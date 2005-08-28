@@ -1,0 +1,15 @@
+#!/bin/bash
+# Copyright 1999-2005 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Header: /var/cvsroot/gentoo-src/portage/bin/doenvd,v 1.2.2.1 2005/01/13 04:51:56 vapier Exp $
+
+if [ ${#} -lt 1 ] ; then
+	echo "doenvd: at least one argument needed"
+	exit 1
+fi
+
+tmp_INSDESTTREE="${INSDESTTREE}"
+INSDESTTREE=/etc/env.d/
+doins "$@"
+INSDESTTREE="${tmp_INSDESTTREE}"
+unset tmp_INSDESTTREE

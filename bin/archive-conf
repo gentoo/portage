@@ -1,0 +1,101 @@
+#!/usr/bin/python
+# Copyright 1999-2004 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Header: /var/cvsroot/gentoo-src/portage/bin/archive-conf,v 1.7 2004/10/04 13:57:36 vapier Exp $
+
+#
+# archive-conf -- save off a config file in the dispatch-conf archive dir
+#
+#  Written by Wayne Davison <gentoo@blorf.net> with code snagged from
+#  Jeremy Wohl's dispatch-conf script and the portage chkcontents script.
+#
+
+import os, sys, string
+sys.path = ["/usr/lib/portage/pym"]+sys.path
+
+import portage, dispatch_conf
+
+FIND_EXTANT_CONTENTS  = "find %s -name CONTENTS"
+
+MANDATORY_OPTS  = [ 'archive-dir' ]
+
+try:
+    import fchksum
+    def perform_checksum(filename): return fchksum.fmd5t(filename)
+except ImportError:
+    import md5
+    def md5_to_hex(md5sum):
+        hexform = ""
+        for ix in xrange(len(md5sum)):
+            hexform = hexform + "%02x" % ord(md5sum[ix])
+        return string.lower(hexform)
+    
+    def perform_checksum(filename):
+        f = open(filename, 'rb')
+        blocksize=32768
+        data = f.read(blocksize)
+        size = 0L
+        sum = md5.new()
+        while data:
+            sum.update(data)
+            size = size + len(data)
+            data = f.read(blocksize)
+        return (md5_to_hex(sum.digest()),size)
+
+def archive_conf():
+    args = []
+    content_files = []
+    md5_match_hash = {}
+
+    options = dispatch_conf.read_config(MANDATORY_OPTS)
+
+    for conf in sys.argv[1:]:
+        if not os.path.isabs(conf):
+            conf = os.path.abspath(conf)
+        args += [ conf ]
+        md5_match_hash[conf] = ''
+
+    # Find all the CONTENT files in VDB_PATH.
+    content_files += os.popen(FIND_EXTANT_CONTENTS % (portage.root+portage.VDB_PATH)).readlines()
+
+    # Search for the saved md5 checksum of all the specified config files
+    # and see if the current file is unmodified or not.
+    try:
+        todo_cnt = len(args)
+        for file in content_files:
+            file = file.rstrip()
+            try:
+                contents = open(file, "r")
+            except IOError, e:
+                print >> sys.stderr, 'archive-conf: Unable to open %s: %s' % (file, e)
+                sys.exit(1)
+            lines = contents.readlines()
+            for line in lines:
+                items = string.split(line)
+                if items[0] == 'obj':
+                    for conf in args:
+                        if items[1] == conf:
+                            stored = string.lower(items[2])
+                            real = string.lower(perform_checksum(conf)[0])
+                            if stored == real:
+                                md5_match_hash[conf] = conf
+                            todo_cnt -= 1
+                            if todo_cnt == 0:
+                                raise "Break"
+    except "Break":
+        pass
+
+    for conf in args:
+        archive = os.path.join(options['archive-dir'], conf.lstrip('/'))
+        if options['use-rcs'] == 'yes':
+            dispatch_conf.rcs_archive(archive, conf, md5_match_hash[conf], '')
+            dispatch_conf.rcs_archive_post_process(archive)
+        else:
+            dispatch_conf.file_archive(archive, conf, md5_match_hash[conf], '')
+            dispatch_conf.file_archive_post_process(archive)
+
+# run
+if len(sys.argv) > 1:
+    archive_conf()
+else:
+    print >> sys.stderr, 'Usage: archive-conf /CONFIG/FILE [/CONFIG/FILE...]'

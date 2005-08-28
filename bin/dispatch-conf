@@ -1,0 +1,311 @@
+#!/usr/bin/python -O
+# Copyright 1999-2004 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Header: /var/cvsroot/gentoo-src/portage/bin/dispatch-conf,v 1.7.2.10 2005/05/12 15:20:22 jstubbs Exp $
+
+#
+# dispatch-conf -- Integrate modified configs, post-emerge
+#
+#  Jeremy Wohl (http://igmus.org)
+#
+# TODO
+#  dialog menus
+#
+
+from stat import *
+from random import *
+import os, shutil, sys, string, re, commands, atexit
+sys.path = ["/usr/lib/portage/pym"]+sys.path
+
+import portage, dispatch_conf
+
+FIND_EXTANT_CONFIGS  = "find %s/ -iname '._cfg????_*' | sed -e 's://:/:g'"
+DIFF_CONTENTS        = 'diff -Nu %s %s'
+DIFF_CVS_INTERP      = 'diff -Nu %s %s | grep "^[+-][^+-]" | grep -v "# .Header:.*"'
+DIFF_WSCOMMENTS      = 'diff -Nu %s %s | grep "^[+-][^+-]" | grep -v "^[-+]#" | grep -v "^[-+][:space:]*$"'
+
+# We need a secure scratch dir and python does silly verbose errors on the use of tempnam
+oldmask = os.umask(0077)
+SCRATCH_DIR = None
+while SCRATCH_DIR is None:
+    try:
+        mydir = "/tmp/dispatch-conf."
+        for x in range(0,8):
+            if int(random() * 3) == 0:
+                mydir += chr(int(65+random()*26.0))
+            elif int(random() * 2) == 0:
+                mydir += chr(int(97+random()*26.0))
+            else:
+                mydir += chr(int(48+random()*10.0))
+        if os.path.exists(mydir):
+            continue
+        os.mkdir(mydir)
+        SCRATCH_DIR = mydir
+    except OSError, e:
+        if e.errno != 17:
+            raise
+os.umask(oldmask)
+
+# Ensure the scratch dir is deleted
+def cleanup(mydir=SCRATCH_DIR):
+    shutil.rmtree(SCRATCH_DIR)
+atexit.register(cleanup)
+
+MANDATORY_OPTS  = [ 'archive-dir', 'diff', 'replace-cvs', 'replace-wscomments', 'merge' ]
+
+class dispatch:
+    options = {}
+
+    def grind (self, config_paths):
+        confs = []
+        count = 0
+
+
+        self.options = dispatch_conf.read_config(MANDATORY_OPTS)
+
+        if self.options.has_key("log-file"):
+            if os.path.exists(self.options["log-file"]):
+                shutil.copyfile(self.options["log-file"], self.options["log-file"] + '.old')
+                os.remove(self.options["log-file"])
+        else:
+            self.options["log-file"] = "/dev/null"
+
+        #
+        # Build list of extant configs
+        #
+
+        for path in config_paths.split ():
+            if not os.path.exists (path):
+                continue
+
+            confs += self.massage (os.popen (FIND_EXTANT_CONFIGS % (path,)).readlines ())
+
+        if self.options['use-rcs'] == 'yes' and ((os.system( "which rcs >/dev/null 2>&1" ) == 256)
+                                                 or (os.system( "which ci >/dev/null 2>&1" ) == 256)
+                                                 or (os.system( "which co >/dev/null 2>&1" ) == 256) 
+                                                 or (os.system( "which rcsmerge >/dev/null 2>&1" ) == 256)):
+            print >> sys.stderr, 'dispatch-conf: Error finding all RCS utils and use-rcs=yes in config; fatal'
+            return False
+
+
+        #
+        # Remove new configs identical to current
+        #                  and
+        # Auto-replace configs a) whose differences are simply CVS interpolations,
+        #                  or  b) whose differences are simply ws or comments,
+        #                  or  c) in paths now unprotected by CONFIG_PROTECT_MASK,
+        #
+
+        def f (conf):
+            mrgconf = re.sub(r'\._cfg', '._mrg', conf['new'])
+            archive = os.path.join(self.options['archive-dir'], conf['current'].lstrip('/'))
+            if self.options['use-rcs'] == 'yes':
+                mrgfail = dispatch_conf.rcs_archive(archive, conf['current'], conf['new'], mrgconf)
+            else:
+                mrgfail = dispatch_conf.file_archive(archive, conf['current'], conf['new'], mrgconf)
+            if os.path.exists(archive + '.dist'):
+                unmodified = len(commands.getoutput(DIFF_CONTENTS % (conf['current'], archive + '.dist'))) == 0
+            else:
+                unmodified = 0
+            if os.path.exists(mrgconf):
+                if mrgfail or len(commands.getoutput(DIFF_CONTENTS % (conf['new'], mrgconf))) == 0:
+                    os.unlink(mrgconf)
+                    newconf = conf['new']
+                else:
+                    newconf = mrgconf
+            else:
+                newconf = conf['new']
+
+            same_file = len(commands.getoutput (DIFF_CONTENTS   % (conf ['current'], newconf))) == 0
+            same_cvs  = len(commands.getoutput (DIFF_CVS_INTERP % (conf ['current'], newconf))) == 0
+            same_wsc  = len(commands.getoutput (DIFF_WSCOMMENTS % (conf ['current'], newconf))) == 0
+
+            # Do options permit?
+            same_cvs = same_cvs and self.options['replace-cvs'] == 'yes'
+            same_wsc = same_wsc and self.options['replace-wscomments'] == 'yes'
+            unmodified = unmodified and self.options['replace-unmodified'] == 'yes'
+
+            if same_file:
+                os.unlink (conf ['new'])
+                self.post_process(conf['current'])
+                if os.path.exists(mrgconf):
+                    os.unlink(mrgconf)
+                return False
+            elif unmodified or same_cvs or same_wsc or conf ['dir'] in portage.settings ['CONFIG_PROTECT_MASK'].split ():
+                self.replace(newconf, conf['current'])
+                self.post_process(conf['current'])
+                if newconf == mrgconf:
+                    os.unlink(conf['new'])
+                elif os.path.exists(mrgconf):
+                    os.unlink(mrgconf)
+                return False
+            else:
+                return True
+
+        confs = filter (f, confs)
+
+        #
+        # Interactively process remaining
+        #
+
+        for conf in confs:
+            count = count + 1
+
+            newconf = conf['new']
+            mrgconf = re.sub(r'\._cfg', '._mrg', newconf)
+            if os.path.exists(mrgconf):
+                newconf = mrgconf
+            show_new_diff = 0
+
+            while 1:
+                if show_new_diff:
+                    os.system((self.options['diff']) % (conf['new'], mrgconf))
+                    show_new_diff = 0
+                else:
+                    os.system((self.options['diff']) % (conf['current'], newconf))
+
+                print
+                print '>> (%i of %i) -- %s' % (count, len(confs), conf ['current'])
+                print '>> q quit, h help, n next, e edit-new, z zap-new, u use-new\n   m merge, t toggle-merge, l look-merge: ',
+
+                c = getch ()
+
+                if c == 'q':
+                    sys.exit (0)
+                if c == 'h':
+                    self.do_help ()
+                    continue
+                elif c == 't':
+                    if newconf == mrgconf:
+                        newconf = conf['new']
+                    elif os.path.exists(mrgconf):
+                        newconf = mrgconf
+                    continue
+                elif c == 'n':
+                    break
+                elif c == 'm':
+                    merged = SCRATCH_DIR+"/"+os.path.basename(conf['current'])
+                    print
+                    os.system (self.options['merge'] % (merged, conf ['current'], newconf))
+                    shutil.copyfile(merged, mrgconf)
+                    os.remove(merged)
+                    mystat = os.lstat(conf['new'])
+                    os.chmod(mrgconf, mystat[ST_MODE])
+                    os.chown(mrgconf, mystat[ST_UID], mystat[ST_GID])
+                    newconf = mrgconf
+                    continue
+                elif c == 'l':
+                    show_new_diff = 1
+                    continue
+                elif c == 'e':
+                    os.system(os.environ['EDITOR'] + ' ' + newconf)
+                    continue
+                elif c == 'z':
+                    os.unlink(conf['new'])
+                    if os.path.exists(mrgconf):
+                        os.unlink(mrgconf)
+                    break
+                elif c == 'u':
+                    self.replace(newconf, conf ['current'])
+                    self.post_process(conf['current'])
+                    if newconf == mrgconf:
+                        os.unlink(conf['new'])
+                    elif os.path.exists(mrgconf):
+                        os.unlink(mrgconf)
+                    break
+                else:
+                    continue
+
+
+    def replace (self, newconf, curconf):
+        """Replace current config with the new/merged version.  Also logs
+        the diff of what changed into the configured log file."""
+        os.system((DIFF_CONTENTS % (curconf, newconf)) + '>>' + self.options["log-file"])
+        try:
+            shutil.copyfile(newconf, curconf)
+            os.remove(newconf)
+        except (IOError, os.error), why:
+            print >> sys.stderr, 'dispatch-conf: Error renaming %s to %s: %s; fatal' % \
+                  (newconf, curconf, str(why))
+
+
+    def post_process(self, curconf):
+        archive = os.path.join(self.options['archive-dir'], curconf.lstrip('/'))
+        if self.options['use-rcs'] == 'yes':
+            dispatch_conf.rcs_archive_post_process(archive)
+        else:
+            dispatch_conf.file_archive_post_process(archive)
+
+
+    def massage (self, newconfigs):
+        """Sort, rstrip, remove old versions, break into triad hash.
+
+        Triad is dictionary of current (/etc/make.conf), new (/etc/._cfg0003_make.conf)
+        and dir (/etc).
+
+        We keep ._cfg0002_conf over ._cfg0001_conf and ._cfg0000_conf.
+        """
+        h = {}
+
+        newconfigs.sort ()
+
+        for nconf in newconfigs:
+            nconf = nconf.rstrip ()
+            conf  = re.sub (r'\._cfg\d+_', '', nconf)
+            dir   = re.match (r'^(.+)/', nconf).group (1)
+
+            if h.has_key (conf):
+                mrgconf = re.sub(r'\._cfg', '._mrg', h[conf]['new'])
+                if os.path.exists(mrgconf):
+                    os.unlink(mrgconf)
+                os.unlink(h[conf]['new'])
+
+            h [conf] = { 'current' : conf, 'dir' : dir, 'new' : nconf }
+
+        configs = h.values ()
+        configs.sort (lambda a, b: cmp(a ['current'], b ['current']))
+
+        return configs
+
+
+    def do_help (self):
+        print; print
+
+        print '  u -- update current config with new config and continue'
+        print '  z -- zap (delete) new config and continue'
+        print '  n -- skip to next config, leave all intact'
+        print '  e -- edit new config'
+        print '  m -- interactively merge current and new configs'
+        print '  l -- look at diff between pre-merged and merged configs'
+        print '  t -- toggle new config between merged and pre-merged state'
+        print '  h -- this screen'
+        print '  q -- quit'
+
+        print; print 'press any key to return to diff...',
+
+        getch ()
+
+
+def getch ():
+    # from ASPN - Danny Yoo
+    #
+    import sys, tty, termios
+
+    fd = sys.stdin.fileno()
+    old_settings = termios.tcgetattr(fd)
+    try:
+        tty.setraw(sys.stdin.fileno())
+        ch = sys.stdin.read(1)
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+    return ch
+
+
+# run
+d = dispatch ()
+
+if len(sys.argv) > 1:
+    # for testing
+    d.grind (string.join (sys.argv [1:]))
+else:
+    d.grind (portage.settings ['CONFIG_PROTECT'])

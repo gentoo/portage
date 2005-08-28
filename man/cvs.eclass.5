@@ -1,0 +1,80 @@
+.TH CVS.ECLASS 5 "Nov 2004" "Portage 2.0.51" portage
+.SH NAME
+cvs.eclass \- provides generic cvs fetching functions
+.SH DESCRIPTION
+The \fBcvs\fR eclass contains a suite of functions that are used to
+create 'live' cvs ebuilds.  These ebuilds are called 'live' because
+they will checkout a cvs repository at the time of emerge and compile
+the source from the checkout.  This eclass usually generates pretty
+unstable ebuilds ... but you can't get anymore bleeding edge than
+a live cvs checkout :).
+
+Common usage of this eclass involves setting \fBECVS_SERVER\fR and
+\fBECVS_MODULE\fR to grab the relevant cvs sources, and then letting
+the eclass define \fBsrc_unpack\fR for you.
+.SH VARIABLES
+.TP
+.B "ECVS_CVS_COMMAND" = \fI"cvs -q -f -z4"\fR
+The command to run in order to checkout the module from the cvs
+repository.  You should not need to change this.
+.TP
+.B "ECVS_UP_OPTS" = \fI"-dP"\fR
+Options to pass to \fBECVS_CVS_COMMAND\fR when running an update.  
+You should not have to modify this.
+.TP
+.B "ECVS_CO_OPTS" = \fI""\fR
+Options to pass to \fBECVS_CVS_COMMAND\fR when running a checkout.  
+You should not have to modify this.
+.TP
+.B "ECVS_TOP_DIR" = \fI"${DISTDIR}/cvs-src"\fR
+Where the cvs modules will be stored and then accessed.  You
+should not have to modify this.
+.TP
+.B "ECVS_SERVER" = \fI"offline"\fR
+Set this to the server that you will be checking the sources out of.  
+If you set this to 'offline' then the eclass will assume the module
+is already checked out and in \fBECVS_TOP_DIR\fR.  You almost always
+will set this variable.
+.TP
+.B "ECVS_AUTH" = \fI"pserver"\fR
+The authentication method to use to checkout the sources.  Please
+note that the only method currently supported is 'pserver'.  You
+should not need to modify this variable.
+.TP
+.B "ECVS_USER" = \fI"anonymous"\fR
+The user to log into the server with.
+.TP
+.B "ECVS_PASS" = \fI""\fR
+The password to log into the server with.
+.TP
+.B "ECVS_MODULE" = \fI""\fR
+The module to checkout from the cvs server.  Please note that you
+*must* set this variable.
+.TP
+.B "ECVS_BRANCH" = \fI"HEAD"\fR
+The branch to checkout the sources from.  The common targets are
+HEAD (current 'stable' cvs code) and SPLIT (current 'unstable' cvs
+code).
+.SH FUNCTIONS
+.TP
+.B cvs_fetch
+This function will setup \fBECVS_TOP_DIR\fR and any other pre-checkout
+steps that may need to be taken.  Then it will login into the server
+and finally checkout the sources from cvs.  You usually do not call
+this function yourself, but rather let it be handled by \fBcvs_src_unpack\fR.
+.TP
+.B cvs_src_unpack
+This function will determine where the cvs files need to be saved and
+then where they need to be placed after the checkout.  The final result
+is that you will have a copy of \fBECVS_MODULE\fR in \fB${WORKDIR}\fR.  Thus
+you will usually set \fB${S}\fR to be \fB${WORKDIR}/${ECVS_MODULE}\fR.
+.SH REPORTING BUGS
+Please report bugs via http://bugs.gentoo.org/
+.SH SEE ALSO
+.BR ebuild (5)
+.SH FILES
+.BR /usr/portage/eclass/cvs.eclass
+.SH AUTHORS
+Mike Frysinger <vapier@gentoo.org>
+.SH CVS HEADER
+$Header: /var/cvsroot/gentoo-src/portage/man/cvs.eclass.5,v 1.4.2.2 2005/01/15 00:19:36 vapier Exp $

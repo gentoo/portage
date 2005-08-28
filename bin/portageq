@@ -1,0 +1,256 @@
+#!/usr/bin/python -O
+# Copyright 1999-2004 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Header: /var/cvsroot/gentoo-src/portage/bin/portageq,v 1.13.2.1 2005/04/12 12:23:41 jstubbs Exp $
+
+import sys, os
+os.environ["PORTAGE_CALLER"] = "portageq"
+sys.path = ["/usr/lib/portage/pym"]+sys.path
+
+import portage,types,string
+
+
+#-----------------------------------------------------------------------------
+#
+# To add functionality to this tool, add a function below.
+#
+# The format for functions is:
+#
+#   def function(argv):
+#       """<list of options for this function>
+#       <description of the function>
+#       """
+#       <code>
+#
+# "argv" is an array of the command line parameters provided after the command.
+#
+# Make sure you document the function in the right format.  The documentation
+# is used to display help on the function.
+#
+# You do not need to add the function to any lists, this tool is introspective,
+# and will automaticly add a command by the same name as the function!
+#
+
+
+def has_version(argv):
+	"""<root> <category/package>
+	Return code 0 if it's available, 1 otherwise.
+	"""
+	if (len(argv) < 2):
+		print "ERROR: insufficient parameters!"
+		sys.exit(2)
+	try:
+		mylist=portage.db[argv[0]]["vartree"].dbapi.match(argv[1])
+		if mylist:
+			sys.exit(0)
+		else:
+			sys.exit(1)
+	except KeyError:
+		sys.exit(1)
+
+
+def best_version(argv):
+	"""<root> <category/package>
+	Returns category/package-version (without .ebuild).
+	"""
+	if (len(argv) < 2):
+		print "ERROR: insufficient parameters!"
+		sys.exit(2)
+	try:
+		mylist=portage.db[argv[0]]["vartree"].dbapi.match(argv[1])
+		print portage.best(mylist)
+	except KeyError:
+		sys.exit(1)
+
+
+def mass_best_version(argv):
+	"""<root> [<category/package>]+
+	Returns category/package-version (without .ebuild).
+	"""
+	if (len(argv) < 2):
+		print "ERROR: insufficient parameters!"
+		sys.exit(2)
+	try:
+		for pack in argv[1:]:
+			mylist=portage.db[argv[0]]["vartree"].dbapi.match(pack)
+			print pack+":"+portage.best(mylist)
+	except KeyError:
+		sys.exit(1)
+
+
+def best_visible(argv):
+	"""<root> [<category/package>]+
+	Returns category/package-version (without .ebuild).
+	"""
+	if (len(argv) < 2):
+		print "ERROR: insufficient parameters!"
+		sys.exit(2)
+	try:
+		mylist=portage.db[argv[0]]["porttree"].dbapi.match(argv[1])
+		print portage.best(mylist)
+	except KeyError:
+		sys.exit(1)
+
+
+def mass_best_visible(argv):
+	"""<root> [<category/package>]+
+	Returns category/package-version (without .ebuild).
+	"""
+	if (len(argv) < 2):
+		print "ERROR: insufficient parameters!"
+		sys.exit(2)
+	try:
+		for pack in argv[1:]:
+			mylist=portage.db[argv[0]]["porttree"].dbapi.match(pack)
+			print pack+":"+portage.best(mylist)
+	except KeyError:
+		sys.exit(1)
+
+
+def all_best_visible(argv):
+	"""<root>
+	Returns all best_visible packages (without .ebuild).
+	"""
+	if (len(argv) < 1):
+		print "ERROR: insufficient parameters!"
+	
+	#print portage.db[argv[0]]["porttree"].dbapi.cp_all()
+	for pkg in portage.db[argv[0]]["porttree"].dbapi.cp_all():
+		mybest=portage.best(portage.db[argv[0]]["porttree"].dbapi.match(pkg))
+		if mybest:
+			print mybest
+
+def match(argv):
+	"""<root> <category/package>
+	Returns \n seperated list of category/package-version
+	"""
+	if (len(argv) < 2):
+		print "ERROR: insufficient parameters!"
+		sys.exit(2)
+	try:
+		print string.join(portage.db[argv[0]]["vartree"].dbapi.match(argv[1]),"\n")
+	except KeyError:
+		sys.exit(1)
+
+
+def vdb_path(argv):
+	"""
+	Returns the path used for the var(installed) package database for the
+	set environment/configuration options.
+	"""
+	print portage.root+portage.VDB_PATH
+
+def gentoo_mirrors(argv):
+	"""
+	Returns the mirrors set to use in the portage configuration.
+	"""
+	print portage.settings["GENTOO_MIRRORS"]
+
+
+def portdir(argv):
+	"""
+	Returns the PORTDIR path as defined in the portage configuration.
+	"""
+	print portage.settings["PORTDIR"]
+
+
+def config_protect(argv):
+	"""
+	Returns the CONFIG_PROTECT paths as defined in the portage configuration.
+	"""
+	print portage.settings["CONFIG_PROTECT"]
+
+
+def config_protect_mask(argv):
+	"""
+	Returns the CONFIG_PROTECT_MASK paths as defined in the portage configuration.
+	"""
+	print portage.settings["CONFIG_PROTECT_MASK"]
+
+
+def portdir_overlay(argv):
+	"""
+	Returns the PORTDIR_OVERLAY path as defined in the portage configuration.
+	"""
+	print portage.settings["PORTDIR_OVERLAY"]
+
+
+def pkgdir(argv):
+	"""
+	Returns the PKGDIR path as defined in the portage configuration.
+	"""
+	print portage.settings["PKGDIR"]
+
+
+def distdir(argv):
+	"""
+	Returns the DISTDIR path as defined in the portage configuration.
+	"""
+	print portage.settings["DISTDIR"]
+
+
+def envvar(argv):
+	"""<variable>
+	Returns a specific environment variable as exists prior to ebuild.sh.
+	Similar to: emerge --verbose --info | egrep '^<variable>='
+	"""
+	print portage.settings[argv[0]]
+
+
+#-----------------------------------------------------------------------------
+#
+# DO NOT CHANGE CODE BEYOND THIS POINT - IT'S NOT NEEDED!
+#
+
+def usage():
+	rev="$Revision: 1.13.2.1 $"
+	ver=string.split(rev, ' ')[1]
+	print ">>> Portage information query tool -- version "+ver
+	print ">>> Usage: portageq <command> [<option> ...]"
+	print ""
+	print "Available commands:"
+
+	#
+	# Show our commands -- we do this by scanning the functions in this
+	# file, and formatting each functions documentation.
+	#
+	for name in globals().keys():
+		# Drop python stuff, modules, and our own support functions.
+		if (name in ("usage", "__doc__", "__name__", "main", "os", "portage", "sys", "__builtins__", "types", "string")):
+			continue
+
+		# Drop non-functions
+		obj = globals()[name]
+		if  (type(obj) != types.FunctionType):
+			continue
+
+		doc = obj.__doc__
+		if (doc == None):
+			print "   "+name
+			print "      MISSING DOCUMENTATION!"
+			print ""
+			continue
+
+		lines = string.split(doc, '\n')
+		print "   "+name+" "+string.strip(lines[0])
+		for line in lines[1:]:
+			print "      "+string.strip(line)
+
+
+def main():
+	if (len(sys.argv) < 2):
+		usage()
+		sys.exit()
+	
+	cmd = sys.argv[1]
+	try:
+		function = globals()[cmd]
+		function(sys.argv[2:])
+	except KeyError:
+		usage()
+		sys.exit()
+
+main()
+
+
+#-----------------------------------------------------------------------------

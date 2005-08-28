@@ -1,0 +1,52 @@
+.TH TLA.ECLASS 5 "Nov 2004" "Portage 2.0.51" portage
+.SH NAME
+tla.eclass \- provides generic tla fetching functions
+.SH DESCRIPTION
+The \fBtla\fR eclass provides an interface to easily allow ebuild authors to
+create 'live' tla ebuilds that fetch their sources from a tla repository.
+.SH VARIABLES
+.TP
+.B ETLA_TLA_CMD = \fI"tla"\fR
+Defines tla executable.  Defaults to 'tla'.
+.TP
+.B ETLA_GET_CMD = \fI"get"\fR
+Defines tla get option.  Defaults to 'get'.
+.TP
+.B ETLA_UPDATE_CMD = \fI"replay"\fR
+Defines tla update option.  Defaults to 'replay'.
+.TP
+.B ETLA_TOP_DIR = \fI"${DISTDIR}/tla-src"\fR
+Defines location where fetched sources will be kept.  Defaults to '${DISTDIR}/tla-src'.
+.TP
+.B ETLA_VERSION = \fI"foo@bar.com--archive-name/category--branch--version"\fR
+Defines tla version in the above format.  This variable will be passed as the
+argument to a tla subcommand such as get, replay, etc.
+.TP
+.B ETLA_CACHE_DIR = \fI"${ELTA_VERSION}"\fR
+Defines the location where the version shall be cached.  This location is
+relative to \fBETLA_TOP_DIR\fR.  Defaults to '\fBETLA_VERSION\fR'.
+.TP
+.B ETLA_ARCHIVES
+Defines a whitespace-delimited list of significant archive URI's.  This variable
+should at least include the URI of the archive that the wanted version is stored
+in.
+.TP
+.B ETLA_CLEAN
+Defines whether or not to fetch a clean copy of sources if there is already a
+working copy available.  If set, the working copy will be removed and a fresh
+copy will be fetched.  Otherwise, the working copy will just be updated (via
+\fBETLA_UPDATE_CMD\fR).  This variable is unset by default.
+.SH FUNCTIONS
+.TP
+.B tla_src_unpack
+Default src_unpack that fetches the sources and places them in \fB${WORKDIR}\fR/\fB${P}\fR.
+.SH REPORTING BUGS
+Please report bugs via http://bugs.gentoo.org/
+.SH SEE ALSO
+.BR ebuild (5)
+.SH FILES
+.BR /usr/portage/eclass/tla.eclass
+.SH AUTHORS
+Aaron Walker <ka0ttic@gentoo.org>
+.SH CVS HEADER
+$Header: /var/cvsroot/gentoo-src/portage/man/tla.eclass.5,v 1.1.2.2 2005/01/15 00:19:36 vapier Exp $

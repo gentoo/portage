@@ -1,0 +1,36 @@
+#!/usr/bin/python -O
+# Copyright 1999-2004 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Header: /var/cvsroot/gentoo-src/portage/bin/clean_locks,v 1.1 2004/09/26 10:44:31 carpaski Exp $
+
+import os,sys
+sys.path = ["/usr/lib/portage/pym"]+sys.path
+
+import portage_locks
+
+if not sys.argv[1:] or "--help" in sys.argv or "-h" in sys.argv:
+	print
+	print "You must specify directories with hardlink-locks to clean."
+	print "You may optionally specify --force, which will remove all"
+	print "of the locks, even if we can't establish if they are in use."
+	print "Please attempt cleaning without force first."
+	print
+	print sys.argv[0]+" /usr/portage/distfiles/.locks"
+	print sys.argv[0]+" --force /usr/portage/distfiles/.locks"
+	print
+	sys.exit(1)
+	
+force = False
+if "--force" in sys.argv[1:]:
+	force=True
+	
+for x in sys.argv[1:]:
+	if x == "--force":
+		continue
+	for y in portage_locks.hardlock_cleanup(x, remove_all_locks=force):
+		print y
+	print
+
+
+
+	

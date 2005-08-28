@@ -1,0 +1,37 @@
+.TH "RPM.ECLASS" "5" "Jun 2003" "Portage 2.0.51" "portage"
+.SH "NAME"
+rpm.eclass \- convienence class for extracting RPM's
+.SH "DESCRIPTION"
+The \fBrpm\fR eclass exists in order to unpack RPM's for you.  This
+way developers dont have to keep employing their own tricks just to
+extract the source archives from an RPM.  The eclass will define the
+\fBsrc_unpack\fR function and do all the unpacking for you.  The
+unpack function will utilize either \fBrpmoffset\fR or \fBrpm2cpio\fR to
+unpack the RPM.  If both exist on the system, then \fBrpm2cpio\fR
+will be utilized.
+.SH "VARIABLES"
+.TP
+.B USE_RPMOFFSET_ONLY = \fI"[0|1]"\fR
+If you want to force the RPM extractor to utilize \fBrpmoffset\fR
+even if \fBrpm2cpio\fR is detected, then just set this variable to 1.
+.SH "FUNCTIONS"
+.TP
+.B rpm_unpack \fI"<file to unpack>"\fR
+Unpack an RPM file in the same manner that \fBunpack\fR unpacks any
+other archive.  The contents of the RPM will be extracted to \fB${WORKDIR}\fR.
+.TP
+.B rpm_src_unpack
+This replacement for \fBsrc_unpack\fR will go through \fB${A}\fR and
+unpack all the files.  If the file is an RPM, then \fBrpm_unpack\fR
+will be called.  Otherwise the default \fBunpack\fR function will be
+utilized.
+.SH "REPORTING BUGS"
+Please report bugs via http://bugs.gentoo.org/
+.SH "SEE ALSO"
+.BR ebuild (5)
+.SH "FILES"
+.BR /usr/portage/eclass/rpm.eclass
+.SH "AUTHORS"
+Mike Frysinger <vapier@gentoo.org>
+.SH "CVS HEADER"
+$Header: /var/cvsroot/gentoo-src/portage/man/rpm.eclass.5,v 1.3.2.1 2005/01/15 00:19:36 vapier Exp $

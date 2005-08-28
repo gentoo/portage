@@ -1,0 +1,26 @@
+#!/bin/bash
+# Copyright 1999-2004 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Header: /var/cvsroot/gentoo-src/portage/bin/doexe,v 1.10.2.1 2004/12/06 03:01:43 carpaski Exp $
+
+mynum=${#}
+if [ ${mynum} -lt 1 ] ; then
+	echo "doexe: at least one argument needed"
+	exit 1
+fi
+if [ ! -d "${D}${EXEDESTTREE}" ] ; then
+	install -d "${D}${EXEDESTTREE}"
+fi
+
+for x in "$@" ; do
+	if [ -L "${x}" ] ; then
+		cp "${x}" "${T}"
+		mysrc="${T}"/`/usr/bin/basename "${x}"`
+	elif [ -d "${x}" ] ; then
+		echo "doexe: warning, skipping directory ${x}"
+		continue
+	else
+		mysrc="${x}"
+	fi
+	install ${EXEOPTIONS} "${mysrc}" "${D}${EXEDESTTREE}"
+done

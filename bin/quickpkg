@@ -1,0 +1,148 @@
+#!/bin/bash
+# Copyright 1999-2005 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Header: /var/cvsroot/gentoo-src/portage/bin/quickpkg,v 1.13.2.6 2005/08/10 22:08:48 vapier Exp $
+
+# This script tries to quickly create a Gentoo binary package using the
+# VDB_PATH/category/pkg/*  files
+#
+# Resulting tbz2 file will be created in ${PKGDIR} ...
+# default is /usr/portage/packages/All/
+
+if [ "`whoami`" != "root" ] ; then
+	echo "You must run this as root"
+	exit 1
+fi
+
+export PORTAGE_DB=$(portageq vdb_path)
+if [ -z "$1" ] || [ $1 == "-h" ] || [ $1 == "--help" ] ; then
+	echo "QUICKPKG ver 1.2"
+	echo "USAGE: quickpkg <list of pkgs>"
+	echo "    a pkg can be of the form:"
+	echo "        - ${PORTAGE_DB}/<CATEGORY>/<PKG-VERSION>/"
+	echo "        - single depend-type atom ..."
+	echo "              if portage can emerge it, quickpkg can make a package"
+	echo "              for exact definitions of depend atoms, see ebuild(5)"
+	echo
+	echo "EXAMPLE:"
+	echo "    quickpkg ${PORTAGE_DB}/net-www/apache-1.3.27-r1"
+	echo "        package up apache, just version 1.3.27-r1"
+	echo "    quickpkg apache"
+	echo "        package up apache, all versions of apache installed"
+	echo "    quickpkg =apache-1.3.27-r1"
+	echo "        package up apache, just version 1.3.27-r1"
+	exit 1
+fi
+
+export PKGDIR=$(portageq envvar PKGDIR)
+export PORTAGE_TMPDIR=$(portageq envvar PORTAGE_TMPDIR)
+
+source /sbin/functions.sh
+
+# here we make a package given a little info
+# $1 = package-name w/version
+# $2 = category
+do_pkg() {
+	mkdir -p "${PORTAGE_TMPDIR}/portage-pkg" || exit 1
+	chmod 0750 "${PORTAGE_TMPDIR}/portage-pkg"
+	MYDIR="${PORTAGE_TMPDIR}/portage-pkg/$1"
+	SRCDIR="${PORTAGE_DB}/$2/$1"
+	LOG="${PORTAGE_TMPDIR}/portage-pkg/$1-quickpkglog"
+
+	ebegin "Building package for $1"
+	(
+		# clean up temp directory
+		rm -rf "${MYDIR}"
+
+		# get pkg info files
+		mkdir -p "${MYDIR}"/temp
+		cp "${SRCDIR}"/* "${MYDIR}"/temp/
+
+		# create filelist and a basic tbz2
+		gawk '{
+			if ($1 != "dir") {
+				if ($1 == "obj")
+					NF=NF-2
+				else if ($1 == "sym")
+					NF=NF-3
+				print
+			}
+		}' "${SRCDIR}"/CONTENTS | cut -f2- -d" " - > "${MYDIR}"/filelist
+		tar vjcf "${MYDIR}"/bin.tar.bz2 --files-from="${MYDIR}"/filelist --no-recursion
+
+		# join together the basic tbz2 and the pkg info files
+		xpak "${MYDIR}"/temp "${MYDIR}"/inf.xpak
+		tbz2tool join "${MYDIR}"/bin.tar.bz2 "${MYDIR}"/inf.xpak "${MYDIR}"/$1.tbz2
+
+		# move the final binary package to PKGDIR
+		[ -d "${PKGDIR}"/All ] ||  mkdir -p "${PKGDIR}"/All
+		[ -d "${PKGDIR}/$2" ] || mkdir -p "${PKGDIR}/$2"
+		mv "${MYDIR}"/$1.tbz2 "${PKGDIR}"/All
+		( cd "${PKGDIR}/$2" && ln -s ../All/$1.tbz2 )
+
+		# cleanup again
+		rm -rf "${MYDIR}"
+	) >& "${LOG}"
+
+	if [ -e "${PKGDIR}/All/$1.tbz2" ] ; then
+		rm -f "${LOG}"
+		PKGSTATS="${PKGSTATS}"$'\n'"$(einfo $1: $(du -h "${PKGDIR}/All/$1.tbz2" | gawk '{print $1}'))"
+		eend 0
+	else
+		cat ${LOG}
+		PKGSTATS="${PKGSTATS}"$'\n'"$(ewarn $1: not created)"
+		eend 1
+	fi
+}
+
+# here we parse the parameters given to use on the cmdline
+export PKGERROR=""
+export PKGSTATS=""
+for x in "$@" ; do
+
+	# they gave us full path
+	if [ -e "${x}"/CONTENTS ] ; then
+		x=$(readlink -f $x)
+		pkg=$(echo ${x} | cut -d/ -f6)
+		cat=$(echo ${x} | cut -d/ -f5)
+		do_pkg "${pkg}" "${cat}"
+
+	# lets figure out what they want
+	else
+		DIRLIST=$(portageq match / "${x}")
+		if [ -z "${DIRLIST}" ] ; then
+			eerror "Could not find anything to match '${x}'; skipping"
+			export PKGERROR="${PKGERROR} ${x}"
+			continue
+		fi
+
+		for d in ${DIRLIST} ; do
+			pkg=$(echo ${d} | cut -d/ -f2)
+			cat=$(echo ${d} | cut -d/ -f1)
+			if [ -f "${PORTAGE_DB}/${cat}/${pkg}/CONTENTS" ] ; then
+				do_pkg ${pkg} ${cat}
+			elif [ -d "${PORTAGE_DB}/${cat}/${pkg}" ] ; then
+				ewarn "Package '${cat}/${pkg}' was injected; skipping"
+			else
+				eerror "Unhandled case (${cat}/${pkg}) !"
+				eerror "Please file a bug at http://bugs.gentoo.org/"
+				exit 10
+			fi
+		done
+	fi
+
+done
+
+if [ -z "${PKGSTATS}" ] ; then
+	eerror "No packages found"
+	exit 1
+else
+	echo $'\n'"$(einfo Packages now in ${PKGDIR}:)${PKGSTATS}"
+fi
+if [ ! -z "${PKGERROR}" ] ; then
+	ewarn "The following packages could not be found:"
+	ewarn "${PKGERROR}"
+	exit 2
+fi
+
+exit 0

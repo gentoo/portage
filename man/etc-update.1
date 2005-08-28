@@ -1,0 +1,40 @@
+.TH "ETC-UPDATE" "1" "Feb 2003" "Portage 2.0.51" "Portage"
+.SH NAME
+etc-update \- handle configuration file updates
+.SH SYNOPSIS
+.B etc-update
+.SH DESCRIPTION
+.I etc-update
+is supposed to be run after merging a new package to see if
+there are updates to the configuration files.  If a new
+configuration file will override an old one, 
+.I etc-update 
+will prompt the user for a decision.
+.PP
+.I etc-update
+will check all directories in the \fICONFIG_PROTECT\fR variable.  All
+config files found in \fICONFIG_PROTECT_MASK\fR will automatically be
+updated for you by \fIetc-update\fR.  See \fBmake.conf\fR(5) for more
+information.
+.SH OPTIONS
+.TP
+None.
+.SH "REPORTING BUGS"
+Please report bugs via http://bugs.gentoo.org/
+.SH "SEE ALSO"
+.BR make.conf (5)
+.SH "FILES"
+.TP
+.B /etc/etc-update.conf
+Configuration settings for \fIetc-update\fR are stored here.
+.TP
+.B /etc/dispatch-conf.conf
+Settings for dispatching configuration files right before they're merged.
+.SH AUTHORS
+Jochem Kossen and Leo Lipelis
+.br
+Karl Trygve Kalleberg <karltk@gentoo.org>
+.br
+Mike Frysinger <vapier@gentoo.org>
+.SH "CVS HEADER"
+$Header: /var/cvsroot/gentoo-src/portage/man/etc-update.1,v 1.9 2004/09/17 00:17:10 vapier Exp $

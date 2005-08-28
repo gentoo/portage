@@ -1,0 +1,59 @@
+#!/usr/bin/python
+# Copyright 1999-2004 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Header: /var/cvsroot/gentoo-src/portage/bin/pkgmerge,v 1.8 2004/10/04 13:56:50 vapier Exp $
+
+import sys,os,string
+sys.path = ["/usr/lib/portage/pym"]+sys.path
+
+import portage,xpak
+
+#build our package digraph
+
+def digraph_create(digraph,mykey,myprovides=None):
+	mytbz2=xpak.tbz2(bintree.getname(mykey))
+	mydep=mytbz2.getelements("RDEPEND")
+	digraph.addnode(mykey,myprovides)
+	mycheck=roottree.depcheck(string.join(mydep," "))
+	if mycheck[0]==0:
+		print "!!! Error: RDEPEND string formatted incorrectly:",mydep
+		return None 
+	for x in mycheck[1]:
+		mymatch=bintree.dep_bestmatch(x)
+		if mymatch=="":
+			print "!!! Error: can't resolve dependency --",x
+			return None
+		if not digraph_create(digraph,mymatch,mykey):
+			return None
+	return 1
+
+#main program loop
+myvirtuals=portage.getvirtuals(portage.root)
+roottree=portage.vartree(portage.root,myvirtuals)
+bintree=portage.binarytree("/",myvirtuals)
+pretend=0
+if len(sys.argv)>=2:
+	if sys.argv[1]=="--pretend":
+		print "These are the packages that I would merge, in order:"
+		pretend=1
+		del sys.argv[1]
+	elif sys.argv[1]=="--help":
+		print "Usage: pkgmerge [--pretend] pkg1.tbz2 [pkg2.tbz2]..."
+		sys.exit(1)
+for mypkg in sys.argv[1:]:
+	digraph=portage.digraph()	
+	mytbz2=xpak.tbz2(mypkg)
+	mykey=mytbz2.getelements("CATEGORY")[0]+"/"+os.path.basename(mypkg)[:-5]
+	digraph_create(digraph,mykey)	
+	while not digraph.empty():
+		mykey=digraph.firstzero()
+		if not mykey:
+			print "!!! Error: circular dependencies"
+			sys.exit(1)
+		mytbz2=bintree.getname(mykey)
+		if pretend:
+			print mytbz2
+		else:
+			portage.pkgmerge(mytbz2,portage.settings["ROOT"])
+		digraph.delnode(mykey)
+		

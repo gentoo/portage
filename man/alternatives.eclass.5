@@ -1,0 +1,59 @@
+.TH ALTERNATIVES.ECLASS 5 "Nov 2004" "Portage 2.0.51" portage
+.SH NAME
+alternatives \- interface for SLOT'ed packages requiring a symbolic link to the
+latest version
+.SH DESCRIPTION
+The \fBalternatives\fR eclass provides an interface for SLOT'ed packages that 
+require a symbolic link that points to the latest version installed.  Due to the
+varying order in which SLOT'ed versions may be installed, the symbolic link is
+not always guaranteed to point to the latest version.  The \fBalternatives\fR
+eclass attempts to solve this problem.
+.br
+
+There are currently two methods in which this eclass may be used.  The first
+method involves variable invocation (via \fBSOURCE\fR and \fBALTERNATIVES\fR),
+while the second method involves function invocation (via \fBalternatives_makesym\fR
+or \fBalternatives_auto_makesym\fR).  These will be described below, however,
+please keep in mind that the two methods are not meant to be used in conjunction.
+.SH VARIABLES
+.TP
+.B SOURCE = \fI"/usr/bin/python"\fR
+Defines the name of the symbolic link that will be created to point to the 
+latest installed version.
+.TP
+.B ALTERNATIVES = \fI"/usr/bin/python2.3 /usr/bin/python2.2"\fR
+Defines a whitespace-delimited list of alternatives.  The first one found to
+exist will become the target of the created symbolic link.
+.SH FUNCTIONS
+.TP
+.B alternatives_makesym \fI< symlink > < alt1 alt2 ... >\fR
+Creates the specified symbolic link to point to the first specified alternative
+found to exist.  This function is normally invoked from \fBpkg_postinst\fR and
+\fBpkg_postrm\fR.
+.TP
+.B alternatives_auto_makesym \fI< symlink > < alt_glob >\fR
+A "smart" version of \fBalternatives_makesym\fR that attempts to automatically
+deduce which version to link to, based on the specified alternatives glob
+pattern (eg. "python[0-9].[0-9]").  Like \fBalternatives_makesym\fR, this
+function is normally invoked from \fBpkg_postinst\fR and \fBpkg_postrm\fR.
+.TP
+\fBNOTE\fR: the following default pkg functions are only meant for use with the
+variable invocation method.
+.TP
+.B alternatives_pkg_postinst
+Default pkg_postinst that calls \fBalternatives_makesym\fR if both the
+\fBSOURCE\fR and \fBALTERNATIVES\fR variables are set.
+.TP
+.B alternatives_pkg_postrm
+Default pkg_postrm that calls \fBalternatives_makesym\fR if both the \fBSOURCE\fR
+and \fBALTERNATIVES\fR variables are set.
+.SH REPORTING BUGS
+Please report bugs via http://bugs.gentoo.org/
+.SH SEE ALSO
+.BR ebuild (5)
+.SH FILES
+.BR /usr/portage/eclass/alternatives.eclass
+.SH AUTHORS
+Aaron Walker <ka0ttic@gentoo.org>
+.SH CVS HEADER
+$Header: /var/cvsroot/gentoo-src/portage/man/alternatives.eclass.5,v 1.1.2.1 2005/08/20 05:05:31 vapier Exp $

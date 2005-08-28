@@ -1,0 +1,15 @@
+#!/bin/bash
+# Copyright 1999-2004 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Header: /var/cvsroot/gentoo-src/portage/bin/fowners,v 1.6 2004/10/04 13:56:50 vapier Exp $
+
+if [ ${#} -lt 2 ] ; then
+	echo "${0}: at least two arguments needed"
+	exit 1
+fi
+
+OWNER="${1}"
+shift
+for FILE in $*; do
+	chown "${OWNER}" "${D}${FILE}"
+done

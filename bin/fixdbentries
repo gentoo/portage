@@ -1,0 +1,20 @@
+#!/bin/bash
+# Copyright 1999-2004 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Header: /var/cvsroot/gentoo-src/portage/bin/fixdbentries,v 1.3 2004/10/04 13:56:50 vapier Exp $
+
+# Script to adjust the contents of the DB entries after a package move.
+# Fairly straight forward... ./movedbentry 'from/here' 'to/here' /over/here
+
+VAR=$1
+NEW=$2
+SPATH=$3
+
+grep -FrZl "${VAR}" "${SPATH}" |
+sed "s#${SPATH}[^\d000]\+/CONTENTS\d000##g" |
+$XARGS -0 sed -i -e "
+s#${VAR}\$#${NEW}#g; 
+s#${VAR}\([[:space:]]\)#${NEW}\1#g; 
+s#${VAR}\(-[^a-zA-Z]\)#${NEW}\1#g; 
+s#${VAR}\([^a-zA-Z0-9-]\)#${NEW}\1#g
+"

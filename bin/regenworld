@@ -1,0 +1,93 @@
+#!/usr/bin/python
+# Copyright 1999-2004 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Header: /var/cvsroot/gentoo-src/portage/bin/regenworld,v 1.10.2.1 2005/01/11 03:40:57 carpaski Exp $
+
+import sys
+sys.path.insert(0, "/usr/lib/portage/pym")
+
+import portage, string, re
+
+__candidatematcher__ = re.compile("^[0-9]+: \\*\\*\\* emerge ")
+__noncandidatematcher__ = re.compile(" sync( |$)| clean( |$)| search( |$)|--oneshot| unmerge( |$)")
+
+def issyspkg(pkgline):
+	return (pkgline[0] == "*")
+
+def iscandidate(logline):
+	return (__candidatematcher__.match(logline) \
+				and not __noncandidatematcher__.search(logline))
+
+def getpkginfo(logline):
+	logline = re.sub("^[0-9]+: \\*\\*\\* emerge ", "", logline)
+	logline = logline.strip()
+	logline = re.sub("(\\S+\\.(ebuild|tbz2))|(--\\S+)|inject ", "", logline)
+	return logline.strip()
+
+__uniqlist__ = []
+def isunwanted(pkgline):
+	if pkgline in ["world", "system", "depclean", "info", "regen", ""]:
+		return False
+	elif pkgline in __uniqlist__:
+		return False
+	elif not re.search("^[a-zA-Z<>=~]", pkgline):
+		return False
+	else:
+		__uniqlist__.append(pkgline)
+		return True
+
+# show a little description if we have arguments
+if len(sys.argv) >= 2 and sys.argv[1] in ["-h", "--help"]:
+	print "This script regenerates the portage world file by checking the portage"
+	print "logfile for all actions that you've done in the past. It ignores any"
+	print "arguments except --help. It is recommended that you make a backup of"
+	print "your existing world file (%s) before using this tool." % portage.WORLD_FILE
+	sys.exit(0)
+
+worldlist = portage.grabfile(portage.WORLD_FILE)
+syslist = portage.settings.packages
+syslist = filter(issyspkg, syslist)
+
+logfile = portage.grabfile("/var/log/emerge.log")
+biglist = filter(iscandidate, logfile)
+biglist = map(getpkginfo, biglist)
+tmplist = []
+for l in biglist:
+	tmplist += l.split()
+biglist = filter(isunwanted, tmplist)
+#for p in biglist:
+#	print p
+#sys.exit(0)
+
+# resolving virtuals
+realsyslist = []
+for mykey in syslist:
+	# drop the asterix
+	mykey = mykey[1:]
+	#print "candidate:",mykey
+	mylist=portage.db["/"]["vartree"].dbapi.match(mykey)
+	if mylist:
+		mykey=portage.cpv_getkey(mylist[0])
+		if mykey not in realsyslist:
+			realsyslist.append(mykey)
+
+for mykey in biglist:
+	#print "checking:",mykey
+	try:
+		mylist=portage.db["/"]["vartree"].dbapi.match(mykey)
+	except KeyError:
+		if "--debug" in sys.argv:
+			print "* ignoring broken log entry for %s (likely injected)" % mykey
+	except ValueError, e:
+		print "* %s is an ambigous package name, candidates are:\n%s" % (mykey, e)
+		continue
+	if mylist:
+		#print "mylist:",mylist
+		myfavkey=portage.cpv_getkey(mylist[0])
+		if (myfavkey not in realsyslist) and (myfavkey not in worldlist):
+			print "add to world:",myfavkey
+			worldlist.append(myfavkey)
+
+myfile=open(portage.WORLD_FILE, "w")
+myfile.write(string.join(worldlist, '\n')+'\n')
+myfile.close()

@@ -1,0 +1,62 @@
+#!/usr/bin/python
+# Copyright 1999-2004 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Header: /var/cvsroot/gentoo-src/portage/bin/chkcontents,v 1.11 2004/10/04 13:56:50 vapier Exp $
+
+# Very simple program to compare the md5sums of a package as listed
+# in VDB_PATH/category/package/CONTENTS with the md5sums of the
+# actual programs on the system (and makes sure that symlinks point to
+# the right files).
+
+import string, os.path, os, sys
+sys.path = ["/usr/lib/portage/pym"]+sys.path
+import portage
+
+def CONTENTScheck(path):
+	try:
+		contents = open(path, "r")
+	except IOError, e:
+		print "Unable to open %s: %s" % (path, e)
+		sys.exit(1)
+	lines = contents.readlines()
+	for line in lines:
+		items = string.split(line)
+		# items is a list w/ size depending on the type of item listed in item[0]
+		# if items[0] = 'dir' then items[1] is the path of a directory
+		# if items[0] = 'obj' then items[1] is the path of a file,
+		#                          items[2] is the file's md5sum,
+		#                          items[3] is the file's size
+		# if items[0] = 'sym' then items[1] is the path of a symbolic link,
+		#                          items[2] is '->'
+		#                          items[3] is the file the symlink should point to
+		#                          items[4] is the symlink mtime 
+		if (items[0] == 'obj'):
+			md5stored = string.lower(items[2])
+			# fchksum.fmdft(file) returns the file's md5sum and the file's size
+			md5real = string.lower(portage.perform_checksum(items[1])[0])
+			if (md5stored != md5real):
+				if md5real:
+					print "%s has md5sum of %s instead of %s" % (items[1], md5real, md5stored)
+				else:
+					print "%s is missing!" % items[1]
+		elif (items[0] == 'sym'):
+			link = items[1]
+			target = items[3]
+			if (not os.path.islink(link)):
+				print "%s is not a symbolic link" % link
+				continue
+			actualtarget = os.readlink(link)
+			if (os.path.normpath(actualtarget) != os.path.normpath(target)):
+				print "%s points to %s, not %s" % (link, actualtarget, target)
+
+
+if __name__ == '__main__':
+	import sys
+	if (len(sys.argv) != 2 or sys.argv[1] == "--help"):
+		print "This program compares md5sums in the file VDB_PATH/category/package/CONTENTS"
+		print "with the md5sums of the actual files on the filesystem"
+		print "(and makes sure that symlinks point to the right files)."
+		print "\nUsage: chkcontents path/to/CONTENTS"
+		sys.exit(1)
+	CONTENTScheck(sys.argv[1])
+

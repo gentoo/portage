@@ -1,0 +1,3227 @@
+#!/usr/bin/python -O
+# Copyright 1999-2004 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Header: /var/cvsroot/gentoo-src/portage/bin/emerge,v 1.345.2.33 2005/06/02 00:57:52 vapier Exp $
+
+import os,sys
+os.environ["PORTAGE_CALLER"]="emerge"
+sys.path = ["/usr/lib/portage/pym"]+sys.path
+
+import portage
+
+import emergehelp,xpak,string,re,commands,time,shutil,traceback,atexit,signal,socket,types
+from stat import *
+from output import *
+
+import portage_util
+import portage_locks
+import portage_exception
+
+
+spinner_msgs = ["Gentoo Rocks ("+os.uname()[0]+")",
+                "Thank you for using Gentoo. :)",
+                "Are you actually trying to read this?",
+                "How many times have you stared at this?",
+                "We are generating the cache right now",
+                "You are paying too much attention.",
+                "A theory is better than its explanation.",
+                "Phasers locked on target, Captain.",
+                "Thrashing is just virtual crashing.",
+                "To be is to program.",
+                "Real Users hate Real Programmers.",
+                "When all else fails, read the instructions.",
+                "Functionality breeds Contempt.",
+                "The future lies ahead.",
+                "3.1415926535897932384626433832795028841971694",
+                "Sometimes insanity is the only alternative.",
+                "Inaccuracy saves a world of explanation.",
+               ]
+
+
+def update_basic_spinner():
+	global spinner, spinpos
+	spinpos = (spinpos+1) % 500
+	if (spinpos % 100) == 0:
+		if spinpos == 0:
+			sys.stdout.write(". ")
+		else:
+			sys.stdout.write(".")
+	sys.stdout.flush()
+
+def update_scroll_spinner():
+	global spinner, spinpos
+	if(spinpos >= len(spinner)):
+		sys.stdout.write(darkgreen(" \b\b\b"+spinner[len(spinner)-1-(spinpos%len(spinner))]))
+	else:
+		sys.stdout.write(green("\b "+spinner[spinpos]))
+	sys.stdout.flush()
+	spinpos = (spinpos+1) % (2*len(spinner))
+
+def update_twirl_spinner():
+	global spinner, spinpos
+	spinpos = (spinpos+1) % len(spinner)
+	sys.stdout.write("\b\b "+spinner[spinpos])
+	sys.stdout.flush()
+
+spinpos = 0
+spinner = "/-\\|/-\\|/-\\|/-\\|\\-/|\\-/|\\-/|\\-/|"
+update_spinner = update_twirl_spinner
+if "candy" in portage.settings.features:
+	spinner = spinner_msgs[int(time.time()*100)%len(spinner_msgs)]
+	update_spinner = update_scroll_spinner
+if not sys.stdout.isatty() or ("--nospinner" in sys.argv):
+	update_spinner = update_basic_spinner
+
+
+if (not sys.stdout.isatty()) or (portage.settings["NOCOLOR"] in ["yes","true"]):
+	nocolor()
+
+def normpath(mystr):
+	if mystr and (mystr[0]=='/'):
+		return os.path.normpath("///"+mystr)
+	else:
+		return os.path.normpath(mystr)
+
+def userquery(prompt, responses=None, colours=None):
+	"""Displays a prompt and a set of responses, then waits for a response
+	which is checked against the responses and the first to match is
+	returned.
+
+	prompt: a String.
+	responses: a List of Strings.
+	colours: a List of Functions taking and returning a String, used to
+	process the responses for display. Typically these will be functions
+	like red() but could be e.g. lambda x: "DisplayString".
+	If responses is omitted, defaults to ["Yes, "No"], [green, red].
+	If only colours is omitted, defaults to [bold, ...].
+
+	Returns a member of the List responses. (If called without optional
+	arguments, returns "Yes" or "No".)
+	KeyboardInterrupt is converted to SystemExit to avoid tracebacks being
+	printed."""
+	if responses is None:
+		responses, colours = ["Yes", "No"], [green, red]
+	elif colours is None:
+		colours=[bold]
+	colours=(colours*len(responses))[:len(responses)]
+	print bold(prompt),
+	try:
+		while True:
+			response=raw_input("["+string.join([colours[i](responses[i]) for i in range(len(responses))],"/")+"] ")
+			for key in responses:
+				if response.upper()==key[:len(response)].upper():
+					return key
+			print "Sorry, response '%s' not understood." % response,
+	except (EOFError, KeyboardInterrupt):
+		print "Interrupted."
+		sys.exit(1)
+
+def sorted_versions(verlist):
+	ret = []
+	for ver in verlist:
+		verparts = ver.split("-")
+		if len(verparts) == 2:
+			verrev = int(verparts[1][1:])
+		else:
+			verrev = 0
+		x = 0
+		while x < len(ret):
+			retparts = ret[x].split("-")
+			verdiff = portage.vercmp(retparts[0], verparts[0])
+			if verdiff > 0:
+				break
+			elif verdiff == 0:
+				if len(retparts) == 2:
+					retrev = int(retparts[1][1:])
+				else:
+					retrev = 0
+				if retrev >= verrev:
+					break
+			x += 1
+		ret.insert(x, ver)
+	return ret
+
+if portage.settings.has_key("PORTAGE_NICENESS"):
+	try:
+		os.nice(int(portage.settings["PORTAGE_NICENESS"]))
+	except SystemExit, e:
+		raise # Needed else can't exit
+	except Exception,e:
+		print "!!! Failed to change nice value to '"+str(portage.settings["PORTAGE_NICENESS"])+"'"
+		print "!!!",e
+
+#Freeze the portdbapi for enhanced performance:
+portage.portdb.freeze()
+
+# Kill noauto as it will break merges otherwise.
+while 'noauto' in portage.features:
+	del portage.features[portage.features.index('noauto')]
+
+#number of ebuilds merged
+merged=0
+params=["selective", "deep", "self", "recurse", "empty"]
+actions=[
+"clean", "config", "depclean",
+"info",   "inject",   "metadata",
+"prune", "regen",  "rsync", "search",
+"sync",  "system", "unmerge",  "world",
+]
+options=[
+"--ask",
+"--buildpkg",     "--buildpkgonly",
+"--changelog",    "--columns",
+"--debug",        "--deep",
+"--digest",
+"--emptytree",
+"--fetchonly",    "--fetch-all-uri",
+"--getbinpkg",    "--getbinpkgonly",
+"--help",         "--noconfmem",
+"--newuse",       "--nocolor",
+"--nodeps",       "--noreplace",
+"--nospinner",    "--oneshot",
+"--onlydeps",     "--pretend",
+"--quiet",        "--resume",
+"--searchdesc",   "--selective",
+"--skipfirst",
+"--tree",
+"--update",       "--upgradeonly",
+"--usepkg",       "--usepkgonly",
+"--verbose",      "--version"
+]
+
+shortmapping={
+"1":"--oneshot",
+"a":"--ask",
+"b":"--buildpkg",  "B":"--buildpkgonly",
+"c":"--clean",     "C":"--unmerge",
+"d":"--debug",     "D":"--deep",
+"e":"--emptytree",
+"f":"--fetchonly", "F":"--fetch-all-uri",
+"g":"--getbinpkg", "G":"--getbinpkgonly",
+"h":"--help",
+"i":"--inject",
+"k":"--usepkg",    "K":"--usepkgonly",
+"l":"--changelog",
+"n":"--noreplace", "N":"--newuse",
+"o":"--onlydeps",  "O":"--nodeps",
+"p":"--pretend",   "P":"--prune",
+"q":"--quiet",
+"s":"--search",    "S":"--searchdesc",
+'t':"--tree",
+"u":"--update",    "U":"--upgradeonly",
+"v":"--verbose",   "V":"--version"
+}
+
+myaction=None
+myopts=[]
+myfiles=[]
+edebug=0
+
+# process short actions
+tmpcmdline=sys.argv[1:]
+#tmpcmdline.extend(portage.settings["EMERGE_OPTS"].split())
+cmdline=[]
+for x in tmpcmdline:
+	if x[0:1]=="-"and x[1:2]!="-":
+		for y in x[1:]:
+			if shortmapping.has_key(y):
+				if shortmapping[y] in cmdline:
+					print
+					print "*** Warning: Redundant use of",shortmapping[y]
+				else:
+					cmdline.append(shortmapping[y])
+			else:
+				print "!!! Error: -"+y+" is an invalid short action or option."
+				sys.exit(1)
+	else:
+		cmdline.append(x)
+
+# process the options and command arguments
+for x in cmdline:
+	if not x:
+		continue
+	if len(x)>=2 and x[0:2]=="--":
+		if x in options:
+			myopts.append(x)
+		elif x[2:] in actions:
+			if x[2:]=="rsync" or x=="rsync":
+				# "emerge --rsync"
+				print
+				print red("*** '--rsync' has been deprecated.")
+				print red("*** Please use '--sync' instead.")
+				print
+				x="--sync"
+			if myaction:
+				if myaction not in ["system", "world"]:
+					myaction="--"+myaction
+				print
+				print red("!!!")+green(" Multiple actions requested... Please choose one only.")
+				print red("!!!")+" '"+darkgreen(myaction)+"' "+red("or")+" '"+darkgreen(x)+"'"
+				print
+				sys.exit(1)
+			myaction=x[2:]
+		else:
+			print "!!! Error:",x,"is an invalid option."
+			sys.exit(1)
+	elif (not myaction) and (x in actions):
+		if x not in ["system", "world"]:
+			#print red("*** Deprecated use of action '"+x+"'")
+			if x=="rsync":
+				# "emerge rsync"
+				print
+				print red("*** 'rsync' will now install the package rsync.")
+				print red("*** To sync the tree, please use '--sync' instead.")
+				print
+				myfiles.append(x)
+				continue
+		if myaction:
+			print
+			print red("!!!")+green(" Multiple actions requested... Please choose one only.")
+			print red("!!! '")+darkgreen(myaction)+"' "+red("or")+" '"+darkgreen(x)+"'"
+			print
+			sys.exit(1)
+		myaction=x
+	elif x[-1]=="/":
+		# this little conditional helps tab completion
+		myfiles.append(x[:-1])
+	else:
+		myfiles.append(x)
+
+
+if "moo" in myfiles:
+	print """
+
+  Gentoo (""" + os.uname()[0] + """)
+
+ _______________________
+< Have you mooed today? >
+ -----------------------
+        \   ^__^
+         \  (oo)\_______
+            (__)\       )\/\ 
+                ||----w |
+                ||     ||
+
+"""
+
+if (myaction in ["world", "system"]) and myfiles:
+	print "emerge: please specify a package class (\"world\" or \"system\") or individual packages, but not both."
+	sys.exit(1)
+
+for x in myfiles:
+	if (x[-7:] == ".ebuild" or x[-5:] == ".tbz2") and os.path.exists(os.path.abspath(x)):
+		print "emerging by path implies --oneshot... adding --oneshot to options."
+		print red("\n*** emerging by path is broken and may not always work!!!\n")
+		break
+
+if ("--tree" in myopts) and ("--columns" in myopts):
+	print "emerge: can't specify both of \"--tree\" and \"--columns\"."
+	sys.exit(1)
+
+# Always create packages if FEATURES=buildpkg
+# Imply --buildpkg if --buildpkgonly
+if ("buildpkg" in portage.features) or ("--buildpkgonly" in myopts):
+	if "--buildpkg" not in myopts:
+		myopts.append("--buildpkg")
+
+# --tree only makes sense with --pretend
+if "--tree" in myopts and not (("--pretend" in myopts) or ("--ask" in myopts)):
+	print ">>> --tree implies --pretend... adding --pretend to options."
+	myopts.append("--pretend")
+
+# Also allow -S to invoke search action (-sS)
+if ("--searchdesc" in myopts):
+	if myaction and myaction != "search":
+		myfiles.append(myaction)
+	if "--search" not in myopts:
+		myopts.append("--search")
+	myaction = "search"
+
+# Always try and fetch binary packages if FEATURES=getbinpkg
+if ("getbinpkg" in portage.features):
+	myopts.append("--getbinpkg")
+
+if ("--getbinpkgonly" in myopts) and not ("--usepkgonly" in myopts):
+	myopts.append("--usepkgonly")
+
+if ("--getbinpkgonly" in myopts) and not ("--getbinpkg" in myopts):
+	myopts.append("--getbinpkg")
+
+if ("--getbinpkg" in myopts) and not ("--usepkg" in myopts):
+	myopts.append("--usepkg")
+
+# Also allow -K to apply --usepkg/-k
+if ("--usepkgonly" in myopts) and not ("--usepkg" in myopts):
+	myopts.append("--usepkg")
+
+# Print deprecation warning for -U
+if ("--upgradeonly" in myopts):
+	print
+	print red("*** Warning: --upgradeonly is a deprecated option in portage-"+portage.VERSION)
+	print red("***          and will likely be removed in a future version.")
+	print
+	# Also allow -U to apply --update/-u
+	if not ("--update" in myopts):
+		print ">>> --upgradeonly implies --update... adding --update to options."
+		myopts.append("--update")
+
+# Also allow -l to apply --pretend/-p, but if already in --ask mode
+if ("--changelog" in myopts) and not (("--pretend" in myopts) or ("--ask" in myopts)):
+	print ">>> --changelog implies --pretend... adding --pretend to options."
+	myopts.append("--pretend")
+
+# Allow -p to remove --ask
+if ("--pretend" in myopts) and ("--ask" in myopts):
+	print ">>> --pretend disables --ask... removing --ask from options."
+	myopts.remove("--ask")
+
+# forbid --ask when not in a terminal
+# note: this breaks `emerge --ask | tee logfile`, but that doesn't work anyway.
+if ("--ask" in myopts) and (not sys.stdin.isatty()):
+	portage.writemsg("!!! \"--ask\" should only be used in a terminal. Exiting.\n")
+	sys.exit(1)
+
+# Set so that configs will be merged regardless of remembered status
+if ("--noconfmem" in myopts):
+	portage.settings.unlock()
+	portage.settings["NOCONFMEM"]="1"
+	portage.settings.backup_changes("NOCONFMEM")
+	portage.settings.lock()
+
+# Set various debug markers... They should be merged somehow.
+if ("--debug" in myopts):
+	portage.settings.unlock()
+	portage.settings["PORTAGE_DEBUG"]="1"
+	portage.settings.backup_changes("PORTAGE_DEBUG")
+	portage.debug=1
+	portage.settings.lock()
+
+if ("--resume" in myopts):
+	if "--verbose" in myopts:
+		print "* --verbose is currently broken with --resume. Disabling..."
+		myopts.remove("--verbose")
+	if "--tree" in myopts:
+		print "* --tree is currently broken with --resume. Disabling..."
+		myopts.remove("--tree")
+
+# Set color output
+if ("--nocolor" in myopts) and (sys.stdout.isatty()):
+	nocolor()
+
+CLEAN_DELAY = 5
+EMERGE_WARNING_DELAY = 10
+if portage.settings["CLEAN_DELAY"]:
+	CLEAN_DELAY = string.atoi("0"+portage.settings["CLEAN_DELAY"])
+if portage.settings["EMERGE_WARNING_DELAY"]:
+	EMERGE_WARNING_DELAY = string.atoi("0"+portage.settings["EMERGE_WARNING_DELAY"])
+
+if "inject" == myaction:
+	print
+	print red("*** --inject has been deprecated.")
+	print red("*** If you manage a piece of software yourself, add it's name and")
+	print red("*** version (eg foo/bar-1.0) to /etc/portage/profile/package.provided.")
+	print red("*** If you want to prevent portage from upgrading a package, add it to")
+	print red("*** /etc/portage/package.mask prepending it with '>' (eg >foo/bar-1.0)")
+	print red("*** For more information on fine-grained portage control, please see")
+	print red("*** the portage man page.")
+	print
+
+def emergelog(mystr,short_msg=None):
+	if "notitles" not in portage.features:
+		if short_msg:
+			xtermTitle(short_msg)
+		else:
+			xtermTitle(mystr)
+	try:
+		#seems odd opening a file each write...
+		if not os.path.exists("/var/log/emerge.log"):
+			mylogfile=open("/var/log/emerge.log", "w")
+			os.chmod("/var/log/emerge.log", S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP)
+			os.chown("/var/log/emerge.log", portage.portage_uid, portage.portage_gid)
+		else:
+			mylogfile=open("/var/log/emerge.log", "a")
+
+		l=portage_locks.lockfile(mylogfile)
+		# seek because we may have gotten held up by the lock.
+		# if so, we may not be positioned at the end of the file.
+		mylogfile.seek(0,2)
+		mylogfile.write(str(time.time())[:10]+": "+mystr+"\n")
+		mylogfile.flush()
+		portage_locks.unlockfile(l)
+		mylogfile.close()
+	except SystemExit, e:
+		raise # Needed else can't exit
+	except Exception, e:
+		if edebug:
+			print "emergelog():",e
+		pass
+
+def emergeexit():
+	"""This gets out final log message in before we quit."""
+	if "--pretend" not in myopts:
+		emergelog(" *** terminating.")
+	if "notitles" not in portage.features:
+		xtermTitleReset()
+atexit.register(emergeexit)
+
+def emergeexitsig(signum, frame):
+	signal.signal(signal.SIGINT, signal.SIG_IGN)
+	portage.portageexit()
+	portage_util.writemsg("\n\nExiting on signal %(signal)s\n" % {"signal":signum})
+	sys.exit(100+signum)
+signal.signal(signal.SIGINT, emergeexitsig)
+
+def countdown(secs=5, doing="Starting"):
+	if secs:
+		print ">>> Waiting",secs,"seconds before starting..."
+		print ">>> (Control-C to abort)...\n"+doing+" in: ",
+		ticks=range(secs)
+		ticks.reverse()
+		for sec in ticks:
+			sys.stdout.write(red(str(sec+1)+" "))
+			sys.stdout.flush()
+			time.sleep(1)
+		print
+
+# formats a size given in bytes nicely
+def format_size(mysize):
+	if type(mysize) not in [types.IntType,types.LongType]:
+		return str(mysize)
+	mystr=str(mysize/1024)
+	mycount=len(mystr)
+	while (mycount > 3):
+		mycount-=3
+		mystr=mystr[:mycount]+","+mystr[mycount:]
+	return mystr+" kB"
+
+
+def getgccversion():
+	"""
+	rtype: C{str}
+	return:  the current in-use gcc version
+	"""
+
+	gcc_env_dir = os.path.join('/', 'etc', 'env.d', 'gcc')
+	gcc_config_config = os.path.join(gcc_env_dir, 'config')
+	gcc_ver_command = 'gcc -dumpversion'
+	gcc_ver_prefix = 'gcc-'
+
+	gcc_not_found_error = red(
+	"!!! No gcc found. You probably need to 'source /etc/profile'\n" +
+	"!!! to update the environment of this terminal and possibly\n" +
+	"!!! other terminals also."
+	)
+
+	gcc_distcc_broken_error = green(
+	'!!! Relying on the shell to locate gcc, this may break\n' +
+	'!!! DISTCC, installing gcc-config and setting your current gcc\n' +
+	'!!! profile will fix this'
+	)
+
+	def fallback():
+
+		print >>sys.stderr, gcc_distcc_broken_error
+
+		gccout = commands.getstatusoutput(gcc_ver_command)
+
+		if gccout[0] != 0:
+			print >>sys.stderr, gcc_not_found_error
+			gccver = "[unavailable]"
+		else:
+			gccver = gcc_ver_prefix + gccout[1]
+
+		return gccver
+
+	if os.path.isfile(gcc_config_config):
+		try:
+			gccver_str = open(gcc_config_config).read().strip()
+			gccver = gcc_ver_prefix + string.join(gccver_str.split('-')[4:], '-')
+		except IndexError:
+			gccver = fallback()
+
+	else:
+		import glob
+		dir_l = glob.glob(os.path.join(gcc_env_dir, '*-*'))
+
+		if len(dir_l) == 1:
+			try:
+				gccver = gcc_ver_prefix + dir_l[0].split('-')[-1]
+			except IndexError:
+				gccver = fallback()
+
+		else:
+			# There was no "config" file in /etc/env.d/gcc and there was more
+			# than one profile in /etc/env.d/gcc so we can't actively
+			# determine what version of gcc we are using so we fall back on the
+			# old way that breaks distcc
+
+			gccver = fallback()
+
+	return gccver
+
+def getportageversion():
+	try:
+		import re
+		profilever = os.path.normpath("///"+os.readlink("/etc/make.profile"))
+		basepath   = os.path.normpath("///"+portage.settings["PORTDIR"]+"/profiles")
+		if re.match(basepath,profilever):
+			profilever = profilever[len(basepath)+1:]
+		else:
+			profilever = "!"+profilever
+		del basepath
+	except SystemExit, e:
+		raise # Needed else can't exit
+	except:
+		profilever="unavailable"
+	libcver=[]
+	libclist  = portage.vardbapi(portage.root).match("virtual/libc")
+	libclist += portage.vardbapi(portage.root).match("virtual/glibc")
+	libclist  = portage_util.unique_array(libclist)
+	for x in libclist:
+		xs=portage.catpkgsplit(x)
+		if libcver:
+			libcver+=","+string.join(xs[1:], "-")
+		else:
+			libcver=string.join(xs[1:], "-")
+	if libcver==[]:
+		libcver="unavailable"
+
+	gccver = getgccversion()
+	unameout=os.uname()[2]+" "+os.uname()[4]
+
+	return "Portage " + portage.VERSION +" ("+profilever+", "+gccver+", "+libcver+", "+unameout+")"
+
+def help():
+	# Move all the help stuff out of this file.
+	emergehelp.help(myaction,myopts,havecolor)
+
+# check if root user is the current user for the actions where emerge needs this
+if ("--pretend" in myopts) or ("--fetchonly" in myopts or "--fetch-all-uri" in myopts) or (myaction=="search"):
+	if not portage.secpass:
+		if portage.wheelgid==portage.portage_gid:
+			print "emerge: wheel group membership required for \"--pretend\" and search."
+			print "emerge: wheel group use is being deprecated. Please update group and passwd to"
+			print "        include the portage user as noted above, and then use group portage."
+		else:
+			print "emerge: portage group membership required for \"--pretend\" and search."
+		sys.exit(1)
+elif "--version" in myopts:
+	print getportageversion()
+	sys.exit(0)
+elif "--help" in myopts:
+	help()
+	sys.exit(0)
+elif portage.secpass!=2:
+	if myaction in ["search", "info", "regen"]:
+		pass
+	elif (not myaction) and (not myfiles):
+		pass
+	elif ("--pretend" in myopts) and (myaction in ["world","system","clean","prune","unmerge"]):
+		pass
+	else:
+		if "--debug" in myopts:
+			print "myaction",myaction
+			print "myopts",myopts
+		print "emerge: root access required."
+		sys.exit(1)
+
+if not "--pretend" in myopts:
+	emergelog("Started emerge on: "+time.strftime("%b %d, %Y %H:%M:%S", time.localtime()))
+	myelogstr=""
+	if myopts:
+		myelogstr=string.join(myopts, " ")
+	if myaction:
+		myelogstr+=" "+myaction
+	if myfiles:
+		myelogstr+=" "+string.join(myfiles, " ")
+	emergelog(" *** emerge "+myelogstr)
+
+#configure emerge engine parameters
+#
+# self:      include _this_ package regardless of if it is merged.
+# selective: exclude the package if it is merged
+# recurse:   go into the dependencies
+# empty:     pretend nothing is merged
+myparams=["self","recurse"]
+add=[]
+sub=[]
+if "--update" in myopts:
+	add.extend(["selective","empty"])
+if "--emptytree" in myopts:
+	add.extend(["empty"])
+	sub.extend(["selective"])
+if "--nodeps" in myopts:
+	sub.extend(["recurse"])
+if "--noreplace" in myopts:
+	add.extend(["selective"])
+if "--deep" in myopts:
+	add.extend(["deep"])
+if "--selective" in myopts:
+	add.extend(["selective"])
+if myaction in ["world","system"]:
+	add.extend(["selective"])
+elif myaction in ["depclean"]:
+	add.extend(["empty"])
+	sub.extend(["selective"])
+for x in add:
+	if (x not in myparams) and (x not in sub):
+		myparams.append(x)
+for x in sub:
+	if x in myparams:
+		myparams.remove(x)
+
+# search functionality
+class search:
+
+	#
+	# class constants
+	#
+	VERSION_SHORT=1
+	VERSION_RELEASE=2
+
+	#
+	# public interface
+	#
+	def __init__(self):
+		"""Searches the available and installed packages for the supplied search key.
+		The list of available and installed packages is created at object instantiation.
+		This makes successive searches faster."""
+		self.installcache = portage.db["/"]["vartree"]
+
+	def execute(self,searchkey):
+		"""Performs the search for the supplied search key"""
+		global myopts
+		match_category = 0
+		self.searchkey=searchkey
+		self.packagematches = []
+		if "--searchdesc" in myopts:
+			self.searchdesc=1
+			self.matches = {"pkg":[], "desc":[]}
+		else:
+			self.searchdesc=0
+			self.matches = {"pkg":[]}
+		print "Searching...   ",
+
+		if self.searchkey[0] == '@':
+			match_category = 1
+			self.searchkey = self.searchkey[1:]
+		if self.searchkey=="*":
+			#hack for people who aren't regular expression gurus
+			self.searchkey==".*"
+		if re.search("\+\+", self.searchkey):
+			#hack for people who aren't regular expression gurus
+			self.searchkey=re.sub("\+\+","\+\+",self.searchkey)
+		self.searchre=re.compile(self.searchkey.lower(),re.I)
+		for package in portage.portdb.cp_all():
+			update_spinner()
+
+			if match_category:
+				match_string  = package[:]
+			else:
+				match_string  = package.split("/")[-1]
+
+			masked=0
+			if self.searchre.search(match_string):
+				if not portage.portdb.xmatch("match-visible",package):
+					masked=1
+				self.matches["pkg"].append([package,masked])
+			elif self.searchdesc: # DESCRIPTION searching
+				full_package = portage.portdb.xmatch("bestmatch-visible",package)
+				if not full_package:
+					#no match found; we don't want to query description
+					full_package=portage.best(portage.portdb.xmatch("match-all",package))
+					if not full_package:
+						continue
+					else:
+						masked=1
+				try:
+					full_desc = portage.portdb.aux_get(full_package,["DESCRIPTION"])[0]
+				except KeyError:
+					print "emerge: search: aux_get() failed, skipping"
+					continue
+				if self.searchre.search(full_desc):
+					self.matches["desc"].append([full_package,masked])
+		self.mlen=0
+		for mtype in self.matches.keys():
+			self.matches[mtype].sort()
+			self.mlen += len(self.matches[mtype])
+
+	def output(self):
+		"""Outputs the results of the search."""
+		print "\b\b  \n[ Results for search key : "+white(self.searchkey)+" ]"
+		print "[ Applications found : "+white(str(self.mlen))+" ]"
+		print " "
+		for mtype in self.matches.keys():
+			for match,masked in self.matches[mtype]:
+				if mtype=="pkg":
+					catpack=match
+					full_package = portage.portdb.xmatch("bestmatch-visible",match)
+					if not full_package:
+						#no match found; we don't want to query description
+						masked=1
+						full_package=portage.best(portage.portdb.xmatch("match-all",match))
+				else:
+					full_package = match
+					match        = portage.pkgsplit(match)[0]
+
+				if full_package:
+					try:
+						desc, homepage, license = portage.portdb.aux_get(full_package,["DESCRIPTION","HOMEPAGE","LICENSE"])
+					except KeyError:
+						print "emerge: search: aux_get() failed, skipping"
+						continue
+					if masked:
+						print green("*")+"  "+white(match)+" "+red("[ Masked ]")
+					else:
+						print green("*")+"  "+white(match)
+					myversion = self.getVersion(full_package, search.VERSION_RELEASE)
+
+					mysum = [0,0]
+					mycat = match.split("/")[0]
+					mypkg = match.split("/")[1]
+
+					mydigest = portage.db["/"]["porttree"].dbapi.finddigest(mycat+"/"+mypkg + "-" + myversion)
+
+					try:
+						myfile = open(mydigest,"r")
+						for line in myfile.readlines():
+							mysum[0] += int(line.split(" ")[3])
+						myfile.close()
+						mystr = str(mysum[0]/1024)
+						mycount=len(mystr)
+						while (mycount > 3):
+							mycount-=3
+							mystr=mystr[:mycount]+","+mystr[mycount:]
+						mysum[0]=mystr+" kB"
+					except SystemExit, e:
+						raise # Needed else can't exit
+					except Exception, e:
+						if edebug:
+							print "!!! Exception:",e
+						mysum[0]=" [no/bad digest]"
+
+					if "--quiet" not in myopts:
+						print "     ", darkgreen("Latest version available:"),myversion
+						print "     ", self.getInstallationStatus(mycat+'/'+mypkg)
+						print "     ", darkgreen("Size of downloaded files:"),mysum[0]
+						print "     ", darkgreen("Homepage:")+"   ",homepage
+						print "     ", darkgreen("Description:"),desc
+						print "     ", darkgreen("License:")+"    ",license
+						print
+		print
+	#
+	# private interface
+	#
+	def getInstallationStatus(self,package):
+		installed_package = self.installcache.dep_bestmatch(package)
+		result = ""
+		version = self.getVersion(installed_package,search.VERSION_RELEASE)
+		if len(version) > 0:
+			result = darkgreen("Latest version installed:")+" "+version
+		else:
+			result = darkgreen("Latest version installed:")+" [ Not Installed ]"
+		return result
+
+	def getVersion(self,full_package,detail):
+		if len(full_package) > 1:
+			package_parts = portage.catpkgsplit(full_package)
+			if detail == search.VERSION_RELEASE and package_parts[3] != 'r0':
+				result = package_parts[2]+ "-" + package_parts[3]
+			else:
+				result = package_parts[2]
+		else:
+			result = ""
+		return result
+
+
+#build our package digraph
+def getlist(mode):
+	if mode=="system":
+		mylines=portage.settings.packages
+	elif mode=="world":
+		try:
+			myfile=open(portage.root+portage.WORLD_FILE,"r")
+			mylines=myfile.readlines()
+			myfile.close()
+		except OSError:
+			print "!!! Couldn't open "+pfile+"; exiting."
+			sys.exit(1)
+		except IOError:
+			#world file doesn't exist
+			mylines=[]
+	mynewlines=[]
+	for x in mylines:
+		myline=string.join(string.split(x))
+		if not len(myline):
+			continue
+		elif myline[0]=="#":
+			continue
+		elif mode=="system":
+			if myline[0]!="*":
+				continue
+			myline=myline[1:]
+		mynewlines.append(myline.strip())
+
+	# Remove everything that is package.provided from our list
+	for myatom in mynewlines[:]:
+		mykey = portage.dep_getkey(myatom)
+		if portage.settings.pprovideddict.has_key(mykey) and \
+			portage.match_from_list(myatom, portage.settings.pprovideddict[mykey]):
+				mynewlines.remove(myatom)
+
+	return mynewlines
+
+def genericdict(mylist):
+	mynewdict={}
+	for x in mylist:
+		mynewdict[portage.dep_getkey(x)]=x
+	return mynewdict
+
+olddbapi=None
+class depgraph:
+
+	def __init__(self,myaction,myopts):
+		global olddbapi
+		self.pkgsettings = portage.config(clone=portage.settings)
+		if not self.pkgsettings["ARCH"]:
+			portage.writemsg(red("\a!!! ARCH is not set... Are you missing the /etc/make.profile symlink?\n"))
+			portage.writemsg(red("\a!!! Is the symlink correct? Is your portage tree complete?\n\n"))
+			sys.exit(9)
+		self.applied_useflags = {}
+
+		self.missingbins=[]
+		self.myaction=myaction
+		self.digraph=portage.digraph()
+		self.orderedkeys=[]
+		self.outdatedpackages=[]
+		self.mydbapi={}
+		self.mydbapi["/"] = portage.fakedbapi()
+		if "empty" not in myparams:
+			for pkg in portage.db["/"]["vartree"].getallcpv():
+				self.mydbapi["/"].cpv_inject(pkg)
+		if portage.root != "/":
+			self.mydbapi[portage.root] = portage.fakedbapi()
+			if "empty" not in myparams:
+				for pkg in portage.db[portage.root]["vartree"].getallcpv():
+					self.mydbapi[portage.root].cpv_inject(pkg)
+
+		if "--usepkg" in myopts:
+			portage.db["/"]["bintree"].populate(("--getbinpkg" in myopts), ("--getbinpkgonly" in myopts))
+
+	def create(self,mybigkey,myparent=None,addme=1,myuse=None):
+		"""creates the actual digraph of packages to merge.  return 1 on success, 0 on failure
+		mybigkey = specification of package to merge; myparent = parent package (one depending on me);
+		addme = should I be added to the tree? (for the --onlydeps mode)"""
+		#stuff to add:
+		#SLOT-aware emerge
+		#IUSE-aware emerge
+		#"no downgrade" emerge
+		#print "mybigkey:",mybigkey
+
+		jbigkey=string.join(mybigkey)
+		if self.digraph.hasnode(jbigkey+" merge") or self.digraph.hasnode(jbigkey+" nomerge"):
+			#this conditional is needed to prevent infinite recursion on already-processed deps
+			return 1
+
+		update_spinner()
+
+		mytype,myroot,mykey=mybigkey
+		# select the correct /var database that we'll be checking against
+		vardbapi=portage.db[myroot]["vartree"].dbapi
+
+		if addme:
+			# if the package is already on the system, we add a "nomerge"
+			# directive, otherwise we add a "merge" directive.
+			if mytype=="blocks":
+				# we've encountered a "blocks" node.  We will totally ignore this
+				# node and not add it to our digraph if it doesn't apply to us.
+				if "--buildpkgonly" not in myopts and myparent and (self.mydbapi[myroot].match(mykey) or vardbapi.match(mykey)):
+					mybigkey.append(myparent.split()[2])
+					self.digraph.addnode(string.join(mybigkey),myparent)
+				return 1
+
+		if myuse == None:
+			self.pkgsettings.setcpv(mykey)
+			myuse=string.split(self.pkgsettings["USE"], " ")
+
+		self.applied_useflags[mykey] = myuse
+
+		merging=1
+		if addme:
+		# this is where we add the node to the list of packages to merge
+			if not myparent:
+				# command-line specified or part of a world list...
+				if ("self" not in myparams) or (("selective" in myparams) and vardbapi.cpv_exists(mykey)):
+					# the package is on the system, so don't merge it.
+					merging=0
+			elif ("selective" in myparams) and vardbapi.cpv_exists(mykey):
+				merging=0
+
+			if (merging==0 and mytype=="ebuild" and "--newuse" in myopts and vardbapi.cpv_exists(mykey)):
+				iuses=string.split(portage.portdb.aux_get(mykey, ["IUSE"])[0])
+				old_use=string.split(vardbapi.aux_get(mykey, ["USE"])[0])
+				now_use=string.split(self.pkgsettings["USE"])
+				for x in iuses:
+					if (old_use.count(x) and not now_use.count(x)) or (not old_use.count(x) and now_use.count(x)):
+						merging=1
+						break
+		else:
+			#onlydeps mode; don't merge
+			merging=2
+		if merging==1:
+			mybigkey.append("merge")
+		else:
+			mybigkey.append("nomerge")
+
+		# whatever the case, we need to add the node to our digraph so
+		# that children can depend upon it.
+		self.digraph.addnode(string.join(mybigkey),myparent)
+		if ("deep" not in myparams) and (not merging):
+			return 1
+		elif "recurse" not in myparams:
+			return 1
+
+		edepend={}
+		if mytype=="binary":
+			mypkgparts=portage.catpkgsplit(mykey)
+			tbz2name = string.split(mykey, "/")[1]+".tbz2"
+			if tbz2name in portage.db[portage.root]["bintree"].invalids:
+				sys.stderr.write("\nINVALID PACKAGE (is required to continue): "+str(mykey)+"\n")
+				sys.exit(1)
+			if portage.db[portage.root]["bintree"].isremote(mykey):
+				edepend = portage.db[portage.root]["bintree"].remotepkgs[tbz2name]
+				edepend["DEPEND"] =""
+				edepend["RDEPEND"]=string.join(string.split(edepend["RDEPEND"])," ")
+				edepend["PDEPEND"]=string.join(string.split(edepend["PDEPEND"])," ")
+				edepend["SLOT"]   =string.strip(edepend["SLOT"])
+				#portage.db[portage.root]["bintree"].gettbz2(mykey)
+			else: # It's local.
+				mytbz2=xpak.tbz2(portage.db[portage.root]["bintree"].getname(mykey))
+				edepend["DEPEND"] =""
+				edepend["RDEPEND"]=string.join(mytbz2.getelements("RDEPEND")," ")
+				edepend["PDEPEND"]=string.join(mytbz2.getelements("PDEPEND")," ")
+				edepend["SLOT"]   =mytbz2.getfile("SLOT",mypkgparts[2])
+		elif mytype=="ebuild":
+			try:
+				mymeta = ["DEPEND","RDEPEND","PDEPEND"]
+				myfoo = portage.portdb.aux_get(mykey, mymeta)
+				for index in range(0,len(mymeta)):
+					edepend[mymeta[index]] = myfoo[index]
+				if "--buildpkgonly" in myopts:
+					edepend["RDEPEND"] = ""
+			except (KeyError,IOError):
+				print "emerge: create(): aux_get() error on",mykey+"; aborting..."
+				sys.exit(1)
+		mydep={}
+		mp=string.join(mybigkey)
+
+		if myroot=="/":
+			mydep["/"]=edepend["DEPEND"]+" "+edepend["RDEPEND"]
+			if not self.select_dep("/",mydep["/"],myparent=mp,myuse=myuse):
+				return 0
+		else:
+			mydep["/"]=edepend["DEPEND"]
+			mydep[myroot]=edepend["RDEPEND"]
+			if not self.select_dep("/",mydep["/"],myparent=mp,myuse=myuse):
+				return 0
+			if not self.select_dep(myroot,mydep[myroot],myparent=mp,myuse=myuse):
+				return 0
+
+		if edepend.has_key("PDEPEND") and edepend["PDEPEND"]:
+			# Post Depend -- Add to the list without a parent, as it depends
+			# on a package being present AND must be built after that package.
+			if not self.select_dep(myroot,edepend["PDEPEND"],myuse=myuse):
+				return 0
+
+		return 1
+
+	def select_files(self,myfiles):
+		"given a list of .tbz2s, .ebuilds and deps, create the appropriate depgraph and return a favorite list"
+		myfavorites=[]
+		for x in myfiles:
+			if x[-5:]==".tbz2":
+				if not os.path.exists(x):
+					if os.path.exists(self.pkgsettings["PKGDIR"]+"/All/"+x):
+						x=self.pkgsettings["PKGDIR"]+"/All/"+x
+					elif os.path.exists(self.pkgsettings["PKGDIR"]+"/"+x):
+						x=self.pkgsettings["PKGDIR"]+"/"+x
+					else:
+						print "\n\n!!! Binary package '"+str(x)+"' does not exist."
+						print "!!! Please ensure the tbz2 exists as specified.\n"
+						sys.exit(1)
+				mytbz2=xpak.tbz2(x)
+				mykey=mytbz2.getelements("CATEGORY")[0]+"/"+os.path.basename(x)[:-5]
+				if os.path.realpath(portage.db["/"]["bintree"].getname(mykey)) != os.path.realpath(x):
+					print red("\n*** You need to adjust PKGDIR to emerge this package.\n")
+					sys.exit(1)
+				if not self.create(["binary",portage.root,mykey],None,"--onlydeps" not in myopts):
+					return (0,myfavorites)
+				elif not "--oneshot" in myopts:
+					myfavorites.append(mykey)
+			elif x[-7:]==".ebuild":
+				x = os.path.realpath(x)
+				mykey=os.path.basename(os.path.normpath(x+"/../.."))+"/"+os.path.basename(x)[:-7]
+				ebuild_path = portage.db["/"]["porttree"].dbapi.findname(mykey)
+				if ebuild_path:
+					if os.path.realpath(ebuild_path) != x:
+						print red("\n*** You need to adjust PORTDIR or PORTDIR_OVERLAY to emerge this package.\n")
+						sys.exit(1)
+					if mykey not in portage.db["/"]["porttree"].dbapi.xmatch("match-visible", portage.dep_getkey(mykey)):
+						print red("\n*** You are emerging a masked package. It is MUCH better to use")
+						print red("*** /etc/portage/package.* to accomplish this. See portage(5) man")
+						print red("*** page for details.")
+						countdown(EMERGE_WARNING_DELAY, "Continuing...")
+				else:
+					print red("\n*** "+x+" does not exist")
+					sys.exit(1)
+				if not self.create(["ebuild",portage.root,mykey],None,"--onlydeps" not in myopts):
+					return (0,myfavorites)
+				elif not "--oneshot" in myopts:
+					myfavorites.append(mykey)
+			else:
+				try:
+					mykey=portage.dep_expand(x,mydb=portage.portdb)
+				except ValueError, errpkgs:
+					print "\n\n!!! The short ebuild name \"" + x + "\" is ambiguous.  Please specify"
+					print "!!! one of the following fully-qualified ebuild names instead:\n"
+					for i in errpkgs[0]:
+						print "    " + green(i)
+					print
+					sys.exit(1)
+
+				# select needs to return 0 on dep_check failure
+
+				sys.stdout.flush()
+				sys.stderr.flush()
+
+				try:
+					self.mysd = self.select_dep(portage.root,mykey,arg=x)
+				except portage_exception.MissingSignature, e:
+					portage.writemsg("\n\n!!! A missing gpg signature is preventing portage from calculating the\n")
+					portage.writemsg("!!! required dependencies. This is a security feature enabled by the admin\n")
+					portage.writemsg("!!! to aid in the detection of malicious intent.\n\n")
+					portage.writemsg("!!! THIS IS A POSSIBLE INDICATION OF A TAMPERED FILES -- CHECK CAREFULLY.\n")
+					portage.writemsg("!!! Affected file: %s\n" % (e))
+					sys.exit(1)
+				except portage_exception.InvalidSignature, e:
+					portage.writemsg("\n\n!!! An invalid gpg signature is preventing portage from calculating the\n")
+					portage.writemsg("!!! required dependencies. This is a security feature enabled by the admin\n")
+					portage.writemsg("!!! to aid in the detection of malicious intent.\n\n")
+					portage.writemsg("!!! THIS IS A POSSIBLE INDICATION OF A TAMPERED FILES -- CHECK CAREFULLY.\n")
+					portage.writemsg("!!! Affected file: %s\n" % (e))
+					sys.exit(1)
+				except SystemExit, e:
+					raise # Needed else can't exit
+				except Exception, e:
+					if "--debug" in myopts:
+						raise
+					print "\n\n!!! Problem in",mykey,"dependencies."
+					print "!!!",str(e),e.__module__
+					sys.exit(1)
+
+				if not self.mysd:
+					return (0,myfavorites)
+				elif not "--oneshot" in myopts:
+					myfavorites.append(mykey)
+
+		missing=0
+		if "--usepkgonly" in myopts:
+			for x in self.digraph.dict.keys():
+				xs=string.split(x," ")
+				if (xs[0] != "binary") and (xs[3]=="merge"):
+					if missing == 0:
+						print
+					missing += 1
+					print "Missing binary for:",xs[2]
+
+		# We're true here unless we are missing binaries.
+		return (not missing,myfavorites)
+
+	def is_newer_ver_installed(self,myroot,pkg,pkgver):
+		"if there is a version of pkg installed newer than pkgver, return it"
+		vardbapi=portage.db[myroot]["vartree"].dbapi
+
+		matches=portage.db[myroot]["vartree"].dbapi.match(pkg)
+		if matches:
+			myslot=portage.db["/"]["porttree"].getslot(pkgver)
+			for match in matches:
+				if portage.pkgcmp(portage.catpkgsplit(pkgver)[1:], portage.catpkgsplit(match)[1:]) < 0:
+					curslot=portage.db[myroot]["vartree"].getslot(match)
+					if curslot == myslot:
+						return match
+
+	def select_dep(self,myroot,depstring,myparent=None,arg=None,myuse=None):
+		"given a dependency string, create the appropriate depgraph and return 1 on success and 0 on failure"
+		if "--debug" in myopts:
+			print
+			print "Parent:   ",myparent
+			print "Depstring:",depstring
+		if not arg:
+			#processing dependencies
+			mycheck=portage.dep_check(depstring,self.mydbapi[myroot],self.pkgsettings,myuse=myuse,use_binaries=("--usepkg" in myopts))
+			#mycheck=portage.dep_check(depstring,self.mydbapi[myroot],self.pkgsettings,myuse=myuse)
+
+			if not mycheck[0]:
+				mymerge=[]
+			else:
+				mymerge=mycheck[1]
+
+		else:
+			#we're processing a command-line argument; unconditionally merge it even if it's already merged
+			mymerge=[depstring]
+
+		# dep_check has been run so we can now add our parent to our
+		# build state to update virtuals and other settings. This
+		# happens after the package is added to the tree so that a
+		# package can depend on a virtual which it satisfies.
+		if myparent:
+			myp = myparent.split()
+			if myp[3]=="merge":
+				self.mydbapi[myroot].cpv_inject(myp[2])
+				if myp[0]=="binary":
+					self.pkgsettings.setinst(myp[2],portage.db["/"]["bintree"].dbapi)
+				else:
+					self.pkgsettings.setinst(myp[2],portage.db[myroot]["porttree"].dbapi)
+
+		if not mymerge:
+			return 1
+
+		if "--debug" in myopts:
+			print "Candidates:",mymerge
+		for x in mymerge:
+			myk=None
+			binpkguseflags=None
+			if x[0]=="!":
+				# if this package is myself, don't append it to block list.
+				if "--debug" in myopts:
+					print "Myparent",myparent
+				if (myparent):
+					if myparent.split()[2] in portage.portdb.xmatch("match-all", x[1:]):
+						# myself, so exit.
+						continue
+				# adding block
+				myk=["blocks",myroot,x[1:]]
+			else:
+				#We are not processing a blocker but a normal dependency
+				myeb=None
+				myeb_matches = portage.portdb.xmatch("match-visible",x)
+				if ("--usepkgonly" not in myopts):
+					myeb=portage.best(myeb_matches)
+
+				myeb_pkg=None
+				if ("--usepkg" in myopts):
+					# The next line assumes the binarytree has been populated.
+					# XXX: Need to work out how we use the binary tree with roots.
+					myeb_pkg_matches=portage.db["/"]["bintree"].dbapi.match(x)
+					if ("--usepkgonly" not in myopts):
+						# Remove any binary package entries that are masked in the portage tree (#55871)
+						for idx in range(len(myeb_pkg_matches)-1,-1,-1):
+							if myeb_pkg_matches[idx] not in myeb_matches:
+								del myeb_pkg_matches[idx]
+					myeb_pkg = portage.best(myeb_pkg_matches)
+
+				if not myeb_pkg:
+					myeb_pkg = None
+				elif ("--newuse" in myopts):
+					iuses=string.split(portage.db["/"]["bintree"].dbapi.aux_get(myeb_pkg, ["IUSE"])[0])
+					old_use=string.split(portage.db["/"]["bintree"].dbapi.aux_get(myeb_pkg, ["USE"])[0])
+					self.pkgsettings.setcpv(myeb_pkg)
+					now_use=string.split(self.pkgsettings["USE"])
+					self.pkgsettings.reset()
+					for x in iuses:
+						if (old_use.count(x) and not now_use.count(x)) or (not old_use.count(x) and now_use.count(x)):
+							myeb_pkg = None
+							break
+
+				if (not myeb) and (not myeb_pkg):
+					if not arg:
+						xinfo='"'+x+'"'
+					else:
+						xinfo='"'+arg+'"'
+					if myparent:
+						xfrom = '(dependency required by '+green('"'+myparent.split()[2]+'"')+red(' ['+myparent.split()[0]+"])")
+					alleb=portage.portdb.xmatch("match-all",x)
+					if alleb:
+						if "--usepkgonly" not in myopts:
+							print "\n!!! "+red("All ebuilds that could satisfy ")+green(xinfo)+red(" have been masked.")
+							print "!!! One of the following masked packages is required to complete your request:"
+							oldcomment = ""
+							for p in alleb:
+								mreasons = portage.getmaskingstatus(p)
+								print "- "+p+" (masked by: "+string.join(mreasons, ", ")+")"
+								comment = portage.getmaskingreason(p)
+								if comment and comment != oldcomment:
+									print comment
+									oldcomment = comment
+							print
+							print "For more information, see MASKED PACKAGES section in the emerge man page or "
+							print "section 2.2 \"Software Availability\" in the Gentoo Handbook."
+							if myparent:
+								print     "!!!    "+red(xfrom)
+							print
+						else:
+							print "\n!!! "+red("There are no packages available to satisfy: ")+green(xinfo)
+							print "!!! Either add a suitable binary package or compile from an ebuild."
+					else:
+						print "\nemerge: there are no ebuilds to satisfy "+xinfo+"."
+						if myparent:
+							print xfrom
+						print
+					return 0
+
+				if "--debug" in myopts:
+					print "ebuild:",myeb
+					print "binpkg:",myeb_pkg
+
+				if myeb and myeb_pkg:
+					myeb_s     = portage.catpkgsplit(myeb)
+					myeb_s     = [myeb_s[0]+"/"+myeb_s[1], myeb_s[2], myeb_s[3]]
+					myeb_pkg_s = portage.catpkgsplit(myeb_pkg)
+					myeb_pkg_s = [myeb_pkg_s[0]+"/"+myeb_pkg_s[1], myeb_pkg_s[2], myeb_pkg_s[3]]
+
+					if portage.pkgcmp(myeb_s, myeb_pkg_s) == 0: # pkg is same version as ebuild
+						myeb = None
+					else:
+						myeb_pkg = None
+
+				if "--upgradeonly" in myopts:
+					# Check that there isn't a newer version of this package already installed
+					cand = None
+					try:
+						# XXX: This can throw an exception if the ebuild doesn't exist
+						if myeb:
+							cand=self.is_newer_ver_installed(myroot,x,myeb)
+						elif myeb_pkg:
+							cand=self.is_newer_ver_installed(myroot,x,myeb_pkg)
+					except SystemExit, e:
+						raise # Needed else can't exit
+					except Exception, e:
+						print "Warning: "+str(e)
+					if cand:
+						myeb=cand
+
+				if myeb:
+					myk=["ebuild",myroot,myeb]
+				elif myeb_pkg:
+					binpkguseflags=portage.db[portage.root]["bintree"].get_use(myeb_pkg)
+					myk=["binary",myroot,myeb_pkg]
+				else:
+					sys.stderr.write("!!! Confused... Don't know what I'm using for dependency info. :(\n")
+					sys.exit(1)
+
+				#if "--usepkg" in myopts:
+				#	#If we want to use packages, see if we have a pre-built one...
+				#	mypk=portage.db["/"]["bintree"].dbapi.match(x)
+				#	if myeb in mypk:
+				#		#Use it only if it's exactly the version we want.
+				#		myk=["binary",myroot,myeb]
+				#	else:
+				#		myk=["ebuild",myroot,myeb]
+				#else:
+				#	myk=["ebuild",myroot,myeb]
+			if myparent:
+				#we are a dependency, so we want to be unconditionally added
+				if not self.create(myk,myparent,myuse=binpkguseflags):
+					return 0
+			else:
+				#if mysource is not set, then we are a command-line dependency and should not be added
+				#if --onlydeps is specified.
+				if not self.create(myk,myparent,"--onlydeps" not in myopts,myuse=binpkguseflags):
+					return 0
+
+		if "--debug" in myopts:
+			print "Exiting...",myparent
+		return 1
+
+
+	def altlist(self):
+		mygraph=self.digraph.copy()
+		dolist=["/"]
+		retlist=[]
+		for x in portage.db.keys():
+			portage.db[x]["merge"]=[]
+			if x not in dolist:
+				dolist.append(x)
+		while (not mygraph.empty()):
+			mycurkey=mygraph.firstzero()
+			if not mycurkey:
+				print "!!! Error: circular dependencies:"
+				print
+				for x in mygraph.dict.keys():
+					for y in mygraph.dict[x][1]:
+						print y,"depends on",x
+				print
+				sys.exit(1)
+			splitski=string.split(mycurkey)
+			#I'm not sure of the significance of the following lines (vestigal?) so I'm commenting 'em out.
+			#These lines remove already-merged things from our alt-list
+			#if "--update" in myopts:
+			#	if not portage.db["/"]["vartree"].exists_specific(splitski[2]):
+			#		portage.db["/"]["merge"].append(splitski)
+			#else:
+			portage.db[splitski[1]]["merge"].append(splitski)
+			mygraph.delnode(mycurkey)
+		for x in dolist:
+			for y in portage.db[x]["merge"]:
+				retlist.append(y)
+		return retlist
+
+	def xcreate(self,mode="system"):
+		global syslist
+		if mode=="system":
+			mylist=syslist
+		else:
+			#world mode
+			worldlist=getlist("world")
+			sysdict=genericdict(syslist)
+			worlddict=genericdict(worldlist)
+			#we're effectively upgrading sysdict to contain all new deps from worlddict
+			for x in worlddict.keys():
+				#only add the world node if the package is:
+				#actually installed -- this prevents the remerging of already unmerged packages when we do a world --update;
+				#actually available -- this prevents emerge from bombing out due to no match being found (we want a silent ignore)
+				if "empty" in myparams:
+					if portage.db["/"]["vartree"].dbapi.match(x):
+						sysdict[x]=worlddict[x]
+				elif portage.db[portage.root]["vartree"].dbapi.match(x):
+					#package is installed
+					sysdict[x]=worlddict[x]
+				else:
+					print "\n*** Package in world file is not installed: "+x
+			mylist = sysdict.keys()
+
+		for mydep in mylist:
+			myeb=portage.portdb.xmatch("bestmatch-visible",mydep)
+			if not myeb:
+				#this is an unavailable world entry; just continue
+				continue
+
+			if "--upgradeonly" in myopts:
+				cand=self.is_newer_ver_installed(portage.root,mydep,myeb)
+				if cand:
+					myeb=cand
+
+			#THIS NEXT BUNCH OF CODE NEEDS TO BE REPLACED TO SUPPORT WORLD ANTI-DEPS
+			#if mydep2[0]=="!":, etc.
+			binpkguseflags = None
+			if "--usepkg" in myopts:
+				mypk=portage.db[portage.root]["bintree"].dep_bestmatch(mydep)
+				if myeb==mypk:
+					myk=["binary",portage.root,mypk]
+					binpkguseflags=portage.db[portage.root]["bintree"].get_use(mypk)
+					if ("--newuse" in myopts):
+						iuses=string.split(portage.db["/"]["bintree"].dbapi.aux_get(mypk, ["IUSE"])[0])
+						old_use=string.split(portage.db["/"]["bintree"].dbapi.aux_get(mypk, ["USE"])[0])
+						self.pkgsettings.setcpv(mypk)
+						now_use=string.split(self.pkgsettings["USE"])
+						self.pkgsettings.reset()
+						for x in iuses:
+							if (old_use.count(x) and not now_use.count(x)) or (not old_use.count(x) and now_use.count(x)):
+								myk=["ebuild",portage.root,myeb]
+								binpkguseflags=None
+								break
+				elif "--usepkgonly" in myopts:
+					if not mypk:
+						self.missingbins += [myeb]
+						myk=["binary",portage.root,myeb]
+					else:
+						myk=["binary",portage.root,mypk]
+				else:
+					myk=["ebuild",portage.root,myeb]
+			else:
+				myk=["ebuild",portage.root,myeb]
+
+			if not self.create(myk,myuse=binpkguseflags):
+				print
+				print "!!! Problem with dependencies under ",myk[0],myk[2]
+				print "!!! Possibly a DEPEND/*DEPEND problem."
+				print
+				return 0
+		return 1
+
+	def match(self,mydep,myroot=portage.root,mykey=None):
+		# support mutual exclusive deps
+		mydep2=mydep
+		if mydep2[0]=="!":
+			mydep2=mydep[1:]
+
+		if mydep[0]=="!":
+			#add our blocker; it will be ignored later if necessary (if we are remerging the same pkg, for example)
+			myk="blocks "+myroot+" "+mydep2
+		else:
+			myeb=portage.db[portage.root]["porttree"].dep_bestmatch(mydep2)
+			if not myeb:
+				if not mykey:
+					print "\n!!! Error: couldn't find match for",mydep
+				else:
+					print "\n!!! Error: couldn't find match for",mydep,"in",mykey
+				print
+				sys.exit(1)
+
+			if "--usepkg" in myopts:
+				mypk=portage.db[portage.root]["bintree"].dep_bestmatch(mydep)
+				if myeb==mypk:
+					myk="binary "+portage.root+" "+mypk
+				else:
+					myk="ebuild "+myroot+" "+myeb
+			else:
+				myk="ebuild "+myroot+" "+myeb
+
+		return myk
+
+	def display(self,mylist):
+		changelogs=[]
+		p=[]
+		totalsize=0
+
+		if "--verbose" in myopts:
+			overlays = string.split(portage.settings['PORTDIR_OVERLAY'])
+
+		if "--tree" in myopts:
+			mylist.reverse()
+			mygraph=self.digraph.copy()
+
+		i = 0
+		while i < len(mylist):
+			if mylist[i][-1]=="nomerge":
+				if not ("--tree" in myopts):
+					# we don't care about this elements
+					mylist.pop(i)
+					continue
+				if (i == (len(mylist) - 1)) \
+				   or (mygraph.depth(string.join(mylist[i])) \
+				       >= mygraph.depth(string.join(mylist[i+1]))):
+					# end of a useless branch (may be the last one)
+					# -> delete the element and test the previous one
+					mylist.pop(i)
+					if i > 0:
+						i -= 1
+					continue
+			# the branch continues, or we've found a good element.
+			# -> let's see what's next, if anything
+			i += 1
+
+		display_overlays=False
+		# files to fetch list - avoids counting a same file twice
+		# in size display (verbose mode)
+		myfetchlist=[]
+		for x in mylist:
+			fetch=" "
+
+			if x[0]=="blocks":
+				addl=""+red("B")+"  "+fetch+"  "
+				resolved=portage.db[x[1]]["vartree"].resolve_key(x[2])
+				print "["+x[0]+" "+addl+"]",red(resolved),
+				if resolved!=x[2]:
+					if x[3]:
+						print red("(\""+x[2]+"\" is blocking "+x[3]+")")
+					else:
+						print red("(\""+x[2]+"\")")
+				else:
+					if x[3]:
+						print red("(is blocking "+x[3]+")")
+					else:
+						print
+			else:
+				if (x[0]!="binary") and ("fetch" in string.split(portage.portdb.aux_get(x[2],["RESTRICT"])[0])):
+					fetch = red("F")
+					if portage.portdb.fetch_check(x[2], portage.settings):
+						fetch = green("f")
+
+				#we need to use "--emptrytree" testing here rather than "empty" param testing because "empty"
+				#param is used for -u, where you still *do* want to see when something is being upgraded.
+				myoldbest=""
+				if (not "--emptytree" in myopts) and portage.db[x[1]]["vartree"].exists_specific(x[2]):
+					addl="  "+yellow("R")+fetch+"  "
+				elif (not "--emptytree" in myopts) and portage.db[x[1]]["vartree"].exists_specific_cat(x[2]):
+					if x[0] == "binary":
+						mynewslot=portage.db["/"]["bintree"].getslot(x[2])
+					elif x[0] == "ebuild":
+						mynewslot=portage.db["/"]["porttree"].getslot(x[2])
+					myoldlist=portage.db[x[1]]["vartree"].dbapi.match(portage.pkgsplit(x[2])[0])
+					myinslotlist=filter((lambda p: portage.db[portage.root]["vartree"].getslot(p)==mynewslot),myoldlist)
+					if myinslotlist:
+						myoldbest=portage.best(myinslotlist)
+						addl="   "+fetch
+						if portage.pkgcmp(portage.pkgsplit(x[2]), portage.pkgsplit(myoldbest)) < 0:
+							# Downgrade in slot
+							addl+=turquoise("U")+blue("D")
+						else:
+							# Update in slot
+							addl+=turquoise("U")+" "
+					else:
+						# New slot, mark it new.
+						addl=" "+green("NS")+fetch+"  "
+
+					if "--changelog" in myopts:
+						changelogs.extend(self.calc_changelog(
+							portage.portdb.findname(x[2]),
+							portage.db["/"]["vartree"].dep_bestmatch('/'.join(portage.catpkgsplit(x[2])[:2])),
+							x[2]
+							))
+				else:
+					addl=" "+green("N")+" "+fetch+"  "
+
+				verboseadd=""
+				if "--verbose" in myopts:
+					# iuse verbose
+					try:
+						if x[0] == "binary":
+							iuse_split = string.split(portage.db["/"]["bintree"].dbapi.aux_get(x[2],["IUSE"])[0])
+						elif x[0] == "ebuild":
+							iuse_split = string.split(portage.portdb.aux_get(x[2],["IUSE"])[0])
+						else:
+							iuse_split = []
+					except SystemExit, e:
+						raise # Needed else can't exit
+					except:
+						portage.writemsg("!!! Error getting IUSE (report this to bugs.gentoo.org)\n")
+						portage.writemsg("!!! %s\n" % x)
+						iuse_split = []
+					iuse_split.sort()
+					old_use=None
+					if myoldbest:
+						pkg=myoldbest
+					else:
+						pkg=x[2]
+					if portage.db["/"]["vartree"].dbapi.cpv_exists(pkg):
+						try:
+							old_use=string.split(portage.db["/"]["vartree"].dbapi.aux_get(pkg, ["USE"])[0])
+						except SystemExit, e:
+							raise # Needed else can't exit
+						except:
+							pass
+					iuse=""
+					now_use=self.applied_useflags[x[2]]
+					for ebuild_iuse in portage_util.unique_array(iuse_split):
+						usechange=""
+						if old_use:
+							if (old_use.count(ebuild_iuse) and not now_use.count(ebuild_iuse)) or (not old_use.count(ebuild_iuse) and now_use.count(ebuild_iuse)):
+								usechange="*"
+
+						if ebuild_iuse in self.applied_useflags[x[2]]:
+							if usechange == "*":
+								iuse=green("+"+ebuild_iuse)
+							else:
+								iuse=red("+"+ebuild_iuse)
+						elif ebuild_iuse in portage.settings.usemask:
+							iuse=blue("(-"+ebuild_iuse+")")
+						else:
+							iuse=blue("-"+ebuild_iuse)
+						verboseadd+=iuse+usechange+" "
+
+					# size verbose
+					mysize=0
+					if x[0] == "ebuild" and x[-1]!="nomerge":
+						myfilesdict=portage.portdb.getfetchsizes(x[2], useflags=self.applied_useflags[x[2]], debug=edebug)
+						if myfilesdict==None:
+							myfilesdict="[empty/missing/bad digest]"
+						else:
+							for myfetchfile in myfilesdict.keys():
+								if myfetchfile not in myfetchlist:
+									mysize+=myfilesdict[myfetchfile]
+									myfetchlist.append(myfetchfile)
+							totalsize+=mysize
+						verboseadd+=format_size(mysize)+" "
+
+					# overlay verbose
+					# XXX: Invalid binaries have caused tracebacks here. 'if file_name'
+					# x = ['binary', '/', 'sys-apps/pcmcia-cs-3.2.7.2.6', 'merge']
+					file_name=portage.portdb.findname(x[2])
+					if file_name: # It might not exist in the tree
+						dir_name=os.path.abspath(os.path.dirname(file_name)+"/../..")
+						if (overlays.count(dir_name)>0):
+							verboseadd+=teal("["+str(overlays.index(os.path.normpath(dir_name))+1)+"]")+" "
+							display_overlays=True
+					else:
+						verboseadd += "[No ebuild?]"
+
+				xs=portage.pkgsplit(x[2])
+				if xs[2]=="r0":
+					xs[2]=""
+				else:
+					xs[2]="-"+xs[2]
+
+				if self.pkgsettings.has_key("COLUMNWIDTH"):
+					mywidth=int(self.pkgsettings.settings["COLUMNWIDTH"])
+				else:
+					mywidth=130
+				oldlp=mywidth-30
+				newlp=oldlp-30
+
+				indent=""
+				if ("--tree" in myopts):
+					indent=" "*mygraph.depth(string.join(x))
+
+				if myoldbest:
+					myoldbest=portage.pkgsplit(myoldbest)[1]+"-"+portage.pkgsplit(myoldbest)[2]
+					if myoldbest[-3:]=="-r0":
+						myoldbest=myoldbest[:-3]
+					myoldbest=blue("["+myoldbest+"]")
+
+				if x[1]!="/":
+					if "--columns" in myopts:
+						myprint="["+x[0]+" "+addl+"] "+indent+darkgreen(xs[0])
+						if (newlp-nc_len(myprint)) > 0:
+							myprint=myprint+(" "*(newlp-nc_len(myprint)))
+						myprint=myprint+"["+darkblue(xs[1]+xs[2])+"] "
+						if (oldlp-nc_len(myprint)) > 0:
+							myprint=myprint+" "*(oldlp-nc_len(myprint))
+						myprint=myprint+myoldbest
+						myprint=myprint+darkgreen("  to "+x[1])+" "+verboseadd
+					else:
+						myprint="["+x[0]+" "+addl+"] "+darkgreen(x[2])+" "+myoldbest+" "+darkgreen("to "+x[1])+" "+verboseadd
+				else:
+					if "--columns" in myopts:
+						myprint="["+x[0]+" "+addl+"] "+indent+darkgreen(xs[0])
+						if (newlp-nc_len(myprint)) > 0:
+							myprint=myprint+(" "*(newlp-nc_len(myprint)))
+						myprint=myprint+green(" ["+xs[1]+xs[2]+"] ")
+						if (oldlp-nc_len(myprint)) > 0:
+							myprint=myprint+(" "*(oldlp-nc_len(myprint)))
+						myprint=myprint+myoldbest+"  "+verboseadd
+					else:
+						if x[3]=="nomerge":
+							myprint=darkblue("[nomerge      ] "+indent+x[2]+" "+myoldbest+" ")+verboseadd
+						else:
+							myprint="["+x[0]+" "+addl+"] "+indent+darkgreen(x[2])+" "+myoldbest+" "+verboseadd
+				p.append(myprint)
+
+			if ("--tree" not in myopts):
+				mysplit=portage.pkgsplit(x[2])
+
+				# XXX mysplit _can_ be None.... Why?
+				if mysplit and (len(mysplit)==3):
+					if "--emptytree" not in myopts:
+						if mysplit[0]=="sys-apps/portage":
+							if ((mysplit[1]+mysplit[2]) != portage.VERSION) and \
+							   ("livecvsportage" not in portage.settings.features):
+								if mylist.index(x)<len(mylist)-1:
+									p.append(red("*** Portage will stop merging at this point and reload itself,"))
+									p.append(red("    recalculate dependencies, and complete the merge."))
+									if "--update" not in myopts:
+										p.append(darkgreen("    You may avoid the remerging of packages by updating portage on its own."))
+									print
+					else:
+						if mysplit[0]=="sys-apps/portage" and ("--emptytree" in myopts):
+							if mysplit[1]+mysplit[2]!=portage.VERSION:
+								p.append(red("***")+" Please update portage to the above version before proceeding.")
+								p.append("    Failure to do so may result in failed or improper merges.")
+								p.append("    A simple '"+green("emerge -u portage")+"' is sufficient.")
+								p.append("")
+				del mysplit
+
+		for x in p:
+			print x
+
+		if "--verbose" in myopts:
+			print
+			print "Total size of downloads: "+format_size(totalsize)
+			if overlays and display_overlays:
+				print "Portage overlays:"
+				y=0
+				for x in overlays:
+					y=y+1
+					print " "+teal("["+str(y)+"]"),x
+
+		if "--changelog" in myopts:
+			print
+			for revision,text in changelogs:
+				print bold('*'+revision)
+				sys.stdout.write(text)
+
+	def calc_changelog(self,ebuildpath,current,next):
+		current = '-'.join(portage.catpkgsplit(current)[1:])
+		if current.endswith('-r0'): current = current[:-3]
+		next = '-'.join(portage.catpkgsplit(next)[1:])
+		if next.endswith('-r0'): next = next[:-3]
+		changelogpath = os.path.join(os.path.split(ebuildpath)[0],'ChangeLog')
+		try:
+			changelog = open(changelogpath).read()
+		except SystemExit, e:
+			raise # Needed else can't exit
+		except:
+			return []
+		divisions = self.find_changelog_tags(changelog)
+		#print 'XX from',current,'to',next
+		#for div,text in divisions: print 'XX',div
+		# skip entries for all revisions above the one we are about to emerge
+		for i in range(len(divisions)):
+			if divisions[i][0]==next:
+				divisions = divisions[i:]
+				break
+		# find out how many entries we are going to display
+		for i in range(len(divisions)):
+			if divisions[i][0]==current:
+				divisions = divisions[:i]
+				break
+		else:
+		    # couldnt find the current revision in the list. display nothing
+			return []
+		return divisions
+
+	def find_changelog_tags(self,changelog):
+		divs = []
+		release = None
+		while 1:
+			match = re.search(r'^\*\ ?([-a-zA-Z0-9_.]*)(?:\ .*)?\n',changelog,re.M)
+			if match is None:
+				if release is not None:
+					divs.append((release,changelog))
+				return divs
+			if release is not None:
+				divs.append((release,changelog[:match.start()]))
+			changelog = changelog[match.end():]
+			release = match.group(1)
+			if release.endswith('.ebuild'):
+				release = release[:-7]
+			if release.endswith('-r0'):
+				release = release[:-3]
+
+	def outdated(self):
+		return self.outdatedpackages
+
+	def merge(self,mylist):
+		returnme=0
+		mymergelist=[]
+
+		#check for blocking dependencies
+		if ("--fetchonly" not in myopts) and ("--buildpkgonly" not in myopts):
+			for x in mylist:
+				if x[0]=="blocks":
+					print "\n!!! Error: the "+x[2]+" package conflicts with another package."
+					print   "!!!        both can't be installed on the same system together."
+					print   "!!!        Please use 'emerge --pretend' to determine blockers."
+					print
+					if ("--pretend" not in myopts):
+						sys.exit(1)
+
+		#buildsyspkg: I need mysysdict also on resume (moved from the else block)
+		mysysdict=genericdict(syslist)
+		if ("--resume" in myopts):
+			# We're resuming.
+			print green("*** Resuming merge...")
+			emergelog(" *** Resuming merge...")
+			mymergelist=portage.mtimedb["resume"]["mergelist"][:]
+			if ("--skipfirst" in myopts) and mymergelist:
+				del portage.mtimedb["resume"]["mergelist"][0]
+				del mymergelist[0]
+		else:
+			myfavs=portage.grabfile(portage.root+portage.WORLD_FILE)
+			myfavdict=genericdict(myfavs)
+			for x in range(len(mylist)):
+				if mylist[x][3]!="nomerge":
+					# Add to the mergelist
+					mymergelist.append(mylist[x])
+				else:
+					myfavkey=portage.cpv_getkey(mylist[x][2])
+					if "--onlydeps" in myopts:
+						continue
+					# Add to the world file. Since we won't be able to later.
+					if (not "--fetchonly" in myopts) and (myfavkey in favorites):
+						#don't record if already in system profile or already recorded
+						if (not mysysdict.has_key(myfavkey)) and (not myfavdict.has_key(myfavkey)):
+							#we don't have a favorites entry for this package yet; add one
+							myfavdict[myfavkey]=myfavkey
+							print ">>> Recording",myfavkey,"in \"world\" favorites file..."
+			if not "--fetchonly" in myopts:
+				portage.writedict(myfavdict,portage.root+portage.WORLD_FILE,writekey=0)
+
+			portage.mtimedb["resume"]["mergelist"]=mymergelist[:]
+
+		# We need to yank the harmful-to-new-builds settings from features.
+		myorigfeat=self.pkgsettings["FEATURES"]
+		myfeat=myorigfeat.split()
+		while ("keeptemp" in myfeat):
+			del myfeat[myfeat.index("keeptemp")]
+		while ("keepwork" in myfeat):
+			del myfeat[myfeat.index("keepwork")]
+
+		self.pkgsettings["FEATURES"]=string.join(myfeat)
+
+		mergecount=0
+		if "--fetchonly" in myopts:
+			mynewmergelist = []
+			for x in mymergelist:
+				if x[0] != "blocks":
+					mynewmergelist.append(x)
+			mymergelist = mynewmergelist
+		for x in mymergelist:
+			mergecount+=1
+			myroot=x[1]
+			pkgindex=2
+			if x[0]=="blocks":
+				pkgindex=3
+			y=portage.portdb.findname(x[pkgindex])
+			if not "--pretend" in myopts:
+				print ">>> emerge ("+str(mergecount)+" of "+str(len(mymergelist))+")",x[pkgindex],"to",x[1]
+				emergelog(" >>> emerge ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" to "+x[1])
+
+			self.pkgsettings["EMERGE_FROM"] = x[0][:]
+			self.pkgsettings.backup_changes("EMERGE_FROM")
+
+			#buildsyspkg: Check if we need to _force_ binary package creation
+			issyspkg = ("buildsyspkg" in myfeat) \
+					and x[0] != "blocks" \
+					and mysysdict.has_key(portage.cpv_getkey(x[2])) \
+					and not ("--buildpkg" in myopts)
+			if x[0] in ["ebuild","blocks"]:
+				if (x[0]=="blocks") and ("--fetchonly" not in myopts):
+					raise Exception, "Merging a blocker"
+				elif ("--fetchonly" in myopts) or ("--fetch-all-uri" in myopts):
+					if x[0] == "blocks":
+						continue
+					if ("--fetch-all-uri" in myopts):
+						retval=portage.doebuild(y,"fetch",myroot,self.pkgsettings,edebug,("--pretend" in myopts),fetchonly=1,fetchall=1)
+					else:
+						retval=portage.doebuild(y,"fetch",myroot,self.pkgsettings,edebug,("--pretend" in myopts),fetchonly=1)
+					if (retval == None) or retval:
+						print
+						print "!!! Fetch for",y,"failed, continuing..."
+						print
+						returnme=1
+					continue
+				elif "--buildpkg" in myopts or issyspkg:
+					#buildsyspkg: Sounds useful to display something, but I don't know if we should also log it
+					if issyspkg:
+						print ">>> This is a system package, let's pack a rescue tarball."
+						#emergelog(">>> This is a system package, let's pack a rescue tarball.")
+					#create pkg, then merge pkg
+					short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Clean"
+					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Cleaning ("+x[pkgindex]+"::"+y+")", short_msg=short_msg)
+					retval=portage.doebuild(y,"clean",myroot,self.pkgsettings,edebug,cleanup=1)
+					if (retval == None):
+						portage_util.writemsg("Unable to run required binary.\n")
+						sys.exit(127)
+					if retval:
+						sys.exit(retval)
+					short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Compile"
+					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Compiling/Packaging ("+x[pkgindex]+"::"+y+")", short_msg=short_msg)
+					retval=portage.doebuild(y,"package",myroot,self.pkgsettings,edebug)
+					if (retval == None):
+						portage_util.writemsg("Unable to run required binary.\n")
+						sys.exit(127)
+					if retval:
+						sys.exit(retval)
+					#dynamically update our database
+					if "--buildpkgonly" not in myopts:
+						portage.db[portage.root]["bintree"].inject(x[2])
+						mytbz2=portage.db[portage.root]["bintree"].getname(x[2])
+						short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Merge"
+						emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Merging ("+x[pkgindex]+"::"+y+")", short_msg=short_msg)
+
+						self.pkgsettings["EMERGE_FROM"] = "binary"
+						self.pkgsettings.backup_changes("EMERGE_FROM")
+
+						retval=portage.pkgmerge(mytbz2,myroot,self.pkgsettings)
+						if retval==None:
+							sys.exit(1)
+				else:
+					short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Clean"
+					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Cleaning ("+x[pkgindex]+"::"+y+")", short_msg=short_msg)
+					retval=portage.doebuild(y,"clean",myroot,self.pkgsettings,edebug,cleanup=1)
+					if (retval == None):
+						portage_util.writemsg("Unable to run required binary.\n")
+						sys.exit(127)
+					if retval:
+						sys.exit(retval)
+					short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Compile"
+					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Compiling/Merging ("+x[pkgindex]+"::"+y+")", short_msg=short_msg)
+					retval=portage.doebuild(y,"merge",myroot,self.pkgsettings,edebug)
+					if (retval == None):
+						portage_util.writemsg("Unable to run required binary.\n")
+						sys.exit(127)
+					if retval:
+						sys.exit(retval)
+					#dynamically update our database
+			elif x[0]=="binary":
+				#merge the tbz2
+				mytbz2=portage.db[portage.root]["bintree"].getname(x[2])
+				if portage.db[portage.root]["bintree"].isremote(x[2]):
+					short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Fetch"
+					emergelog(" --- ("+str(mergecount)+" of "+str(len(mymergelist))+") Fetching Binary ("+x[pkgindex]+"::"+mytbz2+")", short_msg=short_msg)
+					portage.db[portage.root]["bintree"].gettbz2(x[2])
+
+				if ("--fetchonly" in myopts) or ("--fetch-all-uri" in myopts):
+					continue
+
+				short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Merge Binary"
+				emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Merging Binary ("+x[pkgindex]+"::"+mytbz2+")", short_msg=short_msg)
+				retval=portage.pkgmerge(mytbz2,x[1],self.pkgsettings)
+				if retval==None:
+					sys.exit(1)
+				#need to check for errors
+			if "--buildpkgonly" not in myopts:
+				portage.db[x[1]]["vartree"].inject(x[2])
+				myfavkey=portage.cpv_getkey(x[2])
+				if "--fetchonly" not in myopts and "--fetch-all-uri" not in myopts and myfavkey in favorites:
+					myfavs=portage.grabfile(myroot+portage.WORLD_FILE)
+					myfavdict=genericdict(myfavs)
+					mysysdict=genericdict(syslist)
+					#don't record if already in system profile or already recorded
+					if (not mysysdict.has_key(myfavkey)) and (not myfavdict.has_key(myfavkey)):
+						#we don't have a favorites entry for this package yet; add one
+						myfavdict[myfavkey]=myfavkey
+						print ">>> Recording",myfavkey,"in \"world\" favorites file..."
+						emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Updating world file ("+x[pkgindex]+")")
+						portage.writedict(myfavdict,myroot+portage.WORLD_FILE,writekey=0)
+
+				if ("noclean" not in portage.features) and (x[0] != "binary"):
+					short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Clean Post"
+					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Post-Build Cleaning ("+x[pkgindex]+"::"+y+")", short_msg=short_msg)
+					retval=portage.doebuild(y,"clean",myroot,self.pkgsettings,edebug,cleanup=1)
+					if (retval == None):
+						portage_util.writemsg("Unable to run required binary.\n")
+						sys.exit(127)
+					if retval:
+						sys.exit(retval)
+
+				if ("--pretend" not in myopts) and ("--fetchonly" not in myopts) and ("--fetch-all-uri" not in myopts):
+					# Clean the old package that we have merged over top of it.
+					if self.pkgsettings["AUTOCLEAN"]=="yes":
+						xsplit=portage.pkgsplit(x[2])
+						emergelog(" >>> AUTOCLEAN: "+xsplit[0])
+						retval=unmerge("clean", [xsplit[0]])
+						if not retval:
+							emergelog(" --- AUTOCLEAN: Nothing unmerged.")
+
+					# Figure out if we need a restart.
+					mysplit=portage.pkgsplit(x[2])
+					if mysplit[0]=="sys-apps/portage":
+						myver=mysplit[1]+"-"+mysplit[2]
+						if myver[-3:]=='-r0':
+							myver=myver[:-3]
+						if (myver != portage.VERSION) and \
+						   ("livecvsportage" not in portage.settings.features):
+							if len(mymergelist) > mergecount:
+								myargv=sys.argv
+								myr=0
+								for myra in range(len(myargv)):
+									if myargv[myr][0:len("portage")]=="portage":
+										del myargv[myr]
+										myr-=1
+									if myargv[myr][0:len("sys-apps/portage")]=="sys-apps/portage":
+										del myargv[myr]
+										myr-=1
+									myr+=1
+								emergelog(" *** RESTARTING emerge via exec() after change of portage version.")
+								portage.portageexit()
+								# Remove --ask from options before restarting
+								mynewargv=[]
+								badlongopts = ["--ask","--tree","--changelog"]
+								badshortopts = ["a","t","l"]
+								for arg in myargv:
+									if arg[0:2] == "--":
+										if arg in badlongopts:
+											continue
+										mynewargv += [arg]
+									elif arg[0] == "-":
+										myarg = "-"
+										for ch in arg[1:]:
+											if ch in badshortopts:
+												continue
+											myarg += ch
+										mynewargv += [myarg]
+									else:
+										mynewargv += [arg]
+								os.execv("/usr/lib/portage/bin/emerge", mynewargv)
+
+			if ("--pretend" not in myopts) and ("--fetchonly" not in myopts) and ("--fetch-all-uri" not in myopts):
+				emergelog(" ::: completed emerge ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[2]+" to "+x[1])
+
+			# Unsafe for parallel merges
+			del portage.mtimedb["resume"]["mergelist"][0]
+
+		emergelog(" *** Finished. Cleaning up...")
+
+		# We're out of the loop... We're done. Delete the resume data.
+		if portage.mtimedb.has_key("resume"):
+			del portage.mtimedb["resume"]
+
+		if ("--pretend" not in myopts):
+			if ("--fetchonly" not in myopts) and ("--fetch-all-uri" not in myopts):
+				if (mergecount>0):
+					if retval:
+						portage.env_update()
+
+		#by doing an exit this way, --fetchonly can continue to try to
+		#fetch everything even if a particular download fails.
+		if "--fetchonly" in myopts or "--fetch-all-uri" in myopts:
+			if returnme:
+				print "\n\n!!! Some fetch errors were encountered.  Please see above for details.\n\n"
+				sys.exit(returnme)
+			else:
+				sys.exit(0)
+
+def unmerge(unmerge_action, unmerge_files):
+	candidate_catpkgs=[]
+	global_unmerge=0
+
+	realsyslist = getlist("system")
+	syslist = []
+	for x in realsyslist:
+		mycp = portage.dep_getkey(x)
+		if mycp in portage.settings.virtuals:
+			syslist.extend(portage.settings.virtuals[mycp])
+		syslist.append(mycp)
+
+	global myopts
+	mysettings = portage.config(clone=portage.settings)
+
+	if not unmerge_files or "world" in unmerge_files or "system" in unmerge_files:
+		if "unmerge"==unmerge_action:
+			print
+			print bold("emerge unmerge")+" can only be used with specific package names, not with "+bold("world")+" or"
+			print bold("system")+" targets."
+			print
+			return 0
+		else:
+			global_unmerge=1
+
+	localtree=portage.db[portage.root]["vartree"]
+	# process all arguments and add all valid db entries to candidate_catpkgs
+	if global_unmerge:
+		if not unmerge_files or "world" in unmerge_files:
+			candidate_catpkgs.extend(localtree.getallnodes())
+		elif "system" in unmerge_files:
+			candidate_catpkgs.extend(getlist("system"))
+	else:
+		#we've got command-line arguments
+		if not unmerge_files:
+			print "\nNo packages to unmerge have been provided.\n"
+			return 0
+		for x in unmerge_files:
+			arg_parts=x.split('/')
+			if (x[0] not in [".","/"]) and (arg_parts[-1][-7:] != ".ebuild"):
+				#possible cat/pkg or dep; treat as such
+				candidate_catpkgs.append(x)
+			elif unmerge_action in ["prune","clean"]:
+				print "\n!!! Prune and clean do not accept individual ebuilds as arguments;\n    skipping.\n"
+				continue
+			else:
+				# it appears that the user is specifying an installed ebuild and we're in "unmerge" mode, so it's
+				# ok.
+				if not os.path.exists(x):
+					print "\n!!! The path '"+x+"' doesn't exist.\n"
+					return 0
+
+				absx   = os.path.abspath(x)
+				sp_absx = absx.split("/")
+				if sp_absx[-1][-7:] == ".ebuild":
+					del sp_absx[-1]
+					absx = string.join(sp_absx,"/")
+
+				sp_absx_len = len(sp_absx)
+
+				vdb_path = portage.root+portage.VDB_PATH
+				vdb_len  = len(vdb_path)
+
+				sp_vdb     = vdb_path.split("/")
+				sp_vdb_len = len(sp_vdb)
+
+				if not os.path.exists(absx+"/CONTENTS"):
+					print "!!! Not a valid db dir: "+str(absx)
+					return 0
+
+				if sp_absx_len <= sp_vdb_len:
+					# The Path is shorter... so it can't be inside the vdb.
+					print spabsx
+					print absx
+					print "\n!!!",x,"cannot be inside "+(portage.root+portage.VDB_PATH)+"; aborting.\n"
+					return 0
+
+				for idx in range(0,sp_vdb_len):
+					if (idx >= sp_absx_len) or (sp_vdb[idx] != sp_absx[idx]):
+						print sp_absx
+						print absx
+						print "\n!!!",x,"is not inside "+(portage.root+portage.VDB_PATH)+"; aborting.\n"
+						return 0
+
+				print "="+string.join(sp_absx[sp_vdb_len:],"/")
+				candidate_catpkgs.append("="+string.join(sp_absx[sp_vdb_len:],"/"))
+
+	if ("--pretend" in myopts) or ("--ask" in myopts):
+		print darkgreen("\n>>> These are the packages that I would unmerge:")
+
+	pkgmap={}
+	numselected=0
+	for x in candidate_catpkgs:
+		#cycle through all our candidate deps and determine what will and will not get unmerged
+		try:
+			mymatch=localtree.dep_match(x)
+		except KeyError:
+			mymatch=None
+		except ValueError, errpkgs:
+			print "\n\n!!! The short ebuild name \"" + x + "\" is ambiguous.  Please specify"
+			print "!!! one of the following fully-qualified ebuild names instead:\n"
+			for i in errpkgs[0]:
+				print "    " + green(i)
+			print
+			sys.exit(1)
+
+		if not mymatch and x[0] not in "<>=~":
+			#add a "=" if missing
+			mymatch=localtree.dep_match("="+x)
+		if not mymatch:
+			print "\n--- Couldn't find " + white(x) + " to "+unmerge_action+"."
+			continue
+		mykey=portage.key_expand(portage.dep_getkey(mymatch[0]),portage.db["/"]["vartree"].dbapi)
+		if not pkgmap.has_key(mykey):
+			pkgmap[mykey]={"protected":[], "selected":[], "omitted":[] }
+		if unmerge_action=="unmerge":
+				for y in mymatch:
+					if y not in pkgmap[mykey]["selected"]:
+						pkgmap[mykey]["selected"].append(y)
+						numselected=numselected+len(mymatch)
+
+		else:
+			#unmerge_action in ["prune", clean"]
+			slotmap={}
+			for mypkg in mymatch:
+				if unmerge_action=="clean":
+					myslot=localtree.getslot(mypkg)
+				else:
+					#since we're pruning, we don't care about slots and put all the pkgs in together
+					myslot=0
+				if not slotmap.has_key(myslot):
+					slotmap[myslot]={}
+				slotmap[myslot][localtree.dbapi.cpv_counter(mypkg)]=mypkg
+			for myslot in slotmap.keys():
+				counterkeys=slotmap[myslot].keys()
+				counterkeys.sort()
+				if not counterkeys:
+					continue
+				counterkeys.sort()
+				pkgmap[mykey]["protected"].append(slotmap[myslot][counterkeys[-1]])
+				del counterkeys[-1]
+				#be pretty and get them in order of merge:
+				for ckey in counterkeys:
+					pkgmap[mykey]["selected"].append(slotmap[myslot][ckey])
+					numselected=numselected+1
+				#ok, now the last-merged package is protected, and the rest are selected
+	if global_unmerge and not numselected:
+		print "\n>>> No outdated packages were found on your system.\n"
+		return 0
+
+	if not numselected:
+		print "\n>>>",unmerge_action+": No packages selected for removal.\n"
+		return 0
+
+	for x in pkgmap.keys():
+		for y in localtree.dep_match(x):
+			if y not in pkgmap[x]["omitted"] and \
+			   y not in pkgmap[x]["selected"] and \
+			   y not in pkgmap[x]["protected"]:
+				pkgmap[x]["omitted"].append(y)
+		if global_unmerge and not pkgmap[x]["selected"]:
+			#avoid cluttering the preview printout with stuff that isn't getting unmerged
+			continue
+		if not (pkgmap[x]["protected"] or pkgmap[x]["omitted"]) and (x in syslist):
+			print red("\a\n\n!!! '%s' is part of your system profile. '%s'" % (mykey))
+			print yellow("\a!!! Unmerging it may be damaging to your system.\n")
+			if "--pretend" not in myopts and "--ask" not in myopts:
+				global EMERGE_WARNING_DELAY
+				countdown(EMERGE_WARNING_DELAY,red("Press Ctrl-C to Stop"))
+		print "\n "+white(x)
+		for mytype in ["selected","protected","omitted"]:
+			print string.rjust(mytype,12)+":",
+			if pkgmap[x][mytype]:
+				for mypkg in pkgmap[x][mytype]:
+					mysplit=portage.catpkgsplit(mypkg)
+					if mysplit[3]=="r0":
+						myversion=mysplit[2]
+					else:
+						myversion=mysplit[2]+"-"+mysplit[3]
+					if mytype=="selected":
+						print red(myversion),
+					else:
+						print green(myversion),
+			else:
+					print "none",
+			print
+
+	print "\n>>>",red("'Selected'"),"packages are slated for removal."
+	print ">>>",green("'Protected'"),"and",green("'omitted'"),"packages will not be removed.\n"
+
+	if "--pretend" in myopts:
+		#we're done... return
+		return 0
+	if "--ask" in myopts:
+		if userquery("Do you want me to unmerge these packages?")=="No":
+			# enter pretend mode for correct formatting of results
+			myopts+=["--pretend"]
+			print
+			print "Quitting."
+			print
+			return 0
+	#the real unmerging begins, after a short delay....
+
+	global CLEAN_DELAY
+	countdown(CLEAN_DELAY, ">>> Unmerging")
+
+	for x in pkgmap.keys():
+		for y in pkgmap[x]["selected"]:
+			print ">>> Unmerging "+y+"..."
+			emergelog("=== Unmerging... ("+y+")")
+			mysplit=string.split(y,"/")
+			#unmerge...
+			retval=portage.unmerge(mysplit[0],mysplit[1],portage.root,mysettings,unmerge_action not in ["clean","prune"])
+			if retval:
+				emergelog(" !!! unmerge FAILURE: "+y)
+			else:
+				emergelog(" >>> unmerge success: "+y)
+	#run ldconfig, etc...
+	portage.env_update()
+	if not numselected:
+		return 0
+	else:
+		return 1
+
+
+def chk_updated_info_files(retval):
+	root=portage.root
+
+	infodirs=[]
+	infodirs.extend(string.split(portage.settings["INFOPATH"], ":"))
+	infodirs.extend(string.split(portage.settings["INFODIR"], ":"))
+
+	print
+	if os.path.exists("/usr/bin/install-info"):
+		regen_infodirs=[]
+		for z in infodirs:
+			if z=='':
+				continue
+			inforoot=normpath(root+z)
+			if os.path.isdir(inforoot):
+				try:
+					infomtime=os.stat(inforoot)[ST_MTIME]
+				except SystemExit, e:
+					raise # Needed else can't exit
+				except:
+					infomtime=0
+
+				if not portage.mtimedb.has_key("info"):
+					portage.mtimedb["info"]={}
+				if portage.mtimedb["info"].has_key(inforoot):
+					if portage.mtimedb["info"][inforoot]==infomtime:
+						pass
+					else:
+						portage.mtimedb["info"][inforoot]=infomtime
+						regen_infodirs.append(inforoot)
+				else:
+					regen_infodirs.append(inforoot)
+
+		if not regen_infodirs:
+			print " "+green("*")+" GNU info directory index is up-to-date."
+		else:
+			print " "+green("*")+" Regenerating GNU info directory index..."
+
+			icount=0
+			badcount=0
+			for inforoot in regen_infodirs:
+				if inforoot=='':
+					continue
+				try:
+					os.rename(inforoot+"/dir",inforoot+"/dir.old")
+				except SystemExit, e:
+					raise # Needed else can't exit
+				except:
+					pass
+
+				if not os.path.isdir(inforoot):
+					continue
+				errmsg = ""
+				for x in os.listdir(inforoot):
+					if (x[0] == ".") or (x in ["dir","dir.old"]) or (os.path.isdir(inforoot+"/"+x)):
+						continue
+					myso=commands.getstatusoutput("LANG=C LANGUAGE=C /usr/bin/install-info --dir-file="+inforoot+"/dir "+inforoot+"/"+x)[1]
+					existsstr="already exists, for file `"
+					if myso!="":
+						if re.search(existsstr,myso):
+							# Already exists... Don't increment the count for this.
+							pass
+						elif myso[:44]=="install-info: warning: no info dir entry in ":
+							# This info file doesn't contain a DIR-header: install-info produces this
+							# (harmless) warning (the --quiet switch doesn't seem to work).
+							# Don't increment the count for this.
+							pass
+						else:
+							badcount=badcount+1
+							errmsg += myso + "\n"
+					icount=icount+1
+
+				#update mtime so we can potentially avoid regenerating.
+				portage.mtimedb["info"][inforoot]=os.stat(inforoot)[ST_MTIME]
+
+			if badcount:
+				print " "+yellow("*")+" Processed",icount,"info files;",badcount,"errors."
+				print errmsg
+			else:
+				print " "+green("*")+" Processed",icount,"info files."
+
+
+def post_emerge(retval=0):
+	global myopts
+	os.chdir("/")
+	if "--pretend" in myopts:
+		sys.exit(retval)
+
+	emergelog(" *** exiting successfully.")
+
+	if "noinfo" not in portage.settings.features:
+		chk_updated_info_files(retval)
+
+	chk_updated_cfg_files()
+	sys.exit(retval)
+
+
+def chk_updated_cfg_files():
+	if portage.settings["CONFIG_PROTECT"]:
+		#number of directories with some protect files in them
+		procount=0
+		for x in string.split(portage.settings["CONFIG_PROTECT"]):
+			if os.path.isdir(x):
+				a=commands.getstatusoutput("cd "+x+"; find . -iname '._cfg????_*'")
+				if a[0]!=0:
+					print " "+red("*")+" error scanning",x
+				else:
+					files=string.split(a[1])
+					if files:
+						procount=procount+1
+						print " "+yellow("* IMPORTANT:")+"",len(files),"config files in",x,"need updating."
+		if procount:
+			#print " "+yellow("*")+" Type "+green("emerge --help config")+" to learn how to update config files."
+			print " "+yellow("*")+" Type "+green("emerge --help config")+" to learn how to update config files."
+		print
+
+# general options that should be taken into account before any action
+if "--debug" in myopts:
+	edebug=1
+
+if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
+	if "--pretend" in myopts:
+		print "emerge: \"sync\" actions do not support \"--pretend.\""
+		sys.exit(1)
+
+	emergelog(" === "+str(myaction))
+	myportdir=portage.settings["PORTDIR"]
+	if myportdir[-1]=="/":
+		myportdir=myportdir[:-1]
+	if not os.path.exists(myportdir):
+		print ">>>",myportdir,"not found, creating it."
+		os.makedirs(myportdir,0755)
+	syncuri=string.rstrip(portage.settings["SYNC"])
+	os.umask(0022)
+	if myaction == "metadata":
+		if "--ask" in myopts:
+			if userquery("Are you sure?") == "No":
+				sys.exit(1)
+		print "skipping sync"
+		updatecache_flg = True
+		tmpservertimestampfile = None
+	elif syncuri[:8]=="rsync://":
+		if not os.path.exists("/usr/bin/rsync"):
+			print "!!! /usr/bin/rsync does not exist, so rsync support is disabled."
+			print "!!! Type \"emerge net-misc/rsync\" to enable rsync support."
+			sys.exit(1)
+		mytimeout=180
+		if portage.settings.has_key("RSYNC_TIMEOUT"):
+			try:
+				mytimeout=int(portage.settings["RSYNC_TIMEOUT"])
+			except SystemExit, e:
+				raise # Needed else can't exit
+			except:
+				pass
+
+		rsync_flags = [
+			"--recursive",    # Recurse directories
+			"--links",        # Consider symlinks
+			"--safe-links",   # Ignore links outside of tree
+			"--perms",        # Preserve permissions
+			"--times",        # Preserive mod times
+			"--compress",     # Compress the data transmitted
+			"--force",        # Force deletion on non-empty dirs
+			"--whole-file",   # Don't do block transfers, only entire files
+			"--delete",       # Delete files that aren't in the master tree
+			"--delete-after", # Delete only after everything else is done
+			"--stats",        # Show final statistics about what was transfered
+      "--timeout="+str(mytimeout), # IO timeout if not done in X seconds
+			"--exclude='/distfiles'",   # Exclude distfiles from consideration
+			"--exclude='/local'",       # Exclude local     from consideration
+			"--exclude='/packages'",    # Exclude packages  from consideration
+		]
+
+		if "--quiet" in myopts:
+			rsync_flags.append("--quiet")    # Shut up a lot
+		else:
+			rsync_flags.append("--progress") # Progress meter for each file
+
+		if "--verbose" in myopts:
+			rsync_flags.append("--verbose")  # More noise? Not really sure what
+
+		if "--debug" in myopts:
+			rsync_flags.append("--checksum") # Force checksum on all files
+
+		if portage.settings.has_key("RSYNC_EXCLUDEFROM"):
+			if os.path.exists(portage.settings["RSYNC_EXCLUDEFROM"]):
+				rsync_flags.append("--exclude-from="+portage.settings["RSYNC_EXCLUDEFROM"])
+			else:
+				print "!!! RSYNC_EXCLUDEFROM specified, but file does not exist."
+
+		if portage.settings.has_key("RSYNC_RATELIMIT"):
+			rsync_flags.append("--bwlimit="+portage.settings["RSYNC_RATELIMIT"])
+
+		rsynccommand = "/usr/bin/rsync " + string.join(rsync_flags, " ")
+
+		servertimestampdir  = portage.settings.depcachedir+"/"
+		servertimestampfile = portage.settings.depcachedir+"/timestamp.chk"
+		tmpservertimestampdir  = portage.settings["PORTAGE_TMPDIR"]+"/"
+		tmpservertimestampfile = portage.settings["PORTAGE_TMPDIR"]+"/timestamp.chk"
+
+		# We only use the backup if a timestamp exists in the portdir.
+		content=None
+		if os.path.exists(myportdir+"/metadata/timestamp.chk"):
+			content=portage.grabfile(servertimestampfile)
+		if (not content):
+			content=portage.grabfile(myportdir+"/metadata/timestamp.chk")
+
+		if (content):
+			try:
+				mytimestamp=time.mktime(time.strptime(content[0], "%a, %d %b %Y %H:%M:%S +0000"))
+			except ValueError:
+				mytimestamp=0
+		else:
+			mytimestamp=0
+
+		if not os.path.exists(servertimestampdir):
+			os.mkdir(servertimestampdir)
+			os.chown(servertimestampdir, os.getuid(), portage.portage_gid)
+			os.chmod(servertimestampdir, 02775)
+
+		#exitcode=0
+		try:
+			maxretries=int(portage.settings["RSYNC_RETRIES"])
+		except SystemExit, e:
+			raise # Needed else can't exit
+		except:
+			maxretries=3 #default number of retries
+
+		retries=0
+		hostname, port=re.split("rsync://([^:/]*)(:[0-9]+)?", syncuri)[1:3];
+		if port==None:
+			port=""
+		updatecache_flg=True
+
+		ips=[]
+		while (1):
+			if ips:
+				del ips[0]
+			if ips==[]:
+				try:
+					ips=socket.gethostbyname_ex(hostname)[2]
+				except SystemExit, e:
+					raise # Needed else can't exit
+				except Exception, e:
+					print "Notice:",str(e)
+					dosyncuri=syncuri
+
+			if ips:
+				try:
+					dosyncuri=string.replace(syncuri, "//"+hostname+port+"/", "//"+ips[0]+port+"/", 1)
+				except SystemExit, e:
+					raise # Needed else can't exit
+				except Exception, e:
+					print "Notice:",str(e)
+					dosyncuri=syncuri
+
+			if (retries==0):
+				if "--ask" in myopts:
+					if userquery("Do you want to sync your Portage tree with the mirror at\n" + blue(dosyncuri) + bold("?"))=="No":
+						print
+						print "Quitting."
+						print
+						sys.exit(0)
+				emergelog(">>> starting rsync with "+dosyncuri)
+				if "--quiet" not in myopts:
+					print ">>> starting rsync with "+dosyncuri+"..."
+			else:
+				emergelog(">>> Starting retry %d of %d with %s" % (retries,maxretries,dosyncuri))
+				print "\n\n>>> Starting retry %d of %d with %s" % (retries,maxretries,dosyncuri)
+
+			if "--quiet" not in myopts:
+				print ">>> checking server timestamp ..."
+			mycommand=rsynccommand+" "+dosyncuri+"/metadata/timestamp.chk "+tmpservertimestampdir
+			exitcode=portage.spawn(mycommand,portage.settings,free=1)
+			if (exitcode==0):
+				try:
+					servertimestamp = time.mktime(time.strptime(portage.grabfile(tmpservertimestampfile)[0], "%a, %d %b %Y %H:%M:%S +0000"))
+				except SystemExit, e:
+					raise # Needed else can't exit
+				except:
+					servertimestamp = 0
+
+				if (servertimestamp != 0) and (servertimestamp == mytimestamp):
+					emergelog(">>> Cancelling sync -- Already current.")
+					print
+					print ">>>"
+					print ">>> Timestamps on the server and in the local repository are the same."
+					print ">>> Cancelling all further sync action. You are already up to date."
+					print ">>>"
+					print
+					sys.exit(0)
+				elif (servertimestamp != 0) and (servertimestamp < mytimestamp):
+					emergelog(">>> Server out of date: %s" % dosyncuri)
+					print
+					print ">>>"
+					print ">>> SERVER OUT OF DATE: %s" % dosyncuri
+					print ">>>"
+					print
+				elif (servertimestamp == 0) or (servertimestamp > mytimestamp):
+					# actual sync
+					mycommand=rsynccommand+" "+dosyncuri+"/ "+myportdir
+					exitcode=portage.spawn(mycommand,portage.settings,free=1)
+					if exitcode in [0,1,2,3,4,11,14,20,21]:
+						break
+			elif exitcode in [0,1,2,3,4,11,14,20,21]:
+				break
+
+			retries=retries+1
+
+			if retries<=maxretries:
+				print ">>> retry ..."
+				time.sleep(11)
+			else:
+				# over retries
+				# exit loop
+				updatecache_flg=False
+				break
+
+		if (exitcode==0):
+			emergelog("=== Sync completed with %s" % dosyncuri)
+		elif (exitcode>0):
+			print
+			if exitcode==1:
+				print darkred("!!!")+green(" Rsync has reported that there is a syntax error. Please ensure")
+				print darkred("!!!")+green(" that your SYNC statement is proper.")
+				print darkred("!!!")+green(" SYNC="+portage.settings["SYNC"])
+			elif exitcode==11:
+				print darkred("!!!")+green(" Rsync has reported that there is a File IO error. Normally")
+				print darkred("!!!")+green(" this means your disk is full, but can be caused by corruption")
+				print darkred("!!!")+green(" on the filesystem that contains PORTDIR. Please investigate")
+				print darkred("!!!")+green(" and try again after the problem has been fixed.")
+				print darkred("!!!")+green(" PORTDIR="+portage.settings["PORTDIR"])
+			elif exitcode==20:
+				print darkred("!!!")+green(" Rsync was killed before it finished.")
+			else:
+				print darkred("!!!")+green(" Rsync has not successfully finished. It is recommended that you keep")
+				print darkred("!!!")+green(" trying or that you use the 'emerge-webrsync' option if you are unable")
+				print darkred("!!!")+green(" to use rsync due to firewall or other restrictions. This should be a")
+				print darkred("!!!")+green(" temporary problem unless complications exist with your network")
+				print darkred("!!!")+green(" (and possibly your system's filesystem) configuration.")
+			print
+			sys.exit(exitcode)
+	elif syncuri[:6]=="cvs://":
+		if not os.path.exists("/usr/bin/cvs"):
+			print "!!! /usr/bin/cvs does not exist, so rsync support is disabled."
+			print "!!! Type \"emerge dev-util/cvs\" to enable CVS support."
+			sys.exit(1)
+		cvsroot=syncuri[6:]
+		cvsdir=os.path.dirname(myportdir)
+		if not os.path.exists(myportdir+"/CVS"):
+			#initial checkout
+			print ">>> starting initial cvs checkout with "+syncuri+"..."
+			if not portage.spawn("cd "+cvsdir+"; cvs -d "+cvsroot+" login",portage.settings,free=1):
+				print "!!! cvs login error; exiting."
+				sys.exit(1)
+			if os.path.exists(cvsdir+"/gentoo-x86"):
+				print "!!! existing",cvsdir+"/gentoo-x86 directory; exiting."
+				sys.exit(1)
+			if not portage.spawn("cd "+cvsdir+"; cvs -z0 -d "+cvsroot+" co -P gentoo-x86",portage.settings,free=1):
+				print "!!! cvs checkout error; exiting."
+				sys.exit(1)
+			if cvsdir!=myportdir:
+				portage.movefile(cvsdir,portage.settings["PORTDIR"])
+			sys.exit(0)
+		else:
+			#cvs update
+			print ">>> starting cvs update with "+syncuri+"..."
+			sys.exit(portage.spawn("cd "+myportdir+"; cvs -z0 -q update -dP",portage.settings,free=1))
+	else:
+		print "!!! rsync setting: ",syncuri,"not recognized; exiting."
+		sys.exit(1)
+
+	try: # Prevent users from affecting ebuild.sh.
+		os.close(sys.stdin.fileno())
+	except SystemExit, e:
+		raise # Needed else can't exit
+	except:
+		pass
+
+	if os.path.exists(myportdir+"/metadata/cache") and updatecache_flg:
+		if "--quiet" not in myopts:
+			print "\n>>> Updating Portage cache:      ",
+		os.umask(0002)
+		cachedir = os.path.normpath(portage.settings.depcachedir)
+		if cachedir in ["/",    "/bin", "/dev",  "/etc",  "/home",
+		                "/lib", "/opt", "/proc", "/root", "/sbin",
+		                "/sys", "/tmp", "/usr",  "/var"]:
+			print "!!! PORTAGE_CACHEDIR IS SET TO A PRIMARY ROOT DIRECTORY ON YOUR SYSTEM."
+			print "!!! This is ALMOST CERTAINLY NOT what you want: "+str(cachedir)
+			sys.exit(73)
+		if not os.path.exists(cachedir):
+			os.mkdir(cachedir)
+
+		# Potentially bad
+		#if os.path.exists(cachedir+"/"+myportdir):
+		#	portage.spawn("rm -Rf "+cachedir+"/"+myportdir+"/*",portage.settings,free=1)
+
+		# save timestamp.chk for next timestamp check.
+		try:
+			if tmpservertimestampfile != None:
+				portage.movefile(tmpservertimestampfile, servertimestampfile)
+		except SystemExit, e:
+			raise # Needed else can't exit
+		except Exception, e:
+			print "!!! Failed to save current timestamp."
+			print "!!!",e
+
+		portage.portdb.flush_cache()
+
+		try:
+			os.umask(002)
+			os.chown(cachedir, os.getuid(), portage.portage_gid)
+			os.chmod(cachedir, 02775)
+		except SystemExit, e:
+			raise # Needed else can't exit
+		except:
+			pass
+		# we don't make overlay trees cache here.
+		backup_porttrees=portage.portdb.porttrees
+		porttree_root = portage.portdb.porttree_root
+		portage.portdb.porttrees=[porttree_root]
+		cp_list=portage.portdb.cp_all()
+		cp_list.sort()
+		pcnt=0
+		pcntstr=""
+		pcntcount=len(cp_list)/100.0
+		nextupdate=pcntcount
+		current=1
+		def cleanse_cache(cat, saves, porttree_root=porttree_root):
+			if len(saves):
+				d={}
+				for v in saves:
+					d[portage.catsplit(v)[1]] = True
+				for pv in portage.db["/"]["porttree"].dbapi.auxdb[porttree_root][cat].keys():
+					if pv not in d:
+						portage.db["/"]["porttree"].dbapi.auxdb[porttree_root][cat].del_key(pv)
+			else:
+				portage.db["/"]["porttree"].dbapi.auxdb[porttree_root][cat].clear()
+				del portage.db["/"]["porttree"].dbapi.auxdb[porttree_root][cat]
+		savelist = []
+		catlist = []
+		oldcat = portage.catsplit(cp_list[0])[0]
+		for cp in cp_list:
+			current += 1
+			if current >= nextupdate:
+				pcnt += 1
+				nextupdate += pcntcount
+				if "--quiet" not in myopts:
+					pcntstr = str(pcnt)
+					sys.stdout.write("\b"*(len(pcntstr)+1)+pcntstr+"%")
+					sys.stdout.flush()
+			cat = portage.catsplit(cp)[0]
+			if cat != oldcat:
+				catlist.append(oldcat)
+				cleanse_cache(oldcat, savelist)
+				savelist = []
+				oldcat = cat
+			mymatches = portage.db["/"]["porttree"].dbapi.xmatch("match-all", cp)
+			savelist.extend(mymatches)
+			for cpv in mymatches:
+				try: portage.db["/"]["porttree"].dbapi.aux_get(cpv, ["IUSE"],metacachedir=myportdir+"/metadata/cache",debug=("cachedebug" in portage.features))
+				except SystemExit: raise
+				except Exception, e: print "\nFailed cache update:",cpv,e
+		catlist.append(oldcat)
+		catlist.append("local")
+		cleanse_cache(oldcat, savelist)
+		filelist = portage.listdir(cachedir+"/"+myportdir)
+		for x in filelist:
+			found = False
+			for y in catlist:
+				if x.startswith(y):
+					found = True
+					break
+			if not found:
+				portage.spawn("cd /; rm -Rf "+cachedir+"/"+myportdir+"/"+x,portage.settings,free=1,droppriv=1)
+
+
+		portage.portdb.porttrees=backup_porttrees
+		sys.stdout.write("\n\n")
+		sys.stdout.flush()
+
+	portage.portageexit()
+	reload(portage)
+	mybestpv=portage.portdb.xmatch("bestmatch-visible","sys-apps/portage")
+	mypvs=portage.best(portage.db[portage.root]["vartree"].dbapi.match("sys-apps/portage"))
+
+	chk_updated_cfg_files()
+
+	if(mybestpv != mypvs):
+		print
+		print red(" * ")+bold("An update to portage is available.")+" It is _highly_ recommended"
+		print red(" * ")+"that you update portage now, before any other packages are updated."
+		print red(" * ")+"Please do so and then update "+bold("ALL")+" of your configuration files."
+		print
+elif myaction=="regen":
+	emergelog(" === regen")
+	#regenerate cache entries
+	print "Regenerating cache entries... "
+	try:
+		os.close(sys.stdin.fileno())
+	except SystemExit, e:
+		raise # Needed else can't exit
+	except:
+		pass
+	sys.stdout.flush()
+	mynodes=portage.portdb.cp_all()
+	for x in mynodes:
+		mymatches=portage.portdb.xmatch("match-all",x)
+		if not "--quiet" in myopts:
+			print "processing",x
+		for y in mymatches:
+			try:
+				foo=portage.portdb.aux_get(y,["DEPEND"],debug=1)
+			except SystemExit, e:
+				# sys.exit is an exception... And consequently, we can't catch it.
+				raise
+			except Exception, e:
+				print "\n  error processing %(cpv)s, continuing... (%(e)s)" % {"cpv":y,"e":str(e)}
+	print "done!"
+# HELP action
+elif "config"==myaction:
+	if len(myfiles) != 1 or "system" in myfiles or "world" in myfiles:
+		print red("!!! config can only take a single package atom at this time\n")
+		sys.exit(1)
+
+	print
+	pkgs = portage.db[portage.root]["vartree"].dbapi.match(myfiles[0])
+	if len(pkgs) == 0:
+		print "No packages found.\n"
+		sys.exit(0)
+	elif len(pkgs) > 1:
+		if "--ask" in myopts:
+			options = []
+			print "Please select a package to configure:"
+			idx = 0
+			for pkg in pkgs:
+				idx += 1
+				options.append(str(idx))
+				print options[-1]+") "+pkg
+			print "X) Cancel"
+			options.append("X")
+			idx = userquery("Selection?", options)
+			if idx == "X":
+				sys.exit(0)
+			pkg = pkgs[int(idx)-1]
+		else:
+			print "The following packages available:"
+			for pkg in pkgs:
+				print "* "+pkg
+			print "\nPlease use a specific atom or the --ask option."
+			sys.exit(1)
+	else:
+		pkg = pkgs[0]
+
+	print
+	if "--ask" in myopts:
+		if userquery("Ready to configure "+pkg+"?") == "No":
+			sys.exit(0)
+	else:
+		print "Configuring pkg..."
+	print
+	ebuildpath = portage.db[portage.root]["vartree"].dbapi.findname(pkg)
+	mysettings = portage.config(clone=portage.settings)
+	portage.doebuild(ebuildpath,"config",portage.root,mysettings,debug=("--debug" in myopts),cleanup=True)
+	print
+
+# INFO action
+elif "info"==myaction:
+	unameout=commands.getstatusoutput("uname -mrp")[1]
+	print getportageversion()
+	print "================================================================="
+	print "System uname: "+unameout
+	if os.path.exists("/etc/gentoo-release"):
+		os.system("cat /etc/gentoo-release")
+	else:
+		print "Unknown Host Operating System"
+
+	output=commands.getstatusoutput("distcc --version")
+	if not output[0]:
+		print str(string.split(output[1],"\n",1)[0]),
+		if "distcc" in portage.features:
+			print "[enabled]"
+		else:
+			print "[disabled]"
+
+	output=commands.getstatusoutput("ccache -V")
+	if not output[0]:
+		print str(string.split(output[1],"\n",1)[0]),
+		if "ccache" in portage.features:
+			print "[enabled]"
+		else:
+			print "[disabled]"
+
+	myvars  = ["sys-devel/autoconf", "sys-devel/automake", "virtual/os-headers",
+	           "sys-devel/binutils", "sys-devel/libtool",  "dev-lang/python"]
+	myvars += portage_util.grabfile(portage.settings["PORTDIR"]+"/profiles/info_pkgs")
+	myvars  = portage_util.unique_array(myvars)
+	myvars.sort()
+
+	for x in myvars:
+		if portage.isvalidatom(x):
+			pkg_matches = portage.db["/"]["vartree"].dbapi.match(x)
+			pkgs = []
+			for y in pkg_matches:
+				mycpv   = portage.catpkgsplit(y)
+				if(mycpv[3] != "r0"):
+					pkgs += [mycpv[2] + "-" + mycpv[3]]
+				else:
+					pkgs += [mycpv[2]]
+			if not pkgs:
+				pkgs = "[Not Present]"
+			else:
+				pkgs = ", ".join(sorted_versions(pkgs))
+			print "%-20s %s" % (x+":", pkgs)
+		else:
+			print "%-20s %s" % (x+":", "[NOT VALID]")
+
+	libtool_vers = string.join(portage.db["/"]["vartree"].dbapi.match("sys-devel/libtool"), ",")
+
+	if "--verbose" in myopts:
+		myvars=portage.settings.keys()
+	else:
+		myvars = ['GENTOO_MIRRORS', 'CONFIG_PROTECT', 'CONFIG_PROTECT_MASK',
+		          'PORTDIR', 'DISTDIR', 'PKGDIR', 'PORTAGE_TMPDIR',
+		          'PORTDIR_OVERLAY', 'USE', 'CHOST', 'CFLAGS', 'CXXFLAGS',
+		          'ACCEPT_KEYWORDS', 'SYNC', 'FEATURES']
+
+		myvars.extend(portage_util.grabfile(portage.settings["PORTDIR"]+"/profiles/info_vars"))
+
+	myvars = portage_util.unique_array(myvars)
+	unset_vars = []
+	myvars.sort()
+	for x in myvars:
+		if portage.settings.has_key(x):
+			print x+'="'+portage.settings[x]+'"'
+		else:
+			unset_vars.append(x)
+	if unset_vars:
+		print "Unset:  "+", ".join(unset_vars)
+	print
+
+	if "--debug" in myopts:
+		for x in dir(portage):
+			module = getattr(portage, x)
+			if "cvs_id_string" in dir(module):
+				print "%s: %s" % (str(x), str(module.cvs_id_string))
+
+# SEARCH action
+elif "search"==myaction:
+	if not myfiles:
+		print "emerge: no search terms provided."
+	else:
+		searchinstance = search()
+		for mysearch in myfiles:
+			try:
+				searchinstance.execute(mysearch)
+			except re.error, comment:
+				print "\n!!! Regular expression error in \"%s\": %s" % ( mysearch, comment )
+				sys.exit(1)
+			searchinstance.output()
+elif "inject"==myaction:
+	if not myfiles:
+		print "emerge: please specify at least one cat/pkg-ver to inject."
+		sys.exit(1)
+	if "--pretend" in myopts:
+		print "emerge: the \"inject\" action does not support \"--pretend.\""
+		sys.exit(1)
+	for x in myfiles:
+		if x[0] in [">","<","=","!"]:
+			print "!!! '"+x+"' is an invalid specification."
+			print "!!! Must be 'category/package-version' with no other symbols."
+			print
+			continue
+		mycps=portage.catpkgsplit(x)
+		if (not mycps) or (mycps[0]=="null"):
+			print "!!!",x,"is not a specific cat/pkg-version, skipping..."
+			continue
+		if portage.db["/"]["vartree"].exists_specific(x):
+			print "!!! Not injecting",x+"; Package already exists."
+		else:
+			if "--ask" in myopts:
+				if userquery("Do you want to inject the package %s?" % x)=="No":
+					print
+					print "Quitting."
+					print
+					sys.exit(0)
+			portage.db["/"]["vartree"].dbapi.cpv_inject(x)
+			print ">>> Injected",x+"."
+			emergelog(" === inject: "+x)
+elif "unmerge"==myaction or "prune"==myaction or "clean"==myaction:
+	if 1==unmerge(myaction, myfiles):
+		post_emerge()
+
+elif "depclean"==myaction:
+	# Kill packages that aren't explicitly merged or are required as a
+	# dependency of another package. World file is explicit.
+
+	print
+	print red("*** WARNING ***")+" : DEPCLEAN CAN  SERIOUSLY  IMPAIR YOUR SYSTEM. USE CAUTION."
+	print red("*** WARNING ***")+" : (Cancel: CONTROL-C) -- ALWAYS VERIFY ALL PACKAGES IN THE"
+	print red("*** WARNING ***")+" : CANDIDATE LIST FOR  SANITY  BEFORE  ALLOWING DEPCLEAN TO"
+	print red("*** WARNING ***")+" : UNMERGE ANY PACKAGES."
+	print red("*** WARNING ***")+" :"
+	print red("*** WARNING ***")+" : USE FLAGS MAY HAVE AN EXTREME EFFECT ON THE OUTPUT."
+	print red("*** WARNING ***")+" : SOME LIBRARIES MAY BE USED BY PACKAGES BUT ARE NOT"
+	print red("*** WARNING ***")+" : CONSIDERED TO BE A DEPEND DUE TO USE FLAG SETTINGS."
+	print red("*** WARNING ***")+" : emerge --update --deep --newuse world TO VERIFY"
+	print red("*** WARNING ***")+" : SANITY IN THIS REGARD."
+	print red("*** WARNING ***")+" :"
+	print red("*** WARNING ***")+" : Packages  in the list  that are  desired  may be added"
+	print red("*** WARNING ***")+" : directly to the world file to cause them to be ignored"
+	print red("*** WARNING ***")+" : by depclean and maintained in the future. BREAKAGES DUE"
+	print red("*** WARNING ***")+" : TO UNMERGING AN  ==IN-USE LIBRARY==  MAY BE REPAIRED BY"
+	print red("*** WARNING ***")+" : MERGING  *** THE PACKAGE THAT COMPLAINS ***  ABOUT THE"
+	print red("*** WARNING ***")+" : MISSING LIBRARY."
+	print
+	if ("--pretend" not in myopts) and ("--ask" not in myopts):
+		countdown(EMERGE_WARNING_DELAY, ">>> Depclean")
+		emergelog(" >>> depclean")
+
+	mydepgraph=depgraph(myaction,myopts)
+	syslist=getlist("system")
+	worldlist=getlist("world")
+
+	print "Calculating",myaction,"dependencies  ",
+	if not mydepgraph.xcreate("world"):
+		print "\n!!! Failed to create deptree."
+		sys.exit(1)
+	print "\b\b ... done!"
+
+	if ("--usepkgonly" in myopts) and mydepgraph.missingbins:
+		sys.stderr.write(red("The following binaries are not available for merging...\n"))
+		for x in mydepgraph.missingbins:
+			sys.stderr.write("   "+str(x)+"\n")
+		sys.stderr.write("\nThese are required by '--usepkgonly' -- Terminating.\n\n")
+		sys.exit(1)
+
+	alldeps=mydepgraph.digraph.allnodes()
+	myvarlist=portage.vardbapi(portage.root).cp_all()
+
+	if not syslist:
+		print "!!! You have no system list. Cannot determine system from world."
+	if not worldlist:
+		print "!!! You have no world file. Cannot determine explicit merges."
+	if not myvarlist:
+		print "!!! You have no installed package tree (%s). This is a problem." % portage.VDB_PATH
+	if not alldeps:
+		print "!!! You have no dependencies. Impossible. Bug."
+
+	if not (syslist and worldlist and myvarlist and alldeps):
+		print
+		sys.exit(1)
+
+	reallist=[]
+	for x in alldeps:
+		myparts=portage.catpkgsplit(string.split(x)[2])
+		if not myparts:
+			sys.stderr.write(
+			  red("!!! There appears to be a problem with the following package:\n")+
+				red("!!! "+str(string.split(x)[2])+"\n\n")+
+				    "!!! Please ensure that blocking/conflicting packages are not merged."+
+						"!!! 'emerge -p "+str(string.split(x)[2])+"\n\n")
+			if ("--pretend" not in myopts) and ("--ask" not in myopts):
+				countdown(EMERGE_WARNING_DELAY, "*** Continuing")
+			continue
+
+		catpack=myparts[0]+"/"+myparts[1]
+		if catpack not in reallist:
+			reallist.append(catpack)
+
+	cleanlist=[]
+	for x in myvarlist:
+		if x not in reallist:
+			if x not in cleanlist:
+				cleanlist.append(x)
+
+	for x in syslist+worldlist:
+		myparts = portage.catpkgsplit(x)
+		if myparts:
+			if myparts[0][0] in ('<','>','='):
+				myparts[0] = myparts[0][1:]
+			if myparts[0][0] in ('<','>','='):
+				myparts[0] = myparts[0][1:]
+			catpack=myparts[0]+"/"+myparts[1]
+		else:
+			catpack=x
+		if catpack in cleanlist:
+			cleanlist.remove(catpack)
+
+	#print "\n\n\nCleaning: "
+	#for x in cleanlist:
+	#	print x
+	#print
+
+	if len(cleanlist):
+		unmerge("unmerge", cleanlist)
+
+	print
+	print "Packages installed:   "+str(len(myvarlist))
+	print "Packages in world:    "+str(len(worldlist))
+	print "Packages in system:   "+str(len(syslist))
+	print "Unique package names: "+str(len(reallist))
+	print "Required packages:    "+str(len(alldeps))
+	if "--pretend" in myopts:
+		print "Number to remove:     "+str(len(cleanlist))
+	else:
+		print "Number removed:       "+str(len(cleanlist))
+		post_emerge()
+
+# "update", "system", or just process files:
+else:
+	favorites=[]
+	syslist=getlist("system")
+	if (("--pretend" in myopts) and not ("--fetchonly" in myopts or "--fetch-all-uri" in myopts)) or ("--ask" in myopts):
+		if "--tree" in myopts:
+			print
+			print darkgreen("These are the packages that I would merge, in reverse order:")
+			print
+		else:
+			print
+			print darkgreen("These are the packages that I would merge, in order:")
+			print
+
+	if ("--resume" in myopts) and portage.mtimedb.has_key("resume"):
+		myresumeopts=portage.mtimedb["resume"]["myopts"][:]
+
+		while "--skipfirst" in myresumeopts:
+			myresumeopts.remove("--skipfirst")
+		while "--ask" in myresumeopts:
+			myresumeopts.remove("--ask")
+
+		for myopt in myopts:
+			if myopt not in myresumeopts:
+				myresumeopts.append(myopt)
+		myopts=myresumeopts
+		mydepgraph=depgraph("resume",myopts)
+		if "--resume" not in myopts:
+			myopts+=["--resume"]
+	else:
+		if ("--resume" in myopts):
+			del myopts[myopts.index("--resume")]
+			print darkgreen("emerge: It seems we have nothing to resume...")
+			sys.exit(0)
+
+		mydepgraph=depgraph(myaction,myopts)
+		if myaction in ["system","world"]:
+			print "Calculating",myaction,"dependencies  ",
+			sys.stdout.flush()
+			if not mydepgraph.xcreate(myaction):
+				print "!!! Depgraph creation failed."
+				sys.exit(1)
+			print "\b\b ...done!"
+		else:
+			if not myfiles:
+				print "emerge: please tell me what to do."
+				help()
+				sys.exit(1)
+				#we don't have any files to process; skip this step and exit
+			print "Calculating dependencies  ",
+			sys.stdout.flush()
+			retval,favorites=mydepgraph.select_files(myfiles)
+			if not retval:
+				sys.exit(1)
+			print "\b\b ...done!"
+
+			if ("--usepkgonly" in myopts) and mydepgraph.missingbins:
+				sys.stderr.write(red("The following binaries are not available for merging...\n"))
+
+		if mydepgraph.missingbins:
+			for x in mydepgraph.missingbins:
+				sys.stderr.write("   "+str(x)+"\n")
+			sys.stderr.write("\nThese are required by '--usepkgonly' -- Terminating.\n\n")
+			sys.exit(1)
+
+	if "--ask" in myopts:
+		if "--resume" in myopts:
+			mydepgraph.display(portage.mtimedb["resume"]["mergelist"])
+			prompt="Do you want me to resume merging these packages?"
+		else:
+			mydepgraph.display(mydepgraph.altlist())
+			mergecount=0
+			hasblocks = False
+			for x in mydepgraph.altlist():
+				if x[3]!="nomerge":
+					mergecount+=1
+				#check for blocking dependencies
+				if x[0]=="blocks":
+					hasblocks = True
+			if mergecount==0:
+				if portage.settings["AUTOCLEAN"] and "yes"==portage.settings["AUTOCLEAN"]:
+					prompt="Nothing to merge; do you want me to auto-clean packages?"
+				else:
+					print
+					print "Nothing to merge; quitting."
+					print
+					sys.exit(0)
+			elif "--fetchonly" in myopts or "--fetch-all-uri" in myopts:
+				prompt="Do you want me to fetch the source files for these packages?"
+			elif hasblocks:
+				print "\n!!! Error: The above package list contains packages which cannot be installed"
+				print   "!!!        on the same system."
+				print
+				sys.exit(1)
+			else:
+				prompt="Do you want me to merge these packages?"
+		print
+		if userquery(prompt)=="No":
+			print
+			print "Quitting."
+			print
+			sys.exit(0)
+		# Don't ask again (e.g. when auto-cleaning packages after merge)
+		myopts.remove("--ask")
+
+	if ("--pretend" in myopts) and not ("--fetchonly" in myopts or "--fetch-all-uri" in myopts):
+		if ("--resume" in myopts):
+			mydepgraph.display(portage.mtimedb["resume"]["mergelist"])
+		else:
+			mydepgraph.display(mydepgraph.altlist())
+	else:
+		if ("--buildpkgonly" in myopts):
+			if not mydepgraph.digraph.hasallzeros():
+				print "\n!!! --buildpkgonly requires all dependencies to be merged."
+				print "!!! Cannot merge requested packages. Merge deps and try again.\n"
+				sys.exit(1)
+
+		if ("--resume" in myopts):
+			favorites=portage.mtimedb["resume"]["favorites"]
+			mydepgraph.merge(portage.mtimedb["resume"]["mergelist"])
+		else:
+			portage.mtimedb["resume"]={}
+			portage.mtimedb["resume"]["myopts"]=myopts
+			portage.mtimedb["resume"]["favorites"]=favorites
+			if ("--digest" in myopts) and not ("--fetchonly" in myopts or "--fetch-all-uri" in myopts):
+				for pkgline in mydepgraph.altlist():
+					if pkgline[0]=="ebuild" and pkgline[3]=="merge":
+						y=portage.portdb.findname(pkgline[2])
+						tmpsettings = portage.config(clone=portage.settings)
+						retval=portage.doebuild(y,"digest",portage.root,tmpsettings,edebug,("--pretend" in myopts))
+			mydepgraph.merge(mydepgraph.altlist())
+
+		if portage.mtimedb.has_key("resume"):
+			del portage.mtimedb["resume"]
+		if portage.settings["AUTOCLEAN"] and "yes"==portage.settings["AUTOCLEAN"]:
+			print ">>> Auto-cleaning packages ..."
+			unmerge("clean", ["world"])
+	post_emerge()

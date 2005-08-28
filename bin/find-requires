@@ -1,0 +1,44 @@
+#!/bin/sh
+# Copyright 1999-2004 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Header: /var/cvsroot/gentoo-src/portage/bin/find-requires,v 1.5 2004/10/04 13:56:50 vapier Exp $
+
+# note this works for both a.out and ELF executables
+# it also auto-generates requirment lines for shell scripts
+
+ulimit -c 0
+
+filelist=`sed "s/['\"]/\\\&/g"`
+exelist=`echo $filelist | $XARGS file | grep ":.*executable" | cut -d: -f1 `
+scriptlist=`echo $filelist | $XARGS file | egrep ":.* (commands|script) " | cut -d: -f1 `
+liblist=`echo $filelist | $XARGS file | grep ":.*shared object" | cut -d : -f1 `
+
+for f in $exelist; do
+    if [ -x $f ]; then
+	ldd $f | awk '/=>/ { print $1 }'
+    fi
+done | sort -u | sed "s/['\"]/\\\&/g" | $XARGS -n 1 basename | grep -v 'libNoVersion.so' | sort -u
+
+for f in $liblist; do
+    ldd $f | awk '/=>/ { print $1 }'
+done | sort -u | sed "s/['\"]/\\\&/g" | $XARGS -n 1 basename | grep -v 'libNoVersion.so' | sort -u
+
+for f in $scriptlist; do
+    if [ -x $f ]; then
+	head -1 $f | sed -e 's/^\#\![ 	]*//' | cut -d" " -f1
+    fi
+done | sort -u
+
+#for f in $liblist $exelist ; do
+#    objdump -p $f | awk '
+#	BEGIN { START=0; LIBNAME=""; }
+#	/Version References:/ { START=1; }
+#	/required from/ && (START==1) {
+#	    sub(/:/, "", $3);
+#	    LIBNAME=$3;
+#	}
+#	(START==1) && (LIBNAME!="") && ($4~/^GLIBC_*/) { print LIBNAME "(" $4 ")"; }
+#	/^$/ { START=0; }
+#    '
+#done | sort -u
+

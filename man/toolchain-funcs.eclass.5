@@ -1,0 +1,112 @@
+.TH "TOOLCHAIN-FUNCS.ECLASS" "5" "Jun 2003" "Portage 2.0.51" "portage"
+.SH "NAME"
+toolchain-funcs.eclass \- functions to get commonly needed info about the 
+toolchain (binutils/gcc/glibc/etc...)
+.SH "DESCRIPTION"
+The \fBtoolchain-funcs\fR eclass contains a suite of functions that are 
+used to glean information about the toolchain that is used to compile.  
+This allows developers to worry about gcc specs rather than figuring 
+out how to find the specs in the first place.
+.SH "TOOL FUNCTIONS"
+.TP
+.B tc-getAR
+Returns the name of the binutils archiver.  Usually 'ar'.
+.TP
+.B tc-getAS
+Returns the name of the assembler.  Usually 'as'.
+.TP
+.B tc-getBUILD_CC
+Returns the name of the compiler for the build system.  
+Useful only when you have to compile and run a utility while 
+building the package.
+.TP
+.B tc-getCC
+Returns the name of the C compiler binary.  Usually 'gcc'.
+.TP
+.B tc-getCXX
+Returns the name of the C++ compiler binary.  Usually 'g++'.
+.TP
+.B tc-getF77
+Returns the name of the fortran compiler.
+.TP
+.B tc-getGCJ
+Returns the name of the java compiler.  Usually 'gcj'.
+.TP
+.B tc-getLD
+Returns the name of the linker.  Usually 'ld'.
+.TP
+.B tc-getNM
+Returns the name of the symbol/object thingy.  Usually 'nm'.
+.TP
+.B tc-getRANLIB
+Returns the name of the archiver indexer.  Usually 'ranlib'.
+.SH "MISC FUNCTIONS"
+.TP
+\fBtc-arch\fR [\fITARGET\fR]
+Echo the portage $ARCH that the current toolchain represents.  
+Basically this is a drop-in replacment for $ARCH usage.  If no 
+\fITARGET\fR is specified, then CHOST will be used.
+.TP
+\fBtc-arch-kernel\fR [\fITARGET\fR]
+Echo the kernel $ARCH that the current toolchain represents.  If no 
+\fITARGET\fR is specified, then CHOST will be used.
+.TP
+\fBtc-endian\fR [\fITARGET\fR]
+Echo 'little' or 'big' based upon what the current toolchain represents.  
+If no \fITARGET\fR is specified, then CHOST will be used.
+.TP
+\fBtc-export\fR <\fBlist of variables\fR>
+Quickly export \fBlist of variables\fR to the environment.  Much easier 
+than exporting each idividual variable at a time.
+
+For example: \fBtc-export\fR CC CXX AR RANLIB
+.TP
+.B tc-is-cross-compiler
+Return shell true/false based upon whether the current building 
+setup is for a cross compiler.
+.SH "VERSION FUNCTIONS"
+.TP
+.B gcc-fullversion
+Returns the version as by `$CC -dumpversion`.
+.br
+GCC \fI2.95.3\fR will return \fI2.95.3\fR
+.br
+GCC \fI3.2.1\fR will return \fI3.2.1\fR
+.TP
+.B gcc-version
+Returns the version, but only the <major>.<minor>.
+.br
+GCC \fI2.95\fR.3 will return \fI2.95\fR
+.br
+GCC \fI3.2\fR.1 will return \fI3.2\fR
+.TP
+.B gcc-major-version
+Returns the Major version.
+.br
+GCC \fI2\fR.95.3 will return \fI2\fR
+.br
+GCC \fI3\fR.2.1 will return \fI3\fR
+.TP
+.B gcc-minor-version
+Returns the Minor version.
+.br
+GCC 2.\fI95\fR.3 will return \fI95\fR
+.br
+GCC 3.\fI2\fR.1 will return \fI2\fR
+.TP
+.B gcc-micro-version
+Returns the Micro version.
+.br
+GCC 2.95.\fI3\fR will return \fI3\fR
+.br
+GCC 3.2.\fI1\fR will return \fI1\fR
+.SH "REPORTING BUGS"
+Please report bugs via http://bugs.gentoo.org/
+.SH "SEE ALSO"
+.BR ebuild (5)
+.SH "FILES"
+.BR /usr/portage/eclass/toolchain-funcs.eclass
+.SH "AUTHORS"
+Mike Frysinger <vapier@gentoo.org>
+.SH "CVS HEADER"
+$Header: /var/cvsroot/gentoo-src/portage/man/toolchain-funcs.eclass.5,v 1.1.2.2 2005/01/15 00:19:23 vapier Exp $

@@ -1,0 +1,395 @@
+.TH "MAKE.CONF" "5" "Feb 2003" "Portage 2.0.51" "portage"
+.SH "NAME"
+make.conf \- custom settings for Portage
+.SH "SYNOPSIS"
+.B /etc/make.conf
+.SH "DESCRIPTION"
+This file contains various variables that are used by Portage.
+Portage will check the currently\-defined environment variables
+first for any settings.  If no environment settings are found,
+Portage then checks /etc/make.conf.  If no setting is found
+in /etc/make.conf, Portage checks /etc/make.globals. If no
+setting is found there, the profile's default setting is grabbed
+from /etc/make.profile/make.defaults. Please note that all user
+settings should be made in the environment or in /etc/make.conf,
+which is intended to be customized by the user.
+.br 
+Exceptions are incremental variables such as USE, CONFIG_PROTECT*,
+and ACCEPT_KEYWORDS.  Incremental variables are propagated down from
+make.defaults to make.globals to make.conf to the environment
+settings.  Clearing these variables requires a clear\-all as in:
+export USE="\-*"
+.SH "VARIABLES"
+.TP
+\fBACCEPT_KEYWORDS\fR = \fI[space delimited list of KEYWORDS]\fR
+Enable testing of ebuilds that have not yet been deemed 'stable'.  Users
+of the 'x86' architecture would set this to '~x86' while ppc users would
+set this to '~ppc'.  This is an incremental variable.  Only define a 
+~arch.
+.br 
+Defaults to the value of $ARCH.
+.TP
+\fBAUTOCLEAN\fR = \fI["yes" | "no"]\fR
+Automatically cleans the system by removing outdated packages which will not
+remove functionalities or prevent your system from working. On major ABI
+changes this may need to be set to off to ensure that the system can be
+rebuilt using the new libs before the old ones are removed. Downgrading with
+this option turned off may result in missing symlinks and an inoperable system.
+.br 
+Defaults to yes.
+.TP
+\fBBUILD_PREFIX\fR = \fI[path]\fR
+Defines the location of the package working directory. 
+.br 
+Defaults to ${PORTAGE_TMPDIR}/portage
+.TP
+.B CBUILD
+This variable is passed by the \fIebuild scripts\fR to the \fIconfigure\fR
+as \fI\-\-build=${CBUILD}\fR only if it is defined.
+.TP
+\fBCCACHE_SIZE\fR = \fI"size"\fR
+This controls the space use limitations for ccache.  The default is 2 gigabytes 
+('2G').  Sizes are specified with 'G', 'M', or 'K'.
+.TP
+.B CFLAGS CXXFLAGS
+Use these variables to set the desired optimization/CPU instruction settings
+for applications that you compile.  Nearly all ebuild files will take advantage
+of your custom settings, resulting in a Gentoo Linux that is fully customized
+to your specifications.  Please use sane settings as some packages will fail to
+compile/run if the optimizations are too extreme.
+
+For more information:
+.br 
+http://gcc.gnu.org/onlinedocs/gcc\-3.2/gcc/Invoking\-GCC.html
+.br 
+http://gcc.gnu.org/onlinedocs/gcc\-3.3/gcc/Invoking\-GCC.html
+.br 
+http://gcc.gnu.org/onlinedocs/gcc\-2.95.3/gcc_2.html
+.TP
+.B CHOST
+This variable is passed by the \fIebuild scripts\fR to the \fIconfigure\fR
+step as \fI\-\-host=${CHOST}\fR.  This way you can force the build\-host.
+
+For more information:
+.br 
+http://gcc.gnu.org/onlinedocs/gcc\-3.2/gcc/Submodel\-Options.html
+.br 
+http://gcc.gnu.org/onlinedocs/gcc\-3.3/gcc/Submodel\-Options.html
+.br 
+http://gcc.gnu.org/onlinedocs/gcc\-2.95.3/gcc_2.html
+.TP
+\fBCLEAN_DELAY\fR = \fIinteger\fR
+Determines how long the countdown delay will be after running `emerge clean`.
+.br 
+Defaults to 5 seconds.
+.TP
+\fBCONFIG_PROTECT\fR = \fI[space delimited list of dirs]\fR
+All directories that are defined here will have "config file protection"
+enabled for them.  For more information, please see `emerge \-\-help config`.
+.TP
+\fBCONFIG_PROTECT_MASK\fR = \fI[space delimited list of dirs]\fR
+All directories that are defined here will have "config file protection"
+disabled for them.  For more information, please see `emerge \-\-help config`.
+.TP
+.B CTARGET
+This variable is passed by the \fIebuild scripts\fR to the \fIconfigure\fR
+as \fI\-\-target=${CTARGET}\fR only if it is defined.
+.TP
+\fBDISTDIR\fR = \fI[path]\fR
+Defines the location of your local source file repository.
+.br 
+Defaults to ${PORTDIR}/distfiles.
+.TP
+.B EBEEP_IGNORE
+Defines whether or not to ignore audible beeps when displaying important
+informational messages.  This variable is unset by default.
+.TP
+.B EPAUSE_IGNORE
+Defines whether or not to ignore short pauses that occur when displaying
+important informational messages.  This variable is unset by default.
+.TP
+\fBFEATURES\fR = \fI"sandbox ccache autoaddcvs"\fR
+Defines actions portage takes by default.  These options should
+not be changed by anyone but developers and/or maintainers.  'sandbox' is an important
+part of \fBFEATURES\fR and should not be disabled by default.  This is 
+an incremental variable.
+.RS
+.TP
+.B autoaddcvs
+Causes portage to automatically try to add files to cvs that will have to be added 
+later.  Done at generation times and only works when \fIcvs\fR is also in 
+\fBFEATURES\fR.
+.TP
+.B buildpkg
+Binary packages will be created for all packages that are merged.
+.TP
+.B ccache
+Enable portage support for the ccache package.  If the ccache dir is not 
+present in the user's environment, then portage will default to 
+${PORTAGE_TMPDIR}/ccache (with \fIuserpriv\fR) and to /root/.ccache otherwise.
+.TP
+.B collision\-protect
+A QA\-feature to ensure that a package doesn't overwrite files it doesn't own.
+.TP
+.B cvs
+A feature for developers that causes portage to enable all USE flags in SRC_URI
+when creating digests.
+.TP
+.B digest
+Autogenerate a digest for packages.
+.TP
+.B distcc
+Enable portage support for the distcc package.
+.TP
+.B distlocks
+Portage uses lockfiles to ensure competing instances don't clobber
+each other's files. This feature is enabled by default but may cause
+heartache on less intelligent remote filesystems like NFSv2 and some
+strangely configured Samba server (oplocks off, NFS re-export). A tool
+/usr/lib/portage/bin/clean_locks exists to help handle lock issues
+when a problem arises (normally due to a crash or disconnect).
+.TP
+.B fixpackages
+Runs the script that will fix the dependencies in all binary packages.  This is 
+run whenever packages are moved around in the portage tree.  Please note that this 
+can take a lot of time.
+.TP
+.B getbinpkg
+Force emerges to always try to fetch files from the \fIPORTAGE_BINHOST\fR.  See 
+\fBmake.conf\fR(5) for more information.
+.TP
+.B gpg
+Check the signatures of Manifests and make sure they are correct.
+.TP
+.B keeptemp
+Do not delete the ${T} directory after the merge process.
+.TP
+.B keepwork
+Do not delete the ${WORKDIR} directory after the merge process.
+.TP
+.B mirror
+This will cause \fBFETCHCOMMAND\fR to always be run even if 
+the file already exists in \fBDISTDIR\fR.
+.TP
+.B noauto
+When utilizing \fBebuild\fR(1), only run the function requested.
+.TP
+.B noclean
+Do not delete the the source and temporary files after the merge process.
+.TP
+.B nodoc
+Do not install doc files (/usr/share/doc).
+.TP
+.B noinfo
+Do not install info pages.
+.TP
+.B noman
+Do not install manpages.
+.TP
+.B nostrip
+Prevents the stripping of binaries that are merged to the live filesystem.
+.TP
+.B notitles
+Disables xterm titlebar updates (which contains status info).
+.TP
+.B sandbox
+Enable sandbox\-ing when running \fBemerge\fR(1) and \fBebuild(1)\fR.
+.TP
+.B severe
+When checking Manifests, only accept ones that have been signed by a
+key which you trust.
+.TP
+.B sfperms
+Stands for Smart Filesystem Permissions.  Before merging packages to the 
+live filesystem, automatically search for and set permissions on setuid 
+and setgid files.  Files that are setuid have the group and other read 
+bits removed while files that are setgid have the other read bit removed.  
+See also \fIsuidctl\fR below.
+.TP
+.B sign
+When commiting work to cvs with \fBrepoman\fR(1), sign the Manifest with 
+a GPG key.  Read about the \fIPORTAGE_GPG_KEY\fR variable in \fBmake.conf\fR(5).
+.TP
+.B strict
+Have portage react strongly to conditions that have the potential to be 
+dangerous (like missing or incorrect Manifests).
+.TP
+.B suidctl
+Before merging packages to the live filesystem, automatically strip setuid 
+bits from any file that is not listed in \fI/etc/portage/suidctl.conf\fR.
+.TP
+.B test
+Run package\-specific tests during each merge to help make sure 
+the package compiled properly.  See \fItest\fR in \fBebuild\fR(1) 
+and \fIsrc_test()\fR in \fBebuild\fR(5).
+.TP
+.B userpriv
+Allow portage to drop root privledges and compile packages as 
+portage:portage without a sandbox (unless \fIusersandbox\fR is also used).
+.TP
+.B usersandbox
+Enable the sandbox in the compile phase, when running without root privs (\fIuserpriv\fR).
+.RE
+.TP
+\fBFETCHCOMMAND\fR
+This variable contains the command used for fetching package\-sources from
+the internet.
+.TP
+\fBGENTOO_MIRRORS\fR = \fI[URLs]\fR
+Insert your space\-seperated list of local mirrors here.  These
+locations are used to download files before the ones listed in
+the \fIebuild scripts\fR. Merging 'mirrorselect' can help.
+.TP
+\fBhttp_proxy ftp_proxy\fR = \fI[host:port]\fR
+These vars are used if the sources must be downloaded from the
+internet by \fBwget\fR(1).  They are only required if you use a
+proxy server for internet access.
+.TP
+\fBMAKEOPTS\fR
+Use this variable if you want to use parallel make.  For example, if you
+have a dual\-processor system, set this variable to "\-j2" or "\-j3" for 
+enhanced build performance with many packages. Suggested settings are
+between \fICPUs+1\fR and \fI2*CPUs+1\fR.
+For more information, see \fBmake\fR(1).
+.TP
+\fBNOCOLOR\fR = \fI["true" | "false"]\fR
+Defines if color should be disabled by default.
+.br 
+Defaults to false.
+.TP
+\fBPKGDIR\fR = \fI[path]\fR
+Defines the location where created .tbz2 binary packages will be stored.
+.br 
+Defaults to ${PORTDIR}/packages.
+.TP
+.B PORT_LOGDIR
+This variable defines the directory in which per\-ebuild logs are kept.
+Logs are created only when this is set and writable.
+.TP
+\fBPORTAGE_BINHOST\fR = \fI"ftp://login:pass@grp.mirror.site/pub/grp/i686/athlon\-xp"\fR
+This is the host from which portage will grab prebuilt\-binary packages.  
+The list is a single entry specifying the full address of the directory 
+serving the tbz2's for your system.  This is only used when running with 
+the get binary pkg options are given to \fBemerge\fR.  Review \fBemerge\fR(1) 
+for more information.  Note that it should point to the 'All' directory on 
+the host that creates the binary packages and not to the root of the \fBPKGDIR\fR.
+.TP
+\fBPORTAGE_NICENESS\fR = \fI[number]\fR
+The value of this variable will be added to the current nice level that 
+emerge is running at.  In other words, this will not set the nice level, 
+it will increment it.  For more information about nice levels and what 
+are acceptable ranges, see \fBnice\fR(1).
+.TP
+\fBPORTAGE_TMPDIR\fR = \fI[path]\fR
+Defines the location of the temporary build directories.
+.br 
+Defaults to /var/tmp.
+.TP
+\fBPORTDIR\fR = \fI[path]\fR
+Defines the location of your Portage tree.
+.br 
+Defaults to /usr/portage. 
+.TP
+\fBPORTDIR_OVERLAY\fR = \fI"[path] [different\-path] [etc...]"\fR
+Defines the directories in which user made ebuilds may be stored and not 
+overwriten when `emerge \-\-sync` is run.  This is a space delimited list of 
+directories.
+.br 
+Defaults to no value.
+.TP
+\fBRESUMECOMMAND\fR
+This variable contains the command used for resuming package\-sources that
+have been partially downloaded by the \fBFETCHCOMMAND\fR.
+.TP
+\fBROOT\fR = \fI[path]\fR
+Use \fBROOT\fR to specify the target root filesystem to be used for merging 
+packages or ebuilds.  All \fBRDEPEND\fR and \fBPDEPEND\fR will be installed 
+into \fBROOT\fR while all \fBDEPEND\fR will be still be installed into /.  
+Typically, you should set this setting in the environment rather than in 
+\fI/etc/make.conf\fR itself.  It's commonly used for creating new build 
+images.
+.br 
+Defaults to /.
+.TP
+\fBRSYNC_EXCLUDEFROM\fR = \fI"/etc/portage/rsync_excludes"\fR
+This is a file that portage will pass to rsync when it updates the portage 
+tree.  Specific chucks of the tree may be excluded from the sync process.  
+This may cause dependency failures if you are not careful.  The file format 
+is pattern per line, blanks and ';' or '#' lines are comments.  See 
+\fBrsync\fR(1) for more details.
+.TP
+\fBRSYNC_RETRIES\fR = \fI[NUMBER]\fR
+The number of times rsync should retry on failed connections before
+giving up.
+.br 
+Defaults to 3.
+.TP
+\fBRSYNC_TIMEOUT\fR = \fI[SECONDS]\fR
+The number of seconds rsync should remain idle before it determines the
+connection has timed out. Dialup users may need to set this value at or
+above 300 seconds.
+.br 
+Defaults to 180 seconds.
+.TP
+\fBRPMDIR\fR = \fI[path]\fR
+Defines the location where created RPM packages will be stored.
+.br 
+Defaults to ${PORTDIR}/rpm.
+.TP
+\fBSYNC\fR = \fI[RSYNC]\fR
+Insert your preferred rsync mirror here.  This rsync server
+is used to sync the local portage tree when `emerge \-\-sync` is run.
+.br 
+Defaults to rsync://rsync.gentoo.org/gentoo\-portage
+.TP
+\fBUSE\fR = \fI[space delimited list of USE items]\fR
+This variable contains options that control the build behavior of several
+packages.  More information in \fBebuild\fR(5).  Possible USE values
+can be found in \fI/usr/portage/profiles/use.desc\fR.
+.TP
+\fBUSE_ORDER\fR = \fI"env:pkg:conf:auto:defaults"\fR
+Determines precedence for incrementing the setting of the USE variable.
+The above setting will cause the environment (env) to override per package (pkg)
+settings to override make.conf (conf) to override auto generated values 
+from merged packages (auto) to override make.defaults (defaults).
+.br 
+\fB***warning***\fR
+.br 
+Do not modify this value unless you're a developer and you know what
+you're doing. If you change this and something breaks, we will not help
+you fix it.
+.br 
+Defaults to "env:pkg:conf:auto:defaults".
+
+.SH "REPORTING BUGS"
+Please report bugs via http://bugs.gentoo.org/
+.SH "SEE ALSO"
+.BR emerge (1),
+.BR portage (5),
+.BR ebuild (1),
+.BR ebuild (5)
+.TP
+The \fI/usr/sbin/ebuild.sh\fR script. 
+.TP
+The helper apps in \fI/usr/lib/portage/bin\fR.
+.SH "FILES"
+.TP
+\fB/etc/make.conf\fR 
+Contains variables for the build\-process and overwrites those in make.defaults.
+.TP
+\fB/etc/make.globals\fR 
+Contains the default variables for the build\-process, you should edit \fI/etc/make.conf\fR instead.
+.TP
+\fB/usr/portage/profiles/use.desc\fR
+Contains a list of all global USE flags.
+.TP
+\fB/usr/portage/profiles/use.local.desc\fR
+Contains a list of all local USE variables.
+.SH "AUTHORS"
+Daniel Robbins <drobbins@gentoo.org>
+.br 
+Nicholas Jones <carpaski@gentoo.org>
+.br 
+Mike Frysinger <vapier@gentoo.org>
+.SH "CVS HEADER"
+$Header: /var/cvsroot/gentoo-src/portage/man/make.conf.5,v 1.44.2.4 2005/06/04 04:53:13 vapier Exp $

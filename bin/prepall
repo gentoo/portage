@@ -1,0 +1,39 @@
+#!/bin/bash
+# Copyright 1999-2004 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Header: /var/cvsroot/gentoo-src/portage/bin/prepall,v 1.10 2004/10/14 23:31:33 ferringb Exp $
+
+prepallman
+prepallinfo
+prepallstrip
+
+#this should help to ensure that all (most?) shared libraries are executable
+for i in "${D}"opt/*/lib{,32,64} \
+         "${D}"lib{,32,64}       \
+         "${D}"usr/lib{,32,64}   \
+         "${D}"usr/X11R6/lib{,32,64} ; do
+	[ ! -d "${i}" ] && continue
+
+	for j in "${i}"/*.so.* "${i}"/*.so ; do
+		[ ! -e "${j}" ] && continue
+		[ -L "${j}" ] && continue
+		echo "making executable: /${j/${D}/}"
+		chmod +x "${j}"
+	done
+done
+
+# Move aclocals
+for i in `find "${D}"/ -name "aclocal" -type d 2>/dev/null` ; do
+	[ -z "${i}" ] && continue
+
+	# Strip double '/'
+	dir1="`echo "${i}" | sed  -e 's:/\{2,\}:/:g'`"
+	dir2="`echo "${D}/usr/share/aclocal" | sed  -e 's:/\{2,\}:/:g'`"
+	
+	[ "${dir1}" == "${dir2}" ] && continue
+
+	echo "moving aclocal: /${i/${D}/}"
+	install -d "${D}"usr/share/aclocal
+	mv "${i}"/* "${D}"usr/share/aclocal
+	rm -fr "${i}"
+done

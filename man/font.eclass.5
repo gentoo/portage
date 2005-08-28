@@ -1,0 +1,64 @@
+.TH "FONT.ECLASS" "5" "Aug 2004" "Portage 2.0.51" "portage"
+.SH "NAME"
+font.eclass \- easy, uniform font installation
+.SH "DESCRIPTION"
+The \fBfont\fR eclass attempts to make font installation as easy as possible.
+Everything that usually involves installing fonts (such as creating scalable
+font indecis, updating the font cache, etc...) is transparently taken 
+care of by the \fBfont\fR eclass.
+.SH "EXAMPLES"
+Here's a simple example ebuild:
+.nf
+inherit font
+
+DESCRIPTION="a collection of fonts for Nepali users"
+HOMEPAGE="http://www.mpp.org.np/"
+SRC_URI="mirror://gentoo/${P}.tar.bz2"
+
+LICENSE="freedist"
+SLOT="0"
+KEYWORDS="alpha amd64 ppc x86"
+IUSE=""
+
+DEPEND=""
+
+S="${WORKDIR}/${PN}"
+FONT_S=${S}
+FONT_SUFFIX="ttf"
+.fi
+.SH "VARIABLES"
+.TP
+.B "FONT_SUFFIX"
+Space-delimited list of font suffixes to install.
+.TP
+.B "FONT_S"
+Directory containing the fonts.  If omitted,  \fB${S}\fR will be used.
+.TP
+.B "DOCS"
+Space-delimited list of documents to install.
+.SH "FUNCTIONS"
+.TP
+.B "font_xfont_config"
+Creates font indecis for X font files and also installs a fonts.alias file,
+if it exists.  This function is called by \fIfont_src_install\fR.
+.TP
+.B "font_xft_config"
+Creates fontconfig cache.  This function is also called by \fIfont_src_install\fR.
+.TP
+.B "font_src_install"
+Installs all fonts ending with suffixes listed in \fB${FONT_SUFFIX}\fR as well 
+as any documents listed in \fB${DOCS}\fR.  This function will be used as the 
+default \fIsrc_install\fR function in an ebuild that omits one.
+.SH "REPORTING BUGS"
+Please report bugs via http://bugs.gentoo.org/
+.SH "SEE ALSO
+.BR ebuild (5)
+.SH "FILES"
+.BR /usr/portage/eclass/font.eclass
+.SH "AUTHORS"
+.nf
+Aaron Walker <ka0ttic@gentoo.org>
+Mike Frysinger <vapier@gentoo.org>
+.fi
+.SH "CVS HEADER"
+$Header: /var/cvsroot/gentoo-src/portage/man/font.eclass.5,v 1.2.2.1 2005/01/15 00:19:36 vapier Exp $

@@ -1,0 +1,34 @@
+.TH "STARDICT.ECLASS" "5" "Jun 2003" "Portage 2.0.51" "portage"
+.SH "NAME"
+startdict.eclass \- convienence class to do stardict dictionary installations
+.SH "DESCRIPTION"
+The \fBstartdict\fR eclass contains appropriate variables and functions
+to quickly make ebuild's for stardictionaries.  The eclass will define
+\fBsrc_compile\fR and \fBsrc_install\fR functions for you.  All you
+need to do is to set the \fBDICT_SUFFIX\fR, \fBDICT_P\fR, \fBFROM_LANG\fR,
+and \fBTO_LANG\fR variables before inheriting the eclass.
+.SH "VARIABLES"
+.TP
+.B FROM_LANG = \fI"From this language"\fR
+What language is the dictionary translating from?  If you have an
+English to German dictionary, this variable would be set to 'English'.
+.TP
+.B TO_LANG = \fI"To this language"\fR
+What language is the dictionary translating to?  If you have an
+English to German dictionary, this variable would be set to 'German'.
+.TP
+.B DICT_PREFIX = \fI"SRC_URI prefix, like 'dictd_www.mova.org_'"\fR
+SRC_URI prefix, like "dictd_www.mova.org_".
+.TP
+.B DICT_SUFFIX = \fI"SRC_URI after the prefix"\fR
+SRC_URI after the prefix.
+.SH "REPORTING BUGS"
+Please report bugs via http://bugs.gentoo.org/
+.SH "SEE ALSO"
+.BR ebuild (5)
+.SH "FILES"
+.BR /usr/portage/eclass/stardict.eclass
+.SH "AUTHORS"
+Mike Frysinger <vapier@gentoo.org>
+.SH "CVS HEADER"
+$Header: /var/cvsroot/gentoo-src/portage/man/stardict.eclass.5,v 1.3.2.1 2005/01/15 00:19:36 vapier Exp $

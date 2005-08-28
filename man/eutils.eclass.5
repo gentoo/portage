@@ -1,0 +1,176 @@
+.TH "EUTILS.ECLASS" "5" "Jun 2003" "Portage 2.0.51" "portage"
+.SH "NAME"
+eutils.eclass \- many extra (but common) functions that are used in ebuilds
+.SH "DESCRIPTION"
+The \fBeutils\fR eclass contains a suite of functions that complement
+the ones that ebuild.sh already contain.  The idea is that the functions
+are not required in all ebuilds but enough utilize them to have a common
+home.
+.SH "FUNCTIONS"
+.TP
+.BR "cdrom_get_cds " "\fI<cd1 file>\fR \fI[cd2 file]\fR \fI[cd n file]\fR"
+Useful function to help ebuilds that need to read files off of a CD.  This is 
+most commonly used with games.  Just specify a list of files, one per cd, that 
+will be used to detect whether the cd is mounted or not.  This function 
+handles all the messy details of interaction with the user.  Once this 
+function returns, you will have access to the \fICDROM_ROOT\fR variable.  If 
+you want the message to the user to name the CD in a particular way, then 
+export the variable \fICDROM_NAME\fR before calling this function.  If you want 
+to name more than one cd, and you want them to each have a different name, then 
+export the variables \fICDROM_NAME_1\fR, \fICDROM_NAME_2\fR, etc...  For more 
+information on multi-cd support, see \fBcdrom_load_next_cd\fR.
+.TP
+.BR "cdrom_load_next_cd"
+Some packages are so big they come on multiple CDs.  When you're done reading 
+files off a CD and want access to the next one, just call this function.  Again,
+all the messy details of user interaction are taken care of for you.  Once this 
+returns, just read the variable \fICDROM_ROOT\fR for the location of the mounted 
+CD.  Note that you can only go forward in the CD list, so make sure you only 
+call this function when you're done using the current CD.
+.TP
+.BR "draw_line"
+Simple function to draw a line consisting of '=' the same length as $*.  So
+if you run `draw_line 1234 5678` you will get back 9 '=' characters in a line.
+.TP
+.BR "edos2unix " "\fI<files>\fR"
+A handy replacement for dos2unix, recode, fixdos, etc...  This allows you
+to remove all of these text utilities from DEPEND variables because this
+is a script based solution.  Just give it a list of files to convert and
+they will all be changed from the DOS CRLF format to the UNIX LF format.
+.TP
+.BR "enewgroup " "\fI<group>\fR \fI[gid]\fR"
+This function does not require you to understand how to properly add a 
+group to the system.  Just give it a \fIgroup name\fR to add and \fBenewgroup\fR will
+do the rest.  You may specify the \fIgid\fR for the group or allow the group to
+allocate the next available one.
+.TP
+.BR "enewuser " "\fI<user>\fR \fI[uid]\fR \fI[shell]\fR \fI[homedir]\fR \fI[groups]\fR \fI[params]\fR"
+Same as \fBenewgroup\fR, you are not required to understand how to properly add
+a user to the system.  The only required parameter is the \fIusername\fR.
+.br
+.BR "Default Values"
+.br
+\fIuid\fR: next available (pass -1 to get default behavior)
+.br
+\fIshell\fR: /bin/false
+.br
+\fIhomedir\fR: /dev/null
+.br
+\fIgroups\fR: no groups
+.br
+\fIparams\fR: any other parameters \fBuseradd\fR(8) accepts; see the manpage for more details
+.TP
+.BR "epatch"
+See the section on \fBepatch\fR below.
+.TP
+.BR "gen_usr_ldscript"
+Generate linker scripts in /usr/lib for dynamic libs in /lib.  This is to fix linking
+problems when you have the .so in /lib, and the .a in /usr/lib.  What happens is that
+in some cases when linking dynamic, the .a in /usr/lib is used instead of the .so in
+/lib due to gcc/libtool tweaking ld's library search path.
+.TP
+.BR "get_number_of_jobs"
+Checks how many cpu's are present in the system and then sets -j in MAKEOPTS accordingly.
+.TP
+.BR "have_NPTL"
+This function return true if we are using the NPTL pthreads implementation of glibc.
+.TP
+.BR "make_desktop_entry " "\fI<binary>\fR \fI[name]\fR \fI[icon]\fR \fI[type]\fR \fI[path]\fR"
+Make a little shortcut in GNOME/KDE menus for your application.  Just pass the name
+of the binary to execute and the rest will be done for you.  If you want to change
+the name that will show up in the menu, pass the function a \fIname\fR parameter.  If you
+want to specify an \fIicon\fR (default is \fB${PN}\fR.png) then pass a name of a graphic file
+relative to /usr/share/pixmaps/ or the full path to a file.  If you want to specify the
+section of the menu that the icon will install to (rather than the default determined
+by \fB${CATEGORY}\fR) then pass a \fItype\fR value (see http://www.freedesktop.org/standards/menu-spec/
+for valid values).  Finally, if the application needs to start up in a special directory,
+pass the last value as the full \fIpath\fR name.
+.TP
+.BR "unpack_makeself " "\fI[makeself archive]\fR \fI[byte offset]\fR"
+Unpack a makeself archive rather than relying on the script to unpack itself.  Useful for when 
+the scripts use old (POSIX) syntax that is no longer supported properly.  If you don't specify 
+a file to unpack, then \fB${A}\fR is used instead.  If you don't specify the offset, then the 
+proper value will be located by searching the makeself script.
+For more information on makeself archives, please visit: http://www.megastep.org/makeself/
+.TP
+.BR "unpack_pdv " "\fI<pdv archive>\fR \fI<sizeof(off_t)>\fR"
+Unpack a pdv archive rather than relying on the binary to unpack itself.  Useful for when 
+the static binary crashes randomly on systems and for when the binary doesn't provide a 
+non-interactive extraction process.  You have to specify the off_t size since I (vapier@gentoo.org) 
+am unaware of a way to extract that information out of the binary executable automatically.  
+The value you pass is the size of the off_t type (in bytes) on the machine that built the 
+pdv archive.  If you don't know the value yourself, try guessing the values 2, 4, or 8.  
+For more information on pdv archives, please visit: http://pdv.sourceforge.net/
+.SH "EPATCH"
+.TP
+.B "ABOUT"
+\fBepatch\fR is designed to make patching easy.  It does all the common checks that
+a developer would do with the \fBpatch\fR(1) command and then some.  It will attempt
+to apply the patch for a range of offset values (-p0 to -p5, all relative to the working
+directory when \fBepatch\fR was called).  If the patch fails to apply (by testing via
+dryruns), then \fBpatch\fR will stop the emerge process by calling \fBdie\fR.  You will
+be given a log file of the output of the patch attempt so as to ease debugging.  The
+output of a successful patch is a pretty formatted message showing what patches were
+applied.  \fBepatch\fR can be used for bulk patching or for just one or two patches.  
+Additionally, it can handle patches in bzip2, gzip, compress (Z), and zip formats.
+.TP
+.B "USAGE"
+.RS
+.TP
+.B "epatch " "\fI<patch file>\fR"
+The most common and easiest way to use \fBepatch\fR is by just giving it the full path
+to a patch file.
+.TP
+.B "epatch " "\fI<directory>\fR"
+A more powerful use is to fill a directory with patches and then let \fBepatch\fR apply
+all the patches inside it.  The patches must be in the format ??_${\fBARCH\fR}_foo.${\fBEPATCH_SUFFIX\fR}.  
+This ensures that there are a set order, and you can have \fBARCH\fR specific patches.  
+
+.br
+01_all_misc-fix.patch.bz2
+.br
+   apply the misc-fix patch first for all arches
+.br
+02_sparc_another-fix.patch.bz2
+.br
+   apply the another-fix patch second but only on sparc
+.RE
+.TP
+.B VARIABLES
+.RS
+.TP
+.B "EPATCH_SOURCE" = \fI"${WORKDIR}/patch"\fR
+The patch or directory of patches for \fBepatch\fR to apply.  This is set
+automatically if you call \fBepatch\fR with a parameter.
+.TP
+.B "EPATCH_SUFFIX" = \fI"patch.bz2"\fR
+When applying bulk patches this is the suffix that all patches will have.  
+.TP
+.B "EPATCH_OPTS" = \fI""\fR
+Any extra options you may want to pass to \fBpatch\fR(1).  We can't think
+of everything so why restrict you :).  The default is "" of course.
+.TP
+.B "EPATCH_EXCLUDE" = \fI""\fR
+A space delimited list (well, actually \fB$IFS\fR delimited ...) of patch
+files to skip while bulk patching.  Use only file names, not full paths.
+.TP
+.B "EPATCH_SINGLE_MSG" = \fI"Applying <patch name>"\fR
+If you only apply a single patch, then instead of displaying the default
+message you can change it to say anything you want, even 'Dont call me Radio Unit 51',
+if you are so inclined of course.
+.TP
+.B "EPATCH_FORCE" = \fI"[yes|no]"\fR
+This allows you to apply all patches in \fBEPATCH_SOURCE\fR even if they
+dont match the ??_${\fBARCH\fR}_foo.${\fBEPATCH_SUFFIX\fR} file naming
+convention.  By default we want you to use the above convention.
+.RE
+.SH "REPORTING BUGS"
+Please report bugs via http://bugs.gentoo.org/
+.SH "SEE ALSO"
+.BR ebuild (5)
+.SH "FILES"
+.BR /usr/portage/eclass/eutils.eclass
+.SH "AUTHORS"
+Mike Frysinger <vapier@gentoo.org>
+.SH "CVS HEADER"
+$Header: /var/cvsroot/gentoo-src/portage/man/eutils.eclass.5,v 1.5.2.2 2005/01/15 00:19:36 vapier Exp $

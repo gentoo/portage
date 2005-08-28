@@ -1,0 +1,48 @@
+#!/bin/bash
+# Copyright 1999-2005 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Header: /var/cvsroot/gentoo-src/portage/bin/prepstrip,v 1.23.2.3 2005/08/15 02:58:20 vapier Exp $
+
+if [ "${FEATURES//*nostrip*/true}" == "true" ] || [ "${RESTRICT//*nostrip*/true}" == "true" ] ; then
+	echo "nostrip"
+	STRIP="/bin/false"
+	PORTAGE_STRIP_FLAGS=""
+else
+	STRIP="${STRIP:-${CHOST}-strip}"
+	type -p ${STRIP} > /dev/null || STRIP=strip
+	PORTAGE_STRIP_FLAGS=${PORTAGE_STRIP_FLAGS:---strip-unneeded}
+fi
+
+banner=1
+retval=0
+
+for x in "$@" ; do
+	if [ -d "${x}" ]; then
+		# We only want files. So make a pass for each directory and call again.
+		find "${x}" -type f \( -perm -0100 -or -perm -0010 -or -perm -0001 -or -name '*.so' -or -name '*.so.*' \) -print0 |
+				$XARGS -0 -n500 prepstrip
+	else
+		if [ ${banner} -eq 1 ] ; then
+			echo "strip: ${STRIP} ${PORTAGE_STRIP_FLAGS}"
+			banner=0
+		fi
+
+		f=$(file "${x}") || continue
+		[ -z "${f}" ] && continue
+
+		if [ -z "${f/*current ar archive*/}" ]; then
+			echo "   ${x:${#D}:${#x}}"
+			${STRIP} -g "${x}"
+		fi
+		if [ -z "${f/*SB executable*/}" ]; then
+			echo "   ${x:${#D}:${#x}}"
+			${STRIP} "${x}"
+		fi
+		if [ -z "${f/*SB shared object*/}" ]; then
+			echo "   ${x:${#D}:${#x}}"
+			${STRIP} ${PORTAGE_STRIP_FLAGS} "${x}"
+		fi
+	fi
+done
+
+exit ${retval}

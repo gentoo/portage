@@ -1,0 +1,127 @@
+.TH "REPOMAN" "1" "Nov 2002" "Portage 2.0.51" "Portage"
+.SH NAME
+repoman \- Gentoo's program to enforce a minimal level of quality assurance in packages added to the portage tree
+.SH SYNOPSIS
+\fBrepoman\fR [\fIoption\fR] [\fImode\fR]
+.SH DESCRIPTION
+.BR "Quality is job zero."
+.br
+.BR repoman
+is meant for Gentoo developers only due to the fact it does not work on a per-ebuild basis.
+It checks the quality of CVS repositories.
+.br
+Note: \fBrepoman\fR only runs \fIinside local\fR CVS repositories.
+.SH OPTIONS 
+.TP
+.B --pretend
+Don't actually perform commit or fix problems, just show what would be done.
+.TP
+.B --help
+Show the help screen.
+.SH MODES
+.TP
+.B scan
+Scan current directory tree for QA issues (default).  See \fBQA KEYWORDS\fR for more
+information.
+.TP
+.B fix
+Fix those issues that can be fixed (stray digests, missing digests).
+.TP
+.B full
+Scan current directory tree for QA issues (full listing).  See \fBQA KEYWORDS\fR for more
+information.
+.TP
+.B help
+Show the help screen.
+.TP
+.B commit
+Scan current directory tree for QA issues.  If OK, commit via cvs.
+.SH QA KEYWORDS
+.TP
+.BR CVS/Entries.IO_error
+While attempting to commit, a CVS/Entries directory wasn't found- either the cvs co is damaged, or permissions block repoman from reading the file.
+.TP
+.BR digest.assumed
+Files listed in the digest were not found in your $DISTDIR so the existing 
+digest entries are assumed to be correct.
+.TP
+.BR digest.disjointed
+The digests were not added to cvs when the matching ebuild had already been 
+added.
+.TP
+.BR digest.missing
+Ebuild files were found that do not have a corresponding digest.
+.TP
+.BR digest.notadded
+The digests were found but have not been added to cvs.
+.TP
+.BR digest.stray
+Digest files were found that do not have a corresponding ebuild.
+.TP
+.BR ebuild.disjointed
+The ebuilds were not added to cvs when the matching digest had already been 
+added.
+.TP
+.BR ebuild.invalidname
+The ebuild has a filename that is not-parseable by portage.
+.TP
+.BR changelog.missing
+The ChangeLog file was not found.
+.TP
+.BR ebuild.namenomatch
+The euild has a filename that does not have the same name as the parent 
+directory.
+.TP
+.BR ebuild.notadded
+The ebuilds were found but have not been added to cvs.
+.TP
+.BR file.executable
+The file has the executable bit set, when it's not needed- check is limited to ebuilds, digests, Manifest, ChangeLog, and metadata.xml.
+.TP
+.BR file.size
+The file's size exceeds 20k, current policy is no files over 20k in a packages files directory.
+.TP
+.BR filedir.missing
+The package lacks a files directory.
+.TP
+.BR DEPEND.bad
+User-visible ebuilds with bad DEPEND settings (matched against *visible* ebuilds).
+In other words, user-visiable ebuilds could not be found to satisfy the DEPEND settings.
+.TP
+.BR RDEPEND.bad
+User-visible ebuilds with bad RDEPEND settings (matched against *visible* ebuilds).
+In other words, user-visiable ebuilds could not be found to satisfy the RDEPEND settings.
+.TP
+.BR DEPEND.badmasked
+Masked ebuilds with bad DEPEND settings (matched against *all* ebuilds)
+In other words, no ebuilds could not be found to satisfy the DEPEND settings.
+.TP
+.BR RDEPEND.badmasked
+Masked ebuilds with RDEPEND settings (matched against *all* ebuilds)
+In other words, no ebuilds could not be found to satisfy the RDEPEND settings.
+.TP
+.BR ebuild.syntax
+An error occured while generating the cache entry.  This typically means the ebuild contains syntax error(s).
+.TP
+.BR ebuild.output
+A simple sourcing of the ebuild produces output.  This breaks ebuild policy.
+.TP
+.BR KEYWORDS.missing
+The ebuild does not have a KEYWORDS variable.
+.TP
+.BR LICENSE.missing
+The ebuild does not have a LICENSE variable.
+.TP
+.BR DESCRIPTION.missing
+The ebuild does not have a DESCRIPTION variable.
+.TP
+.BR SLOT.missing
+The ebuild does not have a SLOT variable.
+.SH AUTHORS
+Daniel Robbins <drobbins@gentoo.org>
+.SH "REPORTING BUGS"
+Please report bugs via http://bugs.gentoo.org/
+.SH "SEE ALSO"
+.BR emerge (1)
+.SH "CVS HEADER"
+$Header: /var/cvsroot/gentoo-src/portage/man/repoman.1,v 1.7.2.1 2005/01/30 12:12:26 vapier Exp $

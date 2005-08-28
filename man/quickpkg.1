@@ -1,0 +1,56 @@
+.TH "QUICKPKG" "1" "Jul 2003" "Portage 2.0.51" "Portage"
+.SH NAME
+quickpkg \- creates portage packages
+.SH SYNOPSIS
+.B quickpkg <list of pkgs>
+.SH DESCRIPTION
+.I quickpkg
+can be utilized to quickly create a package for portage by
+utilizing the files already on your filesystem.  This package
+then can be emerged on any system.  To review syntax for 
+emerging binary packages, review \fBemerge\fR(1).  The upside
+of this process is that you don't have to wait for the package 
+to unpack, configure, compile, and install before you can have 
+the package ready to go.  The downside is that the package will 
+contain the files that exist on your filesystem even if they have 
+modified since they were first installed.
+.br
+The packages, after being created, will be placed in \fBPKGDIR\fR.  
+This variable is defined in \fBmake.conf\fR(5) and defaults to 
+/var/tmp/portage-pkg.
+.SH OPTIONS
+.TP
+.B <list of packages>
+Each package in the list can be of two forms.  First you can
+give it the full path to the installed entry in the virtual
+database.  That is, /var/db/pkg/<CATEGORY>/<PKG-VERSION>/.  
+The second form is a portage depend atom.  This atom is of
+the same form that you would give \fBemerge\fR if you wanted 
+to emerge something.  See \fBebuild\fR(5) for full definition.
+.SH "EXAMPLES"
+.B quickpkg
+/var/db/pkg/dev-python/pyogg-1.1
+.br
+.B quickpkg
+planeshift
+.br
+.B quickpkg
+=apache-1.3.27-r1
+.br
+.B quickpkg
+=net-www/apache-2*
+.SH "REPORTING BUGS"
+Please report bugs via http://bugs.gentoo.org/
+.SH "SEE ALSO"
+.BR ebuild (5),
+.BR make.conf (5)
+.SH "FILES"
+.TP
+.B /etc/make.conf
+The \fBPKGDIR\fR variable is defined here.
+.SH AUTHORS
+Terry Chan (original author)
+.br
+Mike Frysinger <vapier@gentoo.org> (revamped version)
+.SH "CVS HEADER"
+$Header: /var/cvsroot/gentoo-src/portage/man/quickpkg.1,v 1.3 2004/09/17 00:17:10 vapier Exp $

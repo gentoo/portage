@@ -1,0 +1,159 @@
+#!/usr/bin/python
+# Copyright 1999-2004 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Header: /var/cvsroot/gentoo-src/portage/bin/dohtml,v 1.14.2.1 2004/10/27 14:39:29 jstubbs Exp $
+
+#
+# Typical usage:
+# dohtml -r docs/*
+#  - put all files and directories in docs into /usr/share/doc/${PF}/html
+# dohtml foo.html
+#  - put foo.html into /usr/share/doc/${PF}/html
+#
+#
+# Detailed usage:
+# dohtml <list-of-files> 
+#  - will install the files in the list of files (space-separated list) into 
+#    /usr/share/doc/${PF}/html, provided the file ends in .html, .png, .jpg 
+#     or .css
+# dohtml -r <list-of-files-and-directories>
+#  - will do as 'dohtml', but recurse into all directories, as long as the 
+#    directory name is not CVS
+# dohtml -A jpe,java [-r] <list-of-files[-and-directories]>
+#  - will do as 'dohtml' but add .jpe,.java (default filter list is
+#    added to your list)
+# dohtml -a png,gif,html,htm [-r] <list-of-files[-and-directories]>
+#  - will do as 'dohtml' but filter on .png,.gif,.html,.htm (default filter 
+#    list is ignored)
+# dohtml -x CVS,SCCS,RCS -r <list-of-files-and-directories>
+#  - will do as 'dohtml -r', but ignore directories named CVS, SCCS, RCS
+#
+
+import os
+import string
+import sys
+import types
+
+def dodir(path):
+	os.system("install -d '%s'" % path)
+
+def dofile(src,dst):
+
+	os.system("install -m0644 '%s' '%s'" % (src, dst))
+
+def install(basename, dirname, options, prefix=""):
+
+	fullpath = basename
+	if prefix: fullpath = prefix + "/" + fullpath
+	if dirname: fullpath = dirname + "/" + fullpath
+
+	if options.DOCDESTTREE:
+		destdir = options.D + "usr/share/doc/" + options.PF + "/" + options.DOCDESTTREE + "/" + options.doc_prefix + "/" + prefix
+	else:
+		destdir = options.D + "usr/share/doc/" + options.PF + "/html/" + options.doc_prefix + "/" + prefix
+
+	if os.path.isfile(fullpath):
+		ext = os.path.splitext(basename)[1]
+		if (len(ext) and ext[1:] in options.allowed_exts) or basename in options.allowed_files:
+			dodir(destdir)
+			dofile(fullpath, destdir + "/" + basename)
+	elif options.recurse and os.path.isdir(fullpath) and \
+	     basename not in options.disallowed_dirs:
+		for i in os.listdir(fullpath):
+			pfx = basename
+			if prefix: pfx = prefix + "/" + pfx
+			install(i, dirname, options, pfx)
+
+class OptionsClass:
+	def __init__(self):
+		self.PF = ""
+		self.D = ""
+		self.DOCDESTTREE = ""
+		
+		if os.environ.has_key("PF"):
+			self.PF = os.environ["PF"]
+		if os.environ.has_key("D"):
+			self.D = os.environ["D"]
+		if os.environ.has_key("DOCDESTTREE"):
+			self.DOCDESTTREE = os.environ["DOCDESTTREE"]
+		
+		self.allowed_exts = [ 'png', 'gif', 'html', 'htm', 'jpg', 'css', 'js' ]
+		self.allowed_files = []
+		self.disallowed_dirs = [ 'CVS' ]
+		self.recurse = False
+		self.verbose = False
+		self.doc_prefix = ""
+
+def print_help():
+	opts = OptionsClass()
+
+	print "dohtml [-a .foo,.bar] [-A .foo,.bar] [-f foo,bar] [-x foo,bar]"
+	print "       [-r] [-V] <file> [file ...]"
+	print
+	print " -a   Set the list of allowed to those that are specified."
+	print "      Default:", string.join(opts.allowed_exts, ",")
+	print " -A   Extend the list of allowed file types."
+	print " -f   Set list of allowed extensionless file names."
+	print " -x   Set directories to be excluded from recursion."
+	print "      Default:", string.join(opts.disallowed_dirs, ",")
+	print " -r   Install files and directories recursively."
+	print " -V   Be verbose."
+	print
+
+def parse_args():
+	options = OptionsClass()
+	args = []
+	
+	x = 1
+	while x < len(sys.argv):
+		arg = sys.argv[x]
+		if arg in ["-h","-r","-V"]:
+			if arg == "-h":
+				print_help()
+				sys.exit(0)
+			elif arg == "-r":
+				options.recurse = True
+			elif arg == "-V":
+				options.verbose = True
+		elif sys.argv[x] in ["-A","-a","-f","-x","-p"]:
+			x += 1
+			if x == len(sys.argv):
+				print_help()
+				sys.exit(0)
+			elif arg == "-p":
+				options.doc_prefix = sys.argv[x]
+			else:
+				values = string.split(sys.argv[x], ",")
+				if arg == "-A":
+					options.allowed_exts.extend(values)
+				elif arg == "-a":
+					options.allowed_exts = values
+				elif arg == "-f":
+					options.allowed_files = values
+				elif arg == "-x":
+					options.disallowed_dirs = values
+		else:
+			args.append(sys.argv[x])
+		x += 1
+	
+	return (options, args)
+
+def main():
+
+	(options, args) = parse_args()
+
+	if type(options.allowed_exts) == types.StringType:
+		options.allowed_exts = options.allowed_exts.split(",")
+
+	if options.verbose:
+		print "Allowed extensions:", options.allowed_exts
+		print "Document prefix : '" + options.doc_prefix	 + "'"
+		print "Allowed files :", options.allowed_files
+
+	for x in args:
+		basename = os.path.basename(x)
+		dirname  = os.path.dirname(x)
+		install(basename, dirname, options)
+
+if __name__ == "__main__":
+	main()

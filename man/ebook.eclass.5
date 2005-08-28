@@ -1,0 +1,75 @@
+.TH "EBOOK.ECLASS" "5" "Aug 2004" "Portage 2.0.51" "portage"
+.SH "NAME"
+ebook.eclass \- easy installation of ebooks
+.SH "DESCRIPTION"
+The \fBebook\fR eclass makes writing ebuilds for ebooks a trivial task.
+.SH "VARIABLES"
+\fINOTE\fR: the following variables should be set \fBBEFORE\fR inheriting the
+\fBebook\fR eclass:
+.TP
+.BR "DESCRIPTION"
+Package description.  Defaults to "\fB${P}\fR ebook based on ebook eclass".
+.TP
+.BR "RDEPEND"
+Run-time dependencies.  Defaults to ">=dev-util/devhelp-0.6".
+.TP
+.BR "EBOOKNAME"
+The name of the ebook.  This variable \fImust\fR be set.
+.TP
+.BR "EBOOKVERSION"
+The version of the ebook.  This variable \fImust\fR be set, even if there is
+no version.  See the \fB${NOVERSION}\fR variable below for more information.
+.TP
+.BR "SRC"
+The name of the file to download, minus the file extension.  This variable
+defaults to \fB${EBOOKNAME}\fR-\fB${EBOOKVERSION}\fR.
+.TP
+.BR "SRC_URI"
+The ebook URI to download.  Defaults to "http://lidn.sourceforge.net/books_download/\fB${SRC}\fR.\fB${EBOOKEXT}\fR".
+.TP
+.BR "EBOOKEXT"
+The file name extension of \fB${SRC}\fR.  Defaults to tar.gz.
+.TP
+.BR "EBOOKDESTDIR"
+The directory inside \fB${DEVHELPROOT}\fR/books/\fB${EBOOKDIR}\fR in which the
+ebook will be installed.  This variable defaults to \fB${EBOOKNAME}\fR-\fB${EBOOKVERSION}\fR
+or \fB${EBOOKNAME}\fR if the \fB${NOVERSION}\fR variable is set.
+.TP
+.BR "EBOOKFROMDIR"
+The directory in which the ebook's HTML files are located after unpacking
+\fB${SRC_URI}\fR.  This directory is relative to \fB${WORKDIR}\fR.  This
+variable defaults to \fB${EBOOKNAME}\fR-\fB${EBOOKVERSION}\fR or \fB${EBOOKNAME}\fR
+if the \fB${NOVERSION}\fR variable is set.
+.TP
+.BR "BOOKDEVHELPFILE"
+The file name that the ebook's book.devhelp will be installed as.  This variable
+defaults to \fB${EBOOKNAME}\fR-\fB${EBOOKVERSION}\fR.devhelp or \fB${EBOOKNAME}\fR.devhelp
+if the \fB${NOVERSION}\fR variable is set.
+.TP
+.BR "BOOKDESTDIR"
+The directory in which the ebook's HTML will be installed into.  Defaults to
+\fB${EBOOKNAME}\fR-\fB${EBOOKVERSION}\fR or \fB${EBOOKNAME}\fR is the \fB${NOVERSION}\fR
+variable is set.
+.TP
+.BR "NOVERSION"
+If this variable is not empty, all instances of \fB${EBOOKVERSION}\fR will be
+removed from all variables.
+.TP
+.BR "DEVHELPROOT"
+The location of devhelp's data directory.  Defaults to usr/share/devhelp.
+.SH "FUNCTIONS"
+\fINOTE\fR: the following functions will be used as the defaults should they
+be omitted from the ebuild.
+.TP
+.BR "ebook_src_install"
+Installs \fB${BOOKDEVHELPFILE}\fR and all HTML files into \fB${DEVHELPROOT}\fR/books/\fB${EBOOKDESTDIR}\fR.
+.SH "REPORTING BUGS"
+Please report bugs via http://bugs.gentoo.org/
+.SH "SEE ALSO"
+.BR ebuild (5)
+.SH "FILES"
+.BR /usr/portage/eclass/ebook.eclass
+.SH "AUTHORS"
+Aaron Walker <ka0ttic@gentoo.org>
+.SH "CVS HEADER"
+$Header: /var/cvsroot/gentoo-src/portage/man/ebook.eclass.5,v 1.2.2.1 2005/01/15 00:19:36 vapier Exp $

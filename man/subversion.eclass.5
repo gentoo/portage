@@ -1,0 +1,59 @@
+.TH SUBVERSION.ECLASS 5 "Nov 2004" "Portage 2.0.51" portage
+.SH NAME
+subversion.eclass \- provides subversion fetching functions
+.SH DESCRIPTION
+The \fBsubversion\fR eclass provides functions that enable the ebuild author
+to create 'live' ebuilds that fetch the program's sources from a subversion
+repository.
+.br
+
+\fBNOTE\fR: At the very minimum, the \fBsubversion\fR eclass requires the
+\fBESVN_REPO_URI\fR variable to be set (see below).
+.SH VARIABLES
+.TP
+.B "ESVN_REPO_URI" = \fI"svn://foo/bar/trunk"\fR
+This variable sets the URI from which the sources will be fetched.  The
+\fBsubversion\fR eclass supports fetching from the following protocols:
+\fIhttp\fR, \fIhttps\fR, and \fIsvn\fR.  This variable is required to be set.
+.TP
+.B "ESVN_STORE_DIR" = \fI"${DISTDIR}/svn-src"\fB
+This variable defines the location in which the fetched sources will be kept.
+The default value is '${DISTDIR}/svn-src' and should be sufficient in most
+cases.
+.TP
+.B "ESVN_FETCH_CMD" = \fI"svn checkout"\fB
+This variable defines the command used for initial checkout and defaults to 'svn checkout'.
+.TP
+.B "ESVN_UPDATE_CMD" = \fI"svn update"\fB
+This variable defines the command used for updating sources and defaults to 'svn update'.
+.TP
+.B "ESVN_PROJECT" = \fI"foobar"\fB
+This variable defines the name of the project and defaults to '${PN/-svn}'.
+.TP
+.B "ESVN_BOOTSTRAP" = \fI"autogen.sh"\fB
+This variable defines the name of the bootstrap script to execute in
+preparation for the build process.  This variable is empty by default.  Note:
+"./" is automatically prepended, so it is unnecessary for the ebuild author to
+do so.
+.TP
+.B "ESVN_PATCHES" = \fI"foo.patch *.diff"\fB
+This variable defines a list of patches to apply prior to fetching the sources.
+In addition to literal filenames, you may also use globbing such as *.diff.
+This variable is empty by default.
+.SH FUNCTIONS
+.TP
+.B subversion_src_unpack
+The default \fBsrc_unpack\fR provided by the \fBsubversion\fR eclass simply
+fetches the program's sources from the URI specified by \fBESVN_REPO_URI\fR,
+applies any patches specified by \fBESVN_PATCHES\fR, and then executes the
+bootstrap script specified by \fBESVN_BOOTSTRAP\fR.
+.SH REPORTING BUGS
+Please report bugs via http://bugs.gentoo.org/
+.SH SEE ALSO
+.BR ebuild (5)
+.SH FILES
+.BR /usr/portage/eclass/subversion.eclass
+.SH AUTHORS
+Aaron Walker <ka0ttic@gentoo.org>
+.SH CVS HEADER
+$Header: /var/cvsroot/gentoo-src/portage/man/subversion.eclass.5,v 1.1.2.3 2005/05/10 11:30:32 swegener Exp $

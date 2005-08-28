@@ -1,0 +1,141 @@
+#!/bin/bash
+# Copyright 1999-2004 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Header: /var/cvsroot/gentoo-src/portage/bin/Attic/emerge-webrsync,v 1.8.2.4 2005/02/26 11:22:38 carpaski Exp $
+# Author: Karl Trygve Kalleberg <karltk@gentoo.org>
+# Rewritten from the old, Perl-based emerge-webrsync script
+
+GENTOO_MIRRORS="${GENTOO_MIRRORS} $(/usr/lib/portage/bin/portageq gentoo_mirrors)"
+PORTDIR="$(/usr/lib/portage/bin/portageq portdir)"
+FETCHCOMMAND="$(/usr/lib/portage/bin/portageq envvar FETCHCOMMAND)"
+USERLAND="$(/usr/lib/portage/bin/portageq envvar USERLAND)"
+DISTDIR="$(/usr/lib/portage/bin/portageq envvar PORTAGE_TMPDIR)/emerge-webrsync"
+
+if [ ! -d $DISTDIR ] ; then
+	mkdir -p $DISTDIR
+fi
+
+cd "$DISTDIR"
+
+found=0
+if [ "$1" == "-v" ] ; then
+	wgetops=
+else	
+	#this sucks.  probably better to do 1> /dev/null
+	#that said, waiting on the refactoring.
+	if [ "${FETCHCOMMAND/wget}" != "${FETCHCOMMAND}" ]; then
+		wgetops="-q"
+	elif [ "${FETCHCOMMAND/curl}" != "${FETCHCOMMAND}" ]; then
+		wgetops="-s -f"
+	fi
+fi
+
+if type -p md5sum > /dev/null; then
+	md5_com='md5sum -c "${FILE}.md5sum"'
+elif type -p md5 > /dev/null; then
+	md5_com='[ "$(md5 -q ${FILE})" == "$(cut -d \  -f 1 ${FILE}.md5sum)" ]'
+else
+	echo "warning, unable to do md5 verification of the snapshot!"
+	echo "no suitable md5/md5sum binary was found!"
+	md5_com='true'
+fi
+
+sync_local() {
+	echo Syncing local tree...
+	if ! tar jxf $FILE; then
+		echo "Tar failed to extract the image. Please review the output."
+		echo "Executed command: tar jxf $FILE"
+		exit 1
+	fi
+	rm -f $FILE
+	# Make sure user and group file ownership is root
+	chown -R 0:0 portage
+	cd portage
+	rsync -av --progress --stats --delete --delete-after \
+	--exclude='/distfiles' --exclude='/packages' \
+	--exclude='/local' . ${PORTDIR%%/}
+	cd ..
+	echo "cleaning up"
+	rm -rf portage
+	echo "transferring metadata/cache"
+	emerge metadata
+}
+
+echo "Fetching most recent snapshot"
+
+declare -i attempts=-1
+while (( $attempts <  40 )) ; do
+	attempts=$(( attempts + 1 ))
+
+	#this too, sucks.  it works in the interim though.
+	if [ "$USERLAND" == "BSD" ] || [ "$USERLAND" == "Darwin" ] ; then
+		daysbefore=$(expr $(date +"%s") - 86400 \* $attempts)
+		day=$(date -r $daysbefore +"%d")
+		month=$(date -r $daysbefore +"%m")
+		year=$(date -r $daysbefore +"%Y")
+	else
+		day=$(date -d "-$attempts day" +"%d")
+		month=$(date -d "-$attempts day" +"%m")
+		year=$(date -d "-$attempts day" +"%Y")
+	fi
+
+	FILE_ORIG="portage-${year}${month}${day}.tar.bz2"
+
+	echo "Attempting to fetch file dated: ${year}${month}${day}"
+		
+	got_md5=0
+
+	if [  ! -e "${FILE_ORIG}.md5sum" ]; then
+		FILE="${FILE_ORIG}.md5sum"
+		for i in $GENTOO_MIRRORS ; do 
+			URI="${i}/snapshots/${FILE}"
+			if (eval "$FETCHCOMMAND $wgetops") && [ -s "${FILE}" ]; then
+				got_md5=1
+				break
+			fi
+		done
+	else
+		got_md5=1
+	fi
+	FILE="${FILE_ORIG}"
+
+	if (($got_md5 == 0 )); then
+		echo " --- No md5sum present on the mirror. (Not yet available.)"
+		continue
+	elif [ -s "${FILE}" ]; then
+		if eval "$md5_com"; then
+			echo " === snapshot $FILE is correct, using it"
+			sync_local
+			echo
+			echo " === Snapshot has beed sync'd"
+			echo
+			exit 0
+		else
+			rm $FILE
+		fi
+	fi
+	
+	for i in $GENTOO_MIRRORS ; do
+		URI="${i}/snapshots/$FILE"
+		rm -f "$FILE"
+		if (eval "$FETCHCOMMAND $wgetops") && [ -s "$FILE" ]; then
+			if ! eval "$md5_com"; then
+				echo "md5 failed on $FILE"
+				rm ${FILE}
+				continue
+			else
+				sync_local
+				echo
+				echo " *** Completed websync, please now perform a normal rsync if possible."
+				echo "     Update is current as of the of YYYYMMDD: ${year}${month}${day}"
+				echo
+				exit 0
+			fi
+		fi
+
+	done
+done
+
+rm -rf portage
+
+exit 1

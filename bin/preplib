@@ -1,0 +1,25 @@
+#!/bin/bash
+# Copyright 1999-2004 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Header: /var/cvsroot/gentoo-src/portage/bin/preplib,v 1.7.2.1 2005/01/02 09:36:02 jstubbs Exp $
+
+LIBDIR_VAR="LIBDIR_${ABI}"
+if [ -n "${ABI}" -a -n "${!LIBDIR_VAR}" ]; then
+	CONF_LIBDIR="${!LIBDIR_VAR}"
+fi
+unset LIBDIR_VAR
+
+if [ -z "${CONF_LIBDIR}" ]; then
+	# we need this to default to lib so that things dont break
+	CONF_LIBDIR="lib"
+fi
+
+if [ -z "$1" ] ; then
+	z="${D}usr/${CONF_LIBDIR}"
+else
+	z="${D}$1/${CONF_LIBDIR}"
+fi
+
+if [ -d "${z}" ] ; then
+	ldconfig -n -N "${z}"
+fi

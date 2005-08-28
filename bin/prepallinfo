@@ -1,0 +1,9 @@
+#!/bin/bash
+# Copyright 1999-2004 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Header: /var/cvsroot/gentoo-src/portage/bin/prepallinfo,v 1.6 2004/10/04 13:56:50 vapier Exp $
+
+[ ! -d "${D}usr/share/info" ] && exit 0
+
+echo "info:"
+prepinfo

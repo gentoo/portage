@@ -1,0 +1,93 @@
+.TH "DISPATCH-CONF" "1" "May 2004" "Portage 2.0.51" "Portage"
+.SH NAME
+dispatch-conf \- Sanely update configuration files after emerging new packages
+.SH SYNOPSIS
+.B dispatch-conf
+.SH DESCRIPTION
+.I dispatch-conf
+is designed to be run after merging new packages in order to see if
+there are updates to the configuration files.  If a new
+configuration file will overwrite an old one, 
+.I dispatch-conf 
+will prompt the user for a decision about how to resolve the
+discrepancy.  
+Advantages of 
+.I dispatch-conf
+include easy rollback (changes to config files are stored either using
+patches or rcs) and the ability to automatically update config files
+that the user has never modified or 
+that differ from the current version only in CVS cruft or white space.
+
+.I dispatch-conf
+will check all directories in the \fICONFIG_PROTECT\fR variable.  All
+config files found in \fICONFIG_PROTECT_MASK\fR will automatically be
+updated for you by \fIdispatch-conf\fR.  See \fBmake.conf\fR(5) for more
+information.
+.SH OPTIONS
+.TP
+None.
+.SH USAGE
+.I dispatch-conf
+must be run as root, since the config files to be replaced are generally
+owned by root.  Before running
+.I dispatch-conf
+for the first time the settings in 
+.B /etc/dispatch-conf.conf
+should be edited and the archive directory specified in 
+\fI/etc/dispatch-conf.conf\fR will need to be created.  All changes to
+config files will be saved in the archive directory either as patches
+or using rcs, making restoration to an earlier version rather simple.
+
+When dispatch-conf finds a config file that has a new update the user 
+is provided
+with a menu of options for how to handle the update:
+.TP
+.B u
+Update (replace) the current config file with the new config file and continue.
+.TP
+.B z
+Zap (delete) the new config file and continue.
+.TP
+.B n
+Skip to the next config file, leaving both the original config file and any
+\fICONFIG_PROTECT\fRed files.
+.TP
+.B e
+Edit the new config file, using the editor defined in \fI$EDITOR\fR.
+.TP
+.B m
+Interactively merge the current and new config files.
+.TP
+.B l
+Look at the differences between the pre-merged and merged config files.
+.TP
+.B t
+Toggle between the merged and pre-merged config files (in terms of which
+should be installed using the 
+.Qt u
+command).
+.TP
+.B h
+Display a help screen.
+.TP
+.B q
+Quit
+.I dispatch-conf.
+.SH "REPORTING BUGS"
+Please report bugs via http://bugs.gentoo.org/
+.SH "SEE ALSO"
+.BR make.conf (5), etc-update (1)
+.SH "FILES"
+.TP
+.B /etc/dispatch-conf.conf
+Configuration settings for \fIdispatch-conf\fR are stored here.
+.SH AUTHORS
+Jeremy Wohl
+.br
+Karl Trygve Kalleberg <karltk@gentoo.org>
+.br
+Mike Frysinger <vapier@gentoo.org>
+.br
+Grant Goodyear <g2boojum@gentoo.org>
+.SH "CVS HEADER"
+$Header: /var/cvsroot/gentoo-src/portage/man/dispatch-conf.1,v 1.3.2.1 2004/11/02 23:59:57 vapier Exp $

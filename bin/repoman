@@ -1,0 +1,1522 @@
+#!/usr/bin/python -O
+# Copyright 1999-2005 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Header: /var/cvsroot/gentoo-src/portage/bin/repoman,v 1.98.2.23 2005/06/18 01:00:43 vapier Exp $
+
+# Next to do: dep syntax checking in mask files
+# Then, check to make sure deps are satisfiable (to avoid "can't find match for" problems)
+# that last one is tricky because multiple profiles need to be checked.
+
+import os,sys,shutil
+exename=os.path.basename(sys.argv[0])	
+os.environ["PORTAGE_CALLER"]="repoman"
+sys.path = ["/usr/lib/portage/pym"]+sys.path
+version="1.2"	
+
+import string,signal,re,pickle,tempfile
+
+import portage
+import portage_checksum
+import portage_const
+import portage_dep
+import cvstree
+import time
+from output import *
+#bold, darkgreen, darkred, green, red, turquoise, yellow
+
+from commands import getstatusoutput
+from fileinput import input
+from grp import getgrnam
+from stat import *
+
+
+def err(txt):
+	print exename+": "+txt
+	sys.exit(1)
+
+def exithandler(signum=None,frame=None):
+	sys.stderr.write("\n"+exename+": Interrupted; exiting...\n")
+	sys.exit(1)
+	os.kill(0,signal.SIGKILL)
+signal.signal(signal.SIGINT,exithandler)
+
+REPOROOTS=["gentoo-x86"]
+modes=["scan","fix","full","help","commit","last","lfull"]
+shortmodes={"ci":"commit"}
+modeshelp={
+"scan"  :"Scan current directory tree for QA issues (default)",
+"fix"   :"Fix those issues that can be fixed (stray digests, missing digests)",
+"full"  :"Scan current directory tree for QA issues (full listing)",
+"help"  :"Show this screen",
+"commit":"Scan current directory tree for QA issues; if OK, commit via cvs",
+"last"	:"Remember report from last run",
+"lfull"	:"Remember report from last run (full listing)"
+}
+options=["--pretend","--help","--commitmsg","--commitmsgfile","--verbose","--xmlparse","--ignore-other-arches","--include-masked"]
+shortoptions={"-m":"--commitmsg","-M":"--commitmsgfile","-p":"--pretend","-v":"--verbose","-x":"--xmlparse","-I":"--ignore-other-arches"}
+optionshelp={
+"--pretend":"Don't actually perform commit or fix steps; just show what would be done (always enabled when not started in a CVS tree).",
+"--help"   :"Show this screen",
+"--commitmsg"    :"Adds a commit message via the command line.",
+"--commitmsgfile":"Adds a commit message from a file given on the command line.",
+"--ignore-other-arches": "Instructs repoman to ignore arches that are not relevent to the committing arch. REPORT/FIX issues you work around.",
+"--verbose":"Displays every package name while checking",
+"--xmlparse":"Forces the metadata.xml parse check to be carried out",
+"--include-masked":"Includes masked packages in scans at category or tree level"
+}
+
+qahelp={
+	"CVS/Entries.IO_error":"Attempting to commit, and an IO error was encountered access the Entries file",
+	"digest.partial":"Digest files do not contain all corresponding URI elements",
+	"digest.assumed":"Existing digest must be assumed correct (Package level only)",
+	"digest.unused":"Digest entry has no matching SRC_URI entry",
+	"digest.fail":"Digest does not match the specified local file",
+	"digest.stray":"Digest files that do not have a corresponding ebuild",
+	"digest.missing":"Digest files that are missing (ebuild exists, digest doesn't)",
+	"digest.disjointed":"Digests not added to cvs when the matching ebuild has been added",
+	"digest.notadded":"Digests that exist but have not been added to cvs",
+	"digest.unmatch":"Digests which are incomplete (please check if your USE/ARCH includes all files)",
+	"ebuild.invalidname":"Ebuild files with a non-parseable or syntactically incorrect name",
+	"ebuild.namenomatch":"Ebuild files that do not have the same name as their parent directory",
+	"changelog.missing":"Missing ChangeLog files",
+	"ebuild.disjointed":"Ebuilds not added to cvs when the matching digest has been added",
+	"ebuild.notadded":"Ebuilds that exist but have not been added to cvs",
+	"changelog.notadded":"ChangeLogs that exist but have not been added to cvs",
+	"filedir.missing":"Package lacks a files directory",
+	"file.executable":"Ebuilds, digests, metadata.xml, Manifest, and ChangeLog do note need the executable bit",
+	"file.size":"Files in the files directory must be under 20k",
+	"KEYWORDS.missing":"Ebuilds that have a missing KEYWORDS variable",
+	"LICENSE.missing":"Ebuilds that have a missing LICENSE variable",
+	"DESCRIPTION.missing":"Ebuilds that have a missing DESCRIPTION variable",
+	"SLOT.missing":"Ebuilds that have a missing SLOT variable",
+	"HOMEPAGE.missing":"Ebuilds that have a missing HOMEPAGE variable",
+	"DEPEND.bad":"User-visible ebuilds with bad DEPEND settings (matched against *visible* ebuilds)",
+	"RDEPEND.bad":"User-visible ebuilds with bad RDEPEND settings (matched against *visible* ebuilds)",
+	"PDEPEND.bad":"User-visible ebuilds with bad PDEPEND settings (matched against *visible* ebuilds)",
+	"DEPEND.badmasked":"Masked ebuilds with bad DEPEND settings (matched against *all* ebuilds)",
+	"RDEPEND.badmasked":"Masked ebuilds with RDEPEND settings (matched against *all* ebuilds)",
+	"PDEPEND.badmasked":"Masked ebuilds with PDEPEND settings (matched against *all* ebuilds)",
+	"DEPEND.badindev":"User-visible ebuilds with bad DEPEND settings (matched against *visible* ebuilds) in developing arch",
+	"RDEPEND.badindev":"User-visible ebuilds with bad RDEPEND settings (matched against *visible* ebuilds) in developing arch",
+	"PDEPEND.badindev":"User-visible ebuilds with bad PDEPEND settings (matched against *visible* ebuilds) in developing arch",
+	"DEPEND.badmaskedindev":"Masked ebuilds with bad DEPEND settings (matched against *all* ebuilds) in developing arch",
+	"RDEPEND.badmaskedindev":"Masked ebuilds with RDEPEND settings (matched against *all* ebuilds) in developing arch",
+	"PDEPEND.badmaskedindev":"Masked ebuilds with PDEPEND settings (matched against *all* ebuilds) in developing arch",
+	"DEPEND.syntax":"Syntax error in DEPEND (usually an extra/missing space/parenthesis)",
+	"RDEPEND.syntax":"Syntax error in RDEPEND (usually an extra/missing space/parenthesis)",
+	"PDEPEND.syntax":"Syntax error in PDEPEND (usually an extra/missing space/parenthesis)",
+	"LICENSE.syntax":"Syntax error in LICENSE (usually an extra/missing space/parenthesis)",
+	"ebuild.syntax":"Error generating cache entry for ebuild; typically caused by ebuild syntax error",
+	"ebuild.output":"A simple sourcing of the ebuild produces output; this breaks ebuild policy.",
+	"ebuild.nesteddie":"Placing 'die' inside ( ) prints an error, but doesn't stop the ebuild.",
+	"variable.readonly":"Assigning a readonly variable",
+	"IUSE.invalid":"This build has a variable in IUSE that is not in the use.desc or use.local.desc file",
+	"LICENSE.invalid":"This ebuild is listing a license that doesnt exist in portages license/ dir.",
+	"KEYWORDS.invalid":"This ebuild contains KEYWORDS that are not listed in profiles/arch.list or for which no valid profile was found",
+	"ebuild.nostable":"There are no ebuilds that are marked as stable for your ARCH",
+	"ebuild.allmasked":"All ebuilds are masked for this package (Package level only)",
+	"ebuild.majorsyn":"This ebuild has a major syntax error that may cause the ebuild to fail partially or fully",
+	"ebuild.minorsyn":"This ebuild has a minor syntax error that contravenes gentoo coding style",
+	"ebuild.badheader":"This ebuild has a malformed header",
+	"metadata.missing":"Missing metadata.xml files",
+	"metadata.bad":"Bad metadata.xml files",
+	"virtual.versioned":"PROVIDE contains virtuals with versions",
+	"virtual.exists":"PROVIDE contains existing package names",
+	"virtual.unavailable":"PROVIDE contains a virtual which contains no profile default"
+}
+
+qacats = qahelp.keys()
+qacats.sort()
+
+qawarnings=[
+"changelog.missing",
+"changelog.notadded",
+"ebuild.notadded",
+"ebuild.nostable",
+"ebuild.allmasked",
+"ebuild.nesteddie",
+"digest.assumed",
+"digest.notadded",
+"digest.disjointed",
+"digest.missing",
+"digest.unused",
+"DEPEND.badmasked","RDEPEND.badmasked","PDEPEND.badmasked",
+"DEPEND.badindev","RDEPEND.badindev","PDEPEND.badindev",
+"DEPEND.badmaskedindev","RDEPEND.badmaskedindev","PDEPEND.badmaskedindev",
+"IUSE.invalid",
+"ebuild.minorsyn",
+"ebuild.badheader",
+"file.size",
+"metadata.missing",
+"metadata.bad",
+"virtual.versioned"
+]
+
+missingvars=["KEYWORDS","LICENSE","DESCRIPTION","HOMEPAGE","SLOT"]
+allvars=portage.auxdbkeys
+commitmessage=None
+commitmessagefile=None
+for x in missingvars:
+	x += ".missing"
+	if x not in qacats:
+		print "* missingvars values need to be added to qahelp ("+x+")"
+		qacats.append(x)
+		qawarnings.append(x)
+
+
+def err(txt):
+	print exename+": "+txt
+	sys.exit(1)
+
+ven_cat = r'[\w0-9-]+'                                 # Category
+ven_nam = r'([+a-z0-9-]+(?:[+_a-z0-9-]*[+a-z0-9-]+)*)' # Name
+ven_ver = r'((?:\d+\.)*\d+[a-z]?)'                     # Version
+ven_suf = r'(_(alpha\d*|beta\d*|pre\d*|rc\d*|p\d+))?'  # Suffix
+ven_rev = r'(-r\d+)?'                                  # Revision
+	
+ven_string=ven_cat+'/'+ven_nam+'-'+ven_ver+ven_suf+ven_rev
+valid_ebuild_name_re=re.compile(ven_string+'$', re.I)
+valid_ebuild_filename_re=re.compile(ven_string+'\.ebuild$', re.I)
+
+repoman_settings = portage.config(clone=portage.settings)
+
+def valid_ebuild_name(name):
+	"""(name) --- Checks to ensure that the package name meets portage specs.
+	Return 1 if valid, 0 if not."""
+	# Handle either a path to the ebuild, or cat/pkg-ver string
+	if (len(name) > 7) and (name[-7:] == ".ebuild"):
+		if valid_ebuild_filename_re.match(name):
+			return 1
+	else:
+		if valid_ebuild_name_re.match(name):
+			return 1
+	return 0
+
+
+def help():
+	print
+	print green(exename+" "+version)
+	print " \"Quality is job zero.\""
+	print " Copyright 1999-2005 Gentoo Foundation"
+	print " Distributed under the terms of the GNU General Public License v2"
+	print
+	print bold(" Usage:"),turquoise(exename),"[",green("option"),"] [",green("mode"),"]"
+	print bold(" Modes:"),turquoise("scan (default)"),
+	for x in modes[1:]:
+		print "|",turquoise(x),
+	print "\n"
+	print " "+green(string.ljust("Option",20)+" Description")
+	for x in options:
+		print " "+string.ljust(x,20),optionshelp[x]
+	print
+	print " "+green(string.ljust("Mode",20)+" Description")
+	for x in modes:
+		print " "+string.ljust(x,20),modeshelp[x]
+	print
+	print " "+green(string.ljust("QA keyword",20)+" Description")
+	for x in qacats:
+		print " "+string.ljust(x,20),qahelp[x]
+	print
+	sys.exit(1)
+
+def last():
+	try:
+		#Retrieve and unpickle stats and fails from saved files
+		savedf=open('/var/cache/edb/repo.stats','r')
+		stats = pickle.load(savedf)
+		savedf.close()
+		savedf=open('/var/cache/edb/repo.fails','r')
+		fails = pickle.load(savedf)
+		savedf.close()
+	except SystemExit, e:
+		raise  # Need to propogate this
+	except:
+		err("Error retrieving last repoman run data; exiting.")
+
+	#dofail will be set to 1 if we have failed in at least one non-warning category
+	dofail=0
+	#dowarn will be set to 1 if we tripped any warnings
+	dowarn=0
+	#dofull will be set if we should print a "repoman full" informational message
+	dofull=0
+
+	print
+	print green("RepoMan remembers...")
+	print
+	for x in qacats:
+		if stats[x]:
+			dowarn=1
+			if x not in qawarnings:
+				dofail=1
+		else:
+			if mymode!="lfull":
+				continue
+		print "  "+string.ljust(x,20),
+		if stats[x]==0:
+			print green(`stats[x]`)
+			continue
+		elif x in qawarnings:
+			print yellow(`stats[x]`)
+		else:
+			print red(`stats[x]`)
+		if mymode!="lfull":
+			if stats[x]<12:
+				for y in fails[x]:
+					print "   "+y
+			else:
+				dofull=1
+		else:
+			for y in fails[x]:
+				print "   "+y
+	print
+	if dofull:
+		print bold("Note: type \"repoman lfull\" for a complete listing of repomans last run.")
+		print
+	if dowarn and not dofail:
+		print green("RepoMan sez:"),"\"You only gave me a partial QA payment last time?\nI took it, but I wasn't happy.\""
+	elif not dofail:
+		print green("RepoMan sez:"),"\"If everyone were like you, I'd be out of business!\""
+	print
+	sys.exit(1)
+
+mymode=None
+myoptions=[]
+if len(sys.argv)>1:
+	x=1
+	while x < len(sys.argv):
+		if sys.argv[x] in shortmodes.keys():
+			sys.argv[x]=shortmodes[sys.argv[x]]
+		if sys.argv[x] in modes:
+			if mymode==None:
+				mymode=sys.argv[x]
+			else:
+				err("Please specify either \""+mymode+"\" or \""+sys.argv[x]+"\", but not both.")
+		elif sys.argv[x] in options+shortoptions.keys():
+			optionx=sys.argv[x]
+			if optionx in shortoptions.keys():
+				optionx = shortoptions[optionx]
+			if (optionx=="--commitmsg") and (len(sys.argv)>=(x+1)):
+				commitmessage=sys.argv[x+1]
+				x=x+1
+			elif (optionx=="--commitmsgfile") and (len(sys.argv)>=(x+1)):
+				commitmessagefile=sys.argv[x+1]
+				x=x+1
+			elif optionx not in myoptions:
+				myoptions.append(optionx)
+		else:
+			err("\""+sys.argv[x]+"\" is not a valid mode or option.")
+		x=x+1
+if mymode==None:
+	mymode="scan"
+if mymode=="help" or ("--help" in myoptions):
+	help()
+if mymode=="last" or (mymode=="lfull"):
+	last()
+if mymode=="commit" and "--include-masked" not in myoptions:
+	myoptions.append("--include-masked")
+
+isCvs=False
+myreporoot=None
+if os.path.isdir("CVS"):
+	repoman_settings["PORTDIR_OVERLAY"]=""
+	if "cvs" not in portage.features:
+		print
+		print
+		print red('!!! You do not have ')+bold('FEATURES="cvs" ')+red("enabled...")
+		print red("!!! ")+bold("Adding \"cvs\" to FEATURES")
+		print
+		os.environ["FEATURES"]=repoman_settings["FEATURES"]+" cvs"
+
+	try:
+		isCvs=True
+		myrepofile=open("CVS/Repository")
+		myreporoot=myrepofile.readline()[:-1]
+		myrepofile.close()
+		myrepofile=open("CVS/Root")
+		myreporootpath=string.split(myrepofile.readline()[:-1], ":")[-1]
+		myrepofile.close()
+		if myreporootpath == myreporoot[:len(myreporootpath)]:
+			# goofy os x cvs co.
+			myreporoot = myreporoot[len(myreporootpath):]
+			while myreporoot and myreporoot[0] == '/':
+				myreporoot = myreporoot[1:]
+	except SystemExit, e:
+		raise  # Need to propogate this
+	except:
+		err("Error grabbing repository information; exiting.")
+	myreporootpath=os.path.normpath(myreporootpath)
+	if myreporootpath=="/space/cvsroot":
+		print
+		print
+		print red("You're using the wrong cvsroot. For Manifests to be correct, you must")
+		print red("use the same base cvsroot path that the servers use. Please try the")
+		print red("following script to remedy this:")
+		print
+		print "cd my_cvs_tree"
+		print
+		print "rm -Rf [a-z]*"
+		print "cvs up"
+		print
+		if portage.userland=="BSD" or portage.userland=="Darwin":
+			print "find ./ -type f -regex '.*/CVS/Root$' -print0 | xargs -0 sed \\"
+		else:
+			print "find ./ -type f -regex '.*/CVS/Root$' -print0 | xargs -0r sed \\"
+		fi
+		print "  -i 's:/space/cvsroot$:/home/cvsroot:'"
+		print
+		print red("You must clear and re-update your tree as all header tags will cause")
+		print red("problems in manifests for all rsync and /home/cvsroot users.")
+		print
+		print "You should do this to any other gentoo trees your have as well,"
+		print "excluding the deletions. 'gentoo-src' should be /home/cvsroot."
+		print
+		sys.exit(123)
+
+if not "--pretend" in myoptions and not isCvs:
+	print
+	print darkgreen("Not in a CVS repository; enabling pretend mode.")
+	myoptions.append("--pretend");
+
+
+def have_profile_dir(path, maxdepth=3):
+	while path != "/" and maxdepth:
+		if os.path.exists(path + "/profiles/package.mask"):
+			return path
+		path = os.path.normpath(path + "/..")
+		maxdepth -= 1
+
+portdir=None
+portdir_overlay=None
+mydir=os.getcwd()
+if mydir[-1] != "/":
+	mydir += "/"
+
+for overlay in repoman_settings["PORTDIR_OVERLAY"].split():
+	if overlay[-1] != "/":
+		overlay += "/"
+	if mydir[:len(overlay)] == overlay:
+		portdir_overlay = overlay
+		subdir = mydir[len(overlay):]
+		if subdir and subdir[-1] != "/":
+			subdir += "/"
+		if have_profile_dir(mydir, subdir.count("/")):
+			portdir = portdir_overlay
+		break
+
+if not portdir_overlay:
+	if (repoman_settings["PORTDIR"]+"/")[:len(mydir)] == mydir:
+		portdir_overlay = repoman_settings["PORTDIR"]
+	else:
+		portdir_overlay = have_profile_dir(mydir)
+	portdir = portdir_overlay
+
+if not portdir_overlay:
+	print darkred("Unable to determine PORTDIR.")
+	sys.exit(1)
+
+if not portdir:
+	portdir = repoman_settings["PORTDIR"]
+
+if portdir[-1] == "/":
+	portdir = portdir[:-1]
+if portdir_overlay[-1] == "/":
+	portdir_overlay = portdir_overlay[:-1]
+
+os.environ["PORTDIR"] = portdir
+if portdir_overlay != portdir:
+	os.environ["PORTDIR_OVERLAY"] = portdir_overlay
+else:
+	os.environ["PORTDIR_OVERLAY"] = ""
+
+print "\nSetting paths:"
+print "PORTDIR = \""+os.environ["PORTDIR"]+"\""
+print "PORTDIR_OVERLAY = \""+os.environ["PORTDIR_OVERLAY"]+"\""
+
+
+reload(portage)
+repoman_settings = portage.config(clone=portage.settings)
+
+if not myreporoot:
+	myreporoot = os.path.basename(portdir_overlay)
+	myreporoot += mydir[len(portdir_overlay):-1]
+
+if isCvs:
+	reporoot=None
+	for x in REPOROOTS:
+		if myreporoot[0:len(x)]==x:
+			reporoot=myreporoot
+	if not reporoot:
+		err("Couldn't recognize repository type.  Supported repositories:\n"+repr(REPOROOTS))
+reposplit=string.split(myreporoot,"/")
+repolevel=len(reposplit)
+
+# check if it's in $PORTDIR/$CATEGORY/$PN , otherwise bail if commiting.
+# Reason for this is if they're trying to commit in just $FILESDIR/*, the Manifest needs updating.
+# this check ensure that repoman knows where it is, and the manifest recommit is at least possible.
+if mymode == "commit" and repolevel not in [1,2,3]:
+	print red("***")+" Commit attempts *must* be from within a cvs co, category, or package directory."
+	print red("***")+" Attempting to commit from a packages files directory will be blocked for instance."
+	print red("***")+" This is intended behaviour, to ensure the manifest is recommited for a package."
+	print red("***")
+	err("Unable to identify level we're commiting from for %s" % string.join(reposplit,'/'))
+
+if repolevel == 3 and "--include-masked" not in myoptions:
+	myoptions.append("--include-masked")
+
+startdir=os.getcwd()
+
+for x in range(0,repolevel-1):
+	os.chdir("..")
+repodir=os.getcwd()
+os.chdir(startdir)
+
+def caterror(mycat):
+	err(mycat+" is not an official category.  Skipping QA checks in this directory.\nPlease ensure that you add "+catdir+" to "+repodir+"/profiles/categories\nif it is a new category.")
+print
+if "--pretend" in myoptions:
+	print green("RepoMan does a once-over of the neighborhood...")
+else:
+	print green("RepoMan scours the neighborhood...")
+
+# retreive local USE list
+luselist={}
+try:
+	mylist=portage.grabfile(portdir+"/profiles/use.local.desc")
+	for mypos in range(0,len(mylist)):
+		mysplit=mylist[mypos].split()[0]
+		myuse=string.split(mysplit,":")
+		if len(myuse)==2:
+			if not luselist.has_key(myuse[0]):
+				luselist[myuse[0]] = []
+			luselist[myuse[0]].append(myuse[1])
+except SystemExit, e:
+	raise  # Need to propogate this
+except:
+	err("Couldn't read from use.local.desc")
+
+# setup a uselist from portage
+uselist=[]
+try:
+	uselist=portage.grabfile(portdir+"/profiles/use.desc")
+	for l in range(0,len(uselist)):
+		uselist[l]=string.split(uselist[l])[0]
+except SystemExit, e:
+	raise  # Need to propogate this
+except:
+	err("Couldn't read USE flags from use.desc")
+
+# retrieve a list of current licenses in portage
+liclist=portage.listdir(portdir+"/licenses")
+if not liclist:
+	err("Couldn't find licenses?")
+
+# retrieve list of offical keywords
+try:
+	kwlist=portage.grabfile(portdir+"/profiles/arch.list")
+except SystemExit, e:
+	raise  # Need to propogate this
+except:
+	err("Couldn't read KEYWORDS from arch.list")
+if not kwlist:
+	kwlist=["alpha","arm","hppa","mips","ppc","sparc","x86"]
+
+scanlist=[]
+if repolevel==2:
+	#we are inside a category directory
+	catdir=reposplit[-1]
+	if catdir not in repoman_settings.categories:
+		caterror(catdir)
+	mydirlist=os.listdir(startdir)
+	for x in mydirlist:
+		if x=="CVS":
+			continue
+		if os.path.isdir(startdir+"/"+x):
+			scanlist.append(catdir+"/"+x)
+elif repolevel==1:
+	for x in repoman_settings.categories:
+		if not os.path.isdir(startdir+"/"+x):
+			continue
+		for y in os.listdir(startdir+"/"+x):
+			if y=="CVS":
+				continue
+			if os.path.isdir(startdir+"/"+x+"/"+y):
+				scanlist.append(x+"/"+y)
+elif repolevel==3:
+	catdir = reposplit[-2]
+	if catdir not in repoman_settings.categories:
+		caterror(catdir)
+	scanlist.append(catdir+"/"+reposplit[-1])
+
+profiles={}
+descfile=portdir+"/profiles/profiles.desc"
+if os.path.exists(descfile):
+	for x in portage.grabfile(descfile):
+		if x[0]=="#":
+			continue
+		arch=string.split(x)
+		if len(arch)!=3:
+			print "wrong format: \""+red(x)+"\" in "+descfile
+			continue
+		if not os.path.isdir(portdir+"/profiles/"+arch[1]):
+			print "Invalid "+arch[2]+" profile ("+arch[1]+") for arch "+arch[0]
+			continue
+		if profiles.has_key(arch[0]):
+			profiles[arch[0]]+= [[arch[1], arch[2]]]
+		else:
+			profiles[arch[0]] = [[arch[1], arch[2]]]
+
+	for x in portage.archlist:
+		if x[0] == "~":
+			continue
+		if not profiles.has_key(x):
+			print red("\""+x+"\" doesn't have a valid profile listed in profiles.desc.")
+			print red("You need to either \"cvs update\" your profiles dir or follow this")
+			print red("up with the "+x+" team.")
+			print
+else:
+	print red("profiles.desc does not exist: "+descfile)
+	print red("You need to do \"cvs update\" in profiles dir.")
+	print
+	sys.exit(1)
+
+
+stats={}
+fails={}
+#objsadded records all object being added to cvs
+objsadded=[]
+for x in qacats:
+	stats[x]=0
+	fails[x]=[]
+xmllint_capable = False
+if getstatusoutput('which xmllint')[0] != 0:
+	print red("!!! xmllint not found. Can't check metadata.xml.\n")
+	if "--xmlparse" in myoptions or repolevel==3:
+		print red("!!!")+" sorry, xmllint is needed.  failing\n"
+		sys.exit(1)
+else:
+	#hardcoded paths/urls suck. :-/
+	must_fetch=1
+	backup_exists=0
+	try:
+		# if it's been over a week since fetching (or the system clock is fscked), grab an updated copy of metadata.dtd 
+		# clock is fscked or it's been a week. time to grab a new one.
+		ct=os.stat(portage.CACHE_PATH + '/metadata.dtd')[ST_CTIME]
+		if abs(time.time() - ct) > (60*60*24*7):
+			# don't trap the exception, we're watching for errno 2 (file not found), anything else is a bug.
+			backup_exists=1
+		else:
+			must_fetch=0
+
+	except (OSError,IOError), e:
+		if e.errno != 2:
+			print red("!!!")+" caught exception '%s' for %s/metadata.dtd, bailing" % (str(e), portage.CACHE_PATH)
+			sys.exit(1)
+
+	if must_fetch:
+		print 
+		print green("***")+" the local copy of metadata.dtd needs to be refetched, doing that now"
+		print
+		try:
+			if os.path.exists(repoman_settings["DISTDIR"]+'/metadata.dtd'):
+				os.remove(repoman_settings["DISTDIR"]+'/metadata.dtd')
+			val=portage.fetch(['http://www.gentoo.org/dtd/metadata.dtd'],repoman_settings,fetchonly=0, \
+				try_mirrors=0)
+			if val:
+				if backup_exists:
+					os.remove(portage.CACHE_PATH+'/metadata.dtd')
+				shutil.copy(repoman_settings["DISTDIR"]+'/metadata.dtd',portage.CACHE_PATH+'/metadata.dtd')
+				os.chown(portage.CACHE_PATH+'/metadata.dtd',os.getuid(),portage.portage_gid)
+				os.chmod(portage.CACHE_PATH+'/metadata.dtd',0664)
+
+
+		except SystemExit, e:
+			raise  # Need to propogate this
+		except Exception,e:
+			print
+			print red("!!!")+" attempting to fetch 'http://www.gentoo.org/dtd/metadata.dtd', caught"
+			print red("!!!")+" exception '%s' though." % str(e)
+			val=0
+		if not val:
+			print red("!!!")+" fetching new metadata.dtd failed, aborting"
+			sys.exit(1)
+	#this can be problematic if xmllint changes their output
+	xmllint_capable=True
+
+
+arch_caches={}
+for x in scanlist:
+	#ebuilds and digests added to cvs respectively.
+	if "--verbose" in myoptions:
+		print "checking package " + x
+	eadded=[]
+	dadded=[]
+	cladded=0
+	catdir,pkgdir=x.split("/")
+	checkdir=repodir+"/"+x
+	checkdirlist=os.listdir(checkdir)
+	ebuildlist=[]
+	for y in checkdirlist:
+		if y[-7:]==".ebuild":
+			ebuildlist.append(y[:-7])
+		if y in ["Manifest","ChangeLog","metadata.xml"]:
+			if os.stat(checkdir+"/"+y)[0] & 0x0248:
+				stats["file.executable"] += 1
+				fails["file.executable"].append(checkdir+"/"+y)
+	digestlist=[]
+	if isCvs:
+		try:
+			mystat=os.stat(checkdir+"/files")[0]
+			if len(ebuildlist) and not S_ISDIR(mystat):
+				raise Exception
+		except SystemExit, e:
+			raise  # Need to propogate this
+		except:
+			stats["filedir.missing"] += 1
+			fails["filedir.missing"].append(checkdir)
+			continue
+		try:
+			myf=open(checkdir+"/CVS/Entries","r")
+			myl=myf.readlines()
+			for l in myl:
+				if l[0]!="/":
+					continue
+				splitl=l[1:].split("/")
+				if not len(splitl):
+					continue
+				objsadded.append(splitl[0])
+				if splitl[0][-7:]==".ebuild":
+					eadded.append(splitl[0][:-7])
+				if splitl[0]=="ChangeLog":
+					cladded=1
+		except IOError:
+			if mymode=="commit":
+				stats["CVS/Entries.IO_error"] += 1
+				fails["CVS/Entries.IO_error"].append(checkdir+"/CVS/Entries")
+			continue
+
+		try:
+			myf=open(checkdir+"/files/CVS/Entries","r")
+			myl=myf.readlines()
+			for l in myl:
+				if l[0]!="/":
+					continue
+				splitl=l[1:].split("/")
+				if not len(splitl):
+					continue
+				objsadded.append(splitl[0])
+				if splitl[0][:7]=="digest-":
+					dadded.append(splitl[0][7:])
+		except IOError:
+			if mymode=="commit":
+				stats["CVS/Entries.IO_error"] += 1
+				fails["CVS/Entries.IO_error"].append(checkdir+"/files/CVS/Entries")
+			continue
+
+	if os.path.exists(checkdir+"/files"):
+		filesdirlist=os.listdir(checkdir+"/files")
+		for y in filesdirlist:
+			if y[:7]=="digest-":
+				if y[7:] not in dadded:
+					#digest not added to cvs
+					stats["digest.notadded"]=stats["digest.notadded"]+1
+					fails["digest.notadded"].append(x+"/files/"+y)
+					if y[7:] in eadded:
+						stats["digest.disjointed"]=stats["digest.disjointed"]+1
+						fails["digest.disjointed"].append(x+"/files/"+y)
+						
+				if os.stat(checkdir+"/files/"+y)[0] & 0x0248:
+					stats["file.executable"] += 1
+					fails["file.executable"].append(x+"/files/"+y)
+				
+				mydigests=portage.digestParseFile(checkdir+"/files/"+y)
+				
+				mykey = catdir + "/" + y[7:]
+				if y[7:] not in ebuildlist:
+					#stray digest
+					if mymode=="fix":
+						if "--pretend" in myoptions:
+							print "(cd "+repodir+"/"+x+"/files; cvs rm -f "+y+")"
+						else:
+							os.system("(cd "+repodir+"/"+x+"/files; cvs rm -f "+y+")")
+					else:
+						stats["digest.stray"]=stats["digest.stray"]+1
+						fails["digest.stray"].append(x+"/files/"+y)
+				else:
+					# We have an ebuild
+					myuris,myfiles = portage.db["/"]["porttree"].dbapi.getfetchlist(mykey,all=True)
+					for entry in mydigests.keys():
+						if entry not in myfiles:
+							stats["digest.unused"] += 1
+							fails["digest.unused"].append(y+"::"+entry)
+					uri_dict = {}
+					for myu in myuris:
+						myubn = os.path.basename(myu)
+						if myubn not in uri_dict:
+							uri_dict[myubn]  = [myu]
+						else:
+							uri_dict[myubn] += [myu]
+
+					for myf in uri_dict:
+						myff = repoman_settings["DISTDIR"] + "/" + myf
+						if not mydigests.has_key(myf):
+							uri_settings = portage.config(clone=repoman_settings)
+							if mymode == "fix":
+								if not portage.fetch(uri_dict[myf], uri_settings):
+									stats["digest.unmatch"] += 1
+									fails["digest.unmatch"].append(y+"::"+myf)
+								else:
+									eb_name,eb_location = portage.db["/"]["porttree"].dbapi.findname2(mykey)
+									portage.doebuild(eb_name, "digest", "/", uri_settings)
+							else:
+								stats["digest.partial"] += 1
+								fails["digest.partial"].append(y+"::"+myf)
+						else:
+							if os.path.exists(myff):
+								if not portage_checksum.verify_all(myff, mydigests[myf]):
+									stats["digest.fail"] += 1
+									fails["digest.fail"].append(y+"::"+myf)
+							elif repolevel == 3:
+								stats["digest.assumed"] += 1
+								fails["digest.assumed"].append(y+"::"+myf)
+
+		# recurse through files directory
+		# use filesdirlist as a stack, appending directories as needed so people can't hide > 20k files in a subdirectory.
+		while filesdirlist:
+			y = filesdirlist.pop(0)
+			try:
+				mystat = os.stat(checkdir+"/files/"+y)
+			except OSError, oe:
+				if oe.errno == 2:
+					# don't worry about it.  it likely was removed via fix above.
+					continue
+				else:
+					raise oe
+			if S_ISDIR(mystat.st_mode):
+				for z in os.listdir(checkdir+"/files/"+y):
+					filesdirlist.append(y+"/"+z)
+			# current policy is no files over 20k, this is the check.
+			elif mystat.st_size > 20480:
+				stats["file.size"] += 1
+				fails["file.size"].append("("+ str(mystat.st_size/1024) + "K) "+x+"/files/"+y)
+
+	if "ChangeLog" not in checkdirlist:
+		stats["changelog.missing"]+=1
+		fails["changelog.missing"].append(x+"/ChangeLog")
+	
+	#metadata.xml file check
+	if "metadata.xml" not in checkdirlist:
+		stats["metadata.missing"]+=1
+		fails["metadata.missing"].append(x+"/metadata.xml")
+	#metadata.xml parse check
+	else:
+		#Only carry out if in package directory or check forced
+		if xmllint_capable:
+			st=getstatusoutput("xmllint --nonet --noout --dtdvalid %s/metadata.dtd %s/metadata.xml" % (portage.CACHE_PATH, checkdir))
+			if st[0] != 0:
+				for z in st[1].split("\n"):
+					print red("!!! ")+z
+				stats["metadata.bad"]+=1
+				fails["metadata.bad"].append(x+"/metadata.xml")
+
+	allmasked = True
+
+	for y in ebuildlist:
+		if os.stat(checkdir+"/"+y+".ebuild")[0] & 0x0248:
+			stats["file.executable"] += 1
+			fails["file.executable"].append(x+"/"+y+".ebuild")
+		if y not in eadded:
+			#ebuild not added to cvs
+			stats["ebuild.notadded"]=stats["ebuild.notadded"]+1
+			fails["ebuild.notadded"].append(x+"/"+y+".ebuild")
+			if y in dadded:
+				stats["ebuild.disjointed"]=stats["ebuild.disjointed"]+1
+				fails["ebuild.disjointed"].append(x+"/"+y+".ebuild")
+		if not os.path.exists(checkdir+"/files/digest-"+y):
+			if mymode=="fix":
+				if "--pretend" in myoptions:
+					print "You will need to run:"
+					print "  /usr/sbin/ebuild "+repodir+"/"+x+"/"+y+".ebuild digest"
+				else:
+					retval=os.system("/usr/sbin/ebuild "+repodir+"/"+x+"/"+y+".ebuild digest")
+					if retval:
+						print "!!! Exiting on ebuild digest (shell) error code:",retval
+						sys.exit(retval)
+			else:
+				stats["digest.missing"]=stats["digest.missing"]+1
+				fails["digest.missing"].append(x+"/files/digest-"+y)
+		myesplit=portage.pkgsplit(y)
+		if myesplit==None or not valid_ebuild_name(x.split("/")[0]+"/"+y):
+			stats["ebuild.invalidname"]=stats["ebuild.invalidname"]+1
+			fails["ebuild.invalidname"].append(x+"/"+y+".ebuild")
+			continue
+		elif myesplit[0]!=pkgdir:
+			print pkgdir,myesplit[0]
+			stats["ebuild.namenomatch"]=stats["ebuild.namenomatch"]+1
+			fails["ebuild.namenomatch"].append(x+"/"+y+".ebuild")
+			continue
+		try:
+			myaux=portage.db["/"]["porttree"].dbapi.aux_get(catdir+"/"+y,allvars,strict=1)
+		except KeyError:
+			stats["ebuild.syntax"]=stats["ebuild.syntax"]+1
+			fails["ebuild.syntax"].append(x+"/"+y+".ebuild")
+			continue
+		except IOError:
+			stats["ebuild.output"]=stats["ebuild.output"]+1
+			fails["ebuild.output"].append(x+"/"+y+".ebuild")
+			continue
+
+		mynewaux = {}
+		for idx in range(len(allvars)):
+			if idx < len(myaux):
+				mynewaux[allvars[idx]] = myaux[idx]
+			else:
+				mynewaux[allvars[idx]] = ""
+		myaux = mynewaux
+
+		# Test for negative logic and bad words in the RESTRICT var.
+		#for x in myaux[allvars.index("RESTRICT")].split():
+		#	if x.startswith("no"):
+		#		print "Bad RESTRICT value: %s" % x
+
+		myaux["PROVIDE"] = portage_dep.use_reduce(portage_dep.paren_reduce(myaux["PROVIDE"]), matchall=1)
+		myaux["PROVIDE"] = " ".join(portage.flatten(myaux["PROVIDE"]))
+		for myprovide in myaux["PROVIDE"].split():
+			prov_cp = portage.dep_getkey(myprovide)
+			if prov_cp != myprovide:
+				stats["virtual.versioned"]+=1
+				fails["virtual.versioned"].append(x+"/"+y+".ebuild: "+myprovide)
+			prov_pkg = portage.dep_getkey(portage.best(portage.db["/"]["porttree"].dbapi.xmatch("match-all", prov_cp)))
+			if prov_cp == prov_pkg:
+				stats["virtual.exists"]+=1
+				fails["virtual.exists"].append(x+"/"+y+".ebuild: "+prov_cp)
+
+		for pos in range(0,len(missingvars)):
+			if not myaux[missingvars[pos]]:
+				myqakey=missingvars[pos]+".missing"
+				stats[myqakey]=stats[myqakey]+1
+				fails[myqakey].append(x+"/"+y+".ebuild")
+
+		if "--ignore-other-arches" in myoptions:
+			arches=[[repoman_settings["ARCH"], repoman_settings["ARCH"], portage.groups]]
+		else:
+			arches=[]
+			for keyword in myaux["KEYWORDS"].split():
+				if (keyword[0]=="-"):
+					continue
+				elif (keyword[0]=="~"):
+					arches.append([keyword, keyword[1:], [keyword[1:], keyword]])
+				else:
+					arches.append([keyword, keyword, [keyword]])
+					allmasked = False
+
+		baddepsyntax = False
+		badlicsyntax = False
+		catpkg = catdir+"/"+y
+		for mytype in ["DEPEND","RDEPEND","PDEPEND","LICENSE"]:
+			mydepstr = myaux[mytype]
+			if (string.find(mydepstr, " ?") != -1):
+				stats[mytype+".syntax"] += 1
+				fails[mytype+".syntax"].append(catpkg+".ebuild "+mytype+": '?' preceded by space")
+				if mytype != "LICENSE":
+					baddepsyntax = True
+				else:
+					badlicsyntax = True
+			try:
+				# Missing closing parenthesis will result in a ValueError
+				mydeplist=portage_dep.paren_reduce(mydepstr)
+				# Missing opening parenthesis will result in a final "" element
+				if "" in mydeplist or "(" in mydeplist:
+					raise ValueError
+			except ValueError:
+				stats[mytype+".syntax"] += 1
+				fails[mytype+".syntax"].append(catpkg+".ebuild "+mytype+": Mismatched parenthesis")
+				if mytype != "LICENSE":
+					baddepsyntax = True
+				else:
+					badlicsyntax = True
+
+		for keyword,arch,groups in arches:
+			portage.groups=groups
+
+			if not profiles.has_key(arch):
+				# A missing profile will create an error further down
+				# during the KEYWORDS verification.
+				continue
+				
+			for prof in profiles[arch]:
+
+				profdir = portdir+"/profiles/"+prof[0]
+	
+				portage.profiledir=profdir
+	
+				if arch_caches.has_key(prof[0]):
+					dep_settings, portage.portdb, portage.db["/"]["porttree"] = arch_caches[prof[0]]
+				else:
+					os.environ["ACCEPT_KEYWORDS"]="-~"+arch
+					dep_settings=portage.config(config_profile_path=profdir, config_incrementals=portage_const.INCREMENTALS)
+					portage.portdb=portage.portdbapi(portdir, dep_settings)
+					portage.db["/"]["porttree"]=portage.portagetree("/",dep_settings.getvirtuals("/"))
+					arch_caches[prof[0]]=[dep_settings, portage.portdb, portage.db["/"]["porttree"]]
+	
+				for myprovide in myaux["PROVIDE"].split():
+					prov_cp = portage.dep_getkey(myprovide)
+					if prov_cp not in dep_settings.virtuals:
+						stats["virtual.unavailable"]+=1
+						fails["virtual.unavailable"].append(x+"/"+y+".ebuild: "+keyword+"("+prof[0]+") "+prov_cp)
+
+				if not baddepsyntax:
+					ismasked = (catdir+"/"+y not in portage.db["/"]["porttree"].dbapi.xmatch("list-visible",x))
+					if ismasked:
+						if "--include-masked" not in myoptions:
+							continue
+						#we are testing deps for a masked package; give it some lee-way
+						suffix="masked"
+						matchmode="match-all"
+					else:
+						suffix=""
+						matchmode="match-visible"
+	
+					if prof[1] == "dev":
+						suffix=suffix+"indev"
+					
+					for mytype,mypos in [["DEPEND",len(missingvars)],["RDEPEND",len(missingvars)+1],["PDEPEND",len(missingvars)+2]]:
+						
+						mykey=mytype+".bad"+suffix
+						myvalue = myaux[mytype]
+						if not myvalue:
+							continue
+						try:
+							mydep=portage.dep_check(myvalue,portage.db["/"]["porttree"].dbapi,dep_settings,use="all",mode=matchmode)
+						except KeyError, e:
+							stats[mykey]=stats[mykey]+1
+							fails[mykey].append(x+"/"+y+".ebuild: "+keyword+"("+prof[0]+") "+repr(e[0]))
+							continue
+	
+						if mydep[0]==1:
+							if mydep[1]!=[]:
+								#we have some unsolvable deps
+								#remove ! deps, which always show up as unsatisfiable
+								d=0
+								while d<len(mydep[1]):
+									if mydep[1][d][0]=="!":
+										del mydep[1][d]
+									else:
+										d += 1
+								#if we emptied out our list, continue:
+								if not mydep[1]:
+									continue
+								stats[mykey]=stats[mykey]+1
+								fails[mykey].append(x+"/"+y+".ebuild: "+keyword+"("+prof[0]+") "+repr(mydep[1]))
+						else:
+							stats[mykey]=stats[mykey]+1
+							fails[mykey].append(x+"/"+y+".ebuild: "+keyword+"("+prof[0]+") "+repr(mydep[1]))
+
+		# this check needs work, it won't catch (\ndie)
+		if not os.system("egrep '^[^#]*\([^)]*\<die\>' "+checkdir+"/"+y+".ebuild >/dev/null 2>&1"):
+			stats["ebuild.nesteddie"]=stats["ebuild.nesteddie"]+1
+			fails["ebuild.nesteddie"].append(x+"/"+y+".ebuild")
+		# uselist checks - global
+		myuse = myaux["IUSE"].split()
+		for mypos in range(len(myuse)-1,-1,-1):
+			if myuse[mypos] and (myuse[mypos] in uselist):
+				del myuse[mypos]
+		# uselist checks - local
+		mykey = portage.dep_getkey(catpkg)
+		if luselist.has_key(mykey):
+			for mypos in range(len(myuse)-1,-1,-1):
+				if myuse[mypos] and (myuse[mypos] in luselist[mykey]):
+					del myuse[mypos]
+		for mypos in range(len(myuse)):
+			stats["IUSE.invalid"]=stats["IUSE.invalid"]+1
+			fails["IUSE.invalid"].append(x+"/"+y+".ebuild: %s" % myuse[mypos])	
+
+		# license checks
+		if not badlicsyntax:
+			myuse = myaux["LICENSE"]
+			# Parse the LICENSE variable, remove USE conditions and
+			# flatten it.
+			myuse=portage_dep.use_reduce(portage_dep.paren_reduce(myuse), matchall=1)
+			myuse=portage.flatten(myuse)
+			# Check each entry to ensure that it exists in PORTDIR's
+			# license directory.
+			for mypos in range(0,len(myuse)):
+				# Need to check for "||" manually as no portage
+				# function will remove it without removing values.
+				if myuse[mypos] not in liclist and myuse[mypos] != "||":
+					stats["LICENSE.invalid"]=stats["LICENSE.invalid"]+1
+					fails["LICENSE.invalid"].append(x+"/"+y+".ebuild: %s" % myuse[mypos])
+
+		#keyword checks
+		myuse = myaux["KEYWORDS"].split()
+		for mykey in myuse:
+			myskey=mykey[:]
+			if myskey[0]=="-":
+				myskey=myskey[1:]
+			if myskey[0]=="~":
+				myskey=myskey[1:]
+			if mykey!="-*":
+				if myskey not in kwlist:
+					stats["KEYWORDS.invalid"] += 1
+					fails["KEYWORDS.invalid"].append(x+"/"+y+".ebuild: %s" % mykey)
+				elif not profiles.has_key(myskey):
+					stats["KEYWORDS.invalid"] += 1
+					fails["KEYWORDS.invalid"].append(x+"/"+y+".ebuild: %s (profile invalid)" % mykey)
+
+		#syntax checks
+		myear = time.gmtime(os.stat(checkdir+"/"+y+".ebuild")[ST_MTIME])[0]
+		gentoo_copyright = re.compile(r'^# Copyright ((1999|200\d)-)?' + str(myear) + r' Gentoo Foundation')
+		gentoo_license = re.compile(r'^# Distributed under the terms of the GNU General Public License v2$')
+		cvs_header = re.compile(r'^#\s*\$Header.*\$$')
+		ignore_line = re.compile(r'(^$)|(^(\t)*#)')
+		leading_spaces = re.compile(r'^[\S\t]')
+		trailing_whitespace = re.compile(r'.*([\S]$)')
+		readonly_assignment = re.compile(r'^\s*(export\s+)?(A|P|PV|PN|PR|PVR|PF|D|WORKDIR|FILESDIR|FEATURES|USE)=')
+		continuation_symbol = re.compile(r'(.*[ ]+[\\][ ].*)')
+		line_continuation_quoted = re.compile(r'(\"|\')(([\w ,:;#\[\]\.`=/|\$\^\*{}()\'-])|(\\.))*\1')
+		line_continuation = re.compile(r'([^#]*\S)(\s+|\t)\\$')
+		linenum=0
+		for line in input(checkdir+"/"+y+".ebuild"):
+			linenum += 1
+			# Gentoo copyright check
+			if linenum == 1:
+				match = gentoo_copyright.match(line)
+				if not match:
+					myerrormsg = "Copyright header Error. Possibly date related."
+					stats["ebuild.badheader"] +=1
+					fails["ebuild.badheader"].append(x+"/"+y+".ebuild: %s" % myerrormsg)
+			# Gentoo license check
+			elif linenum == 2:
+				match = gentoo_license.match(line)
+				if not match:
+					myerrormsg = "Gentoo License Error."
+					stats["ebuild.badheader"] +=1
+					fails["ebuild.badheader"].append(x+"/"+y+".ebuild: %s" % myerrormsg)
+			# CVS Header check
+			elif linenum == 3:
+				match = cvs_header.match(line)
+				if not match:
+					myerrormsg = "CVS Header Error."
+					stats["ebuild.badheader"] +=1
+					fails["ebuild.badheader"].append(x+"/"+y+".ebuild: %s" % myerrormsg)
+			else:
+				match = ignore_line.match(line)
+				if not match:
+					# Excluded Blank lines and full line comments. Good!
+					# Leading Spaces Check
+					match = leading_spaces.match(line)
+					if not match:
+						#Line has got leading spaces. Bad!
+						myerrormsg = "Leading Space Syntax Error. Line %d" % linenum
+						stats["ebuild.minorsyn"] +=1
+						fails["ebuild.minorsyn"].append(x+"/"+y+".ebuild: %s" % myerrormsg)
+					# Trailing whitespace check
+					match = trailing_whitespace.match(line)
+					if not match:
+						#Line has got trailing whitespace. Bad!
+						myerrormsg = "Trailing whitespace Syntax Error. Line %d" % linenum
+						stats["ebuild.minorsyn"] +=1
+						fails["ebuild.minorsyn"].append(x+"/"+y+".ebuild: %s" % myerrormsg)
+					# Readonly variable assignment check
+					match = readonly_assignment.match(line)
+					if match:
+						# invalid assignment, very bad!
+						myerrormsg = "Readonly variable assignment to %s on line %d" % (match.group(2), linenum)
+						stats["variable.readonly"] += 1
+						fails["variable.readonly"].append(x+"/"+y+".ebuild: %s" % myerrormsg)
+					# Line continuation check
+					match = continuation_symbol.match(line)
+					if match:
+						#Excluded lines not even containing a " \" match. Good!
+						line = re.sub(line_continuation_quoted,"\"\"",line)
+						#line has been edited to collapsed "" and '' quotes to "". Good!
+						match = continuation_symbol.match(line)
+						if match:
+							#Again exclude lines not even containing a " \" match. Good!
+							#This repetition is done for a slight performance increase
+							match = line_continuation.match(line)
+							if not match:
+								#Line has a line continuation error. Bad!
+								myerrormsg = "Line continuation (\"\\\") Syntax Error. Line %d" % linenum
+								stats["ebuild.majorsyn"] +=1
+								fails["ebuild.majorsyn"].append(x+"/"+y+".ebuild: %s" % myerrormsg)
+
+	# Check for 'all unstable' or 'all masked' -- ACCEPT_KEYWORDS is stripped
+	# XXX -- Needs to be implemented in dep code. Can't determine ~arch nicely.
+	#if not portage.portdb.xmatch("bestmatch-visible",x):
+	#    stats["ebuild.nostable"]+=1
+	#    fails["ebuild.nostable"].append(x)
+	if allmasked and repolevel == 3:
+		stats["ebuild.allmasked"]+=1
+		fails["ebuild.allmasked"].append(x)
+
+#Pickle and save results for instant reuse in last and lfull
+savef=open('/var/cache/edb/repo.stats','w')
+pickle.dump(stats,savef)
+savef.close()
+savef=open('/var/cache/edb/repo.fails','w')
+pickle.dump(fails,savef)
+savef.close()
+if not (os.stat('/var/cache/edb/repo.stats')[ST_GID] == getgrnam('portage')[2]):
+	os.chown('/var/cache/edb/repo.stats',os.geteuid(),getgrnam('portage')[2])
+	os.chmod('/var/cache/edb/repo.stats',0664)
+if not (os.stat('/var/cache/edb/repo.fails')[ST_GID] == getgrnam('portage')[2]):
+	os.chown('/var/cache/edb/repo.fails',os.geteuid(),getgrnam('portage')[2])
+	os.chmod('/var/cache/edb/repo.fails',0664)
+print
+#dofail will be set to 1 if we have failed in at least one non-warning category
+dofail=0
+#dowarn will be set to 1 if we tripped any warnings
+dowarn=0
+#dofull will be set if we should print a "repoman full" informational message
+dofull=0
+for x in qacats:
+	if not isCvs and (string.find(x, "notadded") != -1):
+		stats[x] = 0
+	if stats[x]:
+		dowarn=1
+		if x not in qawarnings:
+			dofail=1
+	else:
+		continue
+	print "  "+string.ljust(x,30),
+	if stats[x]==0:
+		print green(`stats[x]`)
+		continue
+	elif x in qawarnings:
+		print yellow(`stats[x]`)
+	else:
+		print red(`stats[x]`)
+	if mymode!="full":
+		if stats[x]<12:
+			for y in fails[x]:
+				print "   "+y
+		else:
+			dofull=1
+	else:
+		for y in fails[x]:
+			print "   "+y
+print
+
+def grouplist(mylist,seperator="/"):
+	"""(list,seperator="/") -- Takes a list of elements; groups them into
+	same initial element categories. Returns a dict of {base:[sublist]}
+	From: ["blah/foo","spork/spatula","blah/weee/splat"]
+	To:   {"blah":["foo","weee/splat"], "spork":["spatula"]}"""
+	mygroups={}
+	for x in mylist:
+		xs=string.split(x,seperator)
+		if xs[0]==".":
+			xs=xs[1:]
+		if xs[0] not in mygroups.keys():
+			mygroups[xs[0]]=[string.join(xs[1:],seperator)]
+		else:
+			mygroups[xs[0]]+=[string.join(xs[1:],seperator)]
+	return mygroups
+
+if mymode!="commit":
+	if dofull:
+		print bold("Note: type \"repoman full\" for a complete listing.")
+		print
+	if dowarn and not dofail:
+		print green("RepoMan sez:"),"\"You're only giving me a partial QA payment?\nI'll take it this time, but I'm not happy.\""
+	elif not dofail:
+		print green("RepoMan sez:"),"\"If everyone were like you, I'd be out of business!\""
+	print
+else:
+	if dofail:
+		print turquoise("Please fix these important QA issues first.")
+		print green("RepoMan sez:"),"\"Make your QA payment on time and you'll never see the likes of me.\"\n"
+		sys.exit(1)
+
+	if "--pretend" in myoptions:
+		print green("RepoMan sez:"), "\"So, you want to play it safe. Good call.\"\n"
+
+	if fails["digest.missing"]:
+		print green("Creating missing digests...")
+	for x in fails["digest.missing"]:
+		xs=string.split(x,"/")
+		del xs[-2]
+		myeb=string.join(xs[:-1],"/")+"/"+xs[-1][7:]
+		if "--pretend" in myoptions:
+			print "(ebuild "+portdir+"/"+myeb+".ebuild digest)"
+		else:
+			retval=os.system("ebuild "+portdir+"/"+myeb+".ebuild digest")
+			if retval:
+				print "!!! Exiting on ebuild digest (shell) error code:",retval
+				sys.exit(retval)
+
+	mycvstree=cvstree.getentries("./",recursive=1)
+	if isCvs and not mycvstree:
+		print "!!! It seems we don't have a cvs tree?"
+		sys.exit(3)
+
+	myunadded=cvstree.findunadded(mycvstree,recursive=1,basedir="./")
+	myautoadd=[]
+	if myunadded:
+		for x in range(len(myunadded)-1,-1,-1):
+			xs=string.split(myunadded[x],"/")
+			if xs[-1]=="files":
+				print "!!! files dir is not added! Please correct this."
+				sys.exit(-1)
+			elif xs[-1]=="Manifest":
+				# It's a manifest... auto add
+				myautoadd+=[myunadded[x]]
+				del myunadded[x]
+			elif len(xs[-1])>=7:
+				if xs[-1][:7]=="digest-":
+					del xs[-2]
+					myeb=string.join(xs[:-1]+[xs[-1][7:]],"/")+".ebuild"
+					if os.path.exists(myeb):
+						# Ebuild exists for digest... So autoadd it.
+						myautoadd+=[myunadded[x]]
+						del myunadded[x]
+		
+	if myautoadd:
+		print ">>> Auto-Adding missing digests..."
+		if "--pretend" in myoptions:
+			print "(/usr/bin/cvs add "+string.join(myautoadd)+")"
+			retval=0
+		else:
+			retval=os.system("/usr/bin/cvs add "+string.join(myautoadd))
+		if retval:
+			print "!!! Exiting on cvs (shell) error code:",retval
+			sys.exit(retval)
+
+	if myunadded:
+		print red("!!! The following files are in your cvs tree but are not added to the master")
+		print red("!!! tree. Please remove them from the cvs tree or add them to the master tree.")
+		for x in myunadded:
+			print "   ",x
+		print
+		print
+		sys.exit(1)
+
+	mymissing=None
+	if mymissing:
+		print "The following files are obviously missing from your cvs tree"
+		print "and are being fetched so we can continue:"
+		for x in mymissing:
+			print "   ",x
+		if "--pretend" in myoptions:
+			print "(/usr/bin/cvs -q up "+string.join(mymissing)+")"
+			retval=0
+		else:
+			retval=os.system("/usr/bin/cvs -q up "+string.join(mymissing))
+		if retval:
+			print "!!! Exiting on cvs (shell) error code:",retval
+			sys.exit(retval)
+		del mymissing
+
+	retval=["",""]
+	if isCvs:
+		print "Performing a "+green("cvs -n up")+" with a little magic grep to check for updates."
+		retval=getstatusoutput("/usr/bin/cvs -n up 2>&1 | egrep '^[^\?] .*' | egrep -v '^. .*/digest-[^/]+|^cvs server: .* -- ignored$'")
+		
+	mylines=string.split(retval[1], "\n")
+	myupdates=[]
+	for x in mylines:
+		if not x:
+			continue
+		if x[0] not in "UPMAR": # Updates,Patches,Modified,Added,Removed
+			print red("!!! Please fix the following issues reported from cvs: ")+green("(U,P,M,A,R are ok)")
+			print red("!!! Note: This is a pretend/no-modify pass...")
+			print retval[1]
+			print
+			sys.exit(1)
+		elif x[0] in ["U","P"]:
+			myupdates+=[x[2:]]
+	
+	if myupdates:
+		print green("Fetching trivial updates...")
+		if "--pretend" in myoptions:
+			print "(/usr/bin/cvs up "+string.join(myupdates)+")"
+			retval=0
+		else:
+			retval=os.system("/usr/bin/cvs up "+string.join(myupdates))
+		if retval!=0:
+			print "!!! cvs exited with an error. Terminating."
+			sys.exit(retval)
+	
+	if isCvs:
+		mycvstree=cvstree.getentries("./",recursive=1)
+		mychanged=cvstree.findchanged(mycvstree,recursive=1,basedir="./")
+		mynew=cvstree.findnew(mycvstree,recursive=1,basedir="./")
+		myremoved=cvstree.findremoved(mycvstree,recursive=1,basedir="./")
+		if not (mychanged or mynew or myremoved):
+			print
+			print green("RepoMan sez:"), "\"Doing nothing is not always good for QA.\"\n"
+			print
+			print "(Didn't find any changed files...)"
+			print
+			sys.exit(0)
+
+	myupdates=mychanged+mynew
+	myheaders=[]
+	mydirty=[]
+	headerstring="'\$(Header|Id)"
+	headerstring+=".*\$'"
+	for myfile in myupdates:
+		myout=getstatusoutput("egrep -q "+headerstring+" "+myfile)
+		if myout[0]==0:
+			myheaders.append(myfile)
+
+	print "*",green(str(len(myupdates))),"files being committed...",green(str(len(myheaders))),"have headers that will change."
+	print "*","Files with headers will cause the manifests to be made and recommited."
+	print "myupdates:",myupdates
+	print "myheaders:",myheaders
+	print
+	unlinkfile=0
+	if not (commitmessage or commitmessagefile):
+		print "Please enter a CVS commit message at the prompt:"
+		while not commitmessage:
+			try:
+				commitmessage=raw_input(green("> "))
+			except KeyboardInterrupt: 
+				exithandler()
+	try:
+		commitmessage+="\n(Portage version: "+str(portage.VERSION)+")"
+	except:
+		print "Failed to insert portage version in message!"
+		commitmessage+="\n(Portage version: Unknown)"
+	if not commitmessagefile:
+		unlinkfile=1
+		commitmessagefile=tempfile.mktemp(".repoman.msg")
+		if os.path.exists(commitmessagefile):
+			os.unlink(commitmessagefile)
+		mymsg=open(commitmessagefile,"w")
+		mymsg.write(commitmessage)
+		mymsg.close()
+
+		print
+		print green("Using commit message:")
+		print green("------------------------------------------------------------------------------")
+		print commitmessage
+		print green("------------------------------------------------------------------------------")
+		print
+
+		if "--pretend" in myoptions:
+			print "(/usr/bin/cvs -q commit -F "+commitmessagefile+")"
+			retval=0
+		else:
+			retval=os.system("/usr/bin/cvs -q commit -F "+commitmessagefile)
+		if retval:
+			print "!!! Exiting on cvs (shell) error code:",retval
+			sys.exit(retval)
+
+	# Setup the GPG commands
+	def gpgsign(filename):
+		gpgcmd = "gpg --sign --clearsign --yes "
+		gpgcmd+= "--default-key "+repoman_settings["PORTAGE_GPG_KEY"]
+		if repoman_settings.has_key("PORTAGE_GPG_DIR"):
+			gpgcmd += " --homedir "+repoman_settings["PORTAGE_GPG_DIR"]
+		rValue = os.system(gpgcmd+" "+filename)
+		if rValue == 0:
+			os.rename(filename+".asc", filename)
+		else:
+			print "!!! gpg exited with '" + str(rValue) + "' status"
+		return rValue
+
+	if myheaders or myupdates or myremoved or mynew:
+		myfiles=myheaders+myupdates+myremoved+mynew
+		for x in range(len(myfiles)-1, -1, -1):
+			if myfiles[x].count("/") < 4-repolevel:
+				del myfiles[x]
+		mydone=[]
+		if repolevel==3:   # In a package dir
+			repoman_settings["O"]="./"
+			portage.digestgen([],repoman_settings,manifestonly=1)
+		elif repolevel==2: # In a category dir
+			for x in myfiles:
+				xs=string.split(x,"/")
+				if xs[0]==".":
+					xs=xs[1:]
+				if xs[0] in mydone:
+					continue
+				mydone.append(xs[0])
+				repoman_settings["O"]="./"+xs[0]
+				portage.digestgen([],repoman_settings,manifestonly=1)
+		elif repolevel==1: # repo-cvsroot
+			print green("RepoMan sez:"), "\"You're rather crazy... doing the entire repository.\"\n"
+			for x in myfiles:
+				xs=string.split(x,"/")
+				if xs[0]==".":
+					xs=xs[1:]
+				if string.join(xs[:2],"/") in mydone:
+					continue
+				mydone.append(string.join(xs[:2],"/"))
+				repoman_settings["O"]="./"+string.join(xs[:2],"/")
+				portage.digestgen([],repoman_settings,manifestonly=1)
+		else:
+			print red("I'm confused... I don't know where I am!")
+			sys.exit(1)
+
+		if "--pretend" in myoptions:
+			print "(/usr/bin/cvs -q commit -F "+commitmessagefile+")"
+		else:
+			mymsg=open(commitmessagefile,"w")
+			mymsg.write(commitmessage)
+			mymsg.write("\n (Unsigned Manifest commit)")
+			mymsg.close()
+			retval=os.system("/usr/bin/cvs -q commit -F "+commitmessagefile)
+			if retval:
+				print "!!! Exiting on cvs (shell) error code:",retval
+				sys.exit(retval)
+	
+	if "sign" in portage.features:
+		mydone=[]
+		if repolevel==3:   # In a package dir
+			repoman_settings["O"]="./"
+			while(gpgsign(repoman_settings["O"]+"/Manifest")):
+				portage.writemsg("!!! YOU MUST sign the Manifest.\n")
+				portage.writemsg("!!! You can also disable this for the time being by removing FEATURES='sign'")
+				time.sleep(3)
+		elif repolevel==2: # In a category dir
+			for x in myfiles:
+				xs=string.split(x,"/")
+				if xs[0]==".":
+					xs=xs[1:]
+				if xs[0] in mydone:
+					continue
+				mydone.append(xs[0])
+				repoman_settings["O"]="./"+xs[0]
+				while(gpgsign(repoman_settings["O"]+"/Manifest")):
+					portage.writemsg("!!! YOU MUST sign the Manifest.\n")
+					portage.writemsg("!!! You can also disable this for the time being by removing FEATURES='sign'")
+					time.sleep(3)
+		elif repolevel==1: # repo-cvsroot
+			print green("RepoMan sez:"), "\"You're rather crazy... doing the entire repository.\"\n"
+			for x in myfiles:
+				xs=string.split(x,"/")
+				if xs[0]==".":
+					xs=xs[1:]
+				if string.join(xs[:2],"/") in mydone:
+					continue
+				mydone.append(string.join(xs[:2],"/"))
+				repoman_settings["O"]="./"+string.join(xs[:2],"/")
+				while(gpgsign(repoman_settings["O"]+"/Manifest")):
+					portage.writemsg("!!! YOU MUST sign the Manifest.\n")
+					portage.writemsg("!!! You can also disable this for the time being by removing FEATURES='sign'")
+					time.sleep(3)
+
+		if "--pretend" in myoptions:
+			print "(/usr/bin/cvs -q commit -F "+commitmessagefile+")"
+		else:
+			mymsg=open(commitmessagefile,"w")
+			mymsg.write(commitmessage)
+			mymsg.write("\n (Signed Manifest commit)")
+			mymsg.close()
+			retval=os.system("/usr/bin/cvs -q commit -F "+commitmessagefile)
+			if retval:
+				print "!!! Exiting on cvs (shell) error code:",retval
+				sys.exit(retval)
+	
+	if unlinkfile:
+		os.unlink(commitmessagefile)
+	print
+	if isCvs:
+		print "CVS commit complete."
+	else:
+		print "repoman was too scared by not seeing any familiar cvs file that he forgot to commit anything"
+	print green("RepoMan sez:"), "\"If everyone were like you, I'd be out of business!\"\n"
+sys.exit(0)
+

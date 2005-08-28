@@ -1,0 +1,22 @@
+#!/bin/bash
+# Copyright 1999-2004 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Header: /var/cvsroot/gentoo-src/portage/bin/dosed,v 1.7 2004/10/04 13:56:50 vapier Exp $
+
+mysed="s:${D}::g"
+
+for x in "$@" ; do
+	y="${D}${x}"
+	if [ -a "${y}" ] ; then
+		if [ -f "${y}" ] ; then
+			mysrc="${T}/${y##*/}"
+			cp "${y}" "${mysrc}"
+			sed -e "${mysed}" "${mysrc}" > "${y}"
+		else
+			echo "${y} is not a regular file!"
+			exit 1
+		fi
+	else
+		mysed="${x}"
+	fi
+done

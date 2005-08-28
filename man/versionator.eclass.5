@@ -1,0 +1,53 @@
+.TH VERSIONATOR.ECLASS 5 "Nov 2004" "Portage 2.0.51" portage
+.SH NAME
+versionator.eclass \- provides functions for easy manipulation of versions
+.SH DESCRIPTION
+The \fBversionator\fR eclass provides functions to ease manipulation of
+software versions.  The most common use of this eclass is for manipulation of
+the \fB${PV}\fR variable (and saving the result in a variable such as
+\fB${MY_PV}\fR).
+.SH FUNCTIONS
+\fBNOTE\fR: the following functions all operate on a version string (denoted
+as \fIPV\fR in this manual page), which defaults to \fB${PV}\fR if omitted.
+See the eclass for example version strings and their respective results.
+.TP
+.B get_all_version_components \fI< PV >\fR
+Splits PV into its component parts.
+.TP
+.B get_version_components \fI< PV >\fR
+Splits PV into its component parts, ignoring '.', '-', and '_'.
+.TP
+.B get_major_version \fI< PV >\fR
+Retrieves major version from PV.
+.TP
+.B get_version_component_range \fI[ RANGE ] < PV >\fR
+Retrieves a component or range of components, RANGE, from PV.  RANGE may be
+a single number for a particular component, a range such as 1-2 for a range
+of components, or a range such as 2- for that component and everything after it.
+.TP
+.B get_after_major_version \fI< PV >\fR
+Retrieves everything after the major version and its separator (if present).
+.TP
+.B replace_version_separator \fI[ N ] [ SEP ] < PV >\fR
+Replaces the Nth separator of PV with separator, SEP.  If N is a character
+literal (eg. '-'), the first separator of this kind is replaced.
+.TP
+.B replace_all_version_separators \fI[ SEP ] < PV >\fR
+Replaces all version separators in PV with separator, SEP.
+.TP
+.B delete_version_separator \fI[ N ] < PV >\fR
+Deletes the Nth separator of PV.  If N is a character literal (eg. '-'), the first
+separator of this kind is deleted.
+.TP
+.B delete_all_version_separators \fI<PV>\fR
+Deletes all version separators in PV.
+.SH REPORTING BUGS
+Please report bugs via http://bugs.gentoo.org/
+.SH SEE ALSO
+.BR ebuild (5)
+.SH FILES
+.BR /usr/portage/eclass/versionator.eclass
+.SH AUTHORS
+Aaron Walker <ka0ttic@gentoo.org>
+.SH CVS HEADER
+$Header: /var/cvsroot/gentoo-src/portage/man/versionator.eclass.5,v 1.1.2.4 2005/01/15 00:19:36 vapier Exp $

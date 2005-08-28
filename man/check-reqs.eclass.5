@@ -1,0 +1,55 @@
+.TH CHECK-REQS.ECLASS 5 "Dec 2004" "Portage 2.0.51" "portage"
+.SH NAME
+check-reqs.eclass \- functions for checking proper build requirements
+.SH DESCRIPTION
+The \fBcheck-reqs\fR eclass provides a uniform interface for handling ebuilds
+which require an abnormally high amount of system resources.  The variable(s)
+and function(s) mentioned here should usually be set/called from \fBpkg_setup\fR.
+.br
+
+\fBNOTE\fR: Minimum criteria for use of this eclass is a build that requires
+>256MB of RAM and/or >1GB of temporary or install space.
+.SH VARIABLES
+\fBNOTE\fR: all numerical values are evaluated as megabytes (MB).
+.TP
+.B CHECKREQS_ACTION = \fI"(warn|error|ignore)"\fR
+Defines action to take if current system resources do not satisfy requirements.
+\fBNOTE\fR: this variable is for end user only.  Ebuilds must *not* override or
+set a default for this variable.
+.TP
+.B CHECKREQS_MEMORY = \fI"256"\fR
+Defines amount of memory required.  Note that the \fBcheck-reqs\fR eclass does
+not take swap space into account when checking current memory resources.
+.TP
+.B CHECKREQS_DISK_BUILD = \fI"1024"\fR
+Defines amount of temporary build space required.
+.TP
+.B CHECKREQS_DISK_USR = \fI"1024"\fR
+Defines amount of /usr space required.
+.TP
+.B CHECKREQS_DISK_VAR = \fI"1024"\fR
+Defines amount of /var space required.
+.SH FUNCTIONS
+\fBNOTE\fR: all numerical values are evaluated as megabytes (MB).  Any values
+should merely be rough estimates, and a high degree of precision should not
+be implied -- for example, "2048" (or "2000") are more appropriate than "2137".
+.TP
+.B check_reqs
+Performs resource checks based on above defined variables. If the checks fail,
+the action specified by \fBCHECKREQS_ACTION\fR will be executed.  If for some
+reason the \fBcheck-reqs\fR eclass is unable to determine current resources,
+then no action will be performed.  This function should be called from within
+\fBpkg_setup\fR.
+.SH REPORTING BUGS
+Please report bugs via http://bugs.gentoo.org/
+.SH SEE ALSO
+.BR ebuild (5)
+.SH FILES
+.BR /usr/portage/eclass/check-reqs.eclass
+.SH AUTHORS
+.nf
+Aaron Walker <ka0ttic@gentoo.org>
+Ciaran McCreesh <ciaranm@gentoo.org>
+.fi
+.SH CVS HEADER
+$Header: /var/cvsroot/gentoo-src/portage/man/check-reqs.eclass.5,v 1.1.2.3 2005/05/10 11:30:32 swegener Exp $

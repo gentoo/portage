@@ -1,0 +1,91 @@
+# ChangeLog for Path Sandbox
+# Copyright 1999-2004 Gentoo Foundation; Distributed under the GPL v2
+# $Header: /var/cvsroot/gentoo-src/portage/src/sandbox-dev/Attic/ChangeLog,v 1.9 2004/10/04 14:08:46 vapier Exp $
+
+  16 Dec 2002; J Robert Ray <jrray@gentoo.org> Makefile libsandbox.c :
+
+  Instead of parsing the SANDBOX_* env variables on each syscall, save the
+  result in a global sbcontext pointer and cache the value of the env vars
+  to detect later on if they have changed and need to be re-parsed.  Works
+  around bug 233.
+
+  16 Dec 2002; Martin Schlemmer <azarah@gentoo.org> create-localdecls :
+
+  Fix memory leak for mips, bug #12236.  Thanks to Torgeir Hansen <torgeir@trenger.ro>
+  for this fix.
+
+  4 Dec 2002; J Robert Ray <jrray@gentoo.org> sandbox.h sandbox_futils.c :
+  
+  sandbox_futils defined a dirname() function that was masking the same
+  function in glibc and was broken (e.g.: SANDBOX_DIR was being set to
+  '/usr/lib/portage/bi/').  Fixed function to return expected results and
+  renamed it to sb_dirname() to no longer mask the glibc function.  Closes bug
+  11231.
+
+  4 Dec 2002; Martin Schlemmer <azarah@gentoo.org> :
+
+  Fix a segfault in libsandbox.c if canonicalize() was called with
+  first parameter = NULL.
+
+  1 Sep 2002; Martin Schlemmer <azarah@gentoo.org> :
+
+  Fix my braindead 'return 1;' in a void function.  Updated sandbox.c,
+  cleanup() for this.
+
+  Change cleanup() in sandbox.c not to exit with fail status if
+  the pidsfile is missing.  We really should still display sandbox
+  violations if they occured.
+
+  31 Aug 2002; Martin Schlemmer <azarah@gentoo.org> :
+
+  Update cleanup() in sandbox.c to remove the PIDSFILE if this is
+  the last sandbox running.
+
+  25 Aug 2002; Martin Schlemmer <azarah@gentoo.org> :
+
+  Major cleanups to mainly libsandbox.c again.
+
+  22 Aug 2002; Martin Schlemmer <azarah@gentoo.org> :
+
+  Add copyrights to sandbox.h and sandbox_futils.h.  If wrong, the
+  parties involved should please contact me so that we can fix it.
+
+  Add opendir wrapper to libsandbox.c.
+
+  21 Aug 2002; Martin Schlemmer <azarah@gentoo.org> :
+
+  Do some more cleanups to ecanonicalize(), as it dropped filenames in
+  rare cases (after my symlink cleanups), and caused glibc to bork.
+  These fixes went into canonicalize.c.
+
+  20 Aug 2002; Martin Schlemmer <azarah@gentoo.org> :
+
+  Fix spawn_shell() and main() in sandbox.c to properly return fail
+  status.
+
+  19 Aug 2002; Martin Schlemmer <azarah@gentoo.org> :
+
+  The new canonicalize() function in libsandbox.c also resolved symlinks,
+  which caused on cleaning sandbox errors if the symlink pointed to a
+  file in the live root.   Ripped out canonicalize() and realpath() from
+  glibc; removed the symlink stuff, and changed them to ecanonicalize()
+  and erealpath().
+
+  18 Aug 2002; Martin Schlemmer <azarah@gentoo.org> :
+
+  Ripped out all the wrappers, and implemented those of InstallWatch.
+  Losts of cleanups and bugfixes.  Implement a execve that forces
+  $LIBSANDBOX in $LD_PRELOAD.  We can now thus do away with the feared
+  /etc/ld.so.preload (*g*) ... Made the needed changes to sandbox.c,
+  sandbox.h and sandbox_futils.c.  Rewrote the Makefile for most
+  parts; it now have an install target.
+  
+  Reformat the whole thing to look somewhat like the reworked sandbox.c
+  and new sandbox.h and sandbox_futils.c from:
+  
+    Brad House <brad@mainstreetsoftworks.com>.
+
+  Additional Copyrights now due to the InstallWatch code:
+  
+    Copyright (C) 1998-9 Pancrazio `Ezio' de Mauro <p@demauro.net>
+

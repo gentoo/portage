@@ -1,0 +1,17 @@
+#!/usr/bin/python
+# Copyright 1999-2004 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Header: /var/cvsroot/gentoo-src/portage/bin/pkgname,v 1.8 2004/10/04 13:56:50 vapier Exp $
+
+import sys
+sys.path = ["/usr/lib/portage/pym"]+sys.path
+
+import portage
+
+a=portage.pkgsplit(sys.argv[1])
+if a:
+	print a[0],a[1],a[2][1:]
+	sys.exit(0)
+else:
+	print '!!! Error: package name is invalid.'
+	sys.exit(1)

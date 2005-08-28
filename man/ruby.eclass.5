@@ -1,0 +1,47 @@
+.TH RUBY.ECLASS 5 "Nov 2004" "Portage 2.0.51" portage
+.SH NAME
+ruby.eclass \- functions to ease installation of Ruby software
+.SH DESCRIPTION
+The \fBruby\fR eclass provides an interface designed to ease the installation
+and integration of Ruby software.
+.SH VARIABLES
+.TP
+.B RUBY = \fI"/usr/bin/ruby"\fR
+Defines the location of the Ruby binary. Defaults to '/usr/bin/ruby'.
+.TP
+.B USE_RUBY = \fI"ruby18"\fR
+Defines a white-space delimited list of supported Ruby versions.  This variable
+can be set to "any" if the ebuild only installs version independant files.
+Possible values for this variable include \fBany\fR, \fBruby16\fR, \fBruby18\fR,
+and \fBruby19\fR.
+.TP
+.B RUBY_ECONF = \fI"--with-foo"\fR
+Defines any extra arguments to pass to econf.
+.TP
+.B PATCHES = \fI"foo.patch *.diff"\fR
+Defines a white-space delimited list of patches that should be applied.  In
+addition to literal filenames, globbing may also be used.
+.SH FUNCTIONS
+.TP
+.B ruby_einstall
+Default einstall that executes standard Ruby installation scripts in addition
+to installing all .rb files into the local Ruby site directory.
+.TP
+.B erubydoc
+Installs documentation, HTML, and examples into /usr/share/doc/\fB${PF}\fR.
+.TP
+.B ruby_src_compile
+Default src_compile that simply executes \fBruby_econf\fR and \fBruby_emake\fR.
+.TP
+.B ruby_src_install
+Default src_install that simply runs \fBruby_einstall\fR and \fBerubydoc\fR.
+.SH REPORTING BUGS
+Please report bugs via http://bugs.gentoo.org/
+.SH SEE ALSO
+.BR ebuild (5)
+.SH FILES
+.BR /usr/portage/eclass/ruby.eclass
+.SH AUTHORS
+Aaron Walker <ka0ttic@gentoo.org>
+.SH CVS HEADER
+$Header: /var/cvsroot/gentoo-src/portage/man/ruby.eclass.5,v 1.1.2.2 2005/01/15 00:19:36 vapier Exp $

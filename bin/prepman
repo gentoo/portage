@@ -1,0 +1,46 @@
+#!/bin/bash
+# Copyright 1999-2004 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Header: /var/cvsroot/gentoo-src/portage/bin/prepman,v 1.10.2.3 2005/05/29 12:40:08 jstubbs Exp $
+
+if [ -z "$1" ] ; then 
+	z="${D}usr/share/man"
+else
+	z="${D}$1/man"
+fi
+
+[ ! -d "${z}" ] && exit 0
+
+for x in `find "${z}"/ -type d 2>/dev/null` ; do
+	for y in `find "${x}"/ -mindepth 1 -maxdepth 1 \( -type f -or -type l \) ! -name '.keep' 2>/dev/null` ; do
+		if [ -L "${y}" ] ; then
+			# Symlink ...
+			mylink="${y}"
+			linkto="`readlink "${y}"`"
+			
+			# Do NOT change links to directories
+			if [ -d "${z}/${linkto}" ] ; then
+				continue
+			fi
+			
+			if [ "${linkto##*.}" != "gz" ] && [ "${linkto##*.}" != "bz2" ]; then
+				linkto="${linkto}.gz"
+			fi
+			if [ "${mylink##*.}" != "gz" ] && [ "${mylink##*.}" != "bz2" ]; then
+				mylink="${mylink}.gz"
+			fi
+
+			echo "fixing man page symlink: ${mylink##*/}"
+			ln -snf "${linkto}" "${mylink}"
+			if [ "${y}" != "${mylink}" ] ; then
+				echo "removing old symlink: ${y##*/}"
+				rm -f "${y}"
+			fi
+		else
+			if [ "${y##*.}" != "gz" ] && [ "${y##*.}" != "bz2" ] && [ ! -d "${y}" ]; then
+				echo "gzipping man page: ${y##*/}"
+				gzip -f -9 "${y}"
+			fi
+		fi	
+	done
+done

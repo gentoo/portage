@@ -1,0 +1,28 @@
+.TH "ENV-UPDATE" "1" "Feb 2003" "Portage 2.0.51" "Portage"
+.SH NAME
+env-update \- updates environment settings automatically
+.SH SYNOPSIS
+.B env-update
+.SH DESCRIPTION
+.B env-update
+reads the files in \fI/etc/env.d\fR and automatically generates
+\fI/etc/profile.env\fR and \fI/etc/ld.so.conf\fR.  Then \fBldconfig\fR(8)
+is run to update \fI/etc/ld.so.cache\fR.  \fBenv-update\fR is run by
+\fBemerge\fR(1) automatically after each package merge.  Also, if you
+make changes to \fI/etc/env.d\fR, you should run \fIenv-update\fR 
+yourself for changes to take effect immediately.  Note that this would 
+only affect new processes.  In order for the changes to affect your 
+active shell, you will probably have to run \fIsource /etc/profile\fR 
+first.
+.SH OPTIONS 
+.TP
+None.
+.SH AUTHORS
+Daniel Robbins <drobbins@gentoo.org>
+.SH "REPORTING BUGS"
+Please report bugs via http://bugs.gentoo.org/
+.SH "SEE ALSO"
+.BR emerge (1),
+.BR ldconfig (8)
+.SH "CVS HEADER"
+$Header: /var/cvsroot/gentoo-src/portage/man/env-update.1,v 1.6 2004/09/17 00:17:10 vapier Exp $
