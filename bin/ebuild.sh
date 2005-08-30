@@ -335,6 +335,65 @@ keepdir()
 	fi
 }
 
+unpack() {
+	local x
+	local y
+	local myfail
+	local tarvars
+
+	if [ "$USERLAND" == "BSD" ]; then
+		tarvars=""
+	else
+		tarvars="--no-same-owner"	
+	fi	
+
+	[ -z "$*" ] && die "Nothing passed to the 'unpack' command"
+
+	for x in "$@"; do
+		myfail="failure unpacking ${x}"
+		echo ">>> Unpacking ${x} to $(pwd)"
+		y="${x%.*}"
+		y="${y##*.}"
+
+		case "${x##*.}" in
+			tar)
+				tar xf "${DISTDIR}/${x}" ${tarvars} || die "$myfail"
+				;;
+			tgz)
+				tar xzf "${DISTDIR}/${x}" ${tarvars} || die "$myfail"
+				;;
+			tbz2)
+				bzip2 -dc "${DISTDIR}/${x}" | tar xf - ${tarvars}
+				assert "$myfail"
+				;;
+			ZIP|zip)
+				unzip -qo "${DISTDIR}/${x}" || die "$myfail"
+				;;
+			gz|Z|z)
+				if [ "${y}" == "tar" ]; then
+					tar xzf "${DISTDIR}/${x}" ${tarvars} || die "$myfail"
+				else
+					gzip -dc "${DISTDIR}/${x}" > ${x%.*} || die "$myfail"
+				fi
+				;;
+			bz2)
+				if [ "${y}" == "tar" ]; then
+					bzip2 -dc "${DISTDIR}/${x}" | tar xf - ${tarvars} 
+					assert "$myfail"
+				else
+					bzip2 -dc "${DISTDIR}/${x}" > ${x%.*} || die "$myfail"
+				fi
+				;;
+			RAR|rar)
+				unrar x -idq "${DISTDIR}/${x}" || die "$myfail"
+				;;
+			*)
+				echo "unpack ${x}: file format not recognized. Ignoring."
+				;;
+		esac
+	done
+}
+
 strip_duplicate_slashes () { 
 	if [ -n "${1}" ]; then
 		local removed="${1/\/\///}"
