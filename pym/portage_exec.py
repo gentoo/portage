@@ -2,7 +2,7 @@
 # Copyright 1998-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/pym/portage_exec.py,v 1.13.2.4 2005/04/17 09:01:56 jstubbs Exp $
-cvs_id_string="$Id: portage_exec.py,v 1.13.2.4 2005/04/17 09:01:56 jstubbs Exp $"[5:-2]
+
 
 import os,types,atexit,string,stat
 import signal

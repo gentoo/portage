@@ -1,7 +1,7 @@
 #
 # Changes and extensions by Carlos Castillo...
 #
-cvs_id_string="$Id: dcdialog.py,v 1.1.2.1 2005/01/16 02:35:33 carpaski Exp $"[5:-2]
+
 
 #
 # Module: dialog.py

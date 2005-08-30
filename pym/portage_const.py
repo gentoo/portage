@@ -2,7 +2,7 @@
 # Copyright 1998-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/pym/portage_const.py,v 1.3.2.3 2005/04/29 04:56:35 jstubbs Exp $
-cvs_id_string="$Id: portage_const.py,v 1.3.2.3 2005/04/29 04:56:35 jstubbs Exp $"[5:-2]
+
 
 # ===========================================================================
 # START OF CONSTANTS -- START OF CONSTANTS -- START OF CONSTANTS -- START OF

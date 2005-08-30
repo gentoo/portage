@@ -2,7 +2,7 @@
 # Copyright 2003-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/pym/dispatch_conf.py,v 1.3.2.3 2005/04/29 03:37:30 jstubbs Exp $
-cvs_id_string="$Id: dispatch_conf.py,v 1.3.2.3 2005/04/29 03:37:30 jstubbs Exp $"[5:-2]
+
 
 # Library by Wayne Davison <gentoo@blorf.net>, derived from code
 # written by Jeremy Wohl (http://igmus.org)

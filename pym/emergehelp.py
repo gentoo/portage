@@ -1,7 +1,7 @@
 # Copyright 1999-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/pym/emergehelp.py,v 1.8.2.2 2005/01/16 02:35:33 carpaski Exp $
-cvs_id_string="$Id: emergehelp.py,v 1.8.2.2 2005/01/16 02:35:33 carpaski Exp $"[5:-2]
+
 
 import os,sys
 from output import bold, turquoise, green

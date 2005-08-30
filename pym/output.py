@@ -1,7 +1,7 @@
 # Copyright 1998-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/pym/output.py,v 1.24.2.4 2005/04/17 09:01:55 jstubbs Exp $
-cvs_id_string="$Id: output.py,v 1.24.2.4 2005/04/17 09:01:55 jstubbs Exp $"[5:-2]
+
 
 import os,sys,re
 
