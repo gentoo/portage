@@ -3,7 +3,7 @@
  * Distributed under the terms of the GNU General Public License, v2 or later 
  * Author: Brad House <brad@mainstreetsoftworks.com>
  *
- * $Header: /var/cvsroot/gentoo-src/portage/src/sandbox-1.1/Attic/sandbox_futils.c,v 1.11.2.1 2004/11/03 13:12:55 ferringb Exp $
+ * $Id: /var/cvsroot/gentoo-src/portage/src/sandbox-1.1/Attic/sandbox_futils.c,v 1.11.2.1 2004/11/03 13:12:55 ferringb Exp $
  * 
  */
 

@@ -18,7 +18,7 @@
    02111-1307 USA.  */
 
 /*
- * $Header: /var/cvsroot/gentoo-src/portage/src/sandbox-dev/Attic/canonicalize.c,v 1.2 2002/08/26 03:28:30 azarah Exp $
+ * $Id: /var/cvsroot/gentoo-src/portage/src/sandbox-dev/Attic/canonicalize.c,v 1.2 2002/08/26 03:28:30 azarah Exp $
  */
 
 #include <stdlib.h>

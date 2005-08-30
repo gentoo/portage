@@ -1092,7 +1092,7 @@
   
   09 Apr 2003; Nicholas Jones <carpaski@gentoo.org> repoman: Added the
   nostable/allmasked check in. Small cleanups. Move to 'manifests' instead
-  of enhanced digests. Added filters on $Id and $Header. Fixed commitmsg
+  of enhanced digests. Added filters on $Id and $Id. Fixed commitmsg
   and added short options.
   
   09 Apr 2003; Nicholas Jones <carpaski@gentoo.org> cvstree.py: More features

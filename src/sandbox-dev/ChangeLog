@@ -1,6 +1,6 @@
 # ChangeLog for Path Sandbox
 # Copyright 1999-2004 Gentoo Foundation; Distributed under the GPL v2
-# $Header: /var/cvsroot/gentoo-src/portage/src/sandbox-dev/Attic/ChangeLog,v 1.9 2004/10/04 14:08:46 vapier Exp $
+# $Id: /var/cvsroot/gentoo-src/portage/src/sandbox-dev/Attic/ChangeLog,v 1.9 2004/10/04 14:08:46 vapier Exp $
 
   16 Dec 2002; J Robert Ray <jrray@gentoo.org> Makefile libsandbox.c :
 

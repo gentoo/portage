@@ -1,6 +1,6 @@
 # ChangeLog for Path Sandbox
 # Copyright 1999-2004 Gentoo Foundation; Distributed under the GPL v2
-# $Header: /var/cvsroot/gentoo-src/portage/src/sandbox-1.1/Attic/ChangeLog,v 1.37.2.3 2004/12/01 22:14:09 carpaski Exp $
+# $Id: /var/cvsroot/gentoo-src/portage/src/sandbox-1.1/Attic/ChangeLog,v 1.37.2.3 2004/12/01 22:14:09 carpaski Exp $
 
   01 Dec 2004; Nicholas Jones <carpaski@gentoo.org> libsandbox.c, sandbox.c:
   Added ferringb's code to handle the sandbox pid overflow problem.

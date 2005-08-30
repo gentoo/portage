@@ -1,4 +1,4 @@
-/* $Header: /var/cvsroot/gentoo-src/portage/src/tbz2tool.c,v 1.3.2.1 2004/11/05 13:49:22 jstubbs Exp $ */
+/* $Id: /var/cvsroot/gentoo-src/portage/src/tbz2tool.c,v 1.3.2.1 2004/11/05 13:49:22 jstubbs Exp $ */
 
 #include <stdio.h>
 #include <stdlib.h>

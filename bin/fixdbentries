@@ -1,7 +1,7 @@
 #!/bin/bash
 # Copyright 1999-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header: /var/cvsroot/gentoo-src/portage/bin/fixdbentries,v 1.3 2004/10/04 13:56:50 vapier Exp $
+# $Id: /var/cvsroot/gentoo-src/portage/bin/fixdbentries,v 1.3 2004/10/04 13:56:50 vapier Exp $
 
 # Script to adjust the contents of the DB entries after a package move.
 # Fairly straight forward... ./movedbentry 'from/here' 'to/here' /over/here

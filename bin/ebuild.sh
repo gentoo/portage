@@ -1,7 +1,7 @@
 #!/bin/bash
 # Copyright 1999-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header: /var/cvsroot/gentoo-src/portage/bin/ebuild.sh,v 1.201.2.42 2005/08/20 17:24:30 jstubbs Exp $
+# $Id: /var/cvsroot/gentoo-src/portage/bin/ebuild.sh,v 1.201.2.42 2005/08/20 17:24:30 jstubbs Exp $
 
 export SANDBOX_PREDICT="${SANDBOX_PREDICT}:/proc/self/maps:/dev/console:/usr/lib/portage/pym:/dev/random"
 export SANDBOX_WRITE="${SANDBOX_WRITE}:/dev/shm:${PORTAGE_TMPDIR}"

@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # Copyright 1999-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header: /var/cvsroot/gentoo-src/portage/bin/regenworld,v 1.10.2.1 2005/01/11 03:40:57 carpaski Exp $
+# $Id: /var/cvsroot/gentoo-src/portage/bin/regenworld,v 1.10.2.1 2005/01/11 03:40:57 carpaski Exp $
 
 import sys
 sys.path.insert(0, "/usr/lib/portage/pym")

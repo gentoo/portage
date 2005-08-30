@@ -1,4 +1,4 @@
-/* $Header: /var/cvsroot/gentoo-src/portage/src/sandbox/problems/Attic/sandbox_muttbug.c,v 1.3 2003/03/22 14:24:38 carpaski Exp $ */
+/* $Id: /var/cvsroot/gentoo-src/portage/src/sandbox/problems/Attic/sandbox_muttbug.c,v 1.3 2003/03/22 14:24:38 carpaski Exp $ */
 
 #include <stdio.h>
 #include <stdlib.h>

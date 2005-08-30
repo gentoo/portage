@@ -8,7 +8,7 @@
 # Modified 19 Aug 2002; Martin Schlemmer <azarah@gentoo.org>
 #  Major rewrite to support new stuff
 #
-# $Header: /var/cvsroot/gentoo-src/portage/src/sandbox-dev/Attic/Makefile,v 1.3 2002/12/16 22:28:05 jrray Exp $
+# $Id: /var/cvsroot/gentoo-src/portage/src/sandbox-dev/Attic/Makefile,v 1.3 2002/12/16 22:28:05 jrray Exp $
 
 CC = gcc
 LD = ld

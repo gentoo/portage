@@ -4,7 +4,7 @@
  * Distributed under the terms of the GNU General Public License, v2 or later 
  * Author: Brad House <brad@mainstreetsoftworks.com>
  *    
- * $Header: /var/cvsroot/gentoo-src/portage/src/sandbox-dev/Attic/sandbox.h,v 1.2 2002/12/04 18:11:32 azarah Exp $
+ * $Id: /var/cvsroot/gentoo-src/portage/src/sandbox-dev/Attic/sandbox.h,v 1.2 2002/12/04 18:11:32 azarah Exp $
  */
 
 #ifndef __SANDBOX_H__

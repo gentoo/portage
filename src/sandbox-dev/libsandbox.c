@@ -25,7 +25,7 @@
  *  as some of the InstallWatch code was used.
  *
  *
- *  $Header: /var/cvsroot/gentoo-src/portage/src/sandbox-dev/Attic/libsandbox.c,v 1.4 2002/12/16 22:28:05 jrray Exp $
+ *  $Id: /var/cvsroot/gentoo-src/portage/src/sandbox-dev/Attic/libsandbox.c,v 1.4 2002/12/16 22:28:05 jrray Exp $
  *
  */
 

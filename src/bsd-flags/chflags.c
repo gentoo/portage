@@ -1,4 +1,4 @@
-/* $Header: /var/cvsroot/gentoo-src/portage/src/bsd-flags/chflags.c,v 1.1.2.2 2005/02/13 10:48:31 jstubbs Exp $ */
+/* $Id: /var/cvsroot/gentoo-src/portage/src/bsd-flags/chflags.c,v 1.1.2.2 2005/02/13 10:48:31 jstubbs Exp $ */
 
 #include "Python.h"
 

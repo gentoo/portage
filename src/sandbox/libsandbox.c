@@ -11,7 +11,7 @@
 **	Copyright (C) 2001 Geert Bevin, Uwyn, http://www.uwyn.com
 **	Distributed under the terms of the GNU General Public License, v2 or later 
 **	Author : Geert Bevin <gbevin@uwyn.com>
-**  $Header: /var/cvsroot/gentoo-src/portage/src/sandbox/Attic/libsandbox.c,v 1.8 2002/08/05 05:51:39 drobbins Exp $
+**  $Id: /var/cvsroot/gentoo-src/portage/src/sandbox/Attic/libsandbox.c,v 1.8 2002/08/05 05:51:39 drobbins Exp $
 */
 
 #define _GNU_SOURCE

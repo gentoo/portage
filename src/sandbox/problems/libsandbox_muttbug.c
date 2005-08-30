@@ -1,4 +1,4 @@
-/* $Header: /var/cvsroot/gentoo-src/portage/src/sandbox/problems/Attic/libsandbox_muttbug.c,v 1.2 2003/03/22 14:24:38 carpaski Exp $ */
+/* $Id: /var/cvsroot/gentoo-src/portage/src/sandbox/problems/Attic/libsandbox_muttbug.c,v 1.2 2003/03/22 14:24:38 carpaski Exp $ */
 
 #define _GNU_SOURCE
 #define _REENTRANT

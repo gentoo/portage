@@ -8,7 +8,7 @@
 #
 # Uhm... time to learn GNU autoconf :-)
 #
-# $Header: /var/cvsroot/gentoo-src/portage/src/sandbox-dev/Attic/create-localdecls,v 1.2 2002/12/16 19:19:27 azarah Exp $
+# $Id: /var/cvsroot/gentoo-src/portage/src/sandbox-dev/Attic/create-localdecls,v 1.2 2002/12/16 19:19:27 azarah Exp $
 
 OUTFILE='localdecls.h'
 

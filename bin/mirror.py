@@ -1,7 +1,7 @@
 #!/usr/bin/python -O
 # Copyright 1999-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header: /var/cvsroot/gentoo-src/portage/bin/mirror.py,v 1.3 2004/10/10 10:07:20 carpaski Exp $
+# $Id: /var/cvsroot/gentoo-src/portage/bin/mirror.py,v 1.3 2004/10/10 10:07:20 carpaski Exp $
 
 # Defines the number of threads carrying out the downloading.
 maxsems=5

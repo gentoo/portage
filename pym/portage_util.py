@@ -1,6 +1,6 @@
 # Copyright 2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header: /var/cvsroot/gentoo-src/portage/pym/portage_util.py,v 1.11.2.6 2005/04/23 07:26:04 jstubbs Exp $
+# $Id: /var/cvsroot/gentoo-src/portage/pym/portage_util.py,v 1.11.2.6 2005/04/23 07:26:04 jstubbs Exp $
 cvs_id_string="$Id: portage_util.py,v 1.11.2.6 2005/04/23 07:26:04 jstubbs Exp $"[5:-2]
 
 import sys,string,shlex,os.path

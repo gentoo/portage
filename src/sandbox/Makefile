@@ -5,7 +5,7 @@
 # Modified 15 Apr 2002 Jon Nelson <jnelson@gentoo.org>
 #  Clean up Makefile somewhat, and use make's implicit rules
 #
-# $Header: /var/cvsroot/gentoo-src/portage/src/sandbox/Attic/Makefile,v 1.5 2002/08/05 16:44:34 drobbins Exp $
+# $Id: /var/cvsroot/gentoo-src/portage/src/sandbox/Attic/Makefile,v 1.5 2002/08/05 16:44:34 drobbins Exp $
 
 .SUFFIXES:
 .SUFFIXES: .c .o .so

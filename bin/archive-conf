@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # Copyright 1999-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header: /var/cvsroot/gentoo-src/portage/bin/archive-conf,v 1.7 2004/10/04 13:57:36 vapier Exp $
+# $Id: /var/cvsroot/gentoo-src/portage/bin/archive-conf,v 1.7 2004/10/04 13:57:36 vapier Exp $
 
 #
 # archive-conf -- save off a config file in the dispatch-conf archive dir

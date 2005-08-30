@@ -1,5 +1,5 @@
 #! /usr/bin/env python
-# $Header: /var/cvsroot/gentoo-src/portage/src/bsd-flags/setup.py,v 1.1.2.1 2005/02/06 12:56:40 carpaski Exp $
+# $Id: /var/cvsroot/gentoo-src/portage/src/bsd-flags/setup.py,v 1.1.2.1 2005/02/06 12:56:40 carpaski Exp $
 
 from os import chdir, stat
 from distutils.core import setup, Extension

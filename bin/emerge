@@ -1,7 +1,7 @@
 #!/usr/bin/python -O
 # Copyright 1999-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header: /var/cvsroot/gentoo-src/portage/bin/emerge,v 1.345.2.38 2005/08/13 17:25:26 ferringb Exp $
+# $Id: /var/cvsroot/gentoo-src/portage/bin/emerge,v 1.345.2.38 2005/08/13 17:25:26 ferringb Exp $
 
 import os,sys
 os.environ["PORTAGE_CALLER"]="emerge"

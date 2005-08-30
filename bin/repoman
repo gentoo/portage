@@ -1,7 +1,7 @@
 #!/usr/bin/python -O
 # Copyright 1999-2005 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header: /var/cvsroot/gentoo-src/portage/bin/repoman,v 1.98.2.23 2005/06/18 01:00:43 vapier Exp $
+# $Id: /var/cvsroot/gentoo-src/portage/bin/repoman,v 1.98.2.23 2005/06/18 01:00:43 vapier Exp $
 
 # Next to do: dep syntax checking in mask files
 # Then, check to make sure deps are satisfiable (to avoid "can't find match for" problems)

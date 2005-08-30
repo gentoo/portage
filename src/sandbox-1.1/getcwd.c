@@ -26,7 +26,7 @@
  */
 
 /*
- * $Header: /var/cvsroot/gentoo-src/portage/src/sandbox-1.1/Attic/getcwd.c,v 1.1.2.1 2004/10/22 16:53:30 carpaski Exp $
+ * $Id: /var/cvsroot/gentoo-src/portage/src/sandbox-1.1/Attic/getcwd.c,v 1.1.2.1 2004/10/22 16:53:30 carpaski Exp $
  */
 
 /* Modified: 26 July 2003; Martin Schlemmer <azarah@gentoo.org>

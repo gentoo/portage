@@ -1,7 +1,7 @@
 # portage.py -- core Portage functionality
 # Copyright 1998-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header: /var/cvsroot/gentoo-src/portage/pym/portage.py,v 1.524.2.76 2005/05/29 12:40:08 jstubbs Exp $
+# $Id: /var/cvsroot/gentoo-src/portage/pym/portage.py,v 1.524.2.76 2005/05/29 12:40:08 jstubbs Exp $
 cvs_id_string="$Id: portage.py,v 1.524.2.76 2005/05/29 12:40:08 jstubbs Exp $"[5:-2]
 
 VERSION="$Revision: 1.524.2.76 $"[11:-2] + "-cvs"

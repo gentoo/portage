@@ -1,6 +1,6 @@
 # Copyright 2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header: /var/cvsroot/gentoo-src/portage/pym/Attic/portage_db_cpickle.py,v 1.9.2.2 2005/04/23 07:26:04 jstubbs Exp $
+# $Id: /var/cvsroot/gentoo-src/portage/pym/Attic/portage_db_cpickle.py,v 1.9.2.2 2005/04/23 07:26:04 jstubbs Exp $
 cvs_id_string="$Id: portage_db_cpickle.py,v 1.9.2.2 2005/04/23 07:26:04 jstubbs Exp $"[5:-2]
 
 import anydbm,cPickle,types

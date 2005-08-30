@@ -1,7 +1,7 @@
 #!/bin/bash
 # Copyright 1999-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header: /var/cvsroot/gentoo-src/portage/bin/env-update.sh,v 1.2 2004/10/04 13:56:50 vapier Exp $
+# $Id: /var/cvsroot/gentoo-src/portage/bin/env-update.sh,v 1.2 2004/10/04 13:56:50 vapier Exp $
 
 ############################################
 ############################################

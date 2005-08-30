@@ -1,4 +1,4 @@
-/* $Header: /var/cvsroot/gentoo-src/portage/src/python-missingos/missingos.c,v 1.5.2.1 2004/10/22 16:53:30 carpaski Exp $ */
+/* $Id: /var/cvsroot/gentoo-src/portage/src/python-missingos/missingos.c,v 1.5.2.1 2004/10/22 16:53:30 carpaski Exp $ */
 
 #include "Python.h"
 

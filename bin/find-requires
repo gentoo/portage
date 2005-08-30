@@ -1,7 +1,7 @@
 #!/bin/sh
 # Copyright 1999-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header: /var/cvsroot/gentoo-src/portage/bin/find-requires,v 1.5 2004/10/04 13:56:50 vapier Exp $
+# $Id: /var/cvsroot/gentoo-src/portage/bin/find-requires,v 1.5 2004/10/04 13:56:50 vapier Exp $
 
 # note this works for both a.out and ELF executables
 # it also auto-generates requirment lines for shell scripts

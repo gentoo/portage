@@ -1,6 +1,6 @@
 # Copyright 2001-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header: /var/cvsroot/gentoo-src/portage/pym/xpak.py,v 1.13.2.3 2005/02/26 11:22:38 carpaski Exp $
+# $Id: /var/cvsroot/gentoo-src/portage/pym/xpak.py,v 1.13.2.3 2005/02/26 11:22:38 carpaski Exp $
 cvs_id_string="$Id: xpak.py,v 1.13.2.3 2005/02/26 11:22:38 carpaski Exp $"[5:-2]
 
 # The format for a tbz2/xpak:
