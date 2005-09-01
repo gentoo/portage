@@ -70,7 +70,7 @@ def spawn(mycommand,env={},opt_name=None,fd_pipes=None,returnpid=False,uid=None,
 	if type(mycommand)==types.StringType:
 		mycommand=mycommand.split()
 	myc = mycommand[0]
-	if not os.access(myc, os.X_OK):
+	if not os.path.isabs(myc) or not os.access(myc, os.X_OK):
 		if not path_lookup:
 			return None
 		myc = find_binary(myc)

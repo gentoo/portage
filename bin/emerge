@@ -1114,7 +1114,7 @@ class depgraph:
 				if not self.mysd:
 					return (0,myfavorites)
 				elif not "--oneshot" in myopts:
-					myfavorites.append(mykey)
+					myfavorites.append(portage.dep_getkey(mykey))
 
 		missing=0
 		if "--usepkgonly" in myopts:

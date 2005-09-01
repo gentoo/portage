@@ -867,15 +867,11 @@ dyn_compile() {
 		echo "!!! that you know what you are doing... You have 5 seconds to abort..."
 		echo
 
-		echo -ne "\a"; sleep 0.25 &>/dev/null; echo -ne "\a"; sleep 0.25 &>/dev/null
-		echo -ne "\a"; sleep 0.25 &>/dev/null; echo -ne "\a"; sleep 0.25 &>/dev/null
-		echo -ne "\a"; sleep 0.25 &>/dev/null; echo -ne "\a"; sleep 0.25 &>/dev/null
-		echo -ne "\a"; sleep 0.25 &>/dev/null; echo -ne "\a"; sleep 0.25 &>/dev/null
+		for x in 1 2 3 4 5 6 7 8; do
+			echo -ne "\a"
+			LC_ALL=C sleep 0.25
+		done
 
-		echo -ne "\a"; sleep 0,25 &>/dev/null; echo -ne "\a"; sleep 0,25 &>/dev/null
-		echo -ne "\a"; sleep 0,25 &>/dev/null; echo -ne "\a"; sleep 0,25 &>/dev/null
-		echo -ne "\a"; sleep 0,25 &>/dev/null; echo -ne "\a"; sleep 0,25 &>/dev/null
-		echo -ne "\a"; sleep 0,25 &>/dev/null; echo -ne "\a"; sleep 0,25 &>/dev/null
 		sleep 3
 	fi
 
@@ -1129,10 +1125,12 @@ dyn_install() {
 	local count=0
 	find "${D}/" -user  portage | while read file; do
 		count=$(( $count + 1 ))
-		[[ ! -L "${file}" ]] && s=$(stat_perms "$file")
-		if [ -z "${s}" ]; then
-			ewarn "failed stat_perm'ing $file.  User intervention during install isn't wise..."
-			continue
+		if [ ! -L "${file}" ]; then
+			s=$(stat_perms "$file")
+			if [ -z "${s}" ]; then
+				ewarn "failed stat_perm'ing $file.  User intervention during install isn't wise..."
+				continue
+			fi
 		fi
 		chown root "$file"
 		[[ ! -L "${file}" ]] && chmod "$s" "$file"
@@ -1144,10 +1142,12 @@ dyn_install() {
 	count=0
 	find "${D}/" -group portage | while read file; do
 		count=$(( $count + 1 ))
-		[[ ! -L "${file}" ]] && s=$(stat_perms "$file")
-		if [ -z "${s}" ]; then
-			echo "failed stat_perm'ing '$file' . User intervention during install isn't wise..."
-			continue
+		if [ ! -L "${file}" ]; then
+			s=$(stat_perms "$file")
+			if [ -z "${s}" ]; then
+				echo "failed stat_perm'ing '$file' . User intervention during install isn't wise..."
+				continue
+			fi
 		fi
 		chgrp 0 "${file}"
 		[[ ! -L "${file}" ]] && chmod "$s" "$file"

@@ -2530,19 +2530,19 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 					os.makedirs(mysettings["CCACHE_DIR"])
 				mystat = os.stat(mysettings["CCACHE_DIR"])
 				if ("userpriv" in features):
-					if mystat[stat.ST_UID] != portage_gid or ((mystat[stat.ST_MODE]&02070)!=02070):
+					if mystat[stat.ST_UID] != portage_uid or ((mystat[stat.ST_MODE]&02070)!=02070):
 						writemsg("* Adjusting permissions on ccache in %s\n" % mysettings["CCACHE_DIR"])
 						spawn("chgrp -R "+str(portage_gid)+" "+mysettings["CCACHE_DIR"], mysettings, free=1)
 						spawn("chown "+str(portage_uid)+":"+str(portage_gid)+" "+mysettings["CCACHE_DIR"], mysettings, free=1)
 						spawn("chmod -R ug+rw "+mysettings["CCACHE_DIR"], mysettings, free=1)
-						spawn("find "+mysettings["CCACHE_DIR"]+" -type d -exec chmod g+s \{\} \;", mysettings, free=1)
+						spawn("find "+mysettings["CCACHE_DIR"]+" -type d -exec chmod g+xs \{\} \;", mysettings, free=1)
 				else:
 					if mystat[stat.ST_UID] != 0 or ((mystat[stat.ST_MODE]&02070)!=02070):
 						writemsg("* Adjusting permissions on ccache in %s\n" % mysettings["CCACHE_DIR"])
 						spawn("chgrp -R "+str(portage_gid)+" "+mysettings["CCACHE_DIR"], mysettings, free=1)
 						spawn("chown 0:"+str(portage_gid)+" "+mysettings["CCACHE_DIR"], mysettings, free=1)
 						spawn("chmod -R ug+rw "+mysettings["CCACHE_DIR"], mysettings, free=1)
-						spawn("find "+mysettings["CCACHE_DIR"]+" -type d -exec chmod g+s \{\} \;", mysettings, free=1)
+						spawn("find "+mysettings["CCACHE_DIR"]+" -type d -exec chmod g+xs \{\} \;", mysettings, free=1)
 		except OSError, e:
 			print "!!! File system problem. (ReadOnly? Out of space?)"
 			print "!!! Perhaps: rm -Rf",mysettings["BUILD_PREFIX"]
@@ -2872,7 +2872,10 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 					return None # failure
 		try:
 			if didcopy:
-				lchown(dest,sstat[stat.ST_UID],sstat[stat.ST_GID])
+				if stat.S_ISLNK(sstat[stat.ST_MODE]):
+					lchown(dest,sstat[stat.ST_UID],sstat[stat.ST_GID])
+				else
+					os.chown(dest,sstat[stat.ST_UID],sstat[stat.ST_GID])
 				os.chmod(dest, stat.S_IMODE(sstat[stat.ST_MODE])) # Sticky is reset on chown
 				os.unlink(src)
 		except SystemExit, e:
@@ -6745,7 +6748,7 @@ class dblink:
 						if bsd_chflags:
 							bsd_chflags.lchflags(mydest, dflags)
 						os.chmod(mydest,mystat[0])
-						lchown(mydest,mystat[4],mystat[5])
+						os.chown(mydest,mystat[4],mystat[5])
 						print ">>>",mydest+"/"
 				else:
 					#destination doesn't exist
@@ -6757,7 +6760,7 @@ class dblink:
 					os.chmod(mydest,mystat[0])
 					if bsd_chflags:
 						bsd_chflags.lchflags(mydest, bsd_chflags.lgetflags(mysrc))
-					lchown(mydest,mystat[4],mystat[5])
+					os.chown(mydest,mystat[4],mystat[5])
 					print ">>>",mydest+"/"
 				outfile.write("dir "+myrealdest+"\n")
 				# recurse and merge this directory

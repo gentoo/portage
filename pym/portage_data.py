@@ -16,8 +16,9 @@ if ostype=="Linux" or ostype.lower().endswith("gnu"):
 	os.environ["XARGS"]="xargs -r"
 elif ostype == "Darwin":
 	userland="Darwin"
-	os.environ["XARGS"]="xargs"	
-	lchown=os.chown
+	os.environ["XARGS"]="xargs"
+	def lchown(*pos_args, **key_args):
+		pass
 elif ostype in ["FreeBSD","OpenBSD"]:
 	userland="BSD"
 	os.environ["XARGS"]="xargs"

@@ -186,7 +186,10 @@ class dispatch:
                 elif c == 'm':
                     merged = SCRATCH_DIR+"/"+os.path.basename(conf['current'])
                     print
-                    os.system (self.options['merge'] % (merged, conf ['current'], newconf))
+                    ret = os.system (self.options['merge'] % (merged, conf ['current'], newconf))
+                    if ret:
+                        print "Failure running 'merge' command"
+                        continue
                     shutil.copyfile(merged, mrgconf)
                     os.remove(merged)
                     mystat = os.lstat(conf['new'])
