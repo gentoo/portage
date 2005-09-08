@@ -365,10 +365,10 @@ unpack() {
 		myfail="failure unpacking ${x}"
 		case "${x##*.}" in
 			tar)
-				tar ${tarvars} xf "${srcdir}${x}" || die "$myfail"
+				tar xf "${srcdir}${x}" ${tarvars} || die "$myfail"
 				;;
 			tgz)
-				tar ${tarvars} xzf "${srcdir}${x}" || die "$myfail"
+				tar xzf "${srcdir}${x}" ${tarvars} || die "$myfail"
 				;;
 			tbz2)
 				bzip2 -dc "${srcdir}${x}" | tar xf - ${tarvars}
@@ -379,7 +379,7 @@ unpack() {
 				;;
 			gz|Z|z)
 				if [ "${y}" == "tar" ]; then
-					tar ${tarvars} xzf "${srcdir}${x}" || die "$myfail"
+					tar zxf "${srcdir}${x}" ${tarvars} || die "$myfail"
 				else
 					gzip -dc "${srcdir}${x}" > ${x%.*} || die "$myfail"
 				fi
