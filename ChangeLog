@@ -7,6 +7,9 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  08 Sep 2005; Jason Stubbs <jstubbs@gentoo.org> bin/emerge: Only warn on
+  removal of system virtuals if there is only one satisfying package.
+
   21 Aug 2005; Jason Stubbs <jstubbs@gentoo.org> bin/ebuild.sh: Skip protecting
   ownership of symlinks. Patch by truedfx #94199
 

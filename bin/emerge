@@ -2044,8 +2044,14 @@ def unmerge(unmerge_action, unmerge_files):
 	for x in realsyslist:
 		mycp = portage.dep_getkey(x)
 		if mycp in portage.settings.virtuals:
-			syslist.extend(portage.settings.virtuals[mycp])
-		syslist.append(mycp)
+			providers = []
+			for provider in portage.settings.virtuals[mycp]:
+				if portage.db[portage.root]["vartree"].dbapi.match(provider):
+					providers.append(provider)
+			if len(providers) == 1:
+				syslist.extend(providers)
+		else:
+			syslist.append(mycp)
 
 	global myopts
 	mysettings = portage.config(clone=portage.settings)
