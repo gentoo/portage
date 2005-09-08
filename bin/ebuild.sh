@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2004 Gentoo Foundation
+# Copyright 1999-2005 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/bin/ebuild.sh,v 1.201.2.42 2005/08/20 17:24:30 jstubbs Exp $
 
@@ -350,42 +350,50 @@ unpack() {
 	[ -z "$*" ] && die "Nothing passed to the 'unpack' command"
 
 	for x in "$@"; do
-		myfail="failure unpacking ${x}"
-		echo ">>> Unpacking ${x} to $(pwd)"
-		y="${x%.*}"
-		y="${y##*.}"
+		echo ">>> Unpacking ${x} to ${PWD}"
+		y=${x%.*}
+		y=${y##*.}
 
+		myfail="${x} does not exist"
+		if [ "${x:0:2}" = "./" ] ; then
+			srcdir=""
+		else
+			srcdir="${DISTDIR}/"
+		fi
+		[ ! -s "${srcdir}${x}" ] && die "$myfail"
+
+		myfail="failure unpacking ${x}"
 		case "${x##*.}" in
 			tar)
-				tar xf "${DISTDIR}/${x}" ${tarvars} || die "$myfail"
+				tar ${tarvars} xf "${srcdir}${x}" || die "$myfail"
 				;;
 			tgz)
-				tar xzf "${DISTDIR}/${x}" ${tarvars} || die "$myfail"
+				tar ${tarvars} xzf "${srcdir}${x}" || die "$myfail"
 				;;
 			tbz2)
-				bzip2 -dc "${DISTDIR}/${x}" | tar xf - ${tarvars}
+				bzip2 -dc "${srcdir}${x}" | tar xf - ${tarvars}
 				assert "$myfail"
 				;;
-			ZIP|zip)
-				unzip -qo "${DISTDIR}/${x}" || die "$myfail"
+			ZIP|zip|jar)
+				unzip -qo "${srcdir}${x}" || die "$myfail"
 				;;
 			gz|Z|z)
 				if [ "${y}" == "tar" ]; then
-					tar xzf "${DISTDIR}/${x}" ${tarvars} || die "$myfail"
+					tar ${tarvars} xzf "${srcdir}${x}" || die "$myfail"
 				else
-					gzip -dc "${DISTDIR}/${x}" > ${x%.*} || die "$myfail"
+					gzip -dc "${srcdir}${x}" > ${x%.*} || die "$myfail"
 				fi
 				;;
 			bz2)
 				if [ "${y}" == "tar" ]; then
-					bzip2 -dc "${DISTDIR}/${x}" | tar xf - ${tarvars} 
+					bzip2 -dc "${srcdir}${x}" | tar xf - ${tarvars} 
 					assert "$myfail"
 				else
-					bzip2 -dc "${DISTDIR}/${x}" > ${x%.*} || die "$myfail"
+					bzip2 -dc "${srcdir}${x}" > ${x%.*} || die "$myfail"
 				fi
 				;;
 			RAR|rar)
-				unrar x -idq "${DISTDIR}/${x}" || die "$myfail"
+				unrar x -idq "${srcdir}/${x}" || die "$myfail"
 				;;
 			*)
 				echo "unpack ${x}: file format not recognized. Ignoring."
