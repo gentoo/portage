@@ -14,6 +14,7 @@ i18n=""
 for x in "$@" ; do
 	if [ "${x:0:6}" == "-i18n=" ] ; then
 		i18n="${x:6}/"
+		continue
 	fi
 	if [ "${x}" == ".keep" ] ; then
 		continue
