@@ -346,6 +346,18 @@ media\-video/mplayer \-~x86
 # always use unstable netcat
 net-analyzer/netcat
 .fi
+
+.I Additional Note:
+If you encounter the \fB-*\fR KEYWORD, this indicates that the package is known 
+to be broken on all systems which are not otherwise listed in KEYWORDS.  For 
+example, a binary only package which is built for x86 will look like:
+
+games-fps/quake3-demo-1.11.ebuild:KEYWORDS="-* x86"
+
+If you wish to accept this package anyways, then add \fB-*\fR to your 
+package.keywords like this:
+
+games-fps/quake3-demo -*
 .TP
 .BR package.use
 Per\-package USE flags.  Useful for tracking local USE flags or for 
@@ -584,5 +596,3 @@ Please report bugs via http://bugs.gentoo.org/
 .BR ebuild (1),
 .BR ebuild (5),
 .BR make.conf (5)
-.SH "CVS HEADER"
-$Id: /var/cvsroot/gentoo-src/portage/man/portage.5,v 1.17.2.12 2005/07/02 21:02:17 vapier Exp $
