@@ -12,11 +12,9 @@
 
 export PORTAGE_CALLER="etc-update"
 
-eval $(python -c 'import portage; print "export PORTAGE_TMPDIR="+portage.settings["PORTAGE_TMPDIR"]; print "export USERLAND="+portage.settings["USERLAND"]')
+eval $(python -c 'import portage; print "export PORTAGE_TMPDIR="+portage.settings["PORTAGE_TMPDIR"];')
 
-if [ "$USERLAND" == "BSD" ] ; then
-	function sed() { gsed "$@"; }
-elif [ "$USERLAND" == "Darwin" ] && [ -x /bin/gsed ]; then
+if type -p gsed >/dev/null ; then
 	function sed() { gsed "$@"; }
 fi
 
@@ -38,6 +36,12 @@ function scan() {
 	count=0
 	input=0
 	
+	# Sanity check to make sure diff exists and works
+	if ! diff -v &>/dev/null ; then
+		echo "ERROR: 'diff' does not seem to work, aborting"
+		exit 1
+	fi
+
 	for path in ${CONFIG_PROTECT}; do if [ -d ${path} ]; then
 		ofile=""
 		for file in `find ${path}/ -iname "._cfg????_*" |
