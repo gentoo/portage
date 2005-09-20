@@ -7164,6 +7164,11 @@ if 'selinux' in settings["USE"].split(" "):
 	except ImportError:
 		writemsg(red("!!! SELinux module not found.")+" Please verify that it was installed.\n")
 		selinux_enabled=0
+	if selinux_enabled == 0:
+		try:	
+			del sys.modules["selinux"]
+		except KeyError:
+			pass
 else:
 	selinux_enabled=0
 
