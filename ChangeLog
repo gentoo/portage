@@ -8,7 +8,8 @@
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
   20 Sep 2005; Brian Harring <ferringb@gentoo.org> pym/portage.py:
-  Cleanup after python, remove module from sys.modules that was a failed import.
+  Cleanup after python, remove module from sys.modules that was a failed import 
+  for selinux code- identified by Tudor Alexandru Dragos in bug #106363 .
 
   18 Sep 2005; Mike Frysinger <vapier@gentoo.org> bin/etc-update:
   Make sure diff works before checking config files #48184.
