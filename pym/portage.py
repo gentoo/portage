@@ -2874,7 +2874,7 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 			if didcopy:
 				if stat.S_ISLNK(sstat[stat.ST_MODE]):
 					lchown(dest,sstat[stat.ST_UID],sstat[stat.ST_GID])
-				else
+				else:
 					os.chown(dest,sstat[stat.ST_UID],sstat[stat.ST_GID])
 				os.chmod(dest, stat.S_IMODE(sstat[stat.ST_MODE])) # Sticky is reset on chown
 				os.unlink(src)
