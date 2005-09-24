@@ -5329,7 +5329,7 @@ class portdbapi(dbapi):
 			metadata=self.metadb[cat][pkg]
 			
 			try:
-				if metadata["EAPI"] == '0':
+				if metadata["EAPI"] in ('', '0'):
 					metadata["EAPI"] = 0
 			except KeyError:
 				metadata["EAPI"] = 0
