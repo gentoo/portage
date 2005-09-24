@@ -7,6 +7,15 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  24 Sep 2005; Brian Harring <ferringb@gentoo.org> pym/portage.py, 
+  bin/emerge:
+  Final emerge metadata/cache cleanups; emerge --metadata no longer
+  requires root (we run searches as non root, which can update the cache,
+  so emerge --metadata as root is daft), and silenced auxdb exceptions
+  when doing metadata transfers- preparation for when the default backend
+  is changed.  If that weren't in, user would see > 20,0000 lines of 
+  pointless cruft output.
+
   24 Sep 2005; Brian Harring <ferringb@gentoo.org> pym/portage.py,
   +pym/portage_db_metadata.py, +pym/portage_db_flat_hash.py, 
   pym/portage_db_flat.py, pym/portage_const.py:

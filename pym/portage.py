@@ -5315,7 +5315,8 @@ class portdbapi(dbapi):
 			raise
 		except Exception, e:
 			auxdb_is_valid = 0
-			writemsg("auxdb exception: [%(loc)s]: %(exception)s\n" % {"loc":mylocation+"::"+cat+"/"+pkg, "exception":str(e)})
+			if not metacachedir:
+				writemsg("auxdb exception: [%(loc)s]: %(exception)s\n" % {"loc":mylocation+"::"+cat+"/"+pkg, "exception":str(e)})
 			if self.auxdb[mylocation][cat].has_key(pkg):
 				self.auxdb[mylocation][cat].del_key(pkg)
 				self.auxdb[mylocation][cat].sync()
