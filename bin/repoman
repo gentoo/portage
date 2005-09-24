@@ -13,6 +13,13 @@ os.environ["PORTAGE_CALLER"]="repoman"
 sys.path = ["/usr/lib/portage/pym"]+sys.path
 version="1.2"	
 
+allowed_filename_chars="a-zA-Z0-9._-+:"
+allowed_filename_chars_set = {}
+map(allowed_filename_chars_set.setdefault, map(chr, range(ord('a'), ord('z')+1)))
+map(allowed_filename_chars_set.setdefault, map(chr, range(ord('A'), ord('Z')+1)))
+map(allowed_filename_chars_set.setdefault, map(chr, range(ord('0'), ord('9')+1)))
+map(allowed_filename_chars_set.setdefault, map(chr, map(ord, [".", "-", "_", "+", ":"])))
+
 import string,signal,re,pickle,tempfile
 
 import portage
@@ -21,6 +28,8 @@ import portage_const
 import portage_dep
 import cvstree
 import time
+import codecs
+
 from output import *
 #bold, darkgreen, darkred, green, red, turquoise, yellow
 
@@ -85,6 +94,8 @@ qahelp={
 	"filedir.missing":"Package lacks a files directory",
 	"file.executable":"Ebuilds, digests, metadata.xml, Manifest, and ChangeLog do note need the executable bit",
 	"file.size":"Files in the files directory must be under 20k",
+	"file.name":"File/dir name must be composed of only the following chars: %s " % allowed_filename_chars,
+	"file.UTF8":"File is not UTF8 compliant",
 	"KEYWORDS.missing":"Ebuilds that have a missing KEYWORDS variable",
 	"LICENSE.missing":"Ebuilds that have a missing LICENSE variable",
 	"DESCRIPTION.missing":"Ebuilds that have a missing DESCRIPTION variable",
@@ -663,6 +674,29 @@ for x in scanlist:
 				stats["file.executable"] += 1
 				fails["file.executable"].append(checkdir+"/"+y)
 	digestlist=[]
+
+	for y in checkdirlist:
+		for c in y.strip(os.path.sep):
+			if c not in allowed_filename_chars_set:
+				stats["file.name"] += 1
+				fails["file.name"].append("%s/%s: char '%s'" % (checkdir, y, c))
+				break
+
+		if not (y in ("ChangeLog", "metadata.xml") or y.endswith(".ebuild")):
+			continue
+		try:
+			line = 1
+			for l in codecs.open(y, "r", "utf8"):
+				line +=1
+		except UnicodeDecodeError, ue:
+			stats["file.UTF8"] += 1
+			s = ue.object[:ue.start]
+			l2 = s.count("\n")
+			line += l2
+			if l2 != 0:
+				s = s[s.rfind("\n") + 1:]
+			fails["file.UTF8"].append("%s/%s: line %i, just after: '%s'" % (checkdir, y, line, s))
+
 	if isCvs:
 		try:
 			mystat=os.stat(checkdir+"/files")[0]
@@ -798,6 +832,13 @@ for x in scanlist:
 			elif mystat.st_size > 20480:
 				stats["file.size"] += 1
 				fails["file.size"].append("("+ str(mystat.st_size/1024) + "K) "+x+"/files/"+y)
+
+			for c in y.strip(os.path.sep):
+				if c not in allowed_filename_chars_set:
+					stats["file.name"] += 1
+					fails["file.name"].append("%s/%s: char '%s'" % (checkdir, y, c))
+					break
+
 
 	if "ChangeLog" not in checkdirlist:
 		stats["changelog.missing"]+=1

@@ -7,6 +7,9 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  23 Sep 2005; Brian Harring <ferringb@gentoo.org> bin/repoman:
+  bug 106544, glep31 enforcement checks.
+
   20 Sep 2005; Brian Harring <ferringb@gentoo.org> pym/portage.py:
   Cleanup after python, remove module from sys.modules that was a failed import 
   for selinux code- identified by Tudor Alexandru Dragos in bug #106363 .
