@@ -24,14 +24,14 @@ class database(portage_db_flat.database):
 
 		mydict = {}
 		for x in self.dbkeys:
-			mydict[x] = data.get(x, "")
+			mydict[x] = str(data.get(x, ""))
 		mydict["_mtime_"] = long(data["_mtime_"])
 		return mydict
 		
 	def set_values(self, key, values):
 		l = []
 		for x in values.keys():
-			if values[x] and x != "_mtime_":
+			if values[x] not in (None, '') and x != "_mtime_":
 				l.append("%s=%s\n" % (x, values[x]))
 		l.append(values["_mtime_"])
 		portage_db_flat.database.set_values(self, key, l, raw=True)
