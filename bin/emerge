@@ -2205,7 +2205,7 @@ def unmerge(unmerge_action, unmerge_files):
 			#avoid cluttering the preview printout with stuff that isn't getting unmerged
 			continue
 		if not (pkgmap[x]["protected"] or pkgmap[x]["omitted"]) and (x in syslist):
-			print red("\a\n\n!!! '%s' is part of your system profile. '%s'" % (mykey))
+			print red("\a\n\n!!! '%s' is part of your system profile." % mykey)
 			print yellow("\a!!! Unmerging it may be damaging to your system.\n")
 			if "--pretend" not in myopts and "--ask" not in myopts:
 				global EMERGE_WARNING_DELAY
@@ -2685,8 +2685,19 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 			pass
 		# we don't make overlay trees cache here, plus we don't trust portage.settings.categories
 		porttree_root = portage.portdb.porttree_root
-		pdb = portage.portdbapi(porttree_root, portage.config(config_profile_path=portage.settings.profile_path[:], \
-			config_incrementals=portage.settings.incrementals[:]))
+		conf = portage.config(config_profile_path=portage.settings.profile_path[:], \
+			config_incrementals=portage.settings.incrementals[:])
+
+		conf["PORTDIR_OVERLAY"] = ''
+		conf.categories = portage.grabfile(os.path.join(porttree_root, "profiles", "categories"))
+		try:
+			i = conf.categories.index("virtual")
+			if i != -1:
+				conf.categories.remove(i)
+		except (ValueError, IndexError): 
+			pass
+
+		pdb = portage.portdbapi(porttree_root, conf)
 		cp_list = pdb.cp_all()
 		if len(cp_list) == 0:
 			print "no metadata to transfer, exiting"
@@ -2699,19 +2710,23 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 		current=1
 
 		def cleanse_cache(pdb, cat, saves, porttree_root=porttree_root):
-			if len(saves):
-				d={}
-				for v in saves:
-					d[portage.catsplit(v)[1]] = True
-				for pv in pdb.auxdb[porttree_root][cat].keys():
-					if pv not in d:
-						pdb.auxdb[porttree_root][cat].del_key(pv)
-			else:
-				try:
-					pdb.auxdb[porttree_root][cat].clear()
-					del pdb.auxdb[porttree_root][cat]
-				except KeyError:
-					pass
+			try:
+				if len(saves):
+					d={}
+					for v in saves:
+						d[portage.catsplit(v)[1]] = True
+					for pv in pdb.auxdb[porttree_root][cat].keys():
+						if pv not in d:
+							pdb.auxdb[porttree_root][cat].del_key(pv)
+				else:
+					try:
+						pdb.auxdb[porttree_root][cat].clear()
+						del pdb.auxdb[porttree_root][cat]
+					except KeyError:
+						pass
+			except KeyError:
+				# stop breaking things, cleansing is minor.
+				pass
 
 		savelist = []
 		catlist = []
