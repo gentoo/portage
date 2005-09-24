@@ -1898,6 +1898,7 @@ for myarg in $*; do
 		echo `echo "$CDEPEND"`     >> $dbkey
 		echo `echo "$PDEPEND"`     >> $dbkey
 		echo `echo "$PROVIDE"`     >> $dbkey
+		echo `echo "${EAPI:-0}"`   >> $dbkey
 		echo `echo "$UNUSED_01"`   >> $dbkey
 		echo `echo "$UNUSED_02"`   >> $dbkey
 		echo `echo "$UNUSED_03"`   >> $dbkey
@@ -1905,7 +1906,6 @@ for myarg in $*; do
 		echo `echo "$UNUSED_05"`   >> $dbkey
 		echo `echo "$UNUSED_06"`   >> $dbkey
 		echo `echo "$UNUSED_07"`   >> $dbkey
-		echo `echo "$UNUSED_08"`   >> $dbkey
 		set +f
 		#make sure it is writable by our group:
 		exit 0

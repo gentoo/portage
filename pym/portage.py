@@ -81,7 +81,7 @@ try:
 	  MOVE_BINARY, PRELINK_BINARY, WORLD_FILE, MAKE_CONF_FILE, MAKE_DEFAULTS_FILE, \
 	  DEPRECATED_PROFILE_FILE, USER_VIRTUALS_FILE, EBUILD_SH_ENV_FILE, \
 	  INVALID_ENV_FILE, CUSTOM_MIRRORS_FILE, SANDBOX_PIDS_FILE, CONFIG_MEMORY_FILE,\
-	  INCREMENTALS, STICKIES
+	  INCREMENTALS, STICKIES, EAPI
 
 	from portage_data import ostype, lchown, userland, secpass, uid, wheelgid, \
 	                         portage_uid, portage_gid
@@ -915,7 +915,7 @@ class config:
 			if self.modules["user"] == None:
 				self.modules["user"] = {}
 			self.modules["default"] = {
-				"portdbapi.metadbmodule": "portage_db_flat.database",
+				"portdbapi.metadbmodule": "portage_db_metadata.database",
 				"portdbapi.auxdbmodule":  "portage_db_flat.database",
 				"eclass_cache.dbmodule":  "portage_db_cpickle.database",
 			}
@@ -2402,6 +2402,15 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 			raise
 		except:
 			pass
+		try:
+			eapi = int(db[root][tree].dbapi.aux_get(mycpv, ["EAPI"])[0])
+			if portage_const.EAPI != eapi:
+				# can't do anything with this.
+				raise Exception("Unable to do any operations on '%s', due to the fact it's EAPI is higher then this portage versions.  Please upgrade to a portage version that supports EAPI %i" % (mycpv, eapi))
+		except SystemExit, e:
+			raise
+		except Exception, e:
+			raise Exception("Unable to pull EAPI from cpv %s, tree %s; can't confirm that it's supported by this portage, thus unable to merge it: Exception was '%s'" % (mycpv, tree, e))
 
 	if mysplit[2] == "r0":
 		mysettings["PVR"]=mysplit[1]
@@ -3914,7 +3923,14 @@ def getmaskingstatus(mycpv):
 					rValue.append("package.mask")
 
 	# keywords checking
-	mygroups = portdb.aux_get(mycpv, ["KEYWORDS"])[0].split()
+	mygroups, eapi = portdb.aux_get(mycpv, ["KEYWORDS", "EAPI"])
+	try:
+		eapi = abs(eapi)
+	except TypeError:
+		eapi = 1
+	if eapi != portage_const.EAPI:
+		return ["required EAPI %s, supported EAPI %s" % (eapi, portage_const.EAPI)]
+	mygroups = mygroups.split()
 	pgroups=groups[:]
 	myarch = settings["ARCH"]
 	pkgdict = settings.pkeywordsdict
@@ -4534,7 +4550,14 @@ class bindbapi(fakedbapi):
 				else:
 					myval = string.join(myval.split(),' ')
 				mylist.append(myval)
-
+		if "EAPI" in wants:
+			idx = wants.index("EAPI")
+			if mylist[idx] in ("", "0"):
+				mylist[idx] = 0
+			elif mylist[idx] == 0:
+				pass
+			else:
+				mylist[idx] = 1
 		return mylist
 
 
@@ -4814,6 +4837,14 @@ class vardbapi(dbapi):
 			else:
 				myd = ""
 			results.append(myd)
+		if "EAPI" in wants:
+			idx = wants.index("EAPI")
+			if mylist[idx] in ("", "0"):
+				mylist[idx] = 0
+			elif mylist[idx] == 0:
+				pass
+			else:
+				mylist[idx] = 1
 		return results
 
 
@@ -5080,9 +5111,9 @@ auxdbkeys=[
   'DEPEND',    'RDEPEND',   'SLOT',      'SRC_URI',
 	'RESTRICT',  'HOMEPAGE',  'LICENSE',   'DESCRIPTION',
 	'KEYWORDS',  'INHERITED', 'IUSE',      'CDEPEND',
-	'PDEPEND',   'PROVIDE',
+	'PDEPEND',   'PROVIDE', 'EAPI',
 	'UNUSED_01', 'UNUSED_02', 'UNUSED_03', 'UNUSED_04',
-	'UNUSED_05', 'UNUSED_06', 'UNUSED_07', 'UNUSED_08',
+	'UNUSED_05', 'UNUSED_06', 'UNUSED_07',
 	]
 auxdbkeylen=len(auxdbkeys)
 
@@ -5296,11 +5327,26 @@ class portdbapi(dbapi):
 		# we use cache files, which is usually on /usr/portage/metadata/cache/.
 		if doregen and mylocation==self.mysettings["PORTDIR"] and metacachedir and self.metadb[cat].has_key(pkg):
 			metadata=self.metadb[cat][pkg]
-			self.eclassdb.update_package(mylocation,cat,pkg,metadata["INHERITED"].split())
+			
+			try:
+				if metadata["EAPI"] == '0':
+					metadata["EAPI"] = 0
+			except KeyError:
+				metadata["EAPI"] = 0
+
+			if metadata["EAPI"] != portage_const.EAPI:
+				# intentionally wipe keys.
+				map(lambda x: metadata.setdefault("x", ''), auxdbkeys)
+				metadata["EAPI"] == -1
+
+			else:
+				# eclass updates only if we haven't nuked the entry.
+				self.eclassdb.update_package(mylocation,cat,pkg,metadata["INHERITED"].split())
+
 			self.auxdb[mylocation][cat][pkg] = metadata
 			self.auxdb[mylocation][cat].sync()
-		elif doregen:
 
+		elif doregen:
 			writemsg("doregen: %s %s\n" % (doregen,mycpv), 2)
 			writemsg("Generating cache entry(0) for: "+str(myebuild)+"\n",1)
 
@@ -5365,6 +5411,17 @@ class portdbapi(dbapi):
 				if mylines[x][-1] == '\n':
 					mylines[x] = mylines[x][:-1]
 				mydata[auxdbkeys[x]] = mylines[x]
+
+			try:
+				eapi = int(mydata["EAPI"])
+			except ValueError:
+				eapi = 1
+				if eapi > portage_const.EAPI:
+					# if newer version, wipe everything and negate eapi
+					mydata = {}
+					map(lambda x:mydata.setdefault(x, ""), auxdbkeys)
+					mydata["EAPI"] = -eapi
+
 			mydata["_mtime_"] = emtime
 
 			self.auxdb[mylocation][cat][pkg] = mydata
@@ -5376,10 +5433,17 @@ class portdbapi(dbapi):
 		mydata   = self.auxdb[mylocation][cat][pkg]
 		returnme = []
 		for x in mylist:
-			if mydata.has_key(x):
-				returnme.append(mydata[x])
+			returnme.append(mydata.get(x,""))
+
+		if "EAPI" in mylist:
+			idx = mylist.index("EAPI")
+			if returnme[idx] in ("", "0"):
+				returnme[idx] = 0
+			elif returnme[idx] == 0:
+				pass
 			else:
-				returnme.append("")
+				try:				returnme[idx] = int(returnme[idx])
+				except ValueError:	returnme[idx] = 1
 
 		return returnme
 
@@ -5628,14 +5692,14 @@ class portdbapi(dbapi):
 			#we need to update this next line when we have fully integrated the new db api
 			auxerr=0
 			try:
-				myaux=db["/"]["porttree"].dbapi.aux_get(mycpv, ["KEYWORDS"])
+				keys, eapi = db["/"]["porttree"].dbapi.aux_get(mycpv, ["KEYWORDS", "EAPI"])
 			except (KeyError,IOError,TypeError):
 				continue
-			if not myaux[0]:
+			if not keys:
 				# KEYWORDS=""
 				#print "!!! No KEYWORDS for "+str(mycpv)+" -- Untested Status"
 				continue
-			mygroups=myaux[0].split()
+			mygroups=keys.split()
 			pgroups=groups[:]
 			match=0
 			cp = dep_getkey(mycpv)
@@ -5663,7 +5727,8 @@ class portdbapi(dbapi):
 			if not match and ((hastesting and "~*" in pgroups) or (hasstable and "*" in pgroups)):
 				match=1
 			if match:
-				newlist.append(mycpv)
+				if eapi == portage_const.EAPI:
+					newlist.append(mycpv)
 		return newlist
 
 class binarytree(packagetree):

@@ -9,6 +9,10 @@ import stat
 
 import portage_db_template
 
+# since this format is massively deprecated, 
+# we're hardcoding the previously weird line count
+magic_line_count = 22
+
 class database(portage_db_template.database):
 	def module_init(self):
 		self.lastkey  = None # Cache
@@ -42,39 +46,39 @@ class database(portage_db_template.database):
 				mykeys += [x]
 		return mykeys
 
-	def get_values(self,key):
+	def get_values(self,key, data=None):
+		""" do not use data unless you know what it does."""
+
 		if not key:
 			raise KeyError, "key is not set to a valid value"
 
-		try:
-			# give buffering a hint of the pretty much maximal cache size we deal with
-			myf = open(self.fullpath+key, "r", 8192)
-		except OSError, oe:
-			# either the file didn't exist, or it was removed under our feet.
-			return None 
-		
+		mydict = {}
+		if data == None:
+			try:
+				# give buffering a hint of the pretty much maximal cache size we deal with
+				myf = open(self.fullpath+key, "r", 8192)
+			except OSError:
+				# either the file didn't exist, or it was removed under our feet.
+				raise KeyError("failed reading key")
 
-		# nuke the newlines right off the batt.
-		data = myf.read().splitlines()
-		mdict = {}
-		
+			# nuke the newlines right off the batt.
+			data = myf.read().splitlines()
+			mydict["_mtime_"] = os.fstat(myf.fileno()).st_mtime
+			myf.close()
+		else:
+			mydict["_mtime_"] = data.pop(-1)
+
 		# rely on exceptions to note differing line counts.
 		try:
-			for x in range(0, len(self.dbkeys)):
-				mdict[self.dbkeys[x]] = data[x]
-
-			# do this now, rather then earlier- possible that earlier it might have been wasted
-			# if key count mismatched
-			mdict["_mtime_"] = os.fstat(myf.fileno()).st_mtime
+			for x in range(magic_line_count):
+				mydict[self.dbkeys[x]] = data[x]
 
 		except IndexError:
-			myf.close()
 			raise ValueError, "Key count mistmatch"
 
-		myf.close()
-		return mdict
+		return mydict
 	
-	def set_values(self,key,val):
+	def set_values(self,key, val, raw=False):
 		if not key:
 			raise KeyError, "No key provided. key:%s val:%s" % (key,val)
 		if not val:
@@ -86,12 +90,19 @@ class database(portage_db_template.database):
 
 		update_fp = self.fullpath + ".update." + str(os.getpid()) + "." + key
 		myf = open(update_fp,"w")
-		myf.writelines( [ val[x] +"\n" for x in self.dbkeys] )
+		if not raw:
+			myf.writelines( [ str(val[x]) +"\n" for x in self.dbkeys] )
+			if len(self.dbkeys) != magic_line_count:
+				myf.writelines(["\n"] * len(self.dbkeys) - magic_line_count)
+			mtime = val["_mtime_"]
+		else:
+			mtime = val.pop(-1)
+			myf.writelines(val)
 		myf.close()
 		
 		os.chown(update_fp, self.uid, self.gid)
 		os.chmod(update_fp, 0664)
-		os.utime(update_fp, (-1,long(val["_mtime_"])))
+		os.utime(update_fp, (-1,long(mtime)))
 		os.rename(update_fp, self.fullpath+key)
 
 	def del_key(self,key):

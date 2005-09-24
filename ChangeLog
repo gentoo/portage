@@ -7,6 +7,21 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  24 Sep 2005; Brian Harring <ferringb@gentoo.org> pym/portage.py,
+  +pym/portage_db_metadata.py, +pym/portage_db_flat_hash.py, 
+  pym/portage_db_flat.py, pym/portage_const.py:
+  EAPI awareness, and support for flat_hash metadata/cache.
+  Later autodetects if the rsync cache is flat_hash, or flat_list, 
+  and interprets accordingly.
+  
+  Flat_hash is intended to make it such that rsync cache breakages 
+  for older portage versions no longer occur; the container format 
+  can hold pretty much anything across EAPI versions.
+  Additionally... EAPI is intended such that additions to the ebuild 
+  env/helpers don't puke if you're running to old of a portage version; 
+  it allows us to 'version' the ebuild env/funcs, and do masking dependant
+  on that versioning.
+
   23 Sep 2005; Brian Harring <ferringb@gentoo.org> bin/emerge:
   cleanse_cache cleanups, should kill off all remaining issues 
   in bug #100444 .
