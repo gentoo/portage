@@ -408,19 +408,19 @@ Causes the current emerge process to be aborted. The final display will
 include \fIreason\fR.
 .TP
 \fBuse\fR \fI<USE item>\fR
-If \fIUSE item\fR is in the \fBUSE\fR variable, \fIUSE item\fR will be
-echoed and the function will return 0.  If \fIUSE item\fR is not in the
-\fBUSE\fR variable, the function will return 1. \fBuseq\fR is a non-echoing
-version of \fBuse\fR.
+If \fIUSE item\fR is in the \fBUSE\fR variable, the function will silently 
+return 0 (aka shell true).  If \fIUSE item\fR is not in the \fBUSE\fR 
+variable, the function will silently return 1 (aka shell false).  \fBusev\fR 
+is a verbose version of \fBuse\fR.
 .RS
 .TP
 .I Example:
 .nf
-if useq gnome ; then
+if use gnome ; then
 	guiconf="--enable-gui=gnome --with-x"
-elif useq gtk ; then
+elif use gtk ; then
 	guiconf="--enable-gui=gtk --with-x"
-elif useq X ; then
+elif use X ; then
 	guiconf="--enable-gui=athena --with-x"
 else
 	# No gui version will be built
