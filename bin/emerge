@@ -596,7 +596,7 @@ def help():
 	emergehelp.help(myaction,myopts,havecolor)
 
 # check if root user is the current user for the actions where emerge needs this
-if ("--pretend" in myopts) or ("--fetchonly" in myopts or "--fetch-all-uri" in myopts) or (myaction=="metadata"):
+if ("--pretend" in myopts) or ("--fetchonly" in myopts or "--fetch-all-uri" in myopts) or (myaction=="search"):
 	if not portage.secpass:
 		if portage.wheelgid==portage.portage_gid:
 			print "emerge: wheel group membership required for \"--pretend\" and search."
