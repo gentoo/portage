@@ -7,6 +7,9 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  27 Sep 2005; Brian Harring <ferringb@gentoo.org> bin/ebuild.sh:
+  Tweak to make EAPI work for existing vdb entries.
+
   24 Sep 2005; Brian Harring <ferringb@gentoo.org> pym/portage.py, 
   bin/emerge:
   Final emerge metadata/cache cleanups; emerge --metadata no longer

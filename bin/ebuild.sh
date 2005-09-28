@@ -939,6 +939,7 @@ dyn_compile() {
 	echo "$RESTRICT"       > RESTRICT
 	echo "$SLOT"           > SLOT
 	echo "$USE"            > USE
+	echo "$EAPI"		   > EAPI
 
 	set                                         >  environment
 	export -p | sed 's:declare -rx:declare -x:' >> environment
