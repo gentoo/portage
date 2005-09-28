@@ -7,6 +7,9 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  28 Sep 2005; Brian Harring <ferringb@gentoo.org> bin/repoman:
+  Fixup of the file.name check so it doesn't catch CVS dirs.
+
   27 Sep 2005; Brian Harring <ferringb@gentoo.org> bin/ebuild.sh:
   No more portageq in the global scope.
   Instant die.

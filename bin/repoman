@@ -826,6 +826,8 @@ for x in scanlist:
 				else:
 					raise oe
 			if S_ISDIR(mystat.st_mode):
+				if y == "CVS":
+					continue
 				for z in os.listdir(checkdir+"/files/"+y):
 					filesdirlist.append(y+"/"+z)
 			# current policy is no files over 20k, this is the check.
