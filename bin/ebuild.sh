@@ -182,12 +182,7 @@ hasq() {
 
 has_version() {
 	if [ "${EBUILD_PHASE}" == "depend" ]; then
-		echo -n "QA Notice: has_version() in global scope: " >&2
-		if [ ${ECLASS_DEPTH} -gt 0 ]; then
-			echo "eclass ${ECLASS}" >&2
-		else
-			echo "${CATEGORY}/${PF}" >&2
-		fi
+		die "portageq calls (has_version calls portageq) are not allowed in the global scope"
 	fi
 	# return shell-true/shell-false if exists.
 	# Takes single depend-type atoms.
@@ -200,12 +195,7 @@ has_version() {
 
 portageq() {
 	if [ "${EBUILD_PHASE}" == "depend" ]; then
-		echo -n "QA Notice: portageq in global scope: " >&2
-		if [ ${ECLASS_DEPTH} -gt 0 ]; then
-			echo "eclass ${ECLASS}" >&2
-		else
-			echo "${CATEGORY}/${PF}" >&2
-		fi
+		die "portageq calls are not allowed in the global scope"
 	fi
 	/usr/lib/portage/bin/portageq "$@"
 }
@@ -218,12 +208,7 @@ portageq() {
 
 best_version() {
 	if [ "${EBUILD_PHASE}" == "depend" ]; then
-		echo -n "QA Notice: best_version() in global scope: " >&2
-		if [ ${ECLASS_DEPTH} -gt 0 ]; then
-			echo "eclass ${ECLASS}" >&2
-		else
-			echo "${CATEGORY}/${PF}" >&2
-		fi
+		die "portageq calls (best_version calls portageq) are not allowed in the global scope"
 	fi
 	# returns the best/most-current match.
 	# Takes single depend-type atoms.
