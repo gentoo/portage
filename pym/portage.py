@@ -4552,7 +4552,7 @@ class bindbapi(fakedbapi):
 				mylist.append(myval)
 		if "EAPI" in wants:
 			idx = wants.index("EAPI")
-			if mylist[idx] in ("", "0"):
+			if mylist[idx] in ("", "0", None):
 				mylist[idx] = 0
 			elif mylist[idx] == 0:
 				pass
@@ -4839,12 +4839,12 @@ class vardbapi(dbapi):
 			results.append(myd)
 		if "EAPI" in wants:
 			idx = wants.index("EAPI")
-			if mylist[idx] in ("", "0"):
-				mylist[idx] = 0
-			elif mylist[idx] == 0:
+			if results[idx] in ("", "0", None):
+				results[idx] = 0
+			elif results[idx] == 0:
 				pass
 			else:
-				mylist[idx] = 1
+				results[idx] = 1
 		return results
 
 
