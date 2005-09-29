@@ -2082,6 +2082,7 @@ def digestgen(myarchives,mysettings,overwrite=1,manifestonly=0):
 		if os.path.exists(digestfn):
 			myolddigest = digestParseFile(digestfn)
 
+		myarchives.sort()
 		mydigests=digestCreate(myarchives, basedir, oldDigest=myolddigest)
 		if mydigests==None: # There was a problem, exit with an errorcode.
 			return 0
@@ -2108,6 +2109,7 @@ def digestgen(myarchives,mysettings,overwrite=1,manifestonly=0):
 	print green(">>> Generating manifest file...")
 	mypfiles=listdir(pbasedir,recursive=1,filesonly=1,ignorecvs=1,EmptyOnError=1)
 	mypfiles=cvstree.apply_cvsignore_filter(mypfiles)
+	mypfiles.sort()
 	for x in ["Manifest"]:
 		if x in mypfiles:
 			mypfiles.remove(x)
