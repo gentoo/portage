@@ -3128,7 +3128,7 @@ else:
 				if x[3]!="nomerge":
 					mergecount+=1
 				#check for blocking dependencies
-				if x[0]=="blocks":
+				if x[0]=="blocks" and "--fetchonly" not in myopts and "--fetch-all-uri" not in myopts:
 					print "\n!!! Error: The above package list contains packages which cannot be installed"
 					print   "!!!        on the same system."
 					print
@@ -3179,7 +3179,14 @@ else:
 						y=portage.portdb.findname(pkgline[2])
 						tmpsettings = portage.config(clone=portage.settings)
 						retval=portage.doebuild(y,"digest",portage.root,tmpsettings,edebug,("--pretend" in myopts))
-			mydepgraph.merge(mydepgraph.altlist())
+			if "--fetchonly" in myopts or "--fetch-all-uri" in myopts:
+				pkglist = []
+				for pkg in mydepgraph.altlist():
+					if pkg[0] != "blocks":
+						pkglist.append(pkg)
+			else:
+				pkglist = mydepgraph.altlist()
+			mydepgraph.merge(pkglist)
 
 		if portage.mtimedb.has_key("resume"):
 			del portage.mtimedb["resume"]
