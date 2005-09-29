@@ -985,7 +985,6 @@ class depgraph:
 				edepend["DEPEND"] =""
 				edepend["RDEPEND"]=string.join(string.split(edepend["RDEPEND"])," ")
 				edepend["PDEPEND"]=string.join(string.split(edepend["PDEPEND"])," ")
-				edepend["CDEPEND"]=string.join(string.split(edepend["CDEPEND"])," ")
 				edepend["SLOT"]   =string.strip(edepend["SLOT"])
 				#portage.db[portage.root]["bintree"].gettbz2(mykey)
 			else: # It's local.
@@ -993,14 +992,16 @@ class depgraph:
 				edepend["DEPEND"] =""
 				edepend["RDEPEND"]=string.join(mytbz2.getelements("RDEPEND")," ")
 				edepend["PDEPEND"]=string.join(mytbz2.getelements("PDEPEND")," ")
-				edepend["CDEPEND"]=string.join(mytbz2.getelements("CDEPEND")," ")
 				edepend["SLOT"]   =mytbz2.getfile("SLOT",mypkgparts[2])
 		elif mytype=="ebuild":
 			try:
-				mymeta = ["DEPEND","RDEPEND","PDEPEND","CDEPEND"]
+				mymeta = ["DEPEND","RDEPEND","PDEPEND"]
 				myfoo = portage.portdb.aux_get(mykey, mymeta)
 				for index in range(0,len(mymeta)):
 					edepend[mymeta[index]] = myfoo[index]
+				if "--buildpkgonly" in myopts:
+					edepend["RDEPEND"] = ""
+					edepend["PDEPEND"] = ""
 			except (KeyError,IOError):
 				print "emerge: create(): aux_get() error on",mykey+"; aborting..."
 				sys.exit(1)
