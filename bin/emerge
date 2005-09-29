@@ -2951,33 +2951,37 @@ elif "depclean"==myaction:
 	# dependency of another package. World file is explicit.
 
 	print
-	print red("*** WARNING ***")+" : DEPCLEAN CAN  SERIOUSLY  IMPAIR YOUR SYSTEM. USE CAUTION."
-	print red("*** WARNING ***")+" : (Cancel: CONTROL-C) -- ALWAYS VERIFY ALL PACKAGES IN THE"
-	print red("*** WARNING ***")+" : CANDIDATE LIST FOR  SANITY  BEFORE  ALLOWING DEPCLEAN TO"
-	print red("*** WARNING ***")+" : UNMERGE ANY PACKAGES."
-	print red("*** WARNING ***")+" :"
-	print red("*** WARNING ***")+" : USE FLAGS MAY HAVE AN EXTREME EFFECT ON THE OUTPUT."
-	print red("*** WARNING ***")+" : SOME LIBRARIES MAY BE USED BY PACKAGES BUT ARE NOT"
-	print red("*** WARNING ***")+" : CONSIDERED TO BE A DEPEND DUE TO USE FLAG SETTINGS."
-	print red("*** WARNING ***")+" : emerge --update --deep --newuse world TO VERIFY"
-	print red("*** WARNING ***")+" : SANITY IN THIS REGARD."
-	print red("*** WARNING ***")+" :"
-	print red("*** WARNING ***")+" : Packages  in the list  that are  desired  may be added"
-	print red("*** WARNING ***")+" : directly to the world file to cause them to be ignored"
-	print red("*** WARNING ***")+" : by depclean and maintained in the future. BREAKAGES DUE"
-	print red("*** WARNING ***")+" : TO UNMERGING AN  ==IN-USE LIBRARY==  MAY BE REPAIRED BY"
-	print red("*** WARNING ***")+" : MERGING  *** THE PACKAGE THAT COMPLAINS ***  ABOUT THE"
-	print red("*** WARNING ***")+" : MISSING LIBRARY."
-	print
-	if ("--pretend" not in myopts) and ("--ask" not in myopts):
-		countdown(EMERGE_WARNING_DELAY, ">>> Depclean")
-		emergelog(" >>> depclean")
+	print red("*** WARNING ***")+"  --depclean is known to be broken. It is highly recommended"
+	print red("*** WARNING ***")+"  that "+green("`emerge --update --newuse --deep world`")+" be ran before"
+	print red("*** WARNING ***")+"  commencing. However, using --depclean may still break link"
+	print red("*** WARNING ***")+"  level consistency within your system. "+green("`revdep-rebuild`")
+	print red("*** WARNING ***")+"  from app-portage/gentoolkit can help to detect breakage."
+	print red("*** WARNING ***")
+	print red("*** WARNING ***")+"  Also study the list of packages to be cleaned for any"
+	print red("*** WARNING ***")+"  obvious mistakes. Packages can be manually added to the"
+	print red("*** WARNING ***")+"  world list by running "+green("`emerge --noreplace <atom>`")+"."
+	print red("*** WARNING ***")
+	print red("*** WARNING ***")+"  "+bold("Make sure you have a backup.")
 
-	mydepgraph=depgraph(myaction,myopts)
 	syslist=getlist("system")
 	worldlist=getlist("world")
+	myvarlist=portage.vardbapi(portage.root).cp_all()
 
-	print "Calculating",myaction,"dependencies  ",
+	if not syslist:
+		print "\n!!! You have no system list.",
+	if not worldlist:
+		print "\n!!! You have no world file.",
+	if not myvarlist:
+		print "\n!!! You have no installed package database (%s)." % portage.VDB_PATH,
+
+	if not (syslist and worldlist and myvarlist):
+		print "\n!!! Proceeding will break your installation.\n"
+		countdown(EMERGE_WARNING_DELAY, ">>> Depclean")
+
+	emergelog(" >>> depclean")
+	mydepgraph=depgraph(myaction,myopts)
+
+	print "\nCalculating dependencies  ",
 	if not mydepgraph.xcreate("world"):
 		print "\n!!! Failed to create deptree."
 		sys.exit(1)
@@ -2991,19 +2995,9 @@ elif "depclean"==myaction:
 		sys.exit(1)
 
 	alldeps=mydepgraph.digraph.allnodes()
-	myvarlist=portage.vardbapi(portage.root).cp_all()
 
-	if not syslist:
-		print "!!! You have no system list. Cannot determine system from world."
-	if not worldlist:
-		print "!!! You have no world file. Cannot determine explicit merges."
-	if not myvarlist:
-		print "!!! You have no installed package tree (%s). This is a problem." % portage.VDB_PATH
 	if not alldeps:
 		print "!!! You have no dependencies. Impossible. Bug."
-
-	if not (syslist and worldlist and myvarlist and alldeps):
-		print
 		sys.exit(1)
 
 	reallist=[]
