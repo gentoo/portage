@@ -48,7 +48,7 @@ os.umask(oldmask)
 
 # Ensure the scratch dir is deleted
 def cleanup(mydir=SCRATCH_DIR):
-    shutil.rmtree(SCRATCH_DIR)
+    shutil.rmtree(mydir)
 atexit.register(cleanup)
 
 MANDATORY_OPTS  = [ 'archive-dir', 'diff', 'replace-cvs', 'replace-wscomments', 'merge' ]
