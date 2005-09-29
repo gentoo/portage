@@ -17,7 +17,7 @@
 SYNC="rsync://rsync.gentoo.org/gentoo-portage"
 
 # Default distfiles mirrors
-GENTOO_MIRRORS="http://distfiles.gentoo.org http://distro.ibiblio.org/pub/Linux/distributions/gentoo"
+GENTOO_MIRRORS="http://distfiles.gentoo.org http://distro.ibiblio.org/pub/linux/distributions/gentoo"
 
 # Repository Paths
 PORTDIR=/usr/portage
