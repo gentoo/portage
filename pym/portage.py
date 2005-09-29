@@ -609,7 +609,7 @@ def env_update(makelinks=1):
 	elif ostype == "FreeBSD":
 		if (ld_cache_update):
 			writemsg(">>> Regenerating "+str(root)+"var/run/ld-elf.so.hints...\n")
-			commands.getstatusoutput("cd / ; /sbin/ldconfig -elf -f "+str(root)+"var/run/ld-elf.so.hints "+str(root)+"etc/ld.so.conf")
+			commands.getstatusoutput("cd / ; /sbin/ldconfig -i -elf -f "+str(root)+"var/run/ld-elf.so.hints "+str(root)+"etc/ld.so.conf")
 
 	del specials["LDPATH"]
 
