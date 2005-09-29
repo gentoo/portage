@@ -83,6 +83,15 @@ addpredict()
 	export SANDBOX_PREDICT="$SANDBOX_PREDICT:$1"
 }
 
+lchown()
+{
+	chown -h "$@"
+}
+
+lchgrp()
+{
+	chgrp -h "$@"
+}
 
 # source the existing profile.bashrc's.
 save_IFS
@@ -982,6 +991,8 @@ dyn_test() {
 }
 	
 
+PORTAGE_INST_UID="0"
+PORTAGE_INST_GID="0"
 
 dyn_install() {
 	trap "abort_install" SIGINT SIGQUIT
@@ -1119,15 +1130,17 @@ dyn_install() {
 	local count=0
 	find "${D}/" -user  portage | while read file; do
 		count=$(( $count + 1 ))
-		if [ ! -L "${file}" ]; then
-			s=$(stat_perms "$file")
+		if [ -L "${file}" ]; then
+			lchown ${PORTAGE_INST_UID} "${file}"
+		else
+			s=$(stat_perms $file)
 			if [ -z "${s}" ]; then
 				ewarn "failed stat_perm'ing $file.  User intervention during install isn't wise..."
 				continue
 			fi
+			chown ${PORTAGE_INST_UID} "$file"
+			chmod "$s" "$file"
 		fi
-		chown root "$file"
-		[[ ! -L "${file}" ]] && chmod "$s" "$file"
 	done
 	if (( $count > 0 )); then
 		ewarn "$count files were installed with user portage!"
@@ -1136,15 +1149,17 @@ dyn_install() {
 	count=0
 	find "${D}/" -group portage | while read file; do
 		count=$(( $count + 1 ))
-		if [ ! -L "${file}" ]; then
+		if [ -L ${file} ]; then
+			lchgrp ${PORTAGE_INST_GID} "${file}"
+		else
 			s=$(stat_perms "$file")
 			if [ -z "${s}" ]; then
 				echo "failed stat_perm'ing '$file' . User intervention during install isn't wise..."
 				continue
 			fi
+			chgrp ${PORTAGE_INST_GID} "$file"
+			chmod "$s" "$file"
 		fi
-		chgrp 0 "${file}"
-		[[ ! -L "${file}" ]] && chmod "$s" "$file"
 	done
 	if (( $count > 0 )); then
 		ewarn "$count files were installed with group portage!"
