@@ -1252,7 +1252,7 @@ class depgraph:
 									oldcomment = comment
 							print
 							print "For more information, see MASKED PACKAGES section in the emerge man page or "
-							print "section 2.2 \"Software Availability\" in the Gentoo Handbook."
+							print "refer to the Gentoo Handbook."
 							if myparent:
 								print     "!!!    "+red(xfrom)
 							print
