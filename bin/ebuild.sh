@@ -1018,12 +1018,24 @@ dyn_install() {
 	for i in $(find "${D}/" -type f -perm -2002); do
 		((UNSAFE++))
 		echo "UNSAFE SetGID: $i"
+		chmod -s,o-w "$i"
 	done
 	for i in $(find "${D}/" -type f -perm -4002); do
 		((UNSAFE++))
 		echo "UNSAFE SetUID: $i"
+		chmod -s,o-w "$i"
 	done
 	
+	# Now we look for all world writable files.
+	for i in $(find "${D}/" -type f -perm -2); do
+		echo -ne '\a'
+		echo "QA Security Notice:"
+		echo "- ${i:${#D}:${#i}} will be a world writable file."
+		echo "- This may or may not be a security problem, most of the time it is one."
+		echo "- Please double check that $PF really needs a world writeable bit and file bugs accordingly."
+		sleep 1
+	done
+
 	if type -p scanelf > /dev/null ; then
 		# Make sure we disallow insecure RUNPATH/RPATH's
 		# Don't want paths that point to the tree where the package was built
