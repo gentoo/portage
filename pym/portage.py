@@ -3067,6 +3067,8 @@ def isvalidatom(atom):
 	mycpv_cps = catpkgsplit(dep_getcpv(atom))
 	operator = get_operator(atom)
 	if operator:
+		if operator[0] in "<>" and atom[-1] == "*":
+			return 0
 		if mycpv_cps and mycpv_cps[0] != "null":
 			# >=cat/pkg-1.0
 			return 1
