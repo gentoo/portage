@@ -272,7 +272,7 @@ def cacheddir(my_original_path, ignorecvs, ignorelist, EmptyOnError, followSymli
 
 
 def listdir(mypath, recursive=False, filesonly=False, ignorecvs=False, ignorelist=[], followSymlinks=True,
-	EmptyOnError=False):
+	EmptyOnError=False, dirsonly=False):
 
 	list, ftype = cacheddir(mypath, ignorecvs, ignorelist, EmptyOnError, followSymlinks)
 
@@ -302,6 +302,11 @@ def listdir(mypath, recursive=False, filesonly=False, ignorecvs=False, ignorelis
 		for x in range(0,len(ftype)):
 			if ftype[x]==0:
 				rlist=rlist+[list[x]]
+	elif dirsonly:
+		rlist = []
+		for x in range(0, len(ftype)):
+			if ftype[x] == 1:
+				rlist = rlist + [list[x]]	
 	else:
 		rlist=list
 
@@ -5547,8 +5552,7 @@ class portdbapi(dbapi):
 		d={}
 		for x in self.mysettings.categories:
 			for oroot in self.porttrees:
-				for y in listdir(oroot+"/"+x,EmptyOnError=1,ignorecvs=1):
-					mykey=x+"/"+y
+				for y in listdir(oroot+"/"+x,EmptyOnError=1,ignorecvs=1,dirsonly=1):
 					d[x+"/"+y] = None
 		l = d.keys()
 		l.sort()
