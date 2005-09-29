@@ -934,8 +934,7 @@ class depgraph:
 
 		if myuse == None:
 			self.pkgsettings.setcpv(mykey)
-			myuse=string.split(self.pkgsettings["USE"], " ")
-
+			myuse = self.pkgsettings["USE"].split()
 		self.applied_useflags[mykey] = myuse
 
 		merging=1
@@ -949,12 +948,14 @@ class depgraph:
 			elif ("selective" in myparams) and vardbapi.cpv_exists(mykey):
 				merging=0
 
-			if (merging==0 and mytype=="ebuild" and "--newuse" in myopts and vardbapi.cpv_exists(mykey)):
-				iuses=string.split(portage.portdb.aux_get(mykey, ["IUSE"])[0])
-				old_use=string.split(vardbapi.aux_get(mykey, ["USE"])[0])
-				now_use=string.split(self.pkgsettings["USE"])
+			if (merging==0 and "--newuse" in myopts and vardbapi.cpv_exists(mykey)):
+				old_use = vardbapi.aux_get(mykey, ["USE"])[0].split()
+				if mytype == "binary":
+					iuses = portage.db["/"]["bintree"].dbapi.aux_get(mykey, ["IUSE"])[0].split()
+				else:
+					iuses = portage.db["/"]["porttree"].dbapi.aux_get(mykey, ["IUSE"])[0].split()
 				for x in iuses:
-					if (old_use.count(x) and not now_use.count(x)) or (not old_use.count(x) and now_use.count(x)):
+					if (old_use.count(x) and not myuse.count(x)) or (not old_use.count(x) and myuse.count(x)):
 						merging=1
 						break
 		else:
@@ -1224,7 +1225,6 @@ class depgraph:
 					old_use=string.split(portage.db["/"]["bintree"].dbapi.aux_get(myeb_pkg, ["USE"])[0])
 					self.pkgsettings.setcpv(myeb_pkg)
 					now_use=string.split(self.pkgsettings["USE"])
-					self.pkgsettings.reset()
 					for x in iuses:
 						if (old_use.count(x) and not now_use.count(x)) or (not old_use.count(x) and now_use.count(x)):
 							myeb_pkg = None
@@ -1370,67 +1370,17 @@ class depgraph:
 			worldlist=getlist("world")
 			sysdict=genericdict(syslist)
 			worlddict=genericdict(worldlist)
-			#we're effectively upgrading sysdict to contain all new deps from worlddict
+
 			for x in worlddict.keys():
-				#only add the world node if the package is:
-				#actually installed -- this prevents the remerging of already unmerged packages when we do a world --update;
-				#actually available -- this prevents emerge from bombing out due to no match being found (we want a silent ignore)
-				if "empty" in myparams:
-					if portage.db["/"]["vartree"].dbapi.match(x):
-						sysdict[x]=worlddict[x]
-				elif portage.db[portage.root]["vartree"].dbapi.match(x):
-					#package is installed
+				if portage.db["/"]["vartree"].dbapi.match(x):
 					sysdict[x]=worlddict[x]
 				else:
 					print "\n*** Package in world file is not installed: "+x
 			mylist = sysdict.keys()
 
 		for mydep in mylist:
-			myeb=portage.portdb.xmatch("bestmatch-visible",mydep)
-			if not myeb:
-				#this is an unavailable world entry; just continue
-				continue
-
-			if "--upgradeonly" in myopts:
-				cand=self.is_newer_ver_installed(portage.root,mydep,myeb)
-				if cand:
-					myeb=cand
-
-			#THIS NEXT BUNCH OF CODE NEEDS TO BE REPLACED TO SUPPORT WORLD ANTI-DEPS
-			#if mydep2[0]=="!":, etc.
-			binpkguseflags = None
-			if "--usepkg" in myopts:
-				mypk=portage.db[portage.root]["bintree"].dep_bestmatch(mydep)
-				if myeb==mypk:
-					myk=["binary",portage.root,mypk]
-					binpkguseflags=portage.db[portage.root]["bintree"].get_use(mypk)
-					if ("--newuse" in myopts):
-						iuses=string.split(portage.db["/"]["bintree"].dbapi.aux_get(mypk, ["IUSE"])[0])
-						old_use=string.split(portage.db["/"]["bintree"].dbapi.aux_get(mypk, ["USE"])[0])
-						self.pkgsettings.setcpv(mypk)
-						now_use=string.split(self.pkgsettings["USE"])
-						self.pkgsettings.reset()
-						for x in iuses:
-							if (old_use.count(x) and not now_use.count(x)) or (not old_use.count(x) and now_use.count(x)):
-								myk=["ebuild",portage.root,myeb]
-								binpkguseflags=None
-								break
-				elif "--usepkgonly" in myopts:
-					if not mypk:
-						self.missingbins += [myeb]
-						myk=["binary",portage.root,myeb]
-					else:
-						myk=["binary",portage.root,mypk]
-				else:
-					myk=["ebuild",portage.root,myeb]
-			else:
-				myk=["ebuild",portage.root,myeb]
-
-			if not self.create(myk,myuse=binpkguseflags):
-				print
-				print "!!! Problem with",myk[0],myk[2]
-				print "!!! Possibly a DEPEND/*DEPEND problem."
-				print
+			if not self.select_dep(portage.root, mydep):
+				print "\n\n!!! Problem resolving dependencies for", mydep
 				return 0
 		return 1
 
