@@ -5457,7 +5457,8 @@ class portdbapi(dbapi):
 			print red("getfetchlist():")+" aux_get() error reading "+mypkg+"; aborting."
 			sys.exit(1)
 
-		useflags = string.split(mysettings["USE"])
+		if useflags is None:
+			useflags = string.split(mysettings["USE"])
 
 		myurilist = portage_dep.paren_reduce(myuris)
 		myurilist = portage_dep.use_reduce(myurilist,uselist=useflags,matchall=all)
