@@ -111,24 +111,18 @@ def perform_checksum(filename, hash_function=md5hash, calc_prelink=0):
 	
 	if calc_prelink and prelink_capable:
 		mylock = portage_locks.lockfile(prelink_tmpfile, wantnewlockfile=1)
-		# Create non-prelinked temporary file to md5sum.
-		# Raw data is returned on stdout, errors on stderr.
-		# Non-prelinks are just returned.
-		try:
-			shutil.copy2(filename,prelink_tmpfile)
-		except SystemExit, e:
-			raise
-		except Exception,e:
-			portage_util.writemsg("!!! Unable to copy file '"+str(filename)+"'.\n")
-			portage_util.writemsg("!!! "+str(e)+"\n")
-			raise
-		portage_exec.spawn(PRELINK_BINARY+" --undo "+prelink_tmpfile,fd_pipes={})
-		myfilename=prelink_tmpfile
+		# Create non-prelinked temporary file to checksum.
+		# Files rejected by prelink are summed in place.
+		retval=portage_exec.spawn([PRELINK_BINARY,"--undo","-o",prelink_tmpfile,filename],fd_pipes={})
+		if retval==0:
+			#portage_util.writemsg(">>> prelink checksum '"+str(filename)+"'.\n")
+			myfilename=prelink_tmpfile
 
 	myhash, mysize = hash_function(myfilename)
 
 	if calc_prelink and prelink_capable:
-		os.unlink(prelink_tmpfile)
+		if os.path.exists(prelink_tmpfile):
+			os.unlink(prelink_tmpfile)
 		portage_locks.unlockfile(mylock)
 
 	return (myhash,mysize)
