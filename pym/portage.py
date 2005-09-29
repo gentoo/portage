@@ -2604,7 +2604,7 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 						mysettings["LOG_PF"]=mysettings["PF"]
 						mysettings["LOG_COUNTER"]=str(db[myroot]["vartree"].dbapi.get_counter_tick_core("/"))
 					logfile="%s/%s-%s.log" % (mysettings["PORT_LOGDIR"],mysettings["LOG_COUNTER"],mysettings["LOG_PF"])
-				except ValueError, e:
+				except OSError, e:
 					mysettings["PORT_LOGDIR"]=""
 					print "!!! Unable to chown/chmod PORT_LOGDIR. Disabling logging."
 					print "!!!",e
