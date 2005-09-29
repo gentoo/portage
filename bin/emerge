@@ -1271,6 +1271,8 @@ class depgraph:
 							print "!!! Either add a suitable binary package or compile from an ebuild."
 					else:
 						print "\nemerge: there are no ebuilds to satisfy "+xinfo+"."
+						if myparent:
+							print xfrom
 						print
 					return 0
 
