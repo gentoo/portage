@@ -1083,7 +1083,14 @@ class depgraph:
 				elif not "--oneshot" in myopts:
 					myfavorites.append(mykey)
 			else:
-				if not portage.isvalidatom(x) and not portage.isvalidatom("cat/"+x):
+				testkey = portage.dep_getkey(x)
+				if testkey.startswith("null/"):
+					testatom = x.replace(testkey[5:], "cat/"+testkey[5:])
+				elif "/" not in x:
+					testatom = "cat/"+x
+				else:
+					testatom = x
+				if not portage.isvalidatom(testatom):
 					print ("\n\n!!! '%s' is not a valid package atom." % x)
 					print "!!! Please check ebuild(5) for full details."
 					print "!!! (Did you specify a version but forget to prefix with '='?)"
