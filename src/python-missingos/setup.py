@@ -1,4 +1,4 @@
-#! /usr/bin/env python2.2
+#!/usr/bin/python
 # $Id: /var/cvsroot/gentoo-src/portage/src/python-missingos/setup.py,v 1.5.2.1 2004/10/22 16:53:30 carpaski Exp $
 
 from os import chdir, stat
