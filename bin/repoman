@@ -835,10 +835,10 @@ for x in scanlist:
 				stats["file.size"] += 1
 				fails["file.size"].append("("+ str(mystat.st_size/1024) + "K) "+x+"/files/"+y)
 
-			for c in y.strip(os.path.sep):
+			for c in os.path.basename(y.rstrip(os.path.sep)):
 				if c not in allowed_filename_chars_set:
 					stats["file.name"] += 1
-					fails["file.name"].append("%s/%s: char '%s'" % (checkdir, y, c))
+					fails["file.name"].append("%s/files/%s: char '%s'" % (checkdir, y, c))
 					break
 
 
