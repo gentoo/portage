@@ -1,7 +1,7 @@
 #!/usr/bin/python -O
 # Copyright 1999-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: /var/cvsroot/gentoo-src/portage/bin/ebuild,v 1.18.2.3 2005/05/07 04:32:59 ferringb Exp $
+# $Header: /var/cvsroot/gentoo-src/portage/bin/ebuild,v 1.18.2.3 2005/05/07 04:32:59 ferringb Exp $
 
 import os,sys
 sys.path = ["/usr/lib/portage/pym"]+sys.path
@@ -39,23 +39,48 @@ if "merge" in pargs:
 
 import portage
 
-for x in pargs[1:]:
+if len(pargs) > 1 and "noauto" not in portage.features:
+
+	# so... basically we find the highest 'target' specified, and execute only that, rather
+	# then executing each stage by a doebuild call. 
+	# we do this due to the fact doebuild doesn't get it's own env handling right in conjunction with
+	# ebuild.sh's env reloading, fixing it was what ebd does, no point in replicating it in stable 
+	# (too massive of changes).
+	# do a lil dance.
+	try:				pargs.remove("clean")
+	except ValueError:	cleanse_first = False
+	else:				cleanse_first = True
+
+	# make a lil love
+	actionmap_targets = filter(lambda x: x in portage.actionmap_deps, pargs[1:])
+	others = filter(lambda x: x not in portage.actionmap_deps, pargs[1:])
+	def recurse_it(targ):
+		l = portage.actionmap_deps[targ][:]
+		if len(l):
+			l += map(recurse_it, l)
+		return l
+	kills = portage.unique_array(portage.flatten(map(recurse_it, actionmap_targets)))
+	actionmap_targets = filter(lambda x: x not in kills, actionmap_targets)
+	
+	# get down tonight.
+	if "config" in others and (len(actionmap_targets) or len(others) > 1):
+		if len(pargs) != 2:
+			print "config must be called on it's own, not combined with any other phase"
+			sys.exit(1)
+	ebuild = pargs[0]
+	pargs = actionmap_targets + others
+	root = getroot()
+	
+for x in pargs:
 	try:
 		tmpsettings = portage.config(clone=portage.settings)
-
-		if x in ['clean','config']:
-			cleanup=1
-		else:
-			cleanup=0
-		a=portage.doebuild(pargs[0],x,getroot(),tmpsettings,debug=debug,cleanup=cleanup)
+		a=portage.doebuild(ebuild, x, root, tmpsettings, debug=debug, cleanup=cleanse_first)
+		cleanse_first = False
 	except KeyboardInterrupt:
 		print "(interrupted by user -- ctrl-C?)"
 		a=1
-	except IOError:
-		a=1
-		print "ebuild: this ebuild generated output during the depend phase (bad)"
 	if a == None:
-		portage_util.writemsg("Could not run the required binary?\n")
-		sys.exit(127)
+		print "Could not run the required binary?"
+		a = 127
 	if a:
 		sys.exit(a)

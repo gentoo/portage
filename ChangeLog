@@ -7,6 +7,12 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  01 Oct 2005; Brian Harring <ferringb@gentoo.org> bin/ebuild, 
+  pym/portage.py:
+  Fixed ebuild some-ebuild setup unpack so it functions like
+  ebuild some-ebuild unpack does (execute just unpack due to 
+  env issues, see comments in ebuild clarifying if curious).
+
   28 Sep 2005; Brian Harring <ferringb@gentoo.org> bin/repoman:
   Fixup of the file.name check so it doesn't catch CVS dirs.
 

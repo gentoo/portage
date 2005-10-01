@@ -2333,8 +2333,22 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 				droppriv=actionmap[mydo]["args"][1],logfile=logfile)
 	return retval
 
+# chunked out deps for each phase, so that ebuild binary can use it 
+# to collapse targets down.
+actionmap_deps={
+	"depend": [],
+	"setup":  [],
+	"unpack": ["setup"],
+	"compile":["unpack"],
+	"test":   ["compile"],
+	"install":["test"],
+	"rpm":    ["install"],
+	"package":["install"],
+}
+
+
 def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,cleanup=0,dbkey=None,use_cache=1,fetchall=0,tree="porttree"):
-	global db
+	global db, actionmap_deps
 
 	ebuild_path = os.path.abspath(myebuild)
 	pkg_dir     = os.path.dirname(ebuild_path)
@@ -2714,16 +2728,23 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 	if nosandbox and ("userpriv" not in features or "userpriv" in mysettings["RESTRICT"] or \
 		"nouserpriv" in mysettings["RESTRICT"]):
 		nosandbox = ("sandbox" not in features and "usersandbox" not in features)
-	actionmap={
-			  "depend": {                 "args":(0,1)},         # sandbox  / portage
-			  "setup":  {                 "args":(1,0)},         # without  / root
-			 "unpack":  {"dep":"setup",   "args":(0,1)},         # sandbox  / portage
-			"compile":  {"dep":"unpack",  "args":(nosandbox,1)}, # optional / portage
-			   "test":  {"dep":"compile", "args":(nosandbox,1)}, # optional / portage
-			"install":  {"dep":"test",    "args":(0,0)},         # sandbox  / root
-			    "rpm":  {"dep":"install", "args":(0,0)},         # sandbox  / root
-    	"package":  {"dep":"install", "args":(0,0)},         # sandbox  / root
+
+	actionmap = {
+		"depend": {"args":(0,1)},         # sandbox  / portage
+		"setup":  {"args":(1,0)},         # without  / root
+		"unpack": {"args":(0,1)},         # sandbox  / portage
+		"compile":{"args":(nosandbox,1)}, # optional / portage
+		"test":   {"args":(nosandbox,1)}, # optional / portage
+		"install":{"args":(0,0)},         # sandbox  / root
+		"rpm":    {"args":(0,0)},         # sandbox  / root
+		"package":{"args":(0,0)},         # sandbox  / root
 	}
+	
+	# merge the deps in so we have again a 'full' actionmap
+	# be glad when this can die.
+	for x in actionmap.keys():
+		if len(actionmap_deps.get(x, [])):
+			actionmap[x]["dep"] = ' '.join(actionmap_deps[x])
 
 	if mydo in actionmap.keys():
 		if mydo=="package":
