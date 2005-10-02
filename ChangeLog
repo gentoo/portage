@@ -7,6 +7,10 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  01 Oct 2005; Brian Harring <ferringb@gentoo.org> pym/portage.py:
+  selinux_enabled tweak, instead of relying on exception thrown on import,
+  check the actual enabled value (forward compatibility).
+
   01 Oct 2005; Brian Harring <ferringb@gentoo.org> bin/repoman:
   Touch ups to file.name check.
 

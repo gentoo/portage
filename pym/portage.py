@@ -7253,7 +7253,10 @@ settings.lock()
 if 'selinux' in settings["USE"].split(" "):
 	try:
 		import selinux
-		selinux_enabled=1
+		if hasattr(selinux, "enabled"):
+			selinux_enabled = selinux.enabled
+		else:
+			selinux_enabled = 1
 	except OSError, e:
 		writemsg(red("!!! SELinux not loaded: ")+str(e)+"\n")
 		selinux_enabled=0
