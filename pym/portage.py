@@ -5367,7 +5367,7 @@ class portdbapi(dbapi):
 
 			if metadata["EAPI"] != portage_const.EAPI:
 				# intentionally wipe keys.
-				map(lambda x: metadata.setdefault("x", ''), auxdbkeys)
+				map(lambda x: metadata.setdefault(x, ''), auxdbkeys)
 				metadata["EAPI"] == -1
 
 			else:
