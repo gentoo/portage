@@ -1489,7 +1489,7 @@ class depgraph:
 			else:
 				if (x[0]!="binary") and ("fetch" in string.split(portage.portdb.aux_get(x[2],["RESTRICT"])[0])):
 					fetch = red("F")
-					if portage.portdb.fetch_check(x[2], portage.settings):
+					if portage.portdb.fetch_check(x[2], portage.settings["USE"]):
 						fetch = green("f")
 
 				#we need to use "--emptrytree" testing here rather than "empty" param testing because "empty"
