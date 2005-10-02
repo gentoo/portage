@@ -2759,7 +2759,7 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 			print "!!! mydo=qmerge, but install phase hasn't been ran"
 			sys.exit(1)
 		#qmerge is specifically not supposed to do a runtime dep check
-		return merge(mysettings["CATEGORY"],mysettings["PF"],mysettings["D"],mysettings["BUILDDIR"]+"/build-info",myroot,mysettings)
+		return merge(mysettings["CATEGORY"],mysettings["PF"],mysettings["D"],mysettings["BUILDDIR"]+"/build-info",myroot,mysettings,myebuild=mysettings["EBUILD"])
 	elif mydo=="merge":
 		retval=spawnebuild("install",actionmap,mysettings,debug,alwaysdep=1,logfile=logfile)
 		if retval:
