@@ -860,6 +860,9 @@ def getlist(mode):
 			if myline[0]!="*":
 				continue
 			myline=myline[1:]
+		if not portage.isvalidatom(myline):
+			print "!!! Invalid atom '%s' in your '%s' file" % (myline, mode)
+			continue
 		mynewlines.append(myline.strip())
 
 	# Remove everything that is package.provided from our list
