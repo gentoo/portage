@@ -67,7 +67,8 @@ if len(pargs) > 1 and "noauto" not in portage.features:
 		if len(pargs) != 2:
 			print "config must be called on it's own, not combined with any other phase"
 			sys.exit(1)
-	pargs = [pargs[0]] + actionmap_targets + others
+	ebuild = pargs[0]
+	pargs = actionmap_targets + others
 else:
 	ebuild = pargs.pop(0)
 	try:				pargs.remove("clean")
