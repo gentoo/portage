@@ -686,7 +686,7 @@ for x in scanlist:
 			continue
 		try:
 			line = 1
-			for l in codecs.open(y, "r", "utf8"):
+			for l in codecs.open(checkdir+"/"+y, "r", "utf8"):
 				line +=1
 		except UnicodeDecodeError, ue:
 			stats["file.UTF8"] += 1
