@@ -1733,8 +1733,10 @@ export S=${WORKDIR}/${P}
 
 unset E_IUSE E_DEPEND E_RDEPEND E_CDEPEND E_PDEPEND
 
-declare -r T P PN PV PVR PR A D EBUILD EMERGE_FROM O PPID FILESDIR
-declare -r PORTAGE_TMPDIR
+for x in T P PN PV PVR PR A D EBUILD EMERGE_FROM O PPID FILESDIR PORTAGE_TMPDIR; do
+	[[ ${!x-UNSET_VAR} != UNSET_VAR ]] && declare -r ${!x}
+done
+unset x
 
 # Turn of extended glob matching so that g++ doesn't get incorrectly matched.
 shopt -u extglob
