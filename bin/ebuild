@@ -3,88 +3,96 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Header: /var/cvsroot/gentoo-src/portage/bin/ebuild,v 1.18.2.3 2005/05/07 04:32:59 ferringb Exp $
 
-import os,sys
-sys.path = ["/usr/lib/portage/pym"]+sys.path
-import portage_util
+import getopt, os, sys
 
-def getroot():
-	try:
-		a=os.environ["ROOT"]
-		if a == '/':
-			return '/'
-	except SystemExit, e:
-		raise # Needed else we can't exit.
-	except:
-		return '/'
-	return os.path.normpath(a)+'/'
-
-os.environ["PORTAGE_CALLER"]="ebuild"
-		
 if len(sys.argv)<=2:
 	print "expecting two arguments."
 	sys.exit(1)
 
-import getopt
 
-debug=0
-	
-opts,pargs=getopt.getopt(sys.argv[1:],'',['debug'])
-for opt in opts:
-	if opt[0]=='--debug':
-		debug=1 
+(opts, pargs) = getopt.getopt(sys.argv[1:], '', ['debug'])
+debug = ("--debug",'') in opts
+
 
 if "merge" in pargs:
 	print "Disabling noauto in features... merge disables it. (qmerge doesn't)"
 	os.environ["FEATURES"] = os.environ.get("FEATURES", "") + " -noauto"
 
-import portage
+os.environ["PORTAGE_CALLER"]="ebuild"
+sys.path = ["/usr/lib/portage/pym"]+sys.path
 
-if len(pargs) > 1 and "noauto" not in portage.features:
+import portage, portage_util
 
-	# so... basically we find the highest 'target' specified, and execute only that, rather
-	# then executing each stage by a doebuild call. 
-	# we do this due to the fact doebuild doesn't get it's own env handling right in conjunction with
-	# ebuild.sh's env reloading, fixing it was what ebd does, no point in replicating it in stable 
-	# (too massive of changes).
-	# do a lil dance.
-	try:				pargs.remove("clean")
-	except ValueError:	cleanse_first = False
-	else:				cleanse_first = True
 
-	# make a lil love
-	actionmap_targets = filter(lambda x: x in portage.actionmap_deps, pargs[1:])
-	others = filter(lambda x: x not in portage.actionmap_deps, pargs[1:])
-	def recurse_it(targ):
-		l = portage.actionmap_deps[targ][:]
-		if len(l):
-			l += map(recurse_it, l)
+root = os.path.normpath(os.environ.get("ROOT", "") + "/")
+ebuild = os.path.abspath(pargs.pop(0))
+
+if not os.path.exists(ebuild):
+	print "'%s' does not exist." % ebuild
+	sys.exit(1)
+
+ebuild_split = ebuild.split("/")
+del ebuild_split[-2]
+cpv = "/".join(ebuild_split[-2:])[:-7]
+
+portage_ebuild = portage.portdb.findname(cpv)
+
+if portage_ebuild != ebuild:
+	os.environ["PORTDIR"] = "/".join(ebuild_split[:-2])
+	os.environ["PORTDIR_OVERLAY"] = ""
+	print "Adjusting PORTDIR to '%s'..." % os.environ["PORTDIR"]
+	reload(portage)
+
+
+if "noauto" in portage.features:
+
+	arglist = []
+	cleanse = False
+	for arg in pargs:
+		if arg == "clean":
+			cleanse = True
+		else:
+			arglist.append((arg, cleanse))
+			cleanse = False
+
+else:
+
+	cleanse = ("clean" in pargs)
+	while "clean" in pargs:
+		pargs.remove("clean")
+
+	actionmap_targets = filter(lambda x: x in portage.actionmap_deps, pargs)
+	others = filter(lambda x: x not in portage.actionmap_deps, pargs)
+
+	def recurse_it(target):
+		l = portage.actionmap_deps[target][:]
+		if l:
+			l.extend(map(recurse_it, l))
 		return l
+
 	kills = portage.unique_array(portage.flatten(map(recurse_it, actionmap_targets)))
 	actionmap_targets = filter(lambda x: x not in kills, actionmap_targets)
 	
-	# get down tonight.
-	if "config" in others and (len(actionmap_targets) or len(others) > 1):
-		if len(pargs) != 2:
-			print "config must be called on it's own, not combined with any other phase"
-			sys.exit(1)
-	ebuild = pargs[0]
-	pargs = actionmap_targets + others
-else:
-	ebuild = pargs.pop(0)
-	try:				pargs.remove("clean")
-	except ValueError:	cleanse_first = False
-	else:				cleanse_first = True
+	arglist = []
+	for arg in actionmap_targets + others:
+		arglist.append((arg, cleanse))
+		cleanse = False
 
-root = getroot()
-	
-for x in pargs:
+if cleanse:
+	arglist.append(("clean", True))
+
+if len(arglist) > 1 and (("config", False) in arglist or ("config", True) in arglist):
+	print "config must be called on it's own, not combined with any other phase"
+	sys.exit(1)
+
+
+for arg in arglist:
 	try:
 		tmpsettings = portage.config(clone=portage.settings)
-		a=portage.doebuild(ebuild, x, root, tmpsettings, debug=debug, cleanup=cleanse_first)
-		cleanse_first = False
+		a = portage.doebuild(ebuild, arg[0], root, tmpsettings, debug=debug, cleanup=arg[1])
 	except KeyboardInterrupt:
-		print "(interrupted by user -- ctrl-C?)"
-		a=1
+		print "Interrupted."
+		a = 1
 	if a == None:
 		print "Could not run the required binary?"
 		a = 127
