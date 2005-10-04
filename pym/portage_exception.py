@@ -123,6 +123,13 @@ class InvalidPackageName(PortagePackageException):
 	def __str__(self):
 		return repr(self.value)
 
+class UnsupportedAPIException(PortagePackageException):
+	"""Unsupported API"""
+	def __init__(self, cpv, api):
+		self.cpv = cpv
+		self.api = api
+	def __str__(self):
+		return "Unable to do any operations on '%s', due to the fact it's EAPI is higher then this portage versions.  Please upgrade to a portage version that supports EAPI %s" % (self.cpv, self.eapi)
 
 
 

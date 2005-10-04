@@ -2347,6 +2347,10 @@ actionmap_deps={
 }
 
 
+def eapi_is_supported(eapi):
+	return str(eapi) == str(portage_const.EAPI)
+
+
 def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,cleanup=0,dbkey=None,use_cache=1,fetchall=0,tree="porttree"):
 	global db, actionmap_deps
 
@@ -2423,15 +2427,10 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 			raise
 		except:
 			pass
-		try:
-			eapi = int(db[root][tree].dbapi.aux_get(mycpv, ["EAPI"])[0])
-			if portage_const.EAPI != eapi:
-				# can't do anything with this.
-				raise Exception("Unable to do any operations on '%s', due to the fact it's EAPI is higher then this portage versions.  Please upgrade to a portage version that supports EAPI %i" % (mycpv, eapi))
-		except SystemExit, e:
-			raise
-		except Exception, e:
-			raise Exception("Unable to pull EAPI from cpv %s, tree %s; can't confirm that it's supported by this portage, thus unable to merge it: Exception was '%s'" % (mycpv, tree, e))
+		eapi = db[root][tree].dbapi.aux_get(mycpv, ["EAPI"])[0]
+		if not eapi_is_supported(eapi):
+			# can't do anything with this.
+			raise portage_exception.UnsupportedAPIException(mycpv, eapi)
 
 	if mysplit[2] == "r0":
 		mysettings["PVR"]=mysplit[1]
@@ -3954,11 +3953,7 @@ def getmaskingstatus(mycpv):
 
 	# keywords checking
 	mygroups, eapi = portdb.aux_get(mycpv, ["KEYWORDS", "EAPI"])
-	try:
-		eapi = abs(eapi)
-	except TypeError:
-		eapi = 1
-	if eapi != portage_const.EAPI:
+	if not eapi_is_supported(eapi):
 		return ["required EAPI %s, supported EAPI %s" % (eapi, portage_const.EAPI)]
 	mygroups = mygroups.split()
 	pgroups=groups[:]
@@ -4582,12 +4577,8 @@ class bindbapi(fakedbapi):
 				mylist.append(myval)
 		if "EAPI" in wants:
 			idx = wants.index("EAPI")
-			if mylist[idx] in ("", "0", None):
-				mylist[idx] = 0
-			elif mylist[idx] == 0:
-				pass
-			else:
-				mylist[idx] = 1
+			if not mylist[idx]:
+				mylist[idx] = "0"
 		return mylist
 
 
@@ -4869,12 +4860,8 @@ class vardbapi(dbapi):
 			results.append(myd)
 		if "EAPI" in wants:
 			idx = wants.index("EAPI")
-			if results[idx] in ("", "0", None):
-				results[idx] = 0
-			elif results[idx] == 0:
-				pass
-			else:
-				results[idx] = 1
+			if not results[idx]:
+				results[idx] = "0"
 		return results
 
 
@@ -5358,17 +5345,15 @@ class portdbapi(dbapi):
 		# we use cache files, which is usually on /usr/portage/metadata/cache/.
 		if doregen and mylocation==self.mysettings["PORTDIR"] and metacachedir and self.metadb[cat].has_key(pkg):
 			metadata=self.metadb[cat][pkg]
-			
-			try:
-				if metadata["EAPI"] in ('', '0'):
-					metadata["EAPI"] = 0
-			except KeyError:
-				metadata["EAPI"] = 0
 
-			if metadata["EAPI"] != portage_const.EAPI:
+			metadata["EAPI"] = metadata.get("EAPI", "0")).strip()
+
+			if not eapi_is_supported(metadata["EAPI"]):
 				# intentionally wipe keys.
+				eapi = metadata["EAPI"]
+				metadata = {}
 				map(lambda x: metadata.setdefault(x, ''), auxdbkeys)
-				metadata["EAPI"] == -1
+				metadata["EAPI"] == "-"+eapi
 
 			else:
 				# eclass updates only if we haven't nuked the entry.
@@ -5412,7 +5397,7 @@ class portdbapi(dbapi):
 				self.lock_held = 0
 				#depend returned non-zero exit code...
 				writemsg(str(red("\naux_get():")+" (0) Error in "+mycpv+" ebuild. ("+str(myret)+")\n"
-         	   "               Check for syntax error or corruption in the ebuild. (--debug)\n\n"))
+				"               Check for syntax error or corruption in the ebuild. (--debug)\n\n"))
 				raise KeyError
 
 			try:
@@ -5443,15 +5428,14 @@ class portdbapi(dbapi):
 					mylines[x] = mylines[x][:-1]
 				mydata[auxdbkeys[x]] = mylines[x]
 
-			try:
-				eapi = int(mydata["EAPI"])
-			except ValueError:
-				eapi = 1
-				if eapi > portage_const.EAPI:
-					# if newer version, wipe everything and negate eapi
-					mydata = {}
-					map(lambda x:mydata.setdefault(x, ""), auxdbkeys)
-					mydata["EAPI"] = -eapi
+			mydata["EAPI"] = mydata.get("EAPI", "0").strip()
+
+			if not eapi_is_supported(mydata["EAPI"]):
+				# if newer version, wipe everything and negate eapi
+				eapi = mydata["EAPI"]
+				mydata = {}
+				map(lambda x:mydata.setdefault(x, ""), auxdbkeys)
+				mydata["EAPI"] = "-"+eapi
 
 			mydata["_mtime_"] = emtime
 
@@ -5468,13 +5452,8 @@ class portdbapi(dbapi):
 
 		if "EAPI" in mylist:
 			idx = mylist.index("EAPI")
-			if returnme[idx] in ("", "0"):
-				returnme[idx] = 0
-			elif returnme[idx] == 0:
-				pass
-			else:
-				try:				returnme[idx] = int(returnme[idx])
-				except ValueError:	returnme[idx] = 1
+			if not returnme[idx]:
+				returnme[idx] = "0"
 
 		return returnme
 
@@ -5757,9 +5736,8 @@ class portdbapi(dbapi):
 					hasstable = True
 			if not match and ((hastesting and "~*" in pgroups) or (hasstable and "*" in pgroups)):
 				match=1
-			if match:
-				if eapi == portage_const.EAPI:
-					newlist.append(mycpv)
+			if match and eapi_is_supported(eapi):
+				newlist.append(mycpv)
 		return newlist
 
 class binarytree(packagetree):
