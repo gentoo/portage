@@ -5346,7 +5346,7 @@ class portdbapi(dbapi):
 		if doregen and mylocation==self.mysettings["PORTDIR"] and metacachedir and self.metadb[cat].has_key(pkg):
 			metadata=self.metadb[cat][pkg]
 
-			metadata["EAPI"] = metadata.get("EAPI", "0")).strip()
+			metadata["EAPI"] = metadata.get("EAPI", "0").strip()
 
 			if not eapi_is_supported(metadata["EAPI"]):
 				# intentionally wipe keys.
