@@ -2348,7 +2348,7 @@ actionmap_deps={
 
 
 def eapi_is_supported(eapi):
-	return str(eapi) == str(portage_const.EAPI)
+	return str(eapi).strip() == str(portage_const.EAPI).strip()
 
 
 def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,cleanup=0,dbkey=None,use_cache=1,fetchall=0,tree="porttree"):
@@ -5344,14 +5344,16 @@ class portdbapi(dbapi):
 		if doregen and mylocation==self.mysettings["PORTDIR"] and metacachedir and self.metadb[cat].has_key(pkg):
 			metadata=self.metadb[cat][pkg]
 
-			if "EAPI" not in metadata or not metadata["EAPI"].strip():
+			if not (metadata.has_key("EAPI") and metadata["EAPI"].strip()):
 				metadata["EAPI"] = "0"
 
 			if not eapi_is_supported(metadata["EAPI"]):
 				# intentionally wipe keys.
 				eapi = metadata["EAPI"]
+				mtime = metadata.get("_mtime_", 0)
 				metadata = {}
 				map(lambda x: metadata.setdefault(x, ''), auxdbkeys)
+				metadata["_mtime_"] = long(mtime)
 				metadata["EAPI"] == "-"+eapi
 
 			else:
