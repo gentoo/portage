@@ -1827,6 +1827,7 @@ class depgraph:
 
 			self.pkgsettings["EMERGE_FROM"] = x[0][:]
 			self.pkgsettings.backup_changes("EMERGE_FROM")
+			self.pkgsettings.reset()
 
 			#buildsyspkg: Check if we need to _force_ binary package creation
 			issyspkg = ("buildsyspkg" in myfeat) \
