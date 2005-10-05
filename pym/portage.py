@@ -5344,7 +5344,7 @@ class portdbapi(dbapi):
 		if doregen and mylocation==self.mysettings["PORTDIR"] and metacachedir and self.metadb[cat].has_key(pkg):
 			metadata=self.metadb[cat][pkg]
 
-			if not metadata.has_key("EAPI") or metadata["EAPI"].strip() == '':
+			if "EAPI" not in metadata or not metadata["EAPI"].strip():
 				metadata["EAPI"] = "0"
 
 			if not eapi_is_supported(metadata["EAPI"]):
