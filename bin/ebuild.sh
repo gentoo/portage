@@ -1669,7 +1669,7 @@ remove_path_entry() {
 # === === === === === functions end, main part begins === === === === ===
 # === === === === === === === === === === === === === === === === === ===
 
-if [ "$*" != "depend" ] && [ "$*" != "clean" ]; then
+if [ "$*" != "depend" ] && [ "$*" != "clean" ] && [ "$*" != "setup" ]; then
 	cd ${PORTAGE_TMPDIR} &> /dev/null
 	cd ${BUILD_PREFIX} &> /dev/null
 
@@ -1705,7 +1705,7 @@ if [ "$*" != "depend" ] && [ "$*" != "clean" ]; then
 			export PATH="/usr/bin/ccache:${PATH}"
 		fi
 
-		[ -z "${CCACHE_DIR}" ] && export CCACHE_DIR="/root/.ccache"
+		[ -z "${CCACHE_DIR}" ] && export CCACHE_DIR="/var/tmp/ccache"
 
 		addread "${CCACHE_DIR}"
 		addwrite "${CCACHE_DIR}"
@@ -1726,7 +1726,7 @@ killparent() {
 }
 trap "killparent" INT
 
-fi # "$*"!="depend" && "$*"!="clean"
+fi # "$*"!="depend" && "$*"!="clean" && "$*" != "setup"
 
 export SANDBOX_ON="1"
 export S=${WORKDIR}/${P}
