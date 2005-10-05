@@ -4844,8 +4844,6 @@ class vardbapi(dbapi):
 	def aux_get(self, mycpv, wants):
 		global auxdbkeys
 		results = []
-		if not self.cpv_exists(mycpv):
-			return []
 		for x in wants:
 			myfn = self.root+VDB_PATH+"/"+str(mycpv)+"/"+str(x)
 			if os.access(myfn,os.R_OK):
