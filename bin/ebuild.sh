@@ -283,6 +283,11 @@ diefunc() {
 	echo "!!! ${*:-(no error message)}" >&2
 	echo "!!! If you need support, post the topmost build error, NOT this status message." >&2
 	echo >&2
+	if [ "${EBUILD_PHASE/depend}" == "${EBUILD_PHASE}" ]; then
+		for x in $EBUILD_DEATH_HOOKS; do
+			${x} "$@" >&2 1>&2
+		done
+	fi
 	exit 1
 }
 
