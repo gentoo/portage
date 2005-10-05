@@ -354,6 +354,10 @@ if ("--getbinpkg" in myopts) and not ("--usepkg" in myopts):
 if ("--usepkgonly" in myopts) and not ("--usepkg" in myopts):
 	myopts.append("--usepkg")
 
+if ("--newuse" in myopts) and not ("--update" in myopts):
+	print ">>> --newuse implies --update... adding --update to options."
+	myopts.append("--update")
+
 # Print deprecation warning for -U
 if ("--upgradeonly" in myopts):
 	print
