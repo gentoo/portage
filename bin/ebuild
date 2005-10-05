@@ -44,52 +44,15 @@ if portage_ebuild != ebuild:
 	reload(portage)
 
 
-if "noauto" in portage.features:
-
-	arglist = []
-	cleanse = False
-	for arg in pargs:
-		if arg == "clean":
-			cleanse = True
-		else:
-			arglist.append((arg, cleanse))
-			cleanse = False
-
-else:
-
-	cleanse = ("clean" in pargs)
-	while "clean" in pargs:
-		pargs.remove("clean")
-
-	actionmap_targets = filter(lambda x: x in portage.actionmap_deps, pargs)
-	others = filter(lambda x: x not in portage.actionmap_deps, pargs)
-
-	def recurse_it(target):
-		l = portage.actionmap_deps[target][:]
-		if l:
-			l.extend(map(recurse_it, l))
-		return l
-
-	kills = portage.unique_array(portage.flatten(map(recurse_it, actionmap_targets)))
-	actionmap_targets = filter(lambda x: x not in kills, actionmap_targets)
-	
-	arglist = []
-	for arg in actionmap_targets + others:
-		arglist.append((arg, cleanse))
-		cleanse = False
-
-if cleanse:
-	arglist.append(("clean", True))
-
-if len(arglist) > 1 and (("config", False) in arglist or ("config", True) in arglist):
+if len(pargs) > 1 and "config" in pargs:
 	print "config must be called on it's own, not combined with any other phase"
 	sys.exit(1)
 
 
-for arg in arglist:
+for arg in pargs:
 	try:
 		tmpsettings = portage.config(clone=portage.settings)
-		a = portage.doebuild(ebuild, arg[0], root, tmpsettings, debug=debug, cleanup=arg[1])
+		a = portage.doebuild(ebuild, arg, root, tmpsettings, debug=debug, cleanup=("noauto" not in portage.features))
 	except KeyboardInterrupt:
 		print "Interrupted."
 		a = 1
