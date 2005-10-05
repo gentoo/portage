@@ -1,0 +1,111 @@
+#!/usr/bin/python -O
+
+import sys
+from copy import copy
+from optparse import OptionParser, OptionValueError
+
+
+
+import os, portage, portage_const
+class WorldHandler(object):
+
+	def name():
+		return "world"
+	name = staticmethod(name)
+
+	def __init__(self):
+		self.invalid = []
+		self.not_installed = []
+		self.unavailable = []
+		self.okay = []
+		self.found = os.access(portage_const.WORLD_FILE, os.R_OK)
+
+		for atom in open(portage_const.WORLD_FILE).read().split():
+			if not portage.isvalidatom(atom):
+				self.invalid.append(atom)
+			elif not portage.db["/"]["vartree"].dbapi.match(atom):
+				self.not_installed.append(atom)
+			elif not portage.db["/"]["porttree"].dbapi.match(atom):
+				self.unavailable.append(atom)
+			else:
+				self.okay.append(atom)
+
+	def check(self):
+		errors = []
+		if self.found:
+			errors += map(lambda x: "'%s' is not a valid atom" % x, self.invalid)
+			errors += map(lambda x: "'%s' is not installed" % x, self.not_installed)
+			errors += map(lambda x: "'%s' has no ebuilds available" % x, self.unavailable)
+		else:
+			errors.append(portage_const.WORLD_FILE + " could not be opened for reading")
+		return errors
+
+	def fix(self):
+		errors = []
+		try:
+			open(portage_const.WORLD_FILE, "w").write("\n".join(self.okay))
+		except OSError:
+			errors.append(portage_const.WORLD_FILE + " could not be opened for writing")
+		return errors
+
+
+modules = {"world" : WorldHandler}
+
+
+module_names = modules.keys()
+module_names.sort()
+module_names.insert(0, "all")
+
+
+def exclusive(option, value, empty, parser, var=None):
+	if not var:
+		raise ValueError("var not specified to exclusive()")
+	if getattr(parser, var, ""):
+		raise OptionValueError("%s and %s are exclusive options" % (getattr(parser, var), value))
+	setattr(parser, var, value)
+
+
+usage = "usage: emaint [options] " + " | ".join(module_names)
+parser = OptionParser(usage=usage)
+parser.add_option("-c", "--check", help="check for problems",
+	action="callback", callback=exclusive, callback_kwargs={"var":"action"})
+parser.add_option("-f", "--fix", help="attempt to fix problems",
+	action="callback", callback=exclusive, callback_kwargs={"var":"action"})
+parser.action = None
+
+
+(options, args) = parser.parse_args()
+if len(args) != 1:
+	parser.error("Incorrect number of arguments")
+if args[0] not in module_names:
+	parser.error("%s target is not a known target" % args[0])
+
+if parser.action:
+	action = parser.action
+else:
+	print "Defaulting to --check"
+	action = "--check"
+
+if args[0] == "all":
+	tasks = modules.values()
+else:
+	tasks = [modules[args[0]]]
+
+
+if action == "--check":
+	status = "Checking %s for problems"
+	func = "check"
+else:
+	status = "Attempting to fix %s"
+	func = "fix"
+
+
+for task in tasks:
+	print status % task.name()
+	inst = task()
+	result = getattr(inst, func)()
+	if result:
+		print
+		print "\n".join(result)
+		print "\n"
+
