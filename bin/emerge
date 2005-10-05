@@ -860,9 +860,6 @@ def getlist(mode):
 			if myline[0]!="*":
 				continue
 			myline=myline[1:]
-		if not portage.isvalidatom(myline):
-			print "!!! Invalid atom '%s' in your '%s' file" % (myline, mode)
-			continue
 		mynewlines.append(myline.strip())
 
 	# Remove everything that is package.provided from our list
@@ -1393,11 +1390,21 @@ class depgraph:
 			sysdict=genericdict(syslist)
 			worlddict=genericdict(worldlist)
 
+			world_problems = False
 			for x in worlddict.keys():
-				if portage.db["/"]["vartree"].dbapi.match(x):
-					sysdict[x]=worlddict[x]
+				if not portage.isvalidatom(x):
+					world_problems = True
+				elif not portage.db["/"]["vartree"].dbapi.match(x):
+					world_problems = True
+				elif not portage.db["/"]["porttree"].dbapi.match(x):
+					world_problems = True
 				else:
-					print "\n*** Package in world file is not installed: "+x
+					sysdict[x]=worlddict[x]
+			if world_problems:
+				print "\n!!! Problems have been detected with your world file"
+				print "!!! Please run "+green("emaint --check world")+"\n"
+			del world_problems
+
 			mylist = sysdict.keys()
 
 		for mydep in mylist:
