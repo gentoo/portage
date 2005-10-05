@@ -64,9 +64,12 @@ class dispatch:
         self.options = dispatch_conf.read_config(MANDATORY_OPTS)
 
         if self.options.has_key("log-file"):
-            if os.path.exists(self.options["log-file"]):
-                shutil.copyfile(self.options["log-file"], self.options["log-file"] + '.old')
-                os.remove(self.options["log-file"])
+            if os.path.isfile(self.options["log-file"]):
+                shutil.copy(self.options["log-file"], self.options["log-file"] + '.old')
+            if os.path.isfile(self.options["log-file"]) \
+               or not os.path.exists(self.options["log-file"]):
+                open(self.options["log-file"], 'w').close() # Truncate it
+                os.chmod(self.options["log-file"], 0600)
         else:
             self.options["log-file"] = "/dev/null"
 
