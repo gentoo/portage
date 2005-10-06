@@ -649,7 +649,7 @@ if not "--pretend" in myopts:
 myparams=["self","recurse"]
 add=[]
 sub=[]
-if "--update" in myopts:
+if "--update" in myopts or myaction in ("system", "world"):
 	add.extend(["selective","empty"])
 if "--emptytree" in myopts:
 	add.extend(["empty"])
