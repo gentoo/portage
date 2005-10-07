@@ -57,12 +57,12 @@ module_names.sort()
 module_names.insert(0, "all")
 
 
-def exclusive(option, value, empty, parser, var=None):
+def exclusive(option, unused1, unused2, unused3, var=None):
 	if not var:
 		raise ValueError("var not specified to exclusive()")
 	if getattr(parser, var, ""):
 		raise OptionValueError("%s and %s are exclusive options" % (getattr(parser, var), value))
-	setattr(parser, var, value)
+	setattr(parser, var, option)
 
 
 usage = "usage: emaint [options] " + " | ".join(module_names)
@@ -84,7 +84,7 @@ if parser.action:
 	action = parser.action
 else:
 	print "Defaulting to --check"
-	action = "--check"
+	action = "-c/--check"
 
 if args[0] == "all":
 	tasks = modules.values()
@@ -92,7 +92,7 @@ else:
 	tasks = [modules[args[0]]]
 
 
-if action == "--check":
+if action == "-c/--check":
 	status = "Checking %s for problems"
 	func = "check"
 else:
