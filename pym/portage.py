@@ -231,7 +231,8 @@ def cacheddir(my_original_path, ignorecvs, ignorelist, EmptyOnError, followSymli
 		if EmptyOnError:
 			return [], []
 		return None, None
-	if mtime != cached_mtime:
+	# Python retuns mtime in seconds, so if it was changed in the last few seconds, it could be invalid
+	if mtime != cached_mtime or time.time() - mtime < 4:
 		if dircache.has_key(mypath):
 			cacheStale += 1
 		list = os.listdir(mypath)
