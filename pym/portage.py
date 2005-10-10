@@ -7148,9 +7148,9 @@ if not os.path.exists(root+"var/lib/portage"):
 
 os.umask(022)
 profiledir=None
-if "PORTAGE_CALLER" in os.environ and os.environ["PORTAGE_CALLER"] == "emerge" and os.path.isdir(PROFILE_PATH):
+if os.path.isdir(PROFILE_PATH):
 	profiledir = PROFILE_PATH
-	if os.access(DEPRECATED_PROFILE_FILE, os.R_OK):
+	if "PORTAGE_CALLER" in os.environ and os.environ["PORTAGE_CALLER"] == "emerge" and os.access(DEPRECATED_PROFILE_FILE, os.R_OK):
 		deprecatedfile = open(DEPRECATED_PROFILE_FILE, "r")
 		dcontent = deprecatedfile.readlines()
 		deprecatedfile.close()
