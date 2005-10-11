@@ -37,10 +37,9 @@ cpv = "/".join(ebuild_split[-2:])[:-7]
 
 portage_ebuild = portage.portdb.findname(cpv)
 
-if portage_ebuild != ebuild:
-	os.environ["PORTDIR"] = "/".join(ebuild_split[:-2])
-	os.environ["PORTDIR_OVERLAY"] = ""
-	print "Adjusting PORTDIR to '%s'..." % os.environ["PORTDIR"]
+if not portage_ebuild or os.path.abspath(portage_ebuild) != ebuild:
+	os.environ["PORTDIR_OVERLAY"] = "/".join(ebuild_split[:-2])
+	print "Adjusting PORTDIR_OVERLAY to '%s'..." % os.environ["PORTDIR_OVERLAY"]
 	reload(portage)
 
 
