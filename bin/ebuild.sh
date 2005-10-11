@@ -1769,6 +1769,11 @@ if hasq "depend" "$@"; then
 	done
 	unset src bin_path body
 fi
+
+# reset the EBUILD_DEATH_HOOKS so they don't multiple due to stable's re-sourcing of env.
+# this can be left out of ebd variants, since they're unaffected.
+unset EBUILD_DEATH_HOOKS
+
 source ${EBUILD} || die "error sourcing ebuild"
 if ! hasq depend $EBUILD_PHASE; then
 	RESTRICT="${PORTAGE_RESTRICT}"
