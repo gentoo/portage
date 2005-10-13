@@ -25,7 +25,7 @@ import portage, portage_util
 
 
 root = os.path.normpath(os.environ.get("ROOT", "") + "/")
-ebuild = os.path.abspath(pargs.pop(0))
+ebuild = os.path.realpath(pargs.pop(0))
 
 if not os.path.exists(ebuild):
 	print "'%s' does not exist." % ebuild
@@ -37,7 +37,7 @@ cpv = "/".join(ebuild_split[-2:])[:-7]
 
 portage_ebuild = portage.portdb.findname(cpv)
 
-if not portage_ebuild or os.path.abspath(portage_ebuild) != ebuild:
+if not portage_ebuild or os.path.realpath(portage_ebuild) != ebuild:
 	os.environ["PORTDIR_OVERLAY"] = "/".join(ebuild_split[:-2])
 	print "Adjusting PORTDIR_OVERLAY to '%s'..." % os.environ["PORTDIR_OVERLAY"]
 	reload(portage)
