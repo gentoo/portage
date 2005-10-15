@@ -4,7 +4,7 @@
 # $Id: /var/cvsroot/gentoo-src/portage/pym/portage.py,v 1.524.2.76 2005/05/29 12:40:08 jstubbs Exp $
 
 
-VERSION="$Revision: 1.524.2.76 $"[11:-2] + "-cvs"
+VERSION="$Rev$"[4:-1].strip() + "-svn"
 
 # ===========================================================================
 # START OF IMPORTS -- START OF IMPORTS -- START OF IMPORTS -- START OF IMPORT
