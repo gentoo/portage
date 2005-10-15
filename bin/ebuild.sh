@@ -1150,7 +1150,7 @@ dyn_install() {
 		if [ -L "${file}" ]; then
 			lchown ${PORTAGE_INST_UID} "${file}"
 		else
-			s=$(stat_perms $file)
+			s=$(stat_perms "$file")
 			if [ -z "${s}" ]; then
 				ewarn "failed stat_perm'ing $file.  User intervention during install isn't wise..."
 				continue
@@ -1166,7 +1166,7 @@ dyn_install() {
 	count=0
 	find "${D}/" -group portage | while read file; do
 		count=$(( $count + 1 ))
-		if [ -L ${file} ]; then
+		if [ -L "${file}" ]; then
 			lchgrp ${PORTAGE_INST_GID} "${file}"
 		else
 			s=$(stat_perms "$file")
