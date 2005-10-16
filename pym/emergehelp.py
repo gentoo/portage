@@ -17,7 +17,7 @@ def shorthelp():
 	print "   "+turquoise("emerge")+" "+turquoise("--help")+" [ "+green("system")+" | "+green("config")+" | "+green("sync")+" ] "
 	print bold("Options:")+" "+green("-")+"["+green("abcCdDefhikKlnNoOpPsSuUvV")+"] ["+green("--oneshot")+"] ["+green("--newuse")+"] ["+green("--noconfmem")+"]"
 	print      "                                    ["+green("--columns")+"] ["+green("--nospinner")+"]"
-	print bold("Actions:")+" [ "+green("--clean")+" | "+green("--depclean")+" | "+green("--inject")+" | "+green("--prune")+" | "+green("--regen")+" | "+green("--search")+" | "+green("--unmerge")+" ]"
+	print bold("Actions:")+" [ "+green("--clean")+" | "+green("--depclean")+" | "+green("--prune")+" | "+green("--regen")+" | "+green("--search")+" | "+green("--unmerge")+" ]"
 	print
 
 def help(myaction,myopts,havecolor=1):
