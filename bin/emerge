@@ -1098,6 +1098,7 @@ class depgraph:
 					print ("\n\n!!! '%s' is not a valid package atom." % x)
 					print "!!! Please check ebuild(5) for full details."
 					print "!!! (Did you specify a version but forget to prefix with '='?)"
+					return (0,[])
 				try:
 					mykey=portage.dep_expand(x,mydb=portage.portdb)
 				except ValueError, errpkgs:
