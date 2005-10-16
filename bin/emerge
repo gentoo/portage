@@ -1080,7 +1080,7 @@ class depgraph:
 						print red("*** page for details.")
 						countdown(EMERGE_WARNING_DELAY, "Continuing...")
 				else:
-					print red("\n*** "+x+" does not exist")
+					print red("\n*** %s is not in a valid PORTDIR heirarchy or does not exist" % x)
 					sys.exit(1)
 				if not self.create(["ebuild",portage.root,mykey],None,"--onlydeps" not in myopts):
 					return (0,myfavorites)
