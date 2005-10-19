@@ -334,7 +334,7 @@ and the KDE configuration dirs; more may be added in the future.
 
 When Portage installs a file into a protected directory tree like /etc, any
 existing files will not be overwritten.  If a file of the same name already
-exists, Portage will change the name of the to-be- installed file from 'foo' to
+exists, Portage will change the name of the to-be-installed file from 'foo' to
 '._cfg0000_foo'.  If '._cfg0000_foo' already exists, this name becomes
 '._cfg0001_foo', etc.  In this way, existing files are not overwritten,
 allowing the administrator to manually merge the new config files and avoid any
