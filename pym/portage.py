@@ -34,7 +34,7 @@ except Exception, e:
 	sys.stderr.write("\n\n")
 	sys.stderr.write("!!! Failed to complete python imports. There are internal modules for\n")
 	sys.stderr.write("!!! python and failure here indicates that you have a problem with python\n")
-	sys.stderr.write("!!! itself and thus portage is no able to continue processing.\n\n")
+	sys.stderr.write("!!! itself and thus portage is not able to continue processing.\n\n")
 
 	sys.stderr.write("!!! You might consider starting python with verbose flags to see what has\n")
 	sys.stderr.write("!!! gone wrong. Here is the information we got for this exception:\n")
@@ -45,7 +45,7 @@ except:
 	sys.stderr.write("\n\n")
 	sys.stderr.write("!!! Failed to complete python imports. There are internal modules for\n")
 	sys.stderr.write("!!! python and failure here indicates that you have a problem with python\n")
-	sys.stderr.write("!!! itself and thus portage is no able to continue processing.\n\n")
+	sys.stderr.write("!!! itself and thus portage is not able to continue processing.\n\n")
 
 	sys.stderr.write("!!! You might consider starting python with verbose flags to see what has\n")
 	sys.stderr.write("!!! gone wrong. The exception was non-standard and we were unable to catch it.\n\n")
