@@ -1317,7 +1317,11 @@ class depgraph:
 					except Exception, e:
 						print "Warning: "+str(e)
 					if cand:
-						myeb=cand
+						# --newuse can't work because the installed version isn't available
+						# just pretend like the package doesn't matter
+						# XXX: hidden assumption here that the higher versioned package
+						# satisfies the atom that was given
+						continue
 
 				if myeb:
 					myk=["ebuild",myroot,myeb]
