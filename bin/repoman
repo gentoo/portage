@@ -800,7 +800,7 @@ for x in scanlist:
 									fails["digest.unmatch"].append(y+"::"+myf)
 								else:
 									eb_name,eb_location = portage.db["/"]["porttree"].dbapi.findname2(mykey)
-									portage.doebuild(eb_name, "digest", "/", uri_settings)
+									portage.doebuild(eb_name, "digest", "/", uri_settings, tree="porttree")
 							else:
 								stats["digest.partial"] += 1
 								fails["digest.partial"].append(y+"::"+myf)

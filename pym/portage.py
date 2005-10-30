@@ -89,7 +89,7 @@ try:
 	import portage_util
 	from portage_util import grab_multiple, grabdict, grabdict_package, grabfile, grabfile_package, \
 		grabints, map_dictlist_vals, pickle_read, pickle_write, stack_dictlist, stack_dicts, stack_lists, \
-		unique_array, varexpand, writedict, writeints, writemsg, getconfig
+		unique_array, varexpand, writedict, writeints, writemsg, getconfig, dump_traceback
 	import portage_exception
 	import portage_gpg
 	import portage_locks
@@ -2352,8 +2352,12 @@ def eapi_is_supported(eapi):
 	return str(eapi).strip() == str(portage_const.EAPI).strip()
 
 
-def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,cleanup=0,dbkey=None,use_cache=1,fetchall=0,tree="porttree"):
+def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,cleanup=0,dbkey=None,use_cache=1,fetchall=0,tree=None):
 	global db, actionmap_deps
+
+	if not tree:
+		dump_traceback("tree not specified to doebuild")
+		tree = "porttree"
 
 	ebuild_path = os.path.abspath(myebuild)
 	pkg_dir     = os.path.dirname(ebuild_path)
@@ -2759,12 +2763,12 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 			print "!!! mydo=qmerge, but install phase hasn't been ran"
 			sys.exit(1)
 		#qmerge is specifically not supposed to do a runtime dep check
-		return merge(mysettings["CATEGORY"],mysettings["PF"],mysettings["D"],mysettings["BUILDDIR"]+"/build-info",myroot,mysettings,myebuild=mysettings["EBUILD"])
+		return merge(mysettings["CATEGORY"],mysettings["PF"],mysettings["D"],mysettings["BUILDDIR"]+"/build-info",myroot,mysettings,myebuild=mysettings["EBUILD"],mytree=tree)
 	elif mydo=="merge":
 		retval=spawnebuild("install",actionmap,mysettings,debug,alwaysdep=1,logfile=logfile)
 		if retval:
 			return retval
-		return merge(mysettings["CATEGORY"],mysettings["PF"],mysettings["D"],mysettings["BUILDDIR"]+"/build-info",myroot,mysettings,myebuild=mysettings["EBUILD"])
+		return merge(mysettings["CATEGORY"],mysettings["PF"],mysettings["D"],mysettings["BUILDDIR"]+"/build-info",myroot,mysettings,myebuild=mysettings["EBUILD"],mytree=tree)
 	else:
 		print "!!! Unknown mydo:",mydo
 		sys.exit(1)
@@ -2937,12 +2941,12 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 
 	return newmtime
 
-def merge(mycat,mypkg,pkgloc,infloc,myroot,mysettings,myebuild=None):
-	mylink=dblink(mycat,mypkg,myroot,mysettings)
+def merge(mycat,mypkg,pkgloc,infloc,myroot,mysettings,myebuild=None,mytree=None):
+	mylink=dblink(mycat,mypkg,myroot,mysettings,treetype=mytree)
 	return mylink.merge(pkgloc,infloc,myroot,myebuild)
 
 def unmerge(cat,pkg,myroot,mysettings,mytrimworld=1):
-	mylink=dblink(cat,pkg,myroot,mysettings)
+	mylink=dblink(cat,pkg,myroot,mysettings,treetype="vartree")
 	if mylink.exists():
 		mylink.unmerge(trimworld=mytrimworld,cleanup=1)
 	mylink.delete()
@@ -5393,7 +5397,7 @@ class portdbapi(dbapi):
 					writemsg("Uncaught handled exception: %(exception)s\n" % {"exception":str(e)})
 					raise
 
-			myret=doebuild(myebuild,"depend","/",self.mysettings,dbkey=mydbkey)
+			myret=doebuild(myebuild,"depend","/",self.mysettings,dbkey=mydbkey,tree="porttree")
 			if myret:
 				portage_locks.unlockfile(mylock)
 				self.lock_held = 0
@@ -6027,12 +6031,13 @@ class binarytree(packagetree):
 
 class dblink:
 	"this class provides an interface to the standard text package database"
-	def __init__(self,cat,pkg,myroot,mysettings):
+	def __init__(self,cat,pkg,myroot,mysettings,treetype=None):
 		"create a dblink object for cat/pkg.  This dblink entry may or may not exist"
 		self.cat     = cat
 		self.pkg     = pkg
 		self.mycpv   = self.cat+"/"+self.pkg
 		self.mysplit = pkgsplit(self.mycpv)
+		self.treetype = treetype
 
 		self.dbroot   = os.path.normpath(myroot+VDB_PATH)
 		self.dbcatdir = self.dbroot+"/"+cat
@@ -6213,7 +6218,7 @@ class dblink:
 
 		#do prerm script
 		if myebuildpath and os.path.exists(myebuildpath):
-			a=doebuild(myebuildpath,"prerm",self.myroot,self.settings,cleanup=cleanup,use_cache=0,tree="vartree")
+			a=doebuild(myebuildpath,"prerm",self.myroot,self.settings,cleanup=cleanup,use_cache=0,tree=self.treetype)
 			# XXX: Decide how to handle failures here.
 			if a != 0:
 				writemsg("!!! FAILED prerm: "+str(a)+"\n")
@@ -6419,7 +6424,7 @@ class dblink:
 		if myebuildpath and os.path.exists(myebuildpath):
 			# XXX: This should be the old config, not the current one.
 			# XXX: Use vardbapi to load up env vars.
-			a=doebuild(myebuildpath,"postrm",self.myroot,self.settings,use_cache=0,tree="vartree")
+			a=doebuild(myebuildpath,"postrm",self.myroot,self.settings,use_cache=0,tree=self.treetype)
 			# XXX: Decide how to handle failures here.
 			if a != 0:
 				writemsg("!!! FAILED postrm: "+str(a)+"\n")
@@ -6541,9 +6546,9 @@ class dblink:
 		if myebuild:
 			# if we are merging a new ebuild, use *its* pre/postinst rather than using the one in /var/db/pkg
 			# (if any).
-			a=doebuild(myebuild,"preinst",root,self.settings,cleanup=cleanup,use_cache=0)
+			a=doebuild(myebuild,"preinst",root,self.settings,cleanup=cleanup,use_cache=0,tree=self.treetype)
 		else:
-			a=doebuild(inforoot+"/"+self.pkg+".ebuild","preinst",root,self.settings,cleanup=cleanup,use_cache=0)
+			a=doebuild(inforoot+"/"+self.pkg+".ebuild","preinst",root,self.settings,cleanup=cleanup,use_cache=0,tree=self.treetype)
 
 		# XXX: Decide how to handle failures here.
 		if a != 0:
@@ -6658,9 +6663,9 @@ class dblink:
 		if myebuild:
 			# if we are merging a new ebuild, use *its* pre/postinst rather than using the one in /var/db/pkg
 			# (if any).
-			a=doebuild(myebuild,"postinst",root,self.settings,use_cache=0)
+			a=doebuild(myebuild,"postinst",root,self.settings,use_cache=0,tree=self.treetype)
 		else:
-			a=doebuild(inforoot+"/"+self.pkg+".ebuild","postinst",root,self.settings,use_cache=0)
+			a=doebuild(inforoot+"/"+self.pkg+".ebuild","postinst",root,self.settings,use_cache=0,tree=self.treetype)
 
 		# XXX: Decide how to handle failures here.
 		if a != 0:
@@ -7074,7 +7079,7 @@ def pkgmerge(mytbz2,myroot,mysettings):
 	# the merge takes care of pre/postinst and old instance
 	# auto-unmerge, virtual/provides updates, etc.
 	mysettings.load_infodir(infloc)
-	mylink=dblink(mycat,mypkg,myroot,mysettings)
+	mylink=dblink(mycat,mypkg,myroot,mysettings,treetype="bintree")
 	mylink.merge(pkgloc,infloc,myroot,myebuild,cleanup=1)
 
 	if not os.path.exists(infloc+"/RDEPEND"):

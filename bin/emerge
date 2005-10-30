@@ -1848,9 +1848,9 @@ class depgraph:
 					raise Exception, "Merging a blocker"
 				elif ("--fetchonly" in myopts) or ("--fetch-all-uri" in myopts):
 					if ("--fetch-all-uri" in myopts):
-						retval=portage.doebuild(y,"fetch",myroot,self.pkgsettings,edebug,("--pretend" in myopts),fetchonly=1,fetchall=1)
+						retval=portage.doebuild(y,"fetch",myroot,self.pkgsettings,edebug,("--pretend" in myopts),fetchonly=1,fetchall=1,tree="porttree")
 					else:
-						retval=portage.doebuild(y,"fetch",myroot,self.pkgsettings,edebug,("--pretend" in myopts),fetchonly=1)
+						retval=portage.doebuild(y,"fetch",myroot,self.pkgsettings,edebug,("--pretend" in myopts),fetchonly=1,tree="porttree")
 					if (retval == None) or retval:
 						print
 						print "!!! Fetch for",y,"failed, continuing..."
@@ -1865,7 +1865,7 @@ class depgraph:
 					#create pkg, then merge pkg
 					short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Clean"
 					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Cleaning ("+x[pkgindex]+"::"+y+")", short_msg=short_msg)
-					retval=portage.doebuild(y,"clean",myroot,self.pkgsettings,edebug,cleanup=1)
+					retval=portage.doebuild(y,"clean",myroot,self.pkgsettings,edebug,cleanup=1,tree="porttree")
 					if (retval == None):
 						portage_util.writemsg("Unable to run required binary.\n")
 						sys.exit(127)
@@ -1873,7 +1873,7 @@ class depgraph:
 						sys.exit(retval)
 					short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Compile"
 					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Compiling/Packaging ("+x[pkgindex]+"::"+y+")", short_msg=short_msg)
-					retval=portage.doebuild(y,"package",myroot,self.pkgsettings,edebug)
+					retval=portage.doebuild(y,"package",myroot,self.pkgsettings,edebug,tree="porttree")
 					if (retval == None):
 						portage_util.writemsg("Unable to run required binary.\n")
 						sys.exit(127)
@@ -1895,7 +1895,7 @@ class depgraph:
 				else:
 					short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Clean"
 					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Cleaning ("+x[pkgindex]+"::"+y+")", short_msg=short_msg)
-					retval=portage.doebuild(y,"clean",myroot,self.pkgsettings,edebug,cleanup=1)
+					retval=portage.doebuild(y,"clean",myroot,self.pkgsettings,edebug,cleanup=1,tree="porttree")
 					if (retval == None):
 						portage_util.writemsg("Unable to run required binary.\n")
 						sys.exit(127)
@@ -1903,7 +1903,7 @@ class depgraph:
 						sys.exit(retval)
 					short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Compile"
 					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Compiling/Merging ("+x[pkgindex]+"::"+y+")", short_msg=short_msg)
-					retval=portage.doebuild(y,"merge",myroot,self.pkgsettings,edebug)
+					retval=portage.doebuild(y,"merge",myroot,self.pkgsettings,edebug,tree="porttree")
 					if (retval == None):
 						portage_util.writemsg("Unable to run required binary.\n")
 						sys.exit(127)
@@ -1945,7 +1945,7 @@ class depgraph:
 				if ("noclean" not in portage.features) and (x[0] != "binary"):
 					short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Clean Post"
 					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Post-Build Cleaning ("+x[pkgindex]+"::"+y+")", short_msg=short_msg)
-					retval=portage.doebuild(y,"clean",myroot,self.pkgsettings,edebug,cleanup=1)
+					retval=portage.doebuild(y,"clean",myroot,self.pkgsettings,edebug,cleanup=1,tree="porttree")
 					if (retval == None):
 						portage_util.writemsg("Unable to run required binary.\n")
 						sys.exit(127)
@@ -2845,7 +2845,7 @@ elif "config"==myaction:
 	print
 	ebuildpath = portage.db[portage.root]["vartree"].dbapi.findname(pkg)
 	mysettings = portage.config(clone=portage.settings)
-	portage.doebuild(ebuildpath,"config",portage.root,mysettings,debug=("--debug" in myopts),cleanup=True)
+	portage.doebuild(ebuildpath,"config",portage.root,mysettings,debug=("--debug" in myopts),cleanup=True,tree="vartree")
 	print
 
 # INFO action
@@ -3211,7 +3211,7 @@ else:
 					if pkgline[0]=="ebuild" and pkgline[3]=="merge":
 						y=portage.portdb.findname(pkgline[2])
 						tmpsettings = portage.config(clone=portage.settings)
-						retval=portage.doebuild(y,"digest",portage.root,tmpsettings,edebug,("--pretend" in myopts))
+						retval=portage.doebuild(y,"digest",portage.root,tmpsettings,edebug,("--pretend" in myopts),tree="porttree")
 			if "--fetchonly" in myopts or "--fetch-all-uri" in myopts:
 				pkglist = []
 				for pkg in mydepgraph.altlist():
