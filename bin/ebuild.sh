@@ -394,6 +394,9 @@ unpack() {
 			RAR|rar)
 				unrar x -idq "${srcdir}/${x}" || die "$myfail"
 				;;
+			LHa|LHA|lha|lzh)
+				lha xqf "${srcdir}/${x}" || die "$myfail"
+				;;
 			*)
 				echo "unpack ${x}: file format not recognized. Ignoring."
 				;;
