@@ -109,3 +109,4 @@ for task in tasks:
 		print "\n".join(result)
 		print "\n"
 
+print "Finished"
