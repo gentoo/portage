@@ -1,7 +1,7 @@
 #!/bin/bash
 # Copyright 1999-2005 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: etc-update 1912 2005-08-25 03:54:42Z ferringb $
+# $Id: etc-update 2221 2005-11-01 01:32:07Z vapier $
 
 # Author Brandon Low <lostlogic@gentoo.org>
 #
@@ -103,13 +103,23 @@ function scan() {
 function sel_file() {
 	local -i isfirst=0
 	until [ -f ${TMP}/files/${input} ] || [ ${input} == -1 ] || [ ${input} == -3 ]; do
-		for file in `ls ${TMP}/files|sort -n`; do
+		local numfiles=$(ls ${TMP}/files|wc -l)
+		local numwidth=${#numfiles}
+		for file in $(ls ${TMP}/files|sort -n); do
 			if (( ${isfirst} == 0 )); then
 				isfirst=${file}
 			fi
-			echo -n "${file}${PAR} "
+			numshow=$(printf "%${numwidth}i${PAR} " ${file})
+			spacer=${numshow//?/ }
+			echo -n "${numshow}"
 			if (( ${mode} == 0 )); then
-				for word in `cat ${TMP}/files/${file}`; do
+				spacedit=0
+				for word in $(<${TMP}/files/${file}); do
+					if (( ${spacedit} == 1 )); then
+						echo -n "${spacer}"
+					else
+						spacedit=1
+					fi
 					echo ${word}
 				done
 			else
@@ -136,9 +146,9 @@ configuration file is followed by a list of possible replacement files."
 				read input
 			else
 				dialog --title "${title}" --menu "${my_title}" \
-					0 0 0 `echo "-1 Exit";cat ${TMP}/menuitems` \
+					0 0 0 $(echo -e "-1 Exit\n$(<${TMP}/menuitems)") \
 					2> ${TMP}/input
-				input=`cat ${TMP}/input`
+				input=$(<${TMP}/input)
 			fi
 			if (( ${input} == -5 )); then
 				input=-3
@@ -159,18 +169,18 @@ function do_file() {
 	echo
 	local -i my_input
 	local -i fcount=0
-	until (( `cat ${TMP}/files/${input}|wc -l` < 2 )); do
+	until (( $(wc -l < ${TMP}/files/${input}) < 2 )); do
 		my_input=0
-		if (( `cat ${TMP}/files/${input}|wc -l` == 2 )); then
+		if (( $(wc -l < ${TMP}/files/${input}) == 2 )); then
 			my_input=1
 		fi
-		until (( ${my_input} > 0 )) && (( ${my_input} < `cat ${TMP}/files/${input}|wc -l` )); do
+		until (( ${my_input} > 0 )) && (( ${my_input} < $(wc -l < ${TMP}/files/${input}) )); do
 			fcount=0
 
 			if [ "${OVERWRITE_ALL}" == "yes" ]; then
 				my_input=0
 			else
-				for line in `cat ${TMP}/files/${input}`; do
+				for line in $(<${TMP}/files/${input}); do
 					if (( ${fcount} > 0 )); then
 						echo -n "${fcount}${PAR} "
 						echo "${line}"
@@ -190,9 +200,9 @@ function do_file() {
 					read my_input
 				else
 					dialog --title "${title}" --menu "${my_title}" \
-						0 0 0 `cat ${TMP}/menuitems;echo "${fcount} Exit"` \
+						0 0 0 `echo -e "$(<${TMP}/menuitems)\n${fcount} Exit"` \
 						2> ${TMP}/input
-					my_input=`cat ${TMP}/input`
+					my_input=$(<${TMP}/input)
 				fi
 			fi # OVERWRITE_ALL
 
@@ -211,12 +221,12 @@ function do_file() {
 
 		fcount=${my_input}+1
 
-		file=`cat ${TMP}/files/${input} | sed -e "${fcount}p;d"`
-		ofile=`head -n1 ${TMP}/files/${input}`
+		file=$(sed -e "${fcount}p;d" ${TMP}/files/${input})
+		ofile=$(head -n1 ${TMP}/files/${input})
 
 		do_cfg "${file}" "${ofile}"
 
-		cat ${TMP}/files/${input}|sed -e "${fcount}!p;d" > ${TMP}/files/sed
+		sed -e "${fcount}!p;d" ${TMP}/files/${input} > ${TMP}/files/sed
 		mv ${TMP}/files/sed ${TMP}/files/${input}
 
 		if (( ${my_input} == -1 )); then
