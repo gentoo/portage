@@ -111,13 +111,7 @@ whatever you like.
 \fBD\fR = \fI"${PORTAGE_TMPDIR}/portage/${PF}/image"\fR
 Contains the path to the temporary \fIinstall directory\fR.  Every write 
 operation that does not involve the helper tools and functions (found below) 
-should be prefixed with ${D}.  Do not modify this variable.  This will not be 
-available inside of the pkg_* functions, see \fIIMAGE\fR below.
-.TP
-\fBIMAGE\fR = \fI"${PORTAGE_TMPDIR}/portage/${PF}/image"\fR
-Contains the path to the temporary \fIimage directory\fR.  When inside of the 
-\fIpkg_*\fR functions, you should access the \fIIMAGE\fR directory instead of 
-the \fID\fR directory.  Do not modify this variable.
+should be prefixed with ${D}.  Do not modify this variable.
 .TP
 \fBDESCRIPTION\fR = \fI"A happy little package"\fR
 Should contain a short description of the package.
@@ -309,7 +303,7 @@ the program has been merged.
 .br
 You may use the same syntax to vary dependencies as seen above in \fBDEPEND\fR.
 .TP
-\fBRESTRICT\fR = \fI[fetch,mirror,nostrip,userpriv]\fR
+\fBRESTRICT\fR = \fI[fetch,mirror,nostrip,sandbox,test,userpriv]\fR
 This should be a space delimited list of portage features to restrict.
 .PD 0
 .RS
@@ -325,6 +319,12 @@ fetch from URL's in \fBSRC_URI\fR before \fBGENTOO_MIRRORS\fR.
 .TP
 .I nostrip
 final binaries/libraries will not be stripped of debug symbols.
+.TP
+.I sandbox
+disable sandbox (do not use without very good reason).
+.TP
+.I test
+do not run src_test even if user has \fBFEATURES\fR=test.
 .TP
 .I userpriv
 Disables userpriv for specific packages.
@@ -359,7 +359,7 @@ end the function with a call to \fBdie\fR.
 This function can be used if the package needs specific setup actions or
 checks to be preformed before anything else.
 .br
-Initial working directory of ${PORTAGE_TMPDIR}.
+Initial working directory of $PORTAGE_TMPDIR.
 .TP
 .B src_unpack
 This function is used to unpack all the sources in \fIA\fR to \fIWORKDIR\fR.
