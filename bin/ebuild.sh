@@ -1215,7 +1215,7 @@ dyn_preinst() {
 	[ "${EMERGE_FROM}" == "binary" ] && IMAGE=${PKG_TMPDIR}/${PF}/bin \
 					|| IMAGE=${D}
 
-	pkg_preinst
+	D=${IMAGE} pkg_preinst
 
 	# hopefully this will someday allow us to get rid of the no* feature flags
 	# we don't want globbing for initial expansion, but afterwards, we do
