@@ -61,7 +61,7 @@ def use_reduce(deparray, uselist=[], masklist=[], matchall=0, excludeall=[]):
 	leaving an array with subarrays
 	"""
 	# Quick validity checks
-	for x in range(1,len(deparray)):
+	for x in range(len(deparray)):
 		if deparray[x] in ["||","&&"]:
 			if len(deparray) == x:
 				# Operator is the last element
