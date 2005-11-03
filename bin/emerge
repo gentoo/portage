@@ -309,7 +309,8 @@ if (myaction in ["world", "system"]) and myfiles:
 	sys.exit(1)
 
 for x in myfiles:
-	if (x[-7:] == ".ebuild" or x[-5:] == ".tbz2") and os.path.exists(os.path.abspath(x)):
+	ext = os.path.splitext(x)[1]
+	if (ext == ".ebuild" or ext == ".tbz2") and os.path.exists(os.path.abspath(x)):
 		print "emerging by path implies --oneshot... adding --oneshot to options."
 		print red("\n*** emerging by path is broken and may not always work!!!\n")
 		break
@@ -1047,7 +1048,8 @@ class depgraph:
 		"given a list of .tbz2s, .ebuilds and deps, create the appropriate depgraph and return a favorite list"
 		myfavorites=[]
 		for x in myfiles:
-			if x[-5:]==".tbz2":
+			ext = os.path.splitext(x)[1]
+			if ext==".tbz2":
 				if not os.path.exists(x):
 					if os.path.exists(self.pkgsettings["PKGDIR"]+"/All/"+x):
 						x=self.pkgsettings["PKGDIR"]+"/All/"+x
@@ -1058,7 +1060,7 @@ class depgraph:
 						print "!!! Please ensure the tbz2 exists as specified.\n"
 						sys.exit(1)
 				mytbz2=xpak.tbz2(x)
-				mykey=mytbz2.getelements("CATEGORY")[0]+"/"+os.path.basename(x)[:-5]
+				mykey=mytbz2.getelements("CATEGORY")[0]+"/"+os.path.splitext(os.path.basename(x))[0]
 				if os.path.realpath(portage.db["/"]["bintree"].getname(mykey)) != os.path.realpath(x):
 					print red("\n*** You need to adjust PKGDIR to emerge this package.\n")
 					sys.exit(1)
@@ -1066,9 +1068,9 @@ class depgraph:
 					return (0,myfavorites)
 				elif not "--oneshot" in myopts:
 					myfavorites.append(mykey)
-			elif x[-7:]==".ebuild":
+			elif ext==".ebuild":
 				x = os.path.realpath(x)
-				mykey=os.path.basename(os.path.normpath(x+"/../.."))+"/"+os.path.basename(x)[:-7]
+				mykey=os.path.basename(os.path.normpath(x+"/../.."))+"/"+os.path.splitext(os.path.basename(x))[0]
 				ebuild_path = portage.db["/"]["porttree"].dbapi.findname(mykey)
 				if ebuild_path:
 					if os.path.realpath(ebuild_path) != x:
