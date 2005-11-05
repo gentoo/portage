@@ -28,6 +28,7 @@ try:
 	import commands
 	from time import sleep
 	from random import shuffle
+	from cache.cache_errors import CacheError
 except SystemExit, e:
 	raise
 except Exception, e:
@@ -97,6 +98,7 @@ try:
 	from portage_locks import unlockfile,unlockdir,lockfile,lockdir
 	import portage_checksum
 	from portage_checksum import perform_md5,perform_checksum,prelink_capable
+	import eclass_cache
 	from portage_localization import _
 except SystemExit, e:
 	raise
@@ -921,9 +923,8 @@ class config:
 			if self.modules["user"] == None:
 				self.modules["user"] = {}
 			self.modules["default"] = {
-				"portdbapi.metadbmodule": "portage_db_metadata.database",
-				"portdbapi.auxdbmodule":  "portage_db_flat.database",
-				"eclass_cache.dbmodule":  "portage_db_cpickle.database",
+				"portdbapi.metadbmodule": "cache.metadata.database",
+				"portdbapi.auxdbmodule":  "cache.flat_hash.database",
 			}
 
 			self.usemask=[]
@@ -5017,116 +5018,6 @@ class vartree(packagetree):
 	def populate(self):
 		self.populated=1
 
-# ----------------------------------------------------------------------------
-class eclass_cache:
-	"""Maintains the cache information about eclasses used in ebuild."""
-	def __init__(self,porttree_root,settings):
-		self.porttree_root = porttree_root
-		self.settings = settings
-		self.depcachedir = self.settings.depcachedir[:]
-
-		self.dbmodule = self.settings.load_best_module("eclass_cache.dbmodule")
-
-		self.packages = {} # {"PV": {"eclass1": ["location", "_mtime_"]}}
-		self.eclasses = {} # {"Name": ["location","_mtime_"]}
-
-		# don't fool with porttree ordering unless you *ensure* that ebuild.sh's inherit
-		# ordering is *exactly* the same
-		self.porttrees=[self.porttree_root]
-		self.porttrees.extend(self.settings["PORTDIR_OVERLAY"].split())
-		#normalize the path now, so it's not required later.
-		self.porttrees = [os.path.normpath(x) for x in self.porttrees]
-		self.update_eclasses()
-
-	def close_caches(self):
-		for x in self.packages.keys():
-			for y in self.packages[x].keys():
-				try:
-					self.packages[x][y].sync()
-					self.packages[x][y].close()
-				except SystemExit, e:
-					raise
-				except Exception,e:
-					writemsg("Exception when closing DB: %s: %s\n" % (Exception,e))
-				del self.packages[x][y]
-			del self.packages[x]
-
-	def flush_cache(self):
-		self.packages = {}
-		self.eclasses = {}
-		self.update_eclasses()
-
-	def update_eclasses(self):
-		self.eclasses = {}
-		for x in suffix_array(self.porttrees, "/eclass"):
-			if x and os.path.exists(x):
-				dirlist = listdir(x)
-				for y in dirlist:
-					if y[-len(".eclass"):]==".eclass":
-						try:
-							ys=y[:-len(".eclass")]
-							ymtime=os.stat(x+"/"+y)[stat.ST_MTIME]
-						except SystemExit, e:
-							raise
-						except:
-							continue
-						self.eclasses[ys] = [x, ymtime]
-
-	def setup_package(self, location, cat, pkg):
-		if not self.packages.has_key(location):
-			self.packages[location] = {}
-
-		if not self.packages[location].has_key(cat):
-			try:
-				self.packages[location][cat] = self.dbmodule(self.depcachedir+"/"+location, cat+"-eclass", [], uid, portage_gid)
-			except SystemExit, e:
-				raise
-			except Exception, e:
-				writemsg("\n!!! Failed to open the dbmodule for eclass caching.\n")
-				writemsg("!!! Generally these are permission problems. Caught exception follows:\n")
-				writemsg("!!! "+str(e)+"\n")
-				writemsg("!!! Dirname:  "+str(self.depcachedir+"/"+location)+"\n")
-				writemsg("!!! Basename: "+str(cat+"-eclass")+"\n\n")
-				sys.exit(123)
-
-	def sync(self, location, cat, pkg):
-		if self.packages[location].has_key(cat):
-			self.packages[location][cat].sync()
-
-	def update_package(self, location, cat, pkg, eclass_list):
-		self.setup_package(location, cat, pkg)
-		if not eclass_list:
-			return 1
-
-		data = {}
-		for x in eclass_list:
-			if x not in self.eclasses:
-				writemsg("Eclass '%s' does not exist for '%s'\n" % (x, cat+"/"+pkg))
-				return 0
-			data[x] = [self.eclasses[x][0],self.eclasses[x][1]]
-
-		self.packages[location][cat][pkg] = data
-		self.sync(location,cat,pkg)
-		return 1
-
-	def is_current(self, location, cat, pkg, eclass_list):
-		self.setup_package(location, cat, pkg)
-
-		if not eclass_list:
-			return 1
-
-		if not (self.packages[location][cat].has_key(pkg) and self.packages[location][cat][pkg] and eclass_list):
-			return 0
-
-		myp = self.packages[location][cat][pkg]
-		for x in eclass_list:
-			if not (x in self.eclasses and x in myp and myp[x] == self.eclasses[x]):
-				return 0
-
-		return 1
-
-# ----------------------------------------------------------------------------
-
 auxdbkeys=[
   'DEPEND',    'RDEPEND',   'SLOT',      'SRC_URI',
 	'RESTRICT',  'HOMEPAGE',  'LICENSE',   'DESCRIPTION',
@@ -5140,6 +5031,8 @@ auxdbkeylen=len(auxdbkeys)
 def close_portdbapi_caches():
 	for i in portdbapi.portdbapi_instances:
 		i.close_caches()
+
+
 class portdbapi(dbapi):
 	"""this tree will scan a portage directory located at root (passed to init)"""
 	portdbapi_instances = []
@@ -5182,33 +5075,34 @@ class portdbapi(dbapi):
 		if self.tmpfs and not os.access(self.tmpfs, os.R_OK):
 			self.tmpfs = None
 
-		self.eclassdb = eclass_cache(self.porttree_root, self.mysettings)
+		self.eclassdb = eclass_cache.cache(self.porttree_root, overlays=settings["PORTDIR_OVERLAY"].split())
 
 		self.metadb       = {}
 		self.metadbmodule = self.mysettings.load_best_module("portdbapi.metadbmodule")
-
-		self.auxdb        = {}
-		self.auxdbmodule  = self.mysettings.load_best_module("portdbapi.auxdbmodule")
 
 		#if the portdbapi is "frozen", then we assume that we can cache everything (that no updates to it are happening)
 		self.xcache={}
 		self.frozen=0
 
 		self.porttrees=[self.porttree_root]+self.mysettings["PORTDIR_OVERLAY"].split()
+		self.auxdbmodule  = self.mysettings.load_best_module("portdbapi.auxdbmodule")
+		self.auxdb        = {}
 
+		# XXX: REMOVE THIS ONCE UNUSED_0 IS YANKED FROM auxdbkeys
+		# ~harring
+		filtered_auxdbkeys = filter(lambda x: not x.startswith("UNUSED_0"), auxdbkeys)
+		for x in self.porttrees:
+			# location, label, auxdbkeys
+			self.auxdb[x] = self.auxdbmodule(portage_const.DEPCACHE_PATH, x, filtered_auxdbkeys, gid=portage_gid)
+			
 	def close_caches(self):
 		for x in self.auxdb.keys():
-			for y in self.auxdb[x].keys():
-				self.auxdb[x][y].sync()
-				self.auxdb[x][y].close()
-				del self.auxdb[x][y]
-			del self.auxdb[x]
-		self.eclassdb.close_caches()
+			self.auxdb[x].sync()
+		self.auxdb.clear()
 
 	def flush_cache(self):
 		self.metadb = {}
 		self.auxdb  = {}
-		self.eclassdb.flush_cache()
 
 	def finddigest(self,mycpv):
 		try:
@@ -5261,17 +5155,13 @@ class portdbapi(dbapi):
 		# when not found
 		return None, 0
 
-	def aux_get(self,mycpv,mylist,strict=0,metacachedir=None,debug=0):
+	def aux_get(self, mycpv, mylist):
 		"stub code for returning auxilliary db information, such as SLOT, DEPEND, etc."
 		'input: "sys-apps/foo-1.0",["SLOT","DEPEND","HOMEPAGE"]'
 		'return: ["0",">=sys-libs/bar-1.0","http://www.foo.com"] or raise KeyError if error'
 		global auxdbkeys,auxdbkeylen
 
 		cat,pkg = string.split(mycpv, "/", 1)
-
-		if metacachedir:
-			if cat not in self.metadb:
-				self.metadb[cat] = self.metadbmodule(metacachedir,cat,auxdbkeys,uid,portage_gid)
 
 		myebuild, mylocation=self.findname2(mycpv)
 
@@ -5314,11 +5204,6 @@ class portdbapi(dbapi):
 					raise portage_exception.SecurityViolation, "Error in verification of signatures: %(errormsg)s" % {"errormsg":str(e)}
 				writemsg("!!! Manifest is missing or inaccessable: %(manifest)s\n" % {"manifest":myManifestPath})
 
-		if mylocation not in self.auxdb:
-			self.auxdb[mylocation] = {}
-
-		if not self.auxdb[mylocation].has_key(cat):
-			self.auxdb[mylocation][cat] = self.auxdbmodule(self.depcachedir+"/"+mylocation,cat,auxdbkeys,uid,portage_gid)
 
 		if os.access(myebuild, os.R_OK):
 			emtime=os.stat(myebuild)[stat.ST_MTIME]
@@ -5328,47 +5213,24 @@ class portdbapi(dbapi):
 			raise KeyError
 
 		try:
-			auxdb_is_valid = self.auxdb[mylocation][cat].has_key(pkg) and \
-			                 self.auxdb[mylocation][cat][pkg].has_key("_mtime_") and \
-			                 self.auxdb[mylocation][cat][pkg]["_mtime_"] == emtime
-		except SystemExit, e:
-			raise
-		except Exception, e:
-			auxdb_is_valid = 0
-			if not metacachedir:
-				writemsg("auxdb exception: [%(loc)s]: %(exception)s\n" % {"loc":mylocation+"::"+cat+"/"+pkg, "exception":str(e)})
-			if self.auxdb[mylocation][cat].has_key(pkg):
-				self.auxdb[mylocation][cat].del_key(pkg)
-				self.auxdb[mylocation][cat].sync()
-
-		writemsg("auxdb is valid: "+str(auxdb_is_valid)+" "+str(pkg)+"\n", 2)
-		doregen = not (auxdb_is_valid and self.eclassdb.is_current(mylocation,cat,pkg,self.auxdb[mylocation][cat][pkg]["INHERITED"].split()))
-
-		# when mylocation is not overlay directorys and metacachedir is set,
-		# we use cache files, which is usually on /usr/portage/metadata/cache/.
-		if doregen and mylocation==self.mysettings["PORTDIR"] and metacachedir and self.metadb[cat].has_key(pkg):
-			metadata=self.metadb[cat][pkg]
-
-			if "EAPI" not in metadata or not metadata["EAPI"].strip():
-				metadata["EAPI"] = "0"
-
-			if not eapi_is_supported(metadata["EAPI"]):
-				# intentionally wipe keys.
-				eapi = metadata["EAPI"]
-				mtime = metadata.get("_mtime_", 0)
-				metadata = {}
-				map(lambda x: metadata.setdefault(x, ''), auxdbkeys)
-				metadata["_mtime_"] = long(mtime)
-				metadata["EAPI"] == "-"+eapi
-
+			mydata = self.auxdb[mylocation][mycpv]
+			if emtime != long(mydata.get("_mtime_", 0)):
+				doregen = True
+			elif len(mydata.get("_eclasses_", [])) > 0:
+				doregen = not self.eclassdb.is_eclass_data_valid(mydata["_eclasses_"])
 			else:
-				# eclass updates only if we haven't nuked the entry.
-				self.eclassdb.update_package(mylocation,cat,pkg,metadata["INHERITED"].split())
+				doregen = False
+				
+		except KeyError:
+			doregen = True
+		except CacheError:
+			doregen = True
+			try:				del self.auxdb[mylocation][mycpv]
+			except KeyError:	pass
 
-			self.auxdb[mylocation][cat][pkg] = metadata
-			self.auxdb[mylocation][cat].sync()
+		writemsg("auxdb is valid: "+str(not doregen)+" "+str(pkg)+"\n", 2)
 
-		elif doregen:
+		if doregen:
 			writemsg("doregen: %s %s\n" % (doregen,mycpv), 2)
 			writemsg("Generating cache entry(0) for: "+str(myebuild)+"\n",1)
 
@@ -5389,9 +5251,7 @@ class portdbapi(dbapi):
 			if os.path.exists(mydbkey):
 				try:
 					os.unlink(mydbkey)
-				except SystemExit, e:
-					raise
-				except Exception, e:
+				except (IOError, OSError), e:
 					portage_locks.unlockfile(mylock)
 					self.lock_held = 0
 					writemsg("Uncaught handled exception: %(exception)s\n" % {"exception":str(e)})
@@ -5411,19 +5271,13 @@ class portdbapi(dbapi):
 				os.unlink(mydbkey)
 				mylines=mycent.readlines()
 				mycent.close()
-			except SystemExit, e:
-				raise
+
 			except (IOError, OSError):
 				portage_locks.unlockfile(mylock)
 				self.lock_held = 0
 				writemsg(str(red("\naux_get():")+" (1) Error in "+mycpv+" ebuild.\n"
 				  "               Check for syntax error or corruption in the ebuild. (--debug)\n\n"))
 				raise KeyError
-			except Exception, e:
-				portage_locks.unlockfile(mylock)
-				self.lock_held = 0
-				writemsg("Uncaught handled exception: %(exception)s\n" % {"exception":str(e)})
-				raise
 
 			portage_locks.unlockfile(mylock)
 			self.lock_held = 0
@@ -5444,18 +5298,24 @@ class portdbapi(dbapi):
 				map(lambda x:mydata.setdefault(x, ""), auxdbkeys)
 				mydata["EAPI"] = "-"+eapi
 
+			if mydata.get("INHERITED", False):
+				mydata["_eclasses_"] = self.eclassdb.get_eclass_data(mydata["INHERITED"].split())
+			else:
+				mydata["_eclasses_"] = {}
+			
+			del mydata["INHERITED"]
+
 			mydata["_mtime_"] = emtime
 
-			self.auxdb[mylocation][cat][pkg] = mydata
-			self.auxdb[mylocation][cat].sync()
-			if not self.eclassdb.update_package(mylocation, cat, pkg, mylines[auxdbkeys.index("INHERITED")].split()):
-				sys.exit(1)
+			self.auxdb[mylocation][mycpv] = mydata
 
 		#finally, we look at our internal cache entry and return the requested data.
-		mydata   = self.auxdb[mylocation][cat][pkg]
 		returnme = []
 		for x in mylist:
-			returnme.append(mydata.get(x,""))
+			if x == "INHERITED":
+				returnme.append(' '.join(mydata.get("_eclasses_", {}).keys()))
+			else:
+				returnme.append(mydata.get(x,""))
 
 		if "EAPI" in mylist:
 			idx = mylist.index("EAPI")
