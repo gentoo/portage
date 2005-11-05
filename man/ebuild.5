@@ -16,7 +16,7 @@ Here's a simple example ebuild:
 .nf
 # Copyright 1999\-2005 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id:
+# $Header: $
 
 inherit some_eclass another_eclass
 
@@ -811,21 +811,6 @@ All these functions act like the do* functions, but they only work with one
 file and the file is installed as \fI[new filename]\fR.
 .SH "REPORTING BUGS"
 Please report bugs via http://bugs.gentoo.org/
-.SH "SEE ALSO"
-.BR ebuild (1),
-.BR make.conf (5)
-.TP
-The \fI/usr/sbin/ebuild.sh\fR script.
-.TP
-The helper apps in \fI/usr/lib/portage/bin\fR.
-.SH "FILES"
-.TP
-\fB/etc/make.conf\fR 
-Contains variables for the build\-process and overwrites those in make.defaults.
-.TP
-\fB/etc/make.globals\fR
-Contains the default variables for the build\-process, you should edit
-\fI/etc/make.conf\fR instead.
 .SH "AUTHORS"
 .nf
 Achim Gottinger <achim@gentoo.org>
@@ -833,5 +818,18 @@ Mark Guertin <gerk@gentoo.org>
 Nicholas Jones <carpaski@gentoo.org>
 Mike Frysinger <vapier@gentoo.org>
 .fi
-.SH "CVS HEADER"
-$Id: /var/cvsroot/gentoo-src/portage/man/ebuild.5,v 1.73.2.8 2005/05/22 09:56:55 vapier Exp $
+.SH "FILES"
+.TP
+The \fI/usr/sbin/ebuild.sh\fR script.
+.TP
+The helper apps in \fI/usr/lib/portage/bin\fR.
+.TP
+\fB/etc/make.conf\fR 
+Contains variables for the build\-process and overwrites those in make.defaults.
+.TP
+\fB/etc/make.globals\fR
+Contains the default variables for the build\-process, you should edit
+\fI/etc/make.conf\fR instead.
+.SH "SEE ALSO"
+.BR ebuild (1),
+.BR make.conf (5)

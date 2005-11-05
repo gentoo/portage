@@ -159,6 +159,18 @@ Builds a RedHat RPM package from the files in the temporary
 information is not incorporated into the RPM.
 .SH "REPORTING BUGS"
 Please report bugs via http://bugs.gentoo.org/
+.SH "AUTHORS"
+.nf
+Achim Gottinger <achim@gentoo.org>
+Daniel Robbins <drobbins@gentoo.org>
+Nicholas Jones <carpaski@gentoo.org>
+Mike Frysinger <vapier@gentoo.org>
+.fi
+.SH "FILES"
+.TP
+\fB/etc/make.conf\fR 
+Contains variables for the build\-process and overwrites those
+in make.globals.
 .SH "SEE ALSO"
 .BR emerge (1),
 .BR ebuild (5),
@@ -167,18 +179,3 @@ Please report bugs via http://bugs.gentoo.org/
 The \fI/usr/sbin/ebuild.sh\fR script. 
 .TP
 The helper apps in \fI/usr/lib/portage/bin\fR.
-.SH "FILES"
-.TP
-\fB/etc/make.conf\fR 
-Contains variables for the build\-process and overwrites those
-in make.globals.
-.SH "AUTHORS"
-Achim Gottinger <achim@gentoo.org>
-.br 
-Daniel Robbins <drobbins@gentoo.org>
-.br 
-Nicholas Jones <carpaski@gentoo.org>
-.br 
-Mike Frysinger <vapier@gentoo.org>
-.SH "CVS HEADER"
-$Id: /var/cvsroot/gentoo-src/portage/man/ebuild.1,v 1.16 2004/09/17 00:17:10 vapier Exp $"
