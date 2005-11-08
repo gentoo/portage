@@ -1277,17 +1277,14 @@ class depgraph:
 							print
 							print "For more information, see MASKED PACKAGES section in the emerge man page or "
 							print "refer to the Gentoo Handbook."
-							if myparent:
-								print     "!!!    "+red(xfrom)
-							print
 						else:
 							print "\n!!! "+red("There are no packages available to satisfy: ")+green(xinfo)
 							print "!!! Either add a suitable binary package or compile from an ebuild."
 					else:
-						print "\nemerge: there are no ebuilds to satisfy "+xinfo+"."
-						if myparent:
-							print xfrom
-						print
+						print "\nemerge: there are no ebuilds to satisfy "+green(xinfo)+"."
+					if myparent:
+						print xfrom
+					print
 					return 0
 
 				if "--debug" in myopts:
