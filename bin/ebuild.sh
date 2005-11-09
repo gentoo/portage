@@ -634,11 +634,14 @@ END
 
 dyn_setup()
 {
+	[ "$(type -t pre_pkg_setup)" == "function" ] && pre_pkg_setup
 	pkg_setup
+	[ "$(type -t post_pkg_setup)" == "function" ] && post_pkg_setup
 }
 
 dyn_unpack() {
 	trap "abort_unpack" SIGINT SIGQUIT
+	[ "$(type -t pre_src_unpack)" == "function" ] && pre_src_unpack
 	local newstuff="no"
 	if [ -e "${WORKDIR}" ]; then
 		local x
@@ -665,6 +668,7 @@ dyn_unpack() {
 	if [ -e "${WORKDIR}" ]; then
 		if [ "$newstuff" == "no" ]; then
 			echo ">>> WORKDIR is up-to-date, keeping..."
+			[ "$(type -t post_src_unpack)" == "function" ] && post_src_unpack
 			return 0
 		fi
 	fi
@@ -676,6 +680,9 @@ dyn_unpack() {
 	touch "${BUILDDIR}/.unpacked" || die "IO Failure -- Failed 'touch .unpacked' in BUILDIR"
 	echo ">>> Source unpacked."
 	cd "$BUILDDIR"
+
+	[ "$(type -t post_src_unpack)" == "function" ] && post_src_unpack
+
 	trap SIGINT SIGQUIT
 }
 
@@ -857,6 +864,9 @@ abort_install() {
 
 dyn_compile() {
 	trap "abort_compile" SIGINT SIGQUIT
+
+	[ "$(type -t pre_src_compile)" == "function" ] && pre_src_compile
+
 	[ "${CFLAGS-unset}"      != "unset" ] && export CFLAGS
 	[ "${CXXFLAGS-unset}"    != "unset" ] && export CXXFLAGS
 	[ "${LIBCFLAGS-unset}"   != "unset" ] && export LIBCFLAGS
@@ -895,6 +905,7 @@ dyn_compile() {
 		echo ">>> It appears that ${PN} is already compiled; skipping."
 		echo ">>> (clean to force compilation)"
 		trap SIGINT SIGQUIT
+		[ "$(type -t post_src_compile)" == "function" ] && post_src_compile
 		return
 	fi
 	if [ -d "${S}" ]; then
@@ -951,6 +962,9 @@ dyn_compile() {
 	if hasq nostrip $FEATURES $RESTRICT; then
 		touch DEBUGBUILD
 	fi
+
+	[ "$(type -t post_src_compile)" == "function" ] && post_src_compile
+
 	trap SIGINT SIGQUIT
 }
 
@@ -975,8 +989,10 @@ dyn_package() {
 
 
 dyn_test() {
+	[ "$(type -t pre_src_test)" == "function" ] && pre_src_test
 	if [ ${BUILDDIR}/.tested -nt "${WORKDIR}" ]; then
 		echo ">>> It appears that ${PN} has already been tested; skipping."
+		[ "$(type -t post_src_test)" == "function" ] && post_src_test
 		return
 	fi
 	trap "abort_test" SIGINT SIGQUIT
@@ -995,6 +1011,7 @@ dyn_test() {
 
 	cd "${BUILDDIR}"
 	touch .tested || die "Failed to 'touch .tested' in ${BUILDDIR}"
+	[ "$(type -t post_src_test)" == "function" ] && post_src_test
 	trap SIGINT SIGQUIT
 }
 	
@@ -1004,6 +1021,7 @@ PORTAGE_INST_GID="0"
 
 dyn_install() {
 	trap "abort_install" SIGINT SIGQUIT
+	[ "$(type -t pre_src_install)" == "function" ] && pre_src_install
 	rm -rf "${BUILDDIR}/image"
 	mkdir "${BUILDDIR}/image"
 	if [ -d "${S}" ]; then
@@ -1207,6 +1225,7 @@ dyn_install() {
 	echo ">>> Completed installing ${PF} into ${D}"
 	echo
 	cd ${BUILDDIR}
+	[ "$(type -t post_src_install)" == "function" ] && post_src_install
 	trap SIGINT SIGQUIT
 }
 
@@ -1214,6 +1233,8 @@ dyn_preinst() {
 	# set IMAGE depending if this is a binary or compile merge
 	[ "${EMERGE_FROM}" == "binary" ] && IMAGE=${PKG_TMPDIR}/${PF}/bin \
 					|| IMAGE=${D}
+	
+	[ "$(type -t pre_pkg_preinst)" == "function" ] && pre_pkg_preinst
 
 	D=${IMAGE} pkg_preinst
 
@@ -1322,6 +1343,9 @@ dyn_preinst() {
 			echo "!!! Unable to set SELinux security labels"
 		fi
 	fi
+
+	[ "$(type -t post_pkg_preinst)" == "function" ] && post_pkg_preinst
+
 	trap SIGINT SIGQUIT
 }
 
@@ -1848,11 +1872,15 @@ for myarg in $*; do
 	prerm|postrm|postinst|config)
 		export SANDBOX_ON="0"
 		if [ "$PORTAGE_DEBUG" != "1" ]; then
+			[ "$(type -t pre_pkg_${myarg})" == "function" ] && pre_pkg_${myarg}
 			pkg_${myarg}
+			[ "$(type -t post_pkg_${myarg})" == "function" ] && post_pkg_${myarg}
 			#Allow non-zero return codes since they can be caused by &&
 		else
 			set -x
+			[ "$(type -t pre_pkg_${myarg})" == "function" ] && pre_pkg_${myarg}
 			pkg_${myarg}
+			[ "$(type -t post_pkg_${myarg})" == "function" ] && post_pkg_${myarg}
 			#Allow non-zero return codes since they can be caused by &&
 			set +x
 		fi
