@@ -903,7 +903,7 @@ class depgraph:
 		self.outdatedpackages=[]
 		self.mydbapi={}
 		self.mydbapi["/"] = portage.fakedbapi()
-		if "empty" not in myparams:
+		if "empty" not in myparams or portage.root != "/":
 			for pkg in portage.db["/"]["vartree"].getallcpv():
 				self.mydbapi["/"].cpv_inject(pkg)
 		if portage.root != "/":
