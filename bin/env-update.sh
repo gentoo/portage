@@ -1,4 +1,4 @@
-#!/bin/bash
+#!@BASH@
 # Copyright 1999-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/bin/env-update.sh,v 1.2 2004/10/04 13:56:50 vapier Exp $
@@ -197,9 +197,9 @@ unset my_envd_LDPATH
 
 echo ">>> Regenerating ${ROOT}etc/ld.so.cache..."
 if [[ ${MAKELINKS} -eq 0 ]] ; then
-	(cd / ; /sbin/ldconfig -X -r ${ROOT} >& /dev/null)
+	(cd / ; ${PREFIX}/sbin/ldconfig -X -r ${ROOT} >& /dev/null)
 else
-	(cd / ; /sbin/ldconfig -r ${ROOT} >& /dev/null)
+	(cd / ; ${PREFIX}/sbin/ldconfig -r ${ROOT} >& /dev/null)
 fi
 
 cat << EOF > ${PROFILEENV}
@@ -218,4 +218,4 @@ cat << EOF > ${CSHENV}
 $(set | grep '^my_envd_' | sed -e 's:^my_envd_\([[:alpha:]_][[:alnum:]_]*\)=:setenv \1 :')
 EOF
 
-[[ ${ROOT} == / ]] && /sbin/depscan.sh
+[[ ${ROOT} == / ]] && ${PREFIX}/sbin/depscan.sh

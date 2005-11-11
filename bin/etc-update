@@ -1,4 +1,4 @@
-#!/bin/bash
+#!@BASH@
 # Copyright 1999-2005 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id: etc-update 2221 2005-11-01 01:32:07Z vapier $
@@ -65,7 +65,7 @@ function scan() {
 					if [ ! -e "${rpath}/${rfile}" ] || [ ! -e "${rpath}/${rfile:10}" ]; then
 						MATCHES=0
 					else
-						diff -Bbua ${rpath}/${rfile} ${rpath}/${rfile:10} | egrep '^[+-]' | egrep -v '^[+-][\t ]*#|^--- |^\+\+\+ ' | egrep -qv '^[-+][\t ]*$'
+						diff -Bbua ${rpath}/${rfile} ${rpath}/${rfile:10} | @EGREP@ '^[+-]' | @EGREP@ -v '^[+-][\t ]*#|^--- |^\+\+\+ ' | @EGREP@ -qv '^[-+][\t ]*$'
 						MATCHES=$?
 					fi
 				elif [[ -z `diff -Nua ${rpath}/${rfile} ${rpath}/${rfile:10}|
@@ -379,8 +379,8 @@ rm -rf ${TMP} 2> /dev/null
 mkdir ${TMP} || die "failed mkdir command!" 1
 
 # I need the CONFIG_PROTECT value
-CONFIG_PROTECT=$(/usr/lib/portage/bin/portageq envvar CONFIG_PROTECT)
-CONFIG_PROTECT_MASK=$(/usr/lib/portage/bin/portageq envvar CONFIG_PROTECT_MASK)
+CONFIG_PROTECT=$(@PORTAGE_BASE@/bin/portageq envvar CONFIG_PROTECT)
+CONFIG_PROTECT_MASK=$(@PORTAGE_BASE@/bin/portageq envvar CONFIG_PROTECT_MASK)
 
 # load etc-config's configuration
 EU_AUTOMERGE=`get_config eu_automerge`

@@ -1,9 +1,10 @@
-#!/bin/bash
+#!@BASH@
 # Copyright 1999-2005 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/bin/ebuild.sh,v 1.201.2.42 2005/08/20 17:24:30 jstubbs Exp $
 
-export SANDBOX_PREDICT="${SANDBOX_PREDICT}:/proc/self/maps:/dev/console:/usr/lib/portage/pym:/dev/random"
+
+export SANDBOX_PREDICT="${SANDBOX_PREDICT}:/proc/self/maps:/dev/console:@PORTAGE_BASE@/pym:/dev/random"
 export SANDBOX_WRITE="${SANDBOX_WRITE}:/dev/shm:${PORTAGE_TMPDIR}"
 export SANDBOX_READ="${SANDBOX_READ}:/dev/shm:${PORTAGE_TMPDIR}"
 
@@ -47,17 +48,10 @@ fi
 [ ! -z "$OCC" ] && export CC="$OCC"
 [ ! -z "$OCXX" ] && export CXX="$OCXX"
 
-export PATH="/sbin:/usr/sbin:/usr/lib/portage/bin:/bin:/usr/bin:${ROOTPATH}"
+export PATH="${PREFIX}/sbin:${PREFIX}/usr/sbin:@PORTAGE_BASE@/bin:${PREFIX}/bin:${PREFIX}/usr/bin:${ROOTPATH}"
 [ ! -z "$PREROOTPATH" ] && export PATH="${PREROOTPATH%%:}:$PATH"
 
-if [ -e /etc/init.d/functions.sh ]; then
-	source /etc/init.d/functions.sh  &>/dev/null
-elif [ -e /etc/rc.d/config/functions ];	then
-	source /etc/rc.d/config/functions &>/dev/null
-else
-	#Mac OS X
-	source /usr/lib/portage/bin/functions.sh &>/dev/null
-fi
+source @PORTAGE_BASE@/bin/isolated-functions.sh &>/dev/null
 
 # the sandbox is disabled by default except when overridden in the relevant stages
 export SANDBOX_ON="0"
@@ -195,7 +189,7 @@ has_version() {
 	fi
 	# return shell-true/shell-false if exists.
 	# Takes single depend-type atoms.
-	if /usr/lib/portage/bin/portageq 'has_version' "${ROOT}" "$1"; then
+	if @PORTAGE_BASE@/bin/portageq 'has_version' "${ROOT}" "$1"; then
 		return 0
 	else
 		return 1
@@ -206,7 +200,7 @@ portageq() {
 	if [ "${EBUILD_PHASE}" == "depend" ]; then
 		die "portageq calls are not allowed in the global scope"
 	fi
-	/usr/lib/portage/bin/portageq "$@"
+	@PORTAGE_BASE@/bin/portageq "$@"
 }
 
 
@@ -221,7 +215,7 @@ best_version() {
 	fi
 	# returns the best/most-current match.
 	# Takes single depend-type atoms.
-	/usr/lib/portage/bin/portageq 'best_version' "${ROOT}" "$1"
+	@PORTAGE_BASE@/bin/portageq 'best_version' "${ROOT}" "$1"
 }
 
 use_with() {
@@ -1210,13 +1204,13 @@ dyn_install() {
 		rm -f "${D}/usr/share/info/dir.gz"
 	fi
 
-	if hasq multilib-strict ${FEATURES} && [ -x /usr/bin/file -a -x /usr/bin/find -a \
+	if hasq multilib-strict ${FEATURES} && [ -x file -a -x find -a \
 	     -n "${MULTILIB_STRICT_DIRS}" -a -n "${MULTILIB_STRICT_DENY}" ]; then
 		MULTILIB_STRICT_EXEMPT=${MULTILIB_STRICT_EXEMPT:-"(perl5|gcc|gcc-lib)"}
 		for dir in ${MULTILIB_STRICT_DIRS}; do
 			[ -d "${D}/${dir}" ] || continue
-			for file in $(find ${D}/${dir} -type f | egrep -v "^${D}/${dir}/${MULTILIB_STRICT_EXEMPT}"); do
-				file ${file} | egrep -q "${MULTILIB_STRICT_DENY}" && die "File ${file} matches a file type that is not allowed in ${dir}"
+			for file in $(find ${D}/${dir} -type f | @EGREP@ -v "^${D}/${dir}/${MULTILIB_STRICT_EXEMPT}"); do
+				file ${file} | @EGREP@ -q "${MULTILIB_STRICT_DENY}" && die "File ${file} matches a file type that is not allowed in ${dir}"
 			done
 		done
 	fi
@@ -1326,7 +1320,7 @@ dyn_preinst() {
 	if useq selinux; then
 		# only attempt to label if setfiles is executable
 		# and 'context' is available on selinuxfs.
-		if [ -f /selinux/context -a -x /usr/sbin/setfiles ]; then
+		if [ -f /selinux/context -a -x ${PREFIX}/usr/sbin/setfiles ]; then
 			echo ">>> Setting SELinux security labels"
 			if [ -f ${POLICYDIR}/file_contexts/file_contexts ]; then
 				cp -f "${POLICYDIR}/file_contexts/file_contexts" "${T}"
@@ -1335,7 +1329,7 @@ dyn_preinst() {
 			fi
 
 			addwrite /selinux/context
-			/usr/sbin/setfiles -r "${IMAGE}" "${T}/file_contexts" "${IMAGE}" \
+			${PREFIX}/usr/sbin/setfiles -r "${IMAGE}" "${T}/file_contexts" "${IMAGE}" \
 				|| die "Failed to set SELinux security labels."
 		else
 			# nonfatal, since merging can happen outside a SE kernel
@@ -1710,13 +1704,13 @@ if [ "$*" != "depend" ] && [ "$*" != "clean" ] && [ "$*" != "setup" ]; then
 	fi
 
 	if hasq distcc ${FEATURES} &>/dev/null; then
-		if [ -d /usr/lib/distcc/bin ]; then
+		if [ -d ${PREFIX}/usr/lib/distcc/bin ]; then
 			#We can enable distributed compile support
 			if [ -z "${PATH/*distcc*/}" ]; then
 				# Remove the other reference.
 				remove_path_entry "distcc"
 			fi
-			export PATH="/usr/lib/distcc/bin:${PATH}"
+			export PATH="${PREFIX}/usr/lib/distcc/bin:${PATH}"
 			[ ! -z "${DISTCC_LOG}" ] && addwrite "$(dirname ${DISTCC_LOG})"
 		elif which distcc &>/dev/null; then
 			export CC="distcc $CC"
@@ -1731,13 +1725,13 @@ if [ "$*" != "depend" ] && [ "$*" != "clean" ] && [ "$*" != "setup" ]; then
 			remove_path_entry "ccache"
 		fi
 
-		if [ -d /usr/lib/ccache/bin ]; then
-			export PATH="/usr/lib/ccache/bin:${PATH}"
-		elif [ -d /usr/bin/ccache ]; then
-			export PATH="/usr/bin/ccache:${PATH}"
+		if [ -d ${PREFIX}/usr/lib/ccache/bin ]; then
+			export PATH="${PREFIX}/usr/lib/ccache/bin:${PATH}"
+		elif [ -d ${PREFIX}/usr/bin/ccache ]; then
+			export PATH="${PREFIX}/usr/bin/ccache:${PATH}"
 		fi
 
-		[ -z "${CCACHE_DIR}" ] && export CCACHE_DIR="/var/tmp/ccache"
+		[ -z "${CCACHE_DIR}" ] && export CCACHE_DIR="@PREFIX/var/tmp/ccache"
 
 		addread "${CCACHE_DIR}"
 		addwrite "${CCACHE_DIR}"
@@ -1746,7 +1740,7 @@ if [ "$*" != "depend" ] && [ "$*" != "clean" ] && [ "$*" != "setup" ]; then
 	fi
 
 	# XXX: Load up the helper functions.
-#	for X in /usr/lib/portage/bin/functions/*.sh; do
+#	for X in @PORTAGE_BASE@/bin/functions/*.sh; do
 #		source ${X} || die "Failed to source ${X}"
 #	done
 	
@@ -1773,7 +1767,7 @@ unset x
 # Turn of extended glob matching so that g++ doesn't get incorrectly matched.
 shopt -u extglob
 
-QA_INTERCEPTORS="javac java-config python python-config perl grep egrep fgrep sed gcc g++ cc bash awk nawk gawk pkg-config"
+QA_INTERCEPTORS="javac java-config python python-config perl grep @EGREP@ fgrep sed gcc g++ cc bash awk nawk gawk pkg-config"
 # level the QA interceptors if we're in depend
 if hasq "depend" "$@"; then
 	for BIN in ${QA_INTERCEPTORS}; do
@@ -1983,7 +1977,7 @@ done
 if [ "$myarg" != "clean" ]; then
 	# Save current environment and touch a success file. (echo for success)
 	umask 002
-	set | egrep -v "^SANDBOX_" > "${T}/environment" 2>/dev/null
+	set | @EGREP@ -v "^SANDBOX_" > "${T}/environment" 2>/dev/null
 	chown portage:portage "${T}/environment" &>/dev/null
 	chmod g+w "${T}/environment" &>/dev/null
 fi

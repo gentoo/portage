@@ -5,6 +5,7 @@
 
 
 import os,pwd,grp
+import portage_const
 from portage_util import writemsg
 from output import green,red
 
@@ -42,7 +43,7 @@ os.environ["USERLAND"]=userland
 secpass=0
 
 uid=os.getuid()
-wheelgid=0
+wheelgid=portage_const.wheelgid
 
 if uid==0:
 	secpass=2

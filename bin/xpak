@@ -1,4 +1,4 @@
-#!/usr/bin/python -O
+#!@PYTHON@ -O
 # Copyright 1999-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/bin/xpak,v 1.10 2004/10/04 13:56:50 vapier Exp $
@@ -8,7 +8,7 @@ if len(sys.argv)!=3:
 	print "xpak: expecting three arguments."
 	sys.exit(1)
 
-sys.path = ["/usr/lib/portage/pym"]+sys.path
+sys.path = ["@PORTAGE_BASE@/pym"]+sys.path
 
 import xpak
 xpak.xpak(sys.argv[1],sys.argv[2])

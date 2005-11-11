@@ -1,4 +1,4 @@
-#!/bin/bash
+#!@BASH@
 # Copyright 1999-2005 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/bin/quickpkg,v 1.13.2.6 2005/08/10 22:08:48 vapier Exp $
@@ -37,7 +37,7 @@ fi
 export PKGDIR=$(portageq envvar PKGDIR)
 export PORTAGE_TMPDIR=$(portageq envvar PORTAGE_TMPDIR)
 
-source /sbin/functions.sh
+source @PORTAGE_BASE@/bin/isolated-functions.sh
 
 # here we make a package given a little info
 # $1 = package-name w/version

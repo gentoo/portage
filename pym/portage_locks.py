@@ -16,6 +16,7 @@ import portage_file
 import portage_util
 import portage_data
 from portage_localization import _
+import portage_const
 
 HARDLINK_FD = -2
 
@@ -271,7 +272,7 @@ def hardlink_lockfile(lockfilename, max_wait=14400):
 			print
 			print "Waiting on (hardlink) lockfile: (one '.' per 3 seconds)"
 			print "This is a feature to prevent distfiles corruption."
-			print "/usr/lib/portage/bin/clean_locks can fix stuck locks."
+			print "%s/bin/clean_locks can fix stuck locks." % portage_const.PORTAGE_BASE
 			print "Lockfile: " + lockfilename
 		time.sleep(3)
 	

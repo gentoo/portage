@@ -1,10 +1,10 @@
-#!/usr/bin/python -O
+#!@PYTHON@ -O
 # Copyright 1999-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/bin/clean_locks,v 1.1 2004/09/26 10:44:31 carpaski Exp $
 
 import os,sys
-sys.path = ["/usr/lib/portage/pym"]+sys.path
+sys.path = ["@PORTAGE_BASE@/pym"]+sys.path
 
 import portage_locks
 

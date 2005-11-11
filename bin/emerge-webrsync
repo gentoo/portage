@@ -1,15 +1,15 @@
-#!/bin/bash
+#!@BASH@
 # Copyright 1999-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/bin/Attic/emerge-webrsync,v 1.8.2.4 2005/02/26 11:22:38 carpaski Exp $
 # Author: Karl Trygve Kalleberg <karltk@gentoo.org>
 # Rewritten from the old, Perl-based emerge-webrsync script
 
-GENTOO_MIRRORS="${GENTOO_MIRRORS} $(/usr/lib/portage/bin/portageq gentoo_mirrors)"
-PORTDIR="$(/usr/lib/portage/bin/portageq portdir)"
-FETCHCOMMAND="$(/usr/lib/portage/bin/portageq envvar FETCHCOMMAND)"
-USERLAND="$(/usr/lib/portage/bin/portageq envvar USERLAND)"
-DISTDIR="$(/usr/lib/portage/bin/portageq envvar PORTAGE_TMPDIR)/emerge-webrsync"
+GENTOO_MIRRORS="${GENTOO_MIRRORS} $(@PORTAGE_BASE@/bin/portageq gentoo_mirrors)"
+PORTDIR="$(@PORTAGE_BASE@/bin/portageq portdir)"
+FETCHCOMMAND="$(@PORTAGE_BASE@/bin/portageq envvar FETCHCOMMAND)"
+USERLAND="$(@PORTAGE_BASE@/bin/portageq envvar USERLAND)"
+DISTDIR="$(@PORTAGE_BASE@/bin/portageq envvar PORTAGE_TMPDIR)/emerge-webrsync"
 
 if [ ! -d $DISTDIR ] ; then
 	mkdir -p $DISTDIR

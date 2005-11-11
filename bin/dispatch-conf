@@ -1,4 +1,4 @@
-#!/usr/bin/python -O
+#!@PYTHON@ -O
 # Copyright 1999-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/bin/dispatch-conf,v 1.7.2.10 2005/05/12 15:20:22 jstubbs Exp $
@@ -15,7 +15,7 @@
 from stat import *
 from random import *
 import os, shutil, sys, string, re, commands, atexit
-sys.path = ["/usr/lib/portage/pym"]+sys.path
+sys.path = ["@PORTAGE_BASE@/pym"]+sys.path
 
 import portage, dispatch_conf
 

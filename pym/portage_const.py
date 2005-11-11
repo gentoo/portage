@@ -2,35 +2,41 @@
 # Copyright 1998-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/pym/portage_const.py,v 1.3.2.3 2005/04/29 04:56:35 jstubbs Exp $
+import os
+
+# ===========================================================================
+# autotool supplied constants.
+# ===========================================================================
+from portage_const_autotool import *
 
 
 # ===========================================================================
 # START OF CONSTANTS -- START OF CONSTANTS -- START OF CONSTANTS -- START OF
 # ===========================================================================
 
-VDB_PATH                = "var/db/pkg"
-PRIVATE_PATH            = "/var/lib/portage"
-CACHE_PATH              = "/var/cache/edb"
+VDB_PATH                = PREFIX+"var/db/pkg"
+PRIVATE_PATH            = PREFIX+"/var/lib/portage"
+CACHE_PATH              = PREFIX+"/var/cache/edb"
 DEPCACHE_PATH           = CACHE_PATH+"/dep"
 
-USER_CONFIG_PATH        = "/etc/portage"
+USER_CONFIG_PATH        = PREFIX+"/etc/portage"
 MODULES_FILE_PATH       = USER_CONFIG_PATH+"/modules"
 CUSTOM_PROFILE_PATH     = USER_CONFIG_PATH+"/profile"
 
-PORTAGE_BASE_PATH       = "/usr/lib/portage"
+PORTAGE_BASE_PATH       = PORTAGE_BASE
 PORTAGE_BIN_PATH        = PORTAGE_BASE_PATH+"/bin"
 PORTAGE_PYM_PATH        = PORTAGE_BASE_PATH+"/pym"
-PROFILE_PATH            = "/etc/make.profile"
+PROFILE_PATH            = PREFIX+"/etc/make.profile"
 LOCALE_DATA_PATH        = PORTAGE_BASE_PATH+"/locale"
 
 EBUILD_SH_BINARY        = PORTAGE_BIN_PATH+"/ebuild.sh"
-SANDBOX_BINARY          = "/usr/bin/sandbox"
-BASH_BINARY             = "/bin/bash"
-MOVE_BINARY             = "/bin/mv"
-PRELINK_BINARY          = "/usr/sbin/prelink"
+SANDBOX_BINARY          = PREFIX+"/usr/bin/sandbox"
+BASH_BINARY             = PREFIX+"/bin/bash"
+MOVE_BINARY             = PREFIX+"/bin/mv"
+PRELINK_BINARY          = PREFIX+"/usr/sbin/prelink"
 
 WORLD_FILE              = PRIVATE_PATH+"/world"
-MAKE_CONF_FILE          = "/etc/make.conf"
+MAKE_CONF_FILE          = PREFIX+"/etc/make.conf"
 MAKE_DEFAULTS_FILE      = PROFILE_PATH + "/make.defaults"
 DEPRECATED_PROFILE_FILE = PROFILE_PATH+"/deprecated"
 USER_VIRTUALS_FILE      = USER_CONFIG_PATH+"/virtuals"
@@ -42,8 +48,11 @@ CONFIG_MEMORY_FILE      = PRIVATE_PATH + "/config"
 INCREMENTALS=["USE","USE_EXPAND","FEATURES","ACCEPT_KEYWORDS","ACCEPT_LICENSE","CONFIG_PROTECT_MASK","CONFIG_PROTECT","PRELINK_PATH","PRELINK_PATH_MASK"]
 STICKIES=["KEYWORDS_ACCEPT","USE","CFLAGS","CXXFLAGS","MAKEOPTS","EXTRA_ECONF","EXTRA_EINSTALL","EXTRA_EMAKE"]
 
+DEFAULT_PATH = ":".join(map(lambda x: os.path.join(PREFIX, x), ["/sbin", "/usr/sbin/", "/bin", "/usr/bin"]))
+
 EAPI = 0
 
 # ===========================================================================
 # END OF CONSTANTS -- END OF CONSTANTS -- END OF CONSTANTS -- END OF CONSTANT
 # ===========================================================================
+

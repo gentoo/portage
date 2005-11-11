@@ -1,4 +1,4 @@
-#!/bin/bash
+#!@BASH@
 # Copyright 1999-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/bin/doexe,v 1.10.2.1 2004/12/06 03:01:43 carpaski Exp $
@@ -15,7 +15,7 @@ fi
 for x in "$@" ; do
 	if [ -L "${x}" ] ; then
 		cp "${x}" "${T}"
-		mysrc="${T}"/`/usr/bin/basename "${x}"`
+		mysrc="${T}"/`basename "${x}"`
 	elif [ -d "${x}" ] ; then
 		echo "doexe: warning, skipping directory ${x}"
 		continue

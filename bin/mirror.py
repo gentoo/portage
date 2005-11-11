@@ -1,4 +1,4 @@
-#!/usr/bin/python -O
+#!@PYTHON@ -O
 # Copyright 1999-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/bin/mirror.py,v 1.3 2004/10/10 10:07:20 carpaski Exp $
@@ -9,7 +9,7 @@ maxsems=5
 import os,sys,string
 os.environ["PORTAGE_CALLER"]="mirror"
 os.environ["FEATURES"]="mirror cvs"
-sys.path = ["/usr/lib/portage/pym"]+sys.path
+sys.path = ["@PORTAGE_BASE@/pym"]+sys.path
 
 import portage
 from threading import *

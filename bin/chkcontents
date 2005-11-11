@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!@PYTHON@
 # Copyright 1999-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/bin/chkcontents,v 1.11 2004/10/04 13:56:50 vapier Exp $
@@ -9,7 +9,7 @@
 # the right files).
 
 import string, os.path, os, sys
-sys.path = ["/usr/lib/portage/pym"]+sys.path
+sys.path = ["@PORTAGE_BASE@/pym"]+sys.path
 import portage
 
 def CONTENTScheck(path):

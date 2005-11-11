@@ -1,4 +1,4 @@
-#!/usr/bin/python -O
+#!@PYTHON@ -O
 # Copyright 1999-2005 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/bin/repoman,v 1.98.2.23 2005/06/18 01:00:43 vapier Exp $
@@ -10,7 +10,7 @@
 import os,sys,shutil
 exename=os.path.basename(sys.argv[0])	
 os.environ["PORTAGE_CALLER"]="repoman"
-sys.path = ["/usr/lib/portage/pym"]+sys.path
+sys.path = ["@PORTAGE_BASE@/pym"]+sys.path
 version="1.2"	
 
 allowed_filename_chars="a-zA-Z0-9._-+:"
@@ -878,9 +878,9 @@ for x in scanlist:
 			if mymode=="fix":
 				if "--pretend" in myoptions:
 					print "You will need to run:"
-					print "  /usr/sbin/ebuild "+repodir+"/"+x+"/"+y+".ebuild digest"
+					print "  "+"portage_const.PORTAGE_BASE+"/usr/sbin/ebuild "+repodir+"/"+x+"/"+y+".ebuild digest"
 				else:
-					retval=os.system("/usr/sbin/ebuild "+repodir+"/"+x+"/"+y+".ebuild digest")
+					retval=os.system(portage_const.PORTAGE_BASE+"/usr/sbin/ebuild "+repodir+"/"+x+"/"+y+".ebuild digest")
 					if retval:
 						print "!!! Exiting on ebuild digest (shell) error code:",retval
 						sys.exit(retval)
@@ -1055,7 +1055,7 @@ for x in scanlist:
 							fails[mykey].append(x+"/"+y+".ebuild: "+keyword+"("+prof[0]+") "+repr(mydep[1]))
 
 		# this check needs work, it won't catch (\ndie)
-		if not os.system("egrep '^[^#]*\([^)]*\<die\>' "+checkdir+"/"+y+".ebuild >/dev/null 2>&1"):
+		if not os.system("@EGREP@ '^[^#]*\([^)]*\<die\>' "+checkdir+"/"+y+".ebuild >/dev/null 2>&1"):
 			stats["ebuild.nesteddie"]=stats["ebuild.nesteddie"]+1
 			fails["ebuild.nesteddie"].append(x+"/"+y+".ebuild")
 		# uselist checks - global
@@ -1317,10 +1317,10 @@ else:
 	if myautoadd:
 		print ">>> Auto-Adding missing digests..."
 		if "--pretend" in myoptions:
-			print "(/usr/bin/cvs add "+string.join(myautoadd)+")"
+			print "(cvs add "+string.join(myautoadd)+")"
 			retval=0
 		else:
-			retval=os.system("/usr/bin/cvs add "+string.join(myautoadd))
+			retval=os.system("cvs add "+string.join(myautoadd))
 		if retval:
 			print "!!! Exiting on cvs (shell) error code:",retval
 			sys.exit(retval)
@@ -1341,10 +1341,10 @@ else:
 		for x in mymissing:
 			print "   ",x
 		if "--pretend" in myoptions:
-			print "(/usr/bin/cvs -q up "+string.join(mymissing)+")"
+			print "(cvs -q up "+string.join(mymissing)+")"
 			retval=0
 		else:
-			retval=os.system("/usr/bin/cvs -q up "+string.join(mymissing))
+			retval=os.system("cvs -q up "+string.join(mymissing))
 		if retval:
 			print "!!! Exiting on cvs (shell) error code:",retval
 			sys.exit(retval)
@@ -1353,7 +1353,7 @@ else:
 	retval=["",""]
 	if isCvs:
 		print "Performing a "+green("cvs -n up")+" with a little magic grep to check for updates."
-		retval=getstatusoutput("/usr/bin/cvs -n up 2>&1 | egrep '^[^\?] .*' | egrep -v '^. .*/digest-[^/]+|^cvs server: .* -- ignored$'")
+		retval=getstatusoutput("cvs -n up 2>&1 | @EGREP@ '^[^\?] .*' | @EGREP@ -v '^. .*/digest-[^/]+|^cvs server: .* -- ignored$'")
 		
 	mylines=string.split(retval[1], "\n")
 	myupdates=[]
@@ -1372,10 +1372,10 @@ else:
 	if myupdates:
 		print green("Fetching trivial updates...")
 		if "--pretend" in myoptions:
-			print "(/usr/bin/cvs up "+string.join(myupdates)+")"
+			print "(cvs up "+string.join(myupdates)+")"
 			retval=0
 		else:
-			retval=os.system("/usr/bin/cvs up "+string.join(myupdates))
+			retval=os.system("cvs up "+string.join(myupdates))
 		if retval!=0:
 			print "!!! cvs exited with an error. Terminating."
 			sys.exit(retval)
@@ -1399,7 +1399,7 @@ else:
 	headerstring="'\$(Header|Id)"
 	headerstring+=".*\$'"
 	for myfile in myupdates:
-		myout=getstatusoutput("egrep -q "+headerstring+" "+myfile)
+		myout=getstatusoutput("@EGREP@ -q "+headerstring+" "+myfile)
 		if myout[0]==0:
 			myheaders.append(myfile)
 
@@ -1438,10 +1438,10 @@ else:
 		print
 
 		if "--pretend" in myoptions:
-			print "(/usr/bin/cvs -q commit -F "+commitmessagefile+")"
+			print "(cvs -q commit -F "+commitmessagefile+")"
 			retval=0
 		else:
-			retval=os.system("/usr/bin/cvs -q commit -F "+commitmessagefile)
+			retval=os.system("cvs -q commit -F "+commitmessagefile)
 		if retval:
 			print "!!! Exiting on cvs (shell) error code:",retval
 			sys.exit(retval)
@@ -1494,13 +1494,13 @@ else:
 			sys.exit(1)
 
 		if "--pretend" in myoptions:
-			print "(/usr/bin/cvs -q commit -F "+commitmessagefile+")"
+			print "(cvs -q commit -F "+commitmessagefile+")"
 		else:
 			mymsg=open(commitmessagefile,"w")
 			mymsg.write(commitmessage)
 			mymsg.write("\n (Unsigned Manifest commit)")
 			mymsg.close()
-			retval=os.system("/usr/bin/cvs -q commit -F "+commitmessagefile)
+			retval=os.system("cvs -q commit -F "+commitmessagefile)
 			if retval:
 				print "!!! Exiting on cvs (shell) error code:",retval
 				sys.exit(retval)
@@ -1542,13 +1542,13 @@ else:
 					time.sleep(3)
 
 		if "--pretend" in myoptions:
-			print "(/usr/bin/cvs -q commit -F "+commitmessagefile+")"
+			print "(cvs -q commit -F "+commitmessagefile+")"
 		else:
 			mymsg=open(commitmessagefile,"w")
 			mymsg.write(commitmessage)
 			mymsg.write("\n (Signed Manifest commit)")
 			mymsg.close()
-			retval=os.system("/usr/bin/cvs -q commit -F "+commitmessagefile)
+			retval=os.system("cvs -q commit -F "+commitmessagefile)
 			if retval:
 				print "!!! Exiting on cvs (shell) error code:",retval
 				sys.exit(retval)

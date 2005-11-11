@@ -1,10 +1,10 @@
-#!/usr/bin/python
+#!@PYTHON@
 # Copyright 1999-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/bin/dopython,v 1.8 2004/10/04 13:56:50 vapier Exp $
 
 import sys
-sys.path = ["/usr/lib/portage/pym"]+sys.path
+sys.path = ["@PORTAGE_BASE@/pym"]+sys.path
 
 from sys import *
 import portage

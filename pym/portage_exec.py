@@ -215,7 +215,8 @@ def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask):
 
 
 def find_binary(binary):
-	for path in os.getenv("PATH", "").split(":"):
+	from portage_const import DEFAULT_PATH
+	for path in DEFAULT_PATH.split(":"):
 		filename = "%s/%s" % (path, binary)
 		if os.access(filename, os.X_OK) and os.path.isfile(filename):
 			return filename

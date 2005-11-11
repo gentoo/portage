@@ -1,11 +1,11 @@
-#!/usr/bin/python -O
+#!@PYTHON@ -O
 # Copyright 1999-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/bin/emerge,v 1.345.2.38 2005/08/13 17:25:26 ferringb Exp $
 
 import os,sys
 os.environ["PORTAGE_CALLER"]="emerge"
-sys.path = ["/usr/lib/portage/pym"]+sys.path
+sys.path = ["@PORTAGE_BASE@/pym"]+sys.path
 
 import portage
 
@@ -1999,7 +1999,7 @@ class depgraph:
 										mynewargv += [myarg]
 									else:
 										mynewargv += [arg]
-								os.execv("/usr/lib/portage/bin/emerge", mynewargv)
+								os.execv("@PORTAGE_BASE@/bin/emerge", mynewargv)
 
 			if ("--pretend" not in myopts) and ("--fetchonly" not in myopts) and ("--fetch-all-uri" not in myopts):
 				emergelog(" ::: completed emerge ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[2]+" to "+x[1])
@@ -2267,7 +2267,7 @@ def chk_updated_info_files(retval):
 	infodirs.extend(string.split(portage.settings["INFODIR"], ":"))
 
 	print
-	if os.path.exists("/usr/bin/install-info"):
+	if os.path.exists("install-info"):
 		regen_infodirs=[]
 		for z in infodirs:
 			if z=='':
@@ -2315,7 +2315,7 @@ def chk_updated_info_files(retval):
 				for x in os.listdir(inforoot):
 					if (x[0] == ".") or (x in ["dir","dir.old"]) or (os.path.isdir(inforoot+"/"+x)):
 						continue
-					myso=commands.getstatusoutput("LANG=C LANGUAGE=C /usr/bin/install-info --dir-file="+inforoot+"/dir "+inforoot+"/"+x)[1]
+					myso=commands.getstatusoutput("LANG=C LANGUAGE=C install-info --dir-file="+inforoot+"/dir "+inforoot+"/"+x)[1]
 					existsstr="already exists, for file `"
 					if myso!="":
 						if re.search(existsstr,myso):
@@ -2401,8 +2401,8 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 		updatecache_flg = True
 		tmpservertimestampfile = None
 	elif syncuri[:8]=="rsync://":
-		if not os.path.exists("/usr/bin/rsync"):
-			print "!!! /usr/bin/rsync does not exist, so rsync support is disabled."
+		if not os.path.exists("rsync"):
+			print "!!! rsync does not exist, so rsync support is disabled."
 			print "!!! Type \"emerge net-misc/rsync\" to enable rsync support."
 			sys.exit(1)
 		mytimeout=180
@@ -2452,7 +2452,7 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 		if portage.settings.has_key("RSYNC_RATELIMIT"):
 			rsync_flags.append("--bwlimit="+portage.settings["RSYNC_RATELIMIT"])
 
-		rsynccommand = "/usr/bin/rsync " + string.join(rsync_flags, " ")
+		rsynccommand = "rsync " + string.join(rsync_flags, " ")
 
 		servertimestampdir  = portage.settings.depcachedir+"/"
 		servertimestampfile = portage.settings.depcachedir+"/timestamp.chk"
@@ -2602,8 +2602,8 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 			print
 			sys.exit(exitcode)
 	elif syncuri[:6]=="cvs://":
-		if not os.path.exists("/usr/bin/cvs"):
-			print "!!! /usr/bin/cvs does not exist, so rsync support is disabled."
+		if not os.path.exists("cvs"):
+			print "!!! cvs does not exist, so rsync support is disabled."
 			print "!!! Type \"emerge dev-util/cvs\" to enable CVS support."
 			sys.exit(1)
 		cvsroot=syncuri[6:]

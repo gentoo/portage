@@ -1,4 +1,4 @@
-#!/usr/bin/python -O
+#!@PYTHON@ -O
 
 import sys
 from copy import copy
