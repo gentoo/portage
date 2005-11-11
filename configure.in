@@ -1,0 +1,267 @@
+dnl Process this file with autoconf to produce a configure script.
+AC_INIT(portage, 2.0.53_rc4-prefix-02, ferringb@gentoo.org)
+
+case "${prefix}" in
+	'') 	AC_MSG_ERROR([bad value ${prefix} for --prefix, must not be empty]) ;;
+	*/)		AC_MSG_ERROR([bad value ${prefix} for --prefix, must not end with '/']) ;;
+	/*|NONE) ;;
+	*) 		AC_MSG_ERROR([bad value ${prefix} for --prefix, must start with /]) ;;
+esac
+
+
+#AC_ARG_ENABLE(strict-prefix-offset,
+#AC_HELP_STRING([--enable-strict-prefix-offset], [Disable strict usage of --with-prefix-offset for portage scripts]),
+#[case "${enableval}" in 
+#	yes)	strict_prefix_offset=yes;;
+#	no)		strict_prefix_offset=no;;
+#	*)		AC_MSG_ERROR(bad value ${enableval} for --enable-strict-prefix-offset);;
+#esac],
+#[strict_prefix_offset=yes])
+
+
+AC_CANONICAL_BUILD
+AC_CANONICAL_HOST
+AC_CANONICAL_TARGET
+
+AM_INIT_AUTOMAKE
+dnl AM_CONFIG_HEADER(config.h)
+
+
+dnl Checks for programs.
+dnl store clfags prior, otherwise it's not propogaed.
+if test "x$CFLAGS" != "x"
+then
+CFLAGS=$CFLAGS
+fi
+
+AC_PREFIX_DEFAULT([/usr])
+AC_PROG_CC
+AC_PROG_INSTALL
+AC_PROG_LN_S
+AX_PATH_EGREP
+case `${EGREP} --version 2>/dev/null` in
+*"GNU grep"*) ;;
+*)
+	AC_MSG_ERROR([Need GNU grep for ${EGREP}])
+	;;
+esac
+
+AX_PATH_XCU_ID([required])
+AC_PATH_PROG(RM, rm, /bin/rm)
+AC_PATH_PROG(MV, mv, /bin/mv)
+AC_PATH_PROGS(SED, [gsed sed], /usr/bin/sed)
+
+dnl when /bin/sh is bash, then BASH is set to /bin/sh
+test "${BASH}" != "/bin/sh" || $as_unset BASH
+AC_PATH_PROGS(BASH, [bash2 bash], /bin/bash)
+
+dnl >=python-2.2, but prefer path .../python
+AC_PATH_PROG(PYTHON, [python], /usr/bin/python)
+AX_WITH_PYTHON([2.2], [missing])
+if test "x${PYTHON}" = "xmissing"; then
+	PYTHON=
+	AC_PATH_PROGS(PYTHON,
+			  [python2.4 python2.3 python2.2 python2 python],
+			  [/usr/bin/python])
+	AX_WITH_PYTHON([2.2], [missing])
+fi
+if test "x${PYTHON}" = "xmissing"; then
+	AC_MSG_ERROR([cannot find python version >= 2.2])
+fi
+
+AC_PATH_PROG(PERL, perl, [/usr/bin/perl])
+AC_PROG_PERL_VERSION([5.6.0], , [PERL=])
+if test "x${PERL}" = "x"; then
+	AC_PATH_PROGS(PERL, [perl5.8.6 perl5.8.5 perl5.8.4 perl5.8.3 perl5.8.2 \
+		perl5.8.1 perl5.8.0 perl5.8 perl5.6.1 perl5.6.0 perl5.6 perl5 perl],
+		[/usr/bin/perl])
+	AC_PROG_PERL_VERSION([5.6.0], ,
+		[AC_MSG_ERROR([cannot find a perl version >= 5.6.0])]
+	)
+fi
+
+AC_PATH_PROG(BASENAME, basename, /bin/basename)
+AC_PATH_PROG(DIRNAME, dirname, /usr/bin/dirname)
+AC_PATH_PROG(DIALOG, dialog, /usr/bin/dialog)
+AC_PATH_PROG(WGET, wget, /usr/bin/wget)
+AC_PATH_PROG(INSTALL_INFO, install-info, /usr/bin/install-info)
+AC_PATH_PROG(SANDBOX, sandbox, /usr/bin/sandbox)
+AC_PATH_PROG(PRELINK, prelink, /usr/sbin/prelink)
+AC_PATH_PROG(RSYNC, rsync, /usr/bin/rsync)
+AC_PATH_PROG(CVS, cvs, /usr/bin/cvs)
+AC_PATH_PROGS(GPG, [gpg pgp], /usr/bin/gpg)
+AC_PATH_PROG(INSTALL_INFO, install-info, /usr/bin/install-info)
+AC_PATH_PROG(MD5SUM, md5sum, /usr/bin/md5sum)
+AC_PATH_PROG(LOGGER, logger, /usr/bin/logger)
+AC_PATH_PROG(FIND, find, /usr/bin/find)
+AC_PATH_PROG(FILE, file, /usr/bin/file)
+AC_PATH_PROG(READELF, readelf, /usr/bin/readelf)
+AC_PATH_PROG(SETFILES, setfiles, /usr/sbin/setfiles)
+AC_PATH_PROG(FAKEROOT, fakeroot, /usr/bin/fakeroot)
+
+dnl Checks for libraries.
+dnl Replace `main' with a function in -lc:
+AC_CHECK_LIB(c, main)
+dnl Replace `main' with a function in -ldl:
+AC_CHECK_LIB(dl, main)
+dnl Replace `main' with a function in -lgcc:
+AC_CHECK_LIB(gcc, main)
+dnl Replace `main' with a function in -lpthread:
+AC_CHECK_LIB(pthread, main)
+
+dnl Checks for header files.
+AC_HEADER_DIRENT
+AC_HEADER_STDC
+AC_HEADER_SYS_WAIT
+AC_CHECK_HEADERS(fcntl.h limits.h strings.h sys/file.h sys/time.h unistd.h getopt.h)
+
+dnl Checks for typedefs, structures, and compiler characteristics.
+AC_C_CONST
+AC_TYPE_UID_T
+AC_TYPE_MODE_T
+AC_TYPE_SIZE_T
+
+dnl Checks for library functions.
+AC_FUNC_ALLOCA
+AC_TYPE_SIGNAL
+AC_CHECK_FUNCS(getcwd mkdir regcomp rmdir strdup strerror strspn strstr)
+
+AC_ARG_ENABLE(tbz2tool,
+AC_HELP_STRING([--enable-tbz2tool],[build tbz2tool, tool for creating binpkgs (default yes)]),
+[case "${enableval}" in
+  yes)  enable_tbz2tool=true;;
+  no)	enable_tbz2tool=false;;
+  *)	AC_MSG_ERROR(bad value ${enableval} for --enable-tbz2tool);;
+esac],
+[enable_tbz2tool=true])
+
+AC_ARG_ENABLE(missingos,
+AC_HELP_STRING([--enable-missingos],[build compatibility missingos code for python 2.2 (default auto)]),
+[case "${enableval}" in
+  yes)	enable_missingos=true;;
+  no)	enable_missingos=false;;
+  auto)	enable_missingos=auto;;
+  *)	AC_MSG_ERROR(bad value ${enableval} for --enable-missingos);;
+esac],
+[enable_missingos=auto])
+
+AC_ARG_ENABLE(just-compiled-sources,
+AC_HELP_STRING([--enable-just-compiled-sources],[install just the bytecode, not the sources (default no)]),
+[case "${enableval}" in
+  yes)	enable_py_sources=false;;
+  no)	enable_py_sources=true;;
+  *)	AC_MSG_ERROR(bad value ${enableval} for --enable-just-compiled-sources);;
+esac],
+[enable_py_sources=true])
+
+AC_ARG_WITH(user,
+AC_HELP_STRING([--with-user=me],[use user 'me' for portage to work as (default portage)]),
+[case "${withval}" in
+  ""|yes) AC_MSG_ERROR(bad value ${withval} for --with-user);;
+  *) portageuser="${withval}";;
+esac],
+[portageuser="portage"])
+
+AC_ARG_WITH(group,
+AC_HELP_STRING([--with-group=mygroup],[use group 'mygroup' for portage to work as (default portage)]),
+[case "${withval}" in
+  ""|yes) AC_MSG_ERROR(bad value ${withval} for --with-group);;
+  *) portagegroup="${withval}";;
+esac],
+[portagegroup="portage"])
+
+AC_ARG_WITH(wheelgroup,
+AC_HELP_STRING([--with-wheelgroup=wheelgroup],[let portage use 'wheelgroup' as wheel group (default wheel)]),
+[case "${withval}" in
+  ""|yes) AC_MSG_ERROR(bad value ${withval} for --with-wheelgroup);;
+  *) wheelgroup="${withval}";;
+esac],
+[wheelgroup="wheel"])
+
+AC_ARG_WITH(rootuser,
+AC_HELP_STRING([--with-rootuser=me],[allows 'me' to do root tasks (default root)]),
+[case "${withval}" in
+  ""|yes) AC_MSG_ERROR(bad value ${withval} for --with-rootuser);;
+  *) rootuser=${withval};;
+esac],
+[rootuser=root])
+
+AC_ARG_WITH(offset-prefix, 
+AC_HELP_STRING([--with-offset-prefix], [specific the offset prefix, defaults to /]),
+[DOMAIN_PREFIX=$withval],
+[DOMAIN_PREFIX='/'])
+
+
+
+if test x$enable_missingos = xauto
+then
+  pyver=[`python -c 'import sys;print sys.version[0:3]';`]
+  case ${pyver} in
+    2.4)  ;;
+    2.3)  ;;
+    2.2)  enable_missingos=true;;
+    *)    AC_MSG_WARN([unable to determine python version, ${pyver}]);;
+  esac
+fi
+
+AC_MSG_CHECKING([for ARCH to be used])
+dnl detect ARCH from target_cpu
+case "${target_cpu}" in
+i?86) ARCH=x86 ;;
+sparc*) ARCH=sparc ;;
+hppa*) ARCH=hppa ;;
+powerpc*) ARCH=ppc ;;
+dnl don't know more target_cpus yet...
+*) AC_MSG_RESULT([unknown])
+   AC_MSG_CHECKING([for default ARCH to be used])
+   ARCH=${target_cpu} ;;
+esac
+AC_MSG_RESULT([${ARCH}])
+
+AC_CONFIG_FILES([ Makefile ])
+AC_CONFIG_FILES([ subst-install ])
+AC_CONFIG_FILES([ subst-install.vars.in ])
+AC_CONFIG_FILES([ src/Makefile ])
+AC_CONFIG_FILES([ man/Makefile ])
+AC_CONFIG_FILES([ src/python-missingos/Makefile ])
+AC_CONFIG_FILES([ bin/Makefile ])
+AC_CONFIG_FILES([ pym/Makefile ])
+AC_CONFIG_FILES([ cnf/Makefile ])
+
+AC_SUBST(portageuser)
+AC_SUBST(portagegroup)
+AC_SUBST(wheelgroup)
+AC_SUBST(rootuser)
+AC_SUBST(DOMAIN_PREFIX)
+AC_SUBST(ARCH)
+AC_SUBST(PORTAGE_BASE,['${libdir}/portage'])
+AM_CONDITIONAL(INSTALL_PYTHON_SOURCES, test x$enable_py_sources = xtrue)
+AM_CONDITIONAL(BUILD_TBZ2TOOL, test x$enable_tbz2tool = xtrue)
+AM_CONDITIONAL(BUILD_MISSINGOS, test x$enable_missingos = xtrue)
+#AM_CONDITIONAL(BUILD_FILTER_ENV, test x$enable_filter_env = xtrue)
+
+AC_MSG_CHECKING([for a list of variables known by configure])
+rm -f subst-install.vars.in.in.tmp
+pt_configvars=`grep '^s,@' ${srcdir}/configure | sed -e 's|^s,@\([[^@]][[^@]]*\)@.*$|\1|'`
+{
+	pt_all_configurevars=
+	for pt_configvar in ${pt_configvars}
+	do
+		echo "${pt_configvar}=@${pt_configvar}@"
+		pt_all_configurevars="${pt_all_configurevars} ${pt_configvar}"
+	done
+
+	echo "all_configurevars='${pt_all_configurevars}'"
+
+} > subst-install.vars.in.in.tmp
+diff ${srcdir}/subst-install.vars.in.in subst-install.vars.in.in.tmp >/dev/null
+if [[ $? != 0 ]]
+then
+	rm -f ${srcdir}/subst-install.vars.in.in
+	cp subst-install.vars.in.in.tmp ${srcdir}/subst-install.vars.in.in
+fi
+rm -f subst-install.vars.in.in.tmp
+$as_unset pt_configvar pt_configvars pt_all_configurevars
+AC_MSG_RESULT([ok])
+
+AC_OUTPUT

@@ -1,0 +1,96 @@
+prefix = @prefix@
+exec_prefix = @exec_prefix@
+sysconfdir = @sysconfdir@
+libdir = @libdir@
+
+srcdir=@srcdir@
+top_builddir=@top_builddir@
+
+portageuser = @portageuser@
+portagegroup = @portagegroup@
+
+PORTAGE_BIN = @PORTAGE_BASE@/bin
+LN_S = @LN_S@
+INSTALL = @INSTALL@
+INSTALL_script = @INSTALL_PROGRAM@ -o $(portageuser) -g $(portagegroup) -m 755
+INSTALL_scriptsubst = $(SHELL) ${top_builddir}/subst-install --installcmd='${INSTALL_script}'
+
+user_binprogs = \
+	ebuild \
+	emerge \
+	portageq \
+	quickpkg \
+	repoman \
+	tbz2tool \
+	xpak
+
+user_sbinprogs = \
+	archive-conf \
+	dispatch-conf \
+	ebuild \
+	ebuild.sh \
+	env-update \
+	etc-update \
+	fixpackages \
+	pkgmerge \
+	regenworld
+
+list_sourcedir = \
+	  ( cd ${srcdir} && find . -name 'CVS' -prune -o -name '.\#*' -prune -o -name 'Makefile*' -prune \
+	  -o -name '.svn' -prune -o -type f -print )
+
+all:
+
+install:
+	$(INSTALL) -d -m 755 -o $(portageuser) -g $(portagegroup) $(DESTDIR)$(PORTAGE_BIN)
+	$(list_sourcedir) | while read f \
+	; do echo "$(INSTALL_scriptsubst) ${srcdir}/$${f} $(DESTDIR)$(PORTAGE_BIN)/$${f}" \
+	   ; $(INSTALL_scriptsubst) ${srcdir}/$${f} $(DESTDIR)$(PORTAGE_BIN)/$${f} \
+	; done
+	$(INSTALL) -d -m 755 -o $(portageuser) -g $(portagegroup) $(DESTDIR)$(prefix)/bin
+	cd $(DESTDIR)$(prefix)/bin \
+	; for p in $(user_binprogs) \
+	; do test -f $(DESTDIR)$(PORTAGE_BIN)/$${p} \
+		 || { echo "$(DESTDIR)$(PORTAGE_BIN)/$${p} does not exist" ; exit 1 ; } \
+	   ; echo "rm -f $(DESTDIR)$(prefix)/bin/$${p}" \
+	   ; rm -f $(DESTDIR)$(prefix)/bin/$${p} \
+	   ; echo "$(LN_S) ../lib/portage/bin/$${p} $${p}" \
+	   ; $(LN_S) ../lib/portage/bin/$${p} $${p} || exit 1 \
+	; done
+	$(INSTALL) -d -m 755 -o $(portageuser) -g $(portagegroup) $(DESTDIR)$(prefix)/sbin
+	cd $(DESTDIR)$(prefix)/sbin \
+	; for p in $(user_sbinprogs) \
+	; do test -f $(DESTDIR)$(PORTAGE_BIN)/$${p} \
+		 || { echo "$(DESTDIR)$(PORTAGE_BIN)/$${p} does not exist" ; exit 1 ; } \
+	   ; echo "rm -f $(DESTDIR)$(prefix)/sbin/$${p}" \
+	   ; rm -f $(DESTDIR)$(prefix)/sbin/$${p} \
+	   ; echo "$(LN_S) ../lib/portage/bin/$${p} $${p}" \
+	   ; $(LN_S) ../lib/portage/bin/$${p} $${p} || exit 1 \
+	; done
+
+uninstall:
+	$(list_sourcedir) | while read f \
+	; do echo "rm -f $(DESTDIR)$(PORTAGE_BIN)/$${f}" \
+	   ; rm -f $(DESTDIR)$(PORTAGE_BIN)/$${f} \
+	; done
+	for p in $(user_binprogs) \
+	; do echo "rm -f $(DESTDIR)$(prefix)/bin/$${p}" \
+	   ; rm -f $(DESTDIR)$(prefix)/bin/$${p} \
+	; done
+	for p in $(user_sbinprogs) \
+	; do echo "rm -f $(DESTDIR)$(prefix)/sbin/$${p}" \
+	   ; rm -f $(DESTDIR)$(prefix)/sbin/$${p} \
+	; done
+
+distdir:
+	$(list_sourcedir) | while read f \
+	; do echo "$(INSTALL_script) ${srcdir}/$${f} $(distdir)/$${f}" \
+	   ; $(INSTALL_script) ${srcdir}/$${f} $(distdir)/$${f} \
+	; done
+
+all dvi check installcheck:
+clean distclean maintainer-clean:
+
+.PHONY: all install distdir uninstall
+.PHONY: dvi check installcheck
+.PHONY: clean distclean maintainer-clean

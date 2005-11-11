@@ -1,0 +1,63 @@
+sysconfdir = @sysconfdir@
+ARCH = @ARCH@
+
+srcdir=@srcdir@
+top_builddir=@top_builddir@
+
+portageuser = @portageuser@
+portagegroup = @portagegroup@
+
+INSTALL = @INSTALL@
+INSTALL_cnf = @INSTALL_PROGRAM@ -o $(portageuser) -g $(portagegroup) -m 644
+INSTALL_cnfsubst = $(SHELL) ${top_builddir}/subst-install --installcmd='${INSTALL_cnf}'
+
+list_sourcedir = \
+	  ( cd ${srcdir} \
+	&& find . -name 'CVS' -prune \
+		   -o -name 'Makefile*' -prune \
+		   -o -name 'make.*' -type f -print \
+		   -o -name 'dispatch-conf.conf' -type f -print \
+		   -o -name 'etc-update.conf' -type f -print \
+	 )
+
+all:
+
+install:
+	$(INSTALL) -d -m 755 -o $(portageuser) -g $(portagegroup) $(DESTDIR)$(sysconfdir)
+	@ if [ -f $(srcdir)/make.globals.$(ARCH) ] \
+	; then echo "$(INSTALL_cnfsubst) $(srcdir)/make.globals.$(ARCH) $(DESTDIR)$(sysconfdir)/make.globals" \
+		 ; $(INSTALL_cnfsubst) $(srcdir)/make.globals.$(ARCH) $(DESTDIR)$(sysconfdir)/make.globals \
+		 ; echo "$(INSTALL_cnfsubst) $(srcdir)/make.conf.$(ARCH) $(DESTDIR)$(sysconfdir)/make.conf.example" \
+		 ; $(INSTALL_cnfsubst) $(srcdir)/make.conf.$(ARCH) $(DESTDIR)$(sysconfdir)/make.conf.example \
+	; else echo "" \
+		 ; echo "Portage does not have an arch-specific configuration for this arch." \
+		 ; echo "Please notify the arch maintainer about this issue. Using generic." \
+		 ; echo "" \
+		 ; echo "$(INSTALL_cnfsubst) $(srcdir)/make.globals $(DESTDIR)$(sysconfdir)/make.globals" \
+		 ; $(INSTALL_cnfsubst) $(srcdir)/make.globals $(DESTDIR)$(sysconfdir)/make.globals \
+		 ; echo "$(INSTALL_cnfsubst) $(srcdir)/make.conf $(DESTDIR)$(sysconfdir)/make.conf.example" \
+		 ; $(INSTALL_cnfsubst) $(srcdir)/make.conf $(DESTDIR)$(sysconfdir)/make.conf.example \
+	; fi
+	@ for p in etc-update dispatch-conf \
+	; do echo "$(INSTALL_cnfsubst) $(srcdir)/$${p}.conf $(DESTDIR)$(sysconfdir)/$${p}.conf" \
+	   ; $(INSTALL_cnfsubst) $(srcdir)/$${p}.conf $(DESTDIR)$(sysconfdir)/$${p}.conf \
+	; done
+
+uninstall:
+	@ echo rm -f $(DESTDIR)$(sysconfdir)/make.conf.example \
+	; rm -f $(DESTDIR)$(sysconfdir)/make.conf.example \
+	; echo rm -f $(DESTDIR)$(sysconfdir)/make.globals \
+	; rm -f $(DESTDIR)$(sysconfdir)/make.globals \
+
+distdir:
+	$(list_sourcedir) | while read f \
+	; do echo $(INSTALL_cnf) ${srcdir}/$${f} $(distdir)/$${f} \
+	   ; $(INSTALL_cnf) ${srcdir}/$${f} $(distdir)/$${f} \
+	; done
+
+all dvi check installcheck:
+clean distclean maintainer-clean:
+
+.PHONY: all install distdir uninstall
+.PHONY: dvi check installcheck
+.PHONY: clean distclean maintainer-clean
