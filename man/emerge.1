@@ -157,6 +157,11 @@ all matching packages.  This does no checking of dependencies, so
 it may remove packages necessary for the proper operation of your
 system.  Its arguments can be \fIebuilds\fR, \fIclasses\fR, or
 \fIdependencies\fR \-\- see \fB\-\-clean\fR above for examples.
+.TP
+.BR "\-\-config "
+Run package specific actions needed to  be  executed  after  the
+emerge  process  has completed.  This usually entails configuration
+file setup or other similar setups that the user  may  wish to run.
 .SH "OPTIONS"
 .TP
 .BR "\-\-ask " (\fB\-a\fR)
