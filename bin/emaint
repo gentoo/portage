@@ -66,6 +66,12 @@ def exclusive(option, unused1, unused2, unused3, var=None):
 
 
 usage = "usage: emaint [options] " + " | ".join(module_names)
+
+usage+= "\n\nCurrently emaint can only check and fix problems with one's world\n"
+usage+= "file.  Future versions will integrate other portage check-and-fix\n"
+usage+= "tools and provide a single interface to system health checks."
+
+
 parser = OptionParser(usage=usage)
 parser.add_option("-c", "--check", help="check for problems",
 	action="callback", callback=exclusive, callback_kwargs={"var":"action"})
