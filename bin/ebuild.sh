@@ -1236,7 +1236,8 @@ dyn_preinst() {
 	
 	[ "$(type -t pre_pkg_preinst)" == "function" ] && pre_pkg_preinst
 
-	D=${IMAGE} pkg_preinst
+	declare -r D=${IMAGE}
+	pkg_preinst
 
 	# hopefully this will someday allow us to get rid of the no* feature flags
 	# we don't want globbing for initial expansion, but afterwards, we do
@@ -1765,9 +1766,11 @@ export S=${WORKDIR}/${P}
 
 unset E_IUSE E_DEPEND E_RDEPEND E_CDEPEND E_PDEPEND
 
-for x in T P PN PV PVR PR A D EBUILD EMERGE_FROM O PPID FILESDIR PORTAGE_TMPDIR; do
+for x in T P PN PV PVR PR A EBUILD EMERGE_FROM O PPID FILESDIR PORTAGE_TMPDIR; do
 	[[ ${!x-UNSET_VAR} != UNSET_VAR ]] && declare -r ${x}
 done
+# Need to be able to change D in dyn_preinst due to the IMAGE stuff
+[[ $* != "preinst" ]] && declare -r D
 unset x
 
 # Turn of extended glob matching so that g++ doesn't get incorrectly matched.
