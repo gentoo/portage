@@ -2697,7 +2697,6 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 			def __init__(self, dbapi):
 				self.dbapi = dbapi
 				self.cp_all = dbapi.cp_all()
-				self.cp_all.sort()
 				l = len(self.cp_all)
 				self.call_update_min = 100000000
 				self.min_cp_all = l/100.0
