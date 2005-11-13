@@ -113,6 +113,11 @@ def help(myaction,myopts,havecolor=1):
 		print "              your system. Specify arguments using the dependency specification"
 		print "              format described in the "+bold("--clean")+" action above."
 		print
+		print "       "+green("--config")
+		print "              Run package specific actions needed to  be  executed  after  the"
+		print "              emerge  process  has completed.  This usually entails configuration"
+		print "              file setup or other similar setups that the user  may  wish to run."
+		print
 		print turquoise("Options:")
 		print "       "+green("--ask")+" ("+green("-a")+" short option)"
 		print "              before performing the merge, display what ebuilds and tbz2s will"
