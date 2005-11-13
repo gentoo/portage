@@ -50,14 +50,9 @@ fi
 export PATH="/sbin:/usr/sbin:/usr/lib/portage/bin:/bin:/usr/bin:${ROOTPATH}"
 [ ! -z "$PREROOTPATH" ] && export PATH="${PREROOTPATH%%:}:$PATH"
 
-if [ -e /etc/init.d/functions.sh ]; then
-	source /etc/init.d/functions.sh  &>/dev/null
-elif [ -e /etc/rc.d/config/functions ];	then
-	source /etc/rc.d/config/functions &>/dev/null
-else
-	#Mac OS X
-	source /usr/lib/portage/bin/functions.sh &>/dev/null
-fi
+source /usr/lib/portage/bin/isolated-functions.sh  &>/dev/null
+# TODO: make this conditional on config settings, fix any remaining stuff
+set_colors
 
 # the sandbox is disabled by default except when overridden in the relevant stages
 export SANDBOX_ON="0"

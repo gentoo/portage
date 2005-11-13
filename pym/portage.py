@@ -456,6 +456,57 @@ class digraph:
 			mygraph.okeys=self.okeys[:]
 		return mygraph
 
+def elog_process(cpv, mysettings):
+	mylogfiles = listdir(mysettings["T"]+"/logging/")
+	# shortcut for packages without any messages
+	if len(mylogfiles) == 0:
+		return
+	# exploit listdir() file order so we process log entries in cronological order
+	mylogfiles.reverse()
+	mylogentries = {}
+	for f in mylogfiles:
+		msgfunction, msgtype = f.split(".")
+		if not msgtype.upper() in mysettings["PORTAGE_ELOG_CLASSES"].split() \
+				and not msgtype.lower() in mysettings["PORTAGE_ELOG_CLASSES"].split():
+			continue
+		if msgfunction not in portage_const.EBUILD_PHASES:
+			print "!!! can't process invalid log file: %s" % f
+			continue
+		if not msgfunction in mylogentries:
+			mylogentries[msgfunction] = []
+		msgcontent = open(mysettings["T"]+"/logging/"+f, "r").readlines()
+		mylogentries[msgfunction].append((msgtype, msgcontent))
+
+	# in case the filters matched all messages
+	if len(mylogentries) == 0:
+		return
+
+	# generate a single string with all log messages
+	fulllog = ""
+	for phase in portage_const.EBUILD_PHASES:
+		if not phase in mylogentries:
+			continue
+		for msgtype,msgcontent in mylogentries[phase]:
+			fulllog += "%s: %s\n" % (msgtype, phase)
+			for line in msgcontent:
+				fulllog += line
+			fulllog += "\n"
+
+	# pass the processing to the individual modules
+	logsystems = mysettings["PORTAGE_ELOG_SYSTEM"].split()
+	for s in logsystems:
+		try:
+			# FIXME: ugly ad.hoc import code
+			# TODO:  implement a common portage module loader
+			logmodule = __import__("elog_modules.mod_"+s)
+			m = getattr(logmodule, "mod_"+s)
+			m.process(mysettings, cpv, mylogentries, fulllog)
+		except (ImportError, AttributeError), e:
+			print "!!! Error while importing logging modules while loading \"mod_%s\":" % s
+			print e
+		except portage_exception.PortageException, e:
+			print e
+
 # valid end of version components; integers specify offset from release version
 # pre=prerelease, p=patchlevel (should always be followed by an int), rc=release candidate
 # all but _p (where it is required) can be followed by an optional trailing integer
@@ -2509,6 +2560,12 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 		if (os.getuid() == 0):
 			os.chown(mysettings["T"],portage_uid,portage_gid)
 			os.chmod(mysettings["T"],02770)
+
+		logdir = mysettings["T"]+"/logging"
+		if not os.path.exists(logdir):
+			os.makedirs(logdir)
+		os.chown(logdir, portage_uid, portage_gid)
+		os.chmod(logdir, 0770)
 
 		try: # XXX: negative RESTRICT
 			if not (("nouserpriv" in string.split(mysettings["PORTAGE_RESTRICT"])) or \
@@ -6544,6 +6601,10 @@ class dblink:
 		if dircache.has_key(self.dbcatdir):
 			del dircache[self.dbcatdir]
 		print ">>>",self.mycpv,"merged."
+
+		# Process ebuild logfiles
+		elog_process(self.mycpv, self.settings)
+		
 		return 0
 
 	def mergeme(self,srcroot,destroot,outfile,secondhand,stufftomerge,cfgfiledict,thismtime):
