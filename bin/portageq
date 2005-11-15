@@ -202,7 +202,7 @@ def envvar(argv):
 # DO NOT CHANGE CODE BEYOND THIS POINT - IT'S NOT NEEDED!
 #
 
-def usage():
+def usage(argv):
 	rev="$Revision: 1.13.2.1 $"
 	ver=string.split(rev, ' ')[1]
 	print ">>> Portage information query tool -- version "+ver
