@@ -1,0 +1,30 @@
+.TH "EMAINT" "1" "Nov 2005" "Portage 2.0.53" "Portage"
+.SH NAME
+emaint \- updates environment settings automatically
+.SH SYNOPSIS
+.BR emaint
+[\fIoptions\fR]
+[\fBall\fR | \fBworld\fR]
+.SH DESCRIPTION
+.B emaint
+checks for and fixes problems in the portage \fIworld\fR file.
+.SH OPTIONS 
+.TP
+.B \-c, \-\-check
+Check for any problems that may exist.
+.TP
+.B \-f, \-\-fix
+Fix any problems that may exist.
+.SH "REPORTING BUGS"
+Please report bugs via http://bugs.gentoo.org/
+.SH AUTHORS
+.nf
+Mike Frysinger <vapier@gentoo.org>
+.fi
+.SH "FILES"
+.TP
+.B /var/lib/portage/world
+Contains a list of all user\-specified packages.
+.SH "SEE ALSO"
+.BR emerge (1),
+.BR portage (5)
