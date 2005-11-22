@@ -111,9 +111,6 @@ tail end of an rsync update using \fBemerge \-\-sync\fR.  The processing
 creates the cache database that portage uses for pre\-parsed lookups of 
 package data.
 .TP
-.BR \-\-nocolor
-Make sure none of the output from portage contains color.
-.TP
 .BR "\-\-prune " (\fB\-P\fR)
 \fBWARNING: This action can remove important packages!\fR  Tries to remove 
 all but the last version installed.  Since the command currently does not 
@@ -245,6 +242,9 @@ are having problems that this man page does not help resolve.
 Tells emerge to include installed packages where USE flags have changed since 
 compilation.  An asterisk marks when a USE flag has changed since the package 
 was compiled.
+.TP
+.BR \-\-nocolor
+Make sure none of the output from portage contains color.
 .TP
 .BR "\-\-noconfmem"
 Causes portage to disregard merge records indicating that a config file
