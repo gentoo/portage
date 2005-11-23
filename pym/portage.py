@@ -3710,16 +3710,12 @@ def getmaskingstatus(mycpv):
 			if gp=="*":
 				kmask=None
 				break
-			elif gp=="-*":
-				fallback="-*"
 			elif gp=="-"+myarch:
 				kmask="-"+myarch
 				break
 			elif gp=="~"+myarch:
 				kmask="~"+myarch
 				break
-		if kmask == "missing" and fallback:
-			kmask = fallback
 
 	if kmask:
 		rValue.append(kmask+" keyword")
