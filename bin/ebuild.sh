@@ -922,7 +922,6 @@ dyn_compile() {
 	echo "$CATEGORY"       > CATEGORY
 	echo "$CBUILD"         > CBUILD
 	echo "$CC"             > CC
-	echo "$CDEPEND"        > CDEPEND
 	echo "$CFLAGS"         > CFLAGS
 	echo "$CHOST"          > CHOST
 	echo "$CTARGET"        > CTARGET
@@ -1500,7 +1499,6 @@ inherit() {
 	local B_IUSE
 	local B_DEPEND
 	local B_RDEPEND
-	local B_CDEPEND
 	local B_PDEPEND
 	while [ "$1" ]; do
 		location="${ECLASSDIR}/${1}.eclass"
@@ -1537,13 +1535,12 @@ inherit() {
 		set -f
 
 		# Retain the old data and restore it later.
-		unset B_IUSE B_DEPEND B_RDEPEND B_CDEPEND B_PDEPEND
+		unset B_IUSE B_DEPEND B_RDEPEND B_PDEPEND
 		[ "${IUSE-unset}"    != "unset" ] && B_IUSE="${IUSE}"
 		[ "${DEPEND-unset}"  != "unset" ] && B_DEPEND="${DEPEND}"
 		[ "${RDEPEND-unset}" != "unset" ] && B_RDEPEND="${RDEPEND}"
-		[ "${CDEPEND-unset}" != "unset" ] && B_CDEPEND="${CDEPEND}"
 		[ "${PDEPEND-unset}" != "unset" ] && B_PDEPEND="${PDEPEND}"
-		unset   IUSE   DEPEND   RDEPEND   CDEPEND   PDEPEND
+		unset IUSE DEPEND RDEPEND PDEPEND
 		#turn on glob expansion
 		set +f
 		
@@ -1558,7 +1555,6 @@ inherit() {
 		[ "${IUSE-unset}"    != "unset" ] && export E_IUSE="${E_IUSE} ${IUSE}"
 		[ "${DEPEND-unset}"  != "unset" ] && export E_DEPEND="${E_DEPEND} ${DEPEND}"
 		[ "${RDEPEND-unset}" != "unset" ] && export E_RDEPEND="${E_RDEPEND} ${RDEPEND}"
-		[ "${CDEPEND-unset}" != "unset" ] && export E_CDEPEND="${E_CDEPEND} ${CDEPEND}"
 		[ "${PDEPEND-unset}" != "unset" ] && export E_PDEPEND="${E_PDEPEND} ${PDEPEND}"
 
 		[ "${B_IUSE-unset}"    != "unset" ] && IUSE="${B_IUSE}"
@@ -1569,9 +1565,6 @@ inherit() {
 
 		[ "${B_RDEPEND-unset}" != "unset" ] && RDEPEND="${B_RDEPEND}"
 		[ "${B_RDEPEND-unset}" != "unset" ] || unset RDEPEND
-
-		[ "${B_CDEPEND-unset}" != "unset" ] && CDEPEND="${B_CDEPEND}"
-		[ "${B_CDEPEND-unset}" != "unset" ] || unset CDEPEND
 
 		[ "${B_PDEPEND-unset}" != "unset" ] && PDEPEND="${B_PDEPEND}"
 		[ "${B_PDEPEND-unset}" != "unset" ] || unset PDEPEND
@@ -1638,11 +1631,6 @@ newdepend() {
 newrdepend() {
 	debug-print-function newrdepend $*
 	do_newdepend RDEPEND $1
-}
-
-newcdepend() {
-	debug-print-function newcdepend $*
-	do_newdepend CDEPEND $1
 }
 
 newpdepend() {
@@ -1759,7 +1747,7 @@ fi # "$*"!="depend" && "$*"!="clean" && "$*" != "setup"
 export SANDBOX_ON="1"
 export S=${WORKDIR}/${P}
 
-unset E_IUSE E_DEPEND E_RDEPEND E_CDEPEND E_PDEPEND
+unset E_IUSE E_DEPEND E_RDEPEND E_PDEPEND
 
 for x in T P PN PV PVR PR A EBUILD EMERGE_FROM O PPID FILESDIR PORTAGE_TMPDIR; do
 	[[ ${!x-UNSET_VAR} != UNSET_VAR ]] && declare -r ${x}
@@ -1848,15 +1836,14 @@ fi
 IUSE="$IUSE $E_IUSE"
 DEPEND="$DEPEND $E_DEPEND"
 RDEPEND="$RDEPEND $E_RDEPEND"
-CDEPEND="$CDEPEND $E_CDEPEND"
 PDEPEND="$PDEPEND $E_PDEPEND"
 
-unset E_IUSE E_DEPEND E_RDEPEND E_CDEPEND E_PDEPEND
+unset E_IUSE E_DEPEND E_RDEPEND E_PDEPEND
 
 if [ "${EBUILD_PHASE}" != "depend" ]; then
 	# Lock the dbkey variables after the global phase
 	declare -r DEPEND RDEPEND SLOT SRC_URI RESTRICT HOMEPAGE LICENSE DESCRIPTION
-	declare -r KEYWORDS INHERITED IUSE CDEPEND PDEPEND PROVIDE
+	declare -r KEYWORDS INHERITED IUSE PDEPEND PROVIDE
 fi
 
 set +f
@@ -1949,7 +1936,7 @@ for myarg in $*; do
 		echo `echo "$KEYWORDS"`    >> $dbkey
 		echo `echo "$INHERITED"`   >> $dbkey
 		echo `echo "$IUSE"`        >> $dbkey
-		echo `echo "$CDEPEND"`     >> $dbkey
+		echo                       >> $dbkey
 		echo `echo "$PDEPEND"`     >> $dbkey
 		echo `echo "$PROVIDE"`     >> $dbkey
 		echo `echo "${EAPI:-0}"`   >> $dbkey

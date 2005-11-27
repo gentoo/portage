@@ -239,7 +239,7 @@ def usage(argv):
 
 def main():
 	if (len(sys.argv) < 2):
-		usage()
+		usage(sys.argv)
 		sys.exit()
 	
 	cmd = sys.argv[1]
