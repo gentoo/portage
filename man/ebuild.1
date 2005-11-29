@@ -64,6 +64,11 @@ Creates a digest file for the package in
 md5sum's of all the files found in the SRC_URI.  If the fetched source
 of the package is corrupt/bogus in some way, the md5sum will catch this.
 .TP
+.BR manifest
+Updates the manifest file for the package.  This performs the second half
+of the digest command, creating md5sums for the files in the files
+directory as well as the ebuild.
+.TP
 .BR unpack
 Extracts the sources to a subdirectory in the \fIbuild directory\fR
 (BUILD_PREFIX) by running the \fIsrc_unpack()\fR function in the ebuild
