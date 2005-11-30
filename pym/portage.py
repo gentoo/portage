@@ -785,16 +785,16 @@ def new_protect_filename(mydest, newmd5=None):
 #XXX: These two are now implemented in portage_util.py but are needed here
 #XXX: until the isvalidatom() dependency is sorted out.
 
-def grabdict_package(myfilename,juststrings=0):
-	pkgs=grabdict(myfilename, juststrings=juststrings, empty=1)
+def grabdict_package(myfilename,juststrings=0,recursive=0):
+	pkgs=grabdict(myfilename, juststrings=juststrings, empty=1,recursive=recursive)
 	for x in pkgs.keys():
 		if not isvalidatom(x):
 			del(pkgs[x])
 			writemsg("--- Invalid atom in %s: %s\n" % (myfilename, x))
 	return pkgs
 
-def grabfile_package(myfilename,compatlevel=0):
-	pkgs=grabfile(myfilename,compatlevel)
+def grabfile_package(myfilename,compatlevel=0,recursive=0):
+	pkgs=grabfile(myfilename,compatlevel,recursive=recursive)
 	for x in range(len(pkgs)-1,-1,-1):
 		pkg = pkgs[x]
 		if pkg[0] == "-":
@@ -1120,7 +1120,7 @@ class config:
 					if os.path.isdir(ov+"/profiles"):
 						locations.append(ov+"/profiles")
 
-				pusedict=grabdict_package(USER_CONFIG_PATH+"/package.use")
+				pusedict=grabdict_package(USER_CONFIG_PATH+"/package.use", recursive=1)
 				self.pusedict = {}
 				for key in pusedict.keys():
 					cp = dep_getkey(key)
@@ -1129,7 +1129,7 @@ class config:
 					self.pusedict[cp][key] = pusedict[key]
 
 				#package.keywords
-				pkgdict=grabdict_package(USER_CONFIG_PATH+"/package.keywords")
+				pkgdict=grabdict_package(USER_CONFIG_PATH+"/package.keywords", recursive=1)
 				self.pkeywordsdict = {}
 				for key in pkgdict.keys():
 					# default to ~arch if no specific keyword is given
@@ -1149,7 +1149,7 @@ class config:
 					self.pkeywordsdict[cp][key] = pkgdict[key]
 
 				#package.unmask
-				pkgunmasklines = grabfile_package(USER_CONFIG_PATH+"/package.unmask")
+				pkgunmasklines = grabfile_package(USER_CONFIG_PATH+"/package.unmask",recursive=1)
 				self.punmaskdict = {}
 				for x in pkgunmasklines:
 					mycatpkg=dep_getkey(x)
@@ -1167,7 +1167,9 @@ class config:
 			self.loadVirtuals('/')
 
 			#package.mask
-			pkgmasklines = grab_multiple("package.mask", self.profiles + locations, grabfile_package)
+			pkgmasklines = grab_multiple("package.mask", self.profiles, grabfile_package)
+			for l in locations:
+				pkgmasklines.append(grabfile_package(l+os.path.sep+"package.mask", recursive=1))
 			pkgmasklines = stack_lists(pkgmasklines, incremental=1)
 
 			self.pmaskdict = {}
@@ -1688,7 +1690,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 
 	check_config_instance(mysettings)
 
-	custommirrors=grabdict(CUSTOM_MIRRORS_FILE)
+	custommirrors=grabdict(CUSTOM_MIRRORS_FILE,recursive=1)
 
 	mymirrors=[]
 
@@ -3616,6 +3618,7 @@ def dep_wordreduce(mydeplist,mysettings,mydbapi,mode,use_cache=1):
 	return deplist
 
 def getmaskingreason(mycpv):
+	from portage_util import grablines
 	global portdb
 	mysplit = catpkgsplit(mycpv)
 	if not mysplit:
@@ -3624,25 +3627,22 @@ def getmaskingreason(mycpv):
 		raise KeyError("CPV %s does not exist" % mycpv)
 	mycp=mysplit[0]+"/"+mysplit[1]
 
+	pmasklines = grablines(settings["PORTDIR"]+"/profiles/package.mask", recursive=1)
 	if settings.pmaskdict.has_key(mycp):
 		for x in settings.pmaskdict[mycp]:
 			if mycpv in portdb.xmatch("match-all", x):
-				pmaskfile = open(settings["PORTDIR"]+"/profiles/package.mask")
 				comment = ""
 				l = "\n"
-				while len(l) > 0:
-					l = pmaskfile.readline()
-					if len(l) == 0:
-						pmaskfile.close()
-						return None
-					if l[0] == "#":
-						comment += l
-					elif l == "\n":
+				i = 0
+				while i < len(pmasklines):
+					l = pmasklines[i].strip()
+					if l == "":
 						comment = ""
-					elif l.strip() == x:
-						pmaskfile.close()
+					elif l[0] == "#":
+						comment += (l+"\n")
+					elif l == x:
 						return comment
-				pmaskfile.close()
+					i = i + 1
 	return None
 
 def getmaskingstatus(mycpv):
@@ -6921,10 +6921,17 @@ def do_upgrade(mykey):
 	update_files={}
 	file_contents={}
 	myxfiles = ["package.mask","package.unmask","package.keywords","package.use"]
-	myxfiles = myxfiles + prefix_array(myxfiles, "profile/")
+	myxfiles.extend(prefix_array(myxfiles, "profile/"))
+	recursivefiles = []
+	for x in myxfiles:
+		if os.path.isdir(USER_CONFIG_PATH+os.path.sep+x):
+			recursivefiles.extend([x+os.path.sep+y for y in listdir(USER_CONFIG_PATH+os.path.sep+x, filesonly=1, recursive=1)])
+		else:
+			recursivefiles.append(x)
+	myxfiles = recursivefiles
 	for x in myxfiles:
 		try:
-			myfile = open("/etc/portage/"+x,"r")
+			myfile = open(USER_CONFIG_PATH+os.path.sep+x,"r")
 			file_contents[x] = myfile.readlines()
 			myfile.close()
 		except IOError:
@@ -6981,10 +6988,10 @@ def do_upgrade(mykey):
 
 	for x in update_files:
 		mydblink = dblink('','','/',settings)
-		if mydblink.isprotected("/etc/portage/"+x):
-			updating_file=new_protect_filename("/etc/portage/"+x)[0]
+		if mydblink.isprotected(USER_CONFIG_PATH+os.path.sep+x):
+			updating_file=new_protect_filename(USER_CONFIG_PATH+os.path.sep+x)[0]
 		else:
-			updating_file="/etc/portage/"+x
+			updating_file=USER_CONFIG_PATH+os.path.sep+x
 		try:
 			myfile=open(updating_file,"w")
 			myfile.writelines(file_contents[x])
