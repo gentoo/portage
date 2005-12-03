@@ -1054,7 +1054,6 @@ dyn_compile() {
 	echo "$CATEGORY"       > CATEGORY
 	echo "$CBUILD"         > CBUILD
 	echo "$CC"             > CC
-	echo "$CDEPEND"        > CDEPEND
 	echo "$CFLAGS"         > CFLAGS
 	echo "$CHOST"          > CHOST
 	echo "$CTARGET"        > CTARGET
@@ -1363,7 +1362,8 @@ dyn_preinst() {
 	
 	[ "$(type -t pre_pkg_preinst)" == "function" ] && pre_pkg_preinst
 
-	D=${IMAGE} pkg_preinst
+	declare -r D=${IMAGE}
+	pkg_preinst
 
 	# hopefully this will someday allow us to get rid of the no* feature flags
 	# we don't want globbing for initial expansion, but afterwards, we do
@@ -1631,7 +1631,6 @@ inherit() {
 	local B_IUSE
 	local B_DEPEND
 	local B_RDEPEND
-	local B_CDEPEND
 	local B_PDEPEND
 	while [ "$1" ]; do
 		location="${ECLASSDIR}/${1}.eclass"
@@ -1668,13 +1667,12 @@ inherit() {
 		set -f
 
 		# Retain the old data and restore it later.
-		unset B_IUSE B_DEPEND B_RDEPEND B_CDEPEND B_PDEPEND
+		unset B_IUSE B_DEPEND B_RDEPEND B_PDEPEND
 		[ "${IUSE-unset}"    != "unset" ] && B_IUSE="${IUSE}"
 		[ "${DEPEND-unset}"  != "unset" ] && B_DEPEND="${DEPEND}"
 		[ "${RDEPEND-unset}" != "unset" ] && B_RDEPEND="${RDEPEND}"
-		[ "${CDEPEND-unset}" != "unset" ] && B_CDEPEND="${CDEPEND}"
 		[ "${PDEPEND-unset}" != "unset" ] && B_PDEPEND="${PDEPEND}"
-		unset   IUSE   DEPEND   RDEPEND   CDEPEND   PDEPEND
+		unset IUSE DEPEND RDEPEND PDEPEND
 		#turn on glob expansion
 		set +f
 		
@@ -1689,7 +1687,6 @@ inherit() {
 		[ "${IUSE-unset}"    != "unset" ] && export E_IUSE="${E_IUSE} ${IUSE}"
 		[ "${DEPEND-unset}"  != "unset" ] && export E_DEPEND="${E_DEPEND} ${DEPEND}"
 		[ "${RDEPEND-unset}" != "unset" ] && export E_RDEPEND="${E_RDEPEND} ${RDEPEND}"
-		[ "${CDEPEND-unset}" != "unset" ] && export E_CDEPEND="${E_CDEPEND} ${CDEPEND}"
 		[ "${PDEPEND-unset}" != "unset" ] && export E_PDEPEND="${E_PDEPEND} ${PDEPEND}"
 
 		[ "${B_IUSE-unset}"    != "unset" ] && IUSE="${B_IUSE}"
@@ -1700,9 +1697,6 @@ inherit() {
 
 		[ "${B_RDEPEND-unset}" != "unset" ] && RDEPEND="${B_RDEPEND}"
 		[ "${B_RDEPEND-unset}" != "unset" ] || unset RDEPEND
-
-		[ "${B_CDEPEND-unset}" != "unset" ] && CDEPEND="${B_CDEPEND}"
-		[ "${B_CDEPEND-unset}" != "unset" ] || unset CDEPEND
 
 		[ "${B_PDEPEND-unset}" != "unset" ] && PDEPEND="${B_PDEPEND}"
 		[ "${B_PDEPEND-unset}" != "unset" ] || unset PDEPEND
@@ -1769,11 +1763,6 @@ newdepend() {
 newrdepend() {
 	debug-print-function newrdepend $*
 	do_newdepend RDEPEND $1
-}
-
-newcdepend() {
-	debug-print-function newcdepend $*
-	do_newdepend CDEPEND $1
 }
 
 newpdepend() {
