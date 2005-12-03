@@ -41,7 +41,7 @@ alias restore_IFS='if [ "${old_IFS:-unset}" != "unset" ]; then IFS="${old_IFS}";
 
 OCC="$CC"
 OCXX="$CXX"
-source /etc/profile.env &>/dev/null
+source ${PREFIX}/etc/profile.env &>/dev/null
 if [ -f "${PORTAGE_BASHRC}" ]; then
 	source "${PORTAGE_BASHRC}"
 fi
@@ -218,6 +218,139 @@ best_version() {
 	@PORTAGE_BASE@/bin/portageq 'best_version' "${ROOT}" "$1"
 }
 
+with_bindir() {
+	local mybindir
+	if [ -z "${1}" ]; then
+		if [ ! -z "${PREFIX}" ]; then
+			mybindir="${PREFIX}bin"
+		else
+			mybindir="/bin"
+		fi
+	else
+		if [ ! -z "${PREFIX}" ]; then
+			mybindir="${PREFIX}${1}"
+		else
+			mybindir="${1}"
+		fi
+	fi
+	echo "--bindir=${mybindir}"
+	return 0
+}
+
+with_datadir() {
+	local mydatadir
+	if [ -z "${1}" ]; then
+		if [ ! -z "${PREFIX}" ]; then
+			mydatadir="${PREFIX}usr/share"
+		else
+			mydatadir=/usr/share
+		fi
+	else
+		if [ ! -z "${PREFIX}" ]; then
+			mydatadir="${PREFIX}${1}"
+		else
+			mydatadir="${1}"
+		fi
+	fi
+	echo "--datadir=${mydatadir}"
+	return 0
+}
+
+with_infodir() {
+	local myinfodir
+	if [ -z "${1}" ]; then
+		if [ ! -z "${PREFIX}" ]; then
+			myinfodir="${PREFIX}usr/share/info"
+		else
+			myinfodir=/usr/share/info
+		fi
+	else
+		if [ ! -z "${PREFIX}" ]; then
+			myinfodir="${PREFIX}${1}"
+		else
+			myinfodir="${1}"
+		fi
+	fi
+	echo "--infodir=${myinfodir}"
+	return 0
+}
+
+with_mandir() {
+	local mymandir
+	if [ -z "${1}" ]; then
+		if [ ! -z "${PREFIX}" ]; then
+			mymandir="${PREFIX}usr/share/man"
+		else
+			mymandir=/usr/share/man
+		fi
+	else
+		if [ ! -z "${PREFIX}" ]; then
+			mymandir="${PREFIX}${1}"
+		else
+			mymandir="${1}"
+		fi
+	fi
+	echo "--mandir=${mymandir}"
+	return 0
+}
+
+with_prefix() {
+	local myprefix
+	if [ -z "${1}" ]; then
+		if [ ! -z "${PREFIX}" ]; then
+			myprefix="${PREFIX}usr"
+		else
+			myprefix=/usr
+		fi
+	else
+		if [ ! -z "${PREFIX}" ]; then
+			myprefix="${PREFIX}${1}"
+		else
+			myprefix="${1}"
+		fi
+	fi
+	echo "--prefix=${myprefix}"
+	return 0
+}
+
+with_sysconfdir() {
+	local myconfdir
+	if [ -z "${1}" ]; then
+		if [ ! -z "${PREFIX}" ]; then
+			myconfdir="${PREFIX}etc"
+		else
+			myconfdir=/etc
+		fi
+	else
+		if [ ! -z "${PREFIX}" ]; then
+			myconfdir="${PREFIX}${1}"
+		else
+			myconfdir="${1}"
+		fi
+	fi
+	echo "--sysconfdir=${myconfdir}"
+	return 0
+}
+
+with_localstatedir() {
+	local mylocalstatedir
+	if [ -z "${1}" ]; then
+		if [ ! -z "${PREFIX}" ]; then
+			mylocalstatedir="${PREFIX}var/lib"
+		else
+			mylocalstatedir="/var/lib"
+		fi
+	else
+		if [ ! -z "${PREFIX}" ]; then
+			mylocalstatedir="${PREFIX}${1}"
+		else
+			mylocalstatedir="${1}"
+		fi
+	fi
+	echo "--localstatedir=${mylocalstatedir}"
+	return 0
+}
+			
 use_with() {
 	if [ -z "$1" ]; then
 		echo "!!! use_with() called without a parameter." >&2
@@ -413,11 +546,11 @@ econf() {
 		ECONF_SOURCE="."
 	fi
 	if [ -x "${ECONF_SOURCE}/configure" ]; then
-		if [ -e /usr/share/gnuconfig/ ]; then
+		if [ -e ${PREFIX}/usr/share/gnuconfig/ ]; then
 			local x
 			for x in $(find "${WORKDIR}" -type f '(' -name config.guess -o -name config.sub ')') ; do
-				echo " * econf: updating ${x/${WORKDIR}\/} with /usr/share/gnuconfig/${x##*/}"
-				cp -f /usr/share/gnuconfig/${x##*/} ${x}
+				echo " * econf: updating ${x/${WORKDIR}\/} with ${PREFIX}/usr/share/gnuconfig/${x##*/}"
+				cp -f ${PREFIX}/usr/share/gnuconfig/${x##*/} ${x}
 			done
 		fi
 
@@ -448,7 +581,7 @@ econf() {
 				CONF_PREFIX=${pref}
 				[ "${CONF_PREFIX:0:1}" != "/" ] && CONF_PREFIX="/${CONF_PREFIX}"
 			else
-				CONF_PREFIX="/usr"
+				CONF_PREFIX="${PREFIX}/usr"
 			fi
 			export CONF_PREFIX
 			[ "${CONF_LIBDIR:0:1}" != "/" ] && CONF_LIBDIR="/${CONF_LIBDIR}"
@@ -463,24 +596,24 @@ econf() {
 		fi
 		
 		echo "${ECONF_SOURCE}/configure" \
-			--prefix=/usr \
+			--prefix=${PREFIX}/usr \
 			--host=${CHOST} \
-			--mandir=/usr/share/man \
-			--infodir=/usr/share/info \
-			--datadir=/usr/share \
-			--sysconfdir=/etc \
-			--localstatedir=/var/lib \
+			--mandir=${PREFIX}/usr/share/man \
+			--infodir=${PREFIX}/usr/share/info \
+			--datadir=${PREFIX}/usr/share \
+			--sysconfdir=${PREFIX}/etc \
+			--localstatedir=${PREFIX}/var/lib \
 			"$@" \
 			${LOCAL_EXTRA_ECONF}
 
 		if ! "${ECONF_SOURCE}/configure" \
-			--prefix=/usr \
+			--prefix=${PREFIX}/usr \
 			--host=${CHOST} \
-			--mandir=/usr/share/man \
-			--infodir=/usr/share/info \
-			--datadir=/usr/share \
-			--sysconfdir=/etc \
-			--localstatedir=/var/lib \
+			--mandir=${PREFIX}/usr/share/man \
+			--infodir=${PREFIX}/usr/share/info \
+			--datadir=${PREFIX}/usr/share \
+			--sysconfdir=${PREFIX}/etc \
+			--localstatedir=${PREFIX}/var/lib \
 			"$@"  \
 			${LOCAL_EXTRA_ECONF}; then
 
@@ -1138,7 +1271,7 @@ dyn_install() {
 					python -c "import os,stat; print '%o' % os.stat('$1')[stat.ST_MODE]"
 				}
 			else
-				if [ "${USERLAND}" == "BSD" ] || [ "${USERLAND}" == "Darwin" ]; then
+				if [ "${USERLAND}" == "BSD" ]; then
 					do_stat() {
 						# BSD version -- Octal result
 						$(type -p stat) -f '%p' "$1"
@@ -1767,7 +1900,7 @@ unset x
 # Turn of extended glob matching so that g++ doesn't get incorrectly matched.
 shopt -u extglob
 
-QA_INTERCEPTORS="javac java-config python python-config perl grep @EGREP@ fgrep sed gcc g++ cc bash awk nawk gawk pkg-config"
+QA_INTERCEPTORS="javac java-config python python-config perl grep fgrep sed gcc g++ cc bash awk nawk gawk pkg-config"
 # level the QA interceptors if we're in depend
 if hasq "depend" "$@"; then
 	for BIN in ${QA_INTERCEPTORS}; do
