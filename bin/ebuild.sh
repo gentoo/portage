@@ -1890,11 +1890,13 @@ fi # "$*"!="depend" && "$*"!="clean" && "$*" != "setup"
 export SANDBOX_ON="1"
 export S=${WORKDIR}/${P}
 
-unset E_IUSE E_DEPEND E_RDEPEND E_CDEPEND E_PDEPEND
+unset E_IUSE E_DEPEND E_RDEPEND E_PDEPEND
 
-for x in T P PN PV PVR PR A D EBUILD EMERGE_FROM O PPID FILESDIR PORTAGE_TMPDIR; do
+for x in T P PN PV PVR PR A EBUILD EMERGE_FROM O PPID FILESDIR PORTAGE_TMPDIR; do
 	[[ ${!x-UNSET_VAR} != UNSET_VAR ]] && declare -r ${x}
 done
+# Need to be able to change D in dyn_preinst due to the IMAGE stuff
+[[ $* != "preinst" ]] && declare -r D
 unset x
 
 # Turn of extended glob matching so that g++ doesn't get incorrectly matched.
@@ -1977,15 +1979,14 @@ fi
 IUSE="$IUSE $E_IUSE"
 DEPEND="$DEPEND $E_DEPEND"
 RDEPEND="$RDEPEND $E_RDEPEND"
-CDEPEND="$CDEPEND $E_CDEPEND"
 PDEPEND="$PDEPEND $E_PDEPEND"
 
-unset E_IUSE E_DEPEND E_RDEPEND E_CDEPEND E_PDEPEND
+unset E_IUSE E_DEPEND E_RDEPEND E_PDEPEND
 
 if [ "${EBUILD_PHASE}" != "depend" ]; then
 	# Lock the dbkey variables after the global phase
 	declare -r DEPEND RDEPEND SLOT SRC_URI RESTRICT HOMEPAGE LICENSE DESCRIPTION
-	declare -r KEYWORDS INHERITED IUSE CDEPEND PDEPEND PROVIDE
+	declare -r KEYWORDS INHERITED IUSE PDEPEND PROVIDE
 fi
 
 set +f
@@ -2078,7 +2079,7 @@ for myarg in $*; do
 		echo `echo "$KEYWORDS"`    >> $dbkey
 		echo `echo "$INHERITED"`   >> $dbkey
 		echo `echo "$IUSE"`        >> $dbkey
-		echo `echo "$CDEPEND"`     >> $dbkey
+		echo                       >> $dbkey
 		echo `echo "$PDEPEND"`     >> $dbkey
 		echo `echo "$PROVIDE"`     >> $dbkey
 		echo `echo "${EAPI:-0}"`   >> $dbkey
