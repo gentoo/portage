@@ -10,4 +10,5 @@ fi
 
 target="${1}"
 linkname="${2}"
+[[ ${target:0:1} == "/" ]] && target="${PREFIX}${target}"
 ln -snf "${target}" "${D}${linkname}"
