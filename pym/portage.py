@@ -730,16 +730,16 @@ def new_protect_filename(mydest, newmd5=None):
 #XXX: These two are now implemented in portage_util.py but are needed here
 #XXX: until the isvalidatom() dependency is sorted out.
 
-def grabdict_package(myfilename,juststrings=0):
-	pkgs=grabdict(myfilename, juststrings=juststrings, empty=1)
+def grabdict_package(myfilename,juststrings=0,recursive=0):
+	pkgs=grabdict(myfilename, juststrings=juststrings, empty=1,recursive=recursive)
 	for x in pkgs.keys():
 		if not isvalidatom(x):
 			del(pkgs[x])
 			writemsg("--- Invalid atom in %s: %s\n" % (myfilename, x))
 	return pkgs
 
-def grabfile_package(myfilename,compatlevel=0):
-	pkgs=grabfile(myfilename,compatlevel)
+def grabfile_package(myfilename,compatlevel=0,recursive=0):
+	pkgs=grabfile(myfilename,compatlevel,recursive=recursive)
 	for x in range(len(pkgs)-1,-1,-1):
 		pkg = pkgs[x]
 		if pkg[0] == "-":
@@ -1067,7 +1067,7 @@ class config:
 					if os.path.isdir(ov+"/profiles"):
 						locations.append(ov+"/profiles")
 
-				pusedict=grabdict_package(USER_CONFIG_PATH+"/package.use")
+				pusedict=grabdict_package(USER_CONFIG_PATH+"/package.use", recursive=1)
 				self.pusedict = {}
 				for key in pusedict.keys():
 					cp = dep_getkey(key)
@@ -1076,7 +1076,7 @@ class config:
 					self.pusedict[cp][key] = pusedict[key]
 
 				#package.keywords
-				pkgdict=grabdict_package(USER_CONFIG_PATH+"/package.keywords")
+				pkgdict=grabdict_package(USER_CONFIG_PATH+"/package.keywords", recursive=1)
 				self.pkeywordsdict = {}
 				for key in pkgdict.keys():
 					# default to ~arch if no specific keyword is given
@@ -1096,7 +1096,7 @@ class config:
 					self.pkeywordsdict[cp][key] = pkgdict[key]
 
 				#package.unmask
-				pkgunmasklines = grabfile_package(USER_CONFIG_PATH+"/package.unmask")
+				pkgunmasklines = grabfile_package(USER_CONFIG_PATH+"/package.unmask",recursive=1)
 				self.punmaskdict = {}
 				for x in pkgunmasklines:
 					mycatpkg=dep_getkey(x)
@@ -1114,7 +1114,9 @@ class config:
 			self.loadVirtuals('/')
 
 			#package.mask
-			pkgmasklines = grab_multiple("package.mask", self.profiles + locations, grabfile_package)
+			pkgmasklines = grab_multiple("package.mask", self.profiles, grabfile_package)
+			for l in locations:
+				pkgmasklines.append(grabfile_package(l+os.path.sep+"package.mask", recursive=1))
 			pkgmasklines = stack_lists(pkgmasklines, incremental=1)
 
 			self.pmaskdict = {}
@@ -1635,7 +1637,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 
 	check_config_instance(mysettings)
 
-	custommirrors=grabdict(CUSTOM_MIRRORS_FILE)
+	custommirrors=grabdict(CUSTOM_MIRRORS_FILE,recursive=1)
 
 	mymirrors=[]
 
@@ -2513,6 +2515,12 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 			os.chown(mysettings["T"],portage_uid,portage_gid)
 			os.chmod(mysettings["T"],02770)
 
+		logdir = mysettings["T"]+"/logging"
+		if not os.path.exists(logdir):
+			os.makedirs(logdir)
+		os.chown(logdir, portage_uid, portage_gid)
+		os.chmod(logdir, 0770)
+
 		try: # XXX: negative RESTRICT
 			if not (("nouserpriv" in string.split(mysettings["PORTAGE_RESTRICT"])) or \
 			   ("userpriv" in string.split(mysettings["PORTAGE_RESTRICT"]))):
@@ -2622,7 +2630,8 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 				mysettings["DISTCC_DIR"]=""
 
 		mysettings["WORKDIR"]=mysettings["BUILDDIR"]+"/work"
-		mysettings["D"]=os.path.join(mysettings["BUILDDIR"], "image", portage_const.PREFIX.lstrip(os.path.sep))
+		mysettings["DEST"]=os.path.join(mysettings["BUILDDIR"],"image")
+		mysettings["D"]=mysettings["BUILDDIR"]+"/image"+portage_const.PREFIX
 		if mysettings.has_key("PORT_LOGDIR"):
 			if os.access(mysettings["PORT_LOGDIR"]+"/",os.W_OK):
 				try:
@@ -2630,7 +2639,7 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 					os.chmod(mysettings["PORT_LOGDIR"],02770)
 					if not mysettings.has_key("LOG_PF") or (mysettings["LOG_PF"] != mysettings["PF"]):
 						mysettings["LOG_PF"]=mysettings["PF"]
-						mysettings["LOG_COUNTER"]=str(db[myroot]["vartree"].get_counter_tick_core("/"))
+						mysettings["LOG_COUNTER"]=str(db[myroot]["vartree"].dbapi.get_counter_tick_core("/"))
 					logfile="%s/%s-%s.log" % (mysettings["PORT_LOGDIR"],mysettings["LOG_COUNTER"],mysettings["LOG_PF"])
 				except OSError, e:
 					mysettings["PORT_LOGDIR"]=""
@@ -2642,7 +2651,7 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 				mysettings["PORT_LOGDIR"]=""
 
 		if mydo=="unmerge":
-			return unmerge(mysettings["CATEGORY"],mysettings["PF"],myroot+portage_const.PREFIX,mysettings)
+			return unmerge(mysettings["CATEGORY"],mysettings["PF"],myroot,mysettings)
 
 	# if any of these are being called, handle them -- running them out of the sandbox -- and stop now.
 	if mydo=="clean":
@@ -2766,12 +2775,12 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 			print "!!! mydo=qmerge, but install phase hasn't been ran"
 			sys.exit(1)
 		#qmerge is specifically not supposed to do a runtime dep check
-		return merge(mysettings["CATEGORY"],mysettings["PF"],mysettings["D"],mysettings["BUILDDIR"]+"/build-info",myroot,mysettings,myebuild=mysettings["EBUILD"],mytree=tree)
+		return merge(mysettings["CATEGORY"],mysettings["PF"],mysettings["DEST"],mysettings["BUILDDIR"]+"/build-info",myroot,mysettings,myebuild=mysettings["EBUILD"],mytree=tree)
 	elif mydo=="merge":
 		retval=spawnebuild("install",actionmap,mysettings,debug,alwaysdep=1,logfile=logfile)
 		if retval:
 			return retval
-		return merge(mysettings["CATEGORY"],mysettings["PF"],mysettings["D"],mysettings["BUILDDIR"]+"/build-info",myroot,mysettings,myebuild=mysettings["EBUILD"],mytree=tree)
+		return merge(mysettings["CATEGORY"],mysettings["PF"],mysettings["DEST"],mysettings["BUILDDIR"]+"/build-info",myroot,mysettings,myebuild=mysettings["EBUILD"],mytree=tree)
 	else:
 		print "!!! Unknown mydo:",mydo
 		sys.exit(1)
@@ -2954,150 +2963,6 @@ def unmerge(cat,pkg,myroot,mysettings,mytrimworld=1):
 		mylink.unmerge(trimworld=mytrimworld,cleanup=1)
 	mylink.delete()
 
-def relparse(myver):
-	"converts last version part into three components"
-	number=0
-	suffix=0
-	endtype=0
-	endnumber=0
-
-	mynewver=string.split(myver,"_")
-	myver=mynewver[0]
-
-	#normal number or number with letter at end
-	divider=len(myver)-1
-	if myver[divider:] not in "1234567890":
-		#letter at end
-		suffix=ord(myver[divider:])
-		number=string.atof(myver[0:divider])
-	else:
-		number=string.atof(myver)
-
-	if len(mynewver)==2:
-		#an endversion
-		for x in endversion_keys:
-			elen=len(x)
-			if mynewver[1][:elen] == x:
-				match=1
-				endtype=endversion[x]
-				try:
-					endnumber=string.atof(mynewver[1][elen:])
-				except SystemExit, e:
-					raise
-				except:
-					endnumber=0
-				break
-	return [number,suffix,endtype,endnumber]
-
-#returns 1 if valid version string, else 0
-# valid string in format: <v1>.<v2>...<vx>[a-z,_{endversion}[vy]]
-# ververify doesn't do package rev.
-
-vercache={}
-def ververify(myorigval,silent=1):
-	try:
-		return vercache[myorigval]
-	except KeyError:
-		pass
-	if len(myorigval)==0:
-		if not silent:
-			print "!!! Name error: package contains empty \"-\" part."
-		return 0
-	myval=string.split(myorigval,'.')
-	if len(myval)==0:
-		if not silent:
-			print "!!! Name error: empty version string."
-		vercache[myorigval]=0
-		return 0
-	#all but the last version must be a numeric
-	for x in myval[:-1]:
-		if not len(x):
-			if not silent:
-				print "!!! Name error in",myorigval+": two decimal points in a row"
-			vercache[myorigval]=0
-			return 0
-		try:
-			foo=int(x)
-		except SystemExit, e:
-			raise
-		except:
-			if not silent:
-				print "!!! Name error in",myorigval+": \""+x+"\" is not a valid version component."
-			vercache[myorigval]=0
-			return 0
-	if not len(myval[-1]):
-			if not silent:
-				print "!!! Name error in",myorigval+": two decimal points in a row"
-			vercache[myorigval]=0
-			return 0
-	try:
-		foo=int(myval[-1])
-		vercache[myorigval]=1
-		return 1
-	except SystemExit, e:
-		raise
-	except:
-		pass
-	#ok, our last component is not a plain number or blank, let's continue
-	if myval[-1][-1] in string.lowercase:
-		try:
-			foo=int(myval[-1][:-1])
-			vercache[myorigval]=1
-			return 1
-			# 1a, 2.0b, etc.
-		except SystemExit, e:
-			raise
-		except:
-			pass
-	#ok, maybe we have a 1_alpha or 1_beta2; let's see
-	#ep="endpart"
-	ep=string.split(myval[-1],"_")
-	if len(ep)!=2:
-		if not silent:
-			print "!!! Name error in",myorigval
-		vercache[myorigval]=0
-		return 0
-	try:
-		foo=int(ep[0][-1])
-		chk=ep[0]
-	except SystemExit, e:
-		raise
-	except:
-		# because it's ok last char is not numeric. example: foo-1.0.0a_pre1
-		chk=ep[0][:-1]
-
-	try:
-		foo=int(chk)
-	except SystemExit, e:
-		raise
-	except:
-		#this needs to be numeric or numeric+single letter,
-		#i.e. the "1" in "1_alpha" or "1a_alpha"
-		if not silent:
-			print "!!! Name error in",myorigval+": characters before _ must be numeric or numeric+single letter"
-		vercache[myorigval]=0
-		return 0
-	for mye in endversion_keys:
-		if ep[1][0:len(mye)]==mye:
-			if len(mye)==len(ep[1]):
-				#no trailing numeric; ok
-				vercache[myorigval]=1
-				return 1
-			else:
-				try:
-					foo=int(ep[1][len(mye):])
-					vercache[myorigval]=1
-					return 1
-				except SystemExit, e:
-					raise
-				except:
-					#if no endversions work, *then* we return 0
-					pass
-	if not silent:
-		print "!!! Name error in",myorigval
-	vercache[myorigval]=0
-	return 0
-
 def isvalidatom(atom):
 	mycpv_cps = catpkgsplit(dep_getcpv(atom))
 	operator = get_operator(atom)
@@ -3143,200 +3008,9 @@ def isspecific(mypkg):
 	iscache[mypkg]=0
 	return 0
 
-# This function can be used as a package verification function, i.e.
-# "pkgsplit("foo-1.2-1") will return None if foo-1.2-1 isn't a valid
-# package (with version) name.	If it is a valid name, pkgsplit will
-# return a list containing: [ pkgname, pkgversion(norev), pkgrev ].
-# For foo-1.2-1, this list would be [ "foo", "1.2", "1" ].  For
-# Mesa-3.0, this list would be [ "Mesa", "3.0", "0" ].
-pkgcache={}
-
-def pkgsplit(mypkg,silent=1):
-	try:
-		if not pkgcache[mypkg]:
-			return None
-		return pkgcache[mypkg][:]
-	except KeyError:
-		pass
-	myparts=string.split(mypkg,'-')
-	if len(myparts)<2:
-		if not silent:
-			print "!!! Name error in",mypkg+": missing a version or name part."
-		pkgcache[mypkg]=None
-		return None
-	for x in myparts:
-		if len(x)==0:
-			if not silent:
-				print "!!! Name error in",mypkg+": empty \"-\" part."
-			pkgcache[mypkg]=None
-			return None
-	#verify rev
-	revok=0
-	myrev=myparts[-1]
-	if len(myrev) and myrev[0]=="r":
-		try:
-			int(myrev[1:])
-			revok=1
-		except SystemExit, e:
-			raise
-		except:
-			pass
-	if revok:
-		if ververify(myparts[-2]):
-			if len(myparts)==2:
-				pkgcache[mypkg]=None
-				return None
-			else:
-				for x in myparts[:-2]:
-					if ververify(x):
-						pkgcache[mypkg]=None
-						return None
-						#names can't have versiony looking parts
-				myval=[string.join(myparts[:-2],"-"),myparts[-2],myparts[-1]]
-				pkgcache[mypkg]=myval
-				return myval
-		else:
-			pkgcache[mypkg]=None
-			return None
-
-	elif ververify(myparts[-1],silent=silent):
-		if len(myparts)==1:
-			if not silent:
-				print "!!! Name error in",mypkg+": missing name part."
-			pkgcache[mypkg]=None
-			return None
-		else:
-			for x in myparts[:-1]:
-				if ververify(x):
-					if not silent:
-						print "!!! Name error in",mypkg+": multiple version parts."
-					pkgcache[mypkg]=None
-					return None
-			myval=[string.join(myparts[:-1],"-"),myparts[-1],"r0"]
-			pkgcache[mypkg]=myval[:]
-			return myval
-	else:
-		pkgcache[mypkg]=None
-		return None
-
 def getCPFromCPV(mycpv):
 	"""Calls pkgsplit on a cpv and returns only the cp."""
 	return pkgsplit(mycpv)[0]
-
-catcache={}
-def catpkgsplit(mydata,silent=1):
-	"returns [cat, pkgname, version, rev ]"
-	try:
-		if not catcache[mydata]:
-			return None
-		return catcache[mydata][:]
-	except KeyError:
-		pass
-	mysplit=mydata.split("/")
-	p_split=None
-	if len(mysplit)==1:
-		retval=["null"]
-		p_split=pkgsplit(mydata,silent=silent)
-	elif len(mysplit)==2:
-		retval=[mysplit[0]]
-		p_split=pkgsplit(mysplit[1],silent=silent)
-	if not p_split:
-		catcache[mydata]=None
-		return None
-	retval.extend(p_split)
-	catcache[mydata]=retval
-	return retval
-
-# vercmp:
-# This takes two version strings and returns an integer to tell you whether
-# the versions are the same, val1>val2 or val2>val1.
-vcmpcache={}
-def vercmp(val1,val2):
-	if val1==val2:
-		#quick short-circuit
-		return 0
-	valkey=val1+" "+val2
-	try:
-		return vcmpcache[valkey]
-		try:
-			return -vcmpcache[val2+" "+val1]
-		except KeyError:
-			pass
-	except KeyError:
-		pass
-
-	# consider 1_p2 vc 1.1
-	# after expansion will become (1_p2,0) vc (1,1)
-	# then 1_p2 is compared with 1 before 0 is compared with 1
-	# to solve the bug we need to convert it to (1,0_p2)
-	# by splitting _prepart part and adding it back _after_expansion
-	val1_prepart = val2_prepart = ''
-	if val1.count('_'):
-		val1, val1_prepart = val1.split('_', 1)
-	if val2.count('_'):
-		val2, val2_prepart = val2.split('_', 1)
-
-	# replace '-' by '.'
-	# FIXME: Is it needed? can val1/2 contain '-'?
-	val1=string.split(val1,'-')
-	if len(val1)==2:
-		val1[0]=val1[0]+"."+val1[1]
-	val2=string.split(val2,'-')
-	if len(val2)==2:
-		val2[0]=val2[0]+"."+val2[1]
-
-	val1=string.split(val1[0],'.')
-	val2=string.split(val2[0],'.')
-
-	#add back decimal point so that .03 does not become "3" !
-	for x in range(1,len(val1)):
-		if val1[x][0] == '0' :
-			val1[x]='.' + val1[x]
-	for x in range(1,len(val2)):
-		if val2[x][0] == '0' :
-			val2[x]='.' + val2[x]
-
-	# extend version numbers
-	if len(val2)<len(val1):
-		val2.extend(["0"]*(len(val1)-len(val2)))
-	elif len(val1)<len(val2):
-		val1.extend(["0"]*(len(val2)-len(val1)))
-
-	# add back _prepart tails
-	if val1_prepart:
-		val1[-1] += '_' + val1_prepart
-	if val2_prepart:
-		val2[-1] += '_' + val2_prepart
-	#The above code will extend version numbers out so they
-	#have the same number of digits.
-	for x in range(0,len(val1)):
-		cmp1=relparse(val1[x])
-		cmp2=relparse(val2[x])
-		for y in range(0,4):
-			myret=cmp1[y]-cmp2[y]
-			if myret != 0:
-				vcmpcache[valkey]=myret
-				return myret
-	vcmpcache[valkey]=0
-	return 0
-
-
-def pkgcmp(pkg1,pkg2):
-	"""if returnval is less than zero, then pkg2 is newer than pkg1, zero if equal and positive if older."""
-	if pkg1[0] != pkg2[0]:
-		return None
-	mycmp=vercmp(pkg1[1],pkg2[1])
-	if mycmp>0:
-		return 1
-	if mycmp<0:
-		return -1
-	r1=int(pkg1[2][1:])
-	r2=int(pkg2[2][1:])
-	if r1>r2:
-		return 1
-	if r2>r1:
-		return -1
-	return 0
 
 def dep_parenreduce(mysplit,mypos=0):
 	"Accepts a list of strings, and converts '(' and ')' surrounded items to sub-lists"
@@ -3892,6 +3566,7 @@ def dep_wordreduce(mydeplist,mysettings,mydbapi,mode,use_cache=1):
 	return deplist
 
 def getmaskingreason(mycpv):
+	from portage_util import grablines
 	global portdb
 	mysplit = catpkgsplit(mycpv)
 	if not mysplit:
@@ -3900,25 +3575,22 @@ def getmaskingreason(mycpv):
 		raise KeyError("CPV %s does not exist" % mycpv)
 	mycp=mysplit[0]+"/"+mysplit[1]
 
+	pmasklines = grablines(settings["PORTDIR"]+"/profiles/package.mask", recursive=1)
 	if settings.pmaskdict.has_key(mycp):
 		for x in settings.pmaskdict[mycp]:
 			if mycpv in portdb.xmatch("match-all", x):
-				pmaskfile = open(settings["PORTDIR"]+"/profiles/package.mask")
 				comment = ""
 				l = "\n"
-				while len(l) > 0:
-					l = pmaskfile.readline()
-					if len(l) == 0:
-						pmaskfile.close()
-						return None
-					if l[0] == "#":
-						comment += l
-					elif l == "\n":
+				i = 0
+				while i < len(pmasklines):
+					l = pmasklines[i].strip()
+					if l == "":
 						comment = ""
-					elif l.strip() == x:
-						pmaskfile.close()
+					elif l[0] == "#":
+						comment += (l+"\n")
+					elif l == x:
 						return comment
-				pmaskfile.close()
+					i = i + 1
 	return None
 
 def getmaskingstatus(mycpv):
@@ -3986,16 +3658,12 @@ def getmaskingstatus(mycpv):
 			if gp=="*":
 				kmask=None
 				break
-			elif gp=="-*":
-				fallback="-*"
 			elif gp=="-"+myarch:
 				kmask="-"+myarch
 				break
 			elif gp=="~"+myarch:
 				kmask="~"+myarch
 				break
-		if kmask == "missing" and fallback:
-			kmask = fallback
 
 	if kmask:
 		rValue.append(kmask+" keyword")
@@ -5914,9 +5582,9 @@ class dblink:
 		self.settings = mysettings
 		if self.settings==1:
 			raise ValueError
-		
+
 		self.myroot=myroot
-		self.mergedir = myroot + "/" + portage_const.PREFIX
+		self.mergedir = os.path.normpath(myroot+os.path.sep+portage_const.PREFIX)
 		self.updateprotect()
 		self.contentscache=[]
 
@@ -6081,7 +5749,7 @@ class dblink:
 
 		#do prerm script
 		if myebuildpath and os.path.exists(myebuildpath):
-			a=doebuild(myebuildpath,"prerm",self.myroot+portage_const.PREFIX,self.settings,cleanup=cleanup,use_cache=0,tree=self.treetype)
+			a=doebuild(myebuildpath,"prerm",self.myroot,self.settings,cleanup=cleanup,use_cache=0,tree=self.treetype)
 			# XXX: Decide how to handle failures here.
 			if a != 0:
 				writemsg("!!! FAILED prerm: "+str(a)+"\n")
@@ -6547,9 +6215,18 @@ class dblink:
 		if dircache.has_key(self.dbcatdir):
 			del dircache[self.dbcatdir]
 		print ">>>",self.mycpv,"merged."
+
+		# Process ebuild logfiles
+		elog_process(self.mycpv, self.settings)
+		
 		return 0
 
 	def mergeme(self,srcroot,destroot,outfile,secondhand,stufftomerge,cfgfiledict,thismtime):
+		prefix=os.path.normpath(portage_const.PREFIX)
+		os.path.normpath(os.path.sep+srcroot)
+		if srcroot.endswith(prefix):
+			# Trim prefix from srcroot
+			srcroot=srcroot[:-len(prefix)+1]
 		srcroot=os.path.normpath("///"+srcroot)+"/"
 		destroot=os.path.normpath("///"+destroot)+"/"
 		# this is supposed to merge a list of files.  There will be 2 forms of argument passing.
@@ -6569,7 +6246,7 @@ class dblink:
 			mysrc=os.path.normpath("///"+srcroot+offset+x)
 			mydest=os.path.normpath("///"+destroot+offset+x)
 			# myrealdest is mydest without the $ROOT prefix (makes a difference if ROOT!="/")
-			myrealdest=portage_const.PREFIX+offset+x
+			myrealdest=os.path.normpath(os.path.sep+offset+x)
 			# stat file once, test using S_* macros many times (faster that way)
 			try:
 				mystat=os.lstat(mysrc)
@@ -6844,8 +6521,8 @@ class dblink:
 				print zing+" "+mydest
 
 	def merge(self,mergeroot,inforoot,myroot,myebuild=None,cleanup=0):
-		#return self.treewalk(mergeroot,myroot,inforoot,myebuild,cleanup=cleanup)
-		return self.treewalk(mergeroot,myroot+"/"+portage_const.PREFIX,inforoot,myebuild,cleanup=cleanup)
+		return self.treewalk(mergeroot,myroot,inforoot,myebuild,cleanup=cleanup)
+
 	def getstring(self,name):
 		"returns contents of a file with whitespace converted to spaces"
 		if not os.path.exists(self.dbdir+"/"+name):
@@ -6931,7 +6608,7 @@ def pkgmerge(mytbz2,myroot,mysettings):
 	os.chdir(pkgloc)
 
 	mysettings.configdict["pkg"]["CATEGORY"] = mycat;
-	a=doebuild(myebuild,"setup",myroot+portage_const.PREFIX,mysettings,tree="bintree")
+	a=doebuild(myebuild,"setup",myroot,mysettings,tree="bintree")
 	print ">>> extracting",mypkg
 	notok=spawn("bzip2 -dqc -- '"+mytbz2+"' | tar xpf -",mysettings,free=1)
 	if notok:
@@ -6942,8 +6619,8 @@ def pkgmerge(mytbz2,myroot,mysettings):
 	# the merge takes care of pre/postinst and old instance
 	# auto-unmerge, virtual/provides updates, etc.
 	mysettings.load_infodir(infloc)
-	mylink=dblink(mycat,mypkg,myroot+portage_const.PREFIX,mysettings,treetype="bintree")
-	mylink.merge(pkgloc,infloc,myroot+portage_const.PREFIX,myebuild,cleanup=1)
+	mylink=dblink(mycat,mypkg,myroot,mysettings,treetype="bintree")
+	mylink.merge(pkgloc,infloc,myroot,myebuild,cleanup=1)
 
 	if not os.path.exists(infloc+"/RDEPEND"):
 		returnme=""
@@ -6993,7 +6670,7 @@ if not os.path.exists(root+portage_const.PREFIX+"var/tmp"):
 		writemsg("portage: couldn't create "+root+portage_const.PREFIX+"/var/tmp; exiting.\n")
 		sys.exit(1)
 
-if not os.path.exists(root+portage_const.PREFIX+"var/lib"):
+if not os.path.exists(root+portage_const.PREFIX+"var/lib/portage"):
 	writemsg(">>> "+root+portage_const.PREFIX+"var/lib doesn't exist, creating it...\n")
 	try:
 		os.mkdir(root+portage_const.PREFIX+"var",0755)
@@ -7178,7 +6855,7 @@ mtimedbkeys=[
 "version", "starttime",
 "resume", "ldpath"
 ]
-mtimedbfile=root+"var/cache/edb/mtimedb"
+mtimedbfile=root+portage_const.PREFIX+"var/cache/edb/mtimedb"
 try:
 	mypickle=cPickle.Unpickler(open(mtimedbfile))
 	mypickle.find_global=None
@@ -7215,10 +6892,17 @@ def do_upgrade(mykey):
 	update_files={}
 	file_contents={}
 	myxfiles = ["package.mask","package.unmask","package.keywords","package.use"]
-	myxfiles = myxfiles + prefix_array(myxfiles, "profile/")
+	myxfiles.extend(prefix_array(myxfiles, "profile/"))
+	recursivefiles = []
+	for x in myxfiles:
+		if os.path.isdir(USER_CONFIG_PATH+os.path.sep+x):
+			recursivefiles.extend([x+os.path.sep+y for y in listdir(USER_CONFIG_PATH+os.path.sep+x, filesonly=1, recursive=1)])
+		else:
+			recursivefiles.append(x)
+	myxfiles = recursivefiles
 	for x in myxfiles:
 		try:
-			myfile = open("/etc/portage/"+x,"r")
+			myfile = open(USER_CONFIG_PATH+os.path.sep+x,"r")
 			file_contents[x] = myfile.readlines()
 			myfile.close()
 		except IOError:
@@ -7275,10 +6959,10 @@ def do_upgrade(mykey):
 
 	for x in update_files:
 		mydblink = dblink('','','/',settings)
-		if mydblink.isprotected(portage_const.PREFIX+"etc/portage/"+x):
-			updating_file=new_protect_filename(portage_const.PREFIX+"etc/portage/"+x)[0]
+		if mydblink.isprotected(USER_CONFIG_PATH+os.path.sep+x):
+			updating_file=new_protect_filename(USER_CONFIG_PATH+os.path.sep+x)[0]
 		else:
-			updating_file=portage_const.PREFIX+"etc/portage/"+x
+			updating_file=USER_CONFIG_PATH+os.path.sep+x
 		try:
 			myfile=open(updating_file,"w")
 			myfile.writelines(file_contents[x])
