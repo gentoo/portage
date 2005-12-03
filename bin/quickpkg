@@ -37,7 +37,7 @@ fi
 export PKGDIR=$(portageq envvar PKGDIR)
 export PORTAGE_TMPDIR=$(portageq envvar PORTAGE_TMPDIR)
 
-source @PORTAGE_BASE@/bin/isolated-functions.sh
+source @PORTAGE_BASE@/sbin/functions.sh
 
 # here we make a package given a little info
 # $1 = package-name w/version

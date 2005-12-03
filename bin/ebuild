@@ -5,8 +5,10 @@
 
 import getopt, os, sys
 
-if len(sys.argv)<=2:
-	print "expecting two arguments."
+if len(sys.argv) <= 2:
+	print "Usage: ebuild <ebuild file> <command> [command] ..."
+	print ""
+	print "See the ebuild(1) man page for more info"
 	sys.exit(1)
 
 

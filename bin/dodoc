@@ -13,11 +13,15 @@ if [ ! -d "${dir}" ] ; then
 	install -d "${dir}"
 fi
 
+ret=0
 for x in "$@" ; do
 	if [ -s "${x}" ] ; then
 		install -m0644 "${x}" "${dir}"
 		gzip -f -9 "${dir}/${x##*/}"
 	elif [ ! -e "${x}" ] ; then
 		echo "dodoc: ${x} does not exist" 1>&2
+		((++ret))
 	fi
 done
+
+exit ${ret}
