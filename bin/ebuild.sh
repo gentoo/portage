@@ -1003,7 +1003,6 @@ dyn_test() {
 	elif ! hasq test $FEATURES; then
 		echo ">>> Test phase [not enabled]: ${CATEGORY}/${PF}"
 	else
-		echo ">>> Test phase [enabled]: ${CATEGORY}/${PF}"
 		src_test
 	fi
 
