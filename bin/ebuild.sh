@@ -890,6 +890,7 @@ dyn_compile() {
 		sleep 3
 	fi
 
+	local srcdir=${BUILDDIR}
 	cd "${BUILDDIR}"
 	if [ ! -e "build-info" ];	then
 		mkdir build-info
@@ -904,6 +905,7 @@ dyn_compile() {
 		return
 	fi
 	if [ -d "${S}" ]; then
+		srcdir=${S}
 		cd "${S}"
 	fi
 	#our custom version of libtool uses $S and $D to fix
@@ -912,7 +914,9 @@ dyn_compile() {
 	#some packages use an alternative to $S to build in, cause
 	#our libtool to create problematic .la files
 	export PWORKDIR="$WORKDIR"
+	echo ">>> Compiling source in ${srcdir} ..."
 	src_compile
+	echo ">>> Source compiled."
 	#|| abort_compile "fail"
 	cd "${BUILDDIR}"
 	touch .compiled
