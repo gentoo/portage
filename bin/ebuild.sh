@@ -997,7 +997,7 @@ dyn_test() {
 	if [ -d "${S}" ]; then
 		cd "${S}"
 	fi
-	if hasq maketest $RESTRICT || hasq test $RESTRICT; then
+	if hasq test $RESTRICT; then
 		ewarn "Skipping make test/check due to ebuild restriction."
 		echo ">>> Test phase [explicitly disabled]: ${CATEGORY}/${PF}"
 	elif ! hasq test $FEATURES; then

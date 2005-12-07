@@ -1261,9 +1261,6 @@ class config:
 				writemsg("PORTAGE_GPG_DIR is invalid. Removing gpg from FEATURES.\n")
 				self.features.remove("gpg")
 
-		if "maketest" in self.features and "test" not in self.features:
-			self.features.append("test")
-
 		if not portage_exec.sandbox_capable and ("sandbox" in self.features or "usersandbox" in self.features):
 			writemsg(red("!!! Problem with sandbox binary. Disabling...\n\n"))
 			if "sandbox" in self.features:
