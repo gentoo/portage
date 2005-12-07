@@ -2685,6 +2685,12 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 		mysettings["D"]=mysettings["BUILDDIR"]+"/image/"
 
 		if mysettings.has_key("PORT_LOGDIR"):
+			if not os.access(mysettings["PORT_LOGDIR"],os.F_OK):
+				try:
+					os.mkdir(mysettings["PORT_LOGDIR"])
+				except OSError:
+					print "!!! Unable to create PORT_LOGDIR"
+					print "!!!",e
 			if os.access(mysettings["PORT_LOGDIR"]+"/",os.W_OK):
 				try:
 					os.chown(mysettings["PORT_LOGDIR"],portage_uid,portage_gid)
