@@ -1042,6 +1042,8 @@ dyn_install() {
 	done
 
 	if type -p scanelf > /dev/null ; then
+		local qa_sucks_for_sure=0 qa_kinda_sucks=0
+
 		# Make sure we disallow insecure RUNPATH/RPATH's
 		# Don't want paths that point to the tree where the package was built
 		# (older, broken libtools would do this).  Also check for null paths
@@ -1055,7 +1057,7 @@ dyn_install() {
 			echo " http://bugs.gentoo.org/81745"
 			echo "${f}"
 			echo -ne '\a\n'
-			die "Insecure binaries detected"
+			qa_sucks_for_sure=1
 		fi
 
 		# Check for setid binaries but are not built with BIND_NOW
@@ -1067,8 +1069,7 @@ dyn_install() {
 			echo " LDFLAGS='-Wl,-z,now' emerge ${PN}"
 			echo "${f}"
 			echo -ne '\a\n'
-			[[ ${FEATURES/stricter} != "${FEATURES}" ]] \
-				&& die "Aborting due to lazy bindings"
+			qa_kinda_sucks=1
 			sleep 1
 		fi
 
@@ -1084,8 +1085,7 @@ dyn_install() {
 			echo " consider writing a patch which addresses this problem."
 			echo "${f}"
 			echo -ne '\a\n'
-			[[ ${FEATURES/stricter} != "${FEATURES}" ]] \
-				&& die "Aborting due to textrels"
+			qa_kinda_sucks=1
 			sleep 1
 		fi
 
@@ -1099,13 +1099,18 @@ dyn_install() {
 			echo " at http://bugs.gentoo.org/ to make sure the file is fixed."
 			echo "${f}"
 			echo -ne '\a\n'
-			[[ ${FEATURES/stricter} != "${FEATURES}" ]] \
-				&& die "Aborting due to +x stack"
+			qa_kinda_sucks=1
 			sleep 1
 		fi
 
 		# Save NEEDED information
 		scanelf -qyRF '%p %n' "${D}" | sed -e 's:^:/:' > "${BUILDDIR}"/build-info/NEEDED
+
+		if [[ ${qa_sucks_for_sure} -eq 1 ]] ; then
+			die "Aborting due to series QA concerns"
+		elif [[ ${qa_kinda_sucks} -eq 1 ]] && has stricter ${FEATURES} && ! has stricter ${RESTRICT} ; then
+			die "Aborting due to QA concerns"
+		fi
 	fi
 
 	if [[ ${UNSAFE} > 0 ]] ; then
