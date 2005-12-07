@@ -568,15 +568,15 @@ src_compile() {
 src_test()
 {
 	addpredict /
-	if make check -n &> /dev/null; then
+	if emake -j1 check -n &> /dev/null; then
 		echo ">>> Test phase [check]: ${CATEGORY}/${PF}"
-		if ! make check; then
+		if ! emake -j1 check; then
 			hasq test $FEATURES && die "Make check failed. See above for details."
 			hasq test $FEATURES || eerror "Make check failed. See above for details."
 		fi
-	elif make test -n &> /dev/null; then
+	elif emake -j1 test -n &> /dev/null; then
 		echo ">>> Test phase [test]: ${CATEGORY}/${PF}"
-		if ! make test; then
+		if ! emake -j1 test; then
 			hasq test $FEATURES && die "Make test failed. See above for details."
 			hasq test $FEATURES || eerror "Make test failed. See above for details."
 		fi
