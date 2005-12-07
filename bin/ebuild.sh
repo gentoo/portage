@@ -1107,7 +1107,7 @@ dyn_install() {
 		scanelf -qyRF '%p %n' "${D}" | sed -e 's:^:/:' > "${BUILDDIR}"/build-info/NEEDED
 
 		if [[ ${qa_sucks_for_sure} -eq 1 ]] ; then
-			die "Aborting due to series QA concerns"
+			die "Aborting due to serious QA concerns"
 		elif [[ ${qa_kinda_sucks} -eq 1 ]] && has stricter ${FEATURES} && ! has stricter ${RESTRICT} ; then
 			die "Aborting due to QA concerns"
 		fi

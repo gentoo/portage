@@ -1467,6 +1467,9 @@ class config:
 		self.already_in_regenerate = 0
 
 	def getvirtuals(self, myroot):
+		if self.virtuals:
+			return self.virtuals
+
 		myvirts     = {}
 
 		# This breaks catalyst/portage when setting to a fresh/empty root.
