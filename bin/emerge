@@ -1,5 +1,5 @@
 #!/usr/bin/python -O
-# Copyright 1999-2004 Gentoo Foundation
+# Copyright 1999-2005 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/bin/emerge,v 1.345.2.38 2005/08/13 17:25:26 ferringb Exp $
 
@@ -2426,7 +2426,7 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 			"--delete",       # Delete files that aren't in the master tree
 			"--delete-after", # Delete only after everything else is done
 			"--stats",        # Show final statistics about what was transfered
-      "--timeout="+str(mytimeout), # IO timeout if not done in X seconds
+			"--timeout="+str(mytimeout), # IO timeout if not done in X seconds
 			"--exclude='/distfiles'",   # Exclude distfiles from consideration
 			"--exclude='/local'",       # Exclude local     from consideration
 			"--exclude='/packages'",    # Exclude packages  from consideration
@@ -2685,7 +2685,7 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 			i = conf.categories.index("virtual")
 			if i != -1:
 				conf.categories.remove(i)
-		except (ValueError, IndexError): 
+		except (ValueError, IndexError):
 			pass
 
 		pdb = portage.portdbapi(porttree_root, conf)
@@ -2702,7 +2702,7 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 				self.min_cp_all = l/100.0
 				self.count = 1
 				self.pstr = ''
-			
+
 			def __iter__(self):
 				for x in self.cp_all:
 					self.count += 1
@@ -2712,14 +2712,14 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 					for y in self.dbapi.cp_list(x):
 						yield y
 				self.call_update_mine = 0
-			
+
 			def update(self, *arg):
 				try:				self.pstr = int(self.pstr) + 1
 				except ValueError:	self.pstr = 1
 				sys.stdout.write("%s%i%%" % ("\b" * (len(str(self.pstr))+1), self.pstr))
 				sys.stdout.flush()
 				self.call_update_min = 10000000
-			
+
 			def finish(self, *arg):
 				sys.stdout.write("\b\b\b\b100%\n")
 				sys.stdout.flush()
@@ -2735,7 +2735,7 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 		else:
 			noise_maker = source = percentage_noise_maker(pdb)
 		cache.util.mirror_cache(source, cm, pdb.auxdb[porttree_root], eclass_cache=ec, verbose_instance=noise_maker)
-		
+
 		sys.stdout.flush()
 
 	portage.portageexit()
