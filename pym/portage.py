@@ -2288,7 +2288,7 @@ def digestCheckFiles(myfiles, mydigests, basedir, note="", strict=0):
 	return 1
 
 
-def digestcheck(myfiles, mysettings, strict=0):
+def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 	"""Checks md5sums.  Assumes all files have been downloaded."""
 	# archive files
 	basedir=mysettings["DISTDIR"]+"/"
@@ -2364,6 +2364,9 @@ def digestcheck(myfiles, mysettings, strict=0):
 			else:
 				print "--- Manifest check failed. 'strict' not enabled; ignoring."
 				print
+
+	if justmanifest:
+		return 1
 
 	# Just return the status, as it's the last check.
 	return digestCheckFiles(myfiles, mydigests, basedir, note="src_uri", strict=strict)
@@ -2771,7 +2774,8 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 	except:
 		pass
 
-	if mydo!="manifest" and not fetch(fetchme, mysettings, listonly=listonly, fetchonly=fetchonly):
+	# Only try and fetch the files if we are going to need them
+	if mydo in ["digest","fetch","unpack"] and not fetch(fetchme, mysettings, listonly=listonly, fetchonly=fetchonly):
 		return 1
 
 	if mydo=="fetch" and listonly:
@@ -2789,7 +2793,8 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 	if mydo=="manifest":
 		return (not digestgen(aalist,mysettings,overwrite=1,manifestonly=1))
 
-	if not digestcheck(checkme, mysettings, ("strict" in features)):
+	# Don't digest the src_uri files if we don't actually need them
+	if not digestcheck(checkme, mysettings, ("strict" in features), (mydo not in ["digest","fetch","unpack"])):
 		return 1
 
 	if mydo=="fetch":
