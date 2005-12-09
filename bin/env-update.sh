@@ -217,5 +217,3 @@ cat << EOF > ${CSHENV}
 
 $(set | grep '^my_envd_' | sed -e 's:^my_envd_\([[:alpha:]_][[:alnum:]_]*\)=:setenv \1 :')
 EOF
-
-[[ ${ROOT} == / ]] && /sbin/depscan.sh
