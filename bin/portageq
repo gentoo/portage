@@ -194,8 +194,16 @@ def envvar(argv):
 	Returns a specific environment variable as exists prior to ebuild.sh.
 	Similar to: emerge --verbose --info | egrep '^<variable>='
 	"""
+	if (argv[0] == "-v"):
+		verbose=1
+		argv=argv[1:]
+	else:
+		verbose=0
 	for arg in argv:
-		print portage.settings[arg]
+		if verbose:
+			print arg +"='"+ portage.settings[arg] +"'"
+		else:
+			print portage.settings[arg]
 
 
 #-----------------------------------------------------------------------------
