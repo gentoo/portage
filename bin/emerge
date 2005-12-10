@@ -63,6 +63,9 @@ def update_twirl_spinner():
 	sys.stdout.write("\b\b "+spinner[spinpos])
 	sys.stdout.flush()
 
+def update_quiet_spinner():
+	return
+
 spinpos = 0
 spinner = "/-\\|/-\\|/-\\|/-\\|\\-/|\\-/|\\-/|\\-/|"
 update_spinner = update_twirl_spinner
@@ -162,14 +165,14 @@ merged=0
 params=["selective", "deep", "self", "recurse", "empty"]
 actions=[
 "clean", "config", "depclean",
-"info",   "inject",   "metadata",
+"info",  "inject", "metadata",
 "prune", "regen",  "rsync", "search",
 "sync",  "system", "unmerge",  "world",
 ]
 options=[
 "--ask",
 "--buildpkg",     "--buildpkgonly",
-"--changelog",    "--columns",
+"--changelog",    "--columns", "--cols",
 "--debug",        "--deep",
 "--digest",
 "--emptytree",
@@ -222,7 +225,7 @@ tmpcmdline=sys.argv[1:]
 #tmpcmdline.extend(portage.settings["EMERGE_OPTS"].split())
 cmdline=[]
 for x in tmpcmdline:
-	if x[0:1]=="-"and x[1:2]!="-":
+	if x[0:1]=="-" and x[1:2]!="-":
 		for y in x[1:]:
 			if shortmapping.has_key(y):
 				if shortmapping[y] in cmdline:
@@ -241,6 +244,8 @@ for x in cmdline:
 	if not x:
 		continue
 	if len(x)>=2 and x[0:2]=="--":
+		if x == "--cols":
+			x = "--columns"
 		if x in options:
 			myopts.append(x)
 		elif x[2:] in actions:
@@ -291,7 +296,7 @@ for x in cmdline:
 if "moo" in myfiles:
 	print """
 
-  Gentoo (""" + os.uname()[0] + """)
+  Larry loves Gentoo (""" + os.uname()[0] + """)
 
  _______________________
 < Have you mooed today? >
@@ -318,6 +323,9 @@ for x in myfiles:
 if ("--tree" in myopts) and ("--columns" in myopts):
 	print "emerge: can't specify both of \"--tree\" and \"--columns\"."
 	sys.exit(1)
+
+if ("--quiet" in myopts):
+	update_spinner = update_quiet_spinner
 
 # Always create packages if FEATURES=buildpkg
 # Imply --buildpkg if --buildpkgonly
@@ -2121,7 +2129,7 @@ def unmerge(unmerge_action, unmerge_files):
 				print "="+string.join(sp_absx[sp_vdb_len:],"/")
 				candidate_catpkgs.append("="+string.join(sp_absx[sp_vdb_len:],"/"))
 
-	if ("--pretend" in myopts) or ("--ask" in myopts):
+	if (("--pretend" in myopts) or ("--ask" in myopts)) and not ("--quiet" in myopts):
 		print darkgreen("\n>>> These are the packages that I would unmerge:")
 
 	pkgmap={}
@@ -2985,11 +2993,13 @@ elif "depclean"==myaction:
 	emergelog(" >>> depclean")
 	mydepgraph=depgraph(myaction,myopts)
 
-	print "\nCalculating dependencies  ",
+	if not ("--quiet" in myopts):
+		print "\nCalculating dependencies  ",
 	if not mydepgraph.xcreate("world"):
 		print "\n!!! Failed to create deptree."
 		sys.exit(1)
-	print "\b\b ... done!"
+	if not ("--quiet" in myopts):
+		print "\b\b ... done!"
 
 	if ("--usepkgonly" in myopts) and mydepgraph.missingbins:
 		sys.stderr.write(red("The following binaries are not available for merging...\n"))
@@ -3064,7 +3074,7 @@ elif "depclean"==myaction:
 else:
 	favorites=[]
 	syslist=getlist("system")
-	if (("--pretend" in myopts) and not ("--fetchonly" in myopts or "--fetch-all-uri" in myopts)) or ("--ask" in myopts):
+	if ((("--pretend" in myopts) and not ("--fetchonly" in myopts or "--fetch-all-uri" in myopts)) or ("--ask" in myopts)) and not ("--quiet" in myopts):
 		if "--tree" in myopts:
 			print
 			print darkgreen("These are the packages that I would merge, in reverse order:")
@@ -3097,24 +3107,28 @@ else:
 
 		mydepgraph=depgraph(myaction,myopts)
 		if myaction in ["system","world"]:
-			print "Calculating",myaction,"dependencies  ",
-			sys.stdout.flush()
+			if not ("--quiet" in myopts):
+				print "Calculating",myaction,"dependencies  ",
+				sys.stdout.flush()
 			if not mydepgraph.xcreate(myaction):
 				print "!!! Depgraph creation failed."
 				sys.exit(1)
-			print "\b\b ...done!"
+			if not ("--quiet" in myopts):
+				print "\b\b ...done!"
 		else:
 			if not myfiles:
 				print "emerge: please tell me what to do."
 				help()
 				sys.exit(1)
 				#we don't have any files to process; skip this step and exit
-			print "Calculating dependencies  ",
-			sys.stdout.flush()
+			if not ("--quiet" in myopts):
+				print "Calculating dependencies  ",
+				sys.stdout.flush()
 			retval,favorites=mydepgraph.select_files(myfiles)
 			if not retval:
 				sys.exit(1)
-			print "\b\b ...done!"
+			if not ("--quiet" in myopts):
+				print "\b\b ...done!"
 
 			if ("--usepkgonly" in myopts) and mydepgraph.missingbins:
 				sys.stderr.write(red("The following binaries are not available for merging...\n"))
