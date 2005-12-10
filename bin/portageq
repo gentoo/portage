@@ -7,7 +7,7 @@ import sys, os
 os.environ["PORTAGE_CALLER"] = "portageq"
 sys.path = ["/usr/lib/portage/pym"]+sys.path
 
-import portage,types,string
+import types,string
 
 
 #-----------------------------------------------------------------------------
@@ -149,52 +149,53 @@ def gentoo_mirrors(argv):
 
 def portdir(argv):
 	"""
-	Returns the PORTDIR path as defined in the portage configuration.
+	Returns the PORTDIR path.
 	"""
 	print portage.settings["PORTDIR"]
 
 
 def config_protect(argv):
 	"""
-	Returns the CONFIG_PROTECT paths as defined in the portage configuration.
+	Returns the CONFIG_PROTECT paths.
 	"""
 	print portage.settings["CONFIG_PROTECT"]
 
 
 def config_protect_mask(argv):
 	"""
-	Returns the CONFIG_PROTECT_MASK paths as defined in the portage configuration.
+	Returns the CONFIG_PROTECT_MASK paths.
 	"""
 	print portage.settings["CONFIG_PROTECT_MASK"]
 
 
 def portdir_overlay(argv):
 	"""
-	Returns the PORTDIR_OVERLAY path as defined in the portage configuration.
+	Returns the PORTDIR_OVERLAY path.
 	"""
 	print portage.settings["PORTDIR_OVERLAY"]
 
 
 def pkgdir(argv):
 	"""
-	Returns the PKGDIR path as defined in the portage configuration.
+	Returns the PKGDIR path.
 	"""
 	print portage.settings["PKGDIR"]
 
 
 def distdir(argv):
 	"""
-	Returns the DISTDIR path as defined in the portage configuration.
+	Returns the DISTDIR path.
 	"""
 	print portage.settings["DISTDIR"]
 
 
 def envvar(argv):
-	"""<variable>
+	"""<variable>+
 	Returns a specific environment variable as exists prior to ebuild.sh.
 	Similar to: emerge --verbose --info | egrep '^<variable>='
 	"""
-	print portage.settings[argv[0]]
+	for arg in argv:
+		print portage.settings[arg]
 
 
 #-----------------------------------------------------------------------------
@@ -233,24 +234,31 @@ def usage(argv):
 
 		lines = string.split(doc, '\n')
 		print "   "+name+" "+string.strip(lines[0])
-		for line in lines[1:]:
-			print "      "+string.strip(line)
-
+		if (len(sys.argv) > 1):
+			if ("--help" not in sys.argv):
+				lines = lines[:-1]
+			for line in lines[1:]:
+				print "      "+string.strip(line)
+	if (len(sys.argv) == 1):
+		print "\nRun portageq with --help for info"
 
 def main():
-	if (len(sys.argv) < 2):
+	if (len(sys.argv) < 2) or ("-h" in sys.argv or "--help" in sys.argv):
 		usage(sys.argv)
 		sys.exit()
-	
+
+	# no more fatties
+	global portage
+	import portage
+
 	cmd = sys.argv[1]
 	try:
 		function = globals()[cmd]
 		function(sys.argv[2:])
 	except KeyError:
-		usage()
+		usage(sys.argv)
 		sys.exit()
 
 main()
-
 
 #-----------------------------------------------------------------------------
