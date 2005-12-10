@@ -2774,8 +2774,11 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 	except:
 		pass
 
-	# Only try and fetch the files if we are going to need them
-	if mydo in ["digest","fetch","unpack"] and not fetch(fetchme, mysettings, listonly=listonly, fetchonly=fetchonly):
+	# Only try and fetch the files if we are going to need them ... otherwise,
+	# if user has FEATURES=noauto and they run `ebuild clean unpack compile install`,
+	# we will try and fetch 4 times :/
+	if (mydo in ["digest","fetch","unpack"] or settings["PORTAGE_CALLER"] != "ebuild" or not "noauto" in features) and \
+	   not fetch(fetchme, mysettings, listonly=listonly, fetchonly=fetchonly):
 		return 1
 
 	if mydo=="fetch" and listonly:
@@ -2793,8 +2796,8 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 	if mydo=="manifest":
 		return (not digestgen(aalist,mysettings,overwrite=1,manifestonly=1))
 
-	# Don't digest the src_uri files if we don't actually need them
-	if not digestcheck(checkme, mysettings, ("strict" in features), (mydo not in ["digest","fetch","unpack"])):
+	# See above comment about fetching only when needed
+	if not digestcheck(checkme, mysettings, ("strict" in features), (mydo not in ["digest","fetch","unpack"] and settings["PORTAGE_CALLER"] == "ebuild" and "noauto" in features)):
 		return 1
 
 	if mydo=="fetch":
