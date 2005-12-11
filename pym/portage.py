@@ -2777,7 +2777,7 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 	# Only try and fetch the files if we are going to need them ... otherwise,
 	# if user has FEATURES=noauto and they run `ebuild clean unpack compile install`,
 	# we will try and fetch 4 times :/
-	if (mydo in ["digest","fetch","unpack"] or settings["PORTAGE_CALLER"] != "ebuild" or not "noauto" in features) and \
+	if (mydo in ["digest","fetch","unpack"] or "noauto" not in features) and \
 	   not fetch(fetchme, mysettings, listonly=listonly, fetchonly=fetchonly):
 		return 1
 
