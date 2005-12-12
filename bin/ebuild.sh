@@ -51,7 +51,8 @@ fi
 export PATH="${PREFIX}/sbin:${PREFIX}/usr/sbin:@PORTAGE_BASE@/bin:${PREFIX}/bin:${PREFIX}/usr/bin:${ROOTPATH}"
 [ ! -z "$PREROOTPATH" ] && export PATH="${PREROOTPATH%%:}:$PATH"
 
-source /usr/lib/portage/bin/isolated-functions.sh  &>/dev/null
+source @PORTAGE_BASE@/bin/isolated-functions.sh &>/dev/null
+
 # TODO: make this conditional on config settings, fix any remaining stuff
 set_colors
 
