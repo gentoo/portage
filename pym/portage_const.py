@@ -47,10 +47,10 @@ CONFIG_MEMORY_FILE      = PRIVATE_PATH + "/config"
 
 INCREMENTALS=["USE","USE_EXPAND","FEATURES","ACCEPT_KEYWORDS","ACCEPT_LICENSE","CONFIG_PROTECT_MASK","CONFIG_PROTECT","PRELINK_PATH","PRELINK_PATH_MASK"]
 STICKIES=["KEYWORDS_ACCEPT","USE","CFLAGS","CXXFLAGS","MAKEOPTS","EXTRA_ECONF","EXTRA_EINSTALL","EXTRA_EMAKE"]
-
+EBUILD_PHASES			= ["setup","unpack","compile","test","install","preinst","postinst","prerm","postrm"]
 DEFAULT_PATH = ":".join(map(lambda x: os.path.join(PREFIX, x), ["/sbin", "/usr/sbin/", "/bin", "/usr/bin"]))
 
-EAPI = 0
+EAPI = "prefix"
 
 # ===========================================================================
 # END OF CONSTANTS -- END OF CONSTANTS -- END OF CONSTANTS -- END OF CONSTANT

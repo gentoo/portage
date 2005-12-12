@@ -51,39 +51,35 @@ fi
 export PATH="${PREFIX}/sbin:${PREFIX}/usr/sbin:@PORTAGE_BASE@/bin:${PREFIX}/bin:${PREFIX}/usr/bin:${ROOTPATH}"
 [ ! -z "$PREROOTPATH" ] && export PATH="${PREROOTPATH%%:}:$PATH"
 
-source @PORTAGE_BASE@/bin/isolated-functions.sh &>/dev/null
+source /usr/lib/portage/bin/isolated-functions.sh  &>/dev/null
+# TODO: make this conditional on config settings, fix any remaining stuff
+set_colors
 
 # the sandbox is disabled by default except when overridden in the relevant stages
 export SANDBOX_ON="0"
 
 # sandbox support functions; defined prior to profile.bashrc srcing, since the profile might need to add a default exception (/usr/lib64/conftest fex, bug #60147)
-addread()
-{
+addread() {
 	export SANDBOX_READ="$SANDBOX_READ:$1"
 }
 
-addwrite()
-{
+addwrite() {
 	export SANDBOX_WRITE="$SANDBOX_WRITE:$1"
 }
 
-adddeny()
-{
+adddeny() {
 	export SANDBOX_DENY="$SANDBOX_DENY:$1"
 }
 
-addpredict()
-{
+addpredict() {
 	export SANDBOX_PREDICT="$SANDBOX_PREDICT:$1"
 }
 
-lchown()
-{
+lchown() {
 	chown -h "$@"
 }
 
-lchgrp()
-{
+lchgrp() {
 	chgrp -h "$@"
 }
 
@@ -130,7 +126,7 @@ useq() {
 		neg=1
 	fi
 	local x
-	
+
 	# Make sure we have this USE flag in IUSE
 	if ! hasq "${u}" ${IUSE} ${E_IUSE} && ! hasq "${u}" ${PORTAGE_ARCHLIST} selinux; then
 		echo "QA Notice: USE Flag '${u}' not in IUSE for ${CATEGORY}/${PF}" >&2
@@ -172,7 +168,7 @@ hasq() {
 
 	local me=$1
 	shift
-	
+
 	# All the TTY checks really only help out depend. Which is nice.
 	# Logging kills all this anyway. Everything becomes a pipe. --NJ
 	for x in "$@"; do
@@ -358,7 +354,7 @@ use_with() {
 		return 1
 	fi
 
-	local UW_SUFFIX=""	
+	local UW_SUFFIX=""
 	if [ ! -z "${3}" ]; then
 		UW_SUFFIX="=${3}"
 	fi
@@ -367,7 +363,7 @@ use_with() {
 	if [ -z "${UWORD}" ]; then
 		UWORD="$1"
 	fi
-	
+
 	if useq $1; then
 		echo "--with-${UWORD}${UW_SUFFIX}"
 	else
@@ -383,7 +379,7 @@ use_enable() {
 		return 1
 	fi
 
-	local UE_SUFFIX=""	
+	local UE_SUFFIX=""
 	if [ ! -z "${3}" ]; then
 		UE_SUFFIX="=${3}"
 	fi
@@ -392,7 +388,7 @@ use_enable() {
 	if [ -z "${UWORD}" ]; then
 		UWORD="$1"
 	fi
-	
+
 	if useq $1; then
 		echo "--enable-${UWORD}${UE_SUFFIX}"
 	else
@@ -426,13 +422,12 @@ export INSDESTTREE=""
 export EXEDESTTREE=""
 export DOCDESTTREE=""
 export INSOPTIONS="-m0644"
-export EXEOPTIONS="-m0755"	
+export EXEOPTIONS="-m0755"
 export LIBOPTIONS="-m0644"
 export DIROPTIONS="-m0755"
 export MOPREFIX=${PN}
 
-check_KV()
-{
+check_KV() {
 	if [ -z "${KV}" ]; then
 		eerror ""
 		eerror "Could not determine your kernel version."
@@ -447,8 +442,7 @@ check_KV()
 }
 
 # adds ".keep" files so that dirs aren't auto-cleaned
-keepdir()
-{
+keepdir() {
 	dodir "$@"
 	local x
 	if [ "$1" == "-R" ] || [ "$1" == "-r" ]; then
@@ -470,8 +464,8 @@ unpack() {
 	if [ "$USERLAND" == "BSD" ]; then
 		tarvars=""
 	else
-		tarvars="--no-same-owner"	
-	fi	
+		tarvars="--no-same-owner"
+	fi
 
 	[ -z "$*" ] && die "Nothing passed to the 'unpack' command"
 
@@ -512,7 +506,7 @@ unpack() {
 				;;
 			bz2)
 				if [ "${y}" == "tar" ]; then
-					bzip2 -dc "${srcdir}${x}" | tar xf - ${tarvars} 
+					bzip2 -dc "${srcdir}${x}" | tar xf - ${tarvars}
 					assert "$myfail"
 				else
 					bzip2 -dc "${srcdir}${x}" > ${x%.*} || die "$myfail"
@@ -531,7 +525,7 @@ unpack() {
 	done
 }
 
-strip_duplicate_slashes () { 
+strip_duplicate_slashes () {
 	if [ -n "${1}" ]; then
 		local removed="${1/\/\///}"
 		[ "${removed}" != "${removed/\/\///}" ] && removed=$(strip_duplicate_slashes "${removed}")
@@ -561,7 +555,7 @@ econf() {
 		if [ ! -z "${CTARGET}" ]; then
 			LOCAL_EXTRA_ECONF="--target=${CTARGET} ${LOCAL_EXTRA_ECONF}"
 		fi
-		
+
 		# if the profile defines a location to install libs to aside from default, pass it on.
 		# if the ebuild passes in --libdir, they're responsible for the conf_libdir fun.
 		LIBDIR_VAR="LIBDIR_${ABI}"
@@ -594,7 +588,7 @@ econf() {
 
 			LOCAL_EXTRA_ECONF="--libdir=${CONF_LIBDIR_RESULT} ${LOCAL_EXTRA_ECONF}"
 		fi
-		
+
 		echo "${ECONF_SOURCE}/configure" \
 			--prefix=${PREFIX}/usr \
 			--host=${CHOST} \
@@ -667,13 +661,11 @@ einstall() {
 	fi
 }
 
-pkg_setup()
-{
+pkg_setup() {
 	return
 }
 
-pkg_nofetch()
-{
+pkg_nofetch() {
 	[ -z "${SRC_URI}" ] && return
 
 	echo "!!! The following are listed in SRC_URI for ${PN}:"
@@ -685,7 +677,7 @@ pkg_nofetch()
 src_unpack() {
 	if [ "${A}" != "" ]; then
 		unpack ${A}
-	fi	
+	fi
 }
 
 src_compile() {
@@ -697,18 +689,17 @@ src_compile() {
 	fi
 }
 
-src_test()
-{
+src_test() {
 	addpredict /
-	if make check -n &> /dev/null; then
+	if emake -j1 check -n &> /dev/null; then
 		echo ">>> Test phase [check]: ${CATEGORY}/${PF}"
-		if ! make check; then
+		if ! emake -j1 check; then
 			hasq test $FEATURES && die "Make check failed. See above for details."
 			hasq test $FEATURES || eerror "Make check failed. See above for details."
 		fi
-	elif make test -n &> /dev/null; then
+	elif emake -j1 test -n &> /dev/null; then
 		echo ">>> Test phase [test]: ${CATEGORY}/${PF}"
-		if ! make test; then
+		if ! emake -j1 test; then
 			hasq test $FEATURES && die "Make test failed. See above for details."
 			hasq test $FEATURES || eerror "Make test failed. See above for details."
 		fi
@@ -718,33 +709,27 @@ src_test()
 	SANDBOX_PREDICT="${SANDBOX_PREDICT%:/}"
 }
 
-src_install()
-{
+src_install() {
 	return
 }
 
-pkg_preinst()
-{
+pkg_preinst() {
 	return
 }
 
-pkg_postinst()
-{
+pkg_postinst() {
 	return
 }
 
-pkg_prerm()
-{
+pkg_prerm() {
 	return
 }
 
-pkg_postrm()
-{
+pkg_postrm() {
 	return
 }
 
-pkg_config()
-{
+pkg_config() {
 	eerror "This ebuild does not have a config function."
 }
 
@@ -759,8 +744,7 @@ END
 	chmod 0755 $1
 }
 
-dyn_setup()
-{
+dyn_setup() {
 	[ "$(type -t pre_pkg_setup)" == "function" ] && pre_pkg_setup
 	pkg_setup
 	[ "$(type -t post_pkg_setup)" == "function" ] && post_pkg_setup
@@ -799,7 +783,7 @@ dyn_unpack() {
 			return 0
 		fi
 	fi
-	
+
 	install -m0700 -d "${WORKDIR}" || die "Failed to create dir '${WORKDIR}'"
 	[ -d "$WORKDIR" ] && cd "${WORKDIR}"
 	echo ">>> Unpacking source..."
@@ -818,7 +802,7 @@ dyn_clean() {
 		chflags -R noschg,nouchg,nosappnd,nouappnd,nosunlnk,nouunlnk \
 			"${BUILDDIR}"
 	fi
-	
+
 	if [ "$USERLAND" == "Darwin" ] && type -p chflags &>/dev/null; then
 		chflags -R noschg,nouchg,nosappnd,nouappnd "${BUILDDIR}"
 	fi
@@ -1022,12 +1006,13 @@ dyn_compile() {
 		sleep 3
 	fi
 
+	local srcdir=${BUILDDIR}
 	cd "${BUILDDIR}"
-	if [ ! -e "build-info" ];	then
+	if [ ! -e "build-info" ]; then
 		mkdir build-info
 	fi
 	cp "${EBUILD}" "build-info/${PF}.ebuild"
-	
+
 	if [ ${BUILDDIR}/.compiled -nt "${WORKDIR}" ]; then
 		echo ">>> It appears that ${PN} is already compiled; skipping."
 		echo ">>> (clean to force compilation)"
@@ -1036,6 +1021,7 @@ dyn_compile() {
 		return
 	fi
 	if [ -d "${S}" ]; then
+		srcdir=${S}
 		cd "${S}"
 	fi
 	#our custom version of libtool uses $S and $D to fix
@@ -1044,7 +1030,9 @@ dyn_compile() {
 	#some packages use an alternative to $S to build in, cause
 	#our libtool to create problematic .la files
 	export PWORKDIR="$WORKDIR"
+	echo ">>> Compiling source in ${srcdir} ..."
 	src_compile
+	echo ">>> Source compiled."
 	#|| abort_compile "fail"
 	cd "${BUILDDIR}"
 	touch .compiled
@@ -1125,13 +1113,12 @@ dyn_test() {
 	if [ -d "${S}" ]; then
 		cd "${S}"
 	fi
-	if hasq maketest $RESTRICT || hasq test $RESTRICT; then
+	if hasq test $RESTRICT; then
 		ewarn "Skipping make test/check due to ebuild restriction."
 		echo ">>> Test phase [explicitly disabled]: ${CATEGORY}/${PF}"
 	elif ! hasq test $FEATURES; then
 		echo ">>> Test phase [not enabled]: ${CATEGORY}/${PF}"
 	else
-		echo ">>> Test phase [enabled]: ${CATEGORY}/${PF}"
 		src_test
 	fi
 
@@ -1140,7 +1127,6 @@ dyn_test() {
 	[ "$(type -t post_src_test)" == "function" ] && post_src_test
 	trap SIGINT SIGQUIT
 }
-	
 
 PORTAGE_INST_UID="0"
 PORTAGE_INST_GID="0"
@@ -1177,7 +1163,7 @@ dyn_install() {
 		echo "UNSAFE SetUID: $i"
 		chmod -s,o-w "$i"
 	done
-	
+
 	# Now we look for all world writable files.
 	for i in $(find "${D}/" -type f -perm -2); do
 		echo -ne '\a'
@@ -1189,6 +1175,8 @@ dyn_install() {
 	done
 
 	if type -p scanelf > /dev/null ; then
+		local qa_sucks_for_sure=0 qa_kinda_sucks=0
+
 		# Make sure we disallow insecure RUNPATH/RPATH's
 		# Don't want paths that point to the tree where the package was built
 		# (older, broken libtools would do this).  Also check for null paths
@@ -1202,7 +1190,7 @@ dyn_install() {
 			echo " http://bugs.gentoo.org/81745"
 			echo "${f}"
 			echo -ne '\a\n'
-			die "Insecure binaries detected"
+			qa_sucks_for_sure=1
 		fi
 
 		# Check for setid binaries but are not built with BIND_NOW
@@ -1214,8 +1202,7 @@ dyn_install() {
 			echo " LDFLAGS='-Wl,-z,now' emerge ${PN}"
 			echo "${f}"
 			echo -ne '\a\n'
-			[[ ${FEATURES/stricter} != "${FEATURES}" ]] \
-				&& die "Aborting due to lazy bindings"
+			qa_kinda_sucks=1
 			sleep 1
 		fi
 
@@ -1231,8 +1218,7 @@ dyn_install() {
 			echo " consider writing a patch which addresses this problem."
 			echo "${f}"
 			echo -ne '\a\n'
-			[[ ${FEATURES/stricter} != "${FEATURES}" ]] \
-				&& die "Aborting due to textrels"
+			qa_kinda_sucks=1
 			sleep 1
 		fi
 
@@ -1246,19 +1232,24 @@ dyn_install() {
 			echo " at http://bugs.gentoo.org/ to make sure the file is fixed."
 			echo "${f}"
 			echo -ne '\a\n'
-			[[ ${FEATURES/stricter} != "${FEATURES}" ]] \
-				&& die "Aborting due to +x stack"
+			qa_kinda_sucks=1
 			sleep 1
 		fi
 
 		# Save NEEDED information
 		scanelf -qyRF '%p %n' "${D}" | sed -e 's:^:/:' > "${BUILDDIR}"/build-info/NEEDED
+
+		if [[ ${qa_sucks_for_sure} -eq 1 ]] ; then
+			die "Aborting due to serious QA concerns"
+		elif [[ ${qa_kinda_sucks} -eq 1 ]] && has stricter ${FEATURES} && ! has stricter ${RESTRICT} ; then
+			die "Aborting due to QA concerns"
+		fi
 	fi
 
 	if [[ ${UNSAFE} > 0 ]] ; then
 		die "There are ${UNSAFE} unsafe files. Portage will not install them."
 	fi
-	
+
 	# dumps perms to stdout.  if error, no perms dumped.
 	function stat_perms() {
 		local f
@@ -1359,7 +1350,7 @@ dyn_preinst() {
 	# set IMAGE depending if this is a binary or compile merge
 	[ "${EMERGE_FROM}" == "binary" ] && IMAGE=${PKG_TMPDIR}/${PF}/bin \
 					|| IMAGE=${D}
-	
+
 	[ "$(type -t pre_pkg_preinst)" == "function" ] && pre_pkg_preinst
 
 	declare -r D=${IMAGE}
@@ -1588,19 +1579,19 @@ debug-print() {
 	[ -z "$T" ] && return 0
 
 	while [ "$1" ]; do
-	
+
 		# extra user-configurable targets
 		if [ "$ECLASS_DEBUG_OUTPUT" == "on" ]; then
 			echo "debug: $1"
 		elif [ -n "$ECLASS_DEBUG_OUTPUT" ]; then
 			echo "debug: $1" >> $ECLASS_DEBUG_OUTPUT
 		fi
-		
+
 		# default target
 		echo "$1" >> "${T}/eclass-debug.log"
 		# let the portage user own/write to this file
 		chmod g+w "${T}/eclass-debug.log" &>/dev/null
-		
+
 		shift
 	done
 }
@@ -1662,7 +1653,7 @@ inherit() {
 
 		#We need to back up the value of DEPEND and RDEPEND to B_DEPEND and B_RDEPEND
 		#(if set).. and then restore them after the inherit call.
-	
+
 		#turn off glob expansion
 		set -f
 
@@ -1675,10 +1666,10 @@ inherit() {
 		unset IUSE DEPEND RDEPEND PDEPEND
 		#turn on glob expansion
 		set +f
-		
+
 		source "$location" || export ERRORMSG="died sourcing $location in inherit()"
 		[ -z "${ERRORMSG}" ] || die "${ERRORMSG}"
-		
+
 		#turn off glob expansion
 		set -f
 
@@ -1703,7 +1694,7 @@ inherit() {
 
 		#turn on glob expansion
 		set +f
-		
+
 		hasq $1 $INHERITED || export INHERITED="$INHERITED $1"
 
 		export ECLASS="$PECLASS"
@@ -1865,7 +1856,7 @@ if [ "$*" != "depend" ] && [ "$*" != "clean" ] && [ "$*" != "setup" ]; then
 #	for X in @PORTAGE_BASE@/bin/functions/*.sh; do
 #		source ${X} || die "Failed to source ${X}"
 #	done
-	
+
 else
 
 killparent() {

@@ -7,7 +7,7 @@ import sys, os
 os.environ["PORTAGE_CALLER"] = "portageq"
 sys.path = ["@PORTAGE_BASE@/pym"]+sys.path
 
-import portage,types,string
+import types,string
 
 
 #-----------------------------------------------------------------------------
@@ -190,11 +190,20 @@ def distdir(argv):
 
 
 def envvar(argv):
-	"""<variable>
+	"""<variable>+
 	Returns a specific environment variable as exists prior to ebuild.sh.
 	Similar to: emerge --verbose --info | @EGREP@ '^<variable>='
 	"""
-	print portage.settings[argv[0]]
+	if (argv[0] == "-v"):
+		verbose=1
+		argv=argv[1:]
+	else:
+		verbose=0
+	for arg in argv:
+		if verbose:
+			print arg +"='"+ portage.settings[arg] +"'"
+		else:
+			print portage.settings[arg]
 
 
 #-----------------------------------------------------------------------------
@@ -233,21 +242,29 @@ def usage(argv):
 
 		lines = string.split(doc, '\n')
 		print "   "+name+" "+string.strip(lines[0])
-		for line in lines[1:]:
-			print "      "+string.strip(line)
-
+		if (len(sys.argv) > 1):
+			if ("--help" not in sys.argv):
+				lines = lines[:-1]
+			for line in lines[1:]:
+				print "      "+string.strip(line)
+	if (len(sys.argv) == 1):
+		print "\nRun portageq with --help for info"
 
 def main():
-	if (len(sys.argv) < 2):
+	if (len(sys.argv) < 2) or ("-h" in sys.argv or "--help" in sys.argv):
 		usage(sys.argv)
 		sys.exit()
-	
+
+	# no more fatties
+	global portage
+	import portage
+
 	cmd = sys.argv[1]
 	try:
 		function = globals()[cmd]
 		function(sys.argv[2:])
 	except KeyError:
-		usage()
+		usage(sys.argv)
 		sys.exit()
 
 main()

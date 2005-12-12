@@ -13,16 +13,11 @@ def writemsg(mystr,noiselevel=0):
 		sys.stderr.write(mystr)
 		sys.stderr.flush()
 
-def grabfile(myfilename, compat_level=0):
+def grabfile(myfilename, compat_level=0, recursive=0):
 	"""This function grabs the lines in a file, normalizes whitespace and returns lines in a list; if a line
 	begins with a #, it is ignored, as are empty lines"""
 
-	try:
-		myfile=open(myfilename,"r")
-	except IOError:
-		return []
-	mylines=myfile.readlines()
-	myfile.close()
+	mylines=grablines(myfilename, recursive)
 	newlines=[]
 	for x in mylines:
 		#the split/join thing removes leading and trailing whitespace, and converts any whitespace in the line
@@ -130,15 +125,10 @@ def grab_multiple(basename, locations, handler, all_must_exist=0):
 		mylist.append(handler(x+"/"+basename))
 	return mylist
 
-def grabdict(myfilename,juststrings=0,empty=0):
+def grabdict(myfilename,juststrings=0,empty=0,recursive=0):
 	"""This function grabs the lines in a file, normalizes whitespace and returns lines in a dictionary"""
 	newdict={}
-	try:
-		myfile=open(myfilename,"r")
-	except IOError,e:
-		return newdict 
-	mylines=myfile.readlines()
-	myfile.close()
+	mylines=grablines(myfilename,recursive)
 	for x in mylines:
 		#the split/join thing removes leading and trailing whitespace, and converts any whitespace in the line
 		#into single spaces.
@@ -155,16 +145,16 @@ def grabdict(myfilename,juststrings=0,empty=0):
 			newdict[myline[0]]=myline[1:]
 	return newdict
 
-def grabdict_package(myfilename,juststrings=0):
-	pkgs=grabdict(myfilename, juststrings, empty=1)
+def grabdict_package(myfilename,juststrings=0,recursive=0):
+	pkgs=grabdict(myfilename, juststrings, empty=1, recursive=recursive)
 	for x in pkgs.keys():
 		if not isvalidatom(x):
 			del(pkgs[x])
 			writemsg("--- Invalid atom in %s: %s\n" % (myfilename, x))
 	return pkgs
 
-def grabfile_package(myfilename,compatlevel=0):
-	pkgs=grabfile(myfilename,compatlevel)
+def grabfile_package(myfilename,compatlevel=0,recursive=0):
+	pkgs=grabfile(myfilename,compatlevel,recursive=recursive)
 	for x in range(len(pkgs)-1,-1,-1):
 		pkg = pkgs[x]
 		if pkg[0] == "-":
@@ -176,14 +166,9 @@ def grabfile_package(myfilename,compatlevel=0):
 			del(pkgs[x])
 	return pkgs
 
-def grabints(myfilename):
+def grabints(myfilename,recursive=0):
 	newdict={}
-	try:
-		myfile=open(myfilename,"r")
-	except IOError:
-		return newdict 
-	mylines=myfile.readlines()
-	myfile.close()
+	mylines=grablines(myfilename,recursive)
 	for x in mylines:
 		#the split/join thing removes leading and trailing whitespace, and converts any whitespace in the line
 		#into single spaces.
@@ -192,6 +177,22 @@ def grabints(myfilename):
 			continue
 		newdict[myline[0]]=string.atoi(myline[1])
 	return newdict
+
+def grablines(myfilename,recursive=0):
+	mylines=[]
+	if recursive and os.path.isdir(myfilename):
+		myfiles = [myfilename+os.path.sep+x for x in os.listdir(myfilename)]
+		myfiles.sort()
+		for f in myfiles:
+			mylines.extend(grablines(f, recursive))
+	else:
+		try:
+			myfile = open(myfilename, "r")
+			mylines = myfile.readlines()
+			myfile.close()
+		except IOError:
+			pass
+	return mylines
 
 def writeints(mydict,myfilename):
 	try:

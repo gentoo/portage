@@ -100,6 +100,10 @@ try:
 	from portage_checksum import perform_md5,perform_checksum,prelink_capable
 	import eclass_cache
 	from portage_localization import _
+
+	# Need these functions directly in portage namespace to not break every external tool in existence
+	from portage_versions import ververify,vercmp,catsplit,catpkgsplit,pkgsplit,pkgcmp
+
 except SystemExit, e:
 	raise
 except Exception, e:
@@ -455,6 +459,57 @@ class digraph:
 			mygraph.dict[x]=self.dict[x][:]
 			mygraph.okeys=self.okeys[:]
 		return mygraph
+
+def elog_process(cpv, mysettings):
+	mylogfiles = listdir(mysettings["T"]+"/logging/")
+	# shortcut for packages without any messages
+	if len(mylogfiles) == 0:
+		return
+	# exploit listdir() file order so we process log entries in cronological order
+	mylogfiles.reverse()
+	mylogentries = {}
+	for f in mylogfiles:
+		msgfunction, msgtype = f.split(".")
+		if not msgtype.upper() in mysettings["PORTAGE_ELOG_CLASSES"].split() \
+				and not msgtype.lower() in mysettings["PORTAGE_ELOG_CLASSES"].split():
+			continue
+		if msgfunction not in portage_const.EBUILD_PHASES:
+			print "!!! can't process invalid log file: %s" % f
+			continue
+		if not msgfunction in mylogentries:
+			mylogentries[msgfunction] = []
+		msgcontent = open(mysettings["T"]+"/logging/"+f, "r").readlines()
+		mylogentries[msgfunction].append((msgtype, msgcontent))
+
+	# in case the filters matched all messages
+	if len(mylogentries) == 0:
+		return
+
+	# generate a single string with all log messages
+	fulllog = ""
+	for phase in portage_const.EBUILD_PHASES:
+		if not phase in mylogentries:
+			continue
+		for msgtype,msgcontent in mylogentries[phase]:
+			fulllog += "%s: %s\n" % (msgtype, phase)
+			for line in msgcontent:
+				fulllog += line
+			fulllog += "\n"
+
+	# pass the processing to the individual modules
+	logsystems = mysettings["PORTAGE_ELOG_SYSTEM"].split()
+	for s in logsystems:
+		try:
+			# FIXME: ugly ad.hoc import code
+			# TODO:  implement a common portage module loader
+			logmodule = __import__("elog_modules.mod_"+s)
+			m = getattr(logmodule, "mod_"+s)
+			m.process(mysettings, cpv, mylogentries, fulllog)
+		except (ImportError, AttributeError), e:
+			print "!!! Error while importing logging modules while loading \"mod_%s\":" % s
+			print e
+		except portage_exception.PortageException, e:
+			print e
 
 # valid end of version components; integers specify offset from release version
 # pre=prerelease, p=patchlevel (should always be followed by an int), rc=release candidate
@@ -1208,9 +1263,6 @@ class config:
 				writemsg("PORTAGE_GPG_DIR is invalid. Removing gpg from FEATURES.\n")
 				self.features.remove("gpg")
 
-		if "maketest" in self.features and "test" not in self.features:
-			self.features.append("test")
-
 		if not portage_exec.sandbox_capable and ("sandbox" in self.features or "usersandbox" in self.features):
 			writemsg(red("!!! Problem with sandbox binary. Disabling...\n\n"))
 			if "sandbox" in self.features:
@@ -1417,6 +1469,9 @@ class config:
 		self.already_in_regenerate = 0
 
 	def getvirtuals(self, myroot):
+		if self.virtuals:
+			return self.virtuals
+
 		myvirts     = {}
 
 		# This breaks catalyst/portage when setting to a fresh/empty root.
@@ -2235,7 +2290,7 @@ def digestCheckFiles(myfiles, mydigests, basedir, note="", strict=0):
 	return 1
 
 
-def digestcheck(myfiles, mysettings, strict=0):
+def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 	"""Checks md5sums.  Assumes all files have been downloaded."""
 	# archive files
 	basedir=mysettings["DISTDIR"]+"/"
@@ -2311,6 +2366,9 @@ def digestcheck(myfiles, mysettings, strict=0):
 			else:
 				print "--- Manifest check failed. 'strict' not enabled; ignoring."
 				print
+
+	if justmanifest:
+		return 1
 
 	# Just return the status, as it's the last check.
 	return digestCheckFiles(myfiles, mydigests, basedir, note="src_uri", strict=strict)
@@ -2427,7 +2485,6 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 	mysettings["PV"] = mysplit[1]
 	mysettings["PR"] = mysplit[2]
 	mysettings["PREFIX"] = portage_const.PREFIX
-	
 	if mydo != "depend":
 		try:
 			mysettings["INHERITED"], mysettings["RESTRICT"] = db[root][tree].dbapi.aux_get( \
@@ -2633,6 +2690,12 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 		mysettings["DEST"]=os.path.join(mysettings["BUILDDIR"],"image")
 		mysettings["D"]=mysettings["BUILDDIR"]+"/image"+portage_const.PREFIX
 		if mysettings.has_key("PORT_LOGDIR"):
+			if not os.access(mysettings["PORT_LOGDIR"],os.F_OK):
+				try:
+					os.mkdir(mysettings["PORT_LOGDIR"])
+				except OSError:
+					print "!!! Unable to create PORT_LOGDIR"
+					print "!!!",e
 			if os.access(mysettings["PORT_LOGDIR"]+"/",os.W_OK):
 				try:
 					os.chown(mysettings["PORT_LOGDIR"],portage_uid,portage_gid)
@@ -2713,7 +2776,11 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 	except:
 		pass
 
-	if mydo!="manifest" and not fetch(fetchme, mysettings, listonly=listonly, fetchonly=fetchonly):
+	# Only try and fetch the files if we are going to need them ... otherwise,
+	# if user has FEATURES=noauto and they run `ebuild clean unpack compile install`,
+	# we will try and fetch 4 times :/
+	if (mydo in ["digest","fetch","unpack"] or "noauto" not in features) and \
+	   not fetch(fetchme, mysettings, listonly=listonly, fetchonly=fetchonly):
 		return 1
 
 	if mydo=="fetch" and listonly:
@@ -2731,7 +2798,8 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 	if mydo=="manifest":
 		return (not digestgen(aalist,mysettings,overwrite=1,manifestonly=1))
 
-	if not digestcheck(checkme, mysettings, ("strict" in features)):
+	# See above comment about fetching only when needed
+	if not digestcheck(checkme, mysettings, ("strict" in features), (mydo not in ["digest","fetch","unpack"] and settings["PORTAGE_CALLER"] == "ebuild" and "noauto" in features)):
 		return 1
 
 	if mydo=="fetch":
@@ -4092,7 +4160,7 @@ class dbapi:
 
 	def counter_tick_core(self,myroot,incrementing=1,mycpv=None):
 		"This method will grab the next COUNTER value and record it back to the global file.  Returns new counter value."
-		cpath=myroot+portage_const.CACHE_PATH+"/counter"
+		cpath=os.path.normpath(myroot+portage_const.CACHE_PATH+"/counter")
 		changed=0
 		min_counter = 0
 		if mycpv:
