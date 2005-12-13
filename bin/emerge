@@ -1466,6 +1466,28 @@ class depgraph:
 
 		if "--verbose" in myopts:
 			overlays = string.split(portage.settings['PORTDIR_OVERLAY'])
+			use_expand = portage.settings["USE_EXPAND"].lower().split()
+			use_expand_hidden = portage.settings["USE_EXPAND_HIDDEN"].lower().split()
+
+			def create_use_string(iuse, cur_use, old_use, masked_use):
+				usestr=""
+				for flag in iuse:
+					usechange=""
+					if old_use:
+						if (flag in old_use and flag not in cur_use) or (flag not in old_use and flag in cur_use):
+							usechange="*"
+
+					if flag in cur_use:
+						if usechange == "*":
+							substr = green("+"+flag)
+						else:
+							substr = red("+"+flag)
+					elif flag in masked_use:
+						substr = blue("(-"+flag+")")
+					else:
+						substr = blue("-"+flag)
+					usestr += substr + usechange + " "
+				return usestr
 
 		if "--tree" in myopts:
 			mylist.reverse()
@@ -1568,8 +1590,13 @@ class depgraph:
 						portage.writemsg("!!! Error getting IUSE (report this to bugs.gentoo.org)\n")
 						portage.writemsg("!!! %s\n" % x)
 						iuse_split = []
+
+					iuse_split = portage.unique_array(iuse_split)
 					iuse_split.sort()
-					old_use=None
+
+					cur_use = self.applied_useflags[x[2]]
+
+					old_use = []
 					if myoldbest:
 						pkg=myoldbest
 					else:
@@ -1581,24 +1608,40 @@ class depgraph:
 							raise # Needed else can't exit
 						except:
 							pass
-					iuse=""
-					now_use=self.applied_useflags[x[2]]
-					for ebuild_iuse in portage_util.unique_array(iuse_split):
-						usechange=""
-						if old_use:
-							if (old_use.count(ebuild_iuse) and not now_use.count(ebuild_iuse)) or (not old_use.count(ebuild_iuse) and now_use.count(ebuild_iuse)):
-								usechange="*"
 
-						if ebuild_iuse in self.applied_useflags[x[2]]:
-							if usechange == "*":
-								iuse=green("+"+ebuild_iuse)
-							else:
-								iuse=red("+"+ebuild_iuse)
-						elif ebuild_iuse in portage.settings.usemask:
-							iuse=blue("(-"+ebuild_iuse+")")
-						else:
-							iuse=blue("-"+ebuild_iuse)
-						verboseadd+=iuse+usechange+" "
+					reg_use = []
+					exp_map = {}
+					for flag in iuse_split:
+						found = False
+						for var in use_expand:
+							if flag.startswith(var+"_"):
+								if var in exp_map:
+									exp_map[var]+= [flag[len(var)+1:]]
+								else:
+									exp_map[var] = [flag[len(var)+1:]]
+								found = True
+								break
+						if not found:
+							reg_use.append(flag)
+
+					usestr = create_use_string(reg_use, cur_use, old_use, portage.settings.usemask).strip()
+					if usestr:
+						verboseadd += 'USE="'+usestr+"'  "
+
+					for var in use_expand:
+						if var not in exp_map:
+							continue
+						expcur = []
+						expold = []
+						expmask = []
+						for flag in exp_map[var]:
+							if var+"_"+flag in cur_use:
+								expcur+= [flag]
+							if var+"_"+flag in old_use:
+								expold+= [flag]
+							if var+"_"+flag in portage.settings.usemask:
+								expmask+= [flag]
+						verboseadd += var.upper()+'="'+create_use_string(exp_map[var],expcur,expold,expmask).strip()+'"  '
 
 					# size verbose
 					mysize=0
