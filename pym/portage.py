@@ -1453,7 +1453,7 @@ class config:
 				if self.has_key(var):
 					for x in string.split(self[var]):
 						mystr = string.lower(var)+"_"+x
-						if mystr not in usesplit:
+						if mystr not in usesplit and mystr not in self.usemask:
 							usesplit.append(mystr)
 
 		# Pre-Pend ARCH variable to USE settings so '-*' in env doesn't kill arch.
