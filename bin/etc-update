@@ -12,6 +12,8 @@
 
 export PORTAGE_CALLER="etc-update"
 
+eval $(python -c 'import portage_const;print "export PREFIX="+portage_const.PREFIX;print "export PORTAGE_BIN_PATH="+portage_const.PORTAGE_BIN_PATH;')
+
 if type -p gsed >/dev/null ; then
 	function sed() { gsed "$@"; }
 fi
@@ -22,7 +24,7 @@ function get_config() {
 	# First strip off comment lines, then grab the configuration
 	# item. If there's more than one of the same configuration item,
 	# then allow the last setting to take precedence.
-	cut -d'#' -f1-1 /etc/etc-update.conf | \
+	cut -d'#' -f1-1 ${PREFIX}/etc/etc-update.conf | \
 		sed -ne "s/^ *$item *= *\([\"']\{0,1\}\)\(.*\)\1/\2/p" |sed -e '$p;d'
 }
 
@@ -65,7 +67,7 @@ function scan() {
 					if [ ! -e "${rpath}/${rfile}" ] || [ ! -e "${rpath}/${rfile:10}" ]; then
 						MATCHES=0
 					else
-						diff -Bbua ${rpath}/${rfile} ${rpath}/${rfile:10} | @EGREP@ '^[+-]' | @EGREP@ -v '^[+-][\t ]*#|^--- |^\+\+\+ ' | @EGREP@ -qv '^[-+][\t ]*$'
+						diff -Bbua ${rpath}/${rfile} ${rpath}/${rfile:10} | ${PREFIX}/bin/grep -E '^[+-]' | ${PREFIX}/bin/grep -E -v '^[+-][\t ]*#|^--- |^\+\+\+ ' | ${PREFIX}/bin/grep -E -qv '^[-+][\t ]*$'
 						MATCHES=$?
 					fi
 				elif [[ -z `diff -Nua ${rpath}/${rfile} ${rpath}/${rfile:10}|
@@ -372,15 +374,15 @@ scriptname=$(basename $0)
 
 trap die term
 
-export PORTAGE_TMPDIR=$(/usr/lib/portage/bin/portageq envvar PORTAGE_TMPDIR)
+export PORTAGE_TMPDIR=$(${PORTAGE_BIN_PATH}/portageq envvar PORTAGE_TMPDIR)
 
 TMP="${PORTAGE_TMPDIR}/$$"
 rm -rf ${TMP} 2> /dev/null
 mkdir ${TMP} || die "failed mkdir command!" 1
 
 # I need the CONFIG_PROTECT value
-CONFIG_PROTECT=$(@PORTAGE_BASE@/bin/portageq envvar CONFIG_PROTECT)
-CONFIG_PROTECT_MASK=$(@PORTAGE_BASE@/bin/portageq envvar CONFIG_PROTECT_MASK)
+CONFIG_PROTECT=$(${PORTAGE_BIN_PATH}/portageq envvar CONFIG_PROTECT)
+CONFIG_PROTECT_MASK=$(${PORTAGE_BIN_PATH}/portageq envvar CONFIG_PROTECT_MASK)
 
 # load etc-config's configuration
 EU_AUTOMERGE=`get_config eu_automerge`

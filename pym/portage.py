@@ -1598,7 +1598,7 @@ class config:
 				pass
 
 		elif mykey == "CONFIG_PROTECT_MASK":
-			match += " /etc/env.d"
+			match += " "+portage_const.PREFIX+"/etc/env.d"
 
 		return match
 

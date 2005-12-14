@@ -2053,7 +2053,7 @@ class depgraph:
 										mynewargv += [myarg]
 									else:
 										mynewargv += [arg]
-								os.execv("@PORTAGE_BASE@/bin/emerge", mynewargv)
+								os.execv(portage_const.PORTAGE_BIN_PATH+"/emerge", mynewargv)
 
 			if ("--pretend" not in myopts) and ("--fetchonly" not in myopts) and ("--fetch-all-uri" not in myopts):
 				emergelog(" ::: completed emerge ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[2]+" to "+x[1])
@@ -2905,7 +2905,7 @@ elif "info"==myaction:
 			print "[disabled]"
 
 	myvars  = ["sys-devel/autoconf", "sys-devel/automake", "virtual/os-headers",
-	           "sys-devel/binutils", "sys-devel/libtool",  "dev-lang/python"]
+	           "sys-devel/binutils","sys-devel/odcctools" ,"sys-devel/libtool",  "dev-lang/python"]
 	myvars += portage_util.grabfile(portage.settings["PORTDIR"]+"/profiles/info_pkgs")
 	myvars  = portage_util.unique_array(myvars)
 	myvars.sort()
@@ -2935,7 +2935,7 @@ elif "info"==myaction:
 	else:
 		myvars = ['GENTOO_MIRRORS', 'CONFIG_PROTECT', 'CONFIG_PROTECT_MASK',
 		          'PORTDIR', 'DISTDIR', 'PKGDIR', 'PORTAGE_TMPDIR',
-		          'PORTDIR_OVERLAY', 'USE', 'CHOST', 'CFLAGS', 'CXXFLAGS',
+		          'PORTDIR_OVERLAY', 'PREFIX', 'USE', 'CHOST', 'CFLAGS', 'CXXFLAGS',
 		          'ACCEPT_KEYWORDS', 'SYNC', 'FEATURES']
 
 		myvars.extend(portage_util.grabfile(portage.settings["PORTDIR"]+"/profiles/info_vars"))
