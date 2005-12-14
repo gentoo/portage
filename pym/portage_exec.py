@@ -12,7 +12,7 @@ from portage_const import BASH_BINARY, SANDBOX_BINARY
 
 try:
 	import resource
-	max_fd_limit = resource.getrlimit(resource.RLIMIT_NOFILE)[1]
+	max_fd_limit = resource.getrlimit(resource.RLIMIT_NOFILE)[0]
 except ImportError:
 	max_fd_limit = 256
 
