@@ -1670,6 +1670,8 @@ class depgraph:
 					else:
 						verboseadd += "[No ebuild?]"
 
+					verboseadd+="EAPI: "+blue(str(portage.portdb.aux_get(x[2],["EAPI"])[0]))
+
 				xs=portage.pkgsplit(x[2])
 				if xs[2]=="r0":
 					xs[2]=""
