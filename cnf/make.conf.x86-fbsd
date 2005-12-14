@@ -308,3 +308,43 @@ CHOST="i686-unknown-freebsd5.3"
 #     The file format is one pattern per line, blanks and ';' or '#' lines are
 #     comments. See 'man rsync' for more details on the exclude-from format.
 #RSYNC_EXCLUDEFROM=/etc/portage/rsync_excludes
+
+# logging related variables:
+# PORTAGE_ELOG_CLASSES: selects messages to be logged, possible values are:
+#                          info, warn, error, log
+#                       Warning: commenting this will disable elog
+PORTAGE_ELOG_CLASSES="warn error log"
+
+# PORTAGE_ELOG_SYSTEM: selects the module(s) to process the log messages. Modules
+#                      included in portage are (empty means logging is disabled):
+#                          save (saves one log per package in $PORTAGE_TMPDIR/elogs)
+#                          custom (passes all messages to $PORTAGE_LOG_COMMAND)
+#                          syslog (sends all messages to syslog)
+#                          mail (send all messages to the mailserver defined 
+#                                in $PORTAGE_LOG_MAILURI)
+#                      To use elog you should enable at least one module
+#PORTAGE_ELOG_SYSTEM="save mail"
+
+# PORTAGE_ELOG_COMMAND: only used with the "custom" logging module. Specifies a command
+#                      to process log messages. Two variables are expanded:
+#                          ${PACKAGE} - expands to the cpv entry of the processed 
+#                                       package (see $PVR in ebuild(5))
+#                          ${LOGFILE} - absolute path to the logfile
+#PORTAGE_ELOG_COMMAND="/path/to/logprocessor -p ${PACKAGE} -f ${LOGFILE}"
+
+# PORTAGE_ELOG_MAILURI: this variable holds all important settings for the mail
+#                       module. In most cases listing the recipient adress and
+#                       the receiving mailserver should be sufficient, but you can
+#                       also use advanced settings like authentication or TLS. The
+#                       full syntax is:
+#                           adress [[user:passwd@]mailserver[:port]]
+#                       where
+#                           adress:     recipient adress
+#                           user:       username for smtp auth (defaults to none)
+#                           passwd:     password for smtp auth (defaults to none)
+#                           mailserver: smtp server that should be used to deliver the mail (defaults to localhost)
+#                           port:       port to use on the given smtp server (defaults to 25, values > 100000 indicate that starttls should be used on (port-100000))
+#                       Examples:
+#PORTAGE_ELOG_MAILURI="root@localhost localhost" (this is also the default setting)
+#PORTAGE_ELOG_MAILURI="user@some.domain mail.some.domain" (sends mails to user@some.domain using the mailserver mail.some.domain)
+#PORTAGE_ELOG_MAILURI="user@some.domain user:secret@mail.some.domain:100465" (this is left uncommented as a reader excercise ;)

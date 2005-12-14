@@ -9,7 +9,7 @@ if [ -z "$1" ]; then
 	exit 0
 fi
 
-export PKG="portage"
+export PKG="portage-prefix"
 export TMP="/tmp"
 export V="$1"
 export DEST="${TMP}/${PKG}-${V}"
@@ -24,16 +24,7 @@ fi
 
 rm -rf ${DEST}
 install -d -m0755 ${DEST}
-#get any binaries out of the way
-cd src/sandbox-1.1
-make clean
-cd ../..
-for x in bin cnf man pym src 
-do
-	cp -ax $x ${DEST}
-done
-# Clean invalid sandbox sources
-rm -rf ${DEST}/src/{sandbox,sandbox-dev}
+cp -pPR . ${DEST}
 cp ${DEST}/pym/portage.py ${DEST}/pym/portage.py.orig
 sed '/^VERSION=/s/^.*$/VERSION="'${V}'"/' < ${DEST}/pym/portage.py.orig > ${DEST}/pym/portage.py
 cp ${DEST}/man/emerge.1 ${DEST}/man/emerge.1.orig
@@ -46,14 +37,16 @@ cp ChangeLog ${DEST}
 
 cd ${DEST}
 find -name CVS -exec rm -rf {} \;
-find -name '.svn' -exec rm -rf {} \;
+find -name '.svn' -type d -exec rm -rf {} \;
 find -name '*~' -exec rm -rf {} \;
 find -name '*.pyc' -exec rm -rf {} \;
 find -name '*.pyo' -exec rm -rf {} \;
-chown -R root:root ${DEST}
+chown -R root:0 ${DEST}
 cd $TMP
 rm -f ${PKG}-${V}/bin/emerge.py ${PKG}-${V}/bin/{pmake,sandbox} ${PKG}-${V}/{bin,pym}/'.#'* ${PKG}-${V}/{bin,pym}/*.{orig,diff} ${PKG}-${V}/{bin,pym}/*.py[oc]
-tar cjvf ${TMP}/${PKG}-${V}.tar.bz2 ${PKG}-${V}
-
+cd $TMP/${PKG}-${V}
+chmod a+x autogen.sh && ./autogen.sh
+rm -f AUTHORS NEWS autogen.sh make-man-tarball.sh tabcheck.py tarball.sh ChangeLog.000 COPYING
+tar cjvf ${TMP}/${PKG}-${V}.tar.bz2 ${TMP}/${PKG}-${V}
 #scp ${TMP}/${PKG}-${V}.tar.bz2 carpaski@twobit.net:/home/html/gentoo/portage/
 #scp ${TMP}/${PKG}-${V}.tar.bz2 carpaski@zarquon.twobit.net:/home/www/localhost/htdocs/gentoo/portage/

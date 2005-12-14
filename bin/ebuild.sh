@@ -1129,6 +1129,7 @@ dyn_test() {
 	trap SIGINT SIGQUIT
 }
 
+
 PORTAGE_INST_UID="0"
 PORTAGE_INST_GID="0"
 
