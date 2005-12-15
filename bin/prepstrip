@@ -5,44 +5,43 @@
 
 if [ "${FEATURES//*nostrip*/true}" == "true" ] || [ "${RESTRICT//*nostrip*/true}" == "true" ] ; then
 	echo "nostrip"
-	STRIP="/bin/false"
-	PORTAGE_STRIP_FLAGS=""
-else
-	STRIP=${STRIP:-${CHOST}-strip}
-	type -p -- ${STRIP} > /dev/null || STRIP=strip
-	PORTAGE_STRIP_FLAGS=${PORTAGE_STRIP_FLAGS:---strip-unneeded}
+	exit 0
 fi
 
+STRIP="${STRIP:-${CHOST}-strip}"
+type -p -- ${STRIP} > /dev/null || STRIP=strip
+
+PORTAGE_STRIP_FLAGS=${PORTAGE_STRIP_FLAGS:---strip-unneeded}
+
 banner=1
-retval=0
 
-for x in "$@" ; do
-	if [ -d "${x}" ]; then
-		# We only want files. So make a pass for each directory and call again.
-		find "${x}" -type f \( -perm -0100 -or -perm -0010 -or -perm -0001 -or -name '*.so' -or -name '*.so.*' \) -print0 |
-				$XARGS -0 -n500 prepstrip
-	else
-		if [ ${banner} -eq 1 ] ; then
-			echo "strip: ${STRIP} ${PORTAGE_STRIP_FLAGS}"
-			banner=0
-		fi
+save_elf_debug() {
+	local x=$1
+	local y="${D}/usr/lib/debug/${x:${#D}:${#x}}"
 
-		f=$(file "${x}") || continue
-		[ -z "${f}" ] && continue
+	[ "${FEATURES//*splitdebug*/true}" != "true" ] && return 0
 
-		if [ -z "${f/*current ar archive*/}" ]; then
-			echo "   ${x:${#D}:${#x}}"
-			${STRIP} -g "${x}"
-		fi
-		if [ -z "${f/*SB executable*/}" ]; then
-			echo "   ${x:${#D}:${#x}}"
-			${STRIP} "${x}"
-		fi
-		if [ -z "${f/*SB shared object*/}" ]; then
-			echo "   ${x:${#D}:${#x}}"
-			${STRIP} ${PORTAGE_STRIP_FLAGS} "${x}"
-		fi
+	mkdir -p $(dirname ${y})
+	${CHOST}-objcopy --only-keep-debug ${x} ${y}.debug
+	${CHOST}-objcopy --add-gnu-debuglink=${y}.debug ${x}
+}
+
+for x in $(scanelf -yRBF%F $@) $(for y in "$@"; do find $y -type f -name '*.a' -print0 ; done); do
+	if [ ${banner} -eq 1 ] ; then
+		echo "strip: ${STRIP} ${PORTAGE_STRIP_FLAGS}"
+		banner=0
+	fi
+
+	f=$(file "${x}") || continue
+	[ -z "${f}" ] && continue
+
+	if [ -z "${f/*current ar archive*/}" ]; then
+		echo "   ${x:${#D}:${#x}}"
+		${STRIP} -g "${x}"
+	fi
+	if [ -z "${f/*SB executable*/}" ] || [ -z "${f/*SB shared object*/}" ]; then
+		echo "   ${x:${#D}:${#x}}"
+		save_elf_debug "${x}"
+		${STRIP} ${PORTAGE_STRIP_FLAGS} "${x}"
 	fi
 done
-
-exit ${retval}
