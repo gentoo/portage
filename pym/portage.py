@@ -669,10 +669,10 @@ def env_update(makelinks=1):
 				commands.getstatusoutput("cd / ; /sbin/ldconfig -r "+root)
 			else:
 				commands.getstatusoutput("cd / ; /sbin/ldconfig -X -r "+root)
-	elif ostype == "FreeBSD":
+	elif ostype == "FreeBSD" or ostype == "DragonFly":
 		if (ld_cache_update):
 			writemsg(">>> Regenerating "+str(root)+"var/run/ld-elf.so.hints...\n")
-			commands.getstatusoutput("cd / ; /sbin/ldconfig -i -elf -f "+str(root)+"var/run/ld-elf.so.hints "+str(root)+"etc/ld.so.conf")
+			commands.getstatusoutput("cd / ; /sbin/ldconfig -elf -i -f "+str(root)+"var/run/ld-elf.so.hints "+str(root)+"etc/ld.so.conf")
 
 	del specials["LDPATH"]
 
