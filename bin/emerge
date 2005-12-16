@@ -1626,7 +1626,7 @@ class depgraph:
 
 					usestr = create_use_string(reg_use, cur_use, old_use, portage.settings.usemask).strip()
 					if usestr:
-						verboseadd += 'USE="'+usestr+"'  "
+						verboseadd += 'USE="'+usestr+'"  '
 
 					for var in use_expand:
 						if var not in exp_map:
