@@ -1470,24 +1470,22 @@ class depgraph:
 			use_expand_hidden = portage.settings["USE_EXPAND_HIDDEN"].lower().split()
 
 			def create_use_string(iuse, cur_use, old_use, masked_use):
-				usestr=""
+				usestrs=[]
 				for flag in iuse:
-					usechange=""
-					if old_use:
-						if (flag in old_use and flag not in cur_use) or (flag not in old_use and flag in cur_use):
-							usechange="*"
-
+					if flag in masked_use:
+						continue
+					suffix = ""
 					if flag in cur_use:
-						if usechange == "*":
-							substr = green("+"+flag)
-						else:
-							substr = red("+"+flag)
-					elif flag in masked_use:
-						substr = blue("(-"+flag+")")
+						color = red
+						prefix = "+"
 					else:
-						substr = blue("-"+flag)
-					usestr += substr + usechange + " "
-				return usestr
+						color = blue
+						prefix = "-"
+					if old_use and ((flag in old_use) ^ (flag in cur_use)):
+						color = green
+						suffix = "*"
+					usestrs.append(color(prefix+flag)+suffix)
+				return " ".join(usestrs)
 
 		if "--tree" in myopts:
 			mylist.reverse()
@@ -1624,9 +1622,9 @@ class depgraph:
 						if not found:
 							reg_use.append(flag)
 
-					usestr = create_use_string(reg_use, cur_use, old_use, portage.settings.usemask).strip()
+					usestr = create_use_string(reg_use, cur_use, old_use, portage.settings.usemask)
 					if usestr:
-						verboseadd += 'USE="'+usestr+'"  '
+						verboseadd += ('USE="%s" ' % usestr)
 
 					for var in use_expand:
 						if var not in exp_map:
@@ -1641,7 +1639,7 @@ class depgraph:
 								expold+= [flag]
 							if var+"_"+flag in portage.settings.usemask:
 								expmask+= [flag]
-						verboseadd += var.upper()+'="'+create_use_string(exp_map[var],expcur,expold,expmask).strip()+'"  '
+						verboseadd += ('%s="%s" ' % (var.upper(), create_use_string(exp_map[var],expcur,expold,expmask)))
 
 					# size verbose
 					mysize=0
