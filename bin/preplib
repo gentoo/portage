@@ -3,6 +3,8 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/bin/preplib,v 1.7.2.1 2005/01/02 09:36:02 jstubbs Exp $
 
+ewarn "QA Notice: Please stop using me, fix your package instead"
+
 LIBDIR_VAR="LIBDIR_${ABI}"
 if [ -n "${ABI}" -a -n "${!LIBDIR_VAR}" ]; then
 	CONF_LIBDIR="${!LIBDIR_VAR}"
