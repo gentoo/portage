@@ -10,6 +10,7 @@ except ImportError:
 	import pickle
 import os
 import fs_template
+from template import reconstruct_eclasses
 import cache_errors
 
 
@@ -51,7 +52,10 @@ class database(fs_template.FsBased):
 
 	def __getitem__(self, cpv):
 		# we override getitem because it's just a cpickling of the data handed in.
-		return pickle.loads(self.__db[cpv])
+		d = pickle.loads(self.__db[cpv])
+                if "_eclasses_" in d:
+                        d["_eclasses_"] = reconstruct_eclasses(cpv, d["_eclasses_"])
+		return d
 
 
 	def _setitem(self, cpv, values):
