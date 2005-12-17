@@ -1078,11 +1078,12 @@ dyn_install() {
 		if [[ -n ${f} ]] ; then
 			echo -ne '\a\n'
 			echo "QA Notice: the following files contain runtime text relocations"
-			echo " Text relocations require a lot of extra work to be preformed by the"
-			echo " dynamic linker which will cause serious performance impact on IA-32"
-			echo " and might not function properly on other architectures hppa for example."
-			echo " If you are a programmer please take a closer look at this package and"
-			echo " consider writing a patch which addresses this problem."
+			echo " Text relocations force the dynamic linker to perform extra"
+			echo " work at startup, wastes system resources, and may pose a security"
+			echo " risk.  On some architectures, the code may not ever function"
+			echo " properly, if at all.  If you are a programmer please consider"
+			echo " taking a closer look at this package and writing a patch to"
+			echo " address this problem."
 			echo "${f}"
 			echo -ne '\a\n'
 			qa_kinda_sucks=1
