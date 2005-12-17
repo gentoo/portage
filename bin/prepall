@@ -38,7 +38,6 @@ done
 # http://bugs.gentoo.org/4411
 for a in "${D}"usr/lib*/*.a ; do
 	s=${a%.a}.so
-	if [ ! -e "${s}" ] ; then
 	if [[ ! -e ${s} ]] ; then
 		s=${s%usr/*}${s##*/usr/}
 		if [[ -e ${s} ]] ; then
