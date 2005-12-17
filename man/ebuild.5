@@ -599,10 +599,6 @@ Strips all executable files of debugging symboles.  This includes libraries.
 .TP
 \fBprepinfo\fR \fI[dir]\fR
 .TP
-\fBpreplib\fR \fI[dir]\fR
-.TP
-\fBpreplib.so\fR \fI[dir]\fR
-.TP
 \fBprepman\fR \fI[dir]\fR
 .TP
 \fBprepstrip\fR \fI[dir]\fR
@@ -615,14 +611,6 @@ Similiar to the \fBprepall\fR functions, these are subtle in their differences.
 If a \fIdir\fR is not specified, then \fBprepinfo\fR will assume the dir
 \fIusr\fR. \fBprepinfo\fR will then compress all the files in
 ${D}/\fIdir\fR/info.
-.TP
-.B preplib:
-If a \fIdir\fR is not specified, then \fBpreplib\fR will assume the dir
-\fIusr\fR. \fBpreplib\fR will then run 'ldconfig -n -N' on ${D}/\fIdir\fR/lib.
-.TP
-.B preplib.so:
-All the files with '.so' in their name and are found in ${D}/\fIdir\fR will
-be stripped of their debug symbols.  You may specify multiple directories.
 .TP
 .B prepman:
 If a \fIdir\fR is not specified, then \fBprepman\fR will assume the dir
