@@ -263,6 +263,10 @@ use_enable() {
 	return 0
 }
 
+add-ebuild-death-hook() {
+	export EBUILD_DEATH_HOOKS="${EBUILD_DEATH_HOOKS} $*"
+}
+
 diefunc() {
 	local funcname="$1" lineno="$2" exitcode="$3"
 	shift 3
