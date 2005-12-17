@@ -627,7 +627,7 @@ elif "--help" in myopts:
 elif portage.secpass!=2:
 	if myaction in ["search", "info", "regen", "metadata"]:
 		pass
-	elif (not myaction) and (not myfiles):
+	elif not myaction and not myfiles and "--resume" not in myopts:
 		pass
 	elif ("--pretend" in myopts) and (myaction in ["world","system","clean","prune","unmerge"]):
 		pass
