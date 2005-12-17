@@ -3128,10 +3128,9 @@ else:
 	if ("--resume" in myopts) and portage.mtimedb.has_key("resume"):
 		myresumeopts=portage.mtimedb["resume"]["myopts"][:]
 
-		while "--skipfirst" in myresumeopts:
-			myresumeopts.remove("--skipfirst")
-		while "--ask" in myresumeopts:
-			myresumeopts.remove("--ask")
+		for opt in ("--skipfirst", "--ask", "--verbose"):
+			while opt in myresumeopts:
+				myresumeopts.remove(opt)
 
 		for myopt in myopts:
 			if myopt not in myresumeopts:
