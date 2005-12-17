@@ -3238,7 +3238,7 @@ def dep_eval(deplist):
 				return 0
 		return 1
 
-def dep_zapdeps(unreduced,reduced,vardbapi=None,use_binaries=0):
+def dep_zapdeps(unreduced,reduced,myroot,use_binaries=0):
 	"""Takes an unreduced and reduced deplist and removes satisfied dependencies.
 	Returned deplist contains steps that must be taken to satisfy dependencies."""
 	writemsg("ZapDeps -- %s\n" % (use_binaries), 2)
@@ -3246,88 +3246,52 @@ def dep_zapdeps(unreduced,reduced,vardbapi=None,use_binaries=0):
 		return []
 	if unreduced[0]=="||":
 		if dep_eval(reduced):
-			#deps satisfied, return empty list.
 			return []
-		else:
-			#try to find an installed dep.
-			### We use fakedb when --update now, so we can't use local vardbapi here.
-			### This should be fixed in the feature.
-			### see bug 45468.
-			##if vardbapi:
-			##	mydbapi=vardbapi
-			##else:
-			##	mydbapi=db[root]["vartree"].dbapi
-			mydbapi=db[root]["vartree"].dbapi
 
-			if db["/"].has_key("porttree"):
-				myportapi=db["/"]["porttree"].dbapi
+		found_idx = 1
+		for x in range(1, len(unreduced)):
+			if isinstance(unreduced[x], list):
+				atom_list = dep_zapdeps(unreduced[x], reduced[x], myroot, use_binaries=use_binaries)
 			else:
-				myportapi=None
+				atom_list = [unreduced[x]]
+			all_found = True
+			for atom in atom_list:
+				if not db[myroot]["vartree"].dbapi.match(atom):
+					all_found = False
+					break
+			if all_found:
+				if isinstance(unreduced[x], list):
+					return atom_list
+				found_idx = x
+				break
 
-			if use_binaries and db["/"].has_key("bintree"):
-				mybinapi=db["/"]["bintree"].dbapi
-				writemsg("Using bintree...\n",2)
+		if isinstance(unreduced[found_idx], list):
+			return dep_zapdeps(unreduced[found_idx], reduced[found_idx], myroot, use_binaries=use_binaries)
+
+		satisfied_atom = unreduced[found_idx]
+		atomkey = dep_getkey(satisfied_atom)
+		relevant_atoms = []
+		for dep in unreduced[1:]:
+			if not isinstance(dep, list) and dep_getkey(dep) == atomkey:
+				relevant_atoms.append(dep)
+
+		available_atoms = {}
+		for atom in relevant_atoms:
+			if use_binaries:
+				pkg_list = db["/"]["bintree"].dbapi.match(atom)
 			else:
-				mybinapi=None
+				pkg_list = db["/"]["porttree"].dbapi.xmatch("match-visible", atom)
+			if not pkg_list:
+				continue
+			pkg = best(pkg_list)
+			if pkg not in available_atoms:
+				available_atoms[pkg] = atom
 
-			x=1
-			candidate=[]
-			while x<len(reduced):
-				writemsg("x: %s, reduced[x]: %s\n" % (x,reduced[x]), 2)
-				if (type(reduced[x])==types.ListType):
-					newcand = dep_zapdeps(unreduced[x], reduced[x], vardbapi=vardbapi, use_binaries=use_binaries)
-					candidate.append(newcand)
-				else:
-					if (reduced[x]==False):
-						candidate.append([unreduced[x]])
-					else:
-						candidate.append([])
-				x+=1
+		if not available_atoms:
+			return [satisfied_atom]
 
-			#use installed and no-masked package(s) in portage.
-			for x in candidate:
-				match=1
-				for pkg in x:
-					if not mydbapi.match(pkg):
-						match=0
-						break
-					if myportapi:
-						if not myportapi.match(pkg):
-							match=0
-							break
-				if match:
-					writemsg("Installed match: %s\n" % (x), 2)
-					return x
-
-			# Use binary packages if available.
-			if mybinapi:
-				for x in candidate:
-					match=1
-					for pkg in x:
-						if not mybinapi.match(pkg):
-							match=0
-							break
-						else:
-							writemsg("Binary match: %s\n" % (pkg), 2)
-					if match:
-						writemsg("Binary match final: %s\n" % (x), 2)
-						return x
-
-			#use no-masked package(s) in portage tree
-			if myportapi:
-				for x in candidate:
-					match=1
-					for pkg in x:
-						if not myportapi.match(pkg):
-							match=0
-							break
-					if match:
-						writemsg("Porttree match: %s\n" % (x), 2)
-						return x
-
-			#none of the no-masked pkg, use the first one
-			writemsg("Last resort candidate: %s\n" % (candidate[0]), 2)
-			return candidate[0]
+		best_pkg = best(available_atoms.keys())
+		return [available_atoms[best_pkg]]
 	else:
 		if dep_eval(reduced):
 			#deps satisfied, return empty list.
@@ -3337,7 +3301,7 @@ def dep_zapdeps(unreduced,reduced,vardbapi=None,use_binaries=0):
 			x=0
 			while x<len(reduced):
 				if type(reduced[x])==types.ListType:
-					returnme+=dep_zapdeps(unreduced[x],reduced[x], vardbapi=vardbapi, use_binaries=use_binaries)
+					returnme += dep_zapdeps(unreduced[x],reduced[x], myroot, use_binaries=use_binaries)
 				else:
 					if reduced[x]==False:
 						returnme.append(unreduced[x])
@@ -3510,7 +3474,7 @@ def dep_expand(mydep,mydb=None,use_cache=1):
 		mydep=mydep[1:]
 	return prefix+cpv_expand(mydep,mydb=mydb,use_cache=use_cache)+postfix
 
-def dep_check(depstring,mydbapi,mysettings,use="yes",mode=None,myuse=None,use_cache=1,use_binaries=0):
+def dep_check(depstring,mydbapi,mysettings,use="yes",mode=None,myuse=None,use_cache=1,use_binaries=0,myroot="/"):
 	"""Takes a depend string and parses the condition."""
 
 	#check_config_instance(mysettings)
@@ -3580,7 +3544,7 @@ def dep_check(depstring,mydbapi,mysettings,use="yes",mode=None,myuse=None,use_ca
 	if myeval:
 		return [1,[]]
 	else:
-		myzaps = dep_zapdeps(mysplit,mysplit2,vardbapi=mydbapi,use_binaries=use_binaries)
+		myzaps = dep_zapdeps(mysplit,mysplit2,myroot,use_binaries=use_binaries)
 		mylist = flatten(myzaps)
 		writemsg("myzaps:   %s\n" % (myzaps), 1)
 		writemsg("mylist:   %s\n" % (mylist), 1)
@@ -3614,16 +3578,7 @@ def dep_wordreduce(mydeplist,mysettings,mydbapi,mode,use_cache=1):
 				if mydep!=None:
 					tmp=(len(mydep)>=1)
 					if deplist[mypos][0]=="!":
-						#tmp=not tmp
-						# This is ad-hoc code. We should rewrite this later.. (See #52377)
-						# The reason is that portage uses fakedb when --update option now.
-						# So portage considers that a block package doesn't exist even if it exists.
-						# Then, #52377 happens.
-						# ==== start
-						# emerge checks if it's block or not, so we can always set tmp=False.
-						# but it's not clean..
 						tmp=False
-						# ==== end
 					deplist[mypos]=tmp
 				else:
 					#encountered invalid string

@@ -1188,8 +1188,7 @@ class depgraph:
 			print "Depstring:",depstring
 		if not arg:
 			#processing dependencies
-			mycheck=portage.dep_check(depstring,self.mydbapi[myroot],self.pkgsettings,myuse=myuse,use_binaries=("--usepkg" in myopts))
-			#mycheck=portage.dep_check(depstring,self.mydbapi[myroot],self.pkgsettings,myuse=myuse)
+			mycheck=portage.dep_check(depstring,self.mydbapi[myroot],self.pkgsettings,myuse=myuse,use_binaries=("--usepkgonly" in myopts),myroot=myroot)
 
 			if not mycheck[0]:
 				mymerge=[]
