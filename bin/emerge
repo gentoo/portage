@@ -1836,6 +1836,14 @@ class depgraph:
 			if ("--skipfirst" in myopts) and mymergelist:
 				del portage.mtimedb["resume"]["mergelist"][0]
 				del mymergelist[0]
+			for bigkey in mymergelist:
+				(pkgtype, root, cpv, action) = bigkey
+				if pkgtype == "binary" and not portage.db["/"]["bintree"].dbapi.match("="+cpv) or \
+				   pkgtype == "ebuild" and not portage.db["/"]["porttree"].dbapi.xmatch("match-all", "="+cpv):
+					print red("!!! Error: The resume list contains packages that no longer")
+					print red("!!!        available to be emerged. Please restart/continue")
+					print red("!!!        the merge operation manually.")
+					sys.exit(1)
 		else:
 			myfavs=portage.grabfile(portage.root+portage.WORLD_FILE)
 			myfavdict=genericdict(myfavs)
