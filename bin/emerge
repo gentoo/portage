@@ -1180,7 +1180,7 @@ class depgraph:
 					if curslot == myslot:
 						return match
 
-	def select_dep(self,myroot,depstring,myparent=None,arg=None,myuse=None):
+	def select_dep(self,myroot,depstring,myparent=None,arg=None,myuse=None,raise_on_missing=False):
 		"given a dependency string, create the appropriate depgraph and return 1 on success and 0 on failure"
 		if "--debug" in myopts:
 			print
@@ -1262,6 +1262,8 @@ class depgraph:
 							break
 
 				if (not myeb) and (not myeb_pkg):
+					if raise_on_missing:
+						raise ValueError
 					if not arg:
 						xinfo='"'+x+'"'
 					else:
@@ -1397,6 +1399,7 @@ class depgraph:
 
 	def xcreate(self,mode="system"):
 		global syslist
+		world_problems = False
 		if mode=="system":
 			mylist=syslist
 		else:
@@ -1405,27 +1408,30 @@ class depgraph:
 			sysdict=genericdict(syslist)
 			worlddict=genericdict(worldlist)
 
-			world_problems = False
 			for x in worlddict.keys():
 				if not portage.isvalidatom(x):
 					world_problems = True
 				elif not portage.db["/"]["vartree"].dbapi.match(x):
 					world_problems = True
-				elif not portage.db["/"]["porttree"].dbapi.match(x):
-					world_problems = True
 				else:
 					sysdict[x]=worlddict[x]
-			if world_problems:
-				print "\n!!! Problems have been detected with your world file"
-				print "!!! Please run "+green("emaint --check world")+"\n"
-			del world_problems
 
 			mylist = sysdict.keys()
 
 		for mydep in mylist:
-			if not self.select_dep(portage.root, mydep):
-				print "\n\n!!! Problem resolving dependencies for", mydep
-				return 0
+			try:
+				if not self.select_dep(portage.root, mydep, raise_on_missing=True):
+					print "\n\n!!! Problem resolving dependencies for", mydep
+					return 0
+			except ValueError:
+				if "--debug" in myopts:
+					raise
+				world_problems = True
+
+		if world_problems:
+			print "\n!!! Problems have been detected with your world file"
+			print "!!! Please run "+green("emaint --check world")+"\n"
+
 		return 1
 
 	def match(self,mydep,myroot=portage.root,mykey=None):
