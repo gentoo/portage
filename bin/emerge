@@ -1877,6 +1877,41 @@ class depgraph:
 
 		self.pkgsettings["FEATURES"]=string.join(myfeat)
 
+		if "parallel-fetch" in myfeat and not ("--ask" in myopts or "--pretend" in myopts or "--fetchonly" in myopts):
+			if "distlocks" not in myfeat:
+				print red("!!!")
+				print red("!!!")+" parallel-fetching requires the distlocks feature enabled"
+				print red("!!!")+" you have it disabled, thus parallel-fetching is being disabled"
+				print red("!!!")
+			elif len(mymergelist) > 1:
+				print ">>> starting parallel fetching"
+				pid = os.fork()
+				if not pid:
+					sys.stdin.close()
+					sys.stdout.close()
+					sys.stderr.close()
+					sys.stdout = open("/dev/null","w")
+					sys.stderr = open("/dev/null","w")
+					os.dup2(sys.stdout.fileno(), 1)
+					os.dup2(sys.stdout.fileno(), 2)
+					for x in ("autoaddcvs", "cvs"):
+						try:	myfeat.remove(x)
+						except ValueError: pass
+					self.pkgsettings["FEATURES"] = " ".join(myfeat)
+					ret = 0
+					for x in mymergelist:
+						if x[0] != "ebuild":
+							continue
+						try:
+							ret = portage.doebuild(portage.portdb.findname(x[2]), "fetch", x[1], self.pkgsettings,
+								cleanup=0, fetchonly=True, tree="porttree")
+						except SystemExit:
+							raise
+						except Exception:
+							ret = 1
+					sys.exit(0)
+				portage.portage_exec.spawned_pids.append(pid)
+
 		mergecount=0
 		for x in mymergelist:
 			mergecount+=1

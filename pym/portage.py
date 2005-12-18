@@ -130,9 +130,6 @@ def exithandler(signum,frame):
 	signal.signal(signal.SIGTERM, signal.SIG_IGN)
 
 	# 0=send to *everybody* in process group
-	portageexit()
-	print "Exiting due to signal"
-	os.kill(0,signum)
 	sys.exit(1)
 
 signal.signal(signal.SIGCHLD, signal.SIG_DFL)
@@ -6987,14 +6984,6 @@ def do_upgrade(mykey):
 def portageexit():
 	global uid,portage_gid,portdb,db
 	if secpass and not os.environ.has_key("SANDBOX_ACTIVE"):
-		# wait child process death
-		try:
-			while True:
-				os.wait()
-		except OSError:
-			#writemsg(">>> All child process are now dead.")
-			pass
-
 		close_portdbapi_caches()
 
 		if mtimedb:
