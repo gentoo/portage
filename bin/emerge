@@ -1470,14 +1470,13 @@ class depgraph:
 		totalsize=0
 
 		if "--verbose" in myopts:
-			overlays = string.split(portage.settings['PORTDIR_OVERLAY'])
-			use_expand = portage.settings["USE_EXPAND"].lower().split()
-			use_expand_hidden = portage.settings["USE_EXPAND_HIDDEN"].lower().split()
-
-			def create_use_string(iuse, cur_use, old_use, masked_use):
+			# Original USE display
+			def create_use_string(name, cur_iuse, cur_use, old_iuse, old_use, is_new):
+				if name != "USE":
+					return ""
 				usestrs=[]
-				for flag in iuse:
-					if flag in masked_use:
+				for flag in cur_iuse:
+					if flag in portage.settings.usemask:
 						continue
 					suffix = ""
 					if flag in cur_use:
@@ -1486,11 +1485,21 @@ class depgraph:
 					else:
 						color = blue
 						prefix = "-"
-					if old_use and ((flag in old_use) ^ (flag in cur_use)):
+					if not is_new and ((flag in old_use) ^ (flag in cur_use)):
 						color = green
 						suffix = "*"
 					usestrs.append(color(prefix+flag)+suffix)
-				return " ".join(usestrs)
+				ret = " ".join(usestrs)
+				if ret:
+					ret += " "
+				return ret
+		else:
+			# New compact USE display
+			def create_use_string(name, cur_iuse, cur_use, old_iuse, old_use, is_new):
+				return ""
+
+		if "--verbose" in myopts:
+			overlays = string.split(portage.settings['PORTDIR_OVERLAY'])
 
 		if "--tree" in myopts:
 			mylist.reverse()
@@ -1578,74 +1587,67 @@ class depgraph:
 					addl=" "+green("N")+" "+fetch+"  "
 
 				verboseadd=""
-				if "--verbose" in myopts:
-					# iuse verbose
-					try:
-						if x[0] == "binary":
-							iuse_split = string.split(portage.db["/"]["bintree"].dbapi.aux_get(x[2],["IUSE"])[0])
-						elif x[0] == "ebuild":
-							iuse_split = string.split(portage.portdb.aux_get(x[2],["IUSE"])[0])
-						else:
-							iuse_split = []
-					except SystemExit, e:
-						raise # Needed else can't exit
-					except:
-						portage.writemsg("!!! Error getting IUSE (report this to bugs.gentoo.org)\n")
-						portage.writemsg("!!! %s\n" % x)
-						iuse_split = []
+				
+				if x[2] in self.applied_useflags:
+					# USE flag display
+					if x[0] == "binary":
+						cur_iuse = string.split(portage.db["/"]["bintree"].dbapi.aux_get(x[2],["IUSE"])[0])
+					elif x[0] == "ebuild":
+						cur_iuse = string.split(portage.portdb.aux_get(x[2],["IUSE"])[0])
+					else:
+						cur_iuse = []
 
-					iuse_split = portage.unique_array(iuse_split)
-					iuse_split.sort()
-
+					cur_iuse = portage.unique_array(cur_iuse)
+					cur_iuse.sort()
 					cur_use = self.applied_useflags[x[2]]
 
-					old_use = []
 					if myoldbest:
-						pkg=myoldbest
+						pkg = myoldbest
 					else:
-						pkg=x[2]
+						pkg = x[2]
 					if portage.db["/"]["vartree"].dbapi.cpv_exists(pkg):
-						try:
-							old_use=string.split(portage.db["/"]["vartree"].dbapi.aux_get(pkg, ["USE"])[0])
-						except SystemExit, e:
-							raise # Needed else can't exit
-						except:
-							pass
+						(old_iuse, old_use) = portage.db["/"]["vartree"].dbapi.aux_get(pkg, ["IUSE", "USE"])
+						old_iuse = portage.unique_array(old_iuse.split())
+						old_iuse.sort()
+						old_use = old_use.split()
+						is_new = False
+					else:
+						old_iuse = []
+						old_use = []
+						is_new = True
 
-					reg_use = []
-					exp_map = {}
-					for flag in iuse_split:
-						found = False
-						for var in use_expand:
-							if flag.startswith(var+"_"):
-								if var in exp_map:
-									exp_map[var]+= [flag[len(var)+1:]]
-								else:
-									exp_map[var] = [flag[len(var)+1:]]
-								found = True
-								break
-						if not found:
-							reg_use.append(flag)
+					use_expand = portage.settings["USE_EXPAND"].lower().split()
+					use_expand.sort()
+					use_expand.reverse()
+					use_expand_hidden = portage.settings["USE_EXPAND_HIDDEN"].lower().split()
 
-					usestr = create_use_string(reg_use, cur_use, old_use, portage.settings.usemask)
-					if usestr:
-						verboseadd += ('USE="%s" ' % usestr)
+					def map_to_use_expand(myvals):
+						ret = {}
+						for exp in use_expand:
+							ret[exp] = []
+							for val in myvals[:]:
+								if val.startswith(exp.lower()+"_"):
+									ret[exp].append(val[len(exp)+1:])
+									myvals.remove(val)
+						ret["USE"] = myvals
+						for exp in use_expand_hidden:
+							if exp in ret:
+								del ret[exp]
+						return ret
 
-					for var in use_expand:
-						if var not in exp_map:
-							continue
-						expcur = []
-						expold = []
-						expmask = []
-						for flag in exp_map[var]:
-							if var+"_"+flag in cur_use:
-								expcur+= [flag]
-							if var+"_"+flag in old_use:
-								expold+= [flag]
-							if var+"_"+flag in portage.settings.usemask:
-								expmask+= [flag]
-						verboseadd += ('%s="%s" ' % (var.upper(), create_use_string(exp_map[var],expcur,expold,expmask)))
+					cur_iuse_map = map_to_use_expand(cur_iuse)
+					cur_use_map = map_to_use_expand(cur_use)
+					old_iuse_map = map_to_use_expand(old_iuse)
+					old_use_map = map_to_use_expand(old_use)
 
+					use_expand.sort()
+					use_expand.insert(0, "USE")
+					
+					for key in use_expand:
+						verboseadd += create_use_string(key, cur_iuse_map[key], cur_use_map[key],
+						                                old_iuse_map[key], cur_use_map[key], is_new)
+
+				if "--verbose" in myopts:
 					# size verbose
 					mysize=0
 					if x[0] == "ebuild" and x[-1]!="nomerge":
