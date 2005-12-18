@@ -10,7 +10,6 @@ except ImportError:
 	import pickle
 import os
 import fs_template
-from template import reconstruct_eclasses
 import cache_errors
 
 
