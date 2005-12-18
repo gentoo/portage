@@ -1470,18 +1470,14 @@ class depgraph:
 		totalsize=0
 
 		if "--verbose" in myopts:
-			# Original USE display
+			# Full USE display
 			def create_use_string(name, cur_iuse, cur_use, old_iuse, old_use, is_new):
-				if name != "USE":
-					return ""
-				usestrs=[]
+				usestrs = []
 				for flag in cur_iuse:
-					if flag in portage.settings.usemask:
-						continue
 					suffix = ""
 					if flag in cur_use:
 						color = red
-						prefix = "+"
+						prefix = ""
 					else:
 						color = blue
 						prefix = "-"
@@ -1491,12 +1487,35 @@ class depgraph:
 					usestrs.append(color(prefix+flag)+suffix)
 				ret = " ".join(usestrs)
 				if ret:
-					ret += " "
+					ret = '%s="%s" ' % (name, ret)
 				return ret
 		else:
-			# New compact USE display
+			# Changed-since-previous USE display
 			def create_use_string(name, cur_iuse, cur_use, old_iuse, old_use, is_new):
-				return ""
+				enabled = []
+				disabled = []
+				for flag in cur_iuse:
+					if flag in cur_use:
+						if flag in old_use:
+							enabled.append(red(flag))
+						else:
+							enabled.append(green(flag)+"*")
+					else:
+						if flag in old_use:
+							disabled.append(green("-"+flag)+"*")
+						elif is_new or flag not in old_iuse:
+							disabled.append(blue("-"+flag))
+				enabled = " ".join(enabled)
+				disabled = " ".join(disabled)
+				if enabled and disabled:
+					ret = enabled + " " + disabled
+				elif enabled:
+					ret = enabled
+				else:
+					ret = disabled
+				if ret:
+					ret = '%s="%s" ' % (name, ret)
+				return ret
 
 		if "--verbose" in myopts:
 			overlays = string.split(portage.settings['PORTDIR_OVERLAY'])
@@ -1598,8 +1617,10 @@ class depgraph:
 						cur_iuse = []
 
 					cur_iuse = portage.unique_array(cur_iuse)
+					cur_iuse = [flag for flag in cur_iuse if flag not in portage.settings.usemask]
 					cur_iuse.sort()
 					cur_use = self.applied_useflags[x[2]]
+					cur_use = [flag for flag in cur_use if flag in cur_iuse]
 
 					if myoldbest:
 						pkg = myoldbest
@@ -1615,6 +1636,8 @@ class depgraph:
 						old_iuse = []
 						old_use = []
 						is_new = True
+					old_iuse = [flag for flag in old_iuse if flag not in portage.settings.usemask]
+					old_use = [flag for flag in old_use if flag in old_iuse]
 
 					use_expand = portage.settings["USE_EXPAND"].lower().split()
 					use_expand.sort()
