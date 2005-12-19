@@ -15,4 +15,4 @@ def process(mysettings, cpv, logentries, fulltext):
 	elogfile.write(fulltext)
 	elogfile.close()
 
-	return
+	return elogfilename
