@@ -3125,79 +3125,72 @@ def dep_zapdeps(unreduced,reduced,myroot,use_binaries=0):
 	"""Takes an unreduced and reduced deplist and removes satisfied dependencies.
 	Returned deplist contains steps that must be taken to satisfy dependencies."""
 	writemsg("ZapDeps -- %s\n" % (use_binaries), 2)
-	if unreduced==[] or unreduced==['||'] :
+	if not reduced or unreduced == ["||"] or dep_eval(reduced):
 		return []
-	if unreduced[0]=="||":
-		if dep_eval(reduced):
-			return []
 
-		found_idx = None
-		for x in range(1, len(unreduced)):
-			if isinstance(unreduced[x], list):
-				atom_list = dep_zapdeps(unreduced[x], reduced[x], myroot, use_binaries=use_binaries)
-			else:
-				atom_list = [unreduced[x]]
-			all_found = True
-			for atom in atom_list:
-				if not db[myroot]["vartree"].dbapi.match(atom):
-					all_found = False
-					break
-			if all_found:
-				if isinstance(unreduced[x], list):
-					return atom_list
-				found_idx = x
-				break
-			if not found_idx:
-				all_found = True
-				for atom in atom_list:
-					if not db[myroot]["porttree"].dbapi.xmatch("match-visible", atom):
-						all_found = False
-						break
-				if all_found:
-					found_idx = x
+	if unreduced[0] != "||":
+		unresolved = []
+		for (dep, satisfied) in zip(unreduced, reduced):
+			if isinstance(dep, list):
+				unresolved += dep_zapdeps(dep, satisfied, myroot, use_binaries=use_binaries)
+			elif not satisfied:
+				unresolved.append(dep)
+		return unresolved
 
-		if isinstance(unreduced[found_idx], list):
-			return dep_zapdeps(unreduced[found_idx], reduced[found_idx], myroot, use_binaries=use_binaries)
+	# We're at a ( || atom ... ) type level
+	deps = unreduced[1:]
+	satisfieds = reduced[1:]
 
-		satisfied_atom = unreduced[found_idx]
-		atomkey = dep_getkey(satisfied_atom)
-		relevant_atoms = []
-		for dep in unreduced[1:]:
-			if not isinstance(dep, list) and dep_getkey(dep) == atomkey:
-				relevant_atoms.append(dep)
-
-		available_atoms = {}
-		for atom in relevant_atoms:
-			if use_binaries:
-				pkg_list = db["/"]["bintree"].dbapi.match(atom)
-			else:
-				pkg_list = db["/"]["porttree"].dbapi.xmatch("match-visible", atom)
-			if not pkg_list:
-				continue
-			pkg = best(pkg_list)
-			if pkg not in available_atoms:
-				available_atoms[pkg] = atom
-
-		if not available_atoms:
-			return [satisfied_atom]
-
-		best_pkg = best(available_atoms.keys())
-		return [available_atoms[best_pkg]]
-	else:
-		if dep_eval(reduced):
-			#deps satisfied, return empty list.
-			return []
+	target = None
+	for (dep, satisfied) in zip(deps, satisfieds):
+		if isinstance(dep, list):
+			atoms = dep_zapdeps(dep, satisfied, myroot, use_binaries=use_binaries)
 		else:
-			returnme=[]
-			x=0
-			while x<len(reduced):
-				if type(reduced[x])==types.ListType:
-					returnme += dep_zapdeps(unreduced[x],reduced[x], myroot, use_binaries=use_binaries)
-				else:
-					if reduced[x]==False:
-						returnme.append(unreduced[x])
-				x += 1
-			return returnme
+			atoms = [dep]
+		missing_atoms = [atom for atom in atoms if not db[myroot]["vartree"].dbapi.match(dep_getkey(atom))]
+
+		if not missing_atoms:
+			if isinstance(dep, list):
+				return atoms  # Sorted out by the recursed dep_zapdeps call
+			else:
+				target = dep_getkey(dep) # An installed package that's not yet in the graph
+				break
+
+		if not target:
+			if use_binaries:
+				missing_atoms = [atom for atom in atoms if not db[myroot]["bintree"].dbapi.match(atom)]
+			else:
+				missing_atoms = [atom for atom in atoms if not db[myroot]["porttree"].dbapi.xmatch("match-visible", atom)]
+			if not missing_atoms:
+				target = (dep, satisfied)
+
+	if isinstance(target, tuple): # Nothing matching installed
+		if isinstance(target[0], list): # ... and the first available was a sublist
+			return dep_zapdeps(target[0], target[1], myroot, use_binaries=use_binaries)
+		else: # ... and the first available was a single atom
+			target = dep_getkey(target[0])
+
+	relevant_atoms = [dep for dep in deps if not isinstance(dep, list) and dep_getkey(dep) == target]
+
+	available_pkgs = {}
+	for atom in relevant_atoms:
+		if use_binaries:
+			pkg_list = db["/"]["bintree"].dbapi.match(atom)
+		else:
+			pkg_list = db["/"]["porttree"].dbapi.xmatch("match-visible", atom)
+		if not pkg_list:
+			continue
+		pkg = best(pkg_list)
+		available_pkgs[pkg] = atom
+
+	if not available_pkgs:
+		return [unreduced[0]] # All masked
+
+	target_pkg = best(available_pkgs.keys())
+	suitable_atom = available_pkgs[target_pkg]
+	return [suitable_atom]
+
+
 
 def dep_getkey(mydep):
 	if not len(mydep):
