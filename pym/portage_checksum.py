@@ -4,7 +4,7 @@
 # $Id: /var/cvsroot/gentoo-src/portage/pym/portage_checksum.py,v 1.10.2.2 2005/08/10 05:42:03 ferringb Exp $
 
 
-from portage_const import PRIVATE_PATH,PRELINK_BINARY
+from portage_const import PRIVATE_PATH,PRELINK_BINARY,HASHING_BLOCKSIZE
 import os
 import shutil
 import stat
@@ -13,6 +13,50 @@ import portage_util
 import portage_locks
 import commands
 import sha
+
+
+# actual hash functions first
+
+#dict of all available hash functions
+hashfunc_map = {}
+
+# We _try_ to load this module. If it fails we do the slightly slower fallback.
+try:
+	import fchksum
+	
+	def md5hash(filename):
+		return fchksum.fmd5t(filename)
+
+except ImportError:
+	import md5
+	def md5hash(filename):
+		return pyhash(filename, md5)
+hashfunc_map["MD5"] = md5hash
+
+def sha1hash(filename):
+	return pyhash(filename, sha)
+hashfunc_map["SHA1"] = sha1hash
+	
+# Keep pycrypto optional for now, there are no internal fallbacks for these
+try:
+	import Crypto.Hash.SHA256
+	
+	def sha256hash(filename):
+		return pyhash(filename, Crypto.Hash.SHA256)
+	hashfunc_map["SHA256"] = sha256hash
+except ImportError:
+	pass
+
+try:
+	import Crypto.Hash.RIPEMD
+	
+	def rmd160hash(filename):
+		return pyhash(filename, Crypto.Hash.RIPEMD)
+	hashfunc_map["RMD160"] = rmd160hash
+except ImportError:
+	pass
+
+# end actual hash functions
 
 prelink_capable = False
 if os.path.exists(PRELINK_BINARY):
@@ -24,17 +68,14 @@ if os.path.exists(PRELINK_BINARY):
 def perform_md5(x, calc_prelink=0):
 	return perform_checksum(x, md5hash, calc_prelink)[0]
 
-def perform_sha1(x, calc_prelink=0):
-	return perform_checksum(x, sha1hash, calc_prelink)[0]
-
 def perform_all(x, calc_prelink=0):
 	mydict = {}
-	mydict["SHA1"] = perform_sha1(x, calc_prelink)
-	mydict["MD5"] = perform_md5(x, calc_prelink)
+	for k in hashfunc_map.keys():
+		mydict[k] = perform_checksum(x, hashfunc_map[k], calc_prelink)[0]
 	return mydict
 
 def get_valid_checksum_keys():
-	return ["SHA1", "MD5"]
+	return hashfunc_map.keys()
 
 def verify_all(filename, mydict, calc_prelink=0, strict=0):
 	# Dict relates to single file only.
@@ -49,16 +90,8 @@ def verify_all(filename, mydict, calc_prelink=0, strict=0):
 	for x in mydict.keys():
 		if   x == "size":
 			continue
-		elif x == "SHA1":
-			if mydict[x] != perform_sha1(filename, calc_prelink=calc_prelink):
-				if strict:
-					raise portage_exception.DigestException, "Failed to verify '$(file)s' on checksum type '%(type)s'" % {"file":filename, "type":x}
-				else:
-					file_is_ok = False
-					reason     = "Failed on %s verification" % (x,)
-					break
-		elif x == "MD5":
-			if mydict[x] != perform_md5(filename, calc_prelink=calc_prelink):
+		elif x in hashfunc_map.keys():
+			if mydict[x] != perform_checksum(filename, hashfunc_map[x], calc_prelink=calc_prelink)[0]:
 				if strict:
 					raise portage_exception.DigestException, "Failed to verify '$(file)s' on checksum type '%(type)s'" % {"file":filename, "type":x}
 				else:
@@ -67,42 +100,19 @@ def verify_all(filename, mydict, calc_prelink=0, strict=0):
 					break
 	return file_is_ok,reason
 
-# We _try_ to load this module. If it fails we do the slow fallback.
-try:
-	import fchksum
-	
-	def md5hash(filename):
-		return fchksum.fmd5t(filename)
-
-except ImportError:
-	import md5
-	def md5hash(filename):
-		f = open(filename, 'rb')
-		blocksize=32768
-		data = f.read(blocksize)
-		size = 0L
-		sum = md5.new()
-		while data:
-			sum.update(data)
-			size = size + len(data)
-			data = f.read(blocksize)
-		f.close()
-
-		return (sum.hexdigest(),size)
-
-def sha1hash(filename):
+def pyhash(filename, hashobject):
 	f = open(filename, 'rb')
-	blocksize=32768
+	blocksize = HASHING_BLOCKSIZE
 	data = f.read(blocksize)
 	size = 0L
-	sum = sha.new()
+	sum = hashobject.new()
 	while data:
 		sum.update(data)
 		size = size + len(data)
 		data = f.read(blocksize)
 	f.close()
 
-	return (sum.hexdigest(),size)
+	return (sum.hexdigest(), size)
 
 def perform_checksum(filename, hash_function=md5hash, calc_prelink=0):
 	myfilename      = filename[:]
@@ -126,3 +136,9 @@ def perform_checksum(filename, hash_function=md5hash, calc_prelink=0):
 		portage_locks.unlockfile(mylock)
 
 	return (myhash,mysize)
+
+def perform_multiple_checksums(filename, hashes=["MD5"], calc_prelink=0):
+	rVal = {}
+	for x in hashes:
+		rVal[x] = perform_checksum(filename, hashfunc_map[x], calc_prelink)[0]
+	return rVal

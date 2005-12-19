@@ -45,6 +45,9 @@ EBUILD_PHASES			= ["setup","unpack","compile","test","install","preinst","postin
 
 EAPI = 0
 
+HASHING_BLOCKSIZE		= 32768
+MANIFEST1_HASH_FUNCTIONS = ["MD5","SHA256","RMD160"]
+
 # ===========================================================================
 # END OF CONSTANTS -- END OF CONSTANTS -- END OF CONSTANTS -- END OF CONSTANT
 # ===========================================================================

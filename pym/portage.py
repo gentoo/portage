@@ -1917,7 +1917,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 							if not fetchonly:
 								fetched=2
 							else:
-								# Check md5sum's at each fetch for fetchonly.
+								# Verify checksums at each fetch for fetchonly.
 								verified_ok,reason = portage_checksum.verify_all(mysettings["DISTDIR"]+"/"+myfile, mydigests[myfile])
 								if not verified_ok:
 									writemsg("!!! Previously fetched file: "+str(myfile)+"\n!!! Reason: "+reason+"\nRefetching...\n\n")
@@ -1990,7 +1990,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						try:
 							mystat=os.stat(mysettings["DISTDIR"]+"/"+myfile)
 							# no exception?  file exists. let digestcheck() report
-							# an appropriately for size or md5 errors
+							# an appropriately for size or checksum errors
 							if (mystat[stat.ST_SIZE]<mydigests[myfile]["size"]):
 								# Fetch failed... Try the next one... Kill 404 files though.
 								if (mystat[stat.ST_SIZE]<100000) and (len(myfile)>4) and not ((myfile[-5:]==".html") or (myfile[-4:]==".htm")):
@@ -2013,7 +2013,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 								fetched=2
 								break
 							else:
-								# File is the correct size--check the MD5 sum for the fetched
+								# File is the correct size--check the checksums for the fetched
 								# file NOW, for those users who don't have a stable/continuous
 								# net connection. This way we have a chance to try to download
 								# from another mirror...
@@ -2061,7 +2061,7 @@ def digestCreate(myfiles,basedir,oldDigest={}):
 				print "!!! Given file does not appear to be readable. Does it exist?"
 				print "!!! File:",myfile
 				return None
-			mydigests[x] = portage_checksum.perform_all(myfile)
+			mydigests[x] = portage_checksum.perform_multiple_checksums(myfile, hashes=portage_const.MANIFEST1_HASH_FUNCTIONS)
 			mysize       = os.stat(myfile)[stat.ST_SIZE]
 		else:
 			if x in oldDigest:
@@ -2094,11 +2094,6 @@ def digestCreateLines(filelist, mydict):
 			myline += " "+mysum
 			myline += " "+myarchive
 			myline += " "+str(mysize)
-			if sumName != "MD5":
-				# XXXXXXXXXXXXXXXX This cannot be used!
-				# Older portage make very dumb assumptions about the formats.
-				# We need a lead-in period before we break everything.
-				continue
 			mylines.append(myline)
 	return mylines
 
@@ -2219,9 +2214,10 @@ def digestgen(myarchives,mysettings,overwrite=1,manifestonly=0):
 
 def digestParseFile(myfilename):
 	"""(filename) -- Parses a given file for entries matching:
-	MD5 MD5_STRING_OF_HEX_CHARS FILE_NAME FILE_SIZE
-	Ignores lines that do not begin with 'MD5' and returns a
-	dict with the filenames as keys and [md5,size] as the values."""
+	<checksumkey> <checksum_hex_string> <filename> <filesize>
+	Ignores lines that don't start with a valid checksum identifier
+	and returns a dict with the filenames as keys and {checksumkey:checksum}
+	as the values."""
 
 	if not os.path.exists(myfilename):
 		return None
@@ -2254,7 +2250,7 @@ def digestParseFile(myfilename):
 def digestCheckFiles(myfiles, mydigests, basedir, note="", strict=0):
 	"""(fileslist, digestdict, basedir) -- Takes a list of files and a dict
 	of their digests and checks the digests against the indicated files in
-	the basedir given. Returns 1 only if all files exist and match the md5s.
+	the basedir given. Returns 1 only if all files exist and match the checksums.
 	"""
 	for x in myfiles:
 		if not mydigests.has_key(x):
@@ -2281,12 +2277,12 @@ def digestCheckFiles(myfiles, mydigests, basedir, note="", strict=0):
 			print
 			return 0
 		else:
-			print ">>> md5 "+note+" ;-)",x
+			print ">>> checksums "+note+" ;-)",x
 	return 1
 
 
 def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
-	"""Checks md5sums.  Assumes all files have been downloaded."""
+	"""Verifies checksums.  Assumes all files have been downloaded."""
 	# archive files
 	basedir=mysettings["DISTDIR"]+"/"
 	digestfn=mysettings["FILESDIR"]+"/digest-"+mysettings["PF"]
@@ -2328,6 +2324,7 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 		# Check the portage-related files here.
 		mymfiles=listdir(pbasedir,recursive=1,filesonly=1,ignorecvs=1,EmptyOnError=1)
 		manifest_files = mymdigests.keys()
+		# Files unrelated to the build process are ignored for verification by default
 		for x in ["Manifest", "ChangeLog", "metadata.xml"]:
 			while x in mymfiles:
 				mymfiles.remove(x)
@@ -4925,8 +4922,8 @@ class portdbapi(dbapi):
 	def getfetchsizes(self,mypkg,useflags=None,debug=0):
 		# returns a filename:size dictionnary of remaining downloads
 		mydigest=self.finddigest(mypkg)
-		mymd5s=digestParseFile(mydigest)
-		if not mymd5s:
+		checksums=digestParseFile(mydigest)
+		if not checksums:
 			if debug: print "[empty/missing/bad digest]: "+mypkg
 			return None
 		filesdict={}
@@ -4935,14 +4932,14 @@ class portdbapi(dbapi):
 		else:
 			myuris, myfiles = self.getfetchlist(mypkg,useflags=useflags)
 		#XXX: maybe this should be improved: take partial downloads
-		# into account? check md5sums?
+		# into account? check checksums?
 		for myfile in myfiles:
-			if debug and myfile not in mymd5s.keys():
+			if debug and myfile not in checksums.keys():
 				print "[bad digest]: missing",myfile,"for",mypkg
-			elif myfile in mymd5s.keys():
+			elif myfile in checksums.keys():
 				distfile=settings["DISTDIR"]+"/"+myfile
 				if not os.access(distfile, os.R_OK):
-					filesdict[myfile]=int(mymd5s[myfile]["size"])
+					filesdict[myfile]=int(checksums[myfile]["size"])
 		return filesdict
 
 	def fetch_check(self, mypkg, useflags=None, mysettings=None, all=False):
