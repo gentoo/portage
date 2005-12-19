@@ -83,20 +83,22 @@ def verify_all(filename, mydict, calc_prelink=0, strict=0):
 	file_is_ok = True
 	reason     = "Reason unknown"
 	try:
-		if mydict["size"] != os.stat(filename)[stat.ST_SIZE]:
-			return False,"Filesize does not match recorded size"
+		mysize = os.stat(filename)[stat.ST_SIZE]
+		if mydict["size"] != mysize:
+			return False,("Filesize does not match recorded size", mysize, mydict["size"])
 	except OSError, e:
 		return False, str(e)
 	for x in mydict.keys():
 		if   x == "size":
 			continue
 		elif x in hashfunc_map.keys():
-			if mydict[x] != perform_checksum(filename, hashfunc_map[x], calc_prelink=calc_prelink)[0]:
+			myhash = perform_checksum(filename, hashfunc_map[x], calc_prelink=calc_prelink)[0]
+			if mydict[x] != myhash:
 				if strict:
 					raise portage_exception.DigestException, "Failed to verify '$(file)s' on checksum type '%(type)s'" % {"file":filename, "type":x}
 				else:
 					file_is_ok = False
-					reason     = "Failed on %s verification" % (x,)
+					reason     = (("Failed on %s verification" % x), myhash,mydict[x])
 					break
 	return file_is_ok,reason
 

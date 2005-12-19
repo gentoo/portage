@@ -1920,7 +1920,11 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 								# Verify checksums at each fetch for fetchonly.
 								verified_ok,reason = portage_checksum.verify_all(mysettings["DISTDIR"]+"/"+myfile, mydigests[myfile])
 								if not verified_ok:
-									writemsg("!!! Previously fetched file: "+str(myfile)+"\n!!! Reason: "+reason+"\nRefetching...\n\n")
+									writemsg("!!! Previously fetched file: "+str(myfile)+"\n")
+									writemsg("!!! Reason: "+reason[0]+"\n")
+									writemsg("!!! Got:      "+reason[1]+"\n")
+									writemsg("!!! Expected: "+reason[2]+"\n")
+									writemsg("Refetching...\n\n")
 									os.unlink(mysettings["DISTDIR"]+"/"+myfile)
 									fetched=0
 								else:
@@ -2019,7 +2023,11 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 								# from another mirror...
 								verified_ok,reason = portage_checksum.verify_all(mysettings["DISTDIR"]+"/"+myfile, mydigests[myfile])
 								if not verified_ok:
-									writemsg("!!! Fetched file: "+str(myfile)+" VERIFY FAILED!\n!!! Reason: "+reason+"\nRemoving corrupt distfile...\n")
+									writemsg("!!! Fetched file: "+str(myfile)+" VERIFY FAILED!\n")
+									writemsg("!!! Reason: "+reason[0]+"\n")
+									writemsg("!!! Got:      "+reason[1]+"\n")
+									writemsg("!!! Expected: "+reason[2]+"\n")
+									writemsg("Removing corrupt distfile...\n")
 									os.unlink(mysettings["DISTDIR"]+"/"+myfile)
 									fetched=0
 								else:
@@ -2273,7 +2281,9 @@ def digestCheckFiles(myfiles, mydigests, basedir, note="", strict=0):
 			print
 			print red("!!! Digest verification Failed:")
 			print red("!!!")+"    "+str(myfile)
-			print red("!!! Reason: ")+reason
+			print red("!!! Reason: ")+reason[0]
+			print red("!!! Got:      ")+reason[1]
+			print red("!!! Expected: ")+reason[2]
 			print
 			return 0
 		else:
