@@ -3088,7 +3088,7 @@ def dep_opconvert(mysplit,myuse,mysettings):
 			#mismatched paren, error
 			return None
 		elif mysplit[mypos]=="||":
-			if ((mypos + 1) >= len(mysplit)) or (not isinstance(mysplit[mypos+1], list)):
+			if mypos + 1 >= len(mysplit) or not isinstance(mysplit[mypos+1], list):
 				# || must be followed by paren'd list
 				return None
 			try:
@@ -3141,13 +3141,13 @@ def dep_opconvert(mysplit,myuse,mysettings):
 				#colon mode
 				if enabled:
 					#choose the first option
-					if type(mysplit[mypos+1])==types.ListType:
+					if isinstance(mysplit[mypos + 1], list):
 						newsplit.append(dep_opconvert(mysplit[mypos+1],myuse,mysettings))
 					else:
 						newsplit.append(mysplit[mypos+1])
 				else:
 					#choose the alternate option
-					if type(mysplit[mypos+1])==types.ListType:
+					if isinstance(mysplit[mypos + 1], list):
 						newsplit.append(dep_opconvert(mysplit[mypos+3],myuse,mysettings))
 					else:
 						newsplit.append(mysplit[mypos+3])
@@ -3155,7 +3155,7 @@ def dep_opconvert(mysplit,myuse,mysettings):
 			else:
 				#normal use mode
 				if enabled:
-					if type(mysplit[mypos+1])==types.ListType:
+					if isinstance(mysplit[mypos + 1], list):
 						newsplit.append(dep_opconvert(mysplit[mypos+1],myuse,mysettings))
 					else:
 						newsplit.append(mysplit[mypos+1])
