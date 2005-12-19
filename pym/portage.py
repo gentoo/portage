@@ -3075,40 +3075,20 @@ def getCPFromCPV(mycpv):
 	"""Calls pkgsplit on a cpv and returns only the cp."""
 	return pkgsplit(mycpv)[0]
 
-def dep_parenreduce(mysplit,mypos=0):
-	"Accepts a list of strings, and converts '(' and ')' surrounded items to sub-lists"
-	while (mypos<len(mysplit)):
-		if (mysplit[mypos]=="("):
-			firstpos=mypos
-			mypos=mypos+1
-			while (mypos<len(mysplit)):
-				if mysplit[mypos]==")":
-					mysplit[firstpos:mypos+1]=[mysplit[firstpos+1:mypos]]
-					mypos=firstpos
-					break
-				elif mysplit[mypos]=="(":
-					#recurse
-					mysplit=dep_parenreduce(mysplit,mypos=mypos)
-				mypos=mypos+1
-		mypos=mypos+1
-	return mysplit
-
 def dep_opconvert(mysplit,myuse,mysettings):
 	"Does dependency operator conversion"
-
-	#check_config_instance(mysettings)
 
 	mypos=0
 	newsplit=[]
 	while mypos<len(mysplit):
-		if type(mysplit[mypos])==types.ListType:
+		if isinstance(mysplit[mypos], list):
 			newsplit.append(dep_opconvert(mysplit[mypos],myuse,mysettings))
 			mypos += 1
 		elif mysplit[mypos]==")":
 			#mismatched paren, error
 			return None
 		elif mysplit[mypos]=="||":
-			if ((mypos+1)>=len(mysplit)) or (type(mysplit[mypos+1])!=types.ListType):
+			if ((mypos + 1) >= len(mysplit)) or (not isinstance(mysplit[mypos+1], list)):
 				# || must be followed by paren'd list
 				return None
 			try:
@@ -3189,9 +3169,6 @@ def dep_opconvert(mysplit,myuse,mysettings):
 
 def dep_virtual(mysplit, mysettings):
 	"Does virtual dependency conversion"
-
-
-
 	newsplit=[]
 	for x in mysplit:
 		if type(x)==types.ListType:
@@ -3215,7 +3192,7 @@ def dep_virtual(mysplit, mysettings):
 	return newsplit
 
 def dep_eval(deplist):
-	if len(deplist)==0:
+	if not deplist:
 		return 1
 	if deplist[0]=="||":
 		#or list; we just need one "1"
@@ -3340,96 +3317,6 @@ def dep_getcpv(mydep):
 	elif mydep[:1] in "=<>~":
 		mydep=mydep[1:]
 	return mydep
-
-def cpv_getkey(mycpv):
-	myslash=mycpv.split("/")
-	mysplit=pkgsplit(myslash[-1])
-	mylen=len(myslash)
-	if mylen==2:
-		return myslash[0]+"/"+mysplit[0]
-	elif mylen==1:
-		return mysplit[0]
-	else:
-		return mysplit
-
-def key_expand(mykey,mydb=None,use_cache=1):
-	mysplit=mykey.split("/")
-	if len(mysplit)==1:
-		if mydb and type(mydb)==types.InstanceType:
-			for x in settings.categories:
-				if mydb.cp_list(x+"/"+mykey,use_cache=use_cache):
-					return x+"/"+mykey
-			if virts_p.has_key(mykey):
-				return(virts_p[mykey][0])
-		return "null/"+mykey
-	elif mydb:
-		if type(mydb)==types.InstanceType:
-			if (not mydb.cp_list(mykey,use_cache=use_cache)) and virts and virts.has_key(mykey):
-				return virts[mykey][0]
-		return mykey
-
-def cpv_expand(mycpv,mydb=None,use_cache=1):
-	"""Given a string (packagename or virtual) expand it into a valid
-	cat/package string. Virtuals use the mydb to determine which provided
-	virtual is a valid choice and defaults to the first element when there
-	are no installed/available candidates."""
-	myslash=mycpv.split("/")
-	mysplit=pkgsplit(myslash[-1])
-	if len(myslash)>2:
-		# this is illegal case.
-		mysplit=[]
-		mykey=mycpv
-	elif len(myslash)==2:
-		if mysplit:
-			mykey=myslash[0]+"/"+mysplit[0]
-		else:
-			mykey=mycpv
-		if mydb:
-			writemsg("mydb.__class__: %s\n" % (mydb.__class__), 1)
-			if type(mydb)==types.InstanceType:
-				if (not mydb.cp_list(mykey,use_cache=use_cache)) and virts and virts.has_key(mykey):
-					writemsg("virts[%s]: %s\n" % (str(mykey),virts[mykey]), 1)
-					mykey_orig = mykey[:]
-					for vkey in virts[mykey]:
-						if mydb.cp_list(vkey,use_cache=use_cache):
-							mykey = vkey
-							writemsg("virts chosen: %s\n" % (mykey), 1)
-							break
-					if mykey == mykey_orig:
-						mykey=virts[mykey][0]
-						writemsg("virts defaulted: %s\n" % (mykey), 1)
-			#we only perform virtual expansion if we are passed a dbapi
-	else:
-		#specific cpv, no category, ie. "foo-1.0"
-		if mysplit:
-			myp=mysplit[0]
-		else:
-			# "foo" ?
-			myp=mycpv
-		mykey=None
-		matches=[]
-		if mydb:
-			for x in settings.categories:
-				if mydb.cp_list(x+"/"+myp,use_cache=use_cache):
-					matches.append(x+"/"+myp)
-		if (len(matches)>1):
-			raise ValueError, matches
-		elif matches:
-			mykey=matches[0]
-
-		if not mykey and type(mydb)!=types.ListType:
-			if virts_p.has_key(myp):
-				mykey=virts_p[myp][0]
-			#again, we only perform virtual expansion if we have a dbapi (not a list)
-		if not mykey:
-			mykey="null/"+myp
-	if mysplit:
-		if mysplit[2]=="r0":
-			return mykey+"-"+mysplit[1]
-		else:
-			return mykey+"-"+mysplit[1]+"-"+mysplit[2]
-	else:
-		return mykey
 
 def dep_transform(mydep,oldkey,newkey):
 	origdep=mydep
@@ -3582,6 +3469,96 @@ def dep_wordreduce(mydeplist,mysettings,mydbapi,mode,use_cache=1):
 					return None
 		mypos=mypos+1
 	return deplist
+
+def cpv_getkey(mycpv):
+	myslash=mycpv.split("/")
+	mysplit=pkgsplit(myslash[-1])
+	mylen=len(myslash)
+	if mylen==2:
+		return myslash[0]+"/"+mysplit[0]
+	elif mylen==1:
+		return mysplit[0]
+	else:
+		return mysplit
+
+def key_expand(mykey,mydb=None,use_cache=1):
+	mysplit=mykey.split("/")
+	if len(mysplit)==1:
+		if mydb and type(mydb)==types.InstanceType:
+			for x in settings.categories:
+				if mydb.cp_list(x+"/"+mykey,use_cache=use_cache):
+					return x+"/"+mykey
+			if virts_p.has_key(mykey):
+				return(virts_p[mykey][0])
+		return "null/"+mykey
+	elif mydb:
+		if type(mydb)==types.InstanceType:
+			if (not mydb.cp_list(mykey,use_cache=use_cache)) and virts and virts.has_key(mykey):
+				return virts[mykey][0]
+		return mykey
+
+def cpv_expand(mycpv,mydb=None,use_cache=1):
+	"""Given a string (packagename or virtual) expand it into a valid
+	cat/package string. Virtuals use the mydb to determine which provided
+	virtual is a valid choice and defaults to the first element when there
+	are no installed/available candidates."""
+	myslash=mycpv.split("/")
+	mysplit=pkgsplit(myslash[-1])
+	if len(myslash)>2:
+		# this is illegal case.
+		mysplit=[]
+		mykey=mycpv
+	elif len(myslash)==2:
+		if mysplit:
+			mykey=myslash[0]+"/"+mysplit[0]
+		else:
+			mykey=mycpv
+		if mydb:
+			writemsg("mydb.__class__: %s\n" % (mydb.__class__), 1)
+			if type(mydb)==types.InstanceType:
+				if (not mydb.cp_list(mykey,use_cache=use_cache)) and virts and virts.has_key(mykey):
+					writemsg("virts[%s]: %s\n" % (str(mykey),virts[mykey]), 1)
+					mykey_orig = mykey[:]
+					for vkey in virts[mykey]:
+						if mydb.cp_list(vkey,use_cache=use_cache):
+							mykey = vkey
+							writemsg("virts chosen: %s\n" % (mykey), 1)
+							break
+					if mykey == mykey_orig:
+						mykey=virts[mykey][0]
+						writemsg("virts defaulted: %s\n" % (mykey), 1)
+			#we only perform virtual expansion if we are passed a dbapi
+	else:
+		#specific cpv, no category, ie. "foo-1.0"
+		if mysplit:
+			myp=mysplit[0]
+		else:
+			# "foo" ?
+			myp=mycpv
+		mykey=None
+		matches=[]
+		if mydb:
+			for x in settings.categories:
+				if mydb.cp_list(x+"/"+myp,use_cache=use_cache):
+					matches.append(x+"/"+myp)
+		if (len(matches)>1):
+			raise ValueError, matches
+		elif matches:
+			mykey=matches[0]
+
+		if not mykey and type(mydb)!=types.ListType:
+			if virts_p.has_key(myp):
+				mykey=virts_p[myp][0]
+			#again, we only perform virtual expansion if we have a dbapi (not a list)
+		if not mykey:
+			mykey="null/"+myp
+	if mysplit:
+		if mysplit[2]=="r0":
+			return mykey+"-"+mysplit[1]
+		else:
+			return mykey+"-"+mysplit[1]+"-"+mysplit[2]
+	else:
+		return mykey
 
 def getmaskingreason(mycpv):
 	from portage_util import grablines
