@@ -3131,7 +3131,7 @@ def dep_zapdeps(unreduced,reduced,myroot,use_binaries=0):
 		if dep_eval(reduced):
 			return []
 
-		found_idx = 1
+		found_idx = None
 		for x in range(1, len(unreduced)):
 			if isinstance(unreduced[x], list):
 				atom_list = dep_zapdeps(unreduced[x], reduced[x], myroot, use_binaries=use_binaries)
@@ -3147,6 +3147,14 @@ def dep_zapdeps(unreduced,reduced,myroot,use_binaries=0):
 					return atom_list
 				found_idx = x
 				break
+			if not found_idx:
+				all_found = True
+				for atom in atom_list:
+					if not db[myroot]["porttree"].dbapi.xmatch("match-visible", atom):
+						all_found = False
+						break
+				if all_found:
+					found_idx = x
 
 		if isinstance(unreduced[found_idx], list):
 			return dep_zapdeps(unreduced[found_idx], reduced[found_idx], myroot, use_binaries=use_binaries)
