@@ -4712,22 +4712,7 @@ class portdbapi(dbapi):
 		ret=None
 		if psplit:
 			for x in self.porttrees:
-				# XXX Why are there errors here? XXX
-				try:
-					file=x+"/"+mysplit[0]+"/"+psplit[0]+"/"+mysplit[1]+".ebuild"
-				except SystemExit, e:
-					raise
-				except Exception, e:
-					print
-					print "!!! Problem with determining the name/location of an ebuild."
-					print "!!! Please report this on IRC and bugs if you are not causing it."
-					print "!!! mycpv:  ",mycpv
-					print "!!! mysplit:",mysplit
-					print "!!! psplit: ",psplit
-					print "!!! error:  ",e
-					print
-					sys.exit(17)
-
+				file=x+"/"+mysplit[0]+"/"+psplit[0]+"/"+mysplit[1]+".ebuild"
 				if os.access(file, os.R_OK):
 					# when found
 					ret=[file, x]
