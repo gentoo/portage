@@ -26,7 +26,7 @@ save_elf_debug() {
 	${CHOST}-objcopy --add-gnu-debuglink=${y}.debug ${x}
 }
 
-for x in $(scanelf -yRBF%F $@) $(for y in "$@"; do find $y -type f -name '*.a' -print0 ; done); do
+for x in $(scanelf -yRBF%F "$@") $(for y in "$@"; do find $y -type f -name '*.a' -print0 ; done); do
 	if [ ${banner} -eq 1 ] ; then
 		echo "strip: ${STRIP} ${PORTAGE_STRIP_FLAGS}"
 		banner=0
@@ -35,11 +35,11 @@ for x in $(scanelf -yRBF%F $@) $(for y in "$@"; do find $y -type f -name '*.a' -
 	f=$(file "${x}") || continue
 	[ -z "${f}" ] && continue
 
-	if [ -z "${f/*current ar archive*/}" ]; then
+	if [[ ${f} == *"current ar archive"* ]] ; then
 		echo "   ${x:${#D}:${#x}}"
 		${STRIP} -g "${x}"
 	fi
-	if [ -z "${f/*SB executable*/}" ] || [ -z "${f/*SB shared object*/}" ]; then
+	if [[ ${f} == *"SB executable"* || ${f} == *"SB shared object"* ]] ; then
 		echo "   ${x:${#D}:${#x}}"
 		save_elf_debug "${x}"
 		${STRIP} ${PORTAGE_STRIP_FLAGS} "${x}"
