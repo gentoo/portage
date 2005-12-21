@@ -5442,8 +5442,7 @@ class binarytree(packagetree):
 			raise
 		except:
 			pass
-		getbinpkg.file_get(settings["PORTAGE_BINHOST"]+"/"+tbz2name, mydest, fcmd=settings["RESUMECOMMAND"])
-		return
+		return getbinpkg.file_get(settings["PORTAGE_BINHOST"]+"/"+tbz2name, mydest, fcmd=settings["RESUMECOMMAND"])
 
 	def getslot(self,mycatpkg):
 		"Get a slot for a catpkg; assume it exists."

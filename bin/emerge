@@ -2037,7 +2037,8 @@ class depgraph:
 				if portage.db[portage.root]["bintree"].isremote(x[2]):
 					short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Fetch"
 					emergelog(" --- ("+str(mergecount)+" of "+str(len(mymergelist))+") Fetching Binary ("+x[pkgindex]+"::"+mytbz2+")", short_msg=short_msg)
-					portage.db[portage.root]["bintree"].gettbz2(x[2])
+					if not portage.db[portage.root]["bintree"].gettbz2(x[2]):
+						sys.exit(1)
 
 				if ("--fetchonly" in myopts) or ("--fetch-all-uri" in myopts):
 					continue
