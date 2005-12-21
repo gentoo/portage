@@ -63,7 +63,7 @@ def use_reduce(deparray, uselist=[], masklist=[], matchall=0, excludeall=[]):
 	# Quick validity checks
 	for x in range(len(deparray)):
 		if deparray[x] in ["||","&&"]:
-			if len(deparray) == x:
+			if len(deparray) - 1 == x:
 				# Operator is the last element
 				raise portage_exception.InvalidDependString("INVALID "+deparray[x]+" DEPEND STRING: "+str(deparray))
 			if type(deparray[x+1]) != types.ListType:
