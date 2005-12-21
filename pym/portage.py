@@ -1281,7 +1281,11 @@ class config:
 
 	def load_best_module(self,property_string):
 		best_mod = best_from_dict(property_string,self.modules,self.module_priority)
-		return load_mod(best_mod)
+		try:
+			mod = load_mod(best_mod)
+		except:
+			writemsg(red("!!! Failed to import module '%s'\n") % best_mod)
+			sys.exit(1)
 
 	def lock(self):
 		self.locked = 1
