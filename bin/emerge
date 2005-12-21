@@ -350,6 +350,9 @@ if ("--searchdesc" in myopts):
 if ("getbinpkg" in portage.features):
 	myopts.append("--getbinpkg")
 
+if "--skipfirst" in myopts and "--resume" not in myopts:
+	myopts.append("--resume")
+
 if ("--getbinpkgonly" in myopts) and not ("--usepkgonly" in myopts):
 	myopts.append("--usepkgonly")
 
