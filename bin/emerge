@@ -1418,6 +1418,14 @@ class depgraph:
 
 			mylist = sysdict.keys()
 
+		newlist = []
+		for atom in mylist:
+			if portage.dep_getkey(atom).split("/")[-1] == "portage":
+				newlist.insert(0, atom)
+			else:
+				newlist.append(atom)
+		mylist = newlist
+		
 		for mydep in mylist:
 			try:
 				if not self.select_dep(portage.root, mydep, raise_on_missing=True):
