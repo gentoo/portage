@@ -1510,7 +1510,7 @@ class depgraph:
 							enabled.append(red(flag))
 					elif flag not in cur_use and flag in old_use:
 						disabled.append(green("-"+flag)+"*")
-					elif is_new:
+					elif is_new or flag not in old_iuse:
 						disabled.append(blue("-"+flag))
 				enabled = " ".join(enabled)
 				disabled = " ".join(disabled)
@@ -1674,7 +1674,7 @@ class depgraph:
 					use_expand.insert(0, "USE")
 					
 					for key in use_expand:
-						verboseadd += create_use_string(key, cur_iuse_map[key], cur_use_map[key],
+						verboseadd += create_use_string(key.upper(), cur_iuse_map[key], cur_use_map[key],
 						                                old_iuse_map[key], cur_use_map[key], is_new)
 
 				if "--verbose" in myopts:
