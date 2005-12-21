@@ -2875,7 +2875,7 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 
 	chk_updated_cfg_files()
 
-	if(mybestpv != mypvs):
+	if(mybestpv != mypvs) and not "--quiet" in myopts:
 		print
 		print red(" * ")+bold("An update to portage is available.")+" It is _highly_ recommended"
 		print red(" * ")+"that you update portage now, before any other packages are updated."
