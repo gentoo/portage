@@ -1286,6 +1286,7 @@ class config:
 		except:
 			writemsg(red("!!! Failed to import module '%s'\n") % best_mod)
 			sys.exit(1)
+		return mod
 
 	def lock(self):
 		self.locked = 1
