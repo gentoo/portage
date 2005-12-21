@@ -235,8 +235,9 @@ Enable the sandbox in the compile phase, when running without root privs (\fIuse
 .RE
 .TP
 \fBFETCHCOMMAND\fR
-This variable contains the command used for fetching package\-sources from
-the internet.
+This variable contains the command used for fetching package sources from
+the internet.  It must contain the full path to the executable as well as the
+place-holders \\${DISTDIR} and \\${URI}.
 .TP
 \fBGENTOO_MIRRORS\fR = \fI[URLs]\fR
 Insert your space\-seperated list of local mirrors here.  These
@@ -301,8 +302,9 @@ directories.
 Defaults to no value.
 .TP
 \fBRESUMECOMMAND\fR
-This variable contains the command used for resuming package\-sources that
-have been partially downloaded by the \fBFETCHCOMMAND\fR.
+This variable contains the command used for resuming package sources that
+have been partially downloaded.  It should be defined using the same format
+as \fBFETCHCOMMAND\fR.
 .TP
 \fBROOT\fR = \fI[path]\fR
 Use \fBROOT\fR to specify the target root filesystem to be used for merging 
