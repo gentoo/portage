@@ -2700,7 +2700,7 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 			if not os.access(mysettings["PORT_LOGDIR"],os.F_OK):
 				try:
 					os.mkdir(mysettings["PORT_LOGDIR"])
-				except OSError:
+				except OSError, e:
 					print "!!! Unable to create PORT_LOGDIR"
 					print "!!!",e
 			if os.access(mysettings["PORT_LOGDIR"]+"/",os.W_OK):
