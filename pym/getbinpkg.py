@@ -362,7 +362,10 @@ def file_get(baseurl,dest,conn=None,fcmd=None):
 	myargs  = [os.path.basename(mycmd)]+mysplit[1:]
 	mypid=os.fork()
 	if mypid == 0:
-		os.execv(mycmd,myargs)
+		try:
+			os.execv(mycmd,myargs)
+		except OSError:
+			pass
 		sys.stderr.write("!!! Failed to spawn fetcher.\n")
 		sys.exit(1)
 	retval=os.waitpid(mypid,0)[1]

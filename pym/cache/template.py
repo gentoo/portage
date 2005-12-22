@@ -14,6 +14,7 @@ class database(object):
 	complete_eclass_entries_ = True
 	autocommits = False
 	cleanse_keys = False
+	serialize_eclasses = True
 
 	def __init__(self, location, label, auxdbkeys, readonly=False):
 		""" initialize the derived class; specifically, store label/keys"""
@@ -23,7 +24,6 @@ class database(object):
 		self.readonly = readonly
 		self.sync_rate = 0
 		self.updates = 0
-
 	
 	def __getitem__(self, cpv):
 		"""set a cpv to values
@@ -33,7 +33,7 @@ class database(object):
 			self.commit()
 			self.updates = 0
 		d=self._getitem(cpv)
-		if "_eclasses_" in d:
+		if self.serialize_eclasses and "_eclasses_" in d:
 			d["_eclasses_"] = reconstruct_eclasses(cpv, d["_eclasses_"])
 		return d
 
@@ -41,7 +41,6 @@ class database(object):
 		"""get cpv's values.
 		override this in derived classess"""
 		raise NotImplementedError
-
 
 	def __setitem__(self, cpv, values):
 		"""set a cpv to values
@@ -53,9 +52,9 @@ class database(object):
 			for k in d.keys():
 				if d[k] == '':
 					del d[k]
-			if "_eclasses_" in values:
+			if self.serialize_eclasses and "_eclasses_" in values:
 				d["_eclasses_"] = serialize_eclasses(d["_eclasses_"])
-		elif "_eclasses_" in values:
+		elif self.serialize_eclasses and "_eclasses_" in values:
 			d = ProtectedDict(values)
 			d["_eclasses_"] = serialize_eclasses(d["_eclasses_"])
 		else:
@@ -67,12 +66,10 @@ class database(object):
 				self.commit()
 				self.updates = 0
 
-
 	def _setitem(self, name, values):
 		"""__setitem__ calls this after readonly checks.  override it in derived classes
 		note _eclassees_ key *must* be handled"""
 		raise NotImplementedError
-
 
 	def __delitem__(self, cpv):
 		"""delete a key from the cache.
@@ -86,15 +83,12 @@ class database(object):
 			self.commit()
 			self.updates = 0
 
-
 	def _delitem(self,cpv):
 		"""__delitem__ calls this after readonly checks.  override it in derived classes"""
 		raise NotImplementedError
 
-
 	def has_key(self, cpv):
 		raise NotImplementedError
-
 
 	def keys(self):
 		return tuple(self.iterkeys())
@@ -117,6 +111,9 @@ class database(object):
 	def commit(self):
 		if not self.autocommits:
 			raise NotImplementedError
+
+	def __contains__(self, cpv):
+		return self.has_key(cpv)
 
 	def get_matches(self, match_dict):
 		"""generic function for walking the entire cache db, matching restrictions to
@@ -148,7 +145,6 @@ class database(object):
 					cont = False
 					break
 			if cont:
-#				yield cpv,vals
 				yield cpv
 
 

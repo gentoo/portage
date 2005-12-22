@@ -130,9 +130,6 @@ def exithandler(signum,frame):
 	signal.signal(signal.SIGTERM, signal.SIG_IGN)
 
 	# 0=send to *everybody* in process group
-	portageexit()
-	print "Exiting due to signal"
-	os.kill(0,signum)
 	sys.exit(1)
 
 signal.signal(signal.SIGCHLD, signal.SIG_DFL)
@@ -669,7 +666,7 @@ def env_update(makelinks=1):
 				commands.getstatusoutput("cd / ; "+portage_const.PREFIX+"/sbin/ldconfig -r "+root)
 			else:
 				commands.getstatusoutput("cd / ; "+portage_const.PREFIX+"/sbin/ldconfig -X -r "+root)
-	elif ostype == "FreeBSD":
+	elif ostype in ("FreeBSD","DragonFly"):
 		if (ld_cache_update):
 			writemsg(">>> Regenerating "+str(root)+"var/run/ld-elf.so.hints...\n")
 			commands.getstatusoutput("cd / ; "+portage_const.PREFIX+"/sbin/ldconfig -i -elf -f "+str(root)+portage_const.PREFIX+"var/run/ld-elf.so.hints "+str(root)+portage_const.PREFIX+"etc/ld.so.conf")
@@ -1286,7 +1283,12 @@ class config:
 
 	def load_best_module(self,property_string):
 		best_mod = best_from_dict(property_string,self.modules,self.module_priority)
-		return load_mod(best_mod)
+		try:
+			mod = load_mod(best_mod)
+		except:
+			writemsg(red("!!! Failed to import module '%s'\n") % best_mod)
+			sys.exit(1)
+		return mod
 
 	def lock(self):
 		self.locked = 1
@@ -1922,10 +1924,14 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 							if not fetchonly:
 								fetched=2
 							else:
-								# Check md5sum's at each fetch for fetchonly.
+								# Verify checksums at each fetch for fetchonly.
 								verified_ok,reason = portage_checksum.verify_all(mysettings["DISTDIR"]+"/"+myfile, mydigests[myfile])
 								if not verified_ok:
-									writemsg("!!! Previously fetched file: "+str(myfile)+"\n!!! Reason: "+reason+"\nRefetching...\n\n")
+									writemsg("!!! Previously fetched file: "+str(myfile)+"\n")
+									writemsg("!!! Reason: "+reason[0]+"\n")
+									writemsg("!!! Got:      "+reason[1]+"\n")
+									writemsg("!!! Expected: "+reason[2]+"\n")
+									writemsg("Refetching...\n\n")
 									os.unlink(mysettings["DISTDIR"]+"/"+myfile)
 									fetched=0
 								else:
@@ -1995,7 +2001,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						try:
 							mystat=os.stat(mysettings["DISTDIR"]+"/"+myfile)
 							# no exception?  file exists. let digestcheck() report
-							# an appropriately for size or md5 errors
+							# an appropriately for size or checksum errors
 							if (mystat[stat.ST_SIZE]<mydigests[myfile]["size"]):
 								# Fetch failed... Try the next one... Kill 404 files though.
 								if (mystat[stat.ST_SIZE]<100000) and (len(myfile)>4) and not ((myfile[-5:]==".html") or (myfile[-4:]==".htm")):
@@ -2018,13 +2024,17 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 								fetched=2
 								break
 							else:
-								# File is the correct size--check the MD5 sum for the fetched
+								# File is the correct size--check the checksums for the fetched
 								# file NOW, for those users who don't have a stable/continuous
 								# net connection. This way we have a chance to try to download
 								# from another mirror...
 								verified_ok,reason = portage_checksum.verify_all(mysettings["DISTDIR"]+"/"+myfile, mydigests[myfile])
 								if not verified_ok:
-									writemsg("!!! Fetched file: "+str(myfile)+" VERIFY FAILED!\n!!! Reason: "+reason+"\nRemoving corrupt distfile...\n")
+									writemsg("!!! Fetched file: "+str(myfile)+" VERIFY FAILED!\n")
+									writemsg("!!! Reason: "+reason[0]+"\n")
+									writemsg("!!! Got:      "+reason[1]+"\n")
+									writemsg("!!! Expected: "+reason[2]+"\n")
+									writemsg("Removing corrupt distfile...\n")
 									os.unlink(mysettings["DISTDIR"]+"/"+myfile)
 									fetched=0
 								else:
@@ -2066,7 +2076,7 @@ def digestCreate(myfiles,basedir,oldDigest={}):
 				print "!!! Given file does not appear to be readable. Does it exist?"
 				print "!!! File:",myfile
 				return None
-			mydigests[x] = portage_checksum.perform_all(myfile)
+			mydigests[x] = portage_checksum.perform_multiple_checksums(myfile, hashes=portage_const.MANIFEST1_HASH_FUNCTIONS)
 			mysize       = os.stat(myfile)[stat.ST_SIZE]
 		else:
 			if x in oldDigest:
@@ -2099,11 +2109,6 @@ def digestCreateLines(filelist, mydict):
 			myline += " "+mysum
 			myline += " "+myarchive
 			myline += " "+str(mysize)
-			if sumName != "MD5":
-				# XXXXXXXXXXXXXXXX This cannot be used!
-				# Older portage make very dumb assumptions about the formats.
-				# We need a lead-in period before we break everything.
-				continue
 			mylines.append(myline)
 	return mylines
 
@@ -2224,9 +2229,10 @@ def digestgen(myarchives,mysettings,overwrite=1,manifestonly=0):
 
 def digestParseFile(myfilename):
 	"""(filename) -- Parses a given file for entries matching:
-	MD5 MD5_STRING_OF_HEX_CHARS FILE_NAME FILE_SIZE
-	Ignores lines that do not begin with 'MD5' and returns a
-	dict with the filenames as keys and [md5,size] as the values."""
+	<checksumkey> <checksum_hex_string> <filename> <filesize>
+	Ignores lines that don't start with a valid checksum identifier
+	and returns a dict with the filenames as keys and {checksumkey:checksum}
+	as the values."""
 
 	if not os.path.exists(myfilename):
 		return None
@@ -2259,7 +2265,7 @@ def digestParseFile(myfilename):
 def digestCheckFiles(myfiles, mydigests, basedir, note="", strict=0):
 	"""(fileslist, digestdict, basedir) -- Takes a list of files and a dict
 	of their digests and checks the digests against the indicated files in
-	the basedir given. Returns 1 only if all files exist and match the md5s.
+	the basedir given. Returns 1 only if all files exist and match the checksums.
 	"""
 	for x in myfiles:
 		if not mydigests.has_key(x):
@@ -2282,16 +2288,18 @@ def digestCheckFiles(myfiles, mydigests, basedir, note="", strict=0):
 			print
 			print red("!!! Digest verification Failed:")
 			print red("!!!")+"    "+str(myfile)
-			print red("!!! Reason: ")+reason
+			print red("!!! Reason: ")+reason[0]
+			print red("!!! Got:      ")+reason[1]
+			print red("!!! Expected: ")+reason[2]
 			print
 			return 0
 		else:
-			print ">>> md5 "+note+" ;-)",x
+			print ">>> checksums "+note+" ;-)",x
 	return 1
 
 
 def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
-	"""Checks md5sums.  Assumes all files have been downloaded."""
+	"""Verifies checksums.  Assumes all files have been downloaded."""
 	# archive files
 	basedir=mysettings["DISTDIR"]+"/"
 	digestfn=mysettings["FILESDIR"]+"/digest-"+mysettings["PF"]
@@ -2333,6 +2341,7 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 		# Check the portage-related files here.
 		mymfiles=listdir(pbasedir,recursive=1,filesonly=1,ignorecvs=1,EmptyOnError=1)
 		manifest_files = mymdigests.keys()
+		# Files unrelated to the build process are ignored for verification by default
 		for x in ["Manifest", "ChangeLog", "metadata.xml"]:
 			while x in mymfiles:
 				mymfiles.remove(x)
@@ -3080,123 +3089,9 @@ def getCPFromCPV(mycpv):
 	"""Calls pkgsplit on a cpv and returns only the cp."""
 	return pkgsplit(mycpv)[0]
 
-def dep_parenreduce(mysplit,mypos=0):
-	"Accepts a list of strings, and converts '(' and ')' surrounded items to sub-lists"
-	while (mypos<len(mysplit)):
-		if (mysplit[mypos]=="("):
-			firstpos=mypos
-			mypos=mypos+1
-			while (mypos<len(mysplit)):
-				if mysplit[mypos]==")":
-					mysplit[firstpos:mypos+1]=[mysplit[firstpos+1:mypos]]
-					mypos=firstpos
-					break
-				elif mysplit[mypos]=="(":
-					#recurse
-					mysplit=dep_parenreduce(mysplit,mypos=mypos)
-				mypos=mypos+1
-		mypos=mypos+1
-	return mysplit
-
-def dep_opconvert(mysplit,myuse,mysettings):
-	"Does dependency operator conversion"
-
-	#check_config_instance(mysettings)
-
-	mypos=0
-	newsplit=[]
-	while mypos<len(mysplit):
-		if type(mysplit[mypos])==types.ListType:
-			newsplit.append(dep_opconvert(mysplit[mypos],myuse,mysettings))
-			mypos += 1
-		elif mysplit[mypos]==")":
-			#mismatched paren, error
-			return None
-		elif mysplit[mypos]=="||":
-			if ((mypos+1)>=len(mysplit)) or (type(mysplit[mypos+1])!=types.ListType):
-				# || must be followed by paren'd list
-				return None
-			try:
-				mynew=dep_opconvert(mysplit[mypos+1],myuse,mysettings)
-			except SystemExit, e:
-				raise
-			except Exception, e:
-				print "!!! Unable to satisfy OR dependency:",string.join(mysplit," || ")
-				raise e
-			mynew[0:0]=["||"]
-			newsplit.append(mynew)
-			mypos += 2
-		elif mysplit[mypos][-1]=="?":
-			#uses clause, i.e "gnome? ( foo bar )"
-			#this is a quick and dirty hack so that repoman can enable all USE vars:
-			if (len(myuse)==1) and (myuse[0]=="*") and mysettings:
-				# enable it even if it's ! (for repoman) but kill it if it's
-				# an arch variable that isn't for this arch. XXX Sparc64?
-				k=mysplit[mypos][:-1]
-				if k[0]=="!":
-					k=k[1:]
-				if k not in archlist and k not in mysettings.usemask:
-					enabled=1
-				elif k in archlist:
-					if k==mysettings["ARCH"]:
-						if mysplit[mypos][0]=="!":
-							enabled=0
-						else:
-							enabled=1
-					elif mysplit[mypos][0]=="!":
-						enabled=1
-					else:
-						enabled=0
-				else:
-					enabled=0
-			else:
-				if mysplit[mypos][0]=="!":
-					myusevar=mysplit[mypos][1:-1]
-					if myusevar in myuse:
-						enabled=0
-					else:
-						enabled=1
-				else:
-					myusevar=mysplit[mypos][:-1]
-					if myusevar in myuse:
-						enabled=1
-					else:
-						enabled=0
-			if (mypos+2<len(mysplit)) and (mysplit[mypos+2]==":"):
-				#colon mode
-				if enabled:
-					#choose the first option
-					if type(mysplit[mypos+1])==types.ListType:
-						newsplit.append(dep_opconvert(mysplit[mypos+1],myuse,mysettings))
-					else:
-						newsplit.append(mysplit[mypos+1])
-				else:
-					#choose the alternate option
-					if type(mysplit[mypos+1])==types.ListType:
-						newsplit.append(dep_opconvert(mysplit[mypos+3],myuse,mysettings))
-					else:
-						newsplit.append(mysplit[mypos+3])
-				mypos += 4
-			else:
-				#normal use mode
-				if enabled:
-					if type(mysplit[mypos+1])==types.ListType:
-						newsplit.append(dep_opconvert(mysplit[mypos+1],myuse,mysettings))
-					else:
-						newsplit.append(mysplit[mypos+1])
-				#otherwise, continue.
-				mypos += 2
-		else:
-			#normal item
-			newsplit.append(mysplit[mypos])
-			mypos += 1
-	return newsplit
 
 def dep_virtual(mysplit, mysettings):
 	"Does virtual dependency conversion"
-
-
-
 	newsplit=[]
 	for x in mysplit:
 		if type(x)==types.ListType:
@@ -3220,7 +3115,7 @@ def dep_virtual(mysplit, mysettings):
 	return newsplit
 
 def dep_eval(deplist):
-	if len(deplist)==0:
+	if not deplist:
 		return 1
 	if deplist[0]=="||":
 		#or list; we just need one "1"
@@ -3240,111 +3135,76 @@ def dep_eval(deplist):
 				return 0
 		return 1
 
-def dep_zapdeps(unreduced,reduced,vardbapi=None,use_binaries=0):
+def dep_zapdeps(unreduced,reduced,myroot,use_binaries=0):
 	"""Takes an unreduced and reduced deplist and removes satisfied dependencies.
 	Returned deplist contains steps that must be taken to satisfy dependencies."""
 	writemsg("ZapDeps -- %s\n" % (use_binaries), 2)
-	if unreduced==[] or unreduced==['||'] :
+	if not reduced or unreduced == ["||"] or dep_eval(reduced):
 		return []
-	if unreduced[0]=="||":
-		if dep_eval(reduced):
-			#deps satisfied, return empty list.
-			return []
+
+	if unreduced[0] != "||":
+		unresolved = []
+		for (dep, satisfied) in zip(unreduced, reduced):
+			if isinstance(dep, list):
+				unresolved += dep_zapdeps(dep, satisfied, myroot, use_binaries=use_binaries)
+			elif not satisfied:
+				unresolved.append(dep)
+		return unresolved
+
+	# We're at a ( || atom ... ) type level
+	deps = unreduced[1:]
+	satisfieds = reduced[1:]
+
+	target = None
+	for (dep, satisfied) in zip(deps, satisfieds):
+		if isinstance(dep, list):
+			atoms = dep_zapdeps(dep, satisfied, myroot, use_binaries=use_binaries)
 		else:
-			#try to find an installed dep.
-			### We use fakedb when --update now, so we can't use local vardbapi here.
-			### This should be fixed in the feature.
-			### see bug 45468.
-			##if vardbapi:
-			##	mydbapi=vardbapi
-			##else:
-			##	mydbapi=db[root]["vartree"].dbapi
-			mydbapi=db[root]["vartree"].dbapi
+			atoms = [dep]
+		missing_atoms = [atom for atom in atoms if not db[myroot]["vartree"].dbapi.match(dep_getkey(atom))]
 
-			if db["/"].has_key("porttree"):
-				myportapi=db["/"]["porttree"].dbapi
+		if not missing_atoms:
+			if isinstance(dep, list):
+				return atoms  # Sorted out by the recursed dep_zapdeps call
 			else:
-				myportapi=None
+				target = dep_getkey(dep) # An installed package that's not yet in the graph
+				break
 
-			if use_binaries and db["/"].has_key("bintree"):
-				mybinapi=db["/"]["bintree"].dbapi
-				writemsg("Using bintree...\n",2)
+		if not target:
+			if use_binaries:
+				missing_atoms = [atom for atom in atoms if not db[myroot]["bintree"].dbapi.match(atom)]
 			else:
-				mybinapi=None
+				missing_atoms = [atom for atom in atoms if not db[myroot]["porttree"].dbapi.xmatch("match-visible", atom)]
+			if not missing_atoms:
+				target = (dep, satisfied)
 
-			x=1
-			candidate=[]
-			while x<len(reduced):
-				writemsg("x: %s, reduced[x]: %s\n" % (x,reduced[x]), 2)
-				if (type(reduced[x])==types.ListType):
-					newcand = dep_zapdeps(unreduced[x], reduced[x], vardbapi=vardbapi, use_binaries=use_binaries)
-					candidate.append(newcand)
-				else:
-					if (reduced[x]==False):
-						candidate.append([unreduced[x]])
-					else:
-						candidate.append([])
-				x+=1
+	if isinstance(target, tuple): # Nothing matching installed
+		if isinstance(target[0], list): # ... and the first available was a sublist
+			return dep_zapdeps(target[0], target[1], myroot, use_binaries=use_binaries)
+		else: # ... and the first available was a single atom
+			target = dep_getkey(target[0])
 
-			#use installed and no-masked package(s) in portage.
-			for x in candidate:
-				match=1
-				for pkg in x:
-					if not mydbapi.match(pkg):
-						match=0
-						break
-					if myportapi:
-						if not myportapi.match(pkg):
-							match=0
-							break
-				if match:
-					writemsg("Installed match: %s\n" % (x), 2)
-					return x
+	relevant_atoms = [dep for dep in deps if not isinstance(dep, list) and dep_getkey(dep) == target]
 
-			# Use binary packages if available.
-			if mybinapi:
-				for x in candidate:
-					match=1
-					for pkg in x:
-						if not mybinapi.match(pkg):
-							match=0
-							break
-						else:
-							writemsg("Binary match: %s\n" % (pkg), 2)
-					if match:
-						writemsg("Binary match final: %s\n" % (x), 2)
-						return x
-
-			#use no-masked package(s) in portage tree
-			if myportapi:
-				for x in candidate:
-					match=1
-					for pkg in x:
-						if not myportapi.match(pkg):
-							match=0
-							break
-					if match:
-						writemsg("Porttree match: %s\n" % (x), 2)
-						return x
-
-			#none of the no-masked pkg, use the first one
-			writemsg("Last resort candidate: %s\n" % (candidate[0]), 2)
-			return candidate[0]
-	else:
-		if dep_eval(reduced):
-			#deps satisfied, return empty list.
-			return []
+	available_pkgs = {}
+	for atom in relevant_atoms:
+		if use_binaries:
+			pkg_list = db["/"]["bintree"].dbapi.match(atom)
 		else:
-			returnme=[]
-			x=0
-			while x<len(reduced):
-				if type(reduced[x])==types.ListType:
-					returnme+=dep_zapdeps(unreduced[x],reduced[x], vardbapi=vardbapi, use_binaries=use_binaries)
-				else:
-					if reduced[x]==False:
-						returnme.append(unreduced[x])
-				x += 1
-			return returnme
+			pkg_list = db["/"]["porttree"].dbapi.xmatch("match-visible", atom)
+		if not pkg_list:
+			continue
+		pkg = best(pkg_list)
+		available_pkgs[pkg] = atom
+
+	if not available_pkgs:
+		return [unreduced[0]] # All masked
+
+	target_pkg = best(available_pkgs.keys())
+	suitable_atom = available_pkgs[target_pkg]
+	return [suitable_atom]
+
+
 
 def dep_getkey(mydep):
 	if not len(mydep):
@@ -3381,6 +3241,158 @@ def dep_getcpv(mydep):
 	elif mydep[:1] in "=<>~":
 		mydep=mydep[1:]
 	return mydep
+
+def dep_transform(mydep,oldkey,newkey):
+	origdep=mydep
+	if not len(mydep):
+		return mydep
+	if mydep[0]=="*":
+		mydep=mydep[1:]
+	prefix=""
+	postfix=""
+	if mydep[-1]=="*":
+		mydep=mydep[:-1]
+		postfix="*"
+	if mydep[:2] in [ ">=", "<=" ]:
+		prefix=mydep[:2]
+		mydep=mydep[2:]
+	elif mydep[:1] in "=<>~!":
+		prefix=mydep[:1]
+		mydep=mydep[1:]
+	if mydep==oldkey:
+		return prefix+newkey+postfix
+	else:
+		return origdep
+
+def dep_expand(mydep,mydb=None,use_cache=1):
+	if not len(mydep):
+		return mydep
+	if mydep[0]=="*":
+		mydep=mydep[1:]
+	prefix=""
+	postfix=""
+	if mydep[-1]=="*":
+		mydep=mydep[:-1]
+		postfix="*"
+	if mydep[:2] in [ ">=", "<=" ]:
+		prefix=mydep[:2]
+		mydep=mydep[2:]
+	elif mydep[:1] in "=<>~!":
+		prefix=mydep[:1]
+		mydep=mydep[1:]
+	return prefix+cpv_expand(mydep,mydb=mydb,use_cache=use_cache)+postfix
+
+def dep_check(depstring,mydbapi,mysettings,use="yes",mode=None,myuse=None,use_cache=1,use_binaries=0,myroot="/"):
+	"""Takes a depend string and parses the condition."""
+
+	#check_config_instance(mysettings)
+
+	if use=="all":
+		#enable everything (for repoman)
+		myusesplit=["*"]
+	elif use=="yes":
+		if myuse==None:
+			#default behavior
+			myusesplit = string.split(mysettings["USE"])
+		else:
+			myusesplit = myuse
+			# We've been given useflags to use.
+			#print "USE FLAGS PASSED IN."
+			#print myuse
+			#if "bindist" in myusesplit:
+			#	print "BINDIST is set!"
+			#else:
+			#	print "BINDIST NOT set."
+	else:
+		#we are being run by autouse(), don't consult USE vars yet.
+		# WE ALSO CANNOT USE SETTINGS
+		myusesplit=[]
+
+	#convert parenthesis to sublists
+	mysplit = portage_dep.paren_reduce(depstring)
+
+	if mysettings:
+		# XXX: use="all" is only used by repoman. Why would repoman checks want
+		# profile-masked USE flags to be enabled?
+		#if use=="all":
+		#	mymasks=archlist[:]
+		#else:
+		mymasks=mysettings.usemask+archlist[:]
+
+		while mysettings["ARCH"] in mymasks:
+			del mymasks[mymasks.index(mysettings["ARCH"])]
+		mysplit = portage_dep.use_reduce(mysplit,uselist=myusesplit,masklist=mymasks,matchall=(use=="all"),excludeall=[mysettings["ARCH"]])
+	else:
+		mysplit = portage_dep.use_reduce(mysplit,uselist=myusesplit,matchall=(use=="all"))
+
+	# Do the || conversions
+	mysplit=portage_dep.dep_opconvert(mysplit)
+
+	#convert virtual dependencies to normal packages.
+	mysplit=dep_virtual(mysplit, mysettings)
+	#if mysplit==None, then we have a parse error (paren mismatch or misplaced ||)
+	#up until here, we haven't needed to look at the database tree
+
+	if mysplit==None:
+		return [0,"Parse Error (parentheses mismatch?)"]
+	elif mysplit==[]:
+		#dependencies were reduced to nothing
+		return [1,[]]
+	mysplit2=mysplit[:]
+	mysplit2=dep_wordreduce(mysplit2,mysettings,mydbapi,mode,use_cache=use_cache)
+	if mysplit2==None:
+		return [0,"Invalid token"]
+
+	writemsg("\n\n\n", 1)
+	writemsg("mysplit:  %s\n" % (mysplit), 1)
+	writemsg("mysplit2: %s\n" % (mysplit2), 1)
+	myeval=dep_eval(mysplit2)
+	writemsg("myeval:   %s\n" % (myeval), 1)
+
+	if myeval:
+		return [1,[]]
+	else:
+		myzaps = dep_zapdeps(mysplit,mysplit2,myroot,use_binaries=use_binaries)
+		mylist = flatten(myzaps)
+		writemsg("myzaps:   %s\n" % (myzaps), 1)
+		writemsg("mylist:   %s\n" % (mylist), 1)
+		#remove duplicates
+		mydict={}
+		for x in mylist:
+			mydict[x]=1
+		writemsg("mydict:   %s\n" % (mydict), 1)
+		return [1,mydict.keys()]
+
+def dep_wordreduce(mydeplist,mysettings,mydbapi,mode,use_cache=1):
+	"Reduces the deplist to ones and zeros"
+	mypos=0
+	deplist=mydeplist[:]
+	while mypos<len(deplist):
+		if type(deplist[mypos])==types.ListType:
+			#recurse
+			deplist[mypos]=dep_wordreduce(deplist[mypos],mysettings,mydbapi,mode,use_cache=use_cache)
+		elif deplist[mypos]=="||":
+			pass
+		else:
+			mykey = dep_getkey(deplist[mypos])
+			if mysettings and mysettings.pprovideddict.has_key(mykey) and \
+			        match_from_list(deplist[mypos], mysettings.pprovideddict[mykey]):
+				deplist[mypos]=True
+			else:
+				if mode:
+					mydep=mydbapi.xmatch(mode,deplist[mypos])
+				else:
+					mydep=mydbapi.match(deplist[mypos],use_cache=use_cache)
+				if mydep!=None:
+					tmp=(len(mydep)>=1)
+					if deplist[mypos][0]=="!":
+						tmp=False
+					deplist[mypos]=tmp
+				else:
+					#encountered invalid string
+					return None
+		mypos=mypos+1
+	return deplist
 
 def cpv_getkey(mycpv):
 	myslash=mycpv.split("/")
@@ -3471,167 +3483,6 @@ def cpv_expand(mycpv,mydb=None,use_cache=1):
 			return mykey+"-"+mysplit[1]+"-"+mysplit[2]
 	else:
 		return mykey
-
-def dep_transform(mydep,oldkey,newkey):
-	origdep=mydep
-	if not len(mydep):
-		return mydep
-	if mydep[0]=="*":
-		mydep=mydep[1:]
-	prefix=""
-	postfix=""
-	if mydep[-1]=="*":
-		mydep=mydep[:-1]
-		postfix="*"
-	if mydep[:2] in [ ">=", "<=" ]:
-		prefix=mydep[:2]
-		mydep=mydep[2:]
-	elif mydep[:1] in "=<>~!":
-		prefix=mydep[:1]
-		mydep=mydep[1:]
-	if mydep==oldkey:
-		return prefix+newkey+postfix
-	else:
-		return origdep
-
-def dep_expand(mydep,mydb=None,use_cache=1):
-	if not len(mydep):
-		return mydep
-	if mydep[0]=="*":
-		mydep=mydep[1:]
-	prefix=""
-	postfix=""
-	if mydep[-1]=="*":
-		mydep=mydep[:-1]
-		postfix="*"
-	if mydep[:2] in [ ">=", "<=" ]:
-		prefix=mydep[:2]
-		mydep=mydep[2:]
-	elif mydep[:1] in "=<>~!":
-		prefix=mydep[:1]
-		mydep=mydep[1:]
-	return prefix+cpv_expand(mydep,mydb=mydb,use_cache=use_cache)+postfix
-
-def dep_check(depstring,mydbapi,mysettings,use="yes",mode=None,myuse=None,use_cache=1,use_binaries=0):
-	"""Takes a depend string and parses the condition."""
-
-	#check_config_instance(mysettings)
-
-	if use=="all":
-		#enable everything (for repoman)
-		myusesplit=["*"]
-	elif use=="yes":
-		if myuse==None:
-			#default behavior
-			myusesplit = string.split(mysettings["USE"])
-		else:
-			myusesplit = myuse
-			# We've been given useflags to use.
-			#print "USE FLAGS PASSED IN."
-			#print myuse
-			#if "bindist" in myusesplit:
-			#	print "BINDIST is set!"
-			#else:
-			#	print "BINDIST NOT set."
-	else:
-		#we are being run by autouse(), don't consult USE vars yet.
-		# WE ALSO CANNOT USE SETTINGS
-		myusesplit=[]
-
-	#convert parenthesis to sublists
-	mysplit = portage_dep.paren_reduce(depstring)
-
-	if mysettings:
-		# XXX: use="all" is only used by repoman. Why would repoman checks want
-		# profile-masked USE flags to be enabled?
-		#if use=="all":
-		#	mymasks=archlist[:]
-		#else:
-		mymasks=mysettings.usemask+archlist[:]
-
-		while mysettings["ARCH"] in mymasks:
-			del mymasks[mymasks.index(mysettings["ARCH"])]
-		mysplit = portage_dep.use_reduce(mysplit,uselist=myusesplit,masklist=mymasks,matchall=(use=="all"),excludeall=[mysettings["ARCH"]])
-	else:
-		mysplit = portage_dep.use_reduce(mysplit,uselist=myusesplit,matchall=(use=="all"))
-
-	# Do the || conversions
-	mysplit=portage_dep.dep_opconvert(mysplit)
-
-	#convert virtual dependencies to normal packages.
-	mysplit=dep_virtual(mysplit, mysettings)
-	#if mysplit==None, then we have a parse error (paren mismatch or misplaced ||)
-	#up until here, we haven't needed to look at the database tree
-
-	if mysplit==None:
-		return [0,"Parse Error (parentheses mismatch?)"]
-	elif mysplit==[]:
-		#dependencies were reduced to nothing
-		return [1,[]]
-	mysplit2=mysplit[:]
-	mysplit2=dep_wordreduce(mysplit2,mysettings,mydbapi,mode,use_cache=use_cache)
-	if mysplit2==None:
-		return [0,"Invalid token"]
-
-	writemsg("\n\n\n", 1)
-	writemsg("mysplit:  %s\n" % (mysplit), 1)
-	writemsg("mysplit2: %s\n" % (mysplit2), 1)
-	myeval=dep_eval(mysplit2)
-	writemsg("myeval:   %s\n" % (myeval), 1)
-
-	if myeval:
-		return [1,[]]
-	else:
-		myzaps = dep_zapdeps(mysplit,mysplit2,vardbapi=mydbapi,use_binaries=use_binaries)
-		mylist = flatten(myzaps)
-		writemsg("myzaps:   %s\n" % (myzaps), 1)
-		writemsg("mylist:   %s\n" % (mylist), 1)
-		#remove duplicates
-		mydict={}
-		for x in mylist:
-			mydict[x]=1
-		writemsg("mydict:   %s\n" % (mydict), 1)
-		return [1,mydict.keys()]
-
-def dep_wordreduce(mydeplist,mysettings,mydbapi,mode,use_cache=1):
-	"Reduces the deplist to ones and zeros"
-	mypos=0
-	deplist=mydeplist[:]
-	while mypos<len(deplist):
-		if type(deplist[mypos])==types.ListType:
-			#recurse
-			deplist[mypos]=dep_wordreduce(deplist[mypos],mysettings,mydbapi,mode,use_cache=use_cache)
-		elif deplist[mypos]=="||":
-			pass
-		else:
-			mykey = dep_getkey(deplist[mypos])
-			if mysettings and mysettings.pprovideddict.has_key(mykey) and \
-			        match_from_list(deplist[mypos], mysettings.pprovideddict[mykey]):
-				deplist[mypos]=True
-			else:
-				if mode:
-					mydep=mydbapi.xmatch(mode,deplist[mypos])
-				else:
-					mydep=mydbapi.match(deplist[mypos],use_cache=use_cache)
-				if mydep!=None:
-					tmp=(len(mydep)>=1)
-					if deplist[mypos][0]=="!":
-						#tmp=not tmp
-						# This is ad-hoc code. We should rewrite this later.. (See #52377)
-						# The reason is that portage uses fakedb when --update option now.
-						# So portage considers that a block package doesn't exist even if it exists.
-						# Then, #52377 happens.
-						# ==== start
-						# emerge checks if it's block or not, so we can always set tmp=False.
-						# but it's not clean..
-						tmp=False
-						# ==== end
-					deplist[mypos]=tmp
-				else:
-					#encountered invalid string
-					return None
-		mypos=mypos+1
-	return deplist
 
 def getmaskingreason(mycpv):
 	from portage_util import grablines
@@ -4868,22 +4719,7 @@ class portdbapi(dbapi):
 		ret=None
 		if psplit:
 			for x in self.porttrees:
-				# XXX Why are there errors here? XXX
-				try:
-					file=x+"/"+mysplit[0]+"/"+psplit[0]+"/"+mysplit[1]+".ebuild"
-				except SystemExit, e:
-					raise
-				except Exception, e:
-					print
-					print "!!! Problem with determining the name/location of an ebuild."
-					print "!!! Please report this on IRC and bugs if you are not causing it."
-					print "!!! mycpv:  ",mycpv
-					print "!!! mysplit:",mysplit
-					print "!!! psplit: ",psplit
-					print "!!! error:  ",e
-					print
-					sys.exit(17)
-
+				file=x+"/"+mysplit[0]+"/"+psplit[0]+"/"+mysplit[1]+".ebuild"
 				if os.access(file, os.R_OK):
 					# when found
 					ret=[file, x]
@@ -5088,8 +4924,8 @@ class portdbapi(dbapi):
 	def getfetchsizes(self,mypkg,useflags=None,debug=0):
 		# returns a filename:size dictionnary of remaining downloads
 		mydigest=self.finddigest(mypkg)
-		mymd5s=digestParseFile(mydigest)
-		if not mymd5s:
+		checksums=digestParseFile(mydigest)
+		if not checksums:
 			if debug: print "[empty/missing/bad digest]: "+mypkg
 			return None
 		filesdict={}
@@ -5098,14 +4934,14 @@ class portdbapi(dbapi):
 		else:
 			myuris, myfiles = self.getfetchlist(mypkg,useflags=useflags)
 		#XXX: maybe this should be improved: take partial downloads
-		# into account? check md5sums?
+		# into account? check checksums?
 		for myfile in myfiles:
-			if debug and myfile not in mymd5s.keys():
+			if debug and myfile not in checksums.keys():
 				print "[bad digest]: missing",myfile,"for",mypkg
-			elif myfile in mymd5s.keys():
+			elif myfile in checksums.keys():
 				distfile=settings["DISTDIR"]+"/"+myfile
 				if not os.access(distfile, os.R_OK):
-					filesdict[myfile]=int(mymd5s[myfile]["size"])
+					filesdict[myfile]=int(checksums[myfile]["size"])
 		return filesdict
 
 	def fetch_check(self, mypkg, useflags=None, mysettings=None, all=False):
@@ -5613,8 +5449,7 @@ class binarytree(packagetree):
 			raise
 		except:
 			pass
-		getbinpkg.file_get(settings["PORTAGE_BINHOST"]+"/"+tbz2name, mydest, fcmd=settings["RESUMECOMMAND"])
-		return
+		return getbinpkg.file_get(settings["PORTAGE_BINHOST"]+"/"+tbz2name, mydest, fcmd=settings["RESUMECOMMAND"])
 
 	def getslot(self,mycatpkg):
 		"Get a slot for a catpkg; assume it exists."
@@ -7057,14 +6892,6 @@ def do_upgrade(mykey):
 def portageexit():
 	global uid,portage_gid,portdb,db
 	if secpass and not os.environ.has_key("SANDBOX_ACTIVE"):
-		# wait child process death
-		try:
-			while True:
-				os.wait()
-		except OSError:
-			#writemsg(">>> All child process are now dead.")
-			pass
-
 		close_portdbapi_caches()
 
 		if mtimedb:

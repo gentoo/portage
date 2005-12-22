@@ -17,6 +17,7 @@ class database(fs_template.FsBased):
 
 	autocommits = True
 	cleanse_keys = True
+	serialize_eclasses = False
 
 	def __init__(self, *args, **config):
 		super(database,self).__init__(*args, **config)
@@ -49,10 +50,9 @@ class database(fs_template.FsBased):
 	def iteritems(self):
 		return self.__db.iteritems()
 
-	def __getitem__(self, cpv):
+	def _getitem(self, cpv):
 		# we override getitem because it's just a cpickling of the data handed in.
 		return pickle.loads(self.__db[cpv])
-
 
 	def _setitem(self, cpv, values):
 		self.__db[cpv] = pickle.dumps(values,pickle.HIGHEST_PROTOCOL)
@@ -60,14 +60,11 @@ class database(fs_template.FsBased):
 	def _delitem(self, cpv):
 		del self.__db[cpv]
 
-
 	def iterkeys(self):
 		return iter(self.__db)
 
-
 	def has_key(self, cpv):
 		return cpv in self.__db
-
 
 	def __del__(self):
 		if "__db" in self.__dict__ and self.__db != None:

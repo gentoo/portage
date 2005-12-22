@@ -46,7 +46,7 @@ class fetcher(Thread):
 		if os.path.exists(self.destpath) and self.md5sum:
 			ok,reason = portage_checksum.verify_all(self.destpath, md5sum)
 			if not ok:
-				portage_util.writemsg("Failed verification:" + reason + "\n")
+				portage_util.writemsg("Failed verification:"+reason[0]+" (got "+reason[1]+", expected "+reason[2]+"\n")
 				return 1
 		return 0
 	

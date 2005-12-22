@@ -52,6 +52,9 @@ DEFAULT_PATH = ":".join(map(lambda x: os.path.join(PREFIX, x), ["/sbin", "/usr/s
 
 EAPI = "prefix"
 
+HASHING_BLOCKSIZE		= 32768
+MANIFEST1_HASH_FUNCTIONS = ["MD5","SHA256","RMD160"]
+
 # ===========================================================================
 # END OF CONSTANTS -- END OF CONSTANTS -- END OF CONSTANTS -- END OF CONSTANT
 # ===========================================================================

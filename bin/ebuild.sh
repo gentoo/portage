@@ -5,8 +5,8 @@
 
 
 export SANDBOX_PREDICT="${SANDBOX_PREDICT}:/proc/self/maps:/dev/console:@PORTAGE_BASE@/pym:/dev/random"
-export SANDBOX_WRITE="${SANDBOX_WRITE}:/dev/shm:${PORTAGE_TMPDIR}"
-export SANDBOX_READ="${SANDBOX_READ}:/dev/shm:${PORTAGE_TMPDIR}"
+export SANDBOX_WRITE="${SANDBOX_WRITE}:/dev/shm:/dev/stdout:/dev/stderr:${PORTAGE_TMPDIR}"
+export SANDBOX_READ="${SANDBOX_READ}:/dev/shm:/dev/stdin:${PORTAGE_TMPDIR}"
 
 if [ ! -z "${PORTAGE_GPG_DIR}" ]; then
 	SANDBOX_PREDICT="${SANDBOX_PREDICT}:${PORTAGE_GPG_DIR}"
@@ -398,6 +398,10 @@ use_enable() {
 	return 0
 }
 
+add-ebuild-death-hook() {
+	export EBUILD_DEATH_HOOKS="${EBUILD_DEATH_HOOKS} $*"
+}
+
 diefunc() {
 	local funcname="$1" lineno="$2" exitcode="$3"
 	shift 3
@@ -614,7 +618,7 @@ econf() {
 
 			if [ -s config.log ]; then
 				echo
-				echo "!!! Please attach the config.log to your bug report:"
+				echo "!!! Please attach the following file when filing a report to bugs.gentoo.org:"
 				echo "!!! ${PWD}/config.log"
 			fi
 			die "econf failed"
@@ -1213,11 +1217,10 @@ dyn_install() {
 		if [[ -n ${f} ]] ; then
 			echo -ne '\a\n'
 			echo "QA Notice: the following files contain runtime text relocations"
-			echo " Text relocations require a lot of extra work to be preformed by the"
-			echo " dynamic linker which will cause serious performance impact on IA-32"
-			echo " and might not function properly on other architectures hppa for example."
-			echo " If you are a programmer please take a closer look at this package and"
-			echo " consider writing a patch which addresses this problem."
+			echo " Text relocations force the dynamic linker to perform extra"
+			echo " work at startup, waste system resources, and may pose a security"
+			echo " risk.  On some architectures, the code may not even function"
+			echo " properly, if at all."
 			echo "${f}"
 			echo -ne '\a\n'
 			qa_kinda_sucks=1

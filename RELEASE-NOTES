@@ -22,21 +22,17 @@ New features / Major changes
 		foo-cvs.1.ebuild in the same directory. cvs ebuilds will always be 
 		ranked higher than any non-cvs ebuild.
 	- multiple suffixes now allow for constructions like foo-1.0_pre1_rc5
-	Also the new code is now separated into its own module portage_versions.py
-	with no dependencies on the main portage module. [genone]
+	[genone]
 * recursive config files: Most of the config files in /etc/portage can now
 	also be directories, if they are then portage will recursively use all
 	files in them. So you could have /etc/portage/package.keywords/kde/base
 	and /etc/portage/package.keywords/gnome instead of a single package.keywords.
-	This applies to the following files:
-	- package.keywords
-	- package.mask
-	- package.unmask
-	- package.use
-	- mirrors
 	[genone]
+* multi-hash support: digests and Manifests will now use SHA256 and RMD160 in
+	addition to MD5 [genone]
 
 Bug fixes / Minor Changes
 -------------------------
 * Removal of "masked by -*" message [genone]
 * Fixed some minor screwup in the sort algorithm for versions [genone]
+* Make digest errors more verbose (list actual and expected checksums)

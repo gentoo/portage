@@ -350,6 +350,9 @@ if ("--searchdesc" in myopts):
 if ("getbinpkg" in portage.features):
 	myopts.append("--getbinpkg")
 
+if "--skipfirst" in myopts and "--resume" not in myopts:
+	myopts.append("--resume")
+
 if ("--getbinpkgonly" in myopts) and not ("--usepkgonly" in myopts):
 	myopts.append("--usepkgonly")
 
@@ -628,7 +631,7 @@ elif "--help" in myopts:
 elif portage.secpass!=2:
 	if myaction in ["search", "info", "regen", "metadata"]:
 		pass
-	elif (not myaction) and (not myfiles):
+	elif not myaction and not myfiles and "--resume" not in myopts:
 		pass
 	elif ("--pretend" in myopts) and (myaction in ["world","system","clean","prune","unmerge"]):
 		pass
@@ -1181,7 +1184,7 @@ class depgraph:
 					if curslot == myslot:
 						return match
 
-	def select_dep(self,myroot,depstring,myparent=None,arg=None,myuse=None):
+	def select_dep(self,myroot,depstring,myparent=None,arg=None,myuse=None,raise_on_missing=False):
 		"given a dependency string, create the appropriate depgraph and return 1 on success and 0 on failure"
 		if "--debug" in myopts:
 			print
@@ -1189,8 +1192,7 @@ class depgraph:
 			print "Depstring:",depstring
 		if not arg:
 			#processing dependencies
-			mycheck=portage.dep_check(depstring,self.mydbapi[myroot],self.pkgsettings,myuse=myuse,use_binaries=("--usepkg" in myopts))
-			#mycheck=portage.dep_check(depstring,self.mydbapi[myroot],self.pkgsettings,myuse=myuse)
+			mycheck=portage.dep_check(depstring,self.mydbapi[myroot],self.pkgsettings,myuse=myuse,use_binaries=("--usepkgonly" in myopts),myroot=myroot)
 
 			if not mycheck[0]:
 				mymerge=[]
@@ -1264,6 +1266,8 @@ class depgraph:
 							break
 
 				if (not myeb) and (not myeb_pkg):
+					if raise_on_missing:
+						raise ValueError
 					if not arg:
 						xinfo='"'+x+'"'
 					else:
@@ -1399,6 +1403,7 @@ class depgraph:
 
 	def xcreate(self,mode="system"):
 		global syslist
+		world_problems = False
 		if mode=="system":
 			mylist=syslist
 		else:
@@ -1407,27 +1412,38 @@ class depgraph:
 			sysdict=genericdict(syslist)
 			worlddict=genericdict(worldlist)
 
-			world_problems = False
 			for x in worlddict.keys():
 				if not portage.isvalidatom(x):
 					world_problems = True
 				elif not portage.db["/"]["vartree"].dbapi.match(x):
 					world_problems = True
-				elif not portage.db["/"]["porttree"].dbapi.match(x):
-					world_problems = True
 				else:
 					sysdict[x]=worlddict[x]
-			if world_problems:
-				print "\n!!! Problems have been detected with your world file"
-				print "!!! Please run "+green("emaint --check world")+"\n"
-			del world_problems
 
 			mylist = sysdict.keys()
 
+		newlist = []
+		for atom in mylist:
+			if portage.dep_getkey(atom).split("/")[-1] == "portage":
+				newlist.insert(0, atom)
+			else:
+				newlist.append(atom)
+		mylist = newlist
+		
 		for mydep in mylist:
-			if not self.select_dep(portage.root, mydep):
-				print "\n\n!!! Problem resolving dependencies for", mydep
-				return 0
+			try:
+				if not self.select_dep(portage.root, mydep, raise_on_missing=True):
+					print "\n\n!!! Problem resolving dependencies for", mydep
+					return 0
+			except ValueError:
+				if "--debug" in myopts:
+					raise
+				world_problems = True
+
+		if world_problems:
+			print "\n!!! Problems have been detected with your world file"
+			print "!!! Please run "+green("emaint --check world")+"\n"
+
 		return 1
 
 	def match(self,mydep,myroot=portage.root,mykey=None):
@@ -1466,29 +1482,54 @@ class depgraph:
 		totalsize=0
 
 		if "--verbose" in myopts:
-			overlays = string.split(portage.settings['PORTDIR_OVERLAY'])
-			use_expand = portage.settings["USE_EXPAND"].lower().split()
-			use_expand_hidden = portage.settings["USE_EXPAND_HIDDEN"].lower().split()
-
-			def create_use_string(iuse, cur_use, old_use, masked_use):
-				usestr=""
-				for flag in iuse:
-					usechange=""
-					if old_use:
-						if (flag in old_use and flag not in cur_use) or (flag not in old_use and flag in cur_use):
-							usechange="*"
-
+			# Full USE display
+			def create_use_string(name, cur_iuse, cur_use, old_iuse, old_use, is_new):
+				usestrs = []
+				for flag in cur_iuse:
+					suffix = ""
 					if flag in cur_use:
-						if usechange == "*":
-							substr = green("+"+flag)
-						else:
-							substr = red("+"+flag)
-					elif flag in masked_use:
-						substr = blue("(-"+flag+")")
+						color = red
+						prefix = ""
 					else:
-						substr = blue("-"+flag)
-					usestr += substr + usechange + " "
-				return usestr
+						color = blue
+						prefix = "-"
+					if not is_new and ((flag in old_use) ^ (flag in cur_use)):
+						color = green
+						suffix = "*"
+					usestrs.append(color(prefix+flag)+suffix)
+				ret = " ".join(usestrs)
+				if ret:
+					ret = '%s="%s" ' % (name, ret)
+				return ret
+		else:
+			# Changed-since-previous USE display
+			def create_use_string(name, cur_iuse, cur_use, old_iuse, old_use, is_new):
+				enabled = []
+				disabled = []
+				for flag in cur_iuse:
+					if flag in cur_use and flag not in old_use:
+						if flag in old_iuse:
+							enabled.append(green(flag)+"*")
+						else:
+							enabled.append(red(flag))
+					elif flag not in cur_use and flag in old_use:
+						disabled.append(green("-"+flag)+"*")
+					elif is_new or flag not in old_iuse:
+						disabled.append(blue("-"+flag))
+				enabled = " ".join(enabled)
+				disabled = " ".join(disabled)
+				if enabled and disabled:
+					ret = enabled + " " + disabled
+				elif enabled:
+					ret = enabled
+				else:
+					ret = disabled
+				if ret:
+					ret = '%s="%s" ' % (name, ret)
+				return ret
+
+		if "--verbose" in myopts:
+			overlays = string.split(portage.settings['PORTDIR_OVERLAY'])
 
 		if "--tree" in myopts:
 			mylist.reverse()
@@ -1576,74 +1617,71 @@ class depgraph:
 					addl=" "+green("N")+" "+fetch+"  "
 
 				verboseadd=""
-				if "--verbose" in myopts:
-					# iuse verbose
-					try:
-						if x[0] == "binary":
-							iuse_split = string.split(portage.db["/"]["bintree"].dbapi.aux_get(x[2],["IUSE"])[0])
-						elif x[0] == "ebuild":
-							iuse_split = string.split(portage.portdb.aux_get(x[2],["IUSE"])[0])
-						else:
-							iuse_split = []
-					except SystemExit, e:
-						raise # Needed else can't exit
-					except:
-						portage.writemsg("!!! Error getting IUSE (report this to bugs.gentoo.org)\n")
-						portage.writemsg("!!! %s\n" % x)
-						iuse_split = []
-
-					iuse_split = portage.unique_array(iuse_split)
-					iuse_split.sort()
-
-					cur_use = self.applied_useflags[x[2]]
-
-					old_use = []
-					if myoldbest:
-						pkg=myoldbest
+				
+				if x[2] in self.applied_useflags:
+					# USE flag display
+					if x[0] == "binary":
+						cur_iuse = string.split(portage.db["/"]["bintree"].dbapi.aux_get(x[2],["IUSE"])[0])
+					elif x[0] == "ebuild":
+						cur_iuse = string.split(portage.portdb.aux_get(x[2],["IUSE"])[0])
 					else:
-						pkg=x[2]
+						cur_iuse = []
+
+					cur_iuse = portage.unique_array(cur_iuse)
+					cur_iuse = [flag for flag in cur_iuse if flag not in portage.settings.usemask]
+					cur_iuse.sort()
+					cur_use = self.applied_useflags[x[2]]
+					cur_use = [flag for flag in cur_use if flag in cur_iuse]
+
+					if myoldbest:
+						pkg = myoldbest
+					else:
+						pkg = x[2]
 					if portage.db["/"]["vartree"].dbapi.cpv_exists(pkg):
-						try:
-							old_use=string.split(portage.db["/"]["vartree"].dbapi.aux_get(pkg, ["USE"])[0])
-						except SystemExit, e:
-							raise # Needed else can't exit
-						except:
-							pass
+						(old_iuse, old_use) = portage.db["/"]["vartree"].dbapi.aux_get(pkg, ["IUSE", "USE"])
+						old_iuse = portage.unique_array(old_iuse.split())
+						old_iuse.sort()
+						old_use = old_use.split()
+						is_new = False
+					else:
+						old_iuse = []
+						old_use = []
+						is_new = True
+					old_iuse = [flag for flag in old_iuse if flag not in portage.settings.usemask]
+					old_use = [flag for flag in old_use if flag in old_iuse]
 
-					reg_use = []
-					exp_map = {}
-					for flag in iuse_split:
-						found = False
-						for var in use_expand:
-							if flag.startswith(var+"_"):
-								if var in exp_map:
-									exp_map[var]+= [flag[len(var)+1:]]
-								else:
-									exp_map[var] = [flag[len(var)+1:]]
-								found = True
-								break
-						if not found:
-							reg_use.append(flag)
+					use_expand = portage.settings["USE_EXPAND"].lower().split()
+					use_expand.sort()
+					use_expand.reverse()
+					use_expand_hidden = portage.settings["USE_EXPAND_HIDDEN"].lower().split()
 
-					usestr = create_use_string(reg_use, cur_use, old_use, portage.settings.usemask).strip()
-					if usestr:
-						verboseadd += 'USE="'+usestr+"'  "
+					def map_to_use_expand(myvals):
+						ret = {}
+						for exp in use_expand:
+							ret[exp] = []
+							for val in myvals[:]:
+								if val.startswith(exp.lower()+"_"):
+									ret[exp].append(val[len(exp)+1:])
+									myvals.remove(val)
+						ret["USE"] = myvals
+						for exp in use_expand_hidden:
+							if exp in ret:
+								del ret[exp]
+						return ret
 
-					for var in use_expand:
-						if var not in exp_map:
-							continue
-						expcur = []
-						expold = []
-						expmask = []
-						for flag in exp_map[var]:
-							if var+"_"+flag in cur_use:
-								expcur+= [flag]
-							if var+"_"+flag in old_use:
-								expold+= [flag]
-							if var+"_"+flag in portage.settings.usemask:
-								expmask+= [flag]
-						verboseadd += var.upper()+'="'+create_use_string(exp_map[var],expcur,expold,expmask).strip()+'"  '
+					cur_iuse_map = map_to_use_expand(cur_iuse)
+					cur_use_map = map_to_use_expand(cur_use)
+					old_iuse_map = map_to_use_expand(old_iuse)
+					old_use_map = map_to_use_expand(old_use)
 
+					use_expand.sort()
+					use_expand.insert(0, "USE")
+					
+					for key in use_expand:
+						verboseadd += create_use_string(key.upper(), cur_iuse_map[key], cur_use_map[key],
+						                                old_iuse_map[key], cur_use_map[key], is_new)
+
+				if "--verbose" in myopts:
 					# size verbose
 					mysize=0
 					if x[0] == "ebuild" and x[-1]!="nomerge":
@@ -1842,6 +1880,14 @@ class depgraph:
 			if ("--skipfirst" in myopts) and mymergelist:
 				del portage.mtimedb["resume"]["mergelist"][0]
 				del mymergelist[0]
+			for bigkey in mymergelist:
+				(pkgtype, root, cpv, action) = bigkey
+				if pkgtype == "binary" and not portage.db["/"]["bintree"].dbapi.match("="+cpv) or \
+				   pkgtype == "ebuild" and not portage.db["/"]["porttree"].dbapi.xmatch("match-all", "="+cpv):
+					print red("!!! Error: The resume list contains packages that no longer")
+					print red("!!!        available to be emerged. Please restart/continue")
+					print red("!!!        the merge operation manually.")
+					sys.exit(1)
 		else:
 			myfavs=portage.grabfile(portage.root+portage.WORLD_FILE)
 			myfavdict=genericdict(myfavs)
@@ -1874,6 +1920,41 @@ class depgraph:
 			del myfeat[myfeat.index("keepwork")]
 
 		self.pkgsettings["FEATURES"]=string.join(myfeat)
+
+		if "parallel-fetch" in myfeat and not ("--ask" in myopts or "--pretend" in myopts or "--fetchonly" in myopts):
+			if "distlocks" not in myfeat:
+				print red("!!!")
+				print red("!!!")+" parallel-fetching requires the distlocks feature enabled"
+				print red("!!!")+" you have it disabled, thus parallel-fetching is being disabled"
+				print red("!!!")
+			elif len(mymergelist) > 1:
+				print ">>> starting parallel fetching"
+				pid = os.fork()
+				if not pid:
+					sys.stdin.close()
+					sys.stdout.close()
+					sys.stderr.close()
+					sys.stdout = open("/dev/null","w")
+					sys.stderr = open("/dev/null","w")
+					os.dup2(sys.stdout.fileno(), 1)
+					os.dup2(sys.stdout.fileno(), 2)
+					for x in ("autoaddcvs", "cvs"):
+						try:	myfeat.remove(x)
+						except ValueError: pass
+					self.pkgsettings["FEATURES"] = " ".join(myfeat)
+					ret = 0
+					for x in mymergelist:
+						if x[0] != "ebuild":
+							continue
+						try:
+							ret = portage.doebuild(portage.portdb.findname(x[2]), "fetch", x[1], self.pkgsettings,
+								cleanup=0, fetchonly=True, tree="porttree")
+						except SystemExit:
+							raise
+						except Exception:
+							ret = 1
+					sys.exit(0)
+				portage.portage_exec.spawned_pids.append(pid)
 
 		mergecount=0
 		for x in mymergelist:
@@ -1969,7 +2050,8 @@ class depgraph:
 				if portage.db[portage.root]["bintree"].isremote(x[2]):
 					short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Fetch"
 					emergelog(" --- ("+str(mergecount)+" of "+str(len(mymergelist))+") Fetching Binary ("+x[pkgindex]+"::"+mytbz2+")", short_msg=short_msg)
-					portage.db[portage.root]["bintree"].gettbz2(x[2])
+					if not portage.db[portage.root]["bintree"].gettbz2(x[2]):
+						sys.exit(1)
 
 				if ("--fetchonly" in myopts) or ("--fetch-all-uri" in myopts):
 					continue
@@ -2799,7 +2881,7 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 
 	chk_updated_cfg_files()
 
-	if(mybestpv != mypvs):
+	if(mybestpv != mypvs) and not "--quiet" in myopts:
 		print
 		print red(" * ")+bold("An update to portage is available.")+" It is _highly_ recommended"
 		print red(" * ")+"that you update portage now, before any other packages are updated."
@@ -3133,10 +3215,9 @@ else:
 	if ("--resume" in myopts) and portage.mtimedb.has_key("resume"):
 		myresumeopts=portage.mtimedb["resume"]["myopts"][:]
 
-		while "--skipfirst" in myresumeopts:
-			myresumeopts.remove("--skipfirst")
-		while "--ask" in myresumeopts:
-			myresumeopts.remove("--ask")
+		for opt in ("--skipfirst", "--ask", "--verbose"):
+			while opt in myresumeopts:
+				myresumeopts.remove(opt)
 
 		for myopt in myopts:
 			if myopt not in myresumeopts:

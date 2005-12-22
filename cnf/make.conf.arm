@@ -333,7 +333,8 @@ PORTAGE_ELOG_CLASSES="warn error log"
 #                          ${PACKAGE} - expands to the cpv entry of the processed 
 #                                       package (see $PVR in ebuild(5))
 #                          ${LOGFILE} - absolute path to the logfile
-#PORTAGE_ELOG_COMMAND="/path/to/logprocessor -p ${PACKAGE} -f ${LOGFILE}"
+#						Both variables have to be quoted with single quotes
+#PORTAGE_ELOG_COMMAND="/path/to/logprocessor -p '${PACKAGE}' -f '${LOGFILE}'"
 
 # PORTAGE_ELOG_MAILURI: this variable holds all important settings for the mail
 #                       module. In most cases listing the recipient adress and
