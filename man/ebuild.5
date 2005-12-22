@@ -303,7 +303,7 @@ the program has been merged.
 .br
 You may use the same syntax to vary dependencies as seen above in \fBDEPEND\fR.
 .TP
-\fBRESTRICT\fR = \fI[fetch,mirror,nostrip,sandbox,test,userpriv]\fR
+\fBRESTRICT\fR = \fI[strip,mirror,fetch,userpriv]\fR
 This should be a space delimited list of portage features to restrict.
 .PD 0
 .RS
@@ -317,7 +317,7 @@ files in \fBSRC_URI\fR will not be downloaded from the \fBGENTOO_MIRRORS\fR.
 .I primaryuri
 fetch from URL's in \fBSRC_URI\fR before \fBGENTOO_MIRRORS\fR.
 .TP
-.I nostrip
+.I strip
 final binaries/libraries will not be stripped of debug symbols.
 .TP
 .I sandbox
@@ -359,7 +359,7 @@ end the function with a call to \fBdie\fR.
 This function can be used if the package needs specific setup actions or
 checks to be preformed before anything else.
 .br
-Initial working directory of $PORTAGE_TMPDIR.
+Initial working directory of ${PORTAGE_TMPDIR}.
 .TP
 .B src_unpack
 This function is used to unpack all the sources in \fIA\fR to \fIWORKDIR\fR.
@@ -429,41 +429,41 @@ fi
 .fi
 .RE
 .TP
-\fBuse_with\fR \fI<USE item>\fR \fI[configure option]\fR
-Useful for creating custom options to pass to a configure script. If
-\fIUSE item\fR is in the \fBUSE\fR variable, then the string
-\fI--with-[configure option]\fR will be echoed.  If \fIUSE item\fR is
-not in the \fBUSE\fR variable, then the string
-\fI--without-[configure option]\fR will be echoed.  If
-\fIconfigure option\fR is not specified, then \fIUSE item\fR will be
-used in its place.
+\fBuse_with\fR \fI<USE item>\fR \fI[configure name]\fR \fI[configure opt]\fR
+Useful for creating custom options to pass to a configure script. If \fIUSE 
+item\fR is in the \fBUSE\fR variable and a \fIconfigure opt\fR is specified, 
+then the string \fI--with-[configure name]=[configure opt]\fR will be echoed.  
+If \fIconfigure opt\fR is not specified, then just \fI--with-[configure 
+name]\fR will be echoed.  If \fIUSE item\fR is not in the \fBUSE\fR variable, 
+then the string \fI--without-[configure name]\fR will be echoed. If 
+\fIconfigure name\fR is not specified, then \fIUSE item\fR will be used in 
+its place.
 .RS
 .TP
-.I Example:
+.I Examples:
 .nf
+USE="opengl"
+myconf=$(use_with opengl)
+(myconf now has the value "--with-opengl")
+
 USE="jpeg"
-myconf="$(use_with jpeg libjpeg)"
+myconf=$(use_with jpeg libjpeg)
 (myconf now has the value "--with-libjpeg")
 
 USE=""
-myconf="$(use_with jpeg libjpeg)"
+myconf=$(use_with jpeg libjpeg)
 (myconf now has the value "--without-libjpeg")
 
-USE="opengl"
-myconf="$(use_with opengl")
-(myconf now has the value "--with-opengl")
+USE="sdl"
+myconf=$(use_with sdl SDL all-plugins)
+(myconf now has the value "--with-SDL=all-plugins")
 .fi
 .RE
 .TP
-\fBuse_enable\fR \fI<USE item>\fR \fI[configure option]\fR
-Useful for creating custom options to pass to a configure script. If
-\fIUSE item\fR is in the \fBUSE\fR variable, then the string
-\fI--enable-[configure option]\fR will be echoed.  If \fIUSE item\fR is
-not in the \fBUSE\fR variable, then the string
-\fI--disable-[configure option]\fR will be echoed. If \fIconfigure option\fR
-is not specified, then \fIUSE item\fR will be used in its place.
-.br
-See \fBuse_with\fR for an example.
+\fBuse_enable\fR \fI<USE item>\fR \fI[configure name]\fR \fI[configure opt]\fR
+Same as \fBuse_with\fR above, except that the configure options are 
+\fI--enable-\fR instead of \fI--with-\fR and \fI--disable-\fR instead of 
+\fI--without-\fR.
 .TP
 \fBhas\fR \fI<item>\fR \fI<item list>\fR
 If \fIitem\fR is in \fIitem list\fR, then \fIitem\fR is echoed and \fBhas\fR
@@ -693,11 +693,9 @@ the \fBdolib\fR functions.  The default is \fI-m0644\fR.
 .TP
 \fBdoman\fR \fI[\-i18n=<locale>]\fR \fI<man-page> [list of more man\-pages]\fR
 Installs manual\-pages into /usr/share/man/man[0\-9n] depending on the
-manual file ending.  The files are gzipped if they are not already.  You can 
-specify locale-specific manpages with the \fI\-i18n\fR option.  Then the 
-man-page will be installed into /usr/share/man/\fI<locale>\fR/man[0\-9n].  
-Creates all necessary dirs.
-
+manual file ending.  The files are compressed if they are not already.  You 
+can specify locale-specific manpages with the \fI\-i18n\fR option.  Then the
+man-page will be installed into /usr/share/man/\fI<locale>\fR/man[0\-9n].
 .PD 0
 .TP
 \fBdohard\fR \fI<filename> <linkname>\fR
@@ -708,9 +706,9 @@ Performs the ln command as either a hard link or symlink.
 .TP
 \fBdohtml\fR \fI [\-a filetypes] [\-r] [\-x list\-of\-dirs\-to\-ignore] [list\-of\-files\-and\-dirs]\fR
 Installs the files in the list of files (space\-separated list) into
-/usr/share/doc/${PF}/html provided the file ends in .html, .png, .js, .jpg, 
+/usr/share/doc/${PF}/html provided the file ends in .html, .png, .js, .jpg,
 or .css.  Setting \fI\-a\fR limits what types of files will be included,
-\fI\-A\fR appends to the default list, setting \fI\-x\fR sets which dirs to 
+\fI\-A\fR appends to the default list, setting \fI\-x\fR sets which dirs to
 exclude (CVS excluded by default), \fI\-r\fR sets recursive.
 .TP
 \fBdoinfo\fR \fI<info-file> [list of more info\-files]\fR
