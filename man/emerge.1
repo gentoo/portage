@@ -105,6 +105,14 @@ developers with fixing any problems you may report.  \fBPlease include this
 information when submitting a bug report.\fR  Expanded output can be obtained 
 with the \fI\-\-verbose\fR option.
 .TP
+.BR "\-\-inject " (\fB\-i\fR)
+Injecting a package inserts a 'stub' for that package so that Portage
+thinks that it is installed.  It is handy if you need, say, a binary
+version of XFree86 for esoteric hardware, or you just like to roll
+your own packages.  You \fBmust\fR specify a category and particular
+version of a package for injecting.  For example,
+\fBemerge \-\-inject sys\-kernel/gentoo\-sources\-2.4.19\fR.
+.TP
 .BR \-\-metadata
 Causes portage to process all the metacache files as is normally done on the 
 tail end of an rsync update using \fBemerge \-\-sync\fR.  The processing 
@@ -162,12 +170,11 @@ file setup or other similar setups that the user  may  wish to run.
 .SH "OPTIONS"
 .TP
 .BR "\-\-ask " (\fB\-a\fR)
-Before performing the merge, display what ebuilds and tbz2s will be 
-installed, in the same format as when using \fB\-\-pretend\fR; then ask 
-whether to continue with the merge or abort.  Using \fB\-\-ask\fR is more 
-efficient than using \fB\-\-pretend\fR and then executing the same command 
-without \fB\-\-pretend\fR, as dependencies will only need to be calculated 
-once.
+Before performing the merge, display what ebuilds and tbz2s will be installed, 
+in the same format as when using \fB\-\-pretend\fR; then ask whether to 
+continue with the merge or abort.  Using \fB\-\-ask\fR is more efficient than 
+using \fB\-\-pretend\fR and then executing the same command without 
+\fB\-\-pretend\fR, as dependencies will only need to be calculated once.
 .TP
 .BR "\-\-buildpkg " (\fB\-b\fR)
 Tells emerge to build binary packages for all ebuilds processed in
@@ -205,10 +212,10 @@ As an example, this catches updates in libraries that are not directly
 listed in the dependencies of a package.
 .TP
 .BR "\-\-emptytree " (\fB\-e\fR)
-Virtually tweaks the tree of installed packages to contain nothing.  This is 
-great to use together with \fI\-\-pretend\fR.  This makes it possible for 
-developers to get a complete overview of the entire dependency tree of a 
-certain package.
+Reinstalls all world packages and their dependencies to the current USE 
+specifications while differing from the installed set of packages as 
+little as possible.  You should run with \fB\-\-pretend\fR first to make 
+sure the result is what you expect.
 .TP
 .BR "\-\-fetchonly " (\fB\-f\fR)
 Instead of doing any package building, just perform fetches for all
@@ -243,7 +250,7 @@ Tells emerge to include installed packages where USE flags have changed since
 compilation.  An asterisk marks when a USE flag has changed since the package 
 was compiled.
 .TP
-.BR \-\-nocolor
+.BR "\-\-nocolor "
 Make sure none of the output from portage contains color.
 .TP
 .BR "\-\-noconfmem"
@@ -286,7 +293,7 @@ the printout,
 .br 
 \fIN\fR = new, (not yet installed)
 .br 
-\fIS\fR = new, slot installation (side-by-side versions) 
+\fIS\fR = new, SLOT installation (side-by-side versions) 
 .br 
 \fIU\fR = updating, (changing versions)
 .br 
@@ -332,8 +339,8 @@ also update direct dependencies which may not be what you want.  In general,
 use this option only in combination with the world or system target.
 .TP
 .BR "\-\-upgradeonly " (\fB\-U\fR)
-Updates packages, but excludes updates that would result in a lower version 
-of the package being installed.  \fBSLOT\fRs are considered at a basic level.
+Updates packages, but excludes updates that would result in a lower version of 
+the package being installed.  \fBSLOT\fRs are considered at a basic level.
 .br 
 This option is deprecated and should not be used anymore.  Please use the 
 /etc/portage/package.* files from now on.
@@ -355,6 +362,13 @@ Tell emerge to run in verbose mode.  Currently this flag causes emerge to print 
 .BR "\-\-version " (\fB\-V\fR)
 Displays the version number of \fBemerge\fR.  It cannot be used in
 conjunction with other options.
+.SH "ENVIRONMENT OPTIONS"
+.TP
+\fBROOT\fR = \fI[path]\fR
+Use \fBROOT\fR to specify the target root filesystem to be used for
+merging packages or ebuilds.
+.br
+Defaults to /.
 .SH "OUTPUT"
 When utilizing \fBemerge\fR with the \fB\-\-pretend\fR and \fB\-\-verbose\fR 
 flags, the output may be a little hard to understand at first.  This section

@@ -336,7 +336,7 @@ for a single package.
 .I Format:
 \- comments begin with #
 \- one DEPEND atom per line followed by additional KEYWORDS
-\- blank lines imply unstable host arch
+\- lines without any KEYWORDS imply unstable host arch
 
 .I Example:
 # always use unstable libgd
@@ -420,6 +420,7 @@ categories to be created.
 app\-hackers
 media\-other
 .fi
+.RE
 .TP
 .BR /usr/portage/profiles/
 Global Gentoo settings that are controlled by the developers.  To override 

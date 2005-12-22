@@ -13,7 +13,7 @@ setting is found there, the profile's default setting is grabbed
 from /etc/make.profile/make.defaults. Please note that all user
 settings should be made in the environment or in /etc/make.conf,
 which is intended to be customized by the user.
-.br 
+.br
 Exceptions are incremental variables such as USE, CONFIG_PROTECT*,
 and ACCEPT_KEYWORDS.  Incremental variables are propagated down from
 make.defaults to make.globals to make.conf to the environment
@@ -26,26 +26,18 @@ Enable testing of ebuilds that have not yet been deemed 'stable'.  Users
 of the 'x86' architecture would set this to '~x86' while ppc users would
 set this to '~ppc'.  This is an incremental variable.  Only define a 
 ~arch.
-.br 
+.br
 Defaults to the value of $ARCH.
-.TP
-\fBAUTOCLEAN\fR = \fI["yes" | "no"]\fR
-Automatically cleans the system by removing outdated packages which will not
-remove functionalities or prevent your system from working. On major ABI
-changes this may need to be set to off to ensure that the system can be
-rebuilt using the new libs before the old ones are removed. Downgrading with
-this option turned off may result in missing symlinks and an inoperable system.
-.br 
-Defaults to yes.
 .TP
 \fBBUILD_PREFIX\fR = \fI[path]\fR
 Defines the location of the package working directory. 
-.br 
+.br
 Defaults to ${PORTAGE_TMPDIR}/portage
 .TP
 .B CBUILD
 This variable is passed by the \fIebuild scripts\fR to the \fIconfigure\fR
-as \fI\-\-build=${CBUILD}\fR only if it is defined.
+as \fI\-\-build=${CBUILD}\fR only if it is defined.  Do not set this yourself
+unless you know what you are doing.
 .TP
 \fBCCACHE_SIZE\fR = \fI"size"\fR
 This controls the space use limitations for ccache.  The default is 2 gigabytes 
@@ -58,29 +50,25 @@ of your custom settings, resulting in a Gentoo Linux that is fully customized
 to your specifications.  Please use sane settings as some packages will fail to
 compile/run if the optimizations are too extreme.
 
-For more information:
-.br 
-http://gcc.gnu.org/onlinedocs/gcc\-3.2/gcc/Invoking\-GCC.html
-.br 
-http://gcc.gnu.org/onlinedocs/gcc\-3.3/gcc/Invoking\-GCC.html
-.br 
-http://gcc.gnu.org/onlinedocs/gcc\-2.95.3/gcc_2.html
+For more information, see the \fIInvoking GCC\fR section of the gcc manual:
+.br
+http://gcc.gnu.org/onlinedocs/
 .TP
 .B CHOST
 This variable is passed by the \fIebuild scripts\fR to the \fIconfigure\fR
 step as \fI\-\-host=${CHOST}\fR.  This way you can force the build\-host.
 
 For more information:
-.br 
+.br
 http://gcc.gnu.org/onlinedocs/gcc\-3.2/gcc/Submodel\-Options.html
-.br 
+.br
 http://gcc.gnu.org/onlinedocs/gcc\-3.3/gcc/Submodel\-Options.html
-.br 
+.br
 http://gcc.gnu.org/onlinedocs/gcc\-2.95.3/gcc_2.html
 .TP
 \fBCLEAN_DELAY\fR = \fIinteger\fR
 Determines how long the countdown delay will be after running `emerge clean`.
-.br 
+.br
 Defaults to 5 seconds.
 .TP
 \fBCONFIG_PROTECT\fR = \fI[space delimited list of dirs]\fR
@@ -97,7 +85,7 @@ as \fI\-\-target=${CTARGET}\fR only if it is defined.
 .TP
 \fBDISTDIR\fR = \fI[path]\fR
 Defines the location of your local source file repository.
-.br 
+.br
 Defaults to ${PORTDIR}/distfiles.
 .TP
 .B EBEEP_IGNORE
@@ -145,7 +133,7 @@ Enable portage support for the distcc package.
 Portage uses lockfiles to ensure competing instances don't clobber
 each other's files. This feature is enabled by default but may cause
 heartache on less intelligent remote filesystems like NFSv2 and some
-strangely configured Samba server (oplocks off, NFS re-export). A tool
+strangely configured Samba server (oplocks off, NFS re\-export). A tool
 /usr/lib/portage/bin/clean_locks exists to help handle lock issues
 when a problem arises (normally due to a crash or disconnect).
 .TP
@@ -234,7 +222,7 @@ portage:portage without a sandbox (unless \fIusersandbox\fR is also used).
 Enable the sandbox in the compile phase, when running without root privs (\fIuserpriv\fR).
 .RE
 .TP
-\fBFETCHCOMMAND\fR
+.B FETCHCOMMAND
 This variable contains the command used for fetching package sources from
 the internet.  It must contain the full path to the executable as well as the
 place-holders \\${DISTDIR} and \\${URI}.
@@ -249,7 +237,7 @@ These vars are used if the sources must be downloaded from the
 internet by \fBwget\fR(1).  They are only required if you use a
 proxy server for internet access.
 .TP
-\fBMAKEOPTS\fR
+.B MAKEOPTS
 Use this variable if you want to use parallel make.  For example, if you
 have a dual\-processor system, set this variable to "\-j2" or "\-j3" for 
 enhanced build performance with many packages. Suggested settings are
@@ -258,12 +246,12 @@ For more information, see \fBmake\fR(1).
 .TP
 \fBNOCOLOR\fR = \fI["true" | "false"]\fR
 Defines if color should be disabled by default.
-.br 
+.br
 Defaults to false.
 .TP
 \fBPKGDIR\fR = \fI[path]\fR
 Defines the location where created .tbz2 binary packages will be stored.
-.br 
+.br
 Defaults to ${PORTDIR}/packages.
 .TP
 .B PORT_LOGDIR
@@ -286,22 +274,22 @@ are acceptable ranges, see \fBnice\fR(1).
 .TP
 \fBPORTAGE_TMPDIR\fR = \fI[path]\fR
 Defines the location of the temporary build directories.
-.br 
+.br
 Defaults to /var/tmp.
 .TP
 \fBPORTDIR\fR = \fI[path]\fR
 Defines the location of your Portage tree.
-.br 
+.br
 Defaults to /usr/portage. 
 .TP
 \fBPORTDIR_OVERLAY\fR = \fI"[path] [different\-path] [etc...]"\fR
 Defines the directories in which user made ebuilds may be stored and not 
 overwriten when `emerge \-\-sync` is run.  This is a space delimited list of 
 directories.
-.br 
+.br
 Defaults to no value.
 .TP
-\fBRESUMECOMMAND\fR
+.B RESUMECOMMAND
 This variable contains the command used for resuming package sources that
 have been partially downloaded.  It should be defined using the same format
 as \fBFETCHCOMMAND\fR.
@@ -313,38 +301,38 @@ into \fBROOT\fR while all \fBDEPEND\fR will be still be installed into /.
 Typically, you should set this setting in the environment rather than in 
 \fI/etc/make.conf\fR itself.  It's commonly used for creating new build 
 images.
-.br 
+.br
 Defaults to /.
 .TP
 \fBRSYNC_EXCLUDEFROM\fR = \fI"/etc/portage/rsync_excludes"\fR
 This is a file that portage will pass to rsync when it updates the portage 
 tree.  Specific chucks of the tree may be excluded from the sync process.  
 This may cause dependency failures if you are not careful.  The file format 
-is pattern per line, blanks and ';' or '#' lines are comments.  See 
+is one pattern per line, blanks and ';' or '#' lines are comments.  See 
 \fBrsync\fR(1) for more details.
 .TP
 \fBRSYNC_RETRIES\fR = \fI[NUMBER]\fR
 The number of times rsync should retry on failed connections before
 giving up.
-.br 
+.br
 Defaults to 3.
 .TP
 \fBRSYNC_TIMEOUT\fR = \fI[SECONDS]\fR
 The number of seconds rsync should remain idle before it determines the
 connection has timed out. Dialup users may need to set this value at or
 above 300 seconds.
-.br 
+.br
 Defaults to 180 seconds.
 .TP
 \fBRPMDIR\fR = \fI[path]\fR
 Defines the location where created RPM packages will be stored.
-.br 
+.br
 Defaults to ${PORTDIR}/rpm.
 .TP
 \fBSYNC\fR = \fI[RSYNC]\fR
 Insert your preferred rsync mirror here.  This rsync server
 is used to sync the local portage tree when `emerge \-\-sync` is run.
-.br 
+.br
 Defaults to rsync://rsync.gentoo.org/gentoo\-portage
 .TP
 \fBUSE\fR = \fI[space delimited list of USE items]\fR
@@ -357,13 +345,13 @@ Determines precedence for incrementing the setting of the USE variable.
 The above setting will cause the environment (env) to override per package (pkg)
 settings to override make.conf (conf) to override auto generated values 
 from merged packages (auto) to override make.defaults (defaults).
-.br 
+.br
 \fB***warning***\fR
-.br 
+.br
 Do not modify this value unless you're a developer and you know what
 you're doing. If you change this and something breaks, we will not help
 you fix it.
-.br 
+.br
 Defaults to "env:pkg:conf:auto:defaults".
 
 .SH "REPORTING BUGS"
