@@ -1678,7 +1678,7 @@ class depgraph:
 					
 					for key in use_expand:
 						verboseadd += create_use_string(key.upper(), cur_iuse_map[key], cur_use_map[key],
-						                                old_iuse_map[key], cur_use_map[key], is_new)
+						                                old_iuse_map[key], old_use_map[key], is_new)
 
 				if "--verbose" in myopts:
 					# size verbose
