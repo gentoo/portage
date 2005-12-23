@@ -456,11 +456,19 @@ def unique_array(array):
 	return mya
 
 
-def dump_traceback(msg):
+def dump_traceback(msg, noiselevel=1):
 	import sys, traceback
-	writemsg("\n====================================\n", noiselevel=1)
-	writemsg("Warning: %s\n" % msg, noiselevel=1)
-	for line in traceback.format_list(traceback.extract_stack()[:-1]):
-		writemsg(line, noiselevel=1)
-	writemsg("Please file a bug for %s\n" % sys.argv[0], noiselevel=1)
-	writemsg("====================================\n\n", noiselevel=1)
+	info = sys.exc_info()
+	if not info[2]:
+		stack = traceback.extract_stack()[:-1]
+		error = None
+	else:
+		stack = traceback.extract_tb(info[2])
+		error = str(info[1])
+	writemsg("\n====================================\n", noiselevel=noiselevel)
+	writemsg("%s\n\n" % msg, noiselevel=noiselevel)
+	for line in traceback.format_list(stack):
+		writemsg(line, noiselevel=noiselevel)
+	if error:
+		writemsg(error+"\n", noiselevel=noiselevel)
+	writemsg("====================================\n\n", noiselevel=noiselevel)

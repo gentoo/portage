@@ -1284,7 +1284,7 @@ class config:
 		try:
 			mod = load_mod(best_mod)
 		except:
-			writemsg(red("!!! Failed to import module '%s'\n") % best_mod)
+			dump_traceback(red("Error: Failed to import module '%s'") % best_mod, noiselevel=0)
 			sys.exit(1)
 		return mod
 
@@ -2426,7 +2426,7 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 	global db, actionmap_deps
 
 	if not tree:
-		dump_traceback("tree not specified to doebuild")
+		dump_traceback("Warning: tree not specified to doebuild")
 		tree = "porttree"
 
 	ebuild_path = os.path.abspath(myebuild)
