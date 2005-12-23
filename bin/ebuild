@@ -35,6 +35,10 @@ ebuild_split = ebuild.split("/")
 del ebuild_split[-2]
 cpv = "/".join(ebuild_split[-2:])[:-7]
 
+if not portage.catpkgsplit(cpv):
+	print "!!! %s does not follow correct package syntax." % (cpv)
+	sys.exit(1)
+
 if ebuild.startswith(portage.root + portage_const.VDB_PATH):
 	mytree = "vartree"
 
