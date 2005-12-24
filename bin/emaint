@@ -67,7 +67,7 @@ def exclusive(option, unused1, unused2, unused3, var=None):
 	if not var:
 		raise ValueError("var not specified to exclusive()")
 	if getattr(parser, var, ""):
-		raise OptionValueError("%s and %s are exclusive options" % (getattr(parser, var), value))
+		raise OptionValueError("%s and %s are exclusive options" % (getattr(parser, var), option))
 	setattr(parser, var, str(option))
 
 
