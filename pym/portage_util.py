@@ -195,33 +195,40 @@ def grablines(myfilename,recursive=0):
 	return mylines
 
 def writeints(mydict,myfilename):
+	myfile = None
+	myf2 = "%s.%i" % (myf2, os.getpid())
 	try:
-		myfile=open(myfilename,"w")
+		myfile=open(myf2,"w")
+		for x in mydict:
+			myfile.write("%s %s\n" % (x, str(mydict[x])))
+		myfile.close()
+		os.rename(myf2, myfilename)
 	except IOError:
+		if myfile is not None:
+			os.unlink(myf2)
 		return 0
-	for x in mydict.keys():
-		myfile.write(x+" "+`mydict[x]`+"\n")
-	myfile.close()
 	return 1
 
-def writedict(mydict,myfilename,writekey=1):
+def writedict(mydict,myfilename,writekey=True):
 	"""Writes out a dict to a file; writekey=0 mode doesn't write out
 	the key and assumes all values are strings, not lists."""
+	myfile = None
+	myf2 = "%s.%i" % (myfilename, os.getpid())
 	try:
-		myfile=open(myfilename,"w")
+		myfile=open(myf2,"w")
+		if not writekey:
+			for x in mydict.values():
+				myfile.write(x+"\n")
+		else:
+			for x in mydict.keys():
+				myfile.write("%s %s\n" % (x, " ".join(mydict[x])))
+		myfile.close()
+		os.rename(myf2, myfilename)
+			
 	except IOError:
-		writemsg("Failed to open file for writedict(): "+str(myfilename)+"\n")
+		if myfile is not None:
+			os.unlink(myf2)
 		return 0
-	if not writekey:
-		for x in mydict.values():
-			myfile.write(x+"\n")
-	else:
-		for x in mydict.keys():
-			myfile.write(x+" ")
-			for y in mydict[x]:
-				myfile.write(y+" ")
-			myfile.write("\n")
-	myfile.close()
 	return 1
 
 def getconfig(mycfg,tolerant=0,allow_sourcing=False):
