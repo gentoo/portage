@@ -5664,7 +5664,6 @@ class dblink:
 
 			#process symlinks second-to-last, directories last.
 			mydirs=[]
-			mysyms=[]
 			modprotect="/lib/modules/"
 			for obj in mykeys:
 				obj=os.path.normpath(obj)
@@ -5688,7 +5687,7 @@ class dblink:
 
 				lstatobj=os.lstat(obj)
 				lmtime=str(lstatobj[stat.ST_MTIME])
-				if (pkgfiles[obj][0] not in ("dir","fif","dev","sym")) and (lmtime != pkgfiles[obj][1]):
+				if (pkgfiles[obj][0] not in ("dir","fif","dev")) and (lmtime != pkgfiles[obj][1]):
 					print "--- !mtime", pkgfiles[obj][0], obj
 					continue
 
@@ -5701,7 +5700,11 @@ class dblink:
 					if not os.path.islink(obj):
 						print "--- !sym  ","sym", obj
 						continue
-					mysyms.append(obj)
+					try:
+						os.unlink(obj)
+						print "<<<       ","sym",obj
+					except (OSError,IOError),e:
+						print "!!!       ","sym",obj
 				elif pkgfiles[obj][0]=="obj":
 					if not os.path.isfile(obj):
 						print "--- !obj  ","obj", obj
@@ -5730,41 +5733,11 @@ class dblink:
 				elif pkgfiles[obj][0]=="dev":
 					print "---       ","dev",obj
 
-			#Now, we need to remove symlinks and directories.  We'll repeatedly
-			#remove dead symlinks, then directories until we stop making progress.
-			#This is how we'll clean up directories containing symlinks pointing to
-			#directories that are now empty.  These cases will require several
-			#iterations through our two-stage symlink/directory cleaning loop.
-
-			#main symlink and directory removal loop:
-
 			#progress -- are we making progress?  Initialized to 1 so loop will start
 			progress=1
 			while progress:
 				#let's see if we're able to make progress this iteration...
 				progress=0
-
-				#step 1: remove all the dead symlinks we can...
-
-				pos = 0
-				while pos<len(mysyms):
-					obj=mysyms[pos]
-					if os.path.exists(obj):
-						pos += 1
-					else:
-						#we have a dead symlink; remove it from our list, then from existence
-						del mysyms[pos]
-						#we've made progress!
-						progress = 1
-						try:
-							os.unlink(obj)
-							print "<<<       ","sym",obj
-						except (OSError,IOError),e:
-							print "!!!       ","sym",obj
-							#immutable?
-							pass
-
-				#step 2: remove all the empty directories we can...
 
 				pos = 0
 				while pos<len(mydirs):
@@ -5794,23 +5767,10 @@ class dblink:
 						except (OSError,IOError),e:
 							#immutable?
 							pass
-					#else:
-					#	print "--- !empty","dir", obj
-					#	continue
-
-				#step 3: if we've made progress, we'll give this another go...
-
-			#step 4: otherwise, we'll print out the remaining stuff that we didn't unmerge (and rightly so!)
 
 			#directories that aren't empty:
 			for x in mydirs:
 				print "--- !empty dir", x
-
-			#symlinks whose target still exists:
-			for x in mysyms:
-				print "--- !targe sym", x
-
-		#step 5: well, removal of package objects is complete, now for package *meta*-objects....
 
 		#remove self from vartree database so that our own virtual gets zapped if we're the last node
 		db[self.myroot]["vartree"].zap(self.mycpv)
