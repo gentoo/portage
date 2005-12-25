@@ -117,6 +117,7 @@ qahelp={
 	"RDEPEND.syntax":"Syntax error in RDEPEND (usually an extra/missing space/parenthesis)",
 	"PDEPEND.syntax":"Syntax error in PDEPEND (usually an extra/missing space/parenthesis)",
 	"LICENSE.syntax":"Syntax error in LICENSE (usually an extra/missing space/parenthesis)",
+	"PROVIDE.syntax":"Syntax error in PROVIDE (usually an extra/missing space/parenthesis)",
 	"ebuild.syntax":"Error generating cache entry for ebuild; typically caused by ebuild syntax error",
 	"ebuild.output":"A simple sourcing of the ebuild produces output; this breaks ebuild policy.",
 	"ebuild.nesteddie":"Placing 'die' inside ( ) prints an error, but doesn't stop the ebuild.",
@@ -956,29 +957,50 @@ for x in scanlist:
 
 		baddepsyntax = False
 		badlicsyntax = False
+		badprovsyntax = False
 		catpkg = catdir+"/"+y
-		for mytype in ["DEPEND","RDEPEND","PDEPEND","LICENSE"]:
+		for mytype in ("DEPEND", "RDEPEND", "PDEPEND", "LICENSE", "PROVIDE"):
 			mydepstr = myaux[mytype]
+			badsyntax = None
+			
 			if (string.find(mydepstr, " ?") != -1):
-				stats[mytype+".syntax"] += 1
-				fails[mytype+".syntax"].append(catpkg+".ebuild "+mytype+": '?' preceded by space")
-				if mytype != "LICENSE":
-					baddepsyntax = True
-				else:
-					badlicsyntax = True
+				badsyntax = "'?' preceded by space"
+
 			try:
 				# Missing closing parenthesis will result in a ValueError
-				mydeplist=portage_dep.paren_reduce(mydepstr)
+				mydeplist = portage_dep.paren_reduce(mydepstr)
 				# Missing opening parenthesis will result in a final "" element
 				if "" in mydeplist or "(" in mydeplist:
 					raise ValueError
 			except ValueError:
-				stats[mytype+".syntax"] += 1
-				fails[mytype+".syntax"].append(catpkg+".ebuild "+mytype+": Mismatched parenthesis")
-				if mytype != "LICENSE":
-					baddepsyntax = True
+				badsyntax = "parenthesis mismatch"
+
+			for token in ("||", "(", ")"):
+				if mydepstr.startswith(token+" "):
+					myteststr = mydepstr[len(token):]
 				else:
+					myteststr = mydepstr
+				if myteststr.endswith(" "+token):
+					myteststr = myteststr[:-len(token)]
+				while myteststr.find(" "+token+" ") != -1:
+					myteststr = " ".join(myteststr.split(" "+token+" ", 1))
+				if myteststr.find(token) != -1:
+					print mydepstr
+					print myteststr
+					print token
+					badsyntax = "'%s' not separated by space" % (token)
+					break
+
+			if badsyntax:
+				stats[mytype+".syntax"] += 1
+				fails[mytype+".syntax"].append(catpkg+".ebuild "+mytype+": "+badsyntax)
+				if mytype == "LICENSE":
 					badlicsyntax = True
+				elif mytype == "PROVIDE":
+					badprovsyntax = True
+				else:
+					baddepsyntax = True
+				continue
 
 		for keyword,arch,groups in arches:
 			portage.groups=groups
