@@ -1177,7 +1177,7 @@ dyn_install() {
 
 	if hasq multilib-strict ${FEATURES} && [ -x /usr/bin/file -a -x /usr/bin/find -a \
 	     -n "${MULTILIB_STRICT_DIRS}" -a -n "${MULTILIB_STRICT_DENY}" ]; then
-		MULTILIB_STRICT_EXEMPT=${MULTILIB_STRICT_EXEMPT:-"(perl5|gcc|gcc-lib)"}
+		MULTILIB_STRICT_EXEMPT=${MULTILIB_STRICT_EXEMPT:-"(perl5|gcc|gcc-lib|debug)"}
 		for dir in ${MULTILIB_STRICT_DIRS}; do
 			[ -d "${D}/${dir}" ] || continue
 			for file in $(find ${D}/${dir} -type f | egrep -v "^${D}/${dir}/${MULTILIB_STRICT_EXEMPT}"); do
@@ -1204,7 +1204,13 @@ dyn_preinst() {
 	declare -r D=${IMAGE}
 	pkg_preinst
 
-	# hopefully this will someday allow us to get rid of the no* feature flags
+	# remove man pages, info pages, docs if requested
+	for f in man info doc; do
+		if hasq no${f} $FEATURES; then
+			INSTALL_MASK="${INSTALL_MASK} /usr/share/${f}"
+		fi
+	done
+
 	# we don't want globbing for initial expansion, but afterwards, we do
 	local shopts=$-
 	set -o noglob
@@ -1220,21 +1226,6 @@ dyn_preinst() {
 	# set everything back the way we found it
 	set +o noglob
 	set -${shopts}
-
-	# remove man pages
-	if hasq noman $FEATURES; then
-		rm -fR "${IMAGE}/usr/share/man"
-	fi
-
-	# remove info pages
-	if hasq noinfo $FEATURES; then
-		rm -fR "${IMAGE}/usr/share/info"
-	fi
-
-	# remove docs
-	if hasq nodoc $FEATURES; then
-		rm -fR "${IMAGE}/usr/share/doc"
-	fi
 
 	# remove share dir if unnessesary
 	if hasq nodoc $FEATURES -o hasq noman $FEATURES -o hasq noinfo $FEATURES; then
