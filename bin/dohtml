@@ -63,6 +63,10 @@ def install(basename, dirname, options, prefix=""):
 			pfx = basename
 			if prefix: pfx = prefix + "/" + pfx
 			install(i, dirname, options, pfx)
+	else:
+		return False
+	return True
+
 
 class OptionsClass:
 	def __init__(self):
@@ -150,10 +154,19 @@ def main():
 		print "Document prefix : '" + options.doc_prefix	 + "'"
 		print "Allowed files :", options.allowed_files
 
+	success = True
+	
 	for x in args:
 		basename = os.path.basename(x)
 		dirname  = os.path.dirname(x)
-		install(basename, dirname, options)
+		success = success and install(basename, dirname, options)
+	
+	if success:
+		retcode = 0
+	else:
+		retcode = 1
+	
+	sys.exit(retcode)
 
 if __name__ == "__main__":
 	main()
