@@ -263,7 +263,7 @@ use_enable() {
 	return 0
 }
 
-register_death_hook() {
+register_die_hook() {
 	export EBUILD_DEATH_HOOKS="${EBUILD_DEATH_HOOKS} $*"
 }
 
