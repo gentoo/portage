@@ -2878,6 +2878,13 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 
 	chk_updated_cfg_files()
 
+	if myaction != "metadata":
+		if os.access(portage.USER_CONFIG_PATH + "/bin/post_sync", os.X_OK):
+			try:
+				portage.spawn(portage.USER_CONFIG_PATH + "/bin/post_sync " + dosyncuri, portage.settings, free=1)
+			except:
+				print red(" * ")+bold("spawn failed of "+ portage.USER_CONFIG_PATH + "/bin/post_sync")
+
 	if(mybestpv != mypvs) and not "--quiet" in myopts:
 		print
 		print red(" * ")+bold("An update to portage is available.")+" It is _highly_ recommended"
