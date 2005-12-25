@@ -908,11 +908,11 @@ dyn_compile() {
 	touch .compiled
 	cd build-info
 
-	for f in ASFLAGS CATEGORY CBUILD CC CDEPEND CFLAGS CHOST CXX \
+	for f in ASFLAGS CATEGORY CBUILD CC CFLAGS CHOST CXX \
 		CXXFLAGS DEPEND EXTRA_ECONF EXTRA_EINSTALL EXTRA_MAKE \
 		FEATURES INHERITED IUSE LDFLAGS LIBCFLAGS LIBCXXFLAGS \
 		LICENSE PDEPEND PF PKGUSE PROVIDE RDEPEND RESTRICT SLOT; do
-		[ -n "${!f}" ] && echo "${!f}" > ${f}
+		[ -n "${!f}" ] && echo "${!f}" | tr '\n,\r,\t' ' , , ' | sed s/'  \+'/' '/g > ${f}
 	done
 	echo "${USE}"		> USE
 	echo "${EAPI:-0}"	> EAPI
