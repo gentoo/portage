@@ -3292,10 +3292,7 @@ def dep_check(depstring,mydbapi,mysettings,use="yes",mode=None,myuse=None,use_ca
 
 	#check_config_instance(mysettings)
 
-	if use=="all":
-		#enable everything (for repoman)
-		myusesplit=["*"]
-	elif use=="yes":
+	if use=="yes":
 		if myuse==None:
 			#default behavior
 			myusesplit = string.split(mysettings["USE"])

@@ -73,10 +73,6 @@ def use_reduce(deparray, uselist=[], masklist=[], matchall=0, excludeall=[]):
 		# Conditional with no target
 		raise portage_exception.InvalidDependString("INVALID "+deparray[x]+" DEPEND STRING: "+str(deparray))
 	
-	#XXX: Compatibility -- Still required?
-	if ("*" in uselist):
-		matchall=1
-	
 	mydeparray = deparray[:]
 	rlist = []
 	while mydeparray:
