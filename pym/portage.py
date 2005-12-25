@@ -5739,44 +5739,23 @@ class dblink:
 				elif pkgfiles[obj][0]=="dev":
 					print "---       ","dev",obj
 
-			#progress -- are we making progress?  Initialized to 1 so loop will start
-			progress=1
-			while progress:
-				#let's see if we're able to make progress this iteration...
-				progress=0
+			mydirs.sort()
+			mydirs.reverse()
+			last_non_empty = ""
 
-				pos = 0
-				while pos<len(mydirs):
-					obj=mydirs[pos]
-					objld=listdir(obj)
+			for obj in mydirs:
+				if not last_non_empty.startswith(obj) and not listdir(obj):
+					try:
+						os.rmdir(obj)
+						print "<<<       ","dir",obj
+						last_non_empty = ""
+					except (OSError,IOError),e:
+						#immutable?
+						pass
 
-					if objld == None:
-						print "mydirs["+str(pos)+"]",mydirs[pos]
-						print "obj",obj
-						print "objld",objld
-						# the directory doesn't exist yet, continue
-						pos += 1
-						continue
-
-					if len(objld)>0:
-						#we won't remove this directory (yet), continue
-						pos += 1
-						continue
-					elif (objld != None):
-						#zappo time
-						del mydirs[pos]
-						#we've made progress!
-						progress = 1
-						try:
-							os.rmdir(obj)
-							print "<<<       ","dir",obj
-						except (OSError,IOError),e:
-							#immutable?
-							pass
-
-			#directories that aren't empty:
-			for x in mydirs:
-				print "--- !empty dir", x
+				print "--- !empty dir", obj
+				last_non_empty = obj
+				continue
 
 		#remove self from vartree database so that our own virtual gets zapped if we're the last node
 		db[self.myroot]["vartree"].zap(self.mycpv)
