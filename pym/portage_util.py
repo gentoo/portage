@@ -196,7 +196,7 @@ def grablines(myfilename,recursive=0):
 
 def writeints(mydict,myfilename):
 	myfile = None
-	myf2 = "%s.%i" % (myf2, os.getpid())
+	myf2 = "%s.%i" % (myfilename, os.getpid())
 	try:
 		myfile=open(myf2,"w")
 		for x in mydict:
