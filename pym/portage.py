@@ -5846,6 +5846,7 @@ class dblink:
 			mycwd = os.getcwd()
 			os.chdir(srcroot)
 			mysymlinks = filter(os.path.islink, listdir(srcroot, recursive=1, filesonly=0, followSymlinks=False))
+			myfilelist.extend(mysymlinks)
 
 			stopmerge=False
 			starttime=time.time()
