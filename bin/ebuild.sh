@@ -263,7 +263,7 @@ use_enable() {
 	return 0
 }
 
-add-ebuild-death-hook() {
+register_death_hook() {
 	export EBUILD_DEATH_HOOKS="${EBUILD_DEATH_HOOKS} $*"
 }
 
