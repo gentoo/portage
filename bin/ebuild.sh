@@ -908,37 +908,16 @@ dyn_compile() {
 	touch .compiled
 	cd build-info
 
-	echo "$ASFLAGS"        > ASFLAGS
-	echo "$CATEGORY"       > CATEGORY
-	echo "$CBUILD"         > CBUILD
-	echo "$CC"             > CC
-	echo "$CFLAGS"         > CFLAGS
-	echo "$CHOST"          > CHOST
-	echo "$CTARGET"        > CTARGET
-	echo "$CXX"            > CXX
-	echo "$CXXFLAGS"       > CXXFLAGS
-	echo "$DEPEND"         > DEPEND
-	echo "$EXTRA_ECONF"    > EXTRA_ECONF
-	echo "$EXTRA_EINSTALL" > EXTRA_EINSTALL
-	echo "$EXTRA_EMAKE"    > EXTRA_MAKE
-	echo "$FEATURES"       > FEATURES
-	echo "$INHERITED"      > INHERITED
-	echo "$IUSE"           > IUSE
-	echo "$PKGUSE"         > PKGUSE
-	echo "$LDFLAGS"        > LDFLAGS
-	echo "$LIBCFLAGS"      > LIBCFLAGS
-	echo "$LIBCXXFLAGS"    > LIBCXXFLAGS
-	echo "$LICENSE"        > LICENSE
-	echo "$PDEPEND"        > PDEPEND
-	echo "$PF"             > PF
-	echo "$PROVIDE"        > PROVIDE
-	echo "$RDEPEND"        > RDEPEND
-	echo "$RESTRICT"       > RESTRICT
-	echo "$SLOT"           > SLOT
-	echo "$USE"            > USE
-	echo "${EAPI:-0}"	   > EAPI
-
-	set                                         >  environment
+	for f in ASFLAGS CATEGORY CBUILD CC CDEPEND CFLAGS CHOST CXX \
+		CXXFLAGS DEPEND EXTRA_ECONF EXTRA_EINSTALL EXTRA_MAKE \
+		FEATURES INHERITED IUSE LDFLAGS LIBCFLAGS LIBCXXFLAGS \
+		LICENSE PDEPEND PF PKGUSE PROVIDE RDEPEND RESTRICT SLOT; do
+		local entry="${!f}"
+		[[ $entry != "" ]] && echo "${entry}" > $f
+	done
+	echo "${USE}"		> USE
+	echo "${EAPI:-0}"	> EAPI
+	set                     >  environment
 	export -p | sed 's:declare -rx:declare -x:' >> environment
 	bzip2 -9 environment
 
