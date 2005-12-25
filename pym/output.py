@@ -3,7 +3,7 @@
 # $Id: /var/cvsroot/gentoo-src/portage/pym/output.py,v 1.24.2.4 2005/04/17 09:01:55 jstubbs Exp $
 
 
-import os,sys,re
+import commands,os,sys,re
 
 havecolor=1
 dotitles=1
@@ -102,11 +102,12 @@ def xtermTitle(mystr):
 				sys.stderr.flush()
 				break
 
-def xtermTitleReset():
-	if havecolor and dotitles and os.environ.has_key("TERM"):
-		myt=os.environ["TERM"]
-		xtermTitle(os.environ["TERM"])
+prompt_command = os.getenv("PROMPT_COMMAND", 'echo -ne "\033]0;${USER}@${HOSTNAME%%.*}:${PWD/$HOME/~}\007"')
+default_xterm_title = commands.getoutput(prompt_command)
+del prompt_command
 
+def xtermTitleReset():
+	xtermTitle(default_xterm_title)
 
 def notitles():
 	"turn off title setting"
