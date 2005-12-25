@@ -5749,6 +5749,7 @@ class dblink:
 						os.rmdir(obj)
 						print "<<<       ","dir",obj
 						last_non_empty = ""
+						continue
 					except (OSError,IOError),e:
 						#immutable?
 						pass
