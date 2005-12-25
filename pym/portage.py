@@ -3159,7 +3159,7 @@ def dep_zapdeps(unreduced,reduced,myroot,use_binaries=0):
 			atoms = dep_zapdeps(dep, satisfied, myroot, use_binaries=use_binaries)
 		else:
 			atoms = [dep]
-		missing_atoms = [atom for atom in atoms if not db[myroot]["vartree"].dbapi.match(dep_getkey(atom))]
+		missing_atoms = [atom for atom in atoms if not db[myroot]["vartree"].dbapi.match(atom)]
 
 		if not missing_atoms:
 			if isinstance(dep, list):
@@ -3175,6 +3175,12 @@ def dep_zapdeps(unreduced,reduced,myroot,use_binaries=0):
 				missing_atoms = [atom for atom in atoms if not db[myroot]["porttree"].dbapi.xmatch("match-visible", atom)]
 			if not missing_atoms:
 				target = (dep, satisfied)
+
+	if not target:
+		if isinstance(deps[0], list):
+			return dep_zapdeps(deps[0], satisfieds[0], myroot, use_binaries=use_binaries)
+		else:
+			return [deps[0]]
 
 	if isinstance(target, tuple): # Nothing matching installed
 		if isinstance(target[0], list): # ... and the first available was a sublist
@@ -3196,7 +3202,7 @@ def dep_zapdeps(unreduced,reduced,myroot,use_binaries=0):
 		available_pkgs[pkg] = atom
 
 	if not available_pkgs:
-		return [unreduced[0]] # All masked
+		return [relevant_atoms[0]] # All masked
 
 	target_pkg = best(available_pkgs.keys())
 	suitable_atom = available_pkgs[target_pkg]
