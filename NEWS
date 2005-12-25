@@ -1,0 +1,27 @@
+News (mainly features/major bug fixes)
+
+portage-2.1 (ongoing via pre releases)
+------------
+
+* elog framework and accompanying modules for logging ebuild warnings, errors
+  and general notices.  Collects ewarn/einfo messages.
+* version syntax enhancements allowing multiple suffixes and a new 'cvs'
+  prefix for denoting "live sources" ebuilds.
+* config files as directories enabling finer-grained settings management.
+* Addition of an register_die_hook method that allows ebuild/eclasses to
+  register functions to be called for better debugging on errors.
+* Addition of pre and post user hookable functions for each ebuild phase, accessible 
+  via portage bashrc.  Example would be pre_src_unpack .
+* cache refactoring- runtime improvement from 35% -> 65%.
+* Intelligently handle and display USE_EXPAND-based IUSE variables.
+* FEATURES="parallel-fetch".  Download in parallel to compilation.
+* Include a "changed or new" USE flag output when --verbose isn't specified.
+* Support for splitting out debug information into separate files in
+  /usr/lib{,32,64}.
+* exec subsystem refactoring (now with less bugs!)
+* checksum/digest subsystem refactoring
+* Make --emptytree only apply to ${ROOT} rather than always including /.
+* Allow packages to be upgraded that are only depended on via a
+  "|| ( =cat/pkg-1* =cat/pkg-2* )" construct.
+* Ebuild output is no longer cut off early when using PORT_LOGDIR.
+
