@@ -947,16 +947,15 @@ class depgraph:
 		# select the correct /var database that we'll be checking against
 		vardbapi=portage.db[myroot]["vartree"].dbapi
 
-		if addme:
-			# if the package is already on the system, we add a "nomerge"
-			# directive, otherwise we add a "merge" directive.
-			if mytype=="blocks":
-				# we've encountered a "blocks" node.  We will totally ignore this
-				# node and not add it to our digraph if it doesn't apply to us.
-				if "--buildpkgonly" not in myopts and myparent and (self.mydbapi[myroot].match(mykey) or vardbapi.match(mykey)):
-					mybigkey.append(myparent.split()[2])
-					self.digraph.addnode(string.join(mybigkey),myparent)
-				return 1
+		# if the package is already on the system, we add a "nomerge"
+		# directive, otherwise we add a "merge" directive.
+		if mytype=="blocks":
+			# we've encountered a "blocks" node.  We will totally ignore this
+			# node and not add it to our digraph if it doesn't apply to us.
+			if addme and "--buildpkgonly" not in myopts and myparent and (self.mydbapi[myroot].match(mykey) or vardbapi.match(mykey)):
+				mybigkey.append(myparent.split()[2])
+				self.digraph.addnode(string.join(mybigkey),myparent)
+			return 1
 
 		if myuse == None:
 			self.pkgsettings.setcpv(mykey)
