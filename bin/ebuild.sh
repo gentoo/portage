@@ -912,8 +912,7 @@ dyn_compile() {
 		CXXFLAGS DEPEND EXTRA_ECONF EXTRA_EINSTALL EXTRA_MAKE \
 		FEATURES INHERITED IUSE LDFLAGS LIBCFLAGS LIBCXXFLAGS \
 		LICENSE PDEPEND PF PKGUSE PROVIDE RDEPEND RESTRICT SLOT; do
-		local entry="${!f}"
-		[[ $entry != "" ]] && echo "${entry}" > $f
+		[ "${!f}" != "" ] && echo "${!f}" > ${f}
 	done
 	echo "${USE}"		> USE
 	echo "${EAPI:-0}"	> EAPI
