@@ -1101,9 +1101,6 @@ class config:
 			self.lookuplist=self.configlist[:]
 			self.lookuplist.reverse()
 
-			archlist = grabfile(self["PORTDIR"]+"/profiles/arch.list")
-			self.configdict["conf"]["PORTAGE_ARCHLIST"] = string.join(archlist)
-
 			if os.environ.get("PORTAGE_CALLER","") == "repoman":
 				# repoman shouldn't use local settings.
 				locations = [self["PORTDIR"] + "/profiles"]
@@ -1159,6 +1156,10 @@ class config:
 			categories = grab_multiple("categories", locations, grabfile)
 			self.categories = stack_lists(categories, incremental=1)
 			del categories
+
+			archlist = grab_multiple("arch.list", locations, grabfile)
+			archlist = stack_lists(archlist, incremental=1)
+			self.configdict["conf"]["PORTAGE_ARCHLIST"] = " ".join(archlist)
 
 			# get virtuals -- needs categories
 			self.loadVirtuals('/')
@@ -6903,10 +6904,9 @@ if not os.path.isdir(settings["PORTAGE_TMPDIR"]):
 # COMPATABILITY -- This shouldn't be used.
 pkglines = settings.packages
 
-groups=settings["ACCEPT_KEYWORDS"].split()
-archlist=[]
-for myarch in grabfile(settings["PORTDIR"]+"/profiles/arch.list"):
-	archlist += [myarch,"~"+myarch]
+groups = settings["ACCEPT_KEYWORDS"].split()
+archlist = flatten([[myarch, "~"+myarch] for myarch in settings["PORTAGE_ARCHLIST"].split()])
+
 for group in groups:
 	if not archlist:
 		writemsg("--- 'profiles/arch.list' is empty or not available. Empty portage tree?\n")
