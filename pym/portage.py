@@ -6830,29 +6830,31 @@ def do_upgrade(mykey):
 	myworld.close()
 	print ""
 
+def commit_mtimedb():
+	if mtimedb:
+	# Store mtimedb
+		mymfn=mtimedbfile
+		try:
+			mtimedb["version"]=VERSION
+			cPickle.dump(mtimedb, open(mymfn,"w"), -1)
+		except SystemExit, e:
+			raise
+		except Exception, e:
+			pass
+
+		try:
+			os.chown(mymfn,uid,portage_gid)
+			os.chmod(mymfn,0664)
+		except SystemExit, e:
+			raise
+		except Exception, e:
+			pass
+
 def portageexit():
 	global uid,portage_gid,portdb,db
 	if secpass and not os.environ.has_key("SANDBOX_ACTIVE"):
 		close_portdbapi_caches()
-
-		if mtimedb:
-		# Store mtimedb
-			mymfn=mtimedbfile
-			try:
-				mtimedb["version"]=VERSION
-				cPickle.dump(mtimedb, open(mymfn,"w"), -1)
-			except SystemExit, e:
-				raise
-			except Exception, e:
-				pass
-
-			try:
-				os.chown(mymfn,uid,portage_gid)
-				os.chmod(mymfn,0664)
-			except SystemExit, e:
-				raise
-			except Exception, e:
-				pass
+		commit_mtimedb()
 
 atexit.register(portageexit)
 
@@ -6878,7 +6880,7 @@ if (secpass==2) and (not os.environ.has_key("SANDBOX_ACTIVE")):
 					 (settings["PORTAGE_CALLER"] == "fixpackages"):
 					didupdate=1
 					do_upgrade(mykey)
-					portageexit() # This lets us save state for C-c.
+					commit_mtimedb() # This lets us save state for C-c.
 		except OSError:
 			#directory doesn't exist
 			pass
