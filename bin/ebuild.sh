@@ -702,6 +702,9 @@ dyn_clean() {
 	if [ -z "$(find "${BUILDDIR}" -mindepth 1 -maxdepth 1)" ]; then
 		rmdir "${BUILDDIR}"
 	fi
+	# do not bind this to doebuild defined DISTDIR; don't trust doebuild, and if mistakes are made it'll
+	# result in it wiping the users distfiles directory (bad).
+	rm -rf "${BUILDDIR}/distdir"
 	true
 }
 

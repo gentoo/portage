@@ -2570,6 +2570,7 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 			os.chmod(mysettings["BUILD_PREFIX"],00775)
 
 		# Should be ok again to set $T, as sandbox does not depend on it
+		# XXX Bug.  no way in hell this is valid for clean handling.
 		mysettings["T"]=mysettings["BUILDDIR"]+"/temp"
 		if cleanup or mydo=="clean":
 			if os.path.exists(mysettings["T"]):
@@ -2790,6 +2791,31 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 	if (mydo in ["digest","fetch","unpack"] or "noauto" not in features) and \
 	   not fetch(fetchme, mysettings, listonly=listonly, fetchonly=fetchonly):
 		return 1
+
+	# inefficient.  improve this logic via making actionmap easily searchable to see if we're in the chain of what
+	# will be executed, either that or forced N doebuild calls instead of a single set of phase calls.
+	if (mydo not in ("setup", "clean", "postinst", "preinst", "prerm") and "noauto" not in features) or \
+		mydo == "unpack":
+		orig_distdir = mysettings["DISTDIR"]
+		edpath = mysettings["DISTDIR"] = os.path.join(mysettings["BUILDDIR"], "distdir")
+		if os.path.exists(edpath):
+			try:
+				if os.path.isdir(edpath) and not os.path.islink(edpath):
+					shutil.rmtree(edpath)
+				else:
+					os.unlink(edpath)
+			except OSError:
+				print "!!! Failed reseting ebuild distdir path, " + edpath
+				raise
+		os.mkdir(edpath)
+		os.chown(edpath, -1, portage_gid)
+		os.chmod(edpath, 0775)
+		try:
+			for file in aalist:
+				os.symlink(os.path.join(orig_distdir, file), os.path.join(edpath, file))
+		except OSError:
+			print "!!! Failed symlinking in '%s' to ebuild distdir" % file
+			raise
 
 	if mydo=="fetch" and listonly:
 		return 0
