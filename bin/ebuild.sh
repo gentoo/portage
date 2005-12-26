@@ -1027,7 +1027,7 @@ dyn_install() {
 	done
 
 	if type -p scanelf > /dev/null ; then
-		local qa_sucks_for_sure=0 qa_kinda_sucks=0
+		local insecure_rpath=0
 
 		# Make sure we disallow insecure RUNPATH/RPATH's
 		# Don't want paths that point to the tree where the package was built
@@ -1042,7 +1042,7 @@ dyn_install() {
 			echo " http://bugs.gentoo.org/81745"
 			echo "${f}"
 			echo -ne '\a\n'
-			qa_sucks_for_sure=1
+			insecure_rpath=1
 		fi
 
 		# Check for setid binaries but are not built with BIND_NOW
@@ -1054,7 +1054,7 @@ dyn_install() {
 			echo " LDFLAGS='-Wl,-z,now' emerge ${PN}"
 			echo "${f}"
 			echo -ne '\a\n'
-			qa_kinda_sucks=1
+			die_msg="${die_msg} setXid lazy bindings,"
 			sleep 1
 		fi
 
@@ -1069,7 +1069,7 @@ dyn_install() {
 			echo " properly, if at all."
 			echo "${f}"
 			echo -ne '\a\n'
-			qa_kinda_sucks=1
+			die_msg="${die_msg} textrels,"
 			sleep 1
 		fi
 
@@ -1083,17 +1083,17 @@ dyn_install() {
 			echo " at http://bugs.gentoo.org/ to make sure the file is fixed."
 			echo "${f}"
 			echo -ne '\a\n'
-			qa_kinda_sucks=1
+			die_msg="${die_msg} execstacks"
 			sleep 1
 		fi
 
 		# Save NEEDED information
 		scanelf -qyRF '%p %n' "${D}" | sed -e 's:^:/:' > "${PORTAGE_BUILDDIR}"/build-info/NEEDED
 
-		if [[ ${qa_sucks_for_sure} -eq 1 ]] ; then
-			die "Aborting due to serious QA concerns"
-		elif [[ ${qa_kinda_sucks} -eq 1 ]] && has stricter ${FEATURES} && ! has stricter ${RESTRICT} ; then
-			die "Aborting due to QA concerns"
+		if [[ ${insecure_rpath} -eq 1 ]] ; then
+			die "Aborting due to serious QA concerns with RUNPATH/RPATH"
+		elif [[ ${die_msg} != "" ]] && has stricter ${FEATURES} && ! has stricter ${RESTRICT} ; then
+			die "Aborting due to QA concerns: ${die_msg}"
 		fi
 	fi
 
