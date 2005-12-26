@@ -47,6 +47,7 @@ def has_version(argv):
 			sys.exit(1)
 	except KeyError:
 		sys.exit(1)
+has_version.uses_root = True
 
 
 def best_version(argv):
@@ -61,6 +62,7 @@ def best_version(argv):
 		print portage.best(mylist)
 	except KeyError:
 		sys.exit(1)
+best_version.uses_root = True
 
 
 def mass_best_version(argv):
@@ -76,6 +78,7 @@ def mass_best_version(argv):
 			print pack+":"+portage.best(mylist)
 	except KeyError:
 		sys.exit(1)
+mass_best_version.uses_root = True
 
 
 def best_visible(argv):
@@ -90,6 +93,7 @@ def best_visible(argv):
 		print portage.best(mylist)
 	except KeyError:
 		sys.exit(1)
+best_visible.uses_root = True
 
 
 def mass_best_visible(argv):
@@ -105,6 +109,7 @@ def mass_best_visible(argv):
 			print pack+":"+portage.best(mylist)
 	except KeyError:
 		sys.exit(1)
+mass_best_visible.uses_root = True
 
 
 def all_best_visible(argv):
@@ -119,6 +124,8 @@ def all_best_visible(argv):
 		mybest=portage.best(portage.db[argv[0]]["porttree"].dbapi.match(pkg))
 		if mybest:
 			print mybest
+all_best_visible.uses_root = True
+
 
 def match(argv):
 	"""<root> <category/package>
@@ -131,6 +138,7 @@ def match(argv):
 		print string.join(portage.db[argv[0]]["vartree"].dbapi.match(argv[1]),"\n")
 	except KeyError:
 		sys.exit(1)
+match.uses_root = True
 
 
 def vdb_path(argv):
@@ -139,6 +147,7 @@ def vdb_path(argv):
 	set environment/configuration options.
 	"""
 	print portage.root+portage.VDB_PATH
+
 
 def gentoo_mirrors(argv):
 	"""
@@ -255,13 +264,13 @@ def main():
 		usage(sys.argv)
 		sys.exit()
 
-	# no more fatties
-	global portage
-	import portage
-
 	cmd = sys.argv[1]
 	try:
 		function = globals()[cmd]
+		if getattr(function, "uses_root", False) and len(sys.argv) > 2:
+			os.environ["ROOT"] = sys.argv[2]
+		global portage
+		import portage
 		function(sys.argv[2:])
 	except KeyError:
 		usage(sys.argv)
