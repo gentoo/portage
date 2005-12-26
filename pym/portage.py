@@ -2794,7 +2794,7 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 
 	# inefficient.  improve this logic via making actionmap easily searchable to see if we're in the chain of what
 	# will be executed, either that or forced N doebuild calls instead of a single set of phase calls.
-	if (mydo not in ("setup", "clean", "postinst", "preinst", "prerm") and "noauto" not in features) or \
+	if (mydo not in ("setup", "clean", "postinst", "preinst", "prerm","digest","manifest") and "noauto" not in features) or \
 		mydo == "unpack":
 		orig_distdir = mysettings["DISTDIR"]
 		edpath = mysettings["DISTDIR"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "distdir")
