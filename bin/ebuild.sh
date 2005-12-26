@@ -709,7 +709,7 @@ dyn_clean() {
 }
 
 into() {
-	if [ $1 == "/" ]; then
+	if [ "$1" == "/" ]; then
 		export DESTTREE=""
 	else
 		export DESTTREE=$1
@@ -886,7 +886,7 @@ dyn_compile() {
 	fi
 	cp "${EBUILD}" "build-info/${PF}.ebuild"
 
-	if [ ${PORTAGE_BUILDDIR}/.compiled -nt "${WORKDIR}" ]; then
+	if [ "${PORTAGE_BUILDDIR}/.compiled" -nt "${WORKDIR}" ]; then
 		echo ">>> It appears that ${PN} is already compiled; skipping."
 		echo ">>> (clean to force compilation)"
 		trap SIGINT SIGQUIT
@@ -955,7 +955,7 @@ dyn_package() {
 
 dyn_test() {
 	[ "$(type -t pre_src_test)" == "function" ] && pre_src_test
-	if [ ${PORTAGE_BUILDDIR}/.tested -nt "${WORKDIR}" ]; then
+	if [ "${PORTAGE_BUILDDIR}/.tested" -nt "${WORKDIR}" ]; then
 		echo ">>> It appears that ${PN} has already been tested; skipping."
 		[ "$(type -t post_src_test)" == "function" ] && post_src_test
 		return
@@ -1454,7 +1454,7 @@ debug-print-section() {
 declare -ix ECLASS_DEPTH=0
 inherit() {
 	ECLASS_DEPTH=$(($ECLASS_DEPTH + 1))
-	if [[ $ECLASS_DEPTH > 1 ]]; then
+	if [[ ${ECLASS_DEPTH} > 1 ]]; then
 		debug-print "*** Multiple Inheritence (Level: ${ECLASS_DEPTH})"
 	fi
 
