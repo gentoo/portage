@@ -267,10 +267,13 @@ def main():
 	cmd = sys.argv[1]
 	try:
 		function = globals()[cmd]
-		if getattr(function, "uses_root", False) and len(sys.argv) > 2:
+		uses_root = (getattr(function, "uses_root", False) and len(sys.argv) > 2)
+		if uses_root:
 			os.environ["ROOT"] = sys.argv[2]
 		global portage
 		import portage
+		if uses_root:
+			sys.argv[2] = portage.root
 		function(sys.argv[2:])
 	except KeyError:
 		usage(sys.argv)
