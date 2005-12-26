@@ -2526,7 +2526,7 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 	mysettings["BUILD_PREFIX"] = mysettings["PORTAGE_TMPDIR"]+"/portage"
 	mysettings["HOME"]         = mysettings["BUILD_PREFIX"]+"/homedir"
 	mysettings["PKG_TMPDIR"]   = mysettings["PORTAGE_TMPDIR"]+"/portage-pkg"
-	mysettings["BUILDDIR"]     = mysettings["BUILD_PREFIX"]+"/"+mysettings["PF"]
+	mysettings["PORTAGE_BUILDDIR"]     = mysettings["BUILD_PREFIX"]+"/"+mysettings["PF"]
 
 	mysettings["PORTAGE_BASHRC"] = EBUILD_SH_ENV_FILE
 
@@ -2571,7 +2571,7 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 
 		# Should be ok again to set $T, as sandbox does not depend on it
 		# XXX Bug.  no way in hell this is valid for clean handling.
-		mysettings["T"]=mysettings["BUILDDIR"]+"/temp"
+		mysettings["T"]=mysettings["PORTAGE_BUILDDIR"]+"/temp"
 		if cleanup or mydo=="clean":
 			if os.path.exists(mysettings["T"]):
 				shutil.rmtree(mysettings["T"])
@@ -2612,10 +2612,10 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 				os.makedirs(mysettings["BUILD_PREFIX"])
 			if (os.getuid() == 0):
 				os.chown(mysettings["BUILD_PREFIX"],portage_uid,portage_gid)
-			if not os.path.exists(mysettings["BUILDDIR"]):
-				os.makedirs(mysettings["BUILDDIR"])
+			if not os.path.exists(mysettings["PORTAGE_BUILDDIR"]):
+				os.makedirs(mysettings["PORTAGE_BUILDDIR"])
 			if (os.getuid() == 0):
-				os.chown(mysettings["BUILDDIR"],portage_uid,portage_gid)
+				os.chown(mysettings["PORTAGE_BUILDDIR"],portage_uid,portage_gid)
 		except OSError, e:
 			print "!!! File system problem. (ReadOnly? Out of space?)"
 			print "!!! Perhaps: rm -Rf",mysettings["BUILD_PREFIX"]
@@ -2630,7 +2630,7 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 				os.chmod(mysettings["HOME"],02770)
 		except OSError, e:
 			print "!!! File system problem. (ReadOnly? Out of space?)"
-			print "!!! Failed to create fake home directory in BUILDDIR"
+			print "!!! Failed to create fake home directory in PORTAGE_BUILDDIR"
 			print "!!!",str(e)
 			return 1
 
@@ -2695,8 +2695,8 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 				features.remove("distcc")
 				mysettings["DISTCC_DIR"]=""
 
-		mysettings["WORKDIR"]=mysettings["BUILDDIR"]+"/work"
-		mysettings["D"]=mysettings["BUILDDIR"]+"/image/"
+		mysettings["WORKDIR"]=mysettings["PORTAGE_BUILDDIR"]+"/work"
+		mysettings["D"]=mysettings["PORTAGE_BUILDDIR"]+"/image/"
 
 		if mysettings.has_key("PORT_LOGDIR"):
 			if not os.access(mysettings["PORT_LOGDIR"],os.F_OK):
@@ -2797,7 +2797,7 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 	if (mydo not in ("setup", "clean", "postinst", "preinst", "prerm") and "noauto" not in features) or \
 		mydo == "unpack":
 		orig_distdir = mysettings["DISTDIR"]
-		edpath = mysettings["DISTDIR"] = os.path.join(mysettings["BUILDDIR"], "distdir")
+		edpath = mysettings["DISTDIR"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "distdir")
 		if os.path.exists(edpath):
 			try:
 				if os.path.isdir(edpath) and not os.path.islink(edpath):
@@ -2873,16 +2873,16 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 		return spawnebuild(mydo,actionmap,mysettings,debug,logfile=logfile)
 	elif mydo=="qmerge":
 		#check to ensure install was run.  this *only* pops up when users forget it and are using ebuild
-		if not os.path.exists(mysettings["BUILDDIR"]+"/.installed"):
+		if not os.path.exists(mysettings["PORTAGE_BUILDDIR"]+"/.installed"):
 			print "!!! mydo=qmerge, but install phase hasn't been ran"
 			sys.exit(1)
 		#qmerge is specifically not supposed to do a runtime dep check
-		return merge(mysettings["CATEGORY"],mysettings["PF"],mysettings["D"],mysettings["BUILDDIR"]+"/build-info",myroot,mysettings,myebuild=mysettings["EBUILD"],mytree=tree)
+		return merge(mysettings["CATEGORY"],mysettings["PF"],mysettings["D"],mysettings["PORTAGE_BUILDDIR"]+"/build-info",myroot,mysettings,myebuild=mysettings["EBUILD"],mytree=tree)
 	elif mydo=="merge":
 		retval=spawnebuild("install",actionmap,mysettings,debug,alwaysdep=1,logfile=logfile)
 		if retval:
 			return retval
-		return merge(mysettings["CATEGORY"],mysettings["PF"],mysettings["D"],mysettings["BUILDDIR"]+"/build-info",myroot,mysettings,myebuild=mysettings["EBUILD"],mytree=tree)
+		return merge(mysettings["CATEGORY"],mysettings["PF"],mysettings["D"],mysettings["PORTAGE_BUILDDIR"]+"/build-info",myroot,mysettings,myebuild=mysettings["EBUILD"],mytree=tree)
 	else:
 		print "!!! Unknown mydo:",mydo
 		sys.exit(1)

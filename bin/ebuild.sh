@@ -640,7 +640,7 @@ dyn_unpack() {
 			echo ">>> ${EBUILD} has been updated; recreating WORKDIR..."
 			newstuff="yes"
 			rm -rf "${WORKDIR}"
-		elif [ ! -f "${BUILDDIR}/.unpacked" ]; then
+		elif [ ! -f "${PORTAGE_BUILDDIR}/.unpacked" ]; then
 			echo ">>> Not marked as unpacked; recreating WORKDIR..."
 			newstuff="yes"
 			rm -rf "${WORKDIR}"
@@ -658,9 +658,9 @@ dyn_unpack() {
 	[ -d "$WORKDIR" ] && cd "${WORKDIR}"
 	echo ">>> Unpacking source..."
 	src_unpack
-	touch "${BUILDDIR}/.unpacked" || die "IO Failure -- Failed 'touch .unpacked' in BUILDIR"
+	touch "${PORTAGE_BUILDDIR}/.unpacked" || die "IO Failure -- Failed 'touch .unpacked' in BUILDIR"
 	echo ">>> Source unpacked."
-	cd "$BUILDDIR"
+	cd "${PORTAGE_BUILDDIR}"
 
 	[ "$(type -t post_src_unpack)" == "function" ] && post_src_unpack
 
@@ -670,14 +670,14 @@ dyn_unpack() {
 dyn_clean() {
 	if [ "$USERLAND" == "BSD" ] && type -p chflags &>/dev/null; then
 		chflags -R noschg,nouchg,nosappnd,nouappnd,nosunlnk,nouunlnk \
-			"${BUILDDIR}"
+			"${PORTAGE_BUILDDIR}"
 	fi
 
 	if [ "$USERLAND" == "Darwin" ] && type -p chflags &>/dev/null; then
-		chflags -R noschg,nouchg,nosappnd,nouappnd "${BUILDDIR}"
+		chflags -R noschg,nouchg,nosappnd,nouappnd "${PORTAGE_BUILDDIR}"
 	fi
 
-	rm -rf "${BUILDDIR}/image"
+	rm -rf "${PORTAGE_BUILDDIR}/image"
 
 	if ! hasq keeptemp $FEATURES; then
 		rm -rf "${T}"
@@ -686,25 +686,25 @@ dyn_clean() {
 	fi
 
 	if ! hasq keepwork $FEATURES; then
-		rm -rf "${BUILDDIR}/.unpacked"
-		rm -rf "${BUILDDIR}/.compiled"
-		rm -rf "${BUILDDIR}/.tested"
-		rm -rf "${BUILDDIR}/.installed"
-		rm -rf "${BUILDDIR}/.packaged"
-		rm -rf "${BUILDDIR}/build-info"
+		rm -rf "${PORTAGE_BUILDDIR}/.unpacked"
+		rm -rf "${PORTAGE_BUILDDIR}/.compiled"
+		rm -rf "${PORTAGE_BUILDDIR}/.tested"
+		rm -rf "${PORTAGE_BUILDDIR}/.installed"
+		rm -rf "${PORTAGE_BUILDDIR}/.packaged"
+		rm -rf "${PORTAGE_BUILDDIR}/build-info"
 		rm -rf "${WORKDIR}"
 	fi
 
-	if [ -f "${BUILDDIR}/.unpacked" ]; then
-		find "${BUILDDIR}" -type d ! -regex "^${WORKDIR}" | sort -r | tr "\n" "\0" | $XARGS -0 rmdir &>/dev/null
+	if [ -f "${PORTAGE_BUILDDIR}/.unpacked" ]; then
+		find "${PORTAGE_BUILDDIR}" -type d ! -regex "^${WORKDIR}" | sort -r | tr "\n" "\0" | $XARGS -0 rmdir &>/dev/null
 	fi
 
-	if [ -z "$(find "${BUILDDIR}" -mindepth 1 -maxdepth 1)" ]; then
-		rmdir "${BUILDDIR}"
+	if [ -z "$(find "${PORTAGE_BUILDDIR}" -mindepth 1 -maxdepth 1)" ]; then
+		rmdir "${PORTAGE_BUILDDIR}"
 	fi
 	# do not bind this to doebuild defined DISTDIR; don't trust doebuild, and if mistakes are made it'll
 	# result in it wiping the users distfiles directory (bad).
-	rm -rf "${BUILDDIR}/distdir"
+	rm -rf "${PORTAGE_BUILDDIR}/distdir"
 	true
 }
 
@@ -816,33 +816,33 @@ abort_handler() {
 
 abort_compile() {
 	abort_handler "src_compile" $1
-	rm -f "${BUILDDIR}/.compiled"
+	rm -f "${PORTAGE_BUILDDIR}/.compiled"
 	exit 1
 }
 
 abort_unpack() {
 	abort_handler "src_unpack" $1
-	rm -f "${BUILDDIR}/.unpacked"
-	rm -rf "${BUILDDIR}/work"
+	rm -f "${PORTAGE_BUILDDIR}/.unpacked"
+	rm -rf "${PORTAGE_BUILDDIR}/work"
 	exit 1
 }
 
 abort_package() {
 	abort_handler "dyn_package" $1
-	rm -f "${BUILDDIR}/.packaged"
+	rm -f "${PORTAGE_BUILDDIR}/.packaged"
 	rm -f "${PKGDIR}"/All/${PF}.t*
 	exit 1
 }
 
 abort_test() {
 	abort_handler "dyn_test" $1
-	rm -f "${BUILDDIR}/.tested"
+	rm -f "${PORTAGE_BUILDDIR}/.tested"
 	exit 1
 }
 
 abort_install() {
 	abort_handler "src_install" $1
-	rm -rf "${BUILDDIR}/image"
+	rm -rf "${PORTAGE_BUILDDIR}/image"
 	exit 1
 }
 
@@ -864,7 +864,7 @@ dyn_compile() {
 	[ "${DISTCC_DIR-unset}"  == "unset" ] && export DISTCC_DIR="${PORTAGE_TMPDIR}/.distcc"
 	[ ! -z "${DISTCC_DIR}" ] && addwrite "${DISTCC_DIR}"
 
-	if hasq noauto $FEATURES &>/dev/null && [ ! -f ${BUILDDIR}/.unpacked ]; then
+	if hasq noauto $FEATURES &>/dev/null && [ ! -f ${PORTAGE_BUILDDIR}/.unpacked ]; then
 		echo
 		echo "!!! We apparently haven't unpacked... This is probably not what you"
 		echo "!!! want to be doing... You are using FEATURES=noauto so I'll assume"
@@ -879,14 +879,14 @@ dyn_compile() {
 		sleep 3
 	fi
 
-	local srcdir=${BUILDDIR}
-	cd "${BUILDDIR}"
+	local srcdir=${PORTAGE_BUILDDIR}
+	cd "${PORTAGE_BUILDDIR}"
 	if [ ! -e "build-info" ]; then
 		mkdir build-info
 	fi
 	cp "${EBUILD}" "build-info/${PF}.ebuild"
 
-	if [ ${BUILDDIR}/.compiled -nt "${WORKDIR}" ]; then
+	if [ ${PORTAGE_BUILDDIR}/.compiled -nt "${WORKDIR}" ]; then
 		echo ">>> It appears that ${PN} is already compiled; skipping."
 		echo ">>> (clean to force compilation)"
 		trap SIGINT SIGQUIT
@@ -907,7 +907,7 @@ dyn_compile() {
 	src_compile
 	echo ">>> Source compiled."
 	#|| abort_compile "fail"
-	cd "${BUILDDIR}"
+	cd "${PORTAGE_BUILDDIR}"
 	touch .compiled
 	cd build-info
 
@@ -935,7 +935,7 @@ dyn_compile() {
 
 dyn_package() {
 	trap "abort_package" SIGINT SIGQUIT
-	cd "${BUILDDIR}/image"
+	cd "${PORTAGE_BUILDDIR}/image"
 	tar cpvf - ./ | bzip2 -f > ../bin.tar.bz2 || die "Failed to create tarball"
 	cd ..
 	xpak build-info inf.xpak
@@ -947,15 +947,15 @@ dyn_package() {
 	fi
 	ln -sf "../All/${PF}.tbz2" "${PKGDIR}/${CATEGORY}/${PF}.tbz2" || die "Failed to create symlink in ${PKGDIR}/${CATEGORY}"
 	echo ">>> Done."
-	cd "${BUILDDIR}"
-	touch .packaged || die "Failed to 'touch .packaged' in ${BUILDDIR}"
+	cd "${PORTAGE_BUILDDIR}"
+	touch .packaged || die "Failed to 'touch .packaged' in ${PORTAGE_BUILDDIR}"
 	trap SIGINT SIGQUIT
 }
 
 
 dyn_test() {
 	[ "$(type -t pre_src_test)" == "function" ] && pre_src_test
-	if [ ${BUILDDIR}/.tested -nt "${WORKDIR}" ]; then
+	if [ ${PORTAGE_BUILDDIR}/.tested -nt "${WORKDIR}" ]; then
 		echo ">>> It appears that ${PN} has already been tested; skipping."
 		[ "$(type -t post_src_test)" == "function" ] && post_src_test
 		return
@@ -973,8 +973,8 @@ dyn_test() {
 		src_test
 	fi
 
-	cd "${BUILDDIR}"
-	touch .tested || die "Failed to 'touch .tested' in ${BUILDDIR}"
+	cd "${PORTAGE_BUILDDIR}"
+	touch .tested || die "Failed to 'touch .tested' in ${PORTAGE_BUILDDIR}"
 	[ "$(type -t post_src_test)" == "function" ] && post_src_test
 	trap SIGINT SIGQUIT
 }
@@ -986,8 +986,8 @@ PORTAGE_INST_GID="0"
 dyn_install() {
 	trap "abort_install" SIGINT SIGQUIT
 	[ "$(type -t pre_src_install)" == "function" ] && pre_src_install
-	rm -rf "${BUILDDIR}/image"
-	mkdir "${BUILDDIR}/image"
+	rm -rf "${PORTAGE_BUILDDIR}/image"
+	mkdir "${PORTAGE_BUILDDIR}/image"
 	if [ -d "${S}" ]; then
 		cd "${S}"
 	fi
@@ -1033,7 +1033,7 @@ dyn_install() {
 		# Don't want paths that point to the tree where the package was built
 		# (older, broken libtools would do this).  Also check for null paths
 		# because the loader will search $PWD when it finds null paths.
-		f=$(scanelf -qyRF '%r %p' "${D}" | grep -E "(${BUILDDIR}|: |::|^ )")
+		f=$(scanelf -qyRF '%r %p' "${D}" | grep -E "(${PORTAGE_BUILDDIR}|: |::|^ )")
 		if [[ -n ${f} ]] ; then
 			echo -ne '\a\n'
 			echo "QA Notice: the following files contain insecure RUNPATH's"
@@ -1088,7 +1088,7 @@ dyn_install() {
 		fi
 
 		# Save NEEDED information
-		scanelf -qyRF '%p %n' "${D}" | sed -e 's:^:/:' > "${BUILDDIR}"/build-info/NEEDED
+		scanelf -qyRF '%p %n' "${D}" | sed -e 's:^:/:' > "${PORTAGE_BUILDDIR}"/build-info/NEEDED
 
 		if [[ ${qa_sucks_for_sure} -eq 1 ]] ; then
 			die "Aborting due to serious QA concerns"
@@ -1189,10 +1189,10 @@ dyn_install() {
 		done
 	fi
 
-	touch "${BUILDDIR}/.installed"
+	touch "${PORTAGE_BUILDDIR}/.installed"
 	echo ">>> Completed installing ${PF} into ${D}"
 	echo
-	cd ${BUILDDIR}
+	cd ${PORTAGE_BUILDDIR}
 	[ "$(type -t post_src_install)" == "function" ] && post_src_install
 	trap SIGINT SIGQUIT
 }
