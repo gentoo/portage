@@ -915,7 +915,7 @@ dyn_compile() {
 		CXXFLAGS DEPEND EXTRA_ECONF EXTRA_EINSTALL EXTRA_MAKE \
 		FEATURES INHERITED IUSE LDFLAGS LIBCFLAGS LIBCXXFLAGS \
 		LICENSE PDEPEND PF PKGUSE PROVIDE RDEPEND RESTRICT SLOT; do
-		[ -n "${!f}" ] && echo "${!f}" | tr '\n,\r,\t' ' , , ' | sed s/'  \+'/' '/g > ${f}
+		[ -n "${!f}" ] && echo $(echo "${!f}" | tr '\n,\r,\t' ' , , ' | sed s/'  \+'/' '/g) > ${f}
 	done
 	echo "${USE}"		> USE
 	echo "${EAPI:-0}"	> EAPI
