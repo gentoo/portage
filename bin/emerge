@@ -326,6 +326,7 @@ if ("--tree" in myopts) and ("--columns" in myopts):
 
 if ("--quiet" in myopts):
 	update_spinner = update_quiet_spinner
+	os.environ["PORTAGE_QUIET"] = "1"
 
 # Always create packages if FEATURES=buildpkg
 # Imply --buildpkg if --buildpkgonly
