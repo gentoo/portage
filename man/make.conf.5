@@ -201,6 +201,10 @@ See also \fIsuidctl\fR below.
 When commiting work to cvs with \fBrepoman\fR(1), sign the Manifest with 
 a GPG key.  Read about the \fIPORTAGE_GPG_KEY\fR variable in \fBmake.conf\fR(5).
 .TP
+.B splitdebug
+Prior to stripping ELF etdyn and etexec files, the debugging info is 
+stored for later use by various debuggers.
+.TP
 .B strict
 Have portage react strongly to conditions that have the potential to be 
 dangerous (like missing or incorrect Manifests).
