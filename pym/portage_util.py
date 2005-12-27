@@ -4,6 +4,8 @@
 
 
 import sys,string,shlex,os.path
+if not hasattr(__builtins__, "set"):
+	from sets import Set as set
 
 noiselimit = 0
 def writemsg(mystr,noiselevel=0):
@@ -421,7 +423,8 @@ def unique_array(s):
 
 	# so much for linear.  abuse sort.
 	try:
-		t = sorted(s)
+		t = list(s)
+		t.sort()
 	except TypeError:
 		pass
 	else:
