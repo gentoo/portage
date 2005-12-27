@@ -89,8 +89,8 @@ try:
 
 	import portage_util
 	from portage_util import grabdict, grabdict_package, grabfile, grabfile_package, \
-		grabints, map_dictlist_vals, pickle_read, pickle_write, stack_dictlist, stack_dicts, stack_lists, \
-		unique_array, varexpand, writedict, writeints, writemsg, getconfig, dump_traceback
+		map_dictlist_vals, pickle_read, pickle_write, stack_dictlist, stack_dicts, stack_lists, \
+		unique_array, varexpand, writedict, writemsg, getconfig, dump_traceback
 	import portage_exception
 	import portage_gpg
 	import portage_locks

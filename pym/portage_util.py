@@ -106,32 +106,32 @@ def stack_dicts(dicts, incremental=0, incrementals=[], ignore_none=0):
 
 def stack_lists(lists, incremental=1):
 	"""Stacks an array of list-types into one array. Optionally removing
-	distinct values using '-value' notation. Higher index is preferenced."""
-	new_list = []
-	for x in lists:
-		for y in x:
-			if y:
-				if incremental and y[0]=='-':
-					while y[1:] in new_list:
-						del new_list[new_list.index(y[1:])]
-				else:
-					if y not in new_list:
-						new_list.append(y[:])
-	return new_list
+	distinct values using '-value' notation. Higher index is preferenced.
 
-def grabdict(myfilename,juststrings=0,empty=0,recursive=0):
+	all elements must be hashable."""
+
+	new_list = {}
+	for x in lists:
+		for y in filter(None, x):
+			if incremental and y.startswith("-"):
+				if y[1:] in new_list:
+					del new_list[y[1:]]
+			else:
+				new_list[y] = True
+	return new_list.keys()
+
+def grabdict(myfilename, juststrings=0, empty=0, recursive=0):
 	"""This function grabs the lines in a file, normalizes whitespace and returns lines in a dictionary"""
 	newdict={}
-	mylines=grablines(myfilename,recursive)
-	for x in mylines:
+	for x in grablines(myfilename, recursive):
 		#the split/join thing removes leading and trailing whitespace, and converts any whitespace in the line
 		#into single spaces.
 		if x[0] == "#":
 			continue
 		myline=string.split(x)
-		if len(myline)<2 and empty==0:
+		if len(myline) < 2 and empty == 0:
 			continue
-		if len(myline)<1 and empty==1:
+		if len(myline) < 1 and empty == 1:
 			continue
 		if juststrings:
 			newdict[myline[0]]=string.join(myline[1:])
@@ -139,17 +139,17 @@ def grabdict(myfilename,juststrings=0,empty=0,recursive=0):
 			newdict[myline[0]]=myline[1:]
 	return newdict
 
-def grabdict_package(myfilename,juststrings=0,recursive=0):
+def grabdict_package(myfilename, juststrings=0, recursive=0):
 	pkgs=grabdict(myfilename, juststrings, empty=1, recursive=recursive)
-	for x in pkgs.keys():
+	for x in pkgs:
 		if not isvalidatom(x):
 			del(pkgs[x])
 			writemsg("--- Invalid atom in %s: %s\n" % (myfilename, x))
 	return pkgs
 
-def grabfile_package(myfilename,compatlevel=0,recursive=0):
-	pkgs=grabfile(myfilename,compatlevel,recursive=recursive)
-	for x in range(len(pkgs)-1,-1,-1):
+def grabfile_package(myfilename, compatlevel=0, recursive=0):
+	pkgs=grabfile(myfilename, compatlevel, recursive=recursive)
+	for x in range(len(pkgs)-1, -1, -1):
 		pkg = pkgs[x]
 		if pkg[0] == "-":
 			pkg = pkg[1:]
@@ -159,18 +159,6 @@ def grabfile_package(myfilename,compatlevel=0,recursive=0):
 			writemsg("--- Invalid atom in %s: %s\n" % (myfilename, pkgs[x]))
 			del(pkgs[x])
 	return pkgs
-
-def grabints(myfilename,recursive=0):
-	newdict={}
-	mylines=grablines(myfilename,recursive)
-	for x in mylines:
-		#the split/join thing removes leading and trailing whitespace, and converts any whitespace in the line
-		#into single spaces.
-		myline=string.split(x)
-		if len(myline)!=2:
-			continue
-		newdict[myline[0]]=string.atoi(myline[1])
-	return newdict
 
 def grablines(myfilename,recursive=0):
 	mylines=[]
@@ -187,21 +175,6 @@ def grablines(myfilename,recursive=0):
 		except IOError:
 			pass
 	return mylines
-
-def writeints(mydict,myfilename):
-	myfile = None
-	myf2 = "%s.%i" % (myfilename, os.getpid())
-	try:
-		myfile=open(myf2,"w")
-		for x in mydict:
-			myfile.write("%s %s\n" % (x, str(mydict[x])))
-		myfile.close()
-		os.rename(myf2, myfilename)
-	except IOError:
-		if myfile is not None:
-			os.unlink(myf2)
-		return 0
-	return 1
 
 def writedict(mydict,myfilename,writekey=True):
 	"""Writes out a dict to a file; writekey=0 mode doesn't write out
@@ -418,35 +391,6 @@ def pickle_read(filename,default=None,debug=0):
 		writemsg("!!! Failed to load pickle: "+str(e)+"\n",1)
 		data = default
 	return data
-
-class ReadOnlyConfig:
-	def __init__(self,filename,strict_keys=0):
-		self.__filename = filename[:]
-		self.__strict_keys = strict_keys
-		self.__mydict = {}
-		self.__dict_was_loaded = False
-		if os.path.isfile(self.__filename):
-			self.__mydict = getconfig(self.__filename)
-			self.__dict_was_loaded = True
-
-	def isLoaded():
-		return self.__dict_was_loaded
-
-	def __getitem__(self,key):
-		if self.__mydict.has_key(key):
-			return self.__mydict[key][:]
-		if self.__strict_keys:
-			raise KeyError("%s not found in config: '%s'" % (key,self.__filename))
-		return ""
-
-	def __setitem__(self,key,value):
-		raise KeyError("This class is not modifiable.")
-
-	def keys(self):
-		return self.__mydict.keys()
-
-	def has_key(self,key):
-		return self.__mydict.has_key(key)
 
 def unique_array(array):
 	"""Takes an array and makes sure each element is unique."""
