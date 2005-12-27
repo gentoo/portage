@@ -88,7 +88,7 @@ try:
 	                         portage_uid, portage_gid
 
 	import portage_util
-	from portage_util import grab_multiple, grabdict, grabdict_package, grabfile, grabfile_package, \
+	from portage_util import grabdict, grabdict_package, grabfile, grabfile_package, \
 		grabints, map_dictlist_vals, pickle_read, pickle_write, stack_dictlist, stack_dicts, stack_lists, \
 		unique_array, varexpand, writedict, writeints, writemsg, getconfig, dump_traceback
 	import portage_exception
@@ -1008,7 +1008,7 @@ class config:
 					self.user_profile_dir = os.path.normpath("/"+"///"+CUSTOM_PROFILE_PATH)
 					self.profiles.append(self.user_profile_dir[:])
 
-			self.packages_list = grab_multiple("packages", self.profiles, grabfile_package)
+			self.packages_list = [grabfile_package(os.path.join(x, "packages")) for x in self.profiles]
 			self.packages      = stack_lists(self.packages_list, incremental=1)
 			del self.packages_list
 			#self.packages = grab_stacked("packages", self.profiles, grabfile, incremental_lines=1)
@@ -1023,15 +1023,15 @@ class config:
 					self.prevmaskdict[mycatpkg].append(x)
 
 			# get profile-masked use flags -- INCREMENTAL Child over parent
-			usemask_lists = grab_multiple("use.mask", self.profiles, grabfile)
+			usemask_lists = [grabfile(os.path.join(x, "use.mask")) for x in self.profiles]
 			self.usemask  = stack_lists(usemask_lists, incremental=True)
 			del usemask_lists
-			use_defs_lists = grab_multiple("use.defaults", self.profiles, grabdict)
+			use_defs_lists = [grabdict(os.path.join(x, "use.defaults")) for x in self.profiles]
 			self.use_defs  = stack_dictlist(use_defs_lists, incremental=True)
 			del use_defs_lists
 
 			try:
-				mygcfg_dlists = grab_multiple("make.globals", self.profiles+["/etc"], getconfig)
+				mygcfg_dlists = [getconfig(os.path.join(x, "make.globals")) for x in self.profiles+["/etc"]]
 				self.mygcfg   = stack_dicts(mygcfg_dlists, incrementals=portage_const.INCREMENTALS, ignore_none=1)
 
 				if self.mygcfg == None:
@@ -1049,7 +1049,7 @@ class config:
 			self.mygcfg = {}
 			if self.profiles:
 				try:
-					mygcfg_dlists = grab_multiple("make.defaults", self.profiles, getconfig)
+					mygcfg_dlists = [getconfig(os.path.join(x, "make.defaults")) for x in self.profiles]
 					self.mygcfg   = stack_dicts(mygcfg_dlists, incrementals=portage_const.INCREMENTALS, ignore_none=1)
 					#self.mygcfg = grab_stacked("make.defaults", self.profiles, getconfig)
 					if self.mygcfg == None:
@@ -1153,11 +1153,11 @@ class config:
 						self.punmaskdict[mycatpkg]=[x]
 
 			#getting categories from an external file now
-			categories = grab_multiple("categories", locations, grabfile)
+			categories = [grabfile(os.path.join(x, "categories")) for x in locations]
 			self.categories = stack_lists(categories, incremental=1)
 			del categories
 
-			archlist = grab_multiple("arch.list", locations, grabfile)
+			archlist = [grabfile(os.path.join(x, "arch.list")) for x in locations]
 			archlist = stack_lists(archlist, incremental=1)
 			self.configdict["conf"]["PORTAGE_ARCHLIST"] = " ".join(archlist)
 
@@ -1165,7 +1165,7 @@ class config:
 			self.loadVirtuals('/')
 
 			#package.mask
-			pkgmasklines = grab_multiple("package.mask", self.profiles, grabfile_package)
+			pkgmasklines = [grabfile_package(os.path.join(x, "package.mask")) for x in self.profiles]
 			for l in locations:
 				pkgmasklines.append(grabfile_package(l+os.path.sep+"package.mask", recursive=1))
 			pkgmasklines = stack_lists(pkgmasklines, incremental=1)
@@ -1178,7 +1178,7 @@ class config:
 				else:
 					self.pmaskdict[mycatpkg]=[x]
 
-			pkgprovidedlines = grab_multiple("package.provided", self.profiles, grabfile)
+			pkgprovidedlines = [grabfile(os.path.join(x, "package.provided")) for x in self.profiles]
 			pkgprovidedlines = stack_lists(pkgprovidedlines, incremental=1)
 			for x in range(len(pkgprovidedlines)-1, -1, -1):
 				cpvr = catpkgsplit(pkgprovidedlines[x])
@@ -1497,7 +1497,7 @@ class config:
 		# 2. user-declared set
 		# 5. profile
 
-		self.dirVirtuals = grab_multiple("virtuals", myvirtdirs, grabdict)
+		self.dirVirtuals = [grabdict(os.path.join(x, "virtuals")) for x in myvirtdirs]
 		self.dirVirtuals.reverse()
 
 		if self.user_profile_dir and os.path.exists(self.user_profile_dir+"/virtuals"):
@@ -6912,7 +6912,7 @@ if root!="/":
 profileroots = [settings["PORTDIR"]+"/profiles/"]
 for x in settings["PORTDIR_OVERLAY"].split():
 	profileroots.insert(0, x+"/profiles/")
-thirdparty_lists = grab_multiple("thirdpartymirrors", profileroots, grabdict)
+thirdparty_lists = [grabdict(os.path.join(x, "thirdpartymirrors")) for x in profileroots]
 thirdpartymirrors = stack_dictlist(thirdparty_lists, incremental=True)
 
 if not os.path.exists(settings["PORTAGE_TMPDIR"]):

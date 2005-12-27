@@ -119,12 +119,6 @@ def stack_lists(lists, incremental=1):
 						new_list.append(y[:])
 	return new_list
 
-def grab_multiple(basename, locations, handler, all_must_exist=0):
-	mylist = []
-	for x in locations:
-		mylist.append(handler(x+"/"+basename))
-	return mylist
-
 def grabdict(myfilename,juststrings=0,empty=0,recursive=0):
 	"""This function grabs the lines in a file, normalizes whitespace and returns lines in a dictionary"""
 	newdict={}
