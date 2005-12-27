@@ -16,10 +16,8 @@ try:
 except ImportError:
 	max_fd_limit = 256
 
-
 sandbox_capable = (os.path.isfile(SANDBOX_BINARY) and
                    os.access(SANDBOX_BINARY, os.X_OK))
-
 
 def spawn_bash(mycommand, debug=False, opt_name=None, **keywords):
 	args = [BASH_BINARY]
@@ -32,7 +30,6 @@ def spawn_bash(mycommand, debug=False, opt_name=None, **keywords):
 	args.append(mycommand)
 	return spawn(args, opt_name=opt_name, **keywords)
 
-
 def spawn_sandbox(mycommand, opt_name=None, **keywords):
 	if not sandbox_capable:
 		return spawn_bash(mycommand, opt_name=opt_name, **keywords)
@@ -41,7 +38,6 @@ def spawn_sandbox(mycommand, opt_name=None, **keywords):
 		opt_name = os.path.basename(mycommand.split()[0])
 	args.append(mycommand)
 	return spawn(args, opt_name=opt_name, **keywords)
-
 
 # We need to make sure that any processes spawned are killed off when
 # we exit. spawn() takes care of adding and removing pids to this list
@@ -58,8 +54,8 @@ def cleanup():
 			# This pid has been cleaned up outside
 			# of spawn().
 			pass
-atexit.register(cleanup)
 
+atexit.register(cleanup)
 
 def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
           uid=None, gid=None, groups=None, umask=None, logfile=None,
@@ -169,7 +165,6 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 	# Everything succeeded
 	return 0
 
-
 def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask):
 
 	# If the process we're creating hasn't been given a name
@@ -212,7 +207,6 @@ def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask):
 
 	# And switch to the new process.
 	os.execve(binary, myargs, env)
-
 
 def find_binary(binary):
 	for path in os.getenv("PATH", "").split(":"):
