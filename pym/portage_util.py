@@ -392,15 +392,6 @@ def pickle_read(filename,default=None,debug=0):
 		data = default
 	return data
 
-def unique_array(array):
-	"""Takes an array and makes sure each element is unique."""
-	mya = []
-	for x in array:
-		if x not in mya:
-			mya.append(x)
-	return mya
-
-
 def dump_traceback(msg, noiselevel=1):
 	import sys, traceback
 	info = sys.exc_info()
@@ -417,3 +408,37 @@ def dump_traceback(msg, noiselevel=1):
 	if error:
 		writemsg(error+"\n", noiselevel=noiselevel)
 	writemsg("====================================\n\n", noiselevel=noiselevel)
+
+def unique_array(s):
+	"""lifted from python cookbook, credit: Tim Peters
+	Return a list of the elements in s in arbitrary order, sans duplicates"""
+	n = len(s)
+	# assume all elements are hashable, if so, it's linear
+	try:
+		return list(set(s))
+	except TypeError:
+		pass
+
+	# so much for linear.  abuse sort.
+	try:
+		t = sorted(s)
+	except TypeError:
+		pass
+	else:
+		assert n > 0
+		last = t[0]
+		lasti = i = 1
+		while i < n:
+			if t[i] != last:
+				t[lasti] = last = t[i]
+				lasti += 1
+			i += 1
+		return t[:lasti]
+
+	# blah.	 back to original portage.unique_array
+	u = []
+	for x in s:
+		if x not in u:
+			u.append(x)
+	return u
+	
