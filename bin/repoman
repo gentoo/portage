@@ -287,7 +287,7 @@ def last():
 		print bold("Note: type \"repoman lfull\" for a complete listing of repomans last run.")
 		print
 	if dowarn and not dofail:
-		print green("RepoMan sez:"),"\"You only gave me a partial QA payment last time?\nI took it, but I wasn't happy.\""
+		print green("RepoMan sez:"),"\"You only gave me a partial QA payment last time?\n              I took it, but I wasn't happy.\""
 	elif not dofail:
 		print green("RepoMan sez:"),"\"If everyone were like you, I'd be out of business!\""
 	print
@@ -1285,7 +1285,7 @@ if mymode!="commit":
 		print bold("Note: type \"repoman full\" for a complete listing.")
 		print
 	if dowarn and not dofail:
-		print green("RepoMan sez:"),"\"You're only giving me a partial QA payment?\nI'll take it this time, but I'm not happy.\""
+		print green("RepoMan sez:"),"\"You're only giving me a partial QA payment?\n              I'll take it this time, but I'm not happy.\""
 	elif not dofail:
 		print green("RepoMan sez:"),"\"If everyone were like you, I'd be out of business!\""
 	print
