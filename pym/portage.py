@@ -2788,8 +2788,9 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 	# Only try and fetch the files if we are going to need them ... otherwise,
 	# if user has FEATURES=noauto and they run `ebuild clean unpack compile install`,
 	# we will try and fetch 4 times :/
-	if (mydo in ["digest","fetch","unpack"] or "noauto" not in features) and \
-	   not fetch(fetchme, mysettings, listonly=listonly, fetchonly=fetchonly):
+	need_distfiles = (mydo in ("digest", "fetch", "unpack") or
+	                  mydo != "manifest" and "noauto" not in features)
+	if need_distfiles and not fetch(fetchme, mysettings, listonly=listonly, fetchonly=fetchonly):
 		return 1
 
 	# inefficient.  improve this logic via making actionmap easily searchable to see if we're in the chain of what
