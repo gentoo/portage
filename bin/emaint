@@ -16,8 +16,6 @@ class WorldHandler(object):
 	def __init__(self):
 		self.invalid = []
 		self.not_installed = []
-		self.masked = []
-		self.unavailable = []
 		self.okay = []
 		self.found = os.access(portage_const.WORLD_FILE, os.R_OK)
 
@@ -26,10 +24,6 @@ class WorldHandler(object):
 				self.invalid.append(atom)
 			elif not portage.db["/"]["vartree"].dbapi.match(atom):
 				self.not_installed.append(atom)
-			elif not portage.db["/"]["porttree"].dbapi.xmatch("match-all", atom):
-				self.unavailable.append(atom)
-			elif not portage.db["/"]["porttree"].dbapi.match("match-visible", atom):
-				self.masked.append(atom)
 			else:
 				self.okay.append(atom)
 
@@ -38,10 +32,6 @@ class WorldHandler(object):
 		if self.found:
 			errors += map(lambda x: "'%s' is not a valid atom" % x, self.invalid)
 			errors += map(lambda x: "'%s' is not installed" % x, self.not_installed)
-			errors += map(lambda x: "'%s' is masked (manually fix by adding to package.keywords)" % x, self.masked)
-			errors += map(lambda x: "'%s' has no ebuilds available" % x, self.unavailable)
-			if self.masked:
-				errors += "Masked ebuilds can be manually unmasked with package.keywords or package.unmask"
 		else:
 			errors.append(portage_const.WORLD_FILE + " could not be opened for reading")
 		return errors
