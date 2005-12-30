@@ -160,7 +160,9 @@ qawarnings=[
 "file.size",
 "metadata.missing",
 "metadata.bad",
-"virtual.versioned"
+"virtual.versioned",
+"virtual.exists",
+"virtual.unavailable"
 ]
 
 missingvars=["KEYWORDS","LICENSE","DESCRIPTION","HOMEPAGE","SLOT"]
