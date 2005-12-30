@@ -2584,8 +2584,9 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 		logdir = mysettings["T"]+"/logging"
 		if not os.path.exists(logdir):
 			os.makedirs(logdir)
-		os.chown(logdir, portage_uid, portage_gid)
-		os.chmod(logdir, 0770)
+		if secpass == 2:
+			os.chown(logdir, portage_uid, portage_gid)
+			os.chmod(logdir, 0770)
 
 		try: # XXX: negative RESTRICT
 			if not (("nouserpriv" in string.split(mysettings["PORTAGE_RESTRICT"])) or \
@@ -2707,8 +2708,11 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 					print "!!!",e
 			if os.access(mysettings["PORT_LOGDIR"]+"/",os.W_OK):
 				try:
-					os.chown(mysettings["PORT_LOGDIR"],portage_uid,portage_gid)
-					os.chmod(mysettings["PORT_LOGDIR"],02770)
+					perms = os.stat(mysettings["PORT_LOGDIR"])
+					if perms[stat.ST_UID] != portage_uid or perms[stat.ST_GID] != portage_gid:
+						os.chown(mysettings["PORT_LOGDIR"],portage_uid,portage_gid)
+					if stat.S_IMODE(perms[stat.ST_MODE]) != 02770:
+						os.chmod(mysettings["PORT_LOGDIR"],02770)
 					if not mysettings.has_key("LOG_PF") or (mysettings["LOG_PF"] != mysettings["PF"]):
 						mysettings["LOG_PF"]=mysettings["PF"]
 						mysettings["LOG_COUNTER"]=str(db[myroot]["vartree"].dbapi.get_counter_tick_core("/"))
