@@ -2288,8 +2288,8 @@ def digestCheckFiles(myfiles, mydigests, basedir, note="", strict=0):
 			print red("!!! Digest verification Failed:")
 			print red("!!!")+"    "+str(myfile)
 			print red("!!! Reason: ")+reason[0]
-			print red("!!! Got:      ")+reason[1]
-			print red("!!! Expected: ")+reason[2]
+			print red("!!! Got:      ")+str(reason[1])
+			print red("!!! Expected: ")+str(reason[2])
 			print
 			return 0
 		else:
