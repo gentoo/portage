@@ -1432,6 +1432,7 @@ class depgraph:
 				newlist.append(atom)
 		mylist = newlist
 		
+		missing_atoms = []
 		for mydep in mylist:
 			try:
 				if not self.select_dep(portage.root, mydep, raise_on_missing=True):
@@ -1440,11 +1441,16 @@ class depgraph:
 			except ValueError:
 				if "--debug" in myopts:
 					raise
-				world_problems = True
+				missing_atoms.append(mydep)
 
 		if world_problems:
 			print "\n!!! Problems have been detected with your world file"
 			print "!!! Please run "+green("emaint --check world")+"\n"
+
+		if missing_atoms and "--verbose" in myopts:
+			print "\n!!! Packages for the following atoms are either all"
+			print "!!! masked or don't exist:"
+			print " ".join(missing_atoms) + "\n"
 
 		return 1
 
