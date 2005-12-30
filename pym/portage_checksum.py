@@ -8,6 +8,7 @@ from portage_const import PRIVATE_PATH,PRELINK_BINARY,HASHING_BLOCKSIZE
 import os
 import shutil
 import stat
+import portage_exception
 import portage_exec
 import portage_util
 import portage_locks
@@ -142,5 +143,7 @@ def perform_checksum(filename, hash_function=md5hash, calc_prelink=0):
 def perform_multiple_checksums(filename, hashes=["MD5"], calc_prelink=0):
 	rVal = {}
 	for x in hashes:
+		if x not in hashfunc_map:
+			raise portage_exception.DigestException, x+" hash function not available"
 		rVal[x] = perform_checksum(filename, hashfunc_map[x], calc_prelink)[0]
 	return rVal

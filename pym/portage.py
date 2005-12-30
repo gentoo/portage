@@ -2148,7 +2148,11 @@ def digestgen(myarchives,mysettings,overwrite=1,manifestonly=0):
 			myolddigest = digestParseFile(digestfn)
 
 		myarchives.sort()
-		mydigests=digestCreate(myarchives, basedir, oldDigest=myolddigest)
+		try:
+			mydigests=digestCreate(myarchives, basedir, oldDigest=myolddigest)
+		except portage_exception.DigestException, s:
+			print "!!!",s
+			return 0
 		if mydigests==None: # There was a problem, exit with an errorcode.
 			return 0
 
