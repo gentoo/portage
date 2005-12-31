@@ -418,24 +418,18 @@ libgd 2.x is incompatible with libgd 1.x.  This means that packages that were
 created with libgd 1.x will not compile with 2.x and must downgrade libgd first
 before they can emerge.
 .TP
-.B [ebuild     U\-] x11\-base/xfree\-4.3.0 [4.2.99.902]
-The \- represents lack of \fBSLOT\fR information about Xfree.  This will occur
-when the previous version emerged was injected (see \fBinject\fR for more info)
-or very outdated (so old that \fBSLOT\fR did not exist).  Either way, a newer version
-of Xfree is availabe for your updating delight.
-.TP
-.B [ebuild     U ] sys\-devel/distcc\-2.16 [2.13\-r1] \-gtk +ipv6* (\-selinux)
-The \-gtk reflects the status of \fBUSE\fR variables when emerging distcc.  
-Here we see that distcc can use the \fBUSE\fR variable gtk, but that your 
-current settings have gtk disabled.  This means optional support for gtk will
-not be enabled in distcc when you emerge it.  An asterisk shows that the 
-\fBUSE\fR flags have changed since the package was last installed.  In this 
-case, ipv6 is enabled but was previously disabled.  A \fBUSE\fR flag in 
-pparenthesis, like (\-selinux), is always disabled and shows that the flag is 
-not available for the current system profile.
+.B [ebuild     U ] sys\-devel/distcc\-2.16 [2.13\-r1] USE="ipv6* \-gtk \-qt%"
+Here we see that the make.conf variable \fBUSE\fR affects how this package is
+built.  In this example, ipv6 optional support is enabled and both gtk and qt
+support are disabled.  The asterisk following ipv6 indicates that ipv6 support
+was disabled the last time this packages was installed.  The percent sign
+following qt indicates that the qt option has been added to the package since
+it was last installed.
 .br
-\fB*Note:\fR The \fBUSE\fR status is only displayed when you use the 
-\fB\-\-pretend\fR and \fB\-\-verbose\fR options.
+\fB*Note:\fR Flags that haven't changed since the last install are only
+displayed when you use the \fB\-\-pretend\fR and \fB\-\-verbose\fR options.
+Using the \fB\-\-quiet\fR option will prevent all information from being
+displayed.
 .SH "NOTES"
 You should almost always precede any package install or update attempt with a 
 \fB\-\-pretend\fR install or update.  This lets you see how much will be 
