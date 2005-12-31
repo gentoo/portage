@@ -658,7 +658,7 @@ dyn_unpack() {
 	[ -d "$WORKDIR" ] && cd "${WORKDIR}"
 	echo ">>> Unpacking source..."
 	src_unpack
-	touch "${PORTAGE_BUILDDIR}/.unpacked" || die "IO Failure -- Failed 'touch .unpacked' in ${PORTAGE_BUILDIR}"
+	touch "${PORTAGE_BUILDDIR}/.unpacked" || die "IO Failure -- Failed 'touch .unpacked' in ${PORTAGE_BUILDDIR}"
 	echo ">>> Source unpacked."
 	cd "${PORTAGE_BUILDDIR}"
 
