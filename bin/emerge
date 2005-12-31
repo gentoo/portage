@@ -1489,45 +1489,29 @@ class depgraph:
 		p=[]
 		totalsize=0
 
-		if "--verbose" in myopts:
-			# Full USE display
-			def create_use_string(name, cur_iuse, cur_use, old_iuse, old_use, is_new):
-				usestrs = []
-				for flag in cur_iuse:
-					suffix = ""
-					if flag in cur_use:
-						color = red
-						prefix = ""
-					else:
-						color = blue
-						prefix = "-"
-					if not is_new and ((flag in old_use) ^ (flag in cur_use)):
-						color = green
-						suffix = "*"
-					usestrs.append(color(prefix+flag)+suffix)
-				ret = " ".join(usestrs)
-				if ret:
-					ret = '%s="%s" ' % (name, ret)
-				return ret
-		elif "--quiet" in myopts:
-			# No USE display
+		if "--quiet" in myopts:
 			def create_use_string(*args):
 				return ""
 		else:
-			# Changed-since-previous USE display
-			def create_use_string(name, cur_iuse, cur_use, old_iuse, old_use, is_new):
+			def create_use_string(name, cur_iuse, cur_use, old_iuse, old_use, is_new, all_flags=("--verbose" in myopts)):
 				enabled = []
 				disabled = []
 				for flag in cur_iuse:
-					if flag in cur_use and flag not in old_use:
-						if flag in old_iuse:
-							enabled.append(green(flag)+"*")
-						else:
+					if flag in cur_use:
+						if is_new or flag in old_use and all_flags:
 							enabled.append(red(flag))
-					elif flag not in cur_use and flag in old_use:
-						disabled.append(green("-"+flag)+"*")
-					elif is_new or flag not in old_iuse:
-						disabled.append(blue("-"+flag))
+						elif flag not in old_iuse:
+							enabled.append(yellow(flag)+"%")
+						elif flag not in old_use:
+							enabled.append(green(flag)+"*")
+					else:
+						if is_new or flag in old_iuse and flag not in old_use and all_flags:
+							disabled.append(blue("-"+flag))
+						elif flag not in old_iuse:
+							disabled.append(yellow("-"+flag)+"%")
+						elif flag in old_use:
+							disabled.append(green("-"+flag)+"*")
+
 				enabled = " ".join(enabled)
 				disabled = " ".join(disabled)
 				if enabled and disabled:
