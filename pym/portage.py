@@ -1380,7 +1380,8 @@ class config:
 			if not self.treeVirtuals.has_key(virt):
 				self.treeVirtuals[virt] = []
 			# XXX: Is this bad? -- It's a permanent modification
-			self.treeVirtuals[virt] = portage_util.unique_array(self.treeVirtuals[virt]+[cp])
+			if cp not in self.treeVirtuals[virt]:
+				self.treeVirtuals[virt].append(cp)
 
 		self.virtuals = self.__getvirtuals_compile()
 
