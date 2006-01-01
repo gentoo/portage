@@ -102,7 +102,7 @@ def xtermTitle(mystr):
 				sys.stderr.flush()
 				break
 
-prompt_command = os.getenv("PROMPT_COMMAND", 'echo -ne "\033]0;${USER}@${HOSTNAME%%.*}:${PWD/$HOME/~}\007"')
+prompt_command = os.getenv("PROMPT_COMMAND", 'echo -ne "${USER}@${HOSTNAME%%.*}:${PWD/$HOME/~}"')
 default_xterm_title = commands.getoutput(prompt_command)
 del prompt_command
 
