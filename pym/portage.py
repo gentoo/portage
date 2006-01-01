@@ -90,7 +90,7 @@ try:
 	import portage_util
 	from portage_util import grabdict, grabdict_package, grabfile, grabfile_package, \
 		map_dictlist_vals, pickle_read, pickle_write, stack_dictlist, stack_dicts, stack_lists, \
-		unique_array, varexpand, writedict, writemsg, getconfig, dump_traceback
+		unique_array, varexpand, writedict, writemsg, writemsg_stdout, getconfig, dump_traceback
 	import portage_exception
 	import portage_gpg
 	import portage_locks
@@ -2298,7 +2298,7 @@ def digestCheckFiles(myfiles, mydigests, basedir, note="", strict=0):
 			print
 			return 0
 		else:
-			print ">>> checksums "+note+" ;-)",x
+			writemsg_stdout(">>> checksums "+note+" ;-) %s\n" % x)
 	return 1
 
 
@@ -2497,6 +2497,9 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 	mysettings["PN"] = mysplit[0]
 	mysettings["PV"] = mysplit[1]
 	mysettings["PR"] = mysplit[2]
+
+	if portage_util.noiselimit < 0:
+		mysettings["PORTAGE_QUIET"] = "1"
 
 	if mydo != "depend":
 		try:
@@ -5714,7 +5717,7 @@ class dblink:
 						#we skip this if we're dealing with a symlink
 						#because os.path.exists() will operate on the
 						#link target rather than the link itself.
-						print "--- !found "+str(pkgfiles[obj][0]), obj
+						writemsg_stdout("--- !found "+str(pkgfiles[obj][0])+ " %s\n" % obj)
 						continue
 				# next line includes a tweak to protect modules from being unmerged,
 				# but we don't protect modules from being overwritten if they are
@@ -5722,56 +5725,56 @@ class dblink:
 				# functionality for /lib/modules. For portage-ng both capabilities
 				# should be able to be independently specified.
 				if self.isprotected(obj) or ((len(obj) > len(modprotect)) and (obj[0:len(modprotect)]==modprotect)):
-					print "--- cfgpro "+str(pkgfiles[obj][0]), obj
+					writemsg_stdout("--- cfgpro %s %s\n" % (pkgfiles[obj][0], obj))
 					continue
 
 				lstatobj=os.lstat(obj)
 				lmtime=str(lstatobj[stat.ST_MTIME])
 				if (pkgfiles[obj][0] not in ("dir","fif","dev")) and (lmtime != pkgfiles[obj][1]):
-					print "--- !mtime", pkgfiles[obj][0], obj
+					writemsg_stdout("--- !mtime %s %s\n" % (pkgfiles[obj][0], obj))
 					continue
 
 				if pkgfiles[obj][0]=="dir":
 					if not os.path.isdir(obj):
-						print "--- !dir  ","dir", obj
+						writemsg_stdout("--- !dir  %s %s\n" % ("dir", obj))
 						continue
 					mydirs.append(obj)
 				elif pkgfiles[obj][0]=="sym":
 					if not os.path.islink(obj):
-						print "--- !sym  ","sym", obj
+						writemsg_stdout("--- !sym  %s %s\n" % ("sym", obj))
 						continue
 					try:
 						os.unlink(obj)
-						print "<<<       ","sym",obj
+						writemsg_stdout("<<<       %s %s\n" % ("sym",obj))
 					except (OSError,IOError),e:
-						print "!!!       ","sym",obj
+						writemsg_stdout("!!!       %s %s\n" % ("sym",obj))
 				elif pkgfiles[obj][0]=="obj":
 					if not os.path.isfile(obj):
-						print "--- !obj  ","obj", obj
+						writemsg_stdout("--- !obj  %s %s\n" % ("obj", obj))
 						continue
 					mymd5=portage_checksum.perform_md5(obj, calc_prelink=1)
 
 					# string.lower is needed because db entries used to be in upper-case.  The
 					# string.lower allows for backwards compatibility.
 					if mymd5 != string.lower(pkgfiles[obj][2]):
-						print "--- !md5  ","obj", obj
+						writemsg_stdout("--- !md5  %s %s\n" % ("obj", obj))
 						continue
 					try:
 						os.unlink(obj)
 					except (OSError,IOError),e:
 						pass
-					print "<<<       ","obj",obj
+					writemsg_stdout("<<<       %s %s\n" % ("obj",obj))
 				elif pkgfiles[obj][0]=="fif":
 					if not stat.S_ISFIFO(lstatobj[stat.ST_MODE]):
-						print "--- !fif  ","fif", obj
+						writemsg_stdout("--- !fif  %s %s\n" % ("fif", obj))
 						continue
 					try:
 						os.unlink(obj)
 					except (OSError,IOError),e:
 						pass
-					print "<<<       ","fif",obj
+					writemsg_stdout("<<<       %s %s\n" % ("fif",obj))
 				elif pkgfiles[obj][0]=="dev":
-					print "---       ","dev",obj
+					writemsg_stdout("---       %s %s\n" % ("dev",obj))
 
 			mydirs.sort()
 			mydirs.reverse()
@@ -5781,14 +5784,14 @@ class dblink:
 				if not last_non_empty.startswith(obj) and not listdir(obj):
 					try:
 						os.rmdir(obj)
-						print "<<<       ","dir",obj
+						writemsg_stdout("<<<       %s %s\n" % ("dir",obj))
 						last_non_empty = ""
 						continue
 					except (OSError,IOError),e:
 						#immutable?
 						pass
 
-				print "--- !empty dir", obj
+				writemsg_stdout("--- !empty dir %s\n" % obj)
 				last_non_empty = obj
 				continue
 
@@ -5952,7 +5955,7 @@ class dblink:
 		if not os.path.exists(self.dbtmpdir):
 			os.makedirs(self.dbtmpdir)
 
-		print ">>> Merging",self.mycpv,"to",destroot
+		writemsg_stdout(">>> Merging %s %s %s\n" % (self.mycpv,"to",destroot))
 
 		# run preinst script
 		if myebuild:
@@ -6035,11 +6038,11 @@ class dblink:
 		outfile.close()
 
 		if (oldcontents):
-			print ">>> Safely unmerging already-installed instance..."
+			writemsg_stdout(">>> Safely unmerging already-installed instance...\n")
 			self.dbdir = self.dbpkgdir
 			self.unmerge(oldcontents,trimworld=0)
 			self.dbdir = self.dbtmpdir
-			print ">>> original instance of package unmerged safely."
+			writemsg_stdout(">>> original instance of package unmerged safely.\n")
 
 		# We hold both directory locks.
 		self.dbdir = self.dbpkgdir
@@ -6095,7 +6098,7 @@ class dblink:
 		global dircache
 		if dircache.has_key(self.dbcatdir):
 			del dircache[self.dbcatdir]
-		print ">>>",self.mycpv,"merged."
+		writemsg_stdout(">>> %s %s\n" % (self.mycpv,"merged."))
 
 		# Process ebuild logfiles
 		elog_process(self.mycpv, self.settings)
@@ -6229,7 +6232,7 @@ class dblink:
 
 					if stat.S_ISLNK(mydmode) or stat.S_ISDIR(mydmode):
 						# a symlink to an existing directory will work for us; keep it:
-						print "---",mydest+"/"
+						writemsg_stdout("--- %s\n" % mydest+"/")
 						if bsd_chflags:
 							bsd_chflags.lchflags(mydest, dflags)
 					else:
@@ -6247,7 +6250,7 @@ class dblink:
 							bsd_chflags.lchflags(mydest, dflags)
 						os.chmod(mydest,mystat[0])
 						os.chown(mydest,mystat[4],mystat[5])
-						print ">>>",mydest+"/"
+						writemsg_stdout(">>> %s\n" % mydest+"/")
 				else:
 					#destination doesn't exist
 					if selinux_enabled:
@@ -6259,7 +6262,7 @@ class dblink:
 					if bsd_chflags:
 						bsd_chflags.lchflags(mydest, bsd_chflags.lgetflags(mysrc))
 					os.chown(mydest,mystat[4],mystat[5])
-					print ">>>",mydest+"/"
+					writemsg_stdout(">>> %s\n" % mydest+"/")
 				outfile.write("dir "+myrealdest+"\n")
 				# recurse and merge this directory
 				if self.mergeme(srcroot,destroot,outfile,secondhand,offset+x+"/",cfgfiledict,thismtime):
@@ -6276,7 +6279,7 @@ class dblink:
 					if stat.S_ISDIR(mydmode):
 						# install of destination is blocked by an existing directory with the same name
 						moveme=0
-						print "!!!",mydest
+						writemsg_stdout("!!! %s\n" % mydest)
 					elif stat.S_ISREG(mydmode) or (stat.S_ISLNK(mydmode) and os.path.exists(mydest) and stat.S_ISREG(os.stat(mydest)[stat.ST_MODE])):
 						cfgprot=0
 						# install of destination is blocked by an existing regular file,
@@ -6380,7 +6383,7 @@ class dblink:
 				if mymtime!=None:
 					zing=">>>"
 					outfile.write("obj "+myrealdest+" "+mymd5+" "+str(mymtime)+"\n")
-				print zing,mydest
+				writemsg_stdout("%s %s\n" % (zing,mydest))
 			else:
 				# we are merging a fifo or device node
 				zing="!!!"
@@ -6394,7 +6397,7 @@ class dblink:
 							outfile.write("fif "+myrealdest+"\n")
 					else:
 						sys.exit(1)
-				print zing+" "+mydest
+				writemsg_stdout(zing+" "+mydest+"\n")
 
 	def merge(self,mergeroot,inforoot,myroot,myebuild=None,cleanup=0):
 		return self.treewalk(mergeroot,myroot,inforoot,myebuild,cleanup=cleanup)
@@ -6476,7 +6479,7 @@ def pkgmerge(mytbz2,myroot,mysettings):
 		shutil.rmtree(tmploc+"/"+mypkg,1)
 	os.makedirs(pkgloc)
 	os.makedirs(infloc)
-	print ">>> extracting info"
+	writemsg_stdout(">>> extracting info\n")
 	xptbz2.unpackinfo(infloc)
 	# run pkg_setup early, so we can bail out early
 	# (before extracting binaries) if there's a problem
@@ -6485,7 +6488,7 @@ def pkgmerge(mytbz2,myroot,mysettings):
 
 	mysettings.configdict["pkg"]["CATEGORY"] = mycat;
 	a=doebuild(myebuild,"setup",myroot,mysettings,tree="bintree")
-	print ">>> extracting",mypkg
+	writemsg_stdout(">>> extracting %s\n" % mypkg)
 	notok=spawn("bzip2 -dqc -- '"+mytbz2+"' | tar xpf -",mysettings,free=1)
 	if notok:
 		print "!!! Error extracting",mytbz2
