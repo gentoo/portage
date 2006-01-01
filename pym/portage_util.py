@@ -8,12 +8,19 @@ if not hasattr(__builtins__, "set"):
 	from sets import Set as set
 
 noiselimit = 0
-def writemsg(mystr,noiselevel=0):
+
+def writemsg(mystr,noiselevel=0,fd=None):
 	"""Prints out warning and debug messages based on the noiselimit setting"""
 	global noiselimit
+	if fd is None:
+		fd = sys.stderr
 	if noiselevel <= noiselimit:
-		sys.stderr.write(mystr)
-		sys.stderr.flush()
+		fd.write(mystr)
+		fd.flush()
+
+def writemsg_stdout(mystr,noiselevel=0):
+	"""Prints messages stdout based on the noiselimit setting"""
+	writemsg(mystr, noiselevel=noiselevel, fd=sys.stdout)
 
 def grabfile(myfilename, compat_level=0, recursive=0):
 	"""This function grabs the lines in a file, normalizes whitespace and returns lines in a list; if a line
