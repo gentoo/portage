@@ -16,13 +16,13 @@ elog_base() {
 			return 1
 			;;
 	esac
-	echo ${*} >> ${T}/logging/${EBUILD_PHASE}.${messagetype}
+	echo "$*" >> ${T}/logging/${EBUILD_PHASE}.${messagetype}
 	return 0
 }
 
 elog() {
-	elog_base LOG ${*}
-	echo -e " ${GOOD}*${NORMAL} ${*}"
+	elog_base LOG "$*"
+	echo -e " ${GOOD}*${NORMAL} $*"
 	return 0
 }
 
@@ -45,34 +45,34 @@ esyslog() {
 }
 
 einfo() {
-	einfon ${*}
+	einfon "$*"
 	echo
 	return 0
 }
 
 einfon() {
-	elog_base INFO ${*}
-	echo -ne " ${GOOD}*${NORMAL} ${*}"
+	elog_base INFO "$*"
+	echo -ne " ${GOOD}*${NORMAL} $*"
 	return 0
 }
 
 ewarn() {
-	elog_base WARN ${*}
-	echo -e " ${WARN}*${NORMAL} ${*}"
+	elog_base WARN "$*"
+	echo -e " ${WARN}*${NORMAL} $*"
 	return 0
 }
 
 eerror() {
-	elog_base ERROR ${*}
-	echo -e " ${BAD}*${NORMAL} ${*}"
+	elog_base ERROR "$*"
+	echo -e " ${BAD}*${NORMAL} $*"
 	return 0
 }
 
 ebegin() {
 	if [ -z "${NOCOLOR}" ]; then
-		echo -ne " ${GOOD}*${NORMAL} ${*}..."
+		echo -ne " ${GOOD}*${NORMAL} $* ..."
 	else
-		echo -e " ${GOOD}*${NORMAL} ${*}..."
+		echo -e " ${GOOD}*${NORMAL} $* ..."
 	fi
 	return 0
 }
@@ -87,7 +87,7 @@ eend() {
 		if [ "$#" -ge 2 ]
 		then
 			shift
-			eerror "${*}"
+			eerror "$*"
 		fi
 		echo -e "${ENDCOL}  ${BRACKET}[ ${BAD}!!${BRACKET} ]${NORMAL}"
 		# extra spacing makes it easier to read
