@@ -45,56 +45,81 @@ esyslog() {
 }
 
 einfo() {
-	einfon "$*"
-	echo
+	einfon "$*\n"
+	LAST_E_CMD="einfo"
 	return 0
 }
 
 einfon() {
 	elog_base INFO "$*"
+	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
 	echo -ne " ${GOOD}*${NORMAL} $*"
+	LAST_E_CMD="einfon"
 	return 0
 }
 
 ewarn() {
 	elog_base WARN "$*"
-	echo -e " ${WARN}*${NORMAL} $*"
+	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
+	echo -e " ${WARN}*${NORMAL} ${RC_INDENTATION}$*"
+	LAST_E_CMD="ewarn"
 	return 0
 }
 
 eerror() {
 	elog_base ERROR "$*"
-	echo -e " ${BAD}*${NORMAL} $*"
+	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
+	echo -e " ${BAD}*${NORMAL} ${RC_INDENTATION}$*"
+	LAST_E_CMD="eerror"
 	return 0
 }
 
 ebegin() {
-	if [ -z "${NOCOLOR}" ]; then
-		echo -ne " ${GOOD}*${NORMAL} $* ..."
+	local msg="$*" dots spaces=${RC_DOT_PATTERN//?/ }
+	if [[ -n ${RC_DOT_PATTERN} ]] ; then
+		dots=$(printf "%$(( COLS - 3 - ${#RC_INDENTATION} - ${#msg} - 7 ))s" '')
+		dots=${dots//${spaces}/${RC_DOT_PATTERN}}
+		msg="${msg}${dots}"
 	else
-		echo -e " ${GOOD}*${NORMAL} $* ..."
+		msg="${msg} ..."
 	fi
+	einfon "${msg}"
+	[[ ${RC_ENDCOL} == "yes" ]] && echo
+	LAST_E_LEN=$(( 3 + ${#RC_INDENTATION} + ${#msg} ))
+	LAST_E_CMD="ebegin"
 	return 0
 }
 
-eend() {
-	local retval=
-	if [ "$#" -eq 0 ] || [ "${1:-1}" -eq  0 ]; then
-		echo -e "${ENDCOL}  ${BRACKET}[ ${GOOD}ok${BRACKET} ]${NORMAL}"
-	else
-		retval="$1"
+_eend() {
+	local retval=${1:-0} efunc=${2:-eerror} msg
+	shift 2
 
-		if [ "$#" -ge 2 ]
-		then
-			shift
-			eerror "$*"
+	if [[ ${retval} == "0" ]] ; then
+		msg="${BRACKET}[ ${GOOD}ok${BRACKET} ]${NORMAL}"
+	else
+		if [[ -n $* ]] ; then
+			${efunc} "$*"
 		fi
-		echo -e "${ENDCOL}  ${BRACKET}[ ${BAD}!!${BRACKET} ]${NORMAL}"
-		# extra spacing makes it easier to read
-		echo
-		return ${retval}
+		msg="${BRACKET}[ ${BAD}!!${BRACKET} ]${NORMAL}"
 	fi
-	return 0
+
+	if [[ ${RC_ENDCOL} == "yes" ]] ; then
+		echo -e "${ENDCOL}  ${msg}"
+	else
+		[[ ${LAST_E_CMD} == ebegin ]] || LAST_E_LEN=0
+		printf "%$(( COLS - LAST_E_LEN - 6 ))s%b\n" '' "${msg}"
+	fi
+
+	return ${retval}
+}
+
+eend() {
+	local retval=${1:-0}
+	shift
+
+	_eend ${retval} eerror "$*"
+
+	return ${retval}
 }
 
 KV_major() {
@@ -164,9 +189,9 @@ set_colors() {
 	COLS=${COLUMNS:-0}      # bash's internal COLUMNS variable
 	(( COLS == 0 )) && COLS=$(set -- `stty size 2>/dev/null` ; echo $2)
 	(( COLS > 0 )) || (( COLS = 80 ))
-	COLS=$((${COLS} - 7))	# width of [ ok ] == 7
+	COLS=$((${COLS} - 8))	# width of [ ok ] == 7
 
-	ENDCOL=$'\e[A\e['${COLS}'G'    # Now, ${ENDCOL} will move us to the end of the
+	ENDCOL=$'\e[A\e['${COLS}'C'    # Now, ${ENDCOL} will move us to the end of the
 	                               # column;  irregardless of character width
 
 	GOOD=$'\e[32;01m'
@@ -176,4 +201,9 @@ set_colors() {
 	BRACKET=$'\e[34;01m'
 	NORMAL=$'\e[0m'
 }
+
+RC_ENDCOL="yes"
+RC_INDENTATION=''
+RC_DEFAULT_INDENT=2
+RC_DOT_PATTERN=''
 true
