@@ -79,7 +79,9 @@ def use_reduce(deparray, uselist=[], masklist=[], matchall=0, excludeall=[]):
 		head = mydeparray.pop(0)
 
 		if type(head) == types.ListType:
-			rlist = rlist + [use_reduce(head, uselist, masklist, matchall, excludeall)]
+			additions = use_reduce(head, uselist, masklist, matchall, excludeall)
+			if additions:
+				rlist.append(additions)
 
 		else:
 			if head[-1] == "?": # Use reduce next group on fail.
@@ -122,7 +124,9 @@ def use_reduce(deparray, uselist=[], masklist=[], matchall=0, excludeall=[]):
 				if ismatch:
 					target = newdeparray[-1]
 					if isinstance(target, list):
-						rlist += [use_reduce(target, uselist, masklist, matchall, excludeall)]
+						additions = use_reduce(target, uselist, masklist, matchall, excludeall)
+						if additions:
+							rlist.append(additions)
 					else:
 						rlist += [target]
 
