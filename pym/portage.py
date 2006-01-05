@@ -3374,6 +3374,26 @@ def dep_check(depstring,mydbapi,mysettings,use="yes",mode=None,myuse=None,use_ca
 	#if mysplit==None, then we have a parse error (paren mismatch or misplaced ||)
 	#up until here, we haven't needed to look at the database tree
 
+	# recursive cleansing of empty arrays.
+	# without this, portage eats itself if fed a || ()
+	def f(a):
+		x = 0
+		l = len(a)
+		while x < l:
+			if isinstance(a[x], list):
+				l2 = len(a[x])
+				if l2 == 0:
+					a.pop(x)
+				elif l2 == 1 and a[x][0] in ("||", "&&"):
+					a.pop(x)
+				else:
+					f(a[x])
+					x+=1
+					continue
+				l-=1
+			x+=1
+	f(mysplit)
+			
 	if mysplit==None:
 		return [0,"Parse Error (parentheses mismatch?)"]
 	elif mysplit==[]:
