@@ -1,5 +1,5 @@
 #!/usr/bin/python -O
-# Copyright 1999-2004 Gentoo Foundation
+# Copyright 1999-2006 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/bin/md5check.py,v 1.4 2004/10/10 10:07:20 carpaski Exp $
 

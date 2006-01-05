@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2005 Gentoo Foundation
+# Copyright 1999-2006 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/bin/ebuild.sh,v 1.201.2.42 2005/08/20 17:24:30 jstubbs Exp $
 
@@ -1350,7 +1350,7 @@ dyn_rpm() {
 dyn_help() {
 	echo
 	echo "Portage"
-	echo "Copyright 1999-2004 Gentoo Foundation"
+	echo "Copyright 1999-2006 Gentoo Foundation"
 	echo
 	echo "How to use the ebuild command:"
 	echo

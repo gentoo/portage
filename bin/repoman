@@ -1,5 +1,5 @@
 #!/usr/bin/python -O
-# Copyright 1999-2005 Gentoo Foundation
+# Copyright 1999-2006 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/bin/repoman,v 1.98.2.23 2005/06/18 01:00:43 vapier Exp $
 
@@ -211,7 +211,7 @@ def help():
 	print
 	print green(exename+" "+version)
 	print " \"Quality is job zero.\""
-	print " Copyright 1999-2005 Gentoo Foundation"
+	print " Copyright 1999-2006 Gentoo Foundation"
 	print " Distributed under the terms of the GNU General Public License v2"
 	print
 	print bold(" Usage:"),turquoise(exename),"[",green("option"),"] [",green("mode"),"]"
