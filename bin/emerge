@@ -326,6 +326,7 @@ if ("--tree" in myopts) and ("--columns" in myopts):
 
 if ("--quiet" in myopts):
 	update_spinner = update_quiet_spinner
+	portage_util.noiselimit = -1
 	portage.settings.unlock()
 	portage.settings["PORTAGE_QUIET"]="1"
 	portage.settings.backup_changes("PORTAGE_QUIET")
