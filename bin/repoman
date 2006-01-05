@@ -959,12 +959,12 @@ for x in scanlist:
 		badlicsyntax = False
 		badprovsyntax = False
 		catpkg = catdir+"/"+y
+		type_list, badsyntax = [], []
 		for mytype in ("DEPEND", "RDEPEND", "PDEPEND", "LICENSE", "PROVIDE"):
 			mydepstr = myaux[mytype]
-			badsyntax = None
 			
 			if (string.find(mydepstr, " ?") != -1):
-				badsyntax = "'?' preceded by space"
+				badsyntax.append("'?' preceded by space")
 
 			try:
 				# Missing closing parenthesis will result in a ValueError
@@ -973,7 +973,7 @@ for x in scanlist:
 				if "" in mydeplist or "(" in mydeplist:
 					raise ValueError
 			except ValueError:
-				badsyntax = "parenthesis mismatch"
+				badsyntax.append("parenthesis mismatch")
 
 			for token in ("||", "(", ")"):
 				if mydepstr.startswith(token+" "):
@@ -985,22 +985,25 @@ for x in scanlist:
 				while myteststr.find(" "+token+" ") != -1:
 					myteststr = " ".join(myteststr.split(" "+token+" ", 1))
 				if myteststr.find(token) != -1:
-					print mydepstr
-					print myteststr
-					print token
-					badsyntax = "'%s' not separated by space" % (token)
-					break
+					badsyntax.append("'%s' not separated by space" % (token))
 
-			if badsyntax:
-				stats[mytype+".syntax"] += 1
-				fails[mytype+".syntax"].append(catpkg+".ebuild "+mytype+": "+badsyntax)
-				if mytype == "LICENSE":
-					badlicsyntax = True
-				elif mytype == "PROVIDE":
-					badprovsyntax = True
-				else:
-					baddepsyntax = True
-				continue
+
+			if mytype in ("DEPEND", "RDEPEND", "PDEPEND"):
+				for token in filter(lambda x: not (x.endswith("?") or x.strip() in ("||", "&&")), mydepstr.split()):
+					if not "/" in token:
+						badsyntax.append("'%s' not a valid atom" % token)
+
+			type_list.extend([mytype] * (len(badsyntax) - len(type_list)))
+
+		for m,b in zip(type_list, badsyntax):
+			stats[m+".syntax"] += 1
+			fails[m+".syntax"].append(catpkg+".ebuild "+m+": "+b)
+
+		badlicsyntax = len(filter(lambda x:x=="LICENSE", type_list))
+		badprovsyntax = len(filter(lambda x:x=="PROVIDE", type_list))
+		baddepsyntax = len(type_list) != badlicsyntax + badprovsyntax 
+		badlicsyntax = badlicsyntax > 0
+		badprovsyntax = badprovsyntax > 0
 
 		for keyword,arch,groups in arches:
 			portage.groups=groups
