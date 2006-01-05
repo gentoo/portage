@@ -1073,8 +1073,15 @@ dyn_install() {
 			sleep 1
 		fi
 
-		# Check for files with executable stacks
-		f=$(scanelf -qyRF '%e %p' "${D}")
+		# Check for files with executable stacks, but only on arches which
+		# are supported at the moment.  Keep this list in sync with
+		# http://hardened.gentoo.org/gnu-stack.xml (Arch Status)
+		case ${CHOST} in
+			i?86*|ia64*|s390*|x86_64*)
+				f=$(scanelf -qyRF '%e %p' "${D}") ;;
+			*)
+				f="" ;;
+		esac
 		if [[ -n ${f} ]] ; then
 			echo -ne '\a\n'
 			echo "QA Notice: the following files contain executable stacks"
