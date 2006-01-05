@@ -343,13 +343,13 @@ PORTAGE_ELOG_CLASSES="warn error log"
 #PORTAGE_ELOG_COMMAND="/path/to/logprocessor -p '${PACKAGE}' -f '${LOGFILE}'"
 
 # PORTAGE_ELOG_MAILURI: this variable holds all important settings for the mail
-#                       module. In most cases listing the recipient adress and
+#                       module. In most cases listing the recipient address and
 #                       the receiving mailserver should be sufficient, but you can
 #                       also use advanced settings like authentication or TLS. The
 #                       full syntax is:
-#                           adress [[user:passwd@]mailserver[:port]]
+#                           address [[user:passwd@]mailserver[:port]]
 #                       where
-#                           adress:     recipient adress
+#                           address:     recipient adress
 #                           user:       username for smtp auth (defaults to none)
 #                           passwd:     password for smtp auth (defaults to none)
 #                           mailserver: smtp server that should be used to deliver the mail (defaults to localhost)
