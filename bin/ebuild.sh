@@ -1061,12 +1061,15 @@ dyn_install() {
 		# TEXTREL's are baaaaaaaad
 		f=$(scanelf -qyRF '%t %p' "${D}")
 		if [[ -n ${f} ]] ; then
+			scanelf -qyRF '%T %p' "${WORKDIR}"/ &> "${T}"/scanelf-textrel.log
 			echo -ne '\a\n'
 			echo "QA Notice: the following files contain runtime text relocations"
 			echo " Text relocations force the dynamic linker to perform extra"
 			echo " work at startup, waste system resources, and may pose a security"
 			echo " risk.  On some architectures, the code may not even function"
 			echo " properly, if at all."
+			echo " Please include this file in your report:"
+			echo " ${T}/scanelf-textrel.log"
 			echo "${f}"
 			echo -ne '\a\n'
 			die_msg="${die_msg} textrels,"
@@ -1083,11 +1086,15 @@ dyn_install() {
 				f="" ;;
 		esac
 		if [[ -n ${f} ]] ; then
+			# One more pass to help devs track down the source
+			scanelf -qyRF '%e %p' "${WORKDIR}"/ &> "${T}"/scanelf-exec.log
 			echo -ne '\a\n'
 			echo "QA Notice: the following files contain executable stacks"
 			echo " Files with executable stacks will not work properly (or at all!)"
 			echo " on some architectures/operating systems.  A bug should be filed"
 			echo " at http://bugs.gentoo.org/ to make sure the file is fixed."
+			echo " Please include this file in your report:"
+			echo " ${T}/scanelf-exec.log"
 			echo "${f}"
 			echo -ne '\a\n'
 			die_msg="${die_msg} execstacks"
