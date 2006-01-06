@@ -72,6 +72,7 @@ for d in "${D}"lib* "${D}"usr/lib* ; do
 	if [[ -n ${f} ]] ; then
 		echo -e "\n\aQA Notice: the following shared libraries lack a SONAME\a"
 		echo "${f}"
+		echo
 		sleep 1
 	fi
 
@@ -79,6 +80,7 @@ for d in "${D}"lib* "${D}"usr/lib* ; do
 	if [[ -n ${f} ]] ; then
 		echo -e "\n\aQA Notice: the following shared libraries lack NEEDED entries\a"
 		echo "${f}"
+		echo
 		sleep 1
 	fi
 done
