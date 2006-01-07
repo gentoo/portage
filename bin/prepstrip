@@ -24,6 +24,16 @@ save_elf_debug() {
 	mkdir -p $(dirname ${y})
 	${CHOST}-objcopy --only-keep-debug ${x} ${y}.debug
 	${CHOST}-objcopy --add-gnu-debuglink=${y}.debug ${x}
+
+	[ "${FEATURES//*installsources*/true}" != "true" ] && return 0
+
+	if [ -x /usr/bin/debugedit ] ; then
+		debugedit -b ${WORKDIR} -d /usr/src/debug/${P} -l ${T}/debug.sources "$x"
+		if [ -s ${T}/debug.sources ]; then 
+			[ -d ${D}/usr/src/debug/${P} ] || mkdir -p ${D}/usr/src/debug/${P}
+			cat ${T}/debug.sources | (cd ${WORKDIR}; LANG=C sort -z -u | xargs -0 -- cp --parents -p --target-directory="${D}/usr/src/debug/${P}" )
+		fi
+	fi
 }
 
 for x in $(scanelf -yRBF%F "$@") $(for y in "$@"; do find $y -type f -name '*.a' -print0 ; done); do
