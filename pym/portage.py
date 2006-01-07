@@ -2809,7 +2809,8 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 	# will be executed, either that or forced N doebuild calls instead of a single set of phase calls.
 	if (mydo not in ("setup", "clean", "postinst", "preinst", "prerm", "fetch", "digest", "manifest") and 
 		"noauto" not in features) or mydo == "unpack":
-		orig_distdir = mysettings["DISTDIR"]
+		# remove PORTAGE_ACTUAL_DISTDIR once cvs/svn is supported via SRC_URI
+		mysettings["PORTAGE_ACTUAL_DISTDIR"] = orig_distdir = mysettings["DISTDIR"]
 		edpath = mysettings["DISTDIR"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "distdir")
 		if os.path.exists(edpath):
 			try:
