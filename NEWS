@@ -4,10 +4,11 @@ portage-2.1 (ongoing via pre releases)
 ------------
 
 * elog framework and accompanying modules for logging ebuild warnings, errors
-  and general notices.  Collects ewarn/einfo messages.
+  and general notices. Collects eerror/ewarn/elog/einfo messages.
+* New elog function (should replace einfo in many cases)
 * version syntax enhancements allowing multiple suffixes and a new 'cvs'
   prefix for denoting "live sources" ebuilds.
-* config files as directories enabling finer-grained settings management.
+* config files as directories enabling more flexible settings management.
 * Addition of an register_die_hook method that allows ebuild/eclasses to
   register functions to be called for better debugging on errors.
 * Addition of pre and post user hookable functions for each ebuild phase, accessible 
@@ -19,7 +20,7 @@ portage-2.1 (ongoing via pre releases)
 * Support for splitting out debug information into separate files in
   /usr/lib{,32,64}.
 * exec subsystem refactoring (now with less bugs!)
-* checksum/digest subsystem refactoring
+* Added sha256 and rmd160 hashes for digests/checksums
 * Make --emptytree only apply to ${ROOT} rather than always including /.
 * Allow packages to be upgraded that are only depended on via a
   "|| ( =cat/pkg-1* =cat/pkg-2* )" construct.
