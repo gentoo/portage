@@ -48,8 +48,7 @@ EAPI = 0
 HASHING_BLOCKSIZE		= 32768
 # Disabling until behaviour when missing the relevant python module is
 # corrected.  #116485
-#MANIFEST1_HASH_FUNCTIONS = ["MD5","SHA256","RMD160"]
-MANIFEST1_HASH_FUNCTIONS = ["MD5"]
+MANIFEST1_HASH_FUNCTIONS = ["MD5","SHA256","RMD160"]
 
 # ===========================================================================
 # END OF CONSTANTS -- END OF CONSTANTS -- END OF CONSTANTS -- END OF CONSTANT
