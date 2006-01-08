@@ -20,7 +20,7 @@ portage-2.1 (ongoing via pre releases)
 * Support for splitting out debug information into separate files in
   /usr/lib{,32,64}.
 * exec subsystem refactoring (now with less bugs!)
-* Added sha256 and rmd160 hashes for digests/checksums
+* Added sha256 and rmd160 hashes for digests/manifests
 * Make --emptytree only apply to ${ROOT} rather than always including /.
 * Allow packages to be upgraded that are only depended on via a
   "|| ( =cat/pkg-1* =cat/pkg-2* )" construct.
