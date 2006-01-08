@@ -6253,7 +6253,7 @@ class dblink:
 
 					if stat.S_ISLNK(mydmode) or stat.S_ISDIR(mydmode):
 						# a symlink to an existing directory will work for us; keep it:
-						writemsg_stdout("--- %s\n" % mydest+"/")
+						writemsg_stdout("--- %s/\n" % mydest)
 						if bsd_chflags:
 							bsd_chflags.lchflags(mydest, dflags)
 					else:
@@ -6271,7 +6271,7 @@ class dblink:
 							bsd_chflags.lchflags(mydest, dflags)
 						os.chmod(mydest,mystat[0])
 						os.chown(mydest,mystat[4],mystat[5])
-						writemsg_stdout(">>> %s\n" % mydest+"/")
+						writemsg_stdout(">>> %s/\n" % mydest)
 				else:
 					#destination doesn't exist
 					if selinux_enabled:
@@ -6283,7 +6283,7 @@ class dblink:
 					if bsd_chflags:
 						bsd_chflags.lchflags(mydest, bsd_chflags.lgetflags(mysrc))
 					os.chown(mydest,mystat[4],mystat[5])
-					writemsg_stdout(">>> %s\n" % mydest+"/")
+					writemsg_stdout(">>> %s/\n" % mydest)
 				outfile.write("dir "+myrealdest+"\n")
 				# recurse and merge this directory
 				if self.mergeme(srcroot,destroot,outfile,secondhand,offset+x+"/",cfgfiledict,thismtime):
