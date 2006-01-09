@@ -99,6 +99,13 @@ Re\-emerge the complaining package to fix this issue.
 \fBNote that changes in USE flags can drastically affect the 
 output of \-\-depclean.\fR
 .TP
+.BR "\-\-help " (\fB\-h\fR)
+Displays help information for emerge.  Adding one of the additional
+arguments listed above will give you more specific help information
+on that subject.  The internal \fBemerge\fR help documentation is
+updated more frequently than this man page; check it out if you
+are having problems that this man page does not help resolve.
+.TP
 .BR \-\-info
 This is a list of information to include in bug reports which aids the 
 developers with fixing any problems you may report.  \fBPlease include this 
@@ -140,6 +147,11 @@ the cache.  After a portage update, rsync users may find it convenient to run
 \fBemerge \-\-metadata\fR to rebuild the cache as portage does at the end of 
 a sync operation.
 .TP
+.BR "\-\-resume"
+Resumes the last merge operation.  Please note that this operation
+will only return an error on failure.  If there is nothing for portage
+to do, then portage will exit with a message and a success condition.
+.TP
 .BR "\-\-search " (\fB\-s\fR)
 Searches for matches of the supplied string in the portage tree.
 The \-\-search string is a regular expression.  For example, \fBemerge
@@ -147,7 +159,12 @@ The \-\-search string is a regular expression.  For example, \fBemerge
 \fBemerge \-\-search "gcc$"\fR searches for any package that ends with
 "gcc"; \fBemerge \-\-search "office"\fR searches for any package that
 contains the word "office".  If you want to search the package
-descriptions as well, use the \fB\-\-searchdesc\fR option.
+descriptions as well, use the \fB\-\-searchdesc\fR action.
+.TP
+.BR "\-\-searchdesc " (\fB\-S\fR)
+Matches the search string against the description field as well as
+the package name.  \fBTake caution\fR as the descriptions are also
+matched as regular expressions.
 .TP
 .BR \-\-sync
 Initiates a portage tree update with one of the rsync.gentoo.org
@@ -162,6 +179,22 @@ all matching packages.  This does no checking of dependencies, so
 it may remove packages necessary for the proper operation of your
 system.  Its arguments can be \fIebuilds\fR, \fIclasses\fR, or
 \fIdependencies\fR \-\- see \fB\-\-clean\fR above for examples.
+.TP
+.BR "\-\-update " (\fB\-u\fR)
+Updates packages to the best version available, which may not always be the 
+highest version number due to masking for testing and development.  This will 
+also update direct dependencies which may not be what you want.  In general, 
+use this option only in combination with the world or system target.
+.TP
+.BR "\-\-upgradeonly " (\fB\-U\fR)
+Updates packages, but excludes updates that would result in a lower version of 
+the package being installed.  \fBSLOT\fRs are considered at a basic level.
+.br 
+This option is deprecated and should not be used anymore.  Please use the 
+/etc/portage/package.* files from now on.
+.TP
+.BR "\-\-version " (\fB\-V\fR)
+Displays the version number of \fBemerge\fR.
 .TP
 .BR "\-\-config "
 Run package specific actions needed to  be  executed  after  the
@@ -191,7 +224,7 @@ merging the packages.  This comes with the caveat that all build-time
 dependencies must already be emerged on the system.
 .TP
 .BR "\-\-changelog " (\fB\-l\fR)
-Use this in conjunction with the \fB\-\-pretend\fR action.  This will
+Use this in conjunction with the \fB\-\-pretend\fR option.  This will
 show the ChangeLog entries for all the packages that will be upgraded.
 .TP
 .BR "\-\-columns"
@@ -237,13 +270,6 @@ This option is identical to \fB\-g\fR, as above, except it will not use ANY
 information from the local machine.  All binaries will be downloaded from the 
 remote server without consulting packages existing in the local packages 
 directory.
-.TP
-.BR "\-\-help " (\fB\-h\fR)
-Displays help information for emerge.  Adding one of the additional
-arguments listed above will give you more specific help information
-on that subject.  The internal \fBemerge\fR help documentation is
-updated more frequently than this man page; check it out if you
-are having problems that this man page does not help resolve.
 .TP
 .BR "\-\-newuse " (\fB\-N\fR)
 Tells emerge to include installed packages where USE flags have changed since 
@@ -311,18 +337,8 @@ the printout,
 Results may vary, but the general outcome is a reduced or condensed
 output from portage's displays.
 .TP
-.BR "\-\-resume"
-Resumes the last merge operation.  Please note that this operation
-will only return an error on failure.  If there is nothing for portage
-to do, then portage will exit with a message and a success condition.
-.TP
-.BR "\-\-searchdesc " (\fB\-S\fR)
-Matches the search string against the description field as well as
-the package name.  \fBTake caution\fR as the descriptions are also
-matched as regular expressions.
-.TP
 .BR "\-\-skipfirst"
-This action is only valid when used with \fB\-\-resume\fR.  It removes the 
+This option is only valid when used with \fB\-\-resume\fR.  It removes the 
 first package in the resume list so that a merge may continue in the presence 
 of an uncorrectable or inconsequential error.  This should only be used in 
 cases where skipping the package will not result in failed dependencies.
@@ -331,19 +347,6 @@ cases where skipping the package will not result in failed dependencies.
 Shows the dependency tree for the given target by indenting dependencies.
 This is only really useful in combination with \fB\-\-emptytree\fR or 
 \fB\-\-update\fR and \fB\-\-deep\fR.
-.TP
-.BR "\-\-update " (\fB\-u\fR)
-Updates packages to the best version available, which may not always be the 
-highest version number due to masking for testing and development.  This will 
-also update direct dependencies which may not be what you want.  In general, 
-use this option only in combination with the world or system target.
-.TP
-.BR "\-\-upgradeonly " (\fB\-U\fR)
-Updates packages, but excludes updates that would result in a lower version of 
-the package being installed.  \fBSLOT\fRs are considered at a basic level.
-.br 
-This option is deprecated and should not be used anymore.  Please use the 
-/etc/portage/package.* files from now on.
 .TP
 .BR "\-\-usepkg " (\fB\-k\fR) 
 Tells emerge to use binary packages (from $PKGDIR) if they are available, thus possibly avoiding some 
@@ -358,10 +361,6 @@ information so all masking information is ignored.
 .TP
 .BR "\-\-verbose " (\fB\-v\fR)
 Tell emerge to run in verbose mode.  Currently this flag causes emerge to print out GNU info errors, if any, and to show the USE flags that will be used for each package when pretending.
-.TP
-.BR "\-\-version " (\fB\-V\fR)
-Displays the version number of \fBemerge\fR.  It cannot be used in
-conjunction with other options.
 .SH "ENVIRONMENT OPTIONS"
 .TP
 \fBROOT\fR = \fI[path]\fR
