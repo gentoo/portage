@@ -824,10 +824,10 @@ class search:
 					if "--quiet" not in myopts:
 						print "     ", darkgreen("Latest version available:"),myversion
 						print "     ", self.getInstallationStatus(mycat+'/'+mypkg)
-						print "     ", darkgreen("Size of downloaded files:"),mysum[0]
-						print "     ", darkgreen("Homepage:")+"   ",homepage
-						print "     ", darkgreen("Description:"),desc
-						print "     ", darkgreen("License:")+"    ",license
+						print "     ", darkgreen("Size of files:"),mysum[0]
+						print "     ", darkgreen("Homepage:")+"     ",homepage
+						print "     ", darkgreen("Description:")+"  ",desc
+						print "     ", darkgreen("License:")+"      ",license
 						print
 		print
 	#
