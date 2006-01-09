@@ -6058,12 +6058,11 @@ class dblink:
 		outfile.flush()
 		outfile.close()
 
-		if (oldcontents):
-			writemsg_stdout(">>> Safely unmerging already-installed instance...\n")
-			self.dbdir = self.dbpkgdir
-			self.unmerge(oldcontents,trimworld=0)
-			self.dbdir = self.dbtmpdir
-			writemsg_stdout(">>> original instance of package unmerged safely.\n")
+		writemsg_stdout(">>> Safely unmerging already-installed instance...\n")
+		self.dbdir = self.dbpkgdir
+		self.unmerge(oldcontents,trimworld=0)
+		self.dbdir = self.dbtmpdir
+		writemsg_stdout(">>> original instance of package unmerged safely.\n")
 
 		# We hold both directory locks.
 		self.dbdir = self.dbpkgdir
