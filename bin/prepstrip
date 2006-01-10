@@ -21,6 +21,9 @@ save_elf_debug() {
 
 	[ "${FEATURES//*splitdebug*/true}" != "true" ] && return 0
 
+	# dont save debug info twice.
+	[ "${x:7}" == ".debug" ] && return 0
+
 	mkdir -p $(dirname ${y})
 	${CHOST}-objcopy --only-keep-debug ${x} ${y}.debug
 	${CHOST}-objcopy --add-gnu-debuglink=${y}.debug ${x}
