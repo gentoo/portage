@@ -45,70 +45,71 @@ class WorldHandler(object):
 		return errors
 
 
+# this sucks, should track this in a different manner.
 modules = {"world" : WorldHandler}
-
 
 module_names = modules.keys()
 module_names.sort()
 module_names.insert(0, "all")
 
-
-def exclusive(option, unused1, unused2, unused3, var=None):
-	if not var:
-		raise ValueError("var not specified to exclusive()")
-	if getattr(parser, var, ""):
-		raise OptionValueError("%s and %s are exclusive options" % (getattr(parser, var), option))
-	setattr(parser, var, str(option))
-
-
-usage = "usage: emaint [options] " + " | ".join(module_names)
-
-usage+= "\n\nCurrently emaint can only check and fix problems with one's world\n"
-usage+= "file.  Future versions will integrate other portage check-and-fix\n"
-usage+= "tools and provide a single interface to system health checks."
+if __name__ == "__main__":
+	def exclusive(option, *args, **kw):
+		var = kw.get("var", None)
+		if var is None:
+			raise ValueError("var not specified to exclusive()")
+		if getattr(parser, var, ""):
+			raise OptionValueError("%s and %s are exclusive options" % (getattr(parser, var), option))
+		setattr(parser, var, str(option))
 
 
-parser = OptionParser(usage=usage)
-parser.add_option("-c", "--check", help="check for problems",
-	action="callback", callback=exclusive, callback_kwargs={"var":"action"})
-parser.add_option("-f", "--fix", help="attempt to fix problems",
-	action="callback", callback=exclusive, callback_kwargs={"var":"action"})
-parser.action = None
+	usage = "usage: emaint [options] " + " | ".join(module_names)
+
+	usage+= "\n\nCurrently emaint can only check and fix problems with one's world\n"
+	usage+= "file.  Future versions will integrate other portage check-and-fix\n"
+	usage+= "tools and provide a single interface to system health checks."
 
 
-(options, args) = parser.parse_args()
-if len(args) != 1:
-	parser.error("Incorrect number of arguments")
-if args[0] not in module_names:
-	parser.error("%s target is not a known target" % args[0])
-
-if parser.action:
-	action = parser.action
-else:
-	print "Defaulting to --check"
-	action = "-c/--check"
-
-if args[0] == "all":
-	tasks = modules.values()
-else:
-	tasks = [modules[args[0]]]
+	parser = OptionParser(usage=usage)
+	parser.add_option("-c", "--check", help="check for problems",
+		action="callback", callback=exclusive, callback_kwargs={"var":"action"})
+	parser.add_option("-f", "--fix", help="attempt to fix problems",
+		action="callback", callback=exclusive, callback_kwargs={"var":"action"})
+	parser.action = None
 
 
-if action == "-c/--check":
-	status = "Checking %s for problems"
-	func = "check"
-else:
-	status = "Attempting to fix %s"
-	func = "fix"
+	(options, args) = parser.parse_args()
+	if len(args) != 1:
+		parser.error("Incorrect number of arguments")
+	if args[0] not in module_names:
+		parser.error("%s target is not a known target" % args[0])
+
+	if parser.action:
+		action = parser.action
+	else:
+		print "Defaulting to --check"
+		action = "-c/--check"
+
+	if args[0] == "all":
+		tasks = modules.values()
+	else:
+		tasks = [modules[args[0]]]
 
 
-for task in tasks:
-	print status % task.name()
-	inst = task()
-	result = getattr(inst, func)()
-	if result:
-		print
-		print "\n".join(result)
-		print "\n"
+	if action == "-c/--check":
+		status = "Checking %s for problems"
+		func = "check"
+	else:
+		status = "Attempting to fix %s"
+		func = "fix"
 
-print "Finished"
+
+	for task in tasks:
+		print status % task.name()
+		inst = task()
+		result = getattr(inst, func)()
+		if result:
+			print
+			print "\n".join(result)
+			print "\n"
+
+	print "Finished"
