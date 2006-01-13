@@ -807,7 +807,7 @@ for x in scanlist:
 							else:
 								stats["digest.partial"] += 1
 								fails["digest.partial"].append(y+"::"+myf)
-						else:
+						elif "assume-digests" not in portage.features:
 							if os.path.exists(myff):
 								if not portage_checksum.verify_all(myff, mydigests[myf]):
 									stats["digest.fail"] += 1
