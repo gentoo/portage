@@ -204,6 +204,8 @@ class dispatch:
                     show_new_diff = 1
                     continue
                 elif c == 'e':
+                    if not os.environ.has_key('EDITOR'):
+                        os.environ['EDITOR']='nano'
                     os.system(os.environ['EDITOR'] + ' ' + newconf)
                     continue
                 elif c == 'z':
