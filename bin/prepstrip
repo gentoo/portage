@@ -56,19 +56,19 @@ for x in $(scanelf -yRBF%F "$@") $(for y in "$@"; do find "${y}" -type f -name '
 	#  the for loop from expanding the globs.
 	# The eval echo is to support STRIP_MASK="/*/{booga,bar}" sex.
 	set -o noglob
-	skipstrip=0
+	stripitbaby=1
 	for m in $(eval echo ${STRIP_MASK}) ; do
-		[[ ${x} == ${m} ]] && skipstrip=1 && break
+		[[ ${x} == ${m} ]] && stripitbaby=1 && break
 	done
 	set +o noglob
 
 	if [[ ${f} == *"current ar archive"* ]] ; then
 		echo "   ${x:${#D}:${#x}}"
-		[[ ${skipstrip} -eq 1 ]] && ${STRIP} -g "${x}"
+		[[ ${stripitbaby} -eq 1 ]] && ${STRIP} -g "${x}"
 	fi
 	if [[ ${f} == *"SB executable"* || ${f} == *"SB shared object"* ]] ; then
 		echo "   ${x:${#D}:${#x}}"
 		save_elf_debug "${x}"
-		[[ ${skipstrip} -eq 1 ]] && ${STRIP} ${PORTAGE_STRIP_FLAGS} "${x}"
+		[[ ${stripitbaby} -eq 1 ]] && ${STRIP} ${PORTAGE_STRIP_FLAGS} "${x}"
 	fi
 done
