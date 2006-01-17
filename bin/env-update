@@ -7,5 +7,20 @@ import os,sys
 os.environ["PORTAGE_CALLER"] = "env-update"
 sys.path = ["/usr/lib/portage/pym"]+sys.path
 
+def usage(status):
+	print "Usage: env-update"
+	print ""
+	print "See the env-update(1) man page for more info"
+	sys.exit(status)
+
+if "-h" in sys.argv or "--help" in sys.argv:
+	usage(0)
+
+makelinks=1
+
+if len(sys.argv) > 1:
+	print "!!! Invalid command line options!\n"
+	usage(1)
+
 import portage
-portage.env_update()
+portage.env_update(makelinks)
