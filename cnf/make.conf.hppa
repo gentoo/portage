@@ -283,7 +283,7 @@ CHOST="hppa-unknown-linux-gnu"
 #  'keeptemp'    prevents the clean phase from deleting the temp files ($T) 
 #                from a merge.
 #  'keepwork'    prevents the clean phase from deleting the WORKDIR.
-#  'maketest'    causes ebuilds to perform testing phases if they are capable
+#  'test'    causes ebuilds to perform testing phases if they are capable
 #                of it. Some packages support this automaticaly via makefiles.
 #  'noauto'      causes ebuild to perform only the action requested and 
 #                not any other required actions like clean or unpack -- for
