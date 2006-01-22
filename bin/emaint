@@ -49,7 +49,6 @@ class VdbKeyHandler(object):
 		return "vdbkeys"
 	name = staticmethod(name)
 
-<<<<<<< .mine
 	def __init__(self):
 		self.list = portage.db["/"]["vartree"].dbapi.cpv_all()
 		self.missing = []
@@ -101,6 +100,7 @@ class VdbKeyHandler(object):
 							keyfile.close()
 		
 		return errors
+
 # this sucks, should track this in a different manner.
 modules = {"world" : WorldHandler,
 		   "vdbkeys": VdbKeyHandler}
