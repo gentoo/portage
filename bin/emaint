@@ -4,7 +4,7 @@ import sys
 from copy import copy
 from optparse import OptionParser, OptionValueError
 
-
+import re
 
 import os, portage, portage_const
 class WorldHandler(object):
@@ -44,9 +44,66 @@ class WorldHandler(object):
 			errors.append(portage_const.WORLD_FILE + " could not be opened for writing")
 		return errors
 
+class VdbKeyHandler(object):
+	def name():
+		return "vdbkeys"
+	name = staticmethod(name)
 
+<<<<<<< .mine
+	def __init__(self):
+		self.list = portage.db["/"]["vartree"].dbapi.cpv_all()
+		self.missing = []
+		self.keys = ["HOMEPAGE", "SRC_URI", "KEYWORDS", "DESCRIPTION"]
+		
+		for p in self.list:
+			mydir = "/var/db/pkg/"+p
+			ismissing = True
+			for k in self.keys:
+				if os.path.exists(mydir+"/"+k):
+					ismissing = False
+					break
+			if ismissing:
+				self.missing.append(p)
+		
+	def check(self):
+		return ["%s has missing keys" % x for x in self.missing]
+	
+	def fix(self):
+	
+		errors = []
+	
+		for p in self.missing:
+			mydir = "/var/db/pkg/"+p
+			if not os.access(mydir+"/environment.bz2", os.R_OK):
+				errors.append("Can't access %s" % (mydir+"/environment.bz2"))
+			elif not os.access(mydir, os.W_OK):
+				errors.append("Can't create files in %s" % mydir)
+			else:
+				env = os.popen("bzip2 -dcq "+mydir+"/environment.bz2", "r")
+				envlines = env.read().split("\n")
+				env.close()
+				for k in self.keys:
+					s = [l for l in envlines if l.strip("\"\'").startswith(k+"=")]
+					if len(s) > 1:
+						errors.append("multiple matches for %s found in %s/environment.bz2" % (k, mydir))
+					elif len(s) == 0:
+						s = ""
+					else:
+						s = s[0].split("=",1)[1]
+						s = s.lstrip("$").strip("\'\"")
+						s = re.sub("(\\\\[nrt])+", " ", s)
+						s = re.sub("[\n\r\t]+"," ",s)
+						s = re.sub(" +"," ",s)
+						s = s.strip()
+						if s != "":
+							keyfile = open(mydir+"/"+k, "w")
+							keyfile.write(s+"\n")
+							keyfile.close()
+		
+		return errors
 # this sucks, should track this in a different manner.
-modules = {"world" : WorldHandler}
+modules = {"world" : WorldHandler,
+		   "vdbkeys": VdbKeyHandler}
 
 module_names = modules.keys()
 module_names.sort()
