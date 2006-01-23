@@ -285,6 +285,9 @@ diefunc() {
 }
 
 dump_trace() {
+	# usage- first arg is the number of funcs on the stack to ignore.
+	# defaults to 1 (ignoring dump_trace)
+	# pulled from eselect.
 	local skip funcname sourcefile lineno
 	if [[ -n $1 ]]; then
 		declare -i skip=$1
