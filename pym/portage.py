@@ -1927,10 +1927,10 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 								# Verify checksums at each fetch for fetchonly.
 								verified_ok,reason = portage_checksum.verify_all(mysettings["DISTDIR"]+"/"+myfile, mydigests[myfile])
 								if not verified_ok:
+									print reason
 									writemsg("!!! Previously fetched file: "+str(myfile)+"\n")
 									writemsg("!!! Reason: "+reason[0]+"\n")
-									writemsg("!!! Got:      "+reason[1]+"\n")
-									writemsg("!!! Expected: "+reason[2]+"\n")
+									writemsg("!!! Got:      %s\n!!! Expected: %s\n" % (reason[0], reason[1]))
 									writemsg("Refetching...\n\n")
 									os.unlink(mysettings["DISTDIR"]+"/"+myfile)
 									fetched=0
@@ -2030,10 +2030,10 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 								# from another mirror...
 								verified_ok,reason = portage_checksum.verify_all(mysettings["DISTDIR"]+"/"+myfile, mydigests[myfile])
 								if not verified_ok:
+									print reason
 									writemsg("!!! Fetched file: "+str(myfile)+" VERIFY FAILED!\n")
 									writemsg("!!! Reason: "+reason[0]+"\n")
-									writemsg("!!! Got:      "+reason[1]+"\n")
-									writemsg("!!! Expected: "+reason[2]+"\n")
+									writemsg("!!! Got:      %s\n!!! Expected: %s\n" % (reason[0], reason[1]))
 									writemsg("Removing corrupt distfile...\n")
 									os.unlink(mysettings["DISTDIR"]+"/"+myfile)
 									fetched=0
