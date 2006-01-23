@@ -272,7 +272,7 @@ diefunc() {
 	shift 3
 	echo >&2
 	echo "!!! ERROR: $CATEGORY/$PF failed." >&2
-	echo "!!! Function $funcname, Line $lineno, Exitcode $exitcode" >&2
+	dump_trace 2 1>&2
 	echo "!!! ${*:-(no error message)}" >&2
 	echo "!!! If you need support, post the topmost build error, NOT this status message." >&2
 	echo >&2
@@ -282,6 +282,22 @@ diefunc() {
 		done
 	fi
 	exit 1
+}
+
+dump_trace() {
+	local skip funcname sourcefile lineno
+	if [[ -n $1 ]]; then
+		declare -i skip=$1
+	else
+		skip=1
+	fi
+	echo "Call stack:"
+	for (( n = $skip ; n < ${#FUNCNAME[@]} ; ++n )) ; do
+		funcname=${FUNCNAME[${n}]}
+		sourcefile=$(basename ${BASH_SOURCE[$(( n - 1 ))]})
+		lineno=${BASH_LINENO[$(( n - 1 ))]}
+		echo "  File ${sourcefile}, line ${lineno}, in ${funcname}"
+	done
 }
 
 #if no perms are specified, dirs/files will have decent defaults
