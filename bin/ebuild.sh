@@ -274,7 +274,7 @@ diefunc() {
 	echo "!!! ERROR: $CATEGORY/$PF failed." >&2
 	dump_trace 2 1>&2
 	echo "!!! ${*:-(no error message)}" >&2
-	echo "!!! If you need support, post the topmost build error, NOT this status message." >&2
+	echo "!!! If you need support, post the topmost build error, and the call stack if relevant." >&2
 	echo >&2
 	if [ "${EBUILD_PHASE/depend}" == "${EBUILD_PHASE}" ]; then
 		for x in $EBUILD_DEATH_HOOKS; do
