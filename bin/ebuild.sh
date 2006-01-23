@@ -273,6 +273,7 @@ diefunc() {
 	echo >&2
 	echo "!!! ERROR: $CATEGORY/$PF failed." >&2
 	dump_trace 2 1>&2
+	echo >&2
 	echo "!!! ${*:-(no error message)}" >&2
 	echo "!!! If you need support, post the topmost build error, and the call stack if relevant." >&2
 	echo >&2
@@ -284,24 +285,38 @@ diefunc() {
 	exit 1
 }
 
+shopt -s extdebug
+
+# usage- first arg is the number of funcs on the stack to ignore.
+# defaults to 1 (ignoring dump_trace)
 dump_trace() {
-	# usage- first arg is the number of funcs on the stack to ignore.
-	# defaults to 1 (ignoring dump_trace)
-	# pulled from eselect.
-	local skip funcname sourcefile lineno
+	local funcname="" sourcefile="" lineno="" n e s="yes"
+
+	declare -i strip=1
+
 	if [[ -n $1 ]]; then
-		declare -i skip=$1
-	else
-		skip=1
+		strip=$(( $1 ))
 	fi
+	
 	echo "Call stack:"
-	for (( n = $skip ; n < ${#FUNCNAME[@]} ; ++n )) ; do
-		funcname=${FUNCNAME[${n}]}
-		sourcefile=$(basename ${BASH_SOURCE[$(( n - 1 ))]})
-		lineno=${BASH_LINENO[$(( n - 1 ))]}
-		echo "  File ${sourcefile}, line ${lineno}, in ${funcname}"
+	for (( n = ${#FUNCNAME[@]} - 1, p = ${#BASH_ARGV[@]} ; n > $strip ; n-- )) ; do
+		funcname=${FUNCNAME[${n} - 1]}
+		sourcefile=$(basename ${BASH_SOURCE[${n}]})
+		lineno=${BASH_LINENO[${n} - 1]}
+		# Display function arguments
+		args=
+		if [[ -n "${BASH_ARGV[@]}" ]]; then
+			for (( j = 0 ; j < ${BASH_ARGC[${n} - 1]} ; ++j )); do
+				newarg=${BASH_ARGV[$(( p - j - 1 ))]}
+				args="${args:+${args} }'${newarg}'"
+			done
+			(( p -= ${BASH_ARGC[${n} - 1]} ))
+		fi
+		echo "  ${sourcefile}, line ${lineno}:   Called ${funcname}${args:+ ${args}}"
 	done
 }
+
+
 
 #if no perms are specified, dirs/files will have decent defaults
 #(not secretive, but not stupid)
