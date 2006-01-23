@@ -185,7 +185,7 @@ options=[
 "--onlydeps",     "--pretend",
 "--quiet",        "--resume",
 "--searchdesc",   "--selective",
-"--skipfirst",
+"--skipfirst",    "--skip-first",
 "--tree",
 "--update",       "--upgradeonly",
 "--usepkg",       "--usepkgonly",
@@ -246,6 +246,8 @@ for x in cmdline:
 	if len(x)>=2 and x[0:2]=="--":
 		if x == "--cols":
 			x = "--columns"
+		elif x == "--skip-first":
+			x = "--skipfirst"
 		if x in options:
 			myopts.append(x)
 		elif x[2:] in actions:
