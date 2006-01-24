@@ -26,6 +26,7 @@ import portage
 import portage_checksum
 import portage_const
 import portage_dep
+import portage_exception
 import cvstree
 import time
 import codecs
@@ -959,6 +960,7 @@ for x in scanlist:
 		badlicsyntax = False
 		badprovsyntax = False
 		catpkg = catdir+"/"+y
+		myiuse = myaux["IUSE"].split() + portage.archlist
 		type_list, badsyntax = [], []
 		for mytype in ("DEPEND", "RDEPEND", "PDEPEND", "LICENSE", "PROVIDE"):
 			mydepstr = myaux[mytype]
@@ -974,6 +976,12 @@ for x in scanlist:
 					raise ValueError
 			except ValueError:
 				badsyntax.append("parenthesis mismatch")
+				mydeplist = []
+
+			try:
+				portage_dep.use_reduce(mydeplist, excludeall=myiuse)
+			except portage_exception.InvalidDependString, e:
+				badsyntax.append(str(e))
 
 			for token in ("||", "(", ")"):
 				if mydepstr.startswith(token+" "):
