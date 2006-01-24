@@ -56,6 +56,15 @@ def paren_reduce(mystr,tokenize=1):
 			mylist = mylist + [subsec]
 	return mylist
 
+def paren_enclose(mylist):
+	mystrparts = []
+	for x in mylist:
+		if isinstance(x, list):
+			mystrparts.append("( "+paren_enclose(x)+" )")
+		else:
+			mystrparts.append(x)
+	return " ".join(mystrparts)
+
 def use_reduce(deparray, uselist=[], masklist=[], matchall=0, excludeall=[]):
 	"""Takes a paren_reduce'd array and reduces the use? conditionals out
 	leaving an array with subarrays
@@ -63,15 +72,10 @@ def use_reduce(deparray, uselist=[], masklist=[], matchall=0, excludeall=[]):
 	# Quick validity checks
 	for x in range(len(deparray)):
 		if deparray[x] in ["||","&&"]:
-			if len(deparray) - 1 == x:
-				# Operator is the last element
-				raise portage_exception.InvalidDependString("INVALID "+deparray[x]+" DEPEND STRING: "+str(deparray))
-			if type(deparray[x+1]) != types.ListType:
-				# Operator is not followed by a list
-				raise portage_exception.InvalidDependString("INVALID "+deparray[x]+" DEPEND STRING: "+str(deparray))
+			if len(deparray) - 1 == x or not isinstance(deparray[x+1], list):
+				raise portage_exception.InvalidDependString(deparray[x]+" missing atom list in \""+paren_enclose(deparray)+"\"")
 	if deparray and deparray[-1] and deparray[-1][-1] == "?":
-		# Conditional with no target
-		raise portage_exception.InvalidDependString("INVALID "+deparray[x]+" DEPEND STRING: "+str(deparray))
+		raise portage_exception.InvalidDependString("Conditional without target in \""+paren_enclose(deparray)+"\"")
 	
 	mydeparray = deparray[:]
 	rlist = []
@@ -82,8 +86,8 @@ def use_reduce(deparray, uselist=[], masklist=[], matchall=0, excludeall=[]):
 			additions = use_reduce(head, uselist, masklist, matchall, excludeall)
 			if additions:
 				rlist.append(additions)
-			elif rlist and rlist[-1] in ("||","&&"):
-				raise portage_exception.InvalidDependString("INVALID "+rlist[-1]+" DEPEND STRING: "+str(deparray))
+			elif rlist and rlist[-1] == "||":
+				raise portage_exception.InvalidDependString("No default atom(s) in \""+paren_enclose(deparray)+"\"")
 
 		else:
 			if head[-1] == "?": # Use reduce next group on fail.
