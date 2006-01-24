@@ -39,6 +39,12 @@ This variable is passed by the \fIebuild scripts\fR to the \fIconfigure\fR
 as \fI\-\-build=${CBUILD}\fR only if it is defined.  Do not set this yourself
 unless you know what you are doing.
 .TP
+\fBCCACHE_DIR\fR = \fI[path]\fR
+Defines the location of the ccache working directory.  See the \fBccache\fR(1)
+man page for more information.
+.br
+Defaults to ${PORTAGE_TMPDIR}/ccache
+.TP
 \fBCCACHE_SIZE\fR = \fI"size"\fR
 This controls the space use limitations for ccache.  The default is 2 gigabytes 
 ('2G').  Sizes are specified with 'G', 'M', or 'K'.
