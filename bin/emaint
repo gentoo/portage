@@ -4,7 +4,7 @@ import sys
 from copy import copy
 from optparse import OptionParser, OptionValueError
 
-
+import re
 
 import os, portage, portage_const
 class WorldHandler(object):
@@ -16,8 +16,6 @@ class WorldHandler(object):
 	def __init__(self):
 		self.invalid = []
 		self.not_installed = []
-		self.masked = []
-		self.unavailable = []
 		self.okay = []
 		self.found = os.access(portage_const.WORLD_FILE, os.R_OK)
 
@@ -26,8 +24,6 @@ class WorldHandler(object):
 				self.invalid.append(atom)
 			elif not portage.db["/"]["vartree"].dbapi.match(atom):
 				self.not_installed.append(atom)
-			elif not portage.db["/"]["porttree"].dbapi.xmatch("match-all", atom):
-				self.unavailable.append(atom)
 			elif not portage.db["/"]["porttree"].dbapi.match("match-visible", atom):
 				self.masked.append(atom)
 			else:
@@ -38,8 +34,6 @@ class WorldHandler(object):
 		if self.found:
 			errors += map(lambda x: "'%s' is not a valid atom" % x, self.invalid)
 			errors += map(lambda x: "'%s' is not installed" % x, self.not_installed)
-			errors += map(lambda x: "'%s' is masked (manually fix by adding to package.keywords)" % x, self.masked)
-			errors += map(lambda x: "'%s' has no ebuilds available" % x, self.unavailable)
 			if self.masked:
 				errors += "Masked ebuilds can be manually unmasked with package.keywords or package.unmask"
 		else:
@@ -54,71 +48,130 @@ class WorldHandler(object):
 			errors.append(portage_const.WORLD_FILE + " could not be opened for writing")
 		return errors
 
+class VdbKeyHandler(object):
+	def name():
+		return "vdbkeys"
+	name = staticmethod(name)
 
-modules = {"world" : WorldHandler}
+	def __init__(self):
+		self.list = portage.db["/"]["vartree"].dbapi.cpv_all()
+		self.missing = []
+		self.keys = ["HOMEPAGE", "SRC_URI", "KEYWORDS", "DESCRIPTION"]
+		
+		for p in self.list:
+			mydir = os.path.join(os.sep, portage.settings["ROOT"], portage_const.VDB_PATH, p)+os.sep
+			ismissing = True
+			for k in self.keys:
+				if os.path.exists(mydir+k):
+					ismissing = False
+					break
+			if ismissing:
+				self.missing.append(p)
+		
+	def check(self):
+		return ["%s has missing keys" % x for x in self.missing]
+	
+	def fix(self):
+	
+		errors = []
+	
+		for p in self.missing:
+			mydir = os.path.join(os.sep, portage.settings["ROOT"], portage_const.VDB_PATH, p)+os.sep
+			if not os.access(mydir+"environment.bz2", os.R_OK):
+				errors.append("Can't access %s" % (mydir+"environment.bz2"))
+			elif not os.access(mydir, os.W_OK):
+				errors.append("Can't create files in %s" % mydir)
+			else:
+				env = os.popen("bzip2 -dcq "+mydir+"environment.bz2", "r")
+				envlines = env.read().split("\n")
+				env.close()
+				for k in self.keys:
+					s = [l for l in envlines if l.startswith(k+"=")]
+					if len(s) > 1:
+						errors.append("multiple matches for %s found in %senvironment.bz2" % (k, mydir))
+					elif len(s) == 0:
+						s = ""
+					else:
+						s = s[0].split("=",1)[1]
+						s = s.lstrip("$").strip("\'\"")
+						s = re.sub("(\\\\[nrt])+", " ", s)
+						s = " ".join(s.split()).strip()
+						if s != "":
+							try:
+								keyfile = open(mydir+os.sep+k, "w")
+								keyfile.write(s+"\n")
+								keyfile.close()
+							except (IOError, OSError), e:
+								errors.append("Could not write %s, reason was: %s" % (mydir+k, e))
+		
+		return errors
 
+# this sucks, should track this in a different manner.
+modules = {"world" : WorldHandler,
+		   "vdbkeys": VdbKeyHandler}
 
 module_names = modules.keys()
 module_names.sort()
 module_names.insert(0, "all")
 
-
-def exclusive(option, unused1, unused2, unused3, var=None):
-	if not var:
-		raise ValueError("var not specified to exclusive()")
-	if getattr(parser, var, ""):
-		raise OptionValueError("%s and %s are exclusive options" % (getattr(parser, var), value))
-	setattr(parser, var, str(option))
-
-
-usage = "usage: emaint [options] " + " | ".join(module_names)
-
-usage+= "\n\nCurrently emaint can only check and fix problems with one's world\n"
-usage+= "file.  Future versions will integrate other portage check-and-fix\n"
-usage+= "tools and provide a single interface to system health checks."
+if __name__ == "__main__":
+	def exclusive(option, *args, **kw):
+		var = kw.get("var", None)
+		if var is None:
+			raise ValueError("var not specified to exclusive()")
+		if getattr(parser, var, ""):
+			raise OptionValueError("%s and %s are exclusive options" % (getattr(parser, var), option))
+		setattr(parser, var, str(option))
 
 
-parser = OptionParser(usage=usage)
-parser.add_option("-c", "--check", help="check for problems",
-	action="callback", callback=exclusive, callback_kwargs={"var":"action"})
-parser.add_option("-f", "--fix", help="attempt to fix problems",
-	action="callback", callback=exclusive, callback_kwargs={"var":"action"})
-parser.action = None
+	usage = "usage: emaint [options] " + " | ".join(module_names)
+
+	usage+= "\n\nCurrently emaint can only check and fix problems with one's world\n"
+	usage+= "file.  Future versions will integrate other portage check-and-fix\n"
+	usage+= "tools and provide a single interface to system health checks."
 
 
-(options, args) = parser.parse_args()
-if len(args) != 1:
-	parser.error("Incorrect number of arguments")
-if args[0] not in module_names:
-	parser.error("%s target is not a known target" % args[0])
-
-if parser.action:
-	action = parser.action
-else:
-	print "Defaulting to --check"
-	action = "-c/--check"
-
-if args[0] == "all":
-	tasks = modules.values()
-else:
-	tasks = [modules[args[0]]]
+	parser = OptionParser(usage=usage)
+	parser.add_option("-c", "--check", help="check for problems",
+		action="callback", callback=exclusive, callback_kwargs={"var":"action"})
+	parser.add_option("-f", "--fix", help="attempt to fix problems",
+		action="callback", callback=exclusive, callback_kwargs={"var":"action"})
+	parser.action = None
 
 
-if action == "-c/--check":
-	status = "Checking %s for problems"
-	func = "check"
-else:
-	status = "Attempting to fix %s"
-	func = "fix"
+	(options, args) = parser.parse_args()
+	if len(args) != 1:
+		parser.error("Incorrect number of arguments")
+	if args[0] not in module_names:
+		parser.error("%s target is not a known target" % args[0])
+
+	if parser.action:
+		action = parser.action
+	else:
+		print "Defaulting to --check"
+		action = "-c/--check"
+
+	if args[0] == "all":
+		tasks = modules.values()
+	else:
+		tasks = [modules[args[0]]]
 
 
-for task in tasks:
-	print status % task.name()
-	inst = task()
-	result = getattr(inst, func)()
-	if result:
-		print
-		print "\n".join(result)
-		print "\n"
+	if action == "-c/--check":
+		status = "Checking %s for problems"
+		func = "check"
+	else:
+		status = "Attempting to fix %s"
+		func = "fix"
 
-print "Finished"
+
+	for task in tasks:
+		print status % task.name()
+		inst = task()
+		result = getattr(inst, func)()
+		if result:
+			print
+			print "\n".join(result)
+			print "\n"
+
+	print "Finished"

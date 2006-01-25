@@ -1,5 +1,5 @@
 #!@PYTHON@ -O
-# Copyright 1999-2005 Gentoo Foundation
+# Copyright 1999-2006 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/bin/emerge,v 1.345.2.38 2005/08/13 17:25:26 ferringb Exp $
 
@@ -185,7 +185,7 @@ options=[
 "--onlydeps",     "--pretend",
 "--quiet",        "--resume",
 "--searchdesc",   "--selective",
-"--skipfirst",
+"--skipfirst",    "--skip-first",
 "--tree",
 "--update",       "--upgradeonly",
 "--usepkg",       "--usepkgonly",
@@ -246,6 +246,8 @@ for x in cmdline:
 	if len(x)>=2 and x[0:2]=="--":
 		if x == "--cols":
 			x = "--columns"
+		elif x == "--skip-first":
+			x = "--skipfirst"
 		if x in options:
 			myopts.append(x)
 		elif x[2:] in actions:
@@ -326,6 +328,11 @@ if ("--tree" in myopts) and ("--columns" in myopts):
 
 if ("--quiet" in myopts):
 	update_spinner = update_quiet_spinner
+	portage_util.noiselimit = -1
+	portage.settings.unlock()
+	portage.settings["PORTAGE_QUIET"]="1"
+	portage.settings.backup_changes("PORTAGE_QUIET")
+	portage.settings.lock()
 
 # Always create packages if FEATURES=buildpkg
 # Imply --buildpkg if --buildpkgonly
@@ -820,10 +827,10 @@ class search:
 					if "--quiet" not in myopts:
 						print "     ", darkgreen("Latest version available:"),myversion
 						print "     ", self.getInstallationStatus(mycat+'/'+mypkg)
-						print "     ", darkgreen("Size of downloaded files:"),mysum[0]
-						print "     ", darkgreen("Homepage:")+"   ",homepage
-						print "     ", darkgreen("Description:"),desc
-						print "     ", darkgreen("License:")+"    ",license
+						print "     ", darkgreen("Size of files:"),mysum[0]
+						print "     ", darkgreen("Homepage:")+"     ",homepage
+						print "     ", darkgreen("Description:")+"  ",desc
+						print "     ", darkgreen("License:")+"      ",license
 						print
 		print
 	#
@@ -948,16 +955,15 @@ class depgraph:
 		# select the correct /var database that we'll be checking against
 		vardbapi=portage.db[myroot]["vartree"].dbapi
 
-		if addme:
-			# if the package is already on the system, we add a "nomerge"
-			# directive, otherwise we add a "merge" directive.
-			if mytype=="blocks":
-				# we've encountered a "blocks" node.  We will totally ignore this
-				# node and not add it to our digraph if it doesn't apply to us.
-				if "--buildpkgonly" not in myopts and myparent and (self.mydbapi[myroot].match(mykey) or vardbapi.match(mykey)):
-					mybigkey.append(myparent.split()[2])
-					self.digraph.addnode(string.join(mybigkey),myparent)
-				return 1
+		# if the package is already on the system, we add a "nomerge"
+		# directive, otherwise we add a "merge" directive.
+		if mytype=="blocks":
+			# we've encountered a "blocks" node.  We will totally ignore this
+			# node and not add it to our digraph if it doesn't apply to us.
+			if addme and "--buildpkgonly" not in myopts and myparent and (self.mydbapi[myroot].match(mykey) or vardbapi.match(mykey)):
+				mybigkey.append(myparent.split()[2])
+				self.digraph.addnode(string.join(mybigkey),myparent)
+			return 1
 
 		if myuse == None:
 			self.pkgsettings.setcpv(mykey)
@@ -1430,6 +1436,7 @@ class depgraph:
 				newlist.append(atom)
 		mylist = newlist
 		
+		missing_atoms = []
 		for mydep in mylist:
 			try:
 				if not self.select_dep(portage.root, mydep, raise_on_missing=True):
@@ -1438,11 +1445,16 @@ class depgraph:
 			except ValueError:
 				if "--debug" in myopts:
 					raise
-				world_problems = True
+				missing_atoms.append(mydep)
 
 		if world_problems:
 			print "\n!!! Problems have been detected with your world file"
 			print "!!! Please run "+green("emaint --check world")+"\n"
+
+		if missing_atoms and "--verbose" in myopts:
+			print "\n!!! Packages for the following atoms are either all"
+			print "!!! masked or don't exist:"
+			print " ".join(missing_atoms) + "\n"
 
 		return 1
 
@@ -1481,41 +1493,29 @@ class depgraph:
 		p=[]
 		totalsize=0
 
-		if "--verbose" in myopts:
-			# Full USE display
-			def create_use_string(name, cur_iuse, cur_use, old_iuse, old_use, is_new):
-				usestrs = []
-				for flag in cur_iuse:
-					suffix = ""
-					if flag in cur_use:
-						color = red
-						prefix = ""
-					else:
-						color = blue
-						prefix = "-"
-					if not is_new and ((flag in old_use) ^ (flag in cur_use)):
-						color = green
-						suffix = "*"
-					usestrs.append(color(prefix+flag)+suffix)
-				ret = " ".join(usestrs)
-				if ret:
-					ret = '%s="%s" ' % (name, ret)
-				return ret
+		if "--quiet" in myopts:
+			def create_use_string(*args):
+				return ""
 		else:
-			# Changed-since-previous USE display
-			def create_use_string(name, cur_iuse, cur_use, old_iuse, old_use, is_new):
+			def create_use_string(name, cur_iuse, cur_use, old_iuse, old_use, is_new, all_flags=("--verbose" in myopts)):
 				enabled = []
 				disabled = []
 				for flag in cur_iuse:
-					if flag in cur_use and flag not in old_use:
-						if flag in old_iuse:
-							enabled.append(green(flag)+"*")
-						else:
+					if flag in cur_use:
+						if is_new or flag in old_use and all_flags:
 							enabled.append(red(flag))
-					elif flag not in cur_use and flag in old_use:
-						disabled.append(green("-"+flag)+"*")
-					elif is_new or flag not in old_iuse:
-						disabled.append(blue("-"+flag))
+						elif flag not in old_iuse:
+							enabled.append(yellow(flag)+"%")
+						elif flag not in old_use:
+							enabled.append(green(flag)+"*")
+					else:
+						if is_new or flag in old_iuse and flag not in old_use and all_flags:
+							disabled.append(blue("-"+flag))
+						elif flag not in old_iuse:
+							disabled.append(yellow("-"+flag)+"%")
+						elif flag in old_use:
+							disabled.append(green("-"+flag)+"*")
+
 				enabled = " ".join(enabled)
 				disabled = " ".join(disabled)
 				if enabled and disabled:
@@ -1679,7 +1679,7 @@ class depgraph:
 					
 					for key in use_expand:
 						verboseadd += create_use_string(key.upper(), cur_iuse_map[key], cur_use_map[key],
-						                                old_iuse_map[key], cur_use_map[key], is_new)
+						                                old_iuse_map[key], old_use_map[key], is_new)
 
 				if "--verbose" in myopts:
 					# size verbose
@@ -1938,6 +1938,9 @@ class depgraph:
 					sys.stderr = open("/dev/null","w")
 					os.dup2(sys.stdout.fileno(), 1)
 					os.dup2(sys.stdout.fileno(), 2)
+					# wipe the mtimedb so that portage doesn't attempt to flush it.
+					# do not convert this code away from a fork without correcting this.
+					portage.mtimedb = None
 					for x in ("autoaddcvs", "cvs"):
 						try:	myfeat.remove(x)
 						except ValueError: pass
@@ -2880,6 +2883,13 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 	mypvs=portage.best(portage.db[portage.root]["vartree"].dbapi.match("sys-apps/portage"))
 
 	chk_updated_cfg_files()
+
+	if myaction != "metadata":
+		if os.access(portage.USER_CONFIG_PATH + "/bin/post_sync", os.X_OK):
+			try:
+				portage.spawn(portage.USER_CONFIG_PATH + "/bin/post_sync " + dosyncuri, portage.settings, free=1)
+			except:
+				print red(" * ")+bold("spawn failed of "+ portage.USER_CONFIG_PATH + "/bin/post_sync")
 
 	if(mybestpv != mypvs) and not "--quiet" in myopts:
 		print

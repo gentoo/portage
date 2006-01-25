@@ -14,4 +14,4 @@ portagegroup="@portagegroup@"
 portageuser="@portageuser@"
 rootuser="@rootuser@"
 wheelgid="@wheelgid@"
-wheelgroup"@wheelgroup@
+wheelgroup="@wheelgroup@"

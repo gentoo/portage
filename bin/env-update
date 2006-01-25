@@ -1,5 +1,5 @@
 #!@PYTHON@ -O
-# Copyright 1999-2004 Gentoo Foundation
+# Copyright 1999-2006 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/bin/env-update,v 1.9 2004/10/04 13:56:50 vapier Exp $
 
@@ -7,5 +7,20 @@ import os,sys
 os.environ["PORTAGE_CALLER"] = "env-update"
 sys.path = ["@PORTAGE_BASE@/pym"]+sys.path
 
+def usage(status):
+	print "Usage: env-update"
+	print ""
+	print "See the env-update(1) man page for more info"
+	sys.exit(status)
+
+if "-h" in sys.argv or "--help" in sys.argv:
+	usage(0)
+
+makelinks=1
+
+if len(sys.argv) > 1:
+	print "!!! Invalid command line options!\n"
+	usage(1)
+
 import portage
-portage.env_update()
+portage.env_update(makelinks)

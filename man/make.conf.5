@@ -39,6 +39,12 @@ This variable is passed by the \fIebuild scripts\fR to the \fIconfigure\fR
 as \fI\-\-build=${CBUILD}\fR only if it is defined.  Do not set this yourself
 unless you know what you are doing.
 .TP
+\fBCCACHE_DIR\fR = \fI[path]\fR
+Defines the location of the ccache working directory.  See the \fBccache\fR(1)
+man page for more information.
+.br
+Defaults to ${PORTAGE_TMPDIR}/ccache
+.TP
 \fBCCACHE_SIZE\fR = \fI"size"\fR
 This controls the space use limitations for ccache.  The default is 2 gigabytes 
 ('2G').  Sizes are specified with 'G', 'M', or 'K'.
@@ -102,6 +108,10 @@ not be changed by anyone but developers and/or maintainers.  'sandbox' is an imp
 part of \fBFEATURES\fR and should not be disabled by default.  This is 
 an incremental variable.
 .RS
+.TP
+.B assume-digests
+When commiting work to cvs with \fBrepoman\fR(1), assume that all existing 
+SRC_URI digests are correct.
 .TP
 .B autoaddcvs
 Causes portage to automatically try to add files to cvs that will have to be added 
@@ -184,7 +194,7 @@ Disables xterm titlebar updates (which contains status info).
 Fetch in the background while compiling.
 .TP
 .B sandbox
-Enable sandbox\-ing when running \fBemerge\fR(1) and \fBebuild(1)\fR.
+Enable sandbox\-ing when running \fBemerge\fR(1) and \fBebuild\fR(1).
 .TP
 .B severe
 When checking Manifests, only accept ones that have been signed by a
@@ -200,6 +210,10 @@ See also \fIsuidctl\fR below.
 .B sign
 When commiting work to cvs with \fBrepoman\fR(1), sign the Manifest with 
 a GPG key.  Read about the \fIPORTAGE_GPG_KEY\fR variable in \fBmake.conf\fR(5).
+.TP
+.B splitdebug
+Prior to stripping ELF etdyn and etexec files, the debugging info is 
+stored for later use by various debuggers.
 .TP
 .B strict
 Have portage react strongly to conditions that have the potential to be 

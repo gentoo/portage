@@ -4,14 +4,23 @@
 
 
 import sys,string,shlex,os.path
+if not hasattr(__builtins__, "set"):
+	from sets import Set as set
 
 noiselimit = 0
-def writemsg(mystr,noiselevel=0):
+
+def writemsg(mystr,noiselevel=0,fd=None):
 	"""Prints out warning and debug messages based on the noiselimit setting"""
 	global noiselimit
+	if fd is None:
+		fd = sys.stderr
 	if noiselevel <= noiselimit:
-		sys.stderr.write(mystr)
-		sys.stderr.flush()
+		fd.write(mystr)
+		fd.flush()
+
+def writemsg_stdout(mystr,noiselevel=0):
+	"""Prints messages stdout based on the noiselimit setting"""
+	writemsg(mystr, noiselevel=noiselevel, fd=sys.stdout)
 
 def grabfile(myfilename, compat_level=0, recursive=0):
 	"""This function grabs the lines in a file, normalizes whitespace and returns lines in a list; if a line
@@ -106,38 +115,32 @@ def stack_dicts(dicts, incremental=0, incrementals=[], ignore_none=0):
 
 def stack_lists(lists, incremental=1):
 	"""Stacks an array of list-types into one array. Optionally removing
-	distinct values using '-value' notation. Higher index is preferenced."""
-	new_list = []
+	distinct values using '-value' notation. Higher index is preferenced.
+
+	all elements must be hashable."""
+
+	new_list = {}
 	for x in lists:
-		for y in x:
-			if y:
-				if incremental and y[0]=='-':
-					while y[1:] in new_list:
-						del new_list[new_list.index(y[1:])]
-				else:
-					if y not in new_list:
-						new_list.append(y[:])
-	return new_list
+		for y in filter(None, x):
+			if incremental and y.startswith("-"):
+				if y[1:] in new_list:
+					del new_list[y[1:]]
+			else:
+				new_list[y] = True
+	return new_list.keys()
 
-def grab_multiple(basename, locations, handler, all_must_exist=0):
-	mylist = []
-	for x in locations:
-		mylist.append(handler(x+"/"+basename))
-	return mylist
-
-def grabdict(myfilename,juststrings=0,empty=0,recursive=0):
+def grabdict(myfilename, juststrings=0, empty=0, recursive=0):
 	"""This function grabs the lines in a file, normalizes whitespace and returns lines in a dictionary"""
 	newdict={}
-	mylines=grablines(myfilename,recursive)
-	for x in mylines:
+	for x in grablines(myfilename, recursive):
 		#the split/join thing removes leading and trailing whitespace, and converts any whitespace in the line
 		#into single spaces.
 		if x[0] == "#":
 			continue
 		myline=string.split(x)
-		if len(myline)<2 and empty==0:
+		if len(myline) < 2 and empty == 0:
 			continue
-		if len(myline)<1 and empty==1:
+		if len(myline) < 1 and empty == 1:
 			continue
 		if juststrings:
 			newdict[myline[0]]=string.join(myline[1:])
@@ -145,17 +148,17 @@ def grabdict(myfilename,juststrings=0,empty=0,recursive=0):
 			newdict[myline[0]]=myline[1:]
 	return newdict
 
-def grabdict_package(myfilename,juststrings=0,recursive=0):
+def grabdict_package(myfilename, juststrings=0, recursive=0):
 	pkgs=grabdict(myfilename, juststrings, empty=1, recursive=recursive)
-	for x in pkgs.keys():
+	for x in pkgs:
 		if not isvalidatom(x):
 			del(pkgs[x])
 			writemsg("--- Invalid atom in %s: %s\n" % (myfilename, x))
 	return pkgs
 
-def grabfile_package(myfilename,compatlevel=0,recursive=0):
-	pkgs=grabfile(myfilename,compatlevel,recursive=recursive)
-	for x in range(len(pkgs)-1,-1,-1):
+def grabfile_package(myfilename, compatlevel=0, recursive=0):
+	pkgs=grabfile(myfilename, compatlevel, recursive=recursive)
+	for x in range(len(pkgs)-1, -1, -1):
 		pkg = pkgs[x]
 		if pkg[0] == "-":
 			pkg = pkg[1:]
@@ -165,18 +168,6 @@ def grabfile_package(myfilename,compatlevel=0,recursive=0):
 			writemsg("--- Invalid atom in %s: %s\n" % (myfilename, pkgs[x]))
 			del(pkgs[x])
 	return pkgs
-
-def grabints(myfilename,recursive=0):
-	newdict={}
-	mylines=grablines(myfilename,recursive)
-	for x in mylines:
-		#the split/join thing removes leading and trailing whitespace, and converts any whitespace in the line
-		#into single spaces.
-		myline=string.split(x)
-		if len(myline)!=2:
-			continue
-		newdict[myline[0]]=string.atoi(myline[1])
-	return newdict
 
 def grablines(myfilename,recursive=0):
 	mylines=[]
@@ -194,34 +185,26 @@ def grablines(myfilename,recursive=0):
 			pass
 	return mylines
 
-def writeints(mydict,myfilename):
-	try:
-		myfile=open(myfilename,"w")
-	except IOError:
-		return 0
-	for x in mydict.keys():
-		myfile.write(x+" "+`mydict[x]`+"\n")
-	myfile.close()
-	return 1
-
-def writedict(mydict,myfilename,writekey=1):
+def writedict(mydict,myfilename,writekey=True):
 	"""Writes out a dict to a file; writekey=0 mode doesn't write out
 	the key and assumes all values are strings, not lists."""
+	myfile = None
+	myf2 = "%s.%i" % (myfilename, os.getpid())
 	try:
-		myfile=open(myfilename,"w")
+		myfile=open(myf2,"w")
+		if not writekey:
+			for x in mydict.values():
+				myfile.write(x+"\n")
+		else:
+			for x in mydict.keys():
+				myfile.write("%s %s\n" % (x, " ".join(mydict[x])))
+		myfile.close()
+		os.rename(myf2, myfilename)
+			
 	except IOError:
-		writemsg("Failed to open file for writedict(): "+str(myfilename)+"\n")
+		if myfile is not None:
+			os.unlink(myf2)
 		return 0
-	if not writekey:
-		for x in mydict.values():
-			myfile.write(x+"\n")
-	else:
-		for x in mydict.keys():
-			myfile.write(x+" ")
-			for y in mydict[x]:
-				myfile.write(y+" ")
-			myfile.write("\n")
-	myfile.close()
 	return 1
 
 def getconfig(mycfg,tolerant=0,allow_sourcing=False):
@@ -418,49 +401,54 @@ def pickle_read(filename,default=None,debug=0):
 		data = default
 	return data
 
-class ReadOnlyConfig:
-	def __init__(self,filename,strict_keys=0):
-		self.__filename = filename[:]
-		self.__strict_keys = strict_keys
-		self.__mydict = {}
-		self.__dict_was_loaded = False
-		if os.path.isfile(self.__filename):
-			self.__mydict = getconfig(self.__filename)
-			self.__dict_was_loaded = True
-
-	def isLoaded():
-		return self.__dict_was_loaded
-
-	def __getitem__(self,key):
-		if self.__mydict.has_key(key):
-			return self.__mydict[key][:]
-		if self.__strict_keys:
-			raise KeyError("%s not found in config: '%s'" % (key,self.__filename))
-		return ""
-
-	def __setitem__(self,key,value):
-		raise KeyError("This class is not modifiable.")
-
-	def keys(self):
-		return self.__mydict.keys()
-
-	def has_key(self,key):
-		return self.__mydict.has_key(key)
-
-def unique_array(array):
-	"""Takes an array and makes sure each element is unique."""
-	mya = []
-	for x in array:
-		if x not in mya:
-			mya.append(x)
-	return mya
-
-
-def dump_traceback(msg):
+def dump_traceback(msg, noiselevel=1):
 	import sys, traceback
-	writemsg("\n====================================\n", noiselevel=1)
-	writemsg("Warning: %s\n" % msg, noiselevel=1)
-	for line in traceback.format_list(traceback.extract_stack()[:-1]):
-		writemsg(line, noiselevel=1)
-	writemsg("Please file a bug for %s\n" % sys.argv[0], noiselevel=1)
-	writemsg("====================================\n\n", noiselevel=1)
+	info = sys.exc_info()
+	if not info[2]:
+		stack = traceback.extract_stack()[:-1]
+		error = None
+	else:
+		stack = traceback.extract_tb(info[2])
+		error = str(info[1])
+	writemsg("\n====================================\n", noiselevel=noiselevel)
+	writemsg("%s\n\n" % msg, noiselevel=noiselevel)
+	for line in traceback.format_list(stack):
+		writemsg(line, noiselevel=noiselevel)
+	if error:
+		writemsg(error+"\n", noiselevel=noiselevel)
+	writemsg("====================================\n\n", noiselevel=noiselevel)
+
+def unique_array(s):
+	"""lifted from python cookbook, credit: Tim Peters
+	Return a list of the elements in s in arbitrary order, sans duplicates"""
+	n = len(s)
+	# assume all elements are hashable, if so, it's linear
+	try:
+		return list(set(s))
+	except TypeError:
+		pass
+
+	# so much for linear.  abuse sort.
+	try:
+		t = list(s)
+		t.sort()
+	except TypeError:
+		pass
+	else:
+		assert n > 0
+		last = t[0]
+		lasti = i = 1
+		while i < n:
+			if t[i] != last:
+				t[lasti] = last = t[i]
+				lasti += 1
+			i += 1
+		return t[:lasti]
+
+	# blah.	 back to original portage.unique_array
+	u = []
+	for x in s:
+		if x not in u:
+			u.append(x)
+	return u
+	

@@ -1,14 +1,16 @@
 #!@BASH@
-# Copyright 1999-2004 Gentoo Foundation
+# Copyright 1999-2006 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/bin/dosym,v 1.7 2004/10/04 13:56:50 vapier Exp $
 
-if [ ${#} -ne 2 ] ; then
+if [[ $# -ne 2 ]] ; then
 	echo "${0}: two arguments needed"
 	exit 1
 fi
 
+<<<<<<< .working
 target="${1}"
 linkname="${2}"
 [[ ${target:0:1} == "/" ]] && target="${PREFIX}${target}"
-ln -snf "${target}" "${D}${linkname}"
+exec ln -snf "${target}" "${D}${linkname}"
+

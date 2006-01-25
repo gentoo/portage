@@ -1,5 +1,5 @@
 #!@PYTHON@ -O
-# Copyright 1999-2005 Gentoo Foundation
+# Copyright 1999-2006 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/bin/repoman,v 1.98.2.23 2005/06/18 01:00:43 vapier Exp $
 
@@ -26,6 +26,7 @@ import portage
 import portage_checksum
 import portage_const
 import portage_dep
+import portage_exception
 import cvstree
 import time
 import codecs
@@ -96,11 +97,12 @@ qahelp={
 	"file.size":"Files in the files directory must be under 20k",
 	"file.name":"File/dir name must be composed of only the following chars: %s " % allowed_filename_chars,
 	"file.UTF8":"File is not UTF8 compliant",
-	"KEYWORDS.missing":"Ebuilds that have a missing KEYWORDS variable",
-	"LICENSE.missing":"Ebuilds that have a missing LICENSE variable",
-	"DESCRIPTION.missing":"Ebuilds that have a missing DESCRIPTION variable",
-	"SLOT.missing":"Ebuilds that have a missing SLOT variable",
-	"HOMEPAGE.missing":"Ebuilds that have a missing HOMEPAGE variable",
+	"KEYWORDS.missing":"Ebuilds that have a missing or empty KEYWORDS variable",
+	"KEYWORDS.stupid":"Ebuilds that use KEYWORDS=-* instead of package.mask", 
+	"LICENSE.missing":"Ebuilds that have a missing or empty LICENSE variable",
+	"DESCRIPTION.missing":"Ebuilds that have a missing or empty DESCRIPTION variable",
+	"SLOT.missing":"Ebuilds that have a missing or empty SLOT variable",
+	"HOMEPAGE.missing":"Ebuilds that have a missing or empty HOMEPAGE variable",
 	"DEPEND.bad":"User-visible ebuilds with bad DEPEND settings (matched against *visible* ebuilds)",
 	"RDEPEND.bad":"User-visible ebuilds with bad RDEPEND settings (matched against *visible* ebuilds)",
 	"PDEPEND.bad":"User-visible ebuilds with bad PDEPEND settings (matched against *visible* ebuilds)",
@@ -117,6 +119,7 @@ qahelp={
 	"RDEPEND.syntax":"Syntax error in RDEPEND (usually an extra/missing space/parenthesis)",
 	"PDEPEND.syntax":"Syntax error in PDEPEND (usually an extra/missing space/parenthesis)",
 	"LICENSE.syntax":"Syntax error in LICENSE (usually an extra/missing space/parenthesis)",
+	"PROVIDE.syntax":"Syntax error in PROVIDE (usually an extra/missing space/parenthesis)",
 	"ebuild.syntax":"Error generating cache entry for ebuild; typically caused by ebuild syntax error",
 	"ebuild.output":"A simple sourcing of the ebuild produces output; this breaks ebuild policy.",
 	"ebuild.nesteddie":"Placing 'die' inside ( ) prints an error, but doesn't stop the ebuild.",
@@ -155,6 +158,7 @@ qawarnings=[
 "DEPEND.badindev","RDEPEND.badindev","PDEPEND.badindev",
 "DEPEND.badmaskedindev","RDEPEND.badmaskedindev","PDEPEND.badmaskedindev",
 "IUSE.invalid",
+"KEYWORDS.stupid",
 "ebuild.minorsyn",
 "ebuild.badheader",
 "file.size",
@@ -210,7 +214,7 @@ def help():
 	print
 	print green(exename+" "+version)
 	print " \"Quality is job zero.\""
-	print " Copyright 1999-2005 Gentoo Foundation"
+	print " Copyright 1999-2006 Gentoo Foundation"
 	print " Distributed under the terms of the GNU General Public License v2"
 	print
 	print bold(" Usage:"),turquoise(exename),"[",green("option"),"] [",green("mode"),"]"
@@ -286,7 +290,7 @@ def last():
 		print bold("Note: type \"repoman lfull\" for a complete listing of repomans last run.")
 		print
 	if dowarn and not dofail:
-		print green("RepoMan sez:"),"\"You only gave me a partial QA payment last time?\nI took it, but I wasn't happy.\""
+		print green("RepoMan sez:"),"\"You only gave me a partial QA payment last time?\n              I took it, but I wasn't happy.\""
 	elif not dofail:
 		print green("RepoMan sez:"),"\"If everyone were like you, I'd be out of business!\""
 	print
@@ -806,7 +810,7 @@ for x in scanlist:
 							else:
 								stats["digest.partial"] += 1
 								fails["digest.partial"].append(y+"::"+myf)
-						else:
+						elif "assume-digests" not in portage.features:
 							if os.path.exists(myff):
 								if not portage_checksum.verify_all(myff, mydigests[myf]):
 									stats["digest.fail"] += 1
@@ -941,6 +945,18 @@ for x in scanlist:
 				stats[myqakey]=stats[myqakey]+1
 				fails[myqakey].append(x+"/"+y+".ebuild")
 
+		# KEYWORDS="-*" is a stupid replacement for package.mask and screws general KEYWORDS semantics
+		if "-*" in myaux["KEYWORDS"].split():
+			haskeyword = False
+			for kw in myaux["KEYWORDS"].split():
+				if kw[0] == "~":
+					kw = kw[1:]
+				if kw in kwlist:
+					haskeyword = True
+			if not haskeyword:
+				stats["KEYWORDS.stupid"] += 1
+				fails["KEYWORDS.stupid"].append(x+"/"+y+".ebuild")
+		
 		if "--ignore-other-arches" in myoptions:
 			arches=[[repoman_settings["ARCH"], repoman_settings["ARCH"], portage.groups]]
 		else:
@@ -956,29 +972,60 @@ for x in scanlist:
 
 		baddepsyntax = False
 		badlicsyntax = False
+		badprovsyntax = False
 		catpkg = catdir+"/"+y
-		for mytype in ["DEPEND","RDEPEND","PDEPEND","LICENSE"]:
+		myiuse = myaux["IUSE"].split() + portage.archlist
+		type_list, badsyntax = [], []
+		for mytype in ("DEPEND", "RDEPEND", "PDEPEND", "LICENSE", "PROVIDE"):
 			mydepstr = myaux[mytype]
+			
 			if (string.find(mydepstr, " ?") != -1):
-				stats[mytype+".syntax"] += 1
-				fails[mytype+".syntax"].append(catpkg+".ebuild "+mytype+": '?' preceded by space")
-				if mytype != "LICENSE":
-					baddepsyntax = True
-				else:
-					badlicsyntax = True
+				badsyntax.append("'?' preceded by space")
+
 			try:
 				# Missing closing parenthesis will result in a ValueError
-				mydeplist=portage_dep.paren_reduce(mydepstr)
+				mydeplist = portage_dep.paren_reduce(mydepstr)
 				# Missing opening parenthesis will result in a final "" element
 				if "" in mydeplist or "(" in mydeplist:
 					raise ValueError
 			except ValueError:
-				stats[mytype+".syntax"] += 1
-				fails[mytype+".syntax"].append(catpkg+".ebuild "+mytype+": Mismatched parenthesis")
-				if mytype != "LICENSE":
-					baddepsyntax = True
+				badsyntax.append("parenthesis mismatch")
+				mydeplist = []
+
+			try:
+				portage_dep.use_reduce(mydeplist, excludeall=myiuse)
+			except portage_exception.InvalidDependString, e:
+				badsyntax.append(str(e))
+
+			for token in ("||", "(", ")"):
+				if mydepstr.startswith(token+" "):
+					myteststr = mydepstr[len(token):]
 				else:
-					badlicsyntax = True
+					myteststr = mydepstr
+				if myteststr.endswith(" "+token):
+					myteststr = myteststr[:-len(token)]
+				while myteststr.find(" "+token+" ") != -1:
+					myteststr = " ".join(myteststr.split(" "+token+" ", 1))
+				if myteststr.find(token) != -1:
+					badsyntax.append("'%s' not separated by space" % (token))
+
+
+			if mytype in ("DEPEND", "RDEPEND", "PDEPEND"):
+				for token in filter(lambda x: not (x.endswith("?") or x.strip() in ("||", "&&", "(", ")")), mydepstr.split()):
+					if not "/" in token:
+						badsyntax.append("'%s' not a valid atom" % token)
+
+			type_list.extend([mytype] * (len(badsyntax) - len(type_list)))
+
+		for m,b in zip(type_list, badsyntax):
+			stats[m+".syntax"] += 1
+			fails[m+".syntax"].append(catpkg+".ebuild "+m+": "+b)
+
+		badlicsyntax = len(filter(lambda x:x=="LICENSE", type_list))
+		badprovsyntax = len(filter(lambda x:x=="PROVIDE", type_list))
+		baddepsyntax = len(type_list) != badlicsyntax + badprovsyntax 
+		badlicsyntax = badlicsyntax > 0
+		badprovsyntax = badprovsyntax > 0
 
 		for keyword,arch,groups in arches:
 			portage.groups=groups
@@ -1263,7 +1310,7 @@ if mymode!="commit":
 		print bold("Note: type \"repoman full\" for a complete listing.")
 		print
 	if dowarn and not dofail:
-		print green("RepoMan sez:"),"\"You're only giving me a partial QA payment?\nI'll take it this time, but I'm not happy.\""
+		print green("RepoMan sez:"),"\"You're only giving me a partial QA payment?\n              I'll take it this time, but I'm not happy.\""
 	elif not dofail:
 		print green("RepoMan sez:"),"\"If everyone were like you, I'd be out of business!\""
 	print

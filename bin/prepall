@@ -1,5 +1,5 @@
 #!@BASH@
-# Copyright 1999-2005 Gentoo Foundation
+# Copyright 1999-2006 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id: prepall 2230 2005-11-01 01:35:59Z vapier $
 
@@ -72,6 +72,7 @@ for d in "${D}"lib* "${D}"usr/lib* ; do
 	if [[ -n ${f} ]] ; then
 		echo -e "\n\aQA Notice: the following shared libraries lack a SONAME\a"
 		echo "${f}"
+		echo
 		sleep 1
 	fi
 
@@ -79,8 +80,10 @@ for d in "${D}"lib* "${D}"usr/lib* ; do
 	if [[ -n ${f} ]] ; then
 		echo -e "\n\aQA Notice: the following shared libraries lack NEEDED entries\a"
 		echo "${f}"
+		echo
 		sleep 1
 	fi
 done
 
 fi
+

@@ -18,7 +18,7 @@ def process(mysettings, cpv, logentries, fulltext):
 		if " " in mysettings["PORTAGE_ELOG_MAILURI"]:
 			myrecipient, mymailuri = mysettings["PORTAGE_ELOG_MAILURI"].split()
 			if "@" in mymailuri:
-				myauthdata, myconndata = mymailuri.split("@")
+				myauthdata, myconndata = mymailuri.rsplit("@", 1)
 				try:
 					mymailuser,mymailpasswd = myauthdata.split(":")
 				except ValueError:

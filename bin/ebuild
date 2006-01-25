@@ -1,5 +1,5 @@
 #!@PYTHON@ -O
-# Copyright 1999-2004 Gentoo Foundation
+# Copyright 1999-2006 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Header: /var/cvsroot/gentoo-src/portage/bin/ebuild,v 1.18.2.3 2005/05/07 04:32:59 ferringb Exp $
 
@@ -34,6 +34,10 @@ if not os.path.exists(ebuild):
 ebuild_split = ebuild.split("/")
 del ebuild_split[-2]
 cpv = "/".join(ebuild_split[-2:])[:-7]
+
+if not portage.catpkgsplit(cpv):
+	print "!!! %s does not follow correct package syntax." % (cpv)
+	sys.exit(1)
 
 if ebuild.startswith(portage.root + portage_const.VDB_PATH):
 	mytree = "vartree"

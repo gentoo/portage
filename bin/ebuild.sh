@@ -1,8 +1,7 @@
 #!@BASH@
-# Copyright 1999-2005 Gentoo Foundation
+# Copyright 1999-2006 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/bin/ebuild.sh,v 1.201.2.42 2005/08/20 17:24:30 jstubbs Exp $
-
 
 export SANDBOX_PREDICT="${SANDBOX_PREDICT}:/proc/self/maps:/dev/console:@PORTAGE_BASE@/pym:/dev/random"
 export SANDBOX_WRITE="${SANDBOX_WRITE}:/dev/shm:/dev/stdout:/dev/stderr:${PORTAGE_TMPDIR}"
@@ -398,7 +397,7 @@ use_enable() {
 	return 0
 }
 
-add-ebuild-death-hook() {
+register_die_hook() {
 	export EBUILD_DEATH_HOOKS="${EBUILD_DEATH_HOOKS} $*"
 }
 
@@ -407,9 +406,10 @@ diefunc() {
 	shift 3
 	echo >&2
 	echo "!!! ERROR: $CATEGORY/$PF failed." >&2
-	echo "!!! Function $funcname, Line $lineno, Exitcode $exitcode" >&2
+	dump_trace 2 1>&2
+	echo >&2
 	echo "!!! ${*:-(no error message)}" >&2
-	echo "!!! If you need support, post the topmost build error, NOT this status message." >&2
+	echo "!!! If you need support, post the topmost build error, and the call stack if relevant." >&2
 	echo >&2
 	if [ "${EBUILD_PHASE/depend}" == "${EBUILD_PHASE}" ]; then
 		for x in $EBUILD_DEATH_HOOKS; do
@@ -418,6 +418,39 @@ diefunc() {
 	fi
 	exit 1
 }
+
+shopt -s extdebug
+
+# usage- first arg is the number of funcs on the stack to ignore.
+# defaults to 1 (ignoring dump_trace)
+dump_trace() {
+	local funcname="" sourcefile="" lineno="" n e s="yes"
+
+	declare -i strip=1
+
+	if [[ -n $1 ]]; then
+		strip=$(( $1 ))
+	fi
+	
+	echo "Call stack:"
+	for (( n = ${#FUNCNAME[@]} - 1, p = ${#BASH_ARGV[@]} ; n > $strip ; n-- )) ; do
+		funcname=${FUNCNAME[${n} - 1]}
+		sourcefile=$(basename ${BASH_SOURCE[${n}]})
+		lineno=${BASH_LINENO[${n} - 1]}
+		# Display function arguments
+		args=
+		if [[ -n "${BASH_ARGV[@]}" ]]; then
+			for (( j = 0 ; j < ${BASH_ARGC[${n} - 1]} ; ++j )); do
+				newarg=${BASH_ARGV[$(( p - j - 1 ))]}
+				args="${args:+${args} }'${newarg}'"
+			done
+			(( p -= ${BASH_ARGC[${n} - 1]} ))
+		fi
+		echo "  ${sourcefile}, line ${lineno}:   Called ${funcname}${args:+ ${args}}"
+	done
+}
+
+
 
 #if no perms are specified, dirs/files will have decent defaults
 #(not secretive, but not stupid)
@@ -775,7 +808,7 @@ dyn_unpack() {
 			echo ">>> ${EBUILD} has been updated; recreating WORKDIR..."
 			newstuff="yes"
 			rm -rf "${WORKDIR}"
-		elif [ ! -f "${BUILDDIR}/.unpacked" ]; then
+		elif [ ! -f "${PORTAGE_BUILDDIR}/.unpacked" ]; then
 			echo ">>> Not marked as unpacked; recreating WORKDIR..."
 			newstuff="yes"
 			rm -rf "${WORKDIR}"
@@ -793,9 +826,9 @@ dyn_unpack() {
 	[ -d "$WORKDIR" ] && cd "${WORKDIR}"
 	echo ">>> Unpacking source..."
 	src_unpack
-	touch "${BUILDDIR}/.unpacked" || die "IO Failure -- Failed 'touch .unpacked' in BUILDIR"
+	touch "${PORTAGE_BUILDDIR}/.unpacked" || die "IO Failure -- Failed 'touch .unpacked' in ${PORTAGE_BUILDDIR}"
 	echo ">>> Source unpacked."
-	cd "$BUILDDIR"
+	cd "${PORTAGE_BUILDDIR}"
 
 	[ "$(type -t post_src_unpack)" == "function" ] && post_src_unpack
 
@@ -805,14 +838,14 @@ dyn_unpack() {
 dyn_clean() {
 	if [ "$USERLAND" == "BSD" ] && type -p chflags &>/dev/null; then
 		chflags -R noschg,nouchg,nosappnd,nouappnd,nosunlnk,nouunlnk \
-			"${BUILDDIR}"
+			"${PORTAGE_BUILDDIR}"
 	fi
 
 	if [ "$USERLAND" == "Darwin" ] && type -p chflags &>/dev/null; then
-		chflags -R noschg,nouchg,nosappnd,nouappnd "${BUILDDIR}"
+		chflags -R noschg,nouchg,nosappnd,nouappnd "${PORTAGE_BUILDDIR}"
 	fi
 
-	rm -rf "${BUILDDIR}/image"
+	rm -rf "${PORTAGE_BUILDDIR}/image"
 
 	if ! hasq keeptemp $FEATURES; then
 		rm -rf "${T}"
@@ -821,27 +854,30 @@ dyn_clean() {
 	fi
 
 	if ! hasq keepwork $FEATURES; then
-		rm -rf "${BUILDDIR}/.unpacked"
-		rm -rf "${BUILDDIR}/.compiled"
-		rm -rf "${BUILDDIR}/.tested"
-		rm -rf "${BUILDDIR}/.installed"
-		rm -rf "${BUILDDIR}/.packaged"
-		rm -rf "${BUILDDIR}/build-info"
+		rm -rf "${PORTAGE_BUILDDIR}/.unpacked"
+		rm -rf "${PORTAGE_BUILDDIR}/.compiled"
+		rm -rf "${PORTAGE_BUILDDIR}/.tested"
+		rm -rf "${PORTAGE_BUILDDIR}/.installed"
+		rm -rf "${PORTAGE_BUILDDIR}/.packaged"
+		rm -rf "${PORTAGE_BUILDDIR}/build-info"
 		rm -rf "${WORKDIR}"
 	fi
 
-	if [ -f "${BUILDDIR}/.unpacked" ]; then
-		find "${BUILDDIR}" -type d ! -regex "^${WORKDIR}" | sort -r | tr "\n" "\0" | $XARGS -0 rmdir &>/dev/null
+	if [ -f "${PORTAGE_BUILDDIR}/.unpacked" ]; then
+		find "${PORTAGE_BUILDDIR}" -type d ! -regex "^${WORKDIR}" | sort -r | tr "\n" "\0" | $XARGS -0 rmdir &>/dev/null
 	fi
 
-	if [ -z "$(find "${BUILDDIR}" -mindepth 1 -maxdepth 1)" ]; then
-		rmdir "${BUILDDIR}"
+	if [ -z "$(find "${PORTAGE_BUILDDIR}" -mindepth 1 -maxdepth 1)" ]; then
+		rmdir "${PORTAGE_BUILDDIR}"
 	fi
+	# do not bind this to doebuild defined DISTDIR; don't trust doebuild, and if mistakes are made it'll
+	# result in it wiping the users distfiles directory (bad).
+	rm -rf "${PORTAGE_BUILDDIR}/distdir"
 	true
 }
 
 into() {
-	if [ $1 == "/" ]; then
+	if [ "$1" == "/" ]; then
 		export DESTTREE=""
 	else
 		export DESTTREE=$1
@@ -948,33 +984,33 @@ abort_handler() {
 
 abort_compile() {
 	abort_handler "src_compile" $1
-	rm -f "${BUILDDIR}/.compiled"
+	rm -f "${PORTAGE_BUILDDIR}/.compiled"
 	exit 1
 }
 
 abort_unpack() {
 	abort_handler "src_unpack" $1
-	rm -f "${BUILDDIR}/.unpacked"
-	rm -rf "${BUILDDIR}/work"
+	rm -f "${PORTAGE_BUILDDIR}/.unpacked"
+	rm -rf "${PORTAGE_BUILDDIR}/work"
 	exit 1
 }
 
 abort_package() {
 	abort_handler "dyn_package" $1
-	rm -f "${BUILDDIR}/.packaged"
+	rm -f "${PORTAGE_BUILDDIR}/.packaged"
 	rm -f "${PKGDIR}"/All/${PF}.t*
 	exit 1
 }
 
 abort_test() {
 	abort_handler "dyn_test" $1
-	rm -f "${BUILDDIR}/.tested"
+	rm -f "${PORTAGE_BUILDDIR}/.tested"
 	exit 1
 }
 
 abort_install() {
 	abort_handler "src_install" $1
-	rm -rf "${BUILDDIR}/image"
+	rm -rf "${PORTAGE_BUILDDIR}/image"
 	exit 1
 }
 
@@ -996,7 +1032,7 @@ dyn_compile() {
 	[ "${DISTCC_DIR-unset}"  == "unset" ] && export DISTCC_DIR="${PORTAGE_TMPDIR}/.distcc"
 	[ ! -z "${DISTCC_DIR}" ] && addwrite "${DISTCC_DIR}"
 
-	if hasq noauto $FEATURES &>/dev/null && [ ! -f ${BUILDDIR}/.unpacked ]; then
+	if hasq noauto $FEATURES &>/dev/null && [ ! -f ${PORTAGE_BUILDDIR}/.unpacked ]; then
 		echo
 		echo "!!! We apparently haven't unpacked... This is probably not what you"
 		echo "!!! want to be doing... You are using FEATURES=noauto so I'll assume"
@@ -1011,14 +1047,14 @@ dyn_compile() {
 		sleep 3
 	fi
 
-	local srcdir=${BUILDDIR}
-	cd "${BUILDDIR}"
+	local srcdir=${PORTAGE_BUILDDIR}
+	cd "${PORTAGE_BUILDDIR}"
 	if [ ! -e "build-info" ]; then
 		mkdir build-info
 	fi
 	cp "${EBUILD}" "build-info/${PF}.ebuild"
 
-	if [ ${BUILDDIR}/.compiled -nt "${WORKDIR}" ]; then
+	if [ "${PORTAGE_BUILDDIR}/.compiled" -nt "${WORKDIR}" ]; then
 		echo ">>> It appears that ${PN} is already compiled; skipping."
 		echo ">>> (clean to force compilation)"
 		trap SIGINT SIGQUIT
@@ -1039,41 +1075,20 @@ dyn_compile() {
 	src_compile
 	echo ">>> Source compiled."
 	#|| abort_compile "fail"
-	cd "${BUILDDIR}"
+	cd "${PORTAGE_BUILDDIR}"
 	touch .compiled
 	cd build-info
 
-	echo "$ASFLAGS"        > ASFLAGS
-	echo "$CATEGORY"       > CATEGORY
-	echo "$CBUILD"         > CBUILD
-	echo "$CC"             > CC
-	echo "$CFLAGS"         > CFLAGS
-	echo "$CHOST"          > CHOST
-	echo "$CTARGET"        > CTARGET
-	echo "$CXX"            > CXX
-	echo "$CXXFLAGS"       > CXXFLAGS
-	echo "$DEPEND"         > DEPEND
-	echo "$EXTRA_ECONF"    > EXTRA_ECONF
-	echo "$EXTRA_EINSTALL" > EXTRA_EINSTALL
-	echo "$EXTRA_EMAKE"    > EXTRA_MAKE
-	echo "$FEATURES"       > FEATURES
-	echo "$INHERITED"      > INHERITED
-	echo "$IUSE"           > IUSE
-	echo "$PKGUSE"         > PKGUSE
-	echo "$LDFLAGS"        > LDFLAGS
-	echo "$LIBCFLAGS"      > LIBCFLAGS
-	echo "$LIBCXXFLAGS"    > LIBCXXFLAGS
-	echo "$LICENSE"        > LICENSE
-	echo "$PDEPEND"        > PDEPEND
-	echo "$PF"             > PF
-	echo "$PROVIDE"        > PROVIDE
-	echo "$RDEPEND"        > RDEPEND
-	echo "$RESTRICT"       > RESTRICT
-	echo "$SLOT"           > SLOT
-	echo "$USE"            > USE
-	echo "${EAPI:-0}"	   > EAPI
-
-	set                                         >  environment
+	for f in ASFLAGS CATEGORY CBUILD CC CFLAGS CHOST CTARGET CXX \
+		CXXFLAGS DEPEND EXTRA_ECONF EXTRA_EINSTALL EXTRA_MAKE \
+		FEATURES INHERITED IUSE LDFLAGS LIBCFLAGS LIBCXXFLAGS \
+		LICENSE PDEPEND PF PKGUSE PROVIDE RDEPEND RESTRICT SLOT \
+		KEYWORDS HOMEPAGE SRC_URI DESCRIPTION; do
+		[ -n "${!f}" ] && echo $(echo "${!f}" | tr '\n,\r,\t' ' , , ' | sed s/'  \+'/' '/g) > ${f}
+	done
+	echo "${USE}"		> USE
+	echo "${EAPI:-0}"	> EAPI
+	set                     >  environment
 	export -p | sed 's:declare -rx:declare -x:' >> environment
 	bzip2 -9 environment
 
@@ -1089,7 +1104,7 @@ dyn_compile() {
 
 dyn_package() {
 	trap "abort_package" SIGINT SIGQUIT
-	cd "${BUILDDIR}/image"
+	cd "${PORTAGE_BUILDDIR}/image"
 	tar cpvf - ./ | bzip2 -f > ../bin.tar.bz2 || die "Failed to create tarball"
 	cd ..
 	xpak build-info inf.xpak
@@ -1101,15 +1116,15 @@ dyn_package() {
 	fi
 	ln -sf "../All/${PF}.tbz2" "${PKGDIR}/${CATEGORY}/${PF}.tbz2" || die "Failed to create symlink in ${PKGDIR}/${CATEGORY}"
 	echo ">>> Done."
-	cd "${BUILDDIR}"
-	touch .packaged || die "Failed to 'touch .packaged' in ${BUILDDIR}"
+	cd "${PORTAGE_BUILDDIR}"
+	touch .packaged || die "Failed to 'touch .packaged' in ${PORTAGE_BUILDDIR}"
 	trap SIGINT SIGQUIT
 }
 
 
 dyn_test() {
 	[ "$(type -t pre_src_test)" == "function" ] && pre_src_test
-	if [ ${BUILDDIR}/.tested -nt "${WORKDIR}" ]; then
+	if [ "${PORTAGE_BUILDDIR}/.tested" -nt "${WORKDIR}" ]; then
 		echo ">>> It appears that ${PN} has already been tested; skipping."
 		[ "$(type -t post_src_test)" == "function" ] && post_src_test
 		return
@@ -1127,8 +1142,8 @@ dyn_test() {
 		src_test
 	fi
 
-	cd "${BUILDDIR}"
-	touch .tested || die "Failed to 'touch .tested' in ${BUILDDIR}"
+	cd "${PORTAGE_BUILDDIR}"
+	touch .tested || die "Failed to 'touch .tested' in ${PORTAGE_BUILDDIR}"
 	[ "$(type -t post_src_test)" == "function" ] && post_src_test
 	trap SIGINT SIGQUIT
 }
@@ -1140,8 +1155,8 @@ PORTAGE_INST_GID="0"
 dyn_install() {
 	trap "abort_install" SIGINT SIGQUIT
 	[ "$(type -t pre_src_install)" == "function" ] && pre_src_install
-	rm -rf "${BUILDDIR}/image"
-	mkdir "${BUILDDIR}/image"
+	rm -rf "${PORTAGE_BUILDDIR}/image"
+	mkdir "${PORTAGE_BUILDDIR}/image"
 	if [ -d "${S}" ]; then
 		cd "${S}"
 	fi
@@ -1181,13 +1196,13 @@ dyn_install() {
 	done
 
 	if type -p scanelf > /dev/null ; then
-		local qa_sucks_for_sure=0 qa_kinda_sucks=0
+		local insecure_rpath=0
 
 		# Make sure we disallow insecure RUNPATH/RPATH's
 		# Don't want paths that point to the tree where the package was built
 		# (older, broken libtools would do this).  Also check for null paths
 		# because the loader will search $PWD when it finds null paths.
-		f=$(scanelf -qyRF '%r %p' "${D}" | grep -E "(${BUILDDIR}|: |::|^ )")
+		f=$(scanelf -qyRF '%r %p' "${D}" | grep -E "(${PORTAGE_BUILDDIR}|: |::|^:|^ )")
 		if [[ -n ${f} ]] ; then
 			echo -ne '\a\n'
 			echo "QA Notice: the following files contain insecure RUNPATH's"
@@ -1196,7 +1211,7 @@ dyn_install() {
 			echo " http://bugs.gentoo.org/81745"
 			echo "${f}"
 			echo -ne '\a\n'
-			qa_sucks_for_sure=1
+			insecure_rpath=1
 		fi
 
 		# Check for setid binaries but are not built with BIND_NOW
@@ -1208,46 +1223,60 @@ dyn_install() {
 			echo " LDFLAGS='-Wl,-z,now' emerge ${PN}"
 			echo "${f}"
 			echo -ne '\a\n'
-			qa_kinda_sucks=1
+			die_msg="${die_msg} setXid lazy bindings,"
 			sleep 1
 		fi
 
 		# TEXTREL's are baaaaaaaad
 		f=$(scanelf -qyRF '%t %p' "${D}")
 		if [[ -n ${f} ]] ; then
+			scanelf -qyRF '%T %p' "${WORKDIR}"/ &> "${T}"/scanelf-textrel.log
 			echo -ne '\a\n'
 			echo "QA Notice: the following files contain runtime text relocations"
 			echo " Text relocations force the dynamic linker to perform extra"
 			echo " work at startup, waste system resources, and may pose a security"
 			echo " risk.  On some architectures, the code may not even function"
 			echo " properly, if at all."
+			echo " Please include this file in your report:"
+			echo " ${T}/scanelf-textrel.log"
 			echo "${f}"
 			echo -ne '\a\n'
-			qa_kinda_sucks=1
+			die_msg="${die_msg} textrels,"
 			sleep 1
 		fi
 
-		# Check for files with executable stacks
-		f=$(scanelf -qyRF '%e %p' "${D}")
+		# Check for files with executable stacks, but only on arches which
+		# are supported at the moment.  Keep this list in sync with
+		# http://hardened.gentoo.org/gnu-stack.xml (Arch Status)
+		case ${CTARGET:-${CHOST}} in
+			i?86*|ia64*|s390*|x86_64*)
+				f=$(scanelf -qyRF '%e %p' "${D}") ;;
+			*)
+				f="" ;;
+		esac
 		if [[ -n ${f} ]] ; then
+			# One more pass to help devs track down the source
+			scanelf -qyRF '%e %p' "${WORKDIR}"/ &> "${T}"/scanelf-exec.log
 			echo -ne '\a\n'
 			echo "QA Notice: the following files contain executable stacks"
 			echo " Files with executable stacks will not work properly (or at all!)"
 			echo " on some architectures/operating systems.  A bug should be filed"
 			echo " at http://bugs.gentoo.org/ to make sure the file is fixed."
+			echo " Please include this file in your report:"
+			echo " ${T}/scanelf-exec.log"
 			echo "${f}"
 			echo -ne '\a\n'
-			qa_kinda_sucks=1
+			die_msg="${die_msg} execstacks"
 			sleep 1
 		fi
 
 		# Save NEEDED information
-		scanelf -qyRF '%p %n' "${D}" | sed -e 's:^:/:' > "${BUILDDIR}"/build-info/NEEDED
+		scanelf -qyRF '%p %n' "${D}" | sed -e 's:^:/:' > "${PORTAGE_BUILDDIR}"/build-info/NEEDED
 
-		if [[ ${qa_sucks_for_sure} -eq 1 ]] ; then
-			die "Aborting due to serious QA concerns"
-		elif [[ ${qa_kinda_sucks} -eq 1 ]] && has stricter ${FEATURES} && ! has stricter ${RESTRICT} ; then
-			die "Aborting due to QA concerns"
+		if [[ ${insecure_rpath} -eq 1 ]] ; then
+			die "Aborting due to serious QA concerns with RUNPATH/RPATH"
+		elif [[ ${die_msg} != "" ]] && has stricter ${FEATURES} && ! has stricter ${RESTRICT} ; then
+			die "Aborting due to QA concerns: ${die_msg}"
 		fi
 	fi
 
@@ -1334,7 +1363,7 @@ dyn_install() {
 
 	if hasq multilib-strict ${FEATURES} && [ -x file -a -x find -a \
 	     -n "${MULTILIB_STRICT_DIRS}" -a -n "${MULTILIB_STRICT_DENY}" ]; then
-		MULTILIB_STRICT_EXEMPT=${MULTILIB_STRICT_EXEMPT:-"(perl5|gcc|gcc-lib)"}
+		MULTILIB_STRICT_EXEMPT=${MULTILIB_STRICT_EXEMPT:-"(perl5|gcc|gcc-lib|debug)"}
 		for dir in ${MULTILIB_STRICT_DIRS}; do
 			[ -d "${D}/${dir}" ] || continue
 			for file in $(find ${D}/${dir} -type f | @EGREP@ -v "^${D}/${dir}/${MULTILIB_STRICT_EXEMPT}"); do
@@ -1343,10 +1372,10 @@ dyn_install() {
 		done
 	fi
 
-	touch "${BUILDDIR}/.installed"
+	touch "${PORTAGE_BUILDDIR}/.installed"
 	echo ">>> Completed installing ${PF} into ${D}"
 	echo
-	cd ${BUILDDIR}
+	cd ${PORTAGE_BUILDDIR}
 	[ "$(type -t post_src_install)" == "function" ] && post_src_install
 	trap SIGINT SIGQUIT
 }
@@ -1361,7 +1390,13 @@ dyn_preinst() {
 	declare -r D=${IMAGE}
 	pkg_preinst
 
-	# hopefully this will someday allow us to get rid of the no* feature flags
+	# remove man pages, info pages, docs if requested
+	for f in man info doc; do
+		if hasq no${f} $FEATURES; then
+			INSTALL_MASK="${INSTALL_MASK} /usr/share/${f}"
+		fi
+	done
+
 	# we don't want globbing for initial expansion, but afterwards, we do
 	local shopts=$-
 	set -o noglob
@@ -1377,21 +1412,6 @@ dyn_preinst() {
 	# set everything back the way we found it
 	set +o noglob
 	set -${shopts}
-
-	# remove man pages
-	if hasq noman $FEATURES; then
-		rm -fR "${IMAGE}/usr/share/man"
-	fi
-
-	# remove info pages
-	if hasq noinfo $FEATURES; then
-		rm -fR "${IMAGE}/usr/share/info"
-	fi
-
-	# remove docs
-	if hasq nodoc $FEATURES; then
-		rm -fR "${IMAGE}/usr/share/doc"
-	fi
 
 	# remove share dir if unnessesary
 	if hasq nodoc $FEATURES -o hasq noman $FEATURES -o hasq noinfo $FEATURES; then
@@ -1513,7 +1533,7 @@ dyn_rpm() {
 dyn_help() {
 	echo
 	echo "Portage"
-	echo "Copyright 1999-2004 Gentoo Foundation"
+	echo "Copyright 1999-2006 Gentoo Foundation"
 	echo
 	echo "How to use the ebuild command:"
 	echo
@@ -1617,7 +1637,7 @@ debug-print-section() {
 declare -ix ECLASS_DEPTH=0
 inherit() {
 	ECLASS_DEPTH=$(($ECLASS_DEPTH + 1))
-	if [[ $ECLASS_DEPTH > 1 ]]; then
+	if [[ ${ECLASS_DEPTH} > 1 ]]; then
 		debug-print "*** Multiple Inheritence (Level: ${ECLASS_DEPTH})"
 	fi
 

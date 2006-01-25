@@ -1,38 +1,8 @@
-Release Notes for portage-2.2_pre1
+Release Notes; upgrade information mainly.
+Features/major bugfixes are listed in NEWS
+
+portage-2.1
 ==================================
 
-New features / Major changes
-----------------------------
-* elog framework: This finally adds a flexible way to log all einfo, ewarn and
-	eerror messages as well as adding a new elog command for ebuilds. New ebuilds
-	should use elog instead of einfo for delivering important information as 
-	einfo messages will not be logged by default. [genone]
-* elog modules: Together with the framework some basic modules implementing
-	common logging facilities are shipped, these include:
-	- mod_syslog for relaying messages to syslog
-	- mod_mail for sending messages to a predefined mail adress
-	- mod_save for saving messages to a file
-	- mod_custom for processing messages with a custom command
-	NOTE: The elog interfaces are still subject to change, so don't rely on the
-	exact format yet. [genone]
-* version syntax enhancements: The version parsing and comparison code was 
-	completely rewritten and now supports two extensions to previous versions:
-	- a cvs prefix to denote live cvs (or svn or any other vcs) ebuilds, so now
-		you can have a package foo with the ebuilds foo-1.ebuild and 
-		foo-cvs.1.ebuild in the same directory. cvs ebuilds will always be 
-		ranked higher than any non-cvs ebuild.
-	- multiple suffixes now allow for constructions like foo-1.0_pre1_rc5
-	[genone]
-* recursive config files: Most of the config files in /etc/portage can now
-	also be directories, if they are then portage will recursively use all
-	files in them. So you could have /etc/portage/package.keywords/kde/base
-	and /etc/portage/package.keywords/gnome instead of a single package.keywords.
-	[genone]
-* multi-hash support: digests and Manifests will now use SHA256 and RMD160 in
-	addition to MD5 [genone]
-
-Bug fixes / Minor Changes
--------------------------
-* Removal of "masked by -*" message [genone]
-* Fixed some minor screwup in the sort algorithm for versions [genone]
-* Make digest errors more verbose (list actual and expected checksums)
+* new cache framework, breaking all old cache modules.
+  If you're having problems with portage_db_cdb, this is likely the cause.
