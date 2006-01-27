@@ -654,9 +654,10 @@ def env_update(makelinks=1):
 			mtimedb["ldpath"][x]=newldpathtime
 			ld_cache_update=True
 
-	# ldconfig has very different behaviour between FreeBSD and Linux
-	if ostype=="Linux" or ostype.lower().endswith("gnu"):
-		if (ld_cache_update or makelinks):
+	# Only run ldconfig as needed
+	if (ld_cache_update or makelinks):
+		# ldconfig has very different behaviour between FreeBSD and Linux
+		if ostype=="Linux" or ostype.lower().endswith("gnu"):
 			# We can't update links if we haven't cleaned other versions first, as
 			# an older package installed ON TOP of a newer version will cause ldconfig
 			# to overwrite the symlinks we just made. -X means no links. After 'clean'
@@ -666,8 +667,7 @@ def env_update(makelinks=1):
 				commands.getstatusoutput("cd / ; /sbin/ldconfig -r "+root)
 			else:
 				commands.getstatusoutput("cd / ; /sbin/ldconfig -X -r "+root)
-	elif ostype in ("FreeBSD","DragonFly"):
-		if (ld_cache_update):
+		elif ostype in ("FreeBSD","DragonFly"):
 			writemsg(">>> Regenerating "+str(root)+"var/run/ld-elf.so.hints...\n")
 			commands.getstatusoutput("cd / ; /sbin/ldconfig -elf -i -f "+str(root)+"var/run/ld-elf.so.hints "+str(root)+"etc/ld.so.conf")
 
