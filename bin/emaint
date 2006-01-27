@@ -1,6 +1,7 @@
 #!/usr/bin/python -O
 
 import sys
+sys.path.insert(0, "/usr/lib/portage/pym")
 from copy import copy
 from optparse import OptionParser, OptionValueError
 
