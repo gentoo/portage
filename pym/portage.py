@@ -591,9 +591,6 @@ def env_update(makelinks=1):
 		oldld=None
 
 	ld_cache_update=False
-	if os.environ.has_key("PORTAGE_CALLER") and \
-	   os.environ["PORTAGE_CALLER"] == "env-update":
-		ld_cache_update = True
 
 	newld=specials["LDPATH"]
 	if (oldld!=newld):
