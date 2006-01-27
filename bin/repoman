@@ -136,7 +136,8 @@ qahelp={
 	"metadata.bad":"Bad metadata.xml files",
 	"virtual.versioned":"PROVIDE contains virtuals with versions",
 	"virtual.exists":"PROVIDE contains existing package names",
-	"virtual.unavailable":"PROVIDE contains a virtual which contains no profile default"
+	"virtual.unavailable":"PROVIDE contains a virtual which contains no profile default",
+	"usage.obsolete":"The ebuild makes use of an obsolete construct"
 }
 
 qacats = qahelp.keys()
@@ -660,6 +661,27 @@ else:
 	xmllint_capable=True
 
 
+def x11_deprecation_check(depstr):
+	if depstr.find("virtual/x11") == -1:
+		return False
+	depsplit = depstr.split()
+	ok_stack = []
+	ok = False
+	for token in depsplit:
+		if token == "(":
+			ok_stack.append(ok)
+			ok = False
+		elif token == ")":
+			ok = ok_stack.pop()
+		elif token == "||":
+			ok = True
+		else:
+			ok = False
+			if token.find("virtual/x11") != -1 and (not ok_stack or not ok_stack[-1]):
+				return True
+	return False
+
+
 arch_caches={}
 for x in scanlist:
 	#ebuilds and digests added to cvs respectively.
@@ -1026,6 +1048,11 @@ for x in scanlist:
 		baddepsyntax = len(type_list) != badlicsyntax + badprovsyntax 
 		badlicsyntax = badlicsyntax > 0
 		badprovsyntax = badprovsyntax > 0
+
+		if not baddepsyntax:
+			if x11_deprecation_check(" ".join([myaux["DEPEND"], myaux["RDEPEND"], myaux["PDEPEND"]])):
+				stats["usage.obsolete"] += 1
+				fails["usage.obsolete"].append("%s/%s.ebuild: not migrated to modular X" % (x, y))
 
 		for keyword,arch,groups in arches:
 			portage.groups=groups
