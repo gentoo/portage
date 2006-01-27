@@ -119,6 +119,12 @@ def help(myaction,myopts,havecolor=1):
 		print "              file setup or other similar setups that the user  may  wish to run."
 		print
 		print turquoise("Options:")
+		print "       "+green("--alphabetical")
+		print "              When displaying USE and other flag output, combines the enabled and"
+		print "              disabled lists into one list and sorts the whole list"
+		print "              alphabetically.  With this option, output such as USE=\"dar -bar"
+		print "              -foo\" will instead be displayed as USE=\"-bar dar -foo\""
+		print
 		print "       "+green("--ask")+" ("+green("-a")+" short option)"
 		print "              before performing the merge, display what ebuilds and tbz2s will"
 		print "              be installed, in the same format as when using --pretend; then"
