@@ -222,6 +222,12 @@ CHOST="i686-unknown-freebsd5.3"
 # Advanced Features
 # =================
 #
+# EMERGE_DEFAULT_OPTS allows emerge to act as if certain options are
+#     specified on every run. Useful options include --ask, --verbose,
+#     --usepkg and many others. Options that are not useful, such as --help,
+#     are not filtered.
+#EMERGE_DEFAULT_OPTS=""
+#
 # MAKEOPTS provides extra options that may be passed to 'make' when a
 #     program is compiled. Presently the only use is for specifying
 #     the number of parallel makes (-j) to perform. The suggested number

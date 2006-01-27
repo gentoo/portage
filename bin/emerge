@@ -222,7 +222,7 @@ edebug=0
 
 # process short actions
 tmpcmdline=sys.argv[1:]
-#tmpcmdline.extend(portage.settings["EMERGE_OPTS"].split())
+tmpcmdline.extend(portage.settings["EMERGE_DEFAULT_OPTS"].split())
 cmdline=[]
 for x in tmpcmdline:
 	if x[0:1]=="-" and x[1:2]!="-":
@@ -3025,7 +3025,7 @@ elif "info"==myaction:
 		myvars = ['GENTOO_MIRRORS', 'CONFIG_PROTECT', 'CONFIG_PROTECT_MASK',
 		          'PORTDIR', 'DISTDIR', 'PKGDIR', 'PORTAGE_TMPDIR',
 		          'PORTDIR_OVERLAY', 'USE', 'CHOST', 'CFLAGS', 'CXXFLAGS',
-		          'ACCEPT_KEYWORDS', 'SYNC', 'FEATURES']
+		          'ACCEPT_KEYWORDS', 'SYNC', 'FEATURES', 'EMERGE_DEFAULT_OPTS']
 
 		myvars.extend(portage_util.grabfile(portage.settings["PORTDIR"]+"/profiles/info_vars"))
 
