@@ -23,7 +23,7 @@ elif ostype == "Darwin":
 elif ostype in ["FreeBSD","OpenBSD","NetBSD"]:
 	userland="BSD"
 	os.environ["XARGS"]="xargs"
-elif ostype in ["BeOS","Haiku","HP-UX","SunOS"]
+elif ostype in ["BeOS","Haiku","HP-UX","SunOS"]:
 	userland="GNU"
 	os.environ["XARGS"]="xargs"
 else:
