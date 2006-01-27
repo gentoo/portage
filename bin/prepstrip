@@ -40,6 +40,7 @@ save_elf_debug() {
 			[[ -d ${D}/usr/src/debug/${PF} ]] || mkdir -p "${D}/usr/src/debug/${PF}"
 			cat "${T}"/debug.sources | (cd "${WORKDIR}"; LANG=C sort -z -u | xargs -0 -- cp --parents -p --target-directory="${D}/usr/src/debug/${PF}" )
 		fi
+	fi
 }
 
 for x in $(scanelf -yRBF%F "$@") $(for y in "$@"; do find "${y}" -type f -name '*.a' -print0 ; done); do
