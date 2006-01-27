@@ -23,6 +23,9 @@ elif ostype == "Darwin":
 elif ostype in ["FreeBSD","OpenBSD","NetBSD"]:
 	userland="BSD"
 	os.environ["XARGS"]="xargs"
+elif ostype in ["BeOS","Haiku","HP-UX","SunOS"]
+	userland="GNU"
+	os.environ["XARGS"]="xargs"
 else:
 	writemsg(red("Operating system")+" \""+ostype+"\" "+red("currently unsupported. Exiting.")+"\n")
 	sys.exit(1)
@@ -59,15 +62,15 @@ except KeyError:
 
 #Discover the uid and gid of the portage user/group
 try:
-	portage_uid=pwd.getpwnam("portage")[2]
-	portage_gid=grp.getgrnam("portage")[2]
+	portage_uid=pwd.getpwnam(portage_const.portageuser)[2]
+	portage_gid=grp.getgrnam(portage_const.portagegroup)[2]
 	if (secpass==0):
 		secpass=1
 except KeyError:
 	portage_uid=0
 	portage_gid=wheelgid
 	writemsg("\n")
-	writemsg(  red("portage: 'portage' user or group missing. Please update baselayout\n"))
+	writemsg(  red("portage: "+portage_const.portageuser+" user or group missing. Please update baselayout\n"))
 	writemsg(  red("         and merge portage user(250) and group(250) into your passwd\n"))
 	writemsg(  red("         and group files. Non-root compilation is disabled until then.\n"))
 	writemsg(      "         Also note that non-root/wheel users will need to be added to\n")

@@ -195,7 +195,7 @@ esac],
 [rootuser=root])
 
 AC_ARG_WITH(offset-prefix, 
-AC_HELP_STRING([--with-offset-prefix], [specific the offset prefix, defaults to /]),
+AC_HELP_STRING([--with-offset-prefix], [specify the offset prefix, defaults to /]),
 [DOMAIN_PREFIX=$withval],
 [DOMAIN_PREFIX='/'])
 

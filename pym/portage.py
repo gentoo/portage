@@ -1032,7 +1032,7 @@ class config:
 			del use_defs_lists
 
 			try:
-				mygcfg_dlists = [getconfig(os.path.join(x, "make.globals")) for x in self.profiles+["/etc"]]
+				mygcfg_dlists = [getconfig(os.path.join(x, "make.globals")) for x in self.profiles+[portage_const.SYSCONFDIR]]
 				self.mygcfg   = stack_dicts(mygcfg_dlists, incrementals=portage_const.INCREMENTALS, ignore_none=1)
 
 				if self.mygcfg == None:
@@ -6545,42 +6545,42 @@ os.umask(0)
 if not os.path.exists(root+portage_const.PREFIX+"/tmp"):
 	writemsg(">>> "+root+portage_const.PREFIX+"/tmp doesn't exist, creating it...\n")
 	os.mkdir(root+portage_const.PREFIX+"/tmp",01777)
-if not os.path.exists(root+portage_const.PREFIX+"var/tmp"):
-	writemsg(">>> "+root+portage_const.PREFIX+"var/tmp doesn't exist, creating it...\n")
+if not os.path.exists(root+portage_const.PREFIX+"/var/tmp"):
+	writemsg(">>> "+root+portage_const.PREFIX+"/var/tmp doesn't exist, creating it...\n")
 	try:
-		os.mkdir(root+portage_const.PREFIX+"var",0755)
+		os.mkdir(root+portage_const.PREFIX+"/var",0755)
 	except (OSError,IOError):
 		pass
 	try:
-		os.mkdir(root+portage_const.PREFIX+"var/tmp",01777)
+		os.mkdir(root+portage_const.PREFIX+"/var/tmp",01777)
 	except SystemExit, e:
 		raise
 	except:
 		writemsg("portage: couldn't create "+root+portage_const.PREFIX+"/var/tmp; exiting.\n")
 		sys.exit(1)
 
-if not os.path.exists(root+portage_const.PREFIX+"var/lib/portage"):
-	writemsg(">>> "+root+portage_const.PREFIX+"var/lib doesn't exist, creating it...\n")
+if not os.path.exists(root+portage_const.PREFIX+"/var/lib/portage"):
+	writemsg(">>> "+root+portage_const.PREFIX+"/var/lib doesn't exist, creating it...\n")
 	try:
-		os.mkdir(root+portage_const.PREFIX+"var",0755)
+		os.mkdir(root+portage_const.PREFIX+"/var",0755)
 	except (OSError,IOError):
 		pass
 	try:
-		os.mkdir(root+portage_const.PREFIX+"var/lib",0755)
+		os.mkdir(root+portage_const.PREFIX+"/var/lib",0755)
 	except (OSError,IOError):
 		pass
 	try:
-		os.mkdir(root+portage_const.PREFIX+"var/lib/portage",0755)
+		os.mkdir(root+portage_const.PREFIX+"/var/lib/portage",0755)
 	except SystemExit, e:
 		raise
 	except:
-		writemsg("portage: couldn't create "+root+portage_const.PREFIX+"var/lib/portage; exiting.\n")
+		writemsg("portage: couldn't create "+root+portage_const.PREFIX+"/var/lib/portage; exiting.\n")
 		sys.exit(1)
 
 if not os.path.exists(root+portage_const.PORTAGE_BASE+""):
 	writemsg(">>> "+root+portage_const.PORTAGE_BASE+" doesn't exist, creating it...\n")
 	try:
-		os.mkdir(root+portage_const.PREFIX+"var",0755)
+		os.mkdir(root+portage_const.PREFIX+"/var",0755)
 	except (OSError,IOError):
 		pass
 	try:
@@ -6744,7 +6744,7 @@ mtimedbkeys=[
 "version", "starttime",
 "resume", "ldpath"
 ]
-mtimedbfile=root+portage_const.PREFIX+"var/cache/edb/mtimedb"
+mtimedbfile=root+portage_const.CACHE_PATH+"/mtimedb"
 try:
 	mypickle=cPickle.Unpickler(open(mtimedbfile))
 	mypickle.find_global=None

@@ -1317,7 +1317,7 @@ dyn_install() {
 
 	local file s
 	local count=0
-	find "${D}/" -user  portage | while read file; do
+	find "${D}/" -user  @portageuser@ | while read file; do
 		count=$(( $count + 1 ))
 		if [ -L "${file}" ]; then
 			lchown ${PORTAGE_INST_UID} "${file}"
@@ -1336,7 +1336,7 @@ dyn_install() {
 	fi
 
 	count=0
-	find "${D}/" -group portage | while read file; do
+	find "${D}/" -group @portagegroup@ | while read file; do
 		count=$(( $count + 1 ))
 		if [ -L "${file}" ]; then
 			lchgrp ${PORTAGE_INST_GID} "${file}"

@@ -7,9 +7,11 @@
 
 __all__ = ["PREFIX", "SYSCONFDIR", "PORTAGE_BASE", "portageuser", "portagegroup", "rootuser", "wheelgid", "wheelgroup"]
 
-PREFIX="@DOMAIN_PREFIX@/"
-SYSCONFDIR="@sysconfdir@/"
-PORTAGE_BASE="@PORTAGE_BASE@/"
+from os import path
+
+PREFIX=path.normpath("@DOMAIN_PREFIX@")
+SYSCONFDIR=path.normpath("@sysconfdir@")
+PORTAGE_BASE=path.normpath("@PORTAGE_BASE@")
 portagegroup="@portagegroup@"
 portageuser="@portageuser@"
 rootuser="@rootuser@"

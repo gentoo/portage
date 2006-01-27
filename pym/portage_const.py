@@ -14,7 +14,7 @@ from portage_const_autotool import *
 # START OF CONSTANTS -- START OF CONSTANTS -- START OF CONSTANTS -- START OF
 # ===========================================================================
 
-VDB_PATH                = PREFIX+"var/db/pkg"
+VDB_PATH                = PREFIX+"/var/db/pkg"
 PRIVATE_PATH            = PREFIX+"/var/lib/portage"
 CACHE_PATH              = PREFIX+"/var/cache/edb"
 DEPCACHE_PATH           = CACHE_PATH+"/dep"
@@ -48,7 +48,7 @@ CONFIG_MEMORY_FILE      = PRIVATE_PATH + "/config"
 INCREMENTALS=["USE","USE_EXPAND","USE_EXPAND_HIDDEN","FEATURES","ACCEPT_KEYWORDS","ACCEPT_LICENSE","CONFIG_PROTECT_MASK","CONFIG_PROTECT","PRELINK_PATH","PRELINK_PATH_MASK"]
 STICKIES=["KEYWORDS_ACCEPT","USE","CFLAGS","CXXFLAGS","MAKEOPTS","EXTRA_ECONF","EXTRA_EINSTALL","EXTRA_EMAKE"]
 EBUILD_PHASES			= ["setup","unpack","compile","test","install","preinst","postinst","prerm","postrm"]
-DEFAULT_PATH = ":".join(map(lambda x: os.path.join(PREFIX, x), ["/sbin", "/usr/sbin/", "/bin", "/usr/bin"]))
+DEFAULT_PATH = ":".join(map(lambda x: os.path.normpath(os.path.join(PREFIX, x)), ["/sbin", "/usr/sbin", "/bin", "/usr/bin"]))
 
 EAPI = "prefix"
 
