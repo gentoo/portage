@@ -48,9 +48,9 @@ def install(basename, dirname, options, prefix=""):
 	if dirname: fullpath = dirname + "/" + fullpath
 
 	if options.DOCDESTTREE:
-		destdir = options.D + "usr/share/doc/" + options.PF + "/" + options.DOCDESTTREE + "/" + options.doc_prefix + "/" + prefix
+		destdir = options.D + "/usr/share/doc/" + options.PF + "/" + options.DOCDESTTREE + "/" + options.doc_prefix + "/" + prefix
 	else:
-		destdir = options.D + "usr/share/doc/" + options.PF + "/html/" + options.doc_prefix + "/" + prefix
+		destdir = options.D + "/usr/share/doc/" + options.PF + "/html/" + options.doc_prefix + "/" + prefix
 
 	if os.path.isfile(fullpath):
 		ext = os.path.splitext(basename)[1]
