@@ -218,7 +218,7 @@ with_bindir() {
 	local mybindir
 	if [ -z "${1}" ]; then
 		if [ ! -z "${PREFIX}" ]; then
-			mybindir="${PREFIX}bin"
+			mybindir="${PREFIX}/bin"
 		else
 			mybindir="/bin"
 		fi
@@ -237,7 +237,7 @@ with_datadir() {
 	local mydatadir
 	if [ -z "${1}" ]; then
 		if [ ! -z "${PREFIX}" ]; then
-			mydatadir="${PREFIX}usr/share"
+			mydatadir="${PREFIX}/usr/share"
 		else
 			mydatadir=/usr/share
 		fi
@@ -256,7 +256,7 @@ with_infodir() {
 	local myinfodir
 	if [ -z "${1}" ]; then
 		if [ ! -z "${PREFIX}" ]; then
-			myinfodir="${PREFIX}usr/share/info"
+			myinfodir="${PREFIX}/usr/share/info"
 		else
 			myinfodir=/usr/share/info
 		fi
@@ -275,7 +275,7 @@ with_mandir() {
 	local mymandir
 	if [ -z "${1}" ]; then
 		if [ ! -z "${PREFIX}" ]; then
-			mymandir="${PREFIX}usr/share/man"
+			mymandir="${PREFIX}/usr/share/man"
 		else
 			mymandir=/usr/share/man
 		fi
@@ -294,7 +294,7 @@ with_prefix() {
 	local myprefix
 	if [ -z "${1}" ]; then
 		if [ ! -z "${PREFIX}" ]; then
-			myprefix="${PREFIX}usr"
+			myprefix="${PREFIX}/usr"
 		else
 			myprefix=/usr
 		fi
@@ -313,7 +313,7 @@ with_sysconfdir() {
 	local myconfdir
 	if [ -z "${1}" ]; then
 		if [ ! -z "${PREFIX}" ]; then
-			myconfdir="${PREFIX}etc"
+			myconfdir="${PREFIX}/etc"
 		else
 			myconfdir=/etc
 		fi
@@ -332,7 +332,7 @@ with_localstatedir() {
 	local mylocalstatedir
 	if [ -z "${1}" ]; then
 		if [ ! -z "${PREFIX}" ]; then
-			mylocalstatedir="${PREFIX}var/lib"
+			mylocalstatedir="${PREFIX}/var/lib"
 		else
 			mylocalstatedir="/var/lib"
 		fi
@@ -914,8 +914,8 @@ docinto() {
 		export DOCDESTTREE=""
 	else
 		export DOCDESTTREE="$1"
-		if [ ! -d "${D}usr/share/doc/${PF}/${DOCDESTTREE}" ]; then
-			install -d "${D}usr/share/doc/${PF}/${DOCDESTTREE}"
+		if [ ! -d "${D}/usr/share/doc/${PF}/${DOCDESTTREE}" ]; then
+			install -d "${D}/usr/share/doc/${PF}/${DOCDESTTREE}"
 		fi
 	fi
 }
@@ -1869,7 +1869,7 @@ if [ "$*" != "depend" ] && [ "$*" != "clean" ] && [ "$*" != "setup" ]; then
 			export PATH="${PREFIX}/usr/bin/ccache:${PATH}"
 		fi
 
-		[ -z "${CCACHE_DIR}" ] && export CCACHE_DIR="@PREFIX/var/tmp/ccache"
+		[ -z "${CCACHE_DIR}" ] && export CCACHE_DIR="${PREFIX}/var/tmp/ccache"
 
 		addread "${CCACHE_DIR}"
 		addwrite "${CCACHE_DIR}"
