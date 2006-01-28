@@ -104,8 +104,9 @@ class VdbKeyHandler(object):
 		return errors
 
 # this sucks, should track this in a different manner.
-modules = {"world" : WorldHandler,
-		   "vdbkeys": VdbKeyHandler}
+#modules = {"world" : WorldHandler,
+#		   "vdbkeys": VdbKeyHandler}
+modules = {"world" : WorldHandler}
 
 module_names = modules.keys()
 module_names.sort()
