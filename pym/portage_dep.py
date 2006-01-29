@@ -87,7 +87,9 @@ def use_reduce(deparray, uselist=[], masklist=[], matchall=0, excludeall=[]):
 			if additions:
 				rlist.append(additions)
 			elif rlist and rlist[-1] == "||":
-				raise portage_exception.InvalidDependString("No default atom(s) in \""+paren_enclose(deparray)+"\"")
+			#XXX: Currently some DEPEND strings have || lists without default atoms.
+			#	raise portage_exception.InvalidDependString("No default atom(s) in \""+paren_enclose(deparray)+"\"")
+				rlist.append([])
 
 		else:
 			if head[-1] == "?": # Use reduce next group on fail.

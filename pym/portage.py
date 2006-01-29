@@ -3161,6 +3161,11 @@ def dep_eval(deplist):
 					return 1
 			elif x==1:
 					return 1
+		#XXX: unless there's no available atoms in the list
+		#in which case we need to assume that everything is
+		#okay as some ebuilds are relying on an old bug.
+		if len(deplist) == 1:
+			return 1
 		return 0
 	else:
 		for x in deplist:
