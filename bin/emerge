@@ -72,9 +72,6 @@ update_spinner = update_twirl_spinner
 if "candy" in portage.settings.features:
 	spinner = spinner_msgs[int(time.time()*100)%len(spinner_msgs)]
 	update_spinner = update_scroll_spinner
-if not sys.stdout.isatty() or ("--nospinner" in sys.argv):
-	update_spinner = update_basic_spinner
-
 
 if (not sys.stdout.isatty()) or (portage.settings["NOCOLOR"] in ["yes","true"]):
 	nocolor()
@@ -430,6 +427,9 @@ if ("--resume" in myopts):
 # Set color output
 if ("--nocolor" in myopts) and (sys.stdout.isatty()):
 	nocolor()
+
+if not sys.stdout.isatty() or ("--nospinner" in myopts):
+	update_spinner = update_basic_spinner
 
 CLEAN_DELAY = 5
 EMERGE_WARNING_DELAY = 10
