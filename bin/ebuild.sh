@@ -1332,20 +1332,19 @@ dyn_preinst() {
 	fi
 
 	# SELinux file labeling (needs to always be last in dyn_preinst)
-	if useq selinux; then
+	if hasq selinux ${FEATURES} ; then
 		# only attempt to label if setfiles is executable
 		# and 'context' is available on selinuxfs.
-		if [ -f /selinux/context -a -x /usr/sbin/setfiles ]; then
+		if [ -f /selinux/context -a -x /usr/sbin/setfiles -a -x /usr/sbin/selinuxconfig ]; then
 			echo ">>> Setting SELinux security labels"
-			if [ -f ${POLICYDIR}/file_contexts/file_contexts ]; then
-				cp -f "${POLICYDIR}/file_contexts/file_contexts" "${T}"
-			else
-				make -C "${POLICYDIR}" FC=${T}/file_contexts "${T}/file_contexts"
-			fi
+			(
+				eval "$(/usr/sbin/selinuxconfig)" || \
+					die "Failed to determine SELinux policy paths.";
 
-			addwrite /selinux/context
-			/usr/sbin/setfiles -r "${IMAGE}" "${T}/file_contexts" "${IMAGE}" \
-				|| die "Failed to set SELinux security labels."
+				addwrite /selinux/context;
+
+				/usr/sbin/setfiles "${file_contexts_path}" -r "${IMAGE}" "${IMAGE}";
+			) || die "Failed to set SELinux security labels."
 		else
 			# nonfatal, since merging can happen outside a SE kernel
 			# like during a recovery situation
