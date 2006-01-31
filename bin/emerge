@@ -1278,7 +1278,7 @@ class depgraph:
 					else:
 						xinfo='"'+arg+'"'
 					if myparent:
-						xfrom = '(dependency required by '+green('"'+myparent.split()[2]+'"')+red(' ['+myparent.split()[0]+"])")
+						xfrom = '(dependency required by '+green('"'+myparent.split()[2]+'"')+red(' ['+myparent.split()[0]+"]")+')'
 					alleb=portage.portdb.xmatch("match-all",x)
 					if alleb:
 						if "--usepkgonly" not in myopts:
