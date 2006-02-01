@@ -40,8 +40,14 @@ from grp import getgrnam
 from stat import *
 
 
-def err(txt):
+def warn(txt):
 	print exename+": "+txt
+def err(txt):
+	warn(txt)
+	sys.exit(1)
+def err_help(txt):
+	help(exitstatus=-1,helpfulness=0)
+	warn(txt)
 	sys.exit(1)
 
 def exithandler(signum=None,frame=None):
@@ -51,29 +57,43 @@ def exithandler(signum=None,frame=None):
 signal.signal(signal.SIGINT,exithandler)
 
 REPOROOTS=["gentoo-x86"]
-modes=["scan","fix","full","help","commit","last","lfull"]
 shortmodes={"ci":"commit"}
 modeshelp={
-"scan"  :"Scan current directory tree for QA issues (default)",
-"fix"   :"Fix those issues that can be fixed (stray digests, missing digests)",
-"full"  :"Scan current directory tree for QA issues (full listing)",
-"help"  :"Show this screen",
-"commit":"Scan current directory tree for QA issues; if OK, commit via cvs",
-"last"	:"Remember report from last run",
-"lfull"	:"Remember report from last run (full listing)"
+"scan"   : "Scan directory tree for QA issues (default)",
+"fix"    : "Fix simple QA issues (stray digests, missing digests)",
+"full"   : "Scan directory tree for QA issues (full listing)",
+"help"   : "Show this screen",
+"commit" : "Scan directory tree for QA issues; if OK, commit via cvs",
+"last"   : "Remember report from last run",
+"lfull"  : "Remember report from last run (full listing)"
 }
-options=["--pretend","--help","--commitmsg","--commitmsgfile","--verbose","--xmlparse","--ignore-other-arches","--include-masked"]
-shortoptions={"-m":"--commitmsg","-M":"--commitmsgfile","-p":"--pretend","-v":"--verbose","-x":"--xmlparse","-I":"--ignore-other-arches"}
-optionshelp={
-"--pretend":"Don't actually perform commit or fix steps; just show what would be done (always enabled when not started in a CVS tree).",
-"--help"   :"Show this screen",
-"--commitmsg"    :"Adds a commit message via the command line.",
-"--commitmsgfile":"Adds a commit message from a file given on the command line.",
-"--ignore-other-arches": "Instructs repoman to ignore arches that are not relevent to the committing arch. REPORT/FIX issues you work around.",
-"--verbose":"Displays every package name while checking",
-"--xmlparse":"Forces the metadata.xml parse check to be carried out",
-"--include-masked":"Includes masked packages in scans at category or tree level"
+modes=modeshelp.keys()
+repoman_options={
+"--commitmsg"      : "Adds a commit message via the command line",
+"--commitmsgfile"  : "Adds a commit message from the specified file",
+"--help"           : "Show this screen",
+"--ignore-arches"  : "Ignore arch-specific failures (where arch != host)",
+"--include-masked" : "Include masked packages in scans at category or tree level",
+"--pretend"        : "Don't commit or fix anything; just show what would be done",
+"--quiet"          : "Be less verbose about extraneous info",
+"--verbose"        : "Displays every package name while checking",
+"--version"        : "Show version info",
+"--xmlparse"       : "Forces the metadata.xml parse check to be carried out"
 }
+repoman_shortoptions={
+"-h" : "--help",
+"-i" : "--include-masked",
+"-I" : "--ignore-arches",
+"-m" : "--commitmsg",
+"-M" : "--commitmsgfile",
+"-p" : "--pretend",
+"-q" : "--quiet",
+"-v" : "--verbose",
+"-V" : "--version",
+"-x" : "--xmlparse"
+}
+repoman_shortoptions_rev=dict([(v,k) for (k,v) in repoman_shortoptions.items()])
+options=repoman_options.keys()
 
 qahelp={
 	"CVS/Entries.IO_error":"Attempting to commit, and an IO error was encountered access the Entries file",
@@ -197,6 +217,8 @@ valid_ebuild_name_re=re.compile(ven_string+'$', re.I)
 valid_ebuild_filename_re=re.compile(ven_string+'\.ebuild$', re.I)
 
 repoman_settings = portage.config(clone=portage.settings)
+verbose=0
+quiet=0
 
 def valid_ebuild_name(name):
 	"""(name) --- Checks to ensure that the package name meets portage specs.
@@ -211,31 +233,47 @@ def valid_ebuild_name(name):
 	return 0
 
 
-def help():
+def show_version():
+	print exename+" "+version
+	sys.exit(0)
+def help(exitstatus=1,helpfulness=1):
+	if quiet:
+		helpfulness=0
+	if helpfulness:
+		print
+		print green(exename+" "+version)
+		print " \"Quality is job zero.\""
+		print " Copyright 1999-2006 Gentoo Foundation"
+		print " Distributed under the terms of the GNU General Public License v2"
+		print
+	print bold(" Usage:"),turquoise(exename),"[",green("options"),"] [",green("mode"),"]"
+	if helpfulness:
+		print bold(" Modes:"),turquoise("scan (default)"),
+		for x in modes[1:]:
+			print "|",turquoise(x),
+		print
 	print
-	print green(exename+" "+version)
-	print " \"Quality is job zero.\""
-	print " Copyright 1999-2006 Gentoo Foundation"
-	print " Distributed under the terms of the GNU General Public License v2"
-	print
-	print bold(" Usage:"),turquoise(exename),"[",green("option"),"] [",green("mode"),"]"
-	print bold(" Modes:"),turquoise("scan (default)"),
-	for x in modes[1:]:
-		print "|",turquoise(x),
-	print "\n"
-	print " "+green(string.ljust("Option",20)+" Description")
+	print " "+green(string.ljust("Options",20)+" Description")
 	for x in options:
-		print " "+string.ljust(x,20),optionshelp[x]
+		if repoman_shortoptions_rev.has_key(x):
+			shopt=repoman_shortoptions_rev[x]+", "+x
+		else:
+			shopt="    "+x
+		print " "+string.ljust(shopt,20),repoman_options[x]
 	print
-	print " "+green(string.ljust("Mode",20)+" Description")
+	print " "+green(string.ljust("Modes",20)+" Description")
 	for x in modes:
 		print " "+string.ljust(x,20),modeshelp[x]
-	print
-	print " "+green(string.ljust("QA keyword",20)+" Description")
-	for x in qacats:
-		print " "+string.ljust(x,20),qahelp[x]
-	print
-	sys.exit(1)
+	if helpfulness:
+		print
+		print " "+green(string.ljust("QA keyword",20)+" Description")
+		for x in qacats:
+			print " "+string.ljust(x,20),qahelp[x]
+		print
+	if (exitstatus != -1):
+		sys.exit(exitstatus)
+	else:
+		print
 
 def last():
 	try:
@@ -304,30 +342,36 @@ if len(sys.argv)>1:
 	while x < len(sys.argv):
 		if sys.argv[x] in shortmodes.keys():
 			sys.argv[x]=shortmodes[sys.argv[x]]
+		elif sys.argv[x] in repoman_shortoptions.keys():
+			sys.argv[x] = repoman_shortoptions[sys.argv[x]]
 		if sys.argv[x] in modes:
 			if mymode==None:
 				mymode=sys.argv[x]
 			else:
 				err("Please specify either \""+mymode+"\" or \""+sys.argv[x]+"\", but not both.")
-		elif sys.argv[x] in options+shortoptions.keys():
+		elif sys.argv[x] in options:
 			optionx=sys.argv[x]
-			if optionx in shortoptions.keys():
-				optionx = shortoptions[optionx]
 			if (optionx=="--commitmsg") and (len(sys.argv)>=(x+1)):
 				commitmessage=sys.argv[x+1]
 				x=x+1
 			elif (optionx=="--commitmsgfile") and (len(sys.argv)>=(x+1)):
 				commitmessagefile=sys.argv[x+1]
 				x=x+1
+			elif (optionx=="--verbose"):
+				verbose+=1
+			elif (optionx=="--quiet"):
+				quiet+=1
 			elif optionx not in myoptions:
 				myoptions.append(optionx)
 		else:
-			err("\""+sys.argv[x]+"\" is not a valid mode or option.")
+			err_help("\""+sys.argv[x]+"\" is not a valid mode or option.")
 		x=x+1
 if mymode==None:
 	mymode="scan"
 if mymode=="help" or ("--help" in myoptions):
-	help()
+	help(exitstatus=0)
+if ("--version" in myoptions):
+	show_version()
 if mymode=="last" or (mymode=="lfull"):
 	last()
 if mymode=="commit" and "--include-masked" not in myoptions:
@@ -446,9 +490,10 @@ if portdir_overlay != portdir:
 else:
 	os.environ["PORTDIR_OVERLAY"] = ""
 
-print "\nSetting paths:"
-print "PORTDIR = \""+os.environ["PORTDIR"]+"\""
-print "PORTDIR_OVERLAY = \""+os.environ["PORTDIR_OVERLAY"]+"\""
+if quiet < 2:
+	print "\nSetting paths:"
+	print "PORTDIR = \""+os.environ["PORTDIR"]+"\""
+	print "PORTDIR_OVERLAY = \""+os.environ["PORTDIR_OVERLAY"]+"\""
 
 
 reload(portage)
@@ -490,11 +535,10 @@ os.chdir(startdir)
 
 def caterror(mycat):
 	err(mycat+" is not an official category.  Skipping QA checks in this directory.\nPlease ensure that you add "+catdir+" to "+repodir+"/profiles/categories\nif it is a new category.")
-print
 if "--pretend" in myoptions:
-	print green("RepoMan does a once-over of the neighborhood...")
-else:
-	print green("RepoMan scours the neighborhood...")
+	print green("\nRepoMan does a once-over of the neighborhood...")
+elif quiet < 1:
+	print green("\nRepoMan scours the neighborhood...")
 
 # retreive local USE list
 luselist={}
@@ -685,7 +729,7 @@ def x11_deprecation_check(depstr):
 arch_caches={}
 for x in scanlist:
 	#ebuilds and digests added to cvs respectively.
-	if "--verbose" in myoptions:
+	if verbose:
 		print "checking package " + x
 	eadded=[]
 	dadded=[]
@@ -1281,7 +1325,8 @@ if not (os.stat('/var/cache/edb/repo.stats')[ST_GID] == getgrnam('portage')[2]):
 if not (os.stat('/var/cache/edb/repo.fails')[ST_GID] == getgrnam('portage')[2]):
 	os.chown('/var/cache/edb/repo.fails',os.geteuid(),getgrnam('portage')[2])
 	os.chmod('/var/cache/edb/repo.fails',0664)
-print
+if quiet < 2:
+	print
 #dofail will be set to 1 if we have failed in at least one non-warning category
 dofail=0
 #dowarn will be set to 1 if we tripped any warnings
@@ -1335,12 +1380,17 @@ def grouplist(mylist,seperator="/"):
 if mymode!="commit":
 	if dofull:
 		print bold("Note: type \"repoman full\" for a complete listing.")
-		print
+		if quiet < 1:
+			print
 	if dowarn and not dofail:
-		print green("RepoMan sez:"),"\"You're only giving me a partial QA payment?\n              I'll take it this time, but I'm not happy.\""
+		if quiet < 2:
+			print green("RepoMan sez:"),"\"You're only giving me a partial QA payment?\n              I'll take it this time, but I'm not happy.\""
+		else:
+			print green("RepoMan sez:"),"\"OK for now, but I'll be back ...\""
 	elif not dofail:
 		print green("RepoMan sez:"),"\"If everyone were like you, I'd be out of business!\""
-	print
+	if quiet < 1:
+		print
 else:
 	if dofail:
 		print turquoise("Please fix these important QA issues first.")
