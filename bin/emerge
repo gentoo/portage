@@ -72,9 +72,6 @@ update_spinner = update_twirl_spinner
 if "candy" in portage.settings.features:
 	spinner = spinner_msgs[int(time.time()*100)%len(spinner_msgs)]
 	update_spinner = update_scroll_spinner
-if not sys.stdout.isatty() or ("--nospinner" in sys.argv):
-	update_spinner = update_basic_spinner
-
 
 if (not sys.stdout.isatty()) or (portage.settings["NOCOLOR"] in ["yes","true"]):
 	nocolor()
@@ -170,7 +167,7 @@ actions=[
 "sync",  "system", "unmerge",  "world",
 ]
 options=[
-"--ask",
+"--ask",          "--alphabetical",
 "--buildpkg",     "--buildpkgonly",
 "--changelog",    "--columns", "--cols",
 "--debug",        "--deep",
@@ -222,7 +219,7 @@ edebug=0
 
 # process short actions
 tmpcmdline=sys.argv[1:]
-#tmpcmdline.extend(portage.settings["EMERGE_OPTS"].split())
+tmpcmdline.extend(portage.settings["EMERGE_DEFAULT_OPTS"].split())
 cmdline=[]
 for x in tmpcmdline:
 	if x[0:1]=="-" and x[1:2]!="-":
@@ -430,6 +427,9 @@ if ("--resume" in myopts):
 # Set color output
 if ("--nocolor" in myopts) and (sys.stdout.isatty()):
 	nocolor()
+
+if not sys.stdout.isatty() or ("--nospinner" in myopts):
+	update_spinner = update_basic_spinner
 
 CLEAN_DELAY = 5
 EMERGE_WARNING_DELAY = 10
@@ -1279,7 +1279,7 @@ class depgraph:
 					else:
 						xinfo='"'+arg+'"'
 					if myparent:
-						xfrom = '(dependency required by '+green('"'+myparent.split()[2]+'"')+red(' ['+myparent.split()[0]+"])")
+						xfrom = '(dependency required by '+green('"'+myparent.split()[2]+'"')+red(' ['+myparent.split()[0]+"]")+')'
 					alleb=portage.portdb.xmatch("match-all",x)
 					if alleb:
 						if "--usepkgonly" not in myopts:
@@ -1497,9 +1497,13 @@ class depgraph:
 			def create_use_string(*args):
 				return ""
 		else:
-			def create_use_string(name, cur_iuse, cur_use, old_iuse, old_use, is_new, all_flags=("--verbose" in myopts)):
+			def create_use_string(name, cur_iuse, cur_use, old_iuse, old_use, is_new,
+					all_flags=("--verbose" in myopts), alphabetical=("--alphabetical" in myopts)):
 				enabled = []
-				disabled = []
+				if alphabetical:
+					disabled = enabled
+				else:
+					disabled = []
 				for flag in cur_iuse:
 					if flag in cur_use:
 						if is_new or flag in old_use and all_flags:
@@ -1517,7 +1521,10 @@ class depgraph:
 							disabled.append(green("-"+flag)+"*")
 
 				enabled = " ".join(enabled)
-				disabled = " ".join(disabled)
+				if alphabetical:
+					disabled = ""
+				else:
+					disabled = " ".join(disabled)
 				if enabled and disabled:
 					ret = enabled + " " + disabled
 				elif enabled:
@@ -3028,7 +3035,7 @@ elif "info"==myaction:
 		myvars = ['GENTOO_MIRRORS', 'CONFIG_PROTECT', 'CONFIG_PROTECT_MASK',
 		          'PORTDIR', 'DISTDIR', 'PKGDIR', 'PORTAGE_TMPDIR',
 		          'PORTDIR_OVERLAY', 'PREFIX', 'USE', 'CHOST', 'CFLAGS', 'CXXFLAGS',
-		          'ACCEPT_KEYWORDS', 'SYNC', 'FEATURES']
+		          'ACCEPT_KEYWORDS', 'SYNC', 'FEATURES', 'EMERGE_DEFAULT_OPTS']
 
 		myvars.extend(portage_util.grabfile(portage.settings["PORTDIR"]+"/profiles/info_vars"))
 
@@ -3315,7 +3322,8 @@ else:
 
 	if ("--pretend" in myopts) and not ("--fetchonly" in myopts or "--fetch-all-uri" in myopts):
 		if ("--resume" in myopts):
-			mydepgraph.display(portage.mtimedb["resume"]["mergelist"])
+			### Cut off the first element, since we aren't merging it #121106
+			mydepgraph.display(portage.mtimedb["resume"]["mergelist"][1:])
 		else:
 			mydepgraph.display(mydepgraph.altlist())
 	else:

@@ -1,13 +1,11 @@
 #!@PYTHON@ -O
-
 import sys
 sys.path.insert(0, "@PORTAGE_BASE@/pym")
+
+import os, portage, portage_const, re
 from copy import copy
 from optparse import OptionParser, OptionValueError
 
-import re
-
-import os, portage, portage_const
 class WorldHandler(object):
 
 	def name():
@@ -108,8 +106,9 @@ class VdbKeyHandler(object):
 		return errors
 
 # this sucks, should track this in a different manner.
-modules = {"world" : WorldHandler,
-		   "vdbkeys": VdbKeyHandler}
+#modules = {"world" : WorldHandler,
+#		   "vdbkeys": VdbKeyHandler}
+modules = {"world" : WorldHandler}
 
 module_names = modules.keys()
 module_names.sort()

@@ -591,9 +591,6 @@ def env_update(makelinks=1):
 		oldld=None
 
 	ld_cache_update=False
-	if os.environ.has_key("PORTAGE_CALLER") and \
-	   os.environ["PORTAGE_CALLER"] == "env-update":
-		ld_cache_update = True
 
 	newld=specials["LDPATH"]
 	if (oldld!=newld):
@@ -654,9 +651,10 @@ def env_update(makelinks=1):
 			mtimedb["ldpath"][x]=newldpathtime
 			ld_cache_update=True
 
-	# ldconfig has very different behaviour between FreeBSD and Linux
-	if ostype=="Linux" or ostype.lower().endswith("gnu"):
-		if (ld_cache_update or makelinks):
+	# Only run ldconfig as needed
+	if (ld_cache_update or makelinks):
+		# ldconfig has very different behaviour between FreeBSD and Linux
+		if ostype=="Linux" or ostype.lower().endswith("gnu"):
 			# We can't update links if we haven't cleaned other versions first, as
 			# an older package installed ON TOP of a newer version will cause ldconfig
 			# to overwrite the symlinks we just made. -X means no links. After 'clean'
@@ -666,8 +664,7 @@ def env_update(makelinks=1):
 				commands.getstatusoutput("cd / ; "+portage_const.PREFIX+"/sbin/ldconfig -r "+root)
 			else:
 				commands.getstatusoutput("cd / ; "+portage_const.PREFIX+"/sbin/ldconfig -X -r "+root)
-	elif ostype in ("FreeBSD","DragonFly"):
-		if (ld_cache_update):
+		elif ostype in ("FreeBSD","DragonFly"):
 			writemsg(">>> Regenerating "+str(root)+"var/run/ld-elf.so.hints...\n")
 			commands.getstatusoutput("cd / ; "+portage_const.PREFIX+"/sbin/ldconfig -elf -i -f "+str(root)+portage_const.PREFIX+"/var/run/ld-elf.so.hints "+str(root)+portage_const.PREFIX+"/etc/ld.so.conf")
 			commands.getstatusoutput("cd / ; /sbin/ldconfig -elf -i -f "+str(root)+"var/run/ld-elf.so.hints "+str(root)+"etc/ld.so.conf")
@@ -3168,6 +3165,11 @@ def dep_eval(deplist):
 					return 1
 			elif x==1:
 					return 1
+		#XXX: unless there's no available atoms in the list
+		#in which case we need to assume that everything is
+		#okay as some ebuilds are relying on an old bug.
+		if len(deplist) == 1:
+			return 1
 		return 0
 	else:
 		for x in deplist:

@@ -21,7 +21,7 @@ banner=1
 
 save_elf_debug() {
 	local x=$1
-	local y="${D}/usr/lib/debug/${x:${#D}:${#x}}"
+	local y="${D}/usr/lib/debug/${x:${#D}:${#x}}.debug"
 
 	[[ " ${FEATURES} " != *" splitdebug "* ]] && return 0
 
@@ -29,8 +29,9 @@ save_elf_debug() {
 	[[ ${x:7} == ".debug" ]] && return 0
 
 	mkdir -p $(dirname "${y}")
-	${OBJCOPY} --only-keep-debug ${x} ${y}.debug
-	${OBJCOPY} --add-gnu-debuglink=${y}.debug ${x}
+	${OBJCOPY} --only-keep-debug "${x}" "${y}"
+	${OBJCOPY} --add-gnu-debuglink="${y}" "${x}"
+	chmod a-x "${y}"
 
 	[[ " ${FEATURES} " != *" installsources "* ]] && return 0
 

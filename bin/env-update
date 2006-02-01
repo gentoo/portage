@@ -17,6 +17,9 @@ if "-h" in sys.argv or "--help" in sys.argv:
 	usage(0)
 
 makelinks=1
+if "--no-ldconfig" in sys.argv:
+	makelinks=0
+	sys.argv.pop(sys.argv.index("--no-ldconfig"))
 
 if len(sys.argv) > 1:
 	print "!!! Invalid command line options!\n"

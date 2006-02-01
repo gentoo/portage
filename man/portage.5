@@ -162,13 +162,13 @@ Special USE flags used by catalyst for building a stage3 and GRP sets.
 .BR packages
 This file serves two purposes.  The first is to mask out specific 
 packages/versions on a per\-profile basis.  The second is to provide the 
-list of packages that compose the special \fIsystem\fR class.
+list of packages that compose the special \fIsystem\fR set.
 
 .I Format:
 .nf
 \- comments begin with #
 \- one DEPEND atom per line of what to mask OUT
-\- packages to be added to the system class begin with a *
+\- packages to be added to the system set begin with a *
 .fi
 .I Note:
 In a cascading profile setup, you can remove packages in children 
@@ -180,10 +180,10 @@ a '\-'.
 # i am a comment !
 # only allow versions of glibc less than 2.3
 <sys\-libs/glibc\-2.3
-# add any version of bash to the system class
+# add any version of bash to the system set
 *app\-shells/bash
 # only allow versions of readline earlier than 4.2
-# and add it to the system class
+# and add it to the system set
 *<sys\-libs/readline\-4.2
 .fi
 .TP

@@ -1249,7 +1249,7 @@ dyn_install() {
 		# are supported at the moment.  Keep this list in sync with
 		# http://hardened.gentoo.org/gnu-stack.xml (Arch Status)
 		case ${CTARGET:-${CHOST}} in
-			i?86*|ia64*|s390*|x86_64*)
+			i?86*|ia64*|m68k*|s390*|x86_64*)
 				f=$(scanelf -qyRF '%e %p' "${D}") ;;
 			*)
 				f="" ;;
@@ -1466,20 +1466,19 @@ dyn_preinst() {
 	fi
 
 	# SELinux file labeling (needs to always be last in dyn_preinst)
-	if useq selinux; then
+	if hasq selinux ${FEATURES} ; then
 		# only attempt to label if setfiles is executable
 		# and 'context' is available on selinuxfs.
-		if [ -f /selinux/context -a -x ${PREFIX}/usr/sbin/setfiles ]; then
+		if [ -f /selinux/context -a -x ${PREFIX}/usr/sbin/setfiles -a -x ${PREFIX}/usr/sbin/selinuxconfig ]; then
 			echo ">>> Setting SELinux security labels"
-			if [ -f ${POLICYDIR}/file_contexts/file_contexts ]; then
-				cp -f "${POLICYDIR}/file_contexts/file_contexts" "${T}"
-			else
-				make -C "${POLICYDIR}" FC=${T}/file_contexts "${T}/file_contexts"
-			fi
+			(
+				eval "$(${PREFIX}/usr/sbin/selinuxconfig)" || \
+					die "Failed to determine SELinux policy paths.";
 
-			addwrite /selinux/context
-			${PREFIX}/usr/sbin/setfiles -r "${IMAGE}" "${T}/file_contexts" "${IMAGE}" \
-				|| die "Failed to set SELinux security labels."
+				addwrite /selinux/context;
+
+				${PREFIX}/usr/sbin/setfiles "${file_contexts_path}" -r "${IMAGE}" "${IMAGE}";
+			) || die "Failed to set SELinux security labels."
 		else
 			# nonfatal, since merging can happen outside a SE kernel
 			# like during a recovery situation
@@ -1493,7 +1492,7 @@ dyn_preinst() {
 }
 
 dyn_spec() {
-	tar czf "/usr/src/redhat/SOURCES/${PF}.tar.gz" "${O}/${PF}.ebuild" "${O}/files" || die "Failed to create base rpm tarball."
+	tar czf "${PREFIX}/usr/src/redhat/SOURCES/${PF}.tar.gz" "${O}/${PF}.ebuild" "${O}/files" || die "Failed to create base rpm tarball."
 
 	cat <<__END1__ > ${PF}.spec
 Summary: ${DESCRIPTION}

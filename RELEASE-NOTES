@@ -6,3 +6,6 @@ portage-2.1
 
 * new cache framework, breaking all old cache modules.
   If you're having problems with portage_db_cdb, this is likely the cause.
+* USE flag output ordering has changed.  The old ordering is now an option
+  by the name of --alphabetical.  Adding the option to EMERGE_DEFAULT_OPTS
+  in make.conf will restore the old behaviour permanently.
