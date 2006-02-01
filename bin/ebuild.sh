@@ -1150,6 +1150,16 @@ dyn_install() {
 		die "There are ${UNSAFE} unsafe files. Portage will not install them."
 	fi
 
+	if [[ -d "${D}/${D}" ]] ; then
+		declare -i INSTALLTOD=0
+		for i in $(find "${D}/${D}/"); do
+			echo "QA Notice: ${i##${D}/}installed to \${D}/\${D}"
+			((INSTALLTOD++))
+		done
+		die "Aborting due to QA concerns: ${INSTALLTOD} files installed to ${D}/${D}"
+		unset INSTALLTOD
+	fi
+
 	# dumps perms to stdout.  if error, no perms dumped.
 	function stat_perms() {
 		local f
