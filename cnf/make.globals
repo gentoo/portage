@@ -55,7 +55,7 @@ RSYNC_RETRIES="3"
 RSYNC_TIMEOUT="180"
 
 # Minimal CONFIG_PROTECT
-CONFIG_PROTECT="/etc"
+CONFIG_PROTECT="${PREFIX}/etc"
 
 # Disable auto-use
 USE_ORDER="env:pkg:conf:defaults"
