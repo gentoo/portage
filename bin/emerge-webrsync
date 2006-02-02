@@ -5,6 +5,15 @@
 # Author: Karl Trygve Kalleberg <karltk@gentoo.org>
 # Rewritten from the old, Perl-based emerge-webrsync script
 
+if [ -z "$PULLED_NICENESS" ]; then
+	PULLED_NICENESS="$(/usr/lib/portage/bin/portageq envvar PORTAGE_NICENESS)"
+	if [ -n "$PULLED_NICENESS" ]; then
+		export PULLED_NICENESS
+		exec nice -n $PORTAGE_NICENESS "$0" "$@"
+		echo "failed pulling PORTAGE_NICENESS, disabling"
+	fi
+fi
+
 GENTOO_MIRRORS="${GENTOO_MIRRORS} $(/usr/lib/portage/bin/portageq gentoo_mirrors)"
 PORTDIR="$(/usr/lib/portage/bin/portageq portdir)"
 FETCHCOMMAND="$(/usr/lib/portage/bin/portageq envvar FETCHCOMMAND)"
