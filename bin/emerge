@@ -3319,8 +3319,7 @@ else:
 
 	if ("--pretend" in myopts) and not ("--fetchonly" in myopts or "--fetch-all-uri" in myopts):
 		if ("--resume" in myopts):
-			### Cut off the first element, since we aren't merging it #121106
-			mydepgraph.display(portage.mtimedb["resume"]["mergelist"][1:])
+			mydepgraph.display(portage.mtimedb["resume"]["mergelist"])
 		else:
 			mydepgraph.display(mydepgraph.altlist())
 	else:
