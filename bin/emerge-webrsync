@@ -51,21 +51,29 @@ fi
 
 sync_local() {
 	echo Syncing local tree...
-	if ! tar jxf $FILE; then
-		echo "Tar failed to extract the image. Please review the output."
-		echo "Executed command: tar jxf $FILE"
-		exit 1
+	if type -p tarsync &> /dev/null; then
+		if ! tarsync "${FILE}" "${PORTDIR}" -v -s 1 -o root -g root -e /distfiles -e /packages -e /local; then
+			echo "tarsync failed; tarball is corrupt?"
+			exit 1;
+		fi
+		rm "${FILE}"
+	else
+		if ! tar jxf $FILE; then
+			echo "Tar failed to extract the image. Please review the output."
+			echo "Executed command: tar jxf $FILE"
+			exit 1
+		fi
+		rm -f $FILE
+		# Make sure user and group file ownership is root
+		chown -R 0:0 portage
+		cd portage
+		rsync -av --progress --stats --delete --delete-after \
+		--exclude='/distfiles' --exclude='/packages' \
+		--exclude='/local' . ${PORTDIR%%/}
+		cd ..
+		echo "cleaning up"
+		rm -rf portage
 	fi
-	rm -f $FILE
-	# Make sure user and group file ownership is root
-	chown -R 0:0 portage
-	cd portage
-	rsync -av --progress --stats --delete --delete-after \
-	--exclude='/distfiles' --exclude='/packages' \
-	--exclude='/local' . ${PORTDIR%%/}
-	cd ..
-	echo "cleaning up"
-	rm -rf portage
 	echo "transferring metadata/cache"
 	emerge metadata
 }
