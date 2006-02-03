@@ -462,7 +462,7 @@ def elog_process(cpv, mysettings):
 	# shortcut for packages without any messages
 	if len(mylogfiles) == 0:
 		return
-	# exploit listdir() file order so we process log entries in cronological order
+	# exploit listdir() file order so we process log entries in chronological order
 	mylogfiles.reverse()
 	mylogentries = {}
 	for f in mylogfiles:
