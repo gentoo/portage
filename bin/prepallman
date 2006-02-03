@@ -3,10 +3,14 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/bin/prepallman,v 1.10 2004/10/04 13:56:50 vapier Exp $
 
+ret=0
+
 echo "man:"
 for x in "${D}"opt/*/man "${D}"usr/share/man "${D}"usr/local/man "${D}"usr/X11R6/man ; do
-	if [ -d "${x}" ]
-	then
+	if [[ -d ${x} ]] ; then
 		prepman "`echo "${x}" | sed -e "s:${D}::" -e "s:/man[/]*$::"`"
+		((ret+=$?))
 	fi
 done
+
+exit ${ret}
