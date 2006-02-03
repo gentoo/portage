@@ -1139,14 +1139,14 @@ class depgraph:
 					portage.writemsg("\n\n!!! A missing gpg signature is preventing portage from calculating the\n")
 					portage.writemsg("!!! required dependencies. This is a security feature enabled by the admin\n")
 					portage.writemsg("!!! to aid in the detection of malicious intent.\n\n")
-					portage.writemsg("!!! THIS IS A POSSIBLE INDICATION OF A TAMPERED FILES -- CHECK CAREFULLY.\n")
+					portage.writemsg("!!! THIS IS A POSSIBLE INDICATION OF TAMPERED FILES -- CHECK CAREFULLY.\n")
 					portage.writemsg("!!! Affected file: %s\n" % (e))
 					sys.exit(1)
 				except portage_exception.InvalidSignature, e:
 					portage.writemsg("\n\n!!! An invalid gpg signature is preventing portage from calculating the\n")
 					portage.writemsg("!!! required dependencies. This is a security feature enabled by the admin\n")
 					portage.writemsg("!!! to aid in the detection of malicious intent.\n\n")
-					portage.writemsg("!!! THIS IS A POSSIBLE INDICATION OF A TAMPERED FILES -- CHECK CAREFULLY.\n")
+					portage.writemsg("!!! THIS IS A POSSIBLE INDICATION OF TAMPERED FILES -- CHECK CAREFULLY.\n")
 					portage.writemsg("!!! Affected file: %s\n" % (e))
 					sys.exit(1)
 				except SystemExit, e:
@@ -1867,8 +1867,8 @@ class depgraph:
 		if ("--fetchonly" not in myopts) and ("--buildpkgonly" not in myopts):
 			for x in mylist:
 				if x[0]=="blocks":
-					print "\n!!! Error: the "+x[2]+" package conflicts with another package."
-					print   "!!!        both can't be installed on the same system together."
+					print "\n!!! Error: the "+x[2]+" package conflicts with another package;"
+					print   "!!!        the two packages cannot be installed on the same system together."
 					print   "!!!        Please use 'emerge --pretend' to determine blockers."
 					print
 					if ("--pretend" not in myopts):
@@ -3293,7 +3293,7 @@ else:
 				#check for blocking dependencies
 				if x[0]=="blocks" and "--fetchonly" not in myopts and "--fetch-all-uri" not in myopts:
 					print "\n!!! Error: The above package list contains packages which cannot be installed"
-					print   "!!!        on the same system."
+					print   "!!!        at the same time on the same system."
 					print
 					sys.exit(1)
 			if mergecount==0:
