@@ -3132,7 +3132,9 @@ elif "depclean"==myaction:
 		print "\n!!! Proceeding will break your installation.\n"
 		countdown(EMERGE_WARNING_DELAY, ">>> Depclean")
 
-	emergelog(" >>> depclean")
+	if not "--pretend" in myopts": #just check pretend, since --ask implies pretend bug #119049
+		emergelog(" >>> depclean")
+	
 	mydepgraph=depgraph(myaction,myopts)
 
 	if not ("--quiet" in myopts):
