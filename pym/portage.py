@@ -2666,7 +2666,38 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 			print "!!! Perhaps: rm -Rf",mysettings["BUILD_PREFIX"]
 			print "!!!",str(e)
 			return 1
+		try:
+			if "confcache" in features:
+				if not mysettings.has_key("CONFCACHE_DIR"):
+					mysettings["CONFCACHE_DIR"] = os.path.join(mysettings["PORTAGE_TMPDIR"], "confcache")
+				if not os.path.exists(mysettings["CONFCACHE_DIR"]):
+					if not os.getuid() == 0:
+						# we're boned.
+						features.remove("confcache")
+						mysettings["FEATURES"] = " ".join(features)
+					else:
+						os.makedirs(mysettings["CONFCACHE_DIR"], mode=0775)
+						os.chown(mysettings["CONFCACHE_DIR"], -1, portage_gid)
+				else:
+					st = os.stat(mysettings["CONFCACHE_DIR"])
+					if not (st.st_mode & 07777)  == 0775:
+						os.chmod(mysettings["CONFCACHE_DIR"], 0775)
+					if not st.st_gid == portage_gid:
+						os.chown(mysettings["CONFCACHE_DIR"], -1, portage_gid)
 
+			# check again, since it may have been disabled.
+			if "confcache" in features:
+				for x in listdir(mysettings["CONFCACHE_DIR"]):
+					p = os.path.join(mysettings["CONFCACHE_DIR"], x)
+					st = os.stat(p)
+					if not (st.st_mode & 07777) & 07600 == 0600:
+						os.chmod(p, (st.st_mode & 0777) | 0600)
+					if not st.st_gid == portage_gid:
+						os.chown(p, -1, portage_gid)
+					
+		except OSError, e:
+			print "!!! Failed resetting perms on confcachedir %s" % mysettings["CONFCACHE_DIR"]
+			return 1						
 		#try:
 		#	mystat=os.stat(mysettings["CCACHE_DIR"])
 		#	if (mystat[stat.ST_GID]!=portage_gid) or ((mystat[stat.ST_MODE]&02070)!=02070):
