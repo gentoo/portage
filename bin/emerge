@@ -3216,14 +3216,19 @@ elif "depclean"==myaction:
 else:
 	favorites=[]
 	syslist=getlist("system")
-	if ((("--pretend" in myopts) and not ("--fetchonly" in myopts or "--fetch-all-uri" in myopts)) or ("--ask" in myopts)) and not ("--quiet" in myopts):
-		if "--tree" in myopts:
+	if "--ask" in myopts or "--pretend" in myopts:
+		action = ""
+		if "--fetchonly" in myopts or "--fetch-all-uri" in myopts:
+			action = "fetched"
+		else:
+			action = "merged"
+		if "--tree" in myopts and action != "fetched": # Tree doesn't work with fetching
 			print
-			print darkgreen("These are the packages that would be merged, in reverse order:")
+			print darkgreen("These are the packages that would be %s, in reverse order:") % action
 			print
 		else:
 			print
-			print darkgreen("These are the packages that would be merged, in order:")
+			print darkgreen("These are the packages that would be %s, in order:") % action
 			print
 
 	if ("--resume" in myopts) and portage.mtimedb.has_key("resume"):
