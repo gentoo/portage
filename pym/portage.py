@@ -2137,7 +2137,7 @@ def digestgen(myarchives,mysettings,overwrite=1,manifestonly=0):
 		if (not overwrite) and os.path.exists(digestfn):
 			return 1
 
-		print green(">>> Generating digest file...")
+		print green(">>> Generating the digest file...")
 
 		# Track the old digest so we can assume checksums without requiring
 		# all files to be downloaded. 'Assuming'
@@ -2173,7 +2173,7 @@ def digestgen(myarchives,mysettings,overwrite=1,manifestonly=0):
 		except Exception,e:
 			print e
 
-	print green(">>> Generating manifest file...")
+	print green(">>> Generating the manifest file...")
 	mypfiles=listdir(pbasedir,recursive=1,filesonly=1,ignorecvs=1,EmptyOnError=1)
 	mypfiles=cvstree.apply_cvsignore_filter(mypfiles)
 	mypfiles.sort()
@@ -6075,7 +6075,7 @@ class dblink:
 		self.dbdir = self.dbpkgdir
 		self.unmerge(oldcontents,trimworld=0)
 		self.dbdir = self.dbtmpdir
-		writemsg_stdout(">>> original instance of package unmerged safely.\n")
+		writemsg_stdout(">>> Original instance of package unmerged safely.\n")
 
 		# We hold both directory locks.
 		self.dbdir = self.dbpkgdir
@@ -6512,7 +6512,7 @@ def pkgmerge(mytbz2,myroot,mysettings):
 		shutil.rmtree(tmploc+"/"+mypkg,1)
 	os.makedirs(pkgloc)
 	os.makedirs(infloc)
-	writemsg_stdout(">>> extracting info\n")
+	writemsg_stdout(">>> Extracting info\n")
 	xptbz2.unpackinfo(infloc)
 	# run pkg_setup early, so we can bail out early
 	# (before extracting binaries) if there's a problem
@@ -6521,10 +6521,10 @@ def pkgmerge(mytbz2,myroot,mysettings):
 
 	mysettings.configdict["pkg"]["CATEGORY"] = mycat;
 	a=doebuild(myebuild,"setup",myroot,mysettings,tree="bintree")
-	writemsg_stdout(">>> extracting %s\n" % mypkg)
+	writemsg_stdout(">>> Extracting %s\n" % mypkg)
 	notok=spawn("bzip2 -dqc -- '"+mytbz2+"' | tar xpf -",mysettings,free=1)
 	if notok:
-		print "!!! Error extracting",mytbz2
+		print "!!! Error Extracting",mytbz2
 		cleanup_pkgmerge(mypkg,origdir)
 		return None
 
