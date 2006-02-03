@@ -271,6 +271,8 @@ CHOST="hppa-unknown-linux-gnu"
 #  'collision-protect'
 #                prevents packages from overwriting files that are owned by
 #                another package or by no package at all.
+#  'confcache'   enable confcache support; speeds up autotool based configure
+#                calls
 #  'cvs'         causes portage to enable all cvs features (commits, adds),
 #                and to apply all USE flags in SRC_URI for digests -- for
 #                developers only.
