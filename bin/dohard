@@ -3,11 +3,11 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/bin/dohard,v 1.6 2004/10/04 13:56:50 vapier Exp $
 
-if [ ${#} -ne 2 ] ; then
-	echo "${0}: two arguments needed"
+if [[ $# -ne 2 ]] ; then
+	echo "$0: two arguments needed" 1>&2
 	exit 1
 fi
 
-mysrc="${1}"
-mydest="${2}"
-ln -f "${D}${mysrc}" "${D}${mydest}"
+target=$1
+linkname=$2
+exec ln -f "${D}${target}" "${D}${linkname}"
