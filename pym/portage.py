@@ -1718,12 +1718,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 		pass
 	else:
 		if try_mirrors:
-			for x in mysettings["GENTOO_MIRRORS"].split():
-				if x:
-					if x[-1] == '/':
-						mymirrors += [x[:-1]]
-					else:
-						mymirrors += [x]
+			mymirrors += [x.rstrip("/") for x in mysettings["GENTOO_MIRRORS"].split() if x]
 
 	mydigests = {}
 	digestfn  = mysettings["FILESDIR"]+"/digest-"+mysettings["PF"]
