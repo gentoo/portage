@@ -76,7 +76,14 @@ if "candy" in portage.settings.features:
 if (not sys.stdout.isatty()) or (portage.settings["NOCOLOR"] in ["yes","true"]):
 	nocolor()
 
+
+
 def normpath(mystr):
+	""" 
+		os.path.normpath("//foo") returns "//foo" instead of "/foo"
+		We dislike this behavior so we create our own normpath func
+		to fix it.
+	"""
 	if mystr and (mystr[0]=='/'):
 		return os.path.normpath("///"+mystr)
 	else:
@@ -2899,7 +2906,8 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 		print
 		print red(" * ")+bold("An update to portage is available.")+" It is _highly_ recommended"
 		print red(" * ")+"that you update portage now, before any other packages are updated."
-		print red(" * ")+"Please do so and then update "+bold("ALL")+" of your configuration files."
+		print red(" * ")+"Please run 'emerge portage' and then update "+bold("ALL")+" of your"
+		print red(" * ")+"configuration files."
 		print
 elif myaction=="regen":
 	emergelog(" === regen")
