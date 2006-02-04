@@ -3218,7 +3218,7 @@ elif "depclean"==myaction:
 else:
 	favorites=[]
 	syslist=getlist("system")
-	if "--ask" in myopts or "--pretend" in myopts:
+	if ("--ask" in myopts or "--pretend" in myopts) and not "--quiet" in myopts:
 		action = ""
 		if "--fetchonly" in myopts or "--fetch-all-uri" in myopts:
 			action = "fetched"
