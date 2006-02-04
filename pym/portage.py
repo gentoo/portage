@@ -4092,7 +4092,6 @@ class dbapi:
 		if mycpv:
 			mysplit = pkgsplit(mycpv)
 			for x in self.match(mysplit[0],use_cache=0):
-				# fixed bug #41062
 				if x==mycpv:
 					continue
 				try:
@@ -6374,7 +6373,7 @@ class dblink:
 					zing="---"
 				if self.settings["USERLAND"] == "Darwin" and myrealdest[-2:] == ".a":
 
-					# XXX kludge, bug #58848; can be killed when portage stops relying on
+					# XXX kludge, can be killed when portage stops relying on
 					# md5+mtime, and uses refcounts
 					# alright, we've fooled w/ mtime on the file; this pisses off static archives
 					# basically internal mtime != file's mtime, so the linker (falsely) thinks

@@ -57,7 +57,7 @@ set_colors
 # the sandbox is disabled by default except when overridden in the relevant stages
 export SANDBOX_ON="0"
 
-# sandbox support functions; defined prior to profile.bashrc srcing, since the profile might need to add a default exception (/usr/lib64/conftest fex, bug #60147)
+# sandbox support functions; defined prior to profile.bashrc srcing, since the profile might need to add a default exception (/usr/lib64/conftest fex)
 addread() {
 	export SANDBOX_READ="$SANDBOX_READ:$1"
 }
@@ -1872,8 +1872,8 @@ export TMPDIR="${T}"
 # That will test for unset *or* NULL ("").  We want just to set for unset...
 
 #turn off glob expansion from here on in to prevent *'s and ? in the DEPEND
-#syntax from getting expanded :)  Fixes bug #1473
-#check eclass rdepends also. bug #58819
+#syntax from getting expanded :)
+#check eclass rdepends also.
 set -f
 if [ "${RDEPEND-unset}" == "unset" ] && [ "${E_RDEPEND-unset}" == "unset" ] ; then
 	export RDEPEND="${DEPEND} ${E_DEPEND}"
