@@ -3,26 +3,30 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/bin/dobin,v 1.13 2004/10/04 13:56:50 vapier Exp $
 
-if [ ${#} -lt 1 ] ; then
-	echo "${0}: at least one argument needed"
+if [[ $# -lt 1 ]] ; then
+	echo "$0: at least one argument needed" 1>&2
 	exit 1
 fi
 
-if [ ! -d "${D}${DESTTREE}/bin" ] ; then
+if [[ ! -d ${D}${DESTTREE}/bin ]] ; then
 	install -d "${D}${DESTTREE}/bin" || exit 2
 fi
 
+case ${CHOST} in
+	*-freebsd*) group=wheel ;;
+	*)          group=root ;;
+esac
+
+ret=0
+
 for x in "$@" ; do
-	if [ -x "${x}" ] ; then
-		#if executable, use existing perms
-		install "${x}" "${D}${DESTTREE}/bin" || exit 3
+	if [[ -e ${x} ]] ; then
+		install -m0755 -o root -g ${group} "${x}" "${D}${DESTTREE}/bin"
 	else
-		#otherwise, use reasonable defaults
-		echo ">>> dobin: making ${x} executable..."
-		if [ "$USERLAND" == "GNU" ]; then
-			install -m0755 -o root -g root  "${x}" "${D}${DESTTREE}/bin" || exit 4
-		else
-			install -m0755 -o root -g wheel "${x}" "${D}${DESTTREE}/bin" || exit 4
-		fi
+		echo "!!! ${0##*/}: ${x} does not exist" 1>&2
+		false
 	fi
+	((ret+=$?))
 done
+
+exit ${ret}
