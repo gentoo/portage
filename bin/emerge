@@ -1784,8 +1784,6 @@ class depgraph:
 								if mylist.index(x)<len(mylist)-1:
 									p.append(red("*** Portage will stop merging at this point and reload itself,"))
 									p.append(red("    then resume the merge."))
-									if "--update" not in myopts:
-										p.append(darkgreen("    You may avoid the remerging of packages by updating portage on its own."))
 									print
 					else:
 						if mysplit[0]=="sys-apps/portage" and ("--emptytree" in myopts):
