@@ -1783,7 +1783,7 @@ class depgraph:
 							   ("livecvsportage" not in portage.settings.features):
 								if mylist.index(x)<len(mylist)-1:
 									p.append(red("*** Portage will stop merging at this point and reload itself,"))
-									p.append(red("    recalculate dependencies, and complete the merge."))
+									p.append(red("    then resume the merge."))
 									if "--update" not in myopts:
 										p.append(darkgreen("    You may avoid the remerging of packages by updating portage on its own."))
 									print
@@ -2119,36 +2119,16 @@ class depgraph:
 						if (myver != portage.VERSION) and \
 						   ("livecvsportage" not in portage.settings.features):
 							if len(mymergelist) > mergecount:
-								myargv=sys.argv
-								myr=0
-								for myra in range(len(myargv)):
-									if myargv[myr][0:len("portage")]=="portage":
-										del myargv[myr]
-										myr-=1
-									if myargv[myr][0:len("sys-apps/portage")]=="sys-apps/portage":
-										del myargv[myr]
-										myr-=1
-									myr+=1
 								emergelog(" *** RESTARTING emerge via exec() after change of portage version.")
+								del portage.mtimedb["resume"]["mergelist"][0]
 								portage.portageexit()
-								# Remove --ask from options before restarting
 								mynewargv=[]
-								badlongopts = ["--ask","--tree","--changelog"]
-								badshortopts = ["a","t","l"]
-								for arg in myargv:
-									if arg[0:2] == "--":
-										if arg in badlongopts:
-											continue
-										mynewargv += [arg]
-									elif arg[0] == "-":
-										myarg = "-"
-										for ch in arg[1:]:
-											if ch in badshortopts:
-												continue
-											myarg += ch
-										mynewargv += [myarg]
-									else:
-										mynewargv += [arg]
+								badlongopts = ("--ask","--tree","--changelog","--skipfirst","--resume")
+								for arg in myopts:
+									if arg in badlongopts:
+										continue
+									mynewargv.append(arg)
+								mynewargv.append("--resume")
 								os.execv("/usr/lib/portage/bin/emerge", mynewargv)
 
 			if ("--pretend" not in myopts) and ("--fetchonly" not in myopts) and ("--fetch-all-uri" not in myopts):
