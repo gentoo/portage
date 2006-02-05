@@ -11,120 +11,246 @@ is meant for Gentoo developers only due to the fact it does not work on a per-eb
 It checks the quality of CVS repositories.
 
 Note: \fBrepoman commit\fR only works \fIinside local\fR CVS repositories.
-.SH OPTIONS 
+.SH OPTIONS
 .TP
-.B --pretend
-Don't actually perform commit or fix problems, just show what would be done.
+\fB-q\fR, \fB--quiet\fR
+Be less verbose about extraneous info
 .TP
-.B --help
-Show the help screen.
+\fB-p\fR, \fB--pretend\fR
+Don't commit or fix anything; just show what would be done
+.TP
+\fB-i\fR, \fB--include-masked\fR
+Include masked packages in scans at category or tree level
+.TP
+\fB-x\fR, \fB--xmlparse\fR
+Forces the metadata.xml parse check to be carried out
+.TP
+\fB-v\fR, \fB--verbose\fR
+Displays every package name while checking
+.TP
+\fB-I\fR, \fB--ignore-arches\fR
+Ignore arch-specific failures (where arch != host)
+.TP
+\fB-m\fR, \fB--commitmsg\fR
+Adds a commit message via the command line
+.TP
+\fB-M\fR, \fB--commitmsgfile\fR
+Adds a commit message from the specified file
+.TP
+\fB-V\fR, \fB--version\fR
+Show version info
+.TP
+\fB-h\fR, \fB--help\fR
+Show this screen
 .SH MODES
 .TP
-.B scan
-Scan current directory tree for QA issues (default).  See \fBQA KEYWORDS\fR for more
-information.
-.TP
-.B fix
-Fix those issues that can be fixed (stray digests, missing digests).
-.TP
 .B full
-Scan current directory tree for QA issues (full listing).  See \fBQA KEYWORDS\fR for more
-information.
+Scan directory tree for QA issues (full listing)
+.TP
+.B last
+Remember report from last run
 .TP
 .B help
-Show the help screen.
+Show this screen
+.TP
+.B scan
+Scan directory tree for QA issues (default)
+.TP
+.B fix
+Fix simple QA issues (stray digests, missing digests)
+.TP
+.B lfull
+Remember report from last run (full listing)
 .TP
 .B commit
-Scan current directory tree for QA issues.  If OK, commit via cvs.
+Scan directory tree for QA issues; if OK, commit via cvs
 .SH QA KEYWORDS
 .TP
-.BR CVS/Entries.IO_error
-While attempting to commit, a CVS/Entries directory wasn't found- either the cvs co is damaged, or permissions block repoman from reading the file.
+.B CVS/Entries.IO_error
+Attempting to commit, and an IO error was encountered access the Entries file
 .TP
-.BR digest.assumed
-Files listed in the digest were not found in your $DISTDIR so the existing 
-digest entries are assumed to be correct.
+.B DEPEND.bad
+User-visible ebuilds with bad DEPEND settings (matched against *visible* ebuilds)
 .TP
-.BR digest.disjointed
-The digests were not added to cvs when the matching ebuild had already been 
-added.
+.B DEPEND.badindev
+User-visible ebuilds with bad DEPEND settings (matched against *visible* ebuilds) in developing arch
 .TP
-.BR digest.missing
-Ebuild files were found that do not have a corresponding digest.
-.TP
-.BR digest.notadded
-The digests were found but have not been added to cvs.
-.TP
-.BR digest.stray
-Digest files were found that do not have a corresponding ebuild.
-.TP
-.BR ebuild.disjointed
-The ebuilds were not added to cvs when the matching digest had already been 
-added.
-.TP
-.BR ebuild.invalidname
-The ebuild has a filename that is not-parseable by portage.
-.TP
-.BR changelog.missing
-The ChangeLog file was not found.
-.TP
-.BR ebuild.namenomatch
-The euild has a filename that does not have the same name as the parent 
-directory.
-.TP
-.BR ebuild.notadded
-The ebuilds were found but have not been added to cvs.
-.TP
-.BR file.executable
-The file has the executable bit set, when it's not needed- check is limited to ebuilds, digests, Manifest, ChangeLog, and metadata.xml.
-.TP
-.BR file.size
-The file's size exceeds 20k, current policy is no files over 20k in a packages files directory.
-.TP
-.BR filedir.missing
-The package lacks a files directory.
-.TP
-.BR DEPEND.bad
-User-visible ebuilds with bad DEPEND settings (matched against *visible* ebuilds).
-In other words, user-visiable ebuilds could not be found to satisfy the DEPEND settings.
-.TP
-.BR RDEPEND.bad
-User-visible ebuilds with bad RDEPEND settings (matched against *visible* ebuilds).
-In other words, user-visiable ebuilds could not be found to satisfy the RDEPEND settings.
-.TP
-.BR DEPEND.badmasked
+.B DEPEND.badmasked
 Masked ebuilds with bad DEPEND settings (matched against *all* ebuilds)
-In other words, no ebuilds could not be found to satisfy the DEPEND settings.
 .TP
-.BR RDEPEND.badmasked
+.B DEPEND.badmaskedindev
+Masked ebuilds with bad DEPEND settings (matched against *all* ebuilds) in developing arch
+.TP
+.B DEPEND.syntax
+Syntax error in DEPEND (usually an extra/missing space/parenthesis)
+.TP
+.B DESCRIPTION.missing
+Ebuilds that have a missing or empty DESCRIPTION variable
+.TP
+.B HOMEPAGE.missing
+Ebuilds that have a missing or empty HOMEPAGE variable
+.TP
+.B IUSE.invalid
+This build has a variable in IUSE that is not in the use.desc or use.local.desc file
+.TP
+.B KEYWORDS.invalid
+This ebuild contains KEYWORDS that are not listed in profiles/arch.list or for which no valid profile was found
+.TP
+.B KEYWORDS.missing
+Ebuilds that have a missing or empty KEYWORDS variable
+.TP
+.B KEYWORDS.stupid
+Ebuilds that use KEYWORDS=-* instead of package.mask
+.TP
+.B LICENSE.invalid
+This ebuild is listing a license that doesnt exist in portages license/ dir.
+.TP
+.B LICENSE.missing
+Ebuilds that have a missing or empty LICENSE variable
+.TP
+.B LICENSE.syntax
+Syntax error in LICENSE (usually an extra/missing space/parenthesis)
+.TP
+.B PDEPEND.bad
+User-visible ebuilds with bad PDEPEND settings (matched against *visible* ebuilds)
+.TP
+.B PDEPEND.badindev
+User-visible ebuilds with bad PDEPEND settings (matched against *visible* ebuilds) in developing arch
+.TP
+.B PDEPEND.badmasked
+Masked ebuilds with PDEPEND settings (matched against *all* ebuilds)
+.TP
+.B PDEPEND.badmaskedindev
+Masked ebuilds with PDEPEND settings (matched against *all* ebuilds) in developing arch
+.TP
+.B PDEPEND.syntax
+Syntax error in PDEPEND (usually an extra/missing space/parenthesis)
+.TP
+.B PROVIDE.syntax
+Syntax error in PROVIDE (usually an extra/missing space/parenthesis)
+.TP
+.B RDEPEND.bad
+User-visible ebuilds with bad RDEPEND settings (matched against *visible* ebuilds)
+.TP
+.B RDEPEND.badindev
+User-visible ebuilds with bad RDEPEND settings (matched against *visible* ebuilds) in developing arch
+.TP
+.B RDEPEND.badmasked
 Masked ebuilds with RDEPEND settings (matched against *all* ebuilds)
-In other words, no ebuilds could not be found to satisfy the RDEPEND settings.
 .TP
-.BR ebuild.syntax
-An error occured while generating the cache entry.  This typically means the ebuild contains syntax error(s).
+.B RDEPEND.badmaskedindev
+Masked ebuilds with RDEPEND settings (matched against *all* ebuilds) in developing arch
 .TP
-.BR ebuild.output
-A simple sourcing of the ebuild produces output.  This breaks ebuild policy.
+.B RDEPEND.syntax
+Syntax error in RDEPEND (usually an extra/missing space/parenthesis)
 .TP
-.BR IUSE.invalid
-The ebuild contains a useflag in IUSE that is not in use.desc or 
-use.local.desc.  You should add a description of the USE flag prior to 
-commiting the ebuild.
+.B SLOT.missing
+Ebuilds that have a missing or empty SLOT variable
 .TP
-.BR KEYWORDS.missing
-The ebuild does not have a KEYWORDS variable.
+.B changelog.missing
+Missing ChangeLog files
 .TP
-.BR KEYWORDS.stupid
-The ebuild uses KEYWORDS=-* instead of package.mask.
+.B changelog.notadded
+ChangeLogs that exist but have not been added to cvs
 .TP
-.BR LICENSE.missing
-The ebuild does not have a LICENSE variable.
+.B digest.assumed
+Existing digest must be assumed correct (Package level only)
 .TP
-.BR DESCRIPTION.missing
-The ebuild does not have a DESCRIPTION variable.
+.B digest.disjointed
+Digests not added to cvs when the matching ebuild has been added
 .TP
-.BR SLOT.missing
-The ebuild does not have a SLOT variable.
+.B digest.fail
+Digest does not match the specified local file
+.TP
+.B digest.missing
+Digest files that are missing (ebuild exists, digest doesn't)
+.TP
+.B digest.notadded
+Digests that exist but have not been added to cvs
+.TP
+.B digest.partial
+Digest files do not contain all corresponding URI elements
+.TP
+.B digest.stray
+Digest files that do not have a corresponding ebuild
+.TP
+.B digest.unmatch
+Digests which are incomplete (please check if your USE/ARCH includes all files)
+.TP
+.B digest.unused
+Digest entry has no matching SRC_URI entry
+.TP
+.B ebuild.allmasked
+All ebuilds are masked for this package (Package level only)
+.TP
+.B ebuild.badheader
+This ebuild has a malformed header
+.TP
+.B ebuild.disjointed
+Ebuilds not added to cvs when the matching digest has been added
+.TP
+.B ebuild.invalidname
+Ebuild files with a non-parseable or syntactically incorrect name
+.TP
+.B ebuild.majorsyn
+This ebuild has a major syntax error that may cause the ebuild to fail partially or fully
+.TP
+.B ebuild.minorsyn
+This ebuild has a minor syntax error that contravenes gentoo coding style
+.TP
+.B ebuild.namenomatch
+Ebuild files that do not have the same name as their parent directory
+.TP
+.B ebuild.nesteddie
+Placing 'die' inside ( ) prints an error, but doesn't stop the ebuild.
+.TP
+.B ebuild.nostable
+There are no ebuilds that are marked as stable for your ARCH
+.TP
+.B ebuild.notadded
+Ebuilds that exist but have not been added to cvs
+.TP
+.B ebuild.output
+A simple sourcing of the ebuild produces output; this breaks ebuild policy.
+.TP
+.B ebuild.syntax
+Error generating cache entry for ebuild; typically caused by ebuild syntax error
+.TP
+.B file.UTF8
+File is not UTF8 compliant
+.TP
+.B file.executable
+Ebuilds, digests, metadata.xml, Manifest, and ChangeLog do note need the executable bit
+.TP
+.B file.name
+File/dir name must be composed of only the following chars: a-zA-Z0-9._-+:
+.TP
+.B file.size
+Files in the files directory must be under 20k
+.TP
+.B filedir.missing
+Package lacks a files directory
+.TP
+.B metadata.bad
+Bad metadata.xml files
+.TP
+.B metadata.missing
+Missing metadata.xml files
+.TP
+.B usage.obsolete
+The ebuild makes use of an obsolete construct
+.TP
+.B variable.readonly
+Assigning a readonly variable
+.TP
+.B virtual.exists
+PROVIDE contains existing package names
+.TP
+.B virtual.unavailable
+PROVIDE contains a virtual which contains no profile default
+.TP
+.B virtual.versioned
+PROVIDE contains virtuals with versions
 .SH "REPORTING BUGS"
 Please report bugs via http://bugs.gentoo.org/
 .SH AUTHORS
