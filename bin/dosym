@@ -4,7 +4,7 @@
 # $Id: /var/cvsroot/gentoo-src/portage/bin/dosym,v 1.7 2004/10/04 13:56:50 vapier Exp $
 
 if [[ $# -ne 2 ]] ; then
-	echo "${0}: two arguments needed"
+	echo "$0: two arguments needed" 1>&2
 	exit 1
 fi
 

@@ -3,13 +3,12 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/bin/doinitd,v 1.2.2.1 2005/01/13 04:51:56 vapier Exp $
 
-if [ ${#} -lt 1 ] ; then
-	echo "doinitd: at least one argument needed"
+if [[ $# -lt 1 ]] ; then
+	echo "$0: at least one argument needed" 1>&2
 	exit 1
 fi
 
-tmp_EXEDESTTREE="${EXEDESTTREE}"
-EXEDESTTREE=/etc/init.d/
+exec \
+env \
+EXEDESTTREE="/etc/init.d/" \
 doexe "$@"
-EXEDESTTREE="${tmp_EXEDESTTREE}"
-unset tmp_EXEDESTTREE

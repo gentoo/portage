@@ -76,7 +76,14 @@ if "candy" in portage.settings.features:
 if (not sys.stdout.isatty()) or (portage.settings["NOCOLOR"] in ["yes","true"]):
 	nocolor()
 
+
+
 def normpath(mystr):
+	""" 
+		os.path.normpath("//foo") returns "//foo" instead of "/foo"
+		We dislike this behavior so we create our own normpath func
+		to fix it.
+	"""
 	if mystr and (mystr[0]=='/'):
 		return os.path.normpath("///"+mystr)
 	else:
@@ -1140,14 +1147,14 @@ class depgraph:
 					portage.writemsg("\n\n!!! A missing gpg signature is preventing portage from calculating the\n")
 					portage.writemsg("!!! required dependencies. This is a security feature enabled by the admin\n")
 					portage.writemsg("!!! to aid in the detection of malicious intent.\n\n")
-					portage.writemsg("!!! THIS IS A POSSIBLE INDICATION OF A TAMPERED FILES -- CHECK CAREFULLY.\n")
+					portage.writemsg("!!! THIS IS A POSSIBLE INDICATION OF TAMPERED FILES -- CHECK CAREFULLY.\n")
 					portage.writemsg("!!! Affected file: %s\n" % (e))
 					sys.exit(1)
 				except portage_exception.InvalidSignature, e:
 					portage.writemsg("\n\n!!! An invalid gpg signature is preventing portage from calculating the\n")
 					portage.writemsg("!!! required dependencies. This is a security feature enabled by the admin\n")
 					portage.writemsg("!!! to aid in the detection of malicious intent.\n\n")
-					portage.writemsg("!!! THIS IS A POSSIBLE INDICATION OF A TAMPERED FILES -- CHECK CAREFULLY.\n")
+					portage.writemsg("!!! THIS IS A POSSIBLE INDICATION OF TAMPERED FILES -- CHECK CAREFULLY.\n")
 					portage.writemsg("!!! Affected file: %s\n" % (e))
 					sys.exit(1)
 				except SystemExit, e:
@@ -1347,7 +1354,7 @@ class depgraph:
 					binpkguseflags=portage.db[portage.root]["bintree"].get_use(myeb_pkg)
 					myk=["binary",myroot,myeb_pkg]
 				else:
-					sys.stderr.write("!!! Confused... Don't know what I'm using for dependency info. :(\n")
+					sys.stderr.write("!!! Confused... Don't know what's being used for dependency info. :(\n")
 					sys.exit(1)
 
 				#if "--usepkg" in myopts:
@@ -1870,8 +1877,8 @@ class depgraph:
 		if ("--fetchonly" not in myopts) and ("--buildpkgonly" not in myopts):
 			for x in mylist:
 				if x[0]=="blocks":
-					print "\n!!! Error: the "+x[2]+" package conflicts with another package."
-					print   "!!!        both can't be installed on the same system together."
+					print "\n!!! Error: the "+x[2]+" package conflicts with another package;"
+					print   "!!!        the two packages cannot be installed on the same system together."
 					print   "!!!        Please use 'emerge --pretend' to determine blockers."
 					print
 					if ("--pretend" not in myopts):
@@ -1975,8 +1982,8 @@ class depgraph:
 				pkgindex=3
 			y=portage.portdb.findname(x[pkgindex])
 			if not "--pretend" in myopts:
-				print ">>> emerge ("+str(mergecount)+" of "+str(len(mymergelist))+")",x[pkgindex],"to",x[1]
-				emergelog(" >>> emerge ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" to "+x[1])
+				print ">>> Emerging ("+str(mergecount)+" of "+str(len(mymergelist))+")",x[pkgindex],"to",x[1]
+				emergelog(" >>> Emerging ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" to "+x[1])
 
 			self.pkgsettings["EMERGE_FROM"] = x[0][:]
 			self.pkgsettings.backup_changes("EMERGE_FROM")
@@ -2268,7 +2275,7 @@ def unmerge(unmerge_action, unmerge_files):
 				candidate_catpkgs.append("="+string.join(sp_absx[sp_vdb_len:],"/"))
 
 	if (("--pretend" in myopts) or ("--ask" in myopts)) and not ("--quiet" in myopts):
-		print darkgreen("\n>>> These are the packages that I would unmerge:")
+		print darkgreen("\n>>> These are the packages that would be unmerged:")
 
 	pkgmap={}
 	numselected=0
@@ -2331,7 +2338,7 @@ def unmerge(unmerge_action, unmerge_files):
 		return 0
 
 	if not numselected:
-		print "\n>>>",unmerge_action+": No packages selected for removal.\n"
+		print "\n>>> No packages selected for removal by",unmerge_action+".\n"
 		return 0
 
 	for x in pkgmap.keys():
@@ -2668,15 +2675,15 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 						print "Quitting."
 						print
 						sys.exit(0)
-				emergelog(">>> starting rsync with "+dosyncuri)
+				emergelog(">>> Starting rsync with "+dosyncuri)
 				if "--quiet" not in myopts:
-					print ">>> starting rsync with "+dosyncuri+"..."
+					print ">>> Starting rsync with "+dosyncuri+"..."
 			else:
 				emergelog(">>> Starting retry %d of %d with %s" % (retries,maxretries,dosyncuri))
 				print "\n\n>>> Starting retry %d of %d with %s" % (retries,maxretries,dosyncuri)
 
 			if "--quiet" not in myopts:
-				print ">>> checking server timestamp ..."
+				print ">>> Checking server timestamp ..."
 			mycommand=rsynccommand+" "+dosyncuri+"/metadata/timestamp.chk "+tmpservertimestampdir
 			exitcode=portage.spawn(mycommand,portage.settings,free=1)
 			if (exitcode==0):
@@ -2715,7 +2722,7 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 			retries=retries+1
 
 			if retries<=maxretries:
-				print ">>> retry ..."
+				print ">>> Retrying..."
 				time.sleep(11)
 			else:
 				# over retries
@@ -2756,7 +2763,7 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 		cvsdir=os.path.dirname(myportdir)
 		if not os.path.exists(myportdir+"/CVS"):
 			#initial checkout
-			print ">>> starting initial cvs checkout with "+syncuri+"..."
+			print ">>> Starting initial cvs checkout with "+syncuri+"..."
 			if not portage.spawn("cd "+cvsdir+"; cvs -d "+cvsroot+" login",portage.settings,free=1):
 				print "!!! cvs login error; exiting."
 				sys.exit(1)
@@ -2771,7 +2778,7 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 			sys.exit(0)
 		else:
 			#cvs update
-			print ">>> starting cvs update with "+syncuri+"..."
+			print ">>> Starting cvs update with "+syncuri+"..."
 			sys.exit(portage.spawn("cd "+myportdir+"; cvs -z0 -q update -dP",portage.settings,free=1))
 	else:
 		print "!!! rsync setting: ",syncuri,"not recognized; exiting."
@@ -2902,7 +2909,8 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 		print
 		print red(" * ")+bold("An update to portage is available.")+" It is _highly_ recommended"
 		print red(" * ")+"that you update portage now, before any other packages are updated."
-		print red(" * ")+"Please do so and then update "+bold("ALL")+" of your configuration files."
+		print red(" * ")+"Please run 'emerge portage' and then update "+bold("ALL")+" of your"
+		print red(" * ")+"configuration files."
 		print
 elif myaction=="regen":
 	emergelog(" === regen")
@@ -3135,7 +3143,9 @@ elif "depclean"==myaction:
 		print "\n!!! Proceeding will break your installation.\n"
 		countdown(EMERGE_WARNING_DELAY, ">>> Depclean")
 
-	emergelog(" >>> depclean")
+	if not "--pretend" in myopts: #just check pretend, since --ask implies pretend
+		emergelog(" >>> depclean")
+	
 	mydepgraph=depgraph(myaction,myopts)
 
 	if not ("--quiet" in myopts):
@@ -3144,7 +3154,7 @@ elif "depclean"==myaction:
 		print "\n!!! Failed to create deptree."
 		sys.exit(1)
 	if not ("--quiet" in myopts):
-		print "\b\b ... done!"
+		print "\b\b... done!"
 
 	if ("--usepkgonly" in myopts) and mydepgraph.missingbins:
 		sys.stderr.write(red("The following binaries are not available for merging...\n"))
@@ -3219,14 +3229,19 @@ elif "depclean"==myaction:
 else:
 	favorites=[]
 	syslist=getlist("system")
-	if ((("--pretend" in myopts) and not ("--fetchonly" in myopts or "--fetch-all-uri" in myopts)) or ("--ask" in myopts)) and not ("--quiet" in myopts):
-		if "--tree" in myopts:
+	if ("--ask" in myopts or "--pretend" in myopts) and not "--quiet" in myopts:
+		action = ""
+		if "--fetchonly" in myopts or "--fetch-all-uri" in myopts:
+			action = "fetched"
+		else:
+			action = "merged"
+		if "--tree" in myopts and action != "fetched": # Tree doesn't work with fetching
 			print
-			print darkgreen("These are the packages that I would merge, in reverse order:")
+			print darkgreen("These are the packages that would be %s, in reverse order:") % action
 			print
 		else:
 			print
-			print darkgreen("These are the packages that I would merge, in order:")
+			print darkgreen("These are the packages that would be %s, in order:") % action
 			print
 
 	if ("--resume" in myopts) and portage.mtimedb.has_key("resume"):
@@ -3258,7 +3273,7 @@ else:
 				print "!!! Depgraph creation failed."
 				sys.exit(1)
 			if not ("--quiet" in myopts):
-				print "\b\b ...done!"
+				print "\b\b... done!"
 		else:
 			if not myfiles:
 				print "emerge: please tell me what to do."
@@ -3272,7 +3287,7 @@ else:
 			if not retval:
 				sys.exit(1)
 			if not ("--quiet" in myopts):
-				print "\b\b ...done!"
+				print "\b\b... done!"
 
 			if ("--usepkgonly" in myopts) and mydepgraph.missingbins:
 				sys.stderr.write(red("The following binaries are not available for merging...\n"))
@@ -3296,7 +3311,7 @@ else:
 				#check for blocking dependencies
 				if x[0]=="blocks" and "--fetchonly" not in myopts and "--fetch-all-uri" not in myopts:
 					print "\n!!! Error: The above package list contains packages which cannot be installed"
-					print   "!!!        on the same system."
+					print   "!!!        at the same time on the same system."
 					print
 					sys.exit(1)
 			if mergecount==0:
@@ -3357,6 +3372,6 @@ else:
 		if portage.mtimedb.has_key("resume"):
 			del portage.mtimedb["resume"]
 		if portage.settings["AUTOCLEAN"] and "yes"==portage.settings["AUTOCLEAN"]:
-			print ">>> Auto-cleaning packages ..."
+			print ">>> Auto-cleaning packages..."
 			unmerge("clean", ["world"])
 	post_emerge()

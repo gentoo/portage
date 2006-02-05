@@ -3,13 +3,12 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/bin/doconfd,v 1.2.2.1 2005/01/13 04:51:56 vapier Exp $
 
-if [ ${#} -lt 1 ] ; then
-	echo "doconfd: at least one argument needed"
+if [[ $# -lt 1 ]] ; then
+	echo "$0: at least one argument needed" 1>&2
 	exit 1
 fi
 
-tmp_INSDESTTREE="${INSDESTTREE}"
-INSDESTTREE=/etc/conf.d/
+exec \
+env \
+INSDESTTREE="/etc/conf.d/" \
 doins "$@"
-INSDESTTREE="${tmp_INSDESTTREE}"
-unset tmp_INSDESTTREE
