@@ -2134,6 +2134,10 @@ class depgraph:
 
 			# Unsafe for parallel merges
 			del portage.mtimedb["resume"]["mergelist"][0]
+			# Commit after each merge so that --resume may still work in
+			# in the event that portage is not allowed to exit normally
+			# due to power failure, SIGKILL, etc...
+			portage.commit_mtimedb()
 
 		emergelog(" *** Finished. Cleaning up...")
 
