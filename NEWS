@@ -3,6 +3,8 @@ News (mainly features/major bug fixes)
 portage-2.1 (ongoing via pre releases)
 ------------
 
+* FEATURES="confcache" integration; global caching to speed up configure calls, 
+  requires dev-util/confcache
 * elog framework and accompanying modules for logging ebuild warnings, errors
   and general notices. Collects eerror/ewarn/elog/einfo messages.
 * New elog function (should replace einfo in many cases)

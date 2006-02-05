@@ -3,9 +3,12 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/bin/prepallstrip,v 1.12 2004/10/04 13:56:50 vapier Exp $
 
-if [ "${FEATURES//*nostrip*/true}" == "true" ] || [ "${RESTRICT//*nostrip*/true}" == "true" ] ; then
+if [[ " ${FEATURES} " == *" nostrip "* ]] || \
+   [[ " ${RESTRICT} " == *" nostrip "* ]] || \
+   [[ " ${RESTRICT} " == *" strip "* ]]
+then
 	exit 0
 fi
 
 echo "prepallstrip:"
-prepstrip "${D}"
+exec prepstrip "${D}"

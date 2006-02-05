@@ -627,7 +627,32 @@ econf() {
 			LOCAL_EXTRA_ECONF="--libdir=${CONF_LIBDIR_RESULT} ${LOCAL_EXTRA_ECONF}"
 		fi
 
-		echo "${ECONF_SOURCE}/configure" \
+		local TMP_CONFCACHE_DIR CONFCACHE_ARG
+		if hasq confcache $FEATURES && ! hasq confcache $RESTRICT; then
+			CONFCACHE="$(type -p confcache)"
+			if [ -z "${CONFCACHE}" ]; then
+				ewarn "disabling confcache, binary cannot be found"
+			else
+				CONFCACHE="${CONFCACHE/ /\ }"
+				TMP_CONFCACHE_DIR="${CONFCACHE:+${CONFCACHE_DIR:-${PORTAGE_TMPDIR}/confcache}}"
+				TMP_CONFCACHE_DIR="${TMP_CONFCACHE_DIR/ /\ }"
+				CONFCACHE_ARG="--confcache-dir"
+				local s
+				if [ -n "$CCACHE_DIR" ]; then
+					s="$CCACHE_DIR"
+				fi
+				if [ -n "$DISTCC_DIR" ]; then
+					s="${s:+${s}:}$DISTCC_DIR"
+				fi
+				if [ -n "$s" ]; then
+					CONFCACHE_ARG="--confcache-ignore $s $CONFCACHE_ARG"
+				fi
+			fi
+		else
+			CONFCACHE=
+		fi
+
+		echo ${CONFCACHE} ${CONFCACHE_ARG} ${TMP_CONFCACHE_DIR} "${ECONF_SOURCE}/configure" \
 			--prefix=${PREFIX}/usr \
 			--host=${CHOST} \
 			--mandir=${PREFIX}/usr/share/man \
@@ -638,7 +663,7 @@ econf() {
 			"$@" \
 			${LOCAL_EXTRA_ECONF}
 
-		if ! "${ECONF_SOURCE}/configure" \
+		if ! ${CONFCACHE} ${CONFCACHE_ARG} ${TMP_CONFCACHE_DIR} "${ECONF_SOURCE}/configure" \
 			--prefix=${PREFIX}/usr \
 			--host=${CHOST} \
 			--mandir=${PREFIX}/usr/share/man \
@@ -1284,6 +1309,16 @@ dyn_install() {
 		die "There are ${UNSAFE} unsafe files. Portage will not install them."
 	fi
 
+	if [[ -d ${D}/${D} ]] ; then
+		declare -i INSTALLTOD=0
+		for i in $(find "${D}/${D}/"); do
+			echo "QA Notice: /${i##${D}/${D}} installed in \${D}/\${D}"
+			((INSTALLTOD++))
+		done
+		die "Aborting due to QA concerns: ${INSTALLTOD} files installed in ${D}/${D}"
+		unset INSTALLTOD
+	fi
+
 	# dumps perms to stdout.  if error, no perms dumped.
 	function stat_perms() {
 		local f
@@ -1363,11 +1398,11 @@ dyn_install() {
 
 	if hasq multilib-strict ${FEATURES} && [ -x file -a -x find -a \
 	     -n "${MULTILIB_STRICT_DIRS}" -a -n "${MULTILIB_STRICT_DENY}" ]; then
-		MULTILIB_STRICT_EXEMPT=${MULTILIB_STRICT_EXEMPT:-"(perl5|gcc|gcc-lib|debug)"}
+		MULTILIB_STRICT_EXEMPT=$(echo ${MULTILIB_STRICT_EXEMPT:-"(perl5|gcc|gcc-lib|debug)"} | sed -e 's:\([(|)]\):\\\1:g')
 		for dir in ${MULTILIB_STRICT_DIRS}; do
 			[ -d "${D}/${dir}" ] || continue
-			for file in $(find ${D}/${dir} -type f | @EGREP@ -v "^${D}/${dir}/${MULTILIB_STRICT_EXEMPT}"); do
-				file ${file} | @EGREP@ -q "${MULTILIB_STRICT_DENY}" && die "File ${file} matches a file type that is not allowed in ${dir}"
+			for file in $(find ${D}/${dir} -type f | grep -v "^${D}/${dir}/${MULTILIB_STRICT_EXEMPT}"); do
+				file ${file} | egrep -q "${MULTILIB_STRICT_DENY}" && die "File ${file} matches a file type that is not allowed in ${dir}"
 			done
 		done
 	fi
