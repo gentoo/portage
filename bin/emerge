@@ -2120,14 +2120,13 @@ class depgraph:
 								emergelog(" *** RESTARTING emerge via exec() after change of portage version.")
 								del portage.mtimedb["resume"]["mergelist"][0]
 								portage.portageexit()
-								mynewargv=[]
+								mynewargv=["/usr/lib/portage/bin/emerge","--resume"]
 								badlongopts = ("--ask","--tree","--changelog","--skipfirst","--resume")
 								for arg in myopts:
 									if arg in badlongopts:
 										continue
 									mynewargv.append(arg)
-								mynewargv.append("--resume")
-								os.execv("/usr/lib/portage/bin/emerge", mynewargv)
+								os.execv(mynewargv[0], mynewargv)
 
 			if ("--pretend" not in myopts) and ("--fetchonly" not in myopts) and ("--fetch-all-uri" not in myopts):
 				emergelog(" ::: completed emerge ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[2]+" to "+x[1])
