@@ -2685,8 +2685,8 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 				for x in listdir(mysettings["CONFCACHE_DIR"]):
 					p = os.path.join(mysettings["CONFCACHE_DIR"], x)
 					st = os.stat(p)
-					if not (st.st_mode & 07777) & 07600 == 0600:
-						os.chmod(p, (st.st_mode & 0777) | 0600)
+					if not (st.st_mode & 07777) & 07660 == 0660:
+						os.chmod(p, (st.st_mode & 0777) | 0660)
 					if not st.st_gid == portage_gid:
 						os.chown(p, -1, portage_gid)
 					
