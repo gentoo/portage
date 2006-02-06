@@ -9,7 +9,7 @@ sys.path = ["/usr/lib/portage/pym"]+sys.path
 
 import portage
 
-import emergehelp,xpak,string,re,commands,time,shutil,traceback,atexit,signal,socket,types
+import emergehelp,xpak,string,re,commands,time,shutil,traceback,signal,socket,types
 from stat import *
 from output import *
 
@@ -492,7 +492,7 @@ def emergeexit():
 		emergelog(" *** terminating.")
 	if "notitles" not in portage.features:
 		xtermTitleReset()
-atexit.register(emergeexit)
+portage.atexit_register(emergeexit)
 
 def emergeexitsig(signum, frame):
 	signal.signal(signal.SIGINT, signal.SIG_IGN)
@@ -2119,7 +2119,7 @@ class depgraph:
 							if len(mymergelist) > mergecount:
 								emergelog(" *** RESTARTING emerge via exec() after change of portage version.")
 								del portage.mtimedb["resume"]["mergelist"][0]
-								portage.portageexit()
+								portage.run_exitfuncs()
 								mynewargv=[sys.argv[0],"--resume"]
 								badlongopts = ("--ask","--tree","--changelog","--skipfirst","--resume")
 								for arg in myopts:

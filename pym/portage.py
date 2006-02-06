@@ -19,7 +19,7 @@ except:
 	raise SystemExit, 127
 
 try:
-	import os,string,types,atexit,signal,fcntl
+	import os,string,types,signal,fcntl
 	import time,cPickle,traceback,copy
 	import re,pwd,grp,commands
 	import shlex,shutil
@@ -95,6 +95,7 @@ try:
 	import portage_gpg
 	import portage_locks
 	import portage_exec
+	from portage_exec import atexit_register, run_exitfuncs
 	from portage_locks import unlockfile,unlockdir,lockfile,lockdir
 	import portage_checksum
 	from portage_checksum import perform_md5,perform_checksum,prelink_capable
@@ -6901,7 +6902,7 @@ def portageexit():
 		close_portdbapi_caches()
 		commit_mtimedb()
 
-atexit.register(portageexit)
+atexit_register(portageexit)
 
 if (secpass==2) and (not os.environ.has_key("SANDBOX_ACTIVE")):
 	if settings["PORTAGE_CALLER"] in ["emerge","fixpackages"]:

@@ -4,7 +4,6 @@
 # $Id: /var/cvsroot/gentoo-src/portage/pym/portage_locks.py,v 1.18.2.2 2005/01/16 02:35:33 carpaski Exp $
 
 
-import atexit
 import errno
 import os
 import stat
@@ -15,6 +14,7 @@ import portage_exception
 import portage_file
 import portage_util
 import portage_data
+from portage_exec import atexit_register
 from portage_localization import _
 
 HARDLINK_FD = -2
@@ -30,7 +30,7 @@ def add_hardlock_file_to_cleanup(path):
 	if os.path.isdir(mypath):
 		hardlock_path_list = mypath[:]
 
-atexit.register(clean_my_hardlocks)
+atexit_register(clean_my_hardlocks)
 
 def lockdir(mydir):
 	return lockfile(mydir,wantnewlockfile=1)
