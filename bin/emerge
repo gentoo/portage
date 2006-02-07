@@ -1494,17 +1494,17 @@ class depgraph:
 
 		return myk
 
-	def display(self,mylist):
+	def display(self,mylist,verbosity=("--quiet" in myopts and 1 or "--verbose" in myopts and 3 or 2)):
 		changelogs=[]
 		p=[]
 		totalsize=0
 
-		if "--quiet" in myopts:
+		if verbosity == 1:
 			def create_use_string(*args):
 				return ""
 		else:
 			def create_use_string(name, cur_iuse, cur_use, old_iuse, old_use, is_new,
-					all_flags=("--verbose" in myopts), alphabetical=("--alphabetical" in myopts)):
+					all_flags=(verbosity == 3), alphabetical=("--alphabetical" in myopts)):
 				enabled = []
 				if alphabetical:
 					disabled = enabled
@@ -1541,7 +1541,7 @@ class depgraph:
 					ret = '%s="%s" ' % (name, ret)
 				return ret
 
-		if "--verbose" in myopts:
+		if verbosity == 3:
 			overlays = string.split(portage.settings['PORTDIR_OVERLAY'])
 
 		if "--tree" in myopts:
@@ -1694,7 +1694,7 @@ class depgraph:
 						verboseadd += create_use_string(key.upper(), cur_iuse_map[key], cur_use_map[key],
 						                                old_iuse_map[key], old_use_map[key], is_new)
 
-				if "--verbose" in myopts:
+				if verbosity == 3:
 					# size verbose
 					mysize=0
 					if x[0] == "ebuild" and x[-1]!="nomerge":
@@ -1797,7 +1797,7 @@ class depgraph:
 		for x in p:
 			print x
 
-		if "--verbose" in myopts:
+		if verbosity == 3:
 			print
 			print "Total size of downloads: "+format_size(totalsize)
 			if overlays and display_overlays:
