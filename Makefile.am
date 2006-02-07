@@ -13,7 +13,7 @@ subst-install: subst-install.vars
 #
 subst-install.vars: subst-install.vars.in
 	@rm -f $@ \
-	; case `echo '\'\\\''` in \
+	; case `echo '\\'` in \
 	  \\) bss='\\\\\\\\';; \
 	  \\\\) bss='\\\\';; \
 	  *) echo "unknown shell escape behaviour"; exit 1 ;; \
