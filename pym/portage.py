@@ -5765,45 +5765,45 @@ class dblink:
 
 				if pkgfiles[obj][0]=="dir":
 					if not os.path.isdir(obj):
-						writemsg_stdout("--- !dir  %s %s\n" % ("dir", obj))
+						writemsg_stdout("--- !dir   %s %s\n" % ("dir", obj))
 						continue
 					mydirs.append(obj)
 				elif pkgfiles[obj][0]=="sym":
 					if not os.path.islink(obj):
-						writemsg_stdout("--- !sym  %s %s\n" % ("sym", obj))
+						writemsg_stdout("--- !sym   %s %s\n" % ("sym", obj))
 						continue
 					try:
 						os.unlink(obj)
-						writemsg_stdout("<<<       %s %s\n" % ("sym",obj))
+						writemsg_stdout("<<<        %s %s\n" % ("sym",obj))
 					except (OSError,IOError),e:
-						writemsg_stdout("!!!       %s %s\n" % ("sym",obj))
+						writemsg_stdout("!!!        %s %s\n" % ("sym",obj))
 				elif pkgfiles[obj][0]=="obj":
 					if not os.path.isfile(obj):
-						writemsg_stdout("--- !obj  %s %s\n" % ("obj", obj))
+						writemsg_stdout("--- !obj   %s %s\n" % ("obj", obj))
 						continue
 					mymd5=portage_checksum.perform_md5(obj, calc_prelink=1)
 
 					# string.lower is needed because db entries used to be in upper-case.  The
 					# string.lower allows for backwards compatibility.
 					if mymd5 != string.lower(pkgfiles[obj][2]):
-						writemsg_stdout("--- !md5  %s %s\n" % ("obj", obj))
+						writemsg_stdout("--- !md5   %s %s\n" % ("obj", obj))
 						continue
 					try:
 						os.unlink(obj)
 					except (OSError,IOError),e:
 						pass
-					writemsg_stdout("<<<       %s %s\n" % ("obj",obj))
+					writemsg_stdout("<<<        %s %s\n" % ("obj",obj))
 				elif pkgfiles[obj][0]=="fif":
 					if not stat.S_ISFIFO(lstatobj[stat.ST_MODE]):
-						writemsg_stdout("--- !fif  %s %s\n" % ("fif", obj))
+						writemsg_stdout("--- !fif   %s %s\n" % ("fif", obj))
 						continue
 					try:
 						os.unlink(obj)
 					except (OSError,IOError),e:
 						pass
-					writemsg_stdout("<<<       %s %s\n" % ("fif",obj))
+					writemsg_stdout("<<<        %s %s\n" % ("fif",obj))
 				elif pkgfiles[obj][0]=="dev":
-					writemsg_stdout("---       %s %s\n" % ("dev",obj))
+					writemsg_stdout("---        %s %s\n" % ("dev",obj))
 
 			mydirs.sort()
 			mydirs.reverse()
@@ -5813,7 +5813,7 @@ class dblink:
 				if not last_non_empty.startswith(obj) and not listdir(obj):
 					try:
 						os.rmdir(obj)
-						writemsg_stdout("<<<       %s %s\n" % ("dir",obj))
+						writemsg_stdout("<<<        %s %s\n" % ("dir",obj))
 						last_non_empty = ""
 						continue
 					except (OSError,IOError),e:
