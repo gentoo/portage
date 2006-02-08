@@ -4,6 +4,11 @@
 
 
 import sys,string,shlex,os.path
+try:
+	import cPickle
+except ImportError:
+	import pickle as cPickle
+
 if not hasattr(__builtins__, "set"):
 	from sets import Set as set
 
@@ -365,7 +370,7 @@ def varexpand(mystring,mydict={}):
 	return newstring[1:]	
 
 def pickle_write(data,filename,debug=0):
-	import cPickle,os
+	import os
 	try:
 		myf=open(filename,"w")
 		cPickle.dump(data,myf,-1)
@@ -381,7 +386,7 @@ def pickle_write(data,filename,debug=0):
 	return 1
 
 def pickle_read(filename,default=None,debug=0):
-	import cPickle,os
+	import os
 	if not os.access(filename, os.R_OK):
 		writemsg("pickle_read(): File not readable. '"+filename+"'\n",1)
 		return default

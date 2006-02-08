@@ -20,9 +20,13 @@ except:
 
 try:
 	import os,string,types,signal,fcntl
-	import time,cPickle,traceback,copy
+	import time,traceback,copy
 	import re,pwd,grp,commands
 	import shlex,shutil
+	try:
+		import cPickle
+	except ImportError:
+		import pickle as cPickle
 
 	import stat
 	import commands

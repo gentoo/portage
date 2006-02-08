@@ -5,7 +5,12 @@
 
 
 from output import *
-import htmllib,HTMLParser,string,formatter,sys,os,xpak,time,tempfile,cPickle,base64
+import htmllib,HTMLParser,string,formatter,sys,os,xpak,time,tempfile,base64
+
+try:
+	import cPickle
+except ImportError:
+	import pickle as cPickle
 
 try:
 	import ftplib
