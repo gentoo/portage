@@ -6878,13 +6878,17 @@ def commit_mtimedb():
 	if mtimedb:
 	# Store mtimedb
 		mymfn=mtimedbfile
+		f = None
 		try:
 			mtimedb["version"]=VERSION
-			cPickle.dump(mtimedb, open(mymfn,"w"), -1)
+			f = portage_util.atomic_ofstream(mymfn)
+			cPickle.dump(mtimedb, f, -1)
+			f.close()
 		except SystemExit, e:
 			raise
 		except Exception, e:
-			pass
+			if f is not None:
+				f.abort()
 
 		try:
 			os.chown(mymfn,uid,portage_gid)
