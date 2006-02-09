@@ -527,9 +527,9 @@ class atomic_ofstream(file):
 		if not self.closed:
 			self.abort()
 		# ensure destructor from the base class is called
-		base_self = super(atomic_ofstream, self)
-		if hasattr(base_self, "__del__"):
-			base_self.__del__()
+		base_destructor = getattr(super(atomic_ofstream, self), '__del__', None)
+		if base_destructor is not None:
+			base_destructor()
 
 def write_atomic(file_path, content):
 	f = atomic_ofstream(file_path)
