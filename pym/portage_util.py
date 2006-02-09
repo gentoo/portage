@@ -194,9 +194,8 @@ def writedict(mydict,myfilename,writekey=True):
 	"""Writes out a dict to a file; writekey=0 mode doesn't write out
 	the key and assumes all values are strings, not lists."""
 	myfile = None
-	myf2 = "%s.%i" % (myfilename, os.getpid())
 	try:
-		myfile=open(myf2,"w")
+		myfile = atomic_ofstream(myfilename)
 		if not writekey:
 			for x in mydict.values():
 				myfile.write(x+"\n")
@@ -204,11 +203,9 @@ def writedict(mydict,myfilename,writekey=True):
 			for x in mydict.keys():
 				myfile.write("%s %s\n" % (x, " ".join(mydict[x])))
 		myfile.close()
-		os.rename(myf2, myfilename)
-			
 	except IOError:
 		if myfile is not None:
-			os.unlink(myf2)
+			myfile.abort()
 		return 0
 	return 1
 
@@ -456,4 +453,89 @@ def unique_array(s):
 		if x not in u:
 			u.append(x)
 	return u
-	
+
+def apply_permissions(filename, uid=-1, gid=-1, mode=0,
+	stat_cached=None):
+	"""Apply user, group, and mode bits to a file
+	if the existing bits do not already match."""
+
+	if stat_cached is None:
+		stat_cached = os.stat(filename)
+
+	if	(uid != -1 and uid != stat_cached.st_uid) or \
+		(gid != -1 and gid != stat_cached.st_gid):
+		os.chown(filename, uid, gid)
+
+	if mode & stat_cached.st_mode != mode:
+		os.chmod(filename, mode | stat_cached.st_mode)
+
+def apply_stat_permissions(filename, newstat, stat_cached=None):
+	"""wrapper around apply_permissions that gets
+	uid, gid, and mode from a stat object"""
+	apply_permissions(filename, uid=newstat.st_uid, gid=newstat.st_gid,
+	mode=newstat.st_mode, stat_cached=stat_cached)
+
+class atomic_ofstream(file):
+	"""Write a file atomically via os.rename().  Atomic replacement prevents
+	interprocess interference and prevents corruption of the target
+	file when the write is interrupted (for example, when an 'out of space'
+	error occurs)."""
+
+	def __init__(self, filename, mode='w', **kargs):
+		"""Opens a temporary filename.pid in the same directory as filename."""
+		self._aborted = False
+		self._real_name = filename
+		tmp_name = "%s.%i" % (filename, os.getpid())
+		super(atomic_ofstream, self).__init__(tmp_name, mode=mode, **kargs)
+
+	def close(self):
+		"""Closes the temporary file, copies permissions (if possible),
+		and performs the atomic replacement via os.rename().  If the abort()
+		method has been called, then the temp file is closed and removed."""
+		if not self.closed:
+			try:
+				super(atomic_ofstream, self).close()
+				if not self._aborted:
+					try:
+						apply_stat_permissions(self.name, os.stat(self._real_name))
+					except OSError, oe:
+						import errno
+						if oe.errno in (errno.ENOENT,errno.EPERM):
+							pass
+						else:
+							raise oe
+					os.rename(self.name, self._real_name)
+			finally:
+				# Make sure we cleanup the temp file
+				# even if an exception is raised.
+				try:
+					os.unlink(self.name)
+				except OSError, oe:
+					pass
+
+	def abort(self):
+		"""If an error occurs while writing the file, the user should
+		call this method in order to leave the target file unchanged.
+		This will call close() automatically."""
+		if not self._aborted:
+			self._aborted = True
+			self.close()
+
+	def __del__(self):
+		"""If the user does not explicitely call close(), it is
+		assumed that an error has occurred, so we abort()."""
+		if not self.closed:
+			self.abort()
+		# ensure destructor from the base class is called
+		base_self = super(atomic_ofstream, self)
+		if hasattr(base_self, "__del__"):
+			base_self.__del__()
+
+def write_atomic(file_path, content):
+	f = atomic_ofstream(file_path)
+	try:
+		f.write(content)
+		f.close()
+	except IOError, ioe:
+		f.abort()
+		raise ioe
