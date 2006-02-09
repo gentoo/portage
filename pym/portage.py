@@ -4142,12 +4142,7 @@ class dbapi:
 			#increment counter
 			counter += 1
 			# update new global counter file
-			newcpath=cpath+".new"
-			newcfile=open(newcpath,"w")
-			newcfile.write(str(counter))
-			newcfile.close()
-			# now move global counter file into place
-			os.rename(newcpath,cpath)
+			write_atomic(cpath, str(counter))
 		return counter
 
 	def invalidentry(self, mypath):
