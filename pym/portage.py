@@ -92,7 +92,7 @@ try:
 	                         portage_uid, portage_gid
 
 	import portage_util
-	from portage_util import grabdict, grabdict_package, grabfile, grabfile_package, \
+	from portage_util import grabdict, grabdict_package, grabfile, grabfile_package, write_atomic, \
 		map_dictlist_vals, pickle_read, pickle_write, stack_dictlist, stack_dicts, stack_lists, \
 		unique_array, varexpand, writedict, writemsg, writemsg_stdout, getconfig, dump_traceback
 	import portage_exception
@@ -5862,10 +5862,7 @@ class dblink:
 				os.chown(pdir, 0, portage_gid)
 				os.chmod(pdir, 02770)
 
-			myworld=open(self.myroot+WORLD_FILE,"w")
-			for x in newworldlist:
-				myworld.write(x+"\n")
-			myworld.close()
+			write_atomic(os.path.join(self.myroot,WORLD_FILE),"\n".join(newworldlist))
 
 		#do original postrm
 		if myebuildpath and os.path.exists(myebuildpath):
@@ -6874,10 +6871,7 @@ def do_upgrade(mykey):
 	if processed:
 		#update our internal mtime since we processed all our directives.
 		mtimedb["updates"][mykey]=os.stat(mykey)[stat.ST_MTIME]
-	myworld=open("/"+WORLD_FILE,"w")
-	for x in worldlist:
-		myworld.write(x+"\n")
-	myworld.close()
+	write_atomic(WORLD_FILE,"\n".join(worldlist))
 	print ""
 
 def commit_mtimedb():

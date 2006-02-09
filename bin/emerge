@@ -1916,7 +1916,7 @@ class depgraph:
 							myfavdict[myfavkey]=myfavkey
 							print ">>> Recording",myfavkey,"in \"world\" favorites file..."
 			if not "--fetchonly" in myopts:
-				portage.writedict(myfavdict,portage.root+portage.WORLD_FILE,writekey=0)
+				portage.write_atomic(os.path.join(portage.root,portage.WORLD_FILE),"\n".join(myfavdict.values()))
 
 			portage.mtimedb["resume"]["mergelist"]=mymergelist[:]
 
@@ -2087,7 +2087,7 @@ class depgraph:
 						myfavdict[myfavkey]=myfavkey
 						print ">>> Recording",myfavkey,"in \"world\" favorites file..."
 						emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Updating world file ("+x[pkgindex]+")")
-						portage.writedict(myfavdict,myroot+portage.WORLD_FILE,writekey=0)
+						portage.write_atomic(os.path.join(myroot,portage.WORLD_FILE),"\n".join(myfavdict.values()))
 
 				if ("noclean" not in portage.features) and (x[0] != "binary"):
 					short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Clean Post"

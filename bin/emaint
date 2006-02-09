@@ -40,7 +40,7 @@ class WorldHandler(object):
 	def fix(self):
 		errors = []
 		try:
-			open(portage_const.WORLD_FILE, "w").write("\n".join(self.okay))
+			portage.write_atomic(portage_const.WORLD_FILE,"\n".join(self.okay))
 		except OSError:
 			errors.append(portage_const.WORLD_FILE + " could not be opened for writing")
 		return errors
