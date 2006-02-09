@@ -1841,43 +1841,33 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 			print "!!! No write access to %s" % mysettings["DISTDIR"]+"/"
 			can_fetch=False
 	else:
-		mystat=os.stat(mysettings["DISTDIR"]+"/")
-		if mystat.st_gid != portage_gid:
+		def distdir_perms(filename):
 			try:
-				os.chown(mysettings["DISTDIR"],-1,portage_gid)
+				portage_util.apply_permissions(filename, gid=portage_gid, mode=0775)
 			except OSError, oe:
-				if oe.errno == 1:
-					print red("!!!")+" Unable to chgrp of %s to portage, continuing\n" % mysettings["DISTDIR"]
+				import errno
+				if oe.errno == errno.EPERM:
+					writemsg("!!! Unable to apply group permissions to '%s'.  Non-root users may experience issues.\n"
+					% filename)
 				else:
 					raise oe
-
-		# writable by portage_gid?  This is specific to root, adjust perms if needed automatically.
-		if not stat.S_IMODE(mystat.st_mode) & 020:
-			try:
-				os.chmod(mysettings["DISTDIR"],stat.S_IMODE(mystat.st_mode) | 020)
-			except OSError, oe:
-				if oe.errno == 1:
-					print red("!!!")+" Unable to chmod %s to perms 0755.  Non-root users will experience issues.\n" % mysettings["DISTDIR"]
-				else:
-					raise oe
-
+		distdir_perms(mysettings["DISTDIR"])
 		if use_locks and locks_in_subdir:
-			if os.path.exists(mysettings["DISTDIR"]+"/"+locks_in_subdir):
-				if not os.access(mysettings["DISTDIR"]+"/"+locks_in_subdir,os.W_OK):
-					writemsg("!!! No write access to write to %s.  Aborting.\n" % mysettings["DISTDIR"]+"/"+locks_in_subdir)
-					return 0
-			else:
-				old_umask=os.umask(0002)
-				os.mkdir(mysettings["DISTDIR"]+"/"+locks_in_subdir,0775)
-				if os.stat(mysettings["DISTDIR"]+"/"+locks_in_subdir).st_gid != portage_gid:
-					try:
-						os.chown(mysettings["DISTDIR"]+"/"+locks_in_subdir,-1,portage_gid)
-					except SystemExit, e:
-						raise
-					except:
-						pass
-				os.umask(old_umask)
-
+			distlocks_subdir = os.path.join(mysettings["DISTDIR"], locks_in_subdir)
+			try:
+				distdir_perms(distlocks_subdir)
+			except OSError, oe:
+				import errno
+				if oe.errno == errno.ENOENT:
+					os.mkdir(distlocks_subdir)
+					distdir_perms(distlocks_subdir)
+				else:
+					raise oe
+			if not os.access(distlocks_subdir, os.W_OK):
+				writemsg("!!! No write access to write to %s.  Aborting.\n" % distlocks_subdir)
+				return 0
+			del distlocks_subdir
+		del distdir_perms
 
 	for myfile in filedict.keys():
 		fetched=0
