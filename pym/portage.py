@@ -5726,8 +5726,8 @@ class dblink:
 			#process symlinks second-to-last, directories last.
 			mydirs=[]
 			modprotect="/lib/modules/"
-			for obj in mykeys:
-				obj=os.path.normpath(obj)
+			for objkey in mykeys:
+				obj=os.path.normpath(objkey)
 				if obj[:2]=="//":
 					obj=obj[1:]
 				if not os.path.exists(obj):
@@ -5735,7 +5735,7 @@ class dblink:
 						#we skip this if we're dealing with a symlink
 						#because os.path.exists() will operate on the
 						#link target rather than the link itself.
-						writemsg_stdout("--- !found "+str(pkgfiles[obj][0])+ " %s\n" % obj)
+						writemsg_stdout("--- !found "+str(pkgfiles[objkey][0])+ " %s\n" % obj)
 						continue
 				# next line includes a tweak to protect modules from being unmerged,
 				# but we don't protect modules from being overwritten if they are
@@ -5743,21 +5743,21 @@ class dblink:
 				# functionality for /lib/modules. For portage-ng both capabilities
 				# should be able to be independently specified.
 				if self.isprotected(obj) or ((len(obj) > len(modprotect)) and (obj[0:len(modprotect)]==modprotect)):
-					writemsg_stdout("--- cfgpro %s %s\n" % (pkgfiles[obj][0], obj))
+					writemsg_stdout("--- cfgpro %s %s\n" % (pkgfiles[objkey][0], obj))
 					continue
 
 				lstatobj=os.lstat(obj)
 				lmtime=str(lstatobj[stat.ST_MTIME])
-				if (pkgfiles[obj][0] not in ("dir","fif","dev")) and (lmtime != pkgfiles[obj][1]):
-					writemsg_stdout("--- !mtime %s %s\n" % (pkgfiles[obj][0], obj))
+				if (pkgfiles[objkey][0] not in ("dir","fif","dev")) and (lmtime != pkgfiles[objkey][1]):
+					writemsg_stdout("--- !mtime %s %s\n" % (pkgfiles[objkey][0], obj))
 					continue
 
-				if pkgfiles[obj][0]=="dir":
+				if pkgfiles[objkey][0]=="dir":
 					if not os.path.isdir(obj):
 						writemsg_stdout("--- !dir   %s %s\n" % ("dir", obj))
 						continue
 					mydirs.append(obj)
-				elif pkgfiles[obj][0]=="sym":
+				elif pkgfiles[objkey][0]=="sym":
 					if not os.path.islink(obj):
 						writemsg_stdout("--- !sym   %s %s\n" % ("sym", obj))
 						continue
@@ -5766,7 +5766,7 @@ class dblink:
 						writemsg_stdout("<<<        %s %s\n" % ("sym",obj))
 					except (OSError,IOError),e:
 						writemsg_stdout("!!!        %s %s\n" % ("sym",obj))
-				elif pkgfiles[obj][0]=="obj":
+				elif pkgfiles[objkey][0]=="obj":
 					if not os.path.isfile(obj):
 						writemsg_stdout("--- !obj   %s %s\n" % ("obj", obj))
 						continue
@@ -5774,7 +5774,7 @@ class dblink:
 
 					# string.lower is needed because db entries used to be in upper-case.  The
 					# string.lower allows for backwards compatibility.
-					if mymd5 != string.lower(pkgfiles[obj][2]):
+					if mymd5 != string.lower(pkgfiles[objkey][2]):
 						writemsg_stdout("--- !md5   %s %s\n" % ("obj", obj))
 						continue
 					try:
@@ -5782,7 +5782,7 @@ class dblink:
 					except (OSError,IOError),e:
 						pass
 					writemsg_stdout("<<<        %s %s\n" % ("obj",obj))
-				elif pkgfiles[obj][0]=="fif":
+				elif pkgfiles[objkey][0]=="fif":
 					if not stat.S_ISFIFO(lstatobj[stat.ST_MODE]):
 						writemsg_stdout("--- !fif   %s %s\n" % ("fif", obj))
 						continue
@@ -5791,7 +5791,7 @@ class dblink:
 					except (OSError,IOError),e:
 						pass
 					writemsg_stdout("<<<        %s %s\n" % ("fif",obj))
-				elif pkgfiles[obj][0]=="dev":
+				elif pkgfiles[objkey][0]=="dev":
 					writemsg_stdout("---        %s %s\n" % ("dev",obj))
 
 			mydirs.sort()
