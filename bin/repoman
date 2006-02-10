@@ -39,6 +39,8 @@ from fileinput import input
 from grp import getgrnam
 from stat import *
 
+if portage.settings["NOCOLOR"] in ("yes","true") or not sys.stdout.isatty():
+	nocolor()
 
 def warn(txt):
 	print exename+": "+txt
