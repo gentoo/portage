@@ -5730,10 +5730,21 @@ class dblink:
 				obj=os.path.normpath(objkey)
 				if obj[:2]=="//":
 					obj=obj[1:]
-				if not os.path.exists(obj):
-					if not os.path.islink(obj):
+				statobj = None
+				try:
+					statobj = os.stat(obj)
+				except OSError:
+					pass
+				lstatobj = None
+				try:
+					lstatobj = os.lstat(obj)
+				except (OSError, AttributeError):
+					pass
+				islink = lstatobj is not None and stat.S_ISLNK(lstatobj.st_mode)
+				if statobj is None:
+					if not islink:
 						#we skip this if we're dealing with a symlink
-						#because os.path.exists() will operate on the
+						#because os.stat() will operate on the
 						#link target rather than the link itself.
 						writemsg_stdout("--- !found "+str(pkgfiles[objkey][0])+ " %s\n" % obj)
 						continue
@@ -5746,19 +5757,18 @@ class dblink:
 					writemsg_stdout("--- cfgpro %s %s\n" % (pkgfiles[objkey][0], obj))
 					continue
 
-				lstatobj=os.lstat(obj)
 				lmtime=str(lstatobj[stat.ST_MTIME])
 				if (pkgfiles[objkey][0] not in ("dir","fif","dev")) and (lmtime != pkgfiles[objkey][1]):
 					writemsg_stdout("--- !mtime %s %s\n" % (pkgfiles[objkey][0], obj))
 					continue
 
 				if pkgfiles[objkey][0]=="dir":
-					if not os.path.isdir(obj):
+					if statobj is None or not stat.S_ISDIR(statobj.st_mode):
 						writemsg_stdout("--- !dir   %s %s\n" % ("dir", obj))
 						continue
 					mydirs.append(obj)
 				elif pkgfiles[objkey][0]=="sym":
-					if not os.path.islink(obj):
+					if not islink:
 						writemsg_stdout("--- !sym   %s %s\n" % ("sym", obj))
 						continue
 					try:
@@ -5767,7 +5777,7 @@ class dblink:
 					except (OSError,IOError),e:
 						writemsg_stdout("!!!        %s %s\n" % ("sym",obj))
 				elif pkgfiles[objkey][0]=="obj":
-					if not os.path.isfile(obj):
+					if statobj is None or not stat.S_ISREG(statobj.st_mode):
 						writemsg_stdout("--- !obj   %s %s\n" % ("obj", obj))
 						continue
 					mymd5=portage_checksum.perform_md5(obj, calc_prelink=1)
