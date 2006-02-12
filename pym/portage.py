@@ -290,7 +290,7 @@ def listdir(mypath, recursive=False, filesonly=False, ignorecvs=False, ignorelis
 	if ftype is None:
 		ftype=[]
 
-	if not filesonly and not recursive:
+	if not (filesonly or dirsonly or recursive):
 		return list
 
 	if recursive:
