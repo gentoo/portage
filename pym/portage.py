@@ -5777,8 +5777,16 @@ class dblink:
 					if statobj is None or not stat.S_ISREG(statobj.st_mode):
 						writemsg_stdout("--- !obj   %s %s\n" % ("obj", obj))
 						continue
-					mymd5=portage_checksum.perform_md5(obj, calc_prelink=1)
-
+					mymd5 = None
+					try:
+						mymd5 = portage_checksum.perform_md5(obj, calc_prelink=1)
+					except (OSError,IOError), e:
+						if e.errno == errno.ENOENT:
+							# the file has disappeared between now and our stat call
+							writemsg_stdout("--- !obj   %s %s\n" % ("obj", obj))
+							continue
+						else:
+							raise e
 					# string.lower is needed because db entries used to be in upper-case.  The
 					# string.lower allows for backwards compatibility.
 					if mymd5 != string.lower(pkgfiles[objkey][2]):
