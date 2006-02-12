@@ -182,7 +182,8 @@ options=[
 "--emptytree",
 "--fetchonly",    "--fetch-all-uri",
 "--getbinpkg",    "--getbinpkgonly",
-"--help",         "--noconfmem",
+"--help",         "--ignore-default-opts",
+"--noconfmem",
 "--newuse",       "--nocolor",
 "--nodeps",       "--noreplace",
 "--nospinner",    "--oneshot",
@@ -226,7 +227,8 @@ edebug=0
 
 # process short actions
 tmpcmdline=sys.argv[1:]
-tmpcmdline.extend(portage.settings["EMERGE_DEFAULT_OPTS"].split())
+if "--ignore-default-opts" not in tmpcmdline:
+	tmpcmdline.extend(portage.settings["EMERGE_DEFAULT_OPTS"].split())
 cmdline=[]
 for x in tmpcmdline:
 	if x[0:1]=="-" and x[1:2]!="-":
