@@ -19,7 +19,7 @@ except:
 	raise SystemExit, 127
 
 try:
-	import os,string,types,signal,fcntl
+	import os,string,types,signal,fcntl,errno
 	import time,traceback,copy
 	import re,pwd,grp,commands
 	import shlex,shutil
@@ -1845,7 +1845,6 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 			try:
 				portage_util.apply_permissions(filename, gid=portage_gid, mode=0775)
 			except OSError, oe:
-				import errno
 				if oe.errno == errno.EPERM:
 					writemsg("!!! Unable to apply group permissions to '%s'.  Non-root users may experience issues.\n"
 					% filename)
@@ -1857,7 +1856,6 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 			try:
 				distdir_perms(distlocks_subdir)
 			except OSError, oe:
-				import errno
 				if oe.errno == errno.ENOENT:
 					os.mkdir(distlocks_subdir)
 					distdir_perms(distlocks_subdir)
@@ -3022,7 +3020,6 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 		except SystemExit, e:
 			raise
 		except Exception, e:
-			import errno
 			if e[0]!=errno.EXDEV:
 				# Some random error.
 				print "!!! Failed to move",src,"to",dest
