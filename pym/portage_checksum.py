@@ -131,9 +131,13 @@ def perform_checksum(filename, hash_function=md5hash, calc_prelink=0):
 		if retval==0:
 			#portage_util.writemsg(">>> prelink checksum '"+str(filename)+"'.\n")
 			myfilename=prelink_tmpfile
-
-	myhash, mysize = hash_function(myfilename)
-
+	try:
+		myhash, mysize = hash_function(myfilename)
+	except (OSError, IOError), e:
+		if e.errno == errno.ENOENT:
+			raise portage_exception.FileNotFound(e)
+		else:
+			raise e
 	if calc_prelink and prelink_capable:
 		try:
 			os.unlink(prelink_tmpfile)
