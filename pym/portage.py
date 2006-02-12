@@ -4357,9 +4357,7 @@ class vardbapi(dbapi):
 			if os.path.exists(old_eb_path+".ebuild"):
 				os.rename(old_eb_path+".ebuild", new_eb_path+".ebuild")
 
-			catfile=open(newpath+"/CATEGORY", "w")
-			catfile.write(mynewcat+"\n")
-			catfile.close()
+			write_atomic(os.path.join(newpath, "CATEGORY"), mynewcat+"\n")
 
 		dbdir = self.root+VDB_PATH
 		for catdir in listdir(dbdir):
@@ -5296,9 +5294,7 @@ class binarytree(packagetree):
 
 			fixdbentries(origcp, newcp, mytmpdir)
 
-			catfile=open(mytmpdir+"/CATEGORY", "w")
-			catfile.write(mynewcat+"\n")
-			catfile.close()
+			write_atomic(os.path.join(mytmpdir, "CATEGORY"), mynewcat+"\n")
 			try:
 				os.rename(mytmpdir+"/"+string.split(mycpv,"/")[1]+".ebuild", mytmpdir+"/"+string.split(mynewcpv, "/")[1]+".ebuild")
 			except SystemExit, e:
