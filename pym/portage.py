@@ -3654,7 +3654,8 @@ def fixdbentries(old_value, new_value, dbdir):
 	"""python replacement for the fixdbentries script, replaces old_value
 	with new_value for package names in files in dbdir."""
 	for myfile in [f for f in os.listdir(dbdir) if not f == "CONTENTS"]:
-		f = open(dbdir+"/"+myfile, "r")
+		file_path = os.path.join(dbdir, myfile)
+		f = open(file_path, "r")
 		mycontent = f.read()
 		f.close()
 		if not mycontent.count(old_value):
@@ -3664,9 +3665,7 @@ def fixdbentries(old_value, new_value, dbdir):
 		mycontent = re.sub(old_value+"(\\s)", new_value+"\\1", mycontent)
 		mycontent = re.sub(old_value+"(-[^a-zA-Z])", new_value+"\\1", mycontent)
 		mycontent = re.sub(old_value+"([^a-zA-Z0-9-])", new_value+"\\1", mycontent)
-		f = open(dbdir+"/"+myfile, "w")
-		f.write(mycontent)
-		f.close()
+		write_atomic(file_path, mycontent)
 
 class packagetree:
 	def __init__(self,virtual,clone=None):
