@@ -108,7 +108,7 @@ qahelp={
 	"digest.disjointed":"Digests not added to cvs when the matching ebuild has been added",
 	"digest.notadded":"Digests that exist but have not been added to cvs",
 	"digest.unmatch":"Digests which are incomplete (please check if your USE/ARCH includes all files)",
-	"ebuild.invalidname":"Ebuild files with a non-parseable or syntactically incorrect name",
+	"ebuild.invalidname":"Ebuild files with a non-parseable or syntactically incorrect name (or using 2.1 versioning extensions)",
 	"ebuild.namenomatch":"Ebuild files that do not have the same name as their parent directory",
 	"changelog.missing":"Missing ChangeLog files",
 	"ebuild.disjointed":"Ebuilds not added to cvs when the matching digest has been added",
