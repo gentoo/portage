@@ -15,6 +15,9 @@ if [ "`whoami`" != "root" ] ; then
 fi
 
 export PORTAGE_DB=$(portageq vdb_path)
+export ROOT=$(portageq envvar ROOT)
+export ROOT=${ROOT%/}/
+
 if [ -z "$1" ] || [ $1 == "-h" ] || [ $1 == "--help" ] ; then
 	echo "QUICKPKG ver 1.2"
 	echo "USAGE: quickpkg <list of pkgs>"
@@ -67,8 +70,8 @@ do_pkg() {
 					NF=NF-3
 				print
 			}
-		}' "${SRCDIR}"/CONTENTS | cut -f2- -d" " - > "${MYDIR}"/filelist
-		tar vjcf "${MYDIR}"/bin.tar.bz2 --files-from="${MYDIR}"/filelist --no-recursion
+		}' "${SRCDIR}"/CONTENTS | cut -f2- -d" " - | sed -e 's:^/:./:' > "${MYDIR}"/filelist
+		tar vjcf "${MYDIR}"/bin.tar.bz2 -C "${ROOT}" --files-from="${MYDIR}"/filelist --no-recursion
 
 		# join together the basic tbz2 and the pkg info files
 		xpak "${MYDIR}"/temp "${MYDIR}"/inf.xpak
@@ -109,7 +112,7 @@ for x in "$@" ; do
 
 	# lets figure out what they want
 	else
-		DIRLIST=$(portageq match / "${x}")
+		DIRLIST=$(portageq match "${ROOT}" "${x}")
 		if [ -z "${DIRLIST}" ] ; then
 			eerror "Could not find anything to match '${x}'; skipping"
 			export PKGERROR="${PKGERROR} ${x}"
