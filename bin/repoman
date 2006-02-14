@@ -1626,7 +1626,7 @@ else:
 		else:
 			mymsg=open(commitmessagefile,"w")
 			mymsg.write(commitmessage)
-			mymsg.write("\n (Unsigned Manifest commit)")
+			mymsg.write(" (Unsigned Manifest commit)")
 			mymsg.close()
 			retval=os.system("/usr/bin/cvs -q commit -F "+commitmessagefile)
 			if retval:
