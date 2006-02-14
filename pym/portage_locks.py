@@ -122,7 +122,7 @@ def lockfile(mypath,wantnewlockfile=0,unlinkfile=0):
 			raise
 
 		
-	if type(lockfilename) == types.StringType and not os.path.exists(lockfilename):
+	if type(lockfilename) == types.StringType and os.fstat(myfd).st_nlink != 1:
 		# The file was deleted on us... Keep trying to make one...
 		os.close(myfd)
 		portage_util.writemsg("lockfile recurse\n",1)
