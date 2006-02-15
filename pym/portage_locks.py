@@ -147,9 +147,11 @@ def unlockfile(mytuple):
 		unhardlink_lockfile(lockfilename)
 		return True
 	
-	if type(lockfilename) == types.StringType and os.fstat(myfd).st_nlink != 1:
+	# myfd may be None here due to myfd = mypath in lockfile()
+	if type(lockfilename) == types.StringType and not os.path.exists(lockfilename):
 		portage_util.writemsg("lockfile does not exist '%s'\n" % lockfilename,1)
-		os.close(myfd)
+		if myfd is not None:
+			os.close(myfd)
 		return False
 
 	try:
