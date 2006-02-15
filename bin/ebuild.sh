@@ -285,7 +285,7 @@ diefunc() {
 	exit 1
 }
 
-shopt -s extdebug
+shopt -s extdebug &> /dev/null
 
 # usage- first arg is the number of funcs on the stack to ignore.
 # defaults to 1 (ignoring dump_trace)
