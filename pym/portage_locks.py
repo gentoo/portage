@@ -147,10 +147,9 @@ def unlockfile(mytuple):
 		unhardlink_lockfile(lockfilename)
 		return True
 	
-	if type(lockfilename) == types.StringType and not os.path.exists(lockfilename):
+	if type(lockfilename) == types.StringType and os.fstat(myfd).st_nlink != 1:
 		portage_util.writemsg("lockfile does not exist '%s'\n" % lockfilename,1)
-		if (myfd != None) and type(lockfilename) == types.StringType:
-			os.close(myfd)
+		os.close(myfd)
 		return False
 
 	try:
@@ -178,9 +177,14 @@ def unlockfile(mytuple):
 			# We can safely delete the file.
 			portage_util.writemsg("Got the lockfile...\n",1)
 			#portage_util.writemsg("Unlinking...\n")
-			os.unlink(lockfilename)
-			portage_util.writemsg("Unlinked lockfile...\n",1)
-			locking_method(myfd,fcntl.LOCK_UN)
+			if os.fstat(myfd).st_nlink == 1:
+				os.unlink(lockfilename)
+				portage_util.writemsg("Unlinked lockfile...\n",1)
+				locking_method(myfd,fcntl.LOCK_UN)
+			else:
+				portage_util.writemsg("lockfile does not exist '%s'\n" % lockfilename,1)
+				os.close(myfd)
+				return False
 	except SystemExit, e:
 		raise
 	except Exception, e:
