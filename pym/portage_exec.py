@@ -7,6 +7,7 @@
 import os, atexit, signal, sys
 import portage_data
 
+from portage_util import dump_traceback
 from portage_const import BASH_BINARY, SANDBOX_BINARY
 
 
@@ -39,6 +40,39 @@ def spawn_sandbox(mycommand, opt_name=None, **keywords):
 	args.append(mycommand)
 	return spawn(args, opt_name=opt_name, **keywords)
 
+_exithandlers = []
+def atexit_register(func, *args, **kargs):
+	"""Wrapper around atexit.register that is needed in order to track
+	what is registered.  For example, when portage restarts itself via
+	os.execv, the atexit module does not work so we have to do it
+	manually by calling the run_exitfuncs() function in this module."""
+	_exithandlers.append((func, args, kargs))
+
+def run_exitfuncs():
+	"""This should behave identically to the routine performed by
+	the atexit module at exit time.  It's only necessary to call this
+	function when atexit will not work (because of os.execv, for
+	example)."""
+
+	# This function is a copy of the private atexit._run_exitfuncs()
+	# from the python 2.4.2 sources.  The only difference from the
+	# original function is in the output to stderr.
+	exc_info = None
+	while _exithandlers:
+		func, targs, kargs = _exithandlers.pop()
+		try:
+			func(*targs, **kargs)
+		except SystemExit:
+			exc_info = sys.exc_info()
+		except:
+			dump_traceback("Error in portage_exec.run_exitfuncs", noiselevel=0)
+			exc_info = sys.exc_info()
+
+	if exc_info is not None:
+		raise exc_info[0], exc_info[1], exc_info[2]
+
+atexit.register(run_exitfuncs)
+
 # We need to make sure that any processes spawned are killed off when
 # we exit. spawn() takes care of adding and removing pids to this list
 # as it creates and cleans up processes.
@@ -55,7 +89,7 @@ def cleanup():
 			# of spawn().
 			pass
 
-atexit.register(cleanup)
+atexit_register(cleanup)
 
 def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
           uid=None, gid=None, groups=None, umask=None, logfile=None,

@@ -6,6 +6,7 @@
 
 from portage_const import PRIVATE_PATH,PRELINK_BINARY,HASHING_BLOCKSIZE
 import os
+import errno
 import shutil
 import stat
 import portage_exception
@@ -130,12 +131,21 @@ def perform_checksum(filename, hash_function=md5hash, calc_prelink=0):
 		if retval==0:
 			#portage_util.writemsg(">>> prelink checksum '"+str(filename)+"'.\n")
 			myfilename=prelink_tmpfile
-
-	myhash, mysize = hash_function(myfilename)
-
+	try:
+		myhash, mysize = hash_function(myfilename)
+	except (OSError, IOError), e:
+		if e.errno == errno.ENOENT:
+			raise portage_exception.FileNotFound(e)
+		else:
+			raise e
 	if calc_prelink and prelink_capable:
-		if os.path.exists(prelink_tmpfile):
+		try:
 			os.unlink(prelink_tmpfile)
+		except OSError, oe:
+			if oe.errno == errno.ENOENT:
+				pass
+			else:
+				raise oe
 		portage_locks.unlockfile(mylock)
 
 	return (myhash,mysize)

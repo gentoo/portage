@@ -11,4 +11,4 @@
 #        /etc/make.globals here because emake is only called from an
 #        ebuild.
 
-${MAKE:-make} ${MAKEOPTS} ${EXTRA_EMAKE} "$@"
+exec ${MAKE:-make} ${MAKEOPTS} ${EXTRA_EMAKE} "$@"

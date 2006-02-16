@@ -88,6 +88,4 @@ for mykey in biglist:
 			print "add to world:",myfavkey
 			worldlist.append(myfavkey)
 
-myfile=open(portage.WORLD_FILE, "w")
-myfile.write(string.join(worldlist, '\n')+'\n')
-myfile.close()
+portage.write_atomic(portage.WORLD_FILE,"\n".join(worldlist))

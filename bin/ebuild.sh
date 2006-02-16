@@ -419,7 +419,7 @@ diefunc() {
 	exit 1
 }
 
-shopt -s extdebug
+shopt -s extdebug &> /dev/null
 
 # usage- first arg is the number of funcs on the stack to ignore.
 # defaults to 1 (ignoring dump_trace)
@@ -1398,7 +1398,7 @@ dyn_install() {
 
 	if hasq multilib-strict ${FEATURES} && [ -x file -a -x find -a \
 	     -n "${MULTILIB_STRICT_DIRS}" -a -n "${MULTILIB_STRICT_DENY}" ]; then
-		MULTILIB_STRICT_EXEMPT=$(echo ${MULTILIB_STRICT_EXEMPT:-"(perl5|gcc|gcc-lib|debug)"} | sed -e 's:\([(|)]\):\\\1:g')
+		MULTILIB_STRICT_EXEMPT=$(echo ${MULTILIB_STRICT_EXEMPT:-"(perl5|gcc|gcc-lib|debug|portage)"} | sed -e 's:\([(|)]\):\\\1:g')
 		for dir in ${MULTILIB_STRICT_DIRS}; do
 			[ -d "${D}/${dir}" ] || continue
 			for file in $(find ${D}/${dir} -type f | grep -v "^${D}/${dir}/${MULTILIB_STRICT_EXEMPT}"); do
@@ -1931,7 +1931,7 @@ export S=${WORKDIR}/${P}
 
 unset E_IUSE E_DEPEND E_RDEPEND E_PDEPEND
 
-for x in T P PN PV PVR PR A EBUILD EMERGE_FROM O PPID FILESDIR PORTAGE_TMPDIR; do
+for x in T P PN PV PVR PR CATEGORY A EBUILD EMERGE_FROM O PPID FILESDIR PORTAGE_TMPDIR; do
 	[[ ${!x-UNSET_VAR} != UNSET_VAR ]] && declare -r ${x}
 done
 # Need to be able to change D in dyn_preinst due to the IMAGE stuff

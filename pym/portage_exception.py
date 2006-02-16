@@ -58,6 +58,9 @@ class PackageNotFound(PortagePackageException):
 class InvalidPackageName(PortagePackageException):
 	"""Malformed package name"""
 
+class InvalidAtom(PortagePackageException):
+	"""Malformed atom spec"""
+
 class UnsupportedAPIException(PortagePackageException):
 	"""Unsupported API"""
 	def __init__(self, cpv, api):

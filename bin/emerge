@@ -9,7 +9,7 @@ sys.path = ["@PORTAGE_BASE@/pym"]+sys.path
 
 import portage
 
-import emergehelp,xpak,string,re,commands,time,shutil,traceback,atexit,signal,socket,types
+import emergehelp,xpak,string,re,commands,time,shutil,traceback,signal,socket,types
 from stat import *
 from output import *
 
@@ -182,7 +182,8 @@ options=[
 "--emptytree",
 "--fetchonly",    "--fetch-all-uri",
 "--getbinpkg",    "--getbinpkgonly",
-"--help",         "--noconfmem",
+"--help",         "--ignore-default-opts",
+"--noconfmem",
 "--newuse",       "--nocolor",
 "--nodeps",       "--noreplace",
 "--nospinner",    "--oneshot",
@@ -226,7 +227,8 @@ edebug=0
 
 # process short actions
 tmpcmdline=sys.argv[1:]
-tmpcmdline.extend(portage.settings["EMERGE_DEFAULT_OPTS"].split())
+if "--ignore-default-opts" not in tmpcmdline:
+	tmpcmdline.extend(portage.settings["EMERGE_DEFAULT_OPTS"].split())
 cmdline=[]
 for x in tmpcmdline:
 	if x[0:1]=="-" and x[1:2]!="-":
@@ -493,7 +495,7 @@ def emergeexit():
 		emergelog(" *** terminating.")
 	if "notitles" not in portage.features:
 		xtermTitleReset()
-atexit.register(emergeexit)
+portage.atexit_register(emergeexit)
 
 def emergeexitsig(signum, frame):
 	signal.signal(signal.SIGINT, signal.SIG_IGN)
@@ -1495,17 +1497,17 @@ class depgraph:
 
 		return myk
 
-	def display(self,mylist):
+	def display(self,mylist,verbosity=("--quiet" in myopts and 1 or "--verbose" in myopts and 3 or 2)):
 		changelogs=[]
 		p=[]
 		totalsize=0
 
-		if "--quiet" in myopts:
+		if verbosity == 1:
 			def create_use_string(*args):
 				return ""
 		else:
 			def create_use_string(name, cur_iuse, cur_use, old_iuse, old_use, is_new,
-					all_flags=("--verbose" in myopts), alphabetical=("--alphabetical" in myopts)):
+					all_flags=(verbosity == 3), alphabetical=("--alphabetical" in myopts)):
 				enabled = []
 				if alphabetical:
 					disabled = enabled
@@ -1542,7 +1544,7 @@ class depgraph:
 					ret = '%s="%s" ' % (name, ret)
 				return ret
 
-		if "--verbose" in myopts:
+		if verbosity == 3:
 			overlays = string.split(portage.settings['PORTDIR_OVERLAY'])
 
 		if "--tree" in myopts:
@@ -1695,7 +1697,7 @@ class depgraph:
 						verboseadd += create_use_string(key.upper(), cur_iuse_map[key], cur_use_map[key],
 						                                old_iuse_map[key], old_use_map[key], is_new)
 
-				if "--verbose" in myopts:
+				if verbosity == 3:
 					# size verbose
 					mysize=0
 					if x[0] == "ebuild" and x[-1]!="nomerge":
@@ -1786,9 +1788,7 @@ class depgraph:
 							   ("livecvsportage" not in portage.settings.features):
 								if mylist.index(x)<len(mylist)-1:
 									p.append(red("*** Portage will stop merging at this point and reload itself,"))
-									p.append(red("    recalculate dependencies, and complete the merge."))
-									if "--update" not in myopts:
-										p.append(darkgreen("    You may avoid the remerging of packages by updating portage on its own."))
+									p.append(red("    then resume the merge."))
 									print
 					else:
 						if mysplit[0]=="sys-apps/portage" and ("--emptytree" in myopts):
@@ -1802,7 +1802,7 @@ class depgraph:
 		for x in p:
 			print x
 
-		if "--verbose" in myopts:
+		if verbosity == 3:
 			print
 			print "Total size of downloads: "+format_size(totalsize)
 			if overlays and display_overlays:
@@ -1921,7 +1921,7 @@ class depgraph:
 							myfavdict[myfavkey]=myfavkey
 							print ">>> Recording",myfavkey,"in \"world\" favorites file..."
 			if not "--fetchonly" in myopts:
-				portage.writedict(myfavdict,portage.root+portage.WORLD_FILE,writekey=0)
+				portage.write_atomic(os.path.join(portage.root,portage.WORLD_FILE),"\n".join(myfavdict.values()))
 
 			portage.mtimedb["resume"]["mergelist"]=mymergelist[:]
 
@@ -2092,7 +2092,7 @@ class depgraph:
 						myfavdict[myfavkey]=myfavkey
 						print ">>> Recording",myfavkey,"in \"world\" favorites file..."
 						emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Updating world file ("+x[pkgindex]+")")
-						portage.writedict(myfavdict,myroot+portage.WORLD_FILE,writekey=0)
+						portage.write_atomic(os.path.join(myroot,portage.WORLD_FILE),"\n".join(myfavdict.values()))
 
 				if ("noclean" not in portage.features) and (x[0] != "binary"):
 					short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Clean Post"
@@ -2122,43 +2122,26 @@ class depgraph:
 						if (myver != portage.VERSION) and \
 						   ("livecvsportage" not in portage.settings.features):
 							if len(mymergelist) > mergecount:
-								myargv=sys.argv
-								myr=0
-								for myra in range(len(myargv)):
-									if myargv[myr][0:len("portage")]=="portage":
-										del myargv[myr]
-										myr-=1
-									if myargv[myr][0:len("sys-apps/portage")]=="sys-apps/portage":
-										del myargv[myr]
-										myr-=1
-									myr+=1
 								emergelog(" *** RESTARTING emerge via exec() after change of portage version.")
-								portage.portageexit()
-								# Remove --ask from options before restarting
-								mynewargv=[]
-								badlongopts = ["--ask","--tree","--changelog"]
-								badshortopts = ["a","t","l"]
-								for arg in myargv:
-									if arg[0:2] == "--":
-										if arg in badlongopts:
-											continue
-										mynewargv += [arg]
-									elif arg[0] == "-":
-										myarg = "-"
-										for ch in arg[1:]:
-											if ch in badshortopts:
-												continue
-											myarg += ch
-										mynewargv += [myarg]
-									else:
-										mynewargv += [arg]
-								os.execv(portage_const.PORTAGE_BIN_PATH+"/emerge", mynewargv)
+								del portage.mtimedb["resume"]["mergelist"][0]
+								portage.run_exitfuncs()
+								mynewargv=[sys.argv[0],"--resume"]
+								badlongopts = ("--ask","--tree","--changelog","--skipfirst","--resume")
+								for arg in myopts:
+									if arg in badlongopts:
+										continue
+									mynewargv.append(arg)
+								os.execv(mynewargv[0], mynewargv)
 
 			if ("--pretend" not in myopts) and ("--fetchonly" not in myopts) and ("--fetch-all-uri" not in myopts):
 				emergelog(" ::: completed emerge ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[2]+" to "+x[1])
 
 			# Unsafe for parallel merges
 			del portage.mtimedb["resume"]["mergelist"][0]
+			# Commit after each merge so that --resume may still work in
+			# in the event that portage is not allowed to exit normally
+			# due to power failure, SIGKILL, etc...
+			portage.commit_mtimedb()
 
 		emergelog(" *** Finished. Cleaning up...")
 
@@ -2756,7 +2739,7 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 			sys.exit(exitcode)
 	elif syncuri[:6]=="cvs://":
 		if not os.path.exists("cvs"):
-			print "!!! cvs does not exist, so rsync support is disabled."
+			print "!!! cvs does not exist, so CVS support is disabled."
 			print "!!! Type \"emerge dev-util/cvs\" to enable CVS support."
 			sys.exit(1)
 		cvsroot=syncuri[6:]

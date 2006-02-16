@@ -99,7 +99,9 @@ Defines whether or not to ignore audible beeps when displaying important
 informational messages.  This variable is unset by default.
 .TP
 .B EMERGE_DEFAULT_OPTS
-Options to append to the end of the emerge command line on every invocation.
+Options to append to the end of the \fBemerge\fR(1) command line on every invocation.
+These options will not be appended to the command line if --ignore-default-opts
+is specified.
 .TP
 .B EPAUSE_IGNORE
 Defines whether or not to ignore short pauses that occur when displaying

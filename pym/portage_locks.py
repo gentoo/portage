@@ -4,7 +4,6 @@
 # $Id: /var/cvsroot/gentoo-src/portage/pym/portage_locks.py,v 1.18.2.2 2005/01/16 02:35:33 carpaski Exp $
 
 
-import atexit
 import errno
 import os
 import stat
@@ -15,6 +14,7 @@ import portage_exception
 import portage_file
 import portage_util
 import portage_data
+from portage_exec import atexit_register
 from portage_localization import _
 import portage_const
 
@@ -31,7 +31,7 @@ def add_hardlock_file_to_cleanup(path):
 	if os.path.isdir(mypath):
 		hardlock_path_list = mypath[:]
 
-atexit.register(clean_my_hardlocks)
+atexit_register(clean_my_hardlocks)
 
 def lockdir(mydir):
 	return lockfile(mydir,wantnewlockfile=1)
@@ -123,7 +123,7 @@ def lockfile(mypath,wantnewlockfile=0,unlinkfile=0):
 			raise
 
 		
-	if type(lockfilename) == types.StringType and not os.path.exists(lockfilename):
+	if type(lockfilename) == types.StringType and os.fstat(myfd).st_nlink != 1:
 		# The file was deleted on us... Keep trying to make one...
 		os.close(myfd)
 		portage_util.writemsg("lockfile recurse\n",1)
@@ -148,9 +148,10 @@ def unlockfile(mytuple):
 		unhardlink_lockfile(lockfilename)
 		return True
 	
+	# myfd may be None here due to myfd = mypath in lockfile()
 	if type(lockfilename) == types.StringType and not os.path.exists(lockfilename):
 		portage_util.writemsg("lockfile does not exist '%s'\n" % lockfilename,1)
-		if (myfd != None) and type(lockfilename) == types.StringType:
+		if myfd is not None:
 			os.close(myfd)
 		return False
 
@@ -179,9 +180,14 @@ def unlockfile(mytuple):
 			# We can safely delete the file.
 			portage_util.writemsg("Got the lockfile...\n",1)
 			#portage_util.writemsg("Unlinking...\n")
-			os.unlink(lockfilename)
-			portage_util.writemsg("Unlinked lockfile...\n",1)
-			locking_method(myfd,fcntl.LOCK_UN)
+			if os.fstat(myfd).st_nlink == 1:
+				os.unlink(lockfilename)
+				portage_util.writemsg("Unlinked lockfile...\n",1)
+				locking_method(myfd,fcntl.LOCK_UN)
+			else:
+				portage_util.writemsg("lockfile does not exist '%s'\n" % lockfilename,1)
+				os.close(myfd)
+				return False
 	except SystemExit, e:
 		raise
 	except Exception, e:
