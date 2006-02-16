@@ -4316,6 +4316,10 @@ class vardbapi(dbapi):
 	def move_ent(self,mylist):
 		origcp=mylist[1]
 		newcp=mylist[2]
+		# sanity check
+		for cp in [origcp,newcp]:
+			if not (isvalidatom(cp) and isjustname(cp)):
+				raise portage_exception.InvalidPackageName(cp)
 		origmatches=self.match(origcp,use_cache=0)
 		if not origmatches:
 			return
@@ -4364,7 +4368,11 @@ class vardbapi(dbapi):
 		origslot=mylist[2]
 		newslot=mylist[3]
 
+		if not isvalidatom(pkg):
+			raise portage_exception.InvalidAtom(pkg)
+
 		origmatches=self.match(pkg,use_cache=0)
+		
 		if not origmatches:
 			return
 		for mycpv in origmatches:
@@ -5251,6 +5259,10 @@ class binarytree(packagetree):
 			self.populate()
 		origcp=mylist[1]
 		newcp=mylist[2]
+		# sanity check
+		for cp in [origcp,newcp]:
+			if not (isvalidatom(cp) and isjustname(cp)):
+				raise portage_exception.InvalidPackageName(cp)
 		mynewcat=newcp.split("/")[0]
 		origmatches=self.dbapi.cp_list(origcp)
 		if not origmatches:
@@ -5307,6 +5319,10 @@ class binarytree(packagetree):
 		pkg=mylist[1]
 		origslot=mylist[2]
 		newslot=mylist[3]
+		
+		if not isvalidatom(pkg):
+			raise portage_exception.InvalidAtom(pkg)
+		
 		origmatches=self.dbapi.match(pkg)
 		if not origmatches:
 			return
@@ -6804,8 +6820,12 @@ def do_upgrade(mykey):
 		sys.stdout.flush()
 
 		if mysplit[0]=="move":
-			db["/"]["vartree"].dbapi.move_ent(mysplit)
-			db["/"]["bintree"].move_ent(mysplit)
+			try:
+				db["/"]["vartree"].dbapi.move_ent(mysplit)
+				db["/"]["bintree"].move_ent(mysplit)
+			except portage_exception.InvalidPackageName, e:
+				writemsg("\nERROR: Malformed update entry '%s'\n" % myline)
+				continue
 			#update world entries:
 			for x in range(0,len(worldlist)):
 				#update world entries, if any.
@@ -6825,8 +6845,11 @@ def do_upgrade(mykey):
 						sys.stdout.flush()
 
 		elif mysplit[0]=="slotmove":
-			db["/"]["vartree"].dbapi.move_slot_ent(mysplit)
-			db["/"]["bintree"].move_slot_ent(mysplit,settings["PORTAGE_TMPDIR"]+"/tbz2")
+			try:
+				db["/"]["vartree"].dbapi.move_slot_ent(mysplit)
+				db["/"]["bintree"].move_slot_ent(mysplit,settings["PORTAGE_TMPDIR"]+"/tbz2")
+			except portage_exception.InvalidAtom, e:
+				writemsg("\nERROR: Malformed update entry '%s'\n" % myline)
 
 	for x in update_files:
 		mydblink = dblink('','','/',settings)
