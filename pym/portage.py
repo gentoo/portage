@@ -3651,22 +3651,25 @@ def getmaskingstatus(mycpv):
 		rValue.append(kmask+" keyword")
 	return rValue
 
-def fixdbentries(old_value, new_value, dbdir):
+def fixdbentries(move_dict, dbdir):
 	"""python replacement for the fixdbentries script, replaces old_value
 	with new_value for package names in files in dbdir."""
-	for myfile in [f for f in os.listdir(dbdir) if not f == "CONTENTS"]:
+	for myfile in [f for f in os.listdir(dbdir) if f not in ("CONTENTS", "environment.bz2")]:
 		file_path = os.path.join(dbdir, myfile)
 		f = open(file_path, "r")
 		mycontent = f.read()
 		f.close()
-		if not mycontent.count(old_value):
-			continue
-		old_value = re.escape(old_value);
-		mycontent = re.sub(old_value+"$", new_value, mycontent)
-		mycontent = re.sub(old_value+"(\\s)", new_value+"\\1", mycontent)
-		mycontent = re.sub(old_value+"(-[^a-zA-Z])", new_value+"\\1", mycontent)
-		mycontent = re.sub(old_value+"([^a-zA-Z0-9-])", new_value+"\\1", mycontent)
-		write_atomic(file_path, mycontent)
+		orig_content = mycontent
+		for old_value, new_value in move_dict.iteritems():
+			if not mycontent.count(old_value):
+				continue
+			old_value = re.escape(old_value);
+			mycontent = re.sub(old_value+"$", new_value, mycontent)
+			mycontent = re.sub(old_value+"(\\s)", new_value+"\\1", mycontent)
+			mycontent = re.sub(old_value+"(-[^a-zA-Z])", new_value+"\\1", mycontent)
+			mycontent = re.sub(old_value+"([^a-zA-Z0-9-])", new_value+"\\1", mycontent)
+		if mycontent is not orig_content:
+			write_atomic(file_path, mycontent)
 
 class packagetree:
 	def __init__(self,virtual,clone=None):
@@ -4361,7 +4364,7 @@ class vardbapi(dbapi):
 				for pkgdir in listdir(catdir):
 					pkgdir = catdir+"/"+pkgdir
 					if os.path.isdir(pkgdir):
-						fixdbentries(origcp, newcp, pkgdir)
+						fixdbentries({origcp:newcp}, pkgdir)
 
 	def move_slot_ent(self,mylist):
 		pkg=mylist[1]
@@ -5293,7 +5296,7 @@ class binarytree(packagetree):
 			mytbz2=xpak.tbz2(tbz2path)
 			mytbz2.decompose(mytmpdir, cleanup=1)
 
-			fixdbentries(origcp, newcp, mytmpdir)
+			fixdbentries({origcp:newcp}, mytmpdir)
 
 			write_atomic(os.path.join(mytmpdir, "CATEGORY"), mynewcat+"\n")
 			try:
@@ -5369,7 +5372,7 @@ class binarytree(packagetree):
 				mylist=string.split(mylist)
 				if mylist[0] != "move":
 					continue
-				fixdbentries(mylist[1], mylist[2], mytmpdir)
+				fixdbentries({mylist[1]:mylist[2]}, mytmpdir)
 			mytbz2.recompose(mytmpdir,cleanup=1)
 		return 1
 
