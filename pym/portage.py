@@ -3651,7 +3651,7 @@ def getmaskingstatus(mycpv):
 		rValue.append(kmask+" keyword")
 	return rValue
 
-def fixdbentries(move_dict, dbdir):
+def fixdbentries(update_iter, dbdir):
 	"""python replacement for the fixdbentries script, replaces old_value
 	with new_value for package names in files in dbdir."""
 	for myfile in [f for f in os.listdir(dbdir) if f not in ("CONTENTS", "environment.bz2")]:
@@ -3660,14 +3660,16 @@ def fixdbentries(move_dict, dbdir):
 		mycontent = f.read()
 		f.close()
 		orig_content = mycontent
-		for old_value, new_value in move_dict.iteritems():
-			if not mycontent.count(old_value):
-				continue
-			old_value = re.escape(old_value);
-			mycontent = re.sub(old_value+"$", new_value, mycontent)
-			mycontent = re.sub(old_value+"(\\s)", new_value+"\\1", mycontent)
-			mycontent = re.sub(old_value+"(-[^a-zA-Z])", new_value+"\\1", mycontent)
-			mycontent = re.sub(old_value+"([^a-zA-Z0-9-])", new_value+"\\1", mycontent)
+		for update_cmd in update_iter:
+			if update_cmd[0] == "move":
+				old_value, new_value = update_cmd[1], update_cmd[2]
+				if not mycontent.count(old_value):
+					continue
+				old_value = re.escape(old_value);
+				mycontent = re.sub(old_value+"$", new_value, mycontent)
+				mycontent = re.sub(old_value+"(\\s)", new_value+"\\1", mycontent)
+				mycontent = re.sub(old_value+"(-[^a-zA-Z])", new_value+"\\1", mycontent)
+				mycontent = re.sub(old_value+"([^a-zA-Z0-9-])", new_value+"\\1", mycontent)
 		if mycontent is not orig_content:
 			write_atomic(file_path, mycontent)
 
@@ -4364,7 +4366,7 @@ class vardbapi(dbapi):
 				for pkgdir in listdir(catdir):
 					pkgdir = catdir+"/"+pkgdir
 					if os.path.isdir(pkgdir):
-						fixdbentries({origcp:newcp}, pkgdir)
+						fixdbentries([mylist], pkgdir)
 
 	def move_slot_ent(self,mylist):
 		pkg=mylist[1]
@@ -5296,7 +5298,7 @@ class binarytree(packagetree):
 			mytbz2=xpak.tbz2(tbz2path)
 			mytbz2.decompose(mytmpdir, cleanup=1)
 
-			fixdbentries({origcp:newcp}, mytmpdir)
+			fixdbentries([mylist], mytmpdir)
 
 			write_atomic(os.path.join(mytmpdir, "CATEGORY"), mynewcat+"\n")
 			try:
@@ -5359,12 +5361,8 @@ class binarytree(packagetree):
 		#XXX mytmpdir=settings["PORTAGE_TMPDIR"]+"/tbz2"
 		if not self.populated:
 			self.populate()
-		move_dict = {}
-		for mylist in mybiglist:
-			mylist=string.split(mylist)
-			if mylist[0] != "move":
-				continue
-			move_dict[mylist[1]] = mylist[2]
+
+		update_list = map(lambda x: x.split(), mybiglist)
 		for mycpv in self.dbapi.cp_all():
 			tbz2path=self.getname(mycpv)
 			if os.path.exists(tbz2path) and not os.access(tbz2path,os.W_OK):
@@ -5374,7 +5372,7 @@ class binarytree(packagetree):
 			writemsg("*")
 			mytbz2=xpak.tbz2(tbz2path)
 			mytbz2.decompose(mytmpdir,cleanup=1)
-			fixdbentries(move_dict, mytmpdir)
+			fixdbentries(update_list, mytmpdir)
 			mytbz2.recompose(mytmpdir,cleanup=1)
 		return 1
 
