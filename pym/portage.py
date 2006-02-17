@@ -6825,6 +6825,7 @@ def do_upgrade(mykey):
 				db["/"]["bintree"].move_ent(mysplit)
 			except portage_exception.InvalidPackageName, e:
 				writemsg("\nERROR: Malformed update entry '%s'\n" % myline)
+				myupd.remove(myline) # myupd is used by fixpackages later
 				continue
 			#update world entries:
 			for x in range(0,len(worldlist)):
