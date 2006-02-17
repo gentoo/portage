@@ -6770,6 +6770,7 @@ features=settings["FEATURES"].split()
 
 do_upgrade_packagesmessage=0
 def do_upgrade(mykey):
+	"""Valid updates are returned as a list of split update commands."""
 	global do_upgrade_packagesmessage
 	writemsg("\n\n")
 	writemsg(green("Performing Global Updates: ")+bold(mykey)+"\n")
@@ -6805,7 +6806,6 @@ def do_upgrade(mykey):
 	db["/"]["bintree"]=binarytree("/",settings["PKGDIR"],virts)
 	for myline in mylines:
 		mysplit = myline.split()
-		myupd.append(mysplit)
 		if not len(mysplit):
 			continue
 		if mysplit[0]!="move" and mysplit[0]!="slotmove":
@@ -6829,7 +6829,6 @@ def do_upgrade(mykey):
 				db["/"]["bintree"].move_ent(mysplit)
 			except portage_exception.InvalidPackageName, e:
 				writemsg("\nERROR: Malformed update entry '%s'\n" % myline)
-				myupd.pop() # myupd is used by fixpackages later
 				continue
 			#update world entries:
 			for x in range(0,len(worldlist)):
@@ -6855,6 +6854,9 @@ def do_upgrade(mykey):
 				db["/"]["bintree"].move_slot_ent(mysplit,settings["PORTAGE_TMPDIR"]+"/tbz2")
 			except portage_exception.InvalidAtom, e:
 				writemsg("\nERROR: Malformed update entry '%s'\n" % myline)
+		
+		# The list of valid updates is filtered by continue statements above.
+		myupd.append(mysplit)
 
 	for x in update_files:
 		mydblink = dblink('','','/',settings)
