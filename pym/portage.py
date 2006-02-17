@@ -5359,6 +5359,12 @@ class binarytree(packagetree):
 		#XXX mytmpdir=settings["PORTAGE_TMPDIR"]+"/tbz2"
 		if not self.populated:
 			self.populate()
+		move_dict = {}
+		for mylist in mybiglist:
+			mylist=string.split(mylist)
+			if mylist[0] != "move":
+				continue
+			move_dict[mylist[1]] = mylist[2]
 		for mycpv in self.dbapi.cp_all():
 			tbz2path=self.getname(mycpv)
 			if os.path.exists(tbz2path) and not os.access(tbz2path,os.W_OK):
@@ -5368,11 +5374,7 @@ class binarytree(packagetree):
 			writemsg("*")
 			mytbz2=xpak.tbz2(tbz2path)
 			mytbz2.decompose(mytmpdir,cleanup=1)
-			for mylist in mybiglist:
-				mylist=string.split(mylist)
-				if mylist[0] != "move":
-					continue
-				fixdbentries({mylist[1]:mylist[2]}, mytmpdir)
+			fixdbentries(move_dict, mytmpdir)
 			mytbz2.recompose(mytmpdir,cleanup=1)
 		return 1
 
