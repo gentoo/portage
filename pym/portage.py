@@ -6866,18 +6866,12 @@ def do_upgrade(mykey):
 		except IOError:
 			continue
 
-	# We gotta do the brute force updates for these now.
-	if (settings["PORTAGE_CALLER"] in ["fixpackages"]) or \
-	   ("fixpackages" in features):
-		db["/"]["bintree"].update_ents(myupd,settings["PORTAGE_TMPDIR"]+"/tbz2")
-	else:
-		do_upgrade_packagesmessage = 1
-
 	if processed:
 		#update our internal mtime since we processed all our directives.
 		mtimedb["updates"][mykey]=os.stat(mykey)[stat.ST_MTIME]
 	write_atomic(WORLD_FILE,"\n".join(worldlist))
 	print ""
+	return myupd
 
 def commit_mtimedb():
 	if mtimedb:
@@ -6924,6 +6918,7 @@ if (secpass==2) and (not os.environ.has_key("SANDBOX_ACTIVE")):
 			mylist=[myfile[3:]+"-"+myfile[:2] for myfile in mylist]
 			mylist.sort()
 			mylist=[myfile[5:]+"-"+myfile[:4] for myfile in mylist]
+			myupd = []
 			for myfile in mylist:
 				mykey=updpath+"/"+myfile
 				if not os.path.isfile(mykey):
@@ -6932,8 +6927,16 @@ if (secpass==2) and (not os.environ.has_key("SANDBOX_ACTIVE")):
 					 (mtimedb["updates"][mykey] != os.stat(mykey)[stat.ST_MTIME]) or \
 					 (settings["PORTAGE_CALLER"] == "fixpackages"):
 					didupdate=1
-					do_upgrade(mykey)
+					myupd.extend(do_upgrade(mykey))
 					commit_mtimedb() # This lets us save state for C-c.
+
+			# We gotta do the brute force updates for these now.
+			if (settings["PORTAGE_CALLER"] in ["fixpackages"]) or \
+			("fixpackages" in features):
+				db["/"]["bintree"].update_ents(myupd,settings["PORTAGE_TMPDIR"]+"/tbz2")
+			else:
+				do_upgrade_packagesmessage = 1
+
 		except OSError:
 			#directory doesn't exist
 			pass
