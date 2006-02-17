@@ -5362,7 +5362,6 @@ class binarytree(packagetree):
 		if not self.populated:
 			self.populate()
 
-		update_list = map(lambda x: x.split(), mybiglist)
 		for mycpv in self.dbapi.cp_all():
 			tbz2path=self.getname(mycpv)
 			if os.path.exists(tbz2path) and not os.access(tbz2path,os.W_OK):
@@ -5372,7 +5371,7 @@ class binarytree(packagetree):
 			writemsg("*")
 			mytbz2=xpak.tbz2(tbz2path)
 			mytbz2.decompose(mytmpdir,cleanup=1)
-			fixdbentries(update_list, mytmpdir)
+			fixdbentries(mybiglist, mytmpdir)
 			mytbz2.recompose(mytmpdir,cleanup=1)
 		return 1
 
@@ -6801,10 +6800,9 @@ def do_upgrade(mykey):
 			continue
 
 	worldlist=grabfile("/"+WORLD_FILE)
-	myupd=grabfile(mykey)
+	myupd = map(lambda x: x.split(), grabfile(mykey))
 	db["/"]["bintree"]=binarytree("/",settings["PKGDIR"],virts)
-	for myline in myupd:
-		mysplit=myline.split()
+	for mysplit in myupd:
 		if not len(mysplit):
 			continue
 		if mysplit[0]!="move" and mysplit[0]!="slotmove":
@@ -6828,7 +6826,7 @@ def do_upgrade(mykey):
 				db["/"]["bintree"].move_ent(mysplit)
 			except portage_exception.InvalidPackageName, e:
 				writemsg("\nERROR: Malformed update entry '%s'\n" % myline)
-				myupd.remove(myline) # myupd is used by fixpackages later
+				myupd.remove(mysplit) # myupd is used by fixpackages later
 				continue
 			#update world entries:
 			for x in range(0,len(worldlist)):
