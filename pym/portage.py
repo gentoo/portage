@@ -5377,6 +5377,8 @@ class binarytree(packagetree):
 			mytbz2.decompose(mytmpdir,cleanup=1)
 			if fixdbentries(mybiglist, mytmpdir):
 				mytbz2.recompose(mytmpdir,cleanup=1)
+			else:
+				mytbz2.cleanup(mytmpdir)
 		return 1
 
 	def populate(self, getbinpkgs=0,getbinpkgsonly=0):

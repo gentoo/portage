@@ -16,7 +16,7 @@
 # (integer) == encodeint(integer)  ===> 4 characters (big-endian copy)
 # '+' means concatenate the fields ===> All chunks are strings
 
-import sys,os,string
+import sys,os,string,shutil,errno
 from stat import *
 
 def addtolist(mylist,curdir):
@@ -239,9 +239,8 @@ class tbz2:
 		Returns result of upackinfo()."""
 		if not self.scan():
 			raise IOError
-		if cleanup and os.path.exists(datadir):
-			# XXX: Potentially bad
-			os.system("rm -Rf "+datadir+"/*")
+		if cleanup:
+			self.cleanup(datadir)
 		if not os.path.exists(datadir):
 			os.makedirs(datadir)
 		return self.unpackinfo(datadir)
@@ -263,9 +262,21 @@ class tbz2:
 		myfile.flush()
 		myfile.close()
 		if cleanup:
-			# XXX: Potentially bad
-			os.system("rm -Rf "+datadir)
+			self.cleanup(datadir)
 		return 1
+
+	def cleanup(self, datadir):
+		datadir_split = os.path.split(datadir)
+		if len(datadir_split) >= 2 and len(datadir_split[1]) > 0:
+			# This is potentially dangerous,
+			# thus the above sanity check.
+			try:
+				shutil.rmtree(datadir)
+			except OSError, oe:
+				if oe.errno == errno.ENOENT:
+					pass
+				else:
+					raise oe
 
 	def scan(self):
 		"""Scans the tbz2 to locate the xpak segment and setup internal values.
