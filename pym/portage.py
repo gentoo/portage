@@ -6791,23 +6791,33 @@ def do_upgrade(mykey):
 	db["/"]["bintree"]=binarytree("/",settings["PKGDIR"],virts)
 	for myline in mylines:
 		mysplit = myline.split()
-		if not len(mysplit):
+		if len(mysplit) == 0:
 			continue
-		if mysplit[0]!="move" and mysplit[0]!="slotmove":
+		if mysplit[0] is not in ("move", "slotmove"):
 			writemsg("portage: Update type \""+mysplit[0]+"\" not recognized.\n")
 			processed=0
 			continue
-		if mysplit[0]=="move" and len(mysplit)!=3:
-			writemsg("portage: Update command \""+myline+"\" invalid; skipping.\n")
-			processed=0
-			continue
-		if mysplit[0]=="slotmove" and len(mysplit)!=4:
-			writemsg("portage: Update command \""+myline+"\" invalid; skipping.\n")
-			processed=0
-			continue
-		sys.stdout.write(".")
-		sys.stdout.flush()
-
+		if mysplit[0]=="move":
+			if len(mysplit)!=3:
+				writemsg("portage: Update command \""+myline+"\" invalid; skipping.\n")
+				processed=0
+				continue
+			orig_value, new_value = mysplit[1], mysplit[2]
+			for cp in (orig_value, new_value):
+				if not (isvalidatom(cp) and isjustname(cp)):
+					writemsg("\nERROR: Malformed update entry '%s'\n" % myline)
+					processed=0
+					continue
+		if mysplit[0]=="slotmove":
+			if len(mysplit)!=4:
+				writemsg("portage: Update command \""+myline+"\" invalid; skipping.\n")
+				processed=0
+				continue
+			pkg, origslot, newslot = mylist[1], mylist[2], mylist[3]
+			if not isvalidatom(pkg):
+				writemsg("\nERROR: Malformed update entry '%s'\n" % myline)
+				processed=0
+				continue
 		if mysplit[0]=="move":
 			try:
 				db["/"]["vartree"].dbapi.move_ent(mysplit)
@@ -6825,6 +6835,8 @@ def do_upgrade(mykey):
 		
 		# The list of valid updates is filtered by continue statements above.
 		myupd.append(mysplit)
+		sys.stdout.write(".")
+		sys.stdout.flush()
 
 	if processed:
 		#update our internal mtime since we processed all our directives.
