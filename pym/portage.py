@@ -3652,8 +3652,10 @@ def getmaskingstatus(mycpv):
 	return rValue
 
 def fixdbentries(update_iter, dbdir):
-	"""python replacement for the fixdbentries script, replaces old_value
-	with new_value for package names in files in dbdir."""
+	"""Performs update commands which result in search and replace operations
+	for each of the files in dbdir (excluding CONTENTS and environment.bz2).
+	Returns True when actual modifications are necessary and False otherwise."""
+	modified = False
 	for myfile in [f for f in os.listdir(dbdir) if f not in ("CONTENTS", "environment.bz2")]:
 		file_path = os.path.join(dbdir, myfile)
 		f = open(file_path, "r")
@@ -3672,6 +3674,8 @@ def fixdbentries(update_iter, dbdir):
 				mycontent = re.sub(old_value+"([^a-zA-Z0-9-])", new_value+"\\1", mycontent)
 		if mycontent is not orig_content:
 			write_atomic(file_path, mycontent)
+			modified = True
+	return modified
 
 class packagetree:
 	def __init__(self,virtual,clone=None):
@@ -5371,8 +5375,8 @@ class binarytree(packagetree):
 			writemsg("*")
 			mytbz2=xpak.tbz2(tbz2path)
 			mytbz2.decompose(mytmpdir,cleanup=1)
-			fixdbentries(mybiglist, mytmpdir)
-			mytbz2.recompose(mytmpdir,cleanup=1)
+			if fixdbentries(mybiglist, mytmpdir):
+				mytbz2.recompose(mytmpdir,cleanup=1)
 		return 1
 
 	def populate(self, getbinpkgs=0,getbinpkgsonly=0):
