@@ -6779,10 +6779,8 @@ for x in mtimedb.keys():
 #,"porttree":portagetree(root,virts),"bintree":binarytree(root,virts)}
 features=settings["FEATURES"].split()
 
-do_upgrade_packagesmessage=0
 def do_upgrade(mykey):
 	"""Valid updates are returned as a list of split update commands."""
-	global do_upgrade_packagesmessage
 	writemsg("\n\n")
 	writemsg(green("Performing Global Updates: ")+bold(mykey)+"\n")
 	writemsg("(Could take a couple of minutes if you have a lot of binary packages.)\n")
@@ -6919,55 +6917,54 @@ def portageexit():
 
 atexit_register(portageexit)
 
-if (secpass==2) and (not os.environ.has_key("SANDBOX_ACTIVE")):
-	if settings["PORTAGE_CALLER"] in ["emerge","fixpackages"]:
-		#only do this if we're root and not running repoman/ebuild digest
-		updpath=os.path.normpath(settings["PORTDIR"]+"///profiles/updates")
-		didupdate=0
+def global_updates():
+	updpath = os.path.join(settings["PORTDIR"], "profiles", "updates")
+	mylist = listdir(updpath, EmptyOnError=1)
+	if len(mylist) > 0:
+		# resort the list
+		mylist = [myfile[3:]+"-"+myfile[:2] for myfile in mylist]
+		mylist.sort()
+		mylist = [myfile[5:]+"-"+myfile[:4] for myfile in mylist]
+
 		if not mtimedb.has_key("updates"):
-			mtimedb["updates"]={}
-		try:
-			mylist=listdir(updpath,EmptyOnError=1)
-			# resort the list
-			mylist=[myfile[3:]+"-"+myfile[:2] for myfile in mylist]
-			mylist.sort()
-			mylist=[myfile[5:]+"-"+myfile[:4] for myfile in mylist]
-			myupd = []
-			for myfile in mylist:
-				mykey=updpath+"/"+myfile
-				if not os.path.isfile(mykey):
-					continue
-				if (not mtimedb["updates"].has_key(mykey)) or \
-					 (mtimedb["updates"][mykey] != os.stat(mykey)[stat.ST_MTIME]) or \
-					 (settings["PORTAGE_CALLER"] == "fixpackages"):
-					didupdate=1
-					myupd.extend(do_upgrade(mykey))
-			# The above global updates proceed quickly, so they
-			# are considered a single mtimedb transaction.
-			commit_mtimedb()
+			mtimedb["updates"] = {}
 
-			# We gotta do the brute force updates for these now.
-			if (settings["PORTAGE_CALLER"] in ["fixpackages"]) or \
-			("fixpackages" in features):
-				db["/"]["bintree"].update_ents(myupd,settings["PORTAGE_TMPDIR"]+"/tbz2")
-			else:
-				do_upgrade_packagesmessage = 1
+		didupdate = 0
+		do_upgrade_packagesmessage = 0
+		myupd = []
+		for myfile in mylist:
+			mykey = os.path.join(updpath, myfile)
+			if not os.path.isfile(mykey):
+				continue
+			if mykey not in mtimedb["updates"] or \
+			mtimedb["updates"][mykey] != os.stat(mykey)[stat.ST_MTIME] or \
+			settings["PORTAGE_CALLER"] == "fixpackages":
+				didupdate = 1
+				myupd.extend(do_upgrade(mykey))
+		# The above global updates proceed quickly, so they
+		# are considered a single mtimedb transaction.
+		commit_mtimedb()
 
-		except OSError:
-			#directory doesn't exist
-			pass
+		# We gotta do the brute force updates for these now.
+		if settings["PORTAGE_CALLER"] == "fixpackages" or \
+		"fixpackages" in features:
+			db["/"]["bintree"].update_ents(myupd, os.path.join(settings["PORTAGE_TMPDIR"], "tbz2"))
+		else:
+			do_upgrade_packagesmessage = 1
+
 		if didupdate:
 			#make sure our internal databases are consistent; recreate our virts and vartree
 			do_vartree(settings)
 			if do_upgrade_packagesmessage and \
-				 listdir(settings["PKGDIR"]+"/All/",EmptyOnError=1):
+				listdir(os.path.join(settings["PKGDIR"], "All"), EmptyOnError=1):
 				writemsg("\n\n\n ** Skipping packages. Run 'fixpackages' or set it in FEATURES to fix the")
 				writemsg("\n    tbz2's in the packages directory. "+bold("Note: This can take a very long time."))
 				writemsg("\n")
 
-
-
-
+if (secpass==2) and (not os.environ.has_key("SANDBOX_ACTIVE")):
+	if settings["PORTAGE_CALLER"] in ["emerge","fixpackages"]:
+		#only do this if we're root and not running repoman/ebuild digest
+		global_updates()
 
 #continue setting up other trees
 db["/"]["porttree"]=portagetree("/",virts)
