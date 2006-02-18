@@ -6786,30 +6786,6 @@ def do_upgrade(mykey):
 	writemsg("(Could take a couple of minutes if you have a lot of binary packages.)\n")
 	writemsg("  "+bold(".")+"='update pass'  "+bold("*")+"='binary update'  "+bold("@")+"='/var/db move'\n"+"  "+bold("s")+"='/var/db SLOT move' "+bold("S")+"='binary SLOT move' "+bold("p")+"='update /etc/portage/package.*'\n")
 	processed=1
-	#remove stale virtual entries (mappings for packages that no longer exist)
-
-	update_files={}
-	file_contents={}
-	myxfiles = ["package.mask","package.unmask","package.keywords","package.use"]
-	myxfiles.extend(prefix_array(myxfiles, "profile/"))
-	recursivefiles = []
-	for x in myxfiles:
-		if os.path.isdir(USER_CONFIG_PATH+os.path.sep+x):
-			recursivefiles.extend([x+os.path.sep+y for y in listdir(USER_CONFIG_PATH+os.path.sep+x, filesonly=1, recursive=1)])
-		else:
-			recursivefiles.append(x)
-	myxfiles = recursivefiles
-	for x in myxfiles:
-		try:
-			myfile = open(USER_CONFIG_PATH+os.path.sep+x,"r")
-			file_contents[x] = myfile.readlines()
-			myfile.close()
-		except IOError:
-			if file_contents.has_key(x):
-				del file_contents[x]
-			continue
-
-	worldlist=grabfile("/"+WORLD_FILE)
 	myupd = []
 	mylines = grabfile(mykey)
 	db["/"]["bintree"]=binarytree("/",settings["PKGDIR"],virts)
@@ -6839,23 +6815,6 @@ def do_upgrade(mykey):
 			except portage_exception.InvalidPackageName, e:
 				writemsg("\nERROR: Malformed update entry '%s'\n" % myline)
 				continue
-			#update world entries:
-			for x in range(0,len(worldlist)):
-				#update world entries, if any.
-				worldlist[x]=dep_transform(worldlist[x],mysplit[1],mysplit[2])
-
-			#update /etc/portage/packages.*
-			for x in file_contents:
-				for mypos in range(0,len(file_contents[x])):
-					line=file_contents[x][mypos]
-					if line[0]=="#" or string.strip(line)=="":
-						continue
-					key=dep_getkey(line.split()[0])
-					if key==mysplit[1]:
-						file_contents[x][mypos]=string.replace(line,mysplit[1],mysplit[2])
-						update_files[x]=1
-						sys.stdout.write("p")
-						sys.stdout.flush()
 
 		elif mysplit[0]=="slotmove":
 			try:
@@ -6867,22 +6826,9 @@ def do_upgrade(mykey):
 		# The list of valid updates is filtered by continue statements above.
 		myupd.append(mysplit)
 
-	for x in update_files:
-		mydblink = dblink('','','/',settings)
-		if mydblink.isprotected(USER_CONFIG_PATH+os.path.sep+x):
-			updating_file=new_protect_filename(USER_CONFIG_PATH+os.path.sep+x)[0]
-		else:
-			updating_file=USER_CONFIG_PATH+os.path.sep+x
-		try:
-			write_atomic(updating_file, "".join(file_contents[x]))
-		except IOError:
-			continue
-
 	if processed:
 		#update our internal mtime since we processed all our directives.
 		mtimedb["updates"][mykey]=os.stat(mykey)[stat.ST_MTIME]
-	write_atomic(WORLD_FILE,"\n".join(worldlist))
-	print ""
 	return myupd
 
 def commit_mtimedb():
@@ -6917,6 +6863,63 @@ def portageexit():
 
 atexit_register(portageexit)
 
+def update_config_files(update_iter):
+	"""Perform global updates on /etc/portage/package.* and the world file."""
+	update_files={}
+	file_contents={}
+	myxfiles = ["package.mask","package.unmask","package.keywords","package.use"]
+	myxfiles.extend(prefix_array(myxfiles, "profile/"))
+	recursivefiles = []
+	for x in myxfiles:
+		if os.path.isdir(USER_CONFIG_PATH+os.path.sep+x):
+			recursivefiles.extend([x+os.path.sep+y for y in listdir(USER_CONFIG_PATH+os.path.sep+x, filesonly=1, recursive=1)])
+		else:
+			recursivefiles.append(x)
+	myxfiles = recursivefiles
+	for x in myxfiles:
+		try:
+			myfile = open(USER_CONFIG_PATH+os.path.sep+x,"r")
+			file_contents[x] = myfile.readlines()
+			myfile.close()
+		except IOError:
+			if file_contents.has_key(x):
+				del file_contents[x]
+			continue
+	worldlist = grabfile(WORLD_FILE)
+
+	for update_cmd in update_iter:
+		if update_cmd[0] == "move":
+			old_value, new_value = update_cmd[1], update_cmd[2]
+			#update world entries:
+			for x in range(0,len(worldlist)):
+				#update world entries, if any.
+				worldlist[x] = dep_transform(worldlist[x], old_value, new_value)
+
+			#update /etc/portage/packages.*
+			for x in file_contents:
+				for mypos in range(0,len(file_contents[x])):
+					line = file_contents[x][mypos]
+					if line[0] == "#" or string.strip(line) == "":
+						continue
+					key = dep_getkey(line.split()[0])
+					if key == old_value:
+						file_contents[x][mypos] = string.replace(line, old_value, new_value)
+						update_files[x] = 1
+						sys.stdout.write("p")
+						sys.stdout.flush()
+
+	write_atomic(WORLD_FILE,"\n".join(worldlist))
+
+	for x in update_files:
+		mydblink = dblink('','','/',settings)
+		updating_file = os.path.join(USER_CONFIG_PATH, x)
+		if mydblink.isprotected(updating_file):
+			updating_file = new_protect_filename(updating_file)[0]
+		try:
+			write_atomic(updating_file, "".join(file_contents[x]))
+		except IOError:
+			continue
+
 def global_updates():
 	updpath = os.path.join(settings["PORTDIR"], "profiles", "updates")
 	mylist = listdir(updpath, EmptyOnError=1)
@@ -6941,6 +6944,10 @@ def global_updates():
 			settings["PORTAGE_CALLER"] == "fixpackages":
 				didupdate = 1
 				myupd.extend(do_upgrade(mykey))
+
+		update_config_files(myupd)
+		print
+
 		# The above global updates proceed quickly, so they
 		# are considered a single mtimedb transaction.
 		commit_mtimedb()
