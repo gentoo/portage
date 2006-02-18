@@ -6942,7 +6942,9 @@ if (secpass==2) and (not os.environ.has_key("SANDBOX_ACTIVE")):
 					 (settings["PORTAGE_CALLER"] == "fixpackages"):
 					didupdate=1
 					myupd.extend(do_upgrade(mykey))
-					commit_mtimedb() # This lets us save state for C-c.
+			# The above global updates proceed quickly, so they
+			# are considered a single mtimedb transaction.
+			commit_mtimedb()
 
 			# We gotta do the brute force updates for these now.
 			if (settings["PORTAGE_CALLER"] in ["fixpackages"]) or \
