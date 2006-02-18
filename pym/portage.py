@@ -4362,15 +4362,20 @@ class vardbapi(dbapi):
 				os.rename(old_eb_path+".ebuild", new_eb_path+".ebuild")
 
 			write_atomic(os.path.join(newpath, "CATEGORY"), mynewcat+"\n")
+			fixdbentries([mylist], newpath)
 
-		dbdir = self.root+VDB_PATH
+	def update_ents(self, update_iter):
+		"""Run fixdbentries on all installed packages (time consuming).  Like
+		fixpackages, this should be run from a helper script and display
+		a progress indicator."""
+		dbdir = os.path.join(self.root, VDB_PATH)
 		for catdir in listdir(dbdir):
 			catdir = dbdir+"/"+catdir
 			if os.path.isdir(catdir):
 				for pkgdir in listdir(catdir):
 					pkgdir = catdir+"/"+pkgdir
 					if os.path.isdir(pkgdir):
-						fixdbentries([mylist], pkgdir)
+						fixdbentries(update_iter, pkgdir)
 
 	def move_slot_ent(self,mylist):
 		pkg=mylist[1]
