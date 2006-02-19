@@ -389,6 +389,24 @@ class tbz2:
 		os.chdir(origdir)
 		return 1
 
+	def get_data(self):
+		"""Returns all the files from the dataSegment as a map object."""
+		if not self.scan():
+			return 0
+		a = open(self.file, "r")
+		mydata = {}
+		startpos=0
+		while ((startpos+8)<self.indexsize):
+			namelen=decodeint(self.index[startpos:startpos+4])
+			datapos=decodeint(self.index[startpos+4+namelen:startpos+8+namelen]);
+			datalen=decodeint(self.index[startpos+8+namelen:startpos+12+namelen]);
+			myname=self.index[startpos+4:startpos+4+namelen]
+			a.seek(self.datapos+datapos)
+			mydata[myname] = a.read(datalen)
+			startpos=startpos+namelen+12
+		a.close()
+		return mydata
+
 	def getboth(self):
 		"""Returns an array [indexSegment,dataSegment]"""
 		if not self.scan():
