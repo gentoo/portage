@@ -66,34 +66,39 @@ def xpak(rootdir,outfile=None):
 
 	addtolist(mylist,"")
 	mylist.sort()
+	mydata = {}
+	for x in mylist:
+		a = open(x, "r")
+		mydata[x] = a.read()
+		a.close()
+	os.chdir(origdir)
 
-	#Our list index has been created
-	
+	xpak_segment = xpak_mem(mydata)
+	if outfile:
+		outf = open(outfile, "w")
+		outf.write(xpak_segment)
+		outf.close()
+	else:
+		return xpak_segment
+
+def xpak_mem(mydata):
+	"""Create an xpack segement from a map object."""
 	indexglob=""
 	indexpos=0
 	dataglob=""
 	datapos=0
-	for x in mylist:
-		a=open(x,"r")
-		newglob=a.read()
-		a.close()
+	for x, newglob in mydata.iteritems():
 		mydatasize=len(newglob)
 		indexglob=indexglob+encodeint(len(x))+x+encodeint(datapos)+encodeint(mydatasize)
 		indexpos=indexpos+4+len(x)+4+4
 		dataglob=dataglob+newglob
 		datapos=datapos+mydatasize
-	os.chdir(origdir)
-	if outfile:
-		outf=open(outfile,"w")
-		outf.write("XPAKPACK"+encodeint(len(indexglob))+encodeint(len(dataglob)))
-		outf.write(indexglob)
-		outf.write(dataglob)
-		outf.write("XPAKSTOP")
-		outf.close()
-	else:
-		myret="XPAKPACK"+encodeint(len(indexglob))+encodeint(len(dataglob))
-		myret=myret+indexglob+dataglob+"XPAKSTOP"
-		return myret
+	return "XPAKPACK" \
+	+ encodeint(len(indexglob)) \
+	+ encodeint(len(dataglob)) \
+	+ indexglob \
+	+ dataglob \
+	+ "XPAKSTOP"
 
 def xsplit(infile):
 	"""(infile) -- Splits the infile into two files.
