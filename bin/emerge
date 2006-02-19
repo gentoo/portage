@@ -170,7 +170,7 @@ params=["selective", "deep", "self", "recurse", "empty"]
 actions=[
 "clean", "config", "depclean",
 "info",  "inject", "metadata",
-"prune", "regen",  "rsync", "search",
+"prune", "regen",  "search",
 "sync",  "system", "unmerge",  "world",
 ]
 options=[
@@ -257,13 +257,6 @@ for x in cmdline:
 		if x in options:
 			myopts.append(x)
 		elif x[2:] in actions:
-			if x[2:]=="rsync" or x=="rsync":
-				# "emerge --rsync"
-				print
-				print red("*** '--rsync' has been deprecated.")
-				print red("*** Please use '--sync' instead.")
-				print
-				x="--sync"
 			if myaction:
 				if myaction not in ["system", "world"]:
 					myaction="--"+myaction
@@ -279,14 +272,7 @@ for x in cmdline:
 	elif (not myaction) and (x in actions):
 		if x not in ["system", "world"]:
 			#print red("*** Deprecated use of action '"+x+"'")
-			if x=="rsync":
-				# "emerge rsync"
-				print
-				print red("*** 'rsync' will now install the package rsync.")
-				print red("*** To sync the tree, please use '--sync' instead.")
-				print
-				myfiles.append(x)
-				continue
+			pass
 		if myaction:
 			print
 			print red("!!!")+green(" Multiple actions requested... Please choose one only.")
@@ -2481,7 +2467,7 @@ def chk_updated_cfg_files():
 if "--debug" in myopts:
 	edebug=1
 
-if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
+if myaction in ["sync","metadata"] and (not "--help" in myopts):
 	if "--pretend" in myopts:
 		print "emerge: \"sync\" actions do not support \"--pretend.\""
 		sys.exit(1)

@@ -302,7 +302,7 @@ def help(myaction,myopts,havecolor=1):
 		print "              other information useful for quick reference on a system. See"
 		print "              "+bold("emerge info")+" for more advanced information."
 		print
-	elif myaction in ["rsync","sync"]:
+	elif myaction == "sync":
 		print
 		print bold("Usage: ")+turquoise("emerge")+" "+turquoise("--sync")
 		print
