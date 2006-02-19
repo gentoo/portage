@@ -106,7 +106,7 @@ try:
 	from portage_checksum import perform_md5,perform_checksum,prelink_capable
 	import eclass_cache
 	from portage_localization import _
-	from portage_update import fixdbentries
+	from portage_update import fixdbentries, update_dbentries
 
 	# Need these functions directly in portage namespace to not break every external tool in existence
 	from portage_versions import ververify,vercmp,catsplit,catpkgsplit,pkgsplit,pkgcmp
@@ -5339,8 +5339,7 @@ class binarytree(packagetree):
 			mytbz2.recompose(mytmpdir, cleanup=1)
 		return 1
 
-	def update_ents(self,mybiglist,mytmpdir):
-		#XXX mytmpdir=settings["PORTAGE_TMPDIR"]+"/tbz2"
+	def update_ents(self, update_iter):
 		if not self.populated:
 			self.populate()
 
@@ -5351,12 +5350,12 @@ class binarytree(packagetree):
 				continue
 			#print ">>> Updating binary data:",mycpv
 			writemsg("*")
-			mytbz2=xpak.tbz2(tbz2path)
-			mytbz2.decompose(mytmpdir,cleanup=1)
-			if fixdbentries(mybiglist, mytmpdir):
-				mytbz2.recompose(mytmpdir,cleanup=1)
-			else:
-				mytbz2.cleanup(mytmpdir)
+			mytbz2 = xpak.tbz2(tbz2path)
+			mydata = mytbz2.get_data()
+			updated_items = update_dbentries(update_iter, mydata)
+			if len(updated_items) > 0:
+				mydata.update(updated_items)
+				mytbz2.recompose_mem(xpak.xpak_mem(mydata))
 		return 1
 
 	def populate(self, getbinpkgs=0,getbinpkgsonly=0):
@@ -6944,7 +6943,7 @@ def global_updates():
 		# We gotta do the brute force updates for these now.
 		if settings["PORTAGE_CALLER"] == "fixpackages" or \
 		"fixpackages" in features:
-			db["/"]["bintree"].update_ents(myupd, os.path.join(settings["PORTAGE_TMPDIR"], "tbz2"))
+			db["/"]["bintree"].update_ents(myupd)
 		else:
 			do_upgrade_packagesmessage = 1
 
