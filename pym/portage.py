@@ -6822,11 +6822,7 @@ def do_upgrade(mykey):
 		myupd.append(mysplit)
 		sys.stdout.write(".")
 		sys.stdout.flush()
-
-	if processed:
-		#update our internal mtime since we processed all our directives.
-		mtimedb["updates"][mykey]=os.stat(mykey)[stat.ST_MTIME]
-	return myupd
+	return myupd, processed == 1
 
 def commit_mtimedb():
 	if mtimedb:
@@ -6932,16 +6928,22 @@ def global_updates():
 		didupdate = 0
 		do_upgrade_packagesmessage = 0
 		myupd = []
+		timestamps = {}
 		for myfile in mylist:
 			mykey = os.path.join(updpath, myfile)
-			if not os.path.isfile(mykey):
+			mystat = os.stat(mykey)
+			if not stat.S_ISREG(mystat.st_mode):
 				continue
 			if mykey not in mtimedb["updates"] or \
-			mtimedb["updates"][mykey] != os.stat(mykey)[stat.ST_MTIME] or \
+			mtimedb["updates"][mykey] != mystat.st_mtime or \
 			settings["PORTAGE_CALLER"] == "fixpackages":
 				didupdate = 1
-				myupd.extend(do_upgrade(mykey))
-
+				valid_updates, no_errors = do_upgrade(mykey)
+				myupd.extend(valid_updates)
+				if no_errors:
+					# Update our internal mtime since we
+					# processed all of our directives.
+					timestamps[mykey] = mystat.st_mtime
 		update_config_files(myupd)
 
 		db["/"]["bintree"] = binarytree("/", settings["PKGDIR"], virts)
@@ -6957,7 +6959,14 @@ def global_updates():
 
 		# The above global updates proceed quickly, so they
 		# are considered a single mtimedb transaction.
-		commit_mtimedb()
+		if len(timestamps) > 0:
+			# We do not update the mtime in the mtimedb
+			# until after _all_ of the above updates have
+			# been processed because the mtimedb will
+			# automatically commit when killed by ctrl C.
+			for mykey, mtime in timestamps.iteritems():
+				mtimedb["updates"][mykey] = mtime
+			commit_mtimedb()
 
 		# We gotta do the brute force updates for these now.
 		if settings["PORTAGE_CALLER"] == "fixpackages" or \
