@@ -192,7 +192,7 @@ options=[
 "--searchdesc",   "--selective",
 "--skipfirst",    "--skip-first",
 "--tree",
-"--update",       "--upgradeonly",
+"--update",       
 "--usepkg",       "--usepkgonly",
 "--verbose",      "--version"
 ]
@@ -216,7 +216,7 @@ shortmapping={
 "q":"--quiet",
 "s":"--search",    "S":"--searchdesc",
 't':"--tree",
-"u":"--update",    "U":"--upgradeonly",
+"u":"--update",
 "v":"--verbose",   "V":"--version"
 }
 
@@ -382,17 +382,6 @@ if ("--usepkgonly" in myopts) and not ("--usepkg" in myopts):
 if ("--newuse" in myopts) and not ("--update" in myopts):
 	print ">>> --newuse implies --update... adding --update to options."
 	myopts.append("--update")
-
-# Print deprecation warning for -U
-if ("--upgradeonly" in myopts):
-	print
-	print red("*** Warning: --upgradeonly is a deprecated option in portage-"+portage.VERSION)
-	print red("***          and will likely be removed in a future version.")
-	print
-	# Also allow -U to apply --update/-u
-	if not ("--update" in myopts):
-		print ">>> --upgradeonly implies --update... adding --update to options."
-		myopts.append("--update")
 
 # Also allow -l to apply --pretend/-p, but if already in --ask mode
 if ("--changelog" in myopts) and not (("--pretend" in myopts) or ("--ask" in myopts)):
@@ -1328,26 +1317,6 @@ class depgraph:
 						myeb = None
 					else:
 						myeb_pkg = None
-
-				if "--upgradeonly" in myopts:
-					# Check that there isn't a newer version of this package already installed
-					cand = None
-					try:
-						# XXX: This can throw an exception if the ebuild doesn't exist
-						if myeb:
-							cand=self.is_newer_ver_installed(myroot,x,myeb)
-						elif myeb_pkg:
-							cand=self.is_newer_ver_installed(myroot,x,myeb_pkg)
-					except SystemExit, e:
-						raise # Needed else can't exit
-					except Exception, e:
-						print "Warning: "+str(e)
-					if cand:
-						# --newuse can't work because the installed version isn't available
-						# just pretend like the package doesn't matter
-						# XXX: hidden assumption here that the higher versioned package
-						# satisfies the atom that was given
-						continue
 
 				if myeb:
 					myk=["ebuild",myroot,myeb]
