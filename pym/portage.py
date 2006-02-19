@@ -106,6 +106,7 @@ try:
 	from portage_checksum import perform_md5,perform_checksum,prelink_capable
 	import eclass_cache
 	from portage_localization import _
+	from portage_update import fixdbentries
 
 	# Need these functions directly in portage namespace to not break every external tool in existence
 	from portage_versions import ververify,vercmp,catsplit,catpkgsplit,pkgsplit,pkgcmp
@@ -3650,32 +3651,6 @@ def getmaskingstatus(mycpv):
 	if kmask:
 		rValue.append(kmask+" keyword")
 	return rValue
-
-def fixdbentries(update_iter, dbdir):
-	"""Performs update commands which result in search and replace operations
-	for each of the files in dbdir (excluding CONTENTS and environment.bz2).
-	Returns True when actual modifications are necessary and False otherwise."""
-	modified = False
-	for myfile in [f for f in os.listdir(dbdir) if f not in ("CONTENTS", "environment.bz2")]:
-		file_path = os.path.join(dbdir, myfile)
-		f = open(file_path, "r")
-		mycontent = f.read()
-		f.close()
-		orig_content = mycontent
-		for update_cmd in update_iter:
-			if update_cmd[0] == "move":
-				old_value, new_value = update_cmd[1], update_cmd[2]
-				if not mycontent.count(old_value):
-					continue
-				old_value = re.escape(old_value);
-				mycontent = re.sub(old_value+"$", new_value, mycontent)
-				mycontent = re.sub(old_value+"(\\s)", new_value+"\\1", mycontent)
-				mycontent = re.sub(old_value+"(-[^a-zA-Z])", new_value+"\\1", mycontent)
-				mycontent = re.sub(old_value+"([^a-zA-Z0-9-])", new_value+"\\1", mycontent)
-		if mycontent is not orig_content:
-			write_atomic(file_path, mycontent)
-			modified = True
-	return modified
 
 class packagetree:
 	def __init__(self,virtual,clone=None):
