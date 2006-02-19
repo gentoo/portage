@@ -271,8 +271,7 @@ for x in cmdline:
 			sys.exit(1)
 	elif (not myaction) and (x in actions):
 		if x not in ["system", "world"]:
-			#print red("*** Deprecated use of action '"+x+"'")
-			pass
+			print red("*** Deprecated use of action '%s', use '--%s' instead" % (x,x))
 		if myaction:
 			print
 			print red("!!!")+green(" Multiple actions requested... Please choose one only.")
