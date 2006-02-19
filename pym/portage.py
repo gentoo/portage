@@ -6788,7 +6788,6 @@ def do_upgrade(mykey):
 	processed=1
 	myupd = []
 	mylines = grabfile(mykey)
-	db["/"]["bintree"]=binarytree("/",settings["PKGDIR"],virts)
 	for myline in mylines:
 		mysplit = myline.split()
 		if len(mysplit) == 0:
@@ -6818,20 +6817,6 @@ def do_upgrade(mykey):
 				writemsg("\nERROR: Malformed update entry '%s'\n" % myline)
 				processed=0
 				continue
-		if mysplit[0]=="move":
-			try:
-				db["/"]["vartree"].dbapi.move_ent(mysplit)
-				db["/"]["bintree"].move_ent(mysplit)
-			except portage_exception.InvalidPackageName, e:
-				writemsg("\nERROR: Malformed update entry '%s'\n" % myline)
-				continue
-
-		elif mysplit[0]=="slotmove":
-			try:
-				db["/"]["vartree"].dbapi.move_slot_ent(mysplit)
-				db["/"]["bintree"].move_slot_ent(mysplit,settings["PORTAGE_TMPDIR"]+"/tbz2")
-			except portage_exception.InvalidAtom, e:
-				writemsg("\nERROR: Malformed update entry '%s'\n" % myline)
 		
 		# The list of valid updates is filtered by continue statements above.
 		myupd.append(mysplit)
@@ -6958,6 +6943,16 @@ def global_updates():
 				myupd.extend(do_upgrade(mykey))
 
 		update_config_files(myupd)
+
+		db["/"]["bintree"] = binarytree("/", settings["PKGDIR"], virts)
+		for update_cmd in myupd:
+			if update_cmd[0] == "move":
+				db["/"]["vartree"].dbapi.move_ent(update_cmd)
+				db["/"]["bintree"].move_ent(update_cmd)
+			elif update_cmd[0] == "slotmove":
+				db["/"]["vartree"].dbapi.move_slot_ent(update_cmd)
+				db["/"]["bintree"].move_slot_ent(update_cmd, os.path.join(settings["PORTAGE_TMPDIR"], "tbz2"))
+
 		print
 
 		# The above global updates proceed quickly, so they
