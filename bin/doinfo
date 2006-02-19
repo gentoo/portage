@@ -7,14 +7,14 @@ if [ ${#} -lt 1 ] ; then
 	echo "doinfo: at least one argument needed"
 	exit 1 	
 fi
-if [ ! -d "${D}usr/share/info" ] ; then
-	install -d "${D}usr/share/info"
+if [ ! -d "${D}/usr/share/info" ] ; then
+	install -d "${D}/usr/share/info"
 fi
 
 for x in "$@" ; do
 	if [ -e "${x}" ] ; then
-		install -m0644 "${x}" "${D}usr/share/info"
-		gzip -f -9 "${D}usr/share/info/${x##*/}"
+		install -m0644 "${x}" "${D}/usr/share/info"
+		gzip -f -9 "${D}/usr/share/info/${x##*/}"
 	else
 		echo "doinfo: ${x} does not exist"
 	fi
