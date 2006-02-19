@@ -6793,7 +6793,7 @@ def do_upgrade(mykey):
 		mysplit = myline.split()
 		if len(mysplit) == 0:
 			continue
-		if mysplit[0] is not in ("move", "slotmove"):
+		if mysplit[0] not in ("move", "slotmove"):
 			writemsg("portage: Update type \""+mysplit[0]+"\" not recognized.\n")
 			processed=0
 			continue
@@ -6813,7 +6813,7 @@ def do_upgrade(mykey):
 				writemsg("portage: Update command \""+myline+"\" invalid; skipping.\n")
 				processed=0
 				continue
-			pkg, origslot, newslot = mylist[1], mylist[2], mylist[3]
+			pkg, origslot, newslot = mysplit[1], mysplit[2], mysplit[3]
 			if not isvalidatom(pkg):
 				writemsg("\nERROR: Malformed update entry '%s'\n" % myline)
 				processed=0
