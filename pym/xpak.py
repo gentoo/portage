@@ -256,18 +256,21 @@ class tbz2:
 		"""Creates an xpak segment from the datadir provided, truncates the tbz2
 		to the end of regular data if an xpak segment already exists, and adds
 		the new segment to the file with terminating info."""
+		xpdata = xpak(datadir)
+		self.recompose_mem(xpdata)
+		if cleanup:
+			self.cleanup(datadir)
+
+	def recompose_mem(self, xpdata):
 		self.scan() # Don't care about condition... We'll rewrite the data anyway.
 		myfile=open(self.file,"a+")
 		if not myfile:
 			raise IOError
 		myfile.seek(-self.xpaksize,2) # 0,2 or -0,2 just mean EOF.
 		myfile.truncate()
-		xpdata=xpak(datadir)
 		myfile.write(xpdata+encodeint(len(xpdata))+"STOP")
 		myfile.flush()
 		myfile.close()
-		if cleanup:
-			self.cleanup(datadir)
 		return 1
 
 	def cleanup(self, datadir):
