@@ -5326,8 +5326,6 @@ class binarytree(packagetree):
 		return 1
 
 	def move_slot_ent(self,mylist,mytmpdir):
-		#mytmpdir=settings["PORTAGE_TMPDIR"]+"/tbz2"
-		mytmpdir=mytmpdir+"/tbz2"
 		if not self.populated:
 			self.populate()
 		pkg=mylist[1]
