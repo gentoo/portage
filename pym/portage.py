@@ -5278,21 +5278,16 @@ class binarytree(packagetree):
 			#print ">>> Updating data in:",mycpv
 			sys.stdout.write("%")
 			sys.stdout.flush()
-			mytmpdir=settings["PORTAGE_TMPDIR"]+"/tbz2"
-			mytbz2=xpak.tbz2(tbz2path)
-			mytbz2.decompose(mytmpdir, cleanup=1)
 
-			fixdbentries([mylist], mytmpdir)
-
-			write_atomic(os.path.join(mytmpdir, "CATEGORY"), mynewcat+"\n")
-			try:
-				os.rename(mytmpdir+"/"+string.split(mycpv,"/")[1]+".ebuild", mytmpdir+"/"+string.split(mynewcpv, "/")[1]+".ebuild")
-			except SystemExit, e:
-				raise
-			except Exception, e:
-				pass
-
-			mytbz2.recompose(mytmpdir, cleanup=1)
+			mytbz2 = xpak.tbz2(tbz2path)
+			mydata = mytbz2.get_data()
+			updated_items = update_dbentries([mylist], mydata)
+			mydata.update(updated_items)
+			mydata["CATEGORY"] = mynewcat+"\n"
+			if mynewpkg != myoldpkg:
+				mydata[mynewpkg+".ebuild"] = mydata[myoldpkg+".ebuild"]
+				del mydata[myoldpkg+".ebuild"]
+			mytbz2.recompose_mem(xpak.xpak_mem(mydata))
 
 			self.dbapi.cpv_remove(mycpv)
 			if (mynewpkg != myoldpkg):
@@ -5300,7 +5295,7 @@ class binarytree(packagetree):
 			self.dbapi.cpv_inject(mynewcpv)
 		return 1
 
-	def move_slot_ent(self,mylist,mytmpdir):
+	def move_slot_ent(self, mylist):
 		if not self.populated:
 			self.populate()
 		pkg=mylist[1]
@@ -5322,10 +5317,10 @@ class binarytree(packagetree):
 				continue
 
 			#print ">>> Updating data in:",mycpv
-			mytbz2=xpak.tbz2(tbz2path)
-			mytbz2.decompose(mytmpdir, cleanup=1)
+			mytbz2 = xpak.tbz2(tbz2path)
+			mydata = mytbz2.get_data()
 
-			slot=grabfile(mytmpdir+"/SLOT");
+			slot = mydata["SLOT"]
 			if (not slot):
 				continue
 
@@ -5334,9 +5329,8 @@ class binarytree(packagetree):
 
 			sys.stdout.write("S")
 			sys.stdout.flush()
-
-			write_atomic(os.path.join(mytmpdir, "SLOT"), newslot+"\n")
-			mytbz2.recompose(mytmpdir, cleanup=1)
+			mydata["SLOT"] = newslot+"\n"
+			mytbz2.recompose_mem(xpak.xpak_mem(mydata))
 		return 1
 
 	def update_ents(self, update_iter):
@@ -6925,7 +6919,7 @@ def global_updates():
 				db["/"]["bintree"].move_ent(update_cmd)
 			elif update_cmd[0] == "slotmove":
 				db["/"]["vartree"].dbapi.move_slot_ent(update_cmd)
-				db["/"]["bintree"].move_slot_ent(update_cmd, os.path.join(settings["PORTAGE_TMPDIR"], "tbz2"))
+				db["/"]["bintree"].move_slot_ent(update_cmd)
 
 		print
 
