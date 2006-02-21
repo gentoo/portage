@@ -13,3 +13,5 @@ portage-2.1
   instead.
 * 'emerge sync' has been deprecated, use 'emerge --sync' instead (same 
   for other actions)
+* Tools that call emerge should override the EMERGE_DEFAULT_OPTS environment
+  variable or use the emerge --ignore-default-opts option.

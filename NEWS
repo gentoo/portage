@@ -29,3 +29,8 @@ portage-2.1 (ongoing via pre releases)
 * Ebuild output is no longer cut off early when using PORT_LOGDIR.
 * Distfiles indirection- $DISTFILES access goes through a tmp dir to fail
   access to files not listed in SRC_URI.
+* Emerge now uses --resume to restart itself after portage upgrade.
+* Atomic file updates via the new atomic_ofstream class.
+* Global updates and fixpackages performance optimizations.
+* Tests show that file locking is now more reliable.
+* A bash call stack is printed when an ebuild dies in ebuild.sh.
