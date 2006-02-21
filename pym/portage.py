@@ -6883,7 +6883,7 @@ def global_updates():
 	updpath = os.path.join(settings["PORTDIR"], "profiles", "updates")
 	mylist = listdir(updpath, EmptyOnError=1)
 	# validate the file name (filter out CVS directory, etc...)
-	mylist = [myfile for myfile in mylist if len(myfile) == 7 and myfile[1:2] == "Q-"]
+	mylist = [myfile for myfile in mylist if len(myfile) == 7 and myfile[1:3] == "Q-"]
 	if len(mylist) > 0:
 		# resort the list
 		mylist = [myfile[3:]+"-"+myfile[:2] for myfile in mylist]
