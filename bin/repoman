@@ -972,7 +972,7 @@ for x in scanlist:
 			fails["ebuild.namenomatch"].append(x+"/"+y+".ebuild")
 			continue
 		try:
-			myaux=portage.db["/"]["porttree"].dbapi.aux_get(catdir+"/"+y,allvars)
+			myaux = dict( zip(allvars, portage.db["/"]["porttree"].dbapi.aux_get(catdir+"/"+y, allvars ) )
 		except KeyError:
 			stats["ebuild.syntax"]=stats["ebuild.syntax"]+1
 			fails["ebuild.syntax"].append(x+"/"+y+".ebuild")
@@ -981,14 +981,6 @@ for x in scanlist:
 			stats["ebuild.output"]=stats["ebuild.output"]+1
 			fails["ebuild.output"].append(x+"/"+y+".ebuild")
 			continue
-
-		mynewaux = {}
-		for idx in range(len(allvars)):
-			if idx < len(myaux):
-				mynewaux[allvars[idx]] = myaux[idx]
-			else:
-				mynewaux[allvars[idx]] = ""
-		myaux = mynewaux
 
 		# Test for negative logic and bad words in the RESTRICT var.
 		#for x in myaux[allvars.index("RESTRICT")].split():
