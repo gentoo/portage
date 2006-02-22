@@ -5334,6 +5334,8 @@ class binarytree(packagetree):
 		return 1
 
 	def update_ents(self, update_iter):
+		if len(update_iter) == 0:
+			return
 		if not self.populated:
 			self.populate()
 
