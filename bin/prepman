@@ -3,13 +3,16 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/bin/prepman,v 1.10.2.3 2005/05/29 12:40:08 jstubbs Exp $
 
-if [ -z "$1" ] ; then 
+if [[ -z $1 ]] ; then 
 	z="${D}usr/share/man"
 else
 	z="${D}$1/man"
 fi
 
-[ ! -d "${z}" ] && exit 0
+if [[ ! -d ${z} ]] ; then
+	echo "QA Notice: prepman called with non-existent dir '${z#${D}}'" 2>&1
+	exit 0
+fi
 
 for x in `find "${z}"/ -type d 2>/dev/null` ; do
 	for y in `find "${x}"/ -mindepth 1 -maxdepth 1 \( -type f -or -type l \) ! -name '.keep' 2>/dev/null` ; do
