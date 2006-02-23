@@ -169,7 +169,7 @@ merged=0
 params=["selective", "deep", "self", "recurse", "empty"]
 actions=[
 "clean", "config", "depclean",
-"info",  "inject", "metadata",
+"info", "metadata",
 "prune", "regen",  "search",
 "sync",  "system", "unmerge",  "world",
 ]
@@ -207,7 +207,6 @@ shortmapping={
 "f":"--fetchonly", "F":"--fetch-all-uri",
 "g":"--getbinpkg", "G":"--getbinpkgonly",
 "h":"--help",
-"i":"--inject",
 "k":"--usepkg",    "K":"--usepkgonly",
 "l":"--changelog",
 "n":"--noreplace", "N":"--newuse",
@@ -420,17 +419,6 @@ if portage.settings["CLEAN_DELAY"]:
 	CLEAN_DELAY = string.atoi("0"+portage.settings["CLEAN_DELAY"])
 if portage.settings["EMERGE_WARNING_DELAY"]:
 	EMERGE_WARNING_DELAY = string.atoi("0"+portage.settings["EMERGE_WARNING_DELAY"])
-
-if "inject" == myaction:
-	print
-	print red("*** --inject has been deprecated.")
-	print red("*** If you manage a piece of software yourself, add it's name and")
-	print red("*** version (eg foo/bar-1.0) to /etc/portage/profile/package.provided.")
-	print red("*** If you want to prevent portage from upgrading a package, add it to")
-	print red("*** /etc/portage/package.mask prepending it with '>' (eg >foo/bar-1.0)")
-	print red("*** For more information on fine-grained portage control, please see")
-	print red("*** the portage man page.")
-	print
 
 def emergelog(mystr,short_msg=None):
 	if "notitles" not in portage.features:
@@ -3012,35 +3000,6 @@ elif "search"==myaction:
 				print "\n!!! Regular expression error in \"%s\": %s" % ( mysearch, comment )
 				sys.exit(1)
 			searchinstance.output()
-elif "inject"==myaction:
-	if not myfiles:
-		print "emerge: please specify at least one cat/pkg-ver to inject."
-		sys.exit(1)
-	if "--pretend" in myopts:
-		print "emerge: the \"inject\" action does not support \"--pretend.\""
-		sys.exit(1)
-	for x in myfiles:
-		if x[0] in [">","<","=","!"]:
-			print "!!! '"+x+"' is an invalid specification."
-			print "!!! Must be 'category/package-version' with no other symbols."
-			print
-			continue
-		mycps=portage.catpkgsplit(x)
-		if (not mycps) or (mycps[0]=="null"):
-			print "!!!",x,"is not a specific cat/pkg-version, skipping..."
-			continue
-		if portage.db["/"]["vartree"].exists_specific(x):
-			print "!!! Not injecting",x+"; Package already exists."
-		else:
-			if "--ask" in myopts:
-				if userquery("Do you want to inject the package %s?" % x)=="No":
-					print
-					print "Quitting."
-					print
-					sys.exit(0)
-			portage.db["/"]["vartree"].dbapi.cpv_inject(x)
-			print ">>> Injected",x+"."
-			emergelog(" === inject: "+x)
 elif "unmerge"==myaction or "prune"==myaction or "clean"==myaction:
 	if 1==unmerge(myaction, myfiles):
 		post_emerge()

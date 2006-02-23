@@ -44,9 +44,7 @@ if portage.settings["NOCOLOR"] in ("yes","true") or not sys.stdout.isatty():
 
 def warn(txt):
 	print exename+": "+txt
-def err(txt):
-	warn(txt)
-	sys.exit(1)
+	
 def err_help(txt):
 	help(exitstatus=-1,helpfulness=0)
 	warn(txt)
@@ -238,6 +236,7 @@ def valid_ebuild_name(name):
 def show_version():
 	print exename+" "+version
 	sys.exit(0)
+	
 def help(exitstatus=1,helpfulness=1):
 	if quiet:
 		helpfulness=0
