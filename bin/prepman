@@ -14,33 +14,33 @@ if [[ ! -d ${z} ]] ; then
 	exit 0
 fi
 
-for x in `find "${z}"/ -type d 2>/dev/null` ; do
-	for y in `find "${x}"/ -mindepth 1 -maxdepth 1 \( -type f -or -type l \) ! -name '.keep' 2>/dev/null` ; do
-		if [ -L "${y}" ] ; then
+for x in $(find "${z}"/ -type d 2>/dev/null) ; do
+	for y in $(find "${x}"/ -mindepth 1 -maxdepth 1 \( -type f -or -type l \) ! -name '.keep' 2>/dev/null) ; do
+		if [[ -L ${y} ]] ; then
 			# Symlink ...
-			mylink="${y}"
-			linkto="`readlink "${y}"`"
+			mylink=${y}
+			linkto=$(readlink "${y}")
 			
 			# Do NOT change links to directories
-			if [ -d "${z}/${linkto}" ] ; then
+			if [[ -d ${z}/${linkto} ]] ; then
 				continue
 			fi
-			
-			if [ "${linkto##*.}" != "gz" ] && [ "${linkto##*.}" != "bz2" ]; then
+
+			if [[ ${linkto##*.} != "gz" ]] && [[ ${linkto##*.} != "bz2" ]] ; then
 				linkto="${linkto}.gz"
 			fi
-			if [ "${mylink##*.}" != "gz" ] && [ "${mylink##*.}" != "bz2" ]; then
+			if [[ ${mylink##*.} != "gz" ]] && [[ ${mylink##*.} != "bz2" ]] ; then
 				mylink="${mylink}.gz"
 			fi
 
 			echo "fixing man page symlink: ${mylink##*/}"
 			ln -snf "${linkto}" "${mylink}"
-			if [ "${y}" != "${mylink}" ] ; then
+			if [[ ${y} != "${mylink}" ]] ; then
 				echo "removing old symlink: ${y##*/}"
 				rm -f "${y}"
 			fi
 		else
-			if [ "${y##*.}" != "gz" ] && [ "${y##*.}" != "bz2" ] && [ ! -d "${y}" ]; then
+			if [[ ${y##*.} != "gz" ]] && [[ ${y##*.} != "bz2" ]] && [[ ! -d ${y} ]] ; then
 				echo "gzipping man page: ${y##*/}"
 				gzip -f -9 "${y}"
 			fi
