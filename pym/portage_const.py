@@ -29,10 +29,10 @@ PORTAGE_PYM_PATH        = PORTAGE_BASE_PATH+"/pym"
 PROFILE_PATH            = PREFIX+"/etc/make.profile"
 LOCALE_DATA_PATH        = PORTAGE_BASE_PATH+"/locale"
 
-EBUILD_SH_BINARY        = PORTAGE_BIN_PATH+"/ebuild.sh"
+EBUILD_SH_BINARY        = "ebuild.sh"
 SANDBOX_BINARY          = PREFIX+"/usr/bin/sandbox"
-BASH_BINARY             = PREFIX+"/bin/bash"
-MOVE_BINARY             = PREFIX+"/bin/mv"
+BASH_BINARY             = "bash"
+MOVE_BINARY             = "mv"
 PRELINK_BINARY          = PREFIX+"/usr/sbin/prelink"
 
 WORLD_FILE              = PRIVATE_PATH+"/world"
@@ -48,7 +48,8 @@ CONFIG_MEMORY_FILE      = PRIVATE_PATH + "/config"
 INCREMENTALS=["USE","USE_EXPAND","USE_EXPAND_HIDDEN","FEATURES","ACCEPT_KEYWORDS","ACCEPT_LICENSE","CONFIG_PROTECT_MASK","CONFIG_PROTECT","PRELINK_PATH","PRELINK_PATH_MASK"]
 STICKIES=["KEYWORDS_ACCEPT","USE","CFLAGS","CXXFLAGS","MAKEOPTS","EXTRA_ECONF","EXTRA_EINSTALL","EXTRA_EMAKE"]
 EBUILD_PHASES			= ["setup","unpack","compile","test","install","preinst","postinst","prerm","postrm"]
-DEFAULT_PATH = ":".join(map(lambda x: os.path.normpath(os.path.join(PREFIX, x)), ["/sbin", "/usr/sbin", "/bin", "/usr/bin"]))
+
+DEFAULT_PATH = ":".join(map(lambda x: os.path.normpath(os.path.join(PREFIX, x)), ["sbin", "usr/sbin", "bin", "usr/bin"]))
 
 EAPI = "prefix"
 

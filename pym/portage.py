@@ -1092,6 +1092,10 @@ class config:
 			self.configlist.append({})
 			self.configdict["auto"]=self.configlist[-1]
 
+			try:
+				portage_const.DEFAULT_PATH=portage_const.DEFAULT_PATH+":"+self.mygcfg["ROOTPATH"]
+			except KeyError:
+				pass
 			#backup-env (for recording our calculated incremental variables:)
 			self.backupenv = os.environ.copy()
 			self.configlist.append(self.backupenv) # XXX Why though?
