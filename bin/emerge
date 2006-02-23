@@ -1934,7 +1934,7 @@ class depgraph:
 			y=portage.portdb.findname(x[pkgindex])
 			if not "--pretend" in myopts:
 				print ">>> Emerging ("+str(mergecount)+" of "+str(len(mymergelist))+")",x[pkgindex],"to",x[1]
-				emergelog(" >>> Emerging ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" to "+x[1])
+				emergelog(" >>> emerge ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" to "+x[1])
 
 			self.pkgsettings["EMERGE_FROM"] = x[0][:]
 			self.pkgsettings.backup_changes("EMERGE_FROM")
