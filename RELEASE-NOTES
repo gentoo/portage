@@ -9,6 +9,7 @@ portage-2.1
 * USE flag output ordering has changed.  The old ordering is now an option
   by the name of --alphabetical.  Adding the option to EMERGE_DEFAULT_OPTS
   in make.conf will restore the old behaviour permanently.
+* The deprecated --inject has been removed, use /etc/portage/profiles/package.provided
 * The deprecated --upgradeonly has been removed, use /etc/portage/package.* 
   instead.
 * 'emerge sync' has been deprecated, use 'emerge --sync' instead (same 
