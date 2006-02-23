@@ -3,51 +3,57 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/bin/doman,v 1.13.2.2 2005/07/29 05:55:34 vapier Exp $
 
-if [ $# -lt 1 ] ; then
+if [[ $# -lt 1 ]] ; then
 	echo "$0: at least one argument needed" 1>&2
 	exit 1
 fi
 
-BASE="/usr/share"
 i18n=""
 
+ret=0
+
 for x in "$@" ; do
-	if [ "${x:0:6}" == "-i18n=" ] ; then
-		i18n="${x:6}/"
+	if [[ ${x:0:6} == "-i18n=" ]] ; then
+		i18n=${x:6}/
 		continue
 	fi
-	if [ "${x}" == ".keep" ] ; then
+	if [[ ${x} == ".keep" ]] ; then
 		continue
 	fi
 
 	suffix=${x##*.}
 
-	if [ "$suffix" == "gz" ] ; then
+	if [[ ${suffix} == "gz" ]] ; then
 		compressed="gz"
-		realname="${x%.*}"
-		suffix="${realname##*.}"
+		realname=${x%.*}
+		suffix=${realname##*.}
 	else
-		realname="$x"
+		realname=${x}
 		compressed=""
 	fi
 
 	mandir=${i18n}man${suffix:0:1}
 
 	if echo ${mandir} | egrep -q 'man[0-9n](|f|p|pm)$' -; then
-		if [ -s "${x}" ] ; then
-			if [ ! -d "${D}${BASE}/man/${mandir}" ] ; then
-				install -d "${D}${BASE}/man/${mandir}"
+		if [[ -s ${x} ]] ; then
+			if [[ ! -d ${D}/usr/share/man/${mandir} ]] ; then
+				install -d "${D}/usr/share/man/${mandir}"
 			fi
 
-			install -m0644 "${x}" "${D}${BASE}/man/${mandir}"
+			install -m0644 "${x}" "${D}/usr/share/man/${mandir}"
+			((ret+=$?))
 
-			if [ -z "${compressed}" ] ; then
-				gzip -f -9 "${D}${BASE}/man/${mandir}/${x##*/}"
+			if [[ -z ${compressed} ]] ; then
+				gzip -f -9 "${D}/usr/share/man/${mandir}/${x##*/}"
 			fi
 		else
 			echo "doman: ${x} does not exist" 1>&2
+			((++ret))
 		fi
 	else
 		echo "doman: '${x}' is probably not a man page; skipping" 1>&2
+		((++ret))
 	fi
 done
+
+exit ${ret}
