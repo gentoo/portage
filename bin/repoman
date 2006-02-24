@@ -44,7 +44,10 @@ if portage.settings["NOCOLOR"] in ("yes","true") or not sys.stdout.isatty():
 
 def warn(txt):
 	print exename+": "+txt
-	
+def err(txt):
+	warn(txt)
+	sys.exit(1)
+
 def err_help(txt):
 	help(exitstatus=-1,helpfulness=0)
 	warn(txt)
@@ -201,10 +204,6 @@ for x in missingvars:
 		qacats.append(x)
 		qawarnings.append(x)
 
-
-def err(txt):
-	print exename+": "+txt
-	sys.exit(1)
 
 ven_cat = r'[\w0-9-]+'                                 # Category
 ven_nam = r'([+a-z0-9-]+(?:[+_a-z0-9-]*[+a-z0-9-]+)*)' # Name
