@@ -1589,21 +1589,7 @@ class config:
 				match = x[mykey]
 				break
 
-		if 0 and match and mykey in ["PORTAGE_BINHOST"]:
-			# These require HTTP Encoding
-			try:
-				import urllib
-				if urllib.unquote(match) != match:
-					writemsg("Note: %s already contains escape codes." % (mykey))
-				else:
-					match = urllib.quote(match)
-			except SystemExit, e:
-				raise
-			except:
-				writemsg("Failed to fix %s using urllib, attempting to continue.\n"  % (mykey))
-				pass
-
-		elif mykey == "CONFIG_PROTECT_MASK":
+		if mykey == "CONFIG_PROTECT_MASK":
 			match += " /etc/env.d"
 
 		return match
