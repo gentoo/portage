@@ -5370,6 +5370,7 @@ class binarytree(packagetree):
 				if not mycat:
 					#old-style or corrupt package
 					writemsg("!!! Invalid binary package: "+mypkg+"\n")
+					writemsg("!!! This binary package is not recoverable and should be deleted.\n")
 					self.invalids.append(mypkg)
 					continue
 				mycat=string.strip(mycat)
