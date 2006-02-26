@@ -50,7 +50,7 @@ class database(flat_hash.database):
 					if not c.isalpha():
 						if c == "=" and idx > 0:
 							hashed = True
-							d[line[:idx]] = line[idx + 1:-1]
+							d[line[:idx]] = line[idx + 1:].rstrip("\n")
 						elif c == "_" or c.isdigit():
 							continue
 						break
