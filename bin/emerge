@@ -2713,6 +2713,9 @@ if myaction in ["sync","metadata"] and (not "--help" in myopts):
 	except:
 		pass
 
+	if updatecache_flg and "metadata-transfer" not in portage.settings.features:
+		updatecache_flg = False
+
 	if os.path.exists(myportdir+"/metadata/cache") and updatecache_flg:
 		if "--quiet" not in myopts:
 			print "\n>>> Updating Portage cache:      ",
