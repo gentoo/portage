@@ -11,7 +11,7 @@ class database(object):
 	# basically flags the cache needs be updated when transfered cache to cache.
 	# leave this.
 
-	complete_eclass_entries_ = True
+	complete_eclass_entries = True
 	autocommits = False
 	cleanse_keys = False
 	serialize_eclasses = True
