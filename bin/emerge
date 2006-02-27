@@ -254,7 +254,8 @@ for x in cmdline:
 		elif x == "--skip-first":
 			x = "--skipfirst"
 		if x in options:
-			myopts.append(x)
+			if x not in myopts:
+				myopts.append(x)
 		elif x[2:] in actions:
 			if myaction:
 				if myaction not in ["system", "world"]:
