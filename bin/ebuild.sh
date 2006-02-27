@@ -459,10 +459,10 @@ export DESTTREE=/usr
 export INSDESTTREE=""
 export EXEDESTTREE=""
 export DOCDESTTREE=""
-export INSOPTIONS="-m0644"
-export EXEOPTIONS="-m0755"
-export LIBOPTIONS="-m0644"
-export DIROPTIONS="-m0755"
+export INSOPTIONS="-m 0644"
+export EXEOPTIONS="-m 0755"
+export LIBOPTIONS="-m 0644"
+export DIROPTIONS="-m 0755"
 export MOPREFIX=${PN}
 
 check_KV() {
@@ -847,7 +847,7 @@ dyn_unpack() {
 		fi
 	fi
 
-	install -m0700 -d "${WORKDIR}" || die "Failed to create dir '${WORKDIR}'"
+	install -m 0700 -d "${WORKDIR}" || die "Failed to create dir '${WORKDIR}'"
 	[ -d "$WORKDIR" ] && cd "${WORKDIR}"
 	echo ">>> Unpacking source..."
 	src_unpack
@@ -2100,7 +2100,7 @@ for myarg in $*; do
 		#dbkey=${PORTAGE_CACHEDIR}/${CATEGORY}/${PF}
 
 		if [ ! -d "${dbkey%/*}" ]; then
-			install -d -g ${PORTAGE_GID} -m2775 "${dbkey%/*}"
+			install -d -g ${PORTAGE_GID} -m 2775 "${dbkey%/*}"
 		fi
 
 		# Make it group writable. 666&~002==664
@@ -2151,7 +2151,7 @@ if [ "$myarg" != "clean" ]; then
 	# Save current environment and touch a success file. (echo for success)
 	umask 002
 	set | @EGREP@ -v "^SANDBOX_" > "${T}/environment" 2>/dev/null
-	chown portage:portage "${T}/environment" &>/dev/null
+	chown @portageuser@:@portagegroup@ "${T}/environment" &>/dev/null
 	chmod g+w "${T}/environment" &>/dev/null
 fi
 

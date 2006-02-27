@@ -3,5 +3,5 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/bin/dolib.a,v 1.8 2004/10/10 10:07:20 carpaski Exp $
 
-exec env LIBOPTIONS="-m0644" \
+exec env LIBOPTIONS="-m 0644" \
 	dolib "$@"

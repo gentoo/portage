@@ -39,7 +39,7 @@ def dodir(path):
 
 def dofile(src,dst):
 
-	os.system("install -m0644 '%s' '%s'" % (src, dst))
+	os.system("install -m 0644 '%s' '%s'" % (src, dst))
 
 def install(basename, dirname, options, prefix=""):
 

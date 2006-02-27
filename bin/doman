@@ -37,7 +37,7 @@ for x in "$@" ; do
 				install -d "${D}/usr/share/man/${mandir}"
 			fi
 
-			install -m0644 "${x}" "${D}/usr/share/man/${mandir}"
+			install -m 0644 "${x}" "${D}/usr/share/man/${mandir}"
 			((ret+=$?))
 		elif [[ ! -e ${x} ]] ; then
 			echo "doman: ${x} does not exist" 1>&2
