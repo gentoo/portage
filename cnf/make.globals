@@ -20,17 +20,17 @@ SYNC="rsync://rsync.gentoo.org/gentoo-portage"
 GENTOO_MIRRORS="http://distfiles.gentoo.org http://distro.ibiblio.org/pub/linux/distributions/gentoo"
 
 # Repository Paths
-PORTDIR=/usr/portage
-DISTDIR=/usr/portage/distfiles
-PKGDIR=/usr/portage/packages
-RPMDIR=/usr/portage/rpm
+PORTDIR=@DOMAIN_PREFIX@/usr/portage
+DISTDIR=@DOMAIN_PREFIX@/usr/portage/distfiles
+PKGDIR=@DOMAIN_PREFIX@/usr/portage/packages
+RPMDIR=@DOMAIN_PREFIX@/usr/portage/rpm
 
 # Temporary build directory
-PORTAGE_TMPDIR=/var/tmp
+PORTAGE_TMPDIR=@DOMAIN_PREFIX@/var/tmp
 
 # Fetching command (5 tries, passive ftp for firewall compatibility)
-FETCHCOMMAND="/usr/bin/wget -t 5 --passive-ftp -P \${DISTDIR} \${URI}"
-RESUMECOMMAND="/usr/bin/wget -c -t 5 --passive-ftp -P \${DISTDIR} \${URI}"
+FETCHCOMMAND="@DOMAIN_PREFIX@/usr/bin/wget -t 5 --passive-ftp -P \${DISTDIR} \${URI}"
+RESUMECOMMAND="@DOMAIN_PREFIX@/usr/bin/wget -c -t 5 --passive-ftp -P \${DISTDIR} \${URI}"
 
 # Default user options
 FEATURES="sandbox distlocks metadata-transfer"
@@ -55,7 +55,7 @@ RSYNC_RETRIES="3"
 RSYNC_TIMEOUT="180"
 
 # Minimal CONFIG_PROTECT
-CONFIG_PROTECT="${PREFIX}/etc"
+CONFIG_PROTECT="@DOMAIN_PREFIX@/etc"
 
 # Disable auto-use
 USE_ORDER="env:pkg:conf:defaults"
