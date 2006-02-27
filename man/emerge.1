@@ -112,14 +112,6 @@ developers with fixing any problems you may report.  \fBPlease include this
 information when submitting a bug report.\fR  Expanded output can be obtained 
 with the \fI\-\-verbose\fR option.
 .TP
-.BR "\-\-inject " (\fB\-i\fR)
-Injecting a package inserts a 'stub' for that package so that Portage
-thinks that it is installed.  It is handy if you need, say, a binary
-version of XFree86 for esoteric hardware, or you just like to roll
-your own packages.  You \fBmust\fR specify a category and particular
-version of a package for injecting.  For example,
-\fBemerge \-\-inject sys\-kernel/gentoo\-sources\-2.4.19\fR.
-.TP
 .BR \-\-metadata
 Causes portage to process all the metacache files as is normally done on the 
 tail end of an rsync update using \fBemerge \-\-sync\fR.  The processing 
@@ -185,13 +177,6 @@ Updates packages to the best version available, which may not always be the
 highest version number due to masking for testing and development.  This will 
 also update direct dependencies which may not be what you want.  In general, 
 use this option only in combination with the world or system target.
-.TP
-.BR "\-\-upgradeonly " (\fB\-U\fR)
-Updates packages, but excludes updates that would result in a lower version of 
-the package being installed.  \fBSLOT\fRs are considered at a basic level.
-.br 
-This option is deprecated and should not be used anymore.  Please use the 
-/etc/portage/package.* files from now on.
 .TP
 .BR "\-\-version " (\fB\-V\fR)
 Displays the version number of \fBemerge\fR.

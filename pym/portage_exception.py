@@ -23,11 +23,13 @@ class SecurityViolation(PortageException):
 	"""An incorrect formatting was passed instead of the expected one"""
 
 class IncorrectParameter(PortageException):
-	"""An parameter of the wrong type was passed"""
+	"""A parameter of the wrong type was passed"""
 
 class MissingParameter(PortageException):
-	"""An parameter is required for the action requested but was not passed"""
+	"""A parameter is required for the action requested but was not passed"""
 
+class ParseError(PortageException):
+	"""An error was generated while attempting to parse the request"""
 
 class InvalidData(PortageException):
 	"""An incorrect formatting was passed instead of the expected one"""

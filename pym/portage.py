@@ -106,6 +106,7 @@ try:
 	from portage_checksum import perform_md5,perform_checksum,prelink_capable
 	import eclass_cache
 	from portage_localization import _
+	from portage_update import fixdbentries, update_dbentries
 
 	# Need these functions directly in portage namespace to not break every external tool in existence
 	from portage_versions import ververify,vercmp,catsplit,catpkgsplit,pkgsplit,pkgcmp
@@ -1595,21 +1596,7 @@ class config:
 				match = x[mykey]
 				break
 
-		if 0 and match and mykey in ["PORTAGE_BINHOST"]:
-			# These require HTTP Encoding
-			try:
-				import urllib
-				if urllib.unquote(match) != match:
-					writemsg("Note: %s already contains escape codes." % (mykey))
-				else:
-					match = urllib.quote(match)
-			except SystemExit, e:
-				raise
-			except:
-				writemsg("Failed to fix %s using urllib, attempting to continue.\n"  % (mykey))
-				pass
-
-		elif mykey == "CONFIG_PROTECT_MASK":
+		if mykey == "CONFIG_PROTECT_MASK":
 			match += " "+portage_const.PREFIX+"/etc/env.d"
 
 		return match
@@ -3659,23 +3646,6 @@ def getmaskingstatus(mycpv):
 		rValue.append(kmask+" keyword")
 	return rValue
 
-def fixdbentries(old_value, new_value, dbdir):
-	"""python replacement for the fixdbentries script, replaces old_value
-	with new_value for package names in files in dbdir."""
-	for myfile in [f for f in os.listdir(dbdir) if not f == "CONTENTS"]:
-		file_path = os.path.join(dbdir, myfile)
-		f = open(file_path, "r")
-		mycontent = f.read()
-		f.close()
-		if not mycontent.count(old_value):
-			continue
-		old_value = re.escape(old_value);
-		mycontent = re.sub(old_value+"$", new_value, mycontent)
-		mycontent = re.sub(old_value+"(\\s)", new_value+"\\1", mycontent)
-		mycontent = re.sub(old_value+"(-[^a-zA-Z])", new_value+"\\1", mycontent)
-		mycontent = re.sub(old_value+"([^a-zA-Z0-9-])", new_value+"\\1", mycontent)
-		write_atomic(file_path, mycontent)
-
 class packagetree:
 	def __init__(self,virtual,clone=None):
 		if clone:
@@ -4361,15 +4331,20 @@ class vardbapi(dbapi):
 				os.rename(old_eb_path+".ebuild", new_eb_path+".ebuild")
 
 			write_atomic(os.path.join(newpath, "CATEGORY"), mynewcat+"\n")
+			fixdbentries([mylist], newpath)
 
-		dbdir = self.root+VDB_PATH
+	def update_ents(self, update_iter):
+		"""Run fixdbentries on all installed packages (time consuming).  Like
+		fixpackages, this should be run from a helper script and display
+		a progress indicator."""
+		dbdir = os.path.join(self.root, VDB_PATH)
 		for catdir in listdir(dbdir):
 			catdir = dbdir+"/"+catdir
 			if os.path.isdir(catdir):
 				for pkgdir in listdir(catdir):
 					pkgdir = catdir+"/"+pkgdir
 					if os.path.isdir(pkgdir):
-						fixdbentries(origcp, newcp, pkgdir)
+						fixdbentries(update_iter, pkgdir)
 
 	def move_slot_ent(self,mylist):
 		pkg=mylist[1]
@@ -5297,21 +5272,16 @@ class binarytree(packagetree):
 			#print ">>> Updating data in:",mycpv
 			sys.stdout.write("%")
 			sys.stdout.flush()
-			mytmpdir=settings["PORTAGE_TMPDIR"]+"/tbz2"
-			mytbz2=xpak.tbz2(tbz2path)
-			mytbz2.decompose(mytmpdir, cleanup=1)
 
-			fixdbentries(origcp, newcp, mytmpdir)
-
-			write_atomic(os.path.join(mytmpdir, "CATEGORY"), mynewcat+"\n")
-			try:
-				os.rename(mytmpdir+"/"+string.split(mycpv,"/")[1]+".ebuild", mytmpdir+"/"+string.split(mynewcpv, "/")[1]+".ebuild")
-			except SystemExit, e:
-				raise
-			except Exception, e:
-				pass
-
-			mytbz2.recompose(mytmpdir, cleanup=1)
+			mytbz2 = xpak.tbz2(tbz2path)
+			mydata = mytbz2.get_data()
+			updated_items = update_dbentries([mylist], mydata)
+			mydata.update(updated_items)
+			mydata["CATEGORY"] = mynewcat+"\n"
+			if mynewpkg != myoldpkg:
+				mydata[mynewpkg+".ebuild"] = mydata[myoldpkg+".ebuild"]
+				del mydata[myoldpkg+".ebuild"]
+			mytbz2.recompose_mem(xpak.xpak_mem(mydata))
 
 			self.dbapi.cpv_remove(mycpv)
 			if (mynewpkg != myoldpkg):
@@ -5319,9 +5289,7 @@ class binarytree(packagetree):
 			self.dbapi.cpv_inject(mynewcpv)
 		return 1
 
-	def move_slot_ent(self,mylist,mytmpdir):
-		#mytmpdir=settings["PORTAGE_TMPDIR"]+"/tbz2"
-		mytmpdir=mytmpdir+"/tbz2"
+	def move_slot_ent(self, mylist):
 		if not self.populated:
 			self.populate()
 		pkg=mylist[1]
@@ -5343,10 +5311,10 @@ class binarytree(packagetree):
 				continue
 
 			#print ">>> Updating data in:",mycpv
-			mytbz2=xpak.tbz2(tbz2path)
-			mytbz2.decompose(mytmpdir, cleanup=1)
+			mytbz2 = xpak.tbz2(tbz2path)
+			mydata = mytbz2.get_data()
 
-			slot=grabfile(mytmpdir+"/SLOT");
+			slot = mydata["SLOT"]
 			if (not slot):
 				continue
 
@@ -5355,15 +5323,16 @@ class binarytree(packagetree):
 
 			sys.stdout.write("S")
 			sys.stdout.flush()
-
-			write_atomic(os.path.join(mytmpdir, "SLOT"), newslot+"\n")
-			mytbz2.recompose(mytmpdir, cleanup=1)
+			mydata["SLOT"] = newslot+"\n"
+			mytbz2.recompose_mem(xpak.xpak_mem(mydata))
 		return 1
 
-	def update_ents(self,mybiglist,mytmpdir):
-		#XXX mytmpdir=settings["PORTAGE_TMPDIR"]+"/tbz2"
+	def update_ents(self, update_iter):
+		if len(update_iter) == 0:
+			return
 		if not self.populated:
 			self.populate()
+
 		for mycpv in self.dbapi.cp_all():
 			tbz2path=self.getname(mycpv)
 			if os.path.exists(tbz2path) and not os.access(tbz2path,os.W_OK):
@@ -5371,14 +5340,12 @@ class binarytree(packagetree):
 				continue
 			#print ">>> Updating binary data:",mycpv
 			writemsg("*")
-			mytbz2=xpak.tbz2(tbz2path)
-			mytbz2.decompose(mytmpdir,cleanup=1)
-			for mylist in mybiglist:
-				mylist=string.split(mylist)
-				if mylist[0] != "move":
-					continue
-				fixdbentries(mylist[1], mylist[2], mytmpdir)
-			mytbz2.recompose(mytmpdir,cleanup=1)
+			mytbz2 = xpak.tbz2(tbz2path)
+			mydata = mytbz2.get_data()
+			updated_items = update_dbentries(update_iter, mydata)
+			if len(updated_items) > 0:
+				mydata.update(updated_items)
+				mytbz2.recompose_mem(xpak.xpak_mem(mydata))
 		return 1
 
 	def populate(self, getbinpkgs=0,getbinpkgsonly=0):
@@ -5397,6 +5364,7 @@ class binarytree(packagetree):
 				if not mycat:
 					#old-style or corrupt package
 					writemsg("!!! Invalid binary package: "+mypkg+"\n")
+					writemsg("!!! This binary package is not recoverable and should be deleted.\n")
 					self.invalids.append(mypkg)
 					continue
 				mycat=string.strip(mycat)
@@ -6797,114 +6765,50 @@ for x in mtimedb.keys():
 #,"porttree":portagetree(root,virts),"bintree":binarytree(root,virts)}
 features=settings["FEATURES"].split()
 
-do_upgrade_packagesmessage=0
 def do_upgrade(mykey):
-	global do_upgrade_packagesmessage
+	"""Valid updates are returned as a list of split update commands."""
 	writemsg("\n\n")
 	writemsg(green("Performing Global Updates: ")+bold(mykey)+"\n")
 	writemsg("(Could take a couple of minutes if you have a lot of binary packages.)\n")
 	writemsg("  "+bold(".")+"='update pass'  "+bold("*")+"='binary update'  "+bold("@")+"='/var/db move'\n"+"  "+bold("s")+"='/var/db SLOT move' "+bold("S")+"='binary SLOT move' "+bold("p")+"='update /etc/portage/package.*'\n")
 	processed=1
-	#remove stale virtual entries (mappings for packages that no longer exist)
-
-	update_files={}
-	file_contents={}
-	myxfiles = ["package.mask","package.unmask","package.keywords","package.use"]
-	myxfiles.extend(prefix_array(myxfiles, "profile/"))
-	recursivefiles = []
-	for x in myxfiles:
-		if os.path.isdir(USER_CONFIG_PATH+os.path.sep+x):
-			recursivefiles.extend([x+os.path.sep+y for y in listdir(USER_CONFIG_PATH+os.path.sep+x, filesonly=1, recursive=1)])
-		else:
-			recursivefiles.append(x)
-	myxfiles = recursivefiles
-	for x in myxfiles:
-		try:
-			myfile = open(USER_CONFIG_PATH+os.path.sep+x,"r")
-			file_contents[x] = myfile.readlines()
-			myfile.close()
-		except IOError:
-			if file_contents.has_key(x):
-				del file_contents[x]
+	myupd = []
+	mylines = grabfile(mykey)
+	for myline in mylines:
+		mysplit = myline.split()
+		if len(mysplit) == 0:
 			continue
-
-	worldlist=grabfile("/"+WORLD_FILE)
-	myupd=grabfile(mykey)
-	db["/"]["bintree"]=binarytree("/",settings["PKGDIR"],virts)
-	for myline in myupd:
-		mysplit=myline.split()
-		if not len(mysplit):
-			continue
-		if mysplit[0]!="move" and mysplit[0]!="slotmove":
+		if mysplit[0] not in ("move", "slotmove"):
 			writemsg("portage: Update type \""+mysplit[0]+"\" not recognized.\n")
 			processed=0
 			continue
-		if mysplit[0]=="move" and len(mysplit)!=3:
-			writemsg("portage: Update command \""+myline+"\" invalid; skipping.\n")
-			processed=0
-			continue
-		if mysplit[0]=="slotmove" and len(mysplit)!=4:
-			writemsg("portage: Update command \""+myline+"\" invalid; skipping.\n")
-			processed=0
-			continue
+		if mysplit[0]=="move":
+			if len(mysplit)!=3:
+				writemsg("portage: Update command \""+myline+"\" invalid; skipping.\n")
+				processed=0
+				continue
+			orig_value, new_value = mysplit[1], mysplit[2]
+			for cp in (orig_value, new_value):
+				if not (isvalidatom(cp) and isjustname(cp)):
+					writemsg("\nERROR: Malformed update entry '%s'\n" % myline)
+					processed=0
+					continue
+		if mysplit[0]=="slotmove":
+			if len(mysplit)!=4:
+				writemsg("portage: Update command \""+myline+"\" invalid; skipping.\n")
+				processed=0
+				continue
+			pkg, origslot, newslot = mysplit[1], mysplit[2], mysplit[3]
+			if not isvalidatom(pkg):
+				writemsg("\nERROR: Malformed update entry '%s'\n" % myline)
+				processed=0
+				continue
+		
+		# The list of valid updates is filtered by continue statements above.
+		myupd.append(mysplit)
 		sys.stdout.write(".")
 		sys.stdout.flush()
-
-		if mysplit[0]=="move":
-			try:
-				db["/"]["vartree"].dbapi.move_ent(mysplit)
-				db["/"]["bintree"].move_ent(mysplit)
-			except portage_exception.InvalidPackageName, e:
-				writemsg("\nERROR: Malformed update entry '%s'\n" % myline)
-				continue
-			#update world entries:
-			for x in range(0,len(worldlist)):
-				#update world entries, if any.
-				worldlist[x]=dep_transform(worldlist[x],mysplit[1],mysplit[2])
-
-			#update /etc/portage/packages.*
-			for x in file_contents:
-				for mypos in range(0,len(file_contents[x])):
-					line=file_contents[x][mypos]
-					if line[0]=="#" or string.strip(line)=="":
-						continue
-					key=dep_getkey(line.split()[0])
-					if key==mysplit[1]:
-						file_contents[x][mypos]=string.replace(line,mysplit[1],mysplit[2])
-						update_files[x]=1
-						sys.stdout.write("p")
-						sys.stdout.flush()
-
-		elif mysplit[0]=="slotmove":
-			try:
-				db["/"]["vartree"].dbapi.move_slot_ent(mysplit)
-				db["/"]["bintree"].move_slot_ent(mysplit,settings["PORTAGE_TMPDIR"]+"/tbz2")
-			except portage_exception.InvalidAtom, e:
-				writemsg("\nERROR: Malformed update entry '%s'\n" % myline)
-
-	for x in update_files:
-		mydblink = dblink('','','/',settings)
-		if mydblink.isprotected(USER_CONFIG_PATH+os.path.sep+x):
-			updating_file=new_protect_filename(USER_CONFIG_PATH+os.path.sep+x)[0]
-		else:
-			updating_file=USER_CONFIG_PATH+os.path.sep+x
-		try:
-			write_atomic(updating_file, "".join(file_contents[x]))
-		except IOError:
-			continue
-
-	# We gotta do the brute force updates for these now.
-	if (settings["PORTAGE_CALLER"] in ["fixpackages"]) or \
-	   ("fixpackages" in features):
-		db["/"]["bintree"].update_ents(myupd,settings["PORTAGE_TMPDIR"]+"/tbz2")
-	else:
-		do_upgrade_packagesmessage = 1
-
-	if processed:
-		#update our internal mtime since we processed all our directives.
-		mtimedb["updates"][mykey]=os.stat(mykey)[stat.ST_MTIME]
-	write_atomic(WORLD_FILE,"\n".join(worldlist))
-	print ""
+	return myupd, processed == 1
 
 def commit_mtimedb():
 	if mtimedb:
@@ -6938,44 +6842,140 @@ def portageexit():
 
 atexit_register(portageexit)
 
-if (secpass==2) and (not os.environ.has_key("SANDBOX_ACTIVE")):
-	if settings["PORTAGE_CALLER"] in ["emerge","fixpackages"]:
-		#only do this if we're root and not running repoman/ebuild digest
-		updpath=os.path.normpath(settings["PORTDIR"]+"///profiles/updates")
-		didupdate=0
-		if not mtimedb.has_key("updates"):
-			mtimedb["updates"]={}
+def update_config_files(update_iter):
+	"""Perform global updates on /etc/portage/package.* and the world file."""
+	update_files={}
+	file_contents={}
+	myxfiles = ["package.mask","package.unmask","package.keywords","package.use"]
+	myxfiles.extend(prefix_array(myxfiles, "profile/"))
+	recursivefiles = []
+	for x in myxfiles:
+		if os.path.isdir(USER_CONFIG_PATH+os.path.sep+x):
+			recursivefiles.extend([x+os.path.sep+y for y in listdir(USER_CONFIG_PATH+os.path.sep+x, filesonly=1, recursive=1)])
+		else:
+			recursivefiles.append(x)
+	myxfiles = recursivefiles
+	for x in myxfiles:
 		try:
-			mylist=listdir(updpath,EmptyOnError=1)
-			# resort the list
-			mylist=[myfile[3:]+"-"+myfile[:2] for myfile in mylist]
-			mylist.sort()
-			mylist=[myfile[5:]+"-"+myfile[:4] for myfile in mylist]
-			for myfile in mylist:
-				mykey=updpath+"/"+myfile
-				if not os.path.isfile(mykey):
-					continue
-				if (not mtimedb["updates"].has_key(mykey)) or \
-					 (mtimedb["updates"][mykey] != os.stat(mykey)[stat.ST_MTIME]) or \
-					 (settings["PORTAGE_CALLER"] == "fixpackages"):
-					didupdate=1
-					do_upgrade(mykey)
-					commit_mtimedb() # This lets us save state for C-c.
-		except OSError:
-			#directory doesn't exist
-			pass
+			myfile = open(USER_CONFIG_PATH+os.path.sep+x,"r")
+			file_contents[x] = myfile.readlines()
+			myfile.close()
+		except IOError:
+			if file_contents.has_key(x):
+				del file_contents[x]
+			continue
+	worldlist = grabfile(WORLD_FILE)
+
+	for update_cmd in update_iter:
+		if update_cmd[0] == "move":
+			old_value, new_value = update_cmd[1], update_cmd[2]
+			#update world entries:
+			for x in range(0,len(worldlist)):
+				#update world entries, if any.
+				worldlist[x] = dep_transform(worldlist[x], old_value, new_value)
+
+			#update /etc/portage/packages.*
+			for x in file_contents:
+				for mypos in range(0,len(file_contents[x])):
+					line = file_contents[x][mypos]
+					if line[0] == "#" or string.strip(line) == "":
+						continue
+					key = dep_getkey(line.split()[0])
+					if key == old_value:
+						file_contents[x][mypos] = string.replace(line, old_value, new_value)
+						update_files[x] = 1
+						sys.stdout.write("p")
+						sys.stdout.flush()
+
+	write_atomic(WORLD_FILE,"\n".join(worldlist))
+
+	for x in update_files:
+		mydblink = dblink('','','/',settings)
+		updating_file = os.path.join(USER_CONFIG_PATH, x)
+		if mydblink.isprotected(updating_file):
+			updating_file = new_protect_filename(updating_file)[0]
+		try:
+			write_atomic(updating_file, "".join(file_contents[x]))
+		except IOError:
+			continue
+
+def global_updates():
+	updpath = os.path.join(settings["PORTDIR"], "profiles", "updates")
+	mylist = listdir(updpath, EmptyOnError=1)
+	# validate the file name (filter out CVS directory, etc...)
+	mylist = [myfile for myfile in mylist if len(myfile) == 7 and myfile[1:3] == "Q-"]
+	if len(mylist) > 0:
+		# resort the list
+		mylist = [myfile[3:]+"-"+myfile[:2] for myfile in mylist]
+		mylist.sort()
+		mylist = [myfile[5:]+"-"+myfile[:4] for myfile in mylist]
+
+		if not mtimedb.has_key("updates"):
+			mtimedb["updates"] = {}
+
+		didupdate = 0
+		do_upgrade_packagesmessage = 0
+		myupd = []
+		timestamps = {}
+		for myfile in mylist:
+			mykey = os.path.join(updpath, myfile)
+			mystat = os.stat(mykey)
+			if not stat.S_ISREG(mystat.st_mode):
+				continue
+			if mykey not in mtimedb["updates"] or \
+			mtimedb["updates"][mykey] != mystat.st_mtime or \
+			settings["PORTAGE_CALLER"] == "fixpackages":
+				didupdate = 1
+				valid_updates, no_errors = do_upgrade(mykey)
+				myupd.extend(valid_updates)
+				if no_errors:
+					# Update our internal mtime since we
+					# processed all of our directives.
+					timestamps[mykey] = mystat.st_mtime
+		update_config_files(myupd)
+
+		db["/"]["bintree"] = binarytree("/", settings["PKGDIR"], virts)
+		for update_cmd in myupd:
+			if update_cmd[0] == "move":
+				db["/"]["vartree"].dbapi.move_ent(update_cmd)
+				db["/"]["bintree"].move_ent(update_cmd)
+			elif update_cmd[0] == "slotmove":
+				db["/"]["vartree"].dbapi.move_slot_ent(update_cmd)
+				db["/"]["bintree"].move_slot_ent(update_cmd)
+
+		print
+
+		# The above global updates proceed quickly, so they
+		# are considered a single mtimedb transaction.
+		if len(timestamps) > 0:
+			# We do not update the mtime in the mtimedb
+			# until after _all_ of the above updates have
+			# been processed because the mtimedb will
+			# automatically commit when killed by ctrl C.
+			for mykey, mtime in timestamps.iteritems():
+				mtimedb["updates"][mykey] = mtime
+			commit_mtimedb()
+
+		# We gotta do the brute force updates for these now.
+		if settings["PORTAGE_CALLER"] == "fixpackages" or \
+		"fixpackages" in features:
+			db["/"]["bintree"].update_ents(myupd)
+		else:
+			do_upgrade_packagesmessage = 1
+
 		if didupdate:
 			#make sure our internal databases are consistent; recreate our virts and vartree
 			do_vartree(settings)
 			if do_upgrade_packagesmessage and \
-				 listdir(settings["PKGDIR"]+"/All/",EmptyOnError=1):
+				listdir(os.path.join(settings["PKGDIR"], "All"), EmptyOnError=1):
 				writemsg("\n\n\n ** Skipping packages. Run 'fixpackages' or set it in FEATURES to fix the")
 				writemsg("\n    tbz2's in the packages directory. "+bold("Note: This can take a very long time."))
 				writemsg("\n")
 
-
-
-
+if (secpass==2) and (not os.environ.has_key("SANDBOX_ACTIVE")):
+	if settings["PORTAGE_CALLER"] in ["emerge","fixpackages"]:
+		#only do this if we're root and not running repoman/ebuild digest
+		global_updates()
 
 #continue setting up other trees
 db["/"]["porttree"]=portagetree("/",virts)

@@ -169,8 +169,8 @@ merged=0
 params=["selective", "deep", "self", "recurse", "empty"]
 actions=[
 "clean", "config", "depclean",
-"info",  "inject", "metadata",
-"prune", "regen",  "rsync", "search",
+"info", "metadata",
+"prune", "regen",  "search",
 "sync",  "system", "unmerge",  "world",
 ]
 options=[
@@ -192,7 +192,7 @@ options=[
 "--searchdesc",   "--selective",
 "--skipfirst",    "--skip-first",
 "--tree",
-"--update",       "--upgradeonly",
+"--update",       
 "--usepkg",       "--usepkgonly",
 "--verbose",      "--version"
 ]
@@ -207,7 +207,6 @@ shortmapping={
 "f":"--fetchonly", "F":"--fetch-all-uri",
 "g":"--getbinpkg", "G":"--getbinpkgonly",
 "h":"--help",
-"i":"--inject",
 "k":"--usepkg",    "K":"--usepkgonly",
 "l":"--changelog",
 "n":"--noreplace", "N":"--newuse",
@@ -216,7 +215,7 @@ shortmapping={
 "q":"--quiet",
 "s":"--search",    "S":"--searchdesc",
 't':"--tree",
-"u":"--update",    "U":"--upgradeonly",
+"u":"--update",
 "v":"--verbose",   "V":"--version"
 }
 
@@ -255,15 +254,9 @@ for x in cmdline:
 		elif x == "--skip-first":
 			x = "--skipfirst"
 		if x in options:
-			myopts.append(x)
+			if x not in myopts:
+				myopts.append(x)
 		elif x[2:] in actions:
-			if x[2:]=="rsync" or x=="rsync":
-				# "emerge --rsync"
-				print
-				print red("*** '--rsync' has been deprecated.")
-				print red("*** Please use '--sync' instead.")
-				print
-				x="--sync"
 			if myaction:
 				if myaction not in ["system", "world"]:
 					myaction="--"+myaction
@@ -278,15 +271,7 @@ for x in cmdline:
 			sys.exit(1)
 	elif (not myaction) and (x in actions):
 		if x not in ["system", "world"]:
-			#print red("*** Deprecated use of action '"+x+"'")
-			if x=="rsync":
-				# "emerge rsync"
-				print
-				print red("*** 'rsync' will now install the package rsync.")
-				print red("*** To sync the tree, please use '--sync' instead.")
-				print
-				myfiles.append(x)
-				continue
+			print red("*** Deprecated use of action '%s', use '--%s' instead" % (x,x))
 		if myaction:
 			print
 			print red("!!!")+green(" Multiple actions requested... Please choose one only.")
@@ -383,17 +368,6 @@ if ("--newuse" in myopts) and not ("--update" in myopts):
 	print ">>> --newuse implies --update... adding --update to options."
 	myopts.append("--update")
 
-# Print deprecation warning for -U
-if ("--upgradeonly" in myopts):
-	print
-	print red("*** Warning: --upgradeonly is a deprecated option in portage-"+portage.VERSION)
-	print red("***          and will likely be removed in a future version.")
-	print
-	# Also allow -U to apply --update/-u
-	if not ("--update" in myopts):
-		print ">>> --upgradeonly implies --update... adding --update to options."
-		myopts.append("--update")
-
 # Also allow -l to apply --pretend/-p, but if already in --ask mode
 if ("--changelog" in myopts) and not (("--pretend" in myopts) or ("--ask" in myopts)):
 	print ">>> --changelog implies --pretend... adding --pretend to options."
@@ -446,17 +420,6 @@ if portage.settings["CLEAN_DELAY"]:
 	CLEAN_DELAY = string.atoi("0"+portage.settings["CLEAN_DELAY"])
 if portage.settings["EMERGE_WARNING_DELAY"]:
 	EMERGE_WARNING_DELAY = string.atoi("0"+portage.settings["EMERGE_WARNING_DELAY"])
-
-if "inject" == myaction:
-	print
-	print red("*** --inject has been deprecated.")
-	print red("*** If you manage a piece of software yourself, add it's name and")
-	print red("*** version (eg foo/bar-1.0) to /etc/portage/profile/package.provided.")
-	print red("*** If you want to prevent portage from upgrading a package, add it to")
-	print red("*** /etc/portage/package.mask prepending it with '>' (eg >foo/bar-1.0)")
-	print red("*** For more information on fine-grained portage control, please see")
-	print red("*** the portage man page.")
-	print
 
 def emergelog(mystr,short_msg=None):
 	if "notitles" not in portage.features:
@@ -1330,26 +1293,6 @@ class depgraph:
 					else:
 						myeb_pkg = None
 
-				if "--upgradeonly" in myopts:
-					# Check that there isn't a newer version of this package already installed
-					cand = None
-					try:
-						# XXX: This can throw an exception if the ebuild doesn't exist
-						if myeb:
-							cand=self.is_newer_ver_installed(myroot,x,myeb)
-						elif myeb_pkg:
-							cand=self.is_newer_ver_installed(myroot,x,myeb_pkg)
-					except SystemExit, e:
-						raise # Needed else can't exit
-					except Exception, e:
-						print "Warning: "+str(e)
-					if cand:
-						# --newuse can't work because the installed version isn't available
-						# just pretend like the package doesn't matter
-						# XXX: hidden assumption here that the higher versioned package
-						# satisfies the atom that was given
-						continue
-
 				if myeb:
 					myk=["ebuild",myroot,myeb]
 				elif myeb_pkg:
@@ -1983,7 +1926,7 @@ class depgraph:
 			y=portage.portdb.findname(x[pkgindex])
 			if not "--pretend" in myopts:
 				print ">>> Emerging ("+str(mergecount)+" of "+str(len(mymergelist))+")",x[pkgindex],"to",x[1]
-				emergelog(" >>> Emerging ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" to "+x[1])
+				emergelog(" >>> emerge ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" to "+x[1])
 
 			self.pkgsettings["EMERGE_FROM"] = x[0][:]
 			self.pkgsettings.backup_changes("EMERGE_FROM")
@@ -2515,7 +2458,7 @@ def chk_updated_cfg_files():
 if "--debug" in myopts:
 	edebug=1
 
-if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
+if myaction in ["sync","metadata"] and (not "--help" in myopts):
 	if "--pretend" in myopts:
 		print "emerge: \"sync\" actions do not support \"--pretend.\""
 		sys.exit(1)
@@ -2773,6 +2716,11 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 		raise # Needed else can't exit
 	except:
 		pass
+
+	if updatecache_flg and  \
+		myaction != "metadata" and \
+		"metadata-transfer" not in portage.settings.features:
+		updatecache_flg = False
 
 	if os.path.exists(myportdir+"/metadata/cache") and updatecache_flg:
 		if "--quiet" not in myopts:
@@ -3061,35 +3009,6 @@ elif "search"==myaction:
 				print "\n!!! Regular expression error in \"%s\": %s" % ( mysearch, comment )
 				sys.exit(1)
 			searchinstance.output()
-elif "inject"==myaction:
-	if not myfiles:
-		print "emerge: please specify at least one cat/pkg-ver to inject."
-		sys.exit(1)
-	if "--pretend" in myopts:
-		print "emerge: the \"inject\" action does not support \"--pretend.\""
-		sys.exit(1)
-	for x in myfiles:
-		if x[0] in [">","<","=","!"]:
-			print "!!! '"+x+"' is an invalid specification."
-			print "!!! Must be 'category/package-version' with no other symbols."
-			print
-			continue
-		mycps=portage.catpkgsplit(x)
-		if (not mycps) or (mycps[0]=="null"):
-			print "!!!",x,"is not a specific cat/pkg-version, skipping..."
-			continue
-		if portage.db["/"]["vartree"].exists_specific(x):
-			print "!!! Not injecting",x+"; Package already exists."
-		else:
-			if "--ask" in myopts:
-				if userquery("Do you want to inject the package %s?" % x)=="No":
-					print
-					print "Quitting."
-					print
-					sys.exit(0)
-			portage.db["/"]["vartree"].dbapi.cpv_inject(x)
-			print ">>> Injected",x+"."
-			emergelog(" === inject: "+x)
 elif "unmerge"==myaction or "prune"==myaction or "clean"==myaction:
 	if 1==unmerge(myaction, myfiles):
 		post_emerge()

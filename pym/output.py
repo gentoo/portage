@@ -95,18 +95,28 @@ def nc_len(mystr):
 def xtermTitle(mystr):
 	if havecolor and dotitles and os.environ.has_key("TERM") and sys.stderr.isatty():
 		myt=os.environ["TERM"]
-		legal_terms = ["xterm","Eterm","aterm","rxvt","screen","kterm","rxvt-unicode"]
+		legal_terms = ["xterm","Eterm","aterm","rxvt","screen","kterm","rxvt-unicode","gnome"]
 		for term in legal_terms:
 			if myt.startswith(term):
 				sys.stderr.write("\x1b]2;"+str(mystr)+"\x07")
 				sys.stderr.flush()
 				break
 
-prompt_command = os.getenv("PROMPT_COMMAND", 'echo -ne "${USER}@${HOSTNAME%%.*}:${PWD/$HOME/~}"')
-default_xterm_title = commands.getoutput(prompt_command)
-del prompt_command
+default_xterm_title = None
 
 def xtermTitleReset():
+	global default_xterm_title
+	if default_xterm_title is None:
+		prompt_command = os.getenv('PROMPT_COMMAND')
+		if prompt_command is not None:
+			default_xterm_title = commands.getoutput(prompt_command)
+		else:
+			pwd = os.getenv('PWD','')
+			home = os.getenv('HOME', '')
+			if home != '' and pwd.startswith(home):
+				pwd = '~' + pwd[len(home):]
+			default_xterm_title = '%s@%s:%s' % (
+				os.getenv('LOGNAME', ''), os.getenv('HOSTNAME', '').split('.', 1)[0], pwd)
 	xtermTitle(default_xterm_title)
 
 def notitles():

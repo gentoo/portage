@@ -33,7 +33,7 @@ FETCHCOMMAND="/usr/bin/wget -t 5 --passive-ftp -P \${DISTDIR} \${URI}"
 RESUMECOMMAND="/usr/bin/wget -c -t 5 --passive-ftp -P \${DISTDIR} \${URI}"
 
 # Default user options
-FEATURES="sandbox distlocks"
+FEATURES="sandbox distlocks metadata-transfer"
 
 # Default chunksize for binhost comms
 PORTAGE_BINHOST_CHUNKSIZE="3000"

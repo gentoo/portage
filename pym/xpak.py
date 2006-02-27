@@ -16,7 +16,7 @@
 # (integer) == encodeint(integer)  ===> 4 characters (big-endian copy)
 # '+' means concatenate the fields ===> All chunks are strings
 
-import sys,os,string
+import sys,os,string,shutil,errno
 from stat import *
 
 def addtolist(mylist,curdir):
@@ -66,34 +66,39 @@ def xpak(rootdir,outfile=None):
 
 	addtolist(mylist,"")
 	mylist.sort()
+	mydata = {}
+	for x in mylist:
+		a = open(x, "r")
+		mydata[x] = a.read()
+		a.close()
+	os.chdir(origdir)
 
-	#Our list index has been created
-	
+	xpak_segment = xpak_mem(mydata)
+	if outfile:
+		outf = open(outfile, "w")
+		outf.write(xpak_segment)
+		outf.close()
+	else:
+		return xpak_segment
+
+def xpak_mem(mydata):
+	"""Create an xpack segement from a map object."""
 	indexglob=""
 	indexpos=0
 	dataglob=""
 	datapos=0
-	for x in mylist:
-		a=open(x,"r")
-		newglob=a.read()
-		a.close()
+	for x, newglob in mydata.iteritems():
 		mydatasize=len(newglob)
 		indexglob=indexglob+encodeint(len(x))+x+encodeint(datapos)+encodeint(mydatasize)
 		indexpos=indexpos+4+len(x)+4+4
 		dataglob=dataglob+newglob
 		datapos=datapos+mydatasize
-	os.chdir(origdir)
-	if outfile:
-		outf=open(outfile,"w")
-		outf.write("XPAKPACK"+encodeint(len(indexglob))+encodeint(len(dataglob)))
-		outf.write(indexglob)
-		outf.write(dataglob)
-		outf.write("XPAKSTOP")
-		outf.close()
-	else:
-		myret="XPAKPACK"+encodeint(len(indexglob))+encodeint(len(dataglob))
-		myret=myret+indexglob+dataglob+"XPAKSTOP"
-		return myret
+	return "XPAKPACK" \
+	+ encodeint(len(indexglob)) \
+	+ encodeint(len(dataglob)) \
+	+ indexglob \
+	+ dataglob \
+	+ "XPAKSTOP"
 
 def xsplit(infile):
 	"""(infile) -- Splits the infile into two files.
@@ -239,9 +244,8 @@ class tbz2:
 		Returns result of upackinfo()."""
 		if not self.scan():
 			raise IOError
-		if cleanup and os.path.exists(datadir):
-			# XXX: Potentially bad
-			os.system("rm -Rf "+datadir+"/*")
+		if cleanup:
+			self.cleanup(datadir)
 		if not os.path.exists(datadir):
 			os.makedirs(datadir)
 		return self.unpackinfo(datadir)
@@ -252,20 +256,35 @@ class tbz2:
 		"""Creates an xpak segment from the datadir provided, truncates the tbz2
 		to the end of regular data if an xpak segment already exists, and adds
 		the new segment to the file with terminating info."""
+		xpdata = xpak(datadir)
+		self.recompose_mem(xpdata)
+		if cleanup:
+			self.cleanup(datadir)
+
+	def recompose_mem(self, xpdata):
 		self.scan() # Don't care about condition... We'll rewrite the data anyway.
 		myfile=open(self.file,"a+")
 		if not myfile:
 			raise IOError
 		myfile.seek(-self.xpaksize,2) # 0,2 or -0,2 just mean EOF.
 		myfile.truncate()
-		xpdata=xpak(datadir)
 		myfile.write(xpdata+encodeint(len(xpdata))+"STOP")
 		myfile.flush()
 		myfile.close()
-		if cleanup:
-			# XXX: Potentially bad
-			os.system("rm -Rf "+datadir)
 		return 1
+
+	def cleanup(self, datadir):
+		datadir_split = os.path.split(datadir)
+		if len(datadir_split) >= 2 and len(datadir_split[1]) > 0:
+			# This is potentially dangerous,
+			# thus the above sanity check.
+			try:
+				shutil.rmtree(datadir)
+			except OSError, oe:
+				if oe.errno == errno.ENOENT:
+					pass
+				else:
+					raise oe
 
 	def scan(self):
 		"""Scans the tbz2 to locate the xpak segment and setup internal values.
@@ -369,6 +388,24 @@ class tbz2:
 		a.close()
 		os.chdir(origdir)
 		return 1
+
+	def get_data(self):
+		"""Returns all the files from the dataSegment as a map object."""
+		if not self.scan():
+			return 0
+		a = open(self.file, "r")
+		mydata = {}
+		startpos=0
+		while ((startpos+8)<self.indexsize):
+			namelen=decodeint(self.index[startpos:startpos+4])
+			datapos=decodeint(self.index[startpos+4+namelen:startpos+8+namelen]);
+			datalen=decodeint(self.index[startpos+8+namelen:startpos+12+namelen]);
+			myname=self.index[startpos+4:startpos+4+namelen]
+			a.seek(self.datapos+datapos)
+			mydata[myname] = a.read(datalen)
+			startpos=startpos+namelen+12
+		a.close()
+		return mydata
 
 	def getboth(self):
 		"""Returns an array [indexSegment,dataSegment]"""

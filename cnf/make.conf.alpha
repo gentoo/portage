@@ -276,6 +276,9 @@ CFLAGS="-mcpu=ev5 -O3 -pipe "
 #  'keepwork'    prevents the clean phase from deleting the WORKDIR.
 #  'test'    causes ebuilds to perform testing phases if they are capable
 #                of it. Some packages support this automaticaly via makefiles.
+#  'metadata-transfer'
+#                automatically perform a metadata transfer when `emerge --sync`
+#                is run.
 #  'noauto'      causes ebuild to perform only the action requested and 
 #                not any other required actions like clean or unpack -- for
 #                debugging purposes only.

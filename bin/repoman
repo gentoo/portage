@@ -47,6 +47,7 @@ def warn(txt):
 def err(txt):
 	warn(txt)
 	sys.exit(1)
+
 def err_help(txt):
 	help(exitstatus=-1,helpfulness=0)
 	warn(txt)
@@ -204,10 +205,6 @@ for x in missingvars:
 		qawarnings.append(x)
 
 
-def err(txt):
-	print exename+": "+txt
-	sys.exit(1)
-
 ven_cat = r'[\w0-9-]+'                                 # Category
 ven_nam = r'([+a-z0-9-]+(?:[+_a-z0-9-]*[+a-z0-9-]+)*)' # Name
 ven_ver = r'((?:\d+\.)*\d+[a-z]?)'                     # Version
@@ -238,6 +235,7 @@ def valid_ebuild_name(name):
 def show_version():
 	print exename+" "+version
 	sys.exit(0)
+	
 def help(exitstatus=1,helpfulness=1):
 	if quiet:
 		helpfulness=0
@@ -1021,7 +1019,7 @@ for x in scanlist:
 			fails["ebuild.namenomatch"].append(x+"/"+y+".ebuild")
 			continue
 		try:
-			myaux=portage.db["/"]["porttree"].dbapi.aux_get(catdir+"/"+y,allvars)
+			myaux = dict( zip(allvars, portage.db["/"]["porttree"].dbapi.aux_get(catdir+"/"+y, allvars ) ) )
 		except KeyError:
 			stats["ebuild.syntax"]=stats["ebuild.syntax"]+1
 			fails["ebuild.syntax"].append(x+"/"+y+".ebuild")
@@ -1030,14 +1028,6 @@ for x in scanlist:
 			stats["ebuild.output"]=stats["ebuild.output"]+1
 			fails["ebuild.output"].append(x+"/"+y+".ebuild")
 			continue
-
-		mynewaux = {}
-		for idx in range(len(allvars)):
-			if idx < len(myaux):
-				mynewaux[allvars[idx]] = myaux[idx]
-			else:
-				mynewaux[allvars[idx]] = ""
-		myaux = mynewaux
 
 		# Test for negative logic and bad words in the RESTRICT var.
 		#for x in myaux[allvars.index("RESTRICT")].split():
