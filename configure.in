@@ -194,12 +194,18 @@ AC_HELP_STRING([--with-rootuser=me],[allows 'me' to do root tasks (default root)
 esac],
 [rootuser=root])
 
+AC_ARG_WITH(rootuid,
+AC_HELP_STRING([--with-rootuid=me],[allows uid 'me' to do root tasks (default 0)]),
+[case "${withval}" in
+  ""|yes) AC_MSG_ERROR(bad value ${withval} for --with-rootuid);;
+  *) rootuid=${withval};;
+esac],
+[rootuid=0])
+
 AC_ARG_WITH(offset-prefix, 
-AC_HELP_STRING([--with-offset-prefix], [specify the offset prefix, defaults to /]),
+AC_HELP_STRING([--with-offset-prefix], [specify the installation prefix for all packages , defaults to /]),
 [DOMAIN_PREFIX=$withval],
 [DOMAIN_PREFIX='/'])
-
-
 
 if test x$enable_missingos = xauto
 then
@@ -239,7 +245,9 @@ AC_CONFIG_FILES([ cnf/Makefile ])
 AC_SUBST(portageuser)
 AC_SUBST(portagegroup)
 AC_SUBST(wheelgroup)
+AC_SUBST(wheelgid)
 AC_SUBST(rootuser)
+AC_SUBST(rootuid)
 AC_SUBST(DOMAIN_PREFIX)
 AC_SUBST(ARCH)
 AC_SUBST(PORTAGE_BASE,['${libdir}/portage'])

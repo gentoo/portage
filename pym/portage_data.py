@@ -47,16 +47,17 @@ secpass=0
 
 uid=os.getuid()
 wheelgid=portage_const.wheelgid
+wheelgroup=portage_const.wheelgroup
 
-if uid==0:
+if uid==0 or uid==portage_const.rootuid:
 	secpass=2
 try:
-	wheelgid=grp.getgrnam("wheel")[2]
+	wheelgid=grp.getgrnam(wheelgroup)[2]
 	if (not secpass) and (wheelgid in os.getgroups()):
 		secpass=1
 except KeyError:
-	writemsg("portage initialization: your system doesn't have a 'wheel' group.\n")
-	writemsg("Please fix this as it is a normal system requirement. 'wheel' is GID 10\n")
+	writemsg("portage initialization: your system doesn't have a '%s' group.\n" % wheelgroup)
+	writemsg("Please fix this as it is a normal system requirement. '%s' is GID %d\n" % (wheelgroup, wheelgid))
 	writemsg("'emerge baselayout' and an 'etc-update' should remedy this problem.\n")
 	pass
 
