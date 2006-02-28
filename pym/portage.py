@@ -106,7 +106,7 @@ try:
 	from portage_checksum import perform_md5,perform_checksum,prelink_capable
 	import eclass_cache
 	from portage_localization import _
-	from portage_update import fixdbentries, update_dbentries
+	from portage_update import fixdbentries, update_dbentries, grab_updates
 
 	# Need these functions directly in portage namespace to not break every external tool in existence
 	from portage_versions import ververify,vercmp,catsplit,catpkgsplit,pkgsplit,pkgcmp
@@ -6734,7 +6734,7 @@ for x in mtimedb.keys():
 #,"porttree":portagetree(root,virts),"bintree":binarytree(root,virts)}
 features=settings["FEATURES"].split()
 
-def do_upgrade(mykey):
+def do_upgrade(mykey, mycontent):
 	"""Valid updates are returned as a list of split update commands."""
 	writemsg("\n\n")
 	writemsg(green("Performing Global Updates: ")+bold(mykey)+"\n")
@@ -6742,7 +6742,7 @@ def do_upgrade(mykey):
 	writemsg("  "+bold(".")+"='update pass'  "+bold("*")+"='binary update'  "+bold("@")+"='/var/db move'\n"+"  "+bold("s")+"='/var/db SLOT move' "+bold("S")+"='binary SLOT move' "+bold("p")+"='update /etc/portage/package.*'\n")
 	processed=1
 	myupd = []
-	mylines = grabfile(mykey)
+	mylines = mycontent.splitlines()
 	for myline in mylines:
 		mysplit = myline.split()
 		if len(mysplit) == 0:
@@ -6870,37 +6870,24 @@ def update_config_files(update_iter):
 
 def global_updates():
 	updpath = os.path.join(settings["PORTDIR"], "profiles", "updates")
-	mylist = listdir(updpath, EmptyOnError=1)
-	# validate the file name (filter out CVS directory, etc...)
-	mylist = [myfile for myfile in mylist if len(myfile) == 7 and myfile[1:3] == "Q-"]
-	if len(mylist) > 0:
-		# resort the list
-		mylist = [myfile[3:]+"-"+myfile[:2] for myfile in mylist]
-		mylist.sort()
-		mylist = [myfile[5:]+"-"+myfile[:4] for myfile in mylist]
-
-		if not mtimedb.has_key("updates"):
-			mtimedb["updates"] = {}
-
-		didupdate = 0
+	if not mtimedb.has_key("updates"):
+		mtimedb["updates"] = {}
+	if settings["PORTAGE_CALLER"] == "fixpackages":
+		update_data = grab_updates(updpath)
+	else:
+		update_data = grab_updates(updpath, mtimedb["updates"])
+	if len(update_data) > 0:
+		didupdate = 1
 		do_upgrade_packagesmessage = 0
 		myupd = []
 		timestamps = {}
-		for myfile in mylist:
-			mykey = os.path.join(updpath, myfile)
-			mystat = os.stat(mykey)
-			if not stat.S_ISREG(mystat.st_mode):
-				continue
-			if mykey not in mtimedb["updates"] or \
-			mtimedb["updates"][mykey] != mystat.st_mtime or \
-			settings["PORTAGE_CALLER"] == "fixpackages":
-				didupdate = 1
-				valid_updates, no_errors = do_upgrade(mykey)
-				myupd.extend(valid_updates)
-				if no_errors:
-					# Update our internal mtime since we
-					# processed all of our directives.
-					timestamps[mykey] = mystat.st_mtime
+		for mykey, mystat, mycontent in update_data:
+			valid_updates, no_errors = do_upgrade(mykey, mycontent)
+			myupd.extend(valid_updates)
+			if no_errors:
+				# Update our internal mtime since we
+				# processed all of our directives.
+				timestamps[mykey] = mystat.st_mtime
 		update_config_files(myupd)
 
 		db["/"]["bintree"] = binarytree("/", settings["PKGDIR"], virts)
