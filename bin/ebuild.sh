@@ -727,6 +727,11 @@ dyn_unpack() {
 }
 
 dyn_clean() {
+	if [ -z "${PORTAGE_BUILDDIR}" ]; then
+		echo "Aborting clean phase because PORTAGE_BUILDDIR is unset!"
+		return 1
+	fi
+
 	if [ "$USERLAND" == "BSD" ] && type -p chflags &>/dev/null; then
 		chflags -R noschg,nouchg,nosappnd,nouappnd,nosunlnk,nouunlnk \
 			"${PORTAGE_BUILDDIR}"
