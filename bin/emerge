@@ -1568,7 +1568,7 @@ class depgraph:
 					if "--changelog" in myopts:
 						changelogs.extend(self.calc_changelog(
 							portage.portdb.findname(x[2]),
-							portage.db["/"]["vartree"].dep_bestmatch('/'.join(portage.catpkgsplit(x[2])[:2])),
+							portage.db[x[1]]["vartree"].dep_bestmatch('/'.join(portage.catpkgsplit(x[2])[:2])),
 							x[2]
 							))
 				else:
@@ -1595,8 +1595,8 @@ class depgraph:
 						pkg = myoldbest
 					else:
 						pkg = x[2]
-					if portage.db["/"]["vartree"].dbapi.cpv_exists(pkg):
-						(old_iuse, old_use) = portage.db["/"]["vartree"].dbapi.aux_get(pkg, ["IUSE", "USE"])
+					if portage.db[x[1]]["vartree"].dbapi.cpv_exists(pkg):
+						(old_iuse, old_use) = portage.db[x[1]]["vartree"].dbapi.aux_get(pkg, ["IUSE", "USE"])
 						old_iuse = portage.unique_array(old_iuse.split())
 						old_iuse.sort()
 						old_use = old_use.split()
