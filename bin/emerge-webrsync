@@ -5,13 +5,11 @@
 # Author: Karl Trygve Kalleberg <karltk@gentoo.org>
 # Rewritten from the old, Perl-based emerge-webrsync script
 
-if [ -z "$PORTAGE_NICENESS" ]; then
-	PORTAGE_NICENESS="$(/usr/lib/portage/bin/portageq envvar PORTAGE_NICENESS)"
-	if [ -n "$PORTAGE_NICENESS" ]; then
-		export PORTAGE_NICENESS
-		exec nice -n $PORTAGE_NICENESS "$0" "$@"
-		echo "failed pulling PORTAGE_NICENESS, disabling"
-	fi
+# If PORTAGE_NICENESS is overriden via the env then it will
+# still pass through the portageq call and override properly.
+PORTAGE_NICENESS="$(/usr/lib/portage/bin/portageq envvar PORTAGE_NICENESS)"
+if [ -n "${PORTAGE_NICENESS}" ]; then
+	renice $PORTAGE_NICENESS $$ > /dev/null
 fi
 
 GENTOO_MIRRORS="${GENTOO_MIRRORS} $(/usr/lib/portage/bin/portageq gentoo_mirrors)"
