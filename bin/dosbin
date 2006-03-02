@@ -12,16 +12,11 @@ if [[ ! -d ${D}${DESTTREE}/sbin ]] ; then
 	install -d "${D}${DESTTREE}/sbin" || exit 2
 fi
 
-case ${CHOST} in
-	*-freebsd*) group=wheel ;;
-	*)          group=root ;;
-esac
-
 ret=0
 
 for x in "$@" ; do
 	if [[ -e ${x} ]] ; then
-		install -m0755 -o root -g ${group} "${x}" "${D}${DESTTREE}/sbin"
+		install -m0755 -o root -g 0 "${x}" "${D}${DESTTREE}/sbin"
 	else
 		echo "!!! ${0##*/}: ${x} does not exist" 1>&2
 		false
