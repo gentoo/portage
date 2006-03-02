@@ -16,7 +16,7 @@ ret=0
 
 for x in "$@" ; do
 	if [[ -e ${x} ]] ; then
-		install -m0755 -o root -g 0 "${x}" "${D}${DESTTREE}/sbin"
+		install -m0755 -o 0 -g 0 "${x}" "${D}${DESTTREE}/sbin"
 	else
 		echo "!!! ${0##*/}: ${x} does not exist" 1>&2
 		false
