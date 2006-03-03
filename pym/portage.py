@@ -6899,8 +6899,6 @@ def global_updates():
 				db["/"]["vartree"].dbapi.move_slot_ent(update_cmd)
 				db["/"]["bintree"].move_slot_ent(update_cmd)
 
-		print
-
 		# The above global updates proceed quickly, so they
 		# are considered a single mtimedb transaction.
 		if len(timestamps) > 0:
