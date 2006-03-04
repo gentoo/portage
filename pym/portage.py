@@ -6866,7 +6866,6 @@ def global_updates():
 	else:
 		update_data = grab_updates(updpath, mtimedb["updates"])
 	if len(update_data) > 0:
-		didupdate = 1
 		do_upgrade_packagesmessage = 0
 		myupd = []
 		timestamps = {}
@@ -6920,14 +6919,13 @@ def global_updates():
 		print
 		print
 
-		if didupdate:
-			#make sure our internal databases are consistent; recreate our virts and vartree
-			do_vartree(settings)
-			if do_upgrade_packagesmessage and \
-				listdir(os.path.join(settings["PKGDIR"], "All"), EmptyOnError=1):
-				writemsg(" ** Skipping packages. Run 'fixpackages' or set it in FEATURES to fix the")
-				writemsg("\n    tbz2's in the packages directory. "+bold("Note: This can take a very long time."))
-				writemsg("\n")
+		#make sure our internal databases are consistent; recreate our virts and vartree
+		do_vartree(settings)
+		if do_upgrade_packagesmessage and \
+			listdir(os.path.join(settings["PKGDIR"], "All"), EmptyOnError=1):
+			writemsg(" ** Skipping packages. Run 'fixpackages' or set it in FEATURES to fix the")
+			writemsg("\n    tbz2's in the packages directory. "+bold("Note: This can take a very long time."))
+			writemsg("\n")
 
 if (secpass==2) and (not os.environ.has_key("SANDBOX_ACTIVE")):
 	if settings["PORTAGE_CALLER"] in ["emerge","fixpackages"]:
