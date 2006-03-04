@@ -6734,7 +6734,7 @@ for x in mtimedb.keys():
 #,"porttree":portagetree(root,virts),"bintree":binarytree(root,virts)}
 features=settings["FEATURES"].split()
 
-def do_upgrade(mykey, mycontent):
+def parse_updates(mycontent):
 	"""Valid updates are returned as a list of split update commands."""
 	myupd = []
 	errors = []
@@ -6875,7 +6875,7 @@ def global_updates():
 			writemsg(green("Performing Global Updates: ")+bold(mykey)+"\n")
 			writemsg("(Could take a couple of minutes if you have a lot of binary packages.)\n")
 			writemsg("  "+bold(".")+"='update pass'  "+bold("*")+"='binary update'  "+bold("@")+"='/var/db move'\n"+"  "+bold("s")+"='/var/db SLOT move' "+bold("S")+"='binary SLOT move' "+bold("p")+"='update /etc/portage/package.*'\n")
-			valid_updates, errors = do_upgrade(mykey, mycontent)
+			valid_updates, errors = parse_updates(mycontent)
 			myupd.extend(valid_updates)
 			print len(valid_updates) * "."
 			if len(errors) == 0:
