@@ -6736,48 +6736,37 @@ features=settings["FEATURES"].split()
 
 def do_upgrade(mykey, mycontent):
 	"""Valid updates are returned as a list of split update commands."""
-	writemsg("\n\n")
-	writemsg(green("Performing Global Updates: ")+bold(mykey)+"\n")
-	writemsg("(Could take a couple of minutes if you have a lot of binary packages.)\n")
-	writemsg("  "+bold(".")+"='update pass'  "+bold("*")+"='binary update'  "+bold("@")+"='/var/db move'\n"+"  "+bold("s")+"='/var/db SLOT move' "+bold("S")+"='binary SLOT move' "+bold("p")+"='update /etc/portage/package.*'\n")
-	processed=1
 	myupd = []
+	errors = []
 	mylines = mycontent.splitlines()
 	for myline in mylines:
 		mysplit = myline.split()
 		if len(mysplit) == 0:
 			continue
 		if mysplit[0] not in ("move", "slotmove"):
-			writemsg("portage: Update type \""+mysplit[0]+"\" not recognized.\n")
-			processed=0
+			errors.append("ERROR: Update type not recognized '%s'" % myline)
 			continue
 		if mysplit[0]=="move":
 			if len(mysplit)!=3:
-				writemsg("portage: Update command \""+myline+"\" invalid; skipping.\n")
-				processed=0
+				errors.append("ERROR: Update command invalid '%s'" % myline)
 				continue
 			orig_value, new_value = mysplit[1], mysplit[2]
 			for cp in (orig_value, new_value):
 				if not (isvalidatom(cp) and isjustname(cp)):
-					writemsg("\nERROR: Malformed update entry '%s'\n" % myline)
-					processed=0
+					errors.append("ERROR: Malformed update entry '%s'" % myline)
 					continue
 		if mysplit[0]=="slotmove":
 			if len(mysplit)!=4:
-				writemsg("portage: Update command \""+myline+"\" invalid; skipping.\n")
-				processed=0
+				errors.append("ERROR: Update command invalid '%s'" % myline)
 				continue
 			pkg, origslot, newslot = mysplit[1], mysplit[2], mysplit[3]
 			if not isvalidatom(pkg):
-				writemsg("\nERROR: Malformed update entry '%s'\n" % myline)
-				processed=0
+				errors.append("ERROR: Malformed update entry '%s'" % myline)
 				continue
 		
 		# The list of valid updates is filtered by continue statements above.
 		myupd.append(mysplit)
-		sys.stdout.write(".")
-		sys.stdout.flush()
-	return myupd, processed == 1
+	return myupd, errors
 
 def commit_mtimedb():
 	if mtimedb:
@@ -6882,12 +6871,20 @@ def global_updates():
 		myupd = []
 		timestamps = {}
 		for mykey, mystat, mycontent in update_data:
-			valid_updates, no_errors = do_upgrade(mykey, mycontent)
+			writemsg("\n\n")
+			writemsg(green("Performing Global Updates: ")+bold(mykey)+"\n")
+			writemsg("(Could take a couple of minutes if you have a lot of binary packages.)\n")
+			writemsg("  "+bold(".")+"='update pass'  "+bold("*")+"='binary update'  "+bold("@")+"='/var/db move'\n"+"  "+bold("s")+"='/var/db SLOT move' "+bold("S")+"='binary SLOT move' "+bold("p")+"='update /etc/portage/package.*'\n")
+			valid_updates, errors = do_upgrade(mykey, mycontent)
 			myupd.extend(valid_updates)
-			if no_errors:
+			print len(valid_updates) * "."
+			if len(errors) == 0:
 				# Update our internal mtime since we
 				# processed all of our directives.
 				timestamps[mykey] = mystat.st_mtime
+			else:
+				for msg in errors:
+					writemsg("%s\n" % msg)
 		update_config_files(myupd)
 
 		db["/"]["bintree"] = binarytree("/", settings["PKGDIR"], virts)
@@ -6917,12 +6914,18 @@ def global_updates():
 		else:
 			do_upgrade_packagesmessage = 1
 
+		# Update progress above is indicated by characters written to stdout so
+		# we print a couple new lines here to separate the progress output from
+		# what follows.
+		print
+		print
+
 		if didupdate:
 			#make sure our internal databases are consistent; recreate our virts and vartree
 			do_vartree(settings)
 			if do_upgrade_packagesmessage and \
 				listdir(os.path.join(settings["PKGDIR"], "All"), EmptyOnError=1):
-				writemsg("\n\n\n ** Skipping packages. Run 'fixpackages' or set it in FEATURES to fix the")
+				writemsg(" ** Skipping packages. Run 'fixpackages' or set it in FEATURES to fix the")
 				writemsg("\n    tbz2's in the packages directory. "+bold("Note: This can take a very long time."))
 				writemsg("\n")
 
