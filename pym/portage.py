@@ -5826,7 +5826,8 @@ class dblink:
 				os.chown(pdir, 0, portage_gid)
 				os.chmod(pdir, 02770)
 
-			write_atomic(os.path.join(self.myroot,WORLD_FILE),"\n".join(newworldlist))
+			write_atomic(os.path.join(self.myroot, WORLD_FILE.lstrip(os.sep)),
+			"\n".join(newworldlist))
 
 		#do original postrm
 		if myebuildpath and os.path.exists(myebuildpath):
