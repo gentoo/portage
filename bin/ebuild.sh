@@ -306,7 +306,7 @@ dump_trace() {
 		# Display function arguments
 		args=
 		if [[ -n "${BASH_ARGV[@]}" ]]; then
-			for (( j = 0 ; j < ${BASH_ARGC[${n} - 1]} ; ++j )); do
+			for (( j = 1 ; j <= ${BASH_ARGC[${n} - 1]} ; ++j )); do
 				newarg=${BASH_ARGV[$(( p - j - 1 ))]}
 				args="${args:+${args} }'${newarg}'"
 			done
