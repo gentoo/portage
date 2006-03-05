@@ -5984,10 +5984,7 @@ class dblink:
 		self.updateprotect()
 
 		#if we have a file containing previously-merged config file md5sums, grab it.
-		if os.path.exists(destroot+CONFIG_MEMORY_FILE):
-			cfgfiledict=grabdict(destroot+CONFIG_MEMORY_FILE)
-		else:
-			cfgfiledict={}
+		cfgfiledict = grabdict(os.path.join(destroot, CONFIG_MEMORY_FILE))
 		if self.settings.has_key("NOCONFMEM"):
 			cfgfiledict["IGNORE"]=1
 		else:
@@ -6055,8 +6052,8 @@ class dblink:
 			os.chown(my_private_path, os.getuid(), portage_gid)
 			os.chmod(my_private_path, 02770)
 
-		mylock = portage_locks.lockfile(destroot+CONFIG_MEMORY_FILE)
-		writedict(cfgfiledict,destroot+CONFIG_MEMORY_FILE)
+		mylock = portage_locks.lockfile(os.path.join(destroot, CONFIG_MEMORY_FILE))
+		writedict(cfgfiledict, os.path.join(destroot, CONFIG_MEMORY_FILE))
 		portage_locks.unlockfile(mylock)
 
 		#do postinst script
