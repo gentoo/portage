@@ -1103,11 +1103,16 @@ dyn_install() {
 			echo -ne '\a\n'
 			echo "QA Notice: the following files contain insecure RUNPATH's"
 			echo " Please file a bug about this at http://bugs.gentoo.org/"
-			echo " For more information on this issue, kindly review:"
-			echo " http://bugs.gentoo.org/81745"
+			echo " with the maintaining herd of the package."
+			echo " Summary: $CATEGORY/$PN: insecure RPATH ${f}"
 			echo "${f}"
 			echo -ne '\a\n'
-			insecure_rpath=1
+			if has stricter ${FEATURES}; then
+				insecure_rpath=1
+			else
+				echo "Auto fixing rpaths for ${f}"
+				TMPDIR=${PORTAGE_BUILDDIR} scanelf -BXr ${f} -o /dev/null
+			fi
 		fi
 
 		# Check for setid binaries but are not built with BIND_NOW
