@@ -6049,11 +6049,11 @@ class dblink:
 		if cfgfiledict.has_key("IGNORE"):
 			del cfgfiledict["IGNORE"]
 
-		# XXXX: HACK! PathSpec is very necessary here.
-		if not os.path.exists(destroot+PRIVATE_PATH):
-			os.makedirs(destroot+PRIVATE_PATH)
-			os.chown(destroot+PRIVATE_PATH,os.getuid(),portage_gid)
-			os.chmod(destroot+PRIVATE_PATH,02770)
+		my_private_path = os.path.join(destroot, PRIVATE_PATH)
+		if not os.path.exists(my_private_path):
+			os.makedirs(my_private_path)
+			os.chown(my_private_path, os.getuid(), portage_gid)
+			os.chmod(my_private_path, 02770)
 
 		mylock = portage_locks.lockfile(destroot+CONFIG_MEMORY_FILE)
 		writedict(cfgfiledict,destroot+CONFIG_MEMORY_FILE)

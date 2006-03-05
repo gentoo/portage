@@ -9,7 +9,7 @@
 # ===========================================================================
 
 VDB_PATH                = "var/db/pkg"
-PRIVATE_PATH            = "/var/lib/portage"
+PRIVATE_PATH            = "var/lib/portage"
 CACHE_PATH              = "/var/cache/edb"
 DEPCACHE_PATH           = CACHE_PATH+"/dep"
 
@@ -29,7 +29,7 @@ BASH_BINARY             = "/bin/bash"
 MOVE_BINARY             = "/bin/mv"
 PRELINK_BINARY          = "/usr/sbin/prelink"
 
-WORLD_FILE              = PRIVATE_PATH+"/world"
+WORLD_FILE              = "/" + PRIVATE_PATH + "/world"
 MAKE_CONF_FILE          = "/etc/make.conf"
 MAKE_DEFAULTS_FILE      = PROFILE_PATH + "/make.defaults"
 DEPRECATED_PROFILE_FILE = PROFILE_PATH+"/deprecated"
@@ -37,7 +37,7 @@ USER_VIRTUALS_FILE      = USER_CONFIG_PATH+"/virtuals"
 EBUILD_SH_ENV_FILE      = USER_CONFIG_PATH+"/bashrc"
 INVALID_ENV_FILE        = "/etc/spork/is/not/valid/profile.env"
 CUSTOM_MIRRORS_FILE     = USER_CONFIG_PATH+"/mirrors"
-CONFIG_MEMORY_FILE      = PRIVATE_PATH + "/config"
+CONFIG_MEMORY_FILE      = "/" + PRIVATE_PATH + "/config"
 
 INCREMENTALS=["USE","USE_EXPAND","USE_EXPAND_HIDDEN","FEATURES","ACCEPT_KEYWORDS","ACCEPT_LICENSE","CONFIG_PROTECT_MASK","CONFIG_PROTECT","PRELINK_PATH","PRELINK_PATH_MASK"]
 STICKIES=["KEYWORDS_ACCEPT","USE","CFLAGS","CXXFLAGS","MAKEOPTS","EXTRA_ECONF","EXTRA_EINSTALL","EXTRA_EMAKE"]
