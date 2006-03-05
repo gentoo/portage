@@ -6054,15 +6054,6 @@ class dblink:
 			os.makedirs(destroot+PRIVATE_PATH)
 			os.chown(destroot+PRIVATE_PATH,os.getuid(),portage_gid)
 			os.chmod(destroot+PRIVATE_PATH,02770)
-			dirlist = prefix_array(listdir(destroot+PRIVATE_PATH),destroot+PRIVATE_PATH+"/")
-			while dirlist:
-				dirlist.sort()
-				dirlist.reverse() # Gets them in file-before basedir order
-				x = dirlist[0]
-				if os.path.isdir(x):
-					dirlist += prefix_array(listdir(x),x+"/")
-					continue
-				os.unlink(destroot+PRIVATE_PATH+"/"+x)
 
 		mylock = portage_locks.lockfile(destroot+CONFIG_MEMORY_FILE)
 		writedict(cfgfiledict,destroot+CONFIG_MEMORY_FILE)
