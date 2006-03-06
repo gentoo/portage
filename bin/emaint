@@ -18,9 +18,10 @@ class WorldHandler(object):
 		self.invalid = []
 		self.not_installed = []
 		self.okay = []
-		self.found = os.access(portage_const.WORLD_FILE, os.R_OK)
+		self.world_file = os.path.join("/", portage_const.WORLD_FILE)
+		self.found = os.access(self.world_file, os.R_OK)
 
-		for atom in open(portage_const.WORLD_FILE).read().split():
+		for atom in open(self.world_file).read().split():
 			if not portage.isvalidatom(atom):
 				self.invalid.append(atom)
 			elif not portage.db["/"]["vartree"].dbapi.match(atom):
@@ -34,15 +35,15 @@ class WorldHandler(object):
 			errors += map(lambda x: "'%s' is not a valid atom" % x, self.invalid)
 			errors += map(lambda x: "'%s' is not installed" % x, self.not_installed)
 		else:
-			errors.append(portage_const.WORLD_FILE + " could not be opened for reading")
+			errors.append(self.world_file + " could not be opened for reading")
 		return errors
 
 	def fix(self):
 		errors = []
 		try:
-			portage.write_atomic(portage_const.WORLD_FILE,"\n".join(self.okay))
+			portage.write_atomic(self.world_file, "\n".join(self.okay))
 		except OSError:
-			errors.append(portage_const.WORLD_FILE + " could not be opened for writing")
+			errors.append(self.world_file + " could not be opened for writing")
 		return errors
 
 class VdbKeyHandler(object):

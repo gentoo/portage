@@ -5797,7 +5797,7 @@ class dblink:
 
 		# New code to remove stuff from the world and virtuals files when unmerged.
 		if trimworld:
-			worldlist=grabfile(self.myroot+WORLD_FILE)
+			worldlist = grabfile(os.path.join(self.myroot, WORLD_FILE))
 			mykey=cpv_getkey(self.mycpv)
 			newworldlist=[]
 			for x in worldlist:
@@ -5820,13 +5820,13 @@ class dblink:
 			# (spanky noticed bug)
 			# XXX: dumb question, but abstracting the root uid might be wise/useful for
 			# 2nd pkg manager installation setups.
-			if not os.path.exists(os.path.dirname(self.myroot+WORLD_FILE)):
-				pdir = os.path.dirname(self.myroot + WORLD_FILE)
-				os.makedirs(pdir, mode=0755)
-				os.chown(pdir, 0, portage_gid)
-				os.chmod(pdir, 02770)
+			my_private_path = os.path.join(self.myroot, PRIVATE_PATH)
+			if not os.path.exists(my_private_path):
+				os.makedirs(my_private_path, mode=0755)
+				os.chown(my_private_path, 0, portage_gid)
+				os.chmod(my_private_path, 02770)
 
-			write_atomic(os.path.join(self.myroot, WORLD_FILE.lstrip(os.sep)),
+			write_atomic(os.path.join(self.myroot, WORLD_FILE),
 			"\n".join(newworldlist))
 
 		#do original postrm
@@ -6811,7 +6811,7 @@ def update_config_files(update_iter):
 			if file_contents.has_key(x):
 				del file_contents[x]
 			continue
-	worldlist = grabfile(WORLD_FILE)
+	worldlist = grabfile(os.path.join("/", WORLD_FILE))
 
 	for update_cmd in update_iter:
 		if update_cmd[0] == "move":
@@ -6834,7 +6834,7 @@ def update_config_files(update_iter):
 						sys.stdout.write("p")
 						sys.stdout.flush()
 
-	write_atomic(WORLD_FILE,"\n".join(worldlist))
+	write_atomic(os.path.join("/", WORLD_FILE), "\n".join(worldlist))
 
 	for x in update_files:
 		mydblink = dblink('','','/',settings)

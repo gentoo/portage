@@ -835,7 +835,7 @@ def getlist(mode):
 		mylines=portage.settings.packages
 	elif mode=="world":
 		try:
-			myfile=open(portage.root+portage.WORLD_FILE,"r")
+			myfile = open(os.path.join(portage.root, portage.WORLD_FILE), "r")
 			mylines=myfile.readlines()
 			myfile.close()
 		except OSError:
@@ -1843,7 +1843,7 @@ class depgraph:
 					print red("!!!        the merge operation manually.")
 					sys.exit(1)
 		else:
-			myfavs=portage.grabfile(portage.root+portage.WORLD_FILE)
+			myfavs = portage.grabfile(os.path.join(portage.root, portage.WORLD_FILE))
 			myfavdict=genericdict(myfavs)
 			for x in range(len(mylist)):
 				if mylist[x][3]!="nomerge":
@@ -1862,7 +1862,7 @@ class depgraph:
 							print ">>> Recording",myfavkey,"in \"world\" favorites file..."
 			if not "--fetchonly" in myopts:
 				portage.write_atomic(
-				os.path.join(portage.root, portage.WORLD_FILE.lstrip(os.sep)),
+				os.path.join(portage.root, portage.WORLD_FILE),
 				"\n".join(myfavdict.values()))
 
 			portage.mtimedb["resume"]["mergelist"]=mymergelist[:]
@@ -2025,7 +2025,7 @@ class depgraph:
 				portage.db[x[1]]["vartree"].inject(x[2])
 				myfavkey=portage.cpv_getkey(x[2])
 				if "--fetchonly" not in myopts and "--fetch-all-uri" not in myopts and myfavkey in favorites:
-					myfavs=portage.grabfile(myroot+portage.WORLD_FILE)
+					myfavs = portage.grabfile(os.path.join(myroot, portage.WORLD_FILE))
 					myfavdict=genericdict(myfavs)
 					mysysdict=genericdict(syslist)
 					#don't record if already in system profile or already recorded
@@ -2035,7 +2035,7 @@ class depgraph:
 						print ">>> Recording",myfavkey,"in \"world\" favorites file..."
 						emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Updating world file ("+x[pkgindex]+")")
 						portage.write_atomic(
-						os.path.join(myroot, portage.WORLD_FILE.lstrip(os.sep)),
+						os.path.join(myroot, portage.WORLD_FILE),
 						"\n".join(myfavdict.values()))
 
 				if ("noclean" not in portage.features) and (x[0] != "binary"):

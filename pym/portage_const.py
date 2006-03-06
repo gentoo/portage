@@ -29,7 +29,7 @@ BASH_BINARY             = "/bin/bash"
 MOVE_BINARY             = "/bin/mv"
 PRELINK_BINARY          = "/usr/sbin/prelink"
 
-WORLD_FILE              = "/" + PRIVATE_PATH + "/world"
+WORLD_FILE              = PRIVATE_PATH + "/world"
 MAKE_CONF_FILE          = "/etc/make.conf"
 MAKE_DEFAULTS_FILE      = PROFILE_PATH + "/make.defaults"
 DEPRECATED_PROFILE_FILE = PROFILE_PATH+"/deprecated"

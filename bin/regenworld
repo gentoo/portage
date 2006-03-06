@@ -5,7 +5,7 @@
 
 import sys
 sys.path.insert(0, "/usr/lib/portage/pym")
-
+import os
 import portage, string, re
 
 __candidatematcher__ = re.compile("^[0-9]+: \\*\\*\\* emerge ")
@@ -44,7 +44,7 @@ if len(sys.argv) >= 2 and sys.argv[1] in ["-h", "--help"]:
 	print "your existing world file (%s) before using this tool." % portage.WORLD_FILE
 	sys.exit(0)
 
-worldlist = portage.grabfile(portage.WORLD_FILE)
+worldlist = portage.grabfile(os.path.join("/", portage.WORLD_FILE))
 syslist = portage.settings.packages
 syslist = filter(issyspkg, syslist)
 
@@ -88,4 +88,4 @@ for mykey in biglist:
 			print "add to world:",myfavkey
 			worldlist.append(myfavkey)
 
-portage.write_atomic(portage.WORLD_FILE,"\n".join(worldlist))
+portage.write_atomic(os.path.join("/", portage.WORLD_FILE), "\n".join(worldlist))
