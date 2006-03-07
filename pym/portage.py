@@ -6850,10 +6850,14 @@ def global_updates():
 	updpath = os.path.join(settings["PORTDIR"], "profiles", "updates")
 	if not mtimedb.has_key("updates"):
 		mtimedb["updates"] = {}
-	if settings["PORTAGE_CALLER"] == "fixpackages":
-		update_data = grab_updates(updpath)
-	else:
-		update_data = grab_updates(updpath, mtimedb["updates"])
+	try:
+		if settings["PORTAGE_CALLER"] == "fixpackages":
+			update_data = grab_updates(updpath)
+		else:
+			update_data = grab_updates(updpath, mtimedb["updates"])
+	except portage_exception.DirectoryNotFound:
+		writemsg("--- 'profiles/updates' is empty or not available. Empty portage tree?\n")
+		return
 	if len(update_data) > 0:
 		do_upgrade_packagesmessage = 0
 		myupd = []

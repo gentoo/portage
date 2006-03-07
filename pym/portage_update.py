@@ -1,7 +1,8 @@
 
-import os, re
+import errno, os, re
 
 from portage_util import write_atomic
+from portage_exception import DirectoryNotFound
 
 ignored_dbentries = ("CONTENTS", "environment.bz2")
 
@@ -49,7 +50,13 @@ def grab_updates(updpath, prev_mtimes=None):
 	"""Returns all the updates from the given directory as a sorted list of
 	tuples, each containing (file_path, statobj, content).  If prev_mtimes is
 	given then only updates with differing mtimes are considered."""
-	mylist = os.listdir(updpath)
+	try:
+		mylist = os.listdir(updpath)
+	except OSError, oe:
+		if oe.errno == errno.ENOENT:
+			raise DirectoryNotFound(oe)
+		else:
+			raise oe
 	if prev_mtimes is None:
 		prev_mtimes = {}
 	# validate the file name (filter out CVS directory, etc...)
