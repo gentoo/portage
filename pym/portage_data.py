@@ -49,7 +49,7 @@ uid=os.getuid()
 wheelgid=portage_const.wheelgid
 wheelgroup=portage_const.wheelgroup
 
-if uid==0 or uid==portage_const.rootuid:
+if uid==0 or uid==int(portage_const.rootuid):
 	secpass=2
 try:
 	wheelgid=grp.getgrnam(wheelgroup)[2]
