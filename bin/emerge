@@ -2300,6 +2300,9 @@ def unmerge(unmerge_action, unmerge_files):
 			else:
 					print "none",
 			print
+        
+	if portage.settings["ROOT"]:
+		print string.rjust("ROOT:", 12) + " " + white(portage.settings["ROOT"])
 
 	print "\n>>>",red("'Selected'"),"packages are slated for removal."
 	print ">>>",green("'Protected'"),"and",green("'omitted'"),"packages will not be removed.\n"
