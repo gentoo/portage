@@ -1001,6 +1001,7 @@ dyn_compile() {
 dyn_package() {
 	trap "abort_package" SIGINT SIGQUIT
 	cd "${PORTAGE_BUILDDIR}/image"
+	install_mask "${PORTAGE_BUILDDIR}/image" ${PKG_INSTALL_MASK}
 	tar cpvf - ./ | bzip2 -f > ../bin.tar.bz2 || die "Failed to create tarball"
 	cd ..
 	xpak build-info inf.xpak
@@ -1068,9 +1069,6 @@ dyn_install() {
 	#|| abort_install "fail"
 	prepall
 	cd "${D}"
-
-	# Allow user to remove unwanted files.
-	install_mask "${D}" ${PKG_INSTALL_MASK}
 
 	declare -i UNSAFE=0
 	for i in $(find "${D}/" -type f -perm -2002); do
