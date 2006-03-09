@@ -1301,28 +1301,6 @@ dyn_install() {
 	trap SIGINT SIGQUIT
 }
 
-install_mask() {
-	local root="$1"
-	shift
-	local install_mask="$*"
-
-	# we don't want globbing for initial expansion, but afterwards, we do
-	local shopts=$-
-	set -o noglob
-	for no_inst in ${install_mask}; do
-		set +o noglob
-		einfo "Removing ${no_inst}"
-		# normal stuff
-		rm -Rf ${root}/${no_inst} >&/dev/null
-
-		# we also need to handle globs (*.a, *.h, etc)
-		find "${root}" -name ${no_inst} -exec rm -fR {} \; >&/dev/null
-	done
-	# set everything back the way we found it
-	set +o noglob
-	set -${shopts}
-}
-
 dyn_preinst() {
 	if [ -z "$IMAGE" ]; then
 			eerror "${FUNCNAME}: IMAGE is unset"
