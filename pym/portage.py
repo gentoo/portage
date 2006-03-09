@@ -2373,14 +2373,10 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 		mycommand = MISC_SH_BINARY + " dyn_" + mydo
 	else:
 		mycommand = EBUILD_SH_BINARY + " " + mydo
-	enable_sesandbox = 0
-	if selinux_enabled and "sesandbox" in features and \
-		mydo in ["unpack","compile","test","install"]:
-		enable_sesandbox=1
 	return spawn(mycommand, mysettings, debug=debug,
-		free=actionmap[mydo]["args"][0],
-		droppriv=actionmap[mydo]["args"][1],
-		sesandbox=enable_sesandbox, logfile=logfile)
+		droppriv=actionmap[mydo]["args"][0],
+		free=actionmap[mydo]["args"][1],
+		sesandbox=actionmap[mydo]["args"][2], logfile=logfile)
 
 # chunked out deps for each phase, so that ebuild binary can use it 
 # to collapse targets down.
@@ -2878,15 +2874,19 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 		"nouserpriv" in mysettings["RESTRICT"]):
 		nosandbox = ("sandbox" not in features and "usersandbox" not in features)
 
+	sesandbox = selinux_enabled and "sesandbox" in features
+
+	# args are for the to spawn function
+	#                     (droppriv,  free,     sesandbox)
 	actionmap = {
-		"depend": {"args":(0,1)},         # sandbox  / portage
-		"setup":  {"args":(1,0)},         # without  / root
-		"unpack": {"args":(0,1)},         # sandbox  / portage
-		"compile":{"args":(nosandbox,1)}, # optional / portage
-		"test":   {"args":(nosandbox,1)}, # optional / portage
-		"install":{"args":(0,0)},         # sandbox  / root
-		"rpm":    {"args":(0,0)},         # sandbox  / root
-		"package":{"args":(0,0)},         # sandbox  / root
+		"depend": {"args":(1,         0,         0)},
+		"setup":  {"args":(0,         1,         0)},
+		"unpack": {"args":(1,         0,         sesandbox)},
+		"compile":{"args":(1,         nosandbox, sesandbox)},
+		"test":   {"args":(1,         nosandbox, sesandbox)},
+		"install":{"args":(0,         0,         sesandbox)},
+		"rpm":    {"args":(0,         0,         0)},
+		"package":{"args":(0,         0,         0)},
 	}
 	
 	# merge the deps in so we have again a 'full' actionmap
