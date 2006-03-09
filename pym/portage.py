@@ -1630,7 +1630,7 @@ class config:
 
 # XXX This would be to replace getstatusoutput completely.
 # XXX Issue: cannot block execution. Deadlock condition.
-def spawn(mystring,mysettings,debug=0,free=0,droppriv=0,fd_pipes=None,**keywords):
+def spawn(mystring,mysettings,debug=0,free=0,droppriv=0,sesandbox=0,fd_pipes=None,**keywords):
 	"""spawn a subprocess with optional sandbox protection,
 	depending on whether sandbox is enabled.  The "free" argument,
 	when set to 1, will disable sandboxing.  This allows us to
@@ -1659,14 +1659,20 @@ def spawn(mystring,mysettings,debug=0,free=0,droppriv=0,fd_pipes=None,**keywords
 		free=((droppriv and "usersandbox" not in features) or \
 			(not droppriv and "sandbox" not in features and "usersandbox" not in features))
 
+	if sesandbox:
+		con = selinux.getcontext()
+		con = string.replace(con, mysettings["PORTAGE_T"], mysettings["PORTAGE_SANDBOX_T"])
+		selinux.setexec(con)
+
 	if not free:
 		keywords["opt_name"] += " sandbox"
 		return portage_exec.spawn_sandbox(mystring,env=env,**keywords)
 	else:
 		keywords["opt_name"] += " bash"
 		return portage_exec.spawn_bash(mystring,env=env,**keywords)
-
-
+	
+	if sesandbox:
+		selinux.setexec(None)
 
 def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",use_locks=1, try_mirrors=1):
 	"fetch files.  Will use digest file if available."
@@ -1949,14 +1955,9 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					myfetch=string.replace(locfetch,"${URI}",loc)
 					myfetch=string.replace(myfetch,"${FILE}",myfile)
 					try:
-						if selinux_enabled:
-							con=selinux.getcontext()
-							con=string.replace(con,mysettings["PORTAGE_T"],mysettings["PORTAGE_FETCH_T"])
-							selinux.setexec(con)
-							myret=spawn(myfetch,mysettings,free=1, droppriv=("userfetch" in mysettings.features))
-							selinux.setexec(None)
-						else:
-							myret=spawn(myfetch,mysettings,free=1, droppriv=("userfetch" in mysettings.features))
+						myret = spawn(myfetch, mysettings, free=1,
+							droppriv=("userfetch" in mysettings.features),
+							sesandbox=selinux_enabled)
 					finally:
 						#if root, -always- set the perms.
 						if os.path.exists(mysettings["DISTDIR"]+"/"+myfile) and (fetched != 1 or os.getuid() == 0) \
@@ -2372,19 +2373,14 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 		mycommand = MISC_SH_BINARY + " dyn_" + mydo
 	else:
 		mycommand = EBUILD_SH_BINARY + " " + mydo
-	if selinux_enabled and ("sesandbox" in features) and (mydo in ["unpack","compile","test","install"]):
-		con=selinux.getcontext()
-		con=string.replace(con,mysettings["PORTAGE_T"],mysettings["PORTAGE_SANDBOX_T"])
-		selinux.setexec(con)
-		retval=spawn(mycommand, mysettings, debug=debug,
-				free=actionmap[mydo]["args"][0],
-				droppriv=actionmap[mydo]["args"][1],logfile=logfile)
-		selinux.setexec(None)
-	else:
-		retval=spawn(mycommand, mysettings, debug=debug,
-				free=actionmap[mydo]["args"][0],
-				droppriv=actionmap[mydo]["args"][1],logfile=logfile)
-	return retval
+	enable_sesandbox = 0
+	if selinux_enabled and "sesandbox" in features and \
+		mydo in ["unpack","compile","test","install"]:
+		enable_sesandbox=1
+	return spawn(mycommand, mysettings, debug=debug,
+		free=actionmap[mydo]["args"][0],
+		droppriv=actionmap[mydo]["args"][1],
+		sesandbox=enable_sesandbox, logfile=logfile)
 
 # chunked out deps for each phase, so that ebuild binary can use it 
 # to collapse targets down.
