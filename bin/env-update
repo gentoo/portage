@@ -8,7 +8,7 @@ os.environ["PORTAGE_CALLER"] = "env-update"
 sys.path = ["/usr/lib/portage/pym"]+sys.path
 
 def usage(status):
-	print "Usage: env-update"
+	print "Usage: env-update [--no-ldconfig]"
 	print ""
 	print "See the env-update(1) man page for more info"
 	sys.exit(status)
