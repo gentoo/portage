@@ -2373,10 +2373,18 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 		mycommand = MISC_SH_BINARY + " dyn_" + mydo
 	else:
 		mycommand = EBUILD_SH_BINARY + " " + mydo
-	return spawn(mycommand, mysettings, debug=debug,
+	phase_retval = spawn(mycommand, mysettings, debug=debug,
 		droppriv=actionmap[mydo]["args"][0],
 		free=actionmap[mydo]["args"][1],
 		sesandbox=actionmap[mydo]["args"][2], logfile=logfile)
+	if phase_retval == os.EX_OK:
+		if mydo == "install":
+			mycommand = " ".join([MISC_SH_BINARY, "install_qa_check"])
+			return spawn(mycommand, mysettings, debug=debug,
+				droppriv=actionmap[mydo]["args"][0],
+				free=actionmap[mydo]["args"][1],
+				sesandbox=actionmap[mydo]["args"][2], logfile=logfile)
+	return phase_retval
 
 # chunked out deps for each phase, so that ebuild binary can use it 
 # to collapse targets down.
