@@ -1093,7 +1093,7 @@ dyn_install() {
 	done
 
 	if type -p scanelf > /dev/null ; then
-		local insecure_rpath=0
+		local qa_var insecure_rpath=0
 
 		# Make sure we disallow insecure RUNPATH/RPATH's
 		# Don't want paths that point to the tree where the package was built
@@ -1130,9 +1130,23 @@ dyn_install() {
 		fi
 
 		# TEXTREL's are baaaaaaaad
-		f=$(scanelf -qyRF '%t %p' "${D}")
+		# Allow devs to mark things as ignorable ... e.g. things that are
+		# binary-only and upstream isn't cooperating (nvidia-glx) ... we
+		# allow ebuild authors to set QA_TEXTRELS_arch and QA_TEXTRELS ...
+		# the former overrides the latter ... regexes allowed ! :)
+		qa_var="QA_TEXTRELS_${ARCH}"
+		[[ -n ${!qa_var} ]] && QA_TEXTRELS=${!qa_var}
+		[[ -n ${QA_STRICT_TEXTRELS} ]] && QA_TEXTRELS=""
+		f=$(scanelf -qyRF '%t %p' "${D}" | grep -v ' usr/lib/debug/' | \
+			gawk '
+			BEGIN { split("'"${QA_TEXTRELS}"'", ignore); }
+			{	for (idx in ignore)
+					if ($NF ~ "^"ignore[idx]"$")
+					next;
+				print;
+			}')
 		if [[ -n ${f} ]] ; then
-			scanelf -qyRF '%T %p' "${WORKDIR}"/ &> "${T}"/scanelf-textrel.log
+			scanelf -qyRF '%T %p' "${PORTAGE_BUILDDIR}"/ &> "${T}"/scanelf-textrel.log
 			echo -ne '\a\n'
 			echo "QA Notice: the following files contain runtime text relocations"
 			echo " Text relocations force the dynamic linker to perform extra"
@@ -1156,15 +1170,31 @@ dyn_install() {
 			# http://hardened.gentoo.org/gnu-stack.xml (Arch Status)
 			case ${CTARGET:-${CHOST}} in
 				i?86*|ia64*|m68k*|powerpc64*|s390*|x86_64*)
-					f=$(scanelf -qyRF '%e %p' "${D}") ;;
-				*)
-					f="" ;;
+					# Allow devs to mark things as ignorable ... e.g. things
+					# that are binary-only and upstream isn't cooperating ...
+					# we allow ebuild authors to set QA_EXECSTACK_arch and
+					# QA_EXECSTACK ... the former overrides the latter ...
+					# regexes allowed ! :)
+
+					qa_var="QA_EXECSTACK_${ARCH}"
+					[[ -n ${!qa_var} ]] && QA_EXECSTACK=${!qa_var}
+					[[ -n ${QA_STRICT_EXECSTACK} ]] && QA_EXECSTACK=""
+					f=$(scanelf -qyRF '%e %p' "${D}" | grep -v ' usr/lib/debug/' | \
+						gawk '
+						BEGIN { split("'"${QA_EXECSTACK}"'", ignore); }
+						{	for (idx in ignore)
+								if ($NF ~ "^"ignore[idx]"$")
+									next;
+							print;
+						}')
+					;;
+				*)	f="" ;;
 			esac
 			;;
 		esac
 		if [[ -n ${f} ]] ; then
 			# One more pass to help devs track down the source
-			scanelf -qyRF '%e %p' "${WORKDIR}"/ &> "${T}"/scanelf-exec.log
+			scanelf -qyRF '%e %p' "${PORTAGE_BUILDDIR}"/ &> "${T}"/scanelf-execstack.log
 			echo -ne '\a\n'
 			echo "QA Notice: the following files contain executable stacks"
 			echo " Files with executable stacks will not work properly (or at all!)"
@@ -1172,7 +1202,7 @@ dyn_install() {
 			echo " at http://bugs.gentoo.org/ to make sure the file is fixed."
 			echo " For more information, see http://hardened.gentoo.org/gnu-stack.xml"
 			echo " Please include this file in your report:"
-			echo " ${T}/scanelf-exec.log"
+			echo " ${T}/scanelf-execstack.log"
 			echo "${f}"
 			echo -ne '\a\n'
 			die_msg="${die_msg} execstacks"
