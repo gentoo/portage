@@ -1938,6 +1938,9 @@ done
 
 # Save the env only for relevant phases.
 if [ -n "$myarg" ] && [ "$myarg" != "clean" ]; then
+	# Do not save myarg in the env, or else the above [ -n "$myarg" ] test will
+	# give a false positive when ebuild.sh is sourced.
+	unset myarg
 	# Save current environment and touch a success file. (echo for success)
 	umask 002
 	set | egrep -v "^SANDBOX_" > "${T}/environment" 2>/dev/null
