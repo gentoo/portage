@@ -1324,100 +1324,17 @@ install_mask() {
 }
 
 dyn_preinst() {
-	# set IMAGE depending if this is a binary or compile merge
-	[ "${EMERGE_FROM}" == "binary" ] && IMAGE=${PKG_TMPDIR}/${PF}/bin \
-					|| IMAGE=${D}
+	if [ -z "$IMAGE" ]; then
+			eerror "${FUNCNAME}: IMAGE is unset"
+			return 1
+	fi
 
 	[ "$(type -t pre_pkg_preinst)" == "function" ] && pre_pkg_preinst
 
 	declare -r D=${IMAGE}
 	pkg_preinst
 
-	# remove man pages, info pages, docs if requested
-	for f in man info doc; do
-		if hasq no${f} $FEATURES; then
-			INSTALL_MASK="${INSTALL_MASK} /usr/share/${f}"
-		fi
-	done
-
-	install_mask "${IMAGE}" ${INSTALL_MASK}
-
-	# remove share dir if unnessesary
-	if hasq nodoc $FEATURES -o hasq noman $FEATURES -o hasq noinfo $FEATURES; then
-		rmdir "${IMAGE}/usr/share" &> /dev/null
-	fi
-
-	# Smart FileSystem Permissions
-	if hasq sfperms $FEATURES; then
-		for i in $(find ${IMAGE}/ -type f -perm -4000); do
-			ebegin ">>> SetUID: [chmod go-r] $i "
-			chmod go-r "$i"
-			eend $?
-		done
-		for i in $(find ${IMAGE}/ -type f -perm -2000); do
-			ebegin ">>> SetGID: [chmod o-r] $i "
-			chmod o-r "$i"
-			eend $?
-		done
-	fi
-
-	# total suid control.
-	if hasq suidctl $FEATURES > /dev/null ; then
-		sfconf=/etc/portage/suidctl.conf
-		echo ">>> Preforming suid scan in ${IMAGE}"
-		for i in $(find ${IMAGE}/ -type f \( -perm -4000 -o -perm -2000 \) ); do
-			if [ -s "${sfconf}" ]; then
-				suid="`grep ^${i/${IMAGE}/}$ ${sfconf}`"
-				if [ "${suid}" = "${i/${IMAGE}/}" ]; then
-					echo "- ${i/${IMAGE}/} is an approved suid file"
-				else
-					echo ">>> Removing sbit on non registered ${i/${IMAGE}/}"
-					for x in 5 4 3 2 1 0; do echo -ne "\a"; sleep 0.25 ; done
-					echo -ne "\a"
-					chmod ugo-s "${i}"
-					grep ^#${i/${IMAGE}/}$ ${sfconf} > /dev/null || {
-						# sandbox prevents us from writing directly
-						# to files outside of the sandbox, but this
-						# can easly be bypassed using the addwrite() function
-						addwrite "${sfconf}"
-						echo ">>> Appending commented out entry to ${sfconf} for ${PF}"
-						ls_ret=`ls -ldh "${i}"`
-						echo "## ${ls_ret%${IMAGE}*}${ls_ret#*${IMAGE}}" >> ${sfconf}
-						echo "#${i/${IMAGE}/}" >> ${sfconf}
-						# no delwrite() eh?
-						# delwrite ${sconf}
-					}
-				fi
-			else
-				echo "suidctl feature set but you are lacking a ${sfconf}"
-			fi
-		done
-	fi
-
-	# SELinux file labeling (needs to always be last in dyn_preinst)
-	if hasq selinux ${FEATURES} ; then
-		# only attempt to label if setfiles is executable
-		# and 'context' is available on selinuxfs.
-		if [ -f /selinux/context -a -x /usr/sbin/setfiles -a -x /usr/sbin/selinuxconfig ]; then
-			echo ">>> Setting SELinux security labels"
-			(
-				eval "$(/usr/sbin/selinuxconfig)" || \
-					die "Failed to determine SELinux policy paths.";
-
-				addwrite /selinux/context;
-
-				/usr/sbin/setfiles "${file_contexts_path}" -r "${IMAGE}" "${IMAGE}";
-			) || die "Failed to set SELinux security labels."
-		else
-			# nonfatal, since merging can happen outside a SE kernel
-			# like during a recovery situation
-			echo "!!! Unable to set SELinux security labels"
-		fi
-	fi
-
 	[ "$(type -t post_pkg_preinst)" == "function" ] && post_pkg_preinst
-
-	trap SIGINT SIGQUIT
 }
 
 dyn_spec() {

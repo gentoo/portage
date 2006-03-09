@@ -2749,7 +2749,21 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 		logfile=None
 	if mydo in ["help","clean","setup"]:
 		return spawn(EBUILD_SH_BINARY+" "+mydo,mysettings,debug=debug,free=1,logfile=logfile)
-	elif mydo in ["prerm","postrm","preinst","postinst","config"]:
+	elif mydo == "preinst":
+		mysettings.load_infodir(pkg_dir)
+		if mysettings.has_key("EMERGE_FROM") and "binary" == mysettings["EMERGE_FROM"]:
+			mysettings["IMAGE"] = os.path.join(mysettings["PKG_TMPDIR"], mysettings["PF"], "bin")
+		else:
+			mysettings["IMAGE"] = mysettings["D"]
+		phase_retval = spawn(" ".join((EBUILD_SH_BINARY, mydo)), mysettings, debug=debug, free=1, logfile=logfile)
+		if phase_retval == os.EX_OK:
+			# Post phase logic and tasks that have been factored out of ebuild.sh.
+			myargs = [MISC_SH_BINARY, "preinst_mask", "preinst_sfperms",
+				"preinst_selinux_labels", "preinst_suid_scan"]
+			spawn(" ".join(myargs), mysettings, debug=debug, free=1, logfile=logfile)
+		del mysettings["IMAGE"]
+		return phase_retval
+	elif mydo in ["prerm","postrm","postinst","config"]:
 		mysettings.load_infodir(pkg_dir)
 		return spawn(EBUILD_SH_BINARY+" "+mydo,mysettings,debug=debug,free=1,logfile=logfile)
 
