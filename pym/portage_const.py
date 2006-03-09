@@ -24,6 +24,7 @@ PROFILE_PATH            = "/etc/make.profile"
 LOCALE_DATA_PATH        = PORTAGE_BASE_PATH+"/locale"
 
 EBUILD_SH_BINARY        = PORTAGE_BIN_PATH+"/ebuild.sh"
+MISC_SH_BINARY          = PORTAGE_BIN_PATH + "/misc-functions.sh"
 SANDBOX_BINARY          = "/usr/bin/sandbox"
 BASH_BINARY             = "/bin/bash"
 MOVE_BINARY             = "/bin/mv"

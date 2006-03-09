@@ -891,13 +891,6 @@ abort_unpack() {
 	exit 1
 }
 
-abort_package() {
-	abort_handler "dyn_package" $1
-	rm -f "${PORTAGE_BUILDDIR}/.packaged"
-	rm -f "${PKGDIR}"/All/${PF}.t*
-	exit 1
-}
-
 abort_test() {
 	abort_handler "dyn_test" $1
 	rm -f "${PORTAGE_BUILDDIR}/.tested"
@@ -997,27 +990,6 @@ dyn_compile() {
 
 	trap SIGINT SIGQUIT
 }
-
-dyn_package() {
-	trap "abort_package" SIGINT SIGQUIT
-	cd "${PORTAGE_BUILDDIR}/image"
-	install_mask "${PORTAGE_BUILDDIR}/image" ${PKG_INSTALL_MASK}
-	tar cpvf - ./ | bzip2 -f > ../bin.tar.bz2 || die "Failed to create tarball"
-	cd ..
-	xpak build-info inf.xpak
-	tbz2tool join bin.tar.bz2 inf.xpak "${PF}.tbz2"
-	mv "${PF}.tbz2" "${PKGDIR}/All" || die "Failed to move tbz2 to ${PKGDIR}/All"
-	rm -f inf.xpak bin.tar.bz2
-	if [ ! -d "${PKGDIR}/${CATEGORY}" ]; then
-		install -d "${PKGDIR}/${CATEGORY}"
-	fi
-	ln -sf "../All/${PF}.tbz2" "${PKGDIR}/${CATEGORY}/${PF}.tbz2" || die "Failed to create symlink in ${PKGDIR}/${CATEGORY}"
-	echo ">>> Done."
-	cd "${PORTAGE_BUILDDIR}"
-	touch .packaged || die "Failed to 'touch .packaged' in ${PORTAGE_BUILDDIR}"
-	trap SIGINT SIGQUIT
-}
-
 
 dyn_test() {
 	[ "$(type -t pre_src_test)" == "function" ] && pre_src_test
@@ -2004,7 +1976,7 @@ for myarg in $*; do
 			set +x
 		fi
 		;;
-	package|rpm)
+	rpm)
 		export SANDBOX_ON="0"
 		if [ "$PORTAGE_DEBUG" != "1" ]; then
 			dyn_${myarg}
@@ -2069,7 +2041,8 @@ for myarg in $*; do
 	#fi
 done
 
-if [ "$myarg" != "clean" ]; then
+# Save the env only for relevant phases.
+if [ -n "$myarg" ] && [ "$myarg" != "clean" ]; then
 	# Save current environment and touch a success file. (echo for success)
 	umask 002
 	set | egrep -v "^SANDBOX_" > "${T}/environment" 2>/dev/null
@@ -2077,4 +2050,5 @@ if [ "$myarg" != "clean" ]; then
 	chmod g+w "${T}/environment" &>/dev/null
 fi
 
-exit 0
+# Do not exit when ebuild.sh is sourced by other scripts.
+true

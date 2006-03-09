@@ -86,7 +86,7 @@ try:
 	  MOVE_BINARY, PRELINK_BINARY, WORLD_FILE, MAKE_CONF_FILE, MAKE_DEFAULTS_FILE, \
 	  DEPRECATED_PROFILE_FILE, USER_VIRTUALS_FILE, EBUILD_SH_ENV_FILE, \
 	  INVALID_ENV_FILE, CUSTOM_MIRRORS_FILE, CONFIG_MEMORY_FILE,\
-	  INCREMENTALS, STICKIES, EAPI
+	  INCREMENTALS, STICKIES, EAPI, MISC_SH_BINARY
 
 	from portage_data import ostype, lchown, userland, secpass, uid, wheelgid, \
 	                         portage_uid, portage_gid
@@ -2367,18 +2367,21 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 			retval=spawnebuild(actionmap[mydo]["dep"],actionmap,mysettings,debug,alwaysdep=alwaysdep,logfile=logfile)
 			if retval:
 				return retval
-	# spawn ebuild.sh
-	mycommand = EBUILD_SH_BINARY + " "
+	# spawn ebuild.sh or misc-functions.sh as appropriate
+	if mydo in ["package"]:
+		mycommand = MISC_SH_BINARY + " dyn_" + mydo
+	else:
+		mycommand = EBUILD_SH_BINARY + " " + mydo
 	if selinux_enabled and ("sesandbox" in features) and (mydo in ["unpack","compile","test","install"]):
 		con=selinux.getcontext()
 		con=string.replace(con,mysettings["PORTAGE_T"],mysettings["PORTAGE_SANDBOX_T"])
 		selinux.setexec(con)
-		retval=spawn(mycommand + mydo,mysettings,debug=debug,
+		retval=spawn(mycommand, mysettings, debug=debug,
 				free=actionmap[mydo]["args"][0],
 				droppriv=actionmap[mydo]["args"][1],logfile=logfile)
 		selinux.setexec(None)
 	else:
-		retval=spawn(mycommand + mydo,mysettings, debug=debug,
+		retval=spawn(mycommand, mysettings, debug=debug,
 				free=actionmap[mydo]["args"][0],
 				droppriv=actionmap[mydo]["args"][1],logfile=logfile)
 	return retval
