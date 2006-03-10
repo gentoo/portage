@@ -6490,7 +6490,9 @@ def pkgmerge(mytbz2,myroot,mysettings):
 	os.chdir(pkgloc)
 
 	mysettings.configdict["pkg"]["CATEGORY"] = mycat;
-	a=doebuild(myebuild,"setup",myroot,mysettings,tree="bintree")
+	# Eventually we'd like to pass in the saved ebuild env here.
+	# Do cleanup=1 to ensure that there is no cruft prior to the setup phase.
+	a = doebuild(myebuild, "setup", myroot, mysettings, tree="bintree", cleanup=1)
 	writemsg_stdout(">>> Extracting %s\n" % mypkg)
 	notok=spawn("bzip2 -dqc -- '"+mytbz2+"' | tar xpf -",mysettings,free=1)
 	if notok:
