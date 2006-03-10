@@ -763,12 +763,14 @@ dyn_clean() {
 		find "${PORTAGE_BUILDDIR}" -type d ! -regex "^${WORKDIR}" | sort -r | tr "\n" "\0" | $XARGS -0 rmdir &>/dev/null
 	fi
 
-	if [ -z "$(find "${PORTAGE_BUILDDIR}" -mindepth 1 -maxdepth 1)" ]; then
-		rmdir "${PORTAGE_BUILDDIR}"
-	fi
 	# do not bind this to doebuild defined DISTDIR; don't trust doebuild, and if mistakes are made it'll
 	# result in it wiping the users distfiles directory (bad).
 	rm -rf "${PORTAGE_BUILDDIR}/distdir"
+
+	if [ -z "$(find "${PORTAGE_BUILDDIR}" -mindepth 1 -maxdepth 1)" ]; then
+		rmdir "${PORTAGE_BUILDDIR}"
+	fi
+
 	true
 }
 
