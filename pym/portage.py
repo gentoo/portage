@@ -2369,7 +2369,7 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 			if retval:
 				return retval
 	# spawn ebuild.sh or misc-functions.sh as appropriate
-	if mydo in ["package"]:
+	if mydo in ["package","rpm"]:
 		mycommand = MISC_SH_BINARY + " dyn_" + mydo
 	else:
 		mycommand = EBUILD_SH_BINARY + " " + mydo

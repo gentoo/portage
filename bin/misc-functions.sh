@@ -422,6 +422,46 @@ dyn_package() {
 	touch .packaged || die "Failed to 'touch .packaged' in ${PORTAGE_BUILDDIR}"
 }
 
+dyn_spec() {
+	tar czf "/usr/src/redhat/SOURCES/${PF}.tar.gz" "${O}/${PF}.ebuild" "${O}/files" || die "Failed to create base rpm tarball."
+
+	cat <<__END1__ > ${PF}.spec
+Summary: ${DESCRIPTION}
+Name: ${PN}
+Version: ${PV}
+Release: ${PR}
+Copyright: GPL
+Group: portage/${CATEGORY}
+Source: ${PF}.tar.gz
+Buildroot: ${D}
+%description
+${DESCRIPTION}
+
+${HOMEPAGE}
+
+%prep
+%setup -c
+
+%build
+
+%install
+
+%clean
+
+%files
+/
+__END1__
+
+}
+
+dyn_rpm() {
+	addwrite /usr/src/redhat/
+	addwrite ${RPMDIR}
+	dyn_spec
+	rpmbuild -bb "${PF}.spec" || die "Failed to integrate rpm spec file"
+	install -D "/usr/src/redhat/RPMS/i386/${PN}-${PV}-${PR}.i386.rpm" "${RPMDIR}/${CATEGORY}/${PN}-${PV}-${PR}.rpm" || die "Failed to move rpm"
+}
+
 if [ -n "${MISC_FUNCTIONS_ARGS}" ]; then
 	[ "$PORTAGE_DEBUG" == "1" ] && set -x
 	for x in ${MISC_FUNCTIONS_ARGS}; do

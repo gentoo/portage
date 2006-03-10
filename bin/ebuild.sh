@@ -1061,44 +1061,6 @@ dyn_preinst() {
 	[ "$(type -t post_pkg_preinst)" == "function" ] && post_pkg_preinst
 }
 
-dyn_spec() {
-	tar czf "/usr/src/redhat/SOURCES/${PF}.tar.gz" "${O}/${PF}.ebuild" "${O}/files" || die "Failed to create base rpm tarball."
-
-	cat <<__END1__ > ${PF}.spec
-Summary: ${DESCRIPTION}
-Name: ${PN}
-Version: ${PV}
-Release: ${PR}
-Copyright: GPL
-Group: portage/${CATEGORY}
-Source: ${PF}.tar.gz
-Buildroot: ${D}
-%description
-${DESCRIPTION}
-
-${HOMEPAGE}
-
-%prep
-%setup -c
-
-%build
-
-%install
-
-%clean
-
-%files
-/
-__END1__
-
-}
-
-dyn_rpm() {
-	dyn_spec
-	rpmbuild -bb "${PF}.spec" || die "Failed to integrate rpm spec file"
-	install -D "/usr/src/redhat/RPMS/i386/${PN}-${PV}-${PR}.i386.rpm" "${RPMDIR}/${CATEGORY}/${PN}-${PV}-${PR}.rpm" || die "Failed to move rpm"
-}
-
 dyn_help() {
 	echo
 	echo "Portage"
@@ -1608,16 +1570,6 @@ for myarg in $*; do
 		#pkg_setup needs to be out of the sandbox for tmp file creation;
 		#for example, awking and piping a file in /tmp requires a temp file to be created
 		#in /etc.  If pkg_setup is in the sandbox, both our lilo and apache ebuilds break.
-		export SANDBOX_ON="0"
-		if [ "$PORTAGE_DEBUG" != "1" ]; then
-			dyn_${myarg}
-		else
-			set -x
-			dyn_${myarg}
-			set +x
-		fi
-		;;
-	rpm)
 		export SANDBOX_ON="0"
 		if [ "$PORTAGE_DEBUG" != "1" ]; then
 			dyn_${myarg}
