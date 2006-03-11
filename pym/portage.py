@@ -2509,7 +2509,7 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 
 	mysettings["BUILD_PREFIX"] = mysettings["PORTAGE_TMPDIR"]+"/portage"
 	mysettings["HOME"]         = mysettings["BUILD_PREFIX"]+"/homedir"
-	mysettings["PKG_TMPDIR"]   = mysettings["PORTAGE_TMPDIR"]+"/portage-pkg"
+	mysettings["PKG_TMPDIR"]   = mysettings["PORTAGE_TMPDIR"]+"/binpkgs"
 	mysettings["PORTAGE_BUILDDIR"]     = mysettings["BUILD_PREFIX"]+"/"+mysettings["PF"]
 
 	mysettings["PORTAGE_BASHRC"] = EBUILD_SH_ENV_FILE
@@ -6447,7 +6447,7 @@ class dblink:
 		return os.path.exists(self.dbdir+"/CATEGORY")
 
 def cleanup_pkgmerge(mypkg,origdir):
-	shutil.rmtree(settings["PORTAGE_TMPDIR"]+"/portage-pkg/"+mypkg)
+	shutil.rmtree(settings["PORTAGE_TMPDIR"]+"/binpkgs/"+mypkg)
 	if os.path.exists(settings["PORTAGE_TMPDIR"]+"/portage/"+mypkg+"/temp/environment"):
 		os.unlink(settings["PORTAGE_TMPDIR"]+"/portage/"+mypkg+"/temp/environment")
 	os.chdir(origdir)
@@ -6468,7 +6468,7 @@ def pkgmerge(mytbz2,myroot,mysettings):
 		return None
 	mycat=mycat.strip()
 	mycatpkg=mycat+"/"+mypkg
-	tmploc=mysettings["PORTAGE_TMPDIR"]+"/portage-pkg/"
+	tmploc=mysettings["PORTAGE_TMPDIR"]+"/binpkgs/"
 	pkgloc=tmploc+"/"+mypkg+"/bin/"
 	infloc=tmploc+"/"+mypkg+"/inf/"
 	myebuild=tmploc+"/"+mypkg+"/inf/"+os.path.basename(mytbz2)[:-4]+"ebuild"

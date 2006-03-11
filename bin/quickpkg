@@ -46,11 +46,11 @@ source /sbin/functions.sh
 # $1 = package-name w/version
 # $2 = category
 do_pkg() {
-	mkdir -p "${PORTAGE_TMPDIR}/portage-pkg" || exit 1
-	chmod 0750 "${PORTAGE_TMPDIR}/portage-pkg"
-	MYDIR="${PORTAGE_TMPDIR}/portage-pkg/$1"
+	mkdir -p "${PORTAGE_TMPDIR}/binpkgs" || exit 1
+	chmod 0750 "${PORTAGE_TMPDIR}/binpkgs"
+	MYDIR="${PORTAGE_TMPDIR}/binpkgs/$1"
 	SRCDIR="${PORTAGE_DB}/$2/$1"
-	LOG="${PORTAGE_TMPDIR}/portage-pkg/$1-quickpkglog"
+	LOG="${PORTAGE_TMPDIR}/binpkgs/$1-quickpkglog"
 
 	ebegin "Building package for $1"
 	(
