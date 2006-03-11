@@ -5974,12 +5974,9 @@ class dblink:
 		writemsg_stdout(">>> Merging %s %s %s\n" % (self.mycpv,"to",destroot))
 
 		# run preinst script
-		if myebuild:
-			# if we are merging a new ebuild, use *its* pre/postinst rather than using the one in /var/db/pkg
-			# (if any).
-			a=doebuild(myebuild,"preinst",root,self.settings,cleanup=cleanup,use_cache=0,tree=self.treetype)
-		else:
-			a=doebuild(inforoot+"/"+self.pkg+".ebuild","preinst",root,self.settings,cleanup=cleanup,use_cache=0,tree=self.treetype)
+		if myebuild is None:
+			myebuild = os.path.join(inforoot, self.pkg + ".ebuild")
+		a = doebuild(myebuild, "preinst", root, self.settings, cleanup=cleanup, use_cache=0, tree=self.treetype)
 
 		# XXX: Decide how to handle failures here.
 		if a != 0:
@@ -6078,12 +6075,7 @@ class dblink:
 		portage_locks.unlockfile(mylock)
 
 		#do postinst script
-		if myebuild:
-			# if we are merging a new ebuild, use *its* pre/postinst rather than using the one in /var/db/pkg
-			# (if any).
-			a=doebuild(myebuild,"postinst",root,self.settings,use_cache=0,tree=self.treetype)
-		else:
-			a=doebuild(inforoot+"/"+self.pkg+".ebuild","postinst",root,self.settings,use_cache=0,tree=self.treetype)
+		a = doebuild(myebuild, "postinst", root, self.settings, use_cache=0, tree=self.treetype)
 
 		# XXX: Decide how to handle failures here.
 		if a != 0:
