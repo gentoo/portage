@@ -2556,7 +2556,7 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 		# Should be ok again to set $T, as sandbox does not depend on it
 		# XXX Bug.  no way in hell this is valid for clean handling.
 		mysettings["T"]=mysettings["PORTAGE_BUILDDIR"]+"/temp"
-		if cleanup or mydo=="clean":
+		if cleanup:
 			if os.path.exists(mysettings["T"]):
 				shutil.rmtree(mysettings["T"])
 		if not os.path.exists(mysettings["T"]):
@@ -6099,7 +6099,7 @@ class dblink:
 		# Process ebuild logfiles
 		elog_process(self.mycpv, self.settings)
 		if "noclean" not in features:
-			doebuild(myebuild, "clean", root, self.settings, cleanup=cleanup, tree=self.treetype)
+			doebuild(myebuild, "clean", root, self.settings, tree=self.treetype)
 		return 0
 
 	def mergeme(self,srcroot,destroot,outfile,secondhand,stufftomerge,cfgfiledict,thismtime):
