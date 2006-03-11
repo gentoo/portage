@@ -86,7 +86,7 @@ try:
 	  MOVE_BINARY, PRELINK_BINARY, WORLD_FILE, MAKE_CONF_FILE, MAKE_DEFAULTS_FILE, \
 	  DEPRECATED_PROFILE_FILE, USER_VIRTUALS_FILE, EBUILD_SH_ENV_FILE, \
 	  INVALID_ENV_FILE, CUSTOM_MIRRORS_FILE, CONFIG_MEMORY_FILE,\
-	  INCREMENTALS, STICKIES, EAPI
+	  INCREMENTALS, STICKIES, EAPI, MISC_SH_BINARY
 
 	from portage_data import ostype, lchown, userland, secpass, uid, wheelgid, \
 	                         portage_uid, portage_gid
@@ -106,7 +106,7 @@ try:
 	from portage_checksum import perform_md5,perform_checksum,prelink_capable
 	import eclass_cache
 	from portage_localization import _
-	from portage_update import fixdbentries, update_dbentries
+	from portage_update import fixdbentries, update_dbentries, grab_updates
 
 	# Need these functions directly in portage namespace to not break every external tool in existence
 	from portage_versions import ververify,vercmp,catsplit,catpkgsplit,pkgsplit,pkgcmp
@@ -1637,7 +1637,7 @@ class config:
 
 # XXX This would be to replace getstatusoutput completely.
 # XXX Issue: cannot block execution. Deadlock condition.
-def spawn(mystring,mysettings,debug=0,free=0,droppriv=0,fd_pipes=None,**keywords):
+def spawn(mystring,mysettings,debug=0,free=0,droppriv=0,sesandbox=0,fd_pipes=None,**keywords):
 	"""spawn a subprocess with optional sandbox protection,
 	depending on whether sandbox is enabled.  The "free" argument,
 	when set to 1, will disable sandboxing.  This allows us to
@@ -1666,14 +1666,20 @@ def spawn(mystring,mysettings,debug=0,free=0,droppriv=0,fd_pipes=None,**keywords
 		free=((droppriv and "usersandbox" not in features) or \
 			(not droppriv and "sandbox" not in features and "usersandbox" not in features))
 
+	if sesandbox:
+		con = selinux.getcontext()
+		con = string.replace(con, mysettings["PORTAGE_T"], mysettings["PORTAGE_SANDBOX_T"])
+		selinux.setexec(con)
+
 	if not free:
 		keywords["opt_name"] += " sandbox"
 		return portage_exec.spawn_sandbox(mystring,env=env,**keywords)
 	else:
 		keywords["opt_name"] += " bash"
 		return portage_exec.spawn_bash(mystring,env=env,**keywords)
-
-
+	
+	if sesandbox:
+		selinux.setexec(None)
 
 def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",use_locks=1, try_mirrors=1):
 	"fetch files.  Will use digest file if available."
@@ -1956,14 +1962,9 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					myfetch=string.replace(locfetch,"${URI}",loc)
 					myfetch=string.replace(myfetch,"${FILE}",myfile)
 					try:
-						if selinux_enabled:
-							con=selinux.getcontext()
-							con=string.replace(con,mysettings["PORTAGE_T"],mysettings["PORTAGE_FETCH_T"])
-							selinux.setexec(con)
-							myret=spawn(myfetch,mysettings,free=1, droppriv=("userfetch" in mysettings.features))
-							selinux.setexec(None)
-						else:
-							myret=spawn(myfetch,mysettings,free=1, droppriv=("userfetch" in mysettings.features))
+						myret = spawn(myfetch, mysettings, free=1,
+							droppriv=("userfetch" in mysettings.features),
+							sesandbox=selinux_enabled)
 					finally:
 						#if root, -always- set the perms.
 						if os.path.exists(mysettings["DISTDIR"]+"/"+myfile) and (fetched != 1 or os.getuid() == 0) \
@@ -2374,21 +2375,23 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 			retval=spawnebuild(actionmap[mydo]["dep"],actionmap,mysettings,debug,alwaysdep=alwaysdep,logfile=logfile)
 			if retval:
 				return retval
-	# spawn ebuild.sh
-	mycommand = EBUILD_SH_BINARY + " "
-	if selinux_enabled and ("sesandbox" in features) and (mydo in ["unpack","compile","test","install"]):
-		con=selinux.getcontext()
-		con=string.replace(con,mysettings["PORTAGE_T"],mysettings["PORTAGE_SANDBOX_T"])
-		selinux.setexec(con)
-		retval=spawn(mycommand + mydo,mysettings,debug=debug,
-				free=actionmap[mydo]["args"][0],
-				droppriv=actionmap[mydo]["args"][1],logfile=logfile)
-		selinux.setexec(None)
+	# spawn ebuild.sh or misc-functions.sh as appropriate
+	if mydo in ["package","rpm"]:
+		mycommand = MISC_SH_BINARY + " dyn_" + mydo
 	else:
-		retval=spawn(mycommand + mydo,mysettings, debug=debug,
-				free=actionmap[mydo]["args"][0],
-				droppriv=actionmap[mydo]["args"][1],logfile=logfile)
-	return retval
+		mycommand = EBUILD_SH_BINARY + " " + mydo
+	phase_retval = spawn(mycommand, mysettings, debug=debug,
+		droppriv=actionmap[mydo]["args"][0],
+		free=actionmap[mydo]["args"][1],
+		sesandbox=actionmap[mydo]["args"][2], logfile=logfile)
+	if phase_retval == os.EX_OK:
+		if mydo == "install":
+			mycommand = " ".join([MISC_SH_BINARY, "install_qa_check"])
+			return spawn(mycommand, mysettings, debug=debug,
+				droppriv=actionmap[mydo]["args"][0],
+				free=actionmap[mydo]["args"][1],
+				sesandbox=actionmap[mydo]["args"][2], logfile=logfile)
+	return phase_retval
 
 # chunked out deps for each phase, so that ebuild binary can use it 
 # to collapse targets down.
@@ -2513,7 +2516,7 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 
 	mysettings["BUILD_PREFIX"] = mysettings["PORTAGE_TMPDIR"]+"/portage"
 	mysettings["HOME"]         = mysettings["BUILD_PREFIX"]+"/homedir"
-	mysettings["PKG_TMPDIR"]   = mysettings["PORTAGE_TMPDIR"]+"/portage-pkg"
+	mysettings["PKG_TMPDIR"]   = mysettings["PORTAGE_TMPDIR"]+"/binpkgs"
 	mysettings["PORTAGE_BUILDDIR"]     = mysettings["BUILD_PREFIX"]+"/"+mysettings["PF"]
 
 	mysettings["PORTAGE_BASHRC"] = EBUILD_SH_ENV_FILE
@@ -2754,7 +2757,21 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 		logfile=None
 	if mydo in ["help","clean","setup"]:
 		return spawn(EBUILD_SH_BINARY+" "+mydo,mysettings,debug=debug,free=1,logfile=logfile)
-	elif mydo in ["prerm","postrm","preinst","postinst","config"]:
+	elif mydo == "preinst":
+		mysettings.load_infodir(pkg_dir)
+		if mysettings.has_key("EMERGE_FROM") and "binary" == mysettings["EMERGE_FROM"]:
+			mysettings["IMAGE"] = os.path.join(mysettings["PKG_TMPDIR"], mysettings["PF"], "bin")
+		else:
+			mysettings["IMAGE"] = mysettings["D"]
+		phase_retval = spawn(" ".join((EBUILD_SH_BINARY, mydo)), mysettings, debug=debug, free=1, logfile=logfile)
+		if phase_retval == os.EX_OK:
+			# Post phase logic and tasks that have been factored out of ebuild.sh.
+			myargs = [MISC_SH_BINARY, "preinst_mask", "preinst_sfperms",
+				"preinst_selinux_labels", "preinst_suid_scan"]
+			spawn(" ".join(myargs), mysettings, debug=debug, free=1, logfile=logfile)
+		del mysettings["IMAGE"]
+		return phase_retval
+	elif mydo in ["prerm","postrm","postinst","config"]:
 		mysettings.load_infodir(pkg_dir)
 		return spawn(EBUILD_SH_BINARY+" "+mydo,mysettings,debug=debug,free=1,logfile=logfile)
 
@@ -2873,15 +2890,19 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 		"nouserpriv" in mysettings["RESTRICT"]):
 		nosandbox = ("sandbox" not in features and "usersandbox" not in features)
 
+	sesandbox = selinux_enabled and "sesandbox" in features
+
+	# args are for the to spawn function
+	#                     (droppriv,  free,     sesandbox)
 	actionmap = {
-		"depend": {"args":(0,1)},         # sandbox  / portage
-		"setup":  {"args":(1,0)},         # without  / root
-		"unpack": {"args":(0,1)},         # sandbox  / portage
-		"compile":{"args":(nosandbox,1)}, # optional / portage
-		"test":   {"args":(nosandbox,1)}, # optional / portage
-		"install":{"args":(0,0)},         # sandbox  / root
-		"rpm":    {"args":(0,0)},         # sandbox  / root
-		"package":{"args":(0,0)},         # sandbox  / root
+		"depend": {"args":(1,         0,         0)},
+		"setup":  {"args":(0,         1,         0)},
+		"unpack": {"args":(1,         0,         sesandbox)},
+		"compile":{"args":(1,         nosandbox, sesandbox)},
+		"test":   {"args":(1,         nosandbox, sesandbox)},
+		"install":{"args":(0,         0,         sesandbox)},
+		"rpm":    {"args":(0,         0,         0)},
+		"package":{"args":(0,         0,         0)},
 	}
 	
 	# merge the deps in so we have again a 'full' actionmap
@@ -5806,7 +5827,7 @@ class dblink:
 
 		# New code to remove stuff from the world and virtuals files when unmerged.
 		if trimworld:
-			worldlist=grabfile(self.myroot+WORLD_FILE)
+			worldlist = grabfile(os.path.join(self.myroot, WORLD_FILE))
 			mykey=cpv_getkey(self.mycpv)
 			newworldlist=[]
 			for x in worldlist:
@@ -5829,13 +5850,14 @@ class dblink:
 			# (spanky noticed bug)
 			# XXX: dumb question, but abstracting the root uid might be wise/useful for
 			# 2nd pkg manager installation setups.
-			if not os.path.exists(os.path.dirname(self.myroot+WORLD_FILE)):
-				pdir = os.path.dirname(self.myroot + WORLD_FILE)
-				os.makedirs(pdir, mode=0755)
-				os.chown(pdir, 0, portage_gid)
-				os.chmod(pdir, 02770)
+			my_private_path = os.path.join(self.myroot, PRIVATE_PATH)
+			if not os.path.exists(my_private_path):
+				os.makedirs(my_private_path, mode=0755)
+				os.chown(my_private_path, 0, portage_gid)
+				os.chmod(my_private_path, 02770)
 
-			write_atomic(os.path.join(self.myroot,WORLD_FILE),"\n".join(newworldlist))
+			write_atomic(os.path.join(self.myroot, WORLD_FILE),
+			"\n".join(newworldlist))
 
 		#do original postrm
 		if myebuildpath and os.path.exists(myebuildpath):
@@ -5846,7 +5868,8 @@ class dblink:
 			if a != 0:
 				writemsg("!!! FAILED postrm: "+str(a)+"\n")
 				sys.exit(123)
-
+			if "noclean" not in features:
+				doebuild(myebuildpath, "clean", self.myroot, self.settings, cleanup=cleanup, tree=self.treetype)
 		self.unlockdb()
 
 	def isowner(self,filename,destroot):
@@ -5961,12 +5984,9 @@ class dblink:
 		writemsg_stdout(">>> Merging %s %s %s\n" % (self.mycpv,"to",destroot))
 
 		# run preinst script
-		if myebuild:
-			# if we are merging a new ebuild, use *its* pre/postinst rather than using the one in /var/db/pkg
-			# (if any).
-			a=doebuild(myebuild,"preinst",root,self.settings,cleanup=cleanup,use_cache=0,tree=self.treetype)
-		else:
-			a=doebuild(inforoot+"/"+self.pkg+".ebuild","preinst",root,self.settings,cleanup=cleanup,use_cache=0,tree=self.treetype)
+		if myebuild is None:
+			myebuild = os.path.join(inforoot, self.pkg + ".ebuild")
+		a = doebuild(myebuild, "preinst", root, self.settings, cleanup=cleanup, use_cache=0, tree=self.treetype)
 
 		# XXX: Decide how to handle failures here.
 		if a != 0:
@@ -5992,10 +6012,7 @@ class dblink:
 		self.updateprotect()
 
 		#if we have a file containing previously-merged config file md5sums, grab it.
-		if os.path.exists(destroot+CONFIG_MEMORY_FILE):
-			cfgfiledict=grabdict(destroot+CONFIG_MEMORY_FILE)
-		else:
-			cfgfiledict={}
+		cfgfiledict = grabdict(os.path.join(destroot, CONFIG_MEMORY_FILE))
 		if self.settings.has_key("NOCONFMEM"):
 			cfgfiledict["IGNORE"]=1
 		else:
@@ -6057,32 +6074,18 @@ class dblink:
 		if cfgfiledict.has_key("IGNORE"):
 			del cfgfiledict["IGNORE"]
 
-		# XXXX: HACK! PathSpec is very necessary here.
-		if not os.path.exists(destroot+PRIVATE_PATH):
-			os.makedirs(destroot+PRIVATE_PATH)
-			os.chown(destroot+PRIVATE_PATH,os.getuid(),portage_gid)
-			os.chmod(destroot+PRIVATE_PATH,02770)
-			dirlist = prefix_array(listdir(destroot+PRIVATE_PATH),destroot+PRIVATE_PATH+"/")
-			while dirlist:
-				dirlist.sort()
-				dirlist.reverse() # Gets them in file-before basedir order
-				x = dirlist[0]
-				if os.path.isdir(x):
-					dirlist += prefix_array(listdir(x),x+"/")
-					continue
-				os.unlink(destroot+PRIVATE_PATH+"/"+x)
+		my_private_path = os.path.join(destroot, PRIVATE_PATH)
+		if not os.path.exists(my_private_path):
+			os.makedirs(my_private_path)
+			os.chown(my_private_path, os.getuid(), portage_gid)
+			os.chmod(my_private_path, 02770)
 
-		mylock = portage_locks.lockfile(destroot+CONFIG_MEMORY_FILE)
-		writedict(cfgfiledict,destroot+CONFIG_MEMORY_FILE)
+		mylock = portage_locks.lockfile(os.path.join(destroot, CONFIG_MEMORY_FILE))
+		writedict(cfgfiledict, os.path.join(destroot, CONFIG_MEMORY_FILE))
 		portage_locks.unlockfile(mylock)
 
 		#do postinst script
-		if myebuild:
-			# if we are merging a new ebuild, use *its* pre/postinst rather than using the one in /var/db/pkg
-			# (if any).
-			a=doebuild(myebuild,"postinst",root,self.settings,use_cache=0,tree=self.treetype)
-		else:
-			a=doebuild(inforoot+"/"+self.pkg+".ebuild","postinst",root,self.settings,use_cache=0,tree=self.treetype)
+		a = doebuild(myebuild, "postinst", root, self.settings, use_cache=0, tree=self.treetype)
 
 		# XXX: Decide how to handle failures here.
 		if a != 0:
@@ -6104,7 +6107,8 @@ class dblink:
 
 		# Process ebuild logfiles
 		elog_process(self.mycpv, self.settings)
-		
+		if "noclean" not in features:
+			doebuild(myebuild, "clean", root, self.settings, cleanup=cleanup, tree=self.treetype)
 		return 0
 
 	def mergeme(self,srcroot,destroot,outfile,secondhand,stufftomerge,cfgfiledict,thismtime):
@@ -6457,7 +6461,7 @@ class dblink:
 		return os.path.exists(self.dbdir+"/CATEGORY")
 
 def cleanup_pkgmerge(mypkg,origdir):
-	shutil.rmtree(settings["PORTAGE_TMPDIR"]+"/portage-pkg/"+mypkg)
+	shutil.rmtree(settings["PORTAGE_TMPDIR"]+"/binpkgs/"+mypkg)
 	if os.path.exists(settings["PORTAGE_TMPDIR"]+"/portage/"+mypkg+"/temp/environment"):
 		os.unlink(settings["PORTAGE_TMPDIR"]+"/portage/"+mypkg+"/temp/environment")
 	os.chdir(origdir)
@@ -6478,7 +6482,7 @@ def pkgmerge(mytbz2,myroot,mysettings):
 		return None
 	mycat=mycat.strip()
 	mycatpkg=mycat+"/"+mypkg
-	tmploc=mysettings["PORTAGE_TMPDIR"]+"/portage-pkg/"
+	tmploc=mysettings["PORTAGE_TMPDIR"]+"/binpkgs/"
 	pkgloc=tmploc+"/"+mypkg+"/bin/"
 	infloc=tmploc+"/"+mypkg+"/inf/"
 	myebuild=tmploc+"/"+mypkg+"/inf/"+os.path.basename(mytbz2)[:-4]+"ebuild"
@@ -6494,7 +6498,9 @@ def pkgmerge(mytbz2,myroot,mysettings):
 	os.chdir(pkgloc)
 
 	mysettings.configdict["pkg"]["CATEGORY"] = mycat;
-	a=doebuild(myebuild,"setup",myroot,mysettings,tree="bintree")
+	# Eventually we'd like to pass in the saved ebuild env here.
+	# Do cleanup=1 to ensure that there is no cruft prior to the setup phase.
+	a = doebuild(myebuild, "setup", myroot, mysettings, tree="bintree", cleanup=1)
 	writemsg_stdout(">>> Extracting %s\n" % mypkg)
 	notok=spawn("bzip2 -dqc -- '"+mytbz2+"' | tar xpf -",mysettings,free=1)
 	if notok:
@@ -6739,7 +6745,8 @@ mtimedb={}
 mtimedbkeys=[
 "updates", "info",
 "version", "starttime",
-"resume", "ldpath"
+"resume", "resume_backup",
+"ldpath"
 ]
 mtimedbfile=root+portage_const.CACHE_PATH+"/mtimedb"
 try:
@@ -6765,50 +6772,39 @@ for x in mtimedb.keys():
 #,"porttree":portagetree(root,virts),"bintree":binarytree(root,virts)}
 features=settings["FEATURES"].split()
 
-def do_upgrade(mykey):
+def parse_updates(mycontent):
 	"""Valid updates are returned as a list of split update commands."""
-	writemsg("\n\n")
-	writemsg(green("Performing Global Updates: ")+bold(mykey)+"\n")
-	writemsg("(Could take a couple of minutes if you have a lot of binary packages.)\n")
-	writemsg("  "+bold(".")+"='update pass'  "+bold("*")+"='binary update'  "+bold("@")+"='/var/db move'\n"+"  "+bold("s")+"='/var/db SLOT move' "+bold("S")+"='binary SLOT move' "+bold("p")+"='update /etc/portage/package.*'\n")
-	processed=1
 	myupd = []
-	mylines = grabfile(mykey)
+	errors = []
+	mylines = mycontent.splitlines()
 	for myline in mylines:
 		mysplit = myline.split()
 		if len(mysplit) == 0:
 			continue
 		if mysplit[0] not in ("move", "slotmove"):
-			writemsg("portage: Update type \""+mysplit[0]+"\" not recognized.\n")
-			processed=0
+			errors.append("ERROR: Update type not recognized '%s'" % myline)
 			continue
 		if mysplit[0]=="move":
 			if len(mysplit)!=3:
-				writemsg("portage: Update command \""+myline+"\" invalid; skipping.\n")
-				processed=0
+				errors.append("ERROR: Update command invalid '%s'" % myline)
 				continue
 			orig_value, new_value = mysplit[1], mysplit[2]
 			for cp in (orig_value, new_value):
 				if not (isvalidatom(cp) and isjustname(cp)):
-					writemsg("\nERROR: Malformed update entry '%s'\n" % myline)
-					processed=0
+					errors.append("ERROR: Malformed update entry '%s'" % myline)
 					continue
 		if mysplit[0]=="slotmove":
 			if len(mysplit)!=4:
-				writemsg("portage: Update command \""+myline+"\" invalid; skipping.\n")
-				processed=0
+				errors.append("ERROR: Update command invalid '%s'" % myline)
 				continue
 			pkg, origslot, newslot = mysplit[1], mysplit[2], mysplit[3]
 			if not isvalidatom(pkg):
-				writemsg("\nERROR: Malformed update entry '%s'\n" % myline)
-				processed=0
+				errors.append("ERROR: Malformed update entry '%s'" % myline)
 				continue
 		
 		# The list of valid updates is filtered by continue statements above.
 		myupd.append(mysplit)
-		sys.stdout.write(".")
-		sys.stdout.flush()
-	return myupd, processed == 1
+	return myupd, errors
 
 def commit_mtimedb():
 	if mtimedb:
@@ -6864,7 +6860,7 @@ def update_config_files(update_iter):
 			if file_contents.has_key(x):
 				del file_contents[x]
 			continue
-	worldlist = grabfile(WORLD_FILE)
+	worldlist = grabfile(os.path.join("/", WORLD_FILE))
 
 	for update_cmd in update_iter:
 		if update_cmd[0] == "move":
@@ -6887,7 +6883,7 @@ def update_config_files(update_iter):
 						sys.stdout.write("p")
 						sys.stdout.flush()
 
-	write_atomic(WORLD_FILE,"\n".join(worldlist))
+	write_atomic(os.path.join("/", WORLD_FILE), "\n".join(worldlist))
 
 	for x in update_files:
 		mydblink = dblink('','','/',settings)
@@ -6901,37 +6897,35 @@ def update_config_files(update_iter):
 
 def global_updates():
 	updpath = os.path.join(settings["PORTDIR"], "profiles", "updates")
-	mylist = listdir(updpath, EmptyOnError=1)
-	# validate the file name (filter out CVS directory, etc...)
-	mylist = [myfile for myfile in mylist if len(myfile) == 7 and myfile[1:3] == "Q-"]
-	if len(mylist) > 0:
-		# resort the list
-		mylist = [myfile[3:]+"-"+myfile[:2] for myfile in mylist]
-		mylist.sort()
-		mylist = [myfile[5:]+"-"+myfile[:4] for myfile in mylist]
-
-		if not mtimedb.has_key("updates"):
-			mtimedb["updates"] = {}
-
-		didupdate = 0
+	if not mtimedb.has_key("updates"):
+		mtimedb["updates"] = {}
+	try:
+		if settings["PORTAGE_CALLER"] == "fixpackages":
+			update_data = grab_updates(updpath)
+		else:
+			update_data = grab_updates(updpath, mtimedb["updates"])
+	except portage_exception.DirectoryNotFound:
+		writemsg("--- 'profiles/updates' is empty or not available. Empty portage tree?\n")
+		return
+	if len(update_data) > 0:
 		do_upgrade_packagesmessage = 0
 		myupd = []
 		timestamps = {}
-		for myfile in mylist:
-			mykey = os.path.join(updpath, myfile)
-			mystat = os.stat(mykey)
-			if not stat.S_ISREG(mystat.st_mode):
-				continue
-			if mykey not in mtimedb["updates"] or \
-			mtimedb["updates"][mykey] != mystat.st_mtime or \
-			settings["PORTAGE_CALLER"] == "fixpackages":
-				didupdate = 1
-				valid_updates, no_errors = do_upgrade(mykey)
-				myupd.extend(valid_updates)
-				if no_errors:
-					# Update our internal mtime since we
-					# processed all of our directives.
-					timestamps[mykey] = mystat.st_mtime
+		for mykey, mystat, mycontent in update_data:
+			writemsg("\n\n")
+			writemsg(green("Performing Global Updates: ")+bold(mykey)+"\n")
+			writemsg("(Could take a couple of minutes if you have a lot of binary packages.)\n")
+			writemsg("  "+bold(".")+"='update pass'  "+bold("*")+"='binary update'  "+bold("@")+"='/var/db move'\n"+"  "+bold("s")+"='/var/db SLOT move' "+bold("S")+"='binary SLOT move' "+bold("p")+"='update /etc/portage/package.*'\n")
+			valid_updates, errors = parse_updates(mycontent)
+			myupd.extend(valid_updates)
+			print len(valid_updates) * "."
+			if len(errors) == 0:
+				# Update our internal mtime since we
+				# processed all of our directives.
+				timestamps[mykey] = mystat.st_mtime
+			else:
+				for msg in errors:
+					writemsg("%s\n" % msg)
 		update_config_files(myupd)
 
 		db["/"]["bintree"] = binarytree("/", settings["PKGDIR"], virts)
@@ -6942,8 +6936,6 @@ def global_updates():
 			elif update_cmd[0] == "slotmove":
 				db["/"]["vartree"].dbapi.move_slot_ent(update_cmd)
 				db["/"]["bintree"].move_slot_ent(update_cmd)
-
-		print
 
 		# The above global updates proceed quickly, so they
 		# are considered a single mtimedb transaction.
@@ -6963,14 +6955,19 @@ def global_updates():
 		else:
 			do_upgrade_packagesmessage = 1
 
-		if didupdate:
-			#make sure our internal databases are consistent; recreate our virts and vartree
-			do_vartree(settings)
-			if do_upgrade_packagesmessage and \
-				listdir(os.path.join(settings["PKGDIR"], "All"), EmptyOnError=1):
-				writemsg("\n\n\n ** Skipping packages. Run 'fixpackages' or set it in FEATURES to fix the")
-				writemsg("\n    tbz2's in the packages directory. "+bold("Note: This can take a very long time."))
-				writemsg("\n")
+		# Update progress above is indicated by characters written to stdout so
+		# we print a couple new lines here to separate the progress output from
+		# what follows.
+		print
+		print
+
+		#make sure our internal databases are consistent; recreate our virts and vartree
+		do_vartree(settings)
+		if do_upgrade_packagesmessage and \
+			listdir(os.path.join(settings["PKGDIR"], "All"), EmptyOnError=1):
+			writemsg(" ** Skipping packages. Run 'fixpackages' or set it in FEATURES to fix the")
+			writemsg("\n    tbz2's in the packages directory. "+bold("Note: This can take a very long time."))
+			writemsg("\n")
 
 if (secpass==2) and (not os.environ.has_key("SANDBOX_ACTIVE")):
 	if settings["PORTAGE_CALLER"] in ["emerge","fixpackages"]:

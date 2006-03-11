@@ -440,7 +440,7 @@ dump_trace() {
 		# Display function arguments
 		args=
 		if [[ -n "${BASH_ARGV[@]}" ]]; then
-			for (( j = 0 ; j < ${BASH_ARGC[${n} - 1]} ; ++j )); do
+			for (( j = 1 ; j <= ${BASH_ARGC[${n} - 1]} ; ++j )); do
 				newarg=${BASH_ARGV[$(( p - j - 1 ))]}
 				args="${args:+${args} }'${newarg}'"
 			done
@@ -861,6 +861,11 @@ dyn_unpack() {
 }
 
 dyn_clean() {
+	if [ -z "${PORTAGE_BUILDDIR}" ]; then
+		echo "Aborting clean phase because PORTAGE_BUILDDIR is unset!"
+		return 1
+	fi
+
 	if [ "$USERLAND" == "BSD" ] && type -p chflags &>/dev/null; then
 		chflags -R noschg,nouchg,nosappnd,nouappnd,nosunlnk,nouunlnk \
 			"${PORTAGE_BUILDDIR}"
@@ -892,12 +897,14 @@ dyn_clean() {
 		find "${PORTAGE_BUILDDIR}" -type d ! -regex "^${WORKDIR}" | sort -r | tr "\n" "\0" | $XARGS -0 rmdir &>/dev/null
 	fi
 
-	if [ -z "$(find "${PORTAGE_BUILDDIR}" -mindepth 1 -maxdepth 1)" ]; then
-		rmdir "${PORTAGE_BUILDDIR}"
-	fi
 	# do not bind this to doebuild defined DISTDIR; don't trust doebuild, and if mistakes are made it'll
 	# result in it wiping the users distfiles directory (bad).
 	rm -rf "${PORTAGE_BUILDDIR}/distdir"
+
+	if [ -z "$(find "${PORTAGE_BUILDDIR}" -mindepth 1 -maxdepth 1)" ]; then
+		rmdir "${PORTAGE_BUILDDIR}"
+	fi
+
 	true
 }
 
@@ -1020,13 +1027,6 @@ abort_unpack() {
 	exit 1
 }
 
-abort_package() {
-	abort_handler "dyn_package" $1
-	rm -f "${PORTAGE_BUILDDIR}/.packaged"
-	rm -f "${PKGDIR}"/All/${PF}.t*
-	exit 1
-}
-
 abort_test() {
 	abort_handler "dyn_test" $1
 	rm -f "${PORTAGE_BUILDDIR}/.tested"
@@ -1127,26 +1127,6 @@ dyn_compile() {
 	trap SIGINT SIGQUIT
 }
 
-dyn_package() {
-	trap "abort_package" SIGINT SIGQUIT
-	cd "${PORTAGE_BUILDDIR}/image"
-	tar cpvf - ./ | bzip2 -f > ../bin.tar.bz2 || die "Failed to create tarball"
-	cd ..
-	xpak build-info inf.xpak
-	tbz2tool join bin.tar.bz2 inf.xpak "${PF}.tbz2"
-	mv "${PF}.tbz2" "${PKGDIR}/All" || die "Failed to move tbz2 to ${PKGDIR}/All"
-	rm -f inf.xpak bin.tar.bz2
-	if [ ! -d "${PKGDIR}/${CATEGORY}" ]; then
-		install -d "${PKGDIR}/${CATEGORY}"
-	fi
-	ln -sf "../All/${PF}.tbz2" "${PKGDIR}/${CATEGORY}/${PF}.tbz2" || die "Failed to create symlink in ${PKGDIR}/${CATEGORY}"
-	echo ">>> Done."
-	cd "${PORTAGE_BUILDDIR}"
-	touch .packaged || die "Failed to 'touch .packaged' in ${PORTAGE_BUILDDIR}"
-	trap SIGINT SIGQUIT
-}
-
-
 dyn_test() {
 	[ "$(type -t pre_src_test)" == "function" ] && pre_src_test
 	if [ "${PORTAGE_BUILDDIR}/.tested" -nt "${WORKDIR}" ]; then
@@ -1173,8 +1153,8 @@ dyn_test() {
 	trap SIGINT SIGQUIT
 }
 
-
 dyn_install() {
+	[ -z "$PORTAGE_BUILDDIR" ] && die "${FUNCNAME}: PORTAGE_BUILDDIR is unset"
 	trap "abort_install" SIGINT SIGQUIT
 	[ "$(type -t pre_src_install)" == "function" ] && pre_src_install
 	rm -rf "${PORTAGE_BUILDDIR}/image"
@@ -1191,219 +1171,6 @@ dyn_install() {
 	#our libtool to create problematic .la files
 	export PWORKDIR="$WORKDIR"
 	src_install
-	#|| abort_install "fail"
-	prepall
-	cd "${D}"
-
-	declare -i UNSAFE=0
-	for i in $(find "${D}/" -type f -perm -2002); do
-		((UNSAFE++))
-		echo "UNSAFE SetGID: $i"
-		chmod -s,o-w "$i"
-	done
-	for i in $(find "${D}/" -type f -perm -4002); do
-		((UNSAFE++))
-		echo "UNSAFE SetUID: $i"
-		chmod -s,o-w "$i"
-	done
-
-	# Now we look for all world writable files.
-	for i in $(find "${D}/" -type f -perm -2); do
-		echo -ne '\a'
-		echo "QA Security Notice:"
-		echo "- ${i:${#D}:${#i}} will be a world writable file."
-		echo "- This may or may not be a security problem, most of the time it is one."
-		echo "- Please double check that $PF really needs a world writeable bit and file bugs accordingly."
-		sleep 1
-	done
-
-	if type -p scanelf > /dev/null ; then
-		local insecure_rpath=0
-
-		# Make sure we disallow insecure RUNPATH/RPATH's
-		# Don't want paths that point to the tree where the package was built
-		# (older, broken libtools would do this).  Also check for null paths
-		# because the loader will search $PWD when it finds null paths.
-		f=$(scanelf -qyRF '%r %p' "${D}" | grep -E "(${PORTAGE_BUILDDIR}|: |::|^:|^ )")
-		if [[ -n ${f} ]] ; then
-			echo -ne '\a\n'
-			echo "QA Notice: the following files contain insecure RUNPATH's"
-			echo " Please file a bug about this at http://bugs.gentoo.org/"
-			echo " For more information on this issue, kindly review:"
-			echo " http://bugs.gentoo.org/81745"
-			echo "${f}"
-			echo -ne '\a\n'
-			insecure_rpath=1
-		fi
-
-		# Check for setid binaries but are not built with BIND_NOW
-		f=$(scanelf -qyRF '%b %p' "${D}")
-		if [[ -n ${f} ]] ; then
-			echo -ne '\a\n'
-			echo "QA Notice: the following files are setXid, dyn linked, and using lazy bindings"
-			echo " This combination is generally discouraged.  Try re-emerging the package:"
-			echo " LDFLAGS='-Wl,-z,now' emerge ${PN}"
-			echo "${f}"
-			echo -ne '\a\n'
-			die_msg="${die_msg} setXid lazy bindings,"
-			sleep 1
-		fi
-
-		# TEXTREL's are baaaaaaaad
-		f=$(scanelf -qyRF '%t %p' "${D}")
-		if [[ -n ${f} ]] ; then
-			scanelf -qyRF '%T %p' "${WORKDIR}"/ &> "${T}"/scanelf-textrel.log
-			echo -ne '\a\n'
-			echo "QA Notice: the following files contain runtime text relocations"
-			echo " Text relocations force the dynamic linker to perform extra"
-			echo " work at startup, waste system resources, and may pose a security"
-			echo " risk.  On some architectures, the code may not even function"
-			echo " properly, if at all."
-			echo " Please include this file in your report:"
-			echo " ${T}/scanelf-textrel.log"
-			echo "${f}"
-			echo -ne '\a\n'
-			die_msg="${die_msg} textrels,"
-			sleep 1
-		fi
-
-		# Check for files with executable stacks, but only on arches which
-		# are supported at the moment.  Keep this list in sync with
-		# http://hardened.gentoo.org/gnu-stack.xml (Arch Status)
-		case ${CTARGET:-${CHOST}} in
-			i?86*|ia64*|m68k*|powerpc64*|s390*|x86_64*)
-				f=$(scanelf -qyRF '%e %p' "${D}") ;;
-			*)
-				f="" ;;
-		esac
-		if [[ -n ${f} ]] ; then
-			# One more pass to help devs track down the source
-			scanelf -qyRF '%e %p' "${WORKDIR}"/ &> "${T}"/scanelf-exec.log
-			echo -ne '\a\n'
-			echo "QA Notice: the following files contain executable stacks"
-			echo " Files with executable stacks will not work properly (or at all!)"
-			echo " on some architectures/operating systems.  A bug should be filed"
-			echo " at http://bugs.gentoo.org/ to make sure the file is fixed."
-			echo " Please include this file in your report:"
-			echo " ${T}/scanelf-exec.log"
-			echo "${f}"
-			echo -ne '\a\n'
-			die_msg="${die_msg} execstacks"
-			sleep 1
-		fi
-
-		# Save NEEDED information
-		scanelf -qyRF '%p %n' "${D}" | sed -e 's:^:/:' > "${PORTAGE_BUILDDIR}"/build-info/NEEDED
-
-		if [[ ${insecure_rpath} -eq 1 ]] ; then
-			die "Aborting due to serious QA concerns with RUNPATH/RPATH"
-		elif [[ ${die_msg} != "" ]] && has stricter ${FEATURES} && ! has stricter ${RESTRICT} ; then
-			die "Aborting due to QA concerns: ${die_msg}"
-		fi
-	fi
-
-	if [[ ${UNSAFE} > 0 ]] ; then
-		die "There are ${UNSAFE} unsafe files. Portage will not install them."
-	fi
-
-	if [[ -d ${D}/${D} ]] ; then
-		declare -i INSTALLTOD=0
-		for i in $(find "${D}/${D}/"); do
-			echo "QA Notice: /${i##${D}/${D}} installed in \${D}/\${D}"
-			((INSTALLTOD++))
-		done
-		die "Aborting due to QA concerns: ${INSTALLTOD} files installed in ${D}/${D}"
-		unset INSTALLTOD
-	fi
-
-	# dumps perms to stdout.  if error, no perms dumped.
-	function stat_perms() {
-		local f
-		# only define do_stat if it hasn't been already
-		if ! type -p do_stat &> /dev/null; then
-			if ! type -p stat &>/dev/null; then
-				do_stat() {
-					# Generic version -- Octal result
-					python -c "import os,stat; print '%o' % os.stat('$1')[stat.ST_MODE]"
-				}
-			else
-				if [ "${USERLAND}" == "BSD" ]; then
-					do_stat() {
-						# BSD version -- Octal result
-						$(type -p stat) -f '%p' "$1"
-					}
-				else
-					do_stat() {
-						# Linux version -- Hex result converted to Octal
-						f=$($(type -p stat) -c '%f' "$1") || return $?
-						printf '%o' "0x$f"
-					}
-				fi
-			fi
-		fi
-
-		f=$(do_stat "$@") || return
-		f="${f:2:4}"
-		echo $f
-	}
-
-	local file s
-	local count=0
-	find "${D}/" -user  @portageuser@ | while read file; do
-		count=$(( $count + 1 ))
-		if [ -L "${file}" ]; then
-			lchown @rootuser@ "${file}"
-		else
-			s=$(stat_perms "$file")
-			if [ -z "${s}" ]; then
-				ewarn "failed stat_perm'ing $file.  User intervention during install isn't wise..."
-				continue
-			fi
-			chown @rootuser@ "$file"
-			chmod "$s" "$file"
-		fi
-	done
-	if (( $count > 0 )); then
-		ewarn "$count files were installed with user portage!"
-	fi
-
-	count=0
-	find "${D}/" -group @portagegroup@ | while read file; do
-		count=$(( $count + 1 ))
-		if [ -L "${file}" ]; then
-			lchgrp @wheelgroup@ "${file}"
-		else
-			s=$(stat_perms "$file")
-			if [ -z "${s}" ]; then
-				echo "failed stat_perm'ing '$file' . User intervention during install isn't wise..."
-				continue
-			fi
-			chgrp @wheelgroup@ "$file"
-			chmod "$s" "$file"
-		fi
-	done
-	if (( $count > 0 )); then
-		ewarn "$count files were installed with group portage!"
-	fi
-
-	unset -f stat_perms
-
-	# Portage regenerates this on the installed system.
-	if [ -f "${D}/usr/share/info/dir.gz" ]; then
-		rm -f "${D}/usr/share/info/dir.gz"
-	fi
-
-	if hasq multilib-strict ${FEATURES} && [ -x file -a -x find -a \
-	     -n "${MULTILIB_STRICT_DIRS}" -a -n "${MULTILIB_STRICT_DENY}" ]; then
-		MULTILIB_STRICT_EXEMPT=$(echo ${MULTILIB_STRICT_EXEMPT:-"(perl5|gcc|gcc-lib|debug|portage)"} | sed -e 's:\([(|)]\):\\\1:g')
-		for dir in ${MULTILIB_STRICT_DIRS}; do
-			[ -d "${D}/${dir}" ] || continue
-			for file in $(find ${D}/${dir} -type f | grep -v "^${D}/${dir}/${MULTILIB_STRICT_EXEMPT}"); do
-				file ${file} | egrep -q "${MULTILIB_STRICT_DENY}" && die "File ${file} matches a file type that is not allowed in ${dir}"
-			done
-		done
-	fi
-
 	touch "${PORTAGE_BUILDDIR}/.installed"
 	echo ">>> Completed installing ${PF} into ${D}"
 	echo
@@ -1413,152 +1180,17 @@ dyn_install() {
 }
 
 dyn_preinst() {
-	# set IMAGE depending if this is a binary or compile merge
-	[ "${EMERGE_FROM}" == "binary" ] && IMAGE=${PKG_TMPDIR}/${PF}/bin \
-					|| IMAGE=${D}
+	if [ -z "$IMAGE" ]; then
+			eerror "${FUNCNAME}: IMAGE is unset"
+			return 1
+	fi
 
 	[ "$(type -t pre_pkg_preinst)" == "function" ] && pre_pkg_preinst
 
 	declare -r D=${IMAGE}
 	pkg_preinst
 
-	# remove man pages, info pages, docs if requested
-	for f in man info doc; do
-		if hasq no${f} $FEATURES; then
-			INSTALL_MASK="${INSTALL_MASK} /usr/share/${f}"
-		fi
-	done
-
-	# we don't want globbing for initial expansion, but afterwards, we do
-	local shopts=$-
-	set -o noglob
-	for no_inst in ${INSTALL_MASK}; do
-		set +o noglob
-		einfo "Removing ${no_inst}"
-		# normal stuff
-		rm -Rf ${IMAGE}/${no_inst} >&/dev/null
-
-		# we also need to handle globs (*.a, *.h, etc)
-		find "${IMAGE}" -name ${no_inst} -exec rm -fR {} \; >&/dev/null
-	done
-	# set everything back the way we found it
-	set +o noglob
-	set -${shopts}
-
-	# remove share dir if unnessesary
-	if hasq nodoc $FEATURES -o hasq noman $FEATURES -o hasq noinfo $FEATURES; then
-		rmdir "${IMAGE}/usr/share" &> /dev/null
-	fi
-
-	# Smart FileSystem Permissions
-	if hasq sfperms $FEATURES; then
-		for i in $(find ${IMAGE}/ -type f -perm -4000); do
-			ebegin ">>> SetUID: [chmod go-r] $i "
-			chmod go-r "$i"
-			eend $?
-		done
-		for i in $(find ${IMAGE}/ -type f -perm -2000); do
-			ebegin ">>> SetGID: [chmod o-r] $i "
-			chmod o-r "$i"
-			eend $?
-		done
-	fi
-
-	# total suid control.
-	if hasq suidctl $FEATURES > /dev/null ; then
-		sfconf=/etc/portage/suidctl.conf
-		echo ">>> Preforming suid scan in ${IMAGE}"
-		for i in $(find ${IMAGE}/ -type f \( -perm -4000 -o -perm -2000 \) ); do
-			if [ -s "${sfconf}" ]; then
-				suid="`grep ^${i/${IMAGE}/}$ ${sfconf}`"
-				if [ "${suid}" = "${i/${IMAGE}/}" ]; then
-					echo "- ${i/${IMAGE}/} is an approved suid file"
-				else
-					echo ">>> Removing sbit on non registered ${i/${IMAGE}/}"
-					for x in 5 4 3 2 1 0; do echo -ne "\a"; sleep 0.25 ; done
-					echo -ne "\a"
-					chmod ugo-s "${i}"
-					grep ^#${i/${IMAGE}/}$ ${sfconf} > /dev/null || {
-						# sandbox prevents us from writing directly
-						# to files outside of the sandbox, but this
-						# can easly be bypassed using the addwrite() function
-						addwrite "${sfconf}"
-						echo ">>> Appending commented out entry to ${sfconf} for ${PF}"
-						ls_ret=`ls -ldh "${i}"`
-						echo "## ${ls_ret%${IMAGE}*}${ls_ret#*${IMAGE}}" >> ${sfconf}
-						echo "#${i/${IMAGE}/}" >> ${sfconf}
-						# no delwrite() eh?
-						# delwrite ${sconf}
-					}
-				fi
-			else
-				echo "suidctl feature set but you are lacking a ${sfconf}"
-			fi
-		done
-	fi
-
-	# SELinux file labeling (needs to always be last in dyn_preinst)
-	if hasq selinux ${FEATURES} ; then
-		# only attempt to label if setfiles is executable
-		# and 'context' is available on selinuxfs.
-		if [ -f /selinux/context -a -x ${PREFIX}/usr/sbin/setfiles -a -x ${PREFIX}/usr/sbin/selinuxconfig ]; then
-			echo ">>> Setting SELinux security labels"
-			(
-				eval "$(${PREFIX}/usr/sbin/selinuxconfig)" || \
-					die "Failed to determine SELinux policy paths.";
-
-				addwrite /selinux/context;
-
-				${PREFIX}/usr/sbin/setfiles "${file_contexts_path}" -r "${IMAGE}" "${IMAGE}";
-			) || die "Failed to set SELinux security labels."
-		else
-			# nonfatal, since merging can happen outside a SE kernel
-			# like during a recovery situation
-			echo "!!! Unable to set SELinux security labels"
-		fi
-	fi
-
 	[ "$(type -t post_pkg_preinst)" == "function" ] && post_pkg_preinst
-
-	trap SIGINT SIGQUIT
-}
-
-dyn_spec() {
-	tar czf "${PREFIX}/usr/src/redhat/SOURCES/${PF}.tar.gz" "${O}/${PF}.ebuild" "${O}/files" || die "Failed to create base rpm tarball."
-
-	cat <<__END1__ > ${PF}.spec
-Summary: ${DESCRIPTION}
-Name: ${PN}
-Version: ${PV}
-Release: ${PR}
-Copyright: GPL
-Group: portage/${CATEGORY}
-Source: ${PF}.tar.gz
-Buildroot: ${D}
-%description
-${DESCRIPTION}
-
-${HOMEPAGE}
-
-%prep
-%setup -c
-
-%build
-
-%install
-
-%clean
-
-%files
-/
-__END1__
-
-}
-
-dyn_rpm() {
-	dyn_spec
-	rpmbuild -bb "${PF}.spec" || die "Failed to integrate rpm spec file"
-	install -D "/usr/src/redhat/RPMS/i386/${PN}-${PV}-${PR}.i386.rpm" "${RPMDIR}/${CATEGORY}/${PN}-${PV}-${PR}.rpm" || die "Failed to move rpm"
 }
 
 dyn_help() {
@@ -2079,16 +1711,6 @@ for myarg in $*; do
 			set +x
 		fi
 		;;
-	package|rpm)
-		export SANDBOX_ON="0"
-		if [ "$PORTAGE_DEBUG" != "1" ]; then
-			dyn_${myarg}
-		else
-			set -x
-			dyn_${myarg}
-			set +x
-		fi
-		;;
 	depend)
 		export SANDBOX_ON="0"
 		set -f
@@ -2144,7 +1766,11 @@ for myarg in $*; do
 	#fi
 done
 
-if [ "$myarg" != "clean" ]; then
+# Save the env only for relevant phases.
+if [ -n "$myarg" ] && [ "$myarg" != "clean" ]; then
+	# Do not save myarg in the env, or else the above [ -n "$myarg" ] test will
+	# give a false positive when ebuild.sh is sourced.
+	unset myarg
 	# Save current environment and touch a success file. (echo for success)
 	umask 002
 	set | @EGREP@ -v "^SANDBOX_" > "${T}/environment" 2>/dev/null
@@ -2152,4 +1778,5 @@ if [ "$myarg" != "clean" ]; then
 	chmod g+w "${T}/environment" &>/dev/null
 fi
 
-exit 0
+# Do not exit when ebuild.sh is sourced by other scripts.
+true

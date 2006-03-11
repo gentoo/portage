@@ -536,7 +536,7 @@ if isCvs or isSvn:
 		err("Couldn't recognize repository type.  Supported repositories:\n"+repr(REPOROOTS))
 if isSvn:
 	reposplit=string.split(os.path.normpath(myrepoinfo[1].split("svn.gentoo.org")[1].rstrip().replace("/var/svnroot",'')).replace(x,'')[2:],"/")
-	reposplit.insert(0,myrepo)
+	reposplit.insert(0,myreporoot)
 else:
 	reposplit=string.split(myreporoot,"/")
 repolevel=len(reposplit)

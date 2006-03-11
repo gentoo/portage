@@ -120,7 +120,7 @@ def pyhash(filename, hashobject):
 
 def perform_checksum(filename, hash_function=md5hash, calc_prelink=0):
 	myfilename      = filename[:]
-	prelink_tmpfile = PRIVATE_PATH+"/prelink-checksum.tmp."+str(os.getpid())
+	prelink_tmpfile = os.path.join("/", PRIVATE_PATH, "prelink-checksum.tmp." + str(os.getpid()))
 	mylock          = None
 	
 	if calc_prelink and prelink_capable:

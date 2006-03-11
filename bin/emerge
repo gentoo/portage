@@ -411,8 +411,9 @@ if ("--resume" in myopts):
 if ("--nocolor" in myopts) and (sys.stdout.isatty()):
 	nocolor()
 
-if not sys.stdout.isatty() or ("--nospinner" in myopts):
-	update_spinner = update_basic_spinner
+if not ("--quiet" in myopts):
+	if not sys.stdout.isatty() or ("--nospinner" in myopts):
+		update_spinner = update_basic_spinner
 
 CLEAN_DELAY = 5
 EMERGE_WARNING_DELAY = 10
@@ -836,7 +837,7 @@ def getlist(mode):
 		mylines=portage.settings.packages
 	elif mode=="world":
 		try:
-			myfile=open(portage.root+portage.WORLD_FILE,"r")
+			myfile = open(os.path.join(portage.root, portage.WORLD_FILE), "r")
 			mylines=myfile.readlines()
 			myfile.close()
 		except OSError:
@@ -1569,7 +1570,7 @@ class depgraph:
 					if "--changelog" in myopts:
 						changelogs.extend(self.calc_changelog(
 							portage.portdb.findname(x[2]),
-							portage.db["/"]["vartree"].dep_bestmatch('/'.join(portage.catpkgsplit(x[2])[:2])),
+							portage.db[x[1]]["vartree"].dep_bestmatch('/'.join(portage.catpkgsplit(x[2])[:2])),
 							x[2]
 							))
 				else:
@@ -1596,8 +1597,8 @@ class depgraph:
 						pkg = myoldbest
 					else:
 						pkg = x[2]
-					if portage.db["/"]["vartree"].dbapi.cpv_exists(pkg):
-						(old_iuse, old_use) = portage.db["/"]["vartree"].dbapi.aux_get(pkg, ["IUSE", "USE"])
+					if portage.db[x[1]]["vartree"].dbapi.cpv_exists(pkg):
+						(old_iuse, old_use) = portage.db[x[1]]["vartree"].dbapi.aux_get(pkg, ["IUSE", "USE"])
 						old_iuse = portage.unique_array(old_iuse.split())
 						old_iuse.sort()
 						old_use = old_use.split()
@@ -1846,7 +1847,7 @@ class depgraph:
 					print red("!!!        the merge operation manually.")
 					sys.exit(1)
 		else:
-			myfavs=portage.grabfile(portage.root+portage.WORLD_FILE)
+			myfavs = portage.grabfile(os.path.join(portage.root, portage.WORLD_FILE))
 			myfavdict=genericdict(myfavs)
 			for x in range(len(mylist)):
 				if mylist[x][3]!="nomerge":
@@ -1864,7 +1865,9 @@ class depgraph:
 							myfavdict[myfavkey]=myfavkey
 							print ">>> Recording",myfavkey,"in \"world\" favorites file..."
 			if not "--fetchonly" in myopts:
-				portage.write_atomic(os.path.join(portage.root,portage.WORLD_FILE),"\n".join(myfavdict.values()))
+				portage.write_atomic(
+				os.path.join(portage.root, portage.WORLD_FILE),
+				"\n".join(myfavdict.values()))
 
 			portage.mtimedb["resume"]["mergelist"]=mymergelist[:]
 
@@ -1891,6 +1894,7 @@ class depgraph:
 					sys.stdin.close()
 					sys.stdout.close()
 					sys.stderr.close()
+					time.sleep(3) # allow the parent to have first fetch
 					sys.stdout = open("/dev/null","w")
 					sys.stderr = open("/dev/null","w")
 					os.dup2(sys.stdout.fileno(), 1)
@@ -2026,7 +2030,7 @@ class depgraph:
 				portage.db[x[1]]["vartree"].inject(x[2])
 				myfavkey=portage.cpv_getkey(x[2])
 				if "--fetchonly" not in myopts and "--fetch-all-uri" not in myopts and myfavkey in favorites:
-					myfavs=portage.grabfile(myroot+portage.WORLD_FILE)
+					myfavs = portage.grabfile(os.path.join(myroot, portage.WORLD_FILE))
 					myfavdict=genericdict(myfavs)
 					mysysdict=genericdict(syslist)
 					#don't record if already in system profile or already recorded
@@ -2035,17 +2039,9 @@ class depgraph:
 						myfavdict[myfavkey]=myfavkey
 						print ">>> Recording",myfavkey,"in \"world\" favorites file..."
 						emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Updating world file ("+x[pkgindex]+")")
-						portage.write_atomic(os.path.join(myroot,portage.WORLD_FILE),"\n".join(myfavdict.values()))
-
-				if ("noclean" not in portage.features) and (x[0] != "binary"):
-					short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Clean Post"
-					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Post-Build Cleaning ("+x[pkgindex]+"::"+y+")", short_msg=short_msg)
-					retval=portage.doebuild(y,"clean",myroot,self.pkgsettings,edebug,cleanup=1,tree="porttree")
-					if (retval == None):
-						portage_util.writemsg("Unable to run required binary.\n")
-						sys.exit(127)
-					if retval:
-						sys.exit(retval)
+						portage.write_atomic(
+						os.path.join(myroot, portage.WORLD_FILE),
+						"\n".join(myfavdict.values()))
 
 				if ("--pretend" not in myopts) and ("--fetchonly" not in myopts) and ("--fetch-all-uri" not in myopts):
 					# Clean the old package that we have merged over top of it.
@@ -2077,6 +2073,11 @@ class depgraph:
 								os.execv(mynewargv[0], mynewargv)
 
 			if ("--pretend" not in myopts) and ("--fetchonly" not in myopts) and ("--fetch-all-uri" not in myopts):
+				if "noclean" not in portage.features:
+					short_msg = "emerge: (%s of %s) %s Clean Post" % \
+						(mergecount, len(mymergelist), x[pkgindex])
+					emergelog(" === (%s of %s) Post-Build Cleaning (%s::%s)" % \
+						(mergecount, len(mymergelist), x[pkgindex], y), short_msg=short_msg)
 				emergelog(" ::: completed emerge ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[2]+" to "+x[1])
 
 			# Unsafe for parallel merges
@@ -2299,6 +2300,9 @@ def unmerge(unmerge_action, unmerge_files):
 			else:
 					print "none",
 			print
+        
+	if portage.settings["ROOT"]:
+		print string.rjust("ROOT:", 12) + " " + white(portage.settings["ROOT"])
 
 	print "\n>>>",red("'Selected'"),"packages are slated for removal."
 	print ">>>",green("'Protected'"),"and",green("'omitted'"),"packages will not be removed.\n"
@@ -3146,7 +3150,13 @@ else:
 			print darkgreen("These are the packages that would be %s, in order:") % action
 			print
 
-	if ("--resume" in myopts) and portage.mtimedb.has_key("resume"):
+	if "--resume" in myopts and \
+		("resume" in portage.mtimedb or
+		"resume_backup" in portage.mtimedb):
+		if "resume" not in portage.mtimedb:
+			portage.mtimedb["resume"] = portage.mtimedb["resume_backup"]
+			del portage.mtimedb["resume_backup"]
+			portage.commit_mtimedb()
 		myresumeopts=portage.mtimedb["resume"]["myopts"][:]
 
 		for opt in ("--skipfirst", "--ask", "--verbose"):
@@ -3253,6 +3263,11 @@ else:
 			favorites=portage.mtimedb["resume"]["favorites"]
 			mydepgraph.merge(portage.mtimedb["resume"]["mergelist"])
 		else:
+			if "resume" in portage.mtimedb and \
+			len(portage.mtimedb["resume"]["mergelist"]) > 1:
+				portage.mtimedb["resume_backup"] = portage.mtimedb["resume"]
+				del portage.mtimedb["resume"]
+				portage.commit_mtimedb()
 			portage.mtimedb["resume"]={}
 			portage.mtimedb["resume"]["myopts"]=myopts
 			portage.mtimedb["resume"]["favorites"]=favorites
