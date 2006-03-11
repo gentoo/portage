@@ -3146,7 +3146,13 @@ else:
 			print darkgreen("These are the packages that would be %s, in order:") % action
 			print
 
-	if ("--resume" in myopts) and portage.mtimedb.has_key("resume"):
+	if "--resume" in myopts and \
+		("resume" in portage.mtimedb or
+		"resume_backup" in portage.mtimedb):
+		if "resume" not in portage.mtimedb:
+			portage.mtimedb["resume"] = portage.mtimedb["resume_backup"]
+			del portage.mtimedb["resume_backup"]
+			portage.commit_mtimedb()
 		myresumeopts=portage.mtimedb["resume"]["myopts"][:]
 
 		for opt in ("--skipfirst", "--ask", "--verbose"):
@@ -3253,6 +3259,11 @@ else:
 			favorites=portage.mtimedb["resume"]["favorites"]
 			mydepgraph.merge(portage.mtimedb["resume"]["mergelist"])
 		else:
+			if "resume" in portage.mtimedb and \
+			len(portage.mtimedb["resume"]["mergelist"]) > 1:
+				portage.mtimedb["resume_backup"] = portage.mtimedb["resume"]
+				del portage.mtimedb["resume"]
+				portage.commit_mtimedb()
 			portage.mtimedb["resume"]={}
 			portage.mtimedb["resume"]["myopts"]=myopts
 			portage.mtimedb["resume"]["favorites"]=favorites

@@ -6714,7 +6714,8 @@ mtimedb={}
 mtimedbkeys=[
 "updates", "info",
 "version", "starttime",
-"resume", "ldpath"
+"resume", "resume_backup",
+"ldpath"
 ]
 mtimedbfile=root+"var/cache/edb/mtimedb"
 try:
