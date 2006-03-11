@@ -411,8 +411,9 @@ if ("--resume" in myopts):
 if ("--nocolor" in myopts) and (sys.stdout.isatty()):
 	nocolor()
 
-if not sys.stdout.isatty() or ("--nospinner" in myopts):
-	update_spinner = update_basic_spinner
+if not ("--quiet" in myopts):
+	if not sys.stdout.isatty() or ("--nospinner" in myopts):
+		update_spinner = update_basic_spinner
 
 CLEAN_DELAY = 5
 EMERGE_WARNING_DELAY = 10
