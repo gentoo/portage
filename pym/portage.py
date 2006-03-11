@@ -6097,7 +6097,8 @@ class dblink:
 
 		# Process ebuild logfiles
 		elog_process(self.mycpv, self.settings)
-		
+		if "noclean" not in features:
+			doebuild(myebuild, "clean", root, self.settings, cleanup=cleanup, tree=self.treetype)
 		return 0
 
 	def mergeme(self,srcroot,destroot,outfile,secondhand,stufftomerge,cfgfiledict,thismtime):

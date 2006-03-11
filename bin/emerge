@@ -2069,18 +2069,11 @@ class depgraph:
 								os.execv(mynewargv[0], mynewargv)
 
 			if ("--pretend" not in myopts) and ("--fetchonly" not in myopts) and ("--fetch-all-uri" not in myopts):
-				if "noclean" not in portage.features and x[0] != "binary":
+				if "noclean" not in portage.features:
 					short_msg = "emerge: (%s of %s) %s Clean Post" % \
 						(mergecount, len(mymergelist), x[pkgindex])
 					emergelog(" === (%s of %s) Post-Build Cleaning (%s::%s)" % \
 						(mergecount, len(mymergelist), x[pkgindex], y), short_msg=short_msg)
-					retval = portage.doebuild(y, "clean", myroot,
-						self.pkgsettings, edebug, cleanup=1, tree="porttree")
-					if (retval == None):
-						portage_util.writemsg("Unable to run required binary.\n")
-						sys.exit(127)
-					if retval:
-						sys.exit(retval)
 				emergelog(" ::: completed emerge ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[2]+" to "+x[1])
 
 			# Unsafe for parallel merges
