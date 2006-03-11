@@ -1019,10 +1019,6 @@ dyn_test() {
 	trap SIGINT SIGQUIT
 }
 
-
-PORTAGE_INST_UID="0"
-PORTAGE_INST_GID="0"
-
 dyn_install() {
 	[ -z "$PORTAGE_BUILDDIR" ] && die "${FUNCNAME}: PORTAGE_BUILDDIR is unset"
 	trap "abort_install" SIGINT SIGQUIT
