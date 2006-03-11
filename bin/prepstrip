@@ -35,41 +35,45 @@ save_elf_debug() {
 
 	[[ " ${FEATURES} " != *" installsources "* ]] && return 0
 
-	if [[ -x "/usr/bin/debugedit" ]] ; then
-		debugedit -b "${WORKDIR}" -d /usr/src/debug/${PF} -l "${T}"/debug.sources "${x}"
+	if [[ -x "${PREFIX}/usr/bin/debugedit" ]] ; then
+		debugedit -b "${WORKDIR}" -d "${PREFIX}"/usr/src/debug/${PF} -l "${T}"/debug.sources "${x}"
 		if [[ -s ${T}/debug.sources ]] ; then 
 			[[ -d ${D}/usr/src/debug/${PF} ]] || mkdir -p "${D}/usr/src/debug/${PF}"
 			cat "${T}"/debug.sources | (cd "${WORKDIR}"; LANG=C sort -z -u | xargs -0 -- cp --parents -p --target-directory="${D}/usr/src/debug/${PF}" )
 		fi
 	fi
 }
+if [[ `type -p scanelf` ]]; then
+	for x in $(scanelf -yRBF%F "$@") $(for y in "$@"; do find "${y}" -type f -name '*.a' -print0 ; done); do
+		if [[ ${banner} -eq 1 ]] ; then
+			echo "strip: ${STRIP} ${PORTAGE_STRIP_FLAGS}"
+			banner=0
+		fi
 
-for x in $(scanelf -yRBF%F "$@") $(for y in "$@"; do find "${y}" -type f -name '*.a' -print0 ; done); do
-	if [[ ${banner} -eq 1 ]] ; then
-		echo "strip: ${STRIP} ${PORTAGE_STRIP_FLAGS}"
-		banner=0
-	fi
+		f=$(file "${x}") || continue
+		[[ -z ${f} ]] && continue
 
-	f=$(file "${x}") || continue
-	[[ -z ${f} ]] && continue
+		# The noglob funk is to support STRIP_MASK="/*/booga" and to keep
+		#  the for loop from expanding the globs.
+		# The eval echo is to support STRIP_MASK="/*/{booga,bar}" sex.
+		set -o noglob
+		stripitbaby=1
+		for m in $(eval echo ${STRIP_MASK}) ; do
+			[[ ${x} == ${m} ]] && stripitbaby=1 && break
+		done
+		set +o noglob
 
-	# The noglob funk is to support STRIP_MASK="/*/booga" and to keep
-	#  the for loop from expanding the globs.
-	# The eval echo is to support STRIP_MASK="/*/{booga,bar}" sex.
-	set -o noglob
-	stripitbaby=1
-	for m in $(eval echo ${STRIP_MASK}) ; do
-		[[ ${x} == ${m} ]] && stripitbaby=1 && break
+		if [[ ${f} == *"current ar archive"* ]] ; then
+			echo "   ${x:${#D}:${#x}}"
+			[[ ${stripitbaby} -eq 1 ]] && ${STRIP} -g "${x}"
+		fi
+		if [[ ${f} == *"SB executable"* || ${f} == *"SB shared object"* ]] ; then
+			echo "   ${x:${#D}:${#x}}"
+			save_elf_debug "${x}"
+			[[ ${stripitbaby} -eq 1 ]] && ${STRIP} ${PORTAGE_STRIP_FLAGS} "${x}"
+		fi
 	done
-	set +o noglob
-
-	if [[ ${f} == *"current ar archive"* ]] ; then
-		echo "   ${x:${#D}:${#x}}"
-		[[ ${stripitbaby} -eq 1 ]] && ${STRIP} -g "${x}"
-	fi
-	if [[ ${f} == *"SB executable"* || ${f} == *"SB shared object"* ]] ; then
-		echo "   ${x:${#D}:${#x}}"
-		save_elf_debug "${x}"
-		[[ ${stripitbaby} -eq 1 ]] && ${STRIP} ${PORTAGE_STRIP_FLAGS} "${x}"
-	fi
-done
+else
+	echo "scanelf(1) not found, skipping..."
+fi
+	
