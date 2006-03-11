@@ -5859,7 +5859,8 @@ class dblink:
 			if a != 0:
 				writemsg("!!! FAILED postrm: "+str(a)+"\n")
 				sys.exit(123)
-
+			if "noclean" not in features:
+				doebuild(myebuildpath, "clean", self.myroot, self.settings, cleanup=cleanup, tree=self.treetype)
 		self.unlockdb()
 
 	def isowner(self,filename,destroot):
