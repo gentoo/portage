@@ -1,5 +1,5 @@
 dnl Process this file with autoconf to produce a configure script.
-AC_INIT(portage, 2.0.53_rc4-prefix-02, ferringb@gentoo.org)
+AC_INIT(portage, 2.1.5-prefix, kito@gentoo.org)
 
 case "${prefix}" in
 	'') 	AC_MSG_ERROR([bad value ${prefix} for --prefix, must not be empty]) ;;
@@ -89,6 +89,7 @@ AC_PATH_PROG(SANDBOX, sandbox, /usr/bin/sandbox)
 AC_PATH_PROG(PRELINK, prelink, /usr/sbin/prelink)
 AC_PATH_PROG(RSYNC, rsync, /usr/bin/rsync)
 AC_PATH_PROG(CVS, cvs, /usr/bin/cvs)
+AC_PATH_PROG(SVN, svn, /usr/bin/svn)
 AC_PATH_PROGS(GPG, [gpg pgp], /usr/bin/gpg)
 AC_PATH_PROG(INSTALL_INFO, install-info, /usr/bin/install-info)
 AC_PATH_PROG(MD5SUM, md5sum, /usr/bin/md5sum)

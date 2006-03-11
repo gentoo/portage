@@ -1,4 +1,4 @@
-#!/bin/bash
+#!@BASH@
 # Copyright 1999-2006 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
@@ -14,7 +14,7 @@
 # XXX hack: clear the args so ebuild.sh doesn't see them
 MISC_FUNCTIONS_ARGS="$@"
 shift $#
-source /usr/lib/portage/bin/ebuild.sh
+source @PORTAGE_BASE@/bin/ebuild.sh
 
 install_qa_check() {
 
@@ -195,14 +195,14 @@ install_qa_check() {
 					python -c "import os,stat; print '%o' % os.stat('$1')[stat.ST_MODE]"
 				}
 			else
-				if [ "${USERLAND}" == "BSD" ] || [ "${USERLAND}" == "Darwin" ]; then
+				if [ "${USERLAND}" == "BSD" ]; then
 					do_stat() {
 						# BSD version -- Octal result
 						$(type -p stat) -f '%p' "$1"
 					}
 				else
 					do_stat() {
-						# Linux version -- Hex result converted to Octal
+						# GNU version -- Hex result converted to Octal
 						f=$($(type -p stat) -c '%f' "$1") || return $?
 						printf '%o' "0x$f"
 					}
@@ -217,7 +217,7 @@ install_qa_check() {
 
 	local file s
 	local count=0
-	find "${D}/" -user  portage | while read file; do
+	find "${D}/" -user  @portageuser@ | while read file; do
 		count=$(( $count + 1 ))
 		if [ -L "${file}" ]; then
 			lchown ${PORTAGE_INST_UID} "${file}"
@@ -232,11 +232,11 @@ install_qa_check() {
 		fi
 	done
 	if (( $count > 0 )); then
-		ewarn "$count files were installed with user portage!"
+		ewarn "$count files were installed with user @portageuser@!"
 	fi
 
 	count=0
-	find "${D}/" -group portage | while read file; do
+	find "${D}/" -group @portagegroup@ | while read file; do
 		count=$(( $count + 1 ))
 		if [ -L "${file}" ]; then
 			lchgrp ${PORTAGE_INST_GID} "${file}"
@@ -251,7 +251,7 @@ install_qa_check() {
 		fi
 	done
 	if (( $count > 0 )); then
-		ewarn "$count files were installed with group portage!"
+		ewarn "$count files were installed with group @portagegroup@!"
 	fi
 
 	unset -f stat_perms
@@ -261,7 +261,7 @@ install_qa_check() {
 		rm -f "${D}/usr/share/info/dir.gz"
 	fi
 
-	if hasq multilib-strict ${FEATURES} && [ -x /usr/bin/file -a -x /usr/bin/find -a \
+	if hasq multilib-strict ${FEATURES} && [ -x file -a -x find -a \
 	     -n "${MULTILIB_STRICT_DIRS}" -a -n "${MULTILIB_STRICT_DENY}" ]; then
 		MULTILIB_STRICT_EXEMPT=$(echo ${MULTILIB_STRICT_EXEMPT:-"(perl5|gcc|gcc-lib|debug|portage)"} | sed -e 's:\([(|)]\):\\\1:g')
 		for dir in ${MULTILIB_STRICT_DIRS}; do
@@ -301,11 +301,13 @@ preinst_mask() {
 	if [ -z "$IMAGE" ]; then
 		 eerror "${FUNCNAME}: IMAGE is unset"
 		 return 1
+	else
+		IMAGE="${IMAGE}/${PREFIX}"
 	fi
 	# remove man pages, info pages, docs if requested
 	for f in man info doc; do
 		if hasq no${f} $FEATURES; then
-			INSTALL_MASK="${INSTALL_MASK} /usr/share/${f}"
+			INSTALL_MASK="${INSTALL_MASK} ${PREFIX}/usr/share/${f}"
 		fi
 	done
 
@@ -344,7 +346,7 @@ preinst_suid_scan() {
 	fi
 	# total suid control.
 	if hasq suidctl $FEATURES; then
-		sfconf=/etc/portage/suidctl.conf
+		sfconf=${PREFIX}/etc/portage/suidctl.conf
 		echo ">>> Preforming suid scan in ${IMAGE}"
 		for i in $(find ${IMAGE}/ -type f \( -perm -4000 -o -perm -2000 \) ); do
 			if [ -s "${sfconf}" ]; then
@@ -385,15 +387,15 @@ preinst_selinux_labels() {
 		# SELinux file labeling (needs to always be last in dyn_preinst)
 		# only attempt to label if setfiles is executable
 		# and 'context' is available on selinuxfs.
-		if [ -f /selinux/context -a -x /usr/sbin/setfiles -a -x /usr/sbin/selinuxconfig ]; then
+		if [ -f /selinux/context -a -x ${PREFIX}/usr/sbin/setfiles -a -x ${PREFIX}/usr/sbin/selinuxconfig ]; then
 			echo ">>> Setting SELinux security labels"
 			(
-				eval "$(/usr/sbin/selinuxconfig)" || \
+				eval "$(${PREFIX}/usr/sbin/selinuxconfig)" || \
 					die "Failed to determine SELinux policy paths.";
 	
 				addwrite /selinux/context;
 	
-				/usr/sbin/setfiles "${file_contexts_path}" -r "${IMAGE}" "${IMAGE}";
+				${PREFIX}/usr/sbin/setfiles "${file_contexts_path}" -r "${IMAGE}" "${IMAGE}";
 			) || die "Failed to set SELinux security labels."
 		else
 			# nonfatal, since merging can happen outside a SE kernel
