@@ -2368,22 +2368,17 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 			retval=spawnebuild(actionmap[mydo]["dep"],actionmap,mysettings,debug,alwaysdep=alwaysdep,logfile=logfile)
 			if retval:
 				return retval
-	# spawn ebuild.sh or misc-functions.sh as appropriate
-	if mydo in ["package","rpm"]:
-		mycommand = MISC_SH_BINARY + " dyn_" + mydo
-	else:
-		mycommand = EBUILD_SH_BINARY + " " + mydo
-	phase_retval = spawn(mycommand, mysettings, debug=debug,
-		droppriv=actionmap[mydo]["args"][0],
-		free=actionmap[mydo]["args"][1],
-		sesandbox=actionmap[mydo]["args"][2], logfile=logfile)
+	phase_retval = spawn(actionmap[mydo]["args"][0] + mydo, mysettings, debug=debug,
+		droppriv=actionmap[mydo]["args"][1],
+		free=actionmap[mydo]["args"][2],
+		sesandbox=actionmap[mydo]["args"][3], logfile=logfile)
 	if phase_retval == os.EX_OK:
 		if mydo == "install":
 			mycommand = " ".join([MISC_SH_BINARY, "install_qa_check"])
 			return spawn(mycommand, mysettings, debug=debug,
-				droppriv=actionmap[mydo]["args"][0],
-				free=actionmap[mydo]["args"][1],
-				sesandbox=actionmap[mydo]["args"][2], logfile=logfile)
+				droppriv=actionmap[mydo]["args"][1],
+				free=actionmap[mydo]["args"][2],
+				sesandbox=actionmap[mydo]["args"][3], logfile=logfile)
 	return phase_retval
 
 # chunked out deps for each phase, so that ebuild binary can use it 
@@ -2883,18 +2878,20 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 		nosandbox = ("sandbox" not in features and "usersandbox" not in features)
 
 	sesandbox = selinux_enabled and "sesandbox" in features
+	ebuild_sh = "%s " % EBUILD_SH_BINARY
+	misc_sh = "%s dyn_" % MISC_SH_BINARY
 
 	# args are for the to spawn function
-	#                     (droppriv,  free,     sesandbox)
+	#                     (command, droppriv,  free,      sesandbox)
 	actionmap = {
-		"depend": {"args":(1,         0,         0)},
-		"setup":  {"args":(0,         1,         0)},
-		"unpack": {"args":(1,         0,         sesandbox)},
-		"compile":{"args":(1,         nosandbox, sesandbox)},
-		"test":   {"args":(1,         nosandbox, sesandbox)},
-		"install":{"args":(0,         0,         sesandbox)},
-		"rpm":    {"args":(0,         0,         0)},
-		"package":{"args":(0,         0,         0)},
+		"depend": {"args":(ebuild_sh, 1,         0,         0)},
+		"setup":  {"args":(ebuild_sh, 0,         1,         0)},
+		"unpack": {"args":(ebuild_sh, 1,         0,         sesandbox)},
+		"compile":{"args":(ebuild_sh, 1,         nosandbox, sesandbox)},
+		"test":   {"args":(ebuild_sh, 1,         nosandbox, sesandbox)},
+		"install":{"args":(ebuild_sh, 0,         0,         sesandbox)},
+		"rpm":    {"args":(misc_sh,   0,         0,         0)},
+		"package":{"args":(misc_sh,   0,         0,         0)},
 	}
 	
 	# merge the deps in so we have again a 'full' actionmap
