@@ -290,7 +290,7 @@ install_mask() {
 		rm -Rf ${root}/${no_inst} >&/dev/null
 
 		# we also need to handle globs (*.a, *.h, etc)
-		find "${root}" -name ${no_inst} -exec rm -fR {} \; >/dev/null
+		find "${root}" -path ${no_inst} -exec rm -fR {} \; >/dev/null
 	done
 	# set everything back the way we found it
 	set +o noglob
