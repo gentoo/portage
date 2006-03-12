@@ -3156,7 +3156,7 @@ else:
 			portage.commit_mtimedb()
 		myresumeopts=portage.mtimedb["resume"]["myopts"][:]
 
-		for opt in ("--skipfirst", "--ask", "--verbose"):
+		for opt in ("--skipfirst", "--ask", "--verbose", "--tree"):
 			while opt in myresumeopts:
 				myresumeopts.remove(opt)
 
