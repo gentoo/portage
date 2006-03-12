@@ -3092,7 +3092,9 @@ def unmerge(cat,pkg,myroot,mysettings,mytrimworld=1):
 	mylink=dblink(cat,pkg,myroot,mysettings,treetype="vartree")
 	if mylink.exists():
 		mylink.unmerge(trimworld=mytrimworld,cleanup=1)
-	mylink.delete()
+		mylink.delete()
+		return 0
+	return 1
 
 def isvalidatom(atom):
 	mycpv_cps = catpkgsplit(dep_getcpv(atom))
