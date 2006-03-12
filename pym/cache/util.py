@@ -16,7 +16,7 @@ def mirror_cache(valid_nodes_iterable, src_cache, trg_cache, eclass_cache=None, 
 		noise=verbose_instance
 
 	dead_nodes = {}
-	dead_nodes.fromkeys(trg_cache.keys())
+	dead_nodes = dict.fromkeys(trg_cache.keys())
 	count=0
 
 	if not trg_cache.autocommits:
