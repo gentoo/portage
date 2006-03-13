@@ -5687,6 +5687,15 @@ class dblink:
 
 		#do prerm script
 		if myebuildpath and os.path.exists(myebuildpath):
+			# XXX Bug: When unmerge of the installed instance is triggered by installation of
+			# a new one of the same version, the environments of the two instances should be
+			# separate (${T} should not be shared).  Currently, when the version is the same,
+			# we don't clean because that would wipe out the env from the preinst phase that
+			# the postinst phase may depend on.  The same applies to the clean phase that is
+			# at the end of this method, which should not be triggered when the new and old
+			# versions are the same (until the shared ${T} bug is fixed).
+			#
+			# Eventually, we'd like to pass in the saved ebuild env here...
 			a=doebuild(myebuildpath,"prerm",self.myroot,self.settings,cleanup=cleanup,use_cache=0,tree=self.treetype)
 			# XXX: Decide how to handle failures here.
 			if a != 0:
@@ -5852,8 +5861,8 @@ class dblink:
 			if a != 0:
 				writemsg("!!! FAILED postrm: "+str(a)+"\n")
 				sys.exit(123)
-			if "noclean" not in features:
-				doebuild(myebuildpath, "clean", self.myroot, self.settings, cleanup=cleanup, tree=self.treetype)
+			if cleanup and "noclean" not in features:
+				doebuild(myebuildpath, "clean", self.myroot, self.settings, tree=self.treetype)
 		self.unlockdb()
 
 	def isowner(self,filename,destroot):
