@@ -591,30 +591,22 @@ def help():
 	# Move all the help stuff out of this file.
 	emergehelp.help(myaction,myopts,havecolor)
 
-# check if root user is the current user for the actions where emerge needs this
-if ("--pretend" in myopts) or ("--fetchonly" in myopts or "--fetch-all-uri" in myopts) or (myaction=="search"):
-	if not portage.secpass:
-		if portage.wheelgid==portage.portage_gid:
-			print "emerge: wheel group membership required for \"--pretend\" and search."
-			print "emerge: wheel group use is being deprecated. Please update group and passwd to"
-			print "        include the portage user as noted above, and then use group portage."
-		else:
-			print "emerge: portage group membership required for \"--pretend\" and search."
-		sys.exit(1)
-elif "--version" in myopts:
+if "--version" in myopts:
 	print getportageversion()
 	sys.exit(0)
 elif "--help" in myopts:
 	help()
 	sys.exit(0)
-elif portage.secpass!=2:
-	if myaction in ["search", "info", "regen", "metadata"]:
-		pass
-	elif not myaction and not myfiles and "--resume" not in myopts:
-		pass
-	elif ("--pretend" in myopts) and (myaction in ["world","system","clean","prune","unmerge"]):
-		pass
-	else:
+
+if portage.wheelgid == portage.portage_gid:
+	print "emerge: wheel group use is being deprecated. Please update group and passwd to"
+	print "        include the portage user as noted above, and then use group portage."
+
+# check if root user is the current user for the actions where emerge needs this
+if portage.secpass < 2:
+	# We've already allowed "--version" and "--help" above.
+	if "--pretend" not in myopts and \
+	myaction not in ("search","info"):
 		if "--debug" in myopts:
 			print "myaction",myaction
 			print "myopts",myopts
