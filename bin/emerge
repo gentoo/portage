@@ -3261,6 +3261,7 @@ else:
 			mydepgraph.merge(portage.mtimedb["resume"]["mergelist"])
 		else:
 			if "resume" in portage.mtimedb and \
+			"mergelist" in portage.mtimedb["resume"] and \
 			len(portage.mtimedb["resume"]["mergelist"]) > 1:
 				portage.mtimedb["resume_backup"] = portage.mtimedb["resume"]
 				del portage.mtimedb["resume"]
