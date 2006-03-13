@@ -470,9 +470,9 @@ def apply_permissions(filename, uid=-1, gid=-1, mode=0,
 		os.chmod(filename, mode | stat_cached.st_mode)
 
 def apply_stat_permissions(filename, newstat, stat_cached=None):
-	"""wrapper around apply_permissions that gets
+	"""A wrapper around apply_secpass_permissions that gets
 	uid, gid, and mode from a stat object"""
-	apply_permissions(filename, uid=newstat.st_uid, gid=newstat.st_gid,
+	return apply_secpass_permissions(filename, uid=newstat.st_uid, gid=newstat.st_gid,
 	mode=newstat.st_mode, stat_cached=stat_cached)
 
 def apply_secpass_permissions(filename, uid=-1, gid=-1, mode=0,
