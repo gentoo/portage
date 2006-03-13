@@ -3,7 +3,7 @@
 # $Id: /var/cvsroot/gentoo-src/portage/pym/portage_util.py,v 1.11.2.6 2005/04/23 07:26:04 jstubbs Exp $
 
 
-import sys,string,shlex,os.path
+import sys,string,shlex,os
 try:
 	import cPickle
 except ImportError:
@@ -474,6 +474,38 @@ def apply_stat_permissions(filename, newstat, stat_cached=None):
 	uid, gid, and mode from a stat object"""
 	apply_permissions(filename, uid=newstat.st_uid, gid=newstat.st_gid,
 	mode=newstat.st_mode, stat_cached=stat_cached)
+
+def apply_secpass_permissions(filename, uid=-1, gid=-1, mode=0,
+	stat_cached=None):
+	"""A wrapper around apply_permissions that uses secpass and simple
+	logic to apply as much of the permissions as possible without
+	generating an obviously avoidable permission exception. Despite
+	attempts to avoid an exception, it's possible that one will be raised
+	anyway, so be prepared.
+	Returns True if all permissions are applied and False if some are left
+	unapplied."""
+
+	if stat_cached is None:
+		stat_cached = os.stat(filename)
+
+	all_applied = True
+
+	import portage_data # not imported globally because of circular dep
+	if portage_data.secpass < 2:
+
+		if uid != -1 and \
+		uid != stat_cached.st_uid:
+			all_applied = False
+			uid = -1
+
+		if gid != -1 and \
+		gid != stat_cached.st_gid and \
+		gid not in os.getgroups():
+			all_applied = False
+			gid = -1
+
+	apply_permissions(filename, uid=uid, gid=gid, mode=mode, stat_cached=stat_cached)
+	return all_applied
 
 class atomic_ofstream(file):
 	"""Write a file atomically via os.rename().  Atomic replacement prevents
