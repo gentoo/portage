@@ -38,7 +38,17 @@ if not lchown:
 	
 os.environ["USERLAND"]=userland
 
-#Secpass will be set to 1 if the user is root or in the portage group.
+# Portage has 3 security levels that depend on the uid and gid of the main
+# process and are assigned according to the following table:
+#
+# Privileges  secpass  uid    gid
+# normal      0        any    any
+# group       1        any    portage_gid
+# super       2        0      any
+#
+# If the "wheel" group does not exist then wheelgid falls back to 0.
+# If the "portage" group does not exist then portage_uid falls back to wheelgid.
+
 secpass=0
 
 uid=os.getuid()
@@ -60,7 +70,7 @@ except KeyError:
 try:
 	portage_uid=pwd.getpwnam("portage")[2]
 	portage_gid=grp.getgrnam("portage")[2]
-	if (secpass==0):
+	if secpass < 1 and portage_gid in os.getgroups():
 		secpass=1
 except KeyError:
 	portage_uid=0
