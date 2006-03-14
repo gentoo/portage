@@ -5308,7 +5308,7 @@ class binarytree(packagetree):
 				writemsg("!!! Cannot update readonly binary: "+mycpv+"\n")
 				continue
 			#print ">>> Updating binary data:",mycpv
-			writemsg("*")
+			writemsg_stdout("*")
 			mytbz2 = xpak.tbz2(tbz2path)
 			mydata = mytbz2.get_data()
 			updated_items = update_dbentries(update_iter, mydata)
@@ -6836,13 +6836,13 @@ def global_updates():
 		myupd = []
 		timestamps = {}
 		for mykey, mystat, mycontent in update_data:
-			writemsg("\n\n")
-			writemsg(green("Performing Global Updates: ")+bold(mykey)+"\n")
-			writemsg("(Could take a couple of minutes if you have a lot of binary packages.)\n")
-			writemsg("  "+bold(".")+"='update pass'  "+bold("*")+"='binary update'  "+bold("@")+"='/var/db move'\n"+"  "+bold("s")+"='/var/db SLOT move' "+bold("S")+"='binary SLOT move' "+bold("p")+"='update /etc/portage/package.*'\n")
+			writemsg_stdout("\n\n")
+			writemsg_stdout(green("Performing Global Updates: ")+bold(mykey)+"\n")
+			writemsg_stdout("(Could take a couple of minutes if you have a lot of binary packages.)\n")
+			writemsg_stdout("  "+bold(".")+"='update pass'  "+bold("*")+"='binary update'  "+bold("@")+"='/var/db move'\n"+"  "+bold("s")+"='/var/db SLOT move' "+bold("S")+"='binary SLOT move' "+bold("p")+"='update /etc/portage/package.*'\n")
 			valid_updates, errors = parse_updates(mycontent)
 			myupd.extend(valid_updates)
-			print len(valid_updates) * "."
+			writemsg_stdout(len(valid_updates) * "." + "\n")
 			if len(errors) == 0:
 				# Update our internal mtime since we
 				# processed all of our directives.
@@ -6889,9 +6889,9 @@ def global_updates():
 		do_vartree(settings)
 		if do_upgrade_packagesmessage and \
 			listdir(os.path.join(settings["PKGDIR"], "All"), EmptyOnError=1):
-			writemsg(" ** Skipping packages. Run 'fixpackages' or set it in FEATURES to fix the")
-			writemsg("\n    tbz2's in the packages directory. "+bold("Note: This can take a very long time."))
-			writemsg("\n")
+			writemsg_stdout(" ** Skipping packages. Run 'fixpackages' or set it in FEATURES to fix the")
+			writemsg_stdout("\n    tbz2's in the packages directory. "+bold("Note: This can take a very long time."))
+			writemsg_stdout("\n")
 
 if (secpass==2) and (not os.environ.has_key("SANDBOX_ACTIVE")):
 	if settings["PORTAGE_CALLER"] in ["emerge","fixpackages"]:
