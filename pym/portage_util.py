@@ -455,10 +455,14 @@ def unique_array(s):
 			u.append(x)
 	return u
 
-def apply_permissions(filename, uid=-1, gid=-1, mode=0,
+def apply_permissions(filename, uid=-1, gid=-1, mode=0, mask=-1,
 	stat_cached=None):
-	"""Apply user, group, and mode bits to a file
-	if the existing bits do not already match."""
+	"""Apply user, group, and mode bits to a file if the existing bits do not
+	already match.  The default behavior is to force an exact match of mode
+	bits.  When mask=0 is specified, mode bits on the target file are allowed
+	to be a superset of the mode argument (via logical OR).  When mask>0, the
+	mode bits that the target file is allowed to have are restricted via
+	logical XOR."""
 	try:
 		if stat_cached is None:
 			stat_cached = os.stat(filename)
@@ -467,8 +471,14 @@ def apply_permissions(filename, uid=-1, gid=-1, mode=0,
 			(gid != -1 and gid != stat_cached.st_gid):
 			os.chown(filename, uid, gid)
 
-		if mode & stat_cached.st_mode != mode:
-			os.chmod(filename, mode | stat_cached.st_mode)
+		if mask >= 0:
+			if	(mode & stat_cached.st_mode != mode) or \
+				(mask ^ stat_cached.st_mode != stat_cached.st_mode):
+				new_mode = mode | stat_cached.st_mode
+				new_mode = mask ^ new_mode
+				os.chmod(filename, new_mode)
+		elif mode != stat_cached.st_mode:
+			os.chmod(filename, mode)
 	except OSError, oe:
 		if oe.errno == errno.EPERM:
 			raise OperationNotPermitted(oe)
@@ -477,13 +487,13 @@ def apply_permissions(filename, uid=-1, gid=-1, mode=0,
 		else:
 			raise oe
 
-def apply_stat_permissions(filename, newstat, stat_cached=None):
+def apply_stat_permissions(filename, newstat, **kwargs):
 	"""A wrapper around apply_secpass_permissions that gets
 	uid, gid, and mode from a stat object"""
 	return apply_secpass_permissions(filename, uid=newstat.st_uid, gid=newstat.st_gid,
-	mode=newstat.st_mode, stat_cached=stat_cached)
+	mode=newstat.st_mode, **kwargs)
 
-def apply_secpass_permissions(filename, uid=-1, gid=-1, mode=0,
+def apply_secpass_permissions(filename, uid=-1, gid=-1, mode=0, mask=-1,
 	stat_cached=None):
 	"""A wrapper around apply_permissions that uses secpass and simple
 	logic to apply as much of the permissions as possible without
@@ -520,7 +530,7 @@ def apply_secpass_permissions(filename, uid=-1, gid=-1, mode=0,
 			all_applied = False
 			gid = -1
 
-	apply_permissions(filename, uid=uid, gid=gid, mode=mode, stat_cached=stat_cached)
+	apply_permissions(filename, uid=uid, gid=gid, mode=mode, mask=mask, stat_cached=stat_cached)
 	return all_applied
 
 class atomic_ofstream(file):
