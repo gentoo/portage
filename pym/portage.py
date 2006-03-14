@@ -234,10 +234,8 @@ def cacheddir(my_original_path, ignorecvs, ignorelist, EmptyOnError, followSymli
 		if stat.S_ISDIR(pathstat[stat.ST_MODE]):
 			mtime = pathstat[stat.ST_MTIME]
 		else:
-			raise Exception
-	except SystemExit, e:
-		raise
-	except:
+			raise portage_exception.PortageException
+	except (IOError,OSError,portage_exception.PortageException):
 		if EmptyOnError:
 			return [], []
 		return None, None
@@ -262,9 +260,7 @@ def cacheddir(my_original_path, ignorecvs, ignorelist, EmptyOnError, followSymli
 					ftype.append(2)
 				else:
 					ftype.append(3)
-			except SystemExit, e:
-				raise
-			except:
+			except (IOError, OSError):
 				ftype.append(3)
 		dircache[mypath] = mtime, list, ftype
 
