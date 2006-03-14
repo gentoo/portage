@@ -1849,12 +1849,9 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 			distlocks_subdir = os.path.join(mysettings["DISTDIR"], locks_in_subdir)
 			try:
 				distdir_perms(distlocks_subdir)
-			except OSError, oe:
-				if oe.errno == errno.ENOENT:
-					os.mkdir(distlocks_subdir)
-					distdir_perms(distlocks_subdir)
-				else:
-					raise oe
+			except portage_exceptions.FileNotFound:
+				os.mkdir(distlocks_subdir)
+				distdir_perms(distlocks_subdir)
 			if not os.access(distlocks_subdir, os.W_OK):
 				writemsg("!!! No write access to write to %s.  Aborting.\n" % distlocks_subdir)
 				return 0
