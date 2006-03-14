@@ -92,8 +92,8 @@ try:
 	                         portage_uid, portage_gid
 
 	import portage_util
-	from portage_util import atomic_ofstream, dump_traceback, getconfig, grabdict, \
-		grabdict_package, grabfile, grabfile_package, \
+	from portage_util import atomic_ofstream, apply_secpass_permissions, \
+		dump_traceback, getconfig, grabdict, grabdict_package, grabfile, grabfile_package, \
 		map_dictlist_vals, pickle_read, pickle_write, stack_dictlist, stack_dicts, stack_lists, \
 		unique_array, varexpand, writedict, writemsg, writemsg_stdout, write_atomic
 	import portage_exception
@@ -2536,9 +2536,8 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 
 		if not os.path.exists(mysettings["BUILD_PREFIX"]):
 			os.makedirs(mysettings["BUILD_PREFIX"])
-		if (os.getuid() == 0):
-			os.chown(mysettings["BUILD_PREFIX"],portage_uid,portage_gid)
-			os.chmod(mysettings["BUILD_PREFIX"],00775)
+		apply_secpass_permissions(mysettings["BUILD_PREFIX"],
+		uid=portage_uid, gid=portage_gid, mode=00775)
 
 		# Should be ok again to set $T, as sandbox does not depend on it
 		# XXX Bug.  no way in hell this is valid for clean handling.
@@ -2548,16 +2547,14 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 				shutil.rmtree(mysettings["T"])
 		if not os.path.exists(mysettings["T"]):
 			os.makedirs(mysettings["T"])
-		if (os.getuid() == 0):
-			os.chown(mysettings["T"],portage_uid,portage_gid)
-			os.chmod(mysettings["T"],02770)
+		apply_secpass_permissions(mysettings["T"],
+		uid=portage_uid, gid=portage_gid, mode=02770)
 
 		logdir = mysettings["T"]+"/logging"
 		if not os.path.exists(logdir):
 			os.makedirs(logdir)
-		if secpass == 2:
-			os.chown(logdir, portage_uid, portage_gid)
-			os.chmod(logdir, 0770)
+		apply_secpass_permissions(logdir,
+		uid=portage_uid, gid=portage_gid, mode=0770)
 
 		try: # XXX: negative RESTRICT
 			if not (("nouserpriv" in string.split(mysettings["PORTAGE_RESTRICT"])) or \
@@ -2580,14 +2577,11 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 
 		try:
 			# no reason to check for depend since depend returns above.
-			if not os.path.exists(mysettings["BUILD_PREFIX"]):
-				os.makedirs(mysettings["BUILD_PREFIX"])
-			if (os.getuid() == 0):
-				os.chown(mysettings["BUILD_PREFIX"],portage_uid,portage_gid)
-			if not os.path.exists(mysettings["PORTAGE_BUILDDIR"]):
-				os.makedirs(mysettings["PORTAGE_BUILDDIR"])
-			if (os.getuid() == 0):
-				os.chown(mysettings["PORTAGE_BUILDDIR"],portage_uid,portage_gid)
+			for myvar in ("BUILD_PREFIX", "PORTAGE_BUILDDIR"):
+				if not os.path.exists(mysettings[myvar]):
+					os.makedirs(mysettings[myvar])
+				apply_secpass_permissions(mysettings[myvar],
+				uid=portage_uid, gid=portage_gid)
 		except OSError, e:
 			print "!!! File system problem. (ReadOnly? Out of space?)"
 			print "!!! Perhaps: rm -Rf",mysettings["BUILD_PREFIX"]
@@ -2597,9 +2591,8 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 		try:
 			if not os.path.exists(mysettings["HOME"]):
 				os.makedirs(mysettings["HOME"])
-			if (os.getuid() == 0):
-				os.chown(mysettings["HOME"],portage_uid,portage_gid)
-				os.chmod(mysettings["HOME"],02770)
+			apply_secpass_permissions(mysettings["HOME"],
+			uid=portage_uid, gid=portage_gid, mode=02770)
 		except OSError, e:
 			print "!!! File system problem. (ReadOnly? Out of space?)"
 			print "!!! Failed to create fake home directory in PORTAGE_BUILDDIR"
@@ -2643,24 +2636,17 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 						mysettings["FEATURES"] = " ".join(features)
 					else:
 						os.makedirs(mysettings["CONFCACHE_DIR"], mode=0775)
-						os.chown(mysettings["CONFCACHE_DIR"], -1, portage_gid)
+						apply_secpass_permissions(mysettings["CONFCACHE_DIR"],
+						gid=portage_gid, mode=0775)
 				else:
-					st = os.stat(mysettings["CONFCACHE_DIR"])
-					if not (st.st_mode & 07777)  == 0775:
-						os.chmod(mysettings["CONFCACHE_DIR"], 0775)
-					if not st.st_gid == portage_gid:
-						os.chown(mysettings["CONFCACHE_DIR"], -1, portage_gid)
+					apply_secpass_permissions(mysettings["CONFCACHE_DIR"],
+					gid=portage_gid, mode=0775)
 
 			# check again, since it may have been disabled.
 			if "confcache" in features:
 				for x in listdir(mysettings["CONFCACHE_DIR"]):
 					p = os.path.join(mysettings["CONFCACHE_DIR"], x)
-					st = os.stat(p)
-					if not (st.st_mode & 07777) & 07660 == 0660:
-						os.chmod(p, (st.st_mode & 0777) | 0660)
-					if not st.st_gid == portage_gid:
-						os.chown(p, -1, portage_gid)
-					
+					apply_secpass_permissions(p, gid=portage_gid, mode=0660, mask=07000)
 		except OSError, e:
 			print "!!! Failed resetting perms on confcachedir %s" % mysettings["CONFCACHE_DIR"]
 			return 1						
@@ -2683,13 +2669,13 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 					mysettings["DISTCC_DIR"]=mysettings["PORTAGE_TMPDIR"]+"/portage/.distcc"
 				if not os.path.exists(mysettings["DISTCC_DIR"]):
 					os.makedirs(mysettings["DISTCC_DIR"])
-					os.chown(mysettings["DISTCC_DIR"],portage_uid,portage_gid)
-					os.chmod(mysettings["DISTCC_DIR"],02775)
+					apply_secpass_permissions(mysettings["DISTCC_DIR"],
+					uid=portage_uid, gid=portage_gid, mode=02775)
 				for x in ("/lock", "/state"):
 					if not os.path.exists(mysettings["DISTCC_DIR"]+x):
 						os.mkdir(mysettings["DISTCC_DIR"]+x)
-						os.chown(mysettings["DISTCC_DIR"]+x,portage_uid,portage_gid)
-						os.chmod(mysettings["DISTCC_DIR"]+x,02775)
+						apply_secpass_permissions(mysettings["DISTCC_DIR"]+x,
+						uid=portage_uid, gid=portage_gid, mode=02775)
 			except OSError, e:
 				writemsg("\n!!! File system problem when setting DISTCC_DIR directory permissions.\n")
 				writemsg(  "!!! DISTCC_DIR="+str(mysettings["DISTCC_DIR"]+"\n"))
@@ -2710,11 +2696,8 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 					print "!!!",e
 			if os.access(mysettings["PORT_LOGDIR"]+"/",os.W_OK):
 				try:
-					perms = os.stat(mysettings["PORT_LOGDIR"])
-					if perms[stat.ST_UID] != portage_uid or perms[stat.ST_GID] != portage_gid:
-						os.chown(mysettings["PORT_LOGDIR"],portage_uid,portage_gid)
-					if stat.S_IMODE(perms[stat.ST_MODE]) != 02770:
-						os.chmod(mysettings["PORT_LOGDIR"],02770)
+					apply_secpass_permissions(mysettings["PORT_LOGDIR"],
+					uid=portage_uid, gid=portage_gid, mode=02770)
 					if not mysettings.has_key("LOG_PF") or (mysettings["LOG_PF"] != mysettings["PF"]):
 						mysettings["LOG_PF"]=mysettings["PF"]
 						mysettings["LOG_COUNTER"]=str(db[myroot]["vartree"].dbapi.get_counter_tick_core("/"))
@@ -2796,8 +2779,8 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 		mystat=os.stat(mysettings["DISTDIR"]+"/cvs-src")
 		if ((mystat[stat.ST_GID]!=portage_gid) or ((mystat[stat.ST_MODE]&02770)!=02770)) and not listonly:
 			print "*** Adjusting cvs-src permissions for portage user..."
-			os.chown(mysettings["DISTDIR"]+"/cvs-src",0,portage_gid)
-			os.chmod(mysettings["DISTDIR"]+"/cvs-src",02770)
+			apply_secpass_permissions(mysettings["DISTDIR"]+"/cvs-src",
+			uid=0, gid=portage_gid, mode=02770, stat_cached=mystat)
 			spawn("chgrp -R "+str(portage_gid)+" "+mysettings["DISTDIR"]+"/cvs-src", free=1)
 			spawn("chmod -R g+rw "+mysettings["DISTDIR"]+"/cvs-src", free=1)
 	except SystemExit, e:
@@ -2830,8 +2813,7 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 				print "!!! Failed reseting ebuild distdir path, " + edpath
 				raise
 		os.mkdir(edpath)
-		os.chown(edpath, -1, portage_gid)
-		os.chmod(edpath, 0775)
+		apply_secpass_permissions(edpath, gid=portage_gid, mode=0775)
 		try:
 			for file in aalist:
 				os.symlink(os.path.join(orig_distdir, file), os.path.join(edpath, file))
