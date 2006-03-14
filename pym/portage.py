@@ -12,11 +12,9 @@ VERSION="$Rev$"[6:-2] + "-svn"
 
 try:
 	import sys
-except SystemExit, e:
-	raise
-except:
+except ImportError, e:
 	print "Failed to import sys! Something is _VERY_ wrong with python."
-	raise SystemExit, 127
+	raise e
 
 try:
 	import os,string,types,signal,fcntl,errno
@@ -33,9 +31,7 @@ try:
 	from time import sleep
 	from random import shuffle
 	from cache.cache_errors import CacheError
-except SystemExit, e:
-	raise
-except Exception, e:
+except ImportError, e:
 	sys.stderr.write("\n\n")
 	sys.stderr.write("!!! Failed to complete python imports. There are internal modules for\n")
 	sys.stderr.write("!!! python and failure here indicates that you have a problem with python\n")
@@ -45,25 +41,13 @@ except Exception, e:
 	sys.stderr.write("!!! gone wrong. Here is the information we got for this exception:\n")
 
 	sys.stderr.write("    "+str(e)+"\n\n");
-	sys.exit(127)
-except:
-	sys.stderr.write("\n\n")
-	sys.stderr.write("!!! Failed to complete python imports. There are internal modules for\n")
-	sys.stderr.write("!!! python and failure here indicates that you have a problem with python\n")
-	sys.stderr.write("!!! itself and thus portage is not able to continue processing.\n\n")
-
-	sys.stderr.write("!!! You might consider starting python with verbose flags to see what has\n")
-	sys.stderr.write("!!! gone wrong. The exception was non-standard and we were unable to catch it.\n\n")
-	sys.exit(127)
+	raise e
 
 try:
 	# XXX: This should get renamed to bsd_chflags, I think.
 	import chflags
 	bsd_chflags = chflags
-except SystemExit, e:
-	raise
-except:
-	# XXX: This should get renamed to bsd_chflags, I think.
+except ImportError:
 	bsd_chflags = None
 
 try:
@@ -111,9 +95,7 @@ try:
 	# Need these functions directly in portage namespace to not break every external tool in existence
 	from portage_versions import ververify,vercmp,catsplit,catpkgsplit,pkgsplit,pkgcmp
 
-except SystemExit, e:
-	raise
-except Exception, e:
+except ImportError, e:
 	sys.stderr.write("\n\n")
 	sys.stderr.write("!!! Failed to complete portage imports. There are internal modules for\n")
 	sys.stderr.write("!!! portage and failure here indicates that you have a problem with your\n")
@@ -123,7 +105,7 @@ except Exception, e:
 	sys.stderr.write("!!! a recovery of portage.\n")
 
 	sys.stderr.write("    "+str(e)+"\n\n")
-	sys.exit(127)
+	raise e
 
 
 # ===========================================================================
