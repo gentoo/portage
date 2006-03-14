@@ -31,7 +31,7 @@ try:
 	from time import sleep
 	from random import shuffle
 	from cache.cache_errors import CacheError
-except ImportError e:
+except ImportError, e:
 	sys.stderr.write("\n\n")
 	sys.stderr.write("!!! Failed to complete python imports. There are internal modules for\n")
 	sys.stderr.write("!!! python and failure here indicates that you have a problem with python\n")
@@ -94,7 +94,7 @@ try:
 	# Need these functions directly in portage namespace to not break every external tool in existence
 	from portage_versions import ververify,vercmp,catsplit,catpkgsplit,pkgsplit,pkgcmp
 
-except ImportError e:
+except ImportError, e:
 	sys.stderr.write("\n\n")
 	sys.stderr.write("!!! Failed to complete portage imports. There are internal modules for\n")
 	sys.stderr.write("!!! portage and failure here indicates that you have a problem with your\n")
