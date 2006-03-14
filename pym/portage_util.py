@@ -455,7 +455,7 @@ def unique_array(s):
 			u.append(x)
 	return u
 
-def apply_permissions(filename, uid=-1, gid=-1, mode=0, mask=-1,
+def apply_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 	stat_cached=None):
 	"""Apply user, group, and mode bits to a file if the existing bits do not
 	already match.  The default behavior is to force an exact match of mode
@@ -472,12 +472,14 @@ def apply_permissions(filename, uid=-1, gid=-1, mode=0, mask=-1,
 			os.chown(filename, uid, gid)
 
 		if mask >= 0:
+			if mode == -1:
+				mode = 0 # Don't add any mode bits when mode is unspecified.
 			if	(mode & stat_cached.st_mode != mode) or \
 				(mask ^ stat_cached.st_mode != stat_cached.st_mode):
 				new_mode = mode | stat_cached.st_mode
 				new_mode = mask ^ new_mode
 				os.chmod(filename, new_mode)
-		elif mode != stat_cached.st_mode:
+		elif mode != -1 and mode != stat_cached.st_mode:
 			os.chmod(filename, mode)
 	except OSError, oe:
 		if oe.errno == errno.EPERM:
@@ -493,7 +495,7 @@ def apply_stat_permissions(filename, newstat, **kwargs):
 	return apply_secpass_permissions(filename, uid=newstat.st_uid, gid=newstat.st_gid,
 	mode=newstat.st_mode, **kwargs)
 
-def apply_secpass_permissions(filename, uid=-1, gid=-1, mode=0, mask=-1,
+def apply_secpass_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 	stat_cached=None):
 	"""A wrapper around apply_permissions that uses secpass and simple
 	logic to apply as much of the permissions as possible without
