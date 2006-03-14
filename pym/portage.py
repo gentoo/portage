@@ -2419,7 +2419,7 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 		mysettings.reset(use_cache=use_cache)
 	mysettings.setcpv(mycpv,use_cache=use_cache)
 
-	validcommands = ["help","clean","prerm","postrm","preinst","postinst",
+	validcommands = ["help","clean","prerm","postrm","cleanrm","preinst","postinst",
 	                "config","setup","depend","fetch","digest",
 	                "unpack","compile","test","install","rpm","qmerge","merge",
 	                "package","unmerge", "manifest"]
@@ -2497,7 +2497,13 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 	mysettings["BUILD_PREFIX"] = mysettings["PORTAGE_TMPDIR"]+"/portage"
 	mysettings["HOME"]         = mysettings["BUILD_PREFIX"]+"/homedir"
 	mysettings["PKG_TMPDIR"]   = mysettings["PORTAGE_TMPDIR"]+"/binpkgs"
-	mysettings["PORTAGE_BUILDDIR"]     = mysettings["BUILD_PREFIX"]+"/"+mysettings["PF"]
+
+	# Package {pre,post}inst and {pre,post}rm may overlap, so they must have separate
+	# locations in order to prevent interference.
+	if mydo in ("unmerge", "prerm", "postrm", "cleanrm"):
+		mysettings["PORTAGE_BUILDDIR"] = os.path.join(mysettings["PKG_TMPDIR"], mysettings["PF"])
+	else:
+		mysettings["PORTAGE_BUILDDIR"] = os.path.join(mysettings["BUILD_PREFIX"], mysettings["PF"])
 
 	mysettings["PORTAGE_BASHRC"] = EBUILD_SH_ENV_FILE
 
@@ -2715,9 +2721,9 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 			return unmerge(mysettings["CATEGORY"],mysettings["PF"],myroot,mysettings)
 
 	# if any of these are being called, handle them -- running them out of the sandbox -- and stop now.
-	if mydo=="clean":
-		logfile=None
-	if mydo in ["help","clean","setup"]:
+	if mydo in ["clean","cleanrm"]:
+		return spawn(EBUILD_SH_BINARY+" clean",mysettings,debug=debug,free=1,logfile=None)
+	elif mydo in ["help","setup"]:
 		return spawn(EBUILD_SH_BINARY+" "+mydo,mysettings,debug=debug,free=1,logfile=logfile)
 	elif mydo == "preinst":
 		mysettings.load_infodir(pkg_dir)
@@ -5635,7 +5641,7 @@ class dblink:
 						masked=len(pmpath)
 		return (protected > masked)
 
-	def unmerge(self,pkgfiles=None,trimworld=1,cleanup=0):
+	def unmerge(self,pkgfiles=None,trimworld=1,cleanup=1):
 		global dircache
 		dircache={}
 
@@ -5666,14 +5672,6 @@ class dblink:
 
 		#do prerm script
 		if myebuildpath and os.path.exists(myebuildpath):
-			# XXX Bug: When unmerge of the installed instance is triggered by installation of
-			# a new one of the same version, the environments of the two instances should be
-			# separate (${T} should not be shared).  Currently, when the version is the same,
-			# we don't clean because that would wipe out the env from the preinst phase that
-			# the postinst phase may depend on.  The same applies to the clean phase that is
-			# at the end of this method, which should not be triggered when the new and old
-			# versions are the same (until the shared ${T} bug is fixed).
-			#
 			# Eventually, we'd like to pass in the saved ebuild env here...
 			a=doebuild(myebuildpath,"prerm",self.myroot,self.settings,cleanup=cleanup,use_cache=0,tree=self.treetype)
 			# XXX: Decide how to handle failures here.
@@ -5840,8 +5838,8 @@ class dblink:
 			if a != 0:
 				writemsg("!!! FAILED postrm: "+str(a)+"\n")
 				sys.exit(123)
-			if cleanup and "noclean" not in features:
-				doebuild(myebuildpath, "clean", self.myroot, self.settings, tree=self.treetype)
+			if "noclean" not in features:
+				doebuild(myebuildpath, "cleanrm", self.myroot, self.settings, tree=self.treetype)
 		self.unlockdb()
 
 	def isowner(self,filename,destroot):
