@@ -494,7 +494,15 @@ def apply_secpass_permissions(filename, uid=-1, gid=-1, mode=0,
 	unapplied."""
 
 	if stat_cached is None:
-		stat_cached = os.stat(filename)
+		try:
+			stat_cached = os.stat(filename)
+		except OSError, oe:
+			if oe.errno == errno.EPERM:
+				raise OperationNotPermitted(oe)
+			elif oe.errno == errno.ENOENT:
+				raise FileNotFound(oe)
+			else:
+				raise oe
 
 	all_applied = True
 
