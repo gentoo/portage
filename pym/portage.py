@@ -1837,7 +1837,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 	else:
 		def distdir_perms(filename):
 			try:
-				portage_util.apply_permissions(filename, gid=portage_gid, mode=0775)
+				portage_util.apply_secpass_permissions(filename, gid=portage_gid, mode=0775)
 			except OSError, oe:
 				if oe.errno == errno.EPERM:
 					writemsg("!!! Unable to apply group permissions to '%s'.  Non-root users may experience issues.\n"
