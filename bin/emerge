@@ -7,7 +7,10 @@ import os,sys
 os.environ["PORTAGE_CALLER"]="emerge"
 sys.path = ["/usr/lib/portage/pym"]+sys.path
 
-import portage
+try:
+	import portage
+except KeyboardInterrupt:
+	sys.exit(1) # If they control C during imports, just die silently
 
 import emergehelp,xpak,string,re,commands,time,shutil,traceback,signal,socket,types
 from stat import *
