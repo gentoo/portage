@@ -471,16 +471,19 @@ def apply_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 			(gid != -1 and gid != stat_cached.st_gid):
 			os.chown(filename, uid, gid)
 
+		st_mode = stat_cached.st_mode & 0777 # protect from unwanted bits
 		if mask >= 0:
 			if mode == -1:
 				mode = 0 # Don't add any mode bits when mode is unspecified.
-			if	(mode & stat_cached.st_mode != mode) or \
-				(mask ^ stat_cached.st_mode != stat_cached.st_mode):
-				new_mode = mode | stat_cached.st_mode
+			if	(mode & st_mode != mode) or \
+				(mask ^ st_mode != st_mode):
+				new_mode = mode | st_mode
 				new_mode = mask ^ new_mode
 				os.chmod(filename, new_mode)
-		elif mode != -1 and mode != stat_cached.st_mode:
-			os.chmod(filename, mode)
+		elif mode != -1:
+			mode = mode & 0777 # protect from unwanted bits
+			if mode != st_mode:
+				os.chmod(filename, mode)
 	except OSError, oe:
 		if oe.errno == errno.EPERM:
 			raise OperationNotPermitted(oe)
