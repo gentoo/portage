@@ -46,6 +46,8 @@ class FileNotFound(InvalidLocation):
 class DirectoryNotFound(InvalidLocation):
 	"""A directory was not found when it was expected to exist"""
 
+class OperationNotPermitted(PortageException):
+	"""An operation was not permitted operating system"""
 
 class CommandNotFound(PortageException):
 	"""A required binary was not available or executable"""

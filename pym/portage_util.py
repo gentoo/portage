@@ -2,8 +2,9 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/pym/portage_util.py,v 1.11.2.6 2005/04/23 07:26:04 jstubbs Exp $
 
+from portage_exception import FileNotFound, OperationNotPermitted
 
-import sys,string,shlex,os
+import sys,string,shlex,os,errno
 try:
 	import cPickle
 except ImportError:
@@ -458,16 +459,23 @@ def apply_permissions(filename, uid=-1, gid=-1, mode=0,
 	stat_cached=None):
 	"""Apply user, group, and mode bits to a file
 	if the existing bits do not already match."""
+	try:
+		if stat_cached is None:
+			stat_cached = os.stat(filename)
 
-	if stat_cached is None:
-		stat_cached = os.stat(filename)
+		if	(uid != -1 and uid != stat_cached.st_uid) or \
+			(gid != -1 and gid != stat_cached.st_gid):
+			os.chown(filename, uid, gid)
 
-	if	(uid != -1 and uid != stat_cached.st_uid) or \
-		(gid != -1 and gid != stat_cached.st_gid):
-		os.chown(filename, uid, gid)
-
-	if mode & stat_cached.st_mode != mode:
-		os.chmod(filename, mode | stat_cached.st_mode)
+		if mode & stat_cached.st_mode != mode:
+			os.chmod(filename, mode | stat_cached.st_mode)
+	except OSError, oe:
+		if oe.errno == errno.EPERM:
+			raise OperationNotPermitted(oe)
+		elif oe.errno == errno.ENOENT:
+			raise FileNotFound(oe)
+		else:
+			raise oe
 
 def apply_stat_permissions(filename, newstat, stat_cached=None):
 	"""A wrapper around apply_secpass_permissions that gets
@@ -530,12 +538,10 @@ class atomic_ofstream(file):
 				if not self._aborted:
 					try:
 						apply_stat_permissions(self.name, os.stat(self._real_name))
-					except OSError, oe:
-						import errno
-						if oe.errno in (errno.ENOENT,errno.EPERM):
-							pass
-						else:
-							raise oe
+					except OperationNotPermitted:
+						pass
+					except FileNotFound:
+						pass
 					os.rename(self.name, self._real_name)
 			finally:
 				# Make sure we cleanup the temp file

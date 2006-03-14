@@ -1836,14 +1836,14 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 			can_fetch=False
 	else:
 		def distdir_perms(filename):
+			all_applied = True
 			try:
-				portage_util.apply_secpass_permissions(filename, gid=portage_gid, mode=0775)
-			except OSError, oe:
-				if oe.errno == errno.EPERM:
-					writemsg("!!! Unable to apply group permissions to '%s'.  Non-root users may experience issues.\n"
-					% filename)
-				else:
-					raise oe
+				all_applied = portage_util.apply_secpass_permissions(filename, gid=portage_gid, mode=0775)
+			except portage_exceptions.OperationNotPermitted:
+				all_applied = False
+			if not all_applied:
+				writemsg("!!! Unable to apply group permissions to '%s'." + \
+				"  Non-root users may experience issues.\n" % filename)
 		distdir_perms(mysettings["DISTDIR"])
 		if use_locks and locks_in_subdir:
 			distlocks_subdir = os.path.join(mysettings["DISTDIR"], locks_in_subdir)
