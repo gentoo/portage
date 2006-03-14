@@ -12,9 +12,9 @@ VERSION="$Rev$"[6:-2] + "-svn"
 
 try:
 	import sys
-except ImportError, e:
+except ImportError:
 	print "Failed to import sys! Something is _VERY_ wrong with python."
-	raise e
+	raise
 
 try:
 	import os,string,types,signal,fcntl,errno
@@ -31,7 +31,7 @@ try:
 	from time import sleep
 	from random import shuffle
 	from cache.cache_errors import CacheError
-except ImportError, e:
+except ImportError e:
 	sys.stderr.write("\n\n")
 	sys.stderr.write("!!! Failed to complete python imports. There are internal modules for\n")
 	sys.stderr.write("!!! python and failure here indicates that you have a problem with python\n")
@@ -39,9 +39,8 @@ except ImportError, e:
 
 	sys.stderr.write("!!! You might consider starting python with verbose flags to see what has\n")
 	sys.stderr.write("!!! gone wrong. Here is the information we got for this exception:\n")
-
 	sys.stderr.write("    "+str(e)+"\n\n");
-	raise e
+	raise
 
 try:
 	# XXX: This should get renamed to bsd_chflags, I think.
@@ -95,7 +94,7 @@ try:
 	# Need these functions directly in portage namespace to not break every external tool in existence
 	from portage_versions import ververify,vercmp,catsplit,catpkgsplit,pkgsplit,pkgcmp
 
-except ImportError, e:
+except ImportError e:
 	sys.stderr.write("\n\n")
 	sys.stderr.write("!!! Failed to complete portage imports. There are internal modules for\n")
 	sys.stderr.write("!!! portage and failure here indicates that you have a problem with your\n")
@@ -103,9 +102,8 @@ except ImportError, e:
 	sys.stderr.write("!!! portage tree under '/usr/portage/sys-apps/portage/files/' (default).\n")
 	sys.stderr.write("!!! There is a README.RESCUE file that details the steps required to perform\n")
 	sys.stderr.write("!!! a recovery of portage.\n")
-
 	sys.stderr.write("    "+str(e)+"\n\n")
-	raise e
+	raise
 
 
 # ===========================================================================
