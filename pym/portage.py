@@ -2722,6 +2722,8 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 
 	# if any of these are being called, handle them -- running them out of the sandbox -- and stop now.
 	if mydo in ["clean","cleanrm"]:
+		if "noclean" in features:
+			return 0
 		return spawn(EBUILD_SH_BINARY+" clean",mysettings,debug=debug,free=1,logfile=None)
 	elif mydo in ["help","setup"]:
 		return spawn(EBUILD_SH_BINARY+" "+mydo,mysettings,debug=debug,free=1,logfile=logfile)
@@ -5838,8 +5840,7 @@ class dblink:
 			if a != 0:
 				writemsg("!!! FAILED postrm: "+str(a)+"\n")
 				sys.exit(123)
-			if "noclean" not in features:
-				doebuild(myebuildpath, "cleanrm", self.myroot, self.settings, tree=self.treetype)
+			doebuild(myebuildpath, "cleanrm", self.myroot, self.settings, tree=self.treetype)
 		self.unlockdb()
 
 	def isowner(self,filename,destroot):
@@ -6077,8 +6078,7 @@ class dblink:
 
 		# Process ebuild logfiles
 		elog_process(self.mycpv, self.settings)
-		if "noclean" not in features:
-			doebuild(myebuild, "clean", root, self.settings, tree=self.treetype)
+		doebuild(myebuild, "clean", root, self.settings, tree=self.treetype)
 		return 0
 
 	def mergeme(self,srcroot,destroot,outfile,secondhand,stufftomerge,cfgfiledict,thismtime):
