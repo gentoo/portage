@@ -2697,7 +2697,9 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 	logfile=None
 	# Build directory creation isn't required for any of these.
 	if mydo not in ["fetch","digest","manifest"]:
-		prepare_build_dirs(myroot, mysettings, cleanup)
+		mystatus = prepare_build_dirs(myroot, mysettings, cleanup)
+		if mystatus:
+			return mystatus
 		if mydo=="unmerge":
 			return unmerge(mysettings["CATEGORY"],mysettings["PF"],myroot,mysettings)
 
