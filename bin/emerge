@@ -403,9 +403,6 @@ if ("--debug" in myopts):
 	portage.settings.lock()
 
 if ("--resume" in myopts):
-	if "--verbose" in myopts:
-		print "* --verbose is currently broken with --resume. Disabling..."
-		myopts.remove("--verbose")
 	if "--tree" in myopts:
 		print "* --tree is currently broken with --resume. Disabling..."
 		myopts.remove("--tree")
@@ -1514,6 +1511,15 @@ class depgraph:
 		# in size display (verbose mode)
 		myfetchlist=[]
 		for x in mylist:
+			pkg_type = x[0]
+			pkg_key = x[2]
+			if pkg_key not in self.applied_useflags:
+				if "binary" == pkg_type:
+					self.applied_useflags[pkg_key] = portage.db["/"]["bintree"].dbapi.aux_get(pkg_key, ["USE"])[0].split()
+				elif "ebuild" == pkg_type:
+					self.pkgsettings.setcpv(pkg_key)
+					self.applied_useflags[pkg_key] = self.pkgsettings["USE"].split()
+
 			fetch=" "
 
 			if x[0]=="blocks":
@@ -3151,7 +3157,7 @@ else:
 			portage.commit_mtimedb()
 		myresumeopts=portage.mtimedb["resume"]["myopts"][:]
 
-		for opt in ("--skipfirst", "--ask", "--verbose", "--tree"):
+		for opt in ("--skipfirst", "--ask", "--tree"):
 			while opt in myresumeopts:
 				myresumeopts.remove(opt)
 
