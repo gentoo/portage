@@ -2469,6 +2469,186 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, t
 		myso=os.uname()[2]
 		mysettings["KVERS"]=myso[1]
 
+def prepare_build_dirs(myroot, mysettings, cleanup):
+
+	if not os.path.exists(mysettings["BUILD_PREFIX"]):
+		os.makedirs(mysettings["BUILD_PREFIX"])
+	apply_secpass_permissions(mysettings["BUILD_PREFIX"],
+	uid=portage_uid, gid=portage_gid, mode=00775)
+
+	# Should be ok again to set $T, as sandbox does not depend on it
+	# XXX Bug.  no way in hell this is valid for clean handling.
+	mysettings["T"]=mysettings["PORTAGE_BUILDDIR"]+"/temp"
+	if cleanup:
+		if os.path.exists(mysettings["T"]):
+			shutil.rmtree(mysettings["T"])
+	if not os.path.exists(mysettings["T"]):
+		os.makedirs(mysettings["T"])
+	apply_secpass_permissions(mysettings["T"],
+	uid=portage_uid, gid=portage_gid, mode=02770)
+
+	logdir = mysettings["T"]+"/logging"
+	if not os.path.exists(logdir):
+		os.makedirs(logdir)
+	apply_secpass_permissions(logdir,
+	uid=portage_uid, gid=portage_gid, mode=0770)
+
+	try: # XXX: negative RESTRICT
+		if not (("nouserpriv" in string.split(mysettings["PORTAGE_RESTRICT"])) or \
+			("userpriv" in string.split(mysettings["PORTAGE_RESTRICT"]))):
+			if ("userpriv" in features) and (portage_uid and portage_gid):
+				if (secpass==2):
+					if os.path.exists(mysettings["HOME"]):
+						# XXX: Potentially bad, but held down by HOME replacement above.
+						spawn("rm -Rf "+mysettings["HOME"],mysettings, free=1)
+					if not os.path.exists(mysettings["HOME"]):
+						os.makedirs(mysettings["HOME"])
+			elif ("userpriv" in features):
+				print "!!! Disabling userpriv from features... Portage UID/GID not valid."
+				del features[features.index("userpriv")]
+	except SystemExit, e:
+		raise
+	except Exception, e:
+		print "!!! Couldn't empty HOME:",mysettings["HOME"]
+		print "!!!",e
+
+	try:
+		# no reason to check for depend since depend returns above.
+		for myvar in ("BUILD_PREFIX", "PORTAGE_BUILDDIR"):
+			if not os.path.exists(mysettings[myvar]):
+				os.makedirs(mysettings[myvar])
+			apply_secpass_permissions(mysettings[myvar],
+			uid=portage_uid, gid=portage_gid)
+	except OSError, e:
+		print "!!! File system problem. (ReadOnly? Out of space?)"
+		print "!!! Perhaps: rm -Rf",mysettings["BUILD_PREFIX"]
+		print "!!!",str(e)
+		return 1
+
+	try:
+		if not os.path.exists(mysettings["HOME"]):
+			os.makedirs(mysettings["HOME"])
+		apply_secpass_permissions(mysettings["HOME"],
+		uid=portage_uid, gid=portage_gid, mode=02770)
+	except OSError, e:
+		print "!!! File system problem. (ReadOnly? Out of space?)"
+		print "!!! Failed to create fake home directory in PORTAGE_BUILDDIR"
+		print "!!!",str(e)
+		return 1
+
+	try:
+		if ("ccache" in features):
+			if (not mysettings.has_key("CCACHE_DIR")) or (mysettings["CCACHE_DIR"]==""):
+				mysettings["CCACHE_DIR"]=mysettings["PORTAGE_TMPDIR"]+"/ccache"
+			if not os.path.exists(mysettings["CCACHE_DIR"]):
+				os.makedirs(mysettings["CCACHE_DIR"])
+			mystat = os.stat(mysettings["CCACHE_DIR"])
+			if ("userpriv" in features):
+				if mystat[stat.ST_UID] != portage_uid or ((mystat[stat.ST_MODE]&02070)!=02070):
+					writemsg("* Adjusting permissions on ccache in %s\n" % mysettings["CCACHE_DIR"])
+					spawn("chgrp -R "+str(portage_gid)+" "+mysettings["CCACHE_DIR"], mysettings, free=1)
+					spawn("chown "+str(portage_uid)+":"+str(portage_gid)+" "+mysettings["CCACHE_DIR"], mysettings, free=1)
+					spawn("chmod -R ug+rw "+mysettings["CCACHE_DIR"], mysettings, free=1)
+					spawn("find "+mysettings["CCACHE_DIR"]+" -type d -exec chmod g+xs \{\} \;", mysettings, free=1)
+			else:
+				if mystat[stat.ST_UID] != 0 or ((mystat[stat.ST_MODE]&02070)!=02070):
+					writemsg("* Adjusting permissions on ccache in %s\n" % mysettings["CCACHE_DIR"])
+					spawn("chgrp -R "+str(portage_gid)+" "+mysettings["CCACHE_DIR"], mysettings, free=1)
+					spawn("chown 0:"+str(portage_gid)+" "+mysettings["CCACHE_DIR"], mysettings, free=1)
+					spawn("chmod -R ug+rw "+mysettings["CCACHE_DIR"], mysettings, free=1)
+					spawn("find "+mysettings["CCACHE_DIR"]+" -type d -exec chmod g+xs \{\} \;", mysettings, free=1)
+	except OSError, e:
+		print "!!! File system problem. (ReadOnly? Out of space?)"
+		print "!!! Perhaps: rm -Rf",mysettings["BUILD_PREFIX"]
+		print "!!!",str(e)
+		return 1
+	try:
+		if "confcache" in features:
+			if not mysettings.has_key("CONFCACHE_DIR"):
+				mysettings["CONFCACHE_DIR"] = os.path.join(mysettings["PORTAGE_TMPDIR"], "confcache")
+			if not os.path.exists(mysettings["CONFCACHE_DIR"]):
+				if not os.getuid() == 0:
+					# we're boned.
+					features.remove("confcache")
+					mysettings["FEATURES"] = " ".join(features)
+				else:
+					os.makedirs(mysettings["CONFCACHE_DIR"], mode=0775)
+					apply_secpass_permissions(mysettings["CONFCACHE_DIR"],
+					gid=portage_gid, mode=0775)
+			else:
+				apply_secpass_permissions(mysettings["CONFCACHE_DIR"],
+				gid=portage_gid, mode=0775)
+
+		# check again, since it may have been disabled.
+		if "confcache" in features:
+			for x in listdir(mysettings["CONFCACHE_DIR"]):
+				p = os.path.join(mysettings["CONFCACHE_DIR"], x)
+				apply_secpass_permissions(p, gid=portage_gid, mode=0660, mask=07000)
+	except OSError, e:
+		print "!!! Failed resetting perms on confcachedir %s" % mysettings["CONFCACHE_DIR"]
+		return 1						
+	#try:
+	#	mystat=os.stat(mysettings["CCACHE_DIR"])
+	#	if (mystat[stat.ST_GID]!=portage_gid) or ((mystat[stat.ST_MODE]&02070)!=02070):
+	#		print "*** Adjusting ccache permissions for portage user..."
+	#		os.chown(mysettings["CCACHE_DIR"],portage_uid,portage_gid)
+	#		os.chmod(mysettings["CCACHE_DIR"],02770)
+	#		spawn("chown -R "+str(portage_uid)+":"+str(portage_gid)+" "+mysettings["CCACHE_DIR"],mysettings, free=1)
+	#		spawn("chmod -R g+rw "+mysettings["CCACHE_DIR"],mysettings, free=1)
+	#except SystemExit, e:
+	#	raise
+	#except:
+	#	pass
+
+	if "distcc" in features:
+		try:
+			if (not mysettings.has_key("DISTCC_DIR")) or (mysettings["DISTCC_DIR"]==""):
+				mysettings["DISTCC_DIR"]=mysettings["PORTAGE_TMPDIR"]+"/portage/.distcc"
+			if not os.path.exists(mysettings["DISTCC_DIR"]):
+				os.makedirs(mysettings["DISTCC_DIR"])
+				apply_secpass_permissions(mysettings["DISTCC_DIR"],
+				uid=portage_uid, gid=portage_gid, mode=02775)
+			for x in ("/lock", "/state"):
+				if not os.path.exists(mysettings["DISTCC_DIR"]+x):
+					os.mkdir(mysettings["DISTCC_DIR"]+x)
+					apply_secpass_permissions(mysettings["DISTCC_DIR"]+x,
+					uid=portage_uid, gid=portage_gid, mode=02775)
+		except OSError, e:
+			writemsg("\n!!! File system problem when setting DISTCC_DIR directory permissions.\n")
+			writemsg(  "!!! DISTCC_DIR="+str(mysettings["DISTCC_DIR"]+"\n"))
+			writemsg(  "!!! "+str(e)+"\n\n")
+			time.sleep(5)
+			features.remove("distcc")
+			mysettings["DISTCC_DIR"]=""
+
+	mysettings["WORKDIR"]=mysettings["PORTAGE_BUILDDIR"]+"/work"
+	mysettings["D"]=mysettings["PORTAGE_BUILDDIR"]+"/image/"
+
+	if mysettings.has_key("PORT_LOGDIR"):
+		if not os.access(mysettings["PORT_LOGDIR"],os.F_OK):
+			try:
+				os.mkdir(mysettings["PORT_LOGDIR"])
+			except OSError, e:
+				print "!!! Unable to create PORT_LOGDIR"
+				print "!!!",e
+		if os.access(mysettings["PORT_LOGDIR"]+"/",os.W_OK):
+			try:
+				apply_secpass_permissions(mysettings["PORT_LOGDIR"],
+				uid=portage_uid, gid=portage_gid, mode=02770)
+				if not mysettings.has_key("LOG_PF") or (mysettings["LOG_PF"] != mysettings["PF"]):
+					mysettings["LOG_PF"]=mysettings["PF"]
+					mysettings["LOG_COUNTER"]=str(db[myroot]["vartree"].dbapi.get_counter_tick_core("/"))
+				logfile="%s/%s-%s.log" % (mysettings["PORT_LOGDIR"],mysettings["LOG_COUNTER"],mysettings["LOG_PF"])
+			except OSError, e:
+				mysettings["PORT_LOGDIR"]=""
+				print "!!! Unable to chown/chmod PORT_LOGDIR. Disabling logging."
+				print "!!!",e
+		else:
+			print "!!! Cannot create log... No write access / Does not exist"
+			print "!!! PORT_LOGDIR:",mysettings["PORT_LOGDIR"]
+			mysettings["PORT_LOGDIR"]=""
+
+
 def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,cleanup=0,dbkey=None,use_cache=1,fetchall=0,tree=None):
 	global db, actionmap_deps
 
@@ -2517,184 +2697,7 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 	logfile=None
 	# Build directory creation isn't required for any of these.
 	if mydo not in ["fetch","digest","manifest"]:
-
-		if not os.path.exists(mysettings["BUILD_PREFIX"]):
-			os.makedirs(mysettings["BUILD_PREFIX"])
-		apply_secpass_permissions(mysettings["BUILD_PREFIX"],
-		uid=portage_uid, gid=portage_gid, mode=00775)
-
-		# Should be ok again to set $T, as sandbox does not depend on it
-		# XXX Bug.  no way in hell this is valid for clean handling.
-		mysettings["T"]=mysettings["PORTAGE_BUILDDIR"]+"/temp"
-		if cleanup:
-			if os.path.exists(mysettings["T"]):
-				shutil.rmtree(mysettings["T"])
-		if not os.path.exists(mysettings["T"]):
-			os.makedirs(mysettings["T"])
-		apply_secpass_permissions(mysettings["T"],
-		uid=portage_uid, gid=portage_gid, mode=02770)
-
-		logdir = mysettings["T"]+"/logging"
-		if not os.path.exists(logdir):
-			os.makedirs(logdir)
-		apply_secpass_permissions(logdir,
-		uid=portage_uid, gid=portage_gid, mode=0770)
-
-		try: # XXX: negative RESTRICT
-			if not (("nouserpriv" in string.split(mysettings["PORTAGE_RESTRICT"])) or \
-			   ("userpriv" in string.split(mysettings["PORTAGE_RESTRICT"]))):
-				if ("userpriv" in features) and (portage_uid and portage_gid):
-					if (secpass==2):
-						if os.path.exists(mysettings["HOME"]):
-							# XXX: Potentially bad, but held down by HOME replacement above.
-							spawn("rm -Rf "+mysettings["HOME"],mysettings, free=1)
-						if not os.path.exists(mysettings["HOME"]):
-							os.makedirs(mysettings["HOME"])
-				elif ("userpriv" in features):
-					print "!!! Disabling userpriv from features... Portage UID/GID not valid."
-					del features[features.index("userpriv")]
-		except SystemExit, e:
-			raise
-		except Exception, e:
-			print "!!! Couldn't empty HOME:",mysettings["HOME"]
-			print "!!!",e
-
-		try:
-			# no reason to check for depend since depend returns above.
-			for myvar in ("BUILD_PREFIX", "PORTAGE_BUILDDIR"):
-				if not os.path.exists(mysettings[myvar]):
-					os.makedirs(mysettings[myvar])
-				apply_secpass_permissions(mysettings[myvar],
-				uid=portage_uid, gid=portage_gid)
-		except OSError, e:
-			print "!!! File system problem. (ReadOnly? Out of space?)"
-			print "!!! Perhaps: rm -Rf",mysettings["BUILD_PREFIX"]
-			print "!!!",str(e)
-			return 1
-
-		try:
-			if not os.path.exists(mysettings["HOME"]):
-				os.makedirs(mysettings["HOME"])
-			apply_secpass_permissions(mysettings["HOME"],
-			uid=portage_uid, gid=portage_gid, mode=02770)
-		except OSError, e:
-			print "!!! File system problem. (ReadOnly? Out of space?)"
-			print "!!! Failed to create fake home directory in PORTAGE_BUILDDIR"
-			print "!!!",str(e)
-			return 1
-
-		try:
-			if ("ccache" in features):
-				if (not mysettings.has_key("CCACHE_DIR")) or (mysettings["CCACHE_DIR"]==""):
-					mysettings["CCACHE_DIR"]=mysettings["PORTAGE_TMPDIR"]+"/ccache"
-				if not os.path.exists(mysettings["CCACHE_DIR"]):
-					os.makedirs(mysettings["CCACHE_DIR"])
-				mystat = os.stat(mysettings["CCACHE_DIR"])
-				if ("userpriv" in features):
-					if mystat[stat.ST_UID] != portage_uid or ((mystat[stat.ST_MODE]&02070)!=02070):
-						writemsg("* Adjusting permissions on ccache in %s\n" % mysettings["CCACHE_DIR"])
-						spawn("chgrp -R "+str(portage_gid)+" "+mysettings["CCACHE_DIR"], mysettings, free=1)
-						spawn("chown "+str(portage_uid)+":"+str(portage_gid)+" "+mysettings["CCACHE_DIR"], mysettings, free=1)
-						spawn("chmod -R ug+rw "+mysettings["CCACHE_DIR"], mysettings, free=1)
-						spawn("find "+mysettings["CCACHE_DIR"]+" -type d -exec chmod g+xs \{\} \;", mysettings, free=1)
-				else:
-					if mystat[stat.ST_UID] != 0 or ((mystat[stat.ST_MODE]&02070)!=02070):
-						writemsg("* Adjusting permissions on ccache in %s\n" % mysettings["CCACHE_DIR"])
-						spawn("chgrp -R "+str(portage_gid)+" "+mysettings["CCACHE_DIR"], mysettings, free=1)
-						spawn("chown 0:"+str(portage_gid)+" "+mysettings["CCACHE_DIR"], mysettings, free=1)
-						spawn("chmod -R ug+rw "+mysettings["CCACHE_DIR"], mysettings, free=1)
-						spawn("find "+mysettings["CCACHE_DIR"]+" -type d -exec chmod g+xs \{\} \;", mysettings, free=1)
-		except OSError, e:
-			print "!!! File system problem. (ReadOnly? Out of space?)"
-			print "!!! Perhaps: rm -Rf",mysettings["BUILD_PREFIX"]
-			print "!!!",str(e)
-			return 1
-		try:
-			if "confcache" in features:
-				if not mysettings.has_key("CONFCACHE_DIR"):
-					mysettings["CONFCACHE_DIR"] = os.path.join(mysettings["PORTAGE_TMPDIR"], "confcache")
-				if not os.path.exists(mysettings["CONFCACHE_DIR"]):
-					if not os.getuid() == 0:
-						# we're boned.
-						features.remove("confcache")
-						mysettings["FEATURES"] = " ".join(features)
-					else:
-						os.makedirs(mysettings["CONFCACHE_DIR"], mode=0775)
-						apply_secpass_permissions(mysettings["CONFCACHE_DIR"],
-						gid=portage_gid, mode=0775)
-				else:
-					apply_secpass_permissions(mysettings["CONFCACHE_DIR"],
-					gid=portage_gid, mode=0775)
-
-			# check again, since it may have been disabled.
-			if "confcache" in features:
-				for x in listdir(mysettings["CONFCACHE_DIR"]):
-					p = os.path.join(mysettings["CONFCACHE_DIR"], x)
-					apply_secpass_permissions(p, gid=portage_gid, mode=0660, mask=07000)
-		except OSError, e:
-			print "!!! Failed resetting perms on confcachedir %s" % mysettings["CONFCACHE_DIR"]
-			return 1						
-		#try:
-		#	mystat=os.stat(mysettings["CCACHE_DIR"])
-		#	if (mystat[stat.ST_GID]!=portage_gid) or ((mystat[stat.ST_MODE]&02070)!=02070):
-		#		print "*** Adjusting ccache permissions for portage user..."
-		#		os.chown(mysettings["CCACHE_DIR"],portage_uid,portage_gid)
-		#		os.chmod(mysettings["CCACHE_DIR"],02770)
-		#		spawn("chown -R "+str(portage_uid)+":"+str(portage_gid)+" "+mysettings["CCACHE_DIR"],mysettings, free=1)
-		#		spawn("chmod -R g+rw "+mysettings["CCACHE_DIR"],mysettings, free=1)
-		#except SystemExit, e:
-		#	raise
-		#except:
-		#	pass
-
-		if "distcc" in features:
-			try:
-				if (not mysettings.has_key("DISTCC_DIR")) or (mysettings["DISTCC_DIR"]==""):
-					mysettings["DISTCC_DIR"]=mysettings["PORTAGE_TMPDIR"]+"/portage/.distcc"
-				if not os.path.exists(mysettings["DISTCC_DIR"]):
-					os.makedirs(mysettings["DISTCC_DIR"])
-					apply_secpass_permissions(mysettings["DISTCC_DIR"],
-					uid=portage_uid, gid=portage_gid, mode=02775)
-				for x in ("/lock", "/state"):
-					if not os.path.exists(mysettings["DISTCC_DIR"]+x):
-						os.mkdir(mysettings["DISTCC_DIR"]+x)
-						apply_secpass_permissions(mysettings["DISTCC_DIR"]+x,
-						uid=portage_uid, gid=portage_gid, mode=02775)
-			except OSError, e:
-				writemsg("\n!!! File system problem when setting DISTCC_DIR directory permissions.\n")
-				writemsg(  "!!! DISTCC_DIR="+str(mysettings["DISTCC_DIR"]+"\n"))
-				writemsg(  "!!! "+str(e)+"\n\n")
-				time.sleep(5)
-				features.remove("distcc")
-				mysettings["DISTCC_DIR"]=""
-
-		mysettings["WORKDIR"]=mysettings["PORTAGE_BUILDDIR"]+"/work"
-		mysettings["D"]=mysettings["PORTAGE_BUILDDIR"]+"/image/"
-
-		if mysettings.has_key("PORT_LOGDIR"):
-			if not os.access(mysettings["PORT_LOGDIR"],os.F_OK):
-				try:
-					os.mkdir(mysettings["PORT_LOGDIR"])
-				except OSError, e:
-					print "!!! Unable to create PORT_LOGDIR"
-					print "!!!",e
-			if os.access(mysettings["PORT_LOGDIR"]+"/",os.W_OK):
-				try:
-					apply_secpass_permissions(mysettings["PORT_LOGDIR"],
-					uid=portage_uid, gid=portage_gid, mode=02770)
-					if not mysettings.has_key("LOG_PF") or (mysettings["LOG_PF"] != mysettings["PF"]):
-						mysettings["LOG_PF"]=mysettings["PF"]
-						mysettings["LOG_COUNTER"]=str(db[myroot]["vartree"].dbapi.get_counter_tick_core("/"))
-					logfile="%s/%s-%s.log" % (mysettings["PORT_LOGDIR"],mysettings["LOG_COUNTER"],mysettings["LOG_PF"])
-				except OSError, e:
-					mysettings["PORT_LOGDIR"]=""
-					print "!!! Unable to chown/chmod PORT_LOGDIR. Disabling logging."
-					print "!!!",e
-			else:
-				print "!!! Cannot create log... No write access / Does not exist"
-				print "!!! PORT_LOGDIR:",mysettings["PORT_LOGDIR"]
-				mysettings["PORT_LOGDIR"]=""
-
+		prepare_build_dirs(myroot, mysettings, cleanup)
 		if mydo=="unmerge":
 			return unmerge(mysettings["CATEGORY"],mysettings["PF"],myroot,mysettings)
 
