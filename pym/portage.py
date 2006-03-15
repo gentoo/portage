@@ -2366,13 +2366,7 @@ actionmap_deps={
 def eapi_is_supported(eapi):
 	return str(eapi).strip() == str(portage_const.EAPI).strip()
 
-
-def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,cleanup=0,dbkey=None,use_cache=1,fetchall=0,tree=None):
-	global db, actionmap_deps
-
-	if not tree:
-		dump_traceback("Warning: tree not specified to doebuild")
-		tree = "porttree"
+def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, tree):
 
 	ebuild_path = os.path.abspath(myebuild)
 	pkg_dir     = os.path.dirname(ebuild_path)
@@ -2380,39 +2374,18 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 	if mysettings.configdict["pkg"].has_key("CATEGORY"):
 		cat = mysettings.configdict["pkg"]["CATEGORY"]
 	else:
-		cat         = os.path.basename(os.path.normpath(pkg_dir+"/.."))
-	mypv        = os.path.basename(ebuild_path)[:-7]
-	mycpv       = cat+"/"+mypv
-
+		cat = os.path.basename(os.path.normpath(pkg_dir+"/.."))
+	mypv = os.path.basename(ebuild_path)[:-7]	
+	mycpv = cat+"/"+mypv
 	mysplit=pkgsplit(mypv,silent=0)
 	if mysplit==None:
 		writemsg("!!! Error: PF is null '%s'; exiting.\n" % mypv)
 		return 1
-
 	if mydo != "depend":
 		# XXX: We're doing a little hack here to curtain the gvisible locking
 		# XXX: that creates a deadlock... Really need to isolate that.
 		mysettings.reset(use_cache=use_cache)
 	mysettings.setcpv(mycpv,use_cache=use_cache)
-
-	validcommands = ["help","clean","prerm","postrm","cleanrm","preinst","postinst",
-	                "config","setup","depend","fetch","digest",
-	                "unpack","compile","test","install","rpm","qmerge","merge",
-	                "package","unmerge", "manifest"]
-
-	if mydo not in validcommands:
-		validcommands.sort()
-		writemsg("!!! doebuild: '%s' is not one of the following valid commands:" % mydo)
-		for vcount in range(len(validcommands)):
-			if vcount%6 == 0:
-				writemsg("\n!!! ")
-			writemsg(string.ljust(validcommands[vcount], 11))
-		writemsg("\n")
-		return 1
-
-	if not os.path.exists(myebuild):
-		writemsg("!!! doebuild: "+str(myebuild)+" not found for "+str(mydo)+"\n")
-		return 1
 
 	if debug: # Otherwise it overrides emerge's settings.
 		# We have no other way to set debug... debug can't be passed in
@@ -2473,7 +2446,7 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 	mysettings["BUILD_PREFIX"] = mysettings["PORTAGE_TMPDIR"]+"/portage"
 	mysettings["HOME"]         = mysettings["BUILD_PREFIX"]+"/homedir"
 	mysettings["PKG_TMPDIR"]   = mysettings["PORTAGE_TMPDIR"]+"/binpkgs"
-
+	
 	# Package {pre,post}inst and {pre,post}rm may overlap, so they must have separate
 	# locations in order to prevent interference.
 	if mydo in ("unmerge", "prerm", "postrm", "cleanrm"):
@@ -2496,6 +2469,35 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 		myso=os.uname()[2]
 		mysettings["KVERS"]=myso[1]
 
+def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,cleanup=0,dbkey=None,use_cache=1,fetchall=0,tree=None):
+	global db, actionmap_deps
+
+	if not tree:
+		dump_traceback("Warning: tree not specified to doebuild")
+		tree = "porttree"
+
+	validcommands = ["help","clean","prerm","postrm","cleanrm","preinst","postinst",
+	                "config","setup","depend","fetch","digest",
+	                "unpack","compile","test","install","rpm","qmerge","merge",
+	                "package","unmerge", "manifest"]
+
+	if mydo not in validcommands:
+		validcommands.sort()
+		writemsg("!!! doebuild: '%s' is not one of the following valid commands:" % mydo)
+		for vcount in range(len(validcommands)):
+			if vcount%6 == 0:
+				writemsg("\n!!! ")
+			writemsg(string.ljust(validcommands[vcount], 11))
+		writemsg("\n")
+		return 1
+
+	if not os.path.exists(myebuild):
+		writemsg("!!! doebuild: "+str(myebuild)+" not found for "+str(mydo)+"\n")
+		return 1
+
+	mystatus = doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, tree)
+	if mystatus:
+		return mystatus
 
 	# get possible slot information from the deps file
 	if mydo=="depend":
@@ -2704,7 +2706,7 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 	elif mydo in ["help","setup"]:
 		return spawn(EBUILD_SH_BINARY+" "+mydo,mysettings,debug=debug,free=1,logfile=logfile)
 	elif mydo == "preinst":
-		mysettings.load_infodir(pkg_dir)
+		mysettings.load_infodir(mysettings["O"])
 		if mysettings.has_key("EMERGE_FROM") and "binary" == mysettings["EMERGE_FROM"]:
 			mysettings["IMAGE"] = os.path.join(mysettings["PKG_TMPDIR"], mysettings["PF"], "bin")
 		else:
@@ -2718,9 +2720,10 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 		del mysettings["IMAGE"]
 		return phase_retval
 	elif mydo in ["prerm","postrm","postinst","config"]:
-		mysettings.load_infodir(pkg_dir)
+		mysettings.load_infodir(mysettings["O"])
 		return spawn(EBUILD_SH_BINARY+" "+mydo,mysettings,debug=debug,free=1,logfile=logfile)
 
+	mycpv = "/".join((mysettings["CATEGORY"], mysettings["PF"]))
 	try:
 		mysettings["SLOT"],mysettings["RESTRICT"] = db["/"]["porttree"].dbapi.aux_get(mycpv,["SLOT","RESTRICT"])
 	except (IOError,KeyError):
