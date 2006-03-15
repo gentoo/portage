@@ -4280,7 +4280,7 @@ class vardbapi(dbapi):
 			origpath=self.root+VDB_PATH+"/"+mycpv
 			if not os.path.exists(origpath):
 				continue
-			writemsg("@")
+			writemsg_stdout("@")
 			if not os.path.exists(self.root+VDB_PATH+"/"+mynewcat):
 				#create the directory
 				os.makedirs(self.root+VDB_PATH+"/"+mynewcat)
@@ -4339,7 +4339,7 @@ class vardbapi(dbapi):
 			if (slot[0]!=origslot):
 				continue
 
-			writemsg("s")
+			writemsg_stdout("s")
 			write_atomic(os.path.join(origpath, "SLOT"), newslot+"\n")
 
 	def cp_list(self,mycp,use_cache=1):
@@ -5239,8 +5239,7 @@ class binarytree(packagetree):
 				continue
 
 			#print ">>> Updating data in:",mycpv
-			sys.stdout.write("%")
-			sys.stdout.flush()
+			writemsg_stdout("%")
 
 			mytbz2 = xpak.tbz2(tbz2path)
 			mydata = mytbz2.get_data()
@@ -5290,8 +5289,7 @@ class binarytree(packagetree):
 			if (slot[0]!=origslot):
 				continue
 
-			sys.stdout.write("S")
-			sys.stdout.flush()
+			writemsg_stdout("S")
 			mydata["SLOT"] = newslot+"\n"
 			mytbz2.recompose_mem(xpak.xpak_mem(mydata))
 		return 1
