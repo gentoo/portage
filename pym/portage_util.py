@@ -2,8 +2,9 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/pym/portage_util.py,v 1.11.2.6 2005/04/23 07:26:04 jstubbs Exp $
 
+from portage_exception import FileNotFound, OperationNotPermitted
 
-import sys,string,shlex,os.path
+import sys,string,shlex,os,errno
 try:
 	import cPickle
 except ImportError:
@@ -454,26 +455,90 @@ def unique_array(s):
 			u.append(x)
 	return u
 
-def apply_permissions(filename, uid=-1, gid=-1, mode=0,
+def apply_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 	stat_cached=None):
-	"""Apply user, group, and mode bits to a file
-	if the existing bits do not already match."""
+	"""Apply user, group, and mode bits to a file if the existing bits do not
+	already match.  The default behavior is to force an exact match of mode
+	bits.  When mask=0 is specified, mode bits on the target file are allowed
+	to be a superset of the mode argument (via logical OR).  When mask>0, the
+	mode bits that the target file is allowed to have are restricted via
+	logical XOR."""
+	try:
+		if stat_cached is None:
+			stat_cached = os.stat(filename)
+
+		if	(uid != -1 and uid != stat_cached.st_uid) or \
+			(gid != -1 and gid != stat_cached.st_gid):
+			os.chown(filename, uid, gid)
+
+		st_mode = stat_cached.st_mode & 07777 # protect from unwanted bits
+		if mask >= 0:
+			if mode == -1:
+				mode = 0 # Don't add any mode bits when mode is unspecified.
+			else:
+				mode = mode & 07777
+			if	(mode & st_mode != mode) or \
+				(mask ^ st_mode != st_mode):
+				new_mode = mode | st_mode
+				new_mode = mask ^ new_mode
+				os.chmod(filename, new_mode)
+		elif mode != -1:
+			mode = mode & 07777 # protect from unwanted bits
+			if mode != st_mode:
+				os.chmod(filename, mode)
+	except OSError, oe:
+		if oe.errno == errno.EPERM:
+			raise OperationNotPermitted(oe)
+		elif oe.errno == errno.ENOENT:
+			raise FileNotFound(oe)
+		else:
+			raise oe
+
+def apply_stat_permissions(filename, newstat, **kwargs):
+	"""A wrapper around apply_secpass_permissions that gets
+	uid, gid, and mode from a stat object"""
+	return apply_secpass_permissions(filename, uid=newstat.st_uid, gid=newstat.st_gid,
+	mode=newstat.st_mode, **kwargs)
+
+def apply_secpass_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
+	stat_cached=None):
+	"""A wrapper around apply_permissions that uses secpass and simple
+	logic to apply as much of the permissions as possible without
+	generating an obviously avoidable permission exception. Despite
+	attempts to avoid an exception, it's possible that one will be raised
+	anyway, so be prepared.
+	Returns True if all permissions are applied and False if some are left
+	unapplied."""
 
 	if stat_cached is None:
-		stat_cached = os.stat(filename)
+		try:
+			stat_cached = os.stat(filename)
+		except OSError, oe:
+			if oe.errno == errno.EPERM:
+				raise OperationNotPermitted(oe)
+			elif oe.errno == errno.ENOENT:
+				raise FileNotFound(oe)
+			else:
+				raise oe
 
-	if	(uid != -1 and uid != stat_cached.st_uid) or \
-		(gid != -1 and gid != stat_cached.st_gid):
-		os.chown(filename, uid, gid)
+	all_applied = True
 
-	if mode & stat_cached.st_mode != mode:
-		os.chmod(filename, mode | stat_cached.st_mode)
+	import portage_data # not imported globally because of circular dep
+	if portage_data.secpass < 2:
 
-def apply_stat_permissions(filename, newstat, stat_cached=None):
-	"""wrapper around apply_permissions that gets
-	uid, gid, and mode from a stat object"""
-	apply_permissions(filename, uid=newstat.st_uid, gid=newstat.st_gid,
-	mode=newstat.st_mode, stat_cached=stat_cached)
+		if uid != -1 and \
+		uid != stat_cached.st_uid:
+			all_applied = False
+			uid = -1
+
+		if gid != -1 and \
+		gid != stat_cached.st_gid and \
+		gid not in os.getgroups():
+			all_applied = False
+			gid = -1
+
+	apply_permissions(filename, uid=uid, gid=gid, mode=mode, mask=mask, stat_cached=stat_cached)
+	return all_applied
 
 class atomic_ofstream(file):
 	"""Write a file atomically via os.rename().  Atomic replacement prevents
@@ -498,12 +563,10 @@ class atomic_ofstream(file):
 				if not self._aborted:
 					try:
 						apply_stat_permissions(self.name, os.stat(self._real_name))
-					except OSError, oe:
-						import errno
-						if oe.errno in (errno.ENOENT,errno.EPERM):
-							pass
-						else:
-							raise oe
+					except OperationNotPermitted:
+						pass
+					except FileNotFound:
+						pass
 					os.rename(self.name, self._real_name)
 			finally:
 				# Make sure we cleanup the temp file

@@ -120,7 +120,7 @@ install_qa_check() {
 			# are supported at the moment.  Keep this list in sync with
 			# http://hardened.gentoo.org/gnu-stack.xml (Arch Status)
 			case ${CTARGET:-${CHOST}} in
-				i?86*|ia64*|m68k*|powerpc64*|s390*|x86_64*)
+				i?86*|ia64*|m68k*|s390*|x86_64*)
 					# Allow devs to mark things as ignorable ... e.g. things
 					# that are binary-only and upstream isn't cooperating ...
 					# we allow ebuild authors to set QA_EXECSTACK_arch and
@@ -290,7 +290,7 @@ install_mask() {
 		rm -Rf ${root}/${no_inst} >&/dev/null
 
 		# we also need to handle globs (*.a, *.h, etc)
-		find "${root}" -name ${no_inst} -exec rm -fR {} \; >/dev/null
+		find "${root}" -path ${no_inst} -exec rm -fR {} \; >/dev/null
 	done
 	# set everything back the way we found it
 	set +o noglob

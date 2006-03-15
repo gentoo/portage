@@ -7,7 +7,10 @@ import os,sys
 os.environ["PORTAGE_CALLER"]="emerge"
 sys.path = ["@PORTAGE_BASE@/pym"]+sys.path
 
-import portage
+try:
+	import portage
+except KeyboardInterrupt:
+	sys.exit(1) # If they control C during imports, just die silently
 
 import emergehelp,xpak,string,re,commands,time,shutil,traceback,signal,socket,types
 from stat import *
@@ -400,9 +403,6 @@ if ("--debug" in myopts):
 	portage.settings.lock()
 
 if ("--resume" in myopts):
-	if "--verbose" in myopts:
-		print "* --verbose is currently broken with --resume. Disabling..."
-		myopts.remove("--verbose")
 	if "--tree" in myopts:
 		print "* --tree is currently broken with --resume. Disabling..."
 		myopts.remove("--tree")
@@ -592,30 +592,22 @@ def help():
 	# Move all the help stuff out of this file.
 	emergehelp.help(myaction,myopts,havecolor)
 
-# check if root user is the current user for the actions where emerge needs this
-if ("--pretend" in myopts) or ("--fetchonly" in myopts or "--fetch-all-uri" in myopts) or (myaction=="search"):
-	if not portage.secpass:
-		if portage.wheelgid==portage.portage_gid:
-			print "emerge: wheel group membership required for \"--pretend\" and search."
-			print "emerge: wheel group use is being deprecated. Please update group and passwd to"
-			print "        include the portage user as noted above, and then use group portage."
-		else:
-			print "emerge: portage group membership required for \"--pretend\" and search."
-		sys.exit(1)
-elif "--version" in myopts:
+if "--version" in myopts:
 	print getportageversion()
 	sys.exit(0)
 elif "--help" in myopts:
 	help()
 	sys.exit(0)
-elif portage.secpass!=2:
-	if myaction in ["search", "info", "regen", "metadata"]:
-		pass
-	elif not myaction and not myfiles and "--resume" not in myopts:
-		pass
-	elif ("--pretend" in myopts) and (myaction in ["world","system","clean","prune","unmerge"]):
-		pass
-	else:
+
+if portage.wheelgid == portage.portage_gid:
+	print "emerge: wheel group use is being deprecated. Please update group and passwd to"
+	print "        include the portage user as noted above, and then use group portage."
+
+# check if root user is the current user for the actions where emerge needs this
+if portage.secpass < 2:
+	# We've already allowed "--version" and "--help" above.
+	if "--pretend" not in myopts and \
+	myaction not in ("search","info"):
 		if "--debug" in myopts:
 			print "myaction",myaction
 			print "myopts",myopts
@@ -1520,6 +1512,15 @@ class depgraph:
 		# in size display (verbose mode)
 		myfetchlist=[]
 		for x in mylist:
+			pkg_type = x[0]
+			pkg_key = x[2]
+			if pkg_key not in self.applied_useflags:
+				if "binary" == pkg_type:
+					self.applied_useflags[pkg_key] = portage.db["/"]["bintree"].dbapi.aux_get(pkg_key, ["USE"])[0].split()
+				elif "ebuild" == pkg_type:
+					self.pkgsettings.setcpv(pkg_key)
+					self.applied_useflags[pkg_key] = self.pkgsettings["USE"].split()
+
 			fetch=" "
 
 			if x[0]=="blocks":
@@ -1695,25 +1696,36 @@ class depgraph:
 
 				if x[1]!="/":
 					if "--columns" in myopts:
-						myprint="["+x[0]+" "+addl+"] "+indent+darkgreen(xs[0])
-						if (newlp-nc_len(myprint)) > 0:
-							myprint=myprint+(" "*(newlp-nc_len(myprint)))
-						myprint=myprint+"["+darkblue(xs[1]+xs[2])+"] "
-						if (oldlp-nc_len(myprint)) > 0:
-							myprint=myprint+" "*(oldlp-nc_len(myprint))
-						myprint=myprint+myoldbest
-						myprint=myprint+darkgreen("  to "+x[1])+" "+verboseadd
+						if "--quiet" in myopts:
+							myprint=addl+" "+indent+darkgreen(xs[0])
+							myprint=myprint+darkblue(xs[1]+xs[2])+" "
+							myprint=myprint+myoldbest
+							myprint=myprint+darkgreen(" to "+x[1])
+						else:
+							myprint="["+x[0]+" "+addl+"] "+indent+darkgreen(xs[0])
+							if (newlp-nc_len(myprint)) > 0:
+								myprint=myprint+(" "*(newlp-nc_len(myprint)))
+							myprint=myprint+"["+darkblue(xs[1]+xs[2])+"] "
+							if (oldlp-nc_len(myprint)) > 0:
+								myprint=myprint+" "*(oldlp-nc_len(myprint))
+							myprint=myprint+myoldbest
+							myprint=myprint+darkgreen("  to "+x[1])+" "+verboseadd
 					else:
 						myprint="["+x[0]+" "+addl+"] "+darkgreen(x[2])+" "+myoldbest+" "+darkgreen("to "+x[1])+" "+verboseadd
 				else:
 					if "--columns" in myopts:
-						myprint="["+x[0]+" "+addl+"] "+indent+darkgreen(xs[0])
-						if (newlp-nc_len(myprint)) > 0:
-							myprint=myprint+(" "*(newlp-nc_len(myprint)))
-						myprint=myprint+green(" ["+xs[1]+xs[2]+"] ")
-						if (oldlp-nc_len(myprint)) > 0:
-							myprint=myprint+(" "*(oldlp-nc_len(myprint)))
-						myprint=myprint+myoldbest+"  "+verboseadd
+						if "--quiet" in myopts:
+							myprint=addl+" "+indent+darkgreen(xs[0])
+							myprint=myprint+" "+green(xs[1]+xs[2])
+							myprint=myprint+myoldbest
+						else:
+							myprint="["+x[0]+" "+addl+"] "+indent+darkgreen(xs[0])
+							if (newlp-nc_len(myprint)) > 0:
+								myprint=myprint+(" "*(newlp-nc_len(myprint)))
+							myprint=myprint+green(" ["+xs[1]+xs[2]+"] ")
+							if (oldlp-nc_len(myprint)) > 0:
+								myprint=myprint+(" "*(oldlp-nc_len(myprint)))
+							myprint=myprint+myoldbest+"  "+verboseadd
 					else:
 						if x[3]=="nomerge":
 							myprint=darkblue("[nomerge      ] "+indent+x[2]+" "+myoldbest+" ")+verboseadd
@@ -2975,7 +2987,7 @@ elif "info"==myaction:
 	if "--verbose" in myopts:
 		myvars=portage.settings.keys()
 	else:
-		myvars = ['GENTOO_MIRRORS', 'CONFIG_PROTECT', 'CONFIG_PROTECT_MASK',
+		myvars = ['DEFAULT_PATH', 'GENTOO_MIRRORS', 'CONFIG_PROTECT', 'CONFIG_PROTECT_MASK',
 		          'PORTDIR', 'DISTDIR', 'PKGDIR', 'PORTAGE_TMPDIR',
 		          'PORTDIR_OVERLAY', 'PREFIX', 'USE', 'CHOST', 'CFLAGS', 'CXXFLAGS',
 		          'ACCEPT_KEYWORDS', 'SYNC', 'FEATURES', 'EMERGE_DEFAULT_OPTS']
@@ -3159,7 +3171,7 @@ else:
 			portage.commit_mtimedb()
 		myresumeopts=portage.mtimedb["resume"]["myopts"][:]
 
-		for opt in ("--skipfirst", "--ask", "--verbose"):
+		for opt in ("--skipfirst", "--ask", "--tree"):
 			while opt in myresumeopts:
 				myresumeopts.remove(opt)
 
@@ -3264,6 +3276,7 @@ else:
 			mydepgraph.merge(portage.mtimedb["resume"]["mergelist"])
 		else:
 			if "resume" in portage.mtimedb and \
+			"mergelist" in portage.mtimedb["resume"] and \
 			len(portage.mtimedb["resume"]["mergelist"]) > 1:
 				portage.mtimedb["resume_backup"] = portage.mtimedb["resume"]
 				del portage.mtimedb["resume"]

@@ -12,11 +12,9 @@ VERSION="$Rev$"[6:-2] + "-svn"
 
 try:
 	import sys
-except SystemExit, e:
-	raise
-except:
+except ImportError:
 	print "Failed to import sys! Something is _VERY_ wrong with python."
-	raise SystemExit, 127
+	raise
 
 try:
 	import os,string,types,signal,fcntl,errno
@@ -33,9 +31,7 @@ try:
 	from time import sleep
 	from random import shuffle
 	from cache.cache_errors import CacheError
-except SystemExit, e:
-	raise
-except Exception, e:
+except ImportError, e:
 	sys.stderr.write("\n\n")
 	sys.stderr.write("!!! Failed to complete python imports. There are internal modules for\n")
 	sys.stderr.write("!!! python and failure here indicates that you have a problem with python\n")
@@ -43,27 +39,14 @@ except Exception, e:
 
 	sys.stderr.write("!!! You might consider starting python with verbose flags to see what has\n")
 	sys.stderr.write("!!! gone wrong. Here is the information we got for this exception:\n")
-
 	sys.stderr.write("    "+str(e)+"\n\n");
-	sys.exit(127)
-except:
-	sys.stderr.write("\n\n")
-	sys.stderr.write("!!! Failed to complete python imports. There are internal modules for\n")
-	sys.stderr.write("!!! python and failure here indicates that you have a problem with python\n")
-	sys.stderr.write("!!! itself and thus portage is not able to continue processing.\n\n")
-
-	sys.stderr.write("!!! You might consider starting python with verbose flags to see what has\n")
-	sys.stderr.write("!!! gone wrong. The exception was non-standard and we were unable to catch it.\n\n")
-	sys.exit(127)
+	raise
 
 try:
 	# XXX: This should get renamed to bsd_chflags, I think.
 	import chflags
 	bsd_chflags = chflags
-except SystemExit, e:
-	raise
-except:
-	# XXX: This should get renamed to bsd_chflags, I think.
+except ImportError:
 	bsd_chflags = None
 
 try:
@@ -92,8 +75,8 @@ try:
 	                         portage_uid, portage_gid
 
 	import portage_util
-	from portage_util import atomic_ofstream, dump_traceback, getconfig, grabdict, \
-		grabdict_package, grabfile, grabfile_package, \
+	from portage_util import atomic_ofstream, apply_secpass_permissions, \
+		dump_traceback, getconfig, grabdict, grabdict_package, grabfile, grabfile_package, \
 		map_dictlist_vals, pickle_read, pickle_write, stack_dictlist, stack_dicts, stack_lists, \
 		unique_array, varexpand, writedict, writemsg, writemsg_stdout, write_atomic
 	import portage_exception
@@ -111,9 +94,7 @@ try:
 	# Need these functions directly in portage namespace to not break every external tool in existence
 	from portage_versions import ververify,vercmp,catsplit,catpkgsplit,pkgsplit,pkgcmp
 
-except SystemExit, e:
-	raise
-except Exception, e:
+except ImportError, e:
 	sys.stderr.write("\n\n")
 	sys.stderr.write("!!! Failed to complete portage imports. There are internal modules for\n")
 	sys.stderr.write("!!! portage and failure here indicates that you have a problem with your\n")
@@ -121,9 +102,8 @@ except Exception, e:
 	sys.stderr.write("!!! portage tree under '/usr/portage/sys-apps/portage/files/' (default).\n")
 	sys.stderr.write("!!! There is a README.RESCUE file that details the steps required to perform\n")
 	sys.stderr.write("!!! a recovery of portage.\n")
-
 	sys.stderr.write("    "+str(e)+"\n\n")
-	sys.exit(127)
+	raise
 
 
 # ===========================================================================
@@ -234,10 +214,8 @@ def cacheddir(my_original_path, ignorecvs, ignorelist, EmptyOnError, followSymli
 		if stat.S_ISDIR(pathstat[stat.ST_MODE]):
 			mtime = pathstat[stat.ST_MTIME]
 		else:
-			raise Exception
-	except SystemExit, e:
-		raise
-	except:
+			raise portage_exception.PortageException
+	except (IOError,OSError,portage_exception.PortageException):
 		if EmptyOnError:
 			return [], []
 		return None, None
@@ -262,9 +240,7 @@ def cacheddir(my_original_path, ignorecvs, ignorelist, EmptyOnError, followSymli
 					ftype.append(2)
 				else:
 					ftype.append(3)
-			except SystemExit, e:
-				raise
-			except:
+			except (IOError, OSError):
 				ftype.append(3)
 		dircache[mypath] = mtime, list, ftype
 
@@ -1839,25 +1815,22 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 			can_fetch=False
 	else:
 		def distdir_perms(filename):
+			all_applied = True
 			try:
-				portage_util.apply_permissions(filename, gid=portage_gid, mode=0775)
-			except OSError, oe:
-				if oe.errno == errno.EPERM:
-					writemsg("!!! Unable to apply group permissions to '%s'.  Non-root users may experience issues.\n"
-					% filename)
-				else:
-					raise oe
+				all_applied = portage_util.apply_secpass_permissions(filename, gid=portage_gid, mode=0775)
+			except portage_exception.OperationNotPermitted:
+				all_applied = False
+			if not all_applied:
+				writemsg(("!!! Unable to apply group permissions to '%s'." \
+				+ "  Non-root users may experience issues.\n") % filename)
 		distdir_perms(mysettings["DISTDIR"])
 		if use_locks and locks_in_subdir:
 			distlocks_subdir = os.path.join(mysettings["DISTDIR"], locks_in_subdir)
 			try:
 				distdir_perms(distlocks_subdir)
-			except OSError, oe:
-				if oe.errno == errno.ENOENT:
-					os.mkdir(distlocks_subdir)
-					distdir_perms(distlocks_subdir)
-				else:
-					raise oe
+			except portage_exception.FileNotFound:
+				os.mkdir(distlocks_subdir)
+				distdir_perms(distlocks_subdir)
 			if not os.access(distlocks_subdir, os.W_OK):
 				writemsg("!!! No write access to write to %s.  Aborting.\n" % distlocks_subdir)
 				return 0
@@ -2371,22 +2344,12 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 			retval=spawnebuild(actionmap[mydo]["dep"],actionmap,mysettings,debug,alwaysdep=alwaysdep,logfile=logfile)
 			if retval:
 				return retval
-	# spawn ebuild.sh or misc-functions.sh as appropriate
-	if mydo in ["package","rpm"]:
-		mycommand = MISC_SH_BINARY + " dyn_" + mydo
-	else:
-		mycommand = EBUILD_SH_BINARY + " " + mydo
-	phase_retval = spawn(mycommand, mysettings, debug=debug,
-		droppriv=actionmap[mydo]["args"][0],
-		free=actionmap[mydo]["args"][1],
-		sesandbox=actionmap[mydo]["args"][2], logfile=logfile)
+	kwargs = actionmap[mydo]["args"]
+	phase_retval = spawn(actionmap[mydo]["cmd"] % mydo, mysettings, debug=debug, logfile=logfile, **kwargs)
 	if phase_retval == os.EX_OK:
 		if mydo == "install":
 			mycommand = " ".join([MISC_SH_BINARY, "install_qa_check"])
-			return spawn(mycommand, mysettings, debug=debug,
-				droppriv=actionmap[mydo]["args"][0],
-				free=actionmap[mydo]["args"][1],
-				sesandbox=actionmap[mydo]["args"][2], logfile=logfile)
+			return spawn(mycommand, mysettings, debug=debug, logfile=logfile, **kwargs)
 	return phase_retval
 
 # chunked out deps for each phase, so that ebuild binary can use it 
@@ -2406,13 +2369,7 @@ actionmap_deps={
 def eapi_is_supported(eapi):
 	return str(eapi).strip() == str(portage_const.EAPI).strip()
 
-
-def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,cleanup=0,dbkey=None,use_cache=1,fetchall=0,tree=None):
-	global db, actionmap_deps
-
-	if not tree:
-		dump_traceback("Warning: tree not specified to doebuild")
-		tree = "porttree"
+def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, tree):
 
 	ebuild_path = os.path.abspath(myebuild)
 	pkg_dir     = os.path.dirname(ebuild_path)
@@ -2420,39 +2377,18 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 	if mysettings.configdict["pkg"].has_key("CATEGORY"):
 		cat = mysettings.configdict["pkg"]["CATEGORY"]
 	else:
-		cat         = os.path.basename(os.path.normpath(pkg_dir+"/.."))
-	mypv        = os.path.basename(ebuild_path)[:-7]
-	mycpv       = cat+"/"+mypv
-
+		cat = os.path.basename(os.path.normpath(pkg_dir+"/.."))
+	mypv = os.path.basename(ebuild_path)[:-7]	
+	mycpv = cat+"/"+mypv
 	mysplit=pkgsplit(mypv,silent=0)
 	if mysplit==None:
 		writemsg("!!! Error: PF is null '%s'; exiting.\n" % mypv)
 		return 1
-
 	if mydo != "depend":
 		# XXX: We're doing a little hack here to curtain the gvisible locking
 		# XXX: that creates a deadlock... Really need to isolate that.
 		mysettings.reset(use_cache=use_cache)
 	mysettings.setcpv(mycpv,use_cache=use_cache)
-
-	validcommands = ["help","clean","prerm","postrm","preinst","postinst",
-	                "config","setup","depend","fetch","digest",
-	                "unpack","compile","test","install","rpm","qmerge","merge",
-	                "package","unmerge", "manifest"]
-
-	if mydo not in validcommands:
-		validcommands.sort()
-		writemsg("!!! doebuild: '%s' is not one of the following valid commands:" % mydo)
-		for vcount in range(len(validcommands)):
-			if vcount%6 == 0:
-				writemsg("\n!!! ")
-			writemsg(string.ljust(validcommands[vcount], 11))
-		writemsg("\n")
-		return 1
-
-	if not os.path.exists(myebuild):
-		writemsg("!!! doebuild: "+str(myebuild)+" not found for "+str(mydo)+"\n")
-		return 1
 
 	if debug: # Otherwise it overrides emerge's settings.
 		# We have no other way to set debug... debug can't be passed in
@@ -2513,7 +2449,13 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 	mysettings["BUILD_PREFIX"] = mysettings["PORTAGE_TMPDIR"]+"/portage"
 	mysettings["HOME"]         = mysettings["BUILD_PREFIX"]+"/homedir"
 	mysettings["PKG_TMPDIR"]   = mysettings["PORTAGE_TMPDIR"]+"/binpkgs"
-	mysettings["PORTAGE_BUILDDIR"]     = mysettings["BUILD_PREFIX"]+"/"+mysettings["PF"]
+	
+	# Package {pre,post}inst and {pre,post}rm may overlap, so they must have separate
+	# locations in order to prevent interference.
+	if mydo in ("unmerge", "prerm", "postrm", "cleanrm"):
+		mysettings["PORTAGE_BUILDDIR"] = os.path.join(mysettings["PKG_TMPDIR"], mysettings["PF"])
+	else:
+		mysettings["PORTAGE_BUILDDIR"] = os.path.join(mysettings["BUILD_PREFIX"], mysettings["PF"])
 
 	mysettings["PORTAGE_BASHRC"] = EBUILD_SH_ENV_FILE
 
@@ -2530,6 +2472,216 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 		myso=os.uname()[2]
 		mysettings["KVERS"]=myso[1]
 
+def prepare_build_dirs(myroot, mysettings, cleanup):
+
+	if not os.path.exists(mysettings["BUILD_PREFIX"]):
+		os.makedirs(mysettings["BUILD_PREFIX"])
+	apply_secpass_permissions(mysettings["BUILD_PREFIX"],
+	uid=portage_uid, gid=portage_gid, mode=00775)
+
+	# Should be ok again to set $T, as sandbox does not depend on it
+	# XXX Bug.  no way in hell this is valid for clean handling.
+	mysettings["T"]=mysettings["PORTAGE_BUILDDIR"]+"/temp"
+	if cleanup:
+		if os.path.exists(mysettings["T"]):
+			shutil.rmtree(mysettings["T"])
+	if not os.path.exists(mysettings["T"]):
+		os.makedirs(mysettings["T"])
+	apply_secpass_permissions(mysettings["T"],
+	uid=portage_uid, gid=portage_gid, mode=02770)
+
+	logdir = mysettings["T"]+"/logging"
+	if not os.path.exists(logdir):
+		os.makedirs(logdir)
+	apply_secpass_permissions(logdir,
+	uid=portage_uid, gid=portage_gid, mode=0770)
+
+	try: # XXX: negative RESTRICT
+		if not (("nouserpriv" in string.split(mysettings["PORTAGE_RESTRICT"])) or \
+			("userpriv" in string.split(mysettings["PORTAGE_RESTRICT"]))):
+			if ("userpriv" in features) and (portage_uid and portage_gid):
+				if (secpass==2):
+					if os.path.exists(mysettings["HOME"]):
+						# XXX: Potentially bad, but held down by HOME replacement above.
+						spawn("rm -Rf "+mysettings["HOME"],mysettings, free=1)
+					if not os.path.exists(mysettings["HOME"]):
+						os.makedirs(mysettings["HOME"])
+			elif ("userpriv" in features):
+				print "!!! Disabling userpriv from features... Portage UID/GID not valid."
+				del features[features.index("userpriv")]
+	except SystemExit, e:
+		raise
+	except Exception, e:
+		print "!!! Couldn't empty HOME:",mysettings["HOME"]
+		print "!!!",e
+
+	try:
+		# no reason to check for depend since depend returns above.
+		for myvar in ("BUILD_PREFIX", "PORTAGE_BUILDDIR"):
+			if not os.path.exists(mysettings[myvar]):
+				os.makedirs(mysettings[myvar])
+			apply_secpass_permissions(mysettings[myvar],
+			uid=portage_uid, gid=portage_gid)
+	except OSError, e:
+		print "!!! File system problem. (ReadOnly? Out of space?)"
+		print "!!! Perhaps: rm -Rf",mysettings["BUILD_PREFIX"]
+		print "!!!",str(e)
+		return 1
+
+	try:
+		if not os.path.exists(mysettings["HOME"]):
+			os.makedirs(mysettings["HOME"])
+		apply_secpass_permissions(mysettings["HOME"],
+		uid=portage_uid, gid=portage_gid, mode=02770)
+	except OSError, e:
+		print "!!! File system problem. (ReadOnly? Out of space?)"
+		print "!!! Failed to create fake home directory in PORTAGE_BUILDDIR"
+		print "!!!",str(e)
+		return 1
+
+	try:
+		if ("ccache" in features):
+			if (not mysettings.has_key("CCACHE_DIR")) or (mysettings["CCACHE_DIR"]==""):
+				mysettings["CCACHE_DIR"]=mysettings["PORTAGE_TMPDIR"]+"/ccache"
+			if not os.path.exists(mysettings["CCACHE_DIR"]):
+				os.makedirs(mysettings["CCACHE_DIR"])
+			mystat = os.stat(mysettings["CCACHE_DIR"])
+			if ("userpriv" in features):
+				if mystat[stat.ST_UID] != portage_uid or ((mystat[stat.ST_MODE]&02070)!=02070):
+					writemsg("* Adjusting permissions on ccache in %s\n" % mysettings["CCACHE_DIR"])
+					spawn("chgrp -R "+str(portage_gid)+" "+mysettings["CCACHE_DIR"], mysettings, free=1)
+					spawn("chown "+str(portage_uid)+":"+str(portage_gid)+" "+mysettings["CCACHE_DIR"], mysettings, free=1)
+					spawn("chmod -R ug+rw "+mysettings["CCACHE_DIR"], mysettings, free=1)
+					spawn("find "+mysettings["CCACHE_DIR"]+" -type d -exec chmod g+xs \{\} \;", mysettings, free=1)
+			else:
+				if mystat[stat.ST_UID] != 0 or ((mystat[stat.ST_MODE]&02070)!=02070):
+					writemsg("* Adjusting permissions on ccache in %s\n" % mysettings["CCACHE_DIR"])
+					spawn("chgrp -R "+str(portage_gid)+" "+mysettings["CCACHE_DIR"], mysettings, free=1)
+					spawn("chown 0:"+str(portage_gid)+" "+mysettings["CCACHE_DIR"], mysettings, free=1)
+					spawn("chmod -R ug+rw "+mysettings["CCACHE_DIR"], mysettings, free=1)
+					spawn("find "+mysettings["CCACHE_DIR"]+" -type d -exec chmod g+xs \{\} \;", mysettings, free=1)
+	except OSError, e:
+		print "!!! File system problem. (ReadOnly? Out of space?)"
+		print "!!! Perhaps: rm -Rf",mysettings["BUILD_PREFIX"]
+		print "!!!",str(e)
+		return 1
+	try:
+		if "confcache" in features:
+			if not mysettings.has_key("CONFCACHE_DIR"):
+				mysettings["CONFCACHE_DIR"] = os.path.join(mysettings["PORTAGE_TMPDIR"], "confcache")
+			if not os.path.exists(mysettings["CONFCACHE_DIR"]):
+				if not os.getuid() == 0:
+					# we're boned.
+					features.remove("confcache")
+					mysettings["FEATURES"] = " ".join(features)
+				else:
+					os.makedirs(mysettings["CONFCACHE_DIR"], mode=0775)
+					apply_secpass_permissions(mysettings["CONFCACHE_DIR"],
+					gid=portage_gid, mode=0775)
+			else:
+				apply_secpass_permissions(mysettings["CONFCACHE_DIR"],
+				gid=portage_gid, mode=0775)
+
+		# check again, since it may have been disabled.
+		if "confcache" in features:
+			for x in listdir(mysettings["CONFCACHE_DIR"]):
+				p = os.path.join(mysettings["CONFCACHE_DIR"], x)
+				apply_secpass_permissions(p, gid=portage_gid, mode=0660, mask=07000)
+	except OSError, e:
+		print "!!! Failed resetting perms on confcachedir %s" % mysettings["CONFCACHE_DIR"]
+		return 1						
+	#try:
+	#	mystat=os.stat(mysettings["CCACHE_DIR"])
+	#	if (mystat[stat.ST_GID]!=portage_gid) or ((mystat[stat.ST_MODE]&02070)!=02070):
+	#		print "*** Adjusting ccache permissions for portage user..."
+	#		os.chown(mysettings["CCACHE_DIR"],portage_uid,portage_gid)
+	#		os.chmod(mysettings["CCACHE_DIR"],02770)
+	#		spawn("chown -R "+str(portage_uid)+":"+str(portage_gid)+" "+mysettings["CCACHE_DIR"],mysettings, free=1)
+	#		spawn("chmod -R g+rw "+mysettings["CCACHE_DIR"],mysettings, free=1)
+	#except SystemExit, e:
+	#	raise
+	#except:
+	#	pass
+
+	if "distcc" in features:
+		try:
+			if (not mysettings.has_key("DISTCC_DIR")) or (mysettings["DISTCC_DIR"]==""):
+				mysettings["DISTCC_DIR"]=mysettings["PORTAGE_TMPDIR"]+"/portage/.distcc"
+			if not os.path.exists(mysettings["DISTCC_DIR"]):
+				os.makedirs(mysettings["DISTCC_DIR"])
+				apply_secpass_permissions(mysettings["DISTCC_DIR"],
+				uid=portage_uid, gid=portage_gid, mode=02775)
+			for x in ("/lock", "/state"):
+				if not os.path.exists(mysettings["DISTCC_DIR"]+x):
+					os.mkdir(mysettings["DISTCC_DIR"]+x)
+					apply_secpass_permissions(mysettings["DISTCC_DIR"]+x,
+					uid=portage_uid, gid=portage_gid, mode=02775)
+		except OSError, e:
+			writemsg("\n!!! File system problem when setting DISTCC_DIR directory permissions.\n")
+			writemsg(  "!!! DISTCC_DIR="+str(mysettings["DISTCC_DIR"]+"\n"))
+			writemsg(  "!!! "+str(e)+"\n\n")
+			time.sleep(5)
+			features.remove("distcc")
+			mysettings["DISTCC_DIR"]=""
+
+	mysettings["WORKDIR"]=mysettings["PORTAGE_BUILDDIR"]+"/work"
+	mysettings["DEST"]=mysettings["PORTAGE_BUILDDIR"]+"/image/"
+	mysettings["D"]=os.path.join(mysettings["DEST"],portage_const.PREFIX)
+
+	if mysettings.has_key("PORT_LOGDIR"):
+		if not os.access(mysettings["PORT_LOGDIR"],os.F_OK):
+			try:
+				os.mkdir(mysettings["PORT_LOGDIR"])
+			except OSError, e:
+				print "!!! Unable to create PORT_LOGDIR"
+				print "!!!",e
+		if os.access(mysettings["PORT_LOGDIR"]+"/",os.W_OK):
+			try:
+				apply_secpass_permissions(mysettings["PORT_LOGDIR"],
+				uid=portage_uid, gid=portage_gid, mode=02770)
+				if not mysettings.has_key("LOG_PF") or (mysettings["LOG_PF"] != mysettings["PF"]):
+					mysettings["LOG_PF"]=mysettings["PF"]
+					mysettings["LOG_COUNTER"]=str(db[myroot]["vartree"].dbapi.get_counter_tick_core("/"))
+				logfile="%s/%s-%s.log" % (mysettings["PORT_LOGDIR"],mysettings["LOG_COUNTER"],mysettings["LOG_PF"])
+			except OSError, e:
+				mysettings["PORT_LOGDIR"]=""
+				print "!!! Unable to chown/chmod PORT_LOGDIR. Disabling logging."
+				print "!!!",e
+		else:
+			print "!!! Cannot create log... No write access / Does not exist"
+			print "!!! PORT_LOGDIR:",mysettings["PORT_LOGDIR"]
+			mysettings["PORT_LOGDIR"]=""
+
+
+def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,cleanup=0,dbkey=None,use_cache=1,fetchall=0,tree=None):
+	global db, actionmap_deps
+
+	if not tree:
+		dump_traceback("Warning: tree not specified to doebuild")
+		tree = "porttree"
+
+	validcommands = ["help","clean","prerm","postrm","cleanrm","preinst","postinst",
+	                "config","setup","depend","fetch","digest",
+	                "unpack","compile","test","install","rpm","qmerge","merge",
+	                "package","unmerge", "manifest"]
+
+	if mydo not in validcommands:
+		validcommands.sort()
+		writemsg("!!! doebuild: '%s' is not one of the following valid commands:" % mydo)
+		for vcount in range(len(validcommands)):
+			if vcount%6 == 0:
+				writemsg("\n!!! ")
+			writemsg(string.ljust(validcommands[vcount], 11))
+		writemsg("\n")
+		return 1
+
+	if not os.path.exists(myebuild):
+		writemsg("!!! doebuild: "+str(myebuild)+" not found for "+str(mydo)+"\n")
+		return 1
+
+	mystatus = doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, tree)
+	if mystatus:
+		return mystatus
 
 	# get possible slot information from the deps file
 	if mydo=="depend":
@@ -2550,211 +2702,21 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 	# Build directory creation isn't required for any of these.
 	if mydo not in ["fetch","digest","manifest"]:
 
-		if not os.path.exists(mysettings["BUILD_PREFIX"]):
-			os.makedirs(mysettings["BUILD_PREFIX"])
-		if (os.getuid() == 0):
-			os.chown(mysettings["BUILD_PREFIX"],portage_uid,portage_gid)
-			os.chmod(mysettings["BUILD_PREFIX"],00775)
-
-		# Should be ok again to set $T, as sandbox does not depend on it
-		# XXX Bug.  no way in hell this is valid for clean handling.
-		mysettings["T"]=mysettings["PORTAGE_BUILDDIR"]+"/temp"
-		if cleanup:
-			if os.path.exists(mysettings["T"]):
-				shutil.rmtree(mysettings["T"])
-		if not os.path.exists(mysettings["T"]):
-			os.makedirs(mysettings["T"])
-		if (os.getuid() == 0):
-			os.chown(mysettings["T"],portage_uid,portage_gid)
-			os.chmod(mysettings["T"],02770)
-
-		logdir = mysettings["T"]+"/logging"
-		if not os.path.exists(logdir):
-			os.makedirs(logdir)
-		if secpass == 2:
-			os.chown(logdir, portage_uid, portage_gid)
-			os.chmod(logdir, 0770)
-
-		try: # XXX: negative RESTRICT
-			if not (("nouserpriv" in string.split(mysettings["PORTAGE_RESTRICT"])) or \
-			   ("userpriv" in string.split(mysettings["PORTAGE_RESTRICT"]))):
-				if ("userpriv" in features) and (portage_uid and portage_gid):
-					if (secpass==2):
-						if os.path.exists(mysettings["HOME"]):
-							# XXX: Potentially bad, but held down by HOME replacement above.
-							spawn("rm -Rf "+mysettings["HOME"],mysettings, free=1)
-						if not os.path.exists(mysettings["HOME"]):
-							os.makedirs(mysettings["HOME"])
-				elif ("userpriv" in features):
-					print "!!! Disabling userpriv from features... Portage UID/GID not valid."
-					del features[features.index("userpriv")]
-		except SystemExit, e:
-			raise
-		except Exception, e:
-			print "!!! Couldn't empty HOME:",mysettings["HOME"]
-			print "!!!",e
-
-		try:
-			# no reason to check for depend since depend returns above.
-			if not os.path.exists(mysettings["BUILD_PREFIX"]):
-				os.makedirs(mysettings["BUILD_PREFIX"])
-			if (os.getuid() == 0):
-				os.chown(mysettings["BUILD_PREFIX"],portage_uid,portage_gid)
-			if not os.path.exists(mysettings["PORTAGE_BUILDDIR"]):
-				os.makedirs(mysettings["PORTAGE_BUILDDIR"])
-			if (os.getuid() == 0):
-				os.chown(mysettings["PORTAGE_BUILDDIR"],portage_uid,portage_gid)
-		except OSError, e:
-			print "!!! File system problem. (ReadOnly? Out of space?)"
-			print "!!! Perhaps: rm -Rf",mysettings["BUILD_PREFIX"]
-			print "!!!",str(e)
-			return 1
-
-		try:
-			if not os.path.exists(mysettings["HOME"]):
-				os.makedirs(mysettings["HOME"])
-			if (os.getuid() == 0):
-				os.chown(mysettings["HOME"],portage_uid,portage_gid)
-				os.chmod(mysettings["HOME"],02770)
-		except OSError, e:
-			print "!!! File system problem. (ReadOnly? Out of space?)"
-			print "!!! Failed to create fake home directory in PORTAGE_BUILDDIR"
-			print "!!!",str(e)
-			return 1
-
-		try:
-			if ("ccache" in features):
-				if (not mysettings.has_key("CCACHE_DIR")) or (mysettings["CCACHE_DIR"]==""):
-					mysettings["CCACHE_DIR"]=mysettings["PORTAGE_TMPDIR"]+"/ccache"
-				if not os.path.exists(mysettings["CCACHE_DIR"]):
-					os.makedirs(mysettings["CCACHE_DIR"])
-				mystat = os.stat(mysettings["CCACHE_DIR"])
-				if ("userpriv" in features):
-					if mystat[stat.ST_UID] != portage_uid or ((mystat[stat.ST_MODE]&02070)!=02070):
-						writemsg("* Adjusting permissions on ccache in %s\n" % mysettings["CCACHE_DIR"])
-						spawn("chgrp -R "+str(portage_gid)+" "+mysettings["CCACHE_DIR"], mysettings, free=1)
-						spawn("chown "+str(portage_uid)+":"+str(portage_gid)+" "+mysettings["CCACHE_DIR"], mysettings, free=1)
-						spawn("chmod -R ug+rw "+mysettings["CCACHE_DIR"], mysettings, free=1)
-						spawn("find "+mysettings["CCACHE_DIR"]+" -type d -exec chmod g+xs \{\} \;", mysettings, free=1)
-				else:
-					if mystat[stat.ST_UID] != 0 or ((mystat[stat.ST_MODE]&02070)!=02070):
-						writemsg("* Adjusting permissions on ccache in %s\n" % mysettings["CCACHE_DIR"])
-						spawn("chgrp -R "+str(portage_gid)+" "+mysettings["CCACHE_DIR"], mysettings, free=1)
-						spawn("chown 0:"+str(portage_gid)+" "+mysettings["CCACHE_DIR"], mysettings, free=1)
-						spawn("chmod -R ug+rw "+mysettings["CCACHE_DIR"], mysettings, free=1)
-						spawn("find "+mysettings["CCACHE_DIR"]+" -type d -exec chmod g+xs \{\} \;", mysettings, free=1)
-		except OSError, e:
-			print "!!! File system problem. (ReadOnly? Out of space?)"
-			print "!!! Perhaps: rm -Rf",mysettings["BUILD_PREFIX"]
-			print "!!!",str(e)
-			return 1
-		try:
-			if "confcache" in features:
-				if not mysettings.has_key("CONFCACHE_DIR"):
-					mysettings["CONFCACHE_DIR"] = os.path.join(mysettings["PORTAGE_TMPDIR"], "confcache")
-				if not os.path.exists(mysettings["CONFCACHE_DIR"]):
-					if not os.getuid() == 0:
-						# we're boned.
-						features.remove("confcache")
-						mysettings["FEATURES"] = " ".join(features)
-					else:
-						os.makedirs(mysettings["CONFCACHE_DIR"], mode=0775)
-						os.chown(mysettings["CONFCACHE_DIR"], -1, portage_gid)
-				else:
-					st = os.stat(mysettings["CONFCACHE_DIR"])
-					if not (st.st_mode & 07777)  == 0775:
-						os.chmod(mysettings["CONFCACHE_DIR"], 0775)
-					if not st.st_gid == portage_gid:
-						os.chown(mysettings["CONFCACHE_DIR"], -1, portage_gid)
-
-			# check again, since it may have been disabled.
-			if "confcache" in features:
-				for x in listdir(mysettings["CONFCACHE_DIR"]):
-					p = os.path.join(mysettings["CONFCACHE_DIR"], x)
-					st = os.stat(p)
-					if not (st.st_mode & 07777) & 07660 == 0660:
-						os.chmod(p, (st.st_mode & 0777) | 0660)
-					if not st.st_gid == portage_gid:
-						os.chown(p, -1, portage_gid)
-					
-		except OSError, e:
-			print "!!! Failed resetting perms on confcachedir %s" % mysettings["CONFCACHE_DIR"]
-			return 1						
-		#try:
-		#	mystat=os.stat(mysettings["CCACHE_DIR"])
-		#	if (mystat[stat.ST_GID]!=portage_gid) or ((mystat[stat.ST_MODE]&02070)!=02070):
-		#		print "*** Adjusting ccache permissions for portage user..."
-		#		os.chown(mysettings["CCACHE_DIR"],portage_uid,portage_gid)
-		#		os.chmod(mysettings["CCACHE_DIR"],02770)
-		#		spawn("chown -R "+str(portage_uid)+":"+str(portage_gid)+" "+mysettings["CCACHE_DIR"],mysettings, free=1)
-		#		spawn("chmod -R g+rw "+mysettings["CCACHE_DIR"],mysettings, free=1)
-		#except SystemExit, e:
-		#	raise
-		#except:
-		#	pass
-
-		if "distcc" in features:
-			try:
-				if (not mysettings.has_key("DISTCC_DIR")) or (mysettings["DISTCC_DIR"]==""):
-					mysettings["DISTCC_DIR"]=mysettings["PORTAGE_TMPDIR"]+"/portage/.distcc"
-				if not os.path.exists(mysettings["DISTCC_DIR"]):
-					os.makedirs(mysettings["DISTCC_DIR"])
-					os.chown(mysettings["DISTCC_DIR"],portage_uid,portage_gid)
-					os.chmod(mysettings["DISTCC_DIR"],02775)
-				for x in ("/lock", "/state"):
-					if not os.path.exists(mysettings["DISTCC_DIR"]+x):
-						os.mkdir(mysettings["DISTCC_DIR"]+x)
-						os.chown(mysettings["DISTCC_DIR"]+x,portage_uid,portage_gid)
-						os.chmod(mysettings["DISTCC_DIR"]+x,02775)
-			except OSError, e:
-				writemsg("\n!!! File system problem when setting DISTCC_DIR directory permissions.\n")
-				writemsg(  "!!! DISTCC_DIR="+str(mysettings["DISTCC_DIR"]+"\n"))
-				writemsg(  "!!! "+str(e)+"\n\n")
-				time.sleep(5)
-				features.remove("distcc")
-				mysettings["DISTCC_DIR"]=""
-
-		mysettings["WORKDIR"]=mysettings["PORTAGE_BUILDDIR"]+"/work"
-		mysettings["DEST"]=os.path.join(mysettings["PORTAGE_BUILDDIR"],"image")
-		mysettings["D"]=mysettings["PORTAGE_BUILDDIR"]+"/image"+portage_const.PREFIX
-
-		if mysettings.has_key("PORT_LOGDIR"):
-			if not os.access(mysettings["PORT_LOGDIR"],os.F_OK):
-				try:
-					os.mkdir(mysettings["PORT_LOGDIR"])
-				except OSError, e:
-					print "!!! Unable to create PORT_LOGDIR"
-					print "!!!",e
-			if os.access(mysettings["PORT_LOGDIR"]+"/",os.W_OK):
-				try:
-					perms = os.stat(mysettings["PORT_LOGDIR"])
-					if perms[stat.ST_UID] != portage_uid or perms[stat.ST_GID] != portage_gid:
-						os.chown(mysettings["PORT_LOGDIR"],portage_uid,portage_gid)
-					if stat.S_IMODE(perms[stat.ST_MODE]) != 02770:
-						os.chmod(mysettings["PORT_LOGDIR"],02770)
-					if not mysettings.has_key("LOG_PF") or (mysettings["LOG_PF"] != mysettings["PF"]):
-						mysettings["LOG_PF"]=mysettings["PF"]
-						mysettings["LOG_COUNTER"]=str(db[myroot]["vartree"].dbapi.get_counter_tick_core("/"))
-					logfile="%s/%s-%s.log" % (mysettings["PORT_LOGDIR"],mysettings["LOG_COUNTER"],mysettings["LOG_PF"])
-				except OSError, e:
-					mysettings["PORT_LOGDIR"]=""
-					print "!!! Unable to chown/chmod PORT_LOGDIR. Disabling logging."
-					print "!!!",e
-			else:
-				print "!!! Cannot create log... No write access / Does not exist"
-				print "!!! PORT_LOGDIR:",mysettings["PORT_LOGDIR"]
-				mysettings["PORT_LOGDIR"]=""
-
+		mystatus = prepare_build_dirs(myroot, mysettings, cleanup)
+		if mystatus:
+			return mystatus
 		if mydo=="unmerge":
 			return unmerge(mysettings["CATEGORY"],mysettings["PF"],myroot,mysettings)
 
 	# if any of these are being called, handle them -- running them out of the sandbox -- and stop now.
-	if mydo=="clean":
-		logfile=None
-	if mydo in ["help","clean","setup"]:
+	if mydo in ["clean","cleanrm"]:
+		if "noclean" in features:
+			return 0
+		return spawn(EBUILD_SH_BINARY+" clean",mysettings,debug=debug,free=1,logfile=None)
+	elif mydo in ["help","setup"]:
 		return spawn(EBUILD_SH_BINARY+" "+mydo,mysettings,debug=debug,free=1,logfile=logfile)
 	elif mydo == "preinst":
-		mysettings.load_infodir(pkg_dir)
+		mysettings.load_infodir(mysettings["O"])
 		if mysettings.has_key("EMERGE_FROM") and "binary" == mysettings["EMERGE_FROM"]:
 			mysettings["IMAGE"] = os.path.join(mysettings["PKG_TMPDIR"], mysettings["PF"], "bin")
 		else:
@@ -2768,9 +2730,10 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 		del mysettings["IMAGE"]
 		return phase_retval
 	elif mydo in ["prerm","postrm","postinst","config"]:
-		mysettings.load_infodir(pkg_dir)
+		mysettings.load_infodir(mysettings["O"])
 		return spawn(EBUILD_SH_BINARY+" "+mydo,mysettings,debug=debug,free=1,logfile=logfile)
 
+	mycpv = "/".join((mysettings["CATEGORY"], mysettings["PF"]))
 	try:
 		mysettings["SLOT"],mysettings["RESTRICT"] = db["/"]["porttree"].dbapi.aux_get(mycpv,["SLOT","RESTRICT"])
 	except (IOError,KeyError):
@@ -2813,8 +2776,8 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 		mystat=os.stat(mysettings["DISTDIR"]+"/cvs-src")
 		if ((mystat[stat.ST_GID]!=portage_gid) or ((mystat[stat.ST_MODE]&02770)!=02770)) and not listonly:
 			print "*** Adjusting cvs-src permissions for portage user..."
-			os.chown(mysettings["DISTDIR"]+"/cvs-src",0,portage_gid)
-			os.chmod(mysettings["DISTDIR"]+"/cvs-src",02770)
+			apply_secpass_permissions(mysettings["DISTDIR"]+"/cvs-src",
+			uid=0, gid=portage_gid, mode=02770, stat_cached=mystat)
 			spawn("chgrp -R "+str(portage_gid)+" "+mysettings["DISTDIR"]+"/cvs-src", free=1)
 			spawn("chmod -R g+rw "+mysettings["DISTDIR"]+"/cvs-src", free=1)
 	except SystemExit, e:
@@ -2847,8 +2810,7 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 				print "!!! Failed reseting ebuild distdir path, " + edpath
 				raise
 		os.mkdir(edpath)
-		os.chown(edpath, -1, portage_gid)
-		os.chmod(edpath, 0775)
+		apply_secpass_permissions(edpath, gid=portage_gid, mode=0775)
 		try:
 			for file in aalist:
 				os.symlink(os.path.join(orig_distdir, file), os.path.join(edpath, file))
@@ -2887,18 +2849,19 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 		nosandbox = ("sandbox" not in features and "usersandbox" not in features)
 
 	sesandbox = selinux_enabled and "sesandbox" in features
+	ebuild_sh = EBUILD_SH_BINARY + " %s"
+	misc_sh = MISC_SH_BINARY + " dyn_%s"
 
 	# args are for the to spawn function
-	#                     (droppriv,  free,     sesandbox)
 	actionmap = {
-		"depend": {"args":(1,         0,         0)},
-		"setup":  {"args":(0,         1,         0)},
-		"unpack": {"args":(1,         0,         sesandbox)},
-		"compile":{"args":(1,         nosandbox, sesandbox)},
-		"test":   {"args":(1,         nosandbox, sesandbox)},
-		"install":{"args":(0,         0,         sesandbox)},
-		"rpm":    {"args":(0,         0,         0)},
-		"package":{"args":(0,         0,         0)},
+	"depend": {"cmd":ebuild_sh, "args":{"droppriv":1, "free":0,         "sesandbox":0}},
+	"setup":  {"cmd":ebuild_sh, "args":{"droppriv":0, "free":1,         "sesandbox":0}},
+	"unpack": {"cmd":ebuild_sh, "args":{"droppriv":1, "free":0,         "sesandbox":sesandbox}},
+	"compile":{"cmd":ebuild_sh, "args":{"droppriv":1, "free":nosandbox, "sesandbox":sesandbox}},
+	"test":   {"cmd":ebuild_sh, "args":{"droppriv":1, "free":nosandbox, "sesandbox":sesandbox}},
+	"install":{"cmd":ebuild_sh, "args":{"droppriv":0, "free":0,         "sesandbox":sesandbox}},
+	"rpm":    {"cmd":misc_sh,   "args":{"droppriv":0, "free":0,         "sesandbox":0}},
+	"package":{"cmd":misc_sh,   "args":{"droppriv":0, "free":0,         "sesandbox":0}},
 	}
 	
 	# merge the deps in so we have again a 'full' actionmap
@@ -3105,7 +3068,9 @@ def unmerge(cat,pkg,myroot,mysettings,mytrimworld=1):
 	mylink=dblink(cat,pkg,myroot,mysettings,treetype="vartree")
 	if mylink.exists():
 		mylink.unmerge(trimworld=mytrimworld,cleanup=1)
-	mylink.delete()
+		mylink.delete()
+		return 0
+	return 1
 
 def isvalidatom(atom):
 	mycpv_cps = catpkgsplit(dep_getcpv(atom))
@@ -4328,7 +4293,7 @@ class vardbapi(dbapi):
 			origpath=self.root+VDB_PATH+"/"+mycpv
 			if not os.path.exists(origpath):
 				continue
-			writemsg("@")
+			writemsg_stdout("@")
 			if not os.path.exists(self.root+VDB_PATH+"/"+mynewcat):
 				#create the directory
 				os.makedirs(self.root+VDB_PATH+"/"+mynewcat)
@@ -4387,7 +4352,7 @@ class vardbapi(dbapi):
 			if (slot[0]!=origslot):
 				continue
 
-			writemsg("s")
+			writemsg_stdout("s")
 			write_atomic(os.path.join(origpath, "SLOT"), newslot+"\n")
 
 	def cp_list(self,mycp,use_cache=1):
@@ -5287,8 +5252,7 @@ class binarytree(packagetree):
 				continue
 
 			#print ">>> Updating data in:",mycpv
-			sys.stdout.write("%")
-			sys.stdout.flush()
+			writemsg_stdout("%")
 
 			mytbz2 = xpak.tbz2(tbz2path)
 			mydata = mytbz2.get_data()
@@ -5338,8 +5302,7 @@ class binarytree(packagetree):
 			if (slot[0]!=origslot):
 				continue
 
-			sys.stdout.write("S")
-			sys.stdout.flush()
+			writemsg_stdout("S")
 			mydata["SLOT"] = newslot+"\n"
 			mytbz2.recompose_mem(xpak.xpak_mem(mydata))
 		return 1
@@ -5356,7 +5319,7 @@ class binarytree(packagetree):
 				writemsg("!!! Cannot update readonly binary: "+mycpv+"\n")
 				continue
 			#print ">>> Updating binary data:",mycpv
-			writemsg("*")
+			writemsg_stdout("*")
 			mytbz2 = xpak.tbz2(tbz2path)
 			mydata = mytbz2.get_data()
 			updated_items = update_dbentries(update_iter, mydata)
@@ -5668,7 +5631,7 @@ class dblink:
 						masked=len(pmpath)
 		return (protected > masked)
 
-	def unmerge(self,pkgfiles=None,trimworld=1,cleanup=0):
+	def unmerge(self,pkgfiles=None,trimworld=1,cleanup=1):
 		global dircache
 		dircache={}
 
@@ -5699,6 +5662,7 @@ class dblink:
 
 		#do prerm script
 		if myebuildpath and os.path.exists(myebuildpath):
+			# Eventually, we'd like to pass in the saved ebuild env here...
 			a=doebuild(myebuildpath,"prerm",self.myroot,self.settings,cleanup=cleanup,use_cache=0,tree=self.treetype)
 			# XXX: Decide how to handle failures here.
 			if a != 0:
@@ -5864,8 +5828,7 @@ class dblink:
 			if a != 0:
 				writemsg("!!! FAILED postrm: "+str(a)+"\n")
 				sys.exit(123)
-			if "noclean" not in features:
-				doebuild(myebuildpath, "clean", self.myroot, self.settings, cleanup=cleanup, tree=self.treetype)
+			doebuild(myebuildpath, "cleanrm", self.myroot, self.settings, tree=self.treetype)
 		self.unlockdb()
 
 	def isowner(self,filename,destroot):
@@ -6103,8 +6066,7 @@ class dblink:
 
 		# Process ebuild logfiles
 		elog_process(self.mycpv, self.settings)
-		if "noclean" not in features:
-			doebuild(myebuild, "clean", root, self.settings, tree=self.treetype)
+		doebuild(myebuild, "clean", root, self.settings, tree=self.treetype)
 		return 0
 
 	def mergeme(self,srcroot,destroot,outfile,secondhand,stufftomerge,cfgfiledict,thismtime):
@@ -6908,13 +6870,13 @@ def global_updates():
 		myupd = []
 		timestamps = {}
 		for mykey, mystat, mycontent in update_data:
-			writemsg("\n\n")
-			writemsg(green("Performing Global Updates: ")+bold(mykey)+"\n")
-			writemsg("(Could take a couple of minutes if you have a lot of binary packages.)\n")
-			writemsg("  "+bold(".")+"='update pass'  "+bold("*")+"='binary update'  "+bold("@")+"='/var/db move'\n"+"  "+bold("s")+"='/var/db SLOT move' "+bold("S")+"='binary SLOT move' "+bold("p")+"='update /etc/portage/package.*'\n")
+			writemsg_stdout("\n\n")
+			writemsg_stdout(green("Performing Global Updates: ")+bold(mykey)+"\n")
+			writemsg_stdout("(Could take a couple of minutes if you have a lot of binary packages.)\n")
+			writemsg_stdout("  "+bold(".")+"='update pass'  "+bold("*")+"='binary update'  "+bold("@")+"='/var/db move'\n"+"  "+bold("s")+"='/var/db SLOT move' "+bold("S")+"='binary SLOT move' "+bold("p")+"='update /etc/portage/package.*'\n")
 			valid_updates, errors = parse_updates(mycontent)
 			myupd.extend(valid_updates)
-			print len(valid_updates) * "."
+			writemsg_stdout(len(valid_updates) * "." + "\n")
 			if len(errors) == 0:
 				# Update our internal mtime since we
 				# processed all of our directives.
@@ -6961,9 +6923,9 @@ def global_updates():
 		do_vartree(settings)
 		if do_upgrade_packagesmessage and \
 			listdir(os.path.join(settings["PKGDIR"], "All"), EmptyOnError=1):
-			writemsg(" ** Skipping packages. Run 'fixpackages' or set it in FEATURES to fix the")
-			writemsg("\n    tbz2's in the packages directory. "+bold("Note: This can take a very long time."))
-			writemsg("\n")
+			writemsg_stdout(" ** Skipping packages. Run 'fixpackages' or set it in FEATURES to fix the")
+			writemsg_stdout("\n    tbz2's in the packages directory. "+bold("Note: This can take a very long time."))
+			writemsg_stdout("\n")
 
 if (secpass==2) and (not os.environ.has_key("SANDBOX_ACTIVE")):
 	if settings["PORTAGE_CALLER"] in ["emerge","fixpackages"]:
