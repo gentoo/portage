@@ -50,8 +50,6 @@ INCREMENTALS=["USE","USE_EXPAND","USE_EXPAND_HIDDEN","FEATURES","ACCEPT_KEYWORDS
 STICKIES=["KEYWORDS_ACCEPT","USE","CFLAGS","CXXFLAGS","MAKEOPTS","EXTRA_ECONF","EXTRA_EINSTALL","EXTRA_EMAKE"]
 EBUILD_PHASES			= ["setup","unpack","compile","test","install","preinst","postinst","prerm","postrm"]
 
-DEFAULT_PATH = ":".join(map(lambda x: os.path.normpath(os.path.join(PREFIX, x)), ["sbin", "usr/sbin", "bin", "usr/bin"]))
-
 EAPI = "prefix"
 
 HASHING_BLOCKSIZE		= 32768
