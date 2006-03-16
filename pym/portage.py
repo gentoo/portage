@@ -1576,6 +1576,12 @@ class config:
 				return 1
 		return 0
 
+	def __contains__(self, mykey):
+		"""Called to implement membership test operators (in and not in)."""
+		if self.has_key(mykey):
+			return True
+		return False
+
 	def keys(self):
 		mykeys=[]
 		for x in self.lookuplist:
