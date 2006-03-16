@@ -278,6 +278,7 @@ diefunc() {
 	echo "!!! If you need support, post the topmost build error, and the call stack if relevant." >&2
 	echo >&2
 	if [ "${EBUILD_PHASE/depend}" == "${EBUILD_PHASE}" ]; then
+		local x
 		for x in $EBUILD_DEATH_HOOKS; do
 			${x} "$@" >&2 1>&2
 		done
@@ -438,6 +439,7 @@ strip_duplicate_slashes () {
 }
 
 econf() {
+	local x
 	local LOCAL_EXTRA_ECONF="${EXTRA_ECONF}"
 
 	if [ -z "${ECONF_SOURCE}" ]; then
@@ -445,7 +447,6 @@ econf() {
 	fi
 	if [ -x "${ECONF_SOURCE}/configure" ]; then
 		if [ -e /usr/share/gnuconfig/ ]; then
-			local x
 			for x in $(find "${WORKDIR}" -type f '(' -name config.guess -o -name config.sub ')') ; do
 				echo " * econf: updating ${x/${WORKDIR}\/} with /usr/share/gnuconfig/${x##*/}"
 				cp -f /usr/share/gnuconfig/${x##*/} ${x}
@@ -485,7 +486,7 @@ econf() {
 			[ "${CONF_LIBDIR:0:1}" != "/" ] && CONF_LIBDIR="/${CONF_LIBDIR}"
 
 			CONF_LIBDIR_RESULT="${CONF_PREFIX}${CONF_LIBDIR}"
-			for X in 1 2 3; do
+			for x in 1 2 3; do
 				# The escaping is weird. It will break if you escape the last one.
 				CONF_LIBDIR_RESULT="${CONF_LIBDIR_RESULT//\/\///}"
 			done
@@ -908,6 +909,7 @@ dyn_compile() {
 		echo "!!! that you know what you are doing... You have 5 seconds to abort..."
 		echo
 
+		local x
 		for x in 1 2 3 4 5 6 7 8; do
 			echo -ne "\a"
 			LC_ALL=C sleep 0.25
