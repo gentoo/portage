@@ -576,15 +576,14 @@ pkg_nofetch() {
 	[ -z "${SRC_URI}" ] && return
 
 	echo "!!! The following are listed in SRC_URI for ${PN}:"
-	for MYFILE in `echo ${SRC_URI}`; do
-		echo "!!!   $MYFILE"
+	local x
+	for x in `echo ${SRC_URI}`; do
+		echo "!!!   ${x}"
 	done
 }
 
 src_unpack() {
-	if [ "${A}" != "" ]; then
-		unpack ${A}
-	fi
+	[[ -n ${A} ]] && unpack ${A}
 }
 
 src_compile() {
@@ -642,13 +641,11 @@ pkg_config() {
 
 # Used to generate the /lib/cpp and /usr/bin/cc wrappers
 gen_wrapper() {
-	cat > $1 << END
-#!/bin/sh
-
-$2 "\$@"
-END
-
-	chmod 0755 $1
+	cat > "$1" <<-EOF
+	#!/bin/sh
+	exec $2 "\$@"
+	EOF
+	chmod 0755 "$1"
 }
 
 dyn_setup() {
@@ -1009,8 +1006,8 @@ dyn_install() {
 
 dyn_preinst() {
 	if [ -z "$IMAGE" ]; then
-			eerror "${FUNCNAME}: IMAGE is unset"
-			return 1
+		eerror "${FUNCNAME}: IMAGE is unset"
+		return 1
 	fi
 
 	[ "$(type -t pre_pkg_preinst)" == "function" ] && pre_pkg_preinst
@@ -1220,7 +1217,7 @@ inherit() {
 
 		shift
 	done
-	ECLASS_DEPTH=$(($ECLASS_DEPTH - 1))
+	((--ECLASS_DEPTH))
 }
 
 # Exports stub functions that call the eclass's functions, thereby making them default.
