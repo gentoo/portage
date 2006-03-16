@@ -103,10 +103,7 @@ esyslog() {
 
 
 use() {
-	if useq ${1}; then
-		return 0
-	fi
-	return 1
+	useq ${1}
 }
 
 usev() {
@@ -118,64 +115,41 @@ usev() {
 }
 
 useq() {
-	local u="${1}"
-	local neg=0
-	if [ "${u:0:1}" == "!" ]; then
-		u="${u:1}"
-		neg=1
+	local u=$1
+	local found=0
+
+	# if we got something like '!flag', then invert the return value
+	if [[ ${u:0:1} == "!" ]] ; then
+		u=${u:1}
+		found=1
 	fi
-	local x
 
 	# Make sure we have this USE flag in IUSE
 	if ! hasq "${u}" ${IUSE} ${E_IUSE} && ! hasq "${u}" ${PORTAGE_ARCHLIST} selinux; then
 		echo "QA Notice: USE Flag '${u}' not in IUSE for ${CATEGORY}/${PF}" >&2
 	fi
 
-	for x in ${USE}; do
-		if [ "${x}" == "${u}" ]; then
-			if [ ${neg} -eq 1 ]; then
-				return 1
-			else
-				return 0
-			fi
-		fi
-	done
-	if [ ${neg} -eq 1 ]; then
-		return 0
+	if [[ " ${USE} " == *" ${u} "* ]] ; then
+		return ${found}
 	else
-		return 1
+		return $((!found))
 	fi
 }
 
 has() {
-	if hasq "$@"; then
-		return 0
-	fi
-	return 1
+	hasq "$@"
 }
 
 hasv() {
-	if hasq "$@"; then
-		echo "${1}"
+	if hasq "$@" ; then
+		echo "$1"
 		return 0
 	fi
 	return 1
 }
 
 hasq() {
-	local x
-
-	local me=$1
-	shift
-
-	# All the TTY checks really only help out depend. Which is nice.
-	# Logging kills all this anyway. Everything becomes a pipe. --NJ
-	for x in "$@"; do
-		if [ "${x}" == "${me}" ]; then
-			return 0
-		fi
-	done
-	return 1
+	[[ " ${*:2} " == *" $1 "* ]]
 }
 
 has_version() {
