@@ -395,7 +395,7 @@ unpack() {
 			tgz)
 				tar xzf "${srcdir}${x}" ${tarvars} || die "$myfail"
 				;;
-			tbz2)
+			tbz|tbz2)
 				bzip2 -dc "${srcdir}${x}" | tar xf - ${tarvars}
 				assert "$myfail"
 				;;
@@ -422,6 +422,9 @@ unpack() {
 				;;
 			LHa|LHA|lha|lzh)
 				lha xqf "${srcdir}/${x}" || die "$myfail"
+				;;
+			a|deb)
+				ar x "${srcdir}/${x}" || die "$myfail"
 				;;
 			*)
 				echo "unpack ${x}: file format not recognized. Ignoring."
