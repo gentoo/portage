@@ -1928,9 +1928,14 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					myfetch=string.replace(locfetch,"${URI}",loc)
 					myfetch=string.replace(myfetch,"${FILE}",myfile)
 					try:
-						myret = spawn(myfetch, mysettings, free=1,
-							droppriv=("userfetch" in mysettings.features),
-							sesandbox=selinux_enabled)
+						if selinux_enabled:
+							con = selinux.getcontext()
+							con = string.replace(con, mysettings["PORTAGE_T"], mysettings["PORTAGE_FETCH_T"])
+							selinux.setexec(con)
+							myret = spawn(myfetch, mysettings, free=1, droppriv=("userfetch" in mysettings.features))
+							selinux.setexec(None)
+						else:
+							myret = spawn(myfetch, mysettings, free=1, droppriv=("userfetch" in mysettings.features))
 					finally:
 						#if root, -always- set the perms.
 						if os.path.exists(mysettings["DISTDIR"]+"/"+myfile) and (fetched != 1 or os.getuid() == 0) \
