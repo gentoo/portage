@@ -714,8 +714,10 @@ dyn_unpack() {
 		fi
 	fi
 
-	install -m0700 -d "${WORKDIR}" || die "Failed to create dir '${WORKDIR}'"
-	[ -d "$WORKDIR" ] && cd "${WORKDIR}"
+	if [ ! -d "${WORKDIR}" ]; then
+		install -m${PORTAGE_WORKDIR_MODE-0700} -d "${WORKDIR}" || die "Failed to create dir '${WORKDIR}'"
+	fi
+	cd "${WORKDIR}" || die "Directory change failed: \`cd '${WORKDIR}'\`"
 	echo ">>> Unpacking source..."
 	src_unpack
 	touch "${PORTAGE_BUILDDIR}/.unpacked" || die "IO Failure -- Failed 'touch .unpacked' in ${PORTAGE_BUILDDIR}"

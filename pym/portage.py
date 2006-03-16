@@ -2624,6 +2624,23 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 	mysettings["WORKDIR"]=mysettings["PORTAGE_BUILDDIR"]+"/work"
 	mysettings["D"]=mysettings["PORTAGE_BUILDDIR"]+"/image/"
 
+	workdir_mode = 0700
+	try:
+		workdir_mode = int(eval(mysettings["PORTAGE_WORKDIR_MODE"]))
+		if workdir_mode & 07777 != workdir_mode:
+			raise ValueError("Invalid file mode: %s" % mysettings["PORTAGE_WORKDIR_MODE"])
+	except KeyError, e:
+		writemsg("!!! PORTAGE_WORKDIR_MODE is unset, using %s." % oct(workdir_mode))
+	except ValueError, e:
+		writemsg("%s\n" % e)
+		writemsg("!!! Unable to parse PORTAGE_WORKDIR_MODE='%s', using %s.\n" % \
+		(mysettings["PORTAGE_WORKDIR_MODE"], oct(workdir_mode)))
+	try:
+		apply_secpass_permissions(mysettings["WORKDIR"],
+		uid=portage_uid, gid=portage_gid, mode=workdir_mode)
+	except portage_exception.FileNotFound:
+		pass # ebuild.sh will create it
+
 	if mysettings.has_key("PORT_LOGDIR"):
 		if not os.access(mysettings["PORT_LOGDIR"],os.F_OK):
 			try:
