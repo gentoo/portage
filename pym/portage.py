@@ -2454,6 +2454,10 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, t
 	else:
 		mysettings["PORTAGE_BUILDDIR"] = os.path.join(mysettings["BUILD_PREFIX"], mysettings["PF"])
 
+	mysettings["WORKDIR"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "work")
+	mysettings["D"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "image") + os.sep
+	mysettings["T"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "temp")
+
 	mysettings["PORTAGE_BASHRC"] = EBUILD_SH_ENV_FILE
 
 	#set up KV variable -- DEP SPEEDUP :: Don't waste time. Keep var persistent.
@@ -2476,9 +2480,8 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 	apply_secpass_permissions(mysettings["BUILD_PREFIX"],
 	uid=portage_uid, gid=portage_gid, mode=00775)
 
-	# Should be ok again to set $T, as sandbox does not depend on it
-	# XXX Bug.  no way in hell this is valid for clean handling.
-	mysettings["T"]=mysettings["PORTAGE_BUILDDIR"]+"/temp"
+	# We enable cleanup when we want to make sure old cruft (such as the old
+	# environment) doesn't interfere with the current phase.
 	if cleanup:
 		if os.path.exists(mysettings["T"]):
 			shutil.rmtree(mysettings["T"])
@@ -2620,9 +2623,6 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 			time.sleep(5)
 			features.remove("distcc")
 			mysettings["DISTCC_DIR"]=""
-
-	mysettings["WORKDIR"]=mysettings["PORTAGE_BUILDDIR"]+"/work"
-	mysettings["D"]=mysettings["PORTAGE_BUILDDIR"]+"/image/"
 
 	workdir_mode = 0700
 	try:
