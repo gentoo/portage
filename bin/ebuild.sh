@@ -819,50 +819,28 @@ docinto() {
 }
 
 insopts() {
-	INSOPTIONS=""
-	for x in $*; do
-		#if we have a debug build, let's not strip anything
-		if hasq nostrip $FEATURES $RESTRICT && [ "$x" == "-s" ]; then
-			continue
-		else
-			INSOPTIONS="$INSOPTIONS $x"
-		fi
-	done
-	export INSOPTIONS
+	export INSOPTIONS="$@"
+
+	# `install` should never be called with '-s' ...
+	[[ " ${INSOPTIONS} " == *" -s "* ]] && die "Never call insopts() with -s"
 }
 
 diropts() {
-	DIROPTIONS=""
-	for x in $*; do
-		DIROPTIONS="${DIROPTIONS} $x"
-	done
-	export DIROPTIONS
+	export DIROPTIONS="$@"
 }
 
 exeopts() {
-	EXEOPTIONS=""
-	for x in $*; do
-		#if we have a debug build, let's not strip anything
-		if hasq nostrip $FEATURES $RESTRICT && [ "$x" == "-s" ]; then
-			continue
-		else
-			EXEOPTIONS="$EXEOPTIONS $x"
-		fi
-	done
-	export EXEOPTIONS
+	export EXEOPTIONS="$@"
+
+	# `install` should never be called with '-s' ...
+	[[ " ${EXEOPTIONS} " == *" -s "* ]] && die "Never call exeopts() with -s"
 }
 
 libopts() {
-	LIBOPTIONS=""
-	for x in $*; do
-		#if we have a debug build, let's not strip anything
-		if hasq nostrip $FEATURES $RESTRICT && [ "$x" == "-s" ]; then
-			continue
-		else
-			LIBOPTIONS="$LIBOPTIONS $x"
-		fi
-	done
-	export LIBOPTIONS
+	export LIBOPTIONS="$@"
+
+	# `install` should never be called with '-s' ...
+	[[ " ${LIBOPTIONS} " == *" -s "* ]] && die "Never call libopts() with -s"
 }
 
 abort_handler() {
@@ -984,7 +962,10 @@ dyn_compile() {
 	bzip2 -9 environment
 
 	cp "${EBUILD}" "${PF}.ebuild"
-	if hasq nostrip $FEATURES $RESTRICT; then
+	if [[ " ${FEATURES} " == *" nostrip "* ]] || \
+	   [[ " ${RESTRICT} " == *" nostrip "* ]] || \
+	   [[ " ${RESTRICT} " == *" strip "* ]]
+	then
 		touch DEBUGBUILD
 	fi
 
@@ -1103,7 +1084,10 @@ dyn_help() {
 	echo "  c++ flags   : ${CXXFLAGS}"
 	echo "  make flags  : ${MAKEOPTS}"
 	echo -n "  build mode  : "
-	if hasq nostrip $FEATURES $RESTRICT; then
+	if [[ " ${FEATURES} " == *" nostrip "* ]] || \
+	   [[ " ${RESTRICT} " == *" nostrip "* ]] || \
+	   [[ " ${RESTRICT} " == *" strip "* ]]
+	then
 		echo "debug (large)"
 	else
 		echo "production (stripped)"
@@ -1475,10 +1459,15 @@ fi
 # We need to turn off pathname expansion for -* in KEYWORDS and
 # we need to escape ~ to avoid tilde expansion
 set -f
-KEYWORDS="`eval echo ${KEYWORDS//~/\\~}`"
+KEYWORDS=$(eval echo ${KEYWORDS//~/\\~})
 set +f
 
-hasq nostrip ${RESTRICT} && export DEBUGBUILD=1
+if [[ " ${FEATURES} " == *" nostrip "* ]] || \
+   [[ " ${RESTRICT} " == *" nostrip "* ]] || \
+   [[ " ${RESTRICT} " == *" strip "* ]]
+then
+	export DEBUGBUILD=1
+fi
 
 #a reasonable default for $S
 if [ "$S" = "" ]; then
