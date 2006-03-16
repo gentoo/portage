@@ -1071,17 +1071,10 @@ class depgraph:
 				elif not "--oneshot" in myopts:
 					myfavorites.append(mykey)
 			else:
-				testkey = portage.dep_getkey(x)
-				if testkey.startswith("null/"):
-					testatom = x.replace(testkey[5:], "cat/"+testkey[5:])
-				elif "/" not in x:
-					testatom = "cat/"+x
-				else:
-					testatom = x
-				if not portage.isvalidatom(testatom):
-					print ("\n\n!!! '%s' is not a valid package atom." % x)
-					print "!!! Please check ebuild(5) for full details."
-					print "!!! (Did you specify a version but forget to prefix with '='?)"
+				if not is_valid_package_atom(x):
+					portage.writemsg("\n\n!!! '%s' is not a valid package atom.\n" % x)
+					portage.writemsg("!!! Please check ebuild(5) for full details.\n")
+					portage.writemsg("!!! (Did you specify a version but forget to prefix with '='?)\n")
 					return (0,[])
 				try:
 					mykey=portage.dep_expand(x,mydb=portage.portdb)
@@ -2467,6 +2460,16 @@ def chk_updated_cfg_files():
 			print " "+yellow("*")+" Type "+green("emerge --help config")+" to learn how to update config files."
 		print
 
+def is_valid_package_atom(x):
+	testkey = portage.dep_getkey(x)
+	if testkey.startswith("null/"):
+		testatom = x.replace(testkey[5:], "cat/"+testkey[5:])
+	elif "/" not in x:
+		testatom = "cat/"+x
+	else:
+		testatom = x
+	return portage.isvalidatom(testatom)
+
 # general options that should be taken into account before any action
 if "--debug" in myopts:
 	edebug=1
@@ -2886,7 +2889,11 @@ elif "config"==myaction:
 	if len(myfiles) != 1 or "system" in myfiles or "world" in myfiles:
 		print red("!!! config can only take a single package atom at this time\n")
 		sys.exit(1)
-
+	if not is_valid_package_atom(myfiles[0]):
+		portage.writemsg("!!! '%s' is not a valid package atom.\n" % myfiles[0])
+		portage.writemsg("!!! Please check ebuild(5) for full details.\n")
+		portage.writemsg("!!! (Did you specify a version but forget to prefix with '='?)\n")
+		sys.exit(1)
 	print
 	pkgs = portage.db[portage.root]["vartree"].dbapi.match(myfiles[0])
 	if len(pkgs) == 0:
