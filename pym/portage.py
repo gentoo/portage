@@ -1579,6 +1579,10 @@ class config:
 				return 1
 		return 0
 
+	def __contains__(self, mykey):
+		"""Called to implement membership test operators (in and not in)."""
+		return bool(self.has_key(mykey))
+
 	def keys(self):
 		mykeys=[]
 		for x in self.lookuplist:
@@ -1931,9 +1935,14 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					myfetch=string.replace(locfetch,"${URI}",loc)
 					myfetch=string.replace(myfetch,"${FILE}",myfile)
 					try:
-						myret = spawn(myfetch, mysettings, free=1,
-							droppriv=("userfetch" in mysettings.features),
-							sesandbox=selinux_enabled)
+						if selinux_enabled:
+							con = selinux.getcontext()
+							con = string.replace(con, mysettings["PORTAGE_T"], mysettings["PORTAGE_FETCH_T"])
+							selinux.setexec(con)
+							myret = spawn(myfetch, mysettings, free=1, droppriv=("userfetch" in mysettings.features))
+							selinux.setexec(None)
+						else:
+							myret = spawn(myfetch, mysettings, free=1, droppriv=("userfetch" in mysettings.features))
 					finally:
 						#if root, -always- set the perms.
 						if os.path.exists(mysettings["DISTDIR"]+"/"+myfile) and (fetched != 1 or os.getuid() == 0) \
@@ -2457,6 +2466,11 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, t
 	else:
 		mysettings["PORTAGE_BUILDDIR"] = os.path.join(mysettings["BUILD_PREFIX"], mysettings["PF"])
 
+	mysettings["WORKDIR"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "work")
+	mysettings["DEST"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "image") + os.sep
+	mysettings["D"] = os.path.normpath(mysettings["DEST"]+portage_const.PREFIX)
+	mysettings["T"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "temp")
+
 	mysettings["PORTAGE_BASHRC"] = EBUILD_SH_ENV_FILE
 
 	#set up KV variable -- DEP SPEEDUP :: Don't waste time. Keep var persistent.
@@ -2479,9 +2493,8 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 	apply_secpass_permissions(mysettings["BUILD_PREFIX"],
 	uid=portage_uid, gid=portage_gid, mode=00775)
 
-	# Should be ok again to set $T, as sandbox does not depend on it
-	# XXX Bug.  no way in hell this is valid for clean handling.
-	mysettings["T"]=mysettings["PORTAGE_BUILDDIR"]+"/temp"
+	# We enable cleanup when we want to make sure old cruft (such as the old
+	# environment) doesn't interfere with the current phase.
 	if cleanup:
 		if os.path.exists(mysettings["T"]):
 			shutil.rmtree(mysettings["T"])
@@ -2565,93 +2578,135 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 		print "!!! Perhaps: rm -Rf",mysettings["BUILD_PREFIX"]
 		print "!!!",str(e)
 		return 1
-	try:
-		if "confcache" in features:
-			if not mysettings.has_key("CONFCACHE_DIR"):
-				mysettings["CONFCACHE_DIR"] = os.path.join(mysettings["PORTAGE_TMPDIR"], "confcache")
-			if not os.path.exists(mysettings["CONFCACHE_DIR"]):
-				if not os.getuid() == 0:
-					# we're boned.
-					features.remove("confcache")
-					mysettings["FEATURES"] = " ".join(features)
-				else:
-					os.makedirs(mysettings["CONFCACHE_DIR"], mode=0775)
-					apply_secpass_permissions(mysettings["CONFCACHE_DIR"],
-					gid=portage_gid, mode=0775)
-			else:
-				apply_secpass_permissions(mysettings["CONFCACHE_DIR"],
-				gid=portage_gid, mode=0775)
 
-		# check again, since it may have been disabled.
-		if "confcache" in features:
+	if "confcache" in features:
+		confcache_enabled = True
+		if "CONFCACHE_DIR" not in mysettings:
+			mysettings["CONFCACHE_DIR"] = os.path.join(mysettings["PORTAGE_TMPDIR"], "confcache")
+		confcache_dir_mode = 0775
+
+		try:
+			os.makedirs(mysettings["CONFCACHE_DIR"], mode=confcache_dir_mode)
+		except OSError, oe:
+			if oe.errno == errno.EEXIST:
+				pass
+			elif errno == errno.EPERM:
+				writemsg("Operation Not Permitted: makedirs(%s, mode=%s)\n" % (mysettings["CONFCACHE_DIR"], oct(confcache_dir_mode)))
+				confcache_enabled = False
+
+		if confcache_enabled:
+			try:
+				confcache_enabled = apply_secpass_permissions(
+					mysettings["CONFCACHE_DIR"],
+					gid=portage_gid, mode=confcache_dir_mode)
+			except portage_exception.OperationNotPermitted, e:
+				writemsg("Operation Not Permitted: %s\n" % str(e))
+				confcache_enabled = False
+
+		del confcache_dir_mode
+
+		if confcache_enabled:
 			for x in listdir(mysettings["CONFCACHE_DIR"]):
-				p = os.path.join(mysettings["CONFCACHE_DIR"], x)
-				apply_secpass_permissions(p, gid=portage_gid, mode=0660, mask=07000)
-	except OSError, e:
-		print "!!! Failed resetting perms on confcachedir %s" % mysettings["CONFCACHE_DIR"]
-		return 1						
-	#try:
-	#	mystat=os.stat(mysettings["CCACHE_DIR"])
-	#	if (mystat[stat.ST_GID]!=portage_gid) or ((mystat[stat.ST_MODE]&02070)!=02070):
-	#		print "*** Adjusting ccache permissions for portage user..."
-	#		os.chown(mysettings["CCACHE_DIR"],portage_uid,portage_gid)
-	#		os.chmod(mysettings["CCACHE_DIR"],02770)
-	#		spawn("chown -R "+str(portage_uid)+":"+str(portage_gid)+" "+mysettings["CCACHE_DIR"],mysettings, free=1)
-	#		spawn("chmod -R g+rw "+mysettings["CCACHE_DIR"],mysettings, free=1)
-	#except SystemExit, e:
-	#	raise
-	#except:
-	#	pass
+				cache_file = os.path.join(mysettings["CONFCACHE_DIR"], x)
+				try:
+					confcache_enabled = apply_secpass_permissions(cache_file, gid=portage_gid, mode=0660, mask=07000)
+				except portage_exception.OperationNotPermitted, e:
+					writemsg("Operation Not Permitted: %s\n" % str(e))
+					confcache_enabled = False
+				except portage_exception.FileNotFound, e:
+					writemsg("File Not Found: %s\n" % str(e))
+
+		if not confcache_enabled:
+			writemsg("!!! Failed resetting perms on confcachedir %s\n" % mysettings["CONFCACHE_DIR"])
+			features.remove("confcache")
+			mysettings["FEATURES"] = " ".join(features)
 
 	if "distcc" in features:
-		try:
-			if (not mysettings.has_key("DISTCC_DIR")) or (mysettings["DISTCC_DIR"]==""):
-				mysettings["DISTCC_DIR"]=mysettings["PORTAGE_TMPDIR"]+"/portage/.distcc"
-			if not os.path.exists(mysettings["DISTCC_DIR"]):
-				os.makedirs(mysettings["DISTCC_DIR"])
-				apply_secpass_permissions(mysettings["DISTCC_DIR"],
+		
+		distcc_enabled = True
+
+		if "DISTCC_DIR" not in mysettings or "" == mysettings["DISTCC_DIR"]:
+			mysettings["DISTCC_DIR"] = os.path.join(mysettings["BUILD_PREFIX"], ".distcc")
+		for x in ("", "lock", "state"):
+			mydir = os.path.join(mysettings["DISTCC_DIR"], x)
+			try:
+				os.makedirs(mydir)
+			except OSError, oe:
+				if errno.EEXIST == oe.errno:
+					pass
+				elif errno.EPERM == oe.errno:
+					distcc_enabled = False
+					break
+				else:
+					raise
+			try:
+				distcc_enabled = apply_secpass_permissions(mydir,
 				uid=portage_uid, gid=portage_gid, mode=02775)
-			for x in ("/lock", "/state"):
-				if not os.path.exists(mysettings["DISTCC_DIR"]+x):
-					os.mkdir(mysettings["DISTCC_DIR"]+x)
-					apply_secpass_permissions(mysettings["DISTCC_DIR"]+x,
-					uid=portage_uid, gid=portage_gid, mode=02775)
-		except OSError, e:
+			except portage_exception.OperationNotPermitted, e:
+				writemsg("Operation Not Permitted: %s\n" % str(e))
+				distcc_enabled = False
+				break
+
+		if not distcc_enabled:
 			writemsg("\n!!! File system problem when setting DISTCC_DIR directory permissions.\n")
 			writemsg(  "!!! DISTCC_DIR="+str(mysettings["DISTCC_DIR"]+"\n"))
-			writemsg(  "!!! "+str(e)+"\n\n")
 			time.sleep(5)
 			features.remove("distcc")
+			mysettings["FEATURES"] = " ".join(features)
 			mysettings["DISTCC_DIR"]=""
 
-	mysettings["WORKDIR"]=mysettings["PORTAGE_BUILDDIR"]+"/work"
-	mysettings["DEST"]=mysettings["PORTAGE_BUILDDIR"]+"/image/"
-	mysettings["D"]=os.path.join(mysettings["DEST"],portage_const.PREFIX)
+	workdir_mode = 0700
+	try:
+		workdir_mode = int(eval(mysettings["PORTAGE_WORKDIR_MODE"]))
+		if workdir_mode & 07777 != workdir_mode:
+			raise ValueError("Invalid file mode: %s" % mysettings["PORTAGE_WORKDIR_MODE"])
+	except KeyError, e:
+		writemsg("!!! PORTAGE_WORKDIR_MODE is unset, using %s." % oct(workdir_mode))
+	except ValueError, e:
+		writemsg("%s\n" % e)
+		writemsg("!!! Unable to parse PORTAGE_WORKDIR_MODE='%s', using %s.\n" % \
+		(mysettings["PORTAGE_WORKDIR_MODE"], oct(workdir_mode)))
+	try:
+		apply_secpass_permissions(mysettings["WORKDIR"],
+		uid=portage_uid, gid=portage_gid, mode=workdir_mode)
+	except portage_exception.FileNotFound:
+		pass # ebuild.sh will create it
 
-	if mysettings.has_key("PORT_LOGDIR"):
-		if not os.access(mysettings["PORT_LOGDIR"],os.F_OK):
+	if "PORT_LOGDIR" in mysettings:
+		logging_enabled = True
+
+		try:
+			os.makedirs(mysettings["PORT_LOGDIR"])
+		except OSError, oe:
+			if errno.EEXIST == oe.errno:
+				pass
+			elif errno.EPERM == oe.errno:
+				writemsg("!!! Unable to create PORT_LOGDIR\n")
+				writemsg("!!! %s\n" % str(oe))
+				logging_enabled = False
+			else:
+				raise
+
+		if logging_enabled:
 			try:
-				os.mkdir(mysettings["PORT_LOGDIR"])
-			except OSError, e:
-				print "!!! Unable to create PORT_LOGDIR"
-				print "!!!",e
-		if os.access(mysettings["PORT_LOGDIR"]+"/",os.W_OK):
-			try:
-				apply_secpass_permissions(mysettings["PORT_LOGDIR"],
-				uid=portage_uid, gid=portage_gid, mode=02770)
-				if not mysettings.has_key("LOG_PF") or (mysettings["LOG_PF"] != mysettings["PF"]):
-					mysettings["LOG_PF"]=mysettings["PF"]
-					mysettings["LOG_COUNTER"]=str(db[myroot]["vartree"].dbapi.get_counter_tick_core("/"))
-				logfile="%s/%s-%s.log" % (mysettings["PORT_LOGDIR"],mysettings["LOG_COUNTER"],mysettings["LOG_PF"])
-			except OSError, e:
-				mysettings["PORT_LOGDIR"]=""
-				print "!!! Unable to chown/chmod PORT_LOGDIR. Disabling logging."
-				print "!!!",e
-		else:
-			print "!!! Cannot create log... No write access / Does not exist"
-			print "!!! PORT_LOGDIR:",mysettings["PORT_LOGDIR"]
+				logging_enabled = \
+					apply_secpass_permissions(mysettings["PORT_LOGDIR"],
+					uid=portage_uid, gid=portage_gid, mode=02770)
+			except portage_exception.OperationNotPermitted, e:
+				writemsg("!!! Operation Not Permitted: %s\n" % str(e))
+				logging_enabled = False
+
+		if logging_enabled:
+			if "LOG_PF" not in mysettings or \
+			mysettings["LOG_PF"] != mysettings["PF"]:
+				mysettings["LOG_PF"] = mysettings["PF"]
+				mysettings["LOG_COUNTER"] = \
+					str(db[myroot]["vartree"].dbapi.get_counter_tick_core("/"))
+
+		if not logging_enabled:
+			writemsg("!!! Permission issues with PORT_LOGDIR='%s'\n" % mysettings["PORT_LOGDIR"])
+			writemsg("!!! Disabling logging.\n")
 			mysettings["PORT_LOGDIR"]=""
-
 
 def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,cleanup=0,dbkey=None,use_cache=1,fetchall=0,tree=None):
 	global db, actionmap_deps
@@ -2705,8 +2760,14 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 		mystatus = prepare_build_dirs(myroot, mysettings, cleanup)
 		if mystatus:
 			return mystatus
+
+		if "PORT_LOGDIR" in mysettings:
+			logfile = os.path.join(mysettings["PORT_LOGDIR"], "%s-%s.log" % \
+				(mysettings["LOG_COUNTER"], mysettings["LOG_PF"]))
+
 		if mydo=="unmerge":
-			return unmerge(mysettings["CATEGORY"],mysettings["PF"],myroot,mysettings)
+			return unmerge(mysettings["CATEGORY"],
+				mysettings["PF"], myroot, mysettings)
 
 	# if any of these are being called, handle them -- running them out of the sandbox -- and stop now.
 	if mydo in ["clean","cleanrm"]:
@@ -6482,7 +6543,7 @@ def pkgmerge(mytbz2,myroot,mysettings):
 	cleanup_pkgmerge(mypkg,origdir)
 	return returnme
 
-
+# XXX Fix this
 if os.environ.has_key("ROOT"):
 	root=os.environ["ROOT"]
 	if not len(root):

@@ -104,10 +104,7 @@ esyslog() {
 
 
 use() {
-	if useq ${1}; then
-		return 0
-	fi
-	return 1
+	useq ${1}
 }
 
 usev() {
@@ -119,64 +116,41 @@ usev() {
 }
 
 useq() {
-	local u="${1}"
-	local neg=0
-	if [ "${u:0:1}" == "!" ]; then
-		u="${u:1}"
-		neg=1
+	local u=$1
+	local found=0
+
+	# if we got something like '!flag', then invert the return value
+	if [[ ${u:0:1} == "!" ]] ; then
+		u=${u:1}
+		found=1
 	fi
-	local x
 
 	# Make sure we have this USE flag in IUSE
 	if ! hasq "${u}" ${IUSE} ${E_IUSE} && ! hasq "${u}" ${PORTAGE_ARCHLIST} selinux; then
 		echo "QA Notice: USE Flag '${u}' not in IUSE for ${CATEGORY}/${PF}" >&2
 	fi
 
-	for x in ${USE}; do
-		if [ "${x}" == "${u}" ]; then
-			if [ ${neg} -eq 1 ]; then
-				return 1
-			else
-				return 0
-			fi
-		fi
-	done
-	if [ ${neg} -eq 1 ]; then
-		return 0
+	if [[ " ${USE} " == *" ${u} "* ]] ; then
+		return ${found}
 	else
-		return 1
+		return $((!found))
 	fi
 }
 
 has() {
-	if hasq "$@"; then
-		return 0
-	fi
-	return 1
+	hasq "$@"
 }
 
 hasv() {
-	if hasq "$@"; then
-		echo "${1}"
+	if hasq "$@" ; then
+		echo "$1"
 		return 0
 	fi
 	return 1
 }
 
 hasq() {
-	local x
-
-	local me=$1
-	shift
-
-	# All the TTY checks really only help out depend. Which is nice.
-	# Logging kills all this anyway. Everything becomes a pipe. --NJ
-	for x in "$@"; do
-		if [ "${x}" == "${me}" ]; then
-			return 0
-		fi
-	done
-	return 1
+	[[ " ${*:2} " == *" $1 "* ]]
 }
 
 has_version() {
@@ -412,6 +386,7 @@ diefunc() {
 	echo "!!! If you need support, post the topmost build error, and the call stack if relevant." >&2
 	echo >&2
 	if [ "${EBUILD_PHASE/depend}" == "${EBUILD_PHASE}" ]; then
+		local x
 		for x in $EBUILD_DEATH_HOOKS; do
 			${x} "$@" >&2 1>&2
 		done
@@ -528,7 +503,7 @@ unpack() {
 			tgz)
 				tar xzf "${srcdir}${x}" ${tarvars} || die "$myfail"
 				;;
-			tbz2)
+			tbz|tbz2)
 				bzip2 -dc "${srcdir}${x}" | tar xf - ${tarvars}
 				assert "$myfail"
 				;;
@@ -556,6 +531,9 @@ unpack() {
 			LHa|LHA|lha|lzh)
 				lha xqf "${srcdir}/${x}" || die "$myfail"
 				;;
+			a|deb)
+				ar x "${srcdir}/${x}" || die "$myfail"
+				;;
 			*)
 				echo "unpack ${x}: file format not recognized. Ignoring."
 				;;
@@ -572,6 +550,7 @@ strip_duplicate_slashes () {
 }
 
 econf() {
+	local x
 	local LOCAL_EXTRA_ECONF="${EXTRA_ECONF}"
 
 	if [ -z "${ECONF_SOURCE}" ]; then
@@ -579,7 +558,6 @@ econf() {
 	fi
 	if [ -x "${ECONF_SOURCE}/configure" ]; then
 		if [ -e ${PREFIX}/usr/share/gnuconfig/ ]; then
-			local x
 			for x in $(find "${WORKDIR}" -type f '(' -name config.guess -o -name config.sub ')') ; do
 				echo " * econf: updating ${x/${WORKDIR}\/} with ${PREFIX}/usr/share/gnuconfig/${x##*/}"
 				cp -f ${PREFIX}/usr/share/gnuconfig/${x##*/} ${x}
@@ -619,7 +597,7 @@ econf() {
 			[ "${CONF_LIBDIR:0:1}" != "/" ] && CONF_LIBDIR="/${CONF_LIBDIR}"
 
 			CONF_LIBDIR_RESULT="${CONF_PREFIX}${CONF_LIBDIR}"
-			for X in 1 2 3; do
+			for x in 1 2 3; do
 				# The escaping is weird. It will break if you escape the last one.
 				CONF_LIBDIR_RESULT="${CONF_LIBDIR_RESULT//\/\///}"
 			done
@@ -732,15 +710,14 @@ pkg_nofetch() {
 	[ -z "${SRC_URI}" ] && return
 
 	echo "!!! The following are listed in SRC_URI for ${PN}:"
-	for MYFILE in `echo ${SRC_URI}`; do
-		echo "!!!   $MYFILE"
+	local x
+	for x in `echo ${SRC_URI}`; do
+		echo "!!!   ${x}"
 	done
 }
 
 src_unpack() {
-	if [ "${A}" != "" ]; then
-		unpack ${A}
-	fi
+	[[ -n ${A} ]] && unpack ${A}
 }
 
 src_compile() {
@@ -798,13 +775,11 @@ pkg_config() {
 
 # Used to generate the /lib/cpp and /usr/bin/cc wrappers
 gen_wrapper() {
-	cat > $1 << END
-#!/bin/sh
-
-$2 "\$@"
-END
-
-	chmod 0755 $1
+	cat > "$1" <<-EOF
+	#!/bin/sh
+	exec $2 "\$@"
+	EOF
+	chmod 0755 "$1"
 }
 
 dyn_setup() {
@@ -847,8 +822,10 @@ dyn_unpack() {
 		fi
 	fi
 
-	install -m 0700 -d "${WORKDIR}" || die "Failed to create dir '${WORKDIR}'"
-	[ -d "$WORKDIR" ] && cd "${WORKDIR}"
+	if [ ! -d "${WORKDIR}" ]; then
+		install -m ${PORTAGE_WORKDIR_MODE-0700} -d "${WORKDIR}" || die "Failed to create dir '${WORKDIR}'"
+	fi
+	cd "${WORKDIR}" || die "Directory change failed: \`cd '${WORKDIR}'\`"
 	echo ">>> Unpacking source..."
 	src_unpack
 	touch "${PORTAGE_BUILDDIR}/.unpacked" || die "IO Failure -- Failed 'touch .unpacked' in ${PORTAGE_BUILDDIR}"
@@ -953,50 +930,28 @@ docinto() {
 }
 
 insopts() {
-	INSOPTIONS=""
-	for x in $*; do
-		#if we have a debug build, let's not strip anything
-		if hasq nostrip $FEATURES $RESTRICT && [ "$x" == "-s" ]; then
-			continue
-		else
-			INSOPTIONS="$INSOPTIONS $x"
-		fi
-	done
-	export INSOPTIONS
+	export INSOPTIONS="$@"
+
+	# `install` should never be called with '-s' ...
+	[[ " ${INSOPTIONS} " == *" -s "* ]] && die "Never call insopts() with -s"
 }
 
 diropts() {
-	DIROPTIONS=""
-	for x in $*; do
-		DIROPTIONS="${DIROPTIONS} $x"
-	done
-	export DIROPTIONS
+	export DIROPTIONS="$@"
 }
 
 exeopts() {
-	EXEOPTIONS=""
-	for x in $*; do
-		#if we have a debug build, let's not strip anything
-		if hasq nostrip $FEATURES $RESTRICT && [ "$x" == "-s" ]; then
-			continue
-		else
-			EXEOPTIONS="$EXEOPTIONS $x"
-		fi
-	done
-	export EXEOPTIONS
+	export EXEOPTIONS="$@"
+
+	# `install` should never be called with '-s' ...
+	[[ " ${EXEOPTIONS} " == *" -s "* ]] && die "Never call exeopts() with -s"
 }
 
 libopts() {
-	LIBOPTIONS=""
-	for x in $*; do
-		#if we have a debug build, let's not strip anything
-		if hasq nostrip $FEATURES $RESTRICT && [ "$x" == "-s" ]; then
-			continue
-		else
-			LIBOPTIONS="$LIBOPTIONS $x"
-		fi
-	done
-	export LIBOPTIONS
+	export LIBOPTIONS="$@"
+
+	# `install` should never be called with '-s' ...
+	[[ " ${LIBOPTIONS} " == *" -s "* ]] && die "Never call libopts() with -s"
 }
 
 abort_handler() {
@@ -1064,6 +1019,7 @@ dyn_compile() {
 		echo "!!! that you know what you are doing... You have 5 seconds to abort..."
 		echo
 
+		local x
 		for x in 1 2 3 4 5 6 7 8; do
 			echo -ne "\a"
 			LC_ALL=C sleep 0.25
@@ -1118,7 +1074,10 @@ dyn_compile() {
 	bzip2 -9 environment
 
 	cp "${EBUILD}" "${PF}.ebuild"
-	if hasq nostrip $FEATURES $RESTRICT; then
+	if [[ " ${FEATURES} " == *" nostrip "* ]] || \
+	   [[ " ${RESTRICT} " == *" nostrip "* ]] || \
+	   [[ " ${RESTRICT} " == *" strip "* ]]
+	then
 		touch DEBUGBUILD
 	fi
 
@@ -1181,8 +1140,8 @@ dyn_install() {
 
 dyn_preinst() {
 	if [ -z "$IMAGE" ]; then
-			eerror "${FUNCNAME}: IMAGE is unset"
-			return 1
+		eerror "${FUNCNAME}: IMAGE is unset"
+		return 1
 	fi
 
 	[ "$(type -t pre_pkg_preinst)" == "function" ] && pre_pkg_preinst
@@ -1237,7 +1196,10 @@ dyn_help() {
 	echo "  c++ flags   : ${CXXFLAGS}"
 	echo "  make flags  : ${MAKEOPTS}"
 	echo -n "  build mode  : "
-	if hasq nostrip $FEATURES $RESTRICT; then
+	if [[ " ${FEATURES} " == *" nostrip "* ]] || \
+	   [[ " ${RESTRICT} " == *" nostrip "* ]] || \
+	   [[ " ${RESTRICT} " == *" strip "* ]]
+	then
 		echo "debug (large)"
 	else
 		echo "production (stripped)"
@@ -1389,7 +1351,7 @@ inherit() {
 
 		shift
 	done
-	ECLASS_DEPTH=$(($ECLASS_DEPTH - 1))
+	((--ECLASS_DEPTH))
 }
 
 # Exports stub functions that call the eclass's functions, thereby making them default.
@@ -1609,10 +1571,15 @@ fi
 # We need to turn off pathname expansion for -* in KEYWORDS and
 # we need to escape ~ to avoid tilde expansion
 set -f
-KEYWORDS="`eval echo ${KEYWORDS//~/\\~}`"
+KEYWORDS=$(eval echo ${KEYWORDS//~/\\~})
 set +f
 
-hasq nostrip ${RESTRICT} && export DEBUGBUILD=1
+if [[ " ${FEATURES} " == *" nostrip "* ]] || \
+   [[ " ${RESTRICT} " == *" nostrip "* ]] || \
+   [[ " ${RESTRICT} " == *" strip "* ]]
+then
+	export DEBUGBUILD=1
+fi
 
 #a reasonable default for $S
 if [ "$S" = "" ]; then
