@@ -1578,9 +1578,7 @@ class config:
 
 	def __contains__(self, mykey):
 		"""Called to implement membership test operators (in and not in)."""
-		if self.has_key(mykey):
-			return True
-		return False
+		return bool(self.has_key(mykey))
 
 	def keys(self):
 		mykeys=[]
