@@ -16,7 +16,8 @@ PORTDIR="$(@PORTAGE_BASE@/bin/portageq portdir)"
 FETCHCOMMAND="$(@PORTAGE_BASE@/bin/portageq envvar FETCHCOMMAND)"
 USERLAND="$(@PORTAGE_BASE@/bin/portageq envvar USERLAND)"
 DISTDIR="$(@PORTAGE_BASE@/bin/portageq envvar PORTAGE_TMPDIR)/emerge-webrsync"
-
+PORTAGE_INST_UID="$(@PORTAGE_BASE@/bin/portageq envvar PORTAGE_INST_UID)"
+PORTAGE_INST_GID="$(@PORTAGE_BASE@/bin/portageq envvar PORTAGE_INST_GID)"
 if [ ! -d $DISTDIR ] ; then
 	mkdir -p $DISTDIR
 fi
@@ -49,7 +50,7 @@ fi
 sync_local() {
 	echo Syncing local tree...
 	if type -p tarsync &> /dev/null; then
-		if ! tarsync "${FILE}" "${PORTDIR}" -v -s 1 -o @rootuser@ -g @wheelgroup@ -e /distfiles -e /packages -e /local; then
+		if ! tarsync "${FILE}" "${PORTDIR}" -v -s 1 -o ${PORTAGE_INST_UID} -g ${PORTAGE_INST_GID} -e /distfiles -e /packages -e /local; then
 			echo "tarsync failed; tarball is corrupt?"
 			exit 1;
 		fi
@@ -61,8 +62,8 @@ sync_local() {
 			exit 1
 		fi
 		rm -f $FILE
-		# Make sure user and group file ownership is root
-		chown -R 0:0 portage
+		# Make sure user and group file ownership is ${PORTAGE_INST_UID}:${PORTAGE_INST_GID}
+		chown -R ${PORTAGE_INST_UID}:${PORTAGE_INST_GID} portage
 		cd portage
 		rsync -av --progress --stats --delete --delete-after \
 		--exclude='/distfiles' --exclude='/packages' \

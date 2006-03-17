@@ -1,5 +1,5 @@
 dnl Process this file with autoconf to produce a configure script.
-AC_INIT(portage, 2.1.5-prefix, kito@gentoo.org)
+AC_INIT(portage, 2.1.11-prefix, kito@gentoo.org)
 
 case "${prefix}" in
 	'') 	AC_MSG_ERROR([bad value ${prefix} for --prefix, must not be empty]) ;;
@@ -80,8 +80,8 @@ if test "x${PERL}" = "x"; then
 	)
 fi
 
-AC_PATH_PROG(BASENAME, basename, /bin/basename)
-AC_PATH_PROG(DIRNAME, dirname, /usr/bin/dirname)
+AC_PATH_PROGS(BASENAME, [gbasename basename], /bin/basename)
+AC_PATH_PROGS(DIRNAME, [gdirname dirname], /usr/bin/dirname)
 AC_PATH_PROG(DIALOG, dialog, /usr/bin/dialog)
 AC_PATH_PROG(WGET, wget, /usr/bin/wget)
 AC_PATH_PROG(INSTALL_INFO, install-info, /usr/bin/install-info)
@@ -94,12 +94,13 @@ AC_PATH_PROGS(GPG, [gpg pgp], /usr/bin/gpg)
 AC_PATH_PROG(INSTALL_INFO, install-info, /usr/bin/install-info)
 AC_PATH_PROG(MD5SUM, md5sum, /usr/bin/md5sum)
 AC_PATH_PROG(LOGGER, logger, /usr/bin/logger)
-AC_PATH_PROG(FIND, find, /usr/bin/find)
-AC_PATH_PROG(FILE, file, /usr/bin/file)
+AC_PATH_PROGS(FIND, [gfind find], /usr/bin/find)
+AC_PATH_PROGS(FILE, [gfile file], /usr/bin/file)
 AC_PATH_PROG(READELF, readelf, /usr/bin/readelf)
 AC_PATH_PROG(SETFILES, setfiles, /usr/sbin/setfiles)
 AC_PATH_PROG(FAKEROOT, fakeroot, /usr/bin/fakeroot)
-
+AC_PATH_PROGS(DIFF, [gdiff diff], /usr/bin/diff)
+AC_PATH_PROGS(PATCH, [gpatch patch], /usr/bin/patch)
 dnl Checks for libraries.
 dnl Replace `main' with a function in -lc:
 AC_CHECK_LIB(c, main)
@@ -171,14 +172,6 @@ AC_HELP_STRING([--with-group=mygroup],[use group 'mygroup' for portage to work a
 esac],
 [portagegroup="portage"])
 
-AC_ARG_WITH(wheelgroup,
-AC_HELP_STRING([--with-wheelgroup=wheelgroup],[let portage use 'wheelgroup' as wheel group (default wheel)]),
-[case "${withval}" in
-  ""|yes) AC_MSG_ERROR(bad value ${withval} for --with-wheelgroup);;
-  *) wheelgroup="${withval}";;
-esac],
-[wheelgroup="wheel"])
-
 AC_ARG_WITH(wheelgid,
 AC_HELP_STRING([--with-wheelgid=wheelgid],[let portage use 'wheelgid' as wheel group (default 0)]),
 [case "${withval}" in
@@ -245,7 +238,6 @@ AC_CONFIG_FILES([ cnf/Makefile ])
 
 AC_SUBST(portageuser)
 AC_SUBST(portagegroup)
-AC_SUBST(wheelgroup)
 AC_SUBST(wheelgid)
 AC_SUBST(rootuser)
 AC_SUBST(rootuid)

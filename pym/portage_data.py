@@ -57,12 +57,11 @@ secpass=0
 
 uid=os.getuid()
 wheelgid=portage_const.wheelgid
-wheelgroup=portage_const.wheelgroup
+wheelgroup=grp.getgrgid(portage_const.wheelgid)[0]
 
 if uid==0 or uid==int(portage_const.rootuid):
 	secpass=2
 try:
-	wheelgid=grp.getgrnam(wheelgroup)[2]
 	if (not secpass) and (wheelgid in os.getgroups()):
 		secpass=1
 except KeyError:
