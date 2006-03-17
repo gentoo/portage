@@ -495,9 +495,9 @@ def apply_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 		else:
 			mode = mode & 07777
 		if	(mode & st_mode != mode) or \
-			(mask ^ st_mode != st_mode):
+			((mask ^ st_mode) & st_mode != st_mode):
 			new_mode = mode | st_mode
-			new_mode = mask ^ new_mode
+			new_mode = (mask ^ new_mode) & mode
 	elif mode != -1:
 		mode = mode & 07777 # protect from unwanted bits
 		if mode != st_mode:
