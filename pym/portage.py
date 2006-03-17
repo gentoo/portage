@@ -2605,7 +2605,7 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 			for x in listdir(mysettings["CONFCACHE_DIR"]):
 				cache_file = os.path.join(mysettings["CONFCACHE_DIR"], x)
 				try:
-					apply_secpass_permissions(cache_file, gid=portage_gid, mode=0660, mask=07000)
+					confcache_enabled = apply_secpass_permissions(cache_file, gid=portage_gid, mode=0660, mask=07000)
 				except portage_exception.OperationNotPermitted, e:
 					writemsg("Operation Not Permitted: %s\n" % str(e))
 					confcache_enabled = False
