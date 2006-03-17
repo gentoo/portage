@@ -2574,43 +2574,48 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 		print "!!! Perhaps: rm -Rf",mysettings["BUILD_PREFIX"]
 		print "!!!",str(e)
 		return 1
-	try:
-		if "confcache" in features:
-			if not mysettings.has_key("CONFCACHE_DIR"):
-				mysettings["CONFCACHE_DIR"] = os.path.join(mysettings["PORTAGE_TMPDIR"], "confcache")
-			if not os.path.exists(mysettings["CONFCACHE_DIR"]):
-				if not os.getuid() == 0:
-					# we're boned.
-					features.remove("confcache")
-					mysettings["FEATURES"] = " ".join(features)
-				else:
-					os.makedirs(mysettings["CONFCACHE_DIR"], mode=0775)
-					apply_secpass_permissions(mysettings["CONFCACHE_DIR"],
-					gid=portage_gid, mode=0775)
-			else:
-				apply_secpass_permissions(mysettings["CONFCACHE_DIR"],
-				gid=portage_gid, mode=0775)
 
-		# check again, since it may have been disabled.
-		if "confcache" in features:
+	if "confcache" in features:
+		confcache_enabled = True
+		if "CONFCACHE_DIR" not in mysettings:
+			mysettings["CONFCACHE_DIR"] = os.path.join(mysettings["PORTAGE_TMPDIR"], "confcache")
+		confcache_dir_mode = 0775
+
+		try:
+			os.makedirs(mysettings["CONFCACHE_DIR"], mode=confcache_dir_mode)
+		except OSError, oe:
+			if oe.errno == errno.EEXIST:
+				pass
+			elif errno == errno.EPERM:
+				writemsg("Operation Not Permitted: makedirs(%s, mode=%s)\n" % (mysettings["CONFCACHE_DIR"], oct(confcache_dir_mode)))
+				confcache_enabled = False
+
+		if confcache_enabled:
+			try:
+				confcache_enabled = apply_secpass_permissions(
+					mysettings["CONFCACHE_DIR"],
+					gid=portage_gid, mode=confcache_dir_mode)
+			except portage_exception.OperationNotPermitted, e:
+				writemsg("Operation Not Permitted: %s\n" % str(e))
+				confcache_enabled = False
+
+		del confcache_dir_mode
+
+		if confcache_enabled:
 			for x in listdir(mysettings["CONFCACHE_DIR"]):
-				p = os.path.join(mysettings["CONFCACHE_DIR"], x)
-				apply_secpass_permissions(p, gid=portage_gid, mode=0660, mask=07000)
-	except OSError, e:
-		print "!!! Failed resetting perms on confcachedir %s" % mysettings["CONFCACHE_DIR"]
-		return 1						
-	#try:
-	#	mystat=os.stat(mysettings["CCACHE_DIR"])
-	#	if (mystat[stat.ST_GID]!=portage_gid) or ((mystat[stat.ST_MODE]&02070)!=02070):
-	#		print "*** Adjusting ccache permissions for portage user..."
-	#		os.chown(mysettings["CCACHE_DIR"],portage_uid,portage_gid)
-	#		os.chmod(mysettings["CCACHE_DIR"],02770)
-	#		spawn("chown -R "+str(portage_uid)+":"+str(portage_gid)+" "+mysettings["CCACHE_DIR"],mysettings, free=1)
-	#		spawn("chmod -R g+rw "+mysettings["CCACHE_DIR"],mysettings, free=1)
-	#except SystemExit, e:
-	#	raise
-	#except:
-	#	pass
+				cache_file = os.path.join(mysettings["CONFCACHE_DIR"], x)
+				try:
+					apply_secpass_permissions(cache_file, gid=portage_gid, mode=0660, mask=07000)
+				except portage_exception.OperationNotPermitted, e:
+					writemsg("Operation Not Permitted: %s\n" % str(e))
+					confcache_enabled = False
+				except portage_exception.FileNotFound, e:
+					writemsg("File Not Found: %s\n" % str(e))
+
+		if not confcache_enabled:
+			writemsg("!!! Failed resetting perms on confcachedir %s\n" % mysettings["CONFCACHE_DIR"])
+			features.remove("confcache")
+			mysettings["FEATURES"] = " ".join(features)
 
 	if "distcc" in features:
 		try:
