@@ -411,7 +411,7 @@ dyn_package() {
 	xpak build-info inf.xpak
 	tbz2tool join bin.tar.bz2 inf.xpak "${PF}.tbz2"
 	addwrite "${PKGDIR}"
-	mv "${PF}.tbz2" "${PKGDIR}/All" || die "Failed to move tbz2 to ${PKGDIR}/All"
+	mv -f "${PF}.tbz2" "${PKGDIR}/All" || die "Failed to move tbz2 to ${PKGDIR}/All"
 	rm -f inf.xpak bin.tar.bz2
 	if [ ! -d "${PKGDIR}/${CATEGORY}" ]; then
 		install -d "${PKGDIR}/${CATEGORY}"
