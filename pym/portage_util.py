@@ -463,36 +463,56 @@ def apply_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 	to be a superset of the mode argument (via logical OR).  When mask>0, the
 	mode bits that the target file is allowed to have are restricted via
 	logical XOR."""
-	try:
-		if stat_cached is None:
+
+	if stat_cached is None:
+		try:
 			stat_cached = os.stat(filename)
-
-		if	(uid != -1 and uid != stat_cached.st_uid) or \
-			(gid != -1 and gid != stat_cached.st_gid):
-			os.chown(filename, uid, gid)
-
-		st_mode = stat_cached.st_mode & 07777 # protect from unwanted bits
-		if mask >= 0:
-			if mode == -1:
-				mode = 0 # Don't add any mode bits when mode is unspecified.
+		except OSError, oe:
+			if oe.errno == errno.EPERM:
+				raise OperationNotPermitted("stat('%s')" % filename)
+			elif oe.errno == errno.ENOENT:
+				raise FileNotFound(filename)
 			else:
-				mode = mode & 07777
-			if	(mode & st_mode != mode) or \
-				(mask ^ st_mode != st_mode):
-				new_mode = mode | st_mode
-				new_mode = mask ^ new_mode
-				os.chmod(filename, new_mode)
-		elif mode != -1:
-			mode = mode & 07777 # protect from unwanted bits
-			if mode != st_mode:
-				os.chmod(filename, mode)
-	except OSError, oe:
-		if oe.errno == errno.EPERM:
-			raise OperationNotPermitted(oe)
-		elif oe.errno == errno.ENOENT:
-			raise FileNotFound(oe)
+				raise
+
+	if	(uid != -1 and uid != stat_cached.st_uid) or \
+		(gid != -1 and gid != stat_cached.st_gid):
+		try:
+			os.chown(filename, uid, gid)
+		except OSError, oe:
+			if oe.errno == errno.EPERM:
+				raise OperationNotPermitted("chown('%s', %i, %i)" % (filename, uid, gid))
+			elif oe.errno == errno.ENOENT:
+				raise FileNotFound(filename)
+			else:
+				raise
+
+	new_mode = -1
+	st_mode = stat_cached.st_mode & 07777 # protect from unwanted bits
+	if mask >= 0:
+		if mode == -1:
+			mode = 0 # Don't add any mode bits when mode is unspecified.
 		else:
-			raise oe
+			mode = mode & 07777
+		if	(mode & st_mode != mode) or \
+			(mask ^ st_mode != st_mode):
+			new_mode = mode | st_mode
+			new_mode = mask ^ new_mode
+	elif mode != -1:
+		mode = mode & 07777 # protect from unwanted bits
+		if mode != st_mode:
+			new_mode = mode
+
+	if new_mode != -1:
+		try:
+			os.chmod(filename, new_mode)
+		except OSError, oe:
+			if oe.errno == errno.EPERM:
+				raise OperationNotPermitted("chmod('%s', %s)" % (filename, oct(new_mode)))
+			elif oe.errno == errno.ENOENT:
+				raise FileNotFound(filename)
+			else:
+				raise
 
 def apply_stat_permissions(filename, newstat, **kwargs):
 	"""A wrapper around apply_secpass_permissions that gets
@@ -515,11 +535,11 @@ def apply_secpass_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 			stat_cached = os.stat(filename)
 		except OSError, oe:
 			if oe.errno == errno.EPERM:
-				raise OperationNotPermitted(oe)
+				raise OperationNotPermitted("stat('%s')" % filename)
 			elif oe.errno == errno.ENOENT:
-				raise FileNotFound(oe)
+				raise FileNotFound(filename)
 			else:
-				raise oe
+				raise
 
 	all_applied = True
 
