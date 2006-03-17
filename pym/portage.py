@@ -2819,27 +2819,33 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 		fetchme=newuris[:]
 		checkme=alist[:]
 
-	try:
-		if not os.path.exists(mysettings["DISTDIR"]):
-			os.makedirs(mysettings["DISTDIR"])
-		if not os.path.exists(mysettings["DISTDIR"]+"/cvs-src"):
-			os.makedirs(mysettings["DISTDIR"]+"/cvs-src")
-	except OSError, e:
-		print "!!! File system problem. (Bad Symlink?)"
-		print "!!! Fetching may fail:",str(e)
-
-	try:
-		mystat=os.stat(mysettings["DISTDIR"]+"/cvs-src")
-		if ((mystat[stat.ST_GID]!=portage_gid) or ((mystat[stat.ST_MODE]&02770)!=02770)) and not listonly:
-			print "*** Adjusting cvs-src permissions for portage user..."
-			apply_secpass_permissions(mysettings["DISTDIR"]+"/cvs-src",
-			uid=0, gid=portage_gid, mode=02770, stat_cached=mystat)
-			spawn("chgrp -R "+str(portage_gid)+" "+mysettings["DISTDIR"]+"/cvs-src", free=1)
-			spawn("chmod -R g+rw "+mysettings["DISTDIR"]+"/cvs-src", free=1)
-	except SystemExit, e:
-		raise
-	except:
-		pass
+	if not listonly:
+		for x in ("", "cvs-src"):
+			mydir = os.path.join(mysettings["DISTDIR"], x)
+			try:
+				os.makedirs(mydir)
+			except OSError, oe:
+				if errno.EEXIST == oe.errno:
+					pass
+				elif errno.EPERM == oe.errno:
+					writemsg("!!! %s\n" % str(oe))
+					writemsg("!!! Fetching may fail!\n")
+				else:
+					raise
+		try:
+			apply_secpass_permissions(mysettings["DISTDIR"],
+				gid=portage_gid, mode=0775, mask=02)
+			cvs_src_dir = os.path.join(mysettings["DISTDIR"], "cvs-src")
+			apply_secpass_permissions(cvs_src_dir,
+				gid=portage_gid, mode=02770, mask=02)
+			portage_exec.spawn(["chgrp", "-R", str(portage_gid), cvs_src_dir])
+			portage_exec.spawn(["chmod", "-R", "g+rw", cvs_src_dir])
+			portage_exec.spawn(["find", cvs_src_dir, "-type", "d",
+				"-exec","chmod", "g+xs", "{}", ";"])
+		except portage_exception.OperationNotPermitted, e:
+			writemsg("Operation Not Permitted: %s\n" % str(e))
+		except portage_exception.FileNotFound, e:
+			writemsg("File Not Found: '%s'\n" % str(e))
 
 	# Only try and fetch the files if we are going to need them ... otherwise,
 	# if user has FEATURES=noauto and they run `ebuild clean unpack compile install`,
