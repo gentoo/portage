@@ -2835,17 +2835,31 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 		try:
 			apply_secpass_permissions(mysettings["DISTDIR"],
 				gid=portage_gid, mode=0775, mask=02)
-			cvs_src_dir = os.path.join(mysettings["DISTDIR"], "cvs-src")
-			apply_secpass_permissions(cvs_src_dir,
-				gid=portage_gid, mode=02770, mask=02)
-			portage_exec.spawn(["chgrp", "-R", str(portage_gid), cvs_src_dir])
-			portage_exec.spawn(["chmod", "-R", "g+rw", cvs_src_dir])
-			portage_exec.spawn(["find", cvs_src_dir, "-type", "d",
-				"-exec","chmod", "g+xs", "{}", ";"])
 		except portage_exception.OperationNotPermitted, e:
 			writemsg("Operation Not Permitted: %s\n" % str(e))
 		except portage_exception.FileNotFound, e:
 			writemsg("File Not Found: '%s'\n" % str(e))
+
+		def onerror(oe):
+			writemsg("%s\n" % str(oe))
+		for dirpath, dirnames, filenames in os.walk(
+		os.path.join(mysettings["DISTDIR"], "cvs-src"), onerror=onerror):
+			try:
+				apply_secpass_permissions(dirpath,
+					gid=portage_gid, mode=02770, mask=02)
+			except portage_exception.OperationNotPermitted, e:
+				writemsg("Operation Not Permitted: %s\n" % str(e))
+			except portage_exception.FileNotFound, e:
+				writemsg("File Not Found: '%s'\n" % str(e))
+
+			for name in filenames:
+				try:
+					apply_secpass_permissions(os.path.join(dirpath, name),
+						gid=portage_gid, mode=0660, mask=02)
+				except portage_exception.OperationNotPermitted, e:
+					writemsg("Operation Not Permitted: %s\n" % str(e))
+				except portage_exception.FileNotFound, e:
+					writemsg("File Not Found: '%s'\n" % str(e))
 
 	# Only try and fetch the files if we are going to need them ... otherwise,
 	# if user has FEATURES=noauto and they run `ebuild clean unpack compile install`,
