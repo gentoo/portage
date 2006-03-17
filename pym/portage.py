@@ -2668,30 +2668,41 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 	except portage_exception.FileNotFound:
 		pass # ebuild.sh will create it
 
-	if mysettings.has_key("PORT_LOGDIR"):
-		if not os.access(mysettings["PORT_LOGDIR"],os.F_OK):
-			try:
-				os.mkdir(mysettings["PORT_LOGDIR"])
-			except OSError, e:
-				print "!!! Unable to create PORT_LOGDIR"
-				print "!!!",e
-		if os.access(mysettings["PORT_LOGDIR"]+"/",os.W_OK):
-			try:
-				apply_secpass_permissions(mysettings["PORT_LOGDIR"],
-				uid=portage_uid, gid=portage_gid, mode=02770)
-				if not mysettings.has_key("LOG_PF") or (mysettings["LOG_PF"] != mysettings["PF"]):
-					mysettings["LOG_PF"]=mysettings["PF"]
-					mysettings["LOG_COUNTER"]=str(db[myroot]["vartree"].dbapi.get_counter_tick_core("/"))
-				logfile="%s/%s-%s.log" % (mysettings["PORT_LOGDIR"],mysettings["LOG_COUNTER"],mysettings["LOG_PF"])
-			except OSError, e:
-				mysettings["PORT_LOGDIR"]=""
-				print "!!! Unable to chown/chmod PORT_LOGDIR. Disabling logging."
-				print "!!!",e
-		else:
-			print "!!! Cannot create log... No write access / Does not exist"
-			print "!!! PORT_LOGDIR:",mysettings["PORT_LOGDIR"]
-			mysettings["PORT_LOGDIR"]=""
+	if "PORT_LOGDIR" in mysettings:
+		logging_enabled = True
 
+		try:
+			os.makedirs(mysettings["PORT_LOGDIR"])
+		except OSError, oe:
+			if errno.EEXIST == oe.errno:
+				pass
+			elif errno.EPERM == oe.errno:
+				writemsg("!!! Unable to create PORT_LOGDIR\n")
+				writemsg("!!! %s\n" % str(oe))
+				logging_enabled = False
+			else:
+				raise
+
+		if logging_enabled:
+			try:
+				logging_enabled = \
+					apply_secpass_permissions(mysettings["PORT_LOGDIR"],
+					uid=portage_uid, gid=portage_gid, mode=02770)
+			except portage_exception.OperationNotPermitted, e:
+				writemsg("!!! Operation Not Permitted: %s\n" % str(e))
+				logging_enabled = False
+
+		if logging_enabled:
+			if "LOG_PF" not in mysettings or \
+			mysettings["LOG_PF"] != mysettings["PF"]:
+				mysettings["LOG_PF"] = mysettings["PF"]
+				mysettings["LOG_COUNTER"] = \
+					str(db[myroot]["vartree"].dbapi.get_counter_tick_core("/"))
+
+		if not logging_enabled:
+			writemsg("!!! Permission issues with PORT_LOGDIR='%s'\n" % mysettings["PORT_LOGDIR"])
+			writemsg("!!! Disabling logging.\n")
+			mysettings["PORT_LOGDIR"]=""
 
 def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,cleanup=0,dbkey=None,use_cache=1,fetchall=0,tree=None):
 	global db, actionmap_deps
@@ -2744,8 +2755,14 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 		mystatus = prepare_build_dirs(myroot, mysettings, cleanup)
 		if mystatus:
 			return mystatus
+
+		if "PORT_LOGDIR" in mysettings:
+			logfile = os.path.join(mysettings["PORT_LOGDIR"], "%s-%s.log" % \
+				(mysettings["LOG_COUNTER"], mysettings["LOG_PF"]))
+
 		if mydo=="unmerge":
-			return unmerge(mysettings["CATEGORY"],mysettings["PF"],myroot,mysettings)
+			return unmerge(mysettings["CATEGORY"],
+				mysettings["PF"], myroot, mysettings)
 
 	# if any of these are being called, handle them -- running them out of the sandbox -- and stop now.
 	if mydo in ["clean","cleanrm"]:
