@@ -2618,24 +2618,37 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 			mysettings["FEATURES"] = " ".join(features)
 
 	if "distcc" in features:
-		try:
-			if (not mysettings.has_key("DISTCC_DIR")) or (mysettings["DISTCC_DIR"]==""):
-				mysettings["DISTCC_DIR"]=mysettings["PORTAGE_TMPDIR"]+"/portage/.distcc"
-			if not os.path.exists(mysettings["DISTCC_DIR"]):
-				os.makedirs(mysettings["DISTCC_DIR"])
-				apply_secpass_permissions(mysettings["DISTCC_DIR"],
+		
+		distcc_enabled = True
+
+		if "DISTCC_DIR" not in mysettings or "" == mysettings["DISTCC_DIR"]:
+			mysettings["DISTCC_DIR"] = os.path.join(mysettings["BUILD_PREFIX"], ".distcc")
+		for x in ("", "lock", "state"):
+			mydir = os.path.join(mysettings["DISTCC_DIR"], x)
+			try:
+				os.makedirs(mydir)
+			except OSError, oe:
+				if errno.EEXIST == oe.errno:
+					pass
+				elif errno.EPERM == oe.errno:
+					distcc_enabled = False
+					break
+				else:
+					raise
+			try:
+				distcc_enabled = apply_secpass_permissions(mydir,
 				uid=portage_uid, gid=portage_gid, mode=02775)
-			for x in ("/lock", "/state"):
-				if not os.path.exists(mysettings["DISTCC_DIR"]+x):
-					os.mkdir(mysettings["DISTCC_DIR"]+x)
-					apply_secpass_permissions(mysettings["DISTCC_DIR"]+x,
-					uid=portage_uid, gid=portage_gid, mode=02775)
-		except OSError, e:
+			except portage_exception.OperationNotPermitted, e:
+				writemsg("Operation Not Permitted: %s\n" % str(e))
+				distcc_enabled = False
+				break
+
+		if not distcc_enabled:
 			writemsg("\n!!! File system problem when setting DISTCC_DIR directory permissions.\n")
 			writemsg(  "!!! DISTCC_DIR="+str(mysettings["DISTCC_DIR"]+"\n"))
-			writemsg(  "!!! "+str(e)+"\n\n")
 			time.sleep(5)
 			features.remove("distcc")
+			mysettings["FEATURES"] = " ".join(features)
 			mysettings["DISTCC_DIR"]=""
 
 	workdir_mode = 0700
