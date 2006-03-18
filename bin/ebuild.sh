@@ -689,7 +689,7 @@ dyn_unpack() {
 	fi
 
 	if [ ! -d "${WORKDIR}" ]; then
-		install -m${PORTAGE_WORKDIR_MODE-0700} -d "${WORKDIR}" || die "Failed to create dir '${WORKDIR}'"
+		install -m${PORTAGE_WORKDIR_MODE:-0700} -d "${WORKDIR}" || die "Failed to create dir '${WORKDIR}'"
 	fi
 	cd "${WORKDIR}" || die "Directory change failed: \`cd '${WORKDIR}'\`"
 	echo ">>> Unpacking source..."
