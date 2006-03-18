@@ -2589,7 +2589,7 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 			mysettings["DISTCC_DIR"] = os.path.join(mysettings["BUILD_PREFIX"], ".distcc")
 		for x in ("", "lock", "state"):
 			mydir = os.path.join(mysettings["DISTCC_DIR"], x)
-			if not os.makedirs(mydir):
+			if not makedirs(mydir):
 				distcc_enabled = False
 				break
 
