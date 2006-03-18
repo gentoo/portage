@@ -75,7 +75,7 @@ try:
 	                         portage_uid, portage_gid
 
 	import portage_util
-	from portage_util import atomic_ofstream, apply_secpass_permissions, \
+	from portage_util import atomic_ofstream, apply_secpass_permissions, apply_recursive_permissions, \
 		dump_traceback, getconfig, grabdict, grabdict_package, grabfile, grabfile_package, \
 		map_dictlist_vals, pickle_read, pickle_write, stack_dictlist, stack_dicts, stack_lists, \
 		unique_array, varexpand, writedict, writemsg, writemsg_stdout, write_atomic
@@ -2840,26 +2840,8 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 		except portage_exception.FileNotFound, e:
 			writemsg("File Not Found: '%s'\n" % str(e))
 
-		def onerror(oe):
-			writemsg("%s\n" % str(oe))
-		for dirpath, dirnames, filenames in os.walk(
-		os.path.join(mysettings["DISTDIR"], "cvs-src"), onerror=onerror):
-			try:
-				apply_secpass_permissions(dirpath,
-					gid=portage_gid, mode=02770, mask=02)
-			except portage_exception.OperationNotPermitted, e:
-				writemsg("Operation Not Permitted: %s\n" % str(e))
-			except portage_exception.FileNotFound, e:
-				writemsg("File Not Found: '%s'\n" % str(e))
-
-			for name in filenames:
-				try:
-					apply_secpass_permissions(os.path.join(dirpath, name),
-						gid=portage_gid, mode=0660, mask=02)
-				except portage_exception.OperationNotPermitted, e:
-					writemsg("Operation Not Permitted: %s\n" % str(e))
-				except portage_exception.FileNotFound, e:
-					writemsg("File Not Found: '%s'\n" % str(e))
+		apply_recursive_permissions(os.path.join(mysettings["DISTDIR"], "cvs-src"),
+			gid=portage_gid, dirmode=02770, dirmask=02, filemode=0660, filemask=02)
 
 	# Only try and fetch the files if we are going to need them ... otherwise,
 	# if user has FEATURES=noauto and they run `ebuild clean unpack compile install`,
