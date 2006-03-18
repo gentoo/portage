@@ -2506,7 +2506,7 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 
 	def makedirs(dir_path):
 		try:
-			os.makedirs(mysettings[dir_key])
+			os.makedirs(dir_path)
 		except OSError, oe:
 			if errno.EEXIST == oe.errno:
 				pass
