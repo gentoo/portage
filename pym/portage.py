@@ -2579,7 +2579,7 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 		confcache_enabled = True
 		if "CONFCACHE_DIR" not in mysettings:
 			mysettings["CONFCACHE_DIR"] = os.path.join(mysettings["PORTAGE_TMPDIR"], "confcache")
-		confcache_dir_mode = 0775
+		confcache_dir_mode = 02775
 
 		try:
 			os.makedirs(mysettings["CONFCACHE_DIR"], mode=confcache_dir_mode)
@@ -2591,26 +2591,12 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 				confcache_enabled = False
 
 		if confcache_enabled:
-			try:
-				confcache_enabled = apply_secpass_permissions(
-					mysettings["CONFCACHE_DIR"],
-					gid=portage_gid, mode=confcache_dir_mode)
-			except portage_exception.OperationNotPermitted, e:
-				writemsg("Operation Not Permitted: %s\n" % str(e))
-				confcache_enabled = False
+			confcache_enabled = apply_recursive_permissions(
+				mysettings["CONFCACHE_DIR"], gid=portage_gid,
+				dirmode=confcache_dir_mode, dirmask=02,
+				filemode=0660, filemask=07002)
 
 		del confcache_dir_mode
-
-		if confcache_enabled:
-			for x in listdir(mysettings["CONFCACHE_DIR"]):
-				cache_file = os.path.join(mysettings["CONFCACHE_DIR"], x)
-				try:
-					confcache_enabled = apply_secpass_permissions(cache_file, gid=portage_gid, mode=0660, mask=07000)
-				except portage_exception.OperationNotPermitted, e:
-					writemsg("Operation Not Permitted: %s\n" % str(e))
-					confcache_enabled = False
-				except portage_exception.FileNotFound, e:
-					writemsg("File Not Found: %s\n" % str(e))
 
 		if not confcache_enabled:
 			writemsg("!!! Failed resetting perms on confcachedir %s\n" % mysettings["CONFCACHE_DIR"])
