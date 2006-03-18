@@ -180,7 +180,7 @@ def help(myaction,myopts,havecolor=1):
 		print "              used in combination with --pretend all the SRC_URIs will be"
 		print "              displayed multiple mirrors per line, one line per file."
 		print
-		print "       "+green("--fetch-all-uri")
+		print "       "+green("--fetch-all-uri")+" ("+green("-F")+" short option)"
 		print "              Same as --fetchonly except that all package files, including those"
 		print "              not required to build the package, will be processed."
 		print
@@ -222,7 +222,7 @@ def help(myaction,myopts,havecolor=1):
 		print "       "+green("--nospinner")
 		print "              Disables the spinner regardless of terminal type."
 		print
-		print "       "+green("--oneshot")
+		print "       "+green("--oneshot")+" ("+green("-1")+" short option)"
 		print "              Emerge as normal, but don't add packages to the world profile."
 		print "              This package will only be updated if it is depended upon by"
 		print "              another package."
