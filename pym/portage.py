@@ -2504,6 +2504,20 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 			else:
 				raise
 
+	def makedirs(dir_path):
+		try:
+			os.makedirs(mysettings[dir_key])
+		except OSError, oe:
+			if errno.EEXIST == oe.errno:
+				pass
+			elif errno.EPERM == oe.errno:
+				writemsg("%s\n" % oe)
+				writemsg("Operation Not Permitted: makedirs('%s')\n" % dir_path)
+				return False
+			else:
+				raise
+		return True
+
 	dir_mode_map = {
 		"BUILD_PREFIX"     :00070,
 		"HOME"             :02070,
@@ -2515,18 +2529,8 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 	mysettings["PKG_LOGDIR"] = os.path.join(mysettings["T"], "logging")
 
 	for dir_key, mode in dir_mode_map.iteritems():
-		try:
-			os.makedirs(mysettings[dir_key])
-		except OSError, oe:
-			if errno.EEXIST == oe.errno:
-				pass
-			elif errno.EPERM == oe.errno:
-				writemsg("%s\n" % oe)
-				writemsg("Operation Not Permitted: makedirs('%s')\n" % mysettings[dir_key])
-				return 1
-			else:
-				raise
-
+		if not makedirs(mysettings[dir_key]):
+			return 1
 		try:
 			apply_secpass_permissions(mysettings[dir_key],
 			gid=portage_gid, mode=mode, mask=02)
@@ -2542,24 +2546,12 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 		if "CCACHE_DIR" not in mysettings or "" == mysettings["CCACHE_DIR"]:
 			mysettings["CCACHE_DIR"] = os.path.join(mysettings["PORTAGE_TMPDIR"], "ccache")
 
-		ccache_dir_mode = 02070
-
-		try:
-			os.makedirs(mysettings["CCACHE_DIR"], mode=ccache_dir_mode)
-		except OSError, oe:
-			if oe.errno == errno.EEXIST:
-				pass
-			elif oe.errno == errno.EPERM:
-				writemsg("%s/n" % str(oe))
-				writemsg("Operation Not Permitted: makedirs(%s, mode=%s)\n" % (mysettings["CCACHE_DIR"], oct(ccache_dir_mode)))
-				ccache_enabled = False
-			else:
-				raise
+		ccache_enabled = makedirs(mysettings["CCACHE_DIR"])
 
 		if ccache_enabled:
 			ccache_enabled = apply_recursive_permissions(
 				mysettings["CCACHE_DIR"], gid=portage_gid,
-				dirmode=ccache_dir_mode, dirmask=02,
+				dirmode=02070, dirmask=02,
 				filemode=060, filemask=02)
 
 		if not ccache_enabled:
@@ -2567,39 +2559,27 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 			features.remove("ccache")
 			mysettings["FEATURES"] = " ".join(features)
 
-		del ccache_dir_mode
 		del ccache_enabled
 
 	if "confcache" in features:
 		confcache_enabled = True
 		if "CONFCACHE_DIR" not in mysettings:
 			mysettings["CONFCACHE_DIR"] = os.path.join(mysettings["PORTAGE_TMPDIR"], "confcache")
-		confcache_dir_mode = 02775
 
-		try:
-			os.makedirs(mysettings["CONFCACHE_DIR"], mode=confcache_dir_mode)
-		except OSError, oe:
-			if oe.errno == errno.EEXIST:
-				pass
-			elif oe.errno == errno.EPERM:
-				writemsg("%s/n" % str(oe))
-				writemsg("Operation Not Permitted: makedirs(%s, mode=%s)\n" % (mysettings["CONFCACHE_DIR"], oct(confcache_dir_mode)))
-				confcache_enabled = False
-			else:
-				raise
+		confcache_enabled = makedirs(mysettings["CONFCACHE_DIR"])
 
 		if confcache_enabled:
 			confcache_enabled = apply_recursive_permissions(
 				mysettings["CONFCACHE_DIR"], gid=portage_gid,
-				dirmode=confcache_dir_mode, dirmask=02,
-				filemode=0660, filemask=07002)
-
-		del confcache_dir_mode
+				dirmode=02070, dirmask=02,
+				filemode=060, filemask=02)
 
 		if not confcache_enabled:
 			writemsg("!!! Failed resetting perms on confcachedir %s\n" % mysettings["CONFCACHE_DIR"])
 			features.remove("confcache")
 			mysettings["FEATURES"] = " ".join(features)
+
+		del confcache_enabled
 
 	if "distcc" in features:
 		
@@ -2609,20 +2589,14 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 			mysettings["DISTCC_DIR"] = os.path.join(mysettings["BUILD_PREFIX"], ".distcc")
 		for x in ("", "lock", "state"):
 			mydir = os.path.join(mysettings["DISTCC_DIR"], x)
-			try:
-				os.makedirs(mydir)
-			except OSError, oe:
-				if errno.EEXIST == oe.errno:
-					pass
-				elif errno.EPERM == oe.errno:
-					distcc_enabled = False
-					break
-				else:
-					raise
+			if not os.makedirs(mydir):
+				distcc_enabled = False
+				break
 
-		distcc_enabled = apply_recursive_permissions(
-		mysettings["DISTCC_DIR"], gid=portage_gid,
-		dirmode=02070, dirmask=02, filemode=060, filemask=02)
+		if distcc_enabled:
+			distcc_enabled = apply_recursive_permissions(
+			mysettings["DISTCC_DIR"], gid=portage_gid,
+			dirmode=02070, dirmask=02, filemode=060, filemask=02)
 
 		if not distcc_enabled:
 			writemsg("\n!!! File system problem when setting DISTCC_DIR directory permissions.\n")
@@ -2655,17 +2629,9 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 	if "PORT_LOGDIR" in mysettings:
 		logging_enabled = True
 
-		try:
-			os.makedirs(mysettings["PORT_LOGDIR"])
-		except OSError, oe:
-			if errno.EEXIST == oe.errno:
-				pass
-			elif errno.EPERM == oe.errno:
-				writemsg("!!! Unable to create PORT_LOGDIR\n")
-				writemsg("!!! %s\n" % str(oe))
-				logging_enabled = False
-			else:
-				raise
+		if not makedirs(mysettings["PORT_LOGDIR"]):
+			writemsg("!!! Unable to create PORT_LOGDIR\n")
+			logging_enabled = False
 
 		if logging_enabled:
 			try:
