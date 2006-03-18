@@ -5167,10 +5167,14 @@ class portdbapi(dbapi):
 		for mycpv in mylist:
 			#we need to update this next line when we have fully integrated the new db api
 			auxerr=0
+			keys = None
 			try:
 				keys, eapi = db["/"]["porttree"].dbapi.aux_get(mycpv, ["KEYWORDS", "EAPI"])
-			except (KeyError,IOError,TypeError):
-				continue
+			except KeyError:
+				pass
+			except PortageException, e:
+				writemsg("!!! Error: aux_get('%s', ['KEYWORDS', 'EAPI'])\n" % mycpv)
+				writemsg("!!! %s\n" % str(e))
 			if not keys:
 				# KEYWORDS=""
 				#print "!!! No KEYWORDS for "+str(mycpv)+" -- Untested Status"
