@@ -1639,20 +1639,22 @@ def spawn(mystring,mysettings,debug=0,free=0,droppriv=0,sesandbox=0,fd_pipes=Non
 		free=((droppriv and "usersandbox" not in features) or \
 			(not droppriv and "sandbox" not in features and "usersandbox" not in features))
 
+	if free:
+		keywords["opt_name"] += " bash"
+	else:
+		keywords["opt_name"] += " sandbox"
+
 	if sesandbox:
 		con = selinux.getcontext()
 		con = string.replace(con, mysettings["PORTAGE_T"], mysettings["PORTAGE_SANDBOX_T"])
 		selinux.setexec(con)
 
-	if not free:
-		keywords["opt_name"] += " sandbox"
-		return portage_exec.spawn_sandbox(mystring,env=env,**keywords)
-	else:
-		keywords["opt_name"] += " bash"
-		return portage_exec.spawn_bash(mystring,env=env,**keywords)
-	
+	retval = portage_exec.spawn_bash(mystring, env=env, **keywords)
+
 	if sesandbox:
 		selinux.setexec(None)
+
+	return retval
 
 def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",use_locks=1, try_mirrors=1):
 	"fetch files.  Will use digest file if available."
