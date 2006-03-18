@@ -5,7 +5,7 @@
 
 import fs_template
 import cache_errors
-import os, stat
+import errno, os, stat
 from mappings import LazyLoad, ProtectedDict
 from template import reconstruct_eclasses
 # store the current key order *here*.
@@ -71,7 +71,7 @@ class database(fs_template.FsBased):
 		fp = os.path.join(self.location,cpv[:s],".update.%i.%s" % (os.getpid(), cpv[s+1:]))
 		try:	myf=open(fp, "w")
 		except IOError, ie:
-			if ie.errno == 2:
+			if errno.ENOENT == ie.errno:
 				try:
 					self._ensure_dirs(cpv)
 					myf=open(fp,"w")
@@ -101,7 +101,7 @@ class database(fs_template.FsBased):
 		try:
 			os.remove(os.path.join(self.location,cpv))
 		except OSError, e:
-			if e.errno == 2:
+			if errno.ENOENT == e.errno:
 				raise KeyError(cpv)
 			else:
 				raise cache_errors.CacheCorruption(cpv, e)
