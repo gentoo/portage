@@ -220,14 +220,14 @@ install_qa_check() {
 	find "${D}/" -user  portage | while read file; do
 		count=$(( $count + 1 ))
 		if [ -L "${file}" ]; then
-			lchown ${PORTAGE_INST_UID} "${file}"
+			lchown ${PORTAGE_INST_UID:-0} "${file}"
 		else
 			s=$(stat_perms "$file")
 			if [ -z "${s}" ]; then
 				ewarn "failed stat_perm'ing $file.  User intervention during install isn't wise..."
 				continue
 			fi
-			chown ${PORTAGE_INST_UID} "$file"
+			chown ${PORTAGE_INST_UID:-0} "$file"
 			chmod "$s" "$file"
 		fi
 	done
@@ -239,14 +239,14 @@ install_qa_check() {
 	find "${D}/" -group portage | while read file; do
 		count=$(( $count + 1 ))
 		if [ -L "${file}" ]; then
-			lchgrp ${PORTAGE_INST_GID} "${file}"
+			lchgrp ${PORTAGE_INST_GID:-0} "${file}"
 		else
 			s=$(stat_perms "$file")
 			if [ -z "${s}" ]; then
 				echo "failed stat_perm'ing '$file' . User intervention during install isn't wise..."
 				continue
 			fi
-			chgrp ${PORTAGE_INST_GID} "$file"
+			chgrp ${PORTAGE_INST_GID:-0} "$file"
 			chmod "$s" "$file"
 		fi
 	done

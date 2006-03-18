@@ -51,7 +51,7 @@ fi
 sync_local() {
 	echo Syncing local tree...
 	if type -p tarsync &> /dev/null; then
-		if ! tarsync "${FILE}" "${PORTDIR}" -v -s 1 -o ${PORTAGE_INST_UID} -g ${PORTAGE_INST_GID} -e /distfiles -e /packages -e /local; then
+		if ! tarsync "${FILE}" "${PORTDIR}" -v -s 1 -o ${PORTAGE_INST_UID:-0} -g ${PORTAGE_INST_GID:-0} -e /distfiles -e /packages -e /local; then
 			echo "tarsync failed; tarball is corrupt?"
 			exit 1;
 		fi
@@ -64,7 +64,7 @@ sync_local() {
 		fi
 		rm -f $FILE
 		# Make sure user and group file ownership is ${PORTAGE_INST_UID}:${PORTAGE_INST_GID}
-		chown -R ${PORTAGE_INST_UID}:${PORTAGE_INST_GID} portage
+		chown -R ${PORTAGE_INST_UID:-0}:${PORTAGE_INST_GID:-0} portage
 		cd portage
 		rsync -av --progress --stats --delete --delete-after \
 		--exclude='/distfiles' --exclude='/packages' \
