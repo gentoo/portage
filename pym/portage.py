@@ -4733,23 +4733,25 @@ class portdbapi(dbapi):
 		return self.findname2(mycpv)[0]
 
 	def findname2(self,mycpv):
-		"returns file location for this particular package and in_overlay flag"
+		""" 
+		Returns the location of the CPV, and what overlay it was in.
+		Searches overlays first, then PORTDIR; this allows us to return the first
+		matching file.  As opposed to starting in portdir and then doing overlays
+		second, we would have to exhaustively search the overlays until we found
+		the file we wanted.
+		"""
 		if not mycpv:
 			return "",0
 		mysplit=mycpv.split("/")
-
 		psplit=pkgsplit(mysplit[1])
-		ret=None
+
+		mytrees = self.porttrees[:]
+		mytrees.reverse()
 		if psplit:
-			for x in self.porttrees:
+			for x in mytrees:
 				file=x+"/"+mysplit[0]+"/"+psplit[0]+"/"+mysplit[1]+".ebuild"
 				if os.access(file, os.R_OK):
-					# when found
-					ret=[file, x]
-		if ret:
-			return ret[0], ret[1]
-
-		# when not found
+					return[file, x]
 		return None, 0
 
 	def aux_get(self, mycpv, mylist):
