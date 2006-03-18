@@ -2650,7 +2650,7 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 			raise ValueError("Invalid file mode: %s" % mysettings["PORTAGE_WORKDIR_MODE"])
 	except KeyError, e:
 		writemsg("!!! PORTAGE_WORKDIR_MODE is unset, using %s." % oct(workdir_mode))
-	except ValueError, e:
+	except (ValueError, SyntaxError), e:
 		writemsg("%s\n" % e)
 		writemsg("!!! Unable to parse PORTAGE_WORKDIR_MODE='%s', using %s.\n" % \
 		(mysettings["PORTAGE_WORKDIR_MODE"], oct(workdir_mode)))
