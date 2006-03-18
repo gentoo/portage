@@ -70,16 +70,16 @@ class database(fs_template.FsBased):
 		s = cpv.rfind("/")
 		fp = os.path.join(self.location,cpv[:s],".update.%i.%s" % (os.getpid(), cpv[s+1:]))
 		try:	myf=open(fp, "w")
-		except IOError, ie:
-			if errno.ENOENT == ie.errno:
+		except (IOError, OSError), e:
+			if errno.ENOENT == e.errno:
 				try:
 					self._ensure_dirs(cpv)
 					myf=open(fp,"w")
 				except (OSError, IOError),e:
 					raise cache_errors.CacheCorruption(cpv, e)
-		except OSError, e:
-			raise cache_errors.CacheCorruption(cpv, e)
-		
+			else:
+				raise cache_errors.CacheCorruption(cpv, e)
+
 		for k, v in values.items():
 			if k != "_mtime_" and (k == "_eclasses_" or k in self._known_keys):
 				myf.writelines("%s=%s\n" % (k, v))
