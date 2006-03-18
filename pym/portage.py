@@ -2548,32 +2548,38 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 		print "!!!",str(e)
 		return 1
 
-	try:
-		if ("ccache" in features):
-			if (not mysettings.has_key("CCACHE_DIR")) or (mysettings["CCACHE_DIR"]==""):
-				mysettings["CCACHE_DIR"]=mysettings["PORTAGE_TMPDIR"]+"/ccache"
-			if not os.path.exists(mysettings["CCACHE_DIR"]):
-				os.makedirs(mysettings["CCACHE_DIR"])
-			mystat = os.stat(mysettings["CCACHE_DIR"])
-			if ("userpriv" in features):
-				if mystat[stat.ST_UID] != portage_uid or ((mystat[stat.ST_MODE]&02070)!=02070):
-					writemsg("* Adjusting permissions on ccache in %s\n" % mysettings["CCACHE_DIR"])
-					spawn("chgrp -R "+str(portage_gid)+" "+mysettings["CCACHE_DIR"], mysettings, free=1)
-					spawn("chown "+str(portage_uid)+":"+str(portage_gid)+" "+mysettings["CCACHE_DIR"], mysettings, free=1)
-					spawn("chmod -R ug+rw "+mysettings["CCACHE_DIR"], mysettings, free=1)
-					spawn("find "+mysettings["CCACHE_DIR"]+" -type d -exec chmod g+xs \{\} \;", mysettings, free=1)
+	if "ccache" in features:
+		ccache_enabled = True
+		if "CCACHE_DIR" not in mysettings or "" == mysettings["CCACHE_DIR"]:
+			mysettings["CCACHE_DIR"] = os.path.join(mysettings["PORTAGE_TMPDIR"], "ccache")
+
+		ccache_dir_mode = 02070
+
+		try:
+			os.makedirs(mysettings["CCACHE_DIR"], mode=ccache_dir_mode)
+		except OSError, oe:
+			if oe.errno == errno.EEXIST:
+				pass
+			elif oe.errno == errno.EPERM:
+				writemsg("%s/n" % str(oe))
+				writemsg("Operation Not Permitted: makedirs(%s, mode=%s)\n" % (mysettings["CCACHE_DIR"], oct(ccache_dir_mode)))
+				ccache_enabled = False
 			else:
-				if mystat[stat.ST_UID] != 0 or ((mystat[stat.ST_MODE]&02070)!=02070):
-					writemsg("* Adjusting permissions on ccache in %s\n" % mysettings["CCACHE_DIR"])
-					spawn("chgrp -R "+str(portage_gid)+" "+mysettings["CCACHE_DIR"], mysettings, free=1)
-					spawn("chown 0:"+str(portage_gid)+" "+mysettings["CCACHE_DIR"], mysettings, free=1)
-					spawn("chmod -R ug+rw "+mysettings["CCACHE_DIR"], mysettings, free=1)
-					spawn("find "+mysettings["CCACHE_DIR"]+" -type d -exec chmod g+xs \{\} \;", mysettings, free=1)
-	except OSError, e:
-		print "!!! File system problem. (ReadOnly? Out of space?)"
-		print "!!! Perhaps: rm -Rf",mysettings["BUILD_PREFIX"]
-		print "!!!",str(e)
-		return 1
+				raise
+
+		if ccache_enabled:
+			ccache_enabled = apply_recursive_permissions(
+				mysettings["CCACHE_DIR"], gid=portage_gid,
+				dirmode=ccache_dir_mode, dirmask=02,
+				filemode=060, filemask=02)
+
+		if not ccache_enabled:
+			writemsg("!!! Failed resetting perms on CCACHE_DIR='%s'\n" % mysettings["CCACHE_DIR"])
+			features.remove("ccache")
+			mysettings["FEATURES"] = " ".join(features)
+
+		del ccache_dir_mode
+		del ccache_enabled
 
 	if "confcache" in features:
 		confcache_enabled = True
@@ -2586,9 +2592,12 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 		except OSError, oe:
 			if oe.errno == errno.EEXIST:
 				pass
-			elif errno == errno.EPERM:
+			elif oe.errno == errno.EPERM:
+				writemsg("%s/n" % str(oe))
 				writemsg("Operation Not Permitted: makedirs(%s, mode=%s)\n" % (mysettings["CONFCACHE_DIR"], oct(confcache_dir_mode)))
 				confcache_enabled = False
+			else:
+				raise
 
 		if confcache_enabled:
 			confcache_enabled = apply_recursive_permissions(
