@@ -5172,7 +5172,7 @@ class portdbapi(dbapi):
 				keys, eapi = db["/"]["porttree"].dbapi.aux_get(mycpv, ["KEYWORDS", "EAPI"])
 			except KeyError:
 				pass
-			except PortageException, e:
+			except portage_exception.PortageException, e:
 				writemsg("!!! Error: aux_get('%s', ['KEYWORDS', 'EAPI'])\n" % mycpv)
 				writemsg("!!! %s\n" % str(e))
 			if not keys:
