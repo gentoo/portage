@@ -75,7 +75,7 @@ try:
 	                         portage_uid, portage_gid
 
 	import portage_util
-	from portage_util import atomic_ofstream, apply_secpass_permissions, \
+	from portage_util import atomic_ofstream, apply_secpass_permissions, apply_recursive_permissions, \
 		dump_traceback, getconfig, grabdict, grabdict_package, grabfile, grabfile_package, \
 		map_dictlist_vals, pickle_read, pickle_write, stack_dictlist, stack_dicts, stack_lists, \
 		unique_array, varexpand, writedict, writemsg, writemsg_stdout, write_atomic
@@ -2488,138 +2488,102 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, t
 
 def prepare_build_dirs(myroot, mysettings, cleanup):
 
-	if not os.path.exists(mysettings["BUILD_PREFIX"]):
-		os.makedirs(mysettings["BUILD_PREFIX"])
-	apply_secpass_permissions(mysettings["BUILD_PREFIX"],
-	uid=portage_uid, gid=portage_gid, mode=00775)
+	clean_dirs = [mysettings["HOME"]]
 
 	# We enable cleanup when we want to make sure old cruft (such as the old
 	# environment) doesn't interfere with the current phase.
 	if cleanup:
-		if os.path.exists(mysettings["T"]):
-			shutil.rmtree(mysettings["T"])
-	if not os.path.exists(mysettings["T"]):
-		os.makedirs(mysettings["T"])
-	apply_secpass_permissions(mysettings["T"],
-	uid=portage_uid, gid=portage_gid, mode=02770)
+		clean_dirs.append(mysettings["T"])
 
-	logdir = mysettings["T"]+"/logging"
-	if not os.path.exists(logdir):
-		os.makedirs(logdir)
-	apply_secpass_permissions(logdir,
-	uid=portage_uid, gid=portage_gid, mode=0770)
-
-	try: # XXX: negative RESTRICT
-		if not (("nouserpriv" in string.split(mysettings["PORTAGE_RESTRICT"])) or \
-			("userpriv" in string.split(mysettings["PORTAGE_RESTRICT"]))):
-			if ("userpriv" in features) and (portage_uid and portage_gid):
-				if (secpass==2):
-					if os.path.exists(mysettings["HOME"]):
-						# XXX: Potentially bad, but held down by HOME replacement above.
-						spawn("rm -Rf "+mysettings["HOME"],mysettings, free=1)
-					if not os.path.exists(mysettings["HOME"]):
-						os.makedirs(mysettings["HOME"])
-			elif ("userpriv" in features):
-				print "!!! Disabling userpriv from features... Portage UID/GID not valid."
-				del features[features.index("userpriv")]
-	except SystemExit, e:
-		raise
-	except Exception, e:
-		print "!!! Couldn't empty HOME:",mysettings["HOME"]
-		print "!!!",e
-
-	try:
-		# no reason to check for depend since depend returns above.
-		for myvar in ("BUILD_PREFIX", "PORTAGE_BUILDDIR"):
-			if not os.path.exists(mysettings[myvar]):
-				os.makedirs(mysettings[myvar])
-			apply_secpass_permissions(mysettings[myvar],
-			uid=portage_uid, gid=portage_gid)
-	except OSError, e:
-		print "!!! File system problem. (ReadOnly? Out of space?)"
-		print "!!! Perhaps: rm -Rf",mysettings["BUILD_PREFIX"]
-		print "!!!",str(e)
-		return 1
-
-	try:
-		if not os.path.exists(mysettings["HOME"]):
-			os.makedirs(mysettings["HOME"])
-		apply_secpass_permissions(mysettings["HOME"],
-		uid=portage_uid, gid=portage_gid, mode=02770)
-	except OSError, e:
-		print "!!! File system problem. (ReadOnly? Out of space?)"
-		print "!!! Failed to create fake home directory in PORTAGE_BUILDDIR"
-		print "!!!",str(e)
-		return 1
-
-	try:
-		if ("ccache" in features):
-			if (not mysettings.has_key("CCACHE_DIR")) or (mysettings["CCACHE_DIR"]==""):
-				mysettings["CCACHE_DIR"]=mysettings["PORTAGE_TMPDIR"]+"/ccache"
-			if not os.path.exists(mysettings["CCACHE_DIR"]):
-				os.makedirs(mysettings["CCACHE_DIR"])
-			mystat = os.stat(mysettings["CCACHE_DIR"])
-			if ("userpriv" in features):
-				if mystat[stat.ST_UID] != portage_uid or ((mystat[stat.ST_MODE]&02070)!=02070):
-					writemsg("* Adjusting permissions on ccache in %s\n" % mysettings["CCACHE_DIR"])
-					spawn("chgrp -R "+str(portage_gid)+" "+mysettings["CCACHE_DIR"], mysettings, free=1)
-					spawn("chown "+str(portage_uid)+":"+str(portage_gid)+" "+mysettings["CCACHE_DIR"], mysettings, free=1)
-					spawn("chmod -R ug+rw "+mysettings["CCACHE_DIR"], mysettings, free=1)
-					spawn("find "+mysettings["CCACHE_DIR"]+" -type d -exec chmod g+xs \{\} \;", mysettings, free=1)
+	for clean_dir in clean_dirs:
+		try:
+			shutil.rmtree(clean_dir)
+		except OSError, oe:
+			if errno.ENOENT == oe.errno:
+				pass
+			elif errno.EPERM == oe.errno:
+				writemsg("%s\n" % oe)
+				writemsg("Operation Not Permitted: rmtree('%s')\n" % clean_dir)
+				return 1
 			else:
-				if mystat[stat.ST_UID] != 0 or ((mystat[stat.ST_MODE]&02070)!=02070):
-					writemsg("* Adjusting permissions on ccache in %s\n" % mysettings["CCACHE_DIR"])
-					spawn("chgrp -R "+str(portage_gid)+" "+mysettings["CCACHE_DIR"], mysettings, free=1)
-					spawn("chown 0:"+str(portage_gid)+" "+mysettings["CCACHE_DIR"], mysettings, free=1)
-					spawn("chmod -R ug+rw "+mysettings["CCACHE_DIR"], mysettings, free=1)
-					spawn("find "+mysettings["CCACHE_DIR"]+" -type d -exec chmod g+xs \{\} \;", mysettings, free=1)
-	except OSError, e:
-		print "!!! File system problem. (ReadOnly? Out of space?)"
-		print "!!! Perhaps: rm -Rf",mysettings["BUILD_PREFIX"]
-		print "!!!",str(e)
-		return 1
+				raise
+
+	def makedirs(dir_path):
+		try:
+			os.makedirs(dir_path)
+		except OSError, oe:
+			if errno.EEXIST == oe.errno:
+				pass
+			elif errno.EPERM == oe.errno:
+				writemsg("%s\n" % oe)
+				writemsg("Operation Not Permitted: makedirs('%s')\n" % dir_path)
+				return False
+			else:
+				raise
+		return True
+
+	dir_mode_map = {
+		"BUILD_PREFIX"     :00070,
+		"HOME"             :02070,
+		"PORTAGE_BUILDDIR" :00070,
+		"PKG_LOGDIR"       :00070,
+		"T"                :02070
+	}
+
+	mysettings["PKG_LOGDIR"] = os.path.join(mysettings["T"], "logging")
+
+	for dir_key, mode in dir_mode_map.iteritems():
+		if not makedirs(mysettings[dir_key]):
+			return 1
+		try:
+			apply_secpass_permissions(mysettings[dir_key],
+			gid=portage_gid, mode=mode, mask=02)
+		except portage_exception.OperationNotPermitted, e:
+			writemsg("Operation Not Permitted: %s\n" % str(e))
+			return 1
+		except portage_exception.FileNotFound, e:
+			writemsg("File Not Found: '%s'\n" % str(e))
+			return 1
+
+	if "ccache" in features:
+		ccache_enabled = True
+		if "CCACHE_DIR" not in mysettings or "" == mysettings["CCACHE_DIR"]:
+			mysettings["CCACHE_DIR"] = os.path.join(mysettings["PORTAGE_TMPDIR"], "ccache")
+
+		ccache_enabled = makedirs(mysettings["CCACHE_DIR"])
+
+		if ccache_enabled:
+			ccache_enabled = apply_recursive_permissions(
+				mysettings["CCACHE_DIR"], gid=portage_gid,
+				dirmode=02070, dirmask=02,
+				filemode=060, filemask=02)
+
+		if not ccache_enabled:
+			writemsg("!!! Failed resetting perms on CCACHE_DIR='%s'\n" % mysettings["CCACHE_DIR"])
+			features.remove("ccache")
+			mysettings["FEATURES"] = " ".join(features)
+
+		del ccache_enabled
 
 	if "confcache" in features:
 		confcache_enabled = True
 		if "CONFCACHE_DIR" not in mysettings:
 			mysettings["CONFCACHE_DIR"] = os.path.join(mysettings["PORTAGE_TMPDIR"], "confcache")
-		confcache_dir_mode = 0775
 
-		try:
-			os.makedirs(mysettings["CONFCACHE_DIR"], mode=confcache_dir_mode)
-		except OSError, oe:
-			if oe.errno == errno.EEXIST:
-				pass
-			elif errno == errno.EPERM:
-				writemsg("Operation Not Permitted: makedirs(%s, mode=%s)\n" % (mysettings["CONFCACHE_DIR"], oct(confcache_dir_mode)))
-				confcache_enabled = False
+		confcache_enabled = makedirs(mysettings["CONFCACHE_DIR"])
 
 		if confcache_enabled:
-			try:
-				confcache_enabled = apply_secpass_permissions(
-					mysettings["CONFCACHE_DIR"],
-					gid=portage_gid, mode=confcache_dir_mode)
-			except portage_exception.OperationNotPermitted, e:
-				writemsg("Operation Not Permitted: %s\n" % str(e))
-				confcache_enabled = False
-
-		del confcache_dir_mode
-
-		if confcache_enabled:
-			for x in listdir(mysettings["CONFCACHE_DIR"]):
-				cache_file = os.path.join(mysettings["CONFCACHE_DIR"], x)
-				try:
-					confcache_enabled = apply_secpass_permissions(cache_file, gid=portage_gid, mode=0660, mask=07000)
-				except portage_exception.OperationNotPermitted, e:
-					writemsg("Operation Not Permitted: %s\n" % str(e))
-					confcache_enabled = False
-				except portage_exception.FileNotFound, e:
-					writemsg("File Not Found: %s\n" % str(e))
+			confcache_enabled = apply_recursive_permissions(
+				mysettings["CONFCACHE_DIR"], gid=portage_gid,
+				dirmode=02070, dirmask=02,
+				filemode=060, filemask=02)
 
 		if not confcache_enabled:
 			writemsg("!!! Failed resetting perms on confcachedir %s\n" % mysettings["CONFCACHE_DIR"])
 			features.remove("confcache")
 			mysettings["FEATURES"] = " ".join(features)
+
+		del confcache_enabled
 
 	if "distcc" in features:
 		
@@ -2629,23 +2593,14 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 			mysettings["DISTCC_DIR"] = os.path.join(mysettings["BUILD_PREFIX"], ".distcc")
 		for x in ("", "lock", "state"):
 			mydir = os.path.join(mysettings["DISTCC_DIR"], x)
-			try:
-				os.makedirs(mydir)
-			except OSError, oe:
-				if errno.EEXIST == oe.errno:
-					pass
-				elif errno.EPERM == oe.errno:
-					distcc_enabled = False
-					break
-				else:
-					raise
-			try:
-				distcc_enabled = apply_secpass_permissions(mydir,
-				uid=portage_uid, gid=portage_gid, mode=02775)
-			except portage_exception.OperationNotPermitted, e:
-				writemsg("Operation Not Permitted: %s\n" % str(e))
+			if not makedirs(mydir):
 				distcc_enabled = False
 				break
+
+		if distcc_enabled:
+			distcc_enabled = apply_recursive_permissions(
+			mysettings["DISTCC_DIR"], gid=portage_gid,
+			dirmode=02070, dirmask=02, filemode=060, filemask=02)
 
 		if not distcc_enabled:
 			writemsg("\n!!! File system problem when setting DISTCC_DIR directory permissions.\n")
@@ -2657,15 +2612,18 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 
 	workdir_mode = 0700
 	try:
-		workdir_mode = int(eval(mysettings["PORTAGE_WORKDIR_MODE"]))
-		if workdir_mode & 07777 != workdir_mode:
+		parsed_mode = int(eval(mysettings["PORTAGE_WORKDIR_MODE"]))
+		if parsed_mode & 07777 != parsed_mode:
 			raise ValueError("Invalid file mode: %s" % mysettings["PORTAGE_WORKDIR_MODE"])
+		else:
+			workdir_mode = parsed_mode
 	except KeyError, e:
 		writemsg("!!! PORTAGE_WORKDIR_MODE is unset, using %s." % oct(workdir_mode))
-	except ValueError, e:
+	except (ValueError, SyntaxError), e:
 		writemsg("%s\n" % e)
 		writemsg("!!! Unable to parse PORTAGE_WORKDIR_MODE='%s', using %s.\n" % \
 		(mysettings["PORTAGE_WORKDIR_MODE"], oct(workdir_mode)))
+	mysettings["PORTAGE_WORKDIR_MODE"] = oct(workdir_mode)
 	try:
 		apply_secpass_permissions(mysettings["WORKDIR"],
 		uid=portage_uid, gid=portage_gid, mode=workdir_mode)
@@ -2675,17 +2633,9 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 	if "PORT_LOGDIR" in mysettings:
 		logging_enabled = True
 
-		try:
-			os.makedirs(mysettings["PORT_LOGDIR"])
-		except OSError, oe:
-			if errno.EEXIST == oe.errno:
-				pass
-			elif errno.EPERM == oe.errno:
-				writemsg("!!! Unable to create PORT_LOGDIR\n")
-				writemsg("!!! %s\n" % str(oe))
-				logging_enabled = False
-			else:
-				raise
+		if not makedirs(mysettings["PORT_LOGDIR"]):
+			writemsg("!!! Unable to create PORT_LOGDIR\n")
+			logging_enabled = False
 
 		if logging_enabled:
 			try:
@@ -2840,17 +2790,13 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 		try:
 			apply_secpass_permissions(mysettings["DISTDIR"],
 				gid=portage_gid, mode=0775, mask=02)
-			cvs_src_dir = os.path.join(mysettings["DISTDIR"], "cvs-src")
-			apply_secpass_permissions(cvs_src_dir,
-				gid=portage_gid, mode=02770, mask=02)
-			portage_exec.spawn(["chgrp", "-R", str(portage_gid), cvs_src_dir])
-			portage_exec.spawn(["chmod", "-R", "g+rw", cvs_src_dir])
-			portage_exec.spawn(["find", cvs_src_dir, "-type", "d",
-				"-exec","chmod", "g+xs", "{}", ";"])
 		except portage_exception.OperationNotPermitted, e:
 			writemsg("Operation Not Permitted: %s\n" % str(e))
 		except portage_exception.FileNotFound, e:
 			writemsg("File Not Found: '%s'\n" % str(e))
+
+		apply_recursive_permissions(os.path.join(mysettings["DISTDIR"], "cvs-src"),
+			gid=portage_gid, dirmode=02770, dirmask=02, filemode=0660, filemask=02)
 
 	# Only try and fetch the files if we are going to need them ... otherwise,
 	# if user has FEATURES=noauto and they run `ebuild clean unpack compile install`,

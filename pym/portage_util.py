@@ -2,7 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/pym/portage_util.py,v 1.11.2.6 2005/04/23 07:26:04 jstubbs Exp $
 
-from portage_exception import FileNotFound, OperationNotPermitted
+from portage_exception import PortageException, FileNotFound, OperationNotPermitted
 
 import sys,string,shlex,os,errno
 try:
@@ -519,6 +519,47 @@ def apply_stat_permissions(filename, newstat, **kwargs):
 	uid, gid, and mode from a stat object"""
 	return apply_secpass_permissions(filename, uid=newstat.st_uid, gid=newstat.st_gid,
 	mode=newstat.st_mode, **kwargs)
+
+def apply_recursive_permissions(top, uid=-1, gid=-1,
+	dirmode=-1, dirmask=-1, filemode=-1, filemask=-1, onerror=None):
+	"""A wrapper around apply_secpass_permissions that applies permissions
+	recursively.  If optional argument onerror is specified, it should be a
+	function; it will be called with one argument, a PortageException instance.
+	Returns True if all permissions are applied and False if some are left
+	unapplied."""
+
+	if onerror is None:
+		# Default behavior is to dump errors to stderr so they won't
+		# go unnoticed.  Callers can pass in a quiet instance.
+		def onerror(e):
+			if isinstance(e, OperationNotPermitted):
+				writemsg("Operation Not Permitted: %s\n" % str(e))
+			elif isinstance(e, FileNotFound):
+				writemsg("File Not Found: '%s'\n" % str(e))
+			else:
+				raise
+
+	all_applied = True
+	for dirpath, dirnames, filenames in os.walk(top):
+		try:
+			applied = apply_secpass_permissions(dirpath,
+				uid=uid, gid=gid, mode=dirmode, mask=dirmask)
+			if not applied:
+				all_applied = False
+		except PortageException, e:
+			all_applied = False
+			onerror(e)
+
+		for name in filenames:
+			try:
+				applied = apply_secpass_permissions(os.path.join(dirpath, name),
+					uid=uid, gid=gid, mode=filemode, mask=filemask)
+				if not applied:
+					all_applied = False
+			except PortageException, e:
+				all_applied = False
+				onerror(e)
+	return all_applied
 
 def apply_secpass_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 	stat_cached=None):

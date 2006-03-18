@@ -823,7 +823,7 @@ dyn_unpack() {
 	fi
 
 	if [ ! -d "${WORKDIR}" ]; then
-		install -m ${PORTAGE_WORKDIR_MODE-0700} -d "${WORKDIR}" || die "Failed to create dir '${WORKDIR}'"
+		install -m ${PORTAGE_WORKDIR_MODE:-0700} -d "${WORKDIR}" || die "Failed to create dir '${WORKDIR}'"
 	fi
 	cd "${WORKDIR}" || die "Directory change failed: \`cd '${WORKDIR}'\`"
 	echo ">>> Unpacking source..."
@@ -1226,7 +1226,7 @@ dyn_help() {
 debug-print() {
 	# if $T isn't defined, we're in dep calculation mode and
 	# shouldn't do anything
-	[ -z "$T" ] && return 0
+	[ ! -d "$T" ] && return 0
 
 	while [ "$1" ]; do
 
