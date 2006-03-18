@@ -2484,69 +2484,58 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, t
 
 def prepare_build_dirs(myroot, mysettings, cleanup):
 
-	if not os.path.exists(mysettings["BUILD_PREFIX"]):
-		os.makedirs(mysettings["BUILD_PREFIX"])
-	apply_secpass_permissions(mysettings["BUILD_PREFIX"],
-	uid=portage_uid, gid=portage_gid, mode=00775)
+	clean_dirs = [mysettings["HOME"]]
 
 	# We enable cleanup when we want to make sure old cruft (such as the old
 	# environment) doesn't interfere with the current phase.
 	if cleanup:
-		if os.path.exists(mysettings["T"]):
-			shutil.rmtree(mysettings["T"])
-	if not os.path.exists(mysettings["T"]):
-		os.makedirs(mysettings["T"])
-	apply_secpass_permissions(mysettings["T"],
-	uid=portage_uid, gid=portage_gid, mode=02770)
+		clean_dirs.append(mysettings["T"])
 
-	logdir = mysettings["T"]+"/logging"
-	if not os.path.exists(logdir):
-		os.makedirs(logdir)
-	apply_secpass_permissions(logdir,
-	uid=portage_uid, gid=portage_gid, mode=0770)
+	for clean_dir in clean_dirs:
+		try:
+			shutil.rmtree(clean_dir)
+		except OSError, oe:
+			if errno.ENOENT == oe.errno:
+				pass
+			elif errno.EPERM == oe.errno:
+				writemsg("%s\n" % oe)
+				writemsg("Operation Not Permitted: rmtree('%s')\n" % clean_dir)
+				return 1
+			else:
+				raise
 
-	try: # XXX: negative RESTRICT
-		if not (("nouserpriv" in string.split(mysettings["PORTAGE_RESTRICT"])) or \
-			("userpriv" in string.split(mysettings["PORTAGE_RESTRICT"]))):
-			if ("userpriv" in features) and (portage_uid and portage_gid):
-				if (secpass==2):
-					if os.path.exists(mysettings["HOME"]):
-						# XXX: Potentially bad, but held down by HOME replacement above.
-						spawn("rm -Rf "+mysettings["HOME"],mysettings, free=1)
-					if not os.path.exists(mysettings["HOME"]):
-						os.makedirs(mysettings["HOME"])
-			elif ("userpriv" in features):
-				print "!!! Disabling userpriv from features... Portage UID/GID not valid."
-				del features[features.index("userpriv")]
-	except SystemExit, e:
-		raise
-	except Exception, e:
-		print "!!! Couldn't empty HOME:",mysettings["HOME"]
-		print "!!!",e
+	dir_mode_map = {
+		"BUILD_PREFIX"     :00070,
+		"HOME"             :02070,
+		"PORTAGE_BUILDDIR" :00070,
+		"PKG_LOGDIR"       :00070,
+		"T"                :02070
+	}
 
-	try:
-		# no reason to check for depend since depend returns above.
-		for myvar in ("BUILD_PREFIX", "PORTAGE_BUILDDIR"):
-			if not os.path.exists(mysettings[myvar]):
-				os.makedirs(mysettings[myvar])
-			apply_secpass_permissions(mysettings[myvar],
-			uid=portage_uid, gid=portage_gid)
-	except OSError, e:
-		print "!!! File system problem. (ReadOnly? Out of space?)"
-		print "!!! Perhaps: rm -Rf",mysettings["BUILD_PREFIX"]
-		print "!!!",str(e)
-		return 1
+	mysettings["PKG_LOGDIR"] = os.path.join(mysettings["T"], "logging")
 
-	try:
-		if not os.path.exists(mysettings["HOME"]):
-			os.makedirs(mysettings["HOME"])
-		apply_secpass_permissions(mysettings["HOME"],
-		uid=portage_uid, gid=portage_gid, mode=02770)
-	except OSError, e:
-		print "!!! File system problem. (ReadOnly? Out of space?)"
-		print "!!! Failed to create fake home directory in PORTAGE_BUILDDIR"
-		print "!!!",str(e)
-		return 1
+	for dir_key, mode in dir_mode_map.iteritems():
+		try:
+			os.makedirs(mysettings[dir_key])
+		except OSError, oe:
+			if errno.EEXIST == oe.errno:
+				pass
+			elif errno.EPERM == oe.errno:
+				writemsg("%s\n" % oe)
+				writemsg("Operation Not Permitted: makedirs('%s')\n" % mysettings[dir_key])
+				return 1
+			else:
+				raise
+
+		try:
+			apply_secpass_permissions(mysettings[dir_key],
+			gid=portage_gid, mode=mode, mask=02)
+		except portage_exception.OperationNotPermitted, e:
+			writemsg("Operation Not Permitted: %s\n" % str(e))
+			return 1
+		except portage_exception.FileNotFound, e:
+			writemsg("File Not Found: '%s'\n" % str(e))
+			return 1
 
 	if "ccache" in features:
 		ccache_enabled = True
