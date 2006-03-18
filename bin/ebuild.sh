@@ -1217,7 +1217,8 @@ inherit() {
 
 		shift
 	done
-	((--ECLASS_DEPTH))
+	((--ECLASS_DEPTH)) # Returns 1 when ECLASS_DEPTH reaches 0.
+	return 0
 }
 
 # Exports stub functions that call the eclass's functions, thereby making them default.
