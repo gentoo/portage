@@ -2630,13 +2630,10 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 					break
 				else:
 					raise
-			try:
-				distcc_enabled = apply_secpass_permissions(mydir,
-				uid=portage_uid, gid=portage_gid, mode=02775)
-			except portage_exception.OperationNotPermitted, e:
-				writemsg("Operation Not Permitted: %s\n" % str(e))
-				distcc_enabled = False
-				break
+
+		distcc_enabled = apply_recursive_permissions(
+		mysettings["DISTCC_DIR"], gid=portage_gid,
+		dirmode=02070, dirmask=02, filemode=060, filemask=02)
 
 		if not distcc_enabled:
 			writemsg("\n!!! File system problem when setting DISTCC_DIR directory permissions.\n")
