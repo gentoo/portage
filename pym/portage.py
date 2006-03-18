@@ -2645,15 +2645,18 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 
 	workdir_mode = 0700
 	try:
-		workdir_mode = int(eval(mysettings["PORTAGE_WORKDIR_MODE"]))
-		if workdir_mode & 07777 != workdir_mode:
+		parsed_mode = int(eval(mysettings["PORTAGE_WORKDIR_MODE"]))
+		if parsed_mode & 07777 != parsed_mode:
 			raise ValueError("Invalid file mode: %s" % mysettings["PORTAGE_WORKDIR_MODE"])
+		else:
+			workdir_mode = parsed_mode
 	except KeyError, e:
 		writemsg("!!! PORTAGE_WORKDIR_MODE is unset, using %s." % oct(workdir_mode))
 	except (ValueError, SyntaxError), e:
 		writemsg("%s\n" % e)
 		writemsg("!!! Unable to parse PORTAGE_WORKDIR_MODE='%s', using %s.\n" % \
 		(mysettings["PORTAGE_WORKDIR_MODE"], oct(workdir_mode)))
+	mysettings["PORTAGE_WORKDIR_MODE"] = oct(workdir_mode)
 	try:
 		apply_secpass_permissions(mysettings["WORKDIR"],
 		uid=portage_uid, gid=portage_gid, mode=workdir_mode)
