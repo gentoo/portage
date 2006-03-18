@@ -123,7 +123,7 @@ while (( $attempts <  40 )) ; do
 			echo " === snapshot $FILE is correct, using it"
 			sync_local
 			echo
-			echo " === Snapshot has beed sync'd"
+			echo " === Snapshot has been sync'd"
 			echo
 			exit 0
 		else
