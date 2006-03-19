@@ -16,3 +16,5 @@ portage-2.1
   for other actions)
 * Tools that call emerge should override the EMERGE_DEFAULT_OPTS environment
   variable or use the emerge --ignore-default-opts option.
+* rsync option handling has been redesigned, instead of RSYNC_* variables
+  use PORTAGE_RSYNC_EXTRA_OPTS from now on.
