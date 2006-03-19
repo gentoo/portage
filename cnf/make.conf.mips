@@ -190,18 +190,17 @@ CHOST="mips-unknown-linux-gnu"
 #   Australia:     "rsync://rsync.au.gentoo.org/gentoo-portage"
 #SYNC="rsync://rsync.gentoo.org/gentoo-portage"
 #
-# RSYNC_RETRIES sets the number of times portage will attempt to retrieve
+# PORTAGE_RSYNC_RETRIES sets the number of times portage will attempt to retrieve
 #     a current portage tree before it exits with an error. This allows
 #     for a more successful retrieval without user intervention most times.
-#RSYNC_RETRIES="3"
+#PORTAGE_RSYNC_RETRIES="3"
 #
-# RSYNC_TIMEOUT sets the length of time rsync will wait before it times out
-#     on a connection. Most users will benefit from this setting as it will
-#     reduce the amount of 'dead air' they experience when they run across
-#     the occasional, unreachable mirror. Dialup users might want to set this
-#     value up around the 300 second mark.
-#RSYNC_TIMEOUT=180
-
+# PORTAGE_RSYNC_EXTRA_OPTS can be used to feed additional options to the rsync
+#     command used by `emerge --sync`. This will not change the default options
+#     which are set by PORTAGE_RSYNC_OPTS (don't change those unless you know 
+#     exactly what you're doing).
+#PORTAGE_RSYNC_EXTRA_OPTS=""
+#
 # Advanced Features
 # =================
 #

@@ -298,6 +298,24 @@ emerge is running at.  In other words, this will not set the nice level,
 it will increment it.  For more information about nice levels and what 
 are acceptable ranges, see \fBnice\fR(1).
 .TP
+\fBPORTAGE_RSYNC_EXTRA_OPTS\fR = \fI[rsync options string]\fR
+Additional rsync options to be used by \fBemerge --sync\fR.
+.br
+Defaults to no value.
+.TP
+\fBPORTAGE_RSYNC_OPTS\fR = \fI[rsync options string]\fR
+Default rsync options to be used by \fBemerge --sync\fR. 
+.br
+\fBDon't change this unless you know exactly what you're doing!\fR
+.br
+Defaults to "--recursive --links --safe-links --perms --times --compress --force --whole-file --delete --delete-after --stats --timeout=180 --exclude='/distfiles' --exclude='/local' --exclude='/packages'"
+.TP
+\fBPORTAGE_RSYNC_RETRIES\fR = \fI[NUMBER]\fR
+The number of times rsync should retry on failed connections before
+giving up.
+.br
+Defaults to 3.
+.TP
 \fBPORTAGE_TMPDIR\fR = \fI[path]\fR
 Defines the location of the temporary build directories.
 .br
@@ -329,26 +347,6 @@ Typically, you should set this setting in the environment rather than in
 images.
 .br
 Defaults to /.
-.TP
-\fBRSYNC_EXCLUDEFROM\fR = \fI"/etc/portage/rsync_excludes"\fR
-This is a file that portage will pass to rsync when it updates the portage 
-tree.  Specific chucks of the tree may be excluded from the sync process.  
-This may cause dependency failures if you are not careful.  The file format 
-is one pattern per line, blanks and ';' or '#' lines are comments.  See 
-\fBrsync\fR(1) for more details.
-.TP
-\fBRSYNC_RETRIES\fR = \fI[NUMBER]\fR
-The number of times rsync should retry on failed connections before
-giving up.
-.br
-Defaults to 3.
-.TP
-\fBRSYNC_TIMEOUT\fR = \fI[SECONDS]\fR
-The number of seconds rsync should remain idle before it determines the
-connection has timed out. Dialup users may need to set this value at or
-above 300 seconds.
-.br
-Defaults to 180 seconds.
 .TP
 \fBRPMDIR\fR = \fI[path]\fR
 Defines the location where created RPM packages will be stored.
