@@ -1,6 +1,6 @@
 import fs_template
 import cache_errors
-import os, stat
+import errno, os, stat
 
 # store the current key order *here*.
 class database(fs_template.FsBased):
@@ -31,11 +31,7 @@ class database(fs_template.FsBased):
 			for k,v in zip(self.auxdbkey_order, myf):
 				d[k] = v.rstrip("\n")
 		except (OSError, IOError),e:
-			if isinstance(e,IOError) and e.errno == 2:
-#				print "caught for %s" % cpv, e
-#				l=os.listdir(os.path.dirname(os.path.join(self._base,cpv)))
-#				l.sort()
-#				print l
+			if errno.ENOENT == e.errno:
 				raise KeyError(cpv)
 			raise cache_errors.CacheCorruption(cpv, e)
 
@@ -52,7 +48,7 @@ class database(fs_template.FsBased):
 		fp=os.path.join(self._base,cpv[:s],".update.%i.%s" % (os.getpid(), cpv[s+1:]))
 		try:	myf=open(fp, "w")
 		except (OSError, IOError), e:
-			if e.errno == 2:
+			if errno.ENOENT == e.errno:
 				try:
 					self._ensure_dirs(cpv)
 					myf=open(fp,"w")
@@ -79,7 +75,7 @@ class database(fs_template.FsBased):
 		try:
 			os.remove(os.path.join(self._base,cpv))
 		except OSError, e:
-			if e.errno == 2:
+			if errno.ENOENT == e.errno:
 				raise KeyError(cpv)
 			else:
 				raise cache_errors.CacheCorruption(cpv, e)
