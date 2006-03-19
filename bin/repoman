@@ -1015,7 +1015,7 @@ for x in scanlist:
 				stats["KEYWORDS.stupid"] += 1
 				fails["KEYWORDS.stupid"].append(x+"/"+y+".ebuild")
 		
-		if "--ignore-other-arches" in myoptions:
+		if "--ignore-arches" in myoptions:
 			arches=[[repoman_settings["ARCH"], repoman_settings["ARCH"], portage.groups]]
 		else:
 			arches=[]
