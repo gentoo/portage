@@ -628,6 +628,11 @@ class atomic_ofstream(file):
 						pass
 					except FileNotFound:
 						pass
+					except OSError, oe: # from the above os.stat call
+						if oe.errno in (errno.ENOENT, errno.EPERM):
+							pass
+						else:
+							raise
 					os.rename(self.name, self._real_name)
 			finally:
 				# Make sure we cleanup the temp file
