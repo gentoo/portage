@@ -2507,18 +2507,8 @@ if myaction in ["sync","metadata"] and (not "--help" in myopts):
 			print "!!! Type \"emerge net-misc/rsync\" to enable rsync support."
 			sys.exit(1)
 		mytimeout=180
-		if portage.settings.has_key("RSYNC_TIMEOUT"):
-			print "WARNING: usage of RSYNC_TIMEOUT is deprecated, use PORTAGE_RSYNC_OPTS instead"
-			try:
-				mytimeout=int(portage.settings["RSYNC_TIMEOUT"])
-				rsync_flags.append("--timeout=%d" % mytimeout)
-			except SystemExit, e:
-				raise # Needed else can't exit
-			except:
-				pass
 
-		if (not portage.settings.has_key("PORTAGE_RSYNC_OPTS")) \
-				or portage.settings["PORTAGE_RSYNC_OPTS"] == "":
+		if portage.settings["PORTAGE_RSYNC_OPTS"] == "":
 			print "PORTAGE_RSYNC_OPTS empty or unset, using hardcoded defaults"
 			rsync_flags = [
 				"--recursive",    # Recurse directories
@@ -2555,7 +2545,13 @@ if myaction in ["sync","metadata"] and (not "--help" in myopts):
 				if not rsync_opts.find(opt) >= 0:
 					print yellow("WARNING:")+" adding required option %s not included in PORTAGE_RSYNC_OPTS (override with --exclude='!')" % opt
 					rsync_flags.append(opt)
-
+			if portage.settings["RSYNC_TIMEOUT"] != "":
+				writemsg("WARNING: usage of RSYNC_TIMEOUT is deprecated, use PORTAGE_RSYNC_OPTS instead\n")
+				try:
+					mytimeout=int(portage.settings["RSYNC_TIMEOUT"])
+					rsync_flags.append("--timeout=%d" % mytimeout)
+				except ValueError, e:
+					writemsg("!!! %s\n" % str(e))
 			# TODO: determine options required for official servers
 			if syncuri.rstrip("/").endswith(".gentoo.org/gentoo-portage"):
 				if not rsync_opts.find("--timeout") >= 0:
