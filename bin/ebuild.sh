@@ -51,8 +51,16 @@ export PATH="/sbin:/usr/sbin:/usr/lib/portage/bin:/bin:/usr/bin:${ROOTPATH}"
 [ ! -z "$PREROOTPATH" ] && export PATH="${PREROOTPATH%%:}:$PATH"
 
 source /usr/lib/portage/bin/isolated-functions.sh  &>/dev/null
-# TODO: make this conditional on config settings, fix any remaining stuff
-set_colors
+
+case "${NOCOLOR:-false}" in
+	yes|true)
+		unset_colors
+		;;
+	no|false)
+		set_colors
+		;;
+esac
+
 
 # the sandbox is disabled by default except when overridden in the relevant stages
 export SANDBOX_ON="0"

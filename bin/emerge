@@ -408,8 +408,14 @@ if ("--resume" in myopts):
 		myopts.remove("--tree")
 
 # Set color output
-if ("--nocolor" in myopts) and (sys.stdout.isatty()):
+if "--nocolor" in myopts or \
+portage.settings["NOCOLOR"] in ("yes","true"):
 	nocolor()
+	if "NOCOLOR" not in portage.settings:
+		portage.settings.unlock()
+		portage.settings["NOCOLOR"] = "true"
+		portage.settings.backup_changes("NOCOLOR")
+		portage.settings.lock()
 
 if not ("--quiet" in myopts):
 	if not sys.stdout.isatty() or ("--nospinner" in myopts):
