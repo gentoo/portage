@@ -1351,7 +1351,6 @@ for x in qacats:
 	else:
 		for y in fails[x]:
 			print "   "+y
-print
 
 def grouplist(mylist,seperator="/"):
 	"""(list,seperator="/") -- Takes a list of elements; groups them into
