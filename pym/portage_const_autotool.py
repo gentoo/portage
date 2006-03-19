@@ -5,7 +5,7 @@
 
 # all vars that are to wind up in portage_const must have their name listed in __all__
 
-__all__ = ["PREFIX", "SYSCONFDIR", "PORTAGE_BASE", "portageuser", "portagegroup", "rootuser", "rootuid", "wheelgid"
+__all__ = ["PREFIX", "SYSCONFDIR", "PORTAGE_BASE", "portageuser", "portagegroup", "rootuser", "rootuid", "wheelgid"]
 
 from os import path
 
