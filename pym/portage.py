@@ -2469,8 +2469,8 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, t
 		mysettings["PORTAGE_BUILDDIR"] = os.path.join(mysettings["BUILD_PREFIX"], mysettings["PF"])
 
 	mysettings["WORKDIR"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "work")
-	mysettings["DEST"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "image") + os.sep
-	mysettings["D"] = os.path.normpath(mysettings["DEST"]+portage_const.PREFIX)
+	mysettings["EDEST"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "image") + os.sep
+	mysettings["D"] = os.path.normpath(mysettings["EDEST"]+portage_const.PREFIX)
 	mysettings["T"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "temp")
 
 	mysettings["PORTAGE_BASHRC"] = EBUILD_SH_ENV_FILE
@@ -2898,12 +2898,12 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 			print "!!! mydo=qmerge, but install phase hasn't been ran"
 			sys.exit(1)
 		#qmerge is specifically not supposed to do a runtime dep check
-		return merge(mysettings["CATEGORY"],mysettings["PF"],mysettings["DEST"],mysettings["PORTAGE_BUILDDIR"]+"/build-info",myroot,mysettings,myebuild=mysettings["EBUILD"],mytree=tree)
+		return merge(mysettings["CATEGORY"],mysettings["PF"],mysettings["EDEST"],mysettings["PORTAGE_BUILDDIR"]+"/build-info",myroot,mysettings,myebuild=mysettings["EBUILD"],mytree=tree)
 	elif mydo=="merge":
 		retval=spawnebuild("install",actionmap,mysettings,debug,alwaysdep=1,logfile=logfile)
 		if retval:
 			return retval
-		return merge(mysettings["CATEGORY"],mysettings["PF"],mysettings["DEST"],mysettings["PORTAGE_BUILDDIR"]+"/build-info",myroot,mysettings,myebuild=mysettings["EBUILD"],mytree=tree)
+		return merge(mysettings["CATEGORY"],mysettings["PF"],mysettings["EDEST"],mysettings["PORTAGE_BUILDDIR"]+"/build-info",myroot,mysettings,myebuild=mysettings["EBUILD"],mytree=tree)
 	else:
 		print "!!! Unknown mydo:",mydo
 		sys.exit(1)
