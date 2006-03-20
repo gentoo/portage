@@ -1641,15 +1641,17 @@ def spawn(mystring,mysettings,debug=0,free=0,droppriv=0,sesandbox=0,fd_pipes=Non
 
 	if free:
 		keywords["opt_name"] += " bash"
+		spawn_func = portage_exec.spawn_bash
 	else:
 		keywords["opt_name"] += " sandbox"
+		spawn_func = portage_exec.spawn_sandbox
 
 	if sesandbox:
 		con = selinux.getcontext()
 		con = string.replace(con, mysettings["PORTAGE_T"], mysettings["PORTAGE_SANDBOX_T"])
 		selinux.setexec(con)
 
-	retval = portage_exec.spawn_bash(mystring, env=env, **keywords)
+	retval = spawn_func(mystring, env=env, **keywords)
 
 	if sesandbox:
 		selinux.setexec(None)
