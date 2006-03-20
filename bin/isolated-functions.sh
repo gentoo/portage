@@ -206,4 +206,21 @@ RC_ENDCOL="yes"
 RC_INDENTATION=''
 RC_DEFAULT_INDENT=2
 RC_DOT_PATTERN=''
+
+has() {
+	hasq "$@"
+}
+
+hasv() {
+	if hasq "$@" ; then
+		echo "$1"
+		return 0
+	fi
+	return 1
+}
+
+hasq() {
+	[[ " ${*:2} " == *" $1 "* ]]
+}
+
 true

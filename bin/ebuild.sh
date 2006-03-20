@@ -144,22 +144,6 @@ useq() {
 	fi
 }
 
-has() {
-	hasq "$@"
-}
-
-hasv() {
-	if hasq "$@" ; then
-		echo "$1"
-		return 0
-	fi
-	return 1
-}
-
-hasq() {
-	[[ " ${*:2} " == *" $1 "* ]]
-}
-
 has_version() {
 	if [ "${EBUILD_PHASE}" == "depend" ]; then
 		die "portageq calls (has_version calls portageq) are not allowed in the global scope"
