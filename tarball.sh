@@ -50,4 +50,3 @@ rm -f AUTHORS NEWS autogen.sh make-man-tarball.sh tabcheck.py tarball.sh ChangeL
 cd $TMP
 tar cjvf ${TMP}/${PKG}-${V}.tar.bz2 ${PKG}-${V}
 scp ${TMP}/${PKG}-${V}.tar.bz2 kito@dev.gentoo.org:~/public_html/distfiles/ 
-#scp ${TMP}/${PKG}-${V}.tar.bz2 carpaski@zarquon.twobit.net:/home/www/localhost/htdocs/gentoo/portage/

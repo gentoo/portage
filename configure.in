@@ -1,5 +1,12 @@
 dnl Process this file with autoconf to produce a configure script.
-AC_INIT(portage, 2.1.11-prefix, kito@gentoo.org)
+AC_INIT(portage, 2.1.13, kito@gentoo.org, portage-prefix)
+
+dnl Define our precious vars
+dnl AC_ARG_VAR(prefix, the location portage will be installed to)
+dnl AC_ARG_VAR(offset-prefix, the location all packages will be installed to)
+dnl AC_ARG_VAR(rootuser, the user that pwns portage)
+dnl AC_ARG_VAR(portageuser, the user that portage will operate as [defaults to 'portage'])
+dnl AC_ARG_VAR(portagegroup, the group that portage will operate under [defaults to 'portage'])
 
 case "${prefix}" in
 	'') 	AC_MSG_ERROR([bad value ${prefix} for --prefix, must not be empty]) ;;
@@ -8,24 +15,12 @@ case "${prefix}" in
 	*) 		AC_MSG_ERROR([bad value ${prefix} for --prefix, must start with /]) ;;
 esac
 
-
-#AC_ARG_ENABLE(strict-prefix-offset,
-#AC_HELP_STRING([--enable-strict-prefix-offset], [Disable strict usage of --with-prefix-offset for portage scripts]),
-#[case "${enableval}" in 
-#	yes)	strict_prefix_offset=yes;;
-#	no)		strict_prefix_offset=no;;
-#	*)		AC_MSG_ERROR(bad value ${enableval} for --enable-strict-prefix-offset);;
-#esac],
-#[strict_prefix_offset=yes])
-
-
 AC_CANONICAL_BUILD
 AC_CANONICAL_HOST
 AC_CANONICAL_TARGET
 
 AM_INIT_AUTOMAKE
 dnl AM_CONFIG_HEADER(config.h)
-
 
 dnl Checks for programs.
 dnl store clfags prior, otherwise it's not propogaed.
@@ -47,9 +42,9 @@ case `${EGREP} --version 2>/dev/null` in
 esac
 
 AX_PATH_XCU_ID([required])
-AC_PATH_PROG(RM, rm, /bin/rm)
-AC_PATH_PROG(MV, mv, /bin/mv)
-AC_PATH_PROGS(SED, [gsed sed], /usr/bin/sed)
+AC_PATH_PROGS(RM, [grm gnurm rm], /bin/rm)
+AC_PATH_PROGS(MV, [gmv gnumv mv], /bin/mv)
+AC_PATH_PROGS(SED, [gsed gnused sed], /usr/bin/sed)
 
 dnl when /bin/sh is bash, then BASH is set to /bin/sh
 test "${BASH}" != "/bin/sh" || $as_unset BASH
@@ -80,27 +75,28 @@ if test "x${PERL}" = "x"; then
 	)
 fi
 
-AC_PATH_PROGS(BASENAME, [gbasename basename], /bin/basename)
-AC_PATH_PROGS(DIRNAME, [gdirname dirname], /usr/bin/dirname)
-AC_PATH_PROG(DIALOG, dialog, /usr/bin/dialog)
+AC_PATH_PROGS(BASENAME, [gbasename gnubasename basename], /bin/basename)
+AC_PATH_PROGS(DIRNAME, [gdirname gnudirname dirname], /usr/bin/dirname)
+AC_PATH_PROG(DIALOG, dialog, no)
 AC_PATH_PROG(WGET, wget, /usr/bin/wget)
+AC_PATH_PROG(CURL, curl, no)
 AC_PATH_PROG(INSTALL_INFO, install-info, /usr/bin/install-info)
-AC_PATH_PROG(SANDBOX, sandbox, /usr/bin/sandbox)
-AC_PATH_PROG(PRELINK, prelink, /usr/sbin/prelink)
+AC_PATH_PROG(SANDBOX, sandbox, no)
+AC_PATH_PROG(PRELINK, prelink, no)
 AC_PATH_PROG(RSYNC, rsync, /usr/bin/rsync)
 AC_PATH_PROG(CVS, cvs, /usr/bin/cvs)
-AC_PATH_PROG(SVN, svn, /usr/bin/svn)
-AC_PATH_PROGS(GPG, [gpg pgp], /usr/bin/gpg)
-AC_PATH_PROG(INSTALL_INFO, install-info, /usr/bin/install-info)
-AC_PATH_PROG(MD5SUM, md5sum, /usr/bin/md5sum)
-AC_PATH_PROG(LOGGER, logger, /usr/bin/logger)
-AC_PATH_PROGS(FIND, [gfind find], /usr/bin/find)
-AC_PATH_PROGS(FILE, [gfile file], /usr/bin/file)
-AC_PATH_PROG(READELF, readelf, /usr/bin/readelf)
-AC_PATH_PROG(SETFILES, setfiles, /usr/sbin/setfiles)
-AC_PATH_PROG(FAKEROOT, fakeroot, /usr/bin/fakeroot)
-AC_PATH_PROGS(DIFF, [gdiff diff], /usr/bin/diff)
-AC_PATH_PROGS(PATCH, [gpatch patch], /usr/bin/patch)
+AC_PATH_PROG(SVN, svn, no)
+AC_PATH_PROGS(GPG, [gpg pgp], no)
+AC_PATH_PROG(MD5SUM, md5sum, no)
+AC_PATH_PROG(LOGGER, logger, no)
+AC_PATH_PROGS(FIND, [gfind gnufind find], /usr/bin/find)
+AC_PATH_PROGS(FILE, [gfile gnufile file], /usr/bin/file)
+AC_PATH_PROG(SCANELF, scanelf, no)
+AC_PATH_PROG(SETFILES, setfiles, no)
+AC_PATH_PROG(FAKEROOT, fakeroot, no)
+AC_PATH_PROGS(DIFF, [gdiff gnudiff diff], /usr/bin/diff)
+AC_PATH_PROGS(PATCH, [gpatch gnupatch patch], /usr/bin/patch)
+AC_PATH_PROGS(PATCH, [gxargs gnuxargs xargs], /usr/bin/xargs)
 dnl Checks for libraries.
 dnl Replace `main' with a function in -lc:
 AC_CHECK_LIB(c, main)
@@ -181,20 +177,23 @@ esac],
 [wheelgid="0"])
 
 AC_ARG_WITH(rootuser,
-AC_HELP_STRING([--with-rootuser=me],[allows 'me' to do root tasks (default root)]),
+AC_HELP_STRING([--with-rootuser=me],[declares 'me' as the portage owner (default root)]),
 [case "${withval}" in
   ""|yes) AC_MSG_ERROR(bad value ${withval} for --with-rootuser);;
-  *) rootuser=${withval};;
+  *) rootuser=${withval}
+     rootuid=`id -u ${withval}`;;
 esac],
 [rootuser=root])
 
-AC_ARG_WITH(rootuid,
-AC_HELP_STRING([--with-rootuid=me],[allows uid 'me' to do root tasks (default 0)]),
-[case "${withval}" in
-  ""|yes) AC_MSG_ERROR(bad value ${withval} for --with-rootuid);;
-  *) rootuid=${withval};;
-esac],
-[rootuid=0])
+AC_MSG_CHECKING([for user id of ${rootuser}])
+dnl grab uid of rootuser
+rootuid=`${XCU_ID} -u ${rootuser}`
+if [[ `echo ${rootuid} | ${EGREP} ^[[:digit:]]+$` ]]
+then
+	AC_MSG_RESULT([${rootuid}])
+else
+	AC_MSG_ERROR([error finding the user id of ${rootuser}])
+fi
 
 AC_ARG_WITH(offset-prefix, 
 AC_HELP_STRING([--with-offset-prefix], [specify the installation prefix for all packages , defaults to /]),
