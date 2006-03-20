@@ -2509,8 +2509,6 @@ if myaction in ["sync","metadata"] and (not "--help" in myopts):
 		mytimeout=180
 
 		rsync_opts = []
-		if portage.settings["PORTAGE_RSYNC_EXTRA_OPTS"] != "":
-			rsync_opts.extend(portage.settings["PORTAGE_RSYNC_EXTRA_OPTS"].split())
 
 		if portage.settings["PORTAGE_RSYNC_OPTS"] == "":
 			portage.writemsg("PORTAGE_RSYNC_OPTS empty or unset, using hardcoded defaults\n")
@@ -2609,11 +2607,6 @@ if myaction in ["sync","metadata"] and (not "--help" in myopts):
 			rsync_opts.append("--bwlimit=%s" % \
 			portage.settings["RSYNC_RATELIMIT"])
 
-		rsynccommand = ["/usr/bin/rsync"] + rsync_opts
-
-		if "--debug" in myopts:
-			print rsynccommand
-
 		servertimestampdir  = portage.settings.depcachedir+"/"
 		servertimestampfile = portage.settings.depcachedir+"/timestamp.chk"
 		tmpservertimestampdir  = portage.settings["PORTAGE_TMPDIR"]+"/"
@@ -2695,9 +2688,17 @@ if myaction in ["sync","metadata"] and (not "--help" in myopts):
 
 			if "--quiet" not in myopts:
 				print ">>> Checking server timestamp ..."
-			rsynccommand.append(dosyncuri + "/metadata/timestamp.chk")
-			rsynccommand.append(tmpservertimestampdir)
-			mycommand = " ".join(rsynccommand)
+
+			rsynccommand = " ".join(["/usr/bin/rsync",
+				portage.settings["PORTAGE_RSYNC_EXTRA_OPTS"],
+				" ".join(rsync_opts)])
+
+			if "--debug" in myopts:
+				print rsynccommand
+
+			mycommand = " ".join([rsynccommand,
+				dosyncuri + "/metadata/timestamp.chk",
+				tmpservertimestampdir])
 			exitcode=portage.spawn(mycommand,portage.settings,free=1)
 			if (exitcode==0):
 				try:
