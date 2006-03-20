@@ -96,7 +96,7 @@ AC_PATH_PROG(SETFILES, setfiles, no)
 AC_PATH_PROG(FAKEROOT, fakeroot, no)
 AC_PATH_PROGS(DIFF, [gdiff gnudiff diff], /usr/bin/diff)
 AC_PATH_PROGS(PATCH, [gpatch gnupatch patch], /usr/bin/patch)
-AC_PATH_PROGS(PATCH, [gxargs gnuxargs xargs], /usr/bin/xargs)
+AC_PATH_PROGS(XARGS, [gxargs gnuxargs xargs], /usr/bin/xargs)
 dnl Checks for libraries.
 dnl Replace `main' with a function in -lc:
 AC_CHECK_LIB(c, main)
