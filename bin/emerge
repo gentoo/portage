@@ -2505,7 +2505,7 @@ if myaction in ["sync","metadata"] and (not "--help" in myopts):
 		updatecache_flg = True
 		tmpservertimestampfile = None
 	elif syncuri[:8]=="rsync://":
-		if not os.path.exists(os.path.normpath(portage_const.PREFIX+"/usr/bin/rsync")):
+		if not os.path.exists(portage_const.PREFIX+"/usr/bin/rsync"):
 			print "!!! rsync does not exist, so rsync support is disabled."
 			print "!!! Type \"emerge net-misc/rsync\" to enable rsync support."
 			sys.exit(1)
@@ -2692,7 +2692,7 @@ if myaction in ["sync","metadata"] and (not "--help" in myopts):
 			if "--quiet" not in myopts:
 				print ">>> Checking server timestamp ..."
 
-			rsynccommand = " ".join(["/usr/bin/rsync",
+			rsynccommand = " ".join([portage_const.PREFIX,"/usr/bin/rsync",
 				portage.settings["PORTAGE_RSYNC_EXTRA_OPTS"],
 				" ".join(rsync_opts)])
 
