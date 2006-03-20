@@ -12,6 +12,8 @@ if [ -n "${PORTAGE_NICENESS}" ]; then
 	renice $PORTAGE_NICENESS $$ > /dev/null
 fi
 
+source /usr/lib/portage/bin/isolated-functions.sh || exit 1
+FEATURES="$(/usr/lib/portage/bin/portageq envvar FEATURES)"
 GENTOO_MIRRORS="${GENTOO_MIRRORS} $(/usr/lib/portage/bin/portageq gentoo_mirrors)"
 PORTDIR="$(/usr/lib/portage/bin/portageq portdir)"
 FETCHCOMMAND="$(/usr/lib/portage/bin/portageq envvar FETCHCOMMAND)"
@@ -73,8 +75,10 @@ sync_local() {
 		echo "cleaning up"
 		rm -rf portage
 	fi
-	echo "transferring metadata/cache"
-	emerge --metadata
+	if hasq metadata-transfer ${FEATURES} ; then
+		echo "transferring metadata/cache"
+		emerge --metadata
+	fi
 }
 
 echo "Fetching most recent snapshot"
