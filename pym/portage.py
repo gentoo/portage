@@ -30,10 +30,9 @@ try:
 	import commands
 	from time import sleep
 	from random import shuffle
-	from cache.cache_errors import CacheError
 except ImportError, e:
 	sys.stderr.write("\n\n")
-	sys.stderr.write("!!! Failed to complete python imports. There are internal modules for\n")
+	sys.stderr.write("!!! Failed to complete python imports. These are internal modules for\n")
 	sys.stderr.write("!!! python and failure here indicates that you have a problem with python\n")
 	sys.stderr.write("!!! itself and thus portage is not able to continue processing.\n\n")
 
@@ -50,6 +49,7 @@ except ImportError:
 	bsd_chflags = None
 
 try:
+	from cache.cache_errors import CacheError
 	import cvstree
 	import xpak
 	import getbinpkg
