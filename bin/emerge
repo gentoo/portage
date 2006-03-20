@@ -408,8 +408,14 @@ if ("--resume" in myopts):
 		myopts.remove("--tree")
 
 # Set color output
-if ("--nocolor" in myopts) and (sys.stdout.isatty()):
+if "--nocolor" in myopts or \
+portage.settings["NOCOLOR"] in ("yes","true"):
 	nocolor()
+	if "NOCOLOR" not in portage.settings:
+		portage.settings.unlock()
+		portage.settings["NOCOLOR"] = "true"
+		portage.settings.backup_changes("NOCOLOR")
+		portage.settings.lock()
 
 if not ("--quiet" in myopts):
 	if not sys.stdout.isatty() or ("--nospinner" in myopts):
@@ -2504,53 +2510,105 @@ if myaction in ["sync","metadata"] and (not "--help" in myopts):
 			print "!!! Type \"emerge net-misc/rsync\" to enable rsync support."
 			sys.exit(1)
 		mytimeout=180
-		if portage.settings.has_key("RSYNC_TIMEOUT"):
-			try:
-				mytimeout=int(portage.settings["RSYNC_TIMEOUT"])
-			except SystemExit, e:
-				raise # Needed else can't exit
-			except:
-				pass
 
-		rsync_flags = [
-			"--recursive",    # Recurse directories
-			"--links",        # Consider symlinks
-			"--safe-links",   # Ignore links outside of tree
-			"--perms",        # Preserve permissions
-			"--times",        # Preserive mod times
-			"--compress",     # Compress the data transmitted
-			"--force",        # Force deletion on non-empty dirs
-			"--whole-file",   # Don't do block transfers, only entire files
-			"--delete",       # Delete files that aren't in the master tree
-			"--delete-after", # Delete only after everything else is done
-			"--stats",        # Show final statistics about what was transfered
-			"--timeout="+str(mytimeout), # IO timeout if not done in X seconds
-			"--exclude='/distfiles'",   # Exclude distfiles from consideration
-			"--exclude='/local'",       # Exclude local     from consideration
-			"--exclude='/packages'",    # Exclude packages  from consideration
-		]
+		rsync_opts = []
+
+		if portage.settings["PORTAGE_RSYNC_OPTS"] == "":
+			portage.writemsg("PORTAGE_RSYNC_OPTS empty or unset, using hardcoded defaults\n")
+			rsync_opts.extend([
+				"--recursive",    # Recurse directories
+				"--links",        # Consider symlinks
+				"--safe-links",   # Ignore links outside of tree
+				"--perms",        # Preserve permissions
+				"--times",        # Preserive mod times
+				"--compress",     # Compress the data transmitted
+				"--force",        # Force deletion on non-empty dirs
+				"--whole-file",   # Don't do block transfers, only entire files
+				"--delete",       # Delete files that aren't in the master tree
+				"--delete-after", # Delete only after everything else is done
+				"--stats",        # Show final statistics about what was transfered
+				"--timeout="+str(mytimeout), # IO timeout if not done in X seconds
+				"--exclude='/distfiles'",   # Exclude distfiles from consideration
+				"--exclude='/local'",       # Exclude local     from consideration
+				"--exclude='/packages'",    # Exclude packages  from consideration
+			])
+
+		else:
+			# The below validation is not needed when using the above hardcoded
+			# defaults.
+
+			portage.writemsg("Using PORTAGE_RSYNC_OPTS instead of hardcoded defaults\n")
+			rsync_opts.extend(portage.settings["PORTAGE_RSYNC_OPTS"].split())
+
+			for opt in ("--recursive", "--times"):
+				if opt not in rsync_opts:
+					portage.writemsg(yellow("WARNING:") + " adding required option " + \
+					"%s not included in PORTAGE_RSYNC_OPTS\n" % opt)
+					rsync_opts.append(opt)
+	
+			for exclude in ("distfiles", "local", "packages"):
+				opt = "--exclude='/%s'" % exclude
+				if opt not in rsync_opts:
+					portage.writemsg(yellow("WARNING:") + \
+					" adding required option %s not included in "  % opt + \
+					"PORTAGE_RSYNC_OPTS (override with --exclude='!')\n")
+					rsync_opts.append(opt)
+	
+			if portage.settings["RSYNC_TIMEOUT"] != "":
+				portage.writemsg("WARNING: usage of RSYNC_TIMEOUT is deprecated, " + \
+				"use PORTAGE_RSYNC_OPTS instead\n")
+				try:
+					mytimeout = int(portage.settings["RSYNC_TIMEOUT"])
+					rsync_opts.append("--timeout=%d" % mytimeout)
+				except ValueError, e:
+					portage.writemsg("!!! %s\n" % str(e))
+	
+			# TODO: determine options required for official servers
+			if syncuri.rstrip("/").endswith(".gentoo.org/gentoo-portage"):
+
+				def rsync_opt_startswith(opt_prefix):
+					for x in rsync_opts:
+						if x.startswith(opt_prefix):
+							return True
+					return False
+
+				if not rsync_opt_startswith("--timeout="):
+					rsync_opts.append("--timeout=%d" % mytimeout)
+
+				for opt in ("--compress", "--whole-file"):
+					if opt not in rsync_opts:
+						portage.writemsg(yellow("WARNING:") + " adding required option " + \
+						"%s not included in PORTAGE_RSYNC_OPTS\n" % opt)
+						rsync_opts.append(opt)
 
 		if "--quiet" in myopts:
-			rsync_flags.append("--quiet")    # Shut up a lot
+			rsync_opts.append("--quiet")    # Shut up a lot
 		else:
-			rsync_flags.append("--progress") # Progress meter for each file
+			rsync_opts.append("--progress") # Progress meter for each file
 
 		if "--verbose" in myopts:
-			rsync_flags.append("--verbose")  # More noise? Not really sure what
+			rsync_opts.append("--verbose")  # More noise? Not really sure what
 
 		if "--debug" in myopts:
-			rsync_flags.append("--checksum") # Force checksum on all files
+			rsync_opts.append("--checksum") # Force checksum on all files
 
-		if portage.settings.has_key("RSYNC_EXCLUDEFROM"):
+		if portage.settings["RSYNC_EXCLUDEFROM"] != "":
+			portage.writemsg(yellow("WARNING:") + \
+			" usage of RSYNC_EXCLUDEFROM is deprecated, use " + \
+			"PORTAGE_RSYNC_EXTRA_OPTS instead\n")
 			if os.path.exists(portage.settings["RSYNC_EXCLUDEFROM"]):
-				rsync_flags.append("--exclude-from="+portage.settings["RSYNC_EXCLUDEFROM"])
+				rsync_opts.append("--exclude-from=%s" % \
+				portage.settings["RSYNC_EXCLUDEFROM"])
 			else:
-				print "!!! RSYNC_EXCLUDEFROM specified, but file does not exist."
+				portage.writemsg("!!! RSYNC_EXCLUDEFROM specified," + \
+				" but file does not exist.\n")
 
-		if portage.settings.has_key("RSYNC_RATELIMIT"):
-			rsync_flags.append("--bwlimit="+portage.settings["RSYNC_RATELIMIT"])
-
-		rsynccommand = "rsync " + string.join(rsync_flags, " ")
+		if portage.settings["RSYNC_RATELIMIT"] != "":
+			portage.writemsg(yellow("WARNING:") + \
+			" usage of RSYNC_RATELIMIT is deprecated, use " + \
+			"PORTAGE_RSYNC_EXTRA_OPTS instead")
+			rsync_opts.append("--bwlimit=%s" % \
+			portage.settings["RSYNC_RATELIMIT"])
 
 		servertimestampdir  = portage.settings.depcachedir+"/"
 		servertimestampfile = portage.settings.depcachedir+"/timestamp.chk"
@@ -2579,7 +2637,11 @@ if myaction in ["sync","metadata"] and (not "--help" in myopts):
 
 		#exitcode=0
 		try:
-			maxretries=int(portage.settings["RSYNC_RETRIES"])
+			if portage.settings.has_key("RSYNC_RETRIES"):
+				print yellow("WARNING:")+" usage of RSYNC_RETRIES is deprecated, use PORTAGE_RSYNC_RETRIES instead"
+				maxretries=int(portage.settings["RSYNC_RETRIES"])				
+			else:
+				maxretries=int(portage.settings["PORTAGE_RSYNC_RETRIES"])
 		except SystemExit, e:
 			raise # Needed else can't exit
 		except:
@@ -2629,7 +2691,17 @@ if myaction in ["sync","metadata"] and (not "--help" in myopts):
 
 			if "--quiet" not in myopts:
 				print ">>> Checking server timestamp ..."
-			mycommand=rsynccommand+" "+dosyncuri+"/metadata/timestamp.chk "+tmpservertimestampdir
+
+			rsynccommand = " ".join(["/usr/bin/rsync",
+				portage.settings["PORTAGE_RSYNC_EXTRA_OPTS"],
+				" ".join(rsync_opts)])
+
+			if "--debug" in myopts:
+				print rsynccommand
+
+			mycommand = " ".join([rsynccommand,
+				dosyncuri + "/metadata/timestamp.chk",
+				tmpservertimestampdir])
 			exitcode=portage.spawn(mycommand,portage.settings,free=1)
 			if (exitcode==0):
 				try:

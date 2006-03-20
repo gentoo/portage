@@ -34,3 +34,4 @@ portage-2.1 (ongoing via pre releases)
 * Global updates and fixpackages performance optimizations.
 * Tests show that file locking is now more reliable.
 * A bash call stack is printed when an ebuild dies in ebuild.sh.
+* New rsync option handling by using a generic PORTAGE_RSYNC_EXTRA_OPTS variable

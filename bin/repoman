@@ -1064,7 +1064,7 @@ for x in scanlist:
 				stats["KEYWORDS.stupid"] += 1
 				fails["KEYWORDS.stupid"].append(x+"/"+y+".ebuild")
 		
-		if "--ignore-other-arches" in myoptions:
+		if "--ignore-arches" in myoptions:
 			arches=[[repoman_settings["ARCH"], repoman_settings["ARCH"], portage.groups]]
 		else:
 			arches=[]
@@ -1401,7 +1401,6 @@ for x in qacats:
 	else:
 		for y in fails[x]:
 			print "   "+y
-print
 
 def grouplist(mylist,seperator="/"):
 	"""(list,seperator="/") -- Takes a list of elements; groups them into

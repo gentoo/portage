@@ -52,8 +52,16 @@ export PATH="${DEFAULT_PATH}:${ROOTPATH}"
 
 source @PORTAGE_BASE@/bin/isolated-functions.sh &>/dev/null
 
-# TODO: make this conditional on config settings, fix any remaining stuff
-set_colors
+
+case "${NOCOLOR:-false}" in
+	yes|true)
+		unset_colors
+		;;
+	no|false)
+		set_colors
+		;;
+esac
+
 
 # the sandbox is disabled by default except when overridden in the relevant stages
 export SANDBOX_ON="0"
@@ -135,22 +143,6 @@ useq() {
 	else
 		return $((!found))
 	fi
-}
-
-has() {
-	hasq "$@"
-}
-
-hasv() {
-	if hasq "$@" ; then
-		echo "$1"
-		return 0
-	fi
-	return 1
-}
-
-hasq() {
-	[[ " ${*:2} " == *" $1 "* ]]
 }
 
 has_version() {

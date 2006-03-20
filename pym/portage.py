@@ -30,10 +30,9 @@ try:
 	import commands
 	from time import sleep
 	from random import shuffle
-	from cache.cache_errors import CacheError
 except ImportError, e:
 	sys.stderr.write("\n\n")
-	sys.stderr.write("!!! Failed to complete python imports. There are internal modules for\n")
+	sys.stderr.write("!!! Failed to complete python imports. These are internal modules for\n")
 	sys.stderr.write("!!! python and failure here indicates that you have a problem with python\n")
 	sys.stderr.write("!!! itself and thus portage is not able to continue processing.\n\n")
 
@@ -50,6 +49,7 @@ except ImportError:
 	bsd_chflags = None
 
 try:
+	from cache.cache_errors import CacheError
 	import cvstree
 	import xpak
 	import getbinpkg
@@ -1644,15 +1644,17 @@ def spawn(mystring,mysettings,debug=0,free=0,droppriv=0,sesandbox=0,fd_pipes=Non
 
 	if free:
 		keywords["opt_name"] += " bash"
+		spawn_func = portage_exec.spawn_bash
 	else:
 		keywords["opt_name"] += " sandbox"
+		spawn_func = portage_exec.spawn_sandbox
 
 	if sesandbox:
 		con = selinux.getcontext()
 		con = string.replace(con, mysettings["PORTAGE_T"], mysettings["PORTAGE_SANDBOX_T"])
 		selinux.setexec(con)
 
-	retval = portage_exec.spawn_bash(mystring, env=env, **keywords)
+	retval = spawn_func(mystring, env=env, **keywords)
 
 	if sesandbox:
 		selinux.setexec(None)
@@ -2118,24 +2120,22 @@ def digestgen(myarchives,mysettings,overwrite=1,manifestonly=0):
 		if mydigests==None: # There was a problem, exit with an errorcode.
 			return 0
 
-		try:
-			outfile=open(digestfn, "w+")
-		except SystemExit, e:
-			raise
-		except Exception, e:
-			print "!!! Filesystem error skipping generation. (Read-Only?)"
-			print "!!!",e
-			return 0
-		for x in digestCreateLines(myarchives, mydigests):
-			outfile.write(x+"\n")
-		outfile.close()
-		try:
-			os.chown(digestfn,os.getuid(),portage_gid)
-			os.chmod(digestfn,0664)
-		except SystemExit, e:
-			raise
-		except Exception,e:
-			print e
+		if mydigests != myolddigest:
+			digest_lines = digestCreateLines(myarchives, mydigests)
+			digest_success = True
+			try:
+				write_atomic(digestfn, "\n".join(digest_lines) + "\n")
+				digest_success = apply_secpass_permissions(
+					digestfn, gid=portage_gid, mode=0664)
+			except (IOError, OSError), e:
+				writemsg("!!! %s\n" % str(e))
+				digest_success = False
+			except portage_exception.PortageException:
+				writemsg("!!! %s\n" % str(e))
+				digest_success = False
+			if not digest_success:
+				writemsg("!!! Filesystem error, skipping generation.\n")
+				return 0
 
 	print green(">>> Generating the manifest file...")
 	mypfiles=listdir(pbasedir,recursive=1,filesonly=1,ignorecvs=1,EmptyOnError=1)
