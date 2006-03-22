@@ -42,7 +42,15 @@ OCC="$CC"
 OCXX="$CXX"
 source /etc/profile.env &>/dev/null
 if [ -f "${PORTAGE_BASHRC}" ]; then
-	source "${PORTAGE_BASHRC}"
+	# If $- contains x, then tracing has already enabled elsewhere for some
+	# reason.  We preserve it's state so as not to interfere.
+	if [ "$PORTAGE_DEBUG" != "1" ] || [ "${-/x/}" != "$-" ]; then
+		source "${PORTAGE_BASHRC}"
+	else
+		set -x
+		source "${PORTAGE_BASHRC}"
+		set +x
+	fi
 fi
 [ ! -z "$OCC" ] && export CC="$OCC"
 [ ! -z "$OCXX" ] && export CXX="$OCXX"
