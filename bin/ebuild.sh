@@ -247,6 +247,7 @@ diefunc() {
 	echo >&2
 	echo "!!! ERROR: $CATEGORY/$PF failed." >&2
 	dump_trace 2 1>&2
+	echo "  $(basename "${BASH_SOURCE[1]}"), line ${BASH_LINENO[0]}:   Called die" 1>&2
 	echo >&2
 	echo "!!! ${*:-(no error message)}" >&2
 	echo "!!! If you need support, post the topmost build error, and the call stack if relevant." >&2
