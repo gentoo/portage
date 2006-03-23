@@ -2357,7 +2357,10 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 	if phase_retval == os.EX_OK:
 		if mydo == "install":
 			mycommand = " ".join([MISC_SH_BINARY, "install_qa_check"])
-			return spawn(mycommand, mysettings, debug=debug, logfile=logfile, **kwargs)
+			qa_retval = spawn(mycommand, mysettings, debug=debug, logfile=logfile, **kwargs)
+			if qa_retval:
+				writemsg("!!! install_qa_check failed; exiting.\n")
+			return qa_retval
 	return phase_retval
 
 # chunked out deps for each phase, so that ebuild binary can use it 
