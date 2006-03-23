@@ -2737,7 +2737,9 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 			# Post phase logic and tasks that have been factored out of ebuild.sh.
 			myargs = [MISC_SH_BINARY, "preinst_mask", "preinst_sfperms",
 				"preinst_selinux_labels", "preinst_suid_scan"]
-			spawn(" ".join(myargs), mysettings, debug=debug, free=1, logfile=logfile)
+			phase_retval = spawn(" ".join(myargs), mysettings, debug=debug, free=1, logfile=logfile)
+			if phase_retval != os.EX_OK:
+				writemsg("!!! post preinst failed; exiting.\n")
 		del mysettings["IMAGE"]
 		return phase_retval
 	elif mydo in ["prerm","postrm","postinst","config"]:
