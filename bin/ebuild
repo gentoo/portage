@@ -25,6 +25,11 @@ sys.path = ["/usr/lib/portage/pym"]+sys.path
 
 import portage, portage_util, portage_const
 
+# do this _after_ 'import portage' to prevent unnecessary tracing
+if debug and "python-trace" in portage.features:
+	import portage_debug
+	portage_debug.set_trace(True)
+
 if portage.settings["NOCOLOR"] in ("yes","true") or not sys.stdout.isatty():
 	import output
 	output.nocolor()

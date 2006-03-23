@@ -401,6 +401,9 @@ if ("--debug" in myopts):
 	portage.settings.backup_changes("PORTAGE_DEBUG")
 	portage.debug=1
 	portage.settings.lock()
+	if "python-trace" in portage.features:
+		import portage_debug
+		portage_debug.set_trace(True)
 
 if ("--resume" in myopts):
 	if "--tree" in myopts:
