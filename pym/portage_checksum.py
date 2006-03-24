@@ -58,6 +58,11 @@ try:
 except ImportError:
 	pass
 
+def getsize(filename):
+	size = os.stat(filename).st_size
+	return (size, size)
+hashfunc_map["size"] = getsize
+
 # end actual hash functions
 
 prelink_capable = False
@@ -68,7 +73,7 @@ if os.path.exists(PRELINK_BINARY):
 	del results
 
 def perform_md5(x, calc_prelink=0):
-	return perform_checksum(x, md5hash, calc_prelink)[0]
+	return perform_checksum(x, "MD5", calc_prelink)[0]
 
 def perform_all(x, calc_prelink=0):
 	mydict = {}
@@ -94,7 +99,7 @@ def verify_all(filename, mydict, calc_prelink=0, strict=0):
 		if   x == "size":
 			continue
 		elif x in hashfunc_map.keys():
-			myhash = perform_checksum(filename, hashfunc_map[x], calc_prelink=calc_prelink)[0]
+			myhash = perform_checksum(filename, x, calc_prelink=calc_prelink)[0]
 			if mydict[x] != myhash:
 				if strict:
 					raise portage_exception.DigestException, "Failed to verify '$(file)s' on checksum type '%(type)s'" % {"file":filename, "type":x}
@@ -118,7 +123,7 @@ def pyhash(filename, hashobject):
 
 	return (sum.hexdigest(), size)
 
-def perform_checksum(filename, hash_function=md5hash, calc_prelink=0):
+def perform_checksum(filename, hashname="MD5", calc_prelink=0):
 	myfilename      = filename[:]
 	prelink_tmpfile = os.path.join("/", PRIVATE_PATH, "prelink-checksum.tmp." + str(os.getpid()))
 	mylock          = None
@@ -132,7 +137,9 @@ def perform_checksum(filename, hash_function=md5hash, calc_prelink=0):
 			#portage_util.writemsg(">>> prelink checksum '"+str(filename)+"'.\n")
 			myfilename=prelink_tmpfile
 	try:
-		myhash, mysize = hash_function(myfilename)
+		if hashname not in hashfunc_map:
+			raise portage_exception.DigestException, hashname+" hash function not available (needs dev-python/pycrypto)"
+		myhash, mysize = hashfunc_map[hashname](myfilename)
 	except (OSError, IOError), e:
 		if e.errno == errno.ENOENT:
 			raise portage_exception.FileNotFound(e)
@@ -155,5 +162,5 @@ def perform_multiple_checksums(filename, hashes=["MD5"], calc_prelink=0):
 	for x in hashes:
 		if x not in hashfunc_map:
 			raise portage_exception.DigestException, x+" hash function not available (needs dev-python/pycrypto)"
-		rVal[x] = perform_checksum(filename, hashfunc_map[x], calc_prelink)[0]
+		rVal[x] = perform_checksum(filename, x, calc_prelink)[0]
 	return rVal

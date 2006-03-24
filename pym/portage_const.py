@@ -47,10 +47,10 @@ EBUILD_PHASES			= ["setup","unpack","compile","test","install","preinst","postin
 EAPI = 0
 
 HASHING_BLOCKSIZE		= 32768
-# Disabling until behaviour when missing the relevant python module is
-# corrected.  #116485
 MANIFEST1_HASH_FUNCTIONS = ["MD5","SHA256","RMD160"]
+MANIFEST2_HASH_FUNCTIONS = ["SHA1","SHA256","RMD160"]
 
+MANIFEST2_IDENTIFIERS = ["AUX","MISC","DIST","EBUILD"]
 # ===========================================================================
 # END OF CONSTANTS -- END OF CONSTANTS -- END OF CONSTANTS -- END OF CONSTANT
 # ===========================================================================
