@@ -2613,15 +2613,22 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 
 	workdir_mode = 0700
 	try:
-		parsed_mode = int(eval(mysettings["PORTAGE_WORKDIR_MODE"]))
+		mode = mysettings["PORTAGE_WORKDIR_MODE"]
+		if mode.isdigit():
+			parsed_mode = int(mode)
+		elif mode == "":
+			raise KeyError()
+		else:
+			raise ValueError()
 		if parsed_mode & 07777 != parsed_mode:
-			raise ValueError("Invalid file mode: %s" % mysettings["PORTAGE_WORKDIR_MODE"])
+			raise ValueError("Invalid file mode: %s" % mode)
 		else:
 			workdir_mode = parsed_mode
 	except KeyError, e:
-		writemsg("!!! PORTAGE_WORKDIR_MODE is unset, using %s." % oct(workdir_mode))
-	except (ValueError, SyntaxError), e:
-		writemsg("%s\n" % e)
+		writemsg("!!! PORTAGE_WORKDIR_MODE is unset, using %s.\n" % oct(workdir_mode))
+	except ValueError, e:
+		if len(str(e)) > 0:
+			writemsg("%s\n" % e)
 		writemsg("!!! Unable to parse PORTAGE_WORKDIR_MODE='%s', using %s.\n" % \
 		(mysettings["PORTAGE_WORKDIR_MODE"], oct(workdir_mode)))
 	mysettings["PORTAGE_WORKDIR_MODE"] = oct(workdir_mode)
