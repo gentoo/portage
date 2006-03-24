@@ -406,16 +406,17 @@ preinst_selinux_labels() {
 dyn_package() {
 	cd "${PORTAGE_BUILDDIR}/image"
 	install_mask "${PORTAGE_BUILDDIR}/image" ${PKG_INSTALL_MASK}
-	tar cpvf - ./ | bzip2 -f > ../bin.tar.bz2 || die "Failed to create tarball"
-	cd ..
-	xpak build-info inf.xpak
-	tbz2tool join bin.tar.bz2 inf.xpak "${PF}.tbz2"
+	local pkg_dest="${PKGDIR}/All/${PF}.tbz2"
+	local pkg_tmp="${PKGDIR}/All/${PF}.tbz2.$$"
 	addwrite "${PKGDIR}"
-	mv -f "${PF}.tbz2" "${PKGDIR}/All" || die "Failed to move tbz2 to ${PKGDIR}/All"
-	rm -f inf.xpak bin.tar.bz2
-	if [ ! -d "${PKGDIR}/${CATEGORY}" ]; then
-		install -d "${PKGDIR}/${CATEGORY}"
+	tar cpvf - ./ | bzip2 -f > "${pkg_tmp}" || die "Failed to create tarball"
+	cd ..
+	python -c "import xpak; t=xpak.tbz2('${pkg_tmp}'); t.recompose('${PORTAGE_BUILDDIR}/build-info')"
+	if [ $? -ne 0 ]; then
+		rm -f "${pkg_tmp}"
+		die "Failed to append metadata to the tbz2 file"
 	fi
+	mv -f "${pkg_tmp}" "${pkg_dest}" || die "Failed to move tbz2 to ${pkg_dest}"
 	ln -sf "../All/${PF}.tbz2" "${PKGDIR}/${CATEGORY}/${PF}.tbz2" || die "Failed to create symlink in ${PKGDIR}/${CATEGORY}"
 	echo ">>> Done."
 	cd "${PORTAGE_BUILDDIR}"
