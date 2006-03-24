@@ -661,7 +661,7 @@ def env_update(makelinks=1):
 	cenvnotice += "# GO INTO "+portage_const.EPREFIX+"/etc/csh.cshrc NOT "+portage_const.EPREFIX+"/etc/csh.env\n\n"
 
 	#create /etc/profile.env for bash support
-	outfile = atomic_ofstream(os.path.join(root, portage_const.EPREFIX, "etc", "profile.env"))
+	outfile = atomic_ofstream(os.path.join(root+portage_const.EPREFIX, "etc", "profile.env"))
 	outfile.write(penvnotice)
 
 	for path in specials.keys():
@@ -685,7 +685,7 @@ def env_update(makelinks=1):
 	outfile.close()
 
 	#create /etc/csh.env for (t)csh support
-	outfile = atomic_ofstream(os.path.join(root, portage_const.EPREFIX, "etc", "csh.env"))
+	outfile = atomic_ofstream(os.path.join(root+portage_const.EPREFIX, "etc", "csh.env"))
 	outfile.write(cenvnotice)
 
 	for path in specials.keys():
@@ -2426,7 +2426,7 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, t
 	mysettings["PN"] = mysplit[0]
 	mysettings["PV"] = mysplit[1]
 	mysettings["PR"] = mysplit[2]
-	mysettings["PREFIX"] = portage_const.EPREFIX
+	mysettings["EPREFIX"] = portage_const.EPREFIX
 	if portage_util.noiselimit < 0:
 		mysettings["PORTAGE_QUIET"] = "1"
 

@@ -12,7 +12,7 @@
 
 export PORTAGE_CALLER="etc-update"
 
-eval $(python -c 'import portage_const;print "export PREFIX="+portage_const.EPREFIX;print "export PORTAGE_BIN_PATH="+portage_const.PORTAGE_BIN_PATH;')
+eval $(python -c 'import portage_const;print "export EPREFIX="+portage_const.EPREFIX;print "export PORTAGE_BIN_PATH="+portage_const.PORTAGE_BIN_PATH;')
 
 if type -p gsed >/dev/null ; then
 	function sed() { gsed "$@"; }
