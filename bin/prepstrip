@@ -35,8 +35,8 @@ save_elf_debug() {
 
 	[[ " ${FEATURES} " != *" installsources "* ]] && return 0
 
-	if [[ -x "${PREFIX}/usr/bin/debugedit" ]] ; then
-		debugedit -b "${WORKDIR}" -d "${PREFIX}"/usr/src/debug/${PF} -l "${T}"/debug.sources "${x}"
+	if [[ -x "${EPREFIX}/usr/bin/debugedit" ]] ; then
+		debugedit -b "${WORKDIR}" -d "${EPREFIX}"/usr/src/debug/${PF} -l "${T}"/debug.sources "${x}"
 		if [[ -s ${T}/debug.sources ]] ; then 
 			[[ -d ${D}/usr/src/debug/${PF} ]] || mkdir -p "${D}/usr/src/debug/${PF}"
 			cat "${T}"/debug.sources | (cd "${WORKDIR}"; LANG=C sort -z -u | xargs -0 -- cp --parents -p --target-directory="${D}/usr/src/debug/${PF}" )

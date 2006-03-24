@@ -197,9 +197,9 @@ unset my_envd_LDPATH
 
 echo ">>> Regenerating ${ROOT}etc/ld.so.cache..."
 if [[ ${MAKELINKS} -eq 0 ]] ; then
-	(cd / ; ${PREFIX}/sbin/ldconfig -X -r ${ROOT} >& /dev/null)
+	(cd / ; ${EPREFIX}/sbin/ldconfig -X -r ${ROOT} >& /dev/null)
 else
-	(cd / ; ${PREFIX}/sbin/ldconfig -r ${ROOT} >& /dev/null)
+	(cd / ; ${EPREFIX}/sbin/ldconfig -r ${ROOT} >& /dev/null)
 fi
 
 cat << EOF > ${PROFILEENV}

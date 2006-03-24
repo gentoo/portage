@@ -1216,7 +1216,7 @@ for x in scanlist:
 							fails[mykey].append(x+"/"+y+".ebuild: "+keyword+"("+prof[0]+") "+repr(mydep[1]))
 
 		# this check needs work, it won't catch (\ndie)
-		if not os.system(portage_const.PREFIX+"/usr/bin/grep -E '^[^#]*\([^)]*\<die\>' "+checkdir+"/"+y+".ebuild >/dev/null 2>&1"):
+		if not os.system(portage_const.EPREFIX+"/usr/bin/grep -E '^[^#]*\([^)]*\<die\>' "+checkdir+"/"+y+".ebuild >/dev/null 2>&1"):
 			stats["ebuild.nesteddie"]=stats["ebuild.nesteddie"]+1
 			fails["ebuild.nesteddie"].append(x+"/"+y+".ebuild")
 		# uselist checks - global
@@ -1543,7 +1543,7 @@ else:
 			del mymissing
 		retval=["",""]
 		print "Performing a "+green("cvs -n up")+" with a little magic grep to check for updates."
-		retval=getstatusoutput("cvs -n up 2>&1 | "+portage_const.PREFIX+"/bin/grep -E '^[^\?] .*' | "+portage_const.PREFIX+"/bin/grep -E -v '^. .*/digest-[^/]+|^cvs server: .* -- ignored$'")
+		retval=getstatusoutput("cvs -n up 2>&1 | "+portage_const.EPREFIX+"/bin/grep -E '^[^\?] .*' | "+portage_const.EPREFIX+"/bin/grep -E -v '^. .*/digest-[^/]+|^cvs server: .* -- ignored$'")
 		mylines=string.split(retval[1], "\n")
 
 		for x in mylines:
@@ -1583,7 +1583,7 @@ else:
 		headerstring="'\$(Header|Id)"
 		headerstring+=".*\$'"
 		for myfile in myupdates:
-			myout=getstatusoutput(portage_const.PREFIX+"/bin/grep -E -q "+headerstring+" "+myfile)
+			myout=getstatusoutput(portage_const.EPREFIX+"/bin/grep -E -q "+headerstring+" "+myfile)
 			if myout[0]==0:
 				myheaders.append(myfile)
 

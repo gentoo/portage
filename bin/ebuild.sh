@@ -40,7 +40,7 @@ alias restore_IFS='if [ "${old_IFS:-unset}" != "unset" ]; then IFS="${old_IFS}";
 
 OCC="$CC"
 OCXX="$CXX"
-source ${PREFIX}/etc/profile.env &>/dev/null
+source ${EPREFIX}/etc/profile.env &>/dev/null
 if [ -f "${PORTAGE_BASHRC}" ]; then
 	# If $- contains x, then tracing has already enabled elsewhere for some
 	# reason.  We preserve it's state so as not to interfere.
@@ -191,14 +191,14 @@ best_version() {
 with_bindir() {
 	local mybindir
 	if [ -z "${1}" ]; then
-		if [ ! -z "${PREFIX}" ]; then
-			mybindir="${PREFIX}/bin"
+		if [ ! -z "${EPREFIX}" ]; then
+			mybindir="${EPREFIX}/bin"
 		else
 			mybindir="/bin"
 		fi
 	else
-		if [ ! -z "${PREFIX}" ]; then
-			mybindir="${PREFIX}${1}"
+		if [ ! -z "${EPREFIX}" ]; then
+			mybindir="${EPREFIX}${1}"
 		else
 			mybindir="${1}"
 		fi
@@ -210,14 +210,14 @@ with_bindir() {
 with_datadir() {
 	local mydatadir
 	if [ -z "${1}" ]; then
-		if [ ! -z "${PREFIX}" ]; then
-			mydatadir="${PREFIX}/usr/share"
+		if [ ! -z "${EPREFIX}" ]; then
+			mydatadir="${EPREFIX}/usr/share"
 		else
 			mydatadir=/usr/share
 		fi
 	else
-		if [ ! -z "${PREFIX}" ]; then
-			mydatadir="${PREFIX}${1}"
+		if [ ! -z "${EPREFIX}" ]; then
+			mydatadir="${EPREFIX}${1}"
 		else
 			mydatadir="${1}"
 		fi
@@ -229,14 +229,14 @@ with_datadir() {
 with_infodir() {
 	local myinfodir
 	if [ -z "${1}" ]; then
-		if [ ! -z "${PREFIX}" ]; then
-			myinfodir="${PREFIX}/usr/share/info"
+		if [ ! -z "${EPREFIX}" ]; then
+			myinfodir="${EPREFIX}/usr/share/info"
 		else
 			myinfodir=/usr/share/info
 		fi
 	else
-		if [ ! -z "${PREFIX}" ]; then
-			myinfodir="${PREFIX}${1}"
+		if [ ! -z "${EPREFIX}" ]; then
+			myinfodir="${EPREFIX}${1}"
 		else
 			myinfodir="${1}"
 		fi
@@ -248,14 +248,14 @@ with_infodir() {
 with_mandir() {
 	local mymandir
 	if [ -z "${1}" ]; then
-		if [ ! -z "${PREFIX}" ]; then
-			mymandir="${PREFIX}/usr/share/man"
+		if [ ! -z "${EPREFIX}" ]; then
+			mymandir="${EPREFIX}/usr/share/man"
 		else
 			mymandir=/usr/share/man
 		fi
 	else
-		if [ ! -z "${PREFIX}" ]; then
-			mymandir="${PREFIX}${1}"
+		if [ ! -z "${EPREFIX}" ]; then
+			mymandir="${EPREFIX}${1}"
 		else
 			mymandir="${1}"
 		fi
@@ -267,14 +267,14 @@ with_mandir() {
 with_prefix() {
 	local myprefix
 	if [ -z "${1}" ]; then
-		if [ ! -z "${PREFIX}" ]; then
-			myprefix="${PREFIX}/usr"
+		if [ ! -z "${EPREFIX}" ]; then
+			myprefix="${EPREFIX}/usr"
 		else
 			myprefix=/usr
 		fi
 	else
-		if [ ! -z "${PREFIX}" ]; then
-			myprefix="${PREFIX}${1}"
+		if [ ! -z "${EPREFIX}" ]; then
+			myprefix="${EPREFIX}${1}"
 		else
 			myprefix="${1}"
 		fi
@@ -286,14 +286,14 @@ with_prefix() {
 with_sysconfdir() {
 	local myconfdir
 	if [ -z "${1}" ]; then
-		if [ ! -z "${PREFIX}" ]; then
-			myconfdir="${PREFIX}/etc"
+		if [ ! -z "${EPREFIX}" ]; then
+			myconfdir="${EPREFIX}/etc"
 		else
 			myconfdir=/etc
 		fi
 	else
-		if [ ! -z "${PREFIX}" ]; then
-			myconfdir="${PREFIX}${1}"
+		if [ ! -z "${EPREFIX}" ]; then
+			myconfdir="${EPREFIX}${1}"
 		else
 			myconfdir="${1}"
 		fi
@@ -305,14 +305,14 @@ with_sysconfdir() {
 with_localstatedir() {
 	local mylocalstatedir
 	if [ -z "${1}" ]; then
-		if [ ! -z "${PREFIX}" ]; then
-			mylocalstatedir="${PREFIX}/var/lib"
+		if [ ! -z "${EPREFIX}" ]; then
+			mylocalstatedir="${EPREFIX}/var/lib"
 		else
 			mylocalstatedir="/var/lib"
 		fi
 	else
-		if [ ! -z "${PREFIX}" ]; then
-			mylocalstatedir="${PREFIX}${1}"
+		if [ ! -z "${EPREFIX}" ]; then
+			mylocalstatedir="${EPREFIX}${1}"
 		else
 			mylocalstatedir="${1}"
 		fi
@@ -558,10 +558,10 @@ econf() {
 		ECONF_SOURCE="."
 	fi
 	if [ -x "${ECONF_SOURCE}/configure" ]; then
-		if [ -e ${PREFIX}/usr/share/gnuconfig/ ]; then
+		if [ -e ${EPREFIX}/usr/share/gnuconfig/ ]; then
 			for x in $(find "${WORKDIR}" -type f '(' -name config.guess -o -name config.sub ')') ; do
-				echo " * econf: updating ${x/${WORKDIR}\/} with ${PREFIX}/usr/share/gnuconfig/${x##*/}"
-				cp -f ${PREFIX}/usr/share/gnuconfig/${x##*/} ${x}
+				echo " * econf: updating ${x/${WORKDIR}\/} with ${EPREFIX}/usr/share/gnuconfig/${x##*/}"
+				cp -f ${EPREFIX}/usr/share/gnuconfig/${x##*/} ${x}
 			done
 		fi
 
@@ -592,7 +592,7 @@ econf() {
 				CONF_PREFIX=${pref}
 				[ "${CONF_PREFIX:0:1}" != "/" ] && CONF_PREFIX="/${CONF_PREFIX}"
 			else
-				CONF_PREFIX="${PREFIX}/usr"
+				CONF_PREFIX="${EPREFIX}/usr"
 			fi
 			export CONF_PREFIX
 			[ "${CONF_LIBDIR:0:1}" != "/" ] && CONF_LIBDIR="/${CONF_LIBDIR}"
@@ -632,24 +632,24 @@ econf() {
 		fi
 
 		echo ${CONFCACHE} ${CONFCACHE_ARG} ${TMP_CONFCACHE_DIR} "${ECONF_SOURCE}/configure" \
-			--prefix=${PREFIX}/usr \
+			--prefix=${EPREFIX}/usr \
 			--host=${CHOST} \
-			--mandir=${PREFIX}/usr/share/man \
-			--infodir=${PREFIX}/usr/share/info \
-			--datadir=${PREFIX}/usr/share \
-			--sysconfdir=${PREFIX}/etc \
-			--localstatedir=${PREFIX}/var/lib \
+			--mandir=${EPREFIX}/usr/share/man \
+			--infodir=${EPREFIX}/usr/share/info \
+			--datadir=${EPREFIX}/usr/share \
+			--sysconfdir=${EPREFIX}/etc \
+			--localstatedir=${EPREFIX}/var/lib \
 			"$@" \
 			${LOCAL_EXTRA_ECONF}
 
 		if ! ${CONFCACHE} ${CONFCACHE_ARG} ${TMP_CONFCACHE_DIR} "${ECONF_SOURCE}/configure" \
-			--prefix=${PREFIX}/usr \
+			--prefix=${EPREFIX}/usr \
 			--host=${CHOST} \
-			--mandir=${PREFIX}/usr/share/man \
-			--infodir=${PREFIX}/usr/share/info \
-			--datadir=${PREFIX}/usr/share \
-			--sysconfdir=${PREFIX}/etc \
-			--localstatedir=${PREFIX}/var/lib \
+			--mandir=${EPREFIX}/usr/share/man \
+			--infodir=${EPREFIX}/usr/share/info \
+			--datadir=${EPREFIX}/usr/share \
+			--sysconfdir=${EPREFIX}/etc \
+			--localstatedir=${EPREFIX}/var/lib \
 			"$@"  \
 			${LOCAL_EXTRA_ECONF}; then
 
@@ -1469,13 +1469,13 @@ if [ "$*" != "depend" ] && [ "$*" != "clean" ] && [ "$*" != "setup" ]; then
 	fi
 
 	if hasq distcc ${FEATURES} &>/dev/null; then
-		if [ -d ${PREFIX}/usr/lib/distcc/bin ]; then
+		if [ -d ${EPREFIX}/usr/lib/distcc/bin ]; then
 			#We can enable distributed compile support
 			if [ -z "${PATH/*distcc*/}" ]; then
 				# Remove the other reference.
 				remove_path_entry "distcc"
 			fi
-			export PATH="${PREFIX}/usr/lib/distcc/bin:${PATH}"
+			export PATH="${EPREFIX}/usr/lib/distcc/bin:${PATH}"
 			[ ! -z "${DISTCC_LOG}" ] && addwrite "$(dirname ${DISTCC_LOG})"
 		elif which distcc &>/dev/null; then
 			export CC="distcc $CC"
@@ -1490,13 +1490,13 @@ if [ "$*" != "depend" ] && [ "$*" != "clean" ] && [ "$*" != "setup" ]; then
 			remove_path_entry "ccache"
 		fi
 
-		if [ -d ${PREFIX}/usr/lib/ccache/bin ]; then
-			export PATH="${PREFIX}/usr/lib/ccache/bin:${PATH}"
-		elif [ -d ${PREFIX}/usr/bin/ccache ]; then
-			export PATH="${PREFIX}/usr/bin/ccache:${PATH}"
+		if [ -d ${EPREFIX}/usr/lib/ccache/bin ]; then
+			export PATH="${EPREFIX}/usr/lib/ccache/bin:${PATH}"
+		elif [ -d ${EPREFIX}/usr/bin/ccache ]; then
+			export PATH="${EPREFIX}/usr/bin/ccache:${PATH}"
 		fi
 
-		[ -z "${CCACHE_DIR}" ] && export CCACHE_DIR="${PREFIX}/var/tmp/ccache"
+		[ -z "${CCACHE_DIR}" ] && export CCACHE_DIR="${EPREFIX}/var/tmp/ccache"
 
 		addread "${CCACHE_DIR}"
 		addwrite "${CCACHE_DIR}"

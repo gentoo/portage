@@ -14,19 +14,19 @@ from portage_const_autotool import *
 # START OF CONSTANTS -- START OF CONSTANTS -- START OF CONSTANTS -- START OF
 # ===========================================================================
 
-VDB_PATH                = PREFIX+"/var/db/pkg"
-PRIVATE_PATH            = PREFIX+"/var/lib/portage"
-CACHE_PATH              = PREFIX+"/var/cache/edb"
+VDB_PATH                = EPREFIX+"/var/db/pkg"
+PRIVATE_PATH            = EPREFIX+"/var/lib/portage"
+CACHE_PATH              = EPREFIX+"/var/cache/edb"
 DEPCACHE_PATH           = CACHE_PATH+"/dep"
 
-USER_CONFIG_PATH        = PREFIX+"/etc/portage"
+USER_CONFIG_PATH        = EPREFIX+"/etc/portage"
 MODULES_FILE_PATH       = USER_CONFIG_PATH+"/modules"
 CUSTOM_PROFILE_PATH     = USER_CONFIG_PATH+"/profile"
 
 PORTAGE_BASE_PATH       = PORTAGE_BASE
 PORTAGE_BIN_PATH        = PORTAGE_BASE_PATH+"/bin"
 PORTAGE_PYM_PATH        = PORTAGE_BASE_PATH+"/pym"
-PROFILE_PATH            = PREFIX+"/etc/make.profile"
+PROFILE_PATH            = EPREFIX+"/etc/make.profile"
 LOCALE_DATA_PATH        = PORTAGE_BASE_PATH+"/locale"
 
 EBUILD_SH_BINARY        = PORTAGE_BIN_PATH+"/ebuild.sh"
@@ -37,7 +37,7 @@ MOVE_BINARY             = "mv"
 PRELINK_BINARY          = "prelink"
 
 WORLD_FILE              = PRIVATE_PATH + "/world"
-MAKE_CONF_FILE          = PREFIX+"/etc/make.conf"
+MAKE_CONF_FILE          = EPREFIX+"/etc/make.conf"
 MAKE_DEFAULTS_FILE      = PROFILE_PATH + "/make.defaults"
 DEPRECATED_PROFILE_FILE = PROFILE_PATH+"/deprecated"
 USER_VIRTUALS_FILE      = USER_CONFIG_PATH+"/virtuals"

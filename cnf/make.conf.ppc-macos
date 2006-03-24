@@ -112,13 +112,13 @@ PREFIX=/Library/Gentoo
 # PORTAGE_TMPDIR is the location portage will use for compilations and
 #     temporary storage of data. This can get VERY large depending upon
 #     the application being installed.
-PORTAGE_TMPDIR="${PREFIX}/var/tmp"
+PORTAGE_TMPDIR="${EPREFIX}/var/tmp"
 #
 # PORTDIR is the location of the portage tree. This is the repository
 #     for all profile information as well as all ebuilds. If you change
-#     this, you must update your ${PREFIX}"/etc/make.profile symlink 
+#     this, you must update your ${EPREFIX}"/etc/make.profile symlink 
 #     accordingly.
-PORTDIR="${PREFIX}/usr/portage"
+PORTDIR="${EPREFIX}/usr/portage"
 #
 # DISTDIR is where all of the source code tarballs will be placed for
 #     emerges. The source code is maintained here unless you delete
@@ -138,12 +138,12 @@ PORTDIR="${PREFIX}/usr/portage"
 #     providing a directory. Permissions will be modified as needed IF the
 #     directory exists, otherwise logging will be disabled. NNNN is the
 #     increment at the time the log is created. Logs are thus sequential.
-PORT_LOGDIR="${PREFIX}/var/log/portage"
+PORT_LOGDIR="${EPREFIX}/var/log/portage"
 #
 # PORTDIR_OVERLAY is a directory where local ebuilds may be stored without
 #     concern that they will be deleted by rsync updates. Default is not
 #     defined.
-PORTDIR_OVERLAY="${PREFIX}/usr/local/portage"
+PORTDIR_OVERLAY="${EPREFIX}/usr/local/portage"
 
 # Fetching files 
 # ==============
@@ -156,19 +156,19 @@ PORTDIR_OVERLAY="${PREFIX}/usr/local/portage"
 # alternate ownloaders -- note that you need to merge these programs first.
 #
 # curl groks urls
-FETCHCOMMAND="${PREFIX}/usr/bin/curl -f --connect-timeout 15 -# -o \${DISTDIR}/\${FILE} \${URI}"
-RESUMECOMMAND="${PREFIX}/usr/bin/curl -f --connect-timeout 15 -# -C - -o \${DISTDIR}/\${FILE} \${URI}"
+FETCHCOMMAND="${EPREFIX}/usr/bin/curl -f --connect-timeout 15 -# -o \${DISTDIR}/\${FILE} \${URI}"
+RESUMECOMMAND="${EPREFIX}/usr/bin/curl -f --connect-timeout 15 -# -C - -o \${DISTDIR}/\${FILE} \${URI}"
 # Default wget fetch command (5 tries, passive ftp for firewall compatibility)
-#FETCHCOMMAND="${PREFIX}/usr/bin/wget -t 5 --passive-ftp \${URI} -P \${DISTDIR}"
-#RESUMECOMMAND="${PREFIX}/usr/bin/wget -c -t 5 --passive-ftp \${URI} -P \${DISTDIR}"
+#FETCHCOMMAND="${EPREFIX}/usr/bin/wget -t 5 --passive-ftp \${URI} -P \${DISTDIR}"
+#RESUMECOMMAND="${EPREFIX}/usr/bin/wget -c -t 5 --passive-ftp \${URI} -P \${DISTDIR}"
 #
 # Using wget, ratelimiting downloads
-#FETCHCOMMAND="${PREFIX}/usr/bin/wget -t 5 --passive-ftp --limit-rate=200k \${URI} -P \${DISTDIR}"
-#RESUMECOMMAND="${PREFIX}/usr/bin/wget -c -t 5 --passive-ftp --limit-rate=200k \${URI} -P \${DISTDIR}"
+#FETCHCOMMAND="${EPREFIX}/usr/bin/wget -t 5 --passive-ftp --limit-rate=200k \${URI} -P \${DISTDIR}"
+#RESUMECOMMAND="${EPREFIX}/usr/bin/wget -c -t 5 --passive-ftp --limit-rate=200k \${URI} -P \${DISTDIR}"
 #
 # Lukemftp (BSD ftp):
-#FETCHCOMMAND="${PREFIX}/usr/bin/lukemftp -s -a -o \${DISTDIR}/\${FILE} \${URI}"
-#RESUMECOMMAND="${PREFIX}/usr/bin/lukemftp -s -a -R -o \${DISTDIR}/\${FILE} \${URI}"
+#FETCHCOMMAND="${EPREFIX}/usr/bin/lukemftp -s -a -o \${DISTDIR}/\${FILE} \${URI}"
+#RESUMECOMMAND="${EPREFIX}/usr/bin/lukemftp -s -a -R -o \${DISTDIR}/\${FILE} \${URI}"
 #
 # Portage uses GENTOO_MIRRORS to specify mirrors to use for source retrieval.
 # The list is a space separated list which is read left to right. If you use
@@ -318,7 +318,7 @@ FEATURES="-autoaddcvs -sandbox -sfperms -userpriv -distlocks"
 #     2G, and will be set if not defined otherwise and ccache is in features. 
 #     Portage will set the default ccache dir if it is not present in the
 #     user's environment, for userpriv it sets: ${PORTAGE_TMPDIR}/ccache
-#     (${PREFIX}/var/tmp/ccache), and for regular use the default is /root/.ccache.
+#     (${EPREFIX}/var/tmp/ccache), and for regular use the default is /root/.ccache.
 #     Sizes are specified with 'G' 'M' or 'K'.
 #     '2G' for 2 gigabytes, '2048M' for 2048 megabytes (same as 2G).
 #CCACHE_SIZE="512M"
@@ -331,7 +331,7 @@ FEATURES="-autoaddcvs -sandbox -sfperms -userpriv -distlocks"
 #     consideration. This may cause dependency failures if you are not careful.
 #     The file format is one pattern per line, blanks and ';' or '#' lines are
 #     comments. See 'man rsync' for more details on the exclude-from format.
-#RSYNC_EXCLUDEFROM=${PREFIX}/etc/portage/rsync_excludes
+#RSYNC_EXCLUDEFROM=${EPREFIX}/etc/portage/rsync_excludes
 
 # logging related variables:
 # PORTAGE_ELOG_CLASSES: selects messages to be logged, possible values are:

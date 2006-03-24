@@ -302,12 +302,12 @@ preinst_mask() {
 		 eerror "${FUNCNAME}: IMAGE is unset"
 		 return 1
 	else
-		IMAGE="${IMAGE}/${PREFIX}"
+		IMAGE="${IMAGE}/${EPREFIX}"
 	fi
 	# remove man pages, info pages, docs if requested
 	for f in man info doc; do
 		if hasq no${f} $FEATURES; then
-			INSTALL_MASK="${INSTALL_MASK} ${PREFIX}/usr/share/${f}"
+			INSTALL_MASK="${INSTALL_MASK} ${EPREFIX}/usr/share/${f}"
 		fi
 	done
 
@@ -346,7 +346,7 @@ preinst_suid_scan() {
 	fi
 	# total suid control.
 	if hasq suidctl $FEATURES; then
-		sfconf=${PREFIX}/etc/portage/suidctl.conf
+		sfconf=${EPREFIX}/etc/portage/suidctl.conf
 		echo ">>> Preforming suid scan in ${IMAGE}"
 		for i in $(find ${IMAGE}/ -type f \( -perm -4000 -o -perm -2000 \) ); do
 			if [ -s "${sfconf}" ]; then
@@ -387,15 +387,15 @@ preinst_selinux_labels() {
 		# SELinux file labeling (needs to always be last in dyn_preinst)
 		# only attempt to label if setfiles is executable
 		# and 'context' is available on selinuxfs.
-		if [ -f /selinux/context -a -x ${PREFIX}/usr/sbin/setfiles -a -x ${PREFIX}/usr/sbin/selinuxconfig ]; then
+		if [ -f /selinux/context -a -x ${EPREFIX}/usr/sbin/setfiles -a -x ${EPREFIX}/usr/sbin/selinuxconfig ]; then
 			echo ">>> Setting SELinux security labels"
 			(
-				eval "$(${PREFIX}/usr/sbin/selinuxconfig)" || \
+				eval "$(${EPREFIX}/usr/sbin/selinuxconfig)" || \
 					die "Failed to determine SELinux policy paths.";
 	
 				addwrite /selinux/context;
 	
-				${PREFIX}/usr/sbin/setfiles "${file_contexts_path}" -r "${IMAGE}" "${IMAGE}";
+				${EPREFIX}/usr/sbin/setfiles "${file_contexts_path}" -r "${IMAGE}" "${IMAGE}";
 			) || die "Failed to set SELinux security labels."
 		else
 			# nonfatal, since merging can happen outside a SE kernel

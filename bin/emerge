@@ -439,7 +439,7 @@ def emergelog(mystr,short_msg=None):
 			xtermTitle(mystr)
 	try:
 		#seems odd opening a file each write...
-		elog = portage_const.PREFIX+"/var/log/emerge.log"
+		elog = portage_const.EPREFIX+"/var/log/emerge.log"
 		if not os.path.exists(elog):
 			mylogfile=open(elog, "w")
 			os.chmod(elog, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP)
@@ -568,7 +568,7 @@ def getgccversion():
 def getportageversion():
 	try:
 		import re
-		profilever = os.path.normpath("///"+os.readlink(portage_const.PREFIX+"/etc/make.profile"))
+		profilever = os.path.normpath("///"+os.readlink(portage_const.EPREFIX+"/etc/make.profile"))
 		basepath   = os.path.normpath("///"+portage.settings["PORTDIR"]+"/profiles")
 		if re.match(basepath,profilever):
 			profilever = profilever[len(basepath)+1:]
@@ -2508,7 +2508,7 @@ if myaction in ["sync","metadata"] and (not "--help" in myopts):
 		updatecache_flg = True
 		tmpservertimestampfile = None
 	elif syncuri[:8]=="rsync://":
-		if not os.path.exists(portage_const.PREFIX+"/usr/bin/rsync"):
+		if not os.path.exists(portage_const.EPREFIX+"/usr/bin/rsync"):
 			print "!!! rsync does not exist, so rsync support is disabled."
 			print "!!! Type \"emerge net-misc/rsync\" to enable rsync support."
 			sys.exit(1)
@@ -2695,7 +2695,7 @@ if myaction in ["sync","metadata"] and (not "--help" in myopts):
 			if "--quiet" not in myopts:
 				print ">>> Checking server timestamp ..."
 
-			rsynccommand = " ".join([portage_const.PREFIX,"/usr/bin/rsync",
+			rsynccommand = " ".join([portage_const.EPREFIX,"/usr/bin/rsync",
 				portage.settings["PORTAGE_RSYNC_EXTRA_OPTS"],
 				" ".join(rsync_opts)])
 
@@ -3019,8 +3019,8 @@ elif "info"==myaction:
 	print getportageversion()
 	print "================================================================="
 	print "System uname: "+unameout
-	if os.path.exists(portage_const.PREFIX+"/etc/gentoo-release"):
-		os.system("cat "+portage_const.PREFIX+"/etc/gentoo-release")
+	if os.path.exists(portage_const.EPREFIX+"/etc/gentoo-release"):
+		os.system("cat "+portage_const.EPREFIX+"/etc/gentoo-release")
 	else:
 		print "Unknown Host Operating System"
 
