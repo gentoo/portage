@@ -1,0 +1,43 @@
+--- make.conf	2006-03-19 18:40:11.000000000 +0100
++++ make.conf.mips	2006-03-19 18:26:21.000000000 +0100
+@@ -23,6 +23,13 @@
+ # Example:
+ #USE="X gtk gnome -alsa"
+ 
++# Host Setting
++# ============
++#
++# All MIPS systems should use this host setting:
++
++CHOST="mips-unknown-linux-gnu"
++
+ # Host and optimization settings 
+ # ==============================
+ #
+@@ -33,10 +40,15 @@
+ # package (and in some cases the libraries it uses) at default optimizations
+ # before reporting errors to developers.
+ #
+-# Please refer to the GCC manual for a list of possible values.
++# -mcpu=<cpu-type> for MIPS systems selects the type of processor you want
++# to optimize your code for.   Code generated under those options will run best
++# on that processor, and may not run at all on others.
+ #
+-#CFLAGS="-O2 -pipe"
++# GCC 3.2 supports many mips processor types including: r2000, r3000, r3900, r4000, 
++# r4100, r4300, r4400, r4600, r4650, r5000, r6000, r8000 , orion
+ #
++#CFLAGS="-O2 -pipe"
++
+ # If you set a CFLAGS above, then this line will set your default C++ flags to
+ # the same settings.
+ #CXXFLAGS="${CFLAGS}"
+@@ -61,7 +73,7 @@
+ # DO NOT PUT ANYTHING BUT YOUR SPECIFIC ~ARCHITECTURE IN THE LIST.
+ # IF YOU ARE UNSURE OF YOUR ARCH, OR THE IMPLICATIONS, DO NOT MODIFY THIS.
+ #
+-#ACCEPT_KEYWORDS="~arch"
++#ACCEPT_KEYWORDS="~mips"
+ 
+ # Portage Directories
+ # ===================
