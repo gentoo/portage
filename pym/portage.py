@@ -2546,7 +2546,7 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 	try:
 		mode = mysettings["PORTAGE_WORKDIR_MODE"]
 		if mode.isdigit():
-			parsed_mode = int(mode)
+			parsed_mode = int(mode, 8)
 		elif mode == "":
 			raise KeyError()
 		else:
