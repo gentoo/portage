@@ -42,7 +42,15 @@ OCC="$CC"
 OCXX="$CXX"
 source ${PREFIX}/etc/profile.env &>/dev/null
 if [ -f "${PORTAGE_BASHRC}" ]; then
-	source "${PORTAGE_BASHRC}"
+	# If $- contains x, then tracing has already enabled elsewhere for some
+	# reason.  We preserve it's state so as not to interfere.
+	if [ "$PORTAGE_DEBUG" != "1" ] || [ "${-/x/}" != "$-" ]; then
+		source "${PORTAGE_BASHRC}"
+	else
+		set -x
+		source "${PORTAGE_BASHRC}"
+		set +x
+	fi
 fi
 [ ! -z "$OCC" ] && export CC="$OCC"
 [ ! -z "$OCXX" ] && export CXX="$OCXX"
@@ -373,6 +381,7 @@ diefunc() {
 	echo >&2
 	echo "!!! ERROR: $CATEGORY/$PF failed." >&2
 	dump_trace 2 1>&2
+	echo "  $(basename "${BASH_SOURCE[1]}"), line ${BASH_LINENO[0]}:   Called die" 1>&2
 	echo >&2
 	echo "!!! ${*:-(no error message)}" >&2
 	echo "!!! If you need support, post the topmost build error, and the call stack if relevant." >&2
