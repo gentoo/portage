@@ -31,6 +31,8 @@ import cvstree
 import time
 import codecs
 
+from portage_manifest import Manifest
+
 from output import *
 #bold, darkgreen, darkred, green, red, turquoise, yellow
 
@@ -102,7 +104,7 @@ qahelp={
 	"CVS/Entries.IO_error":"Attempting to commit, and an IO error was encountered access the Entries file",
 	"digest.partial":"Digest files do not contain all corresponding URI elements",
 	"digest.assumed":"Existing digest must be assumed correct (Package level only)",
-	"digest.unused":"Digest entry has no matching SRC_URI entry",
+	"digestentry.unused":"Digest/Manifest entry has no matching SRC_URI entry",
 	"digest.fail":"Digest does not match the specified local file",
 	"digest.stray":"Digest files that do not have a corresponding ebuild",
 	"digest.missing":"Digest files that are missing (ebuild exists, digest doesn't)",
@@ -177,7 +179,7 @@ qawarnings=[
 "digest.notadded",
 "digest.disjointed",
 "digest.missing",
-"digest.unused",
+"digestentry.unused",
 "DEPEND.badmasked","RDEPEND.badmasked","PDEPEND.badmasked",
 "DEPEND.badindev","RDEPEND.badindev","PDEPEND.badindev",
 "DEPEND.badmaskedindev","RDEPEND.badmaskedindev","PDEPEND.badmaskedindev",
@@ -818,6 +820,10 @@ for x in scanlist:
 				fails["CVS/Entries.IO_error"].append(checkdir+"/files/CVS/Entries")
 			continue
 
+	mf=Manifest(checkdir, db=portage.db["/"]["porttree"].dbapi, mysettings=repoman_settings)
+	mydigests=mf.getTypeDigests("DIST")
+	myfiles_all = []
+
 	if os.path.exists(checkdir+"/files"):
 		filesdirlist=os.listdir(checkdir+"/files")
 		for y in filesdirlist:
@@ -834,8 +840,6 @@ for x in scanlist:
 					stats["file.executable"] += 1
 					fails["file.executable"].append(x+"/files/"+y)
 				
-				mydigests=portage.digestParseFile(checkdir+"/files/"+y)
-				
 				mykey = catdir + "/" + y[7:]
 				if y[7:] not in ebuildlist:
 					#stray digest
@@ -850,10 +854,8 @@ for x in scanlist:
 				else:
 					# We have an ebuild
 					myuris,myfiles = portage.db["/"]["porttree"].dbapi.getfetchlist(mykey,all=True)
-					for entry in mydigests.keys():
-						if entry not in myfiles:
-							stats["digest.unused"] += 1
-							fails["digest.unused"].append(y+"::"+entry)
+					myfiles_all.extend(myfiles)
+
 					uri_dict = {}
 					for myu in myuris:
 						myubn = os.path.basename(myu)
@@ -912,6 +914,11 @@ for x in scanlist:
 					stats["file.name"] += 1
 					fails["file.name"].append("%s/files/%s: char '%s'" % (checkdir, y, c))
 					break
+
+	for entry in mydigests.keys():
+		if entry not in myfiles_all:
+			stats["digestentry.unused"] += 1
+			fails["digestentry.unused"].append(checkdir+"::"+entry)
 
 
 	if "ChangeLog" not in checkdirlist:

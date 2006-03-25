@@ -63,6 +63,10 @@ class Manifest(object):
 			rval.update(self.fhashdict[t])
 		return rval
 	
+	def getTypeDigests(self, ftype):
+		""" Similar to getDigests(), but restricted to files of the given type. """
+		return self.fhashdict[ftype]
+
 	def _readDigests(self):
 		""" Parse old style digest files for this Manifest instance """
 		mycontent = ""
@@ -140,6 +144,11 @@ class Manifest(object):
 		mylines = []
 		for t in self.fhashdict.keys():
 			for f in self.fhashdict[t].keys():
+				# compat hack for v1 manifests
+				if t == "AUX":
+					f2 = os.path.join("files", f)
+				else:
+					f2 = f
 				myline = " ".join([t, f, str(self.fhashdict[t][f]["size"])])
 				myhashes = self.fhashdict[t][f]
 				for h in myhashes.keys():
@@ -151,7 +160,7 @@ class Manifest(object):
 					for h in myhashes.keys():
 						if h not in portage_const.MANIFEST1_HASH_FUNCTIONS:
 							continue
-						mylines.append((" ".join([h, str(myhashes[h]), f, str(myhashes["size"])])))
+						mylines.append((" ".join([h, str(myhashes[h]), f2, str(myhashes["size"])])))
 		fd.write("\n".join(mylines))
 		fd.write("\n")
 
