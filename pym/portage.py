@@ -2049,8 +2049,14 @@ def digestgen(myarchives,mysettings,db=None,overwrite=1,manifestonly=0):
 		myrealtype = mf.findFile(f)
 		if myrealtype != None:
 			mytype = myrealtype
+		writemsg(">>> Creating Manifest for %s\n" % mysettings["O"])
 		mf.create(assumeDistfileHashes=True)
-		mf.updateFileHashes(mytype, f, checkExisting=False)
+		try:
+			writemsg(">>> Adding digests for file %s\n" % f)
+			mf.updateFileHashes(mytype, f, checkExisting=False)
+		except portage_exception.FileNotFound, e:
+			writemsg("!!! File %s doesn't exist, can't update Manifest\n" % str(e))
+			return 0
 	# NOTE: overwrite=0 is only used by emerge --digest, not sure we wanna keep that
 	if overwrite or not os.path.exists(mf.getFullname()):
 		mf.write(sign=False)
