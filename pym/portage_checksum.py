@@ -142,7 +142,7 @@ def perform_checksum(filename, hashname="MD5", calc_prelink=0):
 		myhash, mysize = hashfunc_map[hashname](myfilename)
 	except (OSError, IOError), e:
 		if e.errno == errno.ENOENT:
-			raise portage_exception.FileNotFound(e)
+			raise portage_exception.FileNotFound(myfilename)
 		else:
 			raise e
 	if calc_prelink and prelink_capable:
