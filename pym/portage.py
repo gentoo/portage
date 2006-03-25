@@ -881,6 +881,8 @@ class config:
 		self.modifiedkeys = []
 
 		self.virtuals = {}
+		self.virts_p = {}
+		self.dirVirtuals = None
 		self.v_count  = 0
 
 		# Virtuals obtained from the vartree
@@ -1142,9 +1144,6 @@ class config:
 			archlist = stack_lists(archlist, incremental=1)
 			self.configdict["conf"]["PORTAGE_ARCHLIST"] = " ".join(archlist)
 
-			# get virtuals -- needs categories
-			self.loadVirtuals('/')
-
 			#package.mask
 			pkgmasklines = [grabfile_package(os.path.join(x, "package.mask")) for x in self.profiles]
 			for l in locations:
@@ -1185,7 +1184,8 @@ class config:
 		if not useorder:
 			# reasonable defaults; this is important as without USE_ORDER,
 			# USE will always be "" (nothing set)!
-			useorder="env:pkg:conf:auto:defaults"
+			useorder = "env:pkg:conf:defaults"
+			self.backupenv["USE_ORDER"] = useorder
 		useordersplit=useorder.split(":")
 
 		self.uvlist=[]
@@ -1259,7 +1259,9 @@ class config:
 			self.setcpv(mycpv)
 
 	def loadVirtuals(self,root):
-		self.virtuals = self.getvirtuals(root)
+		"""Not currently used by portage."""
+		writemsg("DEPRECATED: portage.config.loadVirtuals\n")
+		self.getvirtuals(root)
 
 	def load_best_module(self,property_string):
 		best_mod = best_from_dict(property_string,self.modules,self.module_priority)
@@ -1347,6 +1349,8 @@ class config:
 		self.reset(keeping_pkg=1,use_cache=use_cache)
 
 	def setinst(self,mycpv,mydbapi):
+		if len(self.virtuals) == 0:
+			self.getvirtuals()
 		# Grab the virtuals this package provides and add them into the tree virtuals.
 		provides = mydbapi.aux_get(mycpv, ["PROVIDE"])[0]
 		if isinstance(mydbapi, portdbapi):
@@ -1385,7 +1389,7 @@ class config:
 			if mykey=="USE":
 				mydbs=self.uvlist
 				# XXX Global usage of db... Needs to go away somehow.
-				if db.has_key(root) and db[root].has_key("vartree"):
+				if "auto" in self["USE_ORDER"].split(":") and db.has_key(root) and db[root].has_key("vartree"):
 					self.configdict["auto"]["USE"]=autouse(db[root]["vartree"],use_cache=use_cache)
 				else:
 					self.configdict["auto"]["USE"]=""
@@ -1451,7 +1455,20 @@ class config:
 
 		self.already_in_regenerate = 0
 
-	def getvirtuals(self, myroot):
+	def get_virts_p(self, myroot):
+		if self.virts_p:
+			return self.virts_p
+		virts = self.getvirtuals(myroot)
+		if virts:
+			myvkeys = virts.keys()
+			for x in myvkeys:
+				vkeysplit = x.split("/")
+				if not self.virts_p.has_key(vkeysplit[1]):
+					self.virts_p[vkeysplit[1]] = virts[x]
+		return self.virts_p
+
+	def getvirtuals(self, myroot="/"):
+		#XXX: due to caching, myroot is ignored on all but the first call
 		if self.virtuals:
 			return self.virtuals
 
@@ -1505,7 +1522,8 @@ class config:
 			# Reduce the provides into a list by CP.
 			self.treeVirtuals = map_dictlist_vals(getCPFromCPV,temp_vartree.get_all_provides())
 
-		return self.__getvirtuals_compile()
+		self.virtuals = self.__getvirtuals_compile()
+		return self.virtuals
 
 	def __getvirtuals_compile(self):
 		"""Actually generate the virtuals we have collected.
@@ -3089,16 +3107,17 @@ def dep_virtual(mysplit, mysettings):
 			newsplit.append(dep_virtual(x, mysettings))
 		else:
 			mykey=dep_getkey(x)
-			if mysettings.virtuals.has_key(mykey):
-				if len(mysettings.virtuals[mykey])==1:
-					a=string.replace(x, mykey, mysettings.virtuals[mykey][0])
+			myvirtuals = mysettings.getvirtuals()
+			if myvirtuals.has_key(mykey):
+				if len(myvirtuals[mykey]) == 1:
+					a = string.replace(x, mykey, myvirtuals[mykey][0])
 				else:
 					if x[0]=="!":
 						# blocker needs "and" not "or(||)".
 						a=[]
 					else:
 						a=['||']
-					for y in mysettings.virtuals[mykey]:
+					for y in myvirtuals[mykey]:
 						a.append(string.replace(x, mykey, y))
 				newsplit.append(a)
 			else:
@@ -3406,6 +3425,9 @@ def cpv_getkey(mycpv):
 
 def key_expand(mykey,mydb=None,use_cache=1):
 	mysplit=mykey.split("/")
+	global settings
+	virts = settings.getvirtuals("/")
+	virts_p = settings.get_virts_p("/")
 	if len(mysplit)==1:
 		if mydb and type(mydb)==types.InstanceType:
 			for x in settings.categories:
@@ -3427,6 +3449,9 @@ def cpv_expand(mycpv,mydb=None,use_cache=1):
 	are no installed/available candidates."""
 	myslash=mycpv.split("/")
 	mysplit=pkgsplit(myslash[-1])
+	global settings
+	virts = settings.getvirtuals("/")
+	virts_p = settings.get_virts_p("/")
 	if len(myslash)>2:
 		# this is illegal case.
 		mysplit=[]
@@ -6549,20 +6574,9 @@ def getvirtuals(myroot):
 	return settings.getvirtuals(myroot)
 
 def do_vartree(mysettings):
-	global virts,virts_p
-	virts=mysettings.getvirtuals("/")
-	virts_p={}
-
-	if virts:
-		myvkeys=virts.keys()
-		for x in myvkeys:
-			vkeysplit=x.split("/")
-			if not virts_p.has_key(vkeysplit[1]):
-				virts_p[vkeysplit[1]]=virts[x]
-	db["/"]={"virtuals":virts,"vartree":vartree("/",virts)}
+	db["/"] = {"vartree":vartree("/")}
 	if root!="/":
-		virts=mysettings.getvirtuals(root)
-		db[root]={"virtuals":virts,"vartree":vartree(root,virts)}
+		db[root] = {"vartree":vartree(root)}
 	#We need to create the vartree first, then load our settings, and then set up our other trees
 
 usedefaults=settings.use_defs
@@ -6828,7 +6842,7 @@ def global_updates():
 					writemsg("%s\n" % msg)
 		update_config_files(myupd)
 
-		db["/"]["bintree"] = binarytree("/", settings["PKGDIR"], virts)
+		db["/"]["bintree"] = binarytree("/", settings["PKGDIR"], settings.getvirtuals("/"))
 		for update_cmd in myupd:
 			if update_cmd[0] == "move":
 				db["/"]["vartree"].dbapi.move_ent(update_cmd)
@@ -6875,11 +6889,11 @@ if (secpass==2) and (not os.environ.has_key("SANDBOX_ACTIVE")):
 		global_updates()
 
 #continue setting up other trees
-db["/"]["porttree"]=portagetree("/",virts)
-db["/"]["bintree"]=binarytree("/",settings["PKGDIR"],virts)
+db["/"]["porttree"] = portagetree("/")
+db["/"]["bintree"] = binarytree("/", settings["PKGDIR"])
 if root!="/":
-	db[root]["porttree"]=portagetree(root,virts)
-	db[root]["bintree"]=binarytree(root,settings["PKGDIR"],virts)
+	db[root]["porttree"] = portagetree(root)
+	db[root]["bintree"] = binarytree(root, settings["PKGDIR"])
 
 profileroots = [settings["PORTDIR"]+"/profiles/"]
 for x in settings["PORTDIR_OVERLAY"].split():

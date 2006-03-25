@@ -1115,7 +1115,7 @@ for x in scanlist:
 	
 				for myprovide in myaux["PROVIDE"].split():
 					prov_cp = portage.dep_getkey(myprovide)
-					if prov_cp not in dep_settings.virtuals:
+					if prov_cp not in dep_settings.getvirtuals():
 						stats["virtual.unavailable"]+=1
 						fails["virtual.unavailable"].append(x+"/"+y+".ebuild: "+keyword+"("+prof[0]+") "+prov_cp)
 
