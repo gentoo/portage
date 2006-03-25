@@ -279,7 +279,7 @@ class Manifest(object):
 		""" Get a list of all DIST files associated to the given cpv """
 		return self.db.getfetchlist(cpv, mysettings=self.mysettings, all=True)[1]
 	
-	def updateFileHashes(self, ftype, fname, checkExisting=True, ignoreMissing=True):
+	def updateFileHashes(self, ftype, fname, checkExisting=True, ignoreMissing=True, reuseExisting=False):
 		""" Regenerate hashes for the given file """
 		if checkExisting:
 			self.checkFileHashes(fname)
@@ -287,7 +287,11 @@ class Manifest(object):
 			raise FileNotInManifestException(fname)
 		if not self.fhashdict[ftype].has_key(fname):
 			self.fhashdict[ftype][fname] = {}
-		myhashes = perform_multiple_checksums(self._getAbsname(ftype, fname), self.hashes)
+		myhashkeys = list(self.hashes)
+		if reuseExisting:
+			for k in [h for h in self.fhashdict[ftype][fname].keys() if h in myhashkeys]:
+				myhashkeys.remove(k)
+		myhashes = perform_multiple_checksums(self._getAbsname(ftype, fname), myhashkeys)
 		self.fhashdict[ftype][fname].update(myhashes)
 	
 	def updateTypeHashes(self, idtype, checkExisting=False, ignoreMissingFiles=True):

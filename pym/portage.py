@@ -2053,7 +2053,7 @@ def digestgen(myarchives,mysettings,db=None,overwrite=1,manifestonly=0):
 		mf.create(assumeDistfileHashes=True)
 		try:
 			writemsg(">>> Adding digests for file %s\n" % f)
-			mf.updateFileHashes(mytype, f, checkExisting=False)
+			mf.updateFileHashes(mytype, f, checkExisting=False, reuseExisting=True)
 		except portage_exception.FileNotFound, e:
 			writemsg("!!! File %s doesn't exist, can't update Manifest\n" % str(e))
 			return 0
