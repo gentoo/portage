@@ -6574,9 +6574,29 @@ def getvirtuals(myroot):
 	return settings.getvirtuals(myroot)
 
 def do_vartree(mysettings):
-	db["/"] = {"vartree":vartree("/")}
+	class LazyVirtualsDict(dict):
+		def __init__(self, myroot):
+			super(LazyVirtualsDict, self).__init__()
+			self.myroot = myroot
+			self["virtuals"] = None
+		def __getitem__(self, key):
+			if "virtuals" == key:
+				if "virtuals" in self:
+					virtuals = super(LazyVirtualsDict, self).__getitem__("virtuals")
+					if virtuals is not None:
+						return virtuals
+					else:
+						global settings
+						virtuals = settings.getvirtuals(self.myroot)
+						self["virtuals"] = virtuals
+						return virtuals
+			return super(LazyVirtualsDict, self).__getitem__(key)
+	global db, root
+	db["/"] = LazyVirtualsDict("/")
+	db["/"]["vartree"] = vartree("/")
 	if root!="/":
-		db[root] = {"vartree":vartree(root)}
+		db[root] = LazyVirtualsDict(root)
+		db[root]["vartree"] = vartree(root)
 	#We need to create the vartree first, then load our settings, and then set up our other trees
 
 usedefaults=settings.use_defs
