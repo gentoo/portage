@@ -73,6 +73,7 @@ try:
 
 	from portage_data import ostype, lchown, userland, secpass, uid, wheelgid, \
 	                         portage_uid, portage_gid
+	from portage_manifest import Manifest
 
 	import portage_util
 	from portage_util import atomic_ofstream, apply_secpass_permissions, apply_recursive_permissions, \
@@ -881,6 +882,8 @@ class config:
 		self.modifiedkeys = []
 
 		self.virtuals = {}
+		self.virts_p = {}
+		self.dirVirtuals = None
 		self.v_count  = 0
 
 		# Virtuals obtained from the vartree
@@ -1141,9 +1144,6 @@ class config:
 			archlist = stack_lists(archlist, incremental=1)
 			self.configdict["conf"]["PORTAGE_ARCHLIST"] = " ".join(archlist)
 
-			# get virtuals -- needs categories
-			self.loadVirtuals('/')
-
 			#package.mask
 			pkgmasklines = [grabfile_package(os.path.join(x, "package.mask")) for x in self.profiles]
 			for l in locations:
@@ -1184,7 +1184,8 @@ class config:
 		if not useorder:
 			# reasonable defaults; this is important as without USE_ORDER,
 			# USE will always be "" (nothing set)!
-			useorder="env:pkg:conf:auto:defaults"
+			useorder = "env:pkg:conf:defaults"
+			self.backupenv["USE_ORDER"] = useorder
 		useordersplit=useorder.split(":")
 
 		self.uvlist=[]
@@ -1261,7 +1262,9 @@ class config:
 			self.setcpv(mycpv)
 
 	def loadVirtuals(self,root):
-		self.virtuals = self.getvirtuals(root)
+		"""Not currently used by portage."""
+		writemsg("DEPRECATED: portage.config.loadVirtuals\n")
+		self.getvirtuals(root)
 
 	def load_best_module(self,property_string):
 		best_mod = best_from_dict(property_string,self.modules,self.module_priority)
@@ -1349,6 +1352,8 @@ class config:
 		self.reset(keeping_pkg=1,use_cache=use_cache)
 
 	def setinst(self,mycpv,mydbapi):
+		if len(self.virtuals) == 0:
+			self.getvirtuals()
 		# Grab the virtuals this package provides and add them into the tree virtuals.
 		provides = mydbapi.aux_get(mycpv, ["PROVIDE"])[0]
 		if isinstance(mydbapi, portdbapi):
@@ -1387,7 +1392,7 @@ class config:
 			if mykey=="USE":
 				mydbs=self.uvlist
 				# XXX Global usage of db... Needs to go away somehow.
-				if db.has_key(root) and db[root].has_key("vartree"):
+				if "auto" in self["USE_ORDER"].split(":") and db.has_key(root) and db[root].has_key("vartree"):
 					self.configdict["auto"]["USE"]=autouse(db[root]["vartree"],use_cache=use_cache)
 				else:
 					self.configdict["auto"]["USE"]=""
@@ -1453,7 +1458,20 @@ class config:
 
 		self.already_in_regenerate = 0
 
-	def getvirtuals(self, myroot):
+	def get_virts_p(self, myroot):
+		if self.virts_p:
+			return self.virts_p
+		virts = self.getvirtuals(myroot)
+		if virts:
+			myvkeys = virts.keys()
+			for x in myvkeys:
+				vkeysplit = x.split("/")
+				if not self.virts_p.has_key(vkeysplit[1]):
+					self.virts_p[vkeysplit[1]] = virts[x]
+		return self.virts_p
+
+	def getvirtuals(self, myroot="/"):
+		#XXX: due to caching, myroot is ignored on all but the first call
 		if self.virtuals:
 			return self.virtuals
 
@@ -1507,7 +1525,8 @@ class config:
 			# Reduce the provides into a list by CP.
 			self.treeVirtuals = map_dictlist_vals(getCPFromCPV,temp_vartree.get_all_provides())
 
-		return self.__getvirtuals_compile()
+		self.virtuals = self.__getvirtuals_compile()
+		return self.virtuals
 
 	def __getvirtuals_compile(self):
 		"""Actually generate the virtuals we have collected.
@@ -2025,179 +2044,73 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 			return 0
 	return 1
 
-
-def digestCreate(myfiles,basedir,oldDigest={}):
-	"""Takes a list of files and the directory they are in and returns the
-	dict of dict[filename][CHECKSUM_KEY] = hash
-	returns None on error."""
-	mydigests={}
-	for x in myfiles:
-		print "<<<",x
-		myfile=os.path.normpath(basedir+"///"+x)
-		if os.path.exists(myfile):
-			if not os.access(myfile, os.R_OK):
-				print "!!! Given file does not appear to be readable. Does it exist?"
-				print "!!! File:",myfile
-				return None
-			mydigests[x] = portage_checksum.perform_multiple_checksums(myfile, hashes=portage_const.MANIFEST1_HASH_FUNCTIONS)
-			mysize       = os.stat(myfile)[stat.ST_SIZE]
-		else:
-			if x in oldDigest:
-				# DeepCopy because we might not have a unique reference.
-				mydigests[x] = copy.deepcopy(oldDigest[x])
-				mysize       = copy.deepcopy(oldDigest[x]["size"])
-			else:
-				print "!!! We have a source URI, but no file..."
-				print "!!! File:",myfile
-				return None
-
-		if mydigests[x].has_key("size") and (mydigests[x]["size"] != mysize):
-			raise portage_exception.DigestException, "Size mismatch during checksums"
-		mydigests[x]["size"] = copy.deepcopy(mysize)
-	return mydigests
-
-def digestCreateLines(filelist, mydict):
-	mylines = []
-	mydigests = copy.deepcopy(mydict)
-	for myarchive in filelist:
-		mysize = mydigests[myarchive]["size"]
-		if len(mydigests[myarchive]) == 0:
-			raise portage_exception.DigestException, "No generate digest for '%(file)s'" % {"file":myarchive}
-		for sumName in mydigests[myarchive].keys():
-			if sumName not in portage_checksum.get_valid_checksum_keys():
-				continue
-			mysum = mydigests[myarchive][sumName]
-
-			myline  = sumName[:]
-			myline += " "+mysum
-			myline += " "+myarchive
-			myline += " "+str(mysize)
-			mylines.append(myline)
-	return mylines
-
-def digestgen(myarchives,mysettings,overwrite=1,manifestonly=0):
+def digestgen(myarchives,mysettings,db=None,overwrite=1,manifestonly=0):
 	"""generates digest file if missing.  Assumes all files are available.	If
-	overwrite=0, the digest will only be created if it doesn't already exist."""
+	overwrite=0, the digest will only be created if it doesn't already exist.
+	DEPRECATED: this now only is a compability wrapper for 
+	            portage_manifest.Manifest()"""
 
-	# archive files
-	basedir=mysettings["DISTDIR"]+"/"
-	digestfn=mysettings["FILESDIR"]+"/digest-"+mysettings["PF"]
+	# NOTE: manifestonly is useless with manifest2 and therefore ignored
+	# NOTE: the old code contains a lot of crap that should really be elsewhere 
+	#       (e.g. cvs stuff should be in ebuild(1) and/or repoman)
+	# TODO: error/exception handling
 
-	# portage files -- p(ortagefiles)basedir
-	pbasedir=mysettings["O"]+"/"
-	manifestfn=pbasedir+"Manifest"
+	if db == None:
+		db = portagetree().dbapi
 
-	if not manifestonly:
-		if not os.path.isdir(mysettings["FILESDIR"]):
-			os.makedirs(mysettings["FILESDIR"])
-		mycvstree=cvstree.getentries(pbasedir, recursive=1)
-
-		if ("cvs" in features) and os.path.exists(pbasedir+"/CVS"):
-			if not cvstree.isadded(mycvstree,"files"):
-				if "autoaddcvs" in features:
-					print ">>> Auto-adding files/ dir to CVS..."
-					spawn("cd "+pbasedir+"; cvs add files",mysettings,free=1)
-				else:
-					print "--- Warning: files/ is not added to cvs."
-
-		if (not overwrite) and os.path.exists(digestfn):
-			return 1
-
-		print green(">>> Generating the digest file...")
-
-		# Track the old digest so we can assume checksums without requiring
-		# all files to be downloaded. 'Assuming'
-		myolddigest = {}
-		if os.path.exists(digestfn):
-			myolddigest = digestParseFile(digestfn)
-
-		myarchives.sort()
+	mf = Manifest(mysettings["O"], db, mysettings)
+	for f in myarchives:
+		# the whole type evaluation is only for the case that myarchives isn't a 
+		# DIST file as create() determines the type on its own
+		mytype = mf.guessType(f)
+		if mytype == "AUX":
+			f = f[5:]
+		elif mytype == None:
+			continue
+		myrealtype = mf.findFile(f)
+		if myrealtype != None:
+			mytype = myrealtype
+		writemsg(">>> Creating Manifest for %s\n" % mysettings["O"])
+		mf.create(assumeDistfileHashes=True)
 		try:
-			mydigests=digestCreate(myarchives, basedir, oldDigest=myolddigest)
-		except portage_exception.DigestException, s:
-			print "!!!",s
+			writemsg(">>> Adding digests for file %s\n" % f)
+			mf.updateFileHashes(mytype, f, checkExisting=False, reuseExisting=not os.path.exists(os.path.join(mysettings["DISTDIR"], f)))
+		except portage_exception.FileNotFound, e:
+			writemsg("!!! File %s doesn't exist, can't update Manifest\n" % str(e))
 			return 0
-		if mydigests==None: # There was a problem, exit with an errorcode.
-			return 0
-
-		if mydigests != myolddigest:
-			digest_lines = digestCreateLines(myarchives, mydigests)
-			digest_success = True
-			try:
-				write_atomic(digestfn, "\n".join(digest_lines) + "\n")
-				digest_success = apply_secpass_permissions(
-					digestfn, gid=portage_gid, mode=0664)
-			except (IOError, OSError), e:
-				writemsg("!!! %s\n" % str(e))
-				digest_success = False
-			except portage_exception.PortageException:
-				writemsg("!!! %s\n" % str(e))
-				digest_success = False
-			if not digest_success:
-				writemsg("!!! Filesystem error, skipping generation.\n")
-				return 0
-
-	print green(">>> Generating the manifest file...")
-	mypfiles=listdir(pbasedir,recursive=1,filesonly=1,ignorecvs=1,EmptyOnError=1)
-	mypfiles=cvstree.apply_cvsignore_filter(mypfiles)
-	mypfiles.sort()
-	for x in ["Manifest"]:
-		if x in mypfiles:
-			mypfiles.remove(x)
-
-	mydigests=digestCreate(mypfiles, pbasedir)
-	if mydigests==None: # There was a problem, exit with an errorcode.
-		return 0
-
-	try:
-		outfile=open(manifestfn, "w+")
-	except SystemExit, e:
-		raise
-	except Exception, e:
-		print "!!! Filesystem error skipping generation. (Read-Only?)"
-		print "!!!",e
-		return 0
-	for x in digestCreateLines(mypfiles, mydigests):
-		outfile.write(x+"\n")
-	outfile.close()
-	try:
-		os.chown(manifestfn,os.getuid(),portage_gid)
-		os.chmod(manifestfn,0664)
-	except SystemExit, e:
-		raise
-	except Exception,e:
-		print e
-
-	if "cvs" in features and os.path.exists(pbasedir+"/CVS"):
-		mycvstree=cvstree.getentries(pbasedir, recursive=1)
-		myunaddedfiles=""
-		if not manifestonly and not cvstree.isadded(mycvstree,digestfn):
-			if digestfn[:len(pbasedir)]==pbasedir:
-				myunaddedfiles=digestfn[len(pbasedir):]+" "
-			else:
-				myunaddedfiles=digestfn+" "
-		if not cvstree.isadded(mycvstree,manifestfn[len(pbasedir):]):
-			if manifestfn[:len(pbasedir)]==pbasedir:
-				myunaddedfiles+=manifestfn[len(pbasedir):]+" "
-			else:
-				myunaddedfiles+=manifestfn
-		if myunaddedfiles:
-			if "autoaddcvs" in features:
-				print blue(">>> Auto-adding digest file(s) to CVS...")
-				spawn("cd "+pbasedir+"; cvs add "+myunaddedfiles,mysettings,free=1)
-			else:
-				print "--- Warning: digests are not yet added into CVS."
-	print darkgreen(">>> Computed message digests.")
-	print
+	# NOTE: overwrite=0 is only used by emerge --digest, not sure we wanna keep that
+	if overwrite or not os.path.exists(mf.getFullname()):
+		mf.write(sign=False)
+	
 	return 1
 
-
-def digestParseFile(myfilename):
+def digestParseFile(myfilename,mysettings=None,db=None):
 	"""(filename) -- Parses a given file for entries matching:
 	<checksumkey> <checksum_hex_string> <filename> <filesize>
 	Ignores lines that don't start with a valid checksum identifier
 	and returns a dict with the filenames as keys and {checksumkey:checksum}
-	as the values."""
+	as the values.
+	DEPRECATED: this function is now only a compability wrapper for
+	            portage_manifest.Manifest()."""
+
+	mysplit = myfilename.split(os.sep)
+	if mysplit[-2] == "files" and mysplit[-1].startswith("digest-"):
+		pkgdir = os.sep+os.sep.join(mysplit[:-2])
+	elif mysplit[-1] == "Manifest":
+		pkgdir = os.sep+os.sep.join(mysplit[:-1])
+
+	if db == None:
+		db = portagetree().dbapi
+	if mysettings == None:
+		mysettings = config(clone=settings)
+
+	mf = Manifest(pkgdir, db, mysettings)
+
+	return mf.getDigests()
+	
+	#########################################
+	# Old code that's replaced by the above #
+	#########################################
 
 	if not os.path.exists(myfilename):
 		return None
@@ -2231,7 +2144,11 @@ def digestCheckFiles(myfiles, mydigests, basedir, note="", strict=0):
 	"""(fileslist, digestdict, basedir) -- Takes a list of files and a dict
 	of their digests and checks the digests against the indicated files in
 	the basedir given. Returns 1 only if all files exist and match the checksums.
+	DEPRECATED: this function isn't compatible with manifest2, use
+	            portage_manifest.Manifest() instead for any digest related tasks.
 	"""
+	print "!!! use of deprecated function digestCheckFiles(), use portage_manifest instead"""
+	return 0
 	for x in myfiles:
 		if not mydigests.has_key(x):
 			print
@@ -2263,8 +2180,46 @@ def digestCheckFiles(myfiles, mydigests, basedir, note="", strict=0):
 	return 1
 
 
-def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
-	"""Verifies checksums.  Assumes all files have been downloaded."""
+def digestcheck(myfiles, mysettings, strict=0, justmanifest=0, db=None):
+	"""Verifies checksums.  Assumes all files have been downloaded.
+	DEPRECATED: this is now only a compability wrapper for 
+	            portage_manifest.Manifest()."""
+	
+	pkgdir = mysettings["O"]
+	if db == None:
+		db = portagetree().dbapi
+	mf = Manifest(pkgdir, db, mysettings)
+	try:
+		if strict:
+			print ">>> checking ebuild checksums",
+			mf.checkTypeHashes("EBUILD")
+			print ":-)"
+			print ">>> checking auxfile checksums",
+			mf.checkTypeHashes("AUX")
+			print ":-)"
+			print ">>> checking miscfile checksums",
+			mf.checkTypeHashes("MISC", ignoreMissingFiles=True)
+			print ":-)"
+		for f in myfiles:
+			if f.startswith("files/"):
+				f = f[5:]
+			print ">>> checking %s checksums" % f,
+			mf.checkFileHashes(mf.findFile(f), f)	
+			print ":-)"
+	except portage_exception.DigestException, e:
+		print e.value
+		print red("!!! ")+"Digest verification failed:"
+		print red("!!! ")+"    "+e.value[0]
+		print red("!!! ")+"Reason: "+e.value[1]
+		print red("!!! ")+"Got: "+str(e.value[2])
+		print red("!!! ")+"Expected: "+str(e.value[3])
+		return 0
+	return 1
+	
+	#########################################
+	# Old code that's replaced by the above	#
+	#########################################   
+	
 	# archive files
 	basedir=mysettings["DISTDIR"]+"/"
 	digestfn=mysettings["FILESDIR"]+"/digest-"+mysettings["PF"]
@@ -2617,15 +2572,22 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 
 	workdir_mode = 0700
 	try:
-		parsed_mode = int(eval(mysettings["PORTAGE_WORKDIR_MODE"]))
+		mode = mysettings["PORTAGE_WORKDIR_MODE"]
+		if mode.isdigit():
+			parsed_mode = int(mode, 8)
+		elif mode == "":
+			raise KeyError()
+		else:
+			raise ValueError()
 		if parsed_mode & 07777 != parsed_mode:
-			raise ValueError("Invalid file mode: %s" % mysettings["PORTAGE_WORKDIR_MODE"])
+			raise ValueError("Invalid file mode: %s" % mode)
 		else:
 			workdir_mode = parsed_mode
 	except KeyError, e:
-		writemsg("!!! PORTAGE_WORKDIR_MODE is unset, using %s." % oct(workdir_mode))
-	except (ValueError, SyntaxError), e:
-		writemsg("%s\n" % e)
+		writemsg("!!! PORTAGE_WORKDIR_MODE is unset, using %s.\n" % oct(workdir_mode))
+	except ValueError, e:
+		if len(str(e)) > 0:
+			writemsg("%s\n" % e)
 		writemsg("!!! Unable to parse PORTAGE_WORKDIR_MODE='%s', using %s.\n" % \
 		(mysettings["PORTAGE_WORKDIR_MODE"], oct(workdir_mode)))
 	mysettings["PORTAGE_WORKDIR_MODE"] = oct(workdir_mode)
@@ -3150,16 +3112,17 @@ def dep_virtual(mysplit, mysettings):
 			newsplit.append(dep_virtual(x, mysettings))
 		else:
 			mykey=dep_getkey(x)
-			if mysettings.virtuals.has_key(mykey):
-				if len(mysettings.virtuals[mykey])==1:
-					a=string.replace(x, mykey, mysettings.virtuals[mykey][0])
+			myvirtuals = mysettings.getvirtuals()
+			if myvirtuals.has_key(mykey):
+				if len(myvirtuals[mykey]) == 1:
+					a = string.replace(x, mykey, myvirtuals[mykey][0])
 				else:
 					if x[0]=="!":
 						# blocker needs "and" not "or(||)".
 						a=[]
 					else:
 						a=['||']
-					for y in mysettings.virtuals[mykey]:
+					for y in myvirtuals[mykey]:
 						a.append(string.replace(x, mykey, y))
 				newsplit.append(a)
 			else:
@@ -3467,6 +3430,9 @@ def cpv_getkey(mycpv):
 
 def key_expand(mykey,mydb=None,use_cache=1):
 	mysplit=mykey.split("/")
+	global settings
+	virts = settings.getvirtuals("/")
+	virts_p = settings.get_virts_p("/")
 	if len(mysplit)==1:
 		if mydb and type(mydb)==types.InstanceType:
 			for x in settings.categories:
@@ -3488,6 +3454,9 @@ def cpv_expand(mycpv,mydb=None,use_cache=1):
 	are no installed/available candidates."""
 	myslash=mycpv.split("/")
 	mysplit=pkgsplit(myslash[-1])
+	global settings
+	virts = settings.getvirtuals("/")
+	virts_p = settings.get_virts_p("/")
 	if len(myslash)>2:
 		# this is illegal case.
 		mysplit=[]
@@ -6633,20 +6602,9 @@ def getvirtuals(myroot):
 	return settings.getvirtuals(myroot)
 
 def do_vartree(mysettings):
-	global virts,virts_p
-	virts=mysettings.getvirtuals("/")
-	virts_p={}
-
-	if virts:
-		myvkeys=virts.keys()
-		for x in myvkeys:
-			vkeysplit=x.split("/")
-			if not virts_p.has_key(vkeysplit[1]):
-				virts_p[vkeysplit[1]]=virts[x]
-	db["/"]={"virtuals":virts,"vartree":vartree("/",virts)}
+	db["/"] = {"vartree":vartree("/")}
 	if root!="/":
-		virts=mysettings.getvirtuals(root)
-		db[root]={"virtuals":virts,"vartree":vartree(root,virts)}
+		db[root] = {"vartree":vartree(root)}
 	#We need to create the vartree first, then load our settings, and then set up our other trees
 
 usedefaults=settings.use_defs
@@ -6912,7 +6870,7 @@ def global_updates():
 					writemsg("%s\n" % msg)
 		update_config_files(myupd)
 
-		db["/"]["bintree"] = binarytree("/", settings["PKGDIR"], virts)
+		db["/"]["bintree"] = binarytree("/", settings["PKGDIR"], settings.getvirtuals("/"))
 		for update_cmd in myupd:
 			if update_cmd[0] == "move":
 				db["/"]["vartree"].dbapi.move_ent(update_cmd)
@@ -6959,11 +6917,11 @@ if (secpass==2) and (not os.environ.has_key("SANDBOX_ACTIVE")):
 		global_updates()
 
 #continue setting up other trees
-db["/"]["porttree"]=portagetree("/",virts)
-db["/"]["bintree"]=binarytree("/",settings["PKGDIR"],virts)
+db["/"]["porttree"] = portagetree("/")
+db["/"]["bintree"] = binarytree("/", settings["PKGDIR"])
 if root!="/":
-	db[root]["porttree"]=portagetree(root,virts)
-	db[root]["bintree"]=binarytree(root,settings["PKGDIR"],virts)
+	db[root]["porttree"] = portagetree(root)
+	db[root]["bintree"] = binarytree(root, settings["PKGDIR"])
 
 profileroots = [settings["PORTDIR"]+"/profiles/"]
 for x in settings["PORTDIR_OVERLAY"].split():
