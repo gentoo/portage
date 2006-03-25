@@ -62,8 +62,13 @@ CONFIG_PROTECT="@DOMAIN_PREFIX@/etc"
 # Disable auto-use
 USE_ORDER="env:pkg:conf:defaults"
 
+# Default portage user/group
+PORTAGE_USER="@portageuser@"
+PORTAGE_GROUP="@portagegroup@"
+
 # Default ownership of installed files.
 PORTAGE_INST_UID="@rootuid@"
+PORTAGE_INST_USER="@rootuser@"
 PORTAGE_INST_GID="@wheelgid@"
 
 # Default PATH for ebuild env

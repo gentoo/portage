@@ -217,7 +217,7 @@ install_qa_check() {
 
 	local file s
 	local count=0
-	find "${D}/" -user  @portageuser@ | while read file; do
+	find "${D}/" -user ${PORTAGE_USER:-portage} | while read file; do
 		count=$(( $count + 1 ))
 		if [ -L "${file}" ]; then
 			lchown ${PORTAGE_INST_UID:-0} "${file}"
@@ -232,11 +232,11 @@ install_qa_check() {
 		fi
 	done
 	if (( $count > 0 )); then
-		ewarn "$count files were installed with user @portageuser@!"
+		ewarn "$count files were installed with user ${PORTAGE_USER:-portage}!"
 	fi
 
 	count=0
-	find "${D}/" -group @portagegroup@ | while read file; do
+	find "${D}/" -group ${PORTAGE_GROUP:-portage}| while read file; do
 		count=$(( $count + 1 ))
 		if [ -L "${file}" ]; then
 			lchgrp ${PORTAGE_INST_GID:-0} "${file}"
@@ -251,7 +251,7 @@ install_qa_check() {
 		fi
 	done
 	if (( $count > 0 )); then
-		ewarn "$count files were installed with group @portagegroup@!"
+		ewarn "$count files were installed with group ${PORTAGE_GROUP:-portage}!"
 	fi
 
 	unset -f stat_perms
