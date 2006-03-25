@@ -215,7 +215,7 @@ def cacheddir(my_original_path, ignorecvs, ignorelist, EmptyOnError, followSymli
 		if stat.S_ISDIR(pathstat[stat.ST_MODE]):
 			mtime = pathstat[stat.ST_MTIME]
 		else:
-			raise portage_exception.PortageException
+			raise portage_exception.DirectoryNotFound(mypath)
 	except (IOError,OSError,portage_exception.PortageException):
 		if EmptyOnError:
 			return [], []
