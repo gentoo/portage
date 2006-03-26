@@ -4,7 +4,10 @@ from portage_data import portage_uid, portage_gid
 def process(mysettings, cpv, logentries, fulltext):
 	cpv_path = cpv.replace("/", ":")
 
-	elogdir = mysettings["PORTAGE_TMPDIR"]+"/elogs"
+	if mysettings["PORT_LOGDIR"] != "":
+		elogdir = os.path.join(mysettings["PORT_LOGDIR"], "elog")
+	else:
+		elogdir = os.path.join(os.sep, "var", "log", "portage", "elog")
 	if not os.path.exists(elogdir):
 		os.makedirs(elogdir)
 	os.chown(elogdir, portage_uid, portage_gid)
