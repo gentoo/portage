@@ -24,7 +24,7 @@ all:
 
 install:
 	$(INSTALL) -d -m 755 -o $(portageuser) -g $(portagegroup) $(DESTDIR)$(sysconfdir)
-	@ if [ -f $(srcdir)/make.globals.$(ARCH) ] \
+	@ if [ -f $(srcdir)/make.conf.$(ARCH).diff ] \
 	; then echo "$(INSTALL_cnfsubst) $(srcdir)/make.globals.$(ARCH) $(DESTDIR)$(sysconfdir)/make.globals" \
 		 ; $(INSTALL_cnfsubst) $(srcdir)/make.globals.$(ARCH) $(DESTDIR)$(sysconfdir)/make.globals \
 		 ; echo "$(INSTALL_cnfsubst) $(srcdir)/make.conf.$(ARCH) $(DESTDIR)$(sysconfdir)/make.conf.example" \
