@@ -2501,70 +2501,72 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 			writemsg("File Not Found: '%s'\n" % str(e))
 			return 1
 
-	if "ccache" in features:
-		ccache_enabled = True
-		if "CCACHE_DIR" not in mysettings or "" == mysettings["CCACHE_DIR"]:
-			mysettings["CCACHE_DIR"] = os.path.join(mysettings["PORTAGE_TMPDIR"], "ccache")
-
-		ccache_enabled = makedirs(mysettings["CCACHE_DIR"])
-
-		if ccache_enabled:
-			ccache_enabled = apply_recursive_permissions(
-				mysettings["CCACHE_DIR"], gid=portage_gid,
-				dirmode=02070, dirmask=02,
-				filemode=060, filemask=02)
-
-		if not ccache_enabled:
-			writemsg("!!! Failed resetting perms on CCACHE_DIR='%s'\n" % mysettings["CCACHE_DIR"])
-			features.remove("ccache")
-			mysettings["FEATURES"] = " ".join(features)
-
-		del ccache_enabled
-
-	if "confcache" in features:
-		confcache_enabled = True
-		if "CONFCACHE_DIR" not in mysettings:
-			mysettings["CONFCACHE_DIR"] = os.path.join(mysettings["PORTAGE_TMPDIR"], "confcache")
-
-		confcache_enabled = makedirs(mysettings["CONFCACHE_DIR"])
-
-		if confcache_enabled:
-			confcache_enabled = apply_recursive_permissions(
-				mysettings["CONFCACHE_DIR"], gid=portage_gid,
-				dirmode=02070, dirmask=02,
-				filemode=060, filemask=02)
-
-		if not confcache_enabled:
-			writemsg("!!! Failed resetting perms on confcachedir %s\n" % mysettings["CONFCACHE_DIR"])
-			features.remove("confcache")
-			mysettings["FEATURES"] = " ".join(features)
-
-		del confcache_enabled
-
-	if "distcc" in features:
-		
-		distcc_enabled = True
-
-		if "DISTCC_DIR" not in mysettings or "" == mysettings["DISTCC_DIR"]:
-			mysettings["DISTCC_DIR"] = os.path.join(mysettings["BUILD_PREFIX"], ".distcc")
-		for x in ("", "lock", "state"):
-			mydir = os.path.join(mysettings["DISTCC_DIR"], x)
-			if not makedirs(mydir):
-				distcc_enabled = False
-				break
-
-		if distcc_enabled:
-			distcc_enabled = apply_recursive_permissions(
-			mysettings["DISTCC_DIR"], gid=portage_gid,
-			dirmode=02070, dirmask=02, filemode=060, filemask=02)
-
-		if not distcc_enabled:
-			writemsg("\n!!! File system problem when setting DISTCC_DIR directory permissions.\n")
-			writemsg(  "!!! DISTCC_DIR="+str(mysettings["DISTCC_DIR"]+"\n"))
-			time.sleep(5)
-			features.remove("distcc")
-			mysettings["FEATURES"] = " ".join(features)
-			mysettings["DISTCC_DIR"]=""
+	features_dirs = {
+		"ccache":{
+			"basedir_var":"CCACHE_DIR",
+			"default_dir":os.path.join(mysettings["PORTAGE_TMPDIR"], "ccache"),
+			"always_recurse":False},
+		"confcache":{
+			"basedir_var":"CONFCACHE_DIR",
+			"default_dir":os.path.join(mysettings["PORTAGE_TMPDIR"], "confcache"),
+			"always_recurse":True},
+		"distcc":{
+			"basedir_var":"DISTCC_DIR",
+			"default_dir":os.path.join(mysettings["BUILD_PREFIX"], ".distcc"),
+			"subdirs":("lock", "state"),
+			"always_recurse":True}
+	}
+	dirmode  = 02070
+	filemode =   060
+	modemask =    02
+	for myfeature, kwargs in features_dirs.iteritems():
+		if myfeature in features:
+			basedir = mysettings[kwargs["basedir_var"]]
+			if basedir == "":
+				basedir = kwargs["default_dir"]
+				mysettings[kwargs["basedir_var"]] = basedir
+			try:
+				mydirs = [mysettings[kwargs["basedir_var"]]]
+				if "subdirs" in kwargs:
+					for subdir in kwargs["subdirs"]:
+						mydirs.append(os.path.join(basedir, subdir))
+				for mydir in mydirs:
+					if not makedirs(mydir):
+						raise portage_exception.DirectoryNotFound(
+							"Failed to create directory.")
+					try:
+						initial_stat = os.stat(mydir)
+						apply_secpass_permissions(mydir,
+							gid=portage_gid, mode=dirmode, mask=modemask, stat_cached=initial_stat)
+						result_stat = os.stat(mydir)
+					except OSError, oe:
+						if errno.EPERM == oe.errno:
+							writemsg("!!! %s\n" % oe)
+							raise portage_exception.OperationNotPermitted("stat('%s')" % mydir)
+						raise
+					# To avoid excessive recursive stat calls, we trigger
+					# recursion when the top level directory does not initially
+					# match our permission requirements.
+					if kwargs["always_recurse"] or \
+					result_stat.st_gid != initial_stat.st_gid or \
+					result_stat.st_mode & 07777 != initial_stat.st_mode & 07777:
+						if not kwargs["always_recurse"]:
+							writemsg("Adjusting permissions recursively: '%s'" % mydir)
+						def onerror(e):
+							raise	# The feature is disabled if a single error
+									# occurs during permissions adjustment.
+						if not apply_recursive_permissions(mydir,
+						gid=portage_gid, dirmode=dirmode, dirmask=modemask,
+						filemode=filemode, filemask=modemask, onerror=onerror):
+							raise portage_exception.OperationNotPermitted(
+								"Failed to apply recursive permissions for the portage group.")
+			except portage_exception.PortageException, e:
+				features.remove(myfeature)
+				mysettings["FEATURES"] = " ".join(features)
+				writemsg("!!! %s\n" % str(e))
+				writemsg("!!! Failed resetting perms on %s='%s'\n" % (kwargs["basedir_var"], basedir))
+				writemsg("!!! Disabled FEATURES='%s'\n" % myfeature)
+				time.sleep(5)
 
 	workdir_mode = 0700
 	try:
