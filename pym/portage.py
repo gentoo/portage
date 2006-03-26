@@ -5869,9 +5869,11 @@ class dblink:
 			if self.pkg in otherversions:
 				otherversions.remove(self.pkg)	# we already checked this package
 
+			myslot = self.settings["SLOT"]
 			for v in otherversions:
-				# should we check for same SLOT here ?
-				mypkglist.append(dblink(self.cat,v,destroot,self.settings))
+				# only allow versions with same slot to overwrite files
+				if myslot == db[self.myroot]["vartree"].dbapi.aux_get(self.mycpv, ["SLOT"])[0]:
+					mypkglist.append(dblink(self.cat,v,destroot,self.settings))
 
 			print green("*")+" checking "+str(len(myfilelist))+" files for package collisions"
 			for f in myfilelist:
