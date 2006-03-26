@@ -9,11 +9,11 @@ class FileNotInManifestException(PortageException):
 
 def manifest2AuxfileFilter(filename):
 	filename = filename.strip(os.sep)
-	return not (filename in ["CVS", ".svn"] or filename.startswith("digest-"))
+	return not (filename in ["CVS", ".svn"] or filename.startswith("digest-") or filename.startswith(".svn"))
 
 def manifest2MiscfileFilter(filename):
 	filename = filename.strip(os.sep)
-	return not (filename in ["CVS", ".svn", "files", "Manifest"] or filename.endswith(".ebuild"))
+	return not (filename in ["CVS", ".svn", "files", "Manifest"] or filename.endswith(".ebuild") or filename.startswith(".svn"))
 
 class Manifest(object):
 	def __init__(self, pkgdir, db, mysettings, manifest1_compat=True, from_scratch=False):
