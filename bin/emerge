@@ -611,16 +611,23 @@ if portage.wheelgid == portage.portage_gid:
 	print "emerge: wheel group use is being deprecated. Please update group and passwd to"
 	print "        include the portage user as noted above, and then use group portage."
 
+if "--debug" in myopts:
+	print "myaction", myaction
+	print "myopts", myopts
+
 # check if root user is the current user for the actions where emerge needs this
 if portage.secpass < 2:
 	# We've already allowed "--version" and "--help" above.
 	if "--pretend" not in myopts and \
 	myaction not in ("search","info"):
-		if "--debug" in myopts:
-			print "myaction",myaction
-			print "myopts",myopts
-		print "emerge: root access required."
-		sys.exit(1)
+		if portage.secpass >= 1:
+			if "--fetchonly" not in myopts and \
+			"--fetch-all-uri" not in myopts:
+				print "emerge: root access required."
+				sys.exit(1)
+		else:
+			print "emerge: root access required."
+			sys.exit(1)
 
 if not "--pretend" in myopts:
 	emergelog("Started emerge on: "+time.strftime("%b %d, %Y %H:%M:%S", time.localtime()))
