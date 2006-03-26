@@ -9,7 +9,7 @@ class FileNotInManifestException(PortageException):
 
 def manifest2AuxfileFilter(filename):
 	filename = filename.strip(os.sep)
-	return not (filename in ["CVS", ".svn"] or filename.startswith("digest-"))
+	return not (filename in [".svn", "CVS"] or filename.startswith("CVS"+os.sep) or filename.startswith(".svn"+os.sep) or filename.startswith("digest-"))
 
 def manifest2MiscfileFilter(filename):
 	filename = filename.strip(os.sep)
