@@ -24,19 +24,10 @@ all:
 
 install:
 	$(INSTALL) -d -m 755 -o $(portageuser) -g $(portagegroup) $(DESTDIR)$(sysconfdir)
-	@ if [ -f $(srcdir)/make.conf.$(ARCH).diff ] \
-	; then echo "$(INSTALL_cnfsubst) $(srcdir)/make.globals.$(ARCH) $(DESTDIR)$(sysconfdir)/make.globals" \
-		 ; $(INSTALL_cnfsubst) $(srcdir)/make.globals.$(ARCH) $(DESTDIR)$(sysconfdir)/make.globals \
-		 ; echo "$(INSTALL_cnfsubst) $(srcdir)/make.conf.$(ARCH) $(DESTDIR)$(sysconfdir)/make.conf.example" \
-		 ; $(INSTALL_cnfsubst) $(srcdir)/make.conf.$(ARCH) $(DESTDIR)$(sysconfdir)/make.conf.example \
-	; else echo "" \
-		 ; echo "Portage does not have an arch-specific configuration for this arch." \
-		 ; echo "Please notify the arch maintainer about this issue. Using generic." \
-		 ; echo "" \
-		 ; echo "$(INSTALL_cnfsubst) $(srcdir)/make.globals $(DESTDIR)$(sysconfdir)/make.globals" \
-		 ; $(INSTALL_cnfsubst) $(srcdir)/make.globals $(DESTDIR)$(sysconfdir)/make.globals \
-		 ; echo "$(INSTALL_cnfsubst) $(srcdir)/make.conf $(DESTDIR)$(sysconfdir)/make.conf.example" \
-		 ; $(INSTALL_cnfsubst) $(srcdir)/make.conf $(DESTDIR)$(sysconfdir)/make.conf.example \
+	; echo "$(INSTALL_cnfsubst) $(srcdir)/make.globals $(DESTDIR)$(sysconfdir)/make.globals" \
+	; $(INSTALL_cnfsubst) $(srcdir)/make.globals $(DESTDIR)$(sysconfdir)/make.globals \
+	; echo "$(INSTALL_cnfsubst) $(srcdir)/make.conf $(DESTDIR)$(sysconfdir)/make.conf.example" \
+	; $(INSTALL_cnfsubst) $(srcdir)/make.conf $(DESTDIR)$(sysconfdir)/make.conf.example \
 	; fi
 	@ for p in etc-update dispatch-conf \
 	; do echo "$(INSTALL_cnfsubst) $(srcdir)/$${p}.conf $(DESTDIR)$(sysconfdir)/$${p}.conf" \
