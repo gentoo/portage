@@ -161,9 +161,13 @@ class Manifest(object):
 	def _createDigestLines1(self, distlist, myhashdict):
 		""" Create an old style digest file."""
 		mylines = []
-		for f in myhashdict["DIST"].keys():
+		myfiles = myhashdict["DIST"].keys()
+		myfiles.sort()
+		for f in myfiles:
 			if f in distlist:
-				for h in myhashdict["DIST"][f].keys():
+				myhashkeys = myhashdict["DIST"][f].keys()
+				myhashkeys.sort()
+				for h in myhashkeys:
 					if h not in portage_const.MANIFEST1_HASH_FUNCTIONS:
 						continue
 					myline = " ".join([h, str(myhashdict["DIST"][f][h]), f, str(myhashdict["DIST"][f]["size"])])
@@ -183,8 +187,12 @@ class Manifest(object):
 	def _write(self, fd):
 		""" Actual Manifest file generator """
 		mylines = []
-		for t in self.fhashdict.keys():
-			for f in self.fhashdict[t].keys():
+		mytypes = self.fhashdict.keys()
+		mytypes.sort()
+		for t in mytypes:
+			myfiles = self.fhashdict[t].keys()
+			myfiles.sort()
+			for f in myfiles:
 				# compat hack for v1 manifests
 				if t == "AUX":
 					f2 = os.path.join("files", f)
@@ -198,7 +206,9 @@ class Manifest(object):
 					myline += " "+h+" "+str(myhashes[h])
 				mylines.append(myline)
 				if self.compat and t != "DIST":
-					for h in myhashes.keys():
+					myhashkeys = myhashes.keys()
+					myhashkeys.sort()
+					for h in myhashkeys:
 						if h not in portage_const.MANIFEST1_HASH_FUNCTIONS:
 							continue
 						mylines.append((" ".join([h, str(myhashes[h]), f2, str(myhashes["size"])])))
