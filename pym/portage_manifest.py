@@ -119,21 +119,25 @@ class Manifest(object):
 		rval = []
 		for cpv in cpvlist:
 			dname = os.path.join(self.pkgdir, "files", "digest-"+portage.catsplit(cpv)[1])
-			mylines = []
 			distlist = self._getCpvDistfiles(cpv)
-			for f in self.fhashdict["DIST"].keys():
-				if f in distlist:
-					for h in self.fhashdict["DIST"][f].keys():
-						if h not in portage_const.MANIFEST1_HASH_FUNCTIONS:
-							continue
-						myline = " ".join([h, str(self.fhashdict["DIST"][f][h]), f, str(self.fhashdict["DIST"][f]["size"])])
-						mylines.append(myline)
 			fd = open(dname, "w")
-			fd.write("\n".join(mylines))
+			fd.write("\n".join(self._createDigestLines1(distlist, self.fhashdict)))
 			fd.write("\n")
 			fd.close()
 			rval.append(dname)
 		return rval
+
+	def _createDigestLines1(self, distlist, myhashdict):
+		""" Create an old style digest file."""
+		mylines = []
+		for f in myhashdict["DIST"].keys():
+			if f in distlist:
+				for h in myhashdict["DIST"][f].keys():
+					if h not in portage_const.MANIFEST1_HASH_FUNCTIONS:
+						continue
+					myline = " ".join([h, str(myhashdict["DIST"][f][h]), f, str(myhashdict["DIST"][f]["size"])])
+					mylines.append(myline)
+		return mylines
 	
 	def _addDigestsToManifest(self, digests, fd):
 		""" Add entries for old style digest files to Manifest file """
