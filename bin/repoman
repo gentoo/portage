@@ -1590,7 +1590,7 @@ else:
 				del myfiles[x]
 		mydone=[]
 		if repolevel==3:   # In a package dir
-			repoman_settings["O"]="./"
+			repoman_settings["O"]=os.getcwd()
 			portage.digestgen([],repoman_settings,manifestonly=1)
 		elif repolevel==2: # In a category dir
 			for x in myfiles:
@@ -1600,7 +1600,7 @@ else:
 				if xs[0] in mydone:
 					continue
 				mydone.append(xs[0])
-				repoman_settings["O"]="./"+xs[0]
+				repoman_settings["O"]=os.path.join(os.getcwd(), xs[0])
 				portage.digestgen([],repoman_settings,manifestonly=1)
 		elif repolevel==1: # repo-cvsroot
 			print green("RepoMan sez:"), "\"You're rather crazy... doing the entire repository.\"\n"
@@ -1611,7 +1611,7 @@ else:
 				if string.join(xs[:2],"/") in mydone:
 					continue
 				mydone.append(string.join(xs[:2],"/"))
-				repoman_settings["O"]="./"+string.join(xs[:2],"/")
+				repoman_settings["O"]=os.path.join(os.getcwd(), x[0], x[1])
 				portage.digestgen([],repoman_settings,manifestonly=1)
 		else:
 			print red("I'm confused... I don't know where I am!")
