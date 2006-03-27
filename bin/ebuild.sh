@@ -406,6 +406,7 @@ unpack() {
 				;;
 		esac
 	done
+	chmod -Rf a+rX,u+w,g-w,o-w .
 }
 
 strip_duplicate_slashes () {
