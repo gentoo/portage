@@ -83,6 +83,11 @@ class Manifest(object):
 		mylines = fd.readlines()
 		fd.close()
 		mylines.extend(self._readDigests().split("\n"))
+		self._parseDigests(mylines, myhashdict=self.fhashdict)
+
+	def _parseDigests(self, mylines, myhashdict=None):
+		if myhashdict is None:
+			myhashdict = {}
 		for l in mylines:
 			myname = ""
 			mysplit = l.split()
@@ -102,10 +107,11 @@ class Manifest(object):
 				myhashes = dict(zip(mysplit[3::2], mysplit[4::2]))
 			if len(myname) == 0:
 				continue
-			if not self.fhashdict[mytype].has_key(myname):
-				self.fhashdict[mytype][myname] = {} 
-			self.fhashdict[mytype][myname].update(myhashes)
-			self.fhashdict[mytype][myname]["size"] = mysize
+			myhashdict.setdefault(mytype, {})
+			myhashdict[mytype].setdefault(myname, {})
+			myhashdict.update(myhashes)
+			myhashdict[mytype][myname]["size"] = mysize
+		return myhashdict
 	
 	def _writeDigests(self):
 		""" Create old style digest files for this Manifest instance """
