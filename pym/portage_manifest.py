@@ -200,14 +200,14 @@ class Manifest(object):
 					f2 = f
 				myline = " ".join([t, f, str(self.fhashdict[t][f]["size"])])
 				myhashes = self.fhashdict[t][f]
-				for h in myhashes.keys():
+				myhashkeys = myhashes.keys()
+				myhashkeys.sort()
+				for h in myhashkeys:
 					if h not in portage_const.MANIFEST2_HASH_FUNCTIONS:
 						continue
 					myline += " "+h+" "+str(myhashes[h])
 				mylines.append(myline)
 				if self.compat and t != "DIST":
-					myhashkeys = myhashes.keys()
-					myhashkeys.sort()
 					for h in myhashkeys:
 						if h not in portage_const.MANIFEST1_HASH_FUNCTIONS:
 							continue
