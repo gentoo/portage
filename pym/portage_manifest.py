@@ -1,4 +1,4 @@
-import os, sets
+import errno, os, sets
 
 import portage, portage_exception, portage_versions, portage_const
 from portage_checksum import *
@@ -114,17 +114,49 @@ class Manifest(object):
 			myhashdict[mytype][myname]["size"] = mysize
 		return myhashdict
 	
-	def _writeDigests(self):
+	def _writeDigests(self, force=False):
 		""" Create old style digest files for this Manifest instance """
 		cpvlist = [os.path.join(self.pkgdir.rstrip(os.sep).split(os.sep)[-2], x[:-7]) for x in portage.listdir(self.pkgdir) if x.endswith(".ebuild")]
 		rval = []
 		for cpv in cpvlist:
 			dname = os.path.join(self.pkgdir, "files", "digest-"+portage.catsplit(cpv)[1])
 			distlist = self._getCpvDistfiles(cpv)
-			write_atomic(dname,
-			"\n".join(self._createDigestLines1(distlist, self.fhashdict))+"\n")
+			update_digest = True
+			if not force:
+				try:
+					f = open(dname, "r")
+					old_data = self._parseDigests(f.readlines())
+					f.close()
+					if len(old_data) == 1 and "DIST" in old_data:
+						new_data = self._getDigestData(distlist)
+						for myfile in new_data["DIST"]:
+							for hashname in new_data["DIST"][myfile].keys():
+								if hashname != "size" and \
+								hashname not in portage_const.MANIFEST1_HASH_FUNCTIONS:
+									del new_data["DIST"][myfile][hashname]
+						if new_data["DIST"] == old_data["DIST"]:
+							update_digest = False
+				except (IOError, OSError), e:
+					if errno.ENOENT == e.errno:
+						pass
+					else:
+						raise
+			if update_digest:
+				write_atomic(dname,
+				"\n".join(self._createDigestLines1(distlist, self.fhashdict))+"\n")
 			rval.append(dname)
 		return rval
+
+	def _getDigestData(self, distlist):
+		"""create a hash dict for a specific list of files"""
+		myhashdict = {}
+		for myname in distlist:
+			for mytype in self.fhashdict:
+				if myname in self.fhashdict[mytype]:
+					myhashdict.setdefault(mytype, {})
+					myhashdict[mytype].setdefault(myname, {})
+					myhashdict[mytype][myname] = self.fhashdict[mytype][myname]
+		return myhashdict
 
 	def _createDigestLines1(self, distlist, myhashdict):
 		""" Create an old style digest file."""
