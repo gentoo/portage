@@ -3,6 +3,7 @@ import os, sets
 import portage, portage_exception, portage_versions, portage_const
 from portage_checksum import *
 from portage_exception import *
+from portage_util import write_atomic
 
 class FileNotInManifestException(PortageException):
 	pass
@@ -120,10 +121,8 @@ class Manifest(object):
 		for cpv in cpvlist:
 			dname = os.path.join(self.pkgdir, "files", "digest-"+portage.catsplit(cpv)[1])
 			distlist = self._getCpvDistfiles(cpv)
-			fd = open(dname, "w")
-			fd.write("\n".join(self._createDigestLines1(distlist, self.fhashdict)))
-			fd.write("\n")
-			fd.close()
+			write_atomic(dname,
+			"\n".join(self._createDigestLines1(distlist, self.fhashdict))+"\n")
 			rval.append(dname)
 		return rval
 
