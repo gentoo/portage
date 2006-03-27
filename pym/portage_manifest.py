@@ -109,7 +109,7 @@ class Manifest(object):
 				continue
 			myhashdict.setdefault(mytype, {})
 			myhashdict[mytype].setdefault(myname, {})
-			myhashdict.update(myhashes)
+			myhashdict[mytype][myname].update(myhashes)
 			myhashdict[mytype][myname]["size"] = mysize
 		return myhashdict
 	
