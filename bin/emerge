@@ -2563,7 +2563,7 @@ if myaction in ["sync","metadata"] and (not "--help" in myopts):
 	
 			if portage.settings["RSYNC_TIMEOUT"] != "":
 				portage.writemsg("WARNING: usage of RSYNC_TIMEOUT is deprecated, " + \
-				"use PORTAGE_RSYNC_OPTS instead\n")
+				"use PORTAGE_RSYNC_EXTRA_OPTS instead\n")
 				try:
 					mytimeout = int(portage.settings["RSYNC_TIMEOUT"])
 					rsync_opts.append("--timeout=%d" % mytimeout)
