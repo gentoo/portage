@@ -1841,7 +1841,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 		def distdir_perms(filename):
 			all_applied = True
 			try:
-				all_applied = portage_util.apply_secpass_permissions(filename, gid=portage_gid, mode=0775)
+				all_applied = portage_util.apply_secpass_permissions(filename, gid=portage_gid, mode=02070, mask=02)
 			except portage_exception.OperationNotPermitted:
 				all_applied = False
 			if not all_applied:
@@ -2741,28 +2741,48 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 		checkme=alist[:]
 
 	if not listonly:
-		for x in ("", "cvs-src"):
-			mydir = os.path.join(mysettings["DISTDIR"], x)
-			try:
-				os.makedirs(mydir)
-			except OSError, oe:
-				if errno.EEXIST == oe.errno:
-					pass
-				elif errno.EPERM == oe.errno:
-					writemsg("!!! %s\n" % str(oe))
-					writemsg("!!! Fetching may fail!\n")
-				else:
-					raise
+		dirmode  = 02070
+		filemode =   060
+		modemask =    02
 		try:
-			apply_secpass_permissions(mysettings["DISTDIR"],
-				gid=portage_gid, mode=0775, mask=02)
-		except portage_exception.OperationNotPermitted, e:
-			writemsg("Operation Not Permitted: %s\n" % str(e))
-		except portage_exception.FileNotFound, e:
-			writemsg("File Not Found: '%s'\n" % str(e))
-
-		apply_recursive_permissions(os.path.join(mysettings["DISTDIR"], "cvs-src"),
-			gid=portage_gid, dirmode=02770, dirmask=02, filemode=0660, filemask=02)
+			for x in ("", "cvs-src"):
+				mydir = os.path.join(mysettings["DISTDIR"], x)
+				try:
+					os.makedirs(mydir)
+				except OSError, oe:
+					if errno.EEXIST == oe.errno:
+						pass
+					elif  oe.errno in (errno.EPERM, errno.EROFS):
+						writemsg("!!! %s\n" % oe)
+						raise portage_exception.OperationNotPermitted("mkdir '%s'" % mydir)
+					else:
+						raise
+				try:
+					initial_stat = os.stat(mydir)
+					apply_secpass_permissions(mydir,
+						gid=portage_gid, mode=dirmode, mask=modemask, stat_cached=initial_stat)
+					result_stat = os.stat(mydir)
+				except OSError, oe:
+					if errno.EPERM == oe.errno:
+						writemsg("!!! %s\n" % oe)
+						raise portage_exception.OperationNotPermitted("stat('%s')" % mydir)
+					raise
+				# Trigger recursion when the top level directory does not
+				# initially match our permission requirements.
+				if result_stat.st_gid != initial_stat.st_gid or \
+				result_stat.st_mode & 07777 != initial_stat.st_mode & 07777:
+					writemsg("Adjusting permissions recursively: '%s'\n" % mydir)
+					def onerror(e):
+						raise # bail out on the first error that occurs during recursion
+					if not apply_recursive_permissions(mydir,
+						gid=portage_gid, dirmode=dirmode, dirmask=modemask,
+						filemode=filemode, filemask=modemask, onerror=onerror):
+						raise portage_exception.OperationNotPermitted(
+							"Failed to apply recursive permissions for the portage group.")
+		except portage_exception.PortageException, e:
+			writemsg("!!! %s\n" % str(e))
+			writemsg("!!! Problem adjusting permissions on DISTDIR='%s'\n" % mysettings["DISTDIR"])
+			writemsg("!!! Fetching may fail!\n")
 
 	# Only try and fetch the files if we are going to need them ... otherwise,
 	# if user has FEATURES=noauto and they run `ebuild clean unpack compile install`,
