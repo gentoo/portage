@@ -320,7 +320,26 @@ with_localstatedir() {
 	echo "--localstatedir=${mylocalstatedir}"
 	return 0
 }
-			
+
+with_tmpdir() {
+	local mytmpdir
+	if [ -z "${1}" ]; then
+		if [ ! -z "${EPREFIX}" ]; then
+			mytmpdir="${EPREFIX}/tmp"
+		else
+			mytmpdir="/tmp"
+		fi
+	else
+		if [ ! -z "${EPREFIX}" ]; then
+			mytmpdir="${EPREFIX}${1}"
+		else
+			mytmpdir="${1}"
+		fi
+	fi
+	echo "--with-tmpdir=${mytmpdir}"
+	return 0
+}
+	
 use_with() {
 	if [ -z "$1" ]; then
 		echo "!!! use_with() called without a parameter." >&2
@@ -540,6 +559,7 @@ unpack() {
 				;;
 		esac
 	done
+	chmod -Rf a+rX,u+w,g-w,o-w .
 }
 
 strip_duplicate_slashes () {

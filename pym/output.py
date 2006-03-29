@@ -132,47 +132,24 @@ def nocolor():
 def resetColor():
 	return codes["reset"]
 
-def ctext(color,text):
-	return codes[ctext]+text+codes["reset"]
+def colorize(color_key, text):
+	return codes[color_key] + text + codes["reset"]
 
-def bold(text):
-	return codes["bold"]+text+codes["reset"]
-def white(text):
-	return bold(text)
+codes["darkteal"]   = codes["turquoise"]
+codes["darkyellow"] = codes["brown"]
+codes["fuscia"]     = codes["fuchsia"]
+codes["white"]      = codes["bold"]
 
-def teal(text):
-	return codes["teal"]+text+codes["reset"]
-def turquoise(text):
-	return codes["turquoise"]+text+codes["reset"]
-def darkteal(text):
-	return turquoise(text)
+compat_functions_colors = ["bold","white","teal","turquoise","darkteal",
+	"fuscia","fuchsia","purple","blue","darkblue","green","darkgreen","yellow",
+	"brown","darkyellow","red","darkred"]
 
-def fuscia(text): # Don't use this one. It's spelled wrong!
-	return codes["fuchsia"]+text+codes["reset"]
-def fuchsia(text):
-	return codes["fuchsia"]+text+codes["reset"]
-def purple(text):
-	return codes["purple"]+text+codes["reset"]
+def create_color_func(color_key):
+	def derived_func(*args):
+		newargs = list(args)
+		newargs.insert(0, color_key)
+		return colorize(*newargs)
+	return derived_func
 
-def blue(text):
-	return codes["blue"]+text+codes["reset"]
-def darkblue(text):
-	return codes["darkblue"]+text+codes["reset"]
-
-def green(text):
-	return codes["green"]+text+codes["reset"]
-def darkgreen(text):
-	return codes["darkgreen"]+text+codes["reset"]
-
-def yellow(text):
-	return codes["yellow"]+text+codes["reset"]
-def brown(text):
-	return codes["brown"]+text+codes["reset"]
-def darkyellow(text):
-	return brown(text)
-
-def red(text):
-	return codes["red"]+text+codes["reset"]
-def darkred(text):
-	return codes["darkred"]+text+codes["reset"]
-
+for c in compat_functions_colors:
+	setattr(sys.modules[__name__], c, create_color_func(c))

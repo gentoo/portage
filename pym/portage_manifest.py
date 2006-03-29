@@ -1,15 +1,16 @@
-import os, sets
+import errno, os, sets
 
 import portage, portage_exception, portage_versions, portage_const
 from portage_checksum import *
 from portage_exception import *
+from portage_util import write_atomic
 
 class FileNotInManifestException(PortageException):
 	pass
 
 def manifest2AuxfileFilter(filename):
 	filename = filename.strip(os.sep)
-	return not (filename in ["CVS", ".svn"] or filename.startswith("digest-") or filename.startswith(".svn"))
+	return not (filename in [".svn", "CVS"] or filename.startswith("CVS"+os.sep) or filename.startswith(".svn"+os.sep) or filename.startswith("digest-"))
 
 def manifest2MiscfileFilter(filename):
 	filename = filename.strip(os.sep)
@@ -83,6 +84,11 @@ class Manifest(object):
 		mylines = fd.readlines()
 		fd.close()
 		mylines.extend(self._readDigests().split("\n"))
+		self._parseDigests(mylines, myhashdict=self.fhashdict)
+
+	def _parseDigests(self, mylines, myhashdict=None):
+		if myhashdict is None:
+			myhashdict = {}
 		for l in mylines:
 			myname = ""
 			mysplit = l.split()
@@ -102,32 +108,71 @@ class Manifest(object):
 				myhashes = dict(zip(mysplit[3::2], mysplit[4::2]))
 			if len(myname) == 0:
 				continue
-			if not self.fhashdict[mytype].has_key(myname):
-				self.fhashdict[mytype][myname] = {} 
-			self.fhashdict[mytype][myname].update(myhashes)
-			self.fhashdict[mytype][myname]["size"] = mysize
+			myhashdict.setdefault(mytype, {})
+			myhashdict[mytype].setdefault(myname, {})
+			myhashdict[mytype][myname].update(myhashes)
+			myhashdict[mytype][myname]["size"] = mysize
+		return myhashdict
 	
-	def _writeDigests(self):
+	def _writeDigests(self, force=False):
 		""" Create old style digest files for this Manifest instance """
 		cpvlist = [os.path.join(self.pkgdir.rstrip(os.sep).split(os.sep)[-2], x[:-7]) for x in portage.listdir(self.pkgdir) if x.endswith(".ebuild")]
 		rval = []
 		for cpv in cpvlist:
 			dname = os.path.join(self.pkgdir, "files", "digest-"+portage.catsplit(cpv)[1])
-			mylines = []
 			distlist = self._getCpvDistfiles(cpv)
-			for f in self.fhashdict["DIST"].keys():
-				if f in distlist:
-					for h in self.fhashdict["DIST"][f].keys():
-						if h not in portage_const.MANIFEST1_HASH_FUNCTIONS:
-							continue
-						myline = " ".join([h, str(self.fhashdict["DIST"][f][h]), f, str(self.fhashdict["DIST"][f]["size"])])
-						mylines.append(myline)
-			fd = open(dname, "w")
-			fd.write("\n".join(mylines))
-			fd.write("\n")
-			fd.close()
+			update_digest = True
+			if not force:
+				try:
+					f = open(dname, "r")
+					old_data = self._parseDigests(f.readlines())
+					f.close()
+					if len(old_data) == 1 and "DIST" in old_data:
+						new_data = self._getDigestData(distlist)
+						for myfile in new_data["DIST"]:
+							for hashname in new_data["DIST"][myfile].keys():
+								if hashname != "size" and \
+								hashname not in portage_const.MANIFEST1_HASH_FUNCTIONS:
+									del new_data["DIST"][myfile][hashname]
+						if new_data["DIST"] == old_data["DIST"]:
+							update_digest = False
+				except (IOError, OSError), e:
+					if errno.ENOENT == e.errno:
+						pass
+					else:
+						raise
+			if update_digest:
+				write_atomic(dname,
+				"\n".join(self._createDigestLines1(distlist, self.fhashdict))+"\n")
 			rval.append(dname)
 		return rval
+
+	def _getDigestData(self, distlist):
+		"""create a hash dict for a specific list of files"""
+		myhashdict = {}
+		for myname in distlist:
+			for mytype in self.fhashdict:
+				if myname in self.fhashdict[mytype]:
+					myhashdict.setdefault(mytype, {})
+					myhashdict[mytype].setdefault(myname, {})
+					myhashdict[mytype][myname] = self.fhashdict[mytype][myname]
+		return myhashdict
+
+	def _createDigestLines1(self, distlist, myhashdict):
+		""" Create an old style digest file."""
+		mylines = []
+		myfiles = myhashdict["DIST"].keys()
+		myfiles.sort()
+		for f in myfiles:
+			if f in distlist:
+				myhashkeys = myhashdict["DIST"][f].keys()
+				myhashkeys.sort()
+				for h in myhashkeys:
+					if h not in portage_const.MANIFEST1_HASH_FUNCTIONS:
+						continue
+					myline = " ".join([h, str(myhashdict["DIST"][f][h]), f, str(myhashdict["DIST"][f]["size"])])
+					mylines.append(myline)
+		return mylines
 	
 	def _addDigestsToManifest(self, digests, fd):
 		""" Add entries for old style digest files to Manifest file """
@@ -142,8 +187,12 @@ class Manifest(object):
 	def _write(self, fd):
 		""" Actual Manifest file generator """
 		mylines = []
-		for t in self.fhashdict.keys():
-			for f in self.fhashdict[t].keys():
+		mytypes = self.fhashdict.keys()
+		mytypes.sort()
+		for t in mytypes:
+			myfiles = self.fhashdict[t].keys()
+			myfiles.sort()
+			for f in myfiles:
 				# compat hack for v1 manifests
 				if t == "AUX":
 					f2 = os.path.join("files", f)
@@ -151,13 +200,15 @@ class Manifest(object):
 					f2 = f
 				myline = " ".join([t, f, str(self.fhashdict[t][f]["size"])])
 				myhashes = self.fhashdict[t][f]
-				for h in myhashes.keys():
+				myhashkeys = myhashes.keys()
+				myhashkeys.sort()
+				for h in myhashkeys:
 					if h not in portage_const.MANIFEST2_HASH_FUNCTIONS:
 						continue
 					myline += " "+h+" "+str(myhashes[h])
 				mylines.append(myline)
 				if self.compat and t != "DIST":
-					for h in myhashes.keys():
+					for h in myhashkeys:
 						if h not in portage_const.MANIFEST1_HASH_FUNCTIONS:
 							continue
 						mylines.append((" ".join([h, str(myhashes[h]), f2, str(myhashes["size"])])))
