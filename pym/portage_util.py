@@ -607,9 +607,21 @@ class atomic_ofstream(file):
 	file when the write is interrupted (for example, when an 'out of space'
 	error occurs)."""
 
-	def __init__(self, filename, mode='w', **kargs):
+	def __init__(self, filename, mode='w', follow_links=True, **kargs):
 		"""Opens a temporary filename.pid in the same directory as filename."""
 		self._aborted = False
+
+		if follow_links:
+			canonical_path = os.path.realpath(filename)
+			self._real_name = canonical_path
+			tmp_name = "%s.%i" % (canonical_path, os.getpid())
+			try:
+				super(atomic_ofstream, self).__init__(tmp_name, mode=mode, **kargs)
+				return
+			except (OSError, IOError), e:
+				writemsg("!!! Failed to open file: '%s'\n" % tmp_name)
+				writemsg("!!! %s\n" % str(e))
+
 		self._real_name = filename
 		tmp_name = "%s.%i" % (filename, os.getpid())
 		super(atomic_ofstream, self).__init__(tmp_name, mode=mode, **kargs)
