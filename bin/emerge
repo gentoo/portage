@@ -1722,7 +1722,7 @@ class depgraph:
 					if "--columns" in myopts:
 						if "--quiet" in myopts:
 							myprint=addl+" "+indent+darkgreen(xs[0])
-							myprint=myprint+" "+green(xs[1]+xs[2])
+							myprint=myprint+" "+green(xs[1]+xs[2])+" "
 							myprint=myprint+myoldbest
 						else:
 							myprint="["+x[0]+" "+addl+"] "+indent+darkgreen(xs[0])
