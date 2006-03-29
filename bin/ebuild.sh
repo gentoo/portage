@@ -665,7 +665,7 @@ dyn_unpack() {
 		local checkme
 		for x in ${AA}; do
 			echo ">>> Checking ${x}'s mtime..."
-			if [ "${DISTDIR}/${x}" -nt "${WORKDIR}" ]; then
+			if [ "${PORTAGE_ACTUAL_DISTDIR:-${DISTDIR}}/${x}" -nt "${WORKDIR}" ]; then
 				echo ">>> ${x} has been updated; recreating WORKDIR..."
 				newstuff="yes"
 				rm -rf "${WORKDIR}"
