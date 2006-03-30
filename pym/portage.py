@@ -2514,26 +2514,13 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 					for subdir in kwargs["subdirs"]:
 						mydirs.append(os.path.join(basedir, subdir))
 				for mydir in mydirs:
-					if not makedirs(mydir):
-						raise portage_exception.DirectoryNotFound(
-							"Failed to create directory.")
-					try:
-						initial_stat = os.stat(mydir)
-						apply_secpass_permissions(mydir,
-							gid=portage_gid, mode=dirmode, mask=modemask, stat_cached=initial_stat)
-						result_stat = os.stat(mydir)
-					except OSError, oe:
-						if errno.EPERM == oe.errno:
-							writemsg("!!! %s\n" % oe)
-							raise portage_exception.OperationNotPermitted("stat('%s')" % mydir)
-						raise
+					modified = portage_util.ensure_dirs(mydir,
+						gid=portage_gid, mode=dirmode, mask=modemask)
 					# To avoid excessive recursive stat calls, we trigger
 					# recursion when the top level directory does not initially
 					# match our permission requirements.
-					if kwargs["always_recurse"] or \
-					result_stat.st_gid != initial_stat.st_gid or \
-					result_stat.st_mode & 07777 != initial_stat.st_mode & 07777:
-						if not kwargs["always_recurse"]:
+					if modified or kwargs["always_recurse"]:
+						if modified:
 							writemsg("Adjusting permissions recursively: '%s'" % mydir)
 						def onerror(e):
 							raise	# The feature is disabled if a single error
