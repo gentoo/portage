@@ -462,7 +462,10 @@ def apply_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 	bits.  When mask=0 is specified, mode bits on the target file are allowed
 	to be a superset of the mode argument (via logical OR).  When mask>0, the
 	mode bits that the target file is allowed to have are restricted via
-	logical XOR."""
+	logical XOR.
+	Returns True if the permissions were modified and False otherwise."""
+
+	modified = False
 
 	if stat_cached is None:
 		try:
@@ -479,6 +482,7 @@ def apply_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 		(gid != -1 and gid != stat_cached.st_gid):
 		try:
 			os.chown(filename, uid, gid)
+			modified = True
 		except OSError, oe:
 			if oe.errno == errno.EPERM:
 				raise OperationNotPermitted("chown('%s', %i, %i)" % (filename, uid, gid))
@@ -506,6 +510,7 @@ def apply_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 	if new_mode != -1:
 		try:
 			os.chmod(filename, new_mode)
+			modified = True
 		except OSError, oe:
 			if oe.errno == errno.EPERM:
 				raise OperationNotPermitted("chmod('%s', %s)" % (filename, oct(new_mode)))
@@ -513,6 +518,7 @@ def apply_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 				raise FileNotFound(filename)
 			else:
 				raise
+	return modified
 
 def apply_stat_permissions(filename, newstat, **kwargs):
 	"""A wrapper around apply_secpass_permissions that gets
