@@ -686,3 +686,23 @@ def write_atomic(file_path, content):
 	except IOError, ioe:
 		f.abort()
 		raise ioe
+
+def ensure_dirs(dir_path, *args, **kwargs):
+	"""Create a directory and call apply_permissions.
+	Returns True if a directory is created or the permissions needed to be
+	modified, and False otherwise."""
+
+	created_dir = False
+
+	try:
+		os.makedirs(dir_path)
+		created_dir = True
+	except OSError, oe:
+		if errno.EEXIST == oe.errno:
+			pass
+		elif  oe.errno in (errno.EPERM, errno.EROFS):
+			raise portage_exception.OperationNotPermitted(str(oe))
+		else:
+			raise
+	perms_modified = apply_permissions(dir_path, *args, **kwargs)
+	return created_dir or perms_modified

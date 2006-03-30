@@ -2734,30 +2734,7 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 			
 			for x in distdir_dirs:
 				mydir = os.path.join(mysettings["DISTDIR"], x)
-				try:
-					os.makedirs(mydir)
-				except OSError, oe:
-					if errno.EEXIST == oe.errno:
-						pass
-					elif  oe.errno in (errno.EPERM, errno.EROFS):
-						writemsg("!!! %s\n" % oe)
-						raise portage_exception.OperationNotPermitted("mkdir '%s'" % mydir)
-					else:
-						raise
-				try:
-					initial_stat = os.stat(mydir)
-					apply_secpass_permissions(mydir,
-						gid=portage_gid, mode=dirmode, mask=modemask, stat_cached=initial_stat)
-					result_stat = os.stat(mydir)
-				except OSError, oe:
-					if errno.EPERM == oe.errno:
-						writemsg("!!! %s\n" % oe)
-						raise portage_exception.OperationNotPermitted("stat('%s')" % mydir)
-					raise
-				# Trigger recursion when the top level directory does not
-				# initially match our permission requirements.
-				if result_stat.st_gid != initial_stat.st_gid or \
-				result_stat.st_mode & 07777 != initial_stat.st_mode & 07777:
+				if portage_util.ensure_dirs(mydir, gid=portage_gid, mode=dirmode, mask=modemask):
 					writemsg("Adjusting permissions recursively: '%s'\n" % mydir)
 					def onerror(e):
 						raise # bail out on the first error that occurs during recursion
