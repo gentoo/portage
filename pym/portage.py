@@ -1838,29 +1838,12 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 			print "!!! No write access to %s" % mysettings["DISTDIR"]+"/"
 			can_fetch=False
 	else:
-		def distdir_perms(filename):
-			all_applied = True
-			try:
-				all_applied = portage_util.apply_secpass_permissions(filename, gid=portage_gid, mode=02070, mask=02)
-			except portage_exception.OperationNotPermitted:
-				all_applied = False
-			if not all_applied:
-				writemsg(("!!! Unable to apply group permissions to '%s'." \
-				+ "  Non-root users may experience issues.\n") % filename)
-		distdir_perms(mysettings["DISTDIR"])
 		if use_locks and locks_in_subdir:
 			distlocks_subdir = os.path.join(mysettings["DISTDIR"], locks_in_subdir)
-			try:
-				distdir_perms(distlocks_subdir)
-			except portage_exception.FileNotFound:
-				os.mkdir(distlocks_subdir)
-				distdir_perms(distlocks_subdir)
 			if not os.access(distlocks_subdir, os.W_OK):
 				writemsg("!!! No write access to write to %s.  Aborting.\n" % distlocks_subdir)
 				return 0
 			del distlocks_subdir
-		del distdir_perms
-
 	for myfile in filedict.keys():
 		fetched=0
 		file_lock = None
@@ -2744,8 +2727,12 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 		dirmode  = 02070
 		filemode =   060
 		modemask =    02
+		distdir_dirs = ["", "cvs-src"]
+		if "distlocks" in features:
+			distdir_dirs.append(".locks")
 		try:
-			for x in ("", "cvs-src"):
+			
+			for x in distdir_dirs:
 				mydir = os.path.join(mysettings["DISTDIR"], x)
 				try:
 					os.makedirs(mydir)
