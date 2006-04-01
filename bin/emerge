@@ -608,10 +608,6 @@ elif "--help" in myopts:
 	help()
 	sys.exit(0)
 
-if portage.wheelgid == portage.portage_gid:
-	print "emerge: wheel group use is being deprecated. Please update group and passwd to"
-	print "        include the portage user as noted above, and then use group portage."
-
 if "--debug" in myopts:
 	print "myaction", myaction
 	print "myopts", myopts
