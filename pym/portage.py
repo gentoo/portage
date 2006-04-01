@@ -618,7 +618,8 @@ def env_update(makelinks=1, srcroot=None):
 	if not mtimedb.has_key("ldpath"):
 		mtimedb["ldpath"]={}
 
-	for x in portage_util.unique_array(specials["LDPATH"]+['/usr/lib','/usr/lib64','/usr/lib32','/lib','/lib64','/lib32']):
+	for lib_dir in portage_util.unique_array(specials["LDPATH"]+['usr/lib','usr/lib64','usr/lib32','lib','lib64','lib32']):
+		x = os.path.join(root, lib_dir.lstrip(os.sep))
 		try:
 			newldpathtime = os.stat(x)[stat.ST_MTIME]
 		except OSError, oe:
@@ -642,7 +643,7 @@ def env_update(makelinks=1, srcroot=None):
 			mtime_changed = True
 
 		if mtime_changed:
-			if srcroot is None:
+			if makelinks or srcroot is None:
 				ld_cache_update = True
 				continue
 			src_dir = os.path.join(srcroot, x.lstrip(os.sep))
@@ -655,7 +656,7 @@ def env_update(makelinks=1, srcroot=None):
 				break
 
 	# Only run ldconfig as needed
-	if (ld_cache_update or makelinks):
+	if ld_cache_update:
 		# ldconfig has very different behaviour between FreeBSD and Linux
 		if ostype=="Linux" or ostype.lower().endswith("gnu"):
 			# We can't update links if we haven't cleaned other versions first, as
