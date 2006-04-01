@@ -505,7 +505,7 @@ endversion_keys = ["pre", "p", "alpha", "beta", "rc"]
 
 #parse /etc/env.d and generate /etc/profile.env
 
-def env_update(makelinks=1,srcroot=""):
+def env_update(makelinks=1, srcroot=None):
 	global root
 	if not os.path.exists(root+"etc/env.d"):
 		prevmask=os.umask(0)
@@ -618,36 +618,44 @@ def env_update(makelinks=1,srcroot=""):
 	if not mtimedb.has_key("ldpath"):
 		mtimedb["ldpath"]={}
 
-	# Skip makelinks if this package doesn't actually have anything to update
-	skip_makelinks=1
 	for x in portage_util.unique_array(specials["LDPATH"]+['/usr/lib','/usr/lib64','/usr/lib32','/lib','/lib64','/lib32']):
-		if makelinks and skip_makelinks and os.access(srcroot+x,os.R_OK):
-			# Special case: we store all debug info in /usr/lib/debug/ so only
-			#   disable skip_makelinks if there is something in there otherwise
-			if x == "/usr/lib" and os.access(srcroot+"/usr/lib/debug",os.R_OK):
-				contents = os.listdir(srcroot+"/usr/lib/")
-				if not (len(contents) == 1 and contents[0] == "debug"):
-					skip_makelinks=0
-			else:
-				skip_makelinks=0
 		try:
-			newldpathtime=os.stat(x)[stat.ST_MTIME]
-		except SystemExit, e:
+			newldpathtime = os.stat(x)[stat.ST_MTIME]
+		except OSError, oe:
+			if oe.errno == errno.ENOENT:
+				try:
+					del mtimedb["ldpath"][x]
+				except KeyError:
+					pass
+				# ignore this path because it doesn't exist
+				continue
 			raise
-		except:
-			newldpathtime=0
+		mtime_changed = False
 		if mtimedb["ldpath"].has_key(x):
 			if mtimedb["ldpath"][x]==newldpathtime:
 				pass
 			else:
 				mtimedb["ldpath"][x]=newldpathtime
-				ld_cache_update=True
+				mtime_changed = True
 		else:
 			mtimedb["ldpath"][x]=newldpathtime
-			ld_cache_update=True
+			mtime_changed = True
+
+		if mtime_changed:
+			if srcroot is None:
+				ld_cache_update = True
+				continue
+			src_dir = os.path.join(srcroot, x.lstrip(os.sep))
+			if not os.path.exists(src_dir):
+				ld_cache_update = True
+				continue
+			for root, dirs, files in os.walk(src_dir):
+				if len(files) > 0:
+					ld_cache_update = True
+				break
 
 	# Only run ldconfig as needed
-	if (ld_cache_update or (makelinks and not skip_makelinks)):
+	if ld_cache_update:
 		# ldconfig has very different behaviour between FreeBSD and Linux
 		if ostype=="Linux" or ostype.lower().endswith("gnu"):
 			# We can't update links if we haven't cleaned other versions first, as
