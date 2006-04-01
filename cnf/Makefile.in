@@ -1,4 +1,5 @@
 sysconfdir = @sysconfdir@
+DEFAULT_PATH = @DEFAULT_PATH@
 ARCH = @ARCH@
 
 srcdir=@srcdir@

@@ -72,7 +72,7 @@ PORTAGE_INST_USER="@rootuser@"
 PORTAGE_INST_GID="@wheelgid@"
 
 # Default PATH for ebuild env
-DEFAULT_PATH="@DOMAIN_PREFIX@/sbin:@DOMAIN_PREFIX@/usr/sbin:@DOMAIN_PREFIX@/bin:@DOMAIN_PREFIX@/usr/bin:@PORTAGE_BASE@/bin"
+DEFAULT_PATH="@DEFAULT_PATH@"
 
 # Mode bits for ${WORKDIR} (see ebuild.5).
 PORTAGE_WORKDIR_MODE="0700"
