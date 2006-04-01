@@ -505,7 +505,7 @@ endversion_keys = ["pre", "p", "alpha", "beta", "rc"]
 
 #parse /etc/env.d and generate /etc/profile.env
 
-def env_update(makelinks=1):
+def env_update(makelinks=1,srcroot=""):
 	global root
 	if not os.path.exists(root+"etc/env.d"):
 		prevmask=os.umask(0)
@@ -618,7 +618,18 @@ def env_update(makelinks=1):
 	if not mtimedb.has_key("ldpath"):
 		mtimedb["ldpath"]={}
 
-	for x in specials["LDPATH"]+['/usr/lib','/lib']:
+	# Skip makelinks if this package doesn't actually have anything to update
+	skip_makelinks=1
+	for x in portage_util.unique_array(specials["LDPATH"]+['/usr/lib','/usr/lib64','/usr/lib32','/lib','/lib64','/lib32']):
+		if makelinks and skip_makelinks and os.access(srcroot+x,os.R_OK):
+			# Special case: we store all debug info in /usr/lib/debug/ so only
+			#   disable skip_makelinks if there is something in there otherwise
+			if x == "/usr/lib" and os.access(srcroot+"/usr/lib/debug",os.R_OK):
+				contents = os.listdir(srcroot+"/usr/lib/")
+				if not (len(contents) == 1 and contents[0] == "debug"):
+					skip_makelinks=0
+			else:
+				skip_makelinks=0
 		try:
 			newldpathtime=os.stat(x)[stat.ST_MTIME]
 		except SystemExit, e:
@@ -636,7 +647,7 @@ def env_update(makelinks=1):
 			ld_cache_update=True
 
 	# Only run ldconfig as needed
-	if (ld_cache_update or makelinks):
+	if (ld_cache_update or (makelinks and not skip_makelinks)):
 		# ldconfig has very different behaviour between FreeBSD and Linux
 		if ostype=="Linux" or ostype.lower().endswith("gnu"):
 			# We can't update links if we haven't cleaned other versions first, as
@@ -6021,7 +6032,7 @@ class dblink:
 				downgrade = True
 
 		#update environment settings, library paths. DO NOT change symlinks.
-		env_update(makelinks=(not downgrade))
+		env_update(makelinks=(not downgrade),srcroot=srcroot)
 		#dircache may break autoclean because it remembers the -MERGING-pkg file
 		global dircache
 		if dircache.has_key(self.dbcatdir):
