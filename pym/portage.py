@@ -650,7 +650,7 @@ def env_update(makelinks=1, srcroot=None):
 			if not os.path.exists(src_dir):
 				ld_cache_update = True
 				continue
-			for root, dirs, files in os.walk(src_dir):
+			for parent_dir, dirs, files in os.walk(src_dir):
 				if len(files) > 0:
 					ld_cache_update = True
 				break
