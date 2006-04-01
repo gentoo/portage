@@ -655,7 +655,7 @@ def env_update(makelinks=1, srcroot=None):
 				break
 
 	# Only run ldconfig as needed
-	if ld_cache_update:
+	if (ld_cache_update or makelinks):
 		# ldconfig has very different behaviour between FreeBSD and Linux
 		if ostype=="Linux" or ostype.lower().endswith("gnu"):
 			# We can't update links if we haven't cleaned other versions first, as
