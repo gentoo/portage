@@ -505,7 +505,7 @@ endversion_keys = ["pre", "p", "alpha", "beta", "rc"]
 
 #parse /etc/env.d and generate /etc/profile.env
 
-def env_update(makelinks=1):
+def env_update(makelinks=1, srcroot=None):
 	global root
 	if not os.path.exists(root+portage_const.EPREFIX+"/etc/env.d"):
 		prevmask=os.umask(0)
@@ -618,22 +618,42 @@ def env_update(makelinks=1):
 	if not mtimedb.has_key("ldpath"):
 		mtimedb["ldpath"]={}
 
-	for x in map(lambda x: portage_const.EPREFIX+x, specials["LDPATH"]+['/usr/lib','/lib']):
+	for lib_dir in portage_util.unique_array(specials["LDPATH"]+['usr/lib','usr/lib64','usr/lib32','lib','lib64','lib32']):
+		x = os.path.join(normalize_path(root+portage_const.EPREFIX), lib_dir.lstrip(os.sep))
 		try:
-			newldpathtime=os.stat(x)[stat.ST_MTIME]
-		except SystemExit, e:
+			newldpathtime = os.stat(x)[stat.ST_MTIME]
+		except OSError, oe:
+			if oe.errno == errno.ENOENT:
+				try:
+					del mtimedb["ldpath"][x]
+				except KeyError:
+					pass
+				# ignore this path because it doesn't exist
+				continue
 			raise
-		except:
-			newldpathtime=0
+		mtime_changed = False
 		if mtimedb["ldpath"].has_key(x):
 			if mtimedb["ldpath"][x]==newldpathtime:
 				pass
 			else:
 				mtimedb["ldpath"][x]=newldpathtime
-				ld_cache_update=True
+				mtime_changed = True
 		else:
 			mtimedb["ldpath"][x]=newldpathtime
-			ld_cache_update=True
+			mtime_changed = True
+
+		if mtime_changed:
+			if srcroot is None:
+				ld_cache_update = True
+				continue
+			src_dir = os.path.join(srcroot, x.lstrip(os.sep))
+			if not os.path.exists(src_dir):
+				ld_cache_update = True
+				continue
+			for parent_dir, dirs, files in os.walk(src_dir):
+				if len(files) > 0:
+					ld_cache_update = True
+				break
 
 	# Only run ldconfig as needed
 	if (ld_cache_update or makelinks):
@@ -1841,29 +1861,12 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 			print "!!! No write access to %s" % mysettings["DISTDIR"]+"/"
 			can_fetch=False
 	else:
-		def distdir_perms(filename):
-			all_applied = True
-			try:
-				all_applied = portage_util.apply_secpass_permissions(filename, gid=portage_gid, mode=0775)
-			except portage_exception.OperationNotPermitted:
-				all_applied = False
-			if not all_applied:
-				writemsg(("!!! Unable to apply group permissions to '%s'." \
-				+ "  Non-root users may experience issues.\n") % filename)
-		distdir_perms(mysettings["DISTDIR"])
 		if use_locks and locks_in_subdir:
 			distlocks_subdir = os.path.join(mysettings["DISTDIR"], locks_in_subdir)
-			try:
-				distdir_perms(distlocks_subdir)
-			except portage_exception.FileNotFound:
-				os.mkdir(distlocks_subdir)
-				distdir_perms(distlocks_subdir)
 			if not os.access(distlocks_subdir, os.W_OK):
 				writemsg("!!! No write access to write to %s.  Aborting.\n" % distlocks_subdir)
 				return 0
 			del distlocks_subdir
-		del distdir_perms
-
 	for myfile in filedict.keys():
 		fetched=0
 		file_lock = None
@@ -2535,26 +2538,13 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 					for subdir in kwargs["subdirs"]:
 						mydirs.append(os.path.join(basedir, subdir))
 				for mydir in mydirs:
-					if not makedirs(mydir):
-						raise portage_exception.DirectoryNotFound(
-							"Failed to create directory.")
-					try:
-						initial_stat = os.stat(mydir)
-						apply_secpass_permissions(mydir,
-							gid=portage_gid, mode=dirmode, mask=modemask, stat_cached=initial_stat)
-						result_stat = os.stat(mydir)
-					except OSError, oe:
-						if errno.EPERM == oe.errno:
-							writemsg("!!! %s\n" % oe)
-							raise portage_exception.OperationNotPermitted("stat('%s')" % mydir)
-						raise
+					modified = portage_util.ensure_dirs(mydir,
+						gid=portage_gid, mode=dirmode, mask=modemask)
 					# To avoid excessive recursive stat calls, we trigger
 					# recursion when the top level directory does not initially
 					# match our permission requirements.
-					if kwargs["always_recurse"] or \
-					result_stat.st_gid != initial_stat.st_gid or \
-					result_stat.st_mode & 07777 != initial_stat.st_mode & 07777:
-						if not kwargs["always_recurse"]:
+					if modified or kwargs["always_recurse"]:
+						if modified:
 							writemsg("Adjusting permissions recursively: '%s'" % mydir)
 						def onerror(e):
 							raise	# The feature is disabled if a single error
@@ -2746,28 +2736,29 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 		checkme=alist[:]
 
 	if not listonly:
-		for x in ("", "cvs-src"):
-			mydir = os.path.join(mysettings["DISTDIR"], x)
-			try:
-				os.makedirs(mydir)
-			except OSError, oe:
-				if errno.EEXIST == oe.errno:
-					pass
-				elif errno.EPERM == oe.errno:
-					writemsg("!!! %s\n" % str(oe))
-					writemsg("!!! Fetching may fail!\n")
-				else:
-					raise
+		dirmode  = 02070
+		filemode =   060
+		modemask =    02
+		distdir_dirs = ["", "cvs-src"]
+		if "distlocks" in features:
+			distdir_dirs.append(".locks")
 		try:
-			apply_secpass_permissions(mysettings["DISTDIR"],
-				gid=portage_gid, mode=0775, mask=02)
-		except portage_exception.OperationNotPermitted, e:
-			writemsg("Operation Not Permitted: %s\n" % str(e))
-		except portage_exception.FileNotFound, e:
-			writemsg("File Not Found: '%s'\n" % str(e))
-
-		apply_recursive_permissions(os.path.join(mysettings["DISTDIR"], "cvs-src"),
-			gid=portage_gid, dirmode=02770, dirmask=02, filemode=0660, filemask=02)
+			
+			for x in distdir_dirs:
+				mydir = os.path.join(mysettings["DISTDIR"], x)
+				if portage_util.ensure_dirs(mydir, gid=portage_gid, mode=dirmode, mask=modemask):
+					writemsg("Adjusting permissions recursively: '%s'\n" % mydir)
+					def onerror(e):
+						raise # bail out on the first error that occurs during recursion
+					if not apply_recursive_permissions(mydir,
+						gid=portage_gid, dirmode=dirmode, dirmask=modemask,
+						filemode=filemode, filemask=modemask, onerror=onerror):
+						raise portage_exception.OperationNotPermitted(
+							"Failed to apply recursive permissions for the portage group.")
+		except portage_exception.PortageException, e:
+			writemsg("!!! %s\n" % str(e))
+			writemsg("!!! Problem adjusting permissions on DISTDIR='%s'\n" % mysettings["DISTDIR"])
+			writemsg("!!! Fetching may fail!\n")
 
 	# Only try and fetch the files if we are going to need them ... otherwise,
 	# if user has FEATURES=noauto and they run `ebuild clean unpack compile install`,
@@ -6056,7 +6047,7 @@ class dblink:
 				downgrade = True
 
 		#update environment settings, library paths. DO NOT change symlinks.
-		env_update(makelinks=(not downgrade))
+		env_update(makelinks=(not downgrade),srcroot=srcroot)
 		#dircache may break autoclean because it remembers the -MERGING-pkg file
 		global dircache
 		if dircache.has_key(self.dbcatdir):

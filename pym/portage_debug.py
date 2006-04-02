@@ -19,15 +19,14 @@ def set_trace(on=True):
 class trace_handler(object):
 
 	def __init__(self):
-		python_base = None
+		python_system_paths = []
 		for x in sys.path:
 			if os.path.basename(x).startswith("python2."):
-				python_base = x
-				break
+				python_system_paths.append(x)
 
 		self.ignore_prefixes = []
-		if python_base is not None:
-			self.ignore_prefixes.append(python_base + os.sep)
+		for x in python_system_paths:
+			self.ignore_prefixes.append(x + os.sep)
 
 		self.trim_filename = prefix_trimmer(os.path.join(portage_const.PORTAGE_BASE_PATH, "pym") + os.sep).trim
 		self.show_local_lines = False

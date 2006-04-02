@@ -462,7 +462,10 @@ def apply_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 	bits.  When mask=0 is specified, mode bits on the target file are allowed
 	to be a superset of the mode argument (via logical OR).  When mask>0, the
 	mode bits that the target file is allowed to have are restricted via
-	logical XOR."""
+	logical XOR.
+	Returns True if the permissions were modified and False otherwise."""
+
+	modified = False
 
 	if stat_cached is None:
 		try:
@@ -479,6 +482,7 @@ def apply_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 		(gid != -1 and gid != stat_cached.st_gid):
 		try:
 			os.chown(filename, uid, gid)
+			modified = True
 		except OSError, oe:
 			if oe.errno == errno.EPERM:
 				raise OperationNotPermitted("chown('%s', %i, %i)" % (filename, uid, gid))
@@ -506,6 +510,7 @@ def apply_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 	if new_mode != -1:
 		try:
 			os.chmod(filename, new_mode)
+			modified = True
 		except OSError, oe:
 			if oe.errno == errno.EPERM:
 				raise OperationNotPermitted("chmod('%s', %s)" % (filename, oct(new_mode)))
@@ -513,6 +518,7 @@ def apply_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 				raise FileNotFound(filename)
 			else:
 				raise
+	return modified
 
 def apply_stat_permissions(filename, newstat, **kwargs):
 	"""A wrapper around apply_secpass_permissions that gets
@@ -607,9 +613,21 @@ class atomic_ofstream(file):
 	file when the write is interrupted (for example, when an 'out of space'
 	error occurs)."""
 
-	def __init__(self, filename, mode='w', **kargs):
+	def __init__(self, filename, mode='w', follow_links=True, **kargs):
 		"""Opens a temporary filename.pid in the same directory as filename."""
 		self._aborted = False
+
+		if follow_links:
+			canonical_path = os.path.realpath(filename)
+			self._real_name = canonical_path
+			tmp_name = "%s.%i" % (canonical_path, os.getpid())
+			try:
+				super(atomic_ofstream, self).__init__(tmp_name, mode=mode, **kargs)
+				return
+			except (OSError, IOError), e:
+				writemsg("!!! Failed to open file: '%s'\n" % tmp_name)
+				writemsg("!!! %s\n" % str(e))
+
 		self._real_name = filename
 		tmp_name = "%s.%i" % (filename, os.getpid())
 		super(atomic_ofstream, self).__init__(tmp_name, mode=mode, **kargs)
@@ -668,3 +686,23 @@ def write_atomic(file_path, content):
 	except IOError, ioe:
 		f.abort()
 		raise ioe
+
+def ensure_dirs(dir_path, *args, **kwargs):
+	"""Create a directory and call apply_permissions.
+	Returns True if a directory is created or the permissions needed to be
+	modified, and False otherwise."""
+
+	created_dir = False
+
+	try:
+		os.makedirs(dir_path)
+		created_dir = True
+	except OSError, oe:
+		if errno.EEXIST == oe.errno:
+			pass
+		elif  oe.errno in (errno.EPERM, errno.EROFS):
+			raise portage_exception.OperationNotPermitted(str(oe))
+		else:
+			raise
+	perms_modified = apply_permissions(dir_path, *args, **kwargs)
+	return created_dir or perms_modified
