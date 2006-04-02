@@ -17,6 +17,13 @@ try:
 except ImportError:
 	max_fd_limit = 256
 
+if os.path.isdir("/proc/%i/fd" % os.getpid()):
+	def get_open_fds():
+		return map(int, os.listdir("/proc/%i/fd" % os.getpid()))
+else:
+	def get_open_fds():
+		return xrange(max_fd_limit)
+
 sandbox_capable = (os.path.isfile(SANDBOX_BINARY) and
                    os.access(SANDBOX_BINARY, os.X_OK))
 
@@ -222,7 +229,7 @@ def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask):
 		os.dup2(my_fds[fd], fd)
 	# Then close _all_ fds that haven't been explictly
 	# requested to be kept open.
-	for fd in range(max_fd_limit):
+	for fd in get_open_fds():
 		if fd not in my_fds:
 			try:
 				os.close(fd)
