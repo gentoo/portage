@@ -154,9 +154,7 @@ def sorted_versions(verlist):
 if portage.settings.has_key("PORTAGE_NICENESS"):
 	try:
 		os.nice(int(portage.settings["PORTAGE_NICENESS"]))
-	except SystemExit, e:
-		raise # Needed else can't exit
-	except Exception,e:
+	except (OSError,ValueError), e:
 		print "!!! Failed to change nice value to '"+str(portage.settings["PORTAGE_NICENESS"])+"'"
 		print "!!!",e
 
