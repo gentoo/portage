@@ -310,7 +310,7 @@ def tokenize(mystring):
 	# This function is obsoleted.
 	# Use portage_dep.parenreduce
 
-	writemsg( output.red("!!! Tokenize is deprecated, please use portage_dep.parenreduce.\n")
+	writemsg( output.red("!!! Tokenize is deprecated, please use portage_dep.parenreduce.\n") )
 
 	newtokens=[]
 	curlist=newtokens
