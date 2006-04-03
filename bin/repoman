@@ -1569,7 +1569,7 @@ else:
 
 		retval = None
 		if "--pretend" in myoptions:
-			print "(/usr/bin/cvs -q commit -F "+ commitmessagefile +" "+ string.join(myupdates," ")"+")"
+			print "(/usr/bin/cvs -q commit -F "+ commitmessagefile +" "+ string.join(myupdates," ")+")"
 		else:
 			retval=os.system("/usr/bin/cvs -q commit -F "+ commitmessagefile + " " +string.join(myupdates, " "))
 			if retval:
