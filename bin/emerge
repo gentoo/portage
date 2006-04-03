@@ -452,9 +452,7 @@ def emergelog(mystr,short_msg=None):
 		mylogfile.flush()
 		portage_locks.unlockfile(l)
 		mylogfile.close()
-	except SystemExit, e:
-		raise # Needed else can't exit
-	except Exception, e:
+	except (IOError,OSError,portage_exception.PortageException), e:
 		if edebug:
 			print "emergelog():",e
 		pass

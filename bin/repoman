@@ -564,6 +564,10 @@ try:
 	uselist=portage.grabfile(portdir+"/profiles/use.desc")
 	for l in range(0,len(uselist)):
 		uselist[l]=string.split(uselist[l])[0]
+	for var in string.split(repoman_settings["USE_EXPAND"]):
+		vardescs = portage.grabfile(portdir+"/profiles/"+var.lower()+".desc")
+		for l in range(0, len(vardescs)):
+			uselist.append(var.lower() + "_" + string.split(vardescs[l])[0])
 except SystemExit, e:
 	raise  # Need to propogate this
 except:
