@@ -1567,14 +1567,14 @@ else:
 		print green("------------------------------------------------------------------------------")
 		print
 
+		retval = None
 		if "--pretend" in myoptions:
-			print "(/usr/bin/cvs -q commit "+string.join(myupdates," ")+" -F "+commitmessagefile+")"
-			retval=0
+			print "(/usr/bin/cvs -q commit -F "+ commitmessagefile +" "+ string.join(myupdates," ")"+")"
 		else:
-			retval=os.system("/usr/bin/cvs -q commit "+string.join(myupdates, " ")+" -F "+commitmessagefile)
-		if retval:
-			print "!!! Exiting on cvs (shell) error code:",retval
-			sys.exit(retval)
+			retval=os.system("/usr/bin/cvs -q commit -F "+ commitmessagefile + " " +string.join(myupdates, " "))
+			if retval:
+				print "!!! Exiting on cvs (shell) error code:",retval
+				sys.exit(retval)
 
 	# Setup the GPG commands
 	def gpgsign(filename):
