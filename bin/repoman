@@ -1511,7 +1511,7 @@ else:
 	if isCvs:
 		mycvstree=cvstree.getentries("./",recursive=1)
 		mychanged=cvstree.findchanged(mycvstree,recursive=1,basedir="./")
-		for manifest in [file for file in mychanged if 'Manifest' in file]:
+		for manifest in [file for file in mychanged if '/Manifest' in file]:
 			mychanged.remove(manifest)
 		mynew=cvstree.findnew(mycvstree,recursive=1,basedir="./")
 		myremoved=cvstree.findremoved(mycvstree,recursive=1,basedir="./")
