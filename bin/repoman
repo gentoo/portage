@@ -1511,6 +1511,8 @@ else:
 	if isCvs:
 		mycvstree=cvstree.getentries("./",recursive=1)
 		mychanged=cvstree.findchanged(mycvstree,recursive=1,basedir="./")
+		for manifest in [file for file in mychanged if 'Manifest' in file]:
+			mychanged.remove(manifest)
 		mynew=cvstree.findnew(mycvstree,recursive=1,basedir="./")
 		myremoved=cvstree.findremoved(mycvstree,recursive=1,basedir="./")
 		if not (mychanged or mynew or myremoved):
@@ -1566,10 +1568,10 @@ else:
 		print
 
 		if "--pretend" in myoptions:
-			print "(/usr/bin/cvs -q commit -F "+commitmessagefile+")"
+			print "(/usr/bin/cvs -q commit "+string.join(myupdates," ")+" -F "+commitmessagefile+")"
 			retval=0
 		else:
-			retval=os.system("/usr/bin/cvs -q commit -F "+commitmessagefile)
+			retval=os.system("/usr/bin/cvs -q commit "+string.join(myupdates, " ")+" -F "+commitmessagefile)
 		if retval:
 			print "!!! Exiting on cvs (shell) error code:",retval
 			sys.exit(retval)
@@ -1580,11 +1582,15 @@ else:
 		gpgcmd+= "--default-key "+repoman_settings["PORTAGE_GPG_KEY"]
 		if repoman_settings.has_key("PORTAGE_GPG_DIR"):
 			gpgcmd += " --homedir "+repoman_settings["PORTAGE_GPG_DIR"]
-		rValue = os.system(gpgcmd+" "+filename)
-		if rValue == 0:
-			os.rename(filename+".asc", filename)
+		if "--pretend" in myoptions:
+			print "("+gpgcmd+" "+filename+")"
+			rValue = 0
 		else:
-			print "!!! gpg exited with '" + str(rValue) + "' status"
+			rValue = os.system(gpgcmd+" "+filename)
+			if rValue == 0:
+				os.rename(filename+".asc", filename)
+			else:
+				print "!!! gpg exited with '" + str(rValue) + "' status"
 		return rValue
 
 	if myheaders or myupdates or myremoved or mynew:
