@@ -1877,7 +1877,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						raise portage_exception.OperationNotPermitted(
 							"Failed to apply recursive permissions for the portage group.")
 		except portage_exception.PortageException, e:
-			if not os.path.dir(mysettings["DISTDIR"]):
+			if not os.path.isdir(mysettings["DISTDIR"]):
 				writemsg("!!! %s\n" % str(e))
 				writemsg("!!! Directory Not Found: DISTDIR='%s'\n" % mysettings["DISTDIR"])
 				writemsg("!!! Fetching will fail!\n")
