@@ -2,7 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/pym/portage_util.py,v 1.11.2.6 2005/04/23 07:26:04 jstubbs Exp $
 
-from portage_exception import PortageException, FileNotFound, OperationNotPermitted
+from portage_exception import PortageException, FileNotFound, OperationNotPermitted, ReadOnlyFileSystem
 
 import sys,string,shlex,os,errno
 try:
@@ -512,12 +512,14 @@ def apply_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 			os.chmod(filename, new_mode)
 			modified = True
 		except OSError, oe:
+			func_call = "chmod('%s', %s)" % (filename, oct(new_mode))
 			if oe.errno == errno.EPERM:
-				raise OperationNotPermitted("chmod('%s', %s)" % (filename, oct(new_mode)))
+				raise OperationNotPermitted(func_call)
+			elif oe.errno == errno.EROFS:
+				raise ReadOnlyFileSystem(func_call)
 			elif oe.errno == errno.ENOENT:
 				raise FileNotFound(filename)
-			else:
-				raise
+			raise
 	return modified
 
 def apply_stat_permissions(filename, newstat, **kwargs):
