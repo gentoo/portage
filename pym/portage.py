@@ -308,7 +308,9 @@ def tokenize(mystring):
 	into embedded lists; returns None on paren mismatch"""
 
 	# This function is obsoleted.
-	# Use dep_parenreduce
+	# Use portage_dep.parenreduce
+
+	writemsg( output.red("!!! Tokenize is deprecated, please use portage_dep.parenreduce.\n")
 
 	newtokens=[]
 	curlist=newtokens
