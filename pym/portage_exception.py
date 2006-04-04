@@ -49,6 +49,9 @@ class DirectoryNotFound(InvalidLocation):
 class OperationNotPermitted(PortageException):
 	"""An operation was not permitted operating system"""
 
+class PermissionDenied(PortageException):
+	"""Permission denied"""
+
 class ReadOnlyFileSystem(PortageException):
 	"""Read-only file system"""
 

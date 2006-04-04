@@ -3,7 +3,10 @@
 # $Id: /var/cvsroot/gentoo-src/portage/pym/output.py,v 1.24.2.4 2005/04/17 09:01:55 jstubbs Exp $
 
 
-import commands,os,sys,re
+import commands,errno,os,re,shlex,sys
+from portage_const import COLOR_MAP_FILE
+from portage_util import writemsg
+from portage_exception import PortageException, ParseError, PermissionDenied, FileNotFound
 
 havecolor=1
 dotitles=1
@@ -87,6 +90,46 @@ codes["brown"]     = esc_seq + "33m"
 
 codes["red"]       = esc_seq + "31;01m"
 codes["darkred"]   = esc_seq + "31m"
+
+def parse_color_map():
+	myfile = COLOR_MAP_FILE
+	ansi_code_pattern = re.compile("^[0-9;]*m$")
+	def strip_quotes(token, quotes):
+		if token[0] in quotes and token[0] == token[-1]:
+			token = token[1:-1]
+		return token
+	try:
+		s = shlex.shlex(open(myfile))
+		s.wordchars = s.wordchars + ";" # for ansi codes
+		d = {}
+		while True:
+			k, o, v = s.get_token(), s.get_token(), s.get_token()
+			if k is s.eof:
+				break
+			if o != "=":
+				raise ParseError("%s%s'%s'" % (s.error_leader(myfile, s.lineno), "expected '=' operator: ", o))
+			k = strip_quotes(k, s.quotes)
+			v = strip_quotes(v, s.quotes)
+			if ansi_code_pattern.match(v):
+				codes[k] = esc_seq + v
+			else:
+				if v in codes:
+					codes[k] = codes[v]
+				else:
+					raise ParseError("%s%s'%s'" % (s.error_leader(myfile, s.lineno), "Undefined: ", v))
+	except (IOError, OSError), e:
+		if e.errno == errno.ENOENT:
+			raise FileNotFound(myfile)
+		elif e.errno == errno.EACCES:
+			raise PermissionDenied(myfile)
+		raise
+
+try:
+	parse_color_map()
+except FileNotFound, e:
+	pass
+except PortageException, e:
+	writemsg("%s\n" % str(e))
 
 def nc_len(mystr):
 	tmp = re.sub(esc_seq + "^m]+m", "", mystr);
