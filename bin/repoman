@@ -1601,7 +1601,6 @@ else:
 		mydone=[]
 		if repolevel==3:   # In a package dir
 			repoman_settings["O"]=os.getcwd()
-			portage.digestgen([],repoman_settings,manifestonly=1)
 		elif repolevel==2: # In a category dir
 			for x in myfiles:
 				xs=string.split(x,"/")
@@ -1611,7 +1610,6 @@ else:
 					continue
 				mydone.append(xs[0])
 				repoman_settings["O"]=os.path.join(os.getcwd(), xs[0])
-				portage.digestgen([],repoman_settings,manifestonly=1)
 		elif repolevel==1: # repo-cvsroot
 			print green("RepoMan sez:"), "\"You're rather crazy... doing the entire repository.\"\n"
 			for x in myfiles:
@@ -1622,7 +1620,6 @@ else:
 					continue
 				mydone.append(string.join(xs[:2],"/"))
 				repoman_settings["O"]=os.path.join(os.getcwd(), x[0], x[1])
-				portage.digestgen([],repoman_settings,manifestonly=1)
 		else:
 			print red("I'm confused... I don't know where I am!")
 			sys.exit(1)
@@ -1630,6 +1627,7 @@ else:
 		if "--pretend" in myoptions:
 			print "(/usr/bin/cvs -q commit -F "+commitmessagefile+")"
 		else:
+			portage.digestgen([],repoman_settings,manifestonly=1)
 			mymsg=open(commitmessagefile,"w")
 			mymsg.write(commitmessage)
 			mymsg.write(" (Unsigned Manifest commit)")
