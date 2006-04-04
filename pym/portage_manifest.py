@@ -124,6 +124,13 @@ class Manifest(object):
 		""" Create old style digest files for this Manifest instance """
 		cpvlist = [os.path.join(self.pkgdir.rstrip(os.sep).split(os.sep)[-2], x[:-7]) for x in portage.listdir(self.pkgdir) if x.endswith(".ebuild")]
 		rval = []
+		try:
+			os.makedirs(os.path.join(self.pkgdir, "files"))
+		except OSError, oe:
+			if oe.errno == errno.EEXIST:
+				pass
+			else:
+				raise
 		for cpv in cpvlist:
 			dname = os.path.join(self.pkgdir, "files", "digest-"+portage.catsplit(cpv)[1])
 			distlist = self._getCpvDistfiles(cpv)
