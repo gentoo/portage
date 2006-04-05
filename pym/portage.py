@@ -507,7 +507,7 @@ endversion_keys = ["pre", "p", "alpha", "beta", "rc"]
 
 #parse /etc/env.d and generate /etc/profile.env
 
-def env_update(makelinks=1, srcroot=None):
+def env_update(makelinks=1):
 	global root
 	if not os.path.exists(root+"etc/env.d"):
 		prevmask=os.umask(0)
@@ -645,17 +645,7 @@ def env_update(makelinks=1, srcroot=None):
 			mtime_changed = True
 
 		if mtime_changed:
-			if srcroot is None:
-				ld_cache_update = True
-				continue
-			src_dir = os.path.join(srcroot, x.lstrip(os.sep))
-			if not os.path.exists(src_dir):
-				ld_cache_update = True
-				continue
-			for parent_dir, dirs, files in os.walk(src_dir):
-				if len(files) > 0:
-					ld_cache_update = True
-				break
+			ld_cache_update = True
 
 	# Only run ldconfig as needed
 	if (ld_cache_update or makelinks):
@@ -6045,7 +6035,7 @@ class dblink:
 				downgrade = True
 
 		#update environment settings, library paths. DO NOT change symlinks.
-		env_update(makelinks=(not downgrade),srcroot=srcroot)
+		env_update(makelinks=(not downgrade))
 		#dircache may break autoclean because it remembers the -MERGING-pkg file
 		global dircache
 		if dircache.has_key(self.dbcatdir):
