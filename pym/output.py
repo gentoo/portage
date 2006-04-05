@@ -73,23 +73,43 @@ codes["underline"] = esc_seq + "04m"
 codes["blink"]     = esc_seq + "05m"
 codes["overline"]  = esc_seq + "06m"  # Who made this up? Seriously.
 
-codes["teal"]      = esc_seq + "36m"
-codes["turquoise"] = esc_seq + "36;01m"
+ansi_color_codes = []
+for x in xrange(30, 38):
+	ansi_color_codes.append("%im" % x)
+	ansi_color_codes.append("%i;01m" % x)
 
-codes["fuchsia"]   = esc_seq + "35;01m"
-codes["purple"]    = esc_seq + "35m"
+rgb_ansi_colors = ['0x000000', '0x555555', '0xAA0000', '0xFF5555', '0x00AA00',
+	'0x55FF55', '0xAA5500', '0xFFFF55', '0x0000AA', '0x5555FF', '0xAA00AA',
+	'0xFF55FF', '0x00AAAA', '0x55FFFF', '0xAAAAAA', '0xFFFFFF']
 
-codes["blue"]      = esc_seq + "34;01m"
-codes["darkblue"]  = esc_seq + "34m"
+for x in xrange(len(rgb_ansi_colors)):
+	codes[rgb_ansi_colors[x]] = esc_seq + ansi_color_codes[x]
 
-codes["green"]     = esc_seq + "32;01m"
-codes["darkgreen"] = esc_seq + "32m"
+del x
 
-codes["yellow"]    = esc_seq + "33;01m"
-codes["brown"]     = esc_seq + "33m"
+codes["black"]     = codes["0x000000"]
+codes["darkgray"]  = codes["0x555555"]
 
-codes["red"]       = esc_seq + "31;01m"
-codes["darkred"]   = esc_seq + "31m"
+codes["red"]       = codes["0xFF5555"]
+codes["darkred"]   = codes["0xAA0000"]
+
+codes["green"]     = codes["0x55FF55"]
+codes["darkgreen"] = codes["0x00AA00"]
+
+codes["yellow"]    = codes["0xFFFF55"]
+codes["brown"]     = codes["0xAA5500"]
+
+codes["blue"]      = codes["0x5555FF"]
+codes["darkblue"]  = codes["0x0000AA"]
+
+codes["fuchsia"]   = codes["0xFF55FF"]
+codes["purple"]    = codes["0xAA00AA"]
+
+codes["teal"]      = codes["0x00AAAA"]
+codes["turquoise"] = codes["0x55FFFF"]
+
+codes["white"]     = codes["0xFFFFFF"]
+codes["lightgray"] = codes["0xAAAAAA"]
 
 def parse_color_map():
 	myfile = COLOR_MAP_FILE
