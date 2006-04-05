@@ -111,6 +111,11 @@ codes["turquoise"] = codes["0x55FFFF"]
 codes["white"]     = codes["0xFFFFFF"]
 codes["lightgray"] = codes["0xAAAAAA"]
 
+codes["darkteal"]   = codes["turquoise"]
+codes["darkyellow"] = codes["brown"]
+codes["fuscia"]     = codes["fuchsia"]
+codes["white"]      = codes["bold"]
+
 def parse_color_map():
 	myfile = COLOR_MAP_FILE
 	ansi_code_pattern = re.compile("^[0-9;]*m$")
@@ -197,11 +202,6 @@ def resetColor():
 
 def colorize(color_key, text):
 	return codes[color_key] + text + codes["reset"]
-
-codes["darkteal"]   = codes["turquoise"]
-codes["darkyellow"] = codes["brown"]
-codes["fuscia"]     = codes["fuchsia"]
-codes["white"]      = codes["bold"]
 
 compat_functions_colors = ["bold","white","teal","turquoise","darkteal",
 	"fuscia","fuchsia","purple","blue","darkblue","green","darkgreen","yellow",
