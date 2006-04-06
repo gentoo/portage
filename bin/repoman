@@ -404,37 +404,8 @@ if os.path.isdir("CVS"):
 			myreporoot = myreporoot[len(myreporootpath):]
 			while myreporoot and myreporoot[0] == '/':
 				myreporoot = myreporoot[1:]
-	except SystemExit, e:
-		raise  # Need to propogate this
-	except:
+	except (OSError, IOError):
 		err("Error grabbing repository information; exiting.")
-	myreporootpath=os.path.normpath(myreporootpath)
-	if myreporootpath=="/space/cvsroot":
-		print
-		print
-		print red("You're using the wrong cvsroot. For Manifests to be correct, you must")
-		print red("use the same base cvsroot path that the servers use. Please try the")
-		print red("following script to remedy this:")
-		print
-		print "cd my_cvs_tree"
-		print
-		print "rm -Rf [a-z]*"
-		print "cvs up"
-		print
-		if portage.userland=="BSD" or portage.userland=="Darwin":
-			print "find ./ -type f -regex '.*/CVS/Root$' -print0 | xargs -0 sed \\"
-		else:
-			print "find ./ -type f -regex '.*/CVS/Root$' -print0 | xargs -0r sed \\"
-		fi
-		print "  -i 's:/space/cvsroot$:/home/cvsroot:'"
-		print
-		print red("You must clear and re-update your tree as all header tags will cause")
-		print red("problems in manifests for all rsync and /home/cvsroot users.")
-		print
-		print "You should do this to any other gentoo trees your have as well,"
-		print "excluding the deletions. 'gentoo-src' should be /home/cvsroot."
-		print
-		sys.exit(123)
 
 if not "--pretend" in myoptions and not isCvs:
 	print
