@@ -2587,10 +2587,10 @@ if myaction in ["sync","metadata"] and (not "--help" in myopts):
 		if "--quiet" in myopts:
 			rsync_opts.append("--quiet")    # Shut up a lot
 		else:
-			rsync_opts.append("--progress") # Progress meter for each file
+			rsync_opts.append("--verbose")	# Print filelist
 
 		if "--verbose" in myopts:
-			rsync_opts.append("--verbose")  # More noise? Not really sure what
+			rsync_opts.append("--progress")  # Progress meter for each file
 
 		if "--debug" in myopts:
 			rsync_opts.append("--checksum") # Force checksum on all files
