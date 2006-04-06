@@ -55,7 +55,7 @@ fi
 [ ! -z "$OCC" ] && export CC="$OCC"
 [ ! -z "$OCXX" ] && export CXX="$OCXX"
 
-export PATH="/sbin:/usr/sbin:/usr/lib/portage/bin:/bin:/usr/bin:${ROOTPATH}"
+export PATH="/usr/local/sbin:/sbin:/usr/sbin:/usr/lib/portage/bin:/usr/local/bin:/bin:/usr/bin:${ROOTPATH}"
 [ ! -z "$PREROOTPATH" ] && export PATH="${PREROOTPATH%%:}:$PATH"
 
 source /usr/lib/portage/bin/isolated-functions.sh  &>/dev/null
