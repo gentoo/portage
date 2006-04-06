@@ -880,6 +880,12 @@ dyn_compile() {
 	[ "${DISTCC_DIR-unset}"  == "unset" ] && export DISTCC_DIR="${PORTAGE_TMPDIR}/.distcc"
 	[ ! -z "${DISTCC_DIR}" ] && addwrite "${DISTCC_DIR}"
 
+	LIBDIR_VAR="LIBDIR_${ABI}"
+	if [ -z "${PKG_CONFIG_PATH}" -a -n "${ABI}" -a -n "${!LIBDIR_VAR}" ]; then
+		export PKG_CONFIG_PATH="/usr/${!LIBDIR_VAR}/pkgconfig"
+	fi
+	unset LIBDIR_VAR
+
 	if hasq noauto $FEATURES &>/dev/null && [ ! -f ${PORTAGE_BUILDDIR}/.unpacked ]; then
 		echo
 		echo "!!! We apparently haven't unpacked... This is probably not what you"
