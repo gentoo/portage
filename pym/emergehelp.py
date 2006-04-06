@@ -300,7 +300,7 @@ def help(myaction,myopts,havecolor=1):
 		print "       "+green("--version")+" ("+green("-V")+" short option)"
 		print "              Displays the currently installed version of portage along with"
 		print "              other information useful for quick reference on a system. See"
-		print "              "+bold("emerge info")+" for more advanced information."
+		print "              "+bold("emerge --info")+" for more advanced information."
 		print
 	elif myaction == "sync":
 		print
