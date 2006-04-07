@@ -6,6 +6,7 @@
 import os,sys
 os.environ["PORTAGE_CALLER"]="emerge"
 sys.path = ["/usr/lib/portage/pym"]+sys.path
+import errno
 
 try:
 	import portage
@@ -846,9 +847,14 @@ def getlist(mode):
 		except OSError:
 			print "!!! Couldn't open "+pfile+"; exiting."
 			sys.exit(1)
-		except IOError:
-			#world file doesn't exist
-			mylines=[]
+		except IOError, e:
+			#Permission denied is a fatal error, as opposed to a missing file
+			if e.errno == errno.EACCES:
+				raise
+			else:
+				if "--quiet" not in myopts:
+					portage.writemsg(red("\n!!! ") + "Warning %s does not exist.\n" % os.path.join(portage.root, portage.WORLD_FILE) )
+				mylines=[]
 	mynewlines=[]
 	for x in mylines:
 		myline=string.join(string.split(x))
