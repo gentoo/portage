@@ -371,7 +371,7 @@ class digraph:
 	def addnode(self,mykey,myparent):
 		if not self.dict.has_key(mykey):
 			self.okeys.append(mykey)
-			if myparent==None:
+			if myparent is None:
 				self.dict[mykey]=[0,[]]
 			else:
 				self.dict[mykey]=[0,[myparent]]
@@ -545,7 +545,7 @@ def env_update(makelinks=1):
 		if x[-1]=='~' or x[-4:]==".bak":
 			continue
 		myconfig=getconfig(root+"etc/env.d/"+x)
-		if myconfig==None:
+		if myconfig is None:
 			writemsg("!!! Parsing error in "+str(root)+"etc/env.d/"+str(x)+"\n")
 			#parse error
 			continue
@@ -863,7 +863,7 @@ def autouse(myvartree,use_cache=1):
 	global usedefaults, autouse_val
 	if autouse_val is not None:
 		return autouse_val
-	if profiledir==None:
+	if profiledir is None:
 		autouse_val = ""
 		return ""
 	myusevars=""
@@ -967,7 +967,7 @@ class config:
 			self.module_priority    = ["user","default"]
 			self.modules            = {}
 			self.modules["user"]    = getconfig(MODULES_FILE_PATH)
-			if self.modules["user"] == None:
+			if self.modules["user"] is None:
 				self.modules["user"] = {}
 			self.modules["default"] = {
 				"portdbapi.metadbmodule": "cache.metadata.database",
@@ -1029,7 +1029,7 @@ class config:
 				mygcfg_dlists = [getconfig(os.path.join(x, "make.globals")) for x in self.profiles+["/etc"]]
 				self.mygcfg   = stack_dicts(mygcfg_dlists, incrementals=portage_const.INCREMENTALS, ignore_none=1)
 
-				if self.mygcfg == None:
+				if self.mygcfg is None:
 					self.mygcfg = {}
 			except SystemExit, e:
 				raise
@@ -1047,7 +1047,7 @@ class config:
 					mygcfg_dlists = [getconfig(os.path.join(x, "make.defaults")) for x in self.profiles]
 					self.mygcfg   = stack_dicts(mygcfg_dlists, incrementals=portage_const.INCREMENTALS, ignore_none=1)
 					#self.mygcfg = grab_stacked("make.defaults", self.profiles, getconfig)
-					if self.mygcfg == None:
+					if self.mygcfg is None:
 						self.mygcfg = {}
 				except SystemExit, e:
 					raise
@@ -1063,7 +1063,7 @@ class config:
 			try:
 				# XXX: Should depend on root?
 				self.mygcfg=getconfig("/"+MAKE_CONF_FILE,allow_sourcing=True)
-				if self.mygcfg == None:
+				if self.mygcfg is None:
 					self.mygcfg = {}
 			except SystemExit, e:
 				raise
@@ -1590,7 +1590,7 @@ class config:
 	def __getitem__(self,mykey):
 		match = ''
 		for x in self.lookuplist:
-			if x == None:
+			if x is None:
 				writemsg("!!! lookuplist is null.\n")
 			elif x.has_key(mykey):
 				match = x[mykey]
@@ -2074,7 +2074,7 @@ def digestgen(myarchives,mysettings,db=None,overwrite=1,manifestonly=0):
 	#       (e.g. cvs stuff should be in ebuild(1) and/or repoman)
 	# TODO: error/exception handling
 
-	if db == None:
+	if db is None:
 		db = portagetree().dbapi
 
 	mf = Manifest(mysettings["O"], db, mysettings)
@@ -2084,7 +2084,7 @@ def digestgen(myarchives,mysettings,db=None,overwrite=1,manifestonly=0):
 		mytype = mf.guessType(f)
 		if mytype == "AUX":
 			f = f[5:]
-		elif mytype == None:
+		elif mytype is None:
 			continue
 		myrealtype = mf.findFile(f)
 		if myrealtype != None:
@@ -2118,9 +2118,9 @@ def digestParseFile(myfilename,mysettings=None,db=None):
 	elif mysplit[-1] == "Manifest":
 		pkgdir = os.sep+os.sep.join(mysplit[:-1])
 
-	if db == None:
+	if db is None:
 		db = portagetree().dbapi
-	if mysettings == None:
+	if mysettings is None:
 		mysettings = config(clone=settings)
 
 	mf = Manifest(pkgdir, db, mysettings)
@@ -2205,7 +2205,7 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0, db=None):
 	            portage_manifest.Manifest()."""
 	
 	pkgdir = mysettings["O"]
-	if db == None:
+	if db is None:
 		db = portagetree().dbapi
 	mf = Manifest(pkgdir, db, mysettings)
 	try:
@@ -2265,14 +2265,14 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0, db=None):
 				return 0
 
 	mydigests=digestParseFile(digestfn)
-	if mydigests==None:
+	if mydigests is None:
 		print "!!! Failed to parse digest file:",digestfn
 		return 0
 	mymdigests=digestParseFile(manifestfn)
 	if "strict" not in features:
 		# XXX: Remove this when manifests become mainstream.
 		pass
-	elif mymdigests==None:
+	elif mymdigests is None:
 			print "!!! Failed to parse manifest file:",manifestfn
 			if strict:
 				return 0
@@ -2369,7 +2369,7 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, t
 	mypv = os.path.basename(ebuild_path)[:-7]	
 	mycpv = cat+"/"+mypv
 	mysplit=pkgsplit(mypv,silent=0)
-	if mysplit==None:
+	if mysplit is None:
 		writemsg("!!! Error: PF is null '%s'; exiting.\n" % mypv)
 		return 1
 	if mydo != "depend":
@@ -3294,7 +3294,7 @@ def dep_check(depstring,mydbapi,mysettings,use="yes",mode=None,myuse=None,use_ca
 	#check_config_instance(mysettings)
 
 	if use=="yes":
-		if myuse==None:
+		if myuse is None:
 			#default behavior
 			myusesplit = string.split(mysettings["USE"])
 		else:
@@ -3333,17 +3333,17 @@ def dep_check(depstring,mydbapi,mysettings,use="yes",mode=None,myuse=None,use_ca
 
 	#convert virtual dependencies to normal packages.
 	mysplit=dep_virtual(mysplit, mysettings)
-	#if mysplit==None, then we have a parse error (paren mismatch or misplaced ||)
+	#if mysplit is None, then we have a parse error (paren mismatch or misplaced ||)
 	#up until here, we haven't needed to look at the database tree
 
-	if mysplit==None:
+	if mysplit is None:
 		return [0,"Parse Error (parentheses mismatch?)"]
 	elif mysplit==[]:
 		#dependencies were reduced to nothing
 		return [1,[]]
 	mysplit2=mysplit[:]
 	mysplit2=dep_wordreduce(mysplit2,mysettings,mydbapi,mode,use_cache=use_cache)
-	if mysplit2==None:
+	if mysplit2 is None:
 		return [0,"Invalid token"]
 
 	writemsg("\n\n\n", 1)
@@ -3635,7 +3635,7 @@ class packagetree:
 def best(mymatches):
 	"accepts None arguments; assumes matches are valid."
 	global bestcount
-	if mymatches==None:
+	if mymatches is None:
 		return ""
 	if not len(mymatches):
 		return ""
@@ -3724,10 +3724,10 @@ def match_from_list(mydep,candidate_list):
 
 	mylist = []
 
-	if operator == None:
+	if operator is None:
 		for x in candidate_list:
 			xs = pkgsplit(x)
-			if xs == None:
+			if xs is None:
 				if x != mycpv:
 					continue
 			elif xs[0] != mycpv:
@@ -3762,7 +3762,7 @@ def match_from_list(mydep,candidate_list):
 			except:
 				writemsg("\nInvalid package name: %s\n" % x)
 				sys.exit(73)
-			if result == None:
+			if result is None:
 				continue
 			elif operator == ">":
 				if result > 0:
@@ -3792,13 +3792,13 @@ def match_from_list_original(mydep,mylist):
 	mycpv=dep_getcpv(mydep)
 	if isspecific(mycpv):
 		cp_key=catpkgsplit(mycpv)
-		if cp_key==None:
+		if cp_key is None:
 			return []
 	else:
 		cp_key=None
 	#Otherwise, this is a special call; we can only select out of the ebuilds specified in the specified mylist
 	if (mydep[0]=="="):
-		if cp_key==None:
+		if cp_key is None:
 			return []
 		if mydep[-1]=="*":
 			#example: "=sys-apps/foo-1.0*"
@@ -3822,7 +3822,7 @@ def match_from_list_original(mydep,mylist):
 			cmp2=[cp_key[1],new_v,"r0"]
 			for x in mylist:
 				cp_x=catpkgsplit(x)
-				if cp_x==None:
+				if cp_x is None:
 					#hrm, invalid entry.  Continue.
 					continue
 				#skip entries in our list that do not have matching categories
@@ -3840,7 +3840,7 @@ def match_from_list_original(mydep,mylist):
 			else:
 				return []
 	elif (mydep[0]==">") or (mydep[0]=="<"):
-		if cp_key==None:
+		if cp_key is None:
 			return []
 		if (len(mydep)>1) and (mydep[1]=="="):
 			cmpstr=mydep[0:2]
@@ -3849,7 +3849,7 @@ def match_from_list_original(mydep,mylist):
 		mynodes=[]
 		for x in mylist:
 			cp_x=catpkgsplit(x)
-			if cp_x==None:
+			if cp_x is None:
 				#invalid entry; continue.
 				continue
 			if cp_key[0]!=cp_x[0]:
@@ -3858,12 +3858,12 @@ def match_from_list_original(mydep,mylist):
 				mynodes.append(x)
 		return mynodes
 	elif mydep[0]=="~":
-		if cp_key==None:
+		if cp_key is None:
 			return []
 		myrev=-1
 		for x in mylist:
 			cp_x=catpkgsplit(x)
-			if cp_x==None:
+			if cp_x is None:
 				#invalid entry; continue
 				continue
 			if cp_key[0]!=cp_x[0]:
@@ -3879,7 +3879,7 @@ def match_from_list_original(mydep,mylist):
 			return []
 		else:
 			return [mymatch]
-	elif cp_key==None:
+	elif cp_key is None:
 		if mydep[0]=="!":
 			return []
 			#we check ! deps in emerge itself, so always returning [] is correct.
@@ -3887,7 +3887,7 @@ def match_from_list_original(mydep,mylist):
 		cp_key=mycpv.split("/")
 		for x in mylist:
 			cp_x=catpkgsplit(x)
-			if cp_x==None:
+			if cp_x is None:
 				#invalid entry; continue
 				continue
 			if cp_key[0]!=cp_x[0]:
@@ -3916,14 +3916,14 @@ class portagetree:
 	def dep_bestmatch(self,mydep):
 		"compatibility method"
 		mymatch=self.dbapi.xmatch("bestmatch-visible",mydep)
-		if mymatch==None:
+		if mymatch is None:
 			return ""
 		return mymatch
 
 	def dep_match(self,mydep):
 		"compatibility method"
 		mymatch=self.dbapi.xmatch("match-visible",mydep)
-		if mymatch==None:
+		if mymatch is None:
 			return []
 		return mymatch
 
@@ -4150,7 +4150,7 @@ class bindbapi(fakedbapi):
 					mylist.append("")
 			else:
 				myval = tbz2.getfile(x)
-				if myval == None:
+				if myval is None:
 					myval = ""
 				else:
 					myval = string.join(myval.split(),' ')
@@ -4338,7 +4338,7 @@ class vardbapi(dbapi):
 				return cpc[1]
 		list=listdir(self.root+VDB_PATH+"/"+mysplit[0],EmptyOnError=1)
 
-		if (list==None):
+		if (list is None):
 			return []
 		returnme=[]
 		for x in list:
@@ -4363,7 +4363,7 @@ class vardbapi(dbapi):
 		basepath = self.root+VDB_PATH+"/"
 
 		mycats = self.categories
-		if mycats == None:
+		if mycats is None:
 			# XXX: CIRCULAR DEP! This helps backwards compat. --NJ (10 Sept 2004)
 			mycats = settings.categories
 
@@ -4499,7 +4499,7 @@ class vartree(packagetree):
 		"compatibility method -- all matches, not just visible ones"
 		#mymatch=best(match(dep_expand(mydep,self.dbapi),self.dbapi))
 		mymatch=best(self.dbapi.match(dep_expand(mydep,mydb=self.dbapi),use_cache=use_cache))
-		if mymatch==None:
+		if mymatch is None:
 			return ""
 		else:
 			return mymatch
@@ -4508,7 +4508,7 @@ class vartree(packagetree):
 		"compatibility method -- we want to see all matches, not just visible ones"
 		#mymatch=match(mydep,self.dbapi)
 		mymatch=self.dbapi.match(mydep,use_cache=use_cache)
-		if mymatch==None:
+		if mymatch is None:
 			return []
 		else:
 			return mymatch
@@ -4885,7 +4885,7 @@ class portdbapi(dbapi):
 		return returnme
 
 	def getfetchlist(self,mypkg,useflags=None,mysettings=None,all=0):
-		if mysettings == None:
+		if mysettings is None:
 			mysettings = self.mysettings
 		try:
 			myuris = self.aux_get(mypkg,["SRC_URI"])[0]
@@ -4915,7 +4915,7 @@ class portdbapi(dbapi):
 			if debug: print "[empty/missing/bad digest]: "+mypkg
 			return None
 		filesdict={}
-		if useflags == None:
+		if useflags is None:
 			myuris, myfiles = self.getfetchlist(mypkg,all=1)
 		else:
 			myuris, myfiles = self.getfetchlist(mypkg,useflags=useflags)
@@ -4957,7 +4957,7 @@ class portdbapi(dbapi):
 		# we use getfetchsizes() now, so this function would be obsoleted
 		#
 		filesdict=self.getfetchsizes(mypkg,useflags=useflags,debug=debug)
-		if filesdict==None:
+		if filesdict is None:
 			return "[empty/missing/bad digest]"
 		mysize=0
 		for myfile in filesdict.keys():
@@ -5064,7 +5064,7 @@ class portdbapi(dbapi):
 		"""two functions in one.  Accepts a list of cpv values and uses the package.mask *and*
 		packages file to remove invisible entries, returning remaining items.  This function assumes
 		that all entries in mylist have the same category and package name."""
-		if (mylist==None) or (len(mylist)==0):
+		if (mylist is None) or (len(mylist)==0):
 			return []
 		newlist=mylist[:]
 		#first, we mask out packages in the package.mask file
@@ -5080,7 +5080,7 @@ class portdbapi(dbapi):
 		if maskdict.has_key(mycp):
 			for x in maskdict[mycp]:
 				mymatches=self.xmatch("match-all",x)
-				if mymatches==None:
+				if mymatches is None:
 					#error in package.mask file; print warning and continue:
 					print "visible(): package.mask entry \""+x+"\" is invalid, ignoring..."
 					continue
@@ -5105,7 +5105,7 @@ class portdbapi(dbapi):
 				#notice how we pass "newlist" to the xmatch() call below....
 				#Without this, ~ deps in the packages files are broken.
 				mymatches=self.xmatch("match-list",x,mylist=newlist)
-				if mymatches==None:
+				if mymatches is None:
 					#error in packages file; print warning and continue:
 					print "emerge: visible(): profile packages entry \""+x+"\" is invalid, ignoring..."
 					continue
@@ -5120,7 +5120,7 @@ class portdbapi(dbapi):
 	def gvisible(self,mylist):
 		"strip out group-masked (not in current group) entries"
 		global groups
-		if mylist==None:
+		if mylist is None:
 			return []
 		newlist=[]
 
@@ -5392,7 +5392,7 @@ class binarytree(packagetree):
 		writemsg("mykey: %s\n" % mykey, 1)
 		mymatch=best(match_from_list(mydep,self.dbapi.cp_list(mykey)))
 		writemsg("mymatch: %s\n" % mymatch, 1)
-		if mymatch==None:
+		if mymatch is None:
 			return ""
 		return mymatch
 
@@ -6135,7 +6135,7 @@ class dblink:
 							else:
 								mydest = new_protect_filename(myrealdest, newmd5=portage_checksum.perform_md5(myabsto))
 
-				# if secondhand==None it means we're operating in "force" mode and should not create a second hand.
+				# if secondhand is None it means we're operating in "force" mode and should not create a second hand.
 				if (secondhand!=None) and (not os.path.exists(myrealto)):
 					# either the target directory doesn't exist yet or the target file doesn't exist -- or
 					# the target is a broken symlink.  We will add this file to our "second hand" and merge
@@ -6178,7 +6178,7 @@ class dblink:
 							bsd_chflags.lchflags(mydest, dflags)
 					else:
 						# a non-directory and non-symlink-to-directory.  Won't work for us.  Move out of the way.
-						if movefile(mydest,mydest+".backup", mysettings=self.settings) == None:
+						if movefile(mydest,mydest+".backup", mysettings=self.settings) is None:
 							sys.exit(1)
 						print "bak",mydest,mydest+".backup"
 						#now create our directory
@@ -6271,7 +6271,7 @@ class dblink:
 				# same way.  Unless moveme=0 (blocking directory)
 				if moveme:
 					mymtime=movefile(mysrc,mydest,newmtime=thismtime,sstat=mystat, mysettings=self.settings)
-					if mymtime == None:
+					if mymtime is None:
 						sys.exit(1)
 					zing=">>>"
 				else:
@@ -6328,7 +6328,7 @@ class dblink:
 			else:
 				# we are merging a fifo or device node
 				zing="!!!"
-				if mydmode==None:
+				if mydmode is None:
 					# destination doesn't exist
 					if movefile(mysrc,mydest,newmtime=thismtime,sstat=mystat, mysettings=self.settings)!=None:
 						zing=">>>"

@@ -347,7 +347,7 @@ if len(sys.argv)>1:
 		elif sys.argv[x] in repoman_shortoptions.keys():
 			sys.argv[x] = repoman_shortoptions[sys.argv[x]]
 		if sys.argv[x] in modes:
-			if mymode==None:
+			if mymode is None:
 				mymode=sys.argv[x]
 			else:
 				err("Please specify either \""+mymode+"\" or \""+sys.argv[x]+"\", but not both.")
@@ -368,7 +368,7 @@ if len(sys.argv)>1:
 		else:
 			err_help("\""+sys.argv[x]+"\" is not a valid mode or option.")
 		x=x+1
-if mymode==None:
+if mymode is None:
 	mymode="scan"
 if mymode=="help" or ("--help" in myoptions):
 	help(exitstatus=0)
@@ -942,7 +942,7 @@ for x in scanlist:
 				stats["digest.missing"]=stats["digest.missing"]+1
 				fails["digest.missing"].append(x+"/files/digest-"+y)
 		myesplit=portage.pkgsplit(y)
-		if myesplit==None or not valid_ebuild_name(x.split("/")[0]+"/"+y):
+		if myesplit is None or not valid_ebuild_name(x.split("/")[0]+"/"+y):
 			stats["ebuild.invalidname"]=stats["ebuild.invalidname"]+1
 			fails["ebuild.invalidname"].append(x+"/"+y+".ebuild")
 			continue

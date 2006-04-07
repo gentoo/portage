@@ -19,9 +19,9 @@ def normpath(mypath):
 
 def makedirs(path, perms=0755, uid=None, gid=None, must_chown=False):
 	old_umask = os.umask(0)
-	if(uid == None):
+	if(uid is None):
 		uid = portage_data.portage_uid
-	if(gid == None):
+	if(gid is None):
 		gid = portage_data.portage_gid
 	if not path:
 		raise portage_exception.InvalidParameter, _("Invalid path: type: '%(type)s' value: '%(path)s'") % {"path": path, "type": type(path)}

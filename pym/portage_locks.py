@@ -154,7 +154,7 @@ def unlockfile(mytuple):
 		return False
 
 	try:
-		if myfd == None:
+		if myfd is None:
 			myfd = os.open(lockfilename, os.O_WRONLY,0660)
 			unlinkfile = 1
 		locking_method(myfd,fcntl.LOCK_UN)

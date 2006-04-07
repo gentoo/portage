@@ -103,7 +103,7 @@ class Manifest(object):
 				mytype = self.guessType(myname)
 				if mytype == "AUX" and myname.startswith("files"+os.sep):
 					myname = myname[6:]
-				if mytype == None:
+				if mytype is None:
 					continue
 				mysize = int(mysplit[3])
 				myhashes = {mysplit[0]: mysplit[1]}

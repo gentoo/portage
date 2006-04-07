@@ -941,7 +941,7 @@ class depgraph:
 				self.digraph.addnode(string.join(mybigkey),myparent)
 			return 1
 
-		if myuse == None:
+		if myuse is None:
 			self.pkgsettings.setcpv(mykey)
 			myuse = self.pkgsettings["USE"].split()
 		self.applied_useflags[mykey] = myuse
@@ -1651,7 +1651,7 @@ class depgraph:
 					mysize=0
 					if x[0] == "ebuild" and x[-1]!="nomerge":
 						myfilesdict=portage.portdb.getfetchsizes(x[2], useflags=self.applied_useflags[x[2]], debug=edebug)
-						if myfilesdict==None:
+						if myfilesdict is None:
 							myfilesdict="[empty/missing/bad digest]"
 						else:
 							for myfetchfile in myfilesdict.keys():
@@ -1963,7 +1963,7 @@ class depgraph:
 						retval=portage.doebuild(y,"fetch",myroot,self.pkgsettings,edebug,("--pretend" in myopts),fetchonly=1,fetchall=1,tree="porttree")
 					else:
 						retval=portage.doebuild(y,"fetch",myroot,self.pkgsettings,edebug,("--pretend" in myopts),fetchonly=1,tree="porttree")
-					if (retval == None) or retval:
+					if (retval is None) or retval:
 						print
 						print "!!! Fetch for",y,"failed, continuing..."
 						print
@@ -1978,7 +1978,7 @@ class depgraph:
 					short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Clean"
 					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Cleaning ("+x[pkgindex]+"::"+y+")", short_msg=short_msg)
 					retval=portage.doebuild(y,"clean",myroot,self.pkgsettings,edebug,cleanup=1,tree="porttree")
-					if (retval == None):
+					if (retval is None):
 						portage_util.writemsg("Unable to run required binary.\n")
 						sys.exit(127)
 					if retval:
@@ -1986,7 +1986,7 @@ class depgraph:
 					short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Compile"
 					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Compiling/Packaging ("+x[pkgindex]+"::"+y+")", short_msg=short_msg)
 					retval=portage.doebuild(y,"package",myroot,self.pkgsettings,edebug,tree="porttree")
-					if (retval == None):
+					if (retval is None):
 						portage_util.writemsg("Unable to run required binary.\n")
 						sys.exit(127)
 					if retval:
@@ -2002,13 +2002,13 @@ class depgraph:
 						self.pkgsettings.backup_changes("EMERGE_FROM")
 
 						retval=portage.pkgmerge(mytbz2,myroot,self.pkgsettings)
-						if retval==None:
+						if retval is None:
 							sys.exit(1)
 				else:
 					short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Clean"
 					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Cleaning ("+x[pkgindex]+"::"+y+")", short_msg=short_msg)
 					retval=portage.doebuild(y,"clean",myroot,self.pkgsettings,edebug,cleanup=1,tree="porttree")
-					if (retval == None):
+					if (retval is None):
 						portage_util.writemsg("Unable to run required binary.\n")
 						sys.exit(127)
 					if retval:
@@ -2016,7 +2016,7 @@ class depgraph:
 					short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Compile"
 					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Compiling/Merging ("+x[pkgindex]+"::"+y+")", short_msg=short_msg)
 					retval=portage.doebuild(y,"merge",myroot,self.pkgsettings,edebug,tree="porttree")
-					if (retval == None):
+					if (retval is None):
 						portage_util.writemsg("Unable to run required binary.\n")
 						sys.exit(127)
 					if retval:
@@ -2037,7 +2037,7 @@ class depgraph:
 				short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Merge Binary"
 				emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Merging Binary ("+x[pkgindex]+"::"+mytbz2+")", short_msg=short_msg)
 				retval=portage.pkgmerge(mytbz2,x[1],self.pkgsettings)
-				if retval==None:
+				if retval is None:
 					sys.exit(1)
 				#need to check for errors
 			if "--buildpkgonly" not in myopts:
@@ -2652,7 +2652,7 @@ if myaction in ["sync","metadata"] and (not "--help" in myopts):
 
 		retries=0
 		hostname, port=re.split("rsync://([^:/]*)(:[0-9]+)?", syncuri)[1:3];
-		if port==None:
+		if port is None:
 			port=""
 		updatecache_flg=True
 

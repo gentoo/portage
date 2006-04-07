@@ -418,7 +418,7 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 	else:
 		keepconnection = 1
 
-	if makepickle == None:
+	if makepickle is None:
 		makepickle = "/var/cache/edb/metadata.idx.most_recent"
 
 	conn,protocol,address,params,headers = create_conn(baseurl, conn)
