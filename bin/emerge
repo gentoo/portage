@@ -615,9 +615,9 @@ if "--debug" in myopts:
 # check if root user is the current user for the actions where emerge needs this
 if portage.secpass < 2:
 	# We've already allowed "--version" and "--help" above.
-	if not myaction:
+	if not myaction and not myfiles:
 		help()
-		sys.exit(0)
+		sys.exit(1)
 	if "--pretend" not in myopts and \
 	myaction not in ("search","info"):
 		if portage.secpass >= 1:
