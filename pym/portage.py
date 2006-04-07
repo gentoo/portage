@@ -4204,14 +4204,12 @@ class vardbapi(dbapi):
 					raise
 				except Exception, e:
 					writemsg("!!! COUNTER file is missing for "+str(mycpv)+" in /var/db.\n")
-					writemsg("!!! Please run /usr/lib/portage/bin/fix-db.pl or\n")
 					writemsg("!!! Please run /usr/lib/portage/bin/fix-db.py or\n")
 					writemsg("!!! unmerge this exact version.\n")
 					writemsg("!!! %s\n" % e)
 					sys.exit(1)
 			else:
 				writemsg("!!! COUNTER file is missing for "+str(mycpv)+" in /var/db.\n")
-				writemsg("!!! Please run /usr/lib/portage/bin/fix-db.pl or\n")
 				writemsg("!!! Please run /usr/lib/portage/bin/fix-db.py or\n")
 				writemsg("!!! remerge the package.\n")
 				sys.exit(1)
