@@ -12,9 +12,7 @@ def manifest2AuxfileFilter(filename):
 	filename = filename.strip(os.sep)
 	for ignored_dir in ("CVS", ".bzr",".git",".svn"):
 		if filename == ignored_dir or \
-			filename.startswith(ignored_dir+os.sep) or \
-			filename.endswith(os.sep+ignored_dir) or \
-			filename.find(os.sep+ignored_dir+os.sep)!=-1:
+		ignored_dir in filename.split(os.sep):
 			return False
 	return not filename.startswith("digest-")
 
