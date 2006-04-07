@@ -627,6 +627,8 @@ class atomic_ofstream(file):
 				super(atomic_ofstream, self).__init__(tmp_name, mode=mode, **kargs)
 				return
 			except (OSError, IOError), e:
+				if canonical_path == filename:
+					raise
 				writemsg("!!! Failed to open file: '%s'\n" % tmp_name)
 				writemsg("!!! %s\n" % str(e))
 
