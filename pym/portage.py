@@ -1612,12 +1612,7 @@ class config:
 		return bool(self.has_key(mykey))
 
 	def keys(self):
-		mykeys=[]
-		for x in self.lookuplist:
-			for y in x.keys():
-				if y not in mykeys:
-					mykeys.append(y)
-		return mykeys
+		return unique_array(flatten([x.keys() for x in self.lookuplist]))
 
 	def __setitem__(self,mykey,myvalue):
 		"set a value; will be thrown away at reset() time"
