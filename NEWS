@@ -35,3 +35,4 @@ portage-2.1 (ongoing via pre releases)
 * Tests show that file locking is now more reliable.
 * A bash call stack is printed when an ebuild dies in ebuild.sh.
 * New rsync option handling by using a generic PORTAGE_RSYNC_EXTRA_OPTS variable
+* Manifest2 support that will allow digest-* files to be eliminated from the tree.
