@@ -36,7 +36,6 @@ class database(fs_template.FsBased):
 			try:
 				self._ensure_dirs()
 				self._ensure_dirs(self._db_path)
-				self._ensure_access(self._db_path)
 			except (OSError, IOError), e:
 				raise cache_errors.InitializationError(self.__class__, e)
 
@@ -44,8 +43,9 @@ class database(fs_template.FsBased):
 			try:
 				if self.__db == None:
 					self.__db = anydbm_module.open(self._db_path, "c", self._perms)
-			except andbm_module.error, e:
+			except anydbm_module.error, e:
 				raise cache_errors.InitializationError(self.__class__, e)
+		self._ensure_access(self._db_path)
 
 	def iteritems(self):
 		return self.__db.iteritems()
@@ -61,7 +61,7 @@ class database(fs_template.FsBased):
 		del self.__db[cpv]
 
 	def iterkeys(self):
-		return iter(self.__db)
+		return iter(self.__db.keys())
 
 	def has_key(self, cpv):
 		return cpv in self.__db
