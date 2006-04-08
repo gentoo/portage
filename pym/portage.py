@@ -3208,19 +3208,17 @@ def dep_zapdeps(unreduced,reduced,myroot,use_binaries=0):
 
 
 def dep_getkey(mydep):
-	if not len(mydep):
-		return mydep
-	if mydep[0]=="*":
+	if mydep and mydep[0]=="*":
 		mydep=mydep[1:]
-	if mydep[-1]=="*":
+	if mydep and mydep[-1]=="*":
 		mydep=mydep[:-1]
-	if mydep[0]=="!":
+	if mydep and mydep[0]=="!":
 		mydep=mydep[1:]
 	if mydep[:2] in [ ">=", "<=" ]:
 		mydep=mydep[2:]
 	elif mydep[:1] in "=<>~":
 		mydep=mydep[1:]
-	if isspecific(mydep):
+	if mydep and isspecific(mydep):
 		mysplit=catpkgsplit(mydep)
 		if not mysplit:
 			return mydep
@@ -3229,13 +3227,11 @@ def dep_getkey(mydep):
 		return mydep
 
 def dep_getcpv(mydep):
-	if not len(mydep):
-		return mydep
-	if mydep[0]=="*":
+	if mydep and mydep[0]=="*":
 		mydep=mydep[1:]
-	if mydep[-1]=="*":
+	if mydep and mydep[-1]=="*":
 		mydep=mydep[:-1]
-	if mydep[0]=="!":
+	if mydep and mydep[0]=="!":
 		mydep=mydep[1:]
 	if mydep[:2] in [ ">=", "<=" ]:
 		mydep=mydep[2:]
