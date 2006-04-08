@@ -3291,11 +3291,6 @@ else:
 			if not ("--quiet" in myopts):
 				print "\b\b... done!"
 		else:
-			if not myfiles:
-				print "emerge: please tell me what to do."
-				help()
-				sys.exit(1)
-				#we don't have any files to process; skip this step and exit
 			if not ("--quiet" in myopts):
 				print "Calculating dependencies  ",
 				sys.stdout.flush()
