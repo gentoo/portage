@@ -357,7 +357,7 @@ class Manifest(object):
 	def updateFileHashes(self, ftype, fname, checkExisting=True, ignoreMissing=True, reuseExisting=False):
 		""" Regenerate hashes for the given file """
 		if checkExisting:
-			self.checkFileHashes(fname)
+			self.checkFileHashes(ftype, fname, ignoreMissing=ignoreMissing)
 		if not ignoreMissing and not self.fhashdict[ftype].has_key(fname):
 			raise FileNotInManifestException(fname)
 		if not self.fhashdict[ftype].has_key(fname):
