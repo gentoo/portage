@@ -2073,6 +2073,7 @@ def digestgen(myarchives,mysettings,db=None,overwrite=1,manifestonly=0):
 		db = portagetree().dbapi
 
 	mf = Manifest(mysettings["O"], db, mysettings)
+	mf.create(assumeDistfileHashes=True)
 	for f in myarchives:
 		# the whole type evaluation is only for the case that myarchives isn't a 
 		# DIST file as create() determines the type on its own
@@ -2085,7 +2086,6 @@ def digestgen(myarchives,mysettings,db=None,overwrite=1,manifestonly=0):
 		if myrealtype != None:
 			mytype = myrealtype
 		writemsg(">>> Creating Manifest for %s\n" % mysettings["O"])
-		mf.create(assumeDistfileHashes=True)
 		try:
 			writemsg(">>> Adding digests for file %s\n" % f)
 			mf.updateFileHashes(mytype, f, checkExisting=False, reuseExisting=not os.path.exists(os.path.join(mysettings["DISTDIR"], f)))
