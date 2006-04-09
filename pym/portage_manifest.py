@@ -3,8 +3,9 @@
 # $Header: $
 
 import errno, os, sets
+from itertools import imap
 
-import portage, portage_exception, portage_versions, portage_const
+import portage_exception, portage_versions, portage_const
 from portage_checksum import *
 from portage_exception import *
 from portage_util import write_atomic
@@ -29,7 +30,7 @@ class Manifest(object):
 		""" create new Manifest instance for package in pkgdir, using db and mysettings for metadata lookups,
 		    and add compability entries for old portage versions if manifest1_compat == True.
 		    Do not parse Manifest file if from_scratch == True (only for internal use) """
-		self.pkgdir = pkgdir+os.sep
+		self.pkgdir = pkgdir.rstrip(os.sep) + os.sep
 		self.fhashdict = {}
 		self.hashes = portage_const.MANIFEST2_HASH_FUNCTIONS[:]
 		self.hashes.append("size")
@@ -79,9 +80,11 @@ class Manifest(object):
 	def _readDigests(self):
 		""" Parse old style digest files for this Manifest instance """
 		mycontent = ""
-		for d in portage.listdir(os.path.join(self.pkgdir, "files"), filesonly=True, recursive=False):
+		for d in os.listdir(os.path.join(self.pkgdir, "files")):
 			if d.startswith("digest-"):
-				mycontent += open(os.path.join(self.pkgdir, "files", d), "r").read()
+				f = open(os.path.join(self.pkgdir, "files", d), "r")
+				mycontent += f.read()
+				f.close()
 		return mycontent
 		
 	def _read(self):
@@ -124,7 +127,7 @@ class Manifest(object):
 	
 	def _writeDigests(self, force=False):
 		""" Create old style digest files for this Manifest instance """
-		cpvlist = [os.path.join(self.pkgdir.rstrip(os.sep).split(os.sep)[-2], x[:-7]) for x in portage.listdir(self.pkgdir) if x.endswith(".ebuild")]
+		cpvlist = [os.path.join(self._pkgdir_category(), x[:-7]) for x in os.listdir(self.pkgdir) if x.endswith(".ebuild")]
 		rval = []
 		try:
 			os.makedirs(os.path.join(self.pkgdir, "files"))
@@ -134,7 +137,7 @@ class Manifest(object):
 			else:
 				raise
 		for cpv in cpvlist:
-			dname = os.path.join(self.pkgdir, "files", "digest-"+portage.catsplit(cpv)[1])
+			dname = os.path.join(self.pkgdir, "files", "digest-%s" % self._catsplit(cpv)[1])
 			distlist = self._getCpvDistfiles(cpv)
 			update_digest = True
 			if not force:
@@ -287,7 +290,9 @@ class Manifest(object):
 		else:
 			distfilehashes = {}
 		self.__init__(self.pkgdir, self.db, self.mysettings, from_scratch=True)
-		for f in portage.listdir(self.pkgdir, filesonly=True, recursive=False):
+		for pkgdir, pkgdir_dirs, pkgdir_files in os.walk(self.pkgdir):
+			break
+		for f in pkgdir_files:
 			if f.endswith(".ebuild"):
 				mytype = "EBUILD"
 			elif manifest2MiscfileFilter(f):
@@ -295,11 +300,18 @@ class Manifest(object):
 			else:
 				continue
 			self.fhashdict[mytype][f] = perform_multiple_checksums(self.pkgdir+f, self.hashes)
-		for f in portage.listdir(self.pkgdir+"files", filesonly=True, recursive=True):
+		recursive_files = []
+		cut_len = len(os.path.join(self.pkgdir, "files") + os.sep)
+		for parentdir, dirs, files in os.walk(os.path.join(self.pkgdir, "files")):
+			for f in files:
+				full_path = os.path.join(parentdir, f)
+				recursive_files.append(full_path[cut_len:])
+		for f in recursive_files:
 			if not manifest2AuxfileFilter(f):
 				continue
-			self.fhashdict["AUX"][f] = perform_multiple_checksums(self.pkgdir+"files"+os.sep+f, self.hashes)
-		cpvlist = [os.path.join(self.pkgdir.rstrip(os.sep).split(os.sep)[-2], x[:-7]) for x in portage.listdir(self.pkgdir) if x.endswith(".ebuild")]
+			self.fhashdict["AUX"][f] = perform_multiple_checksums(
+				os.path.join(self.pkgdir, "files", f.lstrip(os.sep)), self.hashes)
+		cpvlist = [os.path.join(self._pkgdir_category(), x[:-7]) for x in os.listdir(self.pkgdir) if x.endswith(".ebuild")]
 		distlist = []
 		for cpv in cpvlist:
 			distlist.extend(self._getCpvDistfiles(cpv))
@@ -311,7 +323,10 @@ class Manifest(object):
 				self.fhashdict["DIST"][f] = distfilehashes[f]
 			else:
 				raise FileNotFound(fname)			
-	
+
+	def _pkgdir_category(self):
+		return self.pkgdir.rstrip(os.sep).split(os.sep)[-2]
+
 	def _getAbsname(self, ftype, fname):
 		if ftype == "DIST":
 			absname = os.path.join(self.distdir, fname)
@@ -343,7 +358,7 @@ class Manifest(object):
 			self.checkTypeHashes("AUX", ignoreMissingFiles=False)
 			if checkMiscfiles:
 				self.checkTypeHashes("MISC", ignoreMissingFiles=False)
-			ebuildname = portage.catsplit(cpv)[1]+".ebuild"
+			ebuildname = "%s.ebuild" % self._catsplit(cpv)[1]
 			self.checkFileHashes("EBUILD", ebuildname, ignoreMissing=False)
 		if checkDistfiles:
 			if onlyDistfiles:
@@ -384,7 +399,7 @@ class Manifest(object):
 		files)."""
 		self.updateTypeHashes("AUX", ignoreMissingFiles=ignoreMissingFiles)
 		self.updateTypeHashes("MISC", ignoreMissingFiles=ignoreMissingFiles)
-		ebuildname = portage.catsplit(cpv)[1]+".ebuild"
+		ebuildname = "%s.ebuild" % self._catsplit(cpv)[1]
 		self.updateFileHashes("EBUILD", ebuildname, ignoreMissingFiles=ignoreMissingFiles)
 		for f in self._getCpvDistfiles(cpv):
 			self.updateFileHashes("DIST", f, ignoreMissingFiles=ignoreMissingFiles)
@@ -423,3 +438,8 @@ class Manifest(object):
 			elif len(mysplit) > 4 and mysplit[0] in portage_const.MANIFEST2_IDENTIFIERS and ((len(mysplit) - 3) % 2) == 0 and not 2 in rVal:
 				rVal.append(2)
 		return rVal
+
+	def _catsplit(self, pkg_key):
+		"""Split a category and package, returning a list of [cat, pkg].
+		This is compatible with portage.catsplit()"""
+		return pkg_key.split("/", 1)
