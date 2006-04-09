@@ -94,7 +94,7 @@ def verify_all(filename, mydict, calc_prelink=0, strict=0):
 		if mydict["size"] != mysize:
 			return False,("Filesize does not match recorded size", mysize, mydict["size"])
 	except OSError, e:
-		return False, str(e)
+		return False, (str(e), None, None)
 	for x in mydict.keys():
 		if   x == "size":
 			continue
