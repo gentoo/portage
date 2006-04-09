@@ -8,6 +8,7 @@ if [[ $# -ne 2 ]] ; then
 	exit 1
 fi
 
-target=$1
-linkname=$2
-exec ln -snf "${target}" "${D}${linkname}"
+destdir=${2%/*}
+[[ ! -d ${D}${destdir} ]] && dodir "${destdir}"
+
+exec ln -snf "$1" "${D}$2"
