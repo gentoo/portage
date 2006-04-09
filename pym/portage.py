@@ -2113,36 +2113,6 @@ def digestParseFile(myfilename,mysettings=None,db=None):
 	mf = Manifest(pkgdir, db, mysettings)
 
 	return mf.getDigests()
-	
-	#########################################
-	# Old code that's replaced by the above #
-	#########################################
-
-	if not os.path.exists(myfilename):
-		return None
-	mylines = portage_util.grabfile(myfilename, compat_level=1)
-
-	mydigests={}
-	for x in mylines:
-		myline=string.split(x)
-		if len(myline) < 4:
-			#invalid line
-			continue
-		if myline[0] not in portage_checksum.get_valid_checksum_keys():
-			continue
-		mykey  = myline.pop(0)
-		myhash = myline.pop(0)
-		mysize = long(myline.pop())
-		myfn   = string.join(myline, " ")
-		if myfn not in mydigests:
-			mydigests[myfn] = {}
-		mydigests[myfn][mykey] = myhash
-		if "size" in mydigests[myfn]:
-			if mydigests[myfn]["size"] != mysize:
-				raise portage_exception.DigestException, "Conflicting sizes in digest: %(filename)s" % {"filename":myfilename}
-		else:
-			mydigests[myfn]["size"] = mysize
-	return mydigests
 
 # XXXX strict was added here to fix a missing name error.
 # XXXX It's used below, but we're not paying attention to how we get it?
