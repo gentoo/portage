@@ -389,6 +389,19 @@ class Manifest(object):
 		for f in self._getCpvDistfiles(cpv):
 			self.updateFileHashes("DIST", f, ignoreMissingFiles=ignoreMissingFiles)
 
+	def updateHashesGuessType(self, fname, *args, **kwargs):
+		""" Regenerate hashes for the given file (guesses the type and then
+		calls updateFileHashes)."""
+		mytype = self.guessType(fname)
+		if mytype == "AUX":
+			fname = fname[len("files" + os.sep):]
+		elif mytype is None:
+			return
+		myrealtype = self.findFile(fname)
+		if myrealtype is not None:
+			mytype = myrealtype
+		return self.updateFileHashes(mytype, fname, *args, **kwargs)
+
 	def getFileData(self, ftype, fname, key):
 		""" Return the value of a specific (type,filename,key) triple, mainly useful
 		to get the size for distfiles."""

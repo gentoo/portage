@@ -2077,18 +2077,10 @@ def digestgen(myarchives,mysettings,db=None,overwrite=1,manifestonly=0):
 	for f in myarchives:
 		# the whole type evaluation is only for the case that myarchives isn't a 
 		# DIST file as create() determines the type on its own
-		mytype = mf.guessType(f)
-		if mytype == "AUX":
-			f = f[5:]
-		elif mytype is None:
-			continue
-		myrealtype = mf.findFile(f)
-		if myrealtype != None:
-			mytype = myrealtype
 		writemsg(">>> Creating Manifest for %s\n" % mysettings["O"])
 		try:
 			writemsg(">>> Adding digests for file %s\n" % f)
-			mf.updateFileHashes(mytype, f, checkExisting=False, reuseExisting=not os.path.exists(os.path.join(mysettings["DISTDIR"], f)))
+			mf.updateHashesGuessType(f, checkExisting=False, reuseExisting=not os.path.exists(os.path.join(mysettings["DISTDIR"], f)))
 		except portage_exception.FileNotFound, e:
 			writemsg("!!! File %s doesn't exist, can't update Manifest\n" % str(e))
 			return 0
