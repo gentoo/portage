@@ -6344,7 +6344,12 @@ class dblink:
 		return os.path.exists(self.dbdir+"/CATEGORY")
 
 class FetchlistDict(UserDict.DictMixin):
+	"""This provide a mapping interface to retrieve fetch lists.  It's used
+	to allow portage_manifest.Manifest to access fetch lists via a standard
+	mapping interface rather than use the dbapi directly."""
 	def __init__(self, pkgdir, settings):
+		"""pkgdir is a directory containing ebuilds and settings is passed into
+		portdbapi.getfetchlist for __getitem__ calls."""
 		self.pkgdir = pkgdir
 		self.cp = os.sep.join(pkgdir.split(os.sep)[-2:])
 		self.settings = settings
@@ -6353,10 +6358,13 @@ class FetchlistDict(UserDict.DictMixin):
 		# This ensures that the fetchlist comes from the correct portage tree.
 		self.db.porttrees = [porttree]
 	def __getitem__(self, pkg_key):
+		"""Returns the complete fetch list for a given package."""
 		return self.db.getfetchlist(pkg_key, mysettings=self.settings, all=True)[1]
 	def has_key(self, pkg_key):
-		return self.db.cpv_exists(pkg_key)
+		"""Returns true if the given package exists within pkgdir."""
+		return pkg_key in self.keys()
 	def keys(self):
+		"""Returns keys for all packages within pkgdir"""
 		return self.db.cp_list(self.cp)
 
 def cleanup_pkgmerge(mypkg,origdir):
