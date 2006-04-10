@@ -2072,7 +2072,8 @@ def digestgen(myarchives,mysettings,db=None,overwrite=1,manifestonly=0):
 	if db is None:
 		db = portagetree().dbapi
 
-	mf = Manifest(mysettings["O"], db, mysettings)
+	global settings
+	mf = Manifest(mysettings["O"], db, mysettings, mysettings["DISTDIR"])
 	mf.create(assumeDistfileHashes=True)
 	for f in myarchives:
 		# the whole type evaluation is only for the case that myarchives isn't a 
@@ -2110,7 +2111,7 @@ def digestParseFile(myfilename,mysettings=None,db=None):
 	if mysettings is None:
 		mysettings = config(clone=settings)
 
-	mf = Manifest(pkgdir, db, mysettings)
+	mf = Manifest(pkgdir, db, mysettings, mysettings["DISTDIR"])
 
 	return mf.getDigests()
 
@@ -2164,7 +2165,7 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0, db=None):
 	pkgdir = mysettings["O"]
 	if db is None:
 		db = portagetree().dbapi
-	mf = Manifest(pkgdir, db, mysettings)
+	mf = Manifest(pkgdir, db, mysettings, mysettings["DISTDIR"])
 	try:
 		if strict:
 			print ">>> checking ebuild checksums",
@@ -2712,6 +2713,28 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 	if need_distfiles and not fetch(fetchme, mysettings, listonly=listonly, fetchonly=fetchonly):
 		return 1
 
+	if mydo=="fetch" and listonly:
+		return 0
+
+	if "digest" in features:
+		#generate digest if it doesn't exist.
+		if mydo=="digest":
+			return (not digestgen(aalist,mysettings,overwrite=1))
+		else:
+			digestgen(aalist,mysettings,overwrite=0)
+	elif mydo=="digest":
+		#since we are calling "digest" directly, recreate the digest even if it already exists
+		return (not digestgen(aalist,mysettings,overwrite=1))
+	if mydo=="manifest":
+		return (not digestgen(aalist,mysettings,overwrite=1,manifestonly=1))
+
+	# See above comment about fetching only when needed
+	if not digestcheck(checkme, mysettings, ("strict" in features), (mydo not in ["digest","fetch","unpack"] and settings["PORTAGE_CALLER"] == "ebuild" and "noauto" in features)):
+		return 1
+
+	if mydo=="fetch":
+		return 0
+
 	# inefficient.  improve this logic via making actionmap easily searchable to see if we're in the chain of what
 	# will be executed, either that or forced N doebuild calls instead of a single set of phase calls.
 	if (mydo not in ("setup", "clean", "postinst", "preinst", "prerm", "fetch", "digest", "manifest") and 
@@ -2736,28 +2759,6 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 		except OSError:
 			print "!!! Failed symlinking in '%s' to ebuild distdir" % file
 			raise
-
-	if mydo=="fetch" and listonly:
-		return 0
-
-	if "digest" in features:
-		#generate digest if it doesn't exist.
-		if mydo=="digest":
-			return (not digestgen(aalist,mysettings,overwrite=1))
-		else:
-			digestgen(aalist,mysettings,overwrite=0)
-	elif mydo=="digest":
-		#since we are calling "digest" directly, recreate the digest even if it already exists
-		return (not digestgen(aalist,mysettings,overwrite=1))
-	if mydo=="manifest":
-		return (not digestgen(aalist,mysettings,overwrite=1,manifestonly=1))
-
-	# See above comment about fetching only when needed
-	if not digestcheck(checkme, mysettings, ("strict" in features), (mydo not in ["digest","fetch","unpack"] and settings["PORTAGE_CALLER"] == "ebuild" and "noauto" in features)):
-		return 1
-
-	if mydo=="fetch":
-		return 0
 
 	#initial dep checks complete; time to process main commands
 

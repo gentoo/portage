@@ -26,7 +26,7 @@ def manifest2MiscfileFilter(filename):
 	return not (filename in ["CVS", ".svn", "files", "Manifest"] or filename.endswith(".ebuild"))
 
 class Manifest(object):
-	def __init__(self, pkgdir, db, mysettings, manifest1_compat=True, from_scratch=False):
+	def __init__(self, pkgdir, db, mysettings, distdir, manifest1_compat=True, from_scratch=False):
 		""" create new Manifest instance for package in pkgdir, using db and mysettings for metadata lookups,
 		    and add compability entries for old portage versions if manifest1_compat == True.
 		    Do not parse Manifest file if from_scratch == True (only for internal use) """
@@ -44,10 +44,7 @@ class Manifest(object):
 		self.compat = manifest1_compat
 		self.db = db
 		self.mysettings = mysettings
-		if mysettings.has_key("PORTAGE_ACTUAL_DISTDIR"):
-			self.distdir = mysettings["PORTAGE_ACTUAL_DISTDIR"]
-		else:
-			self.distdir = mysettings["DISTDIR"]
+		self.distdir = distdir
 		
 	def guessType(self, filename):
 		""" Perform a best effort guess of which type the given filename is, avoid using this if possible """
@@ -289,7 +286,7 @@ class Manifest(object):
 			distfilehashes = self.fhashdict["DIST"]
 		else:
 			distfilehashes = {}
-		self.__init__(self.pkgdir, self.db, self.mysettings, from_scratch=True)
+		self.__init__(self.pkgdir, self.db, self.mysettings, self.distdir, from_scratch=True)
 		for pkgdir, pkgdir_dirs, pkgdir_files in os.walk(self.pkgdir):
 			break
 		for f in pkgdir_files:

@@ -795,7 +795,8 @@ for x in scanlist:
 				fails["CVS/Entries.IO_error"].append(checkdir+"/files/CVS/Entries")
 			continue
 
-	mf=Manifest(checkdir, db=portage.db["/"]["porttree"].dbapi, mysettings=repoman_settings)
+	mf = Manifest(checkdir, db=portage.db["/"]["porttree"].dbapi,
+		mysettings=repoman_settings, repoman_settings["DISTDIR"])
 	mydigests=mf.getTypeDigests("DIST")
 	myfiles_all = []
 
