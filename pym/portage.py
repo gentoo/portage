@@ -30,6 +30,7 @@ try:
 	import commands
 	from time import sleep
 	from random import shuffle
+	import UserDict
 except ImportError, e:
 	sys.stderr.write("\n\n")
 	sys.stderr.write("!!! Failed to complete python imports. These are internal modules for\n")
@@ -2073,7 +2074,7 @@ def digestgen(myarchives,mysettings,db=None,overwrite=1,manifestonly=0):
 		db = portagetree().dbapi
 
 	global settings
-	mf = Manifest(mysettings["O"], db, mysettings, mysettings["DISTDIR"])
+	mf = Manifest(mysettings["O"], FetchlistDict(mysettings["O"], mysettings), mysettings["DISTDIR"])
 	mf.create(assumeDistfileHashes=True)
 	for f in myarchives:
 		# the whole type evaluation is only for the case that myarchives isn't a 
@@ -2111,7 +2112,7 @@ def digestParseFile(myfilename,mysettings=None,db=None):
 	if mysettings is None:
 		mysettings = config(clone=settings)
 
-	mf = Manifest(pkgdir, db, mysettings, mysettings["DISTDIR"])
+	mf = Manifest(pkgdir, FetchlistDict(pkgdir, mysettings), mysettings["DISTDIR"])
 
 	return mf.getDigests()
 
@@ -2165,7 +2166,7 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0, db=None):
 	pkgdir = mysettings["O"]
 	if db is None:
 		db = portagetree().dbapi
-	mf = Manifest(pkgdir, db, mysettings, mysettings["DISTDIR"])
+	mf = Manifest(pkgdir, FetchlistDict(pkgdir, mysettings), mysettings["DISTDIR"])
 	try:
 		if strict:
 			print ">>> checking ebuild checksums",
@@ -6341,6 +6342,25 @@ class dblink:
 	def isregular(self):
 		"Is this a regular package (does it have a CATEGORY file?  A dblink can be virtual *and* regular)"
 		return os.path.exists(self.dbdir+"/CATEGORY")
+
+class FetchlistDict(UserDict.DictMixin):
+	def __init__(self, pkgdir, settings):
+		self.pkgdir = pkgdir
+		self.cp = os.sep.join(pkgdir.split(os.sep)[-2:])
+		self.settings = settings
+		self.db = portagetree().dbapi
+		porttree = os.path.dirname(os.path.dirname(pkgdir))
+		porttree_key = os.path.normpath(os.path.realpath(porttree)).strip(os.sep)
+		# This ensures that the fetchlist comes from the correct portage tree.
+		for t in self.db.porttrees:
+			if os.path.normpath(os.path.realpath(t)).strip(os.sep) != porttree_key:
+				self.db.porttrees.remove(t)
+	def __getitem__(self, pkg_key):
+		return self.db.getfetchlist(pkg_key, mysettings=self.settings, all=True)[1]
+	def has_key(self, pkg_key):
+		return self.db.cpv_exists(pkg_key)
+	def keys(self):
+		return self.db.cp_list(self.cp)
 
 def cleanup_pkgmerge(mypkg,origdir):
 	shutil.rmtree(settings["PORTAGE_TMPDIR"]+"/binpkgs/"+mypkg)

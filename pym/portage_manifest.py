@@ -26,8 +26,8 @@ def manifest2MiscfileFilter(filename):
 	return not (filename in ["CVS", ".svn", "files", "Manifest"] or filename.endswith(".ebuild"))
 
 class Manifest(object):
-	def __init__(self, pkgdir, db, mysettings, distdir, manifest1_compat=True, from_scratch=False):
-		""" create new Manifest instance for package in pkgdir, using db and mysettings for metadata lookups,
+	def __init__(self, pkgdir, fetchlist_dict, distdir, manifest1_compat=True, from_scratch=False):
+		""" create new Manifest instance for package in pkgdir
 		    and add compability entries for old portage versions if manifest1_compat == True.
 		    Do not parse Manifest file if from_scratch == True (only for internal use) """
 		self.pkgdir = pkgdir.rstrip(os.sep) + os.sep
@@ -42,8 +42,7 @@ class Manifest(object):
 		if not from_scratch:
 			self._read()
 		self.compat = manifest1_compat
-		self.db = db
-		self.mysettings = mysettings
+		self.fetchlist_dict = fetchlist_dict
 		self.distdir = distdir
 		
 	def guessType(self, filename):
@@ -286,7 +285,7 @@ class Manifest(object):
 			distfilehashes = self.fhashdict["DIST"]
 		else:
 			distfilehashes = {}
-		self.__init__(self.pkgdir, self.db, self.mysettings, self.distdir, from_scratch=True)
+		self.__init__(self.pkgdir, self.fetchlist_dict, self.distdir, from_scratch=True)
 		for pkgdir, pkgdir_dirs, pkgdir_files in os.walk(self.pkgdir):
 			break
 		for f in pkgdir_files:
@@ -364,7 +363,7 @@ class Manifest(object):
 	
 	def _getCpvDistfiles(self, cpv):
 		""" Get a list of all DIST files associated to the given cpv """
-		return self.db.getfetchlist(cpv, mysettings=self.mysettings, all=True)[1]
+		return self.fetchlist_dict[cpv]
 	
 	def updateFileHashes(self, ftype, fname, checkExisting=True, ignoreMissing=True, reuseExisting=False):
 		""" Regenerate hashes for the given file """
