@@ -193,7 +193,7 @@ class Manifest(object):
 		mylines = []
 		for dname in digests:
 			myhashes = perform_multiple_checksums(dname, portage_const.MANIFEST1_HASH_FUNCTIONS+["size"])
-			for h in myhashes.keys():
+			for h in myhashes:
 				mylines.append((" ".join([h, str(myhashes[h]), os.path.join("files", os.path.basename(dname)), str(myhashes["size"])])))
 		fd.write("\n".join(mylines))
 		fd.write("\n")
@@ -257,7 +257,7 @@ class Manifest(object):
 		self.fhashdict[ftype][fname] = {}
 		if hashdict != None:
 			self.fhashdict[ftype][fname].update(hashdict)
-		if not portage_const.MANIFEST2_REQUIRED_HASH in self.fhashdict[ftype][fname].keys():
+		if not portage_const.MANIFEST2_REQUIRED_HASH in self.fhashdict[ftype][fname]:
 			self.updateFileHashes(ftype, fname)
 	
 	def removeFile(self, ftype, fname):
@@ -266,7 +266,7 @@ class Manifest(object):
 	
 	def hasFile(self, ftype, fname):
 		""" Return wether the Manifest contains an entry for the given type,filename pair """
-		return (fname in self.fhashdict[ftype].keys())
+		return (fname in self.fhashdict[ftype])
 	
 	def findFile(self, fname):
 		""" Return entrytype of the given file if present in Manifest or None if not present """
@@ -315,7 +315,7 @@ class Manifest(object):
 			fname = os.path.join(self.distdir, f)
 			if os.path.exists(fname):
 				self.fhashdict["DIST"][f] = perform_multiple_checksums(fname, self.hashes)
-			elif assumeDistfileHashes and f in distfilehashes.keys():
+			elif assumeDistfileHashes and f in distfilehashes:
 				self.fhashdict["DIST"][f] = distfilehashes[f]
 			else:
 				raise FileNotFound(fname)			
@@ -337,7 +337,7 @@ class Manifest(object):
 			self.checkTypeHashes(t, ignoreMissingFiles=ignoreMissingFiles)
 	
 	def checkTypeHashes(self, idtype, ignoreMissingFiles=False):
-		for f in self.fhashdict[idtype].keys():
+		for f in self.fhashdict[idtype]:
 			self.checkFileHashes(idtype, f, ignoreMissing=ignoreMissingFiles)
 	
 	def checkFileHashes(self, ftype, fname, ignoreMissing=False):
@@ -375,14 +375,14 @@ class Manifest(object):
 			self.fhashdict[ftype][fname] = {}
 		myhashkeys = list(self.hashes)
 		if reuseExisting:
-			for k in [h for h in self.fhashdict[ftype][fname].keys() if h in myhashkeys]:
+			for k in [h for h in self.fhashdict[ftype][fname] if h in myhashkeys]:
 				myhashkeys.remove(k)
 		myhashes = perform_multiple_checksums(self._getAbsname(ftype, fname), myhashkeys)
 		self.fhashdict[ftype][fname].update(myhashes)
 	
 	def updateTypeHashes(self, idtype, checkExisting=False, ignoreMissingFiles=True):
 		""" Regenerate all hashes for all files of the given type """
-		for fname in self.fhashdict[idtype].keys():
+		for fname in self.fhashdict[idtype]:
 			self.updateFileHashes(idtype, fname, checkExisting)
 	
 	def updateAllHashes(self, checkExisting=False, ignoreMissingFiles=True):
