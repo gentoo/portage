@@ -880,6 +880,8 @@ for x in scanlist:
 				if y == "CVS":
 					continue
 				for z in os.listdir(checkdir+"/files/"+y):
+					if z == "CVS":
+						continue
 					filesdirlist.append(y+"/"+z)
 			# current policy is no files over 20k, this is the check.
 			elif mystat.st_size > 20480:
