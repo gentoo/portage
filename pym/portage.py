@@ -4090,7 +4090,14 @@ class bindbapi(fakedbapi):
 		self.cpvdict={}
 		self.cpdict={}
 
+	def match(self, *pargs, **kwargs):
+		if self.bintree and not self.bintree.populated:
+			self.bintree.populate()
+		return fakedbapi.match(self, *pargs, **kwargs)
+
 	def aux_get(self,mycpv,wants):
+		if self.bintree and not self.bintree.populated:
+			self.bintree.populate()
 		mysplit = string.split(mycpv,"/")
 		mylist  = []
 		tbz2name = mysplit[1]+".tbz2"
