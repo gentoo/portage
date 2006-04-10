@@ -1617,8 +1617,8 @@ else:
 	if "sign" in portage.features:
 		mydone=[]
 		if repolevel==3:   # In a package dir
-			repoman_settings["O"]="./"
-			while(gpgsign(repoman_settings["O"]+"/Manifest")):
+			repoman_settings["O"] = "."
+			while(gpgsign(os.path.join(repoman_settings["O"], "Manifest"))):
 				portage.writemsg("!!! YOU MUST sign the Manifest.\n")
 				portage.writemsg("!!! You can also disable this for the time being by removing FEATURES='sign'")
 				time.sleep(3)
@@ -1630,8 +1630,8 @@ else:
 				if xs[0] in mydone:
 					continue
 				mydone.append(xs[0])
-				repoman_settings["O"]="./"+xs[0]
-				while(gpgsign(repoman_settings["O"]+"/Manifest")):
+				repoman_settings["O"] = os.path.join(".", xs[0])
+				while(gpgsign(os.path.join(repoman_settings["O"], "Manifest"))):
 					portage.writemsg("!!! YOU MUST sign the Manifest.\n")
 					portage.writemsg("!!! You can also disable this for the time being by removing FEATURES='sign'")
 					time.sleep(3)
@@ -1644,8 +1644,8 @@ else:
 				if string.join(xs[:2],"/") in mydone:
 					continue
 				mydone.append(string.join(xs[:2],"/"))
-				repoman_settings["O"]="./"+string.join(xs[:2],"/")
-				while(gpgsign(repoman_settings["O"]+"/Manifest")):
+				repoman_settings["O"] = os.path.join(".", xs[0], xs[1])
+				while(gpgsign(os.path.join(repoman_settings["O"], "Manifest"))):
 					portage.writemsg("!!! YOU MUST sign the Manifest.\n")
 					portage.writemsg("!!! You can also disable this for the time being by removing FEATURES='sign'")
 					time.sleep(3)
