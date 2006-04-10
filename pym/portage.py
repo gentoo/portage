@@ -6349,12 +6349,9 @@ class FetchlistDict(UserDict.DictMixin):
 		self.cp = os.sep.join(pkgdir.split(os.sep)[-2:])
 		self.settings = settings
 		self.db = portagetree().dbapi
-		porttree = os.path.dirname(os.path.dirname(pkgdir))
-		porttree_key = os.path.normpath(os.path.realpath(porttree)).strip(os.sep)
+		porttree = os.sep + os.path.normpath(os.path.dirname(os.path.dirname(pkgdir))).strip(os.sep)
 		# This ensures that the fetchlist comes from the correct portage tree.
-		for t in self.db.porttrees:
-			if os.path.normpath(os.path.realpath(t)).strip(os.sep) != porttree_key:
-				self.db.porttrees.remove(t)
+		self.db.porttrees = [porttree]
 	def __getitem__(self, pkg_key):
 		return self.db.getfetchlist(pkg_key, mysettings=self.settings, all=True)[1]
 	def has_key(self, pkg_key):
