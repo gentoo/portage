@@ -6376,7 +6376,14 @@ class FetchlistDict(UserDict.DictMixin):
 		return pkg_key in self.keys()
 	def keys(self):
 		"""Returns keys for all packages within pkgdir"""
-		return self.db.cp_list(self.cp)
+		global portdb # has the global auxdb caches
+		all_trees = portdb.porttrees
+		# This ensures that the key list comes from the correct portage tree.
+		portdb.porttrees = self.porttrees
+		mykeys = portdb.cp_list(self.cp)
+		# XXX The db is global so we restore it's trees back to their original state.
+		portdb.porttrees = all_trees
+		return mykeys
 
 def cleanup_pkgmerge(mypkg,origdir):
 	shutil.rmtree(settings["PORTAGE_TMPDIR"]+"/binpkgs/"+mypkg)
