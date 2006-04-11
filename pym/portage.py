@@ -2059,7 +2059,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 			return 0
 	return 1
 
-def digestgen(myarchives,mysettings,db=None,overwrite=1,manifestonly=0):
+def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0):
 	"""generates digest file if missing.  Assumes all files are available.	If
 	overwrite=0, the digest will only be created if it doesn't already exist.
 	DEPRECATED: this now only is a compability wrapper for 
@@ -2069,9 +2069,6 @@ def digestgen(myarchives,mysettings,db=None,overwrite=1,manifestonly=0):
 	# NOTE: the old code contains a lot of crap that should really be elsewhere 
 	#       (e.g. cvs stuff should be in ebuild(1) and/or repoman)
 	# TODO: error/exception handling
-
-	if db is None:
-		db = portagetree().dbapi
 
 	global settings
 	mf = Manifest(mysettings["O"], FetchlistDict(mysettings["O"], mysettings), mysettings["DISTDIR"])
