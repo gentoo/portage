@@ -6829,6 +6829,7 @@ class LazyDatabasesDict(dict):
 					# The binarytree likely needs to be populated now, so we
 					# do it now to make sure that all method calls are safe.
 					myvalue.populate()
+				self[item_key] = myvalue
 			return myvalue
 		return dict.__getitem__(self, item_key)
 
