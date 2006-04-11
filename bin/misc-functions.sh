@@ -184,77 +184,27 @@ install_qa_check() {
 		unset INSTALLTOD
 	fi
 
-	# dumps perms to stdout.  if error, no perms dumped.
-	function stat_perms() {
-		local f
-		# only define do_stat if it hasn't been already
-		if ! type -p do_stat &> /dev/null; then
-			if ! type -p stat &>/dev/null; then
-				do_stat() {
-					# Generic version -- Octal result
-					python -c "import os,stat; print '%o' % os.stat('$1')[stat.ST_MODE]"
-				}
-			else
-				if [ "${USERLAND}" == "BSD" ] || [ "${USERLAND}" == "Darwin" ]; then
-					do_stat() {
-						# BSD version -- Octal result
-						$(type -p stat) -f '%p' "$1"
-					}
-				else
-					do_stat() {
-						# Linux version -- Hex result converted to Octal
-						f=$($(type -p stat) -c '%f' "$1") || return $?
-						printf '%o' "0x$f"
-					}
-				fi
-			fi
-		fi
-
-		f=$(do_stat "$@") || return
-		f="${f:2:4}"
-		echo $f
-	}
-
-	local file s
-	local count=0
-	find "${D}/" -user  portage | while read file; do
-		count=$(( $count + 1 ))
-		if [ -L "${file}" ]; then
-			lchown ${PORTAGE_INST_UID:-0} "${file}"
-		else
-			s=$(stat_perms "$file")
-			if [ -z "${s}" ]; then
-				ewarn "failed stat_perm'ing $file.  User intervention during install isn't wise..."
-				continue
-			fi
-			chown ${PORTAGE_INST_UID:-0} "$file"
-			chmod "$s" "$file"
-		fi
-	done
-	if (( $count > 0 )); then
-		ewarn "$count files were installed with user portage!"
+	local file="${T}/find-portage-log"
+	local count=$(find "${D}"/ -user portage | wc -l)
+	if [[ ${count} -gt 0 ]] ; then
+		ewarn "${count} files were installed with user portage!"
+		find "${D}"/ -xtype l -user portage -print0 > "${file}"
+		[[ -s ${file} ]] && cat "${file}" | xargs -0 chown -h ${PORTAGE_INST_UID:-0}
+		find "${D}"/ -user portage -print0 > "${file}"
+		[[ -s ${file} ]] && cat "${file}" | xargs -0 chown ${PORTAGE_INST_UID:-0}
+		rm -f "${file}"
 	fi
 
-	count=0
-	find "${D}/" -group portage | while read file; do
-		count=$(( $count + 1 ))
-		if [ -L "${file}" ]; then
-			lchgrp ${PORTAGE_INST_GID:-0} "${file}"
-		else
-			s=$(stat_perms "$file")
-			if [ -z "${s}" ]; then
-				echo "failed stat_perm'ing '$file' . User intervention during install isn't wise..."
-				continue
-			fi
-			chgrp ${PORTAGE_INST_GID:-0} "$file"
-			chmod "$s" "$file"
-		fi
-	done
-	if (( $count > 0 )); then
-		ewarn "$count files were installed with group portage!"
-	fi
+	count=$(find "${D}"/ -group portage | wc -l)
+	if [[ ${count} -gt 0 ]] ; then
+		ewarn "${count} files were installed with group portage!"
 
-	unset -f stat_perms
+		find "${D}"/ -xtype l -group portage -print0 > "${file}"
+		[[ -s ${file} ]] && cat "${file}" | xargs -0 chgrp -h ${PORTAGE_INST_GID:-0}
+		find "${D}"/ -group portage -print0 > "${file}"
+		[[ -s ${file} ]] && cat "${file}" | xargs -0 chgrp ${PORTAGE_INST_GID:-0}
+		rm -f "${file}"
+	fi
 
 	# Portage regenerates this on the installed system.
 	if [ -f "${D}/usr/share/info/dir.gz" ]; then
