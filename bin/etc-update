@@ -40,16 +40,11 @@ function scan() {
 		exit 1
 	fi
 
-	# `readlink -f` is not supported on all systems, so it's necessary to test
-	# for the alternative "realpath" program.
-	local realpath_cmd="$(type -p "realpath")"
-	[ -z "${realpath_cmd}" ] && realpath_cmd="readlink -q -f"
-
 	for path in ${CONFIG_PROTECT} ; do
 		[ ! -d ${path} ] && continue
 
 		ofile=""
-		for file in `find -L ${path}/ -iname "._cfg????_*" -exec ${realpath_cmd} '{}' ';' | uniq |
+		for file in `find ${path}/ -iname "._cfg????_*" |
 			   sed -e "s:\(^.*/\)\(\._cfg[0-9]*_\)\(.*$\):\1\2\3\%\2\%\3:" |
 			   sort -t'%' -k3 -k2 | LANG=POSIX LC_ALL=POSIX cut -f1 -d'%'`; do
 			rpath=`echo "${file/\/\///}" | sed -e "s:/[^/]*$::"`
