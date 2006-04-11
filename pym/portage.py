@@ -2089,7 +2089,7 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0):
 	
 	return 1
 
-def digestParseFile(myfilename,mysettings=None,db=None):
+def digestParseFile(myfilename, mysettings=None):
 	"""(filename) -- Parses a given file for entries matching:
 	<checksumkey> <checksum_hex_string> <filename> <filesize>
 	Ignores lines that don't start with a valid checksum identifier
@@ -2104,9 +2104,8 @@ def digestParseFile(myfilename,mysettings=None,db=None):
 	elif mysplit[-1] == "Manifest":
 		pkgdir = os.sep + os.sep.join(mysplit[:-1]).strip(os.sep)
 
-	if db is None:
-		db = portagetree().dbapi
 	if mysettings is None:
+		global settings
 		mysettings = config(clone=settings)
 
 	mf = Manifest(pkgdir, FetchlistDict(pkgdir, mysettings), mysettings["DISTDIR"])
