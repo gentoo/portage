@@ -11,6 +11,8 @@ if [ ! -z "${PORTAGE_GPG_DIR}" ]; then
 	SANDBOX_PREDICT="${SANDBOX_PREDICT}:${PORTAGE_GPG_DIR}"
 fi
 
+declare -rx EBUILD_PHASE
+
 if [ "$*" != "depend" ] && [ "$*" != "clean" ] && [ "$*" != "nofetch" ]; then
 	if [ -f "${T}/environment" ]; then
 		source "${T}/environment" &>/dev/null
@@ -20,8 +22,6 @@ fi
 if [ -n "$#" ]; then
 	ARGS="${*}"
 fi
-
-declare -rx EBUILD_PHASE="$*"
 
 # Prevent aliases from causing portage to act inappropriately.
 # Make sure it's before everything so we don't mess aliases that follow.

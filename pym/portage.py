@@ -2197,7 +2197,9 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 			if retval:
 				return retval
 	kwargs = actionmap[mydo]["args"]
+	mysettings["EBUILD_PHASE"] = mydo
 	phase_retval = spawn(actionmap[mydo]["cmd"] % mydo, mysettings, debug=debug, logfile=logfile, **kwargs)
+	del mysettings["EBUILD_PHASE"]
 	if phase_retval == os.EX_OK:
 		if mydo == "install":
 			mycommand = " ".join([MISC_SH_BINARY, "install_qa_check"])
