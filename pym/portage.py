@@ -2154,14 +2154,12 @@ def digestCheckFiles(myfiles, mydigests, basedir, note="", strict=0):
 	return 1
 
 
-def digestcheck(myfiles, mysettings, strict=0, justmanifest=0, db=None):
+def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 	"""Verifies checksums.  Assumes all files have been downloaded.
 	DEPRECATED: this is now only a compability wrapper for 
 	            portage_manifest.Manifest()."""
 	
 	pkgdir = mysettings["O"]
-	if db is None:
-		db = portagetree().dbapi
 	mf = Manifest(pkgdir, FetchlistDict(pkgdir, mysettings), mysettings["DISTDIR"])
 	try:
 		if strict:
