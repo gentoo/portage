@@ -2247,6 +2247,8 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, t
 		mysettings.reset(use_cache=use_cache)
 	mysettings.setcpv(mycpv,use_cache=use_cache)
 
+	mysettings["EBUILD_PHASE"] = mydo
+
 	if debug: # Otherwise it overrides emerge's settings.
 		# We have no other way to set debug... debug can't be passed in
 		# due to how it's coded... Don't overwrite this so we can use it.
