@@ -6804,11 +6804,34 @@ if (secpass==2) and (not os.environ.has_key("SANDBOX_ACTIVE")):
 		global_updates()
 
 #continue setting up other trees
-db["/"]["porttree"] = portagetree("/")
-db["/"]["bintree"] = binarytree("/", settings["PKGDIR"])
+class LazyDatabasesDict(dict):
+	"""This class implements lazy construction of the global databases
+	db[root]["porttree"] and db[root]["bintree"]."""
+	def __init__(self, myroot, items):
+		dict.__init__(self)
+		self.update(items)
+		self.myroot = myroot
+		self.lazy_keys = ("porttree", "bintree")
+		for x in self.lazy_keys:
+			self[x] = None
+	def __getitem__(self, item_key):
+		if item_key in self.lazy_keys and item_key in self:
+			myvalue = dict.__getitem__(self, item_key)
+			if myvalue is None:
+				if "porttree" == item_key:
+					myvalue = portagetree(self.myroot)
+				elif "bintree" == item_key:
+					global settings
+					myvalue = binarytree(self.myroot, settings["PKGDIR"])
+					# The binarytree likely needs to be populated now, so we
+					# do it now to make sure that all method calls are safe.
+					myvalue.populate()
+			return myvalue
+		return dict.__getitem__(self, item_key)
+
+db["/"] = LazyDatabasesDict("/", db["/"])
 if root!="/":
-	db[root]["porttree"] = portagetree(root)
-	db[root]["bintree"] = binarytree(root, settings["PKGDIR"])
+	db[root] = LazyDatabasesDict(root, db[root])
 
 profileroots = [settings["PORTDIR"]+"/profiles/"]
 for x in settings["PORTDIR_OVERLAY"].split():
