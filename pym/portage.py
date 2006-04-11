@@ -2715,6 +2715,9 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 		if not os.path.exists(mysettings["PORTAGE_BUILDDIR"]+"/.installed"):
 			print "!!! mydo=qmerge, but install phase hasn't been ran"
 			sys.exit(1)
+		# qmerge is a special phase that implies noclean.
+		if "noclean" not in mysettings.features:
+			mysettings.features.append("noclean")
 		#qmerge is specifically not supposed to do a runtime dep check
 		return merge(mysettings["CATEGORY"],mysettings["PF"],mysettings["D"],mysettings["PORTAGE_BUILDDIR"]+"/build-info",myroot,mysettings,myebuild=mysettings["EBUILD"],mytree=tree)
 	elif mydo=="merge":
