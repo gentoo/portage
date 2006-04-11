@@ -2103,9 +2103,9 @@ def digestParseFile(myfilename,mysettings=None,db=None):
 
 	mysplit = myfilename.split(os.sep)
 	if mysplit[-2] == "files" and mysplit[-1].startswith("digest-"):
-		pkgdir = os.sep+os.sep.join(mysplit[:-2])
+		pkgdir = os.sep + os.sep.join(mysplit[:-2]).strip(os.sep)
 	elif mysplit[-1] == "Manifest":
-		pkgdir = os.sep+os.sep.join(mysplit[:-1])
+		pkgdir = os.sep + os.sep.join(mysplit[:-1]).strip(os.sep)
 
 	if db is None:
 		db = portagetree().dbapi
@@ -6360,13 +6360,17 @@ class FetchlistDict(UserDict.DictMixin):
 		self.pkgdir = pkgdir
 		self.cp = os.sep.join(pkgdir.split(os.sep)[-2:])
 		self.settings = settings
-		self.db = portagetree().dbapi
-		porttree = os.sep + os.path.normpath(os.path.dirname(os.path.dirname(pkgdir))).strip(os.sep)
-		# This ensures that the fetchlist comes from the correct portage tree.
-		self.db.porttrees = [porttree]
+		self.porttrees = [os.path.dirname(os.path.dirname(pkgdir))]
 	def __getitem__(self, pkg_key):
 		"""Returns the complete fetch list for a given package."""
-		return self.db.getfetchlist(pkg_key, mysettings=self.settings, all=True)[1]
+		global portdb # has the global auxdb caches
+		all_trees = portdb.porttrees
+		# This ensures that the fetchlist comes from the correct portage tree.
+		portdb.porttrees = self.porttrees
+		fetchlist = portdb.getfetchlist(pkg_key, mysettings=self.settings, all=True)[1]
+		# XXX The db is global so we restore it's trees back to their original state.
+		portdb.porttrees = all_trees
+		return fetchlist
 	def has_key(self, pkg_key):
 		"""Returns true if the given package exists within pkgdir."""
 		return pkg_key in self.keys()
