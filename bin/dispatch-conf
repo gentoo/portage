@@ -18,8 +18,16 @@ import os, shutil, sys, string, re, commands, atexit
 sys.path = ["/usr/lib/portage/pym"]+sys.path
 
 import portage, dispatch_conf
+import portage_exec
 
-FIND_EXTANT_CONFIGS  = "find %s/ -iname '._cfg????_*' | sed -e 's://:/:g'"
+# `readlink -f` is not supported on all systems, so it's necessary to test for
+# the alternative "realpath" program.
+FIND_EXTANT_CONFIGS  = "find -L %s/ -iname '._cfg????_*' -exec realpath '{}' ';' | uniq | sed -e 's://:/:g'"
+realpath_binary = portage_exec.find_binary("realpath")
+if realpath_binary is None:
+    FIND_EXTANT_CONFIGS = FIND_EXTANT_CONFIGS.replace("realpath", "readlink -q -f")
+del realpath_binary
+
 DIFF_CONTENTS        = 'diff -Nu %s %s'
 DIFF_CVS_INTERP      = 'diff -Nu %s %s | grep "^[+-][^+-]" | grep -v "# .Header:.*"'
 DIFF_WSCOMMENTS      = 'diff -Nu %s %s | grep "^[+-][^+-]" | grep -v "^[-+]#" | grep -v "^[-+][:space:]*$"'
