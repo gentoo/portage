@@ -6472,28 +6472,23 @@ def getvirtuals(myroot):
 	return settings.getvirtuals(myroot)
 
 def do_vartree(mysettings):
-	class LazyVirtualsDict(dict):
+	class LazyVirtualsItem(object):
 		def __init__(self, myroot):
-			super(LazyVirtualsDict, self).__init__()
-			self.myroot = myroot
-			self["virtuals"] = None
-		def __getitem__(self, key):
-			if "virtuals" == key:
-				if "virtuals" in self:
-					virtuals = super(LazyVirtualsDict, self).__getitem__("virtuals")
-					if virtuals is not None:
-						return virtuals
-					else:
-						global settings
-						virtuals = settings.getvirtuals(self.myroot)
-						self["virtuals"] = virtuals
-						return virtuals
-			return super(LazyVirtualsDict, self).__getitem__(key)
+			self._myroot = myroot
+			self._virtuals = None
+		def __call__(self):
+			if self._virtuals is None:
+				global settings
+				self._virtuals = settings.getvirtuals(self._myroot)
+			return self._virtuals
+
 	global db, root
-	db["/"] = LazyVirtualsDict("/")
+	db["/"] = portage_util.LazyItemsDict()
+	db["/"].addLazyItem("virtuals", LazyVirtualsItem("/"))
 	db["/"]["vartree"] = vartree("/")
 	if root!="/":
-		db[root] = LazyVirtualsDict(root)
+		db[root] = portage_util.LazyItemsDict()
+		db[root].addLazyItem("virtuals", LazyVirtualsItem(root))
 		db[root]["vartree"] = vartree(root)
 	#We need to create the vartree first, then load our settings, and then set up our other trees
 
@@ -6807,35 +6802,25 @@ if (secpass==2) and (not os.environ.has_key("SANDBOX_ACTIVE")):
 		global_updates()
 
 #continue setting up other trees
-class LazyDatabasesDict(dict):
-	"""This class implements lazy construction of the global databases
-	db[root]["porttree"] and db[root]["bintree"]."""
-	def __init__(self, myroot, items):
-		dict.__init__(self)
-		self.update(items)
-		self.myroot = myroot
-		self.lazy_keys = ("porttree", "bintree")
-		for x in self.lazy_keys:
-			self[x] = None
-	def __getitem__(self, item_key):
-		if item_key in self.lazy_keys and item_key in self:
-			myvalue = dict.__getitem__(self, item_key)
-			if myvalue is None:
-				if "porttree" == item_key:
-					myvalue = portagetree(self.myroot)
-				elif "bintree" == item_key:
-					global settings
-					myvalue = binarytree(self.myroot, settings["PKGDIR"])
-					# The binarytree likely needs to be populated now, so we
-					# do it now to make sure that all method calls are safe.
-					myvalue.populate()
-				self[item_key] = myvalue
-			return myvalue
-		return dict.__getitem__(self, item_key)
+class LazyBintreeItem(object):
+	"""This class implements lazy construction of db[root]["bintree"]."""
+	def __init__(self, myroot):
+		self._myroot = myroot
+		self._bintree = None
+	def __call__(self):
+		if self._bintree is None:
+			global settings
+			self._bintree = binarytree(self._myroot, settings["PKGDIR"])
+			# The binarytree likely needs to be populated now, so we
+			# do it now to make sure that all method calls are safe.
+			self._bintree.populate()
+		return self._bintree
 
-db["/"] = LazyDatabasesDict("/", db["/"])
+db["/"]["porttree"] = portagetree("/")
+db["/"].addLazyItem("bintree", LazyBintreeItem("/"))
 if root!="/":
-	db[root] = LazyDatabasesDict(root, db[root])
+	db[root]["porttree"] = portagetree(root)
+	db[root].addLazyItem("bintree", LazyBintreeItem(root))
 
 profileroots = [settings["PORTDIR"]+"/profiles/"]
 for x in settings["PORTDIR_OVERLAY"].split():

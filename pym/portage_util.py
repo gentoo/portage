@@ -710,3 +710,30 @@ def ensure_dirs(dir_path, *args, **kwargs):
 			raise
 	perms_modified = apply_permissions(dir_path, *args, **kwargs)
 	return created_dir or perms_modified
+
+class LazyItemsDict(dict):
+	"""A mapping object that behaves like a standard dict except that it allows
+	for lazy initialization of values via callable objects.  Lazy items can be
+	overwritten and deleted just as normal items."""
+	def __init__(self):
+		dict.__init__(self)
+		self.lazy_items = {}
+	def addLazyItem(self, item_key, value_callable):
+		"""Add a lazy item for the given key.  When the item is requested,
+		value_callable will be called with no arguments."""
+		self.lazy_items[item_key] = value_callable
+		# make it show up in self.keys(), etc...
+		dict.__setitem__(self, item_key, None)
+	def __getitem__(self, item_key):
+		if item_key in self.lazy_items:
+			return self.lazy_items[item_key]()
+		else:
+			return dict.__getitem__(self, item_key)
+	def __setitem__(self, item_key, value):
+		if item_key in self.lazy_items:
+			del self.lazy_items[item_key]
+		dict.__setitem__(self, item_key, value)
+	def __delitem__(self, item_key):
+		if item_key in self.lazy_items:
+			del self.lazy_items[item_key]
+		dict.__delitem__(self, item_key)
