@@ -4511,7 +4511,7 @@ class portdbapi(dbapi):
 				self.manifestVerifier = portage_gpg.FileChecker(self.mysettings["PORTAGE_GPG_DIR"], "gentoo.gpg", minimumTrust=self.manifestVerifyLevel)
 
 		#self.root=settings["PORTDIR"]
-		self.porttree_root = porttree_root
+		self.porttree_root = os.path.realpath(porttree_root)
 
 		self.depcachedir = self.mysettings.depcachedir[:]
 
@@ -4532,7 +4532,8 @@ class portdbapi(dbapi):
 		self.xcache={}
 		self.frozen=0
 
-		self.porttrees=[self.porttree_root]+self.mysettings["PORTDIR_OVERLAY"].split()
+		self.porttrees = [self.porttree_root] + \
+			[os.path.realpath(t) for t in self.mysettings["PORTDIR_OVERLAY"].split()]
 		self.auxdbmodule  = self.mysettings.load_best_module("portdbapi.auxdbmodule")
 		self.auxdb        = {}
 
@@ -6275,7 +6276,7 @@ class FetchlistDict(UserDict.DictMixin):
 		self.pkgdir = pkgdir
 		self.cp = os.sep.join(pkgdir.split(os.sep)[-2:])
 		self.settings = settings
-		self.porttrees = [os.path.dirname(os.path.dirname(pkgdir))]
+		self.porttrees = [os.path.realpath(os.path.dirname(os.path.dirname(pkgdir)))]
 	def __getitem__(self, pkg_key):
 		"""Returns the complete fetch list for a given package."""
 		global portdb # has the global auxdb caches
