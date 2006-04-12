@@ -1402,8 +1402,26 @@ class config:
 			if mykey=="USE":
 				mydbs=self.uvlist
 				# XXX Global usage of db... Needs to go away somehow.
+				global db, root
 				if "auto" in self["USE_ORDER"].split(":") and db.has_key(root) and db[root].has_key("vartree"):
-					self.configdict["auto"]["USE"]=autouse(db[root]["vartree"],use_cache=use_cache)
+					class LazyAutouse(object):
+						def __init__(self, *pargs, **kwargs):
+							self._use = None
+							self._pargs = pargs
+							self._kwargs = kwargs
+						def __call__(self):
+							if self._use is None:
+								global db, root
+								self._use = autouse(db[root]["vartree"], *self._pargs, **self._kwargs)
+							return self._use
+					if isinstance(self.configdict["auto"],
+						portage_util.LazyItemsDict):
+						lazy_values = self.configdict["auto"]
+					else:
+						lazy_values = portage_util.LazyItemsDict()
+						lazy_values.update(self.configdict["auto"])
+					lazy_values.addLazyItem("USE", LazyAutouse(use_cache=use_cache))
+					self.configdict["auto"] = lazy_values
 				else:
 					self.configdict["auto"]["USE"]=""
 			else:
