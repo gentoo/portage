@@ -139,7 +139,7 @@ configuration file is followed by a list of possible replacement files."
 			else
 				dialog --title "${title}" --menu "${my_title}" \
 					0 0 0 $(echo -e "-1 Exit\n$(<${TMP}/menuitems)") \
-					2> ${TMP}/input
+					2> ${TMP}/input || die "User termination!" 0
 				input=$(<${TMP}/input)
 			fi
 			if (( ${input} == -5 )); then
@@ -193,7 +193,7 @@ function do_file() {
 				else
 					dialog --title "${title}" --menu "${my_title}" \
 						0 0 0 `echo -e "$(<${TMP}/menuitems)\n${fcount} Exit"` \
-						2> ${TMP}/input
+						2> ${TMP}/input || die "User termination!" 0
 					my_input=$(<${TMP}/input)
 				fi
 			fi # OVERWRITE_ALL
