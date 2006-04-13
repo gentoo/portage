@@ -110,18 +110,10 @@ function sel_file() {
 				isfirst=${file}
 			fi
 			numshow=$(printf "%${numwidth}i${PAR} " ${file})
-			spacer=${numshow//?/ }
+			numupdates=$(( $(wc -l <${TMP}/files/${file}) - 1 ))
 			echo -n "${numshow}"
 			if (( ${mode} == 0 )); then
-				spacedit=0
-				for word in $(<${TMP}/files/${file}); do
-					if (( ${spacedit} == 1 )); then
-						echo -n "${spacer}"
-					else
-						spacedit=1
-					fi
-					echo ${word}
-				done
+				echo "$(head -n1 ${TMP}/files/${file}) (${numupdates})"
 			else
 				head -n1 ${TMP}/files/${file}
 			fi
