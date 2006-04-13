@@ -44,7 +44,7 @@ function scan() {
 		[ ! -d ${path} ] && continue
 
 		ofile=""
-		for file in `find ${path}/ -iname "._cfg????_*" |
+		for file in `find ${path}/ -iname '._cfg????_*' ! -name '.*~' ! -name '.*.bak' |
 			   sed -e "s:\(^.*/\)\(\._cfg[0-9]*_\)\(.*$\):\1\2\3\%\2\%\3:" |
 			   sort -t'%' -k3 -k2 | LANG=POSIX LC_ALL=POSIX cut -f1 -d'%'`; do
 			rpath=`echo "${file/\/\///}" | sed -e "s:/[^/]*$::"`
