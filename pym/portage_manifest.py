@@ -86,11 +86,16 @@ class Manifest(object):
 		
 	def _read(self):
 		""" Parse Manifest file for this instance """
-		if not os.path.exists(self.getFullname()):
-			return
-		fd = open(self.getFullname(), "r")
-		mylines = fd.readlines()
-		fd.close()
+		mylines = []
+		try:
+			fd = open(self.getFullname(), "r")
+			mylines.extend(fd.readlines())
+			fd.close()
+		except (OSError, IOError), e:
+			if e.errno == errno.ENOENT:
+				pass
+			else:
+				raise
 		mylines.extend(self._readDigests().split("\n"))
 		self._parseDigests(mylines, myhashdict=self.fhashdict)
 

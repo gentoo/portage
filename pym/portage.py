@@ -2163,33 +2163,31 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 	"""Verifies checksums.  Assumes all files have been downloaded.
 	DEPRECATED: this is now only a compability wrapper for 
 	            portage_manifest.Manifest()."""
-	
+	if not strict:
+		return 1
 	pkgdir = mysettings["O"]
+	manifest_path = os.path.join(pkgdir, "Manifest")
+	if not os.path.exists(manifest_path):
+		writemsg("!!! Manifest file not found: '%s'\n" % manifest_path)
+		if strict:
+			return 0
 	mf = Manifest(pkgdir, FetchlistDict(pkgdir, mysettings), mysettings["DISTDIR"])
 	try:
-		if strict:
-			print ">>> checking ebuild checksums",
-			mf.checkTypeHashes("EBUILD")
-			print ":-)"
-			print ">>> checking auxfile checksums",
-			mf.checkTypeHashes("AUX")
-			print ":-)"
-			print ">>> checking miscfile checksums",
-			mf.checkTypeHashes("MISC", ignoreMissingFiles=True)
-			print ":-)"
+		writemsg_stdout(">>> checking ebuild checksums\n")
+		mf.checkTypeHashes("EBUILD")
+		writemsg_stdout(">>> checking auxfile checksums\n")
+		mf.checkTypeHashes("AUX")
+		writemsg_stdout(">>> checking miscfile checksums\n")
+		mf.checkTypeHashes("MISC", ignoreMissingFiles=True)
+		writemsg_stdout(">>> checking distfiles checksums\n")
 		for f in myfiles:
-			if f.startswith("files/"):
-				f = f[5:]
-			print ">>> checking %s checksums" % f,
-			mf.checkFileHashes(mf.findFile(f), f)	
-			print ":-)"
+			mf.checkFileHashes(mf.findFile(f), f)
 	except portage_exception.DigestException, e:
-		print e.value
-		print red("!!! ")+"Digest verification failed:"
-		print red("!!! ")+"    "+e.value[0]
-		print red("!!! ")+"Reason: "+e.value[1]
-		print red("!!! ")+"Got: "+str(e.value[2])
-		print red("!!! ")+"Expected: "+str(e.value[3])
+		writemsg("!!! Digest verification failed:\n")
+		writemsg("!!! %s\n" % e.value[0])
+		writemsg("!!! Reason: %s\n" % e.value[1])
+		writemsg("!!! Got: %s\n" % e.value[2])
+		writemsg("!!! Expected: %s\n" % e.value[3])
 		return 0
 	return 1
 
