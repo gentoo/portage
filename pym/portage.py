@@ -2078,33 +2078,20 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 	return 1
 
 def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0):
-	"""generates digest file if missing.  Assumes all files are available.	If
-	overwrite=0, the digest will only be created if it doesn't already exist.
+	"""Generates a digest file if missing.  Assumes all files are available.
 	DEPRECATED: this now only is a compability wrapper for 
-	            portage_manifest.Manifest()"""
-
-	# NOTE: manifestonly is useless with manifest2 and therefore ignored
-	# NOTE: the old code contains a lot of crap that should really be elsewhere 
-	#       (e.g. cvs stuff should be in ebuild(1) and/or repoman)
-	# TODO: error/exception handling
-
+	            portage_manifest.Manifest()
+	NOTE: manifestonly and overwrite are useless with manifest2 and
+	      are therefore ignored."""
 	global settings
 	mf = Manifest(mysettings["O"], FetchlistDict(mysettings["O"], mysettings), mysettings["DISTDIR"])
-	mf.create(assumeDistfileHashes=True)
-	for f in myarchives:
-		# the whole type evaluation is only for the case that myarchives isn't a 
-		# DIST file as create() determines the type on its own
-		writemsg(">>> Creating Manifest for %s\n" % mysettings["O"])
-		try:
-			writemsg(">>> Adding digests for file %s\n" % f)
-			mf.updateHashesGuessType(f, checkExisting=False, reuseExisting=not os.path.exists(os.path.join(mysettings["DISTDIR"], f)))
-		except portage_exception.FileNotFound, e:
-			writemsg("!!! File %s doesn't exist, can't update Manifest\n" % str(e))
-			return 0
-	# NOTE: overwrite=0 is only used by emerge --digest, not sure we wanna keep that
-	if overwrite or not os.path.exists(mf.getFullname()):
-		mf.write(sign=False)
-	
+	writemsg(">>> Creating Manifest for %s\n" % mysettings["O"])
+	try:
+		mf.create(assumeDistfileHashes=True, requiredDistfiles=myarchives)
+	except portage_exception.FileNotFound, e:
+		writemsg("!!! File %s doesn't exist, can't update Manifest\n" % str(e))
+		return 0
+	mf.write(sign=False)
 	return 1
 
 def digestParseFile(myfilename, mysettings=None):

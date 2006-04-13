@@ -3,7 +3,8 @@
 # $Header: $
 
 import errno, os, sets
-from itertools import imap
+if not hasattr(__builtins__, "set"):
+	from sets import Set as set
 
 import portage_exception, portage_versions, portage_const
 from portage_checksum import *
@@ -135,6 +136,15 @@ class Manifest(object):
 		for cpv in cpvlist:
 			dname = os.path.join(self.pkgdir, "files", "digest-%s" % self._catsplit(cpv)[1])
 			distlist = self._getCpvDistfiles(cpv)
+			have_all_checksums = True
+			for f in distlist:
+				if f not in self.fhashdict["DIST"] or len(self.fhashdict["DIST"][f]) == 0:
+					have_all_checksums = False
+					break
+			if not have_all_checksums:
+				# We don't have all the required checksums to generate a proper
+				# digest, so we have to skip this cpv.
+				continue
 			update_digest = True
 			if not force:
 				try:
@@ -275,10 +285,13 @@ class Manifest(object):
 				return t
 		return None
 	
-	def create(self, checkExisting=False, assumeDistfileHashes=True):
+	def create(self, checkExisting=False, assumeDistfileHashes=True, requiredDistfiles=None):
 		""" Recreate this Manifest from scratch, not using any existing checksums
 		(exception: if assumeDistfileHashes is true then existing DIST checksums are
-		reused if the file doesn't exist in DISTDIR."""
+		reused if the file doesn't exist in DISTDIR.  The requiredDistfiles
+		parameter specifies a list of distfiles to raise a FileNotFound
+		exception for (if no file or existing checksums are available), and
+		defaults to all distfiles when not specified."""
 		if checkExisting:
 			self.checkAllHashes()
 		if assumeDistfileHashes:
@@ -308,18 +321,21 @@ class Manifest(object):
 			self.fhashdict["AUX"][f] = perform_multiple_checksums(
 				os.path.join(self.pkgdir, "files", f.lstrip(os.sep)), self.hashes)
 		cpvlist = [os.path.join(self._pkgdir_category(), x[:-7]) for x in os.listdir(self.pkgdir) if x.endswith(".ebuild")]
-		distlist = []
+		distlist = set()
 		for cpv in cpvlist:
-			distlist.extend(self._getCpvDistfiles(cpv))
+			distlist.update(self._getCpvDistfiles(cpv))
+		if requiredDistfiles is None or len(requiredDistfiles) == 0:
+			# repoman passes in an empty list, which implies that all distfiles
+			# are required.
+			requiredDistfiles = distlist.copy()
 		for f in distlist:
 			fname = os.path.join(self.distdir, f)
 			if os.path.exists(fname):
 				self.fhashdict["DIST"][f] = perform_multiple_checksums(fname, self.hashes)
 			elif assumeDistfileHashes and f in distfilehashes:
 				self.fhashdict["DIST"][f] = distfilehashes[f]
-			else:
-				raise FileNotFound(fname)			
-
+			elif f in requiredDistfiles:
+					raise FileNotFound(fname)
 	def _pkgdir_category(self):
 		return self.pkgdir.rstrip(os.sep).split(os.sep)[-2]
 
