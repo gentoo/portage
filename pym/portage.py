@@ -2764,12 +2764,13 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 	if bsd_chflags:
 		# Check that we can actually unset schg etc flags...
 		# Clear the flags on source and destination; we'll reinstate them after merging
-		if(destexists):
+		if destexists and sflags != 0:
 			if bsd_chflags.lchflags(dest, 0) < 0:
 				writemsg("!!! Couldn't clear flags on file being merged: \n ")
 		# We might have an immutable flag on the parent dir; save and clear.
 		pflags=bsd_chflags.lgetflags(os.path.dirname(dest))
-		bsd_chflags.lchflags(os.path.dirname(dest), 0)
+		if pflags != 0:
+			bsd_chflags.lchflags(os.path.dirname(dest), 0)
 
 		# Don't bother checking the return value here; if it fails then the next line will catch it.
 		bsd_chflags.lchflags(src, 0)
@@ -2805,7 +2806,8 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 			lchown(dest,sstat[stat.ST_UID],sstat[stat.ST_GID])
 			if bsd_chflags:
 				# Restore the flags we saved before moving
-				if bsd_chflags.lchflags(dest, sflags) < 0 or bsd_chflags.lchflags(os.path.dirname(dest), pflags) < 0:
+				if (sflags != 0 and bsd_chflags.lchflags(dest, sflags) < 0) or \
+					(pflags and bsd_chflags.lchflags(os.path.dirname(dest), pflags) < 0):
 					writemsg("!!! Couldn't restore flags ("+str(flags)+") on " + dest+":\n")
 					writemsg("!!! %s\n" % str(e))
 					return None
@@ -2887,7 +2889,8 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 
 	if bsd_chflags:
 		# Restore the flags we saved before moving
-		if bsd_chflags.lchflags(dest, sflags) < 0 or bsd_chflags.lchflags(os.path.dirname(dest), pflags) < 0:
+		if (sflags != 0 and bsd_chflags.lchflags(dest, sflags) < 0) or \
+			(pflags and bsd_chflags.lchflags(os.path.dirname(dest), pflags) < 0):
 			writemsg("!!! Couldn't restore flags ("+str(sflags)+") on " + dest+":\n")
 			return None
 
@@ -6032,7 +6035,7 @@ class dblink:
 					if bsd_chflags:
 						# Save then clear flags on dest.
 						dflags=bsd_chflags.lgetflags(mydest)
-						if(bsd_chflags.lchflags(mydest, 0)<0):
+						if dflags != 0 and bsd_chflags.lchflags(mydest, 0) < 0:
 							writemsg("!!! Couldn't clear flags on '"+mydest+"'.\n")
 
 					if not os.access(mydest, os.W_OK):
