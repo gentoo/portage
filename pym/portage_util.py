@@ -715,9 +715,13 @@ class LazyItemsDict(dict):
 	"""A mapping object that behaves like a standard dict except that it allows
 	for lazy initialization of values via callable objects.  Lazy items can be
 	overwritten and deleted just as normal items."""
-	def __init__(self):
+	def __init__(self, initial_items=None):
 		dict.__init__(self)
 		self.lazy_items = {}
+		if initial_items is not None:
+			self.update(initial_items)
+			if isinstance(initial_items, LazyItemsDict):
+				self.lazy_items.update(initial_items.lazy_items)
 	def addLazyItem(self, item_key, value_callable):
 		"""Add a lazy item for the given key.  When the item is requested,
 		value_callable will be called with no arguments."""

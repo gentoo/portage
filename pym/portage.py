@@ -1414,14 +1414,8 @@ class config:
 								global db, root
 								self._use = autouse(db[root]["vartree"], *self._pargs, **self._kwargs)
 							return self._use
-					if isinstance(self.configdict["auto"],
-						portage_util.LazyItemsDict):
-						lazy_values = self.configdict["auto"]
-					else:
-						lazy_values = portage_util.LazyItemsDict()
-						lazy_values.update(self.configdict["auto"])
-					lazy_values.addLazyItem("USE", LazyAutouse(use_cache=use_cache))
-					self.configdict["auto"] = lazy_values
+					self.configdict["auto"] = portage_util.LazyItemsDict(self.configdict["auto"])
+					self.configdict["auto"].addLazyItem("USE", LazyAutouse(use_cache=use_cache))
 				else:
 					self.configdict["auto"]["USE"]=""
 			else:
