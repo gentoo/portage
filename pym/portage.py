@@ -5730,7 +5730,7 @@ class dblink:
 			myslot = self.settings["SLOT"]
 			for v in otherversions:
 				# only allow versions with same slot to overwrite files
-				if myslot == db[self.myroot]["vartree"].dbapi.aux_get(v.mycpv, ["SLOT"])[0]:
+				if myslot == db[self.myroot]["vartree"].dbapi.aux_get("/".join((self.cat, v)), ["SLOT"])[0]:
 					mypkglist.append(dblink(self.cat,v,destroot,self.settings))
 
 			print green("*")+" checking "+str(len(myfilelist))+" files for package collisions"
