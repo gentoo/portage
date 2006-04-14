@@ -4820,7 +4820,12 @@ class portdbapi(dbapi):
 				ok     = False
 				reason = "digest missing"
 			else:
-				ok,reason = portage_checksum.verify_all(self.mysettings["DISTDIR"]+"/"+x, mysums[x])
+				try:
+					ok, reason = portage_checksum.verify_all(
+						os.path.join(self.mysettings["DISTDIR"], x), mysums[x])
+				except portage_exception.FileNotFound, e:
+					ok = False
+					reason = "File Not Found: '%s'" % str(e)
 			if not ok:
 				failures[x] = reason
 		if failures:
