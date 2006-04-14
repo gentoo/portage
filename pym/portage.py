@@ -2238,6 +2238,7 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, t
 	if mysplit is None:
 		writemsg("!!! Error: PF is null '%s'; exiting.\n" % mypv)
 		return 1
+	slot = mysettings["SLOT"]
 	if mydo != "depend":
 		# XXX: We're doing a little hack here to curtain the gvisible locking
 		# XXX: that creates a deadlock... Really need to isolate that.
@@ -2245,6 +2246,7 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, t
 	mysettings.setcpv(mycpv,use_cache=use_cache)
 
 	mysettings["EBUILD_PHASE"] = mydo
+	mysettings["SLOT"] = slot
 
 	if debug: # Otherwise it overrides emerge's settings.
 		# We have no other way to set debug... debug can't be passed in
@@ -2291,8 +2293,6 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, t
 		mysettings["PVR"]=mysplit[1]
 	else:
 		mysettings["PVR"]=mysplit[1]+"-"+mysplit[2]
-
-	mysettings["SLOT"]=""
 
 	if mysettings.has_key("PATH"):
 		mysplit=string.split(mysettings["PATH"],":")
