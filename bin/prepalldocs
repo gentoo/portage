@@ -3,13 +3,13 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/bin/prepalldocs,v 1.6 2004/10/04 13:56:50 vapier Exp $
 
-z="`find "${D}"usr/share/doc \( -type f -or -type l \) -not -name "*.gz" -not -name "*.js" 2>/dev/null`"
+z="$(find "${D}"usr/share/doc \( -type f -or -type l \) -not -name "*.gz" -not -name "*.js" 2>/dev/null)"
 
 for y in ${z} ; do
 	if [ -L "${y}" ] ; then
 		# Symlink ...
 		mylink="${y}"
-		linkto="`readlink "${y}"`"
+		linkto="$(readlink "${y}")"
 
 		if [ "${linkto##*.}" != "gz" ] ; then
 			linkto="${linkto}.gz"

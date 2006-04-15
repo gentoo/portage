@@ -44,11 +44,11 @@ function scan() {
 		[ ! -d ${path} ] && continue
 
 		ofile=""
-		for file in `find ${path}/ -iname '._cfg????_*' ! -name '.*~' ! -name '.*.bak' |
+		for file in $(find ${path}/ -iname '._cfg????_*' ! -name '.*~' ! -name '.*.bak' |
 			   sed -e "s:\(^.*/\)\(\._cfg[0-9]*_\)\(.*$\):\1\2\3\%\2\%\3:" |
-			   sort -t'%' -k3 -k2 | LANG=POSIX LC_ALL=POSIX cut -f1 -d'%'`; do
-			rpath=`echo "${file/\/\///}" | sed -e "s:/[^/]*$::"`
-			rfile=`echo "${file/\/\///}" | sed -e "s:^.*/::"`
+			   sort -t'%' -k3 -k2 | LANG=POSIX LC_ALL=POSIX cut -f1 -d'%'); do
+			rpath=$(echo "${file/\/\///}" | sed -e "s:/[^/]*$::")
+			rfile=$(echo "${file/\/\///}" | sed -e "s:^.*/::")
 			for mpath in ${CONFIG_PROTECT_MASK}; do
 				if [[ "${rpath}" == "${mpath}"* ]]; then
 					mv ${rpath}/${rfile} ${rpath}/${rfile:10}
@@ -68,8 +68,8 @@ function scan() {
 						diff -Bbua ${rpath}/${rfile} ${rpath}/${rfile:10} | egrep '^[+-]' | egrep -v '^[+-][\t ]*#|^--- |^\+\+\+ ' | egrep -qv '^[-+][\t ]*$'
 						MATCHES=$?
 					fi
-				elif [[ -z `diff -Nua ${rpath}/${rfile} ${rpath}/${rfile:10}|
-							  grep "^[+-][^+-]"|grep -v '# .Header:.*'` ]]; then
+				elif [[ -z $(diff -Nua ${rpath}/${rfile} ${rpath}/${rfile:10}|
+							  grep "^[+-][^+-]"|grep -v '# .Header:.*') ]]; then
 					MATCHES=1
 				fi
 				if [[ "${MATCHES}" == "1" ]]; then
@@ -86,8 +86,8 @@ function scan() {
 				fi
 			fi
 
-			if [[ -z `diff -Nua ${rpath}/${rfile} ${rpath}/${ofile}|
-					  grep "^[+-][^+-]"|grep -v '# .Header:.*'` ]]; then
+			if [[ -z $(diff -Nua ${rpath}/${rfile} ${rpath}/${ofile}|
+					  grep "^[+-][^+-]"|grep -v '# .Header:.*') ]]; then
 				mv ${rpath}/${rfile} ${rpath}/${ofile}
 				continue
 			else
@@ -192,7 +192,7 @@ function do_file() {
 					read my_input
 				else
 					dialog --title "${title}" --menu "${my_title}" \
-						0 0 0 `echo -e "$(<${TMP}/menuitems)\n${fcount} Exit"` \
+						0 0 0 $(echo -e "$(<${TMP}/menuitems)\n${fcount} Exit") \
 						2> ${TMP}/input || die "User termination!" 0
 					my_input=$(<${TMP}/input)
 				fi
@@ -307,10 +307,10 @@ function do_merge() {
 
 	until (( ${my_input} == -1 )); do
 		echo "Merging ${file} and ${ofile}"
-		`echo "${merge_command}" |
+		$(echo "${merge_command}" |
 		 sed -e "s:%merged:${mfile}:g" \
 		 	 -e "s:%orig:${ofile}:g" \
-			 -e "s:%new:${file}:g"`
+			 -e "s:%new:${file}:g")
 		until (( ${my_input} == -1 )); do	
 			echo -n "1) Replace ${ofile} with merged file
 2) Show differences between merged file and original
@@ -327,9 +327,9 @@ Please select from the menu above (-1 to exit, losing this merge): "
 				   return 255
 				   ;;
 				2) ( echo "Showing differences between ${ofile} and ${mfile}"
-					 `echo "${diff_command}" | \
+					 $(echo "${diff_command}" | \
 					  sed -e "s:%file1:${ofile}:" \
-					  	  -e "s:%file2:${mfile}:"` ) | ${pager}
+					  	  -e "s:%file2:${mfile}:") ) | ${pager}
 				   continue
 				   ;;
 				3) break
@@ -375,15 +375,15 @@ CONFIG_PROTECT=$(/usr/lib/portage/bin/portageq envvar CONFIG_PROTECT)
 CONFIG_PROTECT_MASK=$(/usr/lib/portage/bin/portageq envvar CONFIG_PROTECT_MASK)
 
 # load etc-config's configuration
-EU_AUTOMERGE=`get_config eu_automerge`
-rm_opts=`get_config rm_opts`
-mv_opts=`get_config mv_opts`
-cp_opts=`get_config cp_opts`
-pager=`get_config pager`
-diff_command=`get_config diff_command`
-using_editor=`get_config using_editor`
-merge_command=`get_config merge_command`
-declare -i mode=`get_config mode`
+EU_AUTOMERGE=$(get_config eu_automerge)
+rm_opts=$(get_config rm_opts)
+mv_opts=$(get_config mv_opts)
+cp_opts=$(get_config cp_opts)
+pager=$(get_config pager)
+diff_command=$(get_config diff_command)
+using_editor=$(get_config using_editor)
+merge_command=$(get_config merge_command)
+declare -i mode=$(get_config mode)
 [ -z ${mode} ] && mode=0
 [ -z "${pager}" ] && pager="cat"
 

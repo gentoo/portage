@@ -298,7 +298,7 @@ preinst_suid_scan() {
 		echo ">>> Preforming suid scan in ${IMAGE}"
 		for i in $(find ${IMAGE}/ -type f \( -perm -4000 -o -perm -2000 \) ); do
 			if [ -s "${sfconf}" ]; then
-				suid="`grep ^${i/${IMAGE}/}$ ${sfconf}`"
+				suid="$(grep ^${i/${IMAGE}/}$ ${sfconf})"
 				if [ "${suid}" = "${i/${IMAGE}/}" ]; then
 					echo "- ${i/${IMAGE}/} is an approved suid file"
 				else
@@ -312,7 +312,7 @@ preinst_suid_scan() {
 						# can easly be bypassed using the addwrite() function
 						addwrite "${sfconf}"
 						echo ">>> Appending commented out entry to ${sfconf} for ${PF}"
-						ls_ret=`ls -ldh "${i}"`
+						ls_ret=$(ls -ldh "${i}")
 						echo "## ${ls_ret%${IMAGE}*}${ls_ret#*${IMAGE}}" >> ${sfconf}
 						echo "#${i/${IMAGE}/}" >> ${sfconf}
 						# no delwrite() eh?

@@ -17,11 +17,11 @@ fi
 
 rm -f "${z}"/{dir,dir.info,dir.info.gz}
 
-for x in `find "${z}"/ -mindepth 1 -maxdepth 1 \( -type f -or -type l \) 2>/dev/null` ; do
+for x in $(find "${z}"/ -mindepth 1 -maxdepth 1 \( -type f -or -type l \) 2>/dev/null) ; do
 	if [ -L "${x}" ] ; then
 		# Symlink ...
 		mylink="${x}"
-		linkto="`readlink "${x}"`"
+		linkto="$(readlink "${x}")"
 
 		if [ "${linkto##*.}" != "gz" ] ; then
 			linkto="${linkto}.gz"

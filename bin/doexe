@@ -15,7 +15,7 @@ fi
 for x in "$@" ; do
 	if [ -L "${x}" ] ; then
 		cp "${x}" "${T}"
-		mysrc="${T}"/`/usr/bin/basename "${x}"`
+		mysrc="${T}"/$(/usr/bin/basename "${x}")
 	elif [ -d "${x}" ] ; then
 		echo "doexe: warning, skipping directory ${x}"
 		continue

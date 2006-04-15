@@ -9,7 +9,7 @@
 # Resulting tbz2 file will be created in ${PKGDIR} ...
 # default is /usr/portage/packages/All/
 
-if [ "`whoami`" != "root" ] ; then
+if [ "${UID}" != "0" ] ; then
 	echo "You must run this as root"
 	exit 1
 fi

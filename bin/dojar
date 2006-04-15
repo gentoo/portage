@@ -40,7 +40,7 @@ for i in $* ; do
 	bn="$(basename $i)"
 
 	if [ -f "$pf" ] ; then
-		oldcp=`grep "CLASSPATH=" "$pf" | sed "s/CLASSPATH=//"`
+		oldcp=$(grep "CLASSPATH=" "$pf" | sed "s/CLASSPATH=//")
 		grep -v "CLASSPATH=" "$pf" > "${pf}.new"
 		echo "CLASSPATH=${oldcp}:${jardest}${bn}" >> "${pf}.new"
 		mv "${pf}.new" "$pf"

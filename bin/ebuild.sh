@@ -579,7 +579,7 @@ pkg_nofetch() {
 
 	echo "!!! The following are listed in SRC_URI for ${PN}:"
 	local x
-	for x in `echo ${SRC_URI}`; do
+	for x in $(echo ${SRC_URI}); do
 		echo "!!!   ${x}"
 	done
 }
@@ -1407,7 +1407,7 @@ QA_INTERCEPTORS="javac java-config python python-config perl grep egrep fgrep se
 # level the QA interceptors if we're in depend
 if hasq "depend" "$@"; then
 	for BIN in ${QA_INTERCEPTORS}; do
-		BIN_PATH=`type -pf ${BIN}`
+		BIN_PATH=$(type -pf ${BIN})
 		if [ "$?" != "0" ]; then
 			BODY="echo \"*** missing command: ${BIN}\" >&2; return 127"
 		else
@@ -1561,29 +1561,29 @@ for myarg in $*; do
 		# Make it group writable. 666&~002==664
 		umask 002
 
-		#the extra `echo` commands remove newlines
-		echo `echo "$DEPEND"`       > $dbkey
-		echo `echo "$RDEPEND"`     >> $dbkey
-		echo `echo "$SLOT"`        >> $dbkey
-		echo `echo "$SRC_URI"`     >> $dbkey
-		echo `echo "$RESTRICT"`    >> $dbkey
-		echo `echo "$HOMEPAGE"`    >> $dbkey
-		echo `echo "$LICENSE"`     >> $dbkey
-		echo `echo "$DESCRIPTION"` >> $dbkey
-		echo `echo "$KEYWORDS"`    >> $dbkey
-		echo `echo "$INHERITED"`   >> $dbkey
-		echo `echo "$IUSE"`        >> $dbkey
+		#the extra $(echo) commands remove newlines
+		echo $(echo "$DEPEND")       > $dbkey
+		echo $(echo "$RDEPEND")     >> $dbkey
+		echo $(echo "$SLOT")        >> $dbkey
+		echo $(echo "$SRC_URI")     >> $dbkey
+		echo $(echo "$RESTRICT")    >> $dbkey
+		echo $(echo "$HOMEPAGE")    >> $dbkey
+		echo $(echo "$LICENSE")     >> $dbkey
+		echo $(echo "$DESCRIPTION") >> $dbkey
+		echo $(echo "$KEYWORDS")    >> $dbkey
+		echo $(echo "$INHERITED")   >> $dbkey
+		echo $(echo "$IUSE")        >> $dbkey
 		echo                       >> $dbkey
-		echo `echo "$PDEPEND"`     >> $dbkey
-		echo `echo "$PROVIDE"`     >> $dbkey
-		echo `echo "${EAPI:-0}"`   >> $dbkey
-		echo `echo "$UNUSED_01"`   >> $dbkey
-		echo `echo "$UNUSED_02"`   >> $dbkey
-		echo `echo "$UNUSED_03"`   >> $dbkey
-		echo `echo "$UNUSED_04"`   >> $dbkey
-		echo `echo "$UNUSED_05"`   >> $dbkey
-		echo `echo "$UNUSED_06"`   >> $dbkey
-		echo `echo "$UNUSED_07"`   >> $dbkey
+		echo $(echo "$PDEPEND")     >> $dbkey
+		echo $(echo "$PROVIDE")     >> $dbkey
+		echo $(echo "${EAPI:-0}")   >> $dbkey
+		echo $(echo "$UNUSED_01")   >> $dbkey
+		echo $(echo "$UNUSED_02")   >> $dbkey
+		echo $(echo "$UNUSED_03")   >> $dbkey
+		echo $(echo "$UNUSED_04")   >> $dbkey
+		echo $(echo "$UNUSED_05")   >> $dbkey
+		echo $(echo "$UNUSED_06")   >> $dbkey
+		echo $(echo "$UNUSED_07")   >> $dbkey
 		set +f
 		#make sure it is writable by our group:
 		exit 0

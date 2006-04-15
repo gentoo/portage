@@ -8,10 +8,10 @@
 
 ulimit -c 0
 
-filelist=`sed "s/['\"]/\\\&/g"`
-exelist=`echo $filelist | $XARGS file | grep ":.*executable" | cut -d: -f1 `
-scriptlist=`echo $filelist | $XARGS file | egrep ":.* (commands|script) " | cut -d: -f1 `
-liblist=`echo $filelist | $XARGS file | grep ":.*shared object" | cut -d : -f1 `
+filelist=$(sed "s/['\"]/\\\&/g")
+exelist=$(echo $filelist | $XARGS file | grep ":.*executable" | cut -d: -f1 )
+scriptlist=$(echo $filelist | $XARGS file | egrep ":.* (commands|script) " | cut -d: -f1 )
+liblist=$(echo $filelist | $XARGS file | grep ":.*shared object" | cut -d : -f1 )
 
 for f in $exelist; do
     if [ -x $f ]; then
