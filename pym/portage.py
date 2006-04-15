@@ -1404,18 +1404,9 @@ class config:
 				# XXX Global usage of db... Needs to go away somehow.
 				global db, root
 				if "auto" in self["USE_ORDER"].split(":") and db.has_key(root) and db[root].has_key("vartree"):
-					class LazyAutouse(object):
-						def __init__(self, *pargs, **kwargs):
-							self._use = None
-							self._pargs = pargs
-							self._kwargs = kwargs
-						def __call__(self):
-							if self._use is None:
-								global db, root
-								self._use = autouse(db[root]["vartree"], *self._pargs, **self._kwargs)
-							return self._use
 					self.configdict["auto"] = portage_util.LazyItemsDict(self.configdict["auto"])
-					self.configdict["auto"].addLazyItem("USE", LazyAutouse(use_cache=use_cache))
+					self.configdict["auto"].addLazySingleton("USE", autouse,
+						db[root]["vartree"], use_cache=use_cache)
 				else:
 					self.configdict["auto"]["USE"]=""
 			else:
@@ -6478,23 +6469,13 @@ def getvirtuals(myroot):
 	return settings.getvirtuals(myroot)
 
 def do_vartree(mysettings):
-	class LazyVirtualsItem(object):
-		def __init__(self, myroot):
-			self._myroot = myroot
-			self._virtuals = None
-		def __call__(self):
-			if self._virtuals is None:
-				global settings
-				self._virtuals = settings.getvirtuals(self._myroot)
-			return self._virtuals
-
-	global db, root
+	global db, root, settings
 	db["/"] = portage_util.LazyItemsDict()
-	db["/"].addLazyItem("virtuals", LazyVirtualsItem("/"))
+	db["/"].addLazySingleton("virtuals", settings.getvirtuals, "/")
 	db["/"]["vartree"] = vartree("/")
 	if root!="/":
 		db[root] = portage_util.LazyItemsDict()
-		db[root].addLazyItem("virtuals", LazyVirtualsItem(root))
+		db[root].addLazySingleton("virtuals", settings.getvirtuals, root)
 		db[root]["vartree"] = vartree(root)
 	#We need to create the vartree first, then load our settings, and then set up our other trees
 

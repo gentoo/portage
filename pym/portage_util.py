@@ -722,15 +722,31 @@ class LazyItemsDict(dict):
 			self.update(initial_items)
 			if isinstance(initial_items, LazyItemsDict):
 				self.lazy_items.update(initial_items.lazy_items)
-	def addLazyItem(self, item_key, value_callable):
+	def addLazyItem(self, item_key, value_callable, *pargs, **kwargs):
 		"""Add a lazy item for the given key.  When the item is requested,
-		value_callable will be called with no arguments."""
-		self.lazy_items[item_key] = value_callable
+		value_callable will be called with *pargs and **kwargs arguments."""
+		self.lazy_items[item_key] = (value_callable, pargs, kwargs)
 		# make it show up in self.keys(), etc...
 		dict.__setitem__(self, item_key, None)
+	def addLazySingleton(self, item_key, value_callable, *pargs, **kwargs):
+		"""This is like addLazyItem except value_callable will only be called
+		a maximum of 1 time and the result will be cached for future requests."""
+		class SingletonItem(object):
+			def __init__(self, value_callable, *pargs, **kwargs):
+				self._callable = value_callable
+				self._pargs = pargs
+				self._kwargs = kwargs
+				self._called = False
+			def __call__(self):
+				if not self._called:
+					self._called = True
+					self._value = self._callable(*self._pargs, **self._kwargs)
+				return self._value
+		self.addLazyItem(item_key, SingletonItem(value_callable, *pargs, **kwargs))
 	def __getitem__(self, item_key):
 		if item_key in self.lazy_items:
-			return self.lazy_items[item_key]()
+			value_callable, pargs, kwargs = self.lazy_items[item_key]
+			return value_callable(*pargs, **kwargs)
 		else:
 			return dict.__getitem__(self, item_key)
 	def __setitem__(self, item_key, value):
