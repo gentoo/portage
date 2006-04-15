@@ -411,8 +411,10 @@ unpack() {
 
 strip_duplicate_slashes () {
 	if [ -n "${1}" ]; then
-		local removed="${1/\/\///}"
-		[ "${removed}" != "${removed/\/\///}" ] && removed=$(strip_duplicate_slashes "${removed}")
+		local removed=${1}
+		while [ "${removed}" != "${removed/\/\///}" ] ; do
+			removed="${removed/\/\///}"
+		done
 		echo ${removed}
 	fi
 }
