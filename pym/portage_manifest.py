@@ -74,30 +74,41 @@ class Manifest(object):
 		""" Similar to getDigests(), but restricted to files of the given type. """
 		return self.fhashdict[ftype]
 
-	def _readDigests(self):
+	def _readDigests(self, myhashdict=None):
 		""" Parse old style digest files for this Manifest instance """
-		mycontent = ""
+		if myhashdict is None:
+			myhashdict = {}
 		for d in os.listdir(os.path.join(self.pkgdir, "files")):
 			if d.startswith("digest-"):
-				f = open(os.path.join(self.pkgdir, "files", d), "r")
-				mycontent += f.read()
-				f.close()
-		return mycontent
-		
-	def _read(self):
-		""" Parse Manifest file for this instance """
-		mylines = []
+				self._readManifest(os.path.join(self.pkgdir, "files", d),
+					myhashdict=myhashdict)
+		return myhashdict
+
+	def _readManifest(self, file_path, myhashdict=None):
+		"""Parse a manifest or an old style digest.  If myhashdict is given
+		then data will be added too it.  Otherwise, a new dict will be created
+		and returned."""
 		try:
-			fd = open(self.getFullname(), "r")
-			mylines.extend(fd.readlines())
+			fd = open(file_path, "r")
+			if myhashdict is None:
+				myhashdict = {}
+			mylines = fd.readlines()
 			fd.close()
+			self._parseDigests(mylines, myhashdict=myhashdict)
+			return myhashdict
 		except (OSError, IOError), e:
 			if e.errno == errno.ENOENT:
-				pass
+				raise FileNotFound(file_path)
 			else:
 				raise
-		mylines.extend(self._readDigests().split("\n"))
-		self._parseDigests(mylines, myhashdict=self.fhashdict)
+
+	def _read(self):
+		""" Parse Manifest file for this instance """
+		try:
+			self._readManifest(self.getFullname(), myhashdict=self.fhashdict)
+		except FileNotFound:
+			pass
+		self._readDigests(myhashdict=self.fhashdict)
 
 	def _parseDigests(self, mylines, myhashdict=None):
 		if myhashdict is None:
