@@ -409,11 +409,11 @@ unpack() {
 	chmod -Rf a+rX,u+w,g-w,o-w .
 }
 
-strip_duplicate_slashes () {
-	if [ -n "${1}" ]; then
-		local removed=${1}
-		while [ "${removed}" != "${removed/\/\///}" ] ; do
-			removed="${removed/\/\///}"
+strip_duplicate_slashes() {
+	if [[ -n $1 ]] ; then
+		local removed=$1
+		while [[ ${removed} == *//* ]] ; do
+			removed=${removed//\/\///}
 		done
 		echo ${removed}
 	fi
