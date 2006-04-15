@@ -720,8 +720,6 @@ class LazyItemsDict(dict):
 		self.lazy_items = {}
 		if initial_items is not None:
 			self.update(initial_items)
-			if isinstance(initial_items, LazyItemsDict):
-				self.lazy_items.update(initial_items.lazy_items)
 	def addLazyItem(self, item_key, value_callable, *pargs, **kwargs):
 		"""Add a lazy item for the given key.  When the item is requested,
 		value_callable will be called with *pargs and **kwargs arguments."""
@@ -743,6 +741,16 @@ class LazyItemsDict(dict):
 					self._value = self._callable(*self._pargs, **self._kwargs)
 				return self._value
 		self.addLazyItem(item_key, SingletonItem(value_callable, *pargs, **kwargs))
+	def update(self, map_obj):
+		if isinstance(map_obj, LazyItemsDict):
+			for k in map_obj:
+				if k in map_obj.lazy_items:
+					dict.__setitem__(self, k, None)
+				else:
+					dict.__setitem__(self, k, map_obj[k])
+			self.lazy_items.update(map_obj.lazy_items)
+		else:
+			dict.update(self, map_obj)
 	def __getitem__(self, item_key):
 		if item_key in self.lazy_items:
 			value_callable, pargs, kwargs = self.lazy_items[item_key]
