@@ -725,7 +725,7 @@ dyn_clean() {
 	if ! hasq keeptemp $FEATURES; then
 		rm -rf "${T}"
 	else
-		mv "${T}/environment" "${T}/environment.keeptemp"
+		[ -e "${T}/environment ] && mv "${T}/environment" "${T}/environment.keeptemp"
 	fi
 
 	if ! hasq keepwork $FEATURES; then
