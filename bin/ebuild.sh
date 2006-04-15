@@ -145,7 +145,7 @@ useq() {
 		echo "QA Notice: USE Flag '${u}' not in IUSE for ${CATEGORY}/${PF}" >&2
 	fi
 
-	if [[ " ${USE} " == *" ${u} "* ]] ; then
+	if hasq ${u} ${USE} ; then
 		return ${found}
 	else
 		return $((!found))
@@ -801,7 +801,7 @@ insopts() {
 	export INSOPTIONS="$@"
 
 	# `install` should never be called with '-s' ...
-	[[ " ${INSOPTIONS} " == *" -s "* ]] && die "Never call insopts() with -s"
+	hasq -s ${INSOPTIONS} && die "Never call insopts() with -s"
 }
 
 diropts() {
@@ -812,14 +812,14 @@ exeopts() {
 	export EXEOPTIONS="$@"
 
 	# `install` should never be called with '-s' ...
-	[[ " ${EXEOPTIONS} " == *" -s "* ]] && die "Never call exeopts() with -s"
+	hasq -s ${EXEOPTIONS} && die "Never call exeopts() with -s"
 }
 
 libopts() {
 	export LIBOPTIONS="$@"
 
 	# `install` should never be called with '-s' ...
-	[[ " ${LIBOPTIONS} " == *" -s "* ]] && die "Never call libopts() with -s"
+	hasq -s ${LIBOPTIONS} && die "Never call libopts() with -s"
 }
 
 abort_handler() {
@@ -948,9 +948,7 @@ dyn_compile() {
 	bzip2 -9 environment
 
 	cp "${EBUILD}" "${PF}.ebuild"
-	if [[ " ${FEATURES} " == *" nostrip "* ]] || \
-	   [[ " ${RESTRICT} " == *" nostrip "* ]] || \
-	   [[ " ${RESTRICT} " == *" strip "* ]]
+	if hasq nostrip ${FEATURES} ${RESTRICT} || hasq strip ${RESTRICT}
 	then
 		touch DEBUGBUILD
 	fi
@@ -1447,9 +1445,7 @@ set -f
 KEYWORDS=$(eval echo ${KEYWORDS//~/\\~})
 set +f
 
-if [[ " ${FEATURES} " == *" nostrip "* ]] || \
-   [[ " ${RESTRICT} " == *" nostrip "* ]] || \
-   [[ " ${RESTRICT} " == *" strip "* ]]
+if hasq nostrip ${FEATURES} ${RESTRICT} || hasq strip ${RESTRICT}
 then
 	export DEBUGBUILD=1
 fi
