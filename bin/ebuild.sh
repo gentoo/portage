@@ -1070,9 +1070,7 @@ dyn_help() {
 	echo "  c++ flags   : ${CXXFLAGS}"
 	echo "  make flags  : ${MAKEOPTS}"
 	echo -n "  build mode  : "
-	if [[ " ${FEATURES} " == *" nostrip "* ]] || \
-	   [[ " ${RESTRICT} " == *" nostrip "* ]] || \
-	   [[ " ${RESTRICT} " == *" strip "* ]]
+	if hasq nostrip ${FEATURES} ${RESTRICT} || hasq strip ${RESTRICT} ;
 	then
 		echo "debug (large)"
 	else
