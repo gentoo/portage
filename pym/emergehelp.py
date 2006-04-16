@@ -56,6 +56,11 @@ def help(myaction,myopts,havecolor=1):
 		print "              "+bold("<=sys-devel/binutils-2.11.92.0.12.3-r1")+" matches"
 		print "                  binutils-2.11.90.0.7 and binutils-2.11.92.0.12.3-r1"
 		print
+		print "       "+green("--config")
+		print "              Runs package-specific operations that must be executed after an"
+		print "              emerge process has completed.  This usually entails configuration"
+		print "              file setup or other similar setups that the user may wish to run."
+		print
 		print "       "+green("--depclean")
 		print "              Cleans the system by removing packages that are not associated"
 		print "              with explicitly merged packages. Depclean works by creating the"
@@ -75,9 +80,9 @@ def help(myaction,myopts,havecolor=1):
 		print "              run with the '--verbose' flag."
 		print
 		print "       "+green("--metadata")
-		print "              Causes portage to process all the metacache files as is normally done"
-		print "              on the tail end of an rsync update using "+bold("emerge --sync")+". The"
-		print "              processing creates the cache database that portage uses for"
+		print "              Causes portage to process all the metacache files as is normally "
+		print "              done on the tail end of an rsync update using "+bold("emerge --sync")+"."
+		print "              This processing creates the cache database that portage uses for"
 		print "              pre-parsed lookups of package data."
 		print
 		print "       "+green("--prune")+" ("+green("-P")+" short option)"
@@ -94,11 +99,17 @@ def help(myaction,myopts,havecolor=1):
 		print "              users as rsync updates the cache using server-side caches."
 		print "              Rsync users should simply 'emerge --sync' to regenerate."
 		print
+		print "       "+green("--resume")
+		print "              Resumes the last merge operation. It can be treated just like a"
+		print "              regular emerge: --pretend and other options work alongside it."
+		print "              'emerge --resume' only returns an error on failure. When there is"
+		print "              nothing to do, it exits with a message and a success condition."
+		print
 		print "       "+green("--search")+" ("+green("-s")+" short option)"
-		print "              searches for matches of the supplied string in the current local"
-		print "              portage tree. The search string is a regular expression. Prepending"
-		print "              the expression with a '@' will cause the category to be included in"
-		print "              the search."
+		print "              Searches for matches of the supplied string in the current local"
+		print "              portage tree. The search string is a regular expression."
+		print "              Prepending the expression with a '@' will cause the category to"
+		print "              be included in the search."
 		print "              A few examples:"
 		print "              "+bold("emerge search '^kde'")
 		print "                  list all packages starting with kde"
@@ -107,23 +118,38 @@ def help(myaction,myopts,havecolor=1):
 		print "              "+bold("emerge search @^dev-java.*jdk")
 		print "                  list all available Java JDKs"
 		print
+		print "       "+green("--searchdesc")+" ("+green("-S")+" short option)"
+		print "              Matches the search string against the description field as well"
+		print "              the package's name. Take caution as the descriptions are also"
+		print "              matched as regular expressions."
+		print "                emerge -S html"
+		print "                emerge -S applet"
+		print "                emerge -S 'perl.*module'"
+		print
 		print "       "+green("--unmerge")+" ("+green("-C")+" short option)"
 		print "              "+turquoise("WARNING: This action can remove important packages!")
 		print "              Removes all matching packages "+bold("completely")+" from"
 		print "              your system. Specify arguments using the dependency specification"
 		print "              format described in the "+bold("--clean")+" action above."
 		print
-		print "       "+green("--config")
-		print "              Run package specific actions needed to  be  executed  after  the"
-		print "              emerge  process  has completed.  This usually entails configuration"
-		print "              file setup or other similar setups that the user  may  wish to run."
+		print "       "+green("--update")+" ("+green("-u")+" short option)"
+		print "              Updates packages to the best version available, which may not"
+		print "              always be the highest version number due to masking for testing"
+		print "              and development. This will also update direct dependencies which"
+		print "              may not what you want. In general use this option only in combi-"
+		print "              nation with the world or system target."
+		print
+		print "       "+green("--version")+" ("+green("-V")+" short option)"
+		print "              Displays the currently installed version of portage along with"
+		print "              other information useful for quick reference on a system. See"
+		print "              "+bold("emerge info")+" for more advanced information."
 		print
 		print turquoise("Options:")
 		print "       "+green("--alphabetical")
-		print "              When displaying USE and other flag output, combines the enabled and"
-		print "              disabled lists into one list and sorts the whole list"
-		print "              alphabetically.  With this option, output such as USE=\"dar -bar"
-		print "              -foo\" will instead be displayed as USE=\"-bar dar -foo\""
+		print "              When displaying USE and other flag output, combines the enabled"
+		print "              and disabled flags into a single list and sorts it alphabetically."
+		print "              With this option, output such as USE=\"dar -bar -foo\" will instead"
+		print "              be displayed as USE=\"-bar dar -foo\""
 		print
 		print "       "+green("--ask")+" ("+green("-a")+" short option)"
 		print "              before performing the merge, display what ebuilds and tbz2s will"
@@ -200,6 +226,9 @@ def help(myaction,myopts,havecolor=1):
 		print "              Tells emerge to include installed packages where USE flags have "
 		print "              changed since installation."
 		print
+		print "       "+green("--nocolor")
+		print "              Suppresses color in the output."
+		print
 		print "       "+green("--noconfmem")
 		print "              Portage keeps track of files that have been placed into"
 		print "              CONFIG_PROTECT directories, and normally it will not merge the"
@@ -246,20 +275,6 @@ def help(myaction,myopts,havecolor=1):
 		print "              Effects vary, but the general outcome is a reduced or condensed"
 		print "              output from portage's displays."
 		print
-		print "       "+green("--resume")
-		print "              Resumes the last merge operation. Can be treated just like a"
-		print "              regular merge as --pretend and other options work along side."
-		print "              'emerge --resume' only returns an error on failure. Nothing to"
-		print "              do exits with a message and a success condition."
-		print
-		print "       "+green("--searchdesc")+" ("+green("-S")+" short option)"
-		print "              Matches the search string against the description field as well"
-		print "              the package's name. Take caution as the descriptions are also"
-		print "              matched as regular expressions."
-		print "                emerge -S html"
-		print "                emerge -S applet"
-		print "                emerge -S 'perl.*module'"
-		print
 		print "       "+green("--skipfirst")
 		print "              This option is only valid in a resume situation. It removes the"
 		print "              first package in the resume list so that a merge may continue in"
@@ -272,13 +287,6 @@ def help(myaction,myopts,havecolor=1):
 		print "              The packages are also listed in reverse merge order so that"
 		print "              a package's dependencies follow the package. Only really useful"
 		print "              in combination with --emptytree, --update or --deep."
-		print
-		print "       "+green("--update")+" ("+green("-u")+" short option)"
-		print "              Updates packages to the best version available, which may not"
-		print "              always be the highest version number due to masking for testing"
-		print "              and development. This will also update direct dependencies which"
-		print "              may not what you want. In general use this option only in combi-"
-		print "              nation with the world or system target."
 		print
 		print "       "+green("--usepkg")+" ("+green("-k")+" short option)"
 		print "              Tell emerge to use binary packages (from $PKGDIR) if they are"
@@ -296,11 +304,6 @@ def help(myaction,myopts,havecolor=1):
 		print "       "+green("--verbose")+" ("+green("-v")+" short option)"
 		print "              Effects vary, but the general outcome is an increased or expanded"
 		print "              display of content in portage's displays."
-		print
-		print "       "+green("--version")+" ("+green("-V")+" short option)"
-		print "              Displays the currently installed version of portage along with"
-		print "              other information useful for quick reference on a system. See"
-		print "              "+bold("emerge --info")+" for more advanced information."
 		print
 	elif myaction == "sync":
 		print
