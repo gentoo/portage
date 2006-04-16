@@ -30,7 +30,3 @@ for x in sys.argv[1:]:
 	for y in portage_locks.hardlock_cleanup(x, remove_all_locks=force):
 		print y
 	print
-
-
-
-	
