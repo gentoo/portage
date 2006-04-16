@@ -184,26 +184,16 @@ install_qa_check() {
 		unset INSTALLTOD
 	fi
 
-	local file="${T}/find-portage-log"
 	local count=$(find "${D}"/ -user portage | wc -l)
 	if [[ ${count} -gt 0 ]] ; then
 		ewarn "${count} files were installed with user portage!"
-		find "${D}"/ -xtype l -user portage -print0 > "${file}"
-		[[ -s ${file} ]] && cat "${file}" | xargs -0 chown -h ${PORTAGE_INST_UID:-0}
-		find "${D}"/ -user portage -print0 > "${file}"
-		[[ -s ${file} ]] && cat "${file}" | xargs -0 chown ${PORTAGE_INST_UID:-0}
-		rm -f "${file}"
+		find "${D}"/ -user portage -print0 | xargs -0 chown -h ${PORTAGE_INST_UID:-0}
 	fi
 
 	count=$(find "${D}"/ -group portage | wc -l)
 	if [[ ${count} -gt 0 ]] ; then
 		ewarn "${count} files were installed with group portage!"
-
-		find "${D}"/ -xtype l -group portage -print0 > "${file}"
-		[[ -s ${file} ]] && cat "${file}" | xargs -0 chgrp -h ${PORTAGE_INST_GID:-0}
-		find "${D}"/ -group portage -print0 > "${file}"
-		[[ -s ${file} ]] && cat "${file}" | xargs -0 chgrp ${PORTAGE_INST_GID:-0}
-		rm -f "${file}"
+		find "${D}"/ -group portage -print0 | xargs -0 chgrp -h ${PORTAGE_INST_GID:-0}
 	fi
 
 	# Portage regenerates this on the installed system.
