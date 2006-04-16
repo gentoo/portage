@@ -184,17 +184,18 @@ install_qa_check() {
 		unset INSTALLTOD
 	fi
 
-	local count=$(find "${D}"/ -user portage | wc -l)
-	if [[ ${count} -gt 0 ]] ; then
-		ewarn "${count} files were installed with user portage!"
-		find "${D}"/ -user portage -print0 | xargs -0 chown -h ${PORTAGE_INST_UID:-0}
+	local find_log="${T}/find-portage-log"
+	find "${D}"/ -user portage -print0 > "${find_log}"
+	if [[ -s ${find_log} ]] ; then
+		ewarn "QA Notice: Files were installed with user portage!"
+		cat "${find_log}" | xargs -0 chown -h ${PORTAGE_INST_UID:-0}
 	fi
-
-	count=$(find "${D}"/ -group portage | wc -l)
-	if [[ ${count} -gt 0 ]] ; then
-		ewarn "${count} files were installed with group portage!"
-		find "${D}"/ -group portage -print0 | xargs -0 chgrp -h ${PORTAGE_INST_GID:-0}
+	find "${D}"/ -group portage -print0 > "${find_log}"
+	if [[ -s ${find_log} ]] ; then
+		ewarn "QA Notice: Files were installed with group portage!"
+		cat "${find_log}" | xargs -0 chgrp -h ${PORTAGE_INST_GID:-0}
 	fi
+	rm -f "${find_log}"
 
 	# Portage regenerates this on the installed system.
 	if [ -f "${D}/usr/share/info/dir.gz" ]; then
