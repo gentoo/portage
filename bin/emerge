@@ -2948,6 +2948,7 @@ if myaction in ["sync","metadata"] and (not "--help" in myopts):
 		print red(" * ")+"that you update portage now, before any other packages are updated."
 		print red(" * ")+"Please run 'emerge portage' and then update "+bold("ALL")+" of your"
 		print red(" * ")+"configuration files."
+		print red(" * ")+"To update portage, run 'emerge portage'."
 		print
 elif myaction=="regen":
 	emergelog(" === regen")
