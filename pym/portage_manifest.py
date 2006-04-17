@@ -26,7 +26,78 @@ def manifest2MiscfileFilter(filename):
 	filename = filename.strip(os.sep)
 	return not (filename in ["CVS", ".svn", "files", "Manifest"] or filename.endswith(".ebuild"))
 
+def guessManifestFileType(filename):
+	""" Perform a best effort guess of which type the given filename is, avoid using this if possible """
+	if filename.startswith("files" + os.sep + "digest-"):
+		return None
+	if filename.startswith("files" + os.sep):
+		return "AUX"
+	elif filename.endswith(".ebuild"):
+		return "EBUILD"
+	elif filename in ["ChangeLog", "metadata.xml"]:
+		return "MISC"
+	else:
+		return "DIST"
+
+def parseManifest2(mysplit):
+	myentry = None
+	if len(mysplit) > 4 and mysplit[0] in portage_const.MANIFEST2_IDENTIFIERS:
+		mytype = mysplit[0]
+		myname = mysplit[1]
+		mysize = int(mysplit[2])
+		myhashes = dict(zip(mysplit[3::2], mysplit[4::2]))
+		myhashes["size"] = mysize
+		myentry = Manifest2Entry(type=mytype, name=myname, hashes=myhashes)
+	return myentry
+
+def parseManifest1(mysplit):
+	myentry = None
+	if len(mysplit) == 4 and mysplit[0] in ["size"] + portage_const.MANIFEST1_HASH_FUNCTIONS:
+		myname = mysplit[2]
+		mytype = None
+		mytype = guessManifestFileType(myname)
+		if mytype == "AUX":
+			if myname.startswith("files" + os.path.sep):
+				myname = myname[6:]
+		mysize = int(mysplit[3])
+		myhashes = {mysplit[0]: mysplit[1]}
+		myhashes["size"] = mysize
+		myentry = Manifest1Entry(type=mytype, name=myname, hashes=myhashes)
+	return myentry
+
+class ManifestEntry(object):
+	__slots__ = ("type", "name", "hashes")
+	def __init__(self, **kwargs):
+		for k, v in kwargs.iteritems():
+			setattr(self, k, v)
+	def __cmp__(self, other):
+		if str(self) == str(other):
+			return 0
+		return 1
+
+class Manifest1Entry(ManifestEntry):
+	def __str__(self):
+		myhashkeys = self.hashes.keys()
+		for hashkey in myhashkeys:
+			if hashkey != "size":
+				break
+		hashvalue = self.hashes[hashkey]
+		myname = self.name
+		if self.type == "AUX" and not myname.startswith("files" + os.sep):
+			myname = os.path.join("files", myname)
+		return " ".join([hashkey, str(hashvalue), myname, str(self.hashes["size"])])
+
+class Manifest2Entry(ManifestEntry):
+	def __str__(self):
+		myline = " ".join([self.type, self.name, str(self.hashes["size"])])
+		myhashkeys = self.hashes.keys()
+		myhashkeys.sort()
+		for h in myhashkeys:
+			myline += " " + h + " " + str(self.hashes[h])
+		return myline
+
 class Manifest(object):
+	parsers = (parseManifest2, parseManifest1)
 	def __init__(self, pkgdir, fetchlist_dict, distdir, manifest1_compat=True, from_scratch=False):
 		""" create new Manifest instance for package in pkgdir
 		    and add compability entries for old portage versions if manifest1_compat == True.
@@ -45,20 +116,8 @@ class Manifest(object):
 		self.compat = manifest1_compat
 		self.fetchlist_dict = fetchlist_dict
 		self.distdir = distdir
-		
-	def guessType(self, filename):
-		""" Perform a best effort guess of which type the given filename is, avoid using this if possible """
-		if filename.startswith("files"+os.sep+"digest-"):
-			return None
-		if filename.startswith("files"+os.sep):
-			return "AUX"
-		elif filename.endswith(".ebuild"):
-			return "EBUILD"
-		elif filename in ["ChangeLog", "metadata.xml"]:
-			return "MISC"
-		else:
-			return "DIST"
-	
+		self.guessType = guessManifestFileType
+
 	def getFullname(self):
 		""" Returns the absolute path to the Manifest file for this instance """
 		return os.path.join(self.pkgdir, "Manifest")
@@ -80,11 +139,11 @@ class Manifest(object):
 			myhashdict = {}
 		for d in os.listdir(os.path.join(self.pkgdir, "files")):
 			if d.startswith("digest-"):
-				self._readManifest(os.path.join(self.pkgdir, "files", d),
+				self._readManifest(os.path.join(self.pkgdir, "files", d), mytype="DIST",
 					myhashdict=myhashdict)
 		return myhashdict
 
-	def _readManifest(self, file_path, myhashdict=None):
+	def _readManifest(self, file_path, myhashdict=None, **kwargs):
 		"""Parse a manifest or an old style digest.  If myhashdict is given
 		then data will be added too it.  Otherwise, a new dict will be created
 		and returned."""
@@ -92,9 +151,8 @@ class Manifest(object):
 			fd = open(file_path, "r")
 			if myhashdict is None:
 				myhashdict = {}
-			mylines = fd.readlines()
+			self._parseDigests(fd, myhashdict=myhashdict, **kwargs)
 			fd.close()
-			self._parseDigests(mylines, myhashdict=myhashdict)
 			return myhashdict
 		except (OSError, IOError), e:
 			if e.errno == errno.ENOENT:
@@ -109,35 +167,34 @@ class Manifest(object):
 		except FileNotFound:
 			pass
 		self._readDigests(myhashdict=self.fhashdict)
+		
 
-	def _parseDigests(self, mylines, myhashdict=None):
+	def _parseManifestLines(self, mylines):
+		"""Parse manifest lines and return a list of manifest entries."""
+		for myline in mylines:
+			myentry = None
+			mysplit = myline.split()
+			for parser in self.parsers:
+				myentry = parser(mysplit)
+				if myentry is not None:
+					yield myentry
+					break # go to the next line
+
+	def _parseDigests(self, mylines, myhashdict=None, mytype=None):
+		"""Parse manifest entries and store the data in myhashdict.  If mytype
+		is specified, it will override the type for all parsed entries."""
 		if myhashdict is None:
 			myhashdict = {}
-		for l in mylines:
-			myname = ""
-			mysplit = l.split()
-			if len(mysplit) == 4 and mysplit[0] in portage_const.MANIFEST1_HASH_FUNCTIONS:
-				myname = mysplit[2]
-				mytype = self.guessType(myname)
-				if mytype == "AUX" and myname.startswith("files"+os.sep):
-					myname = myname[6:]
-				if mytype is None:
-					continue
-				mysize = int(mysplit[3])
-				myhashes = {mysplit[0]: mysplit[1]}
-			if len(mysplit) > 4 and mysplit[0] in portage_const.MANIFEST2_IDENTIFIERS:
-				mytype = mysplit[0]
-				myname = mysplit[1]
-				mysize = int(mysplit[2])
-				myhashes = dict(zip(mysplit[3::2], mysplit[4::2]))
-			if len(myname) == 0:
-				continue
-			myhashdict.setdefault(mytype, {})
-			myhashdict[mytype].setdefault(myname, {})
-			myhashdict[mytype][myname].update(myhashes)
-			myhashdict[mytype][myname]["size"] = mysize
+		for myentry in self._parseManifestLines(mylines):
+			if mytype is None:
+				myentry_type = myentry.type
+			else:
+				myentry_type = mytype
+			myhashdict.setdefault(myentry_type, {})
+			myhashdict[myentry_type].setdefault(myentry.name, {})
+			myhashdict[myentry_type][myentry.name].update(myentry.hashes)
 		return myhashdict
-	
+
 	def _writeDigests(self, force=False):
 		""" Create old style digest files for this Manifest instance """
 		cpvlist = [os.path.join(self._pkgdir_category(), x[:-7]) for x in os.listdir(self.pkgdir) if x.endswith(".ebuild")]
@@ -165,7 +222,7 @@ class Manifest(object):
 			if not force:
 				try:
 					f = open(dname, "r")
-					old_data = self._parseDigests(f.readlines())
+					old_data = self._parseDigests(f)
 					f.close()
 					if len(old_data) == 1 and "DIST" in old_data:
 						new_data = self._getDigestData(distlist)
@@ -223,46 +280,73 @@ class Manifest(object):
 				mylines.append((" ".join([h, str(myhashes[h]), os.path.join("files", os.path.basename(dname)), str(myhashes["size"])])))
 		fd.write("\n".join(mylines))
 		fd.write("\n")
-	
-	def _write(self, fd):
-		""" Actual Manifest file generator """
-		mylines = []
+
+	def _createManifestEntries(self):
 		mytypes = self.fhashdict.keys()
 		mytypes.sort()
 		for t in mytypes:
 			myfiles = self.fhashdict[t].keys()
 			myfiles.sort()
 			for f in myfiles:
-				# compat hack for v1 manifests
-				if t == "AUX":
-					f2 = os.path.join("files", f)
-				else:
-					f2 = f
-				myline = " ".join([t, f, str(self.fhashdict[t][f]["size"])])
-				myhashes = self.fhashdict[t][f]
-				myhashkeys = myhashes.keys()
-				myhashkeys.sort()
+				myentry = Manifest2Entry(
+					type=t, name=f, hashes=self.fhashdict[t][f].copy())
+				myhashkeys = myentry.hashes.keys()
 				for h in myhashkeys:
-					if h not in portage_const.MANIFEST2_HASH_FUNCTIONS:
-						continue
-					myline += " "+h+" "+str(myhashes[h])
-				mylines.append(myline)
+					if h not in ["size"] + portage_const.MANIFEST2_HASH_FUNCTIONS:
+						del myentry.hashes[h]
+				yield myentry
 				if self.compat and t != "DIST":
+					mysize = self.fhashdict[t][f]["size"]
+					myhashes = self.fhashdict[t][f]
 					for h in myhashkeys:
 						if h not in portage_const.MANIFEST1_HASH_FUNCTIONS:
 							continue
-						mylines.append((" ".join([h, str(myhashes[h]), f2, str(myhashes["size"])])))
-		fd.write("\n".join(mylines))
-		fd.write("\n")
+						yield Manifest1Entry(
+							type=t, name=f, hashes={"size":mysize, h:myhashes[h]})
 
-	def write(self, sign=False):
-		""" Write Manifest instance to disk, optionally signing it """
-		fd = open(self.getFullname(), "w")
-		self._write(fd)
 		if self.compat:
-			digests = self._writeDigests()
-			self._addDigestsToManifest(digests, fd)
-		fd.close()
+			cvp_list = self.fetchlist_dict.keys()
+			cvp_list.sort()
+			for cpv in cvp_list:
+				digest_path = os.path.join("files", "digest-%s" % self._catsplit(cpv)[1])
+				dname = os.path.join(self.pkgdir, digest_path)
+				try:
+					myhashes = perform_multiple_checksums(dname, portage_const.MANIFEST1_HASH_FUNCTIONS+["size"])
+					myhashkeys = myhashes.keys()
+					myhashkeys.sort()
+					for h in myhashkeys:
+						yield Manifest1Entry(type="AUX", name=digest_path,
+							hashes={"size":myhashes["size"], h:myhashes[h]})
+				except FileNotFound:
+					pass
+
+	def write(self, sign=False, force=False):
+		""" Write Manifest instance to disk, optionally signing it """
+		if self.compat:
+			self._writeDigests()
+		myentries = list(self._createManifestEntries())
+		update_manifest = True
+		if not force:
+			try:
+				f = open(self.getFullname(), "r")
+				oldentries = list(self._parseManifestLines(f))
+				f.close()
+				if len(oldentries) == len(myentries):
+					update_manifest = False
+					for i in xrange(len(oldentries)):
+						if oldentries[i] != myentries[i]:
+							update_manifest = True
+							break
+			except (IOError, OSError), e:
+				if e.errno == errno.ENOENT:
+					pass
+				else:
+					raise
+		if update_manifest:
+			fd = open(self.getFullname(), "w")
+			for myentry in myentries:
+				fd.write("%s\n" % str(myentry))
+			fd.close()
 		if sign:
 			self.sign()
 	
