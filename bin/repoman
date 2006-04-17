@@ -1510,9 +1510,10 @@ else:
 
 	print "*",green(str(len(myupdates))),"files being committed...",green(str(len(myheaders))),"have headers that will change."
 	print "*","Files with headers will cause the manifests to be made and recommited."
-	print "myupdates:",myupdates
-	print "myheaders:",myheaders
-	print
+	if quiet == 0:
+		print "myupdates:",myupdates
+		print "myheaders:",myheaders
+		print
 	unlinkfile=0
 	if not (commitmessage or commitmessagefile):
 		print "Please enter a CVS commit message at the prompt:"
