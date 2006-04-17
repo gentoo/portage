@@ -137,10 +137,16 @@ class Manifest(object):
 		""" Parse old style digest files for this Manifest instance """
 		if myhashdict is None:
 			myhashdict = {}
-		for d in os.listdir(os.path.join(self.pkgdir, "files")):
-			if d.startswith("digest-"):
-				self._readManifest(os.path.join(self.pkgdir, "files", d), mytype="DIST",
-					myhashdict=myhashdict)
+		try:
+			for d in os.listdir(os.path.join(self.pkgdir, "files")):
+				if d.startswith("digest-"):
+					self._readManifest(os.path.join(self.pkgdir, "files", d), mytype="DIST",
+						myhashdict=myhashdict)
+		except (IOError, OSError), e:
+			if e.errno == errno.ENOENT:
+				pass
+			else:
+				raise
 		return myhashdict
 
 	def _readManifest(self, file_path, myhashdict=None, **kwargs):
