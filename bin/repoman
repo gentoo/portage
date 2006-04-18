@@ -1554,21 +1554,28 @@ else:
 
 	# Setup the GPG commands
 	def gpgsign(filename):
+		if "PORTAGE_GPG_KEY" not in repoman_settings:
+			raise portage_exception.MissingParameter("PORTAGE_GPG_KEY is unset!")
+		if "PORTAGE_GPG_DIR" not in repoman_settings:
+			raise portage_exception.MissingParameter("PORTAGE_GPG_DIR is unset!")
+		if not os.access(repoman_settings["PORTAGE_GPG_DIR"], os.X_OK):
+			raise portage_exception.InvalidLocation(
+				"Unable to access directory: PORTAGE_GPG_DIR='%s'" % \
+				repoman_settings["PORTAGE_GPG_DIR"])
 		gpgcmd = "gpg --sign --clearsign --yes "
 		gpgcmd+= "--default-key "+repoman_settings["PORTAGE_GPG_KEY"]
 		if repoman_settings.has_key("PORTAGE_GPG_DIR"):
 			gpgcmd += " --homedir "+repoman_settings["PORTAGE_GPG_DIR"]
 		if "--pretend" in myoptions:
 			print "("+gpgcmd+" "+filename+")"
-			rValue = 0
 		else:
 			rValue = os.system(gpgcmd+" "+filename)
-			if rValue == 0:
+			if rValue == os.EX_OK:
 				os.rename(filename+".asc", filename)
 			else:
-				print "!!! gpg exited with '" + str(rValue) + "' status"
-		return rValue
+				raise portage_exception.PortageException("!!! gpg exited with '" + str(rValue) + "' status")
 
+	need_commit = False
 	if myheaders or myupdates or myremoved or mynew:
 		myfiles=myheaders+myupdates+myremoved+mynew
 		for x in range(len(myfiles)-1, -1, -1):
@@ -1603,66 +1610,73 @@ else:
 			print red("I'm confused... I don't know where I am!")
 			sys.exit(1)
 
-		if "--pretend" in myoptions:
-			print "(/usr/bin/cvs -q commit -F "+commitmessagefile+")"
+		# Force an unsigned commit when more than one Manifest needs to be signed.
+		if repolevel < 3 and "sign" in portage.features:
+			if "--pretend" in myoptions:
+				print "(/usr/bin/cvs -q commit -F "+commitmessagefile+")"
+			else:
+				mymsg=open(commitmessagefile,"w")
+				mymsg.write(commitmessage)
+				mymsg.write("\n (Unsigned Manifest commit)")
+				mymsg.close()
+				retval=os.system("/usr/bin/cvs -q commit -F "+commitmessagefile)
+				if retval:
+					print "!!! Exiting on cvs (shell) error code:",retval
+					sys.exit(retval)
 		else:
-			mymsg=open(commitmessagefile,"w")
-			mymsg.write(commitmessage)
-			mymsg.write(" (Unsigned Manifest commit)")
-			mymsg.close()
-			retval=os.system("/usr/bin/cvs -q commit -F "+commitmessagefile)
-			if retval:
-				print "!!! Exiting on cvs (shell) error code:",retval
-				sys.exit(retval)
-	
-	if "sign" in portage.features:
-		mydone=[]
-		if repolevel==3:   # In a package dir
-			repoman_settings["O"] = "."
-			while(gpgsign(os.path.join(repoman_settings["O"], "Manifest"))):
-				portage.writemsg("!!! YOU MUST sign the Manifest.\n")
-				portage.writemsg("!!! You can also disable this for the time being by removing FEATURES='sign'")
-				time.sleep(3)
-		elif repolevel==2: # In a category dir
-			for x in myfiles:
-				xs=string.split(x,"/")
-				if xs[0]==".":
-					xs=xs[1:]
-				if xs[0] in mydone:
-					continue
-				mydone.append(xs[0])
-				repoman_settings["O"] = os.path.join(".", xs[0])
-				while(gpgsign(os.path.join(repoman_settings["O"], "Manifest"))):
-					portage.writemsg("!!! YOU MUST sign the Manifest.\n")
-					portage.writemsg("!!! You can also disable this for the time being by removing FEATURES='sign'")
-					time.sleep(3)
-		elif repolevel==1: # repo-cvsroot
-			print green("RepoMan sez:"), "\"You're rather crazy... doing the entire repository.\"\n"
-			for x in myfiles:
-				xs=string.split(x,"/")
-				if xs[0]==".":
-					xs=xs[1:]
-				if string.join(xs[:2],"/") in mydone:
-					continue
-				mydone.append(string.join(xs[:2],"/"))
-				repoman_settings["O"] = os.path.join(".", xs[0], xs[1])
-				while(gpgsign(os.path.join(repoman_settings["O"], "Manifest"))):
-					portage.writemsg("!!! YOU MUST sign the Manifest.\n")
-					portage.writemsg("!!! You can also disable this for the time being by removing FEATURES='sign'")
-					time.sleep(3)
+			need_commit = True
 
+	signed = False
+	if "sign" in portage.features:
+		signed = True
+		try:
+			if repolevel==3:   # In a package dir
+				repoman_settings["O"] = "."
+				gpgsign(os.path.join(repoman_settings["O"], "Manifest"))
+			elif repolevel==2: # In a category dir
+				mydone=[]
+				for x in myfiles:
+					xs=string.split(x,"/")
+					if xs[0]==".":
+						xs=xs[1:]
+					if xs[0] in mydone:
+						continue
+					mydone.append(xs[0])
+					repoman_settings["O"] = os.path.join(".", xs[0])
+					gpgsign(os.path.join(repoman_settings["O"], "Manifest"))
+			elif repolevel==1: # repo-cvsroot
+				print green("RepoMan sez:"), "\"You're rather crazy... doing the entire repository.\"\n"
+				mydone=[]
+				for x in myfiles:
+					xs=string.split(x,"/")
+					if xs[0]==".":
+						xs=xs[1:]
+					if string.join(xs[:2],"/") in mydone:
+						continue
+					mydone.append(string.join(xs[:2],"/"))
+					repoman_settings["O"] = os.path.join(".", xs[0], xs[1])
+					gpgsign(os.path.join(repoman_settings["O"], "Manifest"))
+		except portage_exception.PortageException, e:
+			portage.writemsg("!!! %s\n" % str(e))
+			portage.writemsg("!!! Disabled FEATURES='sign'\n")
+			signed = False
+
+	if need_commit or signed:
 		if "--pretend" in myoptions:
 			print "(/usr/bin/cvs -q commit -F "+commitmessagefile+")"
 		else:
 			mymsg=open(commitmessagefile,"w")
 			mymsg.write(commitmessage)
-			mymsg.write("\n (Signed Manifest commit)")
+			if signed:
+				mymsg.write("\n (Signed Manifest commit)")
+			else:
+				mymsg.write("\n (Unsigned Manifest commit)")
 			mymsg.close()
 			retval=os.system("/usr/bin/cvs -q commit -F "+commitmessagefile)
 			if retval:
 				print "!!! Exiting on cvs (shell) error code:",retval
 				sys.exit(retval)
-	
+
 	if unlinkfile:
 		os.unlink(commitmessagefile)
 	print
