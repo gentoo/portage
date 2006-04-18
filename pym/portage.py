@@ -1615,6 +1615,14 @@ class config:
 		"""Called to implement membership test operators (in and not in)."""
 		return bool(self.has_key(mykey))
 
+	def setdefault(self, k, x=None):
+		if k in self:
+			return self[k]
+		else:
+			myvalue = x
+			self[k] = x
+			return myvalue
+
 	def keys(self):
 		return unique_array(flatten([x.keys() for x in self.lookuplist]))
 
