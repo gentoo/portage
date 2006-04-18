@@ -102,17 +102,20 @@ function scan() {
 
 function sel_file() {
 	local -i isfirst=0
-	until [ -f ${TMP}/files/${input} ] || [ ${input} == -1 ] || [ ${input} == -3 ]; do
+	until [[ -f ${TMP}/files/${input} ]] || \
+	      [[ ${input} == -1 ]] || \
+	      [[ ${input} == -3 ]]
+	do
 		local numfiles=$(ls ${TMP}/files|wc -l)
 		local numwidth=${#numfiles}
 		for file in $(ls ${TMP}/files|sort -n); do
-			if (( ${isfirst} == 0 )); then
+			if [[ ${isfirst} == 0 ]] ; then
 				isfirst=${file}
 			fi
 			numshow=$(printf "%${numwidth}i${PAR} " ${file})
 			numupdates=$(( $(wc -l <${TMP}/files/${file}) - 1 ))
 			echo -n "${numshow}"
-			if (( ${mode} == 0 )); then
+			if [[ ${mode} == 0 ]] ; then
 				echo "$(head -n1 ${TMP}/files/${file}) (${numupdates})"
 			else
 				head -n1 ${TMP}/files/${file}
@@ -122,14 +125,14 @@ function sel_file() {
 		if [ "${OVERWRITE_ALL}" == "yes" ]; then
 			input=0
 		else
-			if (( ${mode} == 0 )); then
+			if [[ ${mode} == 0 ]] ; then
 				echo "The following is the list of files which need updating, each 
 configuration file is followed by a list of possible replacement files."
 			else
 				local my_title="Please select a file to update"
 			fi
 
-			if (( ${mode} == 0 )); then
+			if [[ ${mode} == 0 ]] ; then
 				cat ${TMP}/menuitems
 				echo    "Please select a file to edit by entering the corresponding number."
 				echo    "              (don't use -3 or -5 if you're unsure what to do)"
@@ -142,16 +145,16 @@ configuration file is followed by a list of possible replacement files."
 					2> ${TMP}/input || die "User termination!" 0
 				input=$(<${TMP}/input)
 			fi
-			if (( ${input} == -5 )); then
+			if [[ ${input} == -5 ]] ; then
 				input=-3
 				export mv_opts=""
 			fi
-			if (( ${input} == -3 )); then
+			if [[ ${input} == -3 ]] ; then
 				input=0
 				export OVERWRITE_ALL="yes"
 			fi
 		fi # -3 automerge
-		if (( ${input} == 0 )); then
+		if [[ -z ${input} ]] || [[ ${input} == 0 ]] ; then
 			input=${isfirst}
 		fi
 	done
@@ -177,7 +180,7 @@ function do_file() {
 						echo -n "${fcount}${PAR} "
 						echo "${line}"
 					else
-						if (( ${mode} == 0 )); then
+						if [[ ${mode} == 0 ]] ; then
 							echo "Below are the new config files for ${line}:"
 						else
 							local my_title="Please select a file to process for ${line}"
@@ -186,7 +189,7 @@ function do_file() {
 					fcount=${fcount}+1
 				done > ${TMP}/menuitems
 
-				if (( ${mode} == 0 )); then
+				if [[ ${mode} == 0 ]] ; then
 					cat ${TMP}/menuitems
 					echo -n "Please select a file to process (-1 to exit this file): "
 					read my_input
@@ -198,16 +201,16 @@ function do_file() {
 				fi
 			fi # OVERWRITE_ALL
 
-			if (( ${my_input} == 0 )); then
+			if [[ ${my_input} == 0 ]] ; then
 				my_input=1
-			elif (( ${my_input} == -1 )); then
+			elif [[ ${my_input} == -1 ]] ; then
 				input=0 
 				return
-			elif (( ${my_input} == ${fcount} )); then
+			elif [[ ${my_input} == ${fcount} ]] ; then
 				break
 			fi
 		done
-		if (( ${my_input} == ${fcount} )); then
+		if [[ ${my_input} == ${fcount} ]] ; then
 			break
 		fi
 
@@ -221,7 +224,7 @@ function do_file() {
 		sed -e "${fcount}!p;d" ${TMP}/files/${input} > ${TMP}/files/sed
 		mv ${TMP}/files/sed ${TMP}/files/${input}
 
-		if (( ${my_input} == -1 )); then
+		if [[ ${my_input} == -1 ]] ; then
 			break
 		fi
 	done
