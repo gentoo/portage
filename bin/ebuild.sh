@@ -384,7 +384,7 @@ unpack() {
 					gzip -dc "${srcdir}${x}" > ${x%.*} || die "$myfail"
 				fi
 				;;
-			bz2)
+			bz2|bz)
 				if [ "${y}" == "tar" ]; then
 					bzip2 -dc "${srcdir}${x}" | tar xf - ${tarvars}
 					assert "$myfail"
