@@ -1574,7 +1574,12 @@ else:
 		if "PORTAGE_GPG_KEY" not in repoman_settings:
 			raise portage_exception.MissingParameter("PORTAGE_GPG_KEY is unset!")
 		if "PORTAGE_GPG_DIR" not in repoman_settings:
-			raise portage_exception.MissingParameter("PORTAGE_GPG_DIR is unset!")
+			if os.environ.has_key("HOME") and os.access(os.environ["HOME"]+"/.gnupg", os.R_OK):
+				repoman_settings["PORTAGE_GPG_DIR"] = os.environ["HOME"]+"/.gnupg"
+				if quiet < 1:
+					print "Automatically setting PORTAGE_GPG_DIR to",repoman_settings["PORTAGE_GPG_DIR"]
+			else:
+				raise portage_exception.MissingParameter("PORTAGE_GPG_DIR is unset!")
 		if not os.access(repoman_settings["PORTAGE_GPG_DIR"], os.X_OK):
 			raise portage_exception.InvalidLocation(
 				"Unable to access directory: PORTAGE_GPG_DIR='%s'" % \
