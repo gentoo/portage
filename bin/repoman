@@ -1519,7 +1519,20 @@ else:
 		print "myheaders:",myheaders
 		print
 	unlinkfile=0
-	if not (commitmessage or commitmessagefile):
+	if commitmessagefile:
+		try:
+			f = open(commitmessagefile)
+			commitmessage = f.read()
+			f.close()
+			del f
+		except (IOError, OSError), e:
+			if e.errno == errno.ENOENT:
+				portage.writemsg("!!! File Not Found: --commitmsgfile='%s'\n" % commitmessagefile)
+			else:
+				raise
+		# We've read the content so the file is no longer needed.
+		commitmessagefile = None
+	if not commitmessage:
 		print "Please enter a CVS commit message at the prompt:"
 		while not commitmessage:
 			try:
@@ -1528,7 +1541,7 @@ else:
 				exithandler()
 	try:
 		commitmessage+="\n(Portage version: "+str(portage.VERSION)+")"
-	except:
+	except AttributeError:
 		print "Failed to insert portage version in message!"
 		commitmessage+="\n(Portage version: Unknown)"
 	if not commitmessagefile:
