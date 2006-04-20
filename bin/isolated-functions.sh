@@ -16,7 +16,7 @@ elog_base() {
 			return 1
 			;;
 	esac
-	echo "$*" >> ${T}/logging/${EBUILD_PHASE}.${messagetype}
+	echo "$*" >> ${T}/logging/${EBUILD_PHASE:-other}.${messagetype}
 	return 0
 }
 
