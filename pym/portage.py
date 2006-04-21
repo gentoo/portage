@@ -4802,12 +4802,27 @@ class portdbapi(dbapi):
 		#XXX: maybe this should be improved: take partial downloads
 		# into account? check checksums?
 		for myfile in myfiles:
-			if debug and myfile not in checksums.keys():
-				print "[bad digest]: missing",myfile,"for",mypkg
-			elif myfile in checksums.keys():
-				distfile=settings["DISTDIR"]+"/"+myfile
-				if not os.access(distfile, os.R_OK):
-					filesdict[myfile]=int(checksums[myfile]["size"])
+			if myfile not in checksums:
+				if debug:
+					writemsg("[bad digest]: missing %s for %s\n" % (myfile, mypkg))
+				continue
+			file_path = os.path.join(self.mysettings["DISTDIR"], myfile)
+			mystat = None
+			try:
+				mystat = os.stat(file_path)
+			except OSError, e:
+				pass
+			if mystat is None:
+				existing_size = 0
+			else:
+				existing_size = mystat.st_size
+			remaining_size = int(checksums[myfile]["size"]) - existing_size
+			if remaining_size > 0:
+				# Assume the download is resumable.
+				filesdict[myfile] = remaining_size
+			elif remaining_size < 0:
+				# The existing file is too large and therefore corrupt.
+				filesdict[myfile] = int(checksums[myfile]["size"])
 		return filesdict
 
 	def fetch_check(self, mypkg, useflags=None, mysettings=None, all=False):
