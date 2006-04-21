@@ -486,7 +486,13 @@ class Manifest(object):
 	def _getCpvDistfiles(self, cpv):
 		""" Get a list of all DIST files associated to the given cpv """
 		return self.fetchlist_dict[cpv]
-	
+
+	def getDistfilesSize(self, fetchlist):
+		total_bytes = 0
+		for f in fetchlist:
+			total_bytes += int(self.fhashdict["DIST"][f]["size"])
+		return total_bytes
+
 	def updateFileHashes(self, ftype, fname, checkExisting=True, ignoreMissing=True, reuseExisting=False):
 		""" Regenerate hashes for the given file """
 		if checkExisting:

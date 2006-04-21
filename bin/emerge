@@ -784,26 +784,20 @@ class search:
 					mysum = [0,0]
 					mycat = match.split("/")[0]
 					mypkg = match.split("/")[1]
-
-					mydigest = portage.db["/"]["porttree"].dbapi.finddigest(mycat+"/"+mypkg + "-" + myversion)
-
-					try:
-						myfile = open(mydigest,"r")
-						for line in myfile.readlines():
-							mysum[0] += int(line.split(" ")[3])
-						myfile.close()
-						mystr = str(mysum[0]/1024)
-						mycount=len(mystr)
-						while (mycount > 3):
-							mycount-=3
-							mystr=mystr[:mycount]+","+mystr[mycount:]
-						mysum[0]=mystr+" kB"
-					except SystemExit, e:
-						raise # Needed else can't exit
-					except Exception, e:
-						if edebug:
-							print "!!! Exception:",e
-						mysum[0]=" [no/bad digest]"
+					mycpv = match + "-" + myversion
+					myebuild = portage.portdb.findname(mycpv)
+					pkgdir = os.path.dirname(myebuild)
+					import portage_manifest
+					mf = portage_manifest.Manifest(pkgdir,
+						portage.FetchlistDict(pkgdir, portage.settings),
+						portage.settings["DISTDIR"])
+					mysum[0] = mf.getDistfilesSize(mf.fetchlist_dict[mycpv])
+					mystr = str(mysum[0]/1024)
+					mycount=len(mystr)
+					while (mycount > 3):
+						mycount-=3
+						mystr=mystr[:mycount]+","+mystr[mycount:]
+					mysum[0]=mystr+" kB"
 
 					if "--quiet" not in myopts:
 						print "     ", darkgreen("Latest version available:"),myversion
