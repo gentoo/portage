@@ -1619,9 +1619,14 @@ class config:
 		if k in self:
 			return self[k]
 		else:
-			myvalue = x
 			self[k] = x
-			return myvalue
+			return x
+
+	def get(self, k, x=None):
+		if k in self:
+			return self[k]
+		else:
+			return x
 
 	def keys(self):
 		return unique_array(flatten([x.keys() for x in self.lookuplist]))
