@@ -1,0 +1,22 @@
+#!/bin/bash
+ 
+if [[ -n ${ESED} ]]; then
+exec ${ESED} "$@"
+elif type -p gsed > /dev/null ; then
+exec gsed "$@"
+else
+old_IFS="${IFS}"
+IFS=":"
+ 
+SEARCH=${PATH#*:}
+for path in $SEARCH; do
+if [[ -x $path/sed ]]; then
+exec $path/sed "$@"
+exit 0
+fi
+done
+ 
+IFS="${old_IFS}"
+fi
+ 
+exit 1
