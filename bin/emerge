@@ -2246,8 +2246,7 @@ def unmerge(unmerge_action, unmerge_files):
 			#add a "=" if missing
 			mymatch=localtree.dep_match("="+x)
 		if not mymatch:
-			print "\n--- Couldn't find " + white(x) + " to "+unmerge_action+"."
-			continue
+			raise portage_exception.PackageNotFound(x)
 		mykey=portage.key_expand(portage.dep_getkey(mymatch[0]),portage.db["/"]["vartree"].dbapi)
 		if not pkgmap.has_key(mykey):
 			pkgmap[mykey]={"protected":[], "selected":[], "omitted":[] }
@@ -3115,8 +3114,12 @@ elif "search"==myaction:
 				sys.exit(1)
 			searchinstance.output()
 elif "unmerge"==myaction or "prune"==myaction or "clean"==myaction:
-	if 1==unmerge(myaction, myfiles):
-		post_emerge()
+	try:
+		if 1==unmerge(myaction, myfiles):
+			post_emerge()
+	except portage_exception.PackageNotFound, e:
+		portage.writemsg("--- Couldn't find %s to unmerge.\n" % str(e))
+		sys.exit(1)
 
 elif "depclean"==myaction:
 	# Kill packages that aren't explicitly merged or are required as a
