@@ -2330,7 +2330,7 @@ def unmerge(unmerge_action, unmerge_files):
 		#we're done... return
 		return 0
 	if "--ask" in myopts:
-		if userquery("Do you want me to unmerge these packages?")=="No":
+		if userquery("Would you like to unmerge these packages?")=="No":
 			# enter pretend mode for correct formatting of results
 			myopts+=["--pretend"]
 			print
@@ -3312,7 +3312,7 @@ else:
 	if "--ask" in myopts:
 		if "--resume" in myopts:
 			mydepgraph.display(portage.mtimedb["resume"]["mergelist"])
-			prompt="Do you want me to resume merging these packages?"
+			prompt="Would you like to resume merging these packages?"
 		else:
 			mydepgraph.display(mydepgraph.altlist())
 			mergecount=0
@@ -3327,16 +3327,16 @@ else:
 					sys.exit(1)
 			if mergecount==0:
 				if portage.settings["AUTOCLEAN"] and "yes"==portage.settings["AUTOCLEAN"]:
-					prompt="Nothing to merge; do you want me to auto-clean packages?"
+					prompt="Nothing to merge; would you like to auto-clean packages?"
 				else:
 					print
 					print "Nothing to merge; quitting."
 					print
 					sys.exit(0)
 			elif "--fetchonly" in myopts or "--fetch-all-uri" in myopts:
-				prompt="Do you want me to fetch the source files for these packages?"
+				prompt="Would you like to fetch the source files for these packages?"
 			else:
-				prompt="Do you want me to merge these packages?"
+				prompt="Would you like to merge these packages?"
 		print
 		if userquery(prompt)=="No":
 			print
