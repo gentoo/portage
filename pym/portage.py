@@ -6498,11 +6498,11 @@ def getvirtuals(myroot):
 
 def do_vartree(mysettings):
 	global db, root, settings
-	db["/"] = portage_util.LazyItemsDict()
+	db["/"] = portage_util.LazyItemsDict(db.get("/", None))
 	db["/"].addLazySingleton("virtuals", settings.getvirtuals, "/")
 	db["/"]["vartree"] = vartree("/")
 	if root!="/":
-		db[root] = portage_util.LazyItemsDict()
+		db[root] = portage_util.LazyItemsDict(db.get(root, None))
 		db[root].addLazySingleton("virtuals", settings.getvirtuals, root)
 		db[root]["vartree"] = vartree(root)
 	#We need to create the vartree first, then load our settings, and then set up our other trees
@@ -6738,6 +6738,11 @@ def update_config_files(update_iter):
 			continue
 
 def global_updates():
+	"""Perform new global updates if they exist in $PORTDIR/profiles/updates/."""
+	# only do this if we're root and not running repoman/ebuild digest
+	global db, mtimedb, secpass, settings
+	if secpass < 2 or "SANDBOX_ACTIVE" in os.environ:
+		return
 	updpath = os.path.join(settings["PORTDIR"], "profiles", "updates")
 	if not mtimedb.has_key("updates"):
 		mtimedb["updates"] = {}
@@ -6805,16 +6810,12 @@ def global_updates():
 
 		#make sure our internal databases are consistent; recreate our virts and vartree
 		do_vartree(settings)
+		db["/"].addLazyItem("bintree", LazyBintreeItem("/"))
 		if do_upgrade_packagesmessage and \
 			listdir(os.path.join(settings["PKGDIR"], "All"), EmptyOnError=1):
 			writemsg_stdout(" ** Skipping packages. Run 'fixpackages' or set it in FEATURES to fix the")
 			writemsg_stdout("\n    tbz2's in the packages directory. "+bold("Note: This can take a very long time."))
 			writemsg_stdout("\n")
-
-if (secpass==2) and (not os.environ.has_key("SANDBOX_ACTIVE")):
-	if settings["PORTAGE_CALLER"] in ["emerge","fixpackages"]:
-		#only do this if we're root and not running repoman/ebuild digest
-		global_updates()
 
 #continue setting up other trees
 class LazyBintreeItem(object):

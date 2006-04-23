@@ -10,6 +10,7 @@ import errno
 
 try:
 	import portage
+	portage.global_updates()
 except KeyboardInterrupt:
 	sys.exit(1) # If they control C during imports, just die silently
 

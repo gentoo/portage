@@ -8,6 +8,7 @@ os.environ["PORTAGE_CALLER"]="fixpackages"
 sys.path = ["/usr/lib/portage/pym"]+sys.path
 
 import portage
+portage.global_updates()
 
 print
 print "Done."
