@@ -465,10 +465,15 @@ class Manifest(object):
 	
 	def checkFileHashes(self, ftype, fname, ignoreMissing=False):
 		myhashes = self.fhashdict[ftype][fname]
-		ok,reason = verify_all(self._getAbsname(ftype, fname), self.fhashdict[ftype][fname])
-		if not ok:
-			raise DigestException(tuple([self._getAbsname(ftype, fname)]+list(reason)))
-		return ok, reason
+		try:
+			ok,reason = verify_all(self._getAbsname(ftype, fname), self.fhashdict[ftype][fname])
+			if not ok:
+				raise DigestException(tuple([self._getAbsname(ftype, fname)]+list(reason)))
+			return ok, reason
+		except FileNotFound, e:
+			if not ignoreMissing:
+				raise
+			return False, "File Not Found: '%s'" % str(e)
 
 	def checkCpvHashes(self, cpv, checkDistfiles=True, onlyDistfiles=False, checkMiscfiles=False):
 		""" check the hashes for all files associated to the given cpv, include all
