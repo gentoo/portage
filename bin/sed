@@ -2,23 +2,25 @@
 # Copyright 2006 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
  
+scriptpath=$_
+
 if [[ -n ${ESED} ]]; then
-exec ${ESED} "$@"
+	exec ${ESED} "$@"
 elif type -p gsed > /dev/null ; then
-exec gsed "$@"
+	exec gsed "$@"
 else
-old_IFS="${IFS}"
-IFS=":"
+	old_IFS="${IFS}"
+	IFS=":"
  
-SEARCH=${PATH#*:}
-for path in $SEARCH; do
-if [[ -x $path/sed ]]; then
-exec $path/sed "$@"
-exit 0
-fi
-done
- 
-IFS="${old_IFS}"
+	for path in $PATH; do
+		[[ ${path}/sed == $scriptpath ]] && continue
+		if [[ -x $path/sed ]]; then
+			exec $path/sed "$@"	
+			exit 0
+		fi
+	done
+	
+	IFS="${old_IFS}"
 fi
  
 exit 1
