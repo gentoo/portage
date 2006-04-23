@@ -1884,8 +1884,8 @@ class depgraph:
 							print ">>> Recording",myfavkey,"in \"world\" favorites file..."
 			if not "--fetchonly" in myopts:
 				portage.write_atomic(
-				os.path.join(portage.root, portage.WORLD_FILE),
-				"\n".join(myfavdict.values()))
+					os.path.join(portage.root, portage.WORLD_FILE),
+					"\n".join(myfavdict.values()))
 
 			portage.mtimedb["resume"]["mergelist"]=mymergelist[:]
 
