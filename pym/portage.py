@@ -96,6 +96,10 @@ try:
 	# Need these functions directly in portage namespace to not break every external tool in existence
 	from portage_versions import ververify,vercmp,catsplit,catpkgsplit,pkgsplit,pkgcmp
 
+	# endversion and endversion_keys are for backward compatibility only.
+	from portage_versions import endversion_keys
+	from portage_versions import suffix_value as endversion
+
 except ImportError, e:
 	sys.stderr.write("\n\n")
 	sys.stderr.write("!!! Failed to complete portage imports. There are internal modules for\n")
@@ -494,17 +498,6 @@ def elog_process(cpv, mysettings):
 			print e
 		except portage_exception.PortageException, e:
 			print e
-
-# valid end of version components; integers specify offset from release version
-# pre=prerelease, p=patchlevel (should always be followed by an int), rc=release candidate
-# all but _p (where it is required) can be followed by an optional trailing integer
-
-endversion={"pre":-2,"p":0,"alpha":-4,"beta":-3,"rc":-1}
-# as there's no reliable way to set {}.keys() order
-# netversion_keys will be used instead of endversion.keys
-# to have fixed search order, so that "pre" is checked
-# before "p"
-endversion_keys = ["pre", "p", "alpha", "beta", "rc"]
 
 #parse /etc/env.d and generate /etc/profile.env
 
