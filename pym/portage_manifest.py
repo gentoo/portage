@@ -321,8 +321,9 @@ class Manifest(object):
 					myhashkeys = myhashes.keys()
 					myhashkeys.sort()
 					for h in myhashkeys:
-						yield Manifest1Entry(type="AUX", name=digest_path,
-							hashes={"size":myhashes["size"], h:myhashes[h]})
+						if h != "size":
+							yield Manifest1Entry(type="AUX", name=digest_path,
+								hashes={"size":myhashes["size"], h:myhashes[h]})
 				except FileNotFound:
 					pass
 
