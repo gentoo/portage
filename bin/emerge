@@ -2219,12 +2219,13 @@ def unmerge(unmerge_action, unmerge_files):
 				print "="+string.join(sp_absx[sp_vdb_len:],"/")
 				candidate_catpkgs.append("="+string.join(sp_absx[sp_vdb_len:],"/"))
 
+	newline=""
 	if (not "--quiet" in myopts):
-		print
+		newline="\n"
 	if portage.settings["ROOT"]:
-		print darkgreen(">>> Using system located in ROOT tree "+portage.settings["ROOT"])
+		print darkgreen(newline+">>> Using system located in ROOT tree "+portage.settings["ROOT"])
 	if (("--pretend" in myopts) or ("--ask" in myopts)) and not ("--quiet" in myopts):
-		print darkgreen(">>> These are the packages that would be unmerged:")
+		print darkgreen(newline+">>> These are the packages that would be unmerged:")
 
 	pkgmap={}
 	numselected=0
