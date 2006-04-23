@@ -6445,19 +6445,23 @@ os.umask(022)
 profiledir=None
 if os.path.isdir(PROFILE_PATH):
 	profiledir = PROFILE_PATH
-	if "PORTAGE_CALLER" in os.environ and os.environ["PORTAGE_CALLER"] == "emerge" and os.access(DEPRECATED_PROFILE_FILE, os.R_OK):
-		deprecatedfile = open(DEPRECATED_PROFILE_FILE, "r")
-		dcontent = deprecatedfile.readlines()
-		deprecatedfile.close()
-		newprofile = dcontent[0]
-		writemsg(red("\n!!! Your current profile is deprecated and not supported anymore.\n"))
-		writemsg(red("!!! Please upgrade to the following profile if possible:\n"))
-		writemsg(8*" "+green(newprofile)+"\n")
-		if len(dcontent) > 1:
-			writemsg("To upgrade do the following steps:\n")
-			for myline in dcontent[1:]:
-				writemsg(myline)
-			writemsg("\n\n")
+
+def deprecated_profile_check():
+	if not os.access(DEPRECATED_PROFILE_FILE, os.R_OK):
+		return False
+	deprecatedfile = open(DEPRECATED_PROFILE_FILE, "r")
+	dcontent = deprecatedfile.readlines()
+	deprecatedfile.close()
+	newprofile = dcontent[0]
+	writemsg(red("\n!!! Your current profile is deprecated and not supported anymore.\n"))
+	writemsg(red("!!! Please upgrade to the following profile if possible:\n"))
+	writemsg(8*" "+green(newprofile)+"\n")
+	if len(dcontent) > 1:
+		writemsg("To upgrade do the following steps:\n")
+		for myline in dcontent[1:]:
+			writemsg(myline)
+		writemsg("\n\n")
+	return True
 
 if os.path.exists(USER_VIRTUALS_FILE):
 	writemsg(red("\n!!! /etc/portage/virtuals is deprecated in favor of\n"))

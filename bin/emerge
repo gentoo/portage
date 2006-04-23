@@ -153,6 +153,8 @@ def sorted_versions(verlist):
 		ret.insert(x, ver)
 	return ret
 
+portage.deprecated_profile_check()
+
 if portage.settings.has_key("PORTAGE_NICENESS"):
 	try:
 		os.nice(int(portage.settings["PORTAGE_NICENESS"]))
