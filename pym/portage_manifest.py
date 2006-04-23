@@ -321,7 +321,7 @@ class Manifest(object):
 					myhashkeys = myhashes.keys()
 					myhashkeys.sort()
 					for h in myhashkeys:
-						if h != "size":
+						if h in portage_const.MANIFEST1_HASH_FUNCTIONS:
 							yield Manifest1Entry(type="AUX", name=digest_path,
 								hashes={"size":myhashes["size"], h:myhashes[h]})
 				except FileNotFound:
