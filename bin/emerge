@@ -1701,12 +1701,14 @@ class depgraph:
 					myoldbest=blue("["+myoldbest+"]")
 
 				if x[1]!="/":
+					if myoldbest:
+						myoldbest +=" "
 					if "--columns" in myopts:
 						if "--quiet" in myopts:
 							myprint=addl+" "+indent+darkgreen(xs[0])
-							myprint=myprint+darkblue(xs[1]+xs[2])+" "
+							myprint=myprint+darkblue(" "+xs[1]+xs[2])+" "
 							myprint=myprint+myoldbest
-							myprint=myprint+darkgreen(" to "+x[1])
+							myprint=myprint+darkgreen("to "+x[1])
 						else:
 							myprint="["+x[0]+" "+addl+"] "+indent+darkgreen(xs[0])
 							if (newlp-nc_len(myprint)) > 0:
@@ -1715,9 +1717,9 @@ class depgraph:
 							if (oldlp-nc_len(myprint)) > 0:
 								myprint=myprint+" "*(oldlp-nc_len(myprint))
 							myprint=myprint+myoldbest
-							myprint=myprint+darkgreen("  to "+x[1])+" "+verboseadd
+							myprint=myprint+darkgreen("to "+x[1])+" "+verboseadd
 					else:
-						myprint="["+x[0]+" "+addl+"] "+darkgreen(x[2])+" "+myoldbest+" "+darkgreen("to "+x[1])+" "+verboseadd
+						myprint="["+x[0]+" "+addl+"] "+darkgreen(x[2])+" "+myoldbest+darkgreen("to "+x[1])+" "+verboseadd
 				else:
 					if "--columns" in myopts:
 						if "--quiet" in myopts:
