@@ -21,7 +21,7 @@ from output import *
 import portage_util
 import portage_locks
 import portage_exception
-
+from portage_const import PROFILE_PATH
 
 spinner_msgs = ["Gentoo Rocks ("+os.uname()[0]+")",
                 "Thank you for using Gentoo. :)",
@@ -565,16 +565,14 @@ def getgccversion():
 def getportageversion():
 	try:
 		import re
-		profilever = os.path.normpath("///"+os.readlink("/etc/make.profile"))
+		profilever = os.path.normpath("///"+os.readlink(PROFILE_PATH))
 		basepath   = os.path.normpath("///"+portage.settings["PORTDIR"]+"/profiles")
 		if re.match(basepath,profilever):
 			profilever = profilever[len(basepath)+1:]
 		else:
 			profilever = "!"+profilever
 		del basepath
-	except SystemExit, e:
-		raise # Needed else can't exit
-	except:
+	except (OSError,IOError):
 		profilever="unavailable"
 	libcver=[]
 	libclist  = portage.vardbapi(portage.root).match("virtual/libc")
@@ -1442,7 +1440,7 @@ class depgraph:
 
 		return myk
 
-	def display(self,mylist,verbosity=("--quiet" in myopts and 1 or "--verbose" in myopts and 3 or 2)):
+	def display(self,mylist,verbosity=("--quiet" in myopts and 1 or "--verbose" in myopts and 3 or 2 )):
 		changelogs=[]
 		p=[]
 		totalsize=0
