@@ -5536,7 +5536,8 @@ class dblink:
 		#do prerm script
 		if myebuildpath and os.path.exists(myebuildpath):
 			# Eventually, we'd like to pass in the saved ebuild env here...
-			a=doebuild(myebuildpath,"prerm",self.myroot,self.settings,cleanup=cleanup,use_cache=0,tree=self.treetype)
+			a = doebuild(myebuildpath, "prerm", self.myroot, self.settings,
+				cleanup=cleanup, use_cache=0, tree="vartree")
 			# XXX: Decide how to handle failures here.
 			if a != 0:
 				writemsg("!!! FAILED prerm: "+str(a)+"\n")
@@ -5696,12 +5697,13 @@ class dblink:
 		if myebuildpath and os.path.exists(myebuildpath):
 			# XXX: This should be the old config, not the current one.
 			# XXX: Use vardbapi to load up env vars.
-			a=doebuild(myebuildpath,"postrm",self.myroot,self.settings,use_cache=0,tree=self.treetype)
+			a = doebuild(myebuildpath, "postrm", self.myroot, self.settings,
+			 use_cache=0, tree="vartree")
 			# XXX: Decide how to handle failures here.
 			if a != 0:
 				writemsg("!!! FAILED postrm: "+str(a)+"\n")
 				sys.exit(123)
-			doebuild(myebuildpath, "cleanrm", self.myroot, self.settings, tree=self.treetype)
+			doebuild(myebuildpath, "cleanrm", self.myroot, self.settings, tree="vartree")
 		self.unlockdb()
 
 	def isowner(self,filename,destroot):
