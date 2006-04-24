@@ -6503,11 +6503,11 @@ def do_vartree(mysettings):
 	global db, root, settings
 	db["/"] = portage_util.LazyItemsDict(db.get("/", None))
 	db["/"].addLazySingleton("virtuals", settings.getvirtuals, "/")
-	db["/"]["vartree"] = vartree("/")
+	db["/"].addLazySingleton("vartree", vartree, "/")
 	if root!="/":
 		db[root] = portage_util.LazyItemsDict(db.get(root, None))
 		db[root].addLazySingleton("virtuals", settings.getvirtuals, root)
-		db[root]["vartree"] = vartree(root)
+		db[root].addLazySingleton("vartree", vartree, root)
 	#We need to create the vartree first, then load our settings, and then set up our other trees
 
 usedefaults=settings.use_defs
@@ -6835,10 +6835,10 @@ class LazyBintreeItem(object):
 			self._bintree.populate()
 		return self._bintree
 
-db["/"]["porttree"] = portagetree("/")
+db["/"].addLazySingleton("porttree", portagetree, "/")
 db["/"].addLazyItem("bintree", LazyBintreeItem("/"))
 if root!="/":
-	db[root]["porttree"] = portagetree(root)
+	db[root].addLazySingleton("porttree", portagetree, root)
 	db[root].addLazyItem("bintree", LazyBintreeItem(root))
 
 thirdpartymirrors = settings.thirdpartymirrors()
