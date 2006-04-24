@@ -6653,6 +6653,14 @@ class LazyBintreeItem(object):
 			self._bintree.populate()
 		return self._bintree
 
+# Initialization of legacy globals.  No functions/classes below this point
+# please!  When the above functions and classes become independent of the
+# below global variables, it will be possible to make the below code
+# conditional on a backward compatibility flag (backward compatibility could
+# be disabled via an environment variable, for example).  This will enable new
+# code that is aware of this flag to import portage without the unnecessary
+# overhead (and other issues!) of initializing the legacy globals.
+
 if os.environ.has_key("ROOT"):
 	root=os.environ["ROOT"]
 	if not len(root):
