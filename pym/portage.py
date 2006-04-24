@@ -6399,70 +6399,6 @@ def pkgmerge(mytbz2,myroot,mysettings):
 	cleanup_pkgmerge(mypkg,origdir)
 	return returnme
 
-
-if os.environ.has_key("ROOT"):
-	root=os.environ["ROOT"]
-	if not len(root):
-		root="/"
-	elif root[-1]!="/":
-		root=root+"/"
-else:
-	root="/"
-if root != "/":
-	if not os.path.exists(root[:-1]):
-		writemsg("!!! Error: ROOT "+root+" does not exist.  Please correct this.\n")
-		writemsg("!!! Exiting.\n\n")
-		sys.exit(1)
-	elif not os.path.isdir(root[:-1]):
-		writemsg("!!! Error: ROOT "+root[:-1]+" is not a directory. Please correct this.\n")
-		writemsg("!!! Exiting.\n\n")
-		sys.exit(1)
-
-#create tmp and var/tmp if they don't exist; read config
-os.umask(0)
-if not os.path.exists(root+"tmp"):
-	writemsg(">>> "+root+"tmp doesn't exist, creating it...\n")
-	os.mkdir(root+"tmp",01777)
-if not os.path.exists(root+"var/tmp"):
-	writemsg(">>> "+root+"var/tmp doesn't exist, creating it...\n")
-	try:
-		os.mkdir(root+"var",0755)
-	except (OSError,IOError):
-		pass
-	try:
-		os.mkdir(root+"var/tmp",01777)
-	except SystemExit, e:
-		raise
-	except:
-		writemsg("portage: couldn't create /var/tmp; exiting.\n")
-		sys.exit(1)
-if not os.path.exists(root+"var/lib/portage"):
-	writemsg(">>> "+root+"var/lib/portage doesn't exist, creating it...\n")
-	try:
-		os.mkdir(root+"var",0755)
-	except (OSError,IOError):
-		pass
-	try:
-		os.mkdir(root+"var/lib",0755)
-	except (OSError,IOError):
-		pass
-	try:
-		os.mkdir(root+"var/lib/portage",02750)
-	except SystemExit, e:
-		raise
-	except:
-		writemsg("portage: couldn't create /var/lib/portage; exiting.\n")
-		sys.exit(1)
-
-
-#####################################
-# Deprecation Checks
-
-os.umask(022)
-profiledir=None
-if os.path.isdir(PROFILE_PATH):
-	profiledir = PROFILE_PATH
-
 def deprecated_profile_check():
 	if not os.access(DEPRECATED_PROFILE_FILE, os.R_OK):
 		return False
@@ -6480,30 +6416,6 @@ def deprecated_profile_check():
 		writemsg("\n\n")
 	return True
 
-if os.path.exists(USER_VIRTUALS_FILE):
-	writemsg(red("\n!!! /etc/portage/virtuals is deprecated in favor of\n"))
-	writemsg(red("!!! /etc/portage/profile/virtuals. Please move it to\n"))
-	writemsg(red("!!! this new location.\n\n"))
-
-#
-#####################################
-
-db={}
-
-# =============================================================================
-# =============================================================================
-# -----------------------------------------------------------------------------
-# We're going to lock the global config to prevent changes, but we need
-# to ensure the global settings are right.
-settings=config(config_profile_path=PROFILE_PATH,config_incrementals=portage_const.INCREMENTALS)
-
-# useful info
-settings["PORTAGE_MASTER_PID"]=str(os.getpid())
-settings.backup_changes("PORTAGE_MASTER_PID")
-# We are disabling user-specific bashrc files.
-settings["BASH_ENV"] = INVALID_ENV_FILE
-settings.backup_changes("BASH_ENV")
-
 # gets virtual package settings
 def getvirtuals(myroot):
 	global settings
@@ -6520,114 +6432,6 @@ def do_vartree(mysettings):
 		db[root].addLazySingleton("virtuals", settings.getvirtuals, root)
 		db[root].addLazySingleton("vartree", vartree, root)
 	#We need to create the vartree first, then load our settings, and then set up our other trees
-
-usedefaults=settings.use_defs
-
-# XXX: This is a circular fix.
-#do_vartree(settings)
-#settings.loadVirtuals('/')
-do_vartree(settings)
-#settings.loadVirtuals('/')
-
-settings.reset() # XXX: Regenerate use after we get a vartree -- GLOBAL
-
-
-# XXX: Might cause problems with root="/" assumptions
-portdb=portdbapi(settings["PORTDIR"])
-
-settings.lock()
-# -----------------------------------------------------------------------------
-# =============================================================================
-# =============================================================================
-
-
-if 'selinux' in settings["USE"].split(" "):
-	try:
-		import selinux
-		if hasattr(selinux, "enabled"):
-			selinux_enabled = selinux.enabled
-		else:
-			selinux_enabled = 1
-	except OSError, e:
-		writemsg(red("!!! SELinux not loaded: ")+str(e)+"\n")
-		selinux_enabled=0
-	except ImportError:
-		writemsg(red("!!! SELinux module not found.")+" Please verify that it was installed.\n")
-		selinux_enabled=0
-	if selinux_enabled == 0:
-		try:	
-			del sys.modules["selinux"]
-		except KeyError:
-			pass
-else:
-	selinux_enabled=0
-
-cachedirs=[CACHE_PATH]
-if root!="/":
-	cachedirs.append(root+CACHE_PATH)
-if not os.environ.has_key("SANDBOX_ACTIVE"):
-	for cachedir in cachedirs:
-		if not os.path.exists(cachedir):
-			os.makedirs(cachedir,0755)
-			writemsg(">>> "+cachedir+" doesn't exist, creating it...\n")
-		if not os.path.exists(cachedir+"/dep"):
-			os.makedirs(cachedir+"/dep",2755)
-			writemsg(">>> "+cachedir+"/dep doesn't exist, creating it...\n")
-		try:
-			os.chown(cachedir,uid,portage_gid)
-			os.chmod(cachedir,0775)
-		except OSError:
-			pass
-		try:
-			mystat=os.lstat(cachedir+"/dep")
-			os.chown(cachedir+"/dep",uid,portage_gid)
-			os.chmod(cachedir+"/dep",02775)
-			if mystat[stat.ST_GID]!=portage_gid:
-				spawn("chown -R "+str(uid)+":"+str(portage_gid)+" "+cachedir+"/dep",settings,free=1)
-				spawn("chmod -R u+rw,g+rw "+cachedir+"/dep",settings,free=1)
-		except OSError:
-			pass
-
-def flushmtimedb(record):
-	global mtimedb
-	if mtimedb:
-		if record in mtimedb.keys():
-			del mtimedb[record]
-			#print "mtimedb["+record+"] is cleared."
-		else:
-			writemsg("Invalid or unset record '"+record+"' in mtimedb.\n")
-
-#grab mtimes for eclasses and upgrades
-mtimedb={}
-mtimedbkeys=[
-"updates", "info",
-"version", "starttime",
-"resume", "resume_backup",
-"ldpath"
-]
-mtimedbfile=root+"var/cache/edb/mtimedb"
-try:
-	mypickle=cPickle.Unpickler(open(mtimedbfile))
-	mypickle.find_global=None
-	mtimedb=mypickle.load()
-	if mtimedb.has_key("old"):
-		mtimedb["updates"]=mtimedb["old"]
-		del mtimedb["old"]
-	if mtimedb.has_key("cur"):
-		del mtimedb["cur"]
-except SystemExit, e:
-	raise
-except:
-	#print "!!!",e
-	mtimedb={"updates":{},"version":"","starttime":0}
-
-for x in mtimedb.keys():
-	if x not in mtimedbkeys:
-		writemsg("Deleting invalid mtimedb key: "+str(x)+"\n")
-		del mtimedb[x]
-
-#,"porttree":portagetree(root,virts),"bintree":binarytree(root,virts)}
-features=settings["FEATURES"].split()
 
 def parse_updates(mycontent):
 	"""Valid updates are returned as a list of split update commands."""
@@ -6848,6 +6652,177 @@ class LazyBintreeItem(object):
 			# do it now to make sure that all method calls are safe.
 			self._bintree.populate()
 		return self._bintree
+
+if os.environ.has_key("ROOT"):
+	root=os.environ["ROOT"]
+	if not len(root):
+		root="/"
+	elif root[-1]!="/":
+		root=root+"/"
+else:
+	root="/"
+if root != "/":
+	if not os.path.exists(root[:-1]):
+		writemsg("!!! Error: ROOT "+root+" does not exist.  Please correct this.\n")
+		writemsg("!!! Exiting.\n\n")
+		sys.exit(1)
+	elif not os.path.isdir(root[:-1]):
+		writemsg("!!! Error: ROOT "+root[:-1]+" is not a directory. Please correct this.\n")
+		writemsg("!!! Exiting.\n\n")
+		sys.exit(1)
+
+#create tmp and var/tmp if they don't exist; read config
+os.umask(0)
+if not os.path.exists(root+"tmp"):
+	writemsg(">>> "+root+"tmp doesn't exist, creating it...\n")
+	os.mkdir(root+"tmp",01777)
+if not os.path.exists(root+"var/tmp"):
+	writemsg(">>> "+root+"var/tmp doesn't exist, creating it...\n")
+	try:
+		os.mkdir(root+"var",0755)
+	except (OSError,IOError):
+		pass
+	try:
+		os.mkdir(root+"var/tmp",01777)
+	except SystemExit, e:
+		raise
+	except:
+		writemsg("portage: couldn't create /var/tmp; exiting.\n")
+		sys.exit(1)
+if not os.path.exists(root+"var/lib/portage"):
+	writemsg(">>> "+root+"var/lib/portage doesn't exist, creating it...\n")
+	try:
+		os.mkdir(root+"var",0755)
+	except (OSError,IOError):
+		pass
+	try:
+		os.mkdir(root+"var/lib",0755)
+	except (OSError,IOError):
+		pass
+	try:
+		os.mkdir(root+"var/lib/portage",02750)
+	except SystemExit, e:
+		raise
+	except:
+		writemsg("portage: couldn't create /var/lib/portage; exiting.\n")
+		sys.exit(1)
+
+os.umask(022)
+profiledir=None
+if os.path.isdir(PROFILE_PATH):
+	profiledir = PROFILE_PATH
+
+if os.path.exists(USER_VIRTUALS_FILE):
+	writemsg(red("\n!!! /etc/portage/virtuals is deprecated in favor of\n"))
+	writemsg(red("!!! /etc/portage/profile/virtuals. Please move it to\n"))
+	writemsg(red("!!! this new location.\n\n"))
+
+db={}
+
+# We're going to lock the global config to prevent changes, but we need
+# to ensure the global settings are right.
+settings=config(config_profile_path=PROFILE_PATH,config_incrementals=portage_const.INCREMENTALS)
+
+# useful info
+settings["PORTAGE_MASTER_PID"]=str(os.getpid())
+settings.backup_changes("PORTAGE_MASTER_PID")
+# We are disabling user-specific bashrc files.
+settings["BASH_ENV"] = INVALID_ENV_FILE
+settings.backup_changes("BASH_ENV")
+usedefaults=settings.use_defs
+do_vartree(settings)
+settings.reset() # XXX: Regenerate use after we get a vartree -- GLOBAL
+
+# XXX: Might cause problems with root="/" assumptions
+portdb=portdbapi(settings["PORTDIR"])
+
+settings.lock()
+
+if 'selinux' in settings["USE"].split(" "):
+	try:
+		import selinux
+		if hasattr(selinux, "enabled"):
+			selinux_enabled = selinux.enabled
+		else:
+			selinux_enabled = 1
+	except OSError, e:
+		writemsg(red("!!! SELinux not loaded: ")+str(e)+"\n")
+		selinux_enabled=0
+	except ImportError:
+		writemsg(red("!!! SELinux module not found.")+" Please verify that it was installed.\n")
+		selinux_enabled=0
+	if selinux_enabled == 0:
+		try:	
+			del sys.modules["selinux"]
+		except KeyError:
+			pass
+else:
+	selinux_enabled=0
+
+cachedirs=[CACHE_PATH]
+if root!="/":
+	cachedirs.append(root+CACHE_PATH)
+if not os.environ.has_key("SANDBOX_ACTIVE"):
+	for cachedir in cachedirs:
+		if not os.path.exists(cachedir):
+			os.makedirs(cachedir,0755)
+			writemsg(">>> "+cachedir+" doesn't exist, creating it...\n")
+		if not os.path.exists(cachedir+"/dep"):
+			os.makedirs(cachedir+"/dep",2755)
+			writemsg(">>> "+cachedir+"/dep doesn't exist, creating it...\n")
+		try:
+			os.chown(cachedir,uid,portage_gid)
+			os.chmod(cachedir,0775)
+		except OSError:
+			pass
+		try:
+			mystat=os.lstat(cachedir+"/dep")
+			os.chown(cachedir+"/dep",uid,portage_gid)
+			os.chmod(cachedir+"/dep",02775)
+			if mystat[stat.ST_GID]!=portage_gid:
+				spawn("chown -R "+str(uid)+":"+str(portage_gid)+" "+cachedir+"/dep",settings,free=1)
+				spawn("chmod -R u+rw,g+rw "+cachedir+"/dep",settings,free=1)
+		except OSError:
+			pass
+
+def flushmtimedb(record):
+	global mtimedb
+	if mtimedb:
+		if record in mtimedb.keys():
+			del mtimedb[record]
+			#print "mtimedb["+record+"] is cleared."
+		else:
+			writemsg("Invalid or unset record '"+record+"' in mtimedb.\n")
+
+#grab mtimes for eclasses and upgrades
+mtimedb={}
+mtimedbkeys=[
+"updates", "info",
+"version", "starttime",
+"resume", "resume_backup",
+"ldpath"
+]
+mtimedbfile=root+"var/cache/edb/mtimedb"
+try:
+	mypickle=cPickle.Unpickler(open(mtimedbfile))
+	mypickle.find_global=None
+	mtimedb=mypickle.load()
+	if mtimedb.has_key("old"):
+		mtimedb["updates"]=mtimedb["old"]
+		del mtimedb["old"]
+	if mtimedb.has_key("cur"):
+		del mtimedb["cur"]
+except SystemExit, e:
+	raise
+except:
+	mtimedb={"updates":{},"version":"","starttime":0}
+
+for x in mtimedb.keys():
+	if x not in mtimedbkeys:
+		writemsg("Deleting invalid mtimedb key: "+str(x)+"\n")
+		del mtimedb[x]
+
+features=settings["FEATURES"].split()
 
 db["/"].addLazySingleton("porttree", portagetree, "/")
 db["/"].addLazyItem("bintree", LazyBintreeItem("/"))
