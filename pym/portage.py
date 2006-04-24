@@ -4526,7 +4526,8 @@ class portdbapi(dbapi):
 		if self.tmpfs and not os.access(self.tmpfs, os.R_OK):
 			self.tmpfs = None
 
-		self.eclassdb = eclass_cache.cache(self.porttree_root, overlays=settings["PORTDIR_OVERLAY"].split())
+		self.eclassdb = eclass_cache.cache(self.porttree_root,
+			overlays=self.mysettings["PORTDIR_OVERLAY"].split())
 
 		self.metadb       = {}
 		self.metadbmodule = self.mysettings.load_best_module("portdbapi.metadbmodule")
