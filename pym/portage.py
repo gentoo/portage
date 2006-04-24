@@ -1645,7 +1645,7 @@ class config:
 
 	def thirdpartymirrors(self):
 		profileroots = [os.path.join(self["PORTDIR"], "profiles")]
-		for x in settings["PORTDIR_OVERLAY"].split():
+		for x in self["PORTDIR_OVERLAY"].split():
 			profileroots.insert(0, os.path.join(x, "profiles"))
 		thirdparty_lists = [grabdict(os.path.join(x, "thirdpartymirrors")) for x in profileroots]
 		return stack_dictlist(thirdparty_lists, incremental=True)
