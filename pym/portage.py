@@ -2226,7 +2226,7 @@ actionmap_deps={
 def eapi_is_supported(eapi):
 	return str(eapi).strip() == str(portage_const.EAPI).strip()
 
-def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, tree):
+def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, mydbapi):
 
 	ebuild_path = os.path.abspath(myebuild)
 	pkg_dir     = os.path.dirname(ebuild_path)
@@ -2278,11 +2278,11 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, t
 		mysettings["PORTAGE_QUIET"] = "1"
 
 	if mydo != "depend":
-		mysettings["INHERITED"], mysettings["RESTRICT"] = db[root][tree].dbapi.aux_get( \
+		mysettings["INHERITED"], mysettings["RESTRICT"] = mydbapi.aux_get( \
 			mycpv,["INHERITED","RESTRICT"])
 		mysettings["PORTAGE_RESTRICT"]=string.join(flatten(portage_dep.use_reduce(portage_dep.paren_reduce( \
 			mysettings["RESTRICT"]), uselist=mysettings["USE"].split())),' ')
-		eapi = db[root][tree].dbapi.aux_get(mycpv, ["EAPI"])[0]
+		eapi = mydbapi.aux_get(mycpv, ["EAPI"])[0]
 		if not eapi_is_supported(eapi):
 			# can't do anything with this.
 			raise portage_exception.UnsupportedAPIException(mycpv, eapi)
@@ -2524,7 +2524,7 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 		writemsg("!!! doebuild: "+str(myebuild)+" not found for "+str(mydo)+"\n")
 		return 1
 
-	mystatus = doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, tree)
+	mystatus = doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, db[myroot][tree].dbapi)
 	if mystatus:
 		return mystatus
 
