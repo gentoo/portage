@@ -2080,7 +2080,6 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0):
 	            portage_manifest.Manifest()
 	NOTE: manifestonly and overwrite are useless with manifest2 and
 	      are therefore ignored."""
-	global settings
 	mf = Manifest(mysettings["O"], FetchlistDict(mysettings["O"], mysettings), mysettings["DISTDIR"])
 	writemsg(">>> Creating Manifest for %s\n" % mysettings["O"])
 	try:
@@ -2637,7 +2636,9 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 		return (not digestgen(aalist,mysettings,overwrite=1,manifestonly=1))
 
 	# See above comment about fetching only when needed
-	if not digestcheck(checkme, mysettings, ("strict" in features), (mydo not in ["digest","fetch","unpack"] and settings["PORTAGE_CALLER"] == "ebuild" and "noauto" in features)):
+	if not digestcheck(checkme, mysettings, ("strict" in features),
+		(mydo not in ["digest","fetch","unpack"] and
+		mysettings["PORTAGE_CALLER"] == "ebuild" and "noauto" in features)):
 		return 1
 
 	if mydo=="fetch":
@@ -3363,7 +3364,7 @@ def cpv_expand(mycpv,mydb=None,use_cache=1):
 
 def getmaskingreason(mycpv):
 	from portage_util import grablines
-	global portdb
+	global portdb, settings
 	mysplit = catpkgsplit(mycpv)
 	if not mysplit:
 		raise ValueError("invalid CPV: %s" % mycpv)
@@ -3390,7 +3391,7 @@ def getmaskingreason(mycpv):
 	return None
 
 def getmaskingstatus(mycpv):
-	global portdb
+	global portdb, settings
 	mysplit = catpkgsplit(mycpv)
 	if not mysplit:
 		raise ValueError("invalid CPV: %s" % mycpv)
@@ -3770,7 +3771,7 @@ def match_from_list_original(mydep,mylist):
 
 class portagetree:
 	def __init__(self,root="/",virtual=None,clone=None):
-		global portdb
+		global portdb, settings
 		if clone:
 			self.root=clone.root
 			self.portroot=clone.portroot
@@ -4118,6 +4119,7 @@ class vardbapi(dbapi):
 	def move_ent(self,mylist):
 		origcp=mylist[1]
 		newcp=mylist[2]
+		global settings
 		# sanity check
 		for cp in [origcp,newcp]:
 			if not (isvalidatom(cp) and isjustname(cp)):
@@ -4232,6 +4234,7 @@ class vardbapi(dbapi):
 		return returnme
 
 	def cpv_all(self,use_cache=1):
+		global settings
 		returnme=[]
 		basepath = self.root+VDB_PATH+"/"
 
@@ -4490,6 +4493,7 @@ class portdbapi(dbapi):
 		if mysettings:
 			self.mysettings = mysettings
 		else:
+			global settings
 			self.mysettings = config(clone=settings)
 
 		self.manifestVerifyLevel  = None
@@ -5204,6 +5208,7 @@ class binarytree(packagetree):
 
 	def populate(self, getbinpkgs=0,getbinpkgsonly=0):
 		"populates the binarytree"
+		global settings
 		if (not os.path.isdir(self.pkgdir) and not getbinpkgs):
 			return 0
 		if (not os.path.isdir(self.pkgdir+"/All") and not getbinpkgs):
@@ -5318,6 +5323,7 @@ class binarytree(packagetree):
 
 	def gettbz2(self,pkgname):
 		"fetches the package from a remote site, if necessary."
+		global settings
 		print "Fetching '"+str(pkgname)+"'"
 		mysplit  = string.split(pkgname,"/")
 		tbz2name = mysplit[1]+".tbz2"
@@ -6327,6 +6333,7 @@ class FetchlistDict(UserDict.DictMixin):
 		return mykeys
 
 def cleanup_pkgmerge(mypkg,origdir):
+	global settings
 	shutil.rmtree(settings["PORTAGE_TMPDIR"]+"/binpkgs/"+mypkg)
 	if os.path.exists(settings["PORTAGE_TMPDIR"]+"/portage/"+mypkg+"/temp/environment"):
 		os.unlink(settings["PORTAGE_TMPDIR"]+"/portage/"+mypkg+"/temp/environment")
@@ -6687,6 +6694,7 @@ atexit_register(portageexit)
 
 def update_config_files(update_iter):
 	"""Perform global updates on /etc/portage/package.* and the world file."""
+	global settings
 	update_files={}
 	file_contents={}
 	myxfiles = ["package.mask","package.unmask","package.keywords","package.use"]
