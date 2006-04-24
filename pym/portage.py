@@ -2278,14 +2278,14 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 		mysettings["PORTAGE_QUIET"] = "1"
 
 	if mydo != "depend":
-		mysettings["INHERITED"], mysettings["RESTRICT"] = mydbapi.aux_get( \
-			mycpv,["INHERITED","RESTRICT"])
-		mysettings["PORTAGE_RESTRICT"]=string.join(flatten(portage_dep.use_reduce(portage_dep.paren_reduce( \
-			mysettings["RESTRICT"]), uselist=mysettings["USE"].split())),' ')
-		eapi = mydbapi.aux_get(mycpv, ["EAPI"])[0]
+		mysettings["INHERITED"], mysettings["RESTRICT"], eapi = mydbapi.aux_get(
+			mycpv, ["INHERITED", "RESTRICT", "EAPI"])
 		if not eapi_is_supported(eapi):
 			# can't do anything with this.
 			raise portage_exception.UnsupportedAPIException(mycpv, eapi)
+		mysettings["PORTAGE_RESTRICT"] = " ".join(flatten(
+			portage_dep.use_reduce(portage_dep.paren_reduce(
+			mysettings["RESTRICT"]), uselist=mysettings["USE"].split())))
 
 	if mysplit[2] == "r0":
 		mysettings["PVR"]=mysplit[1]
