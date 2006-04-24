@@ -502,7 +502,7 @@ def elog_process(cpv, mysettings):
 #parse /etc/env.d and generate /etc/profile.env
 
 def env_update(makelinks=1):
-	global root
+	global root, mtimedb
 	if not os.path.exists(root+"etc/env.d"):
 		prevmask=os.umask(0)
 		os.makedirs(root+"etc/env.d",0755)
@@ -1378,7 +1378,7 @@ class config:
 
 
 	def regenerate(self,useonly=0,use_cache=1):
-		global usesplit,profiledir
+		global db, profiledir
 
 		if self.already_in_regenerate:
 			# XXX: THIS REALLY NEEDS TO GET FIXED. autouse() loops.
@@ -1439,7 +1439,6 @@ class config:
 			self.configlist[-1][mykey]=string.join(myflags," ")
 			del myflags
 
-		#cache split-up USE var in a global
 		usesplit=[]
 
 		for x in string.split(self.configlist[-1]["USE"]):
@@ -2488,6 +2487,7 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 		if logging_enabled:
 			if "LOG_PF" not in mysettings or \
 			mysettings["LOG_PF"] != mysettings["PF"]:
+				global db
 				mysettings["LOG_PF"] = mysettings["PF"]
 				mysettings["LOG_COUNTER"] = \
 					str(db[myroot]["vartree"].dbapi.get_counter_tick_core("/"))
@@ -3011,6 +3011,7 @@ def dep_eval(deplist):
 def dep_zapdeps(unreduced,reduced,myroot,use_binaries=0):
 	"""Takes an unreduced and reduced deplist and removes satisfied dependencies.
 	Returned deplist contains steps that must be taken to satisfy dependencies."""
+	global db
 	writemsg("ZapDeps -- %s\n" % (use_binaries), 2)
 	if not reduced or unreduced == ["||"] or dep_eval(reduced):
 		return []
@@ -4103,6 +4104,7 @@ class vardbapi(dbapi):
 
 	def cpv_inject(self,mycpv):
 		"injects a real package into our on-disk database; assumes mycpv is valid and doesn't already exist"
+		global db
 		os.makedirs(self.root+VDB_PATH+"/"+mycpv)
 		counter=db[self.root]["vartree"].dbapi.counter_tick(self.root,mycpv=mycpv)
 		# write local package counter so that emerge clean does the right thing
@@ -5022,7 +5024,7 @@ class portdbapi(dbapi):
 
 	def gvisible(self,mylist):
 		"strip out group-masked (not in current group) entries"
-		global groups
+		global db, groups
 		if mylist is None:
 			return []
 		newlist=[]
@@ -5511,7 +5513,7 @@ class dblink:
 		return (protected > masked)
 
 	def unmerge(self,pkgfiles=None,trimworld=1,cleanup=1):
-		global dircache
+		global db, dircache
 		dircache={}
 
 		self.lockdb()
@@ -6587,6 +6589,7 @@ if not os.environ.has_key("SANDBOX_ACTIVE"):
 			pass
 
 def flushmtimedb(record):
+	global mtimedb
 	if mtimedb:
 		if record in mtimedb.keys():
 			del mtimedb[record]
@@ -6661,6 +6664,7 @@ def parse_updates(mycontent):
 	return myupd, errors
 
 def commit_mtimedb():
+	global mtimedb
 	if mtimedb:
 	# Store mtimedb
 		mymfn=mtimedbfile
