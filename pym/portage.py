@@ -4784,8 +4784,10 @@ class portdbapi(dbapi):
 
 	def getfetchsizes(self,mypkg,useflags=None,debug=0):
 		# returns a filename:size dictionnary of remaining downloads
-		mydigest=self.finddigest(mypkg)
-		checksums=digestParseFile(mydigest)
+		myebuild = self.findname(mypkg)
+		pkgdir = os.path.dirname(myebuild)
+		mf = Manifest(pkgdir, FetchlistDict(pkgdir, self.mysettings), self.mysettings["DISTDIR"])
+		checksums = mf.getDigests()
 		if not checksums:
 			if debug: print "[empty/missing/bad digest]: "+mypkg
 			return None
@@ -4825,8 +4827,10 @@ class portdbapi(dbapi):
 			if mysettings:
 				useflags = mysettings["USE"].split()
 		myuri, myfiles = self.getfetchlist(mypkg, useflags=useflags, mysettings=mysettings, all=all)
-		mydigest       = self.finddigest(mypkg)
-		mysums         = digestParseFile(mydigest)
+		myebuild = self.findname(mypkg)
+		pkgdir = os.path.dirname(myebuild)
+		mf = Manifest(pkgdir, FetchlistDict(pkgdir, self.mysettings), self.mysettings["DISTDIR"])
+		mysums = mf.getDigests()
 
 		failures = {}
 		for x in myfiles:
