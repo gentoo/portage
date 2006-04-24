@@ -2278,15 +2278,10 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, t
 		mysettings["PORTAGE_QUIET"] = "1"
 
 	if mydo != "depend":
-		try:
-			mysettings["INHERITED"], mysettings["RESTRICT"] = db[root][tree].dbapi.aux_get( \
-				mycpv,["INHERITED","RESTRICT"])
-			mysettings["PORTAGE_RESTRICT"]=string.join(flatten(portage_dep.use_reduce(portage_dep.paren_reduce( \
-				mysettings["RESTRICT"]), uselist=mysettings["USE"].split())),' ')
-		except SystemExit, e:
-			raise
-		except:
-			pass
+		mysettings["INHERITED"], mysettings["RESTRICT"] = db[root][tree].dbapi.aux_get( \
+			mycpv,["INHERITED","RESTRICT"])
+		mysettings["PORTAGE_RESTRICT"]=string.join(flatten(portage_dep.use_reduce(portage_dep.paren_reduce( \
+			mysettings["RESTRICT"]), uselist=mysettings["USE"].split())),' ')
 		eapi = db[root][tree].dbapi.aux_get(mycpv, ["EAPI"])[0]
 		if not eapi_is_supported(eapi):
 			# can't do anything with this.
