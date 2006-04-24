@@ -2319,7 +2319,7 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 
 	#set up KV variable -- DEP SPEEDUP :: Don't waste time. Keep var persistent.
 	if (mydo!="depend") or not mysettings.has_key("KV"):
-		mykv,err1=ExtractKernelVersion(root+"usr/src/linux")
+		mykv,err1=ExtractKernelVersion(os.path.join(myroot, "usr/src/linux"))
 		if mykv:
 			# Regular source tree
 			mysettings["KV"]=mykv
