@@ -1643,6 +1643,12 @@ class config:
 
 		return mydict
 
+	def thirdpartymirrors(self):
+		profileroots = [os.path.join(self["PORTDIR"], "profiles")]
+		for x in settings["PORTDIR_OVERLAY"].split():
+			profileroots.insert(0, os.path.join(x, "profiles"))
+		thirdparty_lists = [grabdict(os.path.join(x, "thirdpartymirrors")) for x in profileroots]
+		return stack_dictlist(thirdparty_lists, incremental=True)
 
 # XXX This would be to replace getstatusoutput completely.
 # XXX Issue: cannot block execution. Deadlock condition.
@@ -6835,11 +6841,7 @@ if root!="/":
 	db[root]["porttree"] = portagetree(root)
 	db[root].addLazyItem("bintree", LazyBintreeItem(root))
 
-profileroots = [settings["PORTDIR"]+"/profiles/"]
-for x in settings["PORTDIR_OVERLAY"].split():
-	profileroots.insert(0, x+"/profiles/")
-thirdparty_lists = [grabdict(os.path.join(x, "thirdpartymirrors")) for x in profileroots]
-thirdpartymirrors = stack_dictlist(thirdparty_lists, incremental=True)
+thirdpartymirrors = settings.thirdpartymirrors()
 
 if not os.path.exists(settings["PORTAGE_TMPDIR"]):
 	writemsg("portage: the directory specified in your PORTAGE_TMPDIR variable, \""+settings["PORTAGE_TMPDIR"]+",\"\n")
