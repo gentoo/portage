@@ -166,8 +166,8 @@ if portage.settings.has_key("PORTAGE_NICENESS"):
 portage.portdb.freeze()
 
 # Kill noauto as it will break merges otherwise.
-while 'noauto' in portage.features:
-	del portage.features[portage.features.index('noauto')]
+while 'noauto' in portage.settings.features:
+	portage.settings.features.remove('noauto')
 
 #number of ebuilds merged
 merged=0
@@ -332,7 +332,7 @@ if ("--quiet" in myopts):
 
 # Always create packages if FEATURES=buildpkg
 # Imply --buildpkg if --buildpkgonly
-if ("buildpkg" in portage.features) or ("--buildpkgonly" in myopts):
+if ("buildpkg" in portage.settings.features) or ("--buildpkgonly" in myopts):
 	if "--buildpkg" not in myopts:
 		myopts.append("--buildpkg")
 
@@ -350,7 +350,7 @@ if ("--searchdesc" in myopts):
 	myaction = "search"
 
 # Always try and fetch binary packages if FEATURES=getbinpkg
-if ("getbinpkg" in portage.features):
+if ("getbinpkg" in portage.settings.features):
 	myopts.append("--getbinpkg")
 
 if "--skipfirst" in myopts and "--resume" not in myopts:
@@ -403,7 +403,7 @@ if ("--debug" in myopts):
 	portage.settings.backup_changes("PORTAGE_DEBUG")
 	portage.debug=1
 	portage.settings.lock()
-	if "python-trace" in portage.features:
+	if "python-trace" in portage.settings.features:
 		import portage_debug
 		portage_debug.set_trace(True)
 
@@ -434,7 +434,7 @@ if portage.settings["EMERGE_WARNING_DELAY"]:
 	EMERGE_WARNING_DELAY = string.atoi("0"+portage.settings["EMERGE_WARNING_DELAY"])
 
 def emergelog(mystr,short_msg=None):
-	if "notitles" not in portage.features:
+	if "notitles" not in portage.settings.features:
 		if short_msg:
 			xtermTitle(short_msg)
 		else:
@@ -465,7 +465,7 @@ def emergeexit():
 	"""This gets out final log message in before we quit."""
 	if "--pretend" not in myopts:
 		emergelog(" *** terminating.")
-	if "notitles" not in portage.features:
+	if "notitles" not in portage.settings.features:
 		xtermTitleReset()
 portage.atexit_register(emergeexit)
 
@@ -2094,7 +2094,7 @@ class depgraph:
 								os.execv(mynewargv[0], mynewargv)
 
 			if ("--pretend" not in myopts) and ("--fetchonly" not in myopts) and ("--fetch-all-uri" not in myopts):
-				if "noclean" not in portage.features:
+				if "noclean" not in portage.settings.features:
 					short_msg = "emerge: (%s of %s) %s Clean Post" % \
 						(mergecount, len(mymergelist), x[pkgindex])
 					emergelog(" === (%s of %s) Post-Build Cleaning (%s::%s)" % \
@@ -3041,7 +3041,7 @@ elif "info"==myaction:
 	output=commands.getstatusoutput("distcc --version")
 	if not output[0]:
 		print str(string.split(output[1],"\n",1)[0]),
-		if "distcc" in portage.features:
+		if "distcc" in portage.settings.features:
 			print "[enabled]"
 		else:
 			print "[disabled]"
@@ -3049,7 +3049,7 @@ elif "info"==myaction:
 	output=commands.getstatusoutput("ccache -V")
 	if not output[0]:
 		print str(string.split(output[1],"\n",1)[0]),
-		if "ccache" in portage.features:
+		if "ccache" in portage.settings.features:
 			print "[enabled]"
 		else:
 			print "[disabled]"

@@ -308,7 +308,6 @@ def listdir(mypath, recursive=False, filesonly=False, ignorecvs=False, ignorelis
 	return rlist
 
 starttime=long(time.time())
-features=[]
 
 def tokenize(mystring):
 	"""breaks a string like 'foo? (bar) oni? (blah (blah))'
@@ -1736,6 +1735,7 @@ def spawn(mystring,mysettings,debug=0,free=0,droppriv=0,sesandbox=0,fd_pipes=Non
 		env=mysettings.environ()
 		keywords["opt_name"]="[%s]" % mysettings["PF"]
 
+	features = mysettings.features
 	# XXX: Negative RESTRICT word
 	droppriv=(droppriv and ("userpriv" in features) and not \
 		(("nouserpriv" in string.split(mysettings["RESTRICT"])) or \
@@ -1770,6 +1770,7 @@ def spawn(mystring,mysettings,debug=0,free=0,droppriv=0,sesandbox=0,fd_pipes=Non
 def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",use_locks=1, try_mirrors=1):
 	"fetch files.  Will use digest file if available."
 
+	features = mysettings.features
 	# 'nomirror' is bad/negative logic. You Restrict mirroring, not no-mirroring.
 	if ("mirror" in mysettings["RESTRICT"].split()) or \
 	   ("nomirror" in mysettings["RESTRICT"].split()):
@@ -2256,7 +2257,7 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 
 # parse actionmap to spawn ebuild with the appropriate args
 def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
-	if alwaysdep or ("noauto" not in features):
+	if alwaysdep or "noauto" not in mysettings.features:
 		# process dependency first
 		if "dep" in actionmap[mydo].keys():
 			retval=spawnebuild(actionmap[mydo]["dep"],actionmap,mysettings,debug,alwaysdep=alwaysdep,logfile=logfile)
@@ -2474,7 +2475,7 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 	filemode =   060
 	modemask =    02
 	for myfeature, kwargs in features_dirs.iteritems():
-		if myfeature in features:
+		if myfeature in mysettings.features:
 			basedir = mysettings[kwargs["basedir_var"]]
 			if basedir == "":
 				basedir = kwargs["default_dir"]
@@ -2502,8 +2503,8 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 							raise portage_exception.OperationNotPermitted(
 								"Failed to apply recursive permissions for the portage group.")
 			except portage_exception.PortageException, e:
-				features.remove(myfeature)
-				mysettings["FEATURES"] = " ".join(features)
+				mysettings.features.remove(myfeature)
+				mysettings["FEATURES"] = " ".join(mysettings.features)
 				writemsg("!!! %s\n" % str(e))
 				writemsg("!!! Failed resetting perms on %s='%s'\n" % (kwargs["basedir_var"], basedir))
 				writemsg("!!! Disabled FEATURES='%s'\n" % myfeature)
@@ -2567,7 +2568,7 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 
 def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,cleanup=0,dbkey=None,use_cache=1,fetchall=0,tree=None):
 	global db, actionmap_deps
-
+	features = mysettings.features
 	if not tree:
 		dump_traceback("Warning: tree not specified to doebuild")
 		tree = "porttree"
@@ -5845,7 +5846,7 @@ class dblink:
 			otherversions.append(v.split("/")[1])
 
 		# check for package collisions
-		if "collision-protect" in features:
+		if "collision-protect" in self.settings.features:
 			myfilelist = listdir(srcroot, recursive=1, filesonly=1, followSymlinks=False)
 
 			# the linkcheck only works if we are in srcroot
@@ -6719,7 +6720,7 @@ def global_updates():
 
 		# We gotta do the brute force updates for these now.
 		if settings["PORTAGE_CALLER"] == "fixpackages" or \
-		"fixpackages" in features:
+		"fixpackages" in settings.features:
 			db["/"]["bintree"].update_ents(myupd)
 		else:
 			do_upgrade_packagesmessage = 1
@@ -6848,7 +6849,6 @@ try:
 except (IOError, OSError):
 	mtimedb = {"updates":{}, "version":"", "starttime":0}
 
-features=settings["FEATURES"].split()
 
 db["/"].addLazySingleton("porttree", portagetree, "/")
 db["/"].addLazyItem("bintree", LazyBintreeItem("/"))
@@ -6863,6 +6863,7 @@ pkglines = settings.packages
 
 groups = settings["ACCEPT_KEYWORDS"].split() # DEPRECATED (no longer used)
 archlist = settings.archlist() # DEPRECATED (no longer used)
+features = settings.features # DEPRECATED (no longer used)
 
 # Clear the cache
 dircache={}

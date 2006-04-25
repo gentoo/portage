@@ -383,7 +383,7 @@ isCvs=False
 myreporoot=None
 if os.path.isdir("CVS"):
 	repoman_settings["PORTDIR_OVERLAY"]=""
-	if "cvs" not in portage.features:
+	if "cvs" not in repoman_settings.features:
 		print
 		print
 		print red('!!! You do not have ')+bold('FEATURES="cvs" ')+red("enabled...")
@@ -859,7 +859,7 @@ for x in scanlist:
 							else:
 								stats["digest.partial"] += 1
 								fails["digest.partial"].append(y+"::"+myf)
-						elif "assume-digests" not in portage.features:
+						elif "assume-digests" not in repoman_settings.features:
 							if os.path.exists(myff):
 								if not portage_checksum.verify_all(myff, mydigests[myf]):
 									stats["digest.fail"] += 1
@@ -1632,7 +1632,7 @@ else:
 			sys.exit(1)
 
 		# Force an unsigned commit when more than one Manifest needs to be signed.
-		if repolevel < 3 and "sign" in portage.features:
+		if repolevel < 3 and "sign" in repoman_settings.features:
 			if "--pretend" in myoptions:
 				print "(/usr/bin/cvs -q commit -F "+commitmessagefile+")"
 			else:
@@ -1648,7 +1648,7 @@ else:
 			need_commit = True
 
 	signed = False
-	if "sign" in portage.features:
+	if "sign" in repoman_settings.features:
 		signed = True
 		try:
 			if repolevel==3:   # In a package dir
