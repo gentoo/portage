@@ -854,15 +854,19 @@ def ExtractKernelVersion(base_dir):
 
 
 autouse_val = None
-def autouse(myvartree,use_cache=1):
+def autouse(myvartree, use_cache=1, mysettings=None):
 	"returns set of USE variables auto-enabled due to packages being installed"
-	global usedefaults, autouse_val
+	global autouse_val
+	if mysettings is None:
+		global settings
+		mysettings = settings
 	if autouse_val is not None:
 		return autouse_val
-	if profiledir is None:
+	if mysettings.profile_path is None:
 		autouse_val = ""
 		return ""
 	myusevars=""
+	usedefaults = mysettings.use_defs
 	for myuse in usedefaults:
 		dep_met = True
 		for mydep in usedefaults[myuse]:
@@ -948,9 +952,11 @@ class config:
 			self.depcachedir = DEPCACHE_PATH
 
 			if not config_profile_path:
-				global profiledir
 				writemsg("config_profile_path not specified to class config\n")
-				self.profile_path = profiledir[:]
+				if os.path.isdir(PROFILE_PATH):
+					self.profile_path = PROFILE_PATH
+				else:
+					self.profile_path = None
 			else:
 				self.profile_path = config_profile_path[:]
 
@@ -1433,7 +1439,7 @@ class config:
 
 
 	def regenerate(self,useonly=0,use_cache=1):
-		global db, profiledir
+		global db
 
 		if self.already_in_regenerate:
 			# XXX: THIS REALLY NEEDS TO GET FIXED. autouse() loops.
@@ -1454,7 +1460,7 @@ class config:
 				if "auto" in self["USE_ORDER"].split(":") and db.has_key(root) and db[root].has_key("vartree"):
 					self.configdict["auto"] = portage_util.LazyItemsDict(self.configdict["auto"])
 					self.configdict["auto"].addLazySingleton("USE", autouse,
-						db[root]["vartree"], use_cache=use_cache)
+						db[root]["vartree"], use_cache=use_cache, mysettings=self)
 				else:
 					self.configdict["auto"]["USE"]=""
 			else:
@@ -6772,7 +6778,7 @@ def load_mtimedb(f):
 # code that is aware of this flag to import portage without the unnecessary
 # overhead (and other issues!) of initializing the legacy globals.
 
-profiledir=None
+profiledir = None # DEPRECATED (no longer used)
 if os.path.isdir(PROFILE_PATH):
 	profiledir = PROFILE_PATH
 
@@ -6795,7 +6801,7 @@ settings.backup_changes("PORTAGE_MASTER_PID")
 # We are disabling user-specific bashrc files.
 settings["BASH_ENV"] = INVALID_ENV_FILE
 settings.backup_changes("BASH_ENV")
-usedefaults=settings.use_defs
+usedefaults = settings.use_defs # DEPRECATED (no longer used)
 do_vartree(settings)
 settings.reset() # XXX: Regenerate use after we get a vartree -- GLOBAL
 

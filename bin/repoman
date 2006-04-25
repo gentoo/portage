@@ -1092,8 +1092,6 @@ for x in scanlist:
 
 				profdir = portdir+"/profiles/"+prof[0]
 	
-				portage.profiledir=profdir
-	
 				if arch_caches.has_key(prof[0]):
 					dep_settings, portage.portdb, portage.db["/"]["porttree"] = arch_caches[prof[0]]
 				else:
