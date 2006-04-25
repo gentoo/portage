@@ -31,6 +31,8 @@ try:
 	from time import sleep
 	from random import shuffle
 	import UserDict
+	if getattr(__builtins__, "set", None) is None:
+		from sets import Set as set
 except ImportError, e:
 	sys.stderr.write("\n\n")
 	sys.stderr.write("!!! Failed to complete python imports. These are internal modules for\n")
@@ -6653,6 +6655,26 @@ class LazyBintreeItem(object):
 			self._bintree.populate()
 		return self._bintree
 
+def load_mtimedb(f):
+	"""Given an open file, unpickle an mtimedb and validate it."""
+	mypickle = cPickle.Unpickler(f)
+	mypickle.find_global = None
+	d = mypickle.load()
+	if "old" in d:
+		d["updates"] = d["old"]
+		del d["old"]
+	if "cur" in d:
+		del d["cur"]
+
+	mtimedbkeys = set(("info", "ldpath", "resume", "resume_backup",
+		"starttime", "updates", "version"))
+
+	for k in d.keys():
+		if k not in mtimedbkeys:
+			writemsg("Deleting invalid mtimedb key: %s\n" % str(k))
+			del d[k]
+	return d
+
 # Initialization of legacy globals.  No functions/classes below this point
 # please!  When the above functions and classes become independent of the
 # below global variables, it will be possible to make the below code
@@ -6794,41 +6816,16 @@ if not os.environ.has_key("SANDBOX_ACTIVE"):
 			pass
 
 def flushmtimedb(record):
-	global mtimedb
-	if mtimedb:
-		if record in mtimedb.keys():
-			del mtimedb[record]
-			#print "mtimedb["+record+"] is cleared."
-		else:
-			writemsg("Invalid or unset record '"+record+"' in mtimedb.\n")
+	writemsg("portage.flushmtimedb() is DEPRECATED\n")
 
-#grab mtimes for eclasses and upgrades
-mtimedb={}
-mtimedbkeys=[
-"updates", "info",
-"version", "starttime",
-"resume", "resume_backup",
-"ldpath"
-]
-mtimedbfile=root+"var/cache/edb/mtimedb"
+mtimedbfile = os.path.join(root, CACHE_PATH.lstrip(os.path.sep), "mtimedb")
 try:
-	mypickle=cPickle.Unpickler(open(mtimedbfile))
-	mypickle.find_global=None
-	mtimedb=mypickle.load()
-	if mtimedb.has_key("old"):
-		mtimedb["updates"]=mtimedb["old"]
-		del mtimedb["old"]
-	if mtimedb.has_key("cur"):
-		del mtimedb["cur"]
-except SystemExit, e:
-	raise
-except:
-	mtimedb={"updates":{},"version":"","starttime":0}
-
-for x in mtimedb.keys():
-	if x not in mtimedbkeys:
-		writemsg("Deleting invalid mtimedb key: "+str(x)+"\n")
-		del mtimedb[x]
+	f = open(mtimedbfile)
+	mtimedb = load_mtimedb(f)
+	f.close()
+	del f
+except OSError:
+	mtimedb = {"updates":{}, "version":"", "starttime":0}
 
 features=settings["FEATURES"].split()
 
