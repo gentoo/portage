@@ -1006,7 +1006,8 @@ for x in scanlist:
 				fails["KEYWORDS.stupid"].append(x+"/"+y+".ebuild")
 		
 		if "--ignore-arches" in myoptions:
-			arches=[[repoman_settings["ARCH"], repoman_settings["ARCH"], portage.groups]]
+			arches = [[repoman_settings["ARCH"], repoman_settings["ARCH"],
+				repoman_settings.groups]]
 		else:
 			arches=[]
 			for keyword in myaux["KEYWORDS"].split():
@@ -1081,7 +1082,6 @@ for x in scanlist:
 				fails["usage.obsolete"].append("%s/%s.ebuild: not migrated to modular X" % (x, y))
 
 		for keyword,arch,groups in arches:
-			portage.groups=groups
 
 			if not profiles.has_key(arch):
 				# A missing profile will create an error further down
@@ -1097,6 +1097,7 @@ for x in scanlist:
 				else:
 					os.environ["ACCEPT_KEYWORDS"]="-~"+arch
 					dep_settings=portage.config(config_profile_path=profdir, config_incrementals=portage_const.INCREMENTALS)
+					dep_settings.groups = groups
 					portage.portdb=portage.portdbapi(portdir, dep_settings)
 					portage.db["/"]["porttree"]=portage.portagetree("/",dep_settings.getvirtuals("/"))
 					arch_caches[prof[0]]=[dep_settings, portage.portdb, portage.db["/"]["porttree"]]
