@@ -1272,6 +1272,12 @@ class config:
 				if group not in archlist and group[0] != '-':
 					writemsg("!!! INVALID ACCEPT_KEYWORDS: %s\n" % str(group))
 
+		if not os.path.islink(PROFILE_PATH) and \
+			os.path.exists(os.path.join(self["PORTDIR"], "profiles")):
+			writemsg("\a\n\n!!! %s is not a symlink and will probably prevent most merges.\n" % PROFILE_PATH)
+			writemsg("!!! It should point into a profile within %s/profiles/\n" % self["PORTDIR"])
+			writemsg("!!! (You can safely ignore this message when syncing. It's harmless.)\n\n\n")
+
 		if mycpv:
 			self.setcpv(mycpv)
 
@@ -6867,12 +6873,6 @@ archlist = settings.archlist()
 
 # Clear the cache
 dircache={}
-
-if not os.path.islink(PROFILE_PATH) and os.path.exists(settings["PORTDIR"]+"/profiles"):
-	writemsg(red("\a\n\n!!! "+PROFILE_PATH+" is not a symlink and will probably prevent most merges.\n"))
-	writemsg(red("!!! It should point into a profile within %s/profiles/\n" % settings["PORTDIR"]))
-	writemsg(red("!!! (You can safely ignore this message when syncing. It's harmless.)\n\n\n"))
-	time.sleep(3)
 
 # ============================================================================
 # ============================================================================
