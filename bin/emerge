@@ -2983,7 +2983,11 @@ elif "config"==myaction:
 		portage.writemsg("!!! (Did you specify a version but forget to prefix with '='?)\n")
 		sys.exit(1)
 	print
-	pkgs = portage.db[portage.root]["vartree"].dbapi.match(myfiles[0])
+	try:
+		pkgs = portage.db[portage.root]["vartree"].dbapi.match(myfiles[0])
+	except ValueError, e:
+		# Multiple matches thrown from cpv_expand
+		pkgs = e.args[0]
 	if len(pkgs) == 0:
 		print "No packages found.\n"
 		sys.exit(0)
