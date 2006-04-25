@@ -1266,6 +1266,26 @@ class config:
 		if mycpv:
 			self.setcpv(mycpv)
 
+		self._init_dirs()
+
+	def _init_dirs(self):
+		"""Create tmp, var/tmp and var/lib/portage (relative to $ROOT)."""
+
+		dir_mode_map = {
+			"tmp"             :(-1,          01777, 0),
+			"var/tmp"         :(-1,          01777, 0),
+			"var/lib/portage" :(portage_gid, 02750, 02),
+			"var/cache/edb"   :(portage_gid,  0755, 02)
+		}
+
+		for mypath, (gid, mode, modemask) in dir_mode_map.iteritems():
+			try:
+				mydir = os.path.join(self.get("ROOT", "/"), mypath)
+				portage_util.ensure_dirs(mydir, gid=gid, mode=mode, mask=modemask)
+			except portage_exception.PortageException, e:
+				writemsg("!!! Directory initialization failed: '%s'\n" % mydir)
+				writemsg("!!! %s\n" % str(e))
+
 	def validate(self):
 		"""Validate miscellaneous settings and display warnings if necessary.
 		(This code was previously in the global scope of portage.py)"""
@@ -4597,7 +4617,7 @@ class portdbapi(dbapi):
 		modemask =    02
 
 		try:
-			for x in ("", "dep"):
+			for x in ("dep",):
 				mydir = os.path.join(CACHE_PATH, x)
 				if portage_util.ensure_dirs(mydir, gid=portage_gid, mode=dirmode, mask=modemask):
 					writemsg("Adjusting permissions recursively: '%s'\n" % mydir)
@@ -6761,43 +6781,6 @@ if root != "/":
 		writemsg("!!! Exiting.\n\n")
 		sys.exit(1)
 
-#create tmp and var/tmp if they don't exist; read config
-os.umask(0)
-if not os.path.exists(root+"tmp"):
-	writemsg(">>> "+root+"tmp doesn't exist, creating it...\n")
-	os.mkdir(root+"tmp",01777)
-if not os.path.exists(root+"var/tmp"):
-	writemsg(">>> "+root+"var/tmp doesn't exist, creating it...\n")
-	try:
-		os.mkdir(root+"var",0755)
-	except (OSError,IOError):
-		pass
-	try:
-		os.mkdir(root+"var/tmp",01777)
-	except SystemExit, e:
-		raise
-	except:
-		writemsg("portage: couldn't create /var/tmp; exiting.\n")
-		sys.exit(1)
-if not os.path.exists(root+"var/lib/portage"):
-	writemsg(">>> "+root+"var/lib/portage doesn't exist, creating it...\n")
-	try:
-		os.mkdir(root+"var",0755)
-	except (OSError,IOError):
-		pass
-	try:
-		os.mkdir(root+"var/lib",0755)
-	except (OSError,IOError):
-		pass
-	try:
-		os.mkdir(root+"var/lib/portage",02750)
-	except SystemExit, e:
-		raise
-	except:
-		writemsg("portage: couldn't create /var/lib/portage; exiting.\n")
-		sys.exit(1)
-
-os.umask(022)
 profiledir=None
 if os.path.isdir(PROFILE_PATH):
 	profiledir = PROFILE_PATH
