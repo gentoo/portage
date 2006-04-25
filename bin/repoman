@@ -604,7 +604,7 @@ if os.path.exists(descfile):
 		else:
 			profiles[arch[0]] = [[arch[1], arch[2]]]
 
-	for x in portage.archlist:
+	for x in repoman_settings.archlist():
 		if x[0] == "~":
 			continue
 		if not profiles.has_key(x):
@@ -1023,7 +1023,7 @@ for x in scanlist:
 		badlicsyntax = False
 		badprovsyntax = False
 		catpkg = catdir+"/"+y
-		myiuse = myaux["IUSE"].split() + portage.archlist
+		myiuse = myaux["IUSE"].split() + repoman_settings.archlist()
 		type_list, badsyntax = [], []
 		for mytype in ("DEPEND", "RDEPEND", "PDEPEND", "LICENSE", "PROVIDE"):
 			mydepstr = myaux[mytype]

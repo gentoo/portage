@@ -3267,7 +3267,7 @@ def dep_check(depstring,mydbapi,mysettings,use="yes",mode=None,myuse=None,use_ca
 		#if use=="all":
 		#	mymasks=archlist[:]
 		#else:
-		mymasks=mysettings.usemask+archlist[:]
+		mymasks = mysettings.usemask + mysettings.archlist()
 
 		while mysettings["ARCH"] in mymasks:
 			del mymasks[mymasks.index(mysettings["ARCH"])]
@@ -6862,7 +6862,7 @@ thirdpartymirrors = settings.thirdpartymirrors()
 pkglines = settings.packages
 
 groups = settings["ACCEPT_KEYWORDS"].split() # DEPRECATED (no longer used)
-archlist = settings.archlist()
+archlist = settings.archlist() # DEPRECATED (no longer used)
 
 # Clear the cache
 dircache={}
