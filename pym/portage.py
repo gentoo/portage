@@ -1266,6 +1266,15 @@ class config:
 		if mycpv:
 			self.setcpv(mycpv)
 
+		self.root = self.get("ROOT", "/")
+		self.root = self.root.rstrip(os.path.sep) + os.path.sep
+		if not os.path.exists(self.root):
+			writemsg("!!! Error: ROOT '%s' does not exist.  Please correct this.\n" % self.root)
+			raise portage_exception.DirectoryNotFound(self.root)
+		elif not os.path.isdir(self.root):
+			writemsg("!!! Error: ROOT '%s' is not a directory. Please correct this.\n" % self.root[:-1])
+			raise portage_exception.DirectoryNotFound(self.root)
+
 		self._init_dirs()
 
 	def _init_dirs(self):
@@ -1280,7 +1289,7 @@ class config:
 
 		for mypath, (gid, mode, modemask) in dir_mode_map.iteritems():
 			try:
-				mydir = os.path.join(self.get("ROOT", "/"), mypath)
+				mydir = os.path.join(self.root, mypath)
 				portage_util.ensure_dirs(mydir, gid=gid, mode=mode, mask=modemask)
 			except portage_exception.PortageException, e:
 				writemsg("!!! Directory initialization failed: '%s'\n" % mydir)
@@ -6763,24 +6772,6 @@ def load_mtimedb(f):
 # code that is aware of this flag to import portage without the unnecessary
 # overhead (and other issues!) of initializing the legacy globals.
 
-if os.environ.has_key("ROOT"):
-	root=os.environ["ROOT"]
-	if not len(root):
-		root="/"
-	elif root[-1]!="/":
-		root=root+"/"
-else:
-	root="/"
-if root != "/":
-	if not os.path.exists(root[:-1]):
-		writemsg("!!! Error: ROOT "+root+" does not exist.  Please correct this.\n")
-		writemsg("!!! Exiting.\n\n")
-		sys.exit(1)
-	elif not os.path.isdir(root[:-1]):
-		writemsg("!!! Error: ROOT "+root[:-1]+" is not a directory. Please correct this.\n")
-		writemsg("!!! Exiting.\n\n")
-		sys.exit(1)
-
 profiledir=None
 if os.path.isdir(PROFILE_PATH):
 	profiledir = PROFILE_PATH
@@ -6789,7 +6780,14 @@ db={}
 
 # We're going to lock the global config to prevent changes, but we need
 # to ensure the global settings are right.
-settings=config(config_profile_path=PROFILE_PATH,config_incrementals=portage_const.INCREMENTALS)
+try:
+	settings = config(config_profile_path=PROFILE_PATH,
+		config_incrementals=portage_const.INCREMENTALS)
+except portage_exception.DirectoryNotFound, e:
+	writemsg("!!! Directory Not Found: %s\n" % str(e))
+	sys.exit(1)
+
+root = settings.root
 
 # useful info
 settings["PORTAGE_MASTER_PID"]=str(os.getpid())
