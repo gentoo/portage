@@ -3512,7 +3512,7 @@ def getmaskingstatus(mycpv):
 	if not eapi_is_supported(eapi):
 		return ["required EAPI %s, supported EAPI %s" % (eapi, portage_const.EAPI)]
 	mygroups = mygroups.split()
-	pgroups = settings.groups
+	pgroups = settings.groups[:] # Make a local copy so we can modify it.
 	myarch = settings["ARCH"]
 	pkgdict = settings.pkeywordsdict
 
@@ -5148,7 +5148,7 @@ class portdbapi(dbapi):
 				continue
 			mygroups=keys.split()
 			# Repoman may modify this attribute as necessary.
-			pgroups = self.mysettings.groups
+			pgroups = self.mysettings.groups[:] # Make a local copy so we can modify it.
 			match=0
 			cp = dep_getkey(mycpv)
 			if pkgdict.has_key(cp):
