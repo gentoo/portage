@@ -1263,6 +1263,15 @@ class config:
 			self["CBUILD"] = self["CHOST"]
 			self.backup_changes("CBUILD")
 
+		groups = self["ACCEPT_KEYWORDS"].split()
+		archlist = self.archlist()
+		if not archlist:
+			writemsg("--- 'profiles/arch.list' is empty or not available. Empty portage tree?\n")
+		else:
+			for group in groups:
+				if group not in archlist and group[0] != '-':
+					writemsg("!!! INVALID ACCEPT_KEYWORDS: %s\n" % str(group))
+
 		if mycpv:
 			self.setcpv(mycpv)
 
@@ -1650,6 +1659,10 @@ class config:
 			profileroots.insert(0, os.path.join(x, "profiles"))
 		thirdparty_lists = [grabdict(os.path.join(x, "thirdpartymirrors")) for x in profileroots]
 		return stack_dictlist(thirdparty_lists, incremental=True)
+
+	def archlist(self):
+		return flatten([[myarch, "~" + myarch] \
+			for myarch in self["PORTAGE_ARCHLIST"].split()])
 
 # XXX This would be to replace getstatusoutput completely.
 # XXX Issue: cannot block execution. Deadlock condition.
@@ -6850,14 +6863,7 @@ if not os.path.isdir(settings["PORTAGE_TMPDIR"]):
 pkglines = settings.packages
 
 groups = settings["ACCEPT_KEYWORDS"].split()
-archlist = flatten([[myarch, "~"+myarch] for myarch in settings["PORTAGE_ARCHLIST"].split()])
-
-for group in groups:
-	if not archlist:
-		writemsg("--- 'profiles/arch.list' is empty or not available. Empty portage tree?\n")
-		break
-	elif (group not in archlist) and group[0]!='-':
-		writemsg("\n"+red("!!! INVALID ACCEPT_KEYWORDS: ")+str(group)+"\n")
+archlist = settings.archlist()
 
 # Clear the cache
 dircache={}
