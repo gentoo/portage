@@ -1263,6 +1263,13 @@ class config:
 			self["CBUILD"] = self["CHOST"]
 			self.backup_changes("CBUILD")
 
+		if mycpv:
+			self.setcpv(mycpv)
+
+	def validate(self):
+		"""Validate miscellaneous settings and display warnings if necessary.
+		(This code was previously in the global scope of portage.py)"""
+
 		groups = self["ACCEPT_KEYWORDS"].split()
 		archlist = self.archlist()
 		if not archlist:
@@ -1277,9 +1284,6 @@ class config:
 			writemsg("\a\n\n!!! %s is not a symlink and will probably prevent most merges.\n" % PROFILE_PATH)
 			writemsg("!!! It should point into a profile within %s/profiles/\n" % self["PORTDIR"])
 			writemsg("!!! (You can safely ignore this message when syncing. It's harmless.)\n\n\n")
-
-		if mycpv:
-			self.setcpv(mycpv)
 
 	def loadVirtuals(self,root):
 		"""Not currently used by portage."""
@@ -2562,6 +2566,15 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 
 		retval = spawn(EBUILD_SH_BINARY+" depend",mysettings)
 		return retval
+
+	if not os.path.exists(mysettings["PORTAGE_TMPDIR"]):
+		writemsg("The directory specified in your PORTAGE_TMPDIR variable, '%s',\n" % mysettings["PORTAGE_TMPDIR"])
+		writemsg("does not exist.  Please create this directory or correct your PORTAGE_TMPDIR setting.\n")
+		return 1
+	elif not os.path.isdir(mysettings["PORTAGE_TMPDIR"]):
+		writemsg("portage: the directory specified in your PORTAGE_TMPDIR variable, '%s',\n" % mysettings["PORTAGE_TMPDIR"])
+		writemsg("is not a directory.  Please correct your PORTAGE_TMPDIR setting.\n")
+		return 1
 
 	logfile=None
 	# Build directory creation isn't required for any of these.
@@ -6786,6 +6799,7 @@ settings.reset() # XXX: Regenerate use after we get a vartree -- GLOBAL
 portdb=portdbapi(settings["PORTDIR"])
 
 settings.lock()
+settings.validate()
 
 if 'selinux' in settings["USE"].split(" "):
 	try:
@@ -6855,15 +6869,6 @@ if root!="/":
 	db[root].addLazyItem("bintree", LazyBintreeItem(root))
 
 thirdpartymirrors = settings.thirdpartymirrors()
-
-if not os.path.exists(settings["PORTAGE_TMPDIR"]):
-	writemsg("portage: the directory specified in your PORTAGE_TMPDIR variable, \""+settings["PORTAGE_TMPDIR"]+",\"\n")
-	writemsg("does not exist.  Please create this directory or correct your PORTAGE_TMPDIR setting.\n")
-	sys.exit(1)
-if not os.path.isdir(settings["PORTAGE_TMPDIR"]):
-	writemsg("portage: the directory specified in your PORTAGE_TMPDIR variable, \""+settings["PORTAGE_TMPDIR"]+",\"\n")
-	writemsg("is not a directory.  Please correct your PORTAGE_TMPDIR setting.\n")
-	sys.exit(1)
 
 # COMPATABILITY -- This shouldn't be used.
 pkglines = settings.packages
