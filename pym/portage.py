@@ -6837,7 +6837,7 @@ try:
 	mtimedb = load_mtimedb(f)
 	f.close()
 	del f
-except OSError:
+except (IOError, OSError):
 	mtimedb = {"updates":{}, "version":"", "starttime":0}
 
 features=settings["FEATURES"].split()
