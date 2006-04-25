@@ -1285,6 +1285,11 @@ class config:
 			writemsg("!!! It should point into a profile within %s/profiles/\n" % self["PORTDIR"])
 			writemsg("!!! (You can safely ignore this message when syncing. It's harmless.)\n\n\n")
 
+		if os.path.exists(USER_VIRTUALS_FILE):
+			writemsg("\n!!! /etc/portage/virtuals is deprecated in favor of\n")
+			writemsg("!!! /etc/portage/profile/virtuals. Please move it to\n")
+			writemsg("!!! this new location.\n\n")
+
 	def loadVirtuals(self,root):
 		"""Not currently used by portage."""
 		writemsg("DEPRECATED: portage.config.loadVirtuals\n")
@@ -6773,11 +6778,6 @@ os.umask(022)
 profiledir=None
 if os.path.isdir(PROFILE_PATH):
 	profiledir = PROFILE_PATH
-
-if os.path.exists(USER_VIRTUALS_FILE):
-	writemsg(red("\n!!! /etc/portage/virtuals is deprecated in favor of\n"))
-	writemsg(red("!!! /etc/portage/profile/virtuals. Please move it to\n"))
-	writemsg(red("!!! this new location.\n\n"))
 
 db={}
 
