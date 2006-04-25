@@ -4580,14 +4580,37 @@ class portdbapi(dbapi):
 			[os.path.realpath(t) for t in self.mysettings["PORTDIR_OVERLAY"].split()]
 		self.auxdbmodule  = self.mysettings.load_best_module("portdbapi.auxdbmodule")
 		self.auxdb        = {}
-
+		self._init_cache_dirs()
 		# XXX: REMOVE THIS ONCE UNUSED_0 IS YANKED FROM auxdbkeys
 		# ~harring
 		filtered_auxdbkeys = filter(lambda x: not x.startswith("UNUSED_0"), auxdbkeys)
 		for x in self.porttrees:
 			# location, label, auxdbkeys
 			self.auxdb[x] = self.auxdbmodule(portage_const.DEPCACHE_PATH, x, filtered_auxdbkeys, gid=portage_gid)
-			
+
+	def _init_cache_dirs(self):
+		"""Create /var/cache/edb/dep and adjust permissions for the portage
+		group."""
+
+		dirmode  = 02070
+		filemode =   060
+		modemask =    02
+
+		try:
+			for x in ("", "dep"):
+				mydir = os.path.join(CACHE_PATH, x)
+				if portage_util.ensure_dirs(mydir, gid=portage_gid, mode=dirmode, mask=modemask):
+					writemsg("Adjusting permissions recursively: '%s'\n" % mydir)
+					def onerror(e):
+						raise # bail out on the first error that occurs during recursion
+					if not apply_recursive_permissions(mydir,
+						gid=portage_gid, dirmode=dirmode, dirmask=modemask,
+						filemode=filemode, filemask=modemask, onerror=onerror):
+						raise portage_exception.OperationNotPermitted(
+							"Failed to apply recursive permissions for the portage group.")
+		except portage_exception.PortageException, e:
+			pass
+
 	def close_caches(self):
 		for x in self.auxdb.keys():
 			self.auxdb[x].sync()
@@ -6821,32 +6844,6 @@ if 'selinux' in settings["USE"].split(" "):
 			pass
 else:
 	selinux_enabled=0
-
-cachedirs=[CACHE_PATH]
-if root!="/":
-	cachedirs.append(root+CACHE_PATH)
-if not os.environ.has_key("SANDBOX_ACTIVE"):
-	for cachedir in cachedirs:
-		if not os.path.exists(cachedir):
-			os.makedirs(cachedir,0755)
-			writemsg(">>> "+cachedir+" doesn't exist, creating it...\n")
-		if not os.path.exists(cachedir+"/dep"):
-			os.makedirs(cachedir+"/dep",2755)
-			writemsg(">>> "+cachedir+"/dep doesn't exist, creating it...\n")
-		try:
-			os.chown(cachedir,uid,portage_gid)
-			os.chmod(cachedir,0775)
-		except OSError:
-			pass
-		try:
-			mystat=os.lstat(cachedir+"/dep")
-			os.chown(cachedir+"/dep",uid,portage_gid)
-			os.chmod(cachedir+"/dep",02775)
-			if mystat[stat.ST_GID]!=portage_gid:
-				spawn("chown -R "+str(uid)+":"+str(portage_gid)+" "+cachedir+"/dep",settings,free=1)
-				spawn("chmod -R u+rw,g+rw "+cachedir+"/dep",settings,free=1)
-		except OSError:
-			pass
 
 def flushmtimedb(record):
 	writemsg("portage.flushmtimedb() is DEPRECATED\n")
