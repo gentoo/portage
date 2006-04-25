@@ -1859,14 +1859,7 @@ class depgraph:
 			if ("--skipfirst" in myopts) and mymergelist:
 				del portage.mtimedb["resume"]["mergelist"][0]
 				del mymergelist[0]
-			for bigkey in mymergelist:
-				(pkgtype, root, cpv, action) = bigkey
-				if pkgtype == "binary" and not portage.db["/"]["bintree"].dbapi.match("="+cpv) or \
-				   pkgtype == "ebuild" and not portage.db["/"]["porttree"].dbapi.xmatch("match-all", "="+cpv):
-					print red("!!! Error: The resume list contains packages that are no longer")
-					print red("!!!        available to be emerged. Please restart/continue")
-					print red("!!!        the merge operation manually.")
-					sys.exit(1)
+			validate_merge_list(mymergelist)
 		else:
 			myfavs = portage.grabfile(os.path.join(portage.root, portage.WORLD_FILE))
 			myfavdict=genericdict(myfavs)
@@ -2490,6 +2483,17 @@ def is_valid_package_atom(x):
 	else:
 		testatom = x
 	return portage.isvalidatom(testatom)
+
+def validate_merge_list(mergelist):
+	"""Validate the list to make sure all the packages are still available.
+	This is needed for --resume."""
+	for (pkg_type, myroot, pkg_key, action) in mergelist:
+		if pkg_type == "binary" and not portage.db["/"]["bintree"].dbapi.match("="+pkg_key) or \
+			pkg_type == "ebuild" and not portage.db["/"]["porttree"].dbapi.xmatch("match-all", "="+pkg_key):
+			print red("!!! Error: The resume list contains packages that are no longer")
+			print red("!!!        available to be emerged. Please restart/continue")
+			print red("!!!        the merge operation manually.")
+			sys.exit(1)
 
 # general options that should be taken into account before any action
 if "--debug" in myopts:
@@ -3319,6 +3323,7 @@ else:
 
 	if "--ask" in myopts:
 		if "--resume" in myopts:
+			validate_merge_list(portage.mtimedb["resume"]["mergelist"])
 			mydepgraph.display(portage.mtimedb["resume"]["mergelist"])
 			prompt="Would you like to resume merging these packages?"
 		else:
@@ -3356,6 +3361,7 @@ else:
 
 	if ("--pretend" in myopts) and not ("--fetchonly" in myopts or "--fetch-all-uri" in myopts):
 		if ("--resume" in myopts):
+			validate_merge_list(portage.mtimedb["resume"]["mergelist"])
 			mydepgraph.display(portage.mtimedb["resume"]["mergelist"])
 		else:
 			mydepgraph.display(mydepgraph.altlist())
