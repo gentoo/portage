@@ -2146,7 +2146,8 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0):
 	            portage_manifest.Manifest()
 	NOTE: manifestonly and overwrite are useless with manifest2 and
 	      are therefore ignored."""
-	mf = Manifest(mysettings["O"], FetchlistDict(mysettings["O"], mysettings), mysettings["DISTDIR"])
+	global portdb
+	mf = Manifest(mysettings["O"], FetchlistDict(mysettings["O"], mysettings, portdb), mysettings["DISTDIR"])
 	writemsg(">>> Creating Manifest for %s\n" % mysettings["O"])
 	try:
 		mf.create(assumeDistfileHashes=True, requiredDistfiles=myarchives)
@@ -2174,8 +2175,8 @@ def digestParseFile(myfilename, mysettings=None):
 	if mysettings is None:
 		global settings
 		mysettings = config(clone=settings)
-
-	mf = Manifest(pkgdir, FetchlistDict(pkgdir, mysettings), mysettings["DISTDIR"])
+	global portdb
+	mf = Manifest(pkgdir, FetchlistDict(pkgdir, mysettings, portdb), mysettings["DISTDIR"])
 
 	return mf.getDigests()
 
@@ -2233,7 +2234,8 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 		writemsg("!!! Manifest file not found: '%s'\n" % manifest_path)
 		if strict:
 			return 0
-	mf = Manifest(pkgdir, FetchlistDict(pkgdir, mysettings), mysettings["DISTDIR"])
+	global portdb
+	mf = Manifest(pkgdir, FetchlistDict(pkgdir, mysettings, portdb), mysettings["DISTDIR"])
 	try:
 		writemsg_stdout(">>> checking ebuild checksums\n")
 		mf.checkTypeHashes("EBUILD")
@@ -4899,7 +4901,7 @@ class portdbapi(dbapi):
 		# returns a filename:size dictionnary of remaining downloads
 		myebuild = self.findname(mypkg)
 		pkgdir = os.path.dirname(myebuild)
-		mf = Manifest(pkgdir, FetchlistDict(pkgdir, self.mysettings), self.mysettings["DISTDIR"])
+		mf = Manifest(pkgdir, FetchlistDict(pkgdir, self.mysettings, self), self.mysettings["DISTDIR"])
 		checksums = mf.getDigests()
 		if not checksums:
 			if debug: print "[empty/missing/bad digest]: "+mypkg
@@ -4942,7 +4944,7 @@ class portdbapi(dbapi):
 		myuri, myfiles = self.getfetchlist(mypkg, useflags=useflags, mysettings=mysettings, all=all)
 		myebuild = self.findname(mypkg)
 		pkgdir = os.path.dirname(myebuild)
-		mf = Manifest(pkgdir, FetchlistDict(pkgdir, self.mysettings), self.mysettings["DISTDIR"])
+		mf = Manifest(pkgdir, FetchlistDict(pkgdir, self.mysettings, self), self.mysettings["DISTDIR"])
 		mysums = mf.getDigests()
 
 		failures = {}
@@ -6415,15 +6417,14 @@ class FetchlistDict(UserDict.DictMixin):
 	"""This provide a mapping interface to retrieve fetch lists.  It's used
 	to allow portage_manifest.Manifest to access fetch lists via a standard
 	mapping interface rather than use the dbapi directly."""
-	def __init__(self, pkgdir, settings):
+	def __init__(self, pkgdir, settings, mydbapi):
 		"""pkgdir is a directory containing ebuilds and settings is passed into
 		portdbapi.getfetchlist for __getitem__ calls."""
 		self.pkgdir = pkgdir
 		self.cp = os.sep.join(pkgdir.split(os.sep)[-2:])
 		self.settings = settings
 		self.mytree = os.path.realpath(os.path.dirname(os.path.dirname(pkgdir)))
-		global portdb # has the global auxdb caches
-		self.portdb = portdb
+		self.portdb = mydbapi
 	def __getitem__(self, pkg_key):
 		"""Returns the complete fetch list for a given package."""
 		return self.portdb.getfetchlist(pkg_key, mysettings=self.settings,

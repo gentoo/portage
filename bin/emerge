@@ -790,7 +790,7 @@ class search:
 					pkgdir = os.path.dirname(myebuild)
 					import portage_manifest
 					mf = portage_manifest.Manifest(pkgdir,
-						portage.FetchlistDict(pkgdir, portage.settings),
+						portage.FetchlistDict(pkgdir, portage.settings, portage.portdb),
 						portage.settings["DISTDIR"])
 					mysum[0] = mf.getDistfilesSize(mf.fetchlist_dict[mycpv])
 					mystr = str(mysum[0]/1024)
