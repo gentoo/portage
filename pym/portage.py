@@ -4675,7 +4675,7 @@ class portdbapi(dbapi):
 	def findname(self,mycpv):
 		return self.findname2(mycpv)[0]
 
-	def findname2(self,mycpv):
+	def findname2(self, mycpv, mytree=None):
 		""" 
 		Returns the location of the CPV, and what overlay it was in.
 		Searches overlays first, then PORTDIR; this allows us to return the first
@@ -4688,8 +4688,11 @@ class portdbapi(dbapi):
 		mysplit=mycpv.split("/")
 		psplit=pkgsplit(mysplit[1])
 
-		mytrees = self.porttrees[:]
-		mytrees.reverse()
+		if mytree:
+			mytrees = [mytree]
+		else:
+			mytrees = self.porttrees[:]
+			mytrees.reverse()
 		if psplit:
 			for x in mytrees:
 				file=x+"/"+mysplit[0]+"/"+psplit[0]+"/"+mysplit[1]+".ebuild"
@@ -4697,7 +4700,7 @@ class portdbapi(dbapi):
 					return[file, x]
 		return None, 0
 
-	def aux_get(self, mycpv, mylist):
+	def aux_get(self, mycpv, mylist, mytree=None):
 		"stub code for returning auxilliary db information, such as SLOT, DEPEND, etc."
 		'input: "sys-apps/foo-1.0",["SLOT","DEPEND","HOMEPAGE"]'
 		'return: ["0",">=sys-libs/bar-1.0","http://www.foo.com"] or raise KeyError if error'
@@ -4705,7 +4708,7 @@ class portdbapi(dbapi):
 
 		cat,pkg = string.split(mycpv, "/", 1)
 
-		myebuild, mylocation=self.findname2(mycpv)
+		myebuild, mylocation = self.findname2(mycpv, mytree)
 
 		if not myebuild:
 			writemsg("!!! aux_get(): ebuild path for '%(cpv)s' not specified:\n" % {"cpv":mycpv})
@@ -4866,11 +4869,11 @@ class portdbapi(dbapi):
 
 		return returnme
 
-	def getfetchlist(self,mypkg,useflags=None,mysettings=None,all=0):
+	def getfetchlist(self, mypkg, useflags=None, mysettings=None, all=0, mytree=None):
 		if mysettings is None:
 			mysettings = self.mysettings
 		try:
-			myuris = self.aux_get(mypkg,["SRC_URI"])[0]
+			myuris = self.aux_get(mypkg, ["SRC_URI"], mytree=mytree)[0]
 		except (IOError,KeyError):
 			print red("getfetchlist():")+" aux_get() error reading "+mypkg+"; aborting."
 			sys.exit(1)
@@ -5001,10 +5004,14 @@ class portdbapi(dbapi):
 					d[x[:-7]] = None
 		return d.keys()
 
-	def cp_list(self,mycp,use_cache=1):
+	def cp_list(self, mycp, use_cache=1, mytree=None):
 		mysplit=mycp.split("/")
 		d={}
-		for oroot in self.porttrees:
+		if mytree:
+			mytrees = [mytree]
+		else:
+			mytrees = self.porttrees
+		for oroot in mytrees:
 			for x in listdir(oroot+"/"+mycp,EmptyOnError=1,ignorecvs=1):
 				if x[-7:]==".ebuild":
 					d[mysplit[0]+"/"+x[:-7]] = None
@@ -6411,30 +6418,19 @@ class FetchlistDict(UserDict.DictMixin):
 		self.pkgdir = pkgdir
 		self.cp = os.sep.join(pkgdir.split(os.sep)[-2:])
 		self.settings = settings
-		self.porttrees = [os.path.realpath(os.path.dirname(os.path.dirname(pkgdir)))]
+		self.mytree = os.path.realpath(os.path.dirname(os.path.dirname(pkgdir)))
+		global portdb # has the global auxdb caches
+		self.portdb = portdb
 	def __getitem__(self, pkg_key):
 		"""Returns the complete fetch list for a given package."""
-		global portdb # has the global auxdb caches
-		all_trees = portdb.porttrees
-		# This ensures that the fetchlist comes from the correct portage tree.
-		portdb.porttrees = self.porttrees
-		fetchlist = portdb.getfetchlist(pkg_key, mysettings=self.settings, all=True)[1]
-		# XXX The db is global so we restore it's trees back to their original state.
-		portdb.porttrees = all_trees
-		return fetchlist
+		return self.portdb.getfetchlist(pkg_key, mysettings=self.settings,
+			all=True, mytree=self.mytree)[1]
 	def has_key(self, pkg_key):
 		"""Returns true if the given package exists within pkgdir."""
 		return pkg_key in self.keys()
 	def keys(self):
 		"""Returns keys for all packages within pkgdir"""
-		global portdb # has the global auxdb caches
-		all_trees = portdb.porttrees
-		# This ensures that the key list comes from the correct portage tree.
-		portdb.porttrees = self.porttrees
-		mykeys = portdb.cp_list(self.cp)
-		# XXX The db is global so we restore it's trees back to their original state.
-		portdb.porttrees = all_trees
-		return mykeys
+		return self.portdb.cp_list(self.cp, mytree=self.mytree)
 
 def cleanup_pkgmerge(mypkg,origdir):
 	global settings
