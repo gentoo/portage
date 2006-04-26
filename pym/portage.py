@@ -1282,9 +1282,6 @@ class config:
 
 		self._init_dirs()
 
-		# Repoman may modify this attribute as necessary.
-		self.groups = self["ACCEPT_KEYWORDS"].split()
-
 	def _init_dirs(self):
 		"""Create tmp, var/tmp and var/lib/portage (relative to $ROOT)."""
 
@@ -3512,7 +3509,7 @@ def getmaskingstatus(mycpv):
 	if not eapi_is_supported(eapi):
 		return ["required EAPI %s, supported EAPI %s" % (eapi, portage_const.EAPI)]
 	mygroups = mygroups.split()
-	pgroups = settings.groups[:] # Make a local copy so we can modify it.
+	pgroups = settings["ACCEPT_KEYWORDS"].split()
 	myarch = settings["ARCH"]
 	pkgdict = settings.pkeywordsdict
 
@@ -5155,7 +5152,7 @@ class portdbapi(dbapi):
 				continue
 			mygroups=keys.split()
 			# Repoman may modify this attribute as necessary.
-			pgroups = self.mysettings.groups[:] # Make a local copy so we can modify it.
+			pgroups = self.mysettings["ACCEPT_KEYWORDS"].split()
 			match=0
 			cp = dep_getkey(mycpv)
 			if pkgdict.has_key(cp):

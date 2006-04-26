@@ -1007,7 +1007,7 @@ for x in scanlist:
 		
 		if "--ignore-arches" in myoptions:
 			arches = [[repoman_settings["ARCH"], repoman_settings["ARCH"],
-				repoman_settings.groups]]
+				repoman_settings["ACCEPT_KEYWORDS"].split()]]
 		else:
 			arches=[]
 			for keyword in myaux["KEYWORDS"].split():
@@ -1095,9 +1095,8 @@ for x in scanlist:
 				if arch_caches.has_key(prof[0]):
 					dep_settings, portage.portdb, portage.db["/"]["porttree"] = arch_caches[prof[0]]
 				else:
-					os.environ["ACCEPT_KEYWORDS"]="-~"+arch
 					dep_settings=portage.config(config_profile_path=profdir, config_incrementals=portage_const.INCREMENTALS)
-					dep_settings.groups = groups
+					dep_settings["ACCEPT_KEYWORDS"] = " ".join(groups)
 					portage.portdb=portage.portdbapi(portdir, dep_settings)
 					portage.db["/"]["porttree"]=portage.portagetree("/",dep_settings.getvirtuals("/"))
 					arch_caches[prof[0]]=[dep_settings, portage.portdb, portage.db["/"]["porttree"]]
