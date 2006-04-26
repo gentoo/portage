@@ -1096,11 +1096,12 @@ for x in scanlist:
 					dep_settings, portage.portdb, portage.db["/"]["porttree"] = arch_caches[prof[0]]
 				else:
 					dep_settings=portage.config(config_profile_path=profdir, config_incrementals=portage_const.INCREMENTALS)
-					dep_settings["ACCEPT_KEYWORDS"] = " ".join(groups)
 					portage.portdb=portage.portdbapi(portdir, dep_settings)
 					portage.db["/"]["porttree"]=portage.portagetree("/",dep_settings.getvirtuals("/"))
 					arch_caches[prof[0]]=[dep_settings, portage.portdb, portage.db["/"]["porttree"]]
-	
+
+				dep_settings["ACCEPT_KEYWORDS"] = " ".join(groups)
+
 				for myprovide in myaux["PROVIDE"].split():
 					prov_cp = portage.dep_getkey(myprovide)
 					if prov_cp not in dep_settings.getvirtuals():
