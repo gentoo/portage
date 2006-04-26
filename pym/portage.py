@@ -1271,14 +1271,15 @@ class config:
 		if mycpv:
 			self.setcpv(mycpv)
 
-		self.root = self.get("ROOT", "/")
-		self.root = self.root.rstrip(os.path.sep) + os.path.sep
-		if not os.path.exists(self.root):
-			writemsg("!!! Error: ROOT '%s' does not exist.  Please correct this.\n" % self.root)
-			raise portage_exception.DirectoryNotFound(self.root)
-		elif not os.path.isdir(self.root):
-			writemsg("!!! Error: ROOT '%s' is not a directory. Please correct this.\n" % self.root[:-1])
-			raise portage_exception.DirectoryNotFound(self.root)
+		myroot = self.get("ROOT", "/")
+		myroot = myroot.rstrip(os.path.sep) + os.path.sep
+		if not os.path.exists(myroot):
+			writemsg("!!! Error: ROOT '%s' does not exist.  Please correct this.\n" % myroot)
+			raise portage_exception.DirectoryNotFound(myroot)
+		elif not os.path.isdir(myroot):
+			writemsg("!!! Error: ROOT '%s' is not a directory. Please correct this.\n" % myroot[:-1])
+			raise portage_exception.DirectoryNotFound(myroot)
+		self["ROOT"] = myroot
 
 		self._init_dirs()
 
@@ -1294,7 +1295,7 @@ class config:
 
 		for mypath, (gid, mode, modemask) in dir_mode_map.iteritems():
 			try:
-				mydir = os.path.join(self.root, mypath)
+				mydir = os.path.join(self["ROOT"], mypath)
 				portage_util.ensure_dirs(mydir, gid=gid, mode=mode, mask=modemask)
 			except portage_exception.PortageException, e:
 				writemsg("!!! Directory initialization failed: '%s'\n" % mydir)
@@ -6791,7 +6792,7 @@ except portage_exception.DirectoryNotFound, e:
 	writemsg("!!! Directory Not Found: %s\n" % str(e))
 	sys.exit(1)
 
-root = settings.root
+root = settings["ROOT"]
 
 # useful info
 settings["PORTAGE_MASTER_PID"]=str(os.getpid())
