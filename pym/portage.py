@@ -2316,6 +2316,11 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 	mysettings["EBUILD_PHASE"] = mydo
 	mysettings["SLOT"] = slot
 
+	mysettings["PORTAGE_MASTER_PID"] = str(os.getpid())
+
+	# We are disabling user-specific bashrc files.
+	mysettings["BASH_ENV"] = INVALID_ENV_FILE
+
 	if debug: # Otherwise it overrides emerge's settings.
 		# We have no other way to set debug... debug can't be passed in
 		# due to how it's coded... Don't overwrite this so we can use it.
@@ -6794,12 +6799,6 @@ except portage_exception.DirectoryNotFound, e:
 
 root = settings["ROOT"]
 
-# useful info
-settings["PORTAGE_MASTER_PID"]=str(os.getpid())
-settings.backup_changes("PORTAGE_MASTER_PID")
-# We are disabling user-specific bashrc files.
-settings["BASH_ENV"] = INVALID_ENV_FILE
-settings.backup_changes("BASH_ENV")
 usedefaults = settings.use_defs # DEPRECATED (no longer used)
 do_vartree(settings)
 settings.reset() # XXX: Regenerate use after we get a vartree -- GLOBAL
