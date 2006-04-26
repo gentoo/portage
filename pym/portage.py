@@ -2140,14 +2140,17 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 			return 0
 	return 1
 
-def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0):
+def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None):
 	"""Generates a digest file if missing.  Assumes all files are available.
 	DEPRECATED: this now only is a compability wrapper for 
 	            portage_manifest.Manifest()
 	NOTE: manifestonly and overwrite are useless with manifest2 and
 	      are therefore ignored."""
-	global portdb
-	mf = Manifest(mysettings["O"], FetchlistDict(mysettings["O"], mysettings, portdb), mysettings["DISTDIR"])
+	if myportdb is None:
+ 		writemsg("Warning: myportdb not specified to digestgen\n")
+		global portdb
+		myportdb = portdb
+	mf = Manifest(mysettings["O"], FetchlistDict(mysettings["O"], mysettings, myportdb), mysettings["DISTDIR"])
 	writemsg(">>> Creating Manifest for %s\n" % mysettings["O"])
 	try:
 		mf.create(assumeDistfileHashes=True, requiredDistfiles=myarchives)
@@ -2572,7 +2575,8 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 			mysettings["PORT_LOGDIR"]=""
 
 def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,cleanup=0,dbkey=None,use_cache=1,fetchall=0,tree=None):
-	global db, actionmap_deps
+	global db, portdb, actionmap_deps
+	myportdb = portdb
 	features = mysettings.features
 	if not tree:
 		dump_traceback("Warning: tree not specified to doebuild")
@@ -2709,14 +2713,14 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 	if "digest" in features:
 		#generate digest if it doesn't exist.
 		if mydo=="digest":
-			return (not digestgen(aalist,mysettings,overwrite=1))
+			return (not digestgen(aalist, mysettings, overwrite=1, myportdb=myportdb))
 		else:
-			digestgen(aalist,mysettings,overwrite=0)
+			digestgen(aalist, mysettings, overwrite=0, myportdb=myportdb)
 	elif mydo=="digest":
 		#since we are calling "digest" directly, recreate the digest even if it already exists
-		return (not digestgen(aalist,mysettings,overwrite=1))
+		return (not digestgen(aalist, mysettings, overwrite=1, myportdb=myportdb))
 	if mydo=="manifest":
-		return (not digestgen(aalist,mysettings,overwrite=1,manifestonly=1))
+		return (not digestgen(aalist,mysettings,overwrite=1,manifestonly=1, myportdb=myportdb))
 
 	# See above comment about fetching only when needed
 	if not digestcheck(checkme, mysettings, ("strict" in features),
