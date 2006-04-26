@@ -2150,7 +2150,8 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
  		writemsg("Warning: myportdb not specified to digestgen\n")
 		global portdb
 		myportdb = portdb
-	mf = Manifest(mysettings["O"], FetchlistDict(mysettings["O"], mysettings, myportdb), mysettings["DISTDIR"])
+	mf = Manifest(mysettings["O"], mysettings["DISTDIR"],
+		fetchlist_dict=FetchlistDict(mysettings["O"], mysettings, myportdb))
 	writemsg(">>> Creating Manifest for %s\n" % mysettings["O"])
 	try:
 		mf.create(assumeDistfileHashes=True, requiredDistfiles=myarchives)
@@ -2178,10 +2179,8 @@ def digestParseFile(myfilename, mysettings=None):
 	if mysettings is None:
 		global settings
 		mysettings = config(clone=settings)
-	global portdb
-	mf = Manifest(pkgdir, FetchlistDict(pkgdir, mysettings, portdb), mysettings["DISTDIR"])
 
-	return mf.getDigests()
+	return Manifest(pkgdir, mysettings["DISTDIR"]).getDigests()
 
 # XXXX strict was added here to fix a missing name error.
 # XXXX It's used below, but we're not paying attention to how we get it?
@@ -2237,8 +2236,7 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 		writemsg("!!! Manifest file not found: '%s'\n" % manifest_path)
 		if strict:
 			return 0
-	global portdb
-	mf = Manifest(pkgdir, FetchlistDict(pkgdir, mysettings, portdb), mysettings["DISTDIR"])
+	mf = Manifest(pkgdir, mysettings["DISTDIR"])
 	try:
 		writemsg_stdout(">>> checking ebuild checksums\n")
 		mf.checkTypeHashes("EBUILD")
@@ -4905,7 +4903,7 @@ class portdbapi(dbapi):
 		# returns a filename:size dictionnary of remaining downloads
 		myebuild = self.findname(mypkg)
 		pkgdir = os.path.dirname(myebuild)
-		mf = Manifest(pkgdir, FetchlistDict(pkgdir, self.mysettings, self), self.mysettings["DISTDIR"])
+		mf = Manifest(pkgdir, self.mysettings["DISTDIR"])
 		checksums = mf.getDigests()
 		if not checksums:
 			if debug: print "[empty/missing/bad digest]: "+mypkg
@@ -4948,7 +4946,7 @@ class portdbapi(dbapi):
 		myuri, myfiles = self.getfetchlist(mypkg, useflags=useflags, mysettings=mysettings, all=all)
 		myebuild = self.findname(mypkg)
 		pkgdir = os.path.dirname(myebuild)
-		mf = Manifest(pkgdir, FetchlistDict(pkgdir, self.mysettings, self), self.mysettings["DISTDIR"])
+		mf = Manifest(pkgdir, self.mysettings["DISTDIR"])
 		mysums = mf.getDigests()
 
 		failures = {}

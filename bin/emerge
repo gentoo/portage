@@ -789,10 +789,11 @@ class search:
 					myebuild = portage.portdb.findname(mycpv)
 					pkgdir = os.path.dirname(myebuild)
 					import portage_manifest
-					mf = portage_manifest.Manifest(pkgdir,
-						portage.FetchlistDict(pkgdir, portage.settings, portage.portdb),
-						portage.settings["DISTDIR"])
-					mysum[0] = mf.getDistfilesSize(mf.fetchlist_dict[mycpv])
+					mf = portage_manifest.Manifest(
+						pkgdir, portage.settings["DISTDIR"])
+					fetchlist = portage.portdb.getfetchlist(mycpv,
+						mysettings=portage.settings, all=True)
+					mysum[0] = mf.getDistfilesSize(fetchlist)
 					mystr = str(mysum[0]/1024)
 					mycount=len(mystr)
 					while (mycount > 3):

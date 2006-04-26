@@ -799,9 +799,7 @@ for x in scanlist:
 		repoman_settings["O"] = checkdir
 		portage.digestgen([], repoman_settings, manifestonly=1, myportdb=portage.portdb)
 
-	mf = Manifest(checkdir,
-		portage.FetchlistDict(checkdir, repoman_settings, portage.portdb),
-		repoman_settings["DISTDIR"])
+	mf = Manifest(checkdir, repoman_settings["DISTDIR"])
 	mydigests=mf.getTypeDigests("DIST")
 	myfiles_all = []
 

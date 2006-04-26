@@ -98,10 +98,13 @@ class Manifest2Entry(ManifestEntry):
 
 class Manifest(object):
 	parsers = (parseManifest2, parseManifest1)
-	def __init__(self, pkgdir, fetchlist_dict, distdir, manifest1_compat=True, from_scratch=False):
+	def __init__(self, pkgdir, distdir, fetchlist_dict=None,
+		manifest1_compat=True, from_scratch=False):
 		""" create new Manifest instance for package in pkgdir
 		    and add compability entries for old portage versions if manifest1_compat == True.
-		    Do not parse Manifest file if from_scratch == True (only for internal use) """
+		    Do not parse Manifest file if from_scratch == True (only for internal use)
+			The fetchlist_dict parameter is required only for generation of
+			a Manifest (not needed for parsing and checking sums)."""
 		self.pkgdir = pkgdir.rstrip(os.sep) + os.sep
 		self.fhashdict = {}
 		self.hashes = portage_const.MANIFEST2_HASH_FUNCTIONS[:]
@@ -405,7 +408,8 @@ class Manifest(object):
 			distfilehashes = self.fhashdict["DIST"]
 		else:
 			distfilehashes = {}
-		self.__init__(self.pkgdir, self.fetchlist_dict, self.distdir, from_scratch=True)
+		self.__init__(self.pkgdir, self.distdir,
+			fetchlist_dict=self.fetchlist_dict, from_scratch=True)
 		for pkgdir, pkgdir_dirs, pkgdir_files in os.walk(self.pkgdir):
 			break
 		for f in pkgdir_files:
