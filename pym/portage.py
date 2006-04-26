@@ -6782,10 +6782,6 @@ def load_mtimedb(f):
 # code that is aware of this flag to import portage without the unnecessary
 # overhead (and other issues!) of initializing the legacy globals.
 
-profiledir = None # DEPRECATED (no longer used)
-if os.path.isdir(PROFILE_PATH):
-	profiledir = PROFILE_PATH
-
 db={}
 
 # We're going to lock the global config to prevent changes, but we need
@@ -6830,9 +6826,6 @@ if 'selinux' in settings["USE"].split(" "):
 else:
 	selinux_enabled=0
 
-def flushmtimedb(record):
-	writemsg("portage.flushmtimedb() is DEPRECATED\n")
-
 mtimedbfile = os.path.join(root, CACHE_PATH.lstrip(os.path.sep), "mtimedb")
 try:
 	f = open(mtimedbfile)
@@ -6851,12 +6844,23 @@ if root!="/":
 
 thirdpartymirrors = settings.thirdpartymirrors()
 
-# COMPATABILITY -- This shouldn't be used.
-pkglines = settings.packages
-
-groups = settings["ACCEPT_KEYWORDS"].split() # DEPRECATED (no longer used)
-archlist = settings.archlist() # DEPRECATED (no longer used)
-features = settings.features # DEPRECATED (no longer used)
+# ============================================================================
+# COMPATIBILITY
+# These attributes should not be used within Portage under any circumstances.
+# ============================================================================
+archlist    = settings.archlist()
+features    = settings.features
+groups      = settings["ACCEPT_KEYWORDS"].split()
+pkglines    = settings.packages
+profiledir  = None
+if os.path.isdir(PROFILE_PATH):
+	profiledir = PROFILE_PATH
+def flushmtimedb(record):
+	writemsg("portage.flushmtimedb() is DEPRECATED\n")
+# ============================================================================
+# COMPATIBILITY
+# These attributes should not be used within Portage under any circumstances.
+# ============================================================================
 
 # Clear the cache
 dircache={}
