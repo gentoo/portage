@@ -2684,18 +2684,17 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	if ("mirror" in features) or fetchall:
 		fetchme=alluris[:]
 		checkme=aalist[:]
-	elif mydo=="digest":
-		fetchme=alluris[:]
-		checkme=aalist[:]
-		digestfn=mysettings["FILESDIR"]+"/digest-"+mysettings["PF"]
-		if os.path.exists(digestfn):
-			mydigests=digestParseFile(digestfn)
-			if mydigests:
-				for x in mydigests:
-					while x in checkme:
-						i = checkme.index(x)
-						del fetchme[i]
-						del checkme[i]
+	elif mydo == "digest" or "cvs" in mysettings.features:
+		fetchme = alluris[:]
+		checkme = aalist[:]
+		# Skip files that we already have digests for.
+		mydigests = Manifest(
+			mysettings["O"], mysettings["DISTDIR"]).getTypeDigests("DIST")
+		for x in mydigests:
+			while x in checkme:
+				i = checkme.index(x)
+				del fetchme[i]
+				del checkme[i]
 	else:
 		fetchme=newuris[:]
 		checkme=alist[:]
