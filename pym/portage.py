@@ -1704,11 +1704,13 @@ class config:
 		return mydict
 
 	def thirdpartymirrors(self):
-		profileroots = [os.path.join(self["PORTDIR"], "profiles")]
-		for x in self["PORTDIR_OVERLAY"].split():
-			profileroots.insert(0, os.path.join(x, "profiles"))
-		thirdparty_lists = [grabdict(os.path.join(x, "thirdpartymirrors")) for x in profileroots]
-		return stack_dictlist(thirdparty_lists, incremental=True)
+		if getattr(self, "_thirdpartymirrors", None) is None:
+			profileroots = [os.path.join(self["PORTDIR"], "profiles")]
+			for x in self["PORTDIR_OVERLAY"].split():
+				profileroots.insert(0, os.path.join(x, "profiles"))
+			thirdparty_lists = [grabdict(os.path.join(x, "thirdpartymirrors")) for x in profileroots]
+			self._thirdpartymirrors = stack_dictlist(thirdparty_lists, incremental=True)
+		return self._thirdpartymirrors
 
 	def archlist(self):
 		return flatten([[myarch, "~" + myarch] \
@@ -1778,7 +1780,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 			print ">>> \"mirror\" mode desired and \"mirror\" restriction found; skipping fetch."
 			return 1
 
-	global thirdpartymirrors
+	thirdpartymirrors = mysettings.thirdpartymirrors()
 
 	check_config_instance(mysettings)
 
@@ -6875,8 +6877,6 @@ if root!="/":
 	db[root].addLazySingleton("porttree", portagetree, root)
 	db[root].addLazyItem("bintree", LazyBintreeItem(root))
 
-thirdpartymirrors = settings.thirdpartymirrors()
-
 # ============================================================================
 # COMPATIBILITY
 # These attributes should not be used within Portage under any circumstances.
@@ -6885,6 +6885,7 @@ archlist    = settings.archlist()
 features    = settings.features
 groups      = settings["ACCEPT_KEYWORDS"].split()
 pkglines    = settings.packages
+thirdpartymirrors = settings.thirdpartymirrors()
 profiledir  = None
 if os.path.isdir(PROFILE_PATH):
 	profiledir = PROFILE_PATH
