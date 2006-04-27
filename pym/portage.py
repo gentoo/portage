@@ -2559,14 +2559,6 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 				writemsg("!!! Operation Not Permitted: %s\n" % str(e))
 				logging_enabled = False
 
-		if logging_enabled:
-			if "LOG_PF" not in mysettings or \
-			mysettings["LOG_PF"] != mysettings["PF"]:
-				global db
-				mysettings["LOG_PF"] = mysettings["PF"]
-				mysettings["LOG_COUNTER"] = \
-					str(db[myroot]["vartree"].dbapi.get_counter_tick_core("/"))
-
 		if not logging_enabled:
 			writemsg("!!! Permission issues with PORT_LOGDIR='%s'\n" % mysettings["PORT_LOGDIR"])
 			writemsg("!!! Disabling logging.\n")
@@ -2574,15 +2566,20 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 
 def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	fetchonly=0, cleanup=0, dbkey=None, use_cache=1, fetchall=0, tree=None,
-	mydbapi=None):
+	mydbapi=None, vartree=None):
+	if not tree:
+		writemsg("Warning: tree not specified to doebuild\n")
+		tree = "porttree"
 	global actionmap_deps
 	if mydbapi is None:
 		global db
 		mydbapi = db[myroot][tree].dbapi
+
+	if vartree is None:
+		global db
+		vartree = db[myroot]["vartree"]
+
 	features = mysettings.features
-	if not tree:
-		dump_traceback("Warning: tree not specified to doebuild")
-		tree = "porttree"
 
 	validcommands = ["help","clean","prerm","postrm","cleanrm","preinst","postinst",
 	                "config","setup","depend","fetch","digest",
@@ -2640,8 +2637,9 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			return mystatus
 
 		if "PORT_LOGDIR" in mysettings:
-			logfile = os.path.join(mysettings["PORT_LOGDIR"], "%s-%s.log" % \
-				(mysettings["LOG_COUNTER"], mysettings["LOG_PF"]))
+			logfile = os.path.join(mysettings["PORT_LOGDIR"],
+				"%s-%s.log" % (str(vartree.dbapi.get_counter_tick_core("/")),
+				mysettings["PF"]))
 
 		if mydo=="unmerge":
 			return unmerge(mysettings["CATEGORY"],
@@ -2807,12 +2805,18 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		if "noclean" not in mysettings.features:
 			mysettings.features.append("noclean")
 		#qmerge is specifically not supposed to do a runtime dep check
-		return merge(mysettings["CATEGORY"],mysettings["PF"],mysettings["D"],mysettings["PORTAGE_BUILDDIR"]+"/build-info",myroot,mysettings,myebuild=mysettings["EBUILD"],mytree=tree)
+		return merge(mysettings["CATEGORY"], mysettings["PF"], mysettings["D"],
+			os.path.join(mysettings["PORTAGE_BUILDDIR"], "build-info"), myroot,
+			mysettings, myebuild=mysettings["EBUILD"], mytree=tree,
+			vartree=vartree)
 	elif mydo=="merge":
 		retval=spawnebuild("install",actionmap,mysettings,debug,alwaysdep=1,logfile=logfile)
 		if retval:
 			return retval
-		return merge(mysettings["CATEGORY"],mysettings["PF"],mysettings["D"],mysettings["PORTAGE_BUILDDIR"]+"/build-info",myroot,mysettings,myebuild=mysettings["EBUILD"],mytree=tree)
+		return merge(mysettings["CATEGORY"], mysettings["PF"], mysettings["D"],
+			os.path.join(mysettings["PORTAGE_BUILDDIR"], "build-info"), myroot,
+			mysettings, myebuild=mysettings["EBUILD"], mytree=tree,
+			vartree=vartree)
 	else:
 		print "!!! Unknown mydo:",mydo
 		sys.exit(1)
@@ -2987,8 +2991,10 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 
 	return newmtime
 
-def merge(mycat,mypkg,pkgloc,infloc,myroot,mysettings,myebuild=None,mytree=None):
-	mylink=dblink(mycat,mypkg,myroot,mysettings,treetype=mytree)
+def merge(mycat, mypkg, pkgloc, infloc, myroot, mysettings, myebuild=None,
+	mytree=None, vartree=None):
+	mylink = dblink(mycat, mypkg, myroot, mysettings, treetype=mytree,
+		vartree=vartree)
 	return mylink.merge(pkgloc,infloc,myroot,myebuild)
 
 def unmerge(cat,pkg,myroot,mysettings,mytrimworld=1):
@@ -5479,13 +5485,18 @@ class binarytree(packagetree):
 
 class dblink:
 	"this class provides an interface to the standard text package database"
-	def __init__(self,cat,pkg,myroot,mysettings,treetype=None):
+	def __init__(self, cat, pkg, myroot, mysettings, treetype=None,
+		vartree=None):
 		"create a dblink object for cat/pkg.  This dblink entry may or may not exist"
 		self.cat     = cat
 		self.pkg     = pkg
 		self.mycpv   = self.cat+"/"+self.pkg
 		self.mysplit = pkgsplit(self.mycpv)
 		self.treetype = treetype
+		if vartree is None:
+			global db
+			vartree = db[myroot]["vartree"]
+		self.vartree = vartree
 
 		self.dbroot   = os.path.normpath(myroot+VDB_PATH)
 		self.dbcatdir = self.dbroot+"/"+cat
@@ -5788,7 +5799,7 @@ class dblink:
 				continue
 
 		#remove self from vartree database so that our own virtual gets zapped if we're the last node
-		db[self.myroot]["vartree"].zap(self.mycpv)
+		self.vartree.zap(self.mycpv)
 
 		# New code to remove stuff from the world and virtuals files when unmerged.
 		if trimworld:
@@ -5797,7 +5808,7 @@ class dblink:
 			newworldlist=[]
 			for x in worldlist:
 				if dep_getkey(x)==mykey:
-					matches=db[self.myroot]["vartree"].dbapi.match(x,use_cache=0)
+					matches = self.vartree.dbapi.match(x,use_cache=0)
 					if not matches:
 						#zap our world entry
 						pass
@@ -5849,7 +5860,6 @@ class dblink:
 		return False
 
 	def treewalk(self,srcroot,destroot,inforoot,myebuild,cleanup=0):
-		global db
 		# srcroot  = ${D};
 		# destroot = where to merge, ie. ${ROOT},
 		# inforoot = root of db entry,
@@ -5863,7 +5873,7 @@ class dblink:
 		self.lockdb()
 
 		otherversions=[]
-		for v in db[self.myroot]["vartree"].dbapi.cp_list(self.mysplit[0]):
+		for v in self.vartree.dbapi.cp_list(self.mysplit[0]):
 			otherversions.append(v.split("/")[1])
 
 		# check for package collisions
@@ -5889,7 +5899,7 @@ class dblink:
 			myslot = self.settings["SLOT"]
 			for v in otherversions:
 				# only allow versions with same slot to overwrite files
-				if myslot == db[self.myroot]["vartree"].dbapi.aux_get("/".join((self.cat, v)), ["SLOT"])[0]:
+				if myslot == self.vartree.dbapi.aux_get("/".join((self.cat, v)), ["SLOT"])[0]:
 					mypkglist.append(dblink(self.cat,v,destroot,self.settings))
 
 			print green("*")+" checking "+str(len(myfilelist))+" files for package collisions"
@@ -5967,7 +5977,7 @@ class dblink:
 		# get current counter value (counter_tick also takes care of incrementing it)
 		# XXX Need to make this destroot, but it needs to be initialized first. XXX
 		# XXX bis: leads to some invalidentry() call through cp_all().
-		counter = db["/"]["vartree"].dbapi.counter_tick(self.myroot,mycpv=self.mycpv)
+		counter = self.vartree.dbapi.counter_tick(self.myroot, mycpv=self.mycpv)
 		# write local package counter for recording
 		lcfile = open(self.dbtmpdir+"/COUNTER","w")
 		lcfile.write(str(counter))
