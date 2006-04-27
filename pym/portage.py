@@ -2808,7 +2808,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		return merge(mysettings["CATEGORY"], mysettings["PF"], mysettings["D"],
 			os.path.join(mysettings["PORTAGE_BUILDDIR"], "build-info"), myroot,
 			mysettings, myebuild=mysettings["EBUILD"], mytree=tree,
-			vartree=vartree)
+			mydbapi=mydbapi, vartree=vartree)
 	elif mydo=="merge":
 		retval=spawnebuild("install",actionmap,mysettings,debug,alwaysdep=1,logfile=logfile)
 		if retval:
@@ -2816,7 +2816,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		return merge(mysettings["CATEGORY"], mysettings["PF"], mysettings["D"],
 			os.path.join(mysettings["PORTAGE_BUILDDIR"], "build-info"), myroot,
 			mysettings, myebuild=mysettings["EBUILD"], mytree=tree,
-			vartree=vartree)
+			mydbapi=mydbapi, vartree=vartree)
 	else:
 		print "!!! Unknown mydo:",mydo
 		sys.exit(1)
@@ -2992,10 +2992,10 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 	return newmtime
 
 def merge(mycat, mypkg, pkgloc, infloc, myroot, mysettings, myebuild=None,
-	mytree=None, vartree=None):
+	mytree=None, mydbapi=None, vartree=None):
 	mylink = dblink(mycat, mypkg, myroot, mysettings, treetype=mytree,
 		vartree=vartree)
-	return mylink.merge(pkgloc,infloc,myroot,myebuild)
+	return mylink.merge(pkgloc, infloc, myroot, myebuild, mydbapi=mydbapi)
 
 def unmerge(cat,pkg,myroot,mysettings,mytrimworld=1):
 	mylink=dblink(cat,pkg,myroot,mysettings,treetype="vartree")
@@ -4822,7 +4822,8 @@ class portdbapi(dbapi):
 					writemsg("Uncaught handled exception: %(exception)s\n" % {"exception":str(e)})
 					raise
 
-			myret=doebuild(myebuild,"depend","/",self.mysettings,dbkey=mydbkey,tree="porttree")
+			myret = doebuild(myebuild, "depend", "/", self.mysettings,
+				dbkey=mydbkey, tree="porttree", mydbapi=self)
 			if myret:
 				portage_locks.unlockfile(mylock)
 				self.lock_held = 0
@@ -5679,7 +5680,8 @@ class dblink:
 		if myebuildpath and os.path.exists(myebuildpath):
 			# Eventually, we'd like to pass in the saved ebuild env here...
 			a = doebuild(myebuildpath, "prerm", self.myroot, self.settings,
-				cleanup=cleanup, use_cache=0, tree="vartree")
+				cleanup=cleanup, use_cache=0, tree="vartree",
+				mydbapi=self.vartree.dbapi, vartree=self.vartree)
 			# XXX: Decide how to handle failures here.
 			if a != 0:
 				writemsg("!!! FAILED prerm: "+str(a)+"\n")
@@ -5840,12 +5842,15 @@ class dblink:
 			# XXX: This should be the old config, not the current one.
 			# XXX: Use vardbapi to load up env vars.
 			a = doebuild(myebuildpath, "postrm", self.myroot, self.settings,
-			 use_cache=0, tree="vartree")
+			 use_cache=0, tree="vartree", mydbapi=self.vartree.dbapi,
+			 vartree=self.vartree)
 			# XXX: Decide how to handle failures here.
 			if a != 0:
 				writemsg("!!! FAILED postrm: "+str(a)+"\n")
 				sys.exit(123)
-			doebuild(myebuildpath, "cleanrm", self.myroot, self.settings, tree="vartree")
+			doebuild(myebuildpath, "cleanrm", self.myroot, self.settings,
+				tree="vartree", mydbapi=self.vartree.dbapi,
+				vartree=self.vartree)
 		self.unlockdb()
 
 	def isowner(self,filename,destroot):
@@ -5859,7 +5864,8 @@ class dblink:
 
 		return False
 
-	def treewalk(self,srcroot,destroot,inforoot,myebuild,cleanup=0):
+	def treewalk(self, srcroot, destroot, inforoot, myebuild, cleanup=0,
+		mydbapi=None):
 		# srcroot  = ${D};
 		# destroot = where to merge, ie. ${ROOT},
 		# inforoot = root of db entry,
@@ -5963,7 +5969,9 @@ class dblink:
 		# run preinst script
 		if myebuild is None:
 			myebuild = os.path.join(inforoot, self.pkg + ".ebuild")
-		a = doebuild(myebuild, "preinst", root, self.settings, cleanup=cleanup, use_cache=0, tree=self.treetype)
+		a = doebuild(myebuild, "preinst", root, self.settings, cleanup=cleanup,
+			use_cache=0, tree=self.treetype, mydbapi=mydbapi,
+			vartree=self.vartree)
 
 		# XXX: Decide how to handle failures here.
 		if a != 0:
@@ -6062,7 +6070,8 @@ class dblink:
 		portage_locks.unlockfile(mylock)
 
 		#do postinst script
-		a = doebuild(myebuild, "postinst", root, self.settings, use_cache=0, tree=self.treetype)
+		a = doebuild(myebuild, "postinst", root, self.settings, use_cache=0,
+			tree=self.treetype, mydbapi=mydbapi, vartree=self.vartree)
 
 		# XXX: Decide how to handle failures here.
 		if a != 0:
@@ -6085,7 +6094,8 @@ class dblink:
 		# Process ebuild logfiles
 		elog_process(self.mycpv, self.settings)
 		if "noclean" not in self.settings.features:
-			doebuild(myebuild, "clean", root, self.settings, tree=self.treetype)
+			doebuild(myebuild, "clean", root, self.settings,
+				tree=self.treetype, mydbapi=mydbapi, vartree=self.vartree)
 		return 0
 
 	def mergeme(self,srcroot,destroot,outfile,secondhand,stufftomerge,cfgfiledict,thismtime):
@@ -6382,8 +6392,10 @@ class dblink:
 						sys.exit(1)
 				writemsg_stdout(zing+" "+mydest+"\n")
 
-	def merge(self,mergeroot,inforoot,myroot,myebuild=None,cleanup=0):
-		return self.treewalk(mergeroot,myroot,inforoot,myebuild,cleanup=cleanup)
+	def merge(self, mergeroot, inforoot, myroot, myebuild=None, cleanup=0,
+		mydbapi=None):
+		return self.treewalk(mergeroot, myroot, inforoot, myebuild,
+			cleanup=cleanup, mydbapi=mydbapi)
 
 	def getstring(self,name):
 		"returns contents of a file with whitespace converted to spaces"
@@ -6466,6 +6478,9 @@ def pkgmerge(mytbz2,myroot,mysettings):
 	"""will merge a .tbz2 file, returning a list of runtime dependencies
 		that must be satisfied, or None if there was a merge error.	This
 		code assumes the package exists."""
+	global db
+	mydbapi = db[myroot]["bintree"].dbapi
+	vartree = db[myroot]["vartree"]
 	if mytbz2[-5:]!=".tbz2":
 		print "!!! Not a .tbz2 file"
 		return None
@@ -6496,7 +6511,8 @@ def pkgmerge(mytbz2,myroot,mysettings):
 	mysettings.configdict["pkg"]["CATEGORY"] = mycat;
 	# Eventually we'd like to pass in the saved ebuild env here.
 	# Do cleanup=1 to ensure that there is no cruft prior to the setup phase.
-	a = doebuild(myebuild, "setup", myroot, mysettings, tree="bintree", cleanup=1)
+	a = doebuild(myebuild, "setup", myroot, mysettings, tree="bintree",
+		cleanup=1, mydbapi=mydbapi, vartree=vartree)
 	writemsg_stdout(">>> Extracting %s\n" % mypkg)
 	notok=spawn("bzip2 -dqc -- '"+mytbz2+"' | tar xpf -",mysettings,free=1)
 	if notok:
