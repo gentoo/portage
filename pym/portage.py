@@ -2572,9 +2572,13 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 			writemsg("!!! Disabling logging.\n")
 			mysettings["PORT_LOGDIR"]=""
 
-def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,cleanup=0,dbkey=None,use_cache=1,fetchall=0,tree=None):
-	global db, portdb, actionmap_deps
-	myportdb = portdb
+def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
+	fetchonly=0, cleanup=0, dbkey=None, use_cache=1, fetchall=0, tree=None,
+	mydbapi=None):
+	global actionmap_deps
+	if mydbapi is None:
+		global db
+		mydbapi = db[myroot][tree].dbapi
 	features = mysettings.features
 	if not tree:
 		dump_traceback("Warning: tree not specified to doebuild")
@@ -2599,7 +2603,8 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 		writemsg("!!! doebuild: "+str(myebuild)+" not found for "+str(mydo)+"\n")
 		return 1
 
-	mystatus = doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, db[myroot][tree].dbapi)
+	mystatus = doebuild_environment(myebuild, mydo, myroot, mysettings, debug,
+		use_cache, mydbapi)
 	if mystatus:
 		return mystatus
 
@@ -2669,13 +2674,15 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 
 	mycpv = "/".join((mysettings["CATEGORY"], mysettings["PF"]))
 	try:
-		mysettings["SLOT"],mysettings["RESTRICT"] = db["/"]["porttree"].dbapi.aux_get(mycpv,["SLOT","RESTRICT"])
+		mysettings["SLOT"], mysettings["RESTRICT"] = \
+			mydbapi.aux_get(mycpv, ["SLOT", "RESTRICT"])
 	except (IOError,KeyError):
 		print red("doebuild():")+" aux_get() error reading "+mycpv+"; aborting."
 		sys.exit(1)
 
-	newuris, alist  = db["/"]["porttree"].dbapi.getfetchlist(mycpv,mysettings=mysettings)
-	alluris, aalist = db["/"]["porttree"].dbapi.getfetchlist(mycpv,mysettings=mysettings,all=1)
+	newuris, alist = mydbapi.getfetchlist(mycpv, mysettings=mysettings)
+	alluris, aalist = mydbapi.getfetchlist(
+		mycpv, mysettings=mysettings, all=True)
 	mysettings["A"]=string.join(alist," ")
 	mysettings["AA"]=string.join(aalist," ")
 	if ("mirror" in features) or fetchall:
@@ -2711,14 +2718,14 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 	if "digest" in features:
 		#generate digest if it doesn't exist.
 		if mydo=="digest":
-			return (not digestgen(aalist, mysettings, overwrite=1, myportdb=myportdb))
+			return (not digestgen(aalist, mysettings, overwrite=1, myportdb=mydbapi))
 		else:
-			digestgen(aalist, mysettings, overwrite=0, myportdb=myportdb)
+			digestgen(aalist, mysettings, overwrite=0, myportdb=mydbapi)
 	elif mydo=="digest":
 		#since we are calling "digest" directly, recreate the digest even if it already exists
-		return (not digestgen(aalist, mysettings, overwrite=1, myportdb=myportdb))
+		return (not digestgen(aalist, mysettings, overwrite=1, myportdb=mydbapi))
 	if mydo=="manifest":
-		return (not digestgen(aalist,mysettings,overwrite=1,manifestonly=1, myportdb=myportdb))
+		return (not digestgen(aalist,mysettings,overwrite=1,manifestonly=1, myportdb=mydbapi))
 
 	# See above comment about fetching only when needed
 	if not digestcheck(checkme, mysettings, ("strict" in features),
