@@ -2570,13 +2570,11 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	if not tree:
 		writemsg("Warning: tree not specified to doebuild\n")
 		tree = "porttree"
-	global actionmap_deps
+	global db, actionmap_deps
 	if mydbapi is None:
-		global db
 		mydbapi = db[myroot][tree].dbapi
 
 	if vartree is None:
-		global db
 		vartree = db[myroot]["vartree"]
 
 	features = mysettings.features
