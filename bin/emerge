@@ -10,7 +10,6 @@ import errno
 
 try:
 	import portage
-	portage.global_updates()
 except KeyboardInterrupt:
 	sys.exit(1) # If they control C during imports, just die silently
 
@@ -22,6 +21,9 @@ import portage_util
 import portage_locks
 import portage_exception
 from portage_const import PROFILE_PATH
+
+portage.global_updates(
+	portage.settings, portage.db, portage.mtimedb["updates"])
 
 spinner_msgs = ["Gentoo Rocks ("+os.uname()[0]+")",
                 "Thank you for using Gentoo. :)",

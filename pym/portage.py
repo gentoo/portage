@@ -6558,17 +6558,6 @@ def getvirtuals(myroot):
 	writemsg("--- DEPRECATED call to getvirtual\n")
 	return settings.getvirtuals(myroot)
 
-def do_vartree(mysettings):
-	global db, root, settings
-	db["/"] = portage_util.LazyItemsDict(db.get("/", None))
-	db["/"].addLazySingleton("virtuals", settings.getvirtuals, "/")
-	db["/"].addLazySingleton("vartree", vartree, "/")
-	if root!="/":
-		db[root] = portage_util.LazyItemsDict(db.get(root, None))
-		db[root].addLazySingleton("virtuals", settings.getvirtuals, root)
-		db[root].addLazySingleton("vartree", vartree, root)
-	#We need to create the vartree first, then load our settings, and then set up our other trees
-
 def parse_updates(mycontent):
 	"""Valid updates are returned as a list of split update commands."""
 	myupd = []
@@ -6694,20 +6683,19 @@ def update_config_files(update_iter):
 		except IOError:
 			continue
 
-def global_updates():
+def global_updates(mysettings, trees, prev_mtimes):
 	"""Perform new global updates if they exist in $PORTDIR/profiles/updates/."""
 	# only do this if we're root and not running repoman/ebuild digest
-	global db, mtimedb, secpass, settings
+	global secpass
 	if secpass < 2 or "SANDBOX_ACTIVE" in os.environ:
 		return
-	updpath = os.path.join(settings["PORTDIR"], "profiles", "updates")
-	if not mtimedb.has_key("updates"):
-		mtimedb["updates"] = {}
+	updpath = os.path.join(mysettings["PORTDIR"], "profiles", "updates")
+
 	try:
-		if settings["PORTAGE_CALLER"] == "fixpackages":
+		if mysettings["PORTAGE_CALLER"] == "fixpackages":
 			update_data = grab_updates(updpath)
 		else:
-			update_data = grab_updates(updpath, mtimedb["updates"])
+			update_data = grab_updates(updpath, prev_mtimes)
 	except portage_exception.DirectoryNotFound:
 		writemsg("--- 'profiles/updates' is empty or not available. Empty portage tree?\n")
 		return
@@ -6732,14 +6720,14 @@ def global_updates():
 					writemsg("%s\n" % msg)
 		update_config_files(myupd)
 
-		db["/"]["bintree"] = binarytree("/", settings["PKGDIR"], settings.getvirtuals("/"))
+		trees["/"]["bintree"] = binarytree("/", mysettings["PKGDIR"], mysettings.getvirtuals("/"))
 		for update_cmd in myupd:
 			if update_cmd[0] == "move":
-				db["/"]["vartree"].dbapi.move_ent(update_cmd)
-				db["/"]["bintree"].move_ent(update_cmd)
+				trees["/"]["vartree"].dbapi.move_ent(update_cmd)
+				trees["/"]["bintree"].move_ent(update_cmd)
 			elif update_cmd[0] == "slotmove":
-				db["/"]["vartree"].dbapi.move_slot_ent(update_cmd)
-				db["/"]["bintree"].move_slot_ent(update_cmd)
+				trees["/"]["vartree"].dbapi.move_slot_ent(update_cmd)
+				trees["/"]["bintree"].move_slot_ent(update_cmd)
 
 		# The above global updates proceed quickly, so they
 		# are considered a single mtimedb transaction.
@@ -6749,13 +6737,12 @@ def global_updates():
 			# been processed because the mtimedb will
 			# automatically commit when killed by ctrl C.
 			for mykey, mtime in timestamps.iteritems():
-				mtimedb["updates"][mykey] = mtime
-			commit_mtimedb()
+				prev_mtimes[mykey] = mtime
 
 		# We gotta do the brute force updates for these now.
-		if settings["PORTAGE_CALLER"] == "fixpackages" or \
-		"fixpackages" in settings.features:
-			db["/"]["bintree"].update_ents(myupd)
+		if mysettings["PORTAGE_CALLER"] == "fixpackages" or \
+		"fixpackages" in mysettings.features:
+			trees["/"]["bintree"].update_ents(myupd)
 		else:
 			do_upgrade_packagesmessage = 1
 
@@ -6766,10 +6753,9 @@ def global_updates():
 		print
 
 		#make sure our internal databases are consistent; recreate our virts and vartree
-		do_vartree(settings)
-		db["/"].addLazyItem("bintree", LazyBintreeItem("/"))
+		do_vartree(mysettings, trees=trees)
 		if do_upgrade_packagesmessage and \
-			listdir(os.path.join(settings["PKGDIR"], "All"), EmptyOnError=1):
+			listdir(os.path.join(mysettings["PKGDIR"], "All"), EmptyOnError=1):
 			writemsg_stdout(" ** Skipping packages. Run 'fixpackages' or set it in FEATURES to fix the")
 			writemsg_stdout("\n    tbz2's in the packages directory. "+bold("Note: This can take a very long time."))
 			writemsg_stdout("\n")
@@ -6800,6 +6786,8 @@ def load_mtimedb(f):
 	if "cur" in d:
 		del d["cur"]
 
+	d.setdefault("updates", {})
+
 	mtimedbkeys = set(("info", "ldpath", "resume", "resume_backup",
 		"starttime", "updates", "version"))
 
@@ -6808,6 +6796,21 @@ def load_mtimedb(f):
 			writemsg("Deleting invalid mtimedb key: %s\n" % str(k))
 			del d[k]
 	return d
+
+def do_vartree(mysettings, trees=None):
+	if trees is None:
+		global db
+		trees = db
+	target_root = mysettings["ROOT"]
+	db_locations = ["/"]
+	if target_root != "/":
+		db_locations.append(target_root)
+	for myroot in db_locations:
+		trees[myroot] = portage_util.LazyItemsDict(trees.get(myroot, None))
+		trees[myroot].addLazySingleton("virtuals", mysettings.getvirtuals, myroot)
+		trees[myroot].addLazySingleton("vartree", vartree, myroot)
+		trees[myroot].addLazySingleton("porttree", portagetree, myroot)
+		trees[myroot].addLazyItem("bintree", LazyBintreeItem(myroot))
 
 # Initialization of legacy globals.  No functions/classes below this point
 # please!  When the above functions and classes become independent of the
@@ -6830,8 +6833,7 @@ except portage_exception.DirectoryNotFound, e:
 
 root = settings["ROOT"]
 
-usedefaults = settings.use_defs # DEPRECATED (no longer used)
-do_vartree(settings)
+do_vartree(settings, trees=db)
 settings.reset() # XXX: Regenerate use after we get a vartree -- GLOBAL
 
 # XXX: Might cause problems with root="/" assumptions
@@ -6870,13 +6872,6 @@ try:
 except (IOError, OSError):
 	mtimedb = {"updates":{}, "version":"", "starttime":0}
 
-
-db["/"].addLazySingleton("porttree", portagetree, "/")
-db["/"].addLazyItem("bintree", LazyBintreeItem("/"))
-if root!="/":
-	db[root].addLazySingleton("porttree", portagetree, root)
-	db[root].addLazyItem("bintree", LazyBintreeItem(root))
-
 # ============================================================================
 # COMPATIBILITY
 # These attributes should not be used within Portage under any circumstances.
@@ -6886,6 +6881,7 @@ features    = settings.features
 groups      = settings["ACCEPT_KEYWORDS"].split()
 pkglines    = settings.packages
 thirdpartymirrors = settings.thirdpartymirrors()
+usedefaults       = settings.use_defs
 profiledir  = None
 if os.path.isdir(PROFILE_PATH):
 	profiledir = PROFILE_PATH

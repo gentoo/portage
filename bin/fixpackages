@@ -8,7 +8,12 @@ os.environ["PORTAGE_CALLER"]="fixpackages"
 sys.path = ["/usr/lib/portage/pym"]+sys.path
 
 import portage
-portage.global_updates()
+
+mysettings = portage.settings
+mytrees = portage.db
+mtimedb = portage.mtimedb
+
+portage.global_updates(mysettings, mytrees, mtimedb["updates"])
 
 print
 print "Done."
