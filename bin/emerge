@@ -794,7 +794,7 @@ class search:
 					mf = portage_manifest.Manifest(
 						pkgdir, portage.settings["DISTDIR"])
 					fetchlist = portage.portdb.getfetchlist(mycpv,
-						mysettings=portage.settings, all=True)
+						mysettings=portage.settings, all=True)[1]
 					mysum[0] = mf.getDistfilesSize(fetchlist)
 					mystr = str(mysum[0]/1024)
 					mycount=len(mystr)
