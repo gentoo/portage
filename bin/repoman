@@ -1582,6 +1582,10 @@ else:
 					print "Automatically setting PORTAGE_GPG_DIR to",repoman_settings["PORTAGE_GPG_DIR"]
 			else:
 				raise portage_exception.MissingParameter("PORTAGE_GPG_DIR is unset!")
+		gpg_dir = repoman_settings["PORTAGE_GPG_DIR"]
+		if gpg_dir.startswith("~") and "HOME" in os.environ:
+			repoman_settings["PORTAGE_GPG_DIR"] = os.path.join(
+				os.environ["HOME"], gpg_dir[1:].lstrip(os.path.sep))
 		if not os.access(repoman_settings["PORTAGE_GPG_DIR"], os.X_OK):
 			raise portage_exception.InvalidLocation(
 				"Unable to access directory: PORTAGE_GPG_DIR='%s'" % \
