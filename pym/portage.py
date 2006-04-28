@@ -1279,7 +1279,7 @@ class config:
 		elif not os.path.isdir(myroot):
 			writemsg("!!! Error: ROOT '%s' is not a directory. Please correct this.\n" % myroot[:-1])
 			raise portage_exception.DirectoryNotFound(myroot)
-		self["ROOT"] = myroot
+		self.backupenv["ROOT"] = myroot
 
 		self._init_dirs()
 
@@ -1439,7 +1439,6 @@ class config:
 
 
 	def regenerate(self,useonly=0,use_cache=1):
-		global db
 
 		if self.already_in_regenerate:
 			# XXX: THIS REALLY NEEDS TO GET FIXED. autouse() loops.
@@ -1455,12 +1454,11 @@ class config:
 		for mykey in myincrementals:
 			if mykey=="USE":
 				mydbs=self.uvlist
-				# XXX Global usage of db... Needs to go away somehow.
-				global db, root
-				if "auto" in self["USE_ORDER"].split(":") and db.has_key(root) and db[root].has_key("vartree"):
+				if "auto" in self["USE_ORDER"].split(":"):
 					self.configdict["auto"] = portage_util.LazyItemsDict(self.configdict["auto"])
 					self.configdict["auto"].addLazySingleton("USE", autouse,
-						db[root]["vartree"], use_cache=use_cache, mysettings=self)
+						vartree(root=self["ROOT"], categories=self.categories),
+						use_cache=use_cache, mysettings=self)
 				else:
 					self.configdict["auto"]["USE"]=""
 			else:
