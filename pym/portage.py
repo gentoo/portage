@@ -2686,7 +2686,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	if ("mirror" in features) or fetchall:
 		fetchme=alluris[:]
 		checkme=aalist[:]
-	elif mydo == "digest" or "cvs" in mysettings.features:
+	elif mydo == "digest":
 		fetchme = alluris[:]
 		checkme = aalist[:]
 		# Skip files that we already have digests for.
