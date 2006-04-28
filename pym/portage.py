@@ -4147,7 +4147,10 @@ class vardbapi(dbapi):
 		#cache for cp_list results
 		self.cpcache    = {}
 		self.blockers   = None
-		self.categories = copy.deepcopy(categories)
+		if categories is None:
+			global settings
+			categories = settings.categories
+		self.categories = categories[:]
 
 	def cpv_exists(self,mykey):
 		"Tells us whether an actual ebuild exists on disk (no masking)"
@@ -4201,9 +4204,8 @@ class vardbapi(dbapi):
 
 	def cpv_inject(self,mycpv):
 		"injects a real package into our on-disk database; assumes mycpv is valid and doesn't already exist"
-		global db
 		os.makedirs(self.root+VDB_PATH+"/"+mycpv)
-		counter=db[self.root]["vartree"].dbapi.counter_tick(self.root,mycpv=mycpv)
+		counter = self.counter_tick(self.root, mycpv=mycpv)
 		# write local package counter so that emerge clean does the right thing
 		write_atomic(os.path.join(self.root, VDB_PATH, mycpv, "COUNTER"), str(counter))
 
@@ -4218,7 +4220,7 @@ class vardbapi(dbapi):
 	def move_ent(self,mylist):
 		origcp=mylist[1]
 		newcp=mylist[2]
-		global settings
+
 		# sanity check
 		for cp in [origcp,newcp]:
 			if not (isvalidatom(cp) and isjustname(cp)):
@@ -4244,7 +4246,7 @@ class vardbapi(dbapi):
 			if os.path.exists(newpath):
 				#dest already exists; keep this puppy where it is.
 				continue
-			spawn(MOVE_BINARY+" "+origpath+" "+newpath,settings, free=1)
+			portage_exec.spawn((MOVE_BINARY, origpath, newpath), env=os.environ)
 
 			# We need to rename the ebuild now.
 			old_eb_path = newpath+"/"+mycpsplit[1]    +"-"+mycpsplit[2]
@@ -4333,16 +4335,10 @@ class vardbapi(dbapi):
 		return returnme
 
 	def cpv_all(self,use_cache=1):
-		global settings
 		returnme=[]
 		basepath = self.root+VDB_PATH+"/"
 
-		mycats = self.categories
-		if mycats is None:
-			# XXX: CIRCULAR DEP! This helps backwards compat. --NJ (10 Sept 2004)
-			mycats = settings.categories
-
-		for x in mycats:
+		for x in self.categories:
 			for y in listdir(basepath+x,EmptyOnError=1):
 				subpath = x+"/"+y
 				# -MERGING- should never be a cpv, nor should files.
@@ -4426,6 +4422,9 @@ class vartree(packagetree):
 			self.populated  = 1
 		else:
 			self.root       = root[:]
+			if categories is None:
+				global settings
+				categories = settings.categories
 			self.dbapi      = vardbapi(self.root,categories=categories)
 			self.populated  = 1
 
@@ -6808,7 +6807,8 @@ def do_vartree(mysettings, trees=None):
 	for myroot in db_locations:
 		trees[myroot] = portage_util.LazyItemsDict(trees.get(myroot, None))
 		trees[myroot].addLazySingleton("virtuals", mysettings.getvirtuals, myroot)
-		trees[myroot].addLazySingleton("vartree", vartree, myroot)
+		trees[myroot].addLazySingleton(
+			"vartree", vartree, myroot, categories=mysettings.categories)
 		trees[myroot].addLazySingleton("porttree", portagetree, myroot)
 		trees[myroot].addLazyItem("bintree", LazyBintreeItem(myroot))
 
