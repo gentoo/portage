@@ -5149,7 +5149,7 @@ class portdbapi(dbapi):
 
 	def gvisible(self,mylist):
 		"strip out group-masked (not in current group) entries"
-		global db
+
 		if mylist is None:
 			return []
 		newlist=[]
@@ -5160,7 +5160,7 @@ class portdbapi(dbapi):
 			auxerr=0
 			keys = None
 			try:
-				keys, eapi = db["/"]["porttree"].dbapi.aux_get(mycpv, ["KEYWORDS", "EAPI"])
+				keys, eapi = self.aux_get(mycpv, ["KEYWORDS", "EAPI"])
 			except KeyError:
 				pass
 			except portage_exception.PortageException, e:
