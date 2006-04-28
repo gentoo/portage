@@ -1084,8 +1084,8 @@ class depgraph:
 						print red("*** page for details.")
 						countdown(EMERGE_WARNING_DELAY, "Continuing...")
 				else:
-					print red("\n*** %s is not in a valid PORTDIR heirarchy or does not exist" % x)
-					sys.exit(1)
+					raise portage_exception.PackageNotFound(
+						"%s is not in a valid portage tree hierarchy or does not exist" % x)
 				if not self.create(["ebuild",portage.root,mykey],None,"--onlydeps" not in myopts):
 					return (0,myfavorites)
 				elif not "--oneshot" in myopts:
@@ -3309,7 +3309,11 @@ else:
 			if not ("--quiet" in myopts):
 				print "Calculating dependencies  ",
 				sys.stdout.flush()
-			retval,favorites=mydepgraph.select_files(myfiles)
+			try:
+				retval, favorites = mydepgraph.select_files(myfiles)
+			except portage_exception.PackageNotFound, e:
+				portage.writemsg("\n!!! %s\n" % str(e))
+				sys.exit(1)
 			if not retval:
 				sys.exit(1)
 			if not ("--quiet" in myopts):
