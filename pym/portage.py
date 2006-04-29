@@ -3110,10 +3110,12 @@ def dep_eval(deplist):
 				return 0
 		return 1
 
-def dep_zapdeps(unreduced,reduced,myroot,use_binaries=0):
+def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 	"""Takes an unreduced and reduced deplist and removes satisfied dependencies.
 	Returned deplist contains steps that must be taken to satisfy dependencies."""
-	global db
+	if trees is None:
+		global db
+		trees = db
 	writemsg("ZapDeps -- %s\n" % (use_binaries), 2)
 	if not reduced or unreduced == ["||"] or dep_eval(reduced):
 		return []
@@ -3137,7 +3139,7 @@ def dep_zapdeps(unreduced,reduced,myroot,use_binaries=0):
 			atoms = dep_zapdeps(dep, satisfied, myroot, use_binaries=use_binaries)
 		else:
 			atoms = [dep]
-		missing_atoms = [atom for atom in atoms if not db[myroot]["vartree"].dbapi.match(atom)]
+		missing_atoms = [atom for atom in atoms if not trees[myroot]["vartree"].dbapi.match(atom)]
 
 		if not missing_atoms:
 			if isinstance(dep, list):
@@ -3148,9 +3150,9 @@ def dep_zapdeps(unreduced,reduced,myroot,use_binaries=0):
 
 		if not target:
 			if use_binaries:
-				missing_atoms = [atom for atom in atoms if not db[myroot]["bintree"].dbapi.match(atom)]
+				missing_atoms = [atom for atom in atoms if not trees[myroot]["bintree"].dbapi.match(atom)]
 			else:
-				missing_atoms = [atom for atom in atoms if not db[myroot]["porttree"].dbapi.xmatch("match-visible", atom)]
+				missing_atoms = [atom for atom in atoms if not trees[myroot]["porttree"].dbapi.xmatch("match-visible", atom)]
 			if not missing_atoms:
 				target = (dep, satisfied)
 
@@ -3171,9 +3173,9 @@ def dep_zapdeps(unreduced,reduced,myroot,use_binaries=0):
 	available_pkgs = {}
 	for atom in relevant_atoms:
 		if use_binaries:
-			pkg_list = db["/"]["bintree"].dbapi.match(atom)
+			pkg_list = trees["/"]["bintree"].dbapi.match(atom)
 		else:
-			pkg_list = db["/"]["porttree"].dbapi.xmatch("match-visible", atom)
+			pkg_list = trees["/"]["porttree"].dbapi.xmatch("match-visible", atom)
 		if not pkg_list:
 			continue
 		pkg = best(pkg_list)
