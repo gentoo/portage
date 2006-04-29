@@ -2571,7 +2571,7 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 
 def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	fetchonly=0, cleanup=0, dbkey=None, use_cache=1, fetchall=0, tree=None,
-	mydbapi=None, vartree=None):
+	mydbapi=None, vartree=None, prev_mtimes=None):
 	if not tree:
 		writemsg("Warning: tree not specified to doebuild\n")
 		tree = "porttree"
@@ -2812,7 +2812,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		return merge(mysettings["CATEGORY"], mysettings["PF"], mysettings["D"],
 			os.path.join(mysettings["PORTAGE_BUILDDIR"], "build-info"), myroot,
 			mysettings, myebuild=mysettings["EBUILD"], mytree=tree,
-			mydbapi=mydbapi, vartree=vartree)
+			mydbapi=mydbapi, vartree=vartree, prev_mtimes=prev_mtimes)
 	elif mydo=="merge":
 		retval=spawnebuild("install",actionmap,mysettings,debug,alwaysdep=1,logfile=logfile)
 		if retval:
@@ -2820,7 +2820,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		return merge(mysettings["CATEGORY"], mysettings["PF"], mysettings["D"],
 			os.path.join(mysettings["PORTAGE_BUILDDIR"], "build-info"), myroot,
 			mysettings, myebuild=mysettings["EBUILD"], mytree=tree,
-			mydbapi=mydbapi, vartree=vartree)
+			mydbapi=mydbapi, vartree=vartree, prev_mtimes=prev_mtimes)
 	else:
 		print "!!! Unknown mydo:",mydo
 		sys.exit(1)
@@ -2996,10 +2996,11 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 	return newmtime
 
 def merge(mycat, mypkg, pkgloc, infloc, myroot, mysettings, myebuild=None,
-	mytree=None, mydbapi=None, vartree=None):
+	mytree=None, mydbapi=None, vartree=None, prev_mtimes=None):
 	mylink = dblink(mycat, mypkg, myroot, mysettings, treetype=mytree,
 		vartree=vartree)
-	return mylink.merge(pkgloc, infloc, myroot, myebuild, mydbapi=mydbapi)
+	return mylink.merge(pkgloc, infloc, myroot, myebuild,
+		mydbapi=mydbapi, prev_mtimes=prev_mtimes)
 
 def unmerge(cat,pkg,myroot,mysettings,mytrimworld=1):
 	mylink=dblink(cat,pkg,myroot,mysettings,treetype="vartree")
@@ -5870,7 +5871,7 @@ class dblink:
 		return False
 
 	def treewalk(self, srcroot, destroot, inforoot, myebuild, cleanup=0,
-		mydbapi=None):
+		mydbapi=None, prev_mtimes=None):
 		# srcroot  = ${D};
 		# destroot = where to merge, ie. ${ROOT},
 		# inforoot = root of db entry,
@@ -6089,7 +6090,8 @@ class dblink:
 				downgrade = True
 
 		#update environment settings, library paths. DO NOT change symlinks.
-		env_update(makelinks=(not downgrade))
+		env_update(makelinks=(not downgrade),
+			target_root=self.settings["ROOT"], prev_mtimes=prev_mtimes)
 		#dircache may break autoclean because it remembers the -MERGING-pkg file
 		global dircache
 		if dircache.has_key(self.dbcatdir):
@@ -6398,9 +6400,9 @@ class dblink:
 				writemsg_stdout(zing+" "+mydest+"\n")
 
 	def merge(self, mergeroot, inforoot, myroot, myebuild=None, cleanup=0,
-		mydbapi=None):
+		mydbapi=None, prev_mtimes=None):
 		return self.treewalk(mergeroot, myroot, inforoot, myebuild,
-			cleanup=cleanup, mydbapi=mydbapi)
+			cleanup=cleanup, mydbapi=mydbapi, prev_mtimes=prev_mtimes)
 
 	def getstring(self,name):
 		"returns contents of a file with whitespace converted to spaces"
@@ -6479,7 +6481,7 @@ def cleanup_pkgmerge(mypkg,origdir):
 		os.unlink(settings["PORTAGE_TMPDIR"]+"/portage/"+mypkg+"/temp/environment")
 	os.chdir(origdir)
 
-def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None):
+def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes=None):
 	"""will merge a .tbz2 file, returning a list of runtime dependencies
 		that must be satisfied, or None if there was a merge error.	This
 		code assumes the package exists."""
@@ -6531,7 +6533,7 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None):
 	# auto-unmerge, virtual/provides updates, etc.
 	mysettings.load_infodir(infloc)
 	mylink=dblink(mycat,mypkg,myroot,mysettings,treetype="bintree")
-	mylink.merge(pkgloc,infloc,myroot,myebuild,cleanup=1)
+	mylink.merge(pkgloc, infloc, myroot, myebuild, cleanup=1, prev_mtimes=prev_mtimes)
 
 	if not os.path.exists(infloc+"/RDEPEND"):
 		returnme=""
