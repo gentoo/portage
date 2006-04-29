@@ -709,13 +709,9 @@ dyn_clean() {
 		return 1
 	fi
 
-	if [ "$USERLAND" == "BSD" ] && type -p chflags &>/dev/null; then
-		chflags -R noschg,nouchg,nosappnd,nouappnd,nosunlnk,nouunlnk \
-			"${PORTAGE_BUILDDIR}"
-	fi
-
-	if [ "$USERLAND" == "Darwin" ] && type -p chflags &>/dev/null; then
+	if type -p chflags &>/dev/null; then
 		chflags -R noschg,nouchg,nosappnd,nouappnd "${PORTAGE_BUILDDIR}"
+		chflags -R nosunlnk,nouunlnk "${PORTAGE_BUILDDIR}" 2>/dev/null
 	fi
 
 	rm -rf "${PORTAGE_BUILDDIR}/image"
