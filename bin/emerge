@@ -2800,13 +2800,10 @@ if myaction in ["sync","metadata"] and (not "--help" in myopts):
 		if not os.path.exists(myportdir+"/CVS"):
 			#initial checkout
 			print ">>> Starting initial cvs checkout with "+syncuri+"..."
-			if not portage.spawn("cd "+cvsdir+"; cvs -d "+cvsroot+" login",portage.settings,free=1):
-				print "!!! cvs login error; exiting."
-				sys.exit(1)
 			if os.path.exists(cvsdir+"/gentoo-x86"):
 				print "!!! existing",cvsdir+"/gentoo-x86 directory; exiting."
 				sys.exit(1)
-			if not portage.spawn("cd "+cvsdir+"; cvs -z0 -d "+cvsroot+" co -P gentoo-x86",portage.settings,free=1):
+			if portage.spawn("cd "+cvsdir+"; cvs -z0 -d "+cvsroot+" co -P gentoo-x86",portage.settings,free=1):
 				print "!!! cvs checkout error; exiting."
 				sys.exit(1)
 			if cvsdir!=myportdir:
@@ -2822,9 +2819,7 @@ if myaction in ["sync","metadata"] and (not "--help" in myopts):
 
 	try: # Prevent users from affecting ebuild.sh.
 		os.close(sys.stdin.fileno())
-	except SystemExit, e:
-		raise # Needed else can't exit
-	except:
+	except OSError, e:
 		pass
 
 	if updatecache_flg and  \
