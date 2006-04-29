@@ -5616,7 +5616,7 @@ class dblink:
 			# we do this so we can remove from non-root filesystems
 			# (use the ROOT var to allow maintenance on other partitions)
 			try:
-				mydat[1]=os.path.normpath(root+mydat[1][1:])
+				mydat[1]=os.path.normpath(self.myroot+mydat[1][1:])
 				if mydat[0]=="obj":
 					#format: type, mtime, md5sum
 					pkgfiles[string.join(mydat[1:-2]," ")]=[mydat[0], mydat[-1], mydat[-2]]
@@ -6005,7 +6005,7 @@ class dblink:
 		# run preinst script
 		if myebuild is None:
 			myebuild = os.path.join(inforoot, self.pkg + ".ebuild")
-		a = doebuild(myebuild, "preinst", root, self.settings, cleanup=cleanup,
+		a = doebuild(myebuild, "preinst", destroot, self.settings, cleanup=cleanup,
 			use_cache=0, tree=self.treetype, mydbapi=mydbapi,
 			vartree=self.vartree)
 
@@ -6106,7 +6106,7 @@ class dblink:
 		portage_locks.unlockfile(mylock)
 
 		#do postinst script
-		a = doebuild(myebuild, "postinst", root, self.settings, use_cache=0,
+		a = doebuild(myebuild, "postinst", destroot, self.settings, use_cache=0,
 			tree=self.treetype, mydbapi=mydbapi, vartree=self.vartree)
 
 		# XXX: Decide how to handle failures here.
@@ -6131,7 +6131,7 @@ class dblink:
 		# Process ebuild logfiles
 		elog_process(self.mycpv, self.settings)
 		if "noclean" not in self.settings.features:
-			doebuild(myebuild, "clean", root, self.settings,
+			doebuild(myebuild, "clean", destroot, self.settings,
 				tree=self.treetype, mydbapi=mydbapi, vartree=self.vartree)
 		return 0
 
