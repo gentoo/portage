@@ -6603,6 +6603,8 @@ def parse_updates(mycontent):
 def commit_mtimedb(mydict=None, filename=None):
 	if mydict is None:
 		global mtimedb
+		if mtimedb is None:
+			return
 		mydict = mtimedb
 	if filename is None:
 		global mtimedbfile
