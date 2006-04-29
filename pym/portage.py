@@ -6479,13 +6479,15 @@ def cleanup_pkgmerge(mypkg,origdir):
 		os.unlink(settings["PORTAGE_TMPDIR"]+"/portage/"+mypkg+"/temp/environment")
 	os.chdir(origdir)
 
-def pkgmerge(mytbz2,myroot,mysettings):
+def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None):
 	"""will merge a .tbz2 file, returning a list of runtime dependencies
 		that must be satisfied, or None if there was a merge error.	This
 		code assumes the package exists."""
 	global db
-	mydbapi = db[myroot]["bintree"].dbapi
-	vartree = db[myroot]["vartree"]
+	if mydbapi is None:
+		mydbapi = db[myroot]["bintree"].dbapi
+	if vartree is None:
+		vartree = db[myroot]["vartree"]
 	if mytbz2[-5:]!=".tbz2":
 		print "!!! Not a .tbz2 file"
 		return None
