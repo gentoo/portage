@@ -114,6 +114,14 @@ except ImportError, e:
 	raise
 
 
+try:
+	import selinux
+except OSError, e:
+	writemsg("!!! SELinux not loaded: %s\n" % str(e))
+	del e
+except ImportError:
+	pass
+
 # ===========================================================================
 # END OF IMPORTS -- END OF IMPORTS -- END OF IMPORTS -- END OF IMPORTS -- END
 # ===========================================================================
@@ -1719,6 +1727,25 @@ class config:
 		return flatten([[myarch, "~" + myarch] \
 			for myarch in self["PORTAGE_ARCHLIST"].split()])
 
+	def selinux_enabled(self):
+		if getattr(self, "_selinux_enabled", None) is None:
+			self._selinux_enabled = 0
+			if "selinux" in self["USE"].split():
+				if "selinux" in globals():
+					if hasattr(selinux, "enabled"):
+						self._selinux_enabled = selinux.enabled
+					else:
+						self._selinux_enabled = 1
+				else:
+					writemsg("!!! SELinux module not found. Please verify that it was installed.\n")
+					self._selinux_enabled = 0
+			if self._selinux_enabled == 0:
+				try:	
+					del sys.modules["selinux"]
+				except KeyError:
+					pass
+		return self._selinux_enabled
+
 # XXX This would be to replace getstatusoutput completely.
 # XXX Issue: cannot block execution. Deadlock condition.
 def spawn(mystring,mysettings,debug=0,free=0,droppriv=0,sesandbox=0,fd_pipes=None,**keywords):
@@ -2059,7 +2086,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					myfetch=string.replace(locfetch,"${URI}",loc)
 					myfetch=string.replace(myfetch,"${FILE}",myfile)
 					try:
-						if selinux_enabled:
+						if mysettings.selinux_enabled():
 							con = selinux.getcontext()
 							con = string.replace(con, mysettings["PORTAGE_T"], mysettings["PORTAGE_FETCH_T"])
 							selinux.setexec(con)
@@ -2771,7 +2798,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		"nouserpriv" in mysettings["RESTRICT"]):
 		nosandbox = ("sandbox" not in features and "usersandbox" not in features)
 
-	sesandbox = selinux_enabled and "sesandbox" in features
+	sesandbox = mysettings.selinux_enabled() and "sesandbox" in mysettings.features
 	ebuild_sh = EBUILD_SH_BINARY + " %s"
 	misc_sh = MISC_SH_BINARY + " dyn_%s"
 
@@ -2833,7 +2860,10 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 	failure.  Move is atomic."""
 	#print "movefile("+str(src)+","+str(dest)+","+str(newmtime)+","+str(sstat)+")"
 	global lchown
-
+	if mysettings is None:
+		global settings
+		mysettings = settings
+	selinux_enabled = mysettings.selinux_enabled()
 	try:
 		if not sstat:
 			sstat=os.lstat(src)
@@ -6241,7 +6271,7 @@ class dblink:
 							sys.exit(1)
 						print "bak",mydest,mydest+".backup"
 						#now create our directory
-						if selinux_enabled:
+						if self.settings.selinux_enabled():
 							sid = selinux.get_sid(mysrc)
 							selinux.secure_mkdir(mydest,sid)
 						else:
@@ -6253,7 +6283,7 @@ class dblink:
 						writemsg_stdout(">>> %s/\n" % mydest)
 				else:
 					#destination doesn't exist
-					if selinux_enabled:
+					if self.settings.selinux_enabled():
 						sid = selinux.get_sid(mysrc)
 						selinux.secure_mkdir(mydest,sid)
 					else:
@@ -6846,27 +6876,6 @@ def init_legacy_globals():
 	do_vartree(settings, trees=db)
 	portdb = portdbapi(settings["PORTDIR"], mysettings=config(clone=settings))
 
-	if 'selinux' in settings["USE"].split(" "):
-		try:
-			import selinux
-			if hasattr(selinux, "enabled"):
-				selinux_enabled = selinux.enabled
-			else:
-				selinux_enabled = 1
-		except OSError, e:
-			writemsg(red("!!! SELinux not loaded: ")+str(e)+"\n")
-			selinux_enabled=0
-		except ImportError:
-			writemsg(red("!!! SELinux module not found.")+" Please verify that it was installed.\n")
-			selinux_enabled=0
-		if selinux_enabled == 0:
-			try:	
-				del sys.modules["selinux"]
-			except KeyError:
-				pass
-	else:
-		selinux_enabled=0
-
 	mtimedbfile = os.path.join(root, CACHE_PATH.lstrip(os.path.sep), "mtimedb")
 	try:
 		f = open(mtimedbfile)
@@ -6885,6 +6894,7 @@ def init_legacy_globals():
 	features    = settings.features
 	groups      = settings["ACCEPT_KEYWORDS"].split()
 	pkglines    = settings.packages
+	selinux_enabled   = settings.selinux_enabled()
 	thirdpartymirrors = settings.thirdpartymirrors()
 	usedefaults       = settings.use_defs
 	profiledir  = None
