@@ -332,34 +332,39 @@ class Manifest(object):
 
 	def write(self, sign=False, force=False):
 		""" Write Manifest instance to disk, optionally signing it """
-		if self.compat:
-			self._writeDigests()
-		myentries = list(self._createManifestEntries())
-		update_manifest = True
-		if not force:
-			try:
-				f = open(self.getFullname(), "r")
-				oldentries = list(self._parseManifestLines(f))
-				f.close()
-				if len(oldentries) == len(myentries):
-					update_manifest = False
-					for i in xrange(len(oldentries)):
-						if oldentries[i] != myentries[i]:
-							update_manifest = True
-							break
-			except (IOError, OSError), e:
-				if e.errno == errno.ENOENT:
-					pass
-				else:
-					raise
-		if update_manifest:
-			fd = open(self.getFullname(), "w")
-			for myentry in myentries:
-				fd.write("%s\n" % str(myentry))
-			fd.close()
-		if sign:
-			self.sign()
-	
+		try:
+			if self.compat:
+				self._writeDigests()
+			myentries = list(self._createManifestEntries())
+			update_manifest = True
+			if not force:
+				try:
+					f = open(self.getFullname(), "r")
+					oldentries = list(self._parseManifestLines(f))
+					f.close()
+					if len(oldentries) == len(myentries):
+						update_manifest = False
+						for i in xrange(len(oldentries)):
+							if oldentries[i] != myentries[i]:
+								update_manifest = True
+								break
+				except (IOError, OSError), e:
+					if e.errno == errno.ENOENT:
+						pass
+					else:
+						raise
+			if update_manifest:
+				fd = open(self.getFullname(), "w")
+				for myentry in myentries:
+					fd.write("%s\n" % str(myentry))
+				fd.close()
+			if sign:
+				self.sign()
+		except (IOError, OSError), e:
+			if e.errno == errno.EACCES:
+				raise PermissionDenied(str(e))
+			raise
+
 	def sign(self):
 		""" Sign the Manifest """
 		raise NotImplementedError()

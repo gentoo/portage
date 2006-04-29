@@ -2710,17 +2710,19 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	if mydo=="fetch" and listonly:
 		return 0
 
-	if "digest" in features:
-		#generate digest if it doesn't exist.
-		if mydo=="digest":
-			return (not digestgen(aalist, mysettings, overwrite=1, myportdb=mydbapi))
-		else:
+	try:
+		if mydo == "manifest":
+			return not digestgen(aalist, mysettings, overwrite=1,
+				manifestonly=1, myportdb=mydbapi)
+		elif mydo == "digest":
+			return not digestgen(aalist, mysettings, overwrite=1,
+				myportdb=mydbapi)
+		elif "digest" in mysettings.features:
 			digestgen(aalist, mysettings, overwrite=0, myportdb=mydbapi)
-	elif mydo=="digest":
-		#since we are calling "digest" directly, recreate the digest even if it already exists
-		return (not digestgen(aalist, mysettings, overwrite=1, myportdb=mydbapi))
-	if mydo=="manifest":
-		return (not digestgen(aalist,mysettings,overwrite=1,manifestonly=1, myportdb=mydbapi))
+	except portage_exception.PermissionDenied, e:
+		writemsg("!!! %s\n" % str(e))
+		if mydo in ("digest", "manifest"):
+			return 1
 
 	# See above comment about fetching only when needed
 	if not digestcheck(checkme, mysettings, ("strict" in features),
