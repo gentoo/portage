@@ -6825,77 +6825,85 @@ def do_vartree(mysettings, trees=None):
 # code that is aware of this flag to import portage without the unnecessary
 # overhead (and other issues!) of initializing the legacy globals.
 
-db={}
+def init_legacy_globals():
+	global db, settings, root, portdb, selinux_enabled, mtimedbfile, mtimedb, \
+	archlist, features, groups, pkglines, thirdpartymirrors, usedefaults, \
+	profiledir, flushmtimedb
 
-# We're going to lock the global config to prevent changes, but we need
-# to ensure the global settings are right.
-try:
-	settings = config(config_profile_path=PROFILE_PATH,
-		config_incrementals=portage_const.INCREMENTALS)
-except portage_exception.DirectoryNotFound, e:
-	writemsg("!!! Directory Not Found: %s\n" % str(e))
-	sys.exit(1)
-
-root = settings["ROOT"]
-
-do_vartree(settings, trees=db)
-settings.reset() # XXX: Regenerate use after we get a vartree -- GLOBAL
-
-# XXX: Might cause problems with root="/" assumptions
-portdb=portdbapi(settings["PORTDIR"])
-
-settings.lock()
-settings.validate()
-
-if 'selinux' in settings["USE"].split(" "):
 	try:
-		import selinux
-		if hasattr(selinux, "enabled"):
-			selinux_enabled = selinux.enabled
-		else:
-			selinux_enabled = 1
-	except OSError, e:
-		writemsg(red("!!! SELinux not loaded: ")+str(e)+"\n")
-		selinux_enabled=0
-	except ImportError:
-		writemsg(red("!!! SELinux module not found.")+" Please verify that it was installed.\n")
-		selinux_enabled=0
-	if selinux_enabled == 0:
-		try:	
-			del sys.modules["selinux"]
-		except KeyError:
-			pass
-else:
-	selinux_enabled=0
+		settings = config(config_profile_path=PROFILE_PATH,
+			config_incrementals=portage_const.INCREMENTALS)
+	except portage_exception.DirectoryNotFound, e:
+		writemsg("!!! Directory Not Found: %s\n" % str(e))
+		sys.exit(1)
 
-mtimedbfile = os.path.join(root, CACHE_PATH.lstrip(os.path.sep), "mtimedb")
-try:
-	f = open(mtimedbfile)
-	mtimedb = load_mtimedb(f)
-	f.close()
-	del f
-except (IOError, OSError):
-	mtimedb = {"updates":{}, "ldpath":{}, "version":"", "starttime":0}
+	settings.reset()
+	settings.lock()
+	settings.validate()
 
-# ============================================================================
-# COMPATIBILITY
-# These attributes should not be used within Portage under any circumstances.
-# ============================================================================
-archlist    = settings.archlist()
-features    = settings.features
-groups      = settings["ACCEPT_KEYWORDS"].split()
-pkglines    = settings.packages
-thirdpartymirrors = settings.thirdpartymirrors()
-usedefaults       = settings.use_defs
-profiledir  = None
-if os.path.isdir(PROFILE_PATH):
-	profiledir = PROFILE_PATH
-def flushmtimedb(record):
-	writemsg("portage.flushmtimedb() is DEPRECATED\n")
-# ============================================================================
-# COMPATIBILITY
-# These attributes should not be used within Portage under any circumstances.
-# ============================================================================
+	root = settings["ROOT"]
+	db={}
+	do_vartree(settings, trees=db)
+	portdb = portdbapi(settings["PORTDIR"], mysettings=config(clone=settings))
+
+	if 'selinux' in settings["USE"].split(" "):
+		try:
+			import selinux
+			if hasattr(selinux, "enabled"):
+				selinux_enabled = selinux.enabled
+			else:
+				selinux_enabled = 1
+		except OSError, e:
+			writemsg(red("!!! SELinux not loaded: ")+str(e)+"\n")
+			selinux_enabled=0
+		except ImportError:
+			writemsg(red("!!! SELinux module not found.")+" Please verify that it was installed.\n")
+			selinux_enabled=0
+		if selinux_enabled == 0:
+			try:	
+				del sys.modules["selinux"]
+			except KeyError:
+				pass
+	else:
+		selinux_enabled=0
+
+	mtimedbfile = os.path.join(root, CACHE_PATH.lstrip(os.path.sep), "mtimedb")
+	try:
+		f = open(mtimedbfile)
+		mtimedb = load_mtimedb(f)
+		f.close()
+		del f
+	except (IOError, OSError):
+		mtimedb = {"updates":{}, "ldpath":{}, "version":"", "starttime":0}
+
+	# ========================================================================
+	# COMPATIBILITY
+	# These attributes should not be used
+	# within Portage under any circumstances.
+	# ========================================================================
+	archlist    = settings.archlist()
+	features    = settings.features
+	groups      = settings["ACCEPT_KEYWORDS"].split()
+	pkglines    = settings.packages
+	thirdpartymirrors = settings.thirdpartymirrors()
+	usedefaults       = settings.use_defs
+	profiledir  = None
+	if os.path.isdir(PROFILE_PATH):
+		profiledir = PROFILE_PATH
+	def flushmtimedb(record):
+		writemsg("portage.flushmtimedb() is DEPRECATED\n")
+	# ========================================================================
+	# COMPATIBILITY
+	# These attributes should not be used
+	# within Portage under any circumstances.
+	# ========================================================================
+
+# WARNING!
+# The PORTAGE_LEGACY_GLOBALS environment variable is reserved for internal
+# use within Portage.  External use of this variable is unsupported because
+# it is experimental and it's behavior is likely to change.
+if "PORTAGE_LEGACY_GLOBALS" not in os.environ:
+	init_legacy_globals()
 
 # Clear the cache
 dircache={}
