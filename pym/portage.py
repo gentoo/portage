@@ -6600,30 +6600,21 @@ def parse_updates(mycontent):
 		myupd.append(mysplit)
 	return myupd, errors
 
-def commit_mtimedb():
-	global mtimedb
-	if mtimedb:
-	# Store mtimedb
-		mymfn=mtimedbfile
-		f = None
-		try:
-			mtimedb["version"]=VERSION
-			f = atomic_ofstream(mymfn)
-			cPickle.dump(mtimedb, f, -1)
-			f.close()
-		except SystemExit, e:
-			raise
-		except Exception, e:
-			if f is not None:
-				f.abort()
-
-		try:
-			os.chown(mymfn,uid,portage_gid)
-			os.chmod(mymfn,0664)
-		except SystemExit, e:
-			raise
-		except Exception, e:
-			pass
+def commit_mtimedb(mydict=None, filename=None):
+	if mydict is None:
+		global mtimedb
+		mydict = mtimedb
+	if filename is None:
+		global mtimedbfile
+		filename = mtimedbfile
+	mydict["version"] = VERSION
+	try:
+		f = atomic_ofstream(filename)
+		cPickle.dump(mydict, f, -1)
+		f.close()
+		portage_util.apply_secpass_permissions(filename, uid=uid, gid=portage_gid, mode=0664)
+	except (IOError, OSError), e:
+		pass
 
 def portageexit():
 	global uid,portage_gid,portdb,db
