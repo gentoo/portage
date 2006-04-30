@@ -2613,7 +2613,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	if mydbapi is None:
 		mydbapi = db[myroot][tree].dbapi
 
-	if vartree is None and (mydo in ("merge, qmerge") or \
+	if vartree is None and (mydo in ("merge", "qmerge", "unmerge") or \
 		"PORT_LOGDIR" in mysettings and \
 		mydo not in ("depend", "fetch", "digest", "manifest")):
 		vartree = db[myroot]["vartree"]
@@ -2677,7 +2677,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 		if mydo == "unmerge":
 			return unmerge(mysettings["CATEGORY"],
-				mysettings["PF"], myroot, mysettings)
+				mysettings["PF"], myroot, mysettings, vartree=vartree)
 
 		if "PORT_LOGDIR" in mysettings:
 			logfile = os.path.join(mysettings["PORT_LOGDIR"],
@@ -3041,8 +3041,9 @@ def merge(mycat, mypkg, pkgloc, infloc, myroot, mysettings, myebuild=None,
 	return mylink.merge(pkgloc, infloc, myroot, myebuild,
 		mydbapi=mydbapi, prev_mtimes=prev_mtimes)
 
-def unmerge(cat,pkg,myroot,mysettings,mytrimworld=1):
-	mylink=dblink(cat,pkg,myroot,mysettings,treetype="vartree")
+def unmerge(cat, pkg, myroot, mysettings, mytrimworld=1, vartree=None):
+	mylink = dblink(
+		cat, pkg, myroot, mysettings, treetype="vartree", vartree=vartree)
 	if mylink.exists():
 		mylink.unmerge(trimworld=mytrimworld,cleanup=1)
 		mylink.delete()
