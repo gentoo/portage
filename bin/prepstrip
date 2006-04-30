@@ -15,7 +15,7 @@ type -p -- ${STRIP} > /dev/null || STRIP=strip
 OBJCOPY=${OBJCOPY:-${CHOST}-objcopy}
 type -p -- ${OBJCOPY} > /dev/null || OBJCOPY=objcopy
 
-PORTAGE_STRIP_FLAGS=${PORTAGE_STRIP_FLAGS:---strip-unneeded}
+export PORTAGE_STRIP_FLAGS=${PORTAGE_STRIP_FLAGS:---strip-unneeded}
 
 banner=1
 
@@ -31,7 +31,7 @@ save_elf_debug() {
 	mkdir -p $(dirname "${y}")
 	${OBJCOPY} --only-keep-debug "${x}" "${y}"
 	${OBJCOPY} --add-gnu-debuglink="${y}" "${x}"
-	chmod a-x "${y}"
+	chmod a-x,o-w "${y}"
 
 	[[ " ${FEATURES} " != *" installsources "* ]] && return 0
 
