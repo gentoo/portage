@@ -89,14 +89,14 @@ install_qa_check() {
 		qa_var="QA_TEXTRELS_${ARCH}"
 		[[ -n ${!qa_var} ]] && QA_TEXTRELS=${!qa_var}
 		[[ -n ${QA_STRICT_TEXTRELS} ]] && QA_TEXTRELS=""
-		f=$(scanelf -qyRF '%t %p' "${D}" | grep -v ' usr/lib/debug/' | \
-			gawk '
-			BEGIN { split("'"${QA_TEXTRELS}"'", ignore); }
-			{	for (idx in ignore)
-					if ($NF ~ "^"ignore[idx]"$")
-					next;
-				print;
-			}')
+		f=()
+		for s in $(scanelf -qyRF '%t %p' "${D}" | grep -v ' usr/lib/debug/'); do
+			[[ ${s} == "TEXTREL" ]] && continue
+			for t in ${QA_TEXTRELS}; do
+				[[ ${t} == ${s} ]] && continue 2
+			done
+			f=( ${f} ${s} )
+		done
 		if [[ -n ${f} ]] ; then
 			scanelf -qyRF '%T %p' "${PORTAGE_BUILDDIR}"/ &> "${T}"/scanelf-textrel.log
 			echo -ne '\a\n'
@@ -108,7 +108,7 @@ install_qa_check() {
 			echo " For more information, see http://hardened.gentoo.org/pic-fix-guide.xml"
 			echo " Please include this file in your report:"
 			echo " ${T}/scanelf-textrel.log"
-			echo "${f}"
+			echo "${f[@]}"
 			echo -ne '\a\n'
 			die_msg="${die_msg} textrels,"
 			sleep 1
