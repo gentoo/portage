@@ -376,9 +376,9 @@ add this to /etc/make.conf:
 
 CONFIG_PROTECT_MASK="/etc/wget /etc/rc.d"
 
-Tools such as dispatch-conf and etc-update are also available to aid in the
-merging of these files. They provide interactive merging and can auto-merge
-trivial changes.
+Tools such as dispatch-conf, cfg-update, and etc-update are also available to
+aid in the merging of these files. They provide interactive merging and can
+auto-merge trivial changes.
 
 """
 		print outstuff
