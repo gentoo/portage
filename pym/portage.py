@@ -2276,16 +2276,16 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 		codes["GOOD"], codes["reset"], codes["BRACKET"], codes["reset"])
 	mywidth = 33
 	try:
-		writemsg_stdout(">>> checking ebuild checksums".ljust(mywidth))
+		writemsg_stdout(">>> checking ebuild checksums ;-)".ljust(mywidth))
 		mf.checkTypeHashes("EBUILD")
 		writemsg_stdout(okaymsg)
-		writemsg_stdout(">>> checking auxfile checksums".ljust(mywidth))
+		writemsg_stdout(">>> checking auxfile checksums ;-)".ljust(mywidth))
 		mf.checkTypeHashes("AUX")
 		writemsg_stdout(okaymsg)
-		writemsg_stdout(">>> checking miscfile checksums".ljust(mywidth))
+		writemsg_stdout(">>> checking miscfile checksums ;-)".ljust(mywidth))
 		mf.checkTypeHashes("MISC", ignoreMissingFiles=True)
 		writemsg_stdout(okaymsg)
-		writemsg_stdout(">>> checking distfiles checksums".ljust(mywidth))
+		writemsg_stdout(">>> checking distfiles checksums ;-)".ljust(mywidth))
 		for f in myfiles:
 			mf.checkFileHashes(mf.findFile(f), f)
 		writemsg_stdout(okaymsg)
