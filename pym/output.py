@@ -116,6 +116,13 @@ codes["darkyellow"] = codes["brown"]
 codes["fuscia"]     = codes["fuchsia"]
 codes["white"]      = codes["bold"]
 
+# Colors from /sbin/functions.sh
+codes["GOOD"]       = codes["green"]
+codes["WARN"]       = codes["yellow"]
+codes["BAD"]        = codes["red"]
+codes["HILITE"]     = codes["teal"]
+codes["BRACKET"]    = codes["blue"]
+
 def parse_color_map():
 	myfile = COLOR_MAP_FILE
 	ansi_code_pattern = re.compile("^[0-9;]*m$")

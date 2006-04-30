@@ -2269,18 +2269,26 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 		if strict:
 			return 0
 	mf = Manifest(pkgdir, mysettings["DISTDIR"])
+	codes = output.codes
+	okaymsg = "%s[%s %sOK%s %s]%s\n" % (codes["BRACKET"], codes["reset"],
+		codes["GOOD"], codes["reset"], codes["BRACKET"], codes["reset"])
+	mywidth = 33
 	try:
-		writemsg_stdout(">>> checking ebuild checksums\n")
+		writemsg_stdout(">>> checking ebuild checksums".ljust(mywidth))
 		mf.checkTypeHashes("EBUILD")
-		writemsg_stdout(">>> checking auxfile checksums\n")
+		writemsg_stdout(okaymsg)
+		writemsg_stdout(">>> checking auxfile checksums".ljust(mywidth))
 		mf.checkTypeHashes("AUX")
-		writemsg_stdout(">>> checking miscfile checksums\n")
+		writemsg_stdout(okaymsg)
+		writemsg_stdout(">>> checking miscfile checksums".ljust(mywidth))
 		mf.checkTypeHashes("MISC", ignoreMissingFiles=True)
-		writemsg_stdout(">>> checking distfiles checksums\n")
+		writemsg_stdout(okaymsg)
+		writemsg_stdout(">>> checking distfiles checksums".ljust(mywidth))
 		for f in myfiles:
 			mf.checkFileHashes(mf.findFile(f), f)
+		writemsg_stdout(okaymsg)
 	except portage_exception.DigestException, e:
-		writemsg("!!! Digest verification failed:\n")
+		writemsg("\n!!! Digest verification failed:\n")
 		writemsg("!!! %s\n" % e.value[0])
 		writemsg("!!! Reason: %s\n" % e.value[1])
 		writemsg("!!! Got: %s\n" % e.value[2])
