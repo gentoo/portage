@@ -3,7 +3,11 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/bin/ebuild.sh,v 1.201.2.42 2005/08/20 17:24:30 jstubbs Exp $
 
-export SANDBOX_PREDICT="${SANDBOX_PREDICT}:/proc/self/maps:/dev/console:/usr/lib/portage/pym:/dev/random"
+PORTAGE_BIN_PATH="${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"
+PORTAGE_PYM_PATH="${PORTAGE_PYM_PATH:-/usr/lib/portage/pym}"
+declare -rx PORTAGE_BIN_PATH PORTAGE_PYM_PATH
+
+export SANDBOX_PREDICT="${SANDBOX_PREDICT}:/proc/self/maps:/dev/console:${PORTAGE_PYM_PATH}:/dev/random"
 export SANDBOX_WRITE="${SANDBOX_WRITE}:/dev/shm:/dev/stdout:/dev/stderr:${PORTAGE_TMPDIR}"
 export SANDBOX_READ="${SANDBOX_READ}:/dev/shm:/dev/stdin:${PORTAGE_TMPDIR}"
 
@@ -55,10 +59,10 @@ fi
 [ ! -z "$OCC" ] && export CC="$OCC"
 [ ! -z "$OCXX" ] && export CXX="$OCXX"
 
-export PATH="/usr/local/sbin:/sbin:/usr/sbin:/usr/lib/portage/bin:/usr/local/bin:/bin:/usr/bin:${ROOTPATH}"
+export PATH="/usr/local/sbin:/sbin:/usr/sbin:${PORTAGE_BIN_PATH}:/usr/local/bin:/bin:/usr/bin:${ROOTPATH}"
 [ ! -z "$PREROOTPATH" ] && export PATH="${PREROOTPATH%%:}:$PATH"
 
-source /usr/lib/portage/bin/isolated-functions.sh  &>/dev/null
+source "${PORTAGE_BIN_PATH}/isolated-functions.sh"  &>/dev/null
 
 case "${NOCOLOR:-false}" in
 	yes|true)
@@ -158,7 +162,7 @@ has_version() {
 	fi
 	# return shell-true/shell-false if exists.
 	# Takes single depend-type atoms.
-	if /usr/lib/portage/bin/portageq 'has_version' "${ROOT}" "$1"; then
+	if "${PORTAGE_BIN_PATH}/portageq" 'has_version' "${ROOT}" "$1"; then
 		return 0
 	else
 		return 1
@@ -169,7 +173,7 @@ portageq() {
 	if [ "${EBUILD_PHASE}" == "depend" ]; then
 		die "portageq calls are not allowed in the global scope"
 	fi
-	/usr/lib/portage/bin/portageq "$@"
+	"${PORTAGE_BIN_PATH}/portageq" "$@"
 }
 
 
@@ -184,7 +188,7 @@ best_version() {
 	fi
 	# returns the best/most-current match.
 	# Takes single depend-type atoms.
-	/usr/lib/portage/bin/portageq 'best_version' "${ROOT}" "$1"
+	"${PORTAGE_BIN_PATH}/portageq" 'best_version' "${ROOT}" "$1"
 }
 
 use_with() {

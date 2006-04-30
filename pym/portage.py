@@ -1293,6 +1293,8 @@ class config:
 			writemsg("!!! Error: ROOT '%s' is not a directory. Please correct this.\n" % myroot[:-1])
 			raise portage_exception.DirectoryNotFound(myroot)
 		self.backupenv["ROOT"] = myroot
+		self.backupenv["PORTAGE_BIN_PATH"] = PORTAGE_BIN_PATH
+		self.backupenv["PORTAGE_PYM_PATH"] = PORTAGE_PYM_PATH
 
 		self._init_dirs()
 

@@ -14,7 +14,8 @@
 # XXX hack: clear the args so ebuild.sh doesn't see them
 MISC_FUNCTIONS_ARGS="$@"
 shift $#
-source /usr/lib/portage/bin/ebuild.sh
+
+source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}/ebuild.sh"
 
 install_qa_check() {
 
