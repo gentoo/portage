@@ -2675,14 +2675,14 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		if mystatus:
 			return mystatus
 
+		if mydo == "unmerge":
+			return unmerge(mysettings["CATEGORY"],
+				mysettings["PF"], myroot, mysettings)
+
 		if "PORT_LOGDIR" in mysettings:
 			logfile = os.path.join(mysettings["PORT_LOGDIR"],
 				"%s-%s.log" % (str(vartree.dbapi.get_counter_tick_core("/")),
 				mysettings["PF"]))
-
-		if mydo=="unmerge":
-			return unmerge(mysettings["CATEGORY"],
-				mysettings["PF"], myroot, mysettings)
 
 	# if any of these are being called, handle them -- running them out of the sandbox -- and stop now.
 	if mydo in ["clean","cleanrm"]:
