@@ -1287,14 +1287,18 @@ class config:
 			self["PORTDIR_OVERLAY"] = string.join(new_ov)
 			self.backup_changes("PORTDIR_OVERLAY")
 
-		# XXX
-		# The below self.regenerate() causes previous changes to FEATURES (and 
-		# other incrementals) to be reverted.  If this instance is a clone, we
-		# need to skip regenerate() so that the copied values are preserved.
 		if clone is None:
 			self.regenerate()
-
-		self.features = portage_util.unique_array(self["FEATURES"].split())
+			self.features = portage_util.unique_array(self["FEATURES"].split())
+		else:
+			# XXX
+			# The below self.regenerate() causes previous changes to FEATURES (and 
+			# other incrementals) to be reverted.  If this instance is a clone, we
+			# need to skip regenerate() so that the copied values are preserved.
+			self.features = portage_util.unique_array(self["FEATURES"].split())
+			self.regenerate()
+			self["FEATURES"] = " ".join(self.features)
+			self.backup_changes("FEATURES")
 
 		#XXX: Should this be temporary? Is it possible at all to have a default?
 		if "gpg" in self.features:
