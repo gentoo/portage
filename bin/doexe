@@ -3,7 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/bin/doexe,v 1.10.2.1 2004/12/06 03:01:43 carpaski Exp $
 
-source /usr/lib/portage/bin/isolated-functions.sh
+source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
 
 if [[ $# -lt 1 ]] ; then
 	echo "$0: at least one argument needed" 1>&2

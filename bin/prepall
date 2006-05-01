@@ -3,7 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id: prepall 2230 2005-11-01 01:35:59Z vapier $
 
-source /usr/lib/portage/bin/isolated-functions.sh
+source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
 
 prepallman
 prepallinfo

@@ -3,7 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/bin/preplib,v 1.7.2.1 2005/01/02 09:36:02 jstubbs Exp $
 
-source /usr/lib/portage/bin/isolated-functions.sh
+source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
 
 vecho "QA Notice: Please stop using me, fix your package instead" 1>&2
 
