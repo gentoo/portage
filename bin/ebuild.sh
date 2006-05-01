@@ -44,7 +44,12 @@ alias restore_IFS='if [ "${old_IFS:-unset}" != "unset" ]; then IFS="${old_IFS}";
 
 OCC="$CC"
 OCXX="$CXX"
+
+env_dump=$(export -p | egrep -v "( EBUILD_PHASE=| PORTAGE_BIN_PATH=| PORTAGE_PYM_PATH=)")
 source /etc/profile.env &>/dev/null
+eval "${env_dump}"
+unset env_dump
+
 if [ -f "${PORTAGE_BASHRC}" ]; then
 	# If $- contains x, then tracing has already enabled elsewhere for some
 	# reason.  We preserve it's state so as not to interfere.
