@@ -1074,10 +1074,10 @@ for x in scanlist:
 		badlicsyntax = badlicsyntax > 0
 		badprovsyntax = badprovsyntax > 0
 
-		if not baddepsyntax:
-			if x11_deprecation_check(" ".join([myaux["DEPEND"], myaux["RDEPEND"], myaux["PDEPEND"]])):
-				stats["usage.obsolete"] += 1
-				fails["usage.obsolete"].append("%s/%s.ebuild: not migrated to modular X" % (x, y))
+#		if not baddepsyntax:
+#			if x11_deprecation_check(" ".join([myaux["DEPEND"], myaux["RDEPEND"], myaux["PDEPEND"]])):
+#				stats["usage.obsolete"] += 1
+#				fails["usage.obsolete"].append("%s/%s.ebuild: not migrated to modular X" % (x, y))
 
 		for keyword,arch,groups in arches:
 
