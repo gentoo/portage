@@ -1287,7 +1287,12 @@ class config:
 			self["PORTDIR_OVERLAY"] = string.join(new_ov)
 			self.backup_changes("PORTDIR_OVERLAY")
 
-		self.regenerate()
+		# XXX
+		# The below self.regenerate() causes previous changes to FEATURES (and 
+		# other incrementals) to be reverted.  If this instance is a clone, we
+		# need to skip regenerate() so that the copied values are preserved.
+		if clone is None:
+			self.regenerate()
 
 		self.features = portage_util.unique_array(self["FEATURES"].split())
 

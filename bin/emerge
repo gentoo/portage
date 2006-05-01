@@ -168,8 +168,13 @@ if portage.settings.has_key("PORTAGE_NICENESS"):
 portage.portdb.freeze()
 
 # Kill noauto as it will break merges otherwise.
-while 'noauto' in portage.settings.features:
-	portage.settings.features.remove('noauto')
+if "noauto" in portage.settings.features:
+	while "noauto" in portage.settings.features:
+		portage.settings.features.remove("noauto")
+	portage.settings.unlock()
+	portage.settings["FEATURES"] = " ".join(portage.settings.features)
+	portage.settings.backup_changes("FEATURES")
+	portage.settings.lock()
 
 #number of ebuilds merged
 merged=0
