@@ -3,6 +3,8 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/bin/prepalldocs,v 1.6 2004/10/04 13:56:50 vapier Exp $
 
+source /usr/lib/portage/bin/isolated-functions.sh
+
 z="$(find "${D}"usr/share/doc \( -type f -or -type l \) -not -name "*.gz" -not -name "*.js" 2>/dev/null)"
 
 for y in ${z} ; do
@@ -18,15 +20,15 @@ for y in ${z} ; do
 			mylink="${mylink}.gz"
 		fi
 
-		echo "fixing doc symlink: ${mylink##*/}"
+		vecho "fixing doc symlink: ${mylink##*/}"
 		ln -snf "${linkto}" "${mylink}"
 		if [ "${y}" != "${mylink}" ] ; then
-			echo "removing old symlink: ${y##*/}"
+			vecho "removing old symlink: ${y##*/}"
 			rm -f "${y}"
 		fi
 	else
 		if [ "${y##*.}" != "gz" ] ; then
-			echo "gzipping doc: ${y##*/}"
+			vecho "gzipping doc: ${y##*/}"
 			gzip -f -9 "${y}"
 		fi
 	fi	

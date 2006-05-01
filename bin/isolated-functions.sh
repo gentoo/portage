@@ -3,6 +3,10 @@
 # $Header$
 
 # Internal logging function, don't use this in ebuilds
+vecho() {
+	[[ ${PORTAGE_QUIET} == "1" ]] || echo ${@}
+}
+
 elog_base() {
 	local messagetype
 	[ -z "${1}" -o -z "${T}" -o ! -d "${T}/logging" ] && return 1
@@ -12,7 +16,7 @@ elog_base() {
 			shift
 			;;
 		*)
-			echo -e " ${BAD}*${NORMAL} Invalid use of internal function elog_base(), next message will not be logged"
+			vecho -e " ${BAD}*${NORMAL} Invalid use of internal function elog_base(), next message will not be logged"
 			return 1
 			;;
 	esac

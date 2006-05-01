@@ -3,6 +3,8 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/bin/prepstrip,v 1.23.2.3 2005/08/15 02:58:20 vapier Exp $
 
+source /usr/lib/portage/bin/isolated-functions.sh
+
 if [[ " ${FEATURES} " == *" nostrip "* ]] || \
    [[ " ${RESTRICT} " == *" nostrip "* ]] || \
    [[ " ${RESTRICT} " == *" strip "* ]]
@@ -46,7 +48,7 @@ save_elf_debug() {
 
 for x in $(scanelf -yRBF%F "$@") $(for y in "$@"; do find "${y}" -type f -name '*.a' -print0 ; done); do
 	if [[ ${banner} -eq 1 ]] ; then
-		echo "strip: ${STRIP} ${PORTAGE_STRIP_FLAGS}"
+		vecho "strip: ${STRIP} ${PORTAGE_STRIP_FLAGS}"
 		banner=0
 	fi
 
@@ -64,11 +66,11 @@ for x in $(scanelf -yRBF%F "$@") $(for y in "$@"; do find "${y}" -type f -name '
 	set +o noglob
 
 	if [[ ${f} == *"current ar archive"* ]] ; then
-		echo "   ${x:${#D}:${#x}}"
+		vecho "   ${x:${#D}:${#x}}"
 		[[ ${stripitbaby} -eq 1 ]] && ${STRIP} -g "${x}"
 	fi
 	if [[ ${f} == *"SB executable"* || ${f} == *"SB shared object"* ]] ; then
-		echo "   ${x:${#D}:${#x}}"
+		vecho "   ${x:${#D}:${#x}}"
 		save_elf_debug "${x}"
 		[[ ${stripitbaby} -eq 1 ]] && ${STRIP} ${PORTAGE_STRIP_FLAGS} "${x}"
 	fi

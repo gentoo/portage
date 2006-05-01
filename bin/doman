@@ -3,6 +3,8 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/bin/doman,v 1.13.2.2 2005/07/29 05:55:34 vapier Exp $
 
+source /usr/lib/portage/bin/isolated-functions.sh
+
 if [[ $# -lt 1 ]] ; then
 	echo "$0: at least one argument needed" 1>&2
 	exit 1
@@ -26,7 +28,7 @@ for x in "$@" ; do
 	if [[ ${suffix} == "gz" ]] ; then
 		realname=${x%.*}
 		suffix=${realname##*.}
-		echo "QA Notice: you should let portage compress '${realname}' for you" 2>&1
+		vecho "QA Notice: you should let portage compress '${realname}' for you" 2>&1
 	fi
 
 	mandir=${i18n}man${suffix:0:1}
@@ -40,11 +42,11 @@ for x in "$@" ; do
 			install -m0644 "${x}" "${D}/usr/share/man/${mandir}"
 			((ret+=$?))
 		elif [[ ! -e ${x} ]] ; then
-			echo "doman: ${x} does not exist" 1>&2
+			vecho "doman: ${x} does not exist" 1>&2
 			((++ret))
 		fi
 	else
-		echo "doman: '${x}' is probably not a man page; skipping" 1>&2
+		vecho "doman: '${x}' is probably not a man page; skipping" 1>&2
 		((++ret))
 	fi
 done

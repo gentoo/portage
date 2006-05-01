@@ -3,7 +3,9 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/bin/prepallinfo,v 1.6 2004/10/04 13:56:50 vapier Exp $
 
+source /usr/lib/portage/bin/isolated-functions.sh
+
 [[ ! -d ${D}usr/share/info ]] && exit 0
 
-echo "info:"
+vecho "info:"
 exec prepinfo

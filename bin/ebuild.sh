@@ -121,7 +121,6 @@ esyslog() {
 	return 0
 }
 
-
 use() {
 	useq ${1}
 }
@@ -146,7 +145,7 @@ useq() {
 
 	# Make sure we have this USE flag in IUSE
 	if ! hasq "${u}" ${IUSE} ${E_IUSE} && ! hasq "${u}" ${PORTAGE_ARCHLIST} selinux; then
-		echo "QA Notice: USE Flag '${u}' not in IUSE for ${CATEGORY}/${PF}" >&2
+		vecho "QA Notice: USE Flag '${u}' not in IUSE for ${CATEGORY}/${PF}" >&2
 	fi
 
 	if hasq ${u} ${USE} ; then
@@ -354,7 +353,7 @@ unpack() {
 	[ -z "$*" ] && die "Nothing passed to the 'unpack' command"
 
 	for x in "$@"; do
-		echo ">>> Unpacking ${x} to ${PWD}"
+		vecho ">>> Unpacking ${x} to ${PWD}"
 		y=${x%.*}
 		y=${y##*.}
 
@@ -406,7 +405,7 @@ unpack() {
 				ar x "${srcdir}/${x}" || die "$myfail"
 				;;
 			*)
-				echo "unpack ${x}: file format not recognized. Ignoring."
+				vecho "unpack ${x}: file format not recognized. Ignoring."
 				;;
 		esac
 	done
@@ -433,7 +432,7 @@ econf() {
 	if [ -x "${ECONF_SOURCE}/configure" ]; then
 		if [ -e /usr/share/gnuconfig/ ]; then
 			for x in $(find "${WORKDIR}" -type f '(' -name config.guess -o -name config.sub ')') ; do
-				echo " * econf: updating ${x/${WORKDIR}\/} with /usr/share/gnuconfig/${x##*/}"
+				vecho " * econf: updating ${x/${WORKDIR}\/} with /usr/share/gnuconfig/${x##*/}"
 				cp -f /usr/share/gnuconfig/${x##*/} ${x}
 			done
 		fi
@@ -500,7 +499,7 @@ econf() {
 			CONFCACHE=
 		fi
 
-		echo ${CONFCACHE} ${CONFCACHE_ARG} ${TMP_CONFCACHE_DIR} "${ECONF_SOURCE}/configure" \
+		vecho ${CONFCACHE} ${CONFCACHE_ARG} ${TMP_CONFCACHE_DIR} "${ECONF_SOURCE}/configure" \
 			--prefix=/usr \
 			--host=${CHOST} \
 			--mandir=/usr/share/man \
@@ -602,19 +601,19 @@ src_compile() {
 src_test() {
 	addpredict /
 	if emake -j1 check -n &> /dev/null; then
-		echo ">>> Test phase [check]: ${CATEGORY}/${PF}"
+		vecho ">>> Test phase [check]: ${CATEGORY}/${PF}"
 		if ! emake -j1 check; then
 			hasq test $FEATURES && die "Make check failed. See above for details."
 			hasq test $FEATURES || eerror "Make check failed. See above for details."
 		fi
 	elif emake -j1 test -n &> /dev/null; then
-		echo ">>> Test phase [test]: ${CATEGORY}/${PF}"
+		vecho ">>> Test phase [test]: ${CATEGORY}/${PF}"
 		if ! emake -j1 test; then
 			hasq test $FEATURES && die "Make test failed. See above for details."
 			hasq test $FEATURES || eerror "Make test failed. See above for details."
 		fi
 	else
-		echo ">>> Test phase [none]: ${CATEGORY}/${PF}"
+		vecho ">>> Test phase [none]: ${CATEGORY}/${PF}"
 	fi
 	SANDBOX_PREDICT="${SANDBOX_PREDICT%:/}"
 }
@@ -666,27 +665,27 @@ dyn_unpack() {
 		local x
 		local checkme
 		for x in ${AA}; do
-			echo ">>> Checking ${x}'s mtime..."
+			vecho ">>> Checking ${x}'s mtime..."
 			if [ "${PORTAGE_ACTUAL_DISTDIR:-${DISTDIR}}/${x}" -nt "${WORKDIR}" ]; then
-				echo ">>> ${x} has been updated; recreating WORKDIR..."
+				vecho ">>> ${x} has been updated; recreating WORKDIR..."
 				newstuff="yes"
 				rm -rf "${WORKDIR}"
 				break
 			fi
 		done
 		if [ "${EBUILD}" -nt "${WORKDIR}" ]; then
-			echo ">>> ${EBUILD} has been updated; recreating WORKDIR..."
+			vecho ">>> ${EBUILD} has been updated; recreating WORKDIR..."
 			newstuff="yes"
 			rm -rf "${WORKDIR}"
 		elif [ ! -f "${PORTAGE_BUILDDIR}/.unpacked" ]; then
-			echo ">>> Not marked as unpacked; recreating WORKDIR..."
+			vecho ">>> Not marked as unpacked; recreating WORKDIR..."
 			newstuff="yes"
 			rm -rf "${WORKDIR}"
 		fi
 	fi
 	if [ -e "${WORKDIR}" ]; then
 		if [ "$newstuff" == "no" ]; then
-			echo ">>> WORKDIR is up-to-date, keeping..."
+			vecho ">>> WORKDIR is up-to-date, keeping..."
 			[ "$(type -t post_src_unpack)" == "function" ] && post_src_unpack
 			return 0
 		fi
@@ -696,10 +695,10 @@ dyn_unpack() {
 		install -m${PORTAGE_WORKDIR_MODE:-0700} -d "${WORKDIR}" || die "Failed to create dir '${WORKDIR}'"
 	fi
 	cd "${WORKDIR}" || die "Directory change failed: \`cd '${WORKDIR}'\`"
-	echo ">>> Unpacking source..."
+	vecho ">>> Unpacking source..."
 	src_unpack
 	touch "${PORTAGE_BUILDDIR}/.unpacked" || die "IO Failure -- Failed 'touch .unpacked' in ${PORTAGE_BUILDDIR}"
-	echo ">>> Source unpacked."
+	vecho ">>> Source unpacked."
 	cd "${PORTAGE_BUILDDIR}"
 
 	[ "$(type -t post_src_unpack)" == "function" ] && post_src_unpack
@@ -908,8 +907,8 @@ dyn_compile() {
 	cp "${EBUILD}" "build-info/${PF}.ebuild"
 
 	if [ "${PORTAGE_BUILDDIR}/.compiled" -nt "${WORKDIR}" ]; then
-		echo ">>> It appears that ${PN} is already compiled; skipping."
-		echo ">>> (clean to force compilation)"
+		vecho ">>> It appears that ${PN} is already compiled; skipping."
+		vecho ">>> (clean to force compilation)"
 		trap SIGINT SIGQUIT
 		[ "$(type -t post_src_compile)" == "function" ] && post_src_compile
 		return
@@ -924,9 +923,9 @@ dyn_compile() {
 	#some packages use an alternative to $S to build in, cause
 	#our libtool to create problematic .la files
 	export PWORKDIR="$WORKDIR"
-	echo ">>> Compiling source in ${srcdir} ..."
+	vecho ">>> Compiling source in ${srcdir} ..."
 	src_compile
-	echo ">>> Source compiled."
+	vecho ">>> Source compiled."
 	#|| abort_compile "fail"
 	cd "${PORTAGE_BUILDDIR}"
 	touch .compiled
@@ -959,7 +958,7 @@ dyn_compile() {
 dyn_test() {
 	[ "$(type -t pre_src_test)" == "function" ] && pre_src_test
 	if [ "${PORTAGE_BUILDDIR}/.tested" -nt "${WORKDIR}" ]; then
-		echo ">>> It appears that ${PN} has already been tested; skipping."
+		vecho ">>> It appears that ${PN} has already been tested; skipping."
 		[ "$(type -t post_src_test)" == "function" ] && post_src_test
 		return
 	fi
@@ -969,9 +968,9 @@ dyn_test() {
 	fi
 	if hasq test $RESTRICT; then
 		ewarn "Skipping make test/check due to ebuild restriction."
-		echo ">>> Test phase [explicitly disabled]: ${CATEGORY}/${PF}"
+		vecho ">>> Test phase [explicitly disabled]: ${CATEGORY}/${PF}"
 	elif ! hasq test $FEATURES; then
-		echo ">>> Test phase [not enabled]: ${CATEGORY}/${PF}"
+		vecho ">>> Test phase [not enabled]: ${CATEGORY}/${PF}"
 	else
 		src_test
 	fi
@@ -991,8 +990,8 @@ dyn_install() {
 	if [ -d "${S}" ]; then
 		cd "${S}"
 	fi
-	echo
-	echo ">>> Install ${PF} into ${D} category ${CATEGORY}"
+	vecho
+	vecho ">>> Install ${PF} into ${D} category ${CATEGORY}"
 	#our custom version of libtool uses $S and $D to fix
 	#invalid paths in .la files
 	export S D
@@ -1001,8 +1000,8 @@ dyn_install() {
 	export PWORKDIR="$WORKDIR"
 	src_install
 	touch "${PORTAGE_BUILDDIR}/.installed"
-	echo ">>> Completed installing ${PF} into ${D}"
-	echo
+	vecho ">>> Completed installing ${PF} into ${D}"
+	vecho
 	cd ${PORTAGE_BUILDDIR}
 	[ "$(type -t post_src_install)" == "function" ] && post_src_install
 	trap SIGINT SIGQUIT
@@ -1150,9 +1149,9 @@ inherit() {
 
 		if [ "$EBUILD_PHASE" != "depend" ]; then
 			if ! hasq $ECLASS $INHERITED; then
-				echo
-				echo "QA Notice: ECLASS '$ECLASS' inherited illegally in $CATEGORY/$PF" >&2
-				echo
+				vecho
+				vecho "QA Notice: ECLASS '$ECLASS' inherited illegally in $CATEGORY/$PF" >&2
+				vecho
 			fi
 		fi
 
@@ -1412,11 +1411,11 @@ if hasq "depend" "$@"; then
 			BODY="${BIN_PATH} \"\$@\"; return \$?"
 		fi
 		FUNC_SRC="${BIN}() {
-		echo -n \"QA Notice: ${BIN} in global scope: \" >&2
+		vecho -n \"QA Notice: ${BIN} in global scope: \" >&2
 		if [ \$ECLASS_DEPTH -gt 0 ]; then
-			echo \"eclass \${ECLASS}\" >&2
+			vecho \"eclass \${ECLASS}\" >&2
 		else
-			echo \"\${CATEGORY}/\${PF}\" >&2
+			vecho \"\${CATEGORY}/\${PF}\" >&2
 		fi
 		${BODY}
 		}";

@@ -3,6 +3,8 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/bin/prepman,v 1.10.2.3 2005/05/29 12:40:08 jstubbs Exp $
 
+source /usr/lib/portage/bin/isolated-functions.sh
+
 if [[ -z $1 ]] ; then 
 	z="${D}usr/share/man"
 else
@@ -10,7 +12,7 @@ else
 fi
 
 if [[ ! -d ${z} ]] ; then
-	echo "QA Notice: prepman called with non-existent dir '${z#${D}}'" 2>&1
+	vecho "QA Notice: prepman called with non-existent dir '${z#${D}}'" 2>&1
 	exit 0
 fi
 
@@ -33,15 +35,15 @@ for x in $(find "${z}"/ -type d 2>/dev/null) ; do
 				mylink="${mylink}.gz"
 			fi
 
-			echo "fixing man page symlink: ${mylink##*/}"
+			vecho "fixing man page symlink: ${mylink##*/}"
 			ln -snf "${linkto}" "${mylink}"
 			if [[ ${y} != "${mylink}" ]] ; then
-				echo "removing old symlink: ${y##*/}"
+				vecho "removing old symlink: ${y##*/}"
 				rm -f "${y}"
 			fi
 		else
 			if [[ ${y##*.} != "gz" ]] && [[ ${y##*.} != "bz2" ]] && [[ ! -d ${y} ]] ; then
-				echo "gzipping man page: ${y##*/}"
+				vecho "gzipping man page: ${y##*/}"
 				gzip -f -9 "${y}"
 			fi
 		fi	

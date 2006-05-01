@@ -3,6 +3,8 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/bin/doins,v 1.7.2.2 2004/12/17 22:25:13 carpaski Exp $
 
+source /usr/lib/portage/bin/isolated-functions.sh
+
 if [ $# -lt 1 ] ; then
 	echo "${0}: at least one argument needed"
 	exit 1
@@ -21,10 +23,10 @@ if [ ${INSDEPTH} -gt 30 ] ; then
 fi
 
 if [ "${INSDESTTREE%${D}*}" == "" ]; then
-	echo "-------------------------------------------------------" 1>&2
-	echo "You should not use \${D} with helpers." 1>&2
-	echo "  --> ${INSDESTTREE}" 1>&2
-	echo "-------------------------------------------------------" 1>&2
+	vecho "-------------------------------------------------------" 1>&2
+	vecho "You should not use \${D} with helpers." 1>&2
+	vecho "  --> ${INSDESTTREE}" 1>&2
+	vecho "-------------------------------------------------------" 1>&2
 	#exit 1
 fi
 

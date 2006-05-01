@@ -3,7 +3,9 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/bin/preplib,v 1.7.2.1 2005/01/02 09:36:02 jstubbs Exp $
 
-echo "QA Notice: Please stop using me, fix your package instead" 1>&2
+source /usr/lib/portage/bin/isolated-functions.sh
+
+vecho "QA Notice: Please stop using me, fix your package instead" 1>&2
 
 LIBDIR_VAR="LIBDIR_${ABI}"
 if [ -n "${ABI}" -a -n "${!LIBDIR_VAR}" ]; then
