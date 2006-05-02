@@ -2383,7 +2383,7 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 	if mysplit is None:
 		writemsg("!!! Error: PF is null '%s'; exiting.\n" % mypv)
 		return 1
-	slot = mysettings["SLOT"]
+
 	if mydo != "depend":
 		# XXX: We're doing a little hack here to curtain the gvisible locking
 		# XXX: that creates a deadlock... Really need to isolate that.
@@ -2391,7 +2391,6 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 	mysettings.setcpv(mycpv,use_cache=use_cache)
 
 	mysettings["EBUILD_PHASE"] = mydo
-	mysettings["SLOT"] = slot
 
 	mysettings["PORTAGE_MASTER_PID"] = str(os.getpid())
 
@@ -2425,8 +2424,8 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 		mysettings["PORTAGE_QUIET"] = "1"
 
 	if mydo != "depend":
-		mysettings["INHERITED"], mysettings["RESTRICT"], eapi = mydbapi.aux_get(
-			mycpv, ["INHERITED", "RESTRICT", "EAPI"])
+		eapi, mysettings["INHERITED"], mysettings["SLOT"], mysettings["RESTRICT"]  = \
+			mydbapi.aux_get(mycpv, ["EAPI", "INHERITED", "SLOT", "RESTRICT"])
 		if not eapi_is_supported(eapi):
 			# can't do anything with this.
 			raise portage_exception.UnsupportedAPIException(mycpv, eapi)
@@ -2745,12 +2744,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		return spawn(EBUILD_SH_BINARY+" "+mydo,mysettings,debug=debug,free=1,logfile=logfile)
 
 	mycpv = "/".join((mysettings["CATEGORY"], mysettings["PF"]))
-	try:
-		mysettings["SLOT"], mysettings["RESTRICT"] = \
-			mydbapi.aux_get(mycpv, ["SLOT", "RESTRICT"])
-	except (IOError,KeyError):
-		print red("doebuild():")+" aux_get() error reading "+mycpv+"; aborting."
-		sys.exit(1)
 
 	newuris, alist = mydbapi.getfetchlist(mycpv, mysettings=mysettings)
 	alluris, aalist = mydbapi.getfetchlist(
