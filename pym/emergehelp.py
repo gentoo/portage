@@ -14,7 +14,7 @@ def shorthelp():
 	print "   "+turquoise("emerge")+" [ "+green("options")+" ] [ "+green("action")+" ] < "+turquoise("system")+" | "+turquoise("world")+" >"
 	print "   "+turquoise("emerge")+" < "+turquoise("--sync")+" | "+turquoise("--metadata")+" | "+turquoise("--info")+" >"
 	print "   "+turquoise("emerge")+" "+turquoise("--resume")+" [ "+green("--pretend")+" | "+green("--ask")+" | "+green("--skipfirst")+" ]"
-	print "   "+turquoise("emerge")+" "+turquoise("--help")+" [ "+green("system")+" | "+green("config")+" | "+green("--sync")+" ] "
+	print "   "+turquoise("emerge")+" "+turquoise("--help")+" [ "+green("system")+" | "+green("world")+" | "+green("config")+" | "+green("--sync")+" ] "
 	print bold("Options:")+" "+green("-")+"["+green("abBcCdDefgGhikKlnNoOpqPsStuvV")+"] ["+green("--oneshot")+"] ["+green("--newuse")+"] ["+green("--noconfmem")+"]"
 	print      "                                    ["+green("--columns")+"] ["+green("--nospinner")+"]"
 	print bold("Actions:")+" [ "+green("--clean")+" | "+green("--depclean")+" | "+green("--prune")+" | "+green("--regen")+" | "+green("--search")+" | "+green("--unmerge")+" ]"
@@ -337,6 +337,18 @@ def help(myaction,myopts,havecolor=1):
 		print "       recent version that matches the profile spec) for you.  It's always a"
 		print "       good idea to do an \"emerge --pretend system\" before an \"emerge"
 		print "       system\", just so you know what emerge is planning to do."
+		print
+	elif myaction=="world":
+		print
+		print bold("Usage: ")+turquoise("emerge")+" [ "+green("options")+" ] "+turquoise("world")
+		print
+		print "       'emerge world' is the Portage command for completely updating your"
+		print "       system.  The normal procedure is to first do an 'emerge --sync' and"
+		print "       then an 'emerge --update --deep world'.  The first command brings your"
+		print "       local Portage tree up-to-date with the latest version information and"
+		print "       ebuilds.  The second command then rebuilds all packages for which newer"
+		print "       versions or newer ebuilds have become available since you last did a"
+		print "       sync and update."
 		print
 	elif myaction=="config":
 		outstuff=green("Config file management support (preliminary)")+"""
