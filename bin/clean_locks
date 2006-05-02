@@ -3,7 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/bin/clean_locks,v 1.1 2004/09/26 10:44:31 carpaski Exp $
 
-import os,sys
+import os,sys,errno
 sys.path = ["/usr/lib/portage/pym"]+sys.path
 
 import portage_locks
@@ -28,6 +28,14 @@ if "--force" in sys.argv[1:]:
 for x in sys.argv[1:]:
 	if x == "--force":
 		continue
-	for y in portage_locks.hardlock_cleanup(x, remove_all_locks=force):
-		print y
-	print
+	try:
+		for y in portage_locks.hardlock_cleanup(x, remove_all_locks=force):
+			print y
+		print
+		
+	except OSError, e:
+		if e.errno in (errno.ENOENT, errno.ENOTDIR):
+			print "!!! %s is not a directory or does not exist" % x
+		else:
+			raise
+		sys.exit(e.errno)
