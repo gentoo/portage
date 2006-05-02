@@ -1881,10 +1881,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 		if try_mirrors:
 			mymirrors += [x.rstrip("/") for x in mysettings["GENTOO_MIRRORS"].split() if x]
 
-	mydigests = {}
-	digestfn  = mysettings["FILESDIR"]+"/digest-"+mysettings["PF"]
-	if os.path.exists(digestfn):
-		mydigests = digestParseFile(digestfn)
+	mydigests = Manifest(
+		mysettings["O"], mysettings["DISTDIR"]).getTypeDigests("DIST")
 
 	fsmirrors = []
 	for x in range(len(mymirrors)-1,-1,-1):
