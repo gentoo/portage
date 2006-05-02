@@ -1851,7 +1851,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 
 	check_config_instance(mysettings)
 
-	custommirrors=grabdict(CUSTOM_MIRRORS_FILE,recursive=1)
+	custommirrors = grabdict(os.path.join(mysettings["PORTAGE_CONFIG_ROOT"],
+		CUSTOM_MIRRORS_FILE.lstrip(os.path.sep)), recursive=1)
 
 	mymirrors=[]
 
