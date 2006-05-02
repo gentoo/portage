@@ -173,7 +173,7 @@ def xtermTitle(mystr):
 		legal_terms = ["xterm","Eterm","aterm","rxvt","screen","kterm","rxvt-unicode","gnome"]
 		for term in legal_terms:
 			if myt.startswith(term):
-				sys.stderr.write("\x1b]2;"+str(mystr)+"\x07")
+				sys.stderr.write("\x1b]0;"+str(mystr)+"\x07")
 				sys.stderr.flush()
 				break
 
