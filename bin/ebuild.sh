@@ -1169,6 +1169,7 @@ inherit() {
 			done
 		fi
 		debug-print "inherit: $1 -> $location"
+		[ ! -e "$location" ] && die "${1}.eclass could not be found by inherit()"
 
 		#We need to back up the value of DEPEND and RDEPEND to B_DEPEND and B_RDEPEND
 		#(if set).. and then restore them after the inherit call.
@@ -1186,8 +1187,7 @@ inherit() {
 		#turn on glob expansion
 		set +f
 
-		source "$location" || export ERRORMSG="died sourcing $location in inherit()"
-		[ -z "${ERRORMSG}" ] || die "${ERRORMSG}"
+		source "$location" || die "died sourcing $location in inherit()"
 
 		#turn off glob expansion
 		set -f
@@ -1435,7 +1435,6 @@ if ! hasq depend $EBUILD_PHASE; then
 	RESTRICT="${PORTAGE_RESTRICT}"
 	unset PORTAGE_RESTRICT
 fi
-[ -z "${ERRORMSG}" ] || die "${ERRORMSG}"
 
 # Expand KEYWORDS
 # We need to turn off pathname expansion for -* in KEYWORDS and
