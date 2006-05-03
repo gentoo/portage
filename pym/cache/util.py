@@ -41,7 +41,13 @@ def mirror_cache(valid_nodes_iterable, src_cache, trg_cache, eclass_cache=None, 
 			pass
 
 		if write_it:
-			if entry.get("INHERITED",""):
+			try:
+				inherited = entry.get("INHERITED", None)
+			except cache_errors.CacheError, ce:
+				noise.exception(x, ce)
+				del ce
+				continue
+			if inherited:
 				if src_cache.complete_eclass_entries:
 					if not "_eclasses_" in entry:
 						noise.corruption(x,"missing _eclasses_ field")
