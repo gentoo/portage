@@ -70,8 +70,9 @@ else:
 		reload(portage)
 		portage_ebuild = portage.portdb.findname(cpv)
 
-		print "!!! %s does not seem to have a valid PORTDIR structure." % overlay
-		sys.exit(1)
+		if not portage_ebuild or os.path.realpath(portage_ebuild) != ebuild:
+			print "!!! %s does not seem to have a valid PORTDIR structure." % overlay
+			sys.exit(1)
 
 
 if len(pargs) > 1 and "config" in pargs:
