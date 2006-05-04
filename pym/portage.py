@@ -2222,7 +2222,8 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
 		fetchlist_dict=FetchlistDict(mysettings["O"], mysettings, myportdb))
 	writemsg(">>> Creating Manifest for %s\n" % mysettings["O"])
 	try:
-		mf.create(assumeDistfileHashes=True, requiredDistfiles=myarchives)
+		mf.create(requiredDistfiles=myarchives, assumeDistHashesSometimes=True,
+			assumeDistHashesAlways=("assume-digests" in mysettings.features))
 	except portage_exception.FileNotFound, e:
 		writemsg("!!! File %s doesn't exist, can't update Manifest\n" % str(e))
 		return 0

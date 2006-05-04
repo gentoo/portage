@@ -400,16 +400,19 @@ class Manifest(object):
 				return t
 		return None
 	
-	def create(self, checkExisting=False, assumeDistfileHashes=True, requiredDistfiles=None):
-		""" Recreate this Manifest from scratch, not using any existing checksums
-		(exception: if assumeDistfileHashes is true then existing DIST checksums are
-		reused if the file doesn't exist in DISTDIR.  The requiredDistfiles
-		parameter specifies a list of distfiles to raise a FileNotFound
-		exception for (if no file or existing checksums are available), and
-		defaults to all distfiles when not specified."""
+	def create(self, checkExisting=False, assumeDistHashesSometimes=False,
+		assumeDistHashesAlways=False, requiredDistfiles=None):
+		""" Recreate this Manifest from scratch.  This will not use any
+		existing checksums unless assumeDistHashesSometimes or
+		assumeDistHashesAlways is true (assumeDistHashesSometimes will only
+		cause DIST checksums to be reused if the file doesn't exist in
+		DISTDIR).  The requiredDistfiles parameter specifies a list of
+		distfiles to raise a FileNotFound exception for (if no file or existing
+		checksums are available), and defaults to all distfiles when not
+		specified."""
 		if checkExisting:
 			self.checkAllHashes()
-		if assumeDistfileHashes:
+		if assumeDistHashesSometimes or assumeDistHashesAlways:
 			distfilehashes = self.fhashdict["DIST"]
 		else:
 			distfilehashes = {}
@@ -446,12 +449,16 @@ class Manifest(object):
 			requiredDistfiles = distlist.copy()
 		for f in distlist:
 			fname = os.path.join(self.distdir, f)
-			if os.path.exists(fname):
-				self.fhashdict["DIST"][f] = perform_multiple_checksums(fname, self.hashes)
-			elif assumeDistfileHashes and f in distfilehashes:
+			if f in distfilehashes and (assumeDistHashesAlways or \
+				(assumeDistHashesSometimes and not os.path.exists(fname))):
 				self.fhashdict["DIST"][f] = distfilehashes[f]
-			elif f in requiredDistfiles:
-					raise FileNotFound(fname)
+			else:
+				try:
+					self.fhashdict["DIST"][f] = perform_multiple_checksums(fname, self.hashes)
+				except FileNotFound:
+					if f in requiredDistfiles:
+						raise
+
 	def _pkgdir_category(self):
 		return self.pkgdir.rstrip(os.sep).split(os.sep)[-2]
 
