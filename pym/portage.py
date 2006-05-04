@@ -1292,13 +1292,15 @@ class config:
 			self.features = portage_util.unique_array(self["FEATURES"].split())
 		else:
 			# XXX
-			# The below self.regenerate() causes previous changes to FEATURES (and 
-			# other incrementals) to be reverted.  If this instance is a clone, we
-			# need to skip regenerate() so that the copied values are preserved.
-			self.features = portage_util.unique_array(self["FEATURES"].split())
+			# The below self.regenerate() causes previous changes to FEATURES
+			# (and other incrementals) to be reverted.  If this instance is a
+			# clone, we need to take the cloned FEATURES from backupenv and
+			# save them where the regenerate() call will not destroy them.
+			# Later, we use backup_changes() to restore the cloned FEATURES
+			# into the backupenv once again.
+			self.features = portage_util.unique_array(
+				self.backupenv["FEATURES"].split())
 			self.regenerate()
-			self["FEATURES"] = " ".join(self.features)
-			self.backup_changes("FEATURES")
 
 		#XXX: Should this be temporary? Is it possible at all to have a default?
 		if "gpg" in self.features:
