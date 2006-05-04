@@ -1423,7 +1423,7 @@ if hasq "depend" "$@"; then
 		}";
 		eval "$FUNC_SRC" || echo "error creating QA interceptor ${BIN}" >&2
 	done
-	unset src bin_path body
+	unset BIN_PATH BIN BODY FUNC_SRC
 fi
 
 # reset the EBUILD_DEATH_HOOKS so they don't multiple due to stable's re-sourcing of env.
@@ -1532,7 +1532,7 @@ for myarg in $*; do
 		fi
 		export SANDBOX_ON="0"
 		;;
-	help|clean|setup|preinst)
+	help|setup|preinst)
 		#pkg_setup needs to be out of the sandbox for tmp file creation;
 		#for example, awking and piping a file in /tmp requires a temp file to be created
 		#in /etc.  If pkg_setup is in the sandbox, both our lilo and apache ebuilds break.
