@@ -1316,7 +1316,7 @@ class config:
 				self.features.remove("usersandbox")
 
 		self.features.sort()
-		self["FEATURES"] = " ".join(["-*"]+self.features)
+		self["FEATURES"] = " ".join(self.features)
 		self.backup_changes("FEATURES")
 
 		if not len(self["CBUILD"]) and len(self["CHOST"]):
@@ -1503,6 +1503,14 @@ class config:
 			myincrementals=["USE"]
 		else:
 			myincrementals=portage_const.INCREMENTALS
+
+		# If self.features exists, it has already been stacked and may have
+		# been mutated, so don't stack it again or else any mutations will be
+		# reverted.
+		if "FEATURES" in myincrementals and hasattr(self, "features"):
+			myincrementals = set(myincrementals)
+			myincrementals.remove("FEATURES")
+
 		for mykey in myincrementals:
 			if mykey=="USE":
 				mydbs=self.uvlist
