@@ -800,13 +800,16 @@ class search:
 						pkgdir, portage.settings["DISTDIR"])
 					fetchlist = portage.portdb.getfetchlist(mycpv,
 						mysettings=portage.settings, all=True)[1]
-					mysum[0] = mf.getDistfilesSize(fetchlist)
-					mystr = str(mysum[0]/1024)
-					mycount=len(mystr)
-					while (mycount > 3):
-						mycount-=3
-						mystr=mystr[:mycount]+","+mystr[mycount:]
-					mysum[0]=mystr+" kB"
+					try:
+						mysum[0] = mf.getDistfilesSize(fetchlist)
+						mystr = str(mysum[0]/1024)
+						mycount=len(mystr)
+						while (mycount > 3):
+							mycount-=3
+							mystr=mystr[:mycount]+","+mystr[mycount:]
+						mysum[0]=mystr+" kB"
+					except KeyError, e:
+						mysum[0] = "Unknown (missing digest for %s)" % str(e)
 
 					if "--quiet" not in myopts:
 						print "     ", darkgreen("Latest version available:"),myversion
