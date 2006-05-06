@@ -2564,7 +2564,7 @@ if myaction in ["sync","metadata"] and (not "--help" in myopts):
 			# The below validation is not needed when using the above hardcoded
 			# defaults.
 
-			portage.writemsg("Using PORTAGE_RSYNC_OPTS instead of hardcoded defaults\n")
+			portage.writemsg("Using PORTAGE_RSYNC_OPTS instead of hardcoded defaults\n", 1)
 			rsync_opts.extend(portage.settings["PORTAGE_RSYNC_OPTS"].split())
 
 			for opt in ("--recursive", "--times"):
@@ -2578,7 +2578,7 @@ if myaction in ["sync","metadata"] and (not "--help" in myopts):
 				if opt not in rsync_opts:
 					portage.writemsg(yellow("WARNING:") + \
 					" adding required option %s not included in "  % opt + \
-					"PORTAGE_RSYNC_OPTS (override with --exclude='!')\n")
+					"PORTAGE_RSYNC_OPTS (can be overridden with --exclude='!')\n")
 					rsync_opts.append(opt)
 	
 			if portage.settings["RSYNC_TIMEOUT"] != "":
