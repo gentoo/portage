@@ -1502,7 +1502,7 @@ class config:
 		if useonly:
 			myincrementals=["USE"]
 		else:
-			myincrementals=portage_const.INCREMENTALS
+			myincrementals = self.incrementals
 
 		# If self.features exists, it has already been stacked and may have
 		# been mutated, so don't stack it again or else any mutations will be
