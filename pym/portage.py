@@ -2331,6 +2331,9 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 			writemsg_stdout(">>> checking %s" % f)
 			mf.checkFileHashes(mf.findFile(f), f)
 			writemsg_stdout(okaymsg)
+	except KeyError, e:
+		writemsg("\n!!! Missing digest for %s\n" % str(e))
+		return 0
 	except portage_exception.DigestException, e:
 		writemsg("\n!!! Digest verification failed:\n")
 		writemsg("!!! %s\n" % e.value[0])
