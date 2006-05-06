@@ -977,9 +977,6 @@ class config:
 					writemsg("!!! Error: %s='%s' is not a directory. Please correct this.\n" % (k, v))
 					raise portage_exception.DirectoryNotFound(v)
 
-			self.backupenv["PORTAGE_CONFIGROOT"] = config_root
-			self.backupenv["ROOT"] = target_root
-
 			self.depcachedir = DEPCACHE_PATH
 
 			if not config_profile_path:
@@ -1328,6 +1325,11 @@ class config:
 
 		self.backupenv["PORTAGE_BIN_PATH"] = PORTAGE_BIN_PATH
 		self.backupenv["PORTAGE_PYM_PATH"] = PORTAGE_PYM_PATH
+
+		self["PORTAGE_CONFIGROOT"] = config_root
+		self.backup_changes("PORTAGE_CONFIGROOT")
+		self["ROOT"] = target_root
+		self.backup_changes("ROOT")
 
 		self._init_dirs()
 
