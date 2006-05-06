@@ -54,9 +54,7 @@ class database(flat_hash.database):
 						elif c == "_" or c.isdigit():
 							continue
 						break
-					elif not c.isupper():
-						break
-			
+
 				if not hashed:
 					# non hashed.
 					d.clear()
