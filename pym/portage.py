@@ -1014,18 +1014,16 @@ class config:
 			# configlist will contain: [ globals, defaults, conf, pkg, auto, backupenv (incrementals), origenv ]
 
 			# The symlink might not exist or might not be a symlink.
-			try:
-				self.profiles=[abssymlink(self.profile_path)]
-			except SystemExit, e:
-				raise
-			except:
-				self.profiles=[self.profile_path]
-
-			mypath = self.profiles[0]
-			while os.path.exists(mypath+"/parent"):
-				mypath = os.path.normpath(mypath+"///"+grabfile(mypath+"/parent")[0])
-				if os.path.exists(mypath):
-					self.profiles.insert(0,mypath)
+			if self.profile_path is None:
+				self.profiles = []
+			else:
+				self.profiles = [abssymlink(self.profile_path)]
+				mypath = self.profiles[0]
+				while os.path.exists(os.path.join(mypath, "parent")):
+					mypath = os.path.normpath(os.path.join(
+						mypath, grabfile(os.path.join(mypath, "parent"))[0]))
+					if os.path.exists(mypath):
+						self.profiles.insert(0, mypath)
 
 			if os.environ.has_key("PORTAGE_CALLER") and os.environ["PORTAGE_CALLER"] == "repoman":
 				pass
