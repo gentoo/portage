@@ -2336,6 +2336,9 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 	except KeyError, e:
 		writemsg("\n!!! Missing digest for %s\n" % str(e))
 		return 0
+	except portage_exception.FileNotFound, e:
+		writemsg("\n!!! A file listed in the Manifest could not be found: %s\n" % str(e))
+		return 0
 	except portage_exception.DigestException, e:
 		writemsg("\n!!! Digest verification failed:\n")
 		writemsg("!!! %s\n" % e.value[0])
