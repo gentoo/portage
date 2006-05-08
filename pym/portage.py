@@ -1017,7 +1017,7 @@ class config:
 			if self.profile_path is None:
 				self.profiles = []
 			else:
-				self.profiles = [abssymlink(self.profile_path)]
+				self.profiles = [os.path.realpath(self.profile_path)]
 				mypath = self.profiles[0]
 				while os.path.exists(os.path.join(mypath, "parent")):
 					mypath = os.path.normpath(os.path.join(
