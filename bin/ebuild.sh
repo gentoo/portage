@@ -365,6 +365,8 @@ unpack() {
 		else
 			srcdir="${DISTDIR}/"
 		fi
+		[ "${x}" != "${x/${DISTDIR}}" ] && \
+			die "Arguments to unpack() should not begin with \${DISTDIR}."
 		[ ! -s "${srcdir}${x}" ] && die "$myfail"
 
 		myfail="failure unpacking ${x}"
