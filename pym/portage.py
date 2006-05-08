@@ -2462,7 +2462,6 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 
 
 	mysettings["BUILD_PREFIX"] = mysettings["PORTAGE_TMPDIR"]+"/portage"
-	mysettings["HOME"]         = mysettings["BUILD_PREFIX"]+"/homedir"
 	mysettings["PKG_TMPDIR"]   = mysettings["PORTAGE_TMPDIR"]+"/binpkgs"
 	
 	# Package {pre,post}inst and {pre,post}rm may overlap, so they must have separate
@@ -2472,6 +2471,7 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 	else:
 		mysettings["PORTAGE_BUILDDIR"] = os.path.join(mysettings["BUILD_PREFIX"], mysettings["PF"])
 
+	mysettings["HOME"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "homedir")
 	mysettings["WORKDIR"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "work")
 	mysettings["D"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "image") + os.sep
 	mysettings["T"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "temp")

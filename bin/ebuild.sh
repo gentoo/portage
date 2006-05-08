@@ -719,7 +719,7 @@ dyn_clean() {
 		chflags -R nosunlnk,nouunlnk "${PORTAGE_BUILDDIR}" 2>/dev/null
 	fi
 
-	rm -rf "${PORTAGE_BUILDDIR}/image"
+	rm -rf "${PORTAGE_BUILDDIR}/image" "${PORTAGE_BUILDDIR}/homedir"
 
 	if ! hasq keeptemp $FEATURES; then
 		rm -rf "${T}"
