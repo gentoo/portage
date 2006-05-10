@@ -2095,6 +2095,8 @@ class depgraph:
 									if arg in badlongopts:
 										continue
 									mynewargv.append(arg)
+								# priority only needs to be adjusted on the first run
+								os.environ["PORTAGE_NICENESS"] = "0"
 								os.execv(mynewargv[0], mynewargv)
 
 			if ("--pretend" not in myopts) and ("--fetchonly" not in myopts) and ("--fetch-all-uri" not in myopts):
