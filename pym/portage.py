@@ -6941,7 +6941,7 @@ def init_legacy_globals():
 		mtimedb = load_mtimedb(f)
 		f.close()
 		del f
-	except (IOError, OSError):
+	except (IOError, OSError, EOFError):
 		mtimedb = {"updates":{}, "ldpath":{}, "version":"", "starttime":0}
 
 	# ========================================================================
