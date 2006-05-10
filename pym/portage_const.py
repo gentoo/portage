@@ -42,7 +42,6 @@ CONFIG_MEMORY_FILE      = PRIVATE_PATH + "/config"
 COLOR_MAP_FILE          = USER_CONFIG_PATH + "/color.map"
 
 INCREMENTALS=["USE","USE_EXPAND","USE_EXPAND_HIDDEN","FEATURES","ACCEPT_KEYWORDS","ACCEPT_LICENSE","CONFIG_PROTECT_MASK","CONFIG_PROTECT","PRELINK_PATH","PRELINK_PATH_MASK"]
-STICKIES=["KEYWORDS_ACCEPT","USE","CFLAGS","CXXFLAGS","MAKEOPTS","EXTRA_ECONF","EXTRA_EINSTALL","EXTRA_EMAKE"]
 EBUILD_PHASES           = ["setup", "unpack", "compile", "test", "install",
                           "preinst", "postinst", "prerm", "postrm", "other"]
 
