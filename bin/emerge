@@ -2086,6 +2086,7 @@ class depgraph:
 						if (myver != portage.VERSION) and \
 						   ("livecvsportage" not in portage.settings.features):
 							if len(mymergelist) > mergecount:
+								emergelog(" ::: completed emerge ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[2]+" to "+x[1])
 								emergelog(" *** RESTARTING emerge via exec() after change of portage version.")
 								del portage.mtimedb["resume"]["mergelist"][0]
 								portage.run_exitfuncs()
