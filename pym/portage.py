@@ -2477,7 +2477,8 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 	mysettings["D"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "image") + os.sep
 	mysettings["T"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "temp")
 
-	mysettings["PORTAGE_BASHRC"] = EBUILD_SH_ENV_FILE
+	mysettings["PORTAGE_BASHRC"] = os.path.join(
+		mysettings["PORTAGE_CONFIGROOT"], EBUILD_SH_ENV_FILE.lstrip(os.path.sep))
 
 	#set up KV variable -- DEP SPEEDUP :: Don't waste time. Keep var persistent.
 	if (mydo!="depend") or not mysettings.has_key("KV"):
