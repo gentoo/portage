@@ -6601,9 +6601,6 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 	origdir=getcwd()
 	os.chdir(pkgloc)
 
-	# Need slot for slot-based collision detection.
-	mysettings["SLOT"] = xptbz2.getfile("SLOT").strip()
-
 	mysettings.configdict["pkg"]["CATEGORY"] = mycat;
 	# Eventually we'd like to pass in the saved ebuild env here.
 	# Do cleanup=1 to ensure that there is no cruft prior to the setup phase.
