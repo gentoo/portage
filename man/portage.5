@@ -37,6 +37,7 @@ virtuals
 .BR /etc/portage/
 .nf
 bashrc
+modules
 package.mask
 package.unmask
 package.keywords
@@ -300,6 +301,28 @@ virtual/aspell\-dict   app\-dicts/aspell\-en
 If needed, this file can be used to set up a special environment for ebuilds,
 different from the standard root environment.  The syntax is the same as for
 any other bash script.
+
+.TP
+.BR modules
+This file can be used to override the metadata cache implementation.  In
+practice, portdbapi.auxdbmodule is the only variable that the user will want to
+override.
+
+.I Example:
+.nf
+portdbapi.auxdbmodule = cache.metadata_overlay.database
+.fi
+
+The metadata_overlay cache module makes it possible to disable
+FEATURES="metadata-transfer" in \fBmake.conf\fR(5).  When the user initially
+enables metadata_overlay in /etc/portage/modules, all of the cache files
+contained in /var/cache/edb/dep/${PORTDIR} must be manually removed in order
+to avoid unecessary cache regeneration.  In addition, users of the
+metadata_overlay module must never modify eclasses in ${PORTDIR} because
+portage will not be able to detect that cache regeneration is necessary.  If
+the user would like to modify eclasses, it is safe to use metadata_overlay
+together with PORTDIR_OVERLAY in \fBmake.conf\fR.
+
 .TP
 .BR package.mask
 A list of DEPEND atoms to mask.  Useful if specific versions of packages do
