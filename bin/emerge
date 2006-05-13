@@ -631,7 +631,8 @@ if portage.secpass < 2:
 	myaction not in ("search","info"):
 		if portage.secpass >= 1:
 			if "--fetchonly" not in myopts and \
-			"--fetch-all-uri" not in myopts:
+			"--fetch-all-uri" not in myopts and \
+			myaction not in ("metadata", "regen"):
 				print "emerge: root access required."
 				sys.exit(1)
 		else:
