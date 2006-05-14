@@ -58,8 +58,6 @@ if uid==0:
 	secpass=2
 try:
 	wheelgid=grp.getgrnam("wheel")[2]
-	if (not secpass) and (wheelgid in os.getgroups()):
-		secpass=1
 except KeyError:
 	writemsg("portage initialization: your system doesn't have a 'wheel' group.\n")
 	writemsg("Please fix this as it is a normal system requirement. 'wheel' is GID 10\n")
@@ -75,7 +73,7 @@ try:
 		secpass=1
 except KeyError:
 	portage_uid=0
-	portage_gid=wheelgid
+	portage_gid=0
 	writemsg("\n")
 	writemsg(  red("portage: 'portage' user or group missing. Please update baselayout\n"))
 	writemsg(  red("         and merge portage user(250) and group(250) into your passwd\n"))
@@ -94,4 +92,3 @@ if (uid!=0) and (portage_gid not in os.getgroups()):
 	writemsg(red("*** due to permissions preventing the creation of the on-disk cache.\n"))
 	writemsg(red("*** Please add this user to the portage group if you wish to use portage.\n"))
 	writemsg("\n")
-
