@@ -22,7 +22,7 @@ banner=1
 
 save_elf_debug() {
 	local x=$1
-	local y="${D}/usr/lib/debug/${x:${#D}:${#x}}.debug"
+	local y="${D}usr/lib/debug/${x:${#D}+1}.debug"
 
 	hasq splitdebug ${FEATURES} || return 0
 
@@ -65,11 +65,11 @@ for x in $(scanelf -yRBF%F "$@") $(for y in "$@"; do find "${y}" -type f -name '
 	set +o noglob
 
 	if [[ ${f} == *"current ar archive"* ]] ; then
-		vecho "   ${x:${#D}:${#x}}"
+		vecho "   ${x:${#D}+1}"
 		[[ ${stripitbaby} -eq 1 ]] && ${STRIP} -g "${x}"
 	fi
 	if [[ ${f} == *"SB executable"* || ${f} == *"SB shared object"* ]] ; then
-		vecho "   ${x:${#D}:${#x}}"
+		vecho "   ${x:${#D}+1}"
 		save_elf_debug "${x}"
 		[[ ${stripitbaby} -eq 1 ]] && ${STRIP} ${PORTAGE_STRIP_FLAGS} "${x}"
 	fi
