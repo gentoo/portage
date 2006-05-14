@@ -6914,6 +6914,9 @@ def init_legacy_globals():
 	archlist, features, groups, pkglines, thirdpartymirrors, usedefaults, \
 	profiledir, flushmtimedb
 
+	# Portage needs to ensure a sane umask for the files it creates.
+	os.umask(022)
+
 	kwargs = {}
 	for k, envvar in (("config_root", "PORTAGE_CONFIGROOT"), ("target_root", "ROOT")):
 		kwargs[k] = os.environ.get(envvar, "/")
