@@ -4,7 +4,7 @@
 
 # Internal logging function, don't use this in ebuilds
 vecho() {
-	[[ ${PORTAGE_QUIET} == "1" ]] || echo ${@}
+	[[ ${PORTAGE_QUIET} == "1" ]] || echo "$@"
 }
 
 elog_base() {
