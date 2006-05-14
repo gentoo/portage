@@ -4747,8 +4747,7 @@ class portdbapi(dbapi):
 		modemask =    02
 
 		try:
-			for x in ("dep",):
-				mydir = os.path.join(CACHE_PATH, x)
+			for mydir in (self.depcachedir,):
 				if portage_util.ensure_dirs(mydir, gid=portage_gid, mode=dirmode, mask=modemask):
 					writemsg("Adjusting permissions recursively: '%s'\n" % mydir)
 					def onerror(e):
