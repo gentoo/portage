@@ -82,7 +82,7 @@ class database(fs_template.FsBased):
 
 		for k, v in values.items():
 			if k != "_mtime_" and (k == "_eclasses_" or k in self._known_keys):
-				myf.write(("%s=%s\n" % (k, v)).encode("utf-8"))
+				myf.write("%s=%s\n" % (k, v))
 
 		myf.close()
 		self._ensure_access(fp, mtime=values["_mtime_"])
