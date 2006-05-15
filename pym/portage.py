@@ -5670,7 +5670,8 @@ class dblink:
 			# we do this so we can remove from non-root filesystems
 			# (use the ROOT var to allow maintenance on other partitions)
 			try:
-				mydat[1] = self.myroot + mydat[1][1:]
+				mydat[1] = os.normpath(os.path.join(
+					self.myroot, mydat[1].lstrip(os.path.sep)))
 				if mydat[0]=="obj":
 					#format: type, mtime, md5sum
 					pkgfiles[string.join(mydat[1:-2]," ")]=[mydat[0], mydat[-1], mydat[-2]]
