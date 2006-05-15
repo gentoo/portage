@@ -2311,7 +2311,7 @@ def unmerge(unmerge_action, unmerge_files):
 			#avoid cluttering the preview printout with stuff that isn't getting unmerged
 			continue
 		if not (pkgmap[x]["protected"] or pkgmap[x]["omitted"]) and (x in syslist):
-			print red("\a\n\n!!! '%s' is part of your system profile." % mykey)
+			print red("\a\n\n!!! '%s' is part of your system profile." % x)
 			print yellow("\a!!! Unmerging it may be damaging to your system.\n")
 			if "--pretend" not in myopts and "--ask" not in myopts:
 				global EMERGE_WARNING_DELAY
