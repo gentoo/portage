@@ -968,8 +968,8 @@ class config:
 			# backupenv is for calculated incremental variables.
 			self.backupenv = os.environ.copy()
 
-			config_root = config_root.rstrip(os.path.sep) + os.path.sep
-			target_root = target_root.rstrip(os.path.sep) + os.path.sep
+			config_root = os.path.normpath(config_root) + os.path.sep
+			target_root = os.path.normpath(target_root) + os.path.sep
 
 			for k, v in (("PORTAGE_CONFIGROOT", config_root),
 				("ROOT", target_root)):
