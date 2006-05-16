@@ -3565,7 +3565,22 @@ def getmaskingreason(mycpv):
 		raise KeyError("CPV %s does not exist" % mycpv)
 	mycp=mysplit[0]+"/"+mysplit[1]
 
-	pmasklines = grablines(settings["PORTDIR"]+"/profiles/package.mask", recursive=1)
+	# XXX- This is a temporary duplicate of code from the config constructor.
+	locations = settings.profiles[:]
+	locations.append(os.path.join(settings["PORTDIR"], "profiles"))
+	locations.append(os.path.join(settings["PORTAGE_CONFIGROOT"],
+		USER_CONFIG_PATH.lstrip(os.path.sep)))
+	for ov in settings["PORTDIR_OVERLAY"].split():
+		profdir = os.path.join(os.path.normpath(ov), "profiles")
+		if os.path.isdir(profdir):
+			locations.append(profdir)
+	locations.reverse()
+	pmasklists = [grablines(os.path.join(x, "package.mask"), recursive=1) for x in locations]
+	pmasklines = []
+	while pmasklists: # stack_lists doesn't preserve order so it can't be used
+		pmasklines.extend(pmasklists.pop(0))
+	del pmasklists
+
 	if settings.pmaskdict.has_key(mycp):
 		for x in settings.pmaskdict[mycp]:
 			if mycpv in portdb.xmatch("match-all", x):
