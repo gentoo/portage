@@ -1829,7 +1829,7 @@ class depgraph:
 		divs = []
 		release = None
 		while 1:
-			match = re.search(r'^\*\ ?([-a-zA-Z0-9_.]*)(?:\ .*)?\n',changelog,re.M)
+			match = re.search(r'^\*\ ?([-a-zA-Z0-9_.+]*)(?:\ .*)?\n',changelog,re.M)
 			if match is None:
 				if release is not None:
 					divs.append((release,changelog))
