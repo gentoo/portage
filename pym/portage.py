@@ -1130,12 +1130,10 @@ class config:
 			self.lookuplist=self.configlist[:]
 			self.lookuplist.reverse()
 
-			if os.environ.get("PORTAGE_CALLER","") == "repoman":
+			if os.environ.get("PORTAGE_CALLER","") == "repoman" and \
+				os.environ.get("PORTDIR_OVERLAY","") == "":
 				# repoman shouldn't use local settings.
 				locations = [self["PORTDIR"] + "/profiles"]
-				self.pusedict = {}
-				self.pkeywordsdict = {}
-				self.punmaskdict = {}
 			else:
 				abs_user_config = os.path.join(config_root,
 					USER_CONFIG_PATH.lstrip(os.path.sep))
@@ -1146,6 +1144,11 @@ class config:
 					if os.path.isdir(ov+"/profiles"):
 						locations.append(ov+"/profiles")
 
+			if os.environ.get("PORTAGE_CALLER","") == "repoman":
+				self.pusedict = {}
+				self.pkeywordsdict = {}
+				self.punmaskdict = {}
+			else:
 				pusedict = grabdict_package(
 					os.path.join(abs_user_config, "package.use"), recursive=1)
 				self.pusedict = {}
