@@ -1754,27 +1754,27 @@ class depgraph:
 							myprint="["+x[0]+" "+addl+"] "+indent+darkgreen(x[2])+" "+myoldbest+" "+verboseadd
 				p.append(myprint)
 
-			if ("--tree" not in myopts):
-				mysplit=portage.pkgsplit(x[2])
+			mysplit = portage.pkgsplit(x[2])
+			if "--tree" not in myopts and mysplit and len(mysplit) == 3 and \
+				mysplit[0] == "sys-apps/portage" and x[1] == "/":
 
-				# XXX mysplit _can_ be None.... Why?
-				if mysplit and (len(mysplit)==3):
-					if "--emptytree" not in myopts:
-						if mysplit[0]=="sys-apps/portage":
-							if ((mysplit[1]+mysplit[2]) != portage.VERSION) and \
-							   ("livecvsportage" not in portage.settings.features):
-								if mylist.index(x)<len(mylist)-1:
-									p.append(red("*** Portage will stop merging at this point and reload itself,"))
-									p.append(red("    then resume the merge."))
-									print
-					else:
-						if mysplit[0]=="sys-apps/portage" and ("--emptytree" in myopts):
-							if mysplit[1]+mysplit[2]!=portage.VERSION:
-								p.append(red("***")+" Please update portage to the above version before proceeding.")
-								p.append("    Failure to do so may result in failed or improper merges.")
-								p.append("    A simple '"+green("emerge -u portage")+"' is sufficient.")
-								p.append("")
-				del mysplit
+				if mysplit[2] == "r0":
+					myversion = mysplit[1]
+				else:
+					myversion = "%s-%s" % (mysplit[1], mysplit[2])
+
+				if myversion != portage.VERSION :
+					if "--emptytree" in myopts:
+						p.append(red("***")+" Please update portage to the above version before proceeding.")
+						p.append("    Failure to do so may result in failed or improper merges.")
+						p.append("    A simple '"+green("emerge portage")+"' is sufficient.")
+						p.append("")
+					elif mylist.index(x) < len(mylist) - 1 and \
+						"livecvsportage" not in portage.settings.features:
+						p.append(red("*** Portage will stop merging at this point and reload itself,"))
+						p.append(red("    then resume the merge."))
+						print
+			del mysplit
 
 		for x in p:
 			print x
@@ -2084,7 +2084,7 @@ class depgraph:
 
 					# Figure out if we need a restart.
 					mysplit=portage.pkgsplit(x[2])
-					if mysplit[0]=="sys-apps/portage":
+					if mysplit[0] == "sys-apps/portage" and x[1] == "/":
 						myver=mysplit[1]+"-"+mysplit[2]
 						if myver[-3:]=='-r0':
 							myver=myver[:-3]
