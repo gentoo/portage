@@ -19,7 +19,7 @@
  # before reporting errors to developers.
  #
 -# Please refer to the GCC manual for a list of possible values.
-+# -mtarget=<cpu-type> for PowerPC64 systems instructs the gcc compiler that
++# -mtune=<cpu-type> for PowerPC64 systems instructs the gcc compiler that
 +# it can use instruction scheduling specific for that type of processor
 +# specified
 +#
@@ -27,7 +27,7 @@
 +# to optimize your code for.   Code generated under those options will run best
 +# on that processor.
 +#
-+# -mcpu=<cpu-type>  and -mtarget=<cpu-type>  should both be specified
++# -mcpu=<cpu-type>  and -mtune=<cpu-type>  should both be specified
 +#
 +# GCC 3.x supports many ppc64 processor types including: power3, power4,
 +# 970 (aka G5), and power5.
@@ -47,11 +47,11 @@
 +# good selection.
 +#
 +#Example CFLAGS setting
-+#CFLAGS="-O2 -pipe -mcpu=970 -mtarget=970 -maltivec -mabi=altivec"
++#CFLAGS="-O2 -pipe -mcpu=970 -mtune=970 -maltivec -mabi=altivec"
 +#
 +#or
 +#
-+#CFLAGS="-O2 -pipe -mcpu=power3 -mtarget=power3"
++#CFLAGS="-O2 -pipe -mcpu=power3 -mtune=power3"
  #
  # If you set a CFLAGS above, then this line will set your default C++ flags to
  # the same settings.
