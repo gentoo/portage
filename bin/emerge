@@ -2077,6 +2077,10 @@ class depgraph:
 						retval=unmerge("clean", [xsplit[0]])
 						if not retval:
 							emergelog(" --- AUTOCLEAN: Nothing unmerged.")
+					else:
+						portage.writemsg_stdout(colorize("WARN", "WARNING:")
+							+ " AUTOCLEAN is disabled.  This can cause serious"
+							+ " problems due to overlapping packages.\n")
 
 					# Figure out if we need a restart.
 					mysplit=portage.pkgsplit(x[2])
@@ -3419,4 +3423,8 @@ else:
 		if portage.settings["AUTOCLEAN"] and "yes"==portage.settings["AUTOCLEAN"]:
 			print ">>> Auto-cleaning packages..."
 			unmerge("clean", ["world"])
+		else:
+			portage.writemsg_stdout(colorize("WARN", "WARNING:")
+				+ " AUTOCLEAN is disabled.  This can cause serious"
+				+ " problems due to overlapping packages.\n")
 	post_emerge()
