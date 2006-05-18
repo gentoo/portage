@@ -2074,7 +2074,11 @@ class depgraph:
 					if self.pkgsettings["AUTOCLEAN"]=="yes":
 						xsplit=portage.pkgsplit(x[2])
 						emergelog(" >>> AUTOCLEAN: "+xsplit[0])
-						retval=unmerge("clean", [xsplit[0]])
+						if x[1] == self.pkgsettings["ROOT"]:
+							retval = unmerge("clean", [xsplit[0]])
+						else:
+							retval = unmerge_overlapping(x[2], x[1],
+								self.pkgsettings, portage.db[x[1]]["vartree"])
 						if not retval:
 							emergelog(" --- AUTOCLEAN: Nothing unmerged.")
 					else:
@@ -2140,6 +2144,69 @@ class depgraph:
 				sys.exit(returnme)
 			else:
 				sys.exit(0)
+
+def unmerge_overlapping(pkg_key, myroot, mysettings, vartree):
+	"""Unmerge any packages that overlap with the given package (overlapping
+	packages fill the same SLOT).  Unlike emerge's unmerge() function, this
+	function does not assume that packages are to be unmerged from the target
+	ROOT.  This function is only needed in the case where ROOT!=/ and the
+	previous version of a build time dependency (that has been upgraded) needs
+	to be cleaned from / (instead of the target ROOT).  When the incorrect
+	assumptions in unmerge() have been fixed, this function can be removed."""
+
+	overlapping = []
+	ommitted_versions = []
+	mydbapi = vartree.dbapi
+	myslot = mydbapi.aux_get(pkg_key, ["SLOT"])[0]
+	mycp = portage.pkgsplit(pkg_key)[0]
+	for other_pkg in mydbapi.cp_list(mycp):
+		if other_pkg == pkg_key:
+			continue
+		other_slot = mydbapi.aux_get(other_pkg, ["SLOT"])[0]
+		if myslot == other_slot:
+			overlapping.append(other_pkg)
+		else:
+			ommitted_versions.append(other_pkg)
+	if overlapping:
+		def get_version(pkg_key):
+			cp, pv, rev = portage.pkgsplit(pkg_key)
+			if rev == "r0":
+				return pv
+			else:
+				return "%s-%s" % (pv, rev)
+		selected_versions = ",".join(map(get_version, overlapping))
+		protected_version = get_version(pkg_key)
+		if ommitted_versions:
+			ommitted_versions = ",".join(map(get_version, ommitted_versions))
+		else:
+			ommitted_versions = "none"
+		portage.writemsg_stdout("\n %s\n" % bold(mycp), noiselevel=-1)
+		portage.writemsg_stdout("selected: ".rjust(14) + selected_versions + \
+			"\n", noiselevel=-1)
+		portage.writemsg_stdout("protected: ".rjust(14) + protected_version + \
+			"\n", noiselevel=-1)
+		portage.writemsg_stdout("omitted: ".rjust(14) + ommitted_versions + \
+			"\n", noiselevel=-1)
+		portage.writemsg_stdout("\n>>>" + red("'Selected'") + \
+			" packages are slated for removal.\n", noiselevel=0)
+		portage.writemsg_stdout(">>>" + green("'Protected'") + " and " + \
+			green("'omitted'") + " packages will not be removed.\n\n",
+			noiselevel=0)
+		global CLEAN_DELAY
+		countdown(CLEAN_DELAY, ">>> Unmerging")
+		for other_pkg in overlapping:
+			portage.writemsg_stdout(">>> Unmerging %s...\n" % other_pkg ,
+				noiselevel=-1)
+			emergelog("=== Unmerging... (%s)" % other_pkg)
+			mysplit = other_pkg.split("/")
+			retval = portage.unmerge(mysplit[0], mysplit[1], myroot,
+				mysettings, mytrimworld=False, vartree=vartree)
+			if retval:
+				emergelog(" !!! unmerge FAILURE: " + other_pkg)
+			else:
+				emergelog(" >>> unmerge success: " + other_pkg)
+		return 1
+	return 0
 
 def unmerge(unmerge_action, unmerge_files):
 	candidate_catpkgs=[]
