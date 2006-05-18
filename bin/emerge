@@ -2074,11 +2074,11 @@ class depgraph:
 					if self.pkgsettings["AUTOCLEAN"]=="yes":
 						xsplit=portage.pkgsplit(x[2])
 						emergelog(" >>> AUTOCLEAN: "+xsplit[0])
-						if x[1] == self.pkgsettings["ROOT"]:
-							try:
-								retval = unmerge("clean", [xsplit[0]])
-							except portage_exception.PackageNotFound:
-								retval = 0
+						if x[1] == portage.settings["ROOT"]:
+							# Compare against portage.settings["ROOT"] because
+							# the value of self.pkgsettings["ROOT"] does not
+							# match the original value!
+							retval = unmerge("clean", [xsplit[0]])
 						else:
 							retval = unmerge_overlapping(x[2], x[1],
 								self.pkgsettings, portage.db[x[1]]["vartree"])
