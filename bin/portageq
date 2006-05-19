@@ -136,7 +136,14 @@ def match(argv):
 		sys.exit(2)
 	try:
 		print string.join(portage.db[argv[0]]["vartree"].dbapi.match(argv[1]),"\n")
-	except KeyError:
+	except ValueError, e:
+		# Multiple matches thrown from cpv_expand
+		pkgs = e.args[0]
+		# An error has occurred so we writemsg to stderr and exit nonzero.
+		portage.writemsg("The following packages available:\n", noiselevel=-1)
+		for pkg in pkgs:
+			portage.writemsg("* %s\n" % pkg, noiselevel=-1)
+		portage.writemsg("\nPlease use a more specific atom.\n", noiselevel=-1)
 		sys.exit(1)
 match.uses_root = True
 
