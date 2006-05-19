@@ -80,6 +80,16 @@ if "candy" in portage.settings.features:
 	spinner = spinner_msgs[int(time.time()*100)%len(spinner_msgs)]
 	update_spinner = update_scroll_spinner
 
+# To enhance usability, make some vars case insensitive by forcing them to
+# lower case.
+portage.settings.unlock()
+for myvar in ("AUTOCLEAN", "NOCOLOR"):
+	if myvar in portage.settings:
+		portage.settings[myvar] = portage.settings[myvar].lower()
+		portage.settings.backup_changes(myvar)
+portage.settings.lock()
+del myvar
+
 if (not sys.stdout.isatty()) or (portage.settings["NOCOLOR"] in ["yes","true"]):
 	nocolor()
 
