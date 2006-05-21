@@ -91,6 +91,7 @@ class Manifest2Entry(ManifestEntry):
 	def __str__(self):
 		myline = " ".join([self.type, self.name, str(self.hashes["size"])])
 		myhashkeys = self.hashes.keys()
+		myhashkeys.remove("size")
 		myhashkeys.sort()
 		for h in myhashkeys:
 			myline += " " + h + " " + str(self.hashes[h])
