@@ -1448,9 +1448,17 @@ class config:
 								self.configdict["pkg"][filename] = "-* "+mydata
 							else:
 								self.configdict["pkg"][filename] = mydata
-					except SystemExit, e:
-						raise
-					except:
+						# CATEGORY is important because it's used in doebuild
+						# to infer the cpv.  If it's corrupted, it leads to
+						# strange errors later on, so we'll validate it and
+						# print a warning if necessary.
+						if filename == "CATEGORY":
+							matchobj = re.match("[-a-zA-Z0-9_.+]+", mydata)
+							if not matchobj or matchobj.start() != 0 or \
+								matchobj.end() != len(mydata):
+								writemsg("!!! CATEGORY file is corrupt: %s\n" % \
+									os.path.join(infodir, filename))
+					except (OSError, IOError):
 						writemsg("!!! Unable to read file: %s\n" % infodir+"/"+filename)
 						pass
 			return 1
