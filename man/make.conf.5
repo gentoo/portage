@@ -240,6 +240,10 @@ Run package\-specific tests during each merge to help make sure
 the package compiled properly.  See \fItest\fR in \fBebuild\fR(1) 
 and \fIsrc_test()\fR in \fBebuild\fR(5).
 .TP
+.B userfetch
+When portage is run as root, drop privileges to portage:portage during the
+fetching of package sources.
+.TP
 .B userpriv
 Allow portage to drop root privledges and compile packages as 
 portage:portage without a sandbox (unless \fIusersandbox\fR is also used).
