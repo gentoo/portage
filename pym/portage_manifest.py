@@ -262,7 +262,7 @@ class Manifest(object):
 				if myname in self.fhashdict[mytype]:
 					myhashdict.setdefault(mytype, {})
 					myhashdict[mytype].setdefault(myname, {})
-					myhashdict[mytype][myname] = self.fhashdict[mytype][myname]
+					myhashdict[mytype][myname].update(self.fhashdict[mytype][myname])
 		return myhashdict
 
 	def _createDigestLines1(self, distlist, myhashdict):
