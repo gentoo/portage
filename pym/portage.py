@@ -2144,15 +2144,29 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					writemsg(">>> Downloading "+str(loc)+"\n")
 					myfetch=string.replace(locfetch,"${URI}",loc)
 					myfetch=string.replace(myfetch,"${FILE}",myfile)
+
+					spawn_keywords = {}
+					if "userfetch" in mysettings.features and \
+						os.getuid() == 0 and portage_gid and portage_uid:
+						spawn_keywords.update({
+							"uid"    : portage_uid,
+							"gid"    : portage_gid,
+							"groups" : [portage_gid],
+							"umask"  : 002})
+
 					try:
+
 						if mysettings.selinux_enabled():
 							con = selinux.getcontext()
 							con = string.replace(con, mysettings["PORTAGE_T"], mysettings["PORTAGE_FETCH_T"])
 							selinux.setexec(con)
-							myret = spawn(myfetch, mysettings, free=1, droppriv=("userfetch" in mysettings.features))
+
+						myret = portage_exec.spawn_bash(myfetch,
+							env=mysettings.environ(), **spawn_keywords)
+
+						if mysettings.selinux_enabled():
 							selinux.setexec(None)
-						else:
-							myret = spawn(myfetch, mysettings, free=1, droppriv=("userfetch" in mysettings.features))
+
 					finally:
 						#if root, -always- set the perms.
 						if os.path.exists(mysettings["DISTDIR"]+"/"+myfile) and (fetched != 1 or os.getuid() == 0) \
