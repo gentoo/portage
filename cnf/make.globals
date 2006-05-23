@@ -60,7 +60,7 @@ PORTAGE_RSYNC_OPTS="--recursive --links --safe-links --perms --times --compress 
 CONFIG_PROTECT="/etc"
 
 # Hide USE flags that can't be changed easily.
-USE_EXPAND_HIDDEN="ELIBC USERLAND"
+USE_EXPAND_HIDDEN="ELIBC KERNEL USERLAND"
 
 # Disable auto-use
 USE_ORDER="env:pkg:conf:defaults"
