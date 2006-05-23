@@ -368,6 +368,10 @@ This variable contains options that control the build behavior of several
 packages.  More information in \fBebuild\fR(5).  Possible USE values
 can be found in \fI/usr/portage/profiles/use.desc\fR.
 .TP
+\fBUSE_EXPAND_HIDDEN\fR = \fI[space delimited list of variable names]\fR
+Names of \fBUSE_EXPAND\fR variables that should not be shown in the verbose merge
+list output of the \fBemerge\fR(1) command.
+.TP
 \fBUSE_ORDER\fR = \fI"env:pkg:conf:auto:defaults"\fR
 Determines precedence for incrementing the setting of the USE variable.
 The above setting will cause the environment (env) to override per package (pkg)
