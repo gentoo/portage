@@ -423,6 +423,13 @@ def have_profile_dir(path, maxdepth=3):
 portdir=None
 portdir_overlay=None
 mydir=os.getcwd()
+if "PWD" in os.environ and os.environ["PWD"] != mydir and \
+	os.path.realpath(os.environ["PWD"]) == mydir:
+	# getcwd() returns the canonical path but that makes it hard for repoman to
+	# orient itself if the user has symlinks in their portage tree structure.
+	# We use os.environ["PWD"], if available, to get the non-canonical path of
+	# the current working directory (from the shell).
+	mydir = os.environ["PWD"]
 if mydir[-1] != "/":
 	mydir += "/"
 
