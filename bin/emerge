@@ -1670,6 +1670,8 @@ class depgraph:
 					use_expand.insert(0, "USE")
 					
 					for key in use_expand:
+						if key in use_expand_hidden:
+							continue
 						verboseadd += create_use_string(key.upper(), cur_iuse_map[key], cur_use_map[key],
 						                                old_iuse_map[key], old_use_map[key], is_new)
 
