@@ -231,6 +231,11 @@ stored for later use by various debuggers.
 Have portage react strongly to conditions that have the potential to be 
 dangerous (like missing or incorrect Manifests).
 .TP
+.B stricter
+Have portage react strongly to conditions that may conflict with system
+security provisions (for example textrels, executable stack).  Read about
+the \fIQA_STRICT_*\fR variables in \fBmake.conf\fR(5).
+.TP
 .B suidctl
 Before merging packages to the live filesystem, automatically strip setuid 
 bits from any file that is not listed in \fI/etc/portage/suidctl.conf\fR.
@@ -341,6 +346,18 @@ Defaults to no value.
 This variable contains the command used for resuming package sources that
 have been partially downloaded.  It should be defined using the same format
 as \fBFETCHCOMMAND\fR.
+.TP
+\fBQA_STRICT_EXECSTACK = \fI"set"\fR
+Set this to cause portage to ignore any \fIQA_EXECSTACK\fR override
+settings from ebuilds.  See also \fBebuild\fR(5).
+.TP
+\fBQA_STRICT_WX_LOAD = \fI"set"\fR
+Set this to cause portage to ignore any \fIQA_WX_LOAD\fR override
+settings from ebuilds.  See also \fBebuild\fR(5).
+.TP
+\fBQA_STRICT_TEXTRELS = \fI"set"\fR
+Set this to cause portage to ignore any \fIQA_TEXTREL\fR override
+settings from ebuilds.  See also \fBebuild\fR(5).
 .TP
 \fBROOT\fR = \fI[path]\fR
 Use \fBROOT\fR to specify the target root filesystem to be used for merging 

@@ -342,6 +342,38 @@ This variable should only be used when a package provides a virtual target.
 For example, blackdown-jdk and sun-jdk provide \fIvirtual/jdk\fR.  This
 allows for packages to depend on \fIvirtual/jdk\fR rather than on blackdown
 or sun specifically.
+.SH "QA CONTROL VARIABLES"
+.TP
+.B USAGE NOTES
+Several QA variables are provided which allow an ebuild to manipulate some
+of the QA checks performed by portage.  Use of these variables in ebuilds
+should be kept to an absolute minimum otherwise they defeat the purpose
+of the QA checks, and their use is subject to agreement of the QA team.
+They are primarily intended for use by ebuilds that install closed-source
+binary objects that cannot be altered.
+.br
+Note that objects that violate these rules may fail on some architectures.
+.TP
+\fBQA_TEXTRELS\fR
+This variable can be set to a list of file paths, relative to the image
+directory, of files that contain text relocations that cannot be eliminated.
+The paths may contain regular expressions.
+.br
+This variable is intended to be used on closed-source binary objects that
+cannot be altered.
+.TP
+\fBQA_EXECSTACK\fR
+This should contain a list of file paths, relative to the image directory, of
+objects that require executable stack in order to run.
+The paths may contain regular expressions.
+.br
+This variable is intended to be used on objects that truly need executable
+stack (i.e. not those marked to need it which in fact do not).
+.TP
+\fBQA_WX_LOAD\fR
+This should contain a list of file paths, relative to the image directory, of
+files that contain writable and executable segments.  These are rare.
+The paths may contain regular expressions.
 .SH "PORTAGE DECLARATIONS"
 .TP
 .B inherit

@@ -133,7 +133,7 @@ install_qa_check() {
 					[[ -n ${QA_STRICT_EXECSTACK} ]] && QA_EXECSTACK=""
 					qa_var="QA_WX_LOAD_${ARCH}"
 					[[ -n ${!qa_var} ]] && QA_WX_LOAD=${!qa_var}
-					[[ -n ${QA_STRICT_EXECSTACK} ]] && QA_WX_LOAD=""
+					[[ -n ${QA_STRICT_WX_LOAD} ]] && QA_WX_LOAD=""
 					export QA_EXECSTACK QA_WX_LOAD
 					f=$(scanelf -qyRF '"%e %p"' "${D}" | grep -v 'usr/lib/debug/')
 					;;
