@@ -1348,8 +1348,12 @@ if [ "$*" != "depend" ] && [ "$*" != "clean" ] && [ "$*" != "setup" ]; then
 			export PATH="/usr/lib/distcc/bin:${PATH}"
 			[ ! -z "${DISTCC_LOG}" ] && addwrite "$(dirname ${DISTCC_LOG})"
 		elif which distcc &>/dev/null; then
-			export CC="distcc $CC"
-			export CXX="distcc $CXX"
+			if ! hasq distcc $CC; then
+				export CC="distcc $CC"
+			fi
+			if ! hasq distcc $CXX; then
+				export CXX="distcc $CXX"
+			fi
 		fi
 	fi
 
