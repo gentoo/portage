@@ -44,7 +44,7 @@ install_qa_check() {
 		sleep 1
 	done
 
-	if type -p scanelf > /dev/null ; then
+	if type -p scanelf > /dev/null && ! hasq binchecks ${RESTRICT}; then
 		local qa_var insecure_rpath=0 tmp_quiet=${PORTAGE_QUIET}
 		
 		# display warnings when using stricter because we die afterwards
@@ -94,14 +94,8 @@ install_qa_check() {
 		qa_var="QA_TEXTRELS_${ARCH}"
 		[[ -n ${!qa_var} ]] && QA_TEXTRELS=${!qa_var}
 		[[ -n ${QA_STRICT_TEXTRELS} ]] && QA_TEXTRELS=""
-		f=()
-		for s in $(scanelf -qyRF '%t %p' "${D}" | grep -v ' usr/lib/debug/'); do
-			[[ ${s} == "TEXTREL" ]] && continue
-			for t in ${QA_TEXTRELS}; do
-				[[ ${t} == ${s} ]] && continue 2
-			done
-			f=( ${f} ${s} )
-		done
+		export QA_TEXTRELS
+		f=$(scanelf -qyRF '"%t %p"' "${D}" | grep -v 'usr/lib/debug/')
 		if [[ -n ${f} ]] ; then
 			scanelf -qyRF '%T %p' "${PORTAGE_BUILDDIR}"/ &> "${T}"/scanelf-textrel.log
 			vecho -ne '\a\n'
@@ -113,13 +107,14 @@ install_qa_check() {
 			vecho " For more information, see http://hardened.gentoo.org/pic-fix-guide.xml"
 			vecho " Please include this file in your report:"
 			vecho " ${T}/scanelf-textrel.log"
-			vecho "${f[@]}"
+			vecho "${f}"
 			vecho -ne '\a\n'
 			die_msg="${die_msg} textrels,"
 			sleep 1
 		fi
 
 		# Also, executable stacks only matter on linux (and just glibc atm ...)
+		f=""
 		case ${CTARGET:-${CHOST}} in
 			*-linux-gnu*)
 			# Check for files with executable stacks, but only on arches which
@@ -136,16 +131,12 @@ install_qa_check() {
 					qa_var="QA_EXECSTACK_${ARCH}"
 					[[ -n ${!qa_var} ]] && QA_EXECSTACK=${!qa_var}
 					[[ -n ${QA_STRICT_EXECSTACK} ]] && QA_EXECSTACK=""
-					f=$(scanelf -qyRF '%e %p' "${D}" | grep -v ' usr/lib/debug/' | \
-						gawk '
-						BEGIN { split("'"${QA_EXECSTACK}"'", ignore); }
-						{	for (idx in ignore)
-								if ($NF ~ "^"ignore[idx]"$")
-									next;
-							print;
-						}')
+					qa_var="QA_WX_LOAD_${ARCH}"
+					[[ -n ${!qa_var} ]] && QA_WX_LOAD=${!qa_var}
+					[[ -n ${QA_STRICT_EXECSTACK} ]] && QA_WX_LOAD=""
+					export QA_EXECSTACK QA_WX_LOAD
+					f=$(scanelf -qyRF '"%e %p"' "${D}" | grep -v 'usr/lib/debug/')
 					;;
-				*)	f="" ;;
 			esac
 			;;
 		esac
