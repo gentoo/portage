@@ -118,7 +118,7 @@ to the live filesystem. The process works as follows: first, the
 \fIpkg_preinst()\fR function (if specified) is run.  Then, the files
 are merged into the live filesystem, and the installed files' md5
 digests are recorded in
-\fI/var/db/pkg/${CATEOGRY}/${PN}\-[version\-rev]/CONTENTS\fR.  After
+\fI/var/db/pkg/${CATEGORY}/${PN}\-${PVR}/CONTENTS\fR.  After
 all the files have been merged, the \fIpkg_postinst()\fR function
 (if specified) is executed.
 .TP
