@@ -2907,7 +2907,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				if not os.path.exists(mysettings["PKGDIR"]+x):
 					os.makedirs(mysettings["PKGDIR"]+x)
 		# REBUILD CODE FOR TBZ2 --- XXXX
-		return spawnebuild(mydo,actionmap,mysettings,debug,logfile=logfile)
+		retval = spawnebuild(mydo, actionmap, mysettings, debug, logfile=logfile)
 	elif mydo=="qmerge":
 		#check to ensure install was run.  this *only* pops up when users forget it and are using ebuild
 		if not os.path.exists(mysettings["PORTAGE_BUILDDIR"]+"/.installed"):
@@ -2917,21 +2917,29 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		if "noclean" not in mysettings.features:
 			mysettings.features.append("noclean")
 		#qmerge is specifically not supposed to do a runtime dep check
-		return merge(mysettings["CATEGORY"], mysettings["PF"], mysettings["D"],
+		retval = merge(mysettings["CATEGORY"], mysettings["PF"], mysettings["D"],
 			os.path.join(mysettings["PORTAGE_BUILDDIR"], "build-info"), myroot,
 			mysettings, myebuild=mysettings["EBUILD"], mytree=tree,
 			mydbapi=mydbapi, vartree=vartree, prev_mtimes=prev_mtimes)
 	elif mydo=="merge":
-		retval=spawnebuild("install",actionmap,mysettings,debug,alwaysdep=1,logfile=logfile)
-		if retval:
-			return retval
-		return merge(mysettings["CATEGORY"], mysettings["PF"], mysettings["D"],
-			os.path.join(mysettings["PORTAGE_BUILDDIR"], "build-info"), myroot,
-			mysettings, myebuild=mysettings["EBUILD"], mytree=tree,
-			mydbapi=mydbapi, vartree=vartree, prev_mtimes=prev_mtimes)
+		retval = spawnebuild("install", actionmap, mysettings, debug,
+			alwaysdep=1, logfile=logfile)
+		if retval == os.EX_OK:
+			retval = merge(mysettings["CATEGORY"], mysettings["PF"],
+				mysettings["D"], os.path.join(mysettings["PORTAGE_BUILDDIR"],
+				"build-info"), myroot, mysettings,
+				myebuild=mysettings["EBUILD"], mytree=tree, mydbapi=mydbapi,
+				vartree=vartree, prev_mtimes=prev_mtimes)
 	else:
 		print "!!! Unknown mydo:",mydo
 		sys.exit(1)
+
+	# Make sure that DISTDIR is restored to it's normal value before we return!
+	if "PORTAGE_ACTUAL_DISTDIR" in mysettings:
+		mysettings["DISTDIR"] = mysettings["PORTAGE_ACTUAL_DISTDIR"]
+		del mysettings["PORTAGE_ACTUAL_DISTDIR"]
+
+	return retval
 
 expandcache={}
 
