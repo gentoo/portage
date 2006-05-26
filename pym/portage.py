@@ -1928,6 +1928,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					mode=0664, mask=02)
 			except portage_exception.FileNotFound:
 				pass
+			except portage_exception.PortageException, e:
+				writemsg("%s\n" % str(e), noiselevel=-1)
 		except (OSError,IOError),e:
 			# file does not exist
 			writemsg(_("!!! %(file)s not found in %(dir)s\n") % {"file":myfile, "dir":mysettings["DISTDIR"]})
