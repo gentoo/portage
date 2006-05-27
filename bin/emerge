@@ -133,7 +133,7 @@ def userquery(prompt, responses=None, colours=None):
 		while True:
 			response=raw_input("["+string.join([colours[i](responses[i]) for i in range(len(responses))],"/")+"] ")
 			for key in responses:
-				if response.upper()==key[:len(response)].upper():
+				if response and response.upper()==key[:len(response)].upper():
 					return key
 			print "Sorry, response '%s' not understood." % response,
 	except (EOFError, KeyboardInterrupt):
