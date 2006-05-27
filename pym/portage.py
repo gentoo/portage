@@ -5847,7 +5847,7 @@ class dblink:
 				mydbapi=self.vartree.dbapi, vartree=self.vartree)
 			# XXX: Decide how to handle failures here.
 			if a != 0:
-				writemsg("!!! FAILED prerm: "+str(a)+"\n")
+				writemsg("!!! FAILED prerm: "+str(a)+"\n", noiselevel=-1)
 				sys.exit(123)
 
 		if pkgfiles:
@@ -6009,7 +6009,7 @@ class dblink:
 			 vartree=self.vartree)
 			# XXX: Decide how to handle failures here.
 			if a != 0:
-				writemsg("!!! FAILED postrm: "+str(a)+"\n")
+				writemsg("!!! FAILED postrm: "+str(a)+"\n", noiselevel=-1)
 				sys.exit(123)
 			doebuild(myebuildpath, "cleanrm", self.myroot, self.settings,
 				tree="vartree", mydbapi=self.vartree.dbapi,
@@ -6238,7 +6238,7 @@ class dblink:
 
 		# XXX: Decide how to handle failures here.
 		if a != 0:
-			writemsg("!!! FAILED postinst: "+str(a)+"\n")
+			writemsg("!!! FAILED postinst: "+str(a)+"\n", noiselevel=-1)
 			sys.exit(123)
 
 		downgrade = False
@@ -6294,8 +6294,8 @@ class dblink:
 				writemsg(red("!!!        as existing is not capable of being stat'd. If you are using an\n"))
 				writemsg(red("!!!        experimental kernel, please boot into a stable one, force an fsck,\n"))
 				writemsg(red("!!!        and ensure your filesystem is in a sane state. ")+bold("'shutdown -Fr now'\n"))
-				writemsg(red("!!!        File:  ")+str(mysrc)+"\n")
-				writemsg(red("!!!        Error: ")+str(e)+"\n")
+				writemsg(red("!!!        File:  ")+str(mysrc)+"\n", noiselevel=-1)
+				writemsg(red("!!!        Error: ")+str(e)+"\n", noiselevel=-1)
 				sys.exit(1)
 			except Exception, e:
 				writemsg("\n")
@@ -6380,7 +6380,7 @@ class dblink:
 
 					if not os.access(mydest, os.W_OK):
 						pkgstuff = pkgsplit(self.pkg)
-						writemsg("\n!!! Cannot write to '"+mydest+"'.\n")
+						writemsg("\n!!! Cannot write to '"+mydest+"'.\n", noiselevel=-1)
 						writemsg("!!! Please check permissions and directories for broken symlinks.\n")
 						writemsg("!!! You may start the merge process again by using ebuild:\n")
 						writemsg("!!! ebuild "+self.settings["PORTDIR"]+"/"+self.cat+"/"+pkgstuff[0]+"/"+self.pkg+".ebuild merge\n")
