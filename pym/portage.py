@@ -2136,7 +2136,10 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 				# check if we can actually write to the directory/existing file.
 				if fetched!=2 and os.path.exists(mysettings["DISTDIR"]+"/"+myfile) != \
 					os.access(mysettings["DISTDIR"]+"/"+myfile, os.W_OK) and not fetch_to_ro:
-					writemsg(red("***")+" Lack write access to %s, failing fetch\n" % str(mysettings["DISTDIR"]+"/"+myfile))
+					writemsg( red("***") + \
+						" Lack write access to %s, failing fetch\n" % \
+						os.path.join(mysettings["DISTDIR"], myfile),
+						noiselevel=-1)
 					fetched=0
 					break
 				elif fetched!=2:
@@ -2249,7 +2252,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 		if listonly:
 			writemsg("\n")
 		if (fetched!=2) and not listonly:
-			writemsg("!!! Couldn't download "+str(myfile)+". Aborting.\n")
+			writemsg("!!! Couldn't download "+str(myfile)+". Aborting.\n",
+				noiselevel=-1)
 			return 0
 	return 1
 
