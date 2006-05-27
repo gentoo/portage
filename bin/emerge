@@ -403,7 +403,8 @@ if ("--pretend" in myopts) and ("--ask" in myopts):
 # forbid --ask when not in a terminal
 # note: this breaks `emerge --ask | tee logfile`, but that doesn't work anyway.
 if ("--ask" in myopts) and (not sys.stdin.isatty()):
-	portage.writemsg("!!! \"--ask\" should only be used in a terminal. Exiting.\n")
+	portage.writemsg("!!! \"--ask\" should only be used in a terminal. Exiting.\n",
+		noiselevel=-1)
 	sys.exit(1)
 
 # Set so that configs will be merged regardless of remembered status
@@ -913,8 +914,10 @@ class depgraph:
 		global olddbapi
 		self.pkgsettings = portage.config(clone=portage.settings)
 		if not self.pkgsettings["ARCH"]:
-			portage.writemsg(red("\a!!! ARCH is not set... Are you missing the /etc/make.profile symlink?\n"))
-			portage.writemsg(red("\a!!! Is the symlink correct? Is your portage tree complete?\n\n"))
+			portage.writemsg(red("\a!!! ARCH is not set... Are you missing the /etc/make.profile symlink?\n"),
+				noiselevel=-1)
+			portage.writemsg(red("\a!!! Is the symlink correct? Is your portage tree complete?\n\n"),
+				noiselevel=-1)
 			sys.exit(9)
 		self.applied_useflags = {}
 
@@ -1111,7 +1114,8 @@ class depgraph:
 					myfavorites.append(mykey)
 			else:
 				if not is_valid_package_atom(x):
-					portage.writemsg("\n\n!!! '%s' is not a valid package atom.\n" % x)
+					portage.writemsg("\n\n!!! '%s' is not a valid package atom.\n" % x,
+						noiselevel=-1)
 					portage.writemsg("!!! Please check ebuild(5) for full details.\n")
 					portage.writemsg("!!! (Did you specify a version but forget to prefix with '='?)\n")
 					return (0,[])
@@ -1137,14 +1141,14 @@ class depgraph:
 					portage.writemsg("!!! required dependencies. This is a security feature enabled by the admin\n")
 					portage.writemsg("!!! to aid in the detection of malicious intent.\n\n")
 					portage.writemsg("!!! THIS IS A POSSIBLE INDICATION OF TAMPERED FILES -- CHECK CAREFULLY.\n")
-					portage.writemsg("!!! Affected file: %s\n" % (e))
+					portage.writemsg("!!! Affected file: %s\n" % (e), noiselevel=-1)
 					sys.exit(1)
 				except portage_exception.InvalidSignature, e:
 					portage.writemsg("\n\n!!! An invalid gpg signature is preventing portage from calculating the\n")
 					portage.writemsg("!!! required dependencies. This is a security feature enabled by the admin\n")
 					portage.writemsg("!!! to aid in the detection of malicious intent.\n\n")
 					portage.writemsg("!!! THIS IS A POSSIBLE INDICATION OF TAMPERED FILES -- CHECK CAREFULLY.\n")
-					portage.writemsg("!!! Affected file: %s\n" % (e))
+					portage.writemsg("!!! Affected file: %s\n" % (e), noiselevel=-1)
 					sys.exit(1)
 				except SystemExit, e:
 					raise # Needed else can't exit
@@ -2003,7 +2007,8 @@ class depgraph:
 					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Cleaning ("+x[pkgindex]+"::"+y+")", short_msg=short_msg)
 					retval=portage.doebuild(y,"clean",myroot,self.pkgsettings,edebug,cleanup=1,tree="porttree")
 					if (retval is None):
-						portage_util.writemsg("Unable to run required binary.\n")
+						portage_util.writemsg("Unable to run required binary.\n",
+							noiselevel=-1)
 						sys.exit(127)
 					if retval:
 						sys.exit(retval)
@@ -2011,7 +2016,8 @@ class depgraph:
 					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Compiling/Packaging ("+x[pkgindex]+"::"+y+")", short_msg=short_msg)
 					retval=portage.doebuild(y,"package",myroot,self.pkgsettings,edebug,tree="porttree")
 					if (retval is None):
-						portage_util.writemsg("Unable to run required binary.\n")
+						portage_util.writemsg("Unable to run required binary.\n",
+							noiselevel=-1)
 						sys.exit(127)
 					if retval:
 						sys.exit(retval)
@@ -2033,7 +2039,8 @@ class depgraph:
 					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Cleaning ("+x[pkgindex]+"::"+y+")", short_msg=short_msg)
 					retval=portage.doebuild(y,"clean",myroot,self.pkgsettings,edebug,cleanup=1,tree="porttree")
 					if (retval is None):
-						portage_util.writemsg("Unable to run required binary.\n")
+						portage_util.writemsg("Unable to run required binary.\n",
+							noiselevel=-1)
 						sys.exit(127)
 					if retval:
 						sys.exit(retval)
@@ -2041,7 +2048,8 @@ class depgraph:
 					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Compiling/Merging ("+x[pkgindex]+"::"+y+")", short_msg=short_msg)
 					retval=portage.doebuild(y,"merge",myroot,self.pkgsettings,edebug,tree="porttree")
 					if (retval is None):
-						portage_util.writemsg("Unable to run required binary.\n")
+						portage_util.writemsg("Unable to run required binary.\n",
+							noiselevel=-1)
 						sys.exit(127)
 					if retval:
 						sys.exit(retval)
@@ -3078,7 +3086,8 @@ elif "config"==myaction:
 		print red("!!! config can only take a single package atom at this time\n")
 		sys.exit(1)
 	if not is_valid_package_atom(myfiles[0]):
-		portage.writemsg("!!! '%s' is not a valid package atom.\n" % myfiles[0])
+		portage.writemsg("!!! '%s' is not a valid package atom.\n" % myfiles[0],
+			noiselevel=-1)
 		portage.writemsg("!!! Please check ebuild(5) for full details.\n")
 		portage.writemsg("!!! (Did you specify a version but forget to prefix with '='?)\n")
 		sys.exit(1)
@@ -3226,7 +3235,8 @@ elif "unmerge"==myaction or "prune"==myaction or "clean"==myaction:
 		if 1==unmerge(myaction, myfiles):
 			post_emerge()
 	except portage_exception.PackageNotFound, e:
-		portage.writemsg("--- Couldn't find %s to unmerge.\n" % str(e))
+		portage.writemsg("--- Couldn't find %s to unmerge.\n" % str(e),
+			noiselevel=-1)
 		sys.exit(1)
 
 elif "depclean"==myaction:
@@ -3405,7 +3415,7 @@ else:
 			try:
 				retval, favorites = mydepgraph.select_files(myfiles)
 			except portage_exception.PackageNotFound, e:
-				portage.writemsg("\n!!! %s\n" % str(e))
+				portage.writemsg("\n!!! %s\n" % str(e), noiselevel=-1)
 				sys.exit(1)
 			if not retval:
 				sys.exit(1)
