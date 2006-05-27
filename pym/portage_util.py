@@ -159,7 +159,8 @@ def grabdict_package(myfilename, juststrings=0, recursive=0):
 	for x in pkgs:
 		if not isvalidatom(x):
 			del(pkgs[x])
-			writemsg("--- Invalid atom in %s: %s\n" % (myfilename, x))
+			writemsg("--- Invalid atom in %s: %s\n" % (myfilename, x),
+				noiselevel=-1)
 	return pkgs
 
 def grabfile_package(myfilename, compatlevel=0, recursive=0):
@@ -171,7 +172,8 @@ def grabfile_package(myfilename, compatlevel=0, recursive=0):
 		if pkg[0] == "*": # Kill this so we can deal the "packages" file too
 			pkg = pkg[1:]
 		if not isvalidatom(pkg):
-			writemsg("--- Invalid atom in %s: %s\n" % (myfilename, pkgs[x]))
+			writemsg("--- Invalid atom in %s: %s\n" % (myfilename, pkgs[x]),
+				noiselevel=-1)
 			del(pkgs[x])
 	return pkgs
 
@@ -232,7 +234,8 @@ def getconfig(mycfg,tolerant=0,allow_sourcing=False):
 				#unexpected end of file
 				#lex.error_leader(self.filename,lex.lineno)
 				if not tolerant:
-					writemsg("!!! Unexpected end of config file: variable "+str(key)+"\n")
+					writemsg("!!! Unexpected end of config file: variable "+str(key)+"\n",
+						noiselevel=-1)
 					raise Exception("ParseError: Unexpected EOF: "+str(mycfg)+": on/before line "+str(lex.lineno))
 				else:
 					return mykeys
@@ -240,7 +243,8 @@ def getconfig(mycfg,tolerant=0,allow_sourcing=False):
 				#invalid token
 				#lex.error_leader(self.filename,lex.lineno)
 				if not tolerant:
-					writemsg("!!! Invalid token (not \"=\") "+str(equ)+"\n")
+					writemsg("!!! Invalid token (not \"=\") "+str(equ)+"\n",
+						noiselevel=-1)
 					raise Exception("ParseError: Invalid token (not '='): "+str(mycfg)+": line "+str(lex.lineno))
 				else:
 					return mykeys
@@ -249,7 +253,8 @@ def getconfig(mycfg,tolerant=0,allow_sourcing=False):
 				#unexpected end of file
 				#lex.error_leader(self.filename,lex.lineno)
 				if not tolerant:
-					writemsg("!!! Unexpected end of config file: variable "+str(key)+"\n")
+					writemsg("!!! Unexpected end of config file: variable "+str(key)+"\n",
+						noiselevel=-1)
 					raise portage_exception.CorruptionError("ParseError: Unexpected EOF: "+str(mycfg)+": line "+str(lex.lineno))
 				else:
 					return mykeys
@@ -541,9 +546,10 @@ def apply_recursive_permissions(top, uid=-1, gid=-1,
 		# go unnoticed.  Callers can pass in a quiet instance.
 		def onerror(e):
 			if isinstance(e, OperationNotPermitted):
-				writemsg("Operation Not Permitted: %s\n" % str(e))
+				writemsg("Operation Not Permitted: %s\n" % str(e),
+					noiselevel=-1)
 			elif isinstance(e, FileNotFound):
-				writemsg("File Not Found: '%s'\n" % str(e))
+				writemsg("File Not Found: '%s'\n" % str(e), noiselevel=-1)
 			else:
 				raise
 
@@ -629,8 +635,9 @@ class atomic_ofstream(file):
 			except (OSError, IOError), e:
 				if canonical_path == filename:
 					raise
-				writemsg("!!! Failed to open file: '%s'\n" % tmp_name)
-				writemsg("!!! %s\n" % str(e))
+				writemsg("!!! Failed to open file: '%s'\n" % tmp_name,
+					noiselevel=-1)
+				writemsg("!!! %s\n" % str(e), noiselevel=-1)
 
 		self._real_name = filename
 		tmp_name = "%s.%i" % (filename, os.getpid())
