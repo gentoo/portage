@@ -2402,7 +2402,8 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 			mycommand = " ".join([MISC_SH_BINARY, "install_qa_check"])
 			qa_retval = spawn(mycommand, mysettings, debug=debug, logfile=logfile, **kwargs)
 			if qa_retval:
-				writemsg("!!! install_qa_check failed; exiting.\n")
+				writemsg("!!! install_qa_check failed; exiting.\n",
+					noiselevel=-1)
 			return qa_retval
 	return phase_retval
 
@@ -2436,7 +2437,8 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 	mycpv = cat+"/"+mypv
 	mysplit=pkgsplit(mypv,silent=0)
 	if mysplit is None:
-		writemsg("!!! Error: PF is null '%s'; exiting.\n" % mypv)
+		writemsg("!!! Error: PF is null '%s'; exiting.\n" % mypv,
+			noiselevel=-1)
 		return 1
 
 	if mydo != "depend":
@@ -2548,8 +2550,9 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 			if errno.ENOENT == oe.errno:
 				pass
 			elif errno.EPERM == oe.errno:
-				writemsg("%s\n" % oe)
-				writemsg("Operation Not Permitted: rmtree('%s')\n" % clean_dir)
+				writemsg("%s\n" % oe, noiselevel=-1)
+				writemsg("Operation Not Permitted: rmtree('%s')\n" % \
+					clean_dir, noiselevel=-1)
 				return 1
 			else:
 				raise
@@ -2561,8 +2564,9 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 			if errno.EEXIST == oe.errno:
 				pass
 			elif errno.EPERM == oe.errno:
-				writemsg("%s\n" % oe)
-				writemsg("Operation Not Permitted: makedirs('%s')\n" % dir_path)
+				writemsg("%s\n" % oe, noiselevel=-1)
+				writemsg("Operation Not Permitted: makedirs('%s')\n" % \
+					dir_path, noiselevel=-1)
 				return False
 			else:
 				raise
@@ -2585,10 +2589,10 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 			apply_secpass_permissions(mysettings[dir_key],
 			gid=portage_gid, mode=mode, mask=02)
 		except portage_exception.OperationNotPermitted, e:
-			writemsg("Operation Not Permitted: %s\n" % str(e))
+			writemsg("Operation Not Permitted: %s\n" % str(e), noiselevel=-1)
 			return 1
 		except portage_exception.FileNotFound, e:
-			writemsg("File Not Found: '%s'\n" % str(e))
+			writemsg("File Not Found: '%s'\n" % str(e), noiselevel=-1)
 			return 1
 
 	features_dirs = {
@@ -2640,9 +2644,11 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 			except portage_exception.PortageException, e:
 				mysettings.features.remove(myfeature)
 				mysettings["FEATURES"] = " ".join(mysettings.features)
-				writemsg("!!! %s\n" % str(e))
-				writemsg("!!! Failed resetting perms on %s='%s'\n" % (kwargs["basedir_var"], basedir))
-				writemsg("!!! Disabled FEATURES='%s'\n" % myfeature)
+				writemsg("!!! %s\n" % str(e), noiselevel=-1)
+				writemsg("!!! Failed resetting perms on %s='%s'\n" % \
+					(kwargs["basedir_var"], basedir), noiselevel=-1)
+				writemsg("!!! Disabled FEATURES='%s'\n" % myfeature,
+					noiselevel=-1)
 				time.sleep(5)
 
 	workdir_mode = 0700
@@ -2685,12 +2691,14 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 					apply_secpass_permissions(mysettings["PORT_LOGDIR"],
 					uid=portage_uid, gid=portage_gid, mode=02770)
 			except portage_exception.OperationNotPermitted, e:
-				writemsg("!!! Operation Not Permitted: %s\n" % str(e))
+				writemsg("!!! Operation Not Permitted: %s\n" % str(e),
+					noiselevel=-1)
 				logging_enabled = False
 
 		if not logging_enabled:
-			writemsg("!!! Permission issues with PORT_LOGDIR='%s'\n" % mysettings["PORT_LOGDIR"])
-			writemsg("!!! Disabling logging.\n")
+			writemsg("!!! Permission issues with PORT_LOGDIR='%s'\n" % \
+				mysettings["PORT_LOGDIR"], noiselevel=-1)
+			writemsg("!!! Disabling logging.\n", noiselevel=-1)
 			mysettings["PORT_LOGDIR"]=""
 
 def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
@@ -2717,16 +2725,18 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 	if mydo not in validcommands:
 		validcommands.sort()
-		writemsg("!!! doebuild: '%s' is not one of the following valid commands:" % mydo)
+		writemsg("!!! doebuild: '%s' is not one of the following valid commands:" % mydo,
+			noiselevel=-1)
 		for vcount in range(len(validcommands)):
 			if vcount%6 == 0:
-				writemsg("\n!!! ")
-			writemsg(string.ljust(validcommands[vcount], 11))
-		writemsg("\n")
+				writemsg("\n!!! ", noiselevel=-1)
+			writemsg(string.ljust(validcommands[vcount], 11), noiselevel=-1)
+		writemsg("\n", noiselevel=-1)
 		return 1
 
 	if not os.path.exists(myebuild):
-		writemsg("!!! doebuild: "+str(myebuild)+" not found for "+str(mydo)+"\n")
+		writemsg("!!! doebuild: %s not found for %s\n" % (myebuild, mydo),
+			noiselevel=-1)
 		return 1
 
 	mystatus = doebuild_environment(myebuild, mydo, myroot, mysettings, debug,
@@ -2749,13 +2759,11 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		retval = spawn(EBUILD_SH_BINARY+" depend",mysettings)
 		return retval
 
-	if not os.path.exists(mysettings["PORTAGE_TMPDIR"]):
-		writemsg("The directory specified in your PORTAGE_TMPDIR variable, '%s',\n" % mysettings["PORTAGE_TMPDIR"])
-		writemsg("does not exist.  Please create this directory or correct your PORTAGE_TMPDIR setting.\n")
-		return 1
-	elif not os.path.isdir(mysettings["PORTAGE_TMPDIR"]):
-		writemsg("portage: the directory specified in your PORTAGE_TMPDIR variable, '%s',\n" % mysettings["PORTAGE_TMPDIR"])
-		writemsg("is not a directory.  Please correct your PORTAGE_TMPDIR setting.\n")
+	if not os.path.isdir(mysettings["PORTAGE_TMPDIR"]):
+		writemsg("The directory specified in your PORTAGE_TMPDIR variable, '%s',\n" % \
+			mysettings["PORTAGE_TMPDIR"], noiselevel=-1)
+		writemsg("does not exist.  Please create this directory or correct your PORTAGE_TMPDIR setting.\n",
+			noiselevel=-1)
 		return 1
 
 	logfile=None
@@ -2792,7 +2800,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				"preinst_selinux_labels", "preinst_suid_scan"]
 			phase_retval = spawn(" ".join(myargs), mysettings, debug=debug, free=1, logfile=logfile)
 			if phase_retval != os.EX_OK:
-				writemsg("!!! post preinst failed; exiting.\n")
+				writemsg("!!! post preinst failed; exiting.\n", noiselevel=-1)
 		del mysettings["IMAGE"]
 		return phase_retval
 	elif mydo in ["prerm","postrm","postinst","config"]:
@@ -2845,7 +2853,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		elif "digest" in mysettings.features:
 			digestgen(aalist, mysettings, overwrite=0, myportdb=mydbapi)
 	except portage_exception.PermissionDenied, e:
-		writemsg("!!! %s\n" % str(e))
+		writemsg("!!! %s\n" % str(e), noiselevel=-1)
 		if mydo in ("digest", "manifest"):
 			return 1
 
