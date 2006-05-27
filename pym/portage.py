@@ -2351,7 +2351,8 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 	pkgdir = mysettings["O"]
 	manifest_path = os.path.join(pkgdir, "Manifest")
 	if not os.path.exists(manifest_path):
-		writemsg("!!! Manifest file not found: '%s'\n" % manifest_path)
+		writemsg("!!! Manifest file not found: '%s'\n" % manifest_path,
+			noiselevel=-1)
 		if strict:
 			return 0
 	mf = Manifest(pkgdir, mysettings["DISTDIR"])
@@ -2371,17 +2372,18 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 			mf.checkFileHashes(mf.findFile(f), f)
 			writemsg_stdout(okaymsg)
 	except KeyError, e:
-		writemsg("\n!!! Missing digest for %s\n" % str(e))
+		writemsg("\n!!! Missing digest for %s\n" % str(e), noiselevel=-1)
 		return 0
 	except portage_exception.FileNotFound, e:
-		writemsg("\n!!! A file listed in the Manifest could not be found: %s\n" % str(e))
+		writemsg("\n!!! A file listed in the Manifest could not be found: %s\n" % str(e),
+			noiselevel=-1)
 		return 0
 	except portage_exception.DigestException, e:
-		writemsg("\n!!! Digest verification failed:\n")
-		writemsg("!!! %s\n" % e.value[0])
-		writemsg("!!! Reason: %s\n" % e.value[1])
-		writemsg("!!! Got: %s\n" % e.value[2])
-		writemsg("!!! Expected: %s\n" % e.value[3])
+		writemsg("\n!!! Digest verification failed:\n", noiselevel=-1)
+		writemsg("!!! %s\n" % e.value[0], noiselevel=-1)
+		writemsg("!!! Reason: %s\n" % e.value[1], noiselevel=-1)
+		writemsg("!!! Got: %s\n" % e.value[2], noiselevel=-1)
+		writemsg("!!! Expected: %s\n" % e.value[3], noiselevel=-1)
 		return 0
 	return 1
 
