@@ -115,7 +115,7 @@ except ImportError, e:
 
 
 try:
-	import selinux
+	import portage_selinux as selinux
 except OSError, e:
 	writemsg("!!! SELinux not loaded: %s\n" % str(e), noiselevel=-1)
 	del e
@@ -1811,10 +1811,10 @@ class config:
 			self._selinux_enabled = 0
 			if "selinux" in self["USE"].split():
 				if "selinux" in globals():
-					if hasattr(selinux, "enabled"):
-						self._selinux_enabled = selinux.enabled
-					else:
+					if selinux.is_selinux_enabled() == 1:
 						self._selinux_enabled = 1
+					else:
+						self._selinux_enabled = 0
 				else:
 					writemsg("!!! SELinux module not found. Please verify that it was installed.\n",
 						noiselevel=-1)
