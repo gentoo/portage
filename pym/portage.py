@@ -2148,8 +2148,11 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						#we don't have the digest file, but the file exists.  Assume it is fully downloaded.
 						fetched=2
 				except (OSError,IOError),e:
-					writemsg("An exception was caught(1)...\nFailing the download: %s.\n" % (str(e)),
-						noiselevel=-1)
+					# ENOENT is expected from the stat call at the beginning of
+					# this try block.
+					if e.errno != errno.ENOENT:
+						writemsg("An exception was caught(1)...\nFailing the download: %s.\n" % (str(e)),
+							noiselevel=-1)
 					fetched=0
 
 				if not can_fetch:
@@ -2272,8 +2275,11 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 									fetched=2
 									break
 						except (OSError,IOError),e:
-							writemsg("An exception was caught(2)...\nFailing the download: %s.\n" % (str(e)),
-								noiselevel=-1)
+							# ENOENT is expected from the stat call at the
+							# beginning of this try block.
+							if e.errno != errno.ENOENT:
+								writemsg("An exception was caught(2)...\nFailing the download: %s.\n" % (str(e)),
+									noiselevel=-1)
 							fetched=0
 					else:
 						if not myret:
