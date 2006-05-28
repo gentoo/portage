@@ -197,6 +197,10 @@ in the same format as when using \fB\-\-pretend\fR; then ask whether to
 continue with the merge or abort.  Using \fB\-\-ask\fR is more efficient than 
 using \fB\-\-pretend\fR and then executing the same command without 
 \fB\-\-pretend\fR, as dependencies will only need to be calculated once.
+\fBWARNING: If the "Enter" key is pressed at the prompt (with no other input),
+it is interpreted as acceptance of the first choice.  Note that the input
+buffer is not cleared prior to the prompt, so an accidental press of the
+"Enter" key at any time prior to the prompt will be interpreted as a choice!\fR
 .TP
 .BR "\-\-buildpkg " (\fB\-b\fR)
 Tells emerge to build binary packages for all ebuilds processed in

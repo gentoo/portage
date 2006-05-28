@@ -109,7 +109,8 @@ def normpath(mystr):
 def userquery(prompt, responses=None, colours=None):
 	"""Displays a prompt and a set of responses, then waits for a response
 	which is checked against the responses and the first to match is
-	returned.
+	returned.  An empty response will match the first value in responses.  The
+	input buffer is *not* cleared prior to the prompt!
 
 	prompt: a String.
 	responses: a List of Strings.
@@ -133,7 +134,8 @@ def userquery(prompt, responses=None, colours=None):
 		while True:
 			response=raw_input("["+string.join([colours[i](responses[i]) for i in range(len(responses))],"/")+"] ")
 			for key in responses:
-				if response and response.upper()==key[:len(response)].upper():
+				# An empty response will match the first value in responses.
+				if response.upper()==key[:len(response)].upper():
 					return key
 			print "Sorry, response '%s' not understood." % response,
 	except (EOFError, KeyboardInterrupt):

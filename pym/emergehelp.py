@@ -157,7 +157,11 @@ def help(myaction,myopts,havecolor=1):
 		print "              ask whether to continue with the merge or abort. Using --ask is"
 		print "              more efficient than using --pretend and then executing the same"
 		print "              command without --pretend, as dependencies will only need to be"
-		print "              calculated once."
+		print "              calculated once. WARNING: If the \"Enter\" key is pressed at the"
+		print "              prompt (with no other input), it is interpreted as acceptance of"
+		print "              the first choice.  Note that the input buffer is not cleared prior"
+		print "              to the prompt, so an accidental press of the \"Enter\" key at any"
+		print "              time prior to the prompt will be interpreted as a choice!"
 		print
 		print "       "+green("--buildpkg")+" ("+green("-b")+" short option)"
 		print "              Tell emerge to build binary packages for all ebuilds processed"
