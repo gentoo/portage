@@ -116,7 +116,9 @@ an incremental variable.
 .TP
 .B assume-digests
 When commiting work to cvs with \fBrepoman\fR(1), assume that all existing 
-SRC_URI digests are correct.
+SRC_URI digests are correct.  This feature also affects digest generation via
+\fBebuild\fR(1) and \fBemerge\fR(1) (emerge generates digests only when the
+\fIdigest\fR feature is enabled).
 .TP
 .B autoaddcvs
 Causes portage to automatically try to add files to cvs that will have to be added 
@@ -143,7 +145,9 @@ A feature for developers that causes portage to enable all USE flags in SRC_URI
 when creating digests.
 .TP
 .B digest
-Autogenerate a digest for packages.
+Autogenerate digests for packages when running the \fBemerge\fR(1) command.  If
+the \fIassume-digests\fR feature is also enabled then existing SRC_URI digests
+will be reused whenever they are available.
 .TP
 .B distcc
 Enable portage support for the distcc package.
