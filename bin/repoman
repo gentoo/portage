@@ -192,7 +192,8 @@ qawarnings=[
 "metadata.bad",
 "virtual.versioned",
 "virtual.exists",
-"virtual.unavailable"
+"virtual.unavailable",
+"usage.obsolete"
 ]
 
 missingvars=["KEYWORDS","LICENSE","DESCRIPTION","HOMEPAGE","SLOT"]
