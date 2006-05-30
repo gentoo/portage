@@ -53,7 +53,10 @@ fi
 sync_local() {
 	echo Syncing local tree...
 	if type -p tarsync &> /dev/null; then
-		if ! tarsync "${FILE}" "${PORTDIR}" -v -s 1 -o ${PORTAGE_INST_UID:-0} -g ${PORTAGE_INST_GID:-0} -e /distfiles -e /packages -e /local; then
+		# tarsync doesn't take numeric uid/gid so we need to convert them.
+		local inst_user="$(python -c "import pwd; print pwd.getpwuid(int('${PORTAGE_INST_UID:-0}'))[0]")"
+		local inst_group="$(python -c "import grp; print grp.getgrgid(int('${PORTAGE_INST_GID:-0}'))[0]")"
+		if ! tarsync "${FILE}" "${PORTDIR}" -v -s 1 -o ${inst_user} -g ${inst_group} -e /distfiles -e /packages -e /local; then
 			echo "tarsync failed; tarball is corrupt?"
 			exit 1;
 		fi
