@@ -45,7 +45,18 @@ save_elf_debug() {
 	fi
 }
 
-for x in $(scanelf -yRBF%F "$@") $(for y in "$@"; do find "${y}" -type f -name '*.a' -print ; done); do
+# The existance of the section .symtab tells us that a binary is stripped.
+# We want to log already stripped binaries, as this may be a QA violation.
+# They prevent us from getting the splitdebug data.
+f="$(scanelf -yqRBF '#k%F' -k '!.symtab' "$@")"
+if [[ -n "${f}" ]] ; then
+	vecho -e "\n\aQA Notice: pre-stripped files found:\a"
+	vecho "${f}"
+	echo "${f}" > "${T}"/scanelf-already-stripped.log
+fi
+
+# Now we look for unstripped binaries.
+for x in $(scanelf -yqRBF '#k%F' -k '.symtab' "$@") $(for y in "$@"; do find "${y}" -type f -name '*.a' -print ; done); do
 	if [[ ${banner} -eq 1 ]] ; then
 		vecho "strip: ${STRIP} ${PORTAGE_STRIP_FLAGS}"
 		banner=0
