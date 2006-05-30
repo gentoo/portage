@@ -3256,6 +3256,12 @@ elif "depclean"==myaction:
 	print red("*** WARNING ***")+"  obvious mistakes. Packages can be manually added to the"
 	print red("*** WARNING ***")+"  world list by running "+green("`emerge --noreplace <atom>`")+"."
 	print red("*** WARNING ***")
+	print red("*** WARNING ***")+"  It is normal for packages that are masked or listed in package.provided"
+	print red("*** WARNING ***")+"  to be removed by depclean.  These are the most likely reasons that"
+	print red("*** WARNING ***")+"  depclean will remove a package even though it is in the world or system"
+	print red("*** WARNING ***")+"  package set.  In order to troubleshoot these types of problems, it is"
+	print red("*** WARNING ***")+"  often helpful to look at the output of "+green("`grep -r <atom> /etc/portage`")+"."
+	print red("*** WARNING ***")
 	print red("*** WARNING ***")+"  "+bold("Make sure you have a backup.")
 
 	syslist=getlist("system")
