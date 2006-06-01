@@ -2036,6 +2036,9 @@ class depgraph:
 						retval=portage.pkgmerge(mytbz2,myroot,self.pkgsettings)
 						if retval is None:
 							sys.exit(1)
+					elif "noclean" not in self.pkgsettings.features:
+						portage.doebuild(y, "clean", myroot, self.pkgsettings,
+							edebug, tree="porttree")
 				else:
 					short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Clean"
 					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Cleaning ("+x[pkgindex]+"::"+y+")", short_msg=short_msg)
