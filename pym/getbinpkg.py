@@ -5,7 +5,7 @@
 
 
 from output import *
-import htmllib,HTMLParser,string,formatter,sys,os,xpak,time,tempfile,base64
+import htmllib,HTMLParser,string,formatter,sys,os,xpak,time,tempfile,base64,urllib2
 
 try:
 	import cPickle
@@ -69,7 +69,7 @@ class ParseLinks(HTMLParser.HTMLParser):
 			for x in attrs:
 				if x[0] == 'href':
 					if x[1] not in self.PL_anchors:
-						self.PL_anchors.append(x[1])
+						self.PL_anchors.append(urllib2.unquote(x[1]))
 
 
 def create_conn(baseurl,conn=None):
