@@ -399,6 +399,14 @@ unpack() {
 					bzip2 -dc "${srcdir}${x}" > ${x%.*} || die "$myfail"
 				fi
 				;;
+			7Z|7z)
+				local my_output
+				my_output="$(7z x -y "${srcdir}/${x}")"
+				if [ $? -ne 0 ]; then
+					echo "${my_output}" >&2
+					die "$myfail"
+				fi
+				;;
 			RAR|rar)
 				unrar x -idq "${srcdir}/${x}" || die "$myfail"
 				;;
