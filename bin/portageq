@@ -145,6 +145,9 @@ def match(argv):
 			portage.writemsg("* %s\n" % pkg, noiselevel=-1)
 		portage.writemsg("\nPlease use a more specific atom.\n", noiselevel=-1)
 		sys.exit(1)
+	except KeyError, e:
+		portage.writemsg("%s\n" % str(e), noiselevel=-1)
+		sys.exit(1)
 match.uses_root = True
 
 
