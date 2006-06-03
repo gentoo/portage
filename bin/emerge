@@ -1518,7 +1518,9 @@ class depgraph:
 				return ret
 
 		if verbosity == 3:
-			overlays = string.split(portage.settings['PORTDIR_OVERLAY'])
+			overlays = self.pkgsettings["PORTDIR_OVERLAY"].split()
+			overlays_real = [os.path.realpath(t) \
+				for t in self.pkgsettings["PORTDIR_OVERLAY"].split()]
 
 		if "--tree" in myopts:
 			mylist.reverse()
@@ -1702,8 +1704,9 @@ class depgraph:
 					file_name=portage.portdb.findname(x[2])
 					if file_name: # It might not exist in the tree
 						dir_name=os.path.abspath(os.path.dirname(file_name)+"/../..")
-						if (overlays.count(dir_name)>0):
-							verboseadd+=teal("["+str(overlays.index(os.path.normpath(dir_name))+1)+"]")+" "
+						if (overlays_real.count(dir_name)>0):
+							verboseadd+=teal("["+str(overlays_real.index(
+								os.path.normpath(dir_name))+1)+"]")+" "
 							display_overlays=True
 					else:
 						verboseadd += "[No ebuild?]"
