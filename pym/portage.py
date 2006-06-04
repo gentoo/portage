@@ -1545,9 +1545,8 @@ class config:
 		for mykey in myincrementals:
 			if mykey=="USE":
 				mydbs=self.uvlist
-				if "auto" in self["USE_ORDER"].split(":"):
-					self.configdict["auto"] = portage_util.LazyItemsDict(self.configdict["auto"])
-					self.configdict["auto"].addLazySingleton("USE", autouse,
+				if "auto" in self["USE_ORDER"].split(":") and "settings" in globals():
+					self.configdict["auto"]["USE"] = autouse(
 						vartree(root=self["ROOT"], categories=self.categories),
 						use_cache=use_cache, mysettings=self)
 				else:
