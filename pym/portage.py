@@ -2320,7 +2320,7 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
 		myportdb = portdb
 	mf = Manifest(mysettings["O"], mysettings["DISTDIR"],
 		fetchlist_dict=FetchlistDict(mysettings["O"], mysettings, myportdb))
-	writemsg(">>> Creating Manifest for %s\n" % mysettings["O"])
+	writemsg_stdout(">>> Creating Manifest for %s\n" % mysettings["O"])
 	try:
 		mf.create(requiredDistfiles=myarchives, assumeDistHashesSometimes=True,
 			assumeDistHashesAlways=("assume-digests" in mysettings.features))
@@ -2329,6 +2329,28 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
 			noiselevel=-1)
 		return 0
 	mf.write(sign=False)
+	if "assume-digests" not in mysettings.features:
+		distlist = mf.fhashdict.get("DIST", {}).keys()
+		distlist.sort()
+		auto_assumed = []
+		for filename in distlist:
+			if not os.path.exists(os.path.join(mysettings["DISTDIR"], filename)):
+				auto_assumed.append(filename)
+		if auto_assumed:
+			mytree = os.path.realpath(
+				os.path.dirname(os.path.dirname(mysettings["O"])))
+			cp = os.path.sep.join(mysettings["O"].split(os.path.sep)[-2:])
+			pkgs = myportdb.cp_list(cp, mytree=mytree)
+			pkgs.sort()
+			writemsg_stdout("  digest.assumed" + \
+				output.colorize("WARN", str(len(auto_assumed)).rjust(18)) + "\n")
+			for pkg_key in pkgs:
+				fetchlist = myportdb.getfetchlist(pkg_key,
+					mysettings=mysettings, all=True, mytree=mytree)[1]
+				pv = pkg_key.split("/")[1]
+				for filename in auto_assumed:
+					if filename in fetchlist:
+						writemsg_stdout("   digest-%s::%s\n" % (pv, filename))
 	return 1
 
 def digestParseFile(myfilename, mysettings=None):
