@@ -149,7 +149,8 @@ qahelp={
 	"ebuild.output":"A simple sourcing of the ebuild produces output; this breaks ebuild policy.",
 	"ebuild.nesteddie":"Placing 'die' inside ( ) prints an error, but doesn't stop the ebuild.",
 	"variable.readonly":"Assigning a readonly variable",
-	"IUSE.invalid":"This build has a variable in IUSE that is not in the use.desc or use.local.desc file",
+	"LIVEVCS.stable":"This ebuild is a live checkout from a VCS but has stable keywords.",
+	"IUSE.invalid":"This ebuild has a variable in IUSE that is not in the use.desc or use.local.desc file",
 	"LICENSE.invalid":"This ebuild is listing a license that doesnt exist in portages license/ dir.",
 	"KEYWORDS.invalid":"This ebuild contains KEYWORDS that are not listed in profiles/arch.list or for which no valid profile was found",
 	"ebuild.nostable":"There are no ebuilds that are marked as stable for your ARCH",
@@ -1010,7 +1011,18 @@ for x in scanlist:
 			if not haskeyword:
 				stats["KEYWORDS.stupid"] += 1
 				fails["KEYWORDS.stupid"].append(x+"/"+y+".ebuild")
-		
+
+		"""
+		Ebuilds that inherit a "Live" eclasss (darcs,subversion,git,cvs,etc..) should
+		not be allowed to be marked stable
+		"""
+		if set(["darcs","cvs","subversion","git"]).intersection(myaux["INHERITED"].split()):
+			bad_stable_keywords = [keyword for keyword in myaux["KEYWORDS"].split() if not keyword.startswith("~")]
+			if bad_stable_keywords:
+				stats["LIVEVCS.stable"] += 1
+				fails["LIVEVCS.stable"].append(x+"/"+y+".ebuild with stable keywords:%s " % bad_stable_keywords)
+			del keyword, bad_stable_keywords		
+
 		if "--ignore-arches" in myoptions:
 			arches = [[repoman_settings["ARCH"], repoman_settings["ARCH"],
 				repoman_settings["ACCEPT_KEYWORDS"].split()]]
