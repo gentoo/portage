@@ -1025,8 +1025,14 @@ class config:
 				self.profiles = [os.path.realpath(self.profile_path)]
 				mypath = self.profiles[0]
 				while os.path.exists(os.path.join(mypath, "parent")):
+					parents_file = os.path.join(mypath, "parent")
+					parents = grabfile(parents_file)
+					if len(parents) != 1:
+						raise portage_exception.ParseError(
+							"Expected 1 parent and got %i: '%s'" % \
+							(len(parents), parents_file))
 					mypath = os.path.normpath(os.path.join(
-						mypath, grabfile(os.path.join(mypath, "parent"))[0]))
+						mypath, parents[0]))
 					if os.path.exists(mypath):
 						self.profiles.insert(0, mypath)
 
