@@ -1035,6 +1035,9 @@ class config:
 						mypath, parents[0]))
 					if os.path.exists(mypath):
 						self.profiles.insert(0, mypath)
+					else:
+						raise portage_exception.ParseError(
+							"Specified parent not found: '%s'" %  parents_file)
 
 			if os.environ.has_key("PORTAGE_CALLER") and os.environ["PORTAGE_CALLER"] == "repoman":
 				pass
