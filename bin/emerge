@@ -3043,6 +3043,8 @@ if myaction in ["sync","metadata"] and (not "--help" in myopts):
 
 	portage.portageexit()
 	reload(portage)
+	portage.global_updates(
+		portage.settings, portage.db, portage.mtimedb["updates"])
 	mybestpv=portage.portdb.xmatch("bestmatch-visible","sys-apps/portage")
 	mypvs=portage.best(portage.db[portage.root]["vartree"].dbapi.match("sys-apps/portage"))
 
