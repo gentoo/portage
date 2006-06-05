@@ -295,6 +295,7 @@ preinst_suid_scan() {
 					vecho ">>> Removing sbit on non registered ${i/${IMAGE}/}"
 					for x in 5 4 3 2 1 0; do echo -ne "\a"; sleep 0.25 ; done
 					vecho -ne "\a"
+					ls_ret=$(ls -ldh "${i}")
 					chmod ugo-s "${i}"
 					grep ^#${i/${IMAGE}/}$ ${sfconf} > /dev/null || {
 						# sandbox prevents us from writing directly
@@ -302,7 +303,6 @@ preinst_suid_scan() {
 						# can easly be bypassed using the addwrite() function
 						addwrite "${sfconf}"
 						vecho ">>> Appending commented out entry to ${sfconf} for ${PF}"
-						ls_ret=$(ls -ldh "${i}")
 						echo "## ${ls_ret%${IMAGE}*}${ls_ret#*${IMAGE}}" >> ${sfconf}
 						echo "#${i/${IMAGE}/}" >> ${sfconf}
 						# no delwrite() eh?
