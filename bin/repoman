@@ -196,7 +196,8 @@ qawarnings=[
 "virtual.versioned",
 "virtual.exists",
 "virtual.unavailable",
-"usage.obsolete"
+"usage.obsolete",
+"LIVEVCS.stable"
 ]
 
 missingvars=["KEYWORDS","LICENSE","DESCRIPTION","HOMEPAGE","SLOT"]
