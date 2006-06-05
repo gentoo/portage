@@ -8,6 +8,8 @@
 # that last one is tricky because multiple profiles need to be checked.
 
 import os,sys,shutil
+if not hasattr(__builtins__, "set"):
+	from sets import Set as set
 exename=os.path.basename(sys.argv[0])	
 os.environ["PORTAGE_CALLER"]="repoman"
 sys.path = ["/usr/lib/portage/pym"]+sys.path
