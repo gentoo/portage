@@ -526,63 +526,34 @@ def getgccversion():
 	return:  the current in-use gcc version
 	"""
 
-	gcc_env_dir = os.path.join('/', 'etc', 'env.d', 'gcc')
-	gcc_config_config = os.path.join(gcc_env_dir, 'config')
 	gcc_ver_command = 'gcc -dumpversion'
 	gcc_ver_prefix = 'gcc-'
 
 	gcc_not_found_error = red(
 	"!!! No gcc found. You probably need to 'source /etc/profile'\n" +
 	"!!! to update the environment of this terminal and possibly\n" +
-	"!!! other terminals also."
+	"!!! other terminals also.\n"
 	)
 
-	gcc_distcc_broken_error = green(
-	'!!! Relying on the shell to locate gcc, this may break\n' +
-	'!!! DISTCC, installing gcc-config and setting your current gcc\n' +
-	'!!! profile will fix this'
-	)
+	mystatus, myoutput = commands.getstatusoutput("gcc-config -c")
+	if mystatus == os.EX_OK and len(myoutput.split("-")) > 0:
+		return gcc_ver_prefix + myoutput.split("-")[-1]
 
-	def fallback():
+	mystatus, myoutput = commands.getstatusoutput("eselect compiler show")
+	if mystatus == os.EX_OK and len(myoutput.split("-")) > 0:
+		return gcc_ver_prefix + myoutput.split("-")[-1]
 
-		print >>sys.stderr, gcc_distcc_broken_error
+	mystatus, myoutput = commands.getstatusoutput(
+		portage.settings["CHOST"] + "-" + gcc_ver_command)
+	if mystatus == os.EX_OK:
+		return gcc_ver_prefix + myoutput
 
-		gccout = commands.getstatusoutput(gcc_ver_command)
+	mystatus, myoutput = commands.getstatusoutput(gcc_ver_command)
+	if mystatus == os.EX_OK:
+		return gcc_ver_prefix + myoutput
 
-		if gccout[0] != 0:
-			print >>sys.stderr, gcc_not_found_error
-			gccver = "[unavailable]"
-		else:
-			gccver = gcc_ver_prefix + gccout[1]
-
-		return gccver
-
-	if os.path.isfile(gcc_config_config):
-		try:
-			gccver_str = open(gcc_config_config).read().strip()
-			gccver = gcc_ver_prefix + string.join(gccver_str.split('-')[4:], '-')
-		except IndexError:
-			gccver = fallback()
-
-	else:
-		import glob
-		dir_l = glob.glob(os.path.join(gcc_env_dir, '*-*'))
-
-		if len(dir_l) == 1:
-			try:
-				gccver = gcc_ver_prefix + dir_l[0].split('-')[-1]
-			except IndexError:
-				gccver = fallback()
-
-		else:
-			# There was no "config" file in /etc/env.d/gcc and there was more
-			# than one profile in /etc/env.d/gcc so we can't actively
-			# determine what version of gcc we are using so we fall back on the
-			# old way that breaks distcc
-
-			gccver = fallback()
-
-	return gccver
+	portage.writemsg(gcc_not_found_error, noiselevel=-1)
+	return "[unavailable]"
 
 def getportageversion():
 	try:
