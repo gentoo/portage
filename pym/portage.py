@@ -2860,8 +2860,9 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				"%s-%s.log" % (str(vartree.dbapi.get_counter_tick_core("/")),
 				mysettings["PF"]))
 
-	if logfile and mydo in actionmap_deps and "PORTAGE_CALLER" in os.environ \
-		and os.environ["PORTAGE_CALLER"] == "emerge":
+	if logfile and "PORTAGE_CALLER" in os.environ and \
+		os.environ["PORTAGE_CALLER"] == "emerge" and \
+		mydo in ["merge"] + actionmap_deps.keys():
 		# Increment the counter so that each new build attempt gets it's
 		# own unique log file (portage uses the counter for nothing more than
 		# log handling, though it can be used to determine merge order).
