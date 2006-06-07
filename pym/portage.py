@@ -2860,6 +2860,16 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				"%s-%s.log" % (str(vartree.dbapi.get_counter_tick_core("/")),
 				mysettings["PF"]))
 
+	if logfile and mydo in actionmap_deps and "PORTAGE_CALLER" in os.environ \
+		and os.environ["PORTAGE_CALLER"] == "emerge":
+		# Increment the counter so that each new build attempt gets it's
+		# own unique log file (portage uses the counter for nothing more than
+		# log handling, though it can be used to determine merge order).
+		while os.path.exists(logfile):
+			logfile = os.path.join(mysettings["PORT_LOGDIR"],
+				"%s-%s.log" % (str(vartree.dbapi.counter_tick("/") + 1),
+				mysettings["PF"]))
+
 	# if any of these are being called, handle them -- running them out of the sandbox -- and stop now.
 	if mydo in ["clean","cleanrm"]:
 		return spawn(EBUILD_SH_BINARY+" clean",mysettings,debug=debug,free=1,logfile=None)
