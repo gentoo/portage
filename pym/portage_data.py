@@ -31,11 +31,14 @@ if not lchown:
 		# Included in python-2.3
 		lchown = os.lchown
 	else:
-		import missingos
-		lchown = missingos.lchown
+		try:
+			import missingos
+			lchown = missingos.lchown
+		except ImportError:
+			def lchown(*pos_args, **key_args):
+				writemsg(red("!!!") + " It seems that os.lchown does not" + \
+					" exist.  Please rebuild python.\n", noiselevel=-1)
 
-
-	
 os.environ["USERLAND"]=userland
 
 # Portage has 3 security levels that depend on the uid and gid of the main
