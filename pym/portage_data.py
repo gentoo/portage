@@ -38,6 +38,7 @@ if not lchown:
 			def lchown(*pos_args, **key_args):
 				writemsg(red("!!!") + " It seems that os.lchown does not" + \
 					" exist.  Please rebuild python.\n", noiselevel=-1)
+			lchown()
 
 os.environ["USERLAND"]=userland
 
