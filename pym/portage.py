@@ -3044,6 +3044,19 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		mysettings["DISTDIR"] = mysettings["PORTAGE_ACTUAL_DISTDIR"]
 		del mysettings["PORTAGE_ACTUAL_DISTDIR"]
 
+	if retval != os.EX_OK and tree == "porttree":
+		for i in xrange(len(mydbapi.porttrees)-1):
+			t = mydbapi.porttrees[i+1]
+			if myebuild.startswith(t):
+				# Display the non-cannonical path, in case it's different, to
+				# prevent confusion.
+				overlays = mysettings["PORTDIR_OVERLAY"].split()
+				try:
+					writemsg("!!! This ebuild is from an overlay: '%s'\n" % \
+						overlays[i], noiselevel=-1)
+				except KeyError:
+					pass
+
 	return retval
 
 expandcache={}
