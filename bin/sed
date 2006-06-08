@@ -2,7 +2,7 @@
 # Copyright 2006 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
  
-scriptpath=$_
+scriptpath="${BASH_SOURCE[0]}"
 
 if [[ -n ${ESED} ]]; then
 	exec ${ESED} "$@"
