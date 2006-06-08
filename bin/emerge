@@ -1853,6 +1853,10 @@ class depgraph:
 					print   "!!!        Please use 'emerge --pretend' to determine blockers."
 					print
 					if ("--pretend" not in myopts):
+						try:
+							del portage.mtimedb["resume"]
+						except KeyError:
+							pass
 						sys.exit(1)
 
 		#buildsyspkg: I need mysysdict also on resume (moved from the else block)
