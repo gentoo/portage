@@ -29,6 +29,7 @@ packages
 packages.build
 package.provided
 parent
+profile.bashrc
 use.defaults
 use.mask
 virtuals
@@ -228,6 +229,11 @@ This contains a path to the parent profile.  It may be either relative or
 absolute.  The paths will be relative to the location of the profile.  Most 
 commonly this file contains '..' to indicate the directory above.  Utilized 
 only in cascading profiles.
+.TP
+.BR profile.bashrc
+If needed, this file can be used to set up a special environment for ebuilds,
+different from the standard root environment.  The syntax is the same as for
+any other bash script.
 .TP
 .BR use.defaults
 Here we DO NOT define the default USE flags, but the so\-called auto\-USE 
