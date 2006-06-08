@@ -1750,10 +1750,6 @@ class config:
 			elif x.has_key(mykey):
 				match = x[mykey]
 				break
-
-		if mykey == "CONFIG_PROTECT_MASK":
-			match += " /etc/env.d"
-
 		return match
 
 	def has_key(self,mykey):
