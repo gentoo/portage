@@ -1336,23 +1336,6 @@ class config:
 			if "usersandbox" in self.features:
 				self.features.remove("usersandbox")
 
-		if "debug-build" in self.features:
-			# the profile should be setting these, but just in case ...
-			if not len(self["DEBUG_CFLAGS"]):
-				self["DEBUG_CFLAGS"] = "-g -O"
-				self.backup_changes("DEBUG_CFLAGS")
-			if not len(self["DEBUG_CXXFLAGS"]):
-				self["DEBUG_CXXFLAGS"] = self["DEBUG_CFLAGS"]
-				self.backup_changes("DEBUG_CXXFLAGS")
-			# replace user vars with debug version
-			for var in ["CFLAGS","CXXFLAGS","LDFLAGS"]:
-				self[var]=self["DEBUG_"+var]
-				self.backup_changes(var)
-			# if user has splitdebug, the debug info will be auto saved for
-			# gdb, otherwise we want to keep the binaries from being stripped
-			if not "splitdebug" in self.features:
-				self.features.append("nostrip")
-
 		self.features.sort()
 		self["FEATURES"] = " ".join(self.features)
 		self.backup_changes("FEATURES")
