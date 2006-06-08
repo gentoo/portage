@@ -3056,6 +3056,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 						overlays[i], noiselevel=-1)
 				except KeyError:
 					pass
+				break
 
 	return retval
 
