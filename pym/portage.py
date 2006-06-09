@@ -3054,7 +3054,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				try:
 					writemsg("!!! This ebuild is from an overlay: '%s'\n" % \
 						overlays[i], noiselevel=-1)
-				except KeyError:
+				except IndexError:
 					pass
 				break
 
