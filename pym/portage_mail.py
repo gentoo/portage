@@ -61,16 +61,16 @@ def send_mail(mysettings, message):
 	else:
 		myrecipient = mysettings["PORTAGE_ELOG_MAILURI"]
 	
+	myfrom = message.get("From")
+		
 	# user wants to use a sendmail binary instead of smtp
 	if mymailhost[0] == os.sep and os.path.exists(mymailhost):
-		fd = os.popen(mymailhost+" "+myrecipient, "w")
+		fd = os.popen(mymailhost+" -f "+myfrom+" "+myrecipient, "w")
 		fd.write(mymessage.as_string())
 		if fd.close() != None:
 			sys.stderr.write("!!! %s returned with a non-zero exit code. This generally indicates an error.\n" % mymailhost)
 	else:
 		try:
-			myfrom = message.get("From")
-		
 			if int(mymailport) > 100000:
 				myconn = smtplib.SMTP(mymailhost, int(mymailport) - 100000)
 				myconn.starttls()
