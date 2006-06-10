@@ -1020,7 +1020,7 @@ for x in scanlist:
 		not be allowed to be marked stable
 		"""
 		if set(["darcs","cvs","subversion","git"]).intersection(myaux["INHERITED"].split()):
-			bad_stable_keywords = [keyword for keyword in myaux["KEYWORDS"].split() if not keyword.startswith("~")]
+			bad_stable_keywords = [keyword for keyword in myaux["KEYWORDS"].split() if not keyword.startswith("~") and not keyword.startswith("-")]
 			if bad_stable_keywords:
 				stats["LIVEVCS.stable"] += 1
 				fails["LIVEVCS.stable"].append(x+"/"+y+".ebuild with stable keywords:%s " % bad_stable_keywords)
