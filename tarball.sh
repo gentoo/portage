@@ -1,5 +1,5 @@
 #!/bin/bash
-# $Id: /var/cvsroot/gentoo-src/portage/Attic/tarball.sh,v 1.181.2.2 2005/05/01 16:04:51 jstubbs Exp $
+# $Id$
 
 if [ -z "$1" ]; then
 	echo

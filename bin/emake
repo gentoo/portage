@@ -1,7 +1,7 @@
 #!/bin/bash
 # Copyright 1999-2006 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: /var/cvsroot/gentoo-src/portage/bin/emake,v 1.9.2.1 2005/05/18 15:19:52 jstubbs Exp $
+# $Id$
 #
 # emake: Supplies some default parameters to GNU make. At the moment the
 #        only parameter supplied is -jN, where N is a number of

@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # Copyright 1999-2006 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: /var/cvsroot/gentoo-src/portage/bin/fix-db.py,v 1.8 2004/10/11 04:01:00 jstubbs Exp $
+# $Id$
 
 import os,sys,re
 sys.path = ["/usr/lib/portage/pym"]+sys.path

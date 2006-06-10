@@ -1,7 +1,7 @@
 #!/usr/bin/python -O
 # Copyright 1999-2006 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: /var/cvsroot/gentoo-src/portage/bin/portageq,v 1.13.2.1 2005/04/12 12:23:41 jstubbs Exp $
+# $Id$
 
 import sys, os
 os.environ["PORTAGE_CALLER"] = "portageq"

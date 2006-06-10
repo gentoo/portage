@@ -1,7 +1,7 @@
 #!/bin/bash
 # Copyright 1999-2006 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: /var/cvsroot/gentoo-src/portage/bin/newbin,v 1.7 2004/10/04 13:56:50 vapier Exp $
+# $Id$
 
 if [[ -z ${T} ]] || [[ -z ${2} ]] ; then
 	echo "$0: Need two arguments, old file and new file" 1>&2

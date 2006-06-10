@@ -37,6 +37,7 @@ def process(mysettings, cpv, logentries, fulltext):
 		mymessage.set_unixfrom(myfrom)
 		mymessage.set_payload(fulltext)
 		mymessage["To"] = myrecipient
+		mymessage["From"] = myfrom
 		
 		mysubject = mysettings["PORTAGE_ELOG_MAILSUBJECT"]
 		mysubject = mysubject.replace("${PACKAGE}", cpv)

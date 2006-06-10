@@ -1,7 +1,7 @@
 # Copyright: 2005 Gentoo Foundation
 # Author(s): Brian Harring (ferringb@gentoo.org)
 # License: GPL2
-# $Id: metadata.py 1964 2005-09-03 00:16:16Z ferringb $
+# $Id$
 
 import os, stat, types
 import flat_hash

@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # Copyright 1999-2006 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: /var/cvsroot/gentoo-src/portage/bin/chkcontents,v 1.11 2004/10/04 13:56:50 vapier Exp $
+# $Id$
 
 # Very simple program to compare the md5sums of a package as listed
 # in VDB_PATH/category/package/CONTENTS with the md5sums of the

@@ -1,7 +1,7 @@
 # portage_checksum.py -- core Portage functionality
 # Copyright 1998-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: /var/cvsroot/gentoo-src/portage/pym/portage_checksum.py,v 1.10.2.2 2005/08/10 05:42:03 ferringb Exp $
+# $Id$
 
 
 from portage_const import PRIVATE_PATH,PRELINK_BINARY,HASHING_BLOCKSIZE
