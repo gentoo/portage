@@ -186,12 +186,10 @@ install_qa_check() {
 	local find_log="${T}/find-portage-log"
 	find "${D}"/ -user portage -print0 > "${find_log}"
 	if [[ -s ${find_log} ]] ; then
-		ewarn "QA Notice: Files were installed with user portage!"
 		xargs -0 chown -h ${PORTAGE_INST_UID:-0} < "${find_log}"
 	fi
 	find "${D}"/ -group portage -print0 > "${find_log}"
 	if [[ -s ${find_log} ]] ; then
-		ewarn "QA Notice: Files were installed with group portage!"
 		xargs -0 chgrp -h ${PORTAGE_INST_GID:-0} < "${find_log}"
 	fi
 	rm -f "${find_log}"
