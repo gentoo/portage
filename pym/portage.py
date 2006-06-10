@@ -6066,11 +6066,7 @@ class dblink:
 					if not stat.S_ISFIFO(lstatobj[stat.ST_MODE]):
 						writemsg_stdout("--- !fif   %s %s\n" % ("fif", obj))
 						continue
-					try:
-						os.unlink(obj)
-					except (OSError,IOError),e:
-						pass
-					writemsg_stdout("<<<        %s %s\n" % ("fif",obj))
+					writemsg_stdout("---        %s %s\n" % ("fif",obj))
 				elif pkgfiles[objkey][0]=="dev":
 					writemsg_stdout("---        %s %s\n" % ("dev",obj))
 
