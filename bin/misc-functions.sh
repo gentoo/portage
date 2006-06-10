@@ -48,7 +48,7 @@ install_qa_check() {
 		local qa_var insecure_rpath=0 tmp_quiet=${PORTAGE_QUIET}
 		
 		# display warnings when using stricter because we die afterwards
-		if has stricter ${FEATURES}; then
+		if has stricter ${FEATURES} && ! has stricter ${RESTRICT}; then
 			unset PORTAGE_QUIET
 		fi
 		
@@ -65,7 +65,7 @@ install_qa_check() {
 			vecho " Summary: $CATEGORY/$PN: insecure RPATH ${f}"
 			vecho "${f}"
 			vecho -ne '\a\n'
-			if has stricter ${FEATURES}; then
+			if has stricter ${FEATURES} && ! has stricter ${RESTRICT}; then
 				insecure_rpath=1
 			else
 				vecho "Auto fixing rpaths for ${f}"
