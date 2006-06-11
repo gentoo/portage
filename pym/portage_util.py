@@ -476,8 +476,11 @@ def apply_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 		try:
 			stat_cached = os.stat(filename)
 		except OSError, oe:
+			func_call = "stat('%s')" % filename
 			if oe.errno == errno.EPERM:
-				raise OperationNotPermitted("stat('%s')" % filename)
+				raise OperationNotPermitted(func_call)
+			elif oe.errno == errno.EACCES:
+				raise PermissionDenied(func_call)
 			elif oe.errno == errno.ENOENT:
 				raise FileNotFound(filename)
 			else:
@@ -489,8 +492,13 @@ def apply_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 			os.chown(filename, uid, gid)
 			modified = True
 		except OSError, oe:
+			func_call = "chown('%s', %i, %i)" % (filename, uid, gid)
 			if oe.errno == errno.EPERM:
-				raise OperationNotPermitted("chown('%s', %i, %i)" % (filename, uid, gid))
+				raise OperationNotPermitted(func_call)
+			elif oe.errno == errno.EACCES:
+				raise PermissionDenied(func_call)
+			elif oe.errno == errno.EROFS:
+				raise ReadOnlyFileSystem(func_call)
 			elif oe.errno == errno.ENOENT:
 				raise FileNotFound(filename)
 			else:
@@ -520,6 +528,8 @@ def apply_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 			func_call = "chmod('%s', %s)" % (filename, oct(new_mode))
 			if oe.errno == errno.EPERM:
 				raise OperationNotPermitted(func_call)
+			elif oe.errno == errno.EACCES:
+				raise PermissionDenied(func_call)
 			elif oe.errno == errno.EROFS:
 				raise ReadOnlyFileSystem(func_call)
 			elif oe.errno == errno.ENOENT:
@@ -589,8 +599,11 @@ def apply_secpass_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 		try:
 			stat_cached = os.stat(filename)
 		except OSError, oe:
+			func_call = "stat('%s')" % filename
 			if oe.errno == errno.EPERM:
-				raise OperationNotPermitted("stat('%s')" % filename)
+				raise OperationNotPermitted(func_call)
+			elif oe.errno == errno.EACCES:
+				raise PermissionDenied(func_call)
 			elif oe.errno == errno.ENOENT:
 				raise FileNotFound(filename)
 			else:
