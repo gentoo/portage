@@ -4529,7 +4529,7 @@ class vardbapi(dbapi):
 			if os.path.exists(newpath):
 				#dest already exists; keep this puppy where it is.
 				continue
-			portage_exec.spawn((MOVE_BINARY, origpath, newpath), env=os.environ)
+			os.rename(origpath, newpath)
 
 			# We need to rename the ebuild now.
 			old_eb_path = newpath+"/"+mycpsplit[1]    +"-"+mycpsplit[2]
