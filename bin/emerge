@@ -2608,9 +2608,6 @@ if myaction in ["sync","metadata"] and (not "--help" in myopts):
 	syncuri=string.rstrip(portage.settings["SYNC"])
 	os.umask(0022)
 	if myaction == "metadata":
-		if "--ask" in myopts:
-			if userquery("Are you sure?") == "No":
-				sys.exit(1)
 		print "skipping sync"
 		updatecache_flg = True
 		tmpservertimestampfile = None
