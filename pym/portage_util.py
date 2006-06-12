@@ -3,6 +3,7 @@
 # $Id$
 
 from portage_exception import PortageException, FileNotFound, OperationNotPermitted, ReadOnlyFileSystem
+import portage_exception
 
 import sys,string,shlex,os,errno
 try:
@@ -722,10 +723,15 @@ def ensure_dirs(dir_path, *args, **kwargs):
 		os.makedirs(dir_path)
 		created_dir = True
 	except OSError, oe:
+		func_call = "makedirs('%s')" % dir_path
 		if errno.EEXIST == oe.errno:
 			pass
-		elif  oe.errno in (errno.EPERM, errno.EROFS):
-			raise portage_exception.OperationNotPermitted(str(oe))
+		elif oe.errno == errno.EPERM:
+			raise OperationNotPermitted(func_call)
+		elif oe.errno == errno.EACCES:
+			raise PermissionDenied(func_call)
+		elif oe.errno == errno.EROFS:
+			raise ReadOnlyFileSystem(func_call)
 		else:
 			raise
 	perms_modified = apply_permissions(dir_path, *args, **kwargs)
