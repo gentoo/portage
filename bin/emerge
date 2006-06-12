@@ -2905,11 +2905,6 @@ if myaction in ["sync","metadata"] and (not "--help" in myopts):
 		print "!!! rsync setting: ",syncuri,"not recognized; exiting."
 		sys.exit(1)
 
-	try: # Prevent users from affecting ebuild.sh.
-		os.close(sys.stdin.fileno())
-	except OSError, e:
-		pass
-
 	if updatecache_flg and  \
 		myaction != "metadata" and \
 		"metadata-transfer" not in portage.settings.features:
