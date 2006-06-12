@@ -49,7 +49,7 @@ esyslog() {
 }
 
 einfo() {
-	einfon "$*\n"
+	einfon "$*"
 	LAST_E_CMD="einfo"
 	return 0
 }
@@ -57,7 +57,11 @@ einfo() {
 einfon() {
 	elog_base INFO "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
-	echo -ne " ${GOOD}*${NORMAL} $*"
+	if [ "${FUNCNAME[1]}" == "einfo" ]; then
+		echo -e " ${GOOD}*${NORMAL} $*"
+	else
+		echo -ne " ${GOOD}*${NORMAL} $*"
+	fi
 	LAST_E_CMD="einfon"
 	return 0
 }
