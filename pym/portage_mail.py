@@ -3,7 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id: portage.py 3483 2006-06-10 21:40:40Z genone $
 
-import portage_exception, socket, smtplib, os
+import portage_exception, socket, smtplib, os, time
 from email.MIMEText import MIMEText as TextMessage
 from email.MIMEMultipart import MIMEMultipart as MultipartMessage
 from email.MIMEBase import MIMEBase as BaseMessage
@@ -26,7 +26,8 @@ def create_message(sender, recipient, subject, body, attachments=None):
 	mymessage["To"] = recipient
 	mymessage["From"] = sender
 	mymessage["Subject"] = subject
-				
+	mymessage["Date"] = time.strftime("%a, %d %b %Y %H:%M:%S %z")
+	
 	return mymessage
 
 def send_mail(mysettings, message):
