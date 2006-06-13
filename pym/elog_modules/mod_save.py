@@ -11,7 +11,7 @@ def process(mysettings, cpv, logentries, fulltext):
 	if not os.path.exists(elogdir):
 		os.makedirs(elogdir)
 	os.chown(elogdir, portage_uid, portage_gid)
-	os.chmod(elogdir, 2770)
+	os.chmod(elogdir, 02770)
 
 	elogfilename = elogdir+"/"+cpv_path+":"+time.strftime("%Y%m%d-%H%M%S", time.gmtime(time.time()))+".log"
 	elogfile = open(elogfilename, "w")
