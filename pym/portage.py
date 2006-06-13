@@ -2544,7 +2544,7 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 
 	mysettings["EBUILD"]   = ebuild_path
 	mysettings["O"]        = pkg_dir
-	mysettings["CATEGORY"] = cat
+	mysettings.configdict["pkg"]["CATEGORY"] = cat
 	mysettings["FILESDIR"] = pkg_dir+"/files"
 	mysettings["PF"]       = mypv
 
@@ -2860,20 +2860,16 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				mysettings["PF"], myroot, mysettings, vartree=vartree)
 
 		if "PORT_LOGDIR" in mysettings:
-			logfile = os.path.join(mysettings["PORT_LOGDIR"],
-				"%s-%s.log" % (str(vartree.dbapi.get_counter_tick_core("/")),
-				mysettings["PF"]))
-
-	if logfile and "PORTAGE_CALLER" in os.environ and \
-		os.environ["PORTAGE_CALLER"] == "emerge" and \
-		mydo in ["merge"] + actionmap_deps.keys():
-		# Increment the counter so that each new build attempt gets it's
-		# own unique log file (portage uses the counter for nothing more than
-		# log handling, though it can be used to determine merge order).
-		while os.path.exists(logfile):
-			logfile = os.path.join(mysettings["PORT_LOGDIR"],
-				"%s-%s.log" % (str(vartree.dbapi.counter_tick("/") + 1),
-				mysettings["PF"]))
+			logid_path = os.path.join(mysettings["PORTAGE_BUILDDIR"], ".logid")
+			if not os.path.exists(logid_path):
+				f = open(logid_path, "w")
+				f.close()
+				del f
+			logid_time = time.strftime("%Y%m%d-%H%M%S",
+				time.gmtime(os.stat(logid_path).st_mtime))
+			logfile = os.path.join(mysettings["PORT_LOGDIR"], "%s:%s:%s.log" %\
+				(mysettings["CATEGORY"], mysettings["PF"], logid_time))
+			del logid_path, logid_time
 
 	# if any of these are being called, handle them -- running them out of the sandbox -- and stop now.
 	if mydo in ["clean","cleanrm"]:
@@ -3051,6 +3047,13 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	if "PORTAGE_ACTUAL_DISTDIR" in mysettings:
 		mysettings["DISTDIR"] = mysettings["PORTAGE_ACTUAL_DISTDIR"]
 		del mysettings["PORTAGE_ACTUAL_DISTDIR"]
+
+	if logfile:
+		try:
+			if os.stat(logfile).st_size == 0:
+				os.unlink(logfile)
+		except OSError:
+			pass
 
 	if retval != os.EX_OK and tree == "porttree":
 		for i in xrange(len(mydbapi.porttrees)-1):

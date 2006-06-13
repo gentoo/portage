@@ -738,6 +738,7 @@ dyn_clean() {
 	fi
 
 	if ! hasq keepwork $FEATURES; then
+		rm -rf "${PORTAGE_BUILDDIR}/.logid"
 		rm -rf "${PORTAGE_BUILDDIR}/.unpacked"
 		rm -rf "${PORTAGE_BUILDDIR}/.compiled"
 		rm -rf "${PORTAGE_BUILDDIR}/.tested"
