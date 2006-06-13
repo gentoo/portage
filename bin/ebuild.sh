@@ -47,20 +47,6 @@ OCXX="$CXX"
 
 source /etc/profile.env &>/dev/null
 
-if [ -f "${PORTAGE_BASHRC}" ]; then
-	# If $- contains x, then tracing has already enabled elsewhere for some
-	# reason.  We preserve it's state so as not to interfere.
-	if [ "$PORTAGE_DEBUG" != "1" ] || [ "${-/x/}" != "$-" ]; then
-		source "${PORTAGE_BASHRC}"
-	else
-		set -x
-		source "${PORTAGE_BASHRC}"
-		set +x
-	fi
-fi
-[ ! -z "$OCC" ] && export CC="$OCC"
-[ ! -z "$OCXX" ] && export CXX="$OCXX"
-
 export PATH="/usr/local/sbin:/sbin:/usr/sbin:${PORTAGE_BIN_PATH}:/usr/local/bin:/bin:/usr/bin:${ROOTPATH}"
 [ ! -z "$PREROOTPATH" ] && export PATH="${PREROOTPATH%%:}:$PATH"
 
@@ -116,6 +102,20 @@ for dir in ${PROFILE_PATHS}; do
 done
 restore_IFS
 
+if [ -f "${PORTAGE_BASHRC}" ]; then
+	# If $- contains x, then tracing has already enabled elsewhere for some
+	# reason.  We preserve it's state so as not to interfere.
+	if [ "$PORTAGE_DEBUG" != "1" ] || [ "${-/x/}" != "$-" ]; then
+		source "${PORTAGE_BASHRC}"
+	else
+		set -x
+		source "${PORTAGE_BASHRC}"
+		set +x
+	fi
+fi
+
+[ ! -z "$OCC" ] && export CC="$OCC"
+[ ! -z "$OCXX" ] && export CXX="$OCXX"
 
 esyslog() {
 	# Custom version of esyslog() to take care of the "Red Star" bug.
