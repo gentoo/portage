@@ -18,3 +18,8 @@ portage-2.1
   variable or use the emerge --ignore-default-opts option.
 * rsync option handling has been redesigned, instead of RSYNC_* variables
   use PORTAGE_RSYNC_EXTRA_OPTS from now on.
+* autouse (use.defaults) has been deprecated by specifying USE_ORDER in make.defaults
+  Users may still turn this back on by specifying USE_ORDER="env:pkg:conf:auto:defaults"
+  in make.conf.  Interested in figuring out what use flags were turned off?  Check out
+  make.defaults in /usr/portage/profiles/base/use.defaults and other use.defaults files
+  that correspond to your profile.
