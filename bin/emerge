@@ -1023,23 +1023,42 @@ class depgraph:
 		mydep={}
 		mp=string.join(mybigkey)
 
-		if myroot=="/":
-			mydep["/"]=edepend["DEPEND"]+" "+edepend["RDEPEND"]
-			if not self.select_dep("/",mydep["/"],myparent=mp,myuse=myuse):
-				return 0
-		else:
-			mydep["/"]=edepend["DEPEND"]
-			mydep[myroot]=edepend["RDEPEND"]
-			if not self.select_dep("/",mydep["/"],myparent=mp,myuse=myuse):
-				return 0
-			if not self.select_dep(myroot,mydep[myroot],myparent=mp,myuse=myuse):
-				return 0
-
-		if edepend.has_key("PDEPEND") and edepend["PDEPEND"]:
-			# Post Depend -- Add to the list without a parent, as it depends
-			# on a package being present AND must be built after that package.
-			if not self.select_dep(myroot,edepend["PDEPEND"],myuse=myuse):
-				return 0
+		try:
+			if myroot=="/":
+				mydep["/"]=edepend["DEPEND"]+" "+edepend["RDEPEND"]
+				if not self.select_dep("/",mydep["/"],myparent=mp,myuse=myuse):
+					return 0
+			else:
+				mydep["/"]=edepend["DEPEND"]
+				mydep[myroot]=edepend["RDEPEND"]
+				if not self.select_dep("/",mydep["/"],myparent=mp,myuse=myuse):
+					return 0
+				if not self.select_dep(myroot,mydep[myroot],myparent=mp,myuse=myuse):
+					return 0
+	
+			if edepend.has_key("PDEPEND") and edepend["PDEPEND"]:
+				# Post Depend -- Add to the list without a parent, as it depends
+				# on a package being present AND must be built after that package.
+				if not self.select_dep(myroot,edepend["PDEPEND"],myuse=myuse):
+					return 0
+		except ValueError, e:
+			pkgs = e.args[0]
+			portage.writemsg("\n\n!!! An atom in the dependencies " + \
+				"is not fully-qualified. Multiple matches:\n\n", noiselevel=-1)
+			for cpv in pkgs:
+				portage.writemsg("    %s\n" % cpv, noiselevel=-1)
+			portage.writemsg("\n", noiselevel=-1)
+			if mytype == "binary":
+				portage.writemsg(
+					"!!! This binary package cannot be installed: '%s'\n" % \
+					mykey, noiselevel=-1)
+			elif mytype == "ebuild":
+				myebuild, mylocation = portage.portdb.findname2(mykey)
+				portage.writemsg("!!! This ebuild cannot be installed: " + \
+					"'%s'\n" % myebuild, noiselevel=-1)
+			portage.writemsg("!!! Please notify the package maintainer " + \
+				"that atoms must be fully-qualified.\n", noiselevel=-1)
+			return 0
 
 		return 1
 
