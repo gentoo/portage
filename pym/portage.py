@@ -2147,7 +2147,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 									writemsg("!!! Previously fetched file: "+str(myfile)+"\n", noiselevel=-1)
 									writemsg("!!! Reason: "+reason[0]+"\n", noiselevel=-1)
 									writemsg("!!! Got:      %s\n!!! Expected: %s\n" % \
-										(reason[0], reason[1]), noiselevel=-1)
+										(reason[1], reason[2]), noiselevel=-1)
 									writemsg("Refetching...\n\n", noiselevel=-1)
 									os.unlink(mysettings["DISTDIR"]+"/"+myfile)
 									fetched=0
@@ -2277,7 +2277,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 									writemsg("!!! Reason: "+reason[0]+"\n",
 										noiselevel=-1)
 									writemsg("!!! Got:      %s\n!!! Expected: %s\n" % \
-										(reason[0], reason[1]), noiselevel=-1)
+										(reason[1], reason[2]), noiselevel=-1)
 									writemsg("Removing corrupt distfile...\n", noiselevel=-1)
 									os.unlink(mysettings["DISTDIR"]+"/"+myfile)
 									fetched=0
