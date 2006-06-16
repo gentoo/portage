@@ -2,7 +2,8 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-from portage_exception import PortageException, FileNotFound, OperationNotPermitted, ReadOnlyFileSystem
+from portage_exception import PortageException, FileNotFound, \
+       OperationNotPermitted, PermissionDenied, ReadOnlyFileSystem
 import portage_exception
 
 import sys,string,shlex,os,errno
