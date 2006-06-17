@@ -39,7 +39,8 @@ as \fBsys\-apps/portage\fR or \fB=python\-2.2.1\-r2\fR.
 ignores a trailing slash so that filename completion can be used.
 The \fIebuild\fR may also be an actual filename, such as
 \fB/usr/portage/app\-admin/python/python\-2.2.1\-r2.ebuild\fR.
-WARNING: The implementation of \fBemerge /path/to/ebuild\fR is broken and so this syntax shouldn't be used.
+WARNING: The implementation of \fBemerge /path/to/ebuild\fR is broken and so 
+this syntax shouldn't be used.
 .TP
 .BR tbz2file
 A \fItbz2file\fR must be a valid .tbz2 created with \fBebuild
@@ -256,7 +257,8 @@ files.
 Using the server and location defined in \fIPORTAGE_BINHOST\fR (see 
 \fBmake.conf\fR(5)), portage will download the information from each binary 
 package found and it will use that information to help build the dependency 
-list.  This option implies \fB\-k\fR.  (Use \fB\-gK\fR for binary\-only merging.)
+list.  This option implies \fB\-k\fR.  (Use \fB\-gK\fR for binary\-only 
+merging.)
 .TP
 .BR "\-\-getbinpkgonly " (\fB\-G\fR)
 This option is identical to \fB\-g\fR, as above, except it will not use ANY 
@@ -345,9 +347,10 @@ This is only really useful in combination with \fB\-\-emptytree\fR or
 \fB\-\-update\fR and \fB\-\-deep\fR.
 .TP
 .BR "\-\-usepkg " (\fB\-k\fR) 
-Tells emerge to use binary packages (from $PKGDIR) if they are available, thus possibly avoiding some 
-time\-consuming compiles.  This option is useful for CD installs; you can export PKGDIR=/mnt/cdrom/packages 
-and then use this option to have emerge "pull" binary packages from the CD in order to satisfy dependencies.
+Tells emerge to use binary packages (from $PKGDIR) if they are available, thus 
+possibly avoiding some time\-consuming compiles.  This option is useful for CD 
+installs; you can export PKGDIR=/mnt/cdrom/packages and then use this option to 
+have emerge "pull" binary packages from the CD in order to satisfy dependencies.
 .TP
 .BR "\-\-usepkgonly " (\fB\-K\fR)
 Tells emerge to only use binary packages (from $PKGDIR).  All the binary 
@@ -356,7 +359,9 @@ will simply abort.  Portage does not use $PORTDIR when calculating dependency
 information so all masking information is ignored.
 .TP
 .BR "\-\-verbose " (\fB\-v\fR)
-Tell emerge to run in verbose mode.  Currently this flag causes emerge to print out GNU info errors, if any, and to show the USE flags that will be used for each package when pretending.
+Tell emerge to run in verbose mode.  Currently this flag causes emerge to print 
+out GNU info errors, if any, and to show the USE flags that will be used for 
+each package when pretending.
 .SH "ENVIRONMENT OPTIONS"
 .TP
 \fBROOT\fR = \fI[path]\fR
@@ -366,7 +371,8 @@ merging packages or ebuilds.
 Defaults to /.
 .TP
 \fBPORTAGE_CONFIGROOT\fR = \fI[path]\fR
-Use \fBPORTAGE_CONFIGROOT\fR to specify the location for various portage configuration files
+Use \fBPORTAGE_CONFIGROOT\fR to specify the location for various portage 
+configuration files
 (see \fBFILES\fR for a detailed list).
 .br
 Defaults to /.
@@ -488,11 +494,11 @@ each package that let \fBportage\fR know which systems are compatible with
 the package.  Packages which compile on an architecture, but have not been 
 proven to be "stable", are masked with a tilde (\fB~\fR) in front of the 
 architecture name.  \fBemerge\fR examines the \fBACCEPT_KEYWORDS\fR environment 
-variable to allow or disallow the emerging of a package masked by \fBKEYWORDS\fR.  
-To inform \fBemerge\fR that it should build these 'testing' versions 
-of packages, you should update your \fI/etc/portage/package.keywords\fR file 
-to list the packages you want the 'testing' version.  See \fBportage\fR(5) for 
-more information.
+variable to allow or disallow the emerging of a package masked by 
+\fBKEYWORDS\fR.  To inform \fBemerge\fR that it should build these 'testing' 
+versions of packages, you should update your 
+\fI/etc/portage/package.keywords\fR file to list the packages you want the 
+'testing' version.  See \fBportage\fR(5) for more information.
 .SH "REPORTING BUGS"
 Please report any bugs you encounter through our website:
 .LP
