@@ -1951,6 +1951,8 @@ class depgraph:
 					for x in mymergelist:
 						if x[0] != "ebuild":
 							continue
+						self.pkgsettings.reset()
+						self.pkgsettings.setcpv(x[2])
 						try:
 							ret = portage.doebuild(portage.portdb.findname(x[2]), "fetch", x[1], self.pkgsettings,
 								cleanup=0, fetchonly=True, tree="porttree")

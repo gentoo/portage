@@ -1513,6 +1513,8 @@ class config:
 		self.puse = newpuse
 		self.configdict["pkg"]["PKGUSE"] = self.puse[:] # For saving to PUSE file
 		self.configdict["pkg"]["USE"]    = self.puse[:] # this gets appended to USE
+		# CATEGORY is essential for doebuild calls
+		self.configdict["pkg"]["CATEGORY"] = mycpv.split("/")[0]
 		self.reset(keeping_pkg=1,use_cache=use_cache)
 
 	def setinst(self,mycpv,mydbapi):
