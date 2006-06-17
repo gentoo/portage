@@ -86,6 +86,11 @@ clean binutils\fR cleans out old versions of binutils;
 specific version of Mozilla.  This is generally safe to use.
 \fBNote that\fR \-\-clean \fBdoes not remove unslotted packages.\fR
 .TP
+.BR "\-\-config "
+Run package specific actions needed to be executed after the emerge process 
+has completed.  This usually entails configuration file setup or other similar 
+setups that the user may wish to run.
+.TP
 .BR \-\-depclean
 Determines all packages installed on the system that have no 
 explicit reason for being there.  \fBemerge\fR generates a list 
@@ -181,11 +186,6 @@ use this option only in combination with the world or system target.
 .TP
 .BR "\-\-version " (\fB\-V\fR)
 Displays the version number of \fBemerge\fR.
-.TP
-.BR "\-\-config "
-Run package specific actions needed to  be  executed  after  the
-emerge  process  has completed.  This usually entails configuration
-file setup or other similar setups that the user  may  wish to run.
 .SH "OPTIONS"
 .TP
 .BR "\-\-alphabetical "
