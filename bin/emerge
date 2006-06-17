@@ -1936,10 +1936,15 @@ class depgraph:
 					sys.stdout.close()
 					sys.stderr.close()
 					time.sleep(3) # allow the parent to have first fetch
-					sys.stdout = open("/dev/null","w")
-					sys.stderr = open("/dev/null","w")
+					fetchlog = "/var/log/emerge-fetch.log"
+					sys.stdout = open(fetchlog, "a")
+					sys.stderr = sys.stdout
 					os.dup2(sys.stdout.fileno(), 1)
-					os.dup2(sys.stdout.fileno(), 2)
+					os.dup2(sys.stderr.fileno(), 2)
+					portage_util.apply_secpass_permissions(fetchlog,
+						uid=portage.portage_uid, gid=portage.portage_gid,
+						mode=0660)
+
 					# wipe the mtimedb so that portage doesn't attempt to flush it.
 					# do not convert this code away from a fork without correcting this.
 					portage.mtimedb = None
