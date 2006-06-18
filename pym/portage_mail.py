@@ -67,7 +67,7 @@ def send_mail(mysettings, message):
 	# user wants to use a sendmail binary instead of smtp
 	if mymailhost[0] == os.sep and os.path.exists(mymailhost):
 		fd = os.popen(mymailhost+" -f "+myfrom+" "+myrecipient, "w")
-		fd.write(mymessage.as_string())
+		fd.write(message.as_string())
 		if fd.close() != None:
 			sys.stderr.write("!!! %s returned with a non-zero exit code. This generally indicates an error.\n" % mymailhost)
 	else:
