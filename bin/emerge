@@ -1937,7 +1937,7 @@ class depgraph:
 					sys.stderr.close()
 					time.sleep(3) # allow the parent to have first fetch
 					fetchlog = "/var/log/emerge-fetch.log"
-					sys.stdout = open(fetchlog, "a")
+					sys.stdout = open(fetchlog, "w")
 					sys.stderr = sys.stdout
 					os.dup2(sys.stdout.fileno(), 1)
 					os.dup2(sys.stderr.fileno(), 2)
