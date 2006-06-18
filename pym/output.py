@@ -105,8 +105,8 @@ codes["darkblue"]  = codes["0x0000AA"]
 codes["fuchsia"]   = codes["0xFF55FF"]
 codes["purple"]    = codes["0xAA00AA"]
 
-codes["teal"]      = codes["0x00AAAA"]
 codes["turquoise"] = codes["0x55FFFF"]
+codes["teal"]      = codes["0x00AAAA"]
 
 codes["white"]     = codes["0xFFFFFF"]
 codes["lightgray"] = codes["0xAAAAAA"]
