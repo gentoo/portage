@@ -95,7 +95,7 @@ install_qa_check() {
 		[[ -n ${!qa_var} ]] && QA_TEXTRELS=${!qa_var}
 		[[ -n ${QA_STRICT_TEXTRELS} ]] && QA_TEXTRELS=""
 		export QA_TEXTRELS
-		f=$(scanelf -qyRF '"%t %p"' "${D}" | grep -v 'usr/lib/debug/')
+		f=$(scanelf -qyRF '%t %p' "${D}" | grep -v 'usr/lib/debug/')
 		if [[ -n ${f} ]] ; then
 			scanelf -qyRF '%T %p' "${PORTAGE_BUILDDIR}"/ &> "${T}"/scanelf-textrel.log
 			vecho -ne '\a\n'
@@ -135,7 +135,7 @@ install_qa_check() {
 					[[ -n ${!qa_var} ]] && QA_WX_LOAD=${!qa_var}
 					[[ -n ${QA_STRICT_WX_LOAD} ]] && QA_WX_LOAD=""
 					export QA_EXECSTACK QA_WX_LOAD
-					f=$(scanelf -qyRF '"%e %p"' "${D}" | grep -v 'usr/lib/debug/')
+					f=$(scanelf -qyRF '%e %p' "${D}" | grep -v 'usr/lib/debug/')
 					;;
 			esac
 			;;
