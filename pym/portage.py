@@ -1146,6 +1146,9 @@ class config:
 			self.lookuplist=self.configlist[:]
 			self.lookuplist.reverse()
 
+			pmask_locations = [os.path.join(self["PORTDIR"], "profiles")]
+			pmask_locations.extend(self.profiles)
+
 			if os.environ.get("PORTAGE_CALLER","") == "repoman" and \
 				os.environ.get("PORTDIR_OVERLAY","") == "":
 				# repoman shouldn't use local settings.
@@ -1163,6 +1166,10 @@ class config:
 					if os.path.isdir(profiles_dir):
 						overlay_profiles.append(profiles_dir)
 				locations += overlay_profiles
+				
+				pmask_locations.extend(overlay_profiles)
+				if os.environ.get("PORTAGE_CALLER","") != "repoman":
+					pmask_locations.append(abs_user_config)
 
 			if os.environ.get("PORTAGE_CALLER","") == "repoman":
 				self.pusedict = {}
@@ -1222,9 +1229,6 @@ class config:
 			self.configdict["conf"]["PORTAGE_ARCHLIST"] = " ".join(archlist)
 
 			#package.mask
-			pmask_locations = [os.path.join(self["PORTDIR"], "profiles")] + \
-				self.profiles + overlay_profiles + \
-				[os.path.join(config_root, USER_CONFIG_PATH.lstrip(os.path.sep))]
 			pkgmasklines = []
 			for x in pmask_locations:
 				pkgmasklines.append(grabfile_package(
