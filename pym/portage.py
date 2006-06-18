@@ -317,52 +317,6 @@ def listdir(mypath, recursive=False, filesonly=False, ignorecvs=False, ignorelis
 
 starttime=long(time.time())
 
-def tokenize(mystring):
-	"""breaks a string like 'foo? (bar) oni? (blah (blah))'
-	into embedded lists; returns None on paren mismatch"""
-
-	# This function is obsoleted.
-	# Use portage_dep.paren_reduce
-
-	writemsg( output.red("!!! Tokenize is deprecated, please use portage_dep.paren_reduce.\n") )
-
-	newtokens=[]
-	curlist=newtokens
-	prevlists=[]
-	level=0
-	accum=""
-	for x in mystring:
-		if x=="(":
-			if accum:
-				curlist.append(accum)
-				accum=""
-			prevlists.append(curlist)
-			curlist=[]
-			level=level+1
-		elif x==")":
-			if accum:
-				curlist.append(accum)
-				accum=""
-			if level==0:
-				writemsg("!!! tokenizer: Unmatched left parenthesis in:\n'"+str(mystring)+"'\n")
-				return None
-			newlist=curlist
-			curlist=prevlists.pop()
-			curlist.append(newlist)
-			level=level-1
-		elif x in string.whitespace:
-			if accum:
-				curlist.append(accum)
-				accum=""
-		else:
-			accum=accum+x
-	if accum:
-		curlist.append(accum)
-	if (level!=0):
-		writemsg("!!! tokenizer: Exiting with unterminated parenthesis in:\n'"+str(mystring)+"'\n")
-		return None
-	return newtokens
-
 def flatten(mytokens):
 	"""this function now turns a [1,[2,3]] list into
 	a [1,2,3] list and returns it."""
