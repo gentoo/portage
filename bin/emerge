@@ -258,8 +258,9 @@ for x in tmpcmdline:
 		for y in x[1:]:
 			if shortmapping.has_key(y):
 				if shortmapping[y] in cmdline:
-					print
-					print "*** Warning: Redundant use of",shortmapping[y]
+					if not shortmapping[y] in ("--verbose", "--pretend"):
+						print
+						print "*** Warning: Redundant use of",shortmapping[y]
 				else:
 					cmdline.append(shortmapping[y])
 			else:
