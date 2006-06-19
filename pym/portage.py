@@ -462,6 +462,13 @@ def elog_process(cpv, mysettings):
 		except portage_exception.PortageException, e:
 			print e
 
+	# clean logfiles to avoid repetitions
+	for f in mylogfiles:
+		try:
+			os.unlink(os.path.join(mysettings["T"], "logging", f))
+		except OSError:
+			pass
+
 #parse /etc/env.d and generate /etc/profile.env
 
 def env_update(makelinks=1, target_root=None, prev_mtimes=None):
@@ -6104,6 +6111,10 @@ class dblink:
 			a = doebuild(myebuildpath, "postrm", self.myroot, self.settings,
 			 use_cache=0, tree="vartree", mydbapi=self.vartree.dbapi,
 			 vartree=self.vartree)
+			
+			# process logs created during pre/postrm
+			elog_process(self.mycpv, self.settings)
+			
 			# XXX: Decide how to handle failures here.
 			if a != 0:
 				writemsg("!!! FAILED postrm: "+str(a)+"\n", noiselevel=-1)
