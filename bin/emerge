@@ -2881,6 +2881,18 @@ if myaction in ["sync","metadata"] and (not "--help" in myopts):
 
 		if (exitcode==0):
 			emergelog("=== Sync completed with %s" % dosyncuri)
+			# save timestamp.chk for next timestamp check.
+			try:
+				if tmpservertimestampfile is not None:
+					portage.movefile(tmpservertimestampfile,
+						servertimestampfile)
+			except SystemExit, e:
+				raise
+			except Exception, e:
+				portage.writemsg("!!! Failed to save current timestamp.\n",
+					noiselevel=-1)
+				portage.writemsg("!!! %s\n" % str(e), noiselevel=-1)
+				del e
 		elif (exitcode>0):
 			print
 			if exitcode==1:
@@ -2952,16 +2964,6 @@ if myaction in ["sync","metadata"] and (not "--help" in myopts):
 		# Potentially bad
 		#if os.path.exists(cachedir+"/"+myportdir):
 		#	portage.spawn("rm -Rf "+cachedir+"/"+myportdir+"/*",portage.settings,free=1)
-
-		# save timestamp.chk for next timestamp check.
-		try:
-			if tmpservertimestampfile != None:
-				portage.movefile(tmpservertimestampfile, servertimestampfile)
-		except SystemExit, e:
-			raise # Needed else can't exit
-		except Exception, e:
-			print "!!! Failed to save current timestamp."
-			print "!!!",e
 
 		portage.portdb.flush_cache()
 
