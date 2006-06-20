@@ -115,6 +115,12 @@ class database(object):
 	def __contains__(self, cpv):
 		return self.has_key(cpv)
 
+	def get(self, k, x=None):
+		try:
+			return self[k]
+		except KeyError:
+			return x
+
 	def get_matches(self, match_dict):
 		"""generic function for walking the entire cache db, matching restrictions to
 		filter what cpv's are returned.  Derived classes should override this if they
