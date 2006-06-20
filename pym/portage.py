@@ -6337,7 +6337,8 @@ class dblink:
 			os.chown(my_private_path, os.getuid(), portage_gid)
 			os.chmod(my_private_path, 02770)
 
-		mylock = portage_locks.lockfile(os.path.join(destroot, CONFIG_MEMORY_FILE))
+		mylock = portage_locks.lockfile(
+			os.path.join(destroot, CONFIG_MEMORY_FILE), wantnewlockfile=1)
 		writedict(cfgfiledict, os.path.join(destroot, CONFIG_MEMORY_FILE))
 		portage_locks.unlockfile(mylock)
 
