@@ -12,7 +12,7 @@
 +# All K6's are i586.
 +# The version number at the end has to correspond to the version of the
 +# profile and of freebsd-lib package.
-+CHOST="i686-unknown-freebsd6.1"
++CHOST="i686-gentoo-freebsd6.1"
 +
  # Host and optimization settings 
  # ==============================
