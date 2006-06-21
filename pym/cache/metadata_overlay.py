@@ -14,7 +14,8 @@ class database(template.database):
 	autocommits = True
 	serialize_eclasses = False
 
-	def __init__(self, location, label, auxdbkeys, **config):
+	def __init__(self, location, label, auxdbkeys, db_rw=db_rw, db_ro=db_ro,
+		**config):
 		super(database, self).__init__(location, label, auxdbkeys)
 		self.db_rw = db_rw(location, label, auxdbkeys, **config)
 		self.db_ro = db_ro(label,"metadata/cache",auxdbkeys)
