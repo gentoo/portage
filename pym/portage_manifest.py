@@ -450,8 +450,16 @@ class Manifest(object):
 			requiredDistfiles = distlist.copy()
 		for f in distlist:
 			fname = os.path.join(self.distdir, f)
-			if f in distfilehashes and (assumeDistHashesAlways or \
-				(assumeDistHashesSometimes and not os.path.exists(fname))):
+			mystat = None
+			try:
+				mystat = os.stat(fname)
+			except OSError:
+				pass
+			if f in distfilehashes and \
+				((assumeDistHashesSometimes and mystat is None) or \
+				(assumeDistHashesAlways and mystat is None) or \
+				(assumeDistHashesAlways and mystat is not None and \
+				distfilehashes[f]["size"] == mystat.st_size)):
 				self.fhashdict["DIST"][f] = distfilehashes[f]
 			else:
 				try:
