@@ -2241,7 +2241,7 @@ def unmerge_overlapping(pkg_key, myroot, mysettings, vartree):
 		return 1
 	return 0
 
-def unmerge(unmerge_action, unmerge_files):
+def unmerge(unmerge_action, unmerge_files, raise_on_missing=True):
 	candidate_catpkgs=[]
 	global_unmerge=0
 
@@ -2362,7 +2362,12 @@ def unmerge(unmerge_action, unmerge_files):
 			#add a "=" if missing
 			mymatch=localtree.dep_match("="+x)
 		if not mymatch:
-			raise portage_exception.PackageNotFound(x)
+			if raise_on_missing:
+				raise portage_exception.PackageNotFound(x)
+			else:
+				portage.writemsg("\n--- Couldn't find '%s' to %s.\n" % \
+					(x, unmerge_action), noiselevel=-1)
+				continue
 		mykey=portage.key_expand(portage.dep_getkey(mymatch[0]),portage.db["/"]["vartree"].dbapi)
 		if not pkgmap.has_key(mykey):
 			pkgmap[mykey]={"protected":[], "selected":[], "omitted":[] }
@@ -3237,13 +3242,8 @@ elif "search"==myaction:
 				sys.exit(1)
 			searchinstance.output()
 elif "unmerge"==myaction or "prune"==myaction or "clean"==myaction:
-	try:
-		if 1==unmerge(myaction, myfiles):
-			post_emerge()
-	except portage_exception.PackageNotFound, e:
-		portage.writemsg("--- Couldn't find %s to unmerge.\n" % str(e),
-			noiselevel=-1)
-		sys.exit(1)
+	if 1 == unmerge(myaction, myfiles, raise_on_missing=False):
+		post_emerge()
 
 elif "depclean"==myaction:
 	# Kill packages that aren't explicitly merged or are required as a
