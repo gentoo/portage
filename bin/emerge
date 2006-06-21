@@ -1417,8 +1417,6 @@ class depgraph:
 					print "\n\n!!! Problem resolving dependencies for", mydep
 					return 0
 			except ValueError:
-				if "--debug" in myopts:
-					raise
 				missing_atoms.append(mydep)
 
 		if world_problems:
