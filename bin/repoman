@@ -948,9 +948,9 @@ for x in scanlist:
 			if mymode=="fix":
 				if "--pretend" in myoptions:
 					print "You will need to run:"
-					print "  /usr/sbin/ebuild "+repodir+"/"+x+"/"+y+".ebuild digest"
+					print "  /usr/bin/ebuild "+repodir+"/"+x+"/"+y+".ebuild digest"
 				else:
-					retval=os.system("/usr/sbin/ebuild "+repodir+"/"+x+"/"+y+".ebuild digest")
+					retval=os.system("/usr/bin/ebuild "+repodir+"/"+x+"/"+y+".ebuild digest")
 					if retval:
 						print "!!! Exiting on ebuild digest (shell) error code:",retval
 						sys.exit(retval)
