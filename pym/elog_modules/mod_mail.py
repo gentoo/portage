@@ -1,4 +1,4 @@
-import smtplib, email.Message, socket, portage_exception
+import smtplib, email.Message, socket, time, portage_exception
 
 def process(mysettings, cpv, logentries, fulltext):
 	mymailhost = "localhost"
@@ -44,6 +44,7 @@ def process(mysettings, cpv, logentries, fulltext):
 		mysubject = mysubject.replace("${HOST}", socket.getfqdn())
 		
 		mymessage["Subject"] = mysubject
+		mymessage["Date"] = time.strftime("%a, %d %b %Y %H:%M:%S %z")
 				
 		if int(mymailport) > 100000:
 			myconn = smtplib.SMTP(mymailhost, int(mymailport) - 100000)
