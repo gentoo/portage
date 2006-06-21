@@ -121,7 +121,7 @@ def lockfile(mypath,wantnewlockfile=0,unlinkfile=0):
 
 		
 	if type(lockfilename) == types.StringType and \
-		myfd != HARDLINK_FD and os.fstat(myfd).st_nlink != 1:
+		myfd != HARDLINK_FD and os.fstat(myfd).st_nlink == 0:
 		# The file was deleted on us... Keep trying to make one...
 		os.close(myfd)
 		portage_util.writemsg("lockfile recurse\n",1)
