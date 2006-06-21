@@ -353,8 +353,8 @@ Please select from the menu above (-1 to exit, losing this merge): "
 }
 
 function die() {
-	trap "" term
-	trap "" kill
+	trap "" TERM
+	trap "" KILL
 	echo "Exiting: ${1}"
 	rm -rf ${TMP}
 	exit ${2}
