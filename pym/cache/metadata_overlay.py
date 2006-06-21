@@ -44,8 +44,10 @@ class database(template.database):
 					del self.db_rw[name] # delete unwanted whiteout when necessary
 				except KeyError:
 					pass
+				return
 		except KeyError:
-			self.db_rw[name] = values
+			pass
+		self.db_rw[name] = values
 
 	def _delitem(self, cpv):
 		value = self[cpv] # validates whiteout and/or raises a KeyError when necessary
