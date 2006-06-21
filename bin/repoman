@@ -80,7 +80,7 @@ repoman_options={
 "--commitmsgfile"  : "Adds a commit message from the specified file",
 "--help"           : "Show this screen",
 "--ignore-arches"  : "Ignore arch-specific failures (where arch != host)",
-"--include-masked" : "Include masked packages in scans at category or tree level",
+"--ignore-masked"  : "Ignore masked packages (not allowed with commit mode)",
 "--pretend"        : "Don't commit or fix anything; just show what would be done",
 "--quiet"          : "Be less verbose about extraneous info",
 "--verbose"        : "Displays every package name while checking",
@@ -89,7 +89,7 @@ repoman_options={
 }
 repoman_shortoptions={
 "-h" : "--help",
-"-i" : "--include-masked",
+"-i" : "--ignore-masked",
 "-I" : "--ignore-arches",
 "-m" : "--commitmsg",
 "-M" : "--commitmsgfile",
@@ -381,8 +381,9 @@ if ("--version" in myoptions):
 	show_version()
 if mymode=="last" or (mymode=="lfull"):
 	last()
-if mymode=="commit" and "--include-masked" not in myoptions:
-	myoptions.append("--include-masked")
+if mymode == "commit":
+	while "--ignore-masked" in myoptions:
+		myoptions.remove("--ignore-masked")
 
 isCvs=False
 myreporoot=None
@@ -507,9 +508,6 @@ if mymode == "commit" and repolevel not in [1,2,3]:
 	print red("***")+" This is intended behaviour, to ensure the manifest is recommited for a package."
 	print red("***")
 	err("Unable to identify level we're commiting from for %s" % string.join(reposplit,'/'))
-
-if repolevel == 3 and "--include-masked" not in myoptions:
-	myoptions.append("--include-masked")
 
 startdir=os.getcwd()
 
@@ -1132,7 +1130,7 @@ for x in scanlist:
 				if not baddepsyntax:
 					ismasked = (catdir+"/"+y not in portage.db["/"]["porttree"].dbapi.xmatch("list-visible",x))
 					if ismasked:
-						if "--include-masked" not in myoptions:
+						if "--ignore-masked" in myoptions:
 							continue
 						#we are testing deps for a masked package; give it some lee-way
 						suffix="masked"
