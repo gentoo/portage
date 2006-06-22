@@ -127,19 +127,6 @@ except ImportError:
 # ===========================================================================
 
 
-def exithandler(signum,frame):
-	"""Handles ^C interrupts in a sane manner"""
-	signal.signal(signal.SIGINT, signal.SIG_IGN)
-	signal.signal(signal.SIGTERM, signal.SIG_IGN)
-
-	# 0=send to *everybody* in process group
-	sys.exit(1)
-
-signal.signal(signal.SIGCHLD, signal.SIG_DFL)
-signal.signal(signal.SIGINT, exithandler)
-signal.signal(signal.SIGTERM, exithandler)
-signal.signal(signal.SIGPIPE, signal.SIG_DFL)
-
 def load_mod(name):
 	modname = string.join(string.split(name,".")[:-1],".")
 	mod = __import__(modname)
