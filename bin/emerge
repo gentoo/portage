@@ -1645,8 +1645,9 @@ class depgraph:
 						mynewslot = self.trees["/"]["porttree"].getslot(x[2])
 					myoldlist = self.trees[x[1]]["vartree"].dbapi.match(
 						portage.pkgsplit(x[2])[0])
-					myinslotlist = [p for p in myoldlist if mynewslot == \
-						self.trees[self.settings["ROOT"]]["vartree"].getslot(p)]
+					myinslotlist = [inst_pkg for inst_pkg in myoldlist
+						if mynewslot == self.trees[
+						self.settings["ROOT"]]["vartree"].getslot(inst_pkg)]
 					if myinslotlist:
 						myoldbest=portage.best(myinslotlist)
 						addl="   "+fetch
