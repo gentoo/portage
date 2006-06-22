@@ -897,11 +897,9 @@ def genericdict(mylist):
 		mynewdict[portage.dep_getkey(x)]=x
 	return mynewdict
 
-olddbapi=None
 class depgraph:
 
 	def __init__(self,myaction,myopts):
-		global olddbapi
 		self.pkgsettings = portage.config(clone=portage.settings)
 		if not self.pkgsettings["ARCH"]:
 			portage.writemsg(red("\a!!! ARCH is not set... Are you missing the /etc/make.profile symlink?\n"),
