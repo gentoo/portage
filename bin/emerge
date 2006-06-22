@@ -3327,6 +3327,21 @@ def action_info():
 			if "cvs_id_string" in dir(module):
 				print "%s: %s" % (str(x), str(module.cvs_id_string))
 
+def action_search():
+	if not myfiles:
+		print "emerge: no search terms provided."
+	else:
+		searchinstance = search(portage.settings, portage.portdb,
+			portage.db["/"]["vartree"], spinner, "--searchdesc" in myopts,
+			"--quiet" not in myopts)
+		for mysearch in myfiles:
+			try:
+				searchinstance.execute(mysearch)
+			except re.error, comment:
+				print "\n!!! Regular expression error in \"%s\": %s" % ( mysearch, comment )
+				sys.exit(1)
+			searchinstance.output()
+
 if myaction in ["sync","metadata"] and "--help" not in myopts:
 	if "--pretend" in myopts:
 		print "emerge: \"sync\" actions do not support \"--pretend.\""
@@ -3344,19 +3359,7 @@ elif "info"==myaction:
 
 # SEARCH action
 elif "search"==myaction:
-	if not myfiles:
-		print "emerge: no search terms provided."
-	else:
-		searchinstance = search(portage.settings, portage.portdb,
-			portage.db["/"]["vartree"], spinner, "--searchdesc" in myopts,
-			"--quiet" not in myopts)
-		for mysearch in myfiles:
-			try:
-				searchinstance.execute(mysearch)
-			except re.error, comment:
-				print "\n!!! Regular expression error in \"%s\": %s" % ( mysearch, comment )
-				sys.exit(1)
-			searchinstance.output()
+	action_search()
 elif "unmerge"==myaction or "prune"==myaction or "clean"==myaction:
 	if 1 == unmerge(myaction, myfiles, raise_on_missing=False):
 		post_emerge()
