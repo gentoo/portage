@@ -153,11 +153,13 @@ to do, then portage will exit with a message and a success condition.
 .BR "\-\-search " (\fB\-s\fR)
 Searches for matches of the supplied string in the portage tree.
 The \-\-search string is a regular expression.  For example, \fBemerge
-\-\-search "^kde"\fR searches for any package that starts with "kde";
+\-\-search "^kde"\fR searches for any package whose name starts with "kde";
 \fBemerge \-\-search "gcc$"\fR searches for any package that ends with
 "gcc"; \fBemerge \-\-search "office"\fR searches for any package that
-contains the word "office".  If you want to search the package
-descriptions as well, use the \fB\-\-searchdesc\fR action.
+contains the word "office".  If you want to include the category into the
+search string, prepend an @: \fBemerge --search "@^dev-java.*jdk"\fR. 
+If you want to search the package descriptions as well, use the
+\fB\-\-searchdesc\fR action.
 .TP
 .BR "\-\-searchdesc " (\fB\-S\fR)
 Matches the search string against the description field as well as
