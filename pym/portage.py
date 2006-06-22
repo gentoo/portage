@@ -1251,7 +1251,8 @@ class config:
 			writemsg(yellow("!!!")+" PORT_LOGDIR was defined, but set to nothing.\n",
 				noiselevel=-1)
 			writemsg(yellow("!!!")+" Disabling it.  Please set it to a non null value.\n")
-			del self["PORT_LOGDIR"]
+			while "PORT_LOGDIR" in self:
+				del self["PORT_LOGDIR"]
 
 		if self["PORTAGE_CACHEDIR"]:
 			# XXX: Deprecated -- April 15 -- NJ
@@ -2748,7 +2749,8 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 			writemsg("!!! Permission issues with PORT_LOGDIR='%s'\n" % \
 				mysettings["PORT_LOGDIR"], noiselevel=-1)
 			writemsg("!!! Disabling logging.\n", noiselevel=-1)
-			mysettings["PORT_LOGDIR"]=""
+			while "PORT_LOGDIR" in mysettings:
+				del mysettings["PORT_LOGDIR"]
 
 def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	fetchonly=0, cleanup=0, dbkey=None, use_cache=1, fetchall=0, tree=None,
