@@ -3464,32 +3464,7 @@ def action_depclean():
 		print "Number removed:       "+str(len(cleanlist))
 		post_emerge()
 
-if myaction in ["sync","metadata"] and "--help" not in myopts:
-	if "--pretend" in myopts:
-		print "emerge: \"sync\" actions do not support \"--pretend.\""
-		sys.exit(1)
-	action_sync()
-elif myaction=="regen":
-	action_regen()
-# HELP action
-elif "config"==myaction:
-	action_config()
-
-# INFO action
-elif "info"==myaction:
-	action_info()
-
-# SEARCH action
-elif "search"==myaction:
-	action_search()
-elif "unmerge"==myaction or "prune"==myaction or "clean"==myaction:
-	if 1 == unmerge(myaction, myfiles, raise_on_missing=False):
-		post_emerge()
-
-elif "depclean"==myaction:
-	action_depclean()
-# "update", "system", or just process files:
-else:
+def action_build(myopts):
 	favorites=[]
 	syslist=getlist("system")
 	if ("--ask" in myopts or "--pretend" in myopts) and not "--quiet" in myopts:
@@ -3657,3 +3632,32 @@ else:
 				+ " AUTOCLEAN is disabled.  This can cause serious"
 				+ " problems due to overlapping packages.\n")
 	post_emerge()
+
+if __name__ == "__main__":
+	if myaction in ["sync","metadata"] and "--help" not in myopts:
+		if "--pretend" in myopts:
+			print "emerge: \"sync\" actions do not support \"--pretend.\""
+			sys.exit(1)
+		action_sync()
+	elif myaction=="regen":
+		action_regen()
+	# HELP action
+	elif "config"==myaction:
+		action_config()
+	
+	# INFO action
+	elif "info"==myaction:
+		action_info()
+	
+	# SEARCH action
+	elif "search"==myaction:
+		action_search()
+	elif "unmerge"==myaction or "prune"==myaction or "clean"==myaction:
+		if 1 == unmerge(myaction, myfiles, raise_on_missing=False):
+			post_emerge()
+	
+	elif "depclean"==myaction:
+		action_depclean()
+	# "update", "system", or just process files:
+	else:
+		action_build(myopts)
