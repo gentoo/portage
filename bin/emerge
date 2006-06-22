@@ -3191,15 +3191,7 @@ def action_regen():
 				print "\n  error processing %(cpv)s, continuing... (%(e)s)" % {"cpv":y,"e":str(e)}
 	print "done!"
 
-if myaction in ["sync","metadata"] and "--help" not in myopts:
-	if "--pretend" in myopts:
-		print "emerge: \"sync\" actions do not support \"--pretend.\""
-		sys.exit(1)
-	action_sync()
-elif myaction=="regen":
-	action_regen()
-# HELP action
-elif "config"==myaction:
+def action_config():
 	if len(myfiles) != 1 or "system" in myfiles or "world" in myfiles:
 		print red("!!! config can only take a single package atom at this time\n")
 		sys.exit(1)
@@ -3253,6 +3245,17 @@ elif "config"==myaction:
 	mysettings = portage.config(clone=portage.settings)
 	portage.doebuild(ebuildpath,"config",portage.root,mysettings,debug=("--debug" in myopts),cleanup=True,tree="vartree")
 	print
+
+if myaction in ["sync","metadata"] and "--help" not in myopts:
+	if "--pretend" in myopts:
+		print "emerge: \"sync\" actions do not support \"--pretend.\""
+		sys.exit(1)
+	action_sync()
+elif myaction=="regen":
+	action_regen()
+# HELP action
+elif "config"==myaction:
+	action_config()
 
 # INFO action
 elif "info"==myaction:
