@@ -1951,7 +1951,7 @@ class depgraph:
 						sys.exit(1)
 
 		#buildsyspkg: I need mysysdict also on resume (moved from the else block)
-		mysysdict=genericdict(syslist)
+		mysysdict = genericdict(getlist("system"))
 		if "--resume" in self.myopts:
 			# We're resuming.
 			print green("*** Resuming merge...")
@@ -2186,7 +2186,6 @@ class depgraph:
 					myfavkey in favorites:
 					myfavs = portage.grabfile(os.path.join(myroot, portage.WORLD_FILE))
 					myfavdict=genericdict(myfavs)
-					mysysdict=genericdict(syslist)
 					#don't record if already in system profile or already recorded
 					if (not mysysdict.has_key(myfavkey)) and (not myfavdict.has_key(myfavkey)):
 						#we don't have a favorites entry for this package yet; add one
@@ -3466,7 +3465,6 @@ def action_depclean():
 
 def action_build(myopts):
 	favorites=[]
-	syslist=getlist("system")
 	if ("--ask" in myopts or "--pretend" in myopts) and not "--quiet" in myopts:
 		action = ""
 		if "--fetchonly" in myopts or "--fetch-all-uri" in myopts:
