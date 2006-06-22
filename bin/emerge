@@ -2725,11 +2725,7 @@ def validate_merge_list(mergelist):
 if "--debug" in myopts:
 	edebug=1
 
-if myaction in ["sync","metadata"] and (not "--help" in myopts):
-	if "--pretend" in myopts:
-		print "emerge: \"sync\" actions do not support \"--pretend.\""
-		sys.exit(1)
-
+def action_sync():
 	emergelog(" === "+str(myaction))
 	myportdir=portage.settings["PORTDIR"]
 	if myportdir[-1]=="/":
@@ -3168,6 +3164,12 @@ if myaction in ["sync","metadata"] and (not "--help" in myopts):
 		print red(" * ")+"configuration files."
 		print red(" * ")+"To update portage, run 'emerge portage'."
 		print
+
+if myaction in ["sync","metadata"] and "--help" not in myopts:
+	if "--pretend" in myopts:
+		print "emerge: \"sync\" actions do not support \"--pretend.\""
+		sys.exit(1)
+	action_sync()
 elif myaction=="regen":
 	emergelog(" === regen")
 	#regenerate cache entries
