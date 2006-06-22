@@ -641,39 +641,41 @@ if not "--pretend" in myopts:
 		myelogstr+=" "+string.join(myfiles, " ")
 	emergelog(" *** emerge "+myelogstr)
 
-#configure emerge engine parameters
-#
-# self:      include _this_ package regardless of if it is merged.
-# selective: exclude the package if it is merged
-# recurse:   go into the dependencies
-# empty:     pretend nothing is merged
-myparams=["self","recurse"]
-add=[]
-sub=[]
-if "--update" in myopts or myaction in ("system", "world"):
-	add.extend(["selective","empty"])
-if "--emptytree" in myopts:
-	add.extend(["empty"])
-	sub.extend(["selective"])
-if "--nodeps" in myopts:
-	sub.extend(["recurse"])
-if "--noreplace" in myopts:
-	add.extend(["selective"])
-if "--deep" in myopts:
-	add.extend(["deep"])
-if "--selective" in myopts:
-	add.extend(["selective"])
-if myaction in ["world","system"]:
-	add.extend(["selective"])
-elif myaction in ["depclean"]:
-	add.extend(["empty"])
-	sub.extend(["selective"])
-for x in add:
-	if (x not in myparams) and (x not in sub):
-		myparams.append(x)
-for x in sub:
-	if x in myparams:
-		myparams.remove(x)
+def create_depgraph_params(myopts, myaction):
+	#configure emerge engine parameters
+	#
+	# self:      include _this_ package regardless of if it is merged.
+	# selective: exclude the package if it is merged
+	# recurse:   go into the dependencies
+	# empty:     pretend nothing is merged
+	myparams=["self","recurse"]
+	add=[]
+	sub=[]
+	if "--update" in myopts or myaction in ("system", "world"):
+		add.extend(["selective","empty"])
+	if "--emptytree" in myopts:
+		add.extend(["empty"])
+		sub.extend(["selective"])
+	if "--nodeps" in myopts:
+		sub.extend(["recurse"])
+	if "--noreplace" in myopts:
+		add.extend(["selective"])
+	if "--deep" in myopts:
+		add.extend(["deep"])
+	if "--selective" in myopts:
+		add.extend(["selective"])
+	if myaction in ["world","system"]:
+		add.extend(["selective"])
+	elif myaction in ["depclean"]:
+		add.extend(["empty"])
+		sub.extend(["selective"])
+	for x in add:
+		if (x not in myparams) and (x not in sub):
+			myparams.append(x)
+	for x in sub:
+		if x in myparams:
+			myparams.remove(x)
+	return myparams
 
 # search functionality
 class search:
@@ -3382,7 +3384,8 @@ def action_depclean():
 
 	if not "--pretend" in myopts: #just check pretend, since --ask implies pretend
 		emergelog(" >>> depclean")
-	
+
+	myparams = create_depgraph_params(myopts, myaction)
 	mydepgraph = depgraph(portage.settings, portage.portdb, portage.db,
 		myaction, myopts, myparams, edebug, spinner)
 
@@ -3497,6 +3500,7 @@ def action_build(myopts):
 			if myopt not in myresumeopts:
 				myresumeopts.append(myopt)
 		myopts=myresumeopts
+		myparams = create_depgraph_params(myopts, myaction)
 		mydepgraph = depgraph(portage.settings, portage.portdb, portage.db,
 			"resume", myopts, myparams, edebug, spinner)
 		if "--resume" not in myopts:
@@ -3507,6 +3511,7 @@ def action_build(myopts):
 			print darkgreen("emerge: It seems we have nothing to resume...")
 			sys.exit(0)
 
+		myparams = create_depgraph_params(myopts, myaction)
 		mydepgraph = depgraph(portage.settings, portage.portdb, portage.db,
 			myaction, myopts, myparams, edebug, spinner)
 		if myaction in ["system","world"]:
