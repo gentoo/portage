@@ -25,60 +25,64 @@ from portage_const import PROFILE_PATH
 portage.global_updates(
 	portage.settings, portage.db, portage.mtimedb["updates"])
 
-spinner_msgs = ["Gentoo Rocks ("+os.uname()[0]+")",
-                "Thank you for using Gentoo. :)",
-                "Are you actually trying to read this?",
-                "How many times have you stared at this?",
-                "We are generating the cache right now",
-                "You are paying too much attention.",
-                "A theory is better than its explanation.",
-                "Phasers locked on target, Captain.",
-                "Thrashing is just virtual crashing.",
-                "To be is to program.",
-                "Real Users hate Real Programmers.",
-                "When all else fails, read the instructions.",
-                "Functionality breeds Contempt.",
-                "The future lies ahead.",
-                "3.1415926535897932384626433832795028841971694",
-                "Sometimes insanity is the only alternative.",
-                "Inaccuracy saves a world of explanation.",
-               ]
+class stdout_spinner(object):
+	scroll_msgs = [
+		"Gentoo Rocks ("+os.uname()[0]+")",
+		"Thank you for using Gentoo. :)",
+		"Are you actually trying to read this?",
+		"How many times have you stared at this?",
+		"We are generating the cache right now",
+		"You are paying too much attention.",
+		"A theory is better than its explanation.",
+		"Phasers locked on target, Captain.",
+		"Thrashing is just virtual crashing.",
+		"To be is to program.",
+		"Real Users hate Real Programmers.",
+		"When all else fails, read the instructions.",
+		"Functionality breeds Contempt.",
+		"The future lies ahead.",
+		"3.1415926535897932384626433832795028841971694",
+		"Sometimes insanity is the only alternative.",
+		"Inaccuracy saves a world of explanation.",
+	]
 
+	twirl_sequence = "/-\\|/-\\|/-\\|/-\\|\\-/|\\-/|\\-/|\\-/|"
 
-def update_basic_spinner():
-	global spinner, spinpos
-	spinpos = (spinpos+1) % 500
-	if (spinpos % 100) == 0:
-		if spinpos == 0:
-			sys.stdout.write(". ")
+	def __init__(self):
+		self.spinpos = 0
+		self.update = self.update_twirl
+		self.scroll_sequence = self.scroll_msgs[
+			int(time.time() * 100) % len(self.scroll_msgs)]
+
+	def update_basic(self):
+		self.spinpos = (self.spinpos + 1) % 500
+		if (self.spinpos % 100) == 0:
+			if self.spinpos == 0:
+				sys.stdout.write(". ")
+			else:
+				sys.stdout.write(".")
+		sys.stdout.flush()
+
+	def update_scroll(self):
+		if(self.spinpos >= len(self.scroll_sequence)):
+			sys.stdout.write(darkgreen(" \b\b\b" + self.scroll_sequence[
+				len(self.scroll_sequence) - 1 - (self.spinpos % len(self.scroll_sequence))]))
 		else:
-			sys.stdout.write(".")
-	sys.stdout.flush()
+			sys.stdout.write(green("\b " + self.scroll_sequence[self.spinpos]))
+		sys.stdout.flush()
+		self.spinpos = (self.spinpos + 1) % (2 * len(self.scroll_sequence))
 
-def update_scroll_spinner():
-	global spinner, spinpos
-	if(spinpos >= len(spinner)):
-		sys.stdout.write(darkgreen(" \b\b\b"+spinner[len(spinner)-1-(spinpos%len(spinner))]))
-	else:
-		sys.stdout.write(green("\b "+spinner[spinpos]))
-	sys.stdout.flush()
-	spinpos = (spinpos+1) % (2*len(spinner))
+	def update_twirl(self):
+		self.spinpos = (self.spinpos + 1) % len(self.twirl_sequence)
+		sys.stdout.write("\b\b " + self.twirl_sequence[self.spinpos])
+		sys.stdout.flush()
 
-def update_twirl_spinner():
-	global spinner, spinpos
-	spinpos = (spinpos+1) % len(spinner)
-	sys.stdout.write("\b\b "+spinner[spinpos])
-	sys.stdout.flush()
+	def update_quiet(self):
+		return
 
-def update_quiet_spinner():
-	return
-
-spinpos = 0
-spinner = "/-\\|/-\\|/-\\|/-\\|\\-/|\\-/|\\-/|\\-/|"
-update_spinner = update_twirl_spinner
+spinner = stdout_spinner()
 if "candy" in portage.settings.features:
-	spinner = spinner_msgs[int(time.time()*100)%len(spinner_msgs)]
-	update_spinner = update_scroll_spinner
+	spinner.update = spinner.update_scroll
 
 # To enhance usability, make some vars case insensitive by forcing them to
 # lower case.
@@ -343,7 +347,7 @@ if ("--tree" in myopts) and ("--columns" in myopts):
 	sys.exit(1)
 
 if ("--quiet" in myopts):
-	update_spinner = update_quiet_spinner
+	spinner.update = spinner.update_quiet
 	portage_util.noiselimit = -1
 	portage.settings.unlock()
 	portage.settings["PORTAGE_QUIET"]="1"
@@ -445,7 +449,7 @@ portage.settings["NOCOLOR"] in ("yes","true"):
 
 if not ("--quiet" in myopts):
 	if not sys.stdout.isatty() or ("--nospinner" in myopts):
-		update_spinner = update_basic_spinner
+		spinner.update = spinner.update_basic
 
 CLEAN_DELAY = 5
 EMERGE_WARNING_DELAY = 10
@@ -714,7 +718,7 @@ class search:
 			self.searchkey=re.sub("\+\+","\+\+",self.searchkey)
 		self.searchre=re.compile(self.searchkey.lower(),re.I)
 		for package in portage.portdb.cp_all():
-			update_spinner()
+			spinner.update()
 
 			if match_category:
 				match_string  = package[:]
@@ -931,7 +935,7 @@ class depgraph:
 			#this conditional is needed to prevent infinite recursion on already-processed deps
 			return 1
 
-		update_spinner()
+		spinner.update()
 
 		mytype,myroot,mykey=mybigkey
 		# select the correct /var database that we'll be checking against
