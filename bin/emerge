@@ -465,13 +465,11 @@ def emergelog(mystr,short_msg=None):
 		else:
 			xtermTitle(mystr)
 	try:
-		#seems odd opening a file each write...
-		if not os.path.exists("/var/log/emerge.log"):
-			mylogfile=open("/var/log/emerge.log", "w")
-			os.chmod("/var/log/emerge.log", S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP)
-			os.chown("/var/log/emerge.log", portage.portage_uid, portage.portage_gid)
-		else:
-			mylogfile=open("/var/log/emerge.log", "a")
+		file_path = "/var/log/emerge.log"
+		mylogfile = open(file_path, "a")
+		portage_util.apply_secpass_permissions(file_path,
+			uid=portage.portage_uid, gid=portage.portage_gid,
+			mode=0660)
 
 		l=portage_locks.lockfile(mylogfile)
 		# seek because we may have gotten held up by the lock.
