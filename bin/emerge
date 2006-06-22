@@ -1434,7 +1434,7 @@ class depgraph:
 		else:
 			#world mode
 			worldlist=getlist("world")
-			sysdict=genericdict(syslist)
+			sysdict = genericdict(getlist("system"))
 			worlddict=genericdict(worldlist)
 
 			for x in worlddict.keys():
