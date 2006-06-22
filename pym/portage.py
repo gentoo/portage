@@ -1247,10 +1247,6 @@ class config:
 		self.backupenv["PORTAGE_GID"]=str(portage_gid)
 
 		if self.has_key("PORT_LOGDIR") and not self["PORT_LOGDIR"]:
-			# port_logdir is defined, but empty.  this causes a traceback in doebuild.
-			writemsg(yellow("!!!")+" PORT_LOGDIR was defined, but set to nothing.\n",
-				noiselevel=-1)
-			writemsg(yellow("!!!")+" Disabling it.  Please set it to a non null value.\n")
 			while "PORT_LOGDIR" in self:
 				del self["PORT_LOGDIR"]
 
