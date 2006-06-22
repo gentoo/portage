@@ -2719,28 +2719,15 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 	except portage_exception.FileNotFound:
 		pass # ebuild.sh will create it
 
+	if mysettings.get("PORT_LOGDIR", "") == "":
+		while "PORT_LOGDIR" in mysettings:
+			del mysettings["PORT_LOGDIR"]
 	if "PORT_LOGDIR" in mysettings:
-		if mysettings["PORT_LOGDIR"] == "":
-			logging_enabled = False
-		else:
-			logging_enabled = True
-
-		if logging_enabled and not makedirs(mysettings["PORT_LOGDIR"]):
-			writemsg("!!! Unable to create PORT_LOGDIR\n",
-				noiselevel=-1)
-			logging_enabled = False
-
-		if logging_enabled:
-			try:
-				logging_enabled = \
-					apply_secpass_permissions(mysettings["PORT_LOGDIR"],
-					uid=portage_uid, gid=portage_gid, mode=02770)
-			except portage_exception.OperationNotPermitted, e:
-				writemsg("!!! Operation Not Permitted: %s\n" % str(e),
-					noiselevel=-1)
-				logging_enabled = False
-
-		if not logging_enabled:
+		try:
+			portage_util.ensure_dirs(mysettings["PORT_LOGDIR"],
+				uid=portage_uid, gid=portage_gid, mode=02770)
+		except portage_exception.PortageException, e:
+			writemsg("!!! %s\n" % str(e), noiselevel=-1)
 			writemsg("!!! Permission issues with PORT_LOGDIR='%s'\n" % \
 				mysettings["PORT_LOGDIR"], noiselevel=-1)
 			writemsg("!!! Disabling logging.\n", noiselevel=-1)
