@@ -2720,9 +2720,12 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 		pass # ebuild.sh will create it
 
 	if "PORT_LOGDIR" in mysettings:
-		logging_enabled = True
+		if mysettings["PORT_LOGDIR"] == "":
+			logging_enabled = False
+		else:
+			logging_enabled = True
 
-		if not makedirs(mysettings["PORT_LOGDIR"]):
+		if logging_enabled and not makedirs(mysettings["PORT_LOGDIR"]):
 			writemsg("!!! Unable to create PORT_LOGDIR\n",
 				noiselevel=-1)
 			logging_enabled = False
