@@ -687,19 +687,24 @@ class search:
 	#
 	# public interface
 	#
-	def __init__(self):
+	def __init__(self, settings, portdb, vartree, spinner, searchdesc,
+		verbose):
 		"""Searches the available and installed packages for the supplied search key.
 		The list of available and installed packages is created at object instantiation.
 		This makes successive searches faster."""
-		self.installcache = portage.db["/"]["vartree"]
+		self.settings = settings
+		self.portdb = portdb
+		self.vartree = vartree
+		self.spinner = spinner
+		self.verbose = verbose
+		self.searchdesc = searchdesc
 
 	def execute(self,searchkey):
 		"""Performs the search for the supplied search key"""
-		global myopts
 		match_category = 0
 		self.searchkey=searchkey
 		self.packagematches = []
-		if "--searchdesc" in myopts:
+		if self.searchdesc:
 			self.searchdesc=1
 			self.matches = {"pkg":[], "desc":[]}
 		else:
@@ -717,8 +722,8 @@ class search:
 			#hack for people who aren't regular expression gurus
 			self.searchkey=re.sub("\+\+","\+\+",self.searchkey)
 		self.searchre=re.compile(self.searchkey.lower(),re.I)
-		for package in portage.portdb.cp_all():
-			spinner.update()
+		for package in self.portdb.cp_all():
+			self.spinner.update()
 
 			if match_category:
 				match_string  = package[:]
@@ -727,20 +732,22 @@ class search:
 
 			masked=0
 			if self.searchre.search(match_string):
-				if not portage.portdb.xmatch("match-visible",package):
+				if not self.portdb.xmatch("match-visible", package):
 					masked=1
 				self.matches["pkg"].append([package,masked])
 			elif self.searchdesc: # DESCRIPTION searching
-				full_package = portage.portdb.xmatch("bestmatch-visible",package)
+				full_package = self.portdb.xmatch("bestmatch-visible", package)
 				if not full_package:
 					#no match found; we don't want to query description
-					full_package=portage.best(portage.portdb.xmatch("match-all",package))
+					full_package = portage.best(
+						self.portdb.xmatch("match-all", package))
 					if not full_package:
 						continue
 					else:
 						masked=1
 				try:
-					full_desc = portage.portdb.aux_get(full_package,["DESCRIPTION"])[0]
+					full_desc = self.portdb.aux_get(
+						full_package, ["DESCRIPTION"])[0]
 				except KeyError:
 					print "emerge: search: aux_get() failed, skipping"
 					continue
@@ -760,18 +767,21 @@ class search:
 			for match,masked in self.matches[mtype]:
 				if mtype=="pkg":
 					catpack=match
-					full_package = portage.portdb.xmatch("bestmatch-visible",match)
+					full_package = self.portdb.xmatch(
+						"bestmatch-visible", match)
 					if not full_package:
 						#no match found; we don't want to query description
 						masked=1
-						full_package=portage.best(portage.portdb.xmatch("match-all",match))
+						full_package = portage.best(
+							self.portdb.xmatch("match-all",match))
 				else:
 					full_package = match
 					match        = portage.pkgsplit(match)[0]
 
 				if full_package:
 					try:
-						desc, homepage, license = portage.portdb.aux_get(full_package,["DESCRIPTION","HOMEPAGE","LICENSE"])
+						desc, homepage, license = self.portdb.aux_get(
+							full_package, ["DESCRIPTION","HOMEPAGE","LICENSE"])
 					except KeyError:
 						print "emerge: search: aux_get() failed, skipping"
 						continue
@@ -785,13 +795,13 @@ class search:
 					mycat = match.split("/")[0]
 					mypkg = match.split("/")[1]
 					mycpv = match + "-" + myversion
-					myebuild = portage.portdb.findname(mycpv)
+					myebuild = self.portdb.findname(mycpv)
 					pkgdir = os.path.dirname(myebuild)
 					import portage_manifest
 					mf = portage_manifest.Manifest(
-						pkgdir, portage.settings["DISTDIR"])
-					fetchlist = portage.portdb.getfetchlist(mycpv,
-						mysettings=portage.settings, all=True)[1]
+						pkgdir, self.settings["DISTDIR"])
+					fetchlist = self.portdb.getfetchlist(mycpv,
+						mysettings=self.settings, all=True)[1]
 					try:
 						mysum[0] = mf.getDistfilesSize(fetchlist)
 						mystr = str(mysum[0]/1024)
@@ -803,7 +813,7 @@ class search:
 					except KeyError, e:
 						mysum[0] = "Unknown (missing digest for %s)" % str(e)
 
-					if "--quiet" not in myopts:
+					if self.verbose:
 						print "     ", darkgreen("Latest version available:"),myversion
 						print "     ", self.getInstallationStatus(mycat+'/'+mypkg)
 						print "     ", darkgreen("Size of files:"),mysum[0]
@@ -816,7 +826,7 @@ class search:
 	# private interface
 	#
 	def getInstallationStatus(self,package):
-		installed_package = self.installcache.dep_bestmatch(package)
+		installed_package = self.vartree.dep_bestmatch(package)
 		result = ""
 		version = self.getVersion(installed_package,search.VERSION_RELEASE)
 		if len(version) > 0:
@@ -3237,7 +3247,9 @@ elif "search"==myaction:
 	if not myfiles:
 		print "emerge: no search terms provided."
 	else:
-		searchinstance = search()
+		searchinstance = search(portage.settings, portage.portdb,
+			portage.db["/"]["vartree"], spinner, "--searchdesc" in myopts,
+			"--quiet" not in myopts)
 		for mysearch in myfiles:
 			try:
 				searchinstance.execute(mysearch)
