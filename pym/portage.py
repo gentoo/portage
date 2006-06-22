@@ -1246,10 +1246,6 @@ class config:
 		self.configdict["env"]["PORTAGE_GID"]=str(portage_gid)
 		self.backupenv["PORTAGE_GID"]=str(portage_gid)
 
-		if self.has_key("PORT_LOGDIR") and not self["PORT_LOGDIR"]:
-			while "PORT_LOGDIR" in self:
-				del self["PORT_LOGDIR"]
-
 		if self["PORTAGE_CACHEDIR"]:
 			# XXX: Deprecated -- April 15 -- NJ
 			writemsg(yellow(">>> PORTAGE_CACHEDIR has been deprecated!")+"\n")
