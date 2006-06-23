@@ -245,21 +245,6 @@ def emergelog(mystr,short_msg=None):
 		if secpass >= 1:
 			print >> sys.stderr, "emergelog():",e
 
-def emergeexit():
-	"""This gets out final log message in before we quit."""
-	if "--pretend" not in myopts:
-		emergelog(" *** terminating.")
-	if "notitles" not in portage.settings.features:
-		xtermTitleReset()
-portage.atexit_register(emergeexit)
-
-def emergeexitsig(signum, frame):
-	signal.signal(signal.SIGINT, signal.SIG_IGN)
-	portage.portageexit()
-	portage_util.writemsg("\n\nExiting on signal %(signal)s\n" % {"signal":signum})
-	sys.exit(100+signum)
-signal.signal(signal.SIGINT, emergeexitsig)
-
 def countdown(secs=5, doing="Starting"):
 	if secs:
 		print ">>> Waiting",secs,"seconds before starting..."
@@ -3645,6 +3630,22 @@ if __name__ == "__main__":
 	# general options that should be taken into account before any action
 	if "--debug" in myopts:
 		edebug=1
+
+	def emergeexitsig(signum, frame):
+		signal.signal(signal.SIGINT, signal.SIG_IGN)
+		signal.signal(signal.SIGTERM, signal.SIG_IGN)
+		portage_util.writemsg("\n\nExiting on signal %(signal)s\n" % {"signal":signum})
+		sys.exit(100+signum)
+	signal.signal(signal.SIGINT, emergeexitsig)
+	signal.signal(signal.SIGTERM, emergeexitsig)
+
+	def emergeexit():
+		"""This gets out final log message in before we quit."""
+		if "--pretend" not in myopts:
+			emergelog(" *** terminating.")
+		if "notitles" not in portage.settings.features:
+			xtermTitleReset()
+	portage.atexit_register(emergeexit)
 
 	if myaction in ["sync","metadata"] and "--help" not in myopts:
 		if "--pretend" in myopts:
