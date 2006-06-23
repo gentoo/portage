@@ -25,8 +25,6 @@ import portage_exception
 from portage_const import PROFILE_PATH
 from portage_data import secpass
 
-portage.global_updates(
-	portage.settings, portage.db, portage.mtimedb["updates"])
 
 class stdout_spinner(object):
 	scroll_msgs = [
@@ -82,23 +80,6 @@ class stdout_spinner(object):
 
 	def update_quiet(self):
 		return
-
-spinner = stdout_spinner()
-if "candy" in portage.settings.features:
-	spinner.update = spinner.update_scroll
-
-# To enhance usability, make some vars case insensitive by forcing them to
-# lower case.
-portage.settings.unlock()
-for myvar in ("AUTOCLEAN", "NOCOLOR"):
-	if myvar in portage.settings:
-		portage.settings[myvar] = portage.settings[myvar].lower()
-		portage.settings.backup_changes(myvar)
-portage.settings.lock()
-del myvar
-
-if (not sys.stdout.isatty()) or (portage.settings["NOCOLOR"] in ["yes","true"]):
-	nocolor()
 
 
 
@@ -174,26 +155,6 @@ def sorted_versions(verlist):
 		ret.insert(x, ver)
 	return ret
 
-portage.deprecated_profile_check()
-
-if portage.settings.has_key("PORTAGE_NICENESS"):
-	try:
-		os.nice(int(portage.settings["PORTAGE_NICENESS"]))
-	except (OSError,ValueError), e:
-		print "!!! Failed to change nice value to '"+str(portage.settings["PORTAGE_NICENESS"])+"'"
-		print "!!!",e
-
-#Freeze the portdbapi for enhanced performance:
-portage.portdb.freeze()
-
-# Kill noauto as it will break merges otherwise.
-if "noauto" in portage.settings.features:
-	while "noauto" in portage.settings.features:
-		portage.settings.features.remove("noauto")
-	portage.settings.unlock()
-	portage.settings["FEATURES"] = " ".join(portage.settings.features)
-	portage.settings.backup_changes("FEATURES")
-	portage.settings.lock()
 
 actions=[
 "clean", "config", "depclean",
@@ -246,217 +207,6 @@ shortmapping={
 "u":"--update",
 "v":"--verbose",   "V":"--version"
 }
-
-myaction=None
-myopts=[]
-myfiles=[]
-edebug=0
-
-# process short actions
-tmpcmdline=sys.argv[1:]
-if "--ignore-default-opts" not in tmpcmdline:
-	tmpcmdline.extend(portage.settings["EMERGE_DEFAULT_OPTS"].split())
-cmdline=[]
-for x in tmpcmdline:
-	if x[0:1]=="-" and x[1:2]!="-":
-		for y in x[1:]:
-			if shortmapping.has_key(y):
-				if shortmapping[y] in cmdline:
-					if not shortmapping[y] in ("--verbose", "--pretend"):
-						print
-						print "*** Warning: Redundant use of",shortmapping[y]
-				else:
-					cmdline.append(shortmapping[y])
-			else:
-				print "!!! Error: -"+y+" is an invalid short action or option."
-				sys.exit(1)
-	else:
-		cmdline.append(x)
-
-# process the options and command arguments
-for x in cmdline:
-	if not x:
-		continue
-	if len(x)>=2 and x[0:2]=="--":
-		if x == "--cols":
-			x = "--columns"
-		elif x == "--skip-first":
-			x = "--skipfirst"
-		if x in options:
-			if x not in myopts:
-				myopts.append(x)
-		elif x[2:] in actions:
-			if myaction:
-				if myaction not in ["system", "world"]:
-					myaction="--"+myaction
-				print
-				print red("!!!")+green(" Multiple actions requested... Please choose one only.")
-				print red("!!!")+" '"+darkgreen(myaction)+"' "+red("or")+" '"+darkgreen(x)+"'"
-				print
-				sys.exit(1)
-			myaction=x[2:]
-		else:
-			print "!!! Error:",x,"is an invalid option."
-			sys.exit(1)
-	elif (not myaction) and (x in actions):
-		if x not in ["system", "world"]:
-			print red("*** Deprecated use of action '%s', use '--%s' instead" % (x,x))
-		if myaction:
-			print
-			print red("!!!")+green(" Multiple actions requested... Please choose one only.")
-			print red("!!! '")+darkgreen(myaction)+"' "+red("or")+" '"+darkgreen(x)+"'"
-			print
-			sys.exit(1)
-		myaction=x
-	elif x[-1]=="/":
-		# this little conditional helps tab completion
-		myfiles.append(x[:-1])
-	else:
-		myfiles.append(x)
-
-
-if "moo" in myfiles:
-	print """
-
-  Larry loves Gentoo (""" + os.uname()[0] + """)
-
- _______________________
-< Have you mooed today? >
- -----------------------
-        \   ^__^
-         \  (oo)\_______
-            (__)\       )\/\ 
-                ||----w |
-                ||     ||
-
-"""
-
-if (myaction in ["world", "system"]) and myfiles:
-	print "emerge: please specify a package class (\"world\" or \"system\") or individual packages, but not both."
-	sys.exit(1)
-
-for x in myfiles:
-	ext = os.path.splitext(x)[1]
-	if (ext == ".ebuild" or ext == ".tbz2") and os.path.exists(os.path.abspath(x)):
-		print "emerging by path implies --oneshot... adding --oneshot to options."
-		print red("\n*** emerging by path is broken and may not always work!!!\n")
-		break
-
-if ("--tree" in myopts) and ("--columns" in myopts):
-	print "emerge: can't specify both of \"--tree\" and \"--columns\"."
-	sys.exit(1)
-
-if ("--quiet" in myopts):
-	spinner.update = spinner.update_quiet
-	portage_util.noiselimit = -1
-	portage.settings.unlock()
-	portage.settings["PORTAGE_QUIET"]="1"
-	portage.settings.backup_changes("PORTAGE_QUIET")
-	portage.settings.lock()
-
-# Always create packages if FEATURES=buildpkg
-# Imply --buildpkg if --buildpkgonly
-if ("buildpkg" in portage.settings.features) or ("--buildpkgonly" in myopts):
-	if "--buildpkg" not in myopts:
-		myopts.append("--buildpkg")
-
-# --tree only makes sense with --pretend
-if "--tree" in myopts and not (("--pretend" in myopts) or ("--ask" in myopts)):
-	print ">>> --tree implies --pretend... adding --pretend to options."
-	myopts.append("--pretend")
-
-# Also allow -S to invoke search action (-sS)
-if ("--searchdesc" in myopts):
-	if myaction and myaction != "search":
-		myfiles.append(myaction)
-	if "--search" not in myopts:
-		myopts.append("--search")
-	myaction = "search"
-
-# Always try and fetch binary packages if FEATURES=getbinpkg
-if ("getbinpkg" in portage.settings.features):
-	myopts.append("--getbinpkg")
-
-if "--skipfirst" in myopts and "--resume" not in myopts:
-	myopts.append("--resume")
-
-if ("--getbinpkgonly" in myopts) and not ("--usepkgonly" in myopts):
-	myopts.append("--usepkgonly")
-
-if ("--getbinpkgonly" in myopts) and not ("--getbinpkg" in myopts):
-	myopts.append("--getbinpkg")
-
-if ("--getbinpkg" in myopts) and not ("--usepkg" in myopts):
-	myopts.append("--usepkg")
-
-# Also allow -K to apply --usepkg/-k
-if ("--usepkgonly" in myopts) and not ("--usepkg" in myopts):
-	myopts.append("--usepkg")
-
-if ("--newuse" in myopts) and not ("--update" in myopts):
-	print ">>> --newuse implies --update... adding --update to options."
-	myopts.append("--update")
-
-# Also allow -l to apply --pretend/-p, but if already in --ask mode
-if ("--changelog" in myopts) and not (("--pretend" in myopts) or ("--ask" in myopts)):
-	print ">>> --changelog implies --pretend... adding --pretend to options."
-	myopts.append("--pretend")
-
-# Allow -p to remove --ask
-if ("--pretend" in myopts) and ("--ask" in myopts):
-	print ">>> --pretend disables --ask... removing --ask from options."
-	myopts.remove("--ask")
-
-# forbid --ask when not in a terminal
-# note: this breaks `emerge --ask | tee logfile`, but that doesn't work anyway.
-if ("--ask" in myopts) and (not sys.stdin.isatty()):
-	portage.writemsg("!!! \"--ask\" should only be used in a terminal. Exiting.\n",
-		noiselevel=-1)
-	sys.exit(1)
-
-# Set so that configs will be merged regardless of remembered status
-if ("--noconfmem" in myopts):
-	portage.settings.unlock()
-	portage.settings["NOCONFMEM"]="1"
-	portage.settings.backup_changes("NOCONFMEM")
-	portage.settings.lock()
-
-# Set various debug markers... They should be merged somehow.
-if ("--debug" in myopts):
-	portage.settings.unlock()
-	portage.settings["PORTAGE_DEBUG"]="1"
-	portage.settings.backup_changes("PORTAGE_DEBUG")
-	portage.debug=1
-	portage.settings.lock()
-	if "python-trace" in portage.settings.features:
-		import portage_debug
-		portage_debug.set_trace(True)
-
-if ("--resume" in myopts):
-	if "--tree" in myopts:
-		print "* --tree is currently broken with --resume. Disabling..."
-		myopts.remove("--tree")
-
-# Set color output
-if "--nocolor" in myopts or \
-portage.settings["NOCOLOR"] in ("yes","true"):
-	nocolor()
-	if "NOCOLOR" not in portage.settings:
-		portage.settings.unlock()
-		portage.settings["NOCOLOR"] = "true"
-		portage.settings.backup_changes("NOCOLOR")
-		portage.settings.lock()
-
-if not ("--quiet" in myopts):
-	if not sys.stdout.isatty() or ("--nospinner" in myopts):
-		spinner.update = spinner.update_basic
-
-CLEAN_DELAY = 5
-EMERGE_WARNING_DELAY = 10
-if portage.settings["CLEAN_DELAY"]:
-	CLEAN_DELAY = string.atoi("0"+portage.settings["CLEAN_DELAY"])
-if portage.settings["EMERGE_WARNING_DELAY"]:
-	EMERGE_WARNING_DELAY = string.atoi("0"+portage.settings["EMERGE_WARNING_DELAY"])
 
 def emergelog(mystr,short_msg=None):
 	if "notitles" not in portage.settings.features:
@@ -593,50 +343,6 @@ def help():
 	# Move all the help stuff out of this file.
 	emergehelp.help(myaction,myopts,havecolor)
 
-if "--version" in myopts:
-	print getportageversion()
-	sys.exit(0)
-elif "--help" in myopts:
-	help()
-	sys.exit(0)
-
-if portage.wheelgid == portage.portage_gid:
-	print "emerge: wheel group use is being deprecated. Please update group and passwd to"
-	print "        include the portage user as noted above, and then use group portage."
-
-if "--debug" in myopts:
-	print "myaction", myaction
-	print "myopts", myopts
-
-if not myaction and not myfiles and "--resume" not in myopts:
-	help()
-	sys.exit(1)
-
-# check if root user is the current user for the actions where emerge needs this
-if portage.secpass < 2:
-	# We've already allowed "--version" and "--help" above.
-	if "--pretend" not in myopts and \
-	myaction not in ("search","info"):
-		if portage.secpass >= 1:
-			if "--fetchonly" not in myopts and \
-			"--fetch-all-uri" not in myopts and \
-			myaction not in ("metadata", "regen"):
-				print "emerge: root access required."
-				sys.exit(1)
-		else:
-			print "emerge: root access required."
-			sys.exit(1)
-
-if not "--pretend" in myopts:
-	emergelog("Started emerge on: "+time.strftime("%b %d, %Y %H:%M:%S", time.localtime()))
-	myelogstr=""
-	if myopts:
-		myelogstr=string.join(myopts, " ")
-	if myaction:
-		myelogstr+=" "+myaction
-	if myfiles:
-		myelogstr+=" "+string.join(myfiles, " ")
-	emergelog(" *** emerge "+myelogstr)
 
 def create_depgraph_params(myopts, myaction):
 	#configure emerge engine parameters
@@ -2716,10 +2422,6 @@ def validate_merge_list(mergelist):
 			print red("!!!        the merge operation manually.")
 			sys.exit(1)
 
-# general options that should be taken into account before any action
-if "--debug" in myopts:
-	edebug=1
-
 def action_sync(myopts, myaction):
 	emergelog(" === "+str(myaction))
 	myportdir=portage.settings["PORTDIR"]
@@ -3630,6 +3332,308 @@ def action_build(myopts, myaction, myfiles):
 	post_emerge()
 
 if __name__ == "__main__":
+
+	portage.global_updates(
+		portage.settings, portage.db, portage.mtimedb["updates"])
+
+	spinner = stdout_spinner()
+	if "candy" in portage.settings.features:
+		spinner.update = spinner.update_scroll
+
+	# To enhance usability, make some vars case insensitive by forcing them to
+	# lower case.
+	portage.settings.unlock()
+	for myvar in ("AUTOCLEAN", "NOCOLOR"):
+		if myvar in portage.settings:
+			portage.settings[myvar] = portage.settings[myvar].lower()
+			portage.settings.backup_changes(myvar)
+	portage.settings.lock()
+	del myvar
+
+	if (not sys.stdout.isatty()) or (portage.settings["NOCOLOR"] in ["yes","true"]):
+		nocolor()
+
+	portage.deprecated_profile_check()
+
+	if portage.settings.has_key("PORTAGE_NICENESS"):
+		try:
+			os.nice(int(portage.settings["PORTAGE_NICENESS"]))
+		except (OSError,ValueError), e:
+			print "!!! Failed to change nice value to '"+str(portage.settings["PORTAGE_NICENESS"])+"'"
+			print "!!!",e
+
+	#Freeze the portdbapi for enhanced performance:
+	portage.portdb.freeze()
+
+	# Kill noauto as it will break merges otherwise.
+	if "noauto" in portage.settings.features:
+		while "noauto" in portage.settings.features:
+			portage.settings.features.remove("noauto")
+		portage.settings.unlock()
+		portage.settings["FEATURES"] = " ".join(portage.settings.features)
+		portage.settings.backup_changes("FEATURES")
+		portage.settings.lock()
+
+	myaction=None
+	myopts=[]
+	myfiles=[]
+	edebug=0
+
+	# process short actions
+	tmpcmdline=sys.argv[1:]
+	if "--ignore-default-opts" not in tmpcmdline:
+		tmpcmdline.extend(portage.settings["EMERGE_DEFAULT_OPTS"].split())
+	cmdline=[]
+	for x in tmpcmdline:
+		if x[0:1]=="-" and x[1:2]!="-":
+			for y in x[1:]:
+				if shortmapping.has_key(y):
+					if shortmapping[y] in cmdline:
+						if not shortmapping[y] in ("--verbose", "--pretend"):
+							print
+							print "*** Warning: Redundant use of",shortmapping[y]
+					else:
+						cmdline.append(shortmapping[y])
+				else:
+					print "!!! Error: -"+y+" is an invalid short action or option."
+					sys.exit(1)
+		else:
+			cmdline.append(x)
+
+	# process the options and command arguments
+	for x in cmdline:
+		if not x:
+			continue
+		if len(x)>=2 and x[0:2]=="--":
+			if x == "--cols":
+				x = "--columns"
+			elif x == "--skip-first":
+				x = "--skipfirst"
+			if x in options:
+				if x not in myopts:
+					myopts.append(x)
+			elif x[2:] in actions:
+				if myaction:
+					if myaction not in ["system", "world"]:
+						myaction="--"+myaction
+					print
+					print red("!!!")+green(" Multiple actions requested... Please choose one only.")
+					print red("!!!")+" '"+darkgreen(myaction)+"' "+red("or")+" '"+darkgreen(x)+"'"
+					print
+					sys.exit(1)
+				myaction=x[2:]
+			else:
+				print "!!! Error:",x,"is an invalid option."
+				sys.exit(1)
+		elif (not myaction) and (x in actions):
+			if x not in ["system", "world"]:
+				print red("*** Deprecated use of action '%s', use '--%s' instead" % (x,x))
+			if myaction:
+				print
+				print red("!!!")+green(" Multiple actions requested... Please choose one only.")
+				print red("!!! '")+darkgreen(myaction)+"' "+red("or")+" '"+darkgreen(x)+"'"
+				print
+				sys.exit(1)
+			myaction=x
+		elif x[-1]=="/":
+			# this little conditional helps tab completion
+			myfiles.append(x[:-1])
+		else:
+			myfiles.append(x)
+
+
+	if "moo" in myfiles:
+		print """
+
+  Larry loves Gentoo (""" + os.uname()[0] + """)
+
+ _______________________
+< Have you mooed today? >
+ -----------------------
+        \   ^__^
+         \  (oo)\_______
+            (__)\       )\/\ 
+                ||----w |
+                ||     ||
+
+"""
+
+	if (myaction in ["world", "system"]) and myfiles:
+		print "emerge: please specify a package class (\"world\" or \"system\") or individual packages, but not both."
+		sys.exit(1)
+
+	for x in myfiles:
+		ext = os.path.splitext(x)[1]
+		if (ext == ".ebuild" or ext == ".tbz2") and os.path.exists(os.path.abspath(x)):
+			print "emerging by path implies --oneshot... adding --oneshot to options."
+			print red("\n*** emerging by path is broken and may not always work!!!\n")
+			break
+
+	if ("--tree" in myopts) and ("--columns" in myopts):
+		print "emerge: can't specify both of \"--tree\" and \"--columns\"."
+		sys.exit(1)
+
+	if ("--quiet" in myopts):
+		spinner.update = spinner.update_quiet
+		portage_util.noiselimit = -1
+		portage.settings.unlock()
+		portage.settings["PORTAGE_QUIET"]="1"
+		portage.settings.backup_changes("PORTAGE_QUIET")
+		portage.settings.lock()
+
+	# Always create packages if FEATURES=buildpkg
+	# Imply --buildpkg if --buildpkgonly
+	if ("buildpkg" in portage.settings.features) or ("--buildpkgonly" in myopts):
+		if "--buildpkg" not in myopts:
+			myopts.append("--buildpkg")
+
+	# --tree only makes sense with --pretend
+	if "--tree" in myopts and not (("--pretend" in myopts) or ("--ask" in myopts)):
+		print ">>> --tree implies --pretend... adding --pretend to options."
+		myopts.append("--pretend")
+
+	# Also allow -S to invoke search action (-sS)
+	if ("--searchdesc" in myopts):
+		if myaction and myaction != "search":
+			myfiles.append(myaction)
+		if "--search" not in myopts:
+			myopts.append("--search")
+		myaction = "search"
+
+	# Always try and fetch binary packages if FEATURES=getbinpkg
+	if ("getbinpkg" in portage.settings.features):
+		myopts.append("--getbinpkg")
+
+	if "--skipfirst" in myopts and "--resume" not in myopts:
+		myopts.append("--resume")
+
+	if ("--getbinpkgonly" in myopts) and not ("--usepkgonly" in myopts):
+		myopts.append("--usepkgonly")
+
+	if ("--getbinpkgonly" in myopts) and not ("--getbinpkg" in myopts):
+		myopts.append("--getbinpkg")
+
+	if ("--getbinpkg" in myopts) and not ("--usepkg" in myopts):
+		myopts.append("--usepkg")
+
+	# Also allow -K to apply --usepkg/-k
+	if ("--usepkgonly" in myopts) and not ("--usepkg" in myopts):
+		myopts.append("--usepkg")
+
+	if ("--newuse" in myopts) and not ("--update" in myopts):
+		print ">>> --newuse implies --update... adding --update to options."
+		myopts.append("--update")
+
+	# Also allow -l to apply --pretend/-p, but if already in --ask mode
+	if ("--changelog" in myopts) and not (("--pretend" in myopts) or ("--ask" in myopts)):
+		print ">>> --changelog implies --pretend... adding --pretend to options."
+		myopts.append("--pretend")
+
+	# Allow -p to remove --ask
+	if ("--pretend" in myopts) and ("--ask" in myopts):
+		print ">>> --pretend disables --ask... removing --ask from options."
+		myopts.remove("--ask")
+
+	# forbid --ask when not in a terminal
+	# note: this breaks `emerge --ask | tee logfile`, but that doesn't work anyway.
+	if ("--ask" in myopts) and (not sys.stdin.isatty()):
+		portage.writemsg("!!! \"--ask\" should only be used in a terminal. Exiting.\n",
+			noiselevel=-1)
+		sys.exit(1)
+
+	# Set so that configs will be merged regardless of remembered status
+	if ("--noconfmem" in myopts):
+		portage.settings.unlock()
+		portage.settings["NOCONFMEM"]="1"
+		portage.settings.backup_changes("NOCONFMEM")
+		portage.settings.lock()
+
+	# Set various debug markers... They should be merged somehow.
+	if ("--debug" in myopts):
+		portage.settings.unlock()
+		portage.settings["PORTAGE_DEBUG"]="1"
+		portage.settings.backup_changes("PORTAGE_DEBUG")
+		portage.debug=1
+		portage.settings.lock()
+		if "python-trace" in portage.settings.features:
+			import portage_debug
+			portage_debug.set_trace(True)
+
+	if ("--resume" in myopts):
+		if "--tree" in myopts:
+			print "* --tree is currently broken with --resume. Disabling..."
+			myopts.remove("--tree")
+
+	# Set color output
+	if "--nocolor" in myopts or \
+	portage.settings["NOCOLOR"] in ("yes","true"):
+		nocolor()
+		if "NOCOLOR" not in portage.settings:
+			portage.settings.unlock()
+			portage.settings["NOCOLOR"] = "true"
+			portage.settings.backup_changes("NOCOLOR")
+			portage.settings.lock()
+
+	if not ("--quiet" in myopts):
+		if not sys.stdout.isatty() or ("--nospinner" in myopts):
+			spinner.update = spinner.update_basic
+
+	CLEAN_DELAY = 5
+	EMERGE_WARNING_DELAY = 10
+	if portage.settings["CLEAN_DELAY"]:
+		CLEAN_DELAY = string.atoi("0"+portage.settings["CLEAN_DELAY"])
+	if portage.settings["EMERGE_WARNING_DELAY"]:
+		EMERGE_WARNING_DELAY = string.atoi("0"+portage.settings["EMERGE_WARNING_DELAY"])
+
+	if "--version" in myopts:
+		print getportageversion()
+		sys.exit(0)
+	elif "--help" in myopts:
+		help()
+		sys.exit(0)
+
+	if portage.wheelgid == portage.portage_gid:
+		print "emerge: wheel group use is being deprecated. Please update group and passwd to"
+		print "        include the portage user as noted above, and then use group portage."
+
+	if "--debug" in myopts:
+		print "myaction", myaction
+		print "myopts", myopts
+
+	if not myaction and not myfiles and "--resume" not in myopts:
+		help()
+		sys.exit(1)
+
+	# check if root user is the current user for the actions where emerge needs this
+	if portage.secpass < 2:
+		# We've already allowed "--version" and "--help" above.
+		if "--pretend" not in myopts and \
+		myaction not in ("search","info"):
+			if portage.secpass >= 1:
+				if "--fetchonly" not in myopts and \
+				"--fetch-all-uri" not in myopts and \
+				myaction not in ("metadata", "regen"):
+					print "emerge: root access required."
+					sys.exit(1)
+			else:
+				print "emerge: root access required."
+				sys.exit(1)
+
+	if not "--pretend" in myopts:
+		emergelog("Started emerge on: "+time.strftime("%b %d, %Y %H:%M:%S", time.localtime()))
+		myelogstr=""
+		if myopts:
+			myelogstr=string.join(myopts, " ")
+		if myaction:
+			myelogstr+=" "+myaction
+		if myfiles:
+			myelogstr+=" "+string.join(myfiles, " ")
+		emergelog(" *** emerge "+myelogstr)
+
+	# general options that should be taken into account before any action
+	if "--debug" in myopts:
+		edebug=1
+
 	if myaction in ["sync","metadata"] and "--help" not in myopts:
 		if "--pretend" in myopts:
 			print "emerge: \"sync\" actions do not support \"--pretend.\""
