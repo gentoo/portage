@@ -192,8 +192,6 @@ if "noauto" in portage.settings.features:
 	portage.settings.backup_changes("FEATURES")
 	portage.settings.lock()
 
-#number of ebuilds merged
-merged=0
 params=["selective", "deep", "self", "recurse", "empty"]
 actions=[
 "clean", "config", "depclean",
