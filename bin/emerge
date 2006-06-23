@@ -3,15 +3,27 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+# This block ensures that ^C interrupts are handled quietly.
+try:
+	import signal
+
+	def exithandler(signum,frame):
+		signal.signal(signal.SIGINT, signal.SIG_IGN)
+		signal.signal(signal.SIGTERM, signal.SIG_IGN)
+		sys.exit(1)
+	
+	signal.signal(signal.SIGINT, exithandler)
+	signal.signal(signal.SIGTERM, exithandler)
+
+except KeyboardInterrupt:
+	sys.exit(1)
+
 import os,sys
 os.environ["PORTAGE_CALLER"]="emerge"
 sys.path = ["/usr/lib/portage/pym"]+sys.path
 import errno
 
-try:
-	import portage
-except KeyboardInterrupt:
-	sys.exit(1) # If they control C during imports, just die silently
+import portage
 
 import emergehelp, xpak, commands, re, signal, socket, string, time, types
 from stat import ST_MTIME
