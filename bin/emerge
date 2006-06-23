@@ -192,7 +192,6 @@ if "noauto" in portage.settings.features:
 	portage.settings.backup_changes("FEATURES")
 	portage.settings.lock()
 
-params=["selective", "deep", "self", "recurse", "empty"]
 actions=[
 "clean", "config", "depclean",
 "info", "metadata",
@@ -643,6 +642,7 @@ def create_depgraph_params(myopts, myaction):
 	# self:      include _this_ package regardless of if it is merged.
 	# selective: exclude the package if it is merged
 	# recurse:   go into the dependencies
+	# deep:      go into the dependencies of already merged packages
 	# empty:     pretend nothing is merged
 	myparams=["self","recurse"]
 	add=[]
