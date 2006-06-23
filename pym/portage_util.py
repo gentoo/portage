@@ -183,7 +183,7 @@ def grablines(myfilename,recursive=0):
 	mylines=[]
 	if recursive and os.path.isdir(myfilename):
 		myfiles = [myfilename+os.path.sep+x for x in os.listdir(myfilename)]
-		myfiles = [file for files in myfiles if not file.startswith(".")]
+		myfiles = [f for f in myfiles if not f.startswith(".")]
 		myfiles.sort()
 		for f in myfiles:
 			mylines.extend(grablines(f, recursive))
