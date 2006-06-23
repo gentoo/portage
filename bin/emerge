@@ -13,7 +13,7 @@ try:
 except KeyboardInterrupt:
 	sys.exit(1) # If they control C during imports, just die silently
 
-import emergehelp,xpak,string,re,commands,time,shutil,traceback,signal,socket,types
+import emergehelp, xpak, commands, re, signal, socket, string, time, types
 from stat import ST_MTIME
 from output import blue, bold, colorize, darkblue, darkgreen, darkred, green, \
 	havecolor, nc_len, nocolor, red, teal, turquoise, white, xtermTitle, \
@@ -2416,7 +2416,7 @@ def unmerge(unmerge_action, unmerge_files, raise_on_missing=True):
 
 				if sp_absx_len <= sp_vdb_len:
 					# The Path is shorter... so it can't be inside the vdb.
-					print spabsx
+					print sp_absx
 					print absx
 					print "\n!!!",x,"cannot be inside "+(portage.root+portage.VDB_PATH)+"; aborting.\n"
 					return 0
