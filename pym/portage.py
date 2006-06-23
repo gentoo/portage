@@ -1281,8 +1281,15 @@ class config:
 					noiselevel=-1)
 				self.features.remove("gpg")
 
-		if not portage_exec.sandbox_capable and ("sandbox" in self.features or "usersandbox" in self.features):
-			writemsg(red("!!! Problem with sandbox binary. Disabling...\n\n"),
+		if not portage_exec.sandbox_capable and \
+			("sandbox" in self.features or "usersandbox" in self.features):
+			if os.environ.get("PORTAGE_CALLER","") == "repoman" and \
+				self.profile_path is not None and \
+				os.path.realpath(self.profile_path) != \
+				os.path.realpath(PROFILE_PATH):
+				pass # This profile does not belong to the user running repoman.
+			else:
+				writemsg(red("!!! Problem with sandbox binary. Disabling...\n\n"),
 				noiselevel=-1)
 			if "sandbox" in self.features:
 				self.features.remove("sandbox")
