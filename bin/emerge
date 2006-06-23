@@ -897,7 +897,7 @@ def genericdict(mylist):
 
 class depgraph:
 
-	def __init__(self, settings, portdb, trees, myaction, myopts, myparams,
+	def __init__(self, settings, portdb, trees, myopts, myparams,
 		edebug, spinner):
 		self.settings = settings
 		self.portdb = portdb
@@ -916,7 +916,6 @@ class depgraph:
 		self.applied_useflags = {}
 
 		self.missingbins=[]
-		self.myaction=myaction
 		self.digraph=portage.digraph()
 		self.orderedkeys=[]
 		self.outdatedpackages=[]
@@ -3383,7 +3382,7 @@ def action_depclean(myopts):
 
 	myparams = create_depgraph_params(myopts, myaction)
 	mydepgraph = depgraph(portage.settings, portage.portdb, portage.db,
-		myaction, myopts, myparams, edebug, spinner)
+		myopts, myparams, edebug, spinner)
 
 	if not ("--quiet" in myopts):
 		print "\nCalculating dependencies  ",
@@ -3498,7 +3497,7 @@ def action_build(myopts, myaction, myfiles):
 		myopts=myresumeopts
 		myparams = create_depgraph_params(myopts, myaction)
 		mydepgraph = depgraph(portage.settings, portage.portdb, portage.db,
-			"resume", myopts, myparams, edebug, spinner)
+			myopts, myparams, edebug, spinner)
 		if "--resume" not in myopts:
 			myopts+=["--resume"]
 	else:
@@ -3509,7 +3508,7 @@ def action_build(myopts, myaction, myfiles):
 
 		myparams = create_depgraph_params(myopts, myaction)
 		mydepgraph = depgraph(portage.settings, portage.portdb, portage.db,
-			myaction, myopts, myparams, edebug, spinner)
+			myopts, myparams, edebug, spinner)
 		if myaction in ["system","world"]:
 			if not ("--quiet" in myopts):
 				print "Calculating",myaction,"dependencies  ",
