@@ -3,6 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+import sys
 # This block ensures that ^C interrupts are handled quietly.
 try:
 	import signal
@@ -18,14 +19,13 @@ try:
 except KeyboardInterrupt:
 	sys.exit(1)
 
-import os,sys
+import os
 os.environ["PORTAGE_CALLER"]="emerge"
 sys.path = ["/usr/lib/portage/pym"]+sys.path
-import errno
 
 import portage
 
-import emergehelp, xpak, commands, re, signal, socket, string, time, types
+import emergehelp, xpak, commands, errno, re, socket, string, time, types
 from stat import ST_MTIME
 from output import blue, bold, colorize, darkblue, darkgreen, darkred, green, \
 	havecolor, nc_len, nocolor, red, teal, turquoise, white, xtermTitle, \
