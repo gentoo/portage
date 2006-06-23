@@ -21,6 +21,7 @@ import portage_util
 import portage_locks
 import portage_exception
 from portage_const import PROFILE_PATH
+from portage_data import secpass
 
 portage.global_updates(
 	portage.settings, portage.db, portage.mtimedb["updates"])
@@ -477,9 +478,8 @@ def emergelog(mystr,short_msg=None):
 		portage_locks.unlockfile(l)
 		mylogfile.close()
 	except (IOError,OSError,portage_exception.PortageException), e:
-		if edebug:
-			print "emergelog():",e
-		pass
+		if secpass >= 1:
+			print >> sys.stderr, "emergelog():",e
 
 def emergeexit():
 	"""This gets out final log message in before we quit."""
