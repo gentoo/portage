@@ -2723,7 +2723,7 @@ def validate_merge_list(mergelist):
 if "--debug" in myopts:
 	edebug=1
 
-def action_sync():
+def action_sync(myopts, myaction):
 	emergelog(" === "+str(myaction))
 	myportdir=portage.settings["PORTDIR"]
 	if myportdir[-1]=="/":
@@ -3189,7 +3189,7 @@ def action_regen():
 				print "\n  error processing %(cpv)s, continuing... (%(e)s)" % {"cpv":y,"e":str(e)}
 	print "done!"
 
-def action_config():
+def action_config(myopts, myfiles):
 	if len(myfiles) != 1 or "system" in myfiles or "world" in myfiles:
 		print red("!!! config can only take a single package atom at this time\n")
 		sys.exit(1)
@@ -3244,7 +3244,7 @@ def action_config():
 	portage.doebuild(ebuildpath,"config",portage.root,mysettings,debug=("--debug" in myopts),cleanup=True,tree="vartree")
 	print
 
-def action_info():
+def action_info(myopts):
 	unameout=commands.getstatusoutput("uname -mrp")[1]
 	print getportageversion()
 	print "================================================================="
@@ -3324,7 +3324,7 @@ def action_info():
 			if "cvs_id_string" in dir(module):
 				print "%s: %s" % (str(x), str(module.cvs_id_string))
 
-def action_search():
+def action_search(myopts, myfiles):
 	if not myfiles:
 		print "emerge: no search terms provided."
 	else:
@@ -3339,7 +3339,7 @@ def action_search():
 				sys.exit(1)
 			searchinstance.output()
 
-def action_depclean():
+def action_depclean(myopts):
 	# Kill packages that aren't explicitly merged or are required as a
 	# dependency of another package. World file is explicit.
 
@@ -3462,7 +3462,7 @@ def action_depclean():
 		print "Number removed:       "+str(len(cleanlist))
 		post_emerge()
 
-def action_build(myopts):
+def action_build(myopts, myaction, myfiles):
 	favorites=[]
 	if ("--ask" in myopts or "--pretend" in myopts) and not "--quiet" in myopts:
 		action = ""
@@ -3637,26 +3637,26 @@ if __name__ == "__main__":
 		if "--pretend" in myopts:
 			print "emerge: \"sync\" actions do not support \"--pretend.\""
 			sys.exit(1)
-		action_sync()
+		action_sync(myopts, myaction)
 	elif myaction=="regen":
 		action_regen()
 	# HELP action
 	elif "config"==myaction:
-		action_config()
+		action_config(myopts, myfiles)
 	
 	# INFO action
 	elif "info"==myaction:
-		action_info()
+		action_info(myopts)
 	
 	# SEARCH action
 	elif "search"==myaction:
-		action_search()
+		action_search(myopts, myfiles)
 	elif "unmerge"==myaction or "prune"==myaction or "clean"==myaction:
 		if 1 == unmerge(myaction, myfiles, raise_on_missing=False):
 			post_emerge()
 	
 	elif "depclean"==myaction:
-		action_depclean()
+		action_depclean(myopts)
 	# "update", "system", or just process files:
 	else:
-		action_build(myopts)
+		action_build(myopts, myaction, myfiles)
