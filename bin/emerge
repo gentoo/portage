@@ -1903,14 +1903,8 @@ class depgraph:
 					if self.pkgsettings["AUTOCLEAN"]=="yes":
 						xsplit=portage.pkgsplit(x[2])
 						emergelog(" >>> AUTOCLEAN: "+xsplit[0])
-						if x[1] == self.settings["ROOT"]:
-							# Compare against portage.settings["ROOT"] because
-							# the value of self.pkgsettings["ROOT"] does not
-							# match the original value!
-							retval = unmerge("clean", [xsplit[0]])
-						else:
-							retval = unmerge_overlapping(x[2], x[1],
-								self.pkgsettings, self.trees[x[1]]["vartree"])
+						retval = unmerge_overlapping(x[2], x[1],
+							self.pkgsettings, self.trees[x[1]]["vartree"])
 						if not retval:
 							emergelog(" --- AUTOCLEAN: Nothing unmerged.")
 					else:
@@ -2043,27 +2037,26 @@ def unmerge_overlapping(pkg_key, myroot, mysettings, vartree):
 		return 1
 	return 0
 
-def unmerge(unmerge_action, unmerge_files, raise_on_missing=True):
+def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
+	raise_on_missing=True):
 	candidate_catpkgs=[]
 	global_unmerge=0
 
-	settings = portage.settings
 	realsyslist = getlist(settings, "system")
 	syslist = []
 	for x in realsyslist:
 		mycp = portage.dep_getkey(x)
-		if mycp in portage.settings.getvirtuals():
+		if mycp in settings.getvirtuals():
 			providers = []
-			for provider in portage.settings.getvirtuals()[mycp]:
-				if portage.db[portage.root]["vartree"].dbapi.match(provider):
+			for provider in settings.getvirtuals()[mycp]:
+				if vartree.dbapi.match(provider):
 					providers.append(provider)
 			if len(providers) == 1:
 				syslist.extend(providers)
 		else:
 			syslist.append(mycp)
 
-	global myopts
-	mysettings = portage.config(clone=portage.settings)
+	mysettings = portage.config(clone=settings)
 
 	if not unmerge_files or "world" in unmerge_files or "system" in unmerge_files:
 		if "unmerge"==unmerge_action:
@@ -2075,7 +2068,7 @@ def unmerge(unmerge_action, unmerge_files, raise_on_missing=True):
 		else:
 			global_unmerge=1
 
-	localtree=portage.db[portage.root]["vartree"]
+	localtree = vartree
 	# process all arguments and add all valid db entries to candidate_catpkgs
 	if global_unmerge:
 		if not unmerge_files or "world" in unmerge_files:
@@ -2171,7 +2164,9 @@ def unmerge(unmerge_action, unmerge_files, raise_on_missing=True):
 				portage.writemsg("\n--- Couldn't find '%s' to %s.\n" % \
 					(x, unmerge_action), noiselevel=-1)
 				continue
-		mykey=portage.key_expand(portage.dep_getkey(mymatch[0]),portage.db["/"]["vartree"].dbapi)
+		mykey = portage.key_expand(
+			portage.dep_getkey(
+				mymatch[0]), mydb=vartree.dbapi, settings=settings)
 		if not pkgmap.has_key(mykey):
 			pkgmap[mykey]={"protected":[], "selected":[], "omitted":[] }
 		if unmerge_action=="unmerge":
@@ -3069,6 +3064,7 @@ def action_depclean(myopts):
 	print red("*** WARNING ***")+"  "+bold("Make sure you have a backup.")
 
 	settings = portage.settings
+	vartree = portage.db[settings["ROOT"]]["vartree"]
 	syslist = getlist(settings, "system")
 	worldlist = getlist(settings, "world")
 	myvarlist=portage.vardbapi(portage.root).cp_all()
@@ -3154,7 +3150,7 @@ def action_depclean(myopts):
 	#print
 
 	if len(cleanlist):
-		unmerge("unmerge", cleanlist)
+		unmerge(settings, myopts, vartree, "unmerge", cleanlist)
 
 	print
 	print "Packages installed:   "+str(len(myvarlist))
@@ -3169,6 +3165,8 @@ def action_depclean(myopts):
 		post_emerge()
 
 def action_build(myopts, myaction, myfiles):
+	settings = portage.settings
+	trees = portage.db
 	favorites=[]
 	if ("--ask" in myopts or "--pretend" in myopts) and not "--quiet" in myopts:
 		action = ""
@@ -3331,7 +3329,8 @@ def action_build(myopts, myaction, myfiles):
 			del portage.mtimedb["resume"]
 		if portage.settings["AUTOCLEAN"] and "yes"==portage.settings["AUTOCLEAN"]:
 			print ">>> Auto-cleaning packages..."
-			unmerge("clean", ["world"])
+			vartree = trees[settings["ROOT"]]["vartree"]
+			unmerge(settings, myopts, vartree, "clean", ["world"])
 		else:
 			portage.writemsg_stdout(colorize("WARN", "WARNING:")
 				+ " AUTOCLEAN is disabled.  This can cause serious"
@@ -3339,7 +3338,8 @@ def action_build(myopts, myaction, myfiles):
 	post_emerge()
 
 if __name__ == "__main__":
-
+	settings = portage.settings
+	trees = portage.db
 	portage.global_updates(
 		portage.settings, portage.db, portage.mtimedb["updates"])
 
@@ -3681,7 +3681,9 @@ if __name__ == "__main__":
 	elif "search"==myaction:
 		action_search(myopts, myfiles)
 	elif "unmerge"==myaction or "prune"==myaction or "clean"==myaction:
-		if 1 == unmerge(myaction, myfiles, raise_on_missing=False):
+		vartree = trees[settings["ROOT"]]["vartree"]
+		if 1 == unmerge(settings, myopts, vartree, myaction, myfiles,
+			raise_on_missing=False):
 			post_emerge()
 	
 	elif "depclean"==myaction:

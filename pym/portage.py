@@ -3536,9 +3536,10 @@ def cpv_getkey(mycpv):
 	else:
 		return mysplit
 
-def key_expand(mykey,mydb=None,use_cache=1):
+def key_expand(mykey, mydb=None, use_cache=1, settings=None):
 	mysplit=mykey.split("/")
-	global settings
+	if settings is None:
+		settings = globals()["settings"]
 	virts = settings.getvirtuals("/")
 	virts_p = settings.get_virts_p("/")
 	if len(mysplit)==1:
