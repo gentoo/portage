@@ -2133,8 +2133,8 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 	newline=""
 	if (not "--quiet" in myopts):
 		newline="\n"
-	if portage.settings["ROOT"] != "/":
-		print darkgreen(newline+">>> Using system located in ROOT tree "+portage.settings["ROOT"])
+	if settings["ROOT"] != "/":
+		print darkgreen(newline+">>> Using system located in ROOT tree "+settings["ROOT"])
 	if (("--pretend" in myopts) or ("--ask" in myopts)) and not ("--quiet" in myopts):
 		print darkgreen(newline+">>> These are the packages that would be unmerged:")
 
