@@ -2103,7 +2103,7 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 
 				sp_absx_len = len(sp_absx)
 
-				vdb_path = portage.root+portage.VDB_PATH
+				vdb_path = os.path.join(settings["ROOT"], portage.VDB_PATH)
 				vdb_len  = len(vdb_path)
 
 				sp_vdb     = vdb_path.split("/")
@@ -2117,14 +2117,14 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 					# The Path is shorter... so it can't be inside the vdb.
 					print sp_absx
 					print absx
-					print "\n!!!",x,"cannot be inside "+(portage.root+portage.VDB_PATH)+"; aborting.\n"
+					print "\n!!!",x,"cannot be inside "+vdb_path+"; aborting.\n"
 					return 0
 
 				for idx in range(0,sp_vdb_len):
 					if (idx >= sp_absx_len) or (sp_vdb[idx] != sp_absx[idx]):
 						print sp_absx
 						print absx
-						print "\n!!!",x,"is not inside "+(portage.root+portage.VDB_PATH)+"; aborting.\n"
+						print "\n!!!",x,"is not inside "+vdb_path+"; aborting.\n"
 						return 0
 
 				print "="+string.join(sp_absx[sp_vdb_len:],"/")
@@ -2267,7 +2267,8 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 			emergelog("=== Unmerging... ("+y+")")
 			mysplit=string.split(y,"/")
 			#unmerge...
-			retval=portage.unmerge(mysplit[0],mysplit[1],portage.root,mysettings,unmerge_action not in ["clean","prune"])
+			retval = portage.unmerge(mysplit[0], mysplit[1], settings["ROOT"],
+				mysettings, unmerge_action not in ["clean","prune"])
 			if retval:
 				emergelog(" !!! unmerge FAILURE: "+y)
 			else:
