@@ -24,45 +24,50 @@ install_qa_check() {
 	declare -i UNSAFE=0
 	for i in $(find "${D}/" -type f -perm -2002); do
 		((UNSAFE++))
-		echo "UNSAFE SetGID: $i"
+		vecho "UNSAFE SetGID: $i"
 		chmod -s,o-w "$i"
 	done
 	for i in $(find "${D}/" -type f -perm -4002); do
 		((UNSAFE++))
-		echo "UNSAFE SetUID: $i"
+		vecho "UNSAFE SetUID: $i"
 		chmod -s,o-w "$i"
 	done
 
 	# Now we look for all world writable files.
 	for i in $(find "${D}/" -type f -perm -2); do
-		echo -ne '\a'
-		echo "QA Security Notice:"
-		echo "- ${i:${#D}:${#i}} will be a world writable file."
-		echo "- This may or may not be a security problem, most of the time it is one."
-		echo "- Please double check that $PF really needs a world writeable bit and file bugs accordingly."
+		vecho -ne '\a'
+		vecho "QA Security Notice:"
+		vecho "- ${i:${#D}:${#i}} will be a world writable file."
+		vecho "- This may or may not be a security problem, most of the time it is one."
+		vecho "- Please double check that $PF really needs a world writeable bit and file bugs accordingly."
 		sleep 1
 	done
 
-	if type -p scanelf > /dev/null ; then
-		local qa_var insecure_rpath=0
-
+	if type -p scanelf > /dev/null && ! hasq binchecks ${RESTRICT}; then
+		local qa_var insecure_rpath=0 tmp_quiet=${PORTAGE_QUIET}
+		
+		# display warnings when using stricter because we die afterwards
+		if has stricter ${FEATURES} && ! has stricter ${RESTRICT}; then
+			unset PORTAGE_QUIET
+		fi
+		
 		# Make sure we disallow insecure RUNPATH/RPATH's
 		# Don't want paths that point to the tree where the package was built
 		# (older, broken libtools would do this).  Also check for null paths
 		# because the loader will search $PWD when it finds null paths.
 		f=$(scanelf -qyRF '%r %p' "${D}" | grep -E "(${PORTAGE_BUILDDIR}|: |::|^:|^ )")
 		if [[ -n ${f} ]] ; then
-			echo -ne '\a\n'
-			echo "QA Notice: the following files contain insecure RUNPATH's"
-			echo " Please file a bug about this at http://bugs.gentoo.org/"
-			echo " with the maintaining herd of the package."
-			echo " Summary: $CATEGORY/$PN: insecure RPATH ${f}"
-			echo "${f}"
-			echo -ne '\a\n'
-			if has stricter ${FEATURES}; then
+			vecho -ne '\a\n'
+			vecho "QA Notice: the following files contain insecure RUNPATH's"
+			vecho " Please file a bug about this at http://bugs.gentoo.org/"
+			vecho " with the maintaining herd of the package."
+			vecho " Summary: $CATEGORY/$PN: insecure RPATH ${f}"
+			vecho "${f}"
+			vecho -ne '\a\n'
+			if has stricter ${FEATURES} && ! has stricter ${RESTRICT}; then
 				insecure_rpath=1
 			else
-				echo "Auto fixing rpaths for ${f}"
+				vecho "Auto fixing rpaths for ${f}"
 				TMPDIR=${PORTAGE_BUILDDIR} scanelf -BXr ${f} -o /dev/null
 			fi
 		fi
@@ -70,12 +75,12 @@ install_qa_check() {
 		# Check for setid binaries but are not built with BIND_NOW
 		f=$(scanelf -qyRF '%b %p' "${D}")
 		if [[ -n ${f} ]] ; then
-			echo -ne '\a\n'
-			echo "QA Notice: the following files are setXid, dyn linked, and using lazy bindings"
-			echo " This combination is generally discouraged.  Try re-emerging the package:"
-			echo " LDFLAGS='-Wl,-z,now' emerge ${PN}"
-			echo "${f}"
-			echo -ne '\a\n'
+			vecho -ne '\a\n'
+			vecho "QA Notice: the following files are setXid, dyn linked, and using lazy bindings"
+			vecho " This combination is generally discouraged.  Try re-emerging the package:"
+			vecho " LDFLAGS='-Wl,-z,now' emerge ${PN}"
+			vecho "${f}"
+			vecho -ne '\a\n'
 			die_msg="${die_msg} setXid lazy bindings,"
 			sleep 1
 		fi
@@ -88,32 +93,27 @@ install_qa_check() {
 		qa_var="QA_TEXTRELS_${ARCH}"
 		[[ -n ${!qa_var} ]] && QA_TEXTRELS=${!qa_var}
 		[[ -n ${QA_STRICT_TEXTRELS} ]] && QA_TEXTRELS=""
-		f=$(scanelf -qyRF '%t %p' "${D}" | grep -v ' usr/lib/debug/' | \
-			gawk '
-			BEGIN { split("'"${QA_TEXTRELS}"'", ignore); }
-			{	for (idx in ignore)
-					if ($NF ~ "^"ignore[idx]"$")
-					next;
-				print;
-			}')
+		export QA_TEXTRELS
+		f=$(scanelf -qyRF '%t %p' "${D}" | grep -v 'usr/lib/debug/')
 		if [[ -n ${f} ]] ; then
 			scanelf -qyRF '%T %p' "${PORTAGE_BUILDDIR}"/ &> "${T}"/scanelf-textrel.log
-			echo -ne '\a\n'
-			echo "QA Notice: the following files contain runtime text relocations"
-			echo " Text relocations force the dynamic linker to perform extra"
-			echo " work at startup, waste system resources, and may pose a security"
-			echo " risk.  On some architectures, the code may not even function"
-			echo " properly, if at all."
-			echo " For more information, see http://hardened.gentoo.org/pic-fix-guide.xml"
-			echo " Please include this file in your report:"
-			echo " ${T}/scanelf-textrel.log"
-			echo "${f}"
-			echo -ne '\a\n'
+			vecho -ne '\a\n'
+			vecho "QA Notice: the following files contain runtime text relocations"
+			vecho " Text relocations force the dynamic linker to perform extra"
+			vecho " work at startup, waste system resources, and may pose a security"
+			vecho " risk.  On some architectures, the code may not even function"
+			vecho " properly, if at all."
+			vecho " For more information, see http://hardened.gentoo.org/pic-fix-guide.xml"
+			vecho " Please include this file in your report:"
+			vecho " ${T}/scanelf-textrel.log"
+			vecho "${f}"
+			vecho -ne '\a\n'
 			die_msg="${die_msg} textrels,"
 			sleep 1
 		fi
 
 		# Also, executable stacks only matter on linux (and just glibc atm ...)
+		f=""
 		case ${CTARGET:-${CHOST}} in
 			*-linux-gnu*)
 			# Check for files with executable stacks, but only on arches which
@@ -130,32 +130,28 @@ install_qa_check() {
 					qa_var="QA_EXECSTACK_${ARCH}"
 					[[ -n ${!qa_var} ]] && QA_EXECSTACK=${!qa_var}
 					[[ -n ${QA_STRICT_EXECSTACK} ]] && QA_EXECSTACK=""
-					f=$(scanelf -qyRF '%e %p' "${D}" | grep -v ' usr/lib/debug/' | \
-						gawk '
-						BEGIN { split("'"${QA_EXECSTACK}"'", ignore); }
-						{	for (idx in ignore)
-								if ($NF ~ "^"ignore[idx]"$")
-									next;
-							print;
-						}')
+					qa_var="QA_WX_LOAD_${ARCH}"
+					[[ -n ${!qa_var} ]] && QA_WX_LOAD=${!qa_var}
+					[[ -n ${QA_STRICT_WX_LOAD} ]] && QA_WX_LOAD=""
+					export QA_EXECSTACK QA_WX_LOAD
+					f=$(scanelf -qyRF '%e %p' "${D}" | grep -v 'usr/lib/debug/')
 					;;
-				*)	f="" ;;
 			esac
 			;;
 		esac
 		if [[ -n ${f} ]] ; then
 			# One more pass to help devs track down the source
 			scanelf -qyRF '%e %p' "${PORTAGE_BUILDDIR}"/ &> "${T}"/scanelf-execstack.log
-			echo -ne '\a\n'
-			echo "QA Notice: the following files contain executable stacks"
-			echo " Files with executable stacks will not work properly (or at all!)"
-			echo " on some architectures/operating systems.  A bug should be filed"
-			echo " at http://bugs.gentoo.org/ to make sure the file is fixed."
-			echo " For more information, see http://hardened.gentoo.org/gnu-stack.xml"
-			echo " Please include this file in your report:"
-			echo " ${T}/scanelf-execstack.log"
-			echo "${f}"
-			echo -ne '\a\n'
+			vecho -ne '\a\n'
+			vecho "QA Notice: the following files contain executable stacks"
+			vecho " Files with executable stacks will not work properly (or at all!)"
+			vecho " on some architectures/operating systems.  A bug should be filed"
+			vecho " at http://bugs.gentoo.org/ to make sure the file is fixed."
+			vecho " For more information, see http://hardened.gentoo.org/gnu-stack.xml"
+			vecho " Please include this file in your report:"
+			vecho " ${T}/scanelf-execstack.log"
+			vecho "${f}"
+			vecho -ne '\a\n'
 			die_msg="${die_msg} execstacks"
 			sleep 1
 		fi
@@ -168,6 +164,8 @@ install_qa_check() {
 		elif [[ ${die_msg} != "" ]] && has stricter ${FEATURES} && ! has stricter ${RESTRICT} ; then
 			die "Aborting due to QA concerns: ${die_msg}"
 		fi
+
+		PORTAGE_QUIET=${tmp_quiet}
 	fi
 
 	if [[ ${UNSAFE} > 0 ]] ; then
@@ -184,77 +182,16 @@ install_qa_check() {
 		unset INSTALLTOD
 	fi
 
-	# dumps perms to stdout.  if error, no perms dumped.
-	function stat_perms() {
-		local f
-		# only define do_stat if it hasn't been already
-		if ! type -p do_stat &> /dev/null; then
-			if ! type -p stat &>/dev/null; then
-				do_stat() {
-					# Generic version -- Octal result
-					python -c "import os,stat; print '%o' % os.stat('$1')[stat.ST_MODE]"
-				}
-			else
-				if [ "${USERLAND}" == "BSD" ]; then
-					do_stat() {
-						# BSD version -- Octal result
-						$(type -p stat) -f '%p' "$1"
-					}
-				else
-					do_stat() {
-						# GNU version -- Hex result converted to Octal
-						f=$($(type -p stat) -c '%f' "$1") || return $?
-						printf '%o' "0x$f"
-					}
-				fi
-			fi
-		fi
-
-		f=$(do_stat "$@") || return
-		f="${f:2:4}"
-		echo $f
-	}
-
-	local file s
-	local count=0
-	find "${D}/" -user ${PORTAGE_USER:-portage} | while read file; do
-		count=$(( $count + 1 ))
-		if [ -L "${file}" ]; then
-			lchown ${PORTAGE_INST_UID:-0} "${file}"
-		else
-			s=$(stat_perms "$file")
-			if [ -z "${s}" ]; then
-				ewarn "failed stat_perm'ing $file.  User intervention during install isn't wise..."
-				continue
-			fi
-			chown ${PORTAGE_INST_UID:-0} "$file"
-			chmod "$s" "$file"
-		fi
-	done
-	if (( $count > 0 )); then
-		ewarn "$count files were installed with user ${PORTAGE_USER:-portage}!"
+	local find_log="${T}/find-portage-log"
+	find "${D}"/ -user portage -print0 > "${find_log}"
+	if [[ -s ${find_log} ]] ; then
+		xargs -0 chown -h ${PORTAGE_INST_UID:-0} < "${find_log}"
 	fi
-
-	count=0
-	find "${D}/" -group ${PORTAGE_GROUP:-portage}| while read file; do
-		count=$(( $count + 1 ))
-		if [ -L "${file}" ]; then
-			lchgrp ${PORTAGE_INST_GID:-0} "${file}"
-		else
-			s=$(stat_perms "$file")
-			if [ -z "${s}" ]; then
-				echo "failed stat_perm'ing '$file' . User intervention during install isn't wise..."
-				continue
-			fi
-			chgrp ${PORTAGE_INST_GID:-0} "$file"
-			chmod "$s" "$file"
-		fi
-	done
-	if (( $count > 0 )); then
-		ewarn "$count files were installed with group ${PORTAGE_GROUP:-portage}!"
+	find "${D}"/ -group portage -print0 > "${find_log}"
+	if [[ -s ${find_log} ]] ; then
+		xargs -0 chgrp -h ${PORTAGE_INST_GID:-0} < "${find_log}"
 	fi
-
-	unset -f stat_perms
+	rm -f "${find_log}"
 
 	# Portage regenerates this on the installed system.
 	if [ -f "${D}/usr/share/info/dir.gz" ]; then
@@ -347,24 +284,24 @@ preinst_suid_scan() {
 	# total suid control.
 	if hasq suidctl $FEATURES; then
 		sfconf=${EPREFIX}/etc/portage/suidctl.conf
-		echo ">>> Preforming suid scan in ${IMAGE}"
+		vecho ">>> Preforming suid scan in ${IMAGE}"
 		for i in $(find ${IMAGE}/ -type f \( -perm -4000 -o -perm -2000 \) ); do
 			if [ -s "${sfconf}" ]; then
-				suid="`grep ^${i/${IMAGE}/}$ ${sfconf}`"
+				suid="$(grep ^${i/${IMAGE}/}$ ${sfconf})"
 				if [ "${suid}" = "${i/${IMAGE}/}" ]; then
-					echo "- ${i/${IMAGE}/} is an approved suid file"
+					vecho "- ${i/${IMAGE}/} is an approved suid file"
 				else
-					echo ">>> Removing sbit on non registered ${i/${IMAGE}/}"
+					vecho ">>> Removing sbit on non registered ${i/${IMAGE}/}"
 					for x in 5 4 3 2 1 0; do echo -ne "\a"; sleep 0.25 ; done
-					echo -ne "\a"
+					vecho -ne "\a"
+					ls_ret=$(ls -ldh "${i}")
 					chmod ugo-s "${i}"
 					grep ^#${i/${IMAGE}/}$ ${sfconf} > /dev/null || {
 						# sandbox prevents us from writing directly
 						# to files outside of the sandbox, but this
 						# can easly be bypassed using the addwrite() function
 						addwrite "${sfconf}"
-						echo ">>> Appending commented out entry to ${sfconf} for ${PF}"
-						ls_ret=`ls -ldh "${i}"`
+						vecho ">>> Appending commented out entry to ${sfconf} for ${PF}"
 						echo "## ${ls_ret%${IMAGE}*}${ls_ret#*${IMAGE}}" >> ${sfconf}
 						echo "#${i/${IMAGE}/}" >> ${sfconf}
 						# no delwrite() eh?
@@ -372,7 +309,7 @@ preinst_suid_scan() {
 					}
 				fi
 			else
-				echo "suidctl feature set but you are lacking a ${sfconf}"
+				vecho "suidctl feature set but you are lacking a ${sfconf}"
 			fi
 		done
 	fi
@@ -388,7 +325,7 @@ preinst_selinux_labels() {
 		# only attempt to label if setfiles is executable
 		# and 'context' is available on selinuxfs.
 		if [ -f /selinux/context -a -x ${EPREFIX}/usr/sbin/setfiles -a -x ${EPREFIX}/usr/sbin/selinuxconfig ]; then
-			echo ">>> Setting SELinux security labels"
+			vecho ">>> Setting SELinux security labels"
 			(
 				eval "$(${EPREFIX}/usr/sbin/selinuxconfig)" || \
 					die "Failed to determine SELinux policy paths.";
@@ -400,7 +337,7 @@ preinst_selinux_labels() {
 		else
 			# nonfatal, since merging can happen outside a SE kernel
 			# like during a recovery situation
-			echo "!!! Unable to set SELinux security labels"
+			vecho "!!! Unable to set SELinux security labels"
 		fi
 	fi
 }
@@ -410,7 +347,9 @@ dyn_package() {
 	install_mask "${PORTAGE_BUILDDIR}/image" ${PKG_INSTALL_MASK}
 	local pkg_dest="${PKGDIR}/All/${PF}.tbz2"
 	local pkg_tmp="${PKGDIR}/All/${PF}.tbz2.$$"
-	addwrite "${PKGDIR}"
+	# Sandbox is disabled in case the user wants to use a symlink
+	# for $PKGDIR and/or $PKGDIR/All.
+	export SANDBOX_ON="0"
 	tar cpvf - ./ | bzip2 -f > "${pkg_tmp}" || die "Failed to create tarball"
 	cd ..
 	python -c "import xpak; t=xpak.tbz2('${pkg_tmp}'); t.recompose('${PORTAGE_BUILDDIR}/build-info')"
@@ -420,7 +359,7 @@ dyn_package() {
 	fi
 	mv -f "${pkg_tmp}" "${pkg_dest}" || die "Failed to move tbz2 to ${pkg_dest}"
 	ln -sf "../All/${PF}.tbz2" "${PKGDIR}/${CATEGORY}/${PF}.tbz2" || die "Failed to create symlink in ${PKGDIR}/${CATEGORY}"
-	echo ">>> Done."
+	vecho ">>> Done."
 	cd "${PORTAGE_BUILDDIR}"
 	touch .packaged || die "Failed to 'touch .packaged' in ${PORTAGE_BUILDDIR}"
 }

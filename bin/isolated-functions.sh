@@ -3,6 +3,10 @@
 # $Header$
 
 # Internal logging function, don't use this in ebuilds
+vecho() {
+	[[ ${PORTAGE_QUIET} == "1" ]] || echo "$@"
+}
+
 elog_base() {
 	local messagetype
 	[ -z "${1}" -o -z "${T}" -o ! -d "${T}/logging" ] && return 1
@@ -12,11 +16,11 @@ elog_base() {
 			shift
 			;;
 		*)
-			echo -e " ${BAD}*${NORMAL} Invalid use of internal function elog_base(), next message will not be logged"
+			vecho -e " ${BAD}*${NORMAL} Invalid use of internal function elog_base(), next message will not be logged"
 			return 1
 			;;
 	esac
-	echo "$*" >> ${T}/logging/${EBUILD_PHASE}.${messagetype}
+	echo -e "$*" >> ${T}/logging/${EBUILD_PHASE:-other}.${messagetype}
 	return 0
 }
 
@@ -45,7 +49,9 @@ esyslog() {
 }
 
 einfo() {
-	einfon "$*\n"
+	elog_base INFO "$*"
+	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
+	echo -e " ${GOOD}*${NORMAL} $*"
 	LAST_E_CMD="einfo"
 	return 0
 }
@@ -187,7 +193,7 @@ unset_colors() {
 
 set_colors() {
 	COLS=${COLUMNS:-0}      # bash's internal COLUMNS variable
-	(( COLS == 0 )) && COLS=$(set -- `stty size 2>/dev/null` ; echo $2)
+	(( COLS == 0 )) && COLS=$(set -- $(stty size 2>/dev/null) ; echo $2)
 	(( COLS > 0 )) || (( COLS = 80 ))
 	COLS=$((${COLS} - 8))	# width of [ ok ] == 7
 
