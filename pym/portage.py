@@ -7063,7 +7063,7 @@ def init_legacy_globals():
 	do_vartree(settings, trees=db)
 	portdb = portdbapi(settings["PORTDIR"], mysettings=config(clone=settings))
 
-	mtimedbfile = os.path.join(root, CACHE_PATH.lstrip(os.path.sep), "mtimedb")
+	mtimedbfile = os.path.join("/", CACHE_PATH.lstrip(os.path.sep), "mtimedb")
 	try:
 		f = open(mtimedbfile)
 		mtimedb = load_mtimedb(f)
