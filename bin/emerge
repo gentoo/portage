@@ -551,12 +551,12 @@ class search:
 
 
 #build our package digraph
-def getlist(mode):
+def getlist(settings, mode):
 	if mode=="system":
-		mylines=portage.settings.packages
+		mylines = settings.packages
 	elif mode=="world":
 		try:
-			file_path = os.path.join(portage.root, portage.WORLD_FILE)
+			file_path = os.path.join(settings["ROOT"], portage.WORLD_FILE)
 			myfile = open(file_path, "r")
 			mylines = myfile.readlines()
 			myfile.close()
@@ -581,10 +581,12 @@ def getlist(mode):
 
 	# Remove everything that is package.provided from our list
 	for atom in mynewlines[:]:
-		for expanded_atom in portage.flatten(portage.dep_virtual([atom], portage.settings)):
+		for expanded_atom in portage.flatten(
+			portage.dep_virtual([atom], settings)):
 			mykey = portage.dep_getkey(expanded_atom)
-			if portage.settings.pprovideddict.has_key(mykey) and \
-				portage.match_from_list(expanded_atom, portage.settings.pprovideddict[mykey]):
+			if mykey in settings.pprovideddict and \
+				portage.match_from_list(
+					expanded_atom, settings.pprovideddict[mykey]):
 					mynewlines.remove(atom)
 					break
 
@@ -1128,11 +1130,11 @@ class depgraph:
 	def xcreate(self,mode="system"):
 		world_problems = False
 		if mode=="system":
-			mylist = getlist("system")
+			mylist = getlist(self.settings, "system")
 		else:
 			#world mode
-			worldlist=getlist("world")
-			sysdict = genericdict(getlist("system"))
+			worldlist = getlist(self.settings, "world")
+			sysdict = genericdict(getlist(self.settings, "system"))
 			worlddict=genericdict(worldlist)
 
 			for x in worlddict.keys():
@@ -1649,7 +1651,7 @@ class depgraph:
 						sys.exit(1)
 
 		#buildsyspkg: I need mysysdict also on resume (moved from the else block)
-		mysysdict = genericdict(getlist("system"))
+		mysysdict = genericdict(getlist(self.settings, "system"))
 		if "--resume" in self.myopts:
 			# We're resuming.
 			print green("*** Resuming merge...")
@@ -2045,7 +2047,8 @@ def unmerge(unmerge_action, unmerge_files, raise_on_missing=True):
 	candidate_catpkgs=[]
 	global_unmerge=0
 
-	realsyslist = getlist("system")
+	settings = portage.settings
+	realsyslist = getlist(settings, "system")
 	syslist = []
 	for x in realsyslist:
 		mycp = portage.dep_getkey(x)
@@ -2078,7 +2081,7 @@ def unmerge(unmerge_action, unmerge_files, raise_on_missing=True):
 		if not unmerge_files or "world" in unmerge_files:
 			candidate_catpkgs.extend(localtree.getallnodes())
 		elif "system" in unmerge_files:
-			candidate_catpkgs.extend(getlist("system"))
+			candidate_catpkgs.extend(getlist(settings, "system"))
 	else:
 		#we've got command-line arguments
 		if not unmerge_files:
@@ -3065,8 +3068,9 @@ def action_depclean(myopts):
 	print red("*** WARNING ***")
 	print red("*** WARNING ***")+"  "+bold("Make sure you have a backup.")
 
-	syslist=getlist("system")
-	worldlist=getlist("world")
+	settings = portage.settings
+	syslist = getlist(settings, "system")
+	worldlist = getlist(settings, "world")
 	myvarlist=portage.vardbapi(portage.root).cp_all()
 
 	if not syslist:
