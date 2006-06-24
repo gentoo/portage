@@ -57,9 +57,7 @@ try:
 
 	# XXX: This needs to get cleaned up.
 	import output
-	from output import blue, bold, brown, darkblue, darkgreen, darkred, darkteal, \
-	  darkyellow, fuchsia, fuscia, green, purple, red, teal, turquoise, white, \
-	  xtermTitle, xtermTitleReset, yellow
+	from output import bold, colorize, green, red, yellow
 
 	import portage_const
 	from portage_const import VDB_PATH, PRIVATE_PATH, CACHE_PATH, DEPCACHE_PATH, \
