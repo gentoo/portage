@@ -17,10 +17,7 @@ except ImportError:
 	raise
 
 try:
-	import os,string,types,signal,fcntl,errno
-	import time,traceback,copy
-	import re,pwd,grp,commands
-	import shlex,shutil
+	import copy, errno, os, re, shutil, string, time, types
 	try:
 		import cPickle
 	except ImportError:
