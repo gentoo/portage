@@ -4169,13 +4169,16 @@ class dbapi:
 
 		# We write our new counter value to a new file that gets moved into
 		# place to avoid filesystem corruption.
+		find_counter = ("find '%s' -type f -name COUNTER | " + \
+			"while read f; do echo $(<\"${f}\"); done | " + \
+			"sort -n | tail -n1") % os.path.join(self.root, VDB_PATH)
 		if os.path.exists(cpath):
 			cfile=open(cpath, "r")
 			try:
 				counter=long(cfile.readline())
 			except (ValueError,OverflowError):
 				try:
-					counter=long(commands.getoutput("for FILE in $(find /"+VDB_PATH+" -type f -name COUNTER); do echo $(<${FILE}); done | sort -n | tail -n1 | tr -d '\n'"))
+					counter = long(commands.getoutput(find_counter).strip())
 					writemsg("!!! COUNTER was corrupted; resetting to value of %d\n" % counter,
 						noiselevel=-1)
 					changed=1
@@ -4189,7 +4192,7 @@ class dbapi:
 			cfile.close()
 		else:
 			try:
-				counter=long(commands.getoutput("for FILE in $(find /"+VDB_PATH+" -type f -name COUNTER); do echo $(<${FILE}); done | sort -n | tail -n1 | tr -d '\n'"))
+				counter = long(commands.getoutput(find_counter).strip())
 				writemsg("!!! Global counter missing. Regenerated from counter files to: %s\n" % counter,
 					noiselevel=-1)
 			except SystemExit, e:
