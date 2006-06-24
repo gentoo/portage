@@ -4140,80 +4140,6 @@ class dbapi:
 		writemsg("DEPRECATED: dbapi.match2\n")
 		match_from_list(mydep,mylist)
 
-	def counter_tick(self,myroot,mycpv=None):
-		return self.counter_tick_core(myroot,incrementing=1,mycpv=mycpv)
-
-	def get_counter_tick_core(self,myroot,mycpv=None):
-		return self.counter_tick_core(myroot,incrementing=0,mycpv=mycpv)+1
-
-	def counter_tick_core(self,myroot,incrementing=1,mycpv=None):
-		"This method will grab the next COUNTER value and record it back to the global file.  Returns new counter value."
-		cpath=myroot+"var/cache/edb/counter"
-		changed=0
-		min_counter = 0
-		if mycpv:
-			mysplit = pkgsplit(mycpv)
-			for x in self.match(mysplit[0],use_cache=0):
-				if x==mycpv:
-					continue
-				try:
-					old_counter = long(self.aux_get(x,["COUNTER"])[0])
-					writemsg("COUNTER '%d' '%s'\n" % (old_counter, x),1)
-				except SystemExit, e:
-					raise
-				except:
-					old_counter = 0
-					writemsg("!!! BAD COUNTER in '%s'\n" % (x), noiselevel=-1)
-				if old_counter > min_counter:
-					min_counter = old_counter
-
-		# We write our new counter value to a new file that gets moved into
-		# place to avoid filesystem corruption.
-		find_counter = ("find '%s' -type f -name COUNTER | " + \
-			"while read f; do echo $(<\"${f}\"); done | " + \
-			"sort -n | tail -n1") % os.path.join(self.root, VDB_PATH)
-		if os.path.exists(cpath):
-			cfile=open(cpath, "r")
-			try:
-				counter=long(cfile.readline())
-			except (ValueError,OverflowError):
-				try:
-					counter = long(commands.getoutput(find_counter).strip())
-					writemsg("!!! COUNTER was corrupted; resetting to value of %d\n" % counter,
-						noiselevel=-1)
-					changed=1
-				except (ValueError,OverflowError):
-					writemsg("!!! COUNTER data is corrupt in pkg db. The values need to be\n",
-						noiselevel=-1)
-					writemsg("!!! corrected/normalized so that portage can operate properly.\n",
-						noiselevel=-1)
-					writemsg("!!! A simple solution is not yet available so try #gentoo on IRC.\n")
-					sys.exit(2)
-			cfile.close()
-		else:
-			try:
-				counter = long(commands.getoutput(find_counter).strip())
-				writemsg("!!! Global counter missing. Regenerated from counter files to: %s\n" % counter,
-					noiselevel=-1)
-			except SystemExit, e:
-				raise
-			except:
-				writemsg("!!! Initializing global counter.\n", noiselevel=-1)
-				counter=long(0)
-			changed=1
-
-		if counter < min_counter:
-			counter = min_counter+1000
-			changed = 1
-
-		if incrementing or changed:
-
-			#increment counter
-			counter += 1
-			# update new global counter file
-			write_atomic(cpath, str(counter))
-		return counter
-
 	def invalidentry(self, mypath):
 		if re.search("portage_lockfile$",mypath):
 			if not os.environ.has_key("PORTAGE_MASTER_PID"):
@@ -4602,6 +4528,79 @@ class vardbapi(dbapi):
 				results[idx] = "0"
 		return results
 
+	def counter_tick(self,myroot,mycpv=None):
+		return self.counter_tick_core(myroot,incrementing=1,mycpv=mycpv)
+
+	def get_counter_tick_core(self,myroot,mycpv=None):
+		return self.counter_tick_core(myroot,incrementing=0,mycpv=mycpv)+1
+
+	def counter_tick_core(self,myroot,incrementing=1,mycpv=None):
+		"This method will grab the next COUNTER value and record it back to the global file.  Returns new counter value."
+		cpath=myroot+"var/cache/edb/counter"
+		changed=0
+		min_counter = 0
+		if mycpv:
+			mysplit = pkgsplit(mycpv)
+			for x in self.match(mysplit[0],use_cache=0):
+				if x==mycpv:
+					continue
+				try:
+					old_counter = long(self.aux_get(x,["COUNTER"])[0])
+					writemsg("COUNTER '%d' '%s'\n" % (old_counter, x),1)
+				except SystemExit, e:
+					raise
+				except:
+					old_counter = 0
+					writemsg("!!! BAD COUNTER in '%s'\n" % (x), noiselevel=-1)
+				if old_counter > min_counter:
+					min_counter = old_counter
+
+		# We write our new counter value to a new file that gets moved into
+		# place to avoid filesystem corruption.
+		find_counter = ("find '%s' -type f -name COUNTER | " + \
+			"while read f; do echo $(<\"${f}\"); done | " + \
+			"sort -n | tail -n1") % os.path.join(self.root, VDB_PATH)
+		if os.path.exists(cpath):
+			cfile=open(cpath, "r")
+			try:
+				counter=long(cfile.readline())
+			except (ValueError,OverflowError):
+				try:
+					counter = long(commands.getoutput(find_counter).strip())
+					writemsg("!!! COUNTER was corrupted; resetting to value of %d\n" % counter,
+						noiselevel=-1)
+					changed=1
+				except (ValueError,OverflowError):
+					writemsg("!!! COUNTER data is corrupt in pkg db. The values need to be\n",
+						noiselevel=-1)
+					writemsg("!!! corrected/normalized so that portage can operate properly.\n",
+						noiselevel=-1)
+					writemsg("!!! A simple solution is not yet available so try #gentoo on IRC.\n")
+					sys.exit(2)
+			cfile.close()
+		else:
+			try:
+				counter = long(commands.getoutput(find_counter).strip())
+				writemsg("!!! Global counter missing. Regenerated from counter files to: %s\n" % counter,
+					noiselevel=-1)
+			except SystemExit, e:
+				raise
+			except:
+				writemsg("!!! Initializing global counter.\n", noiselevel=-1)
+				counter=long(0)
+			changed=1
+
+		if counter < min_counter:
+			counter = min_counter+1000
+			changed = 1
+
+		if incrementing or changed:
+
+			#increment counter
+			counter += 1
+			# update new global counter file
+			write_atomic(cpath, str(counter))
+		return counter
 
 class vartree(packagetree):
 	"this tree will scan a var/db/pkg database located at root (passed to init)"
