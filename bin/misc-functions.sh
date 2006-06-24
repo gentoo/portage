@@ -283,7 +283,7 @@ preinst_suid_scan() {
 	# total suid control.
 	if hasq suidctl $FEATURES; then
 		sfconf=/etc/portage/suidctl.conf
-		vecho ">>> Preforming suid scan in ${IMAGE}"
+		vecho ">>> Performing suid scan in ${IMAGE}"
 		for i in $(find ${IMAGE}/ -type f \( -perm -4000 -o -perm -2000 \) ); do
 			if [ -s "${sfconf}" ]; then
 				suid="$(grep ^${i/${IMAGE}/}$ ${sfconf})"
