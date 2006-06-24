@@ -2327,48 +2327,6 @@ def digestParseFile(myfilename, mysettings=None):
 
 	return Manifest(pkgdir, mysettings["DISTDIR"]).getDigests()
 
-# XXXX strict was added here to fix a missing name error.
-# XXXX It's used below, but we're not paying attention to how we get it?
-def digestCheckFiles(myfiles, mydigests, basedir, note="", strict=0):
-	"""(fileslist, digestdict, basedir) -- Takes a list of files and a dict
-	of their digests and checks the digests against the indicated files in
-	the basedir given. Returns 1 only if all files exist and match the checksums.
-	DEPRECATED: this function isn't compatible with manifest2, use
-	            portage_manifest.Manifest() instead for any digest related tasks.
-	"""
-	print "!!! use of deprecated function digestCheckFiles(), use portage_manifest instead"""
-	return 0
-	for x in myfiles:
-		if not mydigests.has_key(x):
-			print
-			print red("!!! No message digest entry found for file \""+x+".\"")
-			print "!!! Most likely a temporary problem. Try 'emerge sync' again later."
-			print "!!! If you are certain of the authenticity of the file then you may type"
-			print "!!! the following to generate a new digest:"
-			print "!!!   ebuild /usr/portage/category/package/package-version.ebuild digest"
-			return 0
-		myfile=os.path.normpath(basedir+"/"+x)
-		if not os.path.exists(myfile):
-			if strict:
-				print "!!! File does not exist:",myfile
-				return 0
-			continue
-
-		ok,reason = portage_checksum.verify_all(myfile,mydigests[x])
-		if not ok:
-			print
-			print red("!!! Digest verification Failed:")
-			print red("!!!")+"    "+str(os.path.realpath(myfile))
-			print red("!!! Reason: ")+reason[0]
-			print red("!!! Got:      ")+str(reason[1])
-			print red("!!! Expected: ")+str(reason[2])
-			print
-			return 0
-		else:
-			writemsg_stdout(">>> checksums "+note+" ;-) %s\n" % x)
-	return 1
-
-
 def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 	"""Verifies checksums.  Assumes all files have been downloaded.
 	DEPRECATED: this is now only a compability wrapper for 
