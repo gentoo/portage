@@ -996,6 +996,11 @@ dyn_test() {
 
 dyn_install() {
 	[ -z "$PORTAGE_BUILDDIR" ] && die "${FUNCNAME}: PORTAGE_BUILDDIR is unset"
+	if [ "${PORTAGE_BUILDDIR}/.installed" -nt "${WORKDIR}" ]; then
+		vecho ">>> It appears that '${PF}' is already installed; skipping."
+		vecho ">>> Remove '${PORTAGE_BUILDDIR}/.installed' to force install."
+		return 0
+	fi
 	trap "abort_install" SIGINT SIGQUIT
 	[ "$(type -t pre_src_install)" == "function" ] && pre_src_install
 	rm -rf "${PORTAGE_BUILDDIR}/image"
