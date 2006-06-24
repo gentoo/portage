@@ -3755,7 +3755,7 @@ class packagetree:
 			self.dbapi=None
 
 	def resolve_key(self,mykey):
-		return key_expand(mykey,mydb=self.dbapi)
+		return key_expand(mykey, mydb=self.dbapi, settings=self.settings)
 
 	def dep_nomatch(self,mypkgdep):
 		mykey=dep_getkey(mypkgdep)
@@ -4047,6 +4047,7 @@ def match_from_list_original(mydep,mylist):
 class portagetree:
 	def __init__(self,root="/",virtual=None,clone=None):
 		global portdb, settings
+		self.settings = settings # for key_expand calls
 		if clone:
 			self.root=clone.root
 			self.portroot=clone.portroot
@@ -4091,7 +4092,8 @@ class portagetree:
 		cps=catpkgsplit(myspec)
 		if not cps:
 			return None
-		mykey=key_expand(cps[0]+"/"+cps[1],mydb=self.dbapi)
+		mykey = key_expand(cps[0]+"/"+cps[1], mydb=self.dbapi,
+			settings=self.settings)
 		mykey=mykey+"-"+cps[2]
 		if cps[3]!="r0":
 			mykey=mykey+"-"+cps[3]
@@ -4601,6 +4603,8 @@ class vardbapi(dbapi):
 class vartree(packagetree):
 	"this tree will scan a var/db/pkg database located at root (passed to init)"
 	def __init__(self,root="/",virtual=None,clone=None,categories=None):
+		global settings
+		self.settings = settings # for key_expand calls
 		if clone:
 			self.root       = clone.root[:]
 			self.dbapi      = copy.deepcopy(clone.dbapi)
@@ -4608,7 +4612,6 @@ class vartree(packagetree):
 		else:
 			self.root       = root[:]
 			if categories is None:
-				global settings
 				categories = settings.categories
 			self.dbapi      = vardbapi(self.root,categories=categories)
 			self.populated  = 1
@@ -4686,7 +4689,8 @@ class vartree(packagetree):
 		return self.dbapi.cp_all()
 
 	def exists_specific_cat(self,cpv,use_cache=1):
-		cpv=key_expand(cpv,mydb=self.dbapi,use_cache=use_cache)
+		cpv = key_expand(cpv, mydb=self.dbapi, use_cache=use_cache,
+			settings=self.settings)
 		a=catpkgsplit(cpv)
 		if not a:
 			return 0
@@ -4705,7 +4709,8 @@ class vartree(packagetree):
 		return self.root+VDB_PATH+"/"+fullpackage+"/"+package+".ebuild"
 
 	def getnode(self,mykey,use_cache=1):
-		mykey=key_expand(mykey,mydb=self.dbapi,use_cache=use_cache)
+		mykey = key_expand(mykey, mydb=self.dbapi, use_cache=use_cache,
+			settings=self.settings)
 		if not mykey:
 			return []
 		mysplit=mykey.split("/")
@@ -4735,7 +4740,8 @@ class vartree(packagetree):
 
 	def hasnode(self,mykey,use_cache):
 		"""Does the particular node (cat/pkg key) exist?"""
-		mykey=key_expand(mykey,mydb=self.dbapi,use_cache=use_cache)
+		mykey = key_expand(mykey, mydb=self.dbapi, use_cache=use_cache,
+			settings=self.settings)
 		mysplit=mykey.split("/")
 		mydirlist=listdir(self.root+VDB_PATH+"/"+mysplit[0],EmptyOnError=1)
 		for x in mydirlist:
@@ -5401,7 +5407,8 @@ class portdbapi(dbapi):
 class binarytree(packagetree):
 	"this tree scans for a list of all packages available in PKGDIR"
 	def __init__(self,root,pkgdir,virtual=None,clone=None):
-
+		global settings
+		self.settings = settings # for key_expand calls
 		if clone:
 			# XXX This isn't cloning. It's an instance of the same thing.
 			self.root=clone.root
