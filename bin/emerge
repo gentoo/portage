@@ -306,11 +306,11 @@ def getgccversion(chost):
 	portage.writemsg(gcc_not_found_error, noiselevel=-1)
 	return "[unavailable]"
 
-def getportageversion():
+def getportageversion(portdir, target_root, profile, chost):
 	try:
 		import re
-		profilever = os.path.normpath("///"+os.readlink(PROFILE_PATH))
-		basepath   = os.path.normpath("///"+portage.settings["PORTDIR"]+"/profiles")
+		profilever = os.path.normpath("///"+os.readlink(profile))
+		basepath   = os.path.normpath("///" + portdir + "/profiles")
 		if re.match(basepath,profilever):
 			profilever = profilever[len(basepath)+1:]
 		else:
@@ -319,8 +319,8 @@ def getportageversion():
 	except (OSError,IOError):
 		profilever="unavailable"
 	libcver=[]
-	libclist  = portage.vardbapi(portage.root).match("virtual/libc")
-	libclist += portage.vardbapi(portage.root).match("virtual/glibc")
+	libclist  = portage.vardbapi(target_root).match("virtual/libc")
+	libclist += portage.vardbapi(target_root).match("virtual/glibc")
 	libclist  = portage_util.unique_array(libclist)
 	for x in libclist:
 		xs=portage.catpkgsplit(x)
@@ -331,7 +331,7 @@ def getportageversion():
 	if libcver==[]:
 		libcver="unavailable"
 
-	gccver = getgccversion(portage.settings["CHOST"])
+	gccver = getgccversion(chost)
 	unameout=os.uname()[2]+" "+os.uname()[4]
 
 	return "Portage " + portage.VERSION +" ("+profilever+", "+gccver+", "+libcver+", "+unameout+")"
@@ -2946,7 +2946,9 @@ def action_config(myopts, myfiles):
 
 def action_info(myopts):
 	unameout=commands.getstatusoutput("uname -mrp")[1]
-	print getportageversion()
+	settings = portage.settings
+	print getportageversion(settings["PORTDIR"], settings["ROOT"],
+		settings.profile_path, settings["CHOST"])
 	print "================================================================="
 	print "System uname: "+unameout
 	if os.path.exists("/etc/gentoo-release"):
@@ -3587,7 +3589,9 @@ if __name__ == "__main__":
 		EMERGE_WARNING_DELAY = string.atoi("0"+portage.settings["EMERGE_WARNING_DELAY"])
 
 	if "--version" in myopts:
-		print getportageversion()
+		settings = portage.settings
+		print getportageversion(settings["PORTDIR"], settings["ROOT"],
+			settings.profile_path, settings["CHOST"])
 		sys.exit(0)
 	elif "--help" in myopts:
 		help()
