@@ -2690,7 +2690,7 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 		if mysettings.has_key("EMERGE_FROM") and "binary" == mysettings["EMERGE_FROM"]:
 			mysettings["IMAGE"] = os.path.join(mysettings["PKG_TMPDIR"], mysettings["PF"], "bin")
 		else:
-			mysettings["IMAGE"] = mysettings["D"]
+			mysettings["IMAGE"] = mysettings["EDEST"]
 		phase_retval = spawn(" ".join((EBUILD_SH_BINARY, mydo)), mysettings, debug=debug, free=1, logfile=logfile)
 		if phase_retval == os.EX_OK:
 			# Post phase logic and tasks that have been factored out of ebuild.sh.
