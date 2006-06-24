@@ -269,7 +269,7 @@ def format_size(mysize):
 	return mystr+" kB"
 
 
-def getgccversion():
+def getgccversion(chost):
 	"""
 	rtype: C{str}
 	return:  the current in-use gcc version
@@ -287,15 +287,15 @@ def getgccversion():
 	mystatus, myoutput = commands.getstatusoutput("eselect compiler show")
 	if mystatus == os.EX_OK and len(myoutput.split("/")) == 2:
 		part1, part2 = myoutput.split("/")
-		if len(part1.split("-")) > 0:
-			return gcc_ver_prefix + part1.split("-")[-1] + "/" + part2
+		if part1.startswith(chost + "-"):
+			return myoutput.replace(chost + "-", gcc_ver_prefix, 1)
 
 	mystatus, myoutput = commands.getstatusoutput("gcc-config -c")
 	if mystatus == os.EX_OK and len(myoutput.split("-")) > 0:
 		return gcc_ver_prefix + myoutput.split("-")[-1]
 
 	mystatus, myoutput = commands.getstatusoutput(
-		portage.settings["CHOST"] + "-" + gcc_ver_command)
+		chost + "-" + gcc_ver_command)
 	if mystatus == os.EX_OK:
 		return gcc_ver_prefix + myoutput
 
@@ -331,7 +331,7 @@ def getportageversion():
 	if libcver==[]:
 		libcver="unavailable"
 
-	gccver = getgccversion()
+	gccver = getgccversion(portage.settings["CHOST"])
 	unameout=os.uname()[2]+" "+os.uname()[4]
 
 	return "Portage " + portage.VERSION +" ("+profilever+", "+gccver+", "+libcver+", "+unameout+")"
