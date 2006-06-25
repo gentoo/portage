@@ -34,7 +34,6 @@ from output import blue, bold, colorize, darkblue, darkgreen, darkred, green, \
 import portage_util
 import portage_locks
 import portage_exception
-from portage_const import PROFILE_PATH
 from portage_data import secpass
 
 
