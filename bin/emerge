@@ -594,14 +594,15 @@ def genericdict(mylist):
 
 class depgraph:
 
-	def __init__(self, settings, portdb, trees, myopts, myparams,
-		edebug, spinner):
+	def __init__(self, settings, portdb, trees, myopts, myparams, spinner):
 		self.settings = settings
 		self.portdb = portdb
 		self.trees = trees
 		self.myopts = myopts
 		self.myparams = myparams
-		self.edebug = edebug
+		self.edebug = 0
+		if settings.get("PORTAGE_DEBUG", "") == "1":
+			self.edebug = 1
 		self.spinner = spinner
 		self.pkgsettings = portage.config(clone=settings)
 		if not self.pkgsettings["ARCH"]:
@@ -3078,7 +3079,7 @@ def action_depclean(myopts):
 
 	myparams = create_depgraph_params(myopts, myaction)
 	mydepgraph = depgraph(portage.settings, portage.portdb, portage.db,
-		myopts, myparams, edebug, spinner)
+		myopts, myparams, spinner)
 
 	if not ("--quiet" in myopts):
 		print "\nCalculating dependencies  ",
@@ -3196,7 +3197,7 @@ def action_build(myopts, myaction, myfiles):
 		myopts=myresumeopts
 		myparams = create_depgraph_params(myopts, myaction)
 		mydepgraph = depgraph(portage.settings, portage.portdb, portage.db,
-			myopts, myparams, edebug, spinner)
+			myopts, myparams, spinner)
 		if "--resume" not in myopts:
 			myopts+=["--resume"]
 	else:
@@ -3207,7 +3208,7 @@ def action_build(myopts, myaction, myfiles):
 
 		myparams = create_depgraph_params(myopts, myaction)
 		mydepgraph = depgraph(portage.settings, portage.portdb, portage.db,
-			myopts, myparams, edebug, spinner)
+			myopts, myparams, spinner)
 		if myaction in ["system","world"]:
 			if not ("--quiet" in myopts):
 				print "Calculating",myaction,"dependencies  ",
@@ -3309,7 +3310,12 @@ def action_build(myopts, myaction, myfiles):
 					if pkgline[0]=="ebuild" and pkgline[3]=="merge":
 						y=portage.portdb.findname(pkgline[2])
 						tmpsettings = portage.config(clone=portage.settings)
-						retval=portage.doebuild(y,"digest",portage.root,tmpsettings,edebug,("--pretend" in myopts),tree="porttree")
+						edebug = 0
+						if settings.get("PORTAGE_DEBUG", "") == "1":
+							edebug = 1
+						retval = portage.doebuild(
+							y, "digest", settings["ROOT"], tmpsettings, edebug,
+							("--pretend" in myopts), tree="porttree")
 			if "--fetchonly" in myopts or "--fetch-all-uri" in myopts:
 				pkglist = []
 				for pkg in mydepgraph.altlist():
@@ -3650,10 +3656,6 @@ if __name__ == "__main__":
 		if myfiles:
 			myelogstr+=" "+string.join(myfiles, " ")
 		emergelog(" *** emerge "+myelogstr)
-
-	# general options that should be taken into account before any action
-	if "--debug" in myopts:
-		edebug=1
 
 	def emergeexitsig(signum, frame):
 		signal.signal(signal.SIGINT, signal.SIG_IGN)
