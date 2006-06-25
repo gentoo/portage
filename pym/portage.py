@@ -5700,6 +5700,45 @@ class binarytree(packagetree):
 			pass
 		return myslot
 
+class config_protect(object):
+	def __init__(self, myroot, protect_list, mask_list):
+		self.myroot = myroot
+		self.protect_list = protect_list
+		self.mask_list = mask_list
+		self.updateprotect()
+
+	def updateprotect(self):
+		#do some config file management prep
+		self.protect = []
+		for x in self.protect_list:
+			ppath = normalize_path(
+				os.path.join(self.myroot, x.lstrip(os.path.sep))) + os.path.sep
+			if os.path.isdir(ppath):
+				self.protect.append(ppath)
+
+		self.protectmask = []
+		for x in self.mask_list:
+			ppath = normalize_path(
+				os.path.join(self.myroot, x.lstrip(os.path.sep))) + os.path.sep
+			if os.path.isdir(ppath):
+				self.protectmask.append(ppath)
+			#if it doesn't exist, silently skip it
+
+	def isprotected(self,obj):
+		"""Checks if obj is in the current protect/mask directories. Returns
+		0 on unprotected/masked, and 1 on protected."""
+		masked=0
+		protected=0
+		for ppath in self.protect:
+			if (len(ppath) > masked) and (obj[0:len(ppath)]==ppath):
+				protected=len(ppath)
+				#config file management
+				for pmpath in self.protectmask:
+					if (len(pmpath) >= protected) and (obj[0:len(pmpath)]==pmpath):
+						#skip, it's in the mask
+						masked=len(pmpath)
+		return (protected > masked)
+
 class dblink:
 	"this class provides an interface to the standard text package database"
 	def __init__(self, cat, pkg, myroot, mysettings, treetype=None,
@@ -5730,7 +5769,11 @@ class dblink:
 			raise ValueError
 
 		self.myroot=myroot
-		self.updateprotect()
+		protect_obj = config_protect(myroot,
+			mysettings.get("CONFIG_PROTECT","").split(),
+			mysettings.get("CONFIG_PROTECT_MASK","").split())
+		self.updateprotect = protect_obj.updateprotect
+		self.isprotected = protect_obj.isprotected
 		self.contentscache=[]
 
 	def lockdb(self):
@@ -5833,36 +5876,6 @@ class dblink:
 			pos += 1
 		self.contentscache=pkgfiles
 		return pkgfiles
-
-	def updateprotect(self):
-		#do some config file management prep
-		self.protect=[]
-		for x in string.split(self.settings["CONFIG_PROTECT"]):
-			ppath=normalize_path(self.myroot+x)+"/"
-			if os.path.isdir(ppath):
-				self.protect.append(ppath)
-
-		self.protectmask=[]
-		for x in string.split(self.settings["CONFIG_PROTECT_MASK"]):
-			ppath=normalize_path(self.myroot+x)+"/"
-			if os.path.isdir(ppath):
-				self.protectmask.append(ppath)
-			#if it doesn't exist, silently skip it
-
-	def isprotected(self,obj):
-		"""Checks if obj is in the current protect/mask directories. Returns
-		0 on unprotected/masked, and 1 on protected."""
-		masked=0
-		protected=0
-		for ppath in self.protect:
-			if (len(ppath) > masked) and (obj[0:len(ppath)]==ppath):
-				protected=len(ppath)
-				#config file management
-				for pmpath in self.protectmask:
-					if (len(pmpath) >= protected) and (obj[0:len(pmpath)]==pmpath):
-						#skip, it's in the mask
-						masked=len(pmpath)
-		return (protected > masked)
 
 	def unmerge(self,pkgfiles=None,trimworld=1,cleanup=1):
 		global db, dircache
@@ -6895,10 +6908,12 @@ def update_config_files(config_root, mysettings, update_iter):
 
 	write_atomic(os.path.join(config_root, WORLD_FILE), "\n".join(worldlist))
 
+	protect_obj = config_protect(config_root,
+		mysettings.get("CONFIG_PROTECT","").split(),
+		mysettings.get("CONFIG_PROTECT_MASK","").split())
 	for x in update_files:
-		mydblink = dblink('', '', config_root, mysettings)
 		updating_file = os.path.join(abs_user_config, x)
-		if mydblink.isprotected(updating_file):
+		if protect_obj.isprotected(updating_file):
 			updating_file = new_protect_filename(updating_file)[0]
 		try:
 			write_atomic(updating_file, "".join(file_contents[x]))
