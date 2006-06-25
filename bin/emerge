@@ -3338,59 +3338,11 @@ def action_build(myopts, myaction, myfiles):
 				+ " problems due to overlapping packages.\n")
 	post_emerge()
 
-if __name__ == "__main__":
-	settings = portage.settings
-	trees = portage.db
-	portage.global_updates(
-		portage.settings, portage.db, portage.mtimedb["updates"])
-
-	spinner = stdout_spinner()
-	if "candy" in portage.settings.features:
-		spinner.update = spinner.update_scroll
-
-	# To enhance usability, make some vars case insensitive by forcing them to
-	# lower case.
-	portage.settings.unlock()
-	for myvar in ("AUTOCLEAN", "NOCOLOR"):
-		if myvar in portage.settings:
-			portage.settings[myvar] = portage.settings[myvar].lower()
-			portage.settings.backup_changes(myvar)
-	portage.settings.lock()
-	del myvar
-
-	if (not sys.stdout.isatty()) or (portage.settings["NOCOLOR"] in ["yes","true"]):
-		nocolor()
-
-	portage.deprecated_profile_check()
-
-	if portage.settings.has_key("PORTAGE_NICENESS"):
-		try:
-			os.nice(int(portage.settings["PORTAGE_NICENESS"]))
-		except (OSError,ValueError), e:
-			print "!!! Failed to change nice value to '"+str(portage.settings["PORTAGE_NICENESS"])+"'"
-			print "!!!",e
-
-	#Freeze the portdbapi for enhanced performance:
-	portage.portdb.freeze()
-
-	# Kill noauto as it will break merges otherwise.
-	if "noauto" in portage.settings.features:
-		while "noauto" in portage.settings.features:
-			portage.settings.features.remove("noauto")
-		portage.settings.unlock()
-		portage.settings["FEATURES"] = " ".join(portage.settings.features)
-		portage.settings.backup_changes("FEATURES")
-		portage.settings.lock()
-
+def parse_opts(tmpcmdline):
 	myaction=None
 	myopts=[]
 	myfiles=[]
-	edebug=0
 
-	# process short actions
-	tmpcmdline=sys.argv[1:]
-	if "--ignore-default-opts" not in tmpcmdline:
-		tmpcmdline.extend(portage.settings["EMERGE_DEFAULT_OPTS"].split())
 	cmdline=[]
 	for x in tmpcmdline:
 		if x[0:1]=="-" and x[1:2]!="-":
@@ -3449,6 +3401,58 @@ if __name__ == "__main__":
 		else:
 			myfiles.append(x)
 
+	return myaction, myopts, myfiles
+
+if __name__ == "__main__":
+	settings = portage.settings
+	trees = portage.db
+
+	settings.unlock()
+
+	# To enhance usability, make some vars case insensitive by forcing them to
+	# lower case.
+	for myvar in ("AUTOCLEAN", "NOCOLOR"):
+		if myvar in settings:
+			settings[myvar] = settings[myvar].lower()
+			settings.backup_changes(myvar)
+	del myvar
+
+	# Kill noauto as it will break merges otherwise.
+	if "noauto" in settings.features:
+		while "noauto" in settings.features:
+			settings.features.remove("noauto")
+		settings["FEATURES"] = " ".join(settings.features)
+		settings.backup_changes("FEATURES")
+
+	settings.lock()
+
+	if settings.get("NOCOLOR","") in ("yes","true"):
+		nocolor()
+
+	tmpcmdline = sys.argv[1:]
+	if "--ignore-default-opts" not in tmpcmdline:
+		tmpcmdline.extend(settings["EMERGE_DEFAULT_OPTS"].split())
+	myaction, myopts, myfiles = parse_opts(tmpcmdline)
+	edebug = 0
+
+	portage.global_updates(settings, trees, portage.mtimedb["updates"])
+
+	spinner = stdout_spinner()
+	if "candy" in settings.features:
+		spinner.update = spinner.update_scroll
+
+	portage.deprecated_profile_check()
+
+	try:
+		os.nice(int(settings.get("PORTAGE_NICENESS", "0")))
+	except (OSError, ValueError), e:
+		portage.writemsg("!!! Failed to change nice value to '%s'\n" % \
+			settings["PORTAGE_NICENESS"])
+		portage.writemsg("!!! %s\n" % str(e))
+		del e
+
+	#Freeze the portdbapi for enhanced performance:
+	portage.portdb.freeze()
 
 	if "moo" in myfiles:
 		print """
