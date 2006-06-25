@@ -3418,6 +3418,27 @@ if __name__ == "__main__":
 		settings["FEATURES"] = " ".join(settings.features)
 		settings.backup_changes("FEATURES")
 
+	CLEAN_DELAY = 5
+	try:
+		CLEAN_DELAY = int(settings.get("CLEAN_DELAY", str(CLEAN_DELAY)))
+	except ValueError, e:
+		portage.writemsg("!!! %s\n" % str(e), noiselevel=-1)
+		portage.writemsg("!!! Unable to parse integer: CLEAN_DELAY='%s'\n" % \
+			settings["CLEAN_DELAY"], noiselevel=-1)
+	settings["CLEAN_DELAY"] = str(CLEAN_DELAY)
+	settings.backup_changes("CLEAN_DELAY")
+
+	EMERGE_WARNING_DELAY = 10
+	try:
+		EMERGE_WARNING_DELAY = int(settings.get(
+			"EMERGE_WARNING_DELAY", str(EMERGE_WARNING_DELAY)))
+	except ValueError, e:
+		portage.writemsg("!!! %s\n" % str(e), noiselevel=-1)
+		portage.writemsg("!!! Unable to parse integer: EMERGE_WARNING_DELAY='%s'\n" % \
+			settings["EMERGE_WARNING_DELAY"], noiselevel=-1)
+	settings["EMERGE_WARNING_DELAY"] = str(EMERGE_WARNING_DELAY)
+	settings.backup_changes("EMERGE_WARNING_DELAY")
+
 	settings.lock()
 
 	if settings.get("NOCOLOR","") in ("yes","true"):
@@ -3583,13 +3604,6 @@ if __name__ == "__main__":
 	if not ("--quiet" in myopts):
 		if not sys.stdout.isatty() or ("--nospinner" in myopts):
 			spinner.update = spinner.update_basic
-
-	CLEAN_DELAY = 5
-	EMERGE_WARNING_DELAY = 10
-	if portage.settings["CLEAN_DELAY"]:
-		CLEAN_DELAY = string.atoi("0"+portage.settings["CLEAN_DELAY"])
-	if portage.settings["EMERGE_WARNING_DELAY"]:
-		EMERGE_WARNING_DELAY = string.atoi("0"+portage.settings["EMERGE_WARNING_DELAY"])
 
 	if "--version" in myopts:
 		settings = portage.settings
