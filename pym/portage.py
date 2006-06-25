@@ -6857,8 +6857,12 @@ def portageexit():
 
 atexit_register(portageexit)
 
-def update_config_files(config_root, mysettings, update_iter):
-	"""Perform global updates on /etc/portage/package.* and the world file."""
+def update_config_files(config_root, protect, protect_mask, update_iter):
+	"""Perform global updates on /etc/portage/package.* and the world file.
+	config_root - location of files to update
+	protect - list of paths from CONFIG_PROTECT
+	protect_mask - list of paths from CONFIG_PROTECT_MASK
+	update_iter - list of update commands as returned from parse_updates()"""
 	update_files={}
 	file_contents={}
 	myxfiles = ["package.mask","package.unmask","package.keywords","package.use"]
@@ -6908,9 +6912,7 @@ def update_config_files(config_root, mysettings, update_iter):
 
 	write_atomic(os.path.join(config_root, WORLD_FILE), "\n".join(worldlist))
 
-	protect_obj = config_protect(config_root,
-		mysettings.get("CONFIG_PROTECT","").split(),
-		mysettings.get("CONFIG_PROTECT_MASK","").split())
+	protect_obj = config_protect(config_root, protect, protect_mask)
 	for x in update_files:
 		updating_file = os.path.join(abs_user_config, x)
 		if protect_obj.isprotected(updating_file):
@@ -6955,7 +6957,11 @@ def global_updates(mysettings, trees, prev_mtimes):
 			else:
 				for msg in errors:
 					writemsg("%s\n" % msg, noiselevel=-1)
-		update_config_files("/", mysettings, myupd)
+
+		update_config_files("/",
+			mysettings.get("CONFIG_PROTECT","").split(),
+			mysettings.get("CONFIG_PROTECT_MASK","").split(),
+			myupd)
 
 		trees["/"]["bintree"] = binarytree("/", mysettings["PKGDIR"],
 			settings=mysettings)
