@@ -1513,7 +1513,8 @@ class config:
 				mydbs=self.uvlist
 				if "auto" in self["USE_ORDER"].split(":") and "settings" in globals():
 					self.configdict["auto"]["USE"] = autouse(
-						vartree(root=self["ROOT"], categories=self.categories),
+						vartree(root=self["ROOT"], categories=self.categories,
+							settings=self),
 						use_cache=use_cache, mysettings=self)
 				else:
 					self.configdict["auto"]["USE"]=""
@@ -1642,7 +1643,8 @@ class config:
 		# Repoman does not use user or tree virtuals.
 		if os.environ.get("PORTAGE_CALLER","") != "repoman":
 			# XXX: vartree does not use virtuals, does user set matter?
-			temp_vartree = vartree(myroot,self.dirVirtuals,categories=self.categories)
+			temp_vartree = vartree(myroot, self.dirVirtuals,
+				categories=self.categories, settings=self)
 			# Reduce the provides into a list by CP.
 			self.treeVirtuals = map_dictlist_vals(getCPFromCPV,temp_vartree.get_all_provides())
 
@@ -4604,15 +4606,18 @@ class vardbapi(dbapi):
 
 class vartree(packagetree):
 	"this tree will scan a var/db/pkg database located at root (passed to init)"
-	def __init__(self,root="/",virtual=None,clone=None,categories=None):
-		global settings
-		self.settings = settings # for key_expand calls
+	def __init__(self, root="/", virtual=None, clone=None, categories=None,
+		settings=None):
 		if clone:
 			self.root       = clone.root[:]
 			self.dbapi      = copy.deepcopy(clone.dbapi)
 			self.populated  = 1
+			self.settings   = config(clone=clone.settings)
 		else:
 			self.root       = root[:]
+			if settings is None:
+				settings = globals()["settings"]
+			self.settings = settings # for key_expand calls
 			if categories is None:
 				categories = settings.categories
 			self.dbapi      = vardbapi(self.root,categories=categories)
@@ -7024,7 +7029,8 @@ def do_vartree(mysettings, trees=None):
 		trees[myroot] = portage_util.LazyItemsDict(trees.get(myroot, None))
 		trees[myroot].addLazySingleton("virtuals", mysettings.getvirtuals, myroot)
 		trees[myroot].addLazySingleton(
-			"vartree", vartree, myroot, categories=mysettings.categories)
+			"vartree", vartree, myroot, categories=mysettings.categories,
+				settings=mysettings)
 		trees[myroot].addLazySingleton("porttree", portagetree, myroot)
 		trees[myroot].addLazyItem("bintree", LazyBintreeItem(myroot))
 
