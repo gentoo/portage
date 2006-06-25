@@ -335,11 +335,6 @@ def getportageversion(portdir, target_root, profile, chost):
 
 	return "Portage " + portage.VERSION +" ("+profilever+", "+gccver+", "+libcver+", "+unameout+")"
 
-def help():
-	# Move all the help stuff out of this file.
-	emergehelp.help(myaction,myopts,havecolor)
-
-
 def create_depgraph_params(myopts, myaction):
 	#configure emerge engine parameters
 	#
@@ -3602,7 +3597,7 @@ if __name__ == "__main__":
 			settings.profile_path, settings["CHOST"])
 		sys.exit(0)
 	elif "--help" in myopts:
-		help()
+		emergehelp.help(myaction, myopts, havecolor)
 		sys.exit(0)
 
 	if portage.wheelgid == portage.portage_gid:
@@ -3614,7 +3609,7 @@ if __name__ == "__main__":
 		print "myopts", myopts
 
 	if not myaction and not myfiles and "--resume" not in myopts:
-		help()
+		emergehelp.help(myaction, myopts, havecolor)
 		sys.exit(1)
 
 	# check if root user is the current user for the actions where emerge needs this
