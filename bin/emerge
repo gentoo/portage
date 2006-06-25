@@ -826,7 +826,8 @@ class depgraph:
 						print red("\n*** You are emerging a masked package. It is MUCH better to use")
 						print red("*** /etc/portage/package.* to accomplish this. See portage(5) man")
 						print red("*** page for details.")
-						countdown(EMERGE_WARNING_DELAY, "Continuing...")
+						countdown(int(self.settings["EMERGE_WARNING_DELAY"]),
+							"Continuing...")
 				else:
 					raise portage_exception.PackageNotFound(
 						"%s is not in a valid portage tree hierarchy or does not exist" % x)
@@ -2015,8 +2016,7 @@ def unmerge_overlapping(pkg_key, myroot, mysettings, vartree):
 		portage.writemsg_stdout(">>>" + green("'Protected'") + " and " + \
 			green("'omitted'") + " packages will not be removed.\n\n",
 			noiselevel=0)
-		global CLEAN_DELAY
-		countdown(CLEAN_DELAY, ">>> Unmerging")
+		countdown(int(mysettings["CLEAN_DELAY"]), ">>> Unmerging")
 		for other_pkg in overlapping:
 			portage.writemsg_stdout(">>> Unmerging %s...\n" % other_pkg ,
 				noiselevel=-1)
@@ -2215,8 +2215,8 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 			print red("\a\n\n!!! '%s' is part of your system profile." % x)
 			print yellow("\a!!! Unmerging it may be damaging to your system.\n")
 			if "--pretend" not in myopts and "--ask" not in myopts:
-				global EMERGE_WARNING_DELAY
-				countdown(EMERGE_WARNING_DELAY,red("Press Ctrl-C to Stop"))
+				countdown(int(settings["EMERGE_WARNING_DELAY"]),
+					colorize("WARN", "Press Ctrl-C to Stop"))
 		print "\n "+white(x)
 		for mytype in ["selected","protected","omitted"]:
 			print string.rjust(mytype,12)+":",
@@ -2251,9 +2251,7 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 			print
 			return 0
 	#the real unmerging begins, after a short delay....
-
-	global CLEAN_DELAY
-	countdown(CLEAN_DELAY, ">>> Unmerging")
+	countdown(int(settings["CLEAN_DELAY"]), ">>> Unmerging")
 
 	for x in pkgmap.keys():
 		for y in pkgmap[x]["selected"]:
@@ -3073,7 +3071,7 @@ def action_depclean(myopts):
 
 	if not (syslist and worldlist and myvarlist):
 		print "\n!!! Proceeding will break your installation.\n"
-		countdown(EMERGE_WARNING_DELAY, ">>> Depclean")
+		countdown(int(settings["EMERGE_WARNING_DELAY"]), ">>> Depclean")
 
 	if not "--pretend" in myopts: #just check pretend, since --ask implies pretend
 		emergelog(" >>> depclean")
@@ -3113,7 +3111,8 @@ def action_depclean(myopts):
 				    "!!! Please ensure that blocking/conflicting packages are not merged."+
 						"!!! 'emerge -p "+str(string.split(x)[2])+"\n\n")
 			if ("--pretend" not in myopts) and ("--ask" not in myopts):
-				countdown(EMERGE_WARNING_DELAY, "*** Continuing")
+				countdown(int(settings["EMERGE_WARNING_DELAY"]),
+					"*** Continuing")
 			continue
 
 		catpack=myparts[0]+"/"+myparts[1]
