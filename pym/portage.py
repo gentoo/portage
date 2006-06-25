@@ -6844,30 +6844,33 @@ def portageexit():
 
 atexit_register(portageexit)
 
-def update_config_files(update_iter):
+def update_config_files(config_root, mysettings, update_iter):
 	"""Perform global updates on /etc/portage/package.* and the world file."""
-	global settings
 	update_files={}
 	file_contents={}
 	myxfiles = ["package.mask","package.unmask","package.keywords","package.use"]
 	myxfiles.extend(prefix_array(myxfiles, "profile/"))
+	abs_user_config = os.path.join(config_root,
+		USER_CONFIG_PATH.lstrip(os.path.sep))
 	recursivefiles = []
 	for x in myxfiles:
-		if os.path.isdir(USER_CONFIG_PATH+os.path.sep+x):
-			recursivefiles.extend([x+os.path.sep+y for y in listdir(USER_CONFIG_PATH+os.path.sep+x, filesonly=1, recursive=1)])
+		config_file = os.path.join(abs_user_config, x)
+		if os.path.isdir(config_file):
+			recursivefiles.extend([os.path.join(x, y) \
+				for y in listdir(config_file, filesonly=1, recursive=1)])
 		else:
 			recursivefiles.append(x)
 	myxfiles = recursivefiles
 	for x in myxfiles:
 		try:
-			myfile = open(USER_CONFIG_PATH+os.path.sep+x,"r")
+			myfile = open(os.path.join(abs_user_config, x),"r")
 			file_contents[x] = myfile.readlines()
 			myfile.close()
 		except IOError:
 			if file_contents.has_key(x):
 				del file_contents[x]
 			continue
-	worldlist = grabfile(os.path.join("/", WORLD_FILE))
+	worldlist = grabfile(os.path.join(config_root, WORLD_FILE))
 
 	for update_cmd in update_iter:
 		if update_cmd[0] == "move":
@@ -6890,11 +6893,11 @@ def update_config_files(update_iter):
 						sys.stdout.write("p")
 						sys.stdout.flush()
 
-	write_atomic(os.path.join("/", WORLD_FILE), "\n".join(worldlist))
+	write_atomic(os.path.join(config_root, WORLD_FILE), "\n".join(worldlist))
 
 	for x in update_files:
-		mydblink = dblink('','','/',settings)
-		updating_file = os.path.join(USER_CONFIG_PATH, x)
+		mydblink = dblink('', '', config_root, mysettings)
+		updating_file = os.path.join(abs_user_config, x)
 		if mydblink.isprotected(updating_file):
 			updating_file = new_protect_filename(updating_file)[0]
 		try:
@@ -6937,7 +6940,7 @@ def global_updates(mysettings, trees, prev_mtimes):
 			else:
 				for msg in errors:
 					writemsg("%s\n" % msg, noiselevel=-1)
-		update_config_files(myupd)
+		update_config_files("/", mysettings, myupd)
 
 		trees["/"]["bintree"] = binarytree("/", mysettings["PKGDIR"],
 			settings=mysettings)
