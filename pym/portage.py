@@ -5413,9 +5413,7 @@ class portdbapi(dbapi):
 
 class binarytree(packagetree):
 	"this tree scans for a list of all packages available in PKGDIR"
-	def __init__(self,root,pkgdir,virtual=None,clone=None):
-		global settings
-		self.settings = settings # for key_expand calls
+	def __init__(self, root, pkgdir, virtual=None, settings=None, clone=None):
 		if clone:
 			# XXX This isn't cloning. It's an instance of the same thing.
 			self.root=clone.root
@@ -5425,6 +5423,7 @@ class binarytree(packagetree):
 			self.tree=clone.tree
 			self.remotepkgs=clone.remotepkgs
 			self.invalids=clone.invalids
+			self.settings = clone.settings
 		else:
 			self.root=root
 			#self.pkgdir=settings["PKGDIR"]
@@ -5434,6 +5433,7 @@ class binarytree(packagetree):
 			self.tree={}
 			self.remotepkgs={}
 			self.invalids=[]
+			self.settings = settings
 
 	def move_ent(self,mylist):
 		if not self.populated:
@@ -6939,7 +6939,8 @@ def global_updates(mysettings, trees, prev_mtimes):
 					writemsg("%s\n" % msg, noiselevel=-1)
 		update_config_files(myupd)
 
-		trees["/"]["bintree"] = binarytree("/", mysettings["PKGDIR"], mysettings.getvirtuals("/"))
+		trees["/"]["bintree"] = binarytree("/", mysettings["PKGDIR"],
+			settings=mysettings)
 		for update_cmd in myupd:
 			if update_cmd[0] == "move":
 				trees["/"]["vartree"].dbapi.move_ent(update_cmd)
@@ -6982,13 +6983,14 @@ def global_updates(mysettings, trees, prev_mtimes):
 #continue setting up other trees
 class LazyBintreeItem(object):
 	"""This class implements lazy construction of db[root]["bintree"]."""
-	def __init__(self, myroot):
+	def __init__(self, myroot, settings):
 		self._myroot = myroot
 		self._bintree = None
+		self._settings = settings
 	def __call__(self):
 		if self._bintree is None:
-			global settings
-			self._bintree = binarytree(self._myroot, settings["PKGDIR"])
+			self._bintree = binarytree(self._myroot, self._settings["PKGDIR"],
+				settings=self._settings)
 			# The binarytree likely needs to be populated now, so we
 			# do it now to make sure that all method calls are safe.
 			self._bintree.populate()
@@ -7032,7 +7034,8 @@ def do_vartree(mysettings, trees=None):
 			"vartree", vartree, myroot, categories=mysettings.categories,
 				settings=mysettings)
 		trees[myroot].addLazySingleton("porttree", portagetree, myroot)
-		trees[myroot].addLazyItem("bintree", LazyBintreeItem(myroot))
+		trees[myroot].addLazyItem("bintree",
+			LazyBintreeItem(myroot, mysettings))
 
 # Initialization of legacy globals.  No functions/classes below this point
 # please!  When the above functions and classes become independent of the
