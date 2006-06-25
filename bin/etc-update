@@ -10,8 +10,6 @@
 # Leo Lipelis <aeoo@gentoo.org>
 # Karl Trygve Kalleberg <karltk@gentoo.org>
 
-export PORTAGE_CALLER="etc-update"
-
 if type -p gsed >/dev/null ; then
 	function sed() { gsed "$@"; }
 fi

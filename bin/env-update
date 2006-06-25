@@ -4,7 +4,6 @@
 # $Id$
 
 import os,sys
-os.environ["PORTAGE_CALLER"] = "env-update"
 sys.path = ["/usr/lib/portage/pym"]+sys.path
 
 def usage(status):

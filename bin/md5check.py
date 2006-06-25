@@ -4,7 +4,6 @@
 # $Id$
 
 import os,sys,string
-os.environ["PORTAGE_CALLER"]="mirror"
 os.environ["FEATURES"]="mirror cvs"
 sys.path = ["/usr/lib/portage/pym"]+sys.path
 
