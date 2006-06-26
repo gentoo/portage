@@ -26,7 +26,6 @@ sys.path = ["/usr/lib/portage/pym"]+sys.path
 import portage
 
 import emergehelp, xpak, commands, errno, re, socket, string, time, types
-from stat import ST_MTIME
 from output import blue, bold, colorize, darkblue, darkgreen, darkred, green, \
 	havecolor, nc_len, nocolor, red, teal, turquoise, white, xtermTitle, \
 	xtermTitleReset, yellow
@@ -2284,23 +2283,10 @@ def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 				continue
 			inforoot=normpath(root+z)
 			if os.path.isdir(inforoot):
-				try:
-					infomtime=os.stat(inforoot)[ST_MTIME]
-				except SystemExit, e:
-					raise # Needed else can't exit
-				except:
-					infomtime=0
-
-				if not portage.mtimedb.has_key("info"):
-					portage.mtimedb["info"]={}
-				if portage.mtimedb["info"].has_key(inforoot):
-					if portage.mtimedb["info"][inforoot]==infomtime:
-						pass
-					else:
-						portage.mtimedb["info"][inforoot]=infomtime
+				infomtime = os.stat(inforoot).st_mtime
+				if inforoot not in prev_mtimes or \
+					prev_mtimes[inforoot] != infomtime:
 						regen_infodirs.append(inforoot)
-				else:
-					regen_infodirs.append(inforoot)
 
 		if not regen_infodirs:
 			print " "+green("*")+" GNU info directory index is up-to-date."
@@ -2342,7 +2328,7 @@ def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 					icount=icount+1
 
 				#update mtime so we can potentially avoid regenerating.
-				portage.mtimedb["info"][inforoot]=os.stat(inforoot)[ST_MTIME]
+				prev_mtimes[inforoot] = os.stat(inforoot).st_mtime
 
 			if badcount:
 				print " "+yellow("*")+" Processed",icount,"info files;",badcount,"errors."
