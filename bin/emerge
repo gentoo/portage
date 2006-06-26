@@ -2853,8 +2853,7 @@ def action_regen():
 	mynodes=portage.portdb.cp_all()
 	for x in mynodes:
 		mymatches=portage.portdb.xmatch("match-all",x)
-		if not "--quiet" in myopts:
-			print "processing",x
+		portage.writemsg_stdout("processing %s\n" % x)
 		for y in mymatches:
 			try:
 				foo=portage.portdb.aux_get(y,["DEPEND"])
@@ -3002,7 +3001,7 @@ def action_info(myopts):
 			if "cvs_id_string" in dir(module):
 				print "%s: %s" % (str(x), str(module.cvs_id_string))
 
-def action_search(myopts, myfiles):
+def action_search(myopts, myfiles, spinner):
 	if not myfiles:
 		print "emerge: no search terms provided."
 	else:
@@ -3017,7 +3016,7 @@ def action_search(myopts, myfiles):
 				sys.exit(1)
 			searchinstance.output()
 
-def action_depclean(myopts):
+def action_depclean(myopts, spinner):
 	# Kill packages that aren't explicitly merged or are required as a
 	# dependency of another package. World file is explicit.
 
@@ -3062,7 +3061,7 @@ def action_depclean(myopts):
 	if not "--pretend" in myopts: #just check pretend, since --ask implies pretend
 		emergelog(" >>> depclean")
 
-	myparams = create_depgraph_params(myopts, myaction)
+	myparams = create_depgraph_params(myopts, "depclean")
 	mydepgraph = depgraph(portage.settings, portage.portdb, portage.db,
 		myopts, myparams, spinner)
 
@@ -3144,7 +3143,7 @@ def action_depclean(myopts):
 		print "Number removed:       "+str(len(cleanlist))
 		post_emerge(settings, info_mtimes, 0)
 
-def action_build(myopts, myaction, myfiles):
+def action_build(myopts, myaction, myfiles, spinner):
 	settings = portage.settings
 	trees = portage.db
 	info_mtimes = portage.mtimedb["info"]
@@ -3389,7 +3388,7 @@ def parse_opts(tmpcmdline):
 
 	return myaction, myopts, myfiles
 
-if __name__ == "__main__":
+def emerge_main():
 	settings = portage.settings
 	trees = portage.db
 	info_mtimes = portage.mtimedb["info"]
@@ -3690,7 +3689,10 @@ if __name__ == "__main__":
 				post_emerge(settings, info_mtimes, 0)
 
 	elif "depclean"==myaction:
-		action_depclean(myopts)
+		action_depclean(myopts, spinner)
 	# "update", "system", or just process files:
 	else:
-		action_build(myopts, myaction, myfiles)
+		action_build(myopts, myaction, myfiles, spinner)
+
+if __name__ == "__main__":
+	emerge_main()
