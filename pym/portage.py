@@ -7034,7 +7034,7 @@ def load_mtimedb(f):
 	if "cur" in d:
 		del d["cur"]
 
-	for k in ("ldpath", "updates"):
+	for k in ("info", "ldpath", "updates"):
 		d.setdefault(k, {})
 
 	mtimedbkeys = set(("info", "ldpath", "resume", "resume_backup",

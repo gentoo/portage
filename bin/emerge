@@ -2274,12 +2274,7 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 		return 1
 
 
-def chk_updated_info_files(retval):
-	root=portage.root
-
-	infodirs=[]
-	infodirs.extend(string.split(portage.settings["INFOPATH"], ":"))
-	infodirs.extend(string.split(portage.settings["INFODIR"], ":"))
+def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 
 	print
 	if os.path.exists("/usr/bin/install-info"):
@@ -2356,26 +2351,29 @@ def chk_updated_info_files(retval):
 				print " "+green("*")+" Processed",icount,"info files."
 
 
-def post_emerge(retval=0):
-	global myopts
+def post_emerge(settings, info_mtimes, retval):
+	target_root = settings["ROOT"]
+	config_protect = settings.get("CONFIG_PROTECT","").split()
+	infodirs = settings.get("INFOPATH","").split(":") + \
+		settings.get("INFODIR","").split(":")
+
 	os.chdir("/")
-	if "--pretend" in myopts:
-		sys.exit(retval)
 
 	emergelog(" *** exiting successfully.")
 
 	if "noinfo" not in portage.settings.features:
-		chk_updated_info_files(retval)
+		chk_updated_info_files(target_root, infodirs, info_mtimes, retval)
 
-	chk_updated_cfg_files()
+	chk_updated_cfg_files(target_root, config_protect)
 	sys.exit(retval)
 
 
-def chk_updated_cfg_files():
-	if portage.settings["CONFIG_PROTECT"]:
+def chk_updated_cfg_files(target_root, config_protect):
+	if config_protect:
 		#number of directories with some protect files in them
 		procount=0
-		for x in string.split(portage.settings["CONFIG_PROTECT"]):
+		for x in config_protect:
+			x = os.path.join(target_root, x.lstrip(os.path.sep))
 			if os.path.isdir(x):
 				a=commands.getstatusoutput("cd "+x+"; find . -iname '._cfg????_*'")
 				if a[0]!=0:
@@ -3059,6 +3057,7 @@ def action_depclean(myopts):
 
 	settings = portage.settings
 	vartree = portage.db[settings["ROOT"]]["vartree"]
+	info_mtimes = portage.mtimedb["info"]
 	syslist = getlist(settings, "system")
 	worldlist = getlist(settings, "world")
 	myvarlist=portage.vardbapi(portage.root).cp_all()
@@ -3157,11 +3156,12 @@ def action_depclean(myopts):
 		print "Number to remove:     "+str(len(cleanlist))
 	else:
 		print "Number removed:       "+str(len(cleanlist))
-		post_emerge()
+		post_emerge(settings, info_mtimes, 0)
 
 def action_build(myopts, myaction, myfiles):
 	settings = portage.settings
 	trees = portage.db
+	info_mtimes = portage.mtimedb["info"]
 	favorites=[]
 	if ("--ask" in myopts or "--pretend" in myopts) and not "--quiet" in myopts:
 		action = ""
@@ -3335,7 +3335,7 @@ def action_build(myopts, myaction, myfiles):
 			portage.writemsg_stdout(colorize("WARN", "WARNING:")
 				+ " AUTOCLEAN is disabled.  This can cause serious"
 				+ " problems due to overlapping packages.\n")
-	post_emerge()
+	post_emerge(settings, info_mtimes, 0)
 
 def parse_opts(tmpcmdline):
 	myaction=None
@@ -3405,6 +3405,7 @@ def parse_opts(tmpcmdline):
 if __name__ == "__main__":
 	settings = portage.settings
 	trees = portage.db
+	info_mtimes = portage.mtimedb["info"]
 
 	settings.unlock()
 
@@ -3698,7 +3699,7 @@ if __name__ == "__main__":
 		vartree = trees[settings["ROOT"]]["vartree"]
 		if 1 == unmerge(settings, myopts, vartree, myaction, myfiles,
 			raise_on_missing=False):
-			post_emerge()
+			post_emerge(settings, info_mtimes, 0)
 	
 	elif "depclean"==myaction:
 		action_depclean(myopts)
