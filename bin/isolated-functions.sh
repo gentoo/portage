@@ -200,11 +200,11 @@ set_colors() {
 	ENDCOL=$'\e[A\e['${COLS}'C'    # Now, ${ENDCOL} will move us to the end of the
 	                               # column;  irregardless of character width
 
-	GOOD=$'\e[32;01m'
-	WARN=$'\e[33;01m'
-	BAD=$'\e[31;01m'
-	HILITE=$'\e[36;01m'
-	BRACKET=$'\e[34;01m'
+	[ -z "${GOOD}"    ] && GOOD=$'\e[32;01m'
+	[ -z "${WARN}"    ] && WARN=$'\e[33;01m'
+	[ -z "${BAD}"     ] && BAD=$'\e[31;01m'
+	[ -z "${HILITE}"  ] && HILITE=$'\e[36;01m'
+	[ -z "${BRACKET}" ] && BRACKET=$'\e[34;01m'
 	NORMAL=$'\e[0m'
 }
 

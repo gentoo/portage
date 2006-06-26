@@ -2523,6 +2523,10 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 		myso=os.uname()[2]
 		mysettings["KVERS"]=myso[1]
 
+	# Allow color.map to control colors associated with einfo, ewarn, etc...
+	for c in ("GOOD", "WARN", "BAD", "HILITE", "BRACKET"):
+		mysettings[c] = output.codes[c]
+
 def prepare_build_dirs(myroot, mysettings, cleanup):
 
 	clean_dirs = [mysettings["HOME"]]
