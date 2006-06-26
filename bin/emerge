@@ -3321,7 +3321,8 @@ def action_build(myopts, myaction, myfiles):
 			portage.writemsg_stdout(colorize("WARN", "WARNING:")
 				+ " AUTOCLEAN is disabled.  This can cause serious"
 				+ " problems due to overlapping packages.\n")
-	post_emerge(settings, info_mtimes, 0)
+	if "--pretend" not in myopts:
+		post_emerge(settings, info_mtimes, 0)
 
 def parse_opts(tmpcmdline):
 	myaction=None
@@ -3685,8 +3686,9 @@ if __name__ == "__main__":
 		vartree = trees[settings["ROOT"]]["vartree"]
 		if 1 == unmerge(settings, myopts, vartree, myaction, myfiles,
 			raise_on_missing=False):
-			post_emerge(settings, info_mtimes, 0)
-	
+			if "--pretend" not in myopts:
+				post_emerge(settings, info_mtimes, 0)
+
 	elif "depclean"==myaction:
 		action_depclean(myopts)
 	# "update", "system", or just process files:
