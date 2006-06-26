@@ -2766,7 +2766,7 @@ def action_metadata(myopts):
 	portage.portdb.flush_cache()
 
 	ec = portage.eclass_cache.cache(portage.portdb.porttree_root)
-	myportdir = portage.settings["PORTDIR"]
+	myportdir = os.path.realpath(portage.settings["PORTDIR"])
 	cm = portage.settings.load_best_module("portdbapi.metadbmodule")(
 		myportdir, "metadata/cache", portage.auxdbkeys[:])
 
