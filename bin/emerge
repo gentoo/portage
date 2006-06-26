@@ -3568,13 +3568,30 @@ def emerge_main():
 		portage.settings.lock()
 
 	# Set various debug markers... They should be merged somehow.
-	if ("--debug" in myopts):
-		portage.settings.unlock()
-		portage.settings["PORTAGE_DEBUG"]="1"
-		portage.settings.backup_changes("PORTAGE_DEBUG")
+	settings.unlock()
+	PORTAGE_DEBUG = 0
+	try:
+		PORTAGE_DEBUG = int(settings.get("PORTAGE_DEBUG", str(PORTAGE_DEBUG)))
+		if PORTAGE_DEBUG not in (0, 1):
+			portage.writemsg("!!! Invalid value: PORTAGE_DEBUG='%i'\n" % \
+				PORTAGE_DEBUG, noiselevel=-1)
+			portage.writemsg("!!! PORTAGE_DEBUG must be either 0 or 1\n",
+				noiselevel=-1)
+			PORTAGE_DEBUG = 0
+	except ValueError, e:
+		portage.writemsg("!!! %s\n" % str(e), noiselevel=-1)
+		portage.writemsg("!!! Unable to parse integer: PORTAGE_DEBUG='%s'\n" %\
+			settings["PORTAGE_DEBUG"], noiselevel=-1)
+		del e
+	if "--debug" in myopts:
+		PORTAGE_DEBUG = 1
+	settings["PORTAGE_DEBUG"] = str(PORTAGE_DEBUG)
+	settings.backup_changes("PORTAGE_DEBUG")
+	settings.lock()
+
+	if settings.get("PORTAGE_DEBUG", "") == "1":
 		portage.debug=1
-		portage.settings.lock()
-		if "python-trace" in portage.settings.features:
+		if "python-trace" in settings.features:
 			import portage_debug
 			portage_debug.set_trace(True)
 
