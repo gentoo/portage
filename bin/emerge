@@ -3437,7 +3437,11 @@ def emerge_main():
 	if settings.get("NOCOLOR","") in ("yes","true"):
 		nocolor()
 	elif (not sys.stdout.isatty()) and \
-		settings.get("NOCOLOR","") not in ("no","false"):
+		settings.get("NOCOLOR","") != "no":
+		# revdep-rebuild exports NOCOLOR=false, so for now, don't allow
+		# NOCOLOR=false to override the isatty() check.  This can be fixed
+		# in revdep-rebuild by using the --nocolor option when appropriate
+		# instead of exporting NOCOLOR.
 		nocolor()
 
 	tmpcmdline = sys.argv[1:]
