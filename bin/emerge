@@ -2315,12 +2315,11 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 					print "none",
 			print
 
-	if (not "--quiet" in myopts):
-		portage.writemsg_stdout("\n>>> " + colorize("WARN", "'Selected'") + \
-			" packages are slated for removal.\n")
-		portage.writemsg_stdout(">>> " + colorize("GOOD", "'Protected'") + \
-			 " and " + colorize("GOOD", "'omitted'") + \
-			 " packages will not be removed.\n")
+	portage.writemsg_stdout("\n>>> " + colorize("WARN", "'Selected'") + \
+		" packages are slated for removal.\n")
+	portage.writemsg_stdout(">>> " + colorize("GOOD", "'Protected'") + \
+			" and " + colorize("GOOD", "'omitted'") + \
+			" packages will not be removed.\n\n")
 
 	if "--pretend" in myopts:
 		#we're done... return
