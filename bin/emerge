@@ -251,7 +251,7 @@ def countdown(secs=5, doing="Starting"):
 		ticks=range(secs)
 		ticks.reverse()
 		for sec in ticks:
-			sys.stdout.write(red(str(sec+1)+" "))
+			sys.stdout.write(colorize("WARN", str(sec+1)+" "))
 			sys.stdout.flush()
 			time.sleep(1)
 		print
@@ -2079,20 +2079,21 @@ def unmerge_overlapping(pkg_key, myroot, mysettings, vartree):
 		selected_versions = ",".join(map(get_version, overlapping))
 		protected_version = get_version(pkg_key)
 		if ommitted_versions:
-			ommitted_versions = ",".join(map(get_version, ommitted_versions))
+			ommitted_versions = ", ".join(map(get_version, ommitted_versions))
 		else:
 			ommitted_versions = "none"
 		portage.writemsg_stdout("\n %s\n" % bold(mycp), noiselevel=-1)
-		portage.writemsg_stdout("selected: ".rjust(14) + selected_versions + \
-			"\n", noiselevel=-1)
-		portage.writemsg_stdout("protected: ".rjust(14) + protected_version + \
-			"\n", noiselevel=-1)
-		portage.writemsg_stdout("omitted: ".rjust(14) + ommitted_versions + \
-			"\n", noiselevel=-1)
-		portage.writemsg_stdout("\n>>>" + red("'Selected'") + \
+		portage.writemsg_stdout("selected: ".rjust(14) + \
+			colorize("WARN", selected_versions) + "\n", noiselevel=-1)
+		portage.writemsg_stdout("protected: ".rjust(14) + \
+			colorize("GOOD", protected_version) + "\n", noiselevel=-1)
+		portage.writemsg_stdout("omitted: ".rjust(14) + \
+			colorize("GOOD", ommitted_versions) + "\n", noiselevel=-1)
+		portage.writemsg_stdout("\n>>>" + colorize("WARN", "'Selected'") + \
 			" packages are slated for removal.\n", noiselevel=0)
-		portage.writemsg_stdout(">>>" + green("'Protected'") + " and " + \
-			green("'omitted'") + " packages will not be removed.\n\n",
+		portage.writemsg_stdout(">>>" + colorize("GOOD", "'Protected'") + \
+			" and " + colorize("GOOD", "'omitted'") + \
+			" packages will not be removed.\n\n",
 			noiselevel=0)
 		countdown(int(mysettings["CLEAN_DELAY"]), ">>> Unmerging")
 		for other_pkg in overlapping:
@@ -2307,9 +2308,9 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 					else:
 						myversion=mysplit[2]+"-"+mysplit[3]
 					if mytype=="selected":
-						print red(myversion),
+						portage.writemsg_stdout(colorize("WARN", myversion))
 					else:
-						print green(myversion),
+						portage.writemsg_stdout(colorize("GOOD", myversion))
 			else:
 					print "none",
 			print
