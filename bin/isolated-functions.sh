@@ -208,6 +208,7 @@ set_colors() {
 	NORMAL=$'\e[0m'
 }
 
+export -n GOOD WARN BAD HILITE BRACKET
 RC_ENDCOL="yes"
 RC_INDENTATION=''
 RC_DEFAULT_INDENT=2
