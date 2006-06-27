@@ -1665,6 +1665,7 @@ class depgraph:
 	def merge(self, mylist, favorites):
 		returnme=0
 		mymergelist=[]
+		ldpath_mtimes = portage.mtimedb["ldpath"]
 
 		#check for blocking dependencies
 		if "--fetchonly" not in self.myopts and \
@@ -1857,12 +1858,16 @@ class depgraph:
 						short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Merge"
 						emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Merging ("+x[pkgindex]+"::"+y+")", short_msg=short_msg)
 
-						self.pkgsettings["EMERGE_FROM"] = "binary"
-						self.pkgsettings.backup_changes("EMERGE_FROM")
-
-						retval=portage.pkgmerge(mytbz2,myroot,self.pkgsettings)
-						if retval is None:
-							sys.exit(1)
+						retval = portage.merge(self.pkgsettings["CATEGORY"],
+							self.pkgsettings["PF"], self.pkgsettings["D"],
+							os.path.join(self.pkgsettings["PORTAGE_BUILDDIR"],
+							"build-info"), myroot, self.pkgsettings,
+							myebuild=self.pkgsettings["EBUILD"],
+							mytree="porttree", mydbapi=self.portdb,
+							vartree=self.trees[myroot]["vartree"],
+							prev_mtimes=ldpath_mtimes)
+						if retval:
+							sys.exit(retval)
 					elif "noclean" not in self.pkgsettings.features:
 						portage.doebuild(y, "clean", myroot, self.pkgsettings,
 							self.edebug, tree="porttree")
