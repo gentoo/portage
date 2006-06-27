@@ -3089,7 +3089,7 @@ def action_info(myopts):
 			if "cvs_id_string" in dir(module):
 				print "%s: %s" % (str(x), str(module.cvs_id_string))
 
-def action_search(myopts, myfiles, spinner):
+def action_search(settings, vartree, myopts, myfiles, spinner):
 	if not myfiles:
 		print "emerge: no search terms provided."
 	else:
@@ -3795,7 +3795,8 @@ def emerge_main():
 	
 	# SEARCH action
 	elif "search"==myaction:
-		action_search(myopts, myfiles)
+		action_search(settings, trees["/"]["vartree"],
+			myopts, myfiles, spinner)
 	elif "unmerge"==myaction or "prune"==myaction or "clean"==myaction:
 		vartree = trees[settings["ROOT"]]["vartree"]
 		if 1 == unmerge(settings, myopts, vartree, myaction, myfiles,
