@@ -219,8 +219,8 @@ shortmapping={
 "v":"--verbose",   "V":"--version"
 }
 
-def emergelog(mystr,short_msg=None):
-	if "notitles" not in portage.settings.features:
+def emergelog(xterm_titles, mystr, short_msg=None):
+	if xterm_titles:
 		if short_msg:
 			xtermTitle(short_msg)
 		else:
@@ -1666,6 +1666,7 @@ class depgraph:
 		returnme=0
 		mymergelist=[]
 		ldpath_mtimes = portage.mtimedb["ldpath"]
+		xterm_titles = "notitles" not in self.settings.features
 
 		#check for blocking dependencies
 		if "--fetchonly" not in self.myopts and \
@@ -1688,7 +1689,7 @@ class depgraph:
 		if "--resume" in self.myopts:
 			# We're resuming.
 			print green("*** Resuming merge...")
-			emergelog(" *** Resuming merge...")
+			emergelog(xterm_titles, " *** Resuming merge...")
 			mymergelist=portage.mtimedb["resume"]["mergelist"][:]
 			if "--skipfirst" in self.myopts and mymergelist:
 				del portage.mtimedb["resume"]["mergelist"][0]
@@ -1790,7 +1791,9 @@ class depgraph:
 			y = self.portdb.findname(x[pkgindex])
 			if "--pretend" not in self.myopts:
 				print ">>> Emerging ("+str(mergecount)+" of "+str(len(mymergelist))+")",x[pkgindex],"to",x[1]
-				emergelog(" >>> emerge ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" to "+x[1])
+				emergelog(xterm_titles, " >>> emerge ("+\
+					str(mergecount)+" of "+str(len(mymergelist))+\
+					") "+x[pkgindex]+" to "+x[1])
 
 			self.pkgsettings["EMERGE_FROM"] = x[0][:]
 			self.pkgsettings.backup_changes("EMERGE_FROM")
@@ -1829,7 +1832,9 @@ class depgraph:
 						#emergelog(">>> This is a system package, let's pack a rescue tarball.")
 					#create pkg, then merge pkg
 					short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Clean"
-					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Cleaning ("+x[pkgindex]+"::"+y+")", short_msg=short_msg)
+					emergelog(xterm_titles, " === ("+str(mergecount)+\
+						" of "+str(len(mymergelist))+") Cleaning ("+\
+						x[pkgindex]+"::"+y+")", short_msg=short_msg)
 					retval = portage.doebuild(y, "clean", myroot,
 						self.pkgsettings, self.edebug, cleanup=1,
 						tree="porttree")
@@ -1840,7 +1845,10 @@ class depgraph:
 					if retval:
 						sys.exit(retval)
 					short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Compile"
-					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Compiling/Packaging ("+x[pkgindex]+"::"+y+")", short_msg=short_msg)
+					emergelog(xterm_titles, " === ("+str(mergecount)+\
+						" of "+str(len(mymergelist))+\
+						") Compiling/Packaging ("+x[pkgindex]+"::"+y+\
+						")", short_msg=short_msg)
 					retval = portage.doebuild(y, "package", myroot,
 						self.pkgsettings, self.edebug, tree="porttree")
 					if (retval is None):
@@ -1856,7 +1864,10 @@ class depgraph:
 						mytbz2 = self.trees[
 							self.settings["ROOT"]]["bintree"].getname(x[2])
 						short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Merge"
-						emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Merging ("+x[pkgindex]+"::"+y+")", short_msg=short_msg)
+						emergelog(xterm_titles, " === ("+\
+							str(mergecount)+" of "+\
+							str(len(mymergelist))+") Merging ("+\
+							x[pkgindex]+"::"+y+")", short_msg=short_msg)
 
 						retval = portage.merge(self.pkgsettings["CATEGORY"],
 							self.pkgsettings["PF"], self.pkgsettings["D"],
@@ -1873,7 +1884,9 @@ class depgraph:
 							self.edebug, tree="porttree")
 				else:
 					short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Clean"
-					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Cleaning ("+x[pkgindex]+"::"+y+")", short_msg=short_msg)
+					emergelog(xterm_titles, " === ("+str(mergecount)+\
+						" of "+str(len(mymergelist))+") Cleaning ("+\
+						x[pkgindex]+"::"+y+")", short_msg=short_msg)
 					retval = portage.doebuild(y, "clean", myroot,
 						self.pkgsettings, self.edebug, cleanup=1,
 						tree="porttree")
@@ -1884,7 +1897,10 @@ class depgraph:
 					if retval:
 						sys.exit(retval)
 					short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Compile"
-					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Compiling/Merging ("+x[pkgindex]+"::"+y+")", short_msg=short_msg)
+					emergelog(xterm_titles, " === ("+str(mergecount)+\
+						" of "+str(len(mymergelist))+\
+						") Compiling/Merging ("+x[pkgindex]+\
+						"::"+y+")", short_msg=short_msg)
 					retval = portage.doebuild(y, "merge", myroot,
 						self.pkgsettings, self.edebug, tree="porttree")
 					if (retval is None):
@@ -1900,7 +1916,10 @@ class depgraph:
 					self.settings["ROOT"]]["bintree"].getname(x[2])
 				if self.trees[self.settings["ROOT"]]["bintree"].isremote(x[2]):
 					short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Fetch"
-					emergelog(" --- ("+str(mergecount)+" of "+str(len(mymergelist))+") Fetching Binary ("+x[pkgindex]+"::"+mytbz2+")", short_msg=short_msg)
+					emergelog(xterm_titles, " --- ("+str(mergecount)+\
+						" of "+str(len(mymergelist))+\
+						") Fetching Binary ("+x[pkgindex]+\
+						"::"+mytbz2+")", short_msg=short_msg)
 					if not self.trees[
 						self.settings["ROOT"]]["bintree"].gettbz2(x[2]):
 						sys.exit(1)
@@ -1910,7 +1929,9 @@ class depgraph:
 					continue
 
 				short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Merge Binary"
-				emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Merging Binary ("+x[pkgindex]+"::"+mytbz2+")", short_msg=short_msg)
+				emergelog(xterm_titles, " === ("+str(mergecount)+\
+					" of "+str(len(mymergelist))+") Merging Binary ("+\
+					x[pkgindex]+"::"+mytbz2+")", short_msg=short_msg)
 				retval=portage.pkgmerge(mytbz2,x[1],self.pkgsettings)
 				if retval is None:
 					sys.exit(1)
@@ -1928,7 +1949,10 @@ class depgraph:
 						#we don't have a favorites entry for this package yet; add one
 						myfavdict[myfavkey]=myfavkey
 						print ">>> Recording",myfavkey,"in \"world\" favorites file..."
-						emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Updating world file ("+x[pkgindex]+")")
+						emergelog(xterm_titles, " === ("+\
+							str(mergecount)+" of "+\
+							str(len(mymergelist))+\
+							") Updating world file ("+x[pkgindex]+")")
 						portage.write_atomic(
 						os.path.join(myroot, portage.WORLD_FILE),
 						"\n".join(myfavdict.values()))
@@ -1939,11 +1963,12 @@ class depgraph:
 					# Clean the old package that we have merged over top of it.
 					if self.pkgsettings["AUTOCLEAN"]=="yes":
 						xsplit=portage.pkgsplit(x[2])
-						emergelog(" >>> AUTOCLEAN: "+xsplit[0])
+						emergelog(xterm_titles, " >>> AUTOCLEAN: " + xsplit[0])
 						retval = unmerge_overlapping(x[2], x[1],
 							self.pkgsettings, self.trees[x[1]]["vartree"])
 						if not retval:
-							emergelog(" --- AUTOCLEAN: Nothing unmerged.")
+							emergelog(xterm_titles,
+								" --- AUTOCLEAN: Nothing unmerged.")
 					else:
 						portage.writemsg_stdout(colorize("WARN", "WARNING:")
 							+ " AUTOCLEAN is disabled.  This can cause serious"
@@ -1958,8 +1983,14 @@ class depgraph:
 						if (myver != portage.VERSION) and \
 						   "livecvsportage" not in self.settings.features:
 							if len(mymergelist) > mergecount:
-								emergelog(" ::: completed emerge ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[2]+" to "+x[1])
-								emergelog(" *** RESTARTING emerge via exec() after change of portage version.")
+								emergelog(xterm_titles,
+									" ::: completed emerge ("+ \
+									str(mergecount)+" of "+ \
+									str(len(mymergelist))+") "+ \
+									x[2]+" to "+x[1])
+								emergelog(xterm_titles, " *** RESTARTING " + \
+									"emerge via exec() after change of " + \
+									"portage version.")
 								del portage.mtimedb["resume"]["mergelist"][0]
 								portage.run_exitfuncs()
 								mynewargv=[sys.argv[0],"--resume"]
@@ -1978,9 +2009,13 @@ class depgraph:
 				if "noclean" not in self.settings.features:
 					short_msg = "emerge: (%s of %s) %s Clean Post" % \
 						(mergecount, len(mymergelist), x[pkgindex])
-					emergelog(" === (%s of %s) Post-Build Cleaning (%s::%s)" % \
-						(mergecount, len(mymergelist), x[pkgindex], y), short_msg=short_msg)
-				emergelog(" ::: completed emerge ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[2]+" to "+x[1])
+					emergelog(xterm_titles, (" === (%s of %s) " + \
+						"Post-Build Cleaning (%s::%s)") % \
+						(mergecount, len(mymergelist), x[pkgindex], y),
+						short_msg=short_msg)
+				emergelog(xterm_titles, " ::: completed emerge ("+\
+					str(mergecount)+" of "+str(len(mymergelist))+") "+\
+					x[2]+" to "+x[1])
 
 			# Unsafe for parallel merges
 			del portage.mtimedb["resume"]["mergelist"][0]
@@ -1989,7 +2024,7 @@ class depgraph:
 			# due to power failure, SIGKILL, etc...
 			portage.commit_mtimedb()
 
-		emergelog(" *** Finished. Cleaning up...")
+		emergelog(xterm_titles, " *** Finished. Cleaning up...")
 
 		# We're out of the loop... We're done. Delete the resume data.
 		if portage.mtimedb.has_key("resume"):
@@ -2025,6 +2060,7 @@ def unmerge_overlapping(pkg_key, myroot, mysettings, vartree):
 	mydbapi = vartree.dbapi
 	myslot = mydbapi.aux_get(pkg_key, ["SLOT"])[0]
 	mycp = portage.pkgsplit(pkg_key)[0]
+	xterm_titles = "notitles" not in mysettings.features
 	for other_pkg in mydbapi.cp_list(mycp):
 		if other_pkg == pkg_key:
 			continue
@@ -2062,14 +2098,14 @@ def unmerge_overlapping(pkg_key, myroot, mysettings, vartree):
 		for other_pkg in overlapping:
 			portage.writemsg_stdout(">>> Unmerging %s...\n" % other_pkg ,
 				noiselevel=-1)
-			emergelog("=== Unmerging... (%s)" % other_pkg)
+			emergelog(xterm_titles, "=== Unmerging... (%s)" % other_pkg)
 			mysplit = other_pkg.split("/")
 			retval = portage.unmerge(mysplit[0], mysplit[1], myroot,
 				mysettings, mytrimworld=False, vartree=vartree)
 			if retval:
-				emergelog(" !!! unmerge FAILURE: " + other_pkg)
+				emergelog(xterm_titles, " !!! unmerge FAILURE: " + other_pkg)
 			else:
-				emergelog(" >>> unmerge success: " + other_pkg)
+				emergelog(xterm_titles, " >>> unmerge success: " + other_pkg)
 		return 1
 	return 0
 
@@ -2077,6 +2113,7 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 	raise_on_missing=True):
 	candidate_catpkgs=[]
 	global_unmerge=0
+	xterm_titles = "notitles" not in settings.features
 
 	realsyslist = getlist(settings, "system")
 	syslist = []
@@ -2298,15 +2335,15 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 	for x in pkgmap.keys():
 		for y in pkgmap[x]["selected"]:
 			print ">>> Unmerging "+y+"..."
-			emergelog("=== Unmerging... ("+y+")")
+			emergelog(xterm_titles, "=== Unmerging... ("+y+")")
 			mysplit=string.split(y,"/")
 			#unmerge...
 			retval = portage.unmerge(mysplit[0], mysplit[1], settings["ROOT"],
 				mysettings, unmerge_action not in ["clean","prune"])
 			if retval:
-				emergelog(" !!! unmerge FAILURE: "+y)
+				emergelog(xterm_titles, " !!! unmerge FAILURE: "+y)
 			else:
-				emergelog(" >>> unmerge success: "+y)
+				emergelog(xterm_titles, " >>> unmerge success: "+y)
 	#run ldconfig, etc...
 	portage.env_update()
 	if not numselected:
@@ -2387,7 +2424,8 @@ def post_emerge(settings, info_mtimes, retval):
 
 	os.chdir("/")
 
-	emergelog(" *** exiting successfully.")
+	emergelog("notitles" not in settings.features,
+		" *** exiting successfully.")
 
 	if "noinfo" not in portage.settings.features:
 		chk_updated_info_files(target_root, infodirs, info_mtimes, retval)
@@ -2438,7 +2476,9 @@ def validate_merge_list(mergelist):
 			sys.exit(1)
 
 def action_sync(myopts, myaction):
-	emergelog(" === "+str(myaction))
+	settings = portage.settings
+	xterm_titles = "notitles" not in settings.features
+	emergelog(xterm_titles, " === sync")
 	myportdir=portage.settings["PORTDIR"]
 	if myportdir[-1]=="/":
 		myportdir=myportdir[:-1]
@@ -2629,11 +2669,13 @@ def action_sync(myopts, myaction):
 						print "Quitting."
 						print
 						sys.exit(0)
-				emergelog(">>> Starting rsync with "+dosyncuri)
+				emergelog(xterm_titles, ">>> Starting rsync with " + dosyncuri)
 				if "--quiet" not in myopts:
 					print ">>> Starting rsync with "+dosyncuri+"..."
 			else:
-				emergelog(">>> Starting retry %d of %d with %s" % (retries,maxretries,dosyncuri))
+				emergelog(xterm_titles,
+					">>> Starting retry %d of %d with %s" % \
+						(retries,maxretries,dosyncuri))
 				print "\n\n>>> Starting retry %d of %d with %s" % (retries,maxretries,dosyncuri)
 
 			if "--quiet" not in myopts:
@@ -2659,7 +2701,8 @@ def action_sync(myopts, myaction):
 					servertimestamp = 0
 
 				if (servertimestamp != 0) and (servertimestamp == mytimestamp):
-					emergelog(">>> Cancelling sync -- Already current.")
+					emergelog(xterm_titles,
+						">>> Cancelling sync -- Already current.")
 					print
 					print ">>>"
 					print ">>> Timestamps on the server and in the local repository are the same."
@@ -2668,7 +2711,8 @@ def action_sync(myopts, myaction):
 					print
 					sys.exit(0)
 				elif (servertimestamp != 0) and (servertimestamp < mytimestamp):
-					emergelog(">>> Server out of date: %s" % dosyncuri)
+					emergelog(xterm_titles,
+						">>> Server out of date: %s" % dosyncuri)
 					print
 					print ">>>"
 					print ">>> SERVER OUT OF DATE: %s" % dosyncuri
@@ -2695,7 +2739,7 @@ def action_sync(myopts, myaction):
 				break
 
 		if (exitcode==0):
-			emergelog("=== Sync completed with %s" % dosyncuri)
+			emergelog(xterm_titles, "=== Sync completed with %s" % dosyncuri)
 			# save timestamp.chk for next timestamp check.
 			try:
 				if tmpservertimestampfile is not None:
@@ -2882,7 +2926,9 @@ def action_metadata(myopts):
 	os.umask(old_umask)
 
 def action_regen():
-	emergelog(" === regen")
+	settings = portage.settings
+	xterm_titles = "notitles" not in settings.features
+	emergelog(xterm_titles, " === regen")
 	#regenerate cache entries
 	print "Regenerating cache entries... "
 	try:
@@ -3083,6 +3129,7 @@ def action_depclean(myopts, spinner):
 	print red("*** WARNING ***")+"  "+bold("Make sure you have a backup.")
 
 	settings = portage.settings
+	xterm_titles = "notitles" not in settings.features
 	vartree = portage.db[settings["ROOT"]]["vartree"]
 	info_mtimes = portage.mtimedb["info"]
 	syslist = getlist(settings, "system")
@@ -3101,7 +3148,7 @@ def action_depclean(myopts, spinner):
 		countdown(int(settings["EMERGE_WARNING_DELAY"]), ">>> Depclean")
 
 	if not "--pretend" in myopts: #just check pretend, since --ask implies pretend
-		emergelog(" >>> depclean")
+		emergelog(xterm_titles, " >>> depclean")
 
 	myparams = create_depgraph_params(myopts, "depclean")
 	mydepgraph = depgraph(portage.settings, portage.portdb, portage.db,
@@ -3434,6 +3481,7 @@ def emerge_main():
 	settings = portage.settings
 	trees = portage.db
 	info_mtimes = portage.mtimedb["info"]
+	xterm_titles = "notitles" not in settings.features
 
 	settings.unlock()
 
@@ -3700,7 +3748,8 @@ def emerge_main():
 				sys.exit(1)
 
 	if not "--pretend" in myopts:
-		emergelog("Started emerge on: "+time.strftime("%b %d, %Y %H:%M:%S", time.localtime()))
+		emergelog(xterm_titles, "Started emerge on: "+\
+			time.strftime("%b %d, %Y %H:%M:%S", time.localtime()))
 		myelogstr=""
 		if myopts:
 			myelogstr=string.join(myopts, " ")
@@ -3708,7 +3757,7 @@ def emerge_main():
 			myelogstr+=" "+myaction
 		if myfiles:
 			myelogstr+=" "+string.join(myfiles, " ")
-		emergelog(" *** emerge "+myelogstr)
+		emergelog(xterm_titles, " *** emerge " + myelogstr)
 
 	def emergeexitsig(signum, frame):
 		signal.signal(signal.SIGINT, signal.SIG_IGN)
@@ -3721,7 +3770,7 @@ def emerge_main():
 	def emergeexit():
 		"""This gets out final log message in before we quit."""
 		if "--pretend" not in myopts:
-			emergelog(" *** terminating.")
+			emergelog(xterm_titles, " *** terminating.")
 		if "notitles" not in portage.settings.features:
 			xtermTitleReset()
 	portage.atexit_register(emergeexit)
