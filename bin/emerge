@@ -633,31 +633,35 @@ class depgraph:
 				"--getbinpkg" in self.myopts, "--getbinpkgonly" in self.myopts)
 
 	def create(self,mybigkey,myparent=None,addme=1,myuse=None):
-		"""creates the actual digraph of packages to merge.  return 1 on success, 0 on failure
-		mybigkey = specification of package to merge; myparent = parent package (one depending on me);
-		addme = should I be added to the tree? (for the --onlydeps mode)"""
+		"""
+		Fills the digraph with nodes comprised of packages to merge.
+		mybigkey is the package spec of the package to merge.
+		myparent is the package depending on mybigkey ( or None )
+		addme = Should we add this package to the digraph or are we just looking at it's deps?
+			Think --onlydeps, we need to ignore packages in that case.
 		#stuff to add:
 		#SLOT-aware emerge
-		#IUSE-aware emerge
+		#IUSE-aware emerge -> USE DEP aware depgraph
 		#"no downgrade" emerge
-		#print "mybigkey:",mybigkey
+		"""
 
 		jbigkey=string.join(mybigkey)
+		# Prevent cycles where packages are already in the digraph
 		if self.digraph.hasnode(jbigkey+" merge") or self.digraph.hasnode(jbigkey+" nomerge"):
-			#this conditional is needed to prevent infinite recursion on already-processed deps
 			return 1
-
+		
 		self.spinner.update()
-
 		mytype,myroot,mykey=mybigkey
 		# select the correct /var database that we'll be checking against
 		vardbapi = self.trees[myroot]["vartree"].dbapi
 
 		# if the package is already on the system, we add a "nomerge"
 		# directive, otherwise we add a "merge" directive.
+		
 		if mytype=="blocks":
-			# we've encountered a "blocks" node.  We will totally ignore this
-			# node and not add it to our digraph if it doesn't apply to us.
+			""" We ignore blocks unless the package that is blocked is installed
+			    We need to check vardbapi as well as the current depgraph for it.
+			    Blocks are fatal if buildpkgonly is set. """
 			if addme and "--buildpkgonly" not in self.myopts and myparent and \
 				(self.mydbapi[myroot].match(mykey) or vardbapi.match(mykey)):
 				mybigkey.append(myparent.split()[2])
@@ -673,16 +677,22 @@ class depgraph:
 		if addme:
 		# this is where we add the node to the list of packages to merge
 			if not myparent:
-				# command-line specified or part of a world list...
+				""" If there is no parent, the package was specified on the
+				    command line or is part of system/world sets.
+				    In either case, if we aren't in 'self' mode (where package
+				    is always included and if in 'selective' mode package is already
+				    installed we skip merging it."""
 				if "self" not in self.myparams or \
 					("selective" in self.myparams and \
 					vardbapi.cpv_exists(mykey)):
-					# the package is on the system, so don't merge it.
 					merging=0
 			elif "selective" in self.myparams and vardbapi.cpv_exists(mykey):
 				merging=0
 
-			if merging == 0 and "--newuse" in self.myopts and \
+			""" If we aren't merging, perform the --newuse check.
+			    If the package has new iuse flags or different use flags then if
+			    --newuse is specified, we need to merge the package. """
+			if merging==0 and "--newuse" in self.myopts and \
 				vardbapi.cpv_exists(mykey):
 				old_use = vardbapi.aux_get(mykey, ["USE"])[0].split()
 				if mytype == "binary":
@@ -695,26 +705,38 @@ class depgraph:
 					if (old_use.count(x) and not myuse.count(x)) or (not old_use.count(x) and myuse.count(x)):
 						merging=1
 						break
-		else:
-			#onlydeps mode; don't merge
-			merging=2
+		else:   # Not addme
+			merging=2 # Quick hack to make --onlydeps continue with dep parsing but not merging
 		if merging==1:
 			mybigkey.append("merge")
 		else:
 			mybigkey.append("nomerge")
 
-		# whatever the case, we need to add the node to our digraph so
-		# that children can depend upon it.
+		""" At this point, we have either hit a blocker and returned, found the package in the
+		    depgraph already and returned, or we are here.  Whether we are merging or not; we must
+		    add the package to the depgraph; so we do that here. """
 		self.digraph.addnode(string.join(mybigkey),myparent)
+		
+		""" This section determines whether we go deeper into dependencies or not.
+		    We want to go deeper on a few occasions:
+		    Installing package A, we need to make sure package A's deps are met.
+		    emerge --deep <pkgspec>; we need to recursively check dependencies of pkgspec
+		    If we are in --nodeps (no recursion) mode, we obviously only check 1 level of dependencies.
+		"""
 		if "deep" not in self.myparams and not merging:
 			return 1
 		elif "recurse" not in self.myparams:
 			return 1
 
+		""" Check DEPEND/RDEPEND/PDEPEND/SLOT
+		Pull from bintree if it's binary package, porttree if it's ebuild.
+		Binpkg's can be either remote or local. """
+
 		edepend={}
 		if mytype=="binary":
 			mypkgparts=portage.catpkgsplit(mykey)
 			tbz2name = string.split(mykey, "/")[1]+".tbz2"
+			""" This sucks, look at querying the bintree anyhow and throwing an exception """
 			if tbz2name in self.trees[
 				self.settings["ROOT"]]["bintree"].invalids:
 				sys.stderr.write("\nINVALID PACKAGE (is required to continue): "+str(mykey)+"\n")
@@ -726,8 +748,7 @@ class depgraph:
 				edepend["RDEPEND"]=string.join(string.split(edepend["RDEPEND"])," ")
 				edepend["PDEPEND"]=string.join(string.split(edepend["PDEPEND"])," ")
 				edepend["SLOT"]   =string.strip(edepend["SLOT"])
-				#portage.db[portage.root]["bintree"].gettbz2(mykey)
-			else: # It's local.
+			else:
 				mytbz2 = xpak.tbz2(self.trees[
 					self.settings["ROOT"]]["bintree"].getname(mykey))
 				edepend["DEPEND"] =""
@@ -746,6 +767,10 @@ class depgraph:
 			except (KeyError,IOError):
 				print "emerge: create(): aux_get() error on",mykey+"; aborting..."
 				sys.exit(1)
+		
+		""" We have retrieve the dependency information, now we need to recursively
+		    process them.  DEPEND gets processed for root = "/", {R,P}DEPEND in myroot. """
+		
 		mydep={}
 		mp=string.join(mybigkey)
 
@@ -785,7 +810,6 @@ class depgraph:
 			portage.writemsg("!!! Please notify the package maintainer " + \
 				"that atoms must be fully-qualified.\n", noiselevel=-1)
 			return 0
-
 		return 1
 
 	def select_files(self,myfiles):
@@ -917,13 +941,25 @@ class depgraph:
 						return match
 
 	def select_dep(self,myroot,depstring,myparent=None,arg=None,myuse=None,raise_on_missing=False):
-		"given a dependency string, create the appropriate depgraph and return 1 on success and 0 on failure"
+		""" Given a depstring, create the depgraph such that all dependencies are satisfied.
+		    myroot = $ROOT from environment, where {R,P}DEPENDs are merged to.
+		    myparent = the node whose depstring is being passed in
+		    arg = package was specified on the command line, merge even if it's already installed
+		    myuse = USE flags at present
+		    raise_on_missing = Given that the depgraph is not proper, raise an exception if true
+		    else continue trying.
+		    return 1 on success, 0 for failure
+		"""
+		
 		if "--debug" in self.myopts:
 			print
 			print "Parent:   ",myparent
 			print "Depstring:",depstring
+		
 		if not arg:
 			#processing dependencies
+			""" Call portage.dep_check to evaluate the use? conditionals and make sure all
+			dependencies are satisfiable. """
 			mycheck = portage.dep_check(depstring, self.mydbapi[myroot],
 				self.pkgsettings, myuse=myuse,
 				use_binaries=("--usepkgonly" in self.myopts),
