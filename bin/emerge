@@ -2816,7 +2816,7 @@ def action_sync(myopts, myaction):
 	mybestpv=portage.portdb.xmatch("bestmatch-visible","sys-apps/portage")
 	mypvs=portage.best(portage.db[portage.root]["vartree"].dbapi.match("sys-apps/portage"))
 
-	chk_updated_cfg_files()
+	chk_updated_cfg_files("/", settings.get("CONFIG_PROTECT","").split())
 
 	if myaction != "metadata":
 		if os.access(portage.USER_CONFIG_PATH + "/bin/post_sync", os.X_OK):
