@@ -118,7 +118,7 @@ codes["white"]      = codes["bold"]
 
 # Colors from /sbin/functions.sh
 codes["GOOD"]       = codes["green"]
-codes["WARN"]       = codes["yellow"]
+codes["WARN"]       = codes["red"]
 codes["BAD"]        = codes["red"]
 codes["HILITE"]     = codes["teal"]
 codes["BRACKET"]    = codes["blue"]
