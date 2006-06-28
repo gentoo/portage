@@ -2299,7 +2299,7 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 					colorize("UNMERGE_WARN", "Press Ctrl-C to Stop"))
 		print "\n "+white(x)
 		for mytype in ["selected","protected","omitted"]:
-			print string.rjust(mytype,12)+":",
+			portage.writemsg_stdout((mytype + ": ").rjust(14), noiselevel=-1)
 			if pkgmap[x][mytype]:
 				for mypkg in pkgmap[x][mytype]:
 					mysplit=portage.catpkgsplit(mypkg)
@@ -2312,7 +2312,7 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 					else:
 						portage.writemsg_stdout(colorize("GOOD", myversion))
 			else:
-					print "none",
+				portage.writemsg_stdout("none", noiselevel=-1)
 			print
 
 	portage.writemsg_stdout("\n>>> " + colorize("UNMERGE_WARN", "'Selected'") + \
