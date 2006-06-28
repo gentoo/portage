@@ -5450,6 +5450,7 @@ class binarytree(packagetree):
 		for cp in [origcp,newcp]:
 			if not (isvalidatom(cp) and isjustname(cp)):
 				raise portage_exception.InvalidPackageName(cp)
+		origcat = origcp.split("/")[0]
 		mynewcat=newcp.split("/")[0]
 		origmatches=self.dbapi.cp_list(origcp)
 		if not origmatches:
@@ -5492,6 +5493,31 @@ class binarytree(packagetree):
 			if (mynewpkg != myoldpkg):
 				os.rename(tbz2path,self.getname(mynewcpv))
 			self.dbapi.cpv_inject(mynewcpv)
+
+			# remove the old symlink and category directory, then create
+			# the new ones.
+			try:
+				os.unlink(os.path.join(self.pkgdir, origcat, myoldpkg) + ".tbz2")
+			except OSError, e:
+				if e.errno != errno.ENOENT:
+					raise
+			try:
+				os.rmdir(os.path.join(self.pkgdir, origcat))
+			except OSError, e:
+				if e.errno not in (errno.ENOENT, errno.ENOTEMPTY):
+					raise
+			try:
+				os.makedirs(os.path.join(self.pkgdir, mynewcat))
+			except OSError, e:
+				if e.errno != errno.EEXIST:
+					raise
+			try:
+				os.unlink(os.path.join(self.pkgdir, mynewcat, mynewpkg) + ".tbz2")
+			except OSError, e:
+				if e.errno != errno.ENOENT:
+					raise
+			os.symlink(os.path.join("..", "All", mynewpkg) + ".tbz2",
+				os.path.join(self.pkgdir, mynewcat, mynewpkg) + ".tbz2")
 		return 1
 
 	def move_slot_ent(self, mylist):
