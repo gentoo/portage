@@ -118,10 +118,13 @@ codes["white"]      = codes["bold"]
 
 # Colors from /sbin/functions.sh
 codes["GOOD"]       = codes["green"]
-codes["WARN"]       = codes["red"]
+codes["WARN"]       = codes["yellow"]
 codes["BAD"]        = codes["red"]
 codes["HILITE"]     = codes["teal"]
 codes["BRACKET"]    = codes["blue"]
+
+# Portage functions
+codes["UNMERGE_WARN"] = codes["red"]
 
 def parse_color_map():
 	myfile = COLOR_MAP_FILE
