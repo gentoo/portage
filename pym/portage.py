@@ -3562,14 +3562,15 @@ def key_expand(mykey, mydb=None, use_cache=1, settings=None):
 				return virts[mykey][0]
 		return mykey
 
-def cpv_expand(mycpv,mydb=None,use_cache=1):
+def cpv_expand(mycpv, mydb=None, use_cache=1, settings=None):
 	"""Given a string (packagename or virtual) expand it into a valid
 	cat/package string. Virtuals use the mydb to determine which provided
 	virtual is a valid choice and defaults to the first element when there
 	are no installed/available candidates."""
 	myslash=mycpv.split("/")
 	mysplit=pkgsplit(myslash[-1])
-	global settings
+	if settings is None:
+		settings = globals()["settings"]
 	virts = settings.getvirtuals("/")
 	virts_p = settings.get_virts_p("/")
 	if len(myslash)>2:
