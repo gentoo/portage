@@ -435,14 +435,14 @@ if "PWD" in os.environ and os.environ["PWD"] != mydir and \
 	# orient itself if the user has symlinks in their portage tree structure.
 	# We use os.environ["PWD"], if available, to get the non-canonical path of
 	# the current working directory (from the shell).
-	mydir = os.environ["PWD"]
+	mydir = os.path.normpath(os.environ["PWD"])
 if mydir[-1] != "/":
 	mydir += "/"
 
 for overlay in repoman_settings["PORTDIR_OVERLAY"].split():
 	if overlay[-1] != "/":
 		overlay += "/"
-	if mydir[:len(overlay)] == overlay:
+	if mydir.startswith(overlay):
 		portdir_overlay = overlay
 		subdir = mydir[len(overlay):]
 		if subdir and subdir[-1] != "/":
@@ -452,7 +452,7 @@ for overlay in repoman_settings["PORTDIR_OVERLAY"].split():
 		break
 
 if not portdir_overlay:
-	if (repoman_settings["PORTDIR"]+"/")[:len(mydir)] == mydir:
+	if (repoman_settings["PORTDIR"] + os.path.sep).startswith(mydir):
 		portdir_overlay = repoman_settings["PORTDIR"]
 	else:
 		portdir_overlay = have_profile_dir(mydir)
