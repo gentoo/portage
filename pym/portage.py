@@ -3404,7 +3404,7 @@ def dep_transform(mydep,oldkey,newkey):
 	else:
 		return origdep
 
-def dep_expand(mydep,mydb=None,use_cache=1):
+def dep_expand(mydep, mydb=None, use_cache=1, settings=None):
 	if not len(mydep):
 		return mydep
 	if mydep[0]=="*":
@@ -3420,7 +3420,8 @@ def dep_expand(mydep,mydb=None,use_cache=1):
 	elif mydep[:1] in "=<>~!":
 		prefix=mydep[:1]
 		mydep=mydep[1:]
-	return prefix+cpv_expand(mydep,mydb=mydb,use_cache=use_cache)+postfix
+	return prefix + cpv_expand(
+		mydep, mydb=mydb, use_cache=use_cache, settings=settings) + postfix
 
 def dep_check(depstring,mydbapi,mysettings,use="yes",mode=None,myuse=None,use_cache=1,use_binaries=0,myroot="/"):
 	"""Takes a depend string and parses the condition."""
