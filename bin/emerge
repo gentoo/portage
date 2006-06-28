@@ -2308,12 +2308,14 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 					else:
 						myversion=mysplit[2]+"-"+mysplit[3]
 					if mytype=="selected":
-						portage.writemsg_stdout(colorize("UNMERGE_WARN", myversion))
+						portage.writemsg_stdout(
+							colorize("UNMERGE_WARN", myversion), noiselevel=-1)
 					else:
-						portage.writemsg_stdout(colorize("GOOD", myversion))
+						portage.writemsg_stdout(
+							colorize("GOOD", myversion), noiselevel=-1)
 			else:
 				portage.writemsg_stdout("none", noiselevel=-1)
-			print
+			portage.writemsg_stdout("\n", noiselevel=-1)
 
 	portage.writemsg_stdout("\n>>> " + colorize("UNMERGE_WARN", "'Selected'") + \
 		" packages are slated for removal.\n")
