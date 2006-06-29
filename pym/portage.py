@@ -4258,7 +4258,7 @@ class bindbapi(fakedbapi):
 
 cptot=0
 class vardbapi(dbapi):
-	def __init__(self,root,categories=None):
+	def __init__(self, root, categories=None, settings=None):
 		self.root       = root[:]
 		#cache for category directory mtimes
 		self.mtdircache = {}
@@ -4267,8 +4267,10 @@ class vardbapi(dbapi):
 		#cache for cp_list results
 		self.cpcache    = {}
 		self.blockers   = None
+		if settings is None:
+			settings = globals()["settings"]
+		self.settings = settings
 		if categories is None:
-			global settings
 			categories = settings.categories
 		self.categories = categories[:]
 
@@ -4488,7 +4490,8 @@ class vardbapi(dbapi):
 
 	def match(self,origdep,use_cache=1):
 		"caching match function"
-		mydep=dep_expand(origdep,mydb=self,use_cache=use_cache)
+		mydep = dep_expand(
+			origdep, mydb=self, use_cache=use_cache, settings=self.settings)
 		mykey=dep_getkey(mydep)
 		mycat=mykey.split("/")[0]
 		if not use_cache:
