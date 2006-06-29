@@ -2432,7 +2432,7 @@ def post_emerge(settings, info_mtimes, retval):
 	emergelog("notitles" not in settings.features,
 		" *** exiting successfully.")
 
-	if "noinfo" not in portage.settings.features:
+	if "noinfo" not in settings.features:
 		chk_updated_info_files(target_root, infodirs, info_mtimes, retval)
 
 	chk_updated_cfg_files(target_root, config_protect)
@@ -2480,17 +2480,16 @@ def validate_merge_list(mergelist):
 			print red("!!!        the merge operation manually.")
 			sys.exit(1)
 
-def action_sync(myopts, myaction):
-	settings = portage.settings
+def action_sync(settings, myopts, myaction):
 	xterm_titles = "notitles" not in settings.features
 	emergelog(xterm_titles, " === sync")
-	myportdir=portage.settings["PORTDIR"]
+	myportdir=settings["PORTDIR"]
 	if myportdir[-1]=="/":
 		myportdir=myportdir[:-1]
 	if not os.path.exists(myportdir):
 		print ">>>",myportdir,"not found, creating it."
 		os.makedirs(myportdir,0755)
-	syncuri=string.rstrip(portage.settings["SYNC"])
+	syncuri=string.rstrip(settings["SYNC"])
 	os.umask(0022)
 	if myaction == "metadata":
 		print "skipping sync"
@@ -2505,7 +2504,7 @@ def action_sync(myopts, myaction):
 
 		rsync_opts = []
 
-		if portage.settings["PORTAGE_RSYNC_OPTS"] == "":
+		if settings["PORTAGE_RSYNC_OPTS"] == "":
 			portage.writemsg("PORTAGE_RSYNC_OPTS empty or unset, using hardcoded defaults\n")
 			rsync_opts.extend([
 				"--recursive",    # Recurse directories
@@ -2530,7 +2529,7 @@ def action_sync(myopts, myaction):
 			# defaults.
 
 			portage.writemsg("Using PORTAGE_RSYNC_OPTS instead of hardcoded defaults\n", 1)
-			rsync_opts.extend(portage.settings["PORTAGE_RSYNC_OPTS"].split())
+			rsync_opts.extend(settings["PORTAGE_RSYNC_OPTS"].split())
 
 			for opt in ("--recursive", "--times"):
 				if opt not in rsync_opts:
@@ -2546,11 +2545,11 @@ def action_sync(myopts, myaction):
 					"PORTAGE_RSYNC_OPTS (can be overridden with --exclude='!')\n")
 					rsync_opts.append(opt)
 	
-			if portage.settings["RSYNC_TIMEOUT"] != "":
+			if settings["RSYNC_TIMEOUT"] != "":
 				portage.writemsg("WARNING: usage of RSYNC_TIMEOUT is deprecated, " + \
 				"use PORTAGE_RSYNC_EXTRA_OPTS instead\n")
 				try:
-					mytimeout = int(portage.settings["RSYNC_TIMEOUT"])
+					mytimeout = int(settings["RSYNC_TIMEOUT"])
 					rsync_opts.append("--timeout=%d" % mytimeout)
 				except ValueError, e:
 					portage.writemsg("!!! %s\n" % str(e))
@@ -2584,28 +2583,28 @@ def action_sync(myopts, myaction):
 		if "--debug" in myopts:
 			rsync_opts.append("--checksum") # Force checksum on all files
 
-		if portage.settings["RSYNC_EXCLUDEFROM"] != "":
+		if settings["RSYNC_EXCLUDEFROM"] != "":
 			portage.writemsg(yellow("WARNING:") + \
 			" usage of RSYNC_EXCLUDEFROM is deprecated, use " + \
 			"PORTAGE_RSYNC_EXTRA_OPTS instead\n")
-			if os.path.exists(portage.settings["RSYNC_EXCLUDEFROM"]):
+			if os.path.exists(settings["RSYNC_EXCLUDEFROM"]):
 				rsync_opts.append("--exclude-from=%s" % \
-				portage.settings["RSYNC_EXCLUDEFROM"])
+				settings["RSYNC_EXCLUDEFROM"])
 			else:
 				portage.writemsg("!!! RSYNC_EXCLUDEFROM specified," + \
 				" but file does not exist.\n")
 
-		if portage.settings["RSYNC_RATELIMIT"] != "":
+		if settings["RSYNC_RATELIMIT"] != "":
 			portage.writemsg(yellow("WARNING:") + \
 			" usage of RSYNC_RATELIMIT is deprecated, use " + \
 			"PORTAGE_RSYNC_EXTRA_OPTS instead")
 			rsync_opts.append("--bwlimit=%s" % \
-			portage.settings["RSYNC_RATELIMIT"])
+			settings["RSYNC_RATELIMIT"])
 
-		servertimestampdir  = portage.settings.depcachedir+"/"
-		servertimestampfile = portage.settings.depcachedir+"/timestamp.chk"
-		tmpservertimestampdir  = portage.settings["PORTAGE_TMPDIR"]+"/"
-		tmpservertimestampfile = portage.settings["PORTAGE_TMPDIR"]+"/timestamp.chk"
+		servertimestampdir  = settings.depcachedir+"/"
+		servertimestampfile = settings.depcachedir+"/timestamp.chk"
+		tmpservertimestampdir  = settings["PORTAGE_TMPDIR"]+"/"
+		tmpservertimestampfile = settings["PORTAGE_TMPDIR"]+"/timestamp.chk"
 
 		# We only use the backup if a timestamp exists in the portdir.
 		content=None
@@ -2629,11 +2628,11 @@ def action_sync(myopts, myaction):
 
 		#exitcode=0
 		try:
-			if portage.settings.has_key("RSYNC_RETRIES"):
+			if settings.has_key("RSYNC_RETRIES"):
 				print yellow("WARNING:")+" usage of RSYNC_RETRIES is deprecated, use PORTAGE_RSYNC_RETRIES instead"
-				maxretries=int(portage.settings["RSYNC_RETRIES"])				
+				maxretries=int(settings["RSYNC_RETRIES"])				
 			else:
-				maxretries=int(portage.settings["PORTAGE_RSYNC_RETRIES"])
+				maxretries=int(settings["PORTAGE_RSYNC_RETRIES"])
 		except SystemExit, e:
 			raise # Needed else can't exit
 		except:
@@ -2687,7 +2686,7 @@ def action_sync(myopts, myaction):
 				print ">>> Checking server timestamp ..."
 
 			rsynccommand = " ".join(["/usr/bin/rsync",
-				portage.settings["PORTAGE_RSYNC_EXTRA_OPTS"],
+				settings["PORTAGE_RSYNC_EXTRA_OPTS"],
 				" ".join(rsync_opts)])
 
 			if "--debug" in myopts:
@@ -2696,7 +2695,7 @@ def action_sync(myopts, myaction):
 			mycommand = " ".join([rsynccommand,
 				dosyncuri + "/metadata/timestamp.chk",
 				tmpservertimestampdir])
-			exitcode=portage.spawn(mycommand,portage.settings,free=1)
+			exitcode=portage.spawn(mycommand,settings,free=1)
 			if (exitcode==0):
 				try:
 					servertimestamp = time.mktime(time.strptime(portage.grabfile(tmpservertimestampfile)[0], "%a, %d %b %Y %H:%M:%S +0000"))
@@ -2726,7 +2725,7 @@ def action_sync(myopts, myaction):
 				elif (servertimestamp == 0) or (servertimestamp > mytimestamp):
 					# actual sync
 					mycommand=rsynccommand+" "+dosyncuri+"/ "+myportdir
-					exitcode=portage.spawn(mycommand,portage.settings,free=1)
+					exitcode=portage.spawn(mycommand,settings,free=1)
 					if exitcode in [0,1,2,3,4,11,14,20,21]:
 						break
 			elif exitcode in [0,1,2,3,4,11,14,20,21]:
@@ -2762,13 +2761,13 @@ def action_sync(myopts, myaction):
 			if exitcode==1:
 				print darkred("!!!")+green(" Rsync has reported that there is a syntax error. Please ensure")
 				print darkred("!!!")+green(" that your SYNC statement is proper.")
-				print darkred("!!!")+green(" SYNC="+portage.settings["SYNC"])
+				print darkred("!!!")+green(" SYNC="+settings["SYNC"])
 			elif exitcode==11:
 				print darkred("!!!")+green(" Rsync has reported that there is a File IO error. Normally")
 				print darkred("!!!")+green(" this means your disk is full, but can be caused by corruption")
 				print darkred("!!!")+green(" on the filesystem that contains PORTDIR. Please investigate")
 				print darkred("!!!")+green(" and try again after the problem has been fixed.")
-				print darkred("!!!")+green(" PORTDIR="+portage.settings["PORTDIR"])
+				print darkred("!!!")+green(" PORTDIR="+settings["PORTDIR"])
 			elif exitcode==20:
 				print darkred("!!!")+green(" Rsync was killed before it finished.")
 			else:
@@ -2792,32 +2791,32 @@ def action_sync(myopts, myaction):
 			if os.path.exists(cvsdir+"/gentoo-x86"):
 				print "!!! existing",cvsdir+"/gentoo-x86 directory; exiting."
 				sys.exit(1)
-			if portage.spawn("cd "+cvsdir+"; cvs -z0 -d "+cvsroot+" co -P gentoo-x86",portage.settings,free=1):
+			if portage.spawn("cd "+cvsdir+"; cvs -z0 -d "+cvsroot+" co -P gentoo-x86",settings,free=1):
 				print "!!! cvs checkout error; exiting."
 				sys.exit(1)
 			if cvsdir!=myportdir:
-				portage.movefile(cvsdir,portage.settings["PORTDIR"])
+				portage.movefile(cvsdir,settings["PORTDIR"])
 			sys.exit(0)
 		else:
 			#cvs update
 			print ">>> Starting cvs update with "+syncuri+"..."
-			sys.exit(portage.spawn("cd "+myportdir+"; cvs -z0 -q update -dP",portage.settings,free=1))
+			sys.exit(portage.spawn("cd "+myportdir+"; cvs -z0 -q update -dP",settings,free=1))
 	else:
 		print "!!! rsync setting: ",syncuri,"not recognized; exiting."
 		sys.exit(1)
 
 	if updatecache_flg and  \
 		myaction != "metadata" and \
-		"metadata-transfer" not in portage.settings.features:
+		"metadata-transfer" not in settings.features:
 		updatecache_flg = False
 
 	if os.path.exists(myportdir+"/metadata/cache") and updatecache_flg:
-		action_metadata(myopts)
+		action_metadata(settings, myopts)
 
 	portage.portageexit()
 	reload(portage)
 	portage.global_updates(
-		portage.settings, portage.db, portage.mtimedb["updates"])
+		settings, portage.db, portage.mtimedb["updates"])
 	mybestpv=portage.portdb.xmatch("bestmatch-visible","sys-apps/portage")
 	mypvs=portage.best(portage.db[portage.root]["vartree"].dbapi.match("sys-apps/portage"))
 
@@ -2826,7 +2825,7 @@ def action_sync(myopts, myaction):
 	if myaction != "metadata":
 		if os.access(portage.USER_CONFIG_PATH + "/bin/post_sync", os.X_OK):
 			try:
-				portage.spawn(portage.USER_CONFIG_PATH + "/bin/post_sync " + dosyncuri, portage.settings, free=1)
+				portage.spawn(portage.USER_CONFIG_PATH + "/bin/post_sync " + dosyncuri, settings, free=1)
 			except:
 				print red(" * ")+bold("spawn failed of "+ portage.USER_CONFIG_PATH + "/bin/post_sync")
 
@@ -2839,10 +2838,10 @@ def action_sync(myopts, myaction):
 		print red(" * ")+"To update portage, run 'emerge portage'."
 		print
 
-def action_metadata(myopts):
+def action_metadata(settings, myopts):
 	portage.writemsg_stdout("\n>>> Updating Portage cache:      ")
 	old_umask = os.umask(0002)
-	cachedir = os.path.normpath(portage.settings.depcachedir)
+	cachedir = os.path.normpath(settings.depcachedir)
 	if cachedir in ["/",    "/bin", "/dev",  "/etc",  "/home",
 					"/lib", "/opt", "/proc", "/root", "/sbin",
 					"/sys", "/tmp", "/usr",  "/var"]:
@@ -2857,16 +2856,16 @@ def action_metadata(myopts):
 	portage.portdb.flush_cache()
 
 	ec = portage.eclass_cache.cache(portage.portdb.porttree_root)
-	myportdir = os.path.realpath(portage.settings["PORTDIR"])
-	cm = portage.settings.load_best_module("portdbapi.metadbmodule")(
+	myportdir = os.path.realpath(settings["PORTDIR"])
+	cm = settings.load_best_module("portdbapi.metadbmodule")(
 		myportdir, "metadata/cache", portage.auxdbkeys[:])
 
 	# we don't make overlay trees cache here, plus we don't trust
-	# portage.settings.categories
+	# settings.categories
 	porttree_root = portage.portdb.porttree_root
 	conf = portage.config(
-		config_profile_path=portage.settings.profile_path[:], \
-		config_incrementals=portage.settings.incrementals[:])
+		config_profile_path=settings.profile_path[:], \
+		config_incrementals=settings.incrementals[:])
 
 	conf["PORTDIR_OVERLAY"] = ''
 	conf.categories = portage.grabfile(
@@ -2930,8 +2929,7 @@ def action_metadata(myopts):
 	sys.stdout.flush()
 	os.umask(old_umask)
 
-def action_regen():
-	settings = portage.settings
+def action_regen(settings):
 	xterm_titles = "notitles" not in settings.features
 	emergelog(xterm_titles, " === regen")
 	#regenerate cache entries
@@ -2957,7 +2955,7 @@ def action_regen():
 				print "\n  error processing %(cpv)s, continuing... (%(e)s)" % {"cpv":y,"e":str(e)}
 	print "done!"
 
-def action_config(myopts, myfiles):
+def action_config(settings, myopts, myfiles):
 	if len(myfiles) != 1 or "system" in myfiles or "world" in myfiles:
 		print red("!!! config can only take a single package atom at this time\n")
 		sys.exit(1)
@@ -3008,13 +3006,12 @@ def action_config(myopts, myfiles):
 		print "Configuring pkg..."
 	print
 	ebuildpath = portage.db[portage.root]["vartree"].dbapi.findname(pkg)
-	mysettings = portage.config(clone=portage.settings)
+	mysettings = portage.config(clone=settings)
 	portage.doebuild(ebuildpath,"config",portage.root,mysettings,debug=("--debug" in myopts),cleanup=True,tree="vartree")
 	print
 
-def action_info(myopts):
+def action_info(settings, myopts):
 	unameout=commands.getstatusoutput("uname -mrp")[1]
-	settings = portage.settings
 	trees = portage.db
 	print getportageversion(settings["PORTDIR"], settings["ROOT"],
 		settings.profile_path, settings["CHOST"],
@@ -3029,7 +3026,7 @@ def action_info(myopts):
 	output=commands.getstatusoutput("distcc --version")
 	if not output[0]:
 		print str(string.split(output[1],"\n",1)[0]),
-		if "distcc" in portage.settings.features:
+		if "distcc" in settings.features:
 			print "[enabled]"
 		else:
 			print "[disabled]"
@@ -3037,14 +3034,14 @@ def action_info(myopts):
 	output=commands.getstatusoutput("ccache -V")
 	if not output[0]:
 		print str(string.split(output[1],"\n",1)[0]),
-		if "ccache" in portage.settings.features:
+		if "ccache" in settings.features:
 			print "[enabled]"
 		else:
 			print "[disabled]"
 
 	myvars  = ["sys-devel/autoconf", "sys-devel/automake", "virtual/os-headers",
 	           "sys-devel/binutils", "sys-devel/libtool",  "dev-lang/python"]
-	myvars += portage_util.grabfile(portage.settings["PORTDIR"]+"/profiles/info_pkgs")
+	myvars += portage_util.grabfile(settings["PORTDIR"]+"/profiles/info_pkgs")
 	myvars  = portage_util.unique_array(myvars)
 	myvars.sort()
 
@@ -3069,21 +3066,21 @@ def action_info(myopts):
 	libtool_vers = string.join(portage.db["/"]["vartree"].dbapi.match("sys-devel/libtool"), ",")
 
 	if "--verbose" in myopts:
-		myvars=portage.settings.keys()
+		myvars=settings.keys()
 	else:
 		myvars = ['GENTOO_MIRRORS', 'CONFIG_PROTECT', 'CONFIG_PROTECT_MASK',
 		          'PORTDIR', 'DISTDIR', 'PKGDIR', 'PORTAGE_TMPDIR',
 		          'PORTDIR_OVERLAY', 'USE', 'CHOST', 'CFLAGS', 'CXXFLAGS',
 		          'ACCEPT_KEYWORDS', 'SYNC', 'FEATURES', 'EMERGE_DEFAULT_OPTS']
 
-		myvars.extend(portage_util.grabfile(portage.settings["PORTDIR"]+"/profiles/info_vars"))
+		myvars.extend(portage_util.grabfile(settings["PORTDIR"]+"/profiles/info_vars"))
 
 	myvars = portage_util.unique_array(myvars)
 	unset_vars = []
 	myvars.sort()
 	for x in myvars:
-		if portage.settings.has_key(x):
-			print x+'="'+portage.settings[x]+'"'
+		if settings.has_key(x):
+			print x+'="'+settings[x]+'"'
 		else:
 			unset_vars.append(x)
 	if unset_vars:
@@ -3100,7 +3097,7 @@ def action_search(settings, vartree, myopts, myfiles, spinner):
 	if not myfiles:
 		print "emerge: no search terms provided."
 	else:
-		searchinstance = search(portage.settings, portage.portdb,
+		searchinstance = search(settings, portage.portdb,
 			portage.db["/"]["vartree"], spinner, "--searchdesc" in myopts,
 			"--quiet" not in myopts)
 		for mysearch in myfiles:
@@ -3111,7 +3108,7 @@ def action_search(settings, vartree, myopts, myfiles, spinner):
 				sys.exit(1)
 			searchinstance.output()
 
-def action_depclean(myopts, spinner):
+def action_depclean(settings, myopts, spinner):
 	# Kill packages that aren't explicitly merged or are required as a
 	# dependency of another package. World file is explicit.
 
@@ -3135,7 +3132,6 @@ def action_depclean(myopts, spinner):
 	print red("*** WARNING ***")
 	print red("*** WARNING ***")+"  "+bold("Make sure you have a backup.")
 
-	settings = portage.settings
 	xterm_titles = "notitles" not in settings.features
 	vartree = portage.db[settings["ROOT"]]["vartree"]
 	info_mtimes = portage.mtimedb["info"]
@@ -3158,7 +3154,7 @@ def action_depclean(myopts, spinner):
 		emergelog(xterm_titles, " >>> depclean")
 
 	myparams = create_depgraph_params(myopts, "depclean")
-	mydepgraph = depgraph(portage.settings, portage.portdb, portage.db,
+	mydepgraph = depgraph(settings, portage.portdb, portage.db,
 		myopts, myparams, spinner)
 
 	if not ("--quiet" in myopts):
@@ -3239,8 +3235,7 @@ def action_depclean(myopts, spinner):
 		print "Number removed:       "+str(len(cleanlist))
 		post_emerge(settings, info_mtimes, 0)
 
-def action_build(myopts, myaction, myfiles, spinner):
-	settings = portage.settings
+def action_build(settings, myopts, myaction, myfiles, spinner):
 	trees = portage.db
 	info_mtimes = portage.mtimedb["info"]
 	favorites=[]
@@ -3277,7 +3272,7 @@ def action_build(myopts, myaction, myfiles, spinner):
 				myresumeopts.append(myopt)
 		myopts=myresumeopts
 		myparams = create_depgraph_params(myopts, myaction)
-		mydepgraph = depgraph(portage.settings, portage.portdb, portage.db,
+		mydepgraph = depgraph(settings, portage.portdb, portage.db,
 			myopts, myparams, spinner)
 		if "--resume" not in myopts:
 			myopts+=["--resume"]
@@ -3288,7 +3283,7 @@ def action_build(myopts, myaction, myfiles, spinner):
 			sys.exit(0)
 
 		myparams = create_depgraph_params(myopts, myaction)
-		mydepgraph = depgraph(portage.settings, portage.portdb, portage.db,
+		mydepgraph = depgraph(settings, portage.portdb, portage.db,
 			myopts, myparams, spinner)
 		if myaction in ["system","world"]:
 			if not ("--quiet" in myopts):
@@ -3340,7 +3335,7 @@ def action_build(myopts, myaction, myfiles, spinner):
 					print
 					sys.exit(1)
 			if mergecount==0:
-				if portage.settings["AUTOCLEAN"] and "yes"==portage.settings["AUTOCLEAN"]:
+				if settings["AUTOCLEAN"] and "yes"==settings["AUTOCLEAN"]:
 					prompt="Nothing to merge; would you like to auto-clean packages?"
 				else:
 					print
@@ -3390,7 +3385,7 @@ def action_build(myopts, myaction, myfiles, spinner):
 				for pkgline in mydepgraph.altlist():
 					if pkgline[0]=="ebuild" and pkgline[3]=="merge":
 						y=portage.portdb.findname(pkgline[2])
-						tmpsettings = portage.config(clone=portage.settings)
+						tmpsettings = portage.config(clone=settings)
 						edebug = 0
 						if settings.get("PORTAGE_DEBUG", "") == "1":
 							edebug = 1
@@ -3408,7 +3403,7 @@ def action_build(myopts, myaction, myfiles, spinner):
 
 		if portage.mtimedb.has_key("resume"):
 			del portage.mtimedb["resume"]
-		if portage.settings["AUTOCLEAN"] and "yes"==portage.settings["AUTOCLEAN"]:
+		if settings["AUTOCLEAN"] and "yes"==settings["AUTOCLEAN"]:
 			print ">>> Auto-cleaning packages..."
 			vartree = trees[settings["ROOT"]]["vartree"]
 			unmerge(settings, myopts, vartree, "clean", ["world"])
@@ -3599,14 +3594,14 @@ def emerge_main():
 	if ("--quiet" in myopts):
 		spinner.update = spinner.update_quiet
 		portage_util.noiselimit = -1
-		portage.settings.unlock()
-		portage.settings["PORTAGE_QUIET"]="1"
-		portage.settings.backup_changes("PORTAGE_QUIET")
-		portage.settings.lock()
+		settings.unlock()
+		settings["PORTAGE_QUIET"]="1"
+		settings.backup_changes("PORTAGE_QUIET")
+		settings.lock()
 
 	# Always create packages if FEATURES=buildpkg
 	# Imply --buildpkg if --buildpkgonly
-	if ("buildpkg" in portage.settings.features) or ("--buildpkgonly" in myopts):
+	if ("buildpkg" in settings.features) or ("--buildpkgonly" in myopts):
 		if "--buildpkg" not in myopts:
 			myopts.append("--buildpkg")
 
@@ -3624,7 +3619,7 @@ def emerge_main():
 		myaction = "search"
 
 	# Always try and fetch binary packages if FEATURES=getbinpkg
-	if ("getbinpkg" in portage.settings.features):
+	if ("getbinpkg" in settings.features):
 		myopts.append("--getbinpkg")
 
 	if "--skipfirst" in myopts and "--resume" not in myopts:
@@ -3666,10 +3661,10 @@ def emerge_main():
 
 	# Set so that configs will be merged regardless of remembered status
 	if ("--noconfmem" in myopts):
-		portage.settings.unlock()
-		portage.settings["NOCONFMEM"]="1"
-		portage.settings.backup_changes("NOCONFMEM")
-		portage.settings.lock()
+		settings.unlock()
+		settings["NOCONFMEM"]="1"
+		settings.backup_changes("NOCONFMEM")
+		settings.lock()
 
 	# Set various debug markers... They should be merged somehow.
 	settings.unlock()
@@ -3706,20 +3701,19 @@ def emerge_main():
 
 	# Set color output
 	if "--nocolor" in myopts or \
-	portage.settings["NOCOLOR"] in ("yes","true"):
+	settings["NOCOLOR"] in ("yes","true"):
 		nocolor()
-		if "NOCOLOR" not in portage.settings:
-			portage.settings.unlock()
-			portage.settings["NOCOLOR"] = "true"
-			portage.settings.backup_changes("NOCOLOR")
-			portage.settings.lock()
+		if "NOCOLOR" not in settings:
+			settings.unlock()
+			settings["NOCOLOR"] = "true"
+			settings.backup_changes("NOCOLOR")
+			settings.lock()
 
 	if not ("--quiet" in myopts):
 		if not sys.stdout.isatty() or ("--nospinner" in myopts):
 			spinner.update = spinner.update_basic
 
 	if "--version" in myopts:
-		settings = portage.settings
 		print getportageversion(settings["PORTDIR"], settings["ROOT"],
 			settings.profile_path, settings["CHOST"],
 			trees[settings["ROOT"]]["vartree"].dbapi)
@@ -3779,7 +3773,7 @@ def emerge_main():
 		"""This gets out final log message in before we quit."""
 		if "--pretend" not in myopts:
 			emergelog(xterm_titles, " *** terminating.")
-		if "notitles" not in portage.settings.features:
+		if "notitles" not in settings.features:
 			xtermTitleReset()
 	portage.atexit_register(emergeexit)
 
@@ -3788,18 +3782,18 @@ def emerge_main():
 			print "emerge: \"sync\" actions do not support \"--pretend.\""
 			sys.exit(1)
 		if "sync" == myaction:
-			action_sync(myopts, myaction)
+			action_sync(settings, myopts, myaction)
 		else:
-			action_metadata(myopts)
+			action_metadata(settings, myopts)
 	elif myaction=="regen":
-		action_regen()
+		action_regen(settings)
 	# HELP action
 	elif "config"==myaction:
-		action_config(myopts, myfiles)
+		action_config(settings, myopts, myfiles)
 	
 	# INFO action
 	elif "info"==myaction:
-		action_info(myopts)
+		action_info(settings, myopts)
 	
 	# SEARCH action
 	elif "search"==myaction:
@@ -3813,10 +3807,10 @@ def emerge_main():
 				post_emerge(settings, info_mtimes, 0)
 
 	elif "depclean"==myaction:
-		action_depclean(myopts, spinner)
+		action_depclean(settings, myopts, spinner)
 	# "update", "system", or just process files:
 	else:
-		action_build(myopts, myaction, myfiles, spinner)
+		action_build(settings, myopts, myaction, myfiles, spinner)
 
 if __name__ == "__main__":
 	emerge_main()
