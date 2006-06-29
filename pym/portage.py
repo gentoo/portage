@@ -4629,7 +4629,8 @@ class vartree(packagetree):
 			self.settings = settings # for key_expand calls
 			if categories is None:
 				categories = settings.categories
-			self.dbapi      = vardbapi(self.root,categories=categories)
+			self.dbapi = vardbapi(
+				self.root, categories=categories, settings=settings)
 			self.populated  = 1
 
 	def zap(self,mycpv):
