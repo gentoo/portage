@@ -2480,7 +2480,7 @@ def validate_merge_list(trees, mergelist):
 			print red("!!!        the merge operation manually.")
 			sys.exit(1)
 
-def action_sync(settings, myopts, myaction):
+def action_sync(settings, trees, myopts, myaction):
 	xterm_titles = "notitles" not in settings.features
 	emergelog(xterm_titles, " === sync")
 	myportdir=settings["PORTDIR"]
@@ -2816,9 +2816,9 @@ def action_sync(settings, myopts, myaction):
 	portage.portageexit()
 	reload(portage)
 	portage.global_updates(
-		settings, portage.db, portage.mtimedb["updates"])
+		settings, trees, portage.mtimedb["updates"])
 	mybestpv=portage.portdb.xmatch("bestmatch-visible","sys-apps/portage")
-	mypvs=portage.best(portage.db[portage.root]["vartree"].dbapi.match("sys-apps/portage"))
+	mypvs=portage.best(trees[portage.root]["vartree"].dbapi.match("sys-apps/portage"))
 
 	chk_updated_cfg_files("/", settings.get("CONFIG_PROTECT","").split())
 
@@ -2955,7 +2955,7 @@ def action_regen(settings):
 				print "\n  error processing %(cpv)s, continuing... (%(e)s)" % {"cpv":y,"e":str(e)}
 	print "done!"
 
-def action_config(settings, myopts, myfiles):
+def action_config(settings, trees, myopts, myfiles):
 	if len(myfiles) != 1 or "system" in myfiles or "world" in myfiles:
 		print red("!!! config can only take a single package atom at this time\n")
 		sys.exit(1)
@@ -2967,7 +2967,7 @@ def action_config(settings, myopts, myfiles):
 		sys.exit(1)
 	print
 	try:
-		pkgs = portage.db[portage.root]["vartree"].dbapi.match(myfiles[0])
+		pkgs = trees[settings["ROOT"]]["vartree"].dbapi.match(myfiles[0])
 	except ValueError, e:
 		# Multiple matches thrown from cpv_expand
 		pkgs = e.args[0]
@@ -3005,14 +3005,13 @@ def action_config(settings, myopts, myfiles):
 	else:
 		print "Configuring pkg..."
 	print
-	ebuildpath = portage.db[portage.root]["vartree"].dbapi.findname(pkg)
+	ebuildpath = trees[portage.root]["vartree"].dbapi.findname(pkg)
 	mysettings = portage.config(clone=settings)
 	portage.doebuild(ebuildpath,"config",portage.root,mysettings,debug=("--debug" in myopts),cleanup=True,tree="vartree")
 	print
 
-def action_info(settings, myopts):
+def action_info(settings, trees, myopts):
 	unameout=commands.getstatusoutput("uname -mrp")[1]
-	trees = portage.db
 	print getportageversion(settings["PORTDIR"], settings["ROOT"],
 		settings.profile_path, settings["CHOST"],
 		trees[settings["ROOT"]]["vartree"].dbapi)
@@ -3047,7 +3046,7 @@ def action_info(settings, myopts):
 
 	for x in myvars:
 		if portage.isvalidatom(x):
-			pkg_matches = portage.db["/"]["vartree"].dbapi.match(x)
+			pkg_matches = trees["/"]["vartree"].dbapi.match(x)
 			pkgs = []
 			for y in pkg_matches:
 				mycpv   = portage.catpkgsplit(y)
@@ -3063,7 +3062,7 @@ def action_info(settings, myopts):
 		else:
 			print "%-20s %s" % (x+":", "[NOT VALID]")
 
-	libtool_vers = string.join(portage.db["/"]["vartree"].dbapi.match("sys-devel/libtool"), ",")
+	libtool_vers = string.join(trees["/"]["vartree"].dbapi.match("sys-devel/libtool"), ",")
 
 	if "--verbose" in myopts:
 		myvars=settings.keys()
@@ -3098,7 +3097,7 @@ def action_search(settings, vartree, myopts, myfiles, spinner):
 		print "emerge: no search terms provided."
 	else:
 		searchinstance = search(settings, portage.portdb,
-			portage.db["/"]["vartree"], spinner, "--searchdesc" in myopts,
+			vartree, spinner, "--searchdesc" in myopts,
 			"--quiet" not in myopts)
 		for mysearch in myfiles:
 			try:
@@ -3108,7 +3107,7 @@ def action_search(settings, vartree, myopts, myfiles, spinner):
 				sys.exit(1)
 			searchinstance.output()
 
-def action_depclean(settings, myopts, spinner):
+def action_depclean(settings, trees, myopts, spinner):
 	# Kill packages that aren't explicitly merged or are required as a
 	# dependency of another package. World file is explicit.
 
@@ -3133,7 +3132,7 @@ def action_depclean(settings, myopts, spinner):
 	print red("*** WARNING ***")+"  "+bold("Make sure you have a backup.")
 
 	xterm_titles = "notitles" not in settings.features
-	vartree = portage.db[settings["ROOT"]]["vartree"]
+	vartree = trees[settings["ROOT"]]["vartree"]
 	info_mtimes = portage.mtimedb["info"]
 	syslist = getlist(settings, "system")
 	worldlist = getlist(settings, "world")
@@ -3154,7 +3153,7 @@ def action_depclean(settings, myopts, spinner):
 		emergelog(xterm_titles, " >>> depclean")
 
 	myparams = create_depgraph_params(myopts, "depclean")
-	mydepgraph = depgraph(settings, portage.portdb, portage.db,
+	mydepgraph = depgraph(settings, portage.portdb, trees,
 		myopts, myparams, spinner)
 
 	if not ("--quiet" in myopts):
@@ -3235,8 +3234,7 @@ def action_depclean(settings, myopts, spinner):
 		print "Number removed:       "+str(len(cleanlist))
 		post_emerge(settings, info_mtimes, 0)
 
-def action_build(settings, myopts, myaction, myfiles, spinner):
-	trees = portage.db
+def action_build(settings, trees, myopts, myaction, myfiles, spinner):
 	info_mtimes = portage.mtimedb["info"]
 	favorites=[]
 	if ("--ask" in myopts or "--pretend" in myopts) and not "--quiet" in myopts:
@@ -3272,7 +3270,7 @@ def action_build(settings, myopts, myaction, myfiles, spinner):
 				myresumeopts.append(myopt)
 		myopts=myresumeopts
 		myparams = create_depgraph_params(myopts, myaction)
-		mydepgraph = depgraph(settings, portage.portdb, portage.db,
+		mydepgraph = depgraph(settings, portage.portdb, trees,
 			myopts, myparams, spinner)
 		if "--resume" not in myopts:
 			myopts+=["--resume"]
@@ -3283,7 +3281,7 @@ def action_build(settings, myopts, myaction, myfiles, spinner):
 			sys.exit(0)
 
 		myparams = create_depgraph_params(myopts, myaction)
-		mydepgraph = depgraph(settings, portage.portdb, portage.db,
+		mydepgraph = depgraph(settings, portage.portdb, trees,
 			myopts, myparams, spinner)
 		if myaction in ["system","world"]:
 			if not ("--quiet" in myopts):
@@ -3782,18 +3780,18 @@ def emerge_main():
 			print "emerge: \"sync\" actions do not support \"--pretend.\""
 			sys.exit(1)
 		if "sync" == myaction:
-			action_sync(settings, myopts, myaction)
+			action_sync(settings, trees, myopts, myaction)
 		else:
 			action_metadata(settings, myopts)
 	elif myaction=="regen":
 		action_regen(settings)
 	# HELP action
 	elif "config"==myaction:
-		action_config(settings, myopts, myfiles)
+		action_config(settings, trees, myopts, myfiles)
 	
 	# INFO action
 	elif "info"==myaction:
-		action_info(settings, myopts)
+		action_info(settings, trees, myopts)
 	
 	# SEARCH action
 	elif "search"==myaction:
@@ -3807,10 +3805,10 @@ def emerge_main():
 				post_emerge(settings, info_mtimes, 0)
 
 	elif "depclean"==myaction:
-		action_depclean(settings, myopts, spinner)
+		action_depclean(settings, trees, myopts, spinner)
 	# "update", "system", or just process files:
 	else:
-		action_build(settings, myopts, myaction, myfiles, spinner)
+		action_build(settings, trees, myopts, myaction, myfiles, spinner)
 
 if __name__ == "__main__":
 	emerge_main()
