@@ -2818,7 +2818,8 @@ def action_sync(settings, trees, myopts, myaction):
 	portage.global_updates(
 		settings, trees, portage.mtimedb["updates"])
 	mybestpv=portage.portdb.xmatch("bestmatch-visible","sys-apps/portage")
-	mypvs=portage.best(trees[portage.root]["vartree"].dbapi.match("sys-apps/portage"))
+	mypvs = portage.best(
+		trees[settings["ROOT"]]["vartree"].dbapi.match("sys-apps/portage"))
 
 	chk_updated_cfg_files("/", settings.get("CONFIG_PROTECT","").split())
 
@@ -3005,9 +3006,11 @@ def action_config(settings, trees, myopts, myfiles):
 	else:
 		print "Configuring pkg..."
 	print
-	ebuildpath = trees[portage.root]["vartree"].dbapi.findname(pkg)
+	ebuildpath = trees[settings["ROOT"]]["vartree"].dbapi.findname(pkg)
 	mysettings = portage.config(clone=settings)
-	portage.doebuild(ebuildpath,"config",portage.root,mysettings,debug=("--debug" in myopts),cleanup=True,tree="vartree")
+	portage.doebuild(ebuildpath, "config", settings["ROOT"], mysettings,
+		debug=(settings.get("PORTAGE_DEBUG", "") == 1), cleanup=True,
+		tree="vartree")
 	print
 
 def action_info(settings, trees, myopts):
@@ -3136,7 +3139,7 @@ def action_depclean(settings, trees, myopts, spinner):
 	info_mtimes = portage.mtimedb["info"]
 	syslist = getlist(settings, "system")
 	worldlist = getlist(settings, "world")
-	myvarlist=portage.vardbapi(portage.root).cp_all()
+	myvarlist = vartree.dbapi.cp_all()
 
 	if not syslist:
 		print "\n!!! You have no system list.",
