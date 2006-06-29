@@ -1694,7 +1694,7 @@ class depgraph:
 			if "--skipfirst" in self.myopts and mymergelist:
 				del portage.mtimedb["resume"]["mergelist"][0]
 				del mymergelist[0]
-			validate_merge_list(mymergelist)
+			validate_merge_list(self.trees, mymergelist)
 		else:
 			myfavs = portage.grabfile(
 				os.path.join(self.settings["ROOT"], portage.WORLD_FILE))
@@ -2469,12 +2469,12 @@ def is_valid_package_atom(x):
 		testatom = x
 	return portage.isvalidatom(testatom)
 
-def validate_merge_list(mergelist):
+def validate_merge_list(trees, mergelist):
 	"""Validate the list to make sure all the packages are still available.
 	This is needed for --resume."""
 	for (pkg_type, myroot, pkg_key, action) in mergelist:
-		if pkg_type == "binary" and not portage.db["/"]["bintree"].dbapi.match("="+pkg_key) or \
-			pkg_type == "ebuild" and not portage.db["/"]["porttree"].dbapi.xmatch("match-all", "="+pkg_key):
+		if pkg_type == "binary" and not trees["/"]["bintree"].dbapi.match("="+pkg_key) or \
+			pkg_type == "ebuild" and not trees["/"]["porttree"].dbapi.xmatch("match-all", "="+pkg_key):
 			print red("!!! Error: The resume list contains packages that are no longer")
 			print red("!!!        available to be emerged. Please restart/continue")
 			print red("!!!        the merge operation manually.")
@@ -3319,7 +3319,7 @@ def action_build(settings, myopts, myaction, myfiles, spinner):
 
 	if "--ask" in myopts:
 		if "--resume" in myopts:
-			validate_merge_list(portage.mtimedb["resume"]["mergelist"])
+			validate_merge_list(trees, portage.mtimedb["resume"]["mergelist"])
 			mydepgraph.display(portage.mtimedb["resume"]["mergelist"])
 			prompt="Would you like to resume merging these packages?"
 		else:
@@ -3357,7 +3357,7 @@ def action_build(settings, myopts, myaction, myfiles, spinner):
 
 	if ("--pretend" in myopts) and not ("--fetchonly" in myopts or "--fetch-all-uri" in myopts):
 		if ("--resume" in myopts):
-			validate_merge_list(portage.mtimedb["resume"]["mergelist"])
+			validate_merge_list(trees, portage.mtimedb["resume"]["mergelist"])
 			mydepgraph.display(portage.mtimedb["resume"]["mergelist"])
 		else:
 			mydepgraph.display(mydepgraph.altlist())
