@@ -2810,14 +2810,18 @@ def action_sync(settings, portdb, trees, myopts, myaction):
 		"metadata-transfer" not in settings.features:
 		updatecache_flg = False
 
+	portage.portageexit()
+	reload(portage)
+	settings = portage.settings
+	portdb = portage.portdb
+	trees = portage.db
+
 	if os.path.exists(myportdir+"/metadata/cache") and updatecache_flg:
 		action_metadata(settings, portdb, myopts)
 
-	portage.portageexit()
-	reload(portage)
 	portage.global_updates(
 		settings, trees, portage.mtimedb["updates"])
-	portdb = trees["/"]["porttree"].dbapi # New instance from reload(portage)
+
 	mybestpv = portdb.xmatch("bestmatch-visible", "sys-apps/portage")
 	mypvs = portage.best(
 		trees[settings["ROOT"]]["vartree"].dbapi.match("sys-apps/portage"))
@@ -2855,34 +2859,11 @@ def action_metadata(settings, portdb, myopts):
 	if not os.path.exists(cachedir):
 		os.mkdir(cachedir)
 
-	portdb.close_caches()
-	portdb.flush_cache()
-
 	ec = portage.eclass_cache.cache(portdb.porttree_root)
 	myportdir = os.path.realpath(settings["PORTDIR"])
 	cm = settings.load_best_module("portdbapi.metadbmodule")(
 		myportdir, "metadata/cache", portage.auxdbkeys[:])
 
-	# we don't make overlay trees cache here, plus we don't trust
-	# settings.categories
-	porttree_root = portdb.porttree_root
-	conf = portage.config(
-		config_profile_path=settings.profile_path[:], \
-		config_incrementals=settings.incrementals[:])
-
-	conf["PORTDIR_OVERLAY"] = ''
-	conf.categories = portage.grabfile(
-		os.path.join(porttree_root, "profiles", "categories"))
-	try:
-		i = conf.categories.index("virtual")
-		if i != -1:
-			conf.categories.remove(i)
-	except (ValueError, IndexError):
-		pass
-
-	pdb = portage.portdbapi(porttree_root, conf)
-
-	cp_all_list = pdb.cp_all()
 	import cache.util
 
 	class percentage_noise_maker(cache.util.quiet_mirroring):
@@ -2920,13 +2901,13 @@ def action_metadata(settings, portdb, myopts):
 	if "--quiet" in myopts:
 		def quicky_cpv_generator(cp_all_list):
 			for x in cp_all_list:
-				for y in pdb.cp_list(x):
+				for y in portdb.cp_list(x):
 					yield y
-		source = quicky_cpv_generator(pdb.cp_all())
+		source = quicky_cpv_generator(portdb.cp_all())
 		noise_maker = cache.util.quiet_mirroring()
 	else:
-		noise_maker = source = percentage_noise_maker(pdb)
-	cache.util.mirror_cache(source, cm, pdb.auxdb[porttree_root],
+		noise_maker = source = percentage_noise_maker(portdb)
+	cache.util.mirror_cache(source, cm, portdb.auxdb[myportdir],
 		eclass_cache=ec, verbose_instance=noise_maker)
 
 	sys.stdout.flush()
