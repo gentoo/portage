@@ -2480,7 +2480,7 @@ def validate_merge_list(trees, mergelist):
 			print red("!!!        the merge operation manually.")
 			sys.exit(1)
 
-def action_sync(settings, trees, myopts, myaction):
+def action_sync(settings, portdb, trees, myopts, myaction):
 	xterm_titles = "notitles" not in settings.features
 	emergelog(xterm_titles, " === sync")
 	myportdir=settings["PORTDIR"]
@@ -2811,13 +2811,14 @@ def action_sync(settings, trees, myopts, myaction):
 		updatecache_flg = False
 
 	if os.path.exists(myportdir+"/metadata/cache") and updatecache_flg:
-		action_metadata(settings, myopts)
+		action_metadata(settings, portdb, myopts)
 
 	portage.portageexit()
 	reload(portage)
 	portage.global_updates(
 		settings, trees, portage.mtimedb["updates"])
-	mybestpv=portage.portdb.xmatch("bestmatch-visible","sys-apps/portage")
+	portdb = trees["/"]["porttree"].dbapi # New instance from reload(portage)
+	mybestpv = portdb.xmatch("bestmatch-visible", "sys-apps/portage")
 	mypvs = portage.best(
 		trees[settings["ROOT"]]["vartree"].dbapi.match("sys-apps/portage"))
 
@@ -2839,7 +2840,7 @@ def action_sync(settings, trees, myopts, myaction):
 		print red(" * ")+"To update portage, run 'emerge portage'."
 		print
 
-def action_metadata(settings, myopts):
+def action_metadata(settings, portdb, myopts):
 	portage.writemsg_stdout("\n>>> Updating Portage cache:      ")
 	old_umask = os.umask(0002)
 	cachedir = os.path.normpath(settings.depcachedir)
@@ -2854,16 +2855,17 @@ def action_metadata(settings, myopts):
 	if not os.path.exists(cachedir):
 		os.mkdir(cachedir)
 
-	portage.portdb.flush_cache()
+	portdb.close_caches()
+	portdb.flush_cache()
 
-	ec = portage.eclass_cache.cache(portage.portdb.porttree_root)
+	ec = portage.eclass_cache.cache(portdb.porttree_root)
 	myportdir = os.path.realpath(settings["PORTDIR"])
 	cm = settings.load_best_module("portdbapi.metadbmodule")(
 		myportdir, "metadata/cache", portage.auxdbkeys[:])
 
 	# we don't make overlay trees cache here, plus we don't trust
 	# settings.categories
-	porttree_root = portage.portdb.porttree_root
+	porttree_root = portdb.porttree_root
 	conf = portage.config(
 		config_profile_path=settings.profile_path[:], \
 		config_incrementals=settings.incrementals[:])
@@ -2930,7 +2932,7 @@ def action_metadata(settings, myopts):
 	sys.stdout.flush()
 	os.umask(old_umask)
 
-def action_regen(settings):
+def action_regen(settings, portdb):
 	xterm_titles = "notitles" not in settings.features
 	emergelog(xterm_titles, " === regen")
 	#regenerate cache entries
@@ -2942,13 +2944,13 @@ def action_regen(settings):
 	except:
 		pass
 	sys.stdout.flush()
-	mynodes=portage.portdb.cp_all()
+	mynodes = portdb.cp_all()
 	for x in mynodes:
-		mymatches=portage.portdb.xmatch("match-all",x)
+		mymatches = portdb.xmatch("match-all",x)
 		portage.writemsg_stdout("processing %s\n" % x)
 		for y in mymatches:
 			try:
-				foo=portage.portdb.aux_get(y,["DEPEND"])
+				foo = portdb.aux_get(y,["DEPEND"])
 			except SystemExit, e:
 				# sys.exit is an exception... And consequently, we can't catch it.
 				raise
@@ -3095,11 +3097,11 @@ def action_info(settings, trees, myopts):
 			if "cvs_id_string" in dir(module):
 				print "%s: %s" % (str(x), str(module.cvs_id_string))
 
-def action_search(settings, vartree, myopts, myfiles, spinner):
+def action_search(settings, portdb, vartree, myopts, myfiles, spinner):
 	if not myfiles:
 		print "emerge: no search terms provided."
 	else:
-		searchinstance = search(settings, portage.portdb,
+		searchinstance = search(settings, portdb,
 			vartree, spinner, "--searchdesc" in myopts,
 			"--quiet" not in myopts)
 		for mysearch in myfiles:
@@ -3110,7 +3112,7 @@ def action_search(settings, vartree, myopts, myfiles, spinner):
 				sys.exit(1)
 			searchinstance.output()
 
-def action_depclean(settings, trees, myopts, spinner):
+def action_depclean(settings, portdb, trees, myopts, spinner):
 	# Kill packages that aren't explicitly merged or are required as a
 	# dependency of another package. World file is explicit.
 
@@ -3156,7 +3158,7 @@ def action_depclean(settings, trees, myopts, spinner):
 		emergelog(xterm_titles, " >>> depclean")
 
 	myparams = create_depgraph_params(myopts, "depclean")
-	mydepgraph = depgraph(settings, portage.portdb, trees,
+	mydepgraph = depgraph(settings, portdb, trees,
 		myopts, myparams, spinner)
 
 	if not ("--quiet" in myopts):
@@ -3237,7 +3239,7 @@ def action_depclean(settings, trees, myopts, spinner):
 		print "Number removed:       "+str(len(cleanlist))
 		post_emerge(settings, info_mtimes, 0)
 
-def action_build(settings, trees, myopts, myaction, myfiles, spinner):
+def action_build(settings, portdb, trees, myopts, myaction, myfiles, spinner):
 	info_mtimes = portage.mtimedb["info"]
 	favorites=[]
 	if ("--ask" in myopts or "--pretend" in myopts) and not "--quiet" in myopts:
@@ -3273,7 +3275,7 @@ def action_build(settings, trees, myopts, myaction, myfiles, spinner):
 				myresumeopts.append(myopt)
 		myopts=myresumeopts
 		myparams = create_depgraph_params(myopts, myaction)
-		mydepgraph = depgraph(settings, portage.portdb, trees,
+		mydepgraph = depgraph(settings, portdb, trees,
 			myopts, myparams, spinner)
 		if "--resume" not in myopts:
 			myopts+=["--resume"]
@@ -3284,7 +3286,7 @@ def action_build(settings, trees, myopts, myaction, myfiles, spinner):
 			sys.exit(0)
 
 		myparams = create_depgraph_params(myopts, myaction)
-		mydepgraph = depgraph(settings, portage.portdb, trees,
+		mydepgraph = depgraph(settings, portdb, trees,
 			myopts, myparams, spinner)
 		if myaction in ["system","world"]:
 			if not ("--quiet" in myopts):
@@ -3385,7 +3387,7 @@ def action_build(settings, trees, myopts, myaction, myfiles, spinner):
 			if ("--digest" in myopts) and not ("--fetchonly" in myopts or "--fetch-all-uri" in myopts):
 				for pkgline in mydepgraph.altlist():
 					if pkgline[0]=="ebuild" and pkgline[3]=="merge":
-						y=portage.portdb.findname(pkgline[2])
+						y = portdb.findname(pkgline[2])
 						tmpsettings = portage.config(clone=settings)
 						edebug = 0
 						if settings.get("PORTAGE_DEBUG", "") == "1":
@@ -3482,6 +3484,7 @@ def parse_opts(tmpcmdline):
 
 def emerge_main():
 	settings = portage.settings
+	portdb = portage.portdb
 	trees = portage.db
 	info_mtimes = portage.mtimedb["info"]
 	xterm_titles = "notitles" not in settings.features
@@ -3559,7 +3562,7 @@ def emerge_main():
 		del e
 
 	#Freeze the portdbapi for enhanced performance:
-	portage.portdb.freeze()
+	portdb.freeze()
 
 	if "moo" in myfiles:
 		print """
@@ -3783,11 +3786,11 @@ def emerge_main():
 			print "emerge: \"sync\" actions do not support \"--pretend.\""
 			sys.exit(1)
 		if "sync" == myaction:
-			action_sync(settings, trees, myopts, myaction)
+			action_sync(settings, portdb, trees, myopts, myaction)
 		else:
-			action_metadata(settings, myopts)
+			action_metadata(settings, portdb, myopts)
 	elif myaction=="regen":
-		action_regen(settings)
+		action_regen(settings, portdb)
 	# HELP action
 	elif "config"==myaction:
 		action_config(settings, trees, myopts, myfiles)
@@ -3798,7 +3801,7 @@ def emerge_main():
 	
 	# SEARCH action
 	elif "search"==myaction:
-		action_search(settings, trees["/"]["vartree"],
+		action_search(settings, portdb, trees["/"]["vartree"],
 			myopts, myfiles, spinner)
 	elif "unmerge"==myaction or "prune"==myaction or "clean"==myaction:
 		vartree = trees[settings["ROOT"]]["vartree"]
@@ -3808,10 +3811,11 @@ def emerge_main():
 				post_emerge(settings, info_mtimes, 0)
 
 	elif "depclean"==myaction:
-		action_depclean(settings, trees, myopts, spinner)
+		action_depclean(settings, portdb, trees, myopts, spinner)
 	# "update", "system", or just process files:
 	else:
-		action_build(settings, trees, myopts, myaction, myfiles, spinner)
+		action_build(settings, portdb, trees,
+			myopts, myaction, myfiles, spinner)
 
 if __name__ == "__main__":
 	emerge_main()
