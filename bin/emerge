@@ -869,7 +869,7 @@ class depgraph:
 					portage.writemsg("!!! (Did you specify a version but forget to prefix with '='?)\n")
 					return (0,[])
 				try:
-					mykey = portage.dep_expand(x, mydb=self.portdb)
+					mykey = portage.dep_expand(x, mydb=self.portdb, settings=self.settings)
 				except ValueError, errpkgs:
 					print "\n\n!!! The short ebuild name \"" + x + "\" is ambiguous.  Please specify"
 					print "!!! one of the following fully-qualified ebuild names instead:\n"

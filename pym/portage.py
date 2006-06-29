@@ -4677,7 +4677,9 @@ class vartree(packagetree):
 	def dep_bestmatch(self,mydep,use_cache=1):
 		"compatibility method -- all matches, not just visible ones"
 		#mymatch=best(match(dep_expand(mydep,self.dbapi),self.dbapi))
-		mymatch=best(self.dbapi.match(dep_expand(mydep,mydb=self.dbapi),use_cache=use_cache))
+		mymatch = best(self.dbapi.match(
+			dep_expand(mydep, mydb=self.dbapi, settings=self.settings),
+			use_cache=use_cache))
 		if mymatch is None:
 			return ""
 		else:
@@ -5271,7 +5273,7 @@ class portdbapi(dbapi):
 		if not mydep:
 			#this stuff only runs on first call of xmatch()
 			#create mydep, mykey from origdep
-			mydep=dep_expand(origdep,mydb=self)
+			mydep = dep_expand(origdep, mydb=self, settings=self.mysettings)
 			mykey=dep_getkey(mydep)
 
 		if level=="list-visible":
@@ -5665,7 +5667,8 @@ class binarytree(packagetree):
 	def exists_specific(self,cpv):
 		if not self.populated:
 			self.populate()
-		return self.dbapi.match(dep_expand("="+cpv,mydb=self.dbapi))
+		return self.dbapi.match(
+			dep_expand("="+cpv, mydb=self.dbapi, settings=self.settings))
 
 	def dep_bestmatch(self,mydep):
 		"compatibility method -- all matches, not just visible ones"
@@ -5673,7 +5676,7 @@ class binarytree(packagetree):
 			self.populate()
 		writemsg("\n\n", 1)
 		writemsg("mydep: %s\n" % mydep, 1)
-		mydep=dep_expand(mydep,mydb=self.dbapi)
+		mydep = dep_expand(mydep, mydb=self.dbapi, settings=self.settings)
 		writemsg("mydep: %s\n" % mydep, 1)
 		mykey=dep_getkey(mydep)
 		writemsg("mykey: %s\n" % mykey, 1)
