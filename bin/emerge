@@ -305,7 +305,7 @@ def getgccversion(chost):
 	portage.writemsg(gcc_not_found_error, noiselevel=-1)
 	return "[unavailable]"
 
-def getportageversion(portdir, target_root, profile, chost):
+def getportageversion(portdir, target_root, profile, chost, vardb):
 	try:
 		import re
 		profilever = os.path.normpath("///"+os.readlink(profile))
@@ -318,8 +318,8 @@ def getportageversion(portdir, target_root, profile, chost):
 	except (OSError,IOError):
 		profilever="unavailable"
 	libcver=[]
-	libclist  = portage.vardbapi(target_root).match("virtual/libc")
-	libclist += portage.vardbapi(target_root).match("virtual/glibc")
+	libclist  = vardb.match("virtual/libc")
+	libclist += vardb.match("virtual/glibc")
 	libclist  = portage_util.unique_array(libclist)
 	for x in libclist:
 		xs=portage.catpkgsplit(x)
@@ -3015,8 +3015,10 @@ def action_config(myopts, myfiles):
 def action_info(myopts):
 	unameout=commands.getstatusoutput("uname -mrp")[1]
 	settings = portage.settings
+	trees = portage.db
 	print getportageversion(settings["PORTDIR"], settings["ROOT"],
-		settings.profile_path, settings["CHOST"])
+		settings.profile_path, settings["CHOST"],
+		trees[settings["ROOT"]]["vartree"].dbapi)
 	print "================================================================="
 	print "System uname: "+unameout
 	if os.path.exists("/etc/gentoo-release"):
@@ -3719,7 +3721,8 @@ def emerge_main():
 	if "--version" in myopts:
 		settings = portage.settings
 		print getportageversion(settings["PORTDIR"], settings["ROOT"],
-			settings.profile_path, settings["CHOST"])
+			settings.profile_path, settings["CHOST"],
+			trees[settings["ROOT"]]["vartree"].dbapi)
 		sys.exit(0)
 	elif "--help" in myopts:
 		emergehelp.help(myaction, myopts, havecolor)
