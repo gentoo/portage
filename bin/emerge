@@ -1760,7 +1760,7 @@ class depgraph:
 
 					# wipe the mtimedb so that portage doesn't attempt to flush it.
 					# do not convert this code away from a fork without correcting this.
-					mtimedb = None
+					portage.mtimedb = None
 					for x in ("autoaddcvs", "cvs"):
 						try:	myfeat.remove(x)
 						except ValueError: pass
