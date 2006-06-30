@@ -7083,29 +7083,6 @@ class LazyBintreeItem(object):
 			self._bintree.populate()
 		return self._bintree
 
-def load_mtimedb(f):
-	"""Given an open file, unpickle an mtimedb and validate it."""
-	mypickle = cPickle.Unpickler(f)
-	mypickle.find_global = None
-	d = mypickle.load()
-	if "old" in d:
-		d["updates"] = d["old"]
-		del d["old"]
-	if "cur" in d:
-		del d["cur"]
-
-	for k in ("info", "ldpath", "updates"):
-		d.setdefault(k, {})
-
-	mtimedbkeys = set(("info", "ldpath", "resume", "resume_backup",
-		"starttime", "updates", "version"))
-
-	for k in d.keys():
-		if k not in mtimedbkeys:
-			writemsg("Deleting invalid mtimedb key: %s\n" % str(k))
-			del d[k]
-	return d
-
 class MtimeDB(dict):
 	def __init__(self, filename):
 		dict.__init__(self)
@@ -7115,11 +7092,32 @@ class MtimeDB(dict):
 	def _load(self, filename):
 		try:
 			f = open(filename)
-			d = load_mtimedb(f)
+			mypickle = cPickle.Unpickler(f)
+			mypickle.find_global = None
+			d = mypickle.load()
 			f.close()
 			del f
 		except (IOError, OSError, EOFError):
-			d = {"updates":{}, "ldpath":{}, "version":"", "starttime":0}
+			d = {}
+
+		if "old" in d:
+			d["updates"] = d["old"]
+			del d["old"]
+		if "cur" in d:
+			del d["cur"]
+
+		d.setdefault("starttime", 0)
+		d.setdefault("version", "")
+		for k in ("info", "ldpath", "updates"):
+			d.setdefault(k, {})
+
+		mtimedbkeys = set(("info", "ldpath", "resume", "resume_backup",
+			"starttime", "updates", "version"))
+
+		for k in d.keys():
+			if k not in mtimedbkeys:
+				writemsg("Deleting invalid mtimedb key: %s\n" % str(k))
+				del d[k]
 		self.update(d)
 
 	def commit(self):
