@@ -1965,7 +1965,8 @@ class depgraph:
 						xsplit=portage.pkgsplit(x[2])
 						emergelog(xterm_titles, " >>> AUTOCLEAN: " + xsplit[0])
 						retval = unmerge_overlapping(x[2], x[1],
-							self.pkgsettings, self.trees[x[1]]["vartree"])
+							self.pkgsettings, self.trees[x[1]]["vartree"],
+							ldpath_mtimes)
 						if not retval:
 							emergelog(xterm_titles,
 								" --- AUTOCLEAN: Nothing unmerged.")
@@ -2039,7 +2040,7 @@ class depgraph:
 			else:
 				sys.exit(0)
 
-def unmerge_overlapping(pkg_key, myroot, mysettings, vartree):
+def unmerge_overlapping(pkg_key, myroot, mysettings, vartree, ldpath_mtimes):
 	"""Unmerge any packages that overlap with the given package (overlapping
 	packages fill the same SLOT).  Unlike emerge's unmerge() function, this
 	function does not assume that packages are to be unmerged from the target
@@ -2095,7 +2096,8 @@ def unmerge_overlapping(pkg_key, myroot, mysettings, vartree):
 			emergelog(xterm_titles, "=== Unmerging... (%s)" % other_pkg)
 			mysplit = other_pkg.split("/")
 			retval = portage.unmerge(mysplit[0], mysplit[1], myroot,
-				mysettings, mytrimworld=False, vartree=vartree)
+				mysettings, mytrimworld=False, vartree=vartree,
+				ldpath_mtimes=ldpath_mtimes)
 			if retval:
 				emergelog(xterm_titles, " !!! unmerge FAILURE: " + other_pkg)
 			else:
@@ -2104,7 +2106,7 @@ def unmerge_overlapping(pkg_key, myroot, mysettings, vartree):
 	return 0
 
 def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
-	raise_on_missing=True):
+	ldpath_mtimes, raise_on_missing=True):
 	candidate_catpkgs=[]
 	global_unmerge=0
 	xterm_titles = "notitles" not in settings.features
@@ -2338,7 +2340,8 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 			mysplit=string.split(y,"/")
 			#unmerge...
 			retval = portage.unmerge(mysplit[0], mysplit[1], settings["ROOT"],
-				mysettings, unmerge_action not in ["clean","prune"])
+				mysettings, unmerge_action not in ["clean","prune"],
+				vartree=vartree, ldpath_mtimes=ldpath_mtimes)
 			if retval:
 				emergelog(xterm_titles, " !!! unmerge FAILURE: "+y)
 			else:
@@ -3109,6 +3112,7 @@ def action_depclean(settings, portdb, trees, myopts, spinner):
 	xterm_titles = "notitles" not in settings.features
 	vartree = trees[settings["ROOT"]]["vartree"]
 	info_mtimes = portage.mtimedb["info"]
+	ldpath_mtimes = portage.mtimedb["ldpath"]
 	syslist = getlist(settings, "system")
 	worldlist = getlist(settings, "world")
 	myvarlist = vartree.dbapi.cp_all()
@@ -3195,7 +3199,7 @@ def action_depclean(settings, portdb, trees, myopts, spinner):
 	#print
 
 	if len(cleanlist):
-		unmerge(settings, myopts, vartree, "unmerge", cleanlist)
+		unmerge(settings, myopts, vartree, "unmerge", cleanlist, ldpath_mtimes)
 
 	print
 	print "Packages installed:   "+str(len(myvarlist))
@@ -3211,6 +3215,7 @@ def action_depclean(settings, portdb, trees, myopts, spinner):
 
 def action_build(settings, portdb, trees, myopts, myaction, myfiles, spinner):
 	info_mtimes = portage.mtimedb["info"]
+	ldpath_mtimes = portage.mtimedb["ldpath"]
 	favorites=[]
 	if ("--ask" in myopts or "--pretend" in myopts) and not "--quiet" in myopts:
 		action = ""
@@ -3379,7 +3384,8 @@ def action_build(settings, portdb, trees, myopts, myaction, myfiles, spinner):
 		if settings["AUTOCLEAN"] and "yes"==settings["AUTOCLEAN"]:
 			print ">>> Auto-cleaning packages..."
 			vartree = trees[settings["ROOT"]]["vartree"]
-			unmerge(settings, myopts, vartree, "clean", ["world"])
+			unmerge(settings, myopts, vartree, "clean", ["world"],
+				ldpath_mtimes)
 		else:
 			portage.writemsg_stdout(colorize("WARN", "WARNING:")
 				+ " AUTOCLEAN is disabled.  This can cause serious"
@@ -3457,6 +3463,7 @@ def emerge_main():
 	portdb = portage.portdb
 	trees = portage.db
 	info_mtimes = portage.mtimedb["info"]
+	ldpath_mtimes = portage.mtimedb["ldpath"]
 	xterm_titles = "notitles" not in settings.features
 
 	settings.unlock()
@@ -3776,7 +3783,7 @@ def emerge_main():
 	elif "unmerge"==myaction or "prune"==myaction or "clean"==myaction:
 		vartree = trees[settings["ROOT"]]["vartree"]
 		if 1 == unmerge(settings, myopts, vartree, myaction, myfiles,
-			raise_on_missing=False):
+			ldpath_mtimes, raise_on_missing=False):
 			if "--pretend" not in myopts:
 				post_emerge(settings, info_mtimes, 0)
 

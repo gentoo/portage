@@ -3160,11 +3160,12 @@ def merge(mycat, mypkg, pkgloc, infloc, myroot, mysettings, myebuild=None,
 	return mylink.merge(pkgloc, infloc, myroot, myebuild,
 		mydbapi=mydbapi, prev_mtimes=prev_mtimes)
 
-def unmerge(cat, pkg, myroot, mysettings, mytrimworld=1, vartree=None):
+def unmerge(cat, pkg, myroot, mysettings, mytrimworld=1, vartree=None, ldpath_mtimes=None):
 	mylink = dblink(
 		cat, pkg, myroot, mysettings, treetype="vartree", vartree=vartree)
 	if mylink.exists():
-		mylink.unmerge(trimworld=mytrimworld,cleanup=1)
+		mylink.unmerge(trimworld=mytrimworld, cleanup=1,
+			ldpath_mtimes=ldpath_mtimes)
 		mylink.delete()
 		return 0
 	return 1
