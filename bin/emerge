@@ -2030,15 +2030,6 @@ class depgraph:
 		if portage.mtimedb.has_key("resume"):
 			del portage.mtimedb["resume"]
 
-		if "--pretend" not in self.myopts:
-			if "--fetchonly" not in self.myopts and \
-				"--fetch-all-uri" not in self.myopts:
-				if (mergecount>0):
-					if retval:
-						portage.env_update(
-							target_root=self.settings["ROOT"],
-							prev_mtimes=ldpath_mtimes)
-
 		#by doing an exit this way, --fetchonly can continue to try to
 		#fetch everything even if a particular download fails.
 		if "--fetchonly" in self.myopts or "--fetch-all-uri" in self.myopts:
@@ -2352,10 +2343,6 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 				emergelog(xterm_titles, " !!! unmerge FAILURE: "+y)
 			else:
 				emergelog(xterm_titles, " >>> unmerge success: "+y)
-	#run ldconfig, etc...
-	portage.env_update(
-		target_root=settings["ROOT"],
-		prev_mtimes=ldpath_mtimes)
 	return 1
 
 

@@ -5916,8 +5916,9 @@ class dblink:
 		self.contentscache=pkgfiles
 		return pkgfiles
 
-	def unmerge(self,pkgfiles=None,trimworld=1,cleanup=1):
-		global db, dircache
+	def unmerge(self, pkgfiles=None, trimworld=1, cleanup=1,
+		ldpath_mtimes=None):
+		global dircache
 		dircache={}
 
 		self.lockdb()
@@ -6121,6 +6122,7 @@ class dblink:
 				tree="vartree", mydbapi=self.vartree.dbapi,
 				vartree=self.vartree)
 		self.unlockdb()
+		env_update(self.myroot, prev_mtimes=ldpath_mtimes)
 
 	def isowner(self,filename,destroot):
 		""" check if filename is a new file or belongs to this package
