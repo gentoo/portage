@@ -1937,7 +1937,10 @@ class depgraph:
 				emergelog(xterm_titles, " === ("+str(mergecount)+\
 					" of "+str(len(mymergelist))+") Merging Binary ("+\
 					x[pkgindex]+"::"+mytbz2+")", short_msg=short_msg)
-				retval=portage.pkgmerge(mytbz2,x[1],self.pkgsettings)
+				retval = portage.pkgmerge(mytbz2, x[1], self.pkgsettings,
+					mydbapi=self.trees[self.settings["ROOT"]]["bintree"].dbapi,
+					vartree=self.trees[self.settings["ROOT"]]["vartree"],
+					prev_mtimes=ldpath_mtimes)
 				if retval is None:
 					sys.exit(1)
 				#need to check for errors

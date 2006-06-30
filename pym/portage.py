@@ -6752,8 +6752,9 @@ class FetchlistDict(UserDict.DictMixin):
 		"""Returns keys for all packages within pkgdir"""
 		return self.portdb.cp_list(self.cp, mytree=self.mytree)
 
-def cleanup_pkgmerge(mypkg,origdir):
-	global settings
+def cleanup_pkgmerge(mypkg, origdir, settings=None):
+	if settings is None:
+		settings = globals()["settings"]
 	shutil.rmtree(settings["PORTAGE_TMPDIR"]+"/binpkgs/"+mypkg)
 	if os.path.exists(settings["PORTAGE_TMPDIR"]+"/portage/"+mypkg+"/temp/environment"):
 		os.unlink(settings["PORTAGE_TMPDIR"]+"/portage/"+mypkg+"/temp/environment")
@@ -6804,14 +6805,16 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 	notok=spawn("bzip2 -dqc -- '"+mytbz2+"' | tar xpf -",mysettings,free=1)
 	if notok:
 		print "!!! Error Extracting",mytbz2
-		cleanup_pkgmerge(mypkg,origdir)
+		cleanup_pkgmerge(mypkg, origdir, settings=mysettings)
 		return None
 
 	# the merge takes care of pre/postinst and old instance
 	# auto-unmerge, virtual/provides updates, etc.
 	mysettings.load_infodir(infloc)
-	mylink=dblink(mycat,mypkg,myroot,mysettings,treetype="bintree")
-	mylink.merge(pkgloc, infloc, myroot, myebuild, cleanup=1, prev_mtimes=prev_mtimes)
+	mylink = dblink(mycat, mypkg, myroot, mysettings, vartree=vartree,
+		treetype="bintree")
+	mylink.merge(pkgloc, infloc, myroot, myebuild, cleanup=1, mydbapi=mydbapi,
+		prev_mtimes=prev_mtimes)
 
 	if not os.path.exists(infloc+"/RDEPEND"):
 		returnme=""
@@ -6820,7 +6823,7 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 		a=open(infloc+"/RDEPEND","r")
 		returnme=string.join(string.split(a.read())," ")
 		a.close()
-	cleanup_pkgmerge(mypkg,origdir)
+	cleanup_pkgmerge(mypkg, origdir, settings=mysettings)
 	return returnme
 
 def deprecated_profile_check():
