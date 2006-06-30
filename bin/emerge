@@ -618,12 +618,12 @@ class depgraph:
 		self.orderedkeys=[]
 		self.outdatedpackages=[]
 		self.mydbapi={}
-		self.mydbapi["/"] = portage.fakedbapi()
+		self.mydbapi["/"] = portage.fakedbapi(settings=settings)
 		if "empty" not in self.myparams or settings["ROOT"] != "/":
 			for pkg in self.trees["/"]["vartree"].getallcpv():
 				self.mydbapi["/"].cpv_inject(pkg)
 		if settings["ROOT"] != "/":
-			self.mydbapi[settings["ROOT"]] = portage.fakedbapi()
+			self.mydbapi[settings["ROOT"]] = portage.fakedbapi(settings=settings)
 			if "empty" not in self.myparams:
 				for pkg in self.trees[settings["ROOT"]]["vartree"].getallcpv():
 					self.mydbapi[settings["ROOT"]].cpv_inject(pkg)

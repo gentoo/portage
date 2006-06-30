@@ -4143,7 +4143,7 @@ class dbapi:
 		raise NotImplementedError
 
 	def match(self,origdep,use_cache=1):
-		mydep=dep_expand(origdep,mydb=self)
+		mydep = dep_expand(origdep, mydb=self, settings=self.settings)
 		mykey=dep_getkey(mydep)
 		mycat=mykey.split("/")[0]
 		return match_from_list(mydep,self.cp_list(mykey,use_cache=use_cache))
@@ -4170,9 +4170,12 @@ class dbapi:
 
 class fakedbapi(dbapi):
 	"This is a dbapi to use for the emptytree function.  It's empty, but things can be added to it."
-	def __init__(self):
+	def __init__(self, settings=None):
 		self.cpvdict={}
 		self.cpdict={}
+		if settings is None:
+			settings = globals()["settings"]
+		self.settings = settings
 
 	def cpv_exists(self,mycpv):
 		return self.cpvdict.has_key(mycpv)
@@ -4221,10 +4224,13 @@ class fakedbapi(dbapi):
 			del self.cpdict[mycp]
 
 class bindbapi(fakedbapi):
-	def __init__(self,mybintree=None):
+	def __init__(self, mybintree=None, settings=None):
 		self.bintree = mybintree
 		self.cpvdict={}
 		self.cpdict={}
+		if settings is None:
+			settings = globals()["settings"]
+		self.settings = settings
 
 	def match(self, *pargs, **kwargs):
 		if self.bintree and not self.bintree.populated:
@@ -5444,7 +5450,7 @@ class binarytree(packagetree):
 			self.root=root
 			#self.pkgdir=settings["PKGDIR"]
 			self.pkgdir=pkgdir
-			self.dbapi=bindbapi(self)
+			self.dbapi = bindbapi(self, settings=settings)
 			self.populated=0
 			self.tree={}
 			self.remotepkgs={}
