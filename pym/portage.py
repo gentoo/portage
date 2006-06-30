@@ -3283,7 +3283,8 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 		unresolved = []
 		for (dep, satisfied) in zip(unreduced, reduced):
 			if isinstance(dep, list):
-				unresolved += dep_zapdeps(dep, satisfied, myroot, use_binaries=use_binaries)
+				unresolved += dep_zapdeps(dep, satisfied, myroot,
+					use_binaries=use_binaries, trees=trees)
 			elif not satisfied:
 				unresolved.append(dep)
 		return unresolved
@@ -3295,7 +3296,8 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 	target = None
 	for (dep, satisfied) in zip(deps, satisfieds):
 		if isinstance(dep, list):
-			atoms = dep_zapdeps(dep, satisfied, myroot, use_binaries=use_binaries)
+			atoms = dep_zapdeps(dep, satisfied, myroot,
+				use_binaries=use_binaries, trees=trees)
 		else:
 			atoms = [dep]
 		missing_atoms = [atom for atom in atoms if not trees[myroot]["vartree"].dbapi.match(atom)]
@@ -3422,7 +3424,8 @@ def dep_expand(mydep, mydb=None, use_cache=1, settings=None):
 	return prefix + cpv_expand(
 		mydep, mydb=mydb, use_cache=use_cache, settings=settings) + postfix
 
-def dep_check(depstring,mydbapi,mysettings,use="yes",mode=None,myuse=None,use_cache=1,use_binaries=0,myroot="/"):
+def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
+	use_cache=1, use_binaries=0, myroot="/", trees=None):
 	"""Takes a depend string and parses the condition."""
 
 	#check_config_instance(mysettings)
@@ -3489,7 +3492,8 @@ def dep_check(depstring,mydbapi,mysettings,use="yes",mode=None,myuse=None,use_ca
 	if myeval:
 		return [1,[]]
 	else:
-		myzaps = dep_zapdeps(mysplit,mysplit2,myroot,use_binaries=use_binaries)
+		myzaps = dep_zapdeps(mysplit, mysplit2, myroot,
+			use_binaries=use_binaries, trees=trees)
 		mylist = flatten(myzaps)
 		writemsg("myzaps:   %s\n" % (myzaps), 1)
 		writemsg("mylist:   %s\n" % (mylist), 1)

@@ -963,7 +963,7 @@ class depgraph:
 			mycheck = portage.dep_check(depstring, self.mydbapi[myroot],
 				self.pkgsettings, myuse=myuse,
 				use_binaries=("--usepkgonly" in self.myopts),
-				myroot=myroot)
+				myroot=myroot, trees=self.trees)
 
 			if not mycheck[0]:
 				mymerge=[]
