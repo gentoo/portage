@@ -1838,7 +1838,7 @@ class depgraph:
 						x[pkgindex]+"::"+y+")", short_msg=short_msg)
 					retval = portage.doebuild(y, "clean", myroot,
 						self.pkgsettings, self.edebug, cleanup=1,
-						tree="porttree")
+						mydbapi=self.portdb, tree="porttree")
 					if (retval is None):
 						portage_util.writemsg("Unable to run required binary.\n",
 							noiselevel=-1)
@@ -1851,7 +1851,8 @@ class depgraph:
 						") Compiling/Packaging ("+x[pkgindex]+"::"+y+\
 						")", short_msg=short_msg)
 					retval = portage.doebuild(y, "package", myroot,
-						self.pkgsettings, self.edebug, tree="porttree")
+						self.pkgsettings, self.edebug, mydbapi=self.portdb,
+						tree="porttree")
 					if (retval is None):
 						portage_util.writemsg("Unable to run required binary.\n",
 							noiselevel=-1)
