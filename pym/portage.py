@@ -7114,7 +7114,7 @@ class MtimeDB(dict):
 	def commit(self):
 		commit_mtimedb(mydict=self, filename=self.filename)
 
-def do_vartree(mysettings, trees=None):
+def do_vartree(mysettings, portdb=None, trees=None):
 	if trees is None:
 		global db
 		trees = db
@@ -7128,7 +7128,8 @@ def do_vartree(mysettings, trees=None):
 		trees[myroot].addLazySingleton(
 			"vartree", vartree, myroot, categories=mysettings.categories,
 				settings=mysettings)
-		trees[myroot].addLazySingleton("porttree", portagetree, myroot)
+		trees[myroot].addLazySingleton("porttree",
+			portagetree, myroot, settings=mysettings, portdb=portdb)
 		trees[myroot].addLazyItem("bintree",
 			LazyBintreeItem(myroot, mysettings))
 
@@ -7166,8 +7167,8 @@ def init_legacy_globals():
 
 	root = settings["ROOT"]
 	db={}
-	do_vartree(settings, trees=db)
 	portdb = portdbapi(settings["PORTDIR"], mysettings=config(clone=settings))
+	do_vartree(settings, portdb=portdb, trees=db)
 
 	mtimedbfile = os.path.join("/", CACHE_PATH.lstrip(os.path.sep), "mtimedb")
 	mtimedb = MtimeDB(mtimedbfile)
