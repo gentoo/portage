@@ -2356,10 +2356,7 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 	portage.env_update(
 		target_root=settings["ROOT"],
 		prev_mtimes=ldpath_mtimes)
-	if not numselected:
-		return 0
-	else:
-		return 1
+	return 1
 
 
 def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
