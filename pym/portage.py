@@ -6883,9 +6883,11 @@ def commit_mtimedb(mydict=None, filename=None):
 		global mtimedbfile
 		filename = mtimedbfile
 	mydict["version"] = VERSION
+	d = {} # for full backward compat, pickle it as a plain dict object.
+	d.update(mydict)
 	try:
 		f = atomic_ofstream(filename)
-		cPickle.dump(mydict, f, -1)
+		cPickle.dump(d, f, -1)
 		f.close()
 		portage_util.apply_secpass_permissions(filename, uid=uid, gid=portage_gid, mode=0664)
 	except (IOError, OSError), e:
@@ -7088,6 +7090,25 @@ def load_mtimedb(f):
 			del d[k]
 	return d
 
+class MtimeDB(dict):
+	def __init__(self, filename):
+		dict.__init__(self)
+		self.filename = filename
+		self._load(filename)
+
+	def _load(self, filename):
+		try:
+			f = open(filename)
+			d = load_mtimedb(f)
+			f.close()
+			del f
+		except (IOError, OSError, EOFError):
+			d = {"updates":{}, "ldpath":{}, "version":"", "starttime":0}
+		self.update(d)
+
+	def commit(self):
+		commit_mtimedb(mydict=self, filename=self.filename)
+
 def do_vartree(mysettings, trees=None):
 	if trees is None:
 		global db
@@ -7144,13 +7165,7 @@ def init_legacy_globals():
 	portdb = portdbapi(settings["PORTDIR"], mysettings=config(clone=settings))
 
 	mtimedbfile = os.path.join("/", CACHE_PATH.lstrip(os.path.sep), "mtimedb")
-	try:
-		f = open(mtimedbfile)
-		mtimedb = load_mtimedb(f)
-		f.close()
-		del f
-	except (IOError, OSError, EOFError):
-		mtimedb = {"updates":{}, "ldpath":{}, "version":"", "starttime":0}
+	mtimedb = MtimeDB(mtimedbfile)
 
 	# ========================================================================
 	# COMPATIBILITY
