@@ -2035,7 +2035,9 @@ class depgraph:
 				"--fetch-all-uri" not in self.myopts:
 				if (mergecount>0):
 					if retval:
-						portage.env_update()
+						portage.env_update(
+							target_root=self.settings["ROOT"],
+							prev_mtimes=ldpath_mtimes)
 
 		#by doing an exit this way, --fetchonly can continue to try to
 		#fetch everything even if a particular download fails.
@@ -2115,6 +2117,7 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 	candidate_catpkgs=[]
 	global_unmerge=0
 	xterm_titles = "notitles" not in settings.features
+	ldpath_mtimes = portage.mtimedb["ldpath"]
 
 	realsyslist = getlist(settings, "system")
 	syslist = []
@@ -2350,7 +2353,9 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 			else:
 				emergelog(xterm_titles, " >>> unmerge success: "+y)
 	#run ldconfig, etc...
-	portage.env_update()
+	portage.env_update(
+		target_root=settings["ROOT"],
+		prev_mtimes=ldpath_mtimes)
 	if not numselected:
 		return 0
 	else:
