@@ -6320,7 +6320,7 @@ class dblink:
 		if os.path.exists(self.dbpkgdir):
 			writemsg_stdout(">>> Safely unmerging already-installed instance...\n")
 			self.dbdir = self.dbpkgdir
-			self.unmerge(oldcontents,trimworld=0)
+			self.unmerge(oldcontents, trimworld=0, ldpath_mtimes=prev_mtimes)
 			self.dbdir = self.dbtmpdir
 			writemsg_stdout(">>> Original instance of package unmerged safely.\n")
 
