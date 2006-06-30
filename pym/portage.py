@@ -2697,9 +2697,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	if mydbapi is None:
 		mydbapi = db[myroot][tree].dbapi
 
-	if vartree is None and (mydo in ("merge", "qmerge", "unmerge") or \
-		"PORT_LOGDIR" in mysettings and \
-		mydo not in ("depend", "fetch", "digest", "manifest")):
+	if vartree is None and mydo in ("merge", "qmerge", "unmerge"):
 		vartree = db[myroot]["vartree"]
 
 	features = mysettings.features
