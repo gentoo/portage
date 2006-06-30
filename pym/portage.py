@@ -4054,18 +4054,23 @@ def match_from_list_original(mydep,mylist):
 
 
 class portagetree:
-	def __init__(self,root="/",virtual=None,clone=None):
-		global portdb, settings
-		self.settings = settings # for key_expand calls
+	def __init__(self, root="/", virtual=None, clone=None, settings=None,
+		portdb=None):
+
 		if clone:
 			self.root=clone.root
 			self.portroot=clone.portroot
 			self.pkglines=clone.pkglines
 		else:
 			self.root=root
+			if settings is None:
+				settings = globals()["settings"]
+			self.settings = settings
 			self.portroot=settings["PORTDIR"]
 			self.virtual=virtual
-			self.dbapi=portdb
+			if portdb is None:
+				portdb = globals()["portdb"]
+			self.dbapi = portdb
 
 	def dep_bestmatch(self,mydep):
 		"compatibility method"
