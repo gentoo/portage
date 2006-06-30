@@ -1662,10 +1662,10 @@ class depgraph:
 	def outdated(self):
 		return self.outdatedpackages
 
-	def merge(self, mylist, favorites):
+	def merge(self, mylist, favorites, mtimedb):
 		returnme=0
 		mymergelist=[]
-		ldpath_mtimes = portage.mtimedb["ldpath"]
+		ldpath_mtimes = mtimedb["ldpath"]
 		xterm_titles = "notitles" not in self.settings.features
 
 		#check for blocking dependencies
@@ -1679,7 +1679,7 @@ class depgraph:
 					print
 					if "--pretend" not in self.myopts:
 						try:
-							del portage.mtimedb["resume"]
+							del mtimedb["resume"]
 						except KeyError:
 							pass
 						sys.exit(1)
@@ -1690,9 +1690,9 @@ class depgraph:
 			# We're resuming.
 			print green("*** Resuming merge...")
 			emergelog(xterm_titles, " *** Resuming merge...")
-			mymergelist=portage.mtimedb["resume"]["mergelist"][:]
+			mymergelist=mtimedb["resume"]["mergelist"][:]
 			if "--skipfirst" in self.myopts and mymergelist:
-				del portage.mtimedb["resume"]["mergelist"][0]
+				del mtimedb["resume"]["mergelist"][0]
 				del mymergelist[0]
 			validate_merge_list(self.trees, mymergelist)
 		else:
@@ -1720,7 +1720,7 @@ class depgraph:
 					os.path.join(self.settings["ROOT"], portage.WORLD_FILE),
 					"\n".join(myfavdict.values()))
 
-			portage.mtimedb["resume"]["mergelist"]=mymergelist[:]
+			mtimedb["resume"]["mergelist"]=mymergelist[:]
 
 		# We need to yank the harmful-to-new-builds settings from features.
 		myorigfeat=self.pkgsettings["FEATURES"]
@@ -1759,7 +1759,7 @@ class depgraph:
 
 					# wipe the mtimedb so that portage doesn't attempt to flush it.
 					# do not convert this code away from a fork without correcting this.
-					portage.mtimedb = None
+					mtimedb = None
 					for x in ("autoaddcvs", "cvs"):
 						try:	myfeat.remove(x)
 						except ValueError: pass
@@ -1992,7 +1992,7 @@ class depgraph:
 								emergelog(xterm_titles, " *** RESTARTING " + \
 									"emerge via exec() after change of " + \
 									"portage version.")
-								del portage.mtimedb["resume"]["mergelist"][0]
+								del mtimedb["resume"]["mergelist"][0]
 								portage.run_exitfuncs()
 								mynewargv=[sys.argv[0],"--resume"]
 								badlongopts = ("--ask","--tree","--changelog","--skipfirst","--resume")
@@ -2019,7 +2019,7 @@ class depgraph:
 					x[2]+" to "+x[1])
 
 			# Unsafe for parallel merges
-			del portage.mtimedb["resume"]["mergelist"][0]
+			del mtimedb["resume"]["mergelist"][0]
 			# Commit after each merge so that --resume may still work in
 			# in the event that portage is not allowed to exit normally
 			# due to power failure, SIGKILL, etc...
@@ -2028,8 +2028,8 @@ class depgraph:
 		emergelog(xterm_titles, " *** Finished. Cleaning up...")
 
 		# We're out of the loop... We're done. Delete the resume data.
-		if portage.mtimedb.has_key("resume"):
-			del portage.mtimedb["resume"]
+		if mtimedb.has_key("resume"):
+			del mtimedb["resume"]
 
 		#by doing an exit this way, --fetchonly can continue to try to
 		#fetch everything even if a particular download fails.
@@ -2110,7 +2110,6 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 	candidate_catpkgs=[]
 	global_unmerge=0
 	xterm_titles = "notitles" not in settings.features
-	ldpath_mtimes = portage.mtimedb["ldpath"]
 
 	realsyslist = getlist(settings, "system")
 	syslist = []
@@ -2472,7 +2471,7 @@ def validate_merge_list(trees, mergelist):
 			print red("!!!        the merge operation manually.")
 			sys.exit(1)
 
-def action_sync(settings, portdb, trees, myopts, myaction):
+def action_sync(settings, portdb, trees, mtimedb, myopts, myaction):
 	xterm_titles = "notitles" not in settings.features
 	emergelog(xterm_titles, " === sync")
 	myportdir=settings["PORTDIR"]
@@ -2812,7 +2811,7 @@ def action_sync(settings, portdb, trees, myopts, myaction):
 		action_metadata(settings, portdb, myopts)
 
 	portage.global_updates(
-		settings, trees, portage.mtimedb["updates"])
+		settings, trees, mtimedb["updates"])
 
 	mybestpv = portdb.xmatch("bestmatch-visible", "sys-apps/portage")
 	mypvs = portage.best(
@@ -3085,7 +3084,8 @@ def action_search(settings, portdb, vartree, myopts, myfiles, spinner):
 				sys.exit(1)
 			searchinstance.output()
 
-def action_depclean(settings, portdb, trees, myopts, spinner):
+def action_depclean(settings, portdb, trees, info_mtimes, ldpath_mtimes,
+	myopts, spinner):
 	# Kill packages that aren't explicitly merged or are required as a
 	# dependency of another package. World file is explicit.
 
@@ -3111,8 +3111,6 @@ def action_depclean(settings, portdb, trees, myopts, spinner):
 
 	xterm_titles = "notitles" not in settings.features
 	vartree = trees[settings["ROOT"]]["vartree"]
-	info_mtimes = portage.mtimedb["info"]
-	ldpath_mtimes = portage.mtimedb["ldpath"]
 	syslist = getlist(settings, "system")
 	worldlist = getlist(settings, "world")
 	myvarlist = vartree.dbapi.cp_all()
@@ -3213,9 +3211,10 @@ def action_depclean(settings, portdb, trees, myopts, spinner):
 		print "Number removed:       "+str(len(cleanlist))
 		post_emerge(settings, info_mtimes, 0)
 
-def action_build(settings, portdb, trees, myopts, myaction, myfiles, spinner):
-	info_mtimes = portage.mtimedb["info"]
-	ldpath_mtimes = portage.mtimedb["ldpath"]
+def action_build(settings, portdb, trees, mtimedb,
+	myopts, myaction, myfiles, spinner):
+	info_mtimes = mtimedb["info"]
+	ldpath_mtimes = mtimedb["ldpath"]
 	favorites=[]
 	if ("--ask" in myopts or "--pretend" in myopts) and not "--quiet" in myopts:
 		action = ""
@@ -3233,13 +3232,13 @@ def action_build(settings, portdb, trees, myopts, myaction, myfiles, spinner):
 			print
 
 	if "--resume" in myopts and \
-		("resume" in portage.mtimedb or
-		"resume_backup" in portage.mtimedb):
-		if "resume" not in portage.mtimedb:
-			portage.mtimedb["resume"] = portage.mtimedb["resume_backup"]
-			del portage.mtimedb["resume_backup"]
+		("resume" in mtimedb or
+		"resume_backup" in mtimedb):
+		if "resume" not in mtimedb:
+			mtimedb["resume"] = mtimedb["resume_backup"]
+			del mtimedb["resume_backup"]
 			portage.commit_mtimedb()
-		myresumeopts=portage.mtimedb["resume"]["myopts"][:]
+		myresumeopts=mtimedb["resume"]["myopts"][:]
 
 		for opt in ("--skipfirst", "--ask", "--tree"):
 			while opt in myresumeopts:
@@ -3297,8 +3296,8 @@ def action_build(settings, portdb, trees, myopts, myaction, myfiles, spinner):
 
 	if "--ask" in myopts:
 		if "--resume" in myopts:
-			validate_merge_list(trees, portage.mtimedb["resume"]["mergelist"])
-			mydepgraph.display(portage.mtimedb["resume"]["mergelist"])
+			validate_merge_list(trees, mtimedb["resume"]["mergelist"])
+			mydepgraph.display(mtimedb["resume"]["mergelist"])
 			prompt="Would you like to resume merging these packages?"
 		else:
 			mydepgraph.display(mydepgraph.altlist())
@@ -3335,8 +3334,8 @@ def action_build(settings, portdb, trees, myopts, myaction, myfiles, spinner):
 
 	if ("--pretend" in myopts) and not ("--fetchonly" in myopts or "--fetch-all-uri" in myopts):
 		if ("--resume" in myopts):
-			validate_merge_list(trees, portage.mtimedb["resume"]["mergelist"])
-			mydepgraph.display(portage.mtimedb["resume"]["mergelist"])
+			validate_merge_list(trees, mtimedb["resume"]["mergelist"])
+			mydepgraph.display(mtimedb["resume"]["mergelist"])
 		else:
 			mydepgraph.display(mydepgraph.altlist())
 	else:
@@ -3347,18 +3346,18 @@ def action_build(settings, portdb, trees, myopts, myaction, myfiles, spinner):
 				sys.exit(1)
 
 		if ("--resume" in myopts):
-			favorites=portage.mtimedb["resume"]["favorites"]
-			mydepgraph.merge(portage.mtimedb["resume"]["mergelist"], favorites)
+			favorites=mtimedb["resume"]["favorites"]
+			mydepgraph.merge(mtimedb["resume"]["mergelist"], favorites, mtimedb)
 		else:
-			if "resume" in portage.mtimedb and \
-			"mergelist" in portage.mtimedb["resume"] and \
-			len(portage.mtimedb["resume"]["mergelist"]) > 1:
-				portage.mtimedb["resume_backup"] = portage.mtimedb["resume"]
-				del portage.mtimedb["resume"]
+			if "resume" in mtimedb and \
+			"mergelist" in mtimedb["resume"] and \
+			len(mtimedb["resume"]["mergelist"]) > 1:
+				mtimedb["resume_backup"] = mtimedb["resume"]
+				del mtimedb["resume"]
 				portage.commit_mtimedb()
-			portage.mtimedb["resume"]={}
-			portage.mtimedb["resume"]["myopts"]=myopts
-			portage.mtimedb["resume"]["favorites"]=favorites
+			mtimedb["resume"]={}
+			mtimedb["resume"]["myopts"]=myopts
+			mtimedb["resume"]["favorites"]=favorites
 			if ("--digest" in myopts) and not ("--fetchonly" in myopts or "--fetch-all-uri" in myopts):
 				for pkgline in mydepgraph.altlist():
 					if pkgline[0]=="ebuild" and pkgline[3]=="merge":
@@ -3377,10 +3376,10 @@ def action_build(settings, portdb, trees, myopts, myaction, myfiles, spinner):
 						pkglist.append(pkg)
 			else:
 				pkglist = mydepgraph.altlist()
-			mydepgraph.merge(pkglist, favorites)
+			mydepgraph.merge(pkglist, favorites, mtimedb)
 
-		if portage.mtimedb.has_key("resume"):
-			del portage.mtimedb["resume"]
+		if mtimedb.has_key("resume"):
+			del mtimedb["resume"]
 		if settings["AUTOCLEAN"] and "yes"==settings["AUTOCLEAN"]:
 			print ">>> Auto-cleaning packages..."
 			vartree = trees[settings["ROOT"]]["vartree"]
@@ -3462,8 +3461,9 @@ def emerge_main():
 	settings = portage.settings
 	portdb = portage.portdb
 	trees = portage.db
-	info_mtimes = portage.mtimedb["info"]
-	ldpath_mtimes = portage.mtimedb["ldpath"]
+	mtimedb = portage.mtimedb
+	info_mtimes = mtimedb["info"]
+	ldpath_mtimes = mtimedb["ldpath"]
 	xterm_titles = "notitles" not in settings.features
 
 	settings.unlock()
@@ -3522,7 +3522,7 @@ def emerge_main():
 	myaction, myopts, myfiles = parse_opts(tmpcmdline)
 	edebug = 0
 
-	portage.global_updates(settings, trees, portage.mtimedb["updates"])
+	portage.global_updates(settings, trees, mtimedb["updates"])
 
 	spinner = stdout_spinner()
 	if "candy" in settings.features:
@@ -3763,7 +3763,7 @@ def emerge_main():
 			print "emerge: \"sync\" actions do not support \"--pretend.\""
 			sys.exit(1)
 		if "sync" == myaction:
-			action_sync(settings, portdb, trees, myopts, myaction)
+			action_sync(settings, portdb, trees, mtimedb, myopts, myaction)
 		else:
 			action_metadata(settings, portdb, myopts)
 	elif myaction=="regen":
@@ -3788,10 +3788,11 @@ def emerge_main():
 				post_emerge(settings, info_mtimes, 0)
 
 	elif "depclean"==myaction:
-		action_depclean(settings, portdb, trees, myopts, spinner)
+		action_depclean(settings, portdb, trees, info_mtimes, ldpath_mtimes,
+			myopts, spinner)
 	# "update", "system", or just process files:
 	else:
-		action_build(settings, portdb, trees,
+		action_build(settings, portdb, trees, mtimedb,
 			myopts, myaction, myfiles, spinner)
 
 if __name__ == "__main__":
