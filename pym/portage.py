@@ -6126,7 +6126,7 @@ class dblink:
 				tree="vartree", mydbapi=self.vartree.dbapi,
 				vartree=self.vartree)
 		self.unlockdb()
-		env_update(self.myroot, prev_mtimes=ldpath_mtimes)
+		env_update(target_root=self.myroot, prev_mtimes=ldpath_mtimes)
 
 	def isowner(self,filename,destroot):
 		""" check if filename is a new file or belongs to this package
