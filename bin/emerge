@@ -2078,10 +2078,10 @@ def unmerge_overlapping(pkg_key, myroot, mysettings, vartree, ldpath_mtimes):
 				return pv
 			else:
 				return "%s-%s" % (pv, rev)
-		selected_versions = ",".join(map(get_version, overlapping))
+		selected_versions = " ".join(map(get_version, overlapping))
 		protected_version = get_version(pkg_key)
 		if ommitted_versions:
-			ommitted_versions = ", ".join(map(get_version, ommitted_versions))
+			ommitted_versions = " ".join(map(get_version, ommitted_versions))
 		else:
 			ommitted_versions = "none"
 		portage.writemsg_stdout("\n %s\n" % bold(mycp), noiselevel=-1)
@@ -2312,10 +2312,10 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 						myversion=mysplit[2]+"-"+mysplit[3]
 					if mytype=="selected":
 						portage.writemsg_stdout(
-							colorize("UNMERGE_WARN", myversion), noiselevel=-1)
+							colorize("UNMERGE_WARN", myversion + " "), noiselevel=-1)
 					else:
 						portage.writemsg_stdout(
-							colorize("GOOD", myversion), noiselevel=-1)
+							colorize("GOOD", myversion + " "), noiselevel=-1)
 			else:
 				portage.writemsg_stdout("none", noiselevel=-1)
 			portage.writemsg_stdout("\n", noiselevel=-1)
