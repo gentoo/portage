@@ -594,9 +594,9 @@ def genericdict(mylist):
 
 class depgraph:
 
-	def __init__(self, settings, portdb, trees, myopts, myparams, spinner):
+	def __init__(self, settings, trees, myopts, myparams, spinner):
 		self.settings = settings
-		self.portdb = portdb
+		self.portdb = trees["/"]["porttree"].dbapi
 		self.trees = trees
 		self.myopts = myopts
 		self.myparams = myparams
@@ -2479,7 +2479,7 @@ def validate_merge_list(trees, mergelist):
 			print red("!!!        the merge operation manually.")
 			sys.exit(1)
 
-def action_sync(settings, portdb, trees, mtimedb, myopts, myaction):
+def action_sync(settings, trees, mtimedb, myopts, myaction):
 	xterm_titles = "notitles" not in settings.features
 	emergelog(xterm_titles, " === sync")
 	myportdir=settings["PORTDIR"]
@@ -2812,8 +2812,8 @@ def action_sync(settings, portdb, trees, mtimedb, myopts, myaction):
 	portage.portageexit()
 	reload(portage)
 	settings = portage.settings
-	portdb = portage.portdb
 	trees = portage.db
+	portdb = trees["/"]["porttree"].dbapi
 
 	if os.path.exists(myportdir+"/metadata/cache") and updatecache_flg:
 		action_metadata(settings, portdb, myopts)
@@ -3092,7 +3092,7 @@ def action_search(settings, portdb, vartree, myopts, myfiles, spinner):
 				sys.exit(1)
 			searchinstance.output()
 
-def action_depclean(settings, portdb, trees, info_mtimes, ldpath_mtimes,
+def action_depclean(settings, trees, info_mtimes, ldpath_mtimes,
 	myopts, spinner):
 	# Kill packages that aren't explicitly merged or are required as a
 	# dependency of another package. World file is explicit.
@@ -3118,6 +3118,7 @@ def action_depclean(settings, portdb, trees, info_mtimes, ldpath_mtimes,
 	print red("*** WARNING ***")+"  "+bold("Make sure you have a backup.")
 
 	xterm_titles = "notitles" not in settings.features
+	pordb = trees[settings["ROOT"]]["porttree"].dbapi
 	vartree = trees[settings["ROOT"]]["vartree"]
 	syslist = getlist(settings, "system")
 	worldlist = getlist(settings, "world")
@@ -3138,7 +3139,7 @@ def action_depclean(settings, portdb, trees, info_mtimes, ldpath_mtimes,
 		emergelog(xterm_titles, " >>> depclean")
 
 	myparams = create_depgraph_params(myopts, "depclean")
-	mydepgraph = depgraph(settings, portdb, trees,
+	mydepgraph = depgraph(settings, trees,
 		myopts, myparams, spinner)
 
 	if not ("--quiet" in myopts):
@@ -3219,7 +3220,7 @@ def action_depclean(settings, portdb, trees, info_mtimes, ldpath_mtimes,
 		print "Number removed:       "+str(len(cleanlist))
 		post_emerge(settings, info_mtimes, 0)
 
-def action_build(settings, portdb, trees, mtimedb,
+def action_build(settings, trees, mtimedb,
 	myopts, myaction, myfiles, spinner):
 	info_mtimes = mtimedb["info"]
 	ldpath_mtimes = mtimedb["ldpath"]
@@ -3257,7 +3258,7 @@ def action_build(settings, portdb, trees, mtimedb,
 				myresumeopts.append(myopt)
 		myopts=myresumeopts
 		myparams = create_depgraph_params(myopts, myaction)
-		mydepgraph = depgraph(settings, portdb, trees,
+		mydepgraph = depgraph(settings, trees,
 			myopts, myparams, spinner)
 		if "--resume" not in myopts:
 			myopts+=["--resume"]
@@ -3268,7 +3269,7 @@ def action_build(settings, portdb, trees, mtimedb,
 			sys.exit(0)
 
 		myparams = create_depgraph_params(myopts, myaction)
-		mydepgraph = depgraph(settings, portdb, trees,
+		mydepgraph = depgraph(settings, trees,
 			myopts, myparams, spinner)
 		if myaction in ["system","world"]:
 			if not ("--quiet" in myopts):
@@ -3369,7 +3370,7 @@ def action_build(settings, portdb, trees, mtimedb,
 			if ("--digest" in myopts) and not ("--fetchonly" in myopts or "--fetch-all-uri" in myopts):
 				for pkgline in mydepgraph.altlist():
 					if pkgline[0]=="ebuild" and pkgline[3]=="merge":
-						y = portdb.findname(pkgline[2])
+						y = trees[pkgline[1]]["porttree"].dbapi.findname(pkgline[2])
 						tmpsettings = portage.config(clone=settings)
 						edebug = 0
 						if settings.get("PORTAGE_DEBUG", "") == "1":
@@ -3467,8 +3468,8 @@ def parse_opts(tmpcmdline):
 
 def emerge_main():
 	settings = portage.settings
-	portdb = portage.portdb
 	trees = portage.db
+	portdb = trees["/"]["porttree"].dbapi
 	mtimedb = portage.mtimedb
 	info_mtimes = mtimedb["info"]
 	ldpath_mtimes = mtimedb["ldpath"]
@@ -3771,7 +3772,7 @@ def emerge_main():
 			print "emerge: \"sync\" actions do not support \"--pretend.\""
 			sys.exit(1)
 		if "sync" == myaction:
-			action_sync(settings, portdb, trees, mtimedb, myopts, myaction)
+			action_sync(settings, trees, mtimedb, myopts, myaction)
 		else:
 			action_metadata(settings, portdb, myopts)
 	elif myaction=="regen":
@@ -3796,11 +3797,11 @@ def emerge_main():
 				post_emerge(settings, info_mtimes, 0)
 
 	elif "depclean"==myaction:
-		action_depclean(settings, portdb, trees, info_mtimes, ldpath_mtimes,
+		action_depclean(settings, trees, info_mtimes, ldpath_mtimes,
 			myopts, spinner)
 	# "update", "system", or just process files:
 	else:
-		action_build(settings, portdb, trees, mtimedb,
+		action_build(settings, trees, mtimedb,
 			myopts, myaction, myfiles, spinner)
 
 if __name__ == "__main__":
