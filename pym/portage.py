@@ -2446,7 +2446,7 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 	if debug: # Otherwise it overrides emerge's settings.
 		# We have no other way to set debug... debug can't be passed in
 		# due to how it's coded... Don't overwrite this so we can use it.
-		mysettings["PORTAGE_DEBUG"]=str(debug)
+		mysettings["PORTAGE_DEBUG"] = "1"
 
 	mysettings["ROOT"]     = myroot
 	mysettings["STARTDIR"] = getcwd()
