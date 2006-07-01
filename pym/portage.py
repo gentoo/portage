@@ -832,7 +832,8 @@ def autouse(myvartree, use_cache=1, mysettings=None):
 				break
 		if dep_met:
 			myusevars += " "+myuse
-	autouse_val = myusevars
+	if myusevars:
+		autouse_val = myusevars
 	return myusevars
 
 def check_config_instance(test):
@@ -1511,7 +1512,7 @@ class config:
 		for mykey in myincrementals:
 			if mykey=="USE":
 				mydbs=self.uvlist
-				if "auto" in self["USE_ORDER"].split(":") and "settings" in globals():
+				if "auto" in self["USE_ORDER"].split(":"):
 					self.configdict["auto"]["USE"] = autouse(
 						vartree(root=self["ROOT"], categories=self.categories,
 							settings=self),
