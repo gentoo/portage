@@ -3319,13 +3319,15 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 
 	if not target:
 		if isinstance(deps[0], list):
-			return dep_zapdeps(deps[0], satisfieds[0], myroot, use_binaries=use_binaries)
+			return dep_zapdeps(deps[0], satisfieds[0], myroot,
+				use_binaries=use_binaries, trees=trees)
 		else:
 			return [deps[0]]
 
 	if isinstance(target, tuple): # Nothing matching installed
 		if isinstance(target[0], list): # ... and the first available was a sublist
-			return dep_zapdeps(target[0], target[1], myroot, use_binaries=use_binaries)
+			return dep_zapdeps(target[0], target[1], myroot,
+				use_binaries=use_binaries, trees=trees)
 		else: # ... and the first available was a single atom
 			target = dep_getkey(target[0])
 
