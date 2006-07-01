@@ -2424,8 +2424,9 @@ def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 				print " "+green("*")+" Processed",icount,"info files."
 
 
-def post_emerge(settings, info_mtimes, retval):
+def post_emerge(settings, mtimedb, retval):
 	target_root = settings["ROOT"]
+	info_mtimes = mtimedb["info"]
 	config_protect = settings.get("CONFIG_PROTECT","").split()
 	infodirs = settings.get("INFOPATH","").split(":") + \
 		settings.get("INFODIR","").split(":")
@@ -2439,6 +2440,7 @@ def post_emerge(settings, info_mtimes, retval):
 		chk_updated_info_files(target_root, infodirs, info_mtimes, retval)
 
 	chk_updated_cfg_files(target_root, config_protect)
+	mtimedb.commit()
 	sys.exit(retval)
 
 
@@ -3106,7 +3108,7 @@ def action_search(settings, portdb, vartree, myopts, myfiles, spinner):
 				sys.exit(1)
 			searchinstance.output()
 
-def action_depclean(settings, trees, info_mtimes, ldpath_mtimes,
+def action_depclean(settings, trees, ldpath_mtimes,
 	myopts, spinner):
 	# Kill packages that aren't explicitly merged or are required as a
 	# dependency of another package. World file is explicit.
@@ -3232,11 +3234,9 @@ def action_depclean(settings, trees, info_mtimes, ldpath_mtimes,
 		print "Number to remove:     "+str(len(cleanlist))
 	else:
 		print "Number removed:       "+str(len(cleanlist))
-		post_emerge(settings, info_mtimes, 0)
 
 def action_build(settings, trees, mtimedb,
 	myopts, myaction, myfiles, spinner):
-	info_mtimes = mtimedb["info"]
 	ldpath_mtimes = mtimedb["ldpath"]
 	favorites=[]
 	if ("--ask" in myopts or "--pretend" in myopts) and not "--quiet" in myopts:
@@ -3414,8 +3414,6 @@ def action_build(settings, trees, mtimedb,
 			portage.writemsg_stdout(colorize("WARN", "WARNING:")
 				+ " AUTOCLEAN is disabled.  This can cause serious"
 				+ " problems due to overlapping packages.\n")
-	if "--pretend" not in myopts:
-		post_emerge(settings, info_mtimes, 0)
 
 def parse_opts(tmpcmdline):
 	myaction=None
@@ -3513,7 +3511,6 @@ def emerge_main():
 	os.umask(022)
 	settings, trees, mtimedb = load_emerge_config()
 	portdb = trees["/"]["porttree"].dbapi
-	info_mtimes = mtimedb["info"]
 	ldpath_mtimes = mtimedb["ldpath"]
 	xterm_titles = "notitles" not in settings.features
 
@@ -3837,15 +3834,19 @@ def emerge_main():
 		if 1 == unmerge(settings, myopts, vartree, myaction, myfiles,
 			ldpath_mtimes, raise_on_missing=False):
 			if "--pretend" not in myopts:
-				post_emerge(settings, info_mtimes, 0)
+				post_emerge(settings, mtimedb, 0)
 
 	elif "depclean"==myaction:
-		action_depclean(settings, trees, info_mtimes, ldpath_mtimes,
+		action_depclean(settings, trees, ldpath_mtimes,
 			myopts, spinner)
+		if "--pretend" not in myopts:
+			post_emerge(settings, mtimedb, 0)
 	# "update", "system", or just process files:
 	else:
 		action_build(settings, trees, mtimedb,
 			myopts, myaction, myfiles, spinner)
+		if "--pretend" not in myopts:
+			post_emerge(settings, mtimedb, 0)
 
 if __name__ == "__main__":
 	emerge_main()
