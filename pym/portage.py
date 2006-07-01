@@ -3676,8 +3676,11 @@ def getmaskingreason(mycpv):
 					i = i + 1
 	return None
 
-def getmaskingstatus(mycpv):
-	global portdb, settings
+def getmaskingstatus(mycpv, settings=None, portdb=None):
+	if settings is None:
+		settings = globals()["settings"]
+	if portdb is None:
+		portdb = globals()["portdb"]
 	mysplit = catpkgsplit(mycpv)
 	if not mysplit:
 		raise ValueError("invalid CPV: %s" % mycpv)

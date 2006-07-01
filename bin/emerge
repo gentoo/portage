@@ -1055,7 +1055,8 @@ class depgraph:
 							print "!!! One of the following masked packages is required to complete your request:"
 							oldcomment = ""
 							for p in alleb:
-								mreasons = portage.getmaskingstatus(p)
+								mreasons = portage.getmaskingstatus(p,
+									settings=self.settings, portdb=self.portdb)
 								print "- "+p+" (masked by: "+string.join(mreasons, ", ")+")"
 								comment = portage.getmaskingreason(p)
 								if comment and comment != oldcomment:
