@@ -2751,7 +2751,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			try:
 				if tmpservertimestampfile is not None:
 					portage.movefile(tmpservertimestampfile,
-						servertimestampfile)
+						servertimestampfile, mysettings=settings)
 			except SystemExit, e:
 				raise
 			except Exception, e:
