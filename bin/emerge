@@ -1774,7 +1774,9 @@ class depgraph:
 						try:
 							ret = portage.doebuild(self.portdb.findname(x[2]),
 								"fetch", x[1], self.pkgsettings,
-								cleanup=0, fetchonly=True, tree="porttree")
+								cleanup=0, fetchonly=True,
+								mydbapi=self.trees[x[1]]["porttree"].dbapi,
+								tree="porttree")
 						except SystemExit:
 							raise
 						except Exception:
@@ -1883,7 +1885,9 @@ class depgraph:
 							sys.exit(retval)
 					elif "noclean" not in self.pkgsettings.features:
 						portage.doebuild(y, "clean", myroot, self.pkgsettings,
-							self.edebug, tree="porttree")
+							self.edebug,
+							mydbapi=self.trees[myroot]["porttree"].dbapi,
+							tree="porttree")
 				else:
 					short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Clean"
 					emergelog(xterm_titles, " === ("+str(mergecount)+\
@@ -2992,7 +2996,7 @@ def action_config(settings, trees, myopts, myfiles):
 	mysettings = portage.config(clone=settings)
 	portage.doebuild(ebuildpath, "config", settings["ROOT"], mysettings,
 		debug=(settings.get("PORTAGE_DEBUG", "") == 1), cleanup=True,
-		tree="vartree")
+		mydbapi=trees[settings["ROOT"]]["vartree"].dbapi, tree="vartree")
 	print
 
 def action_info(settings, trees, myopts):
@@ -3377,7 +3381,9 @@ def action_build(settings, trees, mtimedb,
 							edebug = 1
 						retval = portage.doebuild(
 							y, "digest", settings["ROOT"], tmpsettings, edebug,
-							("--pretend" in myopts), tree="porttree")
+							("--pretend" in myopts),
+							mydbapi=trees[pkgline[1]]["porttree"].dbapi,
+							tree="porttree")
 			if "--fetchonly" in myopts or "--fetch-all-uri" in myopts:
 				pkglist = []
 				for pkg in mydepgraph.altlist():
