@@ -7060,7 +7060,8 @@ def global_updates(mysettings, trees, prev_mtimes):
 		print
 
 		#make sure our internal databases are consistent; recreate our virts and vartree
-		do_vartree(mysettings, trees=trees)
+		do_vartree(
+			mysettings, portdb=trees["/"]["porttree"].dbapi, trees=trees)
 		if do_upgrade_packagesmessage and \
 			listdir(os.path.join(mysettings["PKGDIR"], "All"), EmptyOnError=1):
 			writemsg_stdout(" ** Skipping packages. Run 'fixpackages' or set it in FEATURES to fix the")
