@@ -5611,7 +5611,6 @@ class binarytree(packagetree):
 
 	def populate(self, getbinpkgs=0,getbinpkgsonly=0):
 		"populates the binarytree"
-		global settings
 		if (not os.path.isdir(self.pkgdir) and not getbinpkgs):
 			return 0
 		if (not os.path.isdir(self.pkgdir+"/All") and not getbinpkgs):
@@ -5642,13 +5641,14 @@ class binarytree(packagetree):
 				except:
 					continue
 
-		if getbinpkgs and not settings["PORTAGE_BINHOST"]:
+		if getbinpkgs and not self.settings["PORTAGE_BINHOST"]:
 			writemsg(red("!!! PORTAGE_BINHOST unset, but use is requested.\n"),
 				noiselevel=-1)
 
-		if getbinpkgs and settings["PORTAGE_BINHOST"] and not self.remotepkgs:
+		if getbinpkgs and \
+			self.settings["PORTAGE_BINHOST"] and not self.remotepkgs:
 			try:
-				chunk_size = long(settings["PORTAGE_BINHOST_CHUNKSIZE"])
+				chunk_size = long(self.settings["PORTAGE_BINHOST_CHUNKSIZE"])
 				if chunk_size < 8:
 					chunk_size = 8
 			except SystemExit, e:
@@ -5657,7 +5657,8 @@ class binarytree(packagetree):
 				chunk_size = 3000
 
 			writemsg(green("Fetching binary packages info...\n"))
-			self.remotepkgs = getbinpkg.dir_get_metadata(settings["PORTAGE_BINHOST"], chunk_size=chunk_size)
+			self.remotepkgs = getbinpkg.dir_get_metadata(
+				self.settings["PORTAGE_BINHOST"], chunk_size=chunk_size)
 			writemsg(green("  -- DONE!\n\n"))
 
 			for mypkg in self.remotepkgs.keys():
@@ -5732,7 +5733,6 @@ class binarytree(packagetree):
 
 	def gettbz2(self,pkgname):
 		"fetches the package from a remote site, if necessary."
-		global settings
 		print "Fetching '"+str(pkgname)+"'"
 		mysplit  = string.split(pkgname,"/")
 		tbz2name = mysplit[1]+".tbz2"
@@ -5749,7 +5749,9 @@ class binarytree(packagetree):
 			raise
 		except:
 			pass
-		return getbinpkg.file_get(settings["PORTAGE_BINHOST"]+"/"+tbz2name, mydest, fcmd=settings["RESUMECOMMAND"])
+		return getbinpkg.file_get(
+			self.settings["PORTAGE_BINHOST"] + "/" + tbz2name,
+			mydest, fcmd=self.settings["RESUMECOMMAND"])
 
 	def getslot(self,mycatpkg):
 		"Get a slot for a catpkg; assume it exists."
