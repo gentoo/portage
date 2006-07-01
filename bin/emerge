@@ -1814,12 +1814,12 @@ class depgraph:
 						retval = portage.doebuild(y, "fetch", myroot,
 							self.pkgsettings, self.edebug,
 							"--pretend" in self.myopts, fetchonly=1,
-							fetchall=1, tree="porttree")
+							fetchall=1, mydbapi=self.portdb, tree="porttree")
 					else:
 						retval = portage.doebuild(y, "fetch", myroot,
 							self.pkgsettings, self.edebug,
 							"--pretend" in self.myopts, fetchonly=1,
-							tree="porttree")
+							mydbapi=self.portdb, tree="porttree")
 					if (retval is None) or retval:
 						print
 						print "!!! Fetch for",y,"failed, continuing..."
