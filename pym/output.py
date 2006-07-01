@@ -125,6 +125,7 @@ codes["BRACKET"]    = codes["blue"]
 
 # Portage functions
 codes["UNMERGE_WARN"] = codes["red"]
+codes["MERGE_LIST_PROGRESS"] = codes["yellow"]
 
 def parse_color_map():
 	myfile = COLOR_MAP_FILE

@@ -1792,7 +1792,10 @@ class depgraph:
 				pkgindex=3
 			y = self.portdb.findname(x[pkgindex])
 			if "--pretend" not in self.myopts:
-				print "\n>>> Emerging ("+yellow(str(mergecount))+" of "+yellow(str(len(mymergelist)))+")",green(x[pkgindex]),"to",x[1]
+				print "\n>>> Emerging (" + \
+					colorize("MERGE_LIST_PROGRESS", str(mergecount)) + " of " + \
+					colorize("MERGE_LIST_PROGRESS", str(len(mymergelist))) + ") " + \
+					colorize("GOOD", x[pkgindex]) + " to " + x[1]
 				emergelog(xterm_titles, " >>> emerge ("+\
 					str(mergecount)+" of "+str(len(mymergelist))+\
 					") "+x[pkgindex]+" to "+x[1])
