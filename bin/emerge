@@ -32,6 +32,8 @@ import emergehelp, xpak, commands, errno, re, socket, string, time, types
 from output import blue, bold, colorize, darkblue, darkgreen, darkred, green, \
 	havecolor, nc_len, nocolor, red, teal, turquoise, white, xtermTitle, \
 	xtermTitleReset, yellow
+from output import create_color_func
+good = create_color_func("GOOD")
 
 import portage_util
 import portage_locks
@@ -3116,25 +3118,26 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	# Kill packages that aren't explicitly merged or are required as a
 	# dependency of another package. World file is explicit.
 
+	warn_prefix = colorize("BAD", "*** WARNING ***  ")
 	print
-	print red("*** WARNING ***")+"  --depclean is known to be broken. It is highly recommended"
-	print red("*** WARNING ***")+"  that "+green("`emerge --update --newuse --deep world`")+" be ran before"
-	print red("*** WARNING ***")+"  commencing. However, using --depclean may still break link"
-	print red("*** WARNING ***")+"  level consistency within your system. "+green("`revdep-rebuild`")
-	print red("*** WARNING ***")+"  from app-portage/gentoolkit can help to detect breakage."
-	print red("*** WARNING ***")
-	print red("*** WARNING ***")+"  Also study the list of packages to be cleaned for any"
-	print red("*** WARNING ***")+"  obvious mistakes. Packages can be manually added to the"
-	print red("*** WARNING ***")+"  world list by running "+green("`emerge --noreplace <atom>`")+"."
-	print red("*** WARNING ***")
-	print red("*** WARNING ***")+"  It is normal for packages that are masked or listed in"
-	print red("*** WARNING ***")+"  package.provided to be removed by depclean.  These are the most"
-	print red("*** WARNING ***")+"  likely reasons that depclean will remove a package even though"
-	print red("*** WARNING ***")+"  it is in the world or system package set.  In order to"
-	print red("*** WARNING ***")+"  troubleshoot these types of problems, it is often helpful to"
-	print red("*** WARNING ***")+"  look at the output of "+green("`grep -r <atom> /etc/portage`")+"."
-	print red("*** WARNING ***")
-	print red("*** WARNING ***")+"  "+bold("Make sure you have a backup.")
+	print warn_prefix + "--depclean is known to be broken. It is highly recommended"
+	print warn_prefix + "that "+good("`emerge --update --newuse --deep world`")+" be ran before"
+	print warn_prefix + "commencing. However, using --depclean may still break link"
+	print warn_prefix + "level consistency within your system. "+good("`revdep-rebuild`")
+	print warn_prefix + "from app-portage/gentoolkit can help to detect breakage."
+	print warn_prefix
+	print warn_prefix + "Also study the list of packages to be cleaned for any"
+	print warn_prefix + "obvious mistakes. Packages can be manually added to the"
+	print warn_prefix + "world list by running "+good("`emerge --noreplace <atom>`")+"."
+	print warn_prefix
+	print warn_prefix + "It is normal for packages that are masked or listed in"
+	print warn_prefix + "package.provided to be removed by depclean.  These are the most"
+	print warn_prefix + "likely reasons that depclean will remove a package even though"
+	print warn_prefix + "it is in the world or system package set.  In order to"
+	print warn_prefix + "troubleshoot these types of problems, it is often helpful to"
+	print warn_prefix + "look at the output of "+good("`grep -r <atom> /etc/portage`")+"."
+	print warn_prefix
+	print warn_prefix + bold("Make sure you have a backup.")
 
 	xterm_titles = "notitles" not in settings.features
 	pordb = trees[settings["ROOT"]]["porttree"].dbapi
