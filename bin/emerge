@@ -1058,7 +1058,8 @@ class depgraph:
 								mreasons = portage.getmaskingstatus(p,
 									settings=self.settings, portdb=self.portdb)
 								print "- "+p+" (masked by: "+string.join(mreasons, ", ")+")"
-								comment = portage.getmaskingreason(p)
+								comment = portage.getmaskingreason(p,
+									settings=self.settings, portdb=self.portdb)
 								if comment and comment != oldcomment:
 									print comment
 									oldcomment = comment

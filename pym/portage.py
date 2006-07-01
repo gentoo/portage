@@ -3633,9 +3633,12 @@ def cpv_expand(mycpv, mydb=None, use_cache=1, settings=None):
 	else:
 		return mykey
 
-def getmaskingreason(mycpv):
+def getmaskingreason(mycpv, settings=None, portdb=None):
 	from portage_util import grablines
-	global portdb, settings
+	if settings is None:
+		settings = globals()["settings"]
+	if portdb is None:
+		portdb = globals()["portdb"]
 	mysplit = catpkgsplit(mycpv)
 	if not mysplit:
 		raise ValueError("invalid CPV: %s" % mycpv)
