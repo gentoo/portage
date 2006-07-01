@@ -835,7 +835,7 @@ class depgraph:
 				mykey=mytbz2.getelements("CATEGORY")[0]+"/"+os.path.splitext(os.path.basename(x))[0]
 				if os.path.realpath(x) != \
 					os.path.realpath(self.trees["/"]["bintree"].getname(mykey)):
-					print red("\n*** You need to adjust PKGDIR to emerge this package.\n")
+					print colorize("BAD", "\n*** You need to adjust PKGDIR to emerge this package.\n")
 					sys.exit(1)
 				if not self.create(["binary", self.settings["ROOT"], mykey],
 					None, "--onlydeps" not in self.myopts):
@@ -848,13 +848,13 @@ class depgraph:
 				ebuild_path = self.trees["/"]["porttree"].dbapi.findname(mykey)
 				if ebuild_path:
 					if os.path.realpath(ebuild_path) != x:
-						print red("\n*** You need to adjust PORTDIR or PORTDIR_OVERLAY to emerge this package.\n")
+						print colorize("BAD", "\n*** You need to adjust PORTDIR or PORTDIR_OVERLAY to emerge this package.\n")
 						sys.exit(1)
 					if mykey not in self.trees["/"]["porttree"].dbapi.xmatch(
 						"match-visible", portage.dep_getkey(mykey)):
-						print red("\n*** You are emerging a masked package. It is MUCH better to use")
-						print red("*** /etc/portage/package.* to accomplish this. See portage(5) man")
-						print red("*** page for details.")
+						print colorize("BAD", "\n*** You are emerging a masked package. It is MUCH better to use")
+						print colorize("BAD", "*** /etc/portage/package.* to accomplish this. See portage(5) man")
+						print colorize("BAD", "*** page for details.")
 						countdown(int(self.settings["EMERGE_WARNING_DELAY"]),
 							"Continuing...")
 				else:
@@ -1585,14 +1585,14 @@ class depgraph:
 
 				if myversion != portage.VERSION :
 					if "--emptytree" in self.myopts:
-						p.append(red("***")+" Please update portage to the above version before proceeding.")
+						p.append(colorize("WARN", "***")+" Please update portage to the above version before proceeding.")
 						p.append("    Failure to do so may result in failed or improper merges.")
 						p.append("    A simple '"+green("emerge portage")+"' is sufficient.")
 						p.append("")
 					elif mylist.index(x) < len(mylist) - 1 and \
 						"livecvsportage" not in self.settings.features:
-						p.append(red("*** Portage will stop merging at this point and reload itself,"))
-						p.append(red("    then resume the merge."))
+						p.append(colorize("WARN", "*** Portage will stop merging at this point and reload itself,"))
+						p.append(colorize("WARN", "    then resume the merge."))
 						print
 			del mysplit
 
@@ -1692,7 +1692,7 @@ class depgraph:
 		mysysdict = genericdict(getlist(self.settings, "system"))
 		if "--resume" in self.myopts:
 			# We're resuming.
-			print green("*** Resuming merge...")
+			print colorize("GOOD", "*** Resuming merge...")
 			emergelog(xterm_titles, " *** Resuming merge...")
 			mymergelist=mtimedb["resume"]["mergelist"][:]
 			if "--skipfirst" in self.myopts and mymergelist:
@@ -2304,8 +2304,8 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 			#avoid cluttering the preview printout with stuff that isn't getting unmerged
 			continue
 		if not (pkgmap[x]["protected"] or pkgmap[x]["omitted"]) and (x in syslist):
-			print red("\a\n\n!!! '%s' is part of your system profile." % x)
-			print yellow("\a!!! Unmerging it may be damaging to your system.\n")
+			print colorize("BAD","\a\n\n!!! '%s' is part of your system profile." % x)
+			print colorize("WARN","\a!!! Unmerging it may be damaging to your system.\n")
 			if "--pretend" not in myopts and "--ask" not in myopts:
 				countdown(int(settings["EMERGE_WARNING_DELAY"]),
 					colorize("UNMERGE_WARN", "Press Ctrl-C to Stop"))
@@ -3620,7 +3620,7 @@ def emerge_main():
 		ext = os.path.splitext(x)[1]
 		if (ext == ".ebuild" or ext == ".tbz2") and os.path.exists(os.path.abspath(x)):
 			print "emerging by path implies --oneshot... adding --oneshot to options."
-			print red("\n*** emerging by path is broken and may not always work!!!\n")
+			print colorize("BAD", "\n*** emerging by path is broken and may not always work!!!\n")
 			break
 
 	if ("--tree" in myopts) and ("--columns" in myopts):
