@@ -903,11 +903,9 @@ class depgraph:
 				except SystemExit, e:
 					raise # Needed else can't exit
 				except Exception, e:
-					if "--debug" in self.myopts:
-						raise
-					print "\n\n!!! Problem in",mykey,"dependencies."
-					print "!!!",str(e),e.__module__
-					sys.exit(1)
+					print >> sys.stderr, "\n\n!!! Problem in '%s' dependencies." % mykey
+					print >> sys.stderr, "!!!", str(e), e.__module__
+					raise
 
 				if not self.mysd:
 					return (0,myfavorites)
