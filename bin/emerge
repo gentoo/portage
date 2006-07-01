@@ -24,7 +24,9 @@ import os
 os.environ["PORTAGE_CALLER"]="emerge"
 sys.path = ["/usr/lib/portage/pym"]+sys.path
 
+os.environ["PORTAGE_LEGACY_GLOBALS"] = "false"
 import portage
+del os.environ["PORTAGE_LEGACY_GLOBALS"]
 
 import emergehelp, xpak, commands, errno, re, socket, string, time, types
 from output import blue, bold, colorize, darkblue, darkgreen, darkred, green, \
@@ -1758,9 +1760,6 @@ class depgraph:
 						uid=portage.portage_uid, gid=portage.portage_gid,
 						mode=0660)
 
-					# wipe the mtimedb so that portage doesn't attempt to flush it.
-					# do not convert this code away from a fork without correcting this.
-					portage.mtimedb = None
 					for x in ("autoaddcvs", "cvs"):
 						try:	myfeat.remove(x)
 						except ValueError: pass
@@ -2042,6 +2041,7 @@ class depgraph:
 		# We're out of the loop... We're done. Delete the resume data.
 		if mtimedb.has_key("resume"):
 			del mtimedb["resume"]
+		mtimedb.commit()
 
 		#by doing an exit this way, --fetchonly can continue to try to
 		#fetch everything even if a particular download fails.
@@ -2813,10 +2813,19 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		"metadata-transfer" not in settings.features:
 		updatecache_flg = False
 
-	portage.portageexit()
-	reload(portage)
-	settings = portage.settings
-	trees = portage.db
+	# Before we reload the whole config,
+	# clean up the existing portdbapi instance(s).
+	portage.close_portdbapi_caches()
+	for myroot in trees:
+		portdb = trees[myroot]["porttree"].dbapi
+		try:
+			portage.portdbapi.portdbapi_instances.remove(portdb)
+		except ValueError:
+			pass
+		del trees[myroot]["porttree"], myroot, portdb
+
+	# Reload the whole config from scratch.
+	settings, trees, mtimedb = load_emerge_config()
 	portdb = trees["/"]["porttree"].dbapi
 
 	if os.path.exists(myportdir+"/metadata/cache") and updatecache_flg:
@@ -2824,6 +2833,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 
 	portage.global_updates(
 		settings, trees, mtimedb["updates"])
+	mtimedb.commit()
 
 	mybestpv = portdb.xmatch("bestmatch-visible", "sys-apps/portage")
 	mypvs = portage.best(
@@ -3472,11 +3482,37 @@ def parse_opts(tmpcmdline):
 
 	return myaction, myopts, myfiles
 
+def load_emerge_config():
+	kwargs = {}
+	for k, envvar in (("config_root", "PORTAGE_CONFIGROOT"), ("target_root", "ROOT")):
+		kwargs[k] = os.environ.get(envvar, "/")
+
+	try:
+		settings = portage.config(
+			config_incrementals=portage.INCREMENTALS, **kwargs)
+		del kwargs
+	except portage_exception.DirectoryNotFound, e:
+		portage.writemsg("!!! Directory Not Found: %s\n" % str(e), noiselevel=-1)
+		sys.exit(1)
+
+	settings.reset()
+	settings.lock()
+	settings.validate()
+
+	portdb = portage.portdbapi(settings["PORTDIR"], mysettings=portage.config(clone=settings))
+	trees = {}
+	portage.do_vartree(settings, portdb=portdb, trees=trees)
+
+	mtimedbfile = os.path.join("/", portage.CACHE_PATH.lstrip(os.path.sep), "mtimedb")
+	mtimedb = portage.MtimeDB(mtimedbfile)
+
+	return settings, trees, mtimedb
+
 def emerge_main():
-	settings = portage.settings
-	trees = portage.db
+	# Portage needs to ensure a sane umask for the files it creates.
+	os.umask(022)
+	settings, trees, mtimedb = load_emerge_config()
 	portdb = trees["/"]["porttree"].dbapi
-	mtimedb = portage.mtimedb
 	info_mtimes = mtimedb["info"]
 	ldpath_mtimes = mtimedb["ldpath"]
 	xterm_titles = "notitles" not in settings.features
@@ -3538,6 +3574,7 @@ def emerge_main():
 	edebug = 0
 
 	portage.global_updates(settings, trees, mtimedb["updates"])
+	mtimedb.commit()
 
 	spinner = stdout_spinner()
 	if "candy" in settings.features:
