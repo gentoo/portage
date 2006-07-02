@@ -2009,6 +2009,7 @@ class depgraph:
 									"emerge via exec() after change of " + \
 									"portage version.")
 								del mtimedb["resume"]["mergelist"][0]
+								mtimedb.commit()
 								portage.run_exitfuncs()
 								mynewargv=[sys.argv[0],"--resume"]
 								badlongopts = ("--ask","--tree","--changelog","--skipfirst","--resume")
