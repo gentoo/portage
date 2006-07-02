@@ -588,14 +588,13 @@ if portdir_overlay != portdir:
 	liclist.update(portage.listdir(os.path.join(portdir_overlay, "licenses")))
 
 # retrieve list of offical keywords
-try:
-	kwlist=portage.grabfile(portdir+"/profiles/arch.list")
-except SystemExit, e:
-	raise  # Need to propogate this
-except:
-	err("Couldn't read KEYWORDS from arch.list")
+kwlist = set(portage.grabfile(os.path.join(portdir, "profiles", "arch.list")))
 if not kwlist:
-	kwlist=["alpha","arm","hppa","mips","ppc","sparc","x86"]
+	err("Couldn't read KEYWORDS from arch.list")
+
+if portdir_overlay != portdir:
+	kwlist.update(portage.grabfile(
+		os.path.join(portdir_overlay, "profiles", "arch.list")))
 
 scanlist=[]
 if repolevel==2:
