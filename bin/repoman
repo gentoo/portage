@@ -7,7 +7,7 @@
 # Then, check to make sure deps are satisfiable (to avoid "can't find match for" problems)
 # that last one is tricky because multiple profiles need to be checked.
 
-import os,sys,shutil
+import errno, os, shutil, sys
 if not hasattr(__builtins__, "set"):
 	from sets import Set as set
 exename=os.path.basename(sys.argv[0])	
@@ -34,14 +34,14 @@ import time
 import codecs
 
 from portage_manifest import Manifest
+from portage_exception import ParseError
 
-from output import *
-#bold, darkgreen, darkred, green, red, turquoise, yellow
+from output import bold, darkgreen, darkred, green, nocolor, red, turquoise, yellow
 
 from commands import getstatusoutput
 from fileinput import input
 from grp import getgrnam
-from stat import *
+from stat import S_ISDIR, ST_CTIME, ST_GID, ST_MTIME
 
 if portage.settings["NOCOLOR"] in ("yes","true") or not sys.stdout.isatty():
 	nocolor()
