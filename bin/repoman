@@ -553,6 +553,18 @@ except (IOError, OSError, ParseError), e:
 	print >> sys.stderr, str(e)
 	err("Couldn't read from use.local.desc")
 
+if portdir_overlay != portdir:
+	filename = os.path.join(portdir_overlay, "profiles", "use.local.desc")
+	if os.path.exists(filename):
+		try:
+			f = open(filename)
+			parse_use_local_desc(f, luselist)
+			f.close()
+		except (IOError, OSError, ParseError), e:
+			print >> sys.stderr, str(e)
+			err("Couldn't read from '%s'" % filename)
+	del filename
+
 # setup a uselist from portage
 uselist=[]
 try:
