@@ -523,20 +523,34 @@ if "--pretend" in myoptions:
 elif quiet < 1:
 	print green("\nRepoMan scours the neighborhood...")
 
+def parse_use_local_desc(mylines, usedict=None):
+	"""returns a dict of the form {cpv:set(flags)}"""
+	if usedict is None:
+		usedict = {}
+	lineno = 0
+	for l in mylines:
+		lineno += 1
+		if not l or l.startswith("#"):
+			continue
+		mysplit = l.split(None, 1)
+		if not mysplit:
+			continue
+		mysplit = mysplit[0].split(":")
+		if len(mysplit) != 2:
+			raise ParseError("line %d: Malformed input: '%s'" % \
+				(lineno, l.rstrip("\n")))
+		usedict.setdefault(mysplit[0], set())
+		usedict[mysplit[0]].add(mysplit[1])
+	return usedict
+
 # retreive local USE list
 luselist={}
 try:
-	mylist=portage.grabfile(portdir+"/profiles/use.local.desc")
-	for mypos in range(0,len(mylist)):
-		mysplit=mylist[mypos].split()[0]
-		myuse=string.split(mysplit,":")
-		if len(myuse)==2:
-			if not luselist.has_key(myuse[0]):
-				luselist[myuse[0]] = []
-			luselist[myuse[0]].append(myuse[1])
-except SystemExit, e:
-	raise  # Need to propogate this
-except:
+	f = open(os.path.join(portdir, "profiles", "use.local.desc"))
+	parse_use_local_desc(f, luselist)
+	f.close()
+except (IOError, OSError, ParseError), e:
+	print >> sys.stderr, str(e)
 	err("Couldn't read from use.local.desc")
 
 # setup a uselist from portage
