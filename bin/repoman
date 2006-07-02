@@ -604,7 +604,7 @@ if repolevel==2:
 		caterror(catdir)
 	mydirlist=os.listdir(startdir)
 	for x in mydirlist:
-		if x=="CVS":
+		if x == "CVS" or x.startswith("."):
 			continue
 		if os.path.isdir(startdir+"/"+x):
 			scanlist.append(catdir+"/"+x)
@@ -613,7 +613,7 @@ elif repolevel==1:
 		if not os.path.isdir(startdir+"/"+x):
 			continue
 		for y in os.listdir(startdir+"/"+x):
-			if y=="CVS":
+			if y == "CVS" or y.startswith("."):
 				continue
 			if os.path.isdir(startdir+"/"+x+"/"+y):
 				scanlist.append(x+"/"+y)
