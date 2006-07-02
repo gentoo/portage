@@ -581,9 +581,11 @@ except:
 	err("Couldn't read USE flags from use.desc")
 
 # retrieve a list of current licenses in portage
-liclist=portage.listdir(portdir+"/licenses")
+liclist = set(portage.listdir(os.path.join(portdir, "licenses")))
 if not liclist:
 	err("Couldn't find licenses?")
+if portdir_overlay != portdir:
+	liclist.update(portage.listdir(os.path.join(portdir_overlay, "licenses")))
 
 # retrieve list of offical keywords
 try:
