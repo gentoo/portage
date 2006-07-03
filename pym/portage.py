@@ -3339,9 +3339,9 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 	available_pkgs = {}
 	for atom in relevant_atoms:
 		if use_binaries:
-			pkg_list = trees["/"]["bintree"].dbapi.match(atom)
+			pkg_list = trees[myroot]["bintree"].dbapi.match(atom)
 		else:
-			pkg_list = trees["/"]["porttree"].dbapi.xmatch("match-visible", atom)
+			pkg_list = trees[myroot]["porttree"].dbapi.xmatch("match-visible", atom)
 		if not pkg_list:
 			continue
 		pkg = best(pkg_list)
