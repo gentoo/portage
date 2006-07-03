@@ -2082,7 +2082,7 @@ def unmerge_overlapping(pkg_key, myroot, mysettings, vartree, ldpath_mtimes):
 		selected_versions = " ".join(map(get_version, overlapping))
 		protected_version = get_version(pkg_key)
 		if ommitted_versions:
-			ommitted_versions = " ".join(map(get_version, ommitted_versions))
+			ommitted_versions = colorize("GOOD", " ".join(map(get_version, ommitted_versions)))
 		else:
 			ommitted_versions = "none"
 		portage.writemsg_stdout("\n %s\n" % bold(mycp), noiselevel=-1)
@@ -2091,7 +2091,7 @@ def unmerge_overlapping(pkg_key, myroot, mysettings, vartree, ldpath_mtimes):
 		portage.writemsg_stdout("protected: ".rjust(14) + \
 			colorize("GOOD", protected_version) + "\n", noiselevel=-1)
 		portage.writemsg_stdout("omitted: ".rjust(14) + \
-			colorize("GOOD", ommitted_versions) + "\n", noiselevel=-1)
+			ommitted_versions + "\n", noiselevel=-1)
 		portage.writemsg_stdout("\n>>>" + colorize("UNMERGE_WARN", "'Selected'") + \
 			" packages are slated for removal.\n", noiselevel=0)
 		portage.writemsg_stdout(">>>" + colorize("GOOD", "'Protected'") + \
