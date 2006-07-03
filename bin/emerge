@@ -3262,6 +3262,16 @@ def action_build(settings, trees, mtimedb,
 			print darkgreen("These are the packages that would be %s, in order:") % action
 			print
 
+	# validate the state of the resume data
+	# so that we can make assumptions later.
+	for k in ("resume", "resume_backup"):
+		if k in mtimedb:
+			if "mergelist" in mtimedb[k]:
+				if not mtimedb[k]["mergelist"]:
+					del mtimedb[k]
+			else:
+				del mtimedb[k]
+
 	if "--resume" in myopts and \
 		("resume" in mtimedb or
 		"resume_backup" in mtimedb):
