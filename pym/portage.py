@@ -4,7 +4,7 @@
 # $Id$
 
 
-VERSION="$Rev$"[6:-2] + "-svn"
+VERSION="2.1.1_pre2-r2"
 
 # ===========================================================================
 # START OF IMPORTS -- START OF IMPORTS -- START OF IMPORTS -- START OF IMPORT
@@ -2813,13 +2813,15 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		fetchme = alluris[:]
 		checkme = aalist[:]
 		# Skip files that we already have digests for.
-		mydigests = Manifest(
-			mysettings["O"], mysettings["DISTDIR"]).getTypeDigests("DIST")
-		for x in mydigests:
-			while x in checkme:
-				i = checkme.index(x)
-				del fetchme[i]
-				del checkme[i]
+		mf = Manifest(mysettings["O"], mysettings["DISTDIR"])
+		mydigests = mf.getTypeDigests("DIST")
+		for filename, hashes in mydigests.iteritems():
+			if len(hashes) == len(mf.hashes):
+				while filename in checkme:
+					i = checkme.index(filename)
+					del fetchme[i]
+					del checkme[i]
+			del filename, hashes
 	else:
 		fetchme=newuris[:]
 		checkme=alist[:]
