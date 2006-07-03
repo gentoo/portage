@@ -3328,7 +3328,13 @@ def action_build(settings, trees, mtimedb,
 	if "--ask" in myopts:
 		if "--resume" in myopts:
 			validate_merge_list(trees, mtimedb["resume"]["mergelist"])
-			mydepgraph.display(mtimedb["resume"]["mergelist"])
+			mymergelist = mtimedb["resume"]["mergelist"]
+			if "--skipfirst" in myopts:
+				mymergelist = mymergelist[1:]
+			if len(mymergelist) == 0:
+				print colorize("INFORM", "emerge: It seems we have nothing to resume...")
+				sys.exit(0)
+			mydepgraph.display(mymergelist)
 			prompt="Would you like to resume merging these packages?"
 		else:
 			mydepgraph.display(mydepgraph.altlist())
@@ -3366,7 +3372,13 @@ def action_build(settings, trees, mtimedb,
 	if ("--pretend" in myopts) and not ("--fetchonly" in myopts or "--fetch-all-uri" in myopts):
 		if ("--resume" in myopts):
 			validate_merge_list(trees, mtimedb["resume"]["mergelist"])
-			mydepgraph.display(mtimedb["resume"]["mergelist"])
+			mymergelist = mtimedb["resume"]["mergelist"]
+			if "--skipfirst" in myopts:
+				mymergelist = mymergelist[1:]
+			if len(mymergelist) == 0:
+				print colorize("INFORM", "emerge: It seems we have nothing to resume...")
+				sys.exit(0)
+			mydepgraph.display(mymergelist)
 		else:
 			mydepgraph.display(mydepgraph.altlist())
 	else:

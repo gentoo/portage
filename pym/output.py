@@ -124,6 +124,7 @@ codes["HILITE"]     = codes["teal"]
 codes["BRACKET"]    = codes["blue"]
 
 # Portage functions
+codes["INFORM"] = codes["darkgreen"]
 codes["UNMERGE_WARN"] = codes["red"]
 codes["MERGE_LIST_PROGRESS"] = codes["yellow"]
 
