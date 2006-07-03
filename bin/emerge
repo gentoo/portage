@@ -1698,6 +1698,7 @@ class depgraph:
 			if "--skipfirst" in self.myopts and mymergelist:
 				del mtimedb["resume"]["mergelist"][0]
 				del mymergelist[0]
+				mtimedb.commit()
 			validate_merge_list(self.trees, mymergelist)
 		else:
 			myfavs = portage.grabfile(
