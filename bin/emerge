@@ -1105,16 +1105,6 @@ class depgraph:
 					sys.stderr.write("!!! Confused... Don't know what's being used for dependency info. :(\n")
 					sys.exit(1)
 
-				#if "--usepkg" in myopts:
-				#	#If we want to use packages, see if we have a pre-built one...
-				#	mypk=portage.db["/"]["bintree"].dbapi.match(x)
-				#	if myeb in mypk:
-				#		#Use it only if it's exactly the version we want.
-				#		myk=["binary",myroot,myeb]
-				#	else:
-				#		myk=["ebuild",myroot,myeb]
-				#else:
-				#	myk=["ebuild",myroot,myeb]
 			if myparent:
 				#we are a dependency, so we want to be unconditionally added
 				if not self.create(myk,myparent,myuse=binpkguseflags):
