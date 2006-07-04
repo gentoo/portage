@@ -600,7 +600,7 @@ class depgraph:
 
 	def __init__(self, settings, trees, myopts, myparams, spinner):
 		self.settings = settings
-		self.portdb = trees["/"]["porttree"].dbapi
+		self.target_root = settings["ROOT"]
 		self.trees = trees
 		self.myopts = myopts
 		self.myparams = myparams
@@ -623,14 +623,15 @@ class depgraph:
 		self.outdatedpackages=[]
 		self.mydbapi={}
 		self.mydbapi["/"] = portage.fakedbapi(settings=settings)
-		if "empty" not in self.myparams or settings["ROOT"] != "/":
+		if "empty" not in self.myparams or self.target_root != "/":
 			for pkg in self.trees["/"]["vartree"].getallcpv():
 				self.mydbapi["/"].cpv_inject(pkg)
-		if settings["ROOT"] != "/":
-			self.mydbapi[settings["ROOT"]] = portage.fakedbapi(settings=settings)
+		if self.target_root != "/":
+			self.mydbapi[self.target_root] = \
+				portage.fakedbapi(settings=settings)
 			if "empty" not in self.myparams:
-				for pkg in self.trees[settings["ROOT"]]["vartree"].getallcpv():
-					self.mydbapi[settings["ROOT"]].cpv_inject(pkg)
+				for pkg in self.trees[self.target_root]["vartree"].getallcpv():
+					self.mydbapi[self.target_root].cpv_inject(pkg)
 
 		if "--usepkg" in self.myopts:
 			trees["/"]["bintree"].populate(
@@ -658,6 +659,8 @@ class depgraph:
 		mytype,myroot,mykey=mybigkey
 		# select the correct /var database that we'll be checking against
 		vardbapi = self.trees[myroot]["vartree"].dbapi
+		portdb = self.trees[myroot]["porttree"].dbapi
+		bindb = self.trees[myroot]["bintree"].dbapi
 
 		# if the package is already on the system, we add a "nomerge"
 		# directive, otherwise we add a "merge" directive.
@@ -700,11 +703,9 @@ class depgraph:
 				vardbapi.cpv_exists(mykey):
 				old_use = vardbapi.aux_get(mykey, ["USE"])[0].split()
 				if mytype == "binary":
-					iuses = self.trees["/"]["bintree"].dbapi.aux_get(
-						mykey, ["IUSE"])[0].split()
+					iuses = bindb.aux_get(mykey, ["IUSE"])[0].split()
 				else:
-					iuses = self.trees["/"]["porttree"].dbapi.aux_get(
-						mykey, ["IUSE"])[0].split()
+					iuses = portdb.aux_get(mykey, ["IUSE"])[0].split()
 				for x in iuses:
 					if (old_use.count(x) and not myuse.count(x)) or (not old_use.count(x) and myuse.count(x)):
 						merging=1
@@ -741,20 +742,17 @@ class depgraph:
 			mypkgparts=portage.catpkgsplit(mykey)
 			tbz2name = string.split(mykey, "/")[1]+".tbz2"
 			""" This sucks, look at querying the bintree anyhow and throwing an exception """
-			if tbz2name in self.trees[
-				self.settings["ROOT"]]["bintree"].invalids:
+			if tbz2name in self.trees[myroot]["bintree"].invalids:
 				sys.stderr.write("\nINVALID PACKAGE (is required to continue): "+str(mykey)+"\n")
 				sys.exit(1)
-			if self.trees[self.settings["ROOT"]]["bintree"].isremote(mykey):
-				edepend = self.trees[
-					self.settings["ROOT"]]["bintree"].remotepkgs[tbz2name]
+			if self.trees[myroot]["bintree"].isremote(mykey):
+				edepend = self.trees[myroot]["bintree"].remotepkgs[tbz2name]
 				edepend["DEPEND"] =""
 				edepend["RDEPEND"]=string.join(string.split(edepend["RDEPEND"])," ")
 				edepend["PDEPEND"]=string.join(string.split(edepend["PDEPEND"])," ")
 				edepend["SLOT"]   =string.strip(edepend["SLOT"])
 			else:
-				mytbz2 = xpak.tbz2(self.trees[
-					self.settings["ROOT"]]["bintree"].getname(mykey))
+				mytbz2 = xpak.tbz2(self.trees[myroot]["bintree"].getname(mykey))
 				edepend["DEPEND"] =""
 				edepend["RDEPEND"]=string.join(mytbz2.getelements("RDEPEND")," ")
 				edepend["PDEPEND"]=string.join(mytbz2.getelements("PDEPEND")," ")
@@ -762,7 +760,7 @@ class depgraph:
 		elif mytype=="ebuild":
 			try:
 				mymeta = ["DEPEND","RDEPEND","PDEPEND"]
-				myfoo = self.portdb.aux_get(mykey, mymeta)
+				myfoo = portdb.aux_get(mykey, mymeta)
 				for index in range(0,len(mymeta)):
 					edepend[mymeta[index]] = myfoo[index]
 				if "--buildpkgonly" in self.myopts:
@@ -808,7 +806,7 @@ class depgraph:
 					"!!! This binary package cannot be installed: '%s'\n" % \
 					mykey, noiselevel=-1)
 			elif mytype == "ebuild":
-				myebuild, mylocation = self.portdb.findname2(mykey)
+				myebuild, mylocation = portdb.findname2(mykey)
 				portage.writemsg("!!! This ebuild cannot be installed: " + \
 					"'%s'\n" % myebuild, noiselevel=-1)
 			portage.writemsg("!!! Please notify the package maintainer " + \
@@ -819,6 +817,7 @@ class depgraph:
 	def select_files(self,myfiles):
 		"given a list of .tbz2s, .ebuilds and deps, create the appropriate depgraph and return a favorite list"
 		myfavorites=[]
+		myroot = self.target_root
 		for x in myfiles:
 			ext = os.path.splitext(x)[1]
 			if ext==".tbz2":
@@ -837,7 +836,7 @@ class depgraph:
 					os.path.realpath(self.trees["/"]["bintree"].getname(mykey)):
 					print colorize("BAD", "\n*** You need to adjust PKGDIR to emerge this package.\n")
 					sys.exit(1)
-				if not self.create(["binary", self.settings["ROOT"], mykey],
+				if not self.create(["binary", myroot, mykey],
 					None, "--onlydeps" not in self.myopts):
 					return (0,myfavorites)
 				elif not "--oneshot" in self.myopts:
@@ -860,7 +859,7 @@ class depgraph:
 				else:
 					raise portage_exception.PackageNotFound(
 						"%s is not in a valid portage tree hierarchy or does not exist" % x)
-				if not self.create(["ebuild", self.settings["ROOT"], mykey],
+				if not self.create(["ebuild", myroot, mykey],
 					None, "--onlydeps" not in self.myopts):
 					return (0,myfavorites)
 				elif not "--oneshot" in self.myopts:
@@ -873,7 +872,9 @@ class depgraph:
 					portage.writemsg("!!! (Did you specify a version but forget to prefix with '='?)\n")
 					return (0,[])
 				try:
-					mykey = portage.dep_expand(x, mydb=self.portdb, settings=self.settings)
+					mykey = portage.dep_expand(x,
+						mydb = self.trees[myroot]["porttree"].dbapi,
+						settings=self.settings)
 				except ValueError, errpkgs:
 					print "\n\n!!! The short ebuild name \"" + x + "\" is ambiguous.  Please specify"
 					print "!!! one of the following fully-qualified ebuild names instead:\n"
@@ -888,8 +889,7 @@ class depgraph:
 				sys.stderr.flush()
 
 				try:
-					self.mysd = self.select_dep(
-						self.settings["ROOT"], mykey, arg=x)
+					self.mysd = self.select_dep(myroot, mykey, arg=x)
 				except portage_exception.MissingSignature, e:
 					portage.writemsg("\n\n!!! A missing gpg signature is preventing portage from calculating the\n")
 					portage.writemsg("!!! required dependencies. This is a security feature enabled by the admin\n")
@@ -952,7 +952,10 @@ class depgraph:
 		    else continue trying.
 		    return 1 on success, 0 for failure
 		"""
-		
+
+		portdb = self.trees[myroot]["porttree"].dbapi
+		bindb  = self.trees[myroot]["bintree"].dbapi
+
 		if "--debug" in self.myopts:
 			print
 			print "Parent:   ",myparent
@@ -985,11 +988,9 @@ class depgraph:
 			if myp[3]=="merge":
 				self.mydbapi[myroot].cpv_inject(myp[2])
 				if myp[0]=="binary":
-					self.pkgsettings.setinst(
-						myp[2], self.trees["/"]["bintree"].dbapi)
+					self.pkgsettings.setinst(myp[2], bindb)
 				else:
-					self.pkgsettings.setinst(
-						myp[2], self.trees[myroot]["porttree"].dbapi)
+					self.pkgsettings.setinst(myp[2], portdb)
 
 		if not mymerge:
 			return 1
@@ -1004,8 +1005,8 @@ class depgraph:
 				if "--debug" in self.myopts:
 					print "Myparent",myparent
 				if (myparent):
-					if myparent.split()[2] in self.portdb.xmatch(
-						"match-all", x[1:]):
+					if myparent.split()[2] in \
+						portdb.xmatch("match-all", x[1:]):
 						# myself, so exit.
 						continue
 				# adding block
@@ -1013,7 +1014,7 @@ class depgraph:
 			else:
 				#We are not processing a blocker but a normal dependency
 				myeb=None
-				myeb_matches = self.portdb.xmatch("match-visible", x)
+				myeb_matches = portdb.xmatch("match-visible", x)
 				if "--usepkgonly" not in self.myopts:
 					myeb=portage.best(myeb_matches)
 
@@ -1021,7 +1022,7 @@ class depgraph:
 				if "--usepkg" in self.myopts:
 					# The next line assumes the binarytree has been populated.
 					# XXX: Need to work out how we use the binary tree with roots.
-					myeb_pkg_matches=self.trees["/"]["bintree"].dbapi.match(x)
+					myeb_pkg_matches = bindb.match(x)
 					if "--usepkgonly" not in self.myopts:
 						# Remove any binary package entries that are masked in the portage tree (#55871)
 						for idx in range(len(myeb_pkg_matches)-1,-1,-1):
@@ -1032,10 +1033,8 @@ class depgraph:
 				if not myeb_pkg:
 					myeb_pkg = None
 				elif "--newuse" in self.myopts:
-					iuses = self.trees["/"]["bintree"].dbapi.aux_get(
-						myeb_pkg, ["IUSE"])[0].split()
-					old_use = self.trees["/"]["bintree"].dbapi.aux_get(
-						myeb_pkg, ["USE"])[0].split()
+					iuses = bindb.aux_get(myeb_pkg, ["IUSE"])[0].split()
+					old_use = bindb.aux_get(myeb_pkg, ["USE"])[0].split()
 					self.pkgsettings.setcpv(myeb_pkg)
 					now_use=string.split(self.pkgsettings["USE"])
 					for x in iuses:
@@ -1052,7 +1051,7 @@ class depgraph:
 						xinfo='"'+arg+'"'
 					if myparent:
 						xfrom = '(dependency required by '+green('"'+myparent.split()[2]+'"')+red(' ['+myparent.split()[0]+"]")+')'
-					alleb = self.portdb.xmatch("match-all", x)
+					alleb = portdb.xmatch("match-all", x)
 					if alleb:
 						if "--usepkgonly" not in self.myopts:
 							print "\n!!! "+red("All ebuilds that could satisfy ")+green(xinfo)+red(" have been masked.")
@@ -1060,10 +1059,10 @@ class depgraph:
 							oldcomment = ""
 							for p in alleb:
 								mreasons = portage.getmaskingstatus(p,
-									settings=self.settings, portdb=self.portdb)
+									settings=self.settings, portdb=portdb)
 								print "- "+p+" (masked by: "+string.join(mreasons, ", ")+")"
 								comment = portage.getmaskingreason(p,
-									settings=self.settings, portdb=self.portdb)
+									settings=self.settings, portdb=portdb)
 								if comment and comment != oldcomment:
 									print comment
 									oldcomment = comment
@@ -1098,8 +1097,8 @@ class depgraph:
 				if myeb:
 					myk=["ebuild",myroot,myeb]
 				elif myeb_pkg:
-					binpkguseflags = self.trees[
-						self.settings["ROOT"]]["bintree"].get_use(myeb_pkg)
+					binpkguseflags = \
+						self.trees[myroot]["bintree"].get_use(myeb_pkg)
 					myk=["binary",myroot,myeb_pkg]
 				else:
 					sys.stderr.write("!!! Confused... Don't know what's being used for dependency info. :(\n")
@@ -1166,7 +1165,7 @@ class depgraph:
 			for x in worlddict.keys():
 				if not portage.isvalidatom(x):
 					world_problems = True
-				elif not self.trees["/"]["vartree"].dbapi.match(x):
+				elif not self.trees[self.target_root]["vartree"].dbapi.match(x):
 					world_problems = True
 				else:
 					sysdict[x]=worlddict[x]
@@ -1185,7 +1184,7 @@ class depgraph:
 		for mydep in mylist:
 			try:
 				if not self.select_dep(
-					self.settings["ROOT"], mydep, raise_on_missing=True):
+					self.target_root, mydep, raise_on_missing=True):
 					print "\n\n!!! Problem resolving dependencies for", mydep
 					return 0
 			except ValueError:
@@ -1205,7 +1204,7 @@ class depgraph:
 	def match(self, mydep, myroot=None, mykey=None):
 		# support mutual exclusive deps
 		if myroot is None:
-			myroot = self.settings["ROOT"]
+			myroot = self.target_root
 		mydep2=mydep
 		if mydep2[0]=="!":
 			mydep2=mydep[1:]
@@ -1214,8 +1213,7 @@ class depgraph:
 			#add our blocker; it will be ignored later if necessary (if we are remerging the same pkg, for example)
 			myk="blocks "+myroot+" "+mydep2
 		else:
-			myeb = self.trees[
-				self.settings["ROOT"]]["porttree"].dep_bestmatch(mydep2)
+			myeb = self.trees[myroot]["porttree"].dep_bestmatch(mydep2)
 			if not myeb:
 				if not mykey:
 					print "\n!!! Error: couldn't find match for",mydep
@@ -1225,10 +1223,9 @@ class depgraph:
 				sys.exit(1)
 
 			if "--usepkg" in self.myopts:
-				mypk = self.trees[
-					self.settings["ROOT"]]["bintree"].dep_bestmatch(mydep)
+				mypk = self.trees[myroot]["bintree"].dep_bestmatch(mydep)
 				if myeb==mypk:
-					myk = " ".join(("binary", self.settings["ROOT"], mypk))
+					myk = " ".join(("binary", myroot, mypk))
 				else:
 					myk = " ".join(("ebuild", myroot, myeb))
 			else:
@@ -1322,11 +1319,14 @@ class depgraph:
 		myfetchlist=[]
 		for x in mylist:
 			pkg_type = x[0]
+			myroot = x[1]
 			pkg_key = x[2]
+			portdb = self.trees[myroot]["porttree"].dbapi
+			bindb  = self.trees[myroot]["bintree"].dbapi
+			vartree = self.trees[myroot]["vartree"]
 			if pkg_key not in self.applied_useflags:
 				if "binary" == pkg_type:
-					self.applied_useflags[pkg_key] = \
-						self.trees["/"]["bintree"].dbapi.aux_get(
+					self.applied_useflags[pkg_key] = bindb.aux_get(
 							pkg_key, ["USE"])[0].split()
 				elif "ebuild" == pkg_type:
 					self.pkgsettings.setcpv(pkg_key)
@@ -1350,10 +1350,10 @@ class depgraph:
 						print
 			else:
 				if x[0] != "binary" and \
-					"fetch" in self.portdb.aux_get(
+					"fetch" in portdb.aux_get(
 					x[2], ["RESTRICT"])[0].split():
 					fetch = red("F")
-					if self.portdb.fetch_check(
+					if portdb.fetch_check(
 						x[2], self.applied_useflags[x[2]]):
 						fetch = green("f")
 
@@ -1366,14 +1366,15 @@ class depgraph:
 				elif "--emptytree" not in self.myopts and \
 					self.trees[x[1]]["vartree"].exists_specific_cat(x[2]):
 					if x[0] == "binary":
-						mynewslot = self.trees["/"]["bintree"].getslot(x[2])
+						mynewslot = \
+							self.trees[myroot]["bintree"].getslot(pkg_key)
 					elif x[0] == "ebuild":
-						mynewslot = self.trees["/"]["porttree"].getslot(x[2])
+						mynewslot = \
+							self.trees[myroot]["porttree"].getslot(pkg_key)
 					myoldlist = self.trees[x[1]]["vartree"].dbapi.match(
 						portage.pkgsplit(x[2])[0])
 					myinslotlist = [inst_pkg for inst_pkg in myoldlist
-						if mynewslot == self.trees[
-						self.settings["ROOT"]]["vartree"].getslot(inst_pkg)]
+						if mynewslot == vartree.getslot(inst_pkg)]
 					if myinslotlist:
 						myoldbest=portage.best(myinslotlist)
 						addl="   "+fetch
@@ -1389,7 +1390,7 @@ class depgraph:
 
 					if "--changelog" in self.myopts:
 						changelogs.extend(self.calc_changelog(
-							self.portdb.findname(x[2]),
+							portdb.findname(pkg_key),
 							self.trees[x[1]]["vartree"].dep_bestmatch(
 							'/'.join(portage.catpkgsplit(x[2])[:2])), x[2]))
 				else:
@@ -1400,11 +1401,9 @@ class depgraph:
 				if x[2] in self.applied_useflags:
 					# USE flag display
 					if x[0] == "binary":
-						cur_iuse = self.trees["/"]["bintree"].dbapi.aux_get(
-							x[2],["IUSE"])[0].split()
+						cur_iuse = bindb.aux_get(pkg_key, ["IUSE"])[0].split()
 					elif x[0] == "ebuild":
-						cur_iuse = self.portdb.aux_get(
-							x[2], ["IUSE"])[0].split()
+						cur_iuse = portdb.aux_get(pkg_key, ["IUSE"])[0].split()
 					else:
 						cur_iuse = []
 
@@ -1473,7 +1472,7 @@ class depgraph:
 					# size verbose
 					mysize=0
 					if x[0] == "ebuild" and x[-1]!="nomerge":
-						myfilesdict = self.portdb.getfetchsizes(
+						myfilesdict = portdb.getfetchsizes(
 							x[2], useflags=self.applied_useflags[x[2]],
 							debug=self.edebug)
 						if myfilesdict is None:
@@ -1489,7 +1488,7 @@ class depgraph:
 					# overlay verbose
 					# XXX: Invalid binaries have caused tracebacks here. 'if file_name'
 					# x = ['binary', '/', 'sys-apps/pcmcia-cs-3.2.7.2.6', 'merge']
-					file_name = self.portdb.findname(x[2])
+					file_name = portdb.findname(pkg_key)
 					if file_name: # It might not exist in the tree
 						dir_name=os.path.abspath(os.path.dirname(file_name)+"/../..")
 						if (overlays_real.count(dir_name)>0):
@@ -1692,7 +1691,7 @@ class depgraph:
 			validate_merge_list(self.trees, mymergelist)
 		else:
 			myfavs = portage.grabfile(
-				os.path.join(self.settings["ROOT"], portage.WORLD_FILE))
+				os.path.join(self.target_root, portage.WORLD_FILE))
 			myfavdict=genericdict(myfavs)
 			for x in range(len(mylist)):
 				if mylist[x][3]!="nomerge":
@@ -1712,7 +1711,7 @@ class depgraph:
 							print ">>> Recording",myfavkey,"in \"world\" favorites file..."
 			if "--fetchonly" not in self.myopts:
 				portage.write_atomic(
-					os.path.join(self.settings["ROOT"], portage.WORLD_FILE),
+					os.path.join(self.target_root, portage.WORLD_FILE),
 					"\n".join(myfavdict.values()))
 
 			mtimedb["resume"]["mergelist"]=mymergelist[:]
@@ -1761,13 +1760,15 @@ class depgraph:
 					for x in mymergelist:
 						if x[0] != "ebuild":
 							continue
+						myroot = x[1]
+						portdb = self.trees[myroot]["porttree"].dbapi
 						self.pkgsettings.reset()
 						self.pkgsettings.setcpv(x[2])
 						try:
-							ret = portage.doebuild(self.portdb.findname(x[2]),
+							ret = portage.doebuild(portdb.findname(x[2]),
 								"fetch", x[1], self.pkgsettings,
 								cleanup=0, fetchonly=True,
-								mydbapi=self.trees[x[1]]["porttree"].dbapi,
+								mydbapi=portdb,
 								tree="porttree")
 						except SystemExit:
 							raise
@@ -1780,10 +1781,13 @@ class depgraph:
 		for x in mymergelist:
 			mergecount+=1
 			myroot=x[1]
+			pkg_key = x[2]
 			pkgindex=2
+			portdb = self.trees[myroot]["porttree"].dbapi
+			bindb  = self.trees[myroot]["bintree"].dbapi
 			if x[0]=="blocks":
 				pkgindex=3
-			y = self.portdb.findname(x[pkgindex])
+			y = portdb.findname(pkg_key)
 			if "--pretend" not in self.myopts:
 				print "\n>>> Emerging (" + \
 					colorize("MERGE_LIST_PROGRESS", str(mergecount)) + " of " + \
@@ -1811,12 +1815,12 @@ class depgraph:
 						retval = portage.doebuild(y, "fetch", myroot,
 							self.pkgsettings, self.edebug,
 							"--pretend" in self.myopts, fetchonly=1,
-							fetchall=1, mydbapi=self.portdb, tree="porttree")
+							fetchall=1, mydbapi=portdb, tree="porttree")
 					else:
 						retval = portage.doebuild(y, "fetch", myroot,
 							self.pkgsettings, self.edebug,
 							"--pretend" in self.myopts, fetchonly=1,
-							mydbapi=self.portdb, tree="porttree")
+							mydbapi=portdb, tree="porttree")
 					if (retval is None) or retval:
 						print
 						print "!!! Fetch for",y,"failed, continuing..."
@@ -1835,7 +1839,7 @@ class depgraph:
 						x[pkgindex]+"::"+y+")", short_msg=short_msg)
 					retval = portage.doebuild(y, "clean", myroot,
 						self.pkgsettings, self.edebug, cleanup=1,
-						mydbapi=self.portdb, tree="porttree")
+						mydbapi=portdb, tree="porttree")
 					if (retval is None):
 						portage_util.writemsg("Unable to run required binary.\n",
 							noiselevel=-1)
@@ -1848,7 +1852,7 @@ class depgraph:
 						") Compiling/Packaging ("+x[pkgindex]+"::"+y+\
 						")", short_msg=short_msg)
 					retval = portage.doebuild(y, "package", myroot,
-						self.pkgsettings, self.edebug, mydbapi=self.portdb,
+						self.pkgsettings, self.edebug, mydbapi=portdb,
 						tree="porttree")
 					if (retval is None):
 						portage_util.writemsg("Unable to run required binary.\n",
@@ -1858,10 +1862,8 @@ class depgraph:
 						sys.exit(retval)
 					#dynamically update our database
 					if "--buildpkgonly" not in self.myopts:
-						self.trees[
-							self.settings["ROOT"]]["bintree"].inject(x[2])
-						mytbz2 = self.trees[
-							self.settings["ROOT"]]["bintree"].getname(x[2])
+						self.trees[myroot]["bintree"].inject(pkg_key)
+						mytbz2 = self.trees[myroot]["bintree"].getname(pkg_key)
 						short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Merge"
 						emergelog(xterm_titles, " === ("+\
 							str(mergecount)+" of "+\
@@ -1873,16 +1875,14 @@ class depgraph:
 							os.path.join(self.pkgsettings["PORTAGE_BUILDDIR"],
 							"build-info"), myroot, self.pkgsettings,
 							myebuild=self.pkgsettings["EBUILD"],
-							mytree="porttree", mydbapi=self.portdb,
+							mytree="porttree", mydbapi=portdb,
 							vartree=self.trees[myroot]["vartree"],
 							prev_mtimes=ldpath_mtimes)
 						if retval:
 							sys.exit(retval)
 					elif "noclean" not in self.pkgsettings.features:
 						portage.doebuild(y, "clean", myroot, self.pkgsettings,
-							self.edebug,
-							mydbapi=self.trees[myroot]["porttree"].dbapi,
-							tree="porttree")
+							self.edebug, mydbapi=portdb, tree="porttree")
 				else:
 					short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Clean"
 					emergelog(xterm_titles, " === ("+str(mergecount)+\
@@ -1890,7 +1890,7 @@ class depgraph:
 						x[pkgindex]+"::"+y+")", short_msg=short_msg)
 					retval = portage.doebuild(y, "clean", myroot,
 						self.pkgsettings, self.edebug, cleanup=1,
-						mydbapi=self.portdb, tree="porttree")
+						mydbapi=portdb, tree="porttree")
 					if (retval is None):
 						portage_util.writemsg("Unable to run required binary.\n",
 							noiselevel=-1)
@@ -1905,7 +1905,7 @@ class depgraph:
 					retval = portage.doebuild(y, "merge", myroot,
 						self.pkgsettings, self.edebug,
 						vartree=self.trees[myroot]["vartree"],
-						mydbapi=self.portdb, tree="porttree",
+						mydbapi=portdb, tree="porttree",
 						prev_mtimes=ldpath_mtimes)
 					if (retval is None):
 						portage_util.writemsg("Unable to run required binary.\n",
@@ -1916,16 +1916,14 @@ class depgraph:
 					#dynamically update our database
 			elif x[0]=="binary":
 				#merge the tbz2
-				mytbz2 = self.trees[
-					self.settings["ROOT"]]["bintree"].getname(x[2])
-				if self.trees[self.settings["ROOT"]]["bintree"].isremote(x[2]):
+				mytbz2 = self.trees[myroot]["bintree"].getname(pkg_key)
+				if self.trees[myroot]["bintree"].isremote(pkg_key):
 					short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Fetch"
 					emergelog(xterm_titles, " --- ("+str(mergecount)+\
 						" of "+str(len(mymergelist))+\
 						") Fetching Binary ("+x[pkgindex]+\
 						"::"+mytbz2+")", short_msg=short_msg)
-					if not self.trees[
-						self.settings["ROOT"]]["bintree"].gettbz2(x[2]):
+					if not self.trees[myroot]["bintree"].gettbz2(pkg_key):
 						sys.exit(1)
 
 				if "--fetchonly" in self.myopts or \
@@ -1937,8 +1935,8 @@ class depgraph:
 					" of "+str(len(mymergelist))+") Merging Binary ("+\
 					x[pkgindex]+"::"+mytbz2+")", short_msg=short_msg)
 				retval = portage.pkgmerge(mytbz2, x[1], self.pkgsettings,
-					mydbapi=self.trees[self.settings["ROOT"]]["bintree"].dbapi,
-					vartree=self.trees[self.settings["ROOT"]]["vartree"],
+					mydbapi=bindb,
+					vartree=self.trees[myroot]["vartree"],
 					prev_mtimes=ldpath_mtimes)
 				if retval is None:
 					sys.exit(1)
