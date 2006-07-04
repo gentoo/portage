@@ -636,6 +636,10 @@ class depgraph:
 		if "--usepkg" in self.myopts:
 			trees["/"]["bintree"].populate(
 				"--getbinpkg" in self.myopts, "--getbinpkgonly" in self.myopts)
+			if self.target_root != "/":
+				trees[self.target_root]["bintree"].populate(
+					"--getbinpkg" in self.myopts,
+					"--getbinpkgonly" in self.myopts)
 
 	def create(self,mybigkey,myparent=None,addme=1,myuse=None):
 		"""
@@ -818,6 +822,7 @@ class depgraph:
 		"given a list of .tbz2s, .ebuilds and deps, create the appropriate depgraph and return a favorite list"
 		myfavorites=[]
 		myroot = self.target_root
+		portdb = self.trees[myroot]["porttree"].dbapi
 		for x in myfiles:
 			ext = os.path.splitext(x)[1]
 			if ext==".tbz2":
@@ -833,7 +838,7 @@ class depgraph:
 				mytbz2=xpak.tbz2(x)
 				mykey=mytbz2.getelements("CATEGORY")[0]+"/"+os.path.splitext(os.path.basename(x))[0]
 				if os.path.realpath(x) != \
-					os.path.realpath(self.trees["/"]["bintree"].getname(mykey)):
+					os.path.realpath(self.trees[myroot]["bintree"].getname(mykey)):
 					print colorize("BAD", "\n*** You need to adjust PKGDIR to emerge this package.\n")
 					sys.exit(1)
 				if not self.create(["binary", myroot, mykey],
@@ -844,12 +849,12 @@ class depgraph:
 			elif ext==".ebuild":
 				x = os.path.realpath(x)
 				mykey=os.path.basename(os.path.normpath(x+"/../.."))+"/"+os.path.splitext(os.path.basename(x))[0]
-				ebuild_path = self.trees["/"]["porttree"].dbapi.findname(mykey)
+				ebuild_path = portdb.findname(mykey)
 				if ebuild_path:
 					if os.path.realpath(ebuild_path) != x:
 						print colorize("BAD", "\n*** You need to adjust PORTDIR or PORTDIR_OVERLAY to emerge this package.\n")
 						sys.exit(1)
-					if mykey not in self.trees["/"]["porttree"].dbapi.xmatch(
+					if mykey not in portdb.xmatch(
 						"match-visible", portage.dep_getkey(mykey)):
 						print colorize("BAD", "\n*** You are emerging a masked package. It is MUCH better to use")
 						print colorize("BAD", "*** /etc/portage/package.* to accomplish this. See portage(5) man")
@@ -935,7 +940,7 @@ class depgraph:
 
 		matches = self.trees[myroot]["vartree"].dbapi.match(pkg)
 		if matches:
-			myslot = self.trees["/"]["porttree"].getslot(pkgver)
+			myslot = self.trees[myroot]["porttree"].getslot(pkgver)
 			for match in matches:
 				if portage.pkgcmp(portage.catpkgsplit(pkgver)[1:], portage.catpkgsplit(match)[1:]) < 0:
 					curslot = self.trees[myroot]["vartree"].getslot(match)
@@ -2473,8 +2478,11 @@ def validate_merge_list(trees, mergelist):
 	"""Validate the list to make sure all the packages are still available.
 	This is needed for --resume."""
 	for (pkg_type, myroot, pkg_key, action) in mergelist:
-		if pkg_type == "binary" and not trees["/"]["bintree"].dbapi.match("="+pkg_key) or \
-			pkg_type == "ebuild" and not trees["/"]["porttree"].dbapi.xmatch("match-all", "="+pkg_key):
+		if pkg_type == "binary" and \
+			not trees[myroot]["bintree"].dbapi.match("="+pkg_key) or \
+			pkg_type == "ebuild" and \
+			not trees[myroot]["porttree"].dbapi.xmatch(
+			"match-all", "="+pkg_key):
 			print red("!!! Error: The resume list contains packages that are no longer")
 			print red("!!!        available to be emerged. Please restart/continue")
 			print red("!!!        the merge operation manually.")
