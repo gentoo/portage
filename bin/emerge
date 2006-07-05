@@ -3543,6 +3543,12 @@ def emerge_main():
 	os.umask(022)
 	settings, trees, mtimedb = load_emerge_config()
 	portdb = trees[settings["ROOT"]]["porttree"].dbapi
+	portage.global_updates(settings, trees, mtimedb["updates"])
+	mtimedb.commit()
+	# Reload the whole config from scratch.
+	settings, trees, mtimedb = load_emerge_config(trees=trees)
+	portdb = trees[settings["ROOT"]]["porttree"].dbapi
+
 	ldpath_mtimes = mtimedb["ldpath"]
 	xterm_titles = "notitles" not in settings.features
 
@@ -3601,9 +3607,6 @@ def emerge_main():
 		tmpcmdline.extend(settings["EMERGE_DEFAULT_OPTS"].split())
 	myaction, myopts, myfiles = parse_opts(tmpcmdline)
 	edebug = 0
-
-	portage.global_updates(settings, trees, mtimedb["updates"])
-	mtimedb.commit()
 
 	spinner = stdout_spinner()
 	if "candy" in settings.features:
