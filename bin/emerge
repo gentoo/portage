@@ -3623,7 +3623,9 @@ def emerge_main():
 		del e
 
 	#Freeze the portdbapi for enhanced performance:
-	portdb.freeze()
+	for myroot in trees:
+		trees[myroot]["porttree"].dbapi.freeze()
+		del myroot
 
 	if "moo" in myfiles:
 		print """
