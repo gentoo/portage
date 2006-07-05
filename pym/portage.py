@@ -5041,10 +5041,6 @@ class portdbapi(dbapi):
 			else:
 				mydbkey = self.depcachedir+"/aux_db_key_temp"
 
-			# XXX: Part of the gvisible hack/fix to prevent deadlock
-			# XXX: through doebuild. Need to isolate this somehow...
-			self.mysettings.reset()
-
 			if self.lock_held:
 				raise "Lock is already held by me?"
 			self.lock_held = 1
@@ -5059,7 +5055,8 @@ class portdbapi(dbapi):
 					writemsg("Uncaught handled exception: %(exception)s\n" % {"exception":str(e)})
 					raise
 
-			myret = doebuild(myebuild, "depend", "/", self.mysettings,
+			ebuild_settings = config(clone=self.mysettings)
+			myret = doebuild(myebuild, "depend", "/", ebuild_settings,
 				dbkey=mydbkey, tree="porttree", mydbapi=self)
 			if myret:
 				portage_locks.unlockfile(mylock)
