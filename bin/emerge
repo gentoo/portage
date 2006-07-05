@@ -2840,7 +2840,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		updatecache_flg = False
 
 	# Reload the whole config from scratch.
-	settings, trees, mtimedb = load_emerge_config()
+	settings, trees, mtimedb = load_emerge_config(trees=trees)
 	portdb = trees[settings["ROOT"]]["porttree"].dbapi
 
 	if os.path.exists(myportdir+"/metadata/cache") and updatecache_flg:
@@ -2850,7 +2850,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		settings, trees, mtimedb["updates"])
 	mtimedb.commit()
 	# Reload the whole config from scratch.
-	settings, trees, mtimedb = load_emerge_config()
+	settings, trees, mtimedb = load_emerge_config(trees=trees)
 	portdb = trees[settings["ROOT"]]["porttree"].dbapi
 
 	mybestpv = portdb.xmatch("bestmatch-visible", "sys-apps/portage")
@@ -3519,11 +3519,11 @@ def parse_opts(tmpcmdline):
 
 	return myaction, myopts, myfiles
 
-def load_emerge_config():
+def load_emerge_config(trees=None):
 	kwargs = {}
 	for k, envvar in (("config_root", "PORTAGE_CONFIGROOT"), ("target_root", "ROOT")):
 		kwargs[k] = os.environ.get(envvar, "/")
-	trees = portage.create_trees(**kwargs)
+	trees = portage.create_trees(trees=trees, **kwargs)
 
 	settings = trees["/"]["vartree"].settings
 
