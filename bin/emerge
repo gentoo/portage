@@ -684,10 +684,12 @@ class depgraph:
 			""" We ignore blocks unless the package that is blocked is installed
 			    We need to check vardbapi as well as the current depgraph for it.
 			    Blocks are fatal if buildpkgonly is set. """
-			if addme and "--buildpkgonly" not in self.myopts and myparent and \
-				(self.mydbapi[myroot].match(mykey) or vardbapi.match(mykey)):
-				mybigkey.append(myparent.split()[2])
-				self.digraph.addnode(string.join(mybigkey),myparent)
+			if addme and "--buildpkgonly" not in self.myopts and myparent:
+				parent_root = myparent.split()[1]
+				if self.mydbapi[parent_root].match(mykey) or \
+					self.trees[parent_root]["vartree"].dbapi.match(mykey):
+					mybigkey.append(myparent.split()[2])
+					self.digraph.addnode(" ".join(mybigkey), myparent)
 			return 1
 
 		if myuse is None:
