@@ -481,7 +481,7 @@ if quiet < 2:
 	print "PORTDIR = \""+os.environ["PORTDIR"]+"\""
 	print "PORTDIR_OVERLAY = \""+os.environ["PORTDIR_OVERLAY"]+"\""
 
-
+portage.close_portdbapi_caches()
 reload(portage)
 repoman_settings = portage.config(clone=portage.settings)
 
@@ -1138,14 +1138,16 @@ for x in scanlist:
 
 				profdir = portdir+"/profiles/"+prof[0]
 	
-				if arch_caches.has_key(prof[0]):
-					dep_settings, portage.portdb, portage.db["/"]["porttree"] = arch_caches[prof[0]]
+				if prof[0] in arch_caches:
+					dep_settings = arch_caches[prof[0]]
 				else:
-					dep_settings=portage.config(config_profile_path=profdir, config_incrementals=portage_const.INCREMENTALS)
-					portage.portdb=portage.portdbapi(portdir, dep_settings)
-					portage.db["/"]["porttree"]=portage.portagetree("/",dep_settings.getvirtuals("/"))
-					arch_caches[prof[0]]=[dep_settings, portage.portdb, portage.db["/"]["porttree"]]
+					dep_settings = portage.config(
+						config_profile_path=profdir,
+						config_incrementals=portage_const.INCREMENTALS)
+					arch_caches[prof[0]] = dep_settings
 
+				portage.db["/"]["porttree"].settings = dep_settings
+				portage.db["/"]["porttree"].dbapi.mysettings = dep_settings
 				dep_settings["ACCEPT_KEYWORDS"] = " ".join(groups)
 
 				for myprovide in myaux["PROVIDE"].split():
