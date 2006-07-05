@@ -1,11 +1,12 @@
 # getbinpkg.py -- Portage binary-package helper functions
 # Copyright 2003-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: /var/cvsroot/gentoo-src/portage/pym/getbinpkg.py,v 1.12.2.3 2005/01/16 02:35:33 carpaski Exp $
+# $Id: getbinpkg.py 3483 2006-06-10 21:40:40Z genone $
 
 
 from output import *
-import htmllib,HTMLParser,string,formatter,sys,os,xpak,time,tempfile,base64
+import htmllib,HTMLParser,string,formatter,sys,os,xpak,time,tempfile,base64,urllib2
+from portage_const import CACHE_PATH
 
 try:
 	import cPickle
@@ -69,7 +70,7 @@ class ParseLinks(HTMLParser.HTMLParser):
 			for x in attrs:
 				if x[0] == 'href':
 					if x[1] not in self.PL_anchors:
-						self.PL_anchors.append(x[1])
+						self.PL_anchors.append(urllib2.unquote(x[1]))
 
 
 def create_conn(baseurl,conn=None):
@@ -418,15 +419,15 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 	else:
 		keepconnection = 1
 
-	if makepickle == None:
-		makepickle = "/var/cache/edb/metadata.idx.most_recent"
+	if makepickle is None:
+		makepickle = CACHE_PATH+"/metadata.idx.most_recent"
 
 	conn,protocol,address,params,headers = create_conn(baseurl, conn)
 
 	filedict = {}
 
 	try:
-		metadatafile = open("/var/cache/edb/remote_metadata.pickle")
+		metadatafile = open(CACHE_PATH+"/remote_metadata.pickle")
 		metadata = cPickle.load(metadatafile)
 		sys.stderr.write("Loaded metadata pickle.\n")
 		metadatafile.close()
@@ -500,7 +501,7 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 					sys.stderr.write("!!! Failed to read data from index: "+str(mfile)+"\n")
 					sys.stderr.write("!!! "+str(e)+"\n")
 			try:
-				metadatafile = open("/var/cache/edb/remote_metadata.pickle", "w+")
+				metadatafile = open(CACHE_PATH+"/remote_metadata.pickle", "w+")
 				cPickle.dump(metadata,metadatafile)
 				metadatafile.close()
 			except SystemExit, e:
@@ -530,7 +531,7 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 	try:
 		if metadata[baseurl].has_key("modified") and metadata[baseurl]["modified"]:
 			metadata[baseurl]["timestamp"] = int(time.time())
-			metadatafile = open("/var/cache/edb/remote_metadata.pickle", "w+")
+			metadatafile = open(CACHE_PATH+"/remote_metadata.pickle", "w+")
 			cPickle.dump(metadata,metadatafile)
 			metadatafile.close()
 		if makepickle:
