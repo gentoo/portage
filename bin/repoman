@@ -1149,6 +1149,8 @@ for x in scanlist:
 				portage.db["/"]["porttree"].settings = dep_settings
 				portage.db["/"]["porttree"].dbapi.mysettings = dep_settings
 				dep_settings["ACCEPT_KEYWORDS"] = " ".join(groups)
+				# just in case, prevent config.reset() from nuking these.
+				dep_settings.backup_changes("ACCEPT_KEYWORDS")
 
 				for myprovide in myaux["PROVIDE"].split():
 					prov_cp = portage.dep_getkey(myprovide)
