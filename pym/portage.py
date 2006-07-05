@@ -1593,8 +1593,10 @@ class config:
 					self.virts_p[vkeysplit[1]] = virts[x]
 		return self.virts_p
 
-	def getvirtuals(self, myroot="/"):
-		#XXX: due to caching, myroot is ignored on all but the first call
+	def getvirtuals(self, myroot=None):
+		"""myroot is now ignored because, due to caching, it has always been
+		broken for all but the first call."""
+		myroot = self["ROOT"]
 		if self.virtuals:
 			return self.virtuals
 
@@ -4067,8 +4069,7 @@ def match_from_list_original(mydep,mylist):
 
 
 class portagetree:
-	def __init__(self, root="/", virtual=None, clone=None, settings=None,
-		portdb=None):
+	def __init__(self, root="/", virtual=None, clone=None, settings=None):
 
 		if clone:
 			self.root=clone.root
@@ -4081,9 +4082,8 @@ class portagetree:
 			self.settings = settings
 			self.portroot=settings["PORTDIR"]
 			self.virtual=virtual
-			if portdb is None:
-				portdb = globals()["portdb"]
-			self.dbapi = portdb
+			self.dbapi = portdbapi(
+				settings["PORTDIR"], mysettings=config(clone=settings))
 
 	def dep_bestmatch(self,mydep):
 		"compatibility method"
@@ -7074,9 +7074,6 @@ def global_updates(mysettings, trees, prev_mtimes):
 		print
 		print
 
-		#make sure our internal databases are consistent; recreate our virts and vartree
-		do_vartree(
-			mysettings, portdb=trees["/"]["porttree"].dbapi, trees=trees)
 		if do_upgrade_packagesmessage and \
 			listdir(os.path.join(mysettings["PKGDIR"], "All"), EmptyOnError=1):
 			writemsg_stdout(" ** Skipping packages. Run 'fixpackages' or set it in FEATURES to fix the")
@@ -7139,24 +7136,44 @@ class MtimeDB(dict):
 	def commit(self):
 		commit_mtimedb(mydict=self, filename=self.filename)
 
-def do_vartree(mysettings, portdb=None, trees=None):
+def create_trees(config_root="/", target_root="/", trees=None):
 	if trees is None:
-		global db
-		trees = db
-	target_root = mysettings["ROOT"]
-	db_locations = ["/"]
-	if target_root != "/":
-		db_locations.append(target_root)
-	for myroot in db_locations:
+		trees = {}
+	else:
+		# clean up any existing portdbapi instances
+		for myroot in trees:
+			portdb = trees[myroot]["porttree"].dbapi
+			portdb.close_caches()
+			portdbapi.portdbapi_instances.remove(portdb)
+			del trees[myroot]["porttree"], myroot, portdb
+
+	settings = config(config_root=config_root, target_root=target_root,
+		config_incrementals=portage_const.INCREMENTALS)
+
+	settings.reset()
+	settings.lock()
+	settings.validate()
+
+	myroots = [(settings["ROOT"], settings)]
+	if settings["ROOT"] != "/":
+		settings = config(config_root="/", target_root="/",
+			config_incrementals=portage_const.INCREMENTALS)
+		settings.reset()
+		settings.lock()
+		settings.validate()
+		myroots.append(("/", settings))
+
+	for myroot, mysettings in myroots:
 		trees[myroot] = portage_util.LazyItemsDict(trees.get(myroot, None))
 		trees[myroot].addLazySingleton("virtuals", mysettings.getvirtuals, myroot)
 		trees[myroot].addLazySingleton(
 			"vartree", vartree, myroot, categories=mysettings.categories,
 				settings=mysettings)
 		trees[myroot].addLazySingleton("porttree",
-			portagetree, myroot, settings=mysettings, portdb=portdb)
+			portagetree, myroot, settings=mysettings)
 		trees[myroot].addLazyItem("bintree",
 			LazyBintreeItem(myroot, mysettings))
+	return trees
 
 # Initialization of legacy globals.  No functions/classes below this point
 # please!  When the above functions and classes become independent of the
@@ -7178,22 +7195,18 @@ def init_legacy_globals():
 	for k, envvar in (("config_root", "PORTAGE_CONFIGROOT"), ("target_root", "ROOT")):
 		kwargs[k] = os.environ.get(envvar, "/")
 
-	try:
-		settings = config(
-			config_incrementals=portage_const.INCREMENTALS, **kwargs)
-		del kwargs
-	except portage_exception.DirectoryNotFound, e:
-		writemsg("!!! Directory Not Found: %s\n" % str(e), noiselevel=-1)
-		sys.exit(1)
+	db = create_trees(**kwargs)
 
-	settings.reset()
-	settings.lock()
-	settings.validate()
+	settings = db["/"]["vartree"].settings
+	portdb = db["/"]["porttree"].dbapi
+
+	for myroot in db:
+		if myroot != "/":
+			settings = db[myroot]["vartree"].settings
+			portdb = db[myroot]["porttree"].dbapi
+			break
 
 	root = settings["ROOT"]
-	db={}
-	portdb = portdbapi(settings["PORTDIR"], mysettings=config(clone=settings))
-	do_vartree(settings, portdb=portdb, trees=db)
 
 	mtimedbfile = os.path.join("/", CACHE_PATH.lstrip(os.path.sep), "mtimedb")
 	mtimedb = MtimeDB(mtimedbfile)
