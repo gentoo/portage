@@ -7127,7 +7127,7 @@ class MtimeDB(dict):
 				writemsg("Deleting invalid mtimedb key: %s\n" % str(k))
 				del d[k]
 		self.update(d)
-		self._clean_data = d
+		self._clean_data = copy.deepcopy(d)
 
 	def commit(self):
 		d = {}
@@ -7135,7 +7135,7 @@ class MtimeDB(dict):
 		# Only commit if the internal state has changed.
 		if d != self._clean_data:
 			commit_mtimedb(mydict=d, filename=self.filename)
-			self._clean_data = d
+			self._clean_data = copy.deepcopy(d)
 
 def create_trees(config_root="/", target_root="/", trees=None):
 	if trees is None:
