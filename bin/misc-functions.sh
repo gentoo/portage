@@ -62,7 +62,6 @@ install_qa_check() {
 			vecho "QA Notice: the following files contain insecure RUNPATH's"
 			vecho " Please file a bug about this at http://bugs.gentoo.org/"
 			vecho " with the maintaining herd of the package."
-			vecho " Summary: $CATEGORY/$PN: insecure RPATH ${f}"
 			vecho "${f}"
 			vecho -ne '\a\n'
 			if has stricter ${FEATURES} && ! has stricter ${RESTRICT}; then
