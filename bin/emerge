@@ -614,18 +614,6 @@ class depgraph:
 		if self.target_root != "/":
 			self.pkgsettings["/"] = \
 				portage.config(clone=trees["/"]["vartree"].settings)
-		for myroot, pkgsettings in self.pkgsettings.iteritems():
-			if not pkgsettings.get("ARCH",""):
-				portage.writemsg(bad("\a!!! ARCH is not set... " + \
-					"Are you missing the /etc/make.profile symlink?\n"),
-					noiselevel=-1)
-				portage.writemsg(bad("\a!!! Is the symlink correct? " + \
-					"Is your portage tree complete?\n\n"),
-					noiselevel=-1)
-				if myroot != "/":
-					portage.writemsg("!!! ROOT='%s'\n" % myroot,
-						noiselevel=-1)
-				sys.exit(9)
 		self.applied_useflags = {}
 
 		self.missingbins=[]
@@ -3521,6 +3509,18 @@ def parse_opts(tmpcmdline):
 
 	return myaction, myopts, myfiles
 
+def validate_ebuild_environment(trees):
+	for myroot in trees:
+		mysettings = trees[myroot]["vartree"].settings
+		if not mysettings.get("ARCH", None):
+			print >> sys.stderr, bad("\a!!! ARCH is not set... " + \
+				"Are you missing the '%setc/make.profile' symlink?" % \
+				mysettings["PORTAGE_CONFIGROOT"])
+			print >> sys.stderr, bad("\a!!! Is the symlink correct? " + \
+				"Is your portage tree complete?\n")
+			sys.exit(9)
+		del myroot, mysettings
+
 def load_emerge_config(trees=None):
 	kwargs = {}
 	for k, envvar in (("config_root", "PORTAGE_CONFIGROOT"), ("target_root", "ROOT")):
@@ -3853,9 +3853,11 @@ def emerge_main():
 		else:
 			action_metadata(settings, portdb, myopts)
 	elif myaction=="regen":
+		validate_ebuild_environment(trees)
 		action_regen(settings, portdb)
 	# HELP action
 	elif "config"==myaction:
+		validate_ebuild_environment(trees)
 		action_config(settings, trees, myopts, myfiles)
 	
 	# INFO action
@@ -3864,9 +3866,11 @@ def emerge_main():
 	
 	# SEARCH action
 	elif "search"==myaction:
+		validate_ebuild_environment(trees)
 		action_search(settings, portdb, trees["/"]["vartree"],
 			myopts, myfiles, spinner)
 	elif "unmerge"==myaction or "prune"==myaction or "clean"==myaction:
+		validate_ebuild_environment(trees)
 		vartree = trees[settings["ROOT"]]["vartree"]
 		if 1 == unmerge(settings, myopts, vartree, myaction, myfiles,
 			ldpath_mtimes, raise_on_missing=False):
@@ -3874,12 +3878,14 @@ def emerge_main():
 				post_emerge(settings, mtimedb, 0)
 
 	elif "depclean"==myaction:
+		validate_ebuild_environment(trees)
 		action_depclean(settings, trees, ldpath_mtimes,
 			myopts, spinner)
 		if "--pretend" not in myopts:
 			post_emerge(settings, mtimedb, 0)
 	# "update", "system", or just process files:
 	else:
+		validate_ebuild_environment(trees)
 		action_build(settings, trees, mtimedb,
 			myopts, myaction, myfiles, spinner)
 		if "--pretend" not in myopts:
