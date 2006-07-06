@@ -809,18 +809,12 @@ def ExtractKernelVersion(base_dir):
 
 	return (version,None)
 
-
-autouse_val = None
 def autouse(myvartree, use_cache=1, mysettings=None):
 	"returns set of USE variables auto-enabled due to packages being installed"
-	global autouse_val
 	if mysettings is None:
 		global settings
 		mysettings = settings
-	if autouse_val is not None:
-		return autouse_val
 	if mysettings.profile_path is None:
-		autouse_val = ""
 		return ""
 	myusevars=""
 	usedefaults = mysettings.use_defs
@@ -832,8 +826,6 @@ def autouse(myvartree, use_cache=1, mysettings=None):
 				break
 		if dep_met:
 			myusevars += " "+myuse
-	if myusevars:
-		autouse_val = myusevars
 	return myusevars
 
 def check_config_instance(test):
