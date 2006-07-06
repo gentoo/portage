@@ -2628,7 +2628,7 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 					# match our permission requirements.
 					if modified or kwargs["always_recurse"]:
 						if modified:
-							writemsg("Adjusting permissions recursively: '%s'" % mydir,
+							writemsg("Adjusting permissions recursively: '%s'\n" % mydir,
 								noiselevel=-1)
 						def onerror(e):
 							raise	# The feature is disabled if a single error
