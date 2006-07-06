@@ -311,17 +311,19 @@ def getgccversion(chost):
 	return "[unavailable]"
 
 def getportageversion(portdir, target_root, profile, chost, vardb):
-	try:
-		import re
-		profilever = os.path.normpath("///"+os.readlink(profile))
-		basepath   = os.path.normpath("///" + portdir + "/profiles")
-		if re.match(basepath,profilever):
-			profilever = profilever[len(basepath)+1:]
+	profilever = "unavailable"
+	if profile:
+		realpath = os.path.realpath(profile)
+		basepath   = os.path.realpath(os.path.join(portdir, "profiles"))
+		if realpath.startswith(basepath):
+			profilever = realpath[1 + len(basepath):]
 		else:
-			profilever = "!"+profilever
-		del basepath
-	except (OSError,IOError):
-		profilever="unavailable"
+			try:
+				profilever = "!" + os.readlink(profile)
+			except (OSError):
+				pass
+		del realpath, basepath
+
 	libcver=[]
 	libclist  = vardb.match("virtual/libc")
 	libclist += vardb.match("virtual/glibc")
