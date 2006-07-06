@@ -2766,6 +2766,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				time.gmtime(os.stat(logid_path).st_mtime))
 			logfile = os.path.join(mysettings["PORT_LOGDIR"], "%s:%s:%s.log" %\
 				(mysettings["CATEGORY"], mysettings["PF"], logid_time))
+			mysettings["PORTAGE_LOG_FILE"] = logfile
 			del logid_path, logid_time
 
 	# if any of these are being called, handle them -- running them out of the sandbox -- and stop now.
