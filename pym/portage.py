@@ -6239,7 +6239,7 @@ class dblink:
 				# Why is the package already merged here db-wise? Shouldn't be the case
 				# only unmerge if it ia new package and has no contents
 				if not self.getcontents():
-					self.unmerge()
+					self.unmerge(ldpath_mtimes=prev_mtimes)
 					self.delete()
 				self.unlockdb()
 				sys.exit(1)
