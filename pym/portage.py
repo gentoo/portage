@@ -5054,6 +5054,7 @@ class portdbapi(dbapi):
 					writemsg("Uncaught handled exception: %(exception)s\n" % {"exception":str(e)})
 					raise
 
+			self.doebuild_settings.reset()
 			myret = doebuild(myebuild, "depend", "/", self.doebuild_settings,
 				dbkey=mydbkey, tree="porttree", mydbapi=self)
 			if myret:
