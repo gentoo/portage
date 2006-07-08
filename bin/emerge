@@ -41,6 +41,8 @@ import portage_locks
 import portage_exception
 from portage_data import secpass
 
+if not hasattr(__builtins__, "set"):
+	from sets import Set as set
 
 class stdout_spinner(object):
 	scroll_msgs = [
@@ -710,13 +712,13 @@ class depgraph:
 				vardbapi.cpv_exists(mykey):
 				old_use = vardbapi.aux_get(mykey, ["USE"])[0].split()
 				if mytype == "binary":
-					iuses = bindb.aux_get(mykey, ["IUSE"])[0].split()
+					iuses = set(bindb.aux_get(mykey, ["IUSE"])[0].split())
 				else:
-					iuses = portdb.aux_get(mykey, ["IUSE"])[0].split()
-				for x in iuses:
-					if (old_use.count(x) and not myuse.count(x)) or (not old_use.count(x) and myuse.count(x)):
+					iuses = set(portdb.aux_get(mykey, ["IUSE"])[0].split())
+					if iuses.intersection(old_use) != \
+						iuses.intersection(myuse):
 						merging=1
-						break
+
 		else:   # Not addme
 			merging=2 # Quick hack to make --onlydeps continue with dep parsing but not merging
 		if merging==1:
@@ -1044,14 +1046,13 @@ class depgraph:
 				if not myeb_pkg:
 					myeb_pkg = None
 				elif "--newuse" in self.myopts:
-					iuses = bindb.aux_get(myeb_pkg, ["IUSE"])[0].split()
+					iuses = set(bindb.aux_get(myeb_pkg, ["IUSE"])[0].split())
 					old_use = bindb.aux_get(myeb_pkg, ["USE"])[0].split()
 					pkgsettings.setcpv(myeb_pkg)
 					now_use = pkgsettings["USE"].split()
-					for x in iuses:
-						if (old_use.count(x) and not now_use.count(x)) or (not old_use.count(x) and now_use.count(x)):
-							myeb_pkg = None
-							break
+					if iuses.intersection(old_use) != \
+						iuses.intersection(now_use):
+						myeb_pkg = None
 
 				if (not myeb) and (not myeb_pkg):
 					if raise_on_missing:
