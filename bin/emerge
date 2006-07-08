@@ -715,9 +715,9 @@ class depgraph:
 					iuses = set(bindb.aux_get(mykey, ["IUSE"])[0].split())
 				else:
 					iuses = set(portdb.aux_get(mykey, ["IUSE"])[0].split())
-					if iuses.intersection(old_use) != \
-						iuses.intersection(myuse):
-						merging=1
+				if iuses.intersection(old_use) != \
+					iuses.intersection(myuse):
+					merging=1
 
 		else:   # Not addme
 			merging=2 # Quick hack to make --onlydeps continue with dep parsing but not merging
