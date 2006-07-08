@@ -1093,13 +1093,13 @@ class depgraph:
 					print "ebuild:",myeb
 					print "binpkg:",myeb_pkg
 
-				if myeb and myeb_pkg:
-					myeb_s     = portage.catpkgsplit(myeb)
-					myeb_s     = [myeb_s[0]+"/"+myeb_s[1], myeb_s[2], myeb_s[3]]
-					myeb_pkg_s = portage.catpkgsplit(myeb_pkg)
-					myeb_pkg_s = [myeb_pkg_s[0]+"/"+myeb_pkg_s[1], myeb_pkg_s[2], myeb_pkg_s[3]]
+				def cmpsplit(cpv):
+					mysplit = portage.catpkgsplit(cpv)
+					return [mysplit[0] + "/" + mysplit[1],
+						mysplit[2], mysplit[3]]
 
-					if portage.pkgcmp(myeb_s, myeb_pkg_s) == 0: # pkg is same version as ebuild
+				if myeb and myeb_pkg:
+					if portage.pkgcmp(cmpsplit(myeb), cmpsplit(myeb_pkg)) == 0:
 						myeb = None
 					else:
 						myeb_pkg = None
