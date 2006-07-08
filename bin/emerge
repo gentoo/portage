@@ -719,9 +719,7 @@ class depgraph:
 					iuses.intersection(myuse):
 					merging=1
 
-		else:   # Not addme
-			merging=2 # Quick hack to make --onlydeps continue with dep parsing but not merging
-		if merging==1:
+		if addme and merging == 1:
 			mybigkey.append("merge")
 		else:
 			mybigkey.append("nomerge")
