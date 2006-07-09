@@ -6737,9 +6737,7 @@ class dblink:
 		return mydata
 
 	def setfile(self,fname,data):
-		myfile=open(self.dbdir+"/"+fname,"w")
-		myfile.write(data)
-		myfile.close()
+		write_atomic(os.path.join(self.dbdir, fname), data)
 
 	def getelements(self,ename):
 		if not os.path.exists(self.dbdir+"/"+ename):
