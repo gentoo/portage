@@ -4200,6 +4200,9 @@ class fakedbapi(dbapi):
 			returnme.extend(self.cpdict[x])
 		return returnme
 
+	def cpv_all(self):
+		return self.cpvdict.keys()
+
 	def cpv_inject(self,mycpv):
 		"""Adds a cpv from the list of available packages."""
 		mycp=cpv_getkey(mycpv)
