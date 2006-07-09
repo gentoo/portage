@@ -4276,7 +4276,7 @@ class bindbapi(fakedbapi):
 
 cptot=0
 class vardbapi(dbapi):
-	def __init__(self, root, categories=None, settings=None):
+	def __init__(self, root, categories=None, settings=None, vartree=None):
 		self.root       = root[:]
 		#cache for category directory mtimes
 		self.mtdircache = {}
@@ -4291,6 +4291,9 @@ class vardbapi(dbapi):
 		if categories is None:
 			categories = settings.categories
 		self.categories = categories[:]
+		if vartree is None:
+			vartree = globals()["db"][root]["vartree"]
+		self.vartree = vartree
 
 	def cpv_exists(self,mykey):
 		"Tells us whether an actual ebuild exists on disk (no masking)"
@@ -4557,6 +4560,22 @@ class vardbapi(dbapi):
 				results[idx] = "0"
 		return results
 
+	def aux_update(self, cpv, values):
+		cat, pkg = cpv.split("/")
+		mylink = dblink(cat, pkg, self.root, self.settings,
+			treetype="vartree", vartree=self.vartree)
+		try:
+			mylink.lockdb()
+		except portage_exception.DirectoryNotFound:
+			raise KeyError(cpv)
+		try:
+			if not mylink.exists():
+				raise KeyError(cpv)
+			for k, v in values.iteritems():
+				mylink.setfile(k, v)
+		finally:
+			mylink.unlockdb()
+
 	def counter_tick(self,myroot,mycpv=None):
 		return self.counter_tick_core(myroot,incrementing=1,mycpv=mycpv)
 
@@ -4647,8 +4666,8 @@ class vartree(packagetree):
 			self.settings = settings # for key_expand calls
 			if categories is None:
 				categories = settings.categories
-			self.dbapi = vardbapi(
-				self.root, categories=categories, settings=settings)
+			self.dbapi = vardbapi(self.root, categories=categories,
+				settings=settings, vartree=self)
 			self.populated  = 1
 
 	def zap(self,mycpv):
