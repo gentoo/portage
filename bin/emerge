@@ -718,10 +718,7 @@ class depgraph:
 			if merging==0 and "--newuse" in self.myopts and \
 				vardbapi.cpv_exists(mykey):
 				old_use = vardbapi.aux_get(mykey, ["USE"])[0].split()
-				if mytype == "binary":
-					iuses = set(bindb.aux_get(mykey, ["IUSE"])[0].split())
-				else:
-					iuses = set(portdb.aux_get(mykey, ["IUSE"])[0].split())
+				iuses = set(mydbapi.aux_get(mykey, ["IUSE"])[0].split())
 				if iuses.intersection(old_use) != \
 					iuses.intersection(myuse):
 					merging=1
