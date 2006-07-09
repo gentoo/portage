@@ -707,13 +707,25 @@ class atomic_ofstream(file):
 			base_destructor()
 
 def write_atomic(file_path, content):
-	f = atomic_ofstream(file_path)
+	f = None
 	try:
+		f = atomic_ofstream(file_path)
 		f.write(content)
 		f.close()
-	except IOError, ioe:
-		f.abort()
-		raise ioe
+	except (IOError, OSError), e:
+		if f:
+			f.abort()
+		func_call = "write_atomic('%s')" % file_path
+		if e.errno == errno.EPERM:
+			raise OperationNotPermitted(func_call)
+		elif e.errno == errno.EACCES:
+			raise PermissionDenied(func_call)
+		elif e.errno == errno.EROFS:
+			raise ReadOnlyFileSystem(func_call)
+		elif e.errno == errno.ENOENT:
+			raise FileNotFound(file_path)
+		else:
+			raise
 
 def ensure_dirs(dir_path, *args, **kwargs):
 	"""Create a directory and call apply_permissions.
