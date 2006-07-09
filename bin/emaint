@@ -7,7 +7,7 @@ from optparse import OptionParser, OptionValueError
 
 import re
 
-import os, portage, portage_const
+import os, portage, portage_const, portage_exception
 class WorldHandler(object):
 
 	def name():
@@ -42,7 +42,7 @@ class WorldHandler(object):
 		errors = []
 		try:
 			portage.write_atomic(self.world_file, "\n".join(self.okay))
-		except OSError:
+		except portage_exception.PortageException:
 			errors.append(self.world_file + " could not be opened for writing")
 		return errors
 

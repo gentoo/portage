@@ -7009,7 +7009,7 @@ def update_config_files(config_root, protect, protect_mask, update_iter):
 			updating_file = new_protect_filename(updating_file)[0]
 		try:
 			write_atomic(updating_file, "".join(file_contents[x]))
-		except (OSError, IOError), e:
+		except portage_exception.PortageException, e:
 			writemsg("\n!!! %s\n" % str(e), noiselevel=-1)
 			writemsg("!!! An error occured while updating a config file:" + \
 				" '%s'\n" % updating_file, noiselevel=-1)
