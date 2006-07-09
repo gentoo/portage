@@ -603,6 +603,11 @@ def genericdict(mylist):
 
 class depgraph:
 
+	pkg_tree_map = {
+		"ebuild":"porttree",
+		"binary":"bintree",
+		"installed":"vartree"}
+
 	def __init__(self, settings, trees, myopts, myparams, spinner):
 		self.settings = settings
 		self.target_root = settings["ROOT"]
@@ -683,6 +688,8 @@ class depgraph:
 					mybigkey.append(myparent.split()[2])
 					self.digraph.addnode(" ".join(mybigkey), myparent)
 			return 1
+		else:
+			mydbapi = self.trees[myroot][self.pkg_tree_map[mytype]].dbapi
 
 		if myuse is None:
 			self.pkgsettings[myroot].setcpv(mykey)
@@ -745,38 +752,18 @@ class depgraph:
 		Binpkg's can be either remote or local. """
 
 		edepend={}
-		if mytype=="binary":
-			mypkgparts=portage.catpkgsplit(mykey)
-			tbz2name = string.split(mykey, "/")[1]+".tbz2"
-			""" This sucks, look at querying the bintree anyhow and throwing an exception """
-			if tbz2name in self.trees[myroot]["bintree"].invalids:
-				sys.stderr.write("\nINVALID PACKAGE (is required to continue): "+str(mykey)+"\n")
-				sys.exit(1)
-			if self.trees[myroot]["bintree"].isremote(mykey):
-				edepend = self.trees[myroot]["bintree"].remotepkgs[tbz2name]
-				edepend["DEPEND"] =""
-				edepend["RDEPEND"]=string.join(string.split(edepend["RDEPEND"])," ")
-				edepend["PDEPEND"]=string.join(string.split(edepend["PDEPEND"])," ")
-				edepend["SLOT"]   =string.strip(edepend["SLOT"])
-			else:
-				mytbz2 = xpak.tbz2(self.trees[myroot]["bintree"].getname(mykey))
-				edepend["DEPEND"] =""
-				edepend["RDEPEND"]=string.join(mytbz2.getelements("RDEPEND")," ")
-				edepend["PDEPEND"]=string.join(mytbz2.getelements("PDEPEND")," ")
-				edepend["SLOT"]   =mytbz2.getfile("SLOT",mypkgparts[2])
-		elif mytype=="ebuild":
-			try:
-				mymeta = ["DEPEND","RDEPEND","PDEPEND"]
-				myfoo = portdb.aux_get(mykey, mymeta)
-				for index in range(0,len(mymeta)):
-					edepend[mymeta[index]] = myfoo[index]
-				if "--buildpkgonly" in self.myopts:
-					edepend["RDEPEND"] = ""
-					edepend["PDEPEND"] = ""
-			except (KeyError,IOError):
-				print "emerge: create(): aux_get() error on",mykey+"; aborting..."
-				sys.exit(1)
-		
+		depkeys = ["DEPEND","RDEPEND","PDEPEND"]
+		depvalues = mydbapi.aux_get(mykey, depkeys)
+		for i in xrange(len(depkeys)):
+			edepend[depkeys[i]] = depvalues[i]
+
+		if mytype == "binary":
+			edepend["DEPEND"] = ""
+		elif mytype == "ebuild":
+			if "--buildpkgonly" in self.myopts:
+				edepend["RDEPEND"] = ""
+				edepend["PDEPEND"] = ""
+
 		""" We have retrieve the dependency information, now we need to recursively
 		    process them.  DEPEND gets processed for root = "/", {R,P}DEPEND in myroot. """
 		
