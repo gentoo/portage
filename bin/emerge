@@ -982,10 +982,8 @@ class depgraph:
 			myp = myparent.split()
 			if myp[3]=="merge":
 				self.mydbapi[myroot].cpv_inject(myp[2])
-				if myp[0]=="binary":
-					pkgsettings.setinst(myp[2], bindb)
-				else:
-					pkgsettings.setinst(myp[2], portdb)
+				pkgsettings.setinst(myp[2],
+					self.trees[myroot][self.pkg_tree_map[myp[0]]].dbapi)
 
 		if not mymerge:
 			return 1
