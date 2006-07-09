@@ -4273,6 +4273,18 @@ class bindbapi(fakedbapi):
 				mylist[idx] = "0"
 		return mylist
 
+	def aux_update(self, cpv, values):
+		tbz2path = self.bintree.getname(cpv)
+		mylock = portage_locks.lockfile(tbz2path, wantnewlockfile=1)
+		try:
+			if not os.path.exists(tbz2path):
+				raise KeyError(cpv)
+			mytbz2 = xpak.tbz2(tbz2path)
+			mydata = mytbz2.get_data()
+			mydata.update(values)
+			mytbz2.recompose_mem(xpak.xpak_mem(mydata))
+		finally:
+			portage_locks.unlockfile(mylock)
 
 cptot=0
 class vardbapi(dbapi):
