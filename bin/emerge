@@ -3006,11 +3006,13 @@ def action_config(settings, trees, myopts, myfiles):
 		mydbapi=trees[settings["ROOT"]]["vartree"].dbapi, tree="vartree")
 	print
 
-def action_info(settings, trees, myopts):
+def action_info(settings, trees, myopts, myfiles):
 	unameout=commands.getstatusoutput("uname -mrp")[1]
 	print getportageversion(settings["PORTDIR"], settings["ROOT"],
 		settings.profile_path, settings["CHOST"],
 		trees[settings["ROOT"]]["vartree"].dbapi)
+	print "================================================================="
+	print "                       System Settings"
 	print "================================================================="
 	print "System uname: "+unameout
 	if os.path.exists("/etc/gentoo-release"):
@@ -3087,6 +3089,68 @@ def action_info(settings, trees, myopts):
 			module = getattr(portage, x)
 			if "cvs_id_string" in dir(module):
 				print "%s: %s" % (str(x), str(module.cvs_id_string))
+
+	# See if we can find any packages installed matching the strings
+	# passed on the command line
+	mypkgs = []
+	vardb = trees[settings["ROOT"]]["vartree"].dbapi
+	for x in myfiles:
+		mypkgs.extend(vardb.match(x))
+
+	# If some packages were found...
+	if mypkgs:
+		# Get our global settings (we only print stuff if it varies from
+		# the current config)
+		mydesiredvars = [ 'CHOST', 'CFLAGS', 'CXXFLAGS' ]
+		auxkeys = mydesiredvars + [ "USE", "IUSE"]
+		global_vals = {}
+		pkgsettings = portage.config(clone=settings)
+
+		for myvar in mydesiredvars:
+			global_vals[myvar] = set(settings.get(myvar, "").split())
+
+		# Loop through each package
+		# Only print settings if they differ from global settings
+		header_printed = False
+		for pkg in mypkgs:
+			# Get all package specific variables
+			auxvalues = vardb.aux_get(pkg, auxkeys)
+			valuesmap = {}
+			for i in xrange(len(auxkeys)):
+				valuesmap[auxkeys[i]] = set(auxvalues[i].split())
+			diff_values = {}
+			for myvar in mydesiredvars:
+				# If the package variable doesn't match the
+				# current global variable, something has changed
+				# so set diff_found so we know to print
+				if valuesmap[myvar] != global_vals[myvar]:
+					diff_values[myvar] = valuesmap[myvar]
+			valuesmap["USE"] = valuesmap["USE"].intersection(valuesmap["IUSE"])
+			pkgsettings.reset()
+			pkgsettings.setcpv(pkg)
+			if valuesmap["IUSE"].intersection(pkgsettings["USE"].split()) != \
+				valuesmap["USE"]:
+				diff_values["USE"] = valuesmap["USE"]
+			# If a difference was found, print the info for
+			# this package.
+			if diff_values:
+
+				# If we have not yet printed the header, 
+				# print it now
+				if not header_printed:
+					print "================================================================="
+					print "                       Package Settings"
+					print "================================================================="
+					header_printed = True
+
+				# Print package info
+				print "%s was built with the following:" % pkg
+				for myvar in mydesiredvars + ["USE"]:
+					if myvar in diff_values:
+						mylist = list(diff_values[myvar])
+						mylist.sort()
+						print "%s=\"%s\"" % (myvar, " ".join(mylist))
+				print
 
 def action_search(settings, portdb, vartree, myopts, myfiles, spinner):
 	if not myfiles:
@@ -3854,8 +3918,8 @@ def emerge_main():
 	
 	# INFO action
 	elif "info"==myaction:
-		action_info(settings, trees, myopts)
-	
+		action_info(settings, trees, myopts, myfiles)
+
 	# SEARCH action
 	elif "search"==myaction:
 		validate_ebuild_environment(trees)
