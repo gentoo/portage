@@ -1018,7 +1018,7 @@ class depgraph:
 					myeb_pkg_matches = bindb.match(x)
 					if "--usepkgonly" not in self.myopts:
 						# Remove any binary package entries that are masked in the portage tree (#55871)
-						for idx in xrange(len(myeb_pkg_matches)):
+						for idx in xrange(len(myeb_pkg_matches)-1, -1, -1):
 							if myeb_pkg_matches[idx] not in myeb_matches and \
 								portdb.cpv_exists(myeb_pkg_matches[idx]):
 								del myeb_pkg_matches[idx]
