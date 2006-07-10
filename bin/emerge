@@ -3528,21 +3528,8 @@ def load_emerge_config(trees=None):
 	mtimedb = portage.MtimeDB(mtimedbfile)
 	return settings, trees, mtimedb
 
-def emerge_main():
-	# Portage needs to ensure a sane umask for the files it creates.
-	os.umask(022)
-	settings, trees, mtimedb = load_emerge_config()
-	portdb = trees[settings["ROOT"]]["porttree"].dbapi
-	portage.global_updates(settings, trees, mtimedb["updates"])
-	mtimedb.commit()
-	# Reload the whole config from scratch.
-	settings, trees, mtimedb = load_emerge_config(trees=trees)
-	portdb = trees[settings["ROOT"]]["porttree"].dbapi
-
-	ldpath_mtimes = mtimedb["ldpath"]
-	xterm_titles = "notitles" not in settings.features
-
-	settings.unlock()
+def adjust_config(myopts, settings):
+	"""Make emerge specific adjustments to the config."""
 
 	# To enhance usability, make some vars case insensitive by forcing them to
 	# lower case.
@@ -3580,12 +3567,58 @@ def emerge_main():
 	settings["EMERGE_WARNING_DELAY"] = str(EMERGE_WARNING_DELAY)
 	settings.backup_changes("EMERGE_WARNING_DELAY")
 
-	settings.lock()
+	if "--quiet" in myopts:
+		settings["PORTAGE_QUIET"]="1"
+		settings.backup_changes("PORTAGE_QUIET")
 
-	if settings.get("NOCOLOR","") in ("yes","true"):
+	# Set so that configs will be merged regardless of remembered status
+	if ("--noconfmem" in myopts):
+		settings["NOCONFMEM"]="1"
+		settings.backup_changes("NOCONFMEM")
+
+	# Set various debug markers... They should be merged somehow.
+	PORTAGE_DEBUG = 0
+	try:
+		PORTAGE_DEBUG = int(settings.get("PORTAGE_DEBUG", str(PORTAGE_DEBUG)))
+		if PORTAGE_DEBUG not in (0, 1):
+			portage.writemsg("!!! Invalid value: PORTAGE_DEBUG='%i'\n" % \
+				PORTAGE_DEBUG, noiselevel=-1)
+			portage.writemsg("!!! PORTAGE_DEBUG must be either 0 or 1\n",
+				noiselevel=-1)
+			PORTAGE_DEBUG = 0
+	except ValueError, e:
+		portage.writemsg("!!! %s\n" % str(e), noiselevel=-1)
+		portage.writemsg("!!! Unable to parse integer: PORTAGE_DEBUG='%s'\n" %\
+			settings["PORTAGE_DEBUG"], noiselevel=-1)
+		del e
+	if "--debug" in myopts:
+		PORTAGE_DEBUG = 1
+	settings["PORTAGE_DEBUG"] = str(PORTAGE_DEBUG)
+	settings.backup_changes("PORTAGE_DEBUG")
+
+	# Set color output
+	if "--nocolor" in myopts:
+		settings["NOCOLOR"] = "true"
+		settings.backup_changes("NOCOLOR")
+
+def emerge_main():
+	# Portage needs to ensure a sane umask for the files it creates.
+	os.umask(022)
+	settings, trees, mtimedb = load_emerge_config()
+	portdb = trees[settings["ROOT"]]["porttree"].dbapi
+	portage.global_updates(settings, trees, mtimedb["updates"])
+	mtimedb.commit()
+	# Reload the whole config from scratch.
+	settings, trees, mtimedb = load_emerge_config(trees=trees)
+	portdb = trees[settings["ROOT"]]["porttree"].dbapi
+
+	ldpath_mtimes = mtimedb["ldpath"]
+	xterm_titles = "notitles" not in settings.features
+
+	if settings.get("NOCOLOR","").lower() in ("yes","true"):
 		nocolor()
 	elif (not sys.stdout.isatty()) and \
-		settings.get("NOCOLOR","") != "no":
+		settings.get("NOCOLOR","").lower() != "no":
 		# revdep-rebuild exports NOCOLOR=false, so for now, don't allow
 		# NOCOLOR=false to override the isatty() check.  This can be fixed
 		# in revdep-rebuild by using the --nocolor option when appropriate
@@ -3596,7 +3629,13 @@ def emerge_main():
 	if "--ignore-default-opts" not in tmpcmdline:
 		tmpcmdline.extend(settings["EMERGE_DEFAULT_OPTS"].split())
 	myaction, myopts, myfiles = parse_opts(tmpcmdline)
-	edebug = 0
+
+	for myroot in trees:
+		mysettings =  trees[myroot]["vartree"].settings
+		mysettings.unlock()
+		adjust_config(myopts, mysettings)
+		mysettings.lock()
+		del myroot, mysettings
 
 	spinner = stdout_spinner()
 	if "candy" in settings.features:
@@ -3651,10 +3690,6 @@ def emerge_main():
 	if ("--quiet" in myopts):
 		spinner.update = spinner.update_quiet
 		portage_util.noiselimit = -1
-		settings.unlock()
-		settings["PORTAGE_QUIET"]="1"
-		settings.backup_changes("PORTAGE_QUIET")
-		settings.lock()
 
 	# Always create packages if FEATURES=buildpkg
 	# Imply --buildpkg if --buildpkgonly
@@ -3716,35 +3751,6 @@ def emerge_main():
 			noiselevel=-1)
 		sys.exit(1)
 
-	# Set so that configs will be merged regardless of remembered status
-	if ("--noconfmem" in myopts):
-		settings.unlock()
-		settings["NOCONFMEM"]="1"
-		settings.backup_changes("NOCONFMEM")
-		settings.lock()
-
-	# Set various debug markers... They should be merged somehow.
-	settings.unlock()
-	PORTAGE_DEBUG = 0
-	try:
-		PORTAGE_DEBUG = int(settings.get("PORTAGE_DEBUG", str(PORTAGE_DEBUG)))
-		if PORTAGE_DEBUG not in (0, 1):
-			portage.writemsg("!!! Invalid value: PORTAGE_DEBUG='%i'\n" % \
-				PORTAGE_DEBUG, noiselevel=-1)
-			portage.writemsg("!!! PORTAGE_DEBUG must be either 0 or 1\n",
-				noiselevel=-1)
-			PORTAGE_DEBUG = 0
-	except ValueError, e:
-		portage.writemsg("!!! %s\n" % str(e), noiselevel=-1)
-		portage.writemsg("!!! Unable to parse integer: PORTAGE_DEBUG='%s'\n" %\
-			settings["PORTAGE_DEBUG"], noiselevel=-1)
-		del e
-	if "--debug" in myopts:
-		PORTAGE_DEBUG = 1
-	settings["PORTAGE_DEBUG"] = str(PORTAGE_DEBUG)
-	settings.backup_changes("PORTAGE_DEBUG")
-	settings.lock()
-
 	if settings.get("PORTAGE_DEBUG", "") == "1":
 		portage.debug=1
 		if "python-trace" in settings.features:
@@ -3760,11 +3766,6 @@ def emerge_main():
 	if "--nocolor" in myopts or \
 	settings["NOCOLOR"] in ("yes","true"):
 		nocolor()
-		if "NOCOLOR" not in settings:
-			settings.unlock()
-			settings["NOCOLOR"] = "true"
-			settings.backup_changes("NOCOLOR")
-			settings.lock()
 
 	if not ("--quiet" in myopts):
 		if not sys.stdout.isatty() or ("--nospinner" in myopts):
