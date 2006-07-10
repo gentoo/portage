@@ -869,6 +869,12 @@ class depgraph:
 				try:
 					mykey = portage.dep_expand(x,
 						mydb=portdb, settings=pkgsettings)
+					if mykey.startswith("null/"):
+						# If category expansion fails against the portage tree,
+						# remove the null/ prefix so that it may be given
+						# another chance to expand against the binary package
+						# tree in select_dep().
+						mykey = mykey[5:]
 				except ValueError, errpkgs:
 					print "\n\n!!! The short ebuild name \"" + x + "\" is ambiguous.  Please specify"
 					print "!!! one of the following fully-qualified ebuild names instead:\n"
