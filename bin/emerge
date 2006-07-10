@@ -3826,9 +3826,11 @@ def emerge_main():
 	signal.signal(signal.SIGINT, emergeexitsig)
 	signal.signal(signal.SIGTERM, emergeexitsig)
 
+	# This hack prevents parallel-fetch from confusing emerge.log parsers.
+	emerge_pid = os.getpid()
 	def emergeexit():
 		"""This gets out final log message in before we quit."""
-		if "--pretend" not in myopts:
+		if "--pretend" not in myopts and emerge_pid == os.getpid():
 			emergelog(xterm_titles, " *** terminating.")
 		if "notitles" not in settings.features:
 			xtermTitleReset()
