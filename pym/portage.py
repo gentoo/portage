@@ -6442,7 +6442,7 @@ class dblink:
 			# We need mydest defined up here to calc. protection paths.  This is now done once per
 			# directory rather than once per file merge.  This should really help merge performance.
 			# Trailing / ensures that protects/masks with trailing /'s match.
-			mytruncpath="/"+offset+"/"
+			mytruncpath = os.path.join(destroot, offset) + os.path.sep
 			myppath=self.isprotected(mytruncpath)
 		else:
 			mergelist=stufftomerge
@@ -6516,9 +6516,11 @@ class dblink:
 						elif self.isprotected(mydest):
 							# Use md5 of the target in ${D} if it exists...
 							if os.path.exists(os.path.normpath(srcroot+myabsto)):
-								mydest = new_protect_filename(myrealdest, newmd5=portage_checksum.perform_md5(srcroot+myabsto))
+								mydest = new_protect_filename(mydest,
+									newmd5=portage_checksum.perform_md5(srcroot+myabsto))
 							else:
-								mydest = new_protect_filename(myrealdest, newmd5=portage_checksum.perform_md5(myabsto))
+								mydest = new_protect_filename(mydest,
+									newmd5=portage_checksum.perform_md5(myabsto))
 
 				# if secondhand is None it means we're operating in "force" mode and should not create a second hand.
 				if (secondhand!=None) and (not os.path.exists(myrealto)):
@@ -6649,9 +6651,8 @@ class dblink:
 								# only record the last md5
 								if len(cfgfiledict[myrealdest])>1:
 									del cfgfiledict[myrealdest][0]
-
 						if cfgprot:
-							mydest = new_protect_filename(myrealdest, newmd5=mymd5)
+							mydest = new_protect_filename(mydest, newmd5=mymd5)
 
 				# whether config protection or not, we merge the new file the
 				# same way.  Unless moveme=0 (blocking directory)
@@ -6664,7 +6665,7 @@ class dblink:
 					mymtime=thismtime
 					# We need to touch the destination so that on --update the
 					# old package won't yank the file with it. (non-cfgprot related)
-					os.utime(myrealdest,(thismtime,thismtime))
+					os.utime(mydest,(thismtime,thismtime))
 					zing="---"
 				if self.settings["USERLAND"] == "Darwin" and myrealdest[-2:] == ".a":
 
@@ -6674,7 +6675,7 @@ class dblink:
 					# basically internal mtime != file's mtime, so the linker (falsely) thinks
 					# the archive is stale, and needs to have it's toc rebuilt.
 
-					myf=open(myrealdest,"r+")
+					myf = open(mydest, "r+")
 
 					# ar mtime field is digits padded with spaces, 12 bytes.
 					lms=str(thismtime+5).ljust(12)
@@ -6684,7 +6685,7 @@ class dblink:
 						# not an archive (dolib.a from portage.py makes it here fex)
 						myf.close()
 					else:
-						st=os.stat(myrealdest)
+						st = os.stat(mydest)
 						while myf.tell() < st.st_size - 12:
 							# skip object name
 							myf.seek(16,1)
@@ -6704,8 +6705,8 @@ class dblink:
 
 						# and now we're at the end. yay.
 						myf.close()
-						mymd5=portage_checksum.perform_md5(myrealdest,calc_prelink=1)
-					os.utime(myrealdest,(thismtime,thismtime))
+						mymd5 = portage_checksum.perform_md5(mydest, calc_prelink=1)
+					os.utime(mydest,(thismtime,thismtime))
 
 				if mymtime!=None:
 					zing=">>>"
