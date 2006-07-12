@@ -6442,7 +6442,10 @@ class dblink:
 			# We need mydest defined up here to calc. protection paths.  This is now done once per
 			# directory rather than once per file merge.  This should really help merge performance.
 			# Trailing / ensures that protects/masks with trailing /'s match.
-			mytruncpath = os.path.join(destroot, offset) + os.path.sep
+			mytruncpath = os.path.sep + \
+				os.path.join(
+					destroot.strip(os.path.sep), offset.strip(os.path.sep)) + \
+				os.path.sep
 			myppath=self.isprotected(mytruncpath)
 		else:
 			mergelist=stufftomerge
