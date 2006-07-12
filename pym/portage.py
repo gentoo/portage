@@ -5826,11 +5826,11 @@ class config_protect(object):
 		masked=0
 		protected=0
 		for ppath in self.protect:
-			if (len(ppath) > masked) and (obj[0:len(ppath)]==ppath):
+			if len(ppath) > masked and obj.startswith(ppath):
 				protected=len(ppath)
 				#config file management
 				for pmpath in self.protectmask:
-					if (len(pmpath) >= protected) and (obj[0:len(pmpath)]==pmpath):
+					if len(pmpath) >= protected and obj.startswith(pmpath):
 						#skip, it's in the mask
 						masked=len(pmpath)
 		return (protected > masked)
