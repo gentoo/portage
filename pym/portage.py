@@ -6511,7 +6511,7 @@ class dblink:
 							# directory in the way: we can't merge a symlink over a directory
 							# we won't merge this, continue with next file...
 							continue
-						srctarget = os.path.normpath(os.path.dirname(mysrc)+"/"+myto)
+
 						if os.path.exists(mysrc) and stat.S_ISDIR(os.stat(mysrc)[stat.ST_MODE]):
 							# Kill file blocking installation of symlink to dir #71787
 							pass
