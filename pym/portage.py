@@ -6200,6 +6200,11 @@ class dblink:
 		# secondhand = list of symlinks that have been skipped due to
 		#              their target not existing (will merge later),
 
+		if not os.path.isdir(srcroot):
+			writemsg("!!! Directory Not Found: D='%s'\n" % srcroot,
+			noiselevel=-1)
+			return 1
+
 		if not os.path.exists(self.dbcatdir):
 			os.makedirs(self.dbcatdir)
 
