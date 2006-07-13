@@ -6493,13 +6493,13 @@ class dblink:
 			if stat.S_ISLNK(mymode):
 				# we are merging a symbolic link
 				myabsto=abssymlink(mysrc)
-				if myabsto[0:len(srcroot)]==srcroot:
+				if myabsto.startswith(srcroot):
 					myabsto=myabsto[len(srcroot):]
 					if myabsto[0]!="/":
 						myabsto="/"+myabsto
 				myto=os.readlink(mysrc)
 				if self.settings and self.settings["D"]:
-					if myto.find(self.settings["D"])==0:
+					if myto.startswith(self.settings["D"]):
 						myto=myto[len(self.settings["D"]):]
 				# myrealto contains the path of the real file to which this symlink points.
 				# we can simply test for existence of this file to see if the target has been merged yet
