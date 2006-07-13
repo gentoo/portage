@@ -6484,10 +6484,11 @@ class dblink:
 			# handy variables; mydest is the target object on the live filesystems;
 			# mysrc is the source object in the temporary install dir
 			try:
-				mydmode=os.lstat(mydest)[stat.ST_MODE]
-			except SystemExit, e:
-				raise
-			except:
+				mydmode = os.lstat(mydest).st_mode
+			except OSError, e:
+				if e.errno != errno.ENOENT:
+					raise
+				del e
 				#dest file doesn't exist
 				mydmode=None
 
