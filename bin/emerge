@@ -618,7 +618,7 @@ def clean_world(vardb, cpv):
 			newworldlist.append(x)
 
 	portage_util.ensure_dirs(os.path.join(vardb.root, portage.PRIVATE_PATH),
-		uid=portage.portage_gid, mode=02770)
+		gid=portage.portage_gid, mode=02770)
 	portage_util.write_atomic(world_filename, "\n".join(newworldlist))
 
 def genericdict(mylist):
