@@ -1662,6 +1662,22 @@ class depgraph:
 	def outdated(self):
 		return self.outdatedpackages
 
+class MergeTask(object):
+
+	def __init__(self, settings, trees, myopts):
+		self.settings = settings
+		self.target_root = settings["ROOT"]
+		self.trees = trees
+		self.myopts = myopts
+		self.edebug = 0
+		if settings.get("PORTAGE_DEBUG", "") == "1":
+			self.edebug = 1
+		self.pkgsettings = {}
+		self.pkgsettings[self.target_root] = portage.config(clone=settings)
+		if self.target_root != "/":
+			self.pkgsettings["/"] = \
+				portage.config(clone=trees["/"]["vartree"].settings)
+
 	def merge(self, mylist, favorites, mtimedb):
 		returnme=0
 		mymergelist=[]
@@ -3452,7 +3468,8 @@ def action_build(settings, trees, mtimedb,
 
 		if ("--resume" in myopts):
 			favorites=mtimedb["resume"]["favorites"]
-			mydepgraph.merge(mtimedb["resume"]["mergelist"], favorites, mtimedb)
+			mergetask = MergeTask(settings, trees, myopts)
+			mergetask.merge(mtimedb["resume"]["mergelist"], favorites, mtimedb)
 		else:
 			if "resume" in mtimedb and \
 			"mergelist" in mtimedb["resume"] and \
@@ -3483,7 +3500,8 @@ def action_build(settings, trees, mtimedb,
 						pkglist.append(pkg)
 			else:
 				pkglist = mydepgraph.altlist()
-			mydepgraph.merge(pkglist, favorites, mtimedb)
+			mergetask = MergeTask(settings, trees, myopts)
+			mergetask.merge(pkglist, favorites, mtimedb)
 
 		if mtimedb.has_key("resume"):
 			del mtimedb["resume"]
