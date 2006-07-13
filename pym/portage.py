@@ -6495,8 +6495,7 @@ class dblink:
 				myabsto=abssymlink(mysrc)
 				if myabsto.startswith(srcroot):
 					myabsto=myabsto[len(srcroot):]
-					if myabsto[0]!="/":
-						myabsto="/"+myabsto
+				myabsto = myabsto.lstrip(sep)
 				myto=os.readlink(mysrc)
 				if self.settings and self.settings["D"]:
 					if myto.startswith(self.settings["D"]):
@@ -6517,12 +6516,17 @@ class dblink:
 							pass
 						elif self.isprotected(mydest):
 							# Use md5 of the target in ${D} if it exists...
-							if os.path.exists(os.path.normpath(srcroot+myabsto)):
-								mydest = new_protect_filename(mydest,
-									newmd5=portage_checksum.perform_md5(srcroot+myabsto))
-							else:
-								mydest = new_protect_filename(mydest,
-									newmd5=portage_checksum.perform_md5(myabsto))
+							try:
+								newmd5 = portage_checksum.perform_md5(
+									join(srcroot, myabsto))
+							except portage_exception.FileNotFound:
+								# Maybe the target is merged already.
+								try:
+									newmd5 = portage_checksum.perform_md5(
+										myrealto)
+								except portage_exception.FileNotFound:
+									newmd5 = None
+							mydest = new_protect_filename(mydest,newmd5=newmd5)
 
 				# if secondhand is None it means we're operating in "force" mode and should not create a second hand.
 				if (secondhand!=None) and (not os.path.exists(myrealto)):
