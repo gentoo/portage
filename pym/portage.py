@@ -6126,40 +6126,6 @@ class dblink:
 		#remove self from vartree database so that our own virtual gets zapped if we're the last node
 		self.vartree.zap(self.mycpv)
 
-		# New code to remove stuff from the world and virtuals files when unmerged.
-		if trimworld:
-			worldlist = grabfile(os.path.join(self.myroot, WORLD_FILE))
-			mykey=cpv_getkey(self.mycpv)
-			newworldlist=[]
-			for x in worldlist:
-				if dep_getkey(x)==mykey:
-					matches = self.vartree.dbapi.match(x,use_cache=0)
-					if not matches:
-						#zap our world entry
-						pass
-					elif (len(matches)==1) and (matches[0]==self.mycpv):
-						#zap our world entry
-						pass
-					else:
-						#others are around; keep it.
-						newworldlist.append(x)
-				else:
-					#this doesn't match the package we're unmerging; keep it.
-					newworldlist.append(x)
-
-			# if the base dir doesn't exist, create it.
-			# (spanky noticed bug)
-			# XXX: dumb question, but abstracting the root uid might be wise/useful for
-			# 2nd pkg manager installation setups.
-			my_private_path = os.path.join(self.myroot, PRIVATE_PATH)
-			if not os.path.exists(my_private_path):
-				os.makedirs(my_private_path, mode=0755)
-				os.chown(my_private_path, 0, portage_gid)
-				os.chmod(my_private_path, 02770)
-
-			write_atomic(os.path.join(self.myroot, WORLD_FILE),
-			"\n".join(newworldlist))
-
 		#do original postrm
 		if myebuildpath and os.path.exists(myebuildpath):
 			# XXX: This should be the old config, not the current one.

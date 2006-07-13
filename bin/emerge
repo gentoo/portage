@@ -595,6 +595,32 @@ def getlist(settings, mode):
 
 	return mynewlines
 
+def clean_world(vardb, cpv):
+	"""Remove a package from the world file when unmerged."""
+	world_filename = os.path.join(vardb.root, portage.WORLD_FILE)
+	worldlist = portage_util.grabfile(world_filename)
+	mykey = portage.cpv_getkey(cpv)
+	newworldlist = []
+	for x in worldlist:
+		if portage.dep_getkey(x) == mykey:
+			matches = vardb.match(x, use_cache=0)
+			if not matches:
+				#zap our world entry
+				pass
+			elif len(matches) == 1 and matches[0] == cpv:
+				#zap our world entry
+				pass
+			else:
+				#others are around; keep it.
+				newworldlist.append(x)
+		else:
+			#this doesn't match the package we're unmerging; keep it.
+			newworldlist.append(x)
+
+	portage_util.ensure_dirs(os.path.join(vardb.root, portage.PRIVATE_PATH),
+		uid=portage.portage_gid, mode=02770)
+	portage_util.write_atomic(world_filename, "\n".join(newworldlist))
+
 def genericdict(mylist):
 	mynewdict={}
 	for x in mylist:
@@ -2303,12 +2329,12 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 			retval = portage.unmerge(mysplit[0], mysplit[1], settings["ROOT"],
 				mysettings, unmerge_action not in ["clean","prune"],
 				vartree=vartree, ldpath_mtimes=ldpath_mtimes)
-			if retval:
+			if retval != os.EX_OK:
 				emergelog(xterm_titles, " !!! unmerge FAILURE: "+y)
 			else:
+				clean_world(vartree.dbapi, y)
 				emergelog(xterm_titles, " >>> unmerge success: "+y)
 	return 1
-
 
 def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 
