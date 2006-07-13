@@ -18,9 +18,8 @@ shift $#
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}/ebuild.sh"
 
 install_qa_check() {
-
+	cd "${D}" || die "cd failed"
 	prepall
-	cd "${D}"
 
 	declare -i UNSAFE=0
 	for i in $(find "${D}/" -type f -perm -2002); do
