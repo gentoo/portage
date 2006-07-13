@@ -6432,29 +6432,27 @@ class dblink:
 		return 0
 
 	def mergeme(self,srcroot,destroot,outfile,secondhand,stufftomerge,cfgfiledict,thismtime):
-		srcroot=os.path.normpath("///"+srcroot)+"/"
-		destroot=os.path.normpath("///"+destroot)+"/"
+		from os.path import sep, normpath, join
+		srcroot = normpath(3*sep + srcroot).rstrip(sep) + sep
+		destroot = normpath(3*sep + destroot).rstrip(sep) + sep
 		# this is supposed to merge a list of files.  There will be 2 forms of argument passing.
 		if type(stufftomerge)==types.StringType:
 			#A directory is specified.  Figure out protection paths, listdir() it and process it.
-			mergelist=listdir(srcroot+stufftomerge)
+			mergelist = listdir(join(srcroot, stufftomerge))
 			offset=stufftomerge
 			# We need mydest defined up here to calc. protection paths.  This is now done once per
 			# directory rather than once per file merge.  This should really help merge performance.
 			# Trailing / ensures that protects/masks with trailing /'s match.
-			mytruncpath = os.path.sep + \
-				os.path.join(
-					destroot.strip(os.path.sep), offset.strip(os.path.sep)) + \
-				os.path.sep
+			mytruncpath = join(destroot, offset).rstrip(sep) + sep
 			myppath=self.isprotected(mytruncpath)
 		else:
 			mergelist=stufftomerge
 			offset=""
 		for x in mergelist:
-			mysrc=os.path.normpath("///"+srcroot+offset+x)
-			mydest=os.path.normpath("///"+destroot+offset+x)
+			mysrc = join(srcroot, offset, x)
+			mydest = join(destroot, offset, x)
 			# myrealdest is mydest without the $ROOT prefix (makes a difference if ROOT!="/")
-			myrealdest="/"+offset+x
+			myrealdest = join(sep, offset, x)
 			# stat file once, test using S_* macros many times (faster that way)
 			try:
 				mystat=os.lstat(mysrc)
@@ -6598,7 +6596,8 @@ class dblink:
 					writemsg_stdout(">>> %s/\n" % mydest)
 				outfile.write("dir "+myrealdest+"\n")
 				# recurse and merge this directory
-				if self.mergeme(srcroot,destroot,outfile,secondhand,offset+x+"/",cfgfiledict,thismtime):
+				if self.mergeme(srcroot, destroot, outfile, secondhand,
+					join(offset, x), cfgfiledict, thismtime):
 					return 1
 			elif stat.S_ISREG(mymode):
 				# we are merging a regular file
