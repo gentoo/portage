@@ -418,16 +418,17 @@ class search:
 			self.matches = {"pkg":[]}
 		print "Searching...   ",
 
+		regexsearch = False
+		if self.searchkey[0] == '%':
+			regexsearch = True
+			self.searchkey = self.searchkey[1:]
 		if self.searchkey[0] == '@':
 			match_category = 1
 			self.searchkey = self.searchkey[1:]
-		if self.searchkey=="*":
-			#hack for people who aren't regular expression gurus
-			self.searchkey==".*"
-		if re.search("\+\+", self.searchkey):
-			#hack for people who aren't regular expression gurus
-			self.searchkey=re.sub("\+\+","\+\+",self.searchkey)
-		self.searchre=re.compile(self.searchkey.lower(),re.I)
+		if regexsearch:
+			self.searchre=re.compile(self.searchkey,re.I)
+		else:
+			self.searchre=re.compile(re.escape(self.searchkey), re.I)
 		for package in self.portdb.cp_all():
 			self.spinner.update()
 
