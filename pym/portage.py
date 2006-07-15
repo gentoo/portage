@@ -188,11 +188,11 @@ def prefix_array(array,prefix,doblanks=1):
 	return newarray
 
 def normalize_path(mypath):
-	newpath = os.path.normpath(mypath)
-	if len(newpath) > 1:
-		if newpath[:2] == "//":
-			newpath = newpath[1:]
-	return newpath
+	if mypath.startswith(os.path.sep):
+		# posixpath.normpath collapses 3 or more leading slashes to just 1.
+		return os.path.normpath(2*os.path.sep + mypath)
+	else:
+		return os.path.normpath(mypath)
 
 dircache = {}
 cacheHit=0
