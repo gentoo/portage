@@ -107,15 +107,19 @@ def help(myaction,myopts,havecolor=1):
 		print
 		print "       "+green("--search")+" ("+green("-s")+" short option)"
 		print "              Searches for matches of the supplied string in the current local"
-		print "              portage tree. The search string is a regular expression."
+		print "              portage tree. By default emerge uses a case-insensitive simple "
+		print "              search, but you can enable a regular expression search by "
+		print "              prefixing the search string with %%."
 		print "              Prepending the expression with a '@' will cause the category to"
 		print "              be included in the search."
 		print "              A few examples:"
-		print "              "+bold("emerge search '^kde'")
+		print "              "+bold("emerge --search libc")
+		print "                  list all packages that contain libc in their name"
+		print "              "+bold("emerge --search '%^kde'")
 		print "                  list all packages starting with kde"
-		print "              "+bold("emerge search 'gcc$'")
+		print "              "+bold("emerge --search '%gcc$'")
 		print "                  list all packages ending with gcc"
-		print "              "+bold("emerge search @^dev-java.*jdk")
+		print "              "+bold("emerge --search '%@^dev-java.*jdk'")
 		print "                  list all available Java JDKs"
 		print
 		print "       "+green("--searchdesc")+" ("+green("-S")+" short option)"
