@@ -2988,8 +2988,9 @@ def action_info(settings, trees, myopts, myfiles):
 	print getportageversion(settings["PORTDIR"], settings["ROOT"],
 		settings.profile_path, settings["CHOST"],
 		trees[settings["ROOT"]]["vartree"].dbapi)
-	print "================================================================="
-	print "                       System Settings"
+	if myfiles:
+		print "================================================================="
+		print "                       System Settings"
 	print "================================================================="
 	print "System uname: "+unameout
 	if os.path.exists("/etc/gentoo-release"):
