@@ -2988,10 +2988,12 @@ def action_info(settings, trees, myopts, myfiles):
 	print getportageversion(settings["PORTDIR"], settings["ROOT"],
 		settings.profile_path, settings["CHOST"],
 		trees[settings["ROOT"]]["vartree"].dbapi)
+	header_width = 65
+	header_title = "System Settings"
 	if myfiles:
-		print "================================================================="
-		print "                       System Settings"
-	print "================================================================="
+		print header_width * "="
+		print header_title.rjust(int(header_width/2 + len(header_title)/2))
+	print header_width * "="
 	print "System uname: "+unameout
 	if os.path.exists("/etc/gentoo-release"):
 		os.system("cat /etc/gentoo-release")
@@ -3116,9 +3118,10 @@ def action_info(settings, trees, myopts, myfiles):
 				# If we have not yet printed the header, 
 				# print it now
 				if not header_printed:
-					print "================================================================="
-					print "                       Package Settings"
-					print "================================================================="
+					header_title = "Package Settings"
+					print header_width * "="
+					print header_title.rjust(int(header_width/2 + len(header_title)/2))
+					print header_width * "="
 					header_printed = True
 
 				# Print package info
