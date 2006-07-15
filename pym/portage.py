@@ -76,7 +76,8 @@ try:
 	import portage_util
 	from portage_util import atomic_ofstream, apply_secpass_permissions, apply_recursive_permissions, \
 		dump_traceback, getconfig, grabdict, grabdict_package, grabfile, grabfile_package, \
-		map_dictlist_vals, pickle_read, pickle_write, stack_dictlist, stack_dicts, stack_lists, \
+		map_dictlist_vals, normalize_path, \
+		pickle_read, pickle_write, stack_dictlist, stack_dicts, stack_lists, \
 		unique_array, varexpand, writedict, writemsg, writemsg_stdout, write_atomic
 	import portage_exception
 	import portage_gpg
@@ -186,13 +187,6 @@ def prefix_array(array,prefix,doblanks=1):
 		else:
 			newarray.append(x)
 	return newarray
-
-def normalize_path(mypath):
-	if mypath.startswith(os.path.sep):
-		# posixpath.normpath collapses 3 or more leading slashes to just 1.
-		return os.path.normpath(2*os.path.sep + mypath)
-	else:
-		return os.path.normpath(mypath)
 
 dircache = {}
 cacheHit=0

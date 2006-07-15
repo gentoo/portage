@@ -30,6 +30,13 @@ def writemsg_stdout(mystr,noiselevel=0):
 	"""Prints messages stdout based on the noiselimit setting"""
 	writemsg(mystr, noiselevel=noiselevel, fd=sys.stdout)
 
+def normalize_path(mypath):
+	if mypath.startswith(os.path.sep):
+		# posixpath.normpath collapses 3 or more leading slashes to just 1.
+		return os.path.normpath(2*os.path.sep + mypath)
+	else:
+		return os.path.normpath(mypath)
+
 def grabfile(myfilename, compat_level=0, recursive=0):
 	"""This function grabs the lines in a file, normalizes whitespace and returns lines in a list; if a line
 	begins with a #, it is ignored, as are empty lines"""
