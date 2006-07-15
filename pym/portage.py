@@ -711,8 +711,9 @@ def new_protect_filename(mydest, newmd5=None):
 			continue
 	prot_num = prot_num + 1
 
-	new_pfile = os.path.normpath(real_dirname+"/._cfg"+string.zfill(prot_num,4)+"_"+real_filename)
-	old_pfile = os.path.normpath(real_dirname+"/"+last_pfile)
+	new_pfile = normalize_path(os.path.join(real_dirname,
+		"._cfg" + str(prot_num).zfill(4) + "_" + real_filename))
+	old_pfile = normalize_path(os.path.join(real_dirname, last_pfile))
 	if last_pfile and newmd5:
 		if portage_checksum.perform_md5(real_dirname+"/"+last_pfile) == newmd5:
 			return old_pfile
@@ -907,9 +908,9 @@ class config:
 			self.backupenv = os.environ.copy()
 
 			config_root = \
-				os.path.normpath(config_root).rstrip(os.path.sep) + os.path.sep
+				normalize_path(config_root).rstrip(os.path.sep) + os.path.sep
 			target_root = \
-				os.path.normpath(target_root).rstrip(os.path.sep) + os.path.sep
+				normalize_path(target_root).rstrip(os.path.sep) + os.path.sep
 
 			for k, v in (("PORTAGE_CONFIGROOT", config_root),
 				("ROOT", target_root)):
@@ -967,7 +968,7 @@ class config:
 						raise portage_exception.ParseError(
 							"Expected 1 parent and got %i: '%s'" % \
 							(len(parents), parents_file))
-					mypath = os.path.normpath(os.path.join(
+					mypath = normalize_path(os.path.join(
 						mypath, parents[0]))
 					if os.path.exists(mypath):
 						self.profiles.insert(0, mypath)
@@ -1097,7 +1098,7 @@ class config:
 					abs_user_config]
 				overlay_profiles = []
 				for ov in self["PORTDIR_OVERLAY"].split():
-					ov = os.path.normpath(ov)
+					ov = normalize_path(ov)
 					profiles_dir = os.path.join(ov, "profiles")
 					if os.path.isdir(profiles_dir):
 						overlay_profiles.append(profiles_dir)
@@ -1238,7 +1239,7 @@ class config:
 		if overlays:
 			new_ov=[]
 			for ov in overlays:
-				ov=os.path.normpath(ov)
+				ov = normalize_path(ov)
 				if os.path.isdir(ov):
 					new_ov.append(ov)
 				else:
@@ -2416,7 +2417,7 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 	if mysettings.configdict["pkg"].has_key("CATEGORY"):
 		cat = mysettings.configdict["pkg"]["CATEGORY"]
 	else:
-		cat = os.path.basename(os.path.normpath(pkg_dir+"/.."))
+		cat = os.path.basename(normalize_path(os.path.join(pkg_dir, "..")))
 	mypv = os.path.basename(ebuild_path)[:-7]	
 	mycpv = cat+"/"+mypv
 	mysplit=pkgsplit(mypv,silent=0)
@@ -3652,7 +3653,7 @@ def getmaskingreason(mycpv, settings=None, portdb=None):
 	locations.append(os.path.join(settings["PORTAGE_CONFIGROOT"],
 		USER_CONFIG_PATH.lstrip(os.path.sep)))
 	for ov in settings["PORTDIR_OVERLAY"].split():
-		profdir = os.path.join(os.path.normpath(ov), "profiles")
+		profdir = os.path.join(normalize_path(ov), "profiles")
 		if os.path.isdir(profdir):
 			locations.append(profdir)
 	locations.reverse()
@@ -5850,7 +5851,7 @@ class dblink:
 			vartree = db[myroot]["vartree"]
 		self.vartree = vartree
 
-		self.dbroot   = os.path.normpath(myroot+VDB_PATH)
+		self.dbroot   = normalize_path(os.path.join(myroot, VDB_PATH))
 		self.dbcatdir = self.dbroot+"/"+cat
 		self.dbpkgdir = self.dbcatdir+"/"+pkg
 		self.dbtmpdir = self.dbcatdir+"/-MERGING-"+pkg
@@ -5935,7 +5936,7 @@ class dblink:
 			# we do this so we can remove from non-root filesystems
 			# (use the ROOT var to allow maintenance on other partitions)
 			try:
-				mydat[1] = os.path.normpath(os.path.join(
+				mydat[1] = normalize_path(os.path.join(
 					self.myroot, mydat[1].lstrip(os.path.sep)))
 				if mydat[0]=="obj":
 					#format: type, mtime, md5sum
@@ -6025,7 +6026,7 @@ class dblink:
 			mydirs=[]
 			modprotect="/lib/modules/"
 			for objkey in mykeys:
-				obj=os.path.normpath(objkey)
+				obj = normalize_path(objkey)
 				if obj[:2]=="//":
 					obj=obj[1:]
 				statobj = None
@@ -6150,7 +6151,8 @@ class dblink:
 	def isowner(self,filename,destroot):
 		""" check if filename is a new file or belongs to this package
 		(for this or a previous version)"""
-		destfile = os.path.normpath(destroot+"/"+filename)
+		destfile = normalize_path(
+			os.path.join(destroot, filename.lstrip(os.path.sep)))
 		if not os.path.exists(destfile):
 			return True
 		if self.getcontents() and filename in self.getcontents().keys():
@@ -6403,9 +6405,9 @@ class dblink:
 		return 0
 
 	def mergeme(self,srcroot,destroot,outfile,secondhand,stufftomerge,cfgfiledict,thismtime):
-		from os.path import sep, normpath, join
-		srcroot = normpath(3*sep + srcroot).rstrip(sep) + sep
-		destroot = normpath(3*sep + destroot).rstrip(sep) + sep
+		from os.path import sep, join
+		srcroot = normalize_path(srcroot).rstrip(sep) + sep
+		destroot = normalize_path(destroot).rstrip(sep) + sep
 		# this is supposed to merge a list of files.  There will be 2 forms of argument passing.
 		if type(stufftomerge)==types.StringType:
 			#A directory is specified.  Figure out protection paths, listdir() it and process it.
@@ -6473,7 +6475,7 @@ class dblink:
 						myto=myto[len(self.settings["D"]):]
 				# myrealto contains the path of the real file to which this symlink points.
 				# we can simply test for existence of this file to see if the target has been merged yet
-				myrealto=os.path.normpath(os.path.join(destroot,myabsto))
+				myrealto = normalize_path(os.path.join(destroot, myabsto))
 				if mydmode!=None:
 					#destination exists
 					if not stat.S_ISLNK(mydmode):
