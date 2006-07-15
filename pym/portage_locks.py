@@ -11,7 +11,6 @@ import string
 import time
 import types
 import portage_exception
-import portage_file
 import portage_util
 import portage_data
 from portage_exec import atexit_register
@@ -24,7 +23,7 @@ def clean_my_hardlocks():
 	for x in hardlock_path_list:
 		hardlock_cleanup(x)
 def add_hardlock_file_to_cleanup(path):
-	mypath = portage_file.normpath(path)
+	mypath = portage_util.normalize_path(path)
 	if os.path.isfile(mypath):
 		mypath = os.path.dirname(mypath)
 	if os.path.isdir(mypath):

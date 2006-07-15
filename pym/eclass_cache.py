@@ -1,10 +1,9 @@
 # Copyright: 2005 Gentoo Foundation
 # Author(s): Nicholas Carpaski (carpaski@gentoo.org), Brian Harring (ferringb@gentoo.org)
 # License: GPL2
-# $Id:$
+# $Id$
 
-from portage_util import writemsg
-import portage_file
+from portage_util import normalize_path, writemsg
 import os, sys
 from portage_data import portage_gid
 
@@ -20,7 +19,7 @@ class cache:
 		# screw with the porttree ordering, w/out having bash inherit match it, and I'll hurt you.
 		# ~harring
 		self.porttrees = [self.porttree_root]+overlays
-		self.porttrees = tuple(map(portage_file.normpath, self.porttrees))
+		self.porttrees = tuple(map(normalize_path, self.porttrees))
 		self._master_eclass_root = os.path.join(self.porttrees[0],"eclass")
 		self.update_eclasses()
 
@@ -40,7 +39,7 @@ class cache:
 	def update_eclasses(self):
 		self.eclasses = {}
 		eclass_len = len(".eclass")
-		for x in [portage_file.normpath(os.path.join(y,"eclass")) for y in self.porttrees]:
+		for x in [normalize_path(os.path.join(y,"eclass")) for y in self.porttrees]:
 			if not os.path.isdir(x):
 				continue
 			for y in [y for y in os.listdir(x) if y.endswith(".eclass")]:
