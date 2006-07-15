@@ -1,6 +1,13 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.1.1
+==================================
+
+* emerge --search doesn't use regular expressions now anymore by default, so
+  emerge --search dvd+rw-tools now works as expected. Regular expressions can be enabled
+  by prefixing the search string with %. 
+
 portage-2.1
 ==================================
 
@@ -23,3 +30,4 @@ portage-2.1
   in make.conf.  Interested in figuring out what use flags were turned off?  Check out
   /usr/portage/profiles/base/use.defaults and other use.defaults files that correspond 
   to your profile.
+
