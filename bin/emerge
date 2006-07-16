@@ -1052,8 +1052,8 @@ class depgraph:
 					if "--usepkgonly" not in self.myopts:
 						# Remove any binary package entries that are masked in the portage tree (#55871)
 						myeb_pkg_matches = [pkg for pkg in myeb_pkg_matches \
-							if pkg not in myeb_matches and \
-							portdb.cpv_exists(pkg)]
+							if pkg in myeb_matches or  \
+							not portdb.cpv_exists(pkg)]
 					myeb_pkg = portage.best(myeb_pkg_matches)
 
 				if not myeb_pkg:
