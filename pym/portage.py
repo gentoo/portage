@@ -5791,7 +5791,7 @@ class binarytree(packagetree):
 			pass
 		return myslot
 
-class config_protect(object):
+class ConfigProtect(object):
 	def __init__(self, myroot, protect_list, mask_list):
 		self.myroot = myroot
 		self.protect_list = protect_list
@@ -5860,7 +5860,7 @@ class dblink:
 			raise ValueError
 
 		self.myroot=myroot
-		protect_obj = config_protect(myroot,
+		protect_obj = ConfigProtect(myroot,
 			mysettings.get("CONFIG_PROTECT","").split(),
 			mysettings.get("CONFIG_PROTECT_MASK","").split())
 		self.updateprotect = protect_obj.updateprotect
@@ -6990,7 +6990,7 @@ def update_config_files(config_root, protect, protect_mask, update_iter):
 
 	write_atomic(os.path.join(config_root, WORLD_FILE), "\n".join(worldlist))
 
-	protect_obj = config_protect(config_root, protect, protect_mask)
+	protect_obj = ConfigProtect(config_root, protect, protect_mask)
 	for x in update_files:
 		updating_file = os.path.join(abs_user_config, x)
 		if protect_obj.isprotected(updating_file):
