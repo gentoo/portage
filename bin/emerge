@@ -2628,14 +2628,28 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		if port is None:
 			port=""
 		updatecache_flg=True
-
+		all_rsync_opts = set(rsync_opts)
+		all_rsync_opts.update(
+			settings.get("PORTAGE_RSYNC_EXTRA_OPTS","").split())
+		family = socket.AF_UNSPEC
+		if "-4" in all_rsync_opts or "--ipv4" in all_rsync_opts:
+			family = socket.AF_INET
+		elif socket.has_ipv6 and \
+			("-6" in all_rsync_opts or "--ipv6" in all_rsync_opts):
+			family = socket.AF_INET6
 		ips=[]
 		while (1):
 			if ips:
 				del ips[0]
 			if ips==[]:
 				try:
-					ips=socket.gethostbyname_ex(hostname)[2]
+					for addrinfo in socket.getaddrinfo(
+						hostname, None, family, socket.SOCK_STREAM):
+						if addrinfo[0] == socket.AF_INET6:
+							# IPv6 addresses need to be enclosed in square brackets
+							ips.append("[%s]" % addrinfo[4][0])
+						else:
+							ips.append(addrinfo[4][0])
 				except SystemExit, e:
 					raise # Needed else can't exit
 				except Exception, e:
