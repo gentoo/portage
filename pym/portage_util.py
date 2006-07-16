@@ -813,3 +813,42 @@ class LazyItemsDict(dict):
 		if item_key in self.lazy_items:
 			del self.lazy_items[item_key]
 		dict.__delitem__(self, item_key)
+
+class ConfigProtect(object):
+	def __init__(self, myroot, protect_list, mask_list):
+		self.myroot = myroot
+		self.protect_list = protect_list
+		self.mask_list = mask_list
+		self.updateprotect()
+
+	def updateprotect(self):
+		#do some config file management prep
+		self.protect = []
+		for x in self.protect_list:
+			ppath = normalize_path(
+				os.path.join(self.myroot, x.lstrip(os.path.sep))) + os.path.sep
+			if os.path.isdir(ppath):
+				self.protect.append(ppath)
+
+		self.protectmask = []
+		for x in self.mask_list:
+			ppath = normalize_path(
+				os.path.join(self.myroot, x.lstrip(os.path.sep))) + os.path.sep
+			if os.path.isdir(ppath):
+				self.protectmask.append(ppath)
+			#if it doesn't exist, silently skip it
+
+	def isprotected(self, obj):
+		"""Checks if obj is in the current protect/mask directories. Returns
+		0 on unprotected/masked, and 1 on protected."""
+		masked = 0
+		protected = 0
+		for ppath in self.protect:
+			if len(ppath) > masked and obj.startswith(ppath):
+				protected = len(ppath)
+				#config file management
+				for pmpath in self.protectmask:
+					if len(pmpath) >= protected and obj.startswith(pmpath):
+						#skip, it's in the mask
+						masked = len(pmpath)
+		return protected > masked

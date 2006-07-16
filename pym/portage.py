@@ -5791,45 +5791,6 @@ class binarytree(packagetree):
 			pass
 		return myslot
 
-class ConfigProtect(object):
-	def __init__(self, myroot, protect_list, mask_list):
-		self.myroot = myroot
-		self.protect_list = protect_list
-		self.mask_list = mask_list
-		self.updateprotect()
-
-	def updateprotect(self):
-		#do some config file management prep
-		self.protect = []
-		for x in self.protect_list:
-			ppath = normalize_path(
-				os.path.join(self.myroot, x.lstrip(os.path.sep))) + os.path.sep
-			if os.path.isdir(ppath):
-				self.protect.append(ppath)
-
-		self.protectmask = []
-		for x in self.mask_list:
-			ppath = normalize_path(
-				os.path.join(self.myroot, x.lstrip(os.path.sep))) + os.path.sep
-			if os.path.isdir(ppath):
-				self.protectmask.append(ppath)
-			#if it doesn't exist, silently skip it
-
-	def isprotected(self,obj):
-		"""Checks if obj is in the current protect/mask directories. Returns
-		0 on unprotected/masked, and 1 on protected."""
-		masked=0
-		protected=0
-		for ppath in self.protect:
-			if len(ppath) > masked and obj.startswith(ppath):
-				protected=len(ppath)
-				#config file management
-				for pmpath in self.protectmask:
-					if len(pmpath) >= protected and obj.startswith(pmpath):
-						#skip, it's in the mask
-						masked=len(pmpath)
-		return (protected > masked)
-
 class dblink:
 	"this class provides an interface to the standard text package database"
 	def __init__(self, cat, pkg, myroot, mysettings, treetype=None,
@@ -5860,7 +5821,7 @@ class dblink:
 			raise ValueError
 
 		self.myroot=myroot
-		protect_obj = ConfigProtect(myroot,
+		protect_obj = portage_util.ConfigProtect(myroot,
 			mysettings.get("CONFIG_PROTECT","").split(),
 			mysettings.get("CONFIG_PROTECT_MASK","").split())
 		self.updateprotect = protect_obj.updateprotect
@@ -6990,7 +6951,8 @@ def update_config_files(config_root, protect, protect_mask, update_iter):
 
 	write_atomic(os.path.join(config_root, WORLD_FILE), "\n".join(worldlist))
 
-	protect_obj = ConfigProtect(config_root, protect, protect_mask)
+	protect_obj = portage_util.ConfigProtect(
+		config_root, protect, protect_mask)
 	for x in update_files:
 		updating_file = os.path.join(abs_user_config, x)
 		if protect_obj.isprotected(updating_file):
