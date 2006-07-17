@@ -1083,17 +1083,13 @@ class config:
 			abs_user_config = os.path.join(config_root,
 				USER_CONFIG_PATH.lstrip(os.path.sep))
 
+			# locations for "categories" and "arch.list" files
+			locations = [os.path.join(self["PORTDIR"], "profiles")]
 			pmask_locations = [os.path.join(self["PORTDIR"], "profiles")]
 			pmask_locations.extend(self.profiles)
 
-			if os.environ.get("PORTAGE_CALLER","") == "repoman" and \
-				os.environ.get("PORTDIR_OVERLAY","") == "":
-				# repoman shouldn't use local settings.
-				locations = [self["PORTDIR"] + "/profiles"]
-				overlay_profiles = []
-			else:
-				locations = [os.path.join(self["PORTDIR"], "profiles"),
-					abs_user_config]
+			if os.environ.get("PORTAGE_CALLER","") != "repoman" or \
+				os.environ.get("PORTDIR_OVERLAY","") != "":
 				overlay_profiles = []
 				for ov in self["PORTDIR_OVERLAY"].split():
 					ov = normalize_path(ov)
@@ -1105,6 +1101,7 @@ class config:
 				pmask_locations.extend(overlay_profiles)
 
 			if os.environ.get("PORTAGE_CALLER","") != "repoman":
+				locations.append(abs_user_config)
 				pmask_locations.append(abs_user_config)
 				pusedict = grabdict_package(
 					os.path.join(abs_user_config, "package.use"), recursive=1)
