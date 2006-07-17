@@ -24,7 +24,10 @@ map(allowed_filename_chars_set.setdefault, map(chr, map(ord, [".", "-", "_", "+"
 
 import string,signal,re,pickle,tempfile
 
+os.environ["PORTAGE_LEGACY_GLOBALS"] = "false"
 import portage
+del os.environ["PORTAGE_LEGACY_GLOBALS"]
+
 import portage_checksum
 import portage_const
 import portage_dep
@@ -43,7 +46,11 @@ from fileinput import input
 from grp import getgrnam
 from stat import S_ISDIR, ST_CTIME, ST_GID, ST_MTIME
 
-if portage.settings["NOCOLOR"] in ("yes","true") or not sys.stdout.isatty():
+
+trees = portage.create_trees()
+settings = trees["/"]["porttree"].settings
+if settings.get("NOCOLOR", None) in ("yes", "true") or \
+	not sys.stdout.isatty():
 	nocolor()
 
 def warn(txt):
@@ -222,7 +229,7 @@ ven_string=ven_cat+'/'+ven_nam+'-'+ven_ver+ven_suf+ven_rev
 valid_ebuild_name_re=re.compile(ven_string+'$', re.I)
 valid_ebuild_filename_re=re.compile(ven_string+'\.ebuild$', re.I)
 
-repoman_settings = portage.config(clone=portage.settings)
+repoman_settings = portage.config(clone=settings)
 verbose=0
 quiet=0
 
@@ -481,9 +488,10 @@ if quiet < 2:
 	print "PORTDIR = \""+os.environ["PORTDIR"]+"\""
 	print "PORTDIR_OVERLAY = \""+os.environ["PORTDIR_OVERLAY"]+"\""
 
-portage.close_portdbapi_caches()
-reload(portage)
-repoman_settings = portage.config(clone=portage.settings)
+trees = portage.create_trees(trees=trees)
+settings = trees["/"]["porttree"].settings
+portdb = trees["/"]["porttree"].dbapi
+repoman_settings = portage.config(clone=settings)
 
 if not myreporoot:
 	myreporoot = os.path.basename(portdir_overlay)
@@ -869,7 +877,7 @@ for x in scanlist:
 						fails["digest.stray"].append(x+"/files/"+y)
 				else:
 					# We have an ebuild
-					myuris,myfiles = portage.db["/"]["porttree"].dbapi.getfetchlist(mykey,all=True)
+					myuris, myfiles = portdb.getfetchlist(mykey, all=True)
 					myfiles_all.extend(myfiles)
 
 					uri_dict = {}
@@ -889,8 +897,10 @@ for x in scanlist:
 									stats["digest.unmatch"] += 1
 									fails["digest.unmatch"].append(y+"::"+myf)
 								else:
-									eb_name,eb_location = portage.db["/"]["porttree"].dbapi.findname2(mykey)
-									portage.doebuild(eb_name, "digest", "/", uri_settings, tree="porttree")
+									eb_name = portdb.findname2(mykey)[0]
+									portage.doebuild(eb_name, "digest", "/",
+										uri_settings, tree="porttree",
+										mydbapi=portdb)
 							else:
 								stats["digest.partial"] += 1
 								fails["digest.partial"].append(y+"::"+myf)
@@ -995,7 +1005,8 @@ for x in scanlist:
 			fails["ebuild.namenomatch"].append(x+"/"+y+".ebuild")
 			continue
 		try:
-			myaux = dict( zip(allvars, portage.db["/"]["porttree"].dbapi.aux_get(catdir+"/"+y, allvars ) ) )
+			myaux = dict(
+				zip(allvars, portdb.aux_get(os.path.join(catdir, y), allvars)))
 		except KeyError:
 			stats["ebuild.syntax"]=stats["ebuild.syntax"]+1
 			fails["ebuild.syntax"].append(x+"/"+y+".ebuild")
@@ -1017,7 +1028,8 @@ for x in scanlist:
 			if prov_cp != myprovide:
 				stats["virtual.versioned"]+=1
 				fails["virtual.versioned"].append(x+"/"+y+".ebuild: "+myprovide)
-			prov_pkg = portage.dep_getkey(portage.best(portage.db["/"]["porttree"].dbapi.xmatch("match-all", prov_cp)))
+			prov_pkg = portage.dep_getkey(
+				portage.best(portdb.xmatch("match-all", prov_cp)))
 			if prov_cp == prov_pkg:
 				stats["virtual.exists"]+=1
 				fails["virtual.exists"].append(x+"/"+y+".ebuild: "+prov_cp)
@@ -1146,8 +1158,8 @@ for x in scanlist:
 						config_incrementals=portage_const.INCREMENTALS)
 					arch_caches[prof[0]] = dep_settings
 
-				portage.db["/"]["porttree"].settings = dep_settings
-				portage.db["/"]["porttree"].dbapi.mysettings = dep_settings
+				trees["/"]["porttree"].settings = dep_settings
+				portdb.mysettings = dep_settings
 				dep_settings["ACCEPT_KEYWORDS"] = " ".join(groups)
 				# just in case, prevent config.reset() from nuking these.
 				dep_settings.backup_changes("ACCEPT_KEYWORDS")
@@ -1159,7 +1171,8 @@ for x in scanlist:
 						fails["virtual.unavailable"].append(x+"/"+y+".ebuild: "+keyword+"("+prof[0]+") "+prov_cp)
 
 				if not baddepsyntax:
-					ismasked = (catdir+"/"+y not in portage.db["/"]["porttree"].dbapi.xmatch("list-visible",x))
+					ismasked = os.path.join(catdir, y) not in \
+						portdb.xmatch("list-visible", x)
 					if ismasked:
 						if "--ignore-masked" in myoptions:
 							continue
@@ -1180,7 +1193,9 @@ for x in scanlist:
 						if not myvalue:
 							continue
 						try:
-							mydep=portage.dep_check(myvalue,portage.db["/"]["porttree"].dbapi,dep_settings,use="all",mode=matchmode)
+							mydep = portage.dep_check(myvalue, portdb,
+								dep_settings, use="all", mode=matchmode,
+								trees=trees)
 						except KeyError, e:
 							stats[mykey]=stats[mykey]+1
 							fails[mykey].append(x+"/"+y+".ebuild: "+keyword+"("+prof[0]+") "+repr(e[0]))
@@ -1664,7 +1679,8 @@ else:
 		mydone=[]
 		if repolevel==3:   # In a package dir
 			repoman_settings["O"]=os.getcwd()
-			portage.digestgen([], repoman_settings, manifestonly=1, myportdb=portage.portdb)
+			portage.digestgen([], repoman_settings, manifestonly=1,
+				myportdb=portdb)
 		elif repolevel==2: # In a category dir
 			for x in myfiles:
 				xs=string.split(x,"/")
@@ -1674,7 +1690,8 @@ else:
 					continue
 				mydone.append(xs[0])
 				repoman_settings["O"]=os.path.join(os.getcwd(), xs[0])
-				portage.digestgen([], repoman_settings, manifestonly=1, myportdb=portage.portdb)
+				portage.digestgen([], repoman_settings, manifestonly=1,
+					myportdb=portdb)
 		elif repolevel==1: # repo-cvsroot
 			print green("RepoMan sez:"), "\"You're rather crazy... doing the entire repository.\"\n"
 			for x in myfiles:
@@ -1685,7 +1702,8 @@ else:
 					continue
 				mydone.append(string.join(xs[:2],"/"))
 				repoman_settings["O"]=os.path.join(os.getcwd(), x[0], x[1])
-				portage.digestgen([], repoman_settings, manifestonly=1, myportdb=portage.portdb)
+				portage.digestgen([], repoman_settings, manifestonly=1,
+					myportdb=portdb)
 		else:
 			print red("I'm confused... I don't know where I am!")
 			sys.exit(1)
