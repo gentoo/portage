@@ -1105,7 +1105,6 @@ class config:
 				pmask_locations.append(abs_user_config)
 				pusedict = grabdict_package(
 					os.path.join(abs_user_config, "package.use"), recursive=1)
-				self.pusedict = {}
 				for key in pusedict.keys():
 					cp = dep_getkey(key)
 					if not self.pusedict.has_key(cp):
@@ -1116,7 +1115,6 @@ class config:
 				pkgdict = grabdict_package(
 					os.path.join(abs_user_config, "package.keywords"),
 					recursive=1)
-				self.pkeywordsdict = {}
 				for key in pkgdict.keys():
 					# default to ~arch if no specific keyword is given
 					if not pkgdict[key]:
@@ -1138,7 +1136,6 @@ class config:
 				pkgunmasklines = grabfile_package(
 					os.path.join(abs_user_config, "package.unmask"),
 					recursive=1)
-				self.punmaskdict = {}
 				for x in pkgunmasklines:
 					mycatpkg=dep_getkey(x)
 					if self.punmaskdict.has_key(mycatpkg):
