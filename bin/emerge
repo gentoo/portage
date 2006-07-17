@@ -3193,7 +3193,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	vartree = trees[settings["ROOT"]]["vartree"]
 	syslist = getlist(settings, "system")
 	worldlist = getlist(settings, "world")
-	myvarlist = vartree.dbapi.cp_all()
+	myvarlist = vartree.dbapi.cpv_all()
 
 	if not syslist:
 		print "\n!!! You have no system list.",
@@ -3235,6 +3235,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 		sys.exit(1)
 
 	reallist=[]
+	explicitly_required = set()
 	for x in alldeps:
 		myparts=portage.catpkgsplit(string.split(x)[2])
 		if not myparts:
@@ -3251,12 +3252,14 @@ def action_depclean(settings, trees, ldpath_mtimes,
 		catpack=myparts[0]+"/"+myparts[1]
 		if catpack not in reallist:
 			reallist.append(catpack)
+		explicitly_required.add(x.split()[2])
 
 	cleanlist=[]
+	clean_unversioned = []
 	for x in myvarlist:
-		if x not in reallist:
-			if x not in cleanlist:
-				cleanlist.append(x)
+		if x not in explicitly_required:
+			cleanlist.append(x)
+			clean_unversioned.append(portage.dep_getkey(x))
 
 	for x in syslist+worldlist:
 		myparts = portage.catpkgsplit(x)
@@ -3268,8 +3271,16 @@ def action_depclean(settings, trees, ldpath_mtimes,
 			catpack=myparts[0]+"/"+myparts[1]
 		else:
 			catpack=x
-		if catpack in cleanlist:
-			cleanlist.remove(catpack)
+		while True:
+			# We have to exempt all slots from the system and world sets since
+			# there's currently no way of knowing which slots the user may want
+			# to keep.
+			try:
+				idx = clean_unversioned.index(catpack) # raises ValueError
+				del cleanlist[idx]
+				del clean_unversioned[idx]
+			except ValueError:
+				break
 
 	#print "\n\n\nCleaning: "
 	#for x in cleanlist:
