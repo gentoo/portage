@@ -1077,6 +1077,12 @@ class config:
 			self.lookuplist=self.configlist[:]
 			self.lookuplist.reverse()
 
+			self.pusedict = {}
+			self.pkeywordsdict = {}
+			self.punmaskdict = {}
+			abs_user_config = os.path.join(config_root,
+				USER_CONFIG_PATH.lstrip(os.path.sep))
+
 			pmask_locations = [os.path.join(self["PORTDIR"], "profiles")]
 			pmask_locations.extend(self.profiles)
 
@@ -1086,8 +1092,6 @@ class config:
 				locations = [self["PORTDIR"] + "/profiles"]
 				overlay_profiles = []
 			else:
-				abs_user_config = os.path.join(config_root,
-					USER_CONFIG_PATH.lstrip(os.path.sep))
 				locations = [os.path.join(self["PORTDIR"], "profiles"),
 					abs_user_config]
 				overlay_profiles = []
@@ -1099,14 +1103,9 @@ class config:
 				locations += overlay_profiles
 				
 				pmask_locations.extend(overlay_profiles)
-				if os.environ.get("PORTAGE_CALLER","") != "repoman":
-					pmask_locations.append(abs_user_config)
 
-			if os.environ.get("PORTAGE_CALLER","") == "repoman":
-				self.pusedict = {}
-				self.pkeywordsdict = {}
-				self.punmaskdict = {}
-			else:
+			if os.environ.get("PORTAGE_CALLER","") != "repoman":
+				pmask_locations.append(abs_user_config)
 				pusedict = grabdict_package(
 					os.path.join(abs_user_config, "package.use"), recursive=1)
 				self.pusedict = {}
