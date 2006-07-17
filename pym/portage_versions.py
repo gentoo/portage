@@ -123,6 +123,27 @@ def vercmp(ver1, ver2, silent=1):
 	return r1 - r2
 	
 def pkgcmp(pkg1, pkg2):
+	"""
+	Compare 2 package versions created in pkgsplit format.
+
+	Example usage:
+		>>> from portage_versions import *
+		>>> pkgcmp(pkgsplit('test-1.0-r1'),pkgsplit('test-1.2-r3'))
+		-1
+		>>> pkgcmp(pkgsplit('test-1.3'),pkgsplit('test-1.2-r3'))
+		1
+
+	@param pkg1: package to compare with
+	@type pkg1: list (example: ['test', '1.0', 'r1'])
+	@param pkg2: package to compare againts
+	@type pkg2: list (example: ['test', '1.0', 'r1'])
+	@rtype: None or integer
+	@return: 
+		1. None if package names are not the same
+		2. 1 if pkg1 is greater than pkg2
+		3. -1 if pkg1 is less than pkg2 
+		4. 0 if pkg1 equals pkg2
+	"""
 	if pkg1[0] != pkg2[0]:
 		return None
 	mycmp=vercmp(pkg1[1],pkg2[1])
