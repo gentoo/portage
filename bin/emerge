@@ -3234,7 +3234,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 		print "!!! You have no dependencies. Impossible. Bug."
 		sys.exit(1)
 
-	reallist=[]
+	reallist = set()
 	explicitly_required = set()
 	for x in alldeps:
 		myparts=portage.catpkgsplit(string.split(x)[2])
@@ -3250,8 +3250,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 			continue
 
 		catpack=myparts[0]+"/"+myparts[1]
-		if catpack not in reallist:
-			reallist.append(catpack)
+		reallist.add(catpack)
 		explicitly_required.add(x.split()[2])
 
 	
