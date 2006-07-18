@@ -2734,17 +2734,20 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		return 1
 
 	logfile=None
-	# Build directory creation isn't required for any of these.
-	if mydo not in ["fetch","digest","manifest"]:
-		mystatus = prepare_build_dirs(myroot, mysettings, cleanup)
-		if mystatus:
-			return mystatus
-
+	builddir_lock = None
+	try:
+		# Build directory creation isn't required for any of these.
+		if mydo not in ["fetch","digest","manifest"]:
+			builddir_lock = portage_locks.lockdir(
+				mysettings["PORTAGE_BUILDDIR"])
+			mystatus = prepare_build_dirs(myroot, mysettings, cleanup)
+			if mystatus:
+				return mystatus
 		if mydo == "unmerge":
 			return unmerge(mysettings["CATEGORY"],
 				mysettings["PF"], myroot, mysettings, vartree=vartree)
 
-		if "PORT_LOGDIR" in mysettings:
+		if "PORT_LOGDIR" in mysettings and "PORTAGE_BUILDDIR" in mysettings:
 			logid_path = os.path.join(mysettings["PORTAGE_BUILDDIR"], ".logid")
 			if not os.path.exists(logid_path):
 				f = open(logid_path, "w")
@@ -2752,212 +2755,240 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				del f
 			logid_time = time.strftime("%Y%m%d-%H%M%S",
 				time.gmtime(os.stat(logid_path).st_mtime))
-			logfile = os.path.join(mysettings["PORT_LOGDIR"], "%s:%s:%s.log" %\
+			logfile = os.path.join(
+				mysettings["PORT_LOGDIR"], "%s:%s:%s.log" % \
 				(mysettings["CATEGORY"], mysettings["PF"], logid_time))
 			mysettings["PORTAGE_LOG_FILE"] = logfile
 			del logid_path, logid_time
 
-	# if any of these are being called, handle them -- running them out of the sandbox -- and stop now.
-	if mydo in ["clean","cleanrm"]:
-		return spawn(EBUILD_SH_BINARY+" clean",mysettings,debug=debug,free=1,logfile=None)
-	elif mydo in ["help","setup"]:
-		return spawn(EBUILD_SH_BINARY+" "+mydo,mysettings,debug=debug,free=1,logfile=logfile)
-	elif mydo == "preinst":
-		mysettings.load_infodir(mysettings["O"])
-		if mysettings.has_key("EMERGE_FROM") and "binary" == mysettings["EMERGE_FROM"]:
-			mysettings["IMAGE"] = os.path.join(mysettings["PKG_TMPDIR"], mysettings["PF"], "bin")
-		else:
-			mysettings["IMAGE"] = mysettings["D"]
-		phase_retval = spawn(" ".join((EBUILD_SH_BINARY, mydo)), mysettings, debug=debug, free=1, logfile=logfile)
-		if phase_retval == os.EX_OK:
-			# Post phase logic and tasks that have been factored out of ebuild.sh.
-			myargs = [MISC_SH_BINARY, "preinst_mask", "preinst_sfperms",
-				"preinst_selinux_labels", "preinst_suid_scan"]
-			phase_retval = spawn(" ".join(myargs), mysettings, debug=debug, free=1, logfile=logfile)
-			if phase_retval != os.EX_OK:
-				writemsg("!!! post preinst failed; exiting.\n", noiselevel=-1)
-		del mysettings["IMAGE"]
-		return phase_retval
-	elif mydo in ["prerm","postrm","postinst","config"]:
-		mysettings.load_infodir(mysettings["O"])
-		return spawn(EBUILD_SH_BINARY+" "+mydo,mysettings,debug=debug,free=1,logfile=logfile)
+		# if any of these are being called, handle them -- running them out of
+		# the sandbox -- and stop now.
+		if mydo in ["clean","cleanrm"]:
+			return spawn(EBUILD_SH_BINARY + " clean", mysettings,
+				debug=debug, free=1, logfile=None)
+		elif mydo in ["help","setup"]:
+			return spawn(EBUILD_SH_BINARY + " " + mydo, mysettings,
+				debug=debug, free=1, logfile=logfile)
+		elif mydo == "preinst":
+			mysettings.load_infodir(mysettings["O"])
+			if mysettings.get("EMERGE_FROM", None) == "binary":
+				mysettings["IMAGE"] = os.path.join(
+					mysettings["PKG_TMPDIR"], mysettings["PF"], "bin")
+			else:
+				mysettings["IMAGE"] = mysettings["D"]
+			phase_retval = spawn(" ".join((EBUILD_SH_BINARY, mydo)),
+				mysettings, debug=debug, free=1, logfile=logfile)
+			if phase_retval == os.EX_OK:
+				# Post phase logic and tasks that have been factored out of
+				# ebuild.sh.
+				myargs = [MISC_SH_BINARY, "preinst_mask", "preinst_sfperms",
+					"preinst_selinux_labels", "preinst_suid_scan"]
+				phase_retval = spawn(" ".join(myargs),
+					mysettings, debug=debug, free=1, logfile=logfile)
+				if phase_retval != os.EX_OK:
+					writemsg("!!! post preinst failed; exiting.\n",
+						noiselevel=-1)
+			del mysettings["IMAGE"]
+			return phase_retval
+		elif mydo in ["prerm","postrm","postinst","config"]:
+			mysettings.load_infodir(mysettings["O"])
+			return spawn(EBUILD_SH_BINARY + " " + mydo,
+				mysettings, debug=debug, free=1, logfile=logfile)
 
-	mycpv = "/".join((mysettings["CATEGORY"], mysettings["PF"]))
+		mycpv = "/".join((mysettings["CATEGORY"], mysettings["PF"]))
 
-	newuris, alist = mydbapi.getfetchlist(mycpv, mysettings=mysettings)
-	alluris, aalist = mydbapi.getfetchlist(
-		mycpv, mysettings=mysettings, all=True)
-	mysettings["A"]=string.join(alist," ")
-	mysettings["AA"]=string.join(aalist," ")
-	if ("mirror" in features) or fetchall:
-		fetchme=alluris[:]
-		checkme=aalist[:]
-	elif mydo == "digest":
-		fetchme = alluris[:]
-		checkme = aalist[:]
-		# Skip files that we already have digests for.
-		mf = Manifest(mysettings["O"], mysettings["DISTDIR"])
-		mydigests = mf.getTypeDigests("DIST")
-		for filename, hashes in mydigests.iteritems():
-			if len(hashes) == len(mf.hashes):
-				while filename in checkme:
-					i = checkme.index(filename)
-					del fetchme[i]
-					del checkme[i]
-			del filename, hashes
-	else:
-		fetchme=newuris[:]
-		checkme=alist[:]
-
-	# Only try and fetch the files if we are going to need them ... otherwise,
-	# if user has FEATURES=noauto and they run `ebuild clean unpack compile install`,
-	# we will try and fetch 4 times :/
-	need_distfiles = (mydo in ("digest", "fetch", "unpack") or
-	                  mydo != "manifest" and "noauto" not in features)
-	if need_distfiles and not fetch(fetchme, mysettings, listonly=listonly, fetchonly=fetchonly):
-		return 1
-
-	if mydo=="fetch" and listonly:
-		return 0
-
-	try:
-		if mydo == "manifest":
-			return not digestgen(aalist, mysettings, overwrite=1,
-				manifestonly=1, myportdb=mydbapi)
+		newuris, alist = mydbapi.getfetchlist(mycpv, mysettings=mysettings)
+		alluris, aalist = mydbapi.getfetchlist(
+			mycpv, mysettings=mysettings, all=True)
+		mysettings["A"] = " ".join(alist)
+		mysettings["AA"] = " ".join(aalist)
+		if ("mirror" in features) or fetchall:
+			fetchme = alluris[:]
+			checkme = aalist[:]
 		elif mydo == "digest":
-			return not digestgen(aalist, mysettings, overwrite=1,
-				myportdb=mydbapi)
-		elif "digest" in mysettings.features:
-			digestgen(aalist, mysettings, overwrite=0, myportdb=mydbapi)
-	except portage_exception.PermissionDenied, e:
-		writemsg("!!! %s\n" % str(e), noiselevel=-1)
-		if mydo in ("digest", "manifest"):
+			fetchme = alluris[:]
+			checkme = aalist[:]
+			# Skip files that we already have digests for.
+			mf = Manifest(mysettings["O"], mysettings["DISTDIR"])
+			mydigests = mf.getTypeDigests("DIST")
+			for filename, hashes in mydigests.iteritems():
+				if len(hashes) == len(mf.hashes):
+					while True:
+						try:
+							i = checkme.index(filename) # raises ValueError
+							del fetchme[i]
+							del checkme[i]
+						except ValueError:
+							break
+				del filename, hashes
+		else:
+			fetchme = newuris[:]
+			checkme = alist[:]
+
+		# Only try and fetch the files if we are going to need them ...
+		# otherwise, if user has FEATURES=noauto and they run `ebuild clean
+		# unpack compile install`, we will try and fetch 4 times :/
+		need_distfiles = (mydo in ("digest", "fetch", "unpack") or \
+			mydo != "manifest" and "noauto" not in features)
+		if need_distfiles and not fetch(
+			fetchme, mysettings, listonly=listonly, fetchonly=fetchonly):
 			return 1
 
-	# See above comment about fetching only when needed
-	if not digestcheck(checkme, mysettings, ("strict" in features),
-		(mydo not in ["digest","fetch","unpack"] and
-		mysettings["PORTAGE_CALLER"] == "ebuild" and "noauto" in features)):
-		return 1
+		if mydo == "fetch" and listonly:
+			return 0
 
-	if mydo=="fetch":
-		return 0
+		try:
+			if mydo == "manifest":
+				return not digestgen(aalist, mysettings, overwrite=1,
+					manifestonly=1, myportdb=mydbapi)
+			elif mydo == "digest":
+				return not digestgen(aalist, mysettings, overwrite=1,
+					myportdb=mydbapi)
+			elif "digest" in mysettings.features:
+				digestgen(aalist, mysettings, overwrite=0, myportdb=mydbapi)
+		except portage_exception.PermissionDenied, e:
+			writemsg("!!! %s\n" % str(e), noiselevel=-1)
+			if mydo in ("digest", "manifest"):
+				return 1
 
-	# inefficient.  improve this logic via making actionmap easily searchable to see if we're in the chain of what
-	# will be executed, either that or forced N doebuild calls instead of a single set of phase calls.
-	if (mydo not in ("setup", "clean", "postinst", "preinst", "prerm", "fetch", "digest", "manifest") and 
-		"noauto" not in features) or mydo == "unpack":
+		# See above comment about fetching only when needed
+		if not digestcheck(checkme, mysettings, ("strict" in features),
+			(mydo not in ["digest","fetch","unpack"] and \
+			mysettings.get("PORTAGE_CALLER", None) == "ebuild" and \
+			"noauto" in features)):
+			return 1
+
+		if mydo == "fetch":
+			return 0
+
 		# remove PORTAGE_ACTUAL_DISTDIR once cvs/svn is supported via SRC_URI
-		mysettings["PORTAGE_ACTUAL_DISTDIR"] = orig_distdir = mysettings["DISTDIR"]
-		edpath = mysettings["DISTDIR"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "distdir")
-		if os.path.exists(edpath):
-			try:
-				if os.path.isdir(edpath) and not os.path.islink(edpath):
-					shutil.rmtree(edpath)
-				else:
-					os.unlink(edpath)
-			except OSError:
-				print "!!! Failed reseting ebuild distdir path, " + edpath
-				raise
-		os.mkdir(edpath)
-		apply_secpass_permissions(edpath, gid=portage_gid, mode=0775)
-		try:
-			for file in aalist:
-				os.symlink(os.path.join(orig_distdir, file), os.path.join(edpath, file))
-		except OSError:
-			print "!!! Failed symlinking in '%s' to ebuild distdir" % file
-			raise
-
-	#initial dep checks complete; time to process main commands
-
-	nosandbox=(("userpriv" in features) and ("usersandbox" not in features) and \
-		("userpriv" not in mysettings["RESTRICT"]) and ("nouserpriv" not in mysettings["RESTRICT"]))
-	if nosandbox and ("userpriv" not in features or "userpriv" in mysettings["RESTRICT"] or \
-		"nouserpriv" in mysettings["RESTRICT"]):
-		nosandbox = ("sandbox" not in features and "usersandbox" not in features)
-
-	sesandbox = mysettings.selinux_enabled() and "sesandbox" in mysettings.features
-	ebuild_sh = EBUILD_SH_BINARY + " %s"
-	misc_sh = MISC_SH_BINARY + " dyn_%s"
-
-	# args are for the to spawn function
-	actionmap = {
-	"depend": {"cmd":ebuild_sh, "args":{"droppriv":1, "free":0,         "sesandbox":0}},
-	"setup":  {"cmd":ebuild_sh, "args":{"droppriv":0, "free":1,         "sesandbox":0}},
-	"unpack": {"cmd":ebuild_sh, "args":{"droppriv":1, "free":0,         "sesandbox":sesandbox}},
-	"compile":{"cmd":ebuild_sh, "args":{"droppriv":1, "free":nosandbox, "sesandbox":sesandbox}},
-	"test":   {"cmd":ebuild_sh, "args":{"droppriv":1, "free":nosandbox, "sesandbox":sesandbox}},
-	"install":{"cmd":ebuild_sh, "args":{"droppriv":0, "free":0,         "sesandbox":sesandbox}},
-	"rpm":    {"cmd":misc_sh,   "args":{"droppriv":0, "free":0,         "sesandbox":0}},
-	"package":{"cmd":misc_sh,   "args":{"droppriv":0, "free":0,         "sesandbox":0}},
-	}
-	
-	# merge the deps in so we have again a 'full' actionmap
-	# be glad when this can die.
-	for x in actionmap.keys():
-		if len(actionmap_deps.get(x, [])):
-			actionmap[x]["dep"] = ' '.join(actionmap_deps[x])
-
-	if mydo in actionmap.keys():
-		if mydo=="package":
-			for x in ["","/"+mysettings["CATEGORY"],"/All"]:
-				if not os.path.exists(mysettings["PKGDIR"]+x):
-					os.makedirs(mysettings["PKGDIR"]+x)
-		# REBUILD CODE FOR TBZ2 --- XXXX
-		retval = spawnebuild(mydo, actionmap, mysettings, debug, logfile=logfile)
-	elif mydo=="qmerge":
-		#check to ensure install was run.  this *only* pops up when users forget it and are using ebuild
-		if not os.path.exists(mysettings["PORTAGE_BUILDDIR"]+"/.installed"):
-			print "!!! mydo=qmerge, but install phase hasn't been ran"
-			sys.exit(1)
-		# qmerge is a special phase that implies noclean.
-		if "noclean" not in mysettings.features:
-			mysettings.features.append("noclean")
-		#qmerge is specifically not supposed to do a runtime dep check
-		retval = merge(mysettings["CATEGORY"], mysettings["PF"], mysettings["D"],
-			os.path.join(mysettings["PORTAGE_BUILDDIR"], "build-info"), myroot,
-			mysettings, myebuild=mysettings["EBUILD"], mytree=tree,
-			mydbapi=mydbapi, vartree=vartree, prev_mtimes=prev_mtimes)
-	elif mydo=="merge":
-		retval = spawnebuild("install", actionmap, mysettings, debug,
-			alwaysdep=1, logfile=logfile)
-		if retval == os.EX_OK:
-			retval = merge(mysettings["CATEGORY"], mysettings["PF"],
-				mysettings["D"], os.path.join(mysettings["PORTAGE_BUILDDIR"],
-				"build-info"), myroot, mysettings,
-				myebuild=mysettings["EBUILD"], mytree=tree, mydbapi=mydbapi,
-				vartree=vartree, prev_mtimes=prev_mtimes)
-	else:
-		print "!!! Unknown mydo:",mydo
-		sys.exit(1)
-
-	# Make sure that DISTDIR is restored to it's normal value before we return!
-	if "PORTAGE_ACTUAL_DISTDIR" in mysettings:
-		mysettings["DISTDIR"] = mysettings["PORTAGE_ACTUAL_DISTDIR"]
-		del mysettings["PORTAGE_ACTUAL_DISTDIR"]
-
-	if logfile:
-		try:
-			if os.stat(logfile).st_size == 0:
-				os.unlink(logfile)
-		except OSError:
-			pass
-
-	if retval != os.EX_OK and tree == "porttree":
-		for i in xrange(len(mydbapi.porttrees)-1):
-			t = mydbapi.porttrees[i+1]
-			if myebuild.startswith(t):
-				# Display the non-cannonical path, in case it's different, to
-				# prevent confusion.
-				overlays = mysettings["PORTDIR_OVERLAY"].split()
+		if (mydo != "setup" and "noauto" not in features) or mydo == "unpack":
+			orig_distdir = mysettings["DISTDIR"]
+			mysettings["PORTAGE_ACTUAL_DISTDIR"] = orig_distdir
+			edpath = mysettings["DISTDIR"] = \
+				os.path.join(mysettings["PORTAGE_BUILDDIR"], "distdir")
+			if os.path.exists(edpath):
 				try:
-					writemsg("!!! This ebuild is from an overlay: '%s'\n" % \
-						overlays[i], noiselevel=-1)
-				except IndexError:
-					pass
-				break
+					if os.path.isdir(edpath) and not os.path.islink(edpath):
+						shutil.rmtree(edpath)
+					else:
+						os.unlink(edpath)
+				except OSError:
+					print "!!! Failed reseting ebuild distdir path, " + edpath
+					raise
+			os.mkdir(edpath)
+			apply_secpass_permissions(edpath, gid=portage_gid, mode=0775)
+			try:
+				for file in aalist:
+					os.symlink(os.path.join(orig_distdir, file),
+						os.path.join(edpath, file))
+			except OSError:
+				print "!!! Failed symlinking in '%s' to ebuild distdir" % file
+				raise
 
-	return retval
+		#initial dep checks complete; time to process main commands
+
+		nosandbox = (("userpriv" in features) and \
+			("usersandbox" not in features) and \
+			("userpriv" not in mysettings["RESTRICT"]) and \
+			("nouserpriv" not in mysettings["RESTRICT"]))
+		if nosandbox and ("userpriv" not in features or \
+			"userpriv" in mysettings["RESTRICT"] or \
+			"nouserpriv" in mysettings["RESTRICT"]):
+			nosandbox = ("sandbox" not in features and \
+				"usersandbox" not in features)
+
+		sesandbox = mysettings.selinux_enabled() and \
+			"sesandbox" in mysettings.features
+		ebuild_sh = EBUILD_SH_BINARY + " %s"
+		misc_sh = MISC_SH_BINARY + " dyn_%s"
+
+		# args are for the to spawn function
+		actionmap = {
+"depend": {"cmd":ebuild_sh, "args":{"droppriv":1, "free":0,         "sesandbox":0}},
+"setup":  {"cmd":ebuild_sh, "args":{"droppriv":0, "free":1,         "sesandbox":0}},
+"unpack": {"cmd":ebuild_sh, "args":{"droppriv":1, "free":0,         "sesandbox":sesandbox}},
+"compile":{"cmd":ebuild_sh, "args":{"droppriv":1, "free":nosandbox, "sesandbox":sesandbox}},
+"test":   {"cmd":ebuild_sh, "args":{"droppriv":1, "free":nosandbox, "sesandbox":sesandbox}},
+"install":{"cmd":ebuild_sh, "args":{"droppriv":0, "free":0,         "sesandbox":sesandbox}},
+"rpm":    {"cmd":misc_sh,   "args":{"droppriv":0, "free":0,         "sesandbox":0}},
+"package":{"cmd":misc_sh,   "args":{"droppriv":0, "free":0,         "sesandbox":0}},
+		}
+
+		# merge the deps in so we have again a 'full' actionmap
+		# be glad when this can die.
+		for x in actionmap.keys():
+			if len(actionmap_deps.get(x, [])):
+				actionmap[x]["dep"] = ' '.join(actionmap_deps[x])
+
+		if mydo in actionmap.keys():
+			if mydo=="package":
+				portage_util.ensure_dirs(
+					os.path.join(mysettings["PKGDIR"], mysettings["CATEGORY"]))
+				portage_util.ensure_dirs(
+					os.path.join(mysettings["PKGDIR"], "All"))
+			retval = spawnebuild(mydo,
+				actionmap, mysettings, debug, logfile=logfile)
+		elif mydo=="qmerge":
+			# check to ensure install was run.  this *only* pops up when users
+			# forget it and are using ebuild
+			if not os.path.exists(
+				os.path.join(mysettings["PORTAGE_BUILDDIR"], ".installed")):
+				writemsg("!!! mydo=qmerge, but install phase hasn't been ran\n",
+					noiselevel=-1)
+				return 1
+			# qmerge is a special phase that implies noclean.
+			if "noclean" not in mysettings.features:
+				mysettings.features.append("noclean")
+			#qmerge is specifically not supposed to do a runtime dep check
+			retval = merge(
+				mysettings["CATEGORY"], mysettings["PF"], mysettings["D"],
+				os.path.join(mysettings["PORTAGE_BUILDDIR"], "build-info"),
+				myroot, mysettings, myebuild=mysettings["EBUILD"], mytree=tree,
+				mydbapi=mydbapi, vartree=vartree, prev_mtimes=prev_mtimes)
+		elif mydo=="merge":
+			retval = spawnebuild("install", actionmap, mysettings, debug,
+				alwaysdep=1, logfile=logfile)
+			if retval == os.EX_OK:
+				retval = merge(mysettings["CATEGORY"], mysettings["PF"],
+					mysettings["D"], os.path.join(mysettings["PORTAGE_BUILDDIR"],
+					"build-info"), myroot, mysettings,
+					myebuild=mysettings["EBUILD"], mytree=tree, mydbapi=mydbapi,
+					vartree=vartree, prev_mtimes=prev_mtimes)
+		else:
+			print "!!! Unknown mydo:",mydo
+			return 1
+
+		if retval != os.EX_OK and tree == "porttree":
+			for i in xrange(len(mydbapi.porttrees)-1):
+				t = mydbapi.porttrees[i+1]
+				if myebuild.startswith(t):
+					# Display the non-cannonical path, in case it's different, to
+					# prevent confusion.
+					overlays = mysettings["PORTDIR_OVERLAY"].split()
+					try:
+						writemsg("!!! This ebuild is from an overlay: '%s'\n" % \
+							overlays[i], noiselevel=-1)
+					except IndexError:
+						pass
+					break
+		return retval
+
+	finally:
+		if builddir_lock:
+			portage_locks.unlockdir(builddir_lock)
+
+		# Make sure that DISTDIR is restored to it's normal value before we return!
+		if "PORTAGE_ACTUAL_DISTDIR" in mysettings:
+			mysettings["DISTDIR"] = mysettings["PORTAGE_ACTUAL_DISTDIR"]
+			del mysettings["PORTAGE_ACTUAL_DISTDIR"]
+
+		if logfile:
+			try:
+				if os.stat(logfile).st_size == 0:
+					os.unlink(logfile)
+			except OSError:
+				pass
 
 expandcache={}
 
