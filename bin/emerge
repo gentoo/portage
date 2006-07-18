@@ -3254,38 +3254,20 @@ def action_depclean(settings, trees, ldpath_mtimes,
 			reallist.append(catpack)
 		explicitly_required.add(x.split()[2])
 
+	
+	sys_world_unversioned = set()
+	from itertools import chain
+	for x in chain(syslist, worldlist):
+		sys_world_unversioned.add(portage.dep_getkey(x))
+
 	cleanlist=[]
-	clean_unversioned = []
 	for x in myvarlist:
 		if x not in explicitly_required:
-			cleanlist.append(x)
-			clean_unversioned.append(portage.dep_getkey(x))
-
-	for x in syslist+worldlist:
-		myparts = portage.catpkgsplit(x)
-		if myparts:
-			if myparts[0][0] in ('<','>','='):
-				myparts[0] = myparts[0][1:]
-			if myparts[0][0] in ('<','>','='):
-				myparts[0] = myparts[0][1:]
-			catpack=myparts[0]+"/"+myparts[1]
-		else:
-			catpack=x
-		while True:
 			# We have to exempt all slots from the system and world sets since
 			# there's currently no way of knowing which slots the user may want
 			# to keep.
-			try:
-				idx = clean_unversioned.index(catpack) # raises ValueError
-				del cleanlist[idx]
-				del clean_unversioned[idx]
-			except ValueError:
-				break
-
-	#print "\n\n\nCleaning: "
-	#for x in cleanlist:
-	#	print x
-	#print
+			if portage.dep_getkey(x) not in sys_world_unversioned:
+				cleanlist.append(x)
 
 	if len(cleanlist):
 		unmerge(settings, myopts, vartree, "unmerge", cleanlist, ldpath_mtimes)
