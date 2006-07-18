@@ -19,7 +19,7 @@ for x in "$@" ; do
 		i18n=${x:6}/
 		continue
 	fi
-	if [[ ${x} == ".keep" ]] ; then
+	if [[ ${x:0:6} == ".keep_" ]] ; then
 		continue
 	fi
 

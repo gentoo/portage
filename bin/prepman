@@ -17,7 +17,7 @@ if [[ ! -d ${z} ]] ; then
 fi
 
 for x in $(find "${z}"/ -type d 2>/dev/null) ; do
-	for y in $(find "${x}"/ -mindepth 1 -maxdepth 1 \( -type f -or -type l \) ! -name '.keep' 2>/dev/null) ; do
+	for y in $(find "${x}"/ -mindepth 1 -maxdepth 1 \( -type f -or -type l \) ! -name '.keep_*' 2>/dev/null) ; do
 		if [[ -L ${y} ]] ; then
 			# Symlink ...
 			mylink=${y}
