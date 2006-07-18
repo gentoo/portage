@@ -46,7 +46,8 @@ from fileinput import input
 from grp import getgrnam
 from stat import S_ISDIR, ST_CTIME, ST_GID, ST_MTIME
 
-
+# A sane umask is needed for files that portage creates.
+os.umask(022)
 trees = portage.create_trees()
 settings = trees["/"]["porttree"].settings
 if settings.get("NOCOLOR", None) in ("yes", "true") or \
