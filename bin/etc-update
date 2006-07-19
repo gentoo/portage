@@ -20,8 +20,10 @@ function get_config() {
 	# First strip off comment lines, then grab the configuration
 	# item. If there's more than one of the same configuration item,
 	# then allow the last setting to take precedence.
-	cut -d'#' -f1-1 /etc/etc-update.conf | \
-		sed -ne "s/^ *$item *= *\([\"']\{0,1\}\)\(.*\)\1/\2/p" |sed -e '$p;d'
+	local result
+	result=$(cut -d'#' -f1-1 /etc/etc-update.conf | \
+		sed -ne "s/^ *$item *= *\([\"']\{0,1\}\)\(.*\)\1/\2/p" |sed -e '$p;d')
+	eval echo $result
 }
 
 function scan() {
@@ -399,9 +401,9 @@ trap die term
 
 eval $(/usr/lib/portage/bin/portageq envvar -v PORTAGE_TMPDIR CONFIG_PROTECT CONFIG_PROTECT_MASK)
 export PORTAGE_TMPDIR
-echo $PORTAGE_TMPDIR
-echo $CONFIG_PROTECT
-echo $CONFIG_PROTECT_MASK
+#echo $PORTAGE_TMPDIR
+#echo $CONFIG_PROTECT
+#echo $CONFIG_PROTECT_MASK
 #export PORTAGE_TMPDIR=$(/usr/lib/portage/bin/portageq envvar PORTAGE_TMPDIR)
 
 TMP="${PORTAGE_TMPDIR}/$$"
