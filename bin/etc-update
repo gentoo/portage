@@ -71,7 +71,7 @@ function scan() {
 					MATCHES=1
 				fi
 				if [[ "${MATCHES}" == "1" ]]; then
-					echo "Automerging trivial changes in: ${rfile:10}"
+					echo "Automerging trivial changes in: ${rpath}/${rfile:10}"
 					mv ${rpath}/${rfile} ${rpath}/${rfile:10}
 					continue
 				else
