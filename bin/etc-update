@@ -397,15 +397,20 @@ trap die term
 
 [ -w /etc ] || die "Need root priviledges for write access to /etc" 1
 
-export PORTAGE_TMPDIR=$(/usr/lib/portage/bin/portageq envvar PORTAGE_TMPDIR)
+eval $(/usr/lib/portage/bin/portageq envvar -v PORTAGE_TMPDIR CONFIG_PROTECT CONFIG_PROTECT_MASK)
+export PORTAGE_TMPDIR
+echo $PORTAGE_TMPDIR
+echo $CONFIG_PROTECT
+echo $CONFIG_PROTECT_MASK
+#export PORTAGE_TMPDIR=$(/usr/lib/portage/bin/portageq envvar PORTAGE_TMPDIR)
 
 TMP="${PORTAGE_TMPDIR}/$$"
 rm -rf ${TMP} 2> /dev/null
 mkdir ${TMP} || die "failed mkdir command!" 1
 
 # I need the CONFIG_PROTECT value
-CONFIG_PROTECT=$(/usr/lib/portage/bin/portageq envvar CONFIG_PROTECT)
-CONFIG_PROTECT_MASK=$(/usr/lib/portage/bin/portageq envvar CONFIG_PROTECT_MASK)
+#CONFIG_PROTECT=$(/usr/lib/portage/bin/portageq envvar CONFIG_PROTECT)
+#CONFIG_PROTECT_MASK=$(/usr/lib/portage/bin/portageq envvar CONFIG_PROTECT_MASK)
 
 # load etc-config's configuration
 EU_AUTOMERGE=$(get_config eu_automerge)
