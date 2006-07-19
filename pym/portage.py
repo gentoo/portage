@@ -2749,7 +2749,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			return unmerge(mysettings["CATEGORY"],
 				mysettings["PF"], myroot, mysettings, vartree=vartree)
 
-		if "PORT_LOGDIR" in mysettings and "PORTAGE_BUILDDIR" in mysettings:
+		if "PORT_LOGDIR" in mysettings and builddir_lock:
 			logid_path = os.path.join(mysettings["PORTAGE_BUILDDIR"], ".logid")
 			if not os.path.exists(logid_path):
 				f = open(logid_path, "w")
