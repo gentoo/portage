@@ -177,6 +177,20 @@ configuration file is followed by a list of possible replacement files."
 	done
 }
 
+function user_special() {
+	if [ -r /etc/etc-update.special ]; then
+		if [ -z "$1" ]; then
+			echo "ERROR: user_special() called without arguments"
+			return 1
+		fi
+		while read pat; do
+			echo ${1} | grep "${pat}" > /dev/null && return 0
+		done < /etc/etc-update.special
+	else
+		return 1
+	fi
+}
+
 function do_file() {
 	echo
 	local -i my_input
@@ -259,9 +273,9 @@ function do_cfg() {
 	local -i my_input=0
 	
 	until (( ${my_input} == -1 )) || [ ! -f ${file} ]; do
-		if [ "${OVERWRITE_ALL}" == "yes" ]; then
+		if [[ "${OVERWRITE_ALL}" == "yes" && ! user_special ${ofile} ]]; then
 			my_input=1
-		elif [ "${DELETE_ALL}" == "yes" ]; then
+		elif [[ "${DELETE_ALL}" == "yes" && ! user_special ${ofile} ]]; then
 			my_input=2
 		else
 		  showdiffcmd=$(echo "${diff_command}" |
