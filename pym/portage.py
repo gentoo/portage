@@ -2222,7 +2222,6 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 									eout = output.EOutput()
 									eout.quiet = mysettings.get("PORTAGE_QUIET", None) == "1"
 									for x_key in mydigests[myfile].keys():
-										writemsg(">>> "+str(myfile)+" "+x_key+" ;-)\n")
 										eout.ebegin("%s %s ;-)" % (myfile, x_key))
 										eout.eend(0)
 									fetched=2
