@@ -365,6 +365,8 @@ scriptname=$(basename $0)
 
 trap die term
 
+[ -w /etc ] || die "Need root priviledges for write access to /etc"
+
 export PORTAGE_TMPDIR=$(/usr/lib/portage/bin/portageq envvar PORTAGE_TMPDIR)
 
 TMP="${PORTAGE_TMPDIR}/$$"
