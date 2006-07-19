@@ -186,9 +186,8 @@ function user_special() {
 		while read pat; do
 			echo ${1} | grep "${pat}" > /dev/null && return 0
 		done < /etc/etc-update.special
-	else
-		return 1
 	fi
+	return 1
 }
 
 function do_file() {
