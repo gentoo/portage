@@ -376,6 +376,12 @@ function die() {
 	trap "" TERM
 	trap "" KILL
 	echo "Exiting: ${1}"
+	
+	if [ ${2} -eq 0 ]; then
+		scan > /dev/null
+		[ ${count} -gt 0 ] && echo "NOTE: ${count} updates remaining"
+	fi
+	
 	rm -rf ${TMP}
 	exit ${2}
 }
@@ -387,7 +393,7 @@ scriptname=$(basename $0)
 
 trap die term
 
-[ -w /etc ] || die "Need root priviledges for write access to /etc"
+[ -w /etc ] || die "Need root priviledges for write access to /etc" 1
 
 export PORTAGE_TMPDIR=$(/usr/lib/portage/bin/portageq envvar PORTAGE_TMPDIR)
 
