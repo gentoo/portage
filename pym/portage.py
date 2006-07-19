@@ -2484,7 +2484,9 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 	if PORTAGE_BIN_PATH not in mysplit:
 		mysettings["PATH"]=PORTAGE_BIN_PATH+":"+mysettings["PATH"]
 
-
+	# Sandbox needs cannonical paths.
+	mysettings["PORTAGE_TMPDIR"] = os.path.realpath(
+		mysettings["PORTAGE_TMPDIR"])
 	mysettings["BUILD_PREFIX"] = mysettings["PORTAGE_TMPDIR"]+"/portage"
 	mysettings["PKG_TMPDIR"]   = mysettings["PORTAGE_TMPDIR"]+"/binpkgs"
 	
