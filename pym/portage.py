@@ -2086,8 +2086,11 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 									os.unlink(mysettings["DISTDIR"]+"/"+myfile)
 									fetched=0
 								else:
+									eout = output.EOutput()
+									eout.quiet = mysettings.get("PORTAGE_QUIET", None) == "1"
 									for x_key in mydigests[myfile].keys():
-										writemsg(">>> Previously fetched file: "+str(myfile)+" "+x_key+" ;-)\n")
+										eout.ebegin("Previously fetched: %s %s ;-)" % (myfile, x_key))
+										eout.eend(0)
 									fetched=2
 									break #No need to keep looking for this file, we have it!
 					else:
@@ -2216,8 +2219,12 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 									os.unlink(mysettings["DISTDIR"]+"/"+myfile)
 									fetched=0
 								else:
+									eout = output.EOutput()
+									eout.quiet = mysettings.get("PORTAGE_QUIET", None) == "1"
 									for x_key in mydigests[myfile].keys():
 										writemsg(">>> "+str(myfile)+" "+x_key+" ;-)\n")
+										eout.ebegin("%s %s ;-)" % (myfile, x_key))
+										eout.eend(0)
 									fetched=2
 									break
 						except (OSError,IOError),e:
@@ -2326,29 +2333,33 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 		if strict:
 			return 0
 	mf = Manifest(pkgdir, mysettings["DISTDIR"])
-	okaymsg = " ;-)\n"
+	eout = output.EOutput()
+	eout.quiet = mysettings.get("PORTAGE_QUIET", None) == "1"
 	try:
-		writemsg_stdout(">>> checking ebuild checksums")
+		eout.ebegin("checking ebuild checksums ;-)")
 		mf.checkTypeHashes("EBUILD")
-		writemsg_stdout(okaymsg)
-		writemsg_stdout(">>> checking auxfile checksums")
+		eout.eend(0)
+		eout.ebegin("checking auxfile checksums ;-)")
 		mf.checkTypeHashes("AUX")
-		writemsg_stdout(okaymsg)
-		writemsg_stdout(">>> checking miscfile checksums")
+		eout.eend(0)
+		eout.ebegin("checking miscfile checksums ;-)")
 		mf.checkTypeHashes("MISC", ignoreMissingFiles=True)
-		writemsg_stdout(okaymsg)
+		eout.eend(0)
 		for f in myfiles:
-			writemsg_stdout(">>> checking %s" % f)
+			eout.ebegin("checking %s ;-)" % f)
 			mf.checkFileHashes(mf.findFile(f), f)
-			writemsg_stdout(okaymsg)
+			eout.eend(0)
 	except KeyError, e:
+		eout.eend(1)
 		writemsg("\n!!! Missing digest for %s\n" % str(e), noiselevel=-1)
 		return 0
 	except portage_exception.FileNotFound, e:
+		eout.eend(1)
 		writemsg("\n!!! A file listed in the Manifest could not be found: %s\n" % str(e),
 			noiselevel=-1)
 		return 0
 	except portage_exception.DigestException, e:
+		eout.eend(1)
 		writemsg("\n!!! Digest verification failed:\n", noiselevel=-1)
 		writemsg("!!! %s\n" % e.value[0], noiselevel=-1)
 		writemsg("!!! Reason: %s\n" % e.value[1], noiselevel=-1)
