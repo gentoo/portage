@@ -3851,9 +3851,6 @@ def best_match_to_list(mypkg,mylist):
 			bestm  = x
 	return bestm
 
-def catsplit(mydep):
-	return mydep.split("/", 1)
-
 def get_operator(mydep):
 	"""
 	returns '~', '=', '>', '<', '=*', '>=', or '<='
