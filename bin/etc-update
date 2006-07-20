@@ -272,9 +272,9 @@ function do_cfg() {
 	local -i my_input=0
 	
 	until (( ${my_input} == -1 )) || [ ! -f ${file} ]; do
-		if [[ "${OVERWRITE_ALL}" == "yes" && ! user_special ${ofile} ]]; then
+		if [[ "${OVERWRITE_ALL}" == "yes" ]] && ! user_special "${ofile}"; then
 			my_input=1
-		elif [[ "${DELETE_ALL}" == "yes" && ! user_special ${ofile} ]]; then
+		elif [[ "${DELETE_ALL}" == "yes" ]] && ! user_special "${ofile}"; then
 			my_input=2
 		else
 		  showdiffcmd=$(echo "${diff_command}" |
