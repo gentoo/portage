@@ -889,8 +889,6 @@ class config:
 			self.punmaskdict = copy.deepcopy(clone.punmaskdict)
 			self.prevmaskdict = copy.deepcopy(clone.prevmaskdict)
 			self.pprovideddict = copy.deepcopy(clone.pprovideddict)
-			self.lookuplist = copy.deepcopy(clone.lookuplist)
-			self.uvlist     = copy.deepcopy(clone.uvlist)
 			self.dirVirtuals = copy.deepcopy(clone.dirVirtuals)
 			self.treeVirtuals = copy.deepcopy(clone.treeVirtuals)
 		else:
