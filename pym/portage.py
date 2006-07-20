@@ -873,6 +873,8 @@ class config:
 			self.usemask  = copy.deepcopy(clone.usemask)
 
 			self.configlist = copy.deepcopy(clone.configlist)
+			self.lookuplist = self.configlist[:]
+			self.lookuplist.reverse()
 			self.configdict = { "globals":   self.configlist[0],
 			                    "defaults":  self.configlist[1],
 			                    "conf":      self.configlist[2],
@@ -1222,9 +1224,6 @@ class config:
 			self.backup_changes("PORTAGE_BIN_PATH")
 			self["PORTAGE_PYM_PATH"] = PORTAGE_PYM_PATH
 			self.backup_changes("PORTAGE_PYM_PATH")
-
-		self.lookuplist=self.configlist[:]
-		self.lookuplist.reverse()
 
 		self.uvlist=[]
 		for x in self["USE_ORDER"].split(":"):
