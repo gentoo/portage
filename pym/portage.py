@@ -873,7 +873,6 @@ class config:
 			self.usemask  = copy.deepcopy(clone.usemask)
 
 			self.configlist = copy.deepcopy(clone.configlist)
-			self.configlist[-1] = os.environ.copy()
 			self.configdict = { "globals":   self.configlist[0],
 			                    "defaults":  self.configlist[1],
 			                    "conf":      self.configlist[2],
