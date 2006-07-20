@@ -891,6 +891,7 @@ class config:
 			self.pprovideddict = copy.deepcopy(clone.pprovideddict)
 			self.dirVirtuals = copy.deepcopy(clone.dirVirtuals)
 			self.treeVirtuals = copy.deepcopy(clone.treeVirtuals)
+			self.features = copy.deepcopy(clone.features)
 		else:
 
 			# backupenv is for calculated incremental variables.
@@ -1236,43 +1237,33 @@ class config:
 		if clone is None:
 			self.regenerate()
 			self.features = portage_util.unique_array(self["FEATURES"].split())
-		else:
-			# XXX
-			# The below self.regenerate() causes previous changes to FEATURES
-			# (and other incrementals) to be reverted.  If this instance is a
-			# clone, we need to take the cloned FEATURES from backupenv and
-			# save them where the regenerate() call will not destroy them.
-			# Later, we use backup_changes() to restore the cloned FEATURES
-			# into the backupenv once again.
-			self.features = portage_util.unique_array(
-				self.backupenv["FEATURES"].split())
-			self.regenerate()
 
-		#XXX: Should this be temporary? Is it possible at all to have a default?
-		if "gpg" in self.features:
-			if not os.path.exists(self["PORTAGE_GPG_DIR"]) or not os.path.isdir(self["PORTAGE_GPG_DIR"]):
-				writemsg("PORTAGE_GPG_DIR is invalid. Removing gpg from FEATURES.\n",
-					noiselevel=-1)
-				self.features.remove("gpg")
+			if "gpg" in self.features:
+				if not os.path.exists(self["PORTAGE_GPG_DIR"]) or \
+					not os.path.isdir(self["PORTAGE_GPG_DIR"]):
+					writemsg(colorize("BAD", "PORTAGE_GPG_DIR is invalid." + \
+						" Removing gpg from FEATURES.\n"), noiselevel=-1)
+					self.features.remove("gpg")
 
-		if not portage_exec.sandbox_capable and \
-			("sandbox" in self.features or "usersandbox" in self.features):
-			if os.environ.get("PORTAGE_CALLER","") == "repoman" and \
-				self.profile_path is not None and \
-				os.path.realpath(self.profile_path) != \
-				os.path.realpath(PROFILE_PATH):
-				pass # This profile does not belong to the user running repoman.
-			else:
-				writemsg(red("!!! Problem with sandbox binary. Disabling...\n\n"),
-				noiselevel=-1)
-			if "sandbox" in self.features:
-				self.features.remove("sandbox")
-			if "usersandbox" in self.features:
-				self.features.remove("usersandbox")
+			if not portage_exec.sandbox_capable and \
+				("sandbox" in self.features or "usersandbox" in self.features):
+				if os.environ.get("PORTAGE_CALLER","") == "repoman" and \
+					self.profile_path is not None and \
+					os.path.realpath(self.profile_path) != \
+					os.path.realpath(PROFILE_PATH):
+					# This profile does not belong to the user running repoman.
+					pass
+				else:
+					writemsg(colorize("BAD", "!!! Problem with sandbox" + \
+						" binary. Disabling...\n\n"), noiselevel=-1)
+				if "sandbox" in self.features:
+					self.features.remove("sandbox")
+				if "usersandbox" in self.features:
+					self.features.remove("usersandbox")
 
-		self.features.sort()
-		self["FEATURES"] = " ".join(self.features)
-		self.backup_changes("FEATURES")
+			self.features.sort()
+			self["FEATURES"] = " ".join(self.features)
+			self.backup_changes("FEATURES")
 
 		if mycpv:
 			self.setcpv(mycpv)
