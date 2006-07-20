@@ -1192,6 +1192,9 @@ class config:
 			if "USE_ORDER" not in self:
 				self.backupenv["USE_ORDER"] = "env:pkg:conf:defaults"
 
+			self["PORTAGE_GID"] = str(portage_gid)
+			self.backup_changes("PORTAGE_GID")
+
 		self.lookuplist=self.configlist[:]
 		self.lookuplist.reverse()
 
@@ -1202,9 +1205,6 @@ class config:
 					del self.configdict[x]["PKGUSE"] # Delete PkgUse, Not legal to set.
 				#prepend db to list to get correct order
 				self.uvlist[0:0]=[self.configdict[x]]
-
-		self.configdict["env"]["PORTAGE_GID"]=str(portage_gid)
-		self.backupenv["PORTAGE_GID"]=str(portage_gid)
 
 		if self["PORTAGE_CACHEDIR"]:
 			# XXX: Deprecated -- April 15 -- NJ
