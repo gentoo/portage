@@ -1187,19 +1187,16 @@ class config:
 				else:
 					self.pprovideddict[mycatpkg]=[x]
 
+			# reasonable defaults; this is important as without USE_ORDER,
+			# USE will always be "" (nothing set)!
+			if "USE_ORDER" not in self:
+				self.backupenv["USE_ORDER"] = "env:pkg:conf:defaults"
+
 		self.lookuplist=self.configlist[:]
 		self.lookuplist.reverse()
 
-		useorder=self["USE_ORDER"]
-		if not useorder:
-			# reasonable defaults; this is important as without USE_ORDER,
-			# USE will always be "" (nothing set)!
-			useorder = "env:pkg:conf:defaults"
-			self.backupenv["USE_ORDER"] = useorder
-		useordersplit=useorder.split(":")
-
 		self.uvlist=[]
-		for x in useordersplit:
+		for x in self["USE_ORDER"].split(":"):
 			if self.configdict.has_key(x):
 				if "PKGUSE" in self.configdict[x].keys():
 					del self.configdict[x]["PKGUSE"] # Delete PkgUse, Not legal to set.
