@@ -1217,6 +1217,11 @@ class config:
 				self["CBUILD"] = self["CHOST"]
 				self.backup_changes("CBUILD")
 
+			self["PORTAGE_BIN_PATH"] = PORTAGE_BIN_PATH
+			self.backup_changes("PORTAGE_BIN_PATH")
+			self["PORTAGE_PYM_PATH"] = PORTAGE_PYM_PATH
+			self.backup_changes("PORTAGE_PYM_PATH")
+
 		self.lookuplist=self.configlist[:]
 		self.lookuplist.reverse()
 
@@ -1271,9 +1276,6 @@ class config:
 
 		if mycpv:
 			self.setcpv(mycpv)
-
-		self.backupenv["PORTAGE_BIN_PATH"] = PORTAGE_BIN_PATH
-		self.backupenv["PORTAGE_PYM_PATH"] = PORTAGE_PYM_PATH
 
 		self._init_dirs()
 
