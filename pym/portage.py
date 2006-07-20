@@ -1213,6 +1213,10 @@ class config:
 				self["PORTDIR_OVERLAY"] = " ".join(new_ov)
 				self.backup_changes("PORTDIR_OVERLAY")
 
+			if "CBUILD" not in self and "CHOST" in self:
+				self["CBUILD"] = self["CHOST"]
+				self.backup_changes("CBUILD")
+
 		self.lookuplist=self.configlist[:]
 		self.lookuplist.reverse()
 
@@ -1264,10 +1268,6 @@ class config:
 		self.features.sort()
 		self["FEATURES"] = " ".join(self.features)
 		self.backup_changes("FEATURES")
-
-		if not len(self["CBUILD"]) and len(self["CHOST"]):
-			self["CBUILD"] = self["CHOST"]
-			self.backup_changes("CBUILD")
 
 		if mycpv:
 			self.setcpv(mycpv)
