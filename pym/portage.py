@@ -1200,6 +1200,19 @@ class config:
 				while "PORTAGE_DEPCACHEDIR" in self:
 					del self["PORTAGE_DEPCACHEDIR"]
 
+			overlays = self.get("PORTDIR_OVERLAY","").split()
+			if overlays:
+				new_ov = []
+				for ov in overlays:
+					ov = normalize_path(ov)
+					if os.path.isdir(ov):
+						new_ov.append(ov)
+					else:
+						writemsg("!!! Invalid PORTDIR_OVERLAY" + \
+							" (not a dir): '%s'\n" % ov, noiselevel=-1)
+				self["PORTDIR_OVERLAY"] = " ".join(new_ov)
+				self.backup_changes("PORTDIR_OVERLAY")
+
 		self.lookuplist=self.configlist[:]
 		self.lookuplist.reverse()
 
@@ -1210,19 +1223,6 @@ class config:
 					del self.configdict[x]["PKGUSE"] # Delete PkgUse, Not legal to set.
 				#prepend db to list to get correct order
 				self.uvlist[0:0]=[self.configdict[x]]
-
-		overlays = string.split(self["PORTDIR_OVERLAY"])
-		if overlays:
-			new_ov=[]
-			for ov in overlays:
-				ov = normalize_path(ov)
-				if os.path.isdir(ov):
-					new_ov.append(ov)
-				else:
-					writemsg(red("!!! Invalid PORTDIR_OVERLAY (not a dir): "+ov+"\n"),
-						noiselevel=-1)
-			self["PORTDIR_OVERLAY"] = string.join(new_ov)
-			self.backup_changes("PORTDIR_OVERLAY")
 
 		if clone is None:
 			self.regenerate()
