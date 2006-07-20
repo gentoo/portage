@@ -894,8 +894,6 @@ class config:
 			self.uvlist     = copy.deepcopy(clone.uvlist)
 			self.dirVirtuals = copy.deepcopy(clone.dirVirtuals)
 			self.treeVirtuals = copy.deepcopy(clone.treeVirtuals)
-			config_root = self.backupenv["PORTAGE_CONFIGROOT"]
-			target_root = self.backupenv["ROOT"]
 		else:
 
 			# backupenv is for calculated incremental variables.
@@ -1076,6 +1074,11 @@ class config:
 			# make lookuplist for loading package.*
 			self.lookuplist=self.configlist[:]
 			self.lookuplist.reverse()
+
+			self["PORTAGE_CONFIGROOT"] = config_root
+			self.backup_changes("PORTAGE_CONFIGROOT")
+			self["ROOT"] = target_root
+			self.backup_changes("ROOT")
 
 			self.pusedict = {}
 			self.pkeywordsdict = {}
@@ -1274,11 +1277,6 @@ class config:
 
 		self.backupenv["PORTAGE_BIN_PATH"] = PORTAGE_BIN_PATH
 		self.backupenv["PORTAGE_PYM_PATH"] = PORTAGE_PYM_PATH
-
-		self["PORTAGE_CONFIGROOT"] = config_root
-		self.backup_changes("PORTAGE_CONFIGROOT")
-		self["ROOT"] = target_root
-		self.backup_changes("ROOT")
 
 		self._init_dirs()
 
