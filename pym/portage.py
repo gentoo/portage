@@ -882,7 +882,7 @@ class config:
 			                    "backupenv": self.configlist[5],
 			                    "env":       self.configlist[6] }
 			self.profiles = copy.deepcopy(clone.profiles)
-			self.backupenv  = copy.deepcopy(clone.backupenv)
+			self.backupenv  = self.configdict["backupenv"]
 			self.pusedict   = copy.deepcopy(clone.pusedict)
 			self.categories = copy.deepcopy(clone.categories)
 			self.pkeywordsdict = copy.deepcopy(clone.pkeywordsdict)
