@@ -843,7 +843,8 @@ for x in scanlist:
 
 	if mymode == "commit":
 		repoman_settings["O"] = checkdir
-		portage.digestgen([], repoman_settings, manifestonly=1, myportdb=portage.portdb)
+		portage.digestgen(
+			[], repoman_settings, manifestonly=1, myportdb=portdb)
 
 	mf = Manifest(checkdir, repoman_settings["DISTDIR"])
 	mydigests=mf.getTypeDigests("DIST")
