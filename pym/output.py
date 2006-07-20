@@ -257,11 +257,20 @@ class EOutput:
 		self.__last_e_cmd = ""
 		self.__last_e_len = 0
 		self.quiet = False
-		self.term_columns = int(os.getenv("COLUMNS", 0))
-		if self.term_columns == 0:
-			self.term_columns = int(commands.getoutput('set -- `stty size 2>/dev/null` ; echo "$2"'))
-			if self.term_columns == 0:
-				self.term_columns = 80
+		columns = 0
+		try:
+			columns = int(os.getenv("COLUMNS", 0))
+		except ValueError:
+			pass
+		if columns <= 0:
+			try:
+				columns = int(commands.getoutput(
+					'set -- `stty size 2>/dev/null` ; echo "$2"'))
+			except ValueError:
+				pass
+		if columns <= 0:
+			columns = 80
+		self.term_columns = columns
 
 	def __eend(self, caller, errno, msg):
 		if errno == 0:
