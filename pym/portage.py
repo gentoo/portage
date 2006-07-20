@@ -1195,6 +1195,11 @@ class config:
 			self["PORTAGE_GID"] = str(portage_gid)
 			self.backup_changes("PORTAGE_GID")
 
+			if self.get("PORTAGE_DEPCACHEDIR", None):
+				self.depcachedir = self["PORTAGE_DEPCACHEDIR"]
+				while "PORTAGE_DEPCACHEDIR" in self:
+					del self["PORTAGE_DEPCACHEDIR"]
+
 		self.lookuplist=self.configlist[:]
 		self.lookuplist.reverse()
 
@@ -1205,19 +1210,6 @@ class config:
 					del self.configdict[x]["PKGUSE"] # Delete PkgUse, Not legal to set.
 				#prepend db to list to get correct order
 				self.uvlist[0:0]=[self.configdict[x]]
-
-		if self["PORTAGE_CACHEDIR"]:
-			# XXX: Deprecated -- April 15 -- NJ
-			writemsg(yellow(">>> PORTAGE_CACHEDIR has been deprecated!")+"\n")
-			writemsg(">>> Please use PORTAGE_DEPCACHEDIR instead.\n")
-			self.depcachedir = self["PORTAGE_CACHEDIR"]
-			del self["PORTAGE_CACHEDIR"]
-
-		if self["PORTAGE_DEPCACHEDIR"]:
-			#the auxcache is the only /var/cache/edb/ entry that stays at / even when "root" changes.
-			# XXX: Could move with a CHROOT functionality addition.
-			self.depcachedir = self["PORTAGE_DEPCACHEDIR"]
-			del self["PORTAGE_DEPCACHEDIR"]
 
 		overlays = string.split(self["PORTDIR_OVERLAY"])
 		if overlays:
