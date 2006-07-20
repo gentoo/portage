@@ -1256,10 +1256,10 @@ class config:
 			self["FEATURES"] = " ".join(self.features)
 			self.backup_changes("FEATURES")
 
+			self._init_dirs()
+
 		if mycpv:
 			self.setcpv(mycpv)
-
-		self._init_dirs()
 
 	def _init_dirs(self):
 		"""Create tmp, var/tmp and var/lib/portage (relative to $ROOT)."""
