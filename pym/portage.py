@@ -837,6 +837,7 @@ class config:
 		self.mycpv    = None
 		self.puse     = []
 		self.modifiedkeys = []
+		self.uvlist = []
 
 		self.virtuals = {}
 		self.virts_p = {}
@@ -1225,15 +1226,6 @@ class config:
 			self["PORTAGE_PYM_PATH"] = PORTAGE_PYM_PATH
 			self.backup_changes("PORTAGE_PYM_PATH")
 
-		self.uvlist=[]
-		for x in self["USE_ORDER"].split(":"):
-			if self.configdict.has_key(x):
-				if "PKGUSE" in self.configdict[x].keys():
-					del self.configdict[x]["PKGUSE"] # Delete PkgUse, Not legal to set.
-				#prepend db to list to get correct order
-				self.uvlist[0:0]=[self.configdict[x]]
-
-		if clone is None:
 			self.regenerate()
 			self.features = portage_util.unique_array(self["FEATURES"].split())
 
@@ -1467,6 +1459,14 @@ class config:
 
 		for mykey in myincrementals:
 			if mykey=="USE":
+				if not self.uvlist:
+					for x in self["USE_ORDER"].split(":"):
+						if x in self.configdict:
+							try:
+								del self.configdict[x]["PKGUSE"]
+							except KeyError:
+								pass
+							self.uvlist.insert(0, self.configdict[x])
 				mydbs=self.uvlist
 				if "auto" in self["USE_ORDER"].split(":"):
 					self.configdict["auto"]["USE"] = autouse(
