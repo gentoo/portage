@@ -91,7 +91,8 @@ try:
 	from portage_checksum import perform_md5,perform_checksum,prelink_capable
 	import eclass_cache
 	from portage_localization import _
-	from portage_update import fixdbentries, grab_updates, parse_updates, update_dbentries
+	from portage_update import fixdbentries, grab_updates, parse_updates, \
+		update_config_files, update_dbentries
 
 	# Need these functions directly in portage namespace to not break every external tool in existence
 	from portage_versions import ververify,vercmp,catsplit,catpkgsplit,pkgsplit,pkgcmp
@@ -6679,75 +6680,6 @@ def portageexit():
 		commit_mtimedb()
 
 atexit_register(portageexit)
-
-def update_config_files(config_root, protect, protect_mask, update_iter):
-	"""Perform global updates on /etc/portage/package.* and the world file.
-	config_root - location of files to update
-	protect - list of paths from CONFIG_PROTECT
-	protect_mask - list of paths from CONFIG_PROTECT_MASK
-	update_iter - list of update commands as returned from parse_updates()"""
-	update_files={}
-	file_contents={}
-	myxfiles = ["package.mask","package.unmask","package.keywords","package.use"]
-	myxfiles.extend(prefix_array(myxfiles, "profile/"))
-	abs_user_config = os.path.join(config_root,
-		USER_CONFIG_PATH.lstrip(os.path.sep))
-	recursivefiles = []
-	for x in myxfiles:
-		config_file = os.path.join(abs_user_config, x)
-		if os.path.isdir(config_file):
-			recursivefiles.extend([os.path.join(x, y) \
-				for y in listdir(config_file, filesonly=1, recursive=1)])
-		else:
-			recursivefiles.append(x)
-	myxfiles = recursivefiles
-	for x in myxfiles:
-		try:
-			myfile = open(os.path.join(abs_user_config, x),"r")
-			file_contents[x] = myfile.readlines()
-			myfile.close()
-		except IOError:
-			if file_contents.has_key(x):
-				del file_contents[x]
-			continue
-	worldlist = grabfile(os.path.join(config_root, WORLD_FILE))
-
-	for update_cmd in update_iter:
-		if update_cmd[0] == "move":
-			old_value, new_value = update_cmd[1], update_cmd[2]
-			#update world entries:
-			for x in range(0,len(worldlist)):
-				#update world entries, if any.
-				worldlist[x] = dep_transform(worldlist[x], old_value, new_value)
-
-			#update /etc/portage/packages.*
-			for x in file_contents:
-				for mypos in range(0,len(file_contents[x])):
-					line = file_contents[x][mypos]
-					if line[0] == "#" or string.strip(line) == "":
-						continue
-					key = dep_getkey(line.split()[0])
-					if key == old_value:
-						file_contents[x][mypos] = string.replace(line, old_value, new_value)
-						update_files[x] = 1
-						sys.stdout.write("p")
-						sys.stdout.flush()
-
-	write_atomic(os.path.join(config_root, WORLD_FILE), "\n".join(worldlist))
-
-	protect_obj = portage_util.ConfigProtect(
-		config_root, protect, protect_mask)
-	for x in update_files:
-		updating_file = os.path.join(abs_user_config, x)
-		if protect_obj.isprotected(updating_file):
-			updating_file = new_protect_filename(updating_file)[0]
-		try:
-			write_atomic(updating_file, "".join(file_contents[x]))
-		except portage_exception.PortageException, e:
-			writemsg("\n!!! %s\n" % str(e), noiselevel=-1)
-			writemsg("!!! An error occured while updating a config file:" + \
-				" '%s'\n" % updating_file, noiselevel=-1)
-			continue
 
 def global_updates(mysettings, trees, prev_mtimes):
 	"""Perform new global updates if they exist in $PORTDIR/profiles/updates/."""

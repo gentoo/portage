@@ -2,11 +2,13 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Header: $
 
-import errno, os, re
+import errno, os, re, sys
 
-from portage_util import write_atomic
-from portage_exception import DirectoryNotFound
-from portage_dep import isvalidatom, isjustname
+from portage_util import ConfigProtect, grabfile, new_protect_filename, \
+	normalize_path, write_atomic, writemsg
+from portage_exception import DirectoryNotFound, PortageException
+from portage_dep import dep_getkey, dep_transform, isvalidatom, isjustname
+from portage_const import USER_CONFIG_PATH, WORLD_FILE
 
 ignored_dbentries = ("CONTENTS", "environment.bz2")
 
@@ -119,3 +121,78 @@ def parse_updates(mycontent):
 		# The list of valid updates is filtered by continue statements above.
 		myupd.append(mysplit)
 	return myupd, errors
+
+def update_config_files(config_root, protect, protect_mask, update_iter):
+	"""Perform global updates on /etc/portage/package.* and the world file.
+	config_root - location of files to update
+	protect - list of paths from CONFIG_PROTECT
+	protect_mask - list of paths from CONFIG_PROTECT_MASK
+	update_iter - list of update commands as returned from parse_updates()"""
+	config_root = normalize_path(config_root)
+	update_files = {}
+	file_contents = {}
+	myxfiles = ["package.mask", "package.unmask", \
+		"package.keywords", "package.use"]
+	myxfiles += [os.path.join("profile", x) for x in myxfiles]
+	abs_user_config = os.path.join(config_root,
+		USER_CONFIG_PATH.lstrip(os.path.sep))
+	recursivefiles = []
+	for x in myxfiles:
+		config_file = os.path.join(abs_user_config, x)
+		if os.path.isdir(config_file):
+			for parent, dirs, files in os.walk(config_file):
+				for y in files:
+					recursivefiles.append(
+						os.path.join(parent, y)[len(abs_user_config) + 1:])
+		else:
+			recursivefiles.append(x)
+	myxfiles = recursivefiles
+	for x in myxfiles:
+		try:
+			myfile = open(os.path.join(abs_user_config, x),"r")
+			file_contents[x] = myfile.readlines()
+			myfile.close()
+		except IOError:
+			if file_contents.has_key(x):
+				del file_contents[x]
+			continue
+	worldlist = grabfile(os.path.join(config_root, WORLD_FILE))
+
+	for update_cmd in update_iter:
+		if update_cmd[0] == "move":
+			old_value, new_value = update_cmd[1], update_cmd[2]
+			#update world entries:
+			for x in range(0,len(worldlist)):
+				#update world entries, if any.
+				worldlist[x] = \
+					dep_transform(worldlist[x], old_value, new_value)
+
+			#update /etc/portage/packages.*
+			for x in file_contents:
+				for mypos in range(0,len(file_contents[x])):
+					line = file_contents[x][mypos]
+					if line[0] == "#" or not line.strip():
+						continue
+					key = dep_getkey(line.split()[0])
+					if key == old_value:
+						file_contents[x][mypos] = \
+							line.replace(old_value, new_value)
+						update_files[x] = 1
+						sys.stdout.write("p")
+						sys.stdout.flush()
+
+	write_atomic(os.path.join(config_root, WORLD_FILE), "\n".join(worldlist))
+
+	protect_obj = ConfigProtect(
+		config_root, protect, protect_mask)
+	for x in update_files:
+		updating_file = os.path.join(abs_user_config, x)
+		if protect_obj.isprotected(updating_file):
+			updating_file = new_protect_filename(updating_file)[0]
+		try:
+			write_atomic(updating_file, "".join(file_contents[x]))
+		except PortageException, e:
+			writemsg("\n!!! %s\n" % str(e), noiselevel=-1)
+			writemsg("!!! An error occured while updating a config file:" + \
+				" '%s'\n" % updating_file, noiselevel=-1)
+			continue
