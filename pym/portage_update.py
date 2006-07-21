@@ -6,6 +6,7 @@ import errno, os, re
 
 from portage_util import write_atomic
 from portage_exception import DirectoryNotFound
+from portage_dep import isvalidatom, isjustname
 
 ignored_dbentries = ("CONTENTS", "environment.bz2")
 
@@ -83,3 +84,38 @@ def grab_updates(updpath, prev_mtimes=None):
 			f.close()
 			update_data.append((file_path, mystat, content))
 	return update_data
+
+def parse_updates(mycontent):
+	"""Valid updates are returned as a list of split update commands."""
+	myupd = []
+	errors = []
+	mylines = mycontent.splitlines()
+	for myline in mylines:
+		mysplit = myline.split()
+		if len(mysplit) == 0:
+			continue
+		if mysplit[0] not in ("move", "slotmove"):
+			errors.append("ERROR: Update type not recognized '%s'" % myline)
+			continue
+		if mysplit[0] == "move":
+			if len(mysplit) != 3:
+				errors.append("ERROR: Update command invalid '%s'" % myline)
+				continue
+			orig_value, new_value = mysplit[1], mysplit[2]
+			for cp in (orig_value, new_value):
+				if not (isvalidatom(cp) and isjustname(cp)):
+					errors.append(
+						"ERROR: Malformed update entry '%s'" % myline)
+					continue
+		if mysplit[0] == "slotmove":
+			if len(mysplit)!=4:
+				errors.append("ERROR: Update command invalid '%s'" % myline)
+				continue
+			pkg, origslot, newslot = mysplit[1], mysplit[2], mysplit[3]
+			if not isvalidatom(pkg):
+				errors.append("ERROR: Malformed update entry '%s'" % myline)
+				continue
+		
+		# The list of valid updates is filtered by continue statements above.
+		myupd.append(mysplit)
+	return myupd, errors
