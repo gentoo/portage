@@ -6,7 +6,6 @@ from portage_exception import PortageException, FileNotFound, \
        OperationNotPermitted, PermissionDenied, ReadOnlyFileSystem
 import portage_exception
 from portage_dep import isvalidatom
-import portage_checksum
 
 import sys,string,shlex,os,errno
 try:
@@ -895,6 +894,7 @@ def new_protect_filename(mydest, newmd5=None):
 		"._cfg" + str(prot_num).zfill(4) + "_" + real_filename))
 	old_pfile = normalize_path(os.path.join(real_dirname, last_pfile))
 	if last_pfile and newmd5:
+		import portage_checksum
 		if portage_checksum.perform_md5(
 			os.path.join(real_dirname, last_pfile)) == newmd5:
 			return old_pfile
