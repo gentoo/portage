@@ -4073,10 +4073,8 @@ class bindbapi(fakedbapi):
 		for x in wants:
 			if self.bintree and self.bintree.isremote(mycpv):
 				# We use the cache for remote packages
-				if self.bintree.remotepkgs[tbz2name].has_key(x):
-					mylist.append(self.bintree.remotepkgs[tbz2name][x][:]) # [:] Copy String
-				else:
-					mylist.append("")
+				mylist.append(" ".join(
+					self.bintree.remotepkgs[tbz2name].get(x,"").split()))
 			else:
 				myval = tbz2.getfile(x)
 				if myval is None:
