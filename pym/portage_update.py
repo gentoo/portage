@@ -141,7 +141,12 @@ def update_config_files(config_root, protect, protect_mask, update_iter):
 		config_file = os.path.join(abs_user_config, x)
 		if os.path.isdir(config_file):
 			for parent, dirs, files in os.walk(config_file):
+				for y in dirs:
+					if y.startswith("."):
+						dirs.remove(y)
 				for y in files:
+					if y.startswith("."):
+						continue
 					recursivefiles.append(
 						os.path.join(parent, y)[len(abs_user_config) + 1:])
 		else:
