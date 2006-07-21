@@ -1076,6 +1076,15 @@ class config:
 			self.lookuplist=self.configlist[:]
 			self.lookuplist.reverse()
 
+			# Blacklist vars that could interfere with portage internals.
+			for blacklisted in ["PKGUSE", "PORTAGE_CONFIGROOT", "ROOT"]:
+				for cfg in self.lookuplist:
+					try:
+						del cfg[blacklisted]
+					except KeyError:
+						pass
+			del blacklisted, cfg
+
 			self["PORTAGE_CONFIGROOT"] = config_root
 			self.backup_changes("PORTAGE_CONFIGROOT")
 			self["ROOT"] = target_root
@@ -1462,10 +1471,6 @@ class config:
 				if not self.uvlist:
 					for x in self["USE_ORDER"].split(":"):
 						if x in self.configdict:
-							try:
-								del self.configdict[x]["PKGUSE"]
-							except KeyError:
-								pass
 							self.uvlist.insert(0, self.configdict[x])
 				mydbs=self.uvlist
 				if "auto" in self["USE_ORDER"].split(":"):
