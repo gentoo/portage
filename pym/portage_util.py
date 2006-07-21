@@ -5,6 +5,7 @@
 from portage_exception import PortageException, FileNotFound, \
        OperationNotPermitted, PermissionDenied, ReadOnlyFileSystem
 import portage_exception
+from portage_dep import isvalidatom
 
 import sys,string,shlex,os,errno
 try:

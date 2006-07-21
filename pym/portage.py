@@ -719,32 +719,6 @@ def new_protect_filename(mydest, newmd5=None):
 	else:
 		return (new_pfile, old_pfile)
 
-#XXX: These two are now implemented in portage_util.py but are needed here
-#XXX: until the isvalidatom() dependency is sorted out.
-
-def grabdict_package(myfilename,juststrings=0,recursive=0):
-	pkgs=grabdict(myfilename, juststrings=juststrings, empty=1,recursive=recursive)
-	for x in pkgs.keys():
-		if not isvalidatom(x):
-			del(pkgs[x])
-			writemsg("--- Invalid atom in %s: %s\n" % (myfilename, x),
-				noiselevel=-1)
-	return pkgs
-
-def grabfile_package(myfilename,compatlevel=0,recursive=0):
-	pkgs=grabfile(myfilename,compatlevel,recursive=recursive)
-	for x in range(len(pkgs)-1,-1,-1):
-		pkg = pkgs[x]
-		if pkg[0] == "-":
-			pkg = pkg[1:]
-		if pkg[0] == "*":
-			pkg = pkg[1:]
-		if not isvalidatom(pkg):
-			writemsg("--- Invalid atom in %s: %s\n" % (myfilename, pkgs[x]),
-				noiselevel=-1)
-			del(pkgs[x])
-	return pkgs
-
 # returns a tuple.  (version[string], error[string])
 # They are pretty much mutually exclusive.
 # Either version is a string and error is none, or
