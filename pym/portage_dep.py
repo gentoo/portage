@@ -20,6 +20,7 @@
 
 import os,string,types,sys,copy
 import portage_exception
+from portage_versions import catpkgsplit
 
 def strip_empty(myarr):
 	for x in range(len(myarr)-1, -1, -1):
@@ -161,3 +162,59 @@ def dep_opconvert(deplist):
 			retlist.append(deplist[x])
 		x += 1
 	return retlist
+
+def get_operator(mydep):
+	"""
+	returns '~', '=', '>', '<', '=*', '>=', or '<='
+	"""
+	if mydep[0] == "~":
+		operator = "~"
+	elif mydep[0] == "=":
+		if mydep[-1] == "*":
+			operator = "=*"
+		else:
+			operator = "="
+	elif mydep[0] in "><":
+		if len(mydep) > 1 and mydep[1] == "=":
+			operator = mydep[0:2]
+		else:
+			operator = mydep[0]
+	else:
+		operator = None
+
+	return operator
+
+def dep_getcpv(mydep):
+	if mydep and mydep[0] == "*":
+		mydep = mydep[1:]
+	if mydep and mydep[-1] == "*":
+		mydep = mydep[:-1]
+	if mydep and mydep[0] == "!":
+		mydep = mydep[1:]
+	if mydep[:2] in [">=", "<="]:
+		mydep = mydep[2:]
+	elif mydep[:1] in "=<>~":
+		mydep = mydep[1:]
+	return mydep
+
+def isvalidatom(atom):
+	mycpv_cps = catpkgsplit(dep_getcpv(atom))
+	operator = get_operator(atom)
+	if operator:
+		if operator[0] in "<>" and atom[-1] == "*":
+			return 0
+		if mycpv_cps and mycpv_cps[0] != "null":
+			# >=cat/pkg-1.0
+			return 1
+		else:
+			# >=cat/pkg or >=pkg-1.0 (no category)
+			return 0
+	if mycpv_cps:
+		# cat/pkg-1.0
+		return 0
+
+	if (len(atom.split('/')) == 2):
+		# cat/pkg
+		return 1
+	else:
+		return 0

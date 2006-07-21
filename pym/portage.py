@@ -54,6 +54,7 @@ try:
 	import xpak
 	import getbinpkg
 	import portage_dep
+	from portage_dep import dep_getcpv, get_operator, isvalidatom
 
 	# XXX: This needs to get cleaned up.
 	import output
@@ -3180,28 +3181,6 @@ def unmerge(cat, pkg, myroot, mysettings, mytrimworld=1, vartree=None, ldpath_mt
 		return 0
 	return 1
 
-def isvalidatom(atom):
-	mycpv_cps = catpkgsplit(dep_getcpv(atom))
-	operator = get_operator(atom)
-	if operator:
-		if operator[0] in "<>" and atom[-1] == "*":
-			return 0
-		if mycpv_cps and mycpv_cps[0] != "null":
-			# >=cat/pkg-1.0
-			return 1
-		else:
-			# >=cat/pkg or >=pkg-1.0 (no category)
-			return 0
-	if mycpv_cps:
-		# cat/pkg-1.0
-		return 0
-
-	if (len(string.split(atom, '/'))==2):
-		# cat/pkg
-		return 1
-	else:
-		return 0
-
 def isjustname(mypkg):
 	myparts=string.split(mypkg,'-')
 	for x in myparts:
@@ -3383,19 +3362,6 @@ def dep_getkey(mydep):
 		return mysplit[0]+"/"+mysplit[1]
 	else:
 		return mydep
-
-def dep_getcpv(mydep):
-	if mydep and mydep[0]=="*":
-		mydep=mydep[1:]
-	if mydep and mydep[-1]=="*":
-		mydep=mydep[:-1]
-	if mydep and mydep[0]=="!":
-		mydep=mydep[1:]
-	if mydep[:2] in [ ">=", "<=" ]:
-		mydep=mydep[2:]
-	elif mydep[:1] in "=<>~":
-		mydep=mydep[1:]
-	return mydep
 
 def dep_transform(mydep,oldkey,newkey):
 	origdep=mydep
@@ -3847,28 +3813,6 @@ def best_match_to_list(mypkg,mylist):
 			maxlen = len(x)
 			bestm  = x
 	return bestm
-
-def get_operator(mydep):
-	"""
-	returns '~', '=', '>', '<', '=*', '>=', or '<='
-	"""
-	if mydep[0] == "~":
-		operator = "~"
-	elif mydep[0] == "=":
-		if mydep[-1] == "*":
-			operator = "=*"
-		else:
-			operator = "="
-	elif mydep[0] in "><":
-		if len(mydep) > 1 and mydep[1] == "=":
-			operator = mydep[0:2]
-		else:
-			operator = mydep[0]
-	else:
-		operator = None
-
-	return operator
-
 
 def match_from_list(mydep,candidate_list):
 	if mydep[0] == "!":
