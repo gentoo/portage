@@ -20,7 +20,7 @@
 
 import os,string,types,sys,copy
 import portage_exception
-from portage_versions import catpkgsplit
+from portage_versions import catpkgsplit, ververify
 
 def strip_empty(myarr):
 	for x in range(len(myarr)-1, -1, -1):
@@ -218,3 +218,66 @@ def isvalidatom(atom):
 		return 1
 	else:
 		return 0
+
+def isjustname(mypkg):
+	myparts = mypkg.split('-')
+	for x in myparts:
+		if ververify(x):
+			return 0
+	return 1
+
+iscache = {}
+
+def isspecific(mypkg):
+	"now supports packages with no category"
+	try:
+		return iscache[mypkg]
+	except KeyError:
+		pass
+	mysplit = mypkg.split("/")
+	if not isjustname(mysplit[-1]):
+			iscache[mypkg] = 1
+			return 1
+	iscache[mypkg] = 0
+	return 0
+
+def dep_getkey(mydep):
+	if mydep and mydep[0] == "*":
+		mydep = mydep[1:]
+	if mydep and mydep[-1] == "*":
+		mydep = mydep[:-1]
+	if mydep and mydep[0] == "!":
+		mydep = mydep[1:]
+	if mydep[:2] in [">=", "<="]:
+		mydep = mydep[2:]
+	elif mydep[:1] in "=<>~":
+		mydep = mydep[1:]
+	if mydep and isspecific(mydep):
+		mysplit = catpkgsplit(mydep)
+		if not mysplit:
+			return mydep
+		return mysplit[0] + "/" + mysplit[1]
+	else:
+		return mydep
+
+def dep_transform(mydep, oldkey, newkey):
+	origdep = mydep
+	if not len(mydep):
+		return mydep
+	if mydep[0] == "*":
+		mydep = mydep[1:]
+	prefix = ""
+	postfix = ""
+	if mydep[-1] == "*":
+		mydep = mydep[:-1]
+		postfix = "*"
+	if mydep[:2] in [">=", "<="]:
+		prefix = mydep[:2]
+		mydep = mydep[2:]
+	elif mydep[:1] in "=<>~!":
+		prefix = mydep[:1]
+		mydep = mydep[1:]
+	if mydep == oldkey:
+		return prefix + newkey + postfix
+	else:
+		return origdep

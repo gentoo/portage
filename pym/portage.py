@@ -54,7 +54,8 @@ try:
 	import xpak
 	import getbinpkg
 	import portage_dep
-	from portage_dep import dep_getcpv, get_operator, isvalidatom
+	from portage_dep import dep_getcpv, dep_getkey, get_operator, \
+		dep_transform, isjustname, isspecific, isvalidatom
 
 	# XXX: This needs to get cleaned up.
 	import output
@@ -3155,29 +3156,6 @@ def unmerge(cat, pkg, myroot, mysettings, mytrimworld=1, vartree=None, ldpath_mt
 		return 0
 	return 1
 
-def isjustname(mypkg):
-	myparts=string.split(mypkg,'-')
-	for x in myparts:
-		if ververify(x):
-			return 0
-	return 1
-
-iscache={}
-def isspecific(mypkg):
-	"now supports packages with no category"
-	try:
-		return iscache[mypkg]
-	except SystemExit, e:
-		raise
-	except:
-		pass
-	mysplit=string.split(mypkg,"/")
-	if not isjustname(mysplit[-1]):
-			iscache[mypkg]=1
-			return 1
-	iscache[mypkg]=0
-	return 0
-
 def getCPFromCPV(mycpv):
 	"""Calls pkgsplit on a cpv and returns only the cp."""
 	return pkgsplit(mycpv)[0]
@@ -3315,49 +3293,6 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 	target_pkg = best(available_pkgs.keys())
 	suitable_atom = available_pkgs[target_pkg]
 	return [suitable_atom]
-
-
-
-def dep_getkey(mydep):
-	if mydep and mydep[0]=="*":
-		mydep=mydep[1:]
-	if mydep and mydep[-1]=="*":
-		mydep=mydep[:-1]
-	if mydep and mydep[0]=="!":
-		mydep=mydep[1:]
-	if mydep[:2] in [ ">=", "<=" ]:
-		mydep=mydep[2:]
-	elif mydep[:1] in "=<>~":
-		mydep=mydep[1:]
-	if mydep and isspecific(mydep):
-		mysplit=catpkgsplit(mydep)
-		if not mysplit:
-			return mydep
-		return mysplit[0]+"/"+mysplit[1]
-	else:
-		return mydep
-
-def dep_transform(mydep,oldkey,newkey):
-	origdep=mydep
-	if not len(mydep):
-		return mydep
-	if mydep[0]=="*":
-		mydep=mydep[1:]
-	prefix=""
-	postfix=""
-	if mydep[-1]=="*":
-		mydep=mydep[:-1]
-		postfix="*"
-	if mydep[:2] in [ ">=", "<=" ]:
-		prefix=mydep[:2]
-		mydep=mydep[2:]
-	elif mydep[:1] in "=<>~!":
-		prefix=mydep[:1]
-		mydep=mydep[1:]
-	if mydep==oldkey:
-		return prefix+newkey+postfix
-	else:
-		return origdep
 
 def dep_expand(mydep, mydb=None, use_cache=1, settings=None):
 	if not len(mydep):
