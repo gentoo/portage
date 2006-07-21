@@ -259,25 +259,3 @@ def dep_getkey(mydep):
 		return mysplit[0] + "/" + mysplit[1]
 	else:
 		return mydep
-
-def dep_transform(mydep, oldkey, newkey):
-	origdep = mydep
-	if not len(mydep):
-		return mydep
-	if mydep[0] == "*":
-		mydep = mydep[1:]
-	prefix = ""
-	postfix = ""
-	if mydep[-1] == "*":
-		mydep = mydep[:-1]
-		postfix = "*"
-	if mydep[:2] in [">=", "<="]:
-		prefix = mydep[:2]
-		mydep = mydep[2:]
-	elif mydep[:1] in "=<>~!":
-		prefix = mydep[:1]
-		mydep = mydep[1:]
-	if mydep == oldkey:
-		return prefix + newkey + postfix
-	else:
-		return origdep

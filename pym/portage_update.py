@@ -7,7 +7,7 @@ import errno, os, re, sys
 from portage_util import ConfigProtect, grabfile, new_protect_filename, \
 	normalize_path, write_atomic, writemsg
 from portage_exception import DirectoryNotFound, PortageException
-from portage_dep import dep_getkey, dep_transform, isvalidatom, isjustname
+from portage_dep import dep_getkey, isvalidatom, isjustname
 from portage_const import USER_CONFIG_PATH, WORLD_FILE
 
 ignored_dbentries = ("CONTENTS", "environment.bz2")
@@ -196,3 +196,25 @@ def update_config_files(config_root, protect, protect_mask, update_iter):
 			writemsg("!!! An error occured while updating a config file:" + \
 				" '%s'\n" % updating_file, noiselevel=-1)
 			continue
+
+def dep_transform(mydep, oldkey, newkey):
+	origdep = mydep
+	if not len(mydep):
+		return mydep
+	if mydep[0] == "*":
+		mydep = mydep[1:]
+	prefix = ""
+	postfix = ""
+	if mydep[-1] == "*":
+		mydep = mydep[:-1]
+		postfix = "*"
+	if mydep[:2] in [">=", "<="]:
+		prefix = mydep[:2]
+		mydep = mydep[2:]
+	elif mydep[:1] in "=<>~!":
+		prefix = mydep[:1]
+		mydep = mydep[1:]
+	if mydep == oldkey:
+		return prefix + newkey + postfix
+	else:
+		return origdep

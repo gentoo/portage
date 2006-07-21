@@ -55,7 +55,7 @@ try:
 	import getbinpkg
 	import portage_dep
 	from portage_dep import dep_getcpv, dep_getkey, get_operator, \
-		dep_transform, isjustname, isspecific, isvalidatom
+		isjustname, isspecific, isvalidatom
 
 	# XXX: This needs to get cleaned up.
 	import output
@@ -91,8 +91,8 @@ try:
 	from portage_checksum import perform_md5,perform_checksum,prelink_capable
 	import eclass_cache
 	from portage_localization import _
-	from portage_update import fixdbentries, grab_updates, parse_updates, \
-		update_config_files, update_dbentries
+	from portage_update import dep_transform, fixdbentries, grab_updates, \
+		parse_updates, update_config_files, update_dbentries
 
 	# Need these functions directly in portage namespace to not break every external tool in existence
 	from portage_versions import ververify,vercmp,catsplit,catpkgsplit,pkgsplit,pkgcmp
