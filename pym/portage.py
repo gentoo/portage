@@ -78,7 +78,7 @@ try:
 	import portage_util
 	from portage_util import atomic_ofstream, apply_secpass_permissions, apply_recursive_permissions, \
 		dump_traceback, getconfig, grabdict, grabdict_package, grabfile, grabfile_package, \
-		map_dictlist_vals, normalize_path, \
+		map_dictlist_vals, new_protect_filename, normalize_path, \
 		pickle_read, pickle_write, stack_dictlist, stack_dicts, stack_lists, \
 		unique_array, varexpand, writedict, writemsg, writemsg_stdout, write_atomic
 	import portage_exception
@@ -668,57 +668,6 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None):
 			continue
 		outfile.write("setenv "+x+" '"+env[x]+"'\n")
 	outfile.close()
-
-def new_protect_filename(mydest, newmd5=None):
-	"""Resolves a config-protect filename for merging, optionally
-	using the last filename if the md5 matches.
-	(dest,md5) ==> 'string'            --- path_to_target_filename
-	(dest)     ==> ('next', 'highest') --- next_target and most-recent_target
-	"""
-
-	# config protection filename format:
-	# ._cfg0000_foo
-	# 0123456789012
-	prot_num=-1
-	last_pfile=""
-
-	if (len(mydest) == 0):
-		raise ValueError, "Empty path provided where a filename is required"
-	if (mydest[-1]=="/"): # XXX add better directory checking
-		raise ValueError, "Directory provided but this function requires a filename"
-	if not os.path.exists(mydest):
-		return mydest
-
-	real_filename = os.path.basename(mydest)
-	real_dirname  = os.path.dirname(mydest)
-	for pfile in listdir(real_dirname):
-		if pfile[0:5] != "._cfg":
-			continue
-		if pfile[10:] != real_filename:
-			continue
-		try:
-			new_prot_num = int(pfile[5:9])
-			if new_prot_num > prot_num:
-				prot_num = new_prot_num
-				last_pfile = pfile
-		except SystemExit, e:
-			raise
-		except:
-			continue
-	prot_num = prot_num + 1
-
-	new_pfile = normalize_path(os.path.join(real_dirname,
-		"._cfg" + str(prot_num).zfill(4) + "_" + real_filename))
-	old_pfile = normalize_path(os.path.join(real_dirname, last_pfile))
-	if last_pfile and newmd5:
-		if portage_checksum.perform_md5(real_dirname+"/"+last_pfile) == newmd5:
-			return old_pfile
-		else:
-			return new_pfile
-	elif newmd5:
-		return new_pfile
-	else:
-		return (new_pfile, old_pfile)
 
 # returns a tuple.  (version[string], error[string])
 # They are pretty much mutually exclusive.

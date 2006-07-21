@@ -6,6 +6,7 @@ from portage_exception import PortageException, FileNotFound, \
        OperationNotPermitted, PermissionDenied, ReadOnlyFileSystem
 import portage_exception
 from portage_dep import isvalidatom
+import portage_checksum
 
 import sys,string,shlex,os,errno
 try:
@@ -853,3 +854,53 @@ class ConfigProtect(object):
 						#skip, it's in the mask
 						masked = len(pmpath)
 		return protected > masked
+
+def new_protect_filename(mydest, newmd5=None):
+	"""Resolves a config-protect filename for merging, optionally
+	using the last filename if the md5 matches.
+	(dest,md5) ==> 'string'            --- path_to_target_filename
+	(dest)     ==> ('next', 'highest') --- next_target and most-recent_target
+	"""
+
+	# config protection filename format:
+	# ._cfg0000_foo
+	# 0123456789012
+	prot_num = -1
+	last_pfile = ""
+
+	if len(mydest) == 0:
+		raise ValueError, "Empty path provided where a filename is required"
+	if mydest[-1] == os.path.sep: # XXX add better directory checking
+		raise ValueError, "Directory provided but this function requires a filename"
+	if not os.path.exists(mydest):
+		return mydest
+
+	real_filename = os.path.basename(mydest)
+	real_dirname  = os.path.dirname(mydest)
+	for pfile in os.listdir(real_dirname):
+		if pfile[0:5] != "._cfg":
+			continue
+		if pfile[10:] != real_filename:
+			continue
+		try:
+			new_prot_num = int(pfile[5:9])
+			if new_prot_num > prot_num:
+				prot_num = new_prot_num
+				last_pfile = pfile
+		except ValueError:
+			continue
+	prot_num = prot_num + 1
+
+	new_pfile = normalize_path(os.path.join(real_dirname,
+		"._cfg" + str(prot_num).zfill(4) + "_" + real_filename))
+	old_pfile = normalize_path(os.path.join(real_dirname, last_pfile))
+	if last_pfile and newmd5:
+		if portage_checksum.perform_md5(
+			os.path.join(real_dirname, last_pfile)) == newmd5:
+			return old_pfile
+		else:
+			return new_pfile
+	elif newmd5:
+		return new_pfile
+	else:
+		return (new_pfile, old_pfile)
