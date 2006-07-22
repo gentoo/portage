@@ -110,7 +110,7 @@ def xsplit(infile):
 	
 	splits = xsplit_mem(mydat)
 	if not splits:
-		return
+		return False
 	
 	myfile=open(infile+".index","w")
 	myfile.write(splits[0])
@@ -118,7 +118,7 @@ def xsplit(infile):
 	myfile=open(infile+".dat","w")
 	myfile.write(splits[1])
 	myfile.close()
-	return
+	return True
 
 def xsplit_mem(mydat):
 	if mydat[0:8]!="XPAKPACK":
