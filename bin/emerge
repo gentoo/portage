@@ -3258,12 +3258,11 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	from itertools import chain
 	for x in chain(syslist, worldlist):
 		mycp = portage.dep_getkey(x)
-		if mycp in settings.getvirtuals():
-			providers = []
-			for provider in settings.getvirtuals()[mycp]:
-				if vartree.dbapi.match(provider):
-					providers.append(provider)
-			sys_world_unversioned.update(providers)
+		try:
+			# include any old-style virtual providers that may exist
+			sys_world_unversioned.update(settings.getvirtuals()[mycp])
+		except KeyError:
+			pass
 		sys_world_unversioned.add(mycp)
 
 	cleanlist=[]
