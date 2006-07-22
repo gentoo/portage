@@ -1108,13 +1108,9 @@ class depgraph:
 					print "ebuild:",myeb
 					print "binpkg:",myeb_pkg
 
-				def cmpsplit(cpv):
-					mysplit = portage.catpkgsplit(cpv)
-					return [mysplit[0] + "/" + mysplit[1],
-						mysplit[2], mysplit[3]]
-
 				if myeb and myeb_pkg:
-					if portage.pkgcmp(cmpsplit(myeb), cmpsplit(myeb_pkg)) == 0:
+					bestmatch = portage.best([myeb, myeb_pkg])
+					if bestmatch == myeb_pkg:
 						myeb = None
 					else:
 						myeb_pkg = None
