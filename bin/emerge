@@ -3257,7 +3257,14 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	sys_world_unversioned = set()
 	from itertools import chain
 	for x in chain(syslist, worldlist):
-		sys_world_unversioned.add(portage.dep_getkey(x))
+		mycp = portage.dep_getkey(x)
+		if mycp in settings.getvirtuals():
+			providers = []
+			for provider in settings.getvirtuals()[mycp]:
+				if vartree.dbapi.match(provider):
+					providers.append(provider)
+			sys_world_unversioned.update(providers)
+		sys_world_unversioned.add(mycp)
 
 	cleanlist=[]
 	for x in myvarlist:
