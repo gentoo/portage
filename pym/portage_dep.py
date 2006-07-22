@@ -20,7 +20,7 @@
 
 import os,string,types,sys,copy
 import portage_exception
-from portage_versions import catpkgsplit, ververify
+from portage_versions import catpkgsplit, catsplit, pkgcmp, pkgsplit, ververify
 
 def strip_empty(myarr):
 	for x in range(len(myarr)-1, -1, -1):
@@ -259,3 +259,115 @@ def dep_getkey(mydep):
 		return mysplit[0] + "/" + mysplit[1]
 	else:
 		return mydep
+
+def match_to_list(mypkg, mylist):
+	"""(pkgname, list)
+	Searches list for entries that matches the package.
+	"""
+	matches = []
+	for x in mylist:
+		if match_from_list(x, [mypkg]):
+			if x not in matches:
+				matches.append(x)
+	return matches
+
+def best_match_to_list(mypkg, mylist):
+	"""(pkgname, list)
+	Returns the most specific entry (assumed to be the longest one)
+	that matches the package given.
+	"""
+	# XXX Assumption is wrong sometimes.
+	maxlen = 0
+	bestm  = None
+	for x in match_to_list(mypkg, mylist):
+		if len(x) > maxlen:
+			maxlen = len(x)
+			bestm  = x
+	return bestm
+
+def match_from_list(mydep, candidate_list):
+	from portage_util import writemsg
+	if mydep[0] == "!":
+		mydep = mydep[1:]
+
+	mycpv     = dep_getcpv(mydep)
+	mycpv_cps = catpkgsplit(mycpv) # Can be None if not specific
+
+	if not mycpv_cps:
+		cat, pkg = catsplit(mycpv)
+		ver      = None
+		rev      = None
+	else:
+		cat, pkg, ver, rev = mycpv_cps
+		if mydep == mycpv:
+			raise KeyError("Specific key requires an operator" + \
+				" (%s) (try adding an '=')" % (mydep))
+
+	if ver and rev:
+		operator = get_operator(mydep)
+		if not operator:
+			writemsg("!!! Invalid atom: %s\n" % mydep, noiselevel=-1)
+			return []
+	else:
+		operator = None
+
+	mylist = []
+
+	if operator is None:
+		for x in candidate_list:
+			xs = pkgsplit(x)
+			if xs is None:
+				if x != mycpv:
+					continue
+			elif xs[0] != mycpv:
+				continue
+			mylist.append(x)
+
+	elif operator == "=": # Exact match
+		if mycpv in candidate_list:
+			mylist = [mycpv]
+
+	elif operator == "=*": # glob match
+		# The old verion ignored _tag suffixes... This one doesn't.
+		for x in candidate_list:
+			if x[0:len(mycpv)] == mycpv:
+				mylist.append(x)
+
+	elif operator == "~": # version, any revision, match
+		for x in candidate_list:
+			xs = catpkgsplit(x)
+			if xs[0:2] != mycpv_cps[0:2]:
+				continue
+			if xs[2] != ver:
+				continue
+			mylist.append(x)
+
+	elif operator in [">", ">=", "<", "<="]:
+		for x in candidate_list:
+			try:
+				result = pkgcmp(pkgsplit(x), [cat + "/" + pkg, ver, rev])
+			except SystemExit:
+				raise
+			except:
+				writemsg("\nInvalid package name: %s\n" % x, noiselevel=-1)
+				raise
+			if result is None:
+				continue
+			elif operator == ">":
+				if result > 0:
+					mylist.append(x)
+			elif operator == ">=":
+				if result >= 0:
+					mylist.append(x)
+			elif operator == "<":
+				if result < 0:
+					mylist.append(x)
+			elif operator == "<=":
+				if result <= 0:
+					mylist.append(x)
+			else:
+				raise KeyError("Unknown operator: %s" % mydep)
+	else:
+		raise KeyError("Unknown operator: %s" % mydep)
+
+	return mylist
