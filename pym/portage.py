@@ -95,7 +95,8 @@ try:
 		parse_updates, update_config_files, update_dbentries
 
 	# Need these functions directly in portage namespace to not break every external tool in existence
-	from portage_versions import ververify,vercmp,catsplit,catpkgsplit,pkgsplit,pkgcmp
+	from portage_versions import best, catpkgsplit, catsplit, pkgcmp, \
+		pkgsplit, vercmp, ververify
 
 	# endversion and endversion_keys are for backward compatibility only.
 	from portage_versions import endversion_keys
@@ -3631,22 +3632,6 @@ class packagetree:
 		"populates the tree with values"
 		populated=1
 		pass
-
-def best(mymatches):
-	"accepts None arguments; assumes matches are valid."
-	global bestcount
-	if mymatches is None:
-		return ""
-	if not len(mymatches):
-		return ""
-	bestmatch=mymatches[0]
-	p2=catpkgsplit(bestmatch)[1:]
-	for x in mymatches[1:]:
-		p1=catpkgsplit(x)[1:]
-		if pkgcmp(p1,p2)>0:
-			bestmatch=x
-			p2=catpkgsplit(bestmatch)[1:]
-	return bestmatch
 
 def match_to_list(mypkg,mylist):
 	"""(pkgname,list)

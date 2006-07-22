@@ -243,3 +243,17 @@ def catpkgsplit(mydata,silent=1):
 def catsplit(mydep):
         return mydep.split("/", 1)
 
+def best(mymatches):
+	"""Accepts None arguments; assumes matches are valid."""
+	if mymatches is None:
+		return ""
+	if not len(mymatches):
+		return ""
+	bestmatch = mymatches[0]
+	p2 = catpkgsplit(bestmatch)[1:]
+	for x in mymatches[1:]:
+		p1 = catpkgsplit(x)[1:]
+		if pkgcmp(p1, p2) > 0:
+			bestmatch = x
+			p2 = catpkgsplit(bestmatch)[1:]
+	return bestmatch
