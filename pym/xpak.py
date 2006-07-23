@@ -154,7 +154,7 @@ def getboth(infile):
 	myindex=myfile.read(indexsize)
 	mydata=myfile.read(datasize)
 	myfile.close()
-	return [myindex,mydata]
+	return myindex, mydata
 
 def listindex(myindex):
 	"""Print to the terminal the filenames listed in the indexglob passed in."""
@@ -417,5 +417,5 @@ class tbz2:
 		mydata =a.read(self.datasize)
 		a.close()
 
-		return [self.index[:],mydata]
+		return self.index, mydata
 
