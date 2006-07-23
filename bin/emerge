@@ -1024,8 +1024,7 @@ class depgraph:
 		if "--debug" in self.myopts:
 			print "Candidates:",mymerge
 		for x in mymerge:
-			myk=None
-			binpkguseflags=None
+			selected_pkg = None
 			if x[0]=="!":
 				# if this package is myself, don't append it to block list.
 				if "--debug" in self.myopts:
@@ -1036,13 +1035,12 @@ class depgraph:
 						# myself, so exit.
 						continue
 				# adding block
-				myk=["blocks",myroot,x[1:]]
+				selected_pkg = ["blocks", myroot, x[1:], None]
 			else:
 				#We are not processing a blocker but a normal dependency
-				myeb=None
+				# List of acceptable packages, ordered by type preference.
+				matched_packages = []
 				myeb_matches = portdb.xmatch("match-visible", x)
-				if "--usepkgonly" not in self.myopts:
-					myeb=portage.best(myeb_matches)
 
 				myeb_pkg=None
 				if "--usepkg" in self.myopts:
@@ -1054,11 +1052,10 @@ class depgraph:
 						myeb_pkg_matches = [pkg for pkg in myeb_pkg_matches \
 							if pkg in myeb_matches or  \
 							not portdb.cpv_exists(pkg)]
-					myeb_pkg = portage.best(myeb_pkg_matches)
+					if myeb_pkg_matches:
+						myeb_pkg = portage.best(myeb_pkg_matches)
 
-				if not myeb_pkg:
-					myeb_pkg = None
-				elif "--newuse" in self.myopts:
+				if myeb_pkg and "--newuse" in self.myopts:
 					iuses = set(bindb.aux_get(myeb_pkg, ["IUSE"])[0].split())
 					old_use = bindb.aux_get(myeb_pkg, ["USE"])[0].split()
 					pkgsettings.setcpv(myeb_pkg)
@@ -1066,8 +1063,18 @@ class depgraph:
 					if iuses.intersection(old_use) != \
 						iuses.intersection(now_use):
 						myeb_pkg = None
+				if myeb_pkg:
+					binpkguseflags = \
+						self.trees[myroot]["bintree"].dbapi.aux_get(
+							myeb_pkg, ["USE"])[0].split()
+					matched_packages.append(
+						["binary", myroot, myeb_pkg, binpkguseflags])
 
-				if (not myeb) and (not myeb_pkg):
+				if "--usepkgonly" not in self.myopts and myeb_matches:
+					matched_packages.append(
+						["ebuild", myroot, portage.best(myeb_matches), None])
+
+				if not matched_packages:
 					if raise_on_missing:
 						raise ValueError
 					if not arg:
@@ -1105,35 +1112,29 @@ class depgraph:
 					return 0
 
 				if "--debug" in self.myopts:
-					print "ebuild:",myeb
-					print "binpkg:",myeb_pkg
+					for pkg in matched_packages:
+						print (pkg[0] + ":").rjust(10), pkg[2]
 
-				if myeb and myeb_pkg:
-					bestmatch = portage.best([myeb, myeb_pkg])
-					if bestmatch == myeb_pkg:
-						myeb = None
-					else:
-						myeb_pkg = None
+				if len(matched_packages) > 1:
+					bestmatch = portage.best(
+						[pkg[2] for pkg in matched_packages])
+					matched_packages = [pkg for pkg in matched_packages \
+						if pkg[2] == bestmatch]
 
-				if myeb:
-					myk=["ebuild",myroot,myeb]
-				elif myeb_pkg:
-					binpkguseflags = \
-						self.trees[myroot]["bintree"].get_use(myeb_pkg)
-					myk=["binary",myroot,myeb_pkg]
-				else:
-					sys.stderr.write("!!! Confused... Don't know what's being used for dependency info. :(\n")
-					sys.exit(1)
+				# ordered by type preference ("ebuild" type is the last resort)
+				selected_pkg =  matched_packages[0]
 
 			if myparent:
 				#we are a dependency, so we want to be unconditionally added
-				if not self.create(myk,myparent,myuse=binpkguseflags):
+				if not self.create(selected_pkg[0:3], myparent,
+					myuse=selected_pkg[-1]):
 					return 0
 			else:
 				#if mysource is not set, then we are a command-line dependency and should not be added
 				#if --onlydeps is specified.
-				if not self.create(myk, myparent,
-					"--onlydeps" not in self.myopts, myuse=binpkguseflags):
+				if not self.create(selected_pkg[0:3], myparent,
+					addme=("--onlydeps" not in self.myopts),
+					myuse=selected_pkg[-1]):
 					return 0
 
 		if "--debug" in self.myopts:
