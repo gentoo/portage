@@ -185,7 +185,7 @@ def searchindex(myindex,myitem):
 				#found
 				datapos=decodeint(myindex[startpos+4+mytestlen:startpos+8+mytestlen]);
 				datalen=decodeint(myindex[startpos+8+mytestlen:startpos+12+mytestlen]);
-				return [datapos,datalen]
+				return datapos, datalen
 		startpos=startpos+mytestlen+12
 		
 def getitem(myid,myitem):
