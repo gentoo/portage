@@ -1044,6 +1044,9 @@ class depgraph:
 				# List of acceptable packages, ordered by type preference.
 				matched_packages = []
 				myeb_matches = portdb.xmatch("match-visible", x)
+				myeb = None
+				if "--usepkgonly" not in self.myopts:
+					myeb = portage.best(myeb_matches)
 
 				myeb_pkg=None
 				if "--usepkg" in self.myopts:
@@ -1063,7 +1066,12 @@ class depgraph:
 					old_use = bindb.aux_get(myeb_pkg, ["USE"])[0].split()
 					pkgsettings.setcpv(myeb_pkg)
 					now_use = pkgsettings["USE"].split()
-					if iuses.intersection(old_use) != \
+					if "--usepkgonly" not in self.myopts and \
+						myeb == myeb_pkg and \
+						iuses.difference(
+						portdb.aux_get(myeb, ["IUSE"])[0].split()):
+						myeb_pkg = None
+					elif iuses.intersection(old_use) != \
 						iuses.intersection(now_use):
 						myeb_pkg = None
 				if myeb_pkg:
@@ -1075,7 +1083,7 @@ class depgraph:
 
 				if "--usepkgonly" not in self.myopts and myeb_matches:
 					matched_packages.append(
-						["ebuild", myroot, portage.best(myeb_matches), None])
+						["ebuild", myroot, myeb, None])
 
 				if not matched_packages:
 					if raise_on_missing:
