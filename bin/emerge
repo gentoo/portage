@@ -746,7 +746,7 @@ class depgraph:
 				vardbapi.cpv_exists(mykey):
 				old_use = vardbapi.aux_get(mykey, ["USE"])[0].split()
 				iuses = set(mydbapi.aux_get(mykey, ["IUSE"])[0].split())
-				if iuses.difference(
+				if iuses.symmetric_difference(
 					vardbapi.aux_get(mykey, ["IUSE"])[0].split()):
 					merging = 1
 				elif iuses.intersection(old_use) != \
@@ -1068,7 +1068,7 @@ class depgraph:
 					now_use = pkgsettings["USE"].split()
 					if "--usepkgonly" not in self.myopts and \
 						myeb == myeb_pkg and \
-						iuses.difference(
+						iuses.symmetric_difference(
 						portdb.aux_get(myeb, ["IUSE"])[0].split()):
 						myeb_pkg = None
 					elif iuses.intersection(old_use) != \
