@@ -746,7 +746,10 @@ class depgraph:
 				vardbapi.cpv_exists(mykey):
 				old_use = vardbapi.aux_get(mykey, ["USE"])[0].split()
 				iuses = set(mydbapi.aux_get(mykey, ["IUSE"])[0].split())
-				if iuses.intersection(old_use) != \
+				if iuses.difference(
+					vardbapi.aux_get(mykey, ["IUSE"])[0].split()):
+					merging = 1
+				elif iuses.intersection(old_use) != \
 					iuses.intersection(myuse):
 					merging=1
 
