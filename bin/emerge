@@ -689,9 +689,13 @@ class depgraph:
 		#"no downgrade" emerge
 		"""
 
-		jbigkey=string.join(mybigkey)
-		# Prevent cycles where packages are already in the digraph
-		if self.digraph.hasnode(jbigkey+" merge") or self.digraph.hasnode(jbigkey+" nomerge"):
+		jbigkey = " ".join(mybigkey) + " merge"
+		if self.digraph.hasnode(jbigkey):
+			if addme:
+				self.digraph.addnode(jbigkey, myparent)
+			return 1
+		jbigkey = " ".join(mybigkey) + " nomerge"
+		if self.digraph.hasnode(jbigkey):
 			return 1
 		
 		self.spinner.update()
