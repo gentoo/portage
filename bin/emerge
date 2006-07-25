@@ -691,7 +691,9 @@ class depgraph:
 
 		jbigkey = " ".join(mybigkey) + " merge"
 		if self.digraph.hasnode(jbigkey):
-			if addme:
+			if addme and jbigkey != myparent:
+				# Refuse to make a node depend on itself so that the we don't
+				# don't create a bogus circular dependency in self.altlist().
 				self.digraph.addnode(jbigkey, myparent)
 			return 1
 		jbigkey = " ".join(mybigkey) + " nomerge"

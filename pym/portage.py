@@ -318,10 +318,6 @@ class digraph:
 		self.okeys=[]
 
 	def addnode(self,mykey,myparent):
-		if mykey == myparent:
-			# Refuse to make a node depend on itself so that the caller doesn't
-			# accidentally create a bogus circular dependency.
-			myparent = None
 		if not self.dict.has_key(mykey):
 			self.okeys.append(mykey)
 			if myparent is None:
