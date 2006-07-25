@@ -1233,9 +1233,10 @@ class depgraph:
 			print "\n!!! Problems have been detected with your world file"
 			print "!!! Please run "+green("emaint --check world")+"\n"
 
-		if missing_atoms and "--verbose" in self.myopts:
-			print "\n!!! Packages for the following atoms are either all"
-			print "!!! masked or don't exist:"
+		if missing_atoms:
+			print "\n" + colorize("BAD", "!!!") + \
+				" Ebuilds for the following packages are either all"
+			print colorize("BAD", "!!!") + " masked or don't exist:"
 			print " ".join(missing_atoms) + "\n"
 
 		return 1
