@@ -166,7 +166,10 @@ def grabdict(myfilename, juststrings=0, empty=0, recursive=0):
 
 def grabdict_package(myfilename, juststrings=0, recursive=0):
 	pkgs=grabdict(myfilename, juststrings, empty=1, recursive=recursive)
-	for x in pkgs:
+	# We need to call keys() here in order to avoid the possibility of
+	# "RuntimeError: dictionary changed size during iteration"
+	# when an invalid atom is deleted.
+	for x in pkgs.keys():
 		if not isvalidatom(x):
 			del(pkgs[x])
 			writemsg("--- Invalid atom in %s: %s\n" % (myfilename, x),
