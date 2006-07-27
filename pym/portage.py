@@ -2049,18 +2049,15 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 							selinux.setexec(None)
 
 					finally:
-						#if root, -always- set the perms.
-						if os.path.exists(mysettings["DISTDIR"]+"/"+myfile) and (fetched != 1 or os.getuid() == 0) \
-							and os.access(mysettings["DISTDIR"]+"/",os.W_OK):
-							if os.stat(mysettings["DISTDIR"]+"/"+myfile).st_gid != portage_gid:
-								try:
-									os.chown(mysettings["DISTDIR"]+"/"+myfile,-1,portage_gid)
-								except SystemExit, e:
-									raise
-								except:
-									portage_util.writemsg("chown failed on distfile: " + str(myfile),
-										noiselevel=-1)
-							os.chmod(mysettings["DISTDIR"]+"/"+myfile,0664)
+						try:
+							apply_secpass_permissions(myfile_path,
+								gid=portage_gid, mode=0664, mask=02)
+						except portage_exception.FileNotFound, e:
+							pass
+						except portage_exception.PortageException, e:
+							if not os.access(myfile_path, os.R_OK):
+								writemsg("!!! Failed to adjust permissions:" + \
+									" %s\n" % str(e), noiselevel=-1)
 
 					if mydigests!=None and mydigests.has_key(myfile):
 						try:
