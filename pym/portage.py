@@ -1800,14 +1800,6 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						writemsg(_("Local mirror has file: %(file)s\n" % {"file":myfile}))
 						shutil.copyfile(mydir+"/"+myfile,destdir+"/"+myfile)
 						break
-			try:
-				apply_secpass_permissions(os.path.join(mysettings["DISTDIR"], myfile), gid=portage_gid,
-					mode=0664, mask=02)
-			except portage_exception.FileNotFound:
-				pass
-			except portage_exception.PortageException, e:
-				if not os.access(os.path.join(mysettings["DISTDIR"], myfile), os.R_OK):
-					writemsg("!!! Failed to adjust permissions: %s\n" % str(e), noiselevel=-1)
 		except (OSError,IOError),e:
 			# file does not exist
 			writemsg(_("!!! %(file)s not found in %(dir)s\n") % {"file":myfile, "dir":mysettings["DISTDIR"]},
@@ -1943,6 +1935,14 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						raise
 					del e
 				else:
+					try:
+						apply_secpass_permissions(
+							myfile_path, gid=portage_gid, mode=0664, mask=02,
+							stat_cached=mystat)
+					except portage_exception.PortageException, e:
+						if not os.access(myfile_path, os.R_OK):
+							writemsg("!!! Failed to adjust permissions:" + \
+								" %s\n" % str(e), noiselevel=-1)
 					if myfile not in mydigests:
 						# We don't have a digest, but the file exists.  We must
 						# assume that it is fully downloaded.
