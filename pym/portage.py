@@ -2067,7 +2067,13 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 
 					if mydigests!=None and mydigests.has_key(myfile):
 						try:
-							mystat=os.stat(mysettings["DISTDIR"]+"/"+myfile)
+							mystat = os.stat(myfile_path)
+						except OSError, e:
+							if e.errno != errno.ENOENT:
+								raise
+							del e
+							fetched = 0
+						else:
 							# no exception?  file exists. let digestcheck() report
 							# an appropriately for size or checksum errors
 							if (mystat[stat.ST_SIZE]<mydigests[myfile]["size"]):
@@ -2116,13 +2122,6 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 										eout.eend(0)
 									fetched=2
 									break
-						except (OSError,IOError),e:
-							# ENOENT is expected from the stat call at the
-							# beginning of this try block.
-							if e.errno != errno.ENOENT:
-								writemsg("An exception was caught(2)...\nFailing the download: %s.\n" % (str(e)),
-									noiselevel=-1)
-							fetched=0
 					else:
 						if not myret:
 							fetched=2
