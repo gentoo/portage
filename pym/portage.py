@@ -2143,6 +2143,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 			print "!!! manually.  See the comments in" + \
 				" the ebuild for more information.\n"
 			spawn(EBUILD_SH_BINARY + " nofetch", mysettings)
+			if listonly:
+				return 0
 		if (fetched!=2) and not listonly:
 			if restrict_fetch:
 				pass
