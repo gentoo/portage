@@ -2135,19 +2135,17 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 
 		if listonly:
 			writemsg("\n")
-		if fetched != 2 and restrict_fetch:
-			print "\n!!!", mysettings["CATEGORY"] + "/" + \
-				mysettings["PF"], "has fetch restriction turned on."
-			print "!!! This probably means that this " + \
-				"ebuild's files must be downloaded"
-			print "!!! manually.  See the comments in" + \
-				" the ebuild for more information.\n"
-			spawn(EBUILD_SH_BINARY + " nofetch", mysettings)
-			if listonly:
-				return 0
-		if (fetched!=2) and not listonly:
+		if fetched != 2:
 			if restrict_fetch:
-				pass
+				print "\n!!!", mysettings["CATEGORY"] + "/" + \
+					mysettings["PF"], "has fetch restriction turned on."
+				print "!!! This probably means that this " + \
+					"ebuild's files must be downloaded"
+				print "!!! manually.  See the comments in" + \
+					" the ebuild for more information.\n"
+				spawn(EBUILD_SH_BINARY + " nofetch", mysettings)
+			elif listonly:
+				continue
 			elif not filedict[myfile]:
 				writemsg("Warning: No mirrors available for file" + \
 					" '%s'\n" % (myfile), noiselevel=-1)
