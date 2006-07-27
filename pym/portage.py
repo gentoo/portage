@@ -2024,7 +2024,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					else:
 						#normal mode:
 						locfetch=fetchcommand
-					writemsg(">>> Downloading "+str(loc)+"\n")
+					writemsg_stdout(">>> Downloading '%s'\n" % \
+						re.sub(r'//(.+):.+@(.+)/',r'//\1:*password*@\2/', loc))
 					myfetch=string.replace(locfetch,"${URI}",loc)
 					myfetch=string.replace(myfetch,"${FILE}",myfile)
 
