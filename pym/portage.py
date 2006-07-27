@@ -1790,22 +1790,6 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 			fsmirrors += [mymirrors[x]]
 			del mymirrors[x]
 
-	for myuri in myuris:
-		myfile=os.path.basename(myuri)
-		try:
-			destdir = mysettings["DISTDIR"]+"/"
-			if not os.path.exists(destdir+myfile):
-				for mydir in fsmirrors:
-					if os.path.exists(mydir+"/"+myfile):
-						writemsg(_("Local mirror has file: %(file)s\n" % {"file":myfile}))
-						shutil.copyfile(mydir+"/"+myfile,destdir+"/"+myfile)
-						break
-		except (OSError,IOError),e:
-			# file does not exist
-			writemsg(_("!!! %(file)s not found in %(dir)s\n") % {"file":myfile, "dir":mysettings["DISTDIR"]},
-				noiselevel=-1)
-			gotit=0
-
 	restrict_fetch = "fetch" in mysettings["RESTRICT"].split()
 	custom_local_mirrors = custommirrors.get("local", [])
 	if restrict_fetch:
@@ -1928,6 +1912,19 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					file_lock = portage_locks.lockfile(mysettings["DISTDIR"]+"/"+myfile,wantnewlockfile=1)
 		try:
 			if not listonly:
+				if fsmirrors and not os.path.exists(myfile_path):
+					for mydir in fsmirrors:
+						mirror_file = os.path.join(mydir, myfile)
+						try:
+							shutil.copyfile(mirror_file, myfile_path)
+							writemsg(_("Local mirror has file:" + \
+								" %(file)s\n" % {"file":myfile}))
+							break
+						except (IOError, OSError), e:
+							if e.errno != errno.ENOENT:
+								raise
+							del e
+
 				try:
 					mystat = os.stat(myfile_path)
 				except OSError, e:
