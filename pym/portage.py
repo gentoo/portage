@@ -1890,16 +1890,6 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 			else:
 				filedict[myfile].append(myuri)
 
-	missingSourceHost = False
-	for myfile in filedict.keys(): # Gives a list, not just the first one
-		if not filedict[myfile]:
-			writemsg("Warning: No mirrors available for file '%s'\n" % (myfile),
-				noiselevel=-1)
-			missingSourceHost = True
-	if missingSourceHost:
-		return 0
-	del missingSourceHost
-
 	can_fetch=True
 
 	if not listonly:
@@ -1942,6 +1932,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 				return 0
 			del distlocks_subdir
 	for myfile in filedict.keys():
+		myfile_path = os.path.join(mysettings["DISTDIR"], myfile)
 		fetched=0
 		file_lock = None
 		if listonly:
@@ -1953,6 +1944,46 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 				else:
 					file_lock = portage_locks.lockfile(mysettings["DISTDIR"]+"/"+myfile,wantnewlockfile=1)
 		try:
+			if not listonly:
+				try:
+					mystat = os.stat(myfile_path)
+				except OSError, e:
+					if e.errno != errno.ENOENT:
+						raise
+					del e
+				else:
+					if myfile not in mydigests:
+						# We don't have a digest, but the file exists.  We must
+						# assume that it is fully downloaded.
+						continue
+					else:
+						if mystat.st_size < mydigests[myfile]["size"]:
+							fetched = 1 # Try to resume this download.
+						else:
+							verified_ok, reason = portage_checksum.verify_all(
+								myfile_path, mydigests[myfile])
+							if not verified_ok:
+								writemsg("!!! Previously fetched" + \
+									" file: '%s'\n" % myfile, noiselevel=-1)
+								writemsg("!!! Reason: %s\n" % reason[0],
+									noiselevel=-1)
+								writemsg(("!!! Got:      %s\n" + \
+									"!!! Expected: %s\n") % \
+									(reason[1], reason[2]), noiselevel=-1)
+								if can_fetch:
+									writemsg("Refetching...\n\n",
+										noiselevel=-1)
+									os.unlink(myfile_path)
+							else:
+								eout = output.EOutput()
+								eout.quiet = \
+									mysettings.get("PORTAGE_QUIET", None) == "1"
+								for digest_name in mydigests[myfile]:
+									eout.ebegin("Previously fetched:" + \
+										" %s %s ;-)" % (myfile, digest_name))
+									eout.eend(0)
+								continue # fetch any remaining files
+
 			for loc in filedict[myfile]:
 				if listonly:
 					writemsg(loc+" ")
@@ -1970,48 +2001,6 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 
 				fetchcommand=string.replace(fetchcommand,"${DISTDIR}",mysettings["DISTDIR"])
 				resumecommand=string.replace(resumecommand,"${DISTDIR}",mysettings["DISTDIR"])
-
-				try:
-					mystat=os.stat(mysettings["DISTDIR"]+"/"+myfile)
-					if mydigests.has_key(myfile):
-						#if we have the digest file, we know the final size and can resume the download.
-						if mystat[stat.ST_SIZE]<mydigests[myfile]["size"]:
-							fetched=1
-						else:
-							#we already have it downloaded, skip.
-							#if our file is bigger than the recorded size, digestcheck should catch it.
-							if not fetchonly:
-								fetched=2
-							else:
-								# Verify checksums at each fetch for fetchonly.
-								verified_ok,reason = portage_checksum.verify_all(mysettings["DISTDIR"]+"/"+myfile, mydigests[myfile])
-								if not verified_ok:
-									print reason
-									writemsg("!!! Previously fetched file: "+str(myfile)+"\n", noiselevel=-1)
-									writemsg("!!! Reason: "+reason[0]+"\n", noiselevel=-1)
-									writemsg("!!! Got:      %s\n!!! Expected: %s\n" % \
-										(reason[1], reason[2]), noiselevel=-1)
-									writemsg("Refetching...\n\n", noiselevel=-1)
-									os.unlink(mysettings["DISTDIR"]+"/"+myfile)
-									fetched=0
-								else:
-									eout = output.EOutput()
-									eout.quiet = mysettings.get("PORTAGE_QUIET", None) == "1"
-									for x_key in mydigests[myfile].keys():
-										eout.ebegin("Previously fetched: %s %s ;-)" % (myfile, x_key))
-										eout.eend(0)
-									fetched=2
-									break #No need to keep looking for this file, we have it!
-					else:
-						#we don't have the digest file, but the file exists.  Assume it is fully downloaded.
-						fetched=2
-				except (OSError,IOError),e:
-					# ENOENT is expected from the stat call at the beginning of
-					# this try block.
-					if e.errno != errno.ENOENT:
-						writemsg("An exception was caught(1)...\nFailing the download: %s.\n" % (str(e)),
-							noiselevel=-1)
-					fetched=0
 
 				if not can_fetch:
 					if fetched != 2:
@@ -2156,8 +2145,12 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 		if listonly:
 			writemsg("\n")
 		if (fetched!=2) and not listonly:
-			writemsg("!!! Couldn't download "+str(myfile)+". Aborting.\n",
-				noiselevel=-1)
+			if not filedict[myfile]:
+				writemsg("Warning: No mirrors available for file" + \
+					" '%s'\n" % (myfile), noiselevel=-1)
+			else:
+				writemsg("!!! Couldn't download '%s'. Aborting.\n" % myfile,
+					noiselevel=-1)
 			return 0
 	return 1
 
