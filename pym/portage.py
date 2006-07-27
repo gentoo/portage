@@ -1814,29 +1814,17 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 				noiselevel=-1)
 			gotit=0
 
-	if "fetch" in mysettings["RESTRICT"].split():
-		# fetch is restricted.	Ensure all files have already been downloaded; otherwise,
-		# print message and exit.
-		gotit=1
-		for myuri in myuris:
-			myfile=os.path.basename(myuri)
-			try:
-				mystat=os.stat(mysettings["DISTDIR"]+"/"+myfile)
-			except (OSError,IOError),e:
-				# file does not exist
-				writemsg(_("!!! %(file)s not found in %(dir)s\n") % {"file":myfile, "dir":mysettings["DISTDIR"]},
-					noiselevel=-1)
-				gotit=0
-		if not gotit:
-			print
-			print "!!!",mysettings["CATEGORY"]+"/"+mysettings["PF"],"has fetch restriction turned on."
-			print "!!! This probably means that this ebuild's files must be downloaded"
-			print "!!! manually.  See the comments in the ebuild for more information."
-			print
-			spawn(EBUILD_SH_BINARY+" nofetch",mysettings)
-			return 0
-		return 1
-	locations=mymirrors[:]
+	restrict_fetch = "fetch" in mysettings["RESTRICT"].split()
+	custom_local_mirrors = custommirrors.get("local", [])
+	if restrict_fetch:
+		# With fetch restriction, a normal uri may only be fetched from
+		# custom local mirrors (if available).  A mirror:// uri may also
+		# be fetched from specific mirrors (effectively overriding fetch
+		# restriction, but only for specific mirrors).
+		locations = custom_local_mirrors
+	else:
+		locations = mymirrors
+
 	filedict={}
 	primaryuri_indexes={}
 	for myuri in myuris:
@@ -1880,6 +1868,9 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 				writemsg("Invalid mirror definition in SRC_URI:\n", noiselevel=-1)
 				writemsg("  %s\n" % (myuri), noiselevel=-1)
 		else:
+			if restrict_fetch:
+				# Only fetch from specific mirrors is allowed.
+				continue
 			if "primaryuri" in mysettings["RESTRICT"].split():
 				# Use the source site first.
 				if primaryuri_indexes.has_key(myfile):
@@ -2144,8 +2135,18 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 
 		if listonly:
 			writemsg("\n")
+		if fetched != 2 and restrict_fetch:
+			print "\n!!!", mysettings["CATEGORY"] + "/" + \
+				mysettings["PF"], "has fetch restriction turned on."
+			print "!!! This probably means that this " + \
+				"ebuild's files must be downloaded"
+			print "!!! manually.  See the comments in" + \
+				" the ebuild for more information.\n"
+			spawn(EBUILD_SH_BINARY + " nofetch", mysettings)
 		if (fetched!=2) and not listonly:
-			if not filedict[myfile]:
+			if restrict_fetch:
+				pass
+			elif not filedict[myfile]:
 				writemsg("Warning: No mirrors available for file" + \
 					" '%s'\n" % (myfile), noiselevel=-1)
 			else:
