@@ -90,7 +90,8 @@ def discard_digests(myebuild, mysettings, mydbapi):
 	from portage_manifest import Manifest
 	mf = Manifest(pkgdir, mysettings["DISTDIR"],
 		fetchlist_dict=portage.FetchlistDict(pkgdir, mysettings, mydbapi))
-	mf.create([], assumeDistHashesSometimes=True, assumeDistHashesAlways=True)
+	mf.create(requiredDistfiles=None,
+		assumeDistHashesSometimes=True, assumeDistHashesAlways=True)
 	distfiles = mydbapi.getfetchlist(cpv, mysettings=mysettings, all=True)[1]
 	for myfile in distfiles:
 		try:

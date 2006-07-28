@@ -403,7 +403,7 @@ class Manifest(object):
 		return None
 	
 	def create(self, checkExisting=False, assumeDistHashesSometimes=False,
-		assumeDistHashesAlways=False, requiredDistfiles=None):
+		assumeDistHashesAlways=False, requiredDistfiles=[]):
 		""" Recreate this Manifest from scratch.  This will not use any
 		existing checksums unless assumeDistHashesSometimes or
 		assumeDistHashesAlways is true (assumeDistHashesSometimes will only
@@ -445,7 +445,11 @@ class Manifest(object):
 		distlist = set()
 		for cpv in cpvlist:
 			distlist.update(self._getCpvDistfiles(cpv))
-		if requiredDistfiles is None or len(requiredDistfiles) == 0:
+		if requiredDistfiles is None:
+			# This allows us to force removal of stale digests for the
+			# ebuild --force digest option (no distfiles are required).
+			requiredDistfiles = set()
+		elif len(requiredDistfiles) == 0:
 			# repoman passes in an empty list, which implies that all distfiles
 			# are required.
 			requiredDistfiles = distlist.copy()
