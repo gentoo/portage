@@ -12,9 +12,9 @@ if len(sys.argv) <= 2:
 	sys.exit(1)
 
 
-(opts, pargs) = getopt.getopt(sys.argv[1:], '', ['debug'])
+opts, pargs = getopt.getopt(sys.argv[1:], '', ['debug', 'force'])
 debug = ("--debug",'') in opts
-
+force = ("--force",'') in opts
 
 if "merge" in pargs:
 	print "Disabling noauto in features... merge disables it. (qmerge doesn't)"
@@ -79,10 +79,31 @@ if len(pargs) > 1 and "config" in pargs:
 	print "config must be called on it's own, not combined with any other phase"
 	sys.exit(1)
 
+def discard_digests(myebuild, mysettings, mydbapi):
+	"""Discard all distfiles digests for the given ebuild.  This is useful when
+	upstream has changed the identity of the distfiles and the user would
+	otherwise have to manually remove the Manifest and files/digest-* files in
+	order to ensure correct results."""
+	pkgdir = os.path.dirname(myebuild)
+	cat, pkg = pkgdir.split(os.sep)[-2:]
+	cpv = cat + "/" + os.path.basename(myebuild)[:-7]
+	from portage_manifest import Manifest
+	mf = Manifest(pkgdir, mysettings["DISTDIR"],
+		fetchlist_dict=portage.FetchlistDict(pkgdir, mysettings, mydbapi))
+	mf.create([], assumeDistHashesSometimes=True, assumeDistHashesAlways=True)
+	distfiles = mydbapi.getfetchlist(cpv, mysettings=mysettings, all=True)[1]
+	for myfile in distfiles:
+		try:
+			del mf.fhashdict["DIST"][myfile]
+		except KeyError:
+			pass
+	mf.write()
 
 for arg in pargs:
 	try:
 		tmpsettings = portage.config(clone=portage.settings)
+		if arg == "digest" and force:
+			discard_digests(ebuild, tmpsettings, portage.portdb)
 		a = portage.doebuild(ebuild, arg, portage.root, tmpsettings, debug=debug, cleanup=("noauto" not in portage.features), tree=mytree)
 	except KeyboardInterrupt:
 		print "Interrupted."
