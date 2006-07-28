@@ -2709,9 +2709,13 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 		mycpv = "/".join((mysettings["CATEGORY"], mysettings["PF"]))
 
-		newuris, alist = mydbapi.getfetchlist(mycpv, mysettings=mysettings)
+		# Make sure we get the correct tree in case there are overlays.
+		mytree = os.path.realpath(
+			os.path.dirname(os.path.dirname(mysettings["O"])))
+		newuris, alist = mydbapi.getfetchlist(
+			mycpv, mytree=mytree, mysettings=mysettings)
 		alluris, aalist = mydbapi.getfetchlist(
-			mycpv, mysettings=mysettings, all=True)
+			mycpv, mytree=mytree, all=True, mysettings=mysettings)
 		mysettings["A"] = " ".join(alist)
 		mysettings["AA"] = " ".join(aalist)
 		if ("mirror" in features) or fetchall:
