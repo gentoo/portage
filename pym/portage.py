@@ -477,12 +477,13 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None):
 	  "KDEDIRS":[],"PATH":[],"CLASSPATH":[],"LDPATH":[],"MANPATH":[],
 		"INFODIR":[],"INFOPATH":[],"ROOTPATH":[],"CONFIG_PROTECT":[],
 		"CONFIG_PROTECT_MASK":[],"PRELINK_PATH":[],"PRELINK_PATH_MASK":[],
-		"PYTHONPATH":[], "ADA_INCLUDE_PATH":[], "ADA_OBJECTS_PATH":[]
+		"PYTHONPATH":[], "ADA_INCLUDE_PATH":[], "ADA_OBJECTS_PATH":[],
+		"PKG_CONFIG_PATH":[]
 	}
 	colon_separated = [
 		"ADA_INCLUDE_PATH",  "ADA_OBJECTS_PATH",
 		"LDPATH",            "MANPATH",
-		"PATH",              "PRELINK_PATH",
+		"PATH",              "PKG_CONFIG_PATH",   "PRELINK_PATH",
 		"PRELINK_PATH_MASK", "PYTHONPATH"
 	]
 
