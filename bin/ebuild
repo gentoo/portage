@@ -85,6 +85,7 @@ def discard_digests(myebuild, mysettings, mydbapi):
 	otherwise have to manually remove the Manifest and files/digest-* files in
 	order to ensure correct results."""
 	pkgdir = os.path.dirname(myebuild)
+	mytree = os.path.realpath(os.path.dirname(os.path.dirname(pkgdir)))
 	cat, pkg = pkgdir.split(os.sep)[-2:]
 	cpv = cat + "/" + os.path.basename(myebuild)[:-7]
 	from portage_manifest import Manifest
@@ -92,7 +93,8 @@ def discard_digests(myebuild, mysettings, mydbapi):
 		fetchlist_dict=portage.FetchlistDict(pkgdir, mysettings, mydbapi))
 	mf.create(requiredDistfiles=None,
 		assumeDistHashesSometimes=True, assumeDistHashesAlways=True)
-	distfiles = mydbapi.getfetchlist(cpv, mysettings=mysettings, all=True)[1]
+	distfiles = mydbapi.getfetchlist(cpv,
+		mysettings=mysettings, all=True, mytree=mytree)[1]
 	for myfile in distfiles:
 		try:
 			del mf.fhashdict["DIST"][myfile]
