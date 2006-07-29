@@ -810,8 +810,9 @@ class config:
 			                    "conf":      self.configlist[2],
 			                    "pkg":       self.configlist[3],
 			                    "auto":      self.configlist[4],
-			                    "backupenv": self.configlist[5],
-			                    "env":       self.configlist[6] }
+			                    "env.d":     self.configlist[5],
+			                    "backupenv": self.configlist[6],
+			                    "env":       self.configlist[7] }
 			self.profiles = copy.deepcopy(clone.profiles)
 			self.backupenv  = self.configdict["backupenv"]
 			self.pusedict   = copy.deepcopy(clone.pusedict)
@@ -993,6 +994,9 @@ class config:
 			#auto-use:
 			self.configlist.append({})
 			self.configdict["auto"]=self.configlist[-1]
+
+			self.configlist.append({})
+			self.configdict["env.d"] = self.configlist[-1]
 
 			self.configlist.append(self.backupenv) # XXX Why though?
 			self.configdict["backupenv"]=self.configlist[-1]
@@ -1382,6 +1386,14 @@ class config:
 			return
 		else:
 			self.already_in_regenerate = 1
+
+		# We grab the latest profile.env here since it changes frequently.
+		self.configdict["env.d"].clear()
+		env_d = getconfig(
+			os.path.join(self["PORTAGE_CONFIGROOT"], "etc", "profile.env"))
+		if env_d:
+			# env_d will be None if profile.env doesn't exist.
+			self.configdict["env.d"].update(env_d)
 
 		if useonly:
 			myincrementals=["USE"]

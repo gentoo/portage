@@ -241,6 +241,8 @@ def getconfig(mycfg,tolerant=0,allow_sourcing=False):
 			lex.source="source"
 		while 1:
 			key=lex.get_token()
+			if key == "export":
+				key = lex.get_token()
 			if (key==''):
 				#normal end of file
 				break;
