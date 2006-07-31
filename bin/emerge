@@ -3343,7 +3343,13 @@ elif "depclean"==myaction:
 	sys_world_unversioned = set()
 	from itertools import chain
 	for x in chain(syslist, worldlist):
-		sys_world_unversioned.add(portage.dep_getkey(x))
+		mycp = portage.dep_getkey(x)
+		try:
+			# include any old-style virtual providers that may exist
+			sys_world_unversioned.update(portage.settings.getvirtuals()[mycp])
+		except KeyError:
+			pass
+		sys_world_unversioned.add(mycp)
 
 	cleanlist=[]
 	for x in myvarlist:
