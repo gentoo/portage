@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/pym/portage_util.py,v 1.11.2.6 2005/04/23 07:26:04 jstubbs Exp $
 
+import portage_exception
 from portage_exception import PortageException, FileNotFound, OperationNotPermitted, ReadOnlyFileSystem
 
 import sys,string,shlex,os,errno
