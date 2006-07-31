@@ -484,9 +484,12 @@ def emergelog(mystr,short_msg=None):
 			print "emergelog():",e
 		pass
 
+# This hack prevents parallel-fetch from confusing emerge.log parsers.
+emerge_pid = os.getpid()
 def emergeexit():
 	"""This gets out final log message in before we quit."""
-	if "--pretend" not in myopts:
+	global emerge_pid
+	if "--pretend" not in myopts and emerge_pid == os.getpid():
 		emergelog(" *** terminating.")
 	if "notitles" not in portage.settings.features:
 		xtermTitleReset()
