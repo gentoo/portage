@@ -538,8 +538,8 @@ def getgccversion():
 	mystatus, myoutput = commands.getstatusoutput("eselect compiler show")
 	if mystatus == os.EX_OK and len(myoutput.split("/")) == 2:
 		part1, part2 = myoutput.split("/")
-		if len(part1.split("-")) > 0:
-			return gcc_ver_prefix + part1.split("-")[-1] + "/" + part2
+		if part1.startswith(portage.settings["CHOST"] + "-"):
+			return myoutput.replace(portage.settings["CHOST"] + "-", gcc_ver_prefix, 1)
 
 	mystatus, myoutput = commands.getstatusoutput("gcc-config -c")
 	if mystatus == os.EX_OK and len(myoutput.split("-")) > 0:
