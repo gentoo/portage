@@ -181,10 +181,12 @@ def grabfile_package(myfilename, compatlevel=0, recursive=0):
 def grablines(myfilename,recursive=0):
 	mylines=[]
 	if recursive and os.path.isdir(myfilename):
-		myfiles = [myfilename+os.path.sep+x for x in os.listdir(myfilename)]
-		myfiles.sort()
-		for f in myfiles:
-			mylines.extend(grablines(f, recursive))
+		dirlist = os.listdir(myfilename)
+		dirlist.sort()
+		for f in dirlist:
+			if not f.startswith("."):
+				mylines.extend(grablines(
+					os.path.join(myfilename, f), recursive))
 	else:
 		try:
 			myfile = open(myfilename, "r")
