@@ -497,7 +497,7 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None):
 		try:
 			myconfig = getconfig(file_path)
 		except portage_exception.ParseError, e:
-			writemsg("!!! %s'\n" % str(e), noiselevel=-1)
+			writemsg("!!! '%s'\n" % str(e), noiselevel=-1)
 			del e
 			continue
 		# process PATH, CLASSPATH, LDPATH
