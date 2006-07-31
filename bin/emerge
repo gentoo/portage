@@ -2162,7 +2162,8 @@ class depgraph:
 			# due to power failure, SIGKILL, etc...
 			portage.commit_mtimedb()
 
-		emergelog(" *** Finished. Cleaning up...")
+		if "--pretend" not in myopts:
+			emergelog(" *** Finished. Cleaning up...")
 
 		# We're out of the loop... We're done. Delete the resume data.
 		if portage.mtimedb.has_key("resume"):
