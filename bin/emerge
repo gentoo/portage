@@ -1129,6 +1129,12 @@ class depgraph:
 					return (0,[])
 				try:
 					mykey=portage.dep_expand(x,mydb=portage.portdb)
+					if mykey.startswith("null/"):
+						# If category expansion fails against the portage tree,
+						# remove the null/ prefix so that it may be given
+						# another chance to expand against the binary package
+						# tree in select_dep().
+						mykey = mykey[5:]
 				except ValueError, errpkgs:
 					print "\n\n!!! The short ebuild name \"" + x + "\" is ambiguous.  Please specify"
 					print "!!! one of the following fully-qualified ebuild names instead:\n"
@@ -1260,9 +1266,9 @@ class depgraph:
 					myeb_pkg_matches=portage.db["/"]["bintree"].dbapi.match(x)
 					if ("--usepkgonly" not in myopts):
 						# Remove any binary package entries that are masked in the portage tree (#55871)
-						for idx in range(len(myeb_pkg_matches)-1,-1,-1):
-							if myeb_pkg_matches[idx] not in myeb_matches:
-								del myeb_pkg_matches[idx]
+						myeb_pkg_matches = [pkg for pkg in myeb_pkg_matches \
+							if pkg in myeb_matches or  \
+							not portage.portdb.cpv_exists(pkg)]
 					myeb_pkg = portage.best(myeb_pkg_matches)
 
 				if not myeb_pkg:
