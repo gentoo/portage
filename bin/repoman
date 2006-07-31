@@ -71,7 +71,6 @@ def exithandler(signum=None,frame=None):
 	os.kill(0,signal.SIGKILL)
 signal.signal(signal.SIGINT,exithandler)
 
-REPOROOTS=["gentoo-x86"]
 shortmodes={"ci":"commit"}
 modeshelp={
 "scan"   : "Scan directory tree for QA issues (default)",
@@ -404,22 +403,7 @@ if os.path.isdir("CVS"):
 		print red("!!! ")+bold("Adding \"cvs\" to FEATURES")
 		print
 		os.environ["FEATURES"]=repoman_settings["FEATURES"]+" cvs"
-
-	try:
-		isCvs=True
-		myrepofile=open("CVS/Repository")
-		myreporoot=myrepofile.readline()[:-1]
-		myrepofile.close()
-		myrepofile=open("CVS/Root")
-		myreporootpath=string.split(myrepofile.readline()[:-1], ":")[-1]
-		myrepofile.close()
-		if myreporootpath == myreporoot[:len(myreporootpath)]:
-			# goofy os x cvs co.
-			myreporoot = myreporoot[len(myreporootpath):]
-			while myreporoot and myreporoot[0] == '/':
-				myreporoot = myreporoot[1:]
-	except (OSError, IOError):
-		err("Error grabbing repository information; exiting.")
+	isCvs = True
 
 if not "--pretend" in myoptions and not isCvs:
 	print
@@ -498,13 +482,6 @@ if not myreporoot:
 	myreporoot = os.path.basename(portdir_overlay)
 	myreporoot += mydir[len(portdir_overlay):-1]
 
-if isCvs:
-	reporoot=None
-	for x in REPOROOTS:
-		if myreporoot[0:len(x)]==x:
-			reporoot=myreporoot
-	if not reporoot:
-		err("Couldn't recognize repository type.  Supported repositories:\n"+repr(REPOROOTS))
 reposplit=string.split(myreporoot,"/")
 repolevel=len(reposplit)
 
