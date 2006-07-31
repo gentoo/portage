@@ -494,10 +494,11 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None):
 		if x[-1]=='~' or x[-4:]==".bak":
 			continue
 		file_path = os.path.join(envd_dir, x)
-		myconfig = getconfig(file_path)
-		if myconfig is None:
-			writemsg("!!! Parsing error in '%s'\n" % file_path, noiselevel=-1)
-			#parse error
+		try:
+			myconfig = getconfig(file_path)
+		except portage_exception.ParseError, e:
+			writemsg("!!! %s'\n" % str(e), noiselevel=-1)
+			del e
 			continue
 		# process PATH, CLASSPATH, LDPATH
 		for myspec in specials.keys():

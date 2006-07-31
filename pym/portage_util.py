@@ -279,7 +279,7 @@ def getconfig(mycfg,tolerant=0,allow_sourcing=False):
 	except SystemExit, e:
 		raise
 	except Exception, e:
-		raise e.__class__, str(e)+" in "+mycfg
+		raise portage_exception.ParseError(str(e)+" in "+mycfg)
 	return mykeys
 	
 #cache expansions of constant strings
