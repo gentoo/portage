@@ -2981,6 +2981,7 @@ if myaction in ["sync","metadata"] and (not "--help" in myopts):
 		ec = portage.eclass_cache.cache(portage.portdb.porttree_root)
 		# kinda ugly.
 		# XXX: nuke the filter when mr UNUSED_0? keys are dead
+		myportdir = os.path.realpath(portage.settings["PORTDIR"])
 		cm = portage.settings.load_best_module("portdbapi.metadbmodule")(myportdir, "metadata/cache", 
 			filter(lambda x: not x.startswith("UNUSED_0"), portage.auxdbkeys))
 
