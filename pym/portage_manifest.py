@@ -219,15 +219,14 @@ class Manifest(object):
 		for cpv in cpvlist:
 			dname = os.path.join(self.pkgdir, "files", "digest-%s" % self._catsplit(cpv)[1])
 			distlist = self._getCpvDistfiles(cpv)
-			have_all_checksums = True
+			missing_digests = set()
 			for f in distlist:
 				if f not in self.fhashdict["DIST"] or len(self.fhashdict["DIST"][f]) == 0:
-					have_all_checksums = False
-					break
-			if not have_all_checksums:
-				# We don't have all the required checksums to generate a proper
-				# digest, so we have to skip this cpv.
-				continue
+					missing_digests.add(f)
+			if missing_digests:
+				# This allows us to force remove of stale digests for the
+				# ebuild --force digest option.
+				distlist = [f for f in distlist if f not in missing_digests]
 			update_digest = True
 			if not force:
 				try:
@@ -236,13 +235,15 @@ class Manifest(object):
 					f.close()
 					if len(old_data) == 1 and "DIST" in old_data:
 						new_data = self._getDigestData(distlist)
-						for myfile in new_data["DIST"]:
-							for hashname in new_data["DIST"][myfile].keys():
-								if hashname != "size" and \
-								hashname not in portage_const.MANIFEST1_HASH_FUNCTIONS:
-									del new_data["DIST"][myfile][hashname]
-						if new_data["DIST"] == old_data["DIST"]:
-							update_digest = False
+						if "DIST" in new_data:
+							for myfile in new_data["DIST"]:
+								for hashname in \
+									new_data["DIST"][myfile].keys():
+									if hashname != "size" and hashname not in \
+										portage_const.MANIFEST1_HASH_FUNCTIONS:
+										del new_data["DIST"][myfile][hashname]
+							if new_data["DIST"] == old_data["DIST"]:
+								update_digest = False
 				except (IOError, OSError), e:
 					if errno.ENOENT == e.errno:
 						pass
@@ -402,7 +403,7 @@ class Manifest(object):
 		return None
 	
 	def create(self, checkExisting=False, assumeDistHashesSometimes=False,
-		assumeDistHashesAlways=False, requiredDistfiles=None):
+		assumeDistHashesAlways=False, requiredDistfiles=[]):
 		""" Recreate this Manifest from scratch.  This will not use any
 		existing checksums unless assumeDistHashesSometimes or
 		assumeDistHashesAlways is true (assumeDistHashesSometimes will only
@@ -444,7 +445,11 @@ class Manifest(object):
 		distlist = set()
 		for cpv in cpvlist:
 			distlist.update(self._getCpvDistfiles(cpv))
-		if requiredDistfiles is None or len(requiredDistfiles) == 0:
+		if requiredDistfiles is None:
+			# This allows us to force removal of stale digests for the
+			# ebuild --force digest option (no distfiles are required).
+			requiredDistfiles = set()
+		elif len(requiredDistfiles) == 0:
 			# repoman passes in an empty list, which implies that all distfiles
 			# are required.
 			requiredDistfiles = distlist.copy()
