@@ -2094,7 +2094,8 @@ class MergeTask(object):
 			# due to power failure, SIGKILL, etc...
 			mtimedb.commit()
 
-		emergelog(xterm_titles, " *** Finished. Cleaning up...")
+		if "--pretend" not in self.myopts:
+			emergelog(xterm_titles, " *** Finished. Cleaning up...")
 
 		# We're out of the loop... We're done. Delete the resume data.
 		if mtimedb.has_key("resume"):
