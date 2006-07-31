@@ -948,14 +948,16 @@ class depgraph:
 		# select the correct /var database that we'll be checking against
 		vardbapi=portage.db[myroot]["vartree"].dbapi
 
-		# if the package is already on the system, we add a "nomerge"
-		# directive, otherwise we add a "merge" directive.
 		if mytype=="blocks":
-			# we've encountered a "blocks" node.  We will totally ignore this
-			# node and not add it to our digraph if it doesn't apply to us.
-			if addme and "--buildpkgonly" not in myopts and myparent and (self.mydbapi[myroot].match(mykey) or vardbapi.match(mykey)):
-				mybigkey.append(myparent.split()[2])
-				self.digraph.addnode(string.join(mybigkey),myparent)
+			""" We ignore blocks unless the package that is blocked is installed
+			    We need to check vardbapi as well as the current depgraph for it.
+			    Blocks are fatal if buildpkgonly is set. """
+			if addme and "--buildpkgonly" not in myopts and myparent:
+				parent_root = myparent.split()[1]
+				if self.mydbapi[parent_root].match(mykey) or \
+					portage.db[parent_root]["vartree"].dbapi.match(mykey):
+					mybigkey.append(myparent.split()[2])
+					self.digraph.addnode(" ".join(mybigkey), myparent)
 			return 1
 
 		if myuse is None:
