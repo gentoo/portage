@@ -1734,7 +1734,8 @@ class MergeTask(object):
 					print "\n!!! Error: the "+x[2]+" package conflicts with another package;"
 					print   "!!!        the two packages cannot be installed on the same system together."
 					print   "!!!        Please use 'emerge --pretend' to determine blockers."
-					print
+					if "--quiet" not in self.myopts:
+						show_blocker_docs_link()
 					if "--pretend" not in self.myopts:
 						try:
 							del mtimedb["resume"]
@@ -2479,6 +2480,14 @@ def validate_merge_list(trees, mergelist):
 			print red("!!!        available to be emerged. Please restart/continue")
 			print red("!!!        the merge operation manually.")
 			sys.exit(1)
+
+def show_blocker_docs_link():
+	print
+	print "For more information about " + bad("Blocked Packages") + ", please refer to the following"
+	print "section of the Gentoo Handbook:"
+	print
+	print "http://www.gentoo.org/doc/en/handbook/handbook-x86.xml?part=2&chap=1#blocked"
+	print
 
 def action_sync(settings, trees, mtimedb, myopts, myaction):
 	xterm_titles = "notitles" not in settings.features
@@ -3416,7 +3425,8 @@ def action_build(settings, trees, mtimedb,
 				if x[0]=="blocks" and "--fetchonly" not in myopts and "--fetch-all-uri" not in myopts:
 					print "\n!!! Error: The above package list contains packages which cannot be installed"
 					print   "!!!        at the same time on the same system."
-					print
+					if "--quiet" not in myopts:
+						show_blocker_docs_link()
 					sys.exit(1)
 			if mergecount==0:
 				if settings["AUTOCLEAN"] and "yes"==settings["AUTOCLEAN"]:
