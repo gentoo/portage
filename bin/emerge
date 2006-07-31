@@ -925,9 +925,15 @@ class depgraph:
 		#"no downgrade" emerge
 		#print "mybigkey:",mybigkey
 
-		jbigkey=string.join(mybigkey)
-		if self.digraph.hasnode(jbigkey+" merge") or self.digraph.hasnode(jbigkey+" nomerge"):
-			#this conditional is needed to prevent infinite recursion on already-processed deps
+		jbigkey = " ".join(mybigkey) + " merge"
+		if self.digraph.hasnode(jbigkey):
+			if addme and jbigkey != myparent:
+				# Refuse to make a node depend on itself so that the we don't
+				# don't create a bogus circular dependency in self.altlist().
+				self.digraph.addnode(jbigkey, myparent)
+			return 1
+		jbigkey = " ".join(mybigkey) + " nomerge"
+		if self.digraph.hasnode(jbigkey):
 			return 1
 
 		update_spinner()
