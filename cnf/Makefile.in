@@ -29,7 +29,7 @@ install:
 	; $(INSTALL_cnfsubst) $(srcdir)/make.globals $(DESTDIR)$(sysconfdir)/make.globals \
 	; echo "$(INSTALL_cnfsubst) $(srcdir)/make.conf $(DESTDIR)$(sysconfdir)/make.conf.example" \
 	; $(INSTALL_cnfsubst) $(srcdir)/make.conf $(DESTDIR)$(sysconfdir)/make.conf.example \
-	: echo "$(INSTALL_cnfsubst) $(srcdir)/dispatch-conf.conf $(DESTDIR)$(sysconfdir)/dispatch-conf.conf" \
+	; echo "$(INSTALL_cnfsubst) $(srcdir)/dispatch-conf.conf $(DESTDIR)$(sysconfdir)/dispatch-conf.conf" \
 	; $(INSTALL_cnfsubst) $(srcdir)/dispatch-conf.conf $(DESTDIR)$(sysconfdir)/dispatch-conf.conf \
 	; echo "$(INSTALL_cnfsubst) $(srcdir)/etc-update.conf $(DESTDIR)$(sysconfdir)/etc-update.conf" \
 	; $(INSTALL_cnfsubst) $(srcdir)/etc-update.conf $(DESTDIR)$(sysconfdir)/etc-update.conf
