@@ -231,7 +231,9 @@ def getconfig(mycfg,tolerant=0,allow_sourcing=False):
 	mykeys={}
 	try:
 		f=open(mycfg,'r')
-	except IOError:
+	except IOError, e:
+		if e.errno != errno.ENOENT:
+			raise
 		return None
 	try:
 		lex=shlex.shlex(f)
