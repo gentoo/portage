@@ -761,6 +761,13 @@ class depgraph:
 
 		if addme and merging == 1:
 			mybigkey.append("merge")
+			# Update old-style virtuals if this package provides any.  These
+			# are needed for dep_virtual calls inside dep_check.
+			self.pkgsettings[myroot].setinst(mykey,
+				self.trees[myroot][self.pkg_tree_map[mytype]].dbapi)
+			# Update our fakedbapi state that is used for dep_wordreduce calls
+			# inside dep_check.
+			self.mydbapi[myroot].cpv_inject(mykey)
 		else:
 			mybigkey.append("nomerge")
 
@@ -1015,17 +1022,6 @@ class depgraph:
 		else:
 			#we're processing a command-line argument; unconditionally merge it even if it's already merged
 			mymerge=[depstring]
-
-		# dep_check has been run so we can now add our parent to our
-		# build state to update virtuals and other settings. This
-		# happens after the package is added to the tree so that a
-		# package can depend on a virtual which it satisfies.
-		if myparent:
-			myp = myparent.split()
-			if myp[3]=="merge":
-				self.mydbapi[myroot].cpv_inject(myp[2])
-				pkgsettings.setinst(myp[2],
-					self.trees[myroot][self.pkg_tree_map[myp[0]]].dbapi)
 
 		if not mymerge:
 			return 1
