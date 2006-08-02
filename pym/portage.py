@@ -1019,6 +1019,24 @@ class config:
 						pass
 			del blacklisted, cfg
 
+			env_d = getconfig(
+				os.path.join(config_root, "etc", "profile.env"))
+			# env_d will be None if profile.env doesn't exist.
+			if env_d:
+				self.configdict["env.d"].update(env_d)
+				# Remove duplicate values so they don't override updated
+				# profile.env values later (profile.env is reloaded in each
+				# call to self.regenerate).
+				for cfg in (self.configdict["backupenv"],
+					self.configdict["env"]):
+					for k, v in env_d.iteritems():
+						try:
+							if cfg[k] == v:
+								del cfg[k]
+						except KeyError:
+							pass
+				del cfg, k, v
+
 			self["PORTAGE_CONFIGROOT"] = config_root
 			self.backup_changes("PORTAGE_CONFIGROOT")
 			self["ROOT"] = target_root
