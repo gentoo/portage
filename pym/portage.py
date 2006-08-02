@@ -806,14 +806,15 @@ class config:
 			self.configlist = copy.deepcopy(clone.configlist)
 			self.lookuplist = self.configlist[:]
 			self.lookuplist.reverse()
-			self.configdict = { "globals":   self.configlist[0],
-			                    "defaults":  self.configlist[1],
-			                    "conf":      self.configlist[2],
-			                    "pkg":       self.configlist[3],
-			                    "auto":      self.configlist[4],
-			                    "env.d":     self.configlist[5],
-			                    "backupenv": self.configlist[6],
-			                    "env":       self.configlist[7] }
+			self.configdict = {
+				"env.d":     self.configlist[0],
+				"globals":   self.configlist[1],
+				"defaults":  self.configlist[2],
+				"conf":      self.configlist[3],
+				"pkg":       self.configlist[4],
+				"auto":      self.configlist[5],
+				"backupenv": self.configlist[6],
+				"env":       self.configlist[7] }
 			self.profiles = copy.deepcopy(clone.profiles)
 			self.backupenv  = self.configdict["backupenv"]
 			self.pusedict   = copy.deepcopy(clone.pusedict)
@@ -877,7 +878,9 @@ class config:
 
 			# back up our incremental variables:
 			self.configdict={}
-			# configlist will contain: [ globals, defaults, conf, pkg, auto, backupenv (incrementals), origenv ]
+			# configlist will contain: [ env.d, globals, defaults, conf, pkg, auto, backupenv, env ]
+			self.configlist.append({})
+			self.configdict["env.d"] = self.configlist[-1]
 
 			# The symlink might not exist or might not be a symlink.
 			if self.profile_path is None:
@@ -995,9 +998,6 @@ class config:
 			#auto-use:
 			self.configlist.append({})
 			self.configdict["auto"]=self.configlist[-1]
-
-			self.configlist.append({})
-			self.configdict["env.d"] = self.configlist[-1]
 
 			self.configlist.append(self.backupenv) # XXX Why though?
 			self.configdict["backupenv"]=self.configlist[-1]
