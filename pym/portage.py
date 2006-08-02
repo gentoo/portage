@@ -1020,7 +1020,7 @@ class config:
 			del blacklisted, cfg
 
 			env_d = getconfig(
-				os.path.join(config_root, "etc", "profile.env"))
+				os.path.join(target_root, "etc", "profile.env"))
 			# env_d will be None if profile.env doesn't exist.
 			if env_d:
 				self.configdict["env.d"].update(env_d)
@@ -1409,7 +1409,7 @@ class config:
 		# We grab the latest profile.env here since it changes frequently.
 		self.configdict["env.d"].clear()
 		env_d = getconfig(
-			os.path.join(self["PORTAGE_CONFIGROOT"], "etc", "profile.env"))
+			os.path.join(self["ROOT"], "etc", "profile.env"))
 		if env_d:
 			# env_d will be None if profile.env doesn't exist.
 			self.configdict["env.d"].update(env_d)
