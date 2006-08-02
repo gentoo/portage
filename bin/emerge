@@ -2481,9 +2481,9 @@ def validate_merge_list(trees, mergelist):
 def show_blocker_docs_link():
 	print
 	print "For more information about " + bad("Blocked Packages") + ", please refer to the following"
-	print "section of the Gentoo Handbook:"
+	print "section of the Gentoo Linux x86 Handbook (architecture is irrelevant):"
 	print
-	print "http://www.gentoo.org/doc/en/handbook/handbook-x86.xml?part=2&chap=1#blocked"
+	print "http://www.gentoo.org/doc/en/handbook/handbook-x86.xml?full=1#blocked"
 	print
 
 def action_sync(settings, trees, mtimedb, myopts, myaction):
