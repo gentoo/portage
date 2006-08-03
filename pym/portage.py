@@ -1421,13 +1421,19 @@ class config:
 			myincrementals=["USE"]
 		else:
 			myincrementals = self.incrementals
-
+		myincrementals = set(myincrementals)
 		# If self.features exists, it has already been stacked and may have
 		# been mutated, so don't stack it again or else any mutations will be
 		# reverted.
 		if "FEATURES" in myincrementals and hasattr(self, "features"):
-			myincrementals = set(myincrementals)
 			myincrementals.remove("FEATURES")
+
+		if "USE" in myincrementals:
+			# Process USE last because it depends on USE_EXPAND which is also
+			# an incremental!
+			myincrementals.remove("USE")
+			myincrementals = list(myincrementals)
+			myincrementals.append("USE")
 
 		for mykey in myincrementals:
 			if mykey=="USE":
@@ -1443,6 +1449,7 @@ class config:
 						use_cache=use_cache, mysettings=self)
 				else:
 					self.configdict["auto"]["USE"]=""
+				use_expand = self.get("USE_EXPAND", "").split()
 			else:
 				mydbs=self.configlist[:-1]
 
@@ -1452,6 +1459,20 @@ class config:
 					continue
 				#variables are already expanded
 				mysplit=curdb[mykey].split()
+
+				if mykey == "USE":
+					for var in use_expand:
+						if var in curdb:
+							var_lower = var.lower()
+							for x in curdb[var].split():
+								if x[0] == "+":
+									x = x[1:]
+								if x[0] == "-":
+									mystr = "-" + var_lower + "_" + x[1:]
+								else:
+									mystr = var_lower + "_" + x
+								if mystr not in mysplit:
+									mysplit.append(mystr)
 
 				for x in mysplit:
 					if x=="-*":
@@ -1486,14 +1507,6 @@ class config:
 		for x in string.split(self.configlist[-1]["USE"]):
 			if x not in self.usemask:
 				usesplit.append(x)
-
-		if self.has_key("USE_EXPAND"):
-			for var in string.split(self["USE_EXPAND"]):
-				if self.has_key(var):
-					for x in string.split(self[var]):
-						mystr = string.lower(var)+"_"+x
-						if mystr not in usesplit and mystr not in self.usemask:
-							usesplit.append(mystr)
 
 		# Pre-Pend ARCH variable to USE settings so '-*' in env doesn't kill arch.
 		if self.configdict["defaults"].has_key("ARCH"):
