@@ -1450,6 +1450,7 @@ class config:
 				else:
 					self.configdict["auto"]["USE"]=""
 				use_expand = self.get("USE_EXPAND", "").split()
+				use_expand_protected = set()
 			else:
 				mydbs=self.configlist[:-1]
 
@@ -1471,6 +1472,7 @@ class config:
 									mystr = "-" + var_lower + "_" + x[1:]
 								else:
 									mystr = var_lower + "_" + x
+									use_expand_protected.add(mystr)
 								if mystr not in mysplit:
 									mysplit.append(mystr)
 
@@ -1478,7 +1480,10 @@ class config:
 					if x=="-*":
 						# "-*" is a special "minus" var that means "unset all settings".
 						# so USE="-* gnome" will have *just* gnome enabled.
-						myflags=[]
+						if mykey == "USE":
+							myflags = list(use_expand_protected)
+						else:
+							myflags = []
 						continue
 
 					if x[0]=="+":
