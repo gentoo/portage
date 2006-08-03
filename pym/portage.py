@@ -1315,6 +1315,7 @@ class config:
 
 		self.modifiedkeys = []
 		if not keeping_pkg:
+			self.mycpv = None
 			self.puse = ""
 			self.configdict["pkg"].clear()
 		self.regenerate(use_cache=use_cache)
@@ -1361,16 +1362,15 @@ class config:
 
 	def setcpv(self,mycpv,use_cache=1):
 		self.modifying()
+		if self.mycpv == mycpv:
+			return
 		self.mycpv = mycpv
 		cp = dep_getkey(mycpv)
-		newpuse = ""
+		self.puse = ""
 		if self.pusedict.has_key(cp):
 			self.pusekey = best_match_to_list(self.mycpv, self.pusedict[cp].keys())
 			if self.pusekey:
-				newpuse = string.join(self.pusedict[cp][self.pusekey])
-		if newpuse == self.puse:
-			return
-		self.puse = newpuse
+				self.puse = " ".join(self.pusedict[cp][self.pusekey])
 		self.configdict["pkg"]["PKGUSE"] = self.puse[:] # For saving to PUSE file
 		self.configdict["pkg"]["USE"]    = self.puse[:] # this gets appended to USE
 		# CATEGORY is essential for doebuild calls
