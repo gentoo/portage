@@ -805,6 +805,8 @@ class config:
 			self.usemask  = copy.deepcopy(clone.usemask)
 			self.pusemaskdict = copy.deepcopy(clone.pusemaskdict)
 			self.pusemask = copy.deepcopy(clone.pusemask)
+			self.puse     = copy.deepcopy(clone.puse)
+			self.mycpv    = copy.deepcopy(clone.mycpv)
 
 			self.configlist = copy.deepcopy(clone.configlist)
 			self.lookuplist = self.configlist[:]
