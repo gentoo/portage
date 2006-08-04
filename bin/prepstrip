@@ -71,7 +71,7 @@ for x in $(scanelf -yqRBF '#k%F' -k '.symtab' "$@") $(for y in "$@"; do find "${
 	set -o noglob
 	stripitbaby=1
 	for m in $(eval echo ${STRIP_MASK}) ; do
-		[[ ${x} == ${m} ]] && stripitbaby=1 && break
+		[[ ${x} == ${m} ]] && stripitbaby=0 && break
 	done
 	set +o noglob
 
