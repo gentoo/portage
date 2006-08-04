@@ -9,7 +9,7 @@ import os
 import portage, string, re
 
 __candidatematcher__ = re.compile("^[0-9]+: \\*\\*\\* emerge ")
-__noncandidatematcher__ = re.compile(" sync( |$)| clean( |$)| search( |$)|--oneshot| unmerge( |$)")
+__noncandidatematcher__ = re.compile(" sync( |$)| clean( |$)| search( |$)|--oneshot|--fetchonly| unmerge( |$)")
 
 def issyspkg(pkgline):
 	return (pkgline[0] == "*")
