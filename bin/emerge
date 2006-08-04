@@ -1363,12 +1363,12 @@ class depgraph:
 			bindb  = self.trees[myroot]["bintree"].dbapi
 			vartree = self.trees[myroot]["vartree"]
 			pkgsettings = self.pkgsettings[myroot]
+			pkgsettings.setcpv(pkg_key)
 			if pkg_key not in self.applied_useflags:
 				if "binary" == pkg_type:
 					self.applied_useflags[pkg_key] = bindb.aux_get(
 							pkg_key, ["USE"])[0].split()
 				elif "ebuild" == pkg_type:
-					pkgsettings.setcpv(pkg_key)
 					self.applied_useflags[pkg_key] = pkgsettings["USE"].split()
 
 			fetch=" "
@@ -1448,7 +1448,8 @@ class depgraph:
 
 					cur_iuse = portage.unique_array(cur_iuse)
 					cur_iuse = [flag for flag in cur_iuse
-						if flag not in pkgsettings.usemask]
+						if flag not in pkgsettings.usemask \
+						and flag not in pkgsettings.pusemask]
 					cur_iuse.sort()
 					cur_use = self.applied_useflags[x[2]]
 					cur_use = [flag for flag in cur_use if flag in cur_iuse]
@@ -1470,7 +1471,8 @@ class depgraph:
 						old_use = []
 						is_new = True
 					old_iuse = [flag for flag in old_iuse
-						if flag not in pkgsettings.usemask]
+						if flag not in pkgsettings.usemask \
+						and flag not in pkgsettings.pusemask]
 					old_use = [flag for flag in old_use if flag in old_iuse]
 
 					use_expand = pkgsettings["USE_EXPAND"].lower().split()

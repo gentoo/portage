@@ -766,6 +766,7 @@ class config:
 		self.locked   = 0
 		self.mycpv    = None
 		self.puse     = []
+		self.pusemask = []
 		self.modifiedkeys = []
 		self.uvlist = []
 
@@ -802,6 +803,8 @@ class config:
 
 			self.use_defs = copy.deepcopy(clone.use_defs)
 			self.usemask  = copy.deepcopy(clone.usemask)
+			self.pusemaskdict = copy.deepcopy(clone.pusemaskdict)
+			self.pusemask = copy.deepcopy(clone.pusemask)
 
 			self.configlist = copy.deepcopy(clone.configlist)
 			self.lookuplist = self.configlist[:]
@@ -937,6 +940,17 @@ class config:
 			use_defs_lists = [grabdict(os.path.join(x, "use.defaults")) for x in self.profiles]
 			self.use_defs  = stack_dictlist(use_defs_lists, incremental=True)
 			del use_defs_lists
+
+			self.pusemaskdict = {}
+			rawpusemask = [grabdict_package(
+				os.path.join(x, "package.use.mask")) \
+				for x in self.profiles]
+			rawpusemask = stack_dictlist(rawpusemask, incremental=True)
+			for k, v in rawpusemask.iteritems():
+				cp = dep_getkey(k)
+				self.pusemaskdict.setdefault(cp, {})
+				self.pusemaskdict[cp][k] = v
+			del rawpusemask
 
 			try:
 				mygcfg_dlists = [getconfig(os.path.join(x, "make.globals")) \
@@ -1317,6 +1331,7 @@ class config:
 		if not keeping_pkg:
 			self.mycpv = None
 			self.puse = ""
+			self.pusemask = []
 			self.configdict["pkg"].clear()
 		self.regenerate(use_cache=use_cache)
 
@@ -1371,6 +1386,12 @@ class config:
 			self.pusekey = best_match_to_list(self.mycpv, self.pusedict[cp].keys())
 			if self.pusekey:
 				self.puse = " ".join(self.pusedict[cp][self.pusekey])
+		self.pusemask = []
+		if cp in self.pusemaskdict:
+			pusemaskkey = best_match_to_list(self.mycpv,
+				self.pusemaskdict[cp].keys())
+			if pusemaskkey:
+				self.pusemask = set(self.pusemaskdict[cp][pusemaskkey])
 		self.configdict["pkg"]["PKGUSE"] = self.puse[:] # For saving to PUSE file
 		self.configdict["pkg"]["USE"]    = self.puse[:] # this gets appended to USE
 		# CATEGORY is essential for doebuild calls
@@ -1510,7 +1531,7 @@ class config:
 		usesplit=[]
 
 		for x in string.split(self.configlist[-1]["USE"]):
-			if x not in self.usemask:
+			if x not in self.usemask and x not in self.pusemask:
 				usesplit.append(x)
 
 		# Pre-Pend ARCH variable to USE settings so '-*' in env doesn't kill arch.
