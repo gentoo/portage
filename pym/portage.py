@@ -4141,6 +4141,8 @@ class vardbapi(dbapi):
 
 		for x in self.categories:
 			for y in listdir(basepath+x,EmptyOnError=1):
+				if y.startswith("."):
+					continue
 				subpath = x+"/"+y
 				# -MERGING- should never be a cpv, nor should files.
 				if os.path.isdir(basepath+subpath) and (pkgsplit(y) is not None):
