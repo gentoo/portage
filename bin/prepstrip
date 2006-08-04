@@ -5,10 +5,12 @@
 
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
 
+unset NOSTRIP
 if hasq nostrip ${FEATURES} ${RESTRICT} || \
    hasq strip ${RESTRICT}
 then
-	exit 0
+	NOSTRIP=1
+	hasq installsources ${FEATURES} || exit 0
 fi
 
 STRIP=${STRIP:-${CHOST}-strip}
@@ -24,7 +26,16 @@ save_elf_debug() {
 	local x=$1
 	local y="${D}usr/lib/debug/${x:${#D}}.debug"
 
+	if hasq installsources ${FEATURES} && [ -x /usr/bin/debugedit ] ; then
+		debugedit -b "${WORKDIR}" -d /usr/src/debug/${PF} -l "${T}"/debug.sources "${x}"
+		if [[ -s ${T}/debug.sources ]] ; then 
+			[[ -d ${D}/usr/src/debug/${PF} ]] || mkdir -p "${D}/usr/src/debug/${PF}"
+			cat "${T}"/debug.sources | (cd "${WORKDIR}"; LANG=C sort -z -u | rsync -a0 --files-from=- "${WORKDIR}/" "${D}/usr/src/debug/${PF}/" )
+		fi
+	fi
+
 	hasq splitdebug ${FEATURES} || return 0
+	[[ -z "${NOSTRIP}" ]] || return 0
 
 	# dont save debug info twice.
 	[[ ${x:7} == ".debug" ]] && return 0
@@ -34,15 +45,6 @@ save_elf_debug() {
 	${OBJCOPY} --add-gnu-debuglink="${y}" "${x}"
 	chmod a-x,o-w "${y}"
 
-	hasq installsources ${FEATURES} || return 0
-
-	if [[ -x "/usr/bin/debugedit" ]] ; then
-		debugedit -b "${WORKDIR}" -d /usr/src/debug/${PF} -l "${T}"/debug.sources "${x}"
-		if [[ -s ${T}/debug.sources ]] ; then 
-			[[ -d ${D}/usr/src/debug/${PF} ]] || mkdir -p "${D}/usr/src/debug/${PF}"
-			cat "${T}"/debug.sources | (cd "${WORKDIR}"; LANG=C sort -z -u | rsync -a0 --files-from=- "${WORKDIR}/" "${D}/usr/src/debug/${PF}/" )
-		fi
-	fi
 }
 
 # The existance of the section .symtab tells us that a binary is stripped.
@@ -58,7 +60,7 @@ fi
 # Now we look for unstripped binaries.
 for x in $(scanelf -yqRBF '#k%F' -k '.symtab' "$@") $(for y in "$@"; do find "${y}" -type f -name '*.a' -print ; done); do
 	if [[ ${banner} -eq 1 ]] ; then
-		vecho "strip: ${STRIP} ${PORTAGE_STRIP_FLAGS}"
+		[[ -z ${NOSTRIP} ]] && vecho "strip: ${STRIP} ${PORTAGE_STRIP_FLAGS}"
 		banner=0
 	fi
 
@@ -77,11 +79,13 @@ for x in $(scanelf -yqRBF '#k%F' -k '.symtab' "$@") $(for y in "$@"; do find "${
 
 	if [[ ${f} == *"current ar archive"* ]] ; then
 		vecho "   ${x:${#D}}"
+		[[ -n ${NOSTRIP} ]] && continue
 		[[ ${stripitbaby} -eq 1 ]] && ${STRIP} -g "${x}"
 	fi
 	if [[ ${f} == *"SB executable"* || ${f} == *"SB shared object"* ]] ; then
 		vecho "   ${x:${#D}}"
 		save_elf_debug "${x}"
+		[[ -n ${NOSTRIP} ]] && continue
 		[[ ${stripitbaby} -eq 1 ]] && ${STRIP} ${PORTAGE_STRIP_FLAGS} "${x}"
 	fi
 done
