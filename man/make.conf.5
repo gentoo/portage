@@ -172,6 +172,10 @@ Force emerges to always try to fetch files from the \fIPORTAGE_BINHOST\fR.  See
 .B gpg
 Check the signatures of Manifests and make sure they are correct.
 .TP
+.B installsources
+Install source code into /usr/src/debug/${PF} (also see \fBsplitdebug\fR).
+This feature works only if debugedit is installed.
+.TP
 .B keeptemp
 Do not delete the ${T} directory after the merge process.
 .TP
