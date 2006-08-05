@@ -3040,6 +3040,13 @@ def action_info(settings, trees, myopts, myfiles):
 		os.system("cat /etc/gentoo-release")
 	else:
 		print "Unknown Host Operating System"
+	lastSync = portage.grabfile(os.path.join(
+		settings["PORTDIR"], "metadata", "timestamp.chk"))
+	print "Last Sync:",
+	if lastSync:
+		print lastSync[0]
+	else:
+		print "Unknown"
 
 	output=commands.getstatusoutput("distcc --version")
 	if not output[0]:
