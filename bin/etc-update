@@ -141,7 +141,7 @@ configuration file is followed by a list of possible replacement files."
 				echo    "              (-1 to exit) (-3 to auto merge all remaining files)"
 				echo    "                           (-5 to auto-merge AND not use 'mv -i')"
 				echo    "                           (-7 to discard all updates)"
-				echo -n "                           (-9 to discard all updates AND not use 'rm -i'):"
+				echo -n "                           (-9 to discard all updates AND not use 'rm -i'): "
 				read input
 			else
 				dialog --title "${title}" --menu "${my_title}" \
