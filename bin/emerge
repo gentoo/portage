@@ -1773,7 +1773,9 @@ class MergeTask(object):
 							#we don't have a favorites entry for this package yet; add one
 							myfavdict[myfavkey]=myfavkey
 							print ">>> Recording",myfavkey,"in \"world\" favorites file..."
-			if "--fetchonly" not in self.myopts:
+			if not ("--fetchonly" in self.myopts or \
+				"--fetch-all-uri" in self.myopts or \
+				"--pretend" in self.myopts):
 				portage.write_atomic(
 					os.path.join(self.target_root, portage.WORLD_FILE),
 					"\n".join(myfavdict.values()))
@@ -1784,7 +1786,9 @@ class MergeTask(object):
 		myfeat = self.settings.features[:]
 
 		if "parallel-fetch" in myfeat and \
-			not ("--ask" in self.myopts or "--pretend" in self.myopts or \
+			not ("--ask" in self.myopts or \
+			"--pretend" in self.myopts or \
+			"--fetch-all-uri" in self.myopts or \
 			"--fetchonly" in self.myopts):
 			if "distlocks" not in myfeat:
 				print red("!!!")
