@@ -1551,6 +1551,7 @@ class config:
 
 		usesplit = [ x for x in myflags if not x.startswith("-") and \
 			x not in self.usemask and x not in self.pusemask ]
+		usesplit.sort()
 
 		# Use the calculated USE flags to regenerate the USE_EXPAND flags so
 		# that they are consistent.
