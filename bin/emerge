@@ -650,7 +650,10 @@ class depgraph:
 		if self.target_root != "/":
 			self.pkgsettings["/"] = \
 				portage.config(clone=trees["/"]["vartree"].settings)
-		self.applied_useflags = {}
+		self.useFlags = {}
+		self.useFlags[self.target_root] = {}
+		if self.target_root != "/":
+			self.useFlags["/"] = {}
 
 		self.missingbins=[]
 		self.digraph=portage.digraph()
@@ -727,7 +730,7 @@ class depgraph:
 		if myuse is None:
 			self.pkgsettings[myroot].setcpv(mykey)
 			myuse = self.pkgsettings[myroot]["USE"].split()
-		self.applied_useflags[mykey] = myuse
+		self.useFlags[myroot][mykey] = myuse
 
 		merging=1
 		if addme:
@@ -1364,12 +1367,12 @@ class depgraph:
 			vartree = self.trees[myroot]["vartree"]
 			pkgsettings = self.pkgsettings[myroot]
 			pkgsettings.setcpv(pkg_key)
-			if pkg_key not in self.applied_useflags:
+			if pkg_key not in self.useFlags[myroot]:
 				if "binary" == pkg_type:
-					self.applied_useflags[pkg_key] = bindb.aux_get(
+					self.useFlags[myroot][pkg_key] = bindb.aux_get(
 							pkg_key, ["USE"])[0].split()
 				elif "ebuild" == pkg_type:
-					self.applied_useflags[pkg_key] = pkgsettings["USE"].split()
+					self.useFlags[myroot][pkg_key] = pkgsettings["USE"].split()
 
 			fetch=" "
 
@@ -1393,7 +1396,7 @@ class depgraph:
 					x[2], ["RESTRICT"])[0].split():
 					fetch = red("F")
 					if portdb.fetch_check(
-						x[2], self.applied_useflags[x[2]]):
+						pkg_key, self.useFlags[myroot][pkg_key]):
 						fetch = green("f")
 
 				#we need to use "--emptrytree" testing here rather than "empty" param testing because "empty"
@@ -1437,7 +1440,7 @@ class depgraph:
 
 				verboseadd=""
 				
-				if x[2] in self.applied_useflags:
+				if pkg_key in self.useFlags[myroot]:
 					# USE flag display
 					if x[0] == "binary":
 						cur_iuse = bindb.aux_get(pkg_key, ["IUSE"])[0].split()
@@ -1451,7 +1454,7 @@ class depgraph:
 						if flag not in pkgsettings.usemask \
 						and flag not in pkgsettings.pusemask]
 					cur_iuse.sort()
-					cur_use = self.applied_useflags[x[2]]
+					cur_use = self.useFlags[myroot][pkg_key]
 					cur_use = [flag for flag in cur_use if flag in cur_iuse]
 
 					if myoldbest:
@@ -1514,7 +1517,7 @@ class depgraph:
 					mysize=0
 					if x[0] == "ebuild" and x[-1]!="nomerge":
 						myfilesdict = portdb.getfetchsizes(
-							x[2], useflags=self.applied_useflags[x[2]],
+							pkg_key, useflags=self.useFlags[myroot][pkg_key],
 							debug=self.edebug)
 						if myfilesdict is None:
 							myfilesdict="[empty/missing/bad digest]"
