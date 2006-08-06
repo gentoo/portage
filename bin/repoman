@@ -733,7 +733,6 @@ for x in scanlist:
 		print "checking package " + x
 	eadded=[]
 	dadded=[]
-	cladded=0
 	catdir,pkgdir=x.split("/")
 	checkdir=repodir+"/"+x
 	checkdirlist=os.listdir(checkdir)
@@ -792,8 +791,6 @@ for x in scanlist:
 				objsadded.append(splitl[0])
 				if splitl[0][-7:]==".ebuild":
 					eadded.append(splitl[0][:-7])
-				if splitl[0]=="ChangeLog":
-					cladded=1
 		except IOError:
 			if mymode=="commit":
 				stats["CVS/Entries.IO_error"] += 1
