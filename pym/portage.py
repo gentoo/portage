@@ -1479,10 +1479,10 @@ class config:
 
 			myflags=[]
 			for curdb in mydbs:
-				if not curdb.has_key(mykey):
+				if mykey not in curdb and mykey != "USE":
 					continue
 				#variables are already expanded
-				mysplit=curdb[mykey].split()
+				mysplit = curdb.get(mykey, "").split()
 
 				if mykey == "USE":
 					for var in use_expand:
