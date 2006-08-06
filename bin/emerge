@@ -2654,9 +2654,12 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			maxretries=3 #default number of retries
 
 		retries=0
-		hostname, port=re.split("rsync://([^:/]*)(:[0-9]+)?", syncuri)[1:3];
+		user_name, hostname, port = re.split(
+			"rsync://([^:/]+@)?([^:/]*)(:[0-9]+)?", syncuri, maxsplit=3)[1:4]
 		if port is None:
 			port=""
+		if user_name is None:
+			user_name=""
 		updatecache_flg=True
 		all_rsync_opts = set(rsync_opts)
 		all_rsync_opts.update(
@@ -2688,7 +2691,9 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 
 			if ips:
 				try:
-					dosyncuri=string.replace(syncuri, "//"+hostname+port+"/", "//"+ips[0]+port+"/", 1)
+					dosyncuri = syncuri.replace(
+						"//" + user_name + hostname + port + "/",
+						"//" + user_name + ips[0] + port + "/", 1)
 				except SystemExit, e:
 					raise # Needed else can't exit
 				except Exception, e:
