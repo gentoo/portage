@@ -28,6 +28,7 @@ make.defaults
 packages
 packages.build
 package.provided
+package.use.mask
 parent
 profile.bashrc
 use.defaults
@@ -222,6 +223,28 @@ x11-libs/qt-3.3.0
 
 # you have modular X but packages want monolithic
 x11-base/xorg-x11-6.8
+.fi
+.TP
+.BR package.use.mask
+Per\-package USE flag masks.
+
+.I Note:
+In a cascading profile setup, you can remove USE flags in children 
+profiles which were added by parent profiles by prefixing the flag with 
+a '\-'.
+
+.I Format:
+.nf
+\- comments begin with #
+\- one DEPEND atom per line with space-delimited USE flags
+.fi
+
+.I Example:
+.nf
+# mask docs for GTK 2.x
+=x11\-libs/gtk+\-2* doc
+# unmask mysql support for QT
+x11\-libs/qt \-mysql
 .fi
 .TP
 .BR parent
