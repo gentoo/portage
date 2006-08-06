@@ -1455,58 +1455,23 @@ class config:
 			# Process USE last because it depends on USE_EXPAND which is also
 			# an incremental!
 			myincrementals.remove("USE")
-			myincrementals = list(myincrementals)
-			myincrementals.append("USE")
 
 		for mykey in myincrementals:
-			if mykey=="USE":
-				if not self.uvlist:
-					for x in self["USE_ORDER"].split(":"):
-						if x in self.configdict:
-							self.uvlist.insert(0, self.configdict[x])
-				mydbs=self.uvlist
-				if "auto" in self["USE_ORDER"].split(":"):
-					self.configdict["auto"]["USE"] = autouse(
-						vartree(root=self["ROOT"], categories=self.categories,
-							settings=self),
-						use_cache=use_cache, mysettings=self)
-				else:
-					self.configdict["auto"]["USE"]=""
-				use_expand = self.get("USE_EXPAND", "").split()
-				use_expand_protected = set()
-			else:
-				mydbs=self.configlist[:-1]
+
+			mydbs=self.configlist[:-1]
 
 			myflags=[]
 			for curdb in mydbs:
-				if mykey not in curdb and mykey != "USE":
+				if mykey not in curdb:
 					continue
 				#variables are already expanded
-				mysplit = curdb.get(mykey, "").split()
-
-				if mykey == "USE":
-					for var in use_expand:
-						if var in curdb:
-							var_lower = var.lower()
-							for x in curdb[var].split():
-								if x[0] == "+":
-									x = x[1:]
-								if x[0] == "-":
-									mystr = "-" + var_lower + "_" + x[1:]
-								else:
-									mystr = var_lower + "_" + x
-									use_expand_protected.add(mystr)
-								if mystr not in mysplit:
-									mysplit.append(mystr)
+				mysplit = curdb[mykey].split()
 
 				for x in mysplit:
 					if x=="-*":
 						# "-*" is a special "minus" var that means "unset all settings".
 						# so USE="-* gnome" will have *just* gnome enabled.
-						if mykey == "USE":
-							myflags = list(use_expand_protected)
-						else:
-							myflags = []
+						myflags = []
 						continue
 
 					if x[0]=="+":
@@ -1530,11 +1495,76 @@ class config:
 			self.configlist[-1][mykey]=string.join(myflags," ")
 			del myflags
 
-		usesplit=[]
+		# Do the USE calculation last because it depends on USE_EXPAND.
+		if "auto" in self["USE_ORDER"].split(":"):
+			self.configdict["auto"]["USE"] = autouse(
+				vartree(root=self["ROOT"], categories=self.categories,
+					settings=self),
+				use_cache=use_cache, mysettings=self)
+		else:
+			self.configdict["auto"]["USE"] = ""
 
-		for x in string.split(self.configlist[-1]["USE"]):
-			if x not in self.usemask and x not in self.pusemask:
-				usesplit.append(x)
+		use_expand_protected = []
+		use_expand = self.get("USE_EXPAND", "").split()
+		for var in use_expand:
+			var_lower = var.lower()
+			for x in self.get(var, "").split():
+				if x[0] == "+":
+					x = x[1:]
+				if x[0] == "-":
+					mystr = "-" + var_lower + "_" + x[1:]
+				else:
+					mystr = var_lower + "_" + x
+				if mystr not in use_expand_protected:
+					use_expand_protected.append(mystr)
+
+		if not self.uvlist:
+			for x in self["USE_ORDER"].split(":"):
+				if x in self.configdict:
+					self.uvlist.append(self.configdict[x])
+			self.uvlist.reverse()
+
+		myflags = use_expand_protected[:]
+		for curdb in self.uvlist:
+			if "USE" not in curdb:
+				continue
+			mysplit = curdb["USE"].split()
+			for x in mysplit:
+				if x == "-*":
+					myflags = use_expand_protected[:]
+					continue
+
+				if x[0] == "+":
+					writemsg(colorize("BAD", "USE flags should not start " + \
+						"with a '+': %s\n" % x), noiselevel=-1)
+					x = x[1:]
+
+				if x[0] == "-":
+					try:
+						myflags.remove(x[1:])
+					except ValueError:
+						pass
+					continue
+
+				if x not in myflags:
+					myflags.append(x)
+
+		usesplit = [ x for x in myflags if not x.startswith("-") and \
+			x not in self.usemask and x not in self.pusemask ]
+
+		# Use the calculated USE flags to regenerate the USE_EXPAND flags so
+		# that they are consistent.
+		for var in use_expand:
+			prefix = var.lower() + "_"
+			prefix_len = len(prefix)
+			expand_flags = set([ x[prefix_len:] for x in usesplit \
+				if x.startswith(prefix) ])
+			var_split = self.get(var, "").split()
+			# Preserve the order of var_split because it can matter for things
+			# like LINGUAS.
+			var_split = [ x for x in var_split if x in expand_flags ]
+			var_split.extend(expand_flags.difference(var_split))
+			self[var] = " ".join(var_split)
 
 		# Pre-Pend ARCH variable to USE settings so '-*' in env doesn't kill arch.
 		if self.configdict["defaults"].has_key("ARCH"):
