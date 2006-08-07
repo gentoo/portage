@@ -3,6 +3,8 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+if not hasattr(__builtins__, "set"):
+	from sets import Set as set
 
 from output import *
 import htmllib,HTMLParser,string,formatter,sys,os,xpak,time,tempfile,base64,urllib2
@@ -511,8 +513,10 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 			break
 	# We may have metadata... now we run through the tbz2 list and check.
 	sys.stderr.write(yellow("cache miss: 'x'")+" --- "+green("cache hit: 'o'")+"\n")
+	binpkg_filenames = set()
 	for x in tbz2list:
 		x = os.path.basename(x)
+		binpkg_filenames.add(x)
 		if ((not metadata[baseurl]["data"].has_key(x)) or \
 		    (x not in metadata[baseurl]["data"].keys())):
 			sys.stderr.write(yellow("x"))
@@ -525,6 +529,14 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 				sys.stderr.write(red("!!! Failed to retrieve metadata on: ")+str(x)+"\n")
 		else:
 			sys.stderr.write(green("o"))
+	# Cleanse stale cache for files that don't exist on the server anymore.
+	stale_cache = set(metadata[baseurl]["data"]).difference(binpkg_filenames)
+	if stale_cache:
+		for x in stale_cache:
+			del metadata[baseurl]["data"][x]
+		metadata[baseurl]["modified"] = 1
+	del stale_cache
+	del binpkg_filenames
 	sys.stderr.write("\n")
 	
 	try:
