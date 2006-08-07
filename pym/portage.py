@@ -1509,12 +1509,19 @@ class config:
 		for var in use_expand:
 			var_lower = var.lower()
 			for x in self.get(var, "").split():
+				# Any incremental USE_EXPAND variables have already been
+				# processed, so leading +/- operators are invalid here.
 				if x[0] == "+":
+					writemsg(colorize("BAD", "Invalid '+' operator in " + \
+						"non-incremental variable '%s': '%s'\n" % (var, x)),
+						noiselevel=-1)
 					x = x[1:]
 				if x[0] == "-":
-					mystr = "-" + var_lower + "_" + x[1:]
-				else:
-					mystr = var_lower + "_" + x
+					writemsg(colorize("BAD", "Invalid '-' operator in " + \
+						"non-incremental variable '%s': '%s'\n" % (var, x)),
+						noiselevel=-1)
+					continue
+				mystr = var_lower + "_" + x
 				if mystr not in use_expand_protected:
 					use_expand_protected.append(mystr)
 
