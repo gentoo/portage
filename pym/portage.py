@@ -1556,7 +1556,7 @@ class config:
 				if x not in myflags:
 					myflags.append(x)
 
-		usesplit = [ x for x in myflags if not x.startswith("-") and \
+		usesplit = [ x for x in myflags if \
 			x not in self.usemask and x not in self.pusemask ]
 		usesplit.sort()
 
