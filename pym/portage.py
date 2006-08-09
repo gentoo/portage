@@ -1244,6 +1244,9 @@ class config:
 	def _init_dirs(self):
 		"""Create tmp, var/tmp and var/lib/portage (relative to $ROOT)."""
 
+		if not os.access(self["ROOT"], os.W_OK):
+			return
+
 		dir_mode_map = {
 			"tmp"             :(-1,          01777, 0),
 			"var/tmp"         :(-1,          01777, 0),
