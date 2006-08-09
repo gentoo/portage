@@ -1284,7 +1284,8 @@ class depgraph:
 			def create_use_string(*args):
 				return ""
 		else:
-			def create_use_string(name, cur_iuse, cur_use, old_iuse, old_use,
+			def create_use_string(name, cur_iuse, iuse_forced, cur_use,
+				old_iuse, old_use,
 				is_new, all_flags=(verbosity == 3 or "--quiet" in self.myopts),
 				alphabetical=("--alphabetical" in self.myopts)):
 				enabled = []
@@ -1294,19 +1295,27 @@ class depgraph:
 					disabled = []
 				for flag in cur_iuse:
 					if flag in cur_use:
+						if flag in iuse_forced:
+							enabled.append("(")
 						if is_new or flag in old_use and all_flags:
 							enabled.append(red(flag))
 						elif flag not in old_iuse:
 							enabled.append(yellow(flag)+"%")
 						elif flag not in old_use:
 							enabled.append(green(flag)+"*")
+						if flag in iuse_forced:
+							enabled.append(")")
 					else:
+						if flag in iuse_forced:
+							disabled.append("(")
 						if is_new or flag in old_iuse and flag not in old_use and all_flags:
 							disabled.append(blue("-"+flag))
 						elif flag not in old_iuse:
 							disabled.append(yellow("-"+flag)+"%")
 						elif flag in old_use:
 							disabled.append(green("-"+flag)+"*")
+						if flag in iuse_forced:
+							disabled.append(")")
 
 				enabled = " ".join(enabled)
 				if alphabetical:
@@ -1449,10 +1458,11 @@ class depgraph:
 					else:
 						cur_iuse = []
 
+					forced_flags = set()
+					forced_flags.update(pkgsettings.usemask)
+					forced_flags.update(pkgsettings.pusemask)
+
 					cur_iuse = portage.unique_array(cur_iuse)
-					cur_iuse = [flag for flag in cur_iuse
-						if flag not in pkgsettings.usemask \
-						and flag not in pkgsettings.pusemask]
 					cur_iuse.sort()
 					cur_use = self.useFlags[myroot][pkg_key]
 					cur_use = [flag for flag in cur_use if flag in cur_iuse]
@@ -1473,9 +1483,7 @@ class depgraph:
 						old_iuse = []
 						old_use = []
 						is_new = True
-					old_iuse = [flag for flag in old_iuse
-						if flag not in pkgsettings.usemask \
-						and flag not in pkgsettings.pusemask]
+
 					old_use = [flag for flag in old_use if flag in old_iuse]
 
 					use_expand = pkgsettings["USE_EXPAND"].lower().split()
@@ -1484,21 +1492,30 @@ class depgraph:
 					use_expand_hidden = \
 						pkgsettings["USE_EXPAND_HIDDEN"].lower().split()
 
-					def map_to_use_expand(myvals):
+					def map_to_use_expand(myvals, forcedFlags=False):
 						ret = {}
+						forced = {}
 						for exp in use_expand:
 							ret[exp] = []
+							forced[exp] = set()
 							for val in myvals[:]:
 								if val.startswith(exp.lower()+"_"):
+									if val in forced_flags:
+										forced[exp].add(val[len(exp)+1:])
 									ret[exp].append(val[len(exp)+1:])
 									myvals.remove(val)
 						ret["USE"] = myvals
+						forced["USE"] = [val for val in myvals \
+							if val in forced_flags]
 						for exp in use_expand_hidden:
 							if exp in ret:
 								del ret[exp]
+						if forcedFlags:
+							return ret, forced
 						return ret
 
-					cur_iuse_map = map_to_use_expand(cur_iuse)
+					cur_iuse_map, iuse_forced = \
+						map_to_use_expand(cur_iuse, forcedFlags=True)
 					cur_use_map = map_to_use_expand(cur_use)
 					old_iuse_map = map_to_use_expand(old_iuse)
 					old_use_map = map_to_use_expand(old_use)
@@ -1509,8 +1526,10 @@ class depgraph:
 					for key in use_expand:
 						if key in use_expand_hidden:
 							continue
-						verboseadd += create_use_string(key.upper(), cur_iuse_map[key], cur_use_map[key],
-						                                old_iuse_map[key], old_use_map[key], is_new)
+						verboseadd += create_use_string(key.upper(),
+							cur_iuse_map[key], iuse_forced[key],
+							cur_use_map[key], old_iuse_map[key],
+							old_use_map[key], is_new)
 
 				if verbosity == 3:
 					# size verbose
