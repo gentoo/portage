@@ -1486,22 +1486,6 @@ else:
 		print
 		sys.exit(1)
 
-	mymissing=None
-	if mymissing:
-		print "The following files are obviously missing from your cvs tree"
-		print "and are being fetched so we can continue:"
-		for x in mymissing:
-			print "   ",x
-		if "--pretend" in myoptions:
-			print "(/usr/bin/cvs -q up "+string.join(mymissing)+")"
-			retval=0
-		else:
-			retval=os.system("/usr/bin/cvs -q up "+string.join(mymissing))
-		if retval:
-			print "!!! Exiting on cvs (shell) error code:",retval
-			sys.exit(retval)
-		del mymissing
-
 	retval=["",""]
 	if isCvs:
 		print "Performing a "+green("cvs -n up")+" with a little magic grep to check for updates."
