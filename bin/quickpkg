@@ -14,6 +14,9 @@ if [ "${UID}" != "0" ] ; then
 	exit 1
 fi
 
+# We need to ensure a sane umask for the packages that will be created.
+umask 022
+
 export PORTAGE_DB=$(portageq vdb_path)
 export ROOT=$(portageq envvar ROOT)
 export ROOT=${ROOT%/}/
