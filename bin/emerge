@@ -1294,28 +1294,30 @@ class depgraph:
 				else:
 					disabled = []
 				for flag in cur_iuse:
+					flag_str = None
+					isEnabled = False
 					if flag in cur_use:
-						if flag in iuse_forced:
-							enabled.append("(")
+						isEnabled = True
 						if is_new or flag in old_use and all_flags:
-							enabled.append(red(flag))
+							flag_str = red(flag)
 						elif flag not in old_iuse:
-							enabled.append(yellow(flag)+"%")
+							flag_str = yellow(flag) + "%"
 						elif flag not in old_use:
-							enabled.append(green(flag)+"*")
-						if flag in iuse_forced:
-							enabled.append(")")
+							flag_str = green(flag) + "*"
 					else:
-						if flag in iuse_forced:
-							disabled.append("(")
 						if is_new or flag in old_iuse and flag not in old_use and all_flags:
-							disabled.append(blue("-"+flag))
+							flag_str = blue("-" + flag)
 						elif flag not in old_iuse:
-							disabled.append(yellow("-"+flag)+"%")
+							flag_str = yellow("-" + flag) + "%"
 						elif flag in old_use:
-							disabled.append(green("-"+flag)+"*")
+							flag_str = green("-" + flag) + "*"
+					if flag_str:
 						if flag in iuse_forced:
-							disabled.append(")")
+							flag_str = "(" + flag_str + ")"
+						if isEnabled:
+							enabled.append(flag_str)
+						else:
+							disabled.append(flag_str)
 
 				enabled = " ".join(enabled)
 				if alphabetical:
