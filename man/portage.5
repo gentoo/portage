@@ -28,10 +28,12 @@ make.defaults
 packages
 packages.build
 package.provided
+package.use.force
 package.use.mask
 parent
 profile.bashrc
 use.defaults
+use.force
 use.mask
 virtuals
 .fi
@@ -225,6 +227,28 @@ x11-libs/qt-3.3.0
 x11-base/xorg-x11-6.8
 .fi
 .TP
+.BR package.use.force
+Per\-package USE flag forcing.
+
+.I Note:
+In a cascading profile setup, you can remove USE flags in children 
+profiles which were added by parent profiles by prefixing the flag with 
+a '\-'.
+
+.I Format:
+.nf
+\- comments begin with #
+\- one DEPEND atom per line with space-delimited USE flags
+.fi
+
+.I Example:
+.nf
+# force docs for GTK 2.x
+=x11\-libs/gtk+\-2* doc
+# unforce mysql support for QT
+x11\-libs/qt \-mysql
+.fi
+.TP
 .BR package.use.mask
 Per\-package USE flag masks.
 
@@ -282,6 +306,21 @@ sdl        media\-libs/libsdl
 # activate tcltk only if we have both 
 # dev\-lang/tcl and dev\-lang/tk
 tcltk      dev\-lang/tcl   dev\-lang/tk
+.fi
+.TP
+.BR use.force
+Some USE flags don't make sense to disable under certain conditions.  Here we
+list forced flags.
+
+.I Note:
+In a cascading profile setup, you can remove USE flags in children 
+profiles which were added by parent profiles by prefixing the flag with 
+a '\-'.
+
+.I Format:
+.nf
+\- comments begin with #
+\- one USE flag per line
 .fi
 .TP
 .BR use.mask
