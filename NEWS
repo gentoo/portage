@@ -1,5 +1,10 @@
 News (mainly features/major bug fixes)
 
+portage-2.1.1
+------------
+
+* Profiles support use.force, package.use.force, and package.use.mask files.
+
 portage-2.1 (ongoing via pre releases)
 ------------
 
