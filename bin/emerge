@@ -1461,6 +1461,8 @@ class depgraph:
 						cur_iuse = []
 
 					forced_flags = set()
+					forced_flags.update(pkgsettings.useforce)
+					forced_flags.update(pkgsettings.puseforce)
 					forced_flags.update(pkgsettings.usemask)
 					forced_flags.update(pkgsettings.pusemask)
 

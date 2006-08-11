@@ -765,6 +765,7 @@ class config:
 
 		self.locked   = 0
 		self.mycpv    = None
+		self.puseforce = []
 		self.puse     = []
 		self.pusemask = []
 		self.modifiedkeys = []
@@ -805,6 +806,9 @@ class config:
 			self.usemask  = copy.deepcopy(clone.usemask)
 			self.pusemaskdict = copy.deepcopy(clone.pusemaskdict)
 			self.pusemask = copy.deepcopy(clone.pusemask)
+			self.useforce      = copy.deepcopy(clone.useforce)
+			self.puseforcedict = copy.deepcopy(clone.puseforcedict)
+			self.puseforce     = copy.deepcopy(clone.puseforce)
 			self.puse     = copy.deepcopy(clone.puse)
 			self.mycpv    = copy.deepcopy(clone.mycpv)
 
@@ -953,6 +957,21 @@ class config:
 				self.pusemaskdict.setdefault(cp, {})
 				self.pusemaskdict[cp][k] = v
 			del rawpusemask
+
+			self.useforce = stack_lists(
+				[grabfile(os.path.join(x, "use.force")) \
+				for x in self.profiles], incremental=True)
+
+			self.puseforcedict = {}
+			rawpuseforce = [grabdict_package(
+				os.path.join(x, "package.use.force")) \
+				for x in self.profiles]
+			rawpuseforce = stack_dictlist(rawpuseforce, incremental=True)
+			for k, v in rawpuseforce.iteritems():
+				cp = dep_getkey(k)
+				self.puseforcedict.setdefault(cp, {})
+				self.puseforcedict[cp][k] = v
+			del rawpuseforce
 
 			try:
 				mygcfg_dlists = [getconfig(os.path.join(x, "make.globals")) \
@@ -1337,6 +1356,7 @@ class config:
 			self.mycpv = None
 			self.puse = ""
 			self.pusemask = []
+			self.puseforce = []
 			self.configdict["pkg"].clear()
 		self.regenerate(use_cache=use_cache)
 
@@ -1397,6 +1417,12 @@ class config:
 				self.pusemaskdict[cp].keys())
 			if pusemaskkey:
 				self.pusemask = set(self.pusemaskdict[cp][pusemaskkey])
+		self.puseforce = []
+		if cp in self.puseforcedict:
+			puseforcekey = best_match_to_list(self.mycpv,
+				self.puseforcedict[cp].keys())
+			if puseforcekey:
+				self.puseforce = self.puseforcedict[cp][puseforcekey][:]
 		self.configdict["pkg"]["PKGUSE"] = self.puse[:] # For saving to PUSE file
 		self.configdict["pkg"]["USE"]    = self.puse[:] # this gets appended to USE
 		# CATEGORY is essential for doebuild calls
@@ -1558,6 +1584,10 @@ class config:
 
 				if x not in myflags:
 					myflags.append(x)
+
+		myflags = set(myflags)
+		myflags.update(self.useforce)
+		myflags.update(self.puseforce)
 
 		usesplit = [ x for x in myflags if \
 			x not in self.usemask and x not in self.pusemask ]
