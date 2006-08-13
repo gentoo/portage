@@ -80,12 +80,10 @@ def stack_dictlist(original_dicts, incremental=0, incrementals=[], ignore_none=0
 	"""Stacks an array of dict-types into one array. Optionally merging or
 	overwriting matching key/value pairs for the dict[key]->list.
 	Returns a single dict. Higher index in lists is preferenced."""
-	final_dict = None
+	final_dict = {}
 	for mydict in original_dicts:
 		if mydict is None:
 			continue
-		if final_dict is None:
-			final_dict = {}
 		for y in mydict.keys():
 			if not final_dict.has_key(y):
 				final_dict[y] = []
