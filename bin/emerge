@@ -2417,7 +2417,9 @@ def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 				if not os.path.isdir(inforoot):
 					continue
 				errmsg = ""
-				for x in os.listdir(inforoot):
+				file_list = os.listdir(inforoot)
+				file_list.sort()
+				for x in file_list:
 					if (x[0] == ".") or (x in ["dir","dir.old"]) or (os.path.isdir(inforoot+"/"+x)):
 						continue
 					myso=commands.getstatusoutput("LANG=C LANGUAGE=C /usr/bin/install-info --dir-file="+inforoot+"/dir "+inforoot+"/"+x)[1]
