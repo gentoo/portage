@@ -764,13 +764,6 @@ class depgraph:
 
 		if addme and merging == 1:
 			mybigkey.append("merge")
-			# Update old-style virtuals if this package provides any.  These
-			# are needed for dep_virtual calls inside dep_check.
-			self.pkgsettings[myroot].setinst(mykey,
-				self.trees[myroot][self.pkg_tree_map[mytype]].dbapi)
-			# Update our fakedbapi state that is used for dep_wordreduce calls
-			# inside dep_check.
-			self.mydbapi[myroot].cpv_inject(mykey)
 		else:
 			mybigkey.append("nomerge")
 
@@ -1025,6 +1018,32 @@ class depgraph:
 		else:
 			#we're processing a command-line argument; unconditionally merge it even if it's already merged
 			mymerge=[depstring]
+
+		if myparent:
+			# In order to get past circular dependencies (in
+			# `emerge -e world`, for example), the parent must be allowed
+			# to satisfy dependencies of it's children.
+
+			# The parent is added after it's own dep_check call so that it
+			# isn't allowed to satisfy a direct bootstrap dependency on itself
+			# or an old-style virtual that it satisfies (unfortunately, this
+			# only works for one level of deps, so it won't work for new-style
+			# virtuals since they introduce an additional level of dependency
+			# indirection).
+
+			p_type, p_root, p_key, p_status = myparent.split()
+			if p_status == "merge" and \
+				not self.mydbapi[p_root].cpv_exists(p_key):
+				# XXX Bug: This fakedbapi data is used in dep_check calls to
+				# determine satisfied deps via dep_wordreduce but it does not
+				# account for merge order (merge order is later calculated
+				# in self.altlist() using data from the digraph).
+				self.mydbapi[p_root].cpv_inject(p_key)
+
+				# Update old-style virtuals if this package provides any.
+				# These are needed for dep_virtual calls inside dep_check.
+				self.pkgsettings[p_root].setinst(p_key,
+					self.trees[p_root][self.pkg_tree_map[p_type]].dbapi)
 
 		if not mymerge:
 			return 1
