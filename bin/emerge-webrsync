@@ -6,8 +6,8 @@
 # Rewritten from the old, Perl-based emerge-webrsync script
 
 eval $(/usr/lib/portage/bin/portageq envvar -v FEATURES FETCHCOMMAND \
-	GENTOO_MIRRORS PORTAGE_INST_UID PORTAGE_INST_GID PORTAGE_NICENESS PORTDIR \
-	USERLAND)
+	GENTOO_MIRRORS PORTAGE_INST_UID PORTAGE_INST_GID PORTAGE_NICENESS \
+	PORTAGE_TMPDIR PORTDIR USERLAND)
 DISTDIR="${PORTAGE_TMPDIR}/emerge-webrsync"
 
 # If PORTAGE_NICENESS is overriden via the env then it will
