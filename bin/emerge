@@ -1032,8 +1032,7 @@ class depgraph:
 			# indirection).
 
 			p_type, p_root, p_key, p_status = myparent.split()
-			if p_status == "merge" and \
-				not self.mydbapi[p_root].cpv_exists(p_key):
+			if p_status == "merge":
 				# XXX Bug: This fakedbapi data is used in dep_check calls to
 				# determine satisfied deps via dep_wordreduce but it does not
 				# account for merge order (merge order is later calculated
