@@ -5,22 +5,19 @@
 # Author: Karl Trygve Kalleberg <karltk@gentoo.org>
 # Rewritten from the old, Perl-based emerge-webrsync script
 
+eval $(/usr/lib/portage/bin/portageq envvar -v FEATURES FETCHCOMMAND \
+	GENTOO_MIRRORS PORTAGE_INST_UID PORTAGE_INST_GID PORTAGE_NICENESS PORTDIR \
+	USERLAND)
+DISTDIR="${PORTAGE_TMPDIR}/emerge-webrsync"
+
 # If PORTAGE_NICENESS is overriden via the env then it will
 # still pass through the portageq call and override properly.
-PORTAGE_NICENESS="$(/usr/lib/portage/bin/portageq envvar PORTAGE_NICENESS)"
 if [ -n "${PORTAGE_NICENESS}" ]; then
 	renice $PORTAGE_NICENESS $$ > /dev/null
 fi
 
 source /usr/lib/portage/bin/isolated-functions.sh || exit 1
-FEATURES="$(/usr/lib/portage/bin/portageq envvar FEATURES)"
-GENTOO_MIRRORS="${GENTOO_MIRRORS} $(/usr/lib/portage/bin/portageq gentoo_mirrors)"
-PORTDIR="$(/usr/lib/portage/bin/portageq portdir)"
-FETCHCOMMAND="$(/usr/lib/portage/bin/portageq envvar FETCHCOMMAND)"
-USERLAND="$(/usr/lib/portage/bin/portageq envvar USERLAND)"
-DISTDIR="$(/usr/lib/portage/bin/portageq envvar PORTAGE_TMPDIR)/emerge-webrsync"
-PORTAGE_INST_UID="$(/usr/lib/portage/bin/portageq envvar PORTAGE_INST_UID)"
-PORTAGE_INST_GID="$(/usr/lib/portage/bin/portageq envvar PORTAGE_INST_GID)"
+
 if [ ! -d $DISTDIR ] ; then
 	mkdir -p $DISTDIR
 fi
