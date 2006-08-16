@@ -3252,6 +3252,17 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	# Kill packages that aren't explicitly merged or are required as a
 	# dependency of another package. World file is explicit.
 
+	warn_prefix = colorize("BAD", "*** WARNING ***  ")
+	print
+	print warn_prefix + "Depclean may break link level dependencies.  Thus, it is"
+	print warn_prefix + "recommended to use a tool such as " + good("`revdep-rebuild`") + " (from"
+	print warn_prefix + "app-portage/gentoolkit) in order to detect such breakage."
+	print warn_prefix
+	print warn_prefix + "Also study the list of packages to be cleaned for any obvious"
+	print warn_prefix + "mistakes. Packages that are part of the world set will always"
+	print warn_prefix + "be kept.  They can be manually added to this set with"
+	print warn_prefix + good("`emerge --noreplace <atom>`") + "."
+
 	xterm_titles = "notitles" not in settings.features
 	portdb = trees[settings["ROOT"]]["porttree"].dbapi
 	vartree = trees[settings["ROOT"]]["vartree"]
