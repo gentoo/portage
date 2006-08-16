@@ -3252,33 +3252,15 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	# Kill packages that aren't explicitly merged or are required as a
 	# dependency of another package. World file is explicit.
 
-	warn_prefix = colorize("BAD", "*** WARNING ***  ")
-	print
-	print warn_prefix + "--depclean is known to be broken. It is highly recommended"
-	print warn_prefix + "that "+good("`emerge --update --newuse --deep world`")+" be ran before"
-	print warn_prefix + "commencing. However, using --depclean may still break link"
-	print warn_prefix + "level consistency within your system. "+good("`revdep-rebuild`")
-	print warn_prefix + "from app-portage/gentoolkit can help to detect breakage."
-	print warn_prefix
-	print warn_prefix + "Also study the list of packages to be cleaned for any"
-	print warn_prefix + "obvious mistakes. Packages can be manually added to the"
-	print warn_prefix + "world list by running "+good("`emerge --noreplace <atom>`")+"."
-	print warn_prefix
-	print warn_prefix + "It is normal for packages that are masked or listed in"
-	print warn_prefix + "package.provided to be removed by depclean.  These are the most"
-	print warn_prefix + "likely reasons that depclean will remove a package even though"
-	print warn_prefix + "it is in the world or system package set.  In order to"
-	print warn_prefix + "troubleshoot these types of problems, it is often helpful to"
-	print warn_prefix + "look at the output of "+good("`grep -r <atom> /etc/portage`")+"."
-	print warn_prefix
-	print warn_prefix + bold("Make sure you have a backup.")
-
 	xterm_titles = "notitles" not in settings.features
-	pordb = trees[settings["ROOT"]]["porttree"].dbapi
+	portdb = trees[settings["ROOT"]]["porttree"].dbapi
 	vartree = trees[settings["ROOT"]]["vartree"]
+	vardb = vartree.dbapi
 	syslist = getlist(settings, "system")
 	worldlist = getlist(settings, "world")
-	myvarlist = vartree.dbapi.cpv_all()
+	fakedb = portage.fakedbapi(settings=settings)
+	emptydb = portage.fakedbapi(settings=settings)
+	myvarlist = vardb.cpv_all()
 
 	if not syslist:
 		print "\n!!! You have no system list.",
@@ -3288,76 +3270,59 @@ def action_depclean(settings, trees, ldpath_mtimes,
 		print "\n!!! You have no installed package database (%s)." % portage.VDB_PATH,
 
 	if not (syslist and worldlist and myvarlist):
-		print "\n!!! Proceeding will break your installation.\n"
-		countdown(int(settings["EMERGE_WARNING_DELAY"]), ">>> Depclean")
+		print "\n!!! Proceeding "+(syslist and myvarlist and "may" or "will")
+		print " break your installation.\n"
+		if "--pretend" not in myopts:
+			countdown(int(settings["EMERGE_WARNING_DELAY"]), ">>> Depclean")
 
 	if not "--pretend" in myopts: #just check pretend, since --ask implies pretend
 		emergelog(xterm_titles, " >>> depclean")
 
-	myparams = create_depgraph_params(myopts, "depclean")
-	mydepgraph = depgraph(settings, trees,
-		myopts, myparams, spinner)
-
-	if not ("--quiet" in myopts):
+	remaining_atoms = worldlist + syslist
+	unresolveable = set()
+	
+	if "--quiet" not in myopts:
 		print "\nCalculating dependencies  ",
-	if not mydepgraph.xcreate("world"):
-		print "\n!!! Failed to create deptree."
-		sys.exit(1)
-	if not ("--quiet" in myopts):
+
+	while remaining_atoms:
+		atom = remaining_atoms.pop()
+		if atom in unresolveable:
+			continue
+		pkgs = vardb.match(atom)
+		if not pkgs:
+			if not atom.startswith("!"):
+				unresolveable.add(atom)
+			continue
+		# Could put slot checking here to ensure that there aren't two
+		# packages with the same slot...
+		for pkg in pkgs:
+			if fakedb.cpv_exists(pkg):
+				continue
+			spinner.update()
+			fakedb.cpv_inject(pkg)
+			mydb = portdb.xmatch("match-visible", "="+pkg) and portdb or vardb
+			depstr = " ".join(mydb.aux_get(pkg,
+				["DEPEND", "RDEPEND", "PDEPEND"]))
+			usedef = vardb.aux_get(pkg, ["USE"])[0].split()
+			success, atoms = portage.dep_check(depstr, emptydb, settings,
+				myuse=usedef, trees=trees, myroot=settings["ROOT"])
+			if not success:
+				print depstr
+				print "Something's probably wrong with ^^^"
+				print "("+str(atoms)+"?)"
+				print "Bye!"
+				return
+			remaining_atoms.extend(atoms)
+
+	if "--quiet" not in myopts:
 		print "\b\b... done!"
 
-	if ("--usepkgonly" in myopts) and mydepgraph.missingbins:
-		sys.stderr.write(red("The following binaries are not available for merging...\n"))
-		for x in mydepgraph.missingbins:
-			sys.stderr.write("   "+str(x)+"\n")
-		sys.stderr.write("\nThese are required by '--usepkgonly' -- Terminating.\n\n")
-		sys.exit(1)
+	if unresolveable:
+		print "The following are required but not installed:"
+		print "* "+"\n* ".join(unresolveable)
+		return
 
-	alldeps=mydepgraph.digraph.allnodes()
-
-	if not alldeps:
-		print "!!! You have no dependencies. Impossible. Bug."
-		sys.exit(1)
-
-	reallist = set()
-	explicitly_required = set()
-	for x in alldeps:
-		myparts=portage.catpkgsplit(string.split(x)[2])
-		if not myparts:
-			sys.stderr.write(
-			  red("!!! There appears to be a problem with the following package:\n")+
-				red("!!! "+str(string.split(x)[2])+"\n\n")+
-				    "!!! Please ensure that blocking/conflicting packages are not merged."+
-						"!!! 'emerge -p "+str(string.split(x)[2])+"\n\n")
-			if ("--pretend" not in myopts) and ("--ask" not in myopts):
-				countdown(int(settings["EMERGE_WARNING_DELAY"]),
-					"*** Continuing")
-			continue
-
-		catpack=myparts[0]+"/"+myparts[1]
-		reallist.add(catpack)
-		explicitly_required.add(x.split()[2])
-
-	
-	sys_world_unversioned = set()
-	from itertools import chain
-	for x in chain(syslist, worldlist):
-		mycp = portage.dep_getkey(x)
-		try:
-			# include any old-style virtual providers that may exist
-			sys_world_unversioned.update(settings.getvirtuals()[mycp])
-		except KeyError:
-			pass
-		sys_world_unversioned.add(mycp)
-
-	cleanlist=[]
-	for x in myvarlist:
-		if x not in explicitly_required:
-			# We have to exempt all slots from the system and world sets since
-			# there's currently no way of knowing which slots the user may want
-			# to keep.
-			if portage.dep_getkey(x) not in sys_world_unversioned:
-				cleanlist.append(x)
+	cleanlist = [pkg for pkg in vardb.cpv_all() if not fakedb.cpv_exists(pkg)]
 
 	if len(cleanlist):
 		unmerge(settings, myopts, vartree, "unmerge", cleanlist, ldpath_mtimes)
@@ -3366,8 +3331,8 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	print "Packages installed:   "+str(len(myvarlist))
 	print "Packages in world:    "+str(len(worldlist))
 	print "Packages in system:   "+str(len(syslist))
-	print "Unique package names: "+str(len(reallist))
-	print "Required packages:    "+str(len(alldeps))
+	print "Unique package names: "+str(len(myvarlist))
+	print "Required packages:    "+str(len(fakedb.cpv_all()))
 	if "--pretend" in myopts:
 		print "Number to remove:     "+str(len(cleanlist))
 	else:
