@@ -644,8 +644,7 @@ else:
 
 stats={}
 fails={}
-#objsadded records all object being added to cvs
-objsadded=[]
+
 for x in qacats:
 	stats[x]=0
 	fails[x]=[]
@@ -788,7 +787,6 @@ for x in scanlist:
 				splitl=l[1:].split("/")
 				if not len(splitl):
 					continue
-				objsadded.append(splitl[0])
 				if splitl[0][-7:]==".ebuild":
 					eadded.append(splitl[0][:-7])
 		except IOError:
@@ -806,7 +804,6 @@ for x in scanlist:
 				splitl=l[1:].split("/")
 				if not len(splitl):
 					continue
-				objsadded.append(splitl[0])
 				if splitl[0][:7]=="digest-":
 					dadded.append(splitl[0][7:])
 		except IOError:
