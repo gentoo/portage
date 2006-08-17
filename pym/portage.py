@@ -6514,6 +6514,11 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 	origdir=getcwd()
 	os.chdir(pkgloc)
 
+	# Save the md5sum for later.
+	fp = open(os.path.join(infloc, "BINPKGMD5"), "w")
+	fp.write(str(portage_checksum.perform_md5(mytbz2))+"\n")
+	fp.close()
+
 	mysettings.configdict["pkg"]["CATEGORY"] = mycat;
 	# Eventually we'd like to pass in the saved ebuild env here.
 	# Do cleanup=1 to ensure that there is no cruft prior to the setup phase.
