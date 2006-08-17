@@ -3323,67 +3323,85 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 				unresolved.append(dep)
 		return unresolved
 
-	# We're at a ( || atom ... ) type level
+	# We're at a ( || atom ... ) type level and need to make a choice
 	deps = unreduced[1:]
 	satisfieds = reduced[1:]
 
-	target = None
+	# Our preference order is for an the first item that:
+	# a) contains all unmasked packages with the same key as installed packages
+	# b) contains all unmasked packages
+	# c) contains masked installed packages
+	# d) is the first item
+
+	preferred = []
+	other = []
+
+	# Alias the trees we'll be checking availability against
+	vardb = trees[myroot]["vartree"].dbapi
+	if use_binaries:
+		mydbapi = trees[myroot]["bintree"].dbapi
+	else:
+		mydbapi = trees[myroot]["porttree"].dbapi
+
+	# Sort the deps into preferred (installed) and other
+	# with values of [[required_atom], availablility]
 	for (dep, satisfied) in zip(deps, satisfieds):
 		if isinstance(dep, list):
 			atoms = dep_zapdeps(dep, satisfied, myroot,
 				use_binaries=use_binaries, trees=trees)
 		else:
 			atoms = [dep]
-		missing_atoms = [atom for atom in atoms if not trees[myroot]["vartree"].dbapi.match(atom)]
 
-		if not missing_atoms:
-			if isinstance(dep, list):
-				return atoms  # Sorted out by the recursed dep_zapdeps call
-			else:
-				target = dep_getkey(dep) # An installed package that's not yet in the graph
+		all_installed = True
+		for atom in atoms:
+			if not vardb.match(atom):
+				all_installed = False
 				break
 
-		if not target:
-			if use_binaries:
-				missing_atoms = [atom for atom in atoms if not trees[myroot]["bintree"].dbapi.match(atom)]
-			else:
-				missing_atoms = [atom for atom in atoms if not trees[myroot]["porttree"].dbapi.xmatch("match-visible", atom)]
-			if not missing_atoms:
-				target = (dep, satisfied)
+		all_available = True
+		for atom in atoms:
+			if not mydbapi.match(atom):
+				all_available = False
+				break
 
-	if not target:
-		if isinstance(deps[0], list):
-			return dep_zapdeps(deps[0], satisfieds[0], myroot,
-				use_binaries=use_binaries, trees=trees)
+		# Check if the set of atoms will result in a downgrade of
+		# an installed package. If they will then don't prefer them
+		# over other atoms.
+		if all_installed and all_available:
+			for atom in atoms:
+				inst_pkgs = vardb.match(dep_getkey(atom))
+				avail_pkg = best(mydbapi.match(atom))
+				avail_slot = mydbapi.aux_get(avail_pkg, ["SLOT"])[0]
+				avail_split = catpkgsplit(avail_pkg)[1:]
+				is_okay = False
+				for pkg in inst_pkgs:
+					if avail_slot != vardb.aux_get(pkg, ["SLOT"])[0]:
+						continue
+					if pkgcmp(avail_split, catpkgsplit(pkg)[1:]) >= 0:
+						is_okay = True
+						break
+				if not is_okay:
+					all_installed = False
+					break
+
+		if all_installed:
+			preferred.append((atoms, all_available))
 		else:
-			return [deps[0]]
+			other.append((atoms, all_available))
 
-	if isinstance(target, tuple): # Nothing matching installed
-		if isinstance(target[0], list): # ... and the first available was a sublist
-			return dep_zapdeps(target[0], target[1], myroot,
-				use_binaries=use_binaries, trees=trees)
-		else: # ... and the first available was a single atom
-			target = dep_getkey(target[0])
+	# preferred now contains a) and c) from the order above with
+	# the masked flag differentiating the two. other contains b)
+	# and d) so adding other to preferred will give us a suitable
+	# list to iterate over.
+	preferred.extend(other)
 
-	relevant_atoms = [dep for dep in deps if not isinstance(dep, list) and dep_getkey(dep) == target]
+	for allow_masked in (False, True):
+		for atoms, all_available in preferred:
+			if all_available or allow_masked:
+				return atoms
 
-	available_pkgs = {}
-	for atom in relevant_atoms:
-		if use_binaries:
-			pkg_list = trees[myroot]["bintree"].dbapi.match(atom)
-		else:
-			pkg_list = trees[myroot]["porttree"].dbapi.xmatch("match-visible", atom)
-		if not pkg_list:
-			continue
-		pkg = best(pkg_list)
-		available_pkgs[pkg] = atom
+	assert(False) # This point should not be reachable
 
-	if not available_pkgs:
-		return [relevant_atoms[0]] # All masked
-
-	target_pkg = best(available_pkgs.keys())
-	suitable_atom = available_pkgs[target_pkg]
-	return [suitable_atom]
 
 def dep_expand(mydep, mydb=None, use_cache=1, settings=None):
 	if not len(mydep):
