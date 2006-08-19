@@ -118,6 +118,11 @@ Contains the path to the temporary \fIinstall directory\fR.  Every write
 operation that does not involve the helper tools and functions (found below) 
 should be prefixed with ${D}.  Do not modify this variable.
 .TP
+\fBROOT\fR = \fI"/"\fR
+Contains the path that portage should use as the root of the live filesystem.  
+When packages wish to make changes to the live filesystem, it should do so in 
+the tree prefixed by ${ROOT}.  Do not modify this variable.
+.TP
 \fBDESCRIPTION\fR = \fI"A happy little package"\fR
 Should contain a short description of the package.
 .TP
