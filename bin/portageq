@@ -3,7 +3,23 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-import sys, os
+import sys
+# This block ensures that ^C interrupts are handled quietly.
+try:
+	import signal
+
+	def exithandler(signum, frame):
+		signal.signal(signal.SIGINT, signal.SIG_IGN)
+		signal.signal(signal.SIGTERM, signal.SIG_IGN)
+		sys.exit(1)
+
+	signal.signal(signal.SIGINT, exithandler)
+	signal.signal(signal.SIGTERM, exithandler)
+
+except KeyboardInterrupt:
+	sys.exit(1)
+
+import os
 os.environ["PORTAGE_CALLER"] = "portageq"
 sys.path = ["/usr/lib/portage/pym"]+sys.path
 
