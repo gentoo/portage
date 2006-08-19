@@ -281,6 +281,12 @@ These vars are used if the sources must be downloaded from the
 internet by \fBwget\fR(1).  They are only required if you use a
 proxy server for internet access.
 .TP
+\fBINSTALL_MASK\fR = \fI[space delimited list of file names]\fR
+Use this variable if you want to selectively prevent certain files from being
+copied into your file system tree.  This does not work on symlinks, but only on
+actual files.  Useful if you wish to filter out files like HACKING.gz and
+TODO.gz.
+.TP
 .B MAKEOPTS
 Use this variable if you want to use parallel make.  For example, if you
 have a dual\-processor system, set this variable to "\-j2" or "\-j3" for 
@@ -419,6 +425,7 @@ Please report bugs via http://bugs.gentoo.org/
 Daniel Robbins <drobbins@gentoo.org>
 Nicholas Jones <carpaski@gentoo.org>
 Mike Frysinger <vapier@gentoo.org>
+Saleem Abdulrasool <compnerd@gentoo.org>
 .fi
 .SH "FILES"
 .TP
