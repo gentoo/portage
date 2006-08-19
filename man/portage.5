@@ -369,7 +369,6 @@ virtual/aspell\-dict   app\-dicts/aspell\-en
 If needed, this file can be used to set up a special environment for ebuilds,
 different from the standard root environment.  The syntax is the same as for
 any other bash script.
-
 .TP
 .BR modules
 This file can be used to override the metadata cache implementation.  In
@@ -390,7 +389,6 @@ metadata_overlay module must never modify eclasses in ${PORTDIR} because
 portage will not be able to detect that cache regeneration is necessary.  If
 the user would like to modify eclasses, it is safe to use metadata_overlay
 together with PORTDIR_OVERLAY in \fBmake.conf\fR.
-
 .TP
 .BR package.mask
 A list of package atoms to mask.  Useful if specific versions of packages do
