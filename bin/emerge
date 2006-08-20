@@ -3289,20 +3289,22 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	if not "--pretend" in myopts: #just check pretend, since --ask implies pretend
 		emergelog(xterm_titles, " >>> depclean")
 
-	remaining_atoms = worldlist + syslist
-	unresolveable = set()
-	
 	if "--quiet" not in myopts:
 		print "\nCalculating dependencies  ",
 
+	remaining_atoms = [(atom, 'world') for atom in worldlist if vardb.match(atom)]
+	remaining_atoms += [(atom, 'system') for atom in syslist if vardb.match(atom)]
+	unresolveable = {}
+
 	while remaining_atoms:
-		atom = remaining_atoms.pop()
-		if atom in unresolveable:
-			continue
+		atom, parent = remaining_atoms.pop()
 		pkgs = vardb.match(atom)
 		if not pkgs:
 			if not atom.startswith("!"):
-				unresolveable.add(atom)
+				if atom in unresolveable:
+					unresolveable[atom].append(parent)
+				else:
+					unresolveable[atom] = [parent]
 			continue
 		# Could put slot checking here to ensure that there aren't two
 		# packages with the same slot...
@@ -3318,19 +3320,23 @@ def action_depclean(settings, trees, ldpath_mtimes,
 			success, atoms = portage.dep_check(depstr, emptydb, settings,
 				myuse=usedef, trees=trees, myroot=settings["ROOT"])
 			if not success:
-				print depstr
-				print "Something's probably wrong with ^^^"
-				print "("+str(atoms)+"?)"
-				print "Bye!"
+				print "\n\n"
+				print "Error occurred while processing",pkg
+				print str(atoms)
 				return
-			remaining_atoms.extend(atoms)
+			for atom in atoms:
+				remaining_atoms.append((atom, pkg))
 
 	if "--quiet" not in myopts:
-		print "\b\b... done!"
+		print "\b\b... done!\n"
 
 	if unresolveable:
-		print "The following are required but not installed:"
-		print "* "+"\n* ".join(unresolveable)
+		print "Dependencies could not be completely resolved due to"
+		print "the following required packages not being installed:"
+		print
+		for atom in unresolveable:
+			print atom, "required by", " ".join(unresolveable[atom])
+		print
 		return
 
 	cleanlist = [pkg for pkg in vardb.cpv_all() if not fakedb.cpv_exists(pkg)]
@@ -3338,7 +3344,6 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	if len(cleanlist):
 		unmerge(settings, myopts, vartree, "unmerge", cleanlist, ldpath_mtimes)
 
-	print
 	print "Packages installed:   "+str(len(myvarlist))
 	print "Packages in world:    "+str(len(worldlist))
 	print "Packages in system:   "+str(len(syslist))
