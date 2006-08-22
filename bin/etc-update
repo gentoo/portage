@@ -298,7 +298,8 @@ function do_cfg() {
 				echo "-------------------------------------------------------------"
 				echo
 			fi
-			echo -n "1) Replace original with update
+			echo -n "File: ${file}
+1) Replace original with update
 2) Delete update, keeping original as is
 3) Interactively merge original with update
 4) Show differences again
