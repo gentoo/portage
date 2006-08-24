@@ -30,7 +30,8 @@ save_elf_debug() {
 		debugedit -b "${WORKDIR}" -d /usr/src/debug/${PF} -l "${T}"/debug.sources "${x}"
 		if [[ -s ${T}/debug.sources ]] ; then 
 			[[ -d ${D}/usr/src/debug/${PF} ]] || mkdir -p "${D}/usr/src/debug/${PF}"
-			cat "${T}"/debug.sources | (cd "${WORKDIR}"; LANG=C sort -z -u | rsync -a0 --files-from=- "${WORKDIR}/" "${D}/usr/src/debug/${PF}/" )
+			cat "${T}"/debug.sources | (cd "${WORKDIR}"; LANG=C sort -z -u | \
+				rsync -aL0 --files-from=- "${WORKDIR}/" "${D}/usr/src/debug/${PF}/" )
 		fi
 	fi
 
