@@ -2,11 +2,15 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
 
-# Internal logging function, don't use this in ebuilds
-vecho() {
-	[[ ${PORTAGE_QUIET} == "1" ]] || echo "$@"
+quiet_mode() {
+	[[ ${PORTAGE_QUIET} -eq 1 ]]
 }
 
+vecho() {
+	quiet_mode || echo "$@"
+}
+
+# Internal logging function, don't use this in ebuilds
 elog_base() {
 	local messagetype
 	[ -z "${1}" -o -z "${T}" -o ! -d "${T}/logging" ] && return 1

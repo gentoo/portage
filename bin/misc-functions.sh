@@ -221,7 +221,7 @@ install_mask() {
 	set -o noglob
 	for no_inst in ${install_mask}; do
 		set +o noglob
-		einfo "Removing ${no_inst}"
+		quiet_mode || einfo "Removing ${no_inst}"
 		# normal stuff
 		rm -Rf ${root}/${no_inst} >&/dev/null
 
