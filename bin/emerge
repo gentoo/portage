@@ -1309,12 +1309,20 @@ class depgraph:
 				enabled = []
 				if alphabetical:
 					disabled = enabled
+					removed = enabled
 				else:
 					disabled = []
-				for flag in cur_iuse:
+					removed = []
+				cur_iuse = set(cur_iuse)
+				enabled_flags = cur_iuse.intersection(cur_use)
+				removed_iuse = set(old_iuse).difference(cur_iuse)
+				any_iuse = cur_iuse.union(old_iuse)
+				any_iuse = list(any_iuse)
+				any_iuse.sort()
+				for flag in any_iuse:
 					flag_str = None
 					isEnabled = False
-					if flag in cur_use:
+					if flag in enabled_flags:
 						isEnabled = True
 						if is_new or flag in old_use and all_flags:
 							flag_str = red(flag)
@@ -1322,6 +1330,10 @@ class depgraph:
 							flag_str = yellow(flag) + "%"
 						elif flag not in old_use:
 							flag_str = green(flag) + "*"
+					elif flag in removed_iuse:
+						if all_flags:
+							removed.append(yellow("!" + flag) + "%")
+						continue
 					else:
 						if is_new or flag in old_iuse and flag not in old_use and all_flags:
 							flag_str = blue("-" + flag)
@@ -1337,17 +1349,10 @@ class depgraph:
 						else:
 							disabled.append(flag_str)
 
-				enabled = " ".join(enabled)
 				if alphabetical:
-					disabled = ""
+					ret = " ".join(enabled)
 				else:
-					disabled = " ".join(disabled)
-				if enabled and disabled:
-					ret = enabled + " " + disabled
-				elif enabled:
-					ret = enabled
-				else:
-					ret = disabled
+					ret = " ".join(enabled + disabled + removed)
 				if ret:
 					ret = '%s="%s" ' % (name, ret)
 				return ret
