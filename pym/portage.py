@@ -6200,7 +6200,7 @@ class dblink:
 				# unlinking no longer necessary; "movefile" will overwrite symlinks atomically and correctly
 				mymtime=movefile(mysrc,mydest,newmtime=thismtime,sstat=mystat, mysettings=self.settings)
 				if mymtime!=None:
-					print ">>>",mydest,"->",myto
+					writemsg_stdout(">>> %s -> %s\n" % (mydest, myto))
 					outfile.write("sym "+myrealdest+" -> "+myto+" "+str(mymtime)+"\n")
 				else:
 					print "!!! Failed to move file."
