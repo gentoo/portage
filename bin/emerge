@@ -1327,9 +1327,7 @@ class depgraph:
 						if is_new or flag in old_use and all_flags:
 							flag_str = red(flag)
 						elif flag not in old_iuse:
-							flag_str = yellow(flag) + "%"
-							if flag not in old_use:
-								flag_str += "*"
+							flag_str = yellow(flag) + "%*"
 						elif flag not in old_use:
 							flag_str = green(flag) + "*"
 					elif flag in removed_iuse:
