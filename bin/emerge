@@ -3267,6 +3267,11 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	print warn_prefix + "mistakes. Packages that are part of the world set will always"
 	print warn_prefix + "be kept.  They can be manually added to this set with"
 	print warn_prefix + good("`emerge --noreplace <atom>`") + "."
+	print warn_prefix
+	print warn_prefix + "As a safety measure, depclean will not remove any packages"
+	print warn_prefix + "unless *all* required dependencies have been resolved.  As a"
+	print warn_prefix + "consequence, it is often necessary to run "
+	print warn_prefix + good("`emerge --update --deep world`") + " prior to depclean."
 
 	xterm_titles = "notitles" not in settings.features
 	portdb = trees[settings["ROOT"]]["porttree"].dbapi
@@ -3341,6 +3346,8 @@ def action_depclean(settings, trees, ldpath_mtimes,
 		print
 		for atom in unresolveable:
 			print atom, "required by", " ".join(unresolveable[atom])
+		print
+		print "Have you forgotten to run " + good("`emerge --update --deep world`") + " prior to depclean?"
 		print
 		return
 
