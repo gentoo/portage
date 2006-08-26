@@ -4,6 +4,7 @@ portage-2.1.1
 ------------
 
 * Profiles support use.force, package.use.force, and package.use.mask files.
+* New depclean algorithm is much safer than the old one.
 
 portage-2.1 (ongoing via pre releases)
 ------------
