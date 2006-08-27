@@ -5674,7 +5674,7 @@ class dblink:
 		self.settings.load_infodir(self.dbdir)
 
 		if not pkgfiles:
-			writemsg_stdout("No package files given... Grabbing a set.")
+			writemsg_stdout("No package files given... Grabbing a set.\n")
 			pkgfiles=self.getcontents()
 
 		# Now, don't assume that the name of the ebuild is the same as the
