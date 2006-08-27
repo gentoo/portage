@@ -199,13 +199,22 @@ install_qa_check() {
 
 	if hasq multilib-strict ${FEATURES} && [ -x /usr/bin/file -a -x /usr/bin/find -a \
 	     -n "${MULTILIB_STRICT_DIRS}" -a -n "${MULTILIB_STRICT_DENY}" ]; then
+	     	local abort=no firstrun=yes
 		MULTILIB_STRICT_EXEMPT=$(echo ${MULTILIB_STRICT_EXEMPT} | sed -e 's:\([(|)]\):\\\1:g')
 		for dir in ${MULTILIB_STRICT_DIRS}; do
 			[ -d "${D}/${dir}" ] || continue
 			for file in $(find ${D}/${dir} -type f | grep -v "^${D}/${dir}/${MULTILIB_STRICT_EXEMPT}"); do
-				file ${file} | egrep -q "${MULTILIB_STRICT_DENY}" && die "File ${file} matches a file type that is not allowed in ${dir}"
+				if $(file ${file} | egrep -q "${MULTILIB_STRICT_DENY}") ; then
+					if [[ ${firstrun} == "yes" ]] ; then
+						echo "Files matching a file type that is not allowed:"
+						firstrun=no
+					fi
+					abort=yes
+					echo "   ${file#${D}//}"
+				fi
 			done
 		done
+		[[ ${abort} == yes ]] && die "multilib-strict check failed!"
 	fi
 
 }
