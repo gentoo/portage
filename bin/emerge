@@ -709,6 +709,7 @@ class depgraph:
 		vardbapi = self.trees[myroot]["vartree"].dbapi
 		portdb = self.trees[myroot]["porttree"].dbapi
 		bindb = self.trees[myroot]["bintree"].dbapi
+		pkgsettings = self.pkgsettings[myroot]
 
 		# if the package is already on the system, we add a "nomerge"
 		# directive, otherwise we add a "merge" directive.
@@ -753,12 +754,19 @@ class depgraph:
 			    --newuse is specified, we need to merge the package. """
 			if merging==0 and "--newuse" in self.myopts and \
 				vardbapi.cpv_exists(mykey):
+				pkgsettings.setcpv(mykey)
+				forced_flags = set()
+				forced_flags.update(pkgsettings.useforce)
+				forced_flags.update(pkgsettings.puseforce)
+				forced_flags.update(pkgsettings.usemask)
+				forced_flags.update(pkgsettings.pusemask)
 				old_use = vardbapi.aux_get(mykey, ["USE"])[0].split()
 				iuses = set(mydbapi.aux_get(mykey, ["IUSE"])[0].split())
+				old_iuse = set(vardbapi.aux_get(mykey, ["IUSE"])[0].split())
 				if iuses.symmetric_difference(
-					vardbapi.aux_get(mykey, ["IUSE"])[0].split()):
+					old_iuse).difference(forced_flags):
 					merging = 1
-				elif iuses.intersection(old_use) != \
+				elif old_iuse.intersection(old_use) != \
 					iuses.intersection(myuse):
 					merging=1
 
