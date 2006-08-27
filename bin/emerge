@@ -1089,13 +1089,19 @@ class depgraph:
 					old_use = bindb.aux_get(myeb_pkg, ["USE"])[0].split()
 					pkgsettings.setcpv(myeb_pkg)
 					now_use = pkgsettings["USE"].split()
-					if "--usepkgonly" not in self.myopts and \
-						myeb == myeb_pkg and \
-						iuses.symmetric_difference(
-						portdb.aux_get(myeb, ["IUSE"])[0].split()):
+					forced_flags = set()
+					forced_flags.update(pkgsettings.useforce)
+					forced_flags.update(pkgsettings.puseforce)
+					forced_flags.update(pkgsettings.usemask)
+					forced_flags.update(pkgsettings.pusemask)
+					cur_iuse = iuses
+					if "--usepkgonly" not in self.myopts and myeb:
+						cur_iuse = set(portdb.aux_get(myeb, ["IUSE"])[0].split())
+					if iuses.symmetric_difference(
+						cur_iuse).difference(forced_flags):
 						myeb_pkg = None
 					elif iuses.intersection(old_use) != \
-						iuses.intersection(now_use):
+						cur_iuse.intersection(now_use):
 						myeb_pkg = None
 				if myeb_pkg:
 					binpkguseflags = \
