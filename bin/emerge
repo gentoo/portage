@@ -1346,16 +1346,19 @@ class depgraph:
 							flag_str = green(flag) + "*"
 					elif flag in removed_iuse:
 						if all_flags:
-							flag_str = yellow("!" + flag) + "%"
+							flag_str = yellow("-" + flag) + "%"
 							if flag in old_use:
 								flag_str += "*"
+							flag_str = "(" + flag_str + ")"
 							removed.append(flag_str)
 						continue
 					else:
 						if is_new or flag in old_iuse and flag not in old_use and all_flags:
 							flag_str = blue("-" + flag)
 						elif flag not in old_iuse:
-							flag_str = yellow("-" + flag) + "%"
+							flag_str = yellow("-" + flag)
+							if flag not in iuse_forced:
+								flag_str += "%"
 						elif flag in old_use:
 							flag_str = green("-" + flag) + "*"
 					if flag_str:
