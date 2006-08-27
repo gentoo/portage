@@ -204,8 +204,8 @@ install_qa_check() {
 		for dir in ${MULTILIB_STRICT_DIRS}; do
 			[ -d "${D}/${dir}" ] || continue
 			for file in $(find ${D}/${dir} -type f | grep -v "^${D}/${dir}/${MULTILIB_STRICT_EXEMPT}"); do
-				if $(file ${file} | egrep -q "${MULTILIB_STRICT_DENY}") ; then
-					if [[ ${firstrun} == "yes" ]] ; then
+				if file ${file} | egrep -q "${MULTILIB_STRICT_DENY}" ; then
+					if [[ ${firstrun} == yes ]] ; then
 						echo "Files matching a file type that is not allowed:"
 						firstrun=no
 					fi
