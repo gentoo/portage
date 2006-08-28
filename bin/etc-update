@@ -33,7 +33,7 @@ function scan() {
 	mkdir ${TMP}/files || die "Failed mkdir command!" 1
 	count=0
 	input=0
-	
+
 	# Sanity check to make sure diff exists and works
 	if ! diff -v &>/dev/null ; then
 		echo "ERROR: 'diff' does not seem to work, aborting"
@@ -58,7 +58,7 @@ function scan() {
 			[ ! -f ${file} ] && continue
 
 
-			if [[ "${ofile:10}" != "${rfile:10}" ]] || 
+			if [[ "${ofile:10}" != "${rfile:10}" ]] ||
 			   [[ ${opath} != ${rpath} ]]; then
 				MATCHES=0
 				if [[ "${EU_AUTOMERGE}" == "yes" ]]; then
@@ -128,7 +128,7 @@ function sel_file() {
 			input=0
 		else
 			if [[ ${mode} == 0 ]] ; then
-				echo "The following is the list of files which need updating, each 
+				echo "The following is the list of files which need updating, each
 configuration file is followed by a list of possible replacement files."
 			else
 				local my_title="Please select a file to update"
@@ -156,7 +156,7 @@ configuration file is followed by a list of possible replacement files."
 				else
 					input=-7
 					export rm_opts=""
-				fi				
+				fi
 			fi
 			if [[ ${input} == -7 ]]; then
 				input=0
@@ -236,7 +236,7 @@ function do_file() {
 			if [[ ${my_input} == 0 ]] ; then
 				my_input=1
 			elif [[ ${my_input} == -1 ]] ; then
-				input=0 
+				input=0
 				return
 			elif [[ ${my_input} == ${fcount} ]] ; then
 				break
@@ -266,20 +266,20 @@ function do_file() {
 }
 
 function do_cfg() {
-	
+
 	local file="${1}"
 	local ofile="${2}"
 	local -i my_input=0
-	
+
 	until (( ${my_input} == -1 )) || [ ! -f ${file} ]; do
 		if [[ "${OVERWRITE_ALL}" == "yes" ]] && ! user_special "${ofile}"; then
 			my_input=1
 		elif [[ "${DELETE_ALL}" == "yes" ]] && ! user_special "${ofile}"; then
 			my_input=2
 		else
-		  showdiffcmd=$(echo "${diff_command}" |
+			showdiffcmd=$(echo "${diff_command}" |
 				sed -e "s:%file1:${ofile}:" -e "s:%file2:${file}:")
-				
+
 			if [ "${using_editor}" == 0 ]; then
 				(
 					echo "Showing differences between ${ofile} and ${file}"
@@ -306,7 +306,7 @@ function do_cfg() {
 Please select from the menu above (-1 to ignore this update): "
 			read my_input
 		fi
-		
+
 		case ${my_input} in
 			1) echo "Replacing ${ofile} with ${file}"
 			   mv ${mv_opts} ${file} ${ofile}
@@ -333,7 +333,7 @@ Please select from the menu above (-1 to ignore this update): "
 }
 
 function do_merge() {
-	
+
 	local file="${1}"
 	local ofile="${2}"
 	local mfile="${2}.merged"
@@ -351,7 +351,7 @@ function do_merge() {
 		 sed -e "s:%merged:${mfile}:g" \
 		 	 -e "s:%orig:${ofile}:g" \
 			 -e "s:%new:${file}:g")
-		until (( ${my_input} == -1 )); do	
+		until (( ${my_input} == -1 )); do
 			echo -n "1) Replace ${ofile} with merged file
 2) Show differences between merged file and original
 3) Remerge original with update
@@ -394,12 +394,12 @@ function die() {
 	trap "" TERM
 	trap "" KILL
 	echo "Exiting: ${1}"
-	
+
 	if [ ${2} -eq 0 ]; then
 		scan > /dev/null
 		[ ${count} -gt 0 ] && echo "NOTE: ${count} updates remaining"
 	fi
-	
+
 	rm -rf ${TMP}
 	exit ${2}
 }
@@ -442,7 +442,7 @@ declare -i mode=$(get_config mode)
 [ -z "${pager}" ] && pager="cat"
 
 #echo "rm_opts: $rm_opts, mv_opts: $mv_opts, cp_opts: $cp_opts"
-#echo "pager: $pager, diff_command: $diff_command, merge_command: $merge_command" 
+#echo "pager: $pager, diff_command: $diff_command, merge_command: $merge_command"
 
 if (( ${mode} == 0 )); then
 	PAR=")"
