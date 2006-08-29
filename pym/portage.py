@@ -2828,8 +2828,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			return spawn(EBUILD_SH_BINARY + " " + mydo, mysettings,
 				debug=debug, free=1, logfile=logfile)
 		elif mydo == "preinst":
-			mysettings.load_infodir(mysettings["O"])
 			if mysettings.get("EMERGE_FROM", None) == "binary":
+				mysettings.load_infodir(mysettings["O"])
 				mysettings["IMAGE"] = os.path.join(
 					mysettings["PKG_TMPDIR"], mysettings["PF"], "bin")
 			else:
