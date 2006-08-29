@@ -142,7 +142,7 @@ configuration file is followed by a list of possible replacement files."
 				echo    "                           (-5 to auto-merge AND not use 'mv -i')"
 				echo    "                           (-7 to discard all updates)"
 				echo -n "                           (-9 to discard all updates AND not use 'rm -i'): "
-				read input
+				input=$(read_int)
 			else
 				dialog --title "${title}" --menu "${my_title}" \
 					0 0 0 $(echo -e "-1 Exit\n$(<${TMP}/menuitems)") \
@@ -190,6 +190,20 @@ function user_special() {
 	return 1
 }
 
+function read_int() {
+	# Read an integer from stdin.  Continously loops until a valid integer is
+	# read.  This is a workaround for odd behavior of bash when an attempt is
+	# made to store a value such as "1y" into an integer-only variable.
+	local my_input
+	while true; do
+		read my_input
+		# failed integer conversions will break a loop unless they're enclosed
+		# in a subshell.
+		echo "${my_input}" | ( declare -i x; read x) && break
+	done
+	echo ${my_input}
+}
+
 function do_file() {
 	echo
 	local -i my_input
@@ -224,7 +238,7 @@ function do_file() {
 				if [[ ${mode} == 0 ]] ; then
 					cat ${TMP}/menuitems
 					echo -n "Please select a file to process (-1 to exit this file): "
-					read my_input
+					my_input=$(read_int)
 				else
 					dialog --title "${title}" --menu "${my_title}" \
 						0 0 0 $(echo -e "$(<${TMP}/menuitems)\n${fcount} Exit") \
@@ -304,7 +318,7 @@ function do_cfg() {
 3) Interactively merge original with update
 4) Show differences again
 Please select from the menu above (-1 to ignore this update): "
-			read my_input
+			my_input=$(read_int)
 		fi
 
 		case ${my_input} in
@@ -358,7 +372,7 @@ function do_merge() {
 4) Edit merged file
 5) Return to the previous menu
 Please select from the menu above (-1 to exit, losing this merge): "
-			read my_input
+			my_input=$(read_int)
 			case ${my_input} in
 				1) echo "Replacing ${ofile} with ${mfile}"
 				   chmod --reference=${ofile} ${mfile}
