@@ -6179,8 +6179,8 @@ class dblink:
 						dflags=bsd_chflags.lgetflags(mydest)
 						if(bsd_chflags.lchflags(mydest, 0)<0):
 							writemsg("!!! Couldn't clear flags on '"+mydest+"'.\n")
-
-					if not os.access(mydest, os.W_OK):
+					# do not abort when running unprivileged if mydest is a prefix of PREFIX, the user could not have write access to it.
+					if not os.access(mydest, os.W_OK) and not prefix.startswith(mydest):
 						pkgstuff = pkgsplit(self.pkg)
 						writemsg("\n!!! Cannot write to '"+mydest+"'.\n")
 						writemsg("!!! Please check permissions and directories for broken symlinks.\n")
