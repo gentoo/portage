@@ -774,6 +774,8 @@ class depgraph:
 			mybigkey.append("merge")
 		else:
 			mybigkey.append("nomerge")
+
+		if merging == 0 and vardbapi.cpv_exists(mykey):
 			myuse = vardbapi.aux_get(mykey, ["USE"])[0].split()
 			self.useFlags[myroot][mykey] = myuse
 
