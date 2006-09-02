@@ -774,6 +774,7 @@ class depgraph:
 			mybigkey.append("merge")
 		else:
 			mybigkey.append("nomerge")
+			myuse = vardbapi.aux_get(mykey, ["USE"])[0].split()
 
 		""" At this point, we have either hit a blocker and returned, found the package in the
 		    depgraph already and returned, or we are here.  Whether we are merging or not; we must
