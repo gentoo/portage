@@ -609,7 +609,6 @@ src_compile() {
 }
 
 src_test() {
-	addpredict /
 	if emake -j1 check -n &> /dev/null; then
 		vecho ">>> Test phase [check]: ${CATEGORY}/${PF}"
 		if ! emake -j1 check; then
@@ -625,7 +624,6 @@ src_test() {
 	else
 		vecho ">>> Test phase [none]: ${CATEGORY}/${PF}"
 	fi
-	SANDBOX_PREDICT="${SANDBOX_PREDICT%:/}"
 }
 
 src_install() {
@@ -983,7 +981,9 @@ dyn_test() {
 		ewarn "Skipping make test/check due to ebuild restriction."
 		vecho ">>> Test phase [explicitly disabled]: ${CATEGORY}/${PF}"
 	else
+		addpredict /
 		src_test
+		SANDBOX_PREDICT="${SANDBOX_PREDICT%:/}"
 	fi
 
 	cd "${PORTAGE_BUILDDIR}"
