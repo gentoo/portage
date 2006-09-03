@@ -4728,9 +4728,9 @@ class portdbapi(dbapi):
 
 		if not myebuild:
 			writemsg("!!! aux_get(): ebuild path for '%(cpv)s' not specified:\n" % {"cpv":mycpv},
-				noiselevel=-1)
-			writemsg("!!!            %s\n" % myebuild, noiselevel=-1)
-			raise KeyError, "'%(cpv)s' at %(path)s" % {"cpv":mycpv,"path":myebuild}
+				noiselevel=1)
+			writemsg("!!!            %s\n" % myebuild, noiselevel=1)
+			raise KeyError(mycpv)
 
 		myManifestPath = string.join(myebuild.split("/")[:-1],"/")+"/Manifest"
 		if "gpg" in self.mysettings.features:
