@@ -364,7 +364,18 @@ information so all masking information is ignored.
 .BR "\-\-verbose " (\fB\-v\fR)
 Tell emerge to run in verbose mode.  Currently this flag causes emerge to print 
 out GNU info errors, if any, and to show the USE flags that will be used for 
-each package when pretending.
+each package when pretending. The following symbols are affixed to USE flags
+in order to indicate their status:
+.br
+
+.br
+\fI- prefix\fR     = not enabled (either disabled or removed)
+.br
+\fI* suffix\fR     = transition to or from the enabled state
+.br
+\fI% suffix\fR     = newly added or removed
+.br
+\fI() circumfix\fR = forced, masked, or removed
 .SH "ENVIRONMENT OPTIONS"
 .TP
 \fBROOT\fR = \fI[path]\fR
