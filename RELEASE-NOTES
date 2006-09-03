@@ -7,6 +7,8 @@ portage-2.1.1
 * emerge --search doesn't use regular expressions now anymore by default, so
   emerge --search dvd+rw-tools now works as expected. Regular expressions can be enabled
   by prefixing the search string with %. 
+* emerge --depclean algorithm is much safer than the old one.
+* emerge --newuse detects changes in IUSE that previously went undetected.
 
 portage-2.1
 ==================================
