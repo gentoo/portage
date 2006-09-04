@@ -3456,6 +3456,9 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 			# should have already been applied via config.regenerate().  Also,
 			# binary or installed packages may have been built with flags that
 			# are now masked, and it would be inconsistent to mask them now.
+			# Additionally, myuse may consist of flags from a parent package
+			# that is being merged to a $ROOT that is different from the one
+			# that mysettings represents.
 			mymasks.update(mysettings.usemask)
 			mymasks.update(mysettings.pusemask)
 			mymasks.update(mysettings.archlist())
