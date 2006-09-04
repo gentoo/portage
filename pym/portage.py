@@ -5845,7 +5845,8 @@ class dblink:
 			os.path.join(destroot, filename.lstrip(os.path.sep)))
 		if not os.path.exists(destfile):
 			return True
-		if self.getcontents() and filename in self.getcontents().keys():
+		pkgfiles = self.getcontents()
+		if pkgfiles and filename in pkgfiles:
 			return True
 
 		return False
