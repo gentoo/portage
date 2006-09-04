@@ -3451,10 +3451,15 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 
 	if mysettings:
 		mymasks = set()
-		mymasks.update(mysettings.usemask)
-		mymasks.update(mysettings.pusemask)
-		mymasks.update(mysettings.archlist())
-		mymasks.discard(mysettings["ARCH"])
+		if use == "all":
+			# These masks are only for repoman.  In other cases, relevant masks
+			# should have already been applied via config.regenerate().  Also,
+			# binary or installed packages may have been built with flags that
+			# are now masked, and it would be inconsistent to mask them now.
+			mymasks.update(mysettings.usemask)
+			mymasks.update(mysettings.pusemask)
+			mymasks.update(mysettings.archlist())
+			mymasks.discard(mysettings["ARCH"])
 		mysplit = portage_dep.use_reduce(mysplit,uselist=myusesplit,masklist=mymasks,matchall=(use=="all"),excludeall=[mysettings["ARCH"]])
 	else:
 		mysplit = portage_dep.use_reduce(mysplit,uselist=myusesplit,matchall=(use=="all"))
