@@ -1158,7 +1158,7 @@ for x in scanlist:
 	
 					if prof[1] == "dev":
 						suffix=suffix+"indev"
-					
+					dep_settings.setcpv("/".join((catdir, y)))
 					for mytype,mypos in [["DEPEND",len(missingvars)],["RDEPEND",len(missingvars)+1],["PDEPEND",len(missingvars)+2]]:
 						
 						mykey=mytype+".bad"+suffix

@@ -3455,7 +3455,8 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 		#if use=="all":
 		#	mymasks=archlist[:]
 		#else:
-		mymasks = mysettings.usemask + mysettings.archlist()
+		mymasks = mysettings.usemask + list(mysettings.pusemask) + \
+			mysettings.archlist()
 
 		while mysettings["ARCH"] in mymasks:
 			del mymasks[mymasks.index(mysettings["ARCH"])]
