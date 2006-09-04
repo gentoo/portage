@@ -904,9 +904,4 @@ def new_protect_filename(mydest, newmd5=None):
 		if portage_checksum.perform_md5(
 			os.path.join(real_dirname, last_pfile)) == newmd5:
 			return old_pfile
-		else:
-			return new_pfile
-	elif newmd5:
-		return new_pfile
-	else:
-		return (new_pfile, old_pfile)
+	return new_pfile
