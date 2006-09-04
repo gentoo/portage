@@ -1017,15 +1017,8 @@ class depgraph:
 			#processing dependencies
 			""" Call portage.dep_check to evaluate the use? conditionals and make sure all
 			dependencies are satisfiable. """
-			if myparent:
-				p_type, p_root, p_key, p_status = myparent.split()
-				dep_settings = self.pkgsettings[p_root]
-				dep_settings.setcpv(p_key)
-			else:
-				dep_settings = self.pkgsettings[self.target_root]
-				dep_settings.reset()
 			mycheck = portage.dep_check(depstring, self.mydbapi[myroot],
-				dep_settings, myuse=myuse,
+				pkgsettings, myuse=myuse,
 				use_binaries=("--usepkgonly" in self.myopts),
 				myroot=myroot, trees=self.trees)
 
