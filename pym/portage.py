@@ -3450,16 +3450,11 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 	mysplit = portage_dep.paren_reduce(depstring)
 
 	if mysettings:
-		# XXX: use="all" is only used by repoman. Why would repoman checks want
-		# profile-masked USE flags to be enabled?
-		#if use=="all":
-		#	mymasks=archlist[:]
-		#else:
-		mymasks = mysettings.usemask + list(mysettings.pusemask) + \
-			mysettings.archlist()
-
-		while mysettings["ARCH"] in mymasks:
-			del mymasks[mymasks.index(mysettings["ARCH"])]
+		mymasks = set()
+		mymasks.update(mysettings.usemask)
+		mymasks.update(mysettings.pusemask)
+		mymasks.update(mysettings.archlist())
+		mymasks.discard(mysettings["ARCH"])
 		mysplit = portage_dep.use_reduce(mysplit,uselist=myusesplit,masklist=mymasks,matchall=(use=="all"),excludeall=[mysettings["ARCH"]])
 	else:
 		mysplit = portage_dep.use_reduce(mysplit,uselist=myusesplit,matchall=(use=="all"))
