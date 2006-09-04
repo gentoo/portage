@@ -1136,6 +1136,8 @@ for x in scanlist:
 				dep_settings["ACCEPT_KEYWORDS"] = " ".join(groups)
 				# just in case, prevent config.reset() from nuking these.
 				dep_settings.backup_changes("ACCEPT_KEYWORDS")
+				# for package.use.mask support inside dep_check
+				dep_settings.setcpv("/".join((catdir, y)))
 
 				for myprovide in myaux["PROVIDE"].split():
 					prov_cp = portage.dep_getkey(myprovide)
@@ -1158,7 +1160,7 @@ for x in scanlist:
 	
 					if prof[1] == "dev":
 						suffix=suffix+"indev"
-					dep_settings.setcpv("/".join((catdir, y)))
+
 					for mytype,mypos in [["DEPEND",len(missingvars)],["RDEPEND",len(missingvars)+1],["PDEPEND",len(missingvars)+2]]:
 						
 						mykey=mytype+".bad"+suffix
