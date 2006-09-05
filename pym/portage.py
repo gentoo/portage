@@ -500,6 +500,9 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None):
 			writemsg("!!! '%s'\n" % str(e), noiselevel=-1)
 			del e
 			continue
+		if myconfig is None:
+			# file removed by a concurrent process
+			raise portage_exception.FileNotFound(file_path)
 		# process PATH, CLASSPATH, LDPATH
 		for myspec in specials.keys():
 			if myconfig.has_key(myspec):
