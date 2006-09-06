@@ -1133,11 +1133,11 @@ for x in scanlist:
 
 				trees["/"]["porttree"].settings = dep_settings
 				portdb.mysettings = dep_settings
+				# for package.use.mask support inside dep_check
+				dep_settings.setcpv("/".join((catdir, y)))
 				dep_settings["ACCEPT_KEYWORDS"] = " ".join(groups)
 				# just in case, prevent config.reset() from nuking these.
 				dep_settings.backup_changes("ACCEPT_KEYWORDS")
-				# for package.use.mask support inside dep_check
-				dep_settings.setcpv("/".join((catdir, y)))
 
 				for myprovide in myaux["PROVIDE"].split():
 					prov_cp = portage.dep_getkey(myprovide)
