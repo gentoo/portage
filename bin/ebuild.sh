@@ -994,7 +994,9 @@ dyn_test() {
 
 dyn_install() {
 	[ -z "$PORTAGE_BUILDDIR" ] && die "${FUNCNAME}: PORTAGE_BUILDDIR is unset"
-	if [ "${PORTAGE_BUILDDIR}/.installed" -nt "${WORKDIR}" ]; then
+	if hasq noauto $FEATURES ; then
+		rm -f "${PORTAGE_BUILDDIR}/.installed"
+	elif [[ ${PORTAGE_BUILDDIR}/.installed -nt ${WORKDIR} ]] ; then
 		vecho ">>> It appears that '${PF}' is already installed; skipping."
 		vecho ">>> Remove '${PORTAGE_BUILDDIR}/.installed' to force install."
 		return 0
