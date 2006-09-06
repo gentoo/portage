@@ -1130,6 +1130,13 @@ for x in scanlist:
 						config_profile_path=profdir,
 						config_incrementals=portage_const.INCREMENTALS)
 					arch_caches[prof[0]] = dep_settings
+					while True:
+						try:
+							# Protect ACCEPT_KEYWORDS from config.regenerate()
+							# (just in case)
+							dep_settings.incrementals.remove("ACCEPT_KEYWORDS")
+						except ValueError:
+							break
 
 				trees["/"]["porttree"].settings = dep_settings
 				portdb.mysettings = dep_settings
