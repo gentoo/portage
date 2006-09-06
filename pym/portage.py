@@ -501,8 +501,9 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None):
 			del e
 			continue
 		if myconfig is None:
-			# file removed by a concurrent process
-			raise portage_exception.FileNotFound(file_path)
+			# broken symlink or file removed by a concurrent process
+			writemsg("!!! File Not Found: '%s'\n" % file_path, noiselevel=-1)
+			continue
 		# process PATH, CLASSPATH, LDPATH
 		for myspec in specials.keys():
 			if myconfig.has_key(myspec):
