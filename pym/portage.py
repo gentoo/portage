@@ -5678,6 +5678,8 @@ class dblink:
 
 	def unmerge(self, pkgfiles=None, trimworld=1, cleanup=1,
 		ldpath_mtimes=None):
+		"""The caller must ensure that lockdb() and unlockdb() are called
+		before and after this method."""
 		global dircache
 		dircache={}
 
