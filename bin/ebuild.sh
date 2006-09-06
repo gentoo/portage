@@ -915,9 +915,9 @@ dyn_compile() {
 	fi
 	cp "${EBUILD}" "build-info/${PF}.ebuild"
 
-	if [ "${PORTAGE_BUILDDIR}/.compiled" -nt "${WORKDIR}" ]; then
-		vecho ">>> It appears that ${PN} is already compiled; skipping."
-		vecho ">>> (clean to force compilation)"
+	if [[ ${PORTAGE_BUILDDIR}/.compiled -nt ${WORKDIR} ]] ; then
+		vecho ">>> It appears that '${PF}' is already compiled; skipping."
+		vecho ">>> Remove '${PORTAGE_BUILDDIR}/.compiled' to force install."
 		trap SIGINT SIGQUIT
 		[ "$(type -t post_src_compile)" == "function" ] && post_src_compile
 		return
