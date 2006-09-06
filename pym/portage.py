@@ -3244,12 +3244,16 @@ def merge(mycat, mypkg, pkgloc, infloc, myroot, mysettings, myebuild=None,
 def unmerge(cat, pkg, myroot, mysettings, mytrimworld=1, vartree=None, ldpath_mtimes=None):
 	mylink = dblink(
 		cat, pkg, myroot, mysettings, treetype="vartree", vartree=vartree)
-	if mylink.exists():
-		mylink.unmerge(trimworld=mytrimworld, cleanup=1,
-			ldpath_mtimes=ldpath_mtimes)
-		mylink.delete()
-		return 0
-	return 1
+	try:
+		mylink.lockdb()
+		if mylink.exists():
+			mylink.unmerge(trimworld=mytrimworld, cleanup=1,
+				ldpath_mtimes=ldpath_mtimes)
+			mylink.delete()
+			return 0
+		return 1
+	finally:
+		mylink.unlockdb()
 
 def getCPFromCPV(mycpv):
 	"""Calls pkgsplit on a cpv and returns only the cp."""
@@ -5677,8 +5681,6 @@ class dblink:
 		global dircache
 		dircache={}
 
-		self.lockdb()
-
 		self.settings.load_infodir(self.dbdir)
 
 		if not pkgfiles:
@@ -5843,7 +5845,7 @@ class dblink:
 			doebuild(myebuildpath, "cleanrm", self.myroot, self.settings,
 				tree="vartree", mydbapi=self.vartree.dbapi,
 				vartree=self.vartree)
-		self.unlockdb()
+
 		env_update(target_root=self.myroot, prev_mtimes=ldpath_mtimes)
 
 	def isowner(self,filename,destroot):
