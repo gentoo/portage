@@ -406,7 +406,7 @@ unpack() {
 				fi
 				;;
 			RAR|rar)
-				unrar x -idq "${srcdir}/${x}" || die "$myfail"
+				unrar x -idq -o+ "${srcdir}/${x}" || die "$myfail"
 				;;
 			LHa|LHA|lha|lzh)
 				lha xqf "${srcdir}/${x}" || die "$myfail"
