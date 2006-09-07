@@ -17,11 +17,12 @@ fi
 # We need to ensure a sane umask for the packages that will be created.
 umask 022
 
+eval $(portageq envvar -v PKGDIR PORTAGE_PYM_PATH PORTAGE_TMPDIR ROOT)
+export PKGDIR PORTAGE_TMPDIR ROOT
+
 # Make sure the xpak module is in PYTHONPATH
-export PYTHONPATH=$(portageq envvar PORTAGE_PYM_PATH)
+export PYTHONPATH=${PORTAGE_PYM_PATH}
 export PORTAGE_DB=$(portageq vdb_path)
-export ROOT=$(portageq envvar ROOT)
-export ROOT=${ROOT%/}/
 
 if [ -z "$1" ] || [ $1 == "-h" ] || [ $1 == "--help" ] ; then
 	echo "QUICKPKG ver 1.2"
@@ -41,9 +42,6 @@ if [ -z "$1" ] || [ $1 == "-h" ] || [ $1 == "--help" ] ; then
 	echo "        package up apache, just version 1.3.27-r1"
 	exit 1
 fi
-
-export PKGDIR=$(portageq envvar PKGDIR)
-export PORTAGE_TMPDIR=$(portageq envvar PORTAGE_TMPDIR)
 
 source /sbin/functions.sh
 
