@@ -21,6 +21,8 @@ eval $(portageq envvar -v NOCOLOR PKGDIR PORTAGE_BIN_PATH PORTAGE_NICENESS \
 	PORTAGE_PYM_PATH PORTAGE_TMPDIR ROOT)
 export PKGDIR PORTAGE_TMPDIR ROOT
 
+[ -n "${PORTAGE_NICENESS}" ] && renice $PORTAGE_NICENESS $$ > /dev/null
+
 # Make sure the xpak module is in PYTHONPATH
 export PYTHONPATH=${PORTAGE_PYM_PATH}
 export PORTAGE_DB=$(portageq vdb_path)
