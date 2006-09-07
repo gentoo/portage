@@ -1204,8 +1204,8 @@ class config:
 
 			if self.get("PORTAGE_DEPCACHEDIR", None):
 				self.depcachedir = self["PORTAGE_DEPCACHEDIR"]
-				while "PORTAGE_DEPCACHEDIR" in self:
-					del self["PORTAGE_DEPCACHEDIR"]
+			self["PORTAGE_DEPCACHEDIR"] = self.depcachedir
+			self.backup_changes("PORTAGE_DEPCACHEDIR")
 
 			overlays = self.get("PORTDIR_OVERLAY","").split()
 			if overlays:
