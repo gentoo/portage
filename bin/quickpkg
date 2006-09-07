@@ -17,6 +17,8 @@ fi
 # We need to ensure a sane umask for the packages that will be created.
 umask 022
 
+# Make sure the xpak module is in PYTHONPATH
+export PYTHONPATH=$(portageq envvar PORTAGE_PYM_PATH)
 export PORTAGE_DB=$(portageq vdb_path)
 export ROOT=$(portageq envvar ROOT)
 export ROOT=${ROOT%/}/
@@ -63,6 +65,9 @@ do_pkg() {
 		# get pkg info files
 		mkdir -p "${MYDIR}"/temp
 		cp "${SRCDIR}"/* "${MYDIR}"/temp/
+		[ -d "${PKGDIR}"/All ] ||  mkdir -p "${PKGDIR}"/All
+		local pkg_dest="${PKGDIR}/All/${1}.tbz2"
+		local pkg_tmp="${PKGDIR}/All/${1}.tbz2.$$"
 
 		# create filelist and a basic tbz2
 		gawk '{
@@ -74,16 +79,14 @@ do_pkg() {
 			}
 			print
 		}' "${SRCDIR}"/CONTENTS | cut -f2- -d" " - | sed -e 's:^/:./:' > "${MYDIR}"/filelist
-		tar vjcf "${MYDIR}"/bin.tar.bz2 -C "${ROOT}" --files-from="${MYDIR}"/filelist --no-recursion
+		tar vjcf "${pkg_tmp}" -C "${ROOT}" --files-from="${MYDIR}"/filelist --no-recursion
 
 		# join together the basic tbz2 and the pkg info files
-		xpak "${MYDIR}"/temp "${MYDIR}"/inf.xpak
-		tbz2tool join "${MYDIR}"/bin.tar.bz2 "${MYDIR}"/inf.xpak "${MYDIR}"/$1.tbz2
+		python -c "import xpak; t=xpak.tbz2('${pkg_tmp}'); t.recompose('${MYDIR}/temp')"
 
 		# move the final binary package to PKGDIR
-		[ -d "${PKGDIR}"/All ] ||  mkdir -p "${PKGDIR}"/All
+		mv -f "${pkg_tmp}" "${pkg_dest}"
 		[ -d "${PKGDIR}/$2" ] || mkdir -p "${PKGDIR}/$2"
-		mv "${MYDIR}"/$1.tbz2 "${PKGDIR}"/All
 		( cd "${PKGDIR}/$2" && ln -s ../All/$1.tbz2 )
 
 		# cleanup again
