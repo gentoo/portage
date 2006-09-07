@@ -71,8 +71,8 @@ do_pkg() {
 					NF=NF-2
 				else if ($1 == "sym")
 					NF=NF-3
-				print
 			}
+			print
 		}' "${SRCDIR}"/CONTENTS | cut -f2- -d" " - | sed -e 's:^/:./:' > "${MYDIR}"/filelist
 		tar vjcf "${MYDIR}"/bin.tar.bz2 -C "${ROOT}" --files-from="${MYDIR}"/filelist --no-recursion
 
