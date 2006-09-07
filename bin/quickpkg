@@ -17,7 +17,8 @@ fi
 # We need to ensure a sane umask for the packages that will be created.
 umask 022
 
-eval $(portageq envvar -v PKGDIR PORTAGE_PYM_PATH PORTAGE_TMPDIR ROOT)
+eval $(portageq envvar -v NOCOLOR PKGDIR PORTAGE_BIN_PATH PORTAGE_NICENESS \
+	PORTAGE_PYM_PATH PORTAGE_TMPDIR ROOT)
 export PKGDIR PORTAGE_TMPDIR ROOT
 
 # Make sure the xpak module is in PYTHONPATH
@@ -43,7 +44,15 @@ if [ -z "$1" ] || [ $1 == "-h" ] || [ $1 == "--help" ] ; then
 	exit 1
 fi
 
-source /sbin/functions.sh
+source "${PORTAGE_BIN_PATH}/isolated-functions.sh"
+case "${NOCOLOR:-false}" in
+	yes|true)
+		unset_colors
+		;;
+	no|false)
+		set_colors
+		;;
+esac
 
 # here we make a package given a little info
 # $1 = package-name w/version
