@@ -5855,8 +5855,11 @@ class dblink:
 		(for this or a previous version)"""
 		destfile = normalize_path(
 			os.path.join(destroot, filename.lstrip(os.path.sep)))
-		if not os.path.exists(destfile):
+		try:
+			os.lstat(destfile) # lexists requires >=python-2.4
+		except OSError:
 			return True
+
 		pkgfiles = self.getcontents()
 		if pkgfiles and filename in pkgfiles:
 			return True
