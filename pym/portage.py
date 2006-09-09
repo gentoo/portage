@@ -5574,6 +5574,7 @@ class dblink:
 		self.updateprotect = protect_obj.updateprotect
 		self.isprotected = protect_obj.isprotected
 		self.contentscache=[]
+		self._contents_inodes = None
 
 	def lockdb(self):
 		if self.lock_num == 0:
@@ -5856,13 +5857,24 @@ class dblink:
 		destfile = normalize_path(
 			os.path.join(destroot, filename.lstrip(os.path.sep)))
 		try:
-			os.lstat(destfile) # lexists requires >=python-2.4
+			mylstat = os.lstat(destfile)
 		except OSError:
 			return True
 
 		pkgfiles = self.getcontents()
 		if pkgfiles and filename in pkgfiles:
 			return True
+		if pkgfiles:
+			if self._contents_inodes is None:
+				self._contents_inodes = set()
+				for x in pkgfiles:
+					try:
+						lstat = os.lstat(x)
+						self._contents_inodes.add((lstat.st_dev, lstat.st_ino))
+					except OSError:
+						pass
+			if (mylstat.st_dev, mylstat.st_ino) in self._contents_inodes:
+				 return True
 
 		return False
 
