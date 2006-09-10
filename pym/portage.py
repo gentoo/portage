@@ -482,7 +482,7 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None):
 	}
 	colon_separated = [
 		"ADA_INCLUDE_PATH",  "ADA_OBJECTS_PATH",
-		"LDPATH",            "MANPATH",
+		"KDEDIRS",           "LDPATH",            "MANPATH",
 		"PATH",              "PKG_CONFIG_PATH",   "PRELINK_PATH",
 		"PRELINK_PATH_MASK", "PYTHONPATH"
 	]
