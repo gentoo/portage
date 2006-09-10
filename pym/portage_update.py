@@ -193,7 +193,7 @@ def update_config_files(config_root, protect, protect_mask, update_iter):
 	for x in update_files:
 		updating_file = os.path.join(abs_user_config, x)
 		if protect_obj.isprotected(updating_file):
-			updating_file = new_protect_filename(updating_file)[0]
+			updating_file = new_protect_filename(updating_file)
 		try:
 			write_atomic(updating_file, "".join(file_contents[x]))
 		except PortageException, e:
