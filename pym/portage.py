@@ -1349,10 +1349,7 @@ class config:
 
 	def reset(self,keeping_pkg=0,use_cache=1):
 		"reset environment to original settings"
-		for x in self.configlist[-1].keys():
-			if x not in self.backupenv.keys():
-				del self.configlist[-1][x]
-
+		self.configdict["env"].clear()
 		self.configdict["env"].update(self.backupenv)
 
 		self.modifiedkeys = []
