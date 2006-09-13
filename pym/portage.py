@@ -1609,7 +1609,11 @@ class config:
 			# like LINGUAS.
 			var_split = [ x for x in var_split if x in expand_flags ]
 			var_split.extend(expand_flags.difference(var_split))
-			self[var] = " ".join(var_split)
+			if var_split or var in self:
+				# Don't export empty USE_EXPAND vars unless the user config
+				# exports them as empty.  This is required for vars such as
+				# LINGUAS, where unset and empty have different meanings.
+				self[var] = " ".join(var_split)
 
 		# Pre-Pend ARCH variable to USE settings so '-*' in env doesn't kill arch.
 		if self.configdict["defaults"].has_key("ARCH"):
