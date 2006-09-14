@@ -13,23 +13,9 @@ import types
 import portage_exception
 import portage_util
 import portage_data
-from portage_exec import atexit_register
 from portage_localization import _
 
 HARDLINK_FD = -2
-
-hardlock_path_list = []
-def clean_my_hardlocks():
-	for x in hardlock_path_list:
-		hardlock_cleanup(x)
-def add_hardlock_file_to_cleanup(path):
-	mypath = portage_util.normalize_path(path)
-	if os.path.isfile(mypath):
-		mypath = os.path.dirname(mypath)
-	if os.path.isdir(mypath):
-		hardlock_path_list = mypath[:]
-
-atexit_register(clean_my_hardlocks)
 
 def lockdir(mydir):
 	return lockfile(mydir,wantnewlockfile=1)
@@ -229,9 +215,7 @@ def hardlink_lockfile(lockfilename, max_wait=14400):
 	Otherwise we lather, rise, and repeat.
 	We default to a 4 hour timeout.
 	"""
-	
-	add_hardlock_file_to_cleanup(lockfilename)
-	
+
 	start_time = time.time()
 	myhardlock = hardlock_name(lockfilename)
 	reported_waiting = False
