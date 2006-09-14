@@ -271,13 +271,16 @@ def hardlink_lockfile(lockfilename, max_wait=14400):
 
 def unhardlink_lockfile(lockfilename):
 	myhardlock = hardlock_name(lockfilename)
-	try:
-		if os.path.exists(myhardlock):
-			os.unlink(myhardlock)
-		if os.path.exists(lockfilename):
+	if hardlink_is_mine(myhardlock, lockfilename):
+		# Make sure not to touch lockfilename unless we really have a lock.
+		try:
 			os.unlink(lockfilename)
+		except OSError:
+			pass
+	try:
+		os.unlink(myhardlock)
 	except OSError:
-		portage_util.writemsg("Something strange happened to our hardlink locks.\n")
+		pass
 
 def hardlock_cleanup(path, remove_all_locks=False):
 	mypid  = str(os.getpid())
