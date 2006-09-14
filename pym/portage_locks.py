@@ -186,11 +186,6 @@ def unlockfile(mytuple):
 def hardlock_name(path):
 	return path+".hardlock-"+os.uname()[1]+"-"+str(os.getpid())
 
-def hardlink_active(lock):
-	if not os.path.exists(lock):
-		return False
- 	# XXXXXXXXXXXXXXXXXXXXXXXXXX
-
 def hardlink_is_mine(link,lock):
 	try:
 		return os.stat(link).st_nlink == 2
