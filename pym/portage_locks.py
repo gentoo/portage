@@ -193,19 +193,9 @@ def hardlink_active(lock):
 
 def hardlink_is_mine(link,lock):
 	try:
-		myhls = os.stat(link)
-		mylfs = os.stat(lock)
+		return os.stat(link).st_nlink == 2
 	except OSError:
-		myhls = None
-		mylfs = None
-
-	if myhls:
-		if myhls[stat.ST_NLINK] == 2:
-			return True
-		if mylfs:
-			if mylfs[stat.ST_INO] == myhls[stat.ST_INO]:
-				return True
-	return False
+		return False
 
 def hardlink_lockfile(lockfilename, max_wait=14400):
 	"""Does the NFS, hardlink shuffle to ensure locking on the disk.
