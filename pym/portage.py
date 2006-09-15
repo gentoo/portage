@@ -6316,39 +6316,25 @@ class dblink:
 						if myppath:
 							# we have a protection path; enable config file management.
 							destmd5=portage_checksum.perform_md5(mydest,calc_prelink=1)
-							cycled=0
-							if cfgfiledict.has_key(myrealdest):
-								if destmd5 in cfgfiledict[myrealdest]:
-									#cycle
-									print "cycle"
-									del cfgfiledict[myrealdest]
-									cycled=1
 							if mymd5==destmd5:
 								#file already in place; simply update mtimes of destination
 								os.utime(mydest,(thismtime,thismtime))
 								zing="---"
 								moveme=0
-							elif cycled:
-								#mymd5!=destmd5 and we've cycled; move mysrc into place as a ._cfg file
-								moveme=1
-								cfgfiledict[myrealdest]=[mymd5]
-								cfgprot=1
-							elif cfgfiledict.has_key(myrealdest) and (mymd5 in cfgfiledict[myrealdest]):
-								#myd5!=destmd5, we haven't cycled, and the file we're merging has been already merged previously
-								zing="-o-"
-								moveme=cfgfiledict["IGNORE"]
-								cfgprot=cfgfiledict["IGNORE"]
 							else:
-								#mymd5!=destmd5, we haven't cycled, and the file we're merging hasn't been merged before
-								moveme=1
-								cfgprot=1
-								if not cfgfiledict.has_key(myrealdest):
-									cfgfiledict[myrealdest]=[]
-								if mymd5 not in cfgfiledict[myrealdest]:
-									cfgfiledict[myrealdest].append(mymd5)
-								# only record the last md5
-								if len(cfgfiledict[myrealdest])>1:
-									del cfgfiledict[myrealdest][0]
+								if mymd5 == cfgfiledict.get(myrealdest, [None])[0]:
+									""" An identical update has previously been
+									merged.  Skip it unless the user has chosen
+									--noconfmem."""
+									zing = "-o-"
+									moveme = cfgfiledict["IGNORE"]
+									cfgprot = cfgfiledict["IGNORE"]
+								else:
+									moveme = 1
+									cfgprot = 1
+							if moveme:
+								# Merging a new file, so update confmem.
+								cfgfiledict[myrealdest] = [mymd5]
 						if cfgprot:
 							mydest = new_protect_filename(mydest, newmd5=mymd5)
 
