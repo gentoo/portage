@@ -475,21 +475,13 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None):
 	fns = templist
 	del templist
 
-	specials={
-	  "KDEDIRS":[],"PATH":[],"CLASSPATH":[],"LDPATH":[],"MANPATH":[],
-		"INFODIR":[],"INFOPATH":[],"ROOTPATH":[],"CONFIG_PROTECT":[],
-		"CONFIG_PROTECT_MASK":[],"PRELINK_PATH":[],"PRELINK_PATH_MASK":[],
-		"PYTHONPATH":[], "ADA_INCLUDE_PATH":[], "ADA_OBJECTS_PATH":[],
-		"PKG_CONFIG_PATH":[]
-	}
-	colon_separated = [
-		"ADA_INCLUDE_PATH",  "ADA_OBJECTS_PATH",
-		"KDEDIRS",           "LDPATH",            "MANPATH",
-		"PATH",              "PKG_CONFIG_PATH",   "PRELINK_PATH",
-		"PRELINK_PATH_MASK", "PYTHONPATH"
-	]
+	space_separated = set(["CONFIG_PROTECT", "CONFIG_PROTECT_MASK"])
+	colon_separated = set(["ADA_INCLUDE_PATH", "ADA_OBJECTS_PATH",
+		"CLASSPATH", "INFODIR", "INFOPATH", "KDEDIRS", "LDPATH", "MANPATH",
+		  "PATH", "PKG_CONFIG_PATH", "PRELINK_PATH", "PRELINK_PATH_MASK",
+		  "PYTHONPATH", "ROOTPATH"])
 
-	env={}
+	config_list = []
 
 	for x in fns:
 		file_path = os.path.join(envd_dir, x)
@@ -503,17 +495,40 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None):
 			# broken symlink or file removed by a concurrent process
 			writemsg("!!! File Not Found: '%s'\n" % file_path, noiselevel=-1)
 			continue
-		# process PATH, CLASSPATH, LDPATH
-		for myspec in specials.keys():
-			if myconfig.has_key(myspec):
-				if myspec in colon_separated:
-					specials[myspec].extend(myconfig[myspec].split(":"))
-				else:
-					specials[myspec].append(myconfig[myspec])
-				del myconfig[myspec]
-		# process all other variables
-		for myenv in myconfig.keys():
-			env[myenv]=myconfig[myenv]
+		config_list.append(myconfig)
+		if "SPACE_SEPARATED" in myconfig:
+			space_separated.update(myconfig["SPACE_SEPARATED"].split())
+			del myconfig["SPACE_SEPARATED"]
+		if "COLON_SEPARATED" in myconfig:
+			colon_separated.update(myconfig["COLON_SEPARATED"].split())
+			del myconfig["COLON_SEPARATED"]
+
+	env = {}
+	specials = {}
+	for var in space_separated:
+		mylist = []
+		for myconfig in config_list:
+			if var in myconfig:
+				mylist.extend(myconfig[var].split())
+				del myconfig[var] # prepare for env.update(myconfig)
+		if mylist:
+			env[var] = " ".join(mylist)
+		specials[var] = mylist
+
+	for var in colon_separated:
+		mylist = []
+		for myconfig in config_list:
+			if var in myconfig:
+				mylist.extend(myconfig[var].split(":"))
+				del myconfig[var] # prepare for env.update(myconfig)
+		if mylist:
+			env[var] = ":".join(mylist)
+		specials[var] = mylist
+
+	for myconfig in config_list:
+		"""Cumulative variables have already been deleted from myconfig so that
+		they won't be overwritten by this dict.update call."""
+		env.update(myconfig)
 
 	ldsoconf_path = os.path.join(target_root, "etc", "ld.so.conf")
 	try:
@@ -533,7 +548,7 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None):
 
 	ld_cache_update=False
 
-	newld=specials["LDPATH"]
+	newld = specials["LDPATH"]
 	if (oldld!=newld):
 		#ld.so.conf needs updating and ldconfig needs to be run
 		myfd = atomic_ofstream(ldsoconf_path)
@@ -631,50 +646,17 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None):
 	outfile = atomic_ofstream(os.path.join(target_root, "etc", "profile.env"))
 	outfile.write(penvnotice)
 
-	for path in specials.keys():
-		if len(specials[path])==0:
-			continue
-		outstring="export "+path+"='"
-		if path in ["CONFIG_PROTECT","CONFIG_PROTECT_MASK"]:
-			for x in specials[path][:-1]:
-				outstring += x+" "
-		else:
-			for x in specials[path][:-1]:
-				outstring=outstring+x+":"
-		outstring=outstring+specials[path][-1]+"'"
-		outfile.write(outstring+"\n")
-
-	#create /etc/profile.env
-	for x in env.keys():
-		if type(env[x])!=types.StringType:
-			continue
-		outfile.write("export "+x+"='"+env[x]+"'\n")
+	env_keys = [ x for x in env if x != "LDPATH" ]
+	env_keys.sort()
+	for x in env_keys:
+		outfile.write("export %s='%s'\n" % (x, env[x]))
 	outfile.close()
 
 	#create /etc/csh.env for (t)csh support
 	outfile = atomic_ofstream(os.path.join(target_root, "etc", "csh.env"))
 	outfile.write(cenvnotice)
-
-	for path in specials.keys():
-		if len(specials[path])==0:
-			continue
-		outstring="setenv "+path+" '"
-		if path in ["CONFIG_PROTECT","CONFIG_PROTECT_MASK"]:
-			for x in specials[path][:-1]:
-				outstring += x+" "
-		else:
-			for x in specials[path][:-1]:
-				outstring=outstring+x+":"
-		outstring=outstring+specials[path][-1]+"'"
-		outfile.write(outstring+"\n")
-		#get it out of the way
-		del specials[path]
-
-	#create /etc/csh.env
-	for x in env.keys():
-		if type(env[x])!=types.StringType:
-			continue
-		outfile.write("setenv "+x+" '"+env[x]+"'\n")
+	for x in env_keys:
+		outfile.write("setenv %s '%s'\n" % (x, env[x]))
 	outfile.close()
 
 # returns a tuple.  (version[string], error[string])
