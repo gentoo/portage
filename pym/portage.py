@@ -6316,6 +6316,10 @@ class dblink:
 							if moveme:
 								# Merging a new file, so update confmem.
 								cfgfiledict[myrealdest] = [mymd5]
+							elif destmd5 == cfgfiledict.get(myrealdest, [None])[0]:
+								"""A previously remembered update has been
+								accepted, so it is removed from confmem."""
+								del cfgfiledict[myrealdest]
 						if cfgprot:
 							mydest = new_protect_filename(mydest, newmd5=mymd5)
 
