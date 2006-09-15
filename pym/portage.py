@@ -463,15 +463,17 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None):
 	portage_util.ensure_dirs(envd_dir, mode=0755)
 	fns = listdir(envd_dir, EmptyOnError=1)
 	fns.sort()
-	pos=0
-	while (pos<len(fns)):
-		if len(fns[pos])<=2:
-			del fns[pos]
+	templist = []
+	for x in fns:
+		if len(x) <= 3:
 			continue
-		if (fns[pos][0] not in string.digits) or (fns[pos][1] not in string.digits):
-			del fns[pos]
+		if not x[0].isdigit() or not x[1].isdigit():
 			continue
-		pos=pos+1
+		if x.startswith(".") or x.endswith("~") or x.endswith(".bak"):
+			continue
+		templist.append(x)
+	fns = templist
+	del templist
 
 	specials={
 	  "KDEDIRS":[],"PATH":[],"CLASSPATH":[],"LDPATH":[],"MANPATH":[],
@@ -490,9 +492,6 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None):
 	env={}
 
 	for x in fns:
-		# don't process backup files
-		if x[-1]=='~' or x[-4:]==".bak":
-			continue
 		file_path = os.path.join(envd_dir, x)
 		try:
 			myconfig = getconfig(file_path)
