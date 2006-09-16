@@ -20,7 +20,7 @@ try:
 except KeyboardInterrupt:
 	sys.exit(1)
 
-import os
+import os, stat
 os.environ["PORTAGE_CALLER"]="emerge"
 sys.path = ["/usr/lib/portage/pym"]+sys.path
 
@@ -2521,15 +2521,29 @@ def chk_updated_cfg_files(target_root, config_protect):
 		procount=0
 		for x in config_protect:
 			x = os.path.join(target_root, x.lstrip(os.path.sep))
-			if os.path.isdir(x):
-				a=commands.getstatusoutput("cd "+x+"; find . -iname '._cfg????_*'")
-				if a[0]!=0:
-					print " "+red("*")+" error scanning",x
-				else:
-					files=string.split(a[1])
-					if files:
-						procount=procount+1
-						print " "+yellow("* IMPORTANT:")+"",len(files),"config files in",x,"need updating."
+			try:
+				mymode = os.lstat(x).st_mode
+			except OSError:
+				continue
+			if stat.S_ISDIR(mymode):
+				mycommand = "cd '%s'; find . -iname '._cfg????_*'" % x
+			else:
+				mycommand = "cd '%s'; find . -maxdepth 1 -iname '._cfg????_%s'" % \
+					os.path.split(x.rstrip(os.path.sep))
+			a = commands.getstatusoutput(mycommand)
+			if a[0] != 0:
+				print >> sys.stderr, " " + bad("*")+ " error scanning '%s'" % x
+			else:
+				files = a[1].split()
+				if files:
+					procount += 1
+					print colorize("WARN", " * IMPORTANT:"),
+					if stat.S_ISDIR(mymode):
+						 print "%d config files in '%s' need updating." % \
+							(len(files), x)
+					else:
+						 print "config file '%s' needs updating." % x
+
 		if procount:
 			#print " "+yellow("*")+" Type "+green("emerge --help config")+" to learn how to update config files."
 			print " "+yellow("*")+" Type "+green("emerge --help config")+" to learn how to update config files."
