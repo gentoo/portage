@@ -6112,11 +6112,6 @@ class dblink:
 			#A directory is specified.  Figure out protection paths, listdir() it and process it.
 			mergelist = listdir(join(srcroot, stufftomerge))
 			offset=stufftomerge
-			# We need mydest defined up here to calc. protection paths.  This is now done once per
-			# directory rather than once per file merge.  This should really help merge performance.
-			# Trailing / ensures that protects/masks with trailing /'s match.
-			mytruncpath = join(destroot, offset).rstrip(sep) + sep
-			myppath=self.isprotected(mytruncpath)
 		else:
 			mergelist=stufftomerge
 			offset=""
@@ -6294,7 +6289,7 @@ class dblink:
 						# or by a symlink to an existing regular file;
 						# now, config file management may come into play.
 						# we only need to tweak mydest if cfg file management is in play.
-						if myppath:
+						if self.isprotected(mydest):
 							# we have a protection path; enable config file management.
 							destmd5=portage_checksum.perform_md5(mydest,calc_prelink=1)
 							if mymd5==destmd5:

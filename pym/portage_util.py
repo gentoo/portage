@@ -7,7 +7,7 @@ from portage_exception import PortageException, FileNotFound, \
 import portage_exception
 from portage_dep import isvalidatom
 
-import sys,string,shlex,os,errno
+import os, errno, shlex, stat, string, sys
 try:
 	import cPickle
 except ImportError:
@@ -829,33 +829,65 @@ class ConfigProtect(object):
 		self.updateprotect()
 
 	def updateprotect(self):
-		#do some config file management prep
+		"""Update internal state for isprotected() calls.  Nonexistent paths
+		are ignored."""
 		self.protect = []
+		self._dirs = set()
 		for x in self.protect_list:
 			ppath = normalize_path(
-				os.path.join(self.myroot, x.lstrip(os.path.sep))) + os.path.sep
-			if os.path.isdir(ppath):
+				os.path.join(self.myroot, x.lstrip(os.path.sep)))
+			mystat = None
+			try:
+				if stat.S_ISDIR(os.lstat(ppath).st_mode):
+					self._dirs.add(ppath)
 				self.protect.append(ppath)
+			except OSError:
+				# If it doesn't exist, there's no need to protect it.
+				pass
 
 		self.protectmask = []
 		for x in self.mask_list:
 			ppath = normalize_path(
-				os.path.join(self.myroot, x.lstrip(os.path.sep))) + os.path.sep
-			if os.path.isdir(ppath):
+				os.path.join(self.myroot, x.lstrip(os.path.sep)))
+			mystat = None
+			try:
+				if stat.S_ISDIR(os.lstat(ppath).st_mode):
+					self._dirs.add(ppath)
 				self.protectmask.append(ppath)
-			#if it doesn't exist, silently skip it
+			except OSError:
+				# If it doesn't exist, there's no need to mask it.
+				pass
 
 	def isprotected(self, obj):
-		"""Checks if obj is in the current protect/mask directories. Returns
-		0 on unprotected/masked, and 1 on protected."""
+		"""Returns True if obj is protected, False otherwise.  The caller must
+		ensure that obj is normalized with a single leading slash.  A trailing
+		slash is optional for directories."""
 		masked = 0
 		protected = 0
+		sep = os.path.sep
 		for ppath in self.protect:
 			if len(ppath) > masked and obj.startswith(ppath):
+				if ppath in self._dirs:
+					if obj != ppath and not obj.startswith(ppath + sep):
+						# /etc/foo does not match /etc/foobaz
+						continue
+				elif obj != ppath:
+					# force exact match when CONFIG_PROTECT lists a
+					# non-directory
+					continue
 				protected = len(ppath)
 				#config file management
 				for pmpath in self.protectmask:
 					if len(pmpath) >= protected and obj.startswith(pmpath):
+						if pmpath in self._dirs:
+							if obj != pmpath and \
+								not obj.startswith(pmpath + sep):
+								# /etc/foo does not match /etc/foobaz
+								continue
+						elif obj != pmpath:
+							# force exact match when CONFIG_PROTECT_MASK lists
+							# a non-directory
+							continue
 						#skip, it's in the mask
 						masked = len(pmpath)
 		return protected > masked
