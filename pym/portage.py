@@ -6573,7 +6573,8 @@ def commit_mtimedb(mydict=None, filename=None):
 		global mtimedb
 		if "mtimedb" not in globals() or mtimedb is None:
 			return
-		mydict = mtimedb
+		mtimedb.commit()
+		return
 	if filename is None:
 		global mtimedbfile
 		filename = mtimedbfile
