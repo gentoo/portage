@@ -1261,7 +1261,7 @@ for x in scanlist:
 		ignore_line = re.compile(r'(^$)|(^(\t)*#)')
 		leading_spaces = re.compile(r'^[\S\t]')
 		trailing_whitespace = re.compile(r'.*([\S]$)')
-		readonly_assignment = re.compile(r'^\s*(export\s+)?(A|P|PV|PN|PR|PVR|PF|D|WORKDIR|FILESDIR|FEATURES|USE)=')
+		readonly_assignment = re.compile(r'^\s*(export\s+)?(A|CATEGORY|P|PV|PN|PR|PVR|PF|D|WORKDIR|FILESDIR|FEATURES|USE)=')
 		continuation_symbol = re.compile(r'(.*[ ]+[\\][ ].*)')
 		line_continuation_quoted = re.compile(r'(\"|\')(([\w ,:;#\[\]\.`=/|\$\^\*{}()\'-])|(\\.))*\1')
 		line_continuation = re.compile(r'([^#]*\S)(\s+|\t)\\$')
