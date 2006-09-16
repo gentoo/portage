@@ -33,6 +33,8 @@ function scan() {
 	mkdir ${TMP}/files || die "Failed mkdir command!" 1
 	count=0
 	input=0
+	local find_opts
+	local my_basename
 
 	# Sanity check to make sure diff exists and works
 	if ! diff -v &>/dev/null ; then
@@ -41,10 +43,16 @@ function scan() {
 	fi
 
 	for path in ${CONFIG_PROTECT} ; do
-		[ ! -d ${path} ] && continue
+		find_opts="-iname ._cfg????_*"
+		if [ ! -d "${path}" ]; then
+			[ ! -f "${path}" ] && continue
+			my_basename="${path##*/}"
+			path="${path%/*}"
+			find_opts="-maxdepth 1 -iname ._cfg????_${my_basename}"
+		fi
 
 		ofile=""
-		for file in $(find ${path}/ -iname '._cfg????_*' ! -name '.*~' ! -name '.*.bak' |
+		for file in $(find ${path}/ ${find_opts} ! -name '.*~' ! -name '.*.bak' |
 			   sed -e "s:\(^.*/\)\(\._cfg[0-9]*_\)\(.*$\):\1\2\3\%\2\%\3:" |
 			   sort -t'%' -k3 -k2 | LANG=POSIX LC_ALL=POSIX cut -f1 -d'%'); do
 			rpath=$(echo "${file/\/\///}" | sed -e "s:/[^/]*$::")
