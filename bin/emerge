@@ -1857,10 +1857,10 @@ class MergeTask(object):
 			mtimedb.commit()
 
 		myfeat = self.settings.features[:]
-
+		bad_resume_opts = set(["--ask", "--tree", "--changelog", "--skipfirst",
+			"--resume"])
 		if "parallel-fetch" in myfeat and \
-			not ("--ask" in self.myopts or \
-			"--pretend" in self.myopts or \
+			not ("--pretend" in self.myopts or \
 			"--fetch-all-uri" in self.myopts or \
 			"--fetchonly" in self.myopts):
 			if "distlocks" not in myfeat:
@@ -1870,49 +1870,21 @@ class MergeTask(object):
 				print red("!!!")
 			elif len(mymergelist) > 1:
 				print ">>> starting parallel fetching"
-				pid = os.fork()
-				if not pid:
-					sys.stdin.close()
-					sys.stdout.close()
-					sys.stderr.close()
-					time.sleep(3) # allow the parent to have first fetch
-					fetchlog = "/var/log/emerge-fetch.log"
-					sys.stdout = open(fetchlog, "w")
-					sys.stderr = sys.stdout
-					os.dup2(sys.stdout.fileno(), 1)
-					os.dup2(sys.stderr.fileno(), 2)
-					portage_util.apply_secpass_permissions(fetchlog,
-						uid=portage.portage_uid, gid=portage.portage_gid,
-						mode=0660)
-
-					for myroot, pkgsettings in self.pkgsettings.iteritems():
-						for x in ("autoaddcvs", "cvs"):
-							while x in pkgsettings.features:
-								pkgsettings.features.remove(x)
-						pkgsettings["FEATURES"] = " ".join(pkgsettings.features)
-						pkgsettings.backup_changes("FEATURES")
-
-					ret = 0
-					for x in mymergelist:
-						if x[0] != "ebuild":
-							continue
-						myroot = x[1]
-						portdb = self.trees[myroot]["porttree"].dbapi
-						pkgsettings = self.pkgsettings[myroot]
-						pkgsettings.reset()
-						pkgsettings.setcpv(x[2])
-						try:
-							ret = portage.doebuild(portdb.findname(x[2]),
-								"fetch", myroot, pkgsettings,
-								cleanup=0, fetchonly=True,
-								mydbapi=portdb,
-								tree="porttree")
-						except SystemExit:
-							raise
-						except Exception:
-							ret = 1
-					sys.exit(0)
-				portage.portage_exec.spawned_pids.append(pid)
+				fetch_log = "/var/log/emerge-fetch.log"
+				logfile = open(fetch_log, "w")
+				fd_pipes = {1:logfile.fileno(), 2:logfile.fileno()}
+				portage_util.apply_secpass_permissions(fetch_log,
+					uid=portage.portage_uid, gid=portage.portage_gid,
+					mode=0660)
+				fetch_env = os.environ.copy()
+				fetch_env["FEATURES"] = fetch_env.get("FEATURES", "") + " -cvs"
+				fetch_env["PORTAGE_NICENESS"] = "0"
+				fetch_args = [sys.argv[0], "--resume", "--fetchonly"]
+				for arg in self.myopts:
+					if arg not in bad_resume_opts:
+						fetch_args.append(arg)
+				portage.portage_exec.spawn(fetch_args, env=fetch_env,
+					fd_pipes=fd_pipes, returnpid=True)
 
 		mergecount=0
 		for x in mymergelist:
@@ -2139,9 +2111,8 @@ class MergeTask(object):
 								mtimedb.commit()
 								portage.run_exitfuncs()
 								mynewargv=[sys.argv[0],"--resume"]
-								badlongopts = ("--ask","--tree","--changelog","--skipfirst","--resume")
 								for arg in self.myopts:
-									if arg in badlongopts:
+									if arg in bad_resume_opts:
 										continue
 									mynewargv.append(arg)
 								# priority only needs to be adjusted on the first run
@@ -3563,6 +3534,10 @@ def action_build(settings, trees, mtimedb,
 		if ("--resume" in myopts):
 			favorites=mtimedb["resume"]["favorites"]
 			mergetask = MergeTask(settings, trees, myopts)
+			if "--fetchonly" in myopts:
+				""" parallel-fetch uses --resume --fetchonly and we don't want
+				it to write the mtimedb"""
+				mtimedb.filename = "/dev/null"
 			mergetask.merge(mtimedb["resume"]["mergelist"], favorites, mtimedb)
 		else:
 			if "resume" in mtimedb and \
@@ -3982,6 +3957,22 @@ def emerge_main():
 				print "emerge: root access required."
 				sys.exit(1)
 
+	disable_emergelog = False
+	for x in ("--pretend", "--fetchonly", "--fetch-all-uri"):
+		if x in myopts:
+			disable_emergelog = True
+			break
+	if myaction in ("search", "info"):
+		disable_emergelog = True
+	if disable_emergelog:
+		""" Disable emergelog for everything except build or unmerge
+		operations.  This helps minimize parallel emerge.log entries that can
+		confuse log parsers.  We especially want it disabled during
+		parallel-fetch, which uses --resume --fetchonly."""
+		global emergelog
+		def emergelog(*pargs, **kargs):
+			pass
+
 	if not "--pretend" in myopts:
 		emergelog(xterm_titles, "Started emerge on: "+\
 			time.strftime("%b %d, %Y %H:%M:%S", time.localtime()))
@@ -4002,11 +3993,9 @@ def emerge_main():
 	signal.signal(signal.SIGINT, emergeexitsig)
 	signal.signal(signal.SIGTERM, emergeexitsig)
 
-	# This hack prevents parallel-fetch from confusing emerge.log parsers.
-	emerge_pid = os.getpid()
 	def emergeexit():
 		"""This gets out final log message in before we quit."""
-		if "--pretend" not in myopts and emerge_pid == os.getpid():
+		if "--pretend" not in myopts:
 			emergelog(xterm_titles, " *** terminating.")
 		if "notitles" not in settings.features:
 			xtermTitleReset()
