@@ -3537,7 +3537,7 @@ def action_build(settings, trees, mtimedb,
 			if "--fetchonly" in myopts:
 				""" parallel-fetch uses --resume --fetchonly and we don't want
 				it to write the mtimedb"""
-				mtimedb.filename = "/dev/null"
+				mtimedb.filename = None
 			mergetask.merge(mtimedb["resume"]["mergelist"], favorites, mtimedb)
 		else:
 			if "resume" in mtimedb and \

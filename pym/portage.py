@@ -6732,6 +6732,8 @@ class MtimeDB(dict):
 		self._clean_data = copy.deepcopy(d)
 
 	def commit(self):
+		if not self.filename:
+			return
 		d = {}
 		d.update(self)
 		# Only commit if the internal state has changed.
