@@ -674,7 +674,7 @@ class depgraph:
 					"--getbinpkgonly" in self.myopts)
 
 	def create(self, mybigkey, myparent=None, addme=1, myuse=None,
-		soft_dep=False, arg=None):
+		soft_dep=False, rev_dep=False, arg=None):
 		"""
 		Fills the digraph with nodes comprised of packages to merge.
 		mybigkey is the package spec of the package to merge.
@@ -692,11 +692,17 @@ class depgraph:
 			if addme and jbigkey != myparent:
 				# Refuse to make a node depend on itself so that the we don't
 				# don't create a bogus circular dependency in self.altlist().
-				self.digraph.addnode(jbigkey, myparent, soft_dep=soft_dep)
+				if rev_dep and myparent:
+					self.digraph.addnode(myparent, jbigkey, soft_dep=soft_dep)
+				else:
+					self.digraph.addnode(jbigkey, myparent, soft_dep=soft_dep)
 			return 1
 		jbigkey = " ".join(mybigkey) + " nomerge"
 		if self.digraph.hasnode(jbigkey):
-			self.digraph.addnode(jbigkey, myparent, soft_dep=soft_dep)
+			if rev_dep and myparent:
+				self.digraph.addnode(myparent, jbigkey, soft_dep=soft_dep)
+			else:
+				self.digraph.addnode(jbigkey, myparent, soft_dep=soft_dep)
 			return 1
 		
 		self.spinner.update()
@@ -779,7 +785,12 @@ class depgraph:
 		""" At this point, we have either hit a blocker and returned, found the package in the
 		    depgraph already and returned, or we are here.  Whether we are merging or not; we must
 		    add the package to the depgraph; so we do that here. """
-		self.digraph.addnode(" ".join(mybigkey), myparent, soft_dep=soft_dep)
+		if rev_dep and myparent:
+			self.digraph.addnode(myparent, " ".join(mybigkey),
+				soft_dep=soft_dep)
+		else:
+			self.digraph.addnode(" ".join(mybigkey), myparent,
+				soft_dep=soft_dep)
 		
 		""" This section determines whether we go deeper into dependencies or not.
 		    We want to go deeper on a few occasions:
@@ -824,8 +835,8 @@ class depgraph:
 			if edepend.has_key("PDEPEND") and edepend["PDEPEND"]:
 				# Post Depend -- Add to the list without a parent, as it depends
 				# on a package being present AND must be built after that package.
-				if not self.select_dep(myroot, edepend["PDEPEND"], myuse=myuse,
-					soft_deps=True):
+				if not self.select_dep(myroot, edepend["PDEPEND"], myparent=mp,
+					myuse=myuse, soft_deps=True, rev_deps=True):
 					return 0
 		except ValueError, e:
 			pkgs = e.args[0]
@@ -989,7 +1000,7 @@ class depgraph:
 						return match
 
 	def select_dep(self, myroot, depstring, myparent=None, arg=None,
-		myuse=None, raise_on_missing=False, soft_deps=False):
+		myuse=None, raise_on_missing=False, soft_deps=False, rev_deps=False):
 		""" Given a depstring, create the depgraph such that all dependencies are satisfied.
 		    myroot = $ROOT from environment, where {R,P}DEPENDs are merged to.
 		    myparent = the node whose depstring is being passed in
@@ -1009,6 +1020,8 @@ class depgraph:
 			print
 			print "Parent:   ",myparent
 			print "Depstring:",depstring
+			if rev_deps:
+				print "Reverse:", rev_deps
 		
 		if not arg:
 			#processing dependencies
@@ -1180,14 +1193,15 @@ class depgraph:
 				#we are a dependency, so we want to be unconditionally added
 				soft_dep = soft_deps or vardb.match(x)
 				if not self.create(selected_pkg[0:3], myparent,
-					myuse=selected_pkg[-1], soft_dep=soft_dep, arg=arg):
+					myuse=selected_pkg[-1], soft_dep=soft_dep,
+					rev_dep=rev_deps, arg=arg):
 					return 0
 			else:
 				#if mysource is not set, then we are a command-line dependency and should not be added
 				#if --onlydeps is specified.
 				if not self.create(selected_pkg[0:3], myparent,
 					addme=("--onlydeps" not in self.myopts),
-					myuse=selected_pkg[-1], arg=arg):
+					myuse=selected_pkg[-1], rev_dep=rev_deps, arg=arg):
 					return 0
 
 		if "--debug" in self.myopts:
