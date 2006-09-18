@@ -313,84 +313,161 @@ def flatten(mytokens):
 
 class digraph:
 	def __init__(self):
-		self.dict={}
-		#okeys = keys, in order they were added (to optimize firstzero() ordering)
-		self.okeys=[]
+		"""Create an empty digraph"""
+		
+		# { node : ( { child : soft_dep } , { parent : soft_dep } ) }
+		self.nodes = {}
+		self.order = []
 
-	def addnode(self,mykey,myparent):
-		if not self.dict.has_key(mykey):
-			self.okeys.append(mykey)
-			if myparent is None:
-				self.dict[mykey]=[0,[]]
-			else:
-				self.dict[mykey]=[0,[myparent]]
-				self.dict[myparent][0]=self.dict[myparent][0]+1
+	def add(self, node, parent, soft_dep=False):
+		"""Adds the specified node with the specified parent.
+		
+		If the dep is a soft-dep and the node already has a hard
+		relationship to the parent, the relationship is left as hard."""
+		
+		if node not in self.nodes:
+			self.nodes[node] = ({}, {})
+			self.order.append(node)
+		
+		if not parent:
 			return
-		if myparent and (not myparent in self.dict[mykey][1]):
-			self.dict[mykey][1].append(myparent)
-			self.dict[myparent][0]=self.dict[myparent][0]+1
+		
+		if parent not in self.nodes:
+			self.nodes[parent] = ({}, {})
+			self.order.append(parent)
+		
+		if parent in self.nodes[node][1]:
+			if not soft_dep:
+				self.nodes[node][1][parent] = False
+		else:
+			self.nodes[node][1][parent] = soft_dep
+		
+		if node in self.nodes[parent][0]:
+			if not soft_dep:
+				self.nodes[parent][0][node] = False
+		else:
+			self.nodes[parent][0][node] = soft_dep
 
-	def delnode(self,mykey):
-		if not self.dict.has_key(mykey):
-			return
-		for x in self.dict[mykey][1]:
-			self.dict[x][0]=self.dict[x][0]-1
-		del self.dict[mykey]
-		while 1:
-			try:
-				self.okeys.remove(mykey)
-			except ValueError:
-				break
+	def remove(self, node):
+		"""Removes the specified node from the digraph, also removing
+		and ties to other nodes in the digraph. Raises KeyError if the
+		node doesn't exist."""
+		
+		if node not in self.nodes:
+			raise KeyError(node)
+		
+		for parent in self.nodes[node][1]:
+			del self.nodes[parent][0][node]
+		for child in self.nodes[node][0]:
+			del self.nodes[child][1][node]
+		
+		del self.nodes[node]
+		self.order.remove(node)
 
-	def allnodes(self):
-		"returns all nodes in the dictionary"
-		return self.dict.keys()
+	def contains(self, node):
+		"""Checks if the digraph contains mynode"""
+		return node in self.nodes
+
+	def all_nodes(self):
+		"""Return a list of all nodes in the graph"""
+		return self.order[:]
+
+	def child_nodes(self, node):
+		"""Return all children of the specified node"""
+		return self.nodes[node][0].keys()
+
+	def parent_nodes(self, node):
+		"""Return all parents of the specified node"""
+		return self.nodes[node][1].keys()
+
+	def leaf_nodes(self, ignore_soft_deps=False):
+		"""Return all nodes that have no children
+		
+		If ignore_soft_deps is True, soft deps are not counted as
+		children in calculations."""
+		
+		leaf_nodes = []
+		for node in self.order:
+			is_leaf_node = True
+			for child in self.nodes[node][0]:
+				if not (ignore_soft_deps and self.nodes[node][0][child]):
+					is_leaf_node = False
+					break
+			if is_leaf_node:
+				leaf_nodes.append(node)
+		return leaf_nodes
+
+	def is_empty(self):
+		"""Checks if the digraph is empty"""
+		return len(self.nodes) == 0
+
+	def clone(self):
+		clone = digraph()
+		clone.nodes = copy.deepcopy(self.nodes)
+		clone.order = self.order[:]
+		return clone
+
+	# Backward compatibility
+	addnode = add
+	allnodes = all_nodes
+	allzeros = leaf_nodes
+	hasnode = contains
+	empty = is_empty
+	copy = clone
+
+	def delnode(self, node):
+		try:
+			self.remove(node)
+		except KeyError:
+			pass
 
 	def firstzero(self):
-		"returns first node with zero references, or NULL if no such node exists"
-		for x in self.okeys:
-			if self.dict[x][0]==0:
-				return x
+		leaf_nodes = self.leaf_nodes()
+		if leaf_nodes:
+			return leaf_nodes[0]
 		return None
 
-	def depth(self, mykey):
-		depth=0
-		while (self.dict[mykey][1]):
-			depth=depth+1
-			mykey=self.dict[mykey][1][0]
-		return depth
-
-	def allzeros(self):
-		"returns all nodes with zero references, or NULL if no such node exists"
-		zerolist = []
-		for x in self.dict.keys():
-			mys = string.split(x)
-			if mys[0] != "blocks" and self.dict[x][0]==0:
-				zerolist.append(x)
-		return zerolist
-
 	def hasallzeros(self):
-		"returns 0/1, Are all nodes zeros? 1 : 0"
-		zerolist = []
-		for x in self.dict.keys():
-			if self.dict[x][0]!=0:
-				return 0
-		return 1
+		return len(self.leaf_nodes() == 0)
 
-	def empty(self):
-		if len(self.dict)==0:
-			return 1
-		return 0
+	def depth(self, node):
+		"""Find how many nodes are in the parent chain of the passed node
+		
+		This method doesn't make sense unless there is no more than one
+		parent for each node. As this digraph is capable of having multiple
+		parents on a node, this implementation chooses an arbitrary parent
+		for calculations, stopping as soon as a loop is detected in order
+		to mimic the sorts of counts that would have previously been
+		returned.
+		
+		This method is only used by emerge's --tree option. That option
+		needs to be reworked to not use this so that this method can be
+		removed altogether."""
+		
+		parents = {}
+		while self.nodes[node][1]:
+			parent = self.nodes[node][1].keys()[0]
+			if parent in parents:
+				break
+			parents[parent] = True
+			node = parent
+		return len(parents)
+	
+	def debug_print(self):
+		for node in self.nodes:
+			print node,
+			if self.nodes[node][0]:
+				print "depends on"
+			else:
+				print "(no children)"
+			for child in self.nodes[node][0]:
+				print "  ",child,
+				if self.nodes[node][0][child]:
+					print "(hard)"
+				else:
+					print "(soft)"
 
-	def hasnode(self,mynode):
-		return self.dict.has_key(mynode)
 
-	def copy(self):
-		mygraph=digraph()
-		for x in self.dict.keys():
-			mygraph.dict[x]=self.dict[x][:]
-			mygraph.okeys=self.okeys[:]
-		return mygraph
 
 def elog_process(cpv, mysettings):
 	mylogfiles = listdir(mysettings["T"]+"/logging/")
@@ -3293,7 +3370,8 @@ def dep_eval(deplist):
 				return 0
 		return 1
 
-def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
+def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None,
+	return_all_deps=False):
 	"""Takes an unreduced and reduced deplist and removes satisfied dependencies.
 	Returned deplist contains steps that must be taken to satisfy dependencies."""
 	if trees is None:
@@ -3308,8 +3386,9 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 		for (dep, satisfied) in zip(unreduced, reduced):
 			if isinstance(dep, list):
 				unresolved += dep_zapdeps(dep, satisfied, myroot,
-					use_binaries=use_binaries, trees=trees)
-			elif not satisfied:
+					use_binaries=use_binaries, trees=trees,
+					return_all_deps=return_all_deps)
+			elif not satisfied or return_all_deps:
 				unresolved.append(dep)
 		return unresolved
 
@@ -3413,7 +3492,7 @@ def dep_expand(mydep, mydb=None, use_cache=1, settings=None):
 		mydep, mydb=mydb, use_cache=use_cache, settings=settings) + postfix
 
 def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
-	use_cache=1, use_binaries=0, myroot="/", trees=None):
+	use_cache=1, use_binaries=0, myroot="/", trees=None, return_all_deps=False):
 	"""Takes a depend string and parses the condition."""
 
 	#check_config_instance(mysettings)
@@ -3478,23 +3557,18 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 	writemsg("\n\n\n", 1)
 	writemsg("mysplit:  %s\n" % (mysplit), 1)
 	writemsg("mysplit2: %s\n" % (mysplit2), 1)
-	myeval=dep_eval(mysplit2)
-	writemsg("myeval:   %s\n" % (myeval), 1)
 
-	if myeval:
-		return [1,[]]
-	else:
-		myzaps = dep_zapdeps(mysplit, mysplit2, myroot,
-			use_binaries=use_binaries, trees=trees)
-		mylist = flatten(myzaps)
-		writemsg("myzaps:   %s\n" % (myzaps), 1)
-		writemsg("mylist:   %s\n" % (mylist), 1)
-		#remove duplicates
-		mydict={}
-		for x in mylist:
-			mydict[x]=1
-		writemsg("mydict:   %s\n" % (mydict), 1)
-		return [1,mydict.keys()]
+	myzaps = dep_zapdeps(mysplit, mysplit2, myroot,
+		use_binaries=use_binaries, trees=trees, return_all_deps=return_all_deps)
+	mylist = flatten(myzaps)
+	writemsg("myzaps:   %s\n" % (myzaps), 1)
+	writemsg("mylist:   %s\n" % (mylist), 1)
+	#remove duplicates
+	mydict={}
+	for x in mylist:
+		mydict[x]=1
+	writemsg("mydict:   %s\n" % (mydict), 1)
+	return [1,mydict.keys()]
 
 def dep_wordreduce(mydeplist,mysettings,mydbapi,mode,use_cache=1):
 	"Reduces the deplist to ones and zeros"

@@ -352,24 +352,18 @@ def create_depgraph_params(myopts, myaction):
 	# recurse:   go into the dependencies
 	# deep:      go into the dependencies of already merged packages
 	# empty:     pretend nothing is merged
-	myparams=["self","recurse"]
+	myparams = ["self", "recurse", "selective"]
 	add=[]
 	sub=[]
 	if "--update" in myopts or myaction in ("system", "world"):
-		add.extend(["selective","empty"])
+		add.append("empty")
 	if "--emptytree" in myopts:
 		add.extend(["empty"])
 		sub.extend(["selective"])
 	if "--nodeps" in myopts:
 		sub.extend(["recurse"])
-	if "--noreplace" in myopts:
-		add.extend(["selective"])
 	if "--deep" in myopts:
 		add.extend(["deep"])
-	if "--selective" in myopts:
-		add.extend(["selective"])
-	if myaction in ["world","system"]:
-		add.extend(["selective"])
 	elif myaction in ["depclean"]:
 		add.extend(["empty"])
 		sub.extend(["selective"])
@@ -679,7 +673,8 @@ class depgraph:
 					"--getbinpkg" in self.myopts,
 					"--getbinpkgonly" in self.myopts)
 
-	def create(self,mybigkey,myparent=None,addme=1,myuse=None):
+	def create(self, mybigkey, myparent=None, addme=1, myuse=None,
+		soft_dep=False, arg=None):
 		"""
 		Fills the digraph with nodes comprised of packages to merge.
 		mybigkey is the package spec of the package to merge.
@@ -697,10 +692,11 @@ class depgraph:
 			if addme and jbigkey != myparent:
 				# Refuse to make a node depend on itself so that the we don't
 				# don't create a bogus circular dependency in self.altlist().
-				self.digraph.addnode(jbigkey, myparent)
+				self.digraph.addnode(jbigkey, myparent, soft_dep=soft_dep)
 			return 1
 		jbigkey = " ".join(mybigkey) + " nomerge"
 		if self.digraph.hasnode(jbigkey):
+			self.digraph.addnode(jbigkey, myparent, soft_dep=soft_dep)
 			return 1
 		
 		self.spinner.update()
@@ -723,7 +719,8 @@ class depgraph:
 				if self.mydbapi[parent_root].match(mykey) or \
 					self.trees[parent_root]["vartree"].dbapi.match(mykey):
 					mybigkey.append(myparent.split()[2])
-					self.digraph.addnode(" ".join(mybigkey), myparent)
+					self.digraph.addnode(" ".join(mybigkey), myparent,
+						soft_dep=soft_dep)
 			return 1
 		else:
 			mydbapi = self.trees[myroot][self.pkg_tree_map[mytype]].dbapi
@@ -744,7 +741,7 @@ class depgraph:
 				    installed we skip merging it."""
 				if "self" not in self.myparams or \
 					("selective" in self.myparams and \
-					vardbapi.cpv_exists(mykey)):
+					not arg and vardbapi.cpv_exists(mykey)):
 					merging=0
 			elif "selective" in self.myparams and vardbapi.cpv_exists(mykey):
 				merging=0
@@ -782,7 +779,7 @@ class depgraph:
 		""" At this point, we have either hit a blocker and returned, found the package in the
 		    depgraph already and returned, or we are here.  Whether we are merging or not; we must
 		    add the package to the depgraph; so we do that here. """
-		self.digraph.addnode(string.join(mybigkey),myparent)
+		self.digraph.addnode(" ".join(mybigkey), myparent, soft_dep=soft_dep)
 		
 		""" This section determines whether we go deeper into dependencies or not.
 		    We want to go deeper on a few occasions:
@@ -815,26 +812,20 @@ class depgraph:
 		""" We have retrieve the dependency information, now we need to recursively
 		    process them.  DEPEND gets processed for root = "/", {R,P}DEPEND in myroot. """
 		
-		mydep={}
 		mp=string.join(mybigkey)
 
 		try:
-			if myroot=="/":
-				mydep["/"]=edepend["DEPEND"]+" "+edepend["RDEPEND"]
-				if not self.select_dep("/",mydep["/"],myparent=mp,myuse=myuse):
-					return 0
-			else:
-				mydep["/"]=edepend["DEPEND"]
-				mydep[myroot]=edepend["RDEPEND"]
-				if not self.select_dep("/",mydep["/"],myparent=mp,myuse=myuse):
-					return 0
-				if not self.select_dep(myroot,mydep[myroot],myparent=mp,myuse=myuse):
-					return 0
-	
+			if not self.select_dep("/", edepend["DEPEND"], myparent=mp,
+				myuse=myuse):
+				return 0
+			if not self.select_dep(myroot,edepend["RDEPEND"], myparent=mp,
+				myuse=myuse, soft_deps=True):
+				return 0
 			if edepend.has_key("PDEPEND") and edepend["PDEPEND"]:
 				# Post Depend -- Add to the list without a parent, as it depends
 				# on a package being present AND must be built after that package.
-				if not self.select_dep(myroot,edepend["PDEPEND"],myuse=myuse):
+				if not self.select_dep(myroot, edepend["PDEPEND"], myuse=myuse,
+					soft_deps=True):
 					return 0
 		except ValueError, e:
 			pkgs = e.args[0]
@@ -940,7 +931,11 @@ class depgraph:
 				sys.stderr.flush()
 
 				try:
-					self.mysd = self.select_dep(myroot, mykey, arg=x)
+					if "--noreplace" in self.myopts:
+						arg = None
+					else:
+						arg = x
+					self.mysd = self.select_dep(myroot, mykey, arg=arg)
 				except portage_exception.MissingSignature, e:
 					portage.writemsg("\n\n!!! A missing gpg signature is preventing portage from calculating the\n")
 					portage.writemsg("!!! required dependencies. This is a security feature enabled by the admin\n")
@@ -969,7 +964,7 @@ class depgraph:
 
 		missing=0
 		if "--usepkgonly" in self.myopts:
-			for x in self.digraph.dict.keys():
+			for x in self.digraph.all_nodes():
 				xs=string.split(x," ")
 				if (xs[0] != "binary") and (xs[3]=="merge"):
 					if missing == 0:
@@ -993,7 +988,8 @@ class depgraph:
 					if curslot == myslot:
 						return match
 
-	def select_dep(self,myroot,depstring,myparent=None,arg=None,myuse=None,raise_on_missing=False):
+	def select_dep(self, myroot, depstring, myparent=None, arg=None,
+		myuse=None, raise_on_missing=False, soft_deps=False):
 		""" Given a depstring, create the depgraph such that all dependencies are satisfied.
 		    myroot = $ROOT from environment, where {R,P}DEPENDs are merged to.
 		    myparent = the node whose depstring is being passed in
@@ -1006,6 +1002,7 @@ class depgraph:
 
 		portdb = self.trees[myroot]["porttree"].dbapi
 		bindb  = self.trees[myroot]["bintree"].dbapi
+		vardb  = self.trees[myroot]["vartree"].dbapi
 		pkgsettings = self.pkgsettings[myroot]
 
 		if "--debug" in self.myopts:
@@ -1020,7 +1017,7 @@ class depgraph:
 			mycheck = portage.dep_check(depstring, self.mydbapi[myroot],
 				pkgsettings, myuse=myuse,
 				use_binaries=("--usepkgonly" in self.myopts),
-				myroot=myroot, trees=self.trees)
+				myroot=myroot, trees=self.trees, return_all_deps=True)
 
 			if not mycheck[0]:
 				mymerge=[]
@@ -1056,9 +1053,6 @@ class depgraph:
 				self.pkgsettings[p_root].setinst(p_key,
 					self.trees[p_root][self.pkg_tree_map[p_type]].dbapi)
 
-		if not mymerge:
-			return 1
-
 		if "--debug" in self.myopts:
 			print "Candidates:",mymerge
 		for x in mymerge:
@@ -1076,6 +1070,12 @@ class depgraph:
 				selected_pkg = ["blocks", myroot, x[1:], None]
 			else:
 				#We are not processing a blocker but a normal dependency
+				pkg_key = portage.dep_getkey(x)
+				if pkg_key in pkgsettings.pprovideddict and \
+					portage.match_from_list(
+						x, pkgsettings.pprovideddict[pkg_key]):
+						continue
+
 				# List of acceptable packages, ordered by type preference.
 				matched_packages = []
 				myeb_matches = portdb.xmatch("match-visible", x)
@@ -1178,15 +1178,16 @@ class depgraph:
 
 			if myparent:
 				#we are a dependency, so we want to be unconditionally added
+				soft_dep = soft_deps or vardb.match(x)
 				if not self.create(selected_pkg[0:3], myparent,
-					myuse=selected_pkg[-1]):
+					myuse=selected_pkg[-1], soft_dep=soft_dep, arg=arg):
 					return 0
 			else:
 				#if mysource is not set, then we are a command-line dependency and should not be added
 				#if --onlydeps is specified.
 				if not self.create(selected_pkg[0:3], myparent,
 					addme=("--onlydeps" not in self.myopts),
-					myuse=selected_pkg[-1]):
+					myuse=selected_pkg[-1], arg=arg):
 					return 0
 
 		if "--debug" in self.myopts:
@@ -1205,13 +1206,16 @@ class depgraph:
 		while (not mygraph.empty()):
 			mycurkey=mygraph.firstzero()
 			if not mycurkey:
-				print "!!! Error: circular dependencies:"
-				print
-				for x in mygraph.dict.keys():
-					for y in mygraph.dict[x][1]:
-						print y,"depends on",x
-				print
-				sys.exit(1)
+				installables = mygraph.leaf_nodes(ignore_soft_deps=True)
+				if not installables:
+					print "!!! Error: circular dependencies:"
+					print
+					for x in mygraph.allnodes():
+						for y in mygraph.parent_nodes(x):
+							print y,"depends on",x
+						print
+					sys.exit(1)
+				mycurkey = installables[0]
 			splitski=string.split(mycurkey)
 			#I'm not sure of the significance of the following lines (vestigal?) so I'm commenting 'em out.
 			#These lines remove already-merged things from our alt-list
