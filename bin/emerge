@@ -1085,11 +1085,12 @@ class depgraph:
 				selected_pkg = ["blocks", myroot, x[1:], None]
 			else:
 				#We are not processing a blocker but a normal dependency
-				pkg_key = portage.dep_getkey(x)
-				if pkg_key in pkgsettings.pprovideddict and \
-					portage.match_from_list(
-						x, pkgsettings.pprovideddict[pkg_key]):
-						continue
+				if not arg:
+					pkg_key = portage.dep_getkey(x)
+					if pkg_key in pkgsettings.pprovideddict and \
+						portage.match_from_list(
+							x, pkgsettings.pprovideddict[pkg_key]):
+							continue
 
 				# List of acceptable packages, ordered by type preference.
 				matched_packages = []
