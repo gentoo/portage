@@ -1022,6 +1022,8 @@ class depgraph:
 			print "Depstring:",depstring
 			if rev_deps:
 				print "Reverse:", rev_deps
+			if soft_deps:
+				print "Soft:", soft_deps
 		
 		if not arg:
 			#processing dependencies
