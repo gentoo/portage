@@ -4,7 +4,7 @@
 # $Id$
 
 import os
-import template, cache_errors
+from cache import template
 from portage_data import portage_gid
 
 class FsBased(template.database):

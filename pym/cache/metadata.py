@@ -4,11 +4,10 @@
 # $Id$
 
 import os, stat, types
-import flat_hash
-import cache_errors
+from cache import flat_hash
 import eclass_cache 
-from template import reconstruct_eclasses, serialize_eclasses
-from mappings import ProtectedDict, LazyLoad
+from cache.template import reconstruct_eclasses
+from cache.mappings import ProtectedDict
 
 # this is the old cache format, flat_list.  count maintained here.
 magic_line_count = 22

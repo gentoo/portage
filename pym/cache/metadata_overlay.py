@@ -5,9 +5,9 @@
 import time
 if not hasattr(__builtins__, "set"):
 	from sets import Set as set
-import template
-from flat_hash import database as db_rw
-from metadata import database as db_ro
+from cache import template
+from cache.flat_hash import database as db_rw
+from cache.metadata import database as db_ro
 
 class database(template.database):
 

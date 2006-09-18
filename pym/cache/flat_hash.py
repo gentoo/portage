@@ -3,11 +3,11 @@
 # License: GPL2
 # $Id$
 
-import fs_template
-import cache_errors
+from cache import fs_template
+from cache import cache_errors
 import errno, os, stat
-from mappings import LazyLoad, ProtectedDict
-from template import reconstruct_eclasses
+from cache.mappings import LazyLoad, ProtectedDict
+from cache.template import reconstruct_eclasses
 # store the current key order *here*.
 class database(fs_template.FsBased):
 

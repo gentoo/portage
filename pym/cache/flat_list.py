@@ -1,5 +1,5 @@
-import fs_template
-import cache_errors
+from cache import fs_template
+from cache import cache_errors
 import errno, os, stat
 
 # store the current key order *here*.
