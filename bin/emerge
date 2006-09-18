@@ -1885,6 +1885,7 @@ class MergeTask(object):
 						fetch_args.append(arg)
 				portage.portage_exec.spawn(fetch_args, env=fetch_env,
 					fd_pipes=fd_pipes, returnpid=True)
+				logfile.close() # belongs to the spawned process
 
 		mergecount=0
 		for x in mymergelist:
