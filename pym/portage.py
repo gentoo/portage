@@ -445,7 +445,7 @@ class digraph:
 		return None
 
 	def hasallzeros(self):
-		return len(self.leaf_nodes() == 0)
+		return len(self.leaf_nodes(ignore_soft_deps=True)) == len(self.order)
 
 	def debug_print(self):
 		for node in self.nodes:
