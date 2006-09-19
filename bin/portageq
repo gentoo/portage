@@ -321,7 +321,7 @@ def usage(argv):
 def main():
 	if (len(sys.argv) < 2) or ("-h" in sys.argv or "--help" in sys.argv):
 		usage(sys.argv)
-		sys.exit()
+		sys.exit(os.EX_USAGE)
 
 	cmd = sys.argv[1]
 	try:
@@ -336,7 +336,7 @@ def main():
 		function(sys.argv[2:])
 	except KeyError:
 		usage(sys.argv)
-		sys.exit()
+		sys.exit(os.EX_USAGE)
 
 main()
 
