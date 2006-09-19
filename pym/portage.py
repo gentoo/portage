@@ -397,6 +397,23 @@ class digraph:
 				leaf_nodes.append(node)
 		return leaf_nodes
 
+	def root_nodes(self, ignore_soft_deps=False):
+		"""Return all nodes that have no parents.
+		
+		If ignore_soft_deps is True, soft deps are not counted as
+		parents in calculations."""
+		
+		root_nodes = []
+		for node in self.order:
+			is_root_node = True
+			for parent in self.nodes[node][1]:
+				if not (ignore_soft_deps and self.nodes[node][1][parent]):
+					is_root_node = False
+					break
+			if is_root_node:
+				root_nodes.append(node)
+		return root_nodes
+
 	def is_empty(self):
 		"""Checks if the digraph is empty"""
 		return len(self.nodes) == 0
@@ -430,29 +447,6 @@ class digraph:
 	def hasallzeros(self):
 		return len(self.leaf_nodes() == 0)
 
-	def depth(self, node):
-		"""Find how many nodes are in the parent chain of the passed node
-		
-		This method doesn't make sense unless there is no more than one
-		parent for each node. As this digraph is capable of having multiple
-		parents on a node, this implementation chooses an arbitrary parent
-		for calculations, stopping as soon as a loop is detected in order
-		to mimic the sorts of counts that would have previously been
-		returned.
-		
-		This method is only used by emerge's --tree option. That option
-		needs to be reworked to not use this so that this method can be
-		removed altogether."""
-		
-		parents = {}
-		while self.nodes[node][1]:
-			parent = self.nodes[node][1].keys()[0]
-			if parent in parents:
-				break
-			parents[parent] = True
-			node = parent
-		return len(parents)
-	
 	def debug_print(self):
 		for node in self.nodes:
 			print node,

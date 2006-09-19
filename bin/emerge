@@ -1212,39 +1212,33 @@ class depgraph:
 		return 1
 
 
-	def altlist(self):
+	def altlist(self, reversed=False):
 		mygraph=self.digraph.copy()
-		dolist=["/"]
 		retlist=[]
-		for x in self.trees.keys():
-			self.trees[x]["merge"] = []
-			if x not in dolist:
-				dolist.append(x)
-		while (not mygraph.empty()):
-			mycurkey=mygraph.firstzero()
-			if not mycurkey:
-				installables = mygraph.leaf_nodes(ignore_soft_deps=True)
-				if not installables:
-					print "!!! Error: circular dependencies:"
-					print
-					for x in mygraph.allnodes():
-						for y in mygraph.parent_nodes(x):
-							print y,"depends on",x
-						print
-					sys.exit(1)
-				mycurkey = installables[0]
-			splitski=string.split(mycurkey)
-			#I'm not sure of the significance of the following lines (vestigal?) so I'm commenting 'em out.
-			#These lines remove already-merged things from our alt-list
-			#if "--update" in myopts:
-			#	if not portage.db["/"]["vartree"].exists_specific(splitski[2]):
-			#		portage.db["/"]["merge"].append(splitski)
-			#else:
-			self.trees[splitski[1]]["merge"].append(splitski)
-			mygraph.delnode(mycurkey)
-		for x in dolist:
-			for y in self.trees[x]["merge"]:
-				retlist.append(y)
+		while not mygraph.empty():
+			if reversed:
+				nodes = mygraph.root_nodes()
+				if not nodes:
+					nodes = mygraph.root_nodes(ignore_soft_deps=True)
+				if nodes:
+					next_node = nodes[-1]
+				else:
+					next_node = None
+			else:
+				nodes = mygraph.leaf_nodes()
+				if not nodes:
+					nodes = mygraph.leaf_nodes(ignore_soft_deps=True)
+				if nodes:
+					next_node = nodes[0]
+				else:
+					next_node = None
+			if not next_node:
+				print "!!! Error: circular dependencies:"
+				print
+				mygraph.debug_print()
+				sys.exit(1)
+			retlist.append(next_node.split())
+			mygraph.remove(next_node)
 		return retlist
 
 	def xcreate(self,mode="system"):
@@ -1409,29 +1403,33 @@ class depgraph:
 			overlays_real = [os.path.realpath(t) \
 				for t in self.settings["PORTDIR_OVERLAY"].split()]
 
-		if "--tree" in self.myopts:
-			mylist.reverse()
-			mygraph=self.digraph.copy()
-
+		tree_nodes = []
+		node_depth = {}
 		i = 0
-		while i < len(mylist):
-			if mylist[i][-1]=="nomerge":
-				if "--tree" not in self.myopts:
-					# we don't care about this elements
-					mylist.pop(i)
-					continue
-				if (i == (len(mylist) - 1)) \
-				   or (mygraph.depth(string.join(mylist[i])) \
-				       >= mygraph.depth(string.join(mylist[i+1]))):
-					# end of a useless branch (may be the last one)
-					# -> delete the element and test the previous one
-					mylist.pop(i)
-					if i > 0:
-						i -= 1
-					continue
-			# the branch continues, or we've found a good element.
-			# -> let's see what's next, if anything
-			i += 1
+		depth = 0
+		for x in mylist:
+			graph_key = " ".join(x)
+			if "--tree" in self.myopts:
+				depth = len(tree_nodes)
+				while depth and graph_key not in \
+					self.digraph.child_nodes(tree_nodes[depth-1]):
+						depth -= 1
+				tree_nodes = tree_nodes[:depth]
+				tree_nodes.append(graph_key)
+			node_depth[graph_key] = depth
+
+		last_merge_depth = 0
+		for i in xrange(len(mylist)-1,-1,-1):
+			graph_key = " ".join(mylist[i])
+			if mylist[i][-1] != "nomerge":
+				last_merge_depth = node_depth[graph_key]
+				continue
+			if node_depth[graph_key] >= last_merge_depth or \
+				i < len(mylist) - 1 and \
+				node_depth[graph_key] >= node_depth[" ".join(mylist[i+1])]:
+					del mylist[i]
+					del node_depth[graph_key]
+		del tree_nodes
 
 		display_overlays=False
 		# files to fetch list - avoids counting a same file twice
@@ -1652,9 +1650,7 @@ class depgraph:
 				oldlp=mywidth-30
 				newlp=oldlp-30
 
-				indent=""
-				if "--tree" in self.myopts:
-					indent=" "*mygraph.depth(string.join(x))
+				indent = " " * node_depth[" ".join(x)]
 
 				if myoldbest:
 					myoldbest=portage.pkgsplit(myoldbest)[1]+"-"+portage.pkgsplit(myoldbest)[2]
@@ -3501,7 +3497,8 @@ def action_build(settings, trees, mtimedb,
 			mydepgraph.display(mymergelist)
 			prompt="Would you like to resume merging these packages?"
 		else:
-			mydepgraph.display(mydepgraph.altlist())
+			mydepgraph.display(
+				mydepgraph.altlist(reversed=("--tree" in myopts)))
 			mergecount=0
 			for x in mydepgraph.altlist():
 				if x[3]!="nomerge":
@@ -3545,7 +3542,8 @@ def action_build(settings, trees, mtimedb,
 				sys.exit(0)
 			mydepgraph.display(mymergelist)
 		else:
-			mydepgraph.display(mydepgraph.altlist())
+			mydepgraph.display(
+				mydepgraph.altlist(reversed=("--tree" in myopts)))
 	else:
 		if ("--buildpkgonly" in myopts):
 			if not mydepgraph.digraph.hasallzeros():
