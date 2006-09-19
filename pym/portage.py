@@ -2109,6 +2109,12 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 				return 0
 			del distlocks_subdir
 	for myfile in filedict.keys():
+		"""
+		fetched  status
+		0        nonexistent
+		1        partially downloaded
+		2        completely downloaded
+		"""
 		myfile_path = os.path.join(mysettings["DISTDIR"], myfile)
 		fetched=0
 		file_lock = None
@@ -2289,6 +2295,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 											try:
 												os.unlink(mysettings["DISTDIR"]+"/"+myfile)
 												writemsg(">>> Deleting invalid distfile. (Improper 404 redirect from server.)\n")
+												fetched = 0
+												continue
 											except SystemExit, e:
 												raise
 											except:
@@ -2297,6 +2305,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 										raise
 									except:
 										pass
+								fetched = 1
 								continue
 							if not fetchonly:
 								fetched=2
