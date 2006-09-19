@@ -463,9 +463,9 @@ class digraph:
 			for child in self.nodes[node][0]:
 				print "  ",child,
 				if self.nodes[node][0][child]:
-					print "(hard)"
-				else:
 					print "(soft)"
+				else:
+					print "(hard)"
 
 
 
