@@ -52,7 +52,8 @@ function scan() {
 		fi
 
 		ofile=""
-		for file in $(find ${path}/ ${find_opts} ! -name '.*~' ! -name '.*.bak' |
+		# The below set -f turns off file name globbing in the ${find_opts} expansion.
+		for file in $(set -f; find ${path}/ ${find_opts} ! -iname '.*~' ! -iname '.*.bak' |
 			   sed -e "s:\(^.*/\)\(\._cfg[0-9]*_\)\(.*$\):\1\2\3\%\2\%\3:" |
 			   sort -t'%' -k3 -k2 | LANG=POSIX LC_ALL=POSIX cut -f1 -d'%'); do
 			rpath=$(echo "${file/\/\///}" | sed -e "s:/[^/]*$::")
