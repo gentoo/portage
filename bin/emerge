@@ -3546,7 +3546,7 @@ def action_build(settings, trees, mtimedb,
 				mydepgraph.altlist(reversed=("--tree" in myopts)))
 	else:
 		if ("--buildpkgonly" in myopts):
-			if not mydepgraph.digraph.hasallzeros():
+			if not mydepgraph.digraph.hasallzeros(ignore_soft_deps=True):
 				print "\n!!! --buildpkgonly requires all dependencies to be merged."
 				print "!!! Cannot merge requested packages. Merge deps and try again.\n"
 				sys.exit(1)
