@@ -655,16 +655,34 @@ class depgraph:
 		self.outdatedpackages=[]
 		self.mydbapi={}
 		self.mydbapi["/"] = portage.fakedbapi(settings=settings)
+		self.pkg_slots={"/" : {}}
+		allcpv = self.trees["/"]["vartree"].getallcpv()
 		if "empty" not in self.myparams or self.target_root != "/":
-			for pkg in self.trees["/"]["vartree"].getallcpv():
+			for pkg in allcpv:
 				self.mydbapi["/"].cpv_inject(pkg)
+		for pkg in allcpv:
+			myslot = self.trees["/"]["vartree"].dbapi.aux_get(pkg, ["SLOT"])[0]
+			mykey = portage.dep_getkey(pkg)
+			if mykey in self.pkg_slots["/"]:
+				self.pkg_slots["/"][mykey][myslot] = pkg
+			else:
+				self.pkg_slots["/"][mykey] = {myslot:pkg}
 		if self.target_root != "/":
+			self.pkg_slots[self.target_root] = {}
+			allcpv = self.trees[self.target_root]["vartree"].getallcpv()
 			self.mydbapi[self.target_root] = \
 				portage.fakedbapi(settings=settings)
 			if "empty" not in self.myparams:
-				for pkg in self.trees[self.target_root]["vartree"].getallcpv():
+				for pkg in allcpv:
 					self.mydbapi[self.target_root].cpv_inject(pkg)
-
+			for pkg in allcpv:
+				myslot = self.trees[self.target_root]["vartree"].dbapi.aux_get(
+					pkg, ["SLOT"])[0]
+				mykey = portage.dep_getkey(pkg)
+				if mykey in self.pkg_slots[self.target_root]:
+					self.pkg_slots[self.target_root][mykey][myslot] = pkg
+				else:
+					self.pkg_slots[self.target_root][mykey] = {myslot:pkg}
 		if "--usepkg" in self.myopts:
 			trees["/"]["bintree"].populate(
 				"--getbinpkg" in self.myopts, "--getbinpkgonly" in self.myopts)
@@ -721,15 +739,19 @@ class depgraph:
 			    We need to check vardbapi as well as the current depgraph for it.
 			    Blocks are fatal if buildpkgonly is set. """
 			if addme and "--buildpkgonly" not in self.myopts and myparent:
-				parent_root = myparent.split()[1]
-				if self.mydbapi[parent_root].match(mykey) or \
-					self.trees[parent_root]["vartree"].dbapi.match(mykey):
-					mybigkey.append(myparent.split()[2])
-					self.digraph.addnode(" ".join(mybigkey), myparent,
-						soft_dep=soft_dep)
+				mybigkey[1] = myparent.split()[1]
+				self.digraph.addnode(" ".join(mybigkey), myparent,
+					soft_dep=soft_dep)
 			return 1
 		else:
 			mydbapi = self.trees[myroot][self.pkg_tree_map[mytype]].dbapi
+			if addme:
+				myslot = mydbapi.aux_get(mykey, ["SLOT"])[0]
+				depkey = portage.dep_getkey(mykey)
+				if depkey in self.pkg_slots:
+					self.pkg_slots[myroot][depkey][myslot] = mykey
+				else:
+					self.pkg_slots[myroot][depkey] = {myslot : mykey}
 
 		if myuse is None:
 			self.pkgsettings[myroot].setcpv(mykey)
@@ -983,6 +1005,8 @@ class depgraph:
 					missing += 1
 					print "Missing binary for:",xs[2]
 
+		self.validate_blockers()
+		
 		# We're true here unless we are missing binaries.
 		return (not missing,myfavorites)
 
@@ -1211,6 +1235,16 @@ class depgraph:
 			print "Exiting...",myparent
 		return 1
 
+	def validate_blockers(self):
+		all_blockers = [node for node in self.digraph.all_nodes()
+				if node.split()[0] == "blocks"]
+		for blocker in all_blockers:
+			mytype, myroot, mydep = blocker.split()
+			mykey = portage.dep_getkey(mydep)
+			if mykey not in self.pkg_slots[myroot] or \
+					not portage.match_from_list(mydep, \
+					self.pkg_slots[myroot][mykey].values()):
+				self.digraph.remove(blocker)
 
 	def altlist(self, reversed=False):
 		mygraph=self.digraph.copy()
@@ -1278,6 +1312,8 @@ class depgraph:
 					return 0
 			except ValueError:
 				missing_atoms.append(mydep)
+
+		self.validate_blockers()
 
 		if world_problems:
 			print "\n!!! Problems have been detected with your world file"
@@ -1457,16 +1493,14 @@ class depgraph:
 				addl=""+red("B")+"  "+fetch+"  "
 				resolved = self.trees[x[1]]["vartree"].resolve_key(x[2])
 				print "["+x[0]+" "+addl+"]",red(resolved),
+				block_parents = self.digraph.parent_nodes(" ".join(x))
+				block_parents = [pnode.split()[2] for pnode in block_parents]
+				block_parents = ", ".join(block_parents)
 				if resolved!=x[2]:
-					if x[3]:
-						print red("(\""+x[2]+"\" is blocking "+x[3]+")")
-					else:
-						print red("(\""+x[2]+"\")")
+					print bad("(\"%s\" is blocking %s)") % \
+						(pkg_key, block_parents)
 				else:
-					if x[3]:
-						print red("(is blocking "+x[3]+")")
-					else:
-						print
+					print bad("(is blocking %s)") % block_parents
 			else:
 				if x[0] != "binary" and \
 					"fetch" in portdb.aux_get(
