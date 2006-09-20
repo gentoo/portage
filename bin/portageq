@@ -319,7 +319,10 @@ def usage(argv):
 		print "\nRun portageq with --help for info"
 
 def main():
-	if (len(sys.argv) < 2) or ("-h" in sys.argv or "--help" in sys.argv):
+	if "-h" in sys.argv or "--help" in sys.argv:
+		usage(sys.argv)
+		sys.exit(os.EX_OK)
+	elif len(sys.argv) < 2:
 		usage(sys.argv)
 		sys.exit(os.EX_USAGE)
 
