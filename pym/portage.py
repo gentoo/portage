@@ -2114,7 +2114,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 		fetched=0
 		file_lock = None
 		if listonly:
-			writemsg("\n")
+			writemsg_stdout("\n", noiselevel=-1)
 		else:
 			if use_locks and can_fetch:
 				if locks_in_subdir:
@@ -2185,7 +2185,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 
 			for loc in filedict[myfile]:
 				if listonly:
-					writemsg(loc+" ")
+					writemsg_stdout(loc+" ", noiselevel=-1)
 					continue
 				# allow different fetchcommands per protocol
 				protocol = loc[0:loc.find("://")]
@@ -2342,7 +2342,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 				portage_locks.unlockfile(file_lock)
 
 		if listonly:
-			writemsg("\n")
+			writemsg_stdout("\n", noiselevel=-1)
 		if fetched != 2:
 			if restrict_fetch:
 				print "\n!!!", mysettings["CATEGORY"] + "/" + \
