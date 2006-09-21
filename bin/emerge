@@ -1108,6 +1108,11 @@ class depgraph:
 			else:
 				#We are not processing a blocker but a normal dependency
 				if not arg:
+					if "empty" not in self.myparams and \
+						"deep" not in self.myparams and \
+						vardb.match(x):
+						continue
+
 					pkg_key = portage.dep_getkey(x)
 					if pkg_key in pkgsettings.pprovideddict and \
 						portage.match_from_list(
