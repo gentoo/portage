@@ -1241,9 +1241,12 @@ class depgraph:
 		for blocker in all_blockers:
 			mytype, myroot, mydep = blocker.split()
 			mykey = portage.dep_getkey(mydep)
-			if mykey not in self.pkg_slots[myroot] or \
-					not portage.match_from_list(mydep, \
-					self.pkg_slots[myroot][mykey].values()):
+			valid = False
+			pkgs = self.pkg_slots[myroot].get(mykey, None)
+			if pkgs and portage.match_from_list(mydep,
+				[pkgs[myslot] for myslot in pkgs]):
+				valid = True
+			if not valid:
 				self.digraph.remove(blocker)
 
 	def altlist(self, reversed=False):
