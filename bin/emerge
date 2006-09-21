@@ -1243,6 +1243,9 @@ class depgraph:
 				if node.split()[0] == "blocks"]
 		for blocker in all_blockers:
 			mytype, myroot, mydep = blocker.split()
+			"""Prior to being added to the digraph, any blockers against
+			old-style virtuals have been expanded to real packages via
+			dep_virtual calls inside dep_check."""
 			mykey = portage.dep_getkey(mydep)
 			valid = False
 			pkgs = self.pkg_slots[myroot].get(mykey, None)
