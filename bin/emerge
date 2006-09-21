@@ -1081,10 +1081,8 @@ class depgraph:
 
 			p_type, p_root, p_key, p_status = myparent.split()
 			if p_status == "merge":
-				# XXX Bug: This fakedbapi data is used in dep_check calls to
-				# determine satisfied deps via dep_wordreduce but it does not
-				# account for merge order (merge order is later calculated
-				# in self.altlist() using data from the digraph).
+				""" This fakedbapi data is used in dep_check calls to determine
+				satisfied deps via dep_wordreduce"""
 				self.mydbapi[p_root].cpv_inject(p_key)
 
 				# Update old-style virtuals if this package provides any.
