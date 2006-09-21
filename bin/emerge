@@ -1236,6 +1236,11 @@ class depgraph:
 		return 1
 
 	def validate_blockers(self):
+		"""Remove any blockers from the digraph that do not match any of the
+		packages within the graph.  Blockers are only matched against the
+		final state of the graph.  Thus, it's possible that mutually blocking
+		packages will be installed simultaneously a some point(s) during the
+		transition from the initial to the final state."""
 		all_blockers = [node for node in self.digraph.all_nodes()
 				if node.split()[0] == "blocks"]
 		for blocker in all_blockers:
