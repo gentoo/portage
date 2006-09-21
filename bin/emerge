@@ -998,8 +998,8 @@ class depgraph:
 		missing=0
 		if "--usepkgonly" in self.myopts:
 			for x in self.digraph.all_nodes():
-				xs=string.split(x," ")
-				if (xs[0] != "binary") and (xs[3]=="merge"):
+				xs = x.split()
+				if len(xs) >= 4 and xs[0] != "binary" and xs[3] == "merge":
 					if missing == 0:
 						print
 					missing += 1
