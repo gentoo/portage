@@ -3544,7 +3544,7 @@ def action_build(settings, trees, mtimedb,
 				mydepgraph.altlist(reversed=("--tree" in myopts)))
 			mergecount=0
 			for x in mydepgraph.altlist():
-				if x[3]!="nomerge":
+				if x[0] != "blocks" and x[3] != "nomerge":
 					mergecount+=1
 				#check for blocking dependencies
 				if x[0]=="blocks" and "--fetchonly" not in myopts and "--fetch-all-uri" not in myopts:
