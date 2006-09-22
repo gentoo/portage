@@ -24,9 +24,9 @@ if [ "$*" != "depend" ] && [ "$*" != "clean" ] && [ "$*" != "nofetch" ]; then
 	fi
 fi
 
-if [ -n "$#" ]; then
-	ARGS="${*}"
-fi
+EBUILD_SH_ARGS="$*"
+
+shift $#
 
 # Prevent aliases from causing portage to act inappropriately.
 # Make sure it's before everything so we don't mess aliases that follow.
@@ -1345,7 +1345,7 @@ remove_path_entry() {
 # === === === === === functions end, main part begins === === === === ===
 # === === === === === === === === === === === === === === === === === ===
 
-if [ "$*" != "depend" ] && [ "$*" != "clean" ] && [ "$*" != "setup" ]; then
+if [[ ${EBUILD_SH_ARGS} != "depend" ]] && [[ ${EBUILD_SH_ARGS}  != "clean" ]] && [[ ${EBUILD_SH_ARGS} != "setup" ]]; then
 	cd ${PORTAGE_TMPDIR} &> /dev/null
 	cd ${BUILD_PREFIX} &> /dev/null
 
@@ -1417,7 +1417,7 @@ for x in T P PN PV PVR PR CATEGORY A EBUILD EMERGE_FROM O PPID FILESDIR PORTAGE_
 	[[ ${!x-UNSET_VAR} != UNSET_VAR ]] && declare -r ${x}
 done
 # Need to be able to change D in dyn_preinst due to the IMAGE stuff
-[[ $* != "preinst" ]] && declare -r D
+[[ ${EBUILD_SH_ARGS} != "preinst" ]] && declare -r D
 unset x
 
 # Turn of extended glob matching so that g++ doesn't get incorrectly matched.
@@ -1425,7 +1425,7 @@ shopt -u extglob
 
 QA_INTERCEPTORS="javac java-config python python-config perl grep egrep fgrep sed gcc g++ cc bash awk nawk gawk pkg-config"
 # level the QA interceptors if we're in depend
-if hasq "depend" "$@"; then
+if hasq "depend" "${EBUILD_SH_ARGS}"; then
 	for BIN in ${QA_INTERCEPTORS}; do
 		BIN_PATH=$(type -pf ${BIN})
 		if [ "$?" != "0" ]; then
@@ -1475,7 +1475,7 @@ if [ "$S" = "" ]; then
 fi
 
 #wipe the interceptors.  we don't want saved.
-if hasq "depend" "$@"; then
+if hasq "depend" "${EBUILD_SH_ARGS}"; then
 	unset -f $QA_INTERCEPTORS
 	unset QA_INTERCEPTORS
 fi
@@ -1514,7 +1514,7 @@ fi
 
 set +f
 
-for myarg in $*; do
+for myarg in ${EBUILD_SH_ARGS} ; do
 	case $myarg in
 	nofetch)
 		pkg_nofetch
