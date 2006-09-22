@@ -717,12 +717,13 @@ class depgraph:
 			return 1
 		jbigkey = " ".join(mybigkey) + " nomerge"
 		if self.digraph.hasnode(jbigkey):
+			"""XXX: It's possible that this package has been explicitly
+			requested as a command line argument.  This can be solved by
+			checking all args prior to marking packages as nomerge"""
 			if rev_dep and myparent:
 				self.digraph.addnode(myparent, jbigkey, soft_dep=soft_dep)
 			else:
 				self.digraph.addnode(jbigkey, myparent, soft_dep=soft_dep)
-			if arg:
-				self.digraph.replace(jbigkey, " ".join(mybigkey) + " merge")
 			return 1
 		
 		self.spinner.update()

@@ -364,32 +364,6 @@ class digraph:
 		del self.nodes[node]
 		self.order.remove(node)
 
-	def replace(self, oldnode, newnode):
-		"""Replace all references to oldnode with references to newnode.
-		This is useful for upgrading a "nomerge" node to a "merge" node.
-
-		@return:
-			1. None on success.
-			2. Raise a KeyError if oldnode does not exist.
-			3. Raise a ValueError if newnode already exists.
-		"""
-		if not self.contains(oldnode):
-			raise KeyError(oldnode)
-		if oldnode == newnode:
-			return
-		if newnode in self.nodes:
-			raise ValueError(newnode)
-		for parent in self.nodes[oldnode][1]:
-			self.nodes[parent][0][newnode] = self.nodes[parent][0][oldnode]
-			del self.nodes[parent][0][oldnode]
-		for child in self.nodes[oldnode][0]:
-			self.nodes[child][1][newnode] = self.nodes[child][1][oldnode]
-			del self.nodes[child][1][oldnode]
-		self.nodes[newnode] = self.nodes[oldnode]
-		del self.nodes[oldnode]
-		oldindex = self.order.index(oldnode)
-		self.order[oldindex] = newnode
-
 	def contains(self, node):
 		"""Checks if the digraph contains mynode"""
 		return node in self.nodes
