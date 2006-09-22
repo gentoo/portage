@@ -9,7 +9,10 @@ from cache.mappings import LazyLoad, ProtectedDict
 from cache.template import reconstruct_eclasses
 from portage_util import writemsg, apply_secpass_permissions
 from portage_data import portage_gid
-from pysqlite2 import dbapi2 as db_module
+try:
+	import sqlite3 as db_module # sqlite3 is optional with >=python-2.5
+except ImportError:
+	from pysqlite2 import dbapi2 as db_module
 DBError = db_module.Error
 
 class database(fs_template.FsBased):
