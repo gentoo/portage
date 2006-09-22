@@ -28,7 +28,8 @@ class database(fs_template.FsBased):
 				def callit(*args2):
 					return args[0](*args[1:]+args2)
 				return callit
-			return ProtectedDict(LazyLoad(curry(self._pull, fp, cpv), initial_items=[("_mtime_", os.stat(fp).st_mtime)]))
+			return ProtectedDict(LazyLoad(curry(self._pull, fp, cpv),
+				initial_items=[("_mtime_", long(os.stat(fp).st_mtime))]))
 		except OSError:
 			raise KeyError(cpv)
 		return self._getitem(cpv)
