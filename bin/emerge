@@ -721,6 +721,8 @@ class depgraph:
 				self.digraph.addnode(myparent, jbigkey, soft_dep=soft_dep)
 			else:
 				self.digraph.addnode(jbigkey, myparent, soft_dep=soft_dep)
+			if arg:
+				self.digraph.replace(jbigkey, " ".join(mybigkey) + " merge")
 			return 1
 		
 		self.spinner.update()
