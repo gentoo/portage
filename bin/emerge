@@ -772,7 +772,8 @@ class depgraph:
 				    installed we skip merging it."""
 				if "self" not in self.myparams or \
 					("selective" in self.myparams and \
-					not arg and vardbapi.cpv_exists(mykey)):
+					not (arg and "--noreplace" not in self.myopts) and \
+					vardbapi.cpv_exists(mykey)):
 					merging=0
 			elif "selective" in self.myparams and vardbapi.cpv_exists(mykey):
 				merging=0
@@ -967,11 +968,7 @@ class depgraph:
 				sys.stderr.flush()
 
 				try:
-					if "--noreplace" in self.myopts:
-						arg = None
-					else:
-						arg = x
-					self.mysd = self.select_dep(myroot, mykey, arg=arg)
+					self.mysd = self.select_dep(myroot, mykey, arg=x)
 				except portage_exception.MissingSignature, e:
 					portage.writemsg("\n\n!!! A missing gpg signature is preventing portage from calculating the\n")
 					portage.writemsg("!!! required dependencies. This is a security feature enabled by the admin\n")
