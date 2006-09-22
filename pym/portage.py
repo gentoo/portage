@@ -6706,7 +6706,7 @@ def global_updates(mysettings, trees, prev_mtimes):
 			if len(errors) == 0:
 				# Update our internal mtime since we
 				# processed all of our directives.
-				timestamps[mykey] = mystat.st_mtime
+				timestamps[mykey] = long(mystat.st_mtime)
 			else:
 				for msg in errors:
 					writemsg("%s\n" % msg, noiselevel=-1)

@@ -80,7 +80,7 @@ def grab_updates(updpath, prev_mtimes=None):
 		file_path = os.path.join(updpath, myfile)
 		mystat = os.stat(file_path)
 		if file_path not in prev_mtimes or \
-		prev_mtimes[file_path] != mystat.st_mtime:
+		long(prev_mtimes[file_path]) != long(mystat.st_mtime):
 			f = open(file_path)
 			content = f.read()
 			f.close()

@@ -35,7 +35,8 @@ class database(fs_template.FsBased):
 				raise KeyError(cpv)
 			raise cache_errors.CacheCorruption(cpv, e)
 
-		try:	d["_mtime_"] = os.fstat(myf.fileno()).st_mtime
+		try:
+			d["_mtime_"] = long(os.fstat(myf.fileno()).st_mtime)
 		except OSError, e:	
 			myf.close()
 			raise cache_errors.CacheCorruption(cpv, e)

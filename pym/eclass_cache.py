@@ -44,7 +44,7 @@ class cache:
 				continue
 			for y in [y for y in os.listdir(x) if y.endswith(".eclass")]:
 				try:
-					mtime=os.stat(x+"/"+y).st_mtime
+					mtime = long(os.stat(os.path.join(x, y)).st_mtime)
 				except OSError:
 					continue
 				ys=y[:-eclass_len]
