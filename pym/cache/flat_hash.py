@@ -23,15 +23,13 @@ class database(fs_template.FsBased):
 	def __getitem__(self, cpv):
 		fp = os.path.join(self.location, cpv)
 		try:
-			myf = None
+			myf = open(fp, "r")
 			try:
-				myf = open(fp,"r")
 				d = self._parse_data(myf, cpv)
 				d["_mtime_"] = long(os.fstat(myf.fileno()).st_mtime)
 				return d
 			finally:
-				if myf:
-					myf.close()
+				myf.close()
 		except (IOError, OSError), e:
 			if e.errno != errno.ENOENT:
 				raise cache_errors.CacheCorruption(cpv, e)
