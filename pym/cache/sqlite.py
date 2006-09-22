@@ -4,8 +4,7 @@
 
 from cache import fs_template
 from cache import cache_errors
-import errno, os, stat
-from cache.mappings import LazyLoad, ProtectedDict
+import os
 from cache.template import reconstruct_eclasses
 from portage_util import writemsg, apply_secpass_permissions
 from portage_data import portage_gid
@@ -138,15 +137,6 @@ class database(fs_template.FsBased):
 			raise cache_errors.InitializationError(self.__class__,"actual synchronous = "+actual_synchronous+" does does not match requested value of "+synchronous)
 
 	def __getitem__(self, cpv):
-		if not self.has_key(cpv):
-			raise KeyError(cpv)
-		def curry(*args):
-			def callit(*args2):
-				return args[0](*args[1:]+args2)
-			return callit
-		return ProtectedDict(LazyLoad(curry(self._pull, cpv)))
-
-	def _pull(self, cpv):
 		cursor = self._db_cursor
 		cursor.execute("select * from %s where %s=%s" % \
 			(self._db_table["packages"]["table_name"],
