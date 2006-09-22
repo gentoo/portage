@@ -23,16 +23,7 @@ class database(fs_template.FsBased):
 
 	def __getitem__(self, cpv):
 		fp = os.path.join(self.location, cpv)
-		try:
-			def curry(*args):
-				def callit(*args2):
-					return args[0](*args[1:]+args2)
-				return callit
-			return ProtectedDict(LazyLoad(curry(self._pull, fp, cpv),
-				initial_items=[("_mtime_", long(os.stat(fp).st_mtime))]))
-		except OSError:
-			raise KeyError(cpv)
-		return self._getitem(cpv)
+		return self._pull(fp, cpv)
 
 	def _pull(self, fp, cpv):
 		try:
@@ -43,6 +34,7 @@ class database(fs_template.FsBased):
 			raise cache_errors.CacheCorruption(cpv, e)
 		try:
 			d = self._parse_data(myf, cpv)
+			d["_mtime_"] = long(os.fstat(myf.fileno()).st_mtime)
 		except (OSError, ValueError), e:
 			myf.close()
 			raise cache_errors.CacheCorruption(cpv, e)
@@ -50,10 +42,8 @@ class database(fs_template.FsBased):
 		return d
 
 
-	def _parse_data(self, data, cpv, mtime=0):
+	def _parse_data(self, data, cpv):
 		d = dict(map(lambda x:x.rstrip().split("=", 1), data))
-		if mtime != 0:
-			d["_mtime_"] = long(mtime)
 		if "_eclasses_" in d:
 			d["_eclasses_"] = reconstruct_eclasses(cpv, d["_eclasses_"])
 		return d

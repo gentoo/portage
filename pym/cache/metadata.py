@@ -32,11 +32,11 @@ class database(flat_hash.database):
 		return flat_hash.database.__getitem__(self, cpv)
 
 
-	def _parse_data(self, data, mtime):
+	def _parse_data(self, data, cpv):
 		# easy attempt first.
 		data = list(data)
 		if len(data) != magic_line_count:
-			d = flat_hash.database._parse_data(self, data, mtime)
+			d = flat_hash.database._parse_data(self, data)
 		else:
 			# this one's interesting.
 			d = {}
