@@ -6,7 +6,6 @@
 from cache import fs_template
 from cache import cache_errors
 import errno, os, stat
-from cache.mappings import LazyLoad, ProtectedDict
 from cache.template import reconstruct_eclasses
 # store the current key order *here*.
 class database(fs_template.FsBased):
@@ -23,24 +22,19 @@ class database(fs_template.FsBased):
 
 	def __getitem__(self, cpv):
 		fp = os.path.join(self.location, cpv)
-		return self._pull(fp, cpv)
-
-	def _pull(self, fp, cpv):
+		myf = None
 		try:
 			myf = open(fp,"r")
-		except IOError:
-			raise KeyError(cpv)
-		except OSError, e:
-			raise cache_errors.CacheCorruption(cpv, e)
-		try:
 			d = self._parse_data(myf, cpv)
 			d["_mtime_"] = long(os.fstat(myf.fileno()).st_mtime)
-		except (OSError, ValueError), e:
 			myf.close()
-			raise cache_errors.CacheCorruption(cpv, e)
-		myf.close()
-		return d
-
+			return d
+		except (IOError, OSError), e:
+			if myf:
+				myf.close()
+			if e.errno != errno.ENOENT:
+				raise cache_errors.CacheCorruption(cpv, e)
+			raise KeyError(cpv)
 
 	def _parse_data(self, data, cpv):
 		d = dict(map(lambda x:x.rstrip().split("=", 1), data))
