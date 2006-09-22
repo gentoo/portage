@@ -1221,7 +1221,7 @@ class depgraph:
 
 			if myparent:
 				#we are a dependency, so we want to be unconditionally added
-				soft_dep = soft_deps or vardb.match(x)
+				soft_dep = bool(soft_deps or vardb.match(x))
 				if not self.create(selected_pkg[0:3], myparent,
 					myuse=selected_pkg[-1], soft_dep=soft_dep,
 					rev_dep=rev_deps, arg=arg):
