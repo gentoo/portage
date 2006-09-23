@@ -2026,10 +2026,6 @@ class MergeTask(object):
 					retval = portage.doebuild(y, "clean", myroot,
 						pkgsettings, self.edebug, cleanup=1,
 						mydbapi=portdb, tree="porttree")
-					if (retval is None):
-						portage_util.writemsg("Unable to run required binary.\n",
-							noiselevel=-1)
-						sys.exit(127)
 					if retval:
 						sys.exit(retval)
 					short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Compile"
@@ -2040,10 +2036,6 @@ class MergeTask(object):
 					retval = portage.doebuild(y, "package", myroot,
 						pkgsettings, self.edebug, mydbapi=portdb,
 						tree="porttree")
-					if (retval is None):
-						portage_util.writemsg("Unable to run required binary.\n",
-							noiselevel=-1)
-						sys.exit(127)
 					if retval:
 						sys.exit(retval)
 					#dynamically update our database
@@ -2077,10 +2069,6 @@ class MergeTask(object):
 					retval = portage.doebuild(y, "clean", myroot,
 						pkgsettings, self.edebug, cleanup=1,
 						mydbapi=portdb, tree="porttree")
-					if (retval is None):
-						portage_util.writemsg("Unable to run required binary.\n",
-							noiselevel=-1)
-						sys.exit(127)
 					if retval:
 						sys.exit(retval)
 					short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Compile"
@@ -2093,10 +2081,6 @@ class MergeTask(object):
 						vartree=self.trees[myroot]["vartree"],
 						mydbapi=portdb, tree="porttree",
 						prev_mtimes=ldpath_mtimes)
-					if (retval is None):
-						portage_util.writemsg("Unable to run required binary.\n",
-							noiselevel=-1)
-						sys.exit(127)
 					if retval:
 						sys.exit(retval)
 					#dynamically update our database
