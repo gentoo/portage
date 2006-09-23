@@ -6547,14 +6547,6 @@ class FetchlistDict(UserDict.DictMixin):
 		"""Returns keys for all packages within pkgdir"""
 		return self.portdb.cp_list(self.cp, mytree=self.mytree)
 
-def cleanup_pkgmerge(mypkg, origdir, settings=None):
-	if settings is None:
-		settings = globals()["settings"]
-	shutil.rmtree(settings["PORTAGE_TMPDIR"]+"/binpkgs/"+mypkg)
-	if os.path.exists(settings["PORTAGE_TMPDIR"]+"/portage/"+mypkg+"/temp/environment"):
-		os.unlink(settings["PORTAGE_TMPDIR"]+"/portage/"+mypkg+"/temp/environment")
-	os.chdir(origdir)
-
 def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes=None):
 	"""will merge a .tbz2 file, returning a list of runtime dependencies
 		that must be satisfied, or None if there was a merge error.	This
@@ -6567,64 +6559,102 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 	if mytbz2[-5:]!=".tbz2":
 		print "!!! Not a .tbz2 file"
 		return None
-	mypkg=os.path.basename(mytbz2)[:-5]
-	xptbz2=xpak.tbz2(mytbz2)
-	pkginfo={}
-	mycat=xptbz2.getfile("CATEGORY")
-	if not mycat:
-		print "!!! CATEGORY info missing from info chunk, aborting..."
-		return None
-	mycat=mycat.strip()
-	mycatpkg=mycat+"/"+mypkg
-	tmploc=mysettings["PORTAGE_TMPDIR"]+"/binpkgs/"
-	pkgloc=tmploc+"/"+mypkg+"/bin/"
-	infloc=tmploc+"/"+mypkg+"/inf/"
-	myebuild=tmploc+"/"+mypkg+"/inf/"+os.path.basename(mytbz2)[:-4]+"ebuild"
-	if os.path.exists(tmploc+"/"+mypkg):
-		shutil.rmtree(tmploc+"/"+mypkg,1)
-	os.makedirs(pkgloc)
-	os.makedirs(infloc)
-	writemsg_stdout(">>> Extracting info\n")
-	xptbz2.unpackinfo(infloc)
-	# run pkg_setup early, so we can bail out early
-	# (before extracting binaries) if there's a problem
-	origdir=getcwd()
-	os.chdir(pkgloc)
 
-	# Save the md5sum for later.
-	fp = open(os.path.join(infloc, "BINPKGMD5"), "w")
-	fp.write(str(portage_checksum.perform_md5(mytbz2))+"\n")
-	fp.close()
+	tbz2_lock = None
+	binpkg_tmpdir_lock = None
+	builddir_lock = None
+	try:
+		tbz2_lock = portage_locks.lockfile(mytbz2, wantnewlockfile=1)
 
-	mysettings.configdict["pkg"]["CATEGORY"] = mycat;
-	# Eventually we'd like to pass in the saved ebuild env here.
-	# Do cleanup=1 to ensure that there is no cruft prior to the setup phase.
-	a = doebuild(myebuild, "setup", myroot, mysettings, tree="bintree",
-		cleanup=1, mydbapi=mydbapi, vartree=vartree)
-	writemsg_stdout(">>> Extracting %s\n" % mypkg)
-	notok=spawn("bzip2 -dqc -- '"+mytbz2+"' | tar xpf -",mysettings,free=1)
-	if notok:
-		print "!!! Error Extracting",mytbz2
-		cleanup_pkgmerge(mypkg, origdir, settings=mysettings)
-		return None
+		mypkg = os.path.basename(mytbz2)[:-5]
+		xptbz2 = xpak.tbz2(mytbz2)
+		mycat = xptbz2.getfile("CATEGORY")
+		if not mycat:
+			writemsg("!!! CATEGORY info missing from info chunk, aborting...\n",
+				noiselevel=-1)
+			return None
+		mycat = mycat.strip()
+		mycatpkg = "%s/%s" % (mycat, mypkg)
 
-	# the merge takes care of pre/postinst and old instance
-	# auto-unmerge, virtual/provides updates, etc.
-	mysettings.load_infodir(infloc)
-	mylink = dblink(mycat, mypkg, myroot, mysettings, vartree=vartree,
-		treetype="bintree")
-	mylink.merge(pkgloc, infloc, myroot, myebuild, cleanup=1, mydbapi=mydbapi,
-		prev_mtimes=prev_mtimes)
+		binpkg_tmpdir = os.path.join(
+			mysettings["PORTAGE_TMPDIR"], "binpkgs", mypkg)
+		pkgloc = os.path.join(binpkg_tmpdir, "bin")
+		infloc = os.path.join(binpkg_tmpdir, "inf")
+		myebuild = os.path.join(
+			infloc, os.path.basename(mytbz2)[:-4] + "ebuild")
+		binpkg_tmp_lock = portage_locks.lockdir(binpkg_tmpdir)
+		try:
+			shutil.rmtree(binpkg_tmpdir)
+		except (IOError, OSError), e:
+			if e.errno != errno.ENOENT:
+				raise
+			del e
+		for mydir in (binpkg_tmpdir, pkgloc, infloc):
+			portage_util.ensure_dirs(mydir, gid=portage_gid, mode=070)
+		writemsg_stdout(">>> Extracting info\n")
+		xptbz2.unpackinfo(infloc)
+		# Store the md5sum in the vdb.
+		fp = open(os.path.join(infloc, "BINPKGMD5"), "w")
+		fp.write(str(portage_checksum.perform_md5(mytbz2))+"\n")
+		fp.close()
 
-	if not os.path.exists(infloc+"/RDEPEND"):
-		returnme=""
-	else:
-		#get runtime dependencies
-		a=open(infloc+"/RDEPEND","r")
-		returnme=string.join(string.split(a.read())," ")
-		a.close()
-	cleanup_pkgmerge(mypkg, origdir, settings=mysettings)
-	return returnme
+		mysettings.configdict["pkg"]["CATEGORY"] = mycat;
+
+		debug = mysettings.get("PORTAGE_DEBUG", "") == "1"
+		doebuild_environment(myebuild, "setup", myroot,
+			mysettings, debug, 1, mydbapi)
+		portage_util.ensure_dirs(
+			os.path.dirname(mysettings["PORTAGE_BUILDDIR"]),
+			gid=portage_gid, mode=070, mask=02)
+		builddir = mysettings["PORTAGE_BUILDDIR"]
+		builddir_lock = portage_locks.lockdir(builddir)
+
+		# Eventually we'd like to pass in the saved ebuild env here.
+		# Do cleanup=1 to ensure that there is no cruft prior to the setup phase.
+		retval = doebuild(myebuild, "setup", myroot, mysettings, tree="bintree",
+			cleanup=1, mydbapi=mydbapi, vartree=vartree)
+		if retval != os.EX_OK:
+			writemsg("!!! Setup failed: %s\n" % retval, noiselevel=-1)
+			return None
+
+		writemsg_stdout(">>> Extracting %s\n" % mypkg)
+		retval = portage_exec.spawn_bash(
+			"bzip2 -dqc -- '%s' | tar -xp -C '%s' -f -" % (mytbz2, pkgloc),
+			env=mysettings.environ())
+		if retval != os.EX_OK:
+			writemsg("!!! Error Extracting '%s'\n" % mytbz2, noiselevel=-1)
+			return None
+		portage_locks.unlockfile(tbz2_lock)
+		tbz2_lock = None
+
+		mysettings.load_infodir(infloc)
+		mylink = dblink(mycat, mypkg, myroot, mysettings, vartree=vartree,
+			treetype="bintree")
+		mylink.merge(pkgloc, infloc, myroot, myebuild, cleanup=0,
+			mydbapi=mydbapi, prev_mtimes=prev_mtimes)
+
+		try:
+			f = open(os.path.join(infloc, "RDEPEND", "r"))
+			try:
+				return " ".join(f.read().split())
+			finally:
+				f.close()
+		except (IOError, OSError):
+			return ""
+	finally:
+		if tbz2_lock:
+			portage_locks.unlockfile(tbz2_lock)
+		if binpkg_tmp_lock:
+			shutil.rmtree(binpkg_tmpdir)
+			portage_locks.unlockdir(binpkg_tmp_lock)
+		if builddir_lock:
+			try:
+				shutil.rmtree(builddir)
+			except (IOError, OSError), e:
+				if e.errno != errno.ENOENT:
+					raise
+				del e
+			portage_locks.unlockdir(builddir_lock)
 
 def deprecated_profile_check():
 	if not os.access(DEPRECATED_PROFILE_FILE, os.R_OK):
