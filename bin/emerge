@@ -2013,77 +2013,78 @@ class MergeTask(object):
 						print
 						returnme=1
 					continue
-				elif "--buildpkg" in self.myopts or issyspkg:
-					#buildsyspkg: Sounds useful to display something, but I don't know if we should also log it
-					if issyspkg:
-						print ">>> This is a system package, let's pack a rescue tarball."
-						#emergelog(">>> This is a system package, let's pack a rescue tarball.")
-					#create pkg, then merge pkg
-					short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Clean"
-					emergelog(xterm_titles, " === ("+str(mergecount)+\
-						" of "+str(len(mymergelist))+") Cleaning ("+\
-						x[pkgindex]+"::"+y+")", short_msg=short_msg)
-					retval = portage.doebuild(y, "clean", myroot,
-						pkgsettings, self.edebug, cleanup=1,
-						mydbapi=portdb, tree="porttree")
-					if retval:
-						sys.exit(retval)
-					short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Compile"
-					emergelog(xterm_titles, " === ("+str(mergecount)+\
-						" of "+str(len(mymergelist))+\
-						") Compiling/Packaging ("+x[pkgindex]+"::"+y+\
-						")", short_msg=short_msg)
-					retval = portage.doebuild(y, "package", myroot,
-						pkgsettings, self.edebug, mydbapi=portdb,
-						tree="porttree")
-					if retval:
-						sys.exit(retval)
-					#dynamically update our database
-					if "--buildpkgonly" not in self.myopts:
-						self.trees[myroot]["bintree"].inject(pkg_key)
-						mytbz2 = self.trees[myroot]["bintree"].getname(pkg_key)
-						short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Merge"
-						emergelog(xterm_titles, " === ("+\
-							str(mergecount)+" of "+\
-							str(len(mymergelist))+") Merging ("+\
-							x[pkgindex]+"::"+y+")", short_msg=short_msg)
 
-						retval = portage.merge(pkgsettings["CATEGORY"],
-							pkgsettings["PF"], pkgsettings["D"],
-							os.path.join(pkgsettings["PORTAGE_BUILDDIR"],
-							"build-info"), myroot, pkgsettings,
-							myebuild=pkgsettings["EBUILD"],
-							mytree="porttree", mydbapi=portdb,
-							vartree=self.trees[myroot]["vartree"],
-							prev_mtimes=ldpath_mtimes)
-						if retval:
-							sys.exit(retval)
-					elif "noclean" not in pkgsettings.features:
-						portage.doebuild(y, "clean", myroot, pkgsettings,
-							self.edebug, mydbapi=portdb, tree="porttree")
-				else:
-					short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Clean"
-					emergelog(xterm_titles, " === ("+str(mergecount)+\
-						" of "+str(len(mymergelist))+") Cleaning ("+\
-						x[pkgindex]+"::"+y+")", short_msg=short_msg)
+				portage.doebuild_environment(y, "setup", myroot,
+					pkgsettings, self.edebug, 1, portdb)
+				portage_util.ensure_dirs(
+					os.path.dirname(pkgsettings["PORTAGE_BUILDDIR"]),
+					gid=portage.portage_gid, mode=070, mask=02)
+				builddir_lock = None
+				try:
+					builddir_lock = portage_locks.lockdir(
+						pkgsettings["PORTAGE_BUILDDIR"])
+					msg = " === (%s of %s) Cleaning (%s::%s)" % \
+						(mergecount, len(mymergelist), pkg_key, y)
+					short_msg = "emerge: (%s of %s) %s Clean" % \
+						(mergecount, len(mymergelist), pkg_key)
+					emergelog(xterm_titles, msg, short_msg=short_msg)
 					retval = portage.doebuild(y, "clean", myroot,
 						pkgsettings, self.edebug, cleanup=1,
 						mydbapi=portdb, tree="porttree")
-					if retval:
-						sys.exit(retval)
-					short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Compile"
-					emergelog(xterm_titles, " === ("+str(mergecount)+\
-						" of "+str(len(mymergelist))+\
-						") Compiling/Merging ("+x[pkgindex]+\
-						"::"+y+")", short_msg=short_msg)
-					retval = portage.doebuild(y, "merge", myroot,
-						pkgsettings, self.edebug,
-						vartree=self.trees[myroot]["vartree"],
-						mydbapi=portdb, tree="porttree",
-						prev_mtimes=ldpath_mtimes)
-					if retval:
-						sys.exit(retval)
-					#dynamically update our database
+					if retval != os.EX_OK:
+						return retval
+					if "--buildpkg" in self.myopts or issyspkg:
+						if issyspkg:
+							print ">>> This is a system package, " + \
+								"let's pack a rescue tarball."
+						msg = " === (%s of %s) Compiling/Packaging (%s::%s)" % \
+							(mergecount, len(mymergelist), pkg_key, y)
+						short_msg = "emerge: (%s of %s) %s Compile" % \
+							(mergecount, len(mymergelist), pkg_key)
+						emergelog(xterm_titles, msg, short_msg=short_msg)
+						retval = portage.doebuild(y, "package", myroot,
+							pkgsettings, self.edebug, mydbapi=portdb,
+							tree="porttree")
+						if retval != os.EX_OK:
+							return retval
+						if "--buildpkgonly" not in self.myopts:
+							bintree = self.trees[myroot]["bintree"]
+							bintree.inject(pkg_key)
+							mytbz2 = bintree.getname(pkg_key)
+							msg = " === (%s of %s) Merging (%s::%s)" % \
+								(mergecount, len(mymergelist), pkg_key, y)
+							short_msg = "emerge: (%s of %s) %s Merge" % \
+								(mergecount, len(mymergelist), pkg_key)
+							emergelog(xterm_titles, msg, short_msg=short_msg)
+							retval = portage.merge(pkgsettings["CATEGORY"],
+								pkgsettings["PF"], pkgsettings["D"],
+								os.path.join(pkgsettings["PORTAGE_BUILDDIR"],
+								"build-info"), myroot, pkgsettings,
+								myebuild=pkgsettings["EBUILD"],
+								mytree="porttree", mydbapi=portdb,
+								vartree=vartree, prev_mtimes=ldpath_mtimes)
+							if retval != os.EX_OK:
+								return retval
+						elif "noclean" not in pkgsettings.features:
+							portage.doebuild(y, "clean", myroot,
+								pkgsettings, self.edebug, mydbapi=portdb,
+								tree="porttree")
+					else:
+						msg = " === (%s of %s) Compiling/Merging (%s::%s)" % \
+							(mergecount, len(mymergelist), pkg_key, y)
+						short_msg = "emerge: (%s of %s) %s Compile" % \
+							(mergecount, len(mymergelist), pkg_key)
+						emergelog(xterm_titles, msg, short_msg=short_msg)
+						retval = portage.doebuild(y, "merge", myroot,
+							pkgsettings, self.edebug, vartree=vartree,
+							mydbapi=portdb, tree="porttree",
+							prev_mtimes=ldpath_mtimes)
+						if retval != os.EX_OK:
+							return retval
+				finally:
+					if builddir_lock:
+						portage_locks.unlockdir(builddir_lock)
+
 			elif x[0]=="binary":
 				#merge the tbz2
 				mytbz2 = self.trees[myroot]["bintree"].getname(pkg_key)
@@ -2215,6 +2216,7 @@ class MergeTask(object):
 				sys.exit(returnme)
 			else:
 				sys.exit(0)
+		return os.EX_OK
 
 def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 	ldpath_mtimes, raise_on_missing=True):
@@ -3600,7 +3602,10 @@ def action_build(settings, trees, mtimedb,
 				it to write the mtimedb"""
 				mtimedb.filename = None
 				time.sleep(3) # allow the parent to have first fetch
-			mergetask.merge(mtimedb["resume"]["mergelist"], favorites, mtimedb)
+			retval = mergetask.merge(
+				mtimedb["resume"]["mergelist"], favorites, mtimedb)
+			if retval != os.EX_OK:
+				sys.exit(retval)
 		else:
 			if "resume" in mtimedb and \
 			"mergelist" in mtimedb["resume"] and \
@@ -3632,7 +3637,9 @@ def action_build(settings, trees, mtimedb,
 			else:
 				pkglist = mydepgraph.altlist()
 			mergetask = MergeTask(settings, trees, myopts)
-			mergetask.merge(pkglist, favorites, mtimedb)
+			retval = mergetask.merge(pkglist, favorites, mtimedb)
+			if retval != os.EX_OK:
+				sys.exit(retval)
 
 		if mtimedb.has_key("resume"):
 			del mtimedb["resume"]
