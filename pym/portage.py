@@ -2530,9 +2530,8 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 	mycpv = cat+"/"+mypv
 	mysplit=pkgsplit(mypv,silent=0)
 	if mysplit is None:
-		writemsg("!!! Error: PF is null '%s'; exiting.\n" % mypv,
-			noiselevel=-1)
-		return 1
+		raise portage_exception.IncorrectParameter(
+			"Invalid ebuild path: '%s'" % myebuild)
 
 	if mydo != "depend":
 		# XXX: We're doing a little hack here to curtain the gvisible locking
