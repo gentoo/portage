@@ -2632,6 +2632,7 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 	# Allow color.map to control colors associated with einfo, ewarn, etc...
 	for c in ("GOOD", "WARN", "BAD", "HILITE", "BRACKET"):
 		mysettings[c] = output.codes[c]
+	return os.EX_OK
 
 def prepare_build_dirs(myroot, mysettings, cleanup):
 
@@ -2843,7 +2844,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 	mystatus = doebuild_environment(myebuild, mydo, myroot, mysettings, debug,
 		use_cache, mydbapi)
-	if mystatus:
+	if mystatus != os.EX_OK:
 		return mystatus
 
 	# get possible slot information from the deps file

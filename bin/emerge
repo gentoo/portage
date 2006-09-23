@@ -2014,8 +2014,10 @@ class MergeTask(object):
 						returnme=1
 					continue
 
-				portage.doebuild_environment(y, "setup", myroot,
+				retval = portage.doebuild_environment(y, "setup", myroot,
 					pkgsettings, self.edebug, 1, portdb)
+				if retval != os.EX_OK:
+					return retval
 				portage_util.ensure_dirs(
 					os.path.dirname(pkgsettings["PORTAGE_BUILDDIR"]),
 					gid=portage.portage_gid, mode=070, mask=02)
