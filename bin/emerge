@@ -690,6 +690,7 @@ class depgraph:
 				trees[self.target_root]["bintree"].populate(
 					"--getbinpkg" in self.myopts,
 					"--getbinpkgonly" in self.myopts)
+		self.args_keys = []
 
 	def create(self, mybigkey, myparent=None, addme=1, myuse=None,
 		soft_dep=False, rev_dep=False, arg=None):
@@ -728,6 +729,8 @@ class depgraph:
 		
 		self.spinner.update()
 		mytype,myroot,mykey=mybigkey
+		if not arg:
+			arg = portage.best_match_to_list(mykey, self.args_keys)
 		# select the correct /var database that we'll be checking against
 		vardbapi = self.trees[myroot]["vartree"].dbapi
 		portdb = self.trees[myroot]["porttree"].dbapi
@@ -764,7 +767,7 @@ class depgraph:
 		merging=1
 		if addme:
 		# this is where we add the node to the list of packages to merge
-			if not myparent:
+			if (arg and "--noreplace" not in self.myopts) or not myparent:
 				""" If there is no parent, the package was specified on the
 				    command line or is part of system/world sets.
 				    In either case, if we aren't in 'self' mode (where package
@@ -889,7 +892,9 @@ class depgraph:
 		myfavorites=[]
 		myroot = self.target_root
 		portdb = self.trees[myroot]["porttree"].dbapi
+		bindb = self.trees[myroot]["bintree"].dbapi
 		pkgsettings = self.pkgsettings[myroot]
+		self.args_keys = []
 		for x in myfiles:
 			ext = os.path.splitext(x)[1]
 			if ext==".tbz2":
@@ -946,14 +951,18 @@ class depgraph:
 					portage.writemsg("!!! (Did you specify a version but forget to prefix with '='?)\n")
 					return (0,[])
 				try:
+					mykey = None
+					if "--usepkg" in self.myopts:
+						mykey = portage.dep_expand(x, mydb=bindb,
+							settings=pkgsettings)
+					if (mykey and not mykey.startswith("null/")) or \
+						"--usepkgonly" in self.myopts:
+						self.args_keys.append(mykey)
+						continue
+
 					mykey = portage.dep_expand(x,
 						mydb=portdb, settings=pkgsettings)
-					if mykey.startswith("null/"):
-						# If category expansion fails against the portage tree,
-						# remove the null/ prefix so that it may be given
-						# another chance to expand against the binary package
-						# tree in select_dep().
-						mykey = mykey[5:]
+					self.args_keys.append(mykey)
 				except ValueError, errpkgs:
 					print "\n\n!!! The short ebuild name \"" + x + "\" is ambiguous.  Please specify"
 					print "!!! one of the following fully-qualified ebuild names instead:\n"
@@ -962,11 +971,7 @@ class depgraph:
 					print
 					sys.exit(1)
 
-				# select needs to return 0 on dep_check failure
-
-				sys.stdout.flush()
-				sys.stderr.flush()
-
+		for mykey in self.args_keys:
 				try:
 					self.mysd = self.select_dep(myroot, mykey, arg=x)
 				except portage_exception.MissingSignature, e:
