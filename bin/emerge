@@ -895,6 +895,7 @@ class depgraph:
 		bindb = self.trees[myroot]["bintree"].dbapi
 		pkgsettings = self.pkgsettings[myroot]
 		self.args_keys = []
+		raw_args = []
 		for x in myfiles:
 			ext = os.path.splitext(x)[1]
 			if ext==".tbz2":
@@ -958,11 +959,13 @@ class depgraph:
 					if (mykey and not mykey.startswith("null/")) or \
 						"--usepkgonly" in self.myopts:
 						self.args_keys.append(mykey)
+						raw_args.append(x)
 						continue
 
 					mykey = portage.dep_expand(x,
 						mydb=portdb, settings=pkgsettings)
 					self.args_keys.append(mykey)
+					raw_args.append(x)
 				except ValueError, errpkgs:
 					print "\n\n!!! The short ebuild name \"" + x + "\" is ambiguous.  Please specify"
 					print "!!! one of the following fully-qualified ebuild names instead:\n"
@@ -971,9 +974,10 @@ class depgraph:
 					print
 					sys.exit(1)
 
-		for mykey in self.args_keys:
+		for i in xrange(len(self.args_keys)):
+				mykey = self.args_keys[i]
 				try:
-					self.mysd = self.select_dep(myroot, mykey, arg=x)
+					self.mysd = self.select_dep(myroot, mykey, arg=raw_args[i])
 				except portage_exception.MissingSignature, e:
 					portage.writemsg("\n\n!!! A missing gpg signature is preventing portage from calculating the\n")
 					portage.writemsg("!!! required dependencies. This is a security feature enabled by the admin\n")
