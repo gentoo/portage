@@ -5763,10 +5763,10 @@ class dblink:
 				gid=portage_gid, mode=070, mask=02)
 		builddir_lock = None
 		try:
-			builddir_lock = portage_locks.lockdir(
-				self.settings["PORTAGE_BUILDDIR"])
-
 			if myebuildpath:
+				builddir_lock = portage_locks.lockdir(
+					self.settings["PORTAGE_BUILDDIR"])
+
 				# Eventually, we'd like to pass in the saved ebuild env here...
 				retval = doebuild(myebuildpath, "prerm", self.myroot,
 					self.settings, cleanup=cleanup, use_cache=0,
