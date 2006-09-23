@@ -5742,42 +5742,73 @@ class dblink:
 		ldpath_mtimes=None):
 		"""The caller must ensure that lockdb() and unlockdb() are called
 		before and after this method."""
-		global dircache
-		dircache={}
+
+		# Now, don't assume that the name of the ebuild is the same as the
+		# name of the dir; the package may have been moved.
+		myebuildpath = None
+		mystuff = listdir(self.dbdir, EmptyOnError=1)
+		for x in mystuff:
+			if x.endswith(".ebuild"):
+				myebuildpath = os.path.join(self.dbdir, x)
+				break
 
 		self.settings.load_infodir(self.dbdir)
+		if myebuildpath:
+			retval = doebuild_environment(myebuildpath, "prerm", self.myroot,
+				self.settings, 0, 0, self.vartree.dbapi)
+			if retval != os.EX_OK:
+				sys.exit(retval)
+			portage_util.ensure_dirs(
+				os.path.dirname(self.settings["PORTAGE_BUILDDIR"]),
+				gid=portage_gid, mode=070, mask=02)
+		builddir_lock = None
+		try:
+			builddir_lock = portage_locks.lockdir(
+				self.settings["PORTAGE_BUILDDIR"])
+
+			if myebuildpath:
+				# Eventually, we'd like to pass in the saved ebuild env here...
+				retval = doebuild(myebuildpath, "prerm", self.myroot,
+					self.settings, cleanup=cleanup, use_cache=0,
+					mydbapi=self.vartree.dbapi, tree="vartree",
+					vartree=self.vartree)
+				# XXX: Decide how to handle failures here.
+				if retval != os.EX_OK:
+					writemsg("!!! FAILED prerm: %s\n" % retval, noiselevel=-1)
+					sys.exit(123)
+
+			self._unmerge_pkgfiles(pkgfiles)
+
+			if myebuildpath:
+				retval = doebuild(myebuildpath, "postrm", self.myroot,
+					 self.settings, use_cache=0, tree="vartree",
+					 mydbapi=self.vartree.dbapi, vartree=self.vartree)
+
+				# process logs created during pre/postrm
+				elog_process(self.mycpv, self.settings)
+
+				# XXX: Decide how to handle failures here.
+				if retval != os.EX_OK:
+					writemsg("!!! FAILED postrm: %s\n" % retval, noiselevel=-1)
+					sys.exit(123)
+				doebuild(myebuildpath, "cleanrm", self.myroot, self.settings,
+					tree="vartree", mydbapi=self.vartree.dbapi,
+					vartree=self.vartree)
+
+		finally:
+			if builddir_lock:
+				portage_locks.unlockdir(builddir_lock)
+
+		env_update(target_root=self.myroot, prev_mtimes=ldpath_mtimes)
+
+	def _unmerge_pkgfiles(self, pkgfiles):
+
+		global dircache
+		dircache={}
 
 		if not pkgfiles:
 			writemsg_stdout("No package files given... Grabbing a set.\n")
 			pkgfiles=self.getcontents()
-
-		# Now, don't assume that the name of the ebuild is the same as the
-		# name of the dir; the package may have been moved.
-		myebuildpath=None
-
-		# We should use the environement file if possible,
-		# as it has all sourced files already included.
-		# XXX: Need to ensure it doesn't overwrite any important vars though.
-		if os.access(self.dbdir+"/environment.bz2", os.R_OK):
-			spawn("bzip2 -d "+self.dbdir+"/environment.bz2",self.settings,free=1)
-
-		if not myebuildpath:
-			mystuff=listdir(self.dbdir,EmptyOnError=1)
-			for x in mystuff:
-				if x[-7:]==".ebuild":
-					myebuildpath=self.dbdir+"/"+x
-					break
-
-		#do prerm script
-		if myebuildpath and os.path.exists(myebuildpath):
-			# Eventually, we'd like to pass in the saved ebuild env here...
-			a = doebuild(myebuildpath, "prerm", self.myroot, self.settings,
-				cleanup=cleanup, use_cache=0, tree="vartree",
-				mydbapi=self.vartree.dbapi, vartree=self.vartree)
-			# XXX: Decide how to handle failures here.
-			if a != 0:
-				writemsg("!!! FAILED prerm: "+str(a)+"\n", noiselevel=-1)
-				sys.exit(123)
 
 		if pkgfiles:
 			mykeys=pkgfiles.keys()
@@ -5890,27 +5921,6 @@ class dblink:
 
 		#remove self from vartree database so that our own virtual gets zapped if we're the last node
 		self.vartree.zap(self.mycpv)
-
-		#do original postrm
-		if myebuildpath and os.path.exists(myebuildpath):
-			# XXX: This should be the old config, not the current one.
-			# XXX: Use vardbapi to load up env vars.
-			a = doebuild(myebuildpath, "postrm", self.myroot, self.settings,
-			 use_cache=0, tree="vartree", mydbapi=self.vartree.dbapi,
-			 vartree=self.vartree)
-			
-			# process logs created during pre/postrm
-			elog_process(self.mycpv, self.settings)
-			
-			# XXX: Decide how to handle failures here.
-			if a != 0:
-				writemsg("!!! FAILED postrm: "+str(a)+"\n", noiselevel=-1)
-				sys.exit(123)
-			doebuild(myebuildpath, "cleanrm", self.myroot, self.settings,
-				tree="vartree", mydbapi=self.vartree.dbapi,
-				vartree=self.vartree)
-
-		env_update(target_root=self.myroot, prev_mtimes=ldpath_mtimes)
 
 	def isowner(self,filename,destroot):
 		""" check if filename is a new file or belongs to this package
