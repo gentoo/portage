@@ -2792,6 +2792,18 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 			writemsg("!!! Disabling logging.\n", noiselevel=-1)
 			while "PORT_LOGDIR" in mysettings:
 				del mysettings["PORT_LOGDIR"]
+	if "PORT_LOGDIR" in mysettings:
+		logid_path = os.path.join(mysettings["PORTAGE_BUILDDIR"], ".logid")
+		if not os.path.exists(logid_path):
+			f = open(logid_path, "w")
+			f.close()
+			del f
+		logid_time = time.strftime("%Y%m%d-%H%M%S",
+			time.gmtime(os.stat(logid_path).st_mtime))
+		mysettings["PORTAGE_LOG_FILE"] = os.path.join(
+			mysettings["PORT_LOGDIR"], "%s:%s:%s.log" % \
+			(mysettings["CATEGORY"], mysettings["PF"], logid_time))
+		del logid_path, logid_time
 
 def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	fetchonly=0, cleanup=0, dbkey=None, use_cache=1, fetchall=0, tree=None,
@@ -2868,23 +2880,11 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			mystatus = prepare_build_dirs(myroot, mysettings, cleanup)
 			if mystatus:
 				return mystatus
+			# PORTAGE_LOG_FILE is set above by the prepare_build_dirs() call.
+			logfile = mysettings.get("PORTAGE_LOG_FILE", None)
 		if mydo == "unmerge":
 			return unmerge(mysettings["CATEGORY"],
 				mysettings["PF"], myroot, mysettings, vartree=vartree)
-
-		if "PORT_LOGDIR" in mysettings and builddir_lock:
-			logid_path = os.path.join(mysettings["PORTAGE_BUILDDIR"], ".logid")
-			if not os.path.exists(logid_path):
-				f = open(logid_path, "w")
-				f.close()
-				del f
-			logid_time = time.strftime("%Y%m%d-%H%M%S",
-				time.gmtime(os.stat(logid_path).st_mtime))
-			logfile = os.path.join(
-				mysettings["PORT_LOGDIR"], "%s:%s:%s.log" % \
-				(mysettings["CATEGORY"], mysettings["PF"], logid_time))
-			mysettings["PORTAGE_LOG_FILE"] = logfile
-			del logid_path, logid_time
 
 		# if any of these are being called, handle them -- running them out of
 		# the sandbox -- and stop now.
