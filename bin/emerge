@@ -364,9 +364,6 @@ def create_depgraph_params(myopts, myaction):
 		sub.extend(["recurse"])
 	if "--deep" in myopts:
 		add.extend(["deep"])
-	elif myaction in ["depclean"]:
-		add.extend(["empty"])
-		sub.extend(["selective"])
 	for x in add:
 		if (x not in myparams) and (x not in sub):
 			myparams.append(x)
