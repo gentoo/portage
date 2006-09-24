@@ -3374,7 +3374,8 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None,
 		global db
 		trees = db
 	writemsg("ZapDeps -- %s\n" % (use_binaries), 2)
-	if not reduced or unreduced == ["||"] or dep_eval(reduced):
+	if not reduced or unreduced == ["||"] or \
+		(not return_all_deps and dep_eval(reduced)):
 		return []
 
 	if unreduced[0] != "||":

@@ -352,11 +352,13 @@ def create_depgraph_params(myopts, myaction):
 	# recurse:   go into the dependencies
 	# deep:      go into the dependencies of already merged packages
 	# empty:     pretend nothing is merged
-	myparams = ["self", "recurse", "selective"]
+	myparams = ["recurse"]
 	add=[]
 	sub=[]
 	if "--update" in myopts or myaction in ("system", "world"):
-		add.append("empty")
+		add.extend(["selective"])
+	if "--noreplace" in myopts:
+		add.extend(["selective"])
 	if "--emptytree" in myopts:
 		add.extend(["empty"])
 		sub.extend(["selective"])
@@ -764,19 +766,9 @@ class depgraph:
 		merging=1
 		if addme:
 		# this is where we add the node to the list of packages to merge
-			if (arg and "--noreplace" not in self.myopts) or not myparent:
-				""" If there is no parent, the package was specified on the
-				    command line or is part of system/world sets.
-				    In either case, if we aren't in 'self' mode (where package
-				    is always included and if in 'selective' mode package is already
-				    installed we skip merging it."""
-				if "self" not in self.myparams or \
-					("selective" in self.myparams and \
-					not (arg and "--noreplace" not in self.myopts) and \
-					vardbapi.cpv_exists(mykey)):
+			if "selective" in self.myparams or not arg:
+				if "empty" not in self.myparams and vardbapi.cpv_exists(mykey):
 					merging=0
-			elif "selective" in self.myparams and vardbapi.cpv_exists(mykey):
-				merging=0
 
 			""" If we aren't merging, perform the --newuse check.
 			    If the package has new iuse flags or different use flags then if
