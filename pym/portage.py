@@ -2892,12 +2892,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			return spawn(EBUILD_SH_BINARY + " " + mydo, mysettings,
 				debug=debug, free=1, logfile=logfile)
 		elif mydo == "preinst":
-			if mysettings.get("EMERGE_FROM", None) == "binary":
-				mysettings.load_infodir(mysettings["O"])
-				mysettings["IMAGE"] = os.path.join(
-					mysettings["PKG_TMPDIR"], mysettings["PF"], "bin")
-			else:
-				mysettings["IMAGE"] = mysettings["D"]
+			mysettings["IMAGE"] = mysettings["D"]
 			phase_retval = spawn(" ".join((EBUILD_SH_BINARY, mydo)),
 				mysettings, debug=debug, free=1, logfile=logfile)
 			if phase_retval == os.EX_OK:
@@ -6561,7 +6556,6 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 		return None
 
 	tbz2_lock = None
-	binpkg_tmpdir_lock = None
 	builddir_lock = None
 	try:
 		tbz2_lock = portage_locks.lockfile(mytbz2, wantnewlockfile=1)
@@ -6574,45 +6568,37 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 				noiselevel=-1)
 			return None
 		mycat = mycat.strip()
-		mycatpkg = "%s/%s" % (mycat, mypkg)
 
-		binpkg_tmpdir = os.path.join(
-			mysettings["PORTAGE_TMPDIR"], "binpkgs", mypkg)
-		pkgloc = os.path.join(binpkg_tmpdir, "bin")
-		infloc = os.path.join(binpkg_tmpdir, "inf")
+		# These are the same directories that would be used at build time.
+		builddir = os.path.join(mysettings["PORTAGE_TMPDIR"], "portage", mypkg)
+		pkgloc = os.path.join(builddir, "image")
+		infloc = os.path.join(builddir, "build-info")
 		myebuild = os.path.join(
 			infloc, os.path.basename(mytbz2)[:-4] + "ebuild")
-		binpkg_tmp_lock = portage_locks.lockdir(binpkg_tmpdir)
+		portage_util.ensure_dirs(os.path.dirname(builddir),
+			gid=portage_gid, mode=070, mask=02)
+		builddir_lock = portage_locks.lockdir(builddir)
 		try:
-			shutil.rmtree(binpkg_tmpdir)
+			shutil.rmtree(builddir)
 		except (IOError, OSError), e:
 			if e.errno != errno.ENOENT:
 				raise
 			del e
-		for mydir in (binpkg_tmpdir, pkgloc, infloc):
+		for mydir in (builddir, pkgloc, infloc):
 			portage_util.ensure_dirs(mydir, gid=portage_gid, mode=070)
 		writemsg_stdout(">>> Extracting info\n")
 		xptbz2.unpackinfo(infloc)
+		mysettings.load_infodir(infloc)
 		# Store the md5sum in the vdb.
 		fp = open(os.path.join(infloc, "BINPKGMD5"), "w")
 		fp.write(str(portage_checksum.perform_md5(mytbz2))+"\n")
 		fp.close()
 
-		mysettings.configdict["pkg"]["CATEGORY"] = mycat;
-
 		debug = mysettings.get("PORTAGE_DEBUG", "") == "1"
-		doebuild_environment(myebuild, "setup", myroot,
-			mysettings, debug, 1, mydbapi)
-		portage_util.ensure_dirs(
-			os.path.dirname(mysettings["PORTAGE_BUILDDIR"]),
-			gid=portage_gid, mode=070, mask=02)
-		builddir = mysettings["PORTAGE_BUILDDIR"]
-		builddir_lock = portage_locks.lockdir(builddir)
 
 		# Eventually we'd like to pass in the saved ebuild env here.
-		# Do cleanup=1 to ensure that there is no cruft prior to the setup phase.
-		retval = doebuild(myebuild, "setup", myroot, mysettings, tree="bintree",
-			cleanup=1, mydbapi=mydbapi, vartree=vartree)
+		retval = doebuild(myebuild, "setup", myroot, mysettings, debug=debug,
+			tree="bintree", mydbapi=mydbapi, vartree=vartree)
 		if retval != os.EX_OK:
 			writemsg("!!! Setup failed: %s\n" % retval, noiselevel=-1)
 			return None
@@ -6627,7 +6613,6 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 		portage_locks.unlockfile(tbz2_lock)
 		tbz2_lock = None
 
-		mysettings.load_infodir(infloc)
 		mylink = dblink(mycat, mypkg, myroot, mysettings, vartree=vartree,
 			treetype="bintree")
 		mylink.merge(pkgloc, infloc, myroot, myebuild, cleanup=0,
@@ -6644,9 +6629,6 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 	finally:
 		if tbz2_lock:
 			portage_locks.unlockfile(tbz2_lock)
-		if binpkg_tmp_lock:
-			shutil.rmtree(binpkg_tmpdir)
-			portage_locks.unlockdir(binpkg_tmp_lock)
 		if builddir_lock:
 			try:
 				shutil.rmtree(builddir)
