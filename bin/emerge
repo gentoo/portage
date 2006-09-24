@@ -858,8 +858,13 @@ class depgraph:
 			if not self.select_dep("/", edepend["DEPEND"], myparent=mp,
 				myuse=myuse):
 				return 0
+			"""RDEPEND is soft by definition.  However, in order to ensure
+			correct merge order, we make it a hard dependency.  Otherwise, a
+			build time dependency might not be usable due to it's run time
+			dependencies not being installed yet.
+			"""
 			if not self.select_dep(myroot,edepend["RDEPEND"], myparent=mp,
-				myuse=myuse, soft_deps=True):
+				myuse=myuse, soft_deps=False):
 				return 0
 			if edepend.has_key("PDEPEND") and edepend["PDEPEND"]:
 				# Post Depend -- Add to the list without a parent, as it depends
