@@ -1051,24 +1051,20 @@ class depgraph:
 				print "Reverse:", rev_deps
 			if soft_deps:
 				print "Soft:", soft_deps
-		
-		if not arg:
-			#processing dependencies
-			""" Call portage.dep_check to evaluate the use? conditionals and make sure all
-			dependencies are satisfiable. """
-			mycheck = portage.dep_check(depstring, self.mydbapi[myroot],
-				pkgsettings, myuse=myuse,
-				use_binaries=("--usepkgonly" in self.myopts),
-				myroot=myroot, trees=self.trees, return_all_deps=True)
 
-			if not mycheck[0]:
-				mymerge=[]
-			else:
-				mymerge=mycheck[1]
+		#processing dependencies
+		""" Call portage.dep_check to evaluate the use? conditionals and make sure all
+		dependencies are satisfiable. """
+		mycheck = portage.dep_check(depstring, self.mydbapi[myroot],
+			pkgsettings, myuse=myuse,
+			use_binaries=("--usepkgonly" in self.myopts),
+			myroot=myroot, trees=self.trees, return_all_deps=True)
 
-		else:
-			#we're processing a command-line argument; unconditionally merge it even if it's already merged
-			mymerge=[depstring]
+		if not mycheck[0]:
+			sys.stderr.write("\n\n%s\n\n" % mycheck[1])
+			sys.stderr.write("%s\n\n" % depstring)
+			return 0
+		mymerge = mycheck[1]
 
 		if myparent:
 			# In order to get past circular dependencies (in
