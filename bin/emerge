@@ -1325,7 +1325,7 @@ class depgraph:
 			try:
 				if not self.select_dep(
 					self.target_root, mydep, raise_on_missing=True):
-					print "\n\n!!! Problem resolving dependencies for", mydep
+					print >> sys.stderr, "\n\n!!! Problem resolving dependencies for", mydep
 					return 0
 			except ValueError:
 				missing_atoms.append(mydep)
@@ -1333,14 +1333,14 @@ class depgraph:
 		self.validate_blockers()
 
 		if world_problems:
-			print "\n!!! Problems have been detected with your world file"
-			print "!!! Please run "+green("emaint --check world")+"\n"
+			print >> sys.stderr, "\n!!! Problems have been detected with your world file"
+			print >> sys.stderr, "!!! Please run "+green("emaint --check world")+"\n"
 
 		if missing_atoms:
-			print "\n" + colorize("BAD", "!!!") + \
+			print >> sys.stderr, "\n" + colorize("BAD", "!!!") + \
 				" Ebuilds for the following packages are either all"
-			print colorize("BAD", "!!!") + " masked or don't exist:"
-			print " ".join(missing_atoms) + "\n"
+			print >> sys.stderr, colorize("BAD", "!!!") + " masked or don't exist:"
+			print >> sys.stderr, " ".join(missing_atoms) + "\n"
 
 		return 1
 
