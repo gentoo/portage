@@ -313,156 +313,84 @@ def flatten(mytokens):
 
 class digraph:
 	def __init__(self):
-		"""Create an empty digraph"""
-		
-		# { node : ( { child : soft_dep } , { parent : soft_dep } ) }
-		self.nodes = {}
-		self.order = []
+		self.dict={}
+		#okeys = keys, in order they were added (to optimize firstzero() ordering)
+		self.okeys=[]
 
-	def add(self, node, parent, soft_dep=False):
-		"""Adds the specified node with the specified parent.
-		
-		If the dep is a soft-dep and the node already has a hard
-		relationship to the parent, the relationship is left as hard."""
-		
-		if node not in self.nodes:
-			self.nodes[node] = ({}, {})
-			self.order.append(node)
-		
-		if not parent:
+	def addnode(self,mykey,myparent):
+		if not self.dict.has_key(mykey):
+			self.okeys.append(mykey)
+			if myparent is None:
+				self.dict[mykey]=[0,[]]
+			else:
+				self.dict[mykey]=[0,[myparent]]
+				self.dict[myparent][0]=self.dict[myparent][0]+1
 			return
-		
-		if parent not in self.nodes:
-			self.nodes[parent] = ({}, {})
-			self.order.append(parent)
-		
-		if parent in self.nodes[node][1]:
-			if not soft_dep:
-				self.nodes[node][1][parent] = False
-		else:
-			self.nodes[node][1][parent] = soft_dep
-		
-		if node in self.nodes[parent][0]:
-			if not soft_dep:
-				self.nodes[parent][0][node] = False
-		else:
-			self.nodes[parent][0][node] = soft_dep
+		if myparent and (not myparent in self.dict[mykey][1]):
+			self.dict[mykey][1].append(myparent)
+			self.dict[myparent][0]=self.dict[myparent][0]+1
 
-	def remove(self, node):
-		"""Removes the specified node from the digraph, also removing
-		and ties to other nodes in the digraph. Raises KeyError if the
-		node doesn't exist."""
-		
-		if node not in self.nodes:
-			raise KeyError(node)
-		
-		for parent in self.nodes[node][1]:
-			del self.nodes[parent][0][node]
-		for child in self.nodes[node][0]:
-			del self.nodes[child][1][node]
-		
-		del self.nodes[node]
-		self.order.remove(node)
+	def delnode(self,mykey):
+		if not self.dict.has_key(mykey):
+			return
+		for x in self.dict[mykey][1]:
+			self.dict[x][0]=self.dict[x][0]-1
+		del self.dict[mykey]
+		while 1:
+			try:
+				self.okeys.remove(mykey)
+			except ValueError:
+				break
 
-	def contains(self, node):
-		"""Checks if the digraph contains mynode"""
-		return node in self.nodes
-
-	def all_nodes(self):
-		"""Return a list of all nodes in the graph"""
-		return self.order[:]
-
-	def child_nodes(self, node):
-		"""Return all children of the specified node"""
-		return self.nodes[node][0].keys()
-
-	def parent_nodes(self, node):
-		"""Return all parents of the specified node"""
-		return self.nodes[node][1].keys()
-
-	def leaf_nodes(self, ignore_soft_deps=False):
-		"""Return all nodes that have no children
-		
-		If ignore_soft_deps is True, soft deps are not counted as
-		children in calculations."""
-		
-		leaf_nodes = []
-		for node in self.order:
-			is_leaf_node = True
-			for child in self.nodes[node][0]:
-				if not (ignore_soft_deps and self.nodes[node][0][child]):
-					is_leaf_node = False
-					break
-			if is_leaf_node:
-				leaf_nodes.append(node)
-		return leaf_nodes
-
-	def root_nodes(self, ignore_soft_deps=False):
-		"""Return all nodes that have no parents.
-		
-		If ignore_soft_deps is True, soft deps are not counted as
-		parents in calculations."""
-		
-		root_nodes = []
-		for node in self.order:
-			is_root_node = True
-			for parent in self.nodes[node][1]:
-				if not (ignore_soft_deps and self.nodes[node][1][parent]):
-					is_root_node = False
-					break
-			if is_root_node:
-				root_nodes.append(node)
-		return root_nodes
-
-	def is_empty(self):
-		"""Checks if the digraph is empty"""
-		return len(self.nodes) == 0
-
-	def clone(self):
-		clone = digraph()
-		clone.nodes = copy.deepcopy(self.nodes)
-		clone.order = self.order[:]
-		return clone
-
-	# Backward compatibility
-	addnode = add
-	allnodes = all_nodes
-	allzeros = leaf_nodes
-	hasnode = contains
-	empty = is_empty
-	copy = clone
-
-	def delnode(self, node):
-		try:
-			self.remove(node)
-		except KeyError:
-			pass
+	def allnodes(self):
+		"returns all nodes in the dictionary"
+		return self.dict.keys()
 
 	def firstzero(self):
-		leaf_nodes = self.leaf_nodes()
-		if leaf_nodes:
-			return leaf_nodes[0]
+		"returns first node with zero references, or NULL if no such node exists"
+		for x in self.okeys:
+			if self.dict[x][0]==0:
+				return x
 		return None
 
-	def hasallzeros(self, ignore_soft_deps=False):
-		return len(self.leaf_nodes(ignore_soft_deps=ignore_soft_deps)) == \
-			len(self.order)
+	def depth(self, mykey):
+		depth=0
+		while (self.dict[mykey][1]):
+			depth=depth+1
+			mykey=self.dict[mykey][1][0]
+		return depth
 
-	def debug_print(self):
-		for node in self.nodes:
-			print node,
-			if self.nodes[node][0]:
-				print "depends on"
-			else:
-				print "(no children)"
-			for child in self.nodes[node][0]:
-				print "  ",child,
-				if self.nodes[node][0][child]:
-					print "(soft)"
-				else:
-					print "(hard)"
+	def allzeros(self):
+		"returns all nodes with zero references, or NULL if no such node exists"
+		zerolist = []
+		for x in self.dict.keys():
+			mys = string.split(x)
+			if mys[0] != "blocks" and self.dict[x][0]==0:
+				zerolist.append(x)
+		return zerolist
 
+	def hasallzeros(self):
+		"returns 0/1, Are all nodes zeros? 1 : 0"
+		zerolist = []
+		for x in self.dict.keys():
+			if self.dict[x][0]!=0:
+				return 0
+		return 1
 
+	def empty(self):
+		if len(self.dict)==0:
+			return 1
+		return 0
+
+	def hasnode(self,mynode):
+		return self.dict.has_key(mynode)
+
+	def copy(self):
+		mygraph=digraph()
+		for x in self.dict.keys():
+			mygraph.dict[x]=self.dict[x][:]
+			mygraph.okeys=self.okeys[:]
+		return mygraph
 
 def elog_process(cpv, mysettings):
 	mylogfiles = listdir(mysettings["T"]+"/logging/")
@@ -1402,7 +1330,10 @@ class config:
 
 	def reset(self,keeping_pkg=0,use_cache=1):
 		"reset environment to original settings"
-		self.configdict["env"].clear()
+		for x in self.configlist[-1].keys():
+			if x not in self.backupenv.keys():
+				del self.configlist[-1][x]
+
 		self.configdict["env"].update(self.backupenv)
 
 		self.modifiedkeys = []
@@ -1659,11 +1590,7 @@ class config:
 			# like LINGUAS.
 			var_split = [ x for x in var_split if x in expand_flags ]
 			var_split.extend(expand_flags.difference(var_split))
-			if var_split or var in self:
-				# Don't export empty USE_EXPAND vars unless the user config
-				# exports them as empty.  This is required for vars such as
-				# LINGUAS, where unset and empty have different meanings.
-				self[var] = " ".join(var_split)
+			self[var] = " ".join(var_split)
 
 		# Pre-Pend ARCH variable to USE settings so '-*' in env doesn't kill arch.
 		if self.configdict["defaults"].has_key("ARCH"):
@@ -2104,17 +2031,11 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 				return 0
 			del distlocks_subdir
 	for myfile in filedict.keys():
-		"""
-		fetched  status
-		0        nonexistent
-		1        partially downloaded
-		2        completely downloaded
-		"""
 		myfile_path = os.path.join(mysettings["DISTDIR"], myfile)
 		fetched=0
 		file_lock = None
 		if listonly:
-			writemsg_stdout("\n", noiselevel=-1)
+			writemsg("\n")
 		else:
 			if use_locks and can_fetch:
 				if locks_in_subdir:
@@ -2185,7 +2106,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 
 			for loc in filedict[myfile]:
 				if listonly:
-					writemsg_stdout(loc+" ", noiselevel=-1)
+					writemsg(loc+" ")
 					continue
 				# allow different fetchcommands per protocol
 				protocol = loc[0:loc.find("://")]
@@ -2290,8 +2211,6 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 											try:
 												os.unlink(mysettings["DISTDIR"]+"/"+myfile)
 												writemsg(">>> Deleting invalid distfile. (Improper 404 redirect from server.)\n")
-												fetched = 0
-												continue
 											except SystemExit, e:
 												raise
 											except:
@@ -2300,7 +2219,6 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 										raise
 									except:
 										pass
-								fetched = 1
 								continue
 							if not fetchonly:
 								fetched=2
@@ -2342,7 +2260,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 				portage_locks.unlockfile(file_lock)
 
 		if listonly:
-			writemsg_stdout("\n", noiselevel=-1)
+			writemsg("\n")
 		if fetched != 2:
 			if restrict_fetch:
 				print "\n!!!", mysettings["CATEGORY"] + "/" + \
@@ -2530,8 +2448,9 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 	mycpv = cat+"/"+mypv
 	mysplit=pkgsplit(mypv,silent=0)
 	if mysplit is None:
-		raise portage_exception.IncorrectParameter(
-			"Invalid ebuild path: '%s'" % myebuild)
+		writemsg("!!! Error: PF is null '%s'; exiting.\n" % mypv,
+			noiselevel=-1)
+		return 1
 
 	if mydo != "depend":
 		# XXX: We're doing a little hack here to curtain the gvisible locking
@@ -2791,18 +2710,6 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 			writemsg("!!! Disabling logging.\n", noiselevel=-1)
 			while "PORT_LOGDIR" in mysettings:
 				del mysettings["PORT_LOGDIR"]
-	if "PORT_LOGDIR" in mysettings:
-		logid_path = os.path.join(mysettings["PORTAGE_BUILDDIR"], ".logid")
-		if not os.path.exists(logid_path):
-			f = open(logid_path, "w")
-			f.close()
-			del f
-		logid_time = time.strftime("%Y%m%d-%H%M%S",
-			time.gmtime(os.stat(logid_path).st_mtime))
-		mysettings["PORTAGE_LOG_FILE"] = os.path.join(
-			mysettings["PORT_LOGDIR"], "%s:%s:%s.log" % \
-			(mysettings["CATEGORY"], mysettings["PF"], logid_time))
-		del logid_path, logid_time
 
 def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	fetchonly=0, cleanup=0, dbkey=None, use_cache=1, fetchall=0, tree=None,
@@ -2840,8 +2747,10 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			noiselevel=-1)
 		return 1
 
-	doebuild_environment(myebuild, mydo, myroot, mysettings, debug,
+	mystatus = doebuild_environment(myebuild, mydo, myroot, mysettings, debug,
 		use_cache, mydbapi)
+	if mystatus:
+		return mystatus
 
 	# get possible slot information from the deps file
 	if mydo=="depend":
@@ -2872,16 +2781,28 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		if mydo not in ["fetch","digest","manifest"]:
 			portage_util.ensure_dirs(mysettings["PORTAGE_BUILDDIR"],
 				gid=portage_gid, mode=070, mask=02)
-			#builddir_lock = portage_locks.lockdir(
-			#	mysettings["PORTAGE_BUILDDIR"])
+			builddir_lock = portage_locks.lockdir(
+				mysettings["PORTAGE_BUILDDIR"])
 			mystatus = prepare_build_dirs(myroot, mysettings, cleanup)
 			if mystatus:
 				return mystatus
-			# PORTAGE_LOG_FILE is set above by the prepare_build_dirs() call.
-			logfile = mysettings.get("PORTAGE_LOG_FILE", None)
 		if mydo == "unmerge":
 			return unmerge(mysettings["CATEGORY"],
 				mysettings["PF"], myroot, mysettings, vartree=vartree)
+
+		if "PORT_LOGDIR" in mysettings and builddir_lock:
+			logid_path = os.path.join(mysettings["PORTAGE_BUILDDIR"], ".logid")
+			if not os.path.exists(logid_path):
+				f = open(logid_path, "w")
+				f.close()
+				del f
+			logid_time = time.strftime("%Y%m%d-%H%M%S",
+				time.gmtime(os.stat(logid_path).st_mtime))
+			logfile = os.path.join(
+				mysettings["PORT_LOGDIR"], "%s:%s:%s.log" % \
+				(mysettings["CATEGORY"], mysettings["PF"], logid_time))
+			mysettings["PORTAGE_LOG_FILE"] = logfile
+			del logid_path, logid_time
 
 		# if any of these are being called, handle them -- running them out of
 		# the sandbox -- and stop now.
@@ -2892,7 +2813,12 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			return spawn(EBUILD_SH_BINARY + " " + mydo, mysettings,
 				debug=debug, free=1, logfile=logfile)
 		elif mydo == "preinst":
-			mysettings["IMAGE"] = mysettings["D"]
+			if mysettings.get("EMERGE_FROM", None) == "binary":
+				mysettings.load_infodir(mysettings["O"])
+				mysettings["IMAGE"] = os.path.join(
+					mysettings["PKG_TMPDIR"], mysettings["PF"], "bin")
+			else:
+				mysettings["IMAGE"] = mysettings["D"]
 			phase_retval = spawn(" ".join((EBUILD_SH_BINARY, mydo)),
 				mysettings, debug=debug, free=1, logfile=logfile)
 			if phase_retval == os.EX_OK:
@@ -3366,16 +3292,14 @@ def dep_eval(deplist):
 				return 0
 		return 1
 
-def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None,
-	return_all_deps=False):
+def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 	"""Takes an unreduced and reduced deplist and removes satisfied dependencies.
 	Returned deplist contains steps that must be taken to satisfy dependencies."""
 	if trees is None:
 		global db
 		trees = db
 	writemsg("ZapDeps -- %s\n" % (use_binaries), 2)
-	if not reduced or unreduced == ["||"] or \
-		(not return_all_deps and dep_eval(reduced)):
+	if not reduced or unreduced == ["||"] or dep_eval(reduced):
 		return []
 
 	if unreduced[0] != "||":
@@ -3383,9 +3307,8 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None,
 		for (dep, satisfied) in zip(unreduced, reduced):
 			if isinstance(dep, list):
 				unresolved += dep_zapdeps(dep, satisfied, myroot,
-					use_binaries=use_binaries, trees=trees,
-					return_all_deps=return_all_deps)
-			elif not satisfied or return_all_deps:
+					use_binaries=use_binaries, trees=trees)
+			elif not satisfied:
 				unresolved.append(dep)
 		return unresolved
 
@@ -3489,7 +3412,7 @@ def dep_expand(mydep, mydb=None, use_cache=1, settings=None):
 		mydep, mydb=mydb, use_cache=use_cache, settings=settings) + postfix
 
 def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
-	use_cache=1, use_binaries=0, myroot="/", trees=None, return_all_deps=False):
+	use_cache=1, use_binaries=0, myroot="/", trees=None):
 	"""Takes a depend string and parses the condition."""
 
 	#check_config_instance(mysettings)
@@ -3554,18 +3477,23 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 	writemsg("\n\n\n", 1)
 	writemsg("mysplit:  %s\n" % (mysplit), 1)
 	writemsg("mysplit2: %s\n" % (mysplit2), 1)
+	myeval=dep_eval(mysplit2)
+	writemsg("myeval:   %s\n" % (myeval), 1)
 
-	myzaps = dep_zapdeps(mysplit, mysplit2, myroot,
-		use_binaries=use_binaries, trees=trees, return_all_deps=return_all_deps)
-	mylist = flatten(myzaps)
-	writemsg("myzaps:   %s\n" % (myzaps), 1)
-	writemsg("mylist:   %s\n" % (mylist), 1)
-	#remove duplicates
-	mydict={}
-	for x in mylist:
-		mydict[x]=1
-	writemsg("mydict:   %s\n" % (mydict), 1)
-	return [1,mydict.keys()]
+	if myeval:
+		return [1,[]]
+	else:
+		myzaps = dep_zapdeps(mysplit, mysplit2, myroot,
+			use_binaries=use_binaries, trees=trees)
+		mylist = flatten(myzaps)
+		writemsg("myzaps:   %s\n" % (myzaps), 1)
+		writemsg("mylist:   %s\n" % (mylist), 1)
+		#remove duplicates
+		mydict={}
+		for x in mylist:
+			mydict[x]=1
+		writemsg("mydict:   %s\n" % (mydict), 1)
+		return [1,mydict.keys()]
 
 def dep_wordreduce(mydeplist,mysettings,mydbapi,mode,use_cache=1):
 	"Reduces the deplist to ones and zeros"
@@ -5627,7 +5555,6 @@ class dblink:
 		self.updateprotect = protect_obj.updateprotect
 		self.isprotected = protect_obj.isprotected
 		self.contentscache=[]
-		self._contents_inodes = None
 
 	def lockdb(self):
 		if self.lock_num == 0:
@@ -5734,71 +5661,42 @@ class dblink:
 		ldpath_mtimes=None):
 		"""The caller must ensure that lockdb() and unlockdb() are called
 		before and after this method."""
-
-		# Now, don't assume that the name of the ebuild is the same as the
-		# name of the dir; the package may have been moved.
-		myebuildpath = None
-		mystuff = listdir(self.dbdir, EmptyOnError=1)
-		for x in mystuff:
-			if x.endswith(".ebuild"):
-				myebuildpath = os.path.join(self.dbdir, x)
-				break
-
-		self.settings.load_infodir(self.dbdir)
-		if myebuildpath:
-			doebuild_environment(myebuildpath, "prerm", self.myroot,
-				self.settings, 0, 0, self.vartree.dbapi)
-			portage_util.ensure_dirs(
-				os.path.dirname(self.settings["PORTAGE_BUILDDIR"]),
-				gid=portage_gid, mode=070, mask=02)
-		builddir_lock = None
-		try:
-			if myebuildpath:
-				builddir_lock = portage_locks.lockdir(
-					self.settings["PORTAGE_BUILDDIR"])
-
-				# Eventually, we'd like to pass in the saved ebuild env here...
-				retval = doebuild(myebuildpath, "prerm", self.myroot,
-					self.settings, cleanup=cleanup, use_cache=0,
-					mydbapi=self.vartree.dbapi, tree="vartree",
-					vartree=self.vartree)
-				# XXX: Decide how to handle failures here.
-				if retval != os.EX_OK:
-					writemsg("!!! FAILED prerm: %s\n" % retval, noiselevel=-1)
-					sys.exit(123)
-
-			self._unmerge_pkgfiles(pkgfiles)
-
-			if myebuildpath:
-				retval = doebuild(myebuildpath, "postrm", self.myroot,
-					 self.settings, use_cache=0, tree="vartree",
-					 mydbapi=self.vartree.dbapi, vartree=self.vartree)
-
-				# process logs created during pre/postrm
-				elog_process(self.mycpv, self.settings)
-
-				# XXX: Decide how to handle failures here.
-				if retval != os.EX_OK:
-					writemsg("!!! FAILED postrm: %s\n" % retval, noiselevel=-1)
-					sys.exit(123)
-				doebuild(myebuildpath, "cleanrm", self.myroot, self.settings,
-					tree="vartree", mydbapi=self.vartree.dbapi,
-					vartree=self.vartree)
-
-		finally:
-			if builddir_lock:
-				portage_locks.unlockdir(builddir_lock)
-
-		env_update(target_root=self.myroot, prev_mtimes=ldpath_mtimes)
-
-	def _unmerge_pkgfiles(self, pkgfiles):
-
 		global dircache
 		dircache={}
+
+		self.settings.load_infodir(self.dbdir)
 
 		if not pkgfiles:
 			writemsg_stdout("No package files given... Grabbing a set.\n")
 			pkgfiles=self.getcontents()
+
+		# Now, don't assume that the name of the ebuild is the same as the
+		# name of the dir; the package may have been moved.
+		myebuildpath=None
+
+		# We should use the environement file if possible,
+		# as it has all sourced files already included.
+		# XXX: Need to ensure it doesn't overwrite any important vars though.
+		if os.access(self.dbdir+"/environment.bz2", os.R_OK):
+			spawn("bzip2 -d "+self.dbdir+"/environment.bz2",self.settings,free=1)
+
+		if not myebuildpath:
+			mystuff=listdir(self.dbdir,EmptyOnError=1)
+			for x in mystuff:
+				if x[-7:]==".ebuild":
+					myebuildpath=self.dbdir+"/"+x
+					break
+
+		#do prerm script
+		if myebuildpath and os.path.exists(myebuildpath):
+			# Eventually, we'd like to pass in the saved ebuild env here...
+			a = doebuild(myebuildpath, "prerm", self.myroot, self.settings,
+				cleanup=cleanup, use_cache=0, tree="vartree",
+				mydbapi=self.vartree.dbapi, vartree=self.vartree)
+			# XXX: Decide how to handle failures here.
+			if a != 0:
+				writemsg("!!! FAILED prerm: "+str(a)+"\n", noiselevel=-1)
+				sys.exit(123)
 
 		if pkgfiles:
 			mykeys=pkgfiles.keys()
@@ -5912,30 +5810,37 @@ class dblink:
 		#remove self from vartree database so that our own virtual gets zapped if we're the last node
 		self.vartree.zap(self.mycpv)
 
+		#do original postrm
+		if myebuildpath and os.path.exists(myebuildpath):
+			# XXX: This should be the old config, not the current one.
+			# XXX: Use vardbapi to load up env vars.
+			a = doebuild(myebuildpath, "postrm", self.myroot, self.settings,
+			 use_cache=0, tree="vartree", mydbapi=self.vartree.dbapi,
+			 vartree=self.vartree)
+			
+			# process logs created during pre/postrm
+			elog_process(self.mycpv, self.settings)
+			
+			# XXX: Decide how to handle failures here.
+			if a != 0:
+				writemsg("!!! FAILED postrm: "+str(a)+"\n", noiselevel=-1)
+				sys.exit(123)
+			doebuild(myebuildpath, "cleanrm", self.myroot, self.settings,
+				tree="vartree", mydbapi=self.vartree.dbapi,
+				vartree=self.vartree)
+
+		env_update(target_root=self.myroot, prev_mtimes=ldpath_mtimes)
+
 	def isowner(self,filename,destroot):
 		""" check if filename is a new file or belongs to this package
 		(for this or a previous version)"""
 		destfile = normalize_path(
 			os.path.join(destroot, filename.lstrip(os.path.sep)))
-		try:
-			mylstat = os.lstat(destfile)
-		except OSError:
+		if not os.path.exists(destfile):
 			return True
-
 		pkgfiles = self.getcontents()
 		if pkgfiles and filename in pkgfiles:
 			return True
-		if pkgfiles:
-			if self._contents_inodes is None:
-				self._contents_inodes = set()
-				for x in pkgfiles:
-					try:
-						lstat = os.lstat(x)
-						self._contents_inodes.add((lstat.st_dev, lstat.st_ino))
-					except OSError:
-						pass
-			if (mylstat.st_dev, mylstat.st_ino) in self._contents_inodes:
-				 return True
 
 		return False
 
@@ -6191,6 +6096,11 @@ class dblink:
 			#A directory is specified.  Figure out protection paths, listdir() it and process it.
 			mergelist = listdir(join(srcroot, stufftomerge))
 			offset=stufftomerge
+			# We need mydest defined up here to calc. protection paths.  This is now done once per
+			# directory rather than once per file merge.  This should really help merge performance.
+			# Trailing / ensures that protects/masks with trailing /'s match.
+			mytruncpath = join(destroot, offset).rstrip(sep) + sep
+			myppath=self.isprotected(mytruncpath)
 		else:
 			mergelist=stufftomerge
 			offset=""
@@ -6368,32 +6278,42 @@ class dblink:
 						# or by a symlink to an existing regular file;
 						# now, config file management may come into play.
 						# we only need to tweak mydest if cfg file management is in play.
-						if self.isprotected(mydest):
+						if myppath:
 							# we have a protection path; enable config file management.
 							destmd5=portage_checksum.perform_md5(mydest,calc_prelink=1)
+							cycled=0
+							if cfgfiledict.has_key(myrealdest):
+								if destmd5 in cfgfiledict[myrealdest]:
+									#cycle
+									print "cycle"
+									del cfgfiledict[myrealdest]
+									cycled=1
 							if mymd5==destmd5:
 								#file already in place; simply update mtimes of destination
 								os.utime(mydest,(thismtime,thismtime))
 								zing="---"
 								moveme=0
+							elif cycled:
+								#mymd5!=destmd5 and we've cycled; move mysrc into place as a ._cfg file
+								moveme=1
+								cfgfiledict[myrealdest]=[mymd5]
+								cfgprot=1
+							elif cfgfiledict.has_key(myrealdest) and (mymd5 in cfgfiledict[myrealdest]):
+								#myd5!=destmd5, we haven't cycled, and the file we're merging has been already merged previously
+								zing="-o-"
+								moveme=cfgfiledict["IGNORE"]
+								cfgprot=cfgfiledict["IGNORE"]
 							else:
-								if mymd5 == cfgfiledict.get(myrealdest, [None])[0]:
-									""" An identical update has previously been
-									merged.  Skip it unless the user has chosen
-									--noconfmem."""
-									zing = "-o-"
-									moveme = cfgfiledict["IGNORE"]
-									cfgprot = cfgfiledict["IGNORE"]
-								else:
-									moveme = 1
-									cfgprot = 1
-							if moveme:
-								# Merging a new file, so update confmem.
-								cfgfiledict[myrealdest] = [mymd5]
-							elif destmd5 == cfgfiledict.get(myrealdest, [None])[0]:
-								"""A previously remembered update has been
-								accepted, so it is removed from confmem."""
-								del cfgfiledict[myrealdest]
+								#mymd5!=destmd5, we haven't cycled, and the file we're merging hasn't been merged before
+								moveme=1
+								cfgprot=1
+								if not cfgfiledict.has_key(myrealdest):
+									cfgfiledict[myrealdest]=[]
+								if mymd5 not in cfgfiledict[myrealdest]:
+									cfgfiledict[myrealdest].append(mymd5)
+								# only record the last md5
+								if len(cfgfiledict[myrealdest])>1:
+									del cfgfiledict[myrealdest][0]
 						if cfgprot:
 							mydest = new_protect_filename(mydest, newmd5=mymd5)
 
@@ -6543,6 +6463,14 @@ class FetchlistDict(UserDict.DictMixin):
 		"""Returns keys for all packages within pkgdir"""
 		return self.portdb.cp_list(self.cp, mytree=self.mytree)
 
+def cleanup_pkgmerge(mypkg, origdir, settings=None):
+	if settings is None:
+		settings = globals()["settings"]
+	shutil.rmtree(settings["PORTAGE_TMPDIR"]+"/binpkgs/"+mypkg)
+	if os.path.exists(settings["PORTAGE_TMPDIR"]+"/portage/"+mypkg+"/temp/environment"):
+		os.unlink(settings["PORTAGE_TMPDIR"]+"/portage/"+mypkg+"/temp/environment")
+	os.chdir(origdir)
+
 def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes=None):
 	"""will merge a .tbz2 file, returning a list of runtime dependencies
 		that must be satisfied, or None if there was a merge error.	This
@@ -6555,91 +6483,64 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 	if mytbz2[-5:]!=".tbz2":
 		print "!!! Not a .tbz2 file"
 		return None
+	mypkg=os.path.basename(mytbz2)[:-5]
+	xptbz2=xpak.tbz2(mytbz2)
+	pkginfo={}
+	mycat=xptbz2.getfile("CATEGORY")
+	if not mycat:
+		print "!!! CATEGORY info missing from info chunk, aborting..."
+		return None
+	mycat=mycat.strip()
+	mycatpkg=mycat+"/"+mypkg
+	tmploc=mysettings["PORTAGE_TMPDIR"]+"/binpkgs/"
+	pkgloc=tmploc+"/"+mypkg+"/bin/"
+	infloc=tmploc+"/"+mypkg+"/inf/"
+	myebuild=tmploc+"/"+mypkg+"/inf/"+os.path.basename(mytbz2)[:-4]+"ebuild"
+	if os.path.exists(tmploc+"/"+mypkg):
+		shutil.rmtree(tmploc+"/"+mypkg,1)
+	os.makedirs(pkgloc)
+	os.makedirs(infloc)
+	writemsg_stdout(">>> Extracting info\n")
+	xptbz2.unpackinfo(infloc)
+	# run pkg_setup early, so we can bail out early
+	# (before extracting binaries) if there's a problem
+	origdir=getcwd()
+	os.chdir(pkgloc)
 
-	tbz2_lock = None
-	builddir_lock = None
-	try:
-		""" Don't lock the tbz2 file because the filesytem could be readonly or
-		shared by a cluster."""
-		#tbz2_lock = portage_locks.lockfile(mytbz2, wantnewlockfile=1)
+	# Save the md5sum for later.
+	fp = open(os.path.join(infloc, "BINPKGMD5"), "w")
+	fp.write(str(portage_checksum.perform_md5(mytbz2))+"\n")
+	fp.close()
 
-		mypkg = os.path.basename(mytbz2)[:-5]
-		xptbz2 = xpak.tbz2(mytbz2)
-		mycat = xptbz2.getfile("CATEGORY")
-		if not mycat:
-			writemsg("!!! CATEGORY info missing from info chunk, aborting...\n",
-				noiselevel=-1)
-			return None
-		mycat = mycat.strip()
+	mysettings.configdict["pkg"]["CATEGORY"] = mycat;
+	# Eventually we'd like to pass in the saved ebuild env here.
+	# Do cleanup=1 to ensure that there is no cruft prior to the setup phase.
+	a = doebuild(myebuild, "setup", myroot, mysettings, tree="bintree",
+		cleanup=1, mydbapi=mydbapi, vartree=vartree)
+	writemsg_stdout(">>> Extracting %s\n" % mypkg)
+	notok=spawn("bzip2 -dqc -- '"+mytbz2+"' | tar xpf -",mysettings,free=1)
+	if notok:
+		print "!!! Error Extracting",mytbz2
+		cleanup_pkgmerge(mypkg, origdir, settings=mysettings)
+		return None
 
-		# These are the same directories that would be used at build time.
-		builddir = os.path.join(mysettings["PORTAGE_TMPDIR"], "portage", mypkg)
-		pkgloc = os.path.join(builddir, "image")
-		infloc = os.path.join(builddir, "build-info")
-		myebuild = os.path.join(
-			infloc, os.path.basename(mytbz2)[:-4] + "ebuild")
-		portage_util.ensure_dirs(os.path.dirname(builddir),
-			gid=portage_gid, mode=070, mask=02)
-		builddir_lock = portage_locks.lockdir(builddir)
-		try:
-			shutil.rmtree(builddir)
-		except (IOError, OSError), e:
-			if e.errno != errno.ENOENT:
-				raise
-			del e
-		for mydir in (builddir, pkgloc, infloc):
-			portage_util.ensure_dirs(mydir, gid=portage_gid, mode=070)
-		writemsg_stdout(">>> Extracting info\n")
-		xptbz2.unpackinfo(infloc)
-		mysettings.load_infodir(infloc)
-		# Store the md5sum in the vdb.
-		fp = open(os.path.join(infloc, "BINPKGMD5"), "w")
-		fp.write(str(portage_checksum.perform_md5(mytbz2))+"\n")
-		fp.close()
+	# the merge takes care of pre/postinst and old instance
+	# auto-unmerge, virtual/provides updates, etc.
+	mysettings.load_infodir(infloc)
+	mylink = dblink(mycat, mypkg, myroot, mysettings, vartree=vartree,
+		treetype="bintree")
+	mylink.merge(pkgloc, infloc, myroot, myebuild, cleanup=1, mydbapi=mydbapi,
+		prev_mtimes=prev_mtimes)
 
-		debug = mysettings.get("PORTAGE_DEBUG", "") == "1"
-
-		# Eventually we'd like to pass in the saved ebuild env here.
-		retval = doebuild(myebuild, "setup", myroot, mysettings, debug=debug,
-			tree="bintree", mydbapi=mydbapi, vartree=vartree)
-		if retval != os.EX_OK:
-			writemsg("!!! Setup failed: %s\n" % retval, noiselevel=-1)
-			return None
-
-		writemsg_stdout(">>> Extracting %s\n" % mypkg)
-		retval = portage_exec.spawn_bash(
-			"bzip2 -dqc -- '%s' | tar -xp -C '%s' -f -" % (mytbz2, pkgloc),
-			env=mysettings.environ())
-		if retval != os.EX_OK:
-			writemsg("!!! Error Extracting '%s'\n" % mytbz2, noiselevel=-1)
-			return None
-		#portage_locks.unlockfile(tbz2_lock)
-		#tbz2_lock = None
-
-		mylink = dblink(mycat, mypkg, myroot, mysettings, vartree=vartree,
-			treetype="bintree")
-		mylink.merge(pkgloc, infloc, myroot, myebuild, cleanup=0,
-			mydbapi=mydbapi, prev_mtimes=prev_mtimes)
-
-		try:
-			f = open(os.path.join(infloc, "RDEPEND", "r"))
-			try:
-				return " ".join(f.read().split())
-			finally:
-				f.close()
-		except (IOError, OSError):
-			return ""
-	finally:
-		if tbz2_lock:
-			portage_locks.unlockfile(tbz2_lock)
-		if builddir_lock:
-			try:
-				shutil.rmtree(builddir)
-			except (IOError, OSError), e:
-				if e.errno != errno.ENOENT:
-					raise
-				del e
-			portage_locks.unlockdir(builddir_lock)
+	if not os.path.exists(infloc+"/RDEPEND"):
+		returnme=""
+	else:
+		#get runtime dependencies
+		a=open(infloc+"/RDEPEND","r")
+		returnme=string.join(string.split(a.read())," ")
+		a.close()
+	cleanup_pkgmerge(mypkg, origdir, settings=mysettings)
+	return returnme
 
 def deprecated_profile_check():
 	if not os.access(DEPRECATED_PROFILE_FILE, os.R_OK):
@@ -6671,8 +6572,7 @@ def commit_mtimedb(mydict=None, filename=None):
 		global mtimedb
 		if "mtimedb" not in globals() or mtimedb is None:
 			return
-		mtimedb.commit()
-		return
+		mydict = mtimedb
 	if filename is None:
 		global mtimedbfile
 		filename = mtimedbfile
@@ -6726,7 +6626,7 @@ def global_updates(mysettings, trees, prev_mtimes):
 			if len(errors) == 0:
 				# Update our internal mtime since we
 				# processed all of our directives.
-				timestamps[mykey] = long(mystat.st_mtime)
+				timestamps[mykey] = mystat.st_mtime
 			else:
 				for msg in errors:
 					writemsg("%s\n" % msg, noiselevel=-1)
@@ -6830,8 +6730,6 @@ class MtimeDB(dict):
 		self._clean_data = copy.deepcopy(d)
 
 	def commit(self):
-		if not self.filename:
-			return
 		d = {}
 		d.update(self)
 		# Only commit if the internal state has changed.
