@@ -1106,10 +1106,12 @@ class depgraph:
 				selected_pkg = ["blocks", myroot, x[1:], None]
 			else:
 				#We are not processing a blocker but a normal dependency
-				if not arg:
+				if myparent:
+					"""In some cases, dep_check will return deps that shouldn't
+					be proccessed any further, so they are identified and
+					discarded here."""
 					if "empty" not in self.myparams and \
 						"deep" not in self.myparams and \
-						myparent and \
 						vardb.match(x):
 						continue
 
