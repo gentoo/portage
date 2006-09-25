@@ -1113,6 +1113,7 @@ class depgraph:
 				if not arg:
 					if "empty" not in self.myparams and \
 						"deep" not in self.myparams and \
+						myparent and \
 						vardb.match(x):
 						continue
 
