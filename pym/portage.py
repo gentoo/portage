@@ -6559,7 +6559,9 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 	tbz2_lock = None
 	builddir_lock = None
 	try:
-		tbz2_lock = portage_locks.lockfile(mytbz2, wantnewlockfile=1)
+		""" Don't lock the tbz2 file because the filesytem could be readonly or
+		shared by a cluster."""
+		#tbz2_lock = portage_locks.lockfile(mytbz2, wantnewlockfile=1)
 
 		mypkg = os.path.basename(mytbz2)[:-5]
 		xptbz2 = xpak.tbz2(mytbz2)
@@ -6611,8 +6613,8 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 		if retval != os.EX_OK:
 			writemsg("!!! Error Extracting '%s'\n" % mytbz2, noiselevel=-1)
 			return None
-		portage_locks.unlockfile(tbz2_lock)
-		tbz2_lock = None
+		#portage_locks.unlockfile(tbz2_lock)
+		#tbz2_lock = None
 
 		mylink = dblink(mycat, mypkg, myroot, mysettings, vartree=vartree,
 			treetype="bintree")
