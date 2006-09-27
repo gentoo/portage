@@ -796,7 +796,8 @@ class depgraph:
 		    emerge --deep <pkgspec>; we need to recursively check dependencies of pkgspec
 		    If we are in --nodeps (no recursion) mode, we obviously only check 1 level of dependencies.
 		"""
-		if "deep" not in self.myparams and not merging:
+		if "deep" not in self.myparams and not merging and \
+			not ("--update" in self.myopts and arg and merging):
 			return 1
 		elif "recurse" not in self.myparams:
 			return 1
@@ -825,7 +826,7 @@ class depgraph:
 
 		try:
 			if not self.select_dep("/", edepend["DEPEND"], myparent=mp,
-				myuse=myuse):
+				myuse=myuse, parent_arg=arg):
 				return 0
 			"""RDEPEND is soft by definition.  However, in order to ensure
 			correct merge order, we make it a hard dependency.  Otherwise, a
@@ -833,13 +834,13 @@ class depgraph:
 			dependencies not being installed yet.
 			"""
 			if not self.select_dep(myroot,edepend["RDEPEND"], myparent=mp,
-				myuse=myuse, soft_deps=False):
+				myuse=myuse, soft_deps=False, parent_arg=arg):
 				return 0
 			if edepend.has_key("PDEPEND") and edepend["PDEPEND"]:
 				# Post Depend -- Add to the list without a parent, as it depends
 				# on a package being present AND must be built after that package.
 				if not self.select_dep(myroot, edepend["PDEPEND"], myparent=mp,
-					myuse=myuse, soft_deps=True, rev_deps=True):
+					myuse=myuse, soft_deps=True, rev_deps=True, parent_arg=arg):
 					return 0
 		except ValueError, e:
 			pkgs = e.args[0]
@@ -1007,7 +1008,8 @@ class depgraph:
 						return match
 
 	def select_dep(self, myroot, depstring, myparent=None, arg=None,
-		myuse=None, raise_on_missing=False, soft_deps=False, rev_deps=False):
+		myuse=None, raise_on_missing=False, soft_deps=False, rev_deps=False,
+		parent_arg=None):
 		""" Given a depstring, create the depgraph such that all dependencies are satisfied.
 		    myroot = $ROOT from environment, where {R,P}DEPENDs are merged to.
 		    myparent = the node whose depstring is being passed in
@@ -1095,6 +1097,7 @@ class depgraph:
 					discarded here."""
 					if "empty" not in self.myparams and \
 						"deep" not in self.myparams and \
+						not ("--update" in self.myopts and parent_arg) and \
 						vardb.match(x):
 						continue
 
