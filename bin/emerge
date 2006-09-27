@@ -1229,6 +1229,17 @@ class depgraph:
 		final state of the graph.  Thus, it's possible that mutually blocking
 		packages will be installed simultaneously a some point(s) during the
 		transition from the initial to the final state."""
+
+		""" It's possible that some of the nodes haven't been added to the
+		fakedb yet, so make sure they're all accounted for."""
+		for node in self.digraph.all_nodes():
+			node_split = node.split()
+			mytype, myroot, mykey = node_split[0:3]
+			if mytype in self.pkg_tree_map:
+				mydb = self.trees[myroot][self.pkg_tree_map[mytype]].dbapi
+				myslot = mydb.aux_get(mykey, ["SLOT"])[0]
+				self.mydbapi[myroot].cpv_inject(mykey, myslot=myslot)
+
 		all_blockers = [node for node in self.digraph.all_nodes()
 				if node.split()[0] == "blocks"]
 		for blocker in all_blockers:
