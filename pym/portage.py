@@ -3419,8 +3419,11 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None,
 		else:
 			atoms = [dep]
 
+		""" The package names rather than the exact atoms are used for an
+		initial rough match against installed packages.  More specific
+		preference selection is handled later via slot and version comparison."""
 		all_installed = True
-		for atom in atoms:
+		for atom in set([dep_getkey(atom) for atom in atoms]):
 			if not vardb.match(atom):
 				all_installed = False
 				break
@@ -4805,7 +4808,6 @@ class portdbapi(dbapi):
 		'input: "sys-apps/foo-1.0",["SLOT","DEPEND","HOMEPAGE"]'
 		'return: ["0",">=sys-libs/bar-1.0","http://www.foo.com"] or raise KeyError if error'
 		global auxdbkeys,auxdbkeylen
-
 		cat,pkg = string.split(mycpv, "/", 1)
 
 		myebuild, mylocation = self.findname2(mycpv, mytree)
