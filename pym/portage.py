@@ -3367,7 +3367,7 @@ def dep_eval(deplist):
 		return 1
 
 def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None,
-	fakedb=None, return_all_deps=False):
+	return_all_deps=False):
 	"""Takes an unreduced and reduced deplist and removes satisfied dependencies.
 	Returned deplist contains steps that must be taken to satisfy dependencies."""
 	if trees is None:
@@ -3384,7 +3384,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None,
 			if isinstance(dep, list):
 				unresolved += dep_zapdeps(dep, satisfied, myroot,
 					use_binaries=use_binaries, trees=trees,
-					fakedb=fakedb, return_all_deps=return_all_deps)
+					return_all_deps=return_all_deps)
 			elif not satisfied or return_all_deps:
 				unresolved.append(dep)
 		return unresolved
@@ -3403,10 +3403,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None,
 	other = []
 
 	# Alias the trees we'll be checking availability against
-	if fakedb:
-		vardb = fakedb
-	else:
-		vardb = trees[myroot]["vartree"].dbapi
+	vardb = trees[myroot]["vartree"].dbapi
 	if use_binaries:
 		mydbapi = trees[myroot]["bintree"].dbapi
 	else:
@@ -3418,7 +3415,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None,
 		if isinstance(dep, list):
 			atoms = dep_zapdeps(dep, satisfied, myroot,
 				use_binaries=use_binaries, trees=trees,
-				fakedb=fakedb, return_all_deps=return_all_deps)
+				return_all_deps=return_all_deps)
 		else:
 			atoms = [dep]
 
@@ -3559,12 +3556,9 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 	writemsg("mysplit:  %s\n" % (mysplit), 1)
 	writemsg("mysplit2: %s\n" % (mysplit2), 1)
 
-	fakedb = None
-	if return_all_deps:
-		fakedb = mydbapi
 	myzaps = dep_zapdeps(mysplit, mysplit2, myroot,
 		use_binaries=use_binaries, trees=trees,
-		fakedb=fakedb, return_all_deps=return_all_deps)
+		return_all_deps=return_all_deps)
 	mylist = flatten(myzaps)
 	writemsg("myzaps:   %s\n" % (myzaps), 1)
 	writemsg("mylist:   %s\n" % (mylist), 1)
