@@ -654,34 +654,21 @@ class depgraph:
 		self.outdatedpackages=[]
 		self.mydbapi={}
 		self.mydbapi["/"] = portage.fakedbapi(settings=settings)
-		self.pkg_slots={"/" : {}}
-		allcpv = self.trees["/"]["vartree"].getallcpv()
+		vardb = self.trees["/"]["vartree"].dbapi
+		fakedb = self.mydbapi["/"]
 		if "empty" not in self.myparams or self.target_root != "/":
-			for pkg in allcpv:
-				self.mydbapi["/"].cpv_inject(pkg)
-		for pkg in allcpv:
-			myslot = self.trees["/"]["vartree"].dbapi.aux_get(pkg, ["SLOT"])[0]
-			mykey = portage.dep_getkey(pkg)
-			if mykey in self.pkg_slots["/"]:
-				self.pkg_slots["/"][mykey][myslot] = pkg
-			else:
-				self.pkg_slots["/"][mykey] = {myslot:pkg}
+			for pkg in vardb.cpv_all():
+				myslot = vardb.aux_get(pkg, ["SLOT"])[0]
+				fakedb.cpv_inject(pkg, myslot=myslot)
 		if self.target_root != "/":
-			self.pkg_slots[self.target_root] = {}
-			allcpv = self.trees[self.target_root]["vartree"].getallcpv()
 			self.mydbapi[self.target_root] = \
 				portage.fakedbapi(settings=settings)
+			vardb = self.trees[self.target_root]["vartree"].dbapi
+			fakedb = self.mydbapi[self.target_root]
 			if "empty" not in self.myparams:
-				for pkg in allcpv:
-					self.mydbapi[self.target_root].cpv_inject(pkg)
-			for pkg in allcpv:
-				myslot = self.trees[self.target_root]["vartree"].dbapi.aux_get(
-					pkg, ["SLOT"])[0]
-				mykey = portage.dep_getkey(pkg)
-				if mykey in self.pkg_slots[self.target_root]:
-					self.pkg_slots[self.target_root][mykey][myslot] = pkg
-				else:
-					self.pkg_slots[self.target_root][mykey] = {myslot:pkg}
+				for pkg in vardb.cpv_all():
+					myslot = vardb.aux_get(pkg, ["SLOT"])[0]
+					fakedb.cpv_inject(pkg, myslot=myslot)
 		if "--usepkg" in self.myopts:
 			trees["/"]["bintree"].populate(
 				"--getbinpkg" in self.myopts, "--getbinpkgonly" in self.myopts)
@@ -750,13 +737,6 @@ class depgraph:
 			return 1
 		else:
 			mydbapi = self.trees[myroot][self.pkg_tree_map[mytype]].dbapi
-			if addme:
-				myslot = mydbapi.aux_get(mykey, ["SLOT"])[0]
-				depkey = portage.dep_getkey(mykey)
-				if depkey in self.pkg_slots:
-					self.pkg_slots[myroot][depkey][myslot] = mykey
-				else:
-					self.pkg_slots[myroot][depkey] = {myslot : mykey}
 
 		if myuse is None:
 			self.pkgsettings[myroot].setcpv(mykey)
@@ -1082,7 +1062,10 @@ class depgraph:
 			if p_status == "merge":
 				""" This fakedbapi data is used in dep_check calls to determine
 				satisfied deps via dep_wordreduce"""
-				self.mydbapi[p_root].cpv_inject(p_key)
+				myslot = self.trees[p_root][
+					self.pkg_tree_map[p_type]].dbapi.aux_get(
+						p_key, ["SLOT"])[0]
+				self.mydbapi[p_root].cpv_inject(p_key, myslot=myslot)
 
 				# Update old-style virtuals if this package provides any.
 				# These are needed for dep_virtual calls inside dep_check.
@@ -1253,13 +1236,7 @@ class depgraph:
 			"""Prior to being added to the digraph, any blockers against
 			old-style virtuals have been expanded to real packages via
 			dep_virtual calls inside dep_check."""
-			mykey = portage.dep_getkey(mydep)
-			valid = False
-			pkgs = self.pkg_slots[myroot].get(mykey, None)
-			if pkgs and portage.match_from_list(mydep,
-				[pkgs[myslot] for myslot in pkgs]):
-				valid = True
-			if not valid:
+			if not self.mydbapi[myroot].match(mydep):
 				self.digraph.remove(blocker)
 
 	def altlist(self, reversed=False):
