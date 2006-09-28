@@ -812,12 +812,13 @@ class depgraph:
 		for i in xrange(len(depkeys)):
 			edepend[depkeys[i]] = depvalues[i]
 
-		if mytype == "binary":
-			edepend["DEPEND"] = ""
-		elif mytype == "ebuild":
+		if mytype == "ebuild":
 			if "--buildpkgonly" in self.myopts:
 				edepend["RDEPEND"] = ""
 				edepend["PDEPEND"] = ""
+		if self.myopts.get("--with-bdeps", "n") == "y" and \
+			(mytype == "binary" or mybigkey[3] == "nomerge"):
+			edepend["DEPEND"] = ""
 
 		""" We have retrieve the dependency information, now we need to recursively
 		    process them.  DEPEND gets processed for root = "/", {R,P}DEPEND in myroot. """
@@ -1938,9 +1939,12 @@ class MergeTask(object):
 				fetch_env["FEATURES"] = fetch_env.get("FEATURES", "") + " -cvs"
 				fetch_env["PORTAGE_NICENESS"] = "0"
 				fetch_args = [sys.argv[0], "--resume", "--fetchonly"]
-				for arg in self.myopts:
-					if arg not in bad_resume_opts:
-						fetch_args.append(arg)
+				for myopt, myarg in self.myopts:
+					if myopt not in bad_resume_opts:
+						if myarg is True:
+							fetch_args.append(myopt)
+						else:
+							fetch_args.append(myopt +"="+ myarg)
 				portage.portage_exec.spawn(fetch_args, env=fetch_env,
 					fd_pipes=fd_pipes, returnpid=True)
 				logfile.close() # belongs to the spawned process
@@ -2155,10 +2159,12 @@ class MergeTask(object):
 								mtimedb.commit()
 								portage.run_exitfuncs()
 								mynewargv=[sys.argv[0],"--resume"]
-								for arg in self.myopts:
-									if arg in bad_resume_opts:
-										continue
-									mynewargv.append(arg)
+								for myopt, myarg in self.myopts:
+									if myopt not in bad_resume_opts:
+										if myarg is True:
+											mynewargv.append(myopt)
+										else:
+											mynewargv.append(myopt +"="+ myarg)
 								# priority only needs to be adjusted on the first run
 								os.environ["PORTAGE_NICENESS"] = "0"
 								os.execv(mynewargv[0], mynewargv)
@@ -3378,8 +3384,12 @@ def action_depclean(settings, trees, ldpath_mtimes,
 			spinner.update()
 			fakedb.cpv_inject(pkg)
 			mydb = portdb.xmatch("match-visible", "="+pkg) and portdb or vardb
-			depstr = " ".join(mydb.aux_get(pkg,
-				["DEPEND", "RDEPEND", "PDEPEND"]))
+			if myopts.get("--with-bdeps", "y") == "y":
+				depstr = " ".join(mydb.aux_get(pkg,
+					["DEPEND", "RDEPEND", "PDEPEND"]))
+			else:
+				depstr = " ".join(mydb.aux_get(pkg,
+					["RDEPEND", "PDEPEND"]))
 			usedef = vardb.aux_get(pkg, ["USE"])[0].split()
 			success, atoms = portage.dep_check(depstr, emptydb, settings,
 				myuse=usedef, trees=trees, myroot=settings["ROOT"])
@@ -3649,6 +3659,13 @@ def parse_opts(tmpcmdline):
 	global actions, options, shortmapping
 
 	longopt_aliases = {"--cols":"--columns", "--skip-first":"--skipfirst"}
+	argument_options = {
+		"--with-bdeps": {
+			"help":"include unnecessary build time dependencies",
+			"type":"choice",
+			"choices":("y", "n")
+		}
+	}
 
 	from optparse import OptionParser
 	parser = OptionParser()
@@ -3668,12 +3685,21 @@ def parse_opts(tmpcmdline):
 		parser.add_option(myalias, action="store_true",
 			dest=myopt.lstrip("--").replace("-", "_"), default=False)
 
+	for myopt, kwargs in argument_options.iteritems():
+		parser.add_option(myopt,
+			dest=myopt.lstrip("--").replace("-", "_"), **kwargs)
+
 	myoptions, myargs = parser.parse_args(args=tmpcmdline)
 
 	for myopt in options:
 		v = getattr(myoptions, myopt.lstrip("--").replace("-", "_"))
 		if v:
 			myopts[myopt] = True
+
+	for myopt in argument_options:
+		v = getattr(myoptions, myopt.lstrip("--").replace("-", "_"), None)
+		if v is not None:
+			myopts[myopt] = v
 
 	for action_opt in actions:
 		v = getattr(myoptions, action_opt.replace("-", "_"))
