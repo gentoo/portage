@@ -183,7 +183,7 @@ actions=[
 options=[
 "--ask",          "--alphabetical",
 "--buildpkg",     "--buildpkgonly",
-"--changelog",    "--columns", "--cols",
+"--changelog",    "--columns",
 "--debug",        "--deep",
 "--digest",
 "--emptytree",
@@ -197,7 +197,7 @@ options=[
 "--onlydeps",     "--pretend",
 "--quiet",        "--resume",
 "--searchdesc",   "--selective",
-"--skipfirst",    "--skip-first",
+"--skipfirst",
 "--tree",
 "--update",       
 "--usepkg",       "--usepkgonly",
@@ -3637,66 +3637,61 @@ def action_build(settings, trees, mtimedb,
 				+ " AUTOCLEAN is disabled.  This can cause serious"
 				+ " problems due to overlapping packages.\n")
 
+def multiple_actions(action1, action2):
+	sys.stderr.write("\n!!! Multiple actions requested... Please choose one only.\n")
+	sys.stderr.write("!!! '%s' or '%s'\n\n" % (action1, action2))
+	sys.exit(1)
+
 def parse_opts(tmpcmdline):
 	myaction=None
 	myopts=[]
 	myfiles=[]
 
-	cmdline=[]
-	for x in tmpcmdline:
-		if x[0:1]=="-" and x[1:2]!="-":
-			for y in x[1:]:
-				if shortmapping.has_key(y):
-					if shortmapping[y] in cmdline:
-						if not shortmapping[y] in ("--verbose", "--pretend"):
-							print
-							print "*** Warning: Redundant use of",shortmapping[y]
-					else:
-						cmdline.append(shortmapping[y])
-				else:
-					print "!!! Error: -"+y+" is an invalid short action or option."
-					sys.exit(1)
-		else:
-			cmdline.append(x)
+	global actions, options, shortmapping
 
-	# process the options and command arguments
-	for x in cmdline:
-		if not x:
-			continue
-		if len(x)>=2 and x[0:2]=="--":
-			if x == "--cols":
-				x = "--columns"
-			elif x == "--skip-first":
-				x = "--skipfirst"
-			if x in options:
-				if x not in myopts:
-					myopts.append(x)
-			elif x[2:] in actions:
-				if myaction:
-					if myaction not in ["system", "world"]:
-						myaction="--"+myaction
-					print
-					print red("!!!")+green(" Multiple actions requested... Please choose one only.")
-					print red("!!!")+" '"+darkgreen(myaction)+"' "+red("or")+" '"+darkgreen(x)+"'"
-					print
-					sys.exit(1)
-				myaction=x[2:]
-			else:
-				print "!!! Error:",x,"is an invalid option."
+	longopt_aliases = {"--cols":"--columns", "--skip-first":"--skipfirst"}
+
+	from optparse import OptionParser
+	parser = OptionParser()
+	if parser.has_option("--help"):
+		parser.remove_option("--help")
+
+	for action_opt in actions:
+		parser.add_option("--" + action_opt, action="store_true",
+			dest=action_opt.replace("-", "_"), default=False)
+	for myopt in options:
+		parser.add_option(myopt, action="store_true",
+			dest=myopt.lstrip("--").replace("-", "_"), default=False)
+	for shortopt, longopt in shortmapping.iteritems():
+		parser.add_option("-" + shortopt, action="store_true",
+			dest=longopt.lstrip("--").replace("-", "_"), default=False)
+	for myalias, myopt in longopt_aliases.iteritems():
+		parser.add_option(myalias, action="store_true",
+			dest=myopt.lstrip("--").replace("-", "_"), default=False)
+
+	myoptions, myargs = parser.parse_args(args=tmpcmdline)
+
+	for myopt in options:
+		v = getattr(myoptions, myopt.lstrip("--").replace("-", "_"))
+		if v:
+			myopts.append(myopt)
+
+	for action_opt in actions:
+		v = getattr(myoptions, action_opt.replace("-", "_"))
+		if v:
+			if myaction:
+				multiple_actions(myaction, action_opt)
 				sys.exit(1)
-		elif (not myaction) and (x in actions):
+			myaction = action_opt
+
+	for x in myargs:
+		if x in actions:
 			if x not in ["system", "world"]:
 				print red("*** Deprecated use of action '%s', use '--%s' instead" % (x,x))
 			if myaction:
-				print
-				print red("!!!")+green(" Multiple actions requested... Please choose one only.")
-				print red("!!! '")+darkgreen(myaction)+"' "+red("or")+" '"+darkgreen(x)+"'"
-				print
+				multiple_actions(myaction, x)
 				sys.exit(1)
 			myaction=x
-		elif x[-1]=="/":
-			# this little conditional helps tab completion
-			myfiles.append(x[:-1])
 		else:
 			myfiles.append(x)
 
