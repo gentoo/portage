@@ -36,7 +36,11 @@ class database(fs_template.FsBased):
 			raise KeyError(cpv)
 
 	def _parse_data(self, data, cpv):
-		d = dict(map(lambda x:x.rstrip().split("=", 1), data))
+		try:
+			d = dict(map(lambda x:x.rstrip("\n").split("=", 1), data))
+		except ValueError, e:
+			# If a line is missing an "=", the split length is 1 instead of 2.
+			raise cache_errors.CacheCorruption(cpv, e)
 		if "_eclasses_" in d:
 			d["_eclasses_"] = reconstruct_eclasses(cpv, d["_eclasses_"])
 		return d
