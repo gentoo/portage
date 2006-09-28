@@ -3473,7 +3473,6 @@ def action_build(settings, trees, mtimedb,
 			myopts+=["--resume"]
 	else:
 		if ("--resume" in myopts):
-			del myopts[myopts.index("--resume")]
 			print darkgreen("emerge: It seems we have nothing to resume...")
 			sys.exit(0)
 
@@ -3556,7 +3555,7 @@ def action_build(settings, trees, mtimedb,
 			print
 			sys.exit(0)
 		# Don't ask again (e.g. when auto-cleaning packages after merge)
-		myopts.remove("--ask")
+		del myopts["--ask"]
 
 	if ("--pretend" in myopts) and not ("--fetchonly" in myopts or "--fetch-all-uri" in myopts):
 		if ("--resume" in myopts):
@@ -3644,7 +3643,7 @@ def multiple_actions(action1, action2):
 
 def parse_opts(tmpcmdline):
 	myaction=None
-	myopts=[]
+	myopts = {}
 	myfiles=[]
 
 	global actions, options, shortmapping
@@ -3674,7 +3673,7 @@ def parse_opts(tmpcmdline):
 	for myopt in options:
 		v = getattr(myoptions, myopt.lstrip("--").replace("-", "_"))
 		if v:
-			myopts.append(myopt)
+			myopts[myopt] = True
 
 	for action_opt in actions:
 		v = getattr(myoptions, action_opt.replace("-", "_"))
@@ -3893,54 +3892,54 @@ def emerge_main():
 	# Imply --buildpkg if --buildpkgonly
 	if ("buildpkg" in settings.features) or ("--buildpkgonly" in myopts):
 		if "--buildpkg" not in myopts:
-			myopts.append("--buildpkg")
+			myopts["--buildpkg"] = True
 
 	# --tree only makes sense with --pretend
 	if "--tree" in myopts and not (("--pretend" in myopts) or ("--ask" in myopts)):
 		print ">>> --tree implies --pretend... adding --pretend to options."
-		myopts.append("--pretend")
+		myopts["--pretend"] = True
 
 	# Also allow -S to invoke search action (-sS)
 	if ("--searchdesc" in myopts):
 		if myaction and myaction != "search":
 			myfiles.append(myaction)
 		if "--search" not in myopts:
-			myopts.append("--search")
+			myopts["--search"] = True
 		myaction = "search"
 
 	# Always try and fetch binary packages if FEATURES=getbinpkg
 	if ("getbinpkg" in settings.features):
-		myopts.append("--getbinpkg")
+		myopts["--getbinpkg"] = True
 
 	if "--skipfirst" in myopts and "--resume" not in myopts:
-		myopts.append("--resume")
+		myopts["--resume"] = True
 
 	if ("--getbinpkgonly" in myopts) and not ("--usepkgonly" in myopts):
-		myopts.append("--usepkgonly")
+		myopts["--usepkgonly"] = True
 
 	if ("--getbinpkgonly" in myopts) and not ("--getbinpkg" in myopts):
-		myopts.append("--getbinpkg")
+		myopts["--getbinpkg"] = True
 
 	if ("--getbinpkg" in myopts) and not ("--usepkg" in myopts):
-		myopts.append("--usepkg")
+		myopts["--usepkg"] = True
 
 	# Also allow -K to apply --usepkg/-k
 	if ("--usepkgonly" in myopts) and not ("--usepkg" in myopts):
-		myopts.append("--usepkg")
+		myopts["--usepkg"] = True
 
 	if ("--newuse" in myopts) and not ("--update" in myopts):
 		print ">>> --newuse implies --update... adding --update to options."
-		myopts.append("--update")
+		myopts["--update"] = True
 
 	# Also allow -l to apply --pretend/-p, but if already in --ask mode
 	if ("--changelog" in myopts) and not (("--pretend" in myopts) or ("--ask" in myopts)):
 		print ">>> --changelog implies --pretend... adding --pretend to options."
-		myopts.append("--pretend")
+		myopts["--pretend"] = True
 
 	# Allow -p to remove --ask
 	if ("--pretend" in myopts) and ("--ask" in myopts):
 		print ">>> --pretend disables --ask... removing --ask from options."
-		myopts.remove("--ask")
+		del myopts["--ask"]
 
 	# forbid --ask when not in a terminal
 	# note: this breaks `emerge --ask | tee logfile`, but that doesn't work anyway.
@@ -3958,7 +3957,7 @@ def emerge_main():
 	if ("--resume" in myopts):
 		if "--tree" in myopts:
 			print "* --tree is currently broken with --resume. Disabling..."
-			myopts.remove("--tree")
+			del myopts["--tree"]
 
 	# Set color output
 	if "--nocolor" in myopts or \
