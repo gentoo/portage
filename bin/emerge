@@ -3466,15 +3466,16 @@ def action_build(settings, trees, mtimedb,
 			mtimedb["resume"] = mtimedb["resume_backup"]
 			del mtimedb["resume_backup"]
 			mtimedb.commit()
-		myresumeopts=mtimedb["resume"]["myopts"][:]
+		# XXX: "myopts" is a list for backward compatibility.
+		myresumeopts = dict([(k,True) for k in mtimedb["resume"]["myopts"]])
 
 		for opt in ("--skipfirst", "--ask", "--tree"):
-			while opt in myresumeopts:
-				myresumeopts.remove(opt)
+			if opt in myresumeopts:
+				del myresumeopts[opt]
 
-		for myopt in myopts:
+		for myopt, myarg in myopts.iteritems():
 			if myopt not in myresumeopts:
-				myresumeopts.append(myopt)
+				myresumeopts[myopt] = myarg
 		myopts=myresumeopts
 		myparams = create_depgraph_params(myopts, myaction)
 		mydepgraph = depgraph(settings, trees,
@@ -3607,7 +3608,9 @@ def action_build(settings, trees, mtimedb,
 				del mtimedb["resume"]
 				mtimedb.commit()
 			mtimedb["resume"]={}
-			mtimedb["resume"]["myopts"]=myopts
+			# XXX: Stored as a list for backward compatibility.
+			mtimedb["resume"]["myopts"] = \
+				[k for k in myopts if myopts[k] is True]
 			mtimedb["resume"]["favorites"]=favorites
 			if ("--digest" in myopts) and not ("--fetchonly" in myopts or "--fetch-all-uri" in myopts):
 				for pkgline in mydepgraph.altlist():
