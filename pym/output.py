@@ -285,6 +285,7 @@ class EOutput:
 		if self.__last_e_cmd != "ebegin":
 			self.__last_e_len = 0
 		print "%*s%s" % ((self.term_columns - self.__last_e_len - 6), "", status_brackets)
+		sys.stdout.flush()
 
 	def ebegin(self, msg):
 		"""
@@ -326,6 +327,7 @@ class EOutput:
 		if not self.quiet:
 			if self.__last_e_cmd == "ebegin": print
 			print colorize("BAD", " * ") + msg
+			sys.stdout.flush()
 		self.__last_e_cmd = "eerror"
 
 	def einfo(self, msg):
@@ -338,6 +340,7 @@ class EOutput:
 		if not self.quiet:
 			if self.__last_e_cmd == "ebegin": print
 			print colorize("GOOD", " * ") + msg
+			sys.stdout.flush()
 		self.__last_e_cmd = "einfo"
 
 	def einfon(self, msg):
@@ -350,6 +353,7 @@ class EOutput:
 		if not self.quiet:
 			if self.__last_e_cmd == "ebegin": print
 			print colorize("GOOD", " * ") + msg ,
+			sys.stdout.flush()
 		self.__last_e_cmd = "einfon"
 
 	def ewarn(self, msg):
@@ -362,6 +366,7 @@ class EOutput:
 		if not self.quiet:
 			if self.__last_e_cmd == "ebegin": print
 			print colorize("WARN", " * ") + msg
+			sys.stdout.flush()
 		self.__last_e_cmd = "ewarn"
 
 	def ewend(self, errno, *msg):
