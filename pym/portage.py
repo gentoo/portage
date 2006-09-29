@@ -5985,6 +5985,8 @@ class dblink:
 
 		# check for package collisions
 		if "collision-protect" in self.settings.features:
+			collision_ignore = set([normalize_path(myignore) for myignore in \
+				self.settings.get("COLLISION_IGNORE", "").split()])
 			myfilelist = listdir(srcroot, recursive=1, filesonly=1, followSymlinks=False)
 
 			# the linkcheck only works if we are in srcroot
@@ -6035,6 +6037,14 @@ class dblink:
 				if not isowned:
 					print "existing file "+f+" is not owned by this package"
 					stopmerge=True
+					if collision_ignore:
+						if f in collision_ignore:
+							stopmerge = False
+						else:
+							for myignore in collision_ignore:
+								if f.startswith(myignore + os.path.sep):
+									stopmerge = False
+									break
 			print green("*")+" spent "+str(time.time()-starttime)+" seconds checking for file collisions"
 			if stopmerge:
 				print red("*")+" This package is blocked because it wants to overwrite"
