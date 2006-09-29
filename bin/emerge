@@ -1939,7 +1939,7 @@ class MergeTask(object):
 				fetch_env["FEATURES"] = fetch_env.get("FEATURES", "") + " -cvs"
 				fetch_env["PORTAGE_NICENESS"] = "0"
 				fetch_args = [sys.argv[0], "--resume", "--fetchonly"]
-				for myopt, myarg in self.myopts:
+				for myopt, myarg in self.myopts.iteritems():
 					if myopt not in bad_resume_opts:
 						if myarg is True:
 							fetch_args.append(myopt)
@@ -2159,7 +2159,7 @@ class MergeTask(object):
 								mtimedb.commit()
 								portage.run_exitfuncs()
 								mynewargv=[sys.argv[0],"--resume"]
-								for myopt, myarg in self.myopts:
+								for myopt, myarg in self.myopts.iteritems():
 									if myopt not in bad_resume_opts:
 										if myarg is True:
 											mynewargv.append(myopt)
