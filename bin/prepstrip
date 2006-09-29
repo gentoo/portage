@@ -27,11 +27,13 @@ save_elf_debug() {
 	local y="${D}usr/lib/debug/${x:${#D}}.debug"
 
 	if hasq installsources ${FEATURES} && [ -x /usr/bin/debugedit ] ; then
-		debugedit -b "${WORKDIR}" -d /usr/src/debug/${PF} -l "${T}"/debug.sources "${x}"
+		local sources_dir=/usr/src/debug/${CATEGORY}/${PF}
+		debugedit -b "${WORKDIR}" -d "${sources_dir}" \
+			-l "${T}"/debug.sources "${x}"
 		if [[ -s ${T}/debug.sources ]] ; then 
-			[[ -d ${D}/usr/src/debug/${PF} ]] || mkdir -p "${D}/usr/src/debug/${PF}"
+			[[ -d ${D}${sources_dir} ]] || mkdir -p "${D}${sources_dir}"
 			cat "${T}"/debug.sources | (cd "${WORKDIR}"; LANG=C sort -z -u | \
-				rsync -aL0 --files-from=- "${WORKDIR}/" "${D}/usr/src/debug/${PF}/" )
+				rsync -aL0 --files-from=- "${WORKDIR}/" "${D}${sources_dir}/" )
 		fi
 	fi
 
