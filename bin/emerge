@@ -3848,9 +3848,10 @@ def emerge_main():
 		# instead of exporting NOCOLOR.
 		nocolor()
 
-	tmpcmdline = sys.argv[1:]
+	tmpcmdline = []
 	if "--ignore-default-opts" not in tmpcmdline:
 		tmpcmdline.extend(settings["EMERGE_DEFAULT_OPTS"].split())
+	tmpcmdline.extend(sys.argv[1:])
 	myaction, myopts, myfiles = parse_opts(tmpcmdline)
 
 	for myroot in trees:
