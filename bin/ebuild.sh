@@ -559,7 +559,7 @@ einstall() {
 	fi
 
 	if [ -f ./[mM]akefile -o -f ./GNUmakefile ] ; then
-		if [ ! -z "${PORTAGE_DEBUG}" ]; then
+		if [ "${PORTAGE_DEBUG}" == "1" ]; then
 			make -n prefix=${D}/usr \
 				datadir=${D}/usr/share \
 				infodir=${D}/usr/share/info \
