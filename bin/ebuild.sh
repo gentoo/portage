@@ -560,21 +560,21 @@ einstall() {
 
 	if [ -f ./[mM]akefile -o -f ./GNUmakefile ] ; then
 		if [ "${PORTAGE_DEBUG}" == "1" ]; then
-			make -n prefix=${D}/usr \
-				datadir=${D}/usr/share \
-				infodir=${D}/usr/share/info \
-				localstatedir=${D}/var/lib \
-				mandir=${D}/usr/share/man \
-				sysconfdir=${D}/etc \
+			make -n prefix="${D}/usr" \
+				datadir="${D}/usr/share" \
+				infodir="${D}/usr/share/info" \
+				localstatedir="${D}/var/lib" \
+				mandir="${D}/usr/share/man" \
+				sysconfdir="${D}/etc" \
 				${EXTRA_EINSTALL} \
 				"$@" install
 		fi
-		make prefix=${D}/usr \
-			datadir=${D}/usr/share \
-			infodir=${D}/usr/share/info \
-			localstatedir=${D}/var/lib \
-			mandir=${D}/usr/share/man \
-			sysconfdir=${D}/etc \
+		make prefix="${D}/usr" \
+			datadir="${D}/usr/share" \
+			infodir="${D}/usr/share/info" \
+			localstatedir="${D}/var/lib" \
+			mandir="${D}/usr/share/man" \
+			sysconfdir="${D}/etc" \
 			${EXTRA_EINSTALL} \
 			"$@" install || die "einstall failed"
 	else
