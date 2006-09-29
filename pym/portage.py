@@ -537,7 +537,7 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None):
 	fns.sort()
 	templist = []
 	for x in fns:
-		if len(x) <= 3:
+		if len(x) < 3:
 			continue
 		if not x[0].isdigit() or not x[1].isdigit():
 			continue
