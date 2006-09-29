@@ -77,6 +77,10 @@ Determines how long the countdown delay will be after running `emerge clean`.
 .br
 Defaults to 5 seconds.
 .TP
+\fBCOLLISION_IGNORE\fR = \fI[space delimited list of files and/or directories]\fR
+This variable allows the user to disable \fIcollision\-protect\fR for specific
+files and/or directories.
+.TP
 \fBCONFIG_PROTECT\fR = \fI[space delimited list of dirs]\fR
 All directories that are defined here will have "config file protection"
 enabled for them.  For more information, please see `emerge \-\-help config`.
@@ -142,6 +146,8 @@ calls via the econf helper function. See \fBebuild\fR(5) for more information.
 .TP
 .B collision\-protect
 A QA\-feature to ensure that a package doesn't overwrite files it doesn't own.
+The \fICOLLISION_IGNORE\fR variable can be used to selectively disable this
+feature.
 .TP
 .B cvs
 A feature for developers that causes portage to enable all USE flags in SRC_URI
