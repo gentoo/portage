@@ -3479,8 +3479,6 @@ def action_build(settings, trees, mtimedb,
 		myparams = create_depgraph_params(myopts, myaction)
 		mydepgraph = depgraph(settings, trees,
 			myopts, myparams, spinner)
-		if "--resume" not in myopts:
-			myopts+=["--resume"]
 	else:
 		if ("--resume" in myopts):
 			print darkgreen("emerge: It seems we have nothing to resume...")
