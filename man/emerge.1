@@ -101,9 +101,9 @@ installed; the differences are listed as unnecessary packages
 and then unmerged after a short timeout.  \fBWARNING: Removing some 
 packages may cause packages which link to the removed package 
 to stop working and complain about missing libraries.\fR 
-Re\-emerge the complaining package to fix this issue.
-\fBNote that changes in USE flags can drastically affect the 
-output of \-\-depclean.\fR
+Re\-emerge the complaining package to fix this issue.  Also see
+\fB\-\-with\-bdeps\fR for behavior with respect to build time dependencies that
+are not strictly required.
 .TP
 .BR "\-\-help " (\fB\-h\fR)
 Displays help information for emerge.  Adding one of the additional
@@ -239,7 +239,9 @@ When used in conjunction with \fB\-\-update\fR, this flag forces
 \fBemerge\fR to consider the entire dependency tree of packages,
 instead of checking only the immediate dependencies of the packages.
 As an example, this catches updates in libraries that are not directly
-listed in the dependencies of a package.
+listed in the dependencies of a package.  Also see \fB\-\-with\-bdeps\fR for
+behavior with respect to build time dependencies that are not strictly
+required.
 .TP
 .BR "\-\-emptytree " (\fB\-e\fR)
 Reinstalls all world packages and their dependencies to the current USE 
@@ -376,6 +378,13 @@ in order to indicate their status:
 \fI% suffix\fR     = newly added or removed
 .br
 \fI() circumfix\fR = forced, masked, or removed
+.TP
+.BR "\-\-with\-bdeps < y | n >"
+In dependency calculations, pull in build time dependendencies that are not
+strictly required.   This defaults to \'n\' for installation actions and
+\'y\' for the \-\-depclean action.  This setting can be added to
+EMERGE_DEFAULT_OPTS (see make.conf(5)) and later overridden via the command
+line.
 .SH "ENVIRONMENT OPTIONS"
 .TP
 \fBROOT\fR = \fI[path]\fR
