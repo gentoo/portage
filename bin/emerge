@@ -3470,8 +3470,7 @@ def action_build(settings, trees, mtimedb,
 		myresumeopts = dict([(k,True) for k in mtimedb["resume"]["myopts"]])
 
 		for opt in ("--skipfirst", "--ask", "--tree"):
-			if opt in myresumeopts:
-				del myresumeopts[opt]
+			myresumeopts.pop(opt, None)
 
 		for myopt, myarg in myopts.iteritems():
 			if myopt not in myresumeopts:
