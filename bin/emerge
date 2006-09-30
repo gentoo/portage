@@ -715,6 +715,12 @@ class depgraph:
 		
 		self.spinner.update()
 		mytype,myroot,mykey=mybigkey
+		if mytype == "blocks":
+			if addme and "--buildpkgonly" not in self.myopts and myparent:
+				mybigkey[1] = myparent.split()[1]
+				self.digraph.addnode(" ".join(mybigkey), myparent,
+					soft_dep=soft_dep)
+			return 1
 		if not arg:
 			arg = portage.best_match_to_list(mykey, self.args_keys)
 		# select the correct /var database that we'll be checking against
@@ -725,18 +731,8 @@ class depgraph:
 
 		# if the package is already on the system, we add a "nomerge"
 		# directive, otherwise we add a "merge" directive.
-		
-		if mytype=="blocks":
-			""" We ignore blocks unless the package that is blocked is installed
-			    We need to check vardbapi as well as the current depgraph for it.
-			    Blocks are fatal if buildpkgonly is set. """
-			if addme and "--buildpkgonly" not in self.myopts and myparent:
-				mybigkey[1] = myparent.split()[1]
-				self.digraph.addnode(" ".join(mybigkey), myparent,
-					soft_dep=soft_dep)
-			return 1
-		else:
-			mydbapi = self.trees[myroot][self.pkg_tree_map[mytype]].dbapi
+
+		mydbapi = self.trees[myroot][self.pkg_tree_map[mytype]].dbapi
 
 		if myuse is None:
 			self.pkgsettings[myroot].setcpv(mykey)
