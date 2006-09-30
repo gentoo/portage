@@ -1311,7 +1311,7 @@ class depgraph:
 		for mydep in mylist:
 			try:
 				if not self.select_dep(
-					self.target_root, mydep, raise_on_missing=True):
+					self.target_root, mydep, raise_on_missing=True, arg=mydep):
 					print >> sys.stderr, "\n\n!!! Problem resolving dependencies for", mydep
 					return 0
 			except ValueError:
