@@ -87,7 +87,11 @@ do_pkg() {
 					NF=NF-3
 			}
 			print
-		}' "${SRCDIR}"/CONTENTS | cut -f2- -d" " - | sed -e 's:^/:./:' > "${MYDIR}"/filelist
+		}' "${SRCDIR}"/CONTENTS | cut -f2- -d" " - | sed -e 's:^/:./:' | \
+		while read f; do
+			[ -d "${ROOT}/${f}" ] && [ -h "${ROOT}/${f}" ] && continue
+			echo "$f"
+		done > "${MYDIR}"/filelist
 		tar vjcf "${pkg_tmp}" -C "${ROOT}" --files-from="${MYDIR}"/filelist --no-recursion
 
 		# join together the basic tbz2 and the pkg info files
