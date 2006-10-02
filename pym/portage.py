@@ -312,14 +312,17 @@ def flatten(mytokens):
 #beautiful directed graph object
 
 class digraph:
+	SOFT   = 0
+	MEDIUM = 1
+	HARD   = 2
 	def __init__(self):
 		"""Create an empty digraph"""
 		
-		# { node : ( { child : soft_dep } , { parent : soft_dep } ) }
+		# { node : ( { child : priority } , { parent : priority } ) }
 		self.nodes = {}
 		self.order = []
 
-	def add(self, node, parent, soft_dep=False):
+	def add(self, node, parent, priority=2):
 		"""Adds the specified node with the specified parent.
 		
 		If the dep is a soft-dep and the node already has a hard
@@ -337,16 +340,16 @@ class digraph:
 			self.order.append(parent)
 		
 		if parent in self.nodes[node][1]:
-			if not soft_dep:
-				self.nodes[node][1][parent] = False
+			if priority > self.SOFT:
+				self.nodes[node][1][parent] = priority
 		else:
-			self.nodes[node][1][parent] = soft_dep
+			self.nodes[node][1][parent] = priority
 		
 		if node in self.nodes[parent][0]:
-			if not soft_dep:
-				self.nodes[parent][0][node] = False
+			if priority > self.SOFT:
+				self.nodes[parent][0][node] = priority
 		else:
-			self.nodes[parent][0][node] = soft_dep
+			self.nodes[parent][0][node] = priority
 
 	def remove(self, node):
 		"""Removes the specified node from the digraph, also removing
@@ -380,7 +383,7 @@ class digraph:
 		"""Return all parents of the specified node"""
 		return self.nodes[node][1].keys()
 
-	def leaf_nodes(self, ignore_soft_deps=False):
+	def leaf_nodes(self, ignore_priority=-1):
 		"""Return all nodes that have no children
 		
 		If ignore_soft_deps is True, soft deps are not counted as
@@ -390,14 +393,14 @@ class digraph:
 		for node in self.order:
 			is_leaf_node = True
 			for child in self.nodes[node][0]:
-				if not (ignore_soft_deps and self.nodes[node][0][child]):
+				if self.nodes[node][0][child] > ignore_priority:
 					is_leaf_node = False
 					break
 			if is_leaf_node:
 				leaf_nodes.append(node)
 		return leaf_nodes
 
-	def root_nodes(self, ignore_soft_deps=False):
+	def root_nodes(self, ignore_priority=-1):
 		"""Return all nodes that have no parents.
 		
 		If ignore_soft_deps is True, soft deps are not counted as
@@ -407,7 +410,7 @@ class digraph:
 		for node in self.order:
 			is_root_node = True
 			for parent in self.nodes[node][1]:
-				if not (ignore_soft_deps and self.nodes[node][1][parent]):
+				if self.nodes[node][1][parent] > ignore_priority:
 					is_root_node = False
 					break
 			if is_root_node:
@@ -444,8 +447,8 @@ class digraph:
 			return leaf_nodes[0]
 		return None
 
-	def hasallzeros(self, ignore_soft_deps=False):
-		return len(self.leaf_nodes(ignore_soft_deps=ignore_soft_deps)) == \
+	def hasallzeros(self, ignore_priority=-1):
+		return len(self.leaf_nodes(ignore_priority=ignore_priority)) == \
 			len(self.order)
 
 	def debug_print(self):
@@ -457,10 +460,12 @@ class digraph:
 				print "(no children)"
 			for child in self.nodes[node][0]:
 				print "  ",child,
-				if self.nodes[node][0][child]:
-					print "(soft)"
-				else:
+				if self.nodes[node][0][child] == self.HARD:
 					print "(hard)"
+				elif self.nodes[node][0][child] == self.MEDIUM:
+					print "(medium)"
+				else:
+					print "(soft)"
 
 
 

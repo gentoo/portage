@@ -27,6 +27,7 @@ sys.path = ["/usr/lib/portage/pym"]+sys.path
 os.environ["PORTAGE_LEGACY_GLOBALS"] = "false"
 import portage
 del os.environ["PORTAGE_LEGACY_GLOBALS"]
+from portage import digraph
 
 import emergehelp, xpak, commands, errno, re, socket, string, time, types
 from output import blue, bold, colorize, darkblue, darkgreen, darkred, green, \
@@ -679,7 +680,7 @@ class depgraph:
 		self.args_keys = []
 
 	def create(self, mybigkey, myparent=None, addme=1, myuse=None,
-		soft_dep=False, rev_dep=False, arg=None):
+		priority=digraph.HARD, rev_dep=False, arg=None):
 		"""
 		Fills the digraph with nodes comprised of packages to merge.
 		mybigkey is the package spec of the package to merge.
@@ -698,9 +699,9 @@ class depgraph:
 				# Refuse to make a node depend on itself so that the we don't
 				# don't create a bogus circular dependency in self.altlist().
 				if rev_dep and myparent:
-					self.digraph.addnode(myparent, jbigkey, soft_dep=soft_dep)
+					self.digraph.addnode(myparent, jbigkey, priority=priority)
 				else:
-					self.digraph.addnode(jbigkey, myparent, soft_dep=soft_dep)
+					self.digraph.addnode(jbigkey, myparent, priority=priority)
 			return 1
 		jbigkey = " ".join(mybigkey) + " nomerge"
 		if self.digraph.hasnode(jbigkey):
@@ -708,9 +709,9 @@ class depgraph:
 			requested as a command line argument.  This can be solved by
 			checking all args prior to marking packages as nomerge"""
 			if rev_dep and myparent:
-				self.digraph.addnode(myparent, jbigkey, soft_dep=soft_dep)
+				self.digraph.addnode(myparent, jbigkey, priority=priority)
 			else:
-				self.digraph.addnode(jbigkey, myparent, soft_dep=soft_dep)
+				self.digraph.addnode(jbigkey, myparent, priority=priority)
 			return 1
 		
 		self.spinner.update()
@@ -719,7 +720,7 @@ class depgraph:
 			if addme and "--buildpkgonly" not in self.myopts and myparent:
 				mybigkey[1] = myparent.split()[1]
 				self.digraph.addnode(" ".join(mybigkey), myparent,
-					soft_dep=soft_dep)
+					priority=priority)
 			return 1
 		if not arg:
 			arg = portage.best_match_to_list(mykey, self.args_keys)
@@ -781,10 +782,10 @@ class depgraph:
 		    add the package to the depgraph; so we do that here. """
 		if rev_dep and myparent:
 			self.digraph.addnode(myparent, " ".join(mybigkey),
-				soft_dep=soft_dep)
+				priority=priority)
 		else:
 			self.digraph.addnode(" ".join(mybigkey), myparent,
-				soft_dep=soft_dep)
+				priority=priority)
 		
 		""" This section determines whether we go deeper into dependencies or not.
 		    We want to go deeper on a few occasions:
@@ -831,13 +832,13 @@ class depgraph:
 			dependencies not being installed yet.
 			"""
 			if not self.select_dep(myroot,edepend["RDEPEND"], myparent=mp,
-				myuse=myuse, soft_deps=False, parent_arg=arg):
+				myuse=myuse, priority=digraph.MEDIUM, parent_arg=arg):
 				return 0
 			if edepend.has_key("PDEPEND") and edepend["PDEPEND"]:
 				# Post Depend -- Add to the list without a parent, as it depends
 				# on a package being present AND must be built after that package.
 				if not self.select_dep(myroot, edepend["PDEPEND"], myparent=mp,
-					myuse=myuse, soft_deps=True, rev_deps=True, parent_arg=arg):
+					myuse=myuse, priority=digraph.SOFT, rev_deps=True, parent_arg=arg):
 					return 0
 		except ValueError, e:
 			pkgs = e.args[0]
@@ -1005,7 +1006,7 @@ class depgraph:
 						return match
 
 	def select_dep(self, myroot, depstring, myparent=None, arg=None,
-		myuse=None, raise_on_missing=False, soft_deps=False, rev_deps=False,
+		myuse=None, raise_on_missing=False, priority=digraph.HARD, rev_deps=False,
 		parent_arg=None):
 		""" Given a depstring, create the depgraph such that all dependencies are satisfied.
 		    myroot = $ROOT from environment, where {R,P}DEPENDs are merged to.
@@ -1028,8 +1029,7 @@ class depgraph:
 			print "Depstring:",depstring
 			if rev_deps:
 				print "Reverse:", rev_deps
-			if soft_deps:
-				print "Soft:", soft_deps
+			print "Priority:", priority
 
 		#processing dependencies
 		""" Call portage.dep_check to evaluate the use? conditionals and make sure all
@@ -1206,9 +1206,11 @@ class depgraph:
 
 			if myparent:
 				#we are a dependency, so we want to be unconditionally added
-				soft_dep = bool(soft_deps or vardb.match(x))
+				mypriority = priority
+				if mypriority > digraph.SOFT and vardb.match(x):
+					mypriority = digraph.SOFT
 				if not self.create(selected_pkg[0:3], myparent,
-					myuse=selected_pkg[-1], soft_dep=soft_dep,
+					myuse=selected_pkg[-1], priority=mypriority,
 					rev_dep=rev_deps, arg=arg):
 					return 0
 			else:
@@ -1257,26 +1259,23 @@ class depgraph:
 			if reversed:
 				nodes = mygraph.root_nodes()
 				if not nodes:
-					nodes = mygraph.root_nodes(ignore_soft_deps=True)
-				if nodes:
-					next_node = nodes[-1]
-				else:
-					next_node = None
+					nodes = mygraph.root_nodes(ignore_priority=digraph.SOFT)
+				if not nodes:
+					nodes = mygraph.root_nodes(ignore_priority=digraph.MEDIUM)
 			else:
 				nodes = mygraph.leaf_nodes()
 				if not nodes:
-					nodes = mygraph.leaf_nodes(ignore_soft_deps=True)
-				if nodes:
-					next_node = nodes[0]
-				else:
-					next_node = None
-			if not next_node:
+					nodes = mygraph.leaf_nodes(ignore_priority=digraph.SOFT)
+				if not nodes:
+					nodes = mygraph.leaf_nodes(ignore_priority=digraph.MEDIUM)
+			if not nodes:
 				print "!!! Error: circular dependencies:"
 				print
 				mygraph.debug_print()
 				sys.exit(1)
-			retlist.append(next_node.split())
-			mygraph.remove(next_node)
+			for node in nodes:
+				retlist.append(node.split())
+				mygraph.remove(node)
 		return retlist
 
 	def xcreate(self,mode="system"):
@@ -3576,7 +3575,7 @@ def action_build(settings, trees, mtimedb,
 				mydepgraph.altlist(reversed=("--tree" in myopts)))
 	else:
 		if ("--buildpkgonly" in myopts):
-			if not mydepgraph.digraph.hasallzeros(ignore_soft_deps=True):
+			if not mydepgraph.digraph.hasallzeros(ignore_priority=digraph.MEDIUM):
 				print "\n!!! --buildpkgonly requires all dependencies to be merged."
 				print "!!! Cannot merge requested packages. Merge deps and try again.\n"
 				sys.exit(1)
