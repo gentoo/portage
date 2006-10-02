@@ -1256,26 +1256,56 @@ class depgraph:
 		mygraph=self.digraph.copy()
 		retlist=[]
 		while not mygraph.empty():
+			ignore_priority = -1
 			if reversed:
 				nodes = mygraph.root_nodes()
 				if not nodes:
+					ignore_priority = digraph.SOFT
 					nodes = mygraph.root_nodes(ignore_priority=digraph.SOFT)
 				if not nodes:
+					ignore_priority = digraph.MEDIUM
 					nodes = mygraph.root_nodes(ignore_priority=digraph.MEDIUM)
 			else:
 				nodes = mygraph.leaf_nodes()
 				if not nodes:
+					ignore_priority = digraph.SOFT
 					nodes = mygraph.leaf_nodes(ignore_priority=digraph.SOFT)
 				if not nodes:
+					ignore_priority = digraph.MEDIUM
 					nodes = mygraph.leaf_nodes(ignore_priority=digraph.MEDIUM)
-			if not nodes:
+
+			selected_nodes = None
+			if nodes:
+				if ignore_priority <= digraph.SOFT or len(nodes) == 1:
+					selected_nodes = [nodes[0]]
+				else:
+					"""Find two or more nodes that are mutually dependent and
+					completely satisfy eachother's non-soft deps."""
+					nodes = set(nodes)
+					selected_nodes = None
+					for node in nodes:
+						selected_nodes = set(mygraph.child_nodes(node,
+							ignore_priority=digraph.SOFT))
+						selected_nodes.add(node)
+						grandchildren = set()
+						for child in mygraph.child_nodes(node,
+							ignore_priority=digraph.SOFT):
+							grandchildren.update(mygraph.child_nodes(child,
+								ignore_priority=digraph.SOFT))
+						if grandchildren.issubset(selected_nodes):
+							break
+						selected_nodes = None
+
+			if not selected_nodes:
 				print "!!! Error: circular dependencies:"
 				print
 				mygraph.debug_print()
 				sys.exit(1)
-			for node in nodes:
+
+			for node in selected_nodes:
 				retlist.append(node.split())
 				mygraph.remove(node)
+
 		return retlist
 
 	def xcreate(self,mode="system"):

@@ -375,9 +375,15 @@ class digraph:
 		"""Return a list of all nodes in the graph"""
 		return self.order[:]
 
-	def child_nodes(self, node):
+	def child_nodes(self, node, ignore_priority=-1):
 		"""Return all children of the specified node"""
-		return self.nodes[node][0].keys()
+		if ignore_priority == -1:
+			return self.nodes[node][0].keys()
+		children = []
+		for child, priority in self.nodes[node][0].iteritems():
+			if priority > ignore_priority:
+				children.append(child)
+		return children
 
 	def parent_nodes(self, node):
 		"""Return all parents of the specified node"""
