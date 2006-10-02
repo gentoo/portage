@@ -286,10 +286,10 @@ def getconfig(mycfg,tolerant=0,allow_sourcing=False):
 #cache expansions of constant strings
 cexpand={}
 def varexpand(mystring,mydict={}):
-	try:
-		return cexpand[" "+mystring]
-	except KeyError:
-		pass
+	newstring = cexpand.get(" "+mystring, None)
+	if newstring is not None:
+		return newstring
+
 	"""
 	new variable expansion code.  Removes quotes, handles \n, etc.
 	This code is used by the configfile code, as well as others (parser)
