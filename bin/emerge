@@ -1281,7 +1281,6 @@ class depgraph:
 				else:
 					"""Find two or more nodes that are mutually dependent and
 					completely satisfy eachother's non-soft deps."""
-					nodes = set(nodes)
 					selected_nodes = None
 					for node in nodes:
 						selected_nodes = set(mygraph.child_nodes(node,
