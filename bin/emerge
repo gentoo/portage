@@ -1255,25 +1255,15 @@ class depgraph:
 	def altlist(self, reversed=False):
 		mygraph=self.digraph.copy()
 		retlist=[]
+		if reversed:
+			get_nodes = mygraph.root_nodes
+		else:
+			get_nodes = mygraph.leaf_nodes
 		while not mygraph.empty():
-			ignore_priority = -1
-			if reversed:
-				nodes = mygraph.root_nodes()
-				if not nodes:
-					ignore_priority = digraph.SOFT
-					nodes = mygraph.root_nodes(ignore_priority=digraph.SOFT)
-				if not nodes:
-					ignore_priority = digraph.MEDIUM
-					nodes = mygraph.root_nodes(ignore_priority=digraph.MEDIUM)
-			else:
-				nodes = mygraph.leaf_nodes()
-				if not nodes:
-					ignore_priority = digraph.SOFT
-					nodes = mygraph.leaf_nodes(ignore_priority=digraph.SOFT)
-				if not nodes:
-					ignore_priority = digraph.MEDIUM
-					nodes = mygraph.leaf_nodes(ignore_priority=digraph.MEDIUM)
-
+			for ignore_priority in (-1, digraph.SOFT, digraph.MEDIUM):
+				nodes = get_nodes(ignore_priority=ignore_priority)
+				if nodes:
+					break
 			selected_nodes = None
 			if nodes:
 				if ignore_priority <= digraph.SOFT:
