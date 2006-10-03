@@ -2618,7 +2618,10 @@ def show_blocker_docs_link():
 def action_sync(settings, trees, mtimedb, myopts, myaction):
 	xterm_titles = "notitles" not in settings.features
 	emergelog(xterm_titles, " === sync")
-	myportdir=settings["PORTDIR"]
+	myportdir = settings.get("PORTDIR", None)
+	if not myportdir:
+		sys.stderr.write("!!! PORTDIR is undefined.  Is /etc/make.globals missing?\n")
+		sys.exit(1)
 	if myportdir[-1]=="/":
 		myportdir=myportdir[:-1]
 	if not os.path.exists(myportdir):
