@@ -340,13 +340,13 @@ class digraph:
 			self.order.append(parent)
 		
 		if parent in self.nodes[node][1]:
-			if priority > self.SOFT:
+			if priority > self.nodes[node][1][parent]:
 				self.nodes[node][1][parent] = priority
 		else:
 			self.nodes[node][1][parent] = priority
 		
 		if node in self.nodes[parent][0]:
-			if priority > self.SOFT:
+			if priority > self.nodes[parent][0][node]:
 				self.nodes[parent][0][node] = priority
 		else:
 			self.nodes[parent][0][node] = priority
