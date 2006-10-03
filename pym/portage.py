@@ -2502,6 +2502,13 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 	mysettings["EBUILD_PHASE"] = mydo
 	phase_retval = spawn(actionmap[mydo]["cmd"] % mydo, mysettings, debug=debug, logfile=logfile, **kwargs)
 	del mysettings["EBUILD_PHASE"]
+
+	if "userpriv" in mysettings.features and \
+		not kwargs["droppriv"] and secpass >= 2:
+		# Privileged phases may have left files owned by root.
+		apply_recursive_permissions(mysettings["T"],
+			uid=portage_uid, gid=portage_gid)
+
 	if phase_retval == os.EX_OK:
 		if mydo == "install":
 			mycommand = " ".join([MISC_SH_BINARY, "install_qa_check"])
@@ -2900,7 +2907,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		if mydo in ["clean","cleanrm"]:
 			return spawn(EBUILD_SH_BINARY + " clean", mysettings,
 				debug=debug, free=1, logfile=None)
-		elif mydo in ["help","setup"]:
+		elif mydo == "help":
 			return spawn(EBUILD_SH_BINARY + " " + mydo, mysettings,
 				debug=debug, free=1, logfile=logfile)
 		elif mydo == "preinst":
