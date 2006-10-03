@@ -1260,7 +1260,8 @@ class depgraph:
 		else:
 			get_nodes = mygraph.leaf_nodes
 		while not mygraph.empty():
-			for ignore_priority in (-1, digraph.SOFT, digraph.MEDIUM):
+			for ignore_priority in \
+				(digraph.NONE, digraph.SOFT, digraph.MEDIUM):
 				nodes = get_nodes(ignore_priority=ignore_priority)
 				if nodes:
 					break

@@ -312,6 +312,7 @@ def flatten(mytokens):
 #beautiful directed graph object
 
 class digraph:
+	NONE   = -1
 	SOFT   = 0
 	MEDIUM = 1
 	HARD   = 2
