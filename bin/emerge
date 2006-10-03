@@ -1279,21 +1279,18 @@ class depgraph:
 				if ignore_priority <= digraph.SOFT or len(nodes) == 1:
 					selected_nodes = [nodes[0]]
 				else:
-					"""Find two or more nodes that are mutually dependent and
-					completely satisfy eachother's non-soft deps."""
-					selected_nodes = None
-					for node in nodes:
-						selected_nodes = set(mygraph.child_nodes(node,
-							ignore_priority=digraph.SOFT))
+					"""Recursively gather a group of nodes that RDEPEND on
+					eachother.  This ensures that they are merged as a group
+					and get their RDEPENDs satisfied as soon as possible."""
+					selected_nodes = set()
+					def gather_deps(node):
+						if node in selected_nodes:
+							return
 						selected_nodes.add(node)
-						grandchildren = set()
 						for child in mygraph.child_nodes(node,
 							ignore_priority=digraph.SOFT):
-							grandchildren.update(mygraph.child_nodes(child,
-								ignore_priority=digraph.SOFT))
-						if grandchildren.issubset(selected_nodes):
-							break
-						selected_nodes = None
+							gather_deps(child)
+					gather_deps(nodes[0])
 
 			if not selected_nodes:
 				print "!!! Error: circular dependencies:"
