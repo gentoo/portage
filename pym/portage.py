@@ -3017,8 +3017,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 					print "!!! Failed reseting ebuild distdir path, " + edpath
 					raise
 			os.mkdir(edpath)
-			apply_secpass_permissions(edpath, uid=portage_uid, gid=portage_gid,
-				mode=0755)
+			apply_secpass_permissions(edpath, uid=portage_uid, mode=0755)
 			try:
 				for file in aalist:
 					os.symlink(os.path.join(orig_distdir, file),
