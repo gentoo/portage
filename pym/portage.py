@@ -2682,28 +2682,26 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 				raise
 		return True
 
-	dir_mode_map = {
-		"BUILD_PREFIX"     :00070,
-		"HOME"             :02070,
-		"PORTAGE_BUILDDIR" :00070,
-		"PKG_LOGDIR"       :00070,
-		"T"                :02070
-	}
-
 	mysettings["PKG_LOGDIR"] = os.path.join(mysettings["T"], "logging")
 
-	for dir_key, mode in dir_mode_map.iteritems():
-		if not makedirs(mysettings[dir_key]):
-			return 1
-		try:
-			apply_secpass_permissions(mysettings[dir_key],
-			gid=portage_gid, mode=mode, mask=02)
-		except portage_exception.OperationNotPermitted, e:
-			writemsg("Operation Not Permitted: %s\n" % str(e), noiselevel=-1)
-			return 1
-		except portage_exception.FileNotFound, e:
-			writemsg("File Not Found: '%s'\n" % str(e), noiselevel=-1)
-			return 1
+	try:
+		portage_util.ensure_dirs(mysettings["BUILD_PREFIX"])
+		portage_util.apply_secpass_permissions(mysettings["BUILD_PREFIX"],
+			gid=portage_gid, uid=portage_uid, mode=01775)
+		for dir_key in ("PORTAGE_BUILDDIR", "HOME", "PKG_LOGDIR", "T"):
+			portage_util.ensure_dirs(mysettings[dir_key], mode=0755)
+			# userpriv support
+			portage_util.apply_secpass_permissions(mysettings[dir_key],
+				uid=portage_uid)
+	except portage_exception.PermissionDenied, e:
+		writemsg("Permission Denied: %s\n" % str(e), noiselevel=-1)
+		return 1
+	except portage_exception.OperationNotPermitted, e:
+		writemsg("Operation Not Permitted: %s\n" % str(e), noiselevel=-1)
+		return 1
+	except portage_exception.FileNotFound, e:
+		writemsg("File Not Found: '%s'\n" % str(e), noiselevel=-1)
+		return 1
 
 	features_dirs = {
 		"ccache":{
@@ -2882,8 +2880,10 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	try:
 		# Build directory creation isn't required for any of these.
 		if mydo not in ["fetch","digest","manifest"]:
-			portage_util.ensure_dirs(mysettings["PORTAGE_BUILDDIR"],
-				gid=portage_gid, mode=070, mask=02)
+			portage_util.ensure_dirs(mysettings["PORTAGE_BUILDDIR"], mode=0755)
+			# userpriv support
+			portage_util.apply_secpass_permissions(
+				mysettings["PORTAGE_BUILDDIR"], uid=portage_uid)
 			#builddir_lock = portage_locks.lockdir(
 			#	mysettings["PORTAGE_BUILDDIR"])
 			mystatus = prepare_build_dirs(myroot, mysettings, cleanup)
@@ -5784,7 +5784,7 @@ class dblink:
 				self.settings, 0, 0, self.vartree.dbapi)
 			portage_util.ensure_dirs(
 				os.path.dirname(self.settings["PORTAGE_BUILDDIR"]),
-				gid=portage_gid, mode=070, mask=02)
+				uid=portage_uid, gid=portage_gid, mode=01775)
 		builddir_lock = None
 		try:
 			if myebuildpath:
@@ -6623,7 +6623,7 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 		myebuild = os.path.join(
 			infloc, os.path.basename(mytbz2)[:-4] + "ebuild")
 		portage_util.ensure_dirs(os.path.dirname(builddir),
-			gid=portage_gid, mode=070, mask=02)
+			uid=portage_uid, gid=portage_gid, mode=01775)
 		builddir_lock = portage_locks.lockdir(builddir)
 		try:
 			shutil.rmtree(builddir)
@@ -6632,7 +6632,8 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 				raise
 			del e
 		for mydir in (builddir, pkgloc, infloc):
-			portage_util.ensure_dirs(mydir, gid=portage_gid, mode=070)
+			portage_util.ensure_dirs(mydir, uid=portage_uid,
+				gid=portage_gid, mode=0755)
 		writemsg_stdout(">>> Extracting info\n")
 		xptbz2.unpackinfo(infloc)
 		mysettings.load_infodir(infloc)

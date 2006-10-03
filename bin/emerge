@@ -2018,7 +2018,8 @@ class MergeTask(object):
 					pkgsettings, self.edebug, 1, portdb)
 				portage_util.ensure_dirs(
 					os.path.dirname(pkgsettings["PORTAGE_BUILDDIR"]),
-					gid=portage.portage_gid, mode=070, mask=02)
+					uid=portage.portage_uid, gid=portage.portage_gid,
+					mode=01775)
 				builddir_lock = None
 				try:
 					builddir_lock = portage_locks.lockdir(
