@@ -1276,7 +1276,7 @@ class depgraph:
 
 			selected_nodes = None
 			if nodes:
-				if ignore_priority <= digraph.SOFT or len(nodes) == 1:
+				if ignore_priority <= digraph.SOFT:
 					selected_nodes = [nodes[0]]
 				else:
 					"""Recursively gather a group of nodes that RDEPEND on
