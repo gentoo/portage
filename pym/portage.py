@@ -2080,7 +2080,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 		dirmode  = 02070
 		filemode =   060
 		modemask =    02
-		distdir_dirs = ["", "cvs-src"]
+		distdir_dirs = [""]
 		if "distlocks" in features:
 			distdir_dirs.append(".locks")
 		try:
