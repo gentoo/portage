@@ -6521,12 +6521,12 @@ class dblink:
 					# destination doesn't exist
 					if movefile(mysrc,mydest,newmtime=thismtime,sstat=mystat, mysettings=self.settings)!=None:
 						zing=">>>"
-						if stat.S_ISFIFO(mymode):
-							# we don't record device nodes in CONTENTS,
-							# although we do merge them.
-							outfile.write("fif "+myrealdest+"\n")
 					else:
 						sys.exit(1)
+				if stat.S_ISFIFO(mymode):
+					outfile.write("fif %s\n" % myrealdest)
+				else:
+					outfile.write("dev %s\n" % myrealdest)
 				writemsg_stdout(zing+" "+mydest+"\n")
 
 	def merge(self, mergeroot, inforoot, myroot, myebuild=None, cleanup=0,
