@@ -2503,11 +2503,12 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 	phase_retval = spawn(actionmap[mydo]["cmd"] % mydo, mysettings, debug=debug, logfile=logfile, **kwargs)
 	del mysettings["EBUILD_PHASE"]
 
-	if "userpriv" in mysettings.features and \
-		not kwargs["droppriv"] and secpass >= 2:
-		# Privileged phases may have left files owned by root.
+	if not kwargs["droppriv"] and secpass >= 2:
+		""" Privileged phases may have left files that need to be made
+		writable to a less privileged user."""
 		apply_recursive_permissions(mysettings["T"],
-			uid=portage_uid, gid=portage_gid)
+			uid=portage_uid, gid=portage_gid, dirmode=070, dirmask=0,
+			filemode=030, filemask=0)
 
 	if phase_retval == os.EX_OK:
 		if mydo == "install":
@@ -2696,10 +2697,14 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 		portage_util.apply_secpass_permissions(mysettings["BUILD_PREFIX"],
 			gid=portage_gid, uid=portage_uid, mode=01775)
 		for dir_key in ("PORTAGE_BUILDDIR", "HOME", "PKG_LOGDIR", "T"):
-			portage_util.ensure_dirs(mysettings[dir_key], mode=0755)
-			# userpriv support
+			"""These directories don't necessarily need to be group writable.
+			However, the setup phase is commonly run as a privileged user prior
+			to the other phases being run by an unprivileged user.  Currently,
+			we use the portage group to ensure that the unprivleged user still
+			has write access to these directories in any case."""
+			portage_util.ensure_dirs(mysettings[dir_key], mode=0775)
 			portage_util.apply_secpass_permissions(mysettings[dir_key],
-				uid=portage_uid)
+				uid=portage_uid, gid=portage_gid)
 	except portage_exception.PermissionDenied, e:
 		writemsg("Permission Denied: %s\n" % str(e), noiselevel=-1)
 		return 1
@@ -2910,6 +2915,16 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		elif mydo == "help":
 			return spawn(EBUILD_SH_BINARY + " " + mydo, mysettings,
 				debug=debug, free=1, logfile=logfile)
+		elif mydo == "setup":
+			retval = spawn(EBUILD_SH_BINARY + " " + mydo, mysettings,
+				debug=debug, free=1, logfile=logfile)
+			if secpass >= 2:
+				""" Privileged phases may have left files that need to be made
+				writable to a less privileged user."""
+				apply_recursive_permissions(mysettings["T"],
+					uid=portage_uid, gid=portage_gid, dirmode=070, dirmask=0,
+					filemode=030, filemask=0)
+			return retval
 		elif mydo == "preinst":
 			mysettings["IMAGE"] = mysettings["D"]
 			phase_retval = spawn(" ".join((EBUILD_SH_BINARY, mydo)),
