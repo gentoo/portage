@@ -242,16 +242,7 @@ def isspecific(mypkg):
 	return 0
 
 def dep_getkey(mydep):
-	if mydep and mydep[0] == "*":
-		mydep = mydep[1:]
-	if mydep and mydep[-1] == "*":
-		mydep = mydep[:-1]
-	if mydep and mydep[0] == "!":
-		mydep = mydep[1:]
-	if mydep[:2] in [">=", "<="]:
-		mydep = mydep[2:]
-	elif mydep[:1] in "=<>~":
-		mydep = mydep[1:]
+	mydep = dep_getcpv(mydep)
 	if mydep and isspecific(mydep):
 		mysplit = catpkgsplit(mydep)
 		if not mysplit:
