@@ -1273,15 +1273,26 @@ class depgraph:
 					"""Recursively gather a group of nodes that RDEPEND on
 					eachother.  This ensures that they are merged as a group
 					and get their RDEPENDs satisfied as soon as possible."""
-					selected_nodes = set()
-					def gather_deps(node):
+					def gather_deps(mergeable_nodes, selected_nodes, node):
 						if node in selected_nodes:
-							return
+							return True
+						if node not in mergeable_nodes:
+							return False
 						selected_nodes.add(node)
 						for child in mygraph.child_nodes(node,
 							ignore_priority=digraph.SOFT):
-							gather_deps(child)
-					gather_deps(nodes[0])
+							if not gather_deps(
+								mergeable_nodes, selected_nodes, child):
+								return False
+						return True
+					mergeable_nodes = set(nodes)
+					for node in nodes:
+						selected_nodes = set()
+						if gather_deps(
+							mergeable_nodes, selected_nodes, node):
+							break
+						else:
+							selected_nodes = None
 
 			if not selected_nodes:
 				print "!!! Error: circular dependencies:"
