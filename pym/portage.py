@@ -2892,12 +2892,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	try:
 		# Build directory creation isn't required for any of these.
 		if mydo not in ["fetch","digest","manifest"]:
-			portage_util.ensure_dirs(mysettings["PORTAGE_BUILDDIR"], mode=0755)
-			# userpriv support
-			portage_util.apply_secpass_permissions(
-				mysettings["PORTAGE_BUILDDIR"], uid=portage_uid)
-			#builddir_lock = portage_locks.lockdir(
-			#	mysettings["PORTAGE_BUILDDIR"])
 			mystatus = prepare_build_dirs(myroot, mysettings, cleanup)
 			if mystatus:
 				return mystatus
