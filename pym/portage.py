@@ -2695,7 +2695,7 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 	try:
 		portage_util.ensure_dirs(mysettings["BUILD_PREFIX"])
 		portage_util.apply_secpass_permissions(mysettings["BUILD_PREFIX"],
-			gid=portage_gid, uid=portage_uid, mode=01775)
+			gid=portage_gid, uid=portage_uid, mode=070, mask=0)
 		for dir_key in ("PORTAGE_BUILDDIR", "HOME", "PKG_LOGDIR", "T"):
 			"""These directories don't necessarily need to be group writable.
 			However, the setup phase is commonly run as a privileged user prior
@@ -5799,7 +5799,7 @@ class dblink:
 				self.settings, 0, 0, self.vartree.dbapi)
 			portage_util.ensure_dirs(
 				os.path.dirname(self.settings["PORTAGE_BUILDDIR"]),
-				uid=portage_uid, gid=portage_gid, mode=01775)
+				uid=portage_uid, gid=portage_gid, mode=070, mask=0)
 		builddir_lock = None
 		try:
 			if myebuildpath:
@@ -6638,7 +6638,7 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 		myebuild = os.path.join(
 			infloc, os.path.basename(mytbz2)[:-4] + "ebuild")
 		portage_util.ensure_dirs(os.path.dirname(builddir),
-			uid=portage_uid, gid=portage_gid, mode=01775)
+			uid=portage_uid, gid=portage_gid, mode=070, mask=0)
 		builddir_lock = portage_locks.lockdir(builddir)
 		try:
 			shutil.rmtree(builddir)

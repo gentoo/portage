@@ -2030,7 +2030,7 @@ class MergeTask(object):
 				portage_util.ensure_dirs(
 					os.path.dirname(pkgsettings["PORTAGE_BUILDDIR"]),
 					uid=portage.portage_uid, gid=portage.portage_gid,
-					mode=01775)
+					mode=070, mask=0)
 				builddir_lock = None
 				try:
 					builddir_lock = portage_locks.lockdir(
