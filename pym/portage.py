@@ -2508,7 +2508,7 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 		writable to a less privileged user."""
 		apply_recursive_permissions(mysettings["T"],
 			uid=portage_uid, gid=portage_gid, dirmode=070, dirmask=0,
-			filemode=030, filemask=0)
+			filemode=060, filemask=0)
 
 	if phase_retval == os.EX_OK:
 		if mydo == "install":
@@ -2917,7 +2917,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				writable to a less privileged user."""
 				apply_recursive_permissions(mysettings["T"],
 					uid=portage_uid, gid=portage_gid, dirmode=070, dirmask=0,
-					filemode=030, filemask=0)
+					filemode=060, filemask=0)
 			return retval
 		elif mydo == "preinst":
 			mysettings["IMAGE"] = mysettings["D"]
