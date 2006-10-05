@@ -195,7 +195,16 @@ def dep_getcpv(mydep):
 		mydep = mydep[2:]
 	elif mydep[:1] in "=<>~":
 		mydep = mydep[1:]
+	colon = mydep.rfind(":")
+	if colon != -1:
+		return mydep[:colon]
 	return mydep
+
+def dep_getslot(mydep):
+	colon = mydep.rfind(":")
+	if colon != -1:
+		return mydep[colon+1:]
+	return None
 
 def isvalidatom(atom):
 	mycpv_cps = catpkgsplit(dep_getcpv(atom))
@@ -283,11 +292,13 @@ def match_from_list(mydep, candidate_list):
 
 	mycpv     = dep_getcpv(mydep)
 	mycpv_cps = catpkgsplit(mycpv) # Can be None if not specific
+	slot      = None
 
 	if not mycpv_cps:
 		cat, pkg = catsplit(mycpv)
 		ver      = None
 		rev      = None
+		slot = dep_getslot(mydep)
 	else:
 		cat, pkg, ver, rev = mycpv_cps
 		if mydep == mycpv:
@@ -308,7 +319,15 @@ def match_from_list(mydep, candidate_list):
 		for x in candidate_list:
 			xs = pkgsplit(x)
 			if xs is None:
-				if x != mycpv:
+				xcpv = dep_getcpv(x)
+				if slot is not None:
+					xslot = dep_getslot(x)
+					if xslot is not None and xslot != slot:
+						"""  This function isn't given enough information to
+						reject atoms based on slot unless *both* compared atoms
+						specify slots."""
+						continue
+				if xcpv != mycpv:
 					continue
 			elif xs[0] != mycpv:
 				continue

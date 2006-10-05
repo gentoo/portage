@@ -3517,6 +3517,10 @@ def dep_expand(mydep, mydb=None, use_cache=1, settings=None):
 	elif mydep[:1] in "=<>~!":
 		prefix=mydep[:1]
 		mydep=mydep[1:]
+	colon = mydep.rfind(":")
+	if colon != -1:
+		postfix = mydep[colon:]
+		mydep = mydep[:colon]
 	return prefix + cpv_expand(
 		mydep, mydb=mydb, use_cache=use_cache, settings=settings) + postfix
 
@@ -3981,8 +3985,12 @@ class dbapi:
 	def match(self,origdep,use_cache=1):
 		mydep = dep_expand(origdep, mydb=self, settings=self.settings)
 		mykey=dep_getkey(mydep)
-		mycat=mykey.split("/")[0]
-		return match_from_list(mydep,self.cp_list(mykey,use_cache=use_cache))
+		mylist = match_from_list(mydep,self.cp_list(mykey,use_cache=use_cache))
+		myslot = portage_dep.dep_getslot(mydep)
+		if myslot is not None:
+			mylist = [cpv for cpv in mylist \
+				if self.aux_get(cpv, ["SLOT"])[0] == myslot]
+		return mylist
 
 	def match2(self,mydep,mykey,mylist):
 		writemsg("DEPRECATED: dbapi.match2\n")
@@ -4379,7 +4387,13 @@ class vardbapi(dbapi):
 			if self.matchcache.has_key(mycat):
 				del self.mtdircache[mycat]
 				del self.matchcache[mycat]
-			return match_from_list(mydep,self.cp_list(mykey,use_cache=use_cache))
+			mymatch = match_from_list(mydep,
+				self.cp_list(mykey, use_cache=use_cache))
+			myslot = portage_dep.dep_getslot(mydep)
+			if myslot is not None:
+				mymatch = [cpv for cpv in mymatch \
+					if self.aux_get(cpv, ["SLOT"])[0] == myslot]
+			return mymatch
 		try:
 			curmtime=os.stat(self.root+VDB_PATH+"/"+mycat)[stat.ST_MTIME]
 		except SystemExit, e:
@@ -4393,6 +4407,10 @@ class vardbapi(dbapi):
 			self.matchcache[mycat]={}
 		if not self.matchcache[mycat].has_key(mydep):
 			mymatch=match_from_list(mydep,self.cp_list(mykey,use_cache=use_cache))
+			myslot = portage_dep.dep_getslot(mydep)
+			if myslot is not None:
+				mymatch = [cpv for cpv in mymatch \
+					if self.aux_get(cpv, ["SLOT"])[0] == myslot]
 			self.matchcache[mycat][mydep]=mymatch
 		return self.matchcache[mycat][mydep][:]
 
@@ -5200,6 +5218,10 @@ class portdbapi(dbapi):
 		else:
 			print "ERROR: xmatch doesn't handle",level,"query!"
 			raise KeyError
+		myslot = portage_dep.dep_getslot(mydep)
+		if myslot is not None:
+			myval = [cpv for cpv in myval \
+				if self.aux_get(cpv, ["SLOT"])[0] == myslot]
 		if self.frozen and (level not in ["match-list","bestmatch-list"]):
 			self.xcache[level][mydep]=myval
 		return myval
