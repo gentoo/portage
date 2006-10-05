@@ -273,15 +273,31 @@ def match_to_list(mypkg, mylist):
 
 def best_match_to_list(mypkg, mylist):
 	"""(pkgname, list)
-	Returns the most specific entry (assumed to be the longest one)
-	that matches the package given.
+	Returns the most specific entry that matches the package given.
+	Type    Value
+	=cpv      6
+	~cpv      5
+	=cpv*     4
+	cp:slot   3
+	>cpv      2
+	<cpv      2
+	>=cpv     2
+	<=cpv     2
+	cp        1
 	"""
-	# XXX Assumption is wrong sometimes.
-	maxlen = 0
+	operator_values = {'=':6, '~':5, '=*':4,
+		'>':2, '<':2, '>=':2, '<=':2, None:1}
+	maxvalue = 0
 	bestm  = None
 	for x in match_to_list(mypkg, mylist):
-		if len(x) > maxlen:
-			maxlen = len(x)
+		if dep_getslot(x) is not None:
+			if maxvalue < 3:
+				maxvalue = 3
+				bestm = x
+			continue
+		op_val = operator_values[get_operator(x)]
+		if op_val > maxvalue:
+			maxvalue = op_val
 			bestm  = x
 	return bestm
 
