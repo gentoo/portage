@@ -1,5 +1,10 @@
 News (mainly features/major bug fixes)
 
+portage-2.1.2
+------------
+
+* DEPEND atoms support SLOT dependencies of the form ${CATEGORY}/${PN}:${SLOT}.
+
 portage-2.1.1
 ------------
 
