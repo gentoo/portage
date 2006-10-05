@@ -7,6 +7,7 @@ import errno, os, re, sys
 from portage_util import ConfigProtect, grabfile, new_protect_filename, \
 	normalize_path, write_atomic, writemsg
 from portage_exception import DirectoryNotFound, PortageException
+from portage_versions import ververify
 from portage_dep import dep_getkey, isvalidatom, isjustname
 from portage_const import USER_CONFIG_PATH, WORLD_FILE
 
@@ -17,10 +18,20 @@ def update_dbentry(update_cmd, mycontent):
 		old_value, new_value = update_cmd[1], update_cmd[2]
 		if mycontent.count(old_value):
 			old_value = re.escape(old_value);
-			mycontent = re.sub(old_value+"$", new_value, mycontent)
-			mycontent = re.sub(old_value+"(\\s)", new_value+"\\1", mycontent)
-			mycontent = re.sub(old_value+"(-[^a-zA-Z])", new_value+"\\1", mycontent)
-			mycontent = re.sub(old_value+"([^a-zA-Z0-9-])", new_value+"\\1", mycontent)
+			mycontent = re.sub(old_value+"(:|$|\\s)", new_value+"\\1", mycontent)
+			def myreplace(matchobj):
+				if ververify(matchobj.group(2)):
+					return "%s-%s" % (new_value, matchobj.group(2))
+				else:
+					return "".join(matchobj.groups())
+			mycontent = re.sub("(%s-)(\\S*)" % old_value, myreplace, mycontent)
+	elif update_cmd[0] == "slotmove":
+		pkg, origslot, newslot = update_cmd[1:]
+		old_value = "%s:%s" % (pkg, origslot)
+		if mycontent.count(old_value):
+			old_value = re.escape(old_value)
+			new_value = "%s:%s" % (pkg, newslot)
+			mycontent = re.sub(old_value+"($|\\s)", new_value+"\\1", mycontent)
 	return mycontent
 
 def update_dbentries(update_iter, mydata):
