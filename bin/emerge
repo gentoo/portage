@@ -4126,6 +4126,10 @@ def emerge_main():
 		action_regen(settings, portdb)
 	# HELP action
 	elif "config"==myaction:
+		if "--pretend" in myopts:
+			sys.stderr.write("emerge: The --config action " + \
+				"does not support --pretend.\n")
+			return 1
 		validate_ebuild_environment(trees)
 		action_config(settings, trees, myopts, myfiles)
 	
@@ -4161,4 +4165,5 @@ def emerge_main():
 			post_emerge(settings, mtimedb, 0)
 
 if __name__ == "__main__":
-	emerge_main()
+	retval = emerge_main()
+	sys.exit(retval)
