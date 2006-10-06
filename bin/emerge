@@ -1161,7 +1161,15 @@ class depgraph:
 					"""Fall back to the installed package database.  This is a
 					last resort because the metadata tends to diverge from that
 					of the ebuild in the tree."""
-					myeb_inst = portage.best(vardb.match(x))
+					myeb_inst_matches = vardb.match(x)
+					if "--usepkgonly" not in self.myopts:
+						""" TODO: Improve masking check for installed and
+						binary packages. bug #149816"""
+						myeb_inst_matches = [pkg for pkg in myeb_inst_matches \
+							if not portdb.cpv_exists(pkg)]
+					myeb_inst = None
+					if myeb_inst_matches:
+						myeb_inst = portage.best(myeb_inst_matches)
 					if myeb_inst:
 						binpkguseflags = vardb.aux_get(
 							myeb_inst, ["USE"])[0].split()
