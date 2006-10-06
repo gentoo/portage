@@ -1192,6 +1192,7 @@ class depgraph:
 							for mykey, mystat, mycontent in rawupdates:
 								commands, errors = parse_updates(mycontent)
 								upd_commands.extend(commands)
+							del updpath, rawupdates
 							self.global_updates[myroot] = upd_commands
 						upd_commands = self.global_updates[myroot]
 						aux_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
@@ -1200,6 +1201,8 @@ class depgraph:
 						updates = update_dbentries(upd_commands, aux_dict)
 						if updates:
 							vardb.aux_update(myeb_inst, updates)
+						del binpkguseflags, myeb_inst, upd_commands, \
+							aux_keys, aux_vals, aux_dict, updates
 
 				if not matched_packages:
 					if raise_on_missing:
