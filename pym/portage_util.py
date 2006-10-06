@@ -905,10 +905,6 @@ def new_protect_filename(mydest, newmd5=None):
 	prot_num = -1
 	last_pfile = ""
 
-	if len(mydest) == 0:
-		raise ValueError, "Empty path provided where a filename is required"
-	if mydest[-1] == os.path.sep: # XXX add better directory checking
-		raise ValueError, "Directory provided but this function requires a filename"
 	if not os.path.exists(mydest):
 		return mydest
 
