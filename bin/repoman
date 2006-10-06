@@ -1092,7 +1092,8 @@ for x in scanlist:
 
 			if mytype in ("DEPEND", "RDEPEND", "PDEPEND"):
 				for token in filter(lambda x: not (x.endswith("?") or x.strip() in ("||", "&&", "(", ")")), mydepstr.split()):
-					if not "/" in token:
+					if not "/" in token or \
+						":" in token and myaux["EAPI"] == "0":
 						badsyntax.append("'%s' not a valid atom" % token)
 
 			type_list.extend([mytype] * (len(badsyntax) - len(type_list)))
