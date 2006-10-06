@@ -678,6 +678,7 @@ class depgraph:
 					"--getbinpkg" in self.myopts,
 					"--getbinpkgonly" in self.myopts)
 		self.args_keys = []
+		self.global_updates = {}
 
 	def create(self, mybigkey, myparent=None, addme=1, myuse=None,
 		priority=digraph.HARD, rev_dep=False, arg=None):
@@ -741,7 +742,9 @@ class depgraph:
 		self.useFlags[myroot][mykey] = myuse
 
 		merging=1
-		if addme:
+		if mytype == "installed":
+			merging = 0
+		if addme and mytype != "installed":
 		# this is where we add the node to the list of packages to merge
 			if "selective" in self.myparams or not arg:
 				if "empty" not in self.myparams and vardbapi.cpv_exists(mykey):
@@ -1153,6 +1156,42 @@ class depgraph:
 				if "--usepkgonly" not in self.myopts and myeb_matches:
 					matched_packages.append(
 						["ebuild", myroot, myeb, None])
+
+				if not matched_packages:
+					"""Fall back to the installed package database.  This is a
+					last resort because the metadata tends to diverge from that
+					of the ebuild in the tree."""
+					myeb_inst = portage.best(vardb.match(x))
+					if myeb_inst:
+						binpkguseflags = vardb.aux_get(
+							myeb_inst, ["USE"])[0].split()
+						matched_packages.append(
+							["installed", myroot, myeb_inst, binpkguseflags])
+						"""Now make sure that *DEPEND atoms are up to date.
+						This is done on the fly for single packages only when
+						necessary, since it can be time consuming to run this
+						on all installed packages."""
+						from portage_update import grab_updates, \
+							parse_updates, update_dbentries
+						if myroot not in self.global_updates:
+							updpath = os.path.join(
+								pkgsettings["PORTDIR"], "profiles", "updates")
+							try:
+								rawupdates = grab_updates(updpath)
+							except portage_exception.DirectoryNotFound:
+								rawupdates = []
+							upd_commands = []
+							for mykey, mystat, mycontent in rawupdates:
+								commands, errors = parse_updates(mycontent)
+								upd_commands.extend(commands)
+							self.global_updates[myroot] = upd_commands
+						upd_commands = self.global_updates[myroot]
+						aux_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
+						aux_vals = vardb.aux_get(myeb_inst, aux_keys)
+						aux_dict = dict(zip(aux_keys, aux_vals))
+						updates = update_dbentries(upd_commands, aux_dict)
+						if updates:
+							vardb.aux_update(myeb_inst, updates)
 
 				if not matched_packages:
 					if raise_on_missing:
