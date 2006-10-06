@@ -235,7 +235,7 @@ def getconfig(mycfg,tolerant=0,allow_sourcing=False):
 			raise
 		return None
 	try:
-		lex=shlex.shlex(f)
+		lex = shlex.shlex(f, posix=True)
 		lex.wordchars=string.digits+string.letters+"~!@#$%*_\:;?,./-+{}"     
 		lex.quotes="\"'"
 		if allow_sourcing:
@@ -244,7 +244,7 @@ def getconfig(mycfg,tolerant=0,allow_sourcing=False):
 			key=lex.get_token()
 			if key == "export":
 				key = lex.get_token()
-			if (key==''):
+			if key is None:
 				#normal end of file
 				break;
 			equ=lex.get_token()
@@ -267,7 +267,7 @@ def getconfig(mycfg,tolerant=0,allow_sourcing=False):
 				else:
 					return mykeys
 			val=lex.get_token()
-			if (val==''):
+			if val is None:
 				#unexpected end of file
 				#lex.error_leader(self.filename,lex.lineno)
 				if not tolerant:
