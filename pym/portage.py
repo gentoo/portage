@@ -570,7 +570,7 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None):
 	for x in fns:
 		file_path = os.path.join(envd_dir, x)
 		try:
-			myconfig = getconfig(file_path)
+			myconfig = getconfig(file_path, expand=False)
 		except portage_exception.ParseError, e:
 			writemsg("!!! '%s'\n" % str(e), noiselevel=-1)
 			del e
@@ -1127,7 +1127,7 @@ class config:
 			del blacklisted, cfg
 
 			env_d = getconfig(
-				os.path.join(target_root, "etc", "profile.env"))
+				os.path.join(target_root, "etc", "profile.env"), expand=False)
 			# env_d will be None if profile.env doesn't exist.
 			if env_d:
 				self.configdict["env.d"].update(env_d)
@@ -1530,7 +1530,7 @@ class config:
 		# We grab the latest profile.env here since it changes frequently.
 		self.configdict["env.d"].clear()
 		env_d = getconfig(
-			os.path.join(self["ROOT"], "etc", "profile.env"))
+			os.path.join(self["ROOT"], "etc", "profile.env"), expand=False)
 		if env_d:
 			# env_d will be None if profile.env doesn't exist.
 			self.configdict["env.d"].update(env_d)

@@ -226,7 +226,7 @@ def writedict(mydict,myfilename,writekey=True):
 		return 0
 	return 1
 
-def getconfig(mycfg,tolerant=0,allow_sourcing=False):
+def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 	mykeys={}
 	try:
 		f=open(mycfg,'r')
@@ -276,7 +276,10 @@ def getconfig(mycfg,tolerant=0,allow_sourcing=False):
 					raise portage_exception.CorruptionError("ParseError: Unexpected EOF: "+str(mycfg)+": line "+str(lex.lineno))
 				else:
 					return mykeys
-			mykeys[key]=varexpand(val,mykeys)
+			if expand:
+				mykeys[key] = varexpand(val, mykeys)
+			else:
+				mykeys[key] = val
 	except SystemExit, e:
 		raise
 	except Exception, e:
