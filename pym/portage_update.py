@@ -43,7 +43,7 @@ def update_dbentries(update_iter, mydata):
 			orig_content = mycontent
 			for update_cmd in update_iter:
 				mycontent = update_dbentry(update_cmd, mycontent)
-			if mycontent is not orig_content:
+			if mycontent != orig_content:
 				updated_items[k] = mycontent
 	return updated_items
 
