@@ -1594,7 +1594,8 @@ class depgraph:
 				else:
 					print bad("(is blocking %s)") % block_parents
 			else:
-				if x[0] != "binary" and \
+				mydbapi = self.trees[myroot][self.pkg_tree_map[pkg_type]].dbapi
+				if x[3] != "nomerge" and \
 					"fetch" in portdb.aux_get(
 					x[2], ["RESTRICT"])[0].split():
 					fetch = red("F")
@@ -1610,12 +1611,7 @@ class depgraph:
 					addl="  "+yellow("R")+fetch+"  "
 				elif "--emptytree" not in self.myopts and \
 					self.trees[x[1]]["vartree"].exists_specific_cat(x[2]):
-					if x[0] == "binary":
-						mynewslot = \
-							self.trees[myroot]["bintree"].getslot(pkg_key)
-					elif x[0] == "ebuild":
-						mynewslot = \
-							self.trees[myroot]["porttree"].getslot(pkg_key)
+					mynewslot = mydbapi.aux_get(pkg_key, ["SLOT"])[0]
 					myoldlist = self.trees[x[1]]["vartree"].dbapi.match(
 						portage.pkgsplit(x[2])[0])
 					myinslotlist = [inst_pkg for inst_pkg in myoldlist
@@ -1645,12 +1641,7 @@ class depgraph:
 				
 				if pkg_key in self.useFlags[myroot]:
 					# USE flag display
-					if x[0] == "binary":
-						cur_iuse = bindb.aux_get(pkg_key, ["IUSE"])[0].split()
-					elif x[0] == "ebuild":
-						cur_iuse = portdb.aux_get(pkg_key, ["IUSE"])[0].split()
-					else:
-						cur_iuse = []
+					cur_iuse = mydbapi.aux_get(pkg_key, ["IUSE"])[0].split()
 
 					forced_flags = set()
 					forced_flags.update(pkgsettings.useforce)
