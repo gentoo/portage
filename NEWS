@@ -3,6 +3,15 @@ News (mainly features/major bug fixes)
 portage-2.1.2
 ------------
 
+* CONFIG_PROTECT and CONFIG_PROTECT_MASK both support files (not just
+  directories).
+* Collision protection handles symlinks properly.
+* Dependencies can be satisfied by installed packages that do not have matching
+  ebuilds in the portage tree or overlay.
+* Emerge automatically ignores blockers that are made irrelevant by an upgrade.
+* Emerge builds a complete dependency graph in order to ensure correct merge
+  order and detection of circular dependencies.
+* The world and system sets allow automatic update of all installed slots.
 * DEPEND atoms support SLOT dependencies of the form ${CATEGORY}/${PN}:${SLOT}.
 
 portage-2.1.1
