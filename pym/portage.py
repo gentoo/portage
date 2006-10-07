@@ -1731,7 +1731,6 @@ class config:
 		# 5. profile
 
 		self.dirVirtuals = [grabdict(os.path.join(x, "virtuals")) for x in myvirtdirs]
-		self.dirVirtuals.reverse()
 
 		if self.user_profile_dir and os.path.exists(self.user_profile_dir+"/virtuals"):
 			self.userVirtuals = grabdict(self.user_profile_dir+"/virtuals")
