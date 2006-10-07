@@ -1,11 +1,15 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
-portage-2.1.1
+portage-2.1.2
 ==================================
 
 * emerge does not necessarily update build time dependencies that are not
   strictly required.  See the --with-bdeps option in the emerge(1) man page.
+
+portage-2.1.1
+==================================
+
 * emerge --search doesn't use regular expressions now anymore by default, so
   emerge --search dvd+rw-tools now works as expected. Regular expressions can be enabled
   by prefixing the search string with %. 
