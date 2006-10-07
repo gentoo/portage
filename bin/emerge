@@ -2740,7 +2740,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 					rsync_opts.append(opt)
 	
 			for exclude in ("distfiles", "local", "packages"):
-				opt = "--exclude='/%s'" % exclude
+				opt = "--exclude=/%s" % exclude
 				if opt not in rsync_opts:
 					portage.writemsg(yellow("WARNING:") + \
 					" adding required option %s not included in "  % opt + \
