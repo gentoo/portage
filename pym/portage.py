@@ -1746,7 +1746,8 @@ class config:
 		self.userVirtuals = stack_dictlist([self.userVirtuals],incremental=1)
 
 		# Collapse all the profile virtuals including user negations.
-		self.dirVirtuals = stack_dictlist([self.negVirtuals]+self.dirVirtuals,incremental=1)
+		self.dirVirtuals = stack_dictlist(
+			self.dirVirtuals + [self.negVirtuals], incremental=1)
 
 		# Repoman does not use user or tree virtuals.
 		if os.environ.get("PORTAGE_CALLER","") != "repoman":
