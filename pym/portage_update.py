@@ -214,4 +214,6 @@ def update_config_files(config_root, protect, protect_mask, update_iter):
 			continue
 
 def dep_transform(mydep, oldkey, newkey):
-	return mydep.replace(oldkey, newkey, 1)
+	if dep_getkey(mydep) == oldkey:
+		return mydep.replace(oldkey, newkey, 1)
+	return mydep
