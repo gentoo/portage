@@ -282,32 +282,6 @@ If needed, this file can be used to set up a special environment for ebuilds,
 different from the standard root environment.  The syntax is the same as for
 any other bash script.
 .TP
-.BR use.defaults
-Here we DO NOT define the default USE flags, but the so\-called auto\-USE 
-flags.  This rather unknown portage feature activates a USE flag if a 
-specific package is installed and the flag was not explicitly 
-deactivated.  This file contains the associations between USE flags and 
-packages that trigger the auto\-USE feature.  
-
-In other words, if we never put "sdl" or "\-sdl" into our USE, but we 
-have media\-libs/libsdl emerged, then portage automagically sticks "sdl" 
-into our USE for us.
-
-.I Format:
-.nf
-\- comments begin with #
-\- one USE flag per line with a list of DEPEND atom bases
-.fi
-
-.I Example:
-.nf
-# media\-libs/libsdl will activate "sdl"
-sdl        media\-libs/libsdl
-# activate tcltk only if we have both 
-# dev\-lang/tcl and dev\-lang/tk
-tcltk      dev\-lang/tcl   dev\-lang/tk
-.fi
-.TP
 .BR use.force
 Some USE flags don't make sense to disable under certain conditions.  Here we
 list forced flags.
