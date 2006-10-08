@@ -6029,6 +6029,16 @@ class dblink:
 		# This blocks until we can get the dirs to ourselves.
 		self.lockdb()
 
+		try:
+			""" The merge process may move files out of the image directory,
+			which causes invalidation of the .installed flag."""
+			os.unlink(os.path.join(
+				os.path.dirname(normalize_path(srcroot)), ".installed"))
+		except OSError, e:
+			if e.errno != errno.ENOENT:
+				raise
+			del e
+
 		otherversions=[]
 		for v in self.vartree.dbapi.cp_list(self.mysplit[0]):
 			otherversions.append(v.split("/")[1])
