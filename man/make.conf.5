@@ -111,7 +111,7 @@ is specified.
 Defines whether or not to ignore short pauses that occur when displaying
 important informational messages.  This variable is unset by default.
 .TP
-\fBFEATURES\fR = \fI"sandbox ccache autoaddcvs"\fR
+\fBFEATURES\fR = \fI"sandbox ccache"\fR
 Defines actions portage takes by default.  These options should
 not be changed by anyone but developers and/or maintainers.  'sandbox' is an important
 part of \fBFEATURES\fR and should not be disabled by default.  This is 
@@ -123,11 +123,6 @@ When commiting work to cvs with \fBrepoman\fR(1), assume that all existing
 SRC_URI digests are correct.  This feature also affects digest generation via
 \fBebuild\fR(1) and \fBemerge\fR(1) (emerge generates digests only when the
 \fIdigest\fR feature is enabled).
-.TP
-.B autoaddcvs
-Causes portage to automatically try to add files to cvs that will have to be added 
-later.  Done at generation times and only works when \fIcvs\fR is also in 
-\fBFEATURES\fR.
 .TP
 .B buildpkg
 Binary packages will be created for all packages that are merged.
