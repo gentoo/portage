@@ -969,10 +969,9 @@ class config:
 					parentsFile = os.path.join(currentPath, "parent")
 					if os.path.exists(parentsFile):
 						parents = grabfile(parentsFile)
-						if len(parents) != 1:
+						if not parents:
 							raise portage_exception.ParseError(
-								"Expected 1 parent and got %i: '%s'" % \
-								(len(parents), parents_file))
+								"Empty parent file: '%s'" % parents_file)
 						for parentPath in parents:
 							parentPath = normalize_path(os.path.join(
 								currentPath, parentPath))
