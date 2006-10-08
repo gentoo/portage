@@ -974,9 +974,10 @@ class depgraph:
 							greedy_atoms.append((myarg, myslot_atom))
 			arg_atoms = greedy_atoms
 
-		self.args_keys = []
+		""" These are used inside self.create() in order to ensure packages
+		that happen to match arguments are not incorrectly marked as nomerge."""
+		self.args_keys = [x[1] for x in arg_atoms]
 		for myarg, myatom in arg_atoms:
-				self.args_keys.append(myatom)
 				try:
 					self.mysd = self.select_dep(myroot, myatom, arg=myarg)
 				except portage_exception.MissingSignature, e:
