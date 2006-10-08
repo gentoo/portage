@@ -1392,7 +1392,18 @@ class depgraph:
 					myslots.add(vardb.aux_get(cpv, ["SLOT"])[0])
 				if len(myslots) > 1:
 					for myslot in myslots:
-						newlist.append("%s:%s" % (mykey, myslot))
+						myslot_atom = "%s:%s" % (mykey, myslot)
+						available = False
+						if "--usepkgonly" not in self.myopts and \
+							self.trees[self.target_root][
+							"porttree"].dbapi.match(myslot_atom):
+							available = True
+						elif "--usepkg" in self.myopts and \
+							self.trees[self.target_root][
+							"bintree"].dbapi.match(myslot_atom):
+							available = True
+						if available:
+							newlist.append(myslot_atom)
 		mylist = newlist
 		
 		missing_atoms = []
