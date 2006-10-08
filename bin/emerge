@@ -1606,7 +1606,7 @@ class depgraph:
 					print bad("(is blocking %s)") % block_parents
 			else:
 				mydbapi = self.trees[myroot][self.pkg_tree_map[pkg_type]].dbapi
-				if x[3] != "nomerge" and \
+				if "ebuild" == pkg_type and x[3] != "nomerge" and \
 					"fetch" in portdb.aux_get(
 					x[2], ["RESTRICT"])[0].split():
 					fetch = red("F")
