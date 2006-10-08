@@ -870,8 +870,7 @@ class depgraph:
 		portdb = self.trees[myroot]["porttree"].dbapi
 		bindb = self.trees[myroot]["bintree"].dbapi
 		pkgsettings = self.pkgsettings[myroot]
-		self.args_keys = []
-		raw_args = []
+		arg_atoms = []
 		for x in myfiles:
 			ext = os.path.splitext(x)[1]
 			if ext==".tbz2":
@@ -934,14 +933,12 @@ class depgraph:
 							settings=pkgsettings)
 					if (mykey and not mykey.startswith("null/")) or \
 						"--usepkgonly" in self.myopts:
-						self.args_keys.append(mykey)
-						raw_args.append(x)
+						arg_atoms.append((x, mykey))
 						continue
 
 					mykey = portage.dep_expand(x,
 						mydb=portdb, settings=pkgsettings)
-					self.args_keys.append(mykey)
-					raw_args.append(x)
+					arg_atoms.append((x, mykey))
 				except ValueError, errpkgs:
 					print "\n\n!!! The short ebuild name \"" + x + "\" is ambiguous.  Please specify"
 					print "!!! one of the following fully-qualified ebuild names instead:\n"
@@ -955,11 +952,8 @@ class depgraph:
 			with --emptytree also, to ensure that all slots are remerged."""
 			vardb = self.trees[self.target_root]["vartree"].dbapi
 			greedy_atoms = []
-			raw_greedy = []
-			for i in xrange(len(self.args_keys)):
-				myatom = self.args_keys[i]
-				greedy_atoms.append(myatom)
-				raw_greedy.append(raw_args[i])
+			for myarg, myatom in arg_atoms:
+				greedy_atoms.append((myarg, myatom))
 				myslots = set()
 				for cpv in vardb.match(myatom):
 					myslots.add(vardb.aux_get(cpv, ["SLOT"])[0])
@@ -977,15 +971,14 @@ class depgraph:
 							"bintree"].dbapi.match(myslot_atom):
 							available = True
 						if available:
-							greedy_atoms.append(myslot_atom)
-							raw_greedy.append(raw_args[i])
-			self.args_keys = greedy_atoms
-			raw_args = raw_greedy
+							greedy_atoms.append((myarg, myslot_atom))
+			arg_atoms = greedy_atoms
 
-		for i in xrange(len(self.args_keys)):
-				mykey = self.args_keys[i]
+		self.args_keys = []
+		for myarg, myatom in arg_atoms:
+				self.args_keys.append(myatom)
 				try:
-					self.mysd = self.select_dep(myroot, mykey, arg=raw_args[i])
+					self.mysd = self.select_dep(myroot, myatom, arg=myarg)
 				except portage_exception.MissingSignature, e:
 					portage.writemsg("\n\n!!! A missing gpg signature is preventing portage from calculating the\n")
 					portage.writemsg("!!! required dependencies. This is a security feature enabled by the admin\n")
