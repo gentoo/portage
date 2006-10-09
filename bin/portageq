@@ -20,7 +20,6 @@ except KeyboardInterrupt:
 	sys.exit(1)
 
 import os
-os.environ["PORTAGE_CALLER"] = "portageq"
 sys.path = ["/usr/lib/portage/pym"]+sys.path
 
 import types,string
