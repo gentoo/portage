@@ -828,7 +828,8 @@ def check_config_instance(test):
 
 class config:
 	def __init__(self, clone=None, mycpv=None, config_profile_path=None,
-		config_incrementals=None, config_root="/", target_root="/"):
+		config_incrementals=None, config_root="/", target_root="/",
+		local_config=True):
 
 		self.already_in_regenerate = 0
 
@@ -853,11 +854,13 @@ class config:
 		self.negVirtuals  = {}
 
 		self.user_profile_dir = None
+		self.local_config = local_config
 
 		if clone:
 			self.incrementals = copy.deepcopy(clone.incrementals)
 			self.profile_path = copy.deepcopy(clone.profile_path)
 			self.user_profile_dir = copy.deepcopy(clone.user_profile_dir)
+			self.local_config = copy.deepcopy(clone.local_config)
 
 			self.module_priority = copy.deepcopy(clone.module_priority)
 			self.modules         = copy.deepcopy(clone.modules)
@@ -983,9 +986,7 @@ class config:
 									(parentPath, parentsFile))
 					self.profiles.append(currentPath)
 				addProfile(os.path.realpath(self.profile_path))
-			if os.environ.has_key("PORTAGE_CALLER") and os.environ["PORTAGE_CALLER"] == "repoman":
-				pass
-			else:
+			if local_config:
 				custom_prof = os.path.join(
 					config_root, CUSTOM_PROFILE_PATH.lstrip(os.path.sep))
 				if os.path.exists(custom_prof):
@@ -1159,19 +1160,19 @@ class config:
 			pmask_locations = [os.path.join(self["PORTDIR"], "profiles")]
 			pmask_locations.extend(self.profiles)
 
-			if os.environ.get("PORTAGE_CALLER","") != "repoman" or \
-				os.environ.get("PORTDIR_OVERLAY","") != "":
-				overlay_profiles = []
-				for ov in self["PORTDIR_OVERLAY"].split():
-					ov = normalize_path(ov)
-					profiles_dir = os.path.join(ov, "profiles")
-					if os.path.isdir(profiles_dir):
-						overlay_profiles.append(profiles_dir)
-				locations += overlay_profiles
-				
-				pmask_locations.extend(overlay_profiles)
+			""" repoman controls PORTDIR_OVERLAY via the environment, so no
+			special cases are needed here."""
+			overlay_profiles = []
+			for ov in self["PORTDIR_OVERLAY"].split():
+				ov = normalize_path(ov)
+				profiles_dir = os.path.join(ov, "profiles")
+				if os.path.isdir(profiles_dir):
+					overlay_profiles.append(profiles_dir)
+			locations += overlay_profiles
+			
+			pmask_locations.extend(overlay_profiles)
 
-			if os.environ.get("PORTAGE_CALLER","") != "repoman":
+			if local_config:
 				locations.append(abs_user_config)
 				pmask_locations.append(abs_user_config)
 				pusedict = grabdict_package(
@@ -1305,13 +1306,12 @@ class config:
 
 			if not portage_exec.sandbox_capable and \
 				("sandbox" in self.features or "usersandbox" in self.features):
-				if os.environ.get("PORTAGE_CALLER","") == "repoman" and \
-					self.profile_path is not None and \
-					os.path.realpath(self.profile_path) != \
+				if self.profile_path is not None and \
+					os.path.realpath(self.profile_path) == \
 					os.path.realpath(PROFILE_PATH):
-					# This profile does not belong to the user running repoman.
-					pass
-				else:
+					""" Don't show this warning when running repoman and the
+					sandbox feature came from a profile that doesn't belong to
+					the user."""
 					writemsg(colorize("BAD", "!!! Problem with sandbox" + \
 						" binary. Disabling...\n\n"), noiselevel=-1)
 				if "sandbox" in self.features:
@@ -1749,7 +1749,7 @@ class config:
 			self.dirVirtuals + [self.negVirtuals], incremental=1)
 
 		# Repoman does not use user or tree virtuals.
-		if os.environ.get("PORTAGE_CALLER","") != "repoman":
+		if self.local_config:
 			# XXX: vartree does not use virtuals, does user set matter?
 			temp_vartree = vartree(myroot, self.dirVirtuals,
 				categories=self.categories, settings=self)

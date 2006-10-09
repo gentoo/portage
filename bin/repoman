@@ -11,7 +11,6 @@ import errno, os, shutil, sys
 if not hasattr(__builtins__, "set"):
 	from sets import Set as set
 exename=os.path.basename(sys.argv[0])	
-os.environ["PORTAGE_CALLER"]="repoman"
 sys.path = ["/usr/lib/portage/pym"]+sys.path
 version="1.2"	
 
@@ -48,9 +47,11 @@ from stat import S_ISDIR, ST_CTIME, ST_GID, ST_MTIME
 
 # A sane umask is needed for files that portage creates.
 os.umask(022)
-trees = portage.create_trees()
-settings = trees["/"]["porttree"].settings
-if settings.get("NOCOLOR", None) in ("yes", "true") or \
+repoman_settings = portage.config(local_config=False,
+	config_incrementals=portage_const.INCREMENTALS)
+repoman_settings.lock()
+
+if repoman_settings.get("NOCOLOR", "").upper() in ("yes", "true") or \
 	not sys.stdout.isatty():
 	nocolor()
 
@@ -229,7 +230,6 @@ ven_string=ven_cat+'/'+ven_nam+'-'+ven_ver+ven_suf+ven_rev
 valid_ebuild_name_re=re.compile(ven_string+'$', re.I)
 valid_ebuild_filename_re=re.compile(ven_string+'\.ebuild$', re.I)
 
-repoman_settings = portage.config(clone=settings)
 verbose=0
 quiet=0
 
@@ -473,12 +473,16 @@ if quiet < 2:
 	print "PORTDIR = \""+os.environ["PORTDIR"]+"\""
 	print "PORTDIR_OVERLAY = \""+os.environ["PORTDIR_OVERLAY"]+"\""
 
-trees = portage.create_trees(trees=trees)
-settings = trees["/"]["porttree"].settings
+# Now that PORTDIR_OVERLAY is properly overridden, create the portdb.
+repoman_settings = portage.config(local_config=False,
+	config_incrementals=portage_const.INCREMENTALS)
+repoman_settings.lock()
+trees = portage.create_trees()
+trees["/"]["porttree"].settings = repoman_settings
 portdb = trees["/"]["porttree"].dbapi
+portdb.mysettings = repoman_settings
 # dep_zapdeps looks at the vardbapi, but it shouldn't for repoman.
-trees["/"]["vartree"].dbapi = portage.fakedbapi(settings=settings)
-repoman_settings = portage.config(clone=settings)
+trees["/"]["vartree"].dbapi = portage.fakedbapi(settings=repoman_settings)
 
 if not myreporoot:
 	myreporoot = os.path.basename(portdir_overlay)
@@ -1131,7 +1135,8 @@ for x in scanlist:
 				else:
 					dep_settings = portage.config(
 						config_profile_path=profdir,
-						config_incrementals=portage_const.INCREMENTALS)
+						config_incrementals=portage_const.INCREMENTALS,
+						local_config=False)
 					arch_caches[prof[0]] = dep_settings
 					while True:
 						try:
