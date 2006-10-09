@@ -476,6 +476,8 @@ if quiet < 2:
 trees = portage.create_trees(trees=trees)
 settings = trees["/"]["porttree"].settings
 portdb = trees["/"]["porttree"].dbapi
+# dep_zapdeps looks at the vardbapi, but it shouldn't for repoman.
+trees["/"]["vartree"].dbapi = portage.fakedbapi(settings=settings)
 repoman_settings = portage.config(clone=settings)
 
 if not myreporoot:
