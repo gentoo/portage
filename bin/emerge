@@ -4037,11 +4037,6 @@ def emerge_main():
 		if "--buildpkg" not in myopts:
 			myopts["--buildpkg"] = True
 
-	# --tree only makes sense with --pretend
-	if "--tree" in myopts and not (("--pretend" in myopts) or ("--ask" in myopts)):
-		print ">>> --tree implies --pretend... adding --pretend to options."
-		myopts["--pretend"] = True
-
 	# Also allow -S to invoke search action (-sS)
 	if ("--searchdesc" in myopts):
 		if myaction and myaction != "search":
