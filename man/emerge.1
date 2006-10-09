@@ -184,8 +184,9 @@ system.  Its arguments can be \fIebuilds\fR, \fIsets\fR, or
 .BR "\-\-update " (\fB\-u\fR)
 Updates packages to the best version available, which may not always be the 
 highest version number due to masking for testing and development.  This will 
-also update direct dependencies which may not be what you want.  In general, 
-use this option only in combination with the world or system target.
+also update direct dependencies which may not be what you want.  Package atoms
+specified on the command line are greedy, meaning that unspecific atoms may
+match multiple installed versions of slotted packages.
 .TP
 .BR "\-\-version " (\fB\-V\fR)
 Displays the version number of \fBemerge\fR.
