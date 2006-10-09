@@ -6944,8 +6944,6 @@ def create_trees(config_root="/", target_root="/", trees=None):
 
 	settings = config(config_root=config_root, target_root=target_root,
 		config_incrementals=portage_const.INCREMENTALS)
-
-	settings.reset()
 	settings.lock()
 	settings.validate()
 
@@ -6953,7 +6951,6 @@ def create_trees(config_root="/", target_root="/", trees=None):
 	if settings["ROOT"] != "/":
 		settings = config(config_root="/", target_root="/",
 			config_incrementals=portage_const.INCREMENTALS)
-		settings.reset()
 		settings.lock()
 		settings.validate()
 		myroots.append(("/", settings))
