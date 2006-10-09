@@ -51,7 +51,7 @@ repoman_settings = portage.config(local_config=False,
 	config_incrementals=portage_const.INCREMENTALS)
 repoman_settings.lock()
 
-if repoman_settings.get("NOCOLOR", "").upper() in ("yes", "true") or \
+if repoman_settings.get("NOCOLOR", "").lower() in ("yes", "true") or \
 	not sys.stdout.isatty():
 	nocolor()
 
