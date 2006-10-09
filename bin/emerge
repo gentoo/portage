@@ -21,7 +21,6 @@ except KeyboardInterrupt:
 	sys.exit(1)
 
 import os, stat
-os.environ["PORTAGE_CALLER"]="emerge"
 sys.path = ["/usr/lib/portage/pym"]+sys.path
 
 os.environ["PORTAGE_LEGACY_GLOBALS"] = "false"
