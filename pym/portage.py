@@ -6897,7 +6897,7 @@ class MtimeDB(dict):
 			d = mypickle.load()
 			f.close()
 			del f
-		except (IOError, OSError, EOFError):
+		except (IOError, OSError, EOFError, cPickle.UnpicklingError):
 			d = {}
 
 		if "old" in d:
