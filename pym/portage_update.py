@@ -8,7 +8,7 @@ from portage_util import ConfigProtect, grabfile, new_protect_filename, \
 	normalize_path, write_atomic, writemsg
 from portage_exception import DirectoryNotFound, PortageException
 from portage_versions import ververify
-from portage_dep import dep_getkey, isvalidatom, isjustname
+from portage_dep import dep_getkey, get_operator, isvalidatom, isjustname
 from portage_const import USER_CONFIG_PATH, WORLD_FILE
 
 ignored_dbentries = ("CONTENTS", "environment.bz2")
@@ -25,7 +25,7 @@ def update_dbentry(update_cmd, mycontent):
 				else:
 					return "".join(matchobj.groups())
 			mycontent = re.sub("(%s-)(\\S*)" % old_value, myreplace, mycontent)
-	elif update_cmd[0] == "slotmove":
+	elif update_cmd[0] == "slotmove" and get_operator(update_cmd[1]) is None:
 		pkg, origslot, newslot = update_cmd[1:]
 		old_value = "%s:%s" % (pkg, origslot)
 		if mycontent.count(old_value):
