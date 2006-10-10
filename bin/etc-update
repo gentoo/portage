@@ -21,7 +21,7 @@ function get_config() {
 	# item. If there's more than one of the same configuration item,
 	# then allow the last setting to take precedence.
 	local result
-	result=$(cut -d'#' -f1-1 /etc/etc-update.conf | \
+	result=$(cut -d'#' -f1-1 ${PORTAGE_CONFIGROOT}etc/etc-update.conf | \
 		sed -ne "s/^ *$item *= *\([\"']\{0,1\}\)\(.*\)\1/\2/p" |sed -e '$p;d')
 	eval echo $result
 }
@@ -43,6 +43,7 @@ function scan() {
 	fi
 
 	for path in ${CONFIG_PROTECT} ; do
+		path="${ROOT}${path}"
 		find_opts="-iname ._cfg????_*"
 		if [ ! -d "${path}" ]; then
 			[ ! -f "${path}" ] && continue
@@ -59,6 +60,7 @@ function scan() {
 			rpath=$(echo "${file/\/\///}" | sed -e "s:/[^/]*$::")
 			rfile=$(echo "${file/\/\///}" | sed -e "s:^.*/::")
 			for mpath in ${CONFIG_PROTECT_MASK}; do
+				mpath="${ROOT}${path}"
 				if [[ "${rpath}" == "${mpath}"* ]]; then
 					mv ${rpath}/${rfile} ${rpath}/${rfile:10}
 					break
@@ -187,14 +189,14 @@ configuration file is followed by a list of possible replacement files."
 }
 
 function user_special() {
-	if [ -r /etc/etc-update.special ]; then
+	if [ -r ${PORTAGE_CONFIGROOT}etc/etc-update.special ]; then
 		if [ -z "$1" ]; then
 			echo "ERROR: user_special() called without arguments"
 			return 1
 		fi
 		while read pat; do
 			echo ${1} | grep "${pat}" > /dev/null && return 0
-		done < /etc/etc-update.special
+		done < ${PORTAGE_CONFIGROOT}etc/etc-update.special
 	fi
 	return 1
 }
@@ -434,10 +436,12 @@ scriptname=$(basename $0)
 
 trap die term
 
-[ -w /etc ] || die "Need root priviledges for write access to /etc" 1
 
-eval $(/usr/lib/portage/bin/portageq envvar -v PORTAGE_TMPDIR CONFIG_PROTECT CONFIG_PROTECT_MASK)
+eval $(/usr/lib/portage/bin/portageq envvar -v CONFIG_PROTECT \
+	CONFIG_PROTECT_MASK PORTAGE_CONFIGROOT PORTAGE_TMPDIR ROOT)
 export PORTAGE_TMPDIR
+
+[ -w ${PORTAGE_CONFIGROOT}etc ] || die "Need write access to ${PORTAGE_CONFIGROOT}etc" 1
 #echo $PORTAGE_TMPDIR
 #echo $CONFIG_PROTECT
 #echo $CONFIG_PROTECT_MASK
