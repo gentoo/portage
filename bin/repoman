@@ -451,7 +451,8 @@ if not portdir_overlay:
 	portdir = portdir_overlay
 
 if not portdir_overlay:
-	print darkred("Unable to determine PORTDIR.")
+	sys.stderr.write("Repoman is unable to determine PORTDIR or PORTDIR_OVERLAY from" + \
+		" the current\nworking directory.\n")
 	sys.exit(1)
 
 if not portdir:
