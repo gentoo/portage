@@ -395,7 +395,6 @@ if mymode == "commit":
 isCvs=False
 myreporoot=None
 if os.path.isdir("CVS"):
-	repoman_settings["PORTDIR_OVERLAY"]=""
 	if "cvs" not in repoman_settings.features:
 		print
 		print
