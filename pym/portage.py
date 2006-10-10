@@ -4127,6 +4127,8 @@ class bindbapi(fakedbapi):
 		return mylist
 
 	def aux_update(self, cpv, values):
+		if not self.bintree.populated:
+			self.bintree.populate()
 		tbz2path = self.bintree.getname(cpv)
 		mylock = portage_locks.lockfile(tbz2path, wantnewlockfile=1)
 		try:
@@ -4138,6 +4140,11 @@ class bindbapi(fakedbapi):
 			mytbz2.recompose_mem(xpak.xpak_mem(mydata))
 		finally:
 			portage_locks.unlockfile(mylock)
+
+	def cp_list(self, *pargs, **kwargs):
+		if not self.bintree.populated:
+			self.bintree.populate()
+		return fakedbapi.cp_list(self, *pargs, **kwargs)
 
 cptot=0
 class vardbapi(dbapi):
@@ -6868,20 +6875,6 @@ def global_updates(mysettings, trees, prev_mtimes):
 			writemsg_stdout("\n")
 
 #continue setting up other trees
-class LazyBintreeItem(object):
-	"""This class implements lazy construction of db[root]["bintree"]."""
-	def __init__(self, myroot, settings):
-		self._myroot = myroot
-		self._bintree = None
-		self._settings = settings
-	def __call__(self):
-		if self._bintree is None:
-			self._bintree = binarytree(self._myroot, self._settings["PKGDIR"],
-				settings=self._settings)
-			# The binarytree likely needs to be populated now, so we
-			# do it now to make sure that all method calls are safe.
-			self._bintree.populate()
-		return self._bintree
 
 class MtimeDB(dict):
 	def __init__(self, filename):
@@ -6963,8 +6956,8 @@ def create_trees(config_root="/", target_root="/", trees=None):
 				settings=mysettings)
 		trees[myroot].addLazySingleton("porttree",
 			portagetree, myroot, settings=mysettings)
-		trees[myroot].addLazyItem("bintree",
-			LazyBintreeItem(myroot, mysettings))
+		trees[myroot].addLazySingleton("bintree",
+			binarytree, myroot, mysettings["PKGDIR"], settings=mysettings)
 	return trees
 
 # Initialization of legacy globals.  No functions/classes below this point
