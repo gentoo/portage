@@ -1705,53 +1705,17 @@ class config:
 		if self.virtuals:
 			return self.virtuals
 
-		myvirts     = {}
-
-		# This breaks catalyst/portage when setting to a fresh/empty root.
-		# Virtuals cannot be calculated because there is nothing to work
-		# from. So the only ROOT prefixed dir should be local configs.
-		#myvirtdirs  = prefix_array(self.profiles,myroot+"/")
-		myvirtdirs = copy.deepcopy(self.profiles)
-		while self.user_profile_dir in myvirtdirs:
-			myvirtdirs.remove(self.user_profile_dir)
-
-
-		# Rules
-		# R1: Collapse profile virtuals
-		# R2: Extract user-negatives.
-		# R3: Collapse user-virtuals.
-		# R4: Apply user negatives to all except user settings.
-
-		# Order of preference:
-		# 1. user-declared that are installed
-		# 3. installed and in profile
-		# 4. installed
-		# 2. user-declared set
-		# 5. profile
-
-		self.dirVirtuals = [grabdict(os.path.join(x, "virtuals")) for x in myvirtdirs]
-
-		if self.user_profile_dir and os.path.exists(self.user_profile_dir+"/virtuals"):
-			self.userVirtuals = grabdict(self.user_profile_dir+"/virtuals")
-
-		# Store all the negatives for later.
-		for x in self.userVirtuals.keys():
-			self.negVirtuals[x] = []
-			for y in self.userVirtuals[x]:
-				if y[0] == '-':
-					self.negVirtuals[x].append(y[:])
-
-		# Collapse the user virtuals so that we don't deal with negatives.
-		self.userVirtuals = stack_dictlist([self.userVirtuals],incremental=1)
-
-		# Collapse all the profile virtuals including user negations.
 		self.dirVirtuals = stack_dictlist(
-			self.dirVirtuals + [self.negVirtuals], incremental=1)
+			[grabdict(os.path.join(x, "virtuals")) \
+			for x in self.profiles], incremental=True)
+
+		for virt in self.dirVirtuals:
+			# Preference for virtuals decreases from left to right.
+			self.dirVirtuals[virt].reverse()
 
 		# Repoman does not use user or tree virtuals.
 		if self.local_config:
-			# XXX: vartree does not use virtuals, does user set matter?
-			temp_vartree = vartree(myroot, self.dirVirtuals,
+			temp_vartree = vartree(myroot, None,
 				categories=self.categories, settings=self)
 			# Reduce the provides into a list by CP.
 			self.treeVirtuals = map_dictlist_vals(getCPFromCPV,temp_vartree.get_all_provides())
@@ -1760,48 +1724,27 @@ class config:
 		return self.virtuals
 
 	def __getvirtuals_compile(self):
-		"""Actually generate the virtuals we have collected.
-		The results are reversed so the list order is left to right.
-		Given data is [Best,Better,Good] sets of [Good, Better, Best]"""
+		"""Stack installed and profile virtuals.  Preference for virtuals
+		decreases from left to right.
+		Order of preference:
+		1. installed and in profile
+		2. installed only
+		3. profile only
+		"""
 
 		# Virtuals by profile+tree preferences.
 		ptVirtuals   = {}
-		# Virtuals by user+tree preferences.
-		utVirtuals   = {}
 
-		# If a user virtual is already installed, we preference it.
-		for x in self.userVirtuals.keys():
-			utVirtuals[x] = []
-			if self.treeVirtuals.has_key(x):
-				for y in self.userVirtuals[x]:
-					if y in self.treeVirtuals[x]:
-						utVirtuals[x].append(y)
-			#print "F:",utVirtuals
-			#utVirtuals[x].reverse()
-			#print "R:",utVirtuals
+		for virt, installed_list in self.treeVirtuals.iteritems():
+			profile_list = self.dirVirtuals.get(virt, None)
+			if not profile_list:
+				continue
+			for cp in installed_list:
+				if cp in profile_list:
+					ptVirtuals.setdefault(virt, [])
+					ptVirtuals[virt].append(cp)
 
-		# If a profile virtual is already installed, we preference it.
-		for x in self.dirVirtuals.keys():
-			ptVirtuals[x] = []
-			if self.treeVirtuals.has_key(x):
-				for y in self.dirVirtuals[x]:
-					if y in self.treeVirtuals[x]:
-						ptVirtuals[x].append(y)
-
-		# UserInstalled, ProfileInstalled, Installed, User, Profile
-		biglist = [utVirtuals, ptVirtuals, self.treeVirtuals,
-		           self.userVirtuals, self.dirVirtuals]
-
-		# We reverse each dictlist so that the order matches everything
-		# else in portage. [-*, a, b] [b, c, d] ==> [b, a]
-		for dictlist in biglist:
-			for key in dictlist:
-				dictlist[key].reverse()
-
-		# User settings and profile settings take precedence over tree.
-		val = stack_dictlist(biglist,incremental=1)
-
-		return val
+		return stack_dictlist([ptVirtuals, self.treeVirtuals, self.dirVirtuals])
 
 	def __delitem__(self,mykey):
 		for x in self.lookuplist:
