@@ -476,7 +476,6 @@ if quiet < 2:
 # Now that PORTDIR_OVERLAY is properly overridden, create the portdb.
 repoman_settings = portage.config(local_config=False,
 	config_incrementals=portage_const.INCREMENTALS)
-repoman_settings.lock()
 trees = portage.create_trees()
 trees["/"]["porttree"].settings = repoman_settings
 portdb = trees["/"]["porttree"].dbapi
