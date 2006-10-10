@@ -1406,6 +1406,7 @@ class config:
 			raise Exception, "Configuration is locked."
 
 	def backup_changes(self,key=None):
+		self.modifying()
 		if key and self.configdict["env"].has_key(key):
 			self.backupenv[key] = copy.deepcopy(self.configdict["env"][key])
 		else:
@@ -1413,6 +1414,7 @@ class config:
 
 	def reset(self,keeping_pkg=0,use_cache=1):
 		"reset environment to original settings"
+		self.modifying()
 		self.configdict["env"].clear()
 		self.configdict["env"].update(self.backupenv)
 
@@ -1426,6 +1428,7 @@ class config:
 		self.regenerate(use_cache=use_cache)
 
 	def load_infodir(self,infodir):
+		self.modifying()
 		if self.configdict.has_key("pkg"):
 			for x in self.configdict["pkg"].keys():
 				del self.configdict["pkg"][x]
@@ -1495,6 +1498,7 @@ class config:
 		self.reset(keeping_pkg=1,use_cache=use_cache)
 
 	def setinst(self,mycpv,mydbapi):
+		self.modifying()
 		if len(self.virtuals) == 0:
 			self.getvirtuals()
 		# Grab the virtuals this package provides and add them into the tree virtuals.
@@ -1518,7 +1522,7 @@ class config:
 
 
 	def regenerate(self,useonly=0,use_cache=1):
-
+		self.modifying()
 		if self.already_in_regenerate:
 			# XXX: THIS REALLY NEEDS TO GET FIXED. autouse() loops.
 			writemsg("!!! Looping in regenerate.\n",1)
@@ -1747,6 +1751,7 @@ class config:
 		return stack_dictlist([ptVirtuals, self.treeVirtuals, self.dirVirtuals])
 
 	def __delitem__(self,mykey):
+		self.modifying()
 		for x in self.lookuplist:
 			if x != None:
 				if mykey in x:
