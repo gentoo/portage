@@ -941,6 +941,7 @@ dyn_compile() {
 	touch .compiled
 	cd build-info
 
+	set -f
 	for f in ASFLAGS CATEGORY CBUILD CC CFLAGS CHOST CTARGET CXX \
 		CXXFLAGS DEPEND EXTRA_ECONF EXTRA_EINSTALL EXTRA_MAKE \
 		FEATURES INHERITED IUSE LDFLAGS LIBCFLAGS LIBCXXFLAGS \
@@ -950,6 +951,7 @@ dyn_compile() {
 	done
 	echo "${USE}"		> USE
 	echo "${EAPI:-0}"	> EAPI
+	set +f
 	set                     >  environment
 	export -p | sed 's:declare -rx:declare -x:' >> environment
 	bzip2 -9 environment
