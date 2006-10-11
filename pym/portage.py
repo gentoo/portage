@@ -698,7 +698,7 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None):
 			prev_mtimes[x] = newldpathtime
 			mtime_changed = True
 
-	if contents is None and mtime_changed:
+	if mtime_changed:
 		ld_cache_update = True
 
 	if makelinks and \
