@@ -2570,9 +2570,13 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 	# Package {pre,post}inst and {pre,post}rm may overlap, so they must have separate
 	# locations in order to prevent interference.
 	if mydo in ("unmerge", "prerm", "postrm", "cleanrm"):
-		mysettings["PORTAGE_BUILDDIR"] = os.path.join(mysettings["PKG_TMPDIR"], mysettings["PF"])
+		mysettings["PORTAGE_BUILDDIR"] = os.path.join(
+			mysettings["PKG_TMPDIR"],
+			mysettings["CATEGORY"], mysettings["PF"])
 	else:
-		mysettings["PORTAGE_BUILDDIR"] = os.path.join(mysettings["BUILD_PREFIX"], mysettings["PF"])
+		mysettings["PORTAGE_BUILDDIR"] = os.path.join(
+			mysettings["BUILD_PREFIX"],
+			mysettings["CATEGORY"], mysettings["PF"])
 
 	mysettings["HOME"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "homedir")
 	mysettings["WORKDIR"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "work")
@@ -2639,10 +2643,14 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 
 	mysettings["PKG_LOGDIR"] = os.path.join(mysettings["T"], "logging")
 
+	mydirs = [os.path.dirname(mysettings["PORTAGE_BUILDDIR"])]
+	mydirs.append(os.path.dirname(mydirs[-1]))
+
 	try:
-		portage_util.ensure_dirs(mysettings["BUILD_PREFIX"])
-		portage_util.apply_secpass_permissions(mysettings["BUILD_PREFIX"],
-			gid=portage_gid, uid=portage_uid, mode=070, mask=0)
+		for mydir in mydirs:
+			portage_util.ensure_dirs(mydir)
+			portage_util.apply_secpass_permissions(mydir,
+				gid=portage_gid, uid=portage_uid, mode=070, mask=0)
 		for dir_key in ("PORTAGE_BUILDDIR", "HOME", "PKG_LOGDIR", "T"):
 			"""These directories don't necessarily need to be group writable.
 			However, the setup phase is commonly run as a privileged user prior
@@ -5773,15 +5781,23 @@ class dblink:
 		if myebuildpath:
 			doebuild_environment(myebuildpath, "prerm", self.myroot,
 				self.settings, 0, 0, self.vartree.dbapi)
-			portage_util.ensure_dirs(
-				os.path.dirname(self.settings["PORTAGE_BUILDDIR"]),
+			catdir = os.path.dirname(self.settings["PORTAGE_BUILDDIR"])
+			portage_util.ensure_dirs(os.path.dirname(catdir),
 				uid=portage_uid, gid=portage_gid, mode=070, mask=0)
 		builddir_lock = None
+		catdir_lock = None
 		try:
 			if myebuildpath:
+				catdir_lock = portage_locks.lockdir(catdir)
+				portage_util.ensure_dirs(catdir,
+					uid=portage_uid, gid=portage_gid,
+					mode=070, mask=0)
 				builddir_lock = portage_locks.lockdir(
 					self.settings["PORTAGE_BUILDDIR"])
-
+				try:
+					portage_locks.unlockdir(catdir_lock)
+				finally:
+					catdir_lock = None
 				# Eventually, we'd like to pass in the saved ebuild env here...
 				retval = doebuild(myebuildpath, "prerm", self.myroot,
 					self.settings, cleanup=cleanup, use_cache=0,
@@ -5813,7 +5829,19 @@ class dblink:
 		finally:
 			if builddir_lock:
 				portage_locks.unlockdir(builddir_lock)
-
+			try:
+				if myebuildpath and not catdir_lock:
+					# Lock catdir for removal if empty.
+					catdir_lock = portage_locks.lockdir(catdir)
+			finally:
+				if catdir_lock:
+					try:
+						os.rmdir(catdir)
+					except OSError, e:
+						if e.errno != errno.ENOTEMPTY:
+							raise
+						del e
+					portage_locks.unlockdir(catdir_lock)
 		env_update(target_root=self.myroot, prev_mtimes=ldpath_mtimes)
 
 	def _unmerge_pkgfiles(self, pkgfiles):
@@ -6603,6 +6631,7 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 
 	tbz2_lock = None
 	builddir_lock = None
+	catdir_lock = None
 	try:
 		""" Don't lock the tbz2 file because the filesytem could be readonly or
 		shared by a cluster."""
@@ -6618,14 +6647,23 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 		mycat = mycat.strip()
 
 		# These are the same directories that would be used at build time.
-		builddir = os.path.join(mysettings["PORTAGE_TMPDIR"], "portage", mypkg)
+		builddir = os.path.join(
+			mysettings["PORTAGE_TMPDIR"], "portage", mycat, mypkg)
+		catdir = os.path.dirname(builddir)
 		pkgloc = os.path.join(builddir, "image")
 		infloc = os.path.join(builddir, "build-info")
 		myebuild = os.path.join(
 			infloc, os.path.basename(mytbz2)[:-4] + "ebuild")
-		portage_util.ensure_dirs(os.path.dirname(builddir),
+		portage_util.ensure_dirs(os.path.dirname(catdir),
+			uid=portage_uid, gid=portage_gid, mode=070, mask=0)
+		catdir_lock = portage_locks.lockdir(catdir)
+		portage_util.ensure_dirs(catdir,
 			uid=portage_uid, gid=portage_gid, mode=070, mask=0)
 		builddir_lock = portage_locks.lockdir(builddir)
+		try:
+			portage_locks.unlockdir(catdir_lock)
+		finally:
+			catdir_lock = None
 		try:
 			shutil.rmtree(builddir)
 		except (IOError, OSError), e:
@@ -6686,6 +6724,19 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 					raise
 				del e
 			portage_locks.unlockdir(builddir_lock)
+			try:
+				if not catdir_lock:
+					# Lock catdir for removal if empty.
+					catdir_lock = portage_locks.lockdir(catdir)
+			finally:
+				if catdir_lock:
+					try:
+						os.rmdir(catdir)
+					except OSError, e:
+						if e.errno != errno.ENOTEMPTY:
+							raise
+						del e
+					portage_locks.unlockdir(catdir_lock)
 
 def deprecated_profile_check():
 	if not os.access(DEPRECATED_PROFILE_FILE, os.R_OK):

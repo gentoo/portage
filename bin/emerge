@@ -2118,14 +2118,23 @@ class MergeTask(object):
 
 				portage.doebuild_environment(y, "setup", myroot,
 					pkgsettings, self.edebug, 1, portdb)
-				portage_util.ensure_dirs(
-					os.path.dirname(pkgsettings["PORTAGE_BUILDDIR"]),
+				catdir = os.path.dirname(pkgsettings["PORTAGE_BUILDDIR"])
+				portage_util.ensure_dirs(os.path.dirname(catdir),
 					uid=portage.portage_uid, gid=portage.portage_gid,
 					mode=070, mask=0)
 				builddir_lock = None
+				catdir_lock = None
 				try:
+					catdir_lock = portage_locks.lockdir(catdir)
+					portage_util.ensure_dirs(catdir,
+						uid=portage.portage_uid, gid=portage.portage_gid,
+						mode=070, mask=0)
 					builddir_lock = portage_locks.lockdir(
 						pkgsettings["PORTAGE_BUILDDIR"])
+					try:
+						portage_locks.unlockdir(catdir_lock)
+					finally:
+						catdir_lock = None
 					msg = " === (%s of %s) Cleaning (%s::%s)" % \
 						(mergecount, len(mymergelist), pkg_key, y)
 					short_msg = "emerge: (%s of %s) %s Clean" % \
@@ -2187,6 +2196,19 @@ class MergeTask(object):
 				finally:
 					if builddir_lock:
 						portage_locks.unlockdir(builddir_lock)
+					try:
+						if not catdir_lock:
+							# Lock catdir for removal if empty.
+							catdir_lock = portage_locks.lockdir(catdir)
+					finally:
+						if catdir_lock:
+							try:
+								os.rmdir(catdir)
+							except OSError, e:
+								if e.errno != errno.ENOTEMPTY:
+									raise
+								del e
+							portage_locks.unlockdir(catdir_lock)
 
 			elif x[0]=="binary":
 				#merge the tbz2
