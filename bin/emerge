@@ -2967,9 +2967,8 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			if "--quiet" not in myopts:
 				print ">>> Checking server timestamp ..."
 
-			rsynccommand = " ".join(["/usr/bin/rsync",
-				settings["PORTAGE_RSYNC_EXTRA_OPTS"],
-				" ".join(rsync_opts)])
+			rsynccommand = " ".join(["/usr/bin/rsync", " ".join(rsync_opts),
+				settings.get("PORTAGE_RSYNC_EXTRA_OPTS","")])
 
 			if "--debug" in myopts:
 				print rsynccommand
