@@ -16,9 +16,11 @@ class FileNotInManifestException(PortageException):
 
 def manifest2AuxfileFilter(filename):
 	filename = filename.strip(os.sep)
-	for ignored_dir in ("CVS", ".bzr",".git",".svn"):
-		if filename == ignored_dir or \
-		ignored_dir in filename.split(os.sep):
+	mysplit = filename.split(os.path.sep)
+	if "CVS" in mysplit:
+		return False
+	for x in mysplit:
+		if x.startswith("."):
 			return False
 	return not filename.startswith("digest-")
 
