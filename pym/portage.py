@@ -536,7 +536,7 @@ def elog_process(cpv, mysettings):
 
 #parse /etc/env.d and generate /etc/profile.env
 
-def env_update(makelinks=1, target_root=None, prev_mtimes=None):
+def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None):
 	if target_root is None:
 		global root
 		target_root = root
@@ -672,10 +672,13 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None):
 			newprelink.write("-b "+x+"\n")
 		newprelink.close()
 
+	mtime_changed = False
+	lib_dirs = set()
 	for lib_dir in portage_util.unique_array(specials["LDPATH"]+['usr/lib','usr/lib64','usr/lib32','lib','lib64','lib32']):
 		x = os.path.join(target_root, lib_dir.lstrip(os.sep))
 		try:
 			newldpathtime = os.stat(x)[stat.ST_MTIME]
+			lib_dirs.add(normalize_path(os.path.sep + lib_dir))
 		except OSError, oe:
 			if oe.errno == errno.ENOENT:
 				try:
@@ -685,7 +688,6 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None):
 				# ignore this path because it doesn't exist
 				continue
 			raise
-		mtime_changed = False
 		if x in prev_mtimes:
 			if prev_mtimes[x] == newldpathtime:
 				pass
@@ -696,8 +698,22 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None):
 			prev_mtimes[x] = newldpathtime
 			mtime_changed = True
 
-		if mtime_changed:
-			ld_cache_update = True
+	if contents is None and mtime_changed:
+		ld_cache_update = True
+
+	if makelinks and \
+		not ld_cache_update and \
+		contents is not None:
+		libdir_contents_changed = False
+		for mypath, mydata in contents.iteritems():
+			if mydata[0] not in ("obj","sym"):
+				continue
+			head, tail = os.path.split(mypath)
+			if head in lib_dirs:
+				libdir_contents_changed = True
+				break
+		if not libdir_contents_changed:
+			makelinks = False
 
 	# Only run ldconfig as needed
 	if (ld_cache_update or makelinks):
@@ -5784,6 +5800,7 @@ class dblink:
 		"""The caller must ensure that lockdb() and unlockdb() are called
 		before and after this method."""
 
+		contents = self.getcontents()
 		# Now, don't assume that the name of the ebuild is the same as the
 		# name of the dir; the package may have been moved.
 		myebuildpath = None
@@ -5858,7 +5875,8 @@ class dblink:
 							raise
 						del e
 					portage_locks.unlockdir(catdir_lock)
-		env_update(target_root=self.myroot, prev_mtimes=ldpath_mtimes)
+		env_update(target_root=self.myroot, prev_mtimes=ldpath_mtimes,
+			contents=contents)
 
 	def _unmerge_pkgfiles(self, pkgfiles):
 
@@ -6225,7 +6243,7 @@ class dblink:
 		self.dbdir = self.dbpkgdir
 		self.delete()
 		movefile(self.dbtmpdir, self.dbpkgdir, mysettings=self.settings)
-
+		contents = self.getcontents()
 		self.unlockdb()
 
 		#write out our collection of md5sums
@@ -6257,7 +6275,8 @@ class dblink:
 
 		#update environment settings, library paths. DO NOT change symlinks.
 		env_update(makelinks=(not downgrade),
-			target_root=self.settings["ROOT"], prev_mtimes=prev_mtimes)
+			target_root=self.settings["ROOT"], prev_mtimes=prev_mtimes,
+			contents=contents)
 		#dircache may break autoclean because it remembers the -MERGING-pkg file
 		global dircache
 		if dircache.has_key(self.dbcatdir):
