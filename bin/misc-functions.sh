@@ -80,7 +80,8 @@ install_qa_check() {
 			vecho " LDFLAGS='-Wl,-z,now' emerge ${PN}"
 			vecho "${f}"
 			vecho -ne '\a\n'
-			die_msg="${die_msg} setXid lazy bindings,"
+			# Do not fail here until we have sorted out the lazy issues with security team
+			#die_msg="${die_msg} setXid lazy bindings,"
 			sleep 1
 		fi
 
@@ -160,7 +161,7 @@ install_qa_check() {
 
 		if [[ ${insecure_rpath} -eq 1 ]] ; then
 			die "Aborting due to serious QA concerns with RUNPATH/RPATH"
-		elif [[ ${die_msg} != "" ]] && has stricter ${FEATURES} && ! has stricter ${RESTRICT} ; then
+		elif [[ -n ${die_msg} ]] && has stricter ${FEATURES} && ! has stricter ${RESTRICT} ; then
 			die "Aborting due to QA concerns: ${die_msg}"
 		fi
 
