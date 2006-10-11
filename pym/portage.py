@@ -2435,6 +2435,22 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 		writemsg("!!! Got: %s\n" % e.value[2], noiselevel=-1)
 		writemsg("!!! Expected: %s\n" % e.value[3], noiselevel=-1)
 		return 0
+	""" epatch will just grab all the patches out of a directory, so we have to
+	make sure there aren't any foreign files that it might grab."""
+	filesdir = os.path.join(pkgdir, "files")
+	for parent, dirs, files in os.walk(filesdir):
+		for d in dirs:
+			if d.startswith(".") or d == "CVS":
+				dirs.remove(d)
+		for f in files:
+			if f.startswith("."):
+				continue
+			f = os.path.join(parent, f)[len(filesdir) + 1:]
+			file_type = mf.findFile(f)
+			if file_type != "AUX" and not f.startswith("digest-"):
+				writemsg("!!! A file is not listed in the Manifest: '%s'\n" % \
+					os.path.join(filesdir, f), noiselevel=-1)
+				return 0
 	return 1
 
 # parse actionmap to spawn ebuild with the appropriate args
