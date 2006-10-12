@@ -678,7 +678,7 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None):
 		x = os.path.join(target_root, lib_dir.lstrip(os.sep))
 		try:
 			newldpathtime = os.stat(x)[stat.ST_MTIME]
-			lib_dirs.add(normalize_path(os.path.sep + lib_dir))
+			lib_dirs.add(normalize_path(x))
 		except OSError, oe:
 			if oe.errno == errno.ENOENT:
 				try:
