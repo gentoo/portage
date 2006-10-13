@@ -9,7 +9,7 @@ if [ -z "$1" ]; then
 	exit 0
 fi
 
-export PKG="portage-prefix"
+export PKG="prefix-portage"
 export TMP="/tmp"
 export V="$1"
 export DEST="${TMP}/${PKG}-${V}"
@@ -49,4 +49,3 @@ chmod a+x autogen.sh && ./autogen.sh
 rm -f AUTHORS NEWS autogen.sh make-man-tarball.sh tabcheck.py tarball.sh ChangeLog.000 COPYING
 cd $TMP
 tar cjvf ${TMP}/${PKG}-${V}.tar.bz2 ${PKG}-${V}
-scp ${TMP}/${PKG}-${V}.tar.bz2 kito@dev.gentoo.org:~/public_html/distfiles/ 
