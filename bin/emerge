@@ -2459,6 +2459,7 @@ def chk_updated_cfg_files():
 		#number of directories with some protect files in them
 		procount=0
 		for x in string.split(portage.settings["CONFIG_PROTECT"]):
+			x = portage_const.EPREFIX + x;
 			if os.path.isdir(x):
 				a=commands.getstatusoutput("cd "+x+"; find . -iname '._cfg????_*'")
 				if a[0]!=0:
