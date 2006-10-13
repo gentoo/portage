@@ -6541,7 +6541,7 @@ if not os.path.exists(root+portage_const.PORTAGE_BASE+""):
 	except SystemExit, e:
 		raise
 	except:
-		writemsg("portage: couldn't create %s; exiting.\n" % portage_const.PORTAGE_BASE)
+		writemsg("portage: couldn't create %s; exiting.\n" % root+portage_const.PORTAGE_BASE)
 		sys.exit(1)
 
 
