@@ -6479,6 +6479,13 @@ if os.environ.has_key("ROOT"):
 		root="/"
 	elif root[-1]!="/":
 		root=root+"/"
+	# strip off prefix from the tail of the string, this happens when
+	# portage is called from within ebuilds or eclasses
+	prefix=portage_const.EPREFIX
+	if prefix[-1]!="/":
+		prefix=prefix+"/"
+	if root.endswith(prefix):
+		root=root[0:-len(prefix)]+"/"
 else:
 	root="/"
 if root != "/":
