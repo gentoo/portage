@@ -2367,7 +2367,7 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, t
 		# due to how it's coded... Don't overwrite this so we can use it.
 		mysettings["PORTAGE_DEBUG"]=str(debug)
 
-	mysettings["ROOT"]     = normalize_path(myroot+portage_const.EPREFIX)
+	mysettings["ROOT"]     = normalize_path(myroot+portage_const.EPREFIX)+"/"
 	mysettings["STARTDIR"] = getcwd()
 
 	mysettings["EBUILD"]   = ebuild_path
