@@ -77,12 +77,16 @@ Determines how long the countdown delay will be after running `emerge clean`.
 .br
 Defaults to 5 seconds.
 .TP
-\fBCONFIG_PROTECT\fR = \fI[space delimited list of dirs]\fR
-All directories that are defined here will have "config file protection"
+\fBCOLLISION_IGNORE\fR = \fI[space delimited list of files and/or directories]\fR
+This variable allows the user to disable \fIcollision\-protect\fR for specific
+files and/or directories.
+.TP
+\fBCONFIG_PROTECT\fR = \fI[space delimited list of files and/or directories]\fR
+All files and/or directories that are defined here will have "config file protection"
 enabled for them.  For more information, please see `emerge \-\-help config`.
 .TP
-\fBCONFIG_PROTECT_MASK\fR = \fI[space delimited list of dirs]\fR
-All directories that are defined here will have "config file protection"
+\fBCONFIG_PROTECT_MASK\fR = \fI[space delimited list of files and/or directories]\fR
+All files and/or directories that are defined here will have "config file protection"
 disabled for them.  For more information, please see `emerge \-\-help config`.
 .TP
 .B CTARGET
@@ -107,7 +111,7 @@ is specified.
 Defines whether or not to ignore short pauses that occur when displaying
 important informational messages.  This variable is unset by default.
 .TP
-\fBFEATURES\fR = \fI"sandbox ccache autoaddcvs"\fR
+\fBFEATURES\fR = \fI"sandbox ccache"\fR
 Defines actions portage takes by default.  These options should
 not be changed by anyone but developers and/or maintainers.  'sandbox' is an important
 part of \fBFEATURES\fR and should not be disabled by default.  This is 
@@ -116,15 +120,15 @@ an incremental variable.
 .TP
 .B assume-digests
 When commiting work to cvs with \fBrepoman\fR(1), assume that all existing 
-SRC_URI digests are correct.
-.TP
-.B autoaddcvs
-Causes portage to automatically try to add files to cvs that will have to be added 
-later.  Done at generation times and only works when \fIcvs\fR is also in 
-\fBFEATURES\fR.
+SRC_URI digests are correct.  This feature also affects digest generation via
+\fBebuild\fR(1) and \fBemerge\fR(1) (emerge generates digests only when the
+\fIdigest\fR feature is enabled).
 .TP
 .B buildpkg
 Binary packages will be created for all packages that are merged.
+.TP
+.B buildsyspkg
+Build binary packages for just packages in the system set.
 .TP
 .B ccache
 Enable portage support for the ccache package.  If the ccache dir is not 
@@ -133,17 +137,21 @@ ${PORTAGE_TMPDIR}/ccache (with \fIuserpriv\fR) and to /root/.ccache otherwise.
 .TP
 .B confcache
 Enable confcache support; global configure caching, speeds up autotool based configure 
-calls.
+calls via the econf helper function. See \fBebuild\fR(5) for more information.
 .TP
 .B collision\-protect
 A QA\-feature to ensure that a package doesn't overwrite files it doesn't own.
+The \fICOLLISION_IGNORE\fR variable can be used to selectively disable this
+feature.
 .TP
 .B cvs
 A feature for developers that causes portage to enable all USE flags in SRC_URI
 when creating digests.
 .TP
 .B digest
-Autogenerate a digest for packages.
+Autogenerate digests for packages when running the \fBemerge\fR(1) command.  If
+the \fIassume-digests\fR feature is also enabled then existing SRC_URI digests
+will be reused whenever they are available.
 .TP
 .B distcc
 Enable portage support for the distcc package.
@@ -167,6 +175,10 @@ Force emerges to always try to fetch files from the \fIPORTAGE_BINHOST\fR.  See
 .TP
 .B gpg
 Check the signatures of Manifests and make sure they are correct.
+.TP
+.B installsources
+Install source code into /usr/src/debug/${CATEGORY}/${PF} (also see
+\fBsplitdebug\fR). This feature works only if debugedit is installed.
 .TP
 .B keeptemp
 Do not delete the ${T} directory after the merge process.
@@ -225,11 +237,17 @@ a GPG key.  Read about the \fIPORTAGE_GPG_KEY\fR variable in \fBmake.conf\fR(5).
 .TP
 .B splitdebug
 Prior to stripping ELF etdyn and etexec files, the debugging info is 
-stored for later use by various debuggers.
+stored for later use by various debuggers.  This feature is disabled by
+\fBnostrip\fR.  For installation of source code, see \fBinstallsources\fR.
 .TP
 .B strict
 Have portage react strongly to conditions that have the potential to be 
 dangerous (like missing or incorrect Manifests).
+.TP
+.B stricter
+Have portage react strongly to conditions that may conflict with system
+security provisions (for example textrels, executable stack).  Read about
+the \fIQA_STRICT_*\fR variables in \fBmake.conf\fR(5).
 .TP
 .B suidctl
 Before merging packages to the live filesystem, automatically strip setuid 
@@ -240,8 +258,12 @@ Run package\-specific tests during each merge to help make sure
 the package compiled properly.  See \fItest\fR in \fBebuild\fR(1) 
 and \fIsrc_test()\fR in \fBebuild\fR(5).
 .TP
+.B userfetch
+When portage is run as root, drop privileges to portage:portage during the
+fetching of package sources.
+.TP
 .B userpriv
-Allow portage to drop root privledges and compile packages as 
+Allow portage to drop root privileges and compile packages as 
 portage:portage without a sandbox (unless \fIusersandbox\fR is also used).
 .TP
 .B usersandbox
@@ -262,6 +284,12 @@ the \fIebuild scripts\fR. Merging 'mirrorselect' can help.
 These vars are used if the sources must be downloaded from the
 internet by \fBwget\fR(1).  They are only required if you use a
 proxy server for internet access.
+.TP
+\fBINSTALL_MASK\fR = \fI[space delimited list of file names]\fR
+Use this variable if you want to selectively prevent certain files from being
+copied into your file system tree.  This does not work on symlinks, but only on
+actual files.  Useful if you wish to filter out files like HACKING.gz and
+TODO.gz.
 .TP
 .B MAKEOPTS
 Use this variable if you want to use parallel make.  For example, if you
@@ -338,13 +366,25 @@ This variable contains the command used for resuming package sources that
 have been partially downloaded.  It should be defined using the same format
 as \fBFETCHCOMMAND\fR.
 .TP
+\fBQA_STRICT_EXECSTACK = \fI"set"\fR
+Set this to cause portage to ignore any \fIQA_EXECSTACK\fR override
+settings from ebuilds.  See also \fBebuild\fR(5).
+.TP
+\fBQA_STRICT_WX_LOAD = \fI"set"\fR
+Set this to cause portage to ignore any \fIQA_WX_LOAD\fR override
+settings from ebuilds.  See also \fBebuild\fR(5).
+.TP
+\fBQA_STRICT_TEXTRELS = \fI"set"\fR
+Set this to cause portage to ignore any \fIQA_TEXTREL\fR override
+settings from ebuilds.  See also \fBebuild\fR(5).
+.TP
 \fBROOT\fR = \fI[path]\fR
 Use \fBROOT\fR to specify the target root filesystem to be used for merging 
 packages or ebuilds.  All \fBRDEPEND\fR and \fBPDEPEND\fR will be installed 
 into \fBROOT\fR while all \fBDEPEND\fR will be still be installed into /.  
 Typically, you should set this setting in the environment rather than in 
 \fI/etc/make.conf\fR itself.  It's commonly used for creating new build 
-images.
+images.  Make sure you use an absolute path.
 .br
 Defaults to /.
 .TP
@@ -364,6 +404,10 @@ This variable contains options that control the build behavior of several
 packages.  More information in \fBebuild\fR(5).  Possible USE values
 can be found in \fI/usr/portage/profiles/use.desc\fR.
 .TP
+\fBUSE_EXPAND_HIDDEN\fR = \fI[space delimited list of variable names]\fR
+Names of \fBUSE_EXPAND\fR variables that should not be shown in the verbose merge
+list output of the \fBemerge\fR(1) command.
+.TP
 \fBUSE_ORDER\fR = \fI"env:pkg:conf:auto:defaults"\fR
 Determines precedence for incrementing the setting of the USE variable.
 The above setting will cause the environment (env) to override per package (pkg)
@@ -376,7 +420,7 @@ Do not modify this value unless you're a developer and you know what
 you're doing. If you change this and something breaks, we will not help
 you fix it.
 .br
-Defaults to "env:pkg:conf:auto:defaults".
+Defaults to "env:pkg:conf:defaults".
 
 .SH "REPORTING BUGS"
 Please report bugs via http://bugs.gentoo.org/
@@ -385,6 +429,7 @@ Please report bugs via http://bugs.gentoo.org/
 Daniel Robbins <drobbins@gentoo.org>
 Nicholas Jones <carpaski@gentoo.org>
 Mike Frysinger <vapier@gentoo.org>
+Saleem Abdulrasool <compnerd@gentoo.org>
 .fi
 .SH "FILES"
 .TP

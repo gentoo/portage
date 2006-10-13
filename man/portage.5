@@ -28,8 +28,11 @@ make.defaults
 packages
 packages.build
 package.provided
+package.use.force
+package.use.mask
 parent
-use.defaults
+profile.bashrc
+use.force
 use.mask
 virtuals
 .fi
@@ -37,6 +40,7 @@ virtuals
 .BR /etc/portage/
 .nf
 bashrc
+modules
 package.mask
 package.unmask
 package.keywords
@@ -222,36 +226,74 @@ x11-libs/qt-3.3.0
 x11-base/xorg-x11-6.8
 .fi
 .TP
+.BR package.use.force
+Per\-package USE flag forcing.
+
+.I Note:
+In a cascading profile setup, you can remove USE flags in children 
+profiles which were added by parent profiles by prefixing the flag with 
+a '\-'.
+
+.I Format:
+.nf
+\- comments begin with #
+\- one DEPEND atom per line with space-delimited USE flags
+.fi
+
+.I Example:
+.nf
+# force docs for GTK 2.x
+=x11\-libs/gtk+\-2* doc
+# unforce mysql support for QT
+x11\-libs/qt \-mysql
+.fi
+.TP
+.BR package.use.mask
+Per\-package USE flag masks.
+
+.I Note:
+In a cascading profile setup, you can remove USE flags in children 
+profiles which were added by parent profiles by prefixing the flag with 
+a '\-'.
+
+.I Format:
+.nf
+\- comments begin with #
+\- one DEPEND atom per line with space-delimited USE flags
+.fi
+
+.I Example:
+.nf
+# mask docs for GTK 2.x
+=x11\-libs/gtk+\-2* doc
+# unmask mysql support for QT
+x11\-libs/qt \-mysql
+.fi
+.TP
 .BR parent
 This contains a path to the parent profile.  It may be either relative or 
 absolute.  The paths will be relative to the location of the profile.  Most 
 commonly this file contains '..' to indicate the directory above.  Utilized 
 only in cascading profiles.
 .TP
-.BR use.defaults
-Here we DO NOT define the default USE flags, but the so\-called auto\-USE 
-flags.  This rather unknown portage feature activates a USE flag if a 
-specific package is installed and the flag was not explicitly 
-deactivated.  This file contains the associations between USE flags and 
-packages that trigger the auto\-USE feature.  
+.BR profile.bashrc
+If needed, this file can be used to set up a special environment for ebuilds,
+different from the standard root environment.  The syntax is the same as for
+any other bash script.
+.TP
+.BR use.force
+Some USE flags don't make sense to disable under certain conditions.  Here we
+list forced flags.
 
-In other words, if we never put "sdl" or "\-sdl" into our USE, but we 
-have media\-libs/libsdl emerged, then portage automagically sticks "sdl" 
-into our USE for us.
+.I Note:
+In a cascading profile setup, you can remove USE flags in children 
+profiles which were added by parent profiles by prefixing the flag with 
+a '\-'.
 
 .I Format:
 .nf
 \- comments begin with #
-\- one USE flag per line with a list of DEPEND atom bases
-.fi
-
-.I Example:
-.nf
-# media\-libs/libsdl will activate "sdl"
-sdl        media\-libs/libsdl
-# activate tcltk only if we have both 
-# dev\-lang/tcl and dev\-lang/tk
-tcltk      dev\-lang/tcl   dev\-lang/tk
+\- one USE flag per line
 .fi
 .TP
 .BR use.mask
@@ -294,6 +336,16 @@ virtual/aspell\-dict   app\-dicts/aspell\-en
 .RE
 .TP
 .BR /etc/portage/
+Any file in this directory that begins with "package." can be more than just a 
+flat file.  If it is a directory, then all the files in that directory will be 
+summed together as if it were a single file.
+
+.I Example:
+.nf
+/etc/portage/package.keywords/kde
+/etc/portage/package.keywords/common
+/etc/portage/package.keywords/e17
+.fi
 .RS
 .TP
 .BR bashrc
@@ -301,8 +353,28 @@ If needed, this file can be used to set up a special environment for ebuilds,
 different from the standard root environment.  The syntax is the same as for
 any other bash script.
 .TP
+.BR modules
+This file can be used to override the metadata cache implementation.  In
+practice, portdbapi.auxdbmodule is the only variable that the user will want to
+override.
+
+.I Example:
+.nf
+portdbapi.auxdbmodule = cache.metadata_overlay.database
+.fi
+
+The metadata_overlay cache module makes it possible to disable
+FEATURES="metadata-transfer" in \fBmake.conf\fR(5).  When the user initially
+enables metadata_overlay in /etc/portage/modules, all of the cache files
+contained in /var/cache/edb/dep/${PORTDIR} must be manually removed in order
+to avoid unecessary cache regeneration.  In addition, users of the
+metadata_overlay module must never modify eclasses in ${PORTDIR} because
+portage will not be able to detect that cache regeneration is necessary.  If
+the user would like to modify eclasses, it is safe to use metadata_overlay
+together with PORTDIR_OVERLAY in \fBmake.conf\fR.
+.TP
 .BR package.mask
-A list of DEPEND atoms to mask.  Useful if specific versions of packages do
+A list of package atoms to mask.  Useful if specific versions of packages do
 not work well for you.  For example, you swear by the Nvidia drivers, but only
 versions earlier than 1.0.4496.  No problem!
 
@@ -388,7 +460,7 @@ hosts here.  If the mirror set is not found here, it will check the global
 mirrors file at /usr/portage/profiles/thirdpartymirrors.  You may also set a 
 special mirror type called "local".  This list of mirrors will be checked 
 before GENTOO_MIRRORS and will be used even if the package has 
-RESTRICT="mirror".
+RESTRICT="mirror" or RESTRICT="fetch".
 
 .I Format:
 .nf

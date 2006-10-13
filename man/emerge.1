@@ -39,7 +39,8 @@ as \fBsys\-apps/portage\fR or \fB=python\-2.2.1\-r2\fR.
 ignores a trailing slash so that filename completion can be used.
 The \fIebuild\fR may also be an actual filename, such as
 \fB/usr/portage/app\-admin/python/python\-2.2.1\-r2.ebuild\fR.
-WARNING: The implementation of \fBemerge /path/to/ebuild\fR is broken and so this syntax shouldn't be used.
+WARNING: The implementation of \fBemerge /path/to/ebuild\fR is broken and so 
+this syntax shouldn't be used.
 .TP
 .BR tbz2file
 A \fItbz2file\fR must be a valid .tbz2 created with \fBebuild
@@ -47,14 +48,14 @@ A \fItbz2file\fR must be a valid .tbz2 created with \fBebuild
 [category/]<package>\fR or \fBquickpkg /var/db/pkg/<category>/<package>\fR.
 .TP
 .BR set
-Package sets are a convenient shorthand for large groups of
+A \fIset\fR is a convenient shorthand for a large group of
 packages.  Two sets are currently supported: \fBsystem\fR
 and \fBworld\fR.  \fBsystem\fR refers to a set of packages
 deemed necessary for your system to run properly.  \fBworld\fR
-contains all of the packages in \fBsystem\fR, along with any
+contains all the packages in \fBsystem\fR, plus any
 other packages listed in \fB/var/lib/portage/world\fR.  [See
-\fBFILES\fR below for more information.]  Note that these
-commands are generally used in conjunction with \fB\-\-update\fR.
+\fBFILES\fR below for more information.]  Note that a \fIset\fR
+is generally used in conjunction with \fB\-\-update\fR.
 .TP
 .BR dependency
 A \fIdependency\fR describes bounds on a package that you wish to install.  
@@ -85,6 +86,11 @@ clean binutils\fR cleans out old versions of binutils;
 specific version of Mozilla.  This is generally safe to use.
 \fBNote that\fR \-\-clean \fBdoes not remove unslotted packages.\fR
 .TP
+.BR "\-\-config "
+Run package specific actions needed to be executed after the emerge process 
+has completed.  This usually entails configuration file setup or other similar 
+setups that the user may wish to run.
+.TP
 .BR \-\-depclean
 Determines all packages installed on the system that have no 
 explicit reason for being there.  \fBemerge\fR generates a list 
@@ -95,9 +101,9 @@ installed; the differences are listed as unnecessary packages
 and then unmerged after a short timeout.  \fBWARNING: Removing some 
 packages may cause packages which link to the removed package 
 to stop working and complain about missing libraries.\fR 
-Re\-emerge the complaining package to fix this issue.
-\fBNote that changes in USE flags can drastically affect the 
-output of \-\-depclean.\fR
+Re\-emerge the complaining package to fix this issue.  Also see
+\fB\-\-with\-bdeps\fR for behavior with respect to build time dependencies that
+are not strictly required.
 .TP
 .BR "\-\-help " (\fB\-h\fR)
 Displays help information for emerge.  Adding one of the additional
@@ -107,8 +113,8 @@ updated more frequently than this man page; check it out if you
 are having problems that this man page does not help resolve.
 .TP
 .BR \-\-info
-This is a list of information to include in bug reports which aids the 
-developers with fixing any problems you may report.  \fBPlease include this 
+Produces a list of information to include in bug reports which aids the 
+developers when fixing the reported problem.  \fBPlease include this 
 information when submitting a bug report.\fR  Expanded output can be obtained 
 with the \fI\-\-verbose\fR option.
 .TP
@@ -146,12 +152,15 @@ to do, then portage will exit with a message and a success condition.
 .TP
 .BR "\-\-search " (\fB\-s\fR)
 Searches for matches of the supplied string in the portage tree.
-The \-\-search string is a regular expression.  For example, \fBemerge
-\-\-search "^kde"\fR searches for any package that starts with "kde";
-\fBemerge \-\-search "gcc$"\fR searches for any package that ends with
-"gcc"; \fBemerge \-\-search "office"\fR searches for any package that
-contains the word "office".  If you want to search the package
-descriptions as well, use the \fB\-\-searchdesc\fR action.
+By default emerge uses a case-insensitive simple search, but you can 
+enable a regular expression search by prefixing the search string with %.
+For example, \fBemerge \-\-search "%^kde"\fR searches for any package whose 
+name starts with "kde"; \fBemerge \-\-search "%gcc$"\fR searches for any 
+package that ends with "gcc"; \fBemerge \-\-search "office"\fR searches for 
+any package that contains the word "office".  If you want to include the 
+category into the search string, prepend an @: \fBemerge --search 
+"%@^dev-java.*jdk"\fR. If you want to search the package descriptions as well, 
+use the \fB\-\-searchdesc\fR action.
 .TP
 .BR "\-\-searchdesc " (\fB\-S\fR)
 Matches the search string against the description field as well as
@@ -175,16 +184,12 @@ system.  Its arguments can be \fIebuilds\fR, \fIsets\fR, or
 .BR "\-\-update " (\fB\-u\fR)
 Updates packages to the best version available, which may not always be the 
 highest version number due to masking for testing and development.  This will 
-also update direct dependencies which may not be what you want.  In general, 
-use this option only in combination with the world or system target.
+also update direct dependencies which may not be what you want.  Package atoms
+specified on the command line are greedy, meaning that unspecific atoms may
+match multiple installed versions of slotted packages.
 .TP
 .BR "\-\-version " (\fB\-V\fR)
 Displays the version number of \fBemerge\fR.
-.TP
-.BR "\-\-config "
-Run package specific actions needed to  be  executed  after  the
-emerge  process  has completed.  This usually entails configuration
-file setup or other similar setups that the user  may  wish to run.
 .SH "OPTIONS"
 .TP
 .BR "\-\-alphabetical "
@@ -197,6 +202,10 @@ in the same format as when using \fB\-\-pretend\fR; then ask whether to
 continue with the merge or abort.  Using \fB\-\-ask\fR is more efficient than 
 using \fB\-\-pretend\fR and then executing the same command without 
 \fB\-\-pretend\fR, as dependencies will only need to be calculated once.
+\fBWARNING: If the "Enter" key is pressed at the prompt (with no other input),
+it is interpreted as acceptance of the first choice.  Note that the input
+buffer is not cleared prior to the prompt, so an accidental press of the
+"Enter" key at any time prior to the prompt will be interpreted as a choice!\fR
 .TP
 .BR "\-\-buildpkg " (\fB\-b\fR)
 Tells emerge to build binary packages for all ebuilds processed in
@@ -227,11 +236,13 @@ causing it to output verbose debugging information to stdout.
 \fB\-\-debug\fR is great for finding bash syntax errors.
 .TP
 .BR "\-\-deep " (\fB\-D\fR)
-When used in conjunction with \fB\-\-update\fR, this flag forces
+This flag forces
 \fBemerge\fR to consider the entire dependency tree of packages,
 instead of checking only the immediate dependencies of the packages.
 As an example, this catches updates in libraries that are not directly
-listed in the dependencies of a package.
+listed in the dependencies of a package.  Also see \fB\-\-with\-bdeps\fR for
+behavior with respect to build time dependencies that are not strictly
+required.
 .TP
 .BR "\-\-emptytree " (\fB\-e\fR)
 Reinstalls all world packages and their dependencies to the current USE 
@@ -252,7 +263,8 @@ files.
 Using the server and location defined in \fIPORTAGE_BINHOST\fR (see 
 \fBmake.conf\fR(5)), portage will download the information from each binary 
 package found and it will use that information to help build the dependency 
-list.  This option implies \fB\-k\fR.  (Use \fB\-gK\fR for binary\-only merging.)
+list.  This option implies \fB\-k\fR.  (Use \fB\-gK\fR for binary\-only 
+merging.)
 .TP
 .BR "\-\-getbinpkgonly " (\fB\-G\fR)
 This option is identical to \fB\-g\fR, as above, except it will not use ANY 
@@ -269,7 +281,7 @@ compilation.  An asterisk marks when a USE flag has changed since the package
 was compiled.
 .TP
 .BR "\-\-nocolor "
-Make sure none of the output from portage contains color.
+Suppresses all coloring of portage's output.
 .TP
 .BR "\-\-noconfmem"
 Causes portage to disregard merge records indicating that a config file
@@ -305,23 +317,23 @@ specified, not the packages themselves.
 Instead of actually performing the merge, simply display what *would*
 have been installed if \fB\-\-pretend\fR weren't used.  Using \fB\-\-pretend\fR
 is strongly recommended before installing an unfamiliar package.  In
-the printout, 
+the printout:
 .br 
  
 .br 
-\fIN\fR = new, (not yet installed)
+\fIN\fR = new (not yet installed)
 .br 
-\fIS\fR = new, SLOT installation (side-by-side versions) 
+\fIS\fR = new SLOT installation (side-by-side versions) 
 .br 
-\fIU\fR = updating, (changing versions)
+\fIU\fR = updating (to another version)
 .br 
-\fID\fR = downgrade, (Best version seems lower) 
+\fID\fR = downgrading (best version seems lower)
 .br 
-\fIR\fR = replacing, (Remerging same version))
+\fIR\fR = replacing (remerging same version))
 .br 
-\fIF\fR = fetch restricted, (Manual download)
+\fIF\fR = fetch restricted (must be manually downloaded)
 .br 
-\fIf\fR = fetch restricted, (Already downloaded)
+\fIf\fR = fetch restricted (already downloaded)
 .br 
 \fIB\fR = blocked by an already installed package
 .TP
@@ -341,9 +353,10 @@ This is only really useful in combination with \fB\-\-emptytree\fR or
 \fB\-\-update\fR and \fB\-\-deep\fR.
 .TP
 .BR "\-\-usepkg " (\fB\-k\fR) 
-Tells emerge to use binary packages (from $PKGDIR) if they are available, thus possibly avoiding some 
-time\-consuming compiles.  This option is useful for CD installs; you can export PKGDIR=/mnt/cdrom/packages 
-and then use this option to have emerge "pull" binary packages from the CD in order to satisfy dependencies.
+Tells emerge to use binary packages (from $PKGDIR) if they are available, thus 
+possibly avoiding some time\-consuming compiles.  This option is useful for CD 
+installs; you can export PKGDIR=/mnt/cdrom/packages and then use this option to 
+have emerge "pull" binary packages from the CD in order to satisfy dependencies.
 .TP
 .BR "\-\-usepkgonly " (\fB\-K\fR)
 Tells emerge to only use binary packages (from $PKGDIR).  All the binary 
@@ -352,7 +365,27 @@ will simply abort.  Portage does not use $PORTDIR when calculating dependency
 information so all masking information is ignored.
 .TP
 .BR "\-\-verbose " (\fB\-v\fR)
-Tell emerge to run in verbose mode.  Currently this flag causes emerge to print out GNU info errors, if any, and to show the USE flags that will be used for each package when pretending.
+Tell emerge to run in verbose mode.  Currently this flag causes emerge to print 
+out GNU info errors, if any, and to show the USE flags that will be used for 
+each package when pretending. The following symbols are affixed to USE flags
+in order to indicate their status:
+.br
+
+.br
+\fI- prefix\fR     = not enabled (either disabled or removed)
+.br
+\fI* suffix\fR     = transition to or from the enabled state
+.br
+\fI% suffix\fR     = newly added or removed
+.br
+\fI() circumfix\fR = forced, masked, or removed
+.TP
+.BR "\-\-with\-bdeps < y | n >"
+In dependency calculations, pull in build time dependencies that are not
+strictly required.   This defaults to \'n\' for installation actions and
+\'y\' for the \-\-depclean action.  This setting can be added to
+EMERGE_DEFAULT_OPTS (see make.conf(5)) and later overridden via the command
+line.
 .SH "ENVIRONMENT OPTIONS"
 .TP
 \fBROOT\fR = \fI[path]\fR
@@ -360,11 +393,11 @@ Use \fBROOT\fR to specify the target root filesystem to be used for
 merging packages or ebuilds.
 .br
 Defaults to /.
-.SH "ENVIRONMENT OPTIONS"
 .TP
-\fBROOT\fR = \fI[path]\fR
-Use \fBROOT\fR to specify the target root filesystem to be used for
-merging packages or ebuilds.
+\fBPORTAGE_CONFIGROOT\fR = \fI[path]\fR
+Use \fBPORTAGE_CONFIGROOT\fR to specify the location for various portage 
+configuration files
+(see \fBFILES\fR for a detailed list).
 .br
 Defaults to /.
 .SH "OUTPUT"
@@ -485,11 +518,11 @@ each package that let \fBportage\fR know which systems are compatible with
 the package.  Packages which compile on an architecture, but have not been 
 proven to be "stable", are masked with a tilde (\fB~\fR) in front of the 
 architecture name.  \fBemerge\fR examines the \fBACCEPT_KEYWORDS\fR environment 
-variable to allow or disallow the emerging of a package masked by \fBKEYWORDS\fR.  
-To inform \fBemerge\fR that it should build these 'testing' versions 
-of packages, you should update your \fI/etc/portage/package.keywords\fR file 
-to list the packages you want the 'testing' version.  See \fBportage\fR(5) for 
-more information.
+variable to allow or disallow the emerging of a package masked by 
+\fBKEYWORDS\fR.  To inform \fBemerge\fR that it should build these 'testing' 
+versions of packages, you should update your 
+\fI/etc/portage/package.keywords\fR file to list the packages you want the 
+\'testing\' version.  See \fBportage\fR(5) for more information.
 .SH "REPORTING BUGS"
 Please report any bugs you encounter through our website:
 .LP
