@@ -182,6 +182,31 @@ install_qa_check() {
 		unset INSTALLTOD
 	fi
 
+	if [[ -d ${D}/${EPREFIX} ]] ; then
+		declare -i INSTALLTOD=0
+		for i in $(find "${D}/${EPREFIX}/") ; do
+			echo "QA Notice: ${i#${D}} double prefix"
+			((INSTALLTOD++))
+		done
+		die "Aborting due to QA concerns: ${INSTALLTOD} double prefix files installed"
+		unset INSTALLTOD
+	fi
+
+	if [[ -d ${EDEST} ]] ; then
+		declare -i INSTALLTOD=0
+		for i in $(find ${EDEST%/} | sed -e "s|${EDEST}|/|g") ; do
+			if [[ ${#EPREFIX} -gt ${#i} && ${EPREFIX:0:${#i}} != ${i} ]] ; then
+				echo "QA Notice: ${i} outside of prefix"
+				((INSTALLTOD++))
+			elif [[ ${#EPREFIX} -le ${#i} && ${i:0:${#EPREFIX}} != ${EPREFIX} ]] ; then
+				echo "QA Notice: ${i} outside of prefix"
+				((INSTALLTOD++))
+			fi
+		done
+		[[ $INSTALLTOD > 0 ]] && die "Aborting due to QA concerns: ${INSTALLTOD} files installed outside the prefix"
+		unset INSTALLTOD
+	fi
+
 	local find_log="${T}/find-portage-log"
 	find "${D}"/ -user ${PORTAGE_USER:-portage} -print0 > "${find_log}"
 	if [[ -s ${find_log} ]] ; then
