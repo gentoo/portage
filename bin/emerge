@@ -686,6 +686,9 @@ class depgraph:
 					"--getbinpkgonly" in self.myopts)
 		self.args_keys = []
 		self.global_updates = {}
+		self.pkg_node_map = {}
+		self.blocker_digraph = digraph()
+		self.blocker_parents = {}
 
 	def create(self, mybigkey, myparent=None, addme=1, myuse=None,
 		priority=digraph.HARD, rev_dep=False, arg=None):
@@ -700,15 +703,16 @@ class depgraph:
 		#IUSE-aware emerge -> USE DEP aware depgraph
 		#"no downgrade" emerge
 		"""
-
 		jbigkey = " ".join(mybigkey) + " merge"
 		if self.digraph.hasnode(jbigkey):
 			if addme and jbigkey != myparent:
 				# Refuse to make a node depend on itself so that the we don't
 				# don't create a bogus circular dependency in self.altlist().
 				if rev_dep and myparent:
+					self.pkg_node_map[myparent.split()[2]] = myparent
 					self.digraph.addnode(myparent, jbigkey, priority=priority)
 				else:
+					self.pkg_node_map[mybigkey[2]] = jbigkey
 					self.digraph.addnode(jbigkey, myparent, priority=priority)
 			return 1
 		jbigkey = " ".join(mybigkey) + " nomerge"
@@ -717,8 +721,10 @@ class depgraph:
 			requested as a command line argument.  This can be solved by
 			checking all args prior to marking packages as nomerge"""
 			if rev_dep and myparent:
+				self.pkg_node_map[myparent.split()[2]] = myparent
 				self.digraph.addnode(myparent, jbigkey, priority=priority)
 			else:
+				self.pkg_node_map[mybigkey[2]] = jbigkey
 				self.digraph.addnode(jbigkey, myparent, priority=priority)
 			return 1
 		
@@ -792,11 +798,14 @@ class depgraph:
 		""" At this point, we have either hit a blocker and returned, found the package in the
 		    depgraph already and returned, or we are here.  Whether we are merging or not; we must
 		    add the package to the depgraph; so we do that here. """
+		jbigkey = " ".join(mybigkey)
 		if rev_dep and myparent:
-			self.digraph.addnode(myparent, " ".join(mybigkey),
+			self.pkg_node_map[myparent.split()[2]] = myparent
+			self.digraph.addnode(myparent, jbigkey,
 				priority=priority)
 		else:
-			self.digraph.addnode(" ".join(mybigkey), myparent,
+			self.pkg_node_map[mybigkey[2]] = jbigkey
+			self.digraph.addnode(jbigkey, myparent,
 				priority=priority)
 		
 		""" This section determines whether we go deeper into dependencies or not.
@@ -1119,12 +1128,10 @@ class depgraph:
 			selected_pkg = None
 			if x[0]=="!":
 				# if this package is myself, don't append it to block list.
-				if "--debug" in self.myopts:
-					print "Myparent",myparent
-				if (myparent):
-					if myparent.split()[2] in \
-						portdb.xmatch("match-all", x[1:]):
-						# myself, so exit.
+				if myparent:
+					mydep = x[1:]
+					if mydep == portage.dep_getkey(mydep) and \
+						mydep == portage.dep_getkey(myparent.split()[2]):
 						continue
 				# adding block
 				selected_pkg = ["blocks", myroot, x[1:], None]
@@ -1319,10 +1326,9 @@ class depgraph:
 
 	def validate_blockers(self):
 		"""Remove any blockers from the digraph that do not match any of the
-		packages within the graph.  Blockers are only matched against the
-		final state of the graph.  Thus, it's possible that mutually blocking
-		packages will be installed simultaneously a some point(s) during the
-		transition from the initial to the final state."""
+		packages within the graph.  If necessary, create hard deps to ensure
+		correct merge order such that mutually blocking packages are never
+		installed simultaneously."""
 
 		""" It's possible that some of the nodes haven't been added to the
 		fakedb yet, so make sure they're all accounted for."""
@@ -1330,6 +1336,8 @@ class depgraph:
 			node_split = node.split()
 			mytype, myroot, mykey = node_split[0:3]
 			if mytype in self.pkg_tree_map:
+				if node_split[3] == "nomerge":
+					continue
 				mydb = self.trees[myroot][self.pkg_tree_map[mytype]].dbapi
 				myslot = mydb.aux_get(mykey, ["SLOT"])[0]
 				self.mydbapi[myroot].cpv_inject(mykey, myslot=myslot)
@@ -1338,15 +1346,49 @@ class depgraph:
 				if node.split()[0] == "blocks"]
 		for blocker in all_blockers:
 			mytype, myroot, mydep = blocker.split()
-			"""Prior to being added to the digraph, any blockers against
-			old-style virtuals have been expanded to real packages via
-			dep_virtual calls inside dep_check."""
+			""" In case this block is unresolvable, save the parents for
+			later output in self.display()."""
+			self.blocker_parents[blocker] = self.digraph.parent_nodes(blocker)
 			if not self.mydbapi[myroot].match(mydep):
+				vardb = self.trees[myroot]["vartree"].dbapi
+				blocked_pkgs = vardb.match(mydep)
+				if not blocked_pkgs:
+					self.digraph.remove(blocker)
+					continue
+				"""It may be possible to circumvent this block via correct
+				ordering of upgrades.  If necessary, create hard deps to
+				enforce correct merge order."""
+				fakedb = self.mydbapi[myroot]
+				new_pkgs = []
+				for cpv in blocked_pkgs:
+					myslot = vardb.aux_get(cpv, ["SLOT"])[0]
+					myslot_atom = "%s:%s" % (portage.dep_getkey(cpv), myslot)
+					new_pkgs.append(
+						(myslot_atom, fakedb.match(myslot_atom)[0]))
+				for parent in self.digraph.parent_nodes(blocker):
+					ptype, proot, pcpv, pstatus = parent.split()
+					pdbapi = self.trees[proot][self.pkg_tree_map[ptype]].dbapi
+					pslot = pdbapi.aux_get(pcpv, ["SLOT"])[0]
+					pslot_atom = "%s:%s" % (portage.dep_getkey(pcpv), pslot)
+					for myslot_atom, pkg in new_pkgs:
+						if pslot_atom == myslot_atom:
+							"""A merge within a slot invalidates the block,
+							so the order does not need to be enforced."""
+							continue
+						# Enforce correct merge order with a hard dep.
+						node = self.pkg_node_map[pkg]
+						self.digraph.addnode(node, parent)
+						"""Count references to this blocker so that it can be
+						invalidated after nodes referencing it have been merged."""
+						self.blocker_digraph.addnode(node, blocker)
 				self.digraph.remove(blocker)
 
 	def altlist(self, reversed=False):
 		mygraph=self.digraph.copy()
+		myblockers = self.blocker_digraph.copy()
 		retlist=[]
+		circular_blocks = False
+		blocker_deps = None
 		if reversed:
 			get_nodes = mygraph.root_nodes
 		else:
@@ -1387,6 +1429,19 @@ class depgraph:
 							selected_nodes = None
 
 			if not selected_nodes:
+				if not myblockers.is_empty():
+					"""A blocker couldn't be circumnavigated while keeping all
+					dependencies satisfied.  The user will have to resolve this
+					manually.  This is a panic condition and thus the order
+					doesn't really matter, so just pop a random node in order
+					to avoid a circular dependency panic if possible."""
+					if not circular_blocks:
+						circular_blocks = True
+						blocker_deps = myblockers.leaf_nodes()
+					if blocker_deps:
+						selected_nodes = [blocker_deps.pop()]
+
+			if not selected_nodes:
 				print "!!! Error: circular dependencies:"
 				print
 				mygraph.debug_print()
@@ -1395,6 +1450,15 @@ class depgraph:
 			for node in selected_nodes:
 				retlist.append(node.split())
 				mygraph.remove(node)
+				if not circular_blocks and myblockers.contains(node):
+					"""This node may have invalidated one or more blockers."""
+					myblockers.remove(node)
+					for blocker in myblockers.root_nodes():
+						if not myblockers.child_nodes(blocker):
+							myblockers.remove(blocker)
+
+		if not myblockers.is_empty():
+			retlist.extend([node.split() for node in myblockers.root_nodes()])
 
 		return retlist
 
@@ -1631,7 +1695,7 @@ class depgraph:
 				addl=""+red("B")+"  "+fetch+"  "
 				resolved = self.trees[x[1]]["vartree"].resolve_key(x[2])
 				print "["+x[0]+" "+addl+"]",red(resolved),
-				block_parents = self.digraph.parent_nodes(" ".join(x))
+				block_parents = self.blocker_parents[" ".join(x)]
 				block_parents = [pnode.split()[2] for pnode in block_parents]
 				block_parents = ", ".join(block_parents)
 				if resolved!=x[2]:
