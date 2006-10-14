@@ -1059,7 +1059,12 @@ for x in scanlist:
 		badlicsyntax = False
 		badprovsyntax = False
 		catpkg = catdir+"/"+y
-		myiuse = myaux["IUSE"].split() + repoman_settings.archlist()
+		myiuse = set(repoman_settings.archlist())
+		for myflag in myaux["IUSE"].split():
+			if myflag.startswith("+"):
+				myflag = myflag[1:]
+			myiuse.add(myflag)
+
 		type_list, badsyntax = [], []
 		for mytype in ("DEPEND", "RDEPEND", "PDEPEND", "LICENSE", "PROVIDE"):
 			mydepstr = myaux[mytype]
@@ -1214,7 +1219,13 @@ for x in scanlist:
 			stats["ebuild.nesteddie"]=stats["ebuild.nesteddie"]+1
 			fails["ebuild.nesteddie"].append(x+"/"+y+".ebuild")
 		# uselist checks - global
-		myuse = myaux["IUSE"].split()
+		myuse = []
+		default_use = []
+		for myflag in myaux["IUSE"].split():
+			if myflag.startswith("+"):
+				default_use.append(myflag)
+				myflag = myflag[1:]
+			myuse.append(myflag)
 		for mypos in range(len(myuse)-1,-1,-1):
 			if myuse[mypos] and (myuse[mypos] in uselist):
 				del myuse[mypos]
@@ -1224,6 +1235,8 @@ for x in scanlist:
 			for mypos in range(len(myuse)-1,-1,-1):
 				if myuse[mypos] and (myuse[mypos] in luselist[mykey]):
 					del myuse[mypos]
+		if default_use and myaux["EAPI"] == "0":
+			myuse += default_use
 		for mypos in range(len(myuse)):
 			stats["IUSE.invalid"]=stats["IUSE.invalid"]+1
 			fails["IUSE.invalid"].append(x+"/"+y+".ebuild: %s" % myuse[mypos])	

@@ -622,6 +622,13 @@ def genericdict(mylist):
 		mynewdict[portage.dep_getkey(x)]=x
 	return mynewdict
 
+def filter_iuse_defaults(iuse):
+	for flag in iuse:
+		if flag.startswith("+"):
+			yield flag[1:]
+		else:
+			yield flag
+
 class depgraph:
 
 	pkg_tree_map = {
@@ -737,7 +744,7 @@ class depgraph:
 		mydbapi = self.trees[myroot][self.pkg_tree_map[mytype]].dbapi
 
 		if myuse is None:
-			self.pkgsettings[myroot].setcpv(mykey)
+			self.pkgsettings[myroot].setcpv(mykey, mydb=portdb)
 			myuse = self.pkgsettings[myroot]["USE"].split()
 		self.useFlags[myroot][mykey] = myuse
 
@@ -755,15 +762,17 @@ class depgraph:
 			    --newuse is specified, we need to merge the package. """
 			if merging==0 and "--newuse" in self.myopts and \
 				vardbapi.cpv_exists(mykey):
-				pkgsettings.setcpv(mykey)
+				pkgsettings.setcpv(mykey, mydb=portdb)
 				forced_flags = set()
 				forced_flags.update(pkgsettings.useforce)
 				forced_flags.update(pkgsettings.puseforce)
 				forced_flags.update(pkgsettings.usemask)
 				forced_flags.update(pkgsettings.pusemask)
 				old_use = vardbapi.aux_get(mykey, ["USE"])[0].split()
-				iuses = set(mydbapi.aux_get(mykey, ["IUSE"])[0].split())
-				old_iuse = set(vardbapi.aux_get(mykey, ["IUSE"])[0].split())
+				iuses = set(filter_iuse_defaults(
+					mydbapi.aux_get(mykey, ["IUSE"])[0].split()))
+				old_iuse = set(filter_iuse_defaults(
+					vardbapi.aux_get(mykey, ["IUSE"])[0].split()))
 				if iuses.symmetric_difference(
 					old_iuse).difference(forced_flags):
 					merging = 1
@@ -1158,9 +1167,10 @@ class depgraph:
 						myeb_pkg = portage.best(myeb_pkg_matches)
 
 				if myeb_pkg and "--newuse" in self.myopts:
-					iuses = set(bindb.aux_get(myeb_pkg, ["IUSE"])[0].split())
+					iuses = set(filter_iuse_defaults(
+						bindb.aux_get(myeb_pkg, ["IUSE"])[0].split()))
 					old_use = bindb.aux_get(myeb_pkg, ["USE"])[0].split()
-					pkgsettings.setcpv(myeb_pkg)
+					pkgsettings.setcpv(myeb_pkg, mydb=portdb)
 					now_use = pkgsettings["USE"].split()
 					forced_flags = set()
 					forced_flags.update(pkgsettings.useforce)
@@ -1169,7 +1179,8 @@ class depgraph:
 					forced_flags.update(pkgsettings.pusemask)
 					cur_iuse = iuses
 					if "--usepkgonly" not in self.myopts and myeb:
-						cur_iuse = set(portdb.aux_get(myeb, ["IUSE"])[0].split())
+						cur_iuse = set(filter_iuse_defaults(
+							portdb.aux_get(myeb, ["IUSE"])[0].split()))
 					if iuses.symmetric_difference(
 						cur_iuse).difference(forced_flags):
 						myeb_pkg = None
@@ -1613,7 +1624,7 @@ class depgraph:
 			bindb  = self.trees[myroot]["bintree"].dbapi
 			vartree = self.trees[myroot]["vartree"]
 			pkgsettings = self.pkgsettings[myroot]
-			pkgsettings.setcpv(pkg_key)
+			pkgsettings.setcpv(pkg_key, mydb=portdb)
 			if pkg_key not in self.useFlags[myroot]:
 				if "binary" == pkg_type:
 					self.useFlags[myroot][pkg_key] = bindb.aux_get(
@@ -1683,7 +1694,8 @@ class depgraph:
 				
 				if pkg_key in self.useFlags[myroot]:
 					# USE flag display
-					cur_iuse = mydbapi.aux_get(pkg_key, ["IUSE"])[0].split()
+					cur_iuse = list(filter_iuse_defaults(
+						mydbapi.aux_get(pkg_key, ["IUSE"])[0].split()))
 
 					forced_flags = set()
 					forced_flags.update(pkgsettings.useforce)
@@ -1704,7 +1716,8 @@ class depgraph:
 						old_iuse, old_use = \
 							self.trees[x[1]]["vartree"].dbapi.aux_get(
 								pkg, ["IUSE", "USE"])
-						old_iuse = portage.unique_array(old_iuse.split())
+						old_iuse = list(set(
+							filter_iuse_defaults(old_iuse.split())))
 						old_iuse.sort()
 						old_use = old_use.split()
 						is_new = False
@@ -3382,6 +3395,7 @@ def action_info(settings, trees, myopts, myfiles):
 	# passed on the command line
 	mypkgs = []
 	vardb = trees[settings["ROOT"]]["vartree"].dbapi
+	portdb = trees[settings["ROOT"]]["porttree"].dbapi
 	for x in myfiles:
 		mypkgs.extend(vardb.match(x))
 
@@ -3413,9 +3427,10 @@ def action_info(settings, trees, myopts, myfiles):
 				# so set diff_found so we know to print
 				if valuesmap[myvar] != global_vals[myvar]:
 					diff_values[myvar] = valuesmap[myvar]
+			valuesmap["IUSE"] = set(filter_iuse_defaults(valuesmap["IUSE"]))
 			valuesmap["USE"] = valuesmap["USE"].intersection(valuesmap["IUSE"])
 			pkgsettings.reset()
-			pkgsettings.setcpv(pkg)
+			pkgsettings.setcpv(pkg, mydb=portdb)
 			if valuesmap["IUSE"].intersection(pkgsettings["USE"].split()) != \
 				valuesmap["USE"]:
 				diff_values["USE"] = valuesmap["USE"]

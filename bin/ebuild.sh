@@ -1514,6 +1514,17 @@ PDEPEND="$PDEPEND $E_PDEPEND"
 unset E_IUSE E_DEPEND E_RDEPEND E_PDEPEND
 
 if [ "${EBUILD_PHASE}" != "depend" ]; then
+	# Make IUSE defaults backward compatible with all the old shell code.
+	iuse_temp=""
+	for x in ${IUSE} ; do
+		if [[ ${x} == +* ]]; then
+			iuse_temp="${iuse_temp} ${x:1}"
+		else
+			iuse_temp="${iuse_temp} ${x}"
+		fi
+	done
+	export IUSE=${iuse_temp}
+	unset iuse_temp
 	# Lock the dbkey variables after the global phase
 	declare -r DEPEND RDEPEND SLOT SRC_URI RESTRICT HOMEPAGE LICENSE DESCRIPTION
 	declare -r KEYWORDS INHERITED IUSE PDEPEND PROVIDE
