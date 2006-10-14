@@ -4,7 +4,6 @@
 # $Id: /var/cvsroot/gentoo-src/portage/bin/md5check.py,v 1.4 2004/10/10 10:07:20 carpaski Exp $
 
 import os,sys,string
-os.environ["PORTAGE_CALLER"]="mirror"
 os.environ["FEATURES"]="mirror cvs"
 sys.path = ["@PORTAGE_BASE@/pym"]+sys.path
 

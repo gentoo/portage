@@ -17,9 +17,8 @@ shift $#
 source @PORTAGE_BASE@/bin/ebuild.sh
 
 install_qa_check() {
-
+	cd "${D}" || die "cd failed"
 	prepall
-	cd "${D}"
 
 	declare -i UNSAFE=0
 	for i in $(find "${D}/" -type f -perm -2002); do
@@ -61,7 +60,6 @@ install_qa_check() {
 			vecho "QA Notice: the following files contain insecure RUNPATH's"
 			vecho " Please file a bug about this at http://bugs.gentoo.org/"
 			vecho " with the maintaining herd of the package."
-			vecho " Summary: $CATEGORY/$PN: insecure RPATH ${f}"
 			vecho "${f}"
 			vecho -ne '\a\n'
 			if has stricter ${FEATURES} && ! has stricter ${RESTRICT}; then
@@ -81,7 +79,8 @@ install_qa_check() {
 			vecho " LDFLAGS='-Wl,-z,now' emerge ${PN}"
 			vecho "${f}"
 			vecho -ne '\a\n'
-			die_msg="${die_msg} setXid lazy bindings,"
+			# Do not fail here until we have sorted out the lazy issues with security team
+			#die_msg="${die_msg} setXid lazy bindings,"
 			sleep 1
 		fi
 
@@ -161,7 +160,7 @@ install_qa_check() {
 
 		if [[ ${insecure_rpath} -eq 1 ]] ; then
 			die "Aborting due to serious QA concerns with RUNPATH/RPATH"
-		elif [[ ${die_msg} != "" ]] && has stricter ${FEATURES} && ! has stricter ${RESTRICT} ; then
+		elif [[ -n ${die_msg} ]] && has stricter ${FEATURES} && ! has stricter ${RESTRICT} ; then
 			die "Aborting due to QA concerns: ${die_msg}"
 		fi
 
@@ -225,13 +224,22 @@ install_qa_check() {
 
 	if hasq multilib-strict ${FEATURES} && [ -x file -a -x find -a \
 	     -n "${MULTILIB_STRICT_DIRS}" -a -n "${MULTILIB_STRICT_DENY}" ]; then
-		MULTILIB_STRICT_EXEMPT=$(echo ${MULTILIB_STRICT_EXEMPT:-"(perl5|gcc|gcc-lib|debug|portage)"} | sed -e 's:\([(|)]\):\\\1:g')
+	     	local abort=no firstrun=yes
+		MULTILIB_STRICT_EXEMPT=$(echo ${MULTILIB_STRICT_EXEMPT} | sed -e 's:\([(|)]\):\\\1:g')
 		for dir in ${MULTILIB_STRICT_DIRS}; do
 			[ -d "${D}/${dir}" ] || continue
 			for file in $(find ${D}/${dir} -type f | grep -v "^${D}/${dir}/${MULTILIB_STRICT_EXEMPT}"); do
-				file ${file} | egrep -q "${MULTILIB_STRICT_DENY}" && die "File ${file} matches a file type that is not allowed in ${dir}"
+				if file ${file} | egrep -q "${MULTILIB_STRICT_DENY}" ; then
+					if [[ ${firstrun} == yes ]] ; then
+						echo "Files matching a file type that is not allowed:"
+						firstrun=no
+					fi
+					abort=yes
+					echo "   ${file#${D}//}"
+				fi
 			done
 		done
+		[[ ${abort} == yes ]] && die "multilib-strict check failed!"
 	fi
 
 }
@@ -247,7 +255,7 @@ install_mask() {
 	set -o noglob
 	for no_inst in ${install_mask}; do
 		set +o noglob
-		einfo "Removing ${no_inst}"
+		quiet_mode || einfo "Removing ${no_inst}"
 		# normal stuff
 		rm -Rf ${root}/${no_inst} >&/dev/null
 
@@ -309,7 +317,7 @@ preinst_suid_scan() {
 	# total suid control.
 	if hasq suidctl $FEATURES; then
 		sfconf=${EPREFIX}/etc/portage/suidctl.conf
-		vecho ">>> Preforming suid scan in ${IMAGE}"
+		vecho ">>> Performing suid scan in ${IMAGE}"
 		for i in $(find ${IMAGE}/ -type f \( -perm -4000 -o -perm -2000 \) ); do
 			if [ -s "${sfconf}" ]; then
 				suid="$(grep ^${i/${IMAGE}/}$ ${sfconf})"
@@ -377,6 +385,7 @@ dyn_package() {
 	export SANDBOX_ON="0"
 	tar cpvf - ./ | bzip2 -f > "${pkg_tmp}" || die "Failed to create tarball"
 	cd ..
+	export PYTHONPATH=${PORTAGE_PYM_PATH:-/usr/lib/portage/pym}
 	python -c "import xpak; t=xpak.tbz2('${pkg_tmp}'); t.recompose('${PORTAGE_BUILDDIR}/build-info')"
 	if [ $? -ne 0 ]; then
 		rm -f "${pkg_tmp}"

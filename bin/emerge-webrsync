@@ -1,26 +1,22 @@
 #!@BASH@
 # Copyright 1999-2006 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: /var/cvsroot/gentoo-src/portage/bin/Attic/emerge-webrsync,v 1.8.2.4 2005/02/26 11:22:38 carpaski Exp $
+# $Id$
 # Author: Karl Trygve Kalleberg <karltk@gentoo.org>
 # Rewritten from the old, Perl-based emerge-webrsync script
 
+eval $("@PORTAGE_BASE@"/bin/portageq envvar -v FEATURES FETCHCOMMAND \
+	GENTOO_MIRRORS PORTAGE_INST_UID PORTAGE_INST_GID PORTAGE_NICENESS \
+	PORTAGE_TMPDIR PORTDIR USERLAND)
+DISTDIR="${PORTAGE_TMPDIR}/emerge-webrsync"
+
 # If PORTAGE_NICENESS is overriden via the env then it will
 # still pass through the portageq call and override properly.
-PORTAGE_NICENESS="$(@PORTAGE_BASE@/bin/portageq envvar PORTAGE_NICENESS)"
 if [ -n "${PORTAGE_NICENESS}" ]; then
 	renice $PORTAGE_NICENESS $$ > /dev/null
 fi
 
-source @PORTAGE_BASE@/bin/isolated-functions.sh || exit 1
-FEATURES="$(@PORTAGE_BASE@/bin/portageq envvar FEATURES)"
-GENTOO_MIRRORS="${GENTOO_MIRRORS} $(@PORTAGE_BASE@/bin/portageq gentoo_mirrors)"
-PORTDIR="$(@PORTAGE_BASE@/bin/portageq portdir)"
-FETCHCOMMAND="$(@PORTAGE_BASE@/bin/portageq envvar FETCHCOMMAND)"
-USERLAND="$(@PORTAGE_BASE@/bin/portageq envvar USERLAND)"
-DISTDIR="$(@PORTAGE_BASE@/bin/portageq envvar PORTAGE_TMPDIR)/emerge-webrsync"
-PORTAGE_INST_UID="$(@PORTAGE_BASE@/bin/portageq envvar PORTAGE_INST_UID)"
-PORTAGE_INST_GID="$(@PORTAGE_BASE@/bin/portageq envvar PORTAGE_INST_GID)"
+source "@PORTAGE_BASE@"/bin/isolated-functions.sh || exit 1
 
 if [ ! -d $DISTDIR ] ; then
 	mkdir -p $DISTDIR
@@ -54,7 +50,10 @@ fi
 sync_local() {
 	echo Syncing local tree...
 	if type -p tarsync &> /dev/null; then
-		if ! tarsync "${FILE}" "${PORTDIR}" -v -s 1 -o ${PORTAGE_INST_UID:-0} -g ${PORTAGE_INST_GID:-0} -e /distfiles -e /packages -e /local; then
+		# tarsync doesn't take numeric uid/gid so we need to convert them.
+		local inst_user="$(python -c "import pwd; print pwd.getpwuid(int('${PORTAGE_INST_UID:-0}'))[0]")"
+		local inst_group="$(python -c "import grp; print grp.getgrgid(int('${PORTAGE_INST_GID:-0}'))[0]")"
+		if ! tarsync "${FILE}" "${PORTDIR}" -v -s 1 -o ${inst_user} -g ${inst_group} -e /distfiles -e /packages -e /local; then
 			echo "tarsync failed; tarball is corrupt?"
 			exit 1;
 		fi

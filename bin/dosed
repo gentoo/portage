@@ -7,7 +7,7 @@ mysed="s:${D}::g"
 
 for x in "$@" ; do
 	y="${D}${x}"
-	if [ -a "${y}" ] ; then
+	if [ -e "${y}" ] ; then
 		if [ -f "${y}" ] ; then
 			mysrc="${T}/${y##*/}"
 			cp "${y}" "${mysrc}"

@@ -1,13 +1,16 @@
 #!@BASH@
 # Copyright 1999-2006 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: /var/cvsroot/gentoo-src/portage/bin/prepstrip,v 1.23.2.3 2005/08/15 02:58:20 vapier Exp $
+# $Id$
 
-if [[ " ${FEATURES} " == *" nostrip "* ]] || \
-   [[ " ${RESTRICT} " == *" nostrip "* ]] || \
-   [[ " ${RESTRICT} " == *" strip "* ]]
+source "${PORTAGE_BIN_PATH:-${EPREFIX}/usr/lib/portage/bin}"/isolated-functions.sh
+
+unset NOSTRIP
+if hasq nostrip ${FEATURES} ${RESTRICT} || \
+   hasq strip ${RESTRICT}
 then
-	exit 0
+	NOSTRIP=1
+	hasq installsources ${FEATURES} || exit 0
 fi
 
 STRIP=${STRIP:-${CHOST}-strip}
@@ -15,15 +18,27 @@ type -p -- ${STRIP} > /dev/null || STRIP=strip
 OBJCOPY=${OBJCOPY:-${CHOST}-objcopy}
 type -p -- ${OBJCOPY} > /dev/null || OBJCOPY=objcopy
 
-PORTAGE_STRIP_FLAGS=${PORTAGE_STRIP_FLAGS:---strip-unneeded}
+export PORTAGE_STRIP_FLAGS=${PORTAGE_STRIP_FLAGS:---strip-unneeded}
 
 banner=1
 
 save_elf_debug() {
 	local x=$1
-	local y="${D}/usr/lib/debug/${x:${#D}:${#x}}.debug"
+	local y="${D}usr/lib/debug/${x:${#D}}.debug"
 
-	[[ " ${FEATURES} " != *" splitdebug "* ]] && return 0
+	if hasq installsources ${FEATURES} && [ -x "${EPREFIX}"/usr/bin/debugedit ] ; then
+		local sources_dir=/usr/src/debug/${CATEGORY}/${PF}
+		debugedit -b "${WORKDIR}" -d "${EPREFIX}/${sources_dir}" \
+			-l "${T}"/debug.sources "${x}"
+		if [[ -s ${T}/debug.sources ]] ; then 
+			[[ -d ${D}${sources_dir} ]] || mkdir -p "${D}${sources_dir}"
+			cat "${T}"/debug.sources | (cd "${WORKDIR}"; LANG=C sort -z -u | \
+				rsync -aL0 --files-from=- "${WORKDIR}/" "${D}${sources_dir}/" )
+		fi
+	fi
+
+	hasq splitdebug ${FEATURES} || return 0
+	[[ -z "${NOSTRIP}" ]] || return 0
 
 	# dont save debug info twice.
 	[[ ${x:7} == ".debug" ]] && return 0
@@ -31,49 +46,49 @@ save_elf_debug() {
 	mkdir -p $(dirname "${y}")
 	${OBJCOPY} --only-keep-debug "${x}" "${y}"
 	${OBJCOPY} --add-gnu-debuglink="${y}" "${x}"
-	chmod a-x "${y}"
+	chmod a-x,o-w "${y}"
 
-	[[ " ${FEATURES} " != *" installsources "* ]] && return 0
-
-	if [[ -x "${EPREFIX}/usr/bin/debugedit" ]] ; then
-		debugedit -b "${WORKDIR}" -d "${EPREFIX}"/usr/src/debug/${PF} -l "${T}"/debug.sources "${x}"
-		if [[ -s ${T}/debug.sources ]] ; then 
-			[[ -d ${D}/usr/src/debug/${PF} ]] || mkdir -p "${D}/usr/src/debug/${PF}"
-			cat "${T}"/debug.sources | (cd "${WORKDIR}"; LANG=C sort -z -u | xargs -0 -- cp --parents -p --target-directory="${D}/usr/src/debug/${PF}" )
-		fi
-	fi
 }
-if [[ `type -p scanelf` ]]; then
-	for x in $(scanelf -yRBF%F "$@") $(for y in "$@"; do find "${y}" -type f -name '*.a' -print0 ; done); do
-		if [[ ${banner} -eq 1 ]] ; then
-			echo "strip: ${STRIP} ${PORTAGE_STRIP_FLAGS}"
-			banner=0
-		fi
 
-		f=$(file "${x}") || continue
-		[[ -z ${f} ]] && continue
-
-		# The noglob funk is to support STRIP_MASK="/*/booga" and to keep
-		#  the for loop from expanding the globs.
-		# The eval echo is to support STRIP_MASK="/*/{booga,bar}" sex.
-		set -o noglob
-		stripitbaby=1
-		for m in $(eval echo ${STRIP_MASK}) ; do
-			[[ ${x} == ${m} ]] && stripitbaby=1 && break
-		done
-		set +o noglob
-
-		if [[ ${f} == *"current ar archive"* ]] ; then
-			echo "   ${x:${#D}:${#x}}"
-			[[ ${stripitbaby} -eq 1 ]] && ${STRIP} -g "${x}"
-		fi
-		if [[ ${f} == *"SB executable"* || ${f} == *"SB shared object"* ]] ; then
-			echo "   ${x:${#D}:${#x}}"
-			save_elf_debug "${x}"
-			[[ ${stripitbaby} -eq 1 ]] && ${STRIP} ${PORTAGE_STRIP_FLAGS} "${x}"
-		fi
-	done
-else
-	echo "scanelf(1) not found, skipping..."
+# The existance of the section .symtab tells us that a binary is stripped.
+# We want to log already stripped binaries, as this may be a QA violation.
+# They prevent us from getting the splitdebug data.
+f="$(scanelf -yqRBF '#k%F' -k '!.symtab' "$@")"
+if [[ -n "${f}" ]] ; then
+	vecho -e "\n\aQA Notice: pre-stripped files found:\a"
+	vecho "${f}"
+	echo "${f}" > "${T}"/scanelf-already-stripped.log
 fi
-	
+
+# Now we look for unstripped binaries.
+for x in $(scanelf -yqRBF '#k%F' -k '.symtab' "$@") $(for y in "$@"; do find "${y}" -type f -name '*.a' -print ; done); do
+	if [[ ${banner} -eq 1 ]] ; then
+		[[ -z ${NOSTRIP} ]] && vecho "strip: ${STRIP} ${PORTAGE_STRIP_FLAGS}"
+		banner=0
+	fi
+
+	f=$(file "${x}") || continue
+	[[ -z ${f} ]] && continue
+
+	# The noglob funk is to support STRIP_MASK="/*/booga" and to keep
+	#  the for loop from expanding the globs.
+	# The eval echo is to support STRIP_MASK="/*/{booga,bar}" sex.
+	set -o noglob
+	stripitbaby=1
+	for m in $(eval echo ${STRIP_MASK}) ; do
+		[[ ${x} == ${m} ]] && stripitbaby=0 && break
+	done
+	set +o noglob
+
+	if [[ ${f} == *"current ar archive"* ]] ; then
+		vecho "   ${x:${#D}}"
+		[[ -n ${NOSTRIP} ]] && continue
+		[[ ${stripitbaby} -eq 1 ]] && ${STRIP} -g "${x}"
+	fi
+	if [[ ${f} == *"SB executable"* || ${f} == *"SB shared object"* ]] ; then
+		vecho "   ${x:${#D}}"
+		save_elf_debug "${x}"
+		[[ -n ${NOSTRIP} ]] && continue
+		[[ ${stripitbaby} -eq 1 ]] && ${STRIP} ${PORTAGE_STRIP_FLAGS} "${x}"
+	fi
+done

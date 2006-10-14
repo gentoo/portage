@@ -14,12 +14,12 @@
 
 from stat import *
 from random import *
-import os, shutil, sys, string, re, commands, atexit
+import atexit, commands, os, re, shutil, stat, string, sys
 sys.path = ["@PORTAGE_BASE@/pym"]+sys.path
 
 import portage, dispatch_conf
 
-FIND_EXTANT_CONFIGS  = "find %s/ -iname '._cfg????_*' | sed -e 's://:/:g'"
+FIND_EXTANT_CONFIGS  = "find '%s' %s -iname '._cfg????_%s'"
 DIFF_CONTENTS        = 'diff -Nu %s %s'
 DIFF_CVS_INTERP      = 'diff -Nu %s %s | grep "^[+-][^+-]" | grep -v "# .Header:.*"'
 DIFF_WSCOMMENTS      = 'diff -Nu %s %s | grep "^[+-][^+-]" | grep -v "^[-+]#" | grep -v "^[-+][:space:]*$"'
@@ -78,10 +78,18 @@ class dispatch:
         #
 
         for path in config_paths.split ():
-            if not os.path.exists (path):
+            path = portage.normalize_path(path)
+            try:
+                mymode = os.lstat(path).st_mode
+            except OSError:
                 continue
+            basename = "*"
+            find_opts = ""
+            if not stat.S_ISDIR(mymode):
+                path, basename = os.path.split(path)
+                find_opts = "-maxdepth 1"
 
-            confs += self.massage (os.popen (FIND_EXTANT_CONFIGS % (path,)).readlines ())
+            confs += self.massage(os.popen(FIND_EXTANT_CONFIGS % (path, find_opts, basename)).readlines())
 
         if self.options['use-rcs'] == 'yes' and ((os.system( "which rcs >/dev/null 2>&1" ) == 256)
                                                  or (os.system( "which ci >/dev/null 2>&1" ) == 256)

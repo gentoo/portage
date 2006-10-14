@@ -1,11 +1,12 @@
 #!@PYTHON@ -O
+
 import sys
 sys.path.insert(0, "@PORTAGE_BASE@/pym")
-
-import os, portage, portage_const, re
-from copy import copy
 from optparse import OptionParser, OptionValueError
 
+import re
+
+import os, portage, portage_const, portage_exception
 class WorldHandler(object):
 
 	def name():
@@ -24,8 +25,6 @@ class WorldHandler(object):
 				self.invalid.append(atom)
 			elif not portage.db["/"]["vartree"].dbapi.match(atom):
 				self.not_installed.append(atom)
-			elif not portage.db["/"]["porttree"].dbapi.match("match-visible", atom):
-				self.masked.append(atom)
 			else:
 				self.okay.append(atom)
 
@@ -34,8 +33,6 @@ class WorldHandler(object):
 		if self.found:
 			errors += map(lambda x: "'%s' is not a valid atom" % x, self.invalid)
 			errors += map(lambda x: "'%s' is not installed" % x, self.not_installed)
-			if self.masked:
-				errors += "Masked ebuilds can be manually unmasked with package.keywords or package.unmask"
 		else:
 			errors.append(self.world_file + " could not be opened for reading")
 		return errors
@@ -44,7 +41,7 @@ class WorldHandler(object):
 		errors = []
 		try:
 			portage.write_atomic(self.world_file, "\n".join(self.okay))
-		except OSError:
+		except portage_exception.PortageException:
 			errors.append(self.world_file + " could not be opened for writing")
 		return errors
 
@@ -106,16 +103,16 @@ class VdbKeyHandler(object):
 		
 		return errors
 
-# this sucks, should track this in a different manner.
-#modules = {"world" : WorldHandler,
-#		   "vdbkeys": VdbKeyHandler}
-modules = {"world" : WorldHandler}
+def emaint_main(myargv):
 
-module_names = modules.keys()
-module_names.sort()
-module_names.insert(0, "all")
+	# TODO: Create a system that allows external modules to be added without
+	#       the need for hard coding.
+	modules = {"world" : WorldHandler}
 
-if __name__ == "__main__":
+	module_names = modules.keys()
+	module_names.sort()
+	module_names.insert(0, "all")
+
 	def exclusive(option, *args, **kw):
 		var = kw.get("var", None)
 		if var is None:
@@ -140,7 +137,7 @@ if __name__ == "__main__":
 	parser.action = None
 
 
-	(options, args) = parser.parse_args()
+	(options, args) = parser.parse_args(args=myargv)
 	if len(args) != 1:
 		parser.error("Incorrect number of arguments")
 	if args[0] not in module_names:
@@ -176,3 +173,6 @@ if __name__ == "__main__":
 			print "\n"
 
 	print "Finished"
+
+if __name__ == "__main__":
+	emaint_main(sys.argv[1:])

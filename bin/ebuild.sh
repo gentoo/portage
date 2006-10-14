@@ -1,9 +1,14 @@
 #!@BASH@
 # Copyright 1999-2006 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: /var/cvsroot/gentoo-src/portage/bin/ebuild.sh,v 1.201.2.42 2005/08/20 17:24:30 jstubbs Exp $
+# $Id$
 
-export SANDBOX_PREDICT="${SANDBOX_PREDICT}:/proc/self/maps:/dev/console:@PORTAGE_BASE@/pym:/dev/random"
+PORTAGE_BIN_PATH="${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}"
+PORTAGE_PYM_PATH="${PORTAGE_PYM_PATH:-@PORTAGE_BASE@/pym}"
+declare -rx PORTAGE_BIN_PATH PORTAGE_PYM_PATH
+
+SANDBOX_PREDICT="${SANDBOX_PREDICT}:/proc/self/maps:/dev/console:/dev/random"
+export SANDBOX_PREDICT="${SANDBOX_PREDICT}:${PORTAGE_PYM_PATH}:${PORTAGE_DEPCACHEDIR}"
 export SANDBOX_WRITE="${SANDBOX_WRITE}:/dev/shm:/dev/stdout:/dev/stderr:${PORTAGE_TMPDIR}"
 export SANDBOX_READ="${SANDBOX_READ}:/dev/shm:/dev/stdin:${PORTAGE_TMPDIR}"
 
@@ -11,17 +16,17 @@ if [ ! -z "${PORTAGE_GPG_DIR}" ]; then
 	SANDBOX_PREDICT="${SANDBOX_PREDICT}:${PORTAGE_GPG_DIR}"
 fi
 
+declare -rx EBUILD_PHASE
+
 if [ "$*" != "depend" ] && [ "$*" != "clean" ] && [ "$*" != "nofetch" ]; then
 	if [ -f "${T}/environment" ]; then
 		source "${T}/environment" &>/dev/null
 	fi
 fi
 
-if [ -n "$#" ]; then
-	ARGS="${*}"
-fi
+EBUILD_SH_ARGS="$*"
 
-declare -rx EBUILD_PHASE="$*"
+shift $#
 
 # Prevent aliases from causing portage to act inappropriately.
 # Make sure it's before everything so we don't mess aliases that follow.
@@ -40,26 +45,11 @@ alias restore_IFS='if [ "${old_IFS:-unset}" != "unset" ]; then IFS="${old_IFS}";
 
 OCC="$CC"
 OCXX="$CXX"
-source ${EPREFIX}/etc/profile.env &>/dev/null
-if [ -f "${PORTAGE_BASHRC}" ]; then
-	# If $- contains x, then tracing has already enabled elsewhere for some
-	# reason.  We preserve it's state so as not to interfere.
-	if [ "$PORTAGE_DEBUG" != "1" ] || [ "${-/x/}" != "$-" ]; then
-		source "${PORTAGE_BASHRC}"
-	else
-		set -x
-		source "${PORTAGE_BASHRC}"
-		set +x
-	fi
-fi
-[ ! -z "$OCC" ] && export CC="$OCC"
-[ ! -z "$OCXX" ] && export CXX="$OCXX"
 
 export PATH="${DEFAULT_PATH}:${ROOTPATH}"
 [ ! -z "$PREROOTPATH" ] && export PATH="${PREROOTPATH%%:}:$PATH"
 
-source @PORTAGE_BASE@/bin/isolated-functions.sh &>/dev/null
-
+source "@PORTAGE_BASE@"/bin/isolated-functions.sh &>/dev/null
 
 case "${NOCOLOR:-false}" in
 	yes|true)
@@ -111,13 +101,26 @@ for dir in ${PROFILE_PATHS}; do
 done
 restore_IFS
 
+if [ -f "${PORTAGE_BASHRC}" ]; then
+	# If $- contains x, then tracing has already enabled elsewhere for some
+	# reason.  We preserve it's state so as not to interfere.
+	if [ "$PORTAGE_DEBUG" != "1" ] || [ "${-/x/}" != "$-" ]; then
+		source "${PORTAGE_BASHRC}"
+	else
+		set -x
+		source "${PORTAGE_BASHRC}"
+		set +x
+	fi
+fi
+
+[ ! -z "$OCC" ] && export CC="$OCC"
+[ ! -z "$OCXX" ] && export CXX="$OCXX"
 
 esyslog() {
 	# Custom version of esyslog() to take care of the "Red Star" bug.
 	# MUST follow functions.sh to override the "" parameter problem.
 	return 0
 }
-
 
 use() {
 	useq ${1}
@@ -143,10 +146,10 @@ useq() {
 
 	# Make sure we have this USE flag in IUSE
 	if ! hasq "${u}" ${IUSE} ${E_IUSE} && ! hasq "${u}" ${PORTAGE_ARCHLIST} selinux; then
-		echo "QA Notice: USE Flag '${u}' not in IUSE for ${CATEGORY}/${PF}" >&2
+		vecho "QA Notice: USE Flag '${u}' not in IUSE for ${CATEGORY}/${PF}" >&2
 	fi
 
-	if [[ " ${USE} " == *" ${u} "* ]] ; then
+	if hasq ${u} ${USE} ; then
 		return ${found}
 	else
 		return $((!found))
@@ -159,7 +162,7 @@ has_version() {
 	fi
 	# return shell-true/shell-false if exists.
 	# Takes single depend-type atoms.
-	if @PORTAGE_BASE@/bin/portageq 'has_version' "${ROOT}" "$1"; then
+	if "@PORTAGE_BASE@"/bin/portageq 'has_version' "${ROOT}" "$1"; then
 		return 0
 	else
 		return 1
@@ -170,7 +173,7 @@ portageq() {
 	if [ "${EBUILD_PHASE}" == "depend" ]; then
 		die "portageq calls are not allowed in the global scope"
 	fi
-	@PORTAGE_BASE@/bin/portageq "$@"
+	"@PORTAGE_BASE@"/bin/portageq "$@"
 }
 
 
@@ -185,7 +188,7 @@ best_version() {
 	fi
 	# returns the best/most-current match.
 	# Takes single depend-type atoms.
-	@PORTAGE_BASE@/bin/portageq 'best_version' "${ROOT}" "$1"
+	"@PORTAGE_BASE@"/bin/portageq 'best_version' "${ROOT}" "$1"
 }
 
 with_bindir() {
@@ -454,10 +457,10 @@ export DESTTREE=/usr
 export INSDESTTREE=""
 export EXEDESTTREE=""
 export DOCDESTTREE=""
-export INSOPTIONS="-m 0644"
-export EXEOPTIONS="-m 0755"
-export LIBOPTIONS="-m 0644"
-export DIROPTIONS="-m 0755"
+export INSOPTIONS="-m0644"
+export EXEOPTIONS="-m0755"
+export LIBOPTIONS="-m0644"
+export DIROPTIONS="-m0755"
 export MOPREFIX=${PN}
 
 check_KV() {
@@ -480,10 +483,10 @@ keepdir() {
 	local x
 	if [ "$1" == "-R" ] || [ "$1" == "-r" ]; then
 		shift
-		find "$@" -type d -printf "${D}/%p/.keep\n" | tr "\n" "\0" | $XARGS -0 -n100 touch || die "Failed to recursive create .keep files"
+		find "$@" -type d -printf "${D}/%p/.keep_${CATEGORY}_${PN}-${SLOT}\n" | tr "\n" "\0" | $XARGS -0 -n100 touch || die "Failed to recursive create .keep files"
 	else
 		for x in "$@"; do
-			touch "${D}/${x}/.keep" || die "Failed to create .keep in ${D}/${x}"
+			touch "${D}/${x}/.keep_${CATEGORY}_${PN}-${SLOT}" || die "Failed to create .keep in ${D}/${x}"
 		done
 	fi
 }
@@ -503,7 +506,7 @@ unpack() {
 	[ -z "$*" ] && die "Nothing passed to the 'unpack' command"
 
 	for x in "$@"; do
-		echo ">>> Unpacking ${x} to ${PWD}"
+		vecho ">>> Unpacking ${x} to ${PWD}"
 		y=${x%.*}
 		y=${y##*.}
 
@@ -513,6 +516,8 @@ unpack() {
 		else
 			srcdir="${DISTDIR}/"
 		fi
+		[[ ${x} == ${DISTDIR}* ]] && \
+			die "Arguments to unpack() should not begin with \${DISTDIR}."
 		[ ! -s "${srcdir}${x}" ] && die "$myfail"
 
 		myfail="failure unpacking ${x}"
@@ -537,7 +542,7 @@ unpack() {
 					gzip -dc "${srcdir}${x}" > ${x%.*} || die "$myfail"
 				fi
 				;;
-			bz2)
+			bz2|bz)
 				if [ "${y}" == "tar" ]; then
 					bzip2 -dc "${srcdir}${x}" | tar xf - ${tarvars}
 					assert "$myfail"
@@ -545,8 +550,16 @@ unpack() {
 					bzip2 -dc "${srcdir}${x}" > ${x%.*} || die "$myfail"
 				fi
 				;;
+			7Z|7z)
+				local my_output
+				my_output="$(7z x -y "${srcdir}/${x}")"
+				if [ $? -ne 0 ]; then
+					echo "${my_output}" >&2
+					die "$myfail"
+				fi
+				;;
 			RAR|rar)
-				unrar x -idq "${srcdir}/${x}" || die "$myfail"
+				unrar x -idq -o+ "${srcdir}/${x}" || die "$myfail"
 				;;
 			LHa|LHA|lha|lzh)
 				lha xqf "${srcdir}/${x}" || die "$myfail"
@@ -555,17 +568,19 @@ unpack() {
 				ar x "${srcdir}/${x}" || die "$myfail"
 				;;
 			*)
-				echo "unpack ${x}: file format not recognized. Ignoring."
+				vecho "unpack ${x}: file format not recognized. Ignoring."
 				;;
 		esac
 	done
 	chmod -Rf a+rX,u+w,g-w,o-w .
 }
 
-strip_duplicate_slashes () {
-	if [ -n "${1}" ]; then
-		local removed="${1/\/\///}"
-		[ "${removed}" != "${removed/\/\///}" ] && removed=$(strip_duplicate_slashes "${removed}")
+strip_duplicate_slashes() {
+	if [[ -n $1 ]] ; then
+		local removed=$1
+		while [[ ${removed} == *//* ]] ; do
+			removed=${removed//\/\///}
+		done
 		echo ${removed}
 	fi
 }
@@ -578,10 +593,10 @@ econf() {
 		ECONF_SOURCE="."
 	fi
 	if [ -x "${ECONF_SOURCE}/configure" ]; then
-		if [ -e ${EPREFIX}/usr/share/gnuconfig/ ]; then
+		if [ -e "${EPREFIX}"/usr/share/gnuconfig/ ]; then
 			for x in $(find "${WORKDIR}" -type f '(' -name config.guess -o -name config.sub ')') ; do
-				echo " * econf: updating ${x/${WORKDIR}\/} with ${EPREFIX}/usr/share/gnuconfig/${x##*/}"
-				cp -f ${EPREFIX}/usr/share/gnuconfig/${x##*/} ${x}
+				vecho " * econf: updating ${x/${WORKDIR}\/} with ${EPREFIX}/usr/share/gnuconfig/${x##*/}"
+				cp -f "${EPREFIX}"/usr/share/gnuconfig/${x##*/} ${x}
 			done
 		fi
 
@@ -617,11 +632,7 @@ econf() {
 			export CONF_PREFIX
 			[ "${CONF_LIBDIR:0:1}" != "/" ] && CONF_LIBDIR="/${CONF_LIBDIR}"
 
-			CONF_LIBDIR_RESULT="${CONF_PREFIX}${CONF_LIBDIR}"
-			for x in 1 2 3; do
-				# The escaping is weird. It will break if you escape the last one.
-				CONF_LIBDIR_RESULT="${CONF_LIBDIR_RESULT//\/\///}"
-			done
+			CONF_LIBDIR_RESULT="$(strip_duplicate_slashes ${CONF_PREFIX}${CONF_LIBDIR})"
 
 			LOCAL_EXTRA_ECONF="--libdir=${CONF_LIBDIR_RESULT} ${LOCAL_EXTRA_ECONF}"
 		fi
@@ -651,7 +662,7 @@ econf() {
 			CONFCACHE=
 		fi
 
-		echo ${CONFCACHE} ${CONFCACHE_ARG} ${TMP_CONFCACHE_DIR} "${ECONF_SOURCE}/configure" \
+		vecho ${CONFCACHE} ${CONFCACHE_ARG} ${TMP_CONFCACHE_DIR} "${ECONF_SOURCE}/configure" \
 			--prefix=${EPREFIX}/usr \
 			--host=${CHOST} \
 			--mandir=${EPREFIX}/usr/share/man \
@@ -700,22 +711,22 @@ einstall() {
 	fi
 
 	if [ -f ./[mM]akefile -o -f ./GNUmakefile ] ; then
-		if [ ! -z "${PORTAGE_DEBUG}" ]; then
-			make -n prefix=${D}/usr \
-				datadir=${D}/usr/share \
-				infodir=${D}/usr/share/info \
-				localstatedir=${D}/var/lib \
-				mandir=${D}/usr/share/man \
-				sysconfdir=${D}/etc \
+		if [ "${PORTAGE_DEBUG}" == "1" ]; then
+			make -n prefix="${D}/usr" \
+				datadir="${D}/usr/share" \
+				infodir="${D}/usr/share/info" \
+				localstatedir="${D}/var/lib" \
+				mandir="${D}/usr/share/man" \
+				sysconfdir="${D}/etc" \
 				${EXTRA_EINSTALL} \
 				"$@" install
 		fi
-		make prefix=${D}/usr \
-			datadir=${D}/usr/share \
-			infodir=${D}/usr/share/info \
-			localstatedir=${D}/var/lib \
-			mandir=${D}/usr/share/man \
-			sysconfdir=${D}/etc \
+		make prefix="${D}/usr" \
+			datadir="${D}/usr/share" \
+			infodir="${D}/usr/share/info" \
+			localstatedir="${D}/var/lib" \
+			mandir="${D}/usr/share/man" \
+			sysconfdir="${D}/etc" \
 			${EXTRA_EINSTALL} \
 			"$@" install || die "einstall failed"
 	else
@@ -732,7 +743,7 @@ pkg_nofetch() {
 
 	echo "!!! The following are listed in SRC_URI for ${PN}:"
 	local x
-	for x in `echo ${SRC_URI}`; do
+	for x in $(echo ${SRC_URI}); do
 		echo "!!!   ${x}"
 	done
 }
@@ -751,23 +762,21 @@ src_compile() {
 }
 
 src_test() {
-	addpredict /
 	if emake -j1 check -n &> /dev/null; then
-		echo ">>> Test phase [check]: ${CATEGORY}/${PF}"
+		vecho ">>> Test phase [check]: ${CATEGORY}/${PF}"
 		if ! emake -j1 check; then
 			hasq test $FEATURES && die "Make check failed. See above for details."
 			hasq test $FEATURES || eerror "Make check failed. See above for details."
 		fi
 	elif emake -j1 test -n &> /dev/null; then
-		echo ">>> Test phase [test]: ${CATEGORY}/${PF}"
+		vecho ">>> Test phase [test]: ${CATEGORY}/${PF}"
 		if ! emake -j1 test; then
 			hasq test $FEATURES && die "Make test failed. See above for details."
 			hasq test $FEATURES || eerror "Make test failed. See above for details."
 		fi
 	else
-		echo ">>> Test phase [none]: ${CATEGORY}/${PF}"
+		vecho ">>> Test phase [none]: ${CATEGORY}/${PF}"
 	fi
-	SANDBOX_PREDICT="${SANDBOX_PREDICT%:/}"
 }
 
 src_install() {
@@ -817,40 +826,40 @@ dyn_unpack() {
 		local x
 		local checkme
 		for x in ${AA}; do
-			echo ">>> Checking ${x}'s mtime..."
+			vecho ">>> Checking ${x}'s mtime..."
 			if [ "${PORTAGE_ACTUAL_DISTDIR:-${DISTDIR}}/${x}" -nt "${WORKDIR}" ]; then
-				echo ">>> ${x} has been updated; recreating WORKDIR..."
+				vecho ">>> ${x} has been updated; recreating WORKDIR..."
 				newstuff="yes"
 				rm -rf "${WORKDIR}"
 				break
 			fi
 		done
 		if [ "${EBUILD}" -nt "${WORKDIR}" ]; then
-			echo ">>> ${EBUILD} has been updated; recreating WORKDIR..."
+			vecho ">>> ${EBUILD} has been updated; recreating WORKDIR..."
 			newstuff="yes"
 			rm -rf "${WORKDIR}"
 		elif [ ! -f "${PORTAGE_BUILDDIR}/.unpacked" ]; then
-			echo ">>> Not marked as unpacked; recreating WORKDIR..."
+			vecho ">>> Not marked as unpacked; recreating WORKDIR..."
 			newstuff="yes"
 			rm -rf "${WORKDIR}"
 		fi
 	fi
 	if [ -e "${WORKDIR}" ]; then
 		if [ "$newstuff" == "no" ]; then
-			echo ">>> WORKDIR is up-to-date, keeping..."
+			vecho ">>> WORKDIR is up-to-date, keeping..."
 			[ "$(type -t post_src_unpack)" == "function" ] && post_src_unpack
 			return 0
 		fi
 	fi
 
 	if [ ! -d "${WORKDIR}" ]; then
-		install -m ${PORTAGE_WORKDIR_MODE:-0700} -d "${WORKDIR}" || die "Failed to create dir '${WORKDIR}'"
+		install -m${PORTAGE_WORKDIR_MODE:-0700} -d "${WORKDIR}" || die "Failed to create dir '${WORKDIR}'"
 	fi
 	cd "${WORKDIR}" || die "Directory change failed: \`cd '${WORKDIR}'\`"
-	echo ">>> Unpacking source..."
+	vecho ">>> Unpacking source..."
 	src_unpack
 	touch "${PORTAGE_BUILDDIR}/.unpacked" || die "IO Failure -- Failed 'touch .unpacked' in ${PORTAGE_BUILDDIR}"
-	echo ">>> Source unpacked."
+	vecho ">>> Source unpacked."
 	cd "${PORTAGE_BUILDDIR}"
 
 	[ "$(type -t post_src_unpack)" == "function" ] && post_src_unpack
@@ -864,24 +873,21 @@ dyn_clean() {
 		return 1
 	fi
 
-	if [ "$USERLAND" == "BSD" ] && type -p chflags &>/dev/null; then
-		chflags -R noschg,nouchg,nosappnd,nouappnd,nosunlnk,nouunlnk \
-			"${PORTAGE_BUILDDIR}"
-	fi
-
-	if [ "$USERLAND" == "Darwin" ] && type -p chflags &>/dev/null; then
+	if type -p chflags &>/dev/null; then
 		chflags -R noschg,nouchg,nosappnd,nouappnd "${PORTAGE_BUILDDIR}"
+		chflags -R nosunlnk,nouunlnk "${PORTAGE_BUILDDIR}" 2>/dev/null
 	fi
 
-	rm -rf "${PORTAGE_BUILDDIR}/image"
+	rm -rf "${PORTAGE_BUILDDIR}/image" "${PORTAGE_BUILDDIR}/homedir"
 
 	if ! hasq keeptemp $FEATURES; then
 		rm -rf "${T}"
 	else
-		mv "${T}/environment" "${T}/environment.keeptemp"
+		[ -e "${T}/environment" ] && mv "${T}/environment" "${T}/environment.keeptemp"
 	fi
 
 	if ! hasq keepwork $FEATURES; then
+		rm -rf "${PORTAGE_BUILDDIR}/.logid"
 		rm -rf "${PORTAGE_BUILDDIR}/.unpacked"
 		rm -rf "${PORTAGE_BUILDDIR}/.compiled"
 		rm -rf "${PORTAGE_BUILDDIR}/.tested"
@@ -944,8 +950,8 @@ docinto() {
 		export DOCDESTTREE=""
 	else
 		export DOCDESTTREE="$1"
-		if [ ! -d "${D}/usr/share/doc/${PF}/${DOCDESTTREE}" ]; then
-			install -d "${D}/usr/share/doc/${PF}/${DOCDESTTREE}"
+		if [ ! -d "${D}usr/share/doc/${PF}/${DOCDESTTREE}" ]; then
+			install -d "${D}usr/share/doc/${PF}/${DOCDESTTREE}"
 		fi
 	fi
 }
@@ -954,7 +960,7 @@ insopts() {
 	export INSOPTIONS="$@"
 
 	# `install` should never be called with '-s' ...
-	[[ " ${INSOPTIONS} " == *" -s "* ]] && die "Never call insopts() with -s"
+	hasq -s ${INSOPTIONS} && die "Never call insopts() with -s"
 }
 
 diropts() {
@@ -965,14 +971,14 @@ exeopts() {
 	export EXEOPTIONS="$@"
 
 	# `install` should never be called with '-s' ...
-	[[ " ${EXEOPTIONS} " == *" -s "* ]] && die "Never call exeopts() with -s"
+	hasq -s ${EXEOPTIONS} && die "Never call exeopts() with -s"
 }
 
 libopts() {
 	export LIBOPTIONS="$@"
 
 	# `install` should never be called with '-s' ...
-	[[ " ${LIBOPTIONS} " == *" -s "* ]] && die "Never call libopts() with -s"
+	hasq -s ${LIBOPTIONS} && die "Never call libopts() with -s"
 }
 
 abort_handler() {
@@ -1033,6 +1039,12 @@ dyn_compile() {
 	[ "${DISTCC_DIR-unset}"  == "unset" ] && export DISTCC_DIR="${PORTAGE_TMPDIR}/.distcc"
 	[ ! -z "${DISTCC_DIR}" ] && addwrite "${DISTCC_DIR}"
 
+	LIBDIR_VAR="LIBDIR_${ABI}"
+	if [ -z "${PKG_CONFIG_PATH}" -a -n "${ABI}" -a -n "${!LIBDIR_VAR}" ]; then
+		export PKG_CONFIG_PATH="${EPREFIX}/usr/${!LIBDIR_VAR}/pkgconfig"
+	fi
+	unset LIBDIR_VAR
+
 	if hasq noauto $FEATURES &>/dev/null && [ ! -f ${PORTAGE_BUILDDIR}/.unpacked ]; then
 		echo
 		echo "!!! We apparently haven't unpacked... This is probably not what you"
@@ -1056,9 +1068,9 @@ dyn_compile() {
 	fi
 	cp "${EBUILD}" "build-info/${PF}.ebuild"
 
-	if [ "${PORTAGE_BUILDDIR}/.compiled" -nt "${WORKDIR}" ]; then
-		echo ">>> It appears that ${PN} is already compiled; skipping."
-		echo ">>> (clean to force compilation)"
+	if [[ ${PORTAGE_BUILDDIR}/.compiled -nt ${WORKDIR} ]] ; then
+		vecho ">>> It appears that '${PF}' is already compiled; skipping."
+		vecho ">>> Remove '${PORTAGE_BUILDDIR}/.compiled' to force install."
 		trap SIGINT SIGQUIT
 		[ "$(type -t post_src_compile)" == "function" ] && post_src_compile
 		return
@@ -1073,14 +1085,15 @@ dyn_compile() {
 	#some packages use an alternative to $S to build in, cause
 	#our libtool to create problematic .la files
 	export PWORKDIR="$WORKDIR"
-	echo ">>> Compiling source in ${srcdir} ..."
+	vecho ">>> Compiling source in ${srcdir} ..."
 	src_compile
-	echo ">>> Source compiled."
+	vecho ">>> Source compiled."
 	#|| abort_compile "fail"
 	cd "${PORTAGE_BUILDDIR}"
 	touch .compiled
 	cd build-info
 
+	set -f
 	for f in ASFLAGS CATEGORY CBUILD CC CFLAGS CHOST CTARGET CXX \
 		CXXFLAGS DEPEND EXTRA_ECONF EXTRA_EINSTALL EXTRA_MAKE \
 		FEATURES INHERITED IUSE LDFLAGS LIBCFLAGS LIBCXXFLAGS \
@@ -1090,14 +1103,13 @@ dyn_compile() {
 	done
 	echo "${USE}"		> USE
 	echo "${EAPI:-0}"	> EAPI
+	set +f
 	set                     >  environment
 	export -p | sed 's:declare -rx:declare -x:' >> environment
 	bzip2 -9 environment
 
 	cp "${EBUILD}" "${PF}.ebuild"
-	if [[ " ${FEATURES} " == *" nostrip "* ]] || \
-	   [[ " ${RESTRICT} " == *" nostrip "* ]] || \
-	   [[ " ${RESTRICT} " == *" strip "* ]]
+	if hasq nostrip ${FEATURES} ${RESTRICT} || hasq strip ${RESTRICT}
 	then
 		touch DEBUGBUILD
 	fi
@@ -1110,7 +1122,7 @@ dyn_compile() {
 dyn_test() {
 	[ "$(type -t pre_src_test)" == "function" ] && pre_src_test
 	if [ "${PORTAGE_BUILDDIR}/.tested" -nt "${WORKDIR}" ]; then
-		echo ">>> It appears that ${PN} has already been tested; skipping."
+		vecho ">>> It appears that ${PN} has already been tested; skipping."
 		[ "$(type -t post_src_test)" == "function" ] && post_src_test
 		return
 	fi
@@ -1118,13 +1130,15 @@ dyn_test() {
 	if [ -d "${S}" ]; then
 		cd "${S}"
 	fi
-	if hasq test $RESTRICT; then
+	if ! hasq test $FEATURES; then
+		vecho ">>> Test phase [not enabled]: ${CATEGORY}/${PF}"
+	elif hasq test $RESTRICT; then
 		ewarn "Skipping make test/check due to ebuild restriction."
-		echo ">>> Test phase [explicitly disabled]: ${CATEGORY}/${PF}"
-	elif ! hasq test $FEATURES; then
-		echo ">>> Test phase [not enabled]: ${CATEGORY}/${PF}"
+		vecho ">>> Test phase [explicitly disabled]: ${CATEGORY}/${PF}"
 	else
+		addpredict /
 		src_test
+		SANDBOX_PREDICT="${SANDBOX_PREDICT%:/}"
 	fi
 
 	cd "${PORTAGE_BUILDDIR}"
@@ -1135,6 +1149,13 @@ dyn_test() {
 
 dyn_install() {
 	[ -z "$PORTAGE_BUILDDIR" ] && die "${FUNCNAME}: PORTAGE_BUILDDIR is unset"
+	if hasq noauto $FEATURES ; then
+		rm -f "${PORTAGE_BUILDDIR}/.installed"
+	elif [[ ${PORTAGE_BUILDDIR}/.installed -nt ${WORKDIR} ]] ; then
+		vecho ">>> It appears that '${PF}' is already installed; skipping."
+		vecho ">>> Remove '${PORTAGE_BUILDDIR}/.installed' to force install."
+		return 0
+	fi
 	trap "abort_install" SIGINT SIGQUIT
 	[ "$(type -t pre_src_install)" == "function" ] && pre_src_install
 	rm -rf "${PORTAGE_BUILDDIR}/image"
@@ -1142,8 +1163,8 @@ dyn_install() {
 	if [ -d "${S}" ]; then
 		cd "${S}"
 	fi
-	echo
-	echo ">>> Install ${PF} into ${D} category ${CATEGORY}"
+	vecho
+	vecho ">>> Install ${PF} into ${D} category ${CATEGORY}"
 	#our custom version of libtool uses $S and $D to fix
 	#invalid paths in .la files
 	export S D
@@ -1152,8 +1173,8 @@ dyn_install() {
 	export PWORKDIR="$WORKDIR"
 	src_install
 	touch "${PORTAGE_BUILDDIR}/.installed"
-	echo ">>> Completed installing ${PF} into ${D}"
-	echo
+	vecho ">>> Completed installing ${PF} into ${D}"
+	vecho
 	cd ${PORTAGE_BUILDDIR}
 	[ "$(type -t post_src_install)" == "function" ] && post_src_install
 	trap SIGINT SIGQUIT
@@ -1217,9 +1238,7 @@ dyn_help() {
 	echo "  c++ flags   : ${CXXFLAGS}"
 	echo "  make flags  : ${MAKEOPTS}"
 	echo -n "  build mode  : "
-	if [[ " ${FEATURES} " == *" nostrip "* ]] || \
-	   [[ " ${RESTRICT} " == *" nostrip "* ]] || \
-	   [[ " ${RESTRICT} " == *" strip "* ]]
+	if hasq nostrip ${FEATURES} ${RESTRICT} || hasq strip ${RESTRICT} ;
 	then
 		echo "debug (large)"
 	else
@@ -1303,9 +1322,9 @@ inherit() {
 
 		if [ "$EBUILD_PHASE" != "depend" ]; then
 			if ! hasq $ECLASS $INHERITED; then
-				echo
-				echo "QA Notice: ECLASS '$ECLASS' inherited illegally in $CATEGORY/$PF" >&2
-				echo
+				vecho
+				vecho "QA Notice: ECLASS '$ECLASS' inherited illegally in $CATEGORY/$PF" >&2
+				vecho
 			fi
 		fi
 
@@ -1321,6 +1340,7 @@ inherit() {
 			done
 		fi
 		debug-print "inherit: $1 -> $location"
+		[ ! -e "$location" ] && die "${1}.eclass could not be found by inherit()"
 
 		#We need to back up the value of DEPEND and RDEPEND to B_DEPEND and B_RDEPEND
 		#(if set).. and then restore them after the inherit call.
@@ -1338,8 +1358,7 @@ inherit() {
 		#turn on glob expansion
 		set +f
 
-		source "$location" || export ERRORMSG="died sourcing $location in inherit()"
-		[ -z "${ERRORMSG}" ] || die "${ERRORMSG}"
+		source "$location" || die "died sourcing $location in inherit()"
 
 		#turn off glob expansion
 		set -f
@@ -1480,7 +1499,7 @@ remove_path_entry() {
 # === === === === === functions end, main part begins === === === === ===
 # === === === === === === === === === === === === === === === === === ===
 
-if [ "$*" != "depend" ] && [ "$*" != "clean" ] && [ "$*" != "setup" ]; then
+if [[ ${EBUILD_SH_ARGS} != "depend" ]] && [[ ${EBUILD_SH_ARGS}  != "clean" ]] && [[ ${EBUILD_SH_ARGS} != "setup" ]]; then
 	cd ${PORTAGE_TMPDIR} &> /dev/null
 	cd ${BUILD_PREFIX} &> /dev/null
 
@@ -1489,7 +1508,7 @@ if [ "$*" != "depend" ] && [ "$*" != "clean" ] && [ "$*" != "setup" ]; then
 	fi
 
 	if hasq distcc ${FEATURES} &>/dev/null; then
-		if [ -d ${EPREFIX}/usr/lib/distcc/bin ]; then
+		if [ -d "${EPREFIX}"/usr/lib/distcc/bin ]; then
 			#We can enable distributed compile support
 			if [ -z "${PATH/*distcc*/}" ]; then
 				# Remove the other reference.
@@ -1498,8 +1517,12 @@ if [ "$*" != "depend" ] && [ "$*" != "clean" ] && [ "$*" != "setup" ]; then
 			export PATH="${EPREFIX}/usr/lib/distcc/bin:${PATH}"
 			[ ! -z "${DISTCC_LOG}" ] && addwrite "$(dirname ${DISTCC_LOG})"
 		elif which distcc &>/dev/null; then
-			export CC="distcc $CC"
-			export CXX="distcc $CXX"
+			if ! hasq distcc $CC; then
+				export CC="distcc $CC"
+			fi
+			if ! hasq distcc $CXX; then
+				export CXX="distcc $CXX"
+			fi
 		fi
 	fi
 
@@ -1510,9 +1533,9 @@ if [ "$*" != "depend" ] && [ "$*" != "clean" ] && [ "$*" != "setup" ]; then
 			remove_path_entry "ccache"
 		fi
 
-		if [ -d ${EPREFIX}/usr/lib/ccache/bin ]; then
+		if [ -d "${EPREFIX}"/usr/lib/ccache/bin ]; then
 			export PATH="${EPREFIX}/usr/lib/ccache/bin:${PATH}"
-		elif [ -d ${EPREFIX}/usr/bin/ccache ]; then
+		elif [ -d "${EPREFIX}"/usr/bin/ccache ]; then
 			export PATH="${EPREFIX}/usr/bin/ccache:${PATH}"
 		fi
 
@@ -1548,34 +1571,34 @@ for x in T P PN PV PVR PR CATEGORY A EBUILD EMERGE_FROM O PPID FILESDIR PORTAGE_
 	[[ ${!x-UNSET_VAR} != UNSET_VAR ]] && declare -r ${x}
 done
 # Need to be able to change D in dyn_preinst due to the IMAGE stuff
-[[ $* != "preinst" ]] && declare -r D
+[[ ${EBUILD_SH_ARGS} != "preinst" ]] && declare -r D
 unset x
 
 # Turn of extended glob matching so that g++ doesn't get incorrectly matched.
 shopt -u extglob
 
-QA_INTERCEPTORS="javac java-config python python-config perl grep fgrep sed gcc g++ cc bash awk nawk gawk pkg-config"
+QA_INTERCEPTORS="javac java-config python python-config perl grep egrep fgrep sed gcc g++ cc bash awk nawk gawk pkg-config"
 # level the QA interceptors if we're in depend
-if hasq "depend" "$@"; then
+if hasq "depend" "${EBUILD_SH_ARGS}"; then
 	for BIN in ${QA_INTERCEPTORS}; do
-		BIN_PATH=`type -pf ${BIN}`
+		BIN_PATH=$(type -pf ${BIN})
 		if [ "$?" != "0" ]; then
 			BODY="echo \"*** missing command: ${BIN}\" >&2; return 127"
 		else
 			BODY="${BIN_PATH} \"\$@\"; return \$?"
 		fi
 		FUNC_SRC="${BIN}() {
-		echo -n \"QA Notice: ${BIN} in global scope: \" >&2
+		vecho -n \"QA Notice: ${BIN} in global scope: \" >&2
 		if [ \$ECLASS_DEPTH -gt 0 ]; then
-			echo \"eclass \${ECLASS}\" >&2
+			vecho \"eclass \${ECLASS}\" >&2
 		else
-			echo \"\${CATEGORY}/\${PF}\" >&2
+			vecho \"\${CATEGORY}/\${PF}\" >&2
 		fi
 		${BODY}
 		}";
 		eval "$FUNC_SRC" || echo "error creating QA interceptor ${BIN}" >&2
 	done
-	unset src bin_path body
+	unset BIN_PATH BIN BODY FUNC_SRC
 fi
 
 # reset the EBUILD_DEATH_HOOKS so they don't multiple due to stable's re-sourcing of env.
@@ -1587,7 +1610,6 @@ if ! hasq depend $EBUILD_PHASE; then
 	RESTRICT="${PORTAGE_RESTRICT}"
 	unset PORTAGE_RESTRICT
 fi
-[ -z "${ERRORMSG}" ] || die "${ERRORMSG}"
 
 # Expand KEYWORDS
 # We need to turn off pathname expansion for -* in KEYWORDS and
@@ -1596,9 +1618,7 @@ set -f
 KEYWORDS=$(eval echo ${KEYWORDS//~/\\~})
 set +f
 
-if [[ " ${FEATURES} " == *" nostrip "* ]] || \
-   [[ " ${RESTRICT} " == *" nostrip "* ]] || \
-   [[ " ${RESTRICT} " == *" strip "* ]]
+if hasq nostrip ${FEATURES} ${RESTRICT} || hasq strip ${RESTRICT}
 then
 	export DEBUGBUILD=1
 fi
@@ -1609,7 +1629,7 @@ if [ "$S" = "" ]; then
 fi
 
 #wipe the interceptors.  we don't want saved.
-if hasq "depend" "$@"; then
+if hasq "depend" "${EBUILD_SH_ARGS}"; then
 	unset -f $QA_INTERCEPTORS
 	unset QA_INTERCEPTORS
 fi
@@ -1648,7 +1668,7 @@ fi
 
 set +f
 
-for myarg in $*; do
+for myarg in ${EBUILD_SH_ARGS} ; do
 	case $myarg in
 	nofetch)
 		pkg_nofetch
@@ -1687,7 +1707,7 @@ for myarg in $*; do
 		fi
 		export SANDBOX_ON="0"
 		;;
-	help|clean|setup|preinst)
+	help|setup|preinst)
 		#pkg_setup needs to be out of the sandbox for tmp file creation;
 		#for example, awking and piping a file in /tmp requires a temp file to be created
 		#in /etc.  If pkg_setup is in the sandbox, both our lilo and apache ebuilds break.
@@ -1708,35 +1728,35 @@ for myarg in $*; do
 		#dbkey=${PORTAGE_CACHEDIR}/${CATEGORY}/${PF}
 
 		if [ ! -d "${dbkey%/*}" ]; then
-			install -d -g ${PORTAGE_GID} -m 2775 "${dbkey%/*}"
+			install -d -g ${PORTAGE_GID} -m2775 "${dbkey%/*}"
 		fi
 
 		# Make it group writable. 666&~002==664
 		umask 002
 
-		#the extra `echo` commands remove newlines
-		echo `echo "$DEPEND"`       > $dbkey
-		echo `echo "$RDEPEND"`     >> $dbkey
-		echo `echo "$SLOT"`        >> $dbkey
-		echo `echo "$SRC_URI"`     >> $dbkey
-		echo `echo "$RESTRICT"`    >> $dbkey
-		echo `echo "$HOMEPAGE"`    >> $dbkey
-		echo `echo "$LICENSE"`     >> $dbkey
-		echo `echo "$DESCRIPTION"` >> $dbkey
-		echo `echo "$KEYWORDS"`    >> $dbkey
-		echo `echo "$INHERITED"`   >> $dbkey
-		echo `echo "$IUSE"`        >> $dbkey
+		#the extra $(echo) commands remove newlines
+		echo $(echo "$DEPEND")       > $dbkey
+		echo $(echo "$RDEPEND")     >> $dbkey
+		echo $(echo "$SLOT")        >> $dbkey
+		echo $(echo "$SRC_URI")     >> $dbkey
+		echo $(echo "$RESTRICT")    >> $dbkey
+		echo $(echo "$HOMEPAGE")    >> $dbkey
+		echo $(echo "$LICENSE")     >> $dbkey
+		echo $(echo "$DESCRIPTION") >> $dbkey
+		echo $(echo "$KEYWORDS")    >> $dbkey
+		echo $(echo "$INHERITED")   >> $dbkey
+		echo $(echo "$IUSE")        >> $dbkey
 		echo                       >> $dbkey
-		echo `echo "$PDEPEND"`     >> $dbkey
-		echo `echo "$PROVIDE"`     >> $dbkey
-		echo `echo "${EAPI:-0}"`   >> $dbkey
-		echo `echo "$UNUSED_01"`   >> $dbkey
-		echo `echo "$UNUSED_02"`   >> $dbkey
-		echo `echo "$UNUSED_03"`   >> $dbkey
-		echo `echo "$UNUSED_04"`   >> $dbkey
-		echo `echo "$UNUSED_05"`   >> $dbkey
-		echo `echo "$UNUSED_06"`   >> $dbkey
-		echo `echo "$UNUSED_07"`   >> $dbkey
+		echo $(echo "$PDEPEND")     >> $dbkey
+		echo $(echo "$PROVIDE")     >> $dbkey
+		echo $(echo "${EAPI:-0}")   >> $dbkey
+		echo $(echo "$UNUSED_01")   >> $dbkey
+		echo $(echo "$UNUSED_02")   >> $dbkey
+		echo $(echo "$UNUSED_03")   >> $dbkey
+		echo $(echo "$UNUSED_04")   >> $dbkey
+		echo $(echo "$UNUSED_05")   >> $dbkey
+		echo $(echo "$UNUSED_06")   >> $dbkey
+		echo $(echo "$UNUSED_07")   >> $dbkey
 		set +f
 		#make sure it is writable by our group:
 		exit 0

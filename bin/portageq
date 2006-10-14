@@ -3,8 +3,23 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/bin/portageq,v 1.13.2.1 2005/04/12 12:23:41 jstubbs Exp $
 
-import sys, os
-os.environ["PORTAGE_CALLER"] = "portageq"
+import sys
+# This block ensures that ^C interrupts are handled quietly.
+try:
+	import signal
+
+	def exithandler(signum, frame):
+		signal.signal(signal.SIGINT, signal.SIG_IGN)
+		signal.signal(signal.SIGTERM, signal.SIG_IGN)
+		sys.exit(1)
+
+	signal.signal(signal.SIGINT, exithandler)
+	signal.signal(signal.SIGTERM, exithandler)
+
+except KeyboardInterrupt:
+	sys.exit(1)
+
+import os
 sys.path = ["@PORTAGE_BASE@/pym"]+sys.path
 
 import types,string
@@ -80,6 +95,36 @@ def mass_best_version(argv):
 		sys.exit(1)
 mass_best_version.uses_root = True
 
+def metadata(argv):
+	"""<root> <pkgtype> <category/package> [<key>]+
+	Returns metadata values for the specified package.
+	"""
+	if (len(argv) < 4):
+		print >> sys.stderr, "ERROR: insufficient parameters!"
+		sys.exit(2)
+
+	root, pkgtype, pkgspec = argv[0:3]
+	metakeys = argv[3:]
+	type_map = {
+		"ebuild":"porttree",
+		"binary":"bintree",
+		"installed":"vartree"}
+	if pkgtype not in type_map:
+		print >> sys.stderr, "Unrecognized package type: '%s'" % pkgtype
+		sys.exit(1)
+	trees = portage.db
+	if os.path.realpath(root) == os.path.realpath(portage.settings["ROOT"]):
+		root = portage.settings["ROOT"] # contains the normalized $ROOT
+	try:
+			values = trees[root][type_map[pkgtype]].dbapi.aux_get(
+				pkgspec, metakeys)
+			for value in values:
+				print value
+	except KeyError:
+		print >> sys.stderr, "Package not found: '%s'" % pkgspec
+		sys.exit(1)
+
+metadata.uses_root = True
 
 def best_visible(argv):
 	"""<root> [<category/package>]+
@@ -263,9 +308,12 @@ def usage(argv):
 		print "\nRun portageq with --help for info"
 
 def main():
-	if (len(sys.argv) < 2) or ("-h" in sys.argv or "--help" in sys.argv):
+	if "-h" in sys.argv or "--help" in sys.argv:
 		usage(sys.argv)
-		sys.exit()
+		sys.exit(os.EX_OK)
+	elif len(sys.argv) < 2:
+		usage(sys.argv)
+		sys.exit(os.EX_USAGE)
 
 	cmd = sys.argv[1]
 	try:
@@ -280,7 +328,7 @@ def main():
 		function(sys.argv[2:])
 	except KeyError:
 		usage(sys.argv)
-		sys.exit()
+		sys.exit(os.EX_USAGE)
 
 main()
 

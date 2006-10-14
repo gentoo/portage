@@ -2,11 +2,15 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
 
-# Internal logging function, don't use this in ebuilds
-vecho() {
-	[[ ${PORTAGE_QUIET} == "1" ]] || echo "$@"
+quiet_mode() {
+	[[ ${PORTAGE_QUIET} -eq 1 ]]
 }
 
+vecho() {
+	quiet_mode || echo "$@"
+}
+
+# Internal logging function, don't use this in ebuilds
 elog_base() {
 	local messagetype
 	[ -z "${1}" -o -z "${T}" -o ! -d "${T}/logging" ] && return 1
@@ -200,14 +204,15 @@ set_colors() {
 	ENDCOL=$'\e[A\e['${COLS}'C'    # Now, ${ENDCOL} will move us to the end of the
 	                               # column;  irregardless of character width
 
-	GOOD=$'\e[32;01m'
-	WARN=$'\e[33;01m'
-	BAD=$'\e[31;01m'
-	HILITE=$'\e[36;01m'
-	BRACKET=$'\e[34;01m'
+	[ -z "${GOOD}"    ] && GOOD=$'\e[32;01m'
+	[ -z "${WARN}"    ] && WARN=$'\e[33;01m'
+	[ -z "${BAD}"     ] && BAD=$'\e[31;01m'
+	[ -z "${HILITE}"  ] && HILITE=$'\e[36;01m'
+	[ -z "${BRACKET}" ] && BRACKET=$'\e[34;01m'
 	NORMAL=$'\e[0m'
 }
 
+export -n GOOD WARN BAD HILITE BRACKET
 RC_ENDCOL="yes"
 RC_INDENTATION=''
 RC_DEFAULT_INDENT=2

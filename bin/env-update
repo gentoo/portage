@@ -4,7 +4,6 @@
 # $Id: /var/cvsroot/gentoo-src/portage/bin/env-update,v 1.9 2004/10/04 13:56:50 vapier Exp $
 
 import os,sys
-os.environ["PORTAGE_CALLER"] = "env-update"
 sys.path = ["@PORTAGE_BASE@/pym"]+sys.path
 
 def usage(status):
