@@ -1624,13 +1624,6 @@ class depgraph:
 			bindb  = self.trees[myroot]["bintree"].dbapi
 			vartree = self.trees[myroot]["vartree"]
 			pkgsettings = self.pkgsettings[myroot]
-			pkgsettings.setcpv(pkg_key, mydb=portdb)
-			if pkg_key not in self.useFlags[myroot]:
-				if "binary" == pkg_type:
-					self.useFlags[myroot][pkg_key] = bindb.aux_get(
-							pkg_key, ["USE"])[0].split()
-				elif "ebuild" == pkg_type:
-					self.useFlags[myroot][pkg_key] = pkgsettings["USE"].split()
 
 			fetch=" "
 
@@ -1648,6 +1641,17 @@ class depgraph:
 					print bad("(is blocking %s)") % block_parents
 			else:
 				mydbapi = self.trees[myroot][self.pkg_tree_map[pkg_type]].dbapi
+				pkgsettings.setcpv(pkg_key, mydb=portdb)
+				if pkg_key not in self.useFlags[myroot]:
+					if "ebuild" == pkg_type:
+						if "merge" == x[3] or not vartree.dbapi.cpv_exists(pkg_key):
+							self.useFlags[myroot][pkg_key] = pkgsettings["USE"].split()
+						else:
+							self.useFlags[myroot][pkg_key] = vartree.dbapi.aux_get(
+								pkg_key, ["USE"])[0].split()
+					else:
+						self.useFlags[myroot][pkg_key] = mydbapi.aux_get(
+							pkg_key, ["USE"])[0].split()
 				if "ebuild" == pkg_type and x[3] != "nomerge" and \
 					"fetch" in portdb.aux_get(
 					x[2], ["RESTRICT"])[0].split():
