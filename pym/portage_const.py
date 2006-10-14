@@ -61,4 +61,3 @@ MANIFEST2_IDENTIFIERS = ["AUX","MISC","DIST","EBUILD"]
 # ===========================================================================
 # END OF CONSTANTS -- END OF CONSTANTS -- END OF CONSTANTS -- END OF CONSTANT
 # ===========================================================================
-

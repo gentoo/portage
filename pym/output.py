@@ -1,10 +1,13 @@
 # Copyright 1998-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: /var/cvsroot/gentoo-src/portage/pym/output.py,v 1.24.2.4 2005/04/17 09:01:55 jstubbs Exp $
+# $Id: output.py 4554 2006-09-29 02:10:29Z zmedico $
 
 __docformat__ = "epytext"
 
-import commands,os,sys,re
+import commands,errno,os,re,shlex,sys
+from portage_const import COLOR_MAP_FILE
+from portage_util import writemsg
+from portage_exception import PortageException, ParseError, PermissionDenied, FileNotFound
 
 havecolor=1
 dotitles=1
@@ -71,23 +74,100 @@ codes["underline"] = esc_seq + "04m"
 codes["blink"]     = esc_seq + "05m"
 codes["overline"]  = esc_seq + "06m"  # Who made this up? Seriously.
 
-codes["teal"]      = esc_seq + "36m"
-codes["turquoise"] = esc_seq + "36;01m"
+ansi_color_codes = []
+for x in xrange(30, 38):
+	ansi_color_codes.append("%im" % x)
+	ansi_color_codes.append("%i;01m" % x)
 
-codes["fuchsia"]   = esc_seq + "35;01m"
-codes["purple"]    = esc_seq + "35m"
+rgb_ansi_colors = ['0x000000', '0x555555', '0xAA0000', '0xFF5555', '0x00AA00',
+	'0x55FF55', '0xAA5500', '0xFFFF55', '0x0000AA', '0x5555FF', '0xAA00AA',
+	'0xFF55FF', '0x00AAAA', '0x55FFFF', '0xAAAAAA', '0xFFFFFF']
 
-codes["blue"]      = esc_seq + "34;01m"
-codes["darkblue"]  = esc_seq + "34m"
+for x in xrange(len(rgb_ansi_colors)):
+	codes[rgb_ansi_colors[x]] = esc_seq + ansi_color_codes[x]
 
-codes["green"]     = esc_seq + "32;01m"
-codes["darkgreen"] = esc_seq + "32m"
+del x
 
-codes["yellow"]    = esc_seq + "33;01m"
-codes["brown"]     = esc_seq + "33m"
+codes["black"]     = codes["0x000000"]
+codes["darkgray"]  = codes["0x555555"]
 
-codes["red"]       = esc_seq + "31;01m"
-codes["darkred"]   = esc_seq + "31m"
+codes["red"]       = codes["0xFF5555"]
+codes["darkred"]   = codes["0xAA0000"]
+
+codes["green"]     = codes["0x55FF55"]
+codes["darkgreen"] = codes["0x00AA00"]
+
+codes["yellow"]    = codes["0xFFFF55"]
+codes["brown"]     = codes["0xAA5500"]
+
+codes["blue"]      = codes["0x5555FF"]
+codes["darkblue"]  = codes["0x0000AA"]
+
+codes["fuchsia"]   = codes["0xFF55FF"]
+codes["purple"]    = codes["0xAA00AA"]
+
+codes["turquoise"] = codes["0x55FFFF"]
+codes["teal"]      = codes["0x00AAAA"]
+
+codes["white"]     = codes["0xFFFFFF"]
+codes["lightgray"] = codes["0xAAAAAA"]
+
+codes["darkteal"]   = codes["turquoise"]
+codes["darkyellow"] = codes["brown"]
+codes["fuscia"]     = codes["fuchsia"]
+codes["white"]      = codes["bold"]
+
+# Colors from /sbin/functions.sh
+codes["GOOD"]       = codes["green"]
+codes["WARN"]       = codes["yellow"]
+codes["BAD"]        = codes["red"]
+codes["HILITE"]     = codes["teal"]
+codes["BRACKET"]    = codes["blue"]
+
+# Portage functions
+codes["INFORM"] = codes["darkgreen"]
+codes["UNMERGE_WARN"] = codes["red"]
+codes["MERGE_LIST_PROGRESS"] = codes["yellow"]
+
+def parse_color_map():
+	myfile = COLOR_MAP_FILE
+	ansi_code_pattern = re.compile("^[0-9;]*m$")
+	def strip_quotes(token, quotes):
+		if token[0] in quotes and token[0] == token[-1]:
+			token = token[1:-1]
+		return token
+	try:
+		s = shlex.shlex(open(myfile))
+		s.wordchars = s.wordchars + ";" # for ansi codes
+		d = {}
+		while True:
+			k, o, v = s.get_token(), s.get_token(), s.get_token()
+			if k is s.eof:
+				break
+			if o != "=":
+				raise ParseError("%s%s'%s'" % (s.error_leader(myfile, s.lineno), "expected '=' operator: ", o))
+			k = strip_quotes(k, s.quotes)
+			v = strip_quotes(v, s.quotes)
+			if ansi_code_pattern.match(v):
+				codes[k] = esc_seq + v
+			else:
+				if v in codes:
+					codes[k] = codes[v]
+				else:
+					raise ParseError("%s%s'%s'" % (s.error_leader(myfile, s.lineno), "Undefined: ", v))
+	except (IOError, OSError), e:
+		if e.errno == errno.ENOENT:
+			raise FileNotFound(myfile)
+		elif e.errno == errno.EACCES:
+			raise PermissionDenied(myfile)
+		raise
+
+try:
+	parse_color_map()
+except FileNotFound, e:
+	pass
+except PortageException, e:
+	writemsg("%s\n" % str(e))
 
 def nc_len(mystr):
 	tmp = re.sub(esc_seq + "^m]+m", "", mystr);
@@ -99,7 +179,7 @@ def xtermTitle(mystr):
 		legal_terms = ["xterm","Eterm","aterm","rxvt","screen","kterm","rxvt-unicode","gnome"]
 		for term in legal_terms:
 			if myt.startswith(term):
-				sys.stderr.write("\x1b]2;"+str(mystr)+"\x07")
+				sys.stderr.write("\x1b]0;"+str(mystr)+"\x07")
 				sys.stderr.flush()
 				break
 
@@ -135,11 +215,6 @@ def resetColor():
 
 def colorize(color_key, text):
 	return codes[color_key] + text + codes["reset"]
-
-codes["darkteal"]   = codes["turquoise"]
-codes["darkyellow"] = codes["brown"]
-codes["fuscia"]     = codes["fuchsia"]
-codes["white"]      = codes["bold"]
 
 compat_functions_colors = ["bold","white","teal","turquoise","darkteal",
 	"fuscia","fuchsia","purple","blue","darkblue","green","darkgreen","yellow",
