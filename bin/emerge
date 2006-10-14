@@ -1187,7 +1187,8 @@ class depgraph:
 					matched_packages.append(
 						["ebuild", myroot, myeb, None])
 
-				if not matched_packages:
+				if not matched_packages and \
+					not (arg and "selective" not in self.myparams):
 					"""Fall back to the installed package database.  This is a
 					last resort because the metadata tends to diverge from that
 					of the ebuild in the tree."""
