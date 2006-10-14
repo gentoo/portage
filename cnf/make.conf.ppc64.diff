@@ -1,0 +1,69 @@
+--- make.conf	2006-03-19 18:40:11.000000000 +0100
++++ make.conf.ppc64	2006-03-19 18:26:21.000000000 +0100
+@@ -23,6 +23,13 @@
+ # Example:
+ #USE="X gtk gnome -alsa"
+ 
++# Host Setting
++# ============
++#
++# All PowerPC64 systems should use this host setting:
++
++CHOST="powerpc64-unknown-linux-gnu"
++
+ # Host and optimization settings 
+ # ==============================
+ #
+@@ -33,9 +40,38 @@
+ # package (and in some cases the libraries it uses) at default optimizations
+ # before reporting errors to developers.
+ #
+-# Please refer to the GCC manual for a list of possible values.
++# -mtune=<cpu-type> for PowerPC64 systems instructs the gcc compiler that
++# it can use instruction scheduling specific for that type of processor
++# specified
++#
++# -mcpu=<cpu-type> for PowerPC64 systems selects the type of processor you want
++# to optimize your code for.   Code generated under those options will run best
++# on that processor.
++#
++# -mcpu=<cpu-type>  and -mtune=<cpu-type>  should both be specified
++#
++# GCC 3.x supports many ppc64 processor types including: power3, power4,
++# 970 (aka G5), and power5.
++#
++# RS64 processors should specify power3. 
++#
++# Additional options of interest:
++#
++# -maltivec enables optional altivec support and should be used
++# only for 970 processors.  It also requires that you have
++# the alitvec option compiled into your kernel to take full advantage of this
++# feature.  Note: you should also include -mabi=altivec flag if using this option.
+ #
+-#CFLAGS="-O2 -pipe"
++# -O3 for the most part seems ok but should be used with caution as
++# for instance app-editors/vim has problems if it is used. -O2 is a
++# good selection.
++#
++#Example CFLAGS setting
++#CFLAGS="-O2 -pipe -mcpu=970 -mtune=970 -maltivec -mabi=altivec"
++#
++#or
++#
++#CFLAGS="-O2 -pipe -mcpu=power3 -mtune=power3"
+ #
+ # If you set a CFLAGS above, then this line will set your default C++ flags to
+ # the same settings.
+@@ -61,7 +97,10 @@
+ # DO NOT PUT ANYTHING BUT YOUR SPECIFIC ~ARCHITECTURE IN THE LIST.
+ # IF YOU ARE UNSURE OF YOUR ARCH, OR THE IMPLICATIONS, DO NOT MODIFY THIS.
+ #
+-#ACCEPT_KEYWORDS="~arch"
++# Note: this really shouldn't be enabled until _AFTER_ you bootstrap and emerge
++# system.  If you want the testing things update after these steps are completed.
++#
++#ACCEPT_KEYWORDS="ppc64"
+ 
+ # Portage Directories
+ # ===================
