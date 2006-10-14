@@ -357,7 +357,7 @@ dyn_package() {
 	# Sandbox is disabled in case the user wants to use a symlink
 	# for $PKGDIR and/or $PKGDIR/All.
 	export SANDBOX_ON="0"
-	tar cpvf - ./ | bzip2 -f > "${pkg_tmp}" || die "Failed to create tarball"
+	tar -cf - . | bzip2 -f > "${pkg_tmp}" || die "Failed to create tarball"
 	cd ..
 	export PYTHONPATH=${PORTAGE_PYM_PATH:-/usr/lib/portage/pym}
 	python -c "import xpak; t=xpak.tbz2('${pkg_tmp}'); t.recompose('${PORTAGE_BUILDDIR}/build-info')"
