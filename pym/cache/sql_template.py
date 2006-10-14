@@ -3,8 +3,8 @@
 # License: GPL2
 # $Id: sql_template.py 1911 2005-08-25 03:44:21Z ferringb $
 
-import template, cache_errors
-from template import reconstruct_eclasses
+from cache import template, cache_errors
+from cache.template import reconstruct_eclasses
 
 class SQLDatabase(template.database):
 	"""template class for RDBM based caches

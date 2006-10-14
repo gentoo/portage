@@ -3,11 +3,10 @@
 # License: GPL2
 # $Id: flat_list.py 1911 2005-08-25 03:44:21Z ferringb $
 
-import fs_template
-import cache_errors
+from cache import fs_template
+from cache import cache_errors
 import errno, os, stat
-from mappings import LazyLoad, ProtectedDict
-from template import reconstruct_eclasses
+from cache.template import reconstruct_eclasses
 # store the current key order *here*.
 class database(fs_template.FsBased):
 
@@ -24,35 +23,24 @@ class database(fs_template.FsBased):
 	def __getitem__(self, cpv):
 		fp = os.path.join(self.location, cpv)
 		try:
-			def curry(*args):
-				def callit(*args2):
-					return args[0](*args[1:]+args2)
-				return callit
-			return ProtectedDict(LazyLoad(curry(self._pull, fp, cpv), initial_items=[("_mtime_", os.stat(fp).st_mtime)]))
-		except OSError:
+			myf = open(fp, "r")
+			try:
+				d = self._parse_data(myf, cpv)
+				d["_mtime_"] = long(os.fstat(myf.fileno()).st_mtime)
+				return d
+			finally:
+				myf.close()
+		except (IOError, OSError), e:
+			if e.errno != errno.ENOENT:
+				raise cache_errors.CacheCorruption(cpv, e)
 			raise KeyError(cpv)
-		return self._getitem(cpv)
 
-	def _pull(self, fp, cpv):
+	def _parse_data(self, data, cpv):
 		try:
-			myf = open(fp,"r")
-		except IOError:
-			raise KeyError(cpv)
-		except OSError, e:
+			d = dict(map(lambda x:x.rstrip("\n").split("=", 1), data))
+		except ValueError, e:
+			# If a line is missing an "=", the split length is 1 instead of 2.
 			raise cache_errors.CacheCorruption(cpv, e)
-		try:
-			d = self._parse_data(myf, cpv)
-		except (OSError, ValueError), e:
-			myf.close()
-			raise cache_errors.CacheCorruption(cpv, e)
-		myf.close()
-		return d
-
-
-	def _parse_data(self, data, cpv, mtime=0):
-		d = dict(map(lambda x:x.rstrip().split("=", 1), data))
-		if mtime != 0:
-			d["_mtime_"] = long(mtime)
 		if "_eclasses_" in d:
 			d["_eclasses_"] = reconstruct_eclasses(cpv, d["_eclasses_"])
 		return d

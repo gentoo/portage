@@ -144,7 +144,7 @@ def perform_checksum(filename, hashname="MD5", calc_prelink=0):
 		if e.errno == errno.ENOENT:
 			raise portage_exception.FileNotFound(myfilename)
 		else:
-			raise e
+			raise
 	if calc_prelink and prelink_capable:
 		try:
 			os.unlink(prelink_tmpfile)
@@ -152,7 +152,7 @@ def perform_checksum(filename, hashname="MD5", calc_prelink=0):
 			if oe.errno == errno.ENOENT:
 				pass
 			else:
-				raise oe
+				raise
 		portage_locks.unlockfile(mylock)
 
 	return (myhash,mysize)

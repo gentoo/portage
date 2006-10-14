@@ -4,7 +4,7 @@
 # $Id: fs_template.py 1911 2005-08-25 03:44:21Z ferringb $
 
 import os
-import template, cache_errors
+from cache import template
 from portage_data import portage_gid
 
 class FsBased(template.database):

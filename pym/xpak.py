@@ -110,7 +110,7 @@ def xsplit(infile):
 	
 	splits = xsplit_mem(mydat)
 	if not splits:
-		return
+		return False
 	
 	myfile=open(infile+".index","w")
 	myfile.write(splits[0])
@@ -118,7 +118,7 @@ def xsplit(infile):
 	myfile=open(infile+".dat","w")
 	myfile.write(splits[1])
 	myfile.close()
-	return
+	return True
 
 def xsplit_mem(mydat):
 	if mydat[0:8]!="XPAKPACK":
@@ -154,7 +154,7 @@ def getboth(infile):
 	myindex=myfile.read(indexsize)
 	mydata=myfile.read(datasize)
 	myfile.close()
-	return [myindex,mydata]
+	return myindex, mydata
 
 def listindex(myindex):
 	"""Print to the terminal the filenames listed in the indexglob passed in."""
@@ -185,7 +185,7 @@ def searchindex(myindex,myitem):
 				#found
 				datapos=decodeint(myindex[startpos+4+mytestlen:startpos+8+mytestlen]);
 				datalen=decodeint(myindex[startpos+8+mytestlen:startpos+12+mytestlen]);
-				return [datapos,datalen]
+				return datapos, datalen
 		startpos=startpos+mytestlen+12
 		
 def getitem(myid,myitem):
@@ -417,5 +417,5 @@ class tbz2:
 		mydata =a.read(self.datasize)
 		a.close()
 
-		return [self.index[:],mydata]
+		return self.index, mydata
 

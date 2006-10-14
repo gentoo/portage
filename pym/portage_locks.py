@@ -1,7 +1,7 @@
 # portage: Lock management code
 # Copyright 2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: /var/cvsroot/gentoo-src/portage/pym/portage_locks.py,v 1.18.2.2 2005/01/16 02:35:33 carpaski Exp $
+# $Id$
 
 
 import errno
@@ -11,27 +11,12 @@ import string
 import time
 import types
 import portage_exception
-import portage_file
 import portage_util
 import portage_data
-from portage_exec import atexit_register
 from portage_localization import _
 import portage_const
 
 HARDLINK_FD = -2
-
-hardlock_path_list = []
-def clean_my_hardlocks():
-	for x in hardlock_path_list:
-		hardlock_cleanup(x)
-def add_hardlock_file_to_cleanup(path):
-	mypath = portage_file.normpath(path)
-	if os.path.isfile(mypath):
-		mypath = os.path.dirname(mypath)
-	if os.path.isdir(mypath):
-		hardlock_path_list = mypath[:]
-
-atexit_register(clean_my_hardlocks)
 
 def lockdir(mydir):
 	return lockfile(mydir,wantnewlockfile=1)
@@ -70,8 +55,6 @@ def lockfile(mypath,wantnewlockfile=0,unlinkfile=0):
 			try:
 				if os.stat(lockfilename).st_gid != portage_data.portage_gid:
 					os.chown(lockfilename,os.getuid(),portage_data.portage_gid)
-			except SystemExit, e:
-				raise
 			except OSError, e:
 				if e[0] == 2: # No such file or directory
 					return lockfile(mypath,wantnewlockfile,unlinkfile)
@@ -112,7 +95,7 @@ def lockfile(mypath,wantnewlockfile=0,unlinkfile=0):
 					try:
 						if os.stat(lockfilename)[stat.ST_NLINK] == 1:
 							os.unlink(lockfilename)
-					except Exception, e:
+					except OSError:
 						pass
 					link_success = hardlink_lockfile(lockfilename)
 			if not link_success:
@@ -124,7 +107,7 @@ def lockfile(mypath,wantnewlockfile=0,unlinkfile=0):
 
 		
 	if type(lockfilename) == types.StringType and \
-		myfd != HARDLINK_FD and os.fstat(myfd).st_nlink != 1:
+		myfd != HARDLINK_FD and os.fstat(myfd).st_nlink == 0:
 		# The file was deleted on us... Keep trying to make one...
 		os.close(myfd)
 		portage_util.writemsg("lockfile recurse\n",1)
@@ -157,13 +140,11 @@ def unlockfile(mytuple):
 		return False
 
 	try:
-		if myfd == None:
+		if myfd is None:
 			myfd = os.open(lockfilename, os.O_WRONLY,0660)
 			unlinkfile = 1
 		locking_method(myfd,fcntl.LOCK_UN)
-	except SystemExit, e:
-		raise
-	except Exception, e:
+	except OSError:
 		if type(lockfilename) == types.StringType:
 			os.close(myfd)
 		raise IOError, "Failed to unlock file '%s'\n" % lockfilename
@@ -180,7 +161,6 @@ def unlockfile(mytuple):
 			# We won the lock, so there isn't competition for it.
 			# We can safely delete the file.
 			portage_util.writemsg("Got the lockfile...\n",1)
-			#portage_util.writemsg("Unlinking...\n")
 			if os.fstat(myfd).st_nlink == 1:
 				os.unlink(lockfilename)
 				portage_util.writemsg("Unlinked lockfile...\n",1)
@@ -189,11 +169,7 @@ def unlockfile(mytuple):
 				portage_util.writemsg("lockfile does not exist '%s'\n" % lockfilename,1)
 				os.close(myfd)
 				return False
-	except SystemExit, e:
-		raise
 	except Exception, e:
-		# We really don't care... Someone else has the lock.
-		# So it is their problem now.
 		portage_util.writemsg("Failed to get lock... someone took it.\n",1)
 		portage_util.writemsg(str(e)+"\n",1)
 
@@ -211,28 +187,11 @@ def unlockfile(mytuple):
 def hardlock_name(path):
 	return path+".hardlock-"+os.uname()[1]+"-"+str(os.getpid())
 
-def hardlink_active(lock):
-	if not os.path.exists(lock):
-		return False
- 	# XXXXXXXXXXXXXXXXXXXXXXXXXX
-
 def hardlink_is_mine(link,lock):
 	try:
-		myhls = os.stat(link)
-		mylfs = os.stat(lock)
-	except SystemExit, e:
-		raise
-	except:
-		myhls = None
-		mylfs = None
-
-	if myhls:
-		if myhls[stat.ST_NLINK] == 2:
-			return True
-		if mylfs:
-			if mylfs[stat.ST_INO] == myhls[stat.ST_INO]:
-				return True
-	return False
+		return os.stat(link).st_nlink == 2
+	except OSError:
+		return False
 
 def hardlink_lockfile(lockfilename, max_wait=14400):
 	"""Does the NFS, hardlink shuffle to ensure locking on the disk.
@@ -242,9 +201,7 @@ def hardlink_lockfile(lockfilename, max_wait=14400):
 	Otherwise we lather, rise, and repeat.
 	We default to a 4 hour timeout.
 	"""
-	
-	add_hardlock_file_to_cleanup(lockfilename)
-	
+
 	start_time = time.time()
 	myhardlock = hardlock_name(lockfilename)
 	reported_waiting = False
@@ -259,11 +216,7 @@ def hardlink_lockfile(lockfilename, max_wait=14400):
 
 		try:
 			res = os.link(myhardlock, lockfilename)
-		except SystemExit, e:
-			raise
-		except Exception, e:
-			#print "lockfile(): Hardlink: Link failed."
-			#print "Exception: ",e
+		except OSError:
 			pass
 
 		if hardlink_is_mine(myhardlock, lockfilename):
@@ -288,15 +241,16 @@ def hardlink_lockfile(lockfilename, max_wait=14400):
 
 def unhardlink_lockfile(lockfilename):
 	myhardlock = hardlock_name(lockfilename)
-	try:
-		if os.path.exists(myhardlock):
-			os.unlink(myhardlock)
-		if os.path.exists(lockfilename):
+	if hardlink_is_mine(myhardlock, lockfilename):
+		# Make sure not to touch lockfilename unless we really have a lock.
+		try:
 			os.unlink(lockfilename)
-	except SystemExit, e:
-		raise
-	except:
-		portage_util.writemsg("Something strange happened to our hardlink locks.\n")
+		except OSError:
+			pass
+	try:
+		os.unlink(myhardlock)
+	except OSError:
+		pass
 
 def hardlock_cleanup(path, remove_all_locks=False):
 	mypid  = str(os.getpid())
@@ -342,26 +296,20 @@ def hardlock_cleanup(path, remove_all_locks=False):
 							# We're sweeping through, unlinking everyone's locks.
 							os.unlink(filename)
 							results.append(_("Unlinked: ") + filename)
-						except SystemExit, e:
-							raise
-						except Exception,e:
+						except OSError:
 							pass
 				try:
 					os.unlink(path+"/"+x)
 					results.append(_("Unlinked: ") + path+"/"+x)
 					os.unlink(mylockname)
 					results.append(_("Unlinked: ") + mylockname)
-				except SystemExit, e:
-					raise
-				except Exception,e:
+				except OSError:
 					pass
 			else:
 				try:
 					os.unlink(mylockname)
 					results.append(_("Unlinked: ") + mylockname)
-				except SystemExit, e:
-					raise
-				except Exception,e:
+				except OSError:
 					pass
 
 	return results

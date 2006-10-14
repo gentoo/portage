@@ -4,11 +4,10 @@
 # $Id: metadata.py 1964 2005-09-03 00:16:16Z ferringb $
 
 import os, stat
-import flat_hash
-import cache_errors
+from cache import flat_hash
 import eclass_cache 
-from template import reconstruct_eclasses, serialize_eclasses
-from mappings import ProtectedDict, LazyLoad
+from cache.template import reconstruct_eclasses
+from cache.mappings import ProtectedDict
 
 # this is the old cache format, flat_list.  count maintained here.
 magic_line_count = 22
@@ -33,11 +32,11 @@ class database(flat_hash.database):
 		return flat_hash.database.__getitem__(self, cpv)
 
 
-	def _parse_data(self, data, mtime):
+	def _parse_data(self, data, cpv):
 		# easy attempt first.
 		data = list(data)
 		if len(data) != magic_line_count:
-			d = flat_hash.database._parse_data(self, data, mtime)
+			d = flat_hash.database._parse_data(self, data)
 		else:
 			# this one's interesting.
 			d = {}

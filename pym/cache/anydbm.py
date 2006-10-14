@@ -9,8 +9,8 @@ try:
 except ImportError:
 	import pickle
 import os
-import fs_template
-import cache_errors
+from cache import fs_template
+from cache import cache_errors
 
 
 class database(fs_template.FsBased):

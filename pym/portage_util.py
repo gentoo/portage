@@ -1,10 +1,13 @@
 # Copyright 2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: /var/cvsroot/gentoo-src/portage/pym/portage_util.py,v 1.11.2.6 2005/04/23 07:26:04 jstubbs Exp $
+# $Id$
 
-from portage_exception import PortageException, FileNotFound, OperationNotPermitted
+from portage_exception import PortageException, FileNotFound, \
+       OperationNotPermitted, PermissionDenied, ReadOnlyFileSystem
+import portage_exception
+from portage_dep import isvalidatom
 
-import sys,string,shlex,os,errno
+import os, errno, shlex, stat, string, sys
 try:
 	import cPickle
 except ImportError:
@@ -27,6 +30,13 @@ def writemsg(mystr,noiselevel=0,fd=None):
 def writemsg_stdout(mystr,noiselevel=0):
 	"""Prints messages stdout based on the noiselimit setting"""
 	writemsg(mystr, noiselevel=noiselevel, fd=sys.stdout)
+
+def normalize_path(mypath):
+	if mypath.startswith(os.path.sep):
+		# posixpath.normpath collapses 3 or more leading slashes to just 1.
+		return os.path.normpath(2*os.path.sep + mypath)
+	else:
+		return os.path.normpath(mypath)
 
 def grabfile(myfilename, compat_level=0, recursive=0):
 	"""This function grabs the lines in a file, normalizes whitespace and returns lines in a list; if a line
@@ -70,29 +80,28 @@ def stack_dictlist(original_dicts, incremental=0, incrementals=[], ignore_none=0
 	"""Stacks an array of dict-types into one array. Optionally merging or
 	overwriting matching key/value pairs for the dict[key]->list.
 	Returns a single dict. Higher index in lists is preferenced."""
-	final_dict = None
-	kill_list = {}
+	final_dict = {}
 	for mydict in original_dicts:
-		if mydict == None:
+		if mydict is None:
 			continue
-		if final_dict == None:
-			final_dict = {}
 		for y in mydict.keys():
 			if not final_dict.has_key(y):
 				final_dict[y] = []
-			if not kill_list.has_key(y):
-				kill_list[y] = []
 			
-			mydict[y].reverse()
 			for thing in mydict[y]:
-				if thing and (thing not in kill_list[y]) and ("*" not in kill_list[y]):
-					if (incremental or (y in incrementals)) and thing[0] == '-':
-						if thing[1:] not in kill_list[y]:
-							kill_list[y] += [thing[1:]]
-					else:
-						if thing not in final_dict[y]:
-							final_dict[y].append(thing[:])
-			mydict[y].reverse()
+				if thing:
+					if incremental or y in incrementals:
+						if thing == "-*":
+							final_dict[y] = []
+							continue
+						elif thing.startswith("-"):
+							try:
+								final_dict[y].remove(thing[1:])
+							except ValueError:
+								pass
+							continue
+					if thing not in final_dict[y]:
+						final_dict[y].append(thing)
 			if final_dict.has_key(y) and not final_dict[y]:
 				del final_dict[y]
 	return final_dict
@@ -103,12 +112,12 @@ def stack_dicts(dicts, incremental=0, incrementals=[], ignore_none=0):
 	Returns a single dict."""
 	final_dict = None
 	for mydict in dicts:
-		if mydict == None:
+		if mydict is None:
 			if ignore_none:
 				continue
 			else:
 				return None
-		if final_dict == None:
+		if final_dict is None:
 			final_dict = {}
 		for y in mydict.keys():
 			if mydict[y]:
@@ -156,10 +165,14 @@ def grabdict(myfilename, juststrings=0, empty=0, recursive=0):
 
 def grabdict_package(myfilename, juststrings=0, recursive=0):
 	pkgs=grabdict(myfilename, juststrings, empty=1, recursive=recursive)
-	for x in pkgs:
+	# We need to call keys() here in order to avoid the possibility of
+	# "RuntimeError: dictionary changed size during iteration"
+	# when an invalid atom is deleted.
+	for x in pkgs.keys():
 		if not isvalidatom(x):
 			del(pkgs[x])
-			writemsg("--- Invalid atom in %s: %s\n" % (myfilename, x))
+			writemsg("--- Invalid atom in %s: %s\n" % (myfilename, x),
+				noiselevel=-1)
 	return pkgs
 
 def grabfile_package(myfilename, compatlevel=0, recursive=0):
@@ -171,17 +184,20 @@ def grabfile_package(myfilename, compatlevel=0, recursive=0):
 		if pkg[0] == "*": # Kill this so we can deal the "packages" file too
 			pkg = pkg[1:]
 		if not isvalidatom(pkg):
-			writemsg("--- Invalid atom in %s: %s\n" % (myfilename, pkgs[x]))
+			writemsg("--- Invalid atom in %s: %s\n" % (myfilename, pkgs[x]),
+				noiselevel=-1)
 			del(pkgs[x])
 	return pkgs
 
 def grablines(myfilename,recursive=0):
 	mylines=[]
 	if recursive and os.path.isdir(myfilename):
-		myfiles = [myfilename+os.path.sep+x for x in os.listdir(myfilename)]
-		myfiles.sort()
-		for f in myfiles:
-			mylines.extend(grablines(f, recursive))
+		dirlist = os.listdir(myfilename)
+		dirlist.sort()
+		for f in dirlist:
+			if not f.startswith("."):
+				mylines.extend(grablines(
+					os.path.join(myfilename, f), recursive))
 	else:
 		try:
 			myfile = open(myfilename, "r")
@@ -210,21 +226,25 @@ def writedict(mydict,myfilename,writekey=True):
 		return 0
 	return 1
 
-def getconfig(mycfg,tolerant=0,allow_sourcing=False):
+def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 	mykeys={}
 	try:
 		f=open(mycfg,'r')
-	except IOError:
+	except IOError, e:
+		if e.errno != errno.ENOENT:
+			raise
 		return None
 	try:
-		lex=shlex.shlex(f)
+		lex = shlex.shlex(f, posix=True)
 		lex.wordchars=string.digits+string.letters+"~!@#$%*_\:;?,./-+{}"     
 		lex.quotes="\"'"
 		if allow_sourcing:
 			lex.source="source"
 		while 1:
 			key=lex.get_token()
-			if (key==''):
+			if key == "export":
+				key = lex.get_token()
+			if key is None:
 				#normal end of file
 				break;
 			equ=lex.get_token()
@@ -232,7 +252,8 @@ def getconfig(mycfg,tolerant=0,allow_sourcing=False):
 				#unexpected end of file
 				#lex.error_leader(self.filename,lex.lineno)
 				if not tolerant:
-					writemsg("!!! Unexpected end of config file: variable "+str(key)+"\n")
+					writemsg("!!! Unexpected end of config file: variable "+str(key)+"\n",
+						noiselevel=-1)
 					raise Exception("ParseError: Unexpected EOF: "+str(mycfg)+": on/before line "+str(lex.lineno))
 				else:
 					return mykeys
@@ -240,33 +261,38 @@ def getconfig(mycfg,tolerant=0,allow_sourcing=False):
 				#invalid token
 				#lex.error_leader(self.filename,lex.lineno)
 				if not tolerant:
-					writemsg("!!! Invalid token (not \"=\") "+str(equ)+"\n")
+					writemsg("!!! invalid token (not \"=\") "+str(equ)+"\n",
+						noiselevel=-1)
 					raise Exception("ParseError: Invalid token (not '='): "+str(mycfg)+": line "+str(lex.lineno))
 				else:
 					return mykeys
 			val=lex.get_token()
-			if (val==''):
+			if val is None:
 				#unexpected end of file
 				#lex.error_leader(self.filename,lex.lineno)
 				if not tolerant:
-					writemsg("!!! Unexpected end of config file: variable "+str(key)+"\n")
+					writemsg("!!! Unexpected end of config file: variable "+str(key)+"\n",
+						noiselevel=-1)
 					raise portage_exception.CorruptionError("ParseError: Unexpected EOF: "+str(mycfg)+": line "+str(lex.lineno))
 				else:
 					return mykeys
-			mykeys[key]=varexpand(val,mykeys)
+			if expand:
+				mykeys[key] = varexpand(val, mykeys)
+			else:
+				mykeys[key] = val
 	except SystemExit, e:
 		raise
 	except Exception, e:
-		raise e.__class__, str(e)+" in "+mycfg
+		raise portage_exception.ParseError(str(e)+" in "+mycfg)
 	return mykeys
 	
 #cache expansions of constant strings
 cexpand={}
 def varexpand(mystring,mydict={}):
-	try:
-		return cexpand[" "+mystring]
-	except KeyError:
-		pass
+	newstring = cexpand.get(" "+mystring, None)
+	if newstring is not None:
+		return newstring
+
 	"""
 	new variable expansion code.  Removes quotes, handles \n, etc.
 	This code is used by the configfile code, as well as others (parser)
@@ -471,8 +497,11 @@ def apply_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 		try:
 			stat_cached = os.stat(filename)
 		except OSError, oe:
+			func_call = "stat('%s')" % filename
 			if oe.errno == errno.EPERM:
-				raise OperationNotPermitted("stat('%s')" % filename)
+				raise OperationNotPermitted(func_call)
+			elif oe.errno == errno.EACCES:
+				raise PermissionDenied(func_call)
 			elif oe.errno == errno.ENOENT:
 				raise FileNotFound(filename)
 			else:
@@ -484,8 +513,13 @@ def apply_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 			os.chown(filename, uid, gid)
 			modified = True
 		except OSError, oe:
+			func_call = "chown('%s', %i, %i)" % (filename, uid, gid)
 			if oe.errno == errno.EPERM:
-				raise OperationNotPermitted("chown('%s', %i, %i)" % (filename, uid, gid))
+				raise OperationNotPermitted(func_call)
+			elif oe.errno == errno.EACCES:
+				raise PermissionDenied(func_call)
+			elif oe.errno == errno.EROFS:
+				raise ReadOnlyFileSystem(func_call)
 			elif oe.errno == errno.ENOENT:
 				raise FileNotFound(filename)
 			else:
@@ -512,12 +546,16 @@ def apply_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 			os.chmod(filename, new_mode)
 			modified = True
 		except OSError, oe:
+			func_call = "chmod('%s', %s)" % (filename, oct(new_mode))
 			if oe.errno == errno.EPERM:
-				raise OperationNotPermitted("chmod('%s', %s)" % (filename, oct(new_mode)))
+				raise OperationNotPermitted(func_call)
+			elif oe.errno == errno.EACCES:
+				raise PermissionDenied(func_call)
+			elif oe.errno == errno.EROFS:
+				raise ReadOnlyFileSystem(func_call)
 			elif oe.errno == errno.ENOENT:
 				raise FileNotFound(filename)
-			else:
-				raise
+			raise
 	return modified
 
 def apply_stat_permissions(filename, newstat, **kwargs):
@@ -539,9 +577,10 @@ def apply_recursive_permissions(top, uid=-1, gid=-1,
 		# go unnoticed.  Callers can pass in a quiet instance.
 		def onerror(e):
 			if isinstance(e, OperationNotPermitted):
-				writemsg("Operation Not Permitted: %s\n" % str(e))
+				writemsg("Operation Not Permitted: %s\n" % str(e),
+					noiselevel=-1)
 			elif isinstance(e, FileNotFound):
-				writemsg("File Not Found: '%s'\n" % str(e))
+				writemsg("File Not Found: '%s'\n" % str(e), noiselevel=-1)
 			else:
 				raise
 
@@ -581,8 +620,11 @@ def apply_secpass_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 		try:
 			stat_cached = os.stat(filename)
 		except OSError, oe:
+			func_call = "stat('%s')" % filename
 			if oe.errno == errno.EPERM:
-				raise OperationNotPermitted("stat('%s')" % filename)
+				raise OperationNotPermitted(func_call)
+			elif oe.errno == errno.EACCES:
+				raise PermissionDenied(func_call)
 			elif oe.errno == errno.ENOENT:
 				raise FileNotFound(filename)
 			else:
@@ -625,8 +667,11 @@ class atomic_ofstream(file):
 				super(atomic_ofstream, self).__init__(tmp_name, mode=mode, **kargs)
 				return
 			except (OSError, IOError), e:
-				writemsg("!!! Failed to open file: '%s'\n" % tmp_name)
-				writemsg("!!! %s\n" % str(e))
+				if canonical_path == filename:
+					raise
+				writemsg("!!! Failed to open file: '%s'\n" % tmp_name,
+					noiselevel=-1)
+				writemsg("!!! %s\n" % str(e), noiselevel=-1)
 
 		self._real_name = filename
 		tmp_name = "%s.%i" % (filename, os.getpid())
@@ -679,13 +724,25 @@ class atomic_ofstream(file):
 			base_destructor()
 
 def write_atomic(file_path, content):
-	f = atomic_ofstream(file_path)
+	f = None
 	try:
+		f = atomic_ofstream(file_path)
 		f.write(content)
 		f.close()
-	except IOError, ioe:
-		f.abort()
-		raise ioe
+	except (IOError, OSError), e:
+		if f:
+			f.abort()
+		func_call = "write_atomic('%s')" % file_path
+		if e.errno == errno.EPERM:
+			raise OperationNotPermitted(func_call)
+		elif e.errno == errno.EACCES:
+			raise PermissionDenied(func_call)
+		elif e.errno == errno.EROFS:
+			raise ReadOnlyFileSystem(func_call)
+		elif e.errno == errno.ENOENT:
+			raise FileNotFound(file_path)
+		else:
+			raise
 
 def ensure_dirs(dir_path, *args, **kwargs):
 	"""Create a directory and call apply_permissions.
@@ -698,11 +755,184 @@ def ensure_dirs(dir_path, *args, **kwargs):
 		os.makedirs(dir_path)
 		created_dir = True
 	except OSError, oe:
+		func_call = "makedirs('%s')" % dir_path
 		if errno.EEXIST == oe.errno:
 			pass
-		elif  oe.errno in (errno.EPERM, errno.EROFS):
-			raise portage_exception.OperationNotPermitted(str(oe))
+		elif oe.errno == errno.EPERM:
+			raise OperationNotPermitted(func_call)
+		elif oe.errno == errno.EACCES:
+			raise PermissionDenied(func_call)
+		elif oe.errno == errno.EROFS:
+			raise ReadOnlyFileSystem(func_call)
 		else:
 			raise
 	perms_modified = apply_permissions(dir_path, *args, **kwargs)
 	return created_dir or perms_modified
+
+class LazyItemsDict(dict):
+	"""A mapping object that behaves like a standard dict except that it allows
+	for lazy initialization of values via callable objects.  Lazy items can be
+	overwritten and deleted just as normal items."""
+	def __init__(self, initial_items=None):
+		dict.__init__(self)
+		self.lazy_items = {}
+		if initial_items is not None:
+			self.update(initial_items)
+	def addLazyItem(self, item_key, value_callable, *pargs, **kwargs):
+		"""Add a lazy item for the given key.  When the item is requested,
+		value_callable will be called with *pargs and **kwargs arguments."""
+		self.lazy_items[item_key] = (value_callable, pargs, kwargs)
+		# make it show up in self.keys(), etc...
+		dict.__setitem__(self, item_key, None)
+	def addLazySingleton(self, item_key, value_callable, *pargs, **kwargs):
+		"""This is like addLazyItem except value_callable will only be called
+		a maximum of 1 time and the result will be cached for future requests."""
+		class SingletonItem(object):
+			def __init__(self, value_callable, *pargs, **kwargs):
+				self._callable = value_callable
+				self._pargs = pargs
+				self._kwargs = kwargs
+				self._called = False
+			def __call__(self):
+				if not self._called:
+					self._called = True
+					self._value = self._callable(*self._pargs, **self._kwargs)
+				return self._value
+		self.addLazyItem(item_key, SingletonItem(value_callable, *pargs, **kwargs))
+	def update(self, map_obj):
+		if isinstance(map_obj, LazyItemsDict):
+			for k in map_obj:
+				if k in map_obj.lazy_items:
+					dict.__setitem__(self, k, None)
+				else:
+					dict.__setitem__(self, k, map_obj[k])
+			self.lazy_items.update(map_obj.lazy_items)
+		else:
+			dict.update(self, map_obj)
+	def __getitem__(self, item_key):
+		if item_key in self.lazy_items:
+			value_callable, pargs, kwargs = self.lazy_items[item_key]
+			return value_callable(*pargs, **kwargs)
+		else:
+			return dict.__getitem__(self, item_key)
+	def __setitem__(self, item_key, value):
+		if item_key in self.lazy_items:
+			del self.lazy_items[item_key]
+		dict.__setitem__(self, item_key, value)
+	def __delitem__(self, item_key):
+		if item_key in self.lazy_items:
+			del self.lazy_items[item_key]
+		dict.__delitem__(self, item_key)
+
+class ConfigProtect(object):
+	def __init__(self, myroot, protect_list, mask_list):
+		self.myroot = myroot
+		self.protect_list = protect_list
+		self.mask_list = mask_list
+		self.updateprotect()
+
+	def updateprotect(self):
+		"""Update internal state for isprotected() calls.  Nonexistent paths
+		are ignored."""
+		self.protect = []
+		self._dirs = set()
+		for x in self.protect_list:
+			ppath = normalize_path(
+				os.path.join(self.myroot, x.lstrip(os.path.sep)))
+			mystat = None
+			try:
+				if stat.S_ISDIR(os.lstat(ppath).st_mode):
+					self._dirs.add(ppath)
+				self.protect.append(ppath)
+			except OSError:
+				# If it doesn't exist, there's no need to protect it.
+				pass
+
+		self.protectmask = []
+		for x in self.mask_list:
+			ppath = normalize_path(
+				os.path.join(self.myroot, x.lstrip(os.path.sep)))
+			mystat = None
+			try:
+				if stat.S_ISDIR(os.lstat(ppath).st_mode):
+					self._dirs.add(ppath)
+				self.protectmask.append(ppath)
+			except OSError:
+				# If it doesn't exist, there's no need to mask it.
+				pass
+
+	def isprotected(self, obj):
+		"""Returns True if obj is protected, False otherwise.  The caller must
+		ensure that obj is normalized with a single leading slash.  A trailing
+		slash is optional for directories."""
+		masked = 0
+		protected = 0
+		sep = os.path.sep
+		for ppath in self.protect:
+			if len(ppath) > masked and obj.startswith(ppath):
+				if ppath in self._dirs:
+					if obj != ppath and not obj.startswith(ppath + sep):
+						# /etc/foo does not match /etc/foobaz
+						continue
+				elif obj != ppath:
+					# force exact match when CONFIG_PROTECT lists a
+					# non-directory
+					continue
+				protected = len(ppath)
+				#config file management
+				for pmpath in self.protectmask:
+					if len(pmpath) >= protected and obj.startswith(pmpath):
+						if pmpath in self._dirs:
+							if obj != pmpath and \
+								not obj.startswith(pmpath + sep):
+								# /etc/foo does not match /etc/foobaz
+								continue
+						elif obj != pmpath:
+							# force exact match when CONFIG_PROTECT_MASK lists
+							# a non-directory
+							continue
+						#skip, it's in the mask
+						masked = len(pmpath)
+		return protected > masked
+
+def new_protect_filename(mydest, newmd5=None):
+	"""Resolves a config-protect filename for merging, optionally
+	using the last filename if the md5 matches.
+	(dest,md5) ==> 'string'            --- path_to_target_filename
+	(dest)     ==> ('next', 'highest') --- next_target and most-recent_target
+	"""
+
+	# config protection filename format:
+	# ._cfg0000_foo
+	# 0123456789012
+	prot_num = -1
+	last_pfile = ""
+
+	if not os.path.exists(mydest):
+		return mydest
+
+	real_filename = os.path.basename(mydest)
+	real_dirname  = os.path.dirname(mydest)
+	for pfile in os.listdir(real_dirname):
+		if pfile[0:5] != "._cfg":
+			continue
+		if pfile[10:] != real_filename:
+			continue
+		try:
+			new_prot_num = int(pfile[5:9])
+			if new_prot_num > prot_num:
+				prot_num = new_prot_num
+				last_pfile = pfile
+		except ValueError:
+			continue
+	prot_num = prot_num + 1
+
+	new_pfile = normalize_path(os.path.join(real_dirname,
+		"._cfg" + str(prot_num).zfill(4) + "_" + real_filename))
+	old_pfile = normalize_path(os.path.join(real_dirname, last_pfile))
+	if last_pfile and newmd5:
+		import portage_checksum
+		if portage_checksum.perform_md5(
+			os.path.join(real_dirname, last_pfile)) == newmd5:
+			return old_pfile
+	return new_pfile

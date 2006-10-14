@@ -1,8 +1,12 @@
 
-import errno, os, re
+import errno, os, re, sys
 
-from portage_util import write_atomic
-from portage_exception import DirectoryNotFound
+from portage_util import ConfigProtect, grabfile, new_protect_filename, \
+	normalize_path, write_atomic, writemsg
+from portage_exception import DirectoryNotFound, PortageException
+from portage_versions import ververify
+from portage_dep import dep_getkey, get_operator, isvalidatom, isjustname
+from portage_const import USER_CONFIG_PATH, WORLD_FILE
 
 ignored_dbentries = ("CONTENTS", "environment.bz2")
 
@@ -11,10 +15,20 @@ def update_dbentry(update_cmd, mycontent):
 		old_value, new_value = update_cmd[1], update_cmd[2]
 		if mycontent.count(old_value):
 			old_value = re.escape(old_value);
-			mycontent = re.sub(old_value+"$", new_value, mycontent)
-			mycontent = re.sub(old_value+"(\\s)", new_value+"\\1", mycontent)
-			mycontent = re.sub(old_value+"(-[^a-zA-Z])", new_value+"\\1", mycontent)
-			mycontent = re.sub(old_value+"([^a-zA-Z0-9-])", new_value+"\\1", mycontent)
+			mycontent = re.sub(old_value+"(:|$|\\s)", new_value+"\\1", mycontent)
+			def myreplace(matchobj):
+				if ververify(matchobj.group(2)):
+					return "%s-%s" % (new_value, matchobj.group(2))
+				else:
+					return "".join(matchobj.groups())
+			mycontent = re.sub("(%s-)(\\S*)" % old_value, myreplace, mycontent)
+	elif update_cmd[0] == "slotmove" and get_operator(update_cmd[1]) is None:
+		pkg, origslot, newslot = update_cmd[1:]
+		old_value = "%s:%s" % (pkg, origslot)
+		if mycontent.count(old_value):
+			old_value = re.escape(old_value)
+			new_value = "%s:%s" % (pkg, newslot)
+			mycontent = re.sub(old_value+"($|\\s)", new_value+"\\1", mycontent)
 	return mycontent
 
 def update_dbentries(update_iter, mydata):
@@ -26,7 +40,7 @@ def update_dbentries(update_iter, mydata):
 			orig_content = mycontent
 			for update_cmd in update_iter:
 				mycontent = update_dbentry(update_cmd, mycontent)
-			if mycontent is not orig_content:
+			if mycontent != orig_content:
 				updated_items[k] = mycontent
 	return updated_items
 
@@ -74,9 +88,129 @@ def grab_updates(updpath, prev_mtimes=None):
 		file_path = os.path.join(updpath, myfile)
 		mystat = os.stat(file_path)
 		if file_path not in prev_mtimes or \
-		prev_mtimes[file_path] != mystat.st_mtime:
+		long(prev_mtimes[file_path]) != long(mystat.st_mtime):
 			f = open(file_path)
 			content = f.read()
 			f.close()
 			update_data.append((file_path, mystat, content))
 	return update_data
+
+def parse_updates(mycontent):
+	"""Valid updates are returned as a list of split update commands."""
+	myupd = []
+	errors = []
+	mylines = mycontent.splitlines()
+	for myline in mylines:
+		mysplit = myline.split()
+		if len(mysplit) == 0:
+			continue
+		if mysplit[0] not in ("move", "slotmove"):
+			errors.append("ERROR: Update type not recognized '%s'" % myline)
+			continue
+		if mysplit[0] == "move":
+			if len(mysplit) != 3:
+				errors.append("ERROR: Update command invalid '%s'" % myline)
+				continue
+			orig_value, new_value = mysplit[1], mysplit[2]
+			for cp in (orig_value, new_value):
+				if not (isvalidatom(cp) and isjustname(cp)):
+					errors.append(
+						"ERROR: Malformed update entry '%s'" % myline)
+					continue
+		if mysplit[0] == "slotmove":
+			if len(mysplit)!=4:
+				errors.append("ERROR: Update command invalid '%s'" % myline)
+				continue
+			pkg, origslot, newslot = mysplit[1], mysplit[2], mysplit[3]
+			if not isvalidatom(pkg):
+				errors.append("ERROR: Malformed update entry '%s'" % myline)
+				continue
+		
+		# The list of valid updates is filtered by continue statements above.
+		myupd.append(mysplit)
+	return myupd, errors
+
+def update_config_files(config_root, protect, protect_mask, update_iter):
+	"""Perform global updates on /etc/portage/package.* and the world file.
+	config_root - location of files to update
+	protect - list of paths from CONFIG_PROTECT
+	protect_mask - list of paths from CONFIG_PROTECT_MASK
+	update_iter - list of update commands as returned from parse_updates()"""
+	config_root = normalize_path(config_root)
+	update_files = {}
+	file_contents = {}
+	myxfiles = ["package.mask", "package.unmask", \
+		"package.keywords", "package.use"]
+	myxfiles += [os.path.join("profile", x) for x in myxfiles]
+	abs_user_config = os.path.join(config_root,
+		USER_CONFIG_PATH.lstrip(os.path.sep))
+	recursivefiles = []
+	for x in myxfiles:
+		config_file = os.path.join(abs_user_config, x)
+		if os.path.isdir(config_file):
+			for parent, dirs, files in os.walk(config_file):
+				for y in dirs:
+					if y.startswith("."):
+						dirs.remove(y)
+				for y in files:
+					if y.startswith("."):
+						continue
+					recursivefiles.append(
+						os.path.join(parent, y)[len(abs_user_config) + 1:])
+		else:
+			recursivefiles.append(x)
+	myxfiles = recursivefiles
+	for x in myxfiles:
+		try:
+			myfile = open(os.path.join(abs_user_config, x),"r")
+			file_contents[x] = myfile.readlines()
+			myfile.close()
+		except IOError:
+			if file_contents.has_key(x):
+				del file_contents[x]
+			continue
+	worldlist = grabfile(os.path.join(config_root, WORLD_FILE))
+
+	for update_cmd in update_iter:
+		if update_cmd[0] == "move":
+			old_value, new_value = update_cmd[1], update_cmd[2]
+			#update world entries:
+			for x in range(0,len(worldlist)):
+				#update world entries, if any.
+				worldlist[x] = \
+					dep_transform(worldlist[x], old_value, new_value)
+
+			#update /etc/portage/packages.*
+			for x in file_contents:
+				for mypos in range(0,len(file_contents[x])):
+					line = file_contents[x][mypos]
+					if line[0] == "#" or not line.strip():
+						continue
+					key = dep_getkey(line.split()[0])
+					if key == old_value:
+						file_contents[x][mypos] = \
+							line.replace(old_value, new_value)
+						update_files[x] = 1
+						sys.stdout.write("p")
+						sys.stdout.flush()
+
+	write_atomic(os.path.join(config_root, WORLD_FILE), "\n".join(worldlist))
+
+	protect_obj = ConfigProtect(
+		config_root, protect, protect_mask)
+	for x in update_files:
+		updating_file = os.path.join(abs_user_config, x)
+		if protect_obj.isprotected(updating_file):
+			updating_file = new_protect_filename(updating_file)
+		try:
+			write_atomic(updating_file, "".join(file_contents[x]))
+		except PortageException, e:
+			writemsg("\n!!! %s\n" % str(e), noiselevel=-1)
+			writemsg("!!! An error occured while updating a config file:" + \
+				" '%s'\n" % updating_file, noiselevel=-1)
+			continue
+
+def dep_transform(mydep, oldkey, newkey):
+	if dep_getkey(mydep) == oldkey:
+		return mydep.replace(oldkey, newkey, 1)
+	return mydep

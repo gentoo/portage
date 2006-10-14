@@ -3,7 +3,7 @@
 # License: GPL2
 # $Id: util.py 1911 2005-08-25 03:44:21Z ferringb $
 
-import cache_errors
+from cache import cache_errors
 
 def mirror_cache(valid_nodes_iterable, src_cache, trg_cache, eclass_cache=None, verbose_instance=None):
 
