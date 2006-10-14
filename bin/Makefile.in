@@ -22,7 +22,8 @@ user_binprogs = \
 	quickpkg \
 	repoman \
 	tbz2tool \
-	xpak
+	xpak \
+	sed
 
 user_sbinprogs = \
 	archive-conf \
