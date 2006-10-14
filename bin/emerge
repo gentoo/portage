@@ -2064,7 +2064,7 @@ class MergeTask(object):
 				print red("!!!")
 			elif len(mymergelist) > 1:
 				print ">>> starting parallel fetching"
-				fetch_log = "/var/log/emerge-fetch.log"
+				fetch_log = portage_const.EPREFIX+"/var/log/emerge-fetch.log"
 				logfile = open(fetch_log, "w")
 				fd_pipes = {1:logfile.fileno(), 2:logfile.fileno()}
 				portage_util.apply_secpass_permissions(fetch_log,
@@ -4159,7 +4159,7 @@ def emerge_main():
 		emergehelp.help(myaction, myopts, havecolor)
 		sys.exit(0)
 
-	if portage.wheelgid == portage.portage_gid:
+	if portage.wheelgid == portage.portage_gid and portage.wheelgid > 500:
 		print "emerge: wheel group use is being deprecated. Please update group and passwd to"
 		print "        include the portage user as noted above, and then use group portage."
 
