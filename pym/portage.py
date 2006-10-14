@@ -898,6 +898,7 @@ class config:
 			self.puseforcedict = copy.deepcopy(clone.puseforcedict)
 			self.puseforce     = copy.deepcopy(clone.puseforce)
 			self.puse     = copy.deepcopy(clone.puse)
+			self.pkgprofileuse = copy.deepcopy(clone.pkgprofileuse)
 			self.mycpv    = copy.deepcopy(clone.mycpv)
 
 			self.configlist = copy.deepcopy(clone.configlist)
@@ -905,13 +906,15 @@ class config:
 			self.lookuplist.reverse()
 			self.configdict = {
 				"env.d":     self.configlist[0],
-				"globals":   self.configlist[1],
-				"defaults":  self.configlist[2],
-				"conf":      self.configlist[3],
-				"pkg":       self.configlist[4],
-				"auto":      self.configlist[5],
-				"backupenv": self.configlist[6],
-				"env":       self.configlist[7] }
+				"pkginternal": self.configlist[1],
+				"globals":     self.configlist[2],
+				"defaults":    self.configlist[3],
+				"pkgprofile":  self.configlist[4],
+				"conf":        self.configlist[5],
+				"pkg":         self.configlist[6],
+				"auto":        self.configlist[7],
+				"backupenv":   self.configlist[8],
+				"env":         self.configlist[9] }
 			self.profiles = copy.deepcopy(clone.profiles)
 			self.backupenv  = self.configdict["backupenv"]
 			self.pusedict   = copy.deepcopy(clone.pusedict)
@@ -979,6 +982,9 @@ class config:
 			self.configlist.append({})
 			self.configdict["env.d"] = self.configlist[-1]
 
+			self.configlist.append({})
+			self.configdict["pkginternal"] = self.configlist[-1]
+
 			# The symlink might not exist or might not be a symlink.
 			if self.profile_path is None:
 				self.profiles = []
@@ -1043,6 +1049,17 @@ class config:
 				self.pusemaskdict[cp][k] = v
 			del rawpusemask
 
+			self.pkgprofileuse = {}
+			rawprofileuse = [grabdict_package(
+				os.path.join(x, "package.use"), juststrings=True) \
+				for x in self.profiles]
+			rawprofileuse = stack_dicts(rawprofileuse, incremental=True)
+			for k, v in rawprofileuse.iteritems():
+				cp = dep_getkey(k)
+				self.pkgprofileuse.setdefault(cp, {})
+				self.pkgprofileuse[cp][k] = v
+			del rawprofileuse
+
 			self.useforce = stack_lists(
 				[grabfile(os.path.join(x, "use.force")) \
 				for x in self.profiles], incremental=True)
@@ -1096,6 +1113,9 @@ class config:
 					sys.exit(1)
 			self.configlist.append(self.mygcfg)
 			self.configdict["defaults"]=self.configlist[-1]
+
+			self.configlist.append({})
+			self.configdict["pkgprofile"] = self.configlist[-1]
 
 			try:
 				self.mygcfg = getconfig(
@@ -1278,7 +1298,7 @@ class config:
 			# reasonable defaults; this is important as without USE_ORDER,
 			# USE will always be "" (nothing set)!
 			if "USE_ORDER" not in self:
-				self.backupenv["USE_ORDER"] = "env:pkg:conf:defaults"
+				self.backupenv["USE_ORDER"] = "env:pkg:conf:pkgprofile:defaults:pkginternal"
 
 			self["PORTAGE_GID"] = str(portage_gid)
 			self.backup_changes("PORTAGE_GID")
@@ -1441,6 +1461,8 @@ class config:
 			self.pusemask = []
 			self.puseforce = []
 			self.configdict["pkg"].clear()
+			self.configdict["pkginternal"].clear()
+			self.configdict["pkgprofile"].clear()
 		self.regenerate(use_cache=use_cache)
 
 	def load_infodir(self,infodir):
@@ -1484,12 +1506,25 @@ class config:
 			return 1
 		return 0
 
-	def setcpv(self,mycpv,use_cache=1):
+	def setcpv(self, mycpv, use_cache=1, mydb=None):
 		self.modifying()
 		if self.mycpv == mycpv:
 			return
 		self.mycpv = mycpv
 		cp = dep_getkey(mycpv)
+		pkginternaluse = ""
+		if mydb:
+			pkginternaluse = " ".join([x[1:] \
+				for x in mydb.aux_get(mycpv, ["IUSE"])[0].split() \
+				if x.startswith("+")])
+		self.configdict["pkginternal"]["USE"] = pkginternaluse
+		pkgprofileuse = ""
+		if cp in self.pkgprofileuse:
+			best_match = best_match_to_list(
+				self.mycpv, self.pkgprofileuse[cp].keys())
+			if best_match:
+				pkgprofileuse = self.pkgprofileuse[cp][best_match]
+		self.configdict["pkgprofile"]["USE"] = pkgprofileuse
 		self.puse = ""
 		if self.pusedict.has_key(cp):
 			self.pusekey = best_match_to_list(self.mycpv, self.pusedict[cp].keys())
@@ -2536,7 +2571,7 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 		# XXX: We're doing a little hack here to curtain the gvisible locking
 		# XXX: that creates a deadlock... Really need to isolate that.
 		mysettings.reset(use_cache=use_cache)
-	mysettings.setcpv(mycpv,use_cache=use_cache)
+		mysettings.setcpv(mycpv, use_cache=use_cache, mydb=mydbapi)
 
 	mysettings["EBUILD_PHASE"] = mydo
 
