@@ -1,7 +1,7 @@
 # portage_data.py -- Calculated/Discovered Data Values
 # Copyright 1998-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
+# $Id: portage_data.py 4530 2006-09-25 21:16:32Z zmedico $
 
 
 import os,pwd,grp

@@ -1,7 +1,7 @@
 # portage.py -- core Portage functionality
 # Copyright 1998-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
+# $Id: portage.py 4664 2006-10-12 10:49:27Z zmedico $
 
 
 VERSION="$Rev$"[6:-2] + "-svn"
@@ -2963,6 +2963,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				mysettings, debug=debug, free=1, logfile=logfile)
 
 		mycpv = "/".join((mysettings["CATEGORY"], mysettings["PF"]))
+
 		# Make sure we get the correct tree in case there are overlays.
 		mytree = os.path.realpath(
 			os.path.dirname(os.path.dirname(mysettings["O"])))

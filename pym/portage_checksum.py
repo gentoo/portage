@@ -1,7 +1,7 @@
 # portage_checksum.py -- core Portage functionality
 # Copyright 1998-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: /var/cvsroot/gentoo-src/portage/pym/portage_checksum.py,v 1.10.2.2 2005/08/10 05:42:03 ferringb Exp $
+# $Id: portage_checksum.py 3835 2006-07-11 00:59:10Z zmedico $
 
 
 from portage_const import PRIVATE_PATH,PRELINK_BINARY,HASHING_BLOCKSIZE
@@ -94,7 +94,9 @@ def verify_all(filename, mydict, calc_prelink=0, strict=0):
 		if mydict["size"] != mysize:
 			return False,("Filesize does not match recorded size", mysize, mydict["size"])
 	except OSError, e:
-		return False, str(e)
+		if e.errno == errno.ENOENT:
+			raise portage_exception.FileNotFound(filename)
+		return False, (str(e), None, None)
 	for x in mydict.keys():
 		if   x == "size":
 			continue

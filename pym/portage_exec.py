@@ -1,7 +1,7 @@
 # portage.py -- core Portage functionality
 # Copyright 1998-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: /var/cvsroot/gentoo-src/portage/pym/portage_exec.py,v 1.13.2.4 2005/04/17 09:01:56 jstubbs Exp $
+# $Id: portage_exec.py 3483 2006-06-10 21:40:40Z genone $
 
 
 import os, atexit, signal, sys
@@ -16,6 +16,13 @@ try:
 	max_fd_limit = resource.getrlimit(resource.RLIMIT_NOFILE)[0]
 except ImportError:
 	max_fd_limit = 256
+
+if os.path.isdir("/proc/%i/fd" % os.getpid()):
+	def get_open_fds():
+		return map(int, [fd for fd in os.listdir("/proc/%i/fd" % os.getpid()) if fd.isdigit()])
+else:
+	def get_open_fds():
+		return xrange(max_fd_limit)
 
 sandbox_capable = (os.path.isfile(SANDBOX_BINARY) and
                    os.access(SANDBOX_BINARY, os.X_OK))
@@ -222,7 +229,7 @@ def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask):
 		os.dup2(my_fds[fd], fd)
 	# Then close _all_ fds that haven't been explictly
 	# requested to be kept open.
-	for fd in range(max_fd_limit):
+	for fd in get_open_fds():
 		if fd not in my_fds:
 			try:
 				os.close(fd)

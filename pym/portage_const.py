@@ -1,7 +1,7 @@
 # portage: Constants
 # Copyright 1998-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: /var/cvsroot/gentoo-src/portage/pym/portage_const.py,v 1.3.2.3 2005/04/29 04:56:35 jstubbs Exp $
+# $Id: portage_const.py 3483 2006-06-10 21:40:40Z genone $
 import os
 
 # ===========================================================================
@@ -45,10 +45,11 @@ EBUILD_SH_ENV_FILE      = USER_CONFIG_PATH+"/bashrc"
 INVALID_ENV_FILE        = "/etc/spork/is/not/valid/profile.env"
 CUSTOM_MIRRORS_FILE     = USER_CONFIG_PATH+"/mirrors"
 CONFIG_MEMORY_FILE      = PRIVATE_PATH + "/config"
+COLOR_MAP_FILE          = USER_CONFIG_PATH + "/color.map"
 
 INCREMENTALS=["USE","USE_EXPAND","USE_EXPAND_HIDDEN","FEATURES","ACCEPT_KEYWORDS","ACCEPT_LICENSE","CONFIG_PROTECT_MASK","CONFIG_PROTECT","PRELINK_PATH","PRELINK_PATH_MASK"]
-STICKIES=["KEYWORDS_ACCEPT","USE","CFLAGS","CXXFLAGS","MAKEOPTS","EXTRA_ECONF","EXTRA_EINSTALL","EXTRA_EMAKE"]
-EBUILD_PHASES			= ["setup","unpack","compile","test","install","preinst","postinst","prerm","postrm"]
+EBUILD_PHASES           = ["setup", "unpack", "compile", "test", "install",
+                          "preinst", "postinst", "prerm", "postrm", "other"]
 
 EAPI = "prefix"
 

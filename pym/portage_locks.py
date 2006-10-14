@@ -1,7 +1,7 @@
 # portage: Lock management code
 # Copyright 2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
+# $Id: portage_locks.py 4449 2006-09-14 07:52:39Z zmedico $
 
 
 import errno

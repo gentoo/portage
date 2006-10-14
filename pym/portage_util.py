@@ -1,6 +1,6 @@
 # Copyright 2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
+# $Id: portage_util.py 4603 2006-10-06 03:28:25Z zmedico $
 
 from portage_exception import PortageException, FileNotFound, \
        OperationNotPermitted, PermissionDenied, ReadOnlyFileSystem
@@ -261,7 +261,7 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 				#invalid token
 				#lex.error_leader(self.filename,lex.lineno)
 				if not tolerant:
-					writemsg("!!! invalid token (not \"=\") "+str(equ)+"\n",
+					writemsg("!!! Invalid token (not \"=\") "+str(equ)+"\n",
 						noiselevel=-1)
 					raise Exception("ParseError: Invalid token (not '='): "+str(mycfg)+": line "+str(lex.lineno))
 				else:

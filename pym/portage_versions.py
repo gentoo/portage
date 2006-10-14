@@ -3,6 +3,8 @@ import re,string
 ver_regexp = re.compile("^(cvs\\.)?(\\d+)((\\.\\d+)*)([a-z]?)((_(pre|p|beta|alpha|rc)\\d*)*)(-r(\\d+))?$")
 suffix_regexp = re.compile("^(alpha|beta|rc|pre|p)(\\d*)$")
 suffix_value = {"pre": -2, "p": 0, "alpha": -4, "beta": -3, "rc": -1}
+endversion_keys = ["pre", "p", "alpha", "beta", "rc"]
+
 
 def ververify(myver, silent=1):
 	if ver_regexp.match(myver):

@@ -1,6 +1,6 @@
 # Copyright 1998-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: /var/cvsroot/gentoo-src/portage/pym/portage_exception.py,v 1.8.2.1 2005/01/16 02:35:33 carpaski Exp $
+# $Id: portage_exception.py 3483 2006-06-10 21:40:40Z genone $
 
 
 class PortageException(Exception):
@@ -48,6 +48,12 @@ class DirectoryNotFound(InvalidLocation):
 
 class OperationNotPermitted(PortageException):
 	"""An operation was not permitted operating system"""
+
+class PermissionDenied(PortageException):
+	"""Permission denied"""
+
+class ReadOnlyFileSystem(PortageException):
+	"""Read-only file system"""
 
 class CommandNotFound(PortageException):
 	"""A required binary was not available or executable"""
