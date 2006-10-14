@@ -33,7 +33,6 @@ user_sbinprogs = \
 	env-update \
 	etc-update \
 	fixpackages \
-	pkgmerge \
 	regenworld
 
 list_sourcedir = \
