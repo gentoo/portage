@@ -1453,6 +1453,11 @@ fi
 # this can be left out of ebd variants, since they're unaffected.
 unset EBUILD_DEATH_HOOKS
 
+# *DEPEND and IUSE will be set during the sourcing of the ebuild.  In order to
+# ensure correct interaction between ebuilds and eclasses, they need to be
+# unset before this process of interaction begins.
+unset DEPEND RDEPEND PDEPEND IUSE
+
 source ${EBUILD} || die "error sourcing ebuild"
 if ! hasq depend $EBUILD_PHASE; then
 	RESTRICT="${PORTAGE_RESTRICT}"
