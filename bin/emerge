@@ -1641,17 +1641,26 @@ class depgraph:
 					print bad("(is blocking %s)") % block_parents
 			else:
 				mydbapi = self.trees[myroot][self.pkg_tree_map[pkg_type]].dbapi
-				pkgsettings.setcpv(pkg_key, mydb=portdb)
-				if pkg_key not in self.useFlags[myroot]:
-					if "ebuild" == pkg_type:
-						if "merge" == x[3] or not vartree.dbapi.cpv_exists(pkg_key):
-							self.useFlags[myroot][pkg_key] = pkgsettings["USE"].split()
-						else:
-							self.useFlags[myroot][pkg_key] = vartree.dbapi.aux_get(
-								pkg_key, ["USE"])[0].split()
+				binary_package = True
+				if "ebuild" == pkg_type:
+					if "merge" == x[3] or \
+						not vartree.dbapi.cpv_exists(pkg_key):
+						"""An ebuild "merge" node or a --onlydeps "nomerge"
+						node."""
+						binary_package = False
+						pkgsettings.setcpv(pkg_key, mydb=portdb)
+						if pkg_key not in self.useFlags[myroot]:
+							self.useFlags[myroot][pkg_key] = \
+								pkgsettings["USE"].split()
 					else:
-						self.useFlags[myroot][pkg_key] = mydbapi.aux_get(
-							pkg_key, ["USE"])[0].split()
+						# An ebuild "nomerge" node, so USE come from the vardb.
+						mydbapi = vartree.dbapi
+				if pkg_key not in self.useFlags[myroot]:
+					"""If this is a --resume then the USE flags need to be
+					fetched from the appropriate locations here."""
+					self.useFlags[myroot][pkg_key] = mydbapi.aux_get(
+						pkg_key, ["USE"])[0].split()
+
 				if "ebuild" == pkg_type and x[3] != "nomerge" and \
 					"fetch" in portdb.aux_get(
 					x[2], ["RESTRICT"])[0].split():
@@ -1702,10 +1711,11 @@ class depgraph:
 						mydbapi.aux_get(pkg_key, ["IUSE"])[0].split()))
 
 					forced_flags = set()
-					forced_flags.update(pkgsettings.useforce)
-					forced_flags.update(pkgsettings.puseforce)
-					forced_flags.update(pkgsettings.usemask)
-					forced_flags.update(pkgsettings.pusemask)
+					if not binary_package:
+						forced_flags.update(pkgsettings.useforce)
+						forced_flags.update(pkgsettings.puseforce)
+						forced_flags.update(pkgsettings.usemask)
+						forced_flags.update(pkgsettings.pusemask)
 
 					cur_iuse = portage.unique_array(cur_iuse)
 					cur_iuse.sort()
