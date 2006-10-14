@@ -1,5 +1,5 @@
 #!/bin/bash
-# $Id: /var/cvsroot/gentoo-src/portage/Attic/tarball.sh,v 1.181.2.2 2005/05/01 16:04:51 jstubbs Exp $
+# $Id: $
 
 if [ -z "$1" ]; then
 	echo
@@ -10,7 +10,7 @@ if [ -z "$1" ]; then
 fi
 
 export PKG="prefix-portage"
-export TMP="/tmp"
+export TMP="/var/tmp"
 export V="$1"
 export DEST="${TMP}/${PKG}-${V}"
 export PREVEB="2.0.49_pre2"
@@ -41,7 +41,7 @@ find -name '.svn' -type d -exec rm -rf {} \;
 find -name '*~' -exec rm -rf {} \;
 find -name '*.pyc' -exec rm -rf {} \;
 find -name '*.pyo' -exec rm -rf {} \;
-chown -R root:0 ${DEST}
+#chown -R root:0 ${DEST}
 cd $TMP
 rm -f ${PKG}-${V}/bin/emerge.py ${PKG}-${V}/bin/{pmake,sandbox} ${PKG}-${V}/{bin,pym}/'.#'* ${PKG}-${V}/{bin,pym}/*.{orig,diff} ${PKG}-${V}/{bin,pym}/*.py[oc]
 cd $TMP/${PKG}-${V}
