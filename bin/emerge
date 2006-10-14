@@ -816,7 +816,9 @@ class depgraph:
 			if "--buildpkgonly" in self.myopts:
 				edepend["RDEPEND"] = ""
 				edepend["PDEPEND"] = ""
-		if self.myopts.get("--with-bdeps", "n") == "n" and \
+		if not (arg and "--onlydeps" in self.myopts and \
+			mytype == "ebuild") and \
+			self.myopts.get("--with-bdeps", "n") == "n" and \
 			(mytype == "binary" or mybigkey[3] == "nomerge"):
 			edepend["DEPEND"] = ""
 
