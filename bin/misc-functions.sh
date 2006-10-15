@@ -193,7 +193,7 @@ install_qa_check() {
 
 	if [[ -d ${EDEST} ]] ; then
 		declare -i INSTALLTOD=0
-		for i in $(find ${EDEST%/} | sed -e "s|${EDEST}|/|g") ; do
+		for i in $(find ${EDEST%/} | sed -e "s|^${EDEST%/}||g") ; do
 			if [[ ${#EPREFIX} -gt ${#i} && ${EPREFIX:0:${#i}} != ${i} ]] ; then
 				echo "QA Notice: ${i} outside of prefix"
 				((INSTALLTOD++))

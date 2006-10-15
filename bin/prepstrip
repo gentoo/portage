@@ -3,9 +3,6 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-# on Darwin this stuff all doesn't work, as we dont have ELF
-[[ ${USERLAND} == "Darwin" ]] && return 0
-
 source "${PORTAGE_BIN_PATH:-${EPREFIX}/usr/lib/portage/bin}"/isolated-functions.sh
 
 unset NOSTRIP

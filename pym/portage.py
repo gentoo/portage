@@ -2588,8 +2588,7 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 		# due to how it's coded... Don't overwrite this so we can use it.
 		mysettings["PORTAGE_DEBUG"] = "1"
 
-	mysettings["EPREFIX"]  = portage_const.EPREFIX.rstrip(os.sep)+os.sep
-	#mysettings["ROOT"]     = normalize_path(myroot+portage_const.EPREFIX).rstrip(os.sep)+os.sep
+	mysettings["EPREFIX"]  = portage_const.EPREFIX.rstrip(os.sep)
 	mysettings["ROOT"]     = myroot
 	mysettings["STARTDIR"] = getcwd()
 
@@ -2635,8 +2634,8 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 	# Sandbox needs cannonical paths.
 	mysettings["PORTAGE_TMPDIR"] = os.path.realpath(
 		mysettings["PORTAGE_TMPDIR"])
-	mysettings["BUILD_PREFIX"] = mysettings["PORTAGE_TMPDIR"]+"/portage"
-	mysettings["PKG_TMPDIR"]   = mysettings["PORTAGE_TMPDIR"]+"/binpkgs"
+	mysettings["BUILD_PREFIX"] = os.path.join(mysettings["PORTAGE_TMPDIR"], "portage")
+	mysettings["PKG_TMPDIR"]   = os.path.join(mysettings["PORTAGE_TMPDIR"], "binpkgs")
 	
 	# Package {pre,post}inst and {pre,post}rm may overlap, so they must have separate
 	# locations in order to prevent interference.
@@ -2651,8 +2650,10 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 
 	mysettings["HOME"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "homedir")
 	mysettings["WORKDIR"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "work")
-	mysettings["EDEST"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "image") + os.sep
-	mysettings["D"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "image" + mysettings["EPREFIX"])
+	mysettings["EDEST"] = normalize_path(
+			os.path.join(mysettings["PORTAGE_BUILDDIR"], "image") + os.sep)
+	mysettings["D"] = normalize_path(
+			os.path.join(mysettings["PORTAGE_BUILDDIR"], "image" + mysettings["EPREFIX"]) + os.sep)
 	mysettings["T"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "temp")
 
 	mysettings["PORTAGE_BASHRC"] = os.path.join(
