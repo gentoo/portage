@@ -5639,11 +5639,8 @@ class binarytree(packagetree):
 
 	def getname(self,pkgname):
 		"returns file location for this particular package"
-		mysplit=string.split(pkgname,"/")
-		if len(mysplit)==1:
-			return self.pkgdir+"/All/"+self.resolve_specific(pkgname)+".tbz2"
-		else:
-			return self.pkgdir+"/All/"+mysplit[1]+".tbz2"
+		return os.path.join(self.pkgdir,
+			"All", catsplit(pkgname)[1] + ".tbz2")
 
 	def isremote(self,pkgname):
 		"Returns true if the package is kept remotely."
