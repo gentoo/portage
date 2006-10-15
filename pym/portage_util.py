@@ -144,7 +144,7 @@ def stack_lists(lists, incremental=1):
 				new_list[y] = True
 	return new_list.keys()
 
-def grabdict(myfilename, juststrings=0, empty=0, recursive=0):
+def grabdict(myfilename, juststrings=0, empty=0, recursive=0, incremental=1):
 	"""This function grabs the lines in a file, normalizes whitespace and returns lines in a dictionary"""
 	newdict={}
 	for x in grablines(myfilename, recursive):
@@ -158,9 +158,16 @@ def grabdict(myfilename, juststrings=0, empty=0, recursive=0):
 		if len(myline) < 1 and empty == 1:
 			continue
 		if juststrings:
-			newdict[myline[0]]=string.join(myline[1:])
+			if incremental and newdict.get(myline[0], None):
+				newdict[myline[0]] = \
+					newdict[myline[0]] + " " +  " ".join(myline[1:]))
+			else:
+				newdict[myline[0]] = " ".join(myline[1:])
 		else:
-			newdict[myline[0]]=myline[1:]
+			if incremental and newdict.get(myline[0], None):
+				newdict[myline[0]] = newdict[myline[0]] + myline[1:])
+			else:
+				newdict[myline[0]] = myline[1:]
 	return newdict
 
 def grabdict_package(myfilename, juststrings=0, recursive=0):
