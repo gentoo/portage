@@ -941,6 +941,7 @@ class config:
 
 			for k, v in (("PORTAGE_CONFIGROOT", config_root),
 				("ROOT", target_root)):
+				v = os.path.join(v, portage_const.EPREFIX)
 				if not os.path.isdir(v):
 					writemsg("!!! Error: %s='%s' is not a directory. Please correct this.\n" % (k, v),
 						noiselevel=-1)
@@ -1079,7 +1080,7 @@ class config:
 
 			try:
 				mygcfg_dlists = [getconfig(os.path.join(x, "make.globals")) \
-					for x in self.profiles + [os.path.join(config_root, "etc")]]
+					for x in self.profiles + [os.path.join(config_root, portage_const.EPREFIX, "etc")]]
 				self.mygcfg   = stack_dicts(mygcfg_dlists, incrementals=portage_const.INCREMENTALS, ignore_none=1)
 
 				if self.mygcfg is None:
@@ -1106,7 +1107,7 @@ class config:
 					raise
 				except Exception, e:
 					writemsg("!!! %s\n" % (e), noiselevel=-1)
-					writemsg("!!! 'rm -Rf /usr/portage/profiles; emerge sync' may fix this. If it does\n",
+					writemsg("!!! 'rm -Rf %s/usr/portage/profiles; emerge sync' may fix this. If it does\n" % portage_const.EPREFIX,
 						noiselevel=-1)
 					writemsg("!!! not then please report this to bugs.gentoo.org and, if possible, a dev\n",
 						noiselevel=-1)
@@ -1165,7 +1166,7 @@ class config:
 			del blacklisted, cfg
 
 			env_d = getconfig(
-				os.path.join(target_root, "etc", "profile.env"), expand=False)
+				os.path.join(target_root, portage_const.EPREFIX, "etc", "profile.env"), expand=False)
 			# env_d will be None if profile.env doesn't exist.
 			if env_d:
 				self.configdict["env.d"].update(env_d)
@@ -7056,7 +7057,7 @@ def init_legacy_globals():
 	kwargs = {}
 	for k, envvar in (("config_root", "PORTAGE_CONFIGROOT"), ("target_root", "ROOT")):
 		kwargs[k] = os.path.join(
-				os.environ.get(envvar, os.sep), portage_const.EPREFIX)
+				os.environ.get(envvar, os.sep))
 
 	db = create_trees(**kwargs)
 
