@@ -5729,8 +5729,7 @@ class dblink:
 			raise ValueError
 
 		self.myroot=myroot
-		protect_obj = portage_util.ConfigProtect(myroot
-				+ portage_const.EPREFIX,
+		protect_obj = portage_util.ConfigProtect(myroot + portage_const.EPREFIX,
 			mysettings.get("CONFIG_PROTECT","").split(),
 			mysettings.get("CONFIG_PROTECT_MASK","").split())
 		self.updateprotect = protect_obj.updateprotect

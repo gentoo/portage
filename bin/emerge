@@ -2767,10 +2767,15 @@ def post_emerge(settings, mtimedb, retval):
 	emergelog("notitles" not in settings.features,
 		" *** exiting successfully.")
 
+	from portage_util import normalize_path
 	if "noinfo" not in settings.features:
-		chk_updated_info_files(target_root, infodirs, info_mtimes, retval)
+		chk_updated_info_files(
+				normalize_path(target_root + portage_const.EPREFIX),
+				infodirs, info_mtimes, retval)
 
-	chk_updated_cfg_files(target_root, config_protect)
+	chk_updated_cfg_files(
+			normalize_path(target_root + portage_const.EPREFIX),
+			config_protect)
 	mtimedb.commit()
 	sys.exit(retval)
 

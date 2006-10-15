@@ -43,7 +43,7 @@ function scan() {
 	fi
 
 	for path in ${CONFIG_PROTECT} ; do
-		path="${ROOT}${path}"
+		path="${ROOT}${EPREFIX}/${path}"
 		find_opts="-iname ._cfg????_*"
 		if [ ! -d "${path}" ]; then
 			[ ! -f "${path}" ] && continue
@@ -438,8 +438,11 @@ trap die term
 
 
 eval $(@PORTAGE_BASE@/bin/portageq envvar -v CONFIG_PROTECT \
-	CONFIG_PROTECT_MASK PORTAGE_CONFIGROOT PORTAGE_TMPDIR ROOT)
+	CONFIG_PROTECT_MASK PORTAGE_CONFIGROOT PORTAGE_TMPDIR ROOT EPREFIX)
 export PORTAGE_TMPDIR
+
+# quick hack to get prefix support in
+PORTAGE_CONFIGROOT=${PORTAGE_CONFIGROOT}${EPREFIX}/
 
 [ -w ${PORTAGE_CONFIGROOT}etc ] || die "Need write access to ${PORTAGE_CONFIGROOT}etc" 1
 #echo $PORTAGE_TMPDIR

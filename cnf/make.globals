@@ -57,7 +57,7 @@ PORTAGE_RSYNC_RETRIES="3"
 PORTAGE_RSYNC_OPTS="--recursive --links --safe-links --perms --times --compress --force --whole-file --delete --delete-after --stats --timeout=180 --exclude='/distfiles' --exclude='/local' --exclude='/packages'"
 
 # Minimal CONFIG_PROTECT
-CONFIG_PROTECT="@DOMAIN_PREFIX@/etc"
+CONFIG_PROTECT="/etc"
 
 # Disable auto-use
 USE_ORDER="env:pkg:conf:pkgprofile:defaults:pkginternal"
