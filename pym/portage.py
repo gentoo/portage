@@ -6077,6 +6077,7 @@ class dblink:
 		# secondhand = list of symlinks that have been skipped due to
 		#              their target not existing (will merge later),
 
+		origroot = destroot
 		destroot = normalize_path(destroot + portage_const.EPREFIX)
 
 		if not os.path.isdir(srcroot):
@@ -6120,8 +6121,12 @@ class dblink:
 			for v in otherversions:
 				# only allow versions with same slot to overwrite files
 				if myslot == self.vartree.dbapi.aux_get("/".join((self.cat, v)), ["SLOT"])[0]:
+					# dblink needs the original destroot, as it prefixes
+					# the entries from CONTENTS in vdb with root.  So to
+					# avoid a double prefix there, we don't need a
+					# prefixed root.
 					mypkglist.append(
-						dblink(self.cat, v, destroot, self.settings,
+						dblink(self.cat, v, origroot, self.settings,
 							vartree=self.vartree))
 
 			print green("*")+" checking "+str(len(myfilelist))+" files for package collisions"
