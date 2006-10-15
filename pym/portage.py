@@ -7058,7 +7058,8 @@ def init_legacy_globals():
 
 	kwargs = {}
 	for k, envvar in (("config_root", "PORTAGE_CONFIGROOT"), ("target_root", "ROOT")):
-		kwargs[k] = os.environ.get(envvar, "/")
+		kwargs[k] = os.path.join(
+				os.environ.get(envvar, os.sep), portage_const.EPREFIX)
 
 	db = create_trees(**kwargs)
 
