@@ -6134,11 +6134,11 @@ class dblink:
 					f="/"+f
 				isowned = False
 				for ver in [self]+mypkglist:
-					if (ver.isowner(f, destroot) or ver.isprotected(f)):
+					if (ver.isowner(f, destroot + portage_const.EPREFIX) or ver.isprotected(f)):
 						isowned = True
 						break
 				if not isowned:
-					print "existing file "+f+" is not owned by this package"
+					print "existing file "+ portage_const.EPREFIX + f +" is not owned by this package"
 					stopmerge=True
 					if collision_ignore:
 						if f in collision_ignore:
