@@ -157,17 +157,13 @@ def grabdict(myfilename, juststrings=0, empty=0, recursive=0, incremental=1):
 			continue
 		if len(myline) < 1 and empty == 1:
 			continue
-		if juststrings:
-			if incremental and newdict.get(myline[0], None):
-				newdict[myline[0]] = \
-					newdict[myline[0]] + " " +  " ".join(myline[1:]))
-			else:
-				newdict[myline[0]] = " ".join(myline[1:])
+		if incremental:
+			newdict.setdefault(myline[0], []).extend(myline[1:])
 		else:
-			if incremental and newdict.get(myline[0], None):
-				newdict[myline[0]] = newdict[myline[0]] + myline[1:])
-			else:
-				newdict[myline[0]] = myline[1:]
+			newdict[myline[0]] = myline[1:]
+	if juststrings:
+		for k, v in newdict.iteritems():
+			newdict[k] = " ".join(v)
 	return newdict
 
 def grabdict_package(myfilename, juststrings=0, recursive=0):
