@@ -1587,7 +1587,7 @@ class config:
 		# We grab the latest profile.env here since it changes frequently.
 		self.configdict["env.d"].clear()
 		env_d = getconfig(
-			os.path.join(self["ROOT"], "etc", "profile.env"), expand=False)
+			os.path.join(self["ROOT"] + portage_const.EPREFIX, "etc", "profile.env"), expand=False)
 		if env_d:
 			# env_d will be None if profile.env doesn't exist.
 			self.configdict["env.d"].update(env_d)
@@ -2588,24 +2588,25 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 		# due to how it's coded... Don't overwrite this so we can use it.
 		mysettings["PORTAGE_DEBUG"] = "1"
 
-	mysettings["ROOT"]     = normalize_path(myroot+portage_const.EPREFIX)+"/"
+	mysettings["EPREFIX"]  = portage_const.EPREFIX.rstrip(os.sep)+os.sep
+	#mysettings["ROOT"]     = normalize_path(myroot+portage_const.EPREFIX).rstrip(os.sep)+os.sep
+	mysettings["ROOT"]     = myroot
 	mysettings["STARTDIR"] = getcwd()
 
 	mysettings["EBUILD"]   = ebuild_path
 	mysettings["O"]        = pkg_dir
 	mysettings.configdict["pkg"]["CATEGORY"] = cat
-	mysettings["FILESDIR"] = pkg_dir+"/files"
+	mysettings["FILESDIR"] = os.path.join(pkg_dir, "files")
 	mysettings["PF"]       = mypv
 
-	mysettings["ECLASSDIR"]   = mysettings["PORTDIR"]+"/eclass"
-	mysettings["SANDBOX_LOG"] = mycpv.replace("/", "_-_")
+	mysettings["ECLASSDIR"]   = os.path.join(mysettings["PORTDIR"], "eclass")
+	mysettings["SANDBOX_LOG"] = mycpv.replace(os.path.sep, "_-_")
 
 	mysettings["PROFILE_PATHS"] = string.join(mysettings.profiles,"\n")+"\n"+CUSTOM_PROFILE_PATH
 	mysettings["P"]  = mysplit[0]+"-"+mysplit[1]
 	mysettings["PN"] = mysplit[0]
 	mysettings["PV"] = mysplit[1]
 	mysettings["PR"] = mysplit[2]
-	mysettings["EPREFIX"] = portage_const.EPREFIX
 	if portage_util.noiselimit < 0:
 		mysettings["PORTAGE_QUIET"] = "1"
 
@@ -2651,7 +2652,7 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 	mysettings["HOME"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "homedir")
 	mysettings["WORKDIR"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "work")
 	mysettings["EDEST"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "image") + os.sep
-	mysettings["D"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "image" + mysettings["EPREFIX"]) + os.sep
+	mysettings["D"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "image" + mysettings["EPREFIX"])
 	mysettings["T"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "temp")
 
 	mysettings["PORTAGE_BASHRC"] = os.path.join(
@@ -7057,7 +7058,7 @@ def init_legacy_globals():
 	kwargs = {}
 	for k, envvar in (("config_root", "PORTAGE_CONFIGROOT"), ("target_root", "ROOT")):
 		kwargs[k] = os.path.join(
-				os.environ.get(envvar, os.sep))
+				os.environ.get(envvar, "/"))
 
 	db = create_trees(**kwargs)
 
