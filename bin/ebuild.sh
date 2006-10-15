@@ -1169,9 +1169,7 @@ inherit() {
 		export ECLASS="$1"
 
 		if [ "${EBUILD_PHASE}" != "depend" ] && \
-			[ ${EBUILD_PHASE} != "cleanrm" ] && \
-			[ ${EBUILD_PHASE} != "prerm" ] && \
-			[ ${EBUILD_PHASE} != "postrm" ]; then
+			[[ ${EBUILD_PHASE} != *rm ]]; then
 			# This is disabled in the *rm phases because they frequently give
 			# false alarms due to INHERITED in /var/db/pkg being outdated
 			# in comparison the the eclasses from the portage tree.
