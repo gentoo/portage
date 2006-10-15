@@ -1168,7 +1168,13 @@ inherit() {
 		PECLASS="$ECLASS"
 		export ECLASS="$1"
 
-		if [ "$EBUILD_PHASE" != "depend" ]; then
+		if [ "${EBUILD_PHASE}" != "depend" ] && \
+			[ ${EBUILD_PHASE} != "cleanrm" ] && \
+			[ ${EBUILD_PHASE} != "prerm" ] && \
+			[ ${EBUILD_PHASE} != "postrm" ]; then
+			# This is disabled in the *rm phases because they frequently give
+			# false alarms due to INHERITED in /var/db/pkg being outdated
+			# in comparison the the eclasses from the portage tree.
 			if ! hasq $ECLASS $INHERITED; then
 				vecho
 				vecho "QA Notice: ECLASS '$ECLASS' inherited illegally in $CATEGORY/$PF" >&2
