@@ -36,7 +36,7 @@ class database(flat_hash.database):
 		# easy attempt first.
 		data = list(data)
 		if len(data) != magic_line_count:
-			d = flat_hash.database._parse_data(self, data)
+			d = flat_hash.database._parse_data(self, data, cpv)
 		else:
 			# this one's interesting.
 			d = {}
