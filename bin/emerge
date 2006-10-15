@@ -1927,7 +1927,13 @@ class depgraph:
 							myprint=myprint+myoldbest
 							myprint=myprint+darkgreen("to "+x[1])+" "+verboseadd
 					else:
-						myprint="["+x[0]+" "+addl+"] "+darkgreen(x[2])+" "+myoldbest+darkgreen("to "+x[1])+" "+verboseadd
+						if x[3] == "nomerge":
+							myprint = darkblue("[nomerge      ] ")
+						else:
+							myprint = "[" + pkg_type + " " + addl + "] "
+						myprint += indent + darkgreen(pkg_key) + " " + \
+							myoldbest + darkgreen("to " + myroot) + " " + \
+							verboseadd
 				else:
 					if "--columns" in self.myopts:
 						if "--quiet" in self.myopts:
