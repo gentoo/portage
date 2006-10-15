@@ -4169,6 +4169,11 @@ class bindbapi(fakedbapi):
 			self.bintree.populate()
 		return fakedbapi.cp_list(self, *pargs, **kwargs)
 
+	def cpv_all(self):
+		if not self.bintree.populated:
+			self.bintree.populate()
+		return fakedbapi.cpv_all(self)
+
 cptot=0
 class vardbapi(dbapi):
 	def __init__(self, root, categories=None, settings=None, vartree=None):
