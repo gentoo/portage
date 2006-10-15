@@ -6071,6 +6071,8 @@ class dblink:
 		# secondhand = list of symlinks that have been skipped due to
 		#              their target not existing (will merge later),
 
+		destroot = normalize_path(destroot + portage_const.EPREFIX)
+
 		if not os.path.isdir(srcroot):
 			writemsg("!!! Directory Not Found: D='%s'\n" % srcroot,
 			noiselevel=-1)
@@ -6134,7 +6136,7 @@ class dblink:
 					f="/"+f
 				isowned = False
 				for ver in [self]+mypkglist:
-					if (ver.isowner(f, destroot + portage_const.EPREFIX) or ver.isprotected(f)):
+					if (ver.isowner(f, destroot) or ver.isprotected(f)):
 						isowned = True
 						break
 				if not isowned:
@@ -6330,10 +6332,6 @@ class dblink:
 	def mergeme(self,srcroot,destroot,outfile,secondhand,stufftomerge,cfgfiledict,thismtime):
 		from os.path import sep, join
 		prefix = normalize_path(portage_const.EPREFIX)
-# grobian: is this sane/still necessart?
-		#if srcroot.endswith(prefix):
-		#	# Trim prefix from srcroot
-		#	srcroot=srcroot[:-len(prefix)+1]
 		srcroot = normalize_path(srcroot).rstrip(sep) + sep
 		destroot = normalize_path(destroot).rstrip(sep) + sep
 		# this is supposed to merge a list of files.  There will be 2 forms of argument passing.
@@ -6348,7 +6346,7 @@ class dblink:
 			mysrc = join(srcroot, offset, x)
 			mydest = join(destroot, offset, x)
 			# myrealdest is mydest without the $ROOT prefix (makes a difference if ROOT!="/")
-			myrealdest = join(sep, offset, x)
+			myrealdest = join(prefix, offset, x)
 			# stat file once, test using S_* macros many times (faster that way)
 			try:
 				mystat=os.lstat(mysrc)
@@ -6452,10 +6450,7 @@ class dblink:
 							writemsg("!!! Couldn't clear flags on '"+mydest+"'.\n",
 								noiselevel=-1)
 
-					# do not abort when running unprivileged if mydest
-					# is a prefix of EPREFIX, the user could not have
-					# write access to it.
-					if not os.access(mydest, os.W_OK) and not prefix.startswith(mydest):
+					if not os.access(mydest, os.W_OK):
 						pkgstuff = pkgsplit(self.pkg)
 						writemsg("\n!!! Cannot write to '"+mydest+"'.\n", noiselevel=-1)
 						writemsg("!!! Please check permissions and directories for broken symlinks.\n")
