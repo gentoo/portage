@@ -5394,13 +5394,14 @@ class binarytree(packagetree):
 		else:
 			self.root=root
 			#self.pkgdir=settings["PKGDIR"]
-			self.pkgdir=pkgdir
+			self.pkgdir = normalize_path(pkgdir)
 			self.dbapi = bindbapi(self, settings=settings)
 			self.populated=0
 			self.tree={}
 			self.remotepkgs={}
 			self.invalids=[]
 			self.settings = settings
+			self._pkg_paths = {}
 
 	def move_ent(self,mylist):
 		if not self.populated:
@@ -5439,7 +5440,6 @@ class binarytree(packagetree):
 
 			#print ">>> Updating data in:",mycpv
 			writemsg_stdout("%")
-
 			mytbz2 = xpak.tbz2(tbz2path)
 			mydata = mytbz2.get_data()
 			updated_items = update_dbentries([mylist], mydata)
@@ -5451,35 +5451,61 @@ class binarytree(packagetree):
 			mytbz2.recompose_mem(xpak.xpak_mem(mydata))
 
 			self.dbapi.cpv_remove(mycpv)
-			if (mynewpkg != myoldpkg):
-				os.rename(tbz2path,self.getname(mynewcpv))
+			del self._pkg_paths[mycpv]
+			new_path = self.getname(mynewcpv)
+			self._pkg_paths[mynewcpv] = os.path.join(
+				*new_path.split(os.path.sep)[-2:])
+			if new_path != mytbz2:
+				try:
+					os.makedirs(os.path.dirname(new_path))
+				except OSError, e:
+					if e.errno != errno.EEXIST:
+						raise
+					del e
+				os.rename(tbz2path, new_path)
+				self._remove_symlink(mycpv)
+				if new_path.split(os.path.sep)[-2] == "All":
+					self._create_symlink(mynewcpv)
 			self.dbapi.cpv_inject(mynewcpv)
 
-			# remove the old symlink and category directory, then create
-			# the new ones.
-			try:
-				os.unlink(os.path.join(self.pkgdir, origcat, myoldpkg) + ".tbz2")
-			except OSError, e:
-				if e.errno != errno.ENOENT:
-					raise
-			try:
-				os.rmdir(os.path.join(self.pkgdir, origcat))
-			except OSError, e:
-				if e.errno not in (errno.ENOENT, errno.ENOTEMPTY):
-					raise
-			try:
-				os.makedirs(os.path.join(self.pkgdir, mynewcat))
-			except OSError, e:
-				if e.errno != errno.EEXIST:
-					raise
-			try:
-				os.unlink(os.path.join(self.pkgdir, mynewcat, mynewpkg) + ".tbz2")
-			except OSError, e:
-				if e.errno != errno.ENOENT:
-					raise
-			os.symlink(os.path.join("..", "All", mynewpkg) + ".tbz2",
-				os.path.join(self.pkgdir, mynewcat, mynewpkg) + ".tbz2")
 		return 1
+
+	def _remove_symlink(self, cpv):
+		"""Remove a ${PKGDIR}/${CATEGORY}/${PF}.tbz2 symlink and also remove
+		the ${PKGDIR}/${CATEGORY} directory if empty.  The file will not be
+		removed if os.path.islink() returns False."""
+		mycat, mypkg = catsplit(cpv)
+		mylink = os.path.join(self.pkgdir, mycat, mypkg + ".tbz2")
+		if os.path.islink(mylink):
+			"""Only remove it if it's really a link so that this method never
+			removes a real package that was placed here to avoid a collision."""
+			os.unlink(mylink)
+		try:
+			os.rmdir(os.path.join(self.pkgdir, mycat))
+		except OSError, e:
+			if e.errno not in (errno.ENOENT, errno.ENOTEMPTY):
+				raise
+			del e
+
+	def _create_symlink(self, cpv):
+		"""Create a ${PKGDIR}/${CATEGORY}/${PF}.tbz2 symlink (and
+		${PKGDIR}/${CATEGORY} directory, if necessary).  Any file that may
+		exist in the location of the symlink will first be removed."""
+		mycat, mypkg = catsplit(cpv)
+		full_path = os.path.join(self.pkgdir, mycat, mypkg + ".tbz2")
+		try:
+			os.makedirs(os.path.dirname(full_path))
+		except OSError, e:
+			if e.errno != errno.EEXIST:
+				raise
+			del e
+		try:
+			os.unlink(full_path)
+		except OSError, e:
+			if e.errno != errno.ENOENT:
+				raise
+			del e
+		os.symlink(os.path.join("..", "All", mypkg + ".tbz2"), full_path)
 
 	def move_slot_ent(self, mylist):
 		if not self.populated:
@@ -5541,6 +5567,66 @@ class binarytree(packagetree):
 				mytbz2.recompose_mem(xpak.xpak_mem(mydata))
 		return 1
 
+	def prevent_collision(self, cpv):
+		"""Make sure that the file location ${PKGDIR}/All/${PF}.tbz2 is safe to
+		use for a given cpv.  If a collision will occur with an existing
+		package from another category, the existing package will be bumped to
+		${PKGDIR}/${CATEGORY}/${PF}.tbz2 so that both can coexist."""
+		full_path = self.getname(cpv)
+		if "All" == full_path.split(os.path.sep)[-2]:
+			return
+		"""Move a colliding package if it exists.  Code below this point only
+		executes in rare cases."""
+		mycat, mypkg = catsplit(cpv)
+		myfile = mypkg + ".tbz2"
+		mypath = os.path.join("All", myfile)
+		dest_path = os.path.join(self.pkgdir, mypath)
+		if os.path.exists(dest_path):
+			other_cat = xpak.tbz2(dest_path).getfile("CATEGORY").strip()
+			if other_cat:
+				self._move_from_all(other_cat + "/" + mypkg)
+		"""The file may or may not exist. Move it if necessary and update
+		internal state for future calls to getname()."""
+		self._move_to_all(cpv)
+
+	def _move_to_all(self, cpv):
+		"""If the file exists, move it.  Whether or not it exists, update state
+		for future getname() calls."""
+		mycat , mypkg = catsplit(cpv)
+		myfile = mypkg + ".tbz2"
+		src_path = os.path.join(self.pkgdir, mycat, myfile)
+		try:
+			mystat = os.lstat(src_path)
+		except OSError, e:
+			mystat = None
+		if mystat and stat.S_ISREG(mystat.st_mode):
+			try:
+				os.makedirs(os.path.join(self.pkgdir, "All"))
+			except OSError, e:
+				if e.errno != errno.EEXIST:
+					raise
+				del e
+			os.rename(src_path, os.path.join(self.pkgdir, "All", myfile))
+			self._create_symlink(cpv)
+		self._pkg_paths[cpv] = os.path.join("All", myfile)
+
+	def _move_from_all(self, cpv):
+		"""Move a package from ${PKGDIR}/All/${PF}.tbz2 to
+		${PKGDIR}/${CATEGORY}/${PF}.tbz2 and update state from getname calls."""
+		self._remove_symlink(cpv)
+		mycat , mypkg = catsplit(cpv)
+		myfile = mypkg + ".tbz2"
+		mypath = os.path.join(mycat, myfile)
+		dest_path = os.path.join(self.pkgdir, mypath)
+		try:
+			os.makedirs(os.path.dirname(dest_path))
+		except OSError, e:
+			if e.errno != errno.EEXIST:
+				raise
+			del e
+		os.rename(os.path.join(self.pkgdir, "All", myfile), dest_path)
+		self._pkg_paths[cpv] = mypath
+
 	def populate(self, getbinpkgs=0,getbinpkgsonly=0):
 		"populates the binarytree"
 		if (not os.path.isdir(self.pkgdir) and not getbinpkgs):
@@ -5548,30 +5634,43 @@ class binarytree(packagetree):
 		if (not os.path.isdir(self.pkgdir+"/All") and not getbinpkgs):
 			return 0
 
-		if (not getbinpkgsonly) and os.path.exists(self.pkgdir+"/All"):
-			for mypkg in listdir(self.pkgdir+"/All"):
-				if mypkg[-5:]!=".tbz2":
-					continue
-				mytbz2=xpak.tbz2(self.pkgdir+"/All/"+mypkg)
-				mycat=mytbz2.getfile("CATEGORY")
-				if not mycat:
-					#old-style or corrupt package
-					writemsg("!!! Invalid binary package: "+mypkg+"\n",
-						noiselevel=-1)
-					writemsg("!!! This binary package is not recoverable and should be deleted.\n",
-						noiselevel=-1)
-					self.invalids.append(mypkg)
-					continue
-				mycat=string.strip(mycat)
-				fullpkg=mycat+"/"+mypkg[:-5]
-				mykey=dep_getkey(fullpkg)
-				try:
-					# invalid tbz2's can hurt things.
-					self.dbapi.cpv_inject(fullpkg)
-				except SystemExit, e:
-					raise
-				except:
-					continue
+		if not getbinpkgsonly:
+			pkg_paths = {}
+			dirs = listdir(self.pkgdir, dirsonly=True, EmptyOnError=True)
+			if "All" in dirs:
+				dirs.remove("All")
+			dirs.sort()
+			dirs.insert(0, "All")
+			for mydir in dirs:
+				for myfile in listdir(os.path.join(self.pkgdir, mydir)):
+					if not myfile.endswith(".tbz2"):
+						continue
+					mypath = os.path.join(mydir, myfile)
+					full_path = os.path.join(self.pkgdir, mypath)
+					if os.path.islink(full_path):
+						continue
+					mytbz2 = xpak.tbz2(full_path)
+					mycat = mytbz2.getfile("CATEGORY").strip()
+					mypkg = myfile[:-5]
+					if not mycat:
+						#old-style or corrupt package
+						writemsg("!!! Invalid binary package: '%s'\n" % full_path,
+							noiselevel=-1)
+						writemsg("!!! This binary package is not " + \
+							"recoverable and should be deleted.\n",
+							noiselevel=-1)
+						self.invalids.append(mypkg)
+					if mycat != mydir and mydir != "All":
+						continue
+					if mypkg != mytbz2.getfile("PF").strip():
+						continue
+					mycpv = mycat + "/" + mypkg
+					if mycpv in pkg_paths:
+						# All is first, so it's preferred.
+						continue
+					pkg_paths[mycpv] = mypath
+					self.dbapi.cpv_inject(mycpv)
+			self._pkg_paths = pkg_paths
 
 		if getbinpkgs and not self.settings["PORTAGE_BINHOST"]:
 			writemsg(red("!!! PORTAGE_BINHOST unset, but use is requested.\n"),
@@ -5643,9 +5742,23 @@ class binarytree(packagetree):
 		return mymatch
 
 	def getname(self,pkgname):
-		"returns file location for this particular package"
-		return os.path.join(self.pkgdir,
-			"All", catsplit(pkgname)[1] + ".tbz2")
+		"""Returns a file location for this package.  The default location is
+		${PKGDIR}/All/${PF}.tbz2, but will be ${PKGDIR}/${CATEGORY}/${PF}.tbz2
+		in the rare event of a collision.  The prevent_collision() method can
+		be called to ensure that ${PKGDIR}/All/${PF}.tbz2 is available for a
+		specific cpv."""
+		if not self.populated:
+			self.populate()
+		mycpv = pkgname
+		mypath = self._pkg_paths.get(mycpv, None)
+		if mypath:
+			return os.path.join(self.pkgdir, mypath)
+		mycat, mypkg = catsplit(mycpv)
+		mypath = os.path.join("All", mypkg + ".tbz2")
+		if mypath in self._pkg_paths.values():
+			mypath = os.path.join(mycat, mypkg + ".tbz2")
+		self._pkg_paths[mycpv] = mypath # cache for future lookups
+		return os.path.join(self.pkgdir, mypath)
 
 	def isremote(self,pkgname):
 		"Returns true if the package is kept remotely."

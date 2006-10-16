@@ -2254,6 +2254,7 @@ class MergeTask(object):
 						short_msg = "emerge: (%s of %s) %s Compile" % \
 							(mergecount, len(mymergelist), pkg_key)
 						emergelog(xterm_titles, msg, short_msg=short_msg)
+						self.trees[myroot]["bintree"].prevent_collision(pkg_key)
 						retval = portage.doebuild(y, "package", myroot,
 							pkgsettings, self.edebug, mydbapi=portdb,
 							tree="porttree")
