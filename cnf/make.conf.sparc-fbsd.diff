@@ -1,0 +1,35 @@
+--- make.conf	2006-10-16 17:06:32 +0100
++++ make.conf.sparc-fbsd	2006-10-16 17:09:22 +0100
+@@ -23,6 +23,13 @@
+ # Example:
+ #USE="X gtk gnome -alsa"
+ 
++# Host Setting
++# ============
++#
++# The version number at the end has to correspond to the version of the
++# profile and of freebsd-lib package.
++CHOST="sparc64-gentoo-freebsd6.2"
++
+ # Host and optimization settings 
+ # ==============================
+ #
+@@ -61,7 +68,7 @@
+ # DO NOT PUT ANYTHING BUT YOUR SPECIFIC ~ARCHITECTURE IN THE LIST.
+ # IF YOU ARE UNSURE OF YOUR ARCH, OR THE IMPLICATIONS, DO NOT MODIFY THIS.
+ #
+-#ACCEPT_KEYWORDS="~arch"
++ACCEPT_KEYWORDS="~sparc-fbsd"
+ 
+ # Portage Directories
+ # ===================
+@@ -287,7 +294,8 @@
+ #  'notitles'    disables xterm titlebar updates (which contain status info). 
+ #  'parallel-fetch'
+ #                do fetching in parallel to compilation
+-#  'sandbox'     enables sandboxing when running emerge and ebuild.
++#  'sandbox'     enables sandboxing when running emerge and ebuild. Doesn't
++#                work on *BSD-based systems.
+ #  'strict'      causes portage to react strongly to conditions that are
+ #                potentially dangerous, like missing/incorrect Manifest files.
+ #  'userfetch'   when portage is run as root, drop privileges to
