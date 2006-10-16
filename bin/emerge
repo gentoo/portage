@@ -1457,8 +1457,10 @@ class depgraph:
 						if not myblockers.child_nodes(blocker):
 							myblockers.remove(blocker)
 
-		if not myblockers.is_empty():
-			retlist.extend([node.split() for node in myblockers.root_nodes()])
+		for node in myblockers.root_nodes():
+			retlist.append(node.split())
+			for parent in self.blocker_parents[node]:
+				self.digraph.add(node, parent)
 
 		return retlist
 
