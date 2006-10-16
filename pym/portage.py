@@ -1382,7 +1382,8 @@ class config:
 
 		for mypath, (gid, mode, modemask) in dir_mode_map.iteritems():
 			try:
-				mydir = os.path.join(self["ROOT"] + self["EPREFIX"], mypath)
+				mydir = normalize_path(
+						os.path.join(self["ROOT"] + self["EPREFIX"], mypath))
 				portage_util.ensure_dirs(mydir, gid=gid, mode=mode, mask=modemask)
 			except portage_exception.PortageException, e:
 				writemsg("!!! Directory initialization failed: '%s'\n" % mydir,
