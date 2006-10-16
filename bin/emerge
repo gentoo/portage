@@ -1464,13 +1464,19 @@ class depgraph:
 						if not myblockers.child_nodes(blocker):
 							myblockers.remove(blocker)
 
-		for node in myblockers.root_nodes():
-			retlist.append(node.split())
-			if not reversed:
-				""" Valid blockers need to be in the digraph for --tree
-				support.  Blocker validation does not work with reverse mode,
-				so self.altlist() should first be called with reverse disabled
-				so that blockers are properly validated."""
+		if reversed:
+			for node in self.blocker_digraph.root_nodes():
+				if self.digraph.contains(node):
+					"""This blocker has been validated by a previous merge
+					order calculation."""
+					retlist.append(node.split())
+		else:
+			""" Valid blockers need to be in the digraph for --tree
+			support.  Blocker validation does not work with reverse mode,
+			so self.altlist() should first be called with reverse disabled
+			so that blockers are properly validated."""
+			for node in myblockers.root_nodes():
+				retlist.append(node.split())
 				for parent in self.blocker_parents[node]:
 					self.digraph.add(node, parent)
 
@@ -3837,6 +3843,9 @@ def action_build(settings, trees, mtimedb,
 				sys.exit(0)
 			mydepgraph.display(mymergelist)
 		else:
+			""" Blockers that depend on merge order must first be validated by
+			altlist(reversed=False)."""
+			mydepgraph.altlist()
 			mydepgraph.display(
 				mydepgraph.altlist(reversed=("--tree" in myopts)))
 	else:
