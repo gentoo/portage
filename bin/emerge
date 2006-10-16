@@ -1385,6 +1385,13 @@ class depgraph:
 
 	def altlist(self, reversed=False):
 		mygraph=self.digraph.copy()
+		for node in self.blocker_digraph.root_nodes():
+			"""These nodes aren't needed for the merge order calculation.  They
+			may be in the digraph for --tree support, but they need to be
+			removed prior to the merge order calculation so that they don't
+			trigger any false circular dependency issues."""
+			if mygraph.contains(node):
+				mygraph.remove(node)
 		myblockers = self.blocker_digraph.copy()
 		retlist=[]
 		circular_blocks = False
@@ -1460,6 +1467,7 @@ class depgraph:
 		for node in myblockers.root_nodes():
 			retlist.append(node.split())
 			for parent in self.blocker_parents[node]:
+				# Valid blockers need to be in the digraph for --tree support.
 				self.digraph.add(node, parent)
 
 		return retlist
