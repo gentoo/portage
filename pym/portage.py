@@ -723,17 +723,17 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None):
 			# an older package installed ON TOP of a newer version will cause ldconfig
 			# to overwrite the symlinks we just made. -X means no links. After 'clean'
 			# we can safely create links.
-			writemsg(">>> Regenerating %setc/ld.so.cache...\n" %
+			writemsg(">>> Regenerating %s/etc/ld.so.cache...\n" %
 					target_root+portage_const.EPREFIX)
 			if makelinks:
 				commands.getstatusoutput("cd / ; "+portage_const.EPREFIX+"/sbin/ldconfig -r '%s'" % target_root)
 			else:
 				commands.getstatusoutput("cd / ; "+portage_const.EPREFIX+"/sbin/ldconfig -X -r '%s'" % target_root)
 		elif ostype in ("FreeBSD","DragonFly"):
-			writemsg(">>> Regenerating %svar/run/ld-elf.so.hints...\n" %
+			writemsg(">>> Regenerating %s/var/run/ld-elf.so.hints...\n" %
 					target_root+portage_const.EPREFIX)
 			commands.getstatusoutput(
-				"cd / ; "+portage_const.EPREFIX+"/sbin/ldconfig -elf -i -f '%svar/run/ld-elf.so.hints' '%setc/ld.so.conf'" % \
+				"cd / ; "+portage_const.EPREFIX+"/sbin/ldconfig -elf -i -f '%s/var/run/ld-elf.so.hints' '%s/etc/ld.so.conf'" % \
 				(target_root+portage_const.EPREFIX, target_root+portage_const.EPREFIX))
 
 	del specials["LDPATH"]
@@ -2589,7 +2589,14 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 		mysettings["PORTAGE_DEBUG"] = "1"
 
 	mysettings["EPREFIX"]  = portage_const.EPREFIX.rstrip(os.sep)
-	mysettings["ROOT"]     = myroot
+	# In prefix we add prefix to root, such that many eclasses and
+	# ebuilds "just work" in a prefixed manner.  Beware of this.  At the
+	# bottom of this file we compensate the ROOT variable when portage
+	# is being called from ebuilds or eclasses (e.g. portageq) to avoid
+	# a double prefix.  In other words, inside portage ROOT should be
+	# ROOT, outside portage (in ebuilds and eclasses) ROOT is ROOT +
+	# EPREFIX.
+	mysettings["ROOT"]     = normalize_path(myroot + portage_const.EPREFIX + os.sep)
 	mysettings["STARTDIR"] = getcwd()
 
 	mysettings["EBUILD"]   = ebuild_path
@@ -4502,7 +4509,7 @@ class vardbapi(dbapi):
 
 	def counter_tick_core(self,myroot,incrementing=1,mycpv=None):
 		"This method will grab the next COUNTER value and record it back to the global file.  Returns new counter value."
-		cpath=myroot+"var/cache/edb/counter"
+		cpath=os.path.join(myroot+portage_const.EPREFIX, "var/cache/edb/counter")
 		changed=0
 		min_counter = 0
 		if mycpv:
@@ -7117,7 +7124,6 @@ dircache={}
 # ============================================================================
 # ============================================================================
 
-# XXX Fix this
 if os.environ.has_key("ROOT"):
 	root = normalize_path(os.environ["ROOT"]).rstrip(os.sep) + os.sep
 	# strip off prefix from the tail of the string, this happens when
@@ -7125,16 +7131,6 @@ if os.environ.has_key("ROOT"):
 	prefix = portage_const.EPREFIX.rstrip(os.sep) + os.sep
 	if root.endswith(prefix):
 		root = root[0:-len(prefix)] + os.sep
+		os.environ["ROOT"] = root
 else:
-	root = os.sep
-
-if root != os.sep:
-	if not os.path.exists(root[:-1]):
-		writemsg("!!! Error: ROOT "+root+" does not exist.  Please correct this.\n")
-		writemsg("!!! Exiting.\n\n")
-		sys.exit(1)
-	elif not os.path.isdir(root[:-1]):
-		writemsg("!!! Error: ROOT "+root[:-1]+" is not a directory. Please correct this.\n")
-		writemsg("!!! Exiting.\n\n")
-		sys.exit(1)
-
+	root = "/"

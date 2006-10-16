@@ -2190,6 +2190,11 @@ class MergeTask(object):
 			pkgsettings.backup_changes("EMERGE_FROM")
 			pkgsettings.reset()
 
+			# because portage modifies ROOT (adds EPREFIX) we have to
+			# reset ROOT to what it was after each invocation of portage
+			# code
+			origroot = pkgsettings["ROOT"]
+
 			#buildsyspkg: Check if we need to _force_ binary package creation
 			issyspkg = ("buildsyspkg" in myfeat) \
 					and x[0] != "blocks" \
@@ -2205,11 +2210,13 @@ class MergeTask(object):
 							pkgsettings, self.edebug,
 							"--pretend" in self.myopts, fetchonly=1,
 							fetchall=1, mydbapi=portdb, tree="porttree")
+						pkgsettings["ROOT"] = origroot
 					else:
 						retval = portage.doebuild(y, "fetch", myroot,
 							pkgsettings, self.edebug,
 							"--pretend" in self.myopts, fetchonly=1,
 							mydbapi=portdb, tree="porttree")
+						pkgsettings["ROOT"] = origroot
 					if (retval is None) or retval:
 						print
 						print "!!! Fetch for",y,"failed, continuing..."
@@ -2219,6 +2226,7 @@ class MergeTask(object):
 
 				portage.doebuild_environment(y, "setup", myroot,
 					pkgsettings, self.edebug, 1, portdb)
+				pkgsettings["ROOT"] = origroot
 				catdir = os.path.dirname(pkgsettings["PORTAGE_BUILDDIR"])
 				portage_util.ensure_dirs(os.path.dirname(catdir),
 					uid=portage.portage_uid, gid=portage.portage_gid,
@@ -2258,6 +2266,7 @@ class MergeTask(object):
 						retval = portage.doebuild(y, "package", myroot,
 							pkgsettings, self.edebug, mydbapi=portdb,
 							tree="porttree")
+						pkgsettings["ROOT"] = origroot
 						if retval != os.EX_OK:
 							return retval
 						if "--buildpkgonly" not in self.myopts:
@@ -2276,12 +2285,14 @@ class MergeTask(object):
 								myebuild=pkgsettings["EBUILD"],
 								mytree="porttree", mydbapi=portdb,
 								vartree=vartree, prev_mtimes=ldpath_mtimes)
+							pkgsettings["ROOT"] = origroot
 							if retval != os.EX_OK:
 								return retval
 						elif "noclean" not in pkgsettings.features:
 							portage.doebuild(y, "clean", myroot,
 								pkgsettings, self.edebug, mydbapi=portdb,
 								tree="porttree")
+							pkgsettings["ROOT"] = origroot
 					else:
 						msg = " === (%s of %s) Compiling/Merging (%s::%s)" % \
 							(mergecount, len(mymergelist), pkg_key, y)
@@ -2292,6 +2303,7 @@ class MergeTask(object):
 							pkgsettings, self.edebug, vartree=vartree,
 							mydbapi=portdb, tree="porttree",
 							prev_mtimes=ldpath_mtimes)
+						pkgsettings["ROOT"] = origroot
 						if retval != os.EX_OK:
 							return retval
 				finally:
@@ -2335,6 +2347,7 @@ class MergeTask(object):
 					mydbapi=bindb,
 					vartree=self.trees[myroot]["vartree"],
 					prev_mtimes=ldpath_mtimes)
+				pkgsettings["ROOT"] = origroot
 				if retval is None:
 					sys.exit(1)
 				#need to check for errors
@@ -2368,6 +2381,7 @@ class MergeTask(object):
 						emergelog(xterm_titles, " >>> AUTOCLEAN: " + xsplit[0])
 						retval = unmerge(pkgsettings, self.myopts, vartree,
 							"clean", [xsplit[0]], ldpath_mtimes)
+						pkgsettings["ROOT"] = origroot
 						if not retval:
 							emergelog(xterm_titles,
 								" --- AUTOCLEAN: Nothing unmerged.")
@@ -4244,7 +4258,7 @@ def emerge_main():
 		emergehelp.help(myaction, myopts, havecolor)
 		sys.exit(0)
 
-	if portage.wheelgid == portage.portage_gid and portage.wheelgid > 500:
+	if portage.wheelgid == portage.portage_gid and portage.wheelgid < 500:
 		print "emerge: wheel group use is being deprecated. Please update group and passwd to"
 		print "        include the portage user as noted above, and then use group portage."
 
