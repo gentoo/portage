@@ -734,7 +734,7 @@ class depgraph:
 			if addme and "--buildpkgonly" not in self.myopts and myparent:
 				mybigkey[1] = myparent.split()[1]
 				self.digraph.addnode(" ".join(mybigkey), myparent,
-					priority=priority)
+					priority=digraph.SOFT)
 			return 1
 		if not arg:
 			arg = portage.best_match_to_list(mykey, self.args_keys)
@@ -1478,7 +1478,7 @@ class depgraph:
 			for node in myblockers.root_nodes():
 				retlist.append(node.split())
 				for parent in self.blocker_parents[node]:
-					self.digraph.add(node, parent)
+					self.digraph.add(node, parent, priority=digraph.SOFT)
 
 		return retlist
 
