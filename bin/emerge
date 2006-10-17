@@ -3638,10 +3638,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 		pkgs = vardb.match(atom)
 		if not pkgs:
 			if not atom.startswith("!") and priority == hard:
-				if atom in unresolveable:
-					unresolveable[atom].append(parent)
-				else:
-					unresolveable[atom] = [parent]
+				unresolveable.setdefault(atom, []).append(parent)
 			continue
 		# Could put slot checking here to ensure that there aren't two
 		# packages with the same slot...
