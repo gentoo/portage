@@ -1526,13 +1526,12 @@ class config:
 		self.configdict["pkginternal"]["USE"] = pkginternaluse
 		defaults = []
 		for i in xrange(len(self.profiles)):
-			profile_use = self.make_defaults_use[i]
+			defaults.append(self.make_defaults_use[i])
 			cpdict = self.pkgprofileuse[i].get(cp, None)
 			if cpdict:
 				best_match = best_match_to_list(self.mycpv, cpdict.keys())
 				if best_match:
-					profile_use += " " + cpdict[best_match]
-			defaults.append(profile_use)
+					defaults.append(cpdict[best_match])
 		self.configdict["defaults"]["USE"] = " ".join(defaults)
 		useforce = []
 		for i in xrange(len(self.profiles)):
