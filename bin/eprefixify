@@ -1,0 +1,39 @@
+#!@BASH@
+# Copyright 1999-2006 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Id: $
+
+# replaces @GENTOO_PORTAGE_EPREFIX@ with EPREFIX for the given files
+
+if [[ $# -lt 1 ]] ; then
+	echo "$0: at least one argument needed" 1>&2
+	exit 1
+fi
+
+source "${PORTAGE_BIN_PATH}/isolated-functions.sh"
+case "${NOCOLOR:-false}" in
+	yes|true)
+		unset_colors
+		;;
+	no|false)
+		set_colors
+		;;
+esac
+
+ret=0
+
+einfo "Adjusting to prefix ..."
+for x in "$@" ; do
+	if [[ -e ${x} ]] ; then
+		ebegin ${x##*/}
+		sed -i -e "s|@GENTOO_PORTAGE_EPREFIX@|${EPREFIX}|g" "${x}"
+		r=$?
+		eend $r
+		((ret+=$r))
+	else
+		echo "!!! ${0##*/}: ${x} does not exist" 1>&2
+		false
+	fi
+done
+
+exit ${ret}
