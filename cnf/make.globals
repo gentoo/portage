@@ -60,7 +60,7 @@ PORTAGE_RSYNC_OPTS="--recursive --links --safe-links --perms --times --compress 
 CONFIG_PROTECT="/etc"
 
 # Disable auto-use
-USE_ORDER="env:pkg:conf:pkgprofile:defaults:pkginternal"
+USE_ORDER="env:pkg:conf:defaults:pkginternal"
 
 # Default portage user/group
 PORTAGE_USER="@portageuser@"

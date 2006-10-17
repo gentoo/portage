@@ -735,7 +735,7 @@ class depgraph:
 			if addme and "--buildpkgonly" not in self.myopts and myparent:
 				mybigkey[1] = myparent.split()[1]
 				self.digraph.addnode(" ".join(mybigkey), myparent,
-					priority=priority)
+					priority=digraph.SOFT)
 			return 1
 		if not arg:
 			arg = portage.best_match_to_list(mykey, self.args_keys)
@@ -772,9 +772,7 @@ class depgraph:
 				pkgsettings.setcpv(mykey, mydb=portdb)
 				forced_flags = set()
 				forced_flags.update(pkgsettings.useforce)
-				forced_flags.update(pkgsettings.puseforce)
 				forced_flags.update(pkgsettings.usemask)
-				forced_flags.update(pkgsettings.pusemask)
 				old_use = vardbapi.aux_get(mykey, ["USE"])[0].split()
 				iuses = set(filter_iuse_defaults(
 					mydbapi.aux_get(mykey, ["IUSE"])[0].split()))
@@ -1182,9 +1180,7 @@ class depgraph:
 					now_use = pkgsettings["USE"].split()
 					forced_flags = set()
 					forced_flags.update(pkgsettings.useforce)
-					forced_flags.update(pkgsettings.puseforce)
 					forced_flags.update(pkgsettings.usemask)
-					forced_flags.update(pkgsettings.pusemask)
 					cur_iuse = iuses
 					if "--usepkgonly" not in self.myopts and myeb:
 						cur_iuse = set(filter_iuse_defaults(
@@ -1383,9 +1379,18 @@ class depgraph:
 						invalidated after nodes referencing it have been merged."""
 						self.blocker_digraph.addnode(node, blocker)
 				self.digraph.remove(blocker)
+		# Validate blockers that depend on merge order.
+		self.altlist()
 
 	def altlist(self, reversed=False):
 		mygraph=self.digraph.copy()
+		for node in self.blocker_digraph.root_nodes():
+			"""These nodes aren't needed for the merge order calculation.  They
+			may be in the digraph for --tree support, but they need to be
+			removed prior to the merge order calculation so that they don't
+			trigger any false circular dependency issues."""
+			if mygraph.contains(node):
+				mygraph.remove(node)
 		myblockers = self.blocker_digraph.copy()
 		retlist=[]
 		circular_blocks = False
@@ -1458,10 +1463,21 @@ class depgraph:
 						if not myblockers.child_nodes(blocker):
 							myblockers.remove(blocker)
 
-		for node in myblockers.root_nodes():
-			retlist.append(node.split())
-			for parent in self.blocker_parents[node]:
-				self.digraph.add(node, parent)
+		if reversed:
+			for node in self.blocker_digraph.root_nodes():
+				if self.digraph.contains(node):
+					"""This blocker has been validated by a previous merge
+					order calculation."""
+					retlist.append(node.split())
+		else:
+			""" Valid blockers need to be in the digraph for --tree
+			support.  Blocker validation does not work with reverse mode,
+			so self.altlist() should first be called with reverse disabled
+			so that blockers are properly validated."""
+			for node in myblockers.root_nodes():
+				retlist.append(node.split())
+				for parent in self.blocker_parents[node]:
+					self.digraph.add(node, parent, priority=digraph.SOFT)
 
 		return retlist
 
@@ -1780,9 +1796,7 @@ class depgraph:
 					forced_flags = set()
 					if not binary_package:
 						forced_flags.update(pkgsettings.useforce)
-						forced_flags.update(pkgsettings.puseforce)
 						forced_flags.update(pkgsettings.usemask)
-						forced_flags.update(pkgsettings.pusemask)
 
 					cur_iuse = portage.unique_array(cur_iuse)
 					cur_iuse.sort()
@@ -3628,19 +3642,19 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	if "--quiet" not in myopts:
 		print "\nCalculating dependencies  ",
 
-	remaining_atoms = [(atom, 'world') for atom in worldlist if vardb.match(atom)]
-	remaining_atoms += [(atom, 'system') for atom in syslist if vardb.match(atom)]
+	soft = 0
+	hard = 1
+	remaining_atoms = [(atom, 'world', hard) for atom in worldlist if vardb.match(atom)]
+	remaining_atoms += [(atom, 'system', hard) for atom in syslist if vardb.match(atom)]
 	unresolveable = {}
+	aux_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
 
 	while remaining_atoms:
-		atom, parent = remaining_atoms.pop()
+		atom, parent, priority = remaining_atoms.pop()
 		pkgs = vardb.match(atom)
 		if not pkgs:
-			if not atom.startswith("!"):
-				if atom in unresolveable:
-					unresolveable[atom].append(parent)
-				else:
-					unresolveable[atom] = [parent]
+			if not atom.startswith("!") and priority == hard:
+				unresolveable.setdefault(atom, []).append(parent)
 			continue
 		# Could put slot checking here to ensure that there aren't two
 		# packages with the same slot...
@@ -3650,22 +3664,23 @@ def action_depclean(settings, trees, ldpath_mtimes,
 			spinner.update()
 			fakedb.cpv_inject(pkg)
 			mydb = portdb.xmatch("match-visible", "="+pkg) and portdb or vardb
+			myaux = dict(zip(aux_keys, mydb.aux_get(pkg, aux_keys)))
+			mydeps = []
 			if myopts.get("--with-bdeps", "y") == "y":
-				depstr = " ".join(mydb.aux_get(pkg,
-					["DEPEND", "RDEPEND", "PDEPEND"]))
-			else:
-				depstr = " ".join(mydb.aux_get(pkg,
-					["RDEPEND", "PDEPEND"]))
+				mydeps.append((myaux["DEPEND"], soft))
+			del myaux["DEPEND"]
+			mydeps.append((" ".join(myaux.values()), hard))
 			usedef = vardb.aux_get(pkg, ["USE"])[0].split()
-			success, atoms = portage.dep_check(depstr, emptydb, settings,
-				myuse=usedef, trees=trees, myroot=settings["ROOT"])
-			if not success:
-				print "\n\n"
-				print "Error occurred while processing",pkg
-				print str(atoms)
-				return
-			for atom in atoms:
-				remaining_atoms.append((atom, pkg))
+			for depstr, priority in mydeps:
+				success, atoms = portage.dep_check(depstr, emptydb, settings,
+					myuse=usedef, trees=trees, myroot=settings["ROOT"])
+				if not success:
+					print "\n\n"
+					print "Error occurred while processing",pkg
+					print str(atoms)
+					return
+				for atom in atoms:
+					remaining_atoms.append((atom, pkg, priority))
 
 	if "--quiet" not in myopts:
 		print "\b\b... done!\n"
