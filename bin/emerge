@@ -771,9 +771,7 @@ class depgraph:
 				pkgsettings.setcpv(mykey, mydb=portdb)
 				forced_flags = set()
 				forced_flags.update(pkgsettings.useforce)
-				forced_flags.update(pkgsettings.puseforce)
 				forced_flags.update(pkgsettings.usemask)
-				forced_flags.update(pkgsettings.pusemask)
 				old_use = vardbapi.aux_get(mykey, ["USE"])[0].split()
 				iuses = set(filter_iuse_defaults(
 					mydbapi.aux_get(mykey, ["IUSE"])[0].split()))
@@ -1181,9 +1179,7 @@ class depgraph:
 					now_use = pkgsettings["USE"].split()
 					forced_flags = set()
 					forced_flags.update(pkgsettings.useforce)
-					forced_flags.update(pkgsettings.puseforce)
 					forced_flags.update(pkgsettings.usemask)
-					forced_flags.update(pkgsettings.pusemask)
 					cur_iuse = iuses
 					if "--usepkgonly" not in self.myopts and myeb:
 						cur_iuse = set(filter_iuse_defaults(
@@ -1797,9 +1793,7 @@ class depgraph:
 					forced_flags = set()
 					if not binary_package:
 						forced_flags.update(pkgsettings.useforce)
-						forced_flags.update(pkgsettings.puseforce)
 						forced_flags.update(pkgsettings.usemask)
-						forced_flags.update(pkgsettings.pusemask)
 
 					cur_iuse = portage.unique_array(cur_iuse)
 					cur_iuse.sort()

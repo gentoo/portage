@@ -851,9 +851,7 @@ class config:
 
 		self.locked   = 0
 		self.mycpv    = None
-		self.puseforce = []
 		self.puse     = []
-		self.pusemask = []
 		self.modifiedkeys = []
 		self.uvlist = []
 
@@ -892,11 +890,11 @@ class config:
 
 			self.use_defs = copy.deepcopy(clone.use_defs)
 			self.usemask  = copy.deepcopy(clone.usemask)
-			self.pusemaskdict = copy.deepcopy(clone.pusemaskdict)
-			self.pusemask = copy.deepcopy(clone.pusemask)
+			self.usemask_list = copy.deepcopy(clone.usemask_list)
+			self.pusemask_list = copy.deepcopy(clone.pusemask_list)
 			self.useforce      = copy.deepcopy(clone.useforce)
-			self.puseforcedict = copy.deepcopy(clone.puseforcedict)
-			self.puseforce     = copy.deepcopy(clone.puseforce)
+			self.useforce_list = copy.deepcopy(clone.useforce_list)
+			self.puseforce_list = copy.deepcopy(clone.puseforce_list)
 			self.puse     = copy.deepcopy(clone.puse)
 			self.make_defaults_use = copy.deepcopy(clone.make_defaults_use)
 			self.pkgprofileuse = copy.deepcopy(clone.pkgprofileuse)
@@ -1031,22 +1029,23 @@ class config:
 					self.prevmaskdict[mycatpkg].append(x)
 
 			# get profile-masked use flags -- INCREMENTAL Child over parent
-			usemask_lists = [grabfile(os.path.join(x, "use.mask")) for x in self.profiles]
-			self.usemask  = stack_lists(usemask_lists, incremental=True)
-			del usemask_lists
+			self.usemask_list = [grabfile(os.path.join(x, "use.mask")) \
+				for x in self.profiles]
+			self.usemask  = set(stack_lists(
+				self.usemask_list, incremental=True))
 			use_defs_lists = [grabdict(os.path.join(x, "use.defaults")) for x in self.profiles]
 			self.use_defs  = stack_dictlist(use_defs_lists, incremental=True)
 			del use_defs_lists
 
-			self.pusemaskdict = {}
+			self.pusemask_list = []
 			rawpusemask = [grabdict_package(
 				os.path.join(x, "package.use.mask")) \
 				for x in self.profiles]
-			rawpusemask = stack_dictlist(rawpusemask, incremental=True)
-			for k, v in rawpusemask.iteritems():
-				cp = dep_getkey(k)
-				self.pusemaskdict.setdefault(cp, {})
-				self.pusemaskdict[cp][k] = v
+			for i in xrange(len(self.profiles)):
+				cpdict = {}
+				for k, v in rawpusemask[i].iteritems():
+					cpdict.setdefault(dep_getkey(k), {})[k] = v
+				self.pusemask_list.append(cpdict)
 			del rawpusemask
 
 			self.pkgprofileuse = []
@@ -1060,19 +1059,20 @@ class config:
 				self.pkgprofileuse.append(cpdict)
 			del rawprofileuse
 
-			self.useforce = stack_lists(
-				[grabfile(os.path.join(x, "use.force")) \
-				for x in self.profiles], incremental=True)
+			self.useforce_list = [grabfile(os.path.join(x, "use.force")) \
+				for x in self.profiles]
+			self.useforce  = set(stack_lists(
+				self.useforce_list, incremental=True))
 
-			self.puseforcedict = {}
+			self.puseforce_list = []
 			rawpuseforce = [grabdict_package(
 				os.path.join(x, "package.use.force")) \
 				for x in self.profiles]
-			rawpuseforce = stack_dictlist(rawpuseforce, incremental=True)
-			for k, v in rawpuseforce.iteritems():
-				cp = dep_getkey(k)
-				self.puseforcedict.setdefault(cp, {})
-				self.puseforcedict[cp][k] = v
+			for i in xrange(len(self.profiles)):
+				cpdict = {}
+				for k, v in rawpuseforce[i].iteritems():
+					cpdict.setdefault(dep_getkey(k), {})[k] = v
+				self.puseforce_list.append(cpdict)
 			del rawpuseforce
 
 			try:
@@ -1461,12 +1461,14 @@ class config:
 		if not keeping_pkg:
 			self.mycpv = None
 			self.puse = ""
-			self.pusemask = []
-			self.puseforce = []
 			self.configdict["pkg"].clear()
 			self.configdict["pkginternal"].clear()
 			self.configdict["defaults"]["USE"] = \
 				" ".join(self.make_defaults_use)
+			self.usemask  = set(stack_lists(
+				self.usemask_list, incremental=True))
+			self.useforce  = set(stack_lists(
+				self.useforce_list, incremental=True))
 		self.regenerate(use_cache=use_cache)
 
 	def load_infodir(self,infodir):
@@ -1532,23 +1534,29 @@ class config:
 					profile_use += " " + cpdict[best_match]
 			defaults.append(profile_use)
 		self.configdict["defaults"]["USE"] = " ".join(defaults)
+		useforce = []
+		for i in xrange(len(self.profiles)):
+			useforce.append(self.useforce_list[i])
+			cpdict = self.puseforce_list[i].get(cp, None)
+			if cpdict:
+				best_match = best_match_to_list(self.mycpv, cpdict.keys())
+				if best_match:
+					useforce.append(cpdict[best_match])
+		self.useforce = set(stack_lists(useforce, incremental=True))
+		usemask = []
+		for i in xrange(len(self.profiles)):
+			usemask.append(self.usemask_list[i])
+			cpdict = self.pusemask_list[i].get(cp, None)
+			if cpdict:
+				best_match = best_match_to_list(self.mycpv, cpdict.keys())
+				if best_match:
+					usemask.append(cpdict[best_match])
+		self.usemask = set(stack_lists(usemask, incremental=True))
 		self.puse = ""
 		if self.pusedict.has_key(cp):
 			self.pusekey = best_match_to_list(self.mycpv, self.pusedict[cp].keys())
 			if self.pusekey:
 				self.puse = " ".join(self.pusedict[cp][self.pusekey])
-		self.pusemask = []
-		if cp in self.pusemaskdict:
-			pusemaskkey = best_match_to_list(self.mycpv,
-				self.pusemaskdict[cp].keys())
-			if pusemaskkey:
-				self.pusemask = set(self.pusemaskdict[cp][pusemaskkey])
-		self.puseforce = []
-		if cp in self.puseforcedict:
-			puseforcekey = best_match_to_list(self.mycpv,
-				self.puseforcedict[cp].keys())
-			if puseforcekey:
-				self.puseforce = self.puseforcedict[cp][puseforcekey][:]
 		self.configdict["pkg"]["PKGUSE"] = self.puse[:] # For saving to PUSE file
 		self.configdict["pkg"]["USE"]    = self.puse[:] # this gets appended to USE
 		# CATEGORY is essential for doebuild calls
@@ -1714,10 +1722,9 @@ class config:
 
 		myflags = set(myflags)
 		myflags.update(self.useforce)
-		myflags.update(self.puseforce)
 
 		usesplit = [ x for x in myflags if \
-			x not in self.usemask and x not in self.pusemask ]
+			x not in self.usemask]
 		usesplit.sort()
 
 		# Use the calculated USE flags to regenerate the USE_EXPAND flags so
@@ -3591,7 +3598,6 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 			# that is being merged to a $ROOT that is different from the one
 			# that mysettings represents.
 			mymasks.update(mysettings.usemask)
-			mymasks.update(mysettings.pusemask)
 			mymasks.update(mysettings.archlist())
 			mymasks.discard(mysettings["ARCH"])
 		mysplit = portage_dep.use_reduce(mysplit,uselist=myusesplit,masklist=mymasks,matchall=(use=="all"),excludeall=[mysettings["ARCH"]])
