@@ -898,6 +898,7 @@ class config:
 			self.puseforcedict = copy.deepcopy(clone.puseforcedict)
 			self.puseforce     = copy.deepcopy(clone.puseforce)
 			self.puse     = copy.deepcopy(clone.puse)
+			self.make_defaults_use = copy.deepcopy(clone.make_defaults_use)
 			self.pkgprofileuse = copy.deepcopy(clone.pkgprofileuse)
 			self.mycpv    = copy.deepcopy(clone.mycpv)
 
@@ -909,12 +910,11 @@ class config:
 				"pkginternal": self.configlist[1],
 				"globals":     self.configlist[2],
 				"defaults":    self.configlist[3],
-				"pkgprofile":  self.configlist[4],
-				"conf":        self.configlist[5],
-				"pkg":         self.configlist[6],
-				"auto":        self.configlist[7],
-				"backupenv":   self.configlist[8],
-				"env":         self.configlist[9] }
+				"conf":        self.configlist[4],
+				"pkg":         self.configlist[5],
+				"auto":        self.configlist[6],
+				"backupenv":   self.configlist[7],
+				"env":         self.configlist[8] }
 			self.profiles = copy.deepcopy(clone.profiles)
 			self.backupenv  = self.configdict["backupenv"]
 			self.pusedict   = copy.deepcopy(clone.pusedict)
@@ -1049,15 +1049,15 @@ class config:
 				self.pusemaskdict[cp][k] = v
 			del rawpusemask
 
-			self.pkgprofileuse = {}
+			self.pkgprofileuse = []
 			rawprofileuse = [grabdict_package(
 				os.path.join(x, "package.use"), juststrings=True) \
 				for x in self.profiles]
-			rawprofileuse = stack_dicts(rawprofileuse, incremental=True)
-			for k, v in rawprofileuse.iteritems():
-				cp = dep_getkey(k)
-				self.pkgprofileuse.setdefault(cp, {})
-				self.pkgprofileuse[cp][k] = v
+			for i in xrange(len(self.profiles)):
+				cpdict = {}
+				for k, v in rawprofileuse[i].iteritems():
+					cpdict.setdefault(dep_getkey(k), {})[k] = v
+				self.pkgprofileuse.append(cpdict)
 			del rawprofileuse
 
 			self.useforce = stack_lists(
@@ -1092,10 +1092,16 @@ class config:
 			self.configlist.append(self.mygcfg)
 			self.configdict["globals"]=self.configlist[-1]
 
+			self.make_defaults_use = []
 			self.mygcfg = {}
 			if self.profiles:
 				try:
 					mygcfg_dlists = [getconfig(os.path.join(x, "make.defaults")) for x in self.profiles]
+					for cfg in mygcfg_dlists:
+						if cfg:
+							self.make_defaults_use.append(cfg.get("USE", ""))
+						else:
+							self.make_defaults_use.append("")
 					self.mygcfg   = stack_dicts(mygcfg_dlists, incrementals=portage_const.INCREMENTALS, ignore_none=1)
 					#self.mygcfg = grab_stacked("make.defaults", self.profiles, getconfig)
 					if self.mygcfg is None:
@@ -1113,9 +1119,6 @@ class config:
 					sys.exit(1)
 			self.configlist.append(self.mygcfg)
 			self.configdict["defaults"]=self.configlist[-1]
-
-			self.configlist.append({})
-			self.configdict["pkgprofile"] = self.configlist[-1]
 
 			try:
 				self.mygcfg = getconfig(
@@ -1298,7 +1301,7 @@ class config:
 			# reasonable defaults; this is important as without USE_ORDER,
 			# USE will always be "" (nothing set)!
 			if "USE_ORDER" not in self:
-				self.backupenv["USE_ORDER"] = "env:pkg:conf:pkgprofile:defaults:pkginternal"
+				self.backupenv["USE_ORDER"] = "env:pkg:conf:defaults:pkginternal"
 
 			self["PORTAGE_GID"] = str(portage_gid)
 			self.backup_changes("PORTAGE_GID")
@@ -1462,7 +1465,8 @@ class config:
 			self.puseforce = []
 			self.configdict["pkg"].clear()
 			self.configdict["pkginternal"].clear()
-			self.configdict["pkgprofile"].clear()
+			self.configdict["defaults"]["USE"] = \
+				" ".join(self.make_defaults_use)
 		self.regenerate(use_cache=use_cache)
 
 	def load_infodir(self,infodir):
@@ -1518,13 +1522,16 @@ class config:
 				for x in mydb.aux_get(mycpv, ["IUSE"])[0].split() \
 				if x.startswith("+")])
 		self.configdict["pkginternal"]["USE"] = pkginternaluse
-		pkgprofileuse = ""
-		if cp in self.pkgprofileuse:
-			best_match = best_match_to_list(
-				self.mycpv, self.pkgprofileuse[cp].keys())
-			if best_match:
-				pkgprofileuse = self.pkgprofileuse[cp][best_match]
-		self.configdict["pkgprofile"]["USE"] = pkgprofileuse
+		defaults = []
+		for i in xrange(len(self.profiles)):
+			profile_use = self.make_defaults_use[i]
+			cpdict = self.pkgprofileuse[i].get(cp, None)
+			if cpdict:
+				best_match = best_match_to_list(self.mycpv, cpdict.keys())
+				if best_match:
+					profile_use += " " + cpdict[best_match]
+			defaults.append(profile_use)
+		self.configdict["defaults"]["USE"] = " ".join(defaults)
 		self.puse = ""
 		if self.pusedict.has_key(cp):
 			self.pusekey = best_match_to_list(self.mycpv, self.pusedict[cp].keys())

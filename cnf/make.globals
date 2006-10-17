@@ -61,7 +61,7 @@ CONFIG_PROTECT="/etc"
 CONFIG_PROTECT_MASK="/etc/env.d"
 
 # Disable auto-use
-USE_ORDER="env:pkg:conf:pkgprofile:defaults:pkginternal"
+USE_ORDER="env:pkg:conf:defaults:pkginternal"
 
 # Default ownership of installed files.
 PORTAGE_INST_UID="0"
