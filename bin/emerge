@@ -1378,6 +1378,8 @@ class depgraph:
 						invalidated after nodes referencing it have been merged."""
 						self.blocker_digraph.addnode(node, blocker)
 				self.digraph.remove(blocker)
+		# Validate blockers that depend on merge order.
+		self.altlist()
 
 	def altlist(self, reversed=False):
 		mygraph=self.digraph.copy()
@@ -3790,9 +3792,6 @@ def action_build(settings, trees, mtimedb,
 			mydepgraph.display(mymergelist)
 			prompt="Would you like to resume merging these packages?"
 		else:
-			""" Blockers that depend on merge order must first be validated by
-			altlist(reversed=False)."""
-			mydepgraph.altlist()
 			mydepgraph.display(
 				mydepgraph.altlist(reversed=("--tree" in myopts)))
 			mergecount=0
@@ -3838,9 +3837,6 @@ def action_build(settings, trees, mtimedb,
 				sys.exit(0)
 			mydepgraph.display(mymergelist)
 		else:
-			""" Blockers that depend on merge order must first be validated by
-			altlist(reversed=False)."""
-			mydepgraph.altlist()
 			mydepgraph.display(
 				mydepgraph.altlist(reversed=("--tree" in myopts)))
 	else:
