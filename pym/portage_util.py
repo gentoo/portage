@@ -137,9 +137,13 @@ def stack_lists(lists, incremental=1):
 	new_list = {}
 	for x in lists:
 		for y in filter(None, x):
-			if incremental and y.startswith("-"):
-				if y[1:] in new_list:
-					del new_list[y[1:]]
+			if incremental:
+				if y == "-*":
+					new_list.clear()
+				elif y.startswith("-"):
+					new_list.pop(y[1:], None)
+				else:
+					new_list[y] = True
 			else:
 				new_list[y] = True
 	return new_list.keys()
