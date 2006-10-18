@@ -1246,7 +1246,10 @@ class depgraph:
 					iuses = set(filter_iuse_defaults(
 						bindb.aux_get(myeb_pkg, ["IUSE"])[0].split()))
 					old_use = bindb.aux_get(myeb_pkg, ["USE"])[0].split()
-					pkgsettings.setcpv(myeb_pkg, mydb=portdb)
+					mydb = None
+					if "--usepkgonly" not in self.myopts and myeb:
+						mydb = portdb
+					pkgsettings.setcpv(myeb, mydb=mydb)
 					now_use = pkgsettings["USE"].split()
 					forced_flags = set()
 					forced_flags.update(pkgsettings.useforce)
