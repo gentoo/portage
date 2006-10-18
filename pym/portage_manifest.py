@@ -252,8 +252,12 @@ class Manifest(object):
 					else:
 						raise
 			if update_digest:
-				write_atomic(dname,
-				"\n".join(self._createDigestLines1(distlist, self.fhashdict))+"\n")
+				mylines = self._createDigestLines1(distlist, self.fhashdict)
+				if mylines:
+					mylines = "\n".join(mylines) + "\n"
+				else:
+					mylines = ""
+				write_atomic(dname, mylines)
 			rval.append(dname)
 		return rval
 

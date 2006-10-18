@@ -848,9 +848,14 @@ class ConfigProtect(object):
 				os.path.join(self.myroot, x.lstrip(os.path.sep)))
 			mystat = None
 			try:
+				"""Use lstat so that anything, even a broken symlink can be
+				protected."""
 				if stat.S_ISDIR(os.lstat(ppath).st_mode):
 					self._dirs.add(ppath)
 				self.protect.append(ppath)
+				"""Now use stat in case this is a symlink to a directory."""
+				if stat.S_ISDIR(os.stat(ppath).st_mode):
+					self._dirs.add(ppath)
 			except OSError:
 				# If it doesn't exist, there's no need to protect it.
 				pass
@@ -861,9 +866,14 @@ class ConfigProtect(object):
 				os.path.join(self.myroot, x.lstrip(os.path.sep)))
 			mystat = None
 			try:
+				"""Use lstat so that anything, even a broken symlink can be
+				protected."""
 				if stat.S_ISDIR(os.lstat(ppath).st_mode):
 					self._dirs.add(ppath)
 				self.protectmask.append(ppath)
+				"""Now use stat in case this is a symlink to a directory."""
+				if stat.S_ISDIR(os.stat(ppath).st_mode):
+					self._dirs.add(ppath)
 			except OSError:
 				# If it doesn't exist, there's no need to mask it.
 				pass

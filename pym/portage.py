@@ -312,10 +312,6 @@ def flatten(mytokens):
 #beautiful directed graph object
 
 class digraph:
-	NONE   = -1
-	SOFT   = 0
-	MEDIUM = 1
-	HARD   = 2
 	def __init__(self):
 		"""Create an empty digraph"""
 		
@@ -323,7 +319,7 @@ class digraph:
 		self.nodes = {}
 		self.order = []
 
-	def add(self, node, parent, priority=2):
+	def add(self, node, parent, priority=0):
 		"""Adds the specified node with the specified parent.
 		
 		If the dep is a soft-dep and the node already has a hard
@@ -376,9 +372,9 @@ class digraph:
 		"""Return a list of all nodes in the graph"""
 		return self.order[:]
 
-	def child_nodes(self, node, ignore_priority=-1):
+	def child_nodes(self, node, ignore_priority=None):
 		"""Return all children of the specified node"""
-		if ignore_priority == -1:
+		if ignore_priority is None:
 			return self.nodes[node][0].keys()
 		children = []
 		for child, priority in self.nodes[node][0].iteritems():
@@ -390,7 +386,7 @@ class digraph:
 		"""Return all parents of the specified node"""
 		return self.nodes[node][1].keys()
 
-	def leaf_nodes(self, ignore_priority=-1):
+	def leaf_nodes(self, ignore_priority=None):
 		"""Return all nodes that have no children
 		
 		If ignore_soft_deps is True, soft deps are not counted as
@@ -407,7 +403,7 @@ class digraph:
 				leaf_nodes.append(node)
 		return leaf_nodes
 
-	def root_nodes(self, ignore_priority=-1):
+	def root_nodes(self, ignore_priority=None):
 		"""Return all nodes that have no parents.
 		
 		If ignore_soft_deps is True, soft deps are not counted as
@@ -454,7 +450,7 @@ class digraph:
 			return leaf_nodes[0]
 		return None
 
-	def hasallzeros(self, ignore_priority=-1):
+	def hasallzeros(self, ignore_priority=None):
 		return len(self.leaf_nodes(ignore_priority=ignore_priority)) == \
 			len(self.order)
 
@@ -467,12 +463,7 @@ class digraph:
 				print "(no children)"
 			for child in self.nodes[node][0]:
 				print "  ",child,
-				if self.nodes[node][0][child] == self.HARD:
-					print "(hard)"
-				elif self.nodes[node][0][child] == self.MEDIUM:
-					print "(medium)"
-				else:
-					print "(soft)"
+				print "(%s)" % self.nodes[node][0][child]
 
 
 
@@ -593,7 +584,7 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None):
 		mylist = []
 		for myconfig in config_list:
 			if var in myconfig:
-				mylist.extend(myconfig[var].split())
+				mylist.extend(filter(None, myconfig[var].split()))
 				del myconfig[var] # prepare for env.update(myconfig)
 		if mylist:
 			env[var] = " ".join(mylist)
@@ -603,7 +594,7 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None):
 		mylist = []
 		for myconfig in config_list:
 			if var in myconfig:
-				mylist.extend(myconfig[var].split(":"))
+				mylist.extend(filter(None, myconfig[var].split(":")))
 				del myconfig[var] # prepare for env.update(myconfig)
 		if mylist:
 			env[var] = ":".join(mylist)
@@ -1530,13 +1521,12 @@ class config:
 		self.configdict["pkginternal"]["USE"] = pkginternaluse
 		defaults = []
 		for i in xrange(len(self.profiles)):
-			profile_use = self.make_defaults_use[i]
+			defaults.append(self.make_defaults_use[i])
 			cpdict = self.pkgprofileuse[i].get(cp, None)
 			if cpdict:
 				best_match = best_match_to_list(self.mycpv, cpdict.keys())
 				if best_match:
-					profile_use += " " + cpdict[best_match]
-			defaults.append(profile_use)
+					defaults.append(cpdict[best_match])
 		self.configdict["defaults"]["USE"] = " ".join(defaults)
 		useforce = []
 		for i in xrange(len(self.profiles)):
