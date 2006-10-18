@@ -661,6 +661,8 @@ class DepPriority(object):
 	MIN    = -4
 	def __init__(self, **kwargs):
 		for myattr in self.__slots__:
+			if myattr == "__weakref__":
+				continue
 			myvalue = kwargs.get(myattr, False)
 			setattr(self, myattr, myvalue)
 	def __int__(self):
