@@ -1473,7 +1473,7 @@ class depgraph:
 			get_nodes = mygraph.leaf_nodes
 		ignore_priority_range = [None]
 		ignore_priority_range.extend(
-			xrange(DepPriority.MIN, DepPriority.MEDIUM))
+			xrange(DepPriority.MIN, DepPriority.MEDIUM + 1))
 		while not mygraph.empty():
 			for ignore_priority in ignore_priority_range:
 				nodes = get_nodes(ignore_priority=ignore_priority)
