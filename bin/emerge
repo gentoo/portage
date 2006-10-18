@@ -655,7 +655,7 @@ class DepPriority(object):
 		SOFT     The upper boundary for soft dependencies.
 		MIN      The lower boundary for soft dependencies.
 	"""
-	__slots__ = ["satisfied", "buildtime", "runtime"]
+	__slots__ = ["__weakref__", "satisfied", "buildtime", "runtime"]
 	MEDIUM = -1
 	SOFT   = -2
 	MIN    = -4
