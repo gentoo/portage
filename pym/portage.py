@@ -714,15 +714,13 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None):
 			# an older package installed ON TOP of a newer version will cause ldconfig
 			# to overwrite the symlinks we just made. -X means no links. After 'clean'
 			# we can safely create links.
-			writemsg(">>> Regenerating %s/etc/ld.so.cache...\n" %
-					target_root+portage_const.EPREFIX)
+			writemsg(">>> Regenerating %s/etc/ld.so.cache...\n" % target_root+portage_const.EPREFIX)
 			if makelinks:
 				commands.getstatusoutput("cd / ; "+portage_const.EPREFIX+"/sbin/ldconfig -r '%s'" % target_root)
 			else:
 				commands.getstatusoutput("cd / ; "+portage_const.EPREFIX+"/sbin/ldconfig -X -r '%s'" % target_root)
 		elif ostype in ("FreeBSD","DragonFly"):
-			writemsg(">>> Regenerating %s/var/run/ld-elf.so.hints...\n" %
-					target_root+portage_const.EPREFIX)
+			writemsg(">>> Regenerating %svar/run/ld-elf.so.hints...\n" % target_root+portage_const.EPREFIX+os.sep)
 			commands.getstatusoutput(
 				"cd / ; "+portage_const.EPREFIX+"/sbin/ldconfig -elf -i -f '%s/var/run/ld-elf.so.hints' '%s/etc/ld.so.conf'" % \
 				(target_root+portage_const.EPREFIX, target_root+portage_const.EPREFIX))
@@ -2594,14 +2592,8 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 		mysettings["PORTAGE_DEBUG"] = "1"
 
 	mysettings["EPREFIX"]  = portage_const.EPREFIX.rstrip(os.sep)
-	# In prefix we add prefix to root, such that many eclasses and
-	# ebuilds "just work" in a prefixed manner.  Beware of this.  At the
-	# bottom of this file we compensate the ROOT variable when portage
-	# is being called from ebuilds or eclasses (e.g. portageq) to avoid
-	# a double prefix.  In other words, inside portage ROOT should be
-	# ROOT, outside portage (in ebuilds and eclasses) ROOT is ROOT +
-	# EPREFIX.
-	mysettings["ROOT"]     = normalize_path(myroot + portage_const.EPREFIX + os.sep)
+	mysettings["ROOT"]     = myroot
+	mysettings["PROOT"]    = normalize_path(myroot + mysettings["EPREFIX"]) + os.sep
 	mysettings["STARTDIR"] = getcwd()
 
 	mysettings["EBUILD"]   = ebuild_path
@@ -2618,6 +2610,7 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 	mysettings["PN"] = mysplit[0]
 	mysettings["PV"] = mysplit[1]
 	mysettings["PR"] = mysplit[2]
+
 	if portage_util.noiselimit < 0:
 		mysettings["PORTAGE_QUIET"] = "1"
 
@@ -2662,10 +2655,8 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 
 	mysettings["HOME"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "homedir")
 	mysettings["WORKDIR"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "work")
-	mysettings["EDEST"] = normalize_path(
-			os.path.join(mysettings["PORTAGE_BUILDDIR"], "image") + os.sep)
-	mysettings["D"] = normalize_path(
-			os.path.join(mysettings["PORTAGE_BUILDDIR"], "image" + mysettings["EPREFIX"]) + os.sep)
+	mysettings["EDEST"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "image") + os.sep
+	mysettings["D"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "image" + mysettings["EPREFIX"]) + os.sep
 	mysettings["T"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "temp")
 
 	mysettings["PORTAGE_BASHRC"] = os.path.join(
@@ -6201,7 +6192,6 @@ class dblink:
 		# secondhand = list of symlinks that have been skipped due to
 		#              their target not existing (will merge later),
 
-		origroot = destroot
 		destroot = normalize_path(destroot + portage_const.EPREFIX)
 
 		if not os.path.isdir(srcroot):
@@ -6245,12 +6235,8 @@ class dblink:
 			for v in otherversions:
 				# only allow versions with same slot to overwrite files
 				if myslot == self.vartree.dbapi.aux_get("/".join((self.cat, v)), ["SLOT"])[0]:
-					# dblink needs the original destroot, as it prefixes
-					# the entries from CONTENTS in vdb with root.  So to
-					# avoid a double prefix there, we don't need a
-					# prefixed root.
 					mypkglist.append(
-						dblink(self.cat, v, origroot, self.settings,
+						dblink(self.cat, v, destroot, self.settings,
 							vartree=self.vartree))
 
 			print green("*")+" checking "+str(len(myfilelist))+" files for package collisions"
@@ -6466,7 +6452,7 @@ class dblink:
 
 	def mergeme(self,srcroot,destroot,outfile,secondhand,stufftomerge,cfgfiledict,thismtime):
 		from os.path import sep, join
-		prefix = normalize_path(portage_const.EPREFIX)
+		prefix = normalize_path(portage_const.EPREFIX) + sep
 		srcroot = normalize_path(srcroot).rstrip(sep) + sep
 		destroot = normalize_path(destroot).rstrip(sep) + sep
 		# this is supposed to merge a list of files.  There will be 2 forms of argument passing.
@@ -7186,8 +7172,7 @@ def init_legacy_globals():
 
 	kwargs = {}
 	for k, envvar in (("config_root", "PORTAGE_CONFIGROOT"), ("target_root", "ROOT")):
-		kwargs[k] = os.path.join(
-				os.environ.get(envvar, "/"))
+		kwargs[k] = os.environ.get(envvar, "/")
 
 	db = create_trees(**kwargs)
 
@@ -7241,13 +7226,3 @@ dircache={}
 # ============================================================================
 # ============================================================================
 
-if os.environ.has_key("ROOT"):
-	root = normalize_path(os.environ["ROOT"]).rstrip(os.sep) + os.sep
-	# strip off prefix from the tail of the string, this happens when
-	# portage is called from within ebuilds or eclasses
-	prefix = portage_const.EPREFIX.rstrip(os.sep) + os.sep
-	if root.endswith(prefix):
-		root = root[0:-len(prefix)] + os.sep
-		os.environ["ROOT"] = root
-else:
-	root = "/"

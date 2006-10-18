@@ -25,7 +25,7 @@ ret=0
 einfo "Adjusting to prefix ..."
 for x in "$@" ; do
 	if [[ -e ${x} ]] ; then
-		ebegin ${x##*/}
+		ebegin "  ${x##*/}"
 		sed -i -e "s|@GENTOO_PORTAGE_EPREFIX@|${EPREFIX}|g" "${x}"
 		r=$?
 		eend $r
