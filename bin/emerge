@@ -629,6 +629,76 @@ def filter_iuse_defaults(iuse):
 		else:
 			yield flag
 
+class DepPriority(object):
+	"""
+		This class generates an integer priority level based of various
+		attributes of the dependency relationship.  Attributes can be assigned
+		at any time and the new integer value will be generated on calls to the
+		__int__() method.  Rich comparison operators are supported.
+
+		The boolean attributes that affect the integer value are "satisfied",
+		"buildtime", "runtime", and "system".  Various combinations of
+		attributes lead to the following priority levels:
+
+		Combination of properties    Priority level
+
+		not satisfied and buildtime     0
+		not satisfied and runtime      -1
+		satisfied and buildtime        -2
+		satisfied and runtime          -3
+		(none of the above)            -4
+
+		Several integer constants are defined for categorization of priority
+		levels:
+
+		MEDIUM   The upper boundary for medium dependencies.
+		SOFT     The upper boundary for soft dependencies.
+		MIN      The lower boundary for soft dependencies.
+	"""
+	__slots__ = ["satisfied", "buildtime", "runtime", "system"]
+	MEDIUM = -1
+	SOFT   = -2
+	MIN    = -4
+	def __init__(self, **kwargs):
+		for myattr in self.__slots__:
+			myvalue = kwargs.get(myattr, False)
+			setattr(self, myattr, myvalue)
+	def __int__(self):
+		if not self.satisfied:
+			if self.buildtime:
+				return 0
+			if self.runtime:
+				return -1
+		if self.buildtime:
+			return -2
+		if self.runtime:
+			return -3
+		if self.system:
+			return -4
+		return -5
+	def __lt__(self, other):
+		return int(self) < other
+	def __le__(self, other):
+		return int(self) <= other
+	def __eq__(self, other):
+		return int(self) == other
+	def __ne__(self, other):
+		return int(self) != other
+	def __gt__(self, other):
+		return int(self) > other
+	def __ge__(self, other):
+		return int(self) >= other
+	def copy(self):
+		import copy
+		return copy.copy(self)
+	def __str__(self):
+		myvalue = int(self)
+		if myvalue > self.MEDIUM:
+			return "hard"
+		if myvalue > self.SOFT:
+			return "medium"
+		return "soft"
+
 class depgraph:
 
 	pkg_tree_map = {
@@ -691,7 +761,7 @@ class depgraph:
 		self.blocker_parents = {}
 
 	def create(self, mybigkey, myparent=None, addme=1, myuse=None,
-		priority=digraph.HARD, rev_dep=False, arg=None):
+		priority=DepPriority(), rev_dep=False, arg=None):
 		"""
 		Fills the digraph with nodes comprised of packages to merge.
 		mybigkey is the package spec of the package to merge.
@@ -734,7 +804,7 @@ class depgraph:
 			if addme and "--buildpkgonly" not in self.myopts and myparent:
 				mybigkey[1] = myparent.split()[1]
 				self.digraph.addnode(" ".join(mybigkey), myparent,
-					priority=digraph.SOFT)
+					priority=DepPriority())
 			return 1
 		if not arg:
 			arg = portage.best_match_to_list(mykey, self.args_keys)
@@ -845,7 +915,8 @@ class depgraph:
 
 		try:
 			if not self.select_dep("/", edepend["DEPEND"], myparent=mp,
-				myuse=myuse, parent_arg=arg):
+				myuse=myuse, priority=DepPriority(buildtime=True),
+				parent_arg=arg):
 				return 0
 			"""RDEPEND is soft by definition.  However, in order to ensure
 			correct merge order, we make it a hard dependency.  Otherwise, a
@@ -853,13 +924,15 @@ class depgraph:
 			dependencies not being installed yet.
 			"""
 			if not self.select_dep(myroot,edepend["RDEPEND"], myparent=mp,
-				myuse=myuse, priority=digraph.MEDIUM, parent_arg=arg):
+				myuse=myuse, priority=DepPriority(runtime=True),
+				parent_arg=arg):
 				return 0
 			if edepend.has_key("PDEPEND") and edepend["PDEPEND"]:
 				# Post Depend -- Add to the list without a parent, as it depends
 				# on a package being present AND must be built after that package.
 				if not self.select_dep(myroot, edepend["PDEPEND"], myparent=mp,
-					myuse=myuse, priority=digraph.SOFT, rev_deps=True, parent_arg=arg):
+					myuse=myuse, priority=DepPriority(), rev_deps=True,
+					parent_arg=arg):
 					return 0
 		except ValueError, e:
 			pkgs = e.args[0]
@@ -1055,8 +1128,8 @@ class depgraph:
 						return match
 
 	def select_dep(self, myroot, depstring, myparent=None, arg=None,
-		myuse=None, raise_on_missing=False, priority=digraph.HARD, rev_deps=False,
-		parent_arg=None):
+		myuse=None, raise_on_missing=False, priority=DepPriority(),
+		rev_deps=False, parent_arg=None):
 		""" Given a depstring, create the depgraph such that all dependencies are satisfied.
 		    myroot = $ROOT from environment, where {R,P}DEPENDs are merged to.
 		    myparent = the node whose depstring is being passed in
@@ -1301,9 +1374,9 @@ class depgraph:
 
 			if myparent:
 				#we are a dependency, so we want to be unconditionally added
-				mypriority = priority
-				if mypriority > digraph.SOFT and vardb.match(x):
-					mypriority = digraph.SOFT
+				mypriority = priority.copy()
+				if vardb.match(x):
+					mypriority.satisfied = True
 				if not self.create(selected_pkg[0:3], myparent,
 					myuse=selected_pkg[-1], priority=mypriority,
 					rev_dep=rev_deps, arg=arg):
@@ -1398,15 +1471,17 @@ class depgraph:
 			get_nodes = mygraph.root_nodes
 		else:
 			get_nodes = mygraph.leaf_nodes
+		ignore_priority_range = [None]
+		ignore_priority_range.extend(
+			xrange(DepPriority.MIN, DepPriority.MEDIUM))
 		while not mygraph.empty():
-			for ignore_priority in \
-				(digraph.NONE, digraph.SOFT, digraph.MEDIUM):
+			for ignore_priority in ignore_priority_range:
 				nodes = get_nodes(ignore_priority=ignore_priority)
 				if nodes:
 					break
 			selected_nodes = None
 			if nodes:
-				if ignore_priority <= digraph.SOFT:
+				if ignore_priority <= DepPriority.SOFT:
 					selected_nodes = [nodes[0]]
 				else:
 					"""Recursively gather a group of nodes that RDEPEND on
@@ -1419,7 +1494,7 @@ class depgraph:
 							return False
 						selected_nodes.add(node)
 						for child in mygraph.child_nodes(node,
-							ignore_priority=digraph.SOFT):
+							ignore_priority=DepPriority.SOFT):
 							if not gather_deps(
 								mergeable_nodes, selected_nodes, child):
 								return False
@@ -1476,7 +1551,7 @@ class depgraph:
 			for node in myblockers.root_nodes():
 				retlist.append(node.split())
 				for parent in self.blocker_parents[node]:
-					self.digraph.add(node, parent, priority=digraph.SOFT)
+					self.digraph.add(node, parent, priority=DepPriority())
 
 		return retlist
 
