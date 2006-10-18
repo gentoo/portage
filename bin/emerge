@@ -1449,7 +1449,8 @@ class depgraph:
 							continue
 						# Enforce correct merge order with a hard dep.
 						node = self.pkg_node_map[pkg]
-						self.digraph.addnode(node, parent)
+						self.digraph.addnode(node, parent,
+							priority=DepPriority(buildtime=True))
 						"""Count references to this blocker so that it can be
 						invalidated after nodes referencing it have been merged."""
 						self.blocker_digraph.addnode(node, blocker)
