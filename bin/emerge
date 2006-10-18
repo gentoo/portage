@@ -1432,11 +1432,22 @@ class depgraph:
 				enforce correct merge order."""
 				fakedb = self.mydbapi[myroot]
 				new_pkgs = []
+				unresolveable = False
 				for cpv in blocked_pkgs:
 					myslot = vardb.aux_get(cpv, ["SLOT"])[0]
 					myslot_atom = "%s:%s" % (portage.dep_getkey(cpv), myslot)
-					new_pkgs.append(
-						(myslot_atom, fakedb.match(myslot_atom)[0]))
+					mymatches = fakedb.match(myslot_atom)
+					if mymatches:
+						new_pkgs.append((myslot_atom, mymatches[0]))
+					else:
+						"""There's an installed package that's blocked and
+						there's no upgrade found to invalidate it, so leave
+						this blocker in the digraph."""
+						unresolveable = True
+						break
+				if unresolveable:
+					continue
+
 				for parent in self.digraph.parent_nodes(blocker):
 					ptype, proot, pcpv, pstatus = parent.split()
 					pdbapi = self.trees[proot][self.pkg_tree_map[ptype]].dbapi
