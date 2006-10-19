@@ -1467,7 +1467,8 @@ class depgraph:
 						self.blocker_digraph.addnode(node, blocker)
 				self.digraph.remove(blocker)
 		# Validate blockers that depend on merge order.
-		self.altlist()
+		if not self.blocker_digraph.empty():
+			self.altlist()
 
 	def altlist(self, reversed=False):
 		mygraph=self.digraph.copy()
