@@ -6192,6 +6192,7 @@ class dblink:
 		# secondhand = list of symlinks that have been skipped due to
 		#              their target not existing (will merge later),
 
+		origroot = destroot
 		destroot = normalize_path(destroot + portage_const.EPREFIX)
 
 		if not os.path.isdir(srcroot):
@@ -6318,7 +6319,7 @@ class dblink:
 		# run preinst script
 		if myebuild is None:
 			myebuild = os.path.join(inforoot, self.pkg + ".ebuild")
-		a = doebuild(myebuild, "preinst", destroot, self.settings, cleanup=cleanup,
+		a = doebuild(myebuild, "preinst", origroot, self.settings, cleanup=cleanup,
 			use_cache=0, tree=self.treetype, mydbapi=mydbapi,
 			vartree=self.vartree)
 
@@ -6420,7 +6421,7 @@ class dblink:
 		del conf_mem_file
 
 		#do postinst script
-		a = doebuild(myebuild, "postinst", destroot, self.settings, use_cache=0,
+		a = doebuild(myebuild, "postinst", origroot, self.settings, use_cache=0,
 			tree=self.treetype, mydbapi=mydbapi, vartree=self.vartree)
 
 		# XXX: Decide how to handle failures here.
@@ -6446,7 +6447,7 @@ class dblink:
 		# Process ebuild logfiles
 		elog_process(self.mycpv, self.settings)
 		if "noclean" not in self.settings.features:
-			doebuild(myebuild, "clean", destroot, self.settings,
+			doebuild(myebuild, "clean", origroot, self.settings,
 				tree=self.treetype, mydbapi=mydbapi, vartree=self.vartree)
 		return 0
 
