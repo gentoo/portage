@@ -73,7 +73,7 @@ try:
 	  INCREMENTALS, EAPI, MISC_SH_BINARY
 
 	from portage_data import ostype, lchown, userland, secpass, uid, wheelgid, \
-	                         portage_uid, portage_gid
+	                         portage_uid, portage_gid, userpriv_groups
 	from portage_manifest import Manifest
 
 	import portage_util
@@ -1926,7 +1926,7 @@ def spawn(mystring,mysettings,debug=0,free=0,droppriv=0,sesandbox=0,fd_pipes=Non
 		 ("userpriv" in string.split(mysettings["RESTRICT"]))))
 
 	if droppriv and not uid and portage_gid and portage_uid:
-		keywords.update({"uid":portage_uid,"gid":portage_gid,"groups":[portage_gid],"umask":002})
+		keywords.update({"uid":portage_uid,"gid":portage_gid,"groups":userpriv_groups,"umask":002})
 
 	if not free:
 		free=((droppriv and "usersandbox" not in features) or \
@@ -2257,7 +2257,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						spawn_keywords.update({
 							"uid"    : portage_uid,
 							"gid"    : portage_gid,
-							"groups" : [portage_gid],
+							"groups" : userpriv_groups,
 							"umask"  : 002})
 
 					try:

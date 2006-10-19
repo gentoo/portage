@@ -3,6 +3,8 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+if not hasattr(__builtins__, "set"):
+	from sets import Set as set
 
 import os,pwd,grp
 from portage_util import writemsg
@@ -107,3 +109,10 @@ if (uid!=0) and (portage_gid not in os.getgroups()):
 	writemsg(red("*** Please add this user to the portage group if you wish to use portage.\n"))
 	writemsg("\n")
 	portage_group_warning()
+
+userpriv_groups = [portage_gid]
+if secpass >= 2:
+	for g in grp.getgrall():
+		if "portage" in g[3]:
+			userpriv_groups.append(g[2])
+	userpriv_groups = list(set(userpriv_groups))
