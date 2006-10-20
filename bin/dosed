@@ -9,9 +9,7 @@ for x in "$@" ; do
 	y="${D}${x}"
 	if [ -e "${y}" ] ; then
 		if [ -f "${y}" ] ; then
-			mysrc="${T}/${y##*/}"
-			cp "${y}" "${mysrc}"
-			sed -e "${mysed}" "${mysrc}" > "${y}"
+			sed -ie "${mysed}" "${y}"
 		else
 			echo "${y} is not a regular file!"
 			exit 1
