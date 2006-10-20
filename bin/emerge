@@ -1528,6 +1528,10 @@ class depgraph:
 						selected_nodes = [blocker_deps.pop()]
 
 			if not selected_nodes:
+				if reversed:
+					"""The circular deps ouput should have less noise when
+					altlist is not in reversed mode."""
+					self.altlist()
 				print "!!! Error: circular dependencies:"
 				print
 				mygraph.debug_print()
