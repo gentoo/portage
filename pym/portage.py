@@ -1,7 +1,7 @@
 # portage.py -- core Portage functionality
 # Copyright 1998-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: portage.py 4664 2006-10-12 10:49:27Z zmedico $
+# $Id: $
 
 
 VERSION="$Rev$"[6:-2] + "-svn"
@@ -6237,7 +6237,7 @@ class dblink:
 				# only allow versions with same slot to overwrite files
 				if myslot == self.vartree.dbapi.aux_get("/".join((self.cat, v)), ["SLOT"])[0]:
 					mypkglist.append(
-						dblink(self.cat, v, destroot, self.settings,
+						dblink(self.cat, v, origroot, self.settings,
 							vartree=self.vartree))
 
 			print green("*")+" checking "+str(len(myfilelist))+" files for package collisions"
@@ -6453,7 +6453,6 @@ class dblink:
 
 	def mergeme(self,srcroot,destroot,outfile,secondhand,stufftomerge,cfgfiledict,thismtime):
 		from os.path import sep, join
-		prefix = normalize_path(portage_const.EPREFIX) + sep
 		srcroot = normalize_path(srcroot).rstrip(sep) + sep
 		destroot = normalize_path(destroot).rstrip(sep) + sep
 		# this is supposed to merge a list of files.  There will be 2 forms of argument passing.
@@ -6468,7 +6467,7 @@ class dblink:
 			mysrc = join(srcroot, offset, x)
 			mydest = join(destroot, offset, x)
 			# myrealdest is mydest without the $ROOT prefix (makes a difference if ROOT!="/")
-			myrealdest = join(prefix, offset, x)
+			myrealdest = join(portage_const.EPREFIX + sep, offset, x)
 			# stat file once, test using S_* macros many times (faster that way)
 			try:
 				mystat=os.lstat(mysrc)
