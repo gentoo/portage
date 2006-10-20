@@ -1845,11 +1845,9 @@ class depgraph:
 				#we need to use "--emptrytree" testing here rather than "empty" param testing because "empty"
 				#param is used for -u, where you still *do* want to see when something is being upgraded.
 				myoldbest=""
-				if "--emptytree" not in self.myopts and \
-					self.trees[x[1]]["vartree"].exists_specific(x[2]):
+				if self.trees[x[1]]["vartree"].exists_specific(pkg_key):
 					addl="  "+yellow("R")+fetch+"  "
-				elif "--emptytree" not in self.myopts and \
-					self.trees[x[1]]["vartree"].exists_specific_cat(x[2]):
+				elif self.trees[x[1]]["vartree"].exists_specific_cat(pkg_key):
 					mynewslot = mydbapi.aux_get(pkg_key, ["SLOT"])[0]
 					myoldlist = self.trees[x[1]]["vartree"].dbapi.match(
 						portage.pkgsplit(x[2])[0])
