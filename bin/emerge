@@ -803,8 +803,8 @@ class depgraph:
 		if mytype == "blocks":
 			if addme and "--buildpkgonly" not in self.myopts and myparent:
 				mybigkey[1] = myparent.split()[1]
-				self.digraph.addnode(" ".join(mybigkey), myparent,
-					priority=DepPriority())
+				self.blocker_parents.setdefault(
+					" ".join(mybigkey), set()).add(myparent)
 			return 1
 		if not arg:
 			arg = portage.best_match_to_list(mykey, self.args_keys)
@@ -1414,19 +1414,14 @@ class depgraph:
 				myslot = mydb.aux_get(mykey, ["SLOT"])[0]
 				self.mydbapi[myroot].cpv_inject(mykey, myslot=myslot)
 
-		all_blockers = [node for node in self.digraph.all_nodes()
-				if node.split()[0] == "blocks"]
-		for blocker in all_blockers:
+		for blocker in self.blocker_parents.keys():
 			mytype, myroot, mydep = blocker.split()
-			""" In case this block is unresolvable, save the parents for
-			later output in self.display()."""
-			self.blocker_parents[blocker] = self.digraph.parent_nodes(blocker)
-			if not self.mydbapi[myroot].match(mydep):
-				vardb = self.trees[myroot]["vartree"].dbapi
-				blocked_pkgs = vardb.match(mydep)
-				if not blocked_pkgs:
-					self.digraph.remove(blocker)
-					continue
+			vardb = self.trees[myroot]["vartree"].dbapi
+			blocked_pkgs = vardb.match(mydep)
+			blocked_after_update = self.mydbapi[myroot].match(mydep)
+			if not blocked_pkgs and not blocked_after_update:
+				del self.blocker_parents[blocker]
+			elif not blocked_after_update:
 				"""It may be possible to circumvent this block via correct
 				ordering of upgrades.  If necessary, create hard deps to
 				enforce correct merge order."""
@@ -1448,7 +1443,7 @@ class depgraph:
 				if unresolveable:
 					continue
 
-				for parent in self.digraph.parent_nodes(blocker):
+				for parent in list(self.blocker_parents[blocker]):
 					ptype, proot, pcpv, pstatus = parent.split()
 					pdbapi = self.trees[proot][self.pkg_tree_map[ptype]].dbapi
 					pslot = pdbapi.aux_get(pcpv, ["SLOT"])[0]
@@ -1457,7 +1452,8 @@ class depgraph:
 						if pslot_atom == myslot_atom:
 							"""A merge within a slot invalidates the block,
 							so the order does not need to be enforced."""
-							continue
+							self.blocker_parents[blocker].remove(parent)
+							break
 						# Enforce correct merge order with a hard dep.
 						node = self.pkg_node_map[pkg]
 						self.digraph.addnode(node, parent,
@@ -1465,20 +1461,14 @@ class depgraph:
 						"""Count references to this blocker so that it can be
 						invalidated after nodes referencing it have been merged."""
 						self.blocker_digraph.addnode(node, blocker)
-				self.digraph.remove(blocker)
+				if not self.blocker_parents[blocker]:
+					del self.blocker_parents[blocker]
 		# Validate blockers that depend on merge order.
 		if not self.blocker_digraph.empty():
 			self.altlist()
 
 	def altlist(self, reversed=False):
 		mygraph=self.digraph.copy()
-		for node in self.blocker_digraph.root_nodes():
-			"""These nodes aren't needed for the merge order calculation.  They
-			may be in the digraph for --tree support, but they need to be
-			removed prior to the merge order calculation so that they don't
-			trigger any false circular dependency issues."""
-			if mygraph.contains(node):
-				mygraph.remove(node)
 		myblockers = self.blocker_digraph.copy()
 		retlist=[]
 		circular_blocks = False
@@ -1546,28 +1536,23 @@ class depgraph:
 			for node in selected_nodes:
 				retlist.append(node.split())
 				mygraph.remove(node)
-				if not circular_blocks and myblockers.contains(node):
+				if not reversed and not circular_blocks and myblockers.contains(node):
 					"""This node may have invalidated one or more blockers."""
 					myblockers.remove(node)
 					for blocker in myblockers.root_nodes():
 						if not myblockers.child_nodes(blocker):
 							myblockers.remove(blocker)
+							del self.blocker_parents[blocker]
 
-		if reversed:
-			for node in self.blocker_digraph.root_nodes():
-				if self.digraph.contains(node):
-					"""This blocker has been validated by a previous merge
-					order calculation."""
-					retlist.append(node.split())
-		else:
-			""" Valid blockers need to be in the digraph for --tree
-			support.  Blocker validation does not work with reverse mode,
+		if not reversed:
+			"""Blocker validation does not work with reverse mode,
 			so self.altlist() should first be called with reverse disabled
 			so that blockers are properly validated."""
-			for node in myblockers.root_nodes():
-				retlist.append(node.split())
-				for parent in self.blocker_parents[node]:
-					self.digraph.add(node, parent, priority=DepPriority())
+			self.blocker_digraph = myblockers
+
+		""" Add any unresolved blocks so that they can be displayed."""
+		for blocker in self.blocker_parents:
+			retlist.append(blocker.split())
 
 		return retlist
 
@@ -1762,6 +1747,8 @@ class depgraph:
 		i = 0
 		depth = 0
 		for x in mylist:
+			if "blocks" == x[0]:
+				continue
 			graph_key = " ".join(x)
 			if "--tree" in self.myopts:
 				depth = len(tree_nodes)
@@ -1774,6 +1761,8 @@ class depgraph:
 
 		last_merge_depth = 0
 		for i in xrange(len(mylist)-1,-1,-1):
+			if "blocks" == mylist[i][0]:
+				continue
 			graph_key = " ".join(mylist[i])
 			if mylist[i][-1] != "nomerge":
 				last_merge_depth = node_depth[graph_key]
