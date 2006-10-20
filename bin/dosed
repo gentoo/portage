@@ -9,7 +9,7 @@ for x in "$@" ; do
 	y="${D}${x}"
 	if [ -e "${y}" ] ; then
 		if [ -f "${y}" ] ; then
-			sed -ie "${mysed}" "${y}"
+			sed -i -e "${mysed}" "${y}"
 		else
 			echo "${y} is not a regular file!"
 			exit 1
