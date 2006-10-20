@@ -780,6 +780,9 @@ src_test() {
 }
 
 src_install() {
+	# this avoids misc errors in prefix because it doesn't exist in
+	# by default
+	mkdir -p "${D}"
 	return
 }
 
