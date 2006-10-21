@@ -1051,7 +1051,10 @@ class depgraph:
 				if myslots:
 					best_pkgs = []
 					if "--usepkg" in self.myopts:
-						best_pkg = portage.best(bindb.match(myatom))
+						mymatches = bindb.match(myatom)
+						if "--usepkgonly" not in self.myopts:
+							mymatches = portdb.visible(mymatches)
+						best_pkg = portage.best(mymatches)
 						if best_pkg:
 							best_slot = bindb.aux_get(best_pkg, ["SLOT"])[0]
 							best_pkgs.append(("binary", best_pkg, best_slot))
@@ -1616,7 +1619,10 @@ class depgraph:
 				if myslots:
 					best_pkgs = []
 					if "--usepkg" in self.myopts:
-						best_pkg = portage.best(bindb.match(atom))
+						mymatches = bindb.match(atom)
+						if "--usepkgonly" not in self.myopts:
+							mymatches = portdb.visible(mymatches)
+						best_pkg = portage.best(mymatches)
 						if best_pkg:
 							best_slot = bindb.aux_get(best_pkg, ["SLOT"])[0]
 							best_pkgs.append(("binary", best_pkg, best_slot))
