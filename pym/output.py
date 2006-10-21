@@ -173,13 +173,15 @@ def nc_len(mystr):
 	tmp = re.sub(esc_seq + "^m]+m", "", mystr);
 	return len(tmp)
 
-def xtermTitle(mystr):
+def xtermTitle(mystr, raw=False):
 	if havecolor and dotitles and os.environ.has_key("TERM") and sys.stderr.isatty():
 		myt=os.environ["TERM"]
 		legal_terms = ["xterm","Eterm","aterm","rxvt","screen","kterm","rxvt-unicode","gnome"]
 		for term in legal_terms:
 			if myt.startswith(term):
-				sys.stderr.write("\x1b]0;"+str(mystr)+"\x07")
+				if not raw:
+					mystr = "\x1b]0;%s\x07" % mystr
+				sys.stderr.write(mystr)
 				sys.stderr.flush()
 				break
 
@@ -198,9 +200,9 @@ def xtermTitleReset():
 			home = os.getenv('HOME', '')
 			if home != '' and pwd.startswith(home):
 				pwd = '~' + pwd[len(home):]
-			default_xterm_title = '%s@%s:%s' % (
+			default_xterm_title = '\x1b]0;%s@%s:%s\x07' % (
 				os.getenv('LOGNAME', ''), os.getenv('HOSTNAME', '').split('.', 1)[0], pwd)
-	xtermTitle(default_xterm_title)
+	xtermTitle(default_xterm_title, raw=True)
 
 def notitles():
 	"turn off title setting"
