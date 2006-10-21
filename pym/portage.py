@@ -1507,6 +1507,7 @@ class config:
 		self.modifying()
 		if self.mycpv == mycpv:
 			return
+		has_changed = False
 		self.mycpv = mycpv
 		cp = dep_getkey(mycpv)
 		pkginternaluse = ""
@@ -1514,7 +1515,9 @@ class config:
 			pkginternaluse = " ".join([x[1:] \
 				for x in mydb.aux_get(mycpv, ["IUSE"])[0].split() \
 				if x.startswith("+")])
-		self.configdict["pkginternal"]["USE"] = pkginternaluse
+		if pkginternaluse != self.configdict["pkginternal"].get("USE", ""):
+			self.configdict["pkginternal"]["USE"] = pkginternaluse
+			has_changed = True
 		defaults = []
 		for i in xrange(len(self.profiles)):
 			defaults.append(self.make_defaults_use[i])
@@ -1523,7 +1526,10 @@ class config:
 				best_match = best_match_to_list(self.mycpv, cpdict.keys())
 				if best_match:
 					defaults.append(cpdict[best_match])
-		self.configdict["defaults"]["USE"] = " ".join(defaults)
+		defaults = " ".join(defaults)
+		if defaults != self.configdict["defaults"]["USE"]:
+			self.configdict["defaults"]["USE"] = defaults
+			has_changed = True
 		useforce = []
 		for i in xrange(len(self.profiles)):
 			useforce.append(self.useforce_list[i])
@@ -1532,7 +1538,10 @@ class config:
 				best_match = best_match_to_list(self.mycpv, cpdict.keys())
 				if best_match:
 					useforce.append(cpdict[best_match])
-		self.useforce = set(stack_lists(useforce, incremental=True))
+		useforce = set(stack_lists(useforce, incremental=True))
+		if useforce != self.useforce:
+			self.useforce = useforce
+			has_changed = True
 		usemask = []
 		for i in xrange(len(self.profiles)):
 			usemask.append(self.usemask_list[i])
@@ -1541,17 +1550,24 @@ class config:
 				best_match = best_match_to_list(self.mycpv, cpdict.keys())
 				if best_match:
 					usemask.append(cpdict[best_match])
-		self.usemask = set(stack_lists(usemask, incremental=True))
+		usemask = set(stack_lists(usemask, incremental=True))
+		if usemask != self.usemask:
+			self.usemask = usemask
+			has_changed = True
+		oldpuse = self.puse
 		self.puse = ""
 		if self.pusedict.has_key(cp):
 			self.pusekey = best_match_to_list(self.mycpv, self.pusedict[cp].keys())
 			if self.pusekey:
 				self.puse = " ".join(self.pusedict[cp][self.pusekey])
+		if oldpuse != self.puse:
+			has_changed = True
 		self.configdict["pkg"]["PKGUSE"] = self.puse[:] # For saving to PUSE file
 		self.configdict["pkg"]["USE"]    = self.puse[:] # this gets appended to USE
 		# CATEGORY is essential for doebuild calls
 		self.configdict["pkg"]["CATEGORY"] = mycpv.split("/")[0]
-		self.reset(keeping_pkg=1,use_cache=use_cache)
+		if has_changed:
+			self.reset(keeping_pkg=1,use_cache=use_cache)
 
 	def setinst(self,mycpv,mydbapi):
 		self.modifying()
@@ -2572,10 +2588,12 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 			"Invalid ebuild path: '%s'" % myebuild)
 
 	if mydo != "depend":
-		# XXX: We're doing a little hack here to curtain the gvisible locking
-		# XXX: that creates a deadlock... Really need to isolate that.
-		mysettings.reset(use_cache=use_cache)
 		mysettings.setcpv(mycpv, use_cache=use_cache, mydb=mydbapi)
+		"""For performance reasons, setcpv only triggers regenerate when it
+		detects a package-specific change in config.  For the ebuild
+		environment, a regenerate call is forced in order to ensure that the
+		latest env.d variables are used."""
+		mysettings.regenerate()
 
 	mysettings["EBUILD_PHASE"] = mydo
 
