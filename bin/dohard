@@ -10,4 +10,4 @@ fi
 
 target=$1
 linkname=$2
-exec ln -f "${D}${target}" "${D}${linkname}"
+exec ln -f "${ED}${target}" "${ED}${linkname}"

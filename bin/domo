@@ -8,14 +8,14 @@ if [ ${mynum} -lt 1 ] ; then
 	echo "${0}: at least one argument needed"
 	exit 1
 fi
-if [ ! -d "${D}${DESTTREE}/share/locale" ] ; then
-	install -d "${D}${DESTTREE}/share/locale/"
+if [ ! -d "${ED}${DESTTREE}/share/locale" ] ; then
+	install -d "${ED}${DESTTREE}/share/locale/"
 fi
 
 for x in "$@" ; do
 	if [ -e "${x}" ] ; then
 		mytiny="${x##*/}"
-		mydir="${D}${DESTTREE}/share/locale/${mytiny%.*}/LC_MESSAGES"
+		mydir="${ED}${DESTTREE}/share/locale/${mytiny%.*}/LC_MESSAGES"
 		if [ ! -d "${mydir}" ] ; then
 			install -d "${mydir}"
 		fi

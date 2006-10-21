@@ -17,26 +17,26 @@ shift $#
 source @PORTAGE_BASE@/bin/ebuild.sh
 
 install_qa_check() {
-	cd "${D}" || die "cd failed"
+	cd "${ED}" || die "cd failed"
 	prepall
 
 	declare -i UNSAFE=0
-	for i in $(find "${D}/" -type f -perm -2002); do
+	for i in $(find "${ED}/" -type f -perm -2002); do
 		((UNSAFE++))
 		vecho "UNSAFE SetGID: $i"
 		chmod -s,o-w "$i"
 	done
-	for i in $(find "${D}/" -type f -perm -4002); do
+	for i in $(find "${ED}/" -type f -perm -4002); do
 		((UNSAFE++))
 		vecho "UNSAFE SetUID: $i"
 		chmod -s,o-w "$i"
 	done
 
 	# Now we look for all world writable files.
-	for i in $(find "${D}/" -type f -perm -2); do
+	for i in $(find "${ED}/" -type f -perm -2); do
 		vecho -ne '\a'
 		vecho "QA Security Notice:"
-		vecho "- ${i:${#D}:${#i}} will be a world writable file."
+		vecho "- ${i:${#ED}:${#i}} will be a world writable file."
 		vecho "- This may or may not be a security problem, most of the time it is one."
 		vecho "- Please double check that $PF really needs a world writeable bit and file bugs accordingly."
 		sleep 1
@@ -54,7 +54,7 @@ install_qa_check() {
 		# Don't want paths that point to the tree where the package was built
 		# (older, broken libtools would do this).  Also check for null paths
 		# because the loader will search $PWD when it finds null paths.
-		f=$(scanelf -qyRF '%r %p' "${D}" | grep -E "(${PORTAGE_BUILDDIR}|: |::|^:|^ )")
+		f=$(scanelf -qyRF '%r %p' "${ED}" | grep -E "(${PORTAGE_BUILDDIR}|: |::|^:|^ )")
 		if [[ -n ${f} ]] ; then
 			vecho -ne '\a\n'
 			vecho "QA Notice: the following files contain insecure RUNPATH's"
@@ -71,7 +71,7 @@ install_qa_check() {
 		fi
 
 		# Check for setid binaries but are not built with BIND_NOW
-		f=$(scanelf -qyRF '%b %p' "${D}")
+		f=$(scanelf -qyRF '%b %p' "${ED}")
 		if [[ -n ${f} ]] ; then
 			vecho -ne '\a\n'
 			vecho "QA Notice: the following files are setXid, dyn linked, and using lazy bindings"
@@ -93,7 +93,7 @@ install_qa_check() {
 		[[ -n ${!qa_var} ]] && QA_TEXTRELS=${!qa_var}
 		[[ -n ${QA_STRICT_TEXTRELS} ]] && QA_TEXTRELS=""
 		export QA_TEXTRELS
-		f=$(scanelf -qyRF '%t %p' "${D}" | grep -v 'usr/lib/debug/')
+		f=$(scanelf -qyRF '%t %p' "${ED}" | grep -v 'usr/lib/debug/')
 		if [[ -n ${f} ]] ; then
 			scanelf -qyRF '%T %p' "${PORTAGE_BUILDDIR}"/ &> "${T}"/scanelf-textrel.log
 			vecho -ne '\a\n'
@@ -133,7 +133,7 @@ install_qa_check() {
 					[[ -n ${!qa_var} ]] && QA_WX_LOAD=${!qa_var}
 					[[ -n ${QA_STRICT_WX_LOAD} ]] && QA_WX_LOAD=""
 					export QA_EXECSTACK QA_WX_LOAD
-					f=$(scanelf -qyRF '%e %p' "${D}" | grep -v 'usr/lib/debug/')
+					f=$(scanelf -qyRF '%e %p' "${ED}" | grep -v 'usr/lib/debug/')
 					;;
 			esac
 			;;
@@ -156,7 +156,7 @@ install_qa_check() {
 		fi
 
 		# Save NEEDED information
-		scanelf -qyRF '%p %n' "${D}" | sed -e 's:^:/:' > "${PORTAGE_BUILDDIR}"/build-info/NEEDED
+		scanelf -qyRF '%p %n' "${ED}" | sed -e 's:^:/:' > "${PORTAGE_BUILDDIR}"/build-info/NEEDED
 
 		if [[ ${insecure_rpath} -eq 1 ]] ; then
 			die "Aborting due to serious QA concerns with RUNPATH/RPATH"
@@ -171,29 +171,29 @@ install_qa_check() {
 		die "There are ${UNSAFE} unsafe files. Portage will not install them."
 	fi
 
-	if [[ -d ${D}/${D} ]] ; then
+	if [[ -d ${ED}/${ED} ]] ; then
 		declare -i INSTALLTOD=0
-		for i in $(find "${D}/${D}/"); do
-			echo "QA Notice: /${i##${D}/${D}} installed in \${D}/\${D}"
+		for i in $(find "${ED}/${ED}/"); do
+			echo "QA Notice: /${i##${ED}/${ED}} installed in \${ED}/\${ED}"
 			((INSTALLTOD++))
 		done
-		die "Aborting due to QA concerns: ${INSTALLTOD} files installed in ${D}/${D}"
+		die "Aborting due to QA concerns: ${INSTALLTOD} files installed in ${ED}/${ED}"
 		unset INSTALLTOD
 	fi
 
-	if [[ -d ${D}/${EPREFIX} ]] ; then
+	if [[ -d ${ED}/${EPREFIX} ]] ; then
 		declare -i INSTALLTOD=0
-		for i in $(find "${D}/${EPREFIX}/") ; do
-			echo "QA Notice: ${i#${D}} double prefix"
+		for i in $(find "${ED}/${EPREFIX}/") ; do
+			echo "QA Notice: ${i#${ED}} double prefix"
 			((INSTALLTOD++))
 		done
 		die "Aborting due to QA concerns: ${INSTALLTOD} double prefix files installed"
 		unset INSTALLTOD
 	fi
 
-	if [[ -d ${EDEST} ]] ; then
+	if [[ -d ${D} ]] ; then
 		declare -i INSTALLTOD=0
-		for i in $(find ${EDEST%/} | sed -e "s|^${EDEST%/}||g") ; do
+		for i in $(find ${D%/} | sed -e "s|^${D%/}||g") ; do
 			if [[ ${#EPREFIX} -gt ${#i} && ${EPREFIX:0:${#i}} != ${i} ]] ; then
 				echo "QA Notice: ${i} outside of prefix"
 				((INSTALLTOD++))
@@ -207,19 +207,19 @@ install_qa_check() {
 	fi
 
 	local find_log="${T}/find-portage-log"
-	find "${D}"/ -user ${PORTAGE_USER:-portage} -print0 > "${find_log}"
+	find "${ED}"/ -user ${PORTAGE_USER:-portage} -print0 > "${find_log}"
 	if [[ -s ${find_log} ]] ; then
 		xargs -0 chown -h ${PORTAGE_INST_UID:-0} < "${find_log}"
 	fi
-	find "${D}"/ -group ${PORTAGE_GROUP:-portage} -print0 > "${find_log}"
+	find "${ED}"/ -group ${PORTAGE_GROUP:-portage} -print0 > "${find_log}"
 	if [[ -s ${find_log} ]] ; then
 		xargs -0 chgrp -h ${PORTAGE_INST_GID:-0} < "${find_log}"
 	fi
 	rm -f "${find_log}"
 
 	# Portage regenerates this on the installed system.
-	if [ -f "${D}/usr/share/info/dir.gz" ]; then
-		rm -f "${D}/usr/share/info/dir.gz"
+	if [ -f "${ED}/usr/share/info/dir.gz" ]; then
+		rm -f "${ED}/usr/share/info/dir.gz"
 	fi
 
 	if hasq multilib-strict ${FEATURES} && [ -x file -a -x find -a \
@@ -227,15 +227,15 @@ install_qa_check() {
 	     	local abort=no firstrun=yes
 		MULTILIB_STRICT_EXEMPT=$(echo ${MULTILIB_STRICT_EXEMPT} | sed -e 's:\([(|)]\):\\\1:g')
 		for dir in ${MULTILIB_STRICT_DIRS}; do
-			[ -d "${D}/${dir}" ] || continue
-			for file in $(find ${D}/${dir} -type f | grep -v "^${D}/${dir}/${MULTILIB_STRICT_EXEMPT}"); do
+			[ -d "${ED}/${dir}" ] || continue
+			for file in $(find ${ED}/${dir} -type f | grep -v "^${ED}/${dir}/${MULTILIB_STRICT_EXEMPT}"); do
 				if file ${file} | egrep -q "${MULTILIB_STRICT_DENY}" ; then
 					if [[ ${firstrun} == yes ]] ; then
 						echo "Files matching a file type that is not allowed:"
 						firstrun=no
 					fi
 					abort=yes
-					echo "   ${file#${D}//}"
+					echo "   ${file#${ED}//}"
 				fi
 			done
 		done
@@ -388,7 +388,7 @@ dyn_package() {
 	tar ${tar_options} -cf - . | bzip2 -f > "${pkg_tmp}" || \
 		die "Failed to create tarball"
 	cd ..
-	export PYTHONPATH=${PORTAGE_PYM_PATH:-/usr/lib/portage/pym}
+	export PYTHONPATH=${PORTAGE_PYM_PATH:-${EPREFIX}/usr/lib/portage/pym}
 	python -c "import xpak; t=xpak.tbz2('${pkg_tmp}'); t.recompose('${PORTAGE_BUILDDIR}/build-info')"
 	if [ $? -ne 0 ]; then
 		rm -f "${pkg_tmp}"

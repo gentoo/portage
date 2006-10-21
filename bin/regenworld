@@ -6,7 +6,7 @@
 import sys
 sys.path.insert(0, "@PORTAGE_BASE@/pym")
 import os
-import portage, string, re
+import portage, string, re, portage_const
 
 __candidatematcher__ = re.compile("^[0-9]+: \\*\\*\\* emerge ")
 __noncandidatematcher__ = re.compile(" sync( |$)| clean( |$)| search( |$)|--oneshot|--fetchonly| unmerge( |$)")
@@ -48,7 +48,7 @@ worldlist = portage.grabfile(os.path.join("/", portage.WORLD_FILE))
 syslist = portage.settings.packages
 syslist = filter(issyspkg, syslist)
 
-logfile = portage.grabfile("/var/log/emerge.log")
+logfile = portage.grabfile(portage_const.EPREFIX+"/var/log/emerge.log")
 biglist = filter(iscandidate, logfile)
 biglist = map(getpkginfo, biglist)
 tmplist = []

@@ -483,10 +483,10 @@ keepdir() {
 	local x
 	if [ "$1" == "-R" ] || [ "$1" == "-r" ]; then
 		shift
-		find "$@" -type d -printf "${D}/%p/.keep_${CATEGORY}_${PN}-${SLOT}\n" | tr "\n" "\0" | $XARGS -0 -n100 touch || die "Failed to recursive create .keep files"
+		find "$@" -type d -printf "${ED}/%p/.keep_${CATEGORY}_${PN}-${SLOT}\n" | tr "\n" "\0" | $XARGS -0 -n100 touch || die "Failed to recursive create .keep files"
 	else
 		for x in "$@"; do
-			touch "${D}/${x}/.keep_${CATEGORY}_${PN}-${SLOT}" || die "Failed to create .keep in ${D}/${x}"
+			touch "${ED}/${x}/.keep_${CATEGORY}_${PN}-${SLOT}" || die "Failed to create .keep in ${ED}/${x}"
 		done
 	fi
 }
@@ -663,24 +663,24 @@ econf() {
 		fi
 
 		vecho ${CONFCACHE} ${CONFCACHE_ARG} ${TMP_CONFCACHE_DIR} "${ECONF_SOURCE}/configure" \
-			--prefix=${EPREFIX}/usr \
+			--prefix="${EPREFIX}"/usr \
 			--host=${CHOST} \
-			--mandir=${EPREFIX}/usr/share/man \
-			--infodir=${EPREFIX}/usr/share/info \
-			--datadir=${EPREFIX}/usr/share \
-			--sysconfdir=${EPREFIX}/etc \
-			--localstatedir=${EPREFIX}/var/lib \
+			--mandir="${EPREFIX}"/usr/share/man \
+			--infodir="${EPREFIX}"/usr/share/info \
+			--datadir="${EPREFIX}"/usr/share \
+			--sysconfdir="${EPREFIX}"/etc \
+			--localstatedir="${EPREFIX}"/var/lib \
 			"$@" \
 			${LOCAL_EXTRA_ECONF}
 
 		if ! ${CONFCACHE} ${CONFCACHE_ARG} ${TMP_CONFCACHE_DIR} "${ECONF_SOURCE}/configure" \
-			--prefix=${EPREFIX}/usr \
-			--host=${CHOST} \
-			--mandir=${EPREFIX}/usr/share/man \
-			--infodir=${EPREFIX}/usr/share/info \
-			--datadir=${EPREFIX}/usr/share \
-			--sysconfdir=${EPREFIX}/etc \
-			--localstatedir=${EPREFIX}/var/lib \
+			--prefix="${EPREFIX}"/usr \
+			--host="${CHOST}" \
+			--mandir="${EPREFIX}"/usr/share/man \
+			--infodir="${EPREFIX}"/usr/share/info \
+			--datadir="${EPREFIX}"/usr/share \
+			--sysconfdir="${EPREFIX}"/etc \
+			--localstatedir="${EPREFIX}"/var/lib \
 			"$@"  \
 			${LOCAL_EXTRA_ECONF}; then
 
@@ -712,21 +712,21 @@ einstall() {
 
 	if [ -f ./[mM]akefile -o -f ./GNUmakefile ] ; then
 		if [ "${PORTAGE_DEBUG}" == "1" ]; then
-			make -n prefix="${D}/usr" \
-				datadir="${D}/usr/share" \
-				infodir="${D}/usr/share/info" \
-				localstatedir="${D}/var/lib" \
-				mandir="${D}/usr/share/man" \
-				sysconfdir="${D}/etc" \
+			make -n prefix="${ED}/usr" \
+				datadir="${ED}/usr/share" \
+				infodir="${ED}/usr/share/info" \
+				localstatedir="${ED}/var/lib" \
+				mandir="${ED}/usr/share/man" \
+				sysconfdir="${ED}/etc" \
 				${EXTRA_EINSTALL} \
 				"$@" install
 		fi
-		make prefix="${D}/usr" \
-			datadir="${D}/usr/share" \
-			infodir="${D}/usr/share/info" \
-			localstatedir="${D}/var/lib" \
-			mandir="${D}/usr/share/man" \
-			sysconfdir="${D}/etc" \
+		make prefix="${ED}/usr" \
+			datadir="${ED}/usr/share" \
+			infodir="${ED}/usr/share/info" \
+			localstatedir="${ED}/var/lib" \
+			mandir="${ED}/usr/share/man" \
+			sysconfdir="${ED}/etc" \
 			${EXTRA_EINSTALL} \
 			"$@" install || die "einstall failed"
 	else
@@ -780,9 +780,9 @@ src_test() {
 }
 
 src_install() {
-	# this avoids misc errors in prefix because it doesn't exist in
+	# this avoids misc errors in prefix because it doesn't exist
 	# by default
-	mkdir -p "${D}"
+	mkdir -p "${ED}"
 	return
 }
 
@@ -809,7 +809,7 @@ pkg_config() {
 # Used to generate the /lib/cpp and /usr/bin/cc wrappers
 gen_wrapper() {
 	cat > "$1" <<-EOF
-	#!/bin/sh
+	#!${EPREFIX}/bin/sh
 	exec $2 "\$@"
 	EOF
 	chmod 0755 "$1"
@@ -920,8 +920,8 @@ into() {
 		export DESTTREE=""
 	else
 		export DESTTREE=$1
-		if [ ! -d "${D}${DESTTREE}" ]; then
-			install -d "${D}${DESTTREE}"
+		if [ ! -d "${ED}${DESTTREE}" ]; then
+			install -d "${ED}${DESTTREE}"
 		fi
 	fi
 }
@@ -931,8 +931,8 @@ insinto() {
 		export INSDESTTREE=""
 	else
 		export INSDESTTREE=$1
-		if [ ! -d "${D}${INSDESTTREE}" ]; then
-			install -d "${D}${INSDESTTREE}"
+		if [ ! -d "${ED}${INSDESTTREE}" ]; then
+			install -d "${ED}${INSDESTTREE}"
 		fi
 	fi
 }
@@ -942,8 +942,8 @@ exeinto() {
 		export EXEDESTTREE=""
 	else
 		export EXEDESTTREE="$1"
-		if [ ! -d "${D}${EXEDESTTREE}" ]; then
-			install -d "${D}${EXEDESTTREE}"
+		if [ ! -d "${ED}${EXEDESTTREE}" ]; then
+			install -d "${ED}${EXEDESTTREE}"
 		fi
 	fi
 }
@@ -953,8 +953,8 @@ docinto() {
 		export DOCDESTTREE=""
 	else
 		export DOCDESTTREE="$1"
-		if [ ! -d "${D}usr/share/doc/${PF}/${DOCDESTTREE}" ]; then
-			install -d "${D}usr/share/doc/${PF}/${DOCDESTTREE}"
+		if [ ! -d "${ED}usr/share/doc/${PF}/${DOCDESTTREE}" ]; then
+			install -d "${ED}usr/share/doc/${PF}/${DOCDESTTREE}"
 		fi
 	fi
 }
@@ -1082,9 +1082,9 @@ dyn_compile() {
 		srcdir=${S}
 		cd "${S}"
 	fi
-	#our custom version of libtool uses $S and $D to fix
+	#our custom version of libtool uses $S and $ED to fix
 	#invalid paths in .la files
-	export S D
+	export S ED
 	#some packages use an alternative to $S to build in, cause
 	#our libtool to create problematic .la files
 	export PWORKDIR="$WORKDIR"
@@ -1167,16 +1167,16 @@ dyn_install() {
 		cd "${S}"
 	fi
 	vecho
-	vecho ">>> Install ${PF} into ${D} category ${CATEGORY}"
-	#our custom version of libtool uses $S and $D to fix
+	vecho ">>> Install ${PF} into ${ED} category ${CATEGORY}"
+	#our custom version of libtool uses $S and $ED to fix
 	#invalid paths in .la files
-	export S D
+	export S ED
 	#some packages uses an alternative to $S to build in, cause
 	#our libtool to create problematic .la files
 	export PWORKDIR="$WORKDIR"
 	src_install
 	touch "${PORTAGE_BUILDDIR}/.installed"
-	vecho ">>> Completed installing ${PF} into ${D}"
+	vecho ">>> Completed installing ${PF} into ${ED}"
 	vecho
 	cd ${PORTAGE_BUILDDIR}
 	[ "$(type -t post_src_install)" == "function" ] && post_src_install

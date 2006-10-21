@@ -43,7 +43,7 @@ function scan() {
 	fi
 
 	for path in ${CONFIG_PROTECT} ; do
-		path="${ROOT}${EPREFIX}/${path}"
+		path="${EROOT}/${path}"
 		find_opts="-iname ._cfg????_*"
 		if [ ! -d "${path}" ]; then
 			[ ! -f "${path}" ] && continue
@@ -60,7 +60,7 @@ function scan() {
 			rpath=$(echo "${file/\/\///}" | sed -e "s:/[^/]*$::")
 			rfile=$(echo "${file/\/\///}" | sed -e "s:^.*/::")
 			for mpath in ${CONFIG_PROTECT_MASK}; do
-				mpath="${ROOT}${path}"
+				mpath="${EROOT}${mpath}"
 				if [[ "${rpath}" == "${mpath}"* ]]; then
 					mv ${rpath}/${rfile} ${rpath}/${rfile:10}
 					break
@@ -438,7 +438,8 @@ trap die term
 
 
 eval $(@PORTAGE_BASE@/bin/portageq envvar -v CONFIG_PROTECT \
-	CONFIG_PROTECT_MASK PORTAGE_CONFIGROOT PORTAGE_TMPDIR ROOT EPREFIX)
+	CONFIG_PROTECT_MASK PORTAGE_CONFIGROOT PORTAGE_TMPDIR ROOT \
+	EROOT EPREFIX)
 export PORTAGE_TMPDIR
 
 # quick hack to get prefix support in

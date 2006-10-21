@@ -17,9 +17,9 @@ if [ -z "${CONF_LIBDIR}" ]; then
 fi
 
 if [ -z "$1" ] ; then
-	z="${D}/usr/${CONF_LIBDIR}"
+	z="${ED}/usr/${CONF_LIBDIR}"
 else
-	z="${D}$1/${CONF_LIBDIR}"
+	z="${ED}$1/${CONF_LIBDIR}"
 fi
 
 if [ -d "${z}" ] ; then

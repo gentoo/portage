@@ -11,5 +11,5 @@ fi
 target="${1}"
 linkname="${2}"
 [[ ${target:0:1} == "/" ]] && target="${EPREFIX}${target}"
-exec ln -snf "${target}" "${D}/${linkname}"
+exec ln -snf "${target}" "${ED}/${linkname}"
 

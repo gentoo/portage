@@ -9,9 +9,10 @@ sys.path = ["@PORTAGE_BASE@/pym"]+sys.path
 from stat import *
 from output import *
 from portage import lockfile,unlockfile,VDB_PATH,root
+import portage_const
 
 
-mylog = open("/var/log/emerge_fix-db.log", "a")
+mylog = open(portage_const.EPREFIX+"/var/log/emerge_fix-db.log", "a")
 def writemsg(msg):
 	if msg[-1] != '\n':
 		msg += "\n"
@@ -21,7 +22,7 @@ def writemsg(msg):
 	mylog.flush()
 
 def fix_global_counter(value):
-	myf = open("/var/cache/edb/counter")
+	myf = open(portage_const.EPREFIX+"/var/cache/edb/counter")
 	newvalue = value+1000
 	myf.write(str(newvalue))
 	myf.flush()
@@ -33,7 +34,7 @@ counters = {}
 times = {}
 
 try:
-	real_counter = long(open("/var/cache/edb/counter").read())
+	real_counter = long(open(portage_const.EPREFIX+"/var/cache/edb/counter").read())
 except SystemExit, e:
 	raise  # This needs to be propogated
 except:
@@ -156,20 +157,4 @@ if (len(sys.argv) > 1) and (sys.argv[1] == "--fix"):
 else:
 	#writemsg("Run with '--fix' to attempt automatic correction.")
 	pass
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

@@ -3,6 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id: $
 
+# Fabian Groffen <grobian@gentoo.org>
 # replaces @GENTOO_PORTAGE_EPREFIX@ with EPREFIX for the given files
 
 if [[ $# -lt 1 ]] ; then

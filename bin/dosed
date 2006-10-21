@@ -3,10 +3,10 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/bin/dosed,v 1.7 2004/10/04 13:56:50 vapier Exp $
 
-mysed="s:${D}::g"
+mysed="s:${ED}::g"
 
 for x in "$@" ; do
-	y="${D}${x}"
+	y="${ED}${x}"
 	if [ -e "${y}" ] ; then
 		if [ -f "${y}" ] ; then
 			sed -i -e "${mysed}" "${y}"

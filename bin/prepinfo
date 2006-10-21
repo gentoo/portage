@@ -4,12 +4,12 @@
 # $Id: /var/cvsroot/gentoo-src/portage/bin/prepinfo,v 1.6.2.1 2005/05/29 12:40:08 jstubbs Exp $
 
 if [ -z "$1" ] ; then
-	z="${D}/usr/share/info"
+	z="${ED}/usr/share/info"
 else
-	if [ -d "${D}$1/share/info" ] ; then
-		z="${D}$1/share/info"
+	if [ -d "${ED}$1/share/info" ] ; then
+		z="${ED}$1/share/info"
 	else
-		z="${D}$1/info"
+		z="${ED}$1/info"
 	fi
 fi
 

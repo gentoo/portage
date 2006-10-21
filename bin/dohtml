@@ -48,9 +48,9 @@ def install(basename, dirname, options, prefix=""):
 	if dirname: fullpath = dirname + "/" + fullpath
 
 	if options.DOCDESTTREE:
-		destdir = options.D + "/usr/share/doc/" + options.PF + "/" + options.DOCDESTTREE + "/" + options.doc_prefix + "/" + prefix
+		destdir = options.ED + "/usr/share/doc/" + options.PF + "/" + options.DOCDESTTREE + "/" + options.doc_prefix + "/" + prefix
 	else:
-		destdir = options.D + "/usr/share/doc/" + options.PF + "/html/" + options.doc_prefix + "/" + prefix
+		destdir = options.ED + "/usr/share/doc/" + options.PF + "/html/" + options.doc_prefix + "/" + prefix
 
 	if os.path.isfile(fullpath):
 		ext = os.path.splitext(basename)[1]
@@ -71,13 +71,13 @@ def install(basename, dirname, options, prefix=""):
 class OptionsClass:
 	def __init__(self):
 		self.PF = ""
-		self.D = ""
+		self.ED = ""
 		self.DOCDESTTREE = ""
 		
 		if os.environ.has_key("PF"):
 			self.PF = os.environ["PF"]
-		if os.environ.has_key("D"):
-			self.D = os.environ["D"]
+		if os.environ.has_key("ED"):
+			self.D = os.environ["ED"]
 		if os.environ.has_key("DOCDESTTREE"):
 			self.DOCDESTTREE = os.environ["DOCDESTTREE"]
 		

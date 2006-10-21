@@ -35,6 +35,8 @@ elog() {
 }
 
 esyslog() {
+	# not prefixed yet as I don't know if it's possible to have a logger
+	# inside the prefix at all
 	local pri=
 	local tag=
 

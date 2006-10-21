@@ -22,7 +22,7 @@ fi
 export ROOT="${ROOT:=/}"
 [[ ${ROOT} == */ ]] || export ROOT="${ROOT}/"
 
-export ENVDIR="${ROOT}etc/env.d"
+export ENVDIR="${EROOT}etc/env.d"
 mkdir -p ${ENVDIR}
 chmod 755 ${ENVDIR}
 specials="
@@ -33,13 +33,13 @@ colon_separated="
 	ADA_INCLUDE_PATH ADA_OBJECTS_PATH LDPATH PATH MANPATH ROOTPATH
 	PRELINK_PATH PRELINK_PATH_MASK PYTHON_PATH"
 
-export LDSOCONF="${ROOT}etc/ld.so.conf"
+export LDSOCONF="${EROOT}etc/ld.so.conf"
 
-export PRELINKCONF="${ROOT}etc/prelink.conf"
+export PRELINKCONF="${EROOT}etc/prelink.conf"
 defaultprelinkpaths=":/bin:/sbin:/usr/bin:/usr/sbin:/lib:/usr/lib"
 
-export PROFILEENV="${ROOT}etc/profile.env"
-export CSHENV="${ROOT}etc/csh.env"
+export PROFILEENV="${EROOT}etc/profile.env"
+export CSHENV="${EROOT}etc/csh.env"
 
 # make sure we aren't tricked with previous 'my_envd_' variables
 unset $(set | grep '^my_envd_' | cut -d= -f1)
@@ -195,11 +195,11 @@ unset my_envd_LDPATH
 # RUN EXTERNAL PROGRAMS NOW
 ############################################
 
-echo ">>> Regenerating ${ROOT}etc/ld.so.cache..."
+echo ">>> Regenerating ${EROOT}etc/ld.so.cache..."
 if [[ ${MAKELINKS} -eq 0 ]] ; then
-	(cd / ; ${EPREFIX}/sbin/ldconfig -X -r ${ROOT} >& /dev/null)
+	(cd / ; ${EPREFIX}/sbin/ldconfig -X -r ${EROOT} >& /dev/null)
 else
-	(cd / ; ${EPREFIX}/sbin/ldconfig -r ${ROOT} >& /dev/null)
+	(cd / ; ${EPREFIX}/sbin/ldconfig -r ${EROOT} >& /dev/null)
 fi
 
 cat << EOF > ${PROFILEENV}

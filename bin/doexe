@@ -8,8 +8,8 @@ if [[ $# -lt 1 ]] ; then
 	exit 1
 fi
 
-if [[ ! -d ${D}${EXEDESTTREE} ]] ; then
-	install -d "${D}${EXEDESTTREE}"
+if [[ ! -d ${ED}${EXEDESTTREE} ]] ; then
+	install -d "${ED}${EXEDESTTREE}"
 fi
 
 for x in "$@" ; do
@@ -22,5 +22,5 @@ for x in "$@" ; do
 	else
 		mysrc="${x}"
 	fi
-	install ${EXEOPTIONS} "${mysrc}" "${D}${EXEDESTTREE}"
+	install ${EXEOPTIONS} "${mysrc}" "${ED}${EXEDESTTREE}"
 done

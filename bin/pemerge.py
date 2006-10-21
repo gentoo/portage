@@ -1,7 +1,7 @@
-#!/usr/bin/python -O
+#!@PYTHON@ -O
 
 import profile,time,sys,os
-sys.path = ["/usr/lib/portage/bin","/usr/lib/portage/pym"]+sys.path
+sys.path = ["@PORTAGE_BASE@/bin","@PORTAGE_BASE@/pym"]+sys.path
 
 def clock():
 	return time.time()
@@ -9,7 +9,7 @@ profile.time.clock = clock
 
 profile.run("import emerge", os.getcwd()+"/prof")
 
-class StatsProcesser:
+ class StatsProcesser:
 	def __init__(self, stats):
 		self.output = []
 		self.last = ""

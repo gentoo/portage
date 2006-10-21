@@ -20,15 +20,15 @@ if [ ${INSDEPTH} -gt 30 ] ; then
 	exit 1
 fi
 
-if [ "${INSDESTTREE%${D}*}" == "" ]; then
+if [ "${INSDESTTREE%${ED}*}" == "" ]; then
 	echo "-------------------------------------------------------" 1>&2
-	echo "You should not use \${D} with helpers." 1>&2
+	echo "You should not use \${ED} with helpers." 1>&2
 	echo "  --> ${INSDESTTREE}" 1>&2
 	echo "-------------------------------------------------------" 1>&2
 	#exit 1
 fi
 
-[ ! -d "${D}${INSDESTTREE}" ] && dodir "${INSDESTTREE}"
+[ ! -d "${ED}${INSDESTTREE}" ] && dodir "${INSDESTTREE}"
 
 for x in "$@" ; do
 	if [ -L "$x" ] ; then
@@ -49,5 +49,5 @@ for x in "$@" ; do
 	else
 		mysrc="${x}"
 	fi
-	install ${INSOPTIONS} "${mysrc}" "${D}${INSDESTTREE}"
+	install ${INSOPTIONS} "${mysrc}" "${ED}${INSDESTTREE}"
 done

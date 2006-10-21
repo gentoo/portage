@@ -4,4 +4,4 @@
 # $Id: fperms 1912 2005-08-25 03:54:42Z ferringb $
 
 slash=/
-exec chmod "${@/#${slash}/${D}${slash}}"
+exec chmod "${@/#${slash}/${ED}${slash}}"

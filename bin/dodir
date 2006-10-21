@@ -4,4 +4,4 @@
 # $Id: /var/cvsroot/gentoo-src/portage/bin/dodir,v 1.5 2004/10/04 13:56:50 vapier Exp $
 
 slash=/
-exec install -d ${DIROPTIONS} "${@/#${slash}/${D}${slash}}"
+exec install -d ${DIROPTIONS} "${@/#${slash}/${ED}${slash}}"

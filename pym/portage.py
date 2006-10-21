@@ -2593,7 +2593,7 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 
 	mysettings["EPREFIX"]  = portage_const.EPREFIX.rstrip(os.sep)
 	mysettings["ROOT"]     = myroot
-	mysettings["PROOT"]    = normalize_path(myroot + mysettings["EPREFIX"]) + os.sep
+	mysettings["EROOT"]    = normalize_path(myroot + mysettings["EPREFIX"]) + os.sep
 	mysettings["STARTDIR"] = getcwd()
 
 	mysettings["EBUILD"]   = ebuild_path
@@ -2655,8 +2655,8 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 
 	mysettings["HOME"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "homedir")
 	mysettings["WORKDIR"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "work")
-	mysettings["EDEST"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "image") + os.sep
-	mysettings["D"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "image" + mysettings["EPREFIX"]) + os.sep
+	mysettings["D"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "image") + os.sep
+	mysettings["ED"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "image" + mysettings["EPREFIX"]) + os.sep
 	mysettings["T"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "temp")
 
 	mysettings["PORTAGE_BASHRC"] = os.path.join(

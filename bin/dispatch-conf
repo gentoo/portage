@@ -17,7 +17,7 @@ from random import *
 import atexit, commands, os, re, shutil, stat, string, sys
 sys.path = ["@PORTAGE_BASE@/pym"]+sys.path
 
-import portage, dispatch_conf
+import portage, dispatch_conf, portage_const
 
 FIND_EXTANT_CONFIGS  = "find '%s' %s -iname '._cfg????_%s'"
 DIFF_CONTENTS        = 'diff -Nu %s %s'
@@ -29,7 +29,7 @@ oldmask = os.umask(0077)
 SCRATCH_DIR = None
 while SCRATCH_DIR is None:
     try:
-        mydir = "/tmp/dispatch-conf."
+        mydir = portage_const.EPREFIX+"/var/tmp/dispatch-conf."
         for x in range(0,8):
             if int(random() * 3) == 0:
                 mydir += chr(int(65+random()*26.0))
@@ -78,7 +78,7 @@ class dispatch:
         #
 
         for path in config_paths.split ():
-            path = portage.normalize_path(path)
+            path = portage.normalize_path(portage_const.EPREFIX + path)
             try:
                 mymode = os.lstat(path).st_mode
             except OSError:

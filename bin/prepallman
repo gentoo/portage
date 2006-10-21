@@ -6,9 +6,9 @@
 ret=0
 
 echo "man:"
-for x in "${D}"/opt/*/man "${D}"/usr/share/man "${D}"/usr/local/man "${D}"/usr/X11R6/man ; do
+for x in "${ED}"/opt/*/man "${ED}"/usr/share/man "${ED}"/usr/local/man "${ED}"/usr/X11R6/man ; do
 	if [[ -d ${x} ]] ; then
-		x=${x#${D}}
+		x=${x#${ED}}
 		x=${x%/man}
 		prepman "${x}"
 		((ret+=$?))

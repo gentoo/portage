@@ -4,4 +4,4 @@
 # $Id: fowners 1912 2005-08-25 03:54:42Z ferringb $
 
 slash=/
-exec chown "${@/#${slash}/${D}${slash}}"
+exec chown "${@/#${slash}/${ED}${slash}}"

@@ -24,16 +24,16 @@ banner=1
 
 save_elf_debug() {
 	local x=$1
-	local y="${D}usr/lib/debug/${x:${#D}}.debug"
+	local y="${ED}usr/lib/debug/${x:${#ED}}.debug"
 
 	if hasq installsources ${FEATURES} && [ -x "${EPREFIX}"/usr/bin/debugedit ] ; then
 		local sources_dir=/usr/src/debug/${CATEGORY}/${PF}
 		debugedit -b "${WORKDIR}" -d "${EPREFIX}/${sources_dir}" \
 			-l "${T}"/debug.sources "${x}"
 		if [[ -s ${T}/debug.sources ]] ; then 
-			[[ -d ${D}${sources_dir} ]] || mkdir -p "${D}${sources_dir}"
+			[[ -d ${ED}${sources_dir} ]] || mkdir -p "${ED}${sources_dir}"
 			cat "${T}"/debug.sources | (cd "${WORKDIR}"; LANG=C sort -z -u | \
-				rsync -aL0 --files-from=- "${WORKDIR}/" "${D}${sources_dir}/" )
+				rsync -aL0 --files-from=- "${WORKDIR}/" "${ED}${sources_dir}/" )
 		fi
 	fi
 
@@ -81,12 +81,12 @@ for x in $(scanelf -yqRBF '#k%F' -k '.symtab' "$@") $(for y in "$@"; do find "${
 	set +o noglob
 
 	if [[ ${f} == *"current ar archive"* ]] ; then
-		vecho "   ${x:${#D}}"
+		vecho "   ${x:${#ED}}"
 		[[ -n ${NOSTRIP} ]] && continue
 		[[ ${stripitbaby} -eq 1 ]] && ${STRIP} -g "${x}"
 	fi
 	if [[ ${f} == *"SB executable"* || ${f} == *"SB shared object"* ]] ; then
-		vecho "   ${x:${#D}}"
+		vecho "   ${x:${#ED}}"
 		save_elf_debug "${x}"
 		[[ -n ${NOSTRIP} ]] && continue
 		[[ ${stripitbaby} -eq 1 ]] && ${STRIP} ${PORTAGE_STRIP_FLAGS} "${x}"
