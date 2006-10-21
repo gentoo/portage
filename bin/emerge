@@ -1077,10 +1077,12 @@ class depgraph:
 							self.trees[self.target_root][
 							"porttree"].dbapi.match(myslot_atom):
 							available = True
-						elif "--usepkg" in self.myopts and \
-							self.trees[self.target_root][
-							"bintree"].dbapi.match(myslot_atom):
-							available = True
+						elif "--usepkg" in self.myopts:
+							mymatches = bindb.match(myslot_atom)
+							if "--usepkgonly" not in self.myopts:
+								mymatches = portdb.visible(mymatches)
+							if mymatches:
+								available = True
 						if available:
 							greedy_atoms.append((myarg, myslot_atom))
 			arg_atoms = greedy_atoms
@@ -1644,10 +1646,12 @@ class depgraph:
 							self.trees[self.target_root][
 							"porttree"].dbapi.match(myslot_atom):
 							available = True
-						elif "--usepkg" in self.myopts and \
-							self.trees[self.target_root][
-							"bintree"].dbapi.match(myslot_atom):
-							available = True
+						elif "--usepkg" in self.myopts:
+							mymatches = bindb.match(myslot_atom)
+							if "--usepkgonly" not in self.myopts:
+								mymatches = portdb.visible(mymatches)
+							if mymatches:
+								available = True
 						if available:
 							newlist.append(myslot_atom)
 		mylist = newlist
