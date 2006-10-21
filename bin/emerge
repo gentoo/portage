@@ -876,7 +876,11 @@ class depgraph:
 			self.pkg_node_map[mybigkey[2]] = jbigkey
 			self.digraph.addnode(jbigkey, myparent,
 				priority=priority)
-		
+
+		if addme:
+			myslot = mydbapi.aux_get(mykey, ["SLOT"])[0]
+			self.mydbapi[myroot].cpv_inject(mykey, myslot=myslot)
+
 		""" This section determines whether we go deeper into dependencies or not.
 		    We want to go deeper on a few occasions:
 		    Installing package A, we need to make sure package A's deps are met.
@@ -963,6 +967,8 @@ class depgraph:
 		bindb = self.trees[myroot]["bintree"].dbapi
 		pkgsettings = self.pkgsettings[myroot]
 		arg_atoms = []
+		def visible(mylist):
+			return portdb.gvisible(portdb.visible(mylist))
 		for x in myfiles:
 			ext = os.path.splitext(x)[1]
 			if ext==".tbz2":
@@ -1049,6 +1055,26 @@ class depgraph:
 				myslots = set()
 				for cpv in vardb.match(myatom):
 					myslots.add(vardb.aux_get(cpv, ["SLOT"])[0])
+				if myslots:
+					best_pkgs = []
+					if "--usepkg" in self.myopts:
+						mymatches = bindb.match(myatom)
+						if "--usepkgonly" not in self.myopts:
+							mymatches = visible(mymatches)
+						best_pkg = portage.best(mymatches)
+						if best_pkg:
+							best_slot = bindb.aux_get(best_pkg, ["SLOT"])[0]
+							best_pkgs.append(("binary", best_pkg, best_slot))
+					if "--usepkgonly" not in self.myopts:
+						best_pkg = portage.best(portdb.match(myatom))
+						if best_pkg:
+							best_slot = portdb.aux_get(best_pkg, ["SLOT"])[0]
+							best_pkgs.append(("ebuild", best_pkg, best_slot))
+					if best_pkgs:
+						best_pkg = portage.best([x[1] for x in best_pkgs])
+						best_pkgs = [x for x in best_pkgs if x[1] == best_pkg]
+						best_slot = best_pkgs[0][2]
+						myslots.add(best_slot)
 				if len(myslots) > 1:
 					for myslot in myslots:
 						myslot_atom = "%s:%s" % \
@@ -1058,10 +1084,12 @@ class depgraph:
 							self.trees[self.target_root][
 							"porttree"].dbapi.match(myslot_atom):
 							available = True
-						elif "--usepkg" in self.myopts and \
-							self.trees[self.target_root][
-							"bintree"].dbapi.match(myslot_atom):
-							available = True
+						elif "--usepkg" in self.myopts:
+							mymatches = bindb.match(myslot_atom)
+							if "--usepkgonly" not in self.myopts:
+								mymatches = visible(mymatches)
+							if mymatches:
+								available = True
 						if available:
 							greedy_atoms.append((myarg, myslot_atom))
 			arg_atoms = greedy_atoms
@@ -1169,26 +1197,14 @@ class depgraph:
 		mymerge = mycheck[1]
 
 		if myparent:
-			# In order to get past circular dependencies (in
-			# `emerge -e world`, for example), the parent must be allowed
-			# to satisfy dependencies of it's children.
-
 			# The parent is added after it's own dep_check call so that it
 			# isn't allowed to satisfy a direct bootstrap dependency on itself
-			# or an old-style virtual that it satisfies (unfortunately, this
-			# only works for one level of deps, so it won't work for new-style
-			# virtuals since they introduce an additional level of dependency
-			# indirection).
+			# via an old-style virtual.  This isn't a problem with new-style
+			# virtuals, which are preferenced in dep_zapdeps by looking only at
+			# the depstring, vdb, and available packages.
 
 			p_type, p_root, p_key, p_status = myparent.split()
 			if p_status == "merge":
-				""" This fakedbapi data is used in dep_check calls to determine
-				satisfied deps via dep_wordreduce"""
-				myslot = self.trees[p_root][
-					self.pkg_tree_map[p_type]].dbapi.aux_get(
-						p_key, ["SLOT"])[0]
-				self.mydbapi[p_root].cpv_inject(p_key, myslot=myslot)
-
 				# Update old-style virtuals if this package provides any.
 				# These are needed for dep_virtual calls inside dep_check.
 				self.pkgsettings[p_root].setinst(p_key,
@@ -1403,18 +1419,6 @@ class depgraph:
 		correct merge order such that mutually blocking packages are never
 		installed simultaneously."""
 
-		""" It's possible that some of the nodes haven't been added to the
-		fakedb yet, so make sure they're all accounted for."""
-		for node in self.digraph.all_nodes():
-			node_split = node.split()
-			mytype, myroot, mykey = node_split[0:3]
-			if mytype in self.pkg_tree_map:
-				if node_split[3] == "nomerge":
-					continue
-				mydb = self.trees[myroot][self.pkg_tree_map[mytype]].dbapi
-				myslot = mydb.aux_get(mykey, ["SLOT"])[0]
-				self.mydbapi[myroot].cpv_inject(mykey, myslot=myslot)
-
 		for blocker in self.blocker_parents.keys():
 			mytype, myroot, mydep = blocker.split()
 			vardb = self.trees[myroot]["vartree"].dbapi
@@ -1563,6 +1567,10 @@ class depgraph:
 
 	def xcreate(self,mode="system"):
 		vardb = self.trees[self.target_root]["vartree"].dbapi
+		portdb = self.trees[self.target_root]["porttree"].dbapi
+		bindb = self.trees[self.target_root]["bintree"].dbapi
+		def visible(mylist):
+			return portdb.gvisible(portdb.visible(mylist))
 		world_problems = False
 		if mode=="system":
 			mylist = getlist(self.settings, "system")
@@ -1595,6 +1603,26 @@ class depgraph:
 				myslots = set()
 				for cpv in vardb.match(mykey):
 					myslots.add(vardb.aux_get(cpv, ["SLOT"])[0])
+				if myslots:
+					best_pkgs = []
+					if "--usepkg" in self.myopts:
+						mymatches = bindb.match(atom)
+						if "--usepkgonly" not in self.myopts:
+							mymatches = visible(mymatches)
+						best_pkg = portage.best(mymatches)
+						if best_pkg:
+							best_slot = bindb.aux_get(best_pkg, ["SLOT"])[0]
+							best_pkgs.append(("binary", best_pkg, best_slot))
+					if "--usepkgonly" not in self.myopts:
+						best_pkg = portage.best(portdb.match(atom))
+						if best_pkg:
+							best_slot = portdb.aux_get(best_pkg, ["SLOT"])[0]
+							best_pkgs.append(("ebuild", best_pkg, best_slot))
+					if best_pkgs:
+						best_pkg = portage.best([x[1] for x in best_pkgs])
+						best_pkgs = [x for x in best_pkgs if x[1] == best_pkg]
+						best_slot = best_pkgs[0][2]
+						myslots.add(best_slot)
 				if len(myslots) > 1:
 					for myslot in myslots:
 						myslot_atom = "%s:%s" % (mykey, myslot)
@@ -1603,10 +1631,12 @@ class depgraph:
 							self.trees[self.target_root][
 							"porttree"].dbapi.match(myslot_atom):
 							available = True
-						elif "--usepkg" in self.myopts and \
-							self.trees[self.target_root][
-							"bintree"].dbapi.match(myslot_atom):
-							available = True
+						elif "--usepkg" in self.myopts:
+							mymatches = bindb.match(myslot_atom)
+							if "--usepkgonly" not in self.myopts:
+								mymatches = visible(mymatches)
+							if mymatches:
+								available = True
 						if available:
 							newlist.append(myslot_atom)
 		mylist = newlist
