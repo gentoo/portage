@@ -966,6 +966,8 @@ class depgraph:
 		bindb = self.trees[myroot]["bintree"].dbapi
 		pkgsettings = self.pkgsettings[myroot]
 		arg_atoms = []
+		def visible(mylist):
+			return portdb.gvisible(portdb.visible(mylist))
 		for x in myfiles:
 			ext = os.path.splitext(x)[1]
 			if ext==".tbz2":
@@ -1057,7 +1059,7 @@ class depgraph:
 					if "--usepkg" in self.myopts:
 						mymatches = bindb.match(myatom)
 						if "--usepkgonly" not in self.myopts:
-							mymatches = portdb.visible(mymatches)
+							mymatches = visible(mymatches)
 						best_pkg = portage.best(mymatches)
 						if best_pkg:
 							best_slot = bindb.aux_get(best_pkg, ["SLOT"])[0]
@@ -1084,7 +1086,7 @@ class depgraph:
 						elif "--usepkg" in self.myopts:
 							mymatches = bindb.match(myslot_atom)
 							if "--usepkgonly" not in self.myopts:
-								mymatches = portdb.visible(mymatches)
+								mymatches = visible(mymatches)
 							if mymatches:
 								available = True
 						if available:
@@ -1566,6 +1568,8 @@ class depgraph:
 		vardb = self.trees[self.target_root]["vartree"].dbapi
 		portdb = self.trees[self.target_root]["porttree"].dbapi
 		bindb = self.trees[self.target_root]["bintree"].dbapi
+		def visible(mylist):
+			return portdb.gvisible(portdb.visible(mylist))
 		world_problems = False
 		if mode=="system":
 			mylist = getlist(self.settings, "system")
@@ -1603,7 +1607,7 @@ class depgraph:
 					if "--usepkg" in self.myopts:
 						mymatches = bindb.match(atom)
 						if "--usepkgonly" not in self.myopts:
-							mymatches = portdb.visible(mymatches)
+							mymatches = visible(mymatches)
 						best_pkg = portage.best(mymatches)
 						if best_pkg:
 							best_slot = bindb.aux_get(best_pkg, ["SLOT"])[0]
@@ -1629,7 +1633,7 @@ class depgraph:
 						elif "--usepkg" in self.myopts:
 							mymatches = bindb.match(myslot_atom)
 							if "--usepkgonly" not in self.myopts:
-								mymatches = portdb.visible(mymatches)
+								mymatches = visible(mymatches)
 							if mymatches:
 								available = True
 						if available:
