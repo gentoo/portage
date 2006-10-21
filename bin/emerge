@@ -1194,16 +1194,11 @@ class depgraph:
 		mymerge = mycheck[1]
 
 		if myparent:
-			# In order to get past circular dependencies (in
-			# `emerge -e world`, for example), the parent must be allowed
-			# to satisfy dependencies of it's children.
-
 			# The parent is added after it's own dep_check call so that it
 			# isn't allowed to satisfy a direct bootstrap dependency on itself
-			# or an old-style virtual that it satisfies (unfortunately, this
-			# only works for one level of deps, so it won't work for new-style
-			# virtuals since they introduce an additional level of dependency
-			# indirection).
+			# via an old-style virtual.  This isn't a problem with new-style
+			# virtuals, which are preferenced in dep_zapdeps by looking only at
+			# the depstring, vdb, and available packages.
 
 			p_type, p_root, p_key, p_status = myparent.split()
 			if p_status == "merge":
