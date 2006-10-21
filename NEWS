@@ -3,6 +3,8 @@ News (mainly features/major bug fixes)
 portage-2.1.2
 ------------
 
+* New-style virtuals are now usable for packages that depend on themselves for
+  bootstrap.
 * Profiles support multiple inheritance.
 * CONFIG_PROTECT and CONFIG_PROTECT_MASK both support files (not just
   directories).
