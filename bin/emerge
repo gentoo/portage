@@ -1048,6 +1048,23 @@ class depgraph:
 				myslots = set()
 				for cpv in vardb.match(myatom):
 					myslots.add(vardb.aux_get(cpv, ["SLOT"])[0])
+				if myslots:
+					best_pkgs = []
+					if "--usepkg" in self.myopts:
+						best_pkg = portage.best(bindb.match(myatom))
+						if best_pkg:
+							best_slot = bindb.aux_get(best_pkg, ["SLOT"])[0]
+							best_pkgs.append(("binary", best_pkg, best_slot))
+					if "--usepkgonly" not in self.myopts:
+						best_pkg = portage.best(portdb.match(myatom))
+						if best_pkg:
+							best_slot = portdb.aux_get(best_pkg, ["SLOT"])[0]
+							best_pkgs.append(("ebuild", best_pkg, best_slot))
+					if best_pkgs:
+						best_pkg = portage.best([x[1] for x in best_pkgs])
+						best_pkgs = [x for x in best_pkgs if x[1] == best_pkg]
+						best_slot = best_pkgs[0][2]
+						myslots.add(best_slot)
 				if len(myslots) > 1:
 					for myslot in myslots:
 						myslot_atom = "%s:%s" % \
