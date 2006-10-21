@@ -2588,12 +2588,12 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 			"Invalid ebuild path: '%s'" % myebuild)
 
 	if mydo != "depend":
-		mysettings.setcpv(mycpv, use_cache=use_cache, mydb=mydbapi)
-		"""For performance reasons, setcpv only triggers regenerate when it
+		"""For performance reasons, setcpv only triggers reset when it
 		detects a package-specific change in config.  For the ebuild
-		environment, a regenerate call is forced in order to ensure that the
+		environment, a reset call is forced in order to ensure that the
 		latest env.d variables are used."""
-		mysettings.regenerate()
+		mysettings.reset(use_cache=use_cache)
+		mysettings.setcpv(mycpv, use_cache=use_cache, mydb=mydbapi)
 
 	mysettings["EBUILD_PHASE"] = mydo
 
