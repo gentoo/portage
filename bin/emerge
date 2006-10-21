@@ -875,7 +875,11 @@ class depgraph:
 			self.pkg_node_map[mybigkey[2]] = jbigkey
 			self.digraph.addnode(jbigkey, myparent,
 				priority=priority)
-		
+
+		if addme:
+			myslot = mydbapi.aux_get(mykey, ["SLOT"])[0]
+			self.mydbapi[myroot].cpv_inject(mykey, myslot=myslot)
+
 		""" This section determines whether we go deeper into dependencies or not.
 		    We want to go deeper on a few occasions:
 		    Installing package A, we need to make sure package A's deps are met.
@@ -1203,13 +1207,6 @@ class depgraph:
 
 			p_type, p_root, p_key, p_status = myparent.split()
 			if p_status == "merge":
-				""" This fakedbapi data is used in dep_check calls to determine
-				satisfied deps via dep_wordreduce"""
-				myslot = self.trees[p_root][
-					self.pkg_tree_map[p_type]].dbapi.aux_get(
-						p_key, ["SLOT"])[0]
-				self.mydbapi[p_root].cpv_inject(p_key, myslot=myslot)
-
 				# Update old-style virtuals if this package provides any.
 				# These are needed for dep_virtual calls inside dep_check.
 				self.pkgsettings[p_root].setinst(p_key,
