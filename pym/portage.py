@@ -916,6 +916,9 @@ class config:
 			self.dirVirtuals = copy.deepcopy(clone.dirVirtuals)
 			self.treeVirtuals = copy.deepcopy(clone.treeVirtuals)
 			self.features = copy.deepcopy(clone.features)
+
+			self._accept_license = copy.deepcopy(clone._accept_license)
+			self._plicensedict = copy.deepcopy(clone._plicensedict)
 		else:
 
 			# backupenv is for calculated incremental variables.
@@ -1181,6 +1184,7 @@ class config:
 
 			self.pusedict = {}
 			self.pkeywordsdict = {}
+			self._plicensedict = {}
 			self.punmaskdict = {}
 			abs_user_config = os.path.join(config_root,
 				USER_CONFIG_PATH.lstrip(os.path.sep))
@@ -1233,6 +1237,14 @@ class config:
 					if not self.pkeywordsdict.has_key(cp):
 						self.pkeywordsdict[cp] = {}
 					self.pkeywordsdict[cp][key] = pkgdict[key]
+				
+				#package.license
+				licdict = grabdict_package(
+					os.path.join(abs_user_config, "package.license"),
+					recursive=1)
+				for k, v in licdict.iteritems():
+					self._plicensedict.setdefault(
+						dep_getkey(k), {})[k] = v
 
 				#package.unmask
 				pkgunmasklines = grabfile_package(
@@ -1326,6 +1338,8 @@ class config:
 
 			self.regenerate()
 			self.features = portage_util.unique_array(self["FEATURES"].split())
+			
+			self._accept_license = set(self.get("ACCEPT_LICENSE", "*").split())
 
 			if "gpg" in self.features:
 				if not os.path.exists(self["PORTAGE_GPG_DIR"]) or \
@@ -1568,6 +1582,16 @@ class config:
 		self.configdict["pkg"]["CATEGORY"] = mycpv.split("/")[0]
 		if has_changed:
 			self.reset(keeping_pkg=1,use_cache=use_cache)
+
+	def acceptable_licenses(self, cpv):
+		cpdict = self._plicensedict.get(dep_getkey(cpv), None)
+		if not cpdict:
+			return self._accept_license.copy()
+		plicenses = self._accept_license.copy()
+		matches = match_to_list(cpv, cpdict.keys())
+		for atom in matches:
+			plicenses.update(cpdict[atom])
+		return plicenses
 
 	def setinst(self,mycpv,mydbapi):
 		self.modifying()
@@ -3449,9 +3473,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None,
 	return_all_deps=False):
 	"""Takes an unreduced and reduced deplist and removes satisfied dependencies.
 	Returned deplist contains steps that must be taken to satisfy dependencies."""
-	if trees is None:
-		global db
-		trees = db
+
 	writemsg("ZapDeps -- %s\n" % (use_binaries), 2)
 	if not reduced or unreduced == ["||"] or \
 		(not return_all_deps and dep_eval(reduced)):
@@ -3471,6 +3493,17 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None,
 	# We're at a ( || atom ... ) type level and need to make a choice
 	deps = unreduced[1:]
 	satisfieds = reduced[1:]
+
+	if trees is None:
+		# We don't have trees to check availability against, so we
+		# just default to the first choice.
+		if isinstance(deps[0], list):
+			atoms = dep_zapdeps(deps[0], satisfieds[0], myroot,
+				use_binaries=use_binaries, trees=trees,
+				return_all_deps=return_all_deps)
+		else:
+			atoms = [deps[0]]
+		return atoms
 
 	# Our preference order is for an the first item that:
 	# a) contains all unmasked packages with the same key as installed packages
@@ -3576,7 +3609,8 @@ def dep_expand(mydep, mydb=None, use_cache=1, settings=None):
 		mydep, mydb=mydb, use_cache=use_cache, settings=settings) + postfix
 
 def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
-	use_cache=1, use_binaries=0, myroot="/", trees=None, return_all_deps=False):
+	use_cache=1, use_binaries=0, myroot="/", trees=None, str_matches=None,
+	return_all_deps=False):
 	"""Takes a depend string and parses the condition."""
 
 	#check_config_instance(mysettings)
@@ -3633,7 +3667,8 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 		#dependencies were reduced to nothing
 		return [1,[]]
 	mysplit2=mysplit[:]
-	mysplit2=dep_wordreduce(mysplit2,mysettings,mydbapi,mode,use_cache=use_cache)
+	mysplit2 = dep_wordreduce(mysplit2, mysettings, mydbapi, mode,
+		str_matches=str_matches, use_cache=use_cache)
 	if mysplit2 is None:
 		return [0,"Invalid token"]
 
@@ -3654,19 +3689,24 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 	writemsg("mydict:   %s\n" % (mydict), 1)
 	return [1,mydict.keys()]
 
-def dep_wordreduce(mydeplist,mysettings,mydbapi,mode,use_cache=1):
+def dep_wordreduce(mydeplist, mysettings, mydbapi, mode, str_matches=None,
+	use_cache=1):
 	"Reduces the deplist to ones and zeros"
 	mypos=0
 	deplist=mydeplist[:]
 	while mypos<len(deplist):
 		if type(deplist[mypos])==types.ListType:
 			#recurse
-			deplist[mypos]=dep_wordreduce(deplist[mypos],mysettings,mydbapi,mode,use_cache=use_cache)
+			deplist[mypos] = dep_wordreduce(deplist[mypos], mysettings,
+				mydbapi, mode, str_matches=str_matches, use_cache=use_cache)
 		elif deplist[mypos]=="||":
 			pass
 		else:
 			mykey = dep_getkey(deplist[mypos])
-			if mysettings and mysettings.pprovideddict.has_key(mykey) and \
+			if str_matches is not None:
+				mykey = deplist[mypos]
+				deplist[mypos] = str_matches(mykey)
+			elif mysettings and mysettings.pprovideddict.has_key(mykey) and \
 			        match_from_list(deplist[mypos], mysettings.pprovideddict[mykey]):
 				deplist[mypos]=True
 			else:
@@ -3871,7 +3911,8 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 					rValue.append("package.mask")
 
 	# keywords checking
-	mygroups, eapi = portdb.aux_get(mycpv, ["KEYWORDS", "EAPI"])
+	mygroups, mylicense, eapi = portdb.aux_get(mycpv,
+		["KEYWORDS", "LICENSE", "EAPI"])
 	if not eapi_is_supported(eapi):
 		return ["required EAPI %s, supported EAPI %s" % (eapi, portage_const.EAPI)]
 	mygroups = mygroups.split()
@@ -3906,6 +3947,16 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 
 	if kmask:
 		rValue.append(kmask+" keyword")
+
+	settings.setcpv(mycpv, mydb=portdb)
+	acceptable_licenses = settings.acceptable_licenses(mycpv)
+	def str_matches(myatom):
+		return myatom in acceptable_licenses
+	license_req = dep_check(mylicense, None, settings,
+		str_matches=acceptable_licenses)[1]
+	if license_req:
+		rValue.append(" ".join(license_req) + " license(s)")
+	
 	return rValue
 
 class packagetree:
@@ -5356,16 +5407,17 @@ class portdbapi(dbapi):
 		newlist=[]
 
 		pkgdict = self.mysettings.pkeywordsdict
+		aux_keys = ["KEYWORDS", "LICENSE", "EAPI"]
 		for mycpv in mylist:
 			#we need to update this next line when we have fully integrated the new db api
 			auxerr=0
 			keys = None
 			try:
-				keys, eapi = self.aux_get(mycpv, ["KEYWORDS", "EAPI"])
+				keys, license, eapi = self.aux_get(mycpv, aux_keys)
 			except KeyError:
 				pass
 			except portage_exception.PortageException, e:
-				writemsg("!!! Error: aux_get('%s', ['KEYWORDS', 'EAPI'])\n" % mycpv,
+				writemsg("!!! Error: aux_get('%s', %s)\n" % (mycpv, aux_keys),
 					noiselevel=-1)
 				writemsg("!!! %s\n" % str(e),
 					noiselevel=-1)
@@ -5402,6 +5454,16 @@ class portdbapi(dbapi):
 					hasstable = True
 			if not match and ((hastesting and "~*" in pgroups) or (hasstable and "*" in pgroups)):
 				match=1
+			acceptable_licenses = self.mysettings.acceptable_licenses(mycpv)
+			if "*" not in acceptable_licenses:
+				def str_matches(myatom):
+					return myatom in acceptable_licenses
+				if "?" in license:
+					self.mysettings.setcpv(mycpv, mydb=self)
+				reqd = dep_check(license, None, self.mysettings,
+					str_matches=str_matches)[1]
+				if reqd:
+					match = 0
 			if match and eapi_is_supported(eapi):
 				newlist.append(mycpv)
 		return newlist
