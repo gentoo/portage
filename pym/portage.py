@@ -3953,7 +3953,7 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 	def str_matches(myatom):
 		return myatom in acceptable_licenses
 	license_req = dep_check(mylicense, None, settings,
-		str_matches=acceptable_licenses)[1]
+		str_matches=str_matches)[1]
 	if license_req:
 		rValue.append(" ".join(license_req) + " license(s)")
 	
