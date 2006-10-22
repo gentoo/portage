@@ -293,6 +293,8 @@ preinst_sfperms() {
 	if [ -z "$IMAGE" ]; then
 		 eerror "${FUNCNAME}: IMAGE is unset"
 		 return 1
+	else
+		IMAGE="${IMAGE}/${EPREFIX}"
 	fi
 	# Smart FileSystem Permissions
 	if hasq sfperms $FEATURES; then
@@ -313,6 +315,8 @@ preinst_suid_scan() {
 	if [ -z "$IMAGE" ]; then
 		 eerror "${FUNCNAME}: IMAGE is unset"
 		 return 1
+	else
+		IMAGE="${IMAGE}/${EPREFIX}"
 	fi
 	# total suid control.
 	if hasq suidctl $FEATURES; then
@@ -352,12 +356,14 @@ preinst_selinux_labels() {
 	if [ -z "$IMAGE" ]; then
 		 eerror "${FUNCNAME}: IMAGE is unset"
 		 return 1
+	else
+		IMAGE="${IMAGE}/${EPREFIX}"
 	fi
 	if hasq selinux ${FEATURES}; then
 		# SELinux file labeling (needs to always be last in dyn_preinst)
 		# only attempt to label if setfiles is executable
 		# and 'context' is available on selinuxfs.
-		if [ -f /selinux/context -a -x ${EPREFIX}/usr/sbin/setfiles -a -x ${EPREFIX}/usr/sbin/selinuxconfig ]; then
+		if [ -f ${EPREFIX}/selinux/context -a -x ${EPREFIX}/usr/sbin/setfiles -a -x ${EPREFIX}/usr/sbin/selinuxconfig ]; then
 			vecho ">>> Setting SELinux security labels"
 			(
 				eval "$(${EPREFIX}/usr/sbin/selinuxconfig)" || \

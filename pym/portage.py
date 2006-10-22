@@ -3000,7 +3000,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 					filemode=060, filemask=0)
 			return retval
 		elif mydo == "preinst":
-			mysettings["IMAGE"] = mysettings["EDEST"]
+			mysettings["IMAGE"] = mysettings["D"]
 			phase_retval = spawn(" ".join((EBUILD_SH_BINARY, mydo)),
 				mysettings, debug=debug, free=1, logfile=logfile)
 			if phase_retval == os.EX_OK:
