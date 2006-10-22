@@ -1662,7 +1662,8 @@ class config:
 
 			myflags.sort()
 			#store setting in last element of configlist, the original environment:
-			self.configlist[-1][mykey]=string.join(myflags," ")
+			if myflags:
+				self.configlist[-1][mykey] = " ".join(myflags)
 			del myflags
 
 		# Do the USE calculation last because it depends on USE_EXPAND.
