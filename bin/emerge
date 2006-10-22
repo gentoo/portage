@@ -297,8 +297,8 @@ def getgccversion(chost):
 			return myoutput.replace(chost + "-", gcc_ver_prefix, 1)
 
 	mystatus, myoutput = commands.getstatusoutput("gcc-config -c")
-	if mystatus == os.EX_OK and len(myoutput.split("-")) > 0:
-		return gcc_ver_prefix + myoutput.split("-")[-1]
+	if mystatus == os.EX_OK and myoutput.startswith(chost + "-"):
+		return myoutput.replace(chost + "-", gcc_ver_prefix, 1)
 
 	mystatus, myoutput = commands.getstatusoutput(
 		chost + "-" + gcc_ver_command)
