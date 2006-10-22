@@ -2954,6 +2954,12 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			return spawn(EBUILD_SH_BINARY + " " + mydo, mysettings,
 				debug=debug, free=1, logfile=logfile)
 		elif mydo == "setup":
+			infodir = os.path.join(
+				mysettings["PORTAGE_BUILDDIR"], "build-info")
+			if os.path.isdir(infodir):
+				"""Load USE flags for setup phase of a binary package.
+				Ideally, the environment.bz2 would be used instead."""
+				mysettings.load_infodir(infodir)
 			retval = spawn(EBUILD_SH_BINARY + " " + mydo, mysettings,
 				debug=debug, free=1, logfile=logfile)
 			if secpass >= 2:
