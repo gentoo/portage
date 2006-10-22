@@ -967,7 +967,9 @@ class depgraph:
 		pkgsettings = self.pkgsettings[myroot]
 		arg_atoms = []
 		def visible(mylist):
-			return portdb.gvisible(portdb.visible(mylist))
+			matches = portdb.gvisible(portdb.visible(mylist))
+			return [x for x in mylist \
+				if x in matches or not portdb.cpv_exists(x)]
 		for x in myfiles:
 			ext = os.path.splitext(x)[1]
 			if ext==".tbz2":
@@ -1569,7 +1571,9 @@ class depgraph:
 		portdb = self.trees[self.target_root]["porttree"].dbapi
 		bindb = self.trees[self.target_root]["bintree"].dbapi
 		def visible(mylist):
-			return portdb.gvisible(portdb.visible(mylist))
+			matches = portdb.gvisible(portdb.visible(mylist))
+			return [x for x in mylist \
+				if x in matches or not portdb.cpv_exists(x)]
 		world_problems = False
 		if mode=="system":
 			mylist = getlist(self.settings, "system")
