@@ -1497,9 +1497,12 @@ class config:
 						mydata = string.strip(open(infodir+"/"+filename).read())
 						if len(mydata)<2048:
 							if filename == "USE":
-								self.configdict["pkg"][filename] = "-* "+mydata
+								binpkg_flags = "-* " + mydata
+								self.configdict["pkg"][filename] = binpkg_flags
+								self.configdict["env"][filename] = binpkg_flags
 							else:
 								self.configdict["pkg"][filename] = mydata
+								self.configdict["env"][filename] = mydata
 						# CATEGORY is important because it's used in doebuild
 						# to infer the cpv.  If it's corrupted, it leads to
 						# strange errors later on, so we'll validate it and
