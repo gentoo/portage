@@ -42,9 +42,9 @@ virtuals
 .nf
 bashrc
 modules
+package.keywords
 package.mask
 package.unmask
-package.keywords
 package.use
 mirrors
 categories
@@ -374,34 +374,9 @@ portage will not be able to detect that cache regeneration is necessary.  If
 the user would like to modify eclasses, it is safe to use metadata_overlay
 together with PORTDIR_OVERLAY in \fBmake.conf\fR.
 .TP
-.BR package.mask
-A list of package atoms to mask.  Useful if specific versions of packages do
-not work well for you.  For example, you swear by the Nvidia drivers, but only
-versions earlier than 1.0.4496.  No problem!
-
-.I Format:
-.nf
-\- comments begin with #
-\- one DEPEND atom per line
-.fi
-
-.I Example:
-.nf
-# mask out versions 1.0.4496 of the nvidia
-# drivers and later
->=media\-video/nvidia\-kernel\-1.0.4496
->=media\-video/nvidia\-glx\-1.0.4496
-.fi
-.TP
-.BR package.unmask
-Just like package.mask above, except here you list packages you want to 
-unmask.  Useful for overriding the global package.mask file (see 
-below).  Note that this does not override packages that are masked via 
-KEYWORDS.
-.TP
 .BR package.keywords
 Per\-package KEYWORDS.  Useful for mixing unstable packages in with a normally 
-stable machine or vice versa.  This will allow you to augment ACCEPT_KEYWORDS 
+stable system or vice versa.  This will allow ACCEPT_KEYWORDS to be augmented
 for a single package.
 
 .nf
@@ -434,6 +409,31 @@ If you wish to accept this package anyways, then add \fB-*\fR to your
 package.keywords like this:
 
 games-fps/quake3-demo -*
+.TP
+.BR package.mask
+A list of package atoms to mask.  Useful if specific versions of packages do
+not work well for you.  For example, you swear by the Nvidia drivers, but only
+versions earlier than 1.0.4496.  No problem!
+
+.I Format:
+.nf
+\- comments begin with #
+\- one DEPEND atom per line
+.fi
+
+.I Example:
+.nf
+# mask out versions 1.0.4496 of the nvidia
+# drivers and later
+>=media\-video/nvidia\-kernel\-1.0.4496
+>=media\-video/nvidia\-glx\-1.0.4496
+.fi
+.TP
+.BR package.unmask
+Just like package.mask above, except here you list packages you want to 
+unmask.  Useful for overriding the global package.mask file (see 
+below).  Note that this does not override packages that are masked via 
+KEYWORDS.
 .TP
 .BR package.use
 Per\-package USE flags.  Useful for tracking local USE flags or for 
