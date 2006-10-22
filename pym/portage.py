@@ -1662,7 +1662,7 @@ class config:
 
 			myflags.sort()
 			#store setting in last element of configlist, the original environment:
-			if myflags:
+			if myflags or mykey in self:
 				self.configlist[-1][mykey] = " ".join(myflags)
 			del myflags
 
