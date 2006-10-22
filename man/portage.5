@@ -410,6 +410,25 @@ package.keywords like this:
 
 games-fps/quake3-demo -*
 .TP
+.BR package.license
+Per\-package acceptance of licenses.  This is useful if a license needs to be
+accepted for a single package but should not be accepted for any package.  See
+\fIACCEPT_LICENSE\fR in \fBmake.conf\fR(5) for global license acceptance.
+
+.I Format:
+.nf
+\- comments begin with #
+\- one DEPEND atom per line followed by additional licenses
+.fi
+
+.I Example:
+.nf
+# accept the zlib license just for the zlib package
+sys-libs/zlib ZLIB
+# accept any license for mplayer
+media\-video/mplayer *
+.fi
+.TP
 .BR package.mask
 A list of package atoms to mask.  Useful if specific versions of packages do
 not work well for you.  For example, you swear by the Nvidia drivers, but only
