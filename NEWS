@@ -3,6 +3,8 @@ News (mainly features/major bug fixes)
 portage-2.1.2
 ------------
 
+* ACCEPT_LICENSE and package.license allow packages with unaccepted licenses to
+  be masked.
 * Ebuilds support default USE flags via +flag in IUSE.
 * New-style virtuals are now usable for packages that depend on themselves for
   bootstrap.
