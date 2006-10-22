@@ -1499,7 +1499,7 @@ class config:
 							if filename == "USE":
 								binpkg_flags = "-* " + mydata
 								self.configdict["pkg"][filename] = binpkg_flags
-								self.configdict["env"][filename] = binpkg_flags
+								self.configdict["env"][filename] = mydata
 							else:
 								self.configdict["pkg"][filename] = mydata
 								self.configdict["env"][filename] = mydata
