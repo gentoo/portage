@@ -1495,7 +1495,7 @@ class config:
 				if myre.match(filename):
 					try:
 						mydata = string.strip(open(infodir+"/"+filename).read())
-						if len(mydata)<2048:
+						if len(mydata) < 2048 or filename == "USE":
 							if filename == "USE":
 								binpkg_flags = "-* " + mydata
 								self.configdict["pkg"][filename] = binpkg_flags
