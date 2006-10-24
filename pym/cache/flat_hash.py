@@ -26,7 +26,10 @@ class database(fs_template.FsBased):
 			myf = open(fp, "r")
 			try:
 				d = self._parse_data(myf, cpv)
-				d["_mtime_"] = long(os.fstat(myf.fileno()).st_mtime)
+				if "_mtime_" not in d:
+					"""Backward compatibility with old cache that uses mtime
+					mangling."""
+					d["_mtime_"] = long(os.fstat(myf.fileno()).st_mtime)
 				return d
 			finally:
 				myf.close()
