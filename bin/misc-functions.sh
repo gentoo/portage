@@ -271,8 +271,6 @@ preinst_mask() {
 	if [ -z "$IMAGE" ]; then
 		 eerror "${FUNCNAME}: IMAGE is unset"
 		 return 1
-	else
-		IMAGE="${IMAGE}/${EPREFIX}"
 	fi
 	# remove man pages, info pages, docs if requested
 	for f in man info doc; do
@@ -293,8 +291,6 @@ preinst_sfperms() {
 	if [ -z "$IMAGE" ]; then
 		 eerror "${FUNCNAME}: IMAGE is unset"
 		 return 1
-	else
-		IMAGE="${IMAGE}/${EPREFIX}"
 	fi
 	# Smart FileSystem Permissions
 	if hasq sfperms $FEATURES; then
@@ -315,8 +311,6 @@ preinst_suid_scan() {
 	if [ -z "$IMAGE" ]; then
 		 eerror "${FUNCNAME}: IMAGE is unset"
 		 return 1
-	else
-		IMAGE="${IMAGE}/${EPREFIX}"
 	fi
 	# total suid control.
 	if hasq suidctl $FEATURES; then
@@ -356,8 +350,6 @@ preinst_selinux_labels() {
 	if [ -z "$IMAGE" ]; then
 		 eerror "${FUNCNAME}: IMAGE is unset"
 		 return 1
-	else
-		IMAGE="${IMAGE}/${EPREFIX}"
 	fi
 	if hasq selinux ${FEATURES}; then
 		# SELinux file labeling (needs to always be last in dyn_preinst)

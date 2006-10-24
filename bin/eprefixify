@@ -23,7 +23,7 @@ esac
 
 ret=0
 
-einfo "Adjusting to prefix ..."
+einfo "Adjusting to prefix"
 for x in "$@" ; do
 	if [[ -e ${x} ]] ; then
 		ebegin "  ${x##*/}"

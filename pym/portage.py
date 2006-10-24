@@ -6279,9 +6279,6 @@ class dblink:
 		# secondhand = list of symlinks that have been skipped due to
 		#              their target not existing (will merge later),
 
-		origroot = destroot
-		destroot = normalize_path(destroot + portage_const.EPREFIX)
-
 		if not os.path.isdir(srcroot):
 			writemsg("!!! Directory Not Found: D='%s'\n" % srcroot,
 			noiselevel=-1)
@@ -6324,7 +6321,7 @@ class dblink:
 				# only allow versions with same slot to overwrite files
 				if myslot == self.vartree.dbapi.aux_get("/".join((self.cat, v)), ["SLOT"])[0]:
 					mypkglist.append(
-						dblink(self.cat, v, origroot, self.settings,
+						dblink(self.cat, v, destroot, self.settings,
 							vartree=self.vartree))
 
 			print green("*")+" checking "+str(len(myfilelist))+" files for package collisions"
@@ -6349,7 +6346,7 @@ class dblink:
 						isowned = True
 						break
 				if not isowned:
-					print "existing file "+ portage_const.EPREFIX + f +" is not owned by this package"
+					print "existing file "+ f +" is not owned by this package"
 					stopmerge=True
 					if collision_ignore:
 						if f in collision_ignore:
@@ -6406,7 +6403,7 @@ class dblink:
 		# run preinst script
 		if myebuild is None:
 			myebuild = os.path.join(inforoot, self.pkg + ".ebuild")
-		a = doebuild(myebuild, "preinst", origroot, self.settings, cleanup=cleanup,
+		a = doebuild(myebuild, "preinst", destroot, self.settings, cleanup=cleanup,
 			use_cache=0, tree=self.treetype, mydbapi=mydbapi,
 			vartree=self.vartree)
 
@@ -6448,7 +6445,7 @@ class dblink:
 
 		# we do a first merge; this will recurse through all files in our srcroot but also build up a
 		# "second hand" of symlinks to merge later
-		if self.mergeme(srcroot,destroot,outfile,secondhand,"",cfgfiledict,mymtime):
+		if self.mergeme(srcroot,destroot,outfile,secondhand,portage_const.EPREFIX.lstrip(os.path.sep),cfgfiledict,mymtime):
 			return 1
 
 		# now, it's time for dealing our second hand; we'll loop until we can't merge anymore.	The rest are
@@ -6508,7 +6505,7 @@ class dblink:
 		del conf_mem_file
 
 		#do postinst script
-		a = doebuild(myebuild, "postinst", origroot, self.settings, use_cache=0,
+		a = doebuild(myebuild, "postinst", destroot, self.settings, use_cache=0,
 			tree=self.treetype, mydbapi=mydbapi, vartree=self.vartree)
 
 		# XXX: Decide how to handle failures here.
@@ -6534,7 +6531,7 @@ class dblink:
 		# Process ebuild logfiles
 		elog_process(self.mycpv, self.settings)
 		if "noclean" not in self.settings.features:
-			doebuild(myebuild, "clean", origroot, self.settings,
+			doebuild(myebuild, "clean", destroot, self.settings,
 				tree=self.treetype, mydbapi=mydbapi, vartree=self.vartree)
 		return 0
 
@@ -6554,7 +6551,7 @@ class dblink:
 			mysrc = join(srcroot, offset, x)
 			mydest = join(destroot, offset, x)
 			# myrealdest is mydest without the $ROOT prefix (makes a difference if ROOT!="/")
-			myrealdest = join(portage_const.EPREFIX + sep, offset, x)
+			myrealdest = join(sep, offset, x)
 			# stat file once, test using S_* macros many times (faster that way)
 			try:
 				mystat=os.lstat(mysrc)
