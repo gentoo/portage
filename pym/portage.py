@@ -1239,12 +1239,15 @@ class config:
 					self.pkeywordsdict[cp][key] = pkgdict[key]
 				
 				#package.license
+				"""
+				# Wait until license groups are ready before enabling this.
 				licdict = grabdict_package(
 					os.path.join(abs_user_config, "package.license"),
 					recursive=1)
 				for k, v in licdict.iteritems():
 					self._plicensedict.setdefault(
 						dep_getkey(k), {})[k] = v
+				"""
 
 				#package.unmask
 				pkgunmasklines = grabfile_package(
@@ -1338,8 +1341,11 @@ class config:
 
 			self.regenerate()
 			self.features = portage_util.unique_array(self["FEATURES"].split())
+
 			
-			self._accept_license = set(self.get("ACCEPT_LICENSE", "*").split())
+			# Wait until license groups are ready before enabling this.
+			#self._accept_license = set(self.get("ACCEPT_LICENSE", "*").split())
+			self._accept_license = set(["*"])
 
 			if "gpg" in self.features:
 				if not os.path.exists(self["PORTAGE_GPG_DIR"]) or \
