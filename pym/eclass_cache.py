@@ -15,6 +15,7 @@ class cache:
 		self.porttree_root = porttree_root
 
 		self.eclasses = {} # {"Name": ("location","_mtime_")}
+		self._eclass_locations = {}
 
 		# screw with the porttree ordering, w/out having bash inherit match it, and I'll hurt you.
 		# ~harring
@@ -38,6 +39,7 @@ class cache:
 
 	def update_eclasses(self):
 		self.eclasses = {}
+		self._eclass_locations = {}
 		eclass_len = len(".eclass")
 		for x in [normalize_path(os.path.join(y,"eclass")) for y in self.porttrees]:
 			if not os.path.isdir(x):
@@ -48,13 +50,14 @@ class cache:
 				except OSError:
 					continue
 				ys=y[:-eclass_len]
-				self.eclasses[ys] = (x, long(mtime))
+				self.eclasses[ys] = long(mtime)
+				self._eclass_locations[ys] = x
 	
 	def is_eclass_data_valid(self, ec_dict):
 		if not isinstance(ec_dict, dict):
 			return False
-		for eclass, tup in ec_dict.iteritems():
-			if eclass not in self.eclasses or tuple(tup) != self.eclasses[eclass]:
+		for eclass, mtime in ec_dict.iteritems():
+			if eclass not in self.eclasses or mtime != self.eclasses[eclass]:
 				return False
 
 		return True
@@ -68,7 +71,8 @@ class cache:
 				print "ec=",ec_dict
 				print "inherits=",inherits
 				raise
-			if from_master_only and self.eclasses[x][0] != self._master_eclass_root:
+			if from_master_only and \
+				self._eclass_locations[x] != self._master_eclass_root:
 				return None
 
 		return ec_dict
