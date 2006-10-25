@@ -157,7 +157,17 @@ class database(object):
 
 def serialize_eclasses(eclass_dict):
 	"""takes a dict, returns a string representing said dict"""
+	"""The "new format", which causes older versions of <portage-2.1.2 to
+	traceback with a ValueError due to failed long() conversion.  This format
+	isn't currently written, but the the capability to read it is already built
+	in.
 	return "\t".join(["%s\t%s" % (k, str(v)) \
+		for k, v in eclass_dict.iteritems()])
+	"""
+	""" This is a variation of the old format that uses a relative path instead
+	of the full path of the eclass.  It should only force a regen in older
+	versions of portage (rather than a traceback)."""
+	return "\t".join(["%s\teclass\t%s" % (k, str(v)) \
 		for k, v in eclass_dict.iteritems()])
 
 def reconstruct_eclasses(cpv, eclass_string):
