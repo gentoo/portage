@@ -151,7 +151,17 @@ class database(object):
 
 def serialize_eclasses(eclass_dict):
 	"""takes a dict, returns a string representing said dict"""
+	"""The "new format", which causes older versions of <portage-2.1.2 to
+	traceback with a ValueError due to failed long() conversion.  This format
+	isn't currently written, but the the capability to read it is already built
+	in.
 	return "\t".join(["%s\t%s" % (k, str(v)) \
+		for k, v in eclass_dict.iteritems()])
+	"""
+	""" This is a variation of the old format that uses a relative path instead
+	of the full path of the eclass.  It should only force a regen in older
+	versions of portage (rather than a traceback)."""
+	return "\t".join(["%s\teclass\t%s" % (k, str(v)) \
 		for k, v in eclass_dict.iteritems()])
 
 def reconstruct_eclasses(cpv, eclass_string):
@@ -164,16 +174,15 @@ def reconstruct_eclasses(cpv, eclass_string):
 	if len(eclasses) % 2 != 0 and len(eclasses) % 3 != 0:
 		raise cache_errors.CacheCorruption(cpv, "_eclasses_ was of invalid len %i" % len(eclasses))
 	d={}
-	has_paths = False
 	try:
-		long(eclasses[1])
+		if eclasses[1].isdigit():
+			for x in xrange(0, len(eclasses), 2):
+				d[eclasses[x]] = long(eclasses[x + 1])
+		else:
+			# The old format contains paths that will be discarded.
+			for x in xrange(0, len(eclasses), 3):
+				d[eclasses[x]] = long(eclasses[x + 2])
 	except ValueError:
-		has_paths = True
-	if has_paths:
-		for x in range(0, len(eclasses), 3):
-			d[eclasses[x]] = long(eclasses[x + 2])
-	else:
-		for x in range(0, len(eclasses), 2):
-			d[eclasses[x]] = long(eclasses[x + 1])
+		raise cache_errors.CacheCorruption(cpv, "_eclasses_ mtime conversion to long failed")
 	del eclasses
 	return d
