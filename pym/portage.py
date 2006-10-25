@@ -4454,6 +4454,8 @@ class vardbapi(dbapi):
 			return []
 		returnme=[]
 		for x in list:
+			if x.startswith("."):
+				continue
 			if x[0] == '-':
 				#writemsg(red("INCOMPLETE MERGE:")+str(x[len("-MERGING-"):])+"\n")
 				continue
