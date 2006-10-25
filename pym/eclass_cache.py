@@ -56,13 +56,13 @@ class cache:
 	def is_eclass_data_valid(self, ec_dict):
 		if not isinstance(ec_dict, dict):
 			return False
-		for eclass, mtime in ec_dict.iteritems():
+		for eclass, tup in ec_dict.iteritems():
 			cached_data = self.eclasses.get(eclass, None)
 			""" Only use the mtime for validation since the probability of a
 			collision is small and, depending on the cache implementation, the
 			path may not be specified (cache from rsync mirrors, for example).
 			"""
-			if cached_data is None or mtime != cached_data[1]:
+			if cached_data is None or tup[1] != cached_data[1]:
 				return False
 
 		return True
