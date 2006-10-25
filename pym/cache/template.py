@@ -170,16 +170,15 @@ def reconstruct_eclasses(cpv, eclass_string):
 	if len(eclasses) % 2 != 0 and len(eclasses) % 3 != 0:
 		raise cache_errors.CacheCorruption(cpv, "_eclasses_ was of invalid len %i" % len(eclasses))
 	d={}
-	has_paths = False
 	try:
-		long(eclasses[1])
+		if eclasses[1].isdigit():
+			for x in xrange(0, len(eclasses), 2):
+				d[eclasses[x]] = long(eclasses[x + 1])
+		else:
+			# The old format contains paths that will be discarded.
+			for x in xrange(0, len(eclasses), 3):
+				d[eclasses[x]] = long(eclasses[x + 2])
 	except ValueError:
-		has_paths = True
-	if has_paths:
-		for x in range(0, len(eclasses), 3):
-			d[eclasses[x]] = long(eclasses[x + 2])
-	else:
-		for x in range(0, len(eclasses), 2):
-			d[eclasses[x]] = long(eclasses[x + 1])
+		raise cache_errors.CacheCorruption(cpv, "_eclasses_ mtime conversion to long failed")
 	del eclasses
 	return d
