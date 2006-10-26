@@ -1358,6 +1358,7 @@ class depgraph:
 							print "\n!!! "+red("All ebuilds that could satisfy ")+green(xinfo)+red(" have been masked.")
 							print "!!! One of the following masked packages is required to complete your request:"
 							oldcomment = ""
+							shown_licenses = []
 							for p in alleb:
 								mreasons = portage.getmaskingstatus(p,
 									settings=pkgsettings, portdb=portdb)
@@ -1368,6 +1369,19 @@ class depgraph:
 									if comment and comment != oldcomment:
 										print comment
 										oldcomment = comment
+								licdict = portage.getlicensetexts(p, settings=pkgsettings, portdb=portdb, onlymasked=True)
+								for lic in licdict.keys():
+									if lic+" license" in mreasons and not lic in shown_licenses:
+										if len(licdict[lic][1]) > 2000:
+											print "Please read the text of license %s in %s" % (lic, licdict[lic][0])
+											print
+										else:
+											print "License text for license %s:" % lic
+											print
+											print licdict[lic][1]
+											print
+										shown_licenses.append(lic)
+										
 							print
 							print "For more information, see MASKED PACKAGES section in the emerge man page or "
 							print "refer to the Gentoo Handbook."
