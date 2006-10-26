@@ -3882,7 +3882,7 @@ getmaskingreason=getpmaskcomment
 
 def getmaskingstatus(mycpv, settings=None, portdb=None):
 	if settings is None:
-		settings = globals()["settings"]
+		settings = config(clone=globals()["settings"])
 	if portdb is None:
 		portdb = globals()["portdb"]
 	mysplit = catpkgsplit(mycpv)
