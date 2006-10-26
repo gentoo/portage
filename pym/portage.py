@@ -3832,6 +3832,33 @@ def cpv_expand(mycpv, mydb=None, use_cache=1, settings=None):
 	else:
 		return mykey
 
+def getlicensetexts(mycpv, settings=None, portdb=None, onlymasked=True):
+	if portdb is None:
+		portdb = globals()["portdb"]
+	if settings is None:
+		settings = config(clone=globals()["settings"])
+
+	license_data = portdb.aux_get(mycpv, ["LICENSE"])[0]
+	settings.setcpv(mycpv, mydb=portdb)
+	acceptable_licenses = settings.acceptable_licenses(mycpv)
+
+	def str_matches(myatom):
+		return (not onlymasked) and (myatom in acceptable_licenses)
+
+	license_list = dep_check(license_data, None, settings,
+		str_matches=str_matches)[1]
+	if onlymasked and "*" in acceptable_licenses:
+		license_list = []
+
+	rValue = {}
+	for lic in license_list:
+		# Account for overlays here? How?
+		licfilename = os.path.join(settings["PORTDIR"], "licenses", lic)
+		fd = open(licfilename, "r")
+		rValue[lic] = (licfilename, fd.read())
+		fd.close()
+	return rValue
+
 def getpmaskcomment(mycpv, settings=None, portdb=None):
 	from portage_util import grablines
 	if settings is None:
