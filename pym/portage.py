@@ -3832,7 +3832,7 @@ def cpv_expand(mycpv, mydb=None, use_cache=1, settings=None):
 	else:
 		return mykey
 
-def getmaskingreason(mycpv, settings=None, portdb=None):
+def getpmaskcomment(mycpv, settings=None, portdb=None):
 	from portage_util import grablines
 	if settings is None:
 		settings = globals()["settings"]
@@ -3877,6 +3877,8 @@ def getmaskingreason(mycpv, settings=None, portdb=None):
 						return comment
 					i = i + 1
 	return None
+# Compability name
+getmaskingreason=getpmaskcomment
 
 def getmaskingstatus(mycpv, settings=None, portdb=None):
 	if settings is None:
@@ -3965,7 +3967,7 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 		license_req = dep_check(mylicense, None, settings,
 			str_matches=str_matches)[1]
 		if license_req:
-			rValue.append(" ".join(license_req) + " license(s)")
+			rValue += [x+" license" for x in license_req]
 	
 	return rValue
 

@@ -1362,11 +1362,12 @@ class depgraph:
 								mreasons = portage.getmaskingstatus(p,
 									settings=pkgsettings, portdb=portdb)
 								print "- "+p+" (masked by: "+string.join(mreasons, ", ")+")"
-								comment = portage.getmaskingreason(p,
-									settings=pkgsettings, portdb=portdb)
-								if comment and comment != oldcomment:
-									print comment
-									oldcomment = comment
+								if "package.mask" in mreasons:
+									comment = portage.getpmaskcomment(p,
+										settings=pkgsettings, portdb=portdb)
+									if comment and comment != oldcomment:
+										print comment
+										oldcomment = comment
 							print
 							print "For more information, see MASKED PACKAGES section in the emerge man page or "
 							print "refer to the Gentoo Handbook."
