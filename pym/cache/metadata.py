@@ -68,8 +68,10 @@ class database(flat_hash.database):
 			if "INHERITED" in d:
 				d["_eclasses_"] = self.ec.get_eclass_data(d["INHERITED"].split(), from_master_only=True)
 				del d["INHERITED"]
-		else:
-			d["_eclasses_"] = reconstruct_eclasses(cpv, d["_eclasses_"])
+		elif isinstance(d["_eclasses_"], basestring):
+			# We skip this if flat_hash.database._parse_data() was called above
+			# because it calls reconstruct_eclasses() internally.
+			d["_eclasses_"] = reconstruct_eclasses(None, d["_eclasses_"])
 
 		return d
 

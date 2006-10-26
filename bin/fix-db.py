@@ -4,7 +4,7 @@
 # $Id: /var/cvsroot/gentoo-src/portage/bin/fix-db.py,v 1.8 2004/10/11 04:01:00 jstubbs Exp $
 
 import os,sys,re
-sys.path = ["@PORTAGE_BASE@/pym"]+sys.path
+sys.path.insert(0, os.environ.get("PORTAGE_PYM_PATH", "@PORTAGE_BASE@/pym"))
 
 from stat import *
 from output import *

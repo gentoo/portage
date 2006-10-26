@@ -89,7 +89,7 @@ class database(object):
 		raise NotImplementedError
 
 	def has_key(self, cpv):
-		raise NotImplementedError
+		return cpv in self
 
 	def keys(self):
 		return tuple(self.iterkeys())
@@ -114,7 +114,7 @@ class database(object):
 			raise NotImplementedError
 
 	def __contains__(self, cpv):
-		return self.has_key(cpv)
+		raise NotImplementedError
 
 	def get_matches(self, match_dict):
 		"""generic function for walking the entire cache db, matching restrictions to
@@ -158,10 +158,9 @@ def serialize_eclasses(eclass_dict):
 	return "\t".join(["%s\t%s" % (k, str(v)) \
 		for k, v in eclass_dict.iteritems()])
 	"""
-	""" This is a variation of the old format that uses a relative path instead
-	of the full path of the eclass.  It should only force a regen in older
-	versions of portage (rather than a traceback)."""
-	return "\t".join(["%s\teclass\t%s" % (k, str(v)) \
+	if not eclass_dict:
+		return ""
+	return "\t".join(["%s\t%s\t%s" % (k, v[0], str(v[1])) \
 		for k, v in eclass_dict.iteritems()])
 
 def reconstruct_eclasses(cpv, eclass_string):
@@ -177,11 +176,11 @@ def reconstruct_eclasses(cpv, eclass_string):
 	try:
 		if eclasses[1].isdigit():
 			for x in xrange(0, len(eclasses), 2):
-				d[eclasses[x]] = long(eclasses[x + 1])
+				d[eclasses[x]] = ("", long(eclasses[x + 1]))
 		else:
 			# The old format contains paths that will be discarded.
 			for x in xrange(0, len(eclasses), 3):
-				d[eclasses[x]] = long(eclasses[x + 2])
+				d[eclasses[x]] = (eclasses[x + 1], long(eclasses[x + 2]))
 	except ValueError:
 		raise cache_errors.CacheCorruption(cpv, "_eclasses_ mtime conversion to long failed")
 	del eclasses

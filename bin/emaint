@@ -1,7 +1,7 @@
 #!@PYTHON@ -O
 
-import sys
-sys.path.insert(0, "@PORTAGE_BASE@/pym")
+import sys, os
+sys.path.insert(0, os.environ.get("PORTAGE_PYM_PATH", "@PORTAGE_BASE@/pym"))
 from optparse import OptionParser, OptionValueError
 
 import re

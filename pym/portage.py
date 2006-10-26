@@ -3837,7 +3837,34 @@ def cpv_expand(mycpv, mydb=None, use_cache=1, settings=None):
 	else:
 		return mykey
 
-def getmaskingreason(mycpv, settings=None, portdb=None):
+def getlicensetexts(mycpv, settings=None, portdb=None, onlymasked=True):
+	if portdb is None:
+		portdb = globals()["portdb"]
+	if settings is None:
+		settings = config(clone=globals()["settings"])
+
+	license_data = portdb.aux_get(mycpv, ["LICENSE"])[0]
+	settings.setcpv(mycpv, mydb=portdb)
+	acceptable_licenses = settings.acceptable_licenses(mycpv)
+
+	def str_matches(myatom):
+		return (not onlymasked) and (myatom in acceptable_licenses)
+
+	license_list = dep_check(license_data, None, settings,
+		str_matches=str_matches)[1]
+	if onlymasked and "*" in acceptable_licenses:
+		license_list = []
+
+	rValue = {}
+	for lic in license_list:
+		# Account for overlays here? How?
+		licfilename = os.path.join(settings["PORTDIR"], "licenses", lic)
+		fd = open(licfilename, "r")
+		rValue[lic] = (licfilename, fd.read())
+		fd.close()
+	return rValue
+
+def getpmaskcomment(mycpv, settings=None, portdb=None):
 	from portage_util import grablines
 	if settings is None:
 		settings = globals()["settings"]
@@ -3882,10 +3909,12 @@ def getmaskingreason(mycpv, settings=None, portdb=None):
 						return comment
 					i = i + 1
 	return None
+# Compability name
+getmaskingreason=getpmaskcomment
 
 def getmaskingstatus(mycpv, settings=None, portdb=None):
 	if settings is None:
-		settings = globals()["settings"]
+		settings = config(clone=globals()["settings"])
 	if portdb is None:
 		portdb = globals()["portdb"]
 	mysplit = catpkgsplit(mycpv)
@@ -3970,7 +3999,7 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 		license_req = dep_check(mylicense, None, settings,
 			str_matches=str_matches)[1]
 		if license_req:
-			rValue.append(" ".join(license_req) + " license(s)")
+			rValue += [x+" license" for x in license_req]
 	
 	return rValue
 
@@ -4459,6 +4488,8 @@ class vardbapi(dbapi):
 			return []
 		returnme=[]
 		for x in list:
+			if x.startswith("."):
+				continue
 			if x[0] == '-':
 				#writemsg(red("INCOMPLETE MERGE:")+str(x[len("-MERGING-"):])+"\n")
 				continue

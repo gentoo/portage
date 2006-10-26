@@ -3,8 +3,8 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/bin/clean_locks,v 1.1 2004/09/26 10:44:31 carpaski Exp $
 
-import os,sys
-sys.path = ["@PORTAGE_BASE@/pym"]+sys.path
+import os,sys,errno
+sys.path.insert(0, os.environ.get("PORTAGE_PYM_PATH", "@PORTAGE_BASE@/pym"))
 
 import portage_locks, portage_const
 

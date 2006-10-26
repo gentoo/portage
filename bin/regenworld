@@ -3,9 +3,8 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/bin/regenworld,v 1.10.2.1 2005/01/11 03:40:57 carpaski Exp $
 
-import sys
-sys.path.insert(0, "@PORTAGE_BASE@/pym")
-import os
+import sys, os
+sys.path.insert(0, os.environ.get("PORTAGE_PYM_PATH", "@PORTAGE_BASE@/pym"))
 import portage, string, re, portage_const
 
 __candidatematcher__ = re.compile("^[0-9]+: \\*\\*\\* emerge ")

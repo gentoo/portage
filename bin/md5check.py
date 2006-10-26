@@ -5,7 +5,7 @@
 
 import os,sys,string
 os.environ["FEATURES"]="mirror cvs"
-sys.path = ["@PORTAGE_BASE@/pym"]+sys.path
+sys.path.insert(0, os.environ.get("PORTAGE_PYM_PATH", "@PORTAGE_BASE@/pym"))
 
 import portage
 from threading import *
