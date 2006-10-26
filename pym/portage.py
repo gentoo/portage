@@ -1344,8 +1344,8 @@ class config:
 
 			
 			# Wait until license groups are ready before enabling this.
-			self._accept_license = set(self.get("ACCEPT_LICENSE", "*").split())
-			#self._accept_license = set(["*"])
+			#self._accept_license = set(self.get("ACCEPT_LICENSE", "*").split())
+			self._accept_license = set(["*"])
 
 			if "gpg" in self.features:
 				if not os.path.exists(self["PORTAGE_GPG_DIR"]) or \
