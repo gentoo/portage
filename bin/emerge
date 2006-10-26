@@ -21,7 +21,7 @@ except KeyboardInterrupt:
 	sys.exit(1)
 
 import os, stat
-sys.path = ["/usr/lib/portage/pym"]+sys.path
+sys.path.insert(0, os.environ.get("PORTAGE_PYM_PATH", "/usr/lib/portage/pym"))
 
 os.environ["PORTAGE_LEGACY_GLOBALS"] = "false"
 import portage

@@ -3,8 +3,8 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-import sys
-sys.path = ["/usr/lib/portage/pym"]+sys.path
+import sys, os
+sys.path.insert(0, os.environ.get("PORTAGE_PYM_PATH", "/usr/lib/portage/pym"))
 
 import portage
 

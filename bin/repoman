@@ -11,7 +11,7 @@ import errno, os, shutil, sys
 if not hasattr(__builtins__, "set"):
 	from sets import Set as set
 exename=os.path.basename(sys.argv[0])	
-sys.path = ["/usr/lib/portage/pym"]+sys.path
+sys.path.insert(0, os.environ.get("PORTAGE_PYM_PATH", "/usr/lib/portage/pym"))
 version="1.2"	
 
 allowed_filename_chars="a-zA-Z0-9._-+:"

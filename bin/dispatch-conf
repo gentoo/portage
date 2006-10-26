@@ -15,7 +15,7 @@
 from stat import *
 from random import *
 import atexit, commands, os, re, shutil, stat, string, sys
-sys.path = ["/usr/lib/portage/pym"]+sys.path
+sys.path.insert(0, os.environ.get("PORTAGE_PYM_PATH", "/usr/lib/portage/pym"))
 
 import portage, dispatch_conf
 from portage_exec import find_binary

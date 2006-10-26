@@ -3,12 +3,12 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-import sys
+import sys, os
 if len(sys.argv)!=3:
 	print "xpak: expecting three arguments."
 	sys.exit(1)
 
-sys.path = ["/usr/lib/portage/pym"]+sys.path
+sys.path.insert(0, os.environ.get("PORTAGE_PYM_PATH", "/usr/lib/portage/pym"))
 
 import xpak
 xpak.xpak(sys.argv[1],sys.argv[2])
