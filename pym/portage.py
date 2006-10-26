@@ -714,7 +714,7 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None):
 			# an older package installed ON TOP of a newer version will cause ldconfig
 			# to overwrite the symlinks we just made. -X means no links. After 'clean'
 			# we can safely create links.
-			writemsg(">>> Regenerating %s/etc/ld.so.cache...\n" % target_root+portage_const.EPREFIX)
+			writemsg(">>> Regenerating %s/etc/ld.so.cache...\n" % (target_root+portage_const.EPREFIX))
 			if makelinks:
 				commands.getstatusoutput("cd / ; "+portage_const.EPREFIX+"/sbin/ldconfig -r '%s'" % target_root)
 			else:
