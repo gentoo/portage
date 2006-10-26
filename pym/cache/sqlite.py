@@ -200,7 +200,7 @@ class database(fs_template.FsBased):
 			self._db_table["packages"]["package_key"],
 			self._db_escape_string(cpv)))
 
-	def has_key(self, cpv):
+	def __contains__(self, cpv):
 		cursor = self._db_cursor
 		cursor.execute(" ".join(
 			["SELECT %s FROM %s" %

@@ -196,7 +196,7 @@ class SQLDatabase(template.database):
 		return self.con.fetchone()[0]
 
 
-	def has_key(self, cpv):
+	def __contains__(self, cpv):
 		if not self.autocommits:
 			try:	self.commit()
 			except self._BaseError, e:

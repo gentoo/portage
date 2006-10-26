@@ -63,7 +63,7 @@ class database(fs_template.FsBased):
 	def iterkeys(self):
 		return iter(self.__db.keys())
 
-	def has_key(self, cpv):
+	def __contains__(self, cpv):
 		return cpv in self.__db
 
 	def __del__(self):

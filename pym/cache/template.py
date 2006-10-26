@@ -89,7 +89,7 @@ class database(object):
 		raise NotImplementedError
 
 	def has_key(self, cpv):
-		raise NotImplementedError
+		return cpv in self
 
 	def keys(self):
 		return tuple(self.iterkeys())
@@ -114,7 +114,7 @@ class database(object):
 			raise NotImplementedError
 
 	def __contains__(self, cpv):
-		return self.has_key(cpv)
+		raise NotImplementedError
 
 	def get(self, k, x=None):
 		try:

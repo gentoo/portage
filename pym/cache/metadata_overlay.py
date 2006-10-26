@@ -55,7 +55,7 @@ class database(template.database):
 		else:
 			del self.db_rw[cpv]
 
-	def has_key(self, cpv):
+	def __contains__(self, cpv):
 		try:
 			self[cpv] # validates whiteout when necessary
 		except KeyError:
