@@ -106,7 +106,8 @@ for arg in pargs:
 		tmpsettings = portage.config(clone=portage.settings)
 		if arg == "digest" and force:
 			discard_digests(ebuild, tmpsettings, portage.portdb)
-		a = portage.doebuild(ebuild, arg, portage.root, tmpsettings, debug=debug, cleanup=("noauto" not in portage.features), tree=mytree)
+		a = portage.doebuild(ebuild, arg, portage.root, tmpsettings,
+			debug=debug, tree=mytree)
 	except KeyboardInterrupt:
 		print "Interrupted."
 		a = 1

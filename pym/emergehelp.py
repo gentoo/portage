@@ -17,6 +17,7 @@ def shorthelp():
 	print "   "+turquoise("emerge")+" "+turquoise("--help")+" [ "+green("system")+" | "+green("world")+" | "+green("config")+" | "+green("--sync")+" ] "
 	print bold("Options:")+" "+green("-")+"["+green("abBcCdDefgGhikKlnNoOpqPsStuvV")+"] ["+green("--oneshot")+"] ["+green("--newuse")+"] ["+green("--noconfmem")+"]"
 	print      "                                          ["+green("--columns")+"] ["+green("--nocolor")+"] ["+green("--nospinner")+"]"
+	print "                                          [ "+green("--deep")+"  ] [" + green("--with-bdeps")+" < " + turquoise("y") + " | "+ turquoise("n")+" > ]"
 	print bold("Actions:")+" [ "+green("--clean")+" | "+green("--depclean")+" | "+green("--prune")+" | "+green("--regen")+" | "+green("--search")+" | "+green("--unmerge")+" ]"
 	print
 
@@ -140,8 +141,9 @@ def help(myaction,myopts,havecolor=1):
 		print "              Updates packages to the best version available, which may not"
 		print "              always be the highest version number due to masking for testing"
 		print "              and development. This will also update direct dependencies which"
-		print "              may not what you want. In general use this option only in combi-"
-		print "              nation with the world or system target."
+		print "              may not what you want. Package atoms specified on the command line"
+		print "              are greedy, meaning that unspecific atoms may match multiple"
+		print "              installed versions of slotted packages."
 		print
 		print "       "+green("--version")+" ("+green("-V")+" short option)"
 		print "              Displays the currently installed version of portage along with"
@@ -196,11 +198,12 @@ def help(myaction,myopts,havecolor=1):
 		print "              very verbose information about the dependency and build process."
 		print
 		print "       "+green("--deep")+" ("+green("-D")+" short option)"
-		print "              When used in conjunction with --update, this flag forces emerge"
-		print "              to consider the entire dependency tree of packages, instead of"
-		print "              checking only the immediate dependencies of the packages.  As an"
-		print "              example, this catches updates in libraries that are not directly"
-		print "              listed in the dependencies of a package."
+		print "              This flag forces emerge to consider the entire dependency tree of"
+		print "              packages, instead of checking only the immediate dependencies of"
+		print "              the packages. As an example, this catches updates in libraries"
+		print "              that are not directly listed in the dependencies of a package."
+		print "              Also see --with-bdeps for behavior with respect to build time"
+		print "              dependencies that are not strictly required."
 		print 
 		print "       "+green("--emptytree")+" ("+green("-e")+" short option)"
 		print "              Virtually tweaks the tree of installed packages to contain"
@@ -312,6 +315,13 @@ def help(myaction,myopts,havecolor=1):
 		print "       "+green("--verbose")+" ("+green("-v")+" short option)"
 		print "              Effects vary, but the general outcome is an increased or expanded"
 		print "              display of content in portage's displays."
+		print
+		print "       "+green("--with-bdeps")+" < " + turquoise("y") + " | "+ turquoise("n")+" >"
+		print "              In dependency calculations, pull in build time dependencies that"
+		print "              are not strictly required. This defaults to 'n' for installation"
+		print "              actions and 'y' for the --depclean action. This setting can be"
+		print "              added to EMERGE_DEFAULT_OPTS (see make.conf(5)) and later"
+		print "              overridden via the command line."
 		print
 	elif myaction == "sync":
 		print
