@@ -141,8 +141,9 @@ def help(myaction,myopts,havecolor=1):
 		print "              Updates packages to the best version available, which may not"
 		print "              always be the highest version number due to masking for testing"
 		print "              and development. This will also update direct dependencies which"
-		print "              may not what you want. In general use this option only in combi-"
-		print "              nation with the world or system target."
+		print "              may not what you want. Package atoms specified on the command line"
+		print "              are greedy, meaning that unspecific atoms may match multiple"
+		print "              installed versions of slotted packages."
 		print
 		print "       "+green("--version")+" ("+green("-V")+" short option)"
 		print "              Displays the currently installed version of portage along with"
