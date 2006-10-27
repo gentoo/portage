@@ -17,6 +17,7 @@ def shorthelp():
 	print "   "+turquoise("emerge")+" "+turquoise("--help")+" [ "+green("system")+" | "+green("world")+" | "+green("config")+" | "+green("--sync")+" ] "
 	print bold("Options:")+" "+green("-")+"["+green("abBcCdDefgGhikKlnNoOpqPsStuvV")+"] ["+green("--oneshot")+"] ["+green("--newuse")+"] ["+green("--noconfmem")+"]"
 	print      "                                          ["+green("--columns")+"] ["+green("--nocolor")+"] ["+green("--nospinner")+"]"
+	print "                                          [ "+green("--deep")+"  ] [" + green("--with-bdeps")+" < " + turquoise("y") + " | "+ turquoise("n")+" > ]"
 	print bold("Actions:")+" [ "+green("--clean")+" | "+green("--depclean")+" | "+green("--prune")+" | "+green("--regen")+" | "+green("--search")+" | "+green("--unmerge")+" ]"
 	print
 
@@ -312,6 +313,13 @@ def help(myaction,myopts,havecolor=1):
 		print "       "+green("--verbose")+" ("+green("-v")+" short option)"
 		print "              Effects vary, but the general outcome is an increased or expanded"
 		print "              display of content in portage's displays."
+		print
+		print "       "+green("--with-bdeps")+" < " + turquoise("y") + " | "+ turquoise("n")+" >"
+		print "              In dependency calculations, pull in build time dependencies that"
+		print "              are not strictly required. This defaults to 'n' for installation"
+		print "              actions and 'y' for the --depclean action. This setting can be"
+		print "              added to EMERGE_DEFAULT_OPTS (see make.conf(5)) and later"
+		print "              overridden via the command line."
 		print
 	elif myaction == "sync":
 		print
