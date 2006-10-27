@@ -197,11 +197,12 @@ def help(myaction,myopts,havecolor=1):
 		print "              very verbose information about the dependency and build process."
 		print
 		print "       "+green("--deep")+" ("+green("-D")+" short option)"
-		print "              When used in conjunction with --update, this flag forces emerge"
-		print "              to consider the entire dependency tree of packages, instead of"
-		print "              checking only the immediate dependencies of the packages.  As an"
-		print "              example, this catches updates in libraries that are not directly"
-		print "              listed in the dependencies of a package."
+		print "              This flag forces emerge to consider the entire dependency tree of"
+		print "              packages, instead of checking only the immediate dependencies of"
+		print "              the packages. As an example, this catches updates in libraries"
+		print "              that are not directly listed in the dependencies of a package."
+		print "              Also see --with-bdeps for behavior with respect to build time"
+		print "              dependencies that are not strictly required."
 		print 
 		print "       "+green("--emptytree")+" ("+green("-e")+" short option)"
 		print "              Virtually tweaks the tree of installed packages to contain"
