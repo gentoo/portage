@@ -114,7 +114,14 @@ class database(object):
 			raise NotImplementedError
 
 	def __contains__(self, cpv):
-		raise NotImplementedError
+		"""This method should always be overridden.  It is provided only for
+		backward compatibility with modules that override has_key instead.  It
+		will automatically raise a NotImplementedError if has_key has not been
+		overridden."""
+		if self.has_key is database.has_key:
+			# prevent a possible recursive loop
+			raise NotImplementedError
+		return self.has_key(cpv)
 
 	def get(self, k, x=None):
 		try:
