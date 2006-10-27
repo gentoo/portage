@@ -1269,7 +1269,10 @@ class depgraph:
 					mydb = None
 					if "--usepkgonly" not in self.myopts and myeb:
 						mydb = portdb
-					pkgsettings.setcpv(myeb, mydb=mydb)
+					if myeb:
+						pkgsettings.setcpv(myeb, mydb=mydb)
+					else:
+						pkgsettings.setcpv(myeb_pkg, mydb=mydb)
 					now_use = pkgsettings["USE"].split()
 					forced_flags = set()
 					forced_flags.update(pkgsettings.useforce)
