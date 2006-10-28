@@ -3010,8 +3010,9 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			if phase_retval == os.EX_OK:
 				# Post phase logic and tasks that have been factored out of
 				# ebuild.sh.
-				myargs = [MISC_SH_BINARY, "preinst_mask", "preinst_sfperms",
-					"preinst_selinux_labels", "preinst_suid_scan"]
+				myargs = [MISC_SH_BINARY, "preinst_bsdflags", "preinst_mask",
+					"preinst_sfperms", "preinst_selinux_labels",
+					"preinst_suid_scan"]
 				phase_retval = spawn(" ".join(myargs),
 					mysettings, debug=debug, free=1, logfile=logfile)
 				if phase_retval != os.EX_OK:
@@ -3019,7 +3020,21 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 						noiselevel=-1)
 			del mysettings["IMAGE"]
 			return phase_retval
-		elif mydo in ["prerm","postrm","postinst","config"]:
+		elif mydo == "postinst":
+			mysettings.load_infodir(mysettings["O"])
+			phase_retval = spawn(" ".join((EBUILD_SH_BINARY, mydo)),
+				mysettings, debug=debug, free=1, logfile=logfile)
+			if phase_retval == os.EX_OK:
+				# Post phase logic and tasks that have been factored out of
+				# ebuild.sh.
+				myargs = [MISC_SH_BINARY, "postinst_bsdflags"]
+				phase_retval = spawn(" ".join(myargs),
+					mysettings, debug=debug, free=1, logfile=logfile)
+				if phase_retval != os.EX_OK:
+					writemsg("!!! post postinst failed; exiting.\n",
+						noiselevel=-1)
+			return phase_retval
+		elif mydo in ["prerm","postrm","config"]:
 			mysettings.load_infodir(mysettings["O"])
 			return spawn(EBUILD_SH_BINARY + " " + mydo,
 				mysettings, debug=debug, free=1, logfile=logfile)
@@ -3238,13 +3253,6 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 	try:
 		if not sstat:
 			sstat=os.lstat(src)
-		if bsd_chflags:
-			sflags=bsd_chflags.lgetflags(src)
-			if sflags < 0:
-				# Problem getting flags...
-				writemsg("!!! Couldn't get flags for "+dest+"\n",
-					noiselevel=-1)
-				return None
 
 	except SystemExit, e:
 		raise
@@ -3265,7 +3273,7 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 	if bsd_chflags:
 		# Check that we can actually unset schg etc flags...
 		# Clear the flags on source and destination; we'll reinstate them after merging
-		if destexists and sflags != 0:
+		if destexists and dstat.st_flags != 0:
 			if bsd_chflags.lchflags(dest, 0) < 0:
 				writemsg("!!! Couldn't clear flags on file being merged: \n ",
 					noiselevel=-1)
@@ -3274,10 +3282,8 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 		if pflags != 0:
 			bsd_chflags.lchflags(os.path.dirname(dest), 0)
 
-		# Don't bother checking the return value here; if it fails then the next line will catch it.
-		bsd_chflags.lchflags(src, 0)
-
-		if bsd_chflags.lhasproblems(src)>0 or (destexists and bsd_chflags.lhasproblems(dest)>0) or bsd_chflags.lhasproblems(os.path.dirname(dest))>0:
+		if (destexists and bsd_chflags.lhasproblems(dest) > 0) or \
+			bsd_chflags.lhasproblems(os.path.dirname(dest)) > 0:
 			# This is bad: we can't merge the file with these flags set.
 			writemsg("!!! Can't merge file "+dest+" because of flags set\n",
 				noiselevel=-1)
@@ -3307,14 +3313,6 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 			else:
 				os.symlink(target,dest)
 			lchown(dest,sstat[stat.ST_UID],sstat[stat.ST_GID])
-			if bsd_chflags:
-				# Restore the flags we saved before moving
-				if (sflags != 0 and bsd_chflags.lchflags(dest, sflags) < 0) or \
-					(pflags and bsd_chflags.lchflags(os.path.dirname(dest), pflags) < 0):
-					writemsg("!!! Couldn't restore flags ("+str(flags)+") on " + dest+":\n",
-						noiselevel=-1)
-					writemsg("!!! %s\n" % str(e), noiselevel=-1)
-					return None
 			return os.lstat(dest)[stat.ST_MTIME]
 		except SystemExit, e:
 			raise
@@ -3393,10 +3391,9 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 
 	if bsd_chflags:
 		# Restore the flags we saved before moving
-		if (sflags != 0 and bsd_chflags.lchflags(dest, sflags) < 0) or \
-			(pflags and bsd_chflags.lchflags(os.path.dirname(dest), pflags) < 0):
-			writemsg("!!! Couldn't restore flags ("+str(sflags)+") on " + dest+":\n",
-				noiselevel=-1)
+		if pflags and bsd_chflags.lchflags(os.path.dirname(dest), pflags) < 0:
+			writemsg("!!! Couldn't restore flags (%s) on '%s'\n" % \
+				(str(pflags), os.path.dirname(dest)), noiselevel=-1)
 			return None
 
 	return newmtime
@@ -6729,8 +6726,6 @@ class dblink:
 					else:
 						os.mkdir(mydest)
 					os.chmod(mydest,mystat[0])
-					if bsd_chflags:
-						bsd_chflags.lchflags(mydest, bsd_chflags.lgetflags(mysrc))
 					os.chown(mydest,mystat[4],mystat[5])
 					writemsg_stdout(">>> %s/\n" % mydest)
 				outfile.write("dir "+myrealdest+"\n")

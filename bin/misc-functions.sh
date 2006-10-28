@@ -243,6 +243,24 @@ install_mask() {
 	set -${shopts}
 }
 
+preinst_bsdflags() {
+	type -p chflags &>/dev/null || return 0
+	type -p mtree &>/dev/null || return 1
+	# Save all the file flags for restoration after installation.
+	mtree -c -p "${D}" -k flags > "${T}/bsdflags.mtree"
+	# Remove all the file flags so that the merge phase can do anything
+	# necessary.
+	chflags -R noschg,nouchg,nosappnd,nouappnd "${D}"
+	chflags -R nosunlnk,nouunlnk "${D}" 2>/dev/null
+}
+
+postinst_bsdflags() {
+	type -p chflags &>/dev/null || return 0
+	type -p mtree &>/dev/null || return 1
+	# Restore all the file flags that were saved before installation.
+	mtree -e -p "${ROOT}" -U -k flags < "${T}/bsdflags.mtree" &> /dev/null
+}
+
 preinst_mask() {
 	if [ -z "$IMAGE" ]; then
 		 eerror "${FUNCNAME}: IMAGE is unset"
