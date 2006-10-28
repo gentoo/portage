@@ -5791,6 +5791,7 @@ class binarytree(packagetree):
 							"recoverable and should be deleted.\n",
 							noiselevel=-1)
 						self.invalids.append(mypkg)
+						continue
 					mycat = mycat.strip()
 					if mycat != mydir and mydir != "All":
 						continue
