@@ -1910,7 +1910,12 @@ class config:
 		"return our locally-maintained environment"
 		mydict={}
 		for x in self.keys():
-			mydict[x]=self[x]
+			myvalue = self[x]
+			if not isinstance(myvalue, basestring):
+				writemsg("!!! Non-string value in config: %s=%s\n" % \
+					(x, myvalue), noiselevel=-1)
+				continue
+			mydict[x] = myvalue
 		if not mydict.has_key("HOME") and mydict.has_key("BUILD_PREFIX"):
 			writemsg("*** HOME not set. Setting to "+mydict["BUILD_PREFIX"]+"\n")
 			mydict["HOME"]=mydict["BUILD_PREFIX"][:]
