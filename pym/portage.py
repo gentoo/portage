@@ -5715,8 +5715,10 @@ class binarytree(packagetree):
 		mypath = os.path.join("All", myfile)
 		dest_path = os.path.join(self.pkgdir, mypath)
 		if os.path.exists(dest_path):
-			other_cat = xpak.tbz2(dest_path).getfile("CATEGORY").strip()
+			# For invalid packages, other_cat could be None.
+			other_cat = xpak.tbz2(dest_path).getfile("CATEGORY")
 			if other_cat:
+				other_cat = other_cat.strip()
 				self._move_from_all(other_cat + "/" + mypkg)
 		"""The file may or may not exist. Move it if necessary and update
 		internal state for future calls to getname()."""
@@ -5783,7 +5785,8 @@ class binarytree(packagetree):
 					if os.path.islink(full_path):
 						continue
 					mytbz2 = xpak.tbz2(full_path)
-					mycat = mytbz2.getfile("CATEGORY").strip()
+					# For invalid packages, mycat could be None.
+					mycat = mytbz2.getfile("CATEGORY")
 					mypkg = myfile[:-5]
 					if not mycat:
 						#old-style or corrupt package
@@ -5793,6 +5796,8 @@ class binarytree(packagetree):
 							"recoverable and should be deleted.\n",
 							noiselevel=-1)
 						self.invalids.append(mypkg)
+						continue
+					mycat = mycat.strip()
 					if mycat != mydir and mydir != "All":
 						continue
 					if mypkg != mytbz2.getfile("PF").strip():
