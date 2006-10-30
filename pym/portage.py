@@ -3958,6 +3958,10 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 	mygroups = mygroups.split()
 	pgroups = settings["ACCEPT_KEYWORDS"].split()
 	myarch = settings["ARCH"]
+	if pgroups and myarch not in pgroups:
+		"""For operating systems other than Linux, ARCH is not necessarily a
+		valid keyword."""
+		myarch = pgroups[0].lstrip("~")
 	pkgdict = settings.pkeywordsdict
 
 	cp = dep_getkey(mycpv)
