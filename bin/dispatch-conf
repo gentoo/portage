@@ -81,7 +81,7 @@ class dispatch:
         for path in config_paths.split ():
             path = portage.normalize_path(path)
             try:
-                mymode = os.lstat(path).st_mode
+                mymode = os.stat(path).st_mode
             except OSError:
                 continue
             basename = "*"
