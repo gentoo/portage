@@ -1912,7 +1912,12 @@ class config:
 		"return our locally-maintained environment"
 		mydict={}
 		for x in self.keys():
-			mydict[x]=self[x]
+			myvalue = self[x]
+			if not isinstance(myvalue, basestring):
+				writemsg("!!! Non-string value in config: %s=%s\n" % \
+					(x, myvalue), noiselevel=-1)
+				continue
+			mydict[x] = myvalue
 		if not mydict.has_key("HOME") and mydict.has_key("BUILD_PREFIX"):
 			writemsg("*** HOME not set. Setting to "+mydict["BUILD_PREFIX"]+"\n")
 			mydict["HOME"]=mydict["BUILD_PREFIX"][:]
@@ -3958,6 +3963,10 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 	mygroups = mygroups.split()
 	pgroups = settings["ACCEPT_KEYWORDS"].split()
 	myarch = settings["ARCH"]
+	if pgroups and myarch not in pgroups:
+		"""For operating systems other than Linux, ARCH is not necessarily a
+		valid keyword."""
+		myarch = pgroups[0].lstrip("~")
 	pkgdict = settings.pkeywordsdict
 
 	cp = dep_getkey(mycpv)
