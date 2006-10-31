@@ -4,9 +4,13 @@
 # $Id: /var/cvsroot/gentoo-src/portage/bin/clean_locks,v 1.1 2004/09/26 10:44:31 carpaski Exp $
 
 import os,sys,errno
-sys.path.insert(0, os.environ.get("PORTAGE_PYM_PATH", "@PORTAGE_BASE@/pym"))
+try:
+	import portage_locks
+except ImportError:
+	sys.path.insert(0, "@PORTAGE_BASE@/pym")
+	import portage_locks
 
-import portage_locks, portage_const
+import portage_const
 
 if not sys.argv[1:] or "--help" in sys.argv or "-h" in sys.argv:
 	print

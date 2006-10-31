@@ -4,8 +4,12 @@
 # $Id: /var/cvsroot/gentoo-src/portage/bin/regenworld,v 1.10.2.1 2005/01/11 03:40:57 carpaski Exp $
 
 import sys, os
-sys.path.insert(0, os.environ.get("PORTAGE_PYM_PATH", "@PORTAGE_BASE@/pym"))
-import portage, string, re, portage_const
+try:
+	import portage
+except ImportError:
+	sys.path.insert(0, "@PORTAGE_BASE@/pym")
+	import portage
+import string, re, portage_const
 
 __candidatematcher__ = re.compile("^[0-9]+: \\*\\*\\* emerge ")
 __noncandidatematcher__ = re.compile(" sync( |$)| clean( |$)| search( |$)|--oneshot|--fetchonly| unmerge( |$)")

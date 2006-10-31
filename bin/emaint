@@ -1,12 +1,16 @@
 #!@PYTHON@ -O
 
 import sys, os
-sys.path.insert(0, os.environ.get("PORTAGE_PYM_PATH", "@PORTAGE_BASE@/pym"))
 from optparse import OptionParser, OptionValueError
 
 import re
+try:
+	import portage
+except ImportError:
+	sys.path.insert(0, "@PORTAGE_BASE@/pym")
+	import portage
 
-import os, portage, portage_const, portage_exception
+import portage_const, portage_exception
 class WorldHandler(object):
 
 	def name():

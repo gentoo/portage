@@ -5,9 +5,11 @@
 
 import os,sys
 os.environ["PORTAGE_CALLER"]="fixpackages"
-sys.path.insert(0, os.environ.get("PORTAGE_PYM_PATH", "@PORTAGE_BASE@/pym"))
-
-import portage
+try:
+	import portage
+except ImportError:
+	sys.path.insert(0, "@PORTAGE_BASE@/pym")
+	import portage
 
 print
 print "Done."

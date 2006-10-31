@@ -4,9 +4,11 @@
 # $Id: /var/cvsroot/gentoo-src/portage/bin/pkgname,v 1.8 2004/10/04 13:56:50 vapier Exp $
 
 import sys, os
-sys.path.insert(0, os.environ.get("PORTAGE_PYM_PATH", "@PORTAGE_BASE@/pym"))
-
-import portage
+try:
+	import portage
+except ImportError:
+	sys.path.insert(0, "@PORTAGE_BASE@/pym")
+	import portage
 
 a=portage.pkgsplit(sys.argv[1])
 if a:
