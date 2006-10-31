@@ -12,6 +12,9 @@
 #  dialog menus
 #
 
+if not hasattr(__builtins__, "set"):
+	from sets import Set as set
+
 from stat import *
 from random import *
 import atexit, commands, os, re, shutil, stat, string, sys
@@ -105,6 +108,10 @@ class dispatch:
                     return False
 
 
+        # config file freezing support
+        frozen_files = set(self.options.get("frozen-files", "").split())
+        auto_zapped = []
+
         #
         # Remove new configs identical to current
         #                  and
@@ -147,6 +154,18 @@ class dispatch:
                 self.post_process(conf['current'])
                 if os.path.exists(mrgconf):
                     os.unlink(mrgconf)
+                return False
+            elif conf['current'] in frozen_files:
+                """Frozen files are automatically zapped. The new config has
+                already been archived with a .new suffix.  When zapped, it is
+                left with the .new suffix (post_process is skipped), since it
+                hasn't been merged into the current config."""
+                auto_zapped.append(conf['current'])
+                os.unlink(conf['new'])
+                try:
+                    os.unlink(mrgconf)
+                except OSError:
+                    pass
                 return False
             elif unmodified or same_cvs or same_wsc or conf ['dir'] in portage.settings ['CONFIG_PROTECT_MASK'].split ():
                 self.replace(newconf, conf['current'])
@@ -238,6 +257,13 @@ class dispatch:
                 else:
                     continue
 
+        if auto_zapped:
+            print
+            print " One or more updates are frozen and have been automatically zapped:"
+            print
+            for frozen in auto_zapped:
+                print "  * '%s'" % frozen
+            print
 
     def replace (self, newconf, curconf):
         """Replace current config with the new/merged version.  Also logs
