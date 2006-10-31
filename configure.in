@@ -61,7 +61,7 @@ if test "x${PYTHON}" = "xmissing"; then
 	AX_WITH_PYTHON([2.3.1], [missing])
 fi
 if test "x${PYTHON}" = "xmissing"; then
-	AC_MSG_ERROR([cannot find python version >= 2.2])
+	AC_MSG_ERROR([cannot find python version >= 2.3.1])
 fi
 
 AC_PATH_PROG(PERL, perl, [/usr/bin/perl])
