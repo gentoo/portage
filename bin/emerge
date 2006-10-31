@@ -21,10 +21,13 @@ except KeyboardInterrupt:
 	sys.exit(1)
 
 import os, stat
-sys.path.insert(0, os.environ.get("PORTAGE_PYM_PATH", "/usr/lib/portage/pym"))
 
 os.environ["PORTAGE_LEGACY_GLOBALS"] = "false"
-import portage
+try:
+	import portage
+except ImportError:
+	sys.path.insert(0, "/usr/lib/portage/pym")
+	import portage
 del os.environ["PORTAGE_LEGACY_GLOBALS"]
 from portage import digraph
 

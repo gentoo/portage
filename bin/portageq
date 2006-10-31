@@ -20,7 +20,6 @@ except KeyboardInterrupt:
 	sys.exit(1)
 
 import os
-sys.path.insert(0, os.environ.get("PORTAGE_PYM_PATH", "/usr/lib/portage/pym"))
 
 import types,string
 
@@ -332,7 +331,11 @@ def main():
 		if uses_root:
 			os.environ["ROOT"] = sys.argv[2]
 		global portage
-		import portage
+		try:
+			import portage
+		except ImportError:
+			sys.path.insert(0, "/usr/lib/portage/pym")
+			import portage
 		if uses_root:
 			sys.argv[2] = portage.root
 		function(sys.argv[2:])

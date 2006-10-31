@@ -15,9 +15,13 @@
 from stat import *
 from random import *
 import atexit, commands, os, re, shutil, stat, string, sys
-sys.path.insert(0, os.environ.get("PORTAGE_PYM_PATH", "/usr/lib/portage/pym"))
+try:
+    import portage
+except ImportError:
+    sys.path.insert(0, "/usr/lib/portage/pym")
+    import portage
 
-import portage, dispatch_conf
+import dispatch_conf
 from portage_exec import find_binary
 
 FIND_EXTANT_CONFIGS  = "find '%s' %s -iname '._cfg????_%s'"

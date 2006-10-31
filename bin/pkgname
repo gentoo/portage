@@ -4,9 +4,11 @@
 # $Id$
 
 import sys, os
-sys.path.insert(0, os.environ.get("PORTAGE_PYM_PATH", "/usr/lib/portage/pym"))
-
-import portage
+try:
+	import portage
+except ImportError:
+	sys.path.insert(0, "/usr/lib/portage/pym")
+	import portage
 
 a=portage.pkgsplit(sys.argv[1])
 if a:

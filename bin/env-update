@@ -4,7 +4,6 @@
 # $Id$
 
 import os,sys
-sys.path.insert(0, os.environ.get("PORTAGE_PYM_PATH", "/usr/lib/portage/pym"))
 
 def usage(status):
 	print "Usage: env-update [--no-ldconfig]"
@@ -24,5 +23,9 @@ if len(sys.argv) > 1:
 	print "!!! Invalid command line options!\n"
 	usage(1)
 
-import portage
+try:
+	import portage
+except ImportError:
+	sys.path.insert(0, "/usr/lib/portage/pym")
+	import portage
 portage.env_update(makelinks)

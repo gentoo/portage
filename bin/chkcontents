@@ -9,8 +9,11 @@
 # the right files).
 
 import string, os.path, os, sys
-sys.path.insert(0, os.environ.get("PORTAGE_PYM_PATH", "/usr/lib/portage/pym"))
-import portage
+try:
+	import portage
+except ImportError:
+	sys.path.insert(0, "/usr/lib/portage/pym")
+	import portage
 
 def CONTENTScheck(path):
 	try:

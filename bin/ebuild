@@ -21,9 +21,13 @@ if "merge" in pargs:
 	os.environ["FEATURES"] = os.environ.get("FEATURES", "") + " -noauto"
 
 os.environ["PORTAGE_CALLER"]="ebuild"
-sys.path.insert(0, os.environ.get("PORTAGE_PYM_PATH", "/usr/lib/portage/pym"))
+try:
+	import portage
+except ImportError:
+	sys.path.insert(0, "/usr/lib/portage/pym")
+	import portage
 
-import portage, portage_util, portage_const
+import portage_util, portage_const
 
 # do this _after_ 'import portage' to prevent unnecessary tracing
 if debug and "python-trace" in portage.features:

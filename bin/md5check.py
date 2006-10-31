@@ -5,9 +5,11 @@
 
 import os,sys,string
 os.environ["FEATURES"]="mirror cvs"
-sys.path.insert(0, os.environ.get("PORTAGE_PYM_PATH", "/usr/lib/portage/pym"))
-
-import portage
+try:
+	import portage
+except ImportError:
+	sys.path.insert(0, "/usr/lib/portage/pym")
+	import portage
 from threading import *
 from output import red,green,blue,bold
 from random import shuffle

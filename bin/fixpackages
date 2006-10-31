@@ -5,9 +5,11 @@
 
 import os,sys
 os.environ["PORTAGE_CALLER"]="fixpackages"
-sys.path.insert(0, os.environ.get("PORTAGE_PYM_PATH", "/usr/lib/portage/pym"))
-
-import portage
+try:
+	import portage
+except ImportError:
+	sys.path.insert(0, "/usr/lib/portage/pym")
+	import portage
 
 mysettings = portage.settings
 mytrees = portage.db

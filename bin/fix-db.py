@@ -4,7 +4,12 @@
 # $Id$
 
 import os,sys,re
-sys.path.insert(0, os.environ.get("PORTAGE_PYM_PATH", "/usr/lib/portage/pym"))
+
+try:
+	import portage
+except ImportError:
+	sys.path.insert(0, "/usr/lib/portage/pym")
+	import portage
 
 from stat import *
 from output import *

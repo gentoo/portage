@@ -4,9 +4,11 @@
 # $Id$
 
 import os,sys,errno
-sys.path.insert(0, os.environ.get("PORTAGE_PYM_PATH", "/usr/lib/portage/pym"))
-
-import portage_locks
+try:
+	import portage_locks
+except ImportError:
+	sys.path.insert(0, "/usr/lib/portage/pym")
+	import portage_locks
 
 if not sys.argv[1:] or "--help" in sys.argv or "-h" in sys.argv:
 	import portage

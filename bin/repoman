@@ -11,7 +11,6 @@ import errno, os, shutil, sys
 if not hasattr(__builtins__, "set"):
 	from sets import Set as set
 exename=os.path.basename(sys.argv[0])	
-sys.path.insert(0, os.environ.get("PORTAGE_PYM_PATH", "/usr/lib/portage/pym"))
 version="1.2"	
 
 allowed_filename_chars="a-zA-Z0-9._-+:"
@@ -24,7 +23,11 @@ map(allowed_filename_chars_set.setdefault, map(chr, map(ord, [".", "-", "_", "+"
 import string,signal,re,pickle,tempfile
 
 os.environ["PORTAGE_LEGACY_GLOBALS"] = "false"
-import portage
+try:
+	import portage
+except ImportError:
+	sys.path.insert(0, "/usr/lib/portage/pym")
+	import portage
 del os.environ["PORTAGE_LEGACY_GLOBALS"]
 
 import portage_checksum
