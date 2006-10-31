@@ -1497,11 +1497,17 @@ class config:
 				self.configdict["pkg"]["PORT_ENV_FILE"] = infodir+"/environment"
 
 			myre = re.compile('^[A-Z]+$')
+			null_byte = "\0"
 			for filename in listdir(infodir,filesonly=1,EmptyOnError=1):
 				if myre.match(filename):
 					try:
-						mydata = string.strip(open(infodir+"/"+filename).read())
+						file_path = os.path.join(infodir, filename)
+						mydata = open(file_path).read().strip()
 						if len(mydata) < 2048 or filename == "USE":
+							if null_byte in mydata:
+								writemsg("!!! Null byte found in metadata " + \
+									"file: '%s'\n" % file_path, noiselevel=-1)
+								continue
 							if filename == "USE":
 								binpkg_flags = "-* " + mydata
 								self.configdict["pkg"][filename] = binpkg_flags
