@@ -1550,7 +1550,7 @@ class config:
 				if best_match:
 					defaults.append(cpdict[best_match])
 		defaults = " ".join(defaults)
-		if defaults != self.configdict["defaults"]["USE"]:
+		if defaults != self.configdict["defaults"].get("USE",""):
 			self.configdict["defaults"]["USE"] = defaults
 			has_changed = True
 		useforce = []
