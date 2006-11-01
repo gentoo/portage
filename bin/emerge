@@ -32,6 +32,7 @@ del os.environ["PORTAGE_LEGACY_GLOBALS"]
 from portage import digraph
 
 import emergehelp, xpak, commands, errno, re, socket, string, time, types
+import output
 from output import blue, bold, colorize, darkblue, darkgreen, darkred, green, \
 	havecolor, nc_len, nocolor, red, teal, turquoise, white, xtermTitle, \
 	xtermTitleReset, yellow
@@ -4063,6 +4064,11 @@ def parse_opts(tmpcmdline):
 
 	longopt_aliases = {"--cols":"--columns", "--skip-first":"--skipfirst"}
 	argument_options = {
+		"--color": {
+			"help":"enable or disable color output",
+			"type":"choice",
+			"choices":("y", "n")
+		},
 		"--with-bdeps": {
 			"help":"include unnecessary build time dependencies",
 			"type":"choice",
@@ -4122,6 +4128,11 @@ def parse_opts(tmpcmdline):
 			myaction=x
 		else:
 			myfiles.append(x)
+
+	if "--nocolor" in myopts:
+		print "*** Deprecated use of '--nocolor', use '--color=n' instead."
+		del myopts["--nocolor"]
+		myopts["--color"] = "n"
 
 	return myaction, myopts, myfiles
 
@@ -4222,8 +4233,18 @@ def adjust_config(myopts, settings):
 	settings["PORTAGE_DEBUG"] = str(PORTAGE_DEBUG)
 	settings.backup_changes("PORTAGE_DEBUG")
 
-	# Set color output
-	if "--nocolor" in myopts:
+	"""The explicit --color < y | n > option overrides the NOCOLOR environment
+	variable and stdout auto-detection."""
+	if "--color" in myopts:
+		if "y" == myopts["--color"]:
+			output.havecolor = 1
+			settings["NOCOLOR"] = "false"
+		else:
+			output.havecolor = 0
+			settings["NOCOLOR"] = "true"
+		settings.backup_changes("NOCOLOR")
+	elif not sys.stdout.isatty():
+		output.havecolor = 0
 		settings["NOCOLOR"] = "true"
 		settings.backup_changes("NOCOLOR")
 
@@ -4241,6 +4262,9 @@ def emerge_main():
 	ldpath_mtimes = mtimedb["ldpath"]
 	xterm_titles = "notitles" not in settings.features
 
+	"""Disable color as early as possible via NOCOLOR and stdout
+	auto-detection.  This initial setting may later be overridden via the
+	--color < yes | no > option."""
 	if settings.get("NOCOLOR","").lower() in ("yes","true"):
 		nocolor()
 	elif (not sys.stdout.isatty()) and \
@@ -4380,11 +4404,6 @@ def emerge_main():
 			print "* --tree is currently broken with --resume. Disabling..."
 			del myopts["--tree"]
 
-	# Set color output
-	if "--nocolor" in myopts or \
-	settings["NOCOLOR"] in ("yes","true"):
-		nocolor()
-
 	if not ("--quiet" in myopts):
 		if not sys.stdout.isatty() or ("--nospinner" in myopts):
 			spinner.update = spinner.update_basic
@@ -4395,7 +4414,7 @@ def emerge_main():
 			trees[settings["ROOT"]]["vartree"].dbapi)
 		sys.exit(0)
 	elif "--help" in myopts:
-		emergehelp.help(myaction, myopts, havecolor)
+		emergehelp.help(myaction, myopts, output.havecolor)
 		sys.exit(0)
 
 	if portage.wheelgid == portage.portage_gid:
@@ -4407,7 +4426,7 @@ def emerge_main():
 		print "myopts", myopts
 
 	if not myaction and not myfiles and "--resume" not in myopts:
-		emergehelp.help(myaction, myopts, havecolor)
+		emergehelp.help(myaction, myopts, output.havecolor)
 		sys.exit(1)
 
 	# check if root user is the current user for the actions where emerge needs this
