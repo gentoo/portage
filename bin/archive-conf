@@ -93,10 +93,12 @@ def archive_conf():
         archive = os.path.join(options['archive-dir'], conf.lstrip('/'))
         if options['use-rcs'] == 'yes':
             dispatch_conf.rcs_archive(archive, conf, md5_match_hash[conf], '')
-            dispatch_conf.rcs_archive_post_process(archive)
+            if md5_match_hash[conf]:
+                dispatch_conf.rcs_archive_post_process(archive)
         else:
             dispatch_conf.file_archive(archive, conf, md5_match_hash[conf], '')
-            dispatch_conf.file_archive_post_process(archive)
+            if md5_match_hash[conf]:
+                dispatch_conf.file_archive_post_process(archive)
 
 # run
 if len(sys.argv) > 1:

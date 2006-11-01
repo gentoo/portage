@@ -1499,11 +1499,17 @@ class config:
 				self.configdict["pkg"]["PORT_ENV_FILE"] = infodir+"/environment"
 
 			myre = re.compile('^[A-Z]+$')
+			null_byte = "\0"
 			for filename in listdir(infodir,filesonly=1,EmptyOnError=1):
 				if myre.match(filename):
 					try:
-						mydata = string.strip(open(infodir+"/"+filename).read())
+						file_path = os.path.join(infodir, filename)
+						mydata = open(file_path).read().strip()
 						if len(mydata) < 2048 or filename == "USE":
+							if null_byte in mydata:
+								writemsg("!!! Null byte found in metadata " + \
+									"file: '%s'\n" % file_path, noiselevel=-1)
+								continue
 							if filename == "USE":
 								binpkg_flags = "-* " + mydata
 								self.configdict["pkg"][filename] = binpkg_flags
@@ -6376,6 +6382,8 @@ class dblink:
 						dblink(self.cat, v, destroot, self.settings,
 							vartree=self.vartree))
 
+			collisions = []
+
 			print green("*")+" checking "+str(len(myfilelist))+" files for package collisions"
 			for f in myfilelist:
 				nocheck = False
@@ -6398,7 +6406,8 @@ class dblink:
 						isowned = True
 						break
 				if not isowned:
-					print "existing file "+ f +" is not owned by this package"
+					collisions.append(f)
+					print "existing file "+f+" is not owned by this package"
 					stopmerge=True
 					if collision_ignore:
 						if f in collision_ignore:
@@ -6423,6 +6432,35 @@ class dblink:
 					self.unmerge(ldpath_mtimes=prev_mtimes)
 					self.delete()
 				self.unlockdb()
+				print
+				print "Searching all installed packages for file collisions..."
+				print "Press Ctrl-C to Stop"
+				print
+				""" Note: The isowner calls result in a stat call for *every*
+				single installed file, since the inode numbers are used to work
+				around the problem of ambiguous paths caused by symlinked files
+				and/or directories.  Though it is slow, it is as accurate as
+				possible."""
+				found_owner = False
+				for cpv in self.vartree.dbapi.cpv_all():
+					cat, pkg = catsplit(cpv)
+					mylink = dblink(cat, pkg, destroot, self.settings,
+						vartree=self.vartree)
+					mycollisions = []
+					for f in collisions:
+						if mylink.isowner(f, destroot):
+							mycollisions.append(f)
+					if mycollisions:
+						found_owner = True
+						print " * %s:" % cpv
+						print
+						for f in mycollisions:
+							print "     '%s'" % \
+								os.path.join(destroot, f.lstrip(os.path.sep))
+						print
+				if not found_owner:
+					print "None of the installed packages claim the above file(s)."
+					print
 				sys.exit(1)
 			try:
 				os.chdir(mycwd)
