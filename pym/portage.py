@@ -6377,6 +6377,8 @@ class dblink:
 						dblink(self.cat, v, destroot, self.settings,
 							vartree=self.vartree))
 
+			collisions = []
+
 			print green("*")+" checking "+str(len(myfilelist))+" files for package collisions"
 			for f in myfilelist:
 				nocheck = False
@@ -6399,6 +6401,7 @@ class dblink:
 						isowned = True
 						break
 				if not isowned:
+					collisions.append(f)
 					print "existing file "+f+" is not owned by this package"
 					stopmerge=True
 					if collision_ignore:
@@ -6424,6 +6427,35 @@ class dblink:
 					self.unmerge(ldpath_mtimes=prev_mtimes)
 					self.delete()
 				self.unlockdb()
+				print
+				print "Searching all installed packages for file collisions..."
+				print "Press Ctrl-C to Stop"
+				print
+				""" Note: The isowner calls result in a stat call for *every*
+				single installed file, since the inode numbers are used to work
+				around the problem of ambiguous paths caused by symlinked files
+				and/or directories.  Though it is slow, it is as accurate as
+				possible."""
+				found_owner = False
+				for cpv in self.vartree.dbapi.cpv_all():
+					cat, pkg = catsplit(cpv)
+					mylink = dblink(cat, pkg, destroot, self.settings,
+						vartree=self.vartree)
+					mycollisions = []
+					for f in collisions:
+						if mylink.isowner(f, destroot):
+							mycollisions.append(f)
+					if mycollisions:
+						found_owner = True
+						print " * %s:" % cpv
+						print
+						for f in mycollisions:
+							print "     '%s'" % \
+								os.path.join(destroot, f.lstrip(os.path.sep))
+						print
+				if not found_owner:
+					print "None of the installed packages claim the above file(s)."
+					print
 				sys.exit(1)
 			try:
 				os.chdir(mycwd)
