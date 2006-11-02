@@ -408,19 +408,34 @@ can be found in \fI/usr/portage/profiles/use.desc\fR.
 Names of \fBUSE_EXPAND\fR variables that should not be shown in the verbose merge
 list output of the \fBemerge\fR(1) command.
 .TP
-\fBUSE_ORDER\fR = \fI"env:pkg:conf:auto:defaults"\fR
-Determines precedence for incrementing the setting of the USE variable.
-The above setting will cause the environment (env) to override per package (pkg)
-settings to override make.conf (conf) to override auto generated values 
-from merged packages (auto) to override make.defaults (defaults).
-.br
+\fBUSE_ORDER\fR = \fI"env:pkg:conf:defaults:pkginternal"\fR
+Determines the precedence of layers in the incremental stacking of the USE
+variable. Precedence decreases from left to right such that env overrides
+pkg, pkg overrides conf, and so forth.
+
 \fB***warning***\fR
 .br
 Do not modify this value unless you're a developer and you know what
 you're doing. If you change this and something breaks, we will not help
 you fix it.
 .br
-Defaults to "env:pkg:conf:defaults".
+.RS
+.TP
+.B env
+USE from the current USE environment variable if it exists
+.TP
+.B pkg
+Per-package USE from \fB/etc/portage/package.use\fR (see \fBportage\fR(5))
+.TP
+.B conf
+USE from make.conf
+.TP
+.B defaults
+USE from make.defaults and package.use in the profile (see \fBportage\fR(5))
+.TP
+.B pkginternal
+USE from ebuild IUSE defaults (flags enabled via a + prefix; see \fBebuild\fR(5))
+.RE
 
 .SH "REPORTING BUGS"
 Please report bugs via http://bugs.gentoo.org/

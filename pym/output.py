@@ -210,15 +210,18 @@ def notitles():
 
 def nocolor():
 	"turn off colorization"
+	global havecolor
 	havecolor=0
-	for x in codes.keys():
-		codes[x]=""
 
 def resetColor():
 	return codes["reset"]
 
 def colorize(color_key, text):
-	return codes[color_key] + text + codes["reset"]
+	global havecolor
+	if havecolor:
+		return codes[color_key] + text + codes["reset"]
+	else:
+		return text
 
 compat_functions_colors = ["bold","white","teal","turquoise","darkteal",
 	"fuscia","fuchsia","purple","blue","darkblue","green","darkgreen","yellow",
