@@ -16,7 +16,8 @@ def shorthelp():
 	print "   "+turquoise("emerge")+" "+turquoise("--resume")+" [ "+green("--pretend")+" | "+green("--ask")+" | "+green("--skipfirst")+" ]"
 	print "   "+turquoise("emerge")+" "+turquoise("--help")+" [ "+green("system")+" | "+green("world")+" | "+green("config")+" | "+green("--sync")+" ] "
 	print bold("Options:")+" "+green("-")+"["+green("abBcCdDefgGhikKlnNoOpqPsStuvV")+"] ["+green("--oneshot")+"] ["+green("--newuse")+"] ["+green("--noconfmem")+"]"
-	print      "                                          ["+green("--columns")+"] ["+green("--nocolor")+"] ["+green("--nospinner")+"]"
+	print      "                                          [ " + green("--color")+" < " + turquoise("y") + " | "+ turquoise("n")+" >  ] [ "+green("--columns")+" ]"
+	print      "                                                                 ["+green("--nospinner")+"]"
 	print "                                          [ "+green("--deep")+"  ] [" + green("--with-bdeps")+" < " + turquoise("y") + " | "+ turquoise("n")+" > ]"
 	print bold("Actions:")+" [ "+green("--clean")+" | "+green("--depclean")+" | "+green("--prune")+" | "+green("--regen")+" | "+green("--search")+" | "+green("--unmerge")+" ]"
 	print
@@ -186,6 +187,12 @@ def help(myaction,myopts,havecolor=1):
 		print "              When pretending, also display the ChangeLog entries for packages"
 		print "              that will be upgraded."
 		print
+		print "       "+green("--color") + " < " + turquoise("y") + " | "+ turquoise("n")+" >"
+		print "              Enable or disable color output. This option will override NOCOLOR"
+		print "              (see make.conf(5)) and may also be used to force color output when"
+		print "              stdout is not a tty (by default, color is disabled unless stdout"
+		print "              is a tty)."
+		print
 		print "       "+green("--columns")
 		print "              Display the pretend output in a tabular form. Versions are"
 		print "              aligned vertically."
@@ -236,9 +243,6 @@ def help(myaction,myopts,havecolor=1):
 		print "       "+green("--newuse")+" ("+green("-N")+" short option)"
 		print "              Tells emerge to include installed packages where USE flags have "
 		print "              changed since installation."
-		print
-		print "       "+green("--nocolor")
-		print "              Suppresses color in the output."
 		print
 		print "       "+green("--noconfmem")
 		print "              Portage keeps track of files that have been placed into"
