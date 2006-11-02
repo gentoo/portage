@@ -23,8 +23,6 @@ def shorthelp():
 	print
 
 def help(myaction,myopts,havecolor=1):
-	if not havecolor:
-		nocolor()
 	if not myaction and ("--help" not in myopts):
 		shorthelp()
 		print
