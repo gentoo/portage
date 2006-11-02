@@ -225,6 +225,11 @@ dependencies must already be emerged on the system.
 Use this in conjunction with the \fB\-\-pretend\fR option.  This will
 show the ChangeLog entries for all the packages that will be upgraded.
 .TP
+.BR "\-\-color < y | n >"
+Enable or disable color output.  This option will override \fINOCOLOR\fR
+(see \fBmake.conf\fR(5)) and may also be used to force color output when stdout
+is not a tty (by default, color is disabled unless stdout is a tty).
+.TP
 .BR "\-\-columns"
 Used alongside \fB\-\-pretend\fR to cause the package name, new version, 
 and old version to be displayed in an aligned format for easy cut\-n\-paste.
@@ -279,9 +284,6 @@ Causes \fIEMERGE_DEFAULT_OPTS\fR (see \fBmake.conf\fR(5)) to be ignored.
 Tells emerge to include installed packages where USE flags have changed since 
 compilation.  An asterisk marks when a USE flag has changed since the package 
 was compiled.
-.TP
-.BR "\-\-nocolor "
-Suppresses all coloring of portage's output.
 .TP
 .BR "\-\-noconfmem"
 Causes portage to disregard merge records indicating that a config file
