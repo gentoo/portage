@@ -77,7 +77,7 @@ class OptionsClass:
 		if os.environ.has_key("PF"):
 			self.PF = os.environ["PF"]
 		if os.environ.has_key("ED"):
-			self.D = os.environ["ED"]
+			self.ED = os.environ["ED"]
 		if os.environ.has_key("DOCDESTTREE"):
 			self.DOCDESTTREE = os.environ["DOCDESTTREE"]
 		
