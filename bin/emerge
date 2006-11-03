@@ -3592,11 +3592,9 @@ def action_info(settings, trees, myopts, myfiles):
 					pkgs += [mycpv[2] + "-" + mycpv[3]]
 				else:
 					pkgs += [mycpv[2]]
-			if not pkgs:
-				pkgs = "[Not Present]"
-			else:
+			if pkgs:
 				pkgs = ", ".join(sorted_versions(pkgs))
-			print "%-20s %s" % (x+":", pkgs)
+				print "%-20s %s" % (x+":", pkgs)
 		else:
 			print "%-20s %s" % (x+":", "[NOT VALID]")
 
