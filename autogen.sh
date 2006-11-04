@@ -1,13 +1,17 @@
 #!/bin/sh
 
-autoheader || { echo "failed autoheader"; exit 1; };
-aclocal-1.8 || { echo "failed aclocal"; exit 1; };
+die() {
+	echo "!!! $*" > /dev/stderr
+	exit -1
+}
+
+#autoheader || { echo "failed autoheader"; exit 1; };
+aclocal-1.8 || die "failed aclocal"
 [ "`type -t glibtoolize`" == "file" ] && alias libtoolize=glibtoolize
-libtoolize --automake -c -f || { echo "failed libtoolize"; exit 1; }
-autoconf || { echo "failed autoconf"; exit 1; }
+libtoolize --automake -c -f || die "failed libtoolize"
+autoconf || die "failed autoconf"
 touch ChangeLog 
-automake-1.8 -a -c || { "echo failed automake"; exit 1; }
-rm config.h.in
+automake-1.8 -a -c || die "failed automake"
 
 if [ -x ./test.sh ] ; then
 	exec ./test.sh "$@"

@@ -1,6 +1,8 @@
 dnl Process this file with autoconf to produce a configure script.
 AC_INIT(portage, 2.1.20, grobian@gentoo.org, portage-prefix)
 
+AC_PREREQ([2.60])
+
 dnl Define our precious vars
 dnl AC_ARG_VAR(prefix, the location portage will be installed to)
 dnl AC_ARG_VAR(offset-prefix, the location all packages will be installed to)
@@ -21,7 +23,6 @@ AC_CANONICAL_TARGET
 
 AM_INIT_AUTOMAKE
 dnl AM_CONFIG_HEADER(config.h)
-AC_CONFIG_HEADERS([config.h])
 
 dnl Checks for programs.
 dnl store clfags prior, otherwise it's not propogaed.
@@ -258,8 +259,7 @@ AM_CONDITIONAL(BUILD_MISSINGOS, test x$enable_missingos = xtrue)
 #AM_CONDITIONAL(BUILD_FILTER_ENV, test x$enable_filter_env = xtrue)
 
 AC_MSG_CHECKING([for a list of variables known by configure])
-rm -f subst-install.vars.in.in.tmp
-pt_configvars=`grep '^s,@' ${srcdir}/configure | sed -e 's|^s,@\([[^@]][[^@]]*\)@.*$|\1|'`
+pt_configvars=`sed -n -e "/^ac_subst_vars='/,/'$/p" ${srcdir}/configure | sed -e "s/^ac_subst_vars='//" -e "s/'$//"`
 {
 	pt_all_configurevars=
 	for pt_configvar in ${pt_configvars}
@@ -270,14 +270,7 @@ pt_configvars=`grep '^s,@' ${srcdir}/configure | sed -e 's|^s,@\([[^@]][[^@]]*\)
 
 	echo "all_configurevars='${pt_all_configurevars}'"
 
-} > subst-install.vars.in.in.tmp
-diff ${srcdir}/subst-install.vars.in.in subst-install.vars.in.in.tmp >/dev/null
-if [[ $? != 0 ]]
-then
-	rm -f ${srcdir}/subst-install.vars.in.in
-	cp subst-install.vars.in.in.tmp ${srcdir}/subst-install.vars.in.in
-fi
-rm -f subst-install.vars.in.in.tmp
+} > subst-install.vars.in.in
 $as_unset pt_configvar pt_configvars pt_all_configurevars
 AC_MSG_RESULT([ok])
 
