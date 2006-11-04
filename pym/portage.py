@@ -509,7 +509,7 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None):
 		mylist = []
 		for myconfig in config_list:
 			if var in myconfig:
-				mylist.extend(myconfig[var].split())
+				mylist.extend(filter(None, myconfig[var].split()))
 				del myconfig[var] # prepare for env.update(myconfig)
 		if mylist:
 			env[var] = " ".join(mylist)
@@ -519,7 +519,7 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None):
 		mylist = []
 		for myconfig in config_list:
 			if var in myconfig:
-				mylist.extend(myconfig[var].split(":"))
+				mylist.extend(filter(None, myconfig[var].split(":")))
 				del myconfig[var] # prepare for env.update(myconfig)
 		if mylist:
 			env[var] = ":".join(mylist)
