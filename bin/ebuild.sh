@@ -1378,7 +1378,7 @@ if [[ ${EBUILD_SH_ARGS} != "depend" ]] && [[ ${EBUILD_SH_ARGS}  != "clean" ]] &&
 		fi
 	fi
 
-	if hasq ccache ${FEATURES} && ! hasq ccache ${PORTAGE_RESTRICT} ; then
+	if hasq ccache ${FEATURES} ; then
 		#We can enable compiler cache support
 		if [ -z "${PATH/*ccache*/}" ]; then
 			# Remove the other reference.
