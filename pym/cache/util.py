@@ -36,6 +36,7 @@ def mirror_cache(valid_nodes_iterable, src_cache, trg_cache, eclass_cache=None, 
 			del e
 			continue
 		write_it = True
+		trg = None
 		try:
 			trg = trg_cache[x]
 			if long(trg["_mtime_"]) == long(entry["_mtime_"]) and eclass_cache.is_eclass_data_valid(trg["_eclasses_"]):
@@ -43,7 +44,7 @@ def mirror_cache(valid_nodes_iterable, src_cache, trg_cache, eclass_cache=None, 
 		except (cache_errors.CacheError, KeyError):
 			pass
 
-		if not write_it:
+		if trg and not write_it:
 			""" We don't want to skip the write unless we're really sure that
 			the existing cache is identical, so don't trust _mtime_ and
 			_eclasses_ alone."""
