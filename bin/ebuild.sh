@@ -1504,8 +1504,8 @@ export TMPDIR="${T}"
 #syntax from getting expanded :)
 #check eclass rdepends also.
 set -f
-if [ "${RDEPEND-unset}" == "unset" ] && [ "${E_RDEPEND-unset}" == "unset" ] ; then
-	export RDEPEND="${DEPEND} ${E_DEPEND}"
+if [ "${RDEPEND-unset}" == "unset" ] ; then
+	export RDEPEND=${DEPEND}
 	debug-print "RDEPEND: not set... Setting to: ${DEPEND}"
 fi
 
