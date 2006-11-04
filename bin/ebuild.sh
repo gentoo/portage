@@ -1533,7 +1533,7 @@ if [[ ${EBUILD_SH_ARGS} != "depend" ]] && [[ ${EBUILD_SH_ARGS}  != "clean" ]] &&
 		fi
 	fi
 
-	if hasq ccache ${FEATURES} &>/dev/null; then
+	if hasq ccache ${FEATURES} ; then
 		#We can enable compiler cache support
 		if [ -z "${PATH/*ccache*/}" ]; then
 			# Remove the other reference.
@@ -1659,8 +1659,8 @@ export TMPDIR="${T}"
 #syntax from getting expanded :)
 #check eclass rdepends also.
 set -f
-if [ "${RDEPEND-unset}" == "unset" ] && [ "${E_RDEPEND-unset}" == "unset" ] ; then
-	export RDEPEND="${DEPEND} ${E_DEPEND}"
+if [ "${RDEPEND-unset}" == "unset" ] ; then
+	export RDEPEND=${DEPEND}
 	debug-print "RDEPEND: not set... Setting to: ${DEPEND}"
 fi
 

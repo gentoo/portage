@@ -3598,11 +3598,9 @@ def action_info(settings, trees, myopts, myfiles):
 					pkgs += [mycpv[2] + "-" + mycpv[3]]
 				else:
 					pkgs += [mycpv[2]]
-			if not pkgs:
-				pkgs = "[Not Present]"
-			else:
+			if pkgs:
 				pkgs = ", ".join(sorted_versions(pkgs))
-			print "%-20s %s" % (x+":", pkgs)
+				print "%-20s %s" % (x+":", pkgs)
 		else:
 			print "%-20s %s" % (x+":", "[NOT VALID]")
 
@@ -4282,7 +4280,7 @@ def emerge_main():
 		nocolor()
 
 	tmpcmdline = []
-	if "--ignore-default-opts" not in tmpcmdline:
+	if "--ignore-default-opts" not in sys.argv:
 		tmpcmdline.extend(settings["EMERGE_DEFAULT_OPTS"].split())
 	tmpcmdline.extend(sys.argv[1:])
 	myaction, myopts, myfiles = parse_opts(tmpcmdline)

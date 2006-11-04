@@ -3,6 +3,9 @@
 # License: GPL2
 # $Id: util.py 1911 2005-08-25 03:44:21Z ferringb $
 
+if not hasattr(__builtins__, "set"):
+	from sets import Set as set
+from itertools import chain
 from cache import cache_errors
 
 def mirror_cache(valid_nodes_iterable, src_cache, trg_cache, eclass_cache=None, verbose_instance=None):
@@ -33,12 +36,26 @@ def mirror_cache(valid_nodes_iterable, src_cache, trg_cache, eclass_cache=None, 
 			del e
 			continue
 		write_it = True
+		trg = None
 		try:
 			trg = trg_cache[x]
 			if long(trg["_mtime_"]) == long(entry["_mtime_"]) and eclass_cache.is_eclass_data_valid(trg["_eclasses_"]):
 				write_it = False
 		except (cache_errors.CacheError, KeyError):
 			pass
+
+		if trg and not write_it:
+			""" We don't want to skip the write unless we're really sure that
+			the existing cache is identical, so don't trust _mtime_ and
+			_eclasses_ alone."""
+			for d in (entry, trg):
+				if "EAPI" in d and d["EAPI"] in ("", "0"):
+					del d["EAPI"]
+			for k in set(chain(entry, trg)).difference(
+				("_mtime_", "_eclasses_")):
+				if trg.get(k, "") != entry.get(k, ""):
+					write_it = True
+					break
 
 		if write_it:
 			if entry.get("INHERITED",""):
