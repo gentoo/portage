@@ -4274,7 +4274,7 @@ def emerge_main():
 		nocolor()
 
 	tmpcmdline = []
-	if "--ignore-default-opts" not in tmpcmdline:
+	if "--ignore-default-opts" not in sys.argv:
 		tmpcmdline.extend(settings["EMERGE_DEFAULT_OPTS"].split())
 	tmpcmdline.extend(sys.argv[1:])
 	myaction, myopts, myfiles = parse_opts(tmpcmdline)
