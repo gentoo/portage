@@ -10,7 +10,7 @@
 from stat import *
 import os, sys, commands, shutil
 
-import portage
+import portage, portage_const
 
 RCS_BRANCH = '1.1.1'
 RCS_LOCK = 'rcs -ko -M -l'
@@ -22,12 +22,12 @@ DIFF3_MERGE = 'diff3 -mE %s %s %s >%s'
 
 def read_config(mandatory_opts):
     try:
-        opts = portage.getconfig('/etc/dispatch-conf.conf')
+        opts = portage.getconfig(portage_const.EPREFIX+'/etc/dispatch-conf.conf')
     except:
         opts = None
 
     if not opts:
-        print >> sys.stderr, 'dispatch-conf: Error reading /etc/dispatch-conf.conf; fatal'
+        print >> sys.stderr, 'dispatch-conf: Error reading '+portage_const.EPREFIX+'/etc/dispatch-conf.conf; fatal'
         sys.exit(1)
 
     for key in mandatory_opts:
