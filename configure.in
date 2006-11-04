@@ -1,5 +1,5 @@
 dnl Process this file with autoconf to produce a configure script.
-AC_INIT(portage, 2.1.13, kito@gentoo.org, portage-prefix)
+AC_INIT(portage, 2.1.20, grobian@gentoo.org, portage-prefix)
 
 dnl Define our precious vars
 dnl AC_ARG_VAR(prefix, the location portage will be installed to)
@@ -21,6 +21,7 @@ AC_CANONICAL_TARGET
 
 AM_INIT_AUTOMAKE
 dnl AM_CONFIG_HEADER(config.h)
+AC_CONFIG_HEADERS([config.h])
 
 dnl Checks for programs.
 dnl store clfags prior, otherwise it's not propogaed.
