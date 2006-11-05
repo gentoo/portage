@@ -1374,6 +1374,10 @@ class config:
 			self["FEATURES"] = " ".join(self.features)
 			self.backup_changes("FEATURES")
 
+			# inject EPREFIX as it's in no single config file (I hope),
+			# but needs to be available using portageq
+			self["EPREFIX"] = EPREFIX
+
 			self._init_dirs()
 
 		if mycpv:
