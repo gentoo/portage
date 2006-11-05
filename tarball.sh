@@ -43,4 +43,4 @@ cd $TMP/${PKG}-${V}
 chmod a+x autogen.sh && ./autogen.sh || { echo "autogen failed!"; exit -1; };
 rm -f AUTHORS NEWS autogen.sh make-man-tarball.sh tabcheck.py tarball.sh ChangeLog.000 COPYING
 cd $TMP
-tar cjvf ${TMP}/${PKG}-${V}.tar.bz2 ${PKG}-${V}
+tar -jcf ${TMP}/${PKG}-${V}.tar.bz2 ${PKG}-${V}
