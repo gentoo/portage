@@ -27,7 +27,7 @@ for i in "${ED}"/opt/*/lib{,32,64} \
 		[[ ! -e ${j} ]] && continue
 		[[ -L ${j} ]] && continue
 		[[ -x ${j} ]] && continue
-		echo "making executable: /${j/${ED}/}"
+		echo "making executable: /${j/${D}/}"
 		chmod +x "${j}"
 	done
 
@@ -35,7 +35,7 @@ for i in "${ED}"/opt/*/lib{,32,64} \
 		[[ ! -e ${j} ]] && continue
 		[[ -L ${j} ]] && continue
 		[[ ! -x ${j} ]] && continue
-		echo "removing executable bit: /${j/${ED}/}"
+		echo "removing executable bit: /${j/${D}/}"
 		chmod -x "${j}"
 	done
 done
