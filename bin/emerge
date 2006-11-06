@@ -1520,6 +1520,9 @@ class depgraph:
 			if asap_nodes:
 				"""ASAP nodes are merged before their soft deps."""
 				for node in asap_nodes:
+					if not mygraph.contains(node):
+						asap_nodes.remove(node)
+						continue
 					if not mygraph.child_nodes(node,
 						ignore_priority=DepPriority.SOFT):
 						nodes = [node]
