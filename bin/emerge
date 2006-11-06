@@ -1502,18 +1502,34 @@ class depgraph:
 		retlist=[]
 		circular_blocks = False
 		blocker_deps = None
+		asap_nodes = []
 		if reversed:
 			get_nodes = mygraph.root_nodes
 		else:
 			get_nodes = mygraph.leaf_nodes
+			for cpv, node in self.pkg_node_map.iteritems():
+				if "portage" == portage.catsplit(portage.dep_getkey(cpv))[-1]:
+					asap_nodes.append(node)
+					break
 		ignore_priority_range = [None]
 		ignore_priority_range.extend(
 			xrange(DepPriority.MIN, DepPriority.MEDIUM + 1))
 		while not mygraph.empty():
-			for ignore_priority in ignore_priority_range:
-				nodes = get_nodes(ignore_priority=ignore_priority)
-				if nodes:
-					break
+			ignore_priority = None
+			nodes = None
+			if asap_nodes:
+				"""ASAP nodes are merged before their soft deps."""
+				for node in asap_nodes:
+					if not mygraph.child_nodes(node,
+						ignore_priority=DepPriority.SOFT):
+						nodes = [node]
+						asap_nodes.remove(node)
+						break
+			if not nodes:
+				for ignore_priority in ignore_priority_range:
+					nodes = get_nodes(ignore_priority=ignore_priority)
+					if nodes:
+						break
 			selected_nodes = None
 			if nodes:
 				if ignore_priority <= DepPriority.SOFT:
