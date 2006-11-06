@@ -721,10 +721,15 @@ class depgraph:
 			self.edebug = 1
 		self.spinner = spinner
 		self.pkgsettings = {}
-		self.pkgsettings[self.target_root] = portage.config(clone=settings)
-		if self.target_root != "/":
-			self.pkgsettings["/"] = \
-				portage.config(clone=trees["/"]["vartree"].settings)
+		for myroot in self.trees:
+			self.pkgsettings[myroot] = portage.config(
+				clone=trees[myroot]["vartree"].settings)
+			mydbapis = []
+			if "--usepkgonly" not in self.myopts:
+				mydbapis.append(trees[myroot]["porttree"].dbapi)
+			if "--usepkg" in self.myopts:
+				mydbapis.append(trees[myroot]["bintree"].dbapi)
+			self.pkgsettings[myroot].add_new_virtuals(mydbapis)
 		self.useFlags = {}
 		self.useFlags[self.target_root] = {}
 		if self.target_root != "/":

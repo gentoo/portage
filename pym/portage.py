@@ -849,6 +849,7 @@ class config:
 		self.virtuals = {}
 		self.virts_p = {}
 		self.dirVirtuals = None
+		self._new_virtuals = {}
 		self.v_count  = 0
 
 		# Virtuals obtained from the vartree
@@ -914,6 +915,7 @@ class config:
 			self.prevmaskdict = copy.deepcopy(clone.prevmaskdict)
 			self.pprovideddict = copy.deepcopy(clone.pprovideddict)
 			self.dirVirtuals = copy.deepcopy(clone.dirVirtuals)
+			self._new_virtuals = copy.deepcopy(clone._new_virtuals)
 			self.treeVirtuals = copy.deepcopy(clone.treeVirtuals)
 			self.features = copy.deepcopy(clone.features)
 
@@ -1621,6 +1623,9 @@ class config:
 		virts = flatten(portage_dep.use_reduce(portage_dep.paren_reduce(provides), uselist=myuse.split()))
 
 		cp = dep_getkey(mycpv)
+		if cp.startswith("virtual/"):
+			# Bridge new-style virtual into old-style.
+			virts.append(cp)
 		for virt in virts:
 			virt = dep_getkey(virt)
 			if not self.treeVirtuals.has_key(virt):
@@ -1859,7 +1864,19 @@ class config:
 					ptVirtuals.setdefault(virt, [])
 					ptVirtuals[virt].append(cp)
 
-		return stack_dictlist([ptVirtuals, self.treeVirtuals, self.dirVirtuals])
+		return stack_dictlist([ptVirtuals, self.treeVirtuals, self.dirVirtuals,
+			self._new_virtuals])
+
+	def add_new_virtuals(self, mydbapis):
+		"""Scan for new-style virtuals and bridge them into the old-style."""
+		new_virtuals = {}
+		for mydbapi in mydbapis:
+			for cpv in mydbapi.cpv_all():
+				if cpv.startswith("virtual/"):
+					cp = dep_getkey(cpv)
+					new_virtuals[cp] = [cp]
+		self._new_virtuals = new_virtuals
+		self.virtuals = self.getvirtuals()
 
 	def __delitem__(self,mykey):
 		self.modifying()
@@ -4738,6 +4755,9 @@ class vartree(packagetree):
 					if not mys:
 						mys = string.split(myprovide, "/")
 					myprovides += [mys[0] + "/" + mys[1]]
+			if mycpv.startswith("virtual/"):
+				# Bridge new-style virtual into old-style.
+				myprovides.append(dep_getkey(mycpv))
 			return myprovides
 		except SystemExit, e:
 			raise
@@ -5317,6 +5337,8 @@ class portdbapi(dbapi):
 		l = d.keys()
 		l.sort()
 		return l
+
+	cpv_all = cp_all
 
 	def p_list(self,mycp):
 		d={}
