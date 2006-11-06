@@ -44,3 +44,5 @@ chmod a+x autogen.sh && ./autogen.sh || { echo "autogen failed!"; exit -1; };
 rm -f AUTHORS NEWS autogen.sh make-man-tarball.sh tabcheck.py tarball.sh ChangeLog.000 COPYING
 cd $TMP
 tar -jcf ${TMP}/${PKG}-${V}.tar.bz2 ${PKG}-${V}
+rm -R ${TMP}/${PKG}-${V}
+ls -la ${TMP}/${PKG}-${V}.tar.bz2
