@@ -722,10 +722,15 @@ class depgraph:
 			self.edebug = 1
 		self.spinner = spinner
 		self.pkgsettings = {}
-		self.pkgsettings[self.target_root] = portage.config(clone=settings)
-		if self.target_root != "/":
-			self.pkgsettings["/"] = \
-				portage.config(clone=trees["/"]["vartree"].settings)
+		for myroot in self.trees:
+			self.pkgsettings[myroot] = portage.config(
+				clone=trees[myroot]["vartree"].settings)
+			mydbapis = []
+			if "--usepkgonly" not in self.myopts:
+				mydbapis.append(trees[myroot]["porttree"].dbapi)
+			if "--usepkg" in self.myopts:
+				mydbapis.append(trees[myroot]["bintree"].dbapi)
+			self.pkgsettings[myroot].add_new_virtuals(mydbapis)
 		self.useFlags = {}
 		self.useFlags[self.target_root] = {}
 		if self.target_root != "/":
@@ -842,6 +847,7 @@ class depgraph:
 			    If the package has new iuse flags or different use flags then if
 			    --newuse is specified, we need to merge the package. """
 			if merging==0 and "--newuse" in self.myopts and \
+				mytype == "ebuild" and \
 				vardbapi.cpv_exists(mykey):
 				pkgsettings.setcpv(mykey, mydb=portdb)
 				forced_flags = set()
@@ -1502,18 +1508,37 @@ class depgraph:
 		retlist=[]
 		circular_blocks = False
 		blocker_deps = None
+		asap_nodes = []
 		if reversed:
 			get_nodes = mygraph.root_nodes
 		else:
 			get_nodes = mygraph.leaf_nodes
+			for cpv, node in self.pkg_node_map.iteritems():
+				if "portage" == portage.catsplit(portage.dep_getkey(cpv))[-1]:
+					asap_nodes.append(node)
+					break
 		ignore_priority_range = [None]
 		ignore_priority_range.extend(
 			xrange(DepPriority.MIN, DepPriority.MEDIUM + 1))
 		while not mygraph.empty():
-			for ignore_priority in ignore_priority_range:
-				nodes = get_nodes(ignore_priority=ignore_priority)
-				if nodes:
-					break
+			ignore_priority = None
+			nodes = None
+			if asap_nodes:
+				"""ASAP nodes are merged before their soft deps."""
+				for node in asap_nodes:
+					if not mygraph.contains(node):
+						asap_nodes.remove(node)
+						continue
+					if not mygraph.child_nodes(node,
+						ignore_priority=DepPriority.SOFT):
+						nodes = [node]
+						asap_nodes.remove(node)
+						break
+			if not nodes:
+				for ignore_priority in ignore_priority_range:
+					nodes = get_nodes(ignore_priority=ignore_priority)
+					if nodes:
+						break
 			selected_nodes = None
 			if nodes:
 				if ignore_priority <= DepPriority.SOFT:
@@ -1619,9 +1644,7 @@ class depgraph:
 		newlist = []
 		for atom in mylist:
 			mykey = portage.dep_getkey(atom)
-			if portage.catsplit(mykey)[-1] == "portage":
-				newlist.insert(0, atom)
-			else:
+			if True:
 				newlist.append(atom)
 				"""Make sure all installed slots are updated when possible.
 				Do this with --emptytree also, to ensure that all slots are
@@ -2121,12 +2144,7 @@ class depgraph:
 					myversion = "%s-%s" % (mysplit[1], mysplit[2])
 
 				if myversion != portage.VERSION and "--quiet" not in self.myopts:
-					if "--emptytree" in self.myopts:
-						p.append(colorize("WARN", "***")+" Please update portage to the above version before proceeding.")
-						p.append("    Failure to do so may result in failed or improper merges.")
-						p.append("    A simple '"+green("emerge portage")+"' is sufficient.")
-						p.append("")
-					elif mylist.index(x) < len(mylist) - 1 and \
+					if mylist.index(x) < len(mylist) - 1 and \
 						"livecvsportage" not in self.settings.features:
 						p.append(colorize("WARN", "*** Portage will stop merging at this point and reload itself,"))
 						p.append(colorize("WARN", "    then resume the merge."))

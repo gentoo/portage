@@ -7,7 +7,7 @@
 
 eval $("@PORTAGE_BASE@"/bin/portageq envvar -v FEATURES FETCHCOMMAND \
 	GENTOO_MIRRORS PORTAGE_INST_UID PORTAGE_INST_GID PORTAGE_NICENESS \
-	PORTAGE_TMPDIR PORTDIR USERLAND)
+	PORTAGE_TMPDIR PORTDIR USERLAND EPREFIX)
 DISTDIR="${PORTAGE_TMPDIR}/emerge-webrsync"
 
 # If PORTAGE_NICENESS is overriden via the env then it will
@@ -79,6 +79,7 @@ sync_local() {
 		echo "transferring metadata/cache"
 		emerge --metadata
 	fi
+	[ -x "${EPREFIX}"/etc/portage/bin/post_sync ] && "${EPREFIX}"/etc/portage/bin/post_sync
 }
 
 echo "Fetching most recent snapshot"
