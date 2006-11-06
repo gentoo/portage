@@ -849,7 +849,6 @@ class config:
 		self.virtuals = {}
 		self.virts_p = {}
 		self.dirVirtuals = None
-		self._new_virtuals = {}
 		self.v_count  = 0
 
 		# Virtuals obtained from the vartree
@@ -915,7 +914,6 @@ class config:
 			self.prevmaskdict = copy.deepcopy(clone.prevmaskdict)
 			self.pprovideddict = copy.deepcopy(clone.pprovideddict)
 			self.dirVirtuals = copy.deepcopy(clone.dirVirtuals)
-			self._new_virtuals = copy.deepcopy(clone._new_virtuals)
 			self.treeVirtuals = copy.deepcopy(clone.treeVirtuals)
 			self.features = copy.deepcopy(clone.features)
 
@@ -1864,21 +1862,13 @@ class config:
 					ptVirtuals.setdefault(virt, [])
 					ptVirtuals[virt].append(cp)
 
-		return stack_dictlist([ptVirtuals, self.treeVirtuals, self.dirVirtuals,
-			self._new_virtuals])
-
-	def add_new_virtuals(self, mydbapis):
-		"""Scan for new-style virtuals and bridge them into the old-style."""
-		new_virtuals = {}
-		for mydbapi in mydbapis:
-			for cpv in mydbapi.cpv_all():
-				if cpv.startswith("virtual/"):
-					cp = dep_getkey(cpv)
-					new_virtuals[cp] = [cp]
-		self._new_virtuals = new_virtuals
-		# Make sure dirVirtuals and treeVirtuals are initialized.
-		self.getvirtuals()
-		self.virtuals = self.__getvirtuals_compile()
+		virtuals = stack_dictlist([ptVirtuals, self.treeVirtuals,
+			self.dirVirtuals])
+		# Bridge new-style virtuals into old-style.
+		for k, v in virtuals.iteritems():
+			if k not in v:
+				v.append(k)
+		return virtuals
 
 	def __delitem__(self,mykey):
 		self.modifying()
