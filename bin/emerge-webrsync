@@ -79,6 +79,7 @@ sync_local() {
 		echo "transferring metadata/cache"
 		emerge --metadata
 	fi
+	[ -x /etc/portage/bin/post_sync ] && /etc/portage/bin/post_sync
 }
 
 echo "Fetching most recent snapshot"
