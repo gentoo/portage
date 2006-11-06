@@ -3451,23 +3451,24 @@ def getCPFromCPV(mycpv):
 def dep_virtual(mysplit, mysettings):
 	"Does virtual dependency conversion"
 	newsplit=[]
+	myvirtuals = mysettings.getvirtuals()
 	for x in mysplit:
 		if type(x)==types.ListType:
 			newsplit.append(dep_virtual(x, mysettings))
 		else:
 			mykey=dep_getkey(x)
-			myvirtuals = mysettings.getvirtuals()
-			if myvirtuals.has_key(mykey):
-				if len(myvirtuals[mykey]) == 1:
-					a = string.replace(x, mykey, myvirtuals[mykey][0])
+			mychoices = myvirtuals.get(mykey, None)
+			if mychoices:
+				if len(mychoices) == 1:
+					a = x.replace(mykey, mychoices[0])
 				else:
 					if x[0]=="!":
 						# blocker needs "and" not "or(||)".
 						a=[]
 					else:
 						a=['||']
-					for y in myvirtuals[mykey]:
-						a.append(string.replace(x, mykey, y))
+					for y in mychoices:
+						a.append(x.replace(mykey, y))
 				newsplit.append(a)
 			else:
 				newsplit.append(x)
