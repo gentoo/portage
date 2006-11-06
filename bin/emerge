@@ -1635,9 +1635,7 @@ class depgraph:
 		newlist = []
 		for atom in mylist:
 			mykey = portage.dep_getkey(atom)
-			if portage.catsplit(mykey)[-1] == "portage":
-				newlist.insert(0, atom)
-			else:
+			if True:
 				newlist.append(atom)
 				"""Make sure all installed slots are updated when possible.
 				Do this with --emptytree also, to ensure that all slots are
