@@ -1824,7 +1824,7 @@ class config:
 			return self.virtuals
 
 		self.dirVirtuals = stack_dictlist(
-			[grabdict(os.path.join(x, "virtuals")) \
+			[grabdict_package(os.path.join(x, "virtuals")) \
 			for x in self.profiles], incremental=True)
 
 		for virt in self.dirVirtuals:
