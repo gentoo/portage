@@ -1455,7 +1455,7 @@ class depgraph:
 				enforce correct merge order."""
 				fakedb = self.mydbapi[myroot]
 				new_pkgs = []
-				unresolveable = False
+				unresolvable = False
 				for cpv in blocked_pkgs:
 					myslot = vardb.aux_get(cpv, ["SLOT"])[0]
 					myslot_atom = "%s:%s" % (portage.dep_getkey(cpv), myslot)
@@ -1466,9 +1466,10 @@ class depgraph:
 						"""There's an installed package that's blocked and
 						there's no upgrade found to invalidate it, so leave
 						this blocker in the digraph."""
-						unresolveable = True
+						unresolvable = True
 						break
-				if unresolveable:
+				if unresolvable:
+					# Keep trying to invalidate as many blockers as possible.
 					continue
 
 				for parent in list(self.blocker_parents[blocker]):
@@ -1476,11 +1477,17 @@ class depgraph:
 					pdbapi = self.trees[proot][self.pkg_tree_map[ptype]].dbapi
 					pslot = pdbapi.aux_get(pcpv, ["SLOT"])[0]
 					pslot_atom = "%s:%s" % (portage.dep_getkey(pcpv), pslot)
+					depends_on_merge_order = False
 					for myslot_atom, pkg in new_pkgs:
 						if pslot_atom == myslot_atom:
 							"""A merge within a slot invalidates the block,
 							so the order does not need to be enforced."""
-							self.blocker_parents[blocker].remove(parent)
+							continue
+						if pkg in blocked_after_update:
+							"""This isn't a case of a package blocking itself,
+							and the block is still valid in the final state, so
+							this one is unresolvable."""
+							unresolvable = True
 							break
 						# Enforce correct merge order with a hard dep.
 						node = self.pkg_node_map[pkg]
@@ -1489,6 +1496,18 @@ class depgraph:
 						"""Count references to this blocker so that it can be
 						invalidated after nodes referencing it have been merged."""
 						self.blocker_digraph.addnode(node, blocker)
+						depends_on_merge_order = True
+					if unresolvable:
+						break
+					elif not depends_on_merge_order:
+						self.blocker_parents[blocker].remove(parent)
+				if unresolvable:
+					"""This blocker can not be solved, so make sure that it is
+					removed from the digraph if it has already been added."""
+					if self.blocker_digraph.contains(blocker):
+						self.blocker_digraph.remove(blocker)
+					# Keep trying to invalidate as many blockers as possible.
+					continue
 				if not self.blocker_parents[blocker]:
 					del self.blocker_parents[blocker]
 		# Validate blockers that depend on merge order.
