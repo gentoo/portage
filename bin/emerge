@@ -1745,7 +1745,8 @@ class depgraph:
 				"--verbose" in self.myopts and 3 or 2)
 		changelogs=[]
 		p=[]
-		totalsize=0
+
+		counters = PackageCounters()
 
 		if verbosity == 1 and "--verbose" not in self.myopts:
 			def create_use_string(*args):
@@ -1868,6 +1869,7 @@ class depgraph:
 
 			if x[0]=="blocks":
 				addl=""+red("B")+"  "+fetch+"  "
+				counters.blocks += 1
 				resolved = self.trees[x[1]]["vartree"].resolve_key(x[2])
 				print "["+x[0]+" "+addl+"]",red(resolved),
 				block_parents = self.blocker_parents[" ".join(x)]
@@ -1913,6 +1915,8 @@ class depgraph:
 				myoldbest=""
 				if self.trees[x[1]]["vartree"].exists_specific(pkg_key):
 					addl="  "+yellow("R")+fetch+"  "
+					if x[3] != "nomerge":
+						counters.reinst += 1
 				elif self.trees[x[1]]["vartree"].exists_specific_cat(pkg_key):
 					mynewslot = mydbapi.aux_get(pkg_key, ["SLOT"])[0]
 					myoldlist = self.trees[x[1]]["vartree"].dbapi.match(
@@ -1925,12 +1929,15 @@ class depgraph:
 						if portage.pkgcmp(portage.pkgsplit(x[2]), portage.pkgsplit(myoldbest)) < 0:
 							# Downgrade in slot
 							addl+=turquoise("U")+blue("D")
+							counters.downgrades += 1
 						else:
 							# Update in slot
 							addl+=turquoise("U")+" "
+							counters.upgrades += 1
 					else:
 						# New slot, mark it new.
 						addl=" "+green("NS")+fetch+"  "
+						counters.newslot += 1
 
 					if "--changelog" in self.myopts:
 						changelogs.extend(self.calc_changelog(
@@ -1939,6 +1946,7 @@ class depgraph:
 							'/'.join(portage.catpkgsplit(x[2])[:2])), x[2]))
 				else:
 					addl=" "+green("N")+" "+fetch+"  "
+					counters.new += 1
 
 				verboseadd=""
 				
@@ -2036,7 +2044,7 @@ class depgraph:
 								if myfetchfile not in myfetchlist:
 									mysize+=myfilesdict[myfetchfile]
 									myfetchlist.append(myfetchfile)
-							totalsize+=mysize
+							counters.totalsize += mysize
 						verboseadd+=format_size(mysize)+" "
 
 					# overlay verbose
@@ -2149,7 +2157,7 @@ class depgraph:
 
 		if verbosity == 3:
 			print
-			print "Total size of downloads: "+format_size(totalsize)
+			print counters
 			if overlays and display_overlays:
 				print "Portage overlays:"
 				y=0
@@ -2213,6 +2221,51 @@ class depgraph:
 
 	def outdated(self):
 		return self.outdatedpackages
+
+class PackageCounters(object):
+
+	def __init__(self):
+		self.upgrades   = 0
+		self.downgrades = 0
+		self.new        = 0
+		self.newslot    = 0
+		self.reinst     = 0
+		self.blocks     = 0
+		self.totalsize  = 0
+
+	def __str__(self):
+		total_installs = self.upgrades + self.downgrades + self.newslot + self.new + self.reinst
+		myoutput = []
+		details = []
+		myoutput.append("Total: %s package" % total_installs)
+		if total_installs > 1:
+			myoutput.append("s")
+		myoutput.append(" (")
+		if self.upgrades > 0:
+			details.append("%s upgrade" % self.upgrades)
+			if self.upgrades > 1:
+				details[-1] += "s"
+		if self.downgrades > 0:
+			details.append("%s downgrade" % self.downgrades)
+			if self.downgrades > 1:
+				details[-1] += "s"
+		if self.new > 0:
+			details.append("%s new" % self.new)
+		if self.newslot > 0:
+			details.append("%s in new slot" % self.newslot)
+			if self.newslot > 1:
+				details[-1] += "s"
+		if self.reinst > 0:
+			details.append("%s reinstall" % self.reinst)
+			if self.reinst > 1:
+				details[-1] += "s"
+		if self.blocks > 0:
+			details.append("%s block" % self.blocks)
+			if self.blocks > 1:
+				details[-1] += "s"
+		myoutput.append(", ".join(details))
+		myoutput.append("), Size of downloads: %s" % format_size(self.totalsize))
+		return "".join(myoutput)
 
 class MergeTask(object):
 
