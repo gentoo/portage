@@ -85,6 +85,22 @@ def get_valid_checksum_keys():
 	return hashfunc_map.keys()
 
 def verify_all(filename, mydict, calc_prelink=0, strict=0):
+	"""
+	Verify all checksums against a file.
+
+	@param filename: File to run the checksums against
+	@type filename: String
+	@param calc_prelink: Whether or not to reverse prelink before running the checksum
+	@type calc_prelink: Integer
+	@param strict: Enable/Disable strict checking (which stops exactly at a checksum failure and throws an exception)
+	@type strict: Integer
+	@rtype: Tuple
+	@return: Result of the checks and possible message:
+		1) If size fails, False, and a tuple containing a message, the given size, and the actual size
+		2) If there is an os error, False, and a tuple containing the system error followed by 2 nulls
+		3) If a checksum fails, False and a tuple containing a message, the given hash, and the actual hash
+		4) If all checks succeed, return True and a fake reason
+	"""
 	# Dict relates to single file only.
 	# returns: (passed,reason)
 	file_is_ok = True
@@ -112,6 +128,15 @@ def verify_all(filename, mydict, calc_prelink=0, strict=0):
 	return file_is_ok,reason
 
 def pyhash(filename, hashobject):
+	"""
+	Run a checksum against a file.
+
+	@param filename: File to run the checksum against
+	@type filename: String
+	@param hashname: The hash object that will execute the checksum on the file
+	@type hashname: Object
+	@return: The hash and size of the data
+	"""
 	f = open(filename, 'rb')
 	blocksize = HASHING_BLOCKSIZE
 	data = f.read(blocksize)
@@ -126,6 +151,18 @@ def pyhash(filename, hashobject):
 	return (sum.hexdigest(), size)
 
 def perform_checksum(filename, hashname="MD5", calc_prelink=0):
+	"""
+	Run a specific checksum against a file.
+
+	@param filename: File to run the checksum against
+	@type filename: String
+	@param hashname: The type of hash function to run
+	@type hashname: String
+	@param calc_prelink: Whether or not to reverse prelink before running the checksum
+	@type calc_prelink: Integer
+	@rtype: Tuple
+	@return: The hash and size of the data
+	"""
 	myfilename      = filename[:]
 	prelink_tmpfile = os.path.join("/", PRIVATE_PATH, "prelink-checksum.tmp." + str(os.getpid()))
 	mylock          = None
@@ -160,6 +197,20 @@ def perform_checksum(filename, hashname="MD5", calc_prelink=0):
 	return (myhash,mysize)
 
 def perform_multiple_checksums(filename, hashes=["MD5"], calc_prelink=0):
+	"""
+	Run a group of checksums against a file.
+
+	@param filename: File to run the checksums against
+	@type filename: String
+	@param hashes: A list of checksum functions to run against the file
+	@type hashname: List
+	@param calc_prelink: Whether or not to reverse prelink before running the checksum
+	@type calc_prelink: Integer
+	@rtype: Tuple
+	@return: A dictionary in the form:
+		return_value[hash_name] = (hash_result,size)
+		for each given checksum
+	"""
 	rVal = {}
 	for x in hashes:
 		if x not in hashfunc_map:
