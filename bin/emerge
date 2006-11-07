@@ -3809,7 +3809,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	print warn_prefix + "As a safety measure, depclean will not remove any packages"
 	print warn_prefix + "unless *all* required dependencies have been resolved.  As a"
 	print warn_prefix + "consequence, it is often necessary to run "
-	print warn_prefix + good("`emerge --update --deep world`") + " prior to depclean."
+	print warn_prefix + good("`emerge --update --newuse --deep world`") + " prior to depclean."
 
 	xterm_titles = "notitles" not in settings.features
 	portdb = trees[settings["ROOT"]]["porttree"].dbapi
