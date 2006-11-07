@@ -1449,7 +1449,7 @@ class depgraph:
 			blocked_after_update = self.mydbapi[myroot].match(mydep)
 			if not blocked_pkgs and not blocked_after_update:
 				del self.blocker_parents[blocker]
-			elif not blocked_after_update:
+			else:
 				"""It may be possible to circumvent this block via correct
 				ordering of upgrades.  If necessary, create hard deps to
 				enforce correct merge order."""
