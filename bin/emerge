@@ -3802,7 +3802,9 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	print warn_prefix + "Also study the list of packages to be cleaned for any obvious"
 	print warn_prefix + "mistakes. Packages that are part of the world set will always"
 	print warn_prefix + "be kept.  They can be manually added to this set with"
-	print warn_prefix + good("`emerge --noreplace <atom>`") + "."
+	print warn_prefix + good("`emerge --noreplace <atom>`") + ".  Packages that are listed in"
+	print warn_prefix + "package.provided (see portage(5)) will be removed by"
+	print warn_prefix + "depclean, even if they are part of the world set."
 	print warn_prefix
 	print warn_prefix + "As a safety measure, depclean will not remove any packages"
 	print warn_prefix + "unless *all* required dependencies have been resolved.  As a"
