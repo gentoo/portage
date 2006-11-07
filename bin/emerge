@@ -1220,13 +1220,6 @@ class depgraph:
 		for x in mymerge:
 			selected_pkg = None
 			if x[0]=="!":
-				# if this package is myself, don't append it to block list.
-				if myparent:
-					mydep = x[1:]
-					if mydep == portage.dep_getkey(mydep) and \
-						mydep == portage.dep_getkey(myparent.split()[2]):
-						continue
-				# adding block
 				selected_pkg = ["blocks", myroot, x[1:], None]
 			else:
 				#We are not processing a blocker but a normal dependency
