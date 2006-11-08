@@ -58,6 +58,14 @@ def paren_reduce(mystr,tokenize=1):
 	return mylist
 
 def paren_enclose(mylist):
+	"""
+	Convert a list to a string with sublists enclosed with parens.
+
+	@param mylist: The list
+	@type mylist: List
+	@rtype: String
+	@return: The paren enclosed string
+	"""
 	mystrparts = []
 	for x in mylist:
 		if isinstance(x, list):
@@ -67,8 +75,20 @@ def paren_enclose(mylist):
 	return " ".join(mystrparts)
 
 def use_reduce(deparray, uselist=[], masklist=[], matchall=0, excludeall=[]):
-	"""Takes a paren_reduce'd array and reduces the use? conditionals out
+	"""
+	Takes a paren_reduce'd array and reduces the use? conditionals out
 	leaving an array with subarrays
+
+	@param deparray: paren_reduce'd list of deps
+	@type deparray: List
+	@param uselist: List of use flags
+	@type uselist: List
+	@param masklist: List of masked flags
+	@type masklist: List
+	@param matchall: Resolve all conditional deps unconditionally.  Used by repoman
+	@type matchall: Integer
+	@rtype: List
+	@return: The use reduced depend array
 	"""
 	# Quick validity checks
 	for x in range(len(deparray)):
@@ -146,10 +166,23 @@ def use_reduce(deparray, uselist=[], masklist=[], matchall=0, excludeall=[]):
 
 
 def dep_opconvert(deplist):
-	"""Move || and && to the beginning of the following arrays"""
-	# Hack in management of the weird || for dep_wordreduce, etc.
-	# dep_opconvert: [stuff, ["||", list, of, things]]
-	# At this point: [stuff, "||", [list, of, things]]
+	"""
+	Iterate recursively through a list of deps, if the
+	dep is a '||' or '&&' operator, combine it with the
+	list of deps that follows..
+
+	Example usage:
+	>>> test = ["blah", "||", ["foo", "bar", "baz"]]
+	>>> dep_opconvert(test)
+	['blah', ['||', 'foo', 'bar', 'baz']]
+
+	@param deplist: A list of deps to format
+	@type mydep: List
+	@rtype: List
+	@return:
+		The new list with the new ordering
+	"""
+
 	retlist = []
 	x = 0
 	while x != len(deplist):
@@ -165,7 +198,18 @@ def dep_opconvert(deplist):
 
 def get_operator(mydep):
 	"""
-	returns '~', '=', '>', '<', '=*', '>=', or '<='
+	Return the operator used in a depstring.
+
+	Example usage:
+	>>> from portage_dep import *
+	>>> get_operator(">=test-1.0")
+	'>='
+
+	@param mydep: The dep string to check
+	@type mydep: String
+	@rtype: String
+	@return:
+		The operator. One of: '~', '=', '>', '<', '=*', '>=', or '<='
 	"""
 	if mydep[0] == "~":
 		operator = "~"
