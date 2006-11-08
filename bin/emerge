@@ -1221,13 +1221,6 @@ class depgraph:
 		for x in mymerge:
 			selected_pkg = None
 			if x[0]=="!":
-				# if this package is myself, don't append it to block list.
-				if myparent:
-					mydep = x[1:]
-					if mydep == portage.dep_getkey(mydep) and \
-						mydep == portage.dep_getkey(myparent.split()[2]):
-						continue
-				# adding block
 				selected_pkg = ["blocks", myroot, x[1:], None]
 			else:
 				#We are not processing a blocker but a normal dependency
@@ -1450,13 +1443,13 @@ class depgraph:
 			blocked_after_update = self.mydbapi[myroot].match(mydep)
 			if not blocked_pkgs and not blocked_after_update:
 				del self.blocker_parents[blocker]
-			elif not blocked_after_update:
+			else:
 				"""It may be possible to circumvent this block via correct
 				ordering of upgrades.  If necessary, create hard deps to
 				enforce correct merge order."""
 				fakedb = self.mydbapi[myroot]
 				new_pkgs = []
-				unresolveable = False
+				unresolvable = False
 				for cpv in blocked_pkgs:
 					myslot = vardb.aux_get(cpv, ["SLOT"])[0]
 					myslot_atom = "%s:%s" % (portage.dep_getkey(cpv), myslot)
@@ -1467,9 +1460,10 @@ class depgraph:
 						"""There's an installed package that's blocked and
 						there's no upgrade found to invalidate it, so leave
 						this blocker in the digraph."""
-						unresolveable = True
+						unresolvable = True
 						break
-				if unresolveable:
+				if unresolvable:
+					# Keep trying to invalidate as many blockers as possible.
 					continue
 
 				for parent in list(self.blocker_parents[blocker]):
@@ -1477,11 +1471,17 @@ class depgraph:
 					pdbapi = self.trees[proot][self.pkg_tree_map[ptype]].dbapi
 					pslot = pdbapi.aux_get(pcpv, ["SLOT"])[0]
 					pslot_atom = "%s:%s" % (portage.dep_getkey(pcpv), pslot)
+					depends_on_merge_order = False
 					for myslot_atom, pkg in new_pkgs:
 						if pslot_atom == myslot_atom:
 							"""A merge within a slot invalidates the block,
 							so the order does not need to be enforced."""
-							self.blocker_parents[blocker].remove(parent)
+							continue
+						if pkg in blocked_after_update:
+							"""This isn't a case of a package blocking itself,
+							and the block is still valid in the final state, so
+							this one is unresolvable."""
+							unresolvable = True
 							break
 						# Enforce correct merge order with a hard dep.
 						node = self.pkg_node_map[pkg]
@@ -1490,6 +1490,18 @@ class depgraph:
 						"""Count references to this blocker so that it can be
 						invalidated after nodes referencing it have been merged."""
 						self.blocker_digraph.addnode(node, blocker)
+						depends_on_merge_order = True
+					if unresolvable:
+						break
+					elif not depends_on_merge_order:
+						self.blocker_parents[blocker].remove(parent)
+				if unresolvable:
+					"""This blocker can not be solved, so make sure that it is
+					removed from the digraph if it has already been added."""
+					if self.blocker_digraph.contains(blocker):
+						self.blocker_digraph.remove(blocker)
+					# Keep trying to invalidate as many blockers as possible.
+					continue
 				if not self.blocker_parents[blocker]:
 					del self.blocker_parents[blocker]
 		# Validate blockers that depend on merge order.
@@ -1746,7 +1758,8 @@ class depgraph:
 				"--verbose" in self.myopts and 3 or 2)
 		changelogs=[]
 		p=[]
-		totalsize=0
+
+		counters = PackageCounters()
 
 		if verbosity == 1 and "--verbose" not in self.myopts:
 			def create_use_string(*args):
@@ -1869,6 +1882,7 @@ class depgraph:
 
 			if x[0]=="blocks":
 				addl=""+red("B")+"  "+fetch+"  "
+				counters.blocks += 1
 				resolved = self.trees[x[1]]["vartree"].resolve_key(x[2])
 				print "["+x[0]+" "+addl+"]",red(resolved),
 				block_parents = self.blocker_parents[" ".join(x)]
@@ -1914,6 +1928,8 @@ class depgraph:
 				myoldbest=""
 				if self.trees[x[1]]["vartree"].exists_specific(pkg_key):
 					addl="  "+yellow("R")+fetch+"  "
+					if x[3] != "nomerge":
+						counters.reinst += 1
 				elif self.trees[x[1]]["vartree"].exists_specific_cat(pkg_key):
 					mynewslot = mydbapi.aux_get(pkg_key, ["SLOT"])[0]
 					myoldlist = self.trees[x[1]]["vartree"].dbapi.match(
@@ -1926,12 +1942,15 @@ class depgraph:
 						if portage.pkgcmp(portage.pkgsplit(x[2]), portage.pkgsplit(myoldbest)) < 0:
 							# Downgrade in slot
 							addl+=turquoise("U")+blue("D")
+							counters.downgrades += 1
 						else:
 							# Update in slot
 							addl+=turquoise("U")+" "
+							counters.upgrades += 1
 					else:
 						# New slot, mark it new.
 						addl=" "+green("NS")+fetch+"  "
+						counters.newslot += 1
 
 					if "--changelog" in self.myopts:
 						changelogs.extend(self.calc_changelog(
@@ -1940,6 +1959,7 @@ class depgraph:
 							'/'.join(portage.catpkgsplit(x[2])[:2])), x[2]))
 				else:
 					addl=" "+green("N")+" "+fetch+"  "
+					counters.new += 1
 
 				verboseadd=""
 				
@@ -2037,7 +2057,7 @@ class depgraph:
 								if myfetchfile not in myfetchlist:
 									mysize+=myfilesdict[myfetchfile]
 									myfetchlist.append(myfetchfile)
-							totalsize+=mysize
+							counters.totalsize += mysize
 						verboseadd+=format_size(mysize)+" "
 
 					# overlay verbose
@@ -2150,7 +2170,7 @@ class depgraph:
 
 		if verbosity == 3:
 			print
-			print "Total size of downloads: "+format_size(totalsize)
+			print counters
 			if overlays and display_overlays:
 				print "Portage overlays:"
 				y=0
@@ -2214,6 +2234,54 @@ class depgraph:
 
 	def outdated(self):
 		return self.outdatedpackages
+
+class PackageCounters(object):
+
+	def __init__(self):
+		self.upgrades   = 0
+		self.downgrades = 0
+		self.new        = 0
+		self.newslot    = 0
+		self.reinst     = 0
+		self.blocks     = 0
+		self.totalsize  = 0
+
+	def __str__(self):
+		total_installs = self.upgrades + self.downgrades + self.newslot + self.new + self.reinst
+		myoutput = []
+		details = []
+		myoutput.append("Total: %s package" % total_installs)
+		if total_installs != 1:
+			myoutput.append("s")
+		if total_installs != 0:
+			myoutput.append(" (")
+		if self.upgrades > 0:
+			details.append("%s upgrade" % self.upgrades)
+			if self.upgrades > 1:
+				details[-1] += "s"
+		if self.downgrades > 0:
+			details.append("%s downgrade" % self.downgrades)
+			if self.downgrades > 1:
+				details[-1] += "s"
+		if self.new > 0:
+			details.append("%s new" % self.new)
+		if self.newslot > 0:
+			details.append("%s in new slot" % self.newslot)
+			if self.newslot > 1:
+				details[-1] += "s"
+		if self.reinst > 0:
+			details.append("%s reinstall" % self.reinst)
+			if self.reinst > 1:
+				details[-1] += "s"
+		if self.blocks > 0:
+			details.append("%s block" % self.blocks)
+			if self.blocks > 1:
+				details[-1] += "s"
+		myoutput.append(", ".join(details))
+		if total_installs != 0:
+			myoutput.append(")")
+		myoutput.append(", Size of downloads: %s" % format_size(self.totalsize))
+		return "".join(myoutput)
 
 class MergeTask(object):
 
@@ -3740,12 +3808,14 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	print warn_prefix + "Also study the list of packages to be cleaned for any obvious"
 	print warn_prefix + "mistakes. Packages that are part of the world set will always"
 	print warn_prefix + "be kept.  They can be manually added to this set with"
-	print warn_prefix + good("`emerge --noreplace <atom>`") + "."
+	print warn_prefix + good("`emerge --noreplace <atom>`") + ".  Packages that are listed in"
+	print warn_prefix + "package.provided (see portage(5)) will be removed by"
+	print warn_prefix + "depclean, even if they are part of the world set."
 	print warn_prefix
 	print warn_prefix + "As a safety measure, depclean will not remove any packages"
 	print warn_prefix + "unless *all* required dependencies have been resolved.  As a"
 	print warn_prefix + "consequence, it is often necessary to run "
-	print warn_prefix + good("`emerge --update --deep world`") + " prior to depclean."
+	print warn_prefix + good("`emerge --update --newuse --deep world`") + " prior to depclean."
 
 	xterm_titles = "notitles" not in settings.features
 	portdb = trees[settings["ROOT"]]["porttree"].dbapi
