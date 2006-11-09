@@ -23,13 +23,37 @@ import portage_exception
 from portage_versions import catpkgsplit, catsplit, pkgcmp, pkgsplit, ververify
 
 def strip_empty(myarr):
+	"""
+	Strip all empty elements from an array
+
+	@param myarr: The list of elements
+	@type myarr: List
+	@rtype: Array
+	@return: The array with empty elements removed
+	"""
 	for x in range(len(myarr)-1, -1, -1):
 		if not myarr[x]:
 			del myarr[x]
 	return myarr
 
 def paren_reduce(mystr,tokenize=1):
-	"Accepts a list of strings, and converts '(' and ')' surrounded items to sub-lists"
+	"""
+	Take a string and convert all paren enclosed entities into sublists, optionally
+	futher splitting the list elements by spaces.
+
+	Example usage:
+		>>> paren_reduce('foobar foo ( bar baz )',1)
+		['foobar', 'foo', ['bar', 'baz']]
+		>>> paren_reduce('foobar foo ( bar baz )',0)
+		['foobar foo ', [' bar baz ']]
+
+	@param mystr: The string to reduce
+	@type mystr: String
+	@param tokenize: Split on spaces to produces further list breakdown
+	@type tokenize: Integer
+	@rtype: Array
+	@return: The reduced string in an array
+	"""
 	mylist = []
 	while mystr:
 		if ("(" not in mystr) and (")" not in mystr):
@@ -60,6 +84,11 @@ def paren_reduce(mystr,tokenize=1):
 def paren_enclose(mylist):
 	"""
 	Convert a list to a string with sublists enclosed with parens.
+
+	Example usage:
+		>>> test = ['foobar','foo',['bar','baz']]
+		>>> paren_enclose(test)
+		'foobar foo ( bar baz )'
 
 	@param mylist: The list
 	@type mylist: List
@@ -97,7 +126,7 @@ def use_reduce(deparray, uselist=[], masklist=[], matchall=0, excludeall=[]):
 				raise portage_exception.InvalidDependString(deparray[x]+" missing atom list in \""+paren_enclose(deparray)+"\"")
 	if deparray and deparray[-1] and deparray[-1][-1] == "?":
 		raise portage_exception.InvalidDependString("Conditional without target in \""+paren_enclose(deparray)+"\"")
-	
+
 	mydeparray = deparray[:]
 	rlist = []
 	while mydeparray:
@@ -172,9 +201,9 @@ def dep_opconvert(deplist):
 	list of deps that follows..
 
 	Example usage:
-	>>> test = ["blah", "||", ["foo", "bar", "baz"]]
-	>>> dep_opconvert(test)
-	['blah', ['||', 'foo', 'bar', 'baz']]
+		>>> test = ["blah", "||", ["foo", "bar", "baz"]]
+		>>> dep_opconvert(test)
+		['blah', ['||', 'foo', 'bar', 'baz']]
 
 	@param deplist: A list of deps to format
 	@type mydep: List
@@ -201,15 +230,15 @@ def get_operator(mydep):
 	Return the operator used in a depstring.
 
 	Example usage:
-	>>> from portage_dep import *
-	>>> get_operator(">=test-1.0")
-	'>='
+		>>> from portage_dep import *
+		>>> get_operator(">=test-1.0")
+		'>='
 
 	@param mydep: The dep string to check
 	@type mydep: String
 	@rtype: String
-	@return:
-		The operator. One of: '~', '=', '>', '<', '=*', '>=', or '<='
+	@return: The operator. One of:
+		'~', '=', '>', '<', '=*', '>=', or '<='
 	"""
 	if mydep[0] == "~":
 		operator = "~"
@@ -229,6 +258,18 @@ def get_operator(mydep):
 	return operator
 
 def dep_getcpv(mydep):
+	"""
+	Return the category-package-version with any operators/slot specifications stripped off
+
+	Example usage:
+		>>> dep_getcpv('>=media-libs/test-3.0')
+		'media-libs/test-3.0'
+
+	@param mydep: The depstring
+	@type mydep: String
+	@rtype: String
+	@return: The depstring with the operator removed
+	"""
 	if mydep and mydep[0] == "*":
 		mydep = mydep[1:]
 	if mydep and mydep[-1] == "*":
@@ -245,12 +286,40 @@ def dep_getcpv(mydep):
 	return mydep
 
 def dep_getslot(mydep):
+	"""
+	Retrieve the slot on a depend.
+
+	Example usage:
+		>>> dep_getslot('app-misc/test:3')
+		'3'
+
+	@param mydep: The depstring to retrieve the slot of
+	@type mydep: String
+	@rtype: String
+	@return: The slot
+	"""
 	colon = mydep.rfind(":")
 	if colon != -1:
 		return mydep[colon+1:]
 	return None
 
 def isvalidatom(atom):
+	"""
+	Check to see if a depend atom is valid
+
+	Example usage:
+		>>> isvalidatom('media-libs/test-3.0')
+		0
+		>>> isvalidatom('>=media-libs/test-3.0')
+		1
+
+	@param atom: The depend atom to check against
+	@type atom: String
+	@rtype: Integer
+	@return: One of the following:
+		1) 0 if the atom is invalid
+		2) 1 if the atom is valid
+	"""
 	mycpv_cps = catpkgsplit(dep_getcpv(atom))
 	operator = get_operator(atom)
 	if operator:
@@ -273,6 +342,24 @@ def isvalidatom(atom):
 		return 0
 
 def isjustname(mypkg):
+	"""
+	Checks to see if the depstring is only the package name
+
+	Example usage:
+		>>> isjustname('media-libs/test-3.0')
+		0
+		>>> isjustname('test')
+		1
+		>>> isjustname('media-libs/test')
+		1
+
+	@param mypkg: The package atom to check
+	@param mypkg: String
+	@rtype: Integer
+	@return: One of the following:
+		1) 0 if the package string is not just the package name
+		2) 1 if it is
+	"""
 	myparts = mypkg.split('-')
 	for x in myparts:
 		if ververify(x):
@@ -282,7 +369,23 @@ def isjustname(mypkg):
 iscache = {}
 
 def isspecific(mypkg):
-	"now supports packages with no category"
+	"""
+	Checks to see if a package is in category/package-version or package-version format,
+	possibly returning a cached result.
+
+	Example usage:
+		>>> isspecific('media-libs/test')
+		0
+		>>> isspecific('media-libs/test-3.0')
+		1
+
+	@param mypkg: The package depstring to check against
+	@type mypkg: String
+	@rtype: Integer
+	@return: One of the following:
+		1) 0 if the package string is not specific
+		2) 1 if it is
+	"""
 	try:
 		return iscache[mypkg]
 	except KeyError:
@@ -295,6 +398,18 @@ def isspecific(mypkg):
 	return 0
 
 def dep_getkey(mydep):
+	"""
+	Return the category/package-name of a depstring.
+
+	Example usage:
+		>>> dep_getkey('media-libs/test-3.0')
+		'media-libs/test'
+
+	@param mydep: The depstring to retrieve the category/package-name of
+	@type mydep: String
+	@rtype: String
+	@return: The package category/package-version
+	"""
 	mydep = dep_getcpv(mydep)
 	if mydep and isspecific(mydep):
 		mysplit = catpkgsplit(mydep)
@@ -305,8 +420,15 @@ def dep_getkey(mydep):
 		return mydep
 
 def match_to_list(mypkg, mylist):
-	"""(pkgname, list)
+	"""
 	Searches list for entries that matches the package.
+
+	@param mypkg: The package atom to match
+	@type mypkg: String
+	@param mylist: The list of package atoms to compare against
+	@param mylist: List
+	@rtype: List
+	@return: A unique list of package atoms that match the given package atom
 	"""
 	matches = []
 	for x in mylist:
@@ -316,18 +438,24 @@ def match_to_list(mypkg, mylist):
 	return matches
 
 def best_match_to_list(mypkg, mylist):
-	"""(pkgname, list)
+	"""
 	Returns the most specific entry that matches the package given.
-	Type    Value
-	=cpv      6
-	~cpv      5
-	=cpv*     4
-	cp:slot   3
-	>cpv      2
-	<cpv      2
-	>=cpv     2
-	<=cpv     2
-	cp        1
+
+	@param mypkg: The package atom to check
+	@type mypkg: String
+	@param mylist: The list of package atoms to check against
+	@type mylist: List
+	@rtype: String
+	@return: The package atom which best matches given the following ordering:
+		- =cpv      6
+		- ~cpv      5
+		- =cpv*     4
+		- cp:slot   3
+		- >cpv      2
+		- <cpv      2
+		- >=cpv     2
+		- <=cpv     2
+		- cp        1
 	"""
 	operator_values = {'=':6, '~':5, '=*':4,
 		'>':2, '<':2, '>=':2, '<=':2, None:1}
@@ -346,6 +474,17 @@ def best_match_to_list(mypkg, mylist):
 	return bestm
 
 def match_from_list(mydep, candidate_list):
+	"""
+	Searches list for entries that matches the package.
+
+	@param mydep: The package atom to match
+	@type mydep: String
+	@param candidate_list: The list of package atoms to compare against
+	@param candidate_list: List
+	@rtype: List
+	@return: A list of package atoms that match the given package atom
+	"""
+
 	from portage_util import writemsg
 	if mydep[0] == "!":
 		mydep = mydep[1:]
