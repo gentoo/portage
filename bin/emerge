@@ -3089,6 +3089,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		os.makedirs(myportdir,0755)
 	syncuri=string.rstrip(settings["SYNC"])
 	os.umask(0022)
+	updatecache_flg = False
 	if myaction == "metadata":
 		print "skipping sync"
 		updatecache_flg = True
@@ -3412,11 +3413,14 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 				sys.exit(1)
 			if cvsdir!=myportdir:
 				portage.movefile(cvsdir,settings["PORTDIR"])
-			sys.exit(0)
 		else:
 			#cvs update
 			print ">>> Starting cvs update with "+syncuri+"..."
-			sys.exit(portage.spawn("cd "+myportdir+"; cvs -z0 -q update -dP",settings,free=1))
+			retval = portage.spawn("cd '%s'; cvs -z0 -q update -dP" % \
+				myportdir, settings, free=1)
+			if retval != os.EX_OK:
+				sys.exit(retval)
+		dosyncuri = syncuri
 	else:
 		print "!!! rsync setting: ",syncuri,"not recognized; exiting."
 		sys.exit(1)
@@ -3448,9 +3452,10 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 
 	if myaction != "metadata":
 		if os.access(portage.USER_CONFIG_PATH + "/bin/post_sync", os.X_OK):
-			try:
-				portage.spawn(portage.USER_CONFIG_PATH + "/bin/post_sync " + dosyncuri, settings, free=1)
-			except:
+			retval = portage.portage_exec.spawn(
+				[os.path.join(portage.USER_CONFIG_PATH, "bin", "post_sync"),
+				dosyncuri], env=settings.environ())
+			if retval != os.EX_OK:
 				print red(" * ")+bold("spawn failed of "+ portage.USER_CONFIG_PATH + "/bin/post_sync")
 
 	if(mybestpv != mypvs) and not "--quiet" in myopts:
