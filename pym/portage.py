@@ -1823,9 +1823,29 @@ class config:
 		if self.virtuals:
 			return self.virtuals
 
-		self.dirVirtuals = stack_dictlist(
-			[grabdict_package(os.path.join(x, "virtuals")) \
-			for x in self.profiles], incremental=True)
+		virtuals_list = []
+		for x in self.profiles:
+			virtuals_file = os.path.join(x, "virtuals")
+			virtuals_dict = grabdict(virtuals_file)
+			for k in virtuals_dict.keys():
+				if not isvalidatom(k) or dep_getkey(k) != k:
+					writemsg("--- Invalid virtuals atom in %s: %s\n" % \
+						(virtuals_file, k), noiselevel=-1)
+					del virtuals_dict[k]
+					continue
+				myvalues = virtuals_dict[k]
+				for x in myvalues:
+					if not isvalidatom(x):
+						writemsg("--- Invalid atom in %s: %s\n" % \
+							(virtuals_file, x), noiselevel=-1)
+						myvalues.remove(x)
+				if not myvalues:
+					del virtuals_dict[k]
+			if virtuals_dict:
+				virtuals_list.append(virtuals_dict)
+
+		self.dirVirtuals = stack_dictlist(virtuals_list, incremental=True)
+		del virtuals_list
 
 		for virt in self.dirVirtuals:
 			# Preference for virtuals decreases from left to right.
