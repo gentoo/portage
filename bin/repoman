@@ -1646,31 +1646,42 @@ else:
 	retval=["",""]
 	if isCvs:
 		print "Performing a "+green("cvs -n up")+" with a little magic grep to check for updates."
-		retval=getstatusoutput("cvs -n up 2>&1 | "+portage_const.EPREFIX+"/bin/grep -E '^[^\?] .*' | "+portage_const.EPREFIX+"/bin/grep -E -v '^. .*/digest-[^/]+|^cvs server: .* -- ignored$'")
-		
+		retval=getstatusoutput(portage_const.EPREFIX+"/usr/bin/cvs -n up 2>&1 | "+portage_const.EPREFIX+"/bin/egrep '^[^\?] .*' | "+portage_const.EPREFIX+"/bin/egrep -v '^. .*/digest-[^/]+|^cvs server: .* -- ignored$'")
+	if isSvn:
+		print "Performing a "+green("svn update -u")+" with a little magic grep to check for updates."
+		retval=getstatusoutput(portage_const.EPREFIX+"/usr/bin/svn status -u 2>&1 | "+portage_const.EPREFIX+"/bin/egrep -v '^.  +.*/digest-[^/]+' | "+portage_const.EPREFIX+"/bin/egrep -v '^Status against revision:'")
+
 	mylines=string.split(retval[1], "\n")
 	myupdates=[]
 	for x in mylines:
 		if not x:
 			continue
-		if x[0] not in "UPMAR": # Updates,Patches,Modified,Added,Removed
-			print red("!!! Please fix the following issues reported from cvs: ")+green("(U,P,M,A,R are ok)")
-			print red("!!! Note: This is a pretend/no-modify pass...")
+		if x[0] not in "UPMARD": # Updates,Patches,Modified,Added,Removed/Replaced(svn),Deleted(svn)
+			print red("!!! Please fix the following issues reported from cvs: ")+green("(U,P,M,A,R,D are ok)")
+			if isCvs:
+				print red("!!! Note: This is a pretend/no-modify pass...")
+			if isSvn:
+				print red("!!! Note: This your local checkout has been modified!")
 			print retval[1]
 			print
 			sys.exit(1)
-		elif x[0] in ["U","P"]:
+		elif isCvs and x[0] in ["U","P"]:
 			myupdates+=[x[2:]]
+		elif isSvn and x[8] == '*':
+			myupdates+=[x[9:].lstrip(" 1234567890")]
 	
 	if myupdates:
 		print green("Fetching trivial updates...")
 		if "--pretend" in myoptions:
-			print "(cvs up "+string.join(myupdates)+")"
+			print "(cvs/svn up "+string.join(myupdates)+")"
 			retval=0
 		else:
-			retval=os.system("cvs up "+string.join(myupdates))
+			if isCvs:
+				retval=os.system("cvs up "+string.join(myupdates))
+			elif isSvn:
+				retval=os.system("svn update "+string.join(myupdates))
 		if retval!=0:
-			print "!!! cvs exited with an error. Terminating."
+			print "!!! cvs/svn exited with an error. Terminating."
 			sys.exit(retval)
 	
 	if isCvs:
@@ -1680,6 +1691,15 @@ else:
 			mychanged.remove(manifest)
 		mynew=cvstree.findnew(mycvstree,recursive=1,basedir="./")
 		myremoved=cvstree.findremoved(mycvstree,recursive=1,basedir="./")
+	if isSvn:
+		svnstatus = os.popen("svn status").readlines()
+		mychanged = [ elem.rstrip()[7:] for elem in svnstatus if elem.startswith("M") ]
+		for manifest in [ file for file in mychanged if '/Manifest' in file ]:
+			mychanged.remove(manifest)
+		mynew = [ elem.rstrip()[7:] for elem in svnstatus if elem.startswith("A") ]
+		myremoved = [ elem.rstrip()[7:] for elem in svnstatus if elem.startswith("D") ]
+
+	if isCvs or isSvn:
 		if not (mychanged or mynew or myremoved):
 			print
 			print green("RepoMan sez:"), "\"Doing nothing is not always good for QA.\"\n"
@@ -1718,58 +1738,7 @@ else:
 				raise
 		# We've read the content so the file is no longer needed.
 		commitmessagefile = None
-	if not commitmessage:
-		print "Please enter a CVS commit message at the prompt:"
 	
-	# TODO svn check for UPMAR
-	if isSvn:
-		myconflicts=[]
-		print "Checking "+green("svn -u status")+" to check for updates."
-		mylines=[ elem.strip().split() for elem in getstatusoutput("svn -u status")[1].split("\n") ][:-1]
-		if not mylines:
-			print green("Repoman sez:"), "\n\"Yeah....You want me to do nothing? Very Zen.\"\n"
-			print "(Didn't find any changed files...)\n"
-			sys.exit(0)
-		for x in mylines:
-			print x[0]
-			if x[0] not in "ADM!*":
-				myconflicts.append(x[0]+" "+x[-1])
-			elif x[0] in "*!":
-				myupdates+=x[-1]
-			elif x[0]=="A":
-				mynew+=x[-1]
-			elif x[0]=="D":
-				print x[-1]
-				myremoved.append(x[2])
-			elif x[0]=="M":
-				print x[-1]
-				mychanged.append(x[-1])
-		if myconflicts:
-			print red("!!! Please fix the following issues reported from svn: ")+green("type `svn help status` for help")
-			print red("!!! Note: No files have been modified.")
-			for x in myconflicts:
-				print red(x)
-			sys.exit(1)
-		if myupdates:
-			print green("Fetching trivial updates...")
-			if "--pretend" in myoptions:
-				print "(svn -u status "+string.join(myupdates)+")"
-				retval=0
-			else:
-				retval=os.system("svn up "+string.join(myupdates))
-			if reval!=0:
-				print red("!!! svn error. Terminating.")
-				sys.exit(retval)
-		myupdates=mychanged+mynew+myremoved
-		if myremoved:
-			print "*",red(str(len(myremoved))),"file(s) being removed..."
-		if mynew:
-			print "*",green(str(len(mynew))),"file(s) being added..."
-		if mychanged:
-			print "*",green(str(len(mychanged))),"modified..."
-		print "*",green(str(len(myupdates))),"file(s) total being committed..."
-		print "myupdates:",myupdates
-
 	if not (commitmessage or commitmessagefile):
 		print "Please enter a commit message at the prompt:"
 		while not commitmessage:
@@ -1778,7 +1747,7 @@ else:
 			except KeyboardInterrupt: 
 				exithandler()
 	try:
-		commitmessage+="\n(Portage version: "+str(portage.VERSION)+"-prefix)"
+		commitmessage+="\n(Portage version: "+str(portage.VERSION)+"-prefix/Repoman-SVN)"
 	except AttributeError:
 		print "Failed to insert portage version in message!"
 		commitmessage+="\n(Portage version: Unknown)"
@@ -1803,13 +1772,13 @@ else:
 			if isCvs:
 				print "(cvs -q commit -F "+commitmessagefile+")"
 			if isSvn:
-				print "(svn -q commit -F "+commitmessagefile+")"
+				print "(svn commit -F "+commitmessagefile+")"
 			retval=0
 		else:
 			if isCvs:
 				retval=os.system("cvs -q commit -F "+commitmessagefile)
 			if isSvn:
-				retval=os.system("svn -q commit -F "+commitmessagefile)
+				retval=os.system("svn commit -F "+commitmessagefile)
 		if retval:
 			print "!!! Exiting on vcs (shell) error code:",retval
 			sys.exit(retval)
