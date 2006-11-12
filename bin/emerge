@@ -722,9 +722,11 @@ class depgraph:
 			self.edebug = 1
 		self.spinner = spinner
 		self.pkgsettings = {}
+		self.pkg_node_map = {}
 		for myroot in self.trees:
 			self.pkgsettings[myroot] = portage.config(
 				clone=trees[myroot]["vartree"].settings)
+			self.pkg_node_map[myroot] = {}
 		self.useFlags = {}
 		self.useFlags[self.target_root] = {}
 		if self.target_root != "/":
@@ -760,7 +762,6 @@ class depgraph:
 					"--getbinpkgonly" in self.myopts)
 		self.args_keys = []
 		self.global_updates = {}
-		self.pkg_node_map = {}
 		self.blocker_digraph = digraph()
 		self.blocker_parents = {}
 
@@ -778,32 +779,31 @@ class depgraph:
 		#"no downgrade" emerge
 		"""
 		jbigkey = " ".join(mybigkey) + " merge"
+		mytype, myroot, mykey = mybigkey
 		if self.digraph.hasnode(jbigkey):
 			if addme and jbigkey != myparent:
 				# Refuse to make a node depend on itself so that the we don't
 				# don't create a bogus circular dependency in self.altlist().
+				self.pkg_node_map[myroot][mykey] = jbigkey
 				if rev_dep and myparent:
-					self.pkg_node_map[myparent.split()[2]] = myparent
+					ptype, proot, pkey, pstatus = myparent.split()
+					self.pkg_node_map[proot][pkey] = myparent
 					self.digraph.addnode(myparent, jbigkey, priority=priority)
 				else:
-					self.pkg_node_map[mybigkey[2]] = jbigkey
 					self.digraph.addnode(jbigkey, myparent, priority=priority)
 			return 1
 		jbigkey = " ".join(mybigkey) + " nomerge"
 		if self.digraph.hasnode(jbigkey):
-			"""XXX: It's possible that this package has been explicitly
-			requested as a command line argument.  This can be solved by
-			checking all args prior to marking packages as nomerge"""
+			self.pkg_node_map[myroot][mykey] = jbigkey
 			if rev_dep and myparent:
-				self.pkg_node_map[myparent.split()[2]] = myparent
+				ptype, proot, pkey, pstatus = myparent.split()
+				self.pkg_node_map[proot][pkey] = myparent
 				self.digraph.addnode(myparent, jbigkey, priority=priority)
 			else:
-				self.pkg_node_map[mybigkey[2]] = jbigkey
 				self.digraph.addnode(jbigkey, myparent, priority=priority)
 			return 1
 		
 		self.spinner.update()
-		mytype,myroot,mykey=mybigkey
 		if mytype == "blocks":
 			if addme and "--buildpkgonly" not in self.myopts and myparent:
 				mybigkey[1] = myparent.split()[1]
@@ -872,12 +872,13 @@ class depgraph:
 		    depgraph already and returned, or we are here.  Whether we are merging or not; we must
 		    add the package to the depgraph; so we do that here. """
 		jbigkey = " ".join(mybigkey)
+		self.pkg_node_map[myroot][mykey] = jbigkey
 		if rev_dep and myparent:
-			self.pkg_node_map[myparent.split()[2]] = myparent
+			ptype, proot, pkey, pstatus = myparent.split()
+			self.pkg_node_map[proot][pkey] = myparent
 			self.digraph.addnode(myparent, jbigkey,
 				priority=priority)
 		else:
-			self.pkg_node_map[mybigkey[2]] = jbigkey
 			self.digraph.addnode(jbigkey, myparent,
 				priority=priority)
 
@@ -1484,7 +1485,7 @@ class depgraph:
 							unresolvable = True
 							break
 						# Enforce correct merge order with a hard dep.
-						node = self.pkg_node_map[pkg]
+						node = self.pkg_node_map[proot][pkg]
 						self.digraph.addnode(node, parent,
 							priority=DepPriority(buildtime=True))
 						"""Count references to this blocker so that it can be
@@ -1519,7 +1520,7 @@ class depgraph:
 			get_nodes = mygraph.root_nodes
 		else:
 			get_nodes = mygraph.leaf_nodes
-			for cpv, node in self.pkg_node_map.iteritems():
+			for cpv, node in self.pkg_node_map["/"].iteritems():
 				if "portage" == portage.catsplit(portage.dep_getkey(cpv))[-1]:
 					asap_nodes.append(node)
 					break
@@ -3095,6 +3096,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		os.makedirs(myportdir,0755)
 	syncuri=string.rstrip(settings["SYNC"])
 	os.umask(0022)
+	updatecache_flg = False
 	if myaction == "metadata":
 		print "skipping sync"
 		updatecache_flg = True
@@ -3413,16 +3415,26 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			if os.path.exists(cvsdir+"/gentoo-x86"):
 				print "!!! existing",cvsdir+"/gentoo-x86 directory; exiting."
 				sys.exit(1)
+			try:
+				os.rmdir(myportdir)
+			except OSError, e:
+				if e.errno != errno.ENOENT:
+					sys.stderr.write(
+						"!!! existing '%s' directory; exiting.\n" % myportdir)
+					sys.exit(1)
+				del e
 			if portage.spawn("cd "+cvsdir+"; cvs -z0 -d "+cvsroot+" co -P gentoo-x86",settings,free=1):
 				print "!!! cvs checkout error; exiting."
 				sys.exit(1)
-			if cvsdir!=myportdir:
-				portage.movefile(cvsdir,settings["PORTDIR"])
-			sys.exit(0)
+			os.rename(os.path.join(cvsdir, "gentoo-x86"), myportdir)
 		else:
 			#cvs update
 			print ">>> Starting cvs update with "+syncuri+"..."
-			sys.exit(portage.spawn("cd "+myportdir+"; cvs -z0 -q update -dP",settings,free=1))
+			retval = portage.spawn("cd '%s'; cvs -z0 -q update -dP" % \
+				myportdir, settings, free=1)
+			if retval != os.EX_OK:
+				sys.exit(retval)
+		dosyncuri = syncuri
 	else:
 		print "!!! rsync setting: ",syncuri,"not recognized; exiting."
 		sys.exit(1)
@@ -3454,9 +3466,10 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 
 	if myaction != "metadata":
 		if os.access(portage.USER_CONFIG_PATH + "/bin/post_sync", os.X_OK):
-			try:
-				portage.spawn(portage.USER_CONFIG_PATH + "/bin/post_sync " + dosyncuri, settings, free=1)
-			except:
+			retval = portage.portage_exec.spawn(
+				[os.path.join(portage.USER_CONFIG_PATH, "bin", "post_sync"),
+				dosyncuri], env=settings.environ())
+			if retval != os.EX_OK:
 				print red(" * ")+bold("spawn failed of "+ portage.USER_CONFIG_PATH + "/bin/post_sync")
 
 	if(mybestpv != mypvs) and not "--quiet" in myopts:
