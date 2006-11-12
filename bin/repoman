@@ -470,7 +470,10 @@ if os.path.isdir(".svn"):
 		myrepoinfo = os.popen("svn info").readlines()
 		myurl = myrepoinfo[1][5:].rstrip()
 		myreproot = myrepoinfo[2][17:].rstrip()
-		myreporoot = myurl[len(myreproot):]
+		# This one is EVIL, but I don't know how to solve the problem of
+		# getting rid of /trunk/prefix-overlay.  This only works on the
+		# prefix overlay.
+		myreporoot = "/".join(myurl[len(myreproot):].split("/")[2:])
 		myreporootpath = "/" + "/".join(myreproot.split("/")[3:])
 	except SystemExit, e:
 		raise  # Need to propogate this
@@ -868,13 +871,20 @@ for x in scanlist:
 			myl=myf.readlines()	
 			myf.close()
 			for l in myl:
-				if l[0]!="/":
-					continue
-				splitl=l[1:].split("/")
-				if not len(splitl):
-					continue
-				if splitl[0][-7:]==".ebuild":
-					eadded.append(splitl[0][:-7])
+				if isCvs:
+					if l[0]!="/":
+						continue
+					splitl=l[1:].split("/")
+					if not len(splitl):
+						continue
+					if splitl[0][-7:]==".ebuild":
+						eadded.append(splitl[0][:-7])
+				if isSvn:
+					l = l.rstrip();
+					if l[-1:] == "/":
+						continue
+					if l[-7:] == ".ebuild":
+						eadded.append(l[:-7])
 		except IOError:
 			if mymode=="commit" and isCvs:
 				stats["CVS/Entries.IO_error"] += 1
@@ -892,13 +902,20 @@ for x in scanlist:
 			myl=myf.readlines()
 			myf.close()
 			for l in myl:
-				if l[0]!="/":
-					continue
-				splitl=l[1:].split("/")
-				if not len(splitl):
-					continue
-				if splitl[0][:7]=="digest-":
-					dadded.append(splitl[0][7:])
+				if isCvs:
+					if l[0]!="/":
+						continue
+					splitl=l[1:].split("/")
+					if not len(splitl):
+						continue
+					if splitl[0][:7]=="digest-":
+						dadded.append(splitl[0][7:])
+				if isSvn:
+					l = l.rstrip();
+					if l[-1:] == "/":
+						continue
+					if l[:7] == "digest-":
+						dadded.append(l[7:])
 		except IOError:
 			if mymode=="commit" and isCvs:
 				stats["CVS/Entries.IO_error"] += 1
@@ -940,7 +957,7 @@ for x in scanlist:
 						if isCvs:
 							vcsrm="cvs rm -f"
 						if isSvn:
-							vcsrm="svn rm"
+							vcsrm="svn rm --force"
 						if "--pretend" in myoptions:
 								print "(cd "+repodir+"/"+x+"/files; "+vcsrm+" "+y+")"
 						else:
