@@ -721,9 +721,11 @@ class depgraph:
 			self.edebug = 1
 		self.spinner = spinner
 		self.pkgsettings = {}
+		self.pkg_node_map = {}
 		for myroot in self.trees:
 			self.pkgsettings[myroot] = portage.config(
 				clone=trees[myroot]["vartree"].settings)
+			self.pkg_node_map[myroot] = {}
 		self.useFlags = {}
 		self.useFlags[self.target_root] = {}
 		if self.target_root != "/":
@@ -759,7 +761,6 @@ class depgraph:
 					"--getbinpkgonly" in self.myopts)
 		self.args_keys = []
 		self.global_updates = {}
-		self.pkg_node_map = {}
 		self.blocker_digraph = digraph()
 		self.blocker_parents = {}
 
@@ -777,32 +778,31 @@ class depgraph:
 		#"no downgrade" emerge
 		"""
 		jbigkey = " ".join(mybigkey) + " merge"
+		mytype, myroot, mykey = mybigkey
 		if self.digraph.hasnode(jbigkey):
 			if addme and jbigkey != myparent:
 				# Refuse to make a node depend on itself so that the we don't
 				# don't create a bogus circular dependency in self.altlist().
+				self.pkg_node_map[myroot][mykey] = jbigkey
 				if rev_dep and myparent:
-					self.pkg_node_map[myparent.split()[2]] = myparent
+					ptype, proot, pkey, pstatus = myparent.split()
+					self.pkg_node_map[proot][pkey] = myparent
 					self.digraph.addnode(myparent, jbigkey, priority=priority)
 				else:
-					self.pkg_node_map[mybigkey[2]] = jbigkey
 					self.digraph.addnode(jbigkey, myparent, priority=priority)
 			return 1
 		jbigkey = " ".join(mybigkey) + " nomerge"
 		if self.digraph.hasnode(jbigkey):
-			"""XXX: It's possible that this package has been explicitly
-			requested as a command line argument.  This can be solved by
-			checking all args prior to marking packages as nomerge"""
+			self.pkg_node_map[myroot][mykey] = jbigkey
 			if rev_dep and myparent:
-				self.pkg_node_map[myparent.split()[2]] = myparent
+				ptype, proot, pkey, pstatus = myparent.split()
+				self.pkg_node_map[proot][pkey] = myparent
 				self.digraph.addnode(myparent, jbigkey, priority=priority)
 			else:
-				self.pkg_node_map[mybigkey[2]] = jbigkey
 				self.digraph.addnode(jbigkey, myparent, priority=priority)
 			return 1
 		
 		self.spinner.update()
-		mytype,myroot,mykey=mybigkey
 		if mytype == "blocks":
 			if addme and "--buildpkgonly" not in self.myopts and myparent:
 				mybigkey[1] = myparent.split()[1]
@@ -871,12 +871,13 @@ class depgraph:
 		    depgraph already and returned, or we are here.  Whether we are merging or not; we must
 		    add the package to the depgraph; so we do that here. """
 		jbigkey = " ".join(mybigkey)
+		self.pkg_node_map[myroot][mykey] = jbigkey
 		if rev_dep and myparent:
-			self.pkg_node_map[myparent.split()[2]] = myparent
+			ptype, proot, pkey, pstatus = myparent.split()
+			self.pkg_node_map[proot][pkey] = myparent
 			self.digraph.addnode(myparent, jbigkey,
 				priority=priority)
 		else:
-			self.pkg_node_map[mybigkey[2]] = jbigkey
 			self.digraph.addnode(jbigkey, myparent,
 				priority=priority)
 
@@ -1483,7 +1484,7 @@ class depgraph:
 							unresolvable = True
 							break
 						# Enforce correct merge order with a hard dep.
-						node = self.pkg_node_map[pkg]
+						node = self.pkg_node_map[proot][pkg]
 						self.digraph.addnode(node, parent,
 							priority=DepPriority(buildtime=True))
 						"""Count references to this blocker so that it can be
@@ -1518,7 +1519,7 @@ class depgraph:
 			get_nodes = mygraph.root_nodes
 		else:
 			get_nodes = mygraph.leaf_nodes
-			for cpv, node in self.pkg_node_map.iteritems():
+			for cpv, node in self.pkg_node_map["/"].iteritems():
 				if "portage" == portage.catsplit(portage.dep_getkey(cpv))[-1]:
 					asap_nodes.append(node)
 					break
