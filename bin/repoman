@@ -457,8 +457,7 @@ if os.path.isdir("CVS"):
 isSvn=False
 myreporoot=None
 if os.path.isdir(".svn"):
-	repoman_settings["PORTDIR_OVERLAY"]=""
-	if "svn" not in portage.features:
+	if "svn" not in repoman_settings.features:
 		print
 		print
 		print red('!!! You do not have ')+bold('FEATURES="svn" ')+red("enabled...")
@@ -468,9 +467,11 @@ if os.path.isdir(".svn"):
 
 	try:
 		isSvn=True
-		myrepoinfo=os.popen("svn info").readlines()
-		myreporoot=myrepoinfo[1].split("var/svnroot/")[1].rstrip()
-		myreporootpath=os.path.normpath(myrepoinfo[1].split("svn.gentoo.org")[1].rstrip().replace(myreporoot,''))
+		myrepoinfo = os.popen("svn info").readlines()
+		myurl = myrepoinfo[1][5:].rstrip()
+		myreproot = myrepoinfo[2][17:].rstrip()
+		myreporoot = myurl[len(myreproot):]
+		myreporootpath = "/" + "/".join(myreproot.split("/")[3:])
 	except SystemExit, e:
 		raise  # Need to propogate this
 	except:
@@ -560,16 +561,8 @@ if not myreporoot:
 	myreporoot = os.path.basename(portdir_overlay)
 	myreporoot += mydir[len(portdir_overlay):-1]
 
-if isCvs or isSvn:
-	reporoot=None
-	for x in REPOROOTS:
-		if myreporoot[0:len(x)]==x:
-			reporoot=myreporoot
-	if not reporoot:
-		err("Couldn't recognize repository type.  Supported repositories:\n"+repr(REPOROOTS))
 if isSvn:
-	reposplit=string.split(os.path.normpath(myrepoinfo[1].split("svn.gentoo.org")[1].rstrip().replace("/var/svnroot",'')).replace(x,'')[2:],"/")
-	reposplit.insert(0,myreporoot)
+	reposplit=string.split(myreporoot,"/")
 else:
 	reposplit=string.split(myreporoot,"/")
 repolevel=len(reposplit)
