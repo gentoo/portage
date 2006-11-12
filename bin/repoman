@@ -1747,7 +1747,11 @@ else:
 			except KeyboardInterrupt: 
 				exithandler()
 	try:
-		commitmessage+="\n(Portage version: "+str(portage.VERSION)+"-prefix/Repoman-SVN)"
+		commitmessage+="\n(Portage version: "+str(portage.VERSION)+"-prefix/Repoman-"
+		if isCvs:
+			commitmessage+="CVS)"
+		elif isSvn:
+			commitmessage+="SVN)"
 	except AttributeError:
 		print "Failed to insert portage version in message!"
 		commitmessage+="\n(Portage version: Unknown)"
