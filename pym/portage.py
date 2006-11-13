@@ -6024,8 +6024,7 @@ class dblink:
 		self.dbtmpdir = self.dbcatdir+"/-MERGING-"+pkg
 		self.dbdir    = self.dbpkgdir
 
-		self.lock_pkg = None
-		self.lock_tmp = None
+		self._lock_vdb = None
 		self.lock_num = 0    # Count of the held locks on the db.
 
 		self.settings = mysettings
@@ -6043,15 +6042,13 @@ class dblink:
 
 	def lockdb(self):
 		if self.lock_num == 0:
-			self.lock_pkg = portage_locks.lockdir(self.dbpkgdir)
-			self.lock_tmp = portage_locks.lockdir(self.dbtmpdir)
+			self._lock_vdb = portage_locks.lockdir(self.dbroot)
 		self.lock_num += 1
 
 	def unlockdb(self):
 		self.lock_num -= 1
 		if self.lock_num == 0:
-			portage_locks.unlockdir(self.lock_tmp)
-			portage_locks.unlockdir(self.lock_pkg)
+			portage_locks.unlockdir(self._lock_vdb)
 
 	def getpath(self):
 		"return path to location of db information (for >>> informational display)"
