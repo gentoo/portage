@@ -3903,7 +3903,10 @@ def action_depclean(settings, trees, ldpath_mtimes,
 		for atom in unresolveable:
 			print atom, "required by", " ".join(unresolveable[atom])
 		print
-		print "Have you forgotten to run " + good("`emerge --update --deep world`") + " prior to depclean?"
+		print "Have you forgotten to run " + good("`emerge --update --newuse --deep world`") + " prior to"
+		print "depclean?  It may also be necessary to manually uninstalled packages that no"
+		print "longer exist in the portage tree since it may not be possible to satisfy their"
+		print "dependencies."
 		print
 		return
 
