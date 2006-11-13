@@ -3456,7 +3456,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 						"!!! existing '%s' directory; exiting.\n" % myportdir)
 					sys.exit(1)
 				del e
-			if portage.spawn("cd "+svndir+"; svn checkout "+syncuri,settings,free=1):
+			if portage.spawn("cd "+svndir+"; svn checkout "+syncuri[4:],settings,free=1):
 				print "!!! svn checkout error; exiting."
 				sys.exit(1)
 			os.rename(os.path.join(svndir, "prefix-overlay"), myportdir)
