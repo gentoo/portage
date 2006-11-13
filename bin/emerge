@@ -2687,172 +2687,196 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 	global_unmerge=0
 	xterm_titles = "notitles" not in settings.features
 
-	realsyslist = getlist(settings, "system")
-	syslist = []
-	for x in realsyslist:
-		mycp = portage.dep_getkey(x)
-		if mycp in settings.getvirtuals():
-			providers = []
-			for provider in settings.getvirtuals()[mycp]:
-				if vartree.dbapi.match(provider):
-					providers.append(provider)
-			if len(providers) == 1:
-				syslist.extend(providers)
-		else:
-			syslist.append(mycp)
-
-	mysettings = portage.config(clone=settings)
-
-	if not unmerge_files or "world" in unmerge_files or "system" in unmerge_files:
-		if "unmerge"==unmerge_action:
-			print
-			print bold("emerge unmerge")+" can only be used with specific package names, not with "+bold("world")+" or"
-			print bold("system")+" targets."
-			print
-			return 0
-		else:
-			global_unmerge=1
-
-	localtree = vartree
-	# process all arguments and add all valid db entries to candidate_catpkgs
-	if global_unmerge:
-		if not unmerge_files or "world" in unmerge_files:
-			candidate_catpkgs.extend(localtree.getallnodes())
-		elif "system" in unmerge_files:
-			candidate_catpkgs.extend(getlist(settings, "system"))
-	else:
-		#we've got command-line arguments
-		if not unmerge_files:
-			print "\nNo packages to unmerge have been provided.\n"
-			return 0
-		for x in unmerge_files:
-			arg_parts=x.split('/')
-			if (x[0] not in [".","/"]) and (arg_parts[-1][-7:] != ".ebuild"):
-				#possible cat/pkg or dep; treat as such
-				candidate_catpkgs.append(x)
-			elif unmerge_action in ["prune","clean"]:
-				print "\n!!! Prune and clean do not accept individual ebuilds as arguments;\n    skipping.\n"
-				continue
+	vdb_lock = None
+	try:
+		vdb_lock = portage_locks.lockdir(
+			os.path.join(settings["ROOT"], portage.VDB_PATH))
+		realsyslist = getlist(settings, "system")
+		syslist = []
+		for x in realsyslist:
+			mycp = portage.dep_getkey(x)
+			if mycp in settings.getvirtuals():
+				providers = []
+				for provider in settings.getvirtuals()[mycp]:
+					if vartree.dbapi.match(provider):
+						providers.append(provider)
+				if len(providers) == 1:
+					syslist.extend(providers)
 			else:
-				# it appears that the user is specifying an installed ebuild and we're in "unmerge" mode, so it's
-				# ok.
-				if not os.path.exists(x):
-					print "\n!!! The path '"+x+"' doesn't exist.\n"
-					return 0
-
-				absx   = os.path.abspath(x)
-				sp_absx = absx.split("/")
-				if sp_absx[-1][-7:] == ".ebuild":
-					del sp_absx[-1]
-					absx = string.join(sp_absx,"/")
-
-				sp_absx_len = len(sp_absx)
-
-				vdb_path = os.path.join(settings["ROOT"], portage.VDB_PATH)
-				vdb_len  = len(vdb_path)
-
-				sp_vdb     = vdb_path.split("/")
-				sp_vdb_len = len(sp_vdb)
-
-				if not os.path.exists(absx+"/CONTENTS"):
-					print "!!! Not a valid db dir: "+str(absx)
-					return 0
-
-				if sp_absx_len <= sp_vdb_len:
-					# The Path is shorter... so it can't be inside the vdb.
-					print sp_absx
-					print absx
-					print "\n!!!",x,"cannot be inside "+vdb_path+"; aborting.\n"
-					return 0
-
-				for idx in range(0,sp_vdb_len):
-					if (idx >= sp_absx_len) or (sp_vdb[idx] != sp_absx[idx]):
+				syslist.append(mycp)
+	
+		mysettings = portage.config(clone=settings)
+	
+		if not unmerge_files or "world" in unmerge_files or \
+			"system" in unmerge_files:
+			if "unmerge"==unmerge_action:
+				print
+				print bold("emerge unmerge") + " can only be used with " + \
+					"specific package names, not with "+bold("world")+" or"
+				print bold("system")+" targets."
+				print
+				return 0
+			else:
+				global_unmerge = 1
+	
+		localtree = vartree
+		# process all arguments and add all
+		# valid db entries to candidate_catpkgs
+		if global_unmerge:
+			if not unmerge_files or "world" in unmerge_files:
+				candidate_catpkgs.extend(vartree.dbapi.cpv_all())
+			elif "system" in unmerge_files:
+				candidate_catpkgs.extend(getlist(settings, "system"))
+		else:
+			#we've got command-line arguments
+			if not unmerge_files:
+				print "\nNo packages to unmerge have been provided.\n"
+				return 0
+			for x in unmerge_files:
+				arg_parts = x.split('/')
+				if x[0] not in [".","/"] and \
+					arg_parts[-1][-7:] != ".ebuild":
+					#possible cat/pkg or dep; treat as such
+					candidate_catpkgs.append(x)
+				elif unmerge_action in ["prune","clean"]:
+					print "\n!!! Prune and clean do not accept individual" + \
+						" ebuilds as arguments;\n    skipping.\n"
+					continue
+				else:
+					# it appears that the user is specifying an installed
+					# ebuild and we're in "unmerge" mode, so it's ok.
+					if not os.path.exists(x):
+						print "\n!!! The path '"+x+"' doesn't exist.\n"
+						return 0
+	
+					absx   = os.path.abspath(x)
+					sp_absx = absx.split("/")
+					if sp_absx[-1][-7:] == ".ebuild":
+						del sp_absx[-1]
+						absx = "/".join(sp_absx)
+	
+					sp_absx_len = len(sp_absx)
+	
+					vdb_path = os.path.join(settings["ROOT"], portage.VDB_PATH)
+					vdb_len  = len(vdb_path)
+	
+					sp_vdb     = vdb_path.split("/")
+					sp_vdb_len = len(sp_vdb)
+	
+					if not os.path.exists(absx+"/CONTENTS"):
+						print "!!! Not a valid db dir: "+str(absx)
+						return 0
+	
+					if sp_absx_len <= sp_vdb_len:
+						# The Path is shorter... so it can't be inside the vdb.
 						print sp_absx
 						print absx
-						print "\n!!!",x,"is not inside "+vdb_path+"; aborting.\n"
+						print "\n!!!",x,"cannot be inside "+ \
+							vdb_path+"; aborting.\n"
 						return 0
-
-				print "="+string.join(sp_absx[sp_vdb_len:],"/")
-				candidate_catpkgs.append("="+string.join(sp_absx[sp_vdb_len:],"/"))
-
-	newline=""
-	if (not "--quiet" in myopts):
-		newline="\n"
-	if settings["ROOT"] != "/":
-		print darkgreen(newline+">>> Using system located in ROOT tree "+settings["ROOT"])
-	if (("--pretend" in myopts) or ("--ask" in myopts)) and not ("--quiet" in myopts):
-		print darkgreen(newline+">>> These are the packages that would be unmerged:")
-
-	pkgmap={}
-	numselected=0
-	for x in candidate_catpkgs:
-		#cycle through all our candidate deps and determine what will and will not get unmerged
-		try:
-			mymatch=localtree.dep_match(x)
-		except KeyError:
-			mymatch=None
-		except ValueError, errpkgs:
-			print "\n\n!!! The short ebuild name \"" + x + "\" is ambiguous.  Please specify"
-			print "!!! one of the following fully-qualified ebuild names instead:\n"
-			for i in errpkgs[0]:
-				print "    " + green(i)
-			print
-			sys.exit(1)
-
-		if not mymatch and x[0] not in "<>=~":
-			#add a "=" if missing
-			mymatch=localtree.dep_match("="+x)
-		if not mymatch:
-			if raise_on_missing:
-				raise portage_exception.PackageNotFound(x)
-			else:
-				portage.writemsg("\n--- Couldn't find '%s' to %s.\n" % \
-					(x, unmerge_action), noiselevel=-1)
-				continue
-		mykey = portage.key_expand(
-			portage.dep_getkey(
-				mymatch[0]), mydb=vartree.dbapi, settings=settings)
-		if not pkgmap.has_key(mykey):
-			pkgmap[mykey]={"protected":[], "selected":[], "omitted":[] }
-		if unmerge_action=="unmerge":
-				for y in mymatch:
-					if y not in pkgmap[mykey]["selected"]:
-						pkgmap[mykey]["selected"].append(y)
-						numselected=numselected+len(mymatch)
-
-		else:
-			#unmerge_action in ["prune", clean"]
-			slotmap={}
-			for mypkg in mymatch:
-				if unmerge_action=="clean":
-					myslot=localtree.getslot(mypkg)
+	
+					for idx in range(0,sp_vdb_len):
+						if idx >= sp_absx_len or sp_vdb[idx] != sp_absx[idx]:
+							print sp_absx
+							print absx
+							print "\n!!!", x, "is not inside "+\
+								vdb_path+"; aborting.\n"
+							return 0
+	
+					print "="+"/".join(sp_absx[sp_vdb_len:])
+					candidate_catpkgs.append(
+						"="+"/".join(sp_absx[sp_vdb_len:]))
+	
+		newline=""
+		if (not "--quiet" in myopts):
+			newline="\n"
+		if settings["ROOT"] != "/":
+			print darkgreen(newline+ \
+				">>> Using system located in ROOT tree "+settings["ROOT"])
+		if (("--pretend" in myopts) or ("--ask" in myopts)) and \
+			not ("--quiet" in myopts):
+			print darkgreen(newline+\
+				">>> These are the packages that would be unmerged:")
+	
+		pkgmap={}
+		numselected=0
+		for x in candidate_catpkgs:
+			# cycle through all our candidate deps and determine
+			# what will and will not get unmerged
+			try:
+				mymatch=localtree.dep_match(x)
+			except KeyError:
+				mymatch=None
+			except ValueError, errpkgs:
+				print "\n\n!!! The short ebuild name \"" + \
+					x + "\" is ambiguous.  Please specify"
+				print "!!! one of the following fully-qualified " + \
+					"ebuild names instead:\n"
+				for i in errpkgs[0]:
+					print "    " + green(i)
+				print
+				sys.exit(1)
+	
+			if not mymatch and x[0] not in "<>=~":
+				#add a "=" if missing
+				mymatch=localtree.dep_match("="+x)
+			if not mymatch:
+				if raise_on_missing:
+					raise portage_exception.PackageNotFound(x)
 				else:
-					#since we're pruning, we don't care about slots and put all the pkgs in together
-					myslot=0
-				if not slotmap.has_key(myslot):
-					slotmap[myslot]={}
-				slotmap[myslot][localtree.dbapi.cpv_counter(mypkg)]=mypkg
-			for myslot in slotmap.keys():
-				counterkeys=slotmap[myslot].keys()
-				counterkeys.sort()
-				if not counterkeys:
+					portage.writemsg("\n--- Couldn't find '%s' to %s.\n" % \
+						(x, unmerge_action), noiselevel=-1)
 					continue
-				counterkeys.sort()
-				pkgmap[mykey]["protected"].append(slotmap[myslot][counterkeys[-1]])
-				del counterkeys[-1]
-				#be pretty and get them in order of merge:
-				for ckey in counterkeys:
-					pkgmap[mykey]["selected"].append(slotmap[myslot][ckey])
-					numselected=numselected+1
-				#ok, now the last-merged package is protected, and the rest are selected
-	if global_unmerge and not numselected:
-		print "\n>>> No outdated packages were found on your system.\n"
-		return 0
-
-	if not numselected:
-		print "\n>>> No packages selected for removal by",unmerge_action+".\n"
-		return 0
-
+			mykey = portage.key_expand(
+				portage.dep_getkey(
+					mymatch[0]), mydb=vartree.dbapi, settings=settings)
+			if not pkgmap.has_key(mykey):
+				pkgmap[mykey]={"protected":[], "selected":[], "omitted":[] }
+			if unmerge_action=="unmerge":
+					for y in mymatch:
+						if y not in pkgmap[mykey]["selected"]:
+							pkgmap[mykey]["selected"].append(y)
+							numselected=numselected+len(mymatch)
+	
+			else:
+				#unmerge_action in ["prune", clean"]
+				slotmap={}
+				for mypkg in mymatch:
+					if unmerge_action=="clean":
+						myslot=localtree.getslot(mypkg)
+					else:
+						# since we're pruning, we don't care about slots
+						# and put all the pkgs in together
+						myslot=0
+					if not slotmap.has_key(myslot):
+						slotmap[myslot]={}
+					slotmap[myslot][localtree.dbapi.cpv_counter(mypkg)]=mypkg
+				for myslot in slotmap.keys():
+					counterkeys=slotmap[myslot].keys()
+					counterkeys.sort()
+					if not counterkeys:
+						continue
+					counterkeys.sort()
+					pkgmap[mykey]["protected"].append(
+						slotmap[myslot][counterkeys[-1]])
+					del counterkeys[-1]
+					#be pretty and get them in order of merge:
+					for ckey in counterkeys:
+						pkgmap[mykey]["selected"].append(slotmap[myslot][ckey])
+						numselected=numselected+1
+					# ok, now the last-merged package
+					# is protected, and the rest are selected
+		if global_unmerge and not numselected:
+			print "\n>>> No outdated packages were found on your system.\n"
+			return 0
+	
+		if not numselected:
+			print "\n>>> No packages selected for removal by", \
+				unmerge_action+".\n"
+			return 0
+	finally:
+		if vdb_lock:
+			portage_locks.unlockdir(vdb_lock)
 	for x in pkgmap.keys():
 		for y in localtree.dep_match(x):
 			if y not in pkgmap[x]["omitted"] and \
