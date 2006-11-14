@@ -2264,7 +2264,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						# assume that it is fully downloaded.
 						continue
 					else:
-						if mystat.st_size < mydigests[myfile]["size"]:
+						if mystat.st_size < mydigests[myfile]["size"] and \
+							not restrict_fetch:
 							fetched = 1 # Try to resume this download.
 						else:
 							verified_ok, reason = portage_checksum.verify_all(
@@ -2277,7 +2278,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 								writemsg(("!!! Got:      %s\n" + \
 									"!!! Expected: %s\n") % \
 									(reason[1], reason[2]), noiselevel=-1)
-								if can_fetch:
+								if can_fetch and not restrict_fetch:
 									writemsg("Refetching...\n\n",
 										noiselevel=-1)
 									os.unlink(myfile_path)
