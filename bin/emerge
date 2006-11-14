@@ -1922,9 +1922,11 @@ class depgraph:
 					"fetch" in portdb.aux_get(
 					x[2], ["RESTRICT"])[0].split():
 					fetch = red("F")
+					counters.restrict_fetch += 1
 					if portdb.fetch_check(
 						pkg_key, self.useFlags[myroot][pkg_key]):
 						fetch = green("f")
+						counters.restrict_fetch_satisfied += 1
 
 				#we need to use "--emptrytree" testing here rather than "empty" param testing because "empty"
 				#param is used for -u, where you still *do* want to see when something is being upgraded.
@@ -2248,6 +2250,8 @@ class PackageCounters(object):
 		self.reinst     = 0
 		self.blocks     = 0
 		self.totalsize  = 0
+		self.restrict_fetch           = 0
+		self.restrict_fetch_satisfied = 0
 
 	def __str__(self):
 		total_installs = self.upgrades + self.downgrades + self.newslot + self.new + self.reinst
@@ -2284,6 +2288,14 @@ class PackageCounters(object):
 		if total_installs != 0:
 			myoutput.append(")")
 		myoutput.append(", Size of downloads: %s" % format_size(self.totalsize))
+		if self.restrict_fetch:
+			myoutput.append("\nFetch Restriction: %s package" % \
+				self.restrict_fetch)
+			if self.restrict_fetch > 1:
+				myoutput.append("s")
+		if self.restrict_fetch_satisfied < self.restrict_fetch:
+			myoutput.append(bad(" (%s unsatisfied)") % \
+				(self.restrict_fetch - self.restrict_fetch_satisfied))
 		return "".join(myoutput)
 
 class MergeTask(object):
