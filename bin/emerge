@@ -3487,12 +3487,11 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 	if os.path.exists(myportdir+"/metadata/cache") and updatecache_flg:
 		action_metadata(settings, portdb, myopts)
 
-	portage.global_updates(
-		settings, trees, mtimedb["updates"])
-	mtimedb.commit()
-	# Reload the whole config from scratch.
-	settings, trees, mtimedb = load_emerge_config(trees=trees)
-	portdb = trees[settings["ROOT"]]["porttree"].dbapi
+	if portage.global_updates(settings, trees, mtimedb["updates"]):
+		mtimedb.commit()
+		# Reload the whole config from scratch.
+		settings, trees, mtimedb = load_emerge_config(trees=trees)
+		portdb = trees[settings["ROOT"]]["porttree"].dbapi
 
 	mybestpv = portdb.xmatch("bestmatch-visible", "sys-apps/portage")
 	mypvs = portage.best(
@@ -4391,11 +4390,11 @@ def emerge_main():
 	os.umask(022)
 	settings, trees, mtimedb = load_emerge_config()
 	portdb = trees[settings["ROOT"]]["porttree"].dbapi
-	portage.global_updates(settings, trees, mtimedb["updates"])
-	mtimedb.commit()
-	# Reload the whole config from scratch.
-	settings, trees, mtimedb = load_emerge_config(trees=trees)
-	portdb = trees[settings["ROOT"]]["porttree"].dbapi
+	if portage.global_updates(settings, trees, mtimedb["updates"]):
+		mtimedb.commit()
+		# Reload the whole config from scratch.
+		settings, trees, mtimedb = load_emerge_config(trees=trees)
+		portdb = trees[settings["ROOT"]]["porttree"].dbapi
 
 	ldpath_mtimes = mtimedb["ldpath"]
 	xterm_titles = "notitles" not in settings.features
