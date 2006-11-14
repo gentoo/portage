@@ -166,35 +166,35 @@ def perform_checksum(filename, hashname="MD5", calc_prelink=0):
 	myfilename      = filename[:]
 	prelink_tmpfile = os.path.join("/", PRIVATE_PATH, "prelink-checksum.tmp." + str(os.getpid()))
 	mylock          = None
-	
-	if calc_prelink and prelink_capable:
-		mylock = portage_locks.lockfile(prelink_tmpfile, wantnewlockfile=1)
-		# Create non-prelinked temporary file to checksum.
-		# Files rejected by prelink are summed in place.
-		retval=portage_exec.spawn([PRELINK_BINARY,"--undo","-o",prelink_tmpfile,filename],fd_pipes={})
-		if retval==0:
-			#portage_util.writemsg(">>> prelink checksum '"+str(filename)+"'.\n")
-			myfilename=prelink_tmpfile
 	try:
-		if hashname not in hashfunc_map:
-			raise portage_exception.DigestException, hashname+" hash function not available (needs dev-python/pycrypto)"
-		myhash, mysize = hashfunc_map[hashname](myfilename)
-	except (OSError, IOError), e:
-		if e.errno == errno.ENOENT:
-			raise portage_exception.FileNotFound(myfilename)
-		else:
-			raise
-	if calc_prelink and prelink_capable:
+		if calc_prelink and prelink_capable:
+			mylock = portage_locks.lockfile(prelink_tmpfile, wantnewlockfile=1)
+			# Create non-prelinked temporary file to checksum.
+			# Files rejected by prelink are summed in place.
+			retval = portage_exec.spawn([PRELINK_BINARY, "--undo", "-o",
+				prelink_tmpfile, filename], fd_pipes={})
+			if retval == os.EX_OK:
+				myfilename = prelink_tmpfile
 		try:
-			os.unlink(prelink_tmpfile)
-		except OSError, oe:
-			if oe.errno == errno.ENOENT:
-				pass
-			else:
-				raise
-		portage_locks.unlockfile(mylock)
-
-	return (myhash,mysize)
+			if hashname not in hashfunc_map:
+				raise portage_exception.DigestException(hashname + \
+					" hash function not available (needs dev-python/pycrypto)")
+			myhash, mysize = hashfunc_map[hashname](myfilename)
+		except (OSError, IOError), e:
+			if e.errno == errno.ENOENT:
+				raise portage_exception.FileNotFound(myfilename)
+			raise
+		if calc_prelink and prelink_capable:
+			try:
+				os.unlink(prelink_tmpfile)
+			except OSError, e:
+				if e.errno != errno.ENOENT:
+					raise
+				del e
+		return myhash, mysize
+	finally:
+		if mylock:
+			portage_locks.unlockfile(mylock)
 
 def perform_multiple_checksums(filename, hashes=["MD5"], calc_prelink=0):
 	"""
