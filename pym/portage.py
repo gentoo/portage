@@ -4924,7 +4924,6 @@ class portdbapi(dbapi):
 
 	def __init__(self,porttree_root,mysettings=None):
 		portdbapi.portdbapi_instances.append(self)
-		self.lock_held = 0;
 
 		if mysettings:
 			self.mysettings = mysettings
@@ -5149,48 +5148,44 @@ class portdbapi(dbapi):
 			else:
 				mydbkey = self.depcachedir+"/aux_db_key_temp"
 
-			if self.lock_held:
-				raise "Lock is already held by me?"
-			self.lock_held = 1
-			mylock = portage_locks.lockfile(mydbkey, wantnewlockfile=1)
-
-			if os.path.exists(mydbkey):
+			mylock = None
+			try:
+				portage_locks.lockfile(mydbkey, wantnewlockfile=1)
 				try:
 					os.unlink(mydbkey)
 				except (IOError, OSError), e:
+					if e.errno != errno.ENOENT:
+						raise
+					del e
+
+				self.doebuild_settings.reset()
+				myret = doebuild(myebuild, "depend", "/",
+					 self.doebuild_settings, dbkey=mydbkey, tree="porttree",
+					 mydbapi=self)
+				if myret != os.EX_OK:
+					#depend returned non-zero exit code...
+					writemsg((red("\naux_get():") + \
+						" (0) Error in '%s'. (%s)\n" + \
+						"               Check for syntax error or " + \
+						"corruption in the ebuild. (--debug)\n\n") % \
+						(myebuild, myret), noiselevel=-1)
+					raise KeyError(mycpv)
+
+				try:
+					mycent = open(mydbkey, "r")
+					os.unlink(mydbkey)
+					mylines = mycent.readlines()
+					mycent.close()
+				except (IOError, OSError):
+					writemsg((red("\naux_get():") + \
+						" (1) Error in '%s' ebuild.\n" + \
+						"               Check for syntax error or " + \
+						"corruption in the ebuild. (--debug)\n\n") % myebuild,
+						noiselevel=-1)
+					raise KeyError(mycpv)
+			finally:
+				if mylock:
 					portage_locks.unlockfile(mylock)
-					self.lock_held = 0
-					writemsg("Uncaught handled exception: %(exception)s\n" % {"exception":str(e)})
-					raise
-
-			self.doebuild_settings.reset()
-			myret = doebuild(myebuild, "depend", "/", self.doebuild_settings,
-				dbkey=mydbkey, tree="porttree", mydbapi=self)
-			if myret:
-				portage_locks.unlockfile(mylock)
-				self.lock_held = 0
-				#depend returned non-zero exit code...
-				writemsg(str(red("\naux_get():")+" (0) Error in "+mycpv+" ebuild. ("+str(myret)+")\n"
-				"               Check for syntax error or corruption in the ebuild. (--debug)\n\n"),
-					noiselevel=-1)
-				raise KeyError
-
-			try:
-				mycent=open(mydbkey,"r")
-				os.unlink(mydbkey)
-				mylines=mycent.readlines()
-				mycent.close()
-
-			except (IOError, OSError):
-				portage_locks.unlockfile(mylock)
-				self.lock_held = 0
-				writemsg(str(red("\naux_get():")+" (1) Error in "+mycpv+" ebuild.\n"
-				  "               Check for syntax error or corruption in the ebuild. (--debug)\n\n"),
-				  noiselevel=-1)
-				raise KeyError
-
-			portage_locks.unlockfile(mylock)
-			self.lock_held = 0
 
 			mydata = {}
 			for x in range(0,len(mylines)):
