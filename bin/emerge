@@ -766,6 +766,7 @@ class depgraph:
 		self.global_updates = {}
 		self.blocker_digraph = digraph()
 		self.blocker_parents = {}
+		self._altlist_cache = {}
 
 	def create(self, mybigkey, myparent=None, addme=1, myuse=None,
 		priority=DepPriority(), rev_dep=False, arg=None):
@@ -1512,6 +1513,8 @@ class depgraph:
 			self.altlist()
 
 	def altlist(self, reversed=False):
+		if reversed in self._altlist_cache:
+			return self._altlist_cache[reversed][:]
 		mygraph=self.digraph.copy()
 		myblockers = self.blocker_digraph.copy()
 		retlist=[]
@@ -1620,7 +1623,7 @@ class depgraph:
 		""" Add any unresolved blocks so that they can be displayed."""
 		for blocker in self.blocker_parents:
 			retlist.append(blocker.split())
-
+		self._altlist_cache[reversed] = retlist[:]
 		return retlist
 
 	def xcreate(self,mode="system"):
