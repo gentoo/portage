@@ -6381,9 +6381,6 @@ class dblink:
 		if not os.path.exists(self.dbcatdir):
 			os.makedirs(self.dbcatdir)
 
-		# This blocks until we can get the dirs to ourselves.
-		self.lockdb()
-
 		otherversions=[]
 		for v in self.vartree.dbapi.cp_list(self.mysplit[0]):
 			otherversions.append(v.split("/")[1])
@@ -6467,7 +6464,7 @@ class dblink:
 				if not self.getcontents():
 					self.unmerge(ldpath_mtimes=prev_mtimes)
 					self.delete()
-				self.unlockdb()
+
 				print
 				print "Searching all installed packages for file collisions..."
 				print "Press Ctrl-C to Stop"
@@ -6615,7 +6612,6 @@ class dblink:
 		self.delete()
 		movefile(self.dbtmpdir, self.dbpkgdir, mysettings=self.settings)
 		contents = self.getcontents()
-		self.unlockdb()
 
 		#write out our collection of md5sums
 		if cfgfiledict.has_key("IGNORE"):
@@ -6949,8 +6945,12 @@ class dblink:
 
 	def merge(self, mergeroot, inforoot, myroot, myebuild=None, cleanup=0,
 		mydbapi=None, prev_mtimes=None):
-		return self.treewalk(mergeroot, myroot, inforoot, myebuild,
-			cleanup=cleanup, mydbapi=mydbapi, prev_mtimes=prev_mtimes)
+		try:
+			self.lockdb()
+			return self.treewalk(mergeroot, myroot, inforoot, myebuild,
+				cleanup=cleanup, mydbapi=mydbapi, prev_mtimes=prev_mtimes)
+		finally:
+			self.unlockdb()
 
 	def getstring(self,name):
 		"returns contents of a file with whitespace converted to spaces"
