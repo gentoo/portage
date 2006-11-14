@@ -6459,12 +6459,6 @@ class dblink:
 				print
 				print red("package "+self.cat+"/"+self.pkg+" NOT merged")
 				print
-				# Why is the package already merged here db-wise? Shouldn't be the case
-				# only unmerge if it ia new package and has no contents
-				if not self.getcontents():
-					self.unmerge(ldpath_mtimes=prev_mtimes)
-					self.delete()
-
 				print
 				print "Searching all installed packages for file collisions..."
 				print "Press Ctrl-C to Stop"
