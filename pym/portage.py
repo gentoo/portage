@@ -4236,10 +4236,13 @@ class fakedbapi(dbapi):
 	def cpv_all(self):
 		return self.cpvdict.keys()
 
-	def cpv_inject(self, mycpv, myslot=None):
+	def cpv_inject(self, mycpv, metadata=None):
 		"""Adds a cpv from the list of available packages."""
 		mycp=cpv_getkey(mycpv)
-		self.cpvdict[mycpv] = myslot
+		self.cpvdict[mycpv] = metadata
+		myslot = None
+		if metadata:
+			myslot = metadata.get("SLOT", None)
 		if myslot and mycp in self.cpdict:
 			# If necessary, remove another package in the same SLOT.
 			for cpv in self.cpdict[mycp]:
@@ -4276,13 +4279,10 @@ class fakedbapi(dbapi):
 	def aux_get(self, mycpv, wants):
 		if not self.cpv_exists(mycpv):
 			raise KeyError(mycpv)
-		values = []
-		for x in wants:
-			if x == "SLOT":
-				values.append(self.cpvdict[mycpv])
-			else:
-				values.append("")
-		return values
+		metadata = self.cpvdict[mycpv]
+		if not metadata:
+			return ["" for x in wants]
+		return [metadata.get(x, "") for x in wants]
 
 class bindbapi(fakedbapi):
 	def __init__(self, mybintree=None, settings=None):

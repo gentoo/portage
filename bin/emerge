@@ -745,7 +745,7 @@ class depgraph:
 		if "empty" not in self.myparams or self.target_root != "/":
 			for pkg in vardb.cpv_all():
 				myslot = vardb.aux_get(pkg, ["SLOT"])[0]
-				fakedb.cpv_inject(pkg, myslot=myslot)
+				fakedb.cpv_inject(pkg, metadata={"SLOT":myslot})
 		if self.target_root != "/":
 			self.mydbapi[self.target_root] = \
 				portage.fakedbapi(settings=settings)
@@ -754,7 +754,7 @@ class depgraph:
 			if "empty" not in self.myparams:
 				for pkg in vardb.cpv_all():
 					myslot = vardb.aux_get(pkg, ["SLOT"])[0]
-					fakedb.cpv_inject(pkg, myslot=myslot)
+					fakedb.cpv_inject(pkg, metadata={"SLOT":myslot})
 		if "--usepkg" in self.myopts:
 			trees["/"]["bintree"].populate(
 				"--getbinpkg" in self.myopts, "--getbinpkgonly" in self.myopts)
@@ -887,7 +887,7 @@ class depgraph:
 
 		if addme:
 			myslot = mydbapi.aux_get(mykey, ["SLOT"])[0]
-			self.mydbapi[myroot].cpv_inject(mykey, myslot=myslot)
+			self.mydbapi[myroot].cpv_inject(mykey, metadata={"SLOT":myslot})
 
 		""" This section determines whether we go deeper into dependencies or not.
 		    We want to go deeper on a few occasions:
