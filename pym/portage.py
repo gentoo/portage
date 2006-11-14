@@ -6020,7 +6020,6 @@ class dblink:
 		self.dbdir    = self.dbpkgdir
 
 		self._lock_vdb = None
-		self.lock_num = 0    # Count of the held locks on the db.
 
 		self.settings = mysettings
 		if self.settings==1:
@@ -6036,14 +6035,14 @@ class dblink:
 		self._contents_inodes = None
 
 	def lockdb(self):
-		if self.lock_num == 0:
-			self._lock_vdb = portage_locks.lockdir(self.dbroot)
-		self.lock_num += 1
+		if self._lock_vdb:
+			raise AssertionError("Lock already held.")
+		self._lock_vdb = portage_locks.lockdir(self.dbroot)
 
 	def unlockdb(self):
-		self.lock_num -= 1
-		if self.lock_num == 0:
+		if self._lock_vdb:
 			portage_locks.unlockdir(self._lock_vdb)
+			self._lock_vdb = None
 
 	def getpath(self):
 		"return path to location of db information (for >>> informational display)"
