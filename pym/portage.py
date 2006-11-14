@@ -7191,7 +7191,20 @@ def portageexit():
 atexit_register(portageexit)
 
 def global_updates(mysettings, trees, prev_mtimes):
-	"""Perform new global updates if they exist in $PORTDIR/profiles/updates/."""
+	"""
+	Perform new global updates if they exist in $PORTDIR/profiles/updates/.
+
+	@param mysettings: A config instance for ROOT="/".
+	@type mysettings: config
+	@param trees: A dictionary containing portage trees.
+	@type trees: dict
+	@param prev_mtimes: A dictionary containing mtimes of files located in
+		$PORTDIR/profiles/updates/.
+	@type prev_mtimes: dict
+	@rtype: None or List
+	@return: None if no were no updates, otherwise a list of update commands
+		that have been performed.
+	"""
 	# only do this if we're root and not running repoman/ebuild digest
 	global secpass
 	if secpass < 2 or "SANDBOX_ACTIVE" in os.environ:
@@ -7206,6 +7219,7 @@ def global_updates(mysettings, trees, prev_mtimes):
 	except portage_exception.DirectoryNotFound:
 		writemsg("--- 'profiles/updates' is empty or not available. Empty portage tree?\n")
 		return
+	myupd = None
 	if len(update_data) > 0:
 		do_upgrade_packagesmessage = 0
 		myupd = []
@@ -7269,6 +7283,8 @@ def global_updates(mysettings, trees, prev_mtimes):
 			writemsg_stdout(" ** Skipping packages. Run 'fixpackages' or set it in FEATURES to fix the")
 			writemsg_stdout("\n    tbz2's in the packages directory. "+bold("Note: This can take a very long time."))
 			writemsg_stdout("\n")
+	if myupd:
+		return myupd
 
 #continue setting up other trees
 
