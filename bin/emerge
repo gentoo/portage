@@ -4571,15 +4571,18 @@ def emerge_main():
 		# We've already allowed "--version" and "--help" above.
 		if "--pretend" not in myopts and \
 		myaction not in ("search","info"):
-			if portage.secpass >= 1:
-				if "--fetchonly" not in myopts and \
-				"--fetch-all-uri" not in myopts and \
-				myaction not in ("metadata", "regen"):
+			if portage.secpass < 1 or \
+				not ("--fetchonly" in myopts or \
+				"--fetch-all-uri" in myopts or \
+				myaction in ("metadata", "regen")):
+				if "--ask" in myopts:
+					myopts["--pretend"] = True
+					del myopts["--ask"]
+					print "root access would be required..." + \
+						" adding --pretend to options."
+				else:
 					print "emerge: root access required."
 					sys.exit(1)
-			else:
-				print "emerge: root access required."
-				sys.exit(1)
 
 	disable_emergelog = False
 	for x in ("--pretend", "--fetchonly", "--fetch-all-uri"):
