@@ -2705,10 +2705,11 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 	global_unmerge=0
 	xterm_titles = "notitles" not in settings.features
 
+	vdb_path = os.path.join(settings["ROOT"], portage.VDB_PATH)
 	vdb_lock = None
 	try:
-		vdb_lock = portage_locks.lockdir(
-			os.path.join(settings["ROOT"], portage.VDB_PATH))
+		if os.access(vdb_path, os.W_OK):
+			vdb_lock = portage_locks.lockdir(vdb_path)
 		realsyslist = getlist(settings, "system")
 		syslist = []
 		for x in realsyslist:
