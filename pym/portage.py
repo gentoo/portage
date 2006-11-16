@@ -3543,7 +3543,11 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			if cpv.startswith("virtual/"):
 				pkgs.append((cpv, pkgsplit(cpv)))
 		if not pkgs:
-			newsplit.append(x)
+			# This one couldn't be expanded as a new-style virtual.  In order
+			# for dep_zapdeps to work properly, this atom must be eliminated
+			# from the choices (dep_zapdeps assigns zero cost to any virtual/*
+			# atoms that it encounters).  Old-style virtuals have already been
+			# expanded to real atoms via dep_virtual.
 			continue
 		pkgs.sort(compare_pkgs) # Prefer higher versions.
 		if isblocker:
@@ -3670,7 +3674,8 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None,
 		preference selection is handled later via slot and version comparison."""
 		all_installed = True
 		for atom in set([dep_getkey(atom) for atom in atoms]):
-			if not vardb.match(atom):
+			# New-style virtuals have zero cost to install.
+			if not vardb.match(atom) and not atom.startswith("virtual/"):
 				all_installed = False
 				break
 
@@ -3685,7 +3690,11 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None,
 		# over other atoms.
 		if all_installed and all_available:
 			for atom in atoms:
-				inst_pkgs = vardb.match(dep_getkey(atom))
+				mykey = dep_getkey(atom)
+				if mykey.startswith("virtual/"):
+					# New-style virtuals have zero cost to install.
+					continue
+				inst_pkgs = vardb.match(mykey)
 				avail_pkg = best(mydbapi.match(atom))
 				avail_slot = mydbapi.aux_get(avail_pkg, ["SLOT"])[0]
 				avail_split = catpkgsplit(avail_pkg)[1:]
