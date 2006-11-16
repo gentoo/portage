@@ -243,15 +243,18 @@ def emergelog(xterm_titles, mystr, short_msg=None):
 		portage_util.apply_secpass_permissions(file_path,
 			uid=portage.portage_uid, gid=portage.portage_gid,
 			mode=0660)
-
-		l=portage_locks.lockfile(mylogfile)
-		# seek because we may have gotten held up by the lock.
-		# if so, we may not be positioned at the end of the file.
-		mylogfile.seek(0,2)
-		mylogfile.write(str(time.time())[:10]+": "+mystr+"\n")
-		mylogfile.flush()
-		portage_locks.unlockfile(l)
-		mylogfile.close()
+		mylock = None
+		try:
+			mylock = portage_locks.lockfile(mylogfile)
+			# seek because we may have gotten held up by the lock.
+			# if so, we may not be positioned at the end of the file.
+			mylogfile.seek(0, 2)
+			mylogfile.write(str(time.time())[:10]+": "+mystr+"\n")
+			mylogfile.flush()
+		finally:
+			if mylock:
+				portage_locks.unlockfile(mylock)
+			mylogfile.close()
 	except (IOError,OSError,portage_exception.PortageException), e:
 		if secpass >= 1:
 			print >> sys.stderr, "emergelog():",e
@@ -743,7 +746,7 @@ class depgraph:
 		if "empty" not in self.myparams or self.target_root != "/":
 			for pkg in vardb.cpv_all():
 				myslot = vardb.aux_get(pkg, ["SLOT"])[0]
-				fakedb.cpv_inject(pkg, myslot=myslot)
+				fakedb.cpv_inject(pkg, metadata={"SLOT":myslot})
 		if self.target_root != "/":
 			self.mydbapi[self.target_root] = \
 				portage.fakedbapi(settings=settings)
@@ -752,7 +755,7 @@ class depgraph:
 			if "empty" not in self.myparams:
 				for pkg in vardb.cpv_all():
 					myslot = vardb.aux_get(pkg, ["SLOT"])[0]
-					fakedb.cpv_inject(pkg, myslot=myslot)
+					fakedb.cpv_inject(pkg, metadata={"SLOT":myslot})
 		if "--usepkg" in self.myopts:
 			trees["/"]["bintree"].populate(
 				"--getbinpkg" in self.myopts, "--getbinpkgonly" in self.myopts)
@@ -764,6 +767,7 @@ class depgraph:
 		self.global_updates = {}
 		self.blocker_digraph = digraph()
 		self.blocker_parents = {}
+		self._altlist_cache = {}
 
 	def create(self, mybigkey, myparent=None, addme=1, myuse=None,
 		priority=DepPriority(), rev_dep=False, arg=None):
@@ -884,7 +888,7 @@ class depgraph:
 
 		if addme:
 			myslot = mydbapi.aux_get(mykey, ["SLOT"])[0]
-			self.mydbapi[myroot].cpv_inject(mykey, myslot=myslot)
+			self.mydbapi[myroot].cpv_inject(mykey, metadata={"SLOT":myslot})
 
 		""" This section determines whether we go deeper into dependencies or not.
 		    We want to go deeper on a few occasions:
@@ -1510,6 +1514,8 @@ class depgraph:
 			self.altlist()
 
 	def altlist(self, reversed=False):
+		if reversed in self._altlist_cache:
+			return self._altlist_cache[reversed][:]
 		mygraph=self.digraph.copy()
 		myblockers = self.blocker_digraph.copy()
 		retlist=[]
@@ -1618,7 +1624,7 @@ class depgraph:
 		""" Add any unresolved blocks so that they can be displayed."""
 		for blocker in self.blocker_parents:
 			retlist.append(blocker.split())
-
+		self._altlist_cache[reversed] = retlist[:]
 		return retlist
 
 	def xcreate(self,mode="system"):
@@ -1920,9 +1926,11 @@ class depgraph:
 					"fetch" in portdb.aux_get(
 					x[2], ["RESTRICT"])[0].split():
 					fetch = red("F")
+					counters.restrict_fetch += 1
 					if portdb.fetch_check(
 						pkg_key, self.useFlags[myroot][pkg_key]):
 						fetch = green("f")
+						counters.restrict_fetch_satisfied += 1
 
 				#we need to use "--emptrytree" testing here rather than "empty" param testing because "empty"
 				#param is used for -u, where you still *do* want to see when something is being upgraded.
@@ -2246,6 +2254,8 @@ class PackageCounters(object):
 		self.reinst     = 0
 		self.blocks     = 0
 		self.totalsize  = 0
+		self.restrict_fetch           = 0
+		self.restrict_fetch_satisfied = 0
 
 	def __str__(self):
 		total_installs = self.upgrades + self.downgrades + self.newslot + self.new + self.reinst
@@ -2282,6 +2292,14 @@ class PackageCounters(object):
 		if total_installs != 0:
 			myoutput.append(")")
 		myoutput.append(", Size of downloads: %s" % format_size(self.totalsize))
+		if self.restrict_fetch:
+			myoutput.append("\nFetch Restriction: %s package" % \
+				self.restrict_fetch)
+			if self.restrict_fetch > 1:
+				myoutput.append("s")
+		if self.restrict_fetch_satisfied < self.restrict_fetch:
+			myoutput.append(bad(" (%s unsatisfied)") % \
+				(self.restrict_fetch - self.restrict_fetch_satisfied))
 		return "".join(myoutput)
 
 class MergeTask(object):
@@ -2688,172 +2706,197 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 	global_unmerge=0
 	xterm_titles = "notitles" not in settings.features
 
-	realsyslist = getlist(settings, "system")
-	syslist = []
-	for x in realsyslist:
-		mycp = portage.dep_getkey(x)
-		if mycp in settings.getvirtuals():
-			providers = []
-			for provider in settings.getvirtuals()[mycp]:
-				if vartree.dbapi.match(provider):
-					providers.append(provider)
-			if len(providers) == 1:
-				syslist.extend(providers)
-		else:
-			syslist.append(mycp)
-
-	mysettings = portage.config(clone=settings)
-
-	if not unmerge_files or "world" in unmerge_files or "system" in unmerge_files:
-		if "unmerge"==unmerge_action:
-			print
-			print bold("emerge unmerge")+" can only be used with specific package names, not with "+bold("world")+" or"
-			print bold("system")+" targets."
-			print
-			return 0
-		else:
-			global_unmerge=1
-
-	localtree = vartree
-	# process all arguments and add all valid db entries to candidate_catpkgs
-	if global_unmerge:
-		if not unmerge_files or "world" in unmerge_files:
-			candidate_catpkgs.extend(localtree.getallnodes())
-		elif "system" in unmerge_files:
-			candidate_catpkgs.extend(getlist(settings, "system"))
-	else:
-		#we've got command-line arguments
-		if not unmerge_files:
-			print "\nNo packages to unmerge have been provided.\n"
-			return 0
-		for x in unmerge_files:
-			arg_parts=x.split('/')
-			if (x[0] not in [".","/"]) and (arg_parts[-1][-7:] != ".ebuild"):
-				#possible cat/pkg or dep; treat as such
-				candidate_catpkgs.append(x)
-			elif unmerge_action in ["prune","clean"]:
-				print "\n!!! Prune and clean do not accept individual ebuilds as arguments;\n    skipping.\n"
-				continue
+	vdb_path = os.path.join(settings["ROOT"], portage.VDB_PATH)
+	vdb_lock = None
+	try:
+		if os.access(vdb_path, os.W_OK):
+			vdb_lock = portage_locks.lockdir(vdb_path)
+		realsyslist = getlist(settings, "system")
+		syslist = []
+		for x in realsyslist:
+			mycp = portage.dep_getkey(x)
+			if mycp in settings.getvirtuals():
+				providers = []
+				for provider in settings.getvirtuals()[mycp]:
+					if vartree.dbapi.match(provider):
+						providers.append(provider)
+				if len(providers) == 1:
+					syslist.extend(providers)
 			else:
-				# it appears that the user is specifying an installed ebuild and we're in "unmerge" mode, so it's
-				# ok.
-				if not os.path.exists(x):
-					print "\n!!! The path '"+x+"' doesn't exist.\n"
-					return 0
-
-				absx   = os.path.abspath(x)
-				sp_absx = absx.split("/")
-				if sp_absx[-1][-7:] == ".ebuild":
-					del sp_absx[-1]
-					absx = string.join(sp_absx,"/")
-
-				sp_absx_len = len(sp_absx)
-
-				vdb_path = os.path.join(settings["ROOT"], portage.VDB_PATH)
-				vdb_len  = len(vdb_path)
-
-				sp_vdb     = vdb_path.split("/")
-				sp_vdb_len = len(sp_vdb)
-
-				if not os.path.exists(absx+"/CONTENTS"):
-					print "!!! Not a valid db dir: "+str(absx)
-					return 0
-
-				if sp_absx_len <= sp_vdb_len:
-					# The Path is shorter... so it can't be inside the vdb.
-					print sp_absx
-					print absx
-					print "\n!!!",x,"cannot be inside "+vdb_path+"; aborting.\n"
-					return 0
-
-				for idx in range(0,sp_vdb_len):
-					if (idx >= sp_absx_len) or (sp_vdb[idx] != sp_absx[idx]):
+				syslist.append(mycp)
+	
+		mysettings = portage.config(clone=settings)
+	
+		if not unmerge_files or "world" in unmerge_files or \
+			"system" in unmerge_files:
+			if "unmerge"==unmerge_action:
+				print
+				print bold("emerge unmerge") + " can only be used with " + \
+					"specific package names, not with "+bold("world")+" or"
+				print bold("system")+" targets."
+				print
+				return 0
+			else:
+				global_unmerge = 1
+	
+		localtree = vartree
+		# process all arguments and add all
+		# valid db entries to candidate_catpkgs
+		if global_unmerge:
+			if not unmerge_files or "world" in unmerge_files:
+				candidate_catpkgs.extend(vartree.dbapi.cpv_all())
+			elif "system" in unmerge_files:
+				candidate_catpkgs.extend(getlist(settings, "system"))
+		else:
+			#we've got command-line arguments
+			if not unmerge_files:
+				print "\nNo packages to unmerge have been provided.\n"
+				return 0
+			for x in unmerge_files:
+				arg_parts = x.split('/')
+				if x[0] not in [".","/"] and \
+					arg_parts[-1][-7:] != ".ebuild":
+					#possible cat/pkg or dep; treat as such
+					candidate_catpkgs.append(x)
+				elif unmerge_action in ["prune","clean"]:
+					print "\n!!! Prune and clean do not accept individual" + \
+						" ebuilds as arguments;\n    skipping.\n"
+					continue
+				else:
+					# it appears that the user is specifying an installed
+					# ebuild and we're in "unmerge" mode, so it's ok.
+					if not os.path.exists(x):
+						print "\n!!! The path '"+x+"' doesn't exist.\n"
+						return 0
+	
+					absx   = os.path.abspath(x)
+					sp_absx = absx.split("/")
+					if sp_absx[-1][-7:] == ".ebuild":
+						del sp_absx[-1]
+						absx = "/".join(sp_absx)
+	
+					sp_absx_len = len(sp_absx)
+	
+					vdb_path = os.path.join(settings["ROOT"], portage.VDB_PATH)
+					vdb_len  = len(vdb_path)
+	
+					sp_vdb     = vdb_path.split("/")
+					sp_vdb_len = len(sp_vdb)
+	
+					if not os.path.exists(absx+"/CONTENTS"):
+						print "!!! Not a valid db dir: "+str(absx)
+						return 0
+	
+					if sp_absx_len <= sp_vdb_len:
+						# The Path is shorter... so it can't be inside the vdb.
 						print sp_absx
 						print absx
-						print "\n!!!",x,"is not inside "+vdb_path+"; aborting.\n"
+						print "\n!!!",x,"cannot be inside "+ \
+							vdb_path+"; aborting.\n"
 						return 0
-
-				print "="+string.join(sp_absx[sp_vdb_len:],"/")
-				candidate_catpkgs.append("="+string.join(sp_absx[sp_vdb_len:],"/"))
-
-	newline=""
-	if (not "--quiet" in myopts):
-		newline="\n"
-	if settings["ROOT"].startswith(portage_const.EPREFIX) and settings["ROOT"] != portage_const.EPREFIX:
-		print darkgreen(newline+">>> Using system located in ROOT tree "+settings["ROOT"])
-	if (("--pretend" in myopts) or ("--ask" in myopts)) and not ("--quiet" in myopts):
-		print darkgreen(newline+">>> These are the packages that would be unmerged:")
-
-	pkgmap={}
-	numselected=0
-	for x in candidate_catpkgs:
-		#cycle through all our candidate deps and determine what will and will not get unmerged
-		try:
-			mymatch=localtree.dep_match(x)
-		except KeyError:
-			mymatch=None
-		except ValueError, errpkgs:
-			print "\n\n!!! The short ebuild name \"" + x + "\" is ambiguous.  Please specify"
-			print "!!! one of the following fully-qualified ebuild names instead:\n"
-			for i in errpkgs[0]:
-				print "    " + green(i)
-			print
-			sys.exit(1)
-
-		if not mymatch and x[0] not in "<>=~":
-			#add a "=" if missing
-			mymatch=localtree.dep_match("="+x)
-		if not mymatch:
-			if raise_on_missing:
-				raise portage_exception.PackageNotFound(x)
-			else:
-				portage.writemsg("\n--- Couldn't find '%s' to %s.\n" % \
-					(x, unmerge_action), noiselevel=-1)
-				continue
-		mykey = portage.key_expand(
-			portage.dep_getkey(
-				mymatch[0]), mydb=vartree.dbapi, settings=settings)
-		if not pkgmap.has_key(mykey):
-			pkgmap[mykey]={"protected":[], "selected":[], "omitted":[] }
-		if unmerge_action=="unmerge":
-				for y in mymatch:
-					if y not in pkgmap[mykey]["selected"]:
-						pkgmap[mykey]["selected"].append(y)
-						numselected=numselected+len(mymatch)
-
-		else:
-			#unmerge_action in ["prune", clean"]
-			slotmap={}
-			for mypkg in mymatch:
-				if unmerge_action=="clean":
-					myslot=localtree.getslot(mypkg)
+	
+					for idx in range(0,sp_vdb_len):
+						if idx >= sp_absx_len or sp_vdb[idx] != sp_absx[idx]:
+							print sp_absx
+							print absx
+							print "\n!!!", x, "is not inside "+\
+								vdb_path+"; aborting.\n"
+							return 0
+	
+					print "="+"/".join(sp_absx[sp_vdb_len:])
+					candidate_catpkgs.append(
+						"="+"/".join(sp_absx[sp_vdb_len:]))
+	
+		newline=""
+		if (not "--quiet" in myopts):
+			newline="\n"
+		if settings["ROOT"] != "/":
+			print darkgreen(newline+ \
+				">>> Using system located in ROOT tree "+settings["ROOT"])
+		if (("--pretend" in myopts) or ("--ask" in myopts)) and \
+			not ("--quiet" in myopts):
+			print darkgreen(newline+\
+				">>> These are the packages that would be unmerged:")
+	
+		pkgmap={}
+		numselected=0
+		for x in candidate_catpkgs:
+			# cycle through all our candidate deps and determine
+			# what will and will not get unmerged
+			try:
+				mymatch=localtree.dep_match(x)
+			except KeyError:
+				mymatch=None
+			except ValueError, errpkgs:
+				print "\n\n!!! The short ebuild name \"" + \
+					x + "\" is ambiguous.  Please specify"
+				print "!!! one of the following fully-qualified " + \
+					"ebuild names instead:\n"
+				for i in errpkgs[0]:
+					print "    " + green(i)
+				print
+				sys.exit(1)
+	
+			if not mymatch and x[0] not in "<>=~":
+				#add a "=" if missing
+				mymatch=localtree.dep_match("="+x)
+			if not mymatch:
+				if raise_on_missing:
+					raise portage_exception.PackageNotFound(x)
 				else:
-					#since we're pruning, we don't care about slots and put all the pkgs in together
-					myslot=0
-				if not slotmap.has_key(myslot):
-					slotmap[myslot]={}
-				slotmap[myslot][localtree.dbapi.cpv_counter(mypkg)]=mypkg
-			for myslot in slotmap.keys():
-				counterkeys=slotmap[myslot].keys()
-				counterkeys.sort()
-				if not counterkeys:
+					portage.writemsg("\n--- Couldn't find '%s' to %s.\n" % \
+						(x, unmerge_action), noiselevel=-1)
 					continue
-				counterkeys.sort()
-				pkgmap[mykey]["protected"].append(slotmap[myslot][counterkeys[-1]])
-				del counterkeys[-1]
-				#be pretty and get them in order of merge:
-				for ckey in counterkeys:
-					pkgmap[mykey]["selected"].append(slotmap[myslot][ckey])
-					numselected=numselected+1
-				#ok, now the last-merged package is protected, and the rest are selected
-	if global_unmerge and not numselected:
-		print "\n>>> No outdated packages were found on your system.\n"
-		return 0
-
-	if not numselected:
-		print "\n>>> No packages selected for removal by",unmerge_action+".\n"
-		return 0
-
+			mykey = portage.key_expand(
+				portage.dep_getkey(
+					mymatch[0]), mydb=vartree.dbapi, settings=settings)
+			if not pkgmap.has_key(mykey):
+				pkgmap[mykey]={"protected":[], "selected":[], "omitted":[] }
+			if unmerge_action=="unmerge":
+					for y in mymatch:
+						if y not in pkgmap[mykey]["selected"]:
+							pkgmap[mykey]["selected"].append(y)
+							numselected=numselected+len(mymatch)
+	
+			else:
+				#unmerge_action in ["prune", clean"]
+				slotmap={}
+				for mypkg in mymatch:
+					if unmerge_action=="clean":
+						myslot=localtree.getslot(mypkg)
+					else:
+						# since we're pruning, we don't care about slots
+						# and put all the pkgs in together
+						myslot=0
+					if not slotmap.has_key(myslot):
+						slotmap[myslot]={}
+					slotmap[myslot][localtree.dbapi.cpv_counter(mypkg)]=mypkg
+				for myslot in slotmap.keys():
+					counterkeys=slotmap[myslot].keys()
+					counterkeys.sort()
+					if not counterkeys:
+						continue
+					counterkeys.sort()
+					pkgmap[mykey]["protected"].append(
+						slotmap[myslot][counterkeys[-1]])
+					del counterkeys[-1]
+					#be pretty and get them in order of merge:
+					for ckey in counterkeys:
+						pkgmap[mykey]["selected"].append(slotmap[myslot][ckey])
+						numselected=numselected+1
+					# ok, now the last-merged package
+					# is protected, and the rest are selected
+		if global_unmerge and not numselected:
+			print "\n>>> No outdated packages were found on your system.\n"
+			return 0
+	
+		if not numselected:
+			print "\n>>> No packages selected for removal by", \
+				unmerge_action+".\n"
+			return 0
+	finally:
+		if vdb_lock:
+			portage_locks.unlockdir(vdb_lock)
 	for x in pkgmap.keys():
 		for y in localtree.dep_match(x):
 			if y not in pkgmap[x]["omitted"] and \
@@ -3008,10 +3051,6 @@ def post_emerge(settings, mtimedb, retval):
 		chk_updated_info_files(
 				normalize_path(target_root + portage_const.EPREFIX),
 				infodirs, info_mtimes, retval)
-
-	chk_updated_cfg_files(
-			normalize_path(target_root + portage_const.EPREFIX),
-			config_protect)
 	mtimedb.commit()
 	sys.exit(retval)
 
@@ -3484,12 +3523,11 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 	if os.path.exists(myportdir+"/metadata/cache") and updatecache_flg:
 		action_metadata(settings, portdb, myopts)
 
-	portage.global_updates(
-		settings, trees, mtimedb["updates"])
-	mtimedb.commit()
-	# Reload the whole config from scratch.
-	settings, trees, mtimedb = load_emerge_config(trees=trees)
-	portdb = trees[settings["ROOT"]]["porttree"].dbapi
+	if portage.global_updates(settings, trees, mtimedb["updates"]):
+		mtimedb.commit()
+		# Reload the whole config from scratch.
+		settings, trees, mtimedb = load_emerge_config(trees=trees)
+		portdb = trees[settings["ROOT"]]["porttree"].dbapi
 
 	mybestpv = portdb.xmatch("bestmatch-visible", "sys-apps/portage")
 	mypvs = portage.best(
@@ -3856,7 +3894,9 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	print warn_prefix + "be kept.  They can be manually added to this set with"
 	print warn_prefix + good("`emerge --noreplace <atom>`") + ".  Packages that are listed in"
 	print warn_prefix + "package.provided (see portage(5)) will be removed by"
-	print warn_prefix + "depclean, even if they are part of the world set."
+	print warn_prefix + "depclean, even if they are part of the world set. New-style"
+	print warn_prefix + "virtuals (virtual/* packages installed by older versions of"
+	print warn_prefix + "portage) will also be removed."
 	print warn_prefix
 	print warn_prefix + "As a safety measure, depclean will not remove any packages"
 	print warn_prefix + "unless *all* required dependencies have been resolved.  As a"
@@ -4388,11 +4428,11 @@ def emerge_main():
 	os.umask(022)
 	settings, trees, mtimedb = load_emerge_config()
 	portdb = trees[settings["ROOT"]]["porttree"].dbapi
-	portage.global_updates(settings, trees, mtimedb["updates"])
-	mtimedb.commit()
-	# Reload the whole config from scratch.
-	settings, trees, mtimedb = load_emerge_config(trees=trees)
-	portdb = trees[settings["ROOT"]]["porttree"].dbapi
+	if portage.global_updates(settings, trees, mtimedb["updates"]):
+		mtimedb.commit()
+		# Reload the whole config from scratch.
+		settings, trees, mtimedb = load_emerge_config(trees=trees)
+		portdb = trees[settings["ROOT"]]["porttree"].dbapi
 
 	ldpath_mtimes = mtimedb["ldpath"]
 	xterm_titles = "notitles" not in settings.features
@@ -4569,15 +4609,18 @@ def emerge_main():
 		# We've already allowed "--version" and "--help" above.
 		if "--pretend" not in myopts and \
 		myaction not in ("search","info"):
-			if portage.secpass >= 1:
-				if "--fetchonly" not in myopts and \
-				"--fetch-all-uri" not in myopts and \
-				myaction not in ("metadata", "regen"):
+			if portage.secpass < 1 or \
+				not ("--fetchonly" in myopts or \
+				"--fetch-all-uri" in myopts or \
+				myaction in ("metadata", "regen")):
+				if "--ask" in myopts:
+					myopts["--pretend"] = True
+					del myopts["--ask"]
+					print "root access would be required..." + \
+						" adding --pretend to options."
+				else:
 					print "emerge: root access required."
 					sys.exit(1)
-			else:
-				print "emerge: root access required."
-				sys.exit(1)
 
 	disable_emergelog = False
 	for x in ("--pretend", "--fetchonly", "--fetch-all-uri"):

@@ -1398,8 +1398,7 @@ class config:
 
 		for mypath, (gid, mode, modemask) in dir_mode_map.iteritems():
 			try:
-				mydir = normalize_path(
-						os.path.join(self["ROOT"] + EPREFIX, mypath))
+				mydir = normalize_path(os.path.join(self["ROOT"] + EPREFIX, mypath))
 				portage_util.ensure_dirs(mydir, gid=gid, mode=mode, mask=modemask)
 			except portage_exception.PortageException, e:
 				writemsg("!!! Directory initialization failed: '%s'\n" % mydir,
@@ -2270,7 +2269,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						# assume that it is fully downloaded.
 						continue
 					else:
-						if mystat.st_size < mydigests[myfile]["size"]:
+						if mystat.st_size < mydigests[myfile]["size"] and \
+							not restrict_fetch:
 							fetched = 1 # Try to resume this download.
 						else:
 							verified_ok, reason = portage_checksum.verify_all(
@@ -2283,7 +2283,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 								writemsg(("!!! Got:      %s\n" + \
 									"!!! Expected: %s\n") % \
 									(reason[1], reason[2]), noiselevel=-1)
-								if can_fetch:
+								if can_fetch and not restrict_fetch:
 									writemsg("Refetching...\n\n",
 										noiselevel=-1)
 									os.unlink(myfile_path)
@@ -3513,6 +3513,77 @@ def dep_virtual(mysplit, mysettings):
 				newsplit.append(x)
 	return newsplit
 
+def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
+	trees=None, **kwargs):
+	"""Recursively expand new-style virtuals so as to collapse one or more
+	levels of indirection.  The new-style virtuals should never be installed
+	themselves.  They are only used to expand virtual dependencies.  Virtual
+	blockers are supported but only when the virtual expands to a single
+	atom because it wouldn't necessarily make sense to block all the components
+	of a compound virtual.  When more than one new-style virtual is matched,
+	the matches are sorted from highest to lowest versions and the atom is
+	expanded to || ( highest match ... lowest match )."""
+	newsplit = []
+	# According to GLEP 37, RDEPEND is the only dependency type that is valid
+	# for new-style virtuals.  Repoman should enforce this.
+	dep_keys = ["RDEPEND", "DEPEND", "PDEPEND"]
+	def compare_pkgs(a, b):
+		return pkgcmp(b[1], a[1])
+	portdb = trees[myroot]["porttree"].dbapi
+	for x in mysplit:
+		if x == "||":
+			newsplit.append(x)
+			continue
+		elif isinstance(x, list):
+			newsplit.append(_expand_new_virtuals(x, edebug, mydbapi,
+				mysettings, myroot=myroot, trees=trees, **kwargs))
+			continue
+		elif not dep_getkey(x).startswith("virtual/"):
+			newsplit.append(x)
+			continue
+		isblocker = x.startswith("!")
+		match_atom = x
+		if isblocker:
+			match_atom = x[1:]
+		pkgs = []
+		for cpv in portdb.match(match_atom):
+			# only use new-style matches
+			if cpv.startswith("virtual/"):
+				pkgs.append((cpv, pkgsplit(cpv)))
+		if not pkgs:
+			newsplit.append(x)
+			continue
+		pkgs.sort(compare_pkgs) # Prefer higher versions.
+		if isblocker:
+			a = []
+		else:
+			a = ['||']
+		for y in pkgs:
+			depstring = " ".join(portdb.aux_get(y[0], dep_keys))
+			if edebug:
+				print "Virtual Parent:   ", y[0]
+				print "Virtual Depstring:", depstring
+			mycheck = dep_check(depstring, mydbapi, mysettings, myroot=myroot,
+				trees=trees, **kwargs)
+			if not mycheck[0]:
+				raise portage_exception.ParseError(
+					"%s: %s '%s'" % (y[0], mycheck[1], depstring))
+			if isblocker:
+				virtual_atoms = [atom for atom in mycheck[1] \
+					if not atom.startswith("!")]
+				if len(virtual_atoms) == 1:
+					# It wouldn't make sense to block all the components of a
+					# compound virtual, so only a single atom block is allowed.
+					a.append("!" + virtual_atoms[0])
+			else:
+				a.append(mycheck[1])
+		if isblocker and not a:
+			# Probably a compound virtual.  Pass the atom through unprocessed.
+			newsplit.append(x)
+			continue
+		newsplit.append(a)
+	return newsplit
+
 def dep_eval(deplist):
 	if not deplist:
 		return 1
@@ -3682,7 +3753,7 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 	use_cache=1, use_binaries=0, myroot="/", trees=None, str_matches=None,
 	return_all_deps=False):
 	"""Takes a depend string and parses the condition."""
-
+	edebug = mysettings.get("PORTAGE_DEBUG", None) == "1"
 	#check_config_instance(mysettings)
 
 	if use=="yes":
@@ -3736,6 +3807,17 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 	elif mysplit==[]:
 		#dependencies were reduced to nothing
 		return [1,[]]
+
+	# Recursively expand new-style virtuals so as to
+	# collapse one or more levels of indirection.
+	try:
+		mysplit = _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings,
+			use=use, mode=mode, myuse=myuse, use_cache=use_cache,
+			use_binaries=use_binaries, myroot=myroot, trees=trees,
+			str_matches=str_matches, return_all_deps=return_all_deps)
+	except portage_exception.ParseError, e:
+		return [0, str(e)]
+
 	mysplit2=mysplit[:]
 	mysplit2 = dep_wordreduce(mysplit2, mysettings, mydbapi, mode,
 		str_matches=str_matches, use_cache=use_cache)
@@ -4244,10 +4326,13 @@ class fakedbapi(dbapi):
 	def cpv_all(self):
 		return self.cpvdict.keys()
 
-	def cpv_inject(self, mycpv, myslot=None):
+	def cpv_inject(self, mycpv, metadata=None):
 		"""Adds a cpv from the list of available packages."""
 		mycp=cpv_getkey(mycpv)
-		self.cpvdict[mycpv] = myslot
+		self.cpvdict[mycpv] = metadata
+		myslot = None
+		if metadata:
+			myslot = metadata.get("SLOT", None)
 		if myslot and mycp in self.cpdict:
 			# If necessary, remove another package in the same SLOT.
 			for cpv in self.cpdict[mycp]:
@@ -4284,13 +4369,10 @@ class fakedbapi(dbapi):
 	def aux_get(self, mycpv, wants):
 		if not self.cpv_exists(mycpv):
 			raise KeyError(mycpv)
-		values = []
-		for x in wants:
-			if x == "SLOT":
-				values.append(self.cpvdict[mycpv])
-			else:
-				values.append("")
-		return values
+		metadata = self.cpvdict[mycpv]
+		if not metadata:
+			return ["" for x in wants]
+		return [metadata.get(x, "") for x in wants]
 
 class bindbapi(fakedbapi):
 	def __init__(self, mybintree=None, settings=None):
@@ -4933,7 +5015,6 @@ class portdbapi(dbapi):
 
 	def __init__(self,porttree_root,mysettings=None):
 		portdbapi.portdbapi_instances.append(self)
-		self.lock_held = 0;
 
 		if mysettings:
 			self.mysettings = mysettings
@@ -5158,48 +5239,44 @@ class portdbapi(dbapi):
 			else:
 				mydbkey = self.depcachedir+"/aux_db_key_temp"
 
-			if self.lock_held:
-				raise "Lock is already held by me?"
-			self.lock_held = 1
-			mylock = portage_locks.lockfile(mydbkey, wantnewlockfile=1)
-
-			if os.path.exists(mydbkey):
+			mylock = None
+			try:
+				mylock = portage_locks.lockfile(mydbkey, wantnewlockfile=1)
 				try:
 					os.unlink(mydbkey)
 				except (IOError, OSError), e:
+					if e.errno != errno.ENOENT:
+						raise
+					del e
+
+				self.doebuild_settings.reset()
+				myret = doebuild(myebuild, "depend", "/",
+					 self.doebuild_settings, dbkey=mydbkey, tree="porttree",
+					 mydbapi=self)
+				if myret != os.EX_OK:
+					#depend returned non-zero exit code...
+					writemsg((red("\naux_get():") + \
+						" (0) Error in '%s'. (%s)\n" + \
+						"               Check for syntax error or " + \
+						"corruption in the ebuild. (--debug)\n\n") % \
+						(myebuild, myret), noiselevel=-1)
+					raise KeyError(mycpv)
+
+				try:
+					mycent = open(mydbkey, "r")
+					os.unlink(mydbkey)
+					mylines = mycent.readlines()
+					mycent.close()
+				except (IOError, OSError):
+					writemsg((red("\naux_get():") + \
+						" (1) Error in '%s' ebuild.\n" + \
+						"               Check for syntax error or " + \
+						"corruption in the ebuild. (--debug)\n\n") % myebuild,
+						noiselevel=-1)
+					raise KeyError(mycpv)
+			finally:
+				if mylock:
 					portage_locks.unlockfile(mylock)
-					self.lock_held = 0
-					writemsg("Uncaught handled exception: %(exception)s\n" % {"exception":str(e)})
-					raise
-
-			self.doebuild_settings.reset()
-			myret = doebuild(myebuild, "depend", "/", self.doebuild_settings,
-				dbkey=mydbkey, tree="porttree", mydbapi=self)
-			if myret:
-				portage_locks.unlockfile(mylock)
-				self.lock_held = 0
-				#depend returned non-zero exit code...
-				writemsg(str(red("\naux_get():")+" (0) Error in "+mycpv+" ebuild. ("+str(myret)+")\n"
-				"               Check for syntax error or corruption in the ebuild. (--debug)\n\n"),
-					noiselevel=-1)
-				raise KeyError
-
-			try:
-				mycent=open(mydbkey,"r")
-				os.unlink(mydbkey)
-				mylines=mycent.readlines()
-				mycent.close()
-
-			except (IOError, OSError):
-				portage_locks.unlockfile(mylock)
-				self.lock_held = 0
-				writemsg(str(red("\naux_get():")+" (1) Error in "+mycpv+" ebuild.\n"
-				  "               Check for syntax error or corruption in the ebuild. (--debug)\n\n"),
-				  noiselevel=-1)
-				raise KeyError
-
-			portage_locks.unlockfile(mylock)
-			self.lock_held = 0
 
 			mydata = {}
 			for x in range(0,len(mylines)):
@@ -6033,9 +6110,7 @@ class dblink:
 		self.dbtmpdir = self.dbcatdir+"/-MERGING-"+pkg
 		self.dbdir    = self.dbpkgdir
 
-		self.lock_pkg = None
-		self.lock_tmp = None
-		self.lock_num = 0    # Count of the held locks on the db.
+		self._lock_vdb = None
 
 		self.settings = mysettings
 		if self.settings==1:
@@ -6051,16 +6126,14 @@ class dblink:
 		self._contents_inodes = None
 
 	def lockdb(self):
-		if self.lock_num == 0:
-			self.lock_pkg = portage_locks.lockdir(self.dbpkgdir)
-			self.lock_tmp = portage_locks.lockdir(self.dbtmpdir)
-		self.lock_num += 1
+		if self._lock_vdb:
+			raise AssertionError("Lock already held.")
+		self._lock_vdb = portage_locks.lockdir(self.dbroot)
 
 	def unlockdb(self):
-		self.lock_num -= 1
-		if self.lock_num == 0:
-			portage_locks.unlockdir(self.lock_tmp)
-			portage_locks.unlockdir(self.lock_pkg)
+		if self._lock_vdb:
+			portage_locks.unlockdir(self._lock_vdb)
+			self._lock_vdb = None
 
 	def getpath(self):
 		"return path to location of db information (for >>> informational display)"
@@ -6398,9 +6471,6 @@ class dblink:
 		if not os.path.exists(self.dbcatdir):
 			os.makedirs(self.dbcatdir)
 
-		# This blocks until we can get the dirs to ourselves.
-		self.lockdb()
-
 		otherversions=[]
 		for v in self.vartree.dbapi.cp_list(self.mysplit[0]):
 			otherversions.append(v.split("/")[1])
@@ -6479,12 +6549,6 @@ class dblink:
 				print
 				print red("package "+self.cat+"/"+self.pkg+" NOT merged")
 				print
-				# Why is the package already merged here db-wise? Shouldn't be the case
-				# only unmerge if it ia new package and has no contents
-				if not self.getcontents():
-					self.unmerge(ldpath_mtimes=prev_mtimes)
-					self.delete()
-				self.unlockdb()
 				print
 				print "Searching all installed packages for file collisions..."
 				print "Press Ctrl-C to Stop"
@@ -6632,7 +6696,6 @@ class dblink:
 		self.delete()
 		movefile(self.dbtmpdir, self.dbpkgdir, mysettings=self.settings)
 		contents = self.getcontents()
-		self.unlockdb()
 
 		#write out our collection of md5sums
 		if cfgfiledict.has_key("IGNORE"):
@@ -6966,8 +7029,12 @@ class dblink:
 
 	def merge(self, mergeroot, inforoot, myroot, myebuild=None, cleanup=0,
 		mydbapi=None, prev_mtimes=None):
-		return self.treewalk(mergeroot, myroot, inforoot, myebuild,
-			cleanup=cleanup, mydbapi=mydbapi, prev_mtimes=prev_mtimes)
+		try:
+			self.lockdb()
+			return self.treewalk(mergeroot, myroot, inforoot, myebuild,
+				cleanup=cleanup, mydbapi=mydbapi, prev_mtimes=prev_mtimes)
+		finally:
+			self.unlockdb()
 
 	def getstring(self,name):
 		"returns contents of a file with whitespace converted to spaces"
@@ -7214,7 +7281,20 @@ def portageexit():
 atexit_register(portageexit)
 
 def global_updates(mysettings, trees, prev_mtimes):
-	"""Perform new global updates if they exist in $PORTDIR/profiles/updates/."""
+	"""
+	Perform new global updates if they exist in $PORTDIR/profiles/updates/.
+
+	@param mysettings: A config instance for ROOT="/".
+	@type mysettings: config
+	@param trees: A dictionary containing portage trees.
+	@type trees: dict
+	@param prev_mtimes: A dictionary containing mtimes of files located in
+		$PORTDIR/profiles/updates/.
+	@type prev_mtimes: dict
+	@rtype: None or List
+	@return: None if no were no updates, otherwise a list of update commands
+		that have been performed.
+	"""
 	# only do this if we're root and not running repoman/ebuild digest
 	global secpass
 	if secpass < 2 or "SANDBOX_ACTIVE" in os.environ:
@@ -7229,6 +7309,7 @@ def global_updates(mysettings, trees, prev_mtimes):
 	except portage_exception.DirectoryNotFound:
 		writemsg("--- 'profiles/updates' is empty or not available. Empty portage tree?\n")
 		return
+	myupd = None
 	if len(update_data) > 0:
 		do_upgrade_packagesmessage = 0
 		myupd = []
@@ -7292,6 +7373,8 @@ def global_updates(mysettings, trees, prev_mtimes):
 			writemsg_stdout(" ** Skipping packages. Run 'fixpackages' or set it in FEATURES to fix the")
 			writemsg_stdout("\n    tbz2's in the packages directory. "+bold("Note: This can take a very long time."))
 			writemsg_stdout("\n")
+	if myupd:
+		return myupd
 
 #continue setting up other trees
 
