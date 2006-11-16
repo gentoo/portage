@@ -3505,6 +3505,77 @@ def dep_virtual(mysplit, mysettings):
 				newsplit.append(x)
 	return newsplit
 
+def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
+	trees=None, **kwargs):
+	"""Recursively expand new-style virtuals so as to collapse one or more
+	levels of indirection.  The new-style virtuals should never be installed
+	themselves.  They are only used to expand virtual dependencies.  Virtual
+	blockers are supported but only when the virtual expands to a single
+	atom because it wouldn't necessarily make sense to block all the components
+	of a compound virtual.  When more than one new-style virtual is matched,
+	the matches are sorted from highest to lowest versions and the atom is
+	expanded to || ( highest match ... lowest match )."""
+	newsplit = []
+	# According to GLEP 37, RDEPEND is the only dependency type that is valid
+	# for new-style virtuals.  Repoman should enforce this.
+	dep_keys = ["RDEPEND", "DEPEND", "PDEPEND"]
+	def compare_pkgs(a, b):
+		return pkgcmp(b[1], a[1])
+	portdb = trees[myroot]["porttree"].dbapi
+	for x in mysplit:
+		if x == "||":
+			newsplit.append(x)
+			continue
+		elif isinstance(x, list):
+			newsplit.append(_expand_new_virtuals(x, edebug, mydbapi,
+				mysettings, myroot=myroot, trees=trees, **kwargs))
+			continue
+		elif not dep_getkey(x).startswith("virtual/"):
+			newsplit.append(x)
+			continue
+		isblocker = x.startswith("!")
+		match_atom = x
+		if isblocker:
+			match_atom = x[1:]
+		pkgs = []
+		for cpv in portdb.match(match_atom):
+			# only use new-style matches
+			if cpv.startswith("virtual/"):
+				pkgs.append((cpv, pkgsplit(cpv)))
+		if not pkgs:
+			newsplit.append(x)
+			continue
+		pkgs.sort(compare_pkgs) # Prefer higher versions.
+		if isblocker:
+			a = []
+		else:
+			a = ['||']
+		for y in pkgs:
+			depstring = " ".join(portdb.aux_get(y[0], dep_keys))
+			if edebug:
+				print "Virtual Parent:   ", y[0]
+				print "Virtual Depstring:", depstring
+			mycheck = dep_check(depstring, mydbapi, mysettings, myroot=myroot,
+				trees=trees, **kwargs)
+			if not mycheck[0]:
+				raise portage_exception.ParseError(
+					"%s: %s '%s'" % (y[0], mycheck[1], depstring))
+			if isblocker:
+				virtual_atoms = [atom for atom in mycheck[1] \
+					if not atom.startswith("!")]
+				if len(virtual_atoms) == 1:
+					# It wouldn't make sense to block all the components of a
+					# compound virtual, so only a single atom block is allowed.
+					a.append("!" + virtual_atoms[0])
+			else:
+				a.append(mycheck[1])
+		if isblocker and not a:
+			# Probably a compound virtual.  Pass the atom through unprocessed.
+			newsplit.append(x)
+			continue
+		newsplit.append(a)
+	return newsplit
+
 def dep_eval(deplist):
 	if not deplist:
 		return 1
@@ -3674,7 +3745,7 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 	use_cache=1, use_binaries=0, myroot="/", trees=None, str_matches=None,
 	return_all_deps=False):
 	"""Takes a depend string and parses the condition."""
-
+	edebug = mysettings.get("PORTAGE_DEBUG", None) == "1"
 	#check_config_instance(mysettings)
 
 	if use=="yes":
@@ -3728,6 +3799,17 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 	elif mysplit==[]:
 		#dependencies were reduced to nothing
 		return [1,[]]
+
+	# Recursively expand new-style virtuals so as to
+	# collapse one or more levels of indirection.
+	try:
+		mysplit = _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings,
+			use=use, mode=mode, myuse=myuse, use_cache=use_cache,
+			use_binaries=use_binaries, myroot=myroot, trees=trees,
+			str_matches=str_matches, return_all_deps=return_all_deps)
+	except portage_exception.ParseError, e:
+		return [0, str(e)]
+
 	mysplit2=mysplit[:]
 	mysplit2 = dep_wordreduce(mysplit2, mysettings, mydbapi, mode,
 		str_matches=str_matches, use_cache=use_cache)
