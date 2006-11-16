@@ -1486,11 +1486,11 @@ savef.close()
 savef=open(failsfile,'w')
 pickle.dump(fails,savef)
 savef.close()
-if not (os.stat(statsfile)[ST_GID] == getgrnam('portage')[2]):
-	os.chown(statsfile,os.geteuid(),getgrnam('portage')[2])
+if not (os.stat(statsfile)[ST_GID] == getgrnam('@portagegroup@')[2]):
+	os.chown(statsfile,os.geteuid(),getgrnam('@portagegroup@')[2])
 	os.chmod(statsfile,0664)
-if not (os.stat(failsfile)[ST_GID] == getgrnam('portage')[2]):
-	os.chown(failsfile,os.geteuid(),getgrnam('portage')[2])
+if not (os.stat(failsfile)[ST_GID] == getgrnam('@portagegroup@')[2]):
+	os.chown(failsfile,os.geteuid(),getgrnam('@portagegroup@')[2])
 	os.chmod(failsfile,0664)
 if quiet < 2:
 	print
