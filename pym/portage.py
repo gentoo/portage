@@ -3568,6 +3568,7 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 					# compound virtual, so only a single atom block is allowed.
 					a.append("!" + virtual_atoms[0])
 			else:
+				mycheck[1].append("="+y[0]) # pull in the new-style virtual
 				a.append(mycheck[1])
 		if isblocker and not a:
 			# Probably a compound virtual.  Pass the atom through unprocessed.
