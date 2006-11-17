@@ -19,7 +19,7 @@ try:
 	os.nice(int(mysettings.get("PORTAGE_NICENESS", "0")))
 except (OSError, ValueError), e:
 	portage.writemsg("!!! Failed to change nice value to '%s'\n" % \
-		settings["PORTAGE_NICENESS"])
+		mysettings["PORTAGE_NICENESS"])
 	portage.writemsg("!!! %s\n" % str(e))
 	del e
 
