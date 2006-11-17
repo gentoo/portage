@@ -1621,9 +1621,6 @@ class config:
 		virts = flatten(portage_dep.use_reduce(portage_dep.paren_reduce(provides), uselist=myuse.split()))
 
 		cp = dep_getkey(mycpv)
-		if cp.startswith("virtual/"):
-			# Bridge new-style virtual into old-style.
-			virts.append(cp)
 		for virt in virts:
 			virt = dep_getkey(virt)
 			if not self.treeVirtuals.has_key(virt):
@@ -1888,10 +1885,6 @@ class config:
 
 		virtuals = stack_dictlist([ptVirtuals, self.treeVirtuals,
 			self.dirVirtuals])
-		# Bridge new-style virtuals into old-style.
-		for k, v in virtuals.iteritems():
-			if k not in v:
-				v.append(k)
 		return virtuals
 
 	def __delitem__(self,mykey):
@@ -3522,6 +3515,7 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 	def compare_pkgs(a, b):
 		return pkgcmp(b[1], a[1])
 	portdb = trees[myroot]["porttree"].dbapi
+	myvirtuals = mysettings.getvirtuals()
 	for x in mysplit:
 		if x == "||":
 			newsplit.append(x)
@@ -3530,9 +3524,11 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			newsplit.append(_expand_new_virtuals(x, edebug, mydbapi,
 				mysettings, myroot=myroot, trees=trees, **kwargs))
 			continue
-		elif not dep_getkey(x).startswith("virtual/"):
+		mykey = dep_getkey(x)
+		if not mykey.startswith("virtual/"):
 			newsplit.append(x)
 			continue
+		mychoices = myvirtuals.get(mykey, [])
 		isblocker = x.startswith("!")
 		match_atom = x
 		if isblocker:
@@ -3542,13 +3538,16 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			# only use new-style matches
 			if cpv.startswith("virtual/"):
 				pkgs.append((cpv, pkgsplit(cpv)))
-		if not pkgs:
+		if not (pkgs or mychoices):
 			# This one couldn't be expanded as a new-style virtual.  Old-style
 			# virtuals have already been expanded by dep_virtual, so this one
 			# is unavailable and dep_zapdeps will identify it as such.  The
 			# atom is not eliminated here since it may still represent a
 			# dependency that needs to be satisfied.
 			newsplit.append(x)
+			continue
+		if not pkgs and len(mychoices) == 1:
+			newsplit.append(x.replace(mykey, mychoices[0]))
 			continue
 		pkgs.sort(compare_pkgs) # Prefer higher versions.
 		if isblocker:
@@ -3575,6 +3574,9 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			else:
 				mycheck[1].append("="+y[0]) # pull in the new-style virtual
 				a.append(mycheck[1])
+		# Plain old-style virtuals.  New-style virtuals are preferred.
+		for y in mychoices:
+			a.append(x.replace(mykey, y))
 		if isblocker and not a:
 			# Probably a compound virtual.  Pass the atom through unprocessed.
 			newsplit.append(x)
@@ -3800,14 +3802,7 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 	# Do the || conversions
 	mysplit=portage_dep.dep_opconvert(mysplit)
 
-	#convert virtual dependencies to normal packages.
-	mysplit=dep_virtual(mysplit, mysettings)
-	#if mysplit is None, then we have a parse error (paren mismatch or misplaced ||)
-	#up until here, we haven't needed to look at the database tree
-
-	if mysplit is None:
-		return [0,"Parse Error (parentheses mismatch?)"]
-	elif mysplit==[]:
+	if mysplit == []:
 		#dependencies were reduced to nothing
 		return [1,[]]
 
@@ -4872,9 +4867,6 @@ class vartree(packagetree):
 					if not mys:
 						mys = string.split(myprovide, "/")
 					myprovides += [mys[0] + "/" + mys[1]]
-			if mycpv.startswith("virtual/"):
-				# Bridge new-style virtual into old-style.
-				myprovides.append(dep_getkey(mycpv))
 			return myprovides
 		except SystemExit, e:
 			raise
