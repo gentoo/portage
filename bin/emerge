@@ -4391,6 +4391,15 @@ def emerge_main():
 	os.umask(022)
 	settings, trees, mtimedb = load_emerge_config()
 	portdb = trees[settings["ROOT"]]["porttree"].dbapi
+
+	try:
+		os.nice(int(settings.get("PORTAGE_NICENESS", "0")))
+	except (OSError, ValueError), e:
+		portage.writemsg("!!! Failed to change nice value to '%s'\n" % \
+			settings["PORTAGE_NICENESS"])
+		portage.writemsg("!!! %s\n" % str(e))
+		del e
+
 	if portage.global_updates(settings, trees, mtimedb["updates"]):
 		mtimedb.commit()
 		# Reload the whole config from scratch.
@@ -4431,14 +4440,6 @@ def emerge_main():
 		spinner.update = spinner.update_scroll
 
 	portage.deprecated_profile_check()
-
-	try:
-		os.nice(int(settings.get("PORTAGE_NICENESS", "0")))
-	except (OSError, ValueError), e:
-		portage.writemsg("!!! Failed to change nice value to '%s'\n" % \
-			settings["PORTAGE_NICENESS"])
-		portage.writemsg("!!! %s\n" % str(e))
-		del e
 
 	#Freeze the portdbapi for enhanced performance:
 	for myroot in trees:
