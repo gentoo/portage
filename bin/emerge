@@ -2743,7 +2743,7 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 		# valid db entries to candidate_catpkgs
 		if global_unmerge:
 			if not unmerge_files or "world" in unmerge_files:
-				candidate_catpkgs.extend(vartree.dbapi.cpv_all())
+				candidate_catpkgs.extend(vartree.dbapi.cp_all())
 			elif "system" in unmerge_files:
 				candidate_catpkgs.extend(getlist(settings, "system"))
 		else:
