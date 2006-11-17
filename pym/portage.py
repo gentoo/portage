@@ -3543,11 +3543,12 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			if cpv.startswith("virtual/"):
 				pkgs.append((cpv, pkgsplit(cpv)))
 		if not pkgs:
-			# This one couldn't be expanded as a new-style virtual.  In order
-			# for dep_zapdeps to work properly, this atom must be eliminated
-			# from the choices (dep_zapdeps assigns zero cost to any virtual/*
-			# atoms that it encounters).  Old-style virtuals have already been
-			# expanded to real atoms via dep_virtual.
+			# This one couldn't be expanded as a new-style virtual.  Old-style
+			# virtuals have already been expanded by dep_virtual, so this one
+			# is unavailable and dep_zapdeps will identify it as such.  The
+			# atom is not eliminated here since it may still represent a
+			# dependency that needs to be satisfied.
+			newsplit.append(x)
 			continue
 		pkgs.sort(compare_pkgs) # Prefer higher versions.
 		if isblocker:
