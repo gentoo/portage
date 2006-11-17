@@ -3508,8 +3508,8 @@ def dep_virtual(mysplit, mysettings):
 def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 	trees=None, **kwargs):
 	"""Recursively expand new-style virtuals so as to collapse one or more
-	levels of indirection.  The new-style virtuals should never be installed
-	themselves.  They are only used to expand virtual dependencies.  Virtual
+	levels of indirection.  In dep_zapdeps, new-style virtuals will be assigned
+	zero cost regardless of whether or not they are currently installed. Virtual
 	blockers are supported but only when the virtual expands to a single
 	atom because it wouldn't necessarily make sense to block all the components
 	of a compound virtual.  When more than one new-style virtual is matched,
