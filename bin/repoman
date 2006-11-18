@@ -477,7 +477,6 @@ if quiet < 2:
 	print "PORTDIR_OVERLAY = \""+os.environ["PORTDIR_OVERLAY"]+"\""
 
 # Now that PORTDIR_OVERLAY is properly overridden, create the portdb.
-os.environ["ACCEPT_LICENSE"] = "*"
 repoman_settings = portage.config(local_config=False,
 	config_incrementals=portage_const.INCREMENTALS)
 trees = portage.create_trees()
