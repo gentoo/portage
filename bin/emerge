@@ -3887,6 +3887,19 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	unresolveable = {}
 	aux_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
 
+	fake_vardb = portage.fakedbapi(settings=settings)
+	fakedb_auxkeys = aux_keys[:]
+	fakedb_auxkeys.append("SLOT")
+	for cpv in myvarlist:
+		try:
+			# Prefer live ebuild metadata when available.
+			aux_vals = portdb.aux_get(cpv, fakedb_auxkeys)
+		except KeyError:
+			aux_vals = vardb.aux_get(cpv, fakedb_auxkeys)
+		fake_vardb.cpv_inject(cpv, metadata=dict(zip(fakedb_auxkeys, aux_vals)))
+	# HACK: Ensure that installed packages are preferenced by dep_check().
+	trees[settings["ROOT"]]["porttree"].dbapi = fake_vardb
+
 	while remaining_atoms:
 		atom, parent, priority = remaining_atoms.pop()
 		pkgs = vardb.match(atom)
@@ -3919,6 +3932,9 @@ def action_depclean(settings, trees, ldpath_mtimes,
 					return
 				for atom in atoms:
 					remaining_atoms.append((atom, pkg, priority))
+
+	# Restore the portdb back to normal (see fake_vardb above).
+	trees[settings["ROOT"]]["porttree"].dbapi = portdb
 
 	if "--quiet" not in myopts:
 		print "\b\b... done!\n"
