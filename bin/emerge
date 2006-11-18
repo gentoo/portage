@@ -3914,8 +3914,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 				continue
 			spinner.update()
 			fakedb.cpv_inject(pkg)
-			mydb = portdb.xmatch("match-visible", "="+pkg) and portdb or vardb
-			myaux = dict(zip(aux_keys, mydb.aux_get(pkg, aux_keys)))
+			myaux = dict(zip(aux_keys, fake_vardb.aux_get(pkg, aux_keys)))
 			mydeps = []
 			if myopts.get("--with-bdeps", "y") == "y":
 				mydeps.append((myaux["DEPEND"], soft))
