@@ -866,7 +866,7 @@ for x in scanlist:
 			if isCvs:
 				myf=open(checkdir+"/CVS/Entries","r")
 			if isSvn:
-				myf=os.popen("svn list")
+				myf=os.popen("svn update > /dev/null; svn list")
 			myl=myf.readlines()	
 			myf.close()
 			for l in myl:
@@ -884,6 +884,15 @@ for x in scanlist:
 						continue
 					if l[-7:] == ".ebuild":
 						eadded.append(l[:-7])
+			if isSvn:
+				myf=os.popen("svn status")
+				myl=myf.readlines()
+				myf.close()
+				for l in myl:
+					if l[0] == "A":
+						l = l.rstrip().split(' ')[-1]
+						if l[-7:] == ".ebuild":
+							eadded.append(l[:-7])
 		except IOError:
 			if mymode=="commit" and isCvs:
 				stats["CVS/Entries.IO_error"] += 1
