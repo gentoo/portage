@@ -5355,7 +5355,11 @@ class portdbapi(dbapi):
 		l.sort()
 		return l
 
-	cpv_all = cp_all
+	def cpv_all(self):
+		cpv_list = []
+		for cp in self.cp_all():
+			cpv_list.extend(self.cp_list(cp))
+		return cpv_list
 
 	def p_list(self,mycp):
 		d={}
