@@ -1364,30 +1364,15 @@ class depgraph:
 							print "\n!!! "+red("All ebuilds that could satisfy ")+green(xinfo)+red(" have been masked.")
 							print "!!! One of the following masked packages is required to complete your request:"
 							oldcomment = ""
-							shown_licenses = []
 							for p in alleb:
 								mreasons = portage.getmaskingstatus(p,
 									settings=pkgsettings, portdb=portdb)
 								print "- "+p+" (masked by: "+string.join(mreasons, ", ")+")"
-								if "package.mask" in mreasons:
-									comment = portage.getpmaskcomment(p,
-										settings=pkgsettings, portdb=portdb)
-									if comment and comment != oldcomment:
-										print comment
-										oldcomment = comment
-								licdict = portage.getlicensetexts(p, settings=pkgsettings, portdb=portdb, onlymasked=True)
-								for lic in licdict.keys():
-									if lic+" license" in mreasons and not lic in shown_licenses:
-										if len(licdict[lic][1]) > 2000:
-											print "Please read the text of license %s in %s" % (lic, licdict[lic][0])
-											print
-										else:
-											print "License text for license %s:" % lic
-											print
-											print licdict[lic][1]
-											print
-										shown_licenses.append(lic)
-										
+								comment = portage.getmaskingreason(p,
+									settings=pkgsettings, portdb=portdb)
+								if comment and comment != oldcomment:
+									print comment
+									oldcomment = comment
 							print
 							print "For more information, see MASKED PACKAGES section in the emerge man page or "
 							print "refer to the Gentoo Handbook."
@@ -3937,6 +3922,19 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	unresolveable = {}
 	aux_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
 
+	fake_vardb = portage.fakedbapi(settings=settings)
+	fakedb_auxkeys = aux_keys[:]
+	fakedb_auxkeys.append("SLOT")
+	for cpv in myvarlist:
+		try:
+			# Prefer live ebuild metadata when available.
+			aux_vals = portdb.aux_get(cpv, fakedb_auxkeys)
+		except KeyError:
+			aux_vals = vardb.aux_get(cpv, fakedb_auxkeys)
+		fake_vardb.cpv_inject(cpv, metadata=dict(zip(fakedb_auxkeys, aux_vals)))
+	# HACK: Ensure that installed packages are preferenced by dep_check().
+	trees[settings["ROOT"]]["porttree"].dbapi = fake_vardb
+
 	while remaining_atoms:
 		atom, parent, priority = remaining_atoms.pop()
 		pkgs = vardb.match(atom)
@@ -3951,8 +3949,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 				continue
 			spinner.update()
 			fakedb.cpv_inject(pkg)
-			mydb = portdb.xmatch("match-visible", "="+pkg) and portdb or vardb
-			myaux = dict(zip(aux_keys, mydb.aux_get(pkg, aux_keys)))
+			myaux = dict(zip(aux_keys, fake_vardb.aux_get(pkg, aux_keys)))
 			mydeps = []
 			if myopts.get("--with-bdeps", "y") == "y":
 				mydeps.append((myaux["DEPEND"], soft))
@@ -3969,6 +3966,9 @@ def action_depclean(settings, trees, ldpath_mtimes,
 					return
 				for atom in atoms:
 					remaining_atoms.append((atom, pkg, priority))
+
+	# Restore the portdb back to normal (see fake_vardb above).
+	trees[settings["ROOT"]]["porttree"].dbapi = portdb
 
 	if "--quiet" not in myopts:
 		print "\b\b... done!\n"
