@@ -3858,7 +3858,6 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	syslist = getlist(settings, "system")
 	worldlist = getlist(settings, "world")
 	fakedb = portage.fakedbapi(settings=settings)
-	emptydb = portage.fakedbapi(settings=settings)
 	myvarlist = vardb.cpv_all()
 
 	if not syslist:
@@ -3922,7 +3921,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 			mydeps.append((" ".join(myaux.values()), hard))
 			usedef = vardb.aux_get(pkg, ["USE"])[0].split()
 			for depstr, priority in mydeps:
-				success, atoms = portage.dep_check(depstr, emptydb, settings,
+				success, atoms = portage.dep_check(depstr, None, settings,
 					myuse=usedef, trees=trees, myroot=settings["ROOT"])
 				if not success:
 					print "\n\n"
