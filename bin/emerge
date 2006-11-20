@@ -584,17 +584,6 @@ def getlist(settings, mode):
 			myline=myline[1:]
 		mynewlines.append(myline.strip())
 
-	# Remove everything that is package.provided from our list
-	for atom in mynewlines[:]:
-		for expanded_atom in portage.flatten(
-			portage.dep_virtual([atom], settings)):
-			mykey = portage.dep_getkey(expanded_atom)
-			if mykey in settings.pprovideddict and \
-				portage.match_from_list(
-					expanded_atom, settings.pprovideddict[mykey]):
-					mynewlines.remove(atom)
-					break
-
 	return mynewlines
 
 def clean_world(vardb, cpv):
