@@ -756,6 +756,7 @@ class depgraph:
 		self.blocker_digraph = digraph()
 		self.blocker_parents = {}
 		self._altlist_cache = {}
+		self._pprovided_args = []
 
 	def create(self, mybigkey, myparent=None, addme=1, myuse=None,
 		priority=DepPriority(), rev_dep=False, arg=None):
@@ -1194,6 +1195,12 @@ class depgraph:
 			sys.stderr.write("%s\n\n" % depstring)
 			return 0
 		mymerge = mycheck[1]
+
+		if not mymerge and arg and \
+			portage.best_match_to_list(depstring, self.args_keys):
+			# A provided package has been specified on the command line.  The
+			# package will not be merged and a warning will be displayed.
+			self._pprovided_args.append(arg)
 
 		if myparent:
 			# The parent is added after it's own dep_check call so that it
@@ -2159,6 +2166,21 @@ class depgraph:
 			for revision,text in changelogs:
 				print bold('*'+revision)
 				sys.stdout.write(text)
+
+		if self._pprovided_args:
+			msg = []
+			msg.append(bad("\nWARNING: "))
+			if len(self._pprovided_args) > 1:
+				msg.append("Requested packages will not be " + \
+					"merged because they are listed in\n")
+			else:
+				msg.append("A requested package will not be " + \
+					"merged because it is listed in\n")
+			msg.append("         package.provided:\n\n")
+			for arg in self._pprovided_args:
+				msg.append("             " + arg + "\n")
+			msg.append("\n")
+			sys.stderr.write("".join(msg))
 
 	def calc_changelog(self,ebuildpath,current,next):
 		current = '-'.join(portage.catpkgsplit(current)[1:])
