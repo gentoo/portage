@@ -3801,15 +3801,16 @@ def dep_wordreduce(mydeplist,mysettings,mydbapi,mode,use_cache=1):
 			deplist[mypos]=dep_wordreduce(deplist[mypos],mysettings,mydbapi,mode,use_cache=use_cache)
 		elif deplist[mypos]=="||":
 			pass
-		elif mydbapi is None:
-			# Assume nothing is satisfied.  This forces dep_zapdeps to return
-			# all of deps the deps that have been selected.
-			deplist[mypos] = False
 		else:
 			mykey = dep_getkey(deplist[mypos])
 			if mysettings and mysettings.pprovideddict.has_key(mykey) and \
 			        match_from_list(deplist[mypos], mysettings.pprovideddict[mykey]):
 				deplist[mypos]=True
+			elif mydbapi is None:
+				# Assume nothing is satisfied.  This forces dep_zapdeps to
+				# return all of deps the deps that have been selected
+				# (excluding those satisfied by package.provided).
+				deplist[mypos] = False
 			else:
 				if mode:
 					mydep=mydbapi.xmatch(mode,deplist[mypos])
