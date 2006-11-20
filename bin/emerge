@@ -4197,7 +4197,7 @@ def multiple_actions(action1, action2):
 	sys.stderr.write("!!! '%s' or '%s'\n\n" % (action1, action2))
 	sys.exit(1)
 
-def parse_opts(tmpcmdline):
+def parse_opts(tmpcmdline, silent=False):
 	myaction=None
 	myopts = {}
 	myfiles=[]
@@ -4206,6 +4206,10 @@ def parse_opts(tmpcmdline):
 
 	longopt_aliases = {"--cols":"--columns", "--skip-first":"--skipfirst"}
 	argument_options = {
+		"--config-root": {
+			"help":"specify the location for portage configuration files",
+			"action":"store"
+		},
 		"--color": {
 			"help":"enable or disable color output",
 			"type":"choice",
@@ -4272,7 +4276,9 @@ def parse_opts(tmpcmdline):
 			myfiles.append(x)
 
 	if "--nocolor" in myopts:
-		print "*** Deprecated use of '--nocolor', use '--color=n' instead."
+		if not silent:
+			sys.stderr.write("*** Deprecated use of '--nocolor', " + \
+				"use '--color=n' instead.\n")
 		del myopts["--nocolor"]
 		myopts["--color"] = "n"
 
@@ -4391,6 +4397,14 @@ def adjust_config(myopts, settings):
 		settings.backup_changes("NOCOLOR")
 
 def emerge_main():
+	# This first pass is just for options that need to be known as early as
+	# possible, such as --config-root.  They will be parsed again later,
+	# together with EMERGE_DEFAULT_OPTS (which may vary depending on the
+	# the value of --config-root).
+	myaction, myopts, myfiles = parse_opts(sys.argv[1:], silent=True)
+	if "--config-root" in myopts:
+		os.environ["PORTAGE_CONFIGROOT"] = myopts["--config-root"]
+
 	# Portage needs to ensure a sane umask for the files it creates.
 	os.umask(022)
 	settings, trees, mtimedb = load_emerge_config()
