@@ -1238,12 +1238,6 @@ class depgraph:
 						vardb.match(x):
 						continue
 
-					pkg_key = portage.dep_getkey(x)
-					if pkg_key in pkgsettings.pprovideddict and \
-						portage.match_from_list(
-							x, pkgsettings.pprovideddict[pkg_key]):
-							continue
-
 				# List of acceptable packages, ordered by type preference.
 				matched_packages = []
 				myeb_matches = portdb.xmatch("match-visible", x)
