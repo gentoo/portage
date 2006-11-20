@@ -1195,10 +1195,10 @@ class depgraph:
 		#processing dependencies
 		""" Call portage.dep_check to evaluate the use? conditionals and make sure all
 		dependencies are satisfiable. """
-		mycheck = portage.dep_check(depstring, self.mydbapi[myroot],
+		mycheck = portage.dep_check(depstring, None,
 			pkgsettings, myuse=myuse,
 			use_binaries=("--usepkgonly" in self.myopts),
-			myroot=myroot, trees=self.trees, return_all_deps=True)
+			myroot=myroot, trees=self.trees)
 
 		if not mycheck[0]:
 			sys.stderr.write("\n\n%s\n\n" % mycheck[1])

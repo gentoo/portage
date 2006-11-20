@@ -3580,16 +3580,14 @@ def dep_eval(deplist):
 				return 0
 		return 1
 
-def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None,
-	return_all_deps=False):
+def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 	"""Takes an unreduced and reduced deplist and removes satisfied dependencies.
 	Returned deplist contains steps that must be taken to satisfy dependencies."""
 	if trees is None:
 		global db
 		trees = db
 	writemsg("ZapDeps -- %s\n" % (use_binaries), 2)
-	if not reduced or unreduced == ["||"] or \
-		(not return_all_deps and dep_eval(reduced)):
+	if not reduced or unreduced == ["||"] or dep_eval(reduced):
 		return []
 
 	if unreduced[0] != "||":
@@ -3597,9 +3595,8 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None,
 		for (dep, satisfied) in zip(unreduced, reduced):
 			if isinstance(dep, list):
 				unresolved += dep_zapdeps(dep, satisfied, myroot,
-					use_binaries=use_binaries, trees=trees,
-					return_all_deps=return_all_deps)
-			elif not satisfied or return_all_deps:
+					use_binaries=use_binaries, trees=trees)
+			elif not satisfied:
 				unresolved.append(dep)
 		return unresolved
 
@@ -3628,8 +3625,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None,
 	for (dep, satisfied) in zip(deps, satisfieds):
 		if isinstance(dep, list):
 			atoms = dep_zapdeps(dep, satisfied, myroot,
-				use_binaries=use_binaries, trees=trees,
-				return_all_deps=return_all_deps)
+				use_binaries=use_binaries, trees=trees)
 		else:
 			atoms = [dep]
 
@@ -3716,7 +3712,7 @@ def dep_expand(mydep, mydb=None, use_cache=1, settings=None):
 		mydep, mydb=mydb, use_cache=use_cache, settings=settings) + postfix
 
 def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
-	use_cache=1, use_binaries=0, myroot="/", trees=None, return_all_deps=False):
+	use_cache=1, use_binaries=0, myroot="/", trees=None):
 	"""Takes a depend string and parses the condition."""
 	edebug = mysettings.get("PORTAGE_DEBUG", None) == "1"
 	#check_config_instance(mysettings)
@@ -3771,8 +3767,7 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 	try:
 		mysplit = _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings,
 			use=use, mode=mode, myuse=myuse, use_cache=use_cache,
-			use_binaries=use_binaries, myroot=myroot, trees=trees,
-			return_all_deps=return_all_deps)
+			use_binaries=use_binaries, myroot=myroot, trees=trees)
 	except portage_exception.ParseError, e:
 		return [0, str(e)]
 
@@ -3786,8 +3781,7 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 	writemsg("mysplit2: %s\n" % (mysplit2), 1)
 
 	myzaps = dep_zapdeps(mysplit, mysplit2, myroot,
-		use_binaries=use_binaries, trees=trees,
-		return_all_deps=return_all_deps)
+		use_binaries=use_binaries, trees=trees)
 	mylist = flatten(myzaps)
 	writemsg("myzaps:   %s\n" % (myzaps), 1)
 	writemsg("mylist:   %s\n" % (mylist), 1)
@@ -3800,14 +3794,17 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 
 def dep_wordreduce(mydeplist,mysettings,mydbapi,mode,use_cache=1):
 	"Reduces the deplist to ones and zeros"
-	mypos=0
 	deplist=mydeplist[:]
-	while mypos<len(deplist):
+	for mypos in xrange(len(deplist)):
 		if type(deplist[mypos])==types.ListType:
 			#recurse
 			deplist[mypos]=dep_wordreduce(deplist[mypos],mysettings,mydbapi,mode,use_cache=use_cache)
 		elif deplist[mypos]=="||":
 			pass
+		elif mydbapi is None:
+			# Assume nothing is satisfied.  This forces dep_zapdeps to return
+			# all of deps the deps that have been selected.
+			deplist[mypos] = False
 		else:
 			mykey = dep_getkey(deplist[mypos])
 			if mysettings and mysettings.pprovideddict.has_key(mykey) and \
@@ -3826,7 +3823,6 @@ def dep_wordreduce(mydeplist,mysettings,mydbapi,mode,use_cache=1):
 				else:
 					#encountered invalid string
 					return None
-		mypos=mypos+1
 	return deplist
 
 def cpv_getkey(mycpv):
