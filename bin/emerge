@@ -802,7 +802,7 @@ class depgraph:
 				self.blocker_parents.setdefault(
 					" ".join(mybigkey), set()).add(myparent)
 			return 1
-		if not arg:
+		if not arg and myroot == self.target_root:
 			arg = portage.best_match_to_list(mykey, self.args_keys)
 		# select the correct /var database that we'll be checking against
 		vardbapi = self.trees[myroot]["vartree"].dbapi
