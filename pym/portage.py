@@ -835,7 +835,7 @@ def check_config_instance(test):
 
 class config:
 	def __init__(self, clone=None, mycpv=None, config_profile_path=None,
-		config_incrementals=None, config_root="/", target_root="/",
+		config_incrementals=None, config_root=None, target_root=None,
 		local_config=True):
 
 		self.already_in_regenerate = 0
@@ -921,17 +921,20 @@ class config:
 			# backupenv is for calculated incremental variables.
 			self.backupenv = os.environ.copy()
 
+			def check_var_directory(varname, var):
+				if not os.path.isdir(var):
+					writemsg("!!! Error: %s='%s' is not a directory. " + \
+						"Please correct this.\n" % (var, varname),
+						noiselevel=-1)
+					raise portage_exception.DirectoryNotFound(var)
+
+			if config_root is None:
+				config_root = "/"
+
 			config_root = \
 				normalize_path(config_root).rstrip(os.path.sep) + os.path.sep
-			target_root = \
-				normalize_path(target_root).rstrip(os.path.sep) + os.path.sep
 
-			for k, v in (("PORTAGE_CONFIGROOT", config_root),
-				("ROOT", target_root)):
-				if not os.path.isdir(v):
-					writemsg("!!! Error: %s='%s' is not a directory. Please correct this.\n" % (k, v),
-						noiselevel=-1)
-					raise portage_exception.DirectoryNotFound(v)
+			check_var_directory("PORTAGE_CONFIGROOT", config_root)
 
 			self.depcachedir = DEPCACHE_PATH
 
@@ -1125,7 +1128,16 @@ class config:
 					noiselevel=-1)
 				sys.exit(1)
 
-
+			# Allow ROOT setting to come from make.conf if it's not overridden
+			# by the constructor argument (from the calling environment).  As a
+			# special exception for a very common use case, config_root == "/"
+			# implies that ROOT in make.conf should be ignored.  That way, the
+			# user can chroot into $ROOT and the ROOT setting in make.conf will
+			# be automatically ignored (unless config_root is other than "/").
+			if config_root != "/" and \
+				target_root is None and "ROOT" in self.mygcfg:
+				target_root = self.mygcfg["ROOT"]
+			
 			self.configlist.append(self.mygcfg)
 			self.configdict["conf"]=self.configlist[-1]
 
@@ -1155,6 +1167,14 @@ class config:
 					except KeyError:
 						pass
 			del blacklisted, cfg
+
+			if target_root is None:
+				target_root = "/"
+
+			target_root = \
+				normalize_path(target_root).rstrip(os.path.sep) + os.path.sep
+
+			check_var_directory("ROOT", target_root)
 
 			env_d = getconfig(
 				os.path.join(target_root, "etc", "profile.env"), expand=False)
@@ -7324,7 +7344,7 @@ class MtimeDB(dict):
 			commit_mtimedb(mydict=d, filename=self.filename)
 			self._clean_data = copy.deepcopy(d)
 
-def create_trees(config_root="/", target_root="/", trees=None):
+def create_trees(config_root=None, target_root=None, trees=None):
 	if trees is None:
 		trees = {}
 	else:
@@ -7342,11 +7362,11 @@ def create_trees(config_root="/", target_root="/", trees=None):
 
 	myroots = [(settings["ROOT"], settings)]
 	if settings["ROOT"] != "/":
-		settings = config(config_root="/", target_root="/",
+		settings = config(config_root=None, target_root=None,
 			config_incrementals=portage_const.INCREMENTALS)
 		settings.lock()
 		settings.validate()
-		myroots.append(("/", settings))
+		myroots.append((settings["ROOT"], settings))
 
 	for myroot, mysettings in myroots:
 		trees[myroot] = portage_util.LazyItemsDict(trees.get(myroot, None))
