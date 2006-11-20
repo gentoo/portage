@@ -835,7 +835,7 @@ def check_config_instance(test):
 
 class config:
 	def __init__(self, clone=None, mycpv=None, config_profile_path=None,
-		config_incrementals=None, config_root="/", target_root="/",
+		config_incrementals=None, config_root=None, target_root=None,
 		local_config=True):
 
 		self.already_in_regenerate = 0
@@ -921,18 +921,20 @@ class config:
 			# backupenv is for calculated incremental variables.
 			self.backupenv = os.environ.copy()
 
+			def check_var_directory(varname, var):
+				if not os.path.isdir(var):
+					writemsg("!!! Error: %s='%s' is not a directory. " + \
+						"Please correct this.\n" % (var, varname),
+						noiselevel=-1)
+					raise portage_exception.DirectoryNotFound(var)
+
+			if config_root is None:
+				config_root = "/"
+
 			config_root = \
 				normalize_path(config_root).rstrip(os.path.sep) + os.path.sep
-			target_root = \
-				normalize_path(target_root).rstrip(os.path.sep) + os.path.sep
 
-			for k, v in (("PORTAGE_CONFIGROOT", config_root),
-				("ROOT", target_root)):
-				v = v + EPREFIX
-				if not os.path.isdir(v):
-					writemsg("!!! Error: %s='%s' is not a directory. Please correct this.\n" % (k, v),
-						noiselevel=-1)
-					raise portage_exception.DirectoryNotFound(v)
+			check_var_directory("PORTAGE_CONFIGROOT", config_root + EPREFIX)
 
 			self.depcachedir = DEPCACHE_PATH
 
@@ -1126,7 +1128,16 @@ class config:
 					noiselevel=-1)
 				sys.exit(1)
 
-
+			# Allow ROOT setting to come from make.conf if it's not overridden
+			# by the constructor argument (from the calling environment).  As a
+			# special exception for a very common use case, config_root == "/"
+			# implies that ROOT in make.conf should be ignored.  That way, the
+			# user can chroot into $ROOT and the ROOT setting in make.conf will
+			# be automatically ignored (unless config_root is other than "/").
+			if config_root != "/" and \
+				target_root is None and "ROOT" in self.mygcfg:
+				target_root = self.mygcfg["ROOT"]
+			
 			self.configlist.append(self.mygcfg)
 			self.configdict["conf"]=self.configlist[-1]
 
@@ -1156,6 +1167,14 @@ class config:
 					except KeyError:
 						pass
 			del blacklisted, cfg
+
+			if target_root is None:
+				target_root = "/"
+
+			target_root = \
+				normalize_path(target_root).rstrip(os.path.sep) + os.path.sep
+
+			check_var_directory("ROOT", target_root + EPREFIX)
 
 			env_d = getconfig(
 				os.path.join(target_root + EPREFIX, "etc", "profile.env"), expand=False)
@@ -3588,16 +3607,14 @@ def dep_eval(deplist):
 				return 0
 		return 1
 
-def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None,
-	return_all_deps=False):
+def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 	"""Takes an unreduced and reduced deplist and removes satisfied dependencies.
 	Returned deplist contains steps that must be taken to satisfy dependencies."""
 	if trees is None:
 		global db
 		trees = db
 	writemsg("ZapDeps -- %s\n" % (use_binaries), 2)
-	if not reduced or unreduced == ["||"] or \
-		(not return_all_deps and dep_eval(reduced)):
+	if not reduced or unreduced == ["||"] or dep_eval(reduced):
 		return []
 
 	if unreduced[0] != "||":
@@ -3605,9 +3622,8 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None,
 		for (dep, satisfied) in zip(unreduced, reduced):
 			if isinstance(dep, list):
 				unresolved += dep_zapdeps(dep, satisfied, myroot,
-					use_binaries=use_binaries, trees=trees,
-					return_all_deps=return_all_deps)
-			elif not satisfied or return_all_deps:
+					use_binaries=use_binaries, trees=trees)
+			elif not satisfied:
 				unresolved.append(dep)
 		return unresolved
 
@@ -3636,8 +3652,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None,
 	for (dep, satisfied) in zip(deps, satisfieds):
 		if isinstance(dep, list):
 			atoms = dep_zapdeps(dep, satisfied, myroot,
-				use_binaries=use_binaries, trees=trees,
-				return_all_deps=return_all_deps)
+				use_binaries=use_binaries, trees=trees)
 		else:
 			atoms = [dep]
 
@@ -3724,7 +3739,7 @@ def dep_expand(mydep, mydb=None, use_cache=1, settings=None):
 		mydep, mydb=mydb, use_cache=use_cache, settings=settings) + postfix
 
 def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
-	use_cache=1, use_binaries=0, myroot="/", trees=None, return_all_deps=False):
+	use_cache=1, use_binaries=0, myroot="/", trees=None):
 	"""Takes a depend string and parses the condition."""
 	edebug = mysettings.get("PORTAGE_DEBUG", None) == "1"
 	#check_config_instance(mysettings)
@@ -3779,8 +3794,7 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 	try:
 		mysplit = _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings,
 			use=use, mode=mode, myuse=myuse, use_cache=use_cache,
-			use_binaries=use_binaries, myroot=myroot, trees=trees,
-			return_all_deps=return_all_deps)
+			use_binaries=use_binaries, myroot=myroot, trees=trees)
 	except portage_exception.ParseError, e:
 		return [0, str(e)]
 
@@ -3794,8 +3808,7 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 	writemsg("mysplit2: %s\n" % (mysplit2), 1)
 
 	myzaps = dep_zapdeps(mysplit, mysplit2, myroot,
-		use_binaries=use_binaries, trees=trees,
-		return_all_deps=return_all_deps)
+		use_binaries=use_binaries, trees=trees)
 	mylist = flatten(myzaps)
 	writemsg("myzaps:   %s\n" % (myzaps), 1)
 	writemsg("mylist:   %s\n" % (mylist), 1)
@@ -3808,9 +3821,8 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 
 def dep_wordreduce(mydeplist,mysettings,mydbapi,mode,use_cache=1):
 	"Reduces the deplist to ones and zeros"
-	mypos=0
 	deplist=mydeplist[:]
-	while mypos<len(deplist):
+	for mypos in xrange(len(deplist)):
 		if type(deplist[mypos])==types.ListType:
 			#recurse
 			deplist[mypos]=dep_wordreduce(deplist[mypos],mysettings,mydbapi,mode,use_cache=use_cache)
@@ -3821,6 +3833,11 @@ def dep_wordreduce(mydeplist,mysettings,mydbapi,mode,use_cache=1):
 			if mysettings and mysettings.pprovideddict.has_key(mykey) and \
 			        match_from_list(deplist[mypos], mysettings.pprovideddict[mykey]):
 				deplist[mypos]=True
+			elif mydbapi is None:
+				# Assume nothing is satisfied.  This forces dep_zapdeps to
+				# return all of deps the deps that have been selected
+				# (excluding those satisfied by package.provided).
+				deplist[mypos] = False
 			else:
 				if mode:
 					mydep=mydbapi.xmatch(mode,deplist[mypos])
@@ -3834,7 +3851,6 @@ def dep_wordreduce(mydeplist,mysettings,mydbapi,mode,use_cache=1):
 				else:
 					#encountered invalid string
 					return None
-		mypos=mypos+1
 	return deplist
 
 def cpv_getkey(mycpv):
@@ -7335,7 +7351,7 @@ class MtimeDB(dict):
 			commit_mtimedb(mydict=d, filename=self.filename)
 			self._clean_data = copy.deepcopy(d)
 
-def create_trees(config_root="/", target_root="/", trees=None):
+def create_trees(config_root=None, target_root=None, trees=None):
 	if trees is None:
 		trees = {}
 	else:
@@ -7353,11 +7369,11 @@ def create_trees(config_root="/", target_root="/", trees=None):
 
 	myroots = [(settings["ROOT"], settings)]
 	if settings["ROOT"] != "/":
-		settings = config(config_root="/", target_root="/",
+		settings = config(config_root=None, target_root=None,
 			config_incrementals=portage_const.INCREMENTALS)
 		settings.lock()
 		settings.validate()
-		myroots.append(("/", settings))
+		myroots.append((settings["ROOT"], settings))
 
 	for myroot, mysettings in myroots:
 		trees[myroot] = portage_util.LazyItemsDict(trees.get(myroot, None))
