@@ -924,6 +924,15 @@ for x in scanlist:
 						continue
 					if l[:7] == "digest-":
 						dadded.append(l[7:])
+			if isSvn:
+				myf=os.popen("svn status "+os.path.normpath(checkdir+"/files"))
+				myl=myf.readlines()
+				myf.close()
+				for l in myl:
+					if l[0] == "A":
+						l = l.rstrip().split(' ')[-1]
+						if l[:7] == "digest-":
+							dadded.append(l[7:])
 		except IOError:
 			if mymode=="commit" and isCvs:
 				stats["CVS/Entries.IO_error"] += 1
