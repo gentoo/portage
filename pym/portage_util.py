@@ -523,7 +523,8 @@ def apply_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 			if follow_links:
 				os.chown(filename, uid, gid)
 			else:
-				os.lchown(filename, uid, gid)
+				import portage_data
+				portage_data.lchown(filename, uid, gid)
 			modified = True
 		except OSError, oe:
 			func_call = "chown('%s', %i, %i)" % (filename, uid, gid)
