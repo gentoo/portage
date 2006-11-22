@@ -561,7 +561,12 @@ def apply_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 		if mode == -1:
 			new_mode = st_mode
 		elif mode & stat.S_ISUID or mode & stat.S_ISGID:
-			new_mode = mode & 07777
+			mode = mode & 07777
+			if mask >= 0:
+				new_mode = mode | st_mode
+				new_mode = (mask ^ new_mode) & new_mode
+			else:
+				new_mode = mode
 
 	if not follow_links and stat.S_ISLNK(stat_cached.st_mode):
 		# Mode doesn't matter for symlinks.
