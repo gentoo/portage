@@ -558,7 +558,10 @@ def apply_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 	# bits, so those bits are restored if necessary.
 	if modified and new_mode == -1 and \
 		(st_mode & stat.S_ISUID or st_mode & stat.S_ISGID):
-		new_mode = mode & 07777
+		if mode == -1:
+			new_mode = st_mode
+		elif mode & stat.S_ISUID or mode & stat.S_ISGID:
+			new_mode = mode & 07777
 
 	if not follow_links and stat.S_ISLNK(stat_cached.st_mode):
 		# Mode doesn't matter for symlinks.
