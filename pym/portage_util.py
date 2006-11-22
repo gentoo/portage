@@ -489,7 +489,7 @@ def unique_array(s):
 	return u
 
 def apply_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
-	stat_cached=None):
+	stat_cached=None, follow_links=True):
 	"""Apply user, group, and mode bits to a file if the existing bits do not
 	already match.  The default behavior is to force an exact match of mode
 	bits.  When mask=0 is specified, mode bits on the target file are allowed
@@ -502,7 +502,10 @@ def apply_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 
 	if stat_cached is None:
 		try:
-			stat_cached = os.stat(filename)
+			if follow_links:
+				stat_cached = os.stat(filename)
+			else:
+				stat_cached = os.lstat(filename)
 		except OSError, oe:
 			func_call = "stat('%s')" % filename
 			if oe.errno == errno.EPERM:
@@ -517,7 +520,10 @@ def apply_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 	if	(uid != -1 and uid != stat_cached.st_uid) or \
 		(gid != -1 and gid != stat_cached.st_gid):
 		try:
-			os.chown(filename, uid, gid)
+			if follow_links:
+				os.chown(filename, uid, gid)
+			else:
+				os.lchown(filename, uid, gid)
 			modified = True
 		except OSError, oe:
 			func_call = "chown('%s', %i, %i)" % (filename, uid, gid)
@@ -547,6 +553,16 @@ def apply_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 		mode = mode & 07777 # protect from unwanted bits
 		if mode != st_mode:
 			new_mode = mode
+
+	# The chown system call may clear S_ISUID and S_ISGID
+	# bits, so those bits are restored if necessary.
+	if modified and new_mode == -1 and \
+		(st_mode & stat.S_ISUID or st_mode & stat.S_ISGID):
+		new_mode = mode & 07777
+
+	if not follow_links and stat.S_ISLNK(stat_cached.st_mode):
+		# Mode doesn't matter for symlinks.
+		new_mode = -1
 
 	if new_mode != -1:
 		try:
@@ -614,7 +630,7 @@ def apply_recursive_permissions(top, uid=-1, gid=-1,
 	return all_applied
 
 def apply_secpass_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
-	stat_cached=None):
+	stat_cached=None, follow_links=True):
 	"""A wrapper around apply_permissions that uses secpass and simple
 	logic to apply as much of the permissions as possible without
 	generating an obviously avoidable permission exception. Despite
@@ -625,7 +641,10 @@ def apply_secpass_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 
 	if stat_cached is None:
 		try:
-			stat_cached = os.stat(filename)
+			if follow_links:
+				stat_cached = os.stat(filename)
+			else:
+				stat_cached = os.lstat(filename)
 		except OSError, oe:
 			func_call = "stat('%s')" % filename
 			if oe.errno == errno.EPERM:
@@ -653,7 +672,8 @@ def apply_secpass_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 			all_applied = False
 			gid = -1
 
-	apply_permissions(filename, uid=uid, gid=gid, mode=mode, mask=mask, stat_cached=stat_cached)
+	apply_permissions(filename, uid=uid, gid=gid, mode=mode, mask=mask,
+		stat_cached=stat_cached, follow_links=follow_links)
 	return all_applied
 
 class atomic_ofstream(file):

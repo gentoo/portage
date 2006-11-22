@@ -1344,6 +1344,16 @@ class config:
 			self["PORTAGE_PYM_PATH"] = PORTAGE_PYM_PATH
 			self.backup_changes("PORTAGE_PYM_PATH")
 
+			for var in ("PORTAGE_INST_UID", "PORTAGE_INST_GID"):
+				try:
+					self[var] = str(int(self.get(var, "0")))
+				except ValueError:
+					writemsg(("!!! %s='%s' is not a valid integer.  " + \
+						"Falling back to '0'.\n") % (var, self[var]),
+						noiselevel=-1)
+					self[var] = "0"
+				self.backup_changes(var)
+
 			self.regenerate()
 			self.features = portage_util.unique_array(self["FEATURES"].split())
 
@@ -2614,6 +2624,29 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 
 	if phase_retval == os.EX_OK:
 		if mydo == "install":
+			# User and group bits that match the "portage" user or group are
+			# automatically mapped to PORTAGE_INST_UID and PORTAGE_INST_GID if
+			# necessary.  The chown system call may clear S_ISUID and S_ISGID
+			# bits, so those bits are restored if necessary.
+			from itertools import chain
+			inst_uid = int(mysettings["PORTAGE_INST_UID"])
+			inst_gid = int(mysettings["PORTAGE_INST_GID"])
+			for parent, dirs, files in os.walk(mysettings["D"]):
+				for fname in chain(dirs, files):
+					fpath = os.path.join(parent, fname)
+					mystat = os.lstat(fpath)
+					if mystat.st_uid != portage_uid and \
+						mystat.st_gid != portage_gid:
+						continue
+					myuid = -1
+					mygid = -1
+					if mystat.st_uid == portage_uid:
+						myuid = inst_uid
+					if mystat.st_gid == portage_gid:
+						mygid = inst_gid
+					apply_secpass_permissions(fpath, uid=myuid, gid=mygid,
+						mode=mystat.st_mode, stat_cached=mystat,
+						follow_links=False)
 			mycommand = " ".join([MISC_SH_BINARY, "install_qa_check"])
 			qa_retval = spawn(mycommand, mysettings, debug=debug, logfile=logfile, **kwargs)
 			if qa_retval:
