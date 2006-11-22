@@ -3792,7 +3792,13 @@ def action_info(settings, trees, myopts, myfiles):
 			valuesmap["IUSE"] = set(filter_iuse_defaults(valuesmap["IUSE"]))
 			valuesmap["USE"] = valuesmap["USE"].intersection(valuesmap["IUSE"])
 			pkgsettings.reset()
-			pkgsettings.setcpv(pkg, mydb=portdb)
+			# If a matching ebuild is no longer available in the tree, maybe it
+			# would make sense to compare against the flags for the best
+			# available version with the same slot?
+			mydb = None
+			if portdb.cpv_exists(pkg):
+				mydb = portdb
+			pkgsettings.setcpv(pkg, mydb=mydb)
 			if valuesmap["IUSE"].intersection(pkgsettings["USE"].split()) != \
 				valuesmap["USE"]:
 				diff_values["USE"] = valuesmap["USE"]
