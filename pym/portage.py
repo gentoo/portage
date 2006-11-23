@@ -4089,6 +4089,18 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 		matches = match_to_list(mycpv, pkgdict[cp].keys())
 		for match in matches:
 			pgroups.extend(pkgdict[cp][match])
+		if matches:
+			inc_pgroups = []
+			for x in pgroups:
+				if x != "-*" and x.startswith("-"):
+					try:
+						inc_pgroups.remove(x[1:])
+					except ValueError:
+						pass
+				if x not in inc_pgroups:
+					inc_pgroups.append(x)
+			pgroups = inc_pgroups
+			del inc_pgroups
 
 	kmask = "missing"
 
@@ -5590,6 +5602,18 @@ class portdbapi(dbapi):
 				matches = match_to_list(mycpv, pkgdict[cp].keys())
 				for atom in matches:
 					pgroups.extend(pkgdict[cp][atom])
+				if matches:
+					inc_pgroups = []
+					for x in pgroups:
+						if x != "-*" and x.startswith("-"):
+							try:
+								inc_pgroups.remove(x[1:])
+							except ValueError:
+								pass
+						if x not in inc_pgroups:
+							inc_pgroups.append(x)
+					pgroups = inc_pgroups
+					del inc_pgroups
 			hasstable = False
 			hastesting = False
 			for gp in mygroups:
@@ -5597,9 +5621,6 @@ class portdbapi(dbapi):
 					writemsg("--- WARNING: Package '%s' uses '*' keyword.\n" % mycpv,
 						noiselevel=-1)
 					match=1
-					break
-				elif "-"+gp in pgroups:
-					match=0
 					break
 				elif gp in pgroups:
 					match=1
