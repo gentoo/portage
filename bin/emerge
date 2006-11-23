@@ -274,6 +274,10 @@ def countdown(secs=5, doing="Starting"):
 def format_size(mysize):
 	if type(mysize) not in [types.IntType,types.LongType]:
 		return str(mysize)
+	if 0 != mysize % 1024:
+		# Always round up to the next kB so that it doesn't show 0 kB when
+		# some small file still needs to be fetched.
+		mysize += 1024 - mysize % 1024
 	mystr=str(mysize/1024)
 	mycount=len(mystr)
 	while (mycount > 3):
