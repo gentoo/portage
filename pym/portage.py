@@ -4090,7 +4090,6 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 						inc_pgroups.remove(x[1:])
 					except ValueError:
 						pass
-					continue
 				if x not in inc_pgroups:
 					inc_pgroups.append(x)
 			pgroups = inc_pgroups
@@ -5604,7 +5603,6 @@ class portdbapi(dbapi):
 								inc_pgroups.remove(x[1:])
 							except ValueError:
 								pass
-							continue
 						if x not in inc_pgroups:
 							inc_pgroups.append(x)
 					pgroups = inc_pgroups
