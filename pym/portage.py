@@ -6427,10 +6427,9 @@ class dblink:
 		return False
 
 	def isprotected(self, filename):
-		"""Files are protected by CONFIG_PROTECT only if they are not identical
-		to the file that was originally installed (otherwise, the unmerge phase
-		can remove them).  This allows the merge phase to replace files that
-		will eventually be unmerged anyway."""
+		"""In cases where an installed package in the same slot owns a
+		protected file that will be merged, bump the mtime on the installed
+		file in order to ensure that it isn't unmerged."""
 		if not self._config_protect.isprotected(filename):
 			return False
 		if self._installed_instance is None:
