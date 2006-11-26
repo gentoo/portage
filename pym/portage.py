@@ -6093,7 +6093,8 @@ class dblink:
 			mysettings.get("CONFIG_PROTECT","").split(),
 			mysettings.get("CONFIG_PROTECT_MASK","").split())
 		self.updateprotect = protect_obj.updateprotect
-		self.isprotected = protect_obj.isprotected
+		self._config_protect = protect_obj
+		self._installed_instance = None
 		self.contentscache=[]
 		self._contents_inodes = None
 
@@ -6293,8 +6294,6 @@ class dblink:
 			mykeys.sort()
 			mykeys.reverse()
 
-			self.updateprotect()
-
 			#process symlinks second-to-last, directories last.
 			mydirs=[]
 			modprotect="/lib/modules/"
@@ -6325,7 +6324,7 @@ class dblink:
 				# upgraded. We effectively only want one half of the config protection
 				# functionality for /lib/modules. For portage-ng both capabilities
 				# should be able to be independently specified.
-				if self.isprotected(obj) or ((len(obj) > len(modprotect)) and (obj[0:len(modprotect)]==modprotect)):
+				if obj.startswith(modprotect):
 					writemsg_stdout("--- cfgpro %s %s\n" % (pkgfiles[objkey][0], obj))
 					continue
 
@@ -6427,6 +6426,61 @@ class dblink:
 
 		return False
 
+	def isprotected(self, filename):
+		"""Files are protected by CONFIG_PROTECT only if they are not identical
+		to the file that was originally installed (otherwise, the unmerge phase
+		can remove them).  This allows the merge phase to replace files that
+		will eventually be unmerged anyway."""
+		if not self._config_protect.isprotected(filename):
+			return False
+		if self._installed_instance is None:
+			return True
+		mydata = self._installed_instance.getcontents().get(filename, None)
+		if mydata is None:
+			return True
+		# Duplicate unmerge logic.  Protect the file if it's not identical
+		# to the one that was originally merged.
+		try:
+			lstatobj = os.lstat(filename)
+		except OSError, e:
+			if e.errno != errno.ENOENT:
+				raise
+			del e
+			# The file has disappeared, so it's not protected.
+			return False
+		try:
+			statobj = os.stat(filename)
+		except OSError, e:
+			if e.errno != errno.ENOENT:
+				raise
+			del e
+			statobj = None
+		lmtime = str(lstatobj[stat.ST_MTIME])
+		mytype = mydata[0]
+		if mytype not in ("dir","fif","dev") and \
+			lmtime != mydata[1]:
+			return True
+		if "dir" == mytype:
+			return statobj is None or not stat.S_ISDIR(statobj.st_mode)
+		elif "sym" == mytype:
+			return not stat.S_ISLNK(lstatobj.st_mode)
+		elif "obj" == mytype:
+			if statobj is None or not stat.S_ISREG(statobj.st_mode):
+				 return True
+			try:
+				mymd5 = portage_checksum.perform_md5(filename, calc_prelink=1)
+			except portage_exception.FileNotFound:
+				# The file has disappeared, so it's not protected.
+				return False
+			return mymd5 != mydata[2].lower()
+		elif "fif" == mytype:
+			return not stat.S_ISFIFO(lstatobj[stat.ST_MODE])
+		elif "dev" == mytype:
+			return True
+		# This should be unreachable.
+		raise AssertionError("Unrecognized type '%s' in file '%s'" % (mytype,
+			os.path.join(self._installed_instance.dbdir, "CONTENTS")))
+
 	def treewalk(self, srcroot, destroot, inforoot, myebuild, cleanup=0,
 		mydbapi=None, prev_mtimes=None):
 		# srcroot  = ${D};
@@ -6446,6 +6500,14 @@ class dblink:
 		otherversions=[]
 		for v in self.vartree.dbapi.cp_list(self.mysplit[0]):
 			otherversions.append(v.split("/")[1])
+
+		slot_matches = self.vartree.dbapi.match(
+			"%s:%s" % (self.mysplit[0], self.settings["SLOT"]))
+		if slot_matches:
+			# Used by self.isprotected().
+			self._installed_instance = dblink(self.cat,
+				catsplit(slot_matches[0])[1], destroot, self.settings,
+				vartree=self.vartree)
 
 		# check for package collisions
 		if "collision-protect" in self.settings.features:
