@@ -336,7 +336,6 @@ Please select from the menu above (-1 to ignore this update): "
 			1) echo "Replacing ${ofile} with ${file}"
 			   mv ${mv_opts} ${file} ${ofile}
 			   [ -n "${OVERWRITE_ALL}" ] && my_input=-1
-			   [ -e "${file}" ] || touch ${ofile}
 			   continue
 			   ;;
 			2) echo "Deleting ${file}"
@@ -388,7 +387,6 @@ Please select from the menu above (-1 to exit, losing this merge): "
 				1) echo "Replacing ${ofile} with ${mfile}"
 				   chmod --reference=${ofile} ${mfile}
 				   mv ${mv_opts} ${mfile} ${ofile}
-				   [ -e "${mfile}" ] || touch ${ofile}
 				   rm ${rm_opts} ${file}
 				   return 255
 				   ;;
