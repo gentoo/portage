@@ -52,18 +52,18 @@ dnl when /bin/sh is bash, then BASH is set to /bin/sh
 test "${BASH}" != "/bin/sh" || $as_unset BASH
 AC_PATH_PROGS(BASH, [bash2 bash], /bin/bash)
 
-dnl >=python-2.3.1, but prefer path .../python
+dnl >=python-2.4, but prefer path .../python
 AC_PATH_PROG(PYTHON, [python], /usr/bin/python)
-AX_WITH_PYTHON([2.3.1], [missing])
+AX_WITH_PYTHON([2.4], [missing])
 if test "x${PYTHON}" = "xmissing"; then
 	PYTHON=
 	AC_PATH_PROGS(PYTHON,
 			  [python2.4 python2.3 python2 python],
 			  [/usr/bin/python])
-	AX_WITH_PYTHON([2.3.1], [missing])
+	AX_WITH_PYTHON([2.4], [missing])
 fi
 if test "x${PYTHON}" = "xmissing"; then
-	AC_MSG_ERROR([cannot find python version >= 2.3.1])
+	AC_MSG_ERROR([cannot find python version >= 2.4])
 fi
 
 AC_PATH_PROG(PERL, perl, [/usr/bin/perl])
