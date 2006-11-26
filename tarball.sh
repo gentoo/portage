@@ -13,7 +13,7 @@ export PKG="prefix-portage"
 export TMP="/var/tmp"
 export V="$1"
 export DEST="${TMP}/${PKG}-${V}"
-export PREVEB="2.0.49_pre2"
+#export PREVEB="2.0.49_pre2"
 
 ./tabcheck.py bin/emerge `find ./ -type f -name '*.py'`
 

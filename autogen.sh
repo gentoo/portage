@@ -6,12 +6,12 @@ die() {
 }
 
 #autoheader || { echo "failed autoheader"; exit 1; };
-aclocal-1.8 || die "failed aclocal"
+aclocal || die "failed aclocal"
 [ "`type -t glibtoolize`" == "file" ] && alias libtoolize=glibtoolize
 libtoolize --automake -c -f || die "failed libtoolize"
 autoconf || die "failed autoconf"
 touch ChangeLog 
-automake-1.8 -a -c || die "failed automake"
+automake -a -c || die "failed automake"
 
 if [ -x ./test.sh ] ; then
 	exec ./test.sh "$@"
