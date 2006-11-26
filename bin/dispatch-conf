@@ -279,8 +279,7 @@ class dispatch:
         the diff of what changed into the configured log file."""
         os.system((DIFF_CONTENTS % (curconf, newconf)) + '>>' + self.options["log-file"])
         try:
-            shutil.copyfile(newconf, curconf)
-            os.remove(newconf)
+            os.rename(newconf, curconf)
         except (IOError, os.error), why:
             print >> sys.stderr, 'dispatch-conf: Error renaming %s to %s: %s; fatal' % \
                   (newconf, curconf, str(why))
