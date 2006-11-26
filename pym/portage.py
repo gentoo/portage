@@ -6438,48 +6438,19 @@ class dblink:
 		mydata = self._installed_instance.getcontents().get(filename, None)
 		if mydata is None:
 			return True
-		# Duplicate unmerge logic.  Protect the file if it's not identical
-		# to the one that was originally merged.
+
+		# Bump the mtime in order to ensure that the old config file doesn't
+		# get unmerged.  The user will have an opportunity to merge the new
+		# config with the old one.
 		try:
-			lstatobj = os.lstat(filename)
+			os.utime(filename, None)
 		except OSError, e:
 			if e.errno != errno.ENOENT:
 				raise
 			del e
 			# The file has disappeared, so it's not protected.
 			return False
-		try:
-			statobj = os.stat(filename)
-		except OSError, e:
-			if e.errno != errno.ENOENT:
-				raise
-			del e
-			statobj = None
-		lmtime = str(lstatobj[stat.ST_MTIME])
-		mytype = mydata[0]
-		if mytype not in ("dir","fif","dev") and \
-			lmtime != mydata[1]:
-			return True
-		if "dir" == mytype:
-			return statobj is None or not stat.S_ISDIR(statobj.st_mode)
-		elif "sym" == mytype:
-			return not stat.S_ISLNK(lstatobj.st_mode)
-		elif "obj" == mytype:
-			if statobj is None or not stat.S_ISREG(statobj.st_mode):
-				 return True
-			try:
-				mymd5 = portage_checksum.perform_md5(filename, calc_prelink=1)
-			except portage_exception.FileNotFound:
-				# The file has disappeared, so it's not protected.
-				return False
-			return mymd5 != mydata[2].lower()
-		elif "fif" == mytype:
-			return not stat.S_ISFIFO(lstatobj[stat.ST_MODE])
-		elif "dev" == mytype:
-			return True
-		# This should be unreachable.
-		raise AssertionError("Unrecognized type '%s' in file '%s'" % (mytype,
-			os.path.join(self._installed_instance.dbdir, "CONTENTS")))
+		return True
 
 	def treewalk(self, srcroot, destroot, inforoot, myebuild, cleanup=0,
 		mydbapi=None, prev_mtimes=None):
