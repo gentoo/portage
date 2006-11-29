@@ -60,6 +60,7 @@ case "${NOCOLOR:-false}" in
 		;;
 esac
 
+[[ $PORTAGE_QUIET != "" ]] && export PORTAGE_QUIET
 
 # the sandbox is disabled by default except when overridden in the relevant stages
 export SANDBOX_ON="0"

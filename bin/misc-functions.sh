@@ -464,4 +464,4 @@ if [ -n "${MISC_FUNCTIONS_ARGS}" ]; then
 	done
 fi
 
-true
+:
