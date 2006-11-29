@@ -202,7 +202,7 @@ AC_HELP_STRING([--with-offset-prefix], [specify the installation prefix for all 
 [DOMAIN_PREFIX=$withval],
 [DOMAIN_PREFIX='/'])
 
-DEFAULT_PATH="${DOMAIN_PREFIX}/bin:${DOMAIN_PREFIX}/sbin:${DOMAIN_PREFIX}/usr/bin:${DOMAIN_PREFIX}usr/sbin:${prefix}/bin:${prefix}/lib/portage/bin"
+DEFAULT_PATH="${DOMAIN_PREFIX}/bin:${DOMAIN_PREFIX}/sbin:${DOMAIN_PREFIX}/usr/bin:${DOMAIN_PREFIX}usr/sbin:${prefix}/bin"
 AC_ARG_WITH(default-path, 
 AC_HELP_STRING([--with-default-path], [specify additional PATHs available to the portage build environment ]),
 [DEFAULT_PATH="${DEFAULT_PATH}":$withval],

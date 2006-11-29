@@ -46,7 +46,7 @@ alias restore_IFS='if [ "${old_IFS:-unset}" != "unset" ]; then IFS="${old_IFS}";
 OCC="$CC"
 OCXX="$CXX"
 
-export PATH="${DEFAULT_PATH}:${ROOTPATH}"
+export PATH="${DEFAULT_PATH}:${PORTAGE_BIN_PATH}:${ROOTPATH}"
 [ ! -z "$PREROOTPATH" ] && export PATH="${PREROOTPATH%%:}:$PATH"
 
 source "@PORTAGE_BASE@"/bin/isolated-functions.sh &>/dev/null
