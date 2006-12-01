@@ -1,5 +1,3 @@
-.. Substitutions: arch, cflags, chost, portdir
-
 make.conf
 *********
 
@@ -14,12 +12,12 @@ DESCRIPTION
 ===========
 
 This file contains various variables that are used by Portage.
-Portage will check the currently\-defined environment variables
+Portage will check the currently-defined environment variables
 first for any settings.  If no environment settings are found,
 Portage then checks /etc/make.conf.  If no setting is found
-in /etc/make.conf, Portage checks /etc/make.globals. If no
-setting is found there, the profile's default setting is grabbed
-from /etc/make.profile/make.defaults. Please note that all user
+in /etc/make.conf, Portage checks the profile's default setting
+from /etc/make.profile/make.defaults. If no setting is found there, 
+it finally checks /etc/make.globals. Please note that all user
 settings should be made in the environment or in /etc/make.conf,
 which is intended to be customized by the user.
 
@@ -29,7 +27,7 @@ VARIABLES
 ACCEPT_KEYWORDS
 ---------------
 
-:suggest: ~|arch|
+:suggest: |accept_keywords|
 :valdesc: space delimited list of KEYWORDS
 
 Enable testing of ebuilds that have not yet been deemed 'stable'.  Users
@@ -165,7 +163,7 @@ Various settings affecting portage behavior. Don't disable the defaults without
 a good reason. This is an incremental variable. It can take a combination of the
 following flags:
 
-_`assume-digest`
+_`assume-digests`
 	When commiting work to cvs with repoman(1), assume that all existing SRC_URI 
 	digests are correct.  This feature also affects digest generation via 
 	ebuild(1) and emerge(1) (emerge generates digests only when the digest 
@@ -174,7 +172,7 @@ _`assume-digest`
 _`buildpkg`
 	Binary packages will be created for all packages that are merged.
 
-`_buildsyspkg`
+_`buildsyspkg`
 	Build binary packages for just packages in the system set.
 
 _`ccache`
@@ -282,7 +280,7 @@ _`strict`
 _`stricter`
 	Have portage react strongly to conditions that may conflict with system
 	security provisions (for example textrels, executable stack). Read about
-	the `QA_STRICT_*`_ variables below.
+	the `QA_STRICT`_ variables below.
 
 _`suidctl`
 	Before merging packages to the live filesystem, automatically strip setuid 
@@ -442,7 +440,7 @@ This variable holds all important settings for the mail module. In most cases
 listing the recipient address andthe receiving mailserver should be sufficient,
 but you can also use advanced settings like authentication or TLS. The full 
 syntax is:
-	``address [[user:passwd@]mailserver[:port]]``
+``address [[user:passwd@]mailserver[:port]]``
 where
 
 address
@@ -488,6 +486,13 @@ ${PACKAGE}
 
 ${HOST}
 	FQDN of the host portage is running on
+
+PORTAGE_GPG_KEY
+---------------
+
+:valdesc: GPG key id
+
+This variable tells repoman which GPG key to use for signing Manifests.
 
 PORTAGE_NICENESS
 ----------------
@@ -559,7 +564,7 @@ This variable contains the command used for resuming package sources that
 have been partially downloaded. It should be defined using the same format
 as `FETCHCOMMAND`_.
 
-.. _`QA_STRICT_*`
+.. _QA_STRICT:
 
 QA_STRICT_EXECSTACK
 -------------------
@@ -679,11 +684,11 @@ Please report bugs via http://bugs.gentoo.org/
 AUTHORS
 =======
 
-Daniel Robbins <drobbins@gentoo.org>
-Nicholas Jones <carpaski@gentoo.org>
-Mike Frysinger <vapier@gentoo.org>
-Saleem Abdulrasool <compnerd@gentoo.org>
-Marius Mauch <genone@gentoo.org>
+- Daniel Robbins <drobbins@gentoo.org>
+- Nicholas Jones <carpaski@gentoo.org>
+- Mike Frysinger <vapier@gentoo.org>
+- Saleem Abdulrasool <compnerd@gentoo.org>
+- Marius Mauch <genone@gentoo.org>
 
 FILES
 =====
@@ -708,3 +713,10 @@ SEE ALSO
 - portage(5)
 - ebuild(1)
 - ebuild(5)
+
+.. Substitutions:
+.. |accept_keywords| replace:: ~x86
+.. |cflags| replace:: -march=i686 -O2 -pipe
+.. |chost| replace:: i686-gentoo-linux-gnu
+.. |portdir| replace:: /usr/portage
+
