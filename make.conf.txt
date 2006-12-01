@@ -69,7 +69,7 @@ CXXFLAGS
 :suggest: ${CFLAGS}
 :valdesc: valid gcc flags, see gcc manual
 
-_`CFLAGS`
+`CFLAGS`_
 
 CHOST
 -----
