@@ -3017,6 +3017,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		_doebuild_manifest_exempt_depend = True
 
 	if "strict" in features and \
+		tree == "porttree" and \
 		mydo not in ("digest", "manifest", "help") and \
 		not _doebuild_manifest_exempt_depend:
 		# Always verify the ebuild checksums before executing it.
