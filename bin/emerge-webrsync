@@ -84,21 +84,20 @@ sync_local() {
 
 echo "Fetching most recent snapshot"
 
-declare -i attempts=-1
+declare -i attempts=0
 while (( $attempts <  40 )) ; do
 	attempts=$(( attempts + 1 ))
 
-	#this too, sucks.  it works in the interim though.
-	if [ "$USERLAND" == "BSD" ] || [ "$USERLAND" == "Darwin" ] ; then
-		daysbefore=$(expr $(date +"%s") - 86400 \* $attempts)
-		day=$(date -r $daysbefore +"%d")
-		month=$(date -r $daysbefore +"%m")
-		year=$(date -r $daysbefore +"%Y")
-	else
-		day=$(date -d "-$attempts day" +"%d")
-		month=$(date -d "-$attempts day" +"%m")
-		year=$(date -d "-$attempts day" +"%Y")
-	fi
+	# The snapshot for a given day is generated at 01:45 UTC on the following
+	# day, so the current day's snapshot (going by UTC time) hasn't been
+	# generated yet.  Therefore, always start by looking for the previous day's
+	# snapshot (for attempts=1, subtract 1 day from the current UTC time).
+	daysbefore=$(expr $(date -u +"%s") - 86400 \* ${attempts})
+	DATE_ARGS="-d @${daysbefore}"
+	[ "${USERLAND}" != "GNU" ] && DATE_ARGS="-r ${daysbefore}"
+	day=$(date ${DATE_ARGS} -u +"%d")
+	month=$(date ${DATE_ARGS} -u +"%m")
+	year=$(date ${DATE_ARGS} -u +"%Y")
 
 	FILE_ORIG="portage-${year}${month}${day}.tar.bz2"
 
