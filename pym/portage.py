@@ -3010,7 +3010,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		return 1
 
 	global _doebuild_manifest_exempt_depend
-	if mydo in ("digest", "manifest"):
+	if mydo in ("digest", "manifest", "help"):
 		# Temporarily exempt the depend phase from manifest checks, in case
 		# aux_get calls inside doebuild_environment() trigger cache generation.
 		_doebuild_manifest_exempt_depend = True
@@ -3043,7 +3043,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	doebuild_environment(myebuild, mydo, myroot, mysettings, debug,
 		use_cache, mydbapi)
 
-	if mydo in ("digest", "manifest"):
+	if mydo in ("digest", "manifest", "help"):
 		# If necessary, depend phase has been triggered by doebuild_environment
 		# and the exemption is no longer needed.
 		_doebuild_manifest_exempt_depend = False
