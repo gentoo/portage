@@ -3013,6 +3013,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	global _doebuild_manifest_exempt_depend
 
 	if "strict" in features and \
+		"digest" not in features and \
 		tree == "porttree" and \
 		mydo not in ("digest", "manifest", "help") and \
 		not _doebuild_manifest_exempt_depend:
