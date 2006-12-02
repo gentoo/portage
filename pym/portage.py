@@ -3011,10 +3011,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		return 1
 
 	global _doebuild_manifest_exempt_depend
-	if mydo in ("digest", "manifest", "help"):
-		# Temporarily exempt the depend phase from manifest checks, in case
-		# aux_get calls inside doebuild_environment() trigger cache generation.
-		_doebuild_manifest_exempt_depend = True
 
 	if "strict" in features and \
 		tree == "porttree" and \
@@ -3055,39 +3051,37 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 					return 1
 			_doebuild_manifest_checked = manifest_path
 
-	doebuild_environment(myebuild, mydo, myroot, mysettings, debug,
-		use_cache, mydbapi)
-
-	if mydo in ("digest", "manifest", "help"):
-		# If necessary, depend phase has been triggered by doebuild_environment
-		# and the exemption is no longer needed.
-		_doebuild_manifest_exempt_depend = False
-
-	# get possible slot information from the deps file
-	if mydo=="depend":
-		if mysettings.has_key("PORTAGE_DEBUG") and mysettings["PORTAGE_DEBUG"]=="1":
-			# XXX: This needs to use a FD for saving the output into a file.
-			# XXX: Set this up through spawn
-			pass
-		writemsg("!!! DEBUG: dbkey: %s\n" % str(dbkey), 2)
-		if dbkey:
-			mysettings["dbkey"] = dbkey
-		else:
-			mysettings["dbkey"] = mysettings.depcachedir+"/aux_db_key_temp"
-
-		retval = spawn(EBUILD_SH_BINARY+" depend",mysettings)
-		return retval
-
-	if not os.path.isdir(mysettings["PORTAGE_TMPDIR"]):
-		writemsg("The directory specified in your PORTAGE_TMPDIR variable, '%s',\n" % \
-			mysettings["PORTAGE_TMPDIR"], noiselevel=-1)
-		writemsg("does not exist.  Please create this directory or correct your PORTAGE_TMPDIR setting.\n",
-			noiselevel=-1)
-		return 1
-
 	logfile=None
 	builddir_lock = None
 	try:
+		if mydo in ("digest", "manifest", "help"):
+			# Temporarily exempt the depend phase from manifest checks, in case
+			# aux_get calls trigger cache generation.
+			_doebuild_manifest_exempt_depend = True
+
+		doebuild_environment(myebuild, mydo, myroot, mysettings, debug,
+			use_cache, mydbapi)
+
+		# get possible slot information from the deps file
+		if mydo == "depend":
+			writemsg("!!! DEBUG: dbkey: %s\n" % str(dbkey), 2)
+			if dbkey:
+				mysettings["dbkey"] = dbkey
+			else:
+				mysettings["dbkey"] = \
+					os.path.join(mysettings.depcachedir, "aux_db_key_temp")
+
+			return spawn(EBUILD_SH_BINARY + " depend", mysettings)
+
+		if "PORTAGE_TMPDIR" not in mysettings or \
+			not os.path.isdir(mysettings["PORTAGE_TMPDIR"]):
+			writemsg("The directory specified in your " + \
+				"PORTAGE_TMPDIR variable, '%s',\n" % \
+				mysettings.get("PORTAGE_TMPDIR", ""), noiselevel=-1)
+			writemsg("does not exist.  Please create this directory or " + \
+				"correct your PORTAGE_TMPDIR setting.\n", noiselevel=-1)
+			return 1
+
 		# Build directory creation isn't required for any of these.
 		if mydo not in ["fetch","digest","manifest"]:
 			mystatus = prepare_build_dirs(myroot, mysettings, cleanup)
@@ -3357,6 +3351,11 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 					os.unlink(logfile)
 			except OSError:
 				pass
+
+		if mydo in ("digest", "manifest", "help"):
+			# If necessary, depend phase has been triggered by aux_get calls
+			# and the exemption is no longer needed.
+			_doebuild_manifest_exempt_depend = False
 
 expandcache={}
 
