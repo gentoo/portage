@@ -3007,6 +3007,29 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			noiselevel=-1)
 		return 1
 
+	if "strict" in features and mydo not in ("digest", "manifest", "help"):
+		# Always verify the ebuild checksums before executing it.
+		pkgdir = os.path.dirname(myebuild)
+		manifest_path = os.path.join(pkgdir, "Manifest")
+		if not os.path.exists(manifest_path):
+			writemsg("!!! Manifest file not found: '%s'\n" % manifest_path,
+				noiselevel=-1)
+			return 1
+		mf = Manifest(pkgdir, mysettings["DISTDIR"])
+		try:
+			mf.checkTypeHashes("EBUILD")
+		except portage_exception.FileNotFound, e:
+			writemsg("!!! A file listed in the Manifest " + \
+				"could not be found: %s\n" % str(e), noiselevel=-1)
+			return 1
+		except portage_exception.DigestException, e:
+			writemsg("!!! Digest verification failed:\n", noiselevel=-1)
+			writemsg("!!! %s\n" % e.value[0], noiselevel=-1)
+			writemsg("!!! Reason: %s\n" % e.value[1], noiselevel=-1)
+			writemsg("!!! Got: %s\n" % e.value[2], noiselevel=-1)
+			writemsg("!!! Expected: %s\n" % e.value[3], noiselevel=-1)
+			return 1
+
 	doebuild_environment(myebuild, mydo, myroot, mysettings, debug,
 		use_cache, mydbapi)
 
