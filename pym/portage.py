@@ -3045,6 +3045,14 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				writemsg("!!! Got: %s\n" % e.value[2], noiselevel=-1)
 				writemsg("!!! Expected: %s\n" % e.value[3], noiselevel=-1)
 				return 1
+			# Make sure that all of the ebuilds are actually listed in the
+			# Manifest.
+			for f in os.listdir(pkgdir):
+				if f.endswith(".ebuild") and not mf.hasFile("EBUILD", f):
+					writemsg("!!! A file is not listed in the " + \
+					"Manifest: '%s'\n" % os.path.join(pkgdir, f),
+					noiselevel=-1)
+					return 1
 			_doebuild_manifest_checked = manifest_path
 
 	doebuild_environment(myebuild, mydo, myroot, mysettings, debug,
