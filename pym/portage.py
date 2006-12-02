@@ -2971,6 +2971,8 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 			(mysettings["CATEGORY"], mysettings["PF"], logid_time))
 		del logid_path, logid_time
 
+_doebuild_manifest_exempt_depend = False
+
 def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	fetchonly=0, cleanup=0, dbkey=None, use_cache=1, fetchall=0, tree=None,
 	mydbapi=None, vartree=None, prev_mtimes=None):
@@ -3007,7 +3009,15 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			noiselevel=-1)
 		return 1
 
-	if "strict" in features and mydo not in ("digest", "manifest", "help"):
+	global _doebuild_manifest_exempt_depend
+	if mydo in ("digest", "manifest"):
+		# Temporarily exempt the depend phase from manifest checks, in case
+		# aux_get calls inside doebuild_environment() trigger cache generation.
+		_doebuild_manifest_exempt_depend = True
+
+	if "strict" in features and \
+		mydo not in ("digest", "manifest", "help") and \
+		not _doebuild_manifest_exempt_depend:
 		# Always verify the ebuild checksums before executing it.
 		pkgdir = os.path.dirname(myebuild)
 		manifest_path = os.path.join(pkgdir, "Manifest")
@@ -3032,6 +3042,11 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 	doebuild_environment(myebuild, mydo, myroot, mysettings, debug,
 		use_cache, mydbapi)
+
+	if mydo in ("digest", "manifest"):
+		# If necessary, depend phase has been triggered by doebuild_environment
+		# and the exemption is no longer needed.
+		_doebuild_manifest_exempt_depend = False
 
 	# get possible slot information from the deps file
 	if mydo=="depend":
