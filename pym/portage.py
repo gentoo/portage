@@ -2475,8 +2475,8 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
  		writemsg("Warning: myportdb not specified to digestgen\n")
 		global portdb
 		myportdb = portdb
+	global _doebuild_manifest_exempt_depend
 	try:
-		global _doebuild_manifest_exempt_depend
 		_doebuild_manifest_exempt_depend += 1
 		mf = Manifest(mysettings["O"], mysettings["DISTDIR"],
 			fetchlist_dict=FetchlistDict(mysettings["O"],
