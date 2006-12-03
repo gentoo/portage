@@ -43,7 +43,7 @@ bad = create_color_func("BAD")
 import portage_util
 import portage_locks
 import portage_exception
-import portage_const
+from portage_const import EPREFIX
 from portage_data import secpass
 
 if not hasattr(__builtins__, "set"):
@@ -238,7 +238,7 @@ def emergelog(xterm_titles, mystr, short_msg=None):
 		else:
 			xtermTitle(mystr)
 	try:
-		file_path = portage_const.EPREFIX+"/var/log/emerge.log"
+		file_path = EPREFIX+"/var/log/emerge.log"
 		mylogfile = open(file_path, "a")
 		portage_util.apply_secpass_permissions(file_path,
 			uid=portage.portage_uid, gid=portage.portage_gid,
@@ -2391,7 +2391,7 @@ class MergeTask(object):
 				print red("!!!")
 			elif len(mymergelist) > 1:
 				print ">>> starting parallel fetching"
-				fetch_log = portage_const.EPREFIX+"/var/log/emerge-fetch.log"
+				fetch_log = EPREFIX+"/var/log/emerge-fetch.log"
 				logfile = open(fetch_log, "w")
 				fd_pipes = {1:logfile.fileno(), 2:logfile.fileno()}
 				portage_util.apply_secpass_permissions(fetch_log,
@@ -2965,7 +2965,7 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 
 	print
-	if os.path.exists(portage_const.EPREFIX+"/usr/bin/install-info"):
+	if os.path.exists(EPREFIX+"/usr/bin/install-info"):
 		regen_infodirs=[]
 		for z in infodirs:
 			if z=='':
@@ -3002,7 +3002,7 @@ def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 				for x in file_list:
 					if (x[0] == ".") or (x in ["dir","dir.old"]) or (os.path.isdir(inforoot+"/"+x)):
 						continue
-					myso=commands.getstatusoutput("LANG=C LANGUAGE=C "+portage_const.EPREFIX+"/usr/bin/install-info --dir-file="+inforoot+"/dir "+inforoot+"/"+x)[1]
+					myso=commands.getstatusoutput("LANG=C LANGUAGE=C "+EPREFIX+"/usr/bin/install-info --dir-file="+inforoot+"/dir "+inforoot+"/"+x)[1]
 					existsstr="already exists, for file `"
 					if myso!="":
 						if re.search(existsstr,myso):
@@ -3043,8 +3043,9 @@ def post_emerge(settings, mtimedb, retval):
 	from portage_util import normalize_path
 	if "noinfo" not in settings.features:
 		chk_updated_info_files(
-				normalize_path(target_root + portage_const.EPREFIX),
+				normalize_path(target_root + EPREFIX),
 				infodirs, info_mtimes, retval)
+	chk_updated_cfg_files(normalize_path(target_root + EPREFIX), config_protect)
 	mtimedb.commit()
 	sys.exit(retval)
 
@@ -3135,7 +3136,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		updatecache_flg = True
 		tmpservertimestampfile = None
 	elif syncuri[:8]=="rsync://":
-		if not os.path.exists(portage_const.EPREFIX+"/usr/bin/rsync"):
+		if not os.path.exists(EPREFIX+"/usr/bin/rsync"):
 			print "!!! rsync does not exist, so rsync support is disabled."
 			print "!!! Type \"emerge net-misc/rsync\" to enable rsync support."
 			sys.exit(1)
@@ -3343,7 +3344,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			if "--quiet" not in myopts:
 				print ">>> Checking server timestamp ..."
 
-			rsynccommand = " ".join([portage_const.EPREFIX, "/usr/bin/rsync", " ".join(rsync_opts),
+			rsynccommand = " ".join([EPREFIX, "/usr/bin/rsync", " ".join(rsync_opts),
 				settings.get("PORTAGE_RSYNC_EXTRA_OPTS","")])
 
 			if "--debug" in myopts:
@@ -3436,7 +3437,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			print
 			sys.exit(exitcode)
 	elif syncuri[:6]=="cvs://":
-		if not os.path.exists(portage_const.EPREFIX+"/usr/bin/cvs"):
+		if not os.path.exists(EPREFIX+"/usr/bin/cvs"):
 			print "!!! cvs does not exist, so CVS support is disabled."
 			print "!!! Type \"emerge dev-util/cvs\" to enable CVS support."
 			sys.exit(1)
@@ -3527,7 +3528,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 	mypvs = portage.best(
 		trees[settings["ROOT"]]["vartree"].dbapi.match("sys-apps/portage"))
 
-	chk_updated_cfg_files(portage_const.EPREFIX, settings.get("CONFIG_PROTECT","").split())
+	chk_updated_cfg_files(EPREFIX, settings.get("CONFIG_PROTECT","").split())
 
 	if myaction != "metadata":
 		if os.access(portage.USER_CONFIG_PATH + "/bin/post_sync", os.X_OK):
@@ -4618,10 +4619,6 @@ def emerge_main():
 	elif "--help" in myopts:
 		emergehelp.help(myaction, myopts, output.havecolor)
 		sys.exit(0)
-
-	if portage.wheelgid == portage.portage_gid and portage.wheelgid < 500:
-		print "emerge: wheel group use is being deprecated. Please update group and passwd to"
-		print "        include the portage user as noted above, and then use group portage."
 
 	if "--debug" in myopts:
 		print "myaction", myaction
