@@ -2479,40 +2479,50 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
  		writemsg("Warning: myportdb not specified to digestgen\n")
 		global portdb
 		myportdb = portdb
-	mf = Manifest(mysettings["O"], mysettings["DISTDIR"],
-		fetchlist_dict=FetchlistDict(mysettings["O"], mysettings, myportdb))
-	writemsg_stdout(">>> Creating Manifest for %s\n" % mysettings["O"])
+	global _doebuild_manifest_exempt_depend
 	try:
-		mf.create(requiredDistfiles=myarchives, assumeDistHashesSometimes=True,
-			assumeDistHashesAlways=("assume-digests" in mysettings.features))
-	except portage_exception.FileNotFound, e:
-		writemsg("!!! File %s doesn't exist, can't update Manifest\n" % str(e),
-			noiselevel=-1)
-		return 0
-	mf.write(sign=False)
-	if "assume-digests" not in mysettings.features:
-		distlist = mf.fhashdict.get("DIST", {}).keys()
-		distlist.sort()
-		auto_assumed = []
-		for filename in distlist:
-			if not os.path.exists(os.path.join(mysettings["DISTDIR"], filename)):
-				auto_assumed.append(filename)
-		if auto_assumed:
-			mytree = os.path.realpath(
-				os.path.dirname(os.path.dirname(mysettings["O"])))
-			cp = os.path.sep.join(mysettings["O"].split(os.path.sep)[-2:])
-			pkgs = myportdb.cp_list(cp, mytree=mytree)
-			pkgs.sort()
-			writemsg_stdout("  digest.assumed" + \
-				output.colorize("WARN", str(len(auto_assumed)).rjust(18)) + "\n")
-			for pkg_key in pkgs:
-				fetchlist = myportdb.getfetchlist(pkg_key,
-					mysettings=mysettings, all=True, mytree=mytree)[1]
-				pv = pkg_key.split("/")[1]
-				for filename in auto_assumed:
-					if filename in fetchlist:
-						writemsg_stdout("   digest-%s::%s\n" % (pv, filename))
-	return 1
+		_doebuild_manifest_exempt_depend += 1
+		mf = Manifest(mysettings["O"], mysettings["DISTDIR"],
+			fetchlist_dict=FetchlistDict(mysettings["O"],
+			mysettings, myportdb))
+		writemsg_stdout(">>> Creating Manifest for %s\n" % mysettings["O"])
+		try:
+			mf.create(requiredDistfiles=myarchives,
+				assumeDistHashesSometimes=True,
+				assumeDistHashesAlways=(
+				"assume-digests" in mysettings.features))
+		except portage_exception.FileNotFound, e:
+			writemsg("!!! File %s doesn't exist, can't update " + \
+				"Manifest\n" % str(e), noiselevel=-1)
+			return 0
+		mf.write(sign=False)
+		if "assume-digests" not in mysettings.features:
+			distlist = mf.fhashdict.get("DIST", {}).keys()
+			distlist.sort()
+			auto_assumed = []
+			for filename in distlist:
+				if not os.path.exists(
+					os.path.join(mysettings["DISTDIR"], filename)):
+					auto_assumed.append(filename)
+			if auto_assumed:
+				mytree = os.path.realpath(
+					os.path.dirname(os.path.dirname(mysettings["O"])))
+				cp = os.path.sep.join(mysettings["O"].split(os.path.sep)[-2:])
+				pkgs = myportdb.cp_list(cp, mytree=mytree)
+				pkgs.sort()
+				writemsg_stdout("  digest.assumed" + output.colorize("WARN",
+					str(len(auto_assumed)).rjust(18)) + "\n")
+				for pkg_key in pkgs:
+					fetchlist = myportdb.getfetchlist(pkg_key,
+						mysettings=mysettings, all=True, mytree=mytree)[1]
+					pv = pkg_key.split("/")[1]
+					for filename in auto_assumed:
+						if filename in fetchlist:
+							writemsg_stdout(
+								"   digest-%s::%s\n" % (pv, filename))
+		return 1
+	finally:
+		_doebuild_manifest_exempt_depend -= 1
 
 def digestParseFile(myfilename, mysettings=None):
 	"""(filename) -- Parses a given file for entries matching:
@@ -2978,7 +2988,7 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 			(mysettings["CATEGORY"], mysettings["PF"], logid_time))
 		del logid_path, logid_time
 
-_doebuild_manifest_exempt_depend = False
+_doebuild_manifest_exempt_depend = 0
 _doebuild_manifest_checked = None
 
 def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
@@ -3020,6 +3030,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	global _doebuild_manifest_exempt_depend
 
 	if "strict" in features and \
+		"digest" not in features and \
 		tree == "porttree" and \
 		mydo not in ("digest", "manifest", "help") and \
 		not _doebuild_manifest_exempt_depend:
@@ -3064,7 +3075,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		if mydo in ("digest", "manifest", "help"):
 			# Temporarily exempt the depend phase from manifest checks, in case
 			# aux_get calls trigger cache generation.
-			_doebuild_manifest_exempt_depend = True
+			_doebuild_manifest_exempt_depend += 1
 
 		doebuild_environment(myebuild, mydo, myroot, mysettings, debug,
 			use_cache, mydbapi)
@@ -3362,7 +3373,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		if mydo in ("digest", "manifest", "help"):
 			# If necessary, depend phase has been triggered by aux_get calls
 			# and the exemption is no longer needed.
-			_doebuild_manifest_exempt_depend = False
+			_doebuild_manifest_exempt_depend -= 1
 
 expandcache={}
 
