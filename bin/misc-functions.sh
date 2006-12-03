@@ -47,7 +47,7 @@ install_qa_check() {
 		local qa_var insecure_rpath=0 tmp_quiet=${PORTAGE_QUIET}
 		
 		# display warnings when using stricter because we die afterwards
-		if has stricter ${FEATURES} && ! has stricter ${RESTRICT}; then
+		if has stricter ${FEATURES} ; then
 			unset PORTAGE_QUIET
 		fi
 		
@@ -63,7 +63,7 @@ install_qa_check() {
 			vecho " with the maintaining herd of the package."
 			vecho "${f}"
 			vecho -ne '\a\n'
-			if has stricter ${FEATURES} && ! has stricter ${RESTRICT}; then
+			if has stricter ${FEATURES} ; then
 				insecure_rpath=1
 			else
 				vecho "Auto fixing rpaths for ${f}"
@@ -161,7 +161,7 @@ install_qa_check() {
 
 		if [[ ${insecure_rpath} -eq 1 ]] ; then
 			die "Aborting due to serious QA concerns with RUNPATH/RPATH"
-		elif [[ -n ${die_msg} ]] && has stricter ${FEATURES} && ! has stricter ${RESTRICT} ; then
+		elif [[ -n ${die_msg} ]] && has stricter ${FEATURES} ; then
 			die "Aborting due to QA concerns: ${die_msg}"
 		fi
 
