@@ -4456,6 +4456,13 @@ def emerge_main():
 	tmpcmdline.extend(sys.argv[1:])
 	myaction, myopts, myfiles = parse_opts(tmpcmdline)
 
+	if "--digest" in myopts:
+		os.environ["FEATURES"] = os.environ.get("FEATURES","") + " digest"
+		# Reload the whole config from scratch so that the portdbapi internal
+		# config is updated with new FEATURES.
+		settings, trees, mtimedb = load_emerge_config(trees=trees)
+		portdb = trees[settings["ROOT"]]["porttree"].dbapi
+
 	for myroot in trees:
 		mysettings =  trees[myroot]["vartree"].settings
 		mysettings.unlock()
