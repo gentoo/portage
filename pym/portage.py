@@ -6554,7 +6554,7 @@ class dblink:
 			myfilelist = listdir(srcroot, recursive=1, filesonly=1, followSymlinks=False)
 
 			# the linkcheck only works if we are in srcroot
-			mycwd = os.getcwd()
+			mycwd = getcwd()
 			os.chdir(srcroot)
 			mysymlinks = filter(os.path.islink, listdir(srcroot, recursive=1, filesonly=0, followSymlinks=False))
 			myfilelist.extend(mysymlinks)
