@@ -942,7 +942,7 @@ for x in scanlist:
 				fails["svn.IO_error"].append(checkdir+"/files svn info")
 			continue
 
-	if mymode == "commit":
+	if mymode in ("fix", "commit"):
 		repoman_settings["O"] = checkdir
 		portage.digestgen(
 			[], repoman_settings, manifestonly=1, myportdb=portdb)
