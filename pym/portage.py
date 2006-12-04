@@ -4128,7 +4128,12 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 					rValue.append("package.mask")
 
 	# keywords checking
-	mygroups, eapi = portdb.aux_get(mycpv, ["KEYWORDS", "EAPI"])
+	try:
+		mygroups, eapi = portdb.aux_get(mycpv, ["KEYWORDS", "EAPI"])
+	except KeyError:
+		# The "depend" phase apparently failed for some reason.  An associated
+		# error message will have already been printed to stderr.
+		return ["corruption"]
 	if not eapi_is_supported(eapi):
 		return ["required EAPI %s, supported EAPI %s" % (eapi, portage_const.EAPI)]
 	mygroups = mygroups.split()
