@@ -3471,7 +3471,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		dosyncuri = syncuri
 	elif syncuri[:11]=="svn+http://":
 		# this should be way more generic!
-		if not os.path.exists(portage_const.EPREFIX+"/usr/bin/svn"):
+		if not os.path.exists(EPREFIX+"/usr/bin/svn"):
 			print "!!! svn does not exist, so SVN support is disabled."
 			print "!!! Type \"emerge dev-util/subversion\" to enable SVN support."
 			sys.exit(1)
