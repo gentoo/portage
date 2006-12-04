@@ -820,7 +820,7 @@ for x in scanlist:
 				fails["CVS/Entries.IO_error"].append(checkdir+"/files/CVS/Entries")
 			continue
 
-	if mymode == "commit":
+	if mymode in ("fix", "commit"):
 		repoman_settings["O"] = checkdir
 		portage.digestgen(
 			[], repoman_settings, manifestonly=1, myportdb=portdb)
