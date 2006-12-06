@@ -1847,6 +1847,7 @@ class depgraph:
 			pkg_key = x[2]
 			portdb = self.trees[myroot]["porttree"].dbapi
 			bindb  = self.trees[myroot]["bintree"].dbapi
+			vardb = self.trees[myroot]["vartree"].dbapi
 			vartree = self.trees[myroot]["vartree"]
 			pkgsettings = self.pkgsettings[myroot]
 
@@ -1855,7 +1856,8 @@ class depgraph:
 			if x[0]=="blocks":
 				addl=""+red("B")+"  "+fetch+"  "
 				counters.blocks += 1
-				resolved = self.trees[x[1]]["vartree"].resolve_key(x[2])
+				resolved = portage.key_expand(
+					pkg_key, mydb=vardb, settings=pkgsettings)
 				print "["+x[0]+" "+addl+"]",red(resolved),
 				block_parents = self.blocker_parents[" ".join(x)]
 				block_parents = [pnode.split()[2] for pnode in block_parents]
@@ -1900,16 +1902,16 @@ class depgraph:
 				#we need to use "--emptrytree" testing here rather than "empty" param testing because "empty"
 				#param is used for -u, where you still *do* want to see when something is being upgraded.
 				myoldbest=""
-				if self.trees[x[1]]["vartree"].exists_specific(pkg_key):
+				if vardb.cpv_exists(pkg_key):
 					addl="  "+yellow("R")+fetch+"  "
 					if x[3] != "nomerge":
 						counters.reinst += 1
-				elif self.trees[x[1]]["vartree"].exists_specific_cat(pkg_key):
+				elif vardb.match(portage.dep_getkey(pkg_key)):
 					mynewslot = mydbapi.aux_get(pkg_key, ["SLOT"])[0]
 					myoldlist = self.trees[x[1]]["vartree"].dbapi.match(
 						portage.pkgsplit(x[2])[0])
 					myinslotlist = [inst_pkg for inst_pkg in myoldlist
-						if mynewslot == vartree.getslot(inst_pkg)]
+						if mynewslot == vardb.aux_get(inst_pkg, ["SLOT"])[0]]
 					if myinslotlist:
 						myoldbest=portage.best(myinslotlist)
 						addl="   "+fetch
@@ -1927,10 +1929,11 @@ class depgraph:
 						counters.newslot += 1
 
 					if "--changelog" in self.myopts:
+						slot_atom = "%s:%s" % (portage.dep_getkey(pkg_key),
+							mydbapi.aux_get(pkg_key, ["SLOT"])[0])
 						changelogs.extend(self.calc_changelog(
 							portdb.findname(pkg_key),
-							self.trees[x[1]]["vartree"].dep_bestmatch(
-							'/'.join(portage.catpkgsplit(x[2])[:2])), x[2]))
+							vardb.match(slot_atom)[0], pkg_key))
 				else:
 					addl=" "+green("N")+" "+fetch+"  "
 					counters.new += 1
