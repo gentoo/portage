@@ -3894,7 +3894,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 
 	xterm_titles = "notitles" not in settings.features
 	portdb = trees[settings["ROOT"]]["porttree"].dbapi
-	vartree = trees[settings["ROOT"]]["vartree"]
+	vartree = FakeVartree(trees[settings["ROOT"]]["vartree"])
 	vardb = vartree.dbapi
 	syslist = getlist(settings, "system")
 	worldlist = getlist(settings, "world")
@@ -3995,7 +3995,8 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	cleanlist = [pkg for pkg in vardb.cpv_all() if not fakedb.cpv_exists(pkg)]
 
 	if len(cleanlist):
-		unmerge(settings, myopts, vartree, "unmerge", cleanlist, ldpath_mtimes)
+		unmerge(settings, myopts, trees[settings["ROOT"]]["vartree"],
+			"unmerge", cleanlist, ldpath_mtimes)
 
 	print "Packages installed:   "+str(len(myvarlist))
 	print "Packages in world:    "+str(len(worldlist))
