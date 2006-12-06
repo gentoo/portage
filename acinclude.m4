@@ -151,7 +151,7 @@ AC_DEFUN([AX_PATH_XCU_ID],[dnl
     save_IFS=${IFS}
     ax_cv_path_XCU_ID=no
     IFS=':'
-    for p in /usr/bin:/usr/xpg4/bin:${PATH}
+    for p in ${PATH}:/usr/bin:/usr/xpg4/bin
     do
       IFS=${save_IFS}
       test -x "${p}/id" || continue
