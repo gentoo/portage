@@ -2860,9 +2860,9 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 				#add a "=" if missing
 				mymatch=localtree.dep_match("="+x)
 			if not mymatch:
-					portage.writemsg("\n--- Couldn't find '%s' to %s.\n" % \
-						(x, unmerge_action), noiselevel=-1)
-					continue
+				portage.writemsg("\n--- Couldn't find '%s' to %s.\n" % \
+					(x, unmerge_action), noiselevel=-1)
+				continue
 			mykey = portage.key_expand(
 				portage.dep_getkey(
 					mymatch[0]), mydb=vartree.dbapi, settings=settings)
