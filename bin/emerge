@@ -3894,7 +3894,9 @@ def action_depclean(settings, trees, ldpath_mtimes,
 
 	xterm_titles = "notitles" not in settings.features
 	portdb = trees[settings["ROOT"]]["porttree"].dbapi
-	vartree = FakeVartree(trees[settings["ROOT"]]["vartree"])
+	real_vartree = trees[settings["ROOT"]]["vartree"]
+	vartree = FakeVartree(real_vartree)
+	trees[settings["ROOT"]]["vartree"] = vartree
 	vardb = vartree.dbapi
 	syslist = getlist(settings, "system")
 	worldlist = getlist(settings, "world")
@@ -3974,6 +3976,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 
 	# Restore the portdb back to normal (see fake_vardb above).
 	trees[settings["ROOT"]]["porttree"].dbapi = portdb
+	trees[settings["ROOT"]]["vartree"] = real_vartree
 
 	if "--quiet" not in myopts:
 		print "\b\b... done!\n"
