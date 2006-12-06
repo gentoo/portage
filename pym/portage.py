@@ -4422,6 +4422,9 @@ class fakedbapi(dbapi):
 			return ["" for x in wants]
 		return [metadata.get(x, "") for x in wants]
 
+	def aux_update(self, cpv, values):
+		self.cpvdict[cpv].update(values)
+
 class bindbapi(fakedbapi):
 	def __init__(self, mybintree=None, settings=None):
 		self.bintree = mybintree
