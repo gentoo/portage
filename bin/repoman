@@ -1764,7 +1764,7 @@ else:
 			except KeyboardInterrupt: 
 				exithandler()
 	try:
-		unameout=commands.getstatusoutput("uname -srp")[1]
+		unameout=getstatusoutput("uname -srp")[1]
 		commitmessage+="\n(Portage "+str(portage.VERSION)+"-prefix/"
 		if isCvs:
 			commitmessage+="CVS"
