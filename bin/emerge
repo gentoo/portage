@@ -1931,9 +1931,11 @@ class depgraph:
 					if "--changelog" in self.myopts:
 						slot_atom = "%s:%s" % (portage.dep_getkey(pkg_key),
 							mydbapi.aux_get(pkg_key, ["SLOT"])[0])
-						changelogs.extend(self.calc_changelog(
-							portdb.findname(pkg_key),
-							vardb.match(slot_atom)[0], pkg_key))
+						inst_matches = vardb.match(slot_atom)
+						if inst_matches:
+							changelogs.extend(self.calc_changelog(
+								portdb.findname(pkg_key),
+								inst_matches[0], pkg_key))
 				else:
 					addl=" "+green("N")+" "+fetch+"  "
 					counters.new += 1
