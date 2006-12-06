@@ -1147,19 +1147,6 @@ class depgraph:
 		# We're true here unless we are missing binaries.
 		return (not missing,myfavorites)
 
-	def is_newer_ver_installed(self,myroot,pkg,pkgver):
-		"if there is a version of pkg installed newer than pkgver, return it"
-		vardbapi = self.trees[myroot]["vartree"].dbapi
-
-		matches = self.trees[myroot]["vartree"].dbapi.match(pkg)
-		if matches:
-			myslot = self.trees[myroot]["porttree"].getslot(pkgver)
-			for match in matches:
-				if portage.pkgcmp(portage.catpkgsplit(pkgver)[1:], portage.catpkgsplit(match)[1:]) < 0:
-					curslot = self.trees[myroot]["vartree"].getslot(match)
-					if curslot == myslot:
-						return match
-
 	def select_dep(self, myroot, depstring, myparent=None, arg=None,
 		myuse=None, raise_on_missing=False, priority=DepPriority(),
 		rev_deps=False, parent_arg=None):
