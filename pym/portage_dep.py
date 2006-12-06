@@ -561,9 +561,10 @@ def match_from_list(mydep, candidate_list):
 			mylist.append(x)
 
 	elif operator in [">", ">=", "<", "<="]:
+		mysplit = ["%s/%s" % (cat, pkg), ver, rev]
 		for x in candidate_list:
 			try:
-				result = pkgcmp(pkgsplit(x), [cat + "/" + pkg, ver, rev])
+				result = pkgcmp(pkgsplit(x), mysplit)
 			except SystemExit:
 				raise
 			except:
