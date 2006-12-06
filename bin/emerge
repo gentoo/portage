@@ -2720,7 +2720,7 @@ class MergeTask(object):
 		return os.EX_OK
 
 def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
-	ldpath_mtimes, raise_on_missing=True):
+	ldpath_mtimes, raise_on_missing=False):
 	candidate_catpkgs=[]
 	global_unmerge=0
 	xterm_titles = "notitles" not in settings.features
