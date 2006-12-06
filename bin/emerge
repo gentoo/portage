@@ -3996,7 +3996,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 
 	if len(cleanlist):
 		unmerge(settings, myopts, trees[settings["ROOT"]]["vartree"],
-			"unmerge", cleanlist, ldpath_mtimes)
+			"unmerge", cleanlist, ldpath_mtimes, raise_on_missing=False)
 
 	print "Packages installed:   "+str(len(myvarlist))
 	print "Packages in world:    "+str(len(worldlist))
