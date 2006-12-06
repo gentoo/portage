@@ -2720,7 +2720,7 @@ class MergeTask(object):
 		return os.EX_OK
 
 def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
-	ldpath_mtimes, raise_on_missing=False):
+	ldpath_mtimes):
 	candidate_catpkgs=[]
 	global_unmerge=0
 	xterm_titles = "notitles" not in settings.features
@@ -2860,9 +2860,6 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 				#add a "=" if missing
 				mymatch=localtree.dep_match("="+x)
 			if not mymatch:
-				if raise_on_missing:
-					raise portage_exception.PackageNotFound(x)
-				else:
 					portage.writemsg("\n--- Couldn't find '%s' to %s.\n" % \
 						(x, unmerge_action), noiselevel=-1)
 					continue
@@ -3999,7 +3996,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 
 	if len(cleanlist):
 		unmerge(settings, myopts, trees[settings["ROOT"]]["vartree"],
-			"unmerge", cleanlist, ldpath_mtimes, raise_on_missing=False)
+			"unmerge", cleanlist, ldpath_mtimes)
 
 	print "Packages installed:   "+str(len(myvarlist))
 	print "Packages in world:    "+str(len(worldlist))
@@ -4729,7 +4726,7 @@ def emerge_main():
 		validate_ebuild_environment(trees)
 		vartree = trees[settings["ROOT"]]["vartree"]
 		if 1 == unmerge(settings, myopts, vartree, myaction, myfiles,
-			mtimedb["ldpath"], raise_on_missing=False):
+			mtimedb["ldpath"]):
 			if "--pretend" not in myopts:
 				post_emerge(settings, mtimedb, 0)
 
