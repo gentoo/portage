@@ -699,6 +699,34 @@ class DepPriority(object):
 			return "medium"
 		return "soft"
 
+class FakeVartree(object):
+	"""This is implements an in-memory copy of a vartree instance that provides
+	all the interfaces required for use by the depgraph.  The vardb is locked
+	during the constructor call just long enough to read a copy of the
+	installed package information.  This allows the depgraph to do it's
+	dependency calculations without holding a lock on the vardb.  It also
+	allows things like vardb global updates to be done in memory so that the
+	user doesn't necessarily need write access to the vardb in cases where
+	global updates are necessary (updates are performed when necessary if there
+	is not a matching ebuild in the tree)."""
+	def __init__(self, real_vartree):
+		self.root = real_vartree.root
+		self.settings = real_vartree.settings
+		self.dbapi = portage.fakedbapi(settings=real_vartree.settings)
+		vdb_path = os.path.join(self.root, portage.VDB_PATH)
+		vdb_lock = None
+		try:
+			if os.access(vdb_path, os.W_OK):
+				vdb_lock = portage_locks.lockdir(vdb_path)
+			mykeys = ["SLOT", "USE", "IUSE", "DEPEND", "RDEPEND", "PDEPEND"]
+			real_dbapi = real_vartree.dbapi
+			for cpv in real_dbapi.cpv_all():
+				metadata = dict(zip(mykeys, real_dbapi.aux_get(cpv, mykeys)))
+				self.dbapi.cpv_inject(cpv, metadata=metadata)
+		finally:
+			if vdb_lock:
+				portage_locks.unlockdir(vdb_lock)
+
 class depgraph:
 
 	pkg_tree_map = {
@@ -709,7 +737,6 @@ class depgraph:
 	def __init__(self, settings, trees, myopts, myparams, spinner):
 		self.settings = settings
 		self.target_root = settings["ROOT"]
-		self.trees = trees
 		self.myopts = myopts
 		self.myparams = myparams
 		self.edebug = 0
@@ -718,10 +745,17 @@ class depgraph:
 		self.spinner = spinner
 		self.pkgsettings = {}
 		self.pkg_node_map = {}
-		for myroot in self.trees:
+		self.trees = {}
+		for myroot in trees:
+			self.trees[myroot] = {}
+			for tree in ("porttree", "bintree"):
+				self.trees[myroot][tree] = trees[myroot][tree]
+			self.trees[myroot]["vartree"] = \
+				FakeVartree(trees[myroot]["vartree"])
 			self.pkgsettings[myroot] = portage.config(
-				clone=trees[myroot]["vartree"].settings)
+				clone=self.trees[myroot]["vartree"].settings)
 			self.pkg_node_map[myroot] = {}
+		del trees
 		self.useFlags = {}
 		self.useFlags[self.target_root] = {}
 		if self.target_root != "/":
@@ -749,10 +783,10 @@ class depgraph:
 					myslot = vardb.aux_get(pkg, ["SLOT"])[0]
 					fakedb.cpv_inject(pkg, metadata={"SLOT":myslot})
 		if "--usepkg" in self.myopts:
-			trees["/"]["bintree"].populate(
+			self.trees["/"]["bintree"].populate(
 				"--getbinpkg" in self.myopts, "--getbinpkgonly" in self.myopts)
 			if self.target_root != "/":
-				trees[self.target_root]["bintree"].populate(
+				self.trees[self.target_root]["bintree"].populate(
 					"--getbinpkg" in self.myopts,
 					"--getbinpkgonly" in self.myopts)
 		self.args_keys = []
