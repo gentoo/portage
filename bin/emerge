@@ -4470,7 +4470,6 @@ def emerge_main():
 		settings, trees, mtimedb = load_emerge_config(trees=trees)
 		portdb = trees[settings["ROOT"]]["porttree"].dbapi
 
-	ldpath_mtimes = mtimedb["ldpath"]
 	xterm_titles = "notitles" not in settings.features
 
 	"""Disable color as early as possible via NOCOLOR and stdout
@@ -4491,6 +4490,13 @@ def emerge_main():
 		tmpcmdline.extend(settings["EMERGE_DEFAULT_OPTS"].split())
 	tmpcmdline.extend(sys.argv[1:])
 	myaction, myopts, myfiles = parse_opts(tmpcmdline)
+
+	if "--digest" in myopts:
+		os.environ["FEATURES"] = os.environ.get("FEATURES","") + " digest"
+		# Reload the whole config from scratch so that the portdbapi internal
+		# config is updated with new FEATURES.
+		settings, trees, mtimedb = load_emerge_config(trees=trees)
+		portdb = trees[settings["ROOT"]]["porttree"].dbapi
 
 	for myroot in trees:
 		mysettings =  trees[myroot]["vartree"].settings
@@ -4723,13 +4729,13 @@ def emerge_main():
 		validate_ebuild_environment(trees)
 		vartree = trees[settings["ROOT"]]["vartree"]
 		if 1 == unmerge(settings, myopts, vartree, myaction, myfiles,
-			ldpath_mtimes, raise_on_missing=False):
+			mtimedb["ldpath"], raise_on_missing=False):
 			if "--pretend" not in myopts:
 				post_emerge(settings, mtimedb, 0)
 
 	elif "depclean"==myaction:
 		validate_ebuild_environment(trees)
-		action_depclean(settings, trees, ldpath_mtimes,
+		action_depclean(settings, trees, mtimedb["ldpath"],
 			myopts, spinner)
 		if "--pretend" not in myopts:
 			post_emerge(settings, mtimedb, 0)
