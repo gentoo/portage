@@ -4175,6 +4175,7 @@ def action_build(settings, trees, mtimedb,
 				it to write the mtimedb"""
 				mtimedb.filename = None
 				time.sleep(3) # allow the parent to have first fetch
+			del mydepgraph
 			retval = mergetask.merge(
 				mtimedb["resume"]["mergelist"], favorites, mtimedb)
 			if retval != os.EX_OK:
@@ -4211,6 +4212,7 @@ def action_build(settings, trees, mtimedb,
 						pkglist.append(pkg)
 			else:
 				pkglist = mydepgraph.altlist()
+			del mydepgraph
 			mergetask = MergeTask(settings, trees, myopts)
 			retval = mergetask.merge(pkglist, favorites, mtimedb)
 			if retval != os.EX_OK:
