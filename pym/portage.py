@@ -4264,7 +4264,7 @@ class portagetree:
 			self.portroot=settings["PORTDIR"]
 			self.virtual=virtual
 			self.dbapi = portdbapi(
-				settings["PORTDIR"], mysettings=config(clone=settings))
+				settings["PORTDIR"], mysettings=settings)
 
 	def dep_bestmatch(self,mydep):
 		"compatibility method"

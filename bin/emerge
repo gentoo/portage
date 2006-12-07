@@ -752,6 +752,8 @@ class depgraph:
 				self.trees[myroot][tree] = trees[myroot][tree]
 			self.trees[myroot]["vartree"] = \
 				FakeVartree(trees[myroot]["vartree"])
+			# Make sure the virtuals are populated before cloning.
+			trees[myroot]["vartree"].settings.getvirtuals()
 			self.pkgsettings[myroot] = portage.config(
 				clone=self.trees[myroot]["vartree"].settings)
 			self.pkg_node_map[myroot] = {}
