@@ -533,17 +533,8 @@ def match_from_list(mydep, candidate_list):
 			mylist.append(x)
 
 	elif operator == "=": # Exact match
-		mysplit = ["%s/%s" % (cat, pkg), ver, rev]
-		for x in candidate_list:
-			try:
-				result = pkgcmp(pkgsplit(x), mysplit)
-			except SystemExit:
-				raise
-			except:
-				writemsg("\nInvalid package name: %s\n" % x, noiselevel=-1)
-				raise
-			if result == 0:
-				mylist.append(x)
+		if mycpv in candidate_list:
+			mylist = [mycpv]
 
 	elif operator == "=*": # glob match
 		# The old verion ignored _tag suffixes... This one doesn't.
