@@ -822,8 +822,9 @@ for x in scanlist:
 
 	if mymode in ("fix", "commit"):
 		repoman_settings["O"] = checkdir
-		portage.digestgen(
-			[], repoman_settings, manifestonly=1, myportdb=portdb)
+		if not portage.digestgen([], repoman_settings, myportdb=portdb):
+			print "Unable to generate manifest."
+			sys.exit(1)
 
 	mf = Manifest(checkdir, repoman_settings["DISTDIR"])
 	mydigests=mf.getTypeDigests("DIST")
