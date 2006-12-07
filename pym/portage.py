@@ -30,6 +30,7 @@ try:
 	import UserDict
 	if getattr(__builtins__, "set", None) is None:
 		from sets import Set as set
+	from itertools import chain, izip
 except ImportError, e:
 	sys.stderr.write("\n\n")
 	sys.stderr.write("!!! Failed to complete python imports. These are internal modules for\n")
@@ -2670,7 +2671,6 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 			# automatically mapped to PORTAGE_INST_UID and PORTAGE_INST_GID if
 			# necessary.  The chown system call may clear S_ISUID and S_ISGID
 			# bits, so those bits are restored if necessary.
-			from itertools import chain
 			inst_uid = int(mysettings["PORTAGE_INST_UID"])
 			inst_gid = int(mysettings["PORTAGE_INST_GID"])
 			for parent, dirs, files in os.walk(mysettings["D"]):
@@ -3736,7 +3736,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 
 	if unreduced[0] != "||":
 		unresolved = []
-		for (dep, satisfied) in zip(unreduced, reduced):
+		for dep, satisfied in izip(unreduced, reduced):
 			if isinstance(dep, list):
 				unresolved += dep_zapdeps(dep, satisfied, myroot,
 					use_binaries=use_binaries, trees=trees)
@@ -3766,7 +3766,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 
 	# Sort the deps into preferred (installed) and other
 	# with values of [[required_atom], availablility]
-	for (dep, satisfied) in zip(deps, satisfieds):
+	for dep, satisfied in izip(deps, satisfieds):
 		if isinstance(dep, list):
 			atoms = dep_zapdeps(dep, satisfied, myroot,
 				use_binaries=use_binaries, trees=trees)
