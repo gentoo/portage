@@ -3218,13 +3218,9 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			mydigests = mf.getTypeDigests("DIST")
 			for filename, hashes in mydigests.iteritems():
 				if len(hashes) == len(mf.hashes):
-					while True:
-						try:
-							i = checkme.index(filename) # raises ValueError
-							del fetchme[i]
-							del checkme[i]
-						except ValueError:
-							break
+					checkme = [i for i in checkme if i != filename]
+					fetchme = [i for i in fetchme \
+						if os.path.basename(i) != filename]
 				del filename, hashes
 		else:
 			fetchme = newuris[:]
