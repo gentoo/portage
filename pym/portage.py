@@ -2506,9 +2506,9 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
 						alluris, aalist = myportdb.getfetchlist(
 							cpv, mytree=mytree, all=True,
 							mysettings=mysettings)
-						for i in xrange(len(aalist)):
-							if aalist[i] == myfile:
-								myuris.append(alluris[i])
+						for uri in alluris:
+							if os.path.basename(uri) == myfile:
+								myuris.append(uri)
 				if not fetch(myuris, mysettings):
 					writemsg("!!! File %s doesn't exist, can't update " + \
 						"Manifest\n" % myfile, noiselevel=-1)
