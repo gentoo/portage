@@ -38,7 +38,20 @@ if portage.settings["NOCOLOR"] in ("yes","true") or not sys.stdout.isatty():
 	import output
 	output.nocolor()
 
-ebuild = os.path.realpath(pargs.pop(0))
+ebuild = pargs.pop(0)
+if not os.path.isabs(ebuild):
+	mycwd = os.getcwd()
+	# Try to get the non-canonical path from the PWD evironment variable, since
+	# the canonical path returned from os.getcwd() may may be unusable in
+	# cases where the directory stucture is built from symlinks.
+	if "PWD" in os.environ and os.environ["PWD"] != mycwd and \
+		os.path.realpath(os.environ["PWD"]) == mycwd:
+		mycwd = portage.normalize_path(os.environ["PWD"])
+	ebuild = os.path.join(mycwd, ebuild)
+# portdbapi uses the canonical path for the base of the portage tree, but
+# subdirectories of the base can be built from symlinks (like crossdev does).
+ebuild_portdir = os.path.realpath(os.path.dirname(os.path.dirname(ebuild)))
+ebuild = os.path.join(ebuild_portdir, *ebuild.split(os.path.sep)[-2:])
 
 if not os.path.exists(ebuild):
 	print "'%s' does not exist." % ebuild
@@ -66,7 +79,7 @@ else:
 
 	portage_ebuild = portage.portdb.findname(cpv)
 
-	if not portage_ebuild or os.path.realpath(portage_ebuild) != ebuild:
+	if not portage_ebuild or portage_ebuild != ebuild:
 		overlay = "/".join(ebuild_split[:-2])
 		os.environ["PORTDIR_OVERLAY"] = os.environ.get("PORTDIR_OVERLAY","") + " " + overlay
 		print "Appending %s to PORTDIR_OVERLAY..." % overlay
@@ -74,7 +87,7 @@ else:
 		reload(portage)
 		portage_ebuild = portage.portdb.findname(cpv)
 
-		if not portage_ebuild or os.path.realpath(portage_ebuild) != ebuild:
+		if not portage_ebuild or portage_ebuild != ebuild:
 			print "!!! %s does not seem to have a valid PORTDIR structure." % overlay
 			sys.exit(1)
 
