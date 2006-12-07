@@ -3,7 +3,6 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-
 import re,string
 
 ver_regexp = re.compile("^(cvs\\.)?(\\d+)((\\.\\d+)*)([a-z]?)((_(pre|p|beta|alpha|rc)\\d*)*)(-r(\\d+))?$")
@@ -22,6 +21,29 @@ def ververify(myver, silent=1):
 
 vercmp_cache = {}
 def vercmp(ver1, ver2, silent=1):
+	"""
+	Compare two versions
+	Example usage:
+		>>> from portage_versions import vercmp
+		>>> vercmp('1.0-r1','1.2-r3')
+		negative number
+		>>> vercmp('1.3','1.2-r3')
+		positive number
+		>>> vercmp('1.0_p3','1.0_p3')
+		0
+	
+	@param pkg1: version to compare with (see ver_regexp in portage_versions.py)
+	@type pkg1: string (example: "2.1.2-r3")
+	@param pkg2: version to compare againts (see ver_regexp in portage_versions.py)
+	@type pkg2: string (example: "2.1.2_rc5")
+	@rtype: None or float
+	@return:
+	1. positive if ver1 is greater than ver2
+	2. negative if ver1 is less than ver2 
+	3. 0 if ver1 equals ver2
+	4. None if ver1 or ver2 are invalid (see ver_regexp in portage_versions.py)
+	"""
+
 	if ver1 == ver2:
 		return 0
 	mykey=ver1+":"+ver2
