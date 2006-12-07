@@ -4795,14 +4795,14 @@ class vardbapi(dbapi):
 		results = []
 		for x in wants:
 			myfn = self.root+VDB_PATH+"/"+str(mycpv)+"/"+str(x)
-			if os.access(myfn,os.R_OK):
+			try:
 				myf = open(myfn, "r")
 				myd = myf.read()
 				myf.close()
 				myd = re.sub("[\n\r\t]+"," ",myd)
 				myd = re.sub(" +"," ",myd)
 				myd = string.strip(myd)
-			else:
+			except (IOError, OSError):
 				myd = ""
 			results.append(myd)
 		if "EAPI" in wants:
