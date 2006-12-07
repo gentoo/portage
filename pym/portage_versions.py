@@ -1,3 +1,9 @@
+# portage_versions.py -- core Portage functionality
+# Copyright 1998-2006 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Id$
+
+
 import re,string
 
 ver_regexp = re.compile("^(cvs\\.)?(\\d+)((\\.\\d+)*)([a-z]?)((_(pre|p|beta|alpha|rc)\\d*)*)(-r(\\d+))?$")
