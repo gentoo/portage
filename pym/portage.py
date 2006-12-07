@@ -2510,8 +2510,8 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
 							if os.path.basename(uri) == myfile:
 								myuris.append(uri)
 				if not fetch(myuris, mysettings):
-					writemsg("!!! File %s doesn't exist, can't update " + \
-						"Manifest\n" % myfile, noiselevel=-1)
+					writemsg(("!!! File %s doesn't exist, can't update " + \
+						"Manifest\n") % myfile, noiselevel=-1)
 					return 0
 		writemsg_stdout(">>> Creating Manifest for %s\n" % mysettings["O"])
 		try:
@@ -2520,8 +2520,8 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
 				assumeDistHashesAlways=(
 				"assume-digests" in mysettings.features))
 		except portage_exception.FileNotFound, e:
-			writemsg("!!! File %s doesn't exist, can't update " + \
-				"Manifest\n" % str(e), noiselevel=-1)
+			writemsg(("!!! File %s doesn't exist, can't update " + \
+				"Manifest\n") % e, noiselevel=-1)
 			return 0
 		mf.write(sign=False)
 		if "assume-digests" not in mysettings.features:
