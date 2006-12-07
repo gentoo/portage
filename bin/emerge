@@ -699,7 +699,7 @@ class DepPriority(object):
 			return "medium"
 		return "soft"
 
-class FakeVartree(object):
+class FakeVartree(portage.vartree):
 	"""This is implements an in-memory copy of a vartree instance that provides
 	all the interfaces required for use by the depgraph.  The vardb is locked
 	during the constructor call just long enough to read a copy of the
@@ -718,7 +718,8 @@ class FakeVartree(object):
 		try:
 			if os.access(vdb_path, os.W_OK):
 				vdb_lock = portage_locks.lockdir(vdb_path)
-			mykeys = ["SLOT", "USE", "IUSE", "DEPEND", "RDEPEND", "PDEPEND"]
+			mykeys = ["SLOT", "PROVIDE", "USE", "IUSE",
+				"DEPEND", "RDEPEND", "PDEPEND"]
 			real_dbapi = real_vartree.dbapi
 			for cpv in real_dbapi.cpv_all():
 				metadata = dict(zip(mykeys, real_dbapi.aux_get(cpv, mykeys)))
@@ -726,6 +727,10 @@ class FakeVartree(object):
 		finally:
 			if vdb_lock:
 				portage_locks.unlockdir(vdb_lock)
+		# Populate the old-style virtuals using the cached values.
+		if not self.settings.treeVirtuals:
+			self.settings.treeVirtuals = portage_util.map_dictlist_vals(
+				portage.getCPFromCPV, self.get_all_provides())
 
 class depgraph:
 
@@ -752,8 +757,6 @@ class depgraph:
 				self.trees[myroot][tree] = trees[myroot][tree]
 			self.trees[myroot]["vartree"] = \
 				FakeVartree(trees[myroot]["vartree"])
-			# Make sure the virtuals are populated before cloning.
-			trees[myroot]["vartree"].settings.getvirtuals()
 			self.pkgsettings[myroot] = portage.config(
 				clone=self.trees[myroot]["vartree"].settings)
 			self.pkg_node_map[myroot] = {}

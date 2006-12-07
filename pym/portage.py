@@ -1853,7 +1853,7 @@ class config:
 			self.dirVirtuals[virt].reverse()
 
 		# Repoman does not use user or tree virtuals.
-		if self.local_config:
+		if self.local_config and not self.treeVirtuals:
 			temp_vartree = vartree(myroot, None,
 				categories=self.categories, settings=self)
 			# Reduce the provides into a list by CP.
@@ -4930,11 +4930,9 @@ class vartree(packagetree):
 	def get_provide(self,mycpv):
 		myprovides=[]
 		try:
-			mylines = grabfile(self.root+VDB_PATH+"/"+mycpv+"/PROVIDE")
+			mylines, myuse = self.dbapi.aux_get(mycpv, ["PROVIDE","USE"])
 			if mylines:
-				myuse = grabfile(self.root+VDB_PATH+"/"+mycpv+"/USE")
-				myuse = string.split(string.join(myuse))
-				mylines = string.join(mylines)
+				myuse = myuse.split()
 				mylines = flatten(portage_dep.use_reduce(portage_dep.paren_reduce(mylines), uselist=myuse))
 				for myprovide in mylines:
 					mys = catpkgsplit(myprovide)
