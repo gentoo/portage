@@ -40,7 +40,9 @@ def lockfile(mypath,wantnewlockfile=0,unlinkfile=0):
 		wantnewlockfile = 0
 		unlinkfile      = 0
 	elif wantnewlockfile:
-		lockfilename = mypath+".portage_lockfile"
+		base, tail = os.path.split(mypath)
+		lockfilename = os.path.join(base, "." + tail + ".portage_lockfile")
+		del base, tail
 		unlinkfile   = 1
 	else:
 		lockfilename = mypath
