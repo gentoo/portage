@@ -700,6 +700,34 @@ class DepPriority(object):
 			return "medium"
 		return "soft"
 
+class FakeVartree(object):
+	"""This is implements an in-memory copy of a vartree instance that provides
+	all the interfaces required for use by the depgraph.  The vardb is locked
+	during the constructor call just long enough to read a copy of the
+	installed package information.  This allows the depgraph to do it's
+	dependency calculations without holding a lock on the vardb.  It also
+	allows things like vardb global updates to be done in memory so that the
+	user doesn't necessarily need write access to the vardb in cases where
+	global updates are necessary (updates are performed when necessary if there
+	is not a matching ebuild in the tree)."""
+	def __init__(self, real_vartree):
+		self.root = real_vartree.root
+		self.settings = real_vartree.settings
+		self.dbapi = portage.fakedbapi(settings=real_vartree.settings)
+		vdb_path = os.path.join(self.root, portage.VDB_PATH)
+		vdb_lock = None
+		try:
+			if os.access(vdb_path, os.W_OK):
+				vdb_lock = portage_locks.lockdir(vdb_path)
+			mykeys = ["SLOT", "USE", "IUSE", "DEPEND", "RDEPEND", "PDEPEND"]
+			real_dbapi = real_vartree.dbapi
+			for cpv in real_dbapi.cpv_all():
+				metadata = dict(zip(mykeys, real_dbapi.aux_get(cpv, mykeys)))
+				self.dbapi.cpv_inject(cpv, metadata=metadata)
+		finally:
+			if vdb_lock:
+				portage_locks.unlockdir(vdb_lock)
+
 class depgraph:
 
 	pkg_tree_map = {
@@ -710,7 +738,6 @@ class depgraph:
 	def __init__(self, settings, trees, myopts, myparams, spinner):
 		self.settings = settings
 		self.target_root = settings["ROOT"]
-		self.trees = trees
 		self.myopts = myopts
 		self.myparams = myparams
 		self.edebug = 0
@@ -719,10 +746,17 @@ class depgraph:
 		self.spinner = spinner
 		self.pkgsettings = {}
 		self.pkg_node_map = {}
-		for myroot in self.trees:
+		self.trees = {}
+		for myroot in trees:
+			self.trees[myroot] = {}
+			for tree in ("porttree", "bintree"):
+				self.trees[myroot][tree] = trees[myroot][tree]
+			self.trees[myroot]["vartree"] = \
+				FakeVartree(trees[myroot]["vartree"])
 			self.pkgsettings[myroot] = portage.config(
-				clone=trees[myroot]["vartree"].settings)
+				clone=self.trees[myroot]["vartree"].settings)
 			self.pkg_node_map[myroot] = {}
+		del trees
 		self.useFlags = {}
 		self.useFlags[self.target_root] = {}
 		if self.target_root != "/":
@@ -750,10 +784,10 @@ class depgraph:
 					myslot = vardb.aux_get(pkg, ["SLOT"])[0]
 					fakedb.cpv_inject(pkg, metadata={"SLOT":myslot})
 		if "--usepkg" in self.myopts:
-			trees["/"]["bintree"].populate(
+			self.trees["/"]["bintree"].populate(
 				"--getbinpkg" in self.myopts, "--getbinpkgonly" in self.myopts)
 			if self.target_root != "/":
-				trees[self.target_root]["bintree"].populate(
+				self.trees[self.target_root]["bintree"].populate(
 					"--getbinpkg" in self.myopts,
 					"--getbinpkgonly" in self.myopts)
 		self.args_keys = []
@@ -2687,7 +2721,7 @@ class MergeTask(object):
 		return os.EX_OK
 
 def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
-	ldpath_mtimes, raise_on_missing=True):
+	ldpath_mtimes):
 	candidate_catpkgs=[]
 	global_unmerge=0
 	xterm_titles = "notitles" not in settings.features
@@ -2827,12 +2861,9 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 				#add a "=" if missing
 				mymatch=localtree.dep_match("="+x)
 			if not mymatch:
-				if raise_on_missing:
-					raise portage_exception.PackageNotFound(x)
-				else:
-					portage.writemsg("\n--- Couldn't find '%s' to %s.\n" % \
-						(x, unmerge_action), noiselevel=-1)
-					continue
+				portage.writemsg("\n--- Couldn't find '%s' to %s.\n" % \
+					(x, unmerge_action), noiselevel=-1)
+				continue
 			mykey = portage.key_expand(
 				portage.dep_getkey(
 					mymatch[0]), mydb=vartree.dbapi, settings=settings)
@@ -3896,7 +3927,9 @@ def action_depclean(settings, trees, ldpath_mtimes,
 
 	xterm_titles = "notitles" not in settings.features
 	portdb = trees[settings["ROOT"]]["porttree"].dbapi
-	vartree = trees[settings["ROOT"]]["vartree"]
+	real_vartree = trees[settings["ROOT"]]["vartree"]
+	vartree = FakeVartree(real_vartree)
+	trees[settings["ROOT"]]["vartree"] = vartree
 	vardb = vartree.dbapi
 	syslist = getlist(settings, "system")
 	worldlist = getlist(settings, "world")
@@ -3976,6 +4009,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 
 	# Restore the portdb back to normal (see fake_vardb above).
 	trees[settings["ROOT"]]["porttree"].dbapi = portdb
+	trees[settings["ROOT"]]["vartree"] = real_vartree
 
 	if "--quiet" not in myopts:
 		print "\b\b... done!\n"
@@ -3997,7 +4031,8 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	cleanlist = [pkg for pkg in vardb.cpv_all() if not fakedb.cpv_exists(pkg)]
 
 	if len(cleanlist):
-		unmerge(settings, myopts, vartree, "unmerge", cleanlist, ldpath_mtimes)
+		unmerge(settings, myopts, trees[settings["ROOT"]]["vartree"],
+			"unmerge", cleanlist, ldpath_mtimes)
 
 	print "Packages installed:   "+str(len(myvarlist))
 	print "Packages in world:    "+str(len(worldlist))
@@ -4177,6 +4212,7 @@ def action_build(settings, trees, mtimedb,
 				it to write the mtimedb"""
 				mtimedb.filename = None
 				time.sleep(3) # allow the parent to have first fetch
+			del mydepgraph
 			retval = mergetask.merge(
 				mtimedb["resume"]["mergelist"], favorites, mtimedb)
 			if retval != os.EX_OK:
@@ -4213,6 +4249,7 @@ def action_build(settings, trees, mtimedb,
 						pkglist.append(pkg)
 			else:
 				pkglist = mydepgraph.altlist()
+			del mydepgraph
 			mergetask = MergeTask(settings, trees, myopts)
 			retval = mergetask.merge(pkglist, favorites, mtimedb)
 			if retval != os.EX_OK:
@@ -4721,7 +4758,7 @@ def emerge_main():
 		validate_ebuild_environment(trees)
 		vartree = trees[settings["ROOT"]]["vartree"]
 		if 1 == unmerge(settings, myopts, vartree, myaction, myfiles,
-			mtimedb["ldpath"], raise_on_missing=False):
+			mtimedb["ldpath"]):
 			if "--pretend" not in myopts:
 				post_emerge(settings, mtimedb, 0)
 
