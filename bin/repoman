@@ -398,13 +398,6 @@ if mymode == "commit":
 isCvs=False
 myreporoot=None
 if os.path.isdir("CVS"):
-	if "cvs" not in repoman_settings.features:
-		print
-		print
-		print red('!!! You do not have ')+bold('FEATURES="cvs" ')+red("enabled...")
-		print red("!!! ")+bold("Adding \"cvs\" to FEATURES")
-		print
-		os.environ["FEATURES"]=repoman_settings["FEATURES"]+" cvs"
 	isCvs = True
 
 if not "--pretend" in myoptions and not isCvs:
