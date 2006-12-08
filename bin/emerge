@@ -4315,13 +4315,10 @@ def parse_opts(tmpcmdline, silent=False):
 			if x not in ["system", "world"]:
 				print red("*** Deprecated use of action '%s', use '--%s' instead" % (x,x))
 			# special case "search" so people can search for action terms, e.g. emerge -s sync
-			if myaction and myaction != "search":
+			if myaction:
 				multiple_actions(myaction, x)
 				sys.exit(1)
-			if myaction != "search":
-				myaction=x
-			else:
-				myfiles.append(x)
+			myaction = x
 		else:
 			myfiles.append(x)
 
