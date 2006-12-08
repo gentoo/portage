@@ -48,6 +48,7 @@ from portage_data import secpass
 
 if not hasattr(__builtins__, "set"):
 	from sets import Set as set
+from itertools import izip
 
 class stdout_spinner(object):
 	scroll_msgs = [
@@ -700,7 +701,7 @@ class DepPriority(object):
 			return "medium"
 		return "soft"
 
-class FakeVartree(object):
+class FakeVartree(portage.vartree):
 	"""This is implements an in-memory copy of a vartree instance that provides
 	all the interfaces required for use by the depgraph.  The vardb is locked
 	during the constructor call just long enough to read a copy of the
@@ -719,14 +720,19 @@ class FakeVartree(object):
 		try:
 			if os.access(vdb_path, os.W_OK):
 				vdb_lock = portage_locks.lockdir(vdb_path)
-			mykeys = ["SLOT", "USE", "IUSE", "DEPEND", "RDEPEND", "PDEPEND"]
+			mykeys = ["SLOT", "PROVIDE", "USE", "IUSE",
+				"DEPEND", "RDEPEND", "PDEPEND"]
 			real_dbapi = real_vartree.dbapi
 			for cpv in real_dbapi.cpv_all():
-				metadata = dict(zip(mykeys, real_dbapi.aux_get(cpv, mykeys)))
+				metadata = dict(izip(mykeys, real_dbapi.aux_get(cpv, mykeys)))
 				self.dbapi.cpv_inject(cpv, metadata=metadata)
 		finally:
 			if vdb_lock:
 				portage_locks.unlockdir(vdb_lock)
+		# Populate the old-style virtuals using the cached values.
+		if not self.settings.treeVirtuals:
+			self.settings.treeVirtuals = portage_util.map_dictlist_vals(
+				portage.getCPFromCPV, self.get_all_provides())
 
 class depgraph:
 
@@ -1357,7 +1363,7 @@ class depgraph:
 						upd_commands = self.global_updates[myroot]
 						aux_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
 						aux_vals = vardb.aux_get(myeb_inst, aux_keys)
-						aux_dict = dict(zip(aux_keys, aux_vals))
+						aux_dict = dict(izip(aux_keys, aux_vals))
 						updates = update_dbentries(upd_commands, aux_dict)
 						if updates:
 							vardb.aux_update(myeb_inst, updates)
@@ -3971,7 +3977,8 @@ def action_depclean(settings, trees, ldpath_mtimes,
 			aux_vals = portdb.aux_get(cpv, fakedb_auxkeys)
 		except KeyError:
 			aux_vals = vardb.aux_get(cpv, fakedb_auxkeys)
-		fake_vardb.cpv_inject(cpv, metadata=dict(zip(fakedb_auxkeys, aux_vals)))
+		fake_vardb.cpv_inject(
+			cpv, metadata=dict(izip(fakedb_auxkeys, aux_vals)))
 	# HACK: Ensure that installed packages are preferenced by dep_check().
 	trees[settings["ROOT"]]["porttree"].dbapi = fake_vardb
 
@@ -3989,7 +3996,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 				continue
 			spinner.update()
 			fakedb.cpv_inject(pkg)
-			myaux = dict(zip(aux_keys, fake_vardb.aux_get(pkg, aux_keys)))
+			myaux = dict(izip(aux_keys, fake_vardb.aux_get(pkg, aux_keys)))
 			mydeps = []
 			if myopts.get("--with-bdeps", "y") == "y":
 				mydeps.append((myaux["DEPEND"], soft))

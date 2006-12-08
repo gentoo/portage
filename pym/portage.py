@@ -30,6 +30,7 @@ try:
 	import UserDict
 	if getattr(__builtins__, "set", None) is None:
 		from sets import Set as set
+	from itertools import chain, izip
 except ImportError, e:
 	sys.stderr.write("\n\n")
 	sys.stderr.write("!!! Failed to complete python imports. These are internal modules for\n")
@@ -1857,7 +1858,7 @@ class config:
 			self.dirVirtuals[virt].reverse()
 
 		# Repoman does not use user or tree virtuals.
-		if self.local_config:
+		if self.local_config and not self.treeVirtuals:
 			temp_vartree = vartree(myroot, None,
 				categories=self.categories, settings=self)
 			# Reduce the provides into a list by CP.
@@ -2674,7 +2675,6 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 			# automatically mapped to PORTAGE_INST_UID and PORTAGE_INST_GID if
 			# necessary.  The chown system call may clear S_ISUID and S_ISGID
 			# bits, so those bits are restored if necessary.
-			from itertools import chain
 			inst_uid = int(mysettings["PORTAGE_INST_UID"])
 			inst_gid = int(mysettings["PORTAGE_INST_GID"])
 			for parent, dirs, files in os.walk(mysettings["D"]):
@@ -3743,7 +3743,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 
 	if unreduced[0] != "||":
 		unresolved = []
-		for (dep, satisfied) in zip(unreduced, reduced):
+		for dep, satisfied in izip(unreduced, reduced):
 			if isinstance(dep, list):
 				unresolved += dep_zapdeps(dep, satisfied, myroot,
 					use_binaries=use_binaries, trees=trees)
@@ -3773,7 +3773,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 
 	# Sort the deps into preferred (installed) and other
 	# with values of [[required_atom], availablility]
-	for (dep, satisfied) in zip(deps, satisfieds):
+	for dep, satisfied in izip(deps, satisfieds):
 		if isinstance(dep, list):
 			atoms = dep_zapdeps(dep, satisfied, myroot,
 				use_binaries=use_binaries, trees=trees)
@@ -4271,7 +4271,7 @@ class portagetree:
 			self.portroot=settings["PORTDIR"]
 			self.virtual=virtual
 			self.dbapi = portdbapi(
-				settings["PORTDIR"], mysettings=config(clone=settings))
+				settings["PORTDIR"], mysettings=settings)
 
 	def dep_bestmatch(self,mydep):
 		"compatibility method"
@@ -4802,14 +4802,14 @@ class vardbapi(dbapi):
 		results = []
 		for x in wants:
 			myfn = self.root+VDB_PATH+"/"+str(mycpv)+"/"+str(x)
-			if os.access(myfn,os.R_OK):
+			try:
 				myf = open(myfn, "r")
 				myd = myf.read()
 				myf.close()
 				myd = re.sub("[\n\r\t]+"," ",myd)
 				myd = re.sub(" +"," ",myd)
 				myd = string.strip(myd)
-			else:
+			except (IOError, OSError):
 				myd = ""
 			results.append(myd)
 		if "EAPI" in wants:
@@ -4937,11 +4937,9 @@ class vartree(packagetree):
 	def get_provide(self,mycpv):
 		myprovides=[]
 		try:
-			mylines = grabfile(self.root+VDB_PATH+"/"+mycpv+"/PROVIDE")
+			mylines, myuse = self.dbapi.aux_get(mycpv, ["PROVIDE","USE"])
 			if mylines:
-				myuse = grabfile(self.root+VDB_PATH+"/"+mycpv+"/USE")
-				myuse = string.split(string.join(myuse))
-				mylines = string.join(mylines)
+				myuse = myuse.split()
 				mylines = flatten(portage_dep.use_reduce(portage_dep.paren_reduce(mylines), uselist=myuse))
 				for myprovide in mylines:
 					mys = catpkgsplit(myprovide)
