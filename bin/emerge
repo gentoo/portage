@@ -3622,6 +3622,15 @@ def action_regen(settings, portdb):
 		pass
 	sys.stdout.flush()
 	mynodes = portdb.cp_all()
+	from cache.cache_errors import CacheError
+	dead_nodes = {}
+	for mytree in portdb.porttrees:
+		try:
+			dead_nodes[mytree] = set(portdb.auxdb[mytree].iterkeys())
+		except CacheError, e:
+			print "\n  error listing cache entries for " + \
+				"'%s': %s, continuing..." % (mytree, e)
+			dead_nodes = None
 	for x in mynodes:
 		mymatches = portdb.xmatch("match-all",x)
 		portage.writemsg_stdout("processing %s\n" % x)
@@ -3633,6 +3642,18 @@ def action_regen(settings, portdb):
 				raise
 			except Exception, e:
 				print "\n  error processing %(cpv)s, continuing... (%(e)s)" % {"cpv":y,"e":str(e)}
+			if dead_nodes:
+				for mytree in portdb.porttrees:
+					if portdb.findname2(y, mytree=mytree)[0]:
+						dead_nodes[mytree].discard(y)
+	if dead_nodes:
+		for mytree, nodes in dead_nodes.iteritems():
+			auxdb = portdb.auxdb[mytree]
+			for y in nodes:
+				try:
+					del auxdb[y]
+				except KeyError, CacheError:
+					pass
 	print "done!"
 
 def action_config(settings, trees, myopts, myfiles):
