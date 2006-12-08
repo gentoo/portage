@@ -3632,6 +3632,7 @@ def action_regen(settings, portdb):
 				"'%s': %s, continuing..." % (mytree, e)
 			del e
 			dead_nodes = None
+			break
 	for x in mynodes:
 		mymatches = portdb.xmatch("match-all",x)
 		portage.writemsg_stdout("processing %s\n" % x)
