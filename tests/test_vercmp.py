@@ -42,6 +42,5 @@ class VerCmpTestCase(TestCase):
 			self.failIf( vercmp( test[0], test[1]) == 0, msg="%s == %s? Wrong!" % (test[0],test[1]))
 
 def suite():
-	suite = TestLoader().loadTestsFromTestCase(VerCmpTestCase)
-	return suite
+	return TestLoader().loadTestsFromTestCase(VerCmpTestCase)
 

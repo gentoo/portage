@@ -7,7 +7,7 @@ import unittest
 
 def main():
 	
-	tests = ["test_vercmp"]
+	tests = ["test_vercmp", "test_util"]
 
 	suite = unittest.TestSuite()
 
