@@ -1,0 +1,20 @@
+#!/usr/bin/python
+# runTests.py -- Portage Unit Test Functionality
+# Copyright 2006 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Id$
+
+
+import sys
+import os.path as osp
+
+# Grab SVN portage files instead of normal ones.
+sys.path.insert(0,'../pym')
+
+# Insert our parent dir so we can do shiny import "tests"
+# This line courtesy of Marienz and Pkgcore ;)
+sys.path.insert(0, osp.dirname(osp.dirname(osp.abspath(__file__))))
+
+import tests
+
+tests.main()

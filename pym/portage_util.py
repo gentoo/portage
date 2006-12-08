@@ -77,15 +77,44 @@ def map_dictlist_vals(func,myDict):
 	return new_dl
 
 def stack_dictlist(original_dicts, incremental=0, incrementals=[], ignore_none=0):
-	"""Stacks an array of dict-types into one array. Optionally merging or
+	"""
+	Stacks an array of dict-types into one array. Optionally merging or
 	overwriting matching key/value pairs for the dict[key]->list.
-	Returns a single dict. Higher index in lists is preferenced."""
+	Returns a single dict. Higher index in lists is preferenced.
+	
+	Example usage:
+	   >>> from portage_util import stack_dictlist
+		>>> print stack_dictlist( [{'a':'b'},{'x':'y'}])
+		>>> {'a':'b','x':'y'}
+		>>> print stack_dictlist( [{'a':'b'},{'a':'c'}], incremental = True )
+		>>> {'a':['b','c'] }
+		>>> a = {'KEYWORDS':['x86','alpha']}
+		>>> b = {'KEYWORDS':['-x86']}
+		>>> print stack_dictlist( [a,b] )
+		>>> { 'KEYWORDS':['x86','alpha','-x86']}
+		>>> print stack_dictlist( [a,b], incremental=True)
+		>>> { 'KEYWORDS':['alpha'] }
+		>>> print stack_dictlist( [a,b], incrementals=['KEYWORDS'])
+		>>> { 'KEYWORDS':['alpha'] }
+	
+	@param original_dicts a list of (dictionary objects or None)
+	@type list
+	@param incremental True or false depending on whether new keys should overwrite
+	   keys which already exist.
+	@type boolean
+	@param incrementals A list of items that should be incremental (-foo removes foo from
+	   the returned dict).
+	@type list
+	@param ignore_none Appears to be ignored, but probably was used long long ago.
+	@type boolean
+	
+	"""
 	final_dict = {}
 	for mydict in original_dicts:
 		if mydict is None:
 			continue
 		for y in mydict.keys():
-			if not final_dict.has_key(y):
+			if not y in final_dict:
 				final_dict[y] = []
 			
 			for thing in mydict[y]:
@@ -102,7 +131,7 @@ def stack_dictlist(original_dicts, incremental=0, incrementals=[], ignore_none=0
 							continue
 					if thing not in final_dict[y]:
 						final_dict[y].append(thing)
-			if final_dict.has_key(y) and not final_dict[y]:
+			if y in final_dict and not final_dict[y]:
 				del final_dict[y]
 	return final_dict
 

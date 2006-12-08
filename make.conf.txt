@@ -224,7 +224,7 @@ _`keepwork`
 	may occupy a lot of diskspace.
 
 _`metadata-transfer`
-	Automatically perform a metadata transfer when `emerge --sync` is run.
+	Automatically perform a metadata transfer when emerge --sync is run.
 
 _`mirror`
 	This will cause `FETCHCOMMAND`_ to always be run even if the file already 
@@ -511,7 +511,7 @@ PORTAGE_RSYNC_EXTRA_OPTS
 :suggest: --exclude=/etc/portage/rsync_exclude
 :valdesc: rsync options
 
-Additional rsync options to be used by `emerge --sync`.
+Additional rsync options to be used by emerge --sync.
 
 PORTAGE_RSYNC_OPTS
 ------------------
@@ -519,7 +519,7 @@ PORTAGE_RSYNC_OPTS
 :default: --recursive --links --safe-links --perms --times --compress --force --whole-file --delete --delete-after --stats --timeout=180 --exclude=/distfiles --exclude=/local --exclude=/packages
 :valdesc: rsync options
 
-Default rsync options to be used by `emerge --sync`. **Don't change this unless
+Default rsync options to be used by emerge --sync. **Don't change this unless
 you know exactly what you're doing!**
 
 PORTAGE_RSYNC_RETRIES
@@ -619,7 +619,7 @@ SYNC
 :valdesc: URI to a portage tree server (rsync or cvs)
 
 Insert your preferred rsync mirror here.  This rsync server is used to sync 
-the local portage tree when `emerge --sync` is run. Only one server can be 
+the local portage tree when emerge --sync is run. Only one server can be 
 specified.
 
 USE
