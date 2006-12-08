@@ -3630,6 +3630,7 @@ def action_regen(settings, portdb):
 		except CacheError, e:
 			print "\n  error listing cache entries for " + \
 				"'%s': %s, continuing..." % (mytree, e)
+			del e
 			dead_nodes = None
 	for x in mynodes:
 		mymatches = portdb.xmatch("match-all",x)
