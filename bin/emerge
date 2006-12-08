@@ -4311,7 +4311,7 @@ def parse_opts(tmpcmdline, silent=False):
 			myaction = action_opt
 
 	for x in myargs:
-		if x in actions:
+		if x in actions and myaction != "search":
 			if x not in ["system", "world"]:
 				print red("*** Deprecated use of action '%s', use '--%s' instead" % (x,x))
 			# special case "search" so people can search for action terms, e.g. emerge -s sync
