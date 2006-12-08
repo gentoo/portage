@@ -2482,9 +2482,41 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
 	global _doebuild_manifest_exempt_depend
 	try:
 		_doebuild_manifest_exempt_depend += 1
+		distfiles_map = {}
+		fetchlist_dict = FetchlistDict(mysettings["O"], mysettings, myportdb)
+		for cpv, fetchlist in fetchlist_dict.iteritems():
+			for myfile in fetchlist:
+				distfiles_map.setdefault(myfile, []).append(cpv)
 		mf = Manifest(mysettings["O"], mysettings["DISTDIR"],
-			fetchlist_dict=FetchlistDict(mysettings["O"],
-			mysettings, myportdb))
+			fetchlist_dict=fetchlist_dict)
+		missing_hashes = set(distfiles_map).difference(
+			mf.fhashdict.get("DIST", {}))
+		if missing_hashes:
+			missing_files = []
+			for myfile in missing_hashes:
+				try:
+					os.stat(os.path.join(mysettings["DISTDIR"], myfile))
+				except OSError, e:
+					if e.errno != errno.ENOENT:
+						raise
+					del e
+					missing_files.append(myfile)
+			if missing_files:
+				mytree = os.path.realpath(os.path.dirname(
+					os.path.dirname(mysettings["O"])))
+				myuris = []
+				for myfile in missing_files:
+					for cpv in distfiles_map[myfile]:
+						alluris, aalist = myportdb.getfetchlist(
+							cpv, mytree=mytree, all=True,
+							mysettings=mysettings)
+						for uri in alluris:
+							if os.path.basename(uri) == myfile:
+								myuris.append(uri)
+				if not fetch(myuris, mysettings):
+					writemsg(("!!! File %s doesn't exist, can't update " + \
+						"Manifest\n") % myfile, noiselevel=-1)
+					return 0
 		writemsg_stdout(">>> Creating Manifest for %s\n" % mysettings["O"])
 		try:
 			mf.create(requiredDistfiles=myarchives,
@@ -2492,8 +2524,8 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
 				assumeDistHashesAlways=(
 				"assume-digests" in mysettings.features))
 		except portage_exception.FileNotFound, e:
-			writemsg("!!! File %s doesn't exist, can't update " + \
-				"Manifest\n" % str(e), noiselevel=-1)
+			writemsg(("!!! File %s doesn't exist, can't update " + \
+				"Manifest\n") % e, noiselevel=-1)
 			return 0
 		mf.write(sign=False)
 		if "assume-digests" not in mysettings.features:
@@ -3193,13 +3225,9 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			mydigests = mf.getTypeDigests("DIST")
 			for filename, hashes in mydigests.iteritems():
 				if len(hashes) == len(mf.hashes):
-					while True:
-						try:
-							i = checkme.index(filename) # raises ValueError
-							del fetchme[i]
-							del checkme[i]
-						except ValueError:
-							break
+					checkme = [i for i in checkme if i != filename]
+					fetchme = [i for i in fetchme \
+						if os.path.basename(i) != filename]
 				del filename, hashes
 		else:
 			fetchme = newuris[:]

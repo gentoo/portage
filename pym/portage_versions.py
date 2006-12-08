@@ -54,12 +54,15 @@ def vercmp(ver1, ver2, silent=1):
 		vlist1 = match1.group(3)[1:].split(".")
 		vlist2 = match2.group(3)[1:].split(".")
 		for i in range(0, max(len(vlist1), len(vlist2))):
+			# Implcit .0 is given a value of -1, so that 1.0.0 > 1.0, since it
+			# would be ambiguous if two versions that aren't literally equal
+			# are given the same value (in sorting, for example).
 			if len(vlist1) <= i or len(vlist1[i]) == 0:
-				list1.append(0)
+				list1.append(-1)
 				list2.append(string.atoi(vlist2[i]))
 			elif len(vlist2) <= i or len(vlist2[i]) == 0:
 				list1.append(string.atoi(vlist1[i]))
-				list2.append(0)
+				list2.append(-1)
 			# Let's make life easy and use integers unless we're forced to use floats
 			elif (vlist1[i][0] != "0" and vlist2[i][0] != "0"):
 				list1.append(string.atoi(vlist1[i]))
