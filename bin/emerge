@@ -1720,38 +1720,6 @@ class depgraph:
 
 		return 1
 
-	def match(self, mydep, myroot=None, mykey=None):
-		# support mutual exclusive deps
-		if myroot is None:
-			myroot = self.target_root
-		mydep2=mydep
-		if mydep2[0]=="!":
-			mydep2=mydep[1:]
-
-		if mydep[0]=="!":
-			#add our blocker; it will be ignored later if necessary (if we are remerging the same pkg, for example)
-			myk="blocks "+myroot+" "+mydep2
-		else:
-			myeb = self.trees[myroot]["porttree"].dep_bestmatch(mydep2)
-			if not myeb:
-				if not mykey:
-					print "\n!!! Error: couldn't find match for",mydep
-				else:
-					print "\n!!! Error: couldn't find match for",mydep,"in",mykey
-				print
-				sys.exit(1)
-
-			if "--usepkg" in self.myopts:
-				mypk = self.trees[myroot]["bintree"].dep_bestmatch(mydep)
-				if myeb==mypk:
-					myk = " ".join(("binary", myroot, mypk))
-				else:
-					myk = " ".join(("ebuild", myroot, myeb))
-			else:
-				myk="ebuild "+myroot+" "+myeb
-
-		return myk
-
 	def display(self,mylist,verbosity=None):
 		if verbosity is None:
 			verbosity = ("--quiet" in self.myopts and 1 or \
