@@ -303,7 +303,7 @@ def dep_getslot(mydep):
 		return mydep[colon+1:]
 	return None
 
-_invalid_atom_chars_regexp = re.compile("[()|]")
+_invalid_atom_chars_regexp = re.compile("[()|?]")
 
 def isvalidatom(atom):
 	"""
