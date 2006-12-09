@@ -4405,9 +4405,13 @@ class fakedbapi(dbapi):
 		if myslot and mycp in self.cpdict:
 			# If necessary, remove another package in the same SLOT.
 			for cpv in self.cpdict[mycp]:
-				if mycpv != cpv and myslot == self.cpvdict[cpv]:
-					self.cpv_remove(cpv)
-					break
+				if mycpv != cpv:
+					other_metadata = self.cpvdict[cpv]
+					if other_metadata:
+						other_slot = metadata.get("SLOT", None)
+						if myslot == other_slot:
+							self.cpv_remove(cpv)
+							break
 		if mycp not in self.cpdict:
 			self.cpdict[mycp] = []
 		if not mycpv in self.cpdict[mycp]:
