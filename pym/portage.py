@@ -3884,6 +3884,7 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 
 	if mysettings:
 		mymasks = set()
+		useforce = set([mysettings["ARCH"]])
 		if use == "all":
 			# These masks are only for repoman.  In other cases, relevant masks
 			# should have already been applied via config.regenerate().  Also,
@@ -3895,7 +3896,10 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 			mymasks.update(mysettings.usemask)
 			mymasks.update(mysettings.archlist())
 			mymasks.discard(mysettings["ARCH"])
-		mysplit = portage_dep.use_reduce(mysplit,uselist=myusesplit,masklist=mymasks,matchall=(use=="all"),excludeall=[mysettings["ARCH"]])
+			useforce.update(mysettings.useforce)
+			useforce.difference_update(mymasks)
+		mysplit = portage_dep.use_reduce(mysplit, uselist=myusesplit,
+			masklist=mymasks, matchall=(use=="all"), excludeall=useforce)
 	else:
 		mysplit = portage_dep.use_reduce(mysplit,uselist=myusesplit,matchall=(use=="all"))
 
