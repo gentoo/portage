@@ -752,6 +752,7 @@ class depgraph:
 		self.pkgsettings = {}
 		self.pkg_node_map = {}
 		self.mydbapi = {}
+		self.useFlags = {}
 		self.trees = {}
 		for myroot in trees:
 			self.trees[myroot] = {}
@@ -771,23 +772,17 @@ class depgraph:
 				myslot = vardb.aux_get(pkg, ["SLOT"])[0]
 				fakedb.cpv_inject(pkg, metadata={"SLOT":myslot})
 			del vardb, fakedb
+			self.useFlags[myroot] = {}
+			if "--usepkg" in self.myopts:
+				self.trees[myroot]["bintree"].populate(
+					"--getbinpkg" in self.myopts,
+					"--getbinpkgonly" in self.myopts)
 		del trees
-		self.useFlags = {}
-		self.useFlags[self.target_root] = {}
-		if self.target_root != "/":
-			self.useFlags["/"] = {}
 
 		self.missingbins=[]
 		self.digraph=portage.digraph()
 		self.orderedkeys=[]
 		self.outdatedpackages=[]
-		if "--usepkg" in self.myopts:
-			self.trees["/"]["bintree"].populate(
-				"--getbinpkg" in self.myopts, "--getbinpkgonly" in self.myopts)
-			if self.target_root != "/":
-				self.trees[self.target_root]["bintree"].populate(
-					"--getbinpkg" in self.myopts,
-					"--getbinpkgonly" in self.myopts)
 		self.args_keys = []
 		self.global_updates = {}
 		self.blocker_digraph = digraph()
