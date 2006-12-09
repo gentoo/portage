@@ -18,7 +18,7 @@
 # "a? ( b? ( z ) ) -- Valid
 #
 
-import os,string,types,sys,copy
+import re, string, sys, types
 import portage_exception
 from portage_versions import catpkgsplit, catsplit, pkgcmp, pkgsplit, ververify
 
@@ -303,6 +303,8 @@ def dep_getslot(mydep):
 		return mydep[colon+1:]
 	return None
 
+_invalid_atom_chars_regexp = re.compile("[()|]")
+
 def isvalidatom(atom):
 	"""
 	Check to see if a depend atom is valid
@@ -320,6 +322,9 @@ def isvalidatom(atom):
 		1) 0 if the atom is invalid
 		2) 1 if the atom is valid
 	"""
+	global _invalid_atom_chars_regexp
+	if _invalid_atom_chars_regexp.search(atom):
+		return 0
 	mycpv_cps = catpkgsplit(dep_getcpv(atom))
 	operator = get_operator(atom)
 	if operator:
