@@ -90,7 +90,7 @@ install_qa_check() {
 		# binary-only and upstream isn't cooperating (nvidia-glx) ... we
 		# allow ebuild authors to set QA_TEXTRELS_arch and QA_TEXTRELS ...
 		# the former overrides the latter ... regexes allowed ! :)
-		qa_var="QA_TEXTRELS_${ARCH}"
+		qa_var="QA_TEXTRELS_${ARCH/-/_}"
 		[[ -n ${!qa_var} ]] && QA_TEXTRELS=${!qa_var}
 		[[ -n ${QA_STRICT_TEXTRELS} ]] && QA_TEXTRELS=""
 		export QA_TEXTRELS
@@ -127,10 +127,10 @@ install_qa_check() {
 					# QA_EXECSTACK ... the former overrides the latter ...
 					# regexes allowed ! :)
 
-					qa_var="QA_EXECSTACK_${ARCH}"
+					qa_var="QA_EXECSTACK_${ARCH/-/_}"
 					[[ -n ${!qa_var} ]] && QA_EXECSTACK=${!qa_var}
 					[[ -n ${QA_STRICT_EXECSTACK} ]] && QA_EXECSTACK=""
-					qa_var="QA_WX_LOAD_${ARCH}"
+					qa_var="QA_WX_LOAD_${ARCH/-/_}"
 					[[ -n ${!qa_var} ]] && QA_WX_LOAD=${!qa_var}
 					[[ -n ${QA_STRICT_WX_LOAD} ]] && QA_WX_LOAD=""
 					export QA_EXECSTACK QA_WX_LOAD
