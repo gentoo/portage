@@ -47,7 +47,7 @@ from portage_data import secpass
 
 if not hasattr(__builtins__, "set"):
 	from sets import Set as set
-from itertools import izip
+from itertools import chain, izip
 
 class stdout_spinner(object):
 	scroll_msgs = [
@@ -803,7 +803,7 @@ class depgraph:
 		#IUSE-aware emerge -> USE DEP aware depgraph
 		#"no downgrade" emerge
 		"""
-		jbigkey = " ".join(mybigkey) + " merge"
+		jbigkey = tuple(chain(mybigkey, ["merge"]))
 		mytype, myroot, mykey = mybigkey
 		if self.digraph.hasnode(jbigkey):
 			if addme and jbigkey != myparent:
@@ -811,17 +811,17 @@ class depgraph:
 				# don't create a bogus circular dependency in self.altlist().
 				self.pkg_node_map[myroot][mykey] = jbigkey
 				if rev_dep and myparent:
-					ptype, proot, pkey, pstatus = myparent.split()
+					ptype, proot, pkey, pstatus = myparent
 					self.pkg_node_map[proot][pkey] = myparent
 					self.digraph.addnode(myparent, jbigkey, priority=priority)
 				else:
 					self.digraph.addnode(jbigkey, myparent, priority=priority)
 			return 1
-		jbigkey = " ".join(mybigkey) + " nomerge"
+		jbigkey = tuple(chain(mybigkey, ["nomerge"]))
 		if self.digraph.hasnode(jbigkey):
 			self.pkg_node_map[myroot][mykey] = jbigkey
 			if rev_dep and myparent:
-				ptype, proot, pkey, pstatus = myparent.split()
+				ptype, proot, pkey, pstatus = myparent
 				self.pkg_node_map[proot][pkey] = myparent
 				self.digraph.addnode(myparent, jbigkey, priority=priority)
 			else:
@@ -831,9 +831,9 @@ class depgraph:
 		self.spinner.update()
 		if mytype == "blocks":
 			if addme and "--buildpkgonly" not in self.myopts and myparent:
-				mybigkey[1] = myparent.split()[1]
+				mybigkey[1] = myparent[1]
 				self.blocker_parents.setdefault(
-					" ".join(mybigkey), set()).add(myparent)
+					tuple(mybigkey), set()).add(myparent)
 			return 1
 		if not arg and myroot == self.target_root:
 			arg = portage.best_match_to_list(mykey, self.args_keys)
@@ -896,10 +896,10 @@ class depgraph:
 		""" At this point, we have either hit a blocker and returned, found the package in the
 		    depgraph already and returned, or we are here.  Whether we are merging or not; we must
 		    add the package to the depgraph; so we do that here. """
-		jbigkey = " ".join(mybigkey)
+		jbigkey = tuple(mybigkey)
 		self.pkg_node_map[myroot][mykey] = jbigkey
 		if rev_dep and myparent:
-			ptype, proot, pkey, pstatus = myparent.split()
+			ptype, proot, pkey, pstatus = myparent
 			self.pkg_node_map[proot][pkey] = myparent
 			self.digraph.addnode(myparent, jbigkey,
 				priority=priority)
@@ -946,7 +946,7 @@ class depgraph:
 		""" We have retrieve the dependency information, now we need to recursively
 		    process them.  DEPEND gets processed for root = "/", {R,P}DEPEND in myroot. """
 		
-		mp=string.join(mybigkey)
+		mp = tuple(mybigkey)
 
 		try:
 			if not self.select_dep("/", edepend["DEPEND"], myparent=mp,
@@ -1162,8 +1162,7 @@ class depgraph:
 
 		missing=0
 		if "--usepkgonly" in self.myopts:
-			for x in self.digraph.all_nodes():
-				xs = x.split()
+			for xs in self.digraph.all_nodes():
 				if len(xs) >= 4 and xs[0] != "binary" and xs[3] == "merge":
 					if missing == 0:
 						print
@@ -1228,7 +1227,7 @@ class depgraph:
 			# virtuals, which are preferenced in dep_zapdeps by looking only at
 			# the depstring, vdb, and available packages.
 
-			p_type, p_root, p_key, p_status = myparent.split()
+			p_type, p_root, p_key, p_status = myparent
 			if p_status == "merge":
 				# Update old-style virtuals if this package provides any.
 				# These are needed for dep_virtual calls inside dep_check.
@@ -1365,7 +1364,9 @@ class depgraph:
 					else:
 						xinfo='"'+arg+'"'
 					if myparent:
-						xfrom = '(dependency required by '+green('"'+myparent.split()[2]+'"')+red(' ['+myparent.split()[0]+"]")+')'
+						xfrom = '(dependency required by '+ \
+							green('"%s"' % myparent[2]) + \
+							red(' [%s]' % myparent[0]) + ')'
 					alleb = portdb.xmatch("match-all", x)
 					if alleb:
 						if "--usepkgonly" not in self.myopts:
@@ -1435,7 +1436,7 @@ class depgraph:
 		installed simultaneously."""
 
 		for blocker in self.blocker_parents.keys():
-			mytype, myroot, mydep = blocker.split()
+			mytype, myroot, mydep = blocker
 			vardb = self.trees[myroot]["vartree"].dbapi
 			blocked_pkgs = vardb.match(mydep)
 			blocked_after_update = self.mydbapi[myroot].match(mydep)
@@ -1465,7 +1466,7 @@ class depgraph:
 					continue
 
 				for parent in list(self.blocker_parents[blocker]):
-					ptype, proot, pcpv, pstatus = parent.split()
+					ptype, proot, pcpv, pstatus = parent
 					pdbapi = self.trees[proot][self.pkg_tree_map[ptype]].dbapi
 					pslot = pdbapi.aux_get(pcpv, ["SLOT"])[0]
 					pslot_atom = "%s:%s" % (portage.dep_getkey(pcpv), pslot)
@@ -1598,7 +1599,7 @@ class depgraph:
 				sys.exit(1)
 
 			for node in selected_nodes:
-				retlist.append(node.split())
+				retlist.append(list(node))
 				mygraph.remove(node)
 				if not reversed and not circular_blocks and myblockers.contains(node):
 					"""This node may have invalidated one or more blockers."""
@@ -1616,7 +1617,7 @@ class depgraph:
 
 		""" Add any unresolved blocks so that they can be displayed."""
 		for blocker in self.blocker_parents:
-			retlist.append(blocker.split())
+			retlist.append(list(blocker))
 		self._altlist_cache[reversed] = retlist[:]
 		return retlist
 
@@ -1808,7 +1809,7 @@ class depgraph:
 		for x in mylist:
 			if "blocks" == x[0]:
 				continue
-			graph_key = " ".join(x)
+			graph_key = tuple(x)
 			if "--tree" in self.myopts:
 				depth = len(tree_nodes)
 				while depth and graph_key not in \
@@ -1822,13 +1823,13 @@ class depgraph:
 		for i in xrange(len(mylist)-1,-1,-1):
 			if "blocks" == mylist[i][0]:
 				continue
-			graph_key = " ".join(mylist[i])
+			graph_key = tuple(mylist[i])
 			if mylist[i][-1] != "nomerge":
 				last_merge_depth = node_depth[graph_key]
 				continue
 			if node_depth[graph_key] >= last_merge_depth or \
 				i < len(mylist) - 1 and \
-				node_depth[graph_key] >= node_depth[" ".join(mylist[i+1])]:
+				node_depth[graph_key] >= node_depth[tuple(mylist[i+1])]:
 					del mylist[i]
 					del node_depth[graph_key]
 		del tree_nodes
@@ -1855,8 +1856,8 @@ class depgraph:
 				resolved = portage.key_expand(
 					pkg_key, mydb=vardb, settings=pkgsettings)
 				print "["+x[0]+" "+addl+"]",red(resolved),
-				block_parents = self.blocker_parents[" ".join(x)]
-				block_parents = [pnode.split()[2] for pnode in block_parents]
+				block_parents = self.blocker_parents[tuple(x)]
+				block_parents = [pnode[2] for pnode in block_parents]
 				block_parents = ", ".join(block_parents)
 				if resolved!=x[2]:
 					print bad("(\"%s\" is blocking %s)") % \
@@ -2067,7 +2068,7 @@ class depgraph:
 				oldlp=mywidth-30
 				newlp=oldlp-30
 
-				indent = " " * node_depth[" ".join(x)]
+				indent = " " * node_depth[tuple(x)]
 
 				if myoldbest:
 					myoldbest=portage.pkgsplit(myoldbest)[1]+"-"+portage.pkgsplit(myoldbest)[2]
