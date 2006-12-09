@@ -733,6 +733,27 @@ class FakeVartree(portage.vartree):
 			self.settings.treeVirtuals = portage_util.map_dictlist_vals(
 				portage.getCPFromCPV, self.get_all_provides())
 
+def grab_global_updates(portdir):
+	from portage_update import grab_updates, parse_updates
+	updpath = os.path.join(portdir, "profiles", "updates")
+	try:
+		rawupdates = grab_updates(updpath)
+	except portage_exception.DirectoryNotFound:
+		rawupdates = []
+	upd_commands = []
+	for mykey, mystat, mycontent in rawupdates:
+		commands, errors = parse_updates(mycontent)
+		upd_commands.extend(commands)
+	return upd_commands
+
+def perform_global_updates(mycpv, mydb, mycommands):
+	from portage_update import update_dbentries
+	aux_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
+	aux_dict = dict(izip(aux_keys, mydb.aux_get(mycpv, aux_keys)))
+	updates = update_dbentries(mycommands, aux_dict)
+	if updates:
+		mydb.aux_update(mycpv, updates)
+
 class depgraph:
 
 	pkg_tree_map = {
@@ -1331,30 +1352,11 @@ class depgraph:
 						This is done on the fly for single packages only when
 						necessary, since it can be time consuming to run this
 						on all installed packages."""
-						from portage_update import grab_updates, \
-							parse_updates, update_dbentries
 						if myroot not in self.global_updates:
-							updpath = os.path.join(
-								pkgsettings["PORTDIR"], "profiles", "updates")
-							try:
-								rawupdates = grab_updates(updpath)
-							except portage_exception.DirectoryNotFound:
-								rawupdates = []
-							upd_commands = []
-							for mykey, mystat, mycontent in rawupdates:
-								commands, errors = parse_updates(mycontent)
-								upd_commands.extend(commands)
-							del updpath, rawupdates
-							self.global_updates[myroot] = upd_commands
-						upd_commands = self.global_updates[myroot]
-						aux_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
-						aux_vals = vardb.aux_get(myeb_inst, aux_keys)
-						aux_dict = dict(izip(aux_keys, aux_vals))
-						updates = update_dbentries(upd_commands, aux_dict)
-						if updates:
-							vardb.aux_update(myeb_inst, updates)
-						del binpkguseflags, myeb_inst, upd_commands, \
-							aux_keys, aux_vals, aux_dict, updates
+							self.global_updates[myroot] = \
+								grab_global_updates(pkgsettings["PORTDIR"])
+						perform_global_updates(
+							myeb_inst, vardb, self.global_updates[myroot])
 
 				if not matched_packages:
 					if raise_on_missing:
@@ -3915,14 +3917,22 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	fake_vardb = portage.fakedbapi(settings=settings)
 	fakedb_auxkeys = aux_keys[:]
 	fakedb_auxkeys.append("SLOT")
+	global_updates = None
 	for cpv in myvarlist:
 		try:
 			# Prefer live ebuild metadata when available.
 			aux_vals = portdb.aux_get(cpv, fakedb_auxkeys)
+			live_ebuild = True
 		except KeyError:
 			aux_vals = vardb.aux_get(cpv, fakedb_auxkeys)
+			live_ebuild = False
 		fake_vardb.cpv_inject(
 			cpv, metadata=dict(izip(fakedb_auxkeys, aux_vals)))
+		if not live_ebuild:
+			if global_updates is None:
+				global_updates = grab_global_updates(settings["PORTDIR"])
+			perform_global_updates(cpv, fake_vardb, global_updates)
+
 	# HACK: Ensure that installed packages are preferenced by dep_check().
 	trees[settings["ROOT"]]["porttree"].dbapi = fake_vardb
 
