@@ -679,18 +679,25 @@ dyn_unpack() {
 			if [ "${PORTAGE_ACTUAL_DISTDIR:-${DISTDIR}}/${x}" -nt "${WORKDIR}" ]; then
 				vecho ">>> ${x} has been updated; recreating WORKDIR..."
 				newstuff="yes"
-				rm -rf "${WORKDIR}"
 				break
 			fi
 		done
-		if [ "${EBUILD}" -nt "${WORKDIR}" ]; then
+		if [ "${EBUILD}" -nt "${WORKDIR}" ] && ! hasq keepwork ${FEATURES} ; then
 			vecho ">>> ${EBUILD} has been updated; recreating WORKDIR..."
 			newstuff="yes"
-			rm -rf "${WORKDIR}"
 		elif [ ! -f "${PORTAGE_BUILDDIR}/.unpacked" ]; then
 			vecho ">>> Not marked as unpacked; recreating WORKDIR..."
 			newstuff="yes"
-			rm -rf "${WORKDIR}"
+		fi
+	fi
+	if [ "${newstuff}" == "yes" ]; then
+		# We don't necessarily have privileges to do a full dyn_clean here.
+		rm -rf "${WORKDIR}"
+		if [ -d "${T}" ] && ! hasq keeptemp ${FEATURES} ; then
+			rm -rf "${T}" && mkdir "${T}"
+		else
+			[ -e "${T}/environment" ] && \
+				mv "${T}/environment" "${T}/environment.keeptemp"
 		fi
 	fi
 	if [ -e "${WORKDIR}" ]; then
