@@ -4791,24 +4791,24 @@ class vardbapi(dbapi):
 		return self.root+VDB_PATH+"/"+str(mycpv)+"/"+mycpv.split("/")[1]+".ebuild"
 
 	def aux_get(self, mycpv, wants):
-		global auxdbkeys
+		mydir = os.path.join(self.root, VDB_PATH, mycpv)
+		if not os.path.isdir(mydir):
+			raise KeyError(mycpv)
 		results = []
 		for x in wants:
-			myfn = self.root+VDB_PATH+"/"+str(mycpv)+"/"+str(x)
 			try:
-				myf = open(myfn, "r")
-				myd = myf.read()
-				myf.close()
-				myd = re.sub("[\n\r\t]+"," ",myd)
-				myd = re.sub(" +"," ",myd)
-				myd = string.strip(myd)
-			except (IOError, OSError):
+				myf = open(os.path.join(mydir, x), "r")
+				try:
+					myd = myf.read()
+				finally:
+					myf.close()
+				myd = " ".join(myd.split())
+			except IOError:
 				myd = ""
-			results.append(myd)
-		if "EAPI" in wants:
-			idx = wants.index("EAPI")
-			if not results[idx]:
-				results[idx] = "0"
+			if x == "EAPI" and not myd:
+				results.append("0")
+			else:
+				results.append(myd)
 		return results
 
 	def aux_update(self, cpv, values):
