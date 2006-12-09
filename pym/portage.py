@@ -4408,8 +4408,7 @@ class fakedbapi(dbapi):
 				if mycpv != cpv:
 					other_metadata = self.cpvdict[cpv]
 					if other_metadata:
-						other_slot = metadata.get("SLOT", None)
-						if myslot == other_slot:
+						if myslot == other_metadata.get("SLOT", None):
 							self.cpv_remove(cpv)
 							break
 		if mycp not in self.cpdict:
