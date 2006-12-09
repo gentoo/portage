@@ -4490,16 +4490,12 @@ class bindbapi(fakedbapi):
 		if not self.bintree.populated:
 			self.bintree.populate()
 		tbz2path = self.bintree.getname(cpv)
-		mylock = portage_locks.lockfile(tbz2path, wantnewlockfile=1)
-		try:
-			if not os.path.exists(tbz2path):
-				raise KeyError(cpv)
-			mytbz2 = xpak.tbz2(tbz2path)
-			mydata = mytbz2.get_data()
-			mydata.update(values)
-			mytbz2.recompose_mem(xpak.xpak_mem(mydata))
-		finally:
-			portage_locks.unlockfile(mylock)
+		if not os.path.exists(tbz2path):
+			raise KeyError(cpv)
+		mytbz2 = xpak.tbz2(tbz2path)
+		mydata = mytbz2.get_data()
+		mydata.update(values)
+		mytbz2.recompose_mem(xpak.xpak_mem(mydata))
 
 	def cp_list(self, *pargs, **kwargs):
 		if not self.bintree.populated:
@@ -4814,18 +4810,11 @@ class vardbapi(dbapi):
 	def aux_update(self, cpv, values):
 		cat, pkg = cpv.split("/")
 		mylink = dblink(cat, pkg, self.root, self.settings,
-			treetype="vartree", vartree=self.vartree)
-		try:
-			mylink.lockdb()
-		except portage_exception.DirectoryNotFound:
+		treetype="vartree", vartree=self.vartree)
+		if not mylink.exists():
 			raise KeyError(cpv)
-		try:
-			if not mylink.exists():
-				raise KeyError(cpv)
-			for k, v in values.iteritems():
-				mylink.setfile(k, v)
-		finally:
-			mylink.unlockdb()
+		for k, v in values.iteritems():
+			mylink.setfile(k, v)
 
 	def counter_tick(self,myroot,mycpv=None):
 		return self.counter_tick_core(myroot,incrementing=1,mycpv=mycpv)
