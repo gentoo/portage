@@ -1062,6 +1062,7 @@ for x in scanlist:
 				myflag = myflag[1:]
 			myiuse.add(myflag)
 
+		operator_tokens = set(["||", "(", ")"])
 		type_list, badsyntax = [], []
 		for mytype in ("DEPEND", "RDEPEND", "PDEPEND", "LICENSE", "PROVIDE"):
 			mydepstr = myaux[mytype]
@@ -1084,7 +1085,7 @@ for x in scanlist:
 			except portage_exception.InvalidDependString, e:
 				badsyntax.append(str(e))
 
-			for token in ("||", "(", ")"):
+			for token in operator_tokens:
 				if mydepstr.startswith(token+" "):
 					myteststr = mydepstr[len(token):]
 				else:
@@ -1098,7 +1099,10 @@ for x in scanlist:
 
 
 			if mytype in ("DEPEND", "RDEPEND", "PDEPEND"):
-				for token in filter(lambda x: not (x.endswith("?") or x.strip() in ("||", "&&", "(", ")")), mydepstr.split()):
+				for token in mydepstr.split():
+					if token in operator_tokens or \
+						token.endswith("?"):
+						continue
 					if not portage.isvalidatom(token) or \
 						":" in token and myaux["EAPI"] == "0":
 						badsyntax.append("'%s' not a valid atom" % token)
