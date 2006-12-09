@@ -751,6 +751,7 @@ class depgraph:
 		self.spinner = spinner
 		self.pkgsettings = {}
 		self.pkg_node_map = {}
+		self.mydbapi = {}
 		self.trees = {}
 		for myroot in trees:
 			self.trees[myroot] = {}
@@ -761,6 +762,15 @@ class depgraph:
 			self.pkgsettings[myroot] = portage.config(
 				clone=self.trees[myroot]["vartree"].settings)
 			self.pkg_node_map[myroot] = {}
+			vardb = self.trees[myroot]["vartree"].dbapi
+			# This fakedbapi instance will model the state that the vdb will
+			# have after new packages have been installed.
+			fakedb = portage.fakedbapi(settings=self.pkgsettings[myroot])
+			self.mydbapi[myroot] = fakedb
+			for pkg in vardb.cpv_all():
+				myslot = vardb.aux_get(pkg, ["SLOT"])[0]
+				fakedb.cpv_inject(pkg, metadata={"SLOT":myslot})
+			del vardb, fakedb
 		del trees
 		self.useFlags = {}
 		self.useFlags[self.target_root] = {}
@@ -771,23 +781,6 @@ class depgraph:
 		self.digraph=portage.digraph()
 		self.orderedkeys=[]
 		self.outdatedpackages=[]
-		self.mydbapi={}
-		self.mydbapi["/"] = portage.fakedbapi(settings=settings)
-		vardb = self.trees["/"]["vartree"].dbapi
-		fakedb = self.mydbapi["/"]
-		if "empty" not in self.myparams or self.target_root != "/":
-			for pkg in vardb.cpv_all():
-				myslot = vardb.aux_get(pkg, ["SLOT"])[0]
-				fakedb.cpv_inject(pkg, metadata={"SLOT":myslot})
-		if self.target_root != "/":
-			self.mydbapi[self.target_root] = \
-				portage.fakedbapi(settings=settings)
-			vardb = self.trees[self.target_root]["vartree"].dbapi
-			fakedb = self.mydbapi[self.target_root]
-			if "empty" not in self.myparams:
-				for pkg in vardb.cpv_all():
-					myslot = vardb.aux_get(pkg, ["SLOT"])[0]
-					fakedb.cpv_inject(pkg, metadata={"SLOT":myslot})
 		if "--usepkg" in self.myopts:
 			self.trees["/"]["bintree"].populate(
 				"--getbinpkg" in self.myopts, "--getbinpkgonly" in self.myopts)
