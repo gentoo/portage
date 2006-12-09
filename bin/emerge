@@ -1439,72 +1439,72 @@ class depgraph:
 
 		for blocker in self.blocker_parents.keys():
 			mytype, myroot, mydep = blocker
-			vardb = self.trees[myroot]["vartree"].dbapi
-			blocked_pkgs = vardb.match(mydep)
-			blocked_after_update = self.mydbapi[myroot].match(mydep)
-			if not blocked_pkgs and not blocked_after_update:
+			initial_db = self.trees[myroot]["vartree"].dbapi
+			final_db = self.mydbapi[myroot]
+			blocked_initial = initial_db.match(mydep)
+			blocked_final = final_db.match(mydep)
+			if not blocked_initial and not blocked_final:
 				del self.blocker_parents[blocker]
-			else:
-				"""It may be possible to circumvent this block via correct
-				ordering of upgrades.  If necessary, create hard deps to
-				enforce correct merge order."""
-				fakedb = self.mydbapi[myroot]
-				new_pkgs = []
-				unresolvable = False
-				for cpv in blocked_pkgs:
-					myslot = vardb.aux_get(cpv, ["SLOT"])[0]
-					myslot_atom = "%s:%s" % (portage.dep_getkey(cpv), myslot)
-					mymatches = fakedb.match(myslot_atom)
-					if mymatches:
-						new_pkgs.append((myslot_atom, mymatches[0]))
-					else:
-						"""There's an installed package that's blocked and
-						there's no upgrade found to invalidate it, so leave
-						this blocker in the digraph."""
-						unresolvable = True
-						break
-				if unresolvable:
-					# Keep trying to invalidate as many blockers as possible.
-					continue
-
-				for parent in list(self.blocker_parents[blocker]):
-					ptype, proot, pcpv, pstatus = parent
-					pdbapi = self.trees[proot][self.pkg_tree_map[ptype]].dbapi
-					pslot = pdbapi.aux_get(pcpv, ["SLOT"])[0]
-					pslot_atom = "%s:%s" % (portage.dep_getkey(pcpv), pslot)
-					depends_on_merge_order = False
-					for myslot_atom, pkg in new_pkgs:
-						if pslot_atom == myslot_atom:
-							"""A merge within a slot invalidates the block,
-							so the order does not need to be enforced."""
+				continue
+			blocked_slots_initial = {}
+			blocked_slots_final = {}
+			for cpv in blocked_initial:
+				blocked_slots_initial[cpv] = \
+					"%s:%s" % (portage.dep_getkey(cpv),
+						initial_db.aux_get(cpv, ["SLOT"])[0])
+			for cpv in blocked_final:
+				blocked_slots_final[cpv] = \
+					"%s:%s" % (portage.dep_getkey(cpv),
+						final_db.aux_get(cpv, ["SLOT"])[0])
+			for parent in list(self.blocker_parents[blocker]):
+				ptype, proot, pcpv, pstatus = parent
+				pdbapi = self.trees[proot][self.pkg_tree_map[ptype]].dbapi
+				pslot = pdbapi.aux_get(pcpv, ["SLOT"])[0]
+				pslot_atom = "%s:%s" % (portage.dep_getkey(pcpv), pslot)
+				unresolved_blocks = False
+				depends_on_order = set()
+				for cpv in blocked_initial:
+					slot_atom = blocked_slots_initial[cpv]
+					if slot_atom == pslot_atom:
+						# The parent blocks an initial package in the same
+						# slot as itself.  The merge/nomerge status of neither
+						# node matters.  In any case, this particular block is
+						# automatically resolved.
+						continue
+					if slot_atom not in blocked_slots_final.values():
+						upgrade_matches = final_db.match(slot_atom)
+						if upgrade_matches:
+							# Apparently an upgrade may be able to invalidate
+							# this block.
+							upgrade_node = \
+								self.pkg_node_map[proot][upgrade_matches[0]]
+							depends_on_order.add(upgrade_node)
 							continue
-						if pkg in blocked_after_update:
-							"""This isn't a case of a package blocking itself,
-							and the block is still valid in the final state, so
-							this one is unresolvable."""
-							unresolvable = True
-							break
+					# None of the above blocker resolutions techniques apply,
+					# so apparently this one is unresolvable.
+					unresolved_blocks = True
+				for cpv in blocked_final:
+					slot_atom = blocked_slots_final[cpv]
+					if slot_atom == pslot_atom:
+						# The parent blocks itself, so the merge order does not
+						# need to be enforced.
+						continue
+					# None of the above blocker resolutions techniques apply,
+					# so apparently this one is unresolvable.
+					unresolved_blocks = True
+				if not unresolved_blocks and depends_on_order:
+					for node in depends_on_order:
 						# Enforce correct merge order with a hard dep.
-						node = self.pkg_node_map[proot][pkg]
 						self.digraph.addnode(node, parent,
 							priority=DepPriority(buildtime=True))
-						"""Count references to this blocker so that it can be
-						invalidated after nodes referencing it have been merged."""
+						# Count references to this blocker so that it can be
+						# invalidated after nodes referencing it have been
+						# merged.
 						self.blocker_digraph.addnode(node, blocker)
-						depends_on_merge_order = True
-					if unresolvable:
-						break
-					elif not depends_on_merge_order:
-						self.blocker_parents[blocker].remove(parent)
-				if unresolvable:
-					"""This blocker can not be solved, so make sure that it is
-					removed from the digraph if it has already been added."""
-					if self.blocker_digraph.contains(blocker):
-						self.blocker_digraph.remove(blocker)
-					# Keep trying to invalidate as many blockers as possible.
-					continue
-				if not self.blocker_parents[blocker]:
-					del self.blocker_parents[blocker]
+				if not unresolved_blocks and not depends_on_order:
+					self.blocker_parents[blocker].remove(parent)
+			if not self.blocker_parents[blocker]:
+				del self.blocker_parents[blocker]
 		# Validate blockers that depend on merge order.
 		if not self.blocker_digraph.empty():
 			self.altlist()
