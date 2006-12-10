@@ -4412,9 +4412,12 @@ class fakedbapi(dbapi):
 		if myslot and mycp in self.cpdict:
 			# If necessary, remove another package in the same SLOT.
 			for cpv in self.cpdict[mycp]:
-				if mycpv != cpv and myslot == self.cpvdict[cpv]:
-					self.cpv_remove(cpv)
-					break
+				if mycpv != cpv:
+					other_metadata = self.cpvdict[cpv]
+					if other_metadata:
+						if myslot == other_metadata.get("SLOT", None):
+							self.cpv_remove(cpv)
+							break
 		if mycp not in self.cpdict:
 			self.cpdict[mycp] = []
 		if not mycpv in self.cpdict[mycp]:
@@ -4497,16 +4500,12 @@ class bindbapi(fakedbapi):
 		if not self.bintree.populated:
 			self.bintree.populate()
 		tbz2path = self.bintree.getname(cpv)
-		mylock = portage_locks.lockfile(tbz2path, wantnewlockfile=1)
-		try:
-			if not os.path.exists(tbz2path):
-				raise KeyError(cpv)
-			mytbz2 = xpak.tbz2(tbz2path)
-			mydata = mytbz2.get_data()
-			mydata.update(values)
-			mytbz2.recompose_mem(xpak.xpak_mem(mydata))
-		finally:
-			portage_locks.unlockfile(mylock)
+		if not os.path.exists(tbz2path):
+			raise KeyError(cpv)
+		mytbz2 = xpak.tbz2(tbz2path)
+		mydata = mytbz2.get_data()
+		mydata.update(values)
+		mytbz2.recompose_mem(xpak.xpak_mem(mydata))
 
 	def cp_list(self, *pargs, **kwargs):
 		if not self.bintree.populated:
@@ -4798,41 +4797,34 @@ class vardbapi(dbapi):
 		return self.root+VDB_PATH+"/"+str(mycpv)+"/"+mycpv.split("/")[1]+".ebuild"
 
 	def aux_get(self, mycpv, wants):
-		global auxdbkeys
+		mydir = os.path.join(self.root, VDB_PATH, mycpv)
+		if not os.path.isdir(mydir):
+			raise KeyError(mycpv)
 		results = []
 		for x in wants:
-			myfn = self.root+VDB_PATH+"/"+str(mycpv)+"/"+str(x)
 			try:
-				myf = open(myfn, "r")
-				myd = myf.read()
-				myf.close()
-				myd = re.sub("[\n\r\t]+"," ",myd)
-				myd = re.sub(" +"," ",myd)
-				myd = string.strip(myd)
-			except (IOError, OSError):
+				myf = open(os.path.join(mydir, x), "r")
+				try:
+					myd = myf.read()
+				finally:
+					myf.close()
+				myd = " ".join(myd.split())
+			except IOError:
 				myd = ""
-			results.append(myd)
-		if "EAPI" in wants:
-			idx = wants.index("EAPI")
-			if not results[idx]:
-				results[idx] = "0"
+			if x == "EAPI" and not myd:
+				results.append("0")
+			else:
+				results.append(myd)
 		return results
 
 	def aux_update(self, cpv, values):
 		cat, pkg = cpv.split("/")
 		mylink = dblink(cat, pkg, self.root, self.settings,
-			treetype="vartree", vartree=self.vartree)
-		try:
-			mylink.lockdb()
-		except portage_exception.DirectoryNotFound:
+		treetype="vartree", vartree=self.vartree)
+		if not mylink.exists():
 			raise KeyError(cpv)
-		try:
-			if not mylink.exists():
-				raise KeyError(cpv)
-			for k, v in values.iteritems():
-				mylink.setfile(k, v)
-		finally:
-			mylink.unlockdb()
+		for k, v in values.iteritems():
+			mylink.setfile(k, v)
 
 	def counter_tick(self,myroot,mycpv=None):
 		return self.counter_tick_core(myroot,incrementing=1,mycpv=mycpv)

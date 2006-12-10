@@ -16,5 +16,7 @@ sys.path.insert(0,'../pym')
 sys.path.insert(0, osp.dirname(osp.dirname(osp.abspath(__file__))))
 
 import tests
-
-tests.main()
+if __name__ == "__main__":
+	result = tests.main()
+	if result.failures:
+		sys.exit(1)

@@ -18,4 +18,4 @@ def main():
 		except ImportError:
 			pass
 
-	unittest.TextTestRunner(verbosity=2).run(suite)	
+	return unittest.TextTestRunner(verbosity=2).run(suite)

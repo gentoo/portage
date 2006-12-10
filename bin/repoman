@@ -400,13 +400,6 @@ if mymode == "commit":
 isCvs=False
 myreporoot=None
 if os.path.isdir("CVS"):
-	if "cvs" not in repoman_settings.features:
-		print
-		print
-		print red('!!! You do not have ')+bold('FEATURES="cvs" ')+red("enabled...")
-		print red("!!! ")+bold("Adding \"cvs\" to FEATURES")
-		print
-		os.environ["FEATURES"]=repoman_settings["FEATURES"]+" cvs"
 	isCvs = True
 
 	try:
@@ -457,14 +450,6 @@ if os.path.isdir("CVS"):
 isSvn=False
 myreporoot=None
 if os.path.isdir(".svn"):
-	if "svn" not in repoman_settings.features:
-		print
-		print
-		print red('!!! You do not have ')+bold('FEATURES="svn" ')+red("enabled...")
-		print red("!!! ")+bold("Adding \"svn\" to FEATURES")
-		print
-		os.environ["FEATURES"]=repoman_settings["FEATURES"]+" svn"
-
 	try:
 		isSvn=True
 		myrepoinfo = os.popen("svn info").readlines()
