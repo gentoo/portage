@@ -3837,21 +3837,11 @@ def dep_expand(mydep, mydb=None, use_cache=1, settings=None):
 		return mydep
 	if mydep[0]=="*":
 		mydep=mydep[1:]
-	prefix=""
-	postfix=""
-	if mydep[-1]=="*":
-		mydep=mydep[:-1]
-		postfix="*"
-	if mydep[:2] in [ ">=", "<=" ]:
-		prefix=mydep[:2]
-		mydep=mydep[2:]
-	elif mydep[:1] in "=<>~!":
-		prefix=mydep[:1]
-		mydep=mydep[1:]
-	colon = mydep.rfind(":")
-	if colon != -1:
-		postfix = mydep[colon:]
-		mydep = mydep[:colon]
+	orig_dep = mydep
+	mydep = dep_getcpv(orig_dep)
+	myindex = orig_dep.index(mydep)
+	prefix = orig_dep[:myindex]
+	postfix = orig_dep[myindex+len(mydep):]
 	return prefix + cpv_expand(
 		mydep, mydb=mydb, use_cache=use_cache, settings=settings) + postfix
 
