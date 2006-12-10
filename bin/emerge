@@ -1471,7 +1471,7 @@ class depgraph:
 						# node matters.  In any case, this particular block is
 						# automatically resolved.
 						continue
-					if pstatus == "merge" and
+					if pstatus == "merge" and \
 						slot_atom not in blocked_slots_final.values():
 						upgrade_matches = final_db.match(slot_atom)
 						if upgrade_matches:
