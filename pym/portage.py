@@ -4370,6 +4370,19 @@ class fakedbapi(dbapi):
 		if settings is None:
 			settings = globals()["settings"]
 		self.settings = settings
+		self._match_cache = {}
+
+	def _clear_cache(self):
+		if self._match_cache:
+			self._match_cache = {}
+
+	def match(self, origdep, use_cache=1):
+		result = self._match_cache.get(origdep, None)
+		if result is not None:
+			return result[:]
+		result = dbapi.match(self, origdep, use_cache=use_cache)
+		self._match_cache[origdep] = result
+		return result[:]
 
 	def cpv_exists(self,mycpv):
 		return self.cpvdict.has_key(mycpv)
@@ -4391,6 +4404,7 @@ class fakedbapi(dbapi):
 
 	def cpv_inject(self, mycpv, metadata=None):
 		"""Adds a cpv from the list of available packages."""
+		self._clear_cache()
 		mycp=cpv_getkey(mycpv)
 		self.cpvdict[mycpv] = metadata
 		myslot = None
@@ -4422,6 +4436,7 @@ class fakedbapi(dbapi):
 
 	def cpv_remove(self,mycpv):
 		"""Removes a cpv from the list of available packages."""
+		self._clear_cache()
 		mycp=cpv_getkey(mycpv)
 		if self.cpvdict.has_key(mycpv):
 			del	self.cpvdict[mycpv]
@@ -4441,6 +4456,7 @@ class fakedbapi(dbapi):
 		return [metadata.get(x, "") for x in wants]
 
 	def aux_update(self, cpv, values):
+		self._clear_cache()
 		self.cpvdict[cpv].update(values)
 
 class bindbapi(fakedbapi):
