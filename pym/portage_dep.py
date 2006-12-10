@@ -333,6 +333,8 @@ def isvalidatom(atom):
 	global _invalid_atom_chars_regexp
 	if _invalid_atom_chars_regexp.search(atom):
 		return 0
+	if atom.startswith("!"):
+		atom = atom[1:]
 	mycpv_cps = catpkgsplit(dep_getcpv(atom))
 	operator = get_operator(atom)
 	if operator:
