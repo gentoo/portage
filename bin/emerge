@@ -1190,7 +1190,8 @@ class depgraph:
 					missing += 1
 					print "Missing binary for:",xs[2]
 
-		self.validate_blockers()
+		if not self.validate_blockers():
+			return False, myfavorites
 		
 		# We're true here unless we are missing binaries.
 		return (not missing,myfavorites)
@@ -1437,6 +1438,62 @@ class depgraph:
 		correct merge order such that mutually blocking packages are never
 		installed simultaneously."""
 
+		if "deep" in self.myparams:
+			# Pull in blockers from all installed packages that haven't already
+			# been pulled into the depgraph.  This is not enabled by default
+			# due to the performance penalty that is incurred by all the
+			# additional dep_check calls that are required.
+			dep_keys = ["DEPEND","RDEPEND","PDEPEND"]
+			for myroot in self.trees:
+				pkg_node_map = self.pkg_node_map[myroot]
+				vardb = self.trees[myroot]["vartree"].dbapi
+				portdb = self.trees[myroot]["porttree"].dbapi
+				pkgsettings = self.pkgsettings[myroot]
+				for pkg in self.trees[myroot]["vartree"].dbapi.cpv_all():
+					blocker_atoms = None
+					matching_node = pkg_node_map.get(pkg, None)
+					if not matching_node or \
+						matching_node[3] == "merge":
+						# If this node has any blockers, create a "nomerge"
+						# node for it so that they can be enforced.
+						self.spinner.update()
+						try:
+							dep_vals = portdb.aux_get(pkg, dep_keys)
+							ptype = "ebuild"
+						except KeyError:
+							if myroot not in self.global_updates:
+								self.global_updates[myroot] = \
+									grab_global_updates(pkgsettings["PORTDIR"])
+							perform_global_updates(
+								pkg, vardb, self.global_updates[myroot])
+							dep_vals = vardb.aux_get(pkg, dep_keys)
+							ptype = "installed"
+						myuse = vardb.aux_get(pkg, ["USE"])[0]
+						depstr = " ".join(dep_vals)
+						success, atoms = portage.dep_check(depstr, None,
+							pkgsettings, myuse=myuse, trees=self.trees,
+							myroot=myroot)
+						if not success:
+							print "\n\n"
+							print "Error occurred while processing",pkg
+							print str(atoms)
+							return False
+						blocker_atoms = [myatom for myatom in atoms \
+							if myatom.startswith("!")]
+					if blocker_atoms:
+						# Don't store this parent in pkg_node_map, because it's
+						# not needed there and it might overwrite a "merge"
+						# node with the same cpv.
+						myparent = (ptype, myroot, pkg, "nomerge")
+						for myatom in blocker_atoms:
+							blocker = ("blocks", myroot, myatom[1:])
+							myparents = \
+								self.blocker_parents.get(blocker, None)
+							if not myparents:
+								myparents = set()
+								self.blocker_parents[blocker] = myparents
+							myparents.add(myparent)
+
 		for blocker in self.blocker_parents.keys():
 			mytype, myroot, mydep = blocker
 			initial_db = self.trees[myroot]["vartree"].dbapi
@@ -1509,6 +1566,7 @@ class depgraph:
 		# Validate blockers that depend on merge order.
 		if not self.blocker_digraph.empty():
 			self.altlist()
+		return True
 
 	def altlist(self, reversed=False):
 		if reversed in self._altlist_cache:
@@ -1710,7 +1768,8 @@ class depgraph:
 			except ValueError:
 				missing_atoms.append(mydep)
 
-		self.validate_blockers()
+		if not self.validate_blockers():
+			return False
 
 		if world_problems:
 			print >> sys.stderr, "\n!!! Problems have been detected with your world file"
@@ -1860,7 +1919,7 @@ class depgraph:
 					pkg_key, mydb=vardb, settings=pkgsettings)
 				print "["+x[0]+" "+addl+"]",red(resolved),
 				block_parents = self.blocker_parents[tuple(x)]
-				block_parents = [pnode[2] for pnode in block_parents]
+				block_parents = set([pnode[2] for pnode in block_parents])
 				block_parents = ", ".join(block_parents)
 				if resolved!=x[2]:
 					print bad("(\"%s\" is blocking %s)") % \
