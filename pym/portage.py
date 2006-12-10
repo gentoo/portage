@@ -4467,6 +4467,7 @@ class bindbapi(fakedbapi):
 		if settings is None:
 			settings = globals()["settings"]
 		self.settings = settings
+		self._match_cache = {}
 
 	def match(self, *pargs, **kwargs):
 		if self.bintree and not self.bintree.populated:
