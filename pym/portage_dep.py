@@ -257,6 +257,8 @@ def get_operator(mydep):
 
 	return operator
 
+_dep_getcpv_cache = {}
+
 def dep_getcpv(mydep):
 	"""
 	Return the category-package-version with any operators/slot specifications stripped off
@@ -270,6 +272,11 @@ def dep_getcpv(mydep):
 	@rtype: String
 	@return: The depstring with the operator removed
 	"""
+	global _dep_getcpv_cache
+	retval = _dep_getcpv_cache.get(mydep, None)
+	if retval is not None:
+		return retval
+	mydep_orig = mydep
 	if mydep and mydep[0] == "*":
 		mydep = mydep[1:]
 	if mydep and mydep[-1] == "*":
@@ -282,7 +289,8 @@ def dep_getcpv(mydep):
 		mydep = mydep[1:]
 	colon = mydep.rfind(":")
 	if colon != -1:
-		return mydep[:colon]
+		mydep = mydep[:colon]
+	_dep_getcpv_cache[mydep_orig] = mydep
 	return mydep
 
 def dep_getslot(mydep):
