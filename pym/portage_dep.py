@@ -313,7 +313,7 @@ def dep_getslot(mydep):
 
 _invalid_atom_chars_regexp = re.compile("[()|?]")
 
-def isvalidatom(atom):
+def isvalidatom(atom, allow_blockers=False):
 	"""
 	Check to see if a depend atom is valid
 
@@ -333,6 +333,8 @@ def isvalidatom(atom):
 	global _invalid_atom_chars_regexp
 	if _invalid_atom_chars_regexp.search(atom):
 		return 0
+	if allow_blockers and atom.startswith("!"):
+		atom = atom[1:]
 	mycpv_cps = catpkgsplit(dep_getcpv(atom))
 	operator = get_operator(atom)
 	if operator:
@@ -501,8 +503,8 @@ def match_from_list(mydep, candidate_list):
 	"""
 
 	global _match_from_list_cache
-	mylist = _match_from_list_cache.get(
-		hash((mydep, tuple(candidate_list))), None)
+	cache_key = (mydep, tuple(candidate_list))
+	mylist = _match_from_list_cache.get(cache_key, None)
 	if mylist is not None:
 		return mylist[:]
 
@@ -601,5 +603,5 @@ def match_from_list(mydep, candidate_list):
 	else:
 		raise KeyError("Unknown operator: %s" % mydep)
 
-	_match_from_list_cache[hash((mydep, tuple(candidate_list)))] = mylist
+	_match_from_list_cache[cache_key] = mylist
 	return mylist
