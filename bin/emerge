@@ -3987,6 +3987,8 @@ def action_depclean(settings, trees, ldpath_mtimes,
 		try:
 			# Prefer live ebuild metadata when available.
 			aux_vals = portdb.aux_get(cpv, fakedb_auxkeys)
+			# SLOT always comes from the vardb, for multislot.
+			aux_vals[-1] = vardb.aux_get(cpv, ["SLOT"])[0]
 			live_ebuild = True
 		except KeyError:
 			aux_vals = vardb.aux_get(cpv, fakedb_auxkeys)
