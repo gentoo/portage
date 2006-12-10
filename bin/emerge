@@ -1438,6 +1438,9 @@ class depgraph:
 		correct merge order such that mutually blocking packages are never
 		installed simultaneously."""
 
+		if "--buildpkgonly" in self.myopts:
+			return True
+
 		#if "deep" in self.myparams:
 		if True:
 			# Pull in blockers from all installed packages that haven't already
