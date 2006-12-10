@@ -313,7 +313,7 @@ def dep_getslot(mydep):
 
 _invalid_atom_chars_regexp = re.compile("[()|?]")
 
-def isvalidatom(atom):
+def isvalidatom(atom, allow_blockers=False):
 	"""
 	Check to see if a depend atom is valid
 
@@ -333,7 +333,7 @@ def isvalidatom(atom):
 	global _invalid_atom_chars_regexp
 	if _invalid_atom_chars_regexp.search(atom):
 		return 0
-	if atom.startswith("!"):
+	if allow_blockers and atom.startswith("!"):
 		atom = atom[1:]
 	mycpv_cps = catpkgsplit(dep_getcpv(atom))
 	operator = get_operator(atom)

@@ -1103,7 +1103,7 @@ for x in scanlist:
 					if token in operator_tokens or \
 						token.endswith("?"):
 						continue
-					if not portage.isvalidatom(token) or \
+					if not portage.isvalidatom(token, allow_blockers=True) or \
 						":" in token and myaux["EAPI"] == "0":
 						badsyntax.append("'%s' not a valid atom" % token)
 
