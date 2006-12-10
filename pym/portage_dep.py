@@ -478,6 +478,8 @@ def best_match_to_list(mypkg, mylist):
 			bestm  = x
 	return bestm
 
+_match_from_list_cache = {}
+
 def match_from_list(mydep, candidate_list):
 	"""
 	Searches list for entries that matches the package.
@@ -489,6 +491,11 @@ def match_from_list(mydep, candidate_list):
 	@rtype: List
 	@return: A list of package atoms that match the given package atom
 	"""
+
+	global _match_from_list_cache
+	mylist = _match_from_list_cache.get((mydep, tuple(candidate_list)), None)
+	if mylist is not None:
+		return mylist[:]
 
 	from portage_util import writemsg
 	if mydep[0] == "!":
@@ -585,4 +592,5 @@ def match_from_list(mydep, candidate_list):
 	else:
 		raise KeyError("Unknown operator: %s" % mydep)
 
+	_match_from_list_cache[(mydep, tuple(candidate_list))] = mylist
 	return mylist
