@@ -501,8 +501,8 @@ def match_from_list(mydep, candidate_list):
 	"""
 
 	global _match_from_list_cache
-	mylist = _match_from_list_cache.get(
-		hash((mydep, tuple(candidate_list))), None)
+	cache_key = (mydep, tuple(candidate_list))
+	mylist = _match_from_list_cache.get(cache_key, None)
 	if mylist is not None:
 		return mylist[:]
 
@@ -601,5 +601,5 @@ def match_from_list(mydep, candidate_list):
 	else:
 		raise KeyError("Unknown operator: %s" % mydep)
 
-	_match_from_list_cache[hash((mydep, tuple(candidate_list)))] = mylist
+	_match_from_list_cache[cache_key] = mylist
 	return mylist
