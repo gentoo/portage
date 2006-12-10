@@ -3844,21 +3844,11 @@ def dep_expand(mydep, mydb=None, use_cache=1, settings=None):
 		return mydep
 	if mydep[0]=="*":
 		mydep=mydep[1:]
-	prefix=""
-	postfix=""
-	if mydep[-1]=="*":
-		mydep=mydep[:-1]
-		postfix="*"
-	if mydep[:2] in [ ">=", "<=" ]:
-		prefix=mydep[:2]
-		mydep=mydep[2:]
-	elif mydep[:1] in "=<>~!":
-		prefix=mydep[:1]
-		mydep=mydep[1:]
-	colon = mydep.rfind(":")
-	if colon != -1:
-		postfix = mydep[colon:]
-		mydep = mydep[:colon]
+	orig_dep = mydep
+	mydep = dep_getcpv(orig_dep)
+	myindex = orig_dep.index(mydep)
+	prefix = orig_dep[:myindex]
+	postfix = orig_dep[myindex+len(mydep):]
 	return prefix + cpv_expand(
 		mydep, mydb=mydb, use_cache=use_cache, settings=settings) + postfix
 
@@ -4032,10 +4022,10 @@ def cpv_expand(mycpv, mydb=None, use_cache=1, settings=None):
 			mykey=myslash[0]+"/"+mysplit[0]
 		else:
 			mykey=mycpv
-		if mydb:
+		if mydb and virts and mykey in virts:
 			writemsg("mydb.__class__: %s\n" % (mydb.__class__), 1)
 			if type(mydb)==types.InstanceType:
-				if (not mydb.cp_list(mykey,use_cache=use_cache)) and virts and virts.has_key(mykey):
+				if not mydb.cp_list(mykey, use_cache=use_cache):
 					writemsg("virts[%s]: %s\n" % (str(mykey),virts[mykey]), 1)
 					mykey_orig = mykey[:]
 					for vkey in virts[mykey]:
@@ -4387,6 +4377,19 @@ class fakedbapi(dbapi):
 		if settings is None:
 			settings = globals()["settings"]
 		self.settings = settings
+		self._match_cache = {}
+
+	def _clear_cache(self):
+		if self._match_cache:
+			self._match_cache = {}
+
+	def match(self, origdep, use_cache=1):
+		result = self._match_cache.get(origdep, None)
+		if result is not None:
+			return result[:]
+		result = dbapi.match(self, origdep, use_cache=use_cache)
+		self._match_cache[origdep] = result
+		return result[:]
 
 	def cpv_exists(self,mycpv):
 		return self.cpvdict.has_key(mycpv)
@@ -4408,6 +4411,7 @@ class fakedbapi(dbapi):
 
 	def cpv_inject(self, mycpv, metadata=None):
 		"""Adds a cpv from the list of available packages."""
+		self._clear_cache()
 		mycp=cpv_getkey(mycpv)
 		self.cpvdict[mycpv] = metadata
 		myslot = None
@@ -4439,6 +4443,7 @@ class fakedbapi(dbapi):
 
 	def cpv_remove(self,mycpv):
 		"""Removes a cpv from the list of available packages."""
+		self._clear_cache()
 		mycp=cpv_getkey(mycpv)
 		if self.cpvdict.has_key(mycpv):
 			del	self.cpvdict[mycpv]
@@ -4458,6 +4463,7 @@ class fakedbapi(dbapi):
 		return [metadata.get(x, "") for x in wants]
 
 	def aux_update(self, cpv, values):
+		self._clear_cache()
 		self.cpvdict[cpv].update(values)
 
 class bindbapi(fakedbapi):
@@ -4468,6 +4474,7 @@ class bindbapi(fakedbapi):
 		if settings is None:
 			settings = globals()["settings"]
 		self.settings = settings
+		self._match_cache = {}
 
 	def match(self, *pargs, **kwargs):
 		if self.bintree and not self.bintree.populated:
