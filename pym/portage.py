@@ -4025,10 +4025,10 @@ def cpv_expand(mycpv, mydb=None, use_cache=1, settings=None):
 			mykey=myslash[0]+"/"+mysplit[0]
 		else:
 			mykey=mycpv
-		if mydb:
+		if mydb and virts and mykey in virts:
 			writemsg("mydb.__class__: %s\n" % (mydb.__class__), 1)
 			if type(mydb)==types.InstanceType:
-				if (not mydb.cp_list(mykey,use_cache=use_cache)) and virts and virts.has_key(mykey):
+				if not mydb.cp_list(mykey, use_cache=use_cache):
 					writemsg("virts[%s]: %s\n" % (str(mykey),virts[mykey]), 1)
 					mykey_orig = mykey[:]
 					for vkey in virts[mykey]:
