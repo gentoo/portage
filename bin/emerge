@@ -1491,7 +1491,7 @@ class depgraph:
 								pkg, vardb, self.global_updates[myroot])
 							dep_vals = vardb.aux_get(pkg, dep_keys)
 							ptype = "installed"
-						myuse = vardb.aux_get(pkg, ["USE"])[0]
+						myuse = vardb.aux_get(pkg, ["USE"])[0].split()
 						depstr = " ".join(dep_vals)
 						# It is crucial to pass in final_db here in order to
 						# optimize dep_check calls by eliminating atoms via
