@@ -732,7 +732,7 @@ class FakeVartree(portage.vartree):
 				metadata = dict(izip(mykeys, real_dbapi.aux_get(cpv, mykeys)))
 				myslot = metadata["SLOT"]
 				mycp = portage.dep_getkey(cpv)
-				myslot_atom = "%s:%s" % (myslot, mycp)
+				myslot_atom = "%s:%s" % (mycp, myslot)
 				try:
 					mycounter = long(metadata["COUNTER"])
 				except ValueError:
