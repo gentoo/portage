@@ -2042,6 +2042,12 @@ def spawn(mystring,mysettings,debug=0,free=0,droppriv=0,sesandbox=0,fd_pipes=Non
 def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",use_locks=1, try_mirrors=1):
 	"fetch files.  Will use digest file if available."
 
+	for var_name in ("FETCHCOMMAND", "RESUMECOMMAND"):
+		if not mysettings.get(var_name, None):
+			writemsg(("!!! %s is unset.  It should have been defined " + \
+				"in /etc/make.globals.\n") % var_name,
+				noiselevel=-1)
+			return 0
 	features = mysettings.features
 	# 'nomirror' is bad/negative logic. You Restrict mirroring, not no-mirroring.
 	if ("mirror" in mysettings["RESTRICT"].split()) or \
