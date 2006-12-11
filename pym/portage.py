@@ -6201,6 +6201,8 @@ class dblink:
 	def lockdb(self):
 		if self._lock_vdb:
 			raise AssertionError("Lock already held.")
+		# At least the parent needs to exist for the lock file.
+		portage_util.ensure_dirs(self.dbroot)
 		self._lock_vdb = portage_locks.lockdir(self.dbroot)
 
 	def unlockdb(self):

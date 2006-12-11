@@ -715,6 +715,11 @@ class FakeVartree(portage.vartree):
 		self.settings = real_vartree.settings
 		self.dbapi = portage.fakedbapi(settings=real_vartree.settings)
 		vdb_path = os.path.join(self.root, portage.VDB_PATH)
+		try:
+			# At least the parent needs to exist for the lock file.
+			portage_util.ensure_dirs(vdb_path)
+		except portage_exception.PortageException:
+			pass
 		vdb_lock = None
 		try:
 			if os.access(vdb_path, os.W_OK):
@@ -2759,6 +2764,11 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 	xterm_titles = "notitles" not in settings.features
 
 	vdb_path = os.path.join(settings["ROOT"], portage.VDB_PATH)
+	try:
+		# At least the parent needs to exist for the lock file.
+		portage_util.ensure_dirs(vdb_path)
+	except portage_exception.PortageException:
+		pass
 	vdb_lock = None
 	try:
 		if os.access(vdb_path, os.W_OK):
