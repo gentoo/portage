@@ -724,11 +724,24 @@ class FakeVartree(portage.vartree):
 		try:
 			if os.access(vdb_path, os.W_OK):
 				vdb_lock = portage_locks.lockdir(vdb_path)
-			mykeys = ["SLOT", "PROVIDE", "USE", "IUSE",
+			mykeys = ["SLOT", "COUNTER", "PROVIDE", "USE", "IUSE",
 				"DEPEND", "RDEPEND", "PDEPEND"]
 			real_dbapi = real_vartree.dbapi
+			slot_counters = {}
 			for cpv in real_dbapi.cpv_all():
 				metadata = dict(izip(mykeys, real_dbapi.aux_get(cpv, mykeys)))
+				myslot = metadata["SLOT"]
+				mycp = portage.dep_getkey(cpv)
+				myslot_atom = "%s:%s" % (myslot, mycp)
+				try:
+					mycounter = long(metadata["COUNTER"])
+				except ValueError:
+					mycounter = 0
+				other_counter = slot_counters.get(myslot_atom, None)
+				if other_counter is not None:
+					if other_counter > mycounter:
+						continue
+				slot_counters[myslot_atom] = mycounter
 				self.dbapi.cpv_inject(cpv, metadata=metadata)
 		finally:
 			if vdb_lock:
