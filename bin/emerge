@@ -1520,6 +1520,19 @@ class depgraph:
 								self.blocker_parents[blocker] = myparents
 							myparents.add(myparent)
 
+		modified_slots = {}
+		if self.blocker_parents:
+			for myroot in self.trees:
+				myslots = {}
+				modified_slots[myroot] = myslots
+				final_db = self.mydbapi[myroot]
+				for mycpv, mynode in self.pkg_node_map[myroot].iteritems():
+					mytype, myroot, mycpv, mystatus = mynode
+					if mystatus == "merge":
+						slot_atom = "%s:%s" % (portage.dep_getkey(mycpv),
+							final_db.aux_get(mycpv, ["SLOT"])[0])
+						modified_slots[myroot][slot_atom] = mycpv
+
 		for blocker in self.blocker_parents.keys():
 			mytype, myroot, mydep = blocker
 			initial_db = self.trees[myroot]["vartree"].dbapi
@@ -1544,6 +1557,7 @@ class depgraph:
 				pdbapi = self.trees[proot][self.pkg_tree_map[ptype]].dbapi
 				pslot = pdbapi.aux_get(pcpv, ["SLOT"])[0]
 				pslot_atom = "%s:%s" % (portage.dep_getkey(pcpv), pslot)
+				parent_static = pslot_atom not in modified_slots[proot]
 				unresolved_blocks = False
 				depends_on_order = set()
 				for cpv in blocked_initial:
@@ -1553,6 +1567,11 @@ class depgraph:
 						# slot as itself.  The merge/nomerge status of neither
 						# node matters.  In any case, this particular block is
 						# automatically resolved.
+						continue
+					if parent_static and \
+						slot_atom not in modified_slots[myroot]:
+						# This blocker will be handled the next time that a
+						# merge of either package is triggered.
 						continue
 					if pstatus == "merge" and \
 						slot_atom not in blocked_slots_final.values():
@@ -1572,6 +1591,11 @@ class depgraph:
 					if slot_atom == pslot_atom:
 						# The parent blocks itself, so the merge order does not
 						# need to be enforced.
+						continue
+					if parent_static and \
+						slot_atom not in modified_slots[myroot]:
+						# This blocker will be handled the next time that a
+						# merge of either package is triggered.
 						continue
 					# None of the above blocker resolutions techniques apply,
 					# so apparently this one is unresolvable.
