@@ -678,22 +678,22 @@ class DepPriority(object):
 			return -3
 		return -4
 	def __lt__(self, other):
-		return int(self) < other
+		return self.__int__() < other
 	def __le__(self, other):
-		return int(self) <= other
+		return self.__int__() <= other
 	def __eq__(self, other):
-		return int(self) == other
+		return self.__int__() == other
 	def __ne__(self, other):
-		return int(self) != other
+		return self.__int__() != other
 	def __gt__(self, other):
-		return int(self) > other
+		return self.__int__() > other
 	def __ge__(self, other):
-		return int(self) >= other
+		return self.__int__() >= other
 	def copy(self):
 		import copy
 		return copy.copy(self)
 	def __str__(self):
-		myvalue = int(self)
+		myvalue = self.__int__()
 		if myvalue > self.MEDIUM:
 			return "hard"
 		if myvalue > self.SOFT:
