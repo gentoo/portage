@@ -802,6 +802,7 @@ class depgraph:
 			self.edebug = 1
 		self.spinner = spinner
 		self.pkgsettings = {}
+		# Maps cpv to digraph node for "merge" nodes only.
 		self.pkg_node_map = {}
 		self.mydbapi = {}
 		self._mydbapi_keys = ["SLOT", "DEPEND", "RDEPEND", "PDEPEND"]
@@ -863,20 +864,24 @@ class depgraph:
 			if addme and jbigkey != myparent:
 				# Refuse to make a node depend on itself so that the we don't
 				# don't create a bogus circular dependency in self.altlist().
-				self.pkg_node_map[myroot][mykey] = jbigkey
+				if jbigkey[-1] == "merge":
+					self.pkg_node_map[myroot][mykey] = jbigkey
 				if rev_dep and myparent:
 					ptype, proot, pkey, pstatus = myparent
-					self.pkg_node_map[proot][pkey] = myparent
+					if myparent[-1] == "merge":
+						self.pkg_node_map[proot][pkey] = myparent
 					self.digraph.addnode(myparent, jbigkey, priority=priority)
 				else:
 					self.digraph.addnode(jbigkey, myparent, priority=priority)
 			return 1
 		jbigkey = tuple(chain(mybigkey, ["nomerge"]))
 		if self.digraph.hasnode(jbigkey):
-			self.pkg_node_map[myroot][mykey] = jbigkey
+			if jbigkey[-1] == "merge":
+				self.pkg_node_map[myroot][mykey] = jbigkey
 			if rev_dep and myparent:
 				ptype, proot, pkey, pstatus = myparent
-				self.pkg_node_map[proot][pkey] = myparent
+				if myparent[-1] == "merge":
+					self.pkg_node_map[proot][pkey] = myparent
 				self.digraph.addnode(myparent, jbigkey, priority=priority)
 			else:
 				self.digraph.addnode(jbigkey, myparent, priority=priority)
@@ -951,10 +956,12 @@ class depgraph:
 		    depgraph already and returned, or we are here.  Whether we are merging or not; we must
 		    add the package to the depgraph; so we do that here. """
 		jbigkey = tuple(mybigkey)
-		self.pkg_node_map[myroot][mykey] = jbigkey
+		if jbigkey[-1] == "merge":
+			self.pkg_node_map[myroot][mykey] = jbigkey
 		if rev_dep and myparent:
 			ptype, proot, pkey, pstatus = myparent
-			self.pkg_node_map[proot][pkey] = myparent
+			if myparent[-1] == "merge":
+				self.pkg_node_map[proot][pkey] = myparent
 			self.digraph.addnode(myparent, jbigkey,
 				priority=priority)
 		else:
