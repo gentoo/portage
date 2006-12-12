@@ -961,7 +961,7 @@ class depgraph:
 			self.digraph.addnode(jbigkey, myparent,
 				priority=priority)
 
-		if addme:
+		if mybigkey[-1] == "merge":
 			self.mydbapi[myroot].cpv_inject(mykey,
 				metadata=dict(izip(self._mydbapi_keys,
 				mydbapi.aux_get(mykey, self._mydbapi_keys))))
