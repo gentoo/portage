@@ -1472,6 +1472,19 @@ class depgraph:
 			# been pulled into the depgraph.  This is not enabled by default
 			# due to the performance penalty that is incurred by all the
 			# additional dep_check calls that are required.
+
+			# Optimization hack for dep_check calls that minimizes the
+			# available matches by replacing the portdb with a fakedbapi
+			# instance.
+			class FakePortageTree(object):
+				def __init__(self, mydb):
+					self.dbapi = mydb
+			dep_check_trees = {}
+			for myroot in self.trees:
+				dep_check_trees[myroot] = self.trees[myroot].copy()
+				dep_check_trees[myroot]["porttree"] = \
+					FakePortageTree(self.mydbapi[myroot])
+
 			dep_keys = ["DEPEND","RDEPEND","PDEPEND"]
 			for myroot in self.trees:
 				pkg_node_map = self.pkg_node_map[myroot]
@@ -1494,7 +1507,7 @@ class depgraph:
 						# optimize dep_check calls by eliminating atoms via
 						# dep_wordreduce and dep_eval calls.
 						success, atoms = portage.dep_check(depstr, final_db,
-							pkgsettings, myuse=myuse, trees=self.trees,
+							pkgsettings, myuse=myuse, trees=dep_check_trees,
 							myroot=myroot)
 						if not success:
 							print "\n\n"
