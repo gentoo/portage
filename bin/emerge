@@ -710,10 +710,11 @@ class FakeVartree(portage.vartree):
 	user doesn't necessarily need write access to the vardb in cases where
 	global updates are necessary (updates are performed when necessary if there
 	is not a matching ebuild in the tree)."""
-	def __init__(self, real_vartree):
+	def __init__(self, real_vartree, portdb):
 		self.root = real_vartree.root
 		self.settings = real_vartree.settings
 		self.dbapi = portage.fakedbapi(settings=real_vartree.settings)
+		global_updates = None
 		vdb_path = os.path.join(self.root, portage.VDB_PATH)
 		try:
 			# At least the parent needs to exist for the lock file.
@@ -726,6 +727,7 @@ class FakeVartree(portage.vartree):
 				vdb_lock = portage_locks.lockdir(vdb_path)
 			mykeys = ["SLOT", "COUNTER", "PROVIDE", "USE", "IUSE",
 				"DEPEND", "RDEPEND", "PDEPEND"]
+			portdb_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
 			real_dbapi = real_vartree.dbapi
 			slot_counters = {}
 			for cpv in real_dbapi.cpv_all():
@@ -743,6 +745,17 @@ class FakeVartree(portage.vartree):
 						continue
 				slot_counters[myslot_atom] = mycounter
 				self.dbapi.cpv_inject(cpv, metadata=metadata)
+				try:
+					# Use the live ebuild metadata if possible.
+					live_metadata = dict(izip(portdb_keys,
+						portdb.aux_get(cpv, portdb_keys)))
+					self.dbapi.aux_update(cpv, live_metadata)
+				except KeyError:
+					if global_updates is None:
+						global_updates = \
+							grab_global_updates(portdb.porttree_root)
+					perform_global_updates(
+						cpv, self.dbapi, global_updates)
 		finally:
 			if vdb_lock:
 				portage_locks.unlockdir(vdb_lock)
@@ -798,7 +811,8 @@ class depgraph:
 			for tree in ("porttree", "bintree"):
 				self.trees[myroot][tree] = trees[myroot][tree]
 			self.trees[myroot]["vartree"] = \
-				FakeVartree(trees[myroot]["vartree"])
+				FakeVartree(trees[myroot]["vartree"],
+					trees[myroot]["porttree"].dbapi)
 			self.pkgsettings[myroot] = portage.config(
 				clone=self.trees[myroot]["vartree"].settings)
 			self.pkg_node_map[myroot] = {}
@@ -823,7 +837,6 @@ class depgraph:
 		self.orderedkeys=[]
 		self.outdatedpackages=[]
 		self.args_keys = []
-		self.global_updates = {}
 		self.blocker_digraph = digraph()
 		self.blocker_parents = {}
 		self._altlist_cache = {}
@@ -1367,15 +1380,6 @@ class depgraph:
 							myeb_inst, ["USE"])[0].split()
 						matched_packages.append(
 							["installed", myroot, myeb_inst, binpkguseflags])
-						"""Now make sure that *DEPEND atoms are up to date.
-						This is done on the fly for single packages only when
-						necessary, since it can be time consuming to run this
-						on all installed packages."""
-						if myroot not in self.global_updates:
-							self.global_updates[myroot] = \
-								grab_global_updates(pkgsettings["PORTDIR"])
-						perform_global_updates(
-							myeb_inst, vardb, self.global_updates[myroot])
 
 				if not matched_packages:
 					if raise_on_missing:
@@ -1480,17 +1484,7 @@ class depgraph:
 						# If this node has any blockers, create a "nomerge"
 						# node for it so that they can be enforced.
 						self.spinner.update()
-						try:
-							dep_vals = portdb.aux_get(pkg, dep_keys)
-							ptype = "ebuild"
-						except KeyError:
-							if myroot not in self.global_updates:
-								self.global_updates[myroot] = \
-									grab_global_updates(pkgsettings["PORTDIR"])
-							perform_global_updates(
-								pkg, vardb, self.global_updates[myroot])
-							dep_vals = vardb.aux_get(pkg, dep_keys)
-							ptype = "installed"
+						dep_vals = vardb.aux_get(pkg, dep_keys)
 						myuse = vardb.aux_get(pkg, ["USE"])[0].split()
 						depstr = " ".join(dep_vals)
 						# It is crucial to pass in final_db here in order to
@@ -1510,7 +1504,7 @@ class depgraph:
 						# Don't store this parent in pkg_node_map, because it's
 						# not needed there and it might overwrite a "merge"
 						# node with the same cpv.
-						myparent = (ptype, myroot, pkg, "nomerge")
+						myparent = ("installed", myroot, pkg, "nomerge")
 						for myatom in blocker_atoms:
 							blocker = ("blocks", myroot, myatom[1:])
 							myparents = \
@@ -3995,7 +3989,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	xterm_titles = "notitles" not in settings.features
 	portdb = trees[settings["ROOT"]]["porttree"].dbapi
 	real_vartree = trees[settings["ROOT"]]["vartree"]
-	vartree = FakeVartree(real_vartree)
+	vartree = FakeVartree(real_vartree, portdb)
 	trees[settings["ROOT"]]["vartree"] = vartree
 	vardb = vartree.dbapi
 	syslist = getlist(settings, "system")
@@ -4029,26 +4023,9 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	unresolveable = {}
 	aux_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
 
-	fake_vardb = portage.fakedbapi(settings=settings)
-	fakedb_auxkeys = aux_keys[:]
-	fakedb_auxkeys.append("SLOT")
-	global_updates = None
-	for cpv in myvarlist:
-		try:
-			# Prefer live ebuild metadata when available.
-			aux_vals = portdb.aux_get(cpv, fakedb_auxkeys)
-			# SLOT always comes from the vardb, for multislot.
-			aux_vals[-1] = vardb.aux_get(cpv, ["SLOT"])[0]
-			live_ebuild = True
-		except KeyError:
-			aux_vals = vardb.aux_get(cpv, fakedb_auxkeys)
-			live_ebuild = False
-		fake_vardb.cpv_inject(
-			cpv, metadata=dict(izip(fakedb_auxkeys, aux_vals)))
-		if not live_ebuild:
-			if global_updates is None:
-				global_updates = grab_global_updates(settings["PORTDIR"])
-			perform_global_updates(cpv, fake_vardb, global_updates)
+	# Now that FakeVartree pulls metadata from the portdb and performs global
+	# updates when necessary, fake_vardb and vardb are equivalent.
+	fake_vardb = vardb
 
 	# HACK: Ensure that installed packages are preferenced by dep_check().
 	trees[settings["ROOT"]]["porttree"].dbapi = fake_vardb
