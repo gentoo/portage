@@ -1436,6 +1436,38 @@ class depgraph:
 
 				# ordered by type preference ("ebuild" type is the last resort)
 				selected_pkg =  matched_packages[0]
+				pkgtype, myroot, mycpv, myuse = selected_pkg
+				mydbapi = self.trees[myroot][self.pkg_tree_map[pkgtype]].dbapi
+				slot_atom = "%s:%s" % (portage.dep_getkey(mycpv),
+					mydbapi.aux_get(mycpv, ["SLOT"])[0])
+				existing_node = self._slot_node_map[myroot].get(
+					slot_atom, None)
+				if existing_node:
+					e_type, myroot, e_cpv, e_status = existing_node
+					if portage.match_from_list(x, [e_cpv]):
+						# The existing node can be reused.
+						selected_pkg = [e_type, myroot, e_cpv,
+							self.useFlags[myroot][e_cpv]]
+					else:
+						# In some cases it may be possible to resolve this
+						# automatically, but support for backtracking
+						# (removing nodes that have already been selected) will
+						# be required in order to handle all possible cases 
+						print "\n!!! Multiple versions within a single " + \
+							"package slot have been pulled into the"
+						print "!!! dependency graph:"
+						print
+						for cpv in (mycpv, e_cpv):
+							print "    ", cpv
+						print
+						print "It may be possible to solve this problem " + \
+							"by using package.mask to prevent on of"
+						print "those packages from being selected.  For " + \
+							"more information, see MASKED PACKAGES"
+						print "section in the emerge man page or refer to " + \
+							"the Gentoo Handbook."
+						print
+						return 0
 
 			if myparent:
 				#we are a dependency, so we want to be unconditionally added
