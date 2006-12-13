@@ -4335,6 +4335,12 @@ class dbapi:
 	def cp_list(self,cp,use_cache=1):
 		return
 
+	def cpv_all(self):
+		cpv_list = []
+		for cp in self.cp_all():
+			cpv_list.extend(self.cp_list(cp))
+		return cpv_list
+
 	def aux_get(self,mycpv,mylist):
 		"stub code for returning auxiliary db information, such as SLOT, DEPEND, etc."
 		'input: "sys-apps/foo-1.0",["SLOT","DEPEND","HOMEPAGE"]'
@@ -5525,12 +5531,6 @@ class portdbapi(dbapi):
 		l = d.keys()
 		l.sort()
 		return l
-
-	def cpv_all(self):
-		cpv_list = []
-		for cp in self.cp_all():
-			cpv_list.extend(self.cp_list(cp))
-		return cpv_list
 
 	def p_list(self,mycp):
 		d={}
