@@ -2170,6 +2170,10 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 
 	can_fetch=True
 
+	for var_name in ("FETCHCOMMAND", "RESUMECOMMAND"):
+		if not mysettings.get(var_name, None):
+			can_fetch = False
+
 	if not listonly:
 		dirmode  = 02070
 		filemode =   060
@@ -2316,6 +2320,11 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						else:
 							writemsg("!!! File %s isn't fully fetched, but unable to complete it\n" % myfile,
 								noiselevel=-1)
+						for var_name in ("FETCHCOMMAND", "RESUMECOMMAND"):
+							if not mysettings.get(var_name, None):
+								writemsg(("!!! %s is unset.  It should " + \
+								"have been defined in /etc/make.globals.\n") \
+								 % var_name, noiselevel=-1)
 						return 0
 					else:
 						continue
@@ -4333,6 +4342,12 @@ class dbapi:
 	def cp_list(self,cp,use_cache=1):
 		return
 
+	def cpv_all(self):
+		cpv_list = []
+		for cp in self.cp_all():
+			cpv_list.extend(self.cp_list(cp))
+		return cpv_list
+
 	def aux_get(self,mycpv,mylist):
 		"stub code for returning auxiliary db information, such as SLOT, DEPEND, etc."
 		'input: "sys-apps/foo-1.0",["SLOT","DEPEND","HOMEPAGE"]'
@@ -5523,12 +5538,6 @@ class portdbapi(dbapi):
 		l = d.keys()
 		l.sort()
 		return l
-
-	def cpv_all(self):
-		cpv_list = []
-		for cp in self.cp_all():
-			cpv_list.extend(self.cp_list(cp))
-		return cpv_list
 
 	def p_list(self,mycp):
 		d={}
