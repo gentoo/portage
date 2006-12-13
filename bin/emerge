@@ -2009,7 +2009,10 @@ class depgraph:
 				counters.blocks += 1
 				resolved = portage.key_expand(
 					pkg_key, mydb=vardb, settings=pkgsettings)
-				print "["+x[0]+" "+addl+"]",red(resolved),
+				if ("--columns" in self.myopts):
+					print addl,red(resolved),
+				else:
+					print "["+x[0]+" "+addl+"]",red(resolved),
 				block_parents = self.blocker_parents[tuple(x)]
 				block_parents = set([pnode[2] for pnode in block_parents])
 				block_parents = ", ".join(block_parents)
