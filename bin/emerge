@@ -804,6 +804,8 @@ class depgraph:
 		self.pkgsettings = {}
 		# Maps cpv to digraph node for "merge" nodes only.
 		self.pkg_node_map = {}
+		# Maps slot atom to digraph node for all nodes added to the graph.
+		self._slot_node_map = {}
 		self.mydbapi = {}
 		self._mydbapi_keys = ["SLOT", "DEPEND", "RDEPEND", "PDEPEND"]
 		self.useFlags = {}
@@ -818,6 +820,7 @@ class depgraph:
 			self.pkgsettings[myroot] = portage.config(
 				clone=self.trees[myroot]["vartree"].settings)
 			self.pkg_node_map[myroot] = {}
+			self._slot_node_map[myroot] = {}
 			vardb = self.trees[myroot]["vartree"].dbapi
 			# This fakedbapi instance will model the state that the vdb will
 			# have after new packages have been installed.
@@ -968,10 +971,12 @@ class depgraph:
 			self.digraph.addnode(jbigkey, myparent,
 				priority=priority)
 
+		metadata = dict(izip(self._mydbapi_keys,
+			mydbapi.aux_get(mykey, self._mydbapi_keys)))
+		slot_atom = "%s:%s" % (portage.dep_getkey(mykey), metadata["SLOT"])
+		self._slot_node_map[myroot][slot_atom] = jbigkey
 		if mybigkey[-1] == "merge":
-			self.mydbapi[myroot].cpv_inject(mykey,
-				metadata=dict(izip(self._mydbapi_keys,
-				mydbapi.aux_get(mykey, self._mydbapi_keys))))
+			self.mydbapi[myroot].cpv_inject(mykey, metadata=metadata)
 
 		""" This section determines whether we go deeper into dependencies or not.
 		    We want to go deeper on a few occasions:
@@ -1543,11 +1548,10 @@ class depgraph:
 				myslots = {}
 				modified_slots[myroot] = myslots
 				final_db = self.mydbapi[myroot]
-				for mycpv, mynode in self.pkg_node_map[myroot].iteritems():
+				slot_node_map = self._slot_node_map[myroot]
+				for slot_atom, mynode in slot_node_map.iteritems():
 					mytype, myroot, mycpv, mystatus = mynode
 					if mystatus == "merge":
-						slot_atom = "%s:%s" % (portage.dep_getkey(mycpv),
-							final_db.aux_get(mycpv, ["SLOT"])[0])
 						modified_slots[myroot][slot_atom] = mycpv
 
 		for blocker in self.blocker_parents.keys():
