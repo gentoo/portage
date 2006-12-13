@@ -867,24 +867,16 @@ class depgraph:
 			if addme and jbigkey != myparent:
 				# Refuse to make a node depend on itself so that the we don't
 				# don't create a bogus circular dependency in self.altlist().
-				if jbigkey[-1] == "merge":
-					self.pkg_node_map[myroot][mykey] = jbigkey
 				if rev_dep and myparent:
 					ptype, proot, pkey, pstatus = myparent
-					if myparent[-1] == "merge":
-						self.pkg_node_map[proot][pkey] = myparent
 					self.digraph.addnode(myparent, jbigkey, priority=priority)
 				else:
 					self.digraph.addnode(jbigkey, myparent, priority=priority)
 			return 1
 		jbigkey = tuple(chain(mybigkey, ["nomerge"]))
 		if self.digraph.hasnode(jbigkey):
-			if jbigkey[-1] == "merge":
-				self.pkg_node_map[myroot][mykey] = jbigkey
 			if rev_dep and myparent:
 				ptype, proot, pkey, pstatus = myparent
-				if myparent[-1] == "merge":
-					self.pkg_node_map[proot][pkey] = myparent
 				self.digraph.addnode(myparent, jbigkey, priority=priority)
 			else:
 				self.digraph.addnode(jbigkey, myparent, priority=priority)
@@ -959,12 +951,8 @@ class depgraph:
 		    depgraph already and returned, or we are here.  Whether we are merging or not; we must
 		    add the package to the depgraph; so we do that here. """
 		jbigkey = tuple(mybigkey)
-		if jbigkey[-1] == "merge":
-			self.pkg_node_map[myroot][mykey] = jbigkey
 		if rev_dep and myparent:
 			ptype, proot, pkey, pstatus = myparent
-			if myparent[-1] == "merge":
-				self.pkg_node_map[proot][pkey] = myparent
 			self.digraph.addnode(myparent, jbigkey,
 				priority=priority)
 		else:
@@ -976,6 +964,7 @@ class depgraph:
 		slot_atom = "%s:%s" % (portage.dep_getkey(mykey), metadata["SLOT"])
 		self._slot_node_map[myroot][slot_atom] = jbigkey
 		if mybigkey[-1] == "merge":
+			self.pkg_node_map[myroot][mykey] = jbigkey
 			self.mydbapi[myroot].cpv_inject(mykey, metadata=metadata)
 
 		""" This section determines whether we go deeper into dependencies or not.
