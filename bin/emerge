@@ -802,7 +802,7 @@ class depgraph:
 			self.edebug = 1
 		self.spinner = spinner
 		self.pkgsettings = {}
-		# Maps cpv to digraph node for "merge" nodes only.
+		# Maps cpv to digraph node for all nodes added to the graph.
 		self.pkg_node_map = {}
 		# Maps slot atom to digraph node for all nodes added to the graph.
 		self._slot_node_map = {}
