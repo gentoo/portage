@@ -902,9 +902,11 @@ class depgraph:
 		#"no downgrade" emerge
 		"""
 		mytype, myroot, mykey = mybigkey
-		existing_node = self.pkg_node_map[myroot].get(mykey, None)
+		existing_node = None
+		if addme:
+			existing_node = self.pkg_node_map[myroot].get(mykey)
 		if existing_node:
-			if addme and existing_node != myparent:
+			if existing_node != myparent:
 				# Refuse to make a node depend on itself so that the we don't
 				# don't create a bogus circular dependency in self.altlist().
 				if rev_dep and myparent:
@@ -938,7 +940,6 @@ class depgraph:
 		if myuse is None:
 			self.pkgsettings[myroot].setcpv(mykey, mydb=portdb)
 			myuse = self.pkgsettings[myroot]["USE"].split()
-		self.useFlags[myroot][mykey] = myuse
 
 		merging=1
 		if mytype == "installed":
@@ -976,53 +977,48 @@ class depgraph:
 		else:
 			mybigkey.append("nomerge")
 
-		metadata = dict(izip(self._mydbapi_keys,
-			mydbapi.aux_get(mykey, self._mydbapi_keys)))
-		if merging == 0 and vardbapi.cpv_exists(mykey):
-			metadata["USE"] = vardbapi.aux_get(mykey, ["USE"])[0]
-			myuse = metadata["USE"].split()
-			metadata["SLOT"] = vardbapi.aux_get(mykey, ["SLOT"])[0]
-		slot_atom = "%s:%s" % (portage.dep_getkey(mykey), metadata["SLOT"])
-
-		existing_node = self._slot_node_map[myroot].get(
-			slot_atom, None)
-		if existing_node:
-			e_type, myroot, e_cpv, e_status = existing_node
-			if mykey == e_cpv:
-				# The existing node can be reused.
-				mypriority = priority.copy()
-				if vardbapi.cpv_exists(e_cpv):
-					mypriority.satisfied = True
-				if rev_dep and myparent:
-					ptype, proot, pkey, pstatus = myparent
-					self.digraph.addnode(myparent, existing_node,
-						priority=mypriority)
+		if addme:
+			metadata = dict(izip(self._mydbapi_keys,
+				mydbapi.aux_get(mykey, self._mydbapi_keys)))
+			if merging == 0 and vardbapi.cpv_exists(mykey):
+				metadata["USE"] = vardbapi.aux_get(mykey, ["USE"])[0]
+				myuse = metadata["USE"].split()
+				metadata["SLOT"] = vardbapi.aux_get(mykey, ["SLOT"])[0]
+			slot_atom = "%s:%s" % (portage.dep_getkey(mykey), metadata["SLOT"])
+			existing_node = self._slot_node_map[myroot].get(
+				slot_atom, None)
+			if existing_node:
+				e_type, myroot, e_cpv, e_status = existing_node
+				if mykey == e_cpv:
+					# The existing node can be reused.
+					mypriority = priority.copy()
+					if vardbapi.cpv_exists(e_cpv):
+						mypriority.satisfied = True
+					if rev_dep and myparent:
+						ptype, proot, pkey, pstatus = myparent
+						self.digraph.addnode(myparent, existing_node,
+							priority=mypriority)
+					else:
+						self.digraph.addnode(existing_node, myparent,
+							priority=mypriority)
+					return 1
 				else:
-					self.digraph.addnode(existing_node, myparent,
-						priority=mypriority)
-				return 1
+					self._show_slot_collision_notice((mykey, e_cpv))
+					return 0
+
+			jbigkey = tuple(mybigkey)
+			self._slot_node_map[myroot][slot_atom] = jbigkey
+			self.pkg_node_map[myroot][mykey] = jbigkey
+			self.useFlags[myroot][mykey] = myuse
+			self.mydbapi[myroot].cpv_inject(mykey, metadata=metadata)
+
+			if rev_dep and myparent:
+				ptype, proot, pkey, pstatus = myparent
+				self.digraph.addnode(myparent, jbigkey,
+					priority=priority)
 			else:
-				self._show_slot_collision_notice((mykey, e_cpv))
-				return 0
-
-		jbigkey = tuple(mybigkey)
-		self._slot_node_map[myroot][slot_atom] = jbigkey
-		self.pkg_node_map[myroot][mykey] = jbigkey
-
-		self.useFlags[myroot][mykey] = myuse
-		self.mydbapi[myroot].cpv_inject(mykey, metadata=metadata)
-
-		""" At this point, we have either hit a blocker and returned, found the package in the
-		    depgraph already and returned, or we are here.  Whether we are merging or not; we must
-		    add the package to the depgraph; so we do that here. """
-		jbigkey = tuple(mybigkey)
-		if rev_dep and myparent:
-			ptype, proot, pkey, pstatus = myparent
-			self.digraph.addnode(myparent, jbigkey,
-				priority=priority)
-		else:
-			self.digraph.addnode(jbigkey, myparent,
-				priority=priority)
+				self.digraph.addnode(jbigkey, myparent,
+					priority=priority)
 
 		""" This section determines whether we go deeper into dependencies or not.
 		    We want to go deeper on a few occasions:
