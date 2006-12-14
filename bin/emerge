@@ -901,25 +901,18 @@ class depgraph:
 		#IUSE-aware emerge -> USE DEP aware depgraph
 		#"no downgrade" emerge
 		"""
-		jbigkey = tuple(chain(mybigkey, ["merge"]))
 		mytype, myroot, mykey = mybigkey
-		if self.digraph.hasnode(jbigkey):
-			if addme and jbigkey != myparent:
+		existing_node = self.pkg_node_map[myroot].get(mykey, None)
+		if existing_node:
+			if addme and existing_node != myparent:
 				# Refuse to make a node depend on itself so that the we don't
 				# don't create a bogus circular dependency in self.altlist().
 				if rev_dep and myparent:
-					ptype, proot, pkey, pstatus = myparent
-					self.digraph.addnode(myparent, jbigkey, priority=priority)
+					self.digraph.addnode(myparent, existing_node,
+						priority=priority)
 				else:
-					self.digraph.addnode(jbigkey, myparent, priority=priority)
-			return 1
-		jbigkey = tuple(chain(mybigkey, ["nomerge"]))
-		if self.digraph.hasnode(jbigkey):
-			if rev_dep and myparent:
-				ptype, proot, pkey, pstatus = myparent
-				self.digraph.addnode(myparent, jbigkey, priority=priority)
-			else:
-				self.digraph.addnode(jbigkey, myparent, priority=priority)
+					self.digraph.addnode(existing_node, myparent,
+						priority=priority)
 			return 1
 		
 		self.spinner.update()
