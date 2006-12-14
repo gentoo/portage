@@ -870,7 +870,7 @@ class depgraph:
 		msg.append("It may be possible to solve this problem ")
 		msg.append("by using package.mask to prevent one of ")
 		msg.append("those packages from being selected. ")
-		msg.append("However, it is all so possible that conflicting ")
+		msg.append("However, it is also possible that conflicting ")
 		msg.append("dependencies exist such that they are impossible to ")
 		msg.append("satisfy simultaneously.  If such a conflict exists in ")
 		msg.append("the dependencies of two different packages, then those ")
