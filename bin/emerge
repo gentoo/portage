@@ -1010,7 +1010,6 @@ class depgraph:
 			self.mydbapi[myroot].cpv_inject(mykey, metadata=metadata)
 
 			if rev_dep and myparent:
-				ptype, proot, pkey, pstatus = myparent
 				self.digraph.addnode(myparent, jbigkey,
 					priority=priority)
 			else:
