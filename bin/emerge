@@ -991,16 +991,13 @@ class depgraph:
 				e_type, myroot, e_cpv, e_status = existing_node
 				if mykey == e_cpv:
 					# The existing node can be reused.
-					mypriority = priority.copy()
-					if vardbapi.cpv_exists(e_cpv):
-						mypriority.satisfied = True
 					if rev_dep and myparent:
 						ptype, proot, pkey, pstatus = myparent
 						self.digraph.addnode(myparent, existing_node,
-							priority=mypriority)
+							priority=priority)
 					else:
 						self.digraph.addnode(existing_node, myparent,
-							priority=mypriority)
+							priority=priority)
 					return 1
 				else:
 					self._show_slot_collision_notice((mykey, e_cpv))
