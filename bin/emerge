@@ -2041,7 +2041,7 @@ class depgraph:
 				counters.blocks += 1
 				resolved = portage.key_expand(
 					pkg_key, mydb=vardb, settings=pkgsettings)
-				if ("--columns" in self.myopts):
+				if "--columns" in self.myopts and "--quiet" in self.myopts:
 					print addl,red(resolved),
 				else:
 					print "["+x[0]+" "+addl+"]",red(resolved),
