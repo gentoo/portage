@@ -848,6 +848,46 @@ class depgraph:
 		self._altlist_cache = {}
 		self._pprovided_args = []
 
+	def _show_slot_collision_notice(self, packages):
+		"""Show an informational message advising the user to mask one of the
+		the packages. In some cases it may be possible to resolve this
+		automatically, but support for backtracking (removal nodes that have
+		already been selected) will be required in order to handle all possible
+		cases."""
+
+		from formatter import AbstractFormatter, DumbWriter
+		f = AbstractFormatter(DumbWriter(maxcol=72))
+
+		print "\n!!! Multiple versions within a single " + \
+			"package slot have been "
+		print "!!! pulled into the dependency graph:"
+		print
+		for cpv in packages:
+			print "    ", cpv
+		print
+
+		msg = []
+		msg.append("It may be possible to solve this problem ")
+		msg.append("by using package.mask to prevent one of ")
+		msg.append("those packages from being selected. ")
+		msg.append("However, it is all so possible that conflicting ")
+		msg.append("dependencies exist such that they are impossible to ")
+		msg.append("satisfy simultaneously.  If such a conflict exists in ")
+		msg.append("the dependencies of two different packages, then those ")
+		msg.append("packages can not be installed simultaneously.")
+
+		for x in msg:
+			f.add_flowing_data(x)
+		f.end_paragraph(1)
+
+		msg = []
+		msg.append("For more information, see MASKED PACKAGES ")
+		msg.append("section in the emerge man page or refer ")
+		msg.append("to the Gentoo Handbook.")
+		for x in msg:
+			f.add_flowing_data(x)
+		f.end_paragraph(1)
+
 	def create(self, mybigkey, myparent=None, addme=1, myuse=None,
 		priority=DepPriority(), rev_dep=False, arg=None):
 		"""
@@ -943,9 +983,41 @@ class depgraph:
 		else:
 			mybigkey.append("nomerge")
 
+		metadata = dict(izip(self._mydbapi_keys,
+			mydbapi.aux_get(mykey, self._mydbapi_keys)))
 		if merging == 0 and vardbapi.cpv_exists(mykey):
-			myuse = vardbapi.aux_get(mykey, ["USE"])[0].split()
-			self.useFlags[myroot][mykey] = myuse
+			metadata["USE"] = vardbapi.aux_get(mykey, ["USE"])[0]
+			myuse = metadata["USE"].split()
+			metadata["SLOT"] = vardbapi.aux_get(mykey, ["SLOT"])[0]
+		slot_atom = "%s:%s" % (portage.dep_getkey(mykey), metadata["SLOT"])
+
+		existing_node = self._slot_node_map[myroot].get(
+			slot_atom, None)
+		if existing_node:
+			e_type, myroot, e_cpv, e_status = existing_node
+			if mykey == e_cpv:
+				# The existing node can be reused.
+				mypriority = priority.copy()
+				if vardbapi.cpv_exists(e_cpv):
+					mypriority.satisfied = True
+				if rev_dep and myparent:
+					ptype, proot, pkey, pstatus = myparent
+					self.digraph.addnode(myparent, existing_node,
+						priority=mypriority)
+				else:
+					self.digraph.addnode(existing_node, myparent,
+						priority=mypriority)
+				return 1
+			else:
+				self._show_slot_collision_notice((mykey, e_cpv))
+				return 0
+
+		jbigkey = tuple(mybigkey)
+		self._slot_node_map[myroot][slot_atom] = jbigkey
+		self.pkg_node_map[myroot][mykey] = jbigkey
+
+		self.useFlags[myroot][mykey] = myuse
+		self.mydbapi[myroot].cpv_inject(mykey, metadata=metadata)
 
 		""" At this point, we have either hit a blocker and returned, found the package in the
 		    depgraph already and returned, or we are here.  Whether we are merging or not; we must
@@ -958,14 +1030,6 @@ class depgraph:
 		else:
 			self.digraph.addnode(jbigkey, myparent,
 				priority=priority)
-
-		metadata = dict(izip(self._mydbapi_keys,
-			mydbapi.aux_get(mykey, self._mydbapi_keys)))
-		slot_atom = "%s:%s" % (portage.dep_getkey(mykey), metadata["SLOT"])
-		self._slot_node_map[myroot][slot_atom] = jbigkey
-		if mybigkey[-1] == "merge":
-			self.pkg_node_map[myroot][mykey] = jbigkey
-			self.mydbapi[myroot].cpv_inject(mykey, metadata=metadata)
 
 		""" This section determines whether we go deeper into dependencies or not.
 		    We want to go deeper on a few occasions:
@@ -1449,24 +1513,7 @@ class depgraph:
 						selected_pkg = [e_type, myroot, e_cpv,
 							self.useFlags[myroot][e_cpv]]
 					else:
-						# In some cases it may be possible to resolve this
-						# automatically, but support for backtracking
-						# (removing nodes that have already been selected) will
-						# be required in order to handle all possible cases 
-						print "\n!!! Multiple versions within a single " + \
-							"package slot have been pulled into the"
-						print "!!! dependency graph:"
-						print
-						for cpv in (mycpv, e_cpv):
-							print "    ", cpv
-						print
-						print "It may be possible to solve this problem " + \
-							"by using package.mask to prevent on of"
-						print "those packages from being selected.  For " + \
-							"more information, see MASKED PACKAGES"
-						print "section in the emerge man page or refer to " + \
-							"the Gentoo Handbook."
-						print
+						self._show_slot_collision_notice((mycpv, e_cpv))
 						return 0
 
 			if myparent:
