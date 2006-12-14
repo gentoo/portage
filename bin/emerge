@@ -1626,6 +1626,7 @@ class depgraph:
 				blocked_slots_final[cpv] = \
 					"%s:%s" % (portage.dep_getkey(cpv),
 						final_db.aux_get(cpv, ["SLOT"])[0])
+			blocked_slots_final_values = set(blocked_slots_final.itervalues())
 			for parent in list(self.blocker_parents[blocker]):
 				ptype, proot, pcpv, pstatus = parent
 				pdbapi = self.trees[proot][self.pkg_tree_map[ptype]].dbapi
@@ -1648,7 +1649,7 @@ class depgraph:
 						# merge of either package is triggered.
 						continue
 					if pstatus == "merge" and \
-						slot_atom not in blocked_slots_final.values():
+						slot_atom not in blocked_slots_final_values:
 						upgrade_matches = final_db.match(slot_atom)
 						if upgrade_matches:
 							# Apparently an upgrade may be able to invalidate
