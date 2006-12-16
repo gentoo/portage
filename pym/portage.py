@@ -5163,6 +5163,7 @@ class portdbapi(dbapi):
 		for x in self.porttrees:
 			# location, label, auxdbkeys
 			self.auxdb[x] = self.auxdbmodule(self.depcachedir, x, filtered_auxdbkeys, gid=portage_gid)
+		self._gvisible_aux_cache = {}
 
 	def _init_cache_dirs(self):
 		"""Create /var/cache/edb/dep and adjust permissions for the portage
@@ -5682,15 +5683,20 @@ class portdbapi(dbapi):
 			#we need to update this next line when we have fully integrated the new db api
 			auxerr=0
 			keys = None
-			try:
-				keys, eapi = self.aux_get(mycpv, ["KEYWORDS", "EAPI"])
-			except KeyError:
-				pass
-			except portage_exception.PortageException, e:
-				writemsg("!!! Error: aux_get('%s', ['KEYWORDS', 'EAPI'])\n" % mycpv,
-					noiselevel=-1)
-				writemsg("!!! %s\n" % str(e),
-					noiselevel=-1)
+			aux_cache = self._gvisible_aux_cache.get(mycpv)
+			if aux_cache is not None:
+				keys, eapi = aux_cache
+			else:
+				try:
+					keys, eapi = self.aux_get(mycpv, ["KEYWORDS", "EAPI"])
+				except KeyError:
+					pass
+				except portage_exception.PortageException, e:
+					writemsg("!!! Error: aux_get('%s', ['KEYWORDS', 'EAPI'])\n" % mycpv,
+						noiselevel=-1)
+					writemsg("!!! %s\n" % str(e),
+						noiselevel=-1)
+				self._gvisible_aux_cache[mycpv] = (keys, eapi)
 			if not keys:
 				# KEYWORDS=""
 				#print "!!! No KEYWORDS for "+str(mycpv)+" -- Untested Status"
