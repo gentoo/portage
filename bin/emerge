@@ -862,9 +862,15 @@ class depgraph:
 			"package slot have been "
 		print "!!! pulled into the dependency graph:"
 		print
-		for cpv in packages:
-			print "    ", cpv
-		print
+		for node, parents in packages:
+			print node,
+			if parents:
+				print "pulled in by"
+				for parent in parents:
+					print "  ", parent
+			else:
+				print "(no parents)"
+			print
 
 		msg = []
 		msg.append("It may be possible to solve this problem ")
@@ -1000,7 +1006,13 @@ class depgraph:
 							priority=priority)
 					return 1
 				else:
-					self._show_slot_collision_notice((mykey, e_cpv))
+					e_parents = self.digraph.parent_nodes(existing_node)
+					myparents = []
+					if myparent:
+						myparents.append(myparent)
+					self._show_slot_collision_notice(
+						((tuple(mybigkey), myparents),
+						(existing_node, e_parents)))
 					return 0
 
 			jbigkey = tuple(mybigkey)
@@ -1497,9 +1509,6 @@ class depgraph:
 						# The existing node can be reused.
 						selected_pkg = [e_type, myroot, e_cpv,
 							self.useFlags[myroot][e_cpv]]
-					else:
-						self._show_slot_collision_notice((mycpv, e_cpv))
-						return 0
 
 			if myparent:
 				#we are a dependency, so we want to be unconditionally added
