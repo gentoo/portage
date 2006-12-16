@@ -1136,13 +1136,16 @@ for x in scanlist:
 				profdir = portdir+"/profiles/"+prof[0]
 	
 				if prof[0] in arch_caches:
-					dep_settings = arch_caches[prof[0]]
+					dep_settings, xcache = arch_caches[prof[0]]
 				else:
 					dep_settings = portage.config(
 						config_profile_path=profdir,
 						config_incrementals=portage_const.INCREMENTALS,
 						local_config=False)
-					arch_caches[prof[0]] = dep_settings
+					portdb.melt()
+					portdb.freeze()
+					xcache = portdb.xcache
+					arch_caches[prof[0]] = (dep_settings, xcache)
 					while True:
 						try:
 							# Protect ACCEPT_KEYWORDS from config.regenerate()
@@ -1153,6 +1156,7 @@ for x in scanlist:
 
 				trees["/"]["porttree"].settings = dep_settings
 				portdb.mysettings = dep_settings
+				portdb.xcache = xcache
 				# for package.use.mask support inside dep_check
 				dep_settings.setcpv("/".join((catdir, y)))
 				dep_settings["ACCEPT_KEYWORDS"] = " ".join(groups)
