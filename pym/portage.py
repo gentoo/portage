@@ -5683,6 +5683,7 @@ class portdbapi(dbapi):
 			#we need to update this next line when we have fully integrated the new db api
 			auxerr=0
 			keys = None
+			eapi = None
 			aux_cache = self._gvisible_aux_cache.get(mycpv)
 			if aux_cache is not None:
 				keys, eapi = aux_cache
