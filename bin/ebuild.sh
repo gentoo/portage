@@ -1405,6 +1405,10 @@ if [[ ${EBUILD_SH_ARGS} != "depend" ]] && [[ ${EBUILD_SH_ARGS}  != "clean" ]] &&
 		addwrite "${CCACHE_DIR}"
 
 		[ -n "${CCACHE_SIZE}" ] && ccache -M ${CCACHE_SIZE} &> /dev/null
+	else
+		# Force configure scripts that automatically detect ccache to respect
+		# FEATURES="-ccache"
+		export CCACHE_DISABLE=1
 	fi
 
 	# XXX: Load up the helper functions.
