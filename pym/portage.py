@@ -3884,26 +3884,27 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 	#convert parenthesis to sublists
 	mysplit = portage_dep.paren_reduce(depstring)
 
-	if mysettings:
-		mymasks = set()
-		useforce = set([mysettings["ARCH"]])
-		if use == "all":
-			# These masks are only for repoman.  In other cases, relevant masks
-			# should have already been applied via config.regenerate().  Also,
-			# binary or installed packages may have been built with flags that
-			# are now masked, and it would be inconsistent to mask them now.
-			# Additionally, myuse may consist of flags from a parent package
-			# that is being merged to a $ROOT that is different from the one
-			# that mysettings represents.
-			mymasks.update(mysettings.usemask)
-			mymasks.update(mysettings.archlist())
-			mymasks.discard(mysettings["ARCH"])
-			useforce.update(mysettings.useforce)
-			useforce.difference_update(mymasks)
+	mymasks = set()
+	useforce = set()
+	useforce.add(mysettings["ARCH"])
+	if use == "all":
+		# This masking/forcing is only for repoman.  In other cases, relevant
+		# masking/forcing should have already been applied via
+		# config.regenerate().  Also, binary or installed packages may have
+		# been built with flags that are now masked, and it would be
+		# inconsistent to mask them now.  Additionally, myuse may consist of
+		# flags from a parent package that is being merged to a $ROOT that is
+		# different from the one that mysettings represents.
+		mymasks.update(mysettings.usemask)
+		mymasks.update(mysettings.archlist())
+		mymasks.discard(mysettings["ARCH"])
+		useforce.update(mysettings.useforce)
+		useforce.difference_update(mymasks)
+	try:
 		mysplit = portage_dep.use_reduce(mysplit, uselist=myusesplit,
 			masklist=mymasks, matchall=(use=="all"), excludeall=useforce)
-	else:
-		mysplit = portage_dep.use_reduce(mysplit,uselist=myusesplit,matchall=(use=="all"))
+	except portage_exception.InvalidDependString, e:
+		return [0, str(e)]
 
 	# Do the || conversions
 	mysplit=portage_dep.dep_opconvert(mysplit)
