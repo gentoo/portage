@@ -5678,6 +5678,7 @@ class portdbapi(dbapi):
 			return []
 		newlist=[]
 
+		accept_keywords = self.mysettings["ACCEPT_KEYWORDS"].split()
 		pkgdict = self.mysettings.pkeywordsdict
 		for mycpv in mylist:
 			#we need to update this next line when we have fully integrated the new db api
@@ -5704,7 +5705,7 @@ class portdbapi(dbapi):
 				continue
 			mygroups=keys.split()
 			# Repoman may modify this attribute as necessary.
-			pgroups = self.mysettings["ACCEPT_KEYWORDS"].split()
+			pgroups = accept_keywords[:]
 			match=0
 			cp = dep_getkey(mycpv)
 			if pkgdict.has_key(cp):
