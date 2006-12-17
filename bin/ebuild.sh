@@ -901,7 +901,7 @@ dyn_compile() {
 	fi
 	unset LIBDIR_VAR
 
-	if hasq noauto $FEATURES &>/dev/null && [ ! -f ${PORTAGE_BUILDDIR}/.unpacked ]; then
+	if hasq noauto $FEATURES && [ ! -f ${PORTAGE_BUILDDIR}/.unpacked ]; then
 		echo
 		echo "!!! We apparently haven't unpacked... This is probably not what you"
 		echo "!!! want to be doing... You are using FEATURES=noauto so I'll assume"
@@ -1367,7 +1367,7 @@ if [[ ${EBUILD_SH_ARGS} != "depend" ]] && [[ ${EBUILD_SH_ARGS}  != "clean" ]] &&
 		export USER=portage
 	fi
 
-	if hasq distcc ${FEATURES} &>/dev/null; then
+	if hasq distcc ${FEATURES} ; then
 		if [ -d /usr/lib/distcc/bin ]; then
 			#We can enable distributed compile support
 			if [ -z "${PATH/*distcc*/}" ]; then
