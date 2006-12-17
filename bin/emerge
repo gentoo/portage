@@ -1747,7 +1747,8 @@ class depgraph:
 				if ignore_priority <= DepPriority.SOFT:
 					if ignore_priority is None and not reversed:
 						# Greedily pop all of these nodes since no relationship
-						# has been ignored.
+						# has been ignored.  This optimization destroys --tree
+						# output, so it's disabled in reversed mode.
 						selected_nodes = nodes
 					else:
 						# Only pop one node for optimal merge order.
