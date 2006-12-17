@@ -1745,7 +1745,13 @@ class depgraph:
 			selected_nodes = None
 			if nodes:
 				if ignore_priority <= DepPriority.SOFT:
-					selected_nodes = [nodes[0]]
+					if ignore_priority is None:
+						# Greedily pop all of these nodes since no relationship
+						# has been ignored.
+						selected_nodes = nodes
+					else:
+						# Only pop one node for optimal merge order.
+						selected_nodes = [nodes[0]]
 				else:
 					"""Recursively gather a group of nodes that RDEPEND on
 					eachother.  This ensures that they are merged as a group
