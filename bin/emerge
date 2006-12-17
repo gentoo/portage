@@ -4153,6 +4153,17 @@ def action_depclean(settings, trees, ldpath_mtimes,
 			mydeps.append((" ".join(myaux.values()), hard))
 			usedef = vardb.aux_get(pkg, ["USE"])[0].split()
 			for depstr, priority in mydeps:
+
+				if "--debug" in myopts:
+					print
+					print "Parent:   ", pkg
+					print "Depstring:", depstr
+					print "Priority:",
+					if priority == soft:
+						print "soft"
+					else:
+						print "hard"
+
 				success, atoms = portage.dep_check(depstr, None, settings,
 					myuse=usedef, trees=trees, myroot=settings["ROOT"])
 				if not success:
@@ -4160,6 +4171,10 @@ def action_depclean(settings, trees, ldpath_mtimes,
 					print "Error occurred while processing",pkg
 					print str(atoms)
 					return
+
+				if "--debug" in myopts:
+					print "Candidates:", atoms
+
 				for atom in atoms:
 					remaining_atoms.append((atom, pkg, priority))
 
