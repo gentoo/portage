@@ -1745,7 +1745,7 @@ class depgraph:
 			selected_nodes = None
 			if nodes:
 				if ignore_priority <= DepPriority.SOFT:
-					if ignore_priority is None:
+					if ignore_priority is None and not reversed:
 						# Greedily pop all of these nodes since no relationship
 						# has been ignored.
 						selected_nodes = nodes
