@@ -962,7 +962,7 @@ dyn_compile() {
 	set +f
 	set                     >  environment
 	export -p | sed 's:declare -rx:declare -x:' >> environment
-	bzip2 -9 environment
+	bzip2 -f9 environment
 
 	cp "${EBUILD}" "${PF}.ebuild"
 	if hasq nostrip ${FEATURES} ${RESTRICT} || hasq strip ${RESTRICT}
