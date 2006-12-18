@@ -4150,6 +4150,9 @@ def action_depclean(settings, trees, ldpath_mtimes,
 			usedef = vardb.aux_get(pkg, ["USE"])[0].split()
 			for depstr, priority in mydeps:
 
+				if not depstr:
+					continue
+
 				if "--debug" in myopts:
 					print
 					print "Parent:   ", pkg
