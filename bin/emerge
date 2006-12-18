@@ -4090,7 +4090,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	xterm_titles = "notitles" not in settings.features
 	myroot = settings["ROOT"]
 	dep_check_trees = {}
-	dep_check_trees[myroot] = trees[myroot].copy()
+	dep_check_trees[myroot] = {}
 	dep_check_trees[myroot]["vartree"] = \
 		FakeVartree(trees[myroot]["vartree"], trees[myroot]["porttree"].dbapi)
 	vardb = dep_check_trees[myroot]["vartree"].dbapi
