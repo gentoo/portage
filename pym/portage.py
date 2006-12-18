@@ -5167,7 +5167,9 @@ class portdbapi(dbapi):
 		for x in self.porttrees:
 			# location, label, auxdbkeys
 			self.auxdb[x] = self.auxdbmodule(self.depcachedir, x, filtered_auxdbkeys, gid=portage_gid)
-		self._gvisible_aux_cache = {}
+		# Selectively cache metadata in order to optimize dep matching.
+		self._aux_cache_keys = set(["EAPI", "KEYWORDS", "SLOT"])
+		self._aux_cache = {}
 
 	def _init_cache_dirs(self):
 		"""Create /var/cache/edb/dep and adjust permissions for the portage
@@ -5246,6 +5248,12 @@ class portdbapi(dbapi):
 		"stub code for returning auxilliary db information, such as SLOT, DEPEND, etc."
 		'input: "sys-apps/foo-1.0",["SLOT","DEPEND","HOMEPAGE"]'
 		'return: ["0",">=sys-libs/bar-1.0","http://www.foo.com"] or raise KeyError if error'
+		cache_me = False
+		if not mytree and not set(mylist).difference(self._aux_cache_keys):
+			aux_cache = self._aux_cache.get(mycpv)
+			if aux_cache is not None:
+				return [aux_cache[x] for x in mylist]
+			cache_me = True
 		global auxdbkeys,auxdbkeylen
 		cat,pkg = string.split(mycpv, "/", 1)
 
@@ -5407,6 +5415,14 @@ class portdbapi(dbapi):
 			idx = mylist.index("EAPI")
 			if not returnme[idx]:
 				returnme[idx] = "0"
+
+		if cache_me:
+			aux_cache = {}
+			for x in self._aux_cache_keys:
+				aux_cache[x] = mydata[x]
+			if not aux_cache["EAPI"]:
+				aux_cache["EAPI"] = "0"
+			self._aux_cache[mycpv] = aux_cache
 
 		return returnme
 
@@ -5685,27 +5701,15 @@ class portdbapi(dbapi):
 		accept_keywords = self.mysettings["ACCEPT_KEYWORDS"].split()
 		pkgdict = self.mysettings.pkeywordsdict
 		for mycpv in mylist:
-			#we need to update this next line when we have fully integrated the new db api
-			auxerr=0
-			keys = None
-			eapi = None
-			aux_cache = self._gvisible_aux_cache.get(mycpv)
-			if aux_cache is not None:
-				keys, eapi = aux_cache
-			else:
-				try:
-					keys, eapi = self.aux_get(mycpv, ["KEYWORDS", "EAPI"])
-				except KeyError:
-					pass
-				except portage_exception.PortageException, e:
-					writemsg("!!! Error: aux_get('%s', ['KEYWORDS', 'EAPI'])\n" % mycpv,
-						noiselevel=-1)
-					writemsg("!!! %s\n" % str(e),
-						noiselevel=-1)
-				self._gvisible_aux_cache[mycpv] = (keys, eapi)
-			if not keys:
-				# KEYWORDS=""
-				#print "!!! No KEYWORDS for "+str(mycpv)+" -- Untested Status"
+			try:
+				keys, eapi = self.aux_get(mycpv, ["KEYWORDS", "EAPI"])
+			except KeyError:
+				continue
+			except portage_exception.PortageException, e:
+				writemsg("!!! Error: aux_get('%s', ['KEYWORDS', 'EAPI'])\n" % \
+					mycpv, noiselevel=-1)
+				writemsg("!!! %s\n" % str(e), noiselevel=-1)
+				del e
 				continue
 			mygroups=keys.split()
 			# Repoman may modify this attribute as necessary.
