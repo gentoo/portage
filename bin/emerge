@@ -4088,11 +4088,14 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	print warn_prefix + good("`emerge --update --newuse --deep world`") + " prior to depclean."
 
 	xterm_titles = "notitles" not in settings.features
-	portdb = trees[settings["ROOT"]]["porttree"].dbapi
-	real_vartree = trees[settings["ROOT"]]["vartree"]
-	vartree = FakeVartree(real_vartree, portdb)
-	trees[settings["ROOT"]]["vartree"] = vartree
-	vardb = vartree.dbapi
+	myroot = settings["ROOT"]
+	dep_check_trees = {}
+	dep_check_trees[myroot] = trees[myroot].copy()
+	dep_check_trees[myroot]["vartree"] = \
+		FakeVartree(trees[myroot]["vartree"], trees[myroot]["porttree"].dbapi)
+	vardb = dep_check_trees[myroot]["vartree"].dbapi
+	# Constrain dependency selection to the installed packages.
+	dep_check_trees[myroot]["porttree"] = dep_check_trees[myroot]["vartree"]
 	syslist = getlist(settings, "system")
 	worldlist = getlist(settings, "world")
 	fakedb = portage.fakedbapi(settings=settings)
@@ -4124,13 +4127,6 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	unresolveable = {}
 	aux_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
 
-	# Now that FakeVartree pulls metadata from the portdb and performs global
-	# updates when necessary, fake_vardb and vardb are equivalent.
-	fake_vardb = vardb
-
-	# HACK: Ensure that installed packages are preferenced by dep_check().
-	trees[settings["ROOT"]]["porttree"].dbapi = fake_vardb
-
 	while remaining_atoms:
 		atom, parent, priority = remaining_atoms.pop()
 		pkgs = vardb.match(atom)
@@ -4145,7 +4141,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 				continue
 			spinner.update()
 			fakedb.cpv_inject(pkg)
-			myaux = dict(izip(aux_keys, fake_vardb.aux_get(pkg, aux_keys)))
+			myaux = dict(izip(aux_keys, vardb.aux_get(pkg, aux_keys)))
 			mydeps = []
 			if myopts.get("--with-bdeps", "y") == "y":
 				mydeps.append((myaux["DEPEND"], soft))
@@ -4165,7 +4161,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 						print "hard"
 
 				success, atoms = portage.dep_check(depstr, None, settings,
-					myuse=usedef, trees=trees, myroot=settings["ROOT"])
+					myuse=usedef, trees=dep_check_trees, myroot=myroot)
 				if not success:
 					print "\n\n"
 					print "Error occurred while processing",pkg
@@ -4177,10 +4173,6 @@ def action_depclean(settings, trees, ldpath_mtimes,
 
 				for atom in atoms:
 					remaining_atoms.append((atom, pkg, priority))
-
-	# Restore the portdb back to normal (see fake_vardb above).
-	trees[settings["ROOT"]]["porttree"].dbapi = portdb
-	trees[settings["ROOT"]]["vartree"] = real_vartree
 
 	if "--quiet" not in myopts:
 		print "\b\b... done!\n"
