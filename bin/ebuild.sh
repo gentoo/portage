@@ -1056,7 +1056,7 @@ dyn_compile() {
 	fi
 	unset LIBDIR_VAR
 
-	if hasq noauto $FEATURES &>/dev/null && [ ! -f ${PORTAGE_BUILDDIR}/.unpacked ]; then
+	if hasq noauto $FEATURES && [ ! -f ${PORTAGE_BUILDDIR}/.unpacked ]; then
 		echo
 		echo "!!! We apparently haven't unpacked... This is probably not what you"
 		echo "!!! want to be doing... You are using FEATURES=noauto so I'll assume"
@@ -1117,7 +1117,7 @@ dyn_compile() {
 	set +f
 	set                     >  environment
 	export -p | sed 's:declare -rx:declare -x:' >> environment
-	bzip2 -9 environment
+	bzip2 -f9 environment
 
 	cp "${EBUILD}" "${PF}.ebuild"
 	if hasq nostrip ${FEATURES} ${RESTRICT} || hasq strip ${RESTRICT}
@@ -1522,7 +1522,7 @@ if [[ ${EBUILD_SH_ARGS} != "depend" ]] && [[ ${EBUILD_SH_ARGS}  != "clean" ]] &&
 		export USER=portage
 	fi
 
-	if hasq distcc ${FEATURES} &>/dev/null; then
+	if hasq distcc ${FEATURES} ; then
 		if [ -d "${EPREFIX}"/usr/lib/distcc/bin ]; then
 			#We can enable distributed compile support
 			if [ -z "${PATH/*distcc*/}" ]; then

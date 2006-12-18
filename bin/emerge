@@ -751,7 +751,7 @@ class FakeVartree(portage.vartree):
 					live_metadata = dict(izip(portdb_keys,
 						portdb.aux_get(cpv, portdb_keys)))
 					self.dbapi.aux_update(cpv, live_metadata)
-				except KeyError:
+				except KeyError, portage_exception.PortageException:
 					if global_updates is None:
 						global_updates = \
 							grab_global_updates(portdb.porttree_root)
@@ -1746,7 +1746,14 @@ class depgraph:
 			selected_nodes = None
 			if nodes:
 				if ignore_priority <= DepPriority.SOFT:
-					selected_nodes = [nodes[0]]
+					if ignore_priority is None and not reversed:
+						# Greedily pop all of these nodes since no relationship
+						# has been ignored.  This optimization destroys --tree
+						# output, so it's disabled in reversed mode.
+						selected_nodes = nodes
+					else:
+						# Only pop one node for optimal merge order.
+						selected_nodes = [nodes[0]]
 				else:
 					"""Recursively gather a group of nodes that RDEPEND on
 					eachother.  This ensures that they are merged as a group
@@ -3127,7 +3134,8 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 		#we're done... return
 		return 0
 	if "--ask" in myopts:
-		if userquery("Would you like to unmerge these packages?")=="No":
+		if userquery("Would you like to unmerge these packages?",
+			responses=["No", "Yes"], colours=[red, green]) == "No":
 			# enter pretend mode for correct formatting of results
 			myopts["--pretend"] = True
 			print
@@ -4094,11 +4102,14 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	print warn_prefix + good("`emerge --update --newuse --deep world`") + " prior to depclean."
 
 	xterm_titles = "notitles" not in settings.features
-	portdb = trees[settings["ROOT"]]["porttree"].dbapi
-	real_vartree = trees[settings["ROOT"]]["vartree"]
-	vartree = FakeVartree(real_vartree, portdb)
-	trees[settings["ROOT"]]["vartree"] = vartree
-	vardb = vartree.dbapi
+	myroot = settings["ROOT"]
+	dep_check_trees = {}
+	dep_check_trees[myroot] = {}
+	dep_check_trees[myroot]["vartree"] = \
+		FakeVartree(trees[myroot]["vartree"], trees[myroot]["porttree"].dbapi)
+	vardb = dep_check_trees[myroot]["vartree"].dbapi
+	# Constrain dependency selection to the installed packages.
+	dep_check_trees[myroot]["porttree"] = dep_check_trees[myroot]["vartree"]
 	syslist = getlist(settings, "system")
 	worldlist = getlist(settings, "world")
 	fakedb = portage.fakedbapi(settings=settings)
@@ -4130,13 +4141,6 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	unresolveable = {}
 	aux_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
 
-	# Now that FakeVartree pulls metadata from the portdb and performs global
-	# updates when necessary, fake_vardb and vardb are equivalent.
-	fake_vardb = vardb
-
-	# HACK: Ensure that installed packages are preferenced by dep_check().
-	trees[settings["ROOT"]]["porttree"].dbapi = fake_vardb
-
 	while remaining_atoms:
 		atom, parent, priority = remaining_atoms.pop()
 		pkgs = vardb.match(atom)
@@ -4151,7 +4155,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 				continue
 			spinner.update()
 			fakedb.cpv_inject(pkg)
-			myaux = dict(izip(aux_keys, fake_vardb.aux_get(pkg, aux_keys)))
+			myaux = dict(izip(aux_keys, vardb.aux_get(pkg, aux_keys)))
 			mydeps = []
 			if myopts.get("--with-bdeps", "y") == "y":
 				mydeps.append((myaux["DEPEND"], soft))
@@ -4159,19 +4163,33 @@ def action_depclean(settings, trees, ldpath_mtimes,
 			mydeps.append((" ".join(myaux.values()), hard))
 			usedef = vardb.aux_get(pkg, ["USE"])[0].split()
 			for depstr, priority in mydeps:
+
+				if not depstr:
+					continue
+
+				if "--debug" in myopts:
+					print
+					print "Parent:   ", pkg
+					print "Depstring:", depstr
+					print "Priority:",
+					if priority == soft:
+						print "soft"
+					else:
+						print "hard"
+
 				success, atoms = portage.dep_check(depstr, None, settings,
-					myuse=usedef, trees=trees, myroot=settings["ROOT"])
+					myuse=usedef, trees=dep_check_trees, myroot=myroot)
 				if not success:
 					print "\n\n"
 					print "Error occurred while processing",pkg
 					print str(atoms)
 					return
+
+				if "--debug" in myopts:
+					print "Candidates:", atoms
+
 				for atom in atoms:
 					remaining_atoms.append((atom, pkg, priority))
-
-	# Restore the portdb back to normal (see fake_vardb above).
-	trees[settings["ROOT"]]["porttree"].dbapi = portdb
-	trees[settings["ROOT"]]["vartree"] = real_vartree
 
 	if "--quiet" not in myopts:
 		print "\b\b... done!\n"
@@ -4795,6 +4813,7 @@ def emerge_main():
 		sys.exit(1)
 
 	if settings.get("PORTAGE_DEBUG", "") == "1":
+		spinner.update = spinner.update_quiet
 		portage.debug=1
 		if "python-trace" in settings.features:
 			import portage_debug
