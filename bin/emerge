@@ -4799,6 +4799,7 @@ def emerge_main():
 		sys.exit(1)
 
 	if settings.get("PORTAGE_DEBUG", "") == "1":
+		spinner.update = spinner.update_quiet
 		portage.debug=1
 		if "python-trace" in settings.features:
 			import portage_debug
