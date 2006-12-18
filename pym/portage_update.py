@@ -71,9 +71,8 @@ def grab_updates(updpath, prev_mtimes=None):
 		mylist = os.listdir(updpath)
 	except OSError, oe:
 		if oe.errno == errno.ENOENT:
-			raise DirectoryNotFound(oe)
-		else:
-			raise oe
+			raise DirectoryNotFound(updpath)
+		raise
 	if prev_mtimes is None:
 		prev_mtimes = {}
 	# validate the file name (filter out CVS directory, etc...)

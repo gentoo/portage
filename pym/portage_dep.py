@@ -167,8 +167,9 @@ def use_reduce(deparray, uselist=[], masklist=[], matchall=0, excludeall=[]):
 				for head in newdeparray[:-1]:
 					head = head[:-1]
 					if head[0] == "!":
-						head = head[1:]
-						if not matchall and head in uselist or head in excludeall:
+						head_key = head[1:]
+						if not matchall and head_key in uselist or \
+							head_key in excludeall:
 							ismatch = False
 							break
 					elif head not in masklist:
@@ -186,7 +187,8 @@ def use_reduce(deparray, uselist=[], masklist=[], matchall=0, excludeall=[]):
 						if additions:
 							rlist.append(additions)
 					else:
-						rlist += [target]
+						raise portage_exception.InvalidDependString(
+							"Conditional without parenthesis: '%s?'" % head)
 
 			else:
 				rlist += [head]

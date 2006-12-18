@@ -3654,6 +3654,9 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			newsplit.append(_expand_new_virtuals(x, edebug, mydbapi,
 				mysettings, myroot=myroot, trees=trees, **kwargs))
 			continue
+		if not isvalidatom(x, allow_blockers=True):
+			raise portage_exception.ParseError(
+				"invalid atom: '%s'" % x)
 		mykey = dep_getkey(x)
 		if not mykey.startswith("virtual/"):
 			newsplit.append(x)
@@ -3888,26 +3891,27 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 	#convert parenthesis to sublists
 	mysplit = portage_dep.paren_reduce(depstring)
 
-	if mysettings:
-		mymasks = set()
-		useforce = set([mysettings["ARCH"]])
-		if use == "all":
-			# These masks are only for repoman.  In other cases, relevant masks
-			# should have already been applied via config.regenerate().  Also,
-			# binary or installed packages may have been built with flags that
-			# are now masked, and it would be inconsistent to mask them now.
-			# Additionally, myuse may consist of flags from a parent package
-			# that is being merged to a $ROOT that is different from the one
-			# that mysettings represents.
-			mymasks.update(mysettings.usemask)
-			mymasks.update(mysettings.archlist())
-			mymasks.discard(mysettings["ARCH"])
-			useforce.update(mysettings.useforce)
-			useforce.difference_update(mymasks)
+	mymasks = set()
+	useforce = set()
+	useforce.add(mysettings["ARCH"])
+	if use == "all":
+		# This masking/forcing is only for repoman.  In other cases, relevant
+		# masking/forcing should have already been applied via
+		# config.regenerate().  Also, binary or installed packages may have
+		# been built with flags that are now masked, and it would be
+		# inconsistent to mask them now.  Additionally, myuse may consist of
+		# flags from a parent package that is being merged to a $ROOT that is
+		# different from the one that mysettings represents.
+		mymasks.update(mysettings.usemask)
+		mymasks.update(mysettings.archlist())
+		mymasks.discard(mysettings["ARCH"])
+		useforce.update(mysettings.useforce)
+		useforce.difference_update(mymasks)
+	try:
 		mysplit = portage_dep.use_reduce(mysplit, uselist=myusesplit,
 			masklist=mymasks, matchall=(use=="all"), excludeall=useforce)
-	else:
-		mysplit = portage_dep.use_reduce(mysplit,uselist=myusesplit,matchall=(use=="all"))
+	except portage_exception.InvalidDependString, e:
+		return [0, str(e)]
 
 	# Do the || conversions
 	mysplit=portage_dep.dep_opconvert(mysplit)
@@ -5170,6 +5174,7 @@ class portdbapi(dbapi):
 		for x in self.porttrees:
 			# location, label, auxdbkeys
 			self.auxdb[x] = self.auxdbmodule(self.depcachedir, x, filtered_auxdbkeys, gid=portage_gid)
+		self._gvisible_aux_cache = {}
 
 	def _init_cache_dirs(self):
 		"""Create /var/cache/edb/dep and adjust permissions for the portage
@@ -5684,27 +5689,34 @@ class portdbapi(dbapi):
 			return []
 		newlist=[]
 
+		accept_keywords = self.mysettings["ACCEPT_KEYWORDS"].split()
 		pkgdict = self.mysettings.pkeywordsdict
 		for mycpv in mylist:
 			#we need to update this next line when we have fully integrated the new db api
 			auxerr=0
 			keys = None
-			try:
-				keys, eapi = self.aux_get(mycpv, ["KEYWORDS", "EAPI"])
-			except KeyError:
-				pass
-			except portage_exception.PortageException, e:
-				writemsg("!!! Error: aux_get('%s', ['KEYWORDS', 'EAPI'])\n" % mycpv,
-					noiselevel=-1)
-				writemsg("!!! %s\n" % str(e),
-					noiselevel=-1)
+			eapi = None
+			aux_cache = self._gvisible_aux_cache.get(mycpv)
+			if aux_cache is not None:
+				keys, eapi = aux_cache
+			else:
+				try:
+					keys, eapi = self.aux_get(mycpv, ["KEYWORDS", "EAPI"])
+				except KeyError:
+					pass
+				except portage_exception.PortageException, e:
+					writemsg("!!! Error: aux_get('%s', ['KEYWORDS', 'EAPI'])\n" % mycpv,
+						noiselevel=-1)
+					writemsg("!!! %s\n" % str(e),
+						noiselevel=-1)
+				self._gvisible_aux_cache[mycpv] = (keys, eapi)
 			if not keys:
 				# KEYWORDS=""
 				#print "!!! No KEYWORDS for "+str(mycpv)+" -- Untested Status"
 				continue
 			mygroups=keys.split()
 			# Repoman may modify this attribute as necessary.
-			pgroups = self.mysettings["ACCEPT_KEYWORDS"].split()
+			pgroups = accept_keywords[:]
 			match=0
 			cp = dep_getkey(mycpv)
 			if pkgdict.has_key(cp):
