@@ -925,7 +925,9 @@ class depgraph:
 		
 		self.spinner.update()
 		if mytype == "blocks":
-			if addme and "--buildpkgonly" not in self.myopts and myparent:
+			if myparent and \
+				"--buildpkgonly" not in self.myopts and \
+				"--nodeps" not in self.myopts:
 				mybigkey[1] = myparent[1]
 				self.blocker_parents.setdefault(
 					tuple(mybigkey), set()).add(myparent)
@@ -1538,7 +1540,8 @@ class depgraph:
 		correct merge order such that mutually blocking packages are never
 		installed simultaneously."""
 
-		if "--buildpkgonly" in self.myopts:
+		if "--buildpkgonly" in self.myopts or \
+			"--nodeps" in self.myopts:
 			return True
 
 		#if "deep" in self.myparams:
