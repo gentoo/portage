@@ -5615,7 +5615,8 @@ class portdbapi(dbapi):
 			myval=match_from_list(mydep,mylist)
 		elif level=="match-visible":
 			#dep match -- find all visible matches
-			myval=match_from_list(mydep,self.xmatch("list-visible",None,mydep=mydep,mykey=mykey))
+			myval = match_from_list(mydep,
+				self.xmatch("list-visible", mykey, mydep=mykey, mykey=mykey))
 			#get all visible packages, then get the matching ones
 		elif level=="match-all":
 			#match *all* visible *and* masked packages
@@ -5629,6 +5630,8 @@ class portdbapi(dbapi):
 				if self.aux_get(cpv, ["SLOT"])[0] == myslot]
 		if self.frozen and (level not in ["match-list","bestmatch-list"]):
 			self.xcache[level][mydep]=myval
+			if origdep and origdep != mydep:
+				self.xcache[level][origdep] = myval
 		return myval
 
 	def match(self,mydep,use_cache=1):
