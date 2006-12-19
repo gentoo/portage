@@ -6347,7 +6347,12 @@ class dblink:
 		mystuff = listdir(self.dbdir, EmptyOnError=1)
 		for x in mystuff:
 			if x.endswith(".ebuild"):
-				myebuildpath = os.path.join(self.dbdir, x)
+				myebuildpath = os.path.join(self.dbdir, self.pkg + ".ebuild")
+				if x[:-7] != self.pkg:
+					# Clean up after vardbapi.move_ent() breakage in
+					# portage versions before 2.1.2
+					os.rename(os.path.join(self.dbdir, x), myebuildpath)
+					write_atomic(os.path.join(self.dbdir, "PF"), self.pkg+"\n")
 				break
 
 		self.settings.load_infodir(self.dbdir)
