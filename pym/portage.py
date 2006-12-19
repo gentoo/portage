@@ -5829,6 +5829,7 @@ class binarytree(packagetree):
 			if mynewpkg != myoldpkg:
 				mydata[mynewpkg+".ebuild"] = mydata[myoldpkg+".ebuild"]
 				del mydata[myoldpkg+".ebuild"]
+				mydata["PF"] = mynewpkg + "\n"
 			mytbz2.recompose_mem(xpak.xpak_mem(mydata))
 
 			self.dbapi.cpv_remove(mycpv)
