@@ -467,7 +467,7 @@ class digraph:
 				print "(%s)" % self.nodes[node][0][child]
 
 
-
+_elog_atexit_handlers = []
 def elog_process(cpv, mysettings):
 	mylogfiles = listdir(mysettings["T"]+"/logging/")
 	# shortcut for packages without any messages
@@ -513,6 +513,9 @@ def elog_process(cpv, mysettings):
 			logmodule = __import__("elog_modules.mod_"+s)
 			m = getattr(logmodule, "mod_"+s)
 			m.process(mysettings, cpv, mylogentries, fulllog)
+			if hasattr(m, "finalize") and not m.finalize in _elog_atexit_handlers:
+				_elog_atexit_handlers.append(m.finalize)
+				atexit_register(m.finalize, mysettings)
 		except (ImportError, AttributeError), e:
 			print "!!! Error while importing logging modules while loading \"mod_%s\":" % s
 			print e
