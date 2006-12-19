@@ -2511,7 +2511,7 @@ class MergeTask(object):
 				portage.config(clone=trees["/"]["vartree"].settings)
 
 	def merge(self, mylist, favorites, mtimedb):
-		returnme=0
+		failed_fetches = []
 		mymergelist=[]
 		ldpath_mtimes = mtimedb["ldpath"]
 		xterm_titles = "notitles" not in self.settings.features
@@ -2659,7 +2659,7 @@ class MergeTask(object):
 						print
 						print "!!! Fetch for",y,"failed, continuing..."
 						print
-						returnme=1
+						failed_fetches.append(pkg_key)
 					continue
 
 				portage.doebuild_environment(y, "setup", myroot,
@@ -2885,9 +2885,15 @@ class MergeTask(object):
 		#by doing an exit this way, --fetchonly can continue to try to
 		#fetch everything even if a particular download fails.
 		if "--fetchonly" in self.myopts or "--fetch-all-uri" in self.myopts:
-			if returnme:
-				print "\n\n!!! Some fetch errors were encountered.  Please see above for details.\n\n"
-				sys.exit(returnme)
+			if failed_fetches:
+				sys.stderr.write("\n\n!!! Some fetch errors were " + \
+					"encountered.  Please see above for details.\n\n")
+				for cpv in failed_fetches:
+					sys.stderr.write("   ")
+					sys.stderr.write(cpv)
+					sys.stderr.write("\n")
+				sys.stderr.write("\n")
+				sys.exit(1)
 			else:
 				sys.exit(0)
 		return os.EX_OK
