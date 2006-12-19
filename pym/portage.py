@@ -4665,13 +4665,17 @@ class vardbapi(dbapi):
 			os.rename(origpath, newpath)
 
 			# We need to rename the ebuild now.
-			old_eb_path = newpath+"/"+mycpsplit[1]    +"-"+mycpsplit[2]
-			new_eb_path = newpath+"/"+mycpsplit_new[1]+"-"+mycpsplit[2]
-			if mycpsplit[3] != "r0":
-				old_eb_path += "-"+mycpsplit[3]
-				new_eb_path += "-"+mycpsplit[3]
-			if os.path.exists(old_eb_path+".ebuild"):
-				os.rename(old_eb_path+".ebuild", new_eb_path+".ebuild")
+			old_pf = catsplit(mycpv)[1]
+			new_pf = catsplit(mynewcpv)[1]
+			if new_pf != old_pf:
+				try:
+					os.rename(os.path.join(newpath, old_pf + ".ebuild"),
+						os.path.join(newpath, new_pf + ".ebuild"))
+				except OSError, e:
+					if e.errno != errno.ENOENT:
+						raise
+					del e
+				write_atomic(os.path.join(newpath, "PF"), new_pf+"\n")
 
 			write_atomic(os.path.join(newpath, "CATEGORY"), mynewcat+"\n")
 			fixdbentries([mylist], newpath)
