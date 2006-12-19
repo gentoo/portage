@@ -840,6 +840,9 @@ class depgraph:
 
 		self.missingbins=[]
 		self.digraph=portage.digraph()
+		# Tracks simple parent/child relationships (PDEPEND relationships are
+		# not reversed).
+		self._parent_child_digraph = digraph()
 		self.orderedkeys=[]
 		self.outdatedpackages=[]
 		self.args_keys = []
@@ -912,6 +915,7 @@ class depgraph:
 		if addme:
 			existing_node = self.pkg_node_map[myroot].get(mykey)
 		if existing_node:
+			self._parent_child_digraph.add(existing_node, myparent)
 			if existing_node != myparent:
 				# Refuse to make a node depend on itself so that the we don't
 				# don't create a bogus circular dependency in self.altlist().
@@ -984,6 +988,7 @@ class depgraph:
 			mybigkey.append("merge")
 		else:
 			mybigkey.append("nomerge")
+		jbigkey = tuple(mybigkey)
 
 		if addme:
 			metadata = dict(izip(self._mydbapi_keys,
@@ -999,6 +1004,7 @@ class depgraph:
 				e_type, myroot, e_cpv, e_status = existing_node
 				if mykey == e_cpv:
 					# The existing node can be reused.
+					self._parent_child_digraph.add(existing_node, myparent)
 					if rev_dep and myparent:
 						ptype, proot, pkey, pstatus = myparent
 						self.digraph.addnode(myparent, existing_node,
@@ -1008,16 +1014,16 @@ class depgraph:
 							priority=priority)
 					return 1
 				else:
-					e_parents = self.digraph.parent_nodes(existing_node)
+					e_parents = self._parent_child_digraph.parent_nodes(
+						existing_node)
 					myparents = []
 					if myparent:
 						myparents.append(myparent)
 					self._show_slot_collision_notice(
-						((tuple(mybigkey), myparents),
+						((jbigkey, myparents),
 						(existing_node, e_parents)))
 					return 0
 
-			jbigkey = tuple(mybigkey)
 			self._slot_node_map[myroot][slot_atom] = jbigkey
 			self.pkg_node_map[myroot][mykey] = jbigkey
 			self.useFlags[myroot][mykey] = myuse
@@ -1029,6 +1035,11 @@ class depgraph:
 			else:
 				self.digraph.addnode(jbigkey, myparent,
 					priority=priority)
+
+		# Do this even when addme is False (--onlydeps) so that the
+		# parent/child relationship is always known in case
+		# self._show_slot_collision_notice() needs to be called later.
+		self._parent_child_digraph.add(jbigkey, myparent)
 
 		""" This section determines whether we go deeper into dependencies or not.
 		    We want to go deeper on a few occasions:
