@@ -467,7 +467,7 @@ class digraph:
 				print "(%s)" % self.nodes[node][0][child]
 
 
-
+_elog_atexit_handlers = []
 def elog_process(cpv, mysettings):
 	mylogfiles = listdir(mysettings["T"]+"/logging/")
 	# shortcut for packages without any messages
@@ -513,6 +513,9 @@ def elog_process(cpv, mysettings):
 			logmodule = __import__("elog_modules.mod_"+s)
 			m = getattr(logmodule, "mod_"+s)
 			m.process(mysettings, cpv, mylogentries, fulllog)
+			if hasattr(m, "finalize") and not m.finalize in _elog_atexit_handlers:
+				_elog_atexit_handlers.append(m.finalize)
+				atexit_register(m.finalize, mysettings)
 		except (ImportError, AttributeError), e:
 			print "!!! Error while importing logging modules while loading \"mod_%s\":" % s
 			print e
@@ -2074,10 +2077,10 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 
 	if not os.access(mysettings["DISTDIR"],os.W_OK) and fetch_to_ro:
 		if use_locks:
-			writemsg(red("!!! You are fetching to a read-only filesystem, you should turn locking off"),
-				noiselevel=-1)
-			writemsg("!!! This can be done by adding -distlocks to FEATURES in /etc/make.conf",
-				noiselevel=-1)
+			writemsg(red("!!! For fetching to a read-only filesystem, " + \
+				"locking should be turned off.\n"), noiselevel=-1)
+			writemsg("!!! This can be done by adding -distlocks to " + \
+				"FEATURES in /etc/make.conf\n", noiselevel=-1)
 #			use_locks = 0
 
 	# local mirrors are always added
@@ -2170,11 +2173,21 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 
 	can_fetch=True
 
+	if listonly:
+		can_fetch = False
+
 	for var_name in ("FETCHCOMMAND", "RESUMECOMMAND"):
 		if not mysettings.get(var_name, None):
 			can_fetch = False
 
-	if not listonly:
+	if can_fetch and \
+		not fetch_to_ro and \
+		not os.access(mysettings["DISTDIR"], os.W_OK):
+		writemsg("!!! No write access to '%s'\n" % mysettings["DISTDIR"],
+			noiselevel=-1)
+		can_fetch = False
+
+	if can_fetch:
 		dirmode  = 02070
 		filemode =   060
 		modemask =    02
@@ -2201,12 +2214,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 				writemsg("!!! Directory Not Found: DISTDIR='%s'\n" % mysettings["DISTDIR"], noiselevel=-1)
 				writemsg("!!! Fetching will fail!\n", noiselevel=-1)
 
-	if not os.access(mysettings["DISTDIR"]+"/",os.W_OK):
-		if not fetch_to_ro:
-			print "!!! No write access to %s" % mysettings["DISTDIR"]+"/"
-			can_fetch=False
-	else:
-		if use_locks and locks_in_subdir:
+	if can_fetch and use_locks and locks_in_subdir:
 			distlocks_subdir = os.path.join(mysettings["DISTDIR"], locks_in_subdir)
 			if not os.access(distlocks_subdir, os.W_OK):
 				writemsg("!!! No write access to write to %s.  Aborting.\n" % distlocks_subdir,
@@ -2329,16 +2337,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					else:
 						continue
 
-				# check if we can actually write to the directory/existing file.
-				if fetched!=2 and os.path.exists(mysettings["DISTDIR"]+"/"+myfile) != \
-					os.access(mysettings["DISTDIR"]+"/"+myfile, os.W_OK) and not fetch_to_ro:
-					writemsg( red("***") + \
-						" Lack write access to %s, failing fetch\n" % \
-						os.path.join(mysettings["DISTDIR"], myfile),
-						noiselevel=-1)
-					fetched=0
-					break
-				elif fetched!=2:
+				if fetched != 2:
 					#we either need to resume or start the download
 					#you can't use "continue" when you're inside a "try" block
 					if fetched==1:
@@ -4669,13 +4668,17 @@ class vardbapi(dbapi):
 			os.rename(origpath, newpath)
 
 			# We need to rename the ebuild now.
-			old_eb_path = newpath+"/"+mycpsplit[1]    +"-"+mycpsplit[2]
-			new_eb_path = newpath+"/"+mycpsplit_new[1]+"-"+mycpsplit[2]
-			if mycpsplit[3] != "r0":
-				old_eb_path += "-"+mycpsplit[3]
-				new_eb_path += "-"+mycpsplit[3]
-			if os.path.exists(old_eb_path+".ebuild"):
-				os.rename(old_eb_path+".ebuild", new_eb_path+".ebuild")
+			old_pf = catsplit(mycpv)[1]
+			new_pf = catsplit(mynewcpv)[1]
+			if new_pf != old_pf:
+				try:
+					os.rename(os.path.join(newpath, old_pf + ".ebuild"),
+						os.path.join(newpath, new_pf + ".ebuild"))
+				except OSError, e:
+					if e.errno != errno.ENOENT:
+						raise
+					del e
+				write_atomic(os.path.join(newpath, "PF"), new_pf+"\n")
 
 			write_atomic(os.path.join(newpath, "CATEGORY"), mynewcat+"\n")
 			fixdbentries([mylist], newpath)
@@ -5622,7 +5625,8 @@ class portdbapi(dbapi):
 			myval=match_from_list(mydep,mylist)
 		elif level=="match-visible":
 			#dep match -- find all visible matches
-			myval=match_from_list(mydep,self.xmatch("list-visible",None,mydep=mydep,mykey=mykey))
+			myval = match_from_list(mydep,
+				self.xmatch("list-visible", mykey, mydep=mykey, mykey=mykey))
 			#get all visible packages, then get the matching ones
 		elif level=="match-all":
 			#match *all* visible *and* masked packages
@@ -5636,6 +5640,8 @@ class portdbapi(dbapi):
 				if self.aux_get(cpv, ["SLOT"])[0] == myslot]
 		if self.frozen and (level not in ["match-list","bestmatch-list"]):
 			self.xcache[level][mydep]=myval
+			if origdep and origdep != mydep:
+				self.xcache[level][origdep] = myval
 		return myval
 
 	def match(self,mydep,use_cache=1):
@@ -5830,6 +5836,7 @@ class binarytree(packagetree):
 			if mynewpkg != myoldpkg:
 				mydata[mynewpkg+".ebuild"] = mydata[myoldpkg+".ebuild"]
 				del mydata[myoldpkg+".ebuild"]
+				mydata["PF"] = mynewpkg + "\n"
 			mytbz2.recompose_mem(xpak.xpak_mem(mydata))
 
 			self.dbapi.cpv_remove(mycpv)
@@ -6343,7 +6350,12 @@ class dblink:
 		mystuff = listdir(self.dbdir, EmptyOnError=1)
 		for x in mystuff:
 			if x.endswith(".ebuild"):
-				myebuildpath = os.path.join(self.dbdir, x)
+				myebuildpath = os.path.join(self.dbdir, self.pkg + ".ebuild")
+				if x[:-7] != self.pkg:
+					# Clean up after vardbapi.move_ent() breakage in
+					# portage versions before 2.1.2
+					os.rename(os.path.join(self.dbdir, x), myebuildpath)
+					write_atomic(os.path.join(self.dbdir, "PF"), self.pkg+"\n")
 				break
 
 		self.settings.load_infodir(self.dbdir)

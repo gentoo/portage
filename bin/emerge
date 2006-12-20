@@ -786,6 +786,38 @@ def perform_global_updates(mycpv, mydb, mycommands):
 	if updates:
 		mydb.aux_update(mycpv, updates)
 
+
+def show_invalid_depstring_notice(parent_node, depstring, error_msg):
+
+	from formatter import AbstractFormatter, DumbWriter
+	f = AbstractFormatter(DumbWriter(maxcol=72))
+
+	print "\n\n!!! Invalid or corrupt dependency specification: "
+	print
+	print error_msg
+	print
+	print parent_node
+	print
+	print depstring
+	print
+	p_type, p_root, p_key, p_status = parent_node
+	msg = []
+	if p_status == "nomerge":
+		msg.append("Portage is unable to process the dependencies of the ")
+		msg.append("'%s' package. " % p_key)
+		msg.append("In order to correct this problem, the package ")
+		msg.append("should be uninstalled, reinstalled, or upgraded. ")
+		msg.append("As a temporary workaround, the --nodeps option can ")
+		msg.append("be used to ignore all dependencies.")
+	else:
+		msg.append("This package can not be installed.  ")
+		msg.append("Please notify the '%s' package maintainer " % p_key)
+		msg.append("about this problem.")
+
+	for x in msg:
+		f.add_flowing_data(x)
+	f.end_paragraph(1)
+
 class depgraph:
 
 	pkg_tree_map = {
@@ -841,6 +873,9 @@ class depgraph:
 
 		self.missingbins=[]
 		self.digraph=portage.digraph()
+		# Tracks simple parent/child relationships (PDEPEND relationships are
+		# not reversed).
+		self._parent_child_digraph = digraph()
 		self.orderedkeys=[]
 		self.outdatedpackages=[]
 		self.args_keys = []
@@ -913,6 +948,7 @@ class depgraph:
 		if addme:
 			existing_node = self.pkg_node_map[myroot].get(mykey)
 		if existing_node:
+			self._parent_child_digraph.add(existing_node, myparent)
 			if existing_node != myparent:
 				# Refuse to make a node depend on itself so that the we don't
 				# don't create a bogus circular dependency in self.altlist().
@@ -926,7 +962,9 @@ class depgraph:
 		
 		self.spinner.update()
 		if mytype == "blocks":
-			if addme and "--buildpkgonly" not in self.myopts and myparent:
+			if myparent and \
+				"--buildpkgonly" not in self.myopts and \
+				"--nodeps" not in self.myopts:
 				mybigkey[1] = myparent[1]
 				self.blocker_parents.setdefault(
 					tuple(mybigkey), set()).add(myparent)
@@ -983,6 +1021,7 @@ class depgraph:
 			mybigkey.append("merge")
 		else:
 			mybigkey.append("nomerge")
+		jbigkey = tuple(mybigkey)
 
 		if addme:
 			metadata = dict(izip(self._mydbapi_keys,
@@ -998,6 +1037,7 @@ class depgraph:
 				e_type, myroot, e_cpv, e_status = existing_node
 				if mykey == e_cpv:
 					# The existing node can be reused.
+					self._parent_child_digraph.add(existing_node, myparent)
 					if rev_dep and myparent:
 						ptype, proot, pkey, pstatus = myparent
 						self.digraph.addnode(myparent, existing_node,
@@ -1007,16 +1047,16 @@ class depgraph:
 							priority=priority)
 					return 1
 				else:
-					e_parents = self.digraph.parent_nodes(existing_node)
+					e_parents = self._parent_child_digraph.parent_nodes(
+						existing_node)
 					myparents = []
 					if myparent:
 						myparents.append(myparent)
 					self._show_slot_collision_notice(
-						((tuple(mybigkey), myparents),
+						((jbigkey, myparents),
 						(existing_node, e_parents)))
 					return 0
 
-			jbigkey = tuple(mybigkey)
 			self._slot_node_map[myroot][slot_atom] = jbigkey
 			self.pkg_node_map[myroot][mykey] = jbigkey
 			self.useFlags[myroot][mykey] = myuse
@@ -1028,6 +1068,11 @@ class depgraph:
 			else:
 				self.digraph.addnode(jbigkey, myparent,
 					priority=priority)
+
+		# Do this even when addme is False (--onlydeps) so that the
+		# parent/child relationship is always known in case
+		# self._show_slot_collision_notice() needs to be called later.
+		self._parent_child_digraph.add(jbigkey, myparent)
 
 		""" This section determines whether we go deeper into dependencies or not.
 		    We want to go deeper on a few occasions:
@@ -1328,9 +1373,7 @@ class depgraph:
 			myroot=myroot, trees=self.trees)
 
 		if not mycheck[0]:
-			sys.stderr.write("\n\n%s\n\n" % mycheck[1])
-			sys.stderr.write("Parent: %s\n\n" % str(myparent))
-			sys.stderr.write("%s\n\n" % depstring)
+			show_invalid_depstring_notice(myparent, depstring, mycheck[1])
 			return 0
 		mymerge = mycheck[1]
 
@@ -1539,7 +1582,8 @@ class depgraph:
 		correct merge order such that mutually blocking packages are never
 		installed simultaneously."""
 
-		if "--buildpkgonly" in self.myopts:
+		if "--buildpkgonly" in self.myopts or \
+			"--nodeps" in self.myopts:
 			return True
 
 		#if "deep" in self.myparams:
@@ -1586,9 +1630,9 @@ class depgraph:
 							pkgsettings, myuse=myuse, trees=dep_check_trees,
 							myroot=myroot)
 						if not success:
-							print "\n\n"
-							print "Error occurred while processing",pkg
-							print str(atoms)
+							show_invalid_depstring_notice(
+								("installed", myroot, pkg, "nomerge"),
+								depstr, atoms)
 							return False
 						blocker_atoms = [myatom for myatom in atoms \
 							if myatom.startswith("!")]
@@ -2509,7 +2553,7 @@ class MergeTask(object):
 				portage.config(clone=trees["/"]["vartree"].settings)
 
 	def merge(self, mylist, favorites, mtimedb):
-		returnme=0
+		failed_fetches = []
 		mymergelist=[]
 		ldpath_mtimes = mtimedb["ldpath"]
 		xterm_titles = "notitles" not in self.settings.features
@@ -2657,7 +2701,7 @@ class MergeTask(object):
 						print
 						print "!!! Fetch for",y,"failed, continuing..."
 						print
-						returnme=1
+						failed_fetches.append(pkg_key)
 					continue
 
 				portage.doebuild_environment(y, "setup", myroot,
@@ -2883,9 +2927,15 @@ class MergeTask(object):
 		#by doing an exit this way, --fetchonly can continue to try to
 		#fetch everything even if a particular download fails.
 		if "--fetchonly" in self.myopts or "--fetch-all-uri" in self.myopts:
-			if returnme:
-				print "\n\n!!! Some fetch errors were encountered.  Please see above for details.\n\n"
-				sys.exit(returnme)
+			if failed_fetches:
+				sys.stderr.write("\n\n!!! Some fetch errors were " + \
+					"encountered.  Please see above for details.\n\n")
+				for cpv in failed_fetches:
+					sys.stderr.write("   ")
+					sys.stderr.write(cpv)
+					sys.stderr.write("\n")
+				sys.stderr.write("\n")
+				sys.exit(1)
 			else:
 				sys.exit(0)
 		return os.EX_OK
@@ -4180,9 +4230,9 @@ def action_depclean(settings, trees, ldpath_mtimes,
 				success, atoms = portage.dep_check(depstr, None, settings,
 					myuse=usedef, trees=dep_check_trees, myroot=myroot)
 				if not success:
-					print "\n\n"
-					print "Error occurred while processing",pkg
-					print str(atoms)
+					show_invalid_depstring_notice(
+						("installed", myroot, pkg, "nomerge"),
+						depstr, atoms)
 					return
 
 				if "--debug" in myopts:

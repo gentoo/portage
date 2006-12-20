@@ -19,6 +19,11 @@ portage-2.1.2
 * DEPEND atoms support SLOT dependencies of the form ${CATEGORY}/${PN}:${SLOT}.
 * Development: Extend PYTHONPATH support to allow overriding the hardcoded 
   /usr/lib/portage/pym for development/testing purposes
+* New "finalize" hook for elog modules enabling modules to perform actions on 
+  shutdown (like dispatching collected messages).
+* New elog modules mail_summary and save_summary that act like the mail/save
+  modules except that they merge messages from multiple packages in a single
+  file/mail.
 
 portage-2.1.1
 ------------
