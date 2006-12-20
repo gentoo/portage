@@ -2073,10 +2073,10 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 
 	if not os.access(mysettings["DISTDIR"],os.W_OK) and fetch_to_ro:
 		if use_locks:
-			writemsg(red("!!! You are fetching to a read-only filesystem, you should turn locking off"),
-				noiselevel=-1)
-			writemsg("!!! This can be done by adding -distlocks to FEATURES in /etc/make.conf",
-				noiselevel=-1)
+			writemsg(red("!!! For fetching to a read-only filesystem, " + \
+				"locking should be turned off.\n"), noiselevel=-1)
+			writemsg("!!! This can be done by adding -distlocks to " + \
+				"FEATURES in /etc/make.conf\n", noiselevel=-1)
 #			use_locks = 0
 
 	# local mirrors are always added
