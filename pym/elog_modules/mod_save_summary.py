@@ -1,4 +1,4 @@
-import os. time
+import os, time
 from portage_data import portage_uid, portage_gid
 
 def process(mysettings, cpv, logentries, fulltext):
