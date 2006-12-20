@@ -6,6 +6,7 @@ import time
 if not hasattr(__builtins__, "set"):
 	from sets import Set as set
 from cache import template
+from cache.cache_errors import CacheCorruption
 from cache.flat_hash import database as db_rw
 from cache.metadata import database as db_ro
 
@@ -25,6 +26,9 @@ class database(template.database):
 		try:
 			value = self.db_rw[cpv]
 		except KeyError:
+			return self.db_ro[cpv] # raises a KeyError when necessary
+		except CacheCorruption:
+			del self.db_rw[cpv]
 			return self.db_ro[cpv] # raises a KeyError when necessary
 		if self._is_whiteout(value):
 			if self._is_whiteout_valid(cpv, value):
