@@ -714,7 +714,6 @@ class FakeVartree(portage.vartree):
 		self.root = real_vartree.root
 		self.settings = real_vartree.settings
 		self.dbapi = portage.fakedbapi(settings=real_vartree.settings)
-		global_updates = None
 		vdb_path = os.path.join(self.root, portage.VDB_PATH)
 		try:
 			# At least the parent needs to exist for the lock file.
@@ -727,7 +726,6 @@ class FakeVartree(portage.vartree):
 				vdb_lock = portage_locks.lockdir(vdb_path)
 			mykeys = ["SLOT", "COUNTER", "PROVIDE", "USE", "IUSE",
 				"DEPEND", "RDEPEND", "PDEPEND"]
-			portdb_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
 			real_dbapi = real_vartree.dbapi
 			slot_counters = {}
 			for cpv in real_dbapi.cpv_all():
@@ -745,17 +743,6 @@ class FakeVartree(portage.vartree):
 						continue
 				slot_counters[myslot_atom] = mycounter
 				self.dbapi.cpv_inject(cpv, metadata=metadata)
-				try:
-					# Use the live ebuild metadata if possible.
-					live_metadata = dict(izip(portdb_keys,
-						portdb.aux_get(cpv, portdb_keys)))
-					self.dbapi.aux_update(cpv, live_metadata)
-				except (KeyError, portage_exception.PortageException):
-					if global_updates is None:
-						global_updates = \
-							grab_global_updates(portdb.porttree_root)
-					perform_global_updates(
-						cpv, self.dbapi, global_updates)
 		finally:
 			if vdb_lock:
 				portage_locks.unlockdir(vdb_lock)
@@ -763,6 +750,33 @@ class FakeVartree(portage.vartree):
 		if not self.settings.treeVirtuals:
 			self.settings.treeVirtuals = portage_util.map_dictlist_vals(
 				portage.getCPFromCPV, self.get_all_provides())
+
+		# Intialize variables needed for lazy cache pulls of the live ebuild
+		# metadata.  This ensures that the vardb lock is released ASAP, without
+		# being delayed in case cache generation is triggered.
+		self._aux_get = self.dbapi.aux_get
+		self.dbapi.aux_get = self._aux_get_wrapper
+		self._aux_get_history = set()
+		self._portdb_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
+		self._portdb = portdb
+		self._global_updates = None
+
+	def _aux_get_wrapper(self, pkg, wants):
+		if pkg in self._aux_get_history:
+			return self._aux_get(pkg, wants)
+		self._aux_get_history.add(pkg)
+		try:
+			# Use the live ebuild metadata if possible.
+			live_metadata = dict(izip(self._portdb_keys,
+				self._portdb.aux_get(pkg, self._portdb_keys)))
+			self.dbapi.aux_update(pkg, live_metadata)
+		except (KeyError, portage_exception.PortageException):
+			if self._global_updates is None:
+				self._global_updates = \
+					grab_global_updates(self._portdb.porttree_root)
+			perform_global_updates(
+				pkg, self.dbapi, self._global_updates)
+		return self._aux_get(pkg, wants)
 
 def grab_global_updates(portdir):
 	from portage_update import grab_updates, parse_updates
@@ -858,10 +872,14 @@ class depgraph:
 			# have after new packages have been installed.
 			fakedb = portage.fakedbapi(settings=self.pkgsettings[myroot])
 			self.mydbapi[myroot] = fakedb
-			for pkg in vardb.cpv_all():
-				fakedb.cpv_inject(pkg,
-					metadata=dict(izip(self._mydbapi_keys,
-					vardb.aux_get(pkg, self._mydbapi_keys))))
+			if "--nodeps" not in self.myopts:
+				# --nodeps bypasses this, since it isn't needed in this case
+				# and the cache pulls might trigger (slow) cache generation.
+				for pkg in vardb.cpv_all():
+					self.spinner.update()
+					fakedb.cpv_inject(pkg,
+						metadata=dict(izip(self._mydbapi_keys,
+						vardb.aux_get(pkg, self._mydbapi_keys))))
 			del vardb, fakedb
 			self.useFlags[myroot] = {}
 			if "--usepkg" in self.myopts:
@@ -4316,12 +4334,11 @@ def action_build(settings, trees, mtimedb,
 			sys.exit(0)
 
 		myparams = create_depgraph_params(myopts, myaction)
-		mydepgraph = depgraph(settings, trees,
-			myopts, myparams, spinner)
 		if myaction in ["system","world"]:
 			if not ("--quiet" in myopts):
 				print "Calculating",myaction,"dependencies  ",
 				sys.stdout.flush()
+			mydepgraph = depgraph(settings, trees, myopts, myparams, spinner)
 			if not mydepgraph.xcreate(myaction):
 				print "!!! Depgraph creation failed."
 				sys.exit(1)
@@ -4331,6 +4348,7 @@ def action_build(settings, trees, mtimedb,
 			if not ("--quiet" in myopts):
 				print "Calculating dependencies  ",
 				sys.stdout.flush()
+			mydepgraph = depgraph(settings, trees, myopts, myparams, spinner)
 			try:
 				retval, favorites = mydepgraph.select_files(myfiles)
 			except portage_exception.PackageNotFound, e:
