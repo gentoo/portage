@@ -1603,6 +1603,17 @@ class depgraph:
 			"--nodeps" in self.myopts:
 			return True
 
+		modified_slots = {}
+		for myroot in self.trees:
+			myslots = {}
+			modified_slots[myroot] = myslots
+			final_db = self.mydbapi[myroot]
+			slot_node_map = self._slot_node_map[myroot]
+			for slot_atom, mynode in slot_node_map.iteritems():
+				mytype, myroot, mycpv, mystatus = mynode
+				if mystatus == "merge":
+					myslots[slot_atom] = mycpv
+
 		#if "deep" in self.myparams:
 		if True:
 			# Pull in blockers from all installed packages that haven't already
@@ -1647,6 +1658,14 @@ class depgraph:
 							pkgsettings, myuse=myuse, trees=dep_check_trees,
 							myroot=myroot)
 						if not success:
+							slot_atom = "%s:%s" % (portage.dep_getkey(pkg),
+								vardb.aux_get(pkg, ["SLOT"])[0])
+							if slot_atom in modified_slots[myroot]:
+								# This package is being replaced anyway, so
+								# ignore invalid dependencies so as not to
+								# annoy the user too much (otherwise they'd be
+								# forced to manually unmerge it first).
+								continue
 							show_invalid_depstring_notice(
 								("installed", myroot, pkg, "nomerge"),
 								depstr, atoms)
@@ -1666,18 +1685,6 @@ class depgraph:
 								myparents = set()
 								self.blocker_parents[blocker] = myparents
 							myparents.add(myparent)
-
-		modified_slots = {}
-		if self.blocker_parents:
-			for myroot in self.trees:
-				myslots = {}
-				modified_slots[myroot] = myslots
-				final_db = self.mydbapi[myroot]
-				slot_node_map = self._slot_node_map[myroot]
-				for slot_atom, mynode in slot_node_map.iteritems():
-					mytype, myroot, mycpv, mystatus = mynode
-					if mystatus == "merge":
-						modified_slots[myroot][slot_atom] = mycpv
 
 		for blocker in self.blocker_parents.keys():
 			mytype, myroot, mydep = blocker
