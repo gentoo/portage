@@ -785,6 +785,37 @@ def perform_global_updates(mycpv, mydb, mycommands):
 	if updates:
 		mydb.aux_update(mycpv, updates)
 
+
+def show_invalid_depstring_notice(parent_node, depstring, error_msg):
+
+	from formatter import AbstractFormatter, DumbWriter
+	f = AbstractFormatter(DumbWriter(maxcol=72))
+
+	print "\n\n!!! Invalid or corrupt dependency specification: "
+	print
+	print error_msg
+	print
+	print parent_node
+	print
+	print depstring
+	print
+	p_type, p_root, p_key, p_status = parent_node
+	msg = []
+	if p_status == "nomerge":
+		msg.append("Portage is unable to process the dependencies of this ")
+		msg.append("package.  In order to correct this problem, the package ")
+		msg.append("should be uninstalled, reinstalled, or upgraded. ")
+		msg.append("As a temporary workaround, the --nodeps option can ")
+		msg.append("be used to ignore all dependencies.")
+	else:
+		msg.append("This package can not be installed.  ")
+		msg.append("Please notify the '%s' package maintainer " % p_key)
+		msg.append("about this problem.")
+
+	for x in msg:
+		f.add_flowing_data(x)
+	f.end_paragraph(1)
+
 class depgraph:
 
 	pkg_tree_map = {
@@ -1340,9 +1371,7 @@ class depgraph:
 			myroot=myroot, trees=self.trees)
 
 		if not mycheck[0]:
-			sys.stderr.write("\n\n%s\n\n" % mycheck[1])
-			sys.stderr.write("Parent: %s\n\n" % str(myparent))
-			sys.stderr.write("%s\n\n" % depstring)
+			show_invalid_depstring_notice(myparent, depstring, mycheck[1])
 			return 0
 		mymerge = mycheck[1]
 
@@ -1599,9 +1628,9 @@ class depgraph:
 							pkgsettings, myuse=myuse, trees=dep_check_trees,
 							myroot=myroot)
 						if not success:
-							print "\n\n"
-							print "Error occurred while processing",pkg
-							print str(atoms)
+							show_invalid_depstring_notice(
+								("installed", myroot, pkg, "nomerge"),
+								depstr, atoms)
 							return False
 						blocker_atoms = [myatom for myatom in atoms \
 							if myatom.startswith("!")]
@@ -4187,9 +4216,9 @@ def action_depclean(settings, trees, ldpath_mtimes,
 				success, atoms = portage.dep_check(depstr, None, settings,
 					myuse=usedef, trees=dep_check_trees, myroot=myroot)
 				if not success:
-					print "\n\n"
-					print "Error occurred while processing",pkg
-					print str(atoms)
+					show_invalid_depstring_notice(
+						("installed", myroot, pkg, "nomerge"),
+						depstr, atoms)
 					return
 
 				if "--debug" in myopts:
