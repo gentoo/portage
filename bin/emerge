@@ -750,7 +750,7 @@ class FakeVartree(portage.vartree):
 					live_metadata = dict(izip(portdb_keys,
 						portdb.aux_get(cpv, portdb_keys)))
 					self.dbapi.aux_update(cpv, live_metadata)
-				except KeyError, portage_exception.PortageException:
+				except (KeyError, portage_exception.PortageException):
 					if global_updates is None:
 						global_updates = \
 							grab_global_updates(portdb.porttree_root)
