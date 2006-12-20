@@ -802,8 +802,9 @@ def show_invalid_depstring_notice(parent_node, depstring, error_msg):
 	p_type, p_root, p_key, p_status = parent_node
 	msg = []
 	if p_status == "nomerge":
-		msg.append("Portage is unable to process the dependencies of this ")
-		msg.append("package.  In order to correct this problem, the package ")
+		msg.append("Portage is unable to process the dependencies of the ")
+		msg.append("'%s' package. " % p_key)
+		msg.append("In order to correct this problem, the package ")
 		msg.append("should be uninstalled, reinstalled, or upgraded. ")
 		msg.append("As a temporary workaround, the --nodeps option can ")
 		msg.append("be used to ignore all dependencies.")
