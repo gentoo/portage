@@ -40,6 +40,7 @@ from output import create_color_func
 good = create_color_func("GOOD")
 bad = create_color_func("BAD")
 
+import portage_dep
 import portage_util
 import portage_locks
 import portage_exception
@@ -1376,6 +1377,8 @@ class depgraph:
 		bindb  = self.trees[myroot]["bintree"].dbapi
 		vardb  = self.trees[myroot]["vartree"].dbapi
 		pkgsettings = self.pkgsettings[myroot]
+		if myparent:
+			p_type, p_root, p_key, p_status = myparent
 
 		if "--debug" in self.myopts:
 			print
@@ -1388,10 +1391,15 @@ class depgraph:
 		#processing dependencies
 		""" Call portage.dep_check to evaluate the use? conditionals and make sure all
 		dependencies are satisfiable. """
-		mycheck = portage.dep_check(depstring, None,
-			pkgsettings, myuse=myuse,
-			use_binaries=("--usepkgonly" in self.myopts),
-			myroot=myroot, trees=self.trees)
+		try:
+			if myparent and p_status == "nomerge":
+				portage_dep._dep_check_strict = False
+			mycheck = portage.dep_check(depstring, None,
+				pkgsettings, myuse=myuse,
+				use_binaries=("--usepkgonly" in self.myopts),
+				myroot=myroot, trees=self.trees)
+		finally:
+			portage_dep._dep_check_strict = True
 
 		if not mycheck[0]:
 			show_invalid_depstring_notice(myparent, depstring, mycheck[1])
@@ -1658,9 +1666,13 @@ class depgraph:
 						# It is crucial to pass in final_db here in order to
 						# optimize dep_check calls by eliminating atoms via
 						# dep_wordreduce and dep_eval calls.
-						success, atoms = portage.dep_check(depstr, final_db,
-							pkgsettings, myuse=myuse, trees=dep_check_trees,
-							myroot=myroot)
+						try:
+							portage_dep._dep_check_strict = False
+							success, atoms = portage.dep_check(depstr,
+								final_db, pkgsettings, myuse=myuse,
+								trees=dep_check_trees, myroot=myroot)
+						finally:
+							portage_dep._dep_check_strict = True
 						if not success:
 							slot_atom = "%s:%s" % (portage.dep_getkey(pkg),
 								vardb.aux_get(pkg, ["SLOT"])[0])
@@ -4264,8 +4276,12 @@ def action_depclean(settings, trees, ldpath_mtimes,
 					else:
 						print "hard"
 
-				success, atoms = portage.dep_check(depstr, None, settings,
-					myuse=usedef, trees=dep_check_trees, myroot=myroot)
+				try:
+					portage_dep._dep_check_strict = False
+					success, atoms = portage.dep_check(depstr, None, settings,
+						myuse=usedef, trees=dep_check_trees, myroot=myroot)
+				finally:
+					portage_dep._dep_check_strict = True
 				if not success:
 					show_invalid_depstring_notice(
 						("installed", myroot, pkg, "nomerge"),
