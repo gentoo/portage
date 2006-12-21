@@ -3581,11 +3581,12 @@ def unmerge(cat, pkg, myroot, mysettings, mytrimworld=1, vartree=None, ldpath_mt
 	try:
 		mylink.lockdb()
 		if mylink.exists():
-			mylink.unmerge(trimworld=mytrimworld, cleanup=1,
+			retval = mylink.unmerge(trimworld=mytrimworld, cleanup=1,
 				ldpath_mtimes=ldpath_mtimes)
-			mylink.delete()
-			return 0
-		return 1
+			if retval == os.EX_OK:
+				mylink.delete()
+			return retval
+		return os.EX_OK
 	finally:
 		mylink.unlockdb()
 
@@ -6380,7 +6381,7 @@ class dblink:
 				# XXX: Decide how to handle failures here.
 				if retval != os.EX_OK:
 					writemsg("!!! FAILED prerm: %s\n" % retval, noiselevel=-1)
-					sys.exit(123)
+					return retval
 
 			self._unmerge_pkgfiles(pkgfiles)
 
@@ -6395,7 +6396,7 @@ class dblink:
 				# XXX: Decide how to handle failures here.
 				if retval != os.EX_OK:
 					writemsg("!!! FAILED postrm: %s\n" % retval, noiselevel=-1)
-					sys.exit(123)
+					return retval
 				doebuild(myebuildpath, "cleanrm", self.myroot, self.settings,
 					tree="vartree", mydbapi=self.vartree.dbapi,
 					vartree=self.vartree)
@@ -6418,6 +6419,7 @@ class dblink:
 					portage_locks.unlockdir(catdir_lock)
 		env_update(target_root=self.myroot, prev_mtimes=ldpath_mtimes,
 			contents=contents)
+		return os.EX_OK
 
 	def _unmerge_pkgfiles(self, pkgfiles):
 
