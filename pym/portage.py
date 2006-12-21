@@ -5422,8 +5422,7 @@ class portdbapi(dbapi):
 
 		if cache_me:
 			aux_cache = {}
-			mydata.setdefault("EAPI", "0")
-			if not mydata["EAPI"]:
+			if not mydata.setdefault("EAPI", "0"):
 				mydata["EAPI"] = "0"
 			for x in self._aux_cache_keys:
 				aux_cache[x] = mydata.get(x, "")
