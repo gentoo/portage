@@ -877,7 +877,8 @@ class depgraph:
 			# have after new packages have been installed.
 			fakedb = portage.fakedbapi(settings=self.pkgsettings[myroot])
 			self.mydbapi[myroot] = fakedb
-			if "--nodeps" not in self.myopts:
+			if "--nodeps" not in self.myopts and \
+				"--buildpkgonly" not in self.myopts:
 				# --nodeps bypasses this, since it isn't needed in this case
 				# and the cache pulls might trigger (slow) cache generation.
 				for pkg in vardb.cpv_all():
