@@ -1604,39 +1604,33 @@ for myarg in ${EBUILD_SH_ARGS} ; do
 		export SANDBOX_ON="0"
 		set -f
 
-		# Handled in portage.py now
-		#dbkey=${PORTAGE_CACHEDIR}/${CATEGORY}/${PF}
-
-		if [ ! -d "${dbkey%/*}" ]; then
-			install -d -g ${PORTAGE_GID} -m2775 "${dbkey%/*}"
+		if [ -n "${dbkey}" ] ; then
+			if [ ! -d "${dbkey%/*}" ]; then
+				install -d -g ${PORTAGE_GID} -m2775 "${dbkey%/*}"
+			fi
+			# Make it group writable. 666&~002==664
+			umask 002
 		fi
 
-		# Make it group writable. 666&~002==664
-		umask 002
+		auxdbkeys="DEPEND RDEPEND SLOT SRC_URI RESTRICT HOMEPAGE LICENSE
+			DESCRIPTION KEYWORDS INHERITED IUSE CDEPEND PDEPEND PROVIDE EAPI
+			UNUSED_01 UNUSED_02 UNUSED_03 UNUSED_04 UNUSED_05 UNUSED_06
+			UNUSED_07"
 
 		#the extra $(echo) commands remove newlines
-		echo $(echo "$DEPEND")       > $dbkey
-		echo $(echo "$RDEPEND")     >> $dbkey
-		echo $(echo "$SLOT")        >> $dbkey
-		echo $(echo "$SRC_URI")     >> $dbkey
-		echo $(echo "$RESTRICT")    >> $dbkey
-		echo $(echo "$HOMEPAGE")    >> $dbkey
-		echo $(echo "$LICENSE")     >> $dbkey
-		echo $(echo "$DESCRIPTION") >> $dbkey
-		echo $(echo "$KEYWORDS")    >> $dbkey
-		echo $(echo "$INHERITED")   >> $dbkey
-		echo $(echo "$IUSE")        >> $dbkey
-		echo                       >> $dbkey
-		echo $(echo "$PDEPEND")     >> $dbkey
-		echo $(echo "$PROVIDE")     >> $dbkey
-		echo $(echo "${EAPI:-0}")   >> $dbkey
-		echo $(echo "$UNUSED_01")   >> $dbkey
-		echo $(echo "$UNUSED_02")   >> $dbkey
-		echo $(echo "$UNUSED_03")   >> $dbkey
-		echo $(echo "$UNUSED_04")   >> $dbkey
-		echo $(echo "$UNUSED_05")   >> $dbkey
-		echo $(echo "$UNUSED_06")   >> $dbkey
-		echo $(echo "$UNUSED_07")   >> $dbkey
+		unset CDEPEND
+		[ -n "${EAPI}" ] && EAPI=0
+		if [ -n "${dbkey}" ] ; then
+			> "${dbkey}"
+			for f in ${auxdbkeys} ; do
+				echo $(echo ${!f}) >> "${dbkey}" || exit $?
+			done
+		else
+			for f in ${auxdbkeys} ; do
+				echo $(echo ${!f}) 1>&9 || exit $?
+			done
+			9>&-
+		fi
 		set +f
 		#make sure it is writable by our group:
 		exit 0

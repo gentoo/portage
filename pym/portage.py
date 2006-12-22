@@ -1993,7 +1993,7 @@ class config:
 
 # XXX This would be to replace getstatusoutput completely.
 # XXX Issue: cannot block execution. Deadlock condition.
-def spawn(mystring,mysettings,debug=0,free=0,droppriv=0,sesandbox=0,fd_pipes=None,**keywords):
+def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, **keywords):
 	"""spawn a subprocess with optional sandbox protection,
 	depending on whether sandbox is enabled.  The "free" argument,
 	when set to 1, will disable sandboxing.  This allows us to
@@ -3116,7 +3116,32 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		# get possible slot information from the deps file
 		if mydo == "depend":
 			writemsg("!!! DEBUG: dbkey: %s\n" % str(dbkey), 2)
-			if dbkey:
+			if isinstance(dbkey, dict):
+				mysettings["dbkey"] = ""
+				pr, pw = os.pipe()
+				fd_pipes = {0:0, 1:1, 2:2, 9:pw}
+				mypids = spawn(EBUILD_SH_BINARY + " depend", mysettings,
+					fd_pipes=fd_pipes, returnpid=True)
+				os.close(pw) # belongs exclusively to the child process now
+				maxbytes = 1024
+				mybytes = []
+				while True:
+					mybytes.append(os.read(pr, maxbytes))
+					if not mybytes[-1]:
+						break
+				os.close(pr)
+				mybytes = "".join(mybytes)
+				global auxdbkeys
+				dbkey.update(izip(auxdbkeys, mybytes.split("\n")))
+				retval = os.waitpid(mypids[0], 0)[1]
+				# If it got a signal, return the signal that was sent, but
+				# shift in order to distinguish it from a return value. (just
+				# like portage_exec.spawn() would do).
+				if retval & 0xff:
+					return (retval & 0xff) << 8
+				# Otherwise, return its exit code.
+				return retval >> 8
+			elif dbkey:
 				mysettings["dbkey"] = dbkey
 			else:
 				mysettings["dbkey"] = \
@@ -5337,55 +5362,13 @@ class portdbapi(dbapi):
 			writemsg("doregen: %s %s\n" % (doregen,mycpv), 2)
 			writemsg("Generating cache entry(0) for: "+str(myebuild)+"\n",1)
 
-			if self.tmpfs:
-				mydbkey = self.tmpfs+"/aux_db_key_temp"
-			else:
-				mydbkey = self.depcachedir+"/aux_db_key_temp"
-
-			mylock = None
-			try:
-				mylock = portage_locks.lockfile(mydbkey, wantnewlockfile=1)
-				try:
-					os.unlink(mydbkey)
-				except (IOError, OSError), e:
-					if e.errno != errno.ENOENT:
-						raise
-					del e
-
-				self.doebuild_settings.reset()
-				myret = doebuild(myebuild, "depend", "/",
-					 self.doebuild_settings, dbkey=mydbkey, tree="porttree",
-					 mydbapi=self)
-				if myret != os.EX_OK:
-					#depend returned non-zero exit code...
-					writemsg((red("\naux_get():") + \
-						" (0) Error in '%s'. (%s)\n" + \
-						"               Check for syntax error or " + \
-						"corruption in the ebuild. (--debug)\n\n") % \
-						(myebuild, myret), noiselevel=-1)
-					raise KeyError(mycpv)
-
-				try:
-					mycent = open(mydbkey, "r")
-					os.unlink(mydbkey)
-					mylines = mycent.readlines()
-					mycent.close()
-				except (IOError, OSError):
-					writemsg((red("\naux_get():") + \
-						" (1) Error in '%s' ebuild.\n" + \
-						"               Check for syntax error or " + \
-						"corruption in the ebuild. (--debug)\n\n") % myebuild,
-						noiselevel=-1)
-					raise KeyError(mycpv)
-			finally:
-				if mylock:
-					portage_locks.unlockfile(mylock)
-
+			self.doebuild_settings.reset()
 			mydata = {}
-			for x in range(0,len(mylines)):
-				if mylines[x][-1] == '\n':
-					mylines[x] = mylines[x][:-1]
-				mydata[auxdbkeys[x]] = mylines[x]
+			myret = doebuild(myebuild, "depend",
+				self.doebuild_settings["ROOT"], self.doebuild_settings,
+				dbkey=mydata, tree="porttree", mydbapi=self)
+			if myret != os.EX_OK:
+				raise KeyError(mycpv)
 
 			if "EAPI" not in mydata or not mydata["EAPI"].strip():
 				mydata["EAPI"] = "0"
