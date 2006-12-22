@@ -19,7 +19,10 @@ class database(template.database):
 		**config):
 		super(database, self).__init__(location, label, auxdbkeys)
 		self.db_rw = db_rw(location, label, auxdbkeys, **config)
-		self.db_ro = db_ro(label,"metadata/cache",auxdbkeys)
+		self.commit = self.db_rw.commit
+		ro_config = config.copy()
+		ro_config["readonly"] = True
+		self.db_ro = db_ro(label, "metadata/cache", auxdbkeys, **ro_config)
 
 	def __getitem__(self, cpv):
 		"""funnel whiteout validation through here, since value needs to be fetched"""

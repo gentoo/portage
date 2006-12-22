@@ -3236,8 +3236,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		# Only try and fetch the files if we are going to need them ...
 		# otherwise, if user has FEATURES=noauto and they run `ebuild clean
 		# unpack compile install`, we will try and fetch 4 times :/
-		need_distfiles = (mydo in ("digest", "fetch", "unpack") or \
-			mydo != "manifest" and "noauto" not in features)
+		need_distfiles = (mydo in ("fetch", "unpack") or \
+			mydo not in ("digest", "manifest") and "noauto" not in features)
 		if need_distfiles and not fetch(
 			fetchme, mysettings, listonly=listonly, fetchonly=fetchonly):
 			return 1
@@ -5168,9 +5168,18 @@ class portdbapi(dbapi):
 		# XXX: REMOVE THIS ONCE UNUSED_0 IS YANKED FROM auxdbkeys
 		# ~harring
 		filtered_auxdbkeys = filter(lambda x: not x.startswith("UNUSED_0"), auxdbkeys)
-		for x in self.porttrees:
-			# location, label, auxdbkeys
-			self.auxdb[x] = self.auxdbmodule(self.depcachedir, x, filtered_auxdbkeys, gid=portage_gid)
+		if secpass < 1:
+			from cache import metadata_overlay, volatile
+			for x in self.porttrees:
+				self.auxdb[x] = metadata_overlay.database(
+					self.depcachedir, x, filtered_auxdbkeys,
+					gid=portage_gid, db_rw=volatile.database,
+					db_ro=self.auxdbmodule)
+		else:
+			for x in self.porttrees:
+				# location, label, auxdbkeys
+				self.auxdb[x] = self.auxdbmodule(
+					self.depcachedir, x, filtered_auxdbkeys, gid=portage_gid)
 		# Selectively cache metadata in order to optimize dep matching.
 		self._aux_cache_keys = set(["EAPI", "KEYWORDS", "SLOT"])
 		self._aux_cache = {}
