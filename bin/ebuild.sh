@@ -1656,7 +1656,9 @@ for myarg in ${EBUILD_SH_ARGS} ; do
 done
 
 # Save the env only for relevant phases.
-if [ -n "$myarg" ] && [ "$myarg" != "clean" ]; then
+if [ -n "${myarg}" ] && \
+	[ "${myarg}" != "clean" ] && \
+	[ "${myarg}" != "help" ] ; then
 	# Do not save myarg in the env, or else the above [ -n "$myarg" ] test will
 	# give a false positive when ebuild.sh is sourced.
 	unset myarg
