@@ -3225,8 +3225,7 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 		#we're done... return
 		return 0
 	if "--ask" in myopts:
-		if userquery("Would you like to unmerge these packages?",
-			responses=["No", "Yes"], colours=[red, green]) == "No":
+		if userquery("Would you like to unmerge these packages?")=="No":
 			# enter pretend mode for correct formatting of results
 			myopts["--pretend"] = True
 			print
