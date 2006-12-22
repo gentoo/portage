@@ -168,32 +168,6 @@ def abssymlink(symlink):
 		mylink=mydir+"/"+mylink
 	return os.path.normpath(mylink)
 
-def suffix_array(array,suffix,doblanks=1):
-	"""Appends a given suffix to each element in an Array/List/Tuple.
-	Returns a List."""
-	if type(array) not in [types.ListType, types.TupleType]:
-		raise TypeError, "List or Tuple expected. Got %s" % type(array)
-	newarray=[]
-	for x in array:
-		if x or doblanks:
-			newarray.append(x + suffix)
-		else:
-			newarray.append(x)
-	return newarray
-
-def prefix_array(array,prefix,doblanks=1):
-	"""Prepends a given prefix to each element in an Array/List/Tuple.
-	Returns a List."""
-	if type(array) not in [types.ListType, types.TupleType]:
-		raise TypeError, "List or Tuple expected. Got %s" % type(array)
-	newarray=[]
-	for x in array:
-		if x or doblanks:
-			newarray.append(prefix + x)
-		else:
-			newarray.append(x)
-	return newarray
-
 dircache = {}
 cacheHit=0
 cacheMiss=0
