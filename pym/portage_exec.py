@@ -28,6 +28,19 @@ sandbox_capable = (os.path.isfile(SANDBOX_BINARY) and
                    os.access(SANDBOX_BINARY, os.X_OK))
 
 def spawn_bash(mycommand, debug=False, opt_name=None, **keywords):
+	"""
+	Spawns a bash shell running a specific commands
+	
+	@param mycommand: The command for bash to run
+	@type mycommand: String
+	@param debug: Turn bash debugging on (set -x)
+	@type debug: Boolean
+	@param opt_name: Name of the spawned process (detaults to binary name)
+	@type opt_name: String
+	@param keywords: Extra Dictionary arguments to pass to spawn
+	@type keywords: Dictionary
+	"""
+
 	args = [BASH_BINARY]
 	if not opt_name:
 		opt_name = os.path.basename(mycommand.split()[0])
@@ -101,6 +114,37 @@ atexit_register(cleanup)
 def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
           uid=None, gid=None, groups=None, umask=None, logfile=None,
           path_lookup=True):
+	"""
+	Spawns a given command.
+	
+	@param mycommand: the command to execute
+	@type mycommand: String or List (Popen style list)
+	@param env: A dict of Key=Value pairs for env variables
+	@type env: Dictionary
+	@param opt_name: an optional name for the spawn'd process (defaults to the binary name)
+	@type opt_name: String
+	@param fd_pipes: A dict of mapping for pipes, { '0': stdin, '1': stdout } for example
+	@type fd_pipes: Dictionary
+	@param returnpid: Return the Process IDs for a successful spawn.
+	NOTE: This requires the caller clean up all the PIDs, otherwise spawn will clean them.
+	@type returnpid: Boolean
+	@param uid: User ID to spawn as; useful for dropping privilages
+	@type uid: Integer
+	@param gid: Group ID to spawn as; useful for dropping privilages
+	@type gid: Integer
+	@param groups: Group ID's to spawn in: useful for having the process run in multiple group contexts.
+	@type groups: List
+	@param umask: An integer representing the umask for the process (see man chmod for umask details)
+	@type umask: Integer
+	@param logfile: name of a file to use for logging purposes
+	@type logfile: String
+	@param path_lookup: If the binary is not fully specified then look for it in PATH
+	@type path_lookup: Boolean
+	
+	logfile requires stdout and stderr to be assigned to this process (ie not pointed
+	   somewhere else.)
+	
+	"""
 
 	# mycommand is either a str or a list
 	if isinstance(mycommand, str):
@@ -208,6 +252,31 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 
 def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask):
 
+	"""
+	Execute a given binary with options
+	
+	@param binary: Name of program to execute
+	@type binary: String
+	@param mycommand: Options for program
+	@type mycommand: String
+	@param opt_name: Name of process (defaults to binary)
+	@type opt_name: String
+	@param fd_pipes: Mapping pipes to destination; { 0:0, 1:1, 2:2 }
+	@type fd_pipes: Dictionary
+	@param env: Key,Value mapping for Environmental Variables
+	@type env: Dictionary
+	@param gid: Group ID to run the process under
+	@type gid: Integer
+	@param groups: Groups the Process should be in.
+	@type groups: Integer
+	@param uid: User ID to run the process under
+	@type uid: Integer
+	@param umask: an int representing a unix umask (see man chmod for umask details)
+	@type umask: Integer
+	@rtype: None
+	@returns: Never returns (calls os.execve)
+	"""
+	
 	# If the process we're creating hasn't been given a name
 	# assign it the name of the executable.
 	if not opt_name:
@@ -250,6 +319,15 @@ def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask):
 	os.execve(binary, myargs, env)
 
 def find_binary(binary):
+	"""
+	Given a binary name, find the binary in PATH
+	
+	@param binary: Name of the binary to find
+	@type string
+	@rtype: None or string
+	@returns: full path to binary or None if the binary could not be located.
+	"""
+	
 	for path in os.getenv("PATH", "").split(":"):
 		filename = "%s/%s" % (path, binary)
 		if os.access(filename, os.X_OK) and os.path.isfile(filename):
