@@ -32,7 +32,7 @@ for x in "$@" ; do
 		eend $r
 		((ret+=$r))
 	else
-		echo "!!! ${0##*/}: ${x} does not exist" 1>&2
+		eerror "${0##*/}: ${x} does not exist"
 		false
 	fi
 done
