@@ -847,9 +847,37 @@ def check_config_instance(test):
 		raise TypeError, "Invalid type for config object: %s" % test.__class__
 
 class config:
+	"""
+	This class encompasses the main portage configuration.  Data is pulled from
+	ROOT/PORTDIR/profiles/, from ROOT/etc/make.profile incrementally through all 
+	parent profiles as well as from ROOT/PORTAGE_CONFIGROOT/* for user specified
+	overrides.
+	
+	Generally if you need data like USE flags, FEATURES, environment variables,
+	virtuals ...etc you look in here.
+	"""
+	
 	def __init__(self, clone=None, mycpv=None, config_profile_path=None,
 		config_incrementals=None, config_root=None, target_root=None,
 		local_config=True):
+		"""
+		@param clone: If provided, init will use deepcopy to copy by value the instance.
+		@type clone: Instance of config class.
+		@param mycpv: CPV to load up (see setcpv), this is the same as calling init with mycpv=None
+		and then calling instance.setcpv(mycpv).
+		@type mycpv: String
+		@param config_profile_path: Configurable path to the profile (usually PROFILE_PATH from portage_const)
+		@type config_profile_path: String
+		@param config_incrementals: List of incremental variables (usually portage_const.INCREMENTALS)
+		@type config_incrementals: List
+		@param config_root: path to read local config from (defaults to "/", see PORTAGE_CONFIGROOT)
+		@type config_root: String
+		@param target_root: __init__ override of $ROOT env variable.
+		@type target_root: String
+		@param local_config: Enables loading of local config (/etc/portage); used most by repoman to
+		ignore local config (keywording and unmasking)
+		@type local_config: Boolean
+		"""
 
 		self.already_in_regenerate = 0
 
@@ -2548,7 +2576,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 	return 1
 
 def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None):
-	"""Generates a digest file if missing.  Assumes all files are available.
+	"""
+	Generates a digest file if missing.  Assumes all files are available.
 	DEPRECATED: this now only is a compability wrapper for 
 	            portage_manifest.Manifest()
 	NOTE: manifestonly and overwrite are useless with manifest2 and
@@ -2777,19 +2806,6 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 					noiselevel=-1)
 			return qa_retval
 	return phase_retval
-
-# chunked out deps for each phase, so that ebuild binary can use it 
-# to collapse targets down.
-actionmap_deps={
-	"depend": [],
-	"setup":  [],
-	"unpack": ["setup"],
-	"compile":["unpack"],
-	"test":   ["compile"],
-	"install":["test"],
-	"rpm":    ["install"],
-	"package":["install"],
-}
 
 
 def eapi_is_supported(eapi):
@@ -3103,7 +3119,21 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	if not tree:
 		writemsg("Warning: tree not specified to doebuild\n")
 		tree = "porttree"
-	global db, actionmap_deps
+	global db
+	
+	# chunked out deps for each phase, so that ebuild binary can use it 
+	# to collapse targets down.
+	actionmap_deps={
+	"depend": [],
+	"setup":  [],
+	"unpack": ["setup"],
+	"compile":["unpack"],
+	"test":   ["compile"],
+	"install":["test"],
+	"rpm":    ["install"],
+	"package":["install"],
+	}
+	
 	if mydbapi is None:
 		mydbapi = db[myroot][tree].dbapi
 
