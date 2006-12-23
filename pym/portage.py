@@ -271,8 +271,6 @@ def listdir(mypath, recursive=False, filesonly=False, ignorecvs=False, ignorelis
 
 	return rlist
 
-starttime=long(time.time())
-
 def flatten(mytokens):
 	"""this function now turns a [1,[2,3]] list into
 	a [1,2,3] list and returns it."""
