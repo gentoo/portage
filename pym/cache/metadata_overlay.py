@@ -15,8 +15,11 @@ class database(template.database):
 	serialize_eclasses = False
 
 	def __init__(self, location, label, auxdbkeys, db_rw=db_rw, db_ro=db_ro,
-		**config):
-		super(database, self).__init__(location, label, auxdbkeys)
+		*args, **config):
+		super_config = config.copy()
+		super_config.pop("gid", None)
+		super(database, self).__init__(location, label, auxdbkeys,
+			*args, **super_config)
 		self.db_rw = db_rw(location, label, auxdbkeys, **config)
 		self.commit = self.db_rw.commit
 		self.autocommits = self.db_rw.autocommits
