@@ -4374,8 +4374,12 @@ def action_build(settings, trees, mtimedb,
 				myresumeopts[myopt] = myarg
 		myopts=myresumeopts
 		myparams = create_depgraph_params(myopts, myaction)
+		if not "--quiet" in myopts:
+			print "Calculating dependencies  ",
 		mydepgraph = depgraph(settings, trees,
 			myopts, myparams, spinner)
+		if not "--quiet" in myopts:
+			print "\b\b... done!"
 	else:
 		if ("--resume" in myopts):
 			print darkgreen("emerge: It seems we have nothing to resume...")
