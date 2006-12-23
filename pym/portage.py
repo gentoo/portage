@@ -5171,10 +5171,12 @@ class portdbapi(dbapi):
 		if secpass < 1:
 			from cache import metadata_overlay, volatile
 			for x in self.porttrees:
+				db_ro = self.auxdbmodule(self.depcachedir, x,
+					filtered_auxdbkeys, gid=portage_gid, readonly=True)
 				self.auxdb[x] = metadata_overlay.database(
 					self.depcachedir, x, filtered_auxdbkeys,
 					gid=portage_gid, db_rw=volatile.database,
-					db_ro=self.auxdbmodule)
+					db_ro=db_ro)
 		else:
 			for x in self.porttrees:
 				# location, label, auxdbkeys
