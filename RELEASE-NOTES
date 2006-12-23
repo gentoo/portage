@@ -4,6 +4,12 @@ Features/major bugfixes are listed in NEWS
 portage-2.1.2
 ==================================
 
+* Depending on the number of packages installed, users may notice a difference
+  in the time taken for dependency calculations.  This performance penalty is
+  due to the addition of important new features which include the ability to
+  detect reverse blockers, the building of a complete dependency graph, and the
+  ability to use installed packages to satisify dependencies even after their
+  ebuilds have been removed from the portage tree.
 * emerge does not necessarily update build time dependencies that are not
   strictly required.  See the --with-bdeps option in the emerge(1) man page.
 
