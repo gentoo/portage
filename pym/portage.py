@@ -6648,7 +6648,7 @@ class dblink:
 								if f.startswith(myignore + os.path.sep):
 									stopmerge = False
 									break
-			print green("*")+" spent "+str(time.time()-starttime)+" seconds checking for file collisions"
+			#print green("*")+" spent "+str(time.time()-starttime)+" seconds checking for file collisions"
 			if stopmerge:
 				print red("*")+" This package is blocked because it wants to overwrite"
 				print red("*")+" files belonging to other packages (see messages above)."
