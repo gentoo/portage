@@ -5376,6 +5376,9 @@ class portdbapi(dbapi):
 
 			self.auxdb[mylocation][mycpv] = mydata
 
+		if not mydata.setdefault("EAPI", "0"):
+			mydata["EAPI"] = "0"
+
 		#finally, we look at our internal cache entry and return the requested data.
 		returnme = []
 		for x in mylist:
@@ -5384,15 +5387,8 @@ class portdbapi(dbapi):
 			else:
 				returnme.append(mydata.get(x,""))
 
-		if "EAPI" in mylist:
-			idx = mylist.index("EAPI")
-			if not returnme[idx]:
-				returnme[idx] = "0"
-
 		if cache_me:
 			aux_cache = {}
-			if not mydata.setdefault("EAPI", "0"):
-				mydata["EAPI"] = "0"
 			for x in self._aux_cache_keys:
 				aux_cache[x] = mydata.get(x, "")
 			self._aux_cache[mycpv] = aux_cache
