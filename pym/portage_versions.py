@@ -5,7 +5,8 @@
 
 import re,string
 
-ver_regexp = re.compile("^(cvs\\.)?(\\d+)((\\.\\d+)*)([a-z]?)((_(pre|p|beta|alpha|rc)\\d*)*)(-r(\\d+))?$")
+# PREFIX hack: -r(\\d+) -> -r(\\d+(\\.\\d+)?) (see below)
+ver_regexp = re.compile("^(cvs\\.)?(\\d+)((\\.\\d+)*)([a-z]?)((_(pre|p|beta|alpha|rc)\\d*)*)(-r(\\d+(\\.\\d+)?))?$")
 suffix_regexp = re.compile("^(alpha|beta|rc|pre|p)(\\d*)$")
 suffix_value = {"pre": -2, "p": 0, "alpha": -4, "beta": -3, "rc": -1}
 endversion_keys = ["pre", "p", "alpha", "beta", "rc"]
@@ -142,12 +143,25 @@ def vercmp(ver1, ver2, silent=1):
 			return r1 - r2
 	
 	# the suffix part is equal to, so finally check the revision
+	# PREFIX hack: a revision starting with 0 is an 'inter-revision',
+	# which means that it is possible to create revisions on revisions.
+	# An example is -r01.1 which is the first revision of -r1.  Note
+	# that a period (.) is used to separate the real revision and the
+	# secondary revision number.  This trick is in use to allow revision
+	# bumps in ebuilds synced from the main tree for prefix changes,
+	# while still staying in the main tree versioning scheme.
 	if match1.group(10):
-		r1 = string.atoi(match1.group(10))
+		if match1.group(10)[0] == '0':
+			r1 = string.atof(match1.group(10)[1:])
+		else:
+			r1 = string.atoi(match1.group(10))
 	else:
 		r1 = 0
 	if match2.group(10):
-		r2 = string.atoi(match2.group(10))
+		if match2.group(10)[0] == '0':
+			r2 = string.atof(match2.group(10)[1:])
+		else:
+			r2 = string.atoi(match2.group(10))
 	else:
 		r2 = 0
 	vercmp_cache[mykey] = r1 - r2
@@ -219,7 +233,8 @@ def pkgsplit(mypkg,silent=1):
 	myrev=myparts[-1]
 	if len(myrev) and myrev[0]=="r":
 		try:
-			string.atoi(myrev[1:])
+			# PREFIX hack: allow floats in revisions
+			string.atof(myrev[1:])
 			revok=1
 		except: 
 			pass
