@@ -4619,6 +4619,9 @@ class bindbapi(fakedbapi):
 			settings = globals()["settings"]
 		self.settings = settings
 		self._match_cache = {}
+		# Selectively cache metadata in order to optimize dep matching.
+		self._aux_cache_keys = set(["SLOT"])
+		self._aux_cache = {}
 
 	def match(self, *pargs, **kwargs):
 		if self.bintree and not self.bintree.populated:
@@ -4628,28 +4631,39 @@ class bindbapi(fakedbapi):
 	def aux_get(self,mycpv,wants):
 		if self.bintree and not self.bintree.populated:
 			self.bintree.populate()
+		cache_me = False
+		if not set(wants).difference(self._aux_cache_keys):
+			aux_cache = self._aux_cache.get(mycpv)
+			if aux_cache is not None:
+				return [aux_cache[x] for x in wants]
+			cache_me = True
 		mysplit = string.split(mycpv,"/")
 		mylist  = []
 		tbz2name = mysplit[1]+".tbz2"
 		if self.bintree and not self.bintree.isremote(mycpv):
 			tbz2 = xpak.tbz2(self.bintree.getname(mycpv))
-		for x in wants:
-			if self.bintree and self.bintree.isremote(mycpv):
-				# We use the cache for remote packages
-				mylist.append(" ".join(
-					self.bintree.remotepkgs[tbz2name].get(x,"").split()))
-			else:
-				myval = tbz2.getfile(x)
-				if myval is None:
-					myval = ""
-				else:
-					myval = string.join(myval.split(),' ')
-				mylist.append(myval)
-		if "EAPI" in wants:
-			idx = wants.index("EAPI")
-			if not mylist[idx]:
-				mylist[idx] = "0"
-		return mylist
+			getitem = tbz2.getfile
+		else:
+			getitem = self.bintree.remotepkgs[tbz2name].get
+		mydata = {}
+		mykeys = wants
+		if cache_me:
+			mykeys = self._aux_cache_keys.union(wants)
+		for x in mykeys:
+			myval = getitem(x)
+			# myval is None if the key doesn't exist
+			# or the tbz2 is corrupt.
+			if myval:
+				mydata[x] = " ".join(myval.split())
+		eapi = mydata.get("EAPI")
+		if eapi is not None and not eapi:
+			mydata["EAPI"] = "0"
+		if cache_me:
+			aux_cache = {}
+			for x in self._aux_cache_keys:
+				aux_cache[x] = mydata.get(x, "")
+			self._aux_cache[mycpv] = aux_cache
+		return [mydata.get(x, "") for x in wants]
 
 	def aux_update(self, cpv, values):
 		if not self.bintree.populated:
