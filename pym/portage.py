@@ -3116,6 +3116,54 @@ _doebuild_manifest_checked = None
 def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	fetchonly=0, cleanup=0, dbkey=None, use_cache=1, fetchall=0, tree=None,
 	mydbapi=None, vartree=None, prev_mtimes=None):
+	
+	"""
+	Wrapper function that invokes specific ebuild phases through the spawning
+	of ebuild.sh
+	
+	@param myebuild: name of the ebuild to invoke the phase on (CPV)
+	@type myebuild: String
+	@param mydo: Phase to run
+	@type mydo: String
+	@param myroot: $ROOT (usually '/', see man make.conf)
+	@type myroot: String
+	@param mysettings: Portage Configuration
+	@type mysettings: instance of portage.config
+	@param debug: Turns on various debug information (eg, debug for spawn)
+	@type debug: Boolean
+	@param listonly: Used to wrap fetch(); passed such that fetch only lists files required.
+	@type listonly: Boolean
+	@param fetchonly: Used to wrap fetch(); passed such that files are only fetched (no other actions)
+	@type fetchonly: Boolean
+	@param cleanup: Passed to prepare_build_dirs (TODO: what does it do?)
+	@type cleanup: Boolean
+	@param dbkey: A dict (usually keys and values from the depend phase, such as KEYWORDS, USE, etc..)
+	@type dbkey: Dict or String
+	@param use_cache: Enables the cache
+	@type use_cache: Boolean
+	@param fetchall: Used to wrap fetch(), fetches all URI's (even ones invalid due to USE conditionals)
+	@type fetchall: Boolean
+	@param tree: Which tree to use ('vartree','porttree','bintree', etc..), defaults to 'porttree'
+	@type tree: String
+	@param mydbapi: a dbapi instance to pass to various functions; this should be a portdbapi instance.
+	@type mydbapi: portdbapi instance
+	@param vartree: A instance of vartree; used for aux_get calls, defaults to db[myroot]['vartree']
+	@type vartree: vartree instance
+	@param prev_mtimes: A dict of { filename:mtime } keys used by merge() to do config_protection
+	@type prev_mtimes: dictionary
+	@rtype: Boolean
+	@returns:
+	1. 0 for success
+	2. 1 for error
+	
+	Most errors have an accompanying error message.
+	
+	listonly and fetchonly are only really necessary for operations involving 'fetch'
+	prev_mtimes are only necessary for merge operations.
+	Other variables may not be strictly required, many have defaults that are set inside of doebuild.
+	
+	"""
+	
 	if not tree:
 		writemsg("Warning: tree not specified to doebuild\n")
 		tree = "porttree"
