@@ -4350,41 +4350,6 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 		rValue.append(kmask+" keyword")
 	return rValue
 
-class packagetree:
-	def __init__(self,virtual,clone=None):
-		if clone:
-			self.tree=clone.tree.copy()
-			self.populated=clone.populated
-			self.virtual=clone.virtual
-			self.dbapi=None
-		else:
-			self.tree={}
-			self.populated=0
-			self.virtual=virtual
-			self.dbapi=None
-
-	def resolve_key(self,mykey):
-		return key_expand(mykey, mydb=self.dbapi, settings=self.settings)
-
-	def dep_nomatch(self,mypkgdep):
-		mykey=dep_getkey(mypkgdep)
-		nolist=self.dbapi.cp_list(mykey)
-		mymatch=self.dbapi.match(mypkgdep)
-		if not mymatch:
-			return nolist
-		for x in mymatch:
-			if x in nolist:
-				nolist.remove(x)
-		return nolist
-
-	def depcheck(self,mycheck,use="yes",myusesplit=None):
-		return dep_check(mycheck,self.dbapi,use=use,myuse=myusesplit)
-
-	def populate(self):
-		"populates the tree with values"
-		populated=1
-		pass
-
 class portagetree:
 	def __init__(self, root="/", virtual=None, clone=None, settings=None):
 
@@ -5056,7 +5021,7 @@ class vardbapi(dbapi):
 			write_atomic(cpath, str(counter))
 		return counter
 
-class vartree(packagetree):
+class vartree(object):
 	"this tree will scan a var/db/pkg database located at root (passed to init)"
 	def __init__(self, root="/", virtual=None, clone=None, categories=None,
 		settings=None):
@@ -5854,7 +5819,7 @@ class portdbapi(dbapi):
 				newlist.append(mycpv)
 		return newlist
 
-class binarytree(packagetree):
+class binarytree(object):
 	"this tree scans for a list of all packages available in PKGDIR"
 	def __init__(self, root, pkgdir, virtual=None, settings=None, clone=None):
 		if clone:
