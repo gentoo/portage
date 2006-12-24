@@ -103,6 +103,11 @@ def paren_enclose(mylist):
 			mystrparts.append(x)
 	return " ".join(mystrparts)
 
+# This is just for use by emerge so that it can enable a backward compatibility
+# mode in order to gracefully deal with installed packages that have invalid
+# atoms or dep syntax.
+_dep_check_strict = True
+
 def use_reduce(deparray, uselist=[], masklist=[], matchall=0, excludeall=[]):
 	"""
 	Takes a paren_reduce'd array and reduces the use? conditionals out
@@ -126,6 +131,8 @@ def use_reduce(deparray, uselist=[], masklist=[], matchall=0, excludeall=[]):
 				raise portage_exception.InvalidDependString(deparray[x]+" missing atom list in \""+paren_enclose(deparray)+"\"")
 	if deparray and deparray[-1] and deparray[-1][-1] == "?":
 		raise portage_exception.InvalidDependString("Conditional without target in \""+paren_enclose(deparray)+"\"")
+
+	global _dep_check_strict
 
 	mydeparray = deparray[:]
 	rlist = []
@@ -186,6 +193,9 @@ def use_reduce(deparray, uselist=[], masklist=[], matchall=0, excludeall=[]):
 						additions = use_reduce(target, uselist, masklist, matchall, excludeall)
 						if additions:
 							rlist.append(additions)
+					elif not _dep_check_strict:
+						# The old deprecated behavior.
+						rlist.append(target)
 					else:
 						raise portage_exception.InvalidDependString(
 							"Conditional without parenthesis: '%s?'" % head)

@@ -1997,7 +1997,7 @@ class config:
 
 # XXX This would be to replace getstatusoutput completely.
 # XXX Issue: cannot block execution. Deadlock condition.
-def spawn(mystring,mysettings,debug=0,free=0,droppriv=0,sesandbox=0,fd_pipes=None,**keywords):
+def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, **keywords):
 	"""spawn a subprocess with optional sandbox protection,
 	depending on whether sandbox is enabled.  The "free" argument,
 	when set to 1, will disable sandboxing.  This allows us to
@@ -3123,7 +3123,32 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		# get possible slot information from the deps file
 		if mydo == "depend":
 			writemsg("!!! DEBUG: dbkey: %s\n" % str(dbkey), 2)
-			if dbkey:
+			if isinstance(dbkey, dict):
+				mysettings["dbkey"] = ""
+				pr, pw = os.pipe()
+				fd_pipes = {0:0, 1:1, 2:2, 9:pw}
+				mypids = spawn(EBUILD_SH_BINARY + " depend", mysettings,
+					fd_pipes=fd_pipes, returnpid=True)
+				os.close(pw) # belongs exclusively to the child process now
+				maxbytes = 1024
+				mybytes = []
+				while True:
+					mybytes.append(os.read(pr, maxbytes))
+					if not mybytes[-1]:
+						break
+				os.close(pr)
+				mybytes = "".join(mybytes)
+				global auxdbkeys
+				dbkey.update(izip(auxdbkeys, mybytes.split("\n")))
+				retval = os.waitpid(mypids[0], 0)[1]
+				# If it got a signal, return the signal that was sent, but
+				# shift in order to distinguish it from a return value. (just
+				# like portage_exec.spawn() would do).
+				if retval & 0xff:
+					return (retval & 0xff) << 8
+				# Otherwise, return its exit code.
+				return retval >> 8
+			elif dbkey:
 				mysettings["dbkey"] = dbkey
 			else:
 				mysettings["dbkey"] = \
@@ -3141,7 +3166,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			return 1
 
 		# Build directory creation isn't required for any of these.
-		if mydo not in ["fetch","digest","manifest"]:
+		if mydo not in ("digest", "fetch", "help", "manifest"):
 			mystatus = prepare_build_dirs(myroot, mysettings, cleanup)
 			if mystatus:
 				return mystatus
@@ -3588,11 +3613,12 @@ def unmerge(cat, pkg, myroot, mysettings, mytrimworld=1, vartree=None, ldpath_mt
 	try:
 		mylink.lockdb()
 		if mylink.exists():
-			mylink.unmerge(trimworld=mytrimworld, cleanup=1,
+			retval = mylink.unmerge(trimworld=mytrimworld, cleanup=1,
 				ldpath_mtimes=ldpath_mtimes)
-			mylink.delete()
-			return 0
-		return 1
+			if retval == os.EX_OK:
+				mylink.delete()
+			return retval
+		return os.EX_OK
 	finally:
 		mylink.unlockdb()
 
@@ -3653,7 +3679,8 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			newsplit.append(_expand_new_virtuals(x, edebug, mydbapi,
 				mysettings, myroot=myroot, trees=trees, **kwargs))
 			continue
-		if not isvalidatom(x, allow_blockers=True):
+		if portage_dep._dep_check_strict and \
+			not isvalidatom(x, allow_blockers=True):
 			raise portage_exception.ParseError(
 				"invalid atom: '%s'" % x)
 		mykey = dep_getkey(x)
@@ -5342,55 +5369,13 @@ class portdbapi(dbapi):
 			writemsg("doregen: %s %s\n" % (doregen,mycpv), 2)
 			writemsg("Generating cache entry(0) for: "+str(myebuild)+"\n",1)
 
-			if self.tmpfs:
-				mydbkey = self.tmpfs+"/aux_db_key_temp"
-			else:
-				mydbkey = self.depcachedir+"/aux_db_key_temp"
-
-			mylock = None
-			try:
-				mylock = portage_locks.lockfile(mydbkey, wantnewlockfile=1)
-				try:
-					os.unlink(mydbkey)
-				except (IOError, OSError), e:
-					if e.errno != errno.ENOENT:
-						raise
-					del e
-
-				self.doebuild_settings.reset()
-				myret = doebuild(myebuild, "depend", "/",
-					 self.doebuild_settings, dbkey=mydbkey, tree="porttree",
-					 mydbapi=self)
-				if myret != os.EX_OK:
-					#depend returned non-zero exit code...
-					writemsg((red("\naux_get():") + \
-						" (0) Error in '%s'. (%s)\n" + \
-						"               Check for syntax error or " + \
-						"corruption in the ebuild. (--debug)\n\n") % \
-						(myebuild, myret), noiselevel=-1)
-					raise KeyError(mycpv)
-
-				try:
-					mycent = open(mydbkey, "r")
-					os.unlink(mydbkey)
-					mylines = mycent.readlines()
-					mycent.close()
-				except (IOError, OSError):
-					writemsg((red("\naux_get():") + \
-						" (1) Error in '%s' ebuild.\n" + \
-						"               Check for syntax error or " + \
-						"corruption in the ebuild. (--debug)\n\n") % myebuild,
-						noiselevel=-1)
-					raise KeyError(mycpv)
-			finally:
-				if mylock:
-					portage_locks.unlockfile(mylock)
-
+			self.doebuild_settings.reset()
 			mydata = {}
-			for x in range(0,len(mylines)):
-				if mylines[x][-1] == '\n':
-					mylines[x] = mylines[x][:-1]
-				mydata[auxdbkeys[x]] = mylines[x]
+			myret = doebuild(myebuild, "depend",
+				self.doebuild_settings["ROOT"], self.doebuild_settings,
+				dbkey=mydata, tree="porttree", mydbapi=self)
+			if myret != os.EX_OK:
+				raise KeyError(mycpv)
 
 			if "EAPI" not in mydata or not mydata["EAPI"].strip():
 				mydata["EAPI"] = "0"
@@ -5428,10 +5413,10 @@ class portdbapi(dbapi):
 
 		if cache_me:
 			aux_cache = {}
+			if not mydata.setdefault("EAPI", "0"):
+				mydata["EAPI"] = "0"
 			for x in self._aux_cache_keys:
-				aux_cache[x] = mydata[x]
-			if not aux_cache["EAPI"]:
-				aux_cache["EAPI"] = "0"
+				aux_cache[x] = mydata.get(x, "")
 			self._aux_cache[mycpv] = aux_cache
 
 		return returnme
@@ -6387,7 +6372,7 @@ class dblink:
 				# XXX: Decide how to handle failures here.
 				if retval != os.EX_OK:
 					writemsg("!!! FAILED prerm: %s\n" % retval, noiselevel=-1)
-					sys.exit(123)
+					return retval
 
 			self._unmerge_pkgfiles(pkgfiles)
 
@@ -6402,7 +6387,7 @@ class dblink:
 				# XXX: Decide how to handle failures here.
 				if retval != os.EX_OK:
 					writemsg("!!! FAILED postrm: %s\n" % retval, noiselevel=-1)
-					sys.exit(123)
+					return retval
 				doebuild(myebuildpath, "cleanrm", self.myroot, self.settings,
 					tree="vartree", mydbapi=self.vartree.dbapi,
 					vartree=self.vartree)
@@ -6425,6 +6410,7 @@ class dblink:
 					portage_locks.unlockdir(catdir_lock)
 		env_update(target_root=self.myroot, prev_mtimes=ldpath_mtimes,
 			contents=contents)
+		return os.EX_OK
 
 	def _unmerge_pkgfiles(self, pkgfiles):
 

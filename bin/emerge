@@ -40,6 +40,7 @@ from output import create_color_func
 good = create_color_func("GOOD")
 bad = create_color_func("BAD")
 
+import portage_dep
 import portage_util
 import portage_locks
 import portage_exception
@@ -715,7 +716,6 @@ class FakeVartree(portage.vartree):
 		self.root = real_vartree.root
 		self.settings = real_vartree.settings
 		self.dbapi = portage.fakedbapi(settings=real_vartree.settings)
-		global_updates = None
 		vdb_path = os.path.join(self.root, portage.VDB_PATH)
 		try:
 			# At least the parent needs to exist for the lock file.
@@ -728,7 +728,6 @@ class FakeVartree(portage.vartree):
 				vdb_lock = portage_locks.lockdir(vdb_path)
 			mykeys = ["SLOT", "COUNTER", "PROVIDE", "USE", "IUSE",
 				"DEPEND", "RDEPEND", "PDEPEND"]
-			portdb_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
 			real_dbapi = real_vartree.dbapi
 			slot_counters = {}
 			for cpv in real_dbapi.cpv_all():
@@ -746,17 +745,6 @@ class FakeVartree(portage.vartree):
 						continue
 				slot_counters[myslot_atom] = mycounter
 				self.dbapi.cpv_inject(cpv, metadata=metadata)
-				try:
-					# Use the live ebuild metadata if possible.
-					live_metadata = dict(izip(portdb_keys,
-						portdb.aux_get(cpv, portdb_keys)))
-					self.dbapi.aux_update(cpv, live_metadata)
-				except (KeyError, portage_exception.PortageException):
-					if global_updates is None:
-						global_updates = \
-							grab_global_updates(portdb.porttree_root)
-					perform_global_updates(
-						cpv, self.dbapi, global_updates)
 		finally:
 			if vdb_lock:
 				portage_locks.unlockdir(vdb_lock)
@@ -764,6 +752,33 @@ class FakeVartree(portage.vartree):
 		if not self.settings.treeVirtuals:
 			self.settings.treeVirtuals = portage_util.map_dictlist_vals(
 				portage.getCPFromCPV, self.get_all_provides())
+
+		# Intialize variables needed for lazy cache pulls of the live ebuild
+		# metadata.  This ensures that the vardb lock is released ASAP, without
+		# being delayed in case cache generation is triggered.
+		self._aux_get = self.dbapi.aux_get
+		self.dbapi.aux_get = self._aux_get_wrapper
+		self._aux_get_history = set()
+		self._portdb_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
+		self._portdb = portdb
+		self._global_updates = None
+
+	def _aux_get_wrapper(self, pkg, wants):
+		if pkg in self._aux_get_history:
+			return self._aux_get(pkg, wants)
+		self._aux_get_history.add(pkg)
+		try:
+			# Use the live ebuild metadata if possible.
+			live_metadata = dict(izip(self._portdb_keys,
+				self._portdb.aux_get(pkg, self._portdb_keys)))
+			self.dbapi.aux_update(pkg, live_metadata)
+		except (KeyError, portage_exception.PortageException):
+			if self._global_updates is None:
+				self._global_updates = \
+					grab_global_updates(self._portdb.porttree_root)
+			perform_global_updates(
+				pkg, self.dbapi, self._global_updates)
+		return self._aux_get(pkg, wants)
 
 def grab_global_updates(portdir):
 	from portage_update import grab_updates, parse_updates
@@ -803,12 +818,16 @@ def show_invalid_depstring_notice(parent_node, depstring, error_msg):
 	p_type, p_root, p_key, p_status = parent_node
 	msg = []
 	if p_status == "nomerge":
+		category, pf = portage.catsplit(p_key)
+		pkg_location = os.path.join(p_root, portage.VDB_PATH, category, pf)
 		msg.append("Portage is unable to process the dependencies of the ")
 		msg.append("'%s' package. " % p_key)
 		msg.append("In order to correct this problem, the package ")
 		msg.append("should be uninstalled, reinstalled, or upgraded. ")
 		msg.append("As a temporary workaround, the --nodeps option can ")
-		msg.append("be used to ignore all dependencies.")
+		msg.append("be used to ignore all dependencies.  For reference, ")
+		msg.append("the problematic dependencies can be found in the ")
+		msg.append("*DEPEND files located in '%s/'." % pkg_location)
 	else:
 		msg.append("This package can not be installed.  ")
 		msg.append("Please notify the '%s' package maintainer " % p_key)
@@ -859,10 +878,15 @@ class depgraph:
 			# have after new packages have been installed.
 			fakedb = portage.fakedbapi(settings=self.pkgsettings[myroot])
 			self.mydbapi[myroot] = fakedb
-			for pkg in vardb.cpv_all():
-				fakedb.cpv_inject(pkg,
-					metadata=dict(izip(self._mydbapi_keys,
-					vardb.aux_get(pkg, self._mydbapi_keys))))
+			if "--nodeps" not in self.myopts and \
+				"--buildpkgonly" not in self.myopts:
+				# --nodeps bypasses this, since it isn't needed in this case
+				# and the cache pulls might trigger (slow) cache generation.
+				for pkg in vardb.cpv_all():
+					self.spinner.update()
+					fakedb.cpv_inject(pkg,
+						metadata=dict(izip(self._mydbapi_keys,
+						vardb.aux_get(pkg, self._mydbapi_keys))))
 			del vardb, fakedb
 			self.useFlags[myroot] = {}
 			if "--usepkg" in self.myopts:
@@ -1355,6 +1379,8 @@ class depgraph:
 		bindb  = self.trees[myroot]["bintree"].dbapi
 		vardb  = self.trees[myroot]["vartree"].dbapi
 		pkgsettings = self.pkgsettings[myroot]
+		if myparent:
+			p_type, p_root, p_key, p_status = myparent
 
 		if "--debug" in self.myopts:
 			print
@@ -1367,10 +1393,15 @@ class depgraph:
 		#processing dependencies
 		""" Call portage.dep_check to evaluate the use? conditionals and make sure all
 		dependencies are satisfiable. """
-		mycheck = portage.dep_check(depstring, None,
-			pkgsettings, myuse=myuse,
-			use_binaries=("--usepkgonly" in self.myopts),
-			myroot=myroot, trees=self.trees)
+		try:
+			if myparent and p_status == "nomerge":
+				portage_dep._dep_check_strict = False
+			mycheck = portage.dep_check(depstring, None,
+				pkgsettings, myuse=myuse,
+				use_binaries=("--usepkgonly" in self.myopts),
+				myroot=myroot, trees=self.trees)
+		finally:
+			portage_dep._dep_check_strict = True
 
 		if not mycheck[0]:
 			show_invalid_depstring_notice(myparent, depstring, mycheck[1])
@@ -1586,6 +1617,17 @@ class depgraph:
 			"--nodeps" in self.myopts:
 			return True
 
+		modified_slots = {}
+		for myroot in self.trees:
+			myslots = {}
+			modified_slots[myroot] = myslots
+			final_db = self.mydbapi[myroot]
+			slot_node_map = self._slot_node_map[myroot]
+			for slot_atom, mynode in slot_node_map.iteritems():
+				mytype, myroot, mycpv, mystatus = mynode
+				if mystatus == "merge":
+					myslots[slot_atom] = mycpv
+
 		#if "deep" in self.myparams:
 		if True:
 			# Pull in blockers from all installed packages that haven't already
@@ -1626,10 +1668,22 @@ class depgraph:
 						# It is crucial to pass in final_db here in order to
 						# optimize dep_check calls by eliminating atoms via
 						# dep_wordreduce and dep_eval calls.
-						success, atoms = portage.dep_check(depstr, final_db,
-							pkgsettings, myuse=myuse, trees=dep_check_trees,
-							myroot=myroot)
+						try:
+							portage_dep._dep_check_strict = False
+							success, atoms = portage.dep_check(depstr,
+								final_db, pkgsettings, myuse=myuse,
+								trees=dep_check_trees, myroot=myroot)
+						finally:
+							portage_dep._dep_check_strict = True
 						if not success:
+							slot_atom = "%s:%s" % (portage.dep_getkey(pkg),
+								vardb.aux_get(pkg, ["SLOT"])[0])
+							if slot_atom in modified_slots[myroot]:
+								# This package is being replaced anyway, so
+								# ignore invalid dependencies so as not to
+								# annoy the user too much (otherwise they'd be
+								# forced to manually unmerge it first).
+								continue
 							show_invalid_depstring_notice(
 								("installed", myroot, pkg, "nomerge"),
 								depstr, atoms)
@@ -1649,18 +1703,6 @@ class depgraph:
 								myparents = set()
 								self.blocker_parents[blocker] = myparents
 							myparents.add(myparent)
-
-		modified_slots = {}
-		if self.blocker_parents:
-			for myroot in self.trees:
-				myslots = {}
-				modified_slots[myroot] = myslots
-				final_db = self.mydbapi[myroot]
-				slot_node_map = self._slot_node_map[myroot]
-				for slot_atom, mynode in slot_node_map.iteritems():
-					mytype, myroot, mycpv, mystatus = mynode
-					if mystatus == "merge":
-						modified_slots[myroot][slot_atom] = mycpv
 
 		for blocker in self.blocker_parents.keys():
 			mytype, myroot, mydep = blocker
@@ -3184,8 +3226,7 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 		#we're done... return
 		return 0
 	if "--ask" in myopts:
-		if userquery("Would you like to unmerge these packages?",
-			responses=["No", "Yes"], colours=[red, green]) == "No":
+		if userquery("Would you like to unmerge these packages?")=="No":
 			# enter pretend mode for correct formatting of results
 			myopts["--pretend"] = True
 			print
@@ -3206,10 +3247,31 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 				vartree=vartree, ldpath_mtimes=ldpath_mtimes)
 			if retval != os.EX_OK:
 				emergelog(xterm_titles, " !!! unmerge FAILURE: "+y)
+				ebuild = vartree.dbapi.findname(y)
+				show_unmerge_failure_message(y, ebuild, retval)
+				sys.exit(retval)
 			else:
 				clean_world(vartree.dbapi, y)
 				emergelog(xterm_titles, " >>> unmerge success: "+y)
 	return 1
+
+def show_unmerge_failure_message(pkg, ebuild, retval):
+
+	from formatter import AbstractFormatter, DumbWriter
+	f = AbstractFormatter(DumbWriter(maxcol=72))
+
+	msg = []
+	msg.append("A removal phase of the '%s' package " % pkg)
+	msg.append("has failed with exit value %s.  " % retval)
+	msg.append("The problem occurred while executing ")
+	msg.append("the ebuild located at '%s'.  " % ebuild)
+	msg.append("If necessary, manually remove the ebuild " )
+	msg.append("in order to skip the execution of removal phases.")
+
+	print
+	for x in msg:
+		f.add_flowing_data(x)
+	f.end_paragraph(1)
 
 def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 
@@ -4227,8 +4289,12 @@ def action_depclean(settings, trees, ldpath_mtimes,
 					else:
 						print "hard"
 
-				success, atoms = portage.dep_check(depstr, None, settings,
-					myuse=usedef, trees=dep_check_trees, myroot=myroot)
+				try:
+					portage_dep._dep_check_strict = False
+					success, atoms = portage.dep_check(depstr, None, settings,
+						myuse=usedef, trees=dep_check_trees, myroot=myroot)
+				finally:
+					portage_dep._dep_check_strict = True
 				if not success:
 					show_invalid_depstring_notice(
 						("installed", myroot, pkg, "nomerge"),
@@ -4329,12 +4395,11 @@ def action_build(settings, trees, mtimedb,
 			sys.exit(0)
 
 		myparams = create_depgraph_params(myopts, myaction)
-		mydepgraph = depgraph(settings, trees,
-			myopts, myparams, spinner)
 		if myaction in ["system","world"]:
 			if not ("--quiet" in myopts):
 				print "Calculating",myaction,"dependencies  ",
 				sys.stdout.flush()
+			mydepgraph = depgraph(settings, trees, myopts, myparams, spinner)
 			if not mydepgraph.xcreate(myaction):
 				print "!!! Depgraph creation failed."
 				sys.exit(1)
@@ -4344,6 +4409,7 @@ def action_build(settings, trees, mtimedb,
 			if not ("--quiet" in myopts):
 				print "Calculating dependencies  ",
 				sys.stdout.flush()
+			mydepgraph = depgraph(settings, trees, myopts, myparams, spinner)
 			try:
 				retval, favorites = mydepgraph.select_files(myfiles)
 			except portage_exception.PackageNotFound, e:
