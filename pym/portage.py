@@ -4655,9 +4655,9 @@ class bindbapi(fakedbapi):
 			# or the tbz2 is corrupt.
 			if myval:
 				mydata[x] = " ".join(myval.split())
-		eapi = mydata.get("EAPI")
-		if eapi is not None and not eapi:
-			mydata["EAPI"] = "0"
+		if "EAPI" in mykeys:
+			if not mydata.setdefault("EAPI", "0"):
+				mydata["EAPI"] = "0"
 		if cache_me:
 			aux_cache = {}
 			for x in self._aux_cache_keys:
