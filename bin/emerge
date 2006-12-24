@@ -4023,7 +4023,7 @@ def action_info(settings, trees, myopts, myfiles):
 	print header_width * "="
 	print "System uname: "+unameout
 	gentoo_release = portage.grabfile(os.path.join(
-		settings["PORTAGE_CONFIGROOT"], "etc", "gentoo-release"))
+		settings["PORTAGE_CONFIGROOT"] + EPREFIX, "etc", "gentoo-release"))
 	if gentoo_release:
 		print gentoo_release[0]
 	else:
