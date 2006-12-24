@@ -4585,16 +4585,6 @@ class fakedbapi(dbapi):
 		if not mycpv in self.cpdict[mycp]:
 			self.cpdict[mycp].append(mycpv)
 
-	#def cpv_virtual(self,oldcpv,newcpv):
-	#	"""Maps a cpv to the list of available packages."""
-	#	mycp=cpv_getkey(newcpv)
-	#	self.cpvdict[newcpv]=1
-	#	if not self.virtdict.has_key(mycp):
-	#		self.virtdict[mycp]=[]
-	#	if not mycpv in self.virtdict[mycp]:
-	#		self.virtdict[mycp].append(oldcpv)
-	#	cpv_remove(oldcpv)
-
 	def cpv_remove(self,mycpv):
 		"""Removes a cpv from the list of available packages."""
 		self._clear_cache()
@@ -4682,7 +4672,6 @@ class bindbapi(fakedbapi):
 			self.bintree.populate()
 		return fakedbapi.cpv_all(self)
 
-cptot=0
 class vardbapi(dbapi):
 	def __init__(self, root, categories=None, settings=None, vartree=None):
 		self.root       = root[:]
