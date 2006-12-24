@@ -17,7 +17,7 @@ class database(fs_template.FsBased):
 		self.location = os.path.join(self.location, 
 			self.label.lstrip(os.path.sep).rstrip(os.path.sep))
 
-		if not os.path.exists(self.location):
+		if not self.readonly and not os.path.exists(self.location):
 			self._ensure_dirs()
 
 	def __getitem__(self, cpv):

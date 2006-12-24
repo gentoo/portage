@@ -12,13 +12,19 @@ from cache.metadata import database as db_ro
 
 class database(template.database):
 
-	autocommits = True
 	serialize_eclasses = False
 
 	def __init__(self, location, label, auxdbkeys, **config):
 		super(database, self).__init__(location, label, auxdbkeys)
 		self.db_rw = db_rw(location, label, auxdbkeys, **config)
-		self.db_ro = db_ro(label,"metadata/cache",auxdbkeys)
+		self.commit = self.db_rw.commit
+		self.autocommits = self.db_rw.autocommits
+		if isinstance(db_ro, type):
+			ro_config = config.copy()
+			ro_config["readonly"] = True
+			self.db_ro = db_ro(label, "metadata/cache", auxdbkeys, **ro_config)
+		else:
+			self.db_ro = db_ro
 
 	def __getitem__(self, cpv):
 		"""funnel whiteout validation through here, since value needs to be fetched"""

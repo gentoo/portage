@@ -168,32 +168,6 @@ def abssymlink(symlink):
 		mylink=mydir+"/"+mylink
 	return os.path.normpath(mylink)
 
-def suffix_array(array,suffix,doblanks=1):
-	"""Appends a given suffix to each element in an Array/List/Tuple.
-	Returns a List."""
-	if type(array) not in [types.ListType, types.TupleType]:
-		raise TypeError, "List or Tuple expected. Got %s" % type(array)
-	newarray=[]
-	for x in array:
-		if x or doblanks:
-			newarray.append(x + suffix)
-		else:
-			newarray.append(x)
-	return newarray
-
-def prefix_array(array,prefix,doblanks=1):
-	"""Prepends a given prefix to each element in an Array/List/Tuple.
-	Returns a List."""
-	if type(array) not in [types.ListType, types.TupleType]:
-		raise TypeError, "List or Tuple expected. Got %s" % type(array)
-	newarray=[]
-	for x in array:
-		if x or doblanks:
-			newarray.append(prefix + x)
-		else:
-			newarray.append(x)
-	return newarray
-
 dircache = {}
 cacheHit=0
 cacheMiss=0
@@ -255,9 +229,30 @@ def cacheddir(my_original_path, ignorecvs, ignorelist, EmptyOnError, followSymli
 	writemsg("cacheddirStats: H:%d/M:%d/S:%d\n" % (cacheHit, cacheMiss, cacheStale),10)
 	return ret_list, ret_ftype
 
-
 def listdir(mypath, recursive=False, filesonly=False, ignorecvs=False, ignorelist=[], followSymlinks=True,
 	EmptyOnError=False, dirsonly=False):
+	"""
+	Portage-specific implementation of os.listdir
+
+	@param mypath: Path whose contents you wish to list
+	@type mypath: String
+	@param recursive: Recursively scan directories contained within mypath
+	@type recursive: Boolean
+	@param filesonly; Only return files, not more directories
+	@type filesonly: Boolean
+	@param ignorecvs: Ignore CVS directories ('CVS','.svn','SCCS')
+	@type ignorecvs: Boolean
+	@param ignorelist: List of filenames/directories to exclude
+	@type ignorelist: List
+	@param followSymlinks: Follow Symlink'd files and directories
+	@type followSymlinks: Boolean
+	@param EmptyOnError: Return [] if an error occurs.
+	@type EmptyOnError: Boolean
+	@param dirsonly: Only return directories.
+	@type dirsonly: Boolean
+	@rtype: List
+	@returns: A list of files and directories (or just files or just directories) or an empty list.
+	"""
 
 	list, ftype = cacheddir(mypath, ignorecvs, ignorelist, EmptyOnError, followSymlinks)
 
@@ -296,8 +291,6 @@ def listdir(mypath, recursive=False, filesonly=False, ignorecvs=False, ignorelis
 		rlist=list
 
 	return rlist
-
-starttime=long(time.time())
 
 def flatten(mytokens):
 	"""this function now turns a [1,[2,3]] list into
@@ -754,12 +747,17 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None):
 		outfile.write("setenv %s '%s'\n" % (x, env[x]))
 	outfile.close()
 
-# returns a tuple.  (version[string], error[string])
-# They are pretty much mutually exclusive.
-# Either version is a string and error is none, or
-# version is None and error is a string
-#
 def ExtractKernelVersion(base_dir):
+	"""
+	Try to figure out what kernel version we are running
+	@param base_dir: Path to sources (usually /usr/src/linux)
+	@type base_dir: string
+	@rtype: tuple( version[string], error[string])
+	@returns:
+	1. tuple( version[string], error[string])
+	Either version or error is populated (but never both)
+
+	"""
 	lines = []
 	pathname = os.path.join(base_dir, 'Makefile')
 	try:
@@ -815,7 +813,18 @@ def ExtractKernelVersion(base_dir):
 	return (version,None)
 
 def autouse(myvartree, use_cache=1, mysettings=None):
-	"returns set of USE variables auto-enabled due to packages being installed"
+	"""
+	autuse returns a list of USE variables auto-enabled to packages being installed
+
+	@param myvartree: Instance of the vartree class (from /var/db/pkg...)
+	@type myvartree: vartree
+	@param use_cache: read values from cache
+	@type use_cache: Boolean
+	@param mysettings: Instance of config
+	@type mysettings: config
+	@rtype: string
+	@returns: A string containing a list of USE variables that are enabled via use.defaults
+	"""
 	if mysettings is None:
 		global settings
 		mysettings = settings
@@ -838,9 +847,37 @@ def check_config_instance(test):
 		raise TypeError, "Invalid type for config object: %s" % test.__class__
 
 class config:
+	"""
+	This class encompasses the main portage configuration.  Data is pulled from
+	ROOT/PORTDIR/profiles/, from ROOT/etc/make.profile incrementally through all 
+	parent profiles as well as from ROOT/PORTAGE_CONFIGROOT/* for user specified
+	overrides.
+	
+	Generally if you need data like USE flags, FEATURES, environment variables,
+	virtuals ...etc you look in here.
+	"""
+	
 	def __init__(self, clone=None, mycpv=None, config_profile_path=None,
 		config_incrementals=None, config_root=None, target_root=None,
 		local_config=True):
+		"""
+		@param clone: If provided, init will use deepcopy to copy by value the instance.
+		@type clone: Instance of config class.
+		@param mycpv: CPV to load up (see setcpv), this is the same as calling init with mycpv=None
+		and then calling instance.setcpv(mycpv).
+		@type mycpv: String
+		@param config_profile_path: Configurable path to the profile (usually PROFILE_PATH from portage_const)
+		@type config_profile_path: String
+		@param config_incrementals: List of incremental variables (usually portage_const.INCREMENTALS)
+		@type config_incrementals: List
+		@param config_root: path to read local config from (defaults to "/", see PORTAGE_CONFIGROOT)
+		@type config_root: String
+		@param target_root: __init__ override of $ROOT env variable.
+		@type target_root: String
+		@param local_config: Enables loading of local config (/etc/portage); used most by repoman to
+		ignore local config (keywording and unmasking)
+		@type local_config: Boolean
+		"""
 
 		self.already_in_regenerate = 0
 
@@ -1397,8 +1434,9 @@ class config:
 			self.setcpv(mycpv)
 
 	def _init_dirs(self):
-		"""Create tmp, var/tmp and var/lib/portage (relative to $ROOT)."""
-
+		"""
+		Create a few directories that are critical to portage operation
+		"""
 		if not os.access(self["ROOT"] + EPREFIX, os.W_OK):
 			return
 
@@ -1481,7 +1519,14 @@ class config:
 			raise KeyError, "No such key defined in environment: %s" % key
 
 	def reset(self,keeping_pkg=0,use_cache=1):
-		"reset environment to original settings"
+		"""
+		Restore environment from self.backupenv, call self.regenerate()
+		@param keeping_pkg: Should we keep the set_cpv() data or delete it.
+		@type keeping_pkg: Boolean
+		@param use_cache: Should self.regenerate use the cache or not
+		@type use_cache: Boolean
+		@rype: None
+		"""
 		self.modifying()
 		self.configdict["env"].clear()
 		self.configdict["env"].update(self.backupenv)
@@ -1551,6 +1596,20 @@ class config:
 		return 0
 
 	def setcpv(self, mycpv, use_cache=1, mydb=None):
+		"""
+		Load a particular CPV into the config, this lets us see the
+		Default USE flags for a particular ebuild as well as the USE
+		flags from package.use.
+
+		@param mycpv: A cpv to load
+		@type mycpv: string
+		@param use_cache: Enables caching
+		@type use_cache: Boolean
+		@param mydb: a dbapi instance that supports aux_get with the IUSE key.
+		@type mydb: dbapi or derivative.
+		@rtype: None
+		"""
+
 		self.modifying()
 		if self.mycpv == mycpv:
 			return
@@ -1641,6 +1700,22 @@ class config:
 
 
 	def regenerate(self,useonly=0,use_cache=1):
+		"""
+		Regenerate settings
+		This involves regenerating valid USE flags, re-expanding USE_EXPAND flags
+		re-stacking USE flags (-flag and -*), as well as any other INCREMENTAL
+		variables.  This also updates the env.d configdict; useful in case an ebuild
+		changes the environment.
+
+		If FEATURES has already stacked, it is not stacked twice.
+
+		@param useonly: Only regenerate USE flags (not any other incrementals)
+		@type useonly: Boolean
+		@param use_cache: Enable Caching (only for autouse)
+		@type use_cache: Boolean
+		@rtype: None
+		"""
+
 		self.modifying()
 		if self.already_in_regenerate:
 			# XXX: THIS REALLY NEEDS TO GET FIXED. autouse() loops.
@@ -1998,13 +2073,39 @@ class config:
 # XXX This would be to replace getstatusoutput completely.
 # XXX Issue: cannot block execution. Deadlock condition.
 def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, **keywords):
-	"""spawn a subprocess with optional sandbox protection,
-	depending on whether sandbox is enabled.  The "free" argument,
-	when set to 1, will disable sandboxing.  This allows us to
-	spawn processes that are supposed to modify files outside of the
-	sandbox.  We can't use os.system anymore because it messes up
-	signal handling.  Using spawn allows our Portage signal handler
-	to work."""
+	"""
+	Spawn a subprocess with extra portage-specific options.
+	Optiosn include:
+
+	Sandbox: Sandbox means the spawned process will be limited in its ability t
+	read and write files (normally this means it is restricted to ${IMAGE}/)
+	SElinux Sandbox: Enables sandboxing on SElinux
+	Reduced Privileges: Drops privilages such that the process runs as portage:portage
+	instead of as root.
+
+	Notes: os.system cannot be used because it messes with signal handling.  Instead we
+	use the portage_exec spawn* family of functions.
+
+	This function waits for the process to terminate.
+
+	@param mystring: Command to run
+	@type mystring: String
+	@param mysettings: Either a Dict of Key,Value pairs or an instance of portage.config
+	@type mysettings: Dictionary or config instance
+	@param debug: Ignored
+	@type debug: Boolean
+	@param free: Enable sandboxing for this process
+	@type free: Boolean
+	@param droppriv: Drop to portage:portage when running this command
+	@type droppriv: Boolean
+	@param sesandbox: Enable SELinux Sandboxing (toggles a context switch)
+	@type sesandbox: Boolean
+	@param keywords: Extra options encoded as a dict, to be passed to spawn
+	@type keywords: Dictionary
+	@rtype: Integer
+	@returns:
+	1. The return code of the spawned process.
+	"""
 
 	if type(mysettings) == types.DictType:
 		env=mysettings
@@ -2479,7 +2580,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 	return 1
 
 def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None):
-	"""Generates a digest file if missing.  Assumes all files are available.
+	"""
+	Generates a digest file if missing.  Assumes all files are available.
 	DEPRECATED: this now only is a compability wrapper for 
 	            portage_manifest.Manifest()
 	NOTE: manifestonly and overwrite are useless with manifest2 and
@@ -2708,19 +2810,6 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 					noiselevel=-1)
 			return qa_retval
 	return phase_retval
-
-# chunked out deps for each phase, so that ebuild binary can use it 
-# to collapse targets down.
-actionmap_deps={
-	"depend": [],
-	"setup":  [],
-	"unpack": ["setup"],
-	"compile":["unpack"],
-	"test":   ["compile"],
-	"install":["test"],
-	"rpm":    ["install"],
-	"package":["install"],
-}
 
 
 def eapi_is_supported(eapi):
@@ -3037,7 +3126,21 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	if not tree:
 		writemsg("Warning: tree not specified to doebuild\n")
 		tree = "porttree"
-	global db, actionmap_deps
+	global db
+	
+	# chunked out deps for each phase, so that ebuild binary can use it 
+	# to collapse targets down.
+	actionmap_deps={
+	"depend": [],
+	"setup":  [],
+	"unpack": ["setup"],
+	"compile":["unpack"],
+	"test":   ["compile"],
+	"install":["test"],
+	"rpm":    ["install"],
+	"package":["install"],
+	}
+	
 	if mydbapi is None:
 		mydbapi = db[myroot][tree].dbapi
 
@@ -3269,8 +3372,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		# Only try and fetch the files if we are going to need them ...
 		# otherwise, if user has FEATURES=noauto and they run `ebuild clean
 		# unpack compile install`, we will try and fetch 4 times :/
-		need_distfiles = (mydo in ("digest", "fetch", "unpack") or \
-			mydo != "manifest" and "noauto" not in features)
+		need_distfiles = (mydo in ("fetch", "unpack") or \
+			mydo not in ("digest", "manifest") and "noauto" not in features)
 		if need_distfiles and not fetch(
 			fetchme, mysettings, listonly=listonly, fetchonly=fetchonly):
 			return 1
@@ -5201,9 +5304,20 @@ class portdbapi(dbapi):
 		# XXX: REMOVE THIS ONCE UNUSED_0 IS YANKED FROM auxdbkeys
 		# ~harring
 		filtered_auxdbkeys = filter(lambda x: not x.startswith("UNUSED_0"), auxdbkeys)
-		for x in self.porttrees:
-			# location, label, auxdbkeys
-			self.auxdb[x] = self.auxdbmodule(self.depcachedir, x, filtered_auxdbkeys, gid=portage_gid)
+		if secpass < 1:
+			from cache import metadata_overlay, volatile
+			for x in self.porttrees:
+				db_ro = self.auxdbmodule(self.depcachedir, x,
+					filtered_auxdbkeys, gid=portage_gid, readonly=True)
+				self.auxdb[x] = metadata_overlay.database(
+					self.depcachedir, x, filtered_auxdbkeys,
+					gid=portage_gid, db_rw=volatile.database,
+					db_ro=db_ro)
+		else:
+			for x in self.porttrees:
+				# location, label, auxdbkeys
+				self.auxdb[x] = self.auxdbmodule(
+					self.depcachedir, x, filtered_auxdbkeys, gid=portage_gid)
 		# Selectively cache metadata in order to optimize dep matching.
 		self._aux_cache_keys = set(["EAPI", "KEYWORDS", "SLOT"])
 		self._aux_cache = {}
@@ -5398,6 +5512,9 @@ class portdbapi(dbapi):
 
 			self.auxdb[mylocation][mycpv] = mydata
 
+		if not mydata.setdefault("EAPI", "0"):
+			mydata["EAPI"] = "0"
+
 		#finally, we look at our internal cache entry and return the requested data.
 		returnme = []
 		for x in mylist:
@@ -5406,15 +5523,8 @@ class portdbapi(dbapi):
 			else:
 				returnme.append(mydata.get(x,""))
 
-		if "EAPI" in mylist:
-			idx = mylist.index("EAPI")
-			if not returnme[idx]:
-				returnme[idx] = "0"
-
 		if cache_me:
 			aux_cache = {}
-			if not mydata.setdefault("EAPI", "0"):
-				mydata["EAPI"] = "0"
 			for x in self._aux_cache_keys:
 				aux_cache[x] = mydata.get(x, "")
 			self._aux_cache[mycpv] = aux_cache
@@ -6676,7 +6786,7 @@ class dblink:
 								if f.startswith(myignore + os.path.sep):
 									stopmerge = False
 									break
-			print green("*")+" spent "+str(time.time()-starttime)+" seconds checking for file collisions"
+			#print green("*")+" spent "+str(time.time()-starttime)+" seconds checking for file collisions"
 			if stopmerge:
 				print red("*")+" This package is blocked because it wants to overwrite"
 				print red("*")+" files belonging to other packages (see messages above)."

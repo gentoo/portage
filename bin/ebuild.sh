@@ -1774,7 +1774,7 @@ for myarg in ${EBUILD_SH_ARGS} ; do
 
 		#the extra $(echo) commands remove newlines
 		unset CDEPEND
-		[ -n "${EAPI}" ] && EAPI=0
+		[ -n "${EAPI}" ] || EAPI=0
 		if [ -n "${dbkey}" ] ; then
 			> "${dbkey}"
 			for f in ${auxdbkeys} ; do

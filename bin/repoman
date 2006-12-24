@@ -1489,20 +1489,14 @@ for x in scanlist:
 		fails["ebuild.allmasked"].append(x)
 
 #Pickle and save results for instant reuse in last and lfull
-statsfile=os.path.normpath(portage_const.CACHE_PATH+"/repo.stats")
-failsfile=os.path.normpath(portage_const.CACHE_PATH+"/repo.fails")
-savef=open(statsfile,'w')
-pickle.dump(stats,savef)
-savef.close()
-savef=open(failsfile,'w')
-pickle.dump(fails,savef)
-savef.close()
-if not (os.stat(statsfile)[ST_GID] == getgrnam('@portagegroup@')[2]):
-	os.chown(statsfile,os.geteuid(),getgrnam('@portagegroup@')[2])
-	os.chmod(statsfile,0664)
-if not (os.stat(failsfile)[ST_GID] == getgrnam('@portagegroup@')[2]):
-	os.chown(failsfile,os.geteuid(),getgrnam('@portagegroup@')[2])
-	os.chmod(failsfile,0664)
+if os.access(portage_const.CACHE_PATH, os.W_OK):
+	for myobj, fname in (stats, "repo.stats"), (fails, "repo.fails"):
+		fpath = os.path.join(portage_const.CACHE_PATH, fname)
+		savef = open(fpath, 'w')
+		pickle.dump(myobj, savef)
+		savef.close()
+		portage.apply_secpass_permissions(fpath, gid=portage.portage_gid,
+			mode=0664)
 if quiet < 2:
 	print
 #dofail will be set to 1 if we have failed in at least one non-warning category
