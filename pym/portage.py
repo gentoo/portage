@@ -5688,7 +5688,7 @@ class portdbapi(dbapi):
 		#if no updates are being made to the tree, we can consult our xcache...
 		if self.frozen:
 			try:
-				return self.xcache[level][origdep]
+				return self.xcache[level][origdep][:]
 			except KeyError:
 				pass
 
@@ -5732,7 +5732,7 @@ class portdbapi(dbapi):
 			self.xcache[level][mydep]=myval
 			if origdep and origdep != mydep:
 				self.xcache[level][origdep] = myval
-		return myval
+		return myval[:]
 
 	def match(self,mydep,use_cache=1):
 		return self.xmatch("match-visible",mydep)
