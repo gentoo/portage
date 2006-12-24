@@ -3123,6 +3123,54 @@ _doebuild_manifest_checked = None
 def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	fetchonly=0, cleanup=0, dbkey=None, use_cache=1, fetchall=0, tree=None,
 	mydbapi=None, vartree=None, prev_mtimes=None):
+	
+	"""
+	Wrapper function that invokes specific ebuild phases through the spawning
+	of ebuild.sh
+	
+	@param myebuild: name of the ebuild to invoke the phase on (CPV)
+	@type myebuild: String
+	@param mydo: Phase to run
+	@type mydo: String
+	@param myroot: $ROOT (usually '/', see man make.conf)
+	@type myroot: String
+	@param mysettings: Portage Configuration
+	@type mysettings: instance of portage.config
+	@param debug: Turns on various debug information (eg, debug for spawn)
+	@type debug: Boolean
+	@param listonly: Used to wrap fetch(); passed such that fetch only lists files required.
+	@type listonly: Boolean
+	@param fetchonly: Used to wrap fetch(); passed such that files are only fetched (no other actions)
+	@type fetchonly: Boolean
+	@param cleanup: Passed to prepare_build_dirs (TODO: what does it do?)
+	@type cleanup: Boolean
+	@param dbkey: A dict (usually keys and values from the depend phase, such as KEYWORDS, USE, etc..)
+	@type dbkey: Dict or String
+	@param use_cache: Enables the cache
+	@type use_cache: Boolean
+	@param fetchall: Used to wrap fetch(), fetches all URI's (even ones invalid due to USE conditionals)
+	@type fetchall: Boolean
+	@param tree: Which tree to use ('vartree','porttree','bintree', etc..), defaults to 'porttree'
+	@type tree: String
+	@param mydbapi: a dbapi instance to pass to various functions; this should be a portdbapi instance.
+	@type mydbapi: portdbapi instance
+	@param vartree: A instance of vartree; used for aux_get calls, defaults to db[myroot]['vartree']
+	@type vartree: vartree instance
+	@param prev_mtimes: A dict of { filename:mtime } keys used by merge() to do config_protection
+	@type prev_mtimes: dictionary
+	@rtype: Boolean
+	@returns:
+	1. 0 for success
+	2. 1 for error
+	
+	Most errors have an accompanying error message.
+	
+	listonly and fetchonly are only really necessary for operations involving 'fetch'
+	prev_mtimes are only necessary for merge operations.
+	Other variables may not be strictly required, many have defaults that are set inside of doebuild.
+	
+	"""
+	
 	if not tree:
 		writemsg("Warning: tree not specified to doebuild\n")
 		tree = "porttree"
@@ -4357,41 +4405,6 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 		rValue.append(kmask+" keyword")
 	return rValue
 
-class packagetree:
-	def __init__(self,virtual,clone=None):
-		if clone:
-			self.tree=clone.tree.copy()
-			self.populated=clone.populated
-			self.virtual=clone.virtual
-			self.dbapi=None
-		else:
-			self.tree={}
-			self.populated=0
-			self.virtual=virtual
-			self.dbapi=None
-
-	def resolve_key(self,mykey):
-		return key_expand(mykey, mydb=self.dbapi, settings=self.settings)
-
-	def dep_nomatch(self,mypkgdep):
-		mykey=dep_getkey(mypkgdep)
-		nolist=self.dbapi.cp_list(mykey)
-		mymatch=self.dbapi.match(mypkgdep)
-		if not mymatch:
-			return nolist
-		for x in mymatch:
-			if x in nolist:
-				nolist.remove(x)
-		return nolist
-
-	def depcheck(self,mycheck,use="yes",myusesplit=None):
-		return dep_check(mycheck,self.dbapi,use=use,myuse=myusesplit)
-
-	def populate(self):
-		"populates the tree with values"
-		populated=1
-		pass
-
 class portagetree:
 	def __init__(self, root="/", virtual=None, clone=None, settings=None):
 
@@ -4579,16 +4592,6 @@ class fakedbapi(dbapi):
 		if not mycpv in self.cpdict[mycp]:
 			self.cpdict[mycp].append(mycpv)
 
-	#def cpv_virtual(self,oldcpv,newcpv):
-	#	"""Maps a cpv to the list of available packages."""
-	#	mycp=cpv_getkey(newcpv)
-	#	self.cpvdict[newcpv]=1
-	#	if not self.virtdict.has_key(mycp):
-	#		self.virtdict[mycp]=[]
-	#	if not mycpv in self.virtdict[mycp]:
-	#		self.virtdict[mycp].append(oldcpv)
-	#	cpv_remove(oldcpv)
-
 	def cpv_remove(self,mycpv):
 		"""Removes a cpv from the list of available packages."""
 		self._clear_cache()
@@ -4676,7 +4679,6 @@ class bindbapi(fakedbapi):
 			self.bintree.populate()
 		return fakedbapi.cpv_all(self)
 
-cptot=0
 class vardbapi(dbapi):
 	def __init__(self, root, categories=None, settings=None, vartree=None):
 		self.root       = root[:]
@@ -5063,7 +5065,7 @@ class vardbapi(dbapi):
 			write_atomic(cpath, str(counter))
 		return counter
 
-class vartree(packagetree):
+class vartree(object):
 	"this tree will scan a var/db/pkg database located at root (passed to init)"
 	def __init__(self, root="/", virtual=None, clone=None, categories=None,
 		settings=None):
@@ -5861,7 +5863,7 @@ class portdbapi(dbapi):
 				newlist.append(mycpv)
 		return newlist
 
-class binarytree(packagetree):
+class binarytree(object):
 	"this tree scans for a list of all packages available in PKGDIR"
 	def __init__(self, root, pkgdir, virtual=None, settings=None, clone=None):
 		if clone:
