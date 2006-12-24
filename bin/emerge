@@ -3814,10 +3814,14 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 				sys.exit(retval)
 
 		# write timestamp.chk
-		f = open(os.path.join(myportdir, "metadata", "timestamp.chk"), 'w')
-		f.write(time.strftime("%a, %d %b %Y %H:%M:%S +0000"), time.gmtime())
-		f.write('\n')
-		f.close()
+		try:
+			f = open(os.path.join(myportdir, "metadata", "timestamp.chk"), 'w')
+			f.write(time.strftime("%a, %d %b %Y %H:%M:%S +0000"), time.gmtime())
+			f.write('\n')
+			f.close()
+		except IOError e:
+			# too bad, next time better luck!
+			pass
 
 		dosyncuri = syncuri
 	else:
