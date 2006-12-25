@@ -4626,6 +4626,9 @@ class bindbapi(fakedbapi):
 			settings = globals()["settings"]
 		self.settings = settings
 		self._match_cache = {}
+		# Selectively cache metadata in order to optimize dep matching.
+		self._aux_cache_keys = set(["SLOT"])
+		self._aux_cache = {}
 
 	def match(self, *pargs, **kwargs):
 		if self.bintree and not self.bintree.populated:
@@ -4635,28 +4638,39 @@ class bindbapi(fakedbapi):
 	def aux_get(self,mycpv,wants):
 		if self.bintree and not self.bintree.populated:
 			self.bintree.populate()
+		cache_me = False
+		if not set(wants).difference(self._aux_cache_keys):
+			aux_cache = self._aux_cache.get(mycpv)
+			if aux_cache is not None:
+				return [aux_cache[x] for x in wants]
+			cache_me = True
 		mysplit = string.split(mycpv,"/")
 		mylist  = []
 		tbz2name = mysplit[1]+".tbz2"
 		if self.bintree and not self.bintree.isremote(mycpv):
 			tbz2 = xpak.tbz2(self.bintree.getname(mycpv))
-		for x in wants:
-			if self.bintree and self.bintree.isremote(mycpv):
-				# We use the cache for remote packages
-				mylist.append(" ".join(
-					self.bintree.remotepkgs[tbz2name].get(x,"").split()))
-			else:
-				myval = tbz2.getfile(x)
-				if myval is None:
-					myval = ""
-				else:
-					myval = string.join(myval.split(),' ')
-				mylist.append(myval)
-		if "EAPI" in wants:
-			idx = wants.index("EAPI")
-			if not mylist[idx]:
-				mylist[idx] = "0"
-		return mylist
+			getitem = tbz2.getfile
+		else:
+			getitem = self.bintree.remotepkgs[tbz2name].get
+		mydata = {}
+		mykeys = wants
+		if cache_me:
+			mykeys = self._aux_cache_keys.union(wants)
+		for x in mykeys:
+			myval = getitem(x)
+			# myval is None if the key doesn't exist
+			# or the tbz2 is corrupt.
+			if myval:
+				mydata[x] = " ".join(myval.split())
+		if "EAPI" in mykeys:
+			if not mydata.setdefault("EAPI", "0"):
+				mydata["EAPI"] = "0"
+		if cache_me:
+			aux_cache = {}
+			for x in self._aux_cache_keys:
+				aux_cache[x] = mydata.get(x, "")
+			self._aux_cache[mycpv] = aux_cache
+		return [mydata.get(x, "") for x in wants]
 
 	def aux_update(self, cpv, values):
 		if not self.bintree.populated:
@@ -5695,7 +5709,7 @@ class portdbapi(dbapi):
 		#if no updates are being made to the tree, we can consult our xcache...
 		if self.frozen:
 			try:
-				return self.xcache[level][origdep]
+				return self.xcache[level][origdep][:]
 			except KeyError:
 				pass
 
@@ -5739,7 +5753,7 @@ class portdbapi(dbapi):
 			self.xcache[level][mydep]=myval
 			if origdep and origdep != mydep:
 				self.xcache[level][origdep] = myval
-		return myval
+		return myval[:]
 
 	def match(self,mydep,use_cache=1):
 		return self.xmatch("match-visible",mydep)
@@ -6298,10 +6312,30 @@ class binarytree(object):
 		return myslot
 
 class dblink:
-	"this class provides an interface to the standard text package database"
+	"""
+	This class provides an interface to the installed package database
+	At present this is implemented as a text backend in /var/db/pkg.
+	"""
 	def __init__(self, cat, pkg, myroot, mysettings, treetype=None,
 		vartree=None):
-		"create a dblink object for cat/pkg.  This dblink entry may or may not exist"
+		"""
+		Creates a DBlink object for a given CPV.
+		The given CPV may not be present in the database already.
+		
+		@param cat: Category
+		@type cat: String
+		@param pkg: Package (PV)
+		@type pkg: String
+		@param myroot: Typically ${ROOT}
+		@type myroot: String (Path)
+		@param mysettings: Typically portage.config
+		@type mysettings: An instance of portage.config
+		@param treetype: one of ['porttree','bintree','vartree']
+		@type treetype: String
+		@param vartree: an instance of vartree corresponding to myroot.
+		@type vartree: vartree
+		"""
+		
 		self.cat     = cat
 		self.pkg     = pkg
 		self.mycpv   = self.cat+"/"+self.pkg
@@ -6356,13 +6390,18 @@ class dblink:
 
 	def create(self):
 		"create the skeleton db directory structure.  No contents, virtuals, provides or anything.  Also will create /var/db/pkg if necessary."
+		"""
+		This function should never get called (there is no reason to use it).
+		"""
 		# XXXXX Delete this eventually
 		raise Exception, "This is bad. Don't use it."
 		if not os.path.exists(self.dbdir):
 			os.makedirs(self.dbdir)
 
 	def delete(self):
-		"erase this db entry completely"
+		"""
+		Remove this entry from the database
+		"""
 		if not os.path.exists(self.dbdir):
 			return
 		try:
@@ -6379,10 +6418,16 @@ class dblink:
 			sys.exit(1)
 
 	def clearcontents(self):
+		"""
+		For a given db entry (self), erase the CONTENTS values.
+		"""
 		if os.path.exists(self.dbdir+"/CONTENTS"):
 			os.unlink(self.dbdir+"/CONTENTS")
 
 	def getcontents(self):
+		"""
+		Get the installed files of a given package (aka what that package installed)
+		"""
 		if not os.path.exists(self.dbdir+"/CONTENTS"):
 			return None
 		if self.contentscache != []:
@@ -6437,8 +6482,30 @@ class dblink:
 
 	def unmerge(self, pkgfiles=None, trimworld=1, cleanup=1,
 		ldpath_mtimes=None):
-		"""The caller must ensure that lockdb() and unlockdb() are called
-		before and after this method."""
+		"""
+		Calls prerm
+		Unmerges a given package (CPV)
+		calls postrm
+		calls cleanrm
+		calls env_update
+		
+		@param pkgfiles: files to unmerge (generally self.getcontents() )
+		@type pkgfiles: Dictionary
+		@param trimworld: Remove CPV from world file if True, not if False
+		@type trimworld: Boolean
+		@param cleanup: cleanup to pass to doebuild (see doebuild)
+		@type cleanup: Boolean
+		@param ldpath_mtimes: mtimes to pass to env_update (see env_update)
+		@type ldpath_mtimes: Dictionary
+		@rtype: Integer
+		@returns:
+		1. os.EX_OK if everything went well.
+		2. return code of the failed phase (for prerm, postrm, cleanrm)
+		
+		Notes:
+		The caller must ensure that lockdb() and unlockdb() are called
+		before and after this method.
+		"""
 
 		contents = self.getcontents()
 		# Now, don't assume that the name of the ebuild is the same as the
@@ -6525,7 +6592,15 @@ class dblink:
 		return os.EX_OK
 
 	def _unmerge_pkgfiles(self, pkgfiles):
-
+		"""
+		
+		Unmerges the contents of a package from the liveFS
+		Removes the VDB entry for self
+		
+		@param pkgfiles: typically self.getcontents()
+		@type pkgfiles: Dictionary { filename: [ 'type', '?', 'md5sum' ] }
+		@rtype: None
+		"""
 		global dircache
 		dircache={}
 
@@ -6644,8 +6719,19 @@ class dblink:
 		self.vartree.zap(self.mycpv)
 
 	def isowner(self,filename,destroot):
-		""" check if filename is a new file or belongs to this package
-		(for this or a previous version)"""
+		""" 
+		Check if filename is a new file or belongs to this package
+		(for this or a previous version)
+		
+		@param filename:
+		@type filename:
+		@param destroot:
+		@type destroot:
+		@rtype: Boolean
+		@returns:
+		1. True if this package owns the file.
+		2. False if this package does not own the file.
+		"""
 		destfile = normalize_path(
 			os.path.join(destroot, filename.lstrip(os.path.sep)))
 		try:
@@ -6697,12 +6783,37 @@ class dblink:
 
 	def treewalk(self, srcroot, destroot, inforoot, myebuild, cleanup=0,
 		mydbapi=None, prev_mtimes=None):
-		# srcroot  = ${D};
-		# destroot = where to merge, ie. ${ROOT},
-		# inforoot = root of db entry,
-		# secondhand = list of symlinks that have been skipped due to
-		#              their target not existing (will merge later),
-
+		"""
+		
+		This function does the following:
+		
+		Collision Protection.
+		calls doebuild(mydo=pkg_preinst)
+		Merges the package to the livefs
+		unmerges old version (if required)
+		calls doebuild(mydo=pkg_postinst)
+		calls env_update
+		
+		@param srcroot: Typically this is ${D}
+		@type srcroot: String (Path)
+		@param destroot: Path to merge to (usually ${ROOT})
+		@type destroot: String (Path)
+		@param inforoot: root of the vardb entry ?
+		@type inforoot: String (Path)
+		@param myebuild: path to the ebuild that we are processing
+		@type myebuild: String (Path)
+		@param mydbapi: dbapi which is handed to doebuild.
+		@type mydbapi: portdbapi instance
+		@param prev_mtimes: { Filename:mtime } mapping for env_update
+		@type prev_mtimes: Dictionary
+		@rtype: Boolean
+		@returns:
+		1. 0 on success
+		2. 1 on failure
+		
+		secondhand is a list of symlinks that have been skipped due to their target
+		not existing; we will merge these symlinks at a later time.
+		"""
 		if not os.path.isdir(srcroot):
 			writemsg("!!! Directory Not Found: D='%s'\n" % srcroot,
 			noiselevel=-1)
@@ -6990,6 +7101,32 @@ class dblink:
 		return 0
 
 	def mergeme(self,srcroot,destroot,outfile,secondhand,stufftomerge,cfgfiledict,thismtime):
+		"""
+		
+		This function handles actual merging of the package contents to the livefs.
+		It also handles config protection.
+		
+		@param srcroot: Where are we copying files from (usually ${D})
+		@type srcroot: String (Path)
+		@param destroot: Typically ${ROOT}
+		@type destroot: String (Path)
+		@param outfile: File to log operations to
+		@type outfile: File Object
+		@param secondhand: A set of items to merge in pass two (usually
+		or symlinks that point to non-existing files that may get merged later)
+		@type secondhand: List
+		@param stufftomerge: Either a diretory to merge, or a list of items.
+		@type stufftomerge: String or List
+		@param cfgfiledict: { File:mtime } mapping for config_protected files
+		@type cfgfiledict: Dictionary
+		@param thismtime: The current time (typically long(time.time())
+		@type thismtime: Long
+		@rtype: None or Boolean
+		@returns:
+		1. True on failure
+		2. None otherwise
+		
+		"""
 		from os.path import sep, join
 		srcroot = normalize_path(srcroot).rstrip(sep) + sep
 		destroot = normalize_path(destroot).rstrip(sep) + sep
