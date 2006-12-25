@@ -261,6 +261,15 @@ diefunc() {
 	echo "!!! ${*:-(no error message)}" >&2
 	echo "!!! If you need support, post the topmost build error, and the call stack if relevant." >&2
 	echo >&2
+	if [ -n "${EBUILD_OVERLAY_ECLASSES}" ] ; then
+		echo "This ebuild used the following eclasses from overlays:" >&2
+		echo >&2
+		for x in ${EBUILD_OVERLAY_ECLASSES} ; do
+			echo "  ${x}" >&2
+		done
+		echo >&2
+	fi
+
 	if [ "${EBUILD_PHASE/depend}" == "${EBUILD_PHASE}" ]; then
 		local x
 		for x in $EBUILD_DEATH_HOOKS; do
@@ -1170,6 +1179,7 @@ inherit() {
 	fi
 
 	local location
+	local olocation
 	local PECLASS
 
 	local B_IUSE
@@ -1178,6 +1188,7 @@ inherit() {
 	local B_PDEPEND
 	while [ "$1" ]; do
 		location="${ECLASSDIR}/${1}.eclass"
+		olocation=""
 
 		# PECLASS is used to restore the ECLASS var after recursion.
 		PECLASS="$ECLASS"
@@ -1208,6 +1219,11 @@ inherit() {
 		fi
 		debug-print "inherit: $1 -> $location"
 		[ ! -e "$location" ] && die "${1}.eclass could not be found by inherit()"
+
+		if [ "${location}" == "${olocation}" ] && \
+			! hasq "${location}" ${EBUILD_OVERLAY_ECLASSES} ; then
+				EBUILD_OVERLAY_ECLASSES="${EBUILD_OVERLAY_ECLASSES} ${location}"
+		fi
 
 		#We need to back up the value of DEPEND and RDEPEND to B_DEPEND and B_RDEPEND
 		#(if set).. and then restore them after the inherit call.
