@@ -6305,10 +6305,30 @@ class binarytree(object):
 		return myslot
 
 class dblink:
-	"this class provides an interface to the standard text package database"
+	"""
+	This class provides an interface to the installed package database
+	At present this is implemented as a text backend in /var/db/pkg.
+	"""
 	def __init__(self, cat, pkg, myroot, mysettings, treetype=None,
 		vartree=None):
-		"create a dblink object for cat/pkg.  This dblink entry may or may not exist"
+		"""
+		Creates a DBlink object for a given CPV.
+		The given CPV may not be present in the database already.
+		
+		@param cat: Category
+		@type cat: String
+		@param pkg: Package (PV)
+		@type pkg: String
+		@param myroot: Typically ${ROOT}
+		@type myroot: String (Path)
+		@param mysettings: Typically portage.config
+		@type mysettings: An instance of portage.config
+		@param treetype: one of ['porttree','bintree','vartree']
+		@type treetype: String
+		@param vartree: an instance of vartree corresponding to myroot.
+		@type vartree: vartree
+		"""
+		
 		self.cat     = cat
 		self.pkg     = pkg
 		self.mycpv   = self.cat+"/"+self.pkg
@@ -6363,13 +6383,18 @@ class dblink:
 
 	def create(self):
 		"create the skeleton db directory structure.  No contents, virtuals, provides or anything.  Also will create /var/db/pkg if necessary."
+		"""
+		This function should never get called (there is no reason to use it).
+		"""
 		# XXXXX Delete this eventually
 		raise Exception, "This is bad. Don't use it."
 		if not os.path.exists(self.dbdir):
 			os.makedirs(self.dbdir)
 
 	def delete(self):
-		"erase this db entry completely"
+		"""
+		Remove this entry from the database
+		"""
 		if not os.path.exists(self.dbdir):
 			return
 		try:
@@ -6386,10 +6411,16 @@ class dblink:
 			sys.exit(1)
 
 	def clearcontents(self):
+		"""
+		For a given db entry (self), erase the CONTENTS values.
+		"""
 		if os.path.exists(self.dbdir+"/CONTENTS"):
 			os.unlink(self.dbdir+"/CONTENTS")
 
 	def getcontents(self):
+		"""
+		Get the installed files of a given package (aka what that package installed)
+		"""
 		if not os.path.exists(self.dbdir+"/CONTENTS"):
 			return None
 		if self.contentscache != []:
@@ -6444,8 +6475,30 @@ class dblink:
 
 	def unmerge(self, pkgfiles=None, trimworld=1, cleanup=1,
 		ldpath_mtimes=None):
-		"""The caller must ensure that lockdb() and unlockdb() are called
-		before and after this method."""
+		"""
+		Calls prerm
+		Unmerges a given package (CPV)
+		calls postrm
+		calls cleanrm
+		calls env_update
+		
+		@param pkgfiles: files to unmerge (generally self.getcontents() )
+		@type pkgfiles: Dictionary
+		@param trimworld: Remove CPV from world file if True, not if False
+		@type trimworld: Boolean
+		@param cleanup: cleanup to pass to doebuild (see doebuild)
+		@type cleanup: Boolean
+		@param ldpath_mtimes: mtimes to pass to env_update (see env_update)
+		@type ldpath_mtimes: Dictionary
+		@rtype: Integer
+		@returns:
+		1. os.EX_OK if everything went well.
+		2. return code of the failed phase (for prerm, postrm, cleanrm)
+		
+		Notes:
+		The caller must ensure that lockdb() and unlockdb() are called
+		before and after this method.
+		"""
 
 		contents = self.getcontents()
 		# Now, don't assume that the name of the ebuild is the same as the
@@ -6532,7 +6585,15 @@ class dblink:
 		return os.EX_OK
 
 	def _unmerge_pkgfiles(self, pkgfiles):
-
+		"""
+		
+		Unmerges the contents of a package from the liveFS
+		Removes the VDB entry for self
+		
+		@param pkgfiles: typically self.getcontents()
+		@type pkgfiles: Dictionary { filename: [ 'type', '?', 'md5sum' ] }
+		@rtype: None
+		"""
 		global dircache
 		dircache={}
 
@@ -6651,8 +6712,19 @@ class dblink:
 		self.vartree.zap(self.mycpv)
 
 	def isowner(self,filename,destroot):
-		""" check if filename is a new file or belongs to this package
-		(for this or a previous version)"""
+		""" 
+		Check if filename is a new file or belongs to this package
+		(for this or a previous version)
+		
+		@param filename:
+		@type filename:
+		@param destroot:
+		@type destroot:
+		@rtype: Boolean
+		@returns:
+		1. True if this package owns the file.
+		2. False if this package does not own the file.
+		"""
 		destfile = normalize_path(
 			os.path.join(destroot, filename.lstrip(os.path.sep)))
 		try:
@@ -6704,12 +6776,37 @@ class dblink:
 
 	def treewalk(self, srcroot, destroot, inforoot, myebuild, cleanup=0,
 		mydbapi=None, prev_mtimes=None):
-		# srcroot  = ${D};
-		# destroot = where to merge, ie. ${ROOT},
-		# inforoot = root of db entry,
-		# secondhand = list of symlinks that have been skipped due to
-		#              their target not existing (will merge later),
-
+		"""
+		
+		This function does the following:
+		
+		Collision Protection.
+		calls doebuild(mydo=pkg_preinst)
+		Merges the package to the livefs
+		unmerges old version (if required)
+		calls doebuild(mydo=pkg_postinst)
+		calls env_update
+		
+		@param srcroot: Typically this is ${D}
+		@type srcroot: String (Path)
+		@param destroot: Path to merge to (usually ${ROOT})
+		@type destroot: String (Path)
+		@param inforoot: root of the vardb entry ?
+		@type inforoot: String (Path)
+		@param myebuild: path to the ebuild that we are processing
+		@type myebuild: String (Path)
+		@param mydbapi: dbapi which is handed to doebuild.
+		@type mydbapi: portdbapi instance
+		@param prev_mtimes: { Filename:mtime } mapping for env_update
+		@type prev_mtimes: Dictionary
+		@rtype: Boolean
+		@returns:
+		1. 0 on success
+		2. 1 on failure
+		
+		secondhand is a list of symlinks that have been skipped due to their target
+		not existing; we will merge these symlinks at a later time.
+		"""
 		if not os.path.isdir(srcroot):
 			writemsg("!!! Directory Not Found: D='%s'\n" % srcroot,
 			noiselevel=-1)
