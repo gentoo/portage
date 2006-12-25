@@ -102,14 +102,6 @@ except KeyError:
 	writemsg("\n")
 	portage_group_warning()
 
-if (uid!=0) and (portage_gid not in os.getgroups()):
-	writemsg("\n")
-	writemsg(red("*** You are not in the portage group. You may experience cache problems\n"))
-	writemsg(red("*** due to permissions preventing the creation of the on-disk cache.\n"))
-	writemsg(red("*** Please add this user to the portage group if you wish to use portage.\n"))
-	writemsg("\n")
-	portage_group_warning()
-
 userpriv_groups = [portage_gid]
 if secpass >= 2:
 	for g in grp.getgrall():
