@@ -24,6 +24,10 @@ if [ "$*" != "depend" ] && [ "$*" != "clean" ] && [ "$*" != "nofetch" ]; then
 	fi
 fi
 
+# subshell die support
+EBUILD_MASTER_PID=$$
+trap 'exit 1' SIGTERM
+
 EBUILD_SH_ARGS="$*"
 
 shift $#
@@ -263,6 +267,9 @@ diefunc() {
 			${x} "$@" >&2 1>&2
 		done
 	fi
+
+	# subshell die support
+	kill -s SIGTERM ${EBUILD_MASTER_PID}
 	exit 1
 }
 
