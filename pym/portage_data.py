@@ -48,10 +48,17 @@ os.environ["USERLAND"]=userland
 
 def portage_group_warning():
 	warn_prefix = bad("*** WARNING ***  ")
-	writemsg(warn_prefix + "For security reasons, only system administrators should be\n")
-	writemsg(warn_prefix + "allowed in the portage group.  Untrusted users or processes\n")
-	writemsg(warn_prefix + "can potentially exploit the portage group for attacks such as\n")
-	writemsg(warn_prefix + "local privilege escalation.\n\n")
+	mylines = [
+		"For security reasons, only system administrators should be",
+		"allowed in the portage group.  Untrusted users or processes",
+		"can potentially exploit the portage group for attacks such as",
+		"local privilege escalation."
+	]
+	for x in mylines:
+		writemsg(warn_prefix, noiselevel=-1)
+		writemsg(x, noiselevel=-1)
+		writemsg("\n", noiselevel=-1)
+	writemsg("\n", noiselevel=-1)
 
 # Portage has 3 security levels that depend on the uid and gid of the main
 # process and are assigned according to the following table:
