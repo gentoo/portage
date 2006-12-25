@@ -4961,18 +4961,32 @@ def emerge_main():
 		# We've already allowed "--version" and "--help" above.
 		if "--pretend" not in myopts and \
 		myaction not in ("search","info"):
-			if portage.secpass < 1 or \
-				not ("--fetchonly" in myopts or \
+			need_superuser = not \
+				("--fetchonly" in myopts or \
 				"--fetch-all-uri" in myopts or \
-				myaction in ("metadata", "regen")):
+				myaction in ("metadata", "regen"))
+			if portage.secpass < 1 or \
+				need_superuser:
+				if need_superuser:
+					access_desc = "superuser"
+				else:
+					access_desc = "portage group"
+				# Always show portage_group_warning() when only portage group
+				# access is required but the user is not in the portage group.
+				from portage_data import portage_group_warning
 				if "--ask" in myopts:
 					myopts["--pretend"] = True
 					del myopts["--ask"]
-					print "root access would be required..." + \
-						" adding --pretend to options."
+					print ("%s access would be required... " + \
+						"adding --pretend to options.\n") % access_desc
+					if portage.secpass < 1 and not need_superuser:
+						portage_group_warning()
 				else:
-					print "emerge: root access required."
-					sys.exit(1)
+					sys.stderr.write(("emerge: %s access would be " + \
+						"required.\n\n") % access_desc)
+					if portage.secpass < 1 and not need_superuser:
+						portage_group_warning()
+					return 1
 
 	disable_emergelog = False
 	for x in ("--pretend", "--fetchonly", "--fetch-all-uri"):
