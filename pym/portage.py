@@ -7094,6 +7094,32 @@ class dblink:
 		return 0
 
 	def mergeme(self,srcroot,destroot,outfile,secondhand,stufftomerge,cfgfiledict,thismtime):
+		"""
+		
+		This function handles actual merging of the package contents to the livefs.
+		It also handles config protection.
+		
+		@param srcroot: Where are we copying files from (usually ${D})
+		@type srcroot: String (Path)
+		@param destroot: Typically ${ROOT}
+		@type destroot: String (Path)
+		@param outfile: File to log operations to
+		@type outfile: File Object
+		@param secondhand: A set of items to merge in pass two (usually
+		or symlinks that point to non-existing files that may get merged later)
+		@type secondhand: List
+		@param stufftomerge: Either a diretory to merge, or a list of items.
+		@type stufftomerge: String or List
+		@param cfgfiledict: { File:mtime } mapping for config_protected files
+		@type cfgfiledict: Dictionary
+		@param thismtime: The current time (typically long(time.time())
+		@type thismtime: Long
+		@rtype: None or Boolean
+		@returns:
+		1. True on failure
+		2. None otherwise
+		
+		"""
 		from os.path import sep, join
 		srcroot = normalize_path(srcroot).rstrip(sep) + sep
 		destroot = normalize_path(destroot).rstrip(sep) + sep
