@@ -5018,23 +5018,20 @@ def emerge_main():
 			xtermTitleReset()
 	portage.atexit_register(emergeexit)
 
-	if myaction in ["sync","metadata"] and "--help" not in myopts:
+	if myaction in ("config", "metadata", "regen", "sync"):
 		if "--pretend" in myopts:
-			print "emerge: \"sync\" actions do not support \"--pretend.\""
-			sys.exit(1)
-		if "sync" == myaction:
-			action_sync(settings, trees, mtimedb, myopts, myaction)
-		else:
-			action_metadata(settings, portdb, myopts)
+			sys.stderr.write(("emerge: The '%s' action does " + \
+				"not support '--pretend'.\n") % myaction)
+			return 1
+	if "sync" == myaction:
+		action_sync(settings, trees, mtimedb, myopts, myaction)
+	elif "metadata" == myaction:
+		action_metadata(settings, portdb, myopts)
 	elif myaction=="regen":
 		validate_ebuild_environment(trees)
 		action_regen(settings, portdb)
 	# HELP action
 	elif "config"==myaction:
-		if "--pretend" in myopts:
-			sys.stderr.write("emerge: The --config action " + \
-				"does not support --pretend.\n")
-			return 1
 		validate_ebuild_environment(trees)
 		action_config(settings, trees, myopts, myfiles)
 	
