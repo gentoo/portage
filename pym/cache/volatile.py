@@ -17,9 +17,11 @@ class database(template.database):
 		super(database, self).__init__(*args, **config)
 		self._data = {}
 		self.iterkeys = self._data.iterkeys
-		self._setitem = self._data.__setitem__
 		self._delitem = self._data.__delitem__
 		self.__contains__ = self._data.__contains__
+
+	def _setitem(self, name, values):
+		self._data[name] = copy.deepcopy(values)
 
 	def _getitem(self, cpv):
 		return copy.deepcopy(self._data[cpv])
