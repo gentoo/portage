@@ -3815,8 +3815,10 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 
 		# write timestamp.chk
 		try:
+			if not os.path.exists(os.path.join(myportdir, "metadata")):
+				os.mkdir(os.path.join(myportdir, "metadata"))
 			f = open(os.path.join(myportdir, "metadata", "timestamp.chk"), 'w')
-			f.write(time.strftime("%a, %d %b %Y %H:%M:%S +0000"), time.gmtime())
+			f.write(time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime()))
 			f.write('\n')
 			f.close()
 		except IOError e:
