@@ -4039,7 +4039,8 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 	"""Takes a depend string and parses the condition."""
 	edebug = mysettings.get("PORTAGE_DEBUG", None) == "1"
 	#check_config_instance(mysettings)
-
+	if trees is None:
+		trees = globals()["db"]
 	if use=="yes":
 		if myuse is None:
 			#default behavior
