@@ -33,7 +33,7 @@ save_elf_debug() {
 		if [[ -s ${T}/debug.sources ]] ; then 
 			[[ -d ${D}${sources_dir} ]] || mkdir -p "${D}${sources_dir}"
 			cat "${T}"/debug.sources | (cd "${WORKDIR}"; LANG=C sort -z -u | \
-				rsync -aL0 --files-from=- "${WORKDIR}/" "${D}${sources_dir}/" )
+				rsync -rtL0 --files-from=- "${WORKDIR}/" "${D}${sources_dir}/" )
 		fi
 	fi
 
