@@ -5047,6 +5047,10 @@ class vardbapi(dbapi):
 		if pkg_data:
 			cache_mtime, metadata = pkg_data
 			cache_valid = cache_mtime == mydir_mtime
+			if cache_valid and set(metadata) != self._aux_cache_keys:
+				# Allow self._aux_cache_keys to change without a cache version
+				# bump.
+				cache_valid = False
 		if cache_valid:
 			mydata.update(metadata)
 			pull_me = set(wants).difference(self._aux_cache_keys)
