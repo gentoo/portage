@@ -5305,14 +5305,10 @@ class vartree(object):
 
 	def getslot(self,mycatpkg):
 		"Get a slot for a catpkg; assume it exists."
-		myslot = ""
 		try:
-			myslot=string.join(grabfile(self.root+VDB_PATH+"/"+mycatpkg+"/SLOT"))
-		except SystemExit, e:
-			raise
-		except Exception, e:
-			pass
-		return myslot
+			return self.dbapi.aux_get(mycatpkg, ["SLOT"])[0]
+		except KeyError:
+			return ""
 
 	def hasnode(self,mykey,use_cache):
 		"""Does the particular node (cat/pkg key) exist?"""
