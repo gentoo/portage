@@ -1,10 +1,10 @@
-.TH "EMERGE" "1" "Dec 2005" "Portage 2.1" "Portage"
+.TH "EMERGE" "1" "Dec 2006" "Portage 2.1" "Portage"
 .SH "NAME"
 emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
 .TP
 .BR emerge
-[\fIoptions\fR] [\fIaction\fR] [\fIebuild\fR | \fItbz2file\fR | \fIset\fR | \fIdependency\fR] ...
+[\fIoptions\fR] [\fIaction\fR] [\fIebuild\fR | \fItbz2file\fR | \fIset\fR | \fIatom\fR] ...
 .TP
 .BR emerge
 \fB\-\-sync\fR | \fB\-\-info\fR | \fB\-\-version\fR
@@ -26,7 +26,7 @@ distribution.
 .SH "EBUILDS, TBZ2S, SETS AND DEPENDENCIES"
 \fBemerge\fR primarily installs packages.  You can specify
 packages to install in one of four main ways: an \fIebuild\fR,
-a \fItbz2file\fR, a \fIset\fR, or a \fIdependency\fR.
+a \fItbz2file\fR, a \fIset\fR, or a \fIatom\fR.
 .LP
 .TP
 .BR ebuild
@@ -57,14 +57,14 @@ other packages listed in \fB/var/lib/portage/world\fR.  [See
 \fBFILES\fR below for more information.]  Note that a \fIset\fR
 is generally used in conjunction with \fB\-\-update\fR.
 .TP
-.BR dependency
-A \fIdependency\fR describes bounds on a package that you wish to install.  
-\fISee portage(5) for the details on these 'atoms'.\fR  For example, 
+.BR atom
+An \fIatom\fR describes bounds on a package that you wish to install.  
+\fISee portage(5) for the details on atom syntax.\fR  For example, 
 \fB>=dev\-lang/python\-2.2.1\-r2\fR matches the latest available version of 
 Python greater than or equal to 2.2.1\-r2.  Similarly, 
 \fB<dev\-lang/python\-2.0\fR matches the latest available version of Python 
 before 2.0.  Note that in many shells you will need to escape characters such 
-as '<' and '='; use single\- or double\-quotes around the \fIdependency\fR 
+as '<' and '='; use single\- or double\-quotes around the \fIatom\fR 
 to get around escaping problems.
 .SH "ACTIONS"
 .TP
@@ -72,19 +72,17 @@ to get around escaping problems.
 If no action is specified, the action is to merge in the specified
 packages, satisfying any dependencies that they may have.  The
 arguments can be \fIebuilds\fR, \fItbz2s\fR, \fIsets\fR, or
-\fIdependencies\fR.  \fBNote that you need to use the \-\-usepkg 
+\fIatoms\fR.  \fBNote that you need to use the \-\-usepkg 
 option if you want to install a tbz2\fR.  The packages are added
 to the \fBworld\fR file at the end, so that they are considered for
-later updating.  
+later updating.
 .TP
 .BR "\-\-clean " (\fB\-c\fR)
-Cleans the system by removing packages that will not affect the
-functionality of the system.  The arguments can be \fIebuilds\fR,
-\fIsets\fR, or \fIdependencies\fR.  For example, \fBemerge
---clean binutils\fR cleans out old versions of binutils;
-\fBemerge \-\-clean net\-www/mozilla\-0.9.9\-r2\fR cleans out that
-specific version of Mozilla.  This is generally safe to use.
-\fBNote that\fR \-\-clean \fBdoes not remove unslotted packages.\fR
+Cleans up the system by examining the installed packages and removing older
+packages.  This is accomplished by looking at each installed package and separating
+the installed versions by \fBslot\fR.  Clean will \fBremove all but the most recently
+installed version in each \fbslot\fR.  Clean should not remove unslotted packages.
+Note: Most recently installed means most \fBrecent\fR, not highest version.
 .TP
 .BR "\-\-config "
 Run package specific actions needed to be executed after the emerge process 
@@ -125,14 +123,12 @@ creates the cache database that portage uses for pre\-parsed lookups of
 package data.
 .TP
 .BR "\-\-prune " (\fB\-P\fR)
-\fBWARNING: This action can remove important packages!\fR  Tries to remove 
-all but the last version installed.  Since the command currently does not 
-handle multiple versions of the same package properly, beware!  This does not 
-check dependencies, so it may also remove packages necessary for the proper 
-operation of your system.  \fBUse\fR \-\-clean \fBinstead unless you really 
-know what you're doing\fR.  Its arguments can be \fIebuilds\fR, 
-\fIsets\fR, or \fIdependencies\fR \-\- see \fB\-\-clean\fR above for 
-examples.  You have been warned!
+\fBWARNING: This action can remove important packages!\fR  Prune looks at each
+installed package and attempts to \fBremove\fR all but the \fBmost recently 
+installed version.  \fRPrune ignores \fBslots\fR, if you require a slot\-aware
+Prune use \fB emerge \-\-clean\fR.  Prune may inadvertently remove important 
+packages from your system.  Use \fB\-\-clean\fR instead unless you really 
+know what you're doing.
 .TP
 .BR \-\-regen
 Causes portage to check and update the dependency cache of all ebuilds in the 
@@ -179,7 +175,7 @@ description of PORTDIR_OVERLAY for a method to avoid deletions.
 all matching packages.  This does no checking of dependencies, so
 it may remove packages necessary for the proper operation of your
 system.  Its arguments can be \fIebuilds\fR, \fIsets\fR, or
-\fIdependencies\fR \-\- see \fB\-\-clean\fR above for examples.
+\fIatoms\fR.
 .TP
 .BR "\-\-update " (\fB\-u\fR)
 Updates packages to the best version available, which may not always be the 
@@ -197,11 +193,11 @@ When displaying USE and other flag output, combines the enabled and
 disabled lists into one list and sorts the whole list alphabetically.
 .TP
 .BR "\-\-ask " (\fB\-a\fR)
-Before performing the merge, display what ebuilds and tbz2s will be installed, 
-in the same format as when using \fB\-\-pretend\fR; then ask whether to 
-continue with the merge or abort.  Using \fB\-\-ask\fR is more efficient than 
-using \fB\-\-pretend\fR and then executing the same command without 
-\fB\-\-pretend\fR, as dependencies will only need to be calculated once.
+Before performing the action, display what will take place (server info for
+\fB\-\-sync\fR, \fB\-\-pretend\fR output for merge, and so forth), then ask
+whether to proceed with the action or abort.  Using \fB\-\-ask\fR is more
+efficient than using \fB\-\-pretend\fR and then executing the same command
+without \fB\-\-pretend\fR, as dependencies will only need to be calculated once.
 \fBWARNING: If the "Enter" key is pressed at the prompt (with no other input),
 it is interpreted as acceptance of the first choice.  Note that the input
 buffer is not cleared prior to the prompt, so an accidental press of the
@@ -236,9 +232,9 @@ and old version to be displayed in an aligned format for easy cut\-n\-paste.
 .TP
 .BR "\-\-debug " (\fB\-d\fR)
 Tells emerge to run the emerge command in \fB\-\-debug\fR mode.  In this
-mode the bash build environment will run with the \-x option,
-causing it to output verbose debugging information to stdout.
-\fB\-\-debug\fR is great for finding bash syntax errors.
+mode the bash build environment will run with the \-x option, causing 
+it to output verbose debugging information to stdout.  This also enables
+a plethora of other output (mostly dependency resolution messages).
 .TP
 .BR "\-\-deep " (\fB\-D\fR)
 This flag forces
@@ -282,8 +278,15 @@ Causes \fIEMERGE_DEFAULT_OPTS\fR (see \fBmake.conf\fR(5)) to be ignored.
 .TP
 .BR "\-\-newuse " (\fB\-N\fR)
 Tells emerge to include installed packages where USE flags have changed since 
-compilation.  An asterisk marks when a USE flag has changed since the package 
-was compiled.
+compilation.  USE flag changes include:
+
+A USE flag was added to a package.
+A USE flag was removed from a package.
+A USE flag was turned on for a package.
+A USE flag was turned off for a package.
+
+USE flags may be toggled by your profile as well as your USE and package.use
+settings.
 .TP
 .BR "\-\-noconfmem"
 Causes portage to disregard merge records indicating that a config file
@@ -299,7 +302,7 @@ the build may fail if the dependencies aren't satisfied.
 .BR "\-\-noreplace " (\fB\-n\fR)
 Skips the packages specified on the command\-line that have already
 been installed.  Without this option, any packages, ebuilds, or deps
-you specify on the command\-line *will* cause Portage to remerge
+you specify on the command\-line \fBwill\fR cause Portage to remerge
 the package, even if it is already installed.  Note that Portage will
 not remerge dependencies by default.
 .TP
@@ -308,7 +311,7 @@ Disables the spinner for the session.  The spinner is active when the
 terminal device is determined to be a TTY.  This flag disables it regardless.
 .TP
 .BR "\-\-oneshot " (\fB\-1\fR)
-Emerge as normal, but do not add the packages to the world profile
+Emerge as normal, but do not add the packages to the world file
 for later updating.
 .TP
 .BR "\-\-onlydeps " (\fB\-o\fR)
@@ -399,7 +402,7 @@ Defaults to /.
 \fBPORTAGE_CONFIGROOT\fR = \fI[path]\fR
 Use \fBPORTAGE_CONFIGROOT\fR to specify the location for various portage 
 configuration files
-(see \fBFILES\fR for a detailed list).
+(see \fBFILES\fR for a detailed list of configuration files).
 .br
 Defaults to /.
 .SH "OUTPUT"
@@ -472,7 +475,7 @@ update a large number of packages if the portage tree has been particularly
 active.
 .LP
 You also want to typically use \fB\-\-update\fR, which ignores packages that 
-are already fully updated but upgrades those that are not.
+are already fully updated but updates those that are not.
 .LP
 When you install a package with uninstalled dependencies and do
 not explicitly state those dependencies in the list of parameters,
