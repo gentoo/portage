@@ -3283,7 +3283,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				os.close(pr)
 				mybytes = "".join(mybytes)
 				global auxdbkeys
-				dbkey.update(izip(auxdbkeys, mybytes.split("\n")))
+				for k, v in izip(auxdbkeys, mybytes.splitlines()):
+					dbkey[k] = v
 				retval = os.waitpid(mypids[0], 0)[1]
 				# If it got a signal, return the signal that was sent, but
 				# shift in order to distinguish it from a return value. (just
