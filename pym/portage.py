@@ -5394,7 +5394,6 @@ class portdbapi(dbapi):
 		self.eclassdb = eclass_cache.cache(self.porttree_root,
 			overlays=self.mysettings["PORTDIR_OVERLAY"].split())
 
-		self.metadb       = {}
 		self.metadbmodule = self.mysettings.load_best_module("portdbapi.metadbmodule")
 
 		#if the portdbapi is "frozen", then we assume that we can cache everything (that no updates to it are happening)
@@ -5456,8 +5455,8 @@ class portdbapi(dbapi):
 		self.auxdb.clear()
 
 	def flush_cache(self):
-		self.metadb = {}
-		self.auxdb  = {}
+		for x in self.auxdb.values():
+			x.sync()
 
 	def finddigest(self,mycpv):
 		try:
