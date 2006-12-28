@@ -4719,6 +4719,10 @@ class vardbapi(dbapi):
 
 	def cpv_counter(self,mycpv):
 		"This method will grab the COUNTER. Returns a counter value."
+		try:
+			return long(self.aux_get(mycpv, ["COUNTER"])[0])
+		except KeyError, ValueError:
+			pass
 		cdir=self.root+VDB_PATH+"/"+mycpv
 		cpath=self.root+VDB_PATH+"/"+mycpv+"/COUNTER"
 
