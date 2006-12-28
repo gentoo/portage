@@ -744,6 +744,7 @@ class FakeVartree(portage.vartree):
 						continue
 				slot_counters[myslot_atom] = mycounter
 				self.dbapi.cpv_inject(cpv, metadata=metadata)
+			real_dbapi.flush_cache()
 		finally:
 			if vdb_lock:
 				portage_locks.unlockdir(vdb_lock)
