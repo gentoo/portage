@@ -117,10 +117,12 @@ information when submitting a bug report.\fR  Expanded output can be obtained
 with the \fI\-\-verbose\fR option.
 .TP
 .BR \-\-metadata
-Causes portage to process all the metacache files as is normally done on the 
-tail end of an rsync update using \fBemerge \-\-sync\fR.  The processing 
-creates the cache database that portage uses for pre\-parsed lookups of 
-package data.
+Transfers metadata cache from ${PORTDIR}/metadata/cache/ to
+/var/cache/edb/dep/ as is normally done on the
+tail end of an rsync update using \fBemerge \-\-sync\fR.  This process
+populates the cache database that portage uses for pre-parsed lookups of
+package data.  It does not populate cache for the overlays listed in
+PORTDIR_OVERLAY.  In order to generate cache for overlays, use \fB\-\-regen\fR.
 .TP
 .BR "\-\-prune " (\fB\-P\fR)
 \fBWARNING: This action can remove important packages!\fR  Prune looks at each
