@@ -865,7 +865,15 @@ class BlockerCache(DictMixin):
 		Currently, the cache is only written if the user has superuser
 		privileges (since that's required to obtain a lock), but all users
 		have read access and benefit from faster blocker lookups (as long as
-		the entire cache is still valid)."""
+		the entire cache is still valid).  The cache is stored as a pickled
+		dict object with the following format:
+
+		{
+			version : "1",
+			"blockers" : {cpv1:(counter,(atom1, atom2...)), cpv2...},
+			"virtuals" : vardb.settings.getvirtuals()
+		}
+		"""
 		if self._modified and \
 			secpass >= 2:
 			try:
