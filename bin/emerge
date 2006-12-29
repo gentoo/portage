@@ -1010,6 +1010,7 @@ class depgraph:
 		self.args_keys = []
 		self.blocker_digraph = digraph()
 		self.blocker_parents = {}
+		self._slot_collision_info = []
 		self._altlist_cache = {}
 		self._pprovided_args = []
 
@@ -1176,15 +1177,30 @@ class depgraph:
 							priority=priority)
 					return 1
 				else:
+					# A slot collision has occurred.  Sometimes this coincides
+					# with unresolvable blockers, so the slot collision will be
+					# shown later if there are no unresolvable blockers.
 					e_parents = self._parent_child_digraph.parent_nodes(
 						existing_node)
 					myparents = []
 					if myparent:
 						myparents.append(myparent)
-					self._show_slot_collision_notice(
-						((jbigkey, myparents),
-						(existing_node, e_parents)))
-					return 0
+					self._slot_collision_info.append(
+						((jbigkey, myparents), (existing_node, e_parents)))
+
+					# Now add this node to the graph so that self.display()
+					# can work with it show use flags and --tree output.
+					self.useFlags[myroot][mykey] = myuse
+					self._parent_child_digraph.add(jbigkey, myparent)
+					if rev_dep and myparent:
+						self.digraph.add(myparent, jbigkey,
+							priority=priority)
+					else:
+						self.digraph.add(jbigkey, myparent,
+							priority=priority)
+					# The slot collision has rendered the graph invalid, so
+					# there's no need to process dependencies of this node.
+					return 1
 
 			self._slot_node_map[myroot][slot_atom] = jbigkey
 			self.pkg_node_map[myroot][mykey] = jbigkey
@@ -1905,6 +1921,14 @@ class depgraph:
 		# Validate blockers that depend on merge order.
 		if not self.blocker_digraph.empty():
 			self.altlist()
+		if self._slot_collision_info:
+			# The user is only notified of a slot collision if there are no
+			# unresolvable blocks.
+			for x in self.altlist():
+				if x[0] == "blocks":
+					return True
+			self._show_slot_collision_notice(self._slot_collision_info[0])
+			return False
 		return True
 
 	def altlist(self, reversed=False):
