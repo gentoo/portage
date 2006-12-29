@@ -49,6 +49,12 @@ from portage_data import secpass
 if not hasattr(__builtins__, "set"):
 	from sets import Set as set
 from itertools import chain, izip
+from UserDict import DictMixin
+
+try:
+	import cPickle
+except ImportError:
+	import pickle as cPickle
 
 class stdout_spinner(object):
 	scroll_msgs = [
@@ -801,6 +807,97 @@ def perform_global_updates(mycpv, mydb, mycommands):
 	if updates:
 		mydb.aux_update(mycpv, updates)
 
+class BlockerCache(DictMixin):
+	"""This caches blockers of installed packages so that dep_check does not
+	have to be done for every single installed package on every invocation of
+	emerge.  The cache is invalidated whenever it is detected that something
+	has changed that might alter the results of dep_check() calls:
+		1) the set of installed packages (including COUNTER) has changed
+		2) the old-style virtuals have changed
+	"""
+	class BlockerData(object):
+		def __init__(self, counter, atoms):
+			self.counter = counter
+			self.atoms = atoms
+
+	def __init__(self, myroot, vardb):
+		self._vardb = vardb
+		self._installed_pkgs = set(vardb.cpv_all())
+		self._virtuals = vardb.settings.getvirtuals()
+		self._cache_filename = os.path.join(myroot,
+			portage.CACHE_PATH.lstrip(os.path.sep), "vdb_blockers.pickle")
+		self._cache_version = "1"
+		self._cache_data = None
+		self._modified = False
+		self._load()
+
+	def _load(self):
+		try:
+			f = open(self._cache_filename)
+			mypickle = cPickle.Unpickler(f)
+			mypickle.find_global = None
+			self._cache_data = mypickle.load()
+			f.close()
+			del f
+		except (IOError, OSError, EOFError, cPickle.UnpicklingError):
+			pass
+		cache_valid = self._cache_data and \
+			isinstance(self._cache_data, dict) and \
+			self._cache_data.get("version") == self._cache_version and \
+			self._cache_data["virtuals"] == self._virtuals and \
+			set(self._cache_data["blockers"]) == self._installed_pkgs
+		if cache_valid:
+			for pkg in self._installed_pkgs:
+				if long(self._vardb.aux_get(pkg, ["COUNTER"])[0]) != \
+					self[pkg].counter:
+					cache_valid = False
+					break
+		if not cache_valid:
+			self._cache_data = {"version":self._cache_version}
+			self._cache_data["blockers"] = {}
+			self._cache_data["virtuals"] = self._virtuals
+		self._modified = False
+
+	def flush(self):
+		"""If the current user has permission and the internal blocker cache
+		been updated, save it to disk and mark it unmodified.  This is called
+		by emerge after it has proccessed blockers for all installed packages.
+		Currently, the cache is only written if the user has superuser
+		privileges (since that's required to obtain a lock), but all users
+		have read access and benefit from faster blocker lookups (as long as
+		the entire cache is still valid)."""
+		if self._modified and \
+			secpass >= 2:
+			try:
+				f = portage_util.atomic_ofstream(self._cache_filename)
+				cPickle.dump(self._cache_data, f, -1)
+				f.close()
+				portage_util.apply_secpass_permissions(
+					self._cache_filename, gid=portage.portage_gid, mode=0644)
+			except (IOError, OSError), e:
+				pass
+			self._modified = False
+
+	def __setitem__(self, cpv, blocker_data):
+		"""
+		Update the cache and mark it as modified for a future call to
+		self.flush().
+
+		@param cpv: Package for which to cache blockers.
+		@type cpv: String
+		@param blocker_data: An object with counter and atoms attributes.
+		@type blocker_data: BlockerData
+		"""
+		self._cache_data["blockers"][cpv] = \
+			(blocker_data.counter, blocker_data.atoms)
+		self._modified = True
+
+	def __getitem__(self, cpv):
+		"""
+		@rtype: BlockerData
+		@returns: An object with counter and atoms attributes.
+		"""
+		return self.BlockerData(*self._cache_data["blockers"][cpv])
 
 def show_invalid_depstring_notice(parent_node, depstring, error_msg):
 
@@ -1654,14 +1751,21 @@ class depgraph:
 				portdb = self.trees[myroot]["porttree"].dbapi
 				pkgsettings = self.pkgsettings[myroot]
 				final_db = self.mydbapi[myroot]
-				for pkg in self.trees[myroot]["vartree"].dbapi.cpv_all():
+				cpv_all_installed = self.trees[myroot]["vartree"].dbapi.cpv_all()
+				blocker_cache = BlockerCache(myroot, vardb)
+				for pkg in cpv_all_installed:
 					blocker_atoms = None
 					matching_node = pkg_node_map.get(pkg, None)
-					if not matching_node or \
-						matching_node[3] == "merge":
-						# If this node has any blockers, create a "nomerge"
-						# node for it so that they can be enforced.
-						self.spinner.update()
+					if matching_node and \
+						matching_node[3] == "nomerge":
+						continue
+					# If this node has any blockers, create a "nomerge"
+					# node for it so that they can be enforced.
+					self.spinner.update()
+					blocker_data = blocker_cache.get(pkg)
+					if blocker_data:
+						blocker_atoms = blocker_data.atoms
+					else:
 						dep_vals = vardb.aux_get(pkg, dep_keys)
 						myuse = vardb.aux_get(pkg, ["USE"])[0].split()
 						depstr = " ".join(dep_vals)
@@ -1690,6 +1794,9 @@ class depgraph:
 							return False
 						blocker_atoms = [myatom for myatom in atoms \
 							if myatom.startswith("!")]
+						counter = long(vardb.aux_get(pkg, ["COUNTER"])[0])
+						blocker_cache[pkg] = \
+							blocker_cache.BlockerData(counter, blocker_atoms)
 					if blocker_atoms:
 						# Don't store this parent in pkg_node_map, because it's
 						# not needed there and it might overwrite a "merge"
@@ -1703,6 +1810,8 @@ class depgraph:
 								myparents = set()
 								self.blocker_parents[blocker] = myparents
 							myparents.add(myparent)
+				blocker_cache.flush()
+				del blocker_cache
 
 		for blocker in self.blocker_parents.keys():
 			mytype, myroot, mydep = blocker
