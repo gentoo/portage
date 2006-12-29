@@ -4187,8 +4187,24 @@ def action_info(settings, trees, myopts, myfiles):
 	unset_vars = []
 	myvars.sort()
 	for x in myvars:
-		if settings.has_key(x):
-			print x+'="'+settings[x]+'"'
+		if x in settings:
+			if x != "USE":
+				print '%s="%s"' % (x, settings[x])
+			else:
+				use = set(settings["USE"].split())
+				use_expand = settings["USE_EXPAND"].split()
+				use_expand.sort()
+				for varname in use_expand:
+					flag_prefix = varname.lower() + "_"
+					for f in list(use):
+						if f.startswith(flag_prefix):
+							use.remove(f)
+				print 'USE="%s"' % " ".join(use),
+				for varname in use_expand:
+					myval = settings.get(varname)
+					if myval:
+						print '%s="%s"' % (varname, myval),
+				print
 		else:
 			unset_vars.append(x)
 	if unset_vars:
