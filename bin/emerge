@@ -3316,8 +3316,7 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 			return 0
 	
 		if not numselected:
-			print "\n>>> No packages selected for removal by", \
-				unmerge_action+".\n"
+			portage.writemsg("\n>>> No packages selected for removal by " + unmerge_action + "\n")
 			return 0
 	finally:
 		if vdb_lock:
