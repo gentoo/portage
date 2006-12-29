@@ -3982,28 +3982,28 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 		# Check if the set of atoms will result in a downgrade of
 		# an installed package. If they will then don't prefer them
 		# over other atoms.
+		is_downgrade = False
 		if all_installed and all_available:
 			for atom in atoms:
 				mykey = dep_getkey(atom)
-				if mykey.startswith("virtual/"):
-					# New-style virtuals have zero cost to install.
-					continue
 				inst_pkgs = vardb.match(mykey)
+				if not inst_pkgs:
+					# This must be a new-style virtual that isn't really
+					# installed yet (they have zero cost to install).
+					continue
 				avail_pkg = best(mydbapi.match(atom))
 				avail_slot = mydbapi.aux_get(avail_pkg, ["SLOT"])[0]
 				avail_split = catpkgsplit(avail_pkg)[1:]
-				is_okay = False
 				for pkg in inst_pkgs:
 					if avail_slot != vardb.aux_get(pkg, ["SLOT"])[0]:
 						continue
-					if pkgcmp(avail_split, catpkgsplit(pkg)[1:]) >= 0:
-						is_okay = True
+					if pkgcmp(avail_split, catpkgsplit(pkg)[1:]) < 0:
+						is_downgrade = True
 						break
-				if not is_okay:
-					all_installed = False
+				if is_downgrade:
 					break
 
-		if all_installed:
+		if all_installed and not is_downgrade:
 			preferred.append((atoms, all_available))
 		else:
 			other.append((atoms, all_available))
