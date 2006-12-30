@@ -3945,6 +3945,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 	# d) is the first item
 
 	preferred = []
+	possible_upgrades = []
 	other = []
 
 	# Alias the trees we'll be checking availability against
@@ -3983,17 +3984,19 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 		# an installed package. If they will then don't prefer them
 		# over other atoms.
 		is_downgrade = False
-		if all_installed and all_available:
+		versions = {}
+		if all_installed or all_available:
 			for atom in atoms:
 				mykey = dep_getkey(atom)
+				avail_pkg = best(mydbapi.match(atom))
+				if not avail_pkg:
+					continue
+				avail_slot = mydbapi.aux_get(avail_pkg, ["SLOT"])[0]
+				versions["%s:%s" % (mykey, avail_slot)] = avail_pkg
+				avail_split = catpkgsplit(avail_pkg)[1:]
 				inst_pkgs = vardb.match(mykey)
 				if not inst_pkgs:
-					# This must be a new-style virtual that isn't really
-					# installed yet (they have zero cost to install).
 					continue
-				avail_pkg = best(mydbapi.match(atom))
-				avail_slot = mydbapi.aux_get(avail_pkg, ["SLOT"])[0]
-				avail_split = catpkgsplit(avail_pkg)[1:]
 				for pkg in inst_pkgs:
 					if avail_slot != vardb.aux_get(pkg, ["SLOT"])[0]:
 						continue
@@ -4003,10 +4006,44 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 				if is_downgrade:
 					break
 
-		if all_installed and not is_downgrade:
-			preferred.append((atoms, all_available))
-		else:
-			other.append((atoms, all_available))
+		this_choice = (atoms, versions, all_available)
+		if not is_downgrade:
+			if all_installed:
+				preferred.append(this_choice)
+				continue
+			elif all_available:
+				possible_upgrades.append(this_choice)
+				continue
+		other.append(this_choice)
+
+	# Compare the "all_installed" choices against the "all_available" choices
+	# for possible missed upgrades.  The main purpose of this code is to find
+	# upgrades of new-style virtuals since _expand_new_virtuals() expands them
+	# into || ( highest version ... lowest version ).  We want to prefer the
+	# highest all_available version of the new-style virtual when there is a
+	# lower all_installed version.
+	for possible_upgrade in list(possible_upgrades):
+		atoms, versions, all_available = possible_upgrade
+		myslots = set(versions)
+		for other_choice in preferred:
+			o_atoms, o_versions, o_all_available = other_choice
+			intersecting_slots = myslots.intersection(o_versions)
+			if not intersecting_slots:
+				continue
+			is_downgrade = False
+			for myslot in intersecting_slots:
+				myversion = versions[myslot]
+				o_version = o_versions[myslot]
+				if myversion != o_version and \
+					o_version == best([myversion, o_version]):
+					is_downgrade = True
+					break
+			if not is_downgrade:
+				o_index = preferred.index(other_choice)
+				preferred.insert(o_index, possible_upgrade)
+				possible_upgrades.remove(possible_upgrade)
+				break
+	preferred.extend(possible_upgrades)
 
 	# preferred now contains a) and c) from the order above with
 	# the masked flag differentiating the two. other contains b)
@@ -4015,7 +4052,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 	preferred.extend(other)
 
 	for allow_masked in (False, True):
-		for atoms, all_available in preferred:
+		for atoms, versions, all_available in preferred:
 			if all_available or allow_masked:
 				return atoms
 
