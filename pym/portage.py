@@ -4030,15 +4030,18 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 			intersecting_slots = myslots.intersection(o_versions)
 			if not intersecting_slots:
 				continue
-			is_downgrade = False
+			has_upgrade = False
+			has_downgrade = False
 			for myslot in intersecting_slots:
 				myversion = versions[myslot]
 				o_version = o_versions[myslot]
-				if myversion != o_version and \
-					o_version == best([myversion, o_version]):
-					is_downgrade = True
-					break
-			if not is_downgrade:
+				if myversion != o_version:
+					if myversion == best([myversion, o_version]):
+						has_upgrade = True
+					else:
+						has_downgrade = True
+						break
+			if has_upgrade and not has_downgrade:
 				o_index = preferred.index(other_choice)
 				preferred.insert(o_index, possible_upgrade)
 				possible_upgrades.remove(possible_upgrade)
