@@ -4328,16 +4328,23 @@ def getmaskingreason(mycpv, settings=None, portdb=None):
 			if mycpv in portdb.xmatch("match-all", x):
 				comment = ""
 				l = "\n"
-				i = 0
-				while i < len(pmasklines):
+				comment_valid = -1
+				for i in xrange(len(pmasklines)):
 					l = pmasklines[i].strip()
 					if l == "":
 						comment = ""
+						comment_valid = -1
 					elif l[0] == "#":
 						comment += (l+"\n")
+						comment_valid = i + 1
 					elif l == x:
+						if comment_valid != i:
+							comment = ""
 						return comment
-					i = i + 1
+					elif comment_valid != -1:
+						# Apparently this comment applies to muliple masks, so
+						# it remains valid until a blank line is encountered.
+						comment_valid += 1
 	return None
 
 def getmaskingstatus(mycpv, settings=None, portdb=None):
