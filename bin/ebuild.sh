@@ -684,7 +684,6 @@ dyn_setup() {
 }
 
 dyn_unpack() {
-	trap "abort_unpack" SIGINT SIGQUIT
 	[ "$(type -t pre_src_unpack)" == "function" ] && pre_src_unpack
 	local newstuff="no"
 	if [ -e "${WORKDIR}" ]; then
@@ -735,8 +734,6 @@ dyn_unpack() {
 	cd "${PORTAGE_BUILDDIR}"
 
 	[ "$(type -t post_src_unpack)" == "function" ] && post_src_unpack
-
-	trap SIGINT SIGQUIT
 }
 
 dyn_clean() {
@@ -871,13 +868,6 @@ abort_handler() {
 abort_compile() {
 	abort_handler "src_compile" $1
 	rm -f "${PORTAGE_BUILDDIR}/.compiled"
-	exit 1
-}
-
-abort_unpack() {
-	abort_handler "src_unpack" $1
-	rm -f "${PORTAGE_BUILDDIR}/.unpacked"
-	rm -rf "${PORTAGE_BUILDDIR}/work"
 	exit 1
 }
 
