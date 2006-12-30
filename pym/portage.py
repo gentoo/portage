@@ -4308,14 +4308,14 @@ def getmaskingreason(mycpv, settings=None, portdb=None):
 	mycp=mysplit[0]+"/"+mysplit[1]
 
 	# XXX- This is a temporary duplicate of code from the config constructor.
-	locations = settings.profiles[:]
-	locations.append(os.path.join(settings["PORTDIR"], "profiles"))
-	locations.append(os.path.join(settings["PORTAGE_CONFIGROOT"],
-		USER_CONFIG_PATH.lstrip(os.path.sep)))
+	locations = [os.path.join(settings["PORTDIR"], "profiles")]
+	locations.extend(settings.profiles)
 	for ov in settings["PORTDIR_OVERLAY"].split():
 		profdir = os.path.join(normalize_path(ov), "profiles")
 		if os.path.isdir(profdir):
 			locations.append(profdir)
+	locations.append(os.path.join(settings["PORTAGE_CONFIGROOT"],
+		USER_CONFIG_PATH.lstrip(os.path.sep)))
 	locations.reverse()
 	pmasklists = [grablines(os.path.join(x, "package.mask"), recursive=1) for x in locations]
 	pmasklines = []
