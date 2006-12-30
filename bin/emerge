@@ -50,6 +50,12 @@ from portage_data import secpass
 if not hasattr(__builtins__, "set"):
 	from sets import Set as set
 from itertools import chain, izip
+from UserDict import DictMixin
+
+try:
+	import cPickle
+except ImportError:
+	import pickle as cPickle
 
 class stdout_spinner(object):
 	scroll_msgs = [
@@ -745,6 +751,7 @@ class FakeVartree(portage.vartree):
 						continue
 				slot_counters[myslot_atom] = mycounter
 				self.dbapi.cpv_inject(cpv, metadata=metadata)
+			real_dbapi.flush_cache()
 		finally:
 			if vdb_lock:
 				portage_locks.unlockdir(vdb_lock)
@@ -801,6 +808,105 @@ def perform_global_updates(mycpv, mydb, mycommands):
 	if updates:
 		mydb.aux_update(mycpv, updates)
 
+class BlockerCache(DictMixin):
+	"""This caches blockers of installed packages so that dep_check does not
+	have to be done for every single installed package on every invocation of
+	emerge.  The cache is invalidated whenever it is detected that something
+	has changed that might alter the results of dep_check() calls:
+		1) the set of installed packages (including COUNTER) has changed
+		2) the old-style virtuals have changed
+	"""
+	class BlockerData(object):
+		def __init__(self, counter, atoms):
+			self.counter = counter
+			self.atoms = atoms
+
+	def __init__(self, myroot, vardb):
+		self._vardb = vardb
+		self._installed_pkgs = set(vardb.cpv_all())
+		self._virtuals = vardb.settings.getvirtuals()
+		self._cache_filename = os.path.join(myroot,
+			portage.CACHE_PATH.lstrip(os.path.sep), "vdb_blockers.pickle")
+		self._cache_version = "1"
+		self._cache_data = None
+		self._modified = False
+		self._load()
+
+	def _load(self):
+		try:
+			f = open(self._cache_filename)
+			mypickle = cPickle.Unpickler(f)
+			mypickle.find_global = None
+			self._cache_data = mypickle.load()
+			f.close()
+			del f
+		except (IOError, OSError, EOFError, cPickle.UnpicklingError):
+			pass
+		cache_valid = self._cache_data and \
+			isinstance(self._cache_data, dict) and \
+			self._cache_data.get("version") == self._cache_version and \
+			self._cache_data["virtuals"] == self._virtuals and \
+			set(self._cache_data["blockers"]) == self._installed_pkgs
+		if cache_valid:
+			for pkg in self._installed_pkgs:
+				if long(self._vardb.aux_get(pkg, ["COUNTER"])[0]) != \
+					self[pkg].counter:
+					cache_valid = False
+					break
+		if not cache_valid:
+			self._cache_data = {"version":self._cache_version}
+			self._cache_data["blockers"] = {}
+			self._cache_data["virtuals"] = self._virtuals
+		self._modified = False
+
+	def flush(self):
+		"""If the current user has permission and the internal blocker cache
+		been updated, save it to disk and mark it unmodified.  This is called
+		by emerge after it has proccessed blockers for all installed packages.
+		Currently, the cache is only written if the user has superuser
+		privileges (since that's required to obtain a lock), but all users
+		have read access and benefit from faster blocker lookups (as long as
+		the entire cache is still valid).  The cache is stored as a pickled
+		dict object with the following format:
+
+		{
+			version : "1",
+			"blockers" : {cpv1:(counter,(atom1, atom2...)), cpv2...},
+			"virtuals" : vardb.settings.getvirtuals()
+		}
+		"""
+		if self._modified and \
+			secpass >= 2:
+			try:
+				f = portage_util.atomic_ofstream(self._cache_filename)
+				cPickle.dump(self._cache_data, f, -1)
+				f.close()
+				portage_util.apply_secpass_permissions(
+					self._cache_filename, gid=portage.portage_gid, mode=0644)
+			except (IOError, OSError), e:
+				pass
+			self._modified = False
+
+	def __setitem__(self, cpv, blocker_data):
+		"""
+		Update the cache and mark it as modified for a future call to
+		self.flush().
+
+		@param cpv: Package for which to cache blockers.
+		@type cpv: String
+		@param blocker_data: An object with counter and atoms attributes.
+		@type blocker_data: BlockerData
+		"""
+		self._cache_data["blockers"][cpv] = \
+			(blocker_data.counter, blocker_data.atoms)
+		self._modified = True
+
+	def __getitem__(self, cpv):
+		"""
+		@rtype: BlockerData
+		@returns: An object with counter and atoms attributes.
+		"""
+		return self.BlockerData(*self._cache_data["blockers"][cpv])
 
 def show_invalid_depstring_notice(parent_node, depstring, error_msg):
 
@@ -905,6 +1011,7 @@ class depgraph:
 		self.args_keys = []
 		self.blocker_digraph = digraph()
 		self.blocker_parents = {}
+		self._slot_collision_info = []
 		self._altlist_cache = {}
 		self._pprovided_args = []
 
@@ -1071,15 +1178,30 @@ class depgraph:
 							priority=priority)
 					return 1
 				else:
+					# A slot collision has occurred.  Sometimes this coincides
+					# with unresolvable blockers, so the slot collision will be
+					# shown later if there are no unresolvable blockers.
 					e_parents = self._parent_child_digraph.parent_nodes(
 						existing_node)
 					myparents = []
 					if myparent:
 						myparents.append(myparent)
-					self._show_slot_collision_notice(
-						((jbigkey, myparents),
-						(existing_node, e_parents)))
-					return 0
+					self._slot_collision_info.append(
+						((jbigkey, myparents), (existing_node, e_parents)))
+
+					# Now add this node to the graph so that self.display()
+					# can work with it show use flags and --tree output.
+					self.useFlags[myroot][mykey] = myuse
+					self._parent_child_digraph.add(jbigkey, myparent)
+					if rev_dep and myparent:
+						self.digraph.add(myparent, jbigkey,
+							priority=priority)
+					else:
+						self.digraph.add(jbigkey, myparent,
+							priority=priority)
+					# The slot collision has rendered the graph invalid, so
+					# there's no need to process dependencies of this node.
+					return 1
 
 			self._slot_node_map[myroot][slot_atom] = jbigkey
 			self.pkg_node_map[myroot][mykey] = jbigkey
@@ -1654,14 +1776,21 @@ class depgraph:
 				portdb = self.trees[myroot]["porttree"].dbapi
 				pkgsettings = self.pkgsettings[myroot]
 				final_db = self.mydbapi[myroot]
-				for pkg in self.trees[myroot]["vartree"].dbapi.cpv_all():
+				cpv_all_installed = self.trees[myroot]["vartree"].dbapi.cpv_all()
+				blocker_cache = BlockerCache(myroot, vardb)
+				for pkg in cpv_all_installed:
 					blocker_atoms = None
 					matching_node = pkg_node_map.get(pkg, None)
-					if not matching_node or \
-						matching_node[3] == "merge":
-						# If this node has any blockers, create a "nomerge"
-						# node for it so that they can be enforced.
-						self.spinner.update()
+					if matching_node and \
+						matching_node[3] == "nomerge":
+						continue
+					# If this node has any blockers, create a "nomerge"
+					# node for it so that they can be enforced.
+					self.spinner.update()
+					blocker_data = blocker_cache.get(pkg)
+					if blocker_data:
+						blocker_atoms = blocker_data.atoms
+					else:
 						dep_vals = vardb.aux_get(pkg, dep_keys)
 						myuse = vardb.aux_get(pkg, ["USE"])[0].split()
 						depstr = " ".join(dep_vals)
@@ -1690,6 +1819,9 @@ class depgraph:
 							return False
 						blocker_atoms = [myatom for myatom in atoms \
 							if myatom.startswith("!")]
+						counter = long(vardb.aux_get(pkg, ["COUNTER"])[0])
+						blocker_cache[pkg] = \
+							blocker_cache.BlockerData(counter, blocker_atoms)
 					if blocker_atoms:
 						# Don't store this parent in pkg_node_map, because it's
 						# not needed there and it might overwrite a "merge"
@@ -1703,6 +1835,8 @@ class depgraph:
 								myparents = set()
 								self.blocker_parents[blocker] = myparents
 							myparents.add(myparent)
+				blocker_cache.flush()
+				del blocker_cache
 
 		for blocker in self.blocker_parents.keys():
 			mytype, myroot, mydep = blocker
@@ -1788,6 +1922,14 @@ class depgraph:
 		# Validate blockers that depend on merge order.
 		if not self.blocker_digraph.empty():
 			self.altlist()
+		if self._slot_collision_info:
+			# The user is only notified of a slot collision if there are no
+			# unresolvable blocks.
+			for x in self.altlist():
+				if x[0] == "blocks":
+					return True
+			self._show_slot_collision_notice(self._slot_collision_info[0])
+			return False
 		return True
 
 	def altlist(self, reversed=False):
@@ -4104,8 +4246,24 @@ def action_info(settings, trees, myopts, myfiles):
 	unset_vars = []
 	myvars.sort()
 	for x in myvars:
-		if settings.has_key(x):
-			print x+'="'+settings[x]+'"'
+		if x in settings:
+			if x != "USE":
+				print '%s="%s"' % (x, settings[x])
+			else:
+				use = set(settings["USE"].split())
+				use_expand = settings["USE_EXPAND"].split()
+				use_expand.sort()
+				for varname in use_expand:
+					flag_prefix = varname.lower() + "_"
+					for f in list(use):
+						if f.startswith(flag_prefix):
+							use.remove(f)
+				print 'USE="%s"' % " ".join(use),
+				for varname in use_expand:
+					myval = settings.get(varname)
+					if myval:
+						print '%s="%s"' % (varname, myval),
+				print
 		else:
 			unset_vars.append(x)
 	if unset_vars:

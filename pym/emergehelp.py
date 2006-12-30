@@ -80,10 +80,13 @@ def help(myaction,myopts,havecolor=1):
 		print "              run with the '--verbose' flag."
 		print
 		print "       "+green("--metadata")
-		print "              Causes portage to process all the metacache files as is normally "
-		print "              done on the tail end of an rsync update using "+bold("emerge --sync")+"."
-		print "              This processing creates the cache database that portage uses for"
-		print "              pre-parsed lookups of package data."
+		print "              Transfers metadata cache from ${PORTDIR}/metadata/cache/ to"
+		print "              /var/cache/edb/dep/ as is normally done on the tail end of an"
+		print "              rsync update using " + bold("emerge --sync") + ". This process populates the"
+		print "              cache database that portage uses for pre-parsed lookups of"
+		print "              package data.  It does not populate cache for the overlays"
+		print "              listed in PORTDIR_OVERLAY.  In order to generate cache for"
+		print "              overlays, use " + bold("--regen") + "."
 		print
 		print "       "+green("--prune")+" ("+green("-P")+" short option)"
 		print "              "+turquoise("WARNING: This action can remove important packages!")
