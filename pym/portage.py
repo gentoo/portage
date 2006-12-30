@@ -7126,9 +7126,9 @@ class dblink:
 			vartree=self.vartree)
 
 		# XXX: Decide how to handle failures here.
-		if a != 0:
+		if a != os.EX_OK:
 			writemsg("!!! FAILED preinst: "+str(a)+"\n", noiselevel=-1)
-			sys.exit(123)
+			return a
 
 		# copy "info" files (like SLOT, CFLAGS, etc.) into the database
 		for x in listdir(inforoot):
@@ -7226,9 +7226,9 @@ class dblink:
 			tree=self.treetype, mydbapi=mydbapi, vartree=self.vartree)
 
 		# XXX: Decide how to handle failures here.
-		if a != 0:
+		if a != os.EX_OK:
 			writemsg("!!! FAILED postinst: "+str(a)+"\n", noiselevel=-1)
-			sys.exit(123)
+			return a
 
 		downgrade = False
 		for v in otherversions:
@@ -7250,7 +7250,7 @@ class dblink:
 		if "noclean" not in self.settings.features:
 			doebuild(myebuild, "clean", destroot, self.settings,
 				tree=self.treetype, mydbapi=mydbapi, vartree=self.vartree)
-		return 0
+		return os.EX_OK
 
 	def mergeme(self,srcroot,destroot,outfile,secondhand,stufftomerge,cfgfiledict,thismtime):
 		"""
@@ -7652,7 +7652,7 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 		vartree = db[myroot]["vartree"]
 	if mytbz2[-5:]!=".tbz2":
 		print "!!! Not a .tbz2 file"
-		return None
+		return 1
 
 	tbz2_lock = None
 	builddir_lock = None
@@ -7668,7 +7668,7 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 		if not mycat:
 			writemsg("!!! CATEGORY info missing from info chunk, aborting...\n",
 				noiselevel=-1)
-			return None
+			return 1
 		mycat = mycat.strip()
 
 		# These are the same directories that would be used at build time.
@@ -7713,7 +7713,7 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 			tree="bintree", mydbapi=mydbapi, vartree=vartree)
 		if retval != os.EX_OK:
 			writemsg("!!! Setup failed: %s\n" % retval, noiselevel=-1)
-			return None
+			return retval
 
 		writemsg_stdout(">>> Extracting %s\n" % mypkg)
 		retval = portage_exec.spawn_bash(
@@ -7721,23 +7721,15 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 			env=mysettings.environ())
 		if retval != os.EX_OK:
 			writemsg("!!! Error Extracting '%s'\n" % mytbz2, noiselevel=-1)
-			return None
+			return retval
 		#portage_locks.unlockfile(tbz2_lock)
 		#tbz2_lock = None
 
 		mylink = dblink(mycat, mypkg, myroot, mysettings, vartree=vartree,
 			treetype="bintree")
-		mylink.merge(pkgloc, infloc, myroot, myebuild, cleanup=0,
+		retval = mylink.merge(pkgloc, infloc, myroot, myebuild, cleanup=0,
 			mydbapi=mydbapi, prev_mtimes=prev_mtimes)
-
-		try:
-			f = open(os.path.join(infloc, "RDEPEND", "r"))
-			try:
-				return " ".join(f.read().split())
-			finally:
-				f.close()
-		except (IOError, OSError):
-			return ""
+		return retval
 	finally:
 		if tbz2_lock:
 			portage_locks.unlockfile(tbz2_lock)

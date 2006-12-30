@@ -3015,8 +3015,8 @@ class MergeTask(object):
 					mydbapi=bindb,
 					vartree=self.trees[myroot]["vartree"],
 					prev_mtimes=ldpath_mtimes)
-				if retval is None:
-					sys.exit(1)
+				if retval != os.EX_OK:
+					return retval
 				#need to check for errors
 			if "--buildpkgonly" not in self.myopts:
 				self.trees[x[1]]["vartree"].inject(x[2])
