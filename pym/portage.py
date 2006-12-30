@@ -513,8 +513,10 @@ def elog_process(cpv, mysettings):
 			# Timeout after one minute (in case something like the mail
 			# module gets hung).
 			signal.alarm(60)
-			m.process(mysettings, cpv, mylogentries, fulllog)
-			signal.alarm(0)
+			try:
+				m.process(mysettings, cpv, mylogentries, fulllog)
+			finally:
+				signal.alarm(0)
 			if hasattr(m, "finalize") and not m.finalize in _elog_atexit_handlers:
 				_elog_atexit_handlers.append(m.finalize)
 				atexit_register(m.finalize, mysettings)
