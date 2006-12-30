@@ -505,7 +505,16 @@ def elog_process(cpv, mysettings):
 			# TODO:  implement a common portage module loader
 			logmodule = __import__("elog_modules.mod_"+s)
 			m = getattr(logmodule, "mod_"+s)
+			def timeout_handler(signum, frame):
+				raise portage_exception.PortageException(
+					"Timeout in elog_process for system '%s'" % s)
+			import signal
+			signal.signal(signal.SIGALRM, timeout_handler)
+			# Timeout after one minute (in case something like the mail
+			# module gets hung).
+			signal.alarm(60)
 			m.process(mysettings, cpv, mylogentries, fulllog)
+			signal.alarm(0)
 			if hasattr(m, "finalize") and not m.finalize in _elog_atexit_handlers:
 				_elog_atexit_handlers.append(m.finalize)
 				atexit_register(m.finalize, mysettings)
