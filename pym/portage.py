@@ -5070,7 +5070,8 @@ class vardbapi(dbapi):
 				pass
 			if not self._aux_cache or \
 				not isinstance(self._aux_cache, dict) or \
-				self._aux_cache.get("version") != self._aux_cache_version:
+				self._aux_cache.get("version") != self._aux_cache_version or \
+				not self._aux_cache.get("packages"):
 				self._aux_cache = {"version":self._aux_cache_version}
 				self._aux_cache["packages"] = {}
 			self._aux_cache["modified"] = False

@@ -844,8 +844,8 @@ class BlockerCache(DictMixin):
 		cache_valid = self._cache_data and \
 			isinstance(self._cache_data, dict) and \
 			self._cache_data.get("version") == self._cache_version and \
-			self._cache_data["virtuals"] == self._virtuals and \
-			set(self._cache_data["blockers"]) == self._installed_pkgs
+			self._cache_data.get("virtuals") == self._virtuals and \
+			set(self._cache_data.get("blockers", [])) == self._installed_pkgs
 		if cache_valid:
 			for pkg in self._installed_pkgs:
 				if long(self._vardb.aux_get(pkg, ["COUNTER"])[0]) != \
