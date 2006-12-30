@@ -845,8 +845,8 @@ class BlockerCache(DictMixin):
 		cache_valid = self._cache_data and \
 			isinstance(self._cache_data, dict) and \
 			self._cache_data.get("version") == self._cache_version and \
-			self._cache_data["virtuals"] == self._virtuals and \
-			set(self._cache_data["blockers"]) == self._installed_pkgs
+			self._cache_data.get("virtuals") == self._virtuals and \
+			set(self._cache_data.get("blockers", [])) == self._installed_pkgs
 		if cache_valid:
 			for pkg in self._installed_pkgs:
 				if long(self._vardb.aux_get(pkg, ["COUNTER"])[0]) != \
@@ -1190,8 +1190,14 @@ class depgraph:
 						((jbigkey, myparents), (existing_node, e_parents)))
 
 					# Now add this node to the graph so that self.display()
-					# can work with it show use flags and --tree output.
-					self.useFlags[myroot][mykey] = myuse
+					# can show use flags and --tree output.  This node is
+					# only being partially added to the graph.  It must not be
+					# allowed to interfere with the other nodes that have been
+					# added.  Do not overwrite data for existing nodes in
+					# self.pkg_node_map and self.mydbapi since that data will
+					# be used for blocker validation.
+					self.pkg_node_map[myroot].setdefault(mykey, jbigkey)
+					self.useFlags[myroot].setdefault(mykey, myuse)
 					self._parent_child_digraph.add(jbigkey, myparent)
 					if rev_dep and myparent:
 						self.digraph.add(myparent, jbigkey,
@@ -1526,7 +1532,10 @@ class depgraph:
 			portage_dep._dep_check_strict = True
 
 		if not mycheck[0]:
-			show_invalid_depstring_notice(myparent, depstring, mycheck[1])
+			if myparent:
+				show_invalid_depstring_notice(myparent, depstring, mycheck[1])
+			else:
+				sys.stderr.write("\n%s\n%s\n" % (depstring, mycheck[1]))
 			return 0
 		mymerge = mycheck[1]
 
@@ -3317,8 +3326,9 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 			return 0
 	
 		if not numselected:
-			print "\n>>> No packages selected for removal by", \
-				unmerge_action+".\n"
+			portage.writemsg_stdout(
+				"\n>>> No packages selected for removal by " + \
+				unmerge_action + "\n")
 			return 0
 	finally:
 		if vdb_lock:
@@ -4258,6 +4268,8 @@ def action_info(settings, trees, myopts, myfiles):
 					for f in list(use):
 						if f.startswith(flag_prefix):
 							use.remove(f)
+				use = list(use)
+				use.sort()
 				print 'USE="%s"' % " ".join(use),
 				for varname in use_expand:
 					myval = settings.get(varname)

@@ -25,9 +25,19 @@ for i in "${ED}"/opt/*/lib{,32,64} \
 
 	for j in "${i}"/*.so.* "${i}"/*.so ; do
 		[[ ! -e ${j} ]] && continue
-		[[ -L ${j} ]] && continue
+		if [[ -L ${j} ]] ; then
+			linkdest=$(readlink "${j}")
+			if [[ ${linkdest} == /* ]] ; then
+				vecho -e "\a"
+				vecho "QA Notice: Found an absolute symlink in a library directory:"
+				vecho "           ${j#${D}} -> ${linkdest}"
+				vecho "           It should be a relative symlink if in the same directory"
+				vecho "           or a linker script if it crosses the /usr boundary."
+			fi
+			continue
+		fi
 		[[ -x ${j} ]] && continue
-		echo "making executable: /${j/${D}/}"
+		vecho "making executable: ${j#${D}}"
 		chmod +x "${j}"
 	done
 
@@ -35,7 +45,7 @@ for i in "${ED}"/opt/*/lib{,32,64} \
 		[[ ! -e ${j} ]] && continue
 		[[ -L ${j} ]] && continue
 		[[ ! -x ${j} ]] && continue
-		echo "removing executable bit: /${j/${D}/}"
+		vecho "removing executable bit: ${j#${D}}"
 		chmod -x "${j}"
 	done
 done
@@ -49,7 +59,7 @@ for a in "${ED}"/usr/lib*/*.a ; do
 	if [[ ! -e ${s} ]] ; then
 		s=${s%usr/*}${s##*/usr/}
 		if [[ -e ${s} ]] ; then
-			echo -e "\aQA Notice: missing gen_usr_ldscript for ${s##*/}\a"
+			vecho -e "\aQA Notice: missing gen_usr_ldscript for ${s##*/}\a"
  			sleep 1
 		fi
 	fi
@@ -58,8 +68,8 @@ done
 # Make sure people don't store libtool files or static libs in /lib
 f=$(ls "${ED}"/lib*/*.{a,la} 2>/dev/null)
 if [[ -n ${f} ]] ; then
-	echo -e "\n\aQA Notice: excessive files found in the / partition\a"
-	echo "${f}"
+	vecho -e "\n\aQA Notice: excessive files found in the / partition\a"
+	vecho "${f}"
 	sleep 1
 fi
 
@@ -67,7 +77,7 @@ fi
 for a in "${ED}"/usr/lib*/*.la ; do
 	s=${a##*/}
 	if grep -qs "${ED}" "${a}" ; then
-		echo -e "\n\aQA Notice: ${s} appears to contain PORTAGE_TMPDIR paths\a"
+		vecho -e "\n\aQA Notice: ${s} appears to contain PORTAGE_TMPDIR paths\a"
 		sleep 1
 	fi
 done
@@ -78,17 +88,17 @@ if type -p scanelf > /dev/null ; then
 for d in "${ED}"/lib* "${ED}"/usr/lib* ; do
 	f=$(scanelf -ByF '%S %p' "${d}"/lib*.so* | gawk '$2 == "" { print }')
 	if [[ -n ${f} ]] ; then
-		echo -e "\n\aQA Notice: the following shared libraries lack a SONAME\a"
-		echo "${f}"
-		echo
+		vecho -e "\n\aQA Notice: the following shared libraries lack a SONAME\a"
+		vecho "${f}"
+		vecho
 		sleep 1
 	fi
 
 	f=$(scanelf -ByF '%n %p' "${d}"/lib*.so* | gawk '$2 == "" { print }')
 	if [[ -n ${f} ]] ; then
-		echo -e "\n\aQA Notice: the following shared libraries lack NEEDED entries\a"
-		echo "${f}"
-		echo
+		vecho -e "\n\aQA Notice: the following shared libraries lack NEEDED entries\a"
+		vecho "${f}"
+		vecho
 		sleep 1
 	fi
 done
