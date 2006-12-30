@@ -187,12 +187,14 @@ install_qa_check() {
 		rm -f "${D}/usr/share/info/dir.gz"
 	fi
 
-	if hasq multilib-strict ${FEATURES} && [ -x /usr/bin/file -a -x /usr/bin/find -a \
-	     -n "${MULTILIB_STRICT_DIRS}" -a -n "${MULTILIB_STRICT_DENY}" ]; then
-	     	local abort=no firstrun=yes
+	if hasq multilib-strict ${FEATURES} && \
+	   [[ -x /usr/bin/file && -x /usr/bin/find ]] && \
+	   [[ -n ${MULTILIB_STRICT_DIRS} && -n ${MULTILIB_STRICT_DENY} ]]
+	then
+		local abort=no firstrun=yes
 		MULTILIB_STRICT_EXEMPT=$(echo ${MULTILIB_STRICT_EXEMPT} | sed -e 's:\([(|)]\):\\\1:g')
-		for dir in ${MULTILIB_STRICT_DIRS}; do
-			[ -d "${D}/${dir}" ] || continue
+		for dir in ${MULTILIB_STRICT_DIRS} ; do
+			[[ -d ${D}/${dir} ]] || continue
 			for file in $(find ${D}/${dir} -type f | grep -v "^${D}/${dir}/${MULTILIB_STRICT_EXEMPT}"); do
 				if file ${file} | egrep -q "${MULTILIB_STRICT_DENY}" ; then
 					if [[ ${firstrun} == yes ]] ; then
