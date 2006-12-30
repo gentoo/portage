@@ -1189,8 +1189,14 @@ class depgraph:
 						((jbigkey, myparents), (existing_node, e_parents)))
 
 					# Now add this node to the graph so that self.display()
-					# can work with it show use flags and --tree output.
-					self.useFlags[myroot][mykey] = myuse
+					# can show use flags and --tree output.  This node is
+					# only being partially added to the graph.  It must not be
+					# allowed to interfere with the other nodes that have been
+					# added.  Do not overwrite data for existing nodes in
+					# self.pkg_node_map and self.mydbapi since that data will
+					# be used for blocker validation.
+					self.pkg_node_map[myroot].setdefault(mykey, jbigkey)
+					self.useFlags[myroot].setdefault(mykey, myuse)
 					self._parent_child_digraph.add(jbigkey, myparent)
 					if rev_dep and myparent:
 						self.digraph.add(myparent, jbigkey,
