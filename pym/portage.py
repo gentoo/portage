@@ -3996,7 +3996,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 		# Check if the set of atoms will result in a downgrade of
 		# an installed package. If they will then don't prefer them
 		# over other atoms.
-		is_downgrade = False
+		has_downgrade = False
 		versions = {}
 		if all_installed or all_available:
 			for atom in atoms:
@@ -4004,23 +4004,21 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 				avail_pkg = best(mydbapi.match(atom))
 				if not avail_pkg:
 					continue
-				avail_slot = mydbapi.aux_get(avail_pkg, ["SLOT"])[0]
-				versions["%s:%s" % (mykey, avail_slot)] = avail_pkg
-				avail_split = catpkgsplit(avail_pkg)[1:]
-				inst_pkgs = vardb.match(mykey)
-				if not inst_pkgs:
+				avail_slot = "%s:%s" % (mykey,
+					mydbapi.aux_get(avail_pkg, ["SLOT"])[0])
+				versions[avail_slot] = avail_pkg
+				inst_pkg = vardb.match(avail_slot)
+				if not inst_pkg:
 					continue
-				for pkg in inst_pkgs:
-					if avail_slot != vardb.aux_get(pkg, ["SLOT"])[0]:
-						continue
-					if pkgcmp(avail_split, catpkgsplit(pkg)[1:]) < 0:
-						is_downgrade = True
-						break
-				if is_downgrade:
+				# emerge guarantees 1 package per slot here (highest counter)
+				inst_pkg = inst_pkg[0]
+				if avail_pkg != inst_pkg and \
+					avail_pkg != best([avail_pkg, inst_pkg]):
+					has_downgrade = True
 					break
 
 		this_choice = (atoms, versions, all_available)
-		if not is_downgrade:
+		if not has_downgrade:
 			if all_installed:
 				preferred.append(this_choice)
 				continue
