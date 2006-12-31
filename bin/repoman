@@ -727,6 +727,7 @@ def x11_deprecation_check(depstr):
 
 
 arch_caches={}
+arch_xmatch_caches = {}
 for x in scanlist:
 	#ebuilds and digests added to cvs respectively.
 	if verbose:
@@ -1136,16 +1137,13 @@ for x in scanlist:
 				profdir = portdir+"/profiles/"+prof[0]
 	
 				if prof[0] in arch_caches:
-					dep_settings, xcache = arch_caches[prof[0]]
+					dep_settings = arch_caches[prof[0]]
 				else:
 					dep_settings = portage.config(
 						config_profile_path=profdir,
 						config_incrementals=portage_const.INCREMENTALS,
 						local_config=False)
-					portdb.melt()
-					portdb.freeze()
-					xcache = portdb.xcache
-					arch_caches[prof[0]] = (dep_settings, xcache)
+					arch_caches[prof[0]] = dep_settings
 					while True:
 						try:
 							# Protect ACCEPT_KEYWORDS from config.regenerate()
@@ -1153,6 +1151,14 @@ for x in scanlist:
 							dep_settings.incrementals.remove("ACCEPT_KEYWORDS")
 						except ValueError:
 							break
+
+				xmatch_cache_key = (prof[0], tuple(groups))
+				xcache = arch_xmatch_caches.get(xmatch_cache_key)
+				if xcache is None:
+					portdb.melt()
+					portdb.freeze()
+					xcache = portdb.xcache
+					arch_xmatch_caches[xmatch_cache_key] = xcache
 
 				trees["/"]["porttree"].settings = dep_settings
 				portdb.mysettings = dep_settings
