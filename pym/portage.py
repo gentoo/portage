@@ -475,7 +475,8 @@ def elog_process(cpv, mysettings):
 				and not msgtype.lower() in mysettings["PORTAGE_ELOG_CLASSES"].split():
 			continue
 		if msgfunction not in portage_const.EBUILD_PHASES:
-			print "!!! can't process invalid log file: %s" % f
+			writemsg("!!! can't process invalid log file: %s\n" % f,
+				noiselevel=-1)
 			continue
 		if not msgfunction in mylogentries:
 			mylogentries[msgfunction] = []
@@ -521,10 +522,11 @@ def elog_process(cpv, mysettings):
 				_elog_atexit_handlers.append(m.finalize)
 				atexit_register(m.finalize, mysettings)
 		except (ImportError, AttributeError), e:
-			print "!!! Error while importing logging modules while loading \"mod_%s\":" % s
-			print e
+			writemsg("!!! Error while importing logging modules " + \
+				"while loading \"mod_%s\":\n" % str(s))
+			writemsg("%s\n" % str(e), noiselevel=-1)
 		except portage_exception.PortageException, e:
-			print e
+			writemsg("%s\n" % str(e), noiselevel=-1)
 
 	# clean logfiles to avoid repetitions
 	for f in mylogfiles:
