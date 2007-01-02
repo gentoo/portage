@@ -6853,22 +6853,13 @@ class dblink:
 
 			mydirs.sort()
 			mydirs.reverse()
-			last_non_empty = ""
 
 			for obj in mydirs:
-				if not last_non_empty.startswith(obj) and not listdir(obj):
-					try:
-						os.rmdir(obj)
-						writemsg_stdout("<<<        %s %s\n" % ("dir",obj))
-						last_non_empty = ""
-						continue
-					except (OSError,IOError),e:
-						#immutable?
-						pass
-
-				writemsg_stdout("--- !empty dir %s\n" % obj)
-				last_non_empty = obj
-				continue
+				try:
+					os.rmdir(obj)
+					writemsg_stdout("<<<        %s %s\n" % ("dir",obj))
+				except (OSError, IOError):
+					writemsg_stdout("--- !empty dir %s\n" % obj)
 
 		#remove self from vartree database so that our own virtual gets zapped if we're the last node
 		self.vartree.zap(self.mycpv)
