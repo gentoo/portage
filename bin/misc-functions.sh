@@ -165,6 +165,27 @@ install_qa_check() {
 			die "Aborting due to QA concerns: ${die_msg}"
 		fi
 
+		# Run some sanity checks on shared libraries
+		for d in "${D}"lib* "${D}"usr/lib* ; do
+			f=$(scanelf -ByF '%S %p' "${d}"/lib*.so* | gawk '$2 == "" { print }')
+			if [[ -n ${f} ]] ; then
+				vecho -ne '\a\n'
+				vecho "QA Notice: the following shared libraries lack a SONAME"
+				vecho "${f}"
+				vecho -ne '\a\n'
+				sleep 1
+			fi
+
+			f=$(scanelf -ByF '%n %p' "${d}"/lib*.so* | gawk '$2 == "" { print }')
+			if [[ -n ${f} ]] ; then
+				vecho -ne '\a\n'
+				vecho "QA Notice: the following shared libraries lack NEEDED entries"
+				vecho "${f}"
+				vecho -ne '\a\n'
+				sleep 1
+			fi
+		done
+
 		PORTAGE_QUIET=${tmp_quiet}
 	fi
 
@@ -181,6 +202,81 @@ install_qa_check() {
 		die "Aborting due to QA concerns: ${INSTALLTOD} files installed in ${D}/${D}"
 		unset INSTALLTOD
 	fi
+
+	# this should help to ensure that all (most?) shared libraries are executable
+	# and that all libtool scripts / static libraries are not executable
+	for i in "${D}"opt/*/lib{,32,64} \
+	         "${D}"lib{,32,64}       \
+	         "${D}"usr/lib{,32,64}   \
+	         "${D}"usr/X11R6/lib{,32,64} ; do
+		[[ ! -d ${i} ]] && continue
+
+		for j in "${i}"/*.so.* "${i}"/*.so ; do
+			[[ ! -e ${j} ]] && continue
+			if [[ -L ${j} ]] ; then
+				linkdest=$(readlink "${j}")
+				if [[ ${linkdest} == /* ]] ; then
+					vecho -e "\a\n"
+					vecho "QA Notice: Found an absolute symlink in a library directory:"
+					vecho "           ${j#${D}} -> ${linkdest}"
+					vecho "           It should be a relative symlink if in the same directory"
+					vecho "           or a linker script if it crosses the /usr boundary."
+				fi
+				continue
+			fi
+			[[ -x ${j} ]] && continue
+			vecho "making executable: ${j#${D}}"
+			chmod +x "${j}"
+		done
+
+		for j in "${i}"/*.a "${i}"/*.la ; do
+			[[ ! -e ${j} ]] && continue
+			[[ -L ${j} ]] && continue
+			[[ ! -x ${j} ]] && continue
+			vecho "removing executable bit: ${j#${D}}"
+			chmod -x "${j}"
+		done
+	done
+
+	# When installing static libraries into /usr/lib and shared libraries into 
+	# /lib, we have to make sure we have a linker script in /usr/lib along side 
+	# the static library, or gcc will utilize the static lib when linking :(.
+	# http://bugs.gentoo.org/4411
+	abort="no"
+	for a in "${D}"usr/lib*/*.a ; do
+		s=${a%.a}.so
+		if [[ ! -e ${s} ]] ; then
+			s=${s%usr/*}${s##*/usr/}
+			if [[ -e ${s} ]] ; then
+				vecho -e "\a\n"
+				vecho "QA Notice: missing gen_usr_ldscript for ${s##*/}\a"
+	 			abort="yes"
+			fi
+		fi
+	done
+	[[ ${abort} == "yes" ]] && die "add those ldscripts"
+
+	# Make sure people don't store libtool files or static libs in /lib
+	f=$(ls "${D}"lib*/*.{a,la} 2>/dev/null)
+	if [[ -n ${f} ]] ; then
+		vecho -e "\a\n"
+		vecho "QA Notice: excessive files found in the / partition\a"
+		vecho "${f}"
+		vecho -e "\a\n"
+		die "static archives (*.a) and libtool library files (*.la) do not belong in /"
+	fi
+
+	# Verify that the libtool files don't contain bogus $D entries.
+	abort="no"
+	for a in "${D}"usr/lib*/*.la ; do
+		s=${a##*/}
+		if grep -qs "${D}" "${a}" ; then
+			vecho -e "\a\n"
+			vecho "QA Notice: ${s} appears to contain PORTAGE_TMPDIR paths"
+			abort="yes"
+		fi
+	done
+	[[ ${abort} == "yes" ]] && die "soiled libtool library files found"
 
 	# Portage regenerates this on the installed system.
 	if [ -f "${D}/usr/share/info/dir.gz" ]; then
@@ -208,7 +304,6 @@ install_qa_check() {
 		done
 		[[ ${abort} == yes ]] && die "multilib-strict check failed!"
 	fi
-
 }
 
 
