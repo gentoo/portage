@@ -3962,7 +3962,9 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 	other = []
 
 	# Alias the trees we'll be checking availability against
-	vardb = trees[myroot]["vartree"].dbapi
+	vardb = None
+	if "vartree" in trees[myroot]:
+		vardb = trees[myroot]["vartree"].dbapi
 	if use_binaries:
 		mydbapi = trees[myroot]["bintree"].dbapi
 	else:
@@ -3977,6 +3979,17 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 		else:
 			atoms = [dep]
 
+		all_available = True
+		for atom in atoms:
+			if not mydbapi.match(atom):
+				all_available = False
+				break
+
+		if not vardb:
+			# called by repoman
+			preferred.append((atoms, None, all_available))
+			continue
+
 		""" The package names rather than the exact atoms are used for an
 		initial rough match against installed packages.  More specific
 		preference selection is handled later via slot and version comparison."""
@@ -3985,12 +3998,6 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 			# New-style virtuals have zero cost to install.
 			if not vardb.match(atom) and not atom.startswith("virtual/"):
 				all_installed = False
-				break
-
-		all_available = True
-		for atom in atoms:
-			if not mydbapi.match(atom):
-				all_available = False
 				break
 
 		# Check if the set of atoms will result in a downgrade of

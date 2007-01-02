@@ -477,7 +477,7 @@ trees["/"]["porttree"].settings = repoman_settings
 portdb = trees["/"]["porttree"].dbapi
 portdb.mysettings = repoman_settings
 # dep_zapdeps looks at the vardbapi, but it shouldn't for repoman.
-trees["/"]["vartree"].dbapi = portage.fakedbapi(settings=repoman_settings)
+del trees["/"]["vartree"]
 
 if not myreporoot:
 	myreporoot = os.path.basename(portdir_overlay)
