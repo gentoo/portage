@@ -38,6 +38,9 @@ class database(fs_template.FsBased):
 		config.setdefault("autocommit", self.autocommits)
 		config.setdefault("cache_bytes", self.cache_bytes)
 		config.setdefault("synchronous", self.synchronous)
+		# Timeout for throwing a "database is locked" exception (pysqlite
+		# default is 5.0 seconds).
+		config.setdefault("timeout", 15)
 		self._db_init_connection(config)
 		self._db_init_structures()
 
@@ -49,9 +52,12 @@ class database(fs_template.FsBased):
 		self._dbpath = self.location + ".sqlite"
 		#if os.path.exists(self._dbpath):
 		#	os.unlink(self._dbpath)
+		connection_kwargs = {}
+		connection_kwargs["timeout"] = config["timeout"]
 		try:
 			self._ensure_dirs()
-			self._db_connection = self._db_module.connect(database=self._dbpath)
+			self._db_connection = self._db_module.connect(
+				database=self._dbpath, **connection_kwargs)
 			self._db_cursor = self._db_connection.cursor()
 			self._db_cursor.execute("PRAGMA encoding = %s" % self._db_escape_string("UTF-8"))
 			if not apply_secpass_permissions(self._dbpath, gid=portage_gid, mode=070, mask=02):

@@ -475,7 +475,8 @@ def elog_process(cpv, mysettings):
 				and not msgtype.lower() in mysettings["PORTAGE_ELOG_CLASSES"].split():
 			continue
 		if msgfunction not in portage_const.EBUILD_PHASES:
-			print "!!! can't process invalid log file: %s" % f
+			writemsg("!!! can't process invalid log file: %s\n" % f,
+				noiselevel=-1)
 			continue
 		if not msgfunction in mylogentries:
 			mylogentries[msgfunction] = []
@@ -505,15 +506,27 @@ def elog_process(cpv, mysettings):
 			# TODO:  implement a common portage module loader
 			logmodule = __import__("elog_modules.mod_"+s)
 			m = getattr(logmodule, "mod_"+s)
-			m.process(mysettings, cpv, mylogentries, fulllog)
+			def timeout_handler(signum, frame):
+				raise portage_exception.PortageException(
+					"Timeout in elog_process for system '%s'" % s)
+			import signal
+			signal.signal(signal.SIGALRM, timeout_handler)
+			# Timeout after one minute (in case something like the mail
+			# module gets hung).
+			signal.alarm(60)
+			try:
+				m.process(mysettings, cpv, mylogentries, fulllog)
+			finally:
+				signal.alarm(0)
 			if hasattr(m, "finalize") and not m.finalize in _elog_atexit_handlers:
 				_elog_atexit_handlers.append(m.finalize)
 				atexit_register(m.finalize, mysettings)
 		except (ImportError, AttributeError), e:
-			print "!!! Error while importing logging modules while loading \"mod_%s\":" % s
-			print e
+			writemsg("!!! Error while importing logging modules " + \
+				"while loading \"mod_%s\":\n" % str(s))
+			writemsg("%s\n" % str(e), noiselevel=-1)
 		except portage_exception.PortageException, e:
-			print e
+			writemsg("%s\n" % str(e), noiselevel=-1)
 
 	# clean logfiles to avoid repetitions
 	for f in mylogfiles:
@@ -3956,7 +3969,9 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 	other = []
 
 	# Alias the trees we'll be checking availability against
-	vardb = trees[myroot]["vartree"].dbapi
+	vardb = None
+	if "vartree" in trees[myroot]:
+		vardb = trees[myroot]["vartree"].dbapi
 	if use_binaries:
 		mydbapi = trees[myroot]["bintree"].dbapi
 	else:
@@ -3971,6 +3986,17 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 		else:
 			atoms = [dep]
 
+		all_available = True
+		for atom in atoms:
+			if not mydbapi.match(atom):
+				all_available = False
+				break
+
+		if not vardb:
+			# called by repoman
+			preferred.append((atoms, None, all_available))
+			continue
+
 		""" The package names rather than the exact atoms are used for an
 		initial rough match against installed packages.  More specific
 		preference selection is handled later via slot and version comparison."""
@@ -3981,16 +4007,10 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 				all_installed = False
 				break
 
-		all_available = True
-		for atom in atoms:
-			if not mydbapi.match(atom):
-				all_available = False
-				break
-
 		# Check if the set of atoms will result in a downgrade of
 		# an installed package. If they will then don't prefer them
 		# over other atoms.
-		is_downgrade = False
+		has_downgrade = False
 		versions = {}
 		if all_installed or all_available:
 			for atom in atoms:
@@ -3998,23 +4018,21 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 				avail_pkg = best(mydbapi.match(atom))
 				if not avail_pkg:
 					continue
-				avail_slot = mydbapi.aux_get(avail_pkg, ["SLOT"])[0]
-				versions["%s:%s" % (mykey, avail_slot)] = avail_pkg
-				avail_split = catpkgsplit(avail_pkg)[1:]
-				inst_pkgs = vardb.match(mykey)
-				if not inst_pkgs:
+				avail_slot = "%s:%s" % (mykey,
+					mydbapi.aux_get(avail_pkg, ["SLOT"])[0])
+				versions[avail_slot] = avail_pkg
+				inst_pkg = vardb.match(avail_slot)
+				if not inst_pkg:
 					continue
-				for pkg in inst_pkgs:
-					if avail_slot != vardb.aux_get(pkg, ["SLOT"])[0]:
-						continue
-					if pkgcmp(avail_split, catpkgsplit(pkg)[1:]) < 0:
-						is_downgrade = True
-						break
-				if is_downgrade:
+				# emerge guarantees 1 package per slot here (highest counter)
+				inst_pkg = inst_pkg[0]
+				if avail_pkg != inst_pkg and \
+					avail_pkg != best([avail_pkg, inst_pkg]):
+					has_downgrade = True
 					break
 
 		this_choice = (atoms, versions, all_available)
-		if not is_downgrade:
+		if not has_downgrade:
 			if all_installed:
 				preferred.append(this_choice)
 				continue
@@ -4315,14 +4333,14 @@ def getmaskingreason(mycpv, settings=None, portdb=None):
 	mycp=mysplit[0]+"/"+mysplit[1]
 
 	# XXX- This is a temporary duplicate of code from the config constructor.
-	locations = settings.profiles[:]
-	locations.append(os.path.join(settings["PORTDIR"], "profiles"))
-	locations.append(os.path.join(settings["PORTAGE_CONFIGROOT"],
-		USER_CONFIG_PATH.lstrip(os.path.sep)))
+	locations = [os.path.join(settings["PORTDIR"], "profiles")]
+	locations.extend(settings.profiles)
 	for ov in settings["PORTDIR_OVERLAY"].split():
 		profdir = os.path.join(normalize_path(ov), "profiles")
 		if os.path.isdir(profdir):
 			locations.append(profdir)
+	locations.append(os.path.join(settings["PORTAGE_CONFIGROOT"],
+		USER_CONFIG_PATH.lstrip(os.path.sep)))
 	locations.reverse()
 	pmasklists = [grablines(os.path.join(x, "package.mask"), recursive=1) for x in locations]
 	pmasklines = []
@@ -4335,16 +4353,23 @@ def getmaskingreason(mycpv, settings=None, portdb=None):
 			if mycpv in portdb.xmatch("match-all", x):
 				comment = ""
 				l = "\n"
-				i = 0
-				while i < len(pmasklines):
+				comment_valid = -1
+				for i in xrange(len(pmasklines)):
 					l = pmasklines[i].strip()
 					if l == "":
 						comment = ""
+						comment_valid = -1
 					elif l[0] == "#":
 						comment += (l+"\n")
+						comment_valid = i + 1
 					elif l == x:
+						if comment_valid != i:
+							comment = ""
 						return comment
-					i = i + 1
+					elif comment_valid != -1:
+						# Apparently this comment applies to muliple masks, so
+						# it remains valid until a blank line is encountered.
+						comment_valid += 1
 	return None
 
 def getmaskingstatus(mycpv, settings=None, portdb=None):
@@ -5253,6 +5278,7 @@ class vartree(object):
 
 	def get_provide(self,mycpv):
 		myprovides=[]
+		mylines = None
 		try:
 			mylines, myuse = self.dbapi.aux_get(mycpv, ["PROVIDE","USE"])
 			if mylines:
@@ -5267,11 +5293,13 @@ class vartree(object):
 		except SystemExit, e:
 			raise
 		except Exception, e:
-			print
-			print "Check " + self.root+VDB_PATH+"/"+mycpv+"/PROVIDE and USE."
-			print "Possibly Invalid: " + str(mylines)
-			print "Exception: "+str(e)
-			print
+			mydir = os.path.join(self.root, VDB_PATH, mycpv)
+			writemsg("\nParse Error reading PROVIDE and USE in '%s'\n" % mydir,
+				noiselevel=-1)
+			if mylines:
+				writemsg("Possibly Invalid: '%s'\n" % str(mylines),
+					noiselevel=-1)
+			writemsg("Exception: %s\n\n" % str(e), noiselevel=-1)
 			return []
 
 	def get_all_provides(self):
@@ -6839,22 +6867,13 @@ class dblink:
 
 			mydirs.sort()
 			mydirs.reverse()
-			last_non_empty = ""
 
 			for obj in mydirs:
-				if not last_non_empty.startswith(obj) and not listdir(obj):
-					try:
-						os.rmdir(obj)
-						writemsg_stdout("<<<        %s %s\n" % ("dir",obj))
-						last_non_empty = ""
-						continue
-					except (OSError,IOError),e:
-						#immutable?
-						pass
-
-				writemsg_stdout("--- !empty dir %s\n" % obj)
-				last_non_empty = obj
-				continue
+				try:
+					os.rmdir(obj)
+					writemsg_stdout("<<<        %s %s\n" % ("dir",obj))
+				except (OSError, IOError):
+					writemsg_stdout("--- !empty dir %s\n" % obj)
 
 		#remove self from vartree database so that our own virtual gets zapped if we're the last node
 		self.vartree.zap(self.mycpv)
@@ -7115,9 +7134,9 @@ class dblink:
 			vartree=self.vartree)
 
 		# XXX: Decide how to handle failures here.
-		if a != 0:
+		if a != os.EX_OK:
 			writemsg("!!! FAILED preinst: "+str(a)+"\n", noiselevel=-1)
-			sys.exit(123)
+			return a
 
 		# copy "info" files (like SLOT, CFLAGS, etc.) into the database
 		for x in listdir(inforoot):
@@ -7215,9 +7234,9 @@ class dblink:
 			tree=self.treetype, mydbapi=mydbapi, vartree=self.vartree)
 
 		# XXX: Decide how to handle failures here.
-		if a != 0:
+		if a != os.EX_OK:
 			writemsg("!!! FAILED postinst: "+str(a)+"\n", noiselevel=-1)
-			sys.exit(123)
+			return a
 
 		downgrade = False
 		for v in otherversions:
@@ -7239,7 +7258,7 @@ class dblink:
 		if "noclean" not in self.settings.features:
 			doebuild(myebuild, "clean", destroot, self.settings,
 				tree=self.treetype, mydbapi=mydbapi, vartree=self.vartree)
-		return 0
+		return os.EX_OK
 
 	def mergeme(self,srcroot,destroot,outfile,secondhand,stufftomerge,cfgfiledict,thismtime):
 		"""
@@ -7641,7 +7660,7 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 		vartree = db[myroot]["vartree"]
 	if mytbz2[-5:]!=".tbz2":
 		print "!!! Not a .tbz2 file"
-		return None
+		return 1
 
 	tbz2_lock = None
 	builddir_lock = None
@@ -7657,7 +7676,7 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 		if not mycat:
 			writemsg("!!! CATEGORY info missing from info chunk, aborting...\n",
 				noiselevel=-1)
-			return None
+			return 1
 		mycat = mycat.strip()
 
 		# These are the same directories that would be used at build time.
@@ -7702,7 +7721,7 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 			tree="bintree", mydbapi=mydbapi, vartree=vartree)
 		if retval != os.EX_OK:
 			writemsg("!!! Setup failed: %s\n" % retval, noiselevel=-1)
-			return None
+			return retval
 
 		writemsg_stdout(">>> Extracting %s\n" % mypkg)
 		retval = portage_exec.spawn_bash(
@@ -7710,23 +7729,15 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 			env=mysettings.environ())
 		if retval != os.EX_OK:
 			writemsg("!!! Error Extracting '%s'\n" % mytbz2, noiselevel=-1)
-			return None
+			return retval
 		#portage_locks.unlockfile(tbz2_lock)
 		#tbz2_lock = None
 
 		mylink = dblink(mycat, mypkg, myroot, mysettings, vartree=vartree,
 			treetype="bintree")
-		mylink.merge(pkgloc, infloc, myroot, myebuild, cleanup=0,
+		retval = mylink.merge(pkgloc, infloc, myroot, myebuild, cleanup=0,
 			mydbapi=mydbapi, prev_mtimes=prev_mtimes)
-
-		try:
-			f = open(os.path.join(infloc, "RDEPEND", "r"))
-			try:
-				return " ".join(f.read().split())
-			finally:
-				f.close()
-		except (IOError, OSError):
-			return ""
+		return retval
 	finally:
 		if tbz2_lock:
 			portage_locks.unlockfile(tbz2_lock)
