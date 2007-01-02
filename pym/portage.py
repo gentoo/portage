@@ -5264,6 +5264,7 @@ class vartree(object):
 
 	def get_provide(self,mycpv):
 		myprovides=[]
+		mylines = None
 		try:
 			mylines, myuse = self.dbapi.aux_get(mycpv, ["PROVIDE","USE"])
 			if mylines:
@@ -5278,11 +5279,13 @@ class vartree(object):
 		except SystemExit, e:
 			raise
 		except Exception, e:
-			print
-			print "Check " + self.root+VDB_PATH+"/"+mycpv+"/PROVIDE and USE."
-			print "Possibly Invalid: " + str(mylines)
-			print "Exception: "+str(e)
-			print
+			mydir = os.path.join(self.root, VDB_PATH, mycpv)
+			writemsg("\nParse Error reading PROVIDE and USE in '%s'\n" % mydir,
+				noiselevel=-1)
+			if mylines:
+				writemsg("Possibly Invalid: '%s'\n" % str(mylines),
+					noiselevel=-1)
+			writemsg("Exception: %s\n\n" % str(e))
 			return []
 
 	def get_all_provides(self):
