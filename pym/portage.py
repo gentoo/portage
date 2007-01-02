@@ -2290,13 +2290,6 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 		if not mysettings.get(var_name, None):
 			can_fetch = False
 
-	if can_fetch and \
-		not fetch_to_ro and \
-		not os.access(mysettings["DISTDIR"], os.W_OK):
-		writemsg("!!! No write access to '%s'\n" % mysettings["DISTDIR"],
-			noiselevel=-1)
-		can_fetch = False
-
 	if can_fetch:
 		dirmode  = 02070
 		filemode =   060
@@ -2323,6 +2316,13 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 				writemsg("!!! %s\n" % str(e), noiselevel=-1)
 				writemsg("!!! Directory Not Found: DISTDIR='%s'\n" % mysettings["DISTDIR"], noiselevel=-1)
 				writemsg("!!! Fetching will fail!\n", noiselevel=-1)
+
+	if can_fetch and \
+		not fetch_to_ro and \
+		not os.access(mysettings["DISTDIR"], os.W_OK):
+		writemsg("!!! No write access to '%s'\n" % mysettings["DISTDIR"],
+			noiselevel=-1)
+		can_fetch = False
 
 	if can_fetch and use_locks and locks_in_subdir:
 			distlocks_subdir = os.path.join(mysettings["DISTDIR"], locks_in_subdir)
