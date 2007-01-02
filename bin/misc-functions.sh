@@ -228,17 +228,6 @@ install_qa_check() {
 		unset INSTALLTOD
 	fi
 
-	local find_log="${T}/find-portage-log"
-	find "${ED}"/ -user ${PORTAGE_USER:-portage} -print0 > "${find_log}"
-	if [[ -s ${find_log} ]] ; then
-		xargs -0 chown -h ${PORTAGE_INST_UID:-0} < "${find_log}"
-	fi
-	find "${ED}"/ -group ${PORTAGE_GROUP:-portage} -print0 > "${find_log}"
-	if [[ -s ${find_log} ]] ; then
-		xargs -0 chgrp -h ${PORTAGE_INST_GID:-0} < "${find_log}"
-	fi
-	rm -f "${find_log}"
-
 	# this should help to ensure that all (most?) shared libraries are executable
 	# and that all libtool scripts / static libraries are not executable
 	for i in "${ED}"opt/*/lib{,32,64} \
