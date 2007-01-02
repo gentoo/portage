@@ -5285,7 +5285,7 @@ class vartree(object):
 			if mylines:
 				writemsg("Possibly Invalid: '%s'\n" % str(mylines),
 					noiselevel=-1)
-			writemsg("Exception: %s\n\n" % str(e))
+			writemsg("Exception: %s\n\n" % str(e), noiselevel=-1)
 			return []
 
 	def get_all_provides(self):
