@@ -374,7 +374,7 @@ def file_get(baseurl,dest,conn=None,fcmd=None):
 		except OSError:
 			pass
 		sys.stderr.write("!!! Failed to spawn fetcher.\n")
-		sys.exit(1)
+		os._exit(1)
 	retval=os.waitpid(mypid,0)[1]
 	if (retval & 0xff) == 0:
 		retval = retval >> 8
