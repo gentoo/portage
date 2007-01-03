@@ -3303,6 +3303,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				for k, v in izip(auxdbkeys, mybytes.splitlines()):
 					dbkey[k] = v
 				retval = os.waitpid(mypids[0], 0)[1]
+				portage_exec.spawned_pids.remove(mypids[0])
 				# If it got a signal, return the signal that was sent, but
 				# shift in order to distinguish it from a return value. (just
 				# like portage_exec.spawn() would do).
