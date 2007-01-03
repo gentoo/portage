@@ -501,6 +501,8 @@ def elog_process(cpv, mysettings):
 	# pass the processing to the individual modules
 	logsystems = mysettings["PORTAGE_ELOG_SYSTEM"].split()
 	for s in logsystems:
+		# - is nicer than _ for module names, so allow people to use it.
+		s = s.replace("-", "_")
 		try:
 			# FIXME: ugly ad.hoc import code
 			# TODO:  implement a common portage module loader
