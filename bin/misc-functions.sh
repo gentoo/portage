@@ -216,7 +216,7 @@ install_qa_check() {
 			if [[ -L ${j} ]] ; then
 				linkdest=$(readlink "${j}")
 				if [[ ${linkdest} == /* ]] ; then
-					vecho -e "\a\n"
+					vecho -ne '\a\n'
 					vecho "QA Notice: Found an absolute symlink in a library directory:"
 					vecho "           ${j#${D}} -> ${linkdest}"
 					vecho "           It should be a relative symlink if in the same directory"
@@ -248,7 +248,7 @@ install_qa_check() {
 		if [[ ! -e ${s} ]] ; then
 			s=${s%usr/*}${s##*/usr/}
 			if [[ -e ${s} ]] ; then
-				vecho -e "\a\n"
+				vecho -ne '\a\n'
 				vecho "QA Notice: missing gen_usr_ldscript for ${s##*/}\a"
 	 			abort="yes"
 			fi
@@ -259,10 +259,10 @@ install_qa_check() {
 	# Make sure people don't store libtool files or static libs in /lib
 	f=$(ls "${D}"lib*/*.{a,la} 2>/dev/null)
 	if [[ -n ${f} ]] ; then
-		vecho -e "\a\n"
+		vecho -ne '\a\n'
 		vecho "QA Notice: excessive files found in the / partition\a"
 		vecho "${f}"
-		vecho -e "\a\n"
+		vecho -ne '\a\n'
 		die "static archives (*.a) and libtool library files (*.la) do not belong in /"
 	fi
 
@@ -271,16 +271,52 @@ install_qa_check() {
 	for a in "${D}"usr/lib*/*.la ; do
 		s=${a##*/}
 		if grep -qs "${D}" "${a}" ; then
-			vecho -e "\a\n"
+			vecho -ne '\a\n'
 			vecho "QA Notice: ${s} appears to contain PORTAGE_TMPDIR paths"
 			abort="yes"
 		fi
 	done
 	[[ ${abort} == "yes" ]] && die "soiled libtool library files found"
 
+	# Evaluate misc gcc warnings
+	if [[ -n ${PORTAGE_LOG_FILE} && -r ${PORTAGE_LOG_FILE} ]] ; then
+		local m msgs=(
+			": warning: dereferencing type-punned pointer will break strict-aliasing rules$"
+			": warning: implicit declaration of function "
+			": warning: incompatible implicit declaration of built-in function "
+			": warning: is used uninitialized in this function$" # we'll ignore "may" and "might"
+			": warning: comparisons like X<=Y<=Z do not have their mathematical meaning$"
+			": warning: null argument where non-null required "
+		)
+		abort="no"
+		i=0
+		while [[ -n ${msgs[${i}]} ]] ; do
+			m=${msgs[$((i++))]}
+			f=$(grep "${m}" "${PORTAGE_LOG_FILE}")
+			if [[ -n ${f} ]] ; then
+				vecho -ne '\a\n'
+				vecho "QA Notice: Package has poor programming practices which may compile"
+				vecho "           fine but exhibit random runtime failures."
+				vecho "${f}"
+				vecho -ne '\a\n'
+				abort="yes"
+			fi
+		done
+		f=$(cat "${PORTAGE_LOG_FILE}" | check-implicit-pointer-usage.py)
+		if [[ -n ${f} ]] ; then
+			vecho -ne '\a\n'
+			vecho "QA Notice: Package has poor programming practices which may compile"
+			vecho "           but will almost certainly crash on 64bit architectures."
+			vecho "${f}"
+			vecho -ne '\a\n'
+			abort="yes"
+		fi
+		[[ ${abort} == "yes" ]] && hasq stricter ${FEATURES} && die "poor code kills airplanes"
+	fi
+
 	# Portage regenerates this on the installed system.
-	if [ -f "${D}/usr/share/info/dir.gz" ]; then
-		rm -f "${D}/usr/share/info/dir.gz"
+	if [[ -f ${D}/usr/share/info/dir.gz ]] ; then
+		rm -f "${D}"/usr/share/info/dir.gz
 	fi
 
 	if hasq multilib-strict ${FEATURES} && \

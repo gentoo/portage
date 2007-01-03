@@ -3122,6 +3122,8 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 			mysettings["PORT_LOGDIR"], "%s:%s:%s.log" % \
 			(mysettings["CATEGORY"], mysettings["PF"], logid_time))
 		del logid_path, logid_time
+	else:
+		mysettings["PORTAGE_LOG_FILE"] = os.path.join(mysettings["T"], "build.log")
 
 _doebuild_manifest_exempt_depend = 0
 _doebuild_manifest_checked = None
