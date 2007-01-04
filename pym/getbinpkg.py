@@ -522,6 +522,7 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 		    (x not in metadata[baseurl]["data"].keys())):
 			sys.stderr.write(yellow("x"))
 			metadata[baseurl]["modified"] = 1
+			myid = None
 			for retry in xrange(3):
 				try:
 					myid = file_get_metadata(
@@ -536,7 +537,7 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 					conn, protocol, address, params, headers = create_conn(
 						baseurl)
 
-			if myid[0]:
+			if myid and myid[0]:
 				metadata[baseurl]["data"][x] = make_metadata_dict(myid)
 			elif verbose:
 				sys.stderr.write(red("!!! Failed to retrieve metadata on: ")+str(x)+"\n")
