@@ -114,7 +114,7 @@ if secpass >= 2:
 	# Get a list of group IDs for the portage user.  Do not use grp.getgrall()
 	# since it is known to trigger spurious SIGPIPE problems with nss_ldap.
 	from commands import getstatusoutput
-	mystatus, myoutput = getstatusoutput("id -g portage")
+	mystatus, myoutput = getstatusoutput("id -G portage")
 	if mystatus == os.EX_OK:
 		for x in myoutput.split():
 			try:
