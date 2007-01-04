@@ -2994,14 +2994,26 @@ class MergeTask(object):
 			elif x[0]=="binary":
 				#merge the tbz2
 				mytbz2 = self.trees[myroot]["bintree"].getname(pkg_key)
-				if self.trees[myroot]["bintree"].isremote(pkg_key):
-					short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Fetch"
-					emergelog(xterm_titles, " --- ("+str(mergecount)+\
-						" of "+str(len(mymergelist))+\
-						") Fetching Binary ("+x[pkgindex]+\
-						"::"+mytbz2+")", short_msg=short_msg)
-					if not self.trees[myroot]["bintree"].gettbz2(pkg_key):
-						sys.exit(1)
+				if "--getbinpkg" in self.myopts:
+					tbz2_lock = None
+					try:
+						if "distlocks" in pkgsettings.features and \
+							os.access(pkgsettings["PKGDIR"], os.W_OK):
+							portage_util.ensure_dirs(os.path.dirname(mytbz2))
+							tbz2_lock = portage_locks.lockfile(mytbz2,
+								wantnewlockfile=1)
+						if self.trees[myroot]["bintree"].isremote(pkg_key):
+							msg = " --- (%s of %s) Fetching Binary (%s::%s)" %\
+								(mergecount, len(mymergelist), pkg_key, mytbz2)
+							short_msg = "emerge: (%s of %s) %s Fetch" % \
+								(mergecount, len(mymergelist), pkg_key)
+							emergelog(xterm_titles, msg, short_msg=short_msg)
+							if not self.trees[myroot]["bintree"].gettbz2(
+								pkg_key):
+								return 1
+					finally:
+						if tbz2_lock:
+							portage_locks.unlockfile(tbz2_lock)
 
 				if "--fetchonly" in self.myopts or \
 					"--fetch-all-uri" in self.myopts:
