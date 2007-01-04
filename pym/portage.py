@@ -2781,7 +2781,7 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 	kwargs = actionmap[mydo]["args"]
 	mysettings["EBUILD_PHASE"] = mydo
 	phase_retval = spawn(actionmap[mydo]["cmd"] % mydo, mysettings, debug=debug, logfile=logfile, **kwargs)
-	del mysettings["EBUILD_PHASE"]
+	mysettings["EBUILD_PHASE"] = ""
 
 	if not kwargs["droppriv"] and secpass >= 2:
 		""" Privileged phases may have left files that need to be made
@@ -3373,6 +3373,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				myargs = [MISC_SH_BINARY, "preinst_bsdflags", "preinst_mask",
 					"preinst_sfperms", "preinst_selinux_labels",
 					"preinst_suid_scan"]
+				mysettings["EBUILD_PHASE"] = ""
 				phase_retval = spawn(" ".join(myargs),
 					mysettings, debug=debug, free=1, logfile=logfile)
 				if phase_retval != os.EX_OK:
@@ -3388,6 +3389,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				# Post phase logic and tasks that have been factored out of
 				# ebuild.sh.
 				myargs = [MISC_SH_BINARY, "postinst_bsdflags"]
+				mysettings["EBUILD_PHASE"] = ""
 				phase_retval = spawn(" ".join(myargs),
 					mysettings, debug=debug, free=1, logfile=logfile)
 				if phase_retval != os.EX_OK:
