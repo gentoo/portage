@@ -501,6 +501,8 @@ def elog_process(cpv, mysettings):
 	# pass the processing to the individual modules
 	logsystems = mysettings["PORTAGE_ELOG_SYSTEM"].split()
 	for s in logsystems:
+		# - is nicer than _ for module names, so allow people to use it.
+		s = s.replace("-", "_")
 		try:
 			# FIXME: ugly ad.hoc import code
 			# TODO:  implement a common portage module loader
@@ -2294,13 +2296,6 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 		if not mysettings.get(var_name, None):
 			can_fetch = False
 
-	if can_fetch and \
-		not fetch_to_ro and \
-		not os.access(mysettings["DISTDIR"], os.W_OK):
-		writemsg("!!! No write access to '%s'\n" % mysettings["DISTDIR"],
-			noiselevel=-1)
-		can_fetch = False
-
 	if can_fetch:
 		dirmode  = 02070
 		filemode =   060
@@ -2327,6 +2322,13 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 				writemsg("!!! %s\n" % str(e), noiselevel=-1)
 				writemsg("!!! Directory Not Found: DISTDIR='%s'\n" % mysettings["DISTDIR"], noiselevel=-1)
 				writemsg("!!! Fetching will fail!\n", noiselevel=-1)
+
+	if can_fetch and \
+		not fetch_to_ro and \
+		not os.access(mysettings["DISTDIR"], os.W_OK):
+		writemsg("!!! No write access to '%s'\n" % mysettings["DISTDIR"],
+			noiselevel=-1)
+		can_fetch = False
 
 	if can_fetch and use_locks and locks_in_subdir:
 			distlocks_subdir = os.path.join(mysettings["DISTDIR"], locks_in_subdir)
@@ -2783,7 +2785,7 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 	kwargs = actionmap[mydo]["args"]
 	mysettings["EBUILD_PHASE"] = mydo
 	phase_retval = spawn(actionmap[mydo]["cmd"] % mydo, mysettings, debug=debug, logfile=logfile, **kwargs)
-	del mysettings["EBUILD_PHASE"]
+	mysettings["EBUILD_PHASE"] = ""
 
 	if not kwargs["droppriv"] and secpass >= 2:
 		""" Privileged phases may have left files that need to be made
@@ -3129,6 +3131,8 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 			mysettings["PORT_LOGDIR"], "%s:%s:%s.log" % \
 			(mysettings["CATEGORY"], mysettings["PF"], logid_time))
 		del logid_path, logid_time
+	else:
+		mysettings["PORTAGE_LOG_FILE"] = os.path.join(mysettings["T"], "build.log")
 
 _doebuild_manifest_exempt_depend = 0
 _doebuild_manifest_checked = None
@@ -3306,6 +3310,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				for k, v in izip(auxdbkeys, mybytes.splitlines()):
 					dbkey[k] = v
 				retval = os.waitpid(mypids[0], 0)[1]
+				portage_exec.spawned_pids.remove(mypids[0])
 				# If it got a signal, return the signal that was sent, but
 				# shift in order to distinguish it from a return value. (just
 				# like portage_exec.spawn() would do).
@@ -3375,6 +3380,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				myargs = [MISC_SH_BINARY, "preinst_bsdflags", "preinst_mask",
 					"preinst_sfperms", "preinst_selinux_labels",
 					"preinst_suid_scan"]
+				mysettings["EBUILD_PHASE"] = ""
 				phase_retval = spawn(" ".join(myargs),
 					mysettings, debug=debug, free=1, logfile=logfile)
 				if phase_retval != os.EX_OK:
@@ -3390,6 +3396,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				# Post phase logic and tasks that have been factored out of
 				# ebuild.sh.
 				myargs = [MISC_SH_BINARY, "postinst_bsdflags"]
+				mysettings["EBUILD_PHASE"] = ""
 				phase_retval = spawn(" ".join(myargs),
 					mysettings, debug=debug, free=1, logfile=logfile)
 				if phase_retval != os.EX_OK:

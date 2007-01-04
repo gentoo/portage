@@ -375,7 +375,8 @@ def file_get(baseurl,dest,conn=None,fcmd=None):
 		except OSError:
 			pass
 		sys.stderr.write("!!! Failed to spawn fetcher.\n")
-		sys.exit(1)
+		sys.stderr.flush()
+		os._exit(1)
 	retval=os.waitpid(mypid,0)[1]
 	if (retval & 0xff) == 0:
 		retval = retval >> 8
@@ -522,9 +523,22 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 		    (x not in metadata[baseurl]["data"].keys())):
 			sys.stderr.write(yellow("x"))
 			metadata[baseurl]["modified"] = 1
-			myid = file_get_metadata(baseurl+"/"+x, conn, chunk_size)
-		
-			if myid[0]:
+			myid = None
+			for retry in xrange(3):
+				try:
+					myid = file_get_metadata(
+						"/".join((baseurl.rstrip("/"), x.lstrip("/"))),
+						conn, chunk_size)
+					break
+				except httplib.BadStatusLine:
+					# Sometimes this error is thrown from conn.getresponse() in
+					# make_http_request().  The docstring for this error in
+					# httplib.py says "Presumably, the server closed the
+					# connection before sending a valid response".
+					conn, protocol, address, params, headers = create_conn(
+						baseurl)
+
+			if myid and myid[0]:
 				metadata[baseurl]["data"][x] = make_metadata_dict(myid)
 			elif verbose:
 				sys.stderr.write(red("!!! Failed to retrieve metadata on: ")+str(x)+"\n")

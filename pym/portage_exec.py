@@ -200,6 +200,7 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 			# propogate out of this function and cause exiting
 			# with anything other than os._exit()
 			sys.stderr.write("%s:\n   %s\n" % (e, " ".join(mycommand)))
+			sys.stderr.flush()
 			os._exit(1)
 
 	# Add the pid to our local and the global pid lists.
