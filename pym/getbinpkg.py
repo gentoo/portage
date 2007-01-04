@@ -522,8 +522,20 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 		    (x not in metadata[baseurl]["data"].keys())):
 			sys.stderr.write(yellow("x"))
 			metadata[baseurl]["modified"] = 1
-			myid = file_get_metadata(baseurl+"/"+x, conn, chunk_size)
-		
+			for retry in xrange(3):
+				try:
+					myid = file_get_metadata(
+						"/".join((baseurl.rstrip("/"), x.lstrip("/"))),
+						conn, chunk_size)
+					break
+				except httplib.BadStatusLine:
+					# Sometimes this error is thrown from conn.getresponse() in
+					# make_http_request().  The docstring for this error in
+					# httplib.py says "Presumably, the server closed the
+					# connection before sending a valid response".
+					conn, protocol, address, params, headers = create_conn(
+						baseurl)
+
 			if myid[0]:
 				metadata[baseurl]["data"][x] = make_metadata_dict(myid)
 			elif verbose:
