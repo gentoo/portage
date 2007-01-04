@@ -111,7 +111,16 @@ except KeyError:
 
 userpriv_groups = [portage_gid]
 if secpass >= 2:
-	for g in grp.getgrall():
-		if "portage" in g[3]:
-			userpriv_groups.append(g[2])
-	userpriv_groups = list(set(userpriv_groups))
+	# Get a list of group IDs for the portage user.  Do not use grp.getgrall()
+	# since it is known to trigger spurious SIGPIPE problems with nss_ldap.
+	from commands import getstatusoutput
+	mystatus, myoutput = getstatusoutput("id -g portage")
+	if mystatus == os.EX_OK:
+		for x in myoutput.split():
+			try:
+				userpriv_groups.append(int(x))
+			except ValueError:
+				pass
+			del x
+		userpriv_groups = list(set(userpriv_groups))
+	del getstatusoutput, mystatus, myoutput
