@@ -395,6 +395,7 @@ if mymode == "commit":
 	while "--ignore-masked" in myoptions:
 		myoptions.remove("--ignore-masked")
 
+from portage import normalize_path
 isCvs=False
 myreporoot=None
 if os.path.isdir("CVS"):
@@ -409,8 +410,8 @@ if not "--pretend" in myoptions and not isCvs:
 def have_profile_dir(path, maxdepth=3):
 	while path != "/" and maxdepth:
 		if os.path.exists(path + "/profiles/package.mask"):
-			return path
-		path = os.path.normpath(path + "/..")
+			return normalize_path(path)
+		path = normalize_path(path + "/..")
 		maxdepth -= 1
 
 portdir=None
@@ -422,7 +423,8 @@ if "PWD" in os.environ and os.environ["PWD"] != mydir and \
 	# orient itself if the user has symlinks in their portage tree structure.
 	# We use os.environ["PWD"], if available, to get the non-canonical path of
 	# the current working directory (from the shell).
-	mydir = os.path.normpath(os.environ["PWD"])
+	mydir = os.environ["PWD"]
+mydir = normalize_path(mydir)
 if mydir[-1] != "/":
 	mydir += "/"
 
@@ -453,10 +455,8 @@ if not portdir_overlay:
 if not portdir:
 	portdir = repoman_settings["PORTDIR"]
 
-if portdir[-1] == "/":
-	portdir = portdir[:-1]
-if portdir_overlay[-1] == "/":
-	portdir_overlay = portdir_overlay[:-1]
+portdir = normalize_path(portdir)
+portdir_overlay = normalize_path(portdir_overlay)
 
 os.environ["PORTDIR"] = portdir
 if portdir_overlay != portdir:
