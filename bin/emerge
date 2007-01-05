@@ -744,6 +744,7 @@ class FakeVartree(portage.vartree):
 					mycounter = long(metadata["COUNTER"])
 				except ValueError:
 					mycounter = 0
+					metadata["COUNTER"] = str(mycounter)
 				other_counter = slot_counters.get(myslot_atom, None)
 				if other_counter is not None:
 					if other_counter > mycounter:
