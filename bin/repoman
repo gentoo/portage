@@ -822,7 +822,6 @@ for x in scanlist:
 
 	mf = Manifest(checkdir, repoman_settings["DISTDIR"])
 	mydigests=mf.getTypeDigests("DIST")
-	myfiles_all = []
 
 	if os.path.exists(checkdir+"/files"):
 		filesdirlist=os.listdir(checkdir+"/files")
@@ -854,7 +853,6 @@ for x in scanlist:
 				else:
 					# We have an ebuild
 					myuris, myfiles = portdb.getfetchlist(mykey, all=True)
-					myfiles_all.extend(myfiles)
 
 					uri_dict = {}
 					for myu in myuris:
@@ -919,11 +917,18 @@ for x in scanlist:
 					fails["file.name"].append("%s/files/%s: char '%s'" % (checkdir, y, c))
 					break
 
-	for entry in mydigests.keys():
+	fetchlist_dict = portage.FetchlistDict(checkdir, repoman_settings, portdb)
+	myfiles_all = []
+	for myfiles in fetchlist_dict.itervalues():
+		myfiles_all.extend(myfiles)
+		del myfiles
+	del fetchlist_dict
+	myfiles_all = set(myfiles_all)
+	for entry in mydigests:
 		if entry not in myfiles_all:
 			stats["digestentry.unused"] += 1
 			fails["digestentry.unused"].append(checkdir+"::"+entry)
-
+	del mydigests, myfiles_all
 
 	if "ChangeLog" not in checkdirlist:
 		stats["changelog.missing"]+=1
