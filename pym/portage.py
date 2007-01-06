@@ -5722,7 +5722,7 @@ class portdbapi(dbapi):
 			mysettings = self.mysettings
 		try:
 			myuris = self.aux_get(mypkg, ["SRC_URI"], mytree=mytree)[0]
-		except (IOError,KeyError):
+		except KeyError:
 			print red("getfetchlist():")+" aux_get() error reading "+mypkg+"; aborting."
 			sys.exit(1)
 
