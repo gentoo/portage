@@ -1294,7 +1294,7 @@ for x in scanlist:
 		trailing_whitespace = re.compile(r'.*([\S]$)')
 		readonly_assignment = re.compile(r'^\s*(export\s+)?(A|CATEGORY|P|PV|PN|PR|PVR|PF|D|WORKDIR|FILESDIR|FEATURES|USE)=')
 		continuation_symbol = re.compile(r'(.*[ ]+[\\][ ].*)')
-		line_continuation_quoted = re.compile(r'(\"|\')(([\w ,:;#\[\]\.`=/|\$\^\*{}()\'-])|(\\.))*\1')
+		line_continuation_quoted = re.compile(r'(\"|\'|`)(([\w ,:;#\[\]\.`=/|\$\^\*{}()\'-])|(\\.))*\1')
 		line_continuation = re.compile(r'([^#]*\S)(\s+|\t)\\$')
 		linenum=0
 		previous_line = None
@@ -1353,7 +1353,8 @@ for x in scanlist:
 					if match:
 						#Excluded lines not even containing a " \" match. Good!
 						line = re.sub(line_continuation_quoted,"\"\"",line)
-						#line has been edited to collapsed "" and '' quotes to "". Good!
+						# line has been edited to collapse "", '', and ``
+						# quotes to "". Good!
 						match = continuation_symbol.match(line)
 						if match:
 							#Again exclude lines not even containing a " \" match. Good!
