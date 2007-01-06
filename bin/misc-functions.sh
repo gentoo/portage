@@ -167,7 +167,6 @@ install_qa_check() {
 
 		# Run some sanity checks on shared libraries
 		for d in "${D}"lib* "${D}"usr/lib* ; do
-			[[ ! -d  ${d} ]] && continue
 			f=$(scanelf -ByF '%S %p' "${d}"/lib*.so* | gawk '$2 == "" { print }')
 			if [[ -n ${f} ]] ; then
 				vecho -ne '\a\n'
@@ -245,13 +244,12 @@ install_qa_check() {
 	# http://bugs.gentoo.org/4411
 	abort="no"
 	for a in "${D}"usr/lib*/*.a ; do
-		[[ ! -e ${a} ]] && continue
 		s=${a%.a}.so
 		if [[ ! -e ${s} ]] ; then
 			s=${s%usr/*}${s##*/usr/}
 			if [[ -e ${s} ]] ; then
 				vecho -ne '\a\n'
-				vecho "QA Notice: missing gen_usr_ldscript for ${s##*/}\a"
+				vecho "QA Notice: missing gen_usr_ldscript for ${s##*/}"
 	 			abort="yes"
 			fi
 		fi
@@ -259,17 +257,11 @@ install_qa_check() {
 	[[ ${abort} == "yes" ]] && die "add those ldscripts"
 
 	# Make sure people don't store libtool files or static libs in /lib
-	f=()
-	for a in "${D}"lib*/*.{a,la} ; do
-		[[ ! -e ${a} ]] && continue
-		f=("${f[@]}" "${a}")
-	done
+	f=$(ls "${D}"lib*/*.{a,la} 2>/dev/null)
 	if [[ -n ${f} ]] ; then
 		vecho -ne '\a\n'
 		vecho "QA Notice: excessive files found in the / partition"
-		for a in "${f[@]}" ; do
-			vecho "${a}"
-		done
+		vecho "${f}"
 		vecho -ne '\a\n'
 		die "static archives (*.a) and libtool library files (*.la) do not belong in /"
 	fi
@@ -277,7 +269,6 @@ install_qa_check() {
 	# Verify that the libtool files don't contain bogus $D entries.
 	abort="no"
 	for a in "${D}"usr/lib*/*.la ; do
-		[[ ! -e ${a} ]] && continue
 		s=${a##*/}
 		if grep -qs "${D}" "${a}" ; then
 			vecho -ne '\a\n'
