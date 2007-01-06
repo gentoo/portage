@@ -274,7 +274,7 @@ install_qa_check() {
 			s=${s%usr/*}${s##*/usr/}
 			if [[ -e ${s} ]] ; then
 				vecho -ne '\a\n'
-				vecho "QA Notice: missing gen_usr_ldscript for ${s##*/}\a"
+				vecho "QA Notice: missing gen_usr_ldscript for ${s##*/}"
 	 			abort="yes"
 			fi
 		fi
@@ -285,7 +285,7 @@ install_qa_check() {
 	f=$(ls "${ED}"lib*/*.{a,la} 2>/dev/null)
 	if [[ -n ${f} ]] ; then
 		vecho -ne '\a\n'
-		vecho "QA Notice: excessive files found in the / partition\a"
+		vecho "QA Notice: excessive files found in the / partition"
 		vecho "${f}"
 		vecho -ne '\a\n'
 		die "static archives (*.a) and libtool library files (*.la) do not belong in /"
@@ -317,7 +317,8 @@ install_qa_check() {
 		i=0
 		while [[ -n ${msgs[${i}]} ]] ; do
 			m=${msgs[$((i++))]}
-			f=$(grep "${m}" "${PORTAGE_LOG_FILE}")
+			# force C locale to work around slow unicode locales #160234
+			f=$(LC_ALL=C grep "${m}" "${PORTAGE_LOG_FILE}")
 			if [[ -n ${f} ]] ; then
 				vecho -ne '\a\n'
 				vecho "QA Notice: Package has poor programming practices which may compile"

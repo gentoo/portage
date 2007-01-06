@@ -398,6 +398,7 @@ if mymode == "commit":
 	while "--ignore-masked" in myoptions:
 		myoptions.remove("--ignore-masked")
 
+from portage import normalize_path
 isCvs=False
 myreporoot=None
 if os.path.isdir("CVS"):
@@ -475,8 +476,8 @@ if not "--pretend" in myoptions and not isCvs and not isSvn:
 def have_profile_dir(path, maxdepth=3):
 	while path != "/" and maxdepth:
 		if os.path.exists(path + "/profiles/package.mask"):
-			return path
-		path = os.path.normpath(path + "/..")
+			return normalize_path(path)
+		path = normalize_path(path + "/..")
 		maxdepth -= 1
 
 portdir=None
@@ -488,7 +489,8 @@ if "PWD" in os.environ and os.environ["PWD"] != mydir and \
 	# orient itself if the user has symlinks in their portage tree structure.
 	# We use os.environ["PWD"], if available, to get the non-canonical path of
 	# the current working directory (from the shell).
-	mydir = os.path.normpath(os.environ["PWD"])
+	mydir = os.environ["PWD"]
+mydir = normalize_path(mydir)
 if mydir[-1] != "/":
 	mydir += "/"
 
@@ -519,10 +521,8 @@ if not portdir_overlay:
 if not portdir:
 	portdir = repoman_settings["PORTDIR"]
 
-if portdir[-1] == "/":
-	portdir = portdir[:-1]
-if portdir_overlay[-1] == "/":
-	portdir_overlay = portdir_overlay[:-1]
+portdir = normalize_path(portdir)
+portdir_overlay = normalize_path(portdir_overlay)
 
 os.environ["PORTDIR"] = portdir
 if portdir_overlay != portdir:
@@ -1412,8 +1412,6 @@ for x in scanlist:
 		leading_spaces = re.compile(r'^[\S\t]')
 		trailing_whitespace = re.compile(r'.*([\S]$)')
 		readonly_assignment = re.compile(r'^\s*(export\s+)?(A|CATEGORY|P|PV|PN|PR|PVR|PF|D|WORKDIR|FILESDIR|FEATURES|USE)=')
-		continuation_symbol = re.compile(r'(.*[ ]+[\\][ ].*)')
-		line_continuation_quoted = re.compile(r'(\"|\')(([\w ,:;#\[\]\.`=/|\$\^\*{}()\'-])|(\\.))*\1')
 		line_continuation = re.compile(r'([^#]*\S)(\s+|\t)\\$')
 		linenum=0
 		previous_line = None
@@ -1467,22 +1465,6 @@ for x in scanlist:
 						myerrormsg = "Readonly variable assignment to %s on line %d" % (match.group(2), linenum)
 						stats["variable.readonly"] += 1
 						fails["variable.readonly"].append(x+"/"+y+".ebuild: %s" % myerrormsg)
-					# Line continuation check
-					match = continuation_symbol.match(line)
-					if match:
-						#Excluded lines not even containing a " \" match. Good!
-						line = re.sub(line_continuation_quoted,"\"\"",line)
-						#line has been edited to collapsed "" and '' quotes to "". Good!
-						match = continuation_symbol.match(line)
-						if match:
-							#Again exclude lines not even containing a " \" match. Good!
-							#This repetition is done for a slight performance increase
-							match = line_continuation.match(line)
-							if not match:
-								#Line has a line continuation error. Bad!
-								myerrormsg = "Line continuation (\"\\\") Syntax Error. Line %d" % linenum
-								stats["ebuild.majorsyn"] +=1
-								fails["ebuild.majorsyn"].append(x+"/"+y+".ebuild: %s" % myerrormsg)
 			previous_line = line
 		del previous_line
 
