@@ -292,7 +292,8 @@ install_qa_check() {
 		i=0
 		while [[ -n ${msgs[${i}]} ]] ; do
 			m=${msgs[$((i++))]}
-			f=$(grep "${m}" "${PORTAGE_LOG_FILE}")
+			# force C locale to work around slow unicode locales #160234
+			f=$(LC_ALL=C grep "${m}" "${PORTAGE_LOG_FILE}")
 			if [[ -n ${f} ]] ; then
 				vecho -ne '\a\n'
 				vecho "QA Notice: Package has poor programming practices which may compile"
