@@ -167,6 +167,7 @@ install_qa_check() {
 
 		# Run some sanity checks on shared libraries
 		for d in "${D}"lib* "${D}"usr/lib* ; do
+			[[ ! -d  ${d} ]] && continue
 			f=$(scanelf -ByF '%S %p' "${d}"/lib*.so* | gawk '$2 == "" { print }')
 			if [[ -n ${f} ]] ; then
 				vecho -ne '\a\n'
