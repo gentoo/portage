@@ -401,7 +401,9 @@ myreporoot=None
 if os.path.isdir("CVS"):
 	isCvs = True
 
-if not "--pretend" in myoptions and not isCvs:
+if mymode == "commit" and \
+	not isCvs and \
+	"--pretend" not in myoptions:
 	print
 	print darkgreen("Not in a CVS repository; enabling pretend mode.")
 	myoptions.append("--pretend");
@@ -814,7 +816,8 @@ for x in scanlist:
 				fails["CVS/Entries.IO_error"].append(checkdir+"/files/CVS/Entries")
 			continue
 
-	if mymode in ("fix", "commit"):
+	if mymode in ("fix", "commit") and \
+		"--pretend" not in myoptions:
 		repoman_settings["O"] = checkdir
 		if not portage.digestgen([], repoman_settings, myportdb=portdb):
 			print "Unable to generate manifest."
