@@ -18,9 +18,32 @@ fi
 
 declare -rx EBUILD_PHASE
 
+# These two functions wrap sourcing and calling respectively.  At present they
+# perform a qa check to make sure eclasses and ebuilds and profiles don't mess
+# with shell opts (shopts).  Ebuilds/eclasses changing shopts should reset them 
+# when they are done.
+
+qa_source() {
+	local shopts=$(shopt) OLDIFS="$IFS"
+	source "$@"
+	[[ $shopts != $(shopt) ]] &&
+		vecho "QA Notice: Global shell options were changed and not restored while sourcing $1"
+	[[ "$IFS" != "$OLDIFS" ]] &&
+		vecho "QA Notice: IFS was changed and not reset while sourcing $1"
+}
+
+qa_call() {
+	local shopts=$(shopt) OLDIFS="$IFS"
+	"$@"
+	[[ $shopts != $(shopt) ]] &&
+		vecho "QA Notice: Global shell options were changed while calling $1"
+	[[ "$IFS" != "$OLDIFS" ]] &&
+		vecho "QA Notice: IFS was changed and not reset while calling $1"
+}
+
 if [ "$*" != "depend" ] && [ "$*" != "clean" ] && [ "$*" != "nofetch" ]; then
 	if [ -f "${T}/environment" ]; then
-		source "${T}/environment" &>/dev/null
+		qa_source "${T}/environment" &>/dev/null
 	fi
 fi
 
@@ -101,11 +124,14 @@ for dir in ${PROFILE_PATHS}; do
 	# Must unset it so that it doesn't mess up assumptions in the RCs.
 	unset IFS
 	if [ -f "${dir}/profile.bashrc" ]; then
-		source "${dir}/profile.bashrc"
+		qa_source "${dir}/profile.bashrc"
 	fi
 done
 restore_IFS
 
+# We assume if people are changing shopts in their bashrc they do so at their
+# own peril.  This is the ONLY non-portage bit of code that can change shopts
+# without a QA violation.
 if [ -f "${PORTAGE_BASHRC}" ]; then
 	# If $- contains x, then tracing has already enabled elsewhere for some
 	# reason.  We preserve it's state so as not to interfere.
@@ -678,13 +704,13 @@ gen_wrapper() {
 }
 
 dyn_setup() {
-	[ "$(type -t pre_pkg_setup)" == "function" ] && pre_pkg_setup
-	pkg_setup
-	[ "$(type -t post_pkg_setup)" == "function" ] && post_pkg_setup
+	[ "$(type -t pre_pkg_setup)" == "function" ] && qa_call pre_pkg_setup
+	qa_call pkg_setup
+	[ "$(type -t post_pkg_setup)" == "function" ] && qa_call post_pkg_setup
 }
 
 dyn_unpack() {
-	[ "$(type -t pre_src_unpack)" == "function" ] && pre_src_unpack
+	[ "$(type -t pre_src_unpack)" == "function" ] && qa_call pre_src_unpack
 	local newstuff="no"
 	if [ -e "${WORKDIR}" ]; then
 		local x
@@ -718,7 +744,7 @@ dyn_unpack() {
 	if [ -e "${WORKDIR}" ]; then
 		if [ "$newstuff" == "no" ]; then
 			vecho ">>> WORKDIR is up-to-date, keeping..."
-			[ "$(type -t post_src_unpack)" == "function" ] && post_src_unpack
+			[ "$(type -t post_src_unpack)" == "function" ] && qa_call post_src_unpack
 			return 0
 		fi
 	fi
@@ -728,12 +754,12 @@ dyn_unpack() {
 	fi
 	cd "${WORKDIR}" || die "Directory change failed: \`cd '${WORKDIR}'\`"
 	vecho ">>> Unpacking source..."
-	src_unpack
+	qa_call src_unpack
 	touch "${PORTAGE_BUILDDIR}/.unpacked" || die "IO Failure -- Failed 'touch .unpacked' in ${PORTAGE_BUILDDIR}"
 	vecho ">>> Source unpacked."
 	cd "${PORTAGE_BUILDDIR}"
 
-	[ "$(type -t post_src_unpack)" == "function" ] && post_src_unpack
+	[ "$(type -t post_src_unpack)" == "function" ] && qa_call post_src_unpack
 }
 
 dyn_clean() {
@@ -886,7 +912,7 @@ abort_install() {
 dyn_compile() {
 	trap "abort_compile" SIGINT SIGQUIT
 
-	[ "$(type -t pre_src_compile)" == "function" ] && pre_src_compile
+	[ "$(type -t pre_src_compile)" == "function" ] && qa_call pre_src_compile
 
 	[ "${CFLAGS-unset}"      != "unset" ] && export CFLAGS
 	[ "${CXXFLAGS-unset}"    != "unset" ] && export CXXFLAGS
@@ -934,7 +960,7 @@ dyn_compile() {
 		vecho ">>> It appears that '${PF}' is already compiled; skipping."
 		vecho ">>> Remove '${PORTAGE_BUILDDIR}/.compiled' to force install."
 		trap SIGINT SIGQUIT
-		[ "$(type -t post_src_compile)" == "function" ] && post_src_compile
+		[ "$(type -t post_src_compile)" == "function" ] && qa_call post_src_compile
 		return
 	fi
 	if [ -d "${S}" ]; then
@@ -948,7 +974,7 @@ dyn_compile() {
 	#our libtool to create problematic .la files
 	export PWORKDIR="$WORKDIR"
 	vecho ">>> Compiling source in ${srcdir} ..."
-	src_compile
+	qa_call src_compile
 	vecho ">>> Source compiled."
 	#|| abort_compile "fail"
 	cd "${PORTAGE_BUILDDIR}"
@@ -976,16 +1002,16 @@ dyn_compile() {
 		touch DEBUGBUILD
 	fi
 
-	[ "$(type -t post_src_compile)" == "function" ] && post_src_compile
+	[ "$(type -t post_src_compile)" == "function" ] && qa_call post_src_compile
 
 	trap SIGINT SIGQUIT
 }
 
 dyn_test() {
-	[ "$(type -t pre_src_test)" == "function" ] && pre_src_test
+	[ "$(type -t pre_src_test)" == "function" ] && qa_call pre_src_test
 	if [ "${PORTAGE_BUILDDIR}/.tested" -nt "${WORKDIR}" ]; then
 		vecho ">>> It appears that ${PN} has already been tested; skipping."
-		[ "$(type -t post_src_test)" == "function" ] && post_src_test
+		[ "$(type -t post_src_test)" == "function" ] && qa_call post_src_test
 		return
 	fi
 	trap "abort_test" SIGINT SIGQUIT
@@ -999,13 +1025,13 @@ dyn_test() {
 		vecho ">>> Test phase [explicitly disabled]: ${CATEGORY}/${PF}"
 	else
 		addpredict /
-		src_test
+		qa_call src_test
 		SANDBOX_PREDICT="${SANDBOX_PREDICT%:/}"
 	fi
 
 	cd "${PORTAGE_BUILDDIR}"
 	touch .tested || die "Failed to 'touch .tested' in ${PORTAGE_BUILDDIR}"
-	[ "$(type -t post_src_test)" == "function" ] && post_src_test
+	[ "$(type -t post_src_test)" == "function" ] && qa_call post_src_test
 	trap SIGINT SIGQUIT
 }
 
@@ -1019,7 +1045,7 @@ dyn_install() {
 		return 0
 	fi
 	trap "abort_install" SIGINT SIGQUIT
-	[ "$(type -t pre_src_install)" == "function" ] && pre_src_install
+	[ "$(type -t pre_src_install)" == "function" ] && qa_call pre_src_install
 	rm -rf "${PORTAGE_BUILDDIR}/image"
 	mkdir "${PORTAGE_BUILDDIR}/image"
 	if [ -d "${S}" ]; then
@@ -1033,12 +1059,12 @@ dyn_install() {
 	#some packages uses an alternative to $S to build in, cause
 	#our libtool to create problematic .la files
 	export PWORKDIR="$WORKDIR"
-	src_install
+	qa_call src_install
 	touch "${PORTAGE_BUILDDIR}/.installed"
 	vecho ">>> Completed installing ${PF} into ${D}"
 	vecho
 	cd ${PORTAGE_BUILDDIR}
-	[ "$(type -t post_src_install)" == "function" ] && post_src_install
+	[ "$(type -t post_src_install)" == "function" ] && qa_call post_src_install
 	trap SIGINT SIGQUIT
 }
 
@@ -1048,12 +1074,12 @@ dyn_preinst() {
 		return 1
 	fi
 
-	[ "$(type -t pre_pkg_preinst)" == "function" ] && pre_pkg_preinst
+	[ "$(type -t pre_pkg_preinst)" == "function" ] && qa_call pre_pkg_preinst
 
 	declare -r D=${IMAGE}
 	pkg_preinst
 
-	[ "$(type -t post_pkg_preinst)" == "function" ] && post_pkg_preinst
+	[ "$(type -t post_pkg_preinst)" == "function" ] && qa_call post_pkg_preinst
 }
 
 dyn_help() {
@@ -1231,8 +1257,8 @@ inherit() {
 		#turn on glob expansion
 		set +f
 
-		source "$location" || die "died sourcing $location in inherit()"
-
+		qa_source "$location" || die "died sourcing $location in inherit()"
+		
 		#turn off glob expansion
 		set -f
 
@@ -1564,21 +1590,21 @@ set +f
 for myarg in ${EBUILD_SH_ARGS} ; do
 	case $myarg in
 	nofetch)
-		pkg_nofetch
+		qa_call pkg_nofetch
 		exit 1
 		;;
 	prerm|postrm|postinst|config)
 		export SANDBOX_ON="0"
 		if [ "$PORTAGE_DEBUG" != "1" ]; then
-			[ "$(type -t pre_pkg_${myarg})" == "function" ] && pre_pkg_${myarg}
-			pkg_${myarg}
-			[ "$(type -t post_pkg_${myarg})" == "function" ] && post_pkg_${myarg}
+			[ "$(type -t pre_pkg_${myarg})" == "function" ] && qa_call pre_pkg_${myarg}
+			qa_call pkg_${myarg}
+			[ "$(type -t post_pkg_${myarg})" == "function" ] && qa_call post_pkg_${myarg}
 			#Allow non-zero return codes since they can be caused by &&
 		else
 			set -x
-			[ "$(type -t pre_pkg_${myarg})" == "function" ] && pre_pkg_${myarg}
-			pkg_${myarg}
-			[ "$(type -t post_pkg_${myarg})" == "function" ] && post_pkg_${myarg}
+			[ "$(type -t pre_pkg_${myarg})" == "function" ] && qa_call pre_pkg_${myarg}
+			qa_call pkg_${myarg}
+			[ "$(type -t post_pkg_${myarg})" == "function" ] && qa_call post_pkg_${myarg}
 			#Allow non-zero return codes since they can be caused by &&
 			set +x
 		fi
