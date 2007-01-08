@@ -41,7 +41,7 @@ portage-2.1 (ongoing via pre releases)
   and general notices. Collects eerror/ewarn/elog/einfo messages.
 * New elog function (should replace einfo in many cases)
 * version syntax enhancements allowing multiple suffixes and a new 'cvs'
-  suffix for denoting "live sources" ebuilds.
+  version prefix for denoting "live sources" ebuilds.
 * config files as directories enabling more flexible settings management.
 * Addition of an register_die_hook method that allows ebuild/eclasses to
   register functions to be called for better debugging on errors.
