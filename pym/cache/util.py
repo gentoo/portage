@@ -96,7 +96,10 @@ def mirror_cache(valid_nodes_iterable, src_cache, trg_cache, eclass_cache=None, 
 	# ok.  by this time, the trg_cache is up to date, and we have a dict
 	# with a crapload of cpv's.  we now walk the target db, removing stuff if it's in the list.
 	for key in dead_nodes:
-		try:	del trg_cache[key]
+		try:
+			del trg_cache[key]
+		except KeyError:
+			pass
 		except cache_errors.CacheError, ce:
 			noise.exception(ce)
 			del ce
