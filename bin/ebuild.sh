@@ -21,7 +21,7 @@ declare -rx EBUILD_PHASE
 # These two functions wrap sourcing and calling respectively.  At present they
 # perform a qa check to make sure eclasses and ebuilds and profiles don't mess
 # with shell opts (shopts).  Ebuilds/eclasses changing shopts should reset them 
-# when they are done.
+# when they are done.  Note:  For now these shoudl always return success.
 
 qa_source() {
 	local shopts=$(shopt) OLDIFS="$IFS"
@@ -30,6 +30,7 @@ qa_source() {
 		vecho "QA Notice: Global shell options were changed and not restored while sourcing $1"
 	[[ "$IFS" != "$OLDIFS" ]] &&
 		vecho "QA Notice: IFS was changed and not reset while sourcing $1"
+	return 0
 }
 
 qa_call() {
@@ -39,6 +40,7 @@ qa_call() {
 		vecho "QA Notice: Global shell options were changed while calling $1"
 	[[ "$IFS" != "$OLDIFS" ]] &&
 		vecho "QA Notice: IFS was changed and not reset while calling $1"
+	return 0
 }
 
 if [ "$*" != "depend" ] && [ "$*" != "clean" ] && [ "$*" != "nofetch" ]; then
