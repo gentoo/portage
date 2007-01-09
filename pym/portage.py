@@ -469,10 +469,11 @@ def elog_process(cpv, mysettings):
 	# exploit listdir() file order so we process log entries in chronological order
 	mylogfiles.reverse()
 	mylogentries = {}
+	my_elog_classes = set(mysettings.get("PORTAGE_ELOG_CLASSES", "").split())
 	for f in mylogfiles:
 		msgfunction, msgtype = f.split(".")
-		if not msgtype.upper() in mysettings["PORTAGE_ELOG_CLASSES"].split() \
-				and not msgtype.lower() in mysettings["PORTAGE_ELOG_CLASSES"].split():
+		if msgtype.upper() not in my_elog_classes \
+				and msgtype.lower() not in my_elog_classes:
 			continue
 		if msgfunction not in portage_const.EBUILD_PHASES:
 			writemsg("!!! can't process invalid log file: %s\n" % f,
