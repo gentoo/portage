@@ -2612,8 +2612,18 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
 				distfiles_map.setdefault(myfile, []).append(cpv)
 		mf = Manifest(mysettings["O"], mysettings["DISTDIR"],
 			fetchlist_dict=fetchlist_dict)
-		missing_hashes = set(distfiles_map).difference(
-			mf.fhashdict.get("DIST", {}))
+		required_hash_types = set(portage_const.MANIFEST1_HASH_FUNCTIONS)
+		required_hash_types.update(portage_const.MANIFEST2_HASH_FUNCTIONS)
+		required_hash_types.add("size")
+		dist_hashes = mf.fhashdict.get("DIST", {})
+		missing_hashes = set()
+		for myfile in distfiles_map:
+			myhashes = dist_hashes.get(myfile)
+			if not myhashes:
+				missing_hashes.add(myfile)
+				continue
+			if required_hash_types.difference(myhashes):
+				missing_hashes.add(myfile)
 		if missing_hashes:
 			missing_files = []
 			for myfile in missing_hashes:
