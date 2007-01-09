@@ -25,7 +25,7 @@ declare -rx EBUILD_PHASE
 
 qa_source() {
 	local shopts=$(shopt) OLDIFS="$IFS"
-	source "$@"
+	source "$@" || return 1
 	[[ $shopts != $(shopt) ]] &&
 		vecho "QA Notice: Global shell options were changed and not restored while sourcing $1"
 	[[ "$IFS" != "$OLDIFS" ]] &&
@@ -35,7 +35,7 @@ qa_source() {
 
 qa_call() {
 	local shopts=$(shopt) OLDIFS="$IFS"
-	"$@"
+	"$@" || return 1
 	[[ $shopts != $(shopt) ]] &&
 		vecho "QA Notice: Global shell options were changed while calling $1"
 	[[ "$IFS" != "$OLDIFS" ]] &&
@@ -1165,6 +1165,7 @@ dyn_compile() {
 }
 
 dyn_test() {
+	[ "${EBUILD_FORCE_TEST}" == "1" ] && rm -f "${PORTAGE_BUILDDIR}/.tested"
 	[ "$(type -t pre_src_test)" == "function" ] && qa_call pre_src_test
 	if [ "${PORTAGE_BUILDDIR}/.tested" -nt "${WORKDIR}" ]; then
 		vecho ">>> It appears that ${PN} has already been tested; skipping."
@@ -1175,7 +1176,7 @@ dyn_test() {
 	if [ -d "${S}" ]; then
 		cd "${S}"
 	fi
-	if ! hasq test $FEATURES; then
+	if ! hasq test $FEATURES && [ "${EBUILD_FORCE_TEST}" != "1" ]; then
 		vecho ">>> Test phase [not enabled]: ${CATEGORY}/${PF}"
 	elif hasq test $RESTRICT; then
 		ewarn "Skipping make test/check due to ebuild restriction."

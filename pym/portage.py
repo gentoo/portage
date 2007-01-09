@@ -469,10 +469,11 @@ def elog_process(cpv, mysettings):
 	# exploit listdir() file order so we process log entries in chronological order
 	mylogfiles.reverse()
 	mylogentries = {}
+	my_elog_classes = set(mysettings.get("PORTAGE_ELOG_CLASSES", "").split())
 	for f in mylogfiles:
 		msgfunction, msgtype = f.split(".")
-		if not msgtype.upper() in mysettings["PORTAGE_ELOG_CLASSES"].split() \
-				and not msgtype.lower() in mysettings["PORTAGE_ELOG_CLASSES"].split():
+		if msgtype.upper() not in my_elog_classes \
+				and msgtype.lower() not in my_elog_classes:
 			continue
 		if msgfunction not in portage_const.EBUILD_PHASES:
 			writemsg("!!! can't process invalid log file: %s\n" % f,
@@ -2615,8 +2616,18 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
 				distfiles_map.setdefault(myfile, []).append(cpv)
 		mf = Manifest(mysettings["O"], mysettings["DISTDIR"],
 			fetchlist_dict=fetchlist_dict)
-		missing_hashes = set(distfiles_map).difference(
-			mf.fhashdict.get("DIST", {}))
+		required_hash_types = set(portage_const.MANIFEST1_HASH_FUNCTIONS)
+		required_hash_types.update(portage_const.MANIFEST2_HASH_FUNCTIONS)
+		required_hash_types.add("size")
+		dist_hashes = mf.fhashdict.get("DIST", {})
+		missing_hashes = set()
+		for myfile in distfiles_map:
+			myhashes = dist_hashes.get(myfile)
+			if not myhashes:
+				missing_hashes.add(myfile)
+				continue
+			if required_hash_types.difference(myhashes):
+				missing_hashes.add(myfile)
 		if missing_hashes:
 			missing_files = []
 			for myfile in missing_hashes:
@@ -7013,6 +7024,9 @@ class dblink:
 			os.chdir(srcroot)
 			mysymlinks = filter(os.path.islink, listdir(srcroot, recursive=1, filesonly=0, followSymlinks=False))
 			myfilelist.extend(mysymlinks)
+			mysymlinked_directories = [s + os.path.sep for s in mysymlinks]
+			del mysymlinks
+
 
 			stopmerge=False
 			starttime=time.time()
@@ -7039,10 +7053,10 @@ class dblink:
 				nocheck = False
 				# listdir isn't intelligent enough to exclude symlinked dirs,
 				# so we have to do it ourself
-				for s in mysymlinks:
-					# the length comparison makes sure that the symlink itself is checked
-					if f[:len(s)] == s and len(f) > len(s):
+				for s in mysymlinked_directories:
+					if f.startswith(s):
 						nocheck = True
+						break
 				if nocheck:
 					continue
 				i=i+1

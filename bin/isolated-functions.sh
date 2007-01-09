@@ -15,7 +15,7 @@ elog_base() {
 	local messagetype
 	[ -z "${1}" -o -z "${T}" -o ! -d "${T}/logging" ] && return 1
 	case "${1}" in
-		INFO|WARN|ERROR|LOG)
+		INFO|WARN|ERROR|LOG|QA)
 			messagetype="${1}"
 			shift
 			;;
@@ -25,6 +25,12 @@ elog_base() {
 			;;
 	esac
 	echo -e "$*" >> ${T}/logging/${EBUILD_PHASE:-other}.${messagetype}
+	return 0
+}
+
+eqawarn() {
+	elog_base QA "$*"
+	echo -e " ${WARN}*${NORMAL} $*"
 	return 0
 }
 

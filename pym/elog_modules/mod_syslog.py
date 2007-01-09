@@ -7,7 +7,11 @@ def process(mysettings, cpv, logentries, fulltext):
 		if not phase in logentries:
 			continue
 		for msgtype,msgcontent in logentries[phase]:
-			pri = {"INFO": syslog.LOG_INFO, "WARN": syslog.LOG_WARNING, "ERROR": syslog.LOG_ERR, "LOG": syslog.LOG_NOTICE}
+			pri = {"INFO": syslog.LOG_INFO, 
+				"WARN": syslog.LOG_WARNING, 
+				"ERROR": syslog.LOG_ERR, 
+				"LOG": syslog.LOG_NOTICE,
+				"QA": syslog.LOG_WARNING}
 			msgtext = "".join(msgcontent)
 			syslog.syslog(pri[msgtype], "%s: %s: %s" % (cpv, phase, msgtext))
 	syslog.closelog()

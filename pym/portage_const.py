@@ -53,7 +53,7 @@ EBUILD_PHASES           = ["setup", "unpack", "compile", "test", "install",
 
 EAPI = "prefix"
 
-HASHING_BLOCKSIZE		= 32768
+HASHING_BLOCKSIZE        = 32768
 MANIFEST1_HASH_FUNCTIONS = ["MD5","SHA256","RMD160"]
 MANIFEST2_HASH_FUNCTIONS = ["SHA1","SHA256","RMD160"]
 
