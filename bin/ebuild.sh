@@ -25,7 +25,7 @@ declare -rx EBUILD_PHASE
 
 qa_source() {
 	local shopts=$(shopt) OLDIFS="$IFS"
-	source "$@"
+	source "$@" || return 1
 	[[ $shopts != $(shopt) ]] &&
 		vecho "QA Notice: Global shell options were changed and not restored while sourcing $1"
 	[[ "$IFS" != "$OLDIFS" ]] &&
@@ -35,7 +35,7 @@ qa_source() {
 
 qa_call() {
 	local shopts=$(shopt) OLDIFS="$IFS"
-	"$@"
+	"$@" || return 1
 	[[ $shopts != $(shopt) ]] &&
 		vecho "QA Notice: Global shell options were changed while calling $1"
 	[[ "$IFS" != "$OLDIFS" ]] &&
