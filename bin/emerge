@@ -3462,12 +3462,14 @@ def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 			for inforoot in regen_infodirs:
 				if inforoot=='':
 					continue
-				try:
-					os.rename(inforoot+"/dir",inforoot+"/dir.old")
-				except SystemExit, e:
-					raise # Needed else can't exit
-				except:
-					pass
+				for filename in ("dir", "dir.gz"):
+					file_path = os.path.join(inforoot, filename)
+					try:
+						os.rename(file_path, file_path + ".old")
+					except OSError, e:
+						if e.errno != errno.ENOENT:
+							raise
+						del e
 
 				if not os.path.isdir(inforoot):
 					continue
