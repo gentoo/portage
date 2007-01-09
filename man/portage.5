@@ -207,6 +207,11 @@ For example, if you manage your own copy of a 2.6 kernel, then you can
 tell portage that 'sys-kernel/development-sources-2.6.7' is already taken 
 care of and it should get off your back about it.
 
+Virtual packages (virtual/*) should not be specified in package.provided.
+Depending on the type of virtual, it may be necessary to add an entry to the
+virtuals file and/or add a package that satisfies a virtual to
+package.provided.
+
 .I Format:
 .nf
 \- comments begin with #
