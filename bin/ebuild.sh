@@ -45,7 +45,7 @@ qa_call() {
 
 if [ "$*" != "depend" ] && [ "$*" != "clean" ] && [ "$*" != "nofetch" ]; then
 	if [ -f "${T}/environment" ]; then
-source "${T}/environment" &>/dev/null
+		qa_source "${T}/environment" &>/dev/null
 	fi
 fi
 
@@ -126,7 +126,7 @@ for dir in ${PROFILE_PATHS}; do
 	# Must unset it so that it doesn't mess up assumptions in the RCs.
 	unset IFS
 	if [ -f "${dir}/profile.bashrc" ]; then
-source "${dir}/profile.bashrc"
+		qa_source "${dir}/profile.bashrc"
 	fi
 done
 restore_IFS
@@ -1260,7 +1260,7 @@ inherit() {
 		#turn on glob expansion
 		set +f
 
-source "$location" || die "died sourcing $location in inherit()"
+		qa_source "$location" || die "died sourcing $location in inherit()"
 		
 		#turn off glob expansion
 		set -f
