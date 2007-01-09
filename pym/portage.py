@@ -7017,6 +7017,9 @@ class dblink:
 			os.chdir(srcroot)
 			mysymlinks = filter(os.path.islink, listdir(srcroot, recursive=1, filesonly=0, followSymlinks=False))
 			myfilelist.extend(mysymlinks)
+			mysymlinked_directories = [s + os.path.sep for s in mysymlinks]
+			del mysymlinks
+
 
 			stopmerge=False
 			starttime=time.time()
@@ -7043,10 +7046,10 @@ class dblink:
 				nocheck = False
 				# listdir isn't intelligent enough to exclude symlinked dirs,
 				# so we have to do it ourself
-				for s in mysymlinks:
-					# the length comparison makes sure that the symlink itself is checked
-					if f[:len(s)] == s and len(f) > len(s):
+				for s in mysymlinked_directories:
+					if f.startswith(s):
 						nocheck = True
+						break
 				if nocheck:
 					continue
 				i=i+1
