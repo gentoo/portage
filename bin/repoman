@@ -467,7 +467,9 @@ if os.path.isdir(".svn"):
 	except:
 		err("Error grabbing repository information; exiting.")
 
-if not "--pretend" in myoptions and not isCvs and not isSvn:
+if mymode == "commit" and \
+	not isCvs and not isSvn and \
+	"--pretend" not in myoptions:
 	print
 	print darkgreen("Not in a CVS or SVN repository; enabling pretend mode.")
 	myoptions.append("--pretend");
@@ -929,7 +931,8 @@ for x in scanlist:
 				fails["svn.IO_error"].append(checkdir+"/files svn info")
 			continue
 
-	if mymode in ("fix", "commit"):
+	if mymode in ("fix", "commit") and \
+		"--pretend" not in myoptions:
 		repoman_settings["O"] = checkdir
 		if not portage.digestgen([], repoman_settings, myportdb=portdb):
 			print "Unable to generate manifest."
