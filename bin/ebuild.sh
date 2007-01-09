@@ -1010,6 +1010,7 @@ dyn_compile() {
 }
 
 dyn_test() {
+	[ "${EBUILD_FORCE_TEST}" == "1" ] && rm -f "${PORTAGE_BUILDDIR}/.tested"
 	[ "$(type -t pre_src_test)" == "function" ] && qa_call pre_src_test
 	if [ "${PORTAGE_BUILDDIR}/.tested" -nt "${WORKDIR}" ]; then
 		vecho ">>> It appears that ${PN} has already been tested; skipping."
@@ -1020,7 +1021,7 @@ dyn_test() {
 	if [ -d "${S}" ]; then
 		cd "${S}"
 	fi
-	if ! hasq test $FEATURES; then
+	if ! hasq test $FEATURES && [ "${EBUILD_FORCE_TEST}" != "1" ]; then
 		vecho ">>> Test phase [not enabled]: ${CATEGORY}/${PF}"
 	elif hasq test $RESTRICT; then
 		ewarn "Skipping make test/check due to ebuild restriction."

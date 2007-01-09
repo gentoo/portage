@@ -126,6 +126,10 @@ def discard_digests(myebuild, mysettings, mydbapi):
 for arg in pargs:
 	try:
 		tmpsettings = portage.config(clone=portage.settings)
+		if arg == "test" and not "test" in tmpsettings.features:
+			print "Forcing test."
+			tmpsettings["EBUILD_FORCE_TEST"] = "1"
+			tmpsettings.backupenv["EBUILD_FORCE_TEST"] = "1"
 		if arg == "digest" and force:
 			discard_digests(ebuild, tmpsettings, portage.portdb)
 		a = portage.doebuild(ebuild, arg, portage.root, tmpsettings,
