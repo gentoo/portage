@@ -20,7 +20,7 @@ MODULES_FILE_PATH       = USER_CONFIG_PATH+"/modules"
 CUSTOM_PROFILE_PATH     = USER_CONFIG_PATH+"/profile"
 
 #PORTAGE_BASE_PATH       = "/usr/lib/portage"
-PORTAGE_BASE_PATH	= os.path.join(os.sep, os.sep.join(__file__.split(os.sep)[:-2]))
+PORTAGE_BASE_PATH       = os.path.join(os.sep, os.sep.join(__file__.split(os.sep)[:-2]))
 PORTAGE_BIN_PATH        = PORTAGE_BASE_PATH+"/bin"
 PORTAGE_PYM_PATH        = PORTAGE_BASE_PATH+"/pym"
 PROFILE_PATH            = "/etc/make.profile"
@@ -50,7 +50,7 @@ EBUILD_PHASES           = ["setup", "unpack", "compile", "test", "install",
 
 EAPI = 0
 
-HASHING_BLOCKSIZE		= 32768
+HASHING_BLOCKSIZE        = 32768
 MANIFEST1_HASH_FUNCTIONS = ["MD5","SHA256","RMD160"]
 MANIFEST2_HASH_FUNCTIONS = ["SHA1","SHA256","RMD160"]
 
