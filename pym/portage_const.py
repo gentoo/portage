@@ -8,6 +8,8 @@
 # START OF CONSTANTS -- START OF CONSTANTS -- START OF CONSTANTS -- START OF
 # ===========================================================================
 
+import os
+
 VDB_PATH                = "var/db/pkg"
 PRIVATE_PATH            = "var/lib/portage"
 CACHE_PATH              = "/var/cache/edb"
@@ -17,7 +19,8 @@ USER_CONFIG_PATH        = "/etc/portage"
 MODULES_FILE_PATH       = USER_CONFIG_PATH+"/modules"
 CUSTOM_PROFILE_PATH     = USER_CONFIG_PATH+"/profile"
 
-PORTAGE_BASE_PATH       = "/usr/lib/portage"
+#PORTAGE_BASE_PATH       = "/usr/lib/portage"
+PORTAGE_BASE_PATH	= os.path.join(os.sep, os.sep.join(__file__.split(os.sep)[:-2]))
 PORTAGE_BIN_PATH        = PORTAGE_BASE_PATH+"/bin"
 PORTAGE_PYM_PATH        = PORTAGE_BASE_PATH+"/pym"
 PROFILE_PATH            = "/etc/make.profile"
