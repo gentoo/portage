@@ -26,6 +26,8 @@ portage-2.1.2
 * New elog modules mail_summary and save_summary that act like the mail/save
   modules except that they merge messages from multiple packages in a single
   file/mail.
+* New QA loglevel and matching eqawarn function
+* `ebuild foo test` now always runs src_test if available
 
 portage-2.1.1
 ------------
