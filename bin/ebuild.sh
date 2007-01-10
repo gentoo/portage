@@ -360,10 +360,10 @@ check_KV() {
 	if [ -z "${KV}" ]; then
 		eerror ""
 		eerror "Could not determine your kernel version."
-		eerror "Make sure that you have /usr/src/linux symlink."
-		eerror "And that said kernel has been configured."
+		eerror "Make sure that you have a /usr/src/linux symlink,"
+		eerror "and that the indicated kernel has been configured."
 		eerror "You can also simply run the following command"
-		eerror "in the kernel referenced by /usr/src/linux:"
+		eerror "in the directory referenced by /usr/src/linux:"
 		eerror " make include/linux/version.h"
 		eerror ""
 		die
@@ -376,7 +376,7 @@ keepdir() {
 	local x
 	if [ "$1" == "-R" ] || [ "$1" == "-r" ]; then
 		shift
-		find "$@" -type d -printf "${D}/%p/.keep_${CATEGORY}_${PN}-${SLOT}\n" | tr "\n" "\0" | $XARGS -0 -n100 touch || die "Failed to recursive create .keep files"
+		find "$@" -type d -printf "${D}/%p/.keep_${CATEGORY}_${PN}-${SLOT}\n" | tr "\n" "\0" | $XARGS -0 -n100 touch || die "Failed to recursively create .keep files"
 	else
 		for x in "$@"; do
 			touch "${D}/${x}/.keep_${CATEGORY}_${PN}-${SLOT}" || die "Failed to create .keep in ${D}/${x}"
@@ -960,7 +960,7 @@ dyn_compile() {
 
 	if [[ ${PORTAGE_BUILDDIR}/.compiled -nt ${WORKDIR} ]] ; then
 		vecho ">>> It appears that '${PF}' is already compiled; skipping."
-		vecho ">>> Remove '${PORTAGE_BUILDDIR}/.compiled' to force install."
+		vecho ">>> Remove '${PORTAGE_BUILDDIR}/.compiled' to force compilation."
 		trap SIGINT SIGQUIT
 		[ "$(type -t post_src_compile)" == "function" ] && qa_call post_src_compile
 		return
@@ -1100,22 +1100,22 @@ dyn_help() {
 	echo "  help        : show this help screen"
 	echo "  setup       : execute package specific setup actions"
 	echo "  fetch       : download source archive(s) and patches"
-	echo "  digest      : creates a digest and a manifest file for the package"
-	echo "  manifest    : creates a manifest file for the package"
+	echo "  digest      : create a digest and a manifest file for the package"
+	echo "  manifest    : create a manifest file for the package"
 	echo "  unpack      : unpack/patch sources (auto-fetch if needed)"
 	echo "  compile     : compile sources (auto-fetch/unpack if needed)"
 	echo "  test        : test package (auto-fetch/unpack/compile if needed)"
 	echo "  preinst     : execute pre-install instructions"
 	echo "  postinst    : execute post-install instructions"
-	echo "  install     : installs the package to the temporary install directory"
+	echo "  install     : install the package to the temporary install directory"
 	echo "  qmerge      : merge image into live filesystem, recording files in db"
-	echo "  merge       : does fetch, unpack, compile, install and qmerge"
+	echo "  merge       : do fetch, unpack, compile, install and qmerge"
 	echo "  prerm       : execute pre-removal instructions"
 	echo "  postrm      : execute post-removal instructions"
 	echo "  unmerge     : remove package from live filesystem"
 	echo "  config      : execute package specific configuration actions"
-	echo "  package     : create tarball package in ${PKGDIR}/All"
-	echo "  rpm         : builds a RedHat RPM package"
+	echo "  package     : create a tarball package in ${PKGDIR}/All"
+	echo "  rpm         : build a RedHat RPM package"
 	echo "  clean       : clean up all source and temporary files"
 	echo
 	echo "The following settings will be used for the ebuild process:"
