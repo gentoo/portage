@@ -568,19 +568,18 @@ def match_from_list(mydep, candidate_list):
 			mylist.append(x)
 
 	elif operator == "=": # Exact match
-		if mycpv in candidate_list:
-			mylist = [mycpv]
+		mylist = [cpv for cpv in candidate_list if cpvequal(cpv, mycpv)]
 
 	elif operator == "=*": # glob match
 		# The old verion ignored _tag suffixes... This one doesn't.
 		for x in candidate_list:
-			if x[0:len(mycpv)] == mycpv:
+			if cpvequal(x[0:len(mycpv)], mycpv):
 				mylist.append(x)
 
 	elif operator == "~": # version, any revision, match
 		for x in candidate_list:
 			xs = catpkgsplit(x)
-			if xs[0:2] != mycpv_cps[0:2]:
+			if not cpvequal(xs[0]+"/"+xs[1]+"-"+xs[2], mycpv_cps[0]+"/"+mycpv_cps[1]+"-"+mycpv_cps[2]):
 				continue
 			if xs[2] != ver:
 				continue
