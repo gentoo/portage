@@ -588,6 +588,9 @@ def match_from_list(mydep, candidate_list):
 			if xcpv == mycpv:
 				mylist.append(x)
 			else:
+				# xcpv may not be a proper cpv, but cpvequal needs it to be
+				# reducing it should always work, in worst case it stops at 
+				# the first digit. Might cause a minor peformance hit though.
 				while not isspecific(xcpv):
 					xcpv = xcpv[:-1]
 				if cpvequal(xcpv, mycpv):
