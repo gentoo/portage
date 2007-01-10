@@ -583,10 +583,15 @@ def match_from_list(mydep, candidate_list):
 		mylist = [cpv for cpv in candidate_list if cpvequal(cpv, mycpv)]
 
 	elif operator == "=*": # glob match
-		# The old verion ignored _tag suffixes... This one doesn't.
 		for x in candidate_list:
-			if cpvequal(x[0:len(mycpv)], mycpv):
+			xcpv = x[:min(len(x), len(mycpv))]
+			if xcpv == mycpv:
 				mylist.append(x)
+			else:
+				while not isspecific(xcpv):
+					xcpv = xcpv[:-1]
+				if cpvequal(xcpv, mycpv):
+					mylist.append(x)
 
 	elif operator == "~": # version, any revision, match
 		for x in candidate_list:
