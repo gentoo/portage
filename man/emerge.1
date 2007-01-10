@@ -489,8 +489,9 @@ parameters to \fBemerge\fR.
 override those specified in the default locations, letting you
 avoid using some dependencies you may not want to have.  \fBUSE
 flags specified on the command line are NOT remembered\fR.  For
-example, \fBUSE="\-X \-gnome" emerge mc\fR will emerge mc with
-those USE settings.  If you want those USE settings to be more 
+example, \fBenv USE="\-X \-gnome" emerge mc\fR will emerge mc with
+those USE settings (on Bourne-compatible shells you may omit the \fBenv\fR
+part).  If you want those USE settings to be more 
 permanent, you can put them in /etc/portage/package.use instead.
 .LP
 If \fBemerge \-\-update system\fR or \fBemerge \-\-update world\fR
