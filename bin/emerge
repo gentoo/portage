@@ -1164,6 +1164,7 @@ class depgraph:
 			slot_atom = "%s:%s" % (portage.dep_getkey(mykey), metadata["SLOT"])
 			existing_node = self._slot_node_map[myroot].get(
 				slot_atom, None)
+			slot_collision = False
 			if existing_node:
 				e_type, myroot, e_cpv, e_status = existing_node
 				if mykey == e_cpv:
@@ -1188,31 +1189,26 @@ class depgraph:
 						myparents.append(myparent)
 					self._slot_collision_info.append(
 						((jbigkey, myparents), (existing_node, e_parents)))
+					slot_collision = True
 
-					# Now add this node to the graph so that self.display()
-					# can show use flags and --tree output.  This node is
-					# only being partially added to the graph.  It must not be
-					# allowed to interfere with the other nodes that have been
-					# added.  Do not overwrite data for existing nodes in
-					# self.pkg_node_map and self.mydbapi since that data will
-					# be used for blocker validation.
-					self.pkg_node_map[myroot].setdefault(mykey, jbigkey)
-					self.useFlags[myroot].setdefault(mykey, myuse)
-					self._parent_child_digraph.add(jbigkey, myparent)
-					if rev_dep and myparent:
-						self.digraph.add(myparent, jbigkey,
-							priority=priority)
-					else:
-						self.digraph.add(jbigkey, myparent,
-							priority=priority)
-					# The slot collision has rendered the graph invalid, so
-					# there's no need to process dependencies of this node.
-					return 1
-
-			self._slot_node_map[myroot][slot_atom] = jbigkey
-			self.pkg_node_map[myroot][mykey] = jbigkey
-			self.useFlags[myroot][mykey] = myuse
-			self.mydbapi[myroot].cpv_inject(mykey, metadata=metadata)
+			if slot_collision:
+				# Now add this node to the graph so that self.display()
+				# can show use flags and --tree output.  This node is
+				# only being partially added to the graph.  It must not be
+				# allowed to interfere with the other nodes that have been
+				# added.  Do not overwrite data for existing nodes in
+				# self.pkg_node_map and self.mydbapi since that data will
+				# be used for blocker validation.
+				self.pkg_node_map[myroot].setdefault(mykey, jbigkey)
+				self.useFlags[myroot].setdefault(mykey, myuse)
+				# Even though the graph is now invalid, continue to process
+				# dependencies so that things like --fetchonly can still
+				# function despite collisions.
+			else:
+				self.mydbapi[myroot].cpv_inject(mykey, metadata=metadata)
+				self._slot_node_map[myroot][slot_atom] = jbigkey
+				self.pkg_node_map[myroot][mykey] = jbigkey
+				self.useFlags[myroot][mykey] = myuse
 
 			if rev_dep and myparent:
 				self.digraph.addnode(myparent, jbigkey,
@@ -1938,8 +1934,17 @@ class depgraph:
 				if x[0] == "blocks":
 					return True
 			self._show_slot_collision_notice(self._slot_collision_info[0])
-			return False
+			if not self._invalid_depgraph_is_acceptable():
+				return False
 		return True
+
+	def _invalid_depgraph_is_acceptable(self):
+		acceptable = False
+		for x in ("--nodeps", "--pretend", "--fetchonly", "--fetch-all-uri"):
+			if x in self.myopts:
+				acceptable = True
+				break
+		return acceptable
 
 	def altlist(self, reversed=False):
 		if reversed in self._altlist_cache:
