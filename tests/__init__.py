@@ -7,14 +7,15 @@ import unittest
 
 def main():
 	
-	tests = ["test_vercmp", "test_util"]
+	tests = ["test_atoms", "test_util"]
 
 	suite = unittest.TestSuite()
 
 	for mod in tests:
 		try:
-			test_mod = __import__(mod)
-			suite.addTest(test_mod.suite())
+			loadMod = __import__(mod)
+			tmpSuite = unittest.TestLoader().loadTestsFromModule(loadMod)
+			suite.addTest(tmpSuite)
 		except ImportError:
 			pass
 

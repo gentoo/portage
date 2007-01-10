@@ -37,6 +37,3 @@ class UtilTestCase(TestCase):
 		good = "/foo/bar/baz"
 		self.failUnless(normalize_path(path) == good, msg="NormalizePath(%s) failed to produce %s" % (path, good))
 
-def suite():
-	return TestLoader().loadTestsFromTestCase(UtilTestCase)
-

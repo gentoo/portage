@@ -6,11 +6,42 @@
 from unittest import TestCase
 from unittest import TestLoader
 from portage_versions import vercmp
+from portage_dep import match_from_list
+
+class AtomCmpEqualGlob(TestCase):
+	""" A simple testcase for =* glob matching
+	"""
+
+	def testEqualGlobPass(self):
+		tests = [ ("=sys-apps/portage-45*", "sys-apps/portage-045" ),
+			  ("=sys-fs/udev-1*", "sys-fs/udev-123"),
+			  ("=sys-fs/udev-4*", "sys-fs/udev-456" ) ]
+
+# I need to look up the cvs syntax
+#			  ("=sys-fs/udev_cvs*","sys-fs/udev_cvs_pre4" ) ]
+
+		for test in tests:
+			try:
+				self.failIf( len(match_from_list( test[0], test[1] )) < 1,
+					msg="%s should match %s!" % (test[0], test[1]) )
+			except TypeError:
+				print "%s should match %s!" % (test[0], test[1])
+				raise
+
+	def testEqualGlobFail(self):
+		tests = [ ("=sys-apps/portage*", "sys-apps/portage-2.1" ),
+			  ("=sys-apps/portage-*", "sys-apps/portage-2.1" ) ]
+		for test in tests:
+			try:
+				self.failIf( len( match_from_list( test[0], test[1] ) ),
+					msg="%s should match %s!" % (test[0], test[1]) )
+			except TypeError:
+				#TypeError means it died parsing, this is OK
+				pass
 
 class VerCmpTestCase(TestCase):
 	""" A simple testCase for portage_versions.vercmp()
 	"""
-
 	
 	def testVerCmpGreater(self):
 		
@@ -40,7 +71,3 @@ class VerCmpTestCase(TestCase):
 			("0", "0.0")]
 		for test in tests:
 			self.failIf( vercmp( test[0], test[1]) == 0, msg="%s == %s? Wrong!" % (test[0],test[1]))
-
-def suite():
-	return TestLoader().loadTestsFromTestCase(VerCmpTestCase)
-
