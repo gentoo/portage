@@ -1012,6 +1012,9 @@ class depgraph:
 		self.blocker_digraph = digraph()
 		self.blocker_parents = {}
 		self._slot_collision_info = []
+		# Slot collision nodes are not allowed to block other packages since
+		# blocker validation is only able to account for one package per slot.
+		self._slot_collision_nodes = set()
 		self._altlist_cache = {}
 		self._pprovided_args = []
 
@@ -1095,7 +1098,8 @@ class depgraph:
 		if mytype == "blocks":
 			if myparent and \
 				"--buildpkgonly" not in self.myopts and \
-				"--nodeps" not in self.myopts:
+				"--nodeps" not in self.myopts and \
+				myparent not in self._slot_collision_nodes:
 				mybigkey[1] = myparent[1]
 				self.blocker_parents.setdefault(
 					tuple(mybigkey), set()).add(myparent)
@@ -1189,6 +1193,7 @@ class depgraph:
 						myparents.append(myparent)
 					self._slot_collision_info.append(
 						((jbigkey, myparents), (existing_node, e_parents)))
+					self._slot_collision_nodes.add(jbigkey)
 					slot_collision = True
 
 			if slot_collision:
