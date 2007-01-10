@@ -588,12 +588,15 @@ def match_from_list(mydep, candidate_list):
 		# use vercmp
 		mysplit = catpkgsplit(mycpv)
 		myver = mysplit[2].lstrip("0")
-		if not myver[0].isdigit()
-			mver = "0"+myver
+		if not myver or not myver[0].isdigit():
+			myver = "0"+myver
 		mycpv = mysplit[0]+"/"+mysplit[1]+"-"+myver
 		for x in candidate_list:
 			xs = catpkgsplit(x)
-			xcpv = xs[0]+"/"+xs[1]+"-"+xs[2].lstrip("0")
+			myver = xs[2].lstrip("0")
+			if not myver or not myver[0].isdigit():
+				myver = "0"+myver
+			xcpv = xs[0]+"/"+xs[1]+"-"+myver
 			xcpv = x[:min(len(x), len(mycpv))]
 			if xcpv == mycpv:
 				mylist.append(x)
