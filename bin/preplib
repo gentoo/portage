@@ -5,7 +5,7 @@
 
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
 
-vecho "QA Notice: Please stop using me, fix your package instead" 1>&2
+eqawarn "QA Notice: Deprecated call to 'preplib'"
 
 LIBDIR_VAR="LIBDIR_${ABI}"
 if [ -n "${ABI}" -a -n "${!LIBDIR_VAR}" ]; then

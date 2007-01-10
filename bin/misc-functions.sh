@@ -58,10 +58,10 @@ install_qa_check() {
 		f=$(scanelf -qyRF '%r %p' "${D}" | grep -E "(${PORTAGE_BUILDDIR}|: |::|^:|^ )")
 		if [[ -n ${f} ]] ; then
 			vecho -ne '\a\n'
-			vecho "QA Notice: the following files contain insecure RUNPATH's"
-			vecho " Please file a bug about this at http://bugs.gentoo.org/"
-			vecho " with the maintaining herd of the package."
-			vecho "${f}"
+			eqawarn "QA Notice: The following files contain insecure RUNPATH's"
+			eqawarn " Please file a bug about this at http://bugs.gentoo.org/"
+			eqawarn " with the maintaining herd of the package."
+			eqawarn "${f}"
 			vecho -ne '\a\n'
 			if has stricter ${FEATURES} ; then
 				insecure_rpath=1
@@ -75,10 +75,10 @@ install_qa_check() {
 		f=$(scanelf -qyRF '%b %p' "${D}")
 		if [[ -n ${f} ]] ; then
 			vecho -ne '\a\n'
-			vecho "QA Notice: the following files are setXid, dyn linked, and using lazy bindings"
-			vecho " This combination is generally discouraged.  Try re-emerging the package:"
-			vecho " LDFLAGS='-Wl,-z,now' emerge ${PN}"
-			vecho "${f}"
+			eqawarn "QA Notice: The following files are setXid, dyn linked, and using lazy bindings"
+			eqawarn " This combination is generally discouraged.  Try re-emerging the package:"
+			eqawarn " LDFLAGS='-Wl,-z,now' emerge ${PN}"
+			eqawarn "${f}"
 			vecho -ne '\a\n'
 			# Do not fail here until we have sorted out the lazy issues with security team
 			#die_msg="${die_msg} setXid lazy bindings,"
@@ -98,15 +98,15 @@ install_qa_check() {
 		if [[ -n ${f} ]] ; then
 			scanelf -qyRF '%T %p' "${PORTAGE_BUILDDIR}"/ &> "${T}"/scanelf-textrel.log
 			vecho -ne '\a\n'
-			vecho "QA Notice: the following files contain runtime text relocations"
-			vecho " Text relocations force the dynamic linker to perform extra"
-			vecho " work at startup, waste system resources, and may pose a security"
-			vecho " risk.  On some architectures, the code may not even function"
-			vecho " properly, if at all."
-			vecho " For more information, see http://hardened.gentoo.org/pic-fix-guide.xml"
-			vecho " Please include this file in your report:"
-			vecho " ${T}/scanelf-textrel.log"
-			vecho "${f}"
+			eqawarn "QA Notice: The following files contain runtime text relocations"
+			eqawarn " Text relocations force the dynamic linker to perform extra"
+			eqawarn " work at startup, waste system resources, and may pose a security"
+			eqawarn " risk.  On some architectures, the code may not even function"
+			eqawarn " properly, if at all."
+			eqawarn " For more information, see http://hardened.gentoo.org/pic-fix-guide.xml"
+			eqawarn " Please include this file in your report:"
+			eqawarn " ${T}/scanelf-textrel.log"
+			eqawarn "${f}"
 			vecho -ne '\a\n'
 			die_msg="${die_msg} textrels,"
 			sleep 1
@@ -143,14 +143,14 @@ install_qa_check() {
 			# One more pass to help devs track down the source
 			scanelf -qyRF '%e %p' "${PORTAGE_BUILDDIR}"/ &> "${T}"/scanelf-execstack.log
 			vecho -ne '\a\n'
-			vecho "QA Notice: the following files contain executable stacks"
-			vecho " Files with executable stacks will not work properly (or at all!)"
-			vecho " on some architectures/operating systems.  A bug should be filed"
-			vecho " at http://bugs.gentoo.org/ to make sure the file is fixed."
-			vecho " For more information, see http://hardened.gentoo.org/gnu-stack.xml"
-			vecho " Please include this file in your report:"
-			vecho " ${T}/scanelf-execstack.log"
-			vecho "${f}"
+			eqawarn "QA Notice: The following files contain executable stacks"
+			eqawarn " Files with executable stacks will not work properly (or at all!)"
+			eqawarn " on some architectures/operating systems.  A bug should be filed"
+			eqawarn " at http://bugs.gentoo.org/ to make sure the file is fixed."
+			eqawarn " For more information, see http://hardened.gentoo.org/gnu-stack.xml"
+			eqawarn " Please include this file in your report:"
+			eqawarn " ${T}/scanelf-execstack.log"
+			eqawarn "${f}"
 			vecho -ne '\a\n'
 			die_msg="${die_msg} execstacks"
 			sleep 1
@@ -170,8 +170,8 @@ install_qa_check() {
 			f=$(scanelf -ByF '%S %p' "${d}"/lib*.so* | gawk '$2 == "" { print }')
 			if [[ -n ${f} ]] ; then
 				vecho -ne '\a\n'
-				vecho "QA Notice: the following shared libraries lack a SONAME"
-				vecho "${f}"
+				eqawarn "QA Notice: The following shared libraries lack a SONAME"
+				eqawarn "${f}"
 				vecho -ne '\a\n'
 				sleep 1
 			fi
@@ -179,8 +179,8 @@ install_qa_check() {
 			f=$(scanelf -ByF '%n %p' "${d}"/lib*.so* | gawk '$2 == "" { print }')
 			if [[ -n ${f} ]] ; then
 				vecho -ne '\a\n'
-				vecho "QA Notice: the following shared libraries lack NEEDED entries"
-				vecho "${f}"
+				eqawarn "QA Notice: The following shared libraries lack NEEDED entries"
+				eqawarn "${f}"
 				vecho -ne '\a\n'
 				sleep 1
 			fi
@@ -196,7 +196,7 @@ install_qa_check() {
 	if [[ -d ${D}/${D} ]] ; then
 		declare -i INSTALLTOD=0
 		for i in $(find "${D}/${D}/"); do
-			echo "QA Notice: /${i##${D}/${D}} installed in \${D}/\${D}"
+			eqawarn "QA Notice: /${i##${D}/${D}} installed in \${D}/\${D}"
 			((INSTALLTOD++))
 		done
 		die "Aborting due to QA concerns: ${INSTALLTOD} files installed in ${D}/${D}"
@@ -217,10 +217,10 @@ install_qa_check() {
 				linkdest=$(readlink "${j}")
 				if [[ ${linkdest} == /* ]] ; then
 					vecho -ne '\a\n'
-					vecho "QA Notice: Found an absolute symlink in a library directory:"
-					vecho "           ${j#${D}} -> ${linkdest}"
-					vecho "           It should be a relative symlink if in the same directory"
-					vecho "           or a linker script if it crosses the /usr boundary."
+					eqawarn "QA Notice: Found an absolute symlink in a library directory:"
+					eqawarn "           ${j#${D}} -> ${linkdest}"
+					eqawarn "           It should be a relative symlink if in the same directory"
+					eqawarn "           or a linker script if it crosses the /usr boundary."
 				fi
 				continue
 			fi
@@ -249,7 +249,7 @@ install_qa_check() {
 			s=${s%usr/*}${s##*/usr/}
 			if [[ -e ${s} ]] ; then
 				vecho -ne '\a\n'
-				vecho "QA Notice: missing gen_usr_ldscript for ${s##*/}"
+				eqawarn "QA Notice: Missing gen_usr_ldscript for ${s##*/}"
 	 			abort="yes"
 			fi
 		fi
@@ -260,8 +260,8 @@ install_qa_check() {
 	f=$(ls "${D}"lib*/*.{a,la} 2>/dev/null)
 	if [[ -n ${f} ]] ; then
 		vecho -ne '\a\n'
-		vecho "QA Notice: excessive files found in the / partition"
-		vecho "${f}"
+		eqawarn "QA Notice: Excessive files found in the / partition"
+		eqawarn "${f}"
 		vecho -ne '\a\n'
 		die "static archives (*.a) and libtool library files (*.la) do not belong in /"
 	fi
@@ -272,7 +272,7 @@ install_qa_check() {
 		s=${a##*/}
 		if grep -qs "${D}" "${a}" ; then
 			vecho -ne '\a\n'
-			vecho "QA Notice: ${s} appears to contain PORTAGE_TMPDIR paths"
+			eqawarn "QA Notice: ${s} appears to contain PORTAGE_TMPDIR paths"
 			abort="yes"
 		fi
 	done
@@ -296,9 +296,9 @@ install_qa_check() {
 			f=$(LC_ALL=C grep "${m}" "${PORTAGE_LOG_FILE}")
 			if [[ -n ${f} ]] ; then
 				vecho -ne '\a\n'
-				vecho "QA Notice: Package has poor programming practices which may compile"
-				vecho "           fine but exhibit random runtime failures."
-				vecho "${f}"
+				eqawarn "QA Notice: Package has poor programming practices which may compile"
+				eqawarn "           fine but exhibit random runtime failures."
+				eqawarn "${f}"
 				vecho -ne '\a\n'
 				abort="yes"
 			fi
@@ -306,9 +306,9 @@ install_qa_check() {
 		f=$(cat "${PORTAGE_LOG_FILE}" | check-implicit-pointer-usage.py)
 		if [[ -n ${f} ]] ; then
 			vecho -ne '\a\n'
-			vecho "QA Notice: Package has poor programming practices which may compile"
-			vecho "           but will almost certainly crash on 64bit architectures."
-			vecho "${f}"
+			eqawarn "QA Notice: Package has poor programming practices which may compile"
+			eqawarn "           but will almost certainly crash on 64bit architectures."
+			eqawarn "${f}"
 			vecho -ne '\a\n'
 			abort="yes"
 		fi

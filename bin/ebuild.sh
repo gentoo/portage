@@ -27,9 +27,9 @@ qa_source() {
 	local shopts=$(shopt) OLDIFS="$IFS"
 	source "$@" || return 1
 	[[ $shopts != $(shopt) ]] &&
-		vecho "QA Notice: Global shell options were changed and not restored while sourcing $1"
+		eqawarn "QA Notice: Global shell options changed and were not restored while sourcing '$*'"
 	[[ "$IFS" != "$OLDIFS" ]] &&
-		vecho "QA Notice: IFS was changed and not reset while sourcing $1"
+		eqawarn "QA Notice: Global IFS changed and was not restored while sourcing '$*'"
 	return 0
 }
 
@@ -37,9 +37,9 @@ qa_call() {
 	local shopts=$(shopt) OLDIFS="$IFS"
 	"$@" || return 1
 	[[ $shopts != $(shopt) ]] &&
-		vecho "QA Notice: Global shell options were changed while calling $1"
+		eqawarn "QA Notice: Global shell options changed and were not restored while calling '$*'"
 	[[ "$IFS" != "$OLDIFS" ]] &&
-		vecho "QA Notice: IFS was changed and not reset while calling $1"
+		eqawarn "QA Notice: Global IFS changed and was not restored while calling '$*'"
 	return 0
 }
 
@@ -79,15 +79,6 @@ export PATH="/usr/local/sbin:/sbin:/usr/sbin:${PORTAGE_BIN_PATH}:/usr/local/bin:
 [ ! -z "$PREROOTPATH" ] && export PATH="${PREROOTPATH%%:}:$PATH"
 
 source "${PORTAGE_BIN_PATH}/isolated-functions.sh"  &>/dev/null
-
-case "${NOCOLOR:-false}" in
-	yes|true)
-		unset_colors
-		;;
-	no|false)
-		set_colors
-		;;
-esac
 
 [[ $PORTAGE_QUIET != "" ]] && export PORTAGE_QUIET
 
@@ -179,7 +170,7 @@ useq() {
 
 	# Make sure we have this USE flag in IUSE
 	if ! hasq "${u}" ${IUSE} ${E_IUSE} && ! hasq "${u}" ${PORTAGE_ARCHLIST} selinux; then
-		vecho "QA Notice: USE Flag '${u}' not in IUSE for ${CATEGORY}/${PF}" >&2
+		eqawarn "QA Notice: USE Flag '${u}' not in IUSE for ${CATEGORY}/${PF}"
 	fi
 
 	if hasq ${u} ${USE} ; then
@@ -1219,9 +1210,7 @@ inherit() {
 			# false alarms due to INHERITED in /var/db/pkg being outdated
 			# in comparison the the eclasses from the portage tree.
 			if ! hasq $ECLASS $INHERITED; then
-				vecho
-				vecho "QA Notice: ECLASS '$ECLASS' inherited illegally in $CATEGORY/$PF" >&2
-				vecho
+				eqawarn "QA Notice: ECLASS '$ECLASS' inherited illegally in $CATEGORY/$PF"
 			fi
 		fi
 
@@ -1494,11 +1483,10 @@ if hasq "depend" "${EBUILD_SH_ARGS}"; then
 			BODY="${BIN_PATH} \"\$@\"; return \$?"
 		fi
 		FUNC_SRC="${BIN}() {
-		vecho -n \"QA Notice: ${BIN} in global scope: \" >&2
 		if [ \$ECLASS_DEPTH -gt 0 ]; then
-			vecho \"eclass \${ECLASS}\" >&2
+			eqawarn \"QA Notice: '${BIN}' called in global scope: eclass \${ECLASS}\"
 		else
-			vecho \"\${CATEGORY}/\${PF}\" >&2
+			eqawarn \"QA Notice: '${BIN}' called in global scope: \${CATEGORY}/\${PF}\"
 		fi
 		${BODY}
 		}";

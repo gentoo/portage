@@ -12,7 +12,7 @@ else
 fi
 
 if [[ ! -d ${z} ]] ; then
-	vecho "QA Notice: prepman called with non-existent dir '${z#${D}}'" 2>&1
+	eqawarn "QA Notice: prepman called with non-existent dir '${z#${D}}'"
 	exit 0
 fi
 

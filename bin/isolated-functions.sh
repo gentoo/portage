@@ -30,7 +30,7 @@ elog_base() {
 
 eqawarn() {
 	elog_base QA "$*"
-	echo -e " ${WARN}*${NORMAL} $*"
+	vecho -e " ${WARN}*${NORMAL} $*" >&2
 	return 0
 }
 
@@ -223,6 +223,15 @@ RC_ENDCOL="yes"
 RC_INDENTATION=''
 RC_DEFAULT_INDENT=2
 RC_DOT_PATTERN=''
+
+case "${NOCOLOR:-false}" in
+	yes|true)
+		unset_colors
+		;;
+	no|false)
+		set_colors
+		;;
+esac
 
 has() {
 	hasq "$@"

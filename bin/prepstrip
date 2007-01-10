@@ -55,8 +55,9 @@ save_elf_debug() {
 # They prevent us from getting the splitdebug data.
 f="$(scanelf -yqRBF '#k%F' -k '!.symtab' "$@")"
 if [[ -n "${f}" ]] ; then
-	vecho -e "\n\aQA Notice: pre-stripped files found:\a"
-	vecho "${f}"
+	vecho -e "\a\n"
+	eqawarn "QA Notice: Pre-stripped files found:"
+	eqawarn "${f}"
 	echo "${f}" > "${T}"/scanelf-already-stripped.log
 fi
 
