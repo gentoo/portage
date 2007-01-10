@@ -27,7 +27,7 @@ def cpvequal(cpv1, cpv2):
 	split2 = catpkgsplit(cpv2)
 	
 	if not split1 or not split2:
-		raise portage_exception.PortageException("Invalid data, parameter was not a CPV")
+		raise portage_exception.PortageException("Invalid data '%s, %s', parameter was not a CPV" % (cpv1, cpv2))
 	
 	if split1[0] != split2[0]:
 		return False
