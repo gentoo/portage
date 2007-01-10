@@ -28,6 +28,7 @@ portage-2.1.2
   file/mail.
 * New QA loglevel and matching eqawarn function
 * `ebuild foo test` now always runs src_test if available
+* If DOC_SYMLINK_DIR is set portage installs symlinks to html documention there
 
 portage-2.1.1
 ------------

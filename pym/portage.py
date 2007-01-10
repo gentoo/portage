@@ -2841,7 +2841,7 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 					apply_secpass_permissions(fpath, uid=myuid, gid=mygid,
 						mode=mystat.st_mode, stat_cached=mystat,
 						follow_links=False)
-			mycommand = " ".join([MISC_SH_BINARY, "install_qa_check"])
+			mycommand = " ".join([MISC_SH_BINARY, "install_qa_check", "install_symlink_html_docs"])
 			qa_retval = spawn(mycommand, mysettings, debug=debug, logfile=logfile, **kwargs)
 			if qa_retval:
 				writemsg("!!! install_qa_check failed; exiting.\n",

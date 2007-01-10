@@ -17,6 +17,30 @@ shift $#
 
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}/ebuild.sh"
 
+install_symlink_html_docs() {
+	cd "${D}" || die "cd failed"
+	#symlink the html documentation (if DOC_SYMLINKS_DIR is set in make.conf)
+	if [ -n "${DOC_SYMLINKS_DIR}" ] ; then
+		local mydocdir docdir
+		for docdir in "${HTMLDOC_DIR:-does/not/exist}" "${PF}/html" "${PF}/HTML" "${P}/html" "${P}/HTML" ; do
+			if [ -d "usr/share/doc/${docdir}" ] ; then
+				mydocdir="/usr/share/doc/${docdir}"
+			fi
+		done
+		if [ -n "${mydocdir}" ] ; then
+			local mysympath
+			if [ -z "${SLOT}" -o "${SLOT}" = "0" ] ; then
+				mysympath="${DOC_SYMLINKS_DIR}/${CATEGORY}/${PN}"
+			else
+				mysympath="${DOC_SYMLINKS_DIR}/${CATEGORY}/${PN}-${SLOT}"
+			fi
+			einfo "Symlinking ${mysympath} to the HTML documentation"
+			dodir "${DOC_SYMLINKS_DIR}/${CATEGORY}"
+			dosym "${mydocdir}" "${mysympath}"
+		fi
+	fi
+}
+
 install_qa_check() {
 	cd "${D}" || die "cd failed"
 	prepall
