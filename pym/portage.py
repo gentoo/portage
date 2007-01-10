@@ -1127,9 +1127,7 @@ class config:
 			del rawpuseforce
 
 			try:
-				mygcfg_dlists = [getconfig(os.path.join(x, "make.globals")) \
-					for x in self.profiles + [os.path.join(config_root, "etc")]]
-				self.mygcfg   = stack_dicts(mygcfg_dlists, incrementals=portage_const.INCREMENTALS, ignore_none=1)
+				self.mygcfg   = getconfig(os.path.join(config_root, "etc", "make.globals"))
 
 				if self.mygcfg is None:
 					self.mygcfg = {}
