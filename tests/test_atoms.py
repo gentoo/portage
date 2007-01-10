@@ -21,23 +21,15 @@ class AtomCmpEqualGlob(TestCase):
 #			  ("=sys-fs/udev_cvs*","sys-fs/udev_cvs_pre4" ) ]
 
 		for test in tests:
-			try:
-				self.failIf( len(match_from_list( test[0], test[1] )) < 1,
-					msg="%s should match %s!" % (test[0], test[1]) )
-			except TypeError:
-				print "%s should match %s!" % (test[0], test[1])
-				raise
+			self.failIf( len(match_from_list( test[0], [test[1]] )) != 1,
+				msg="%s should match %s!" % (test[0], test[1]) )
 
 	def testEqualGlobFail(self):
-		tests = [ ("=sys-apps/portage*", "sys-apps/portage-2.1" ),
-			  ("=sys-apps/portage-*", "sys-apps/portage-2.1" ) ]
+		tests = [ ("=sys-apps/portage-2*", "sys-apps/portage-2.1" ),
+			  ("=sys-apps/portage-2.1*", "sys-apps/portage-2.1.2" ) ]
 		for test in tests:
-			try:
-				self.failIf( len( match_from_list( test[0], test[1] ) ),
-					msg="%s should match %s!" % (test[0], test[1]) )
-			except TypeError:
-				#TypeError means it died parsing, this is OK
-				pass
+			self.failIf( len( match_from_list( test[0], [test[1]] ) ) != 1,
+				msg="%s should match %s!" % (test[0], test[1]) )
 
 class VerCmpTestCase(TestCase):
 	""" A simple testCase for portage_versions.vercmp()
