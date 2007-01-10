@@ -587,7 +587,10 @@ def match_from_list(mydep, candidate_list):
 		# Required as =* is a literal prefix match, so can't 
 		# use vercmp
 		mysplit = catpkgsplit(mycpv)
-		mycpv = mysplit[0]+"/"+mysplit[1]+"-"+mysplit[2].lstrip("0")
+		myver = mysplit[2].lstrip("0")
+		if not myver[0].isdigit()
+			mver = "0"+myver
+		mycpv = mysplit[0]+"/"+mysplit[1]+"-"+myver
 		for x in candidate_list:
 			xs = catpkgsplit(x)
 			xcpv = xs[0]+"/"+xs[1]+"-"+xs[2].lstrip("0")
