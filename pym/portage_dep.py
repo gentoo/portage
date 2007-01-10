@@ -597,8 +597,7 @@ def match_from_list(mydep, candidate_list):
 			if not myver or not myver[0].isdigit():
 				myver = "0"+myver
 			xcpv = xs[0]+"/"+xs[1]+"-"+myver
-			xcpv = x[:min(len(x), len(mycpv))]
-			if xcpv == mycpv:
+			if xcpv.startswith(mycpv):
 				mylist.append(x)
 
 	elif operator == "~": # version, any revision, match
