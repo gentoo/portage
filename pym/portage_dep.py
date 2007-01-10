@@ -584,17 +584,14 @@ def match_from_list(mydep, candidate_list):
 
 	elif operator == "=*": # glob match
 		for x in candidate_list:
+			# XXX: Nasty special casing for leading zeros
+			# Required as =* is a literal prefix match, so can't 
+			# use vercmp
+			xs = catpkgsplit(x)
+			xcpv = xs[0]+"/"+xs[1]+"-"+xs[2].lstrip("0")
 			xcpv = x[:min(len(x), len(mycpv))]
 			if xcpv == mycpv:
 				mylist.append(x)
-			else:
-				# xcpv may not be a proper cpv, but cpvequal needs it to be
-				# reducing it should always work, in worst case it stops at 
-				# the first digit. Might cause a minor peformance hit though.
-				while not isspecific(xcpv):
-					xcpv = xcpv[:-1]
-				if cpvequal(xcpv, mycpv):
-					mylist.append(x)
 
 	elif operator == "~": # version, any revision, match
 		for x in candidate_list:
