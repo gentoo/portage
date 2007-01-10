@@ -22,6 +22,18 @@ import re, string, sys, types
 import portage_exception
 from portage_versions import catpkgsplit, catsplit, pkgcmp, pkgsplit, ververify
 
+def cpvequal(cpv1, cpv2):
+	split1 = catpkgsplit(cpv1)
+	split2 = catpkgsplit(cpv2)
+	
+	if not split1 or not split2:
+		raise portage_exception.PortageException("Invalid data, parameter was not a CPV")
+	
+	if split1[0] != split2[0]:
+		return False
+	
+	return (pkgcmp(split1[1:], split2[1:]) == 0)
+
 def strip_empty(myarr):
 	"""
 	Strip all empty elements from an array

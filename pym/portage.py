@@ -3818,19 +3818,6 @@ def getCPFromCPV(mycpv):
 	"""Calls pkgsplit on a cpv and returns only the cp."""
 	return pkgsplit(mycpv)[0]
 
-def cpvequal(cpv1, cpv2):
-	split1 = catpkgsplit(cpv1)
-	split2 = catpkgsplit(cpv2)
-	
-	if not split1 or not split2:
-		raise portage_exception.PortageException("Invalid data, parameter was not a CPV")
-	
-	if split1[0] != split2[0]:
-		return False
-	
-	return (pkgcmp(split1[1:], split2[1:]) == 0)
-
-
 def dep_virtual(mysplit, mysettings):
 	"Does virtual dependency conversion"
 	newsplit=[]
