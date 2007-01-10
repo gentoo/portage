@@ -3,18 +3,26 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-import unittest
+import os, unittest
 
 def main():
 	
-	testDirs = ["portage/", "portage_util/"]
+	testDirs = ["portage", "portage_util"]
 
 	suite = unittest.TestSuite()
 
-	for dir in testDirs:
-		suite.addTests(getTests(dir))
+	basedir = os.path.dirname(__file__)
+	for mydir in testDirs:
+		suite.addTests(getTests(os.path.join(basedir, mydir)))
 
 	return unittest.TextTestRunner(verbosity=2).run(suite)
+
+def my_import(name):
+	mod = __import__(name)
+	components = name.split('.')
+	for comp in components[1:]:
+		mod = getattr(mod, comp)
+	return mod
 
 def getTests( path ):
 	"""
@@ -27,14 +35,14 @@ def getTests( path ):
 	import os
 	files = os.listdir( path )
 	files = [ f[:-3] for f in files if f.startswith("test_") and f.endswith(".py") ]
-
+	parent_module = ".".join(("tests", os.path.basename(path)))
 	result = []
-	for file in files:
+	for mymodule in files:
 		try:
 			# Make the trailing / a . for module importing
-			path2 = path[:-1] + "." + file
-			mod = __import__( path2, globals(), locals(), [path[-1]])
+			modname = ".".join((parent_module, mymodule))
+			mod = my_import(modname)
 			result.append( unittest.TestLoader().loadTestsFromModule(mod) )
 		except ImportError:
-			pass
+			raise
 	return result
