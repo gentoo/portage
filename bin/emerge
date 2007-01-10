@@ -1939,11 +1939,11 @@ class depgraph:
 				if x[0] == "blocks":
 					return True
 			self._show_slot_collision_notice(self._slot_collision_info[0])
-			if not self._invalid_depgraph_is_acceptable():
+			if not self._accept_collisions():
 				return False
 		return True
 
-	def _invalid_depgraph_is_acceptable(self):
+	def _accept_collisions(self):
 		acceptable = False
 		for x in ("--nodeps", "--pretend", "--fetchonly", "--fetch-all-uri"):
 			if x in self.myopts:
