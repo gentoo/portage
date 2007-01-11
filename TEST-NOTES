@@ -19,6 +19,9 @@ tests/portage_versions/test_vercmp.py
 
 would be the filename.
 
-The __init__.py file in tests only goes 1 deep (it's non-recursive, in other words).  If
-you end up with more directories it will probably break at present.  Need to replace the
-'/' in the directory path with a '.' (for proper importing).  This should be trivial to fix.
+The __init__.py file now does recursive tests, but you need to tell it so.  For example, if
+you had cache tests the dir format would be something like...
+
+tests/cache/flat_hash/test_foo.py
+
+and you would put "cache/flat_hash" into the testDirs variable in __init__.py.
