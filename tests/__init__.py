@@ -7,13 +7,13 @@ import os, unittest
 
 def main():
 	
-	testDirs = ["portage", "portage_util"]
+	testDirs = ["portage", "portage_util", "test/foo"]
 
 	suite = unittest.TestSuite()
 
 	basedir = os.path.dirname(__file__)
 	for mydir in testDirs:
-		suite.addTests(getTests(os.path.join(basedir, mydir)))
+		suite.addTests(getTests(os.path.join(basedir, mydir), basedir) )
 
 	return unittest.TextTestRunner(verbosity=2).run(suite)
 
@@ -24,7 +24,7 @@ def my_import(name):
 		mod = getattr(mod, comp)
 	return mod
 
-def getTests( path ):
+def getTests( path, base_path ):
 	"""
 
 	path is the path to a given subdir ( 'portage/' for example)
@@ -35,7 +35,8 @@ def getTests( path ):
 	import os
 	files = os.listdir( path )
 	files = [ f[:-3] for f in files if f.startswith("test_") and f.endswith(".py") ]
-	parent_module = ".".join(("tests", os.path.basename(path)))
+	parent_path = path[len(base_path):]
+	parent_module = ".".join(("tests", parent_path))
 	result = []
 	for mymodule in files:
 		try:
