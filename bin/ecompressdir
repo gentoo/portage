@@ -25,19 +25,14 @@ for dir in "$@" ; do
 		vecho "${0##*/}: $(ecompress --bin) ${dir#${D}}"
 	fi
 
-	find "${dir}" -type f -print0 | xargs -0 ecompress
+	find "${dir}" -type f '!' -name '*'$(ecompress --suffix) -print0 | xargs -0 ecompress
 	((ret+=$?))
 	find -L "${dir}" -type l | \
 	while read brokenlink ; do
 		olddest=$(readlink "${brokenlink}")
 		newdest="${olddest}${suffix}"
-		if [[ -e ${newdest} ]] ; then
-			ln -snf "${newdest}" "${brokenlink}"
-			((ret+=$?))
-		else
-			vecho "ecompressdir: unknown broken symlink: ${brokenlink}"
-			((++ret))
-		fi
+		ln -snf "${newdest}" "${brokenlink}"
+		((ret+=$?))
 	done
 done
 
