@@ -1,35 +1,25 @@
 #!/bin/bash
-# Copyright 1999-2006 Gentoo Foundation
+# Copyright 1999-2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
+if [[ -n $1 ]] ; then
+	vecho "${0##*/}: invalid usage; takes no arguments" 1>&2
+fi
 
-z="$(find "${D}"usr/share/doc \( -type f -or -type l \) -not -name "*.gz" -not -name "*.js" 2>/dev/null)"
+cd "${D}"
+[[ -d usr/share/doc ]] || exit 0
 
-for y in ${z} ; do
-	if [ -L "${y}" ] ; then
-		# Symlink ...
-		mylink="${y}"
-		linkto="$(readlink "${y}")"
+# we dont want to compress the html subdir
+if [[ -d ${D}usr/share/doc/${PF}/html ]] ; then
+	mv "${D}"usr/share/doc/${PF}/html "${T}"/ecompressdir-html-backup || exit 1
+fi
 
-		if [ "${linkto##*.}" != "gz" ] ; then
-			linkto="${linkto}.gz"
-		fi
-		if [ "${mylink##*.}" != "gz" ] ; then
-			mylink="${mylink}.gz"
-		fi
+ecompressdir /usr/share/doc
+ret=$?
 
-		vecho "fixing doc symlink: ${mylink##*/}"
-		ln -snf "${linkto}" "${mylink}"
-		if [ "${y}" != "${mylink}" ] ; then
-			vecho "removing old symlink: ${y##*/}"
-			rm -f "${y}"
-		fi
-	else
-		if [ "${y##*.}" != "gz" ] ; then
-			vecho "gzipping doc: ${y##*/}"
-			gzip -f -9 "${y}"
-		fi
-	fi	
-done
+if [[ -d ${T}/ecompressdir-html-backup ]] ; then
+	mv "${T}"/html "${D}"/usr/share/doc/${PF}/html
+fi
+
+exit ${ret}

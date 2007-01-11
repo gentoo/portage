@@ -1,51 +1,30 @@
 #!/bin/bash
-# Copyright 1999-2006 Gentoo Foundation
+# Copyright 1999-2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
 
 if [[ -z $1 ]] ; then 
-	z="${D}usr/share/man"
+	mandir="${D}usr/share/man"
 else
-	z="${D}$1/man"
+	mandir="${D}$1/man"
 fi
 
-if [[ ! -d ${z} ]] ; then
-	eqawarn "QA Notice: prepman called with non-existent dir '${z#${D}}'"
+if [[ ! -d ${mandir} ]] ; then
+	eqawarn "QA Notice: prepman called with non-existent dir '${mandir#${D}}'"
 	exit 0
 fi
 
-for x in $(find "${z}"/ -type d 2>/dev/null) ; do
-	for y in $(find "${x}"/ -mindepth 1 -maxdepth 1 \( -type f -or -type l \) ! -name '.keep_*' 2>/dev/null) ; do
-		if [[ -L ${y} ]] ; then
-			# Symlink ...
-			mylink=${y}
-			linkto=$(readlink "${y}")
-			
-			# Do NOT change links to directories
-			if [[ -d ${z}/${linkto} ]] ; then
-				continue
-			fi
+shopt -s nullglob
 
-			if [[ ${linkto##*.} != "gz" ]] && [[ ${linkto##*.} != "bz2" ]] ; then
-				linkto="${linkto}.gz"
-			fi
-			if [[ ${mylink##*.} != "gz" ]] && [[ ${mylink##*.} != "bz2" ]] ; then
-				mylink="${mylink}.gz"
-			fi
+ret=0
 
-			vecho "fixing man page symlink: ${mylink##*/}"
-			ln -snf "${linkto}" "${mylink}"
-			if [[ ${y} != "${mylink}" ]] ; then
-				vecho "removing old symlink: ${y##*/}"
-				rm -f "${y}"
-			fi
-		else
-			if [[ ${y##*.} != "gz" ]] && [[ ${y##*.} != "bz2" ]] && [[ ! -d ${y} ]] ; then
-				vecho "gzipping man page: ${y##*/}"
-				gzip -f -9 "${y}"
-			fi
-		fi	
-	done
+# compress and fixup links in each dir
+for subdir in "${mandir}"/man* "${mandir}"/*/man* ; do
+	[[ -d ${subdir} ]] || continue # ignore files named 'man*'
+	ecompressdir "/${subdir#${D}}"
+	((ret+=$?))
 done
+
+exit ${ret}

@@ -340,9 +340,7 @@ install_qa_check() {
 	fi
 
 	# Portage regenerates this on the installed system.
-	if [[ -f ${D}/usr/share/info/dir.gz ]] ; then
-		rm -f "${D}"/usr/share/info/dir.gz
-	fi
+	rm -f "${D}"/usr/share/info/dir{,.gz,.bz2}
 
 	if hasq multilib-strict ${FEATURES} && \
 	   [[ -x /usr/bin/file && -x /usr/bin/find ]] && \

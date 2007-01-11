@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2006 Gentoo Foundation
+# Copyright 1999-2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
@@ -7,14 +7,11 @@ source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
 
 ret=0
 
-vecho "man:"
-for x in "${D}"opt/*/man "${D}"usr/share/man "${D}"usr/local/man "${D}"usr/X11R6/man ; do
-	if [[ -d ${x} ]] ; then
-		x=${x#${D}}
-		x=${x%/man}
-		prepman "${x}"
-		((ret+=$?))
-	fi
-done
+find "${D}" -type d -name man > "${T}"/prepallman.filelist
+while read mandir ; do
+	mandir=${mandir#${D}}
+	prepman "${mandir%/man}"
+	((ret+=$?))
+done < "${T}"/prepallman.filelist
 
 exit ${ret}

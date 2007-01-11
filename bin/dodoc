@@ -1,9 +1,10 @@
 #!/bin/bash
-# Copyright 1999-2006 Gentoo Foundation
+# Copyright 1999-2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+# $Id$
 
 if [ $# -lt 1 ] ; then
-	echo "$0: at least one argument needed" 1>&2
+	vecho "${0##*/}: at least one argument needed" 1>&2
 	exit 1 	
 fi
 
@@ -16,7 +17,7 @@ ret=0
 for x in "$@" ; do
 	if [ -s "${x}" ] ; then
 		install -m0644 "${x}" "${dir}"
-		gzip -f -9 "${dir}/${x##*/}"
+		ecompress "${dir}/${x##*/}"
 	elif [ ! -e "${x}" ] ; then
 		echo "dodoc: ${x} does not exist" 1>&2
 		((++ret))

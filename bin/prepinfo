@@ -1,47 +1,29 @@
 #!/bin/bash
-# Copyright 1999-2006 Gentoo Foundation
+# Copyright 1999-2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
 
-if [ -z "$1" ] ; then
-	z="${D}usr/share/info"
+if [[ -z $1 ]] ; then
+	infodir="/usr/share/info"
 else
-	if [ -d "${D}$1/share/info" ] ; then
-		z="${D}$1/share/info"
+	if [[ -d ${D}$1/share/info ]] ; then
+		infodir="$1/share/info"
 	else
-		z="${D}$1/info"
+		infodir="$1/info"
 	fi
 fi
 
-[ ! -d "${z}" ] && exit 0
-
-rm -f "${z}"/{dir,dir.info,dir.info.gz}
-
-for x in $(find "${z}"/ -mindepth 1 -maxdepth 1 \( -type f -or -type l \) 2>/dev/null) ; do
-	if [ -L "${x}" ] ; then
-		# Symlink ...
-		mylink="${x}"
-		linkto="$(readlink "${x}")"
-
-		if [ "${linkto##*.}" != "gz" ] ; then
-			linkto="${linkto}.gz"
-		fi
-		if [ "${mylink##*.}" != "gz" ] ; then
-			mylink="${mylink}.gz"
-		fi
-
-		vecho "fixing GNU info symlink: ${mylink##*/}"
-		ln -snf "${linkto}" "${mylink}"
-		if [ "${x}" != "${mylink}" ] ; then
-			vecho "removing old symlink: ${x##*/}"
-			rm -f "${x}"
-		fi
+if [[ ! -d ${D}${infodir} ]] ; then
+	if [[ -n $1 ]] ; then
+		vecho "${0##*/}: '${infodir}' does not exist!"
+		exit 1
 	else
-		if [ "${x##*.}" != "gz" ] ; then
-			vecho "gzipping GNU info page: ${x##*/}"
-			gzip -f -9 "${x}"
-		fi
+		exit 0
 	fi
-done
+fi
+
+rm -f "${D}${infodir}"/dir{,.info}{,.gz,.bz2}
+
+exec ecompressdir "${infodir}"
