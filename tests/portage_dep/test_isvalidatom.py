@@ -32,6 +32,9 @@ class IsValidAtom(TestCase):
 				atom_type = "valid"
 			else:
 				atom_type = "invalid"
-
-			self.assertEqual( bool(isvalidatom( test[0] )), test[1],
-				msg="isvalidatom(%s) != %s" % ( test[0], test[1] ) )
+			try:
+				self.assertEqual( bool(isvalidatom( test[0] )), test[1],
+					msg="isvalidatom(%s) != %s" % ( test[0], test[1] ) )
+			except ValueError:
+				if not test[1]:
+					pass
