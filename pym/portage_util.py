@@ -229,7 +229,7 @@ def grablines(myfilename,recursive=0):
 	mylines=[]
 	if recursive and os.path.isdir(myfilename):
 		if myfilename in ["RCS", "CVS", "SCCS"]:
-			continue
+			return mylines
 		dirlist = os.listdir(myfilename)
 		dirlist.sort()
 		for f in dirlist:
