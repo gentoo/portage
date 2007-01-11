@@ -33,5 +33,4 @@ class IsValidAtom(TestCase):
 			else:
 				atom_type = "invalid"
 
-			self.failIf( isvalidatom( test[0] ) != test[1],
-				msg="%s should be a(n) %s atom!" % (test[0], atom_type ) )
+			self.assertEqual( bool(isvalidatom( test[0] )), test[1] )

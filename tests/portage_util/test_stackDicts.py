@@ -25,8 +25,7 @@ class StackDictsTestCase(TestCase):
 
 		for test in tests:
 			result = stack_dicts( test[0], test[2], test[3], test[4] )
-			self.failIf( result != test[1], msg="Expected %s = %s" \
-				% ( result, test[1] ) )
+			self.assertEqual( result, test[1] )
 	
 	def testStackDictsFail(self):
 		
@@ -35,5 +34,4 @@ class StackDictsTestCase(TestCase):
 				False, [], False ) ]
 		for test in tests:
 			result = stack_dicts( test[0], test[2], test[3], test[4] )
-			self.failIf( result == test[1], msg="Expected %s != %s, got \
-				%s == %s!" % (result, test[1], result, test[1]) )
+			self.assertNotEqual( result , test[1] )

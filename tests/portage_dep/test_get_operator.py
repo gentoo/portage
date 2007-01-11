@@ -20,11 +20,7 @@ class GetOperator(TestCase):
 
 		for test in tests:
 			result = get_operator( test[0] + testCP )
-			self.failIf( result != test[1],
-				msg="Expected %s from get_operator( %s ), got \
-					%s" % ( test[1], test[0] + testCP, result ) )
+			self.assertEqual( result, test[1] )
 
 		result = get_operator( "=sys-apps/portage*" )
-		self.failIf( result != "=*",
-				msg="Expected %s from get_operator( %s ), got \
-					%s" % ( "=*", "=sys-apps/portage*", result ) )
+		self.assertEqual( result , "=*" )
