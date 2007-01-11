@@ -3855,6 +3855,8 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 					print ">>> Timestamps on the server and in the local repository are the same."
 					print ">>> Cancelling all further sync action. You are already up to date."
 					print ">>>"
+					print ">>> In order to force sync, remove '%s'." % tmpservertimestampfile
+					print ">>>"
 					print
 					sys.exit(0)
 				elif (servertimestamp != 0) and (servertimestamp < mytimestamp):
@@ -3863,6 +3865,8 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 					print
 					print ">>>"
 					print ">>> SERVER OUT OF DATE: %s" % dosyncuri
+					print ">>>"
+					print ">>> In order to force sync, remove '%s'." % tmpservertimestampfile
 					print ">>>"
 					print
 				elif (servertimestamp == 0) or (servertimestamp > mytimestamp):
