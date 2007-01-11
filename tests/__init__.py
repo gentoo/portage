@@ -35,7 +35,7 @@ def getTests( path, base_path ):
 	import os
 	files = os.listdir( path )
 	files = [ f[:-3] for f in files if f.startswith("test_") and f.endswith(".py") ]
-	parent_path = path[len(base_path):]
+	parent_path = path[len(base_path)+1:]
 	parent_module = ".".join(("tests", parent_path))
 	result = []
 	for mymodule in files:
