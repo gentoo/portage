@@ -10,8 +10,11 @@ class GetOperator(TestCase):
 
 	def testGetOperator(self):
 
+		# get_operator does not validate operators
 		tests = [ ( "~", "~" ), ( "=", "=" ), ( ">", ">" ),
-			  ( ">=", ">=" ), ( "<=", "<=" ) , ( "", None ) ]
+			  ( ">=", ">=" ), ( "<=", "<=" ) , ( "", None ),
+			  ( ">~", ">" ), ("~<", "~"), ( "=~", "=" ),
+			  ( "=>", "=" ), ("=<", "=") ]
 
 		testCP = "sys-apps/portage"
 
