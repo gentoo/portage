@@ -1884,12 +1884,12 @@ class config:
 		myflags = set(myflags)
 		myflags.update(self.useforce)
 
+		# FEATURES=test should imply USE=test
+		if "test" in self.configlist[-1].get("FEATURES","").split():
+			myflags.add("test")
+
 		usesplit = [ x for x in myflags if \
 			x not in self.usemask]
-
-		# FEATURES=test should imply USE=test
-		if "test" in self.configlist[-1]["FEATURES"] and not "test" in usesplit:
-			usesplit.append("test")
 
 		usesplit.sort()
 
