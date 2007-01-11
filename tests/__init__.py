@@ -7,7 +7,7 @@ import os, unittest
 
 def main():
 	
-	testDirs = ["portage", "portage_util", "test/foo"]
+	testDirs = ["portage", "portage_util","portage_versions"]
 
 	suite = unittest.TestSuite()
 
