@@ -10,7 +10,10 @@ fi
 
 # figure out the new suffix
 suffix=$(ecompress --suffix)
-[[ -z ${suffix} ]] && exit 0
+if [[ -z ${suffix} ]] ; then
+	vecho "${0##*/}: unable to figure out compressed suffix"
+	exit 1
+fi
 
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
 
@@ -25,7 +28,7 @@ for dir in "$@" ; do
 		vecho "${0##*/}: $(ecompress --bin) ${dir#${D}}"
 	fi
 
-	find "${dir}" -type f '!' -name '*'$(ecompress --suffix) -print0 | xargs -0 ecompress
+	find "${dir}" -type f '!' -name '*'${suffix} -print0 | xargs -0 ecompress
 	((ret+=$?))
 	find -L "${dir}" -type l | \
 	while read brokenlink ; do
