@@ -1886,6 +1886,11 @@ class config:
 
 		usesplit = [ x for x in myflags if \
 			x not in self.usemask]
+
+		# FEATURES=test should imply USE=test
+		if "test" in self.configlist[-1]["FEATURES"] and not "test" in usesplit:
+			usesplit.append("test")
+
 		usesplit.sort()
 
 		# Use the calculated USE flags to regenerate the USE_EXPAND flags so
