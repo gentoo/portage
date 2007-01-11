@@ -4194,7 +4194,7 @@ def action_info(settings, trees, myopts, myfiles):
 		print "Unknown Host Operating System"
 	lastSync = portage.grabfile(os.path.join(
 		settings["PORTDIR"], "metadata", "timestamp.chk"))
-	print "Last Sync:",
+	print "Timestamp of tree:",
 	if lastSync:
 		print lastSync[0]
 	else:
