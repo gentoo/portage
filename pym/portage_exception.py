@@ -8,7 +8,7 @@ class PortageException(Exception):
 	def __init__(self,value):
 		self.value = value[:]
 	def __str__(self):
-		if isinstance(self.value, str):
+		if isinstance(self.value, basestring):
 			return self.value
 		else:
 			return repr(self.value)
