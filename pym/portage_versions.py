@@ -267,7 +267,7 @@ def catpkgsplit(mydata,silent=1):
 	"""
 	
 	# Categories may contain a-zA-z0-9+_- but cannot start with -
-	valid_category = re.compile("^[A-Za-z0-9+_][A-Za-z0-9+_-]*")
+	valid_category = re.compile("^\w[\w-]*")
 	try:
 		if not catcache[mydata]:
 			return None
