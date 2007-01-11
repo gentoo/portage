@@ -248,6 +248,8 @@ def pkgsplit(mypkg,silent=1):
 		pkgcache[mypkg]=None
 		return None
 
+_valid_category = re.compile("^\w[\w-]*")
+
 catcache={}
 def catpkgsplit(mydata,silent=1):
 	"""
@@ -267,7 +269,7 @@ def catpkgsplit(mydata,silent=1):
 	"""
 	
 	# Categories may contain a-zA-z0-9+_- but cannot start with -
-	valid_category = re.compile("^\w[\w-]*")
+	global _valid_category
 	try:
 		if not catcache[mydata]:
 			return None
@@ -280,7 +282,7 @@ def catpkgsplit(mydata,silent=1):
 		retval=["null"]
 		p_split=pkgsplit(mydata,silent=silent)
 	elif len(mysplit)==2:
-		if not valid_category.match(mysplit[0]):
+		if not _valid_category.match(mysplit[0]):
 			raise InvalidData("Invalid category in %s" %mydata )
 		retval=[mysplit[0]]
 		p_split=pkgsplit(mysplit[1],silent=silent)
