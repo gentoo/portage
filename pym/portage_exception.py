@@ -8,7 +8,10 @@ class PortageException(Exception):
 	def __init__(self,value):
 		self.value = value[:]
 	def __str__(self):
-		return repr(self.value)
+		if isinstance(self.value, str):
+			return self.value
+		else:
+			return repr(self.value)
 
 class CorruptionError(PortageException):
 	"""Corruption indication"""
