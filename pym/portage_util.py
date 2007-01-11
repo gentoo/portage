@@ -178,7 +178,27 @@ def stack_lists(lists, incremental=1):
 	return new_list.keys()
 
 def grabdict(myfilename, juststrings=0, empty=0, recursive=0, incremental=1):
-	"""This function grabs the lines in a file, normalizes whitespace and returns lines in a dictionary"""
+	"""
+	This function grabs the lines in a file, normalizes whitespace and returns lines in a dictionary
+	
+	@param myfilename: file to process
+	@type myfilename: string (path)
+	@param juststrings: only return strings
+	@type juststrings: Boolean (integer)
+	@param empty: Ignore certain lines
+	@type empty: Boolean (integer)
+	@param recursive: Recursively grab ( support for /etc/portage/package.keywords/* and friends )
+	@type recursive: Boolean (integer)
+	@param incremental: Append to the return list, don't overwrite
+	@type incremental: Boolean (integer)
+	@rtype: Dictionary
+	@returns:
+	1.  Returns the lines in a file in a dictionary, for example:
+		'sys-apps/portage x86 amd64 ppc'
+		would return
+		{ "sys-apps/portage" : [ 'x86', 'amd64', 'ppc' ]
+		the line syntax is key : [list of values]
+	"""
 	newdict={}
 	for x in grablines(myfilename, recursive):
 		#the split/join thing removes leading and trailing whitespace, and converts any whitespace in the line
