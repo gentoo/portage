@@ -20,6 +20,7 @@
 
 import re, string, sys, types
 import portage_exception
+from portage_exception import InvalidData
 from portage_versions import catpkgsplit, catsplit, pkgcmp, pkgsplit, ververify
 
 def cpvequal(cpv1, cpv2):
@@ -359,7 +360,10 @@ def isvalidatom(atom, allow_blockers=False):
 		return 0
 	if allow_blockers and atom.startswith("!"):
 		atom = atom[1:]
-	mycpv_cps = catpkgsplit(dep_getcpv(atom))
+	try:
+		mycpv_cps = catpkgsplit(dep_getcpv(atom))
+	except InvalidData:
+		return 0
 	operator = get_operator(atom)
 	if operator:
 		if operator[0] in "<>" and atom[-1] == "*":
