@@ -249,7 +249,23 @@ def pkgsplit(mypkg,silent=1):
 
 catcache={}
 def catpkgsplit(mydata,silent=1):
-	"returns [cat, pkgname, version, rev ]"
+	"""
+	Takes a Category/Package-Version-Rev and returns a list of each.
+	
+	@param mydata: Data to split
+	@type mydata: string 
+	@param silent: suppress error messages
+	@type silent: Boolean (integer)
+	@rype: list
+	@return:
+	1.  If each exists, it returns [cat, pkgname, version, rev]
+	2.  If cat is not specificed in mydata, cat will be "null"
+	3.  if rev does not exist it will be '-r0'
+	1.  If the cat, pkg, or version is invalid, return None
+	"""
+	
+	# Categories may contain a-zA-z0-9+_- but cannot start with -
+	valid_category = re.compile("^[A-Za-z0-9+_][A-Za-z0-9+_-]*")
 	try:
 		if not catcache[mydata]:
 			return None
@@ -262,6 +278,8 @@ def catpkgsplit(mydata,silent=1):
 		retval=["null"]
 		p_split=pkgsplit(mydata,silent=silent)
 	elif len(mysplit)==2:
+		if not valid_category.match(mysplit[0]):
+			raise ValueError("Invalid category in %s" %mydata )
 		retval=[mysplit[0]]
 		p_split=pkgsplit(mysplit[1],silent=silent)
 	if not p_split:
