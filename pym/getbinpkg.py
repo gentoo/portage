@@ -433,9 +433,7 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 		metadata = cPickle.load(metadatafile)
 		sys.stderr.write("Loaded metadata pickle.\n")
 		metadatafile.close()
-	except SystemExit, e:
-		raise
-	except:
+	except (cPickle.UnpicklingError, OSError, IOError):
 		metadata = {}
 	if not metadata.has_key(baseurl):
 		metadata[baseurl]={}
