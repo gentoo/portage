@@ -130,7 +130,7 @@ except ImportError:
 
 
 def load_mod(name):
-	modname = string.join(string.split(name,".")[:-1],".")
+	modname = ".".join(name.split(".")[:-1])
 	mod = __import__(modname)
 	components = name.split('.')
 	for comp in components[1:]:
@@ -796,7 +796,7 @@ def ExtractKernelVersion(base_dir):
 	#XXX: The following code relies on the ordering of vars within the Makefile
 	for line in lines:
 		# split on the '=' then remove annoying whitespace
-		items = string.split(line, '=')
+		items = line.split("=")
 		items = map(string.strip, items)
 		if items[0] == 'VERSION' or \
 			items[0] == 'PATCHLEVEL':
@@ -822,7 +822,7 @@ def ExtractKernelVersion(base_dir):
 	# Check the .config for a CONFIG_LOCALVERSION and append that too, also stripping whitespace
 	kernelconfig = getconfig(base_dir+"/.config")
 	if kernelconfig and kernelconfig.has_key("CONFIG_LOCALVERSION"):
-		version += string.join(string.split(kernelconfig["CONFIG_LOCALVERSION"]), "")
+		version += " ".join(kernelconfig["CONFIG_LOCALVERSION"].split())
 
 	return (version,None)
 
@@ -1928,7 +1928,7 @@ class config:
 				if self.configdict["defaults"]["ARCH"] not in usesplit:
 					usesplit.insert(0,self.configdict["defaults"]["ARCH"])
 
-		self.configlist[-1]["USE"]=string.join(usesplit," ")
+		self.configlist[-1]["USE"]= " ".join(usesplit)
 
 		self.already_in_regenerate = 0
 
@@ -2166,8 +2166,8 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, **keyw
 	features = mysettings.features
 	# XXX: Negative RESTRICT word
 	droppriv=(droppriv and ("userpriv" in features) and not \
-		(("nouserpriv" in string.split(mysettings["RESTRICT"])) or \
-		 ("userpriv" in string.split(mysettings["RESTRICT"]))))
+		(("nouserpriv" in mysettings["RESTRICT"].split()) or \
+		 ("userpriv" in mysettings["RESTRICT"].split())))
 
 	if droppriv and not uid and portage_gid and portage_uid:
 		keywords.update({"uid":portage_uid,"gid":portage_gid,"groups":userpriv_groups,"umask":002})
@@ -2185,7 +2185,7 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, **keyw
 
 	if sesandbox:
 		con = selinux.getcontext()
-		con = string.replace(con, mysettings["PORTAGE_T"], mysettings["PORTAGE_SANDBOX_T"])
+		con = con.replace(mysettings["PORTAGE_T"], mysettings["PORTAGE_SANDBOX_T"])
 		selinux.setexec(con)
 
 	retval = spawn_func(mystring, env=env, **keywords)
@@ -2456,8 +2456,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 				else:
 					resumecommand=mysettings["RESUMECOMMAND"]
 
-				fetchcommand=string.replace(fetchcommand,"${DISTDIR}",mysettings["DISTDIR"])
-				resumecommand=string.replace(resumecommand,"${DISTDIR}",mysettings["DISTDIR"])
+				fetchcommand=fetchcommand.replace("${DISTDIR}",mysettings["DISTDIR"])
+				resumecommand=resumecommand.replace("${DISTDIR}",mysettings["DISTDIR"])
 
 				if not can_fetch:
 					if fetched != 2:
@@ -2488,8 +2488,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						locfetch=fetchcommand
 					writemsg_stdout(">>> Downloading '%s'\n" % \
 						re.sub(r'//(.+):.+@(.+)/',r'//\1:*password*@\2/', loc))
-					myfetch=string.replace(locfetch,"${URI}",loc)
-					myfetch=string.replace(myfetch,"${FILE}",myfile)
+					myfetch=locfetch.replace("${URI}",loc)
+					myfetch=myfetch.replace("${FILE}",myfile)
 
 					spawn_keywords = {}
 					if "userfetch" in mysettings.features and \
@@ -2504,7 +2504,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 
 						if mysettings.selinux_enabled():
 							con = selinux.getcontext()
-							con = string.replace(con, mysettings["PORTAGE_T"], mysettings["PORTAGE_FETCH_T"])
+							con = con.replace(mysettings["PORTAGE_T"], mysettings["PORTAGE_FETCH_T"])
 							selinux.setexec(con)
 
 						myret = portage_exec.spawn_bash(myfetch,
@@ -2904,7 +2904,7 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 	mysettings["ECLASSDIR"]   = mysettings["PORTDIR"]+"/eclass"
 	mysettings["SANDBOX_LOG"] = mycpv.replace("/", "_-_")
 
-	mysettings["PROFILE_PATHS"] = string.join(mysettings.profiles,"\n")+"\n"+CUSTOM_PROFILE_PATH
+	mysettings["PROFILE_PATHS"] = "\n".join(mysettings.profiles)+"\n"+CUSTOM_PROFILE_PATH
 	mysettings["P"]  = mysplit[0]+"-"+mysplit[1]
 	mysettings["PN"] = mysplit[0]
 	mysettings["PV"] = mysplit[1]
@@ -2929,7 +2929,7 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 		mysettings["PVR"]=mysplit[1]+"-"+mysplit[2]
 
 	if mysettings.has_key("PATH"):
-		mysplit=string.split(mysettings["PATH"],":")
+		mysplit=mysettings["PATH"].split(":")
 	else:
 		mysplit=[]
 	if PORTAGE_BIN_PATH not in mysplit:
@@ -3251,7 +3251,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		for vcount in range(len(validcommands)):
 			if vcount%6 == 0:
 				writemsg("\n!!! ", noiselevel=-1)
-			writemsg(string.ljust(validcommands[vcount], 11), noiselevel=-1)
+			writemsg(validcommands[vcount].ljust(11), noiselevel=-1)
 		writemsg("\n", noiselevel=-1)
 		return 1
 
@@ -4139,7 +4139,7 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 	if use=="yes":
 		if myuse is None:
 			#default behavior
-			myusesplit = string.split(mysettings["USE"])
+			myusesplit = mysettings["USE"].split()
 		else:
 			myusesplit = myuse
 			# We've been given useflags to use.
@@ -4544,7 +4544,7 @@ class portagetree:
 		"returns file location for this particular package (DEPRECATED)"
 		if not pkgname:
 			return ""
-		mysplit=string.split(pkgname,"/")
+		mysplit=pkgname.split("/")
 		psplit=pkgsplit(mysplit[1])
 		return self.portroot+"/"+mysplit[0]+"/"+psplit[0]+"/"+mysplit[1]+".ebuild"
 
@@ -4740,7 +4740,7 @@ class bindbapi(fakedbapi):
 			if aux_cache is not None:
 				return [aux_cache[x] for x in wants]
 			cache_me = True
-		mysplit = string.split(mycpv,"/")
+		mysplit = mycpv.split("/")
 		mylist  = []
 		tbz2name = mysplit[1]+".tbz2"
 		if self.bintree and not self.bintree.isremote(mycpv):
@@ -5311,7 +5311,7 @@ class vartree(object):
 				for myprovide in mylines:
 					mys = catpkgsplit(myprovide)
 					if not mys:
-						mys = string.split(myprovide, "/")
+						mys = myprovide.split("/")
 					myprovides += [mys[0] + "/" + mys[1]]
 			return myprovides
 		except SystemExit, e:
@@ -5568,9 +5568,8 @@ class portdbapi(dbapi):
 			mydig   = self.findname2(mycpv)[0]
 			if not mydig:
 				return ""
-			mydigs  = string.split(mydig, "/")[:-1]
-			mydig   = string.join(mydigs, "/")
-
+			mydigs  = mydic.split("/")[:-1]
+			mydig   = "/".join(mydigs)
 			mysplit = mycpv.split("/")
 		except OSError:
 			return ""
@@ -5615,7 +5614,7 @@ class portdbapi(dbapi):
 				return [aux_cache[x] for x in mylist]
 			cache_me = True
 		global auxdbkeys,auxdbkeylen
-		cat,pkg = string.split(mycpv, "/", 1)
+		cat,pkg = mycpv.split("/", 1)
 
 		myebuild, mylocation = self.findname2(mycpv, mytree)
 
@@ -5625,7 +5624,7 @@ class portdbapi(dbapi):
 			writemsg("!!!            %s\n" % myebuild, noiselevel=1)
 			raise KeyError(mycpv)
 
-		myManifestPath = string.join(myebuild.split("/")[:-1],"/")+"/Manifest"
+		myManifestPath = "/".join(myebuild.split("/")[:-1])+"/Manifest"
 		if "gpg" in self.mysettings.features:
 			try:
 				mys = portage_gpg.fileStats(myManifestPath)
@@ -5750,7 +5749,7 @@ class portdbapi(dbapi):
 			sys.exit(1)
 
 		if useflags is None:
-			useflags = string.split(mysettings["USE"])
+			useflags = mysettings["USE"].split()
 
 		myurilist = portage_dep.paren_reduce(myuris)
 		myurilist = portage_dep.use_reduce(myurilist,uselist=useflags,matchall=all)
@@ -6395,7 +6394,7 @@ class binarytree(object):
 						noiselevel=-1)
 					del self.remotepkgs[mypkg]
 					continue
-				mycat=string.strip(self.remotepkgs[mypkg]["CATEGORY"])
+				mycat=self.remotepkgs[mypkg]["CATEGORY"].strip()
 				fullpkg=mycat+"/"+mypkg[:-5]
 				mykey=dep_getkey(fullpkg)
 				try:
@@ -6458,21 +6457,21 @@ class binarytree(object):
 
 	def isremote(self,pkgname):
 		"Returns true if the package is kept remotely."
-		mysplit=string.split(pkgname,"/")
+		mysplit=pkgname.split("/")
 		remote = (not os.path.exists(self.getname(pkgname))) and self.remotepkgs.has_key(mysplit[1]+".tbz2")
 		return remote
 
 	def get_use(self,pkgname):
-		mysplit=string.split(pkgname,"/")
+		mysplit=pkgname.split("/")
 		if self.isremote(pkgname):
-			return string.split(self.remotepkgs[mysplit[1]+".tbz2"]["USE"][:])
+			return self.remotepkgs[mysplit[1]+".tbz2"]["USE"][:].split()
 		tbz2=xpak.tbz2(self.getname(pkgname))
-		return string.split(tbz2.getfile("USE"))
+		return tbz2.getfile("USE").split()
 
 	def gettbz2(self,pkgname):
 		"fetches the package from a remote site, if necessary."
 		print "Fetching '"+str(pkgname)+"'"
-		mysplit  = string.split(pkgname,"/")
+		mysplit  = pkgname.split("/")
 		tbz2name = mysplit[1]+".tbz2"
 		if not self.isremote(pkgname):
 			if (tbz2name not in self.invalids):
@@ -6627,7 +6626,7 @@ class dblink:
 		myc.close()
 		pos=1
 		for line in mylines:
-			mydat = string.split(line)
+			mydat = line.split()
 			# we do this so we can remove from non-root filesystems
 			# (use the ROOT var to allow maintenance on other partitions)
 			try:
@@ -6635,10 +6634,10 @@ class dblink:
 					self.myroot, mydat[1].lstrip(os.path.sep)))
 				if mydat[0]=="obj":
 					#format: type, mtime, md5sum
-					pkgfiles[string.join(mydat[1:-2]," ")]=[mydat[0], mydat[-1], mydat[-2]]
+					pkgfiles[" ".join(mydat[1:-2])]=[mydat[0], mydat[-1], mydat[-2]]
 				elif mydat[0]=="dir":
 					#format: type
-					pkgfiles[string.join(mydat[1:])]=[mydat[0] ]
+					pkgfiles[" ".join(mydat[1:])]=[mydat[0] ]
 				elif mydat[0]=="sym":
 					#format: type, mtime, dest
 					x=len(mydat)-1
@@ -6654,13 +6653,13 @@ class dblink:
 						x=x-1
 					if splitter==-1:
 						return None
-					pkgfiles[string.join(mydat[1:splitter]," ")]=[mydat[0], mydat[-1], string.join(mydat[(splitter+1):-1]," ")]
+					pkgfiles[" ".join(mydat[1:splitter])]=[mydat[0], mydat[-1], " ".join(mydat[(splitter+1):-1])]
 				elif mydat[0]=="dev":
 					#format: type
-					pkgfiles[string.join(mydat[1:]," ")]=[mydat[0] ]
+					pkgfiles[" ".join(mydat[1:])]=[mydat[0] ]
 				elif mydat[0]=="fif":
 					#format: type
-					pkgfiles[string.join(mydat[1:]," ")]=[mydat[0]]
+					pkgfiles[" ".join(mydat[1:])]=[mydat[0]]
 				else:
 					return None
 			except (KeyError,IndexError):
@@ -6869,7 +6868,7 @@ class dblink:
 
 					# string.lower is needed because db entries used to be in upper-case.  The
 					# string.lower allows for backwards compatibility.
-					if mymd5 != string.lower(pkgfiles[objkey][2]):
+					if mymd5 != pkgfiles[objkey][2].lower():
 						writemsg_stdout("--- !md5   %s %s\n" % ("obj", obj))
 						continue
 					try:
@@ -7605,9 +7604,9 @@ class dblink:
 		if not os.path.exists(self.dbdir+"/"+name):
 			return ""
 		myfile=open(self.dbdir+"/"+name,"r")
-		mydata=string.split(myfile.read())
+		mydata=myfile.read().split()
 		myfile.close()
-		return string.join(mydata," ")
+		return " ".join(mydata)
 
 	def copyfile(self,fname):
 		shutil.copyfile(fname,self.dbdir+"/"+os.path.basename(fname))
@@ -7630,7 +7629,7 @@ class dblink:
 		mylines=myelement.readlines()
 		myreturn=[]
 		for x in mylines:
-			for y in string.split(x[:-1]):
+			for y in x[:-1].split():
 				myreturn.append(y)
 		myelement.close()
 		return myreturn
