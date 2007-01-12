@@ -10,11 +10,7 @@ try:
 except ImportError:
 	sys.path.insert(0, "/usr/lib/portage/pym")
 	import portage
-from threading import *
-from output import red,green,blue,bold
-from random import shuffle
-from time import sleep
-
+import portage_util
 
 def cstrip(mystr,mychars):
 	newstr = ""
@@ -80,7 +76,7 @@ for mycpv in hugelist:
 
 					# This associates teh md5 with each file. [md5/size]
 					md5joins = md5_list[mybn][2].split(",")
-					md5joins = " ["+md5_list[mybn][0]+"/"+md5_list[mybn][1]+"],".join(md5joins))
+					md5joins = (" ["+md5_list[mybn][0]+"/"+md5_list[mybn][1]+"],").join(md5joins)
 					md5joins += " ["+md5_list[mybn][0]+"/"+md5_list[mybn][1]+"]"
 
 					portage.writemsg("Colliding md5: %s of %s [%s/%s] and %s\n" % (mybn,mycpv,md5sums[mybn][0],md5sums[mybn][1],md5joins))
