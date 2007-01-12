@@ -88,14 +88,14 @@ def vercmp(ver1, ver2, silent=1):
 			# are given the same value (in sorting, for example).
 			if len(vlist1) <= i or len(vlist1[i]) == 0:
 				list1.append(-1)
-				list2.append(string.atoi(vlist2[i]))
+				list2.append(int(vlist2[i]))
 			elif len(vlist2) <= i or len(vlist2[i]) == 0:
-				list1.append(string.atoi(vlist1[i]))
+				list1.append(int(vlist1[i]))
 				list2.append(-1)
 			# Let's make life easy and use integers unless we're forced to use floats
 			elif (vlist1[i][0] != "0" and vlist2[i][0] != "0"):
-				list1.append(string.atoi(vlist1[i]))
-				list2.append(string.atoi(vlist2[i]))
+				list1.append(int(vlist1[i]))
+				list2.append(int(vlist2[i]))
 			# now we have to use floats so 1.02 compares correctly against 1.1
 			else:
 				list1.append(string.atof("0."+vlist1[i]))
@@ -136,19 +136,19 @@ def vercmp(ver1, ver2, silent=1):
 		if s1[1] != s2[1]:
 			# it's possible that the s(1|2)[1] == ''
 			# in such a case, fudge it.
-			try:			r1 = string.atoi(s1[1])
+			try:			r1 = int(s1[1])
 			except ValueError:	r1 = 0
-			try:			r2 = string.atoi(s2[1])
+			try:			r2 = int(s2[1])
 			except ValueError:	r2 = 0
 			return r1 - r2
 	
 	# the suffix part is equal to, so finally check the revision
 	if match1.group(10):
-		r1 = string.atoi(match1.group(10))
+		r1 = int(match1.group(10))
 	else:
 		r1 = 0
 	if match2.group(10):
-		r2 = string.atoi(match2.group(10))
+		r2 = int(match2.group(10))
 	else:
 		r2 = 0
 	vercmp_cache[mykey] = r1 - r2
@@ -220,9 +220,9 @@ def pkgsplit(mypkg,silent=1):
 	myrev=myparts[-1]
 	if len(myrev) and myrev[0]=="r":
 		try:
-			string.atoi(myrev[1:])
+			int(myrev[1:])
 			revok=1
-		except: 
+		except ValueError:
 			pass
 	if revok:
 		verPos = -2
