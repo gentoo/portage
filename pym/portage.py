@@ -17,7 +17,7 @@ except ImportError:
 	raise
 
 try:
-	import copy, errno, os, re, shutil, string, time, types
+	import copy, errno, os, re, shutil, time, types
 	try:
 		import cPickle
 	except ImportError:
@@ -789,7 +789,7 @@ def ExtractKernelVersion(base_dir):
 	except IOError, details:
 		return (None, str(details))
 
-	lines = map(string.strip, lines)
+	lines = [l.strip() for l in lines]
 
 	version = ''
 
@@ -797,7 +797,7 @@ def ExtractKernelVersion(base_dir):
 	for line in lines:
 		# split on the '=' then remove annoying whitespace
 		items = line.split("=")
-		items = map(string.strip, items)
+		items = [i.strip() for i in items]
 		if items[0] == 'VERSION' or \
 			items[0] == 'PATCHLEVEL':
 			version += items[1]
@@ -817,7 +817,7 @@ def ExtractKernelVersion(base_dir):
 
 	# Append the contents of each to the version string, stripping ALL whitespace
 	for lv in localversions:
-		version += string.join(string.split(string.join(grabfile(base_dir+"/"+lv))), "")
+		version += "".join( " ".join( grabfile( base_dir+ "/" + lv ) ).split() )
 
 	# Check the .config for a CONFIG_LOCALVERSION and append that too, also stripping whitespace
 	kernelconfig = getconfig(base_dir+"/.config")
