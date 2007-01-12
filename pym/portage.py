@@ -2976,8 +2976,10 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 		mysettings["KVERS"]=myso[1]
 
 	# Allow color.map to control colors associated with einfo, ewarn, etc...
+	mycolors = []
 	for c in ("GOOD", "WARN", "BAD", "HILITE", "BRACKET"):
-		mysettings[c] = output.codes[c]
+		mycolors.append("%s=$'%s'" % (c, output.codes[c]))
+	mysettings["PORTAGE_COLORMAP"] = "\n".join(mycolors)
 
 def prepare_build_dirs(myroot, mysettings, cleanup):
 
