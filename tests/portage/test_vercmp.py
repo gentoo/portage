@@ -4,13 +4,11 @@
 # $Id$
 
 from unittest import TestCase
-from unittest import TestLoader
 from portage_versions import vercmp
 
 class VerCmpTestCase(TestCase):
 	""" A simple testCase for portage_versions.vercmp()
 	"""
-
 	
 	def testVerCmpGreater(self):
 		
@@ -40,7 +38,3 @@ class VerCmpTestCase(TestCase):
 			("0", "0.0")]
 		for test in tests:
 			self.failIf( vercmp( test[0], test[1]) == 0, msg="%s == %s? Wrong!" % (test[0],test[1]))
-
-def suite():
-	return TestLoader().loadTestsFromTestCase(VerCmpTestCase)
-

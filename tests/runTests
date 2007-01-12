@@ -5,15 +5,15 @@
 # $Id$
 
 
-import sys
+import os, sys
 import os.path as osp
-
-# Grab SVN portage files instead of normal ones.
-sys.path.insert(0,'../pym')
 
 # Insert our parent dir so we can do shiny import "tests"
 # This line courtesy of Marienz and Pkgcore ;)
 sys.path.insert(0, osp.dirname(osp.dirname(osp.abspath(__file__))))
+
+# Grab SVN portage files instead of normal ones.
+sys.path.insert(0, os.path.join(sys.path[0], "pym"))
 
 import tests
 if __name__ == "__main__":

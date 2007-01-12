@@ -1,0 +1,24 @@
+UnitTests
+---------
+
+Portage has some tests that use the unittest framework that ships with python (2.3-2.4ish)
+Tests have a specific naming convention.
+
+in tests/ there is a runTest script that invokes tests/__init__.py
+
+This init looks at a hardcoded list of test dirs to search for tests.
+If you add a new dir and don't see your new tests, make sure that the dir is in this list.
+
+On the subject of adding more directories; the layout is basically 1 directory per portage
+file at this point (we have few files, and even fewer large files).  Inside of the dir
+you should have files of the form test_${function}.py.
+
+So if I was to write a vercmp test, and vercmp is in portage_versions.
+
+tests/portage_versions/test_vercmp.py
+
+would be the filename.
+
+The __init__.py file in tests only goes 1 deep (it's non-recursive, in other words).  If
+you end up with more directories it will probably break at present.  Need to replace the
+'/' in the directory path with a '.' (for proper importing).  This should be trivial to fix.
