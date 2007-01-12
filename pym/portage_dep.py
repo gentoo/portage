@@ -180,7 +180,7 @@ def use_reduce(deparray, uselist=[], masklist=[], matchall=0, excludeall=[]):
 					sys.stderr.write("Note: Nested use flags without parenthesis (Deprecated)\n")
 					warned = 1
 				if warned:
-					sys.stderr.write("  --> "+"".join(map(str,[head]+newdeparray))+"\n")
+					sys.stderr.write("  --> "+" ".join(map(str,[head]+newdeparray))+"\n")
 
 				# Check that each flag matches
 				ismatch = True
