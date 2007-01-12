@@ -22,6 +22,18 @@ import re, string, sys, types
 import portage_exception
 from portage_versions import catpkgsplit, catsplit, pkgcmp, pkgsplit, ververify
 
+def cpvequal(cpv1, cpv2):
+	split1 = catpkgsplit(cpv1)
+	split2 = catpkgsplit(cpv2)
+	
+	if not split1 or not split2:
+		raise portage_exception.PortageException("Invalid data '%s, %s', parameter was not a CPV" % (cpv1, cpv2))
+	
+	if split1[0] != split2[0]:
+		return False
+	
+	return (pkgcmp(split1[1:], split2[1:]) == 0)
+
 def strip_empty(myarr):
 	"""
 	Strip all empty elements from an array
@@ -568,19 +580,30 @@ def match_from_list(mydep, candidate_list):
 			mylist.append(x)
 
 	elif operator == "=": # Exact match
-		if mycpv in candidate_list:
-			mylist = [mycpv]
+		mylist = [cpv for cpv in candidate_list if cpvequal(cpv, mycpv)]
 
 	elif operator == "=*": # glob match
-		# The old verion ignored _tag suffixes... This one doesn't.
+		# XXX: Nasty special casing for leading zeros
+		# Required as =* is a literal prefix match, so can't 
+		# use vercmp
+		mysplit = catpkgsplit(mycpv)
+		myver = mysplit[2].lstrip("0")
+		if not myver or not myver[0].isdigit():
+			myver = "0"+myver
+		mycpv = mysplit[0]+"/"+mysplit[1]+"-"+myver
 		for x in candidate_list:
-			if x[0:len(mycpv)] == mycpv:
+			xs = catpkgsplit(x)
+			myver = xs[2].lstrip("0")
+			if not myver or not myver[0].isdigit():
+				myver = "0"+myver
+			xcpv = xs[0]+"/"+xs[1]+"-"+myver
+			if xcpv.startswith(mycpv):
 				mylist.append(x)
 
 	elif operator == "~": # version, any revision, match
 		for x in candidate_list:
 			xs = catpkgsplit(x)
-			if xs[0:2] != mycpv_cps[0:2]:
+			if not cpvequal(xs[0]+"/"+xs[1]+"-"+xs[2], mycpv_cps[0]+"/"+mycpv_cps[1]+"-"+mycpv_cps[2]):
 				continue
 			if xs[2] != ver:
 				continue

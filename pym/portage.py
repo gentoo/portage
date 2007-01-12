@@ -1127,9 +1127,7 @@ class config:
 			del rawpuseforce
 
 			try:
-				mygcfg_dlists = [getconfig(os.path.join(x, "make.globals")) \
-					for x in self.profiles + [os.path.join(config_root + EPREFIX, "etc")]]
-				self.mygcfg   = stack_dicts(mygcfg_dlists, incrementals=portage_const.INCREMENTALS, ignore_none=1)
+				self.mygcfg   = getconfig(os.path.join(config_root + EPREFIX, "etc", "make.globals"))
 
 				if self.mygcfg is None:
 					self.mygcfg = {}
@@ -2847,7 +2845,7 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 					apply_secpass_permissions(fpath, uid=myuid, gid=mygid,
 						mode=mystat.st_mode, stat_cached=mystat,
 						follow_links=False)
-			mycommand = " ".join([MISC_SH_BINARY, "install_qa_check"])
+			mycommand = " ".join([MISC_SH_BINARY, "install_qa_check", "install_symlink_html_docs"])
 			qa_retval = spawn(mycommand, mysettings, debug=debug, logfile=logfile, **kwargs)
 			if qa_retval:
 				writemsg("!!! install_qa_check failed; exiting.\n",
@@ -3826,7 +3824,6 @@ def unmerge(cat, pkg, myroot, mysettings, mytrimworld=1, vartree=None, ldpath_mt
 def getCPFromCPV(mycpv):
 	"""Calls pkgsplit on a cpv and returns only the cp."""
 	return pkgsplit(mycpv)[0]
-
 
 def dep_virtual(mysplit, mysettings):
 	"Does virtual dependency conversion"
