@@ -7,7 +7,6 @@
 import errno
 import os
 import stat
-import string
 import time
 import types
 import portage_exception
@@ -264,11 +263,11 @@ def hardlock_cleanup(path, remove_all_locks=False):
 	mylist = {}
 	for x in mydl:
 		if os.path.isfile(path+"/"+x):
-			parts = string.split(x, ".hardlock-")
+			parts = x.split(".hardlock-")
 			if len(parts) == 2:
 				filename = parts[0]
-				hostpid  = string.split(parts[1],"-")
-				host  = string.join(hostpid[:-1], "-")
+				hostpid  = parts[1].split("-")
+				host  = "-".join(hostpid[:-1])
 				pid   = hostpid[-1]
 				
 				if not mylist.has_key(filename):

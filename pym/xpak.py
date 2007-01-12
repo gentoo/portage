@@ -16,7 +16,7 @@
 # (integer) == encodeint(integer)  ===> 4 characters (big-endian copy)
 # '+' means concatenate the fields ===> All chunks are strings
 
-import sys,os,string,shutil,errno
+import sys,os,shutil,errno
 from stat import *
 
 def addtolist(mylist,curdir):
@@ -353,7 +353,7 @@ class tbz2:
 		mydat=self.getfile(myfile)
 		if not mydat:
 			return []
-		return string.split(mydat)
+		return mydat.split()
 
 	def unpackinfo(self,mydest):
 		"""Unpacks all the files from the dataSegment into 'mydest'."""

@@ -18,7 +18,7 @@
 # "a? ( b? ( z ) ) -- Valid
 #
 
-import re, string, sys, types
+import re,  sys, types
 import portage_exception
 from portage_exception import InvalidData
 from portage_versions import catpkgsplit, catsplit, pkgcmp, pkgsplit, ververify
@@ -180,7 +180,7 @@ def use_reduce(deparray, uselist=[], masklist=[], matchall=0, excludeall=[]):
 					sys.stderr.write("Note: Nested use flags without parenthesis (Deprecated)\n")
 					warned = 1
 				if warned:
-					sys.stderr.write("  --> "+string.join(map(str,[head]+newdeparray))+"\n")
+					sys.stderr.write("  --> "+"".join(map(str,[head]+newdeparray))+"\n")
 
 				# Check that each flag matches
 				ismatch = True

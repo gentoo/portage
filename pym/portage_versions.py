@@ -3,7 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-import re,string
+import re
 
 ver_regexp = re.compile("^(cvs\\.)?(\\d+)((\\.\\d+)*)([a-z]?)((_(pre|p|beta|alpha|rc)\\d*)*)(-r(\\d+))?$")
 suffix_regexp = re.compile("^(alpha|beta|rc|pre|p)(\\d*)$")
@@ -98,8 +98,8 @@ def vercmp(ver1, ver2, silent=1):
 				list2.append(int(vlist2[i]))
 			# now we have to use floats so 1.02 compares correctly against 1.1
 			else:
-				list1.append(string.atof("0."+vlist1[i]))
-				list2.append(string.atof("0."+vlist2[i]))
+				list1.append(float("0."+vlist1[i]))
+				list2.append(float("0."+vlist2[i]))
 
 	# and now the final letter
 	if len(match1.group(5)):
@@ -183,8 +183,8 @@ def pkgcmp(pkg1, pkg2):
 		return 1
 	if mycmp<0:
 		return -1
-	r1=string.atof(pkg1[2][1:])
-	r2=string.atof(pkg2[2][1:])
+	r1=float(pkg1[2][1:])
+	r2=float(pkg2[2][1:])
 	if r1>r2:
 		return 1
 	if r2>r1:
@@ -201,7 +201,7 @@ def pkgsplit(mypkg,silent=1):
 		return pkgcache[mypkg][:]
 	except KeyError:
 		pass
-	myparts=string.split(mypkg,'-')
+	myparts=mypkg.split("-")
 	
 	if len(myparts)<2:
 		if not silent:
@@ -241,7 +241,7 @@ def pkgsplit(mypkg,silent=1):
 					pkgcache[mypkg]=None
 					return None
 					#names can't have versiony looking parts
-			myval=[string.join(myparts[:verPos],"-"),myparts[verPos],revision]
+			myval=["-".join(myparts[:verPos]),myparts[verPos],revision]
 			pkgcache[mypkg]=myval
 			return myval
 	else:
