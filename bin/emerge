@@ -585,7 +585,7 @@ def getlist(settings, mode):
 				raise
 	mynewlines=[]
 	for x in mylines:
-		myline="".join(x.split())
+		myline=" ".join(x.split())
 		if not len(myline):
 			continue
 		elif myline[0]=="#":
@@ -2628,7 +2628,7 @@ class depgraph:
 			for arg in self._pprovided_args:
 				msg.append("             " + arg + "\n")
 			msg.append("\n")
-			sys.stderr.write("".join(msg))
+			sys.stderr.write(" ".join(msg))
 
 	def calc_changelog(self,ebuildpath,current,next):
 		current = '-'.join(portage.catpkgsplit(current)[1:])
@@ -2737,7 +2737,7 @@ class PackageCounters(object):
 		if self.restrict_fetch_satisfied < self.restrict_fetch:
 			myoutput.append(bad(" (%s unsatisfied)") % \
 				(self.restrict_fetch - self.restrict_fetch_satisfied))
-		return "".join(myoutput)
+		return " ".join(myoutput)
 
 class MergeTask(object):
 
