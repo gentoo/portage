@@ -95,20 +95,6 @@ install_qa_check() {
 			fi
 		fi
 
-		# Check for setid binaries but are not built with BIND_NOW
-		f=$(scanelf -qyRF '%b %p' "${D}")
-		if [[ -n ${f} ]] ; then
-			vecho -ne '\a\n'
-			eqawarn "QA Notice: The following files are setXid, dyn linked, and using lazy bindings"
-			eqawarn " This combination is generally discouraged.  Try re-emerging the package:"
-			eqawarn " LDFLAGS='-Wl,-z,now' emerge ${PN}"
-			eqawarn "${f}"
-			vecho -ne '\a\n'
-			# Do not fail here until we have sorted out the lazy issues with security team
-			#die_msg="${die_msg} setXid lazy bindings,"
-			sleep 1
-		fi
-
 		# TEXTREL's are baaaaaaaad
 		# Allow devs to mark things as ignorable ... e.g. things that are
 		# binary-only and upstream isn't cooperating (nvidia-glx) ... we
