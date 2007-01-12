@@ -6,7 +6,7 @@
 if not hasattr(__builtins__, "set"):
 	from sets import Set as set
 
-#from output import *
+from output import red, yellow, green
 import htmllib,HTMLParser,formatter,sys,os,xpak,time,tempfile,base64,urllib2
 
 try:
@@ -58,7 +58,7 @@ class ParseLinks(HTMLParser.HTMLParser):
 	def get_anchors_by_suffix(self,suffix):
 		newlist = []
 		for x in self.PL_anchors:
-			if x.endswith(prefix):
+			if x.endswith(suffix):
 				if x not in newlist:
 					newlist.append(x[:])
 		return newlist
