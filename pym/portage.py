@@ -822,7 +822,7 @@ def ExtractKernelVersion(base_dir):
 	# Check the .config for a CONFIG_LOCALVERSION and append that too, also stripping whitespace
 	kernelconfig = getconfig(base_dir+"/.config")
 	if kernelconfig and kernelconfig.has_key("CONFIG_LOCALVERSION"):
-		version += " ".join(kernelconfig["CONFIG_LOCALVERSION"].split())
+		version += "".join(kernelconfig["CONFIG_LOCALVERSION"].split())
 
 	return (version,None)
 
@@ -5568,7 +5568,7 @@ class portdbapi(dbapi):
 			mydig   = self.findname2(mycpv)[0]
 			if not mydig:
 				return ""
-			mydigs  = mydic.split("/")[:-1]
+			mydigs  = mydig.split("/")[:-1]
 			mydig   = "/".join(mydigs)
 			mysplit = mycpv.split("/")
 		except OSError:
