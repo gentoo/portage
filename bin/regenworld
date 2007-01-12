@@ -9,7 +9,7 @@ try:
 except ImportError:
 	sys.path.insert(0, "/usr/lib/portage/pym")
 	import portage
-import string, re
+import re
 
 __candidatematcher__ = re.compile("^[0-9]+: \\*\\*\\* emerge ")
 __noncandidatematcher__ = re.compile(" sync( |$)| clean( |$)| search( |$)|--oneshot|--fetchonly| unmerge( |$)")

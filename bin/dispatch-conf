@@ -17,7 +17,7 @@ if not hasattr(__builtins__, "set"):
 
 from stat import *
 from random import *
-import atexit, commands, os, re, shutil, stat, string, sys
+import atexit, commands, os, re, shutil, stat, sys
 try:
     import portage
 except ImportError:
@@ -362,6 +362,6 @@ d = dispatch ()
 
 if len(sys.argv) > 1:
     # for testing
-    d.grind (string.join (sys.argv [1:]))
+    d.grind ("".join( (sys.argv [1:]))
 else:
     d.grind (portage.settings ['CONFIG_PROTECT'])

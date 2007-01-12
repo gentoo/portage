@@ -21,8 +21,7 @@ except KeyboardInterrupt:
 
 import os
 
-import types,string
-
+import types
 
 #-----------------------------------------------------------------------------
 #
@@ -179,7 +178,7 @@ def match(argv):
 		print "ERROR: insufficient parameters!"
 		sys.exit(2)
 	try:
-		print string.join(portage.db[argv[0]]["vartree"].dbapi.match(argv[1]),"\n")
+		print "\n".join(portage.db[argv[0]]["vartree"].dbapi.match(argv[1]))
 	except ValueError, e:
 		# Multiple matches thrown from cpv_expand
 		pkgs = e.args[0]
@@ -279,7 +278,7 @@ def envvar(argv):
 
 def usage(argv):
 	rev="$Revision: 1.13.2.1 $"
-	ver=string.split(rev, ' ')[1]
+	ver= rev.split(' ')[1]
 	print ">>> Portage information query tool -- version "+ver
 	print ">>> Usage: portageq <command> [<option> ...]"
 	print ""
@@ -306,13 +305,13 @@ def usage(argv):
 			print ""
 			continue
 
-		lines = string.split(doc, '\n')
-		print "   "+name+" "+string.strip(lines[0])
+		lines = doc.split("\n")
+		print "   "+name+" "+lines[0].strip()
 		if (len(sys.argv) > 1):
 			if ("--help" not in sys.argv):
 				lines = lines[:-1]
 			for line in lines[1:]:
-				print "      "+string.strip(line)
+				print "      "+line.strip()
 	if (len(sys.argv) == 1):
 		print "\nRun portageq with --help for info"
 

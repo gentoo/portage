@@ -10,7 +10,7 @@
 #  Jeremy Wohl's dispatch-conf script and the portage chkcontents script.
 #
 
-import os, sys, string
+import os, sys
 try:
     import portage
 except ImportError:
@@ -32,7 +32,7 @@ except ImportError:
         hexform = ""
         for ix in xrange(len(md5sum)):
             hexform = hexform + "%02x" % ord(md5sum[ix])
-        return string.lower(hexform)
+        return hexform.lower()
     
     def perform_checksum(filename):
         f = open(filename, 'rb')
@@ -75,12 +75,12 @@ def archive_conf():
                 sys.exit(1)
             lines = contents.readlines()
             for line in lines:
-                items = string.split(line)
+                items = line.split()
                 if items[0] == 'obj':
                     for conf in args:
                         if items[1] == conf:
-                            stored = string.lower(items[2])
-                            real = string.lower(perform_checksum(conf)[0])
+                            stored = items[2].lower()
+                            real = perform_checksum(conf)[0].lower()
                             if stored == real:
                                 md5_match_hash[conf] = conf
                             todo_cnt -= 1

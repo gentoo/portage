@@ -3,7 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-import os,sys,string
+import os,sys
 os.environ["FEATURES"]="mirror cvs"
 try:
 	import portage
@@ -33,10 +33,10 @@ for mycp in portage.db["/"]["porttree"].dbapi.cp_all():
 hugelist.sort()
 
 for mycpv in hugelist:
-	pv = string.split(mycpv, "/")[-1]
+	pv = mycpv.split("/")[-1]
 
 	newuri = portage.db["/"]["porttree"].dbapi.aux_get(mycpv,["SRC_URI"])[0]
-	newuri = string.split(newuri)
+	newuri = newuri.split()
 
 	digestpath = portage.db["/"]["porttree"].dbapi.findname(mycpv)
 	digestpath = os.path.dirname(digestpath)+"/files/digest-"+pv
@@ -79,8 +79,8 @@ for mycpv in hugelist:
 				   (md5_list[mybn]["size"] != md5sums[mybn]["size"]):
 
 					# This associates teh md5 with each file. [md5/size]
-					md5joins = string.split(md5_list[mybn][2],",")
-					md5joins = string.join(md5joins," ["+md5_list[mybn][0]+"/"+md5_list[mybn][1]+"],")
+					md5joins = md5_list[mybn][2].split(",")
+					md5joins = " ["+md5_list[mybn][0]+"/"+md5_list[mybn][1]+"],".join(md5joins))
 					md5joins += " ["+md5_list[mybn][0]+"/"+md5_list[mybn][1]+"]"
 
 					portage.writemsg("Colliding md5: %s of %s [%s/%s] and %s\n" % (mybn,mycpv,md5sums[mybn][0],md5sums[mybn][1],md5joins))
