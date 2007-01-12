@@ -20,7 +20,7 @@ map(allowed_filename_chars_set.setdefault, map(chr, range(ord('A'), ord('Z')+1))
 map(allowed_filename_chars_set.setdefault, map(chr, range(ord('0'), ord('9')+1)))
 map(allowed_filename_chars_set.setdefault, map(chr, map(ord, [".", "-", "_", "+", ":"])))
 
-import string,signal,re,pickle,tempfile
+import signal,re,pickle,tempfile
 
 os.environ["PORTAGE_LEGACY_GLOBALS"] = "false"
 try:
@@ -270,22 +270,22 @@ def help(exitstatus=1,helpfulness=1):
 			print "|",turquoise(x),
 		print
 	print
-	print " "+green(string.ljust("Options",20)+" Description")
+	print " "+green("Options".ljust(20)+" Description")
 	for x in options:
 		if repoman_shortoptions_rev.has_key(x):
 			shopt=repoman_shortoptions_rev[x]+", "+x
 		else:
 			shopt="    "+x
-		print " "+string.ljust(shopt,20),repoman_options[x]
+		print " "+shopt.ljust(20),repoman_options[x]
 	print
-	print " "+green(string.ljust("Modes",20)+" Description")
+	print " "+green("Modes".ljust(20)+" Description")
 	for x in modes:
-		print " "+string.ljust(x,20),modeshelp[x]
+		print " "+x.ljust(20),modeshelp[x]
 	if helpfulness:
 		print
-		print " "+green(string.ljust("QA keyword",20)+" Description")
+		print " "+green("QA keyword".ljust(20)+" Description")
 		for x in qacats:
-			print " "+string.ljust(x,20),qahelp[x]
+			print " "+x.ljust(20),qahelp[x]
 		print
 	if (exitstatus != -1):
 		sys.exit(exitstatus)
@@ -324,7 +324,7 @@ def last():
 		else:
 			if mymode!="lfull":
 				continue
-		print "  "+string.ljust(x,20),
+		print "  "+ x.ljust(20),
 		if stats[x]==0:
 			print green(`stats[x]`)
 			continue
@@ -485,7 +485,7 @@ if not myreporoot:
 	myreporoot = os.path.basename(portdir_overlay)
 	myreporoot += mydir[len(portdir_overlay):-1]
 
-reposplit=string.split(myreporoot,"/")
+reposplit=myreporoot.split("/")
 repolevel=len(reposplit)
 
 # check if it's in $PORTDIR/$CATEGORY/$PN , otherwise bail if commiting.
@@ -496,7 +496,7 @@ if mymode == "commit" and repolevel not in [1,2,3]:
 	print red("***")+" Attempting to commit from a packages files directory will be blocked for instance."
 	print red("***")+" This is intended behaviour, to ensure the manifest is recommited for a package."
 	print red("***")
-	err("Unable to identify level we're commiting from for %s" % string.join(reposplit,'/'))
+	err("Unable to identify level we're commiting from for %s" % '/'.join(reposplit))
 
 startdir=os.getcwd()
 
@@ -559,11 +559,11 @@ uselist=[]
 try:
 	uselist=portage.grabfile(portdir+"/profiles/use.desc")
 	for l in range(0,len(uselist)):
-		uselist[l]=string.split(uselist[l])[0]
-	for var in string.split(repoman_settings["USE_EXPAND"]):
+		uselist[l]=uselist[l].split()[0]
+	for var in repoman_settings["USE_EXPAND"].split():
 		vardescs = portage.grabfile(portdir+"/profiles/desc/"+var.lower()+".desc")
 		for l in range(0, len(vardescs)):
-			uselist.append(var.lower() + "_" + string.split(vardescs[l])[0])
+			uselist.append(var.lower() + "_" + vardescs[l].split()[0])
 except SystemExit, e:
 	raise  # Need to propogate this
 except:
@@ -618,7 +618,7 @@ if os.path.exists(descfile):
 	for x in portage.grabfile(descfile):
 		if x[0]=="#":
 			continue
-		arch=string.split(x)
+		arch=x.split()
 		if len(arch)!=3:
 			print "wrong format: \""+red(x)+"\" in "+descfile
 			continue
@@ -1076,7 +1076,7 @@ for x in scanlist:
 		for mytype in ("DEPEND", "RDEPEND", "PDEPEND", "LICENSE", "PROVIDE"):
 			mydepstr = myaux[mytype]
 			
-			if (string.find(mydepstr, " ?") != -1):
+			if mydepstr.find(" ?") != -1:
 				badsyntax.append("'?' preceded by space")
 
 			try:
@@ -1384,7 +1384,7 @@ dowarn=0
 #dofull will be set if we should print a "repoman full" informational message
 dofull=0
 for x in qacats:
-	if not isCvs and (string.find(x, "notadded") != -1):
+	if not isCvs and x.find("notadded") != -1:
 		stats[x] = 0
 	if stats[x]:
 		dowarn=1
@@ -1392,7 +1392,7 @@ for x in qacats:
 			dofail=1
 	else:
 		continue
-	print "  "+string.ljust(x,30),
+	print "  "+x.ljust(30),
 	if stats[x]==0:
 		print green(`stats[x]`)
 		continue
@@ -1417,13 +1417,13 @@ def grouplist(mylist,seperator="/"):
 	To:   {"blah":["foo","weee/splat"], "spork":["spatula"]}"""
 	mygroups={}
 	for x in mylist:
-		xs=string.split(x,seperator)
+		xs=x.split(seperator)
 		if xs[0]==".":
 			xs=xs[1:]
 		if xs[0] not in mygroups.keys():
-			mygroups[xs[0]]=[string.join(xs[1:],seperator)]
+			mygroups[xs[0]]=[seperator.join(xs[1:])]
 		else:
-			mygroups[xs[0]]+=[string.join(xs[1:],seperator)]
+			mygroups[xs[0]]+=[seperator.join(xs[1:])]
 	return mygroups
 
 if mymode!="commit":
@@ -1452,9 +1452,9 @@ else:
 	if fails["digest.missing"]:
 		print green("Creating missing digests...")
 	for x in fails["digest.missing"]:
-		xs=string.split(x,"/")
+		xs=x.split("/")
 		del xs[-2]
-		myeb=string.join(xs[:-1],"/")+"/"+xs[-1][7:]
+		myeb="/".join(xs[:-1])+"/"+xs[-1][7:]
 		if "--pretend" in myoptions:
 			print "(ebuild "+portdir+"/"+myeb+".ebuild digest)"
 		else:
@@ -1472,7 +1472,7 @@ else:
 	myautoadd=[]
 	if myunadded:
 		for x in range(len(myunadded)-1,-1,-1):
-			xs=string.split(myunadded[x],"/")
+			xs=myunadded[x].split("/")
 			if xs[-1]=="files":
 				print "!!! files dir is not added! Please correct this."
 				sys.exit(-1)
@@ -1483,7 +1483,7 @@ else:
 			elif len(xs[-1])>=7:
 				if xs[-1][:7]=="digest-":
 					del xs[-2]
-					myeb=string.join(xs[:-1]+[xs[-1][7:]],"/")+".ebuild"
+					myeb="/".join(xs[:-1]+[xs[-1][7:]])+".ebuild"
 					if os.path.exists(myeb):
 						# Ebuild exists for digest... So autoadd it.
 						myautoadd+=[myunadded[x]]
@@ -1492,10 +1492,10 @@ else:
 	if myautoadd:
 		print ">>> Auto-Adding missing digests..."
 		if "--pretend" in myoptions:
-			print "(/usr/bin/cvs add "+string.join(myautoadd)+")"
+			print "(/usr/bin/cvs add "+" ".join(myautoadd)+")"
 			retval=0
 		else:
-			retval=os.system("/usr/bin/cvs add "+string.join(myautoadd))
+			retval=os.system("/usr/bin/cvs add "+" ".join(myautoadd))
 		if retval:
 			print "!!! Exiting on cvs (shell) error code:",retval
 			sys.exit(retval)
@@ -1514,7 +1514,7 @@ else:
 		print "Performing a "+green("cvs -n up")+" with a little magic grep to check for updates."
 		retval=getstatusoutput("/usr/bin/cvs -n up 2>&1 | egrep '^[^\?] .*' | egrep -v '^. .*/digest-[^/]+|^cvs server: .* -- ignored$'")
 		
-	mylines=string.split(retval[1], "\n")
+	mylines=retval[1].split("\n")
 	myupdates=[]
 	for x in mylines:
 		if not x:
@@ -1531,10 +1531,10 @@ else:
 	if myupdates:
 		print green("Fetching trivial updates...")
 		if "--pretend" in myoptions:
-			print "(/usr/bin/cvs up "+string.join(myupdates)+")"
+			print "(/usr/bin/cvs up "+" ".join(myupdates)+")"
 			retval=0
 		else:
-			retval=os.system("/usr/bin/cvs up "+string.join(myupdates))
+			retval=os.system("/usr/bin/cvs up "+" ".join(myupdates))
 		if retval!=0:
 			print "!!! cvs exited with an error. Terminating."
 			sys.exit(retval)
@@ -1614,9 +1614,9 @@ else:
 
 		retval = None
 		if "--pretend" in myoptions:
-			print "(/usr/bin/cvs -q commit -F "+ commitmessagefile +" "+ string.join(myupdates," ")+")"
+			print "(/usr/bin/cvs -q commit -F "+ commitmessagefile +" "+ " ".join(myupdates)+")"
 		else:
-			retval=os.system("/usr/bin/cvs -q commit -F "+ commitmessagefile + " " +string.join(myupdates, " "))
+			retval=os.system("/usr/bin/cvs -q commit -F "+ commitmessagefile + " " +" ".join(myupdates))
 			if retval:
 				print "!!! Exiting on cvs (shell) error code:",retval
 				sys.exit(retval)
@@ -1666,7 +1666,7 @@ else:
 				myportdb=portdb)
 		elif repolevel==2: # In a category dir
 			for x in myfiles:
-				xs=string.split(x,"/")
+				xs=x.split("/")
 				if xs[0]==".":
 					xs=xs[1:]
 				if xs[0] in mydone:
@@ -1678,12 +1678,12 @@ else:
 		elif repolevel==1: # repo-cvsroot
 			print green("RepoMan sez:"), "\"You're rather crazy... doing the entire repository.\"\n"
 			for x in myfiles:
-				xs=string.split(x,"/")
+				xs=x.split("/")
 				if xs[0]==".":
 					xs=xs[1:]
-				if string.join(xs[:2],"/") in mydone:
+				if "/".join(xs[:2]) in mydone:
 					continue
-				mydone.append(string.join(xs[:2],"/"))
+				mydone.append("/".join(xs[:2]))
 				repoman_settings["O"]=os.path.join(os.getcwd(), x[0], x[1])
 				portage.digestgen([], repoman_settings, manifestonly=1,
 					myportdb=portdb)
@@ -1717,7 +1717,7 @@ else:
 			elif repolevel==2: # In a category dir
 				mydone=[]
 				for x in myfiles:
-					xs=string.split(x,"/")
+					xs=x.split("/")
 					if xs[0]==".":
 						xs=xs[1:]
 					if xs[0] in mydone:
@@ -1729,12 +1729,12 @@ else:
 				print green("RepoMan sez:"), "\"You're rather crazy... doing the entire repository.\"\n"
 				mydone=[]
 				for x in myfiles:
-					xs=string.split(x,"/")
+					xs=x.split("/")
 					if xs[0]==".":
 						xs=xs[1:]
-					if string.join(xs[:2],"/") in mydone:
+					if "/".join(xs[:2]) in mydone:
 						continue
-					mydone.append(string.join(xs[:2],"/"))
+					mydone.append("/".join(xs[:2]))
 					repoman_settings["O"] = os.path.join(".", xs[0], xs[1])
 					gpgsign(os.path.join(repoman_settings["O"], "Manifest"))
 		except portage_exception.PortageException, e:
