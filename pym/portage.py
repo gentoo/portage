@@ -153,9 +153,7 @@ def getcwd():
 	"this fixes situations where the current directory doesn't exist"
 	try:
 		return os.getcwd()
-	except SystemExit, e:
-		raise
-	except:
+	except OSError: #dir doesn't exist
 		os.chdir("/")
 		return "/"
 getcwd()
@@ -1537,7 +1535,7 @@ class config:
 		best_mod = best_from_dict(property_string,self.modules,self.module_priority)
 		try:
 			mod = load_mod(best_mod)
-		except:
+		except ImportError:
 			dump_traceback(red("Error: Failed to import module '%s'") % best_mod, noiselevel=0)
 			sys.exit(1)
 		return mod
@@ -2284,17 +2282,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 							thirdpartymirrors[mirrorname].remove(cmirr)
 				# now try the official mirrors
 				if thirdpartymirrors.has_key(mirrorname):
-					try:
-						shuffle(thirdpartymirrors[mirrorname])
-					except SystemExit, e:
-						raise
-					except:
-						writemsg(red("!!! YOU HAVE A BROKEN PYTHON/GLIBC.\n"), noiselevel=-1)
-						writemsg(    "!!! You are most likely on a pentium4 box and have specified -march=pentium4\n")
-						writemsg(    "!!! or -fpmath=sse2. GCC was generating invalid sse2 instructions in versions\n")
-						writemsg(    "!!! prior to 3.2.3. Please merge the latest gcc or rebuid python with either\n")
-						writemsg(    "!!! -march=pentium3 or set -mno-sse2 in your cflags.\n\n\n")
-						time.sleep(10)
+					shuffle(thirdpartymirrors[mirrorname])
 
 					for locmirr in thirdpartymirrors[mirrorname]:
 						filedict[myfile].append(locmirr+"/"+myuri[eidx+1:])
@@ -2547,21 +2535,14 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 								# Fetch failed... Try the next one... Kill 404 files though.
 								if (mystat[stat.ST_SIZE]<100000) and (len(myfile)>4) and not ((myfile[-5:]==".html") or (myfile[-4:]==".htm")):
 									html404=re.compile("<title>.*(not found|404).*</title>",re.I|re.M)
-									try:
-										if html404.search(open(mysettings["DISTDIR"]+"/"+myfile).read()):
-											try:
-												os.unlink(mysettings["DISTDIR"]+"/"+myfile)
-												writemsg(">>> Deleting invalid distfile. (Improper 404 redirect from server.)\n")
-												fetched = 0
-												continue
-											except SystemExit, e:
-												raise
-											except:
-												pass
-									except SystemExit, e:
-										raise
-									except:
-										pass
+									if html404.search(open(mysettings["DISTDIR"]+"/"+myfile).read()):
+										try:
+											os.unlink(mysettings["DISTDIR"]+"/"+myfile)
+											writemsg(">>> Deleting invalid distfile. (Improper 404 redirect from server.)\n")
+											fetched = 0
+											continue
+										except (IOError, OSError):
+											pass
 								fetched = 1
 								continue
 							if not fetchonly:
