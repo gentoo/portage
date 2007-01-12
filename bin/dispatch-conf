@@ -362,6 +362,6 @@ d = dispatch ()
 
 if len(sys.argv) > 1:
     # for testing
-    d.grind (" ".join( (sys.argv [1:]))
+    d.grind (" ".join(sys.argv[1:]))
 else:
     d.grind (portage.settings ['CONFIG_PROTECT'])
