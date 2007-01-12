@@ -1,0 +1,44 @@
+#!/bin/bash
+# Copyright 1999-2007 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Id: prepalldocs 3483 2006-06-10 21:40:40Z genone $
+
+if [[ -z $1 ]] ; then
+	echo "${0##*/}: at least one argument needed" 1>&2
+	exit 1
+fi
+
+# figure out the new suffix
+suffix=$(ecompress --suffix)
+[[ -z ${suffix} ]] && exit 0
+
+source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
+
+ret=0
+
+for dir in "$@" ; do
+	dir="${D}${dir}"
+	if [[ ! -d ${dir} ]] ; then
+		vecho "${0##*/}: ${dir#${D}} does not exist!"
+		continue
+	else
+		vecho "${0##*/}: $(ecompress --bin) ${dir#${D}}"
+	fi
+
+	find "${dir}" -type f -print0 | xargs -0 ecompress
+	((ret+=$?))
+	find -L "${dir}" -type l | \
+	while read brokenlink ; do
+		olddest=$(readlink "${brokenlink}")
+		newdest="${olddest}${suffix}"
+		if [[ -e ${newdest} ]] ; then
+			ln -snf "${newdest}" "${brokenlink}"
+			((ret+=$?))
+		else
+			vecho "ecompressdir: unknown broken symlink: ${brokenlink}"
+			((++ret))
+		fi
+	done
+done
+
+exit ${ret}

@@ -19,15 +19,13 @@ class AtomCmpEqualGlob(TestCase):
 #                         ("=sys-fs/udev_cvs*","sys-fs/udev_cvs_pre4" ) ]
 
                 for test in tests:
-                        self.failIf( len(match_from_list( test[0], [test[1]] )) != 1,
-                                msg="%s should match %s!" % (test[0], test[1]) )
+                        self.assertEqual( len(match_from_list( test[0], [test[1]] )), 1 )
 
         def testEqualGlobFail(self):
                 tests = [ ("=sys-apps/portage-2*", "sys-apps/portage-2.1" ),
                           ("=sys-apps/portage-2.1*", "sys-apps/portage-2.1.2" ) ]
                 for test in tests:
                         try:
-                                self.failIf( len( match_from_list( test[0], [test[1]] ) ) != 1,
-                                        msg="%s shouldn't match %s!" % (test[0], test[1]) )
+                                self.assertEqual( len( match_from_list( test[0], [test[1]] ) ), 1 )
                         except TypeError: # failure is ok here
                                 pass

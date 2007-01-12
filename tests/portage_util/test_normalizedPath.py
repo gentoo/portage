@@ -12,5 +12,4 @@ class NormalizePathTestCase(TestCase):
 		from portage_util import normalize_path
 		path = "///foo/bar/baz"
 		good = "/foo/bar/baz"
-		self.failUnless(normalize_path(path) == good, msg="NormalizePath(%s) failed to produce %s" % (path, good))
-
+		self.assertEqual(normalize_path(path), good)

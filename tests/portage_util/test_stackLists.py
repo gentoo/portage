@@ -17,6 +17,4 @@ class StackListsTestCase(TestCase):
 
 		for test in tests:
 			result = stack_lists( test[0], test[2] )
-			self.failIf( result != test[1],
-				msg="Got %s != %s from stack_lists( %s, %s )" \
-				% ( result, test[1], test[0], test[2] ) )
+			self.assertEqual( result , test[1] )

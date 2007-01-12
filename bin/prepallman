@@ -1,18 +1,15 @@
 #!@BASH@
-# Copyright 1999-2006 Gentoo Foundation
+# Copyright 1999-2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/bin/prepallman,v 1.10 2004/10/04 13:56:50 vapier Exp $
 
 ret=0
 
-echo "man:"
-for x in "${ED}"/opt/*/man "${ED}"/usr/share/man "${ED}"/usr/local/man "${ED}"/usr/X11R6/man ; do
-	if [[ -d ${x} ]] ; then
-		x=${x#${ED}}
-		x=${x%/man}
-		prepman "${x}"
-		((ret+=$?))
-	fi
-done
+find "${ED}" -type d -name man > "${T}"/prepallman.filelist
+while read mandir ; do
+	mandir=${mandir#${ED}}
+	prepman "${mandir%/man}"
+	((ret+=$?))
+done < "${T}"/prepallman.filelist
 
 exit ${ret}

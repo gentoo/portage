@@ -382,7 +382,7 @@ def isvalidatom(atom, allow_blockers=False):
 
 def isjustname(mypkg):
 	"""
-	Checks to see if the depstring is only the package name
+	Checks to see if the depstring is only the package name (no version parts)
 
 	Example usage:
 		>>> isjustname('media-libs/test-3.0')

@@ -1,21 +1,15 @@
 #!@BASH@
-# Copyright 1999-2006 Gentoo Foundation
+# Copyright 1999-2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id: /var/cvsroot/gentoo-src/portage/bin/doinfo,v 1.7 2004/10/04 13:56:50 vapier Exp $
 
-if [ ${#} -lt 1 ] ; then
-	echo "doinfo: at least one argument needed"
+if [[ -z $1 ]] ; then
+	vecho "${0##*/}: at least one argument needed"
 	exit 1 	
 fi
-if [ ! -d "${ED}/usr/share/info" ] ; then
-	install -d "${ED}/usr/share/info"
+
+if [[ ! -d ${ED}usr/share/info ]] ; then
+	install -d "${ED}usr/share/info" || exit 1
 fi
 
-for x in "$@" ; do
-	if [ -e "${x}" ] ; then
-		install -m 0644 "${x}" "${ED}/usr/share/info"
-		gzip -f -9 "${ED}/usr/share/info/${x##*/}"
-	else
-		echo "doinfo: ${x} does not exist"
-	fi
-done
+exec install -m0644 "$@" "${ED}usr/share/info"

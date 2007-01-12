@@ -1,0 +1,44 @@
+#!/bin/bash
+# Copyright 1999-2007 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Id: prepman 5507 2007-01-10 04:22:27Z zmedico $
+
+if [[ -z $1 ]] ; then
+	echo "${0##*/}: at least one argument needed" 1>&2
+	exit 1
+fi
+
+source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
+
+# setup compression stuff
+PORTAGE_COMPRESS=${PORTAGE_COMPRESS:-bzip2}
+if [[ -z ${PORTAGE_COMPRESS_FLAGS} ]] ; then
+	case ${PORTAGE_COMPRESS} in
+		bzip2|gzip)  PORTAGE_COMPRESS_FLAGS="-9";;
+	esac
+fi
+
+case $1 in
+	--suffix)
+		set -e
+		tmpdir="${T}"/.ecompress$$.${RANDOM}
+		mkdir "${tmpdir}"
+		cd "${tmpdir}"
+		# we have to fill the file enough so that there is something
+		# to compress as some programs will refuse to do compression
+		# if it cannot actually compress the file
+		echo {0..1000} > compressme
+		${PORTAGE_COMPRESS} ${PORTAGE_COMPRESS_FLAGS} compressme
+		suffix=$(ls compressme*)
+		suffix=${suffix#compressme}
+		cd /
+		rm -rf "${tmpdir}"
+		echo "${suffix}"
+		;;
+	--bin)
+		echo "${PORTAGE_COMPRESS} ${PORTAGE_COMPRESS_FLAGS}"
+		;;
+	*)
+		exec "${PORTAGE_COMPRESS}" ${PORTAGE_COMPRESS_FLAGS} "$@"
+		;;
+esac
