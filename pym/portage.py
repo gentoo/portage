@@ -895,6 +895,8 @@ class config:
 		@type local_config: Boolean
 		"""
 
+		debug = os.environ.get("PORTAGE_DEBUG") == "1"
+
 		self.already_in_regenerate = 0
 
 		self.locked   = 0
@@ -1134,9 +1136,12 @@ class config:
 			except SystemExit, e:
 				raise
 			except Exception, e:
+				if debug:
+					raise
 				writemsg("!!! %s\n" % (e), noiselevel=-1)
-				writemsg("!!! Incorrect multiline literals can cause this. Do not use them.\n", noiselevel=-1)
-				writemsg("!!! Errors in this file should be reported on bugs.gentoo.org.\n")
+				if not isinstance(e, EnvironmentError):
+					writemsg("!!! Incorrect multiline literals can cause " + \
+						"this. Do not use them.\n", noiselevel=-1)
 				sys.exit(1)
 			self.configlist.append(self.mygcfg)
 			self.configdict["globals"]=self.configlist[-1]
@@ -1158,13 +1163,18 @@ class config:
 				except SystemExit, e:
 					raise
 				except Exception, e:
+					if debug:
+						raise
 					writemsg("!!! %s\n" % (e), noiselevel=-1)
-					writemsg("!!! 'rm -Rf /usr/portage/profiles; emerge sync' may fix this. If it does\n",
-						noiselevel=-1)
-					writemsg("!!! not then please report this to bugs.gentoo.org and, if possible, a dev\n",
-						noiselevel=-1)
-					writemsg("!!! on #gentoo (irc.freenode.org)\n",
-						noiselevel=-1)
+					if not isinstance(e, EnvironmentError):
+						writemsg("!!! 'rm -Rf /usr/portage/profiles; " + \
+							"emerge sync' may fix this. If it does\n",
+							noiselevel=-1)
+						writemsg("!!! not then please report this to " + \
+							"bugs.gentoo.org and, if possible, a dev\n",
+								noiselevel=-1)
+						writemsg("!!! on #gentoo (irc.freenode.org)\n",
+							noiselevel=-1)
 					sys.exit(1)
 			self.configlist.append(self.mygcfg)
 			self.configdict["defaults"]=self.configlist[-1]
@@ -1178,9 +1188,12 @@ class config:
 			except SystemExit, e:
 				raise
 			except Exception, e:
+				if debug:
+					raise
 				writemsg("!!! %s\n" % (e), noiselevel=-1)
-				writemsg("!!! Incorrect multiline literals can cause this. Do not use them.\n",
-					noiselevel=-1)
+				if not isinstance(e, EnvironmentError):
+					writemsg("!!! Incorrect multiline literals can cause " + \
+						"this. Do not use them.\n", noiselevel=-1)
 				sys.exit(1)
 
 			# Allow ROOT setting to come from make.conf if it's not overridden

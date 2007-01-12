@@ -4964,6 +4964,8 @@ def emerge_main():
 	# together with EMERGE_DEFAULT_OPTS (which may vary depending on the
 	# the value of --config-root).
 	myaction, myopts, myfiles = parse_opts(sys.argv[1:], silent=True)
+	if "--debug" in myopts:
+		os.environ["PORTAGE_DEBUG"] = "1"
 	if "--config-root" in myopts:
 		os.environ["PORTAGE_CONFIGROOT"] = myopts["--config-root"]
 
