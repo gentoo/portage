@@ -72,7 +72,7 @@ class cache:
 		for x in inherits:
 			try:
 				ec_dict[x] = self.eclasses[x]
-			except:
+			except KeyError:
 				print "ec=",ec_dict
 				print "inherits=",inherits
 				raise
