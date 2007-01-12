@@ -31,7 +31,7 @@ except ImportError:
 del os.environ["PORTAGE_LEGACY_GLOBALS"]
 from portage import digraph
 
-import emergehelp, xpak, commands, errno, re, socket, string, time, types
+import emergehelp, xpak, commands, errno, re, socket, time, types
 import output
 from output import blue, bold, colorize, darkblue, darkgreen, darkred, green, \
 	havecolor, nc_len, nocolor, red, teal, turquoise, white, xtermTitle, \
@@ -150,7 +150,7 @@ def userquery(prompt, responses=None, colours=None):
 	print bold(prompt),
 	try:
 		while True:
-			response=raw_input("["+string.join([colours[i](responses[i]) for i in range(len(responses))],"/")+"] ")
+			response=raw_input("["+"/".join([colours[i](responses[i]) for i in range(len(responses))])+"] ")
 			for key in responses:
 				# An empty response will match the first value in responses.
 				if response.upper()==key[:len(response)].upper():
@@ -352,9 +352,9 @@ def getportageversion(portdir, target_root, profile, chost, vardb):
 	for x in libclist:
 		xs=portage.catpkgsplit(x)
 		if libcver:
-			libcver+=","+string.join(xs[1:], "-")
+			libcver+=","+"-".join(xs[1:])
 		else:
-			libcver=string.join(xs[1:], "-")
+			libcver="-".join(xs[1:])
 	if libcver==[]:
 		libcver="unavailable"
 
@@ -585,7 +585,7 @@ def getlist(settings, mode):
 				raise
 	mynewlines=[]
 	for x in mylines:
-		myline=string.join(string.split(x))
+		myline="".join(x.split())
 		if not len(myline):
 			continue
 		elif myline[0]=="#":
@@ -1674,7 +1674,7 @@ class depgraph:
 							for p in alleb:
 								mreasons = portage.getmaskingstatus(p,
 									settings=pkgsettings, portdb=portdb)
-								print "- "+p+" (masked by: "+string.join(mreasons, ", ")+")"
+								print "- "+p+" (masked by: "+", ".join(mreasons)+")"
 								comment = portage.getmaskingreason(p,
 									settings=pkgsettings, portdb=portdb)
 								if comment and comment != oldcomment:
@@ -3414,7 +3414,7 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 		for y in pkgmap[x]["selected"]:
 			print ">>> Unmerging "+y+"..."
 			emergelog(xterm_titles, "=== Unmerging... ("+y+")")
-			mysplit=string.split(y,"/")
+			mysplit=y.split("/")
 			#unmerge...
 			retval = portage.unmerge(mysplit[0], mysplit[1], settings["ROOT"],
 				mysettings, unmerge_action not in ["clean","prune"],
@@ -3613,7 +3613,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 	if not os.path.exists(myportdir):
 		print ">>>",myportdir,"not found, creating it."
 		os.makedirs(myportdir,0755)
-	syncuri=string.rstrip(settings["SYNC"])
+	syncuri=settings["SYNC"].rstrip()
 	os.umask(0022)
 	updatecache_flg = False
 	if myaction == "metadata":
@@ -4206,7 +4206,7 @@ def action_info(settings, trees, myopts, myfiles):
 
 	output=commands.getstatusoutput("distcc --version")
 	if not output[0]:
-		print str(string.split(output[1],"\n",1)[0]),
+		print str(output[1].split("\n",1)[0]),
 		if "distcc" in settings.features:
 			print "[enabled]"
 		else:
@@ -4214,7 +4214,7 @@ def action_info(settings, trees, myopts, myfiles):
 
 	output=commands.getstatusoutput("ccache -V")
 	if not output[0]:
-		print str(string.split(output[1],"\n",1)[0]),
+		print str(output[1].split("\n",1)[0]),
 		if "ccache" in settings.features:
 			print "[enabled]"
 		else:
@@ -4242,7 +4242,7 @@ def action_info(settings, trees, myopts, myfiles):
 		else:
 			print "%-20s %s" % (x+":", "[NOT VALID]")
 
-	libtool_vers = string.join(trees["/"]["vartree"].dbapi.match("sys-devel/libtool"), ",")
+	libtool_vers = ",".join(trees["/"]["vartree"].dbapi.match("sys-devel/libtool"))
 
 	if "--verbose" in myopts:
 		myvars=settings.keys()
@@ -5210,11 +5210,11 @@ def emerge_main():
 			time.strftime("%b %d, %Y %H:%M:%S", time.localtime()))
 		myelogstr=""
 		if myopts:
-			myelogstr=string.join(myopts, " ")
+			myelogstr=" ".join(myopts)
 		if myaction:
 			myelogstr+=" "+myaction
 		if myfiles:
-			myelogstr+=" "+string.join(myfiles, " ")
+			myelogstr+=" "+" ".join(myfiles)
 		emergelog(xterm_titles, " *** emerge " + myelogstr)
 
 	def emergeexitsig(signum, frame):
