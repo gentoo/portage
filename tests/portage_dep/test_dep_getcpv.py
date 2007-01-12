@@ -14,6 +14,8 @@ class DepGetCPV(TestCase):
 		
 		prefix_ops = ["<", ">", "=", "~", "!", "<=", 
 			      ">=", "!=", "!<", "!>", "!~",""]
+
+		bad_prefix_ops = [ ">~", "<~", "~>", "~<" ]
 		postfix_ops = [ "*", "" ]
 
 		cpvs = ["sys-apps/portage"]
@@ -22,4 +24,8 @@ class DepGetCPV(TestCase):
 			for prefix in prefix_ops:
 				for postfix in postfix_ops:
 					self.assertEqual( dep_getcpv( 
+						prefix + cpv + postfix ), cpv )
+			for prefix in bad_prefix_ops:
+				for postfix in postfix_ops:
+					self.assertNotEqual( dep_getcpv(
 						prefix + cpv + postfix ), cpv )

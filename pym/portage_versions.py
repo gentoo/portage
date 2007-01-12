@@ -11,6 +11,7 @@ suffix_regexp = re.compile("^(alpha|beta|rc|pre|p)(\\d*)$")
 suffix_value = {"pre": -2, "p": 0, "alpha": -4, "beta": -3, "rc": -1}
 endversion_keys = ["pre", "p", "alpha", "beta", "rc"]
 
+from portage_exception import InvalidData
 
 def ververify(myver, silent=1):
 	if ver_regexp.match(myver):
@@ -75,9 +76,9 @@ def vercmp(ver1, ver2, silent=1):
 	
 	# building lists of the version parts before the suffix
 	# first part is simple
-	list1 = [string.atoi(match1.group(2))]
-	list2 = [string.atoi(match2.group(2))]
-	
+	list1 = [int(match1.group(2))]
+	list2 = [int(match2.group(2))]
+
 	# this part would greatly benefit from a fixed-length version pattern
 	if len(match1.group(3)) or len(match2.group(3)):
 		vlist1 = match1.group(3)[1:].split(".")
@@ -262,9 +263,29 @@ def pkgsplit(mypkg,silent=1):
 		pkgcache[mypkg]=None
 		return None
 
+_valid_category = re.compile("^\w[\w-]*")
+
 catcache={}
 def catpkgsplit(mydata,silent=1):
-	"returns [cat, pkgname, version, rev ]"
+	"""
+	Takes a Category/Package-Version-Rev and returns a list of each.
+	
+	@param mydata: Data to split
+	@type mydata: string 
+	@param silent: suppress error messages
+	@type silent: Boolean (integer)
+	@rype: list
+	@return:
+	1.  If each exists, it returns [cat, pkgname, version, rev]
+	2.  If cat is not specificed in mydata, cat will be "null"
+	3.  if rev does not exist it will be '-r0'
+	4.  If cat is invalid (specified but has incorrect syntax)
+ 		an InvalidData Exception will be thrown
+	"""
+	
+	# Categories may contain a-zA-z0-9+_- but cannot start with -
+	global _valid_category
+	import portage_dep
 	try:
 		if not catcache[mydata]:
 			return None
@@ -277,6 +298,9 @@ def catpkgsplit(mydata,silent=1):
 		retval=["null"]
 		p_split=pkgsplit(mydata,silent=silent)
 	elif len(mysplit)==2:
+		if portage_dep._dep_check_strict and \
+			not _valid_category.match(mysplit[0]):
+			raise InvalidData("Invalid category in %s" %mydata )
 		retval=[mysplit[0]]
 		p_split=pkgsplit(mysplit[1],silent=silent)
 	if not p_split:
