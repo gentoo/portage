@@ -84,7 +84,7 @@ def run_exitfuncs():
 			func(*targs, **kargs)
 		except SystemExit:
 			exc_info = sys.exc_info()
-		except:
+		except: # No idea what they called, so we need this broad except here.
 			dump_traceback("Error in portage_exec.run_exitfuncs", noiselevel=0)
 			exc_info = sys.exc_info()
 

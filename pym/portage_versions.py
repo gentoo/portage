@@ -222,7 +222,7 @@ def pkgsplit(mypkg,silent=1):
 		try:
 			int(myrev[1:])
 			revok=1
-		except ValueError:
+		except ValueError: # from int()
 			pass
 	if revok:
 		verPos = -2
