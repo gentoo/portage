@@ -1963,7 +1963,11 @@ class config:
 					continue
 				myvalues = virtuals_dict[k]
 				for x in myvalues:
-					if not isvalidatom(x):
+					myatom = x
+					if x.startswith("-"):
+						# allow incrementals
+						myatom = x[1:]
+					if not isvalidatom(myatom):
 						writemsg("--- Invalid atom in %s: %s\n" % \
 							(virtuals_file, x), noiselevel=-1)
 						myvalues.remove(x)
