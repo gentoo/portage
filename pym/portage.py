@@ -1348,13 +1348,31 @@ class config:
 
 			pkgprovidedlines = [grabfile(os.path.join(x, "package.provided")) for x in self.profiles]
 			pkgprovidedlines = stack_lists(pkgprovidedlines, incremental=1)
+			has_invalid_data = False
 			for x in range(len(pkgprovidedlines)-1, -1, -1):
+				myline = pkgprovidedlines[x]
+				if not isvalidatom("=" + myline):
+					writemsg("Invalid package name in package.provided:" + \
+						" %s\n" % myline, noiselevel=-1)
+					has_invalid_data = True
+					del pkgprovidedlines[x]
+					continue
 				cpvr = catpkgsplit(pkgprovidedlines[x])
 				if not cpvr or cpvr[0] == "null":
 					writemsg("Invalid package name in package.provided: "+pkgprovidedlines[x]+"\n",
 						noiselevel=-1)
+					has_invalid_data = True
 					del pkgprovidedlines[x]
-
+					continue
+				if cpvr[0] == "virtual":
+					writemsg("Virtual package in package.provided: %s\n" % \
+						myline, noiselevel=-1)
+					has_invalid_data = True
+					del pkgprovidedlines[x]
+					continue
+			if has_invalid_data:
+				writemsg("See portage(5) for correct package.provided usage.\n",
+					noiselevel=-1)
 			self.pprovideddict = {}
 			for x in pkgprovidedlines:
 				cpv=catpkgsplit(x)

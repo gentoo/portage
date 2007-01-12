@@ -547,10 +547,15 @@ VERINS="$(best_version net-ftp/glftpd)"
 .RE
 .SH "HELPER FUNCTIONS: OUTPUT"
 .TP
-\fBeinfo\fR \fI"informative message"\fR
+\fBeinfo\fR \fI"disposable message"\fR
+Same as \fBelog\fR, but should be used when the message isn't important to the
+user (like progress or status messages during the build process).
+.TP
+\fBelog\fR \fI"informative message"\fR
 If you need to display an message that you wish the user to read and take 
-notice of, then use \fBeinfo\fR.  It works just like \fBecho\fR(1), but 
-adds a little more to the output so as to catch the user's eye.
+notice of, then use \fBelog\fR.  It works just like \fBecho\fR(1), but 
+adds a little more to the output so as to catch the user's eye. The message
+will also be logged by portage for later review.
 .TP
 \fBewarn\fR \fI"warning message"\fR
 Same as \fBeinfo\fR, but should be used when showing a warning to the user.
