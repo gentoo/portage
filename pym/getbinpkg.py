@@ -6,7 +6,7 @@
 if not hasattr(__builtins__, "set"):
 	from sets import Set as set
 
-from output import *
+from output import red, yellow, green
 import htmllib,HTMLParser,formatter,sys,os,xpak,time,tempfile,base64,urllib2
 from portage_const import CACHE_PATH
 
@@ -51,7 +51,7 @@ class ParseLinks(HTMLParser.HTMLParser):
 	def get_anchors_by_prefix(self,prefix):
 		newlist = []
 		for x in self.PL_anchors:
-			if (len(x) >= len(prefix)) and (x[:len(suffix)] == prefix):
+			if x.startswith(prefix):
 				if x not in newlist:
 					newlist.append(x[:])
 		return newlist
@@ -59,7 +59,7 @@ class ParseLinks(HTMLParser.HTMLParser):
 	def get_anchors_by_suffix(self,suffix):
 		newlist = []
 		for x in self.PL_anchors:
-			if (len(x) >= len(suffix)) and (x[-len(suffix):] == suffix):
+			if x.endswith(suffix):
 				if x not in newlist:
 					newlist.append(x[:])
 		return newlist

@@ -47,7 +47,7 @@ def grabfile(myfilename, compat_level=0, recursive=0):
 	for x in mylines:
 		#the split/join thing removes leading and trailing whitespace, and converts any whitespace in the line
 		#into single spaces.
-		myline="".join(x.split())
+		myline=" ".join(x.split())
 		if not len(myline):
 			continue
 		if myline[0]=="#":
@@ -154,7 +154,7 @@ def stack_dicts(dicts, incremental=0, incrementals=[], ignore_none=0):
 					final_dict[y] += " "+mydict[y][:]
 				else:
 					final_dict[y]  = mydict[y][:]
-			mydict[y] = "".join(mydict[y].split()) # Remove extra spaces.
+			mydict[y] = " ".join(mydict[y].split()) # Remove extra spaces.
 	return final_dict
 
 def stack_lists(lists, incremental=1):

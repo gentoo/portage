@@ -1,0 +1,71 @@
+Code Guidelines
+---------------
+A few code guidelines to try to stick to, please comment of none of these make
+sense, they are pretty basic and mostly apply to old code.  However for people
+who are looking at current code, they make take up bad habits that exist in the
+current codebase.
+
+Strings
+-------
+Try not to use the functions in the string module, they are deprecated.
+
+string.join(<iterable>," ")
+
+should be replaced with:
+
+" ".join(<iterable>)
+
+and:
+
+string.split(string, delimeter)
+
+should be replaced with:
+
+string.split(delimeter)
+
+Nearly all other methods in string work on string objects and have similar calling
+conventions.
+
+Comparisons
+-----------
+
+if foo == None
+
+should be replaced with:
+
+if foo is not None:
+
+Is not does a reference comparison (address1 = address2 basically) and 
+the == forces a by value compare (with __eq__())
+
+Dict Lookups
+------------
+
+Try not to use has_key, you can use
+
+if foo in dict
+
+instead of if dict.has_key(foo)
+
+Also don't do stuff like:
+
+if foo in dict and dict[foo]:
+
+Generally you can do two things here, if you are messing with defaults..
+
+dict.get(foo, some_default)
+
+will try to retrieve foo from dict, if there is a KeyError, will insert foo
+into dict with the value of some_default.  This method is preferred in most cases.
+
+You can also do something like:
+
+try:
+	dict[foo]
+	...stuff here..
+except KeyError:
+	print "holy cow we totally expected a keyerror here"
+
+in most instances however you are only catching the KeyError to set a default,
+in which case you should be using dict.get() or telling the user they are missing
+a required dict key.
