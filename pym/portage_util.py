@@ -228,10 +228,12 @@ def grabfile_package(myfilename, compatlevel=0, recursive=0):
 def grablines(myfilename,recursive=0):
 	mylines=[]
 	if recursive and os.path.isdir(myfilename):
+		if myfilename in ["RCS", "CVS", "SCCS"]:
+			continue
 		dirlist = os.listdir(myfilename)
 		dirlist.sort()
 		for f in dirlist:
-			if not f.startswith("."):
+			if not f.startswith(".") and not f.endswith("~"):
 				mylines.extend(grablines(
 					os.path.join(myfilename, f), recursive))
 	else:
