@@ -112,7 +112,7 @@ def help(myaction,myopts,havecolor=1):
 		print "              Searches for matches of the supplied string in the current local"
 		print "              portage tree. By default emerge uses a case-insensitive simple "
 		print "              search, but you can enable a regular expression search by "
-		print "              prefixing the search string with %%."
+		print "              prefixing the search string with %."
 		print "              Prepending the expression with a '@' will cause the category to"
 		print "              be included in the search."
 		print "              A few examples:"
