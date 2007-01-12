@@ -4,7 +4,7 @@
 # $Id$
 
 
-import string,os,time,sys,re
+import os,time,sys,re
 from stat import *
 
 # [D]/Name/Version/Date/Flags/Tags
@@ -12,7 +12,7 @@ from stat import *
 def pathdata(entries, path):
 	"""(entries,path)
 	Returns the data(dict) for a specific file/dir at the path specified."""
-	mysplit=string.split(path,"/")
+	mysplit=path.split("/")
 	myentries=entries
 	mytarget=mysplit[-1]
 	mysplit=mysplit[:-1]
@@ -191,7 +191,7 @@ def getentries(mydir,recursive=0):
 			continue
 		if line=="D": # End of entries file
 			break
-		mysplit=string.split(line, "/")
+		mysplit=line.split("/")
 		if len(mysplit)!=6:
 			print "Confused:",mysplit
 			continue

@@ -7,7 +7,7 @@ if not hasattr(__builtins__, "set"):
 	from sets import Set as set
 
 from output import *
-import htmllib,HTMLParser,string,formatter,sys,os,xpak,time,tempfile,base64,urllib2
+import htmllib,HTMLParser,formatter,sys,os,xpak,time,tempfile,base64,urllib2
 
 try:
 	import cPickle
@@ -78,22 +78,22 @@ def create_conn(baseurl,conn=None):
 	"""(baseurl,conn) --- Takes a protocol://site:port/address url, and an
 	optional connection. If connection is already active, it is passed on.
 	baseurl is reduced to address and is returned in tuple (conn,address)"""
-	parts = string.split(baseurl, "://", 1)
+	parts = baseurl.split("://",1)
 	if len(parts) != 2:
 		raise ValueError, "Provided URL does not contain protocol identifier. '%s'" % baseurl
 	protocol,url_parts = parts
 	del parts
-	host,address = string.split(url_parts, "/", 1)
+	host,address = url_parts.split("/",1)
 	del url_parts
 	address = "/"+address
 
-	userpass_host = string.split(host, "@", 1)
+	userpass_host = host.split("@",1)
 	if len(userpass_host) == 1:
 		host = userpass_host[0]
 		userpass = ["anonymous"]
 	else:
 		host = userpass_host[1]
-		userpass = string.split(userpass_host[0], ":")
+		userpass = userpass_host[0].split(":")
 	del userpass_host
 
 	if len(userpass) > 2:
@@ -111,8 +111,7 @@ def create_conn(baseurl,conn=None):
 	if username and password:
 		http_headers = {
 			"Authorization": "Basic %s" %
-			  string.replace(
-			    base64.encodestring("%s:%s" % (username, password)),
+			  base64.encodestring("%s:%s" % (username, password)).replace(
 			    "\012",
 			    ""
 			  ),
@@ -211,8 +210,8 @@ def make_http_request(conn, address, params={}, headers={}, dest=None):
 		if ((rc == 301) or (rc == 302)):
 			ignored_data = response.read()
 			del ignored_data
-			for x in string.split(str(response.msg), "\n"):
-				parts = string.split(x, ": ", 1)
+			for x in str(response.msg).split("\n"):
+				parts = x.split(": ",1)
 				if parts[0] == "Location":
 					if (rc == 301):
 						sys.stderr.write(red("Location has moved: ")+str(parts[1])+"\n")
@@ -361,10 +360,10 @@ def file_get(baseurl,dest,conn=None,fcmd=None):
 	if not fcmd:
 		return file_get_lib(baseurl,dest,conn)
 
-	fcmd = string.replace(fcmd, "${DISTDIR}", dest)
-	fcmd = string.replace(fcmd, "${URI}", baseurl)
-	fcmd = string.replace(fcmd, "${FILE}", os.path.basename(baseurl))
-	mysplit = string.split(fcmd)
+	fcmd = fcmd.replace("${DISTDIR}",dest)
+	fcmd = fcmd.replace("${URI}", baseurl)
+	fcmd = fcmd.replace("${FILE}", os.path.basename(baseurl))
+	mysplit = fcmd.split()
 	mycmd   = mysplit[0]
 	myargs  = [os.path.basename(mycmd)]+mysplit[1:]
 	mypid=os.fork()
