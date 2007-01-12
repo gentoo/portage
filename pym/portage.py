@@ -5562,6 +5562,8 @@ class portdbapi(dbapi):
 	def finddigest(self,mycpv):
 		try:
 			mydig   = self.findname2(mycpv)[0]
+			if not mydig:
+				return ""
 			mydigs  = string.split(mydig, "/")[:-1]
 			mydig   = string.join(mydigs, "/")
 
