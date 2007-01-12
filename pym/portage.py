@@ -3655,9 +3655,7 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 	destexists=1
 	try:
 		dstat=os.lstat(dest)
-	except SystemExit, e:
-		raise
-	except:
+	except (OSError, IOError):
 		dstat=os.lstat(os.path.dirname(dest))
 		destexists=0
 
@@ -5058,9 +5056,7 @@ class vardbapi(dbapi):
 			return mymatch
 		try:
 			curmtime=os.stat(self.root+VDB_PATH+"/"+mycat)[stat.ST_MTIME]
-		except SystemExit, e:
-			raise
-		except:
+		except (IOError, OSError):
 			curmtime=0
 
 		if not self.matchcache.has_key(mycat) or not self.mtdircache[mycat]==curmtime:
@@ -5223,9 +5219,7 @@ class vardbapi(dbapi):
 				try:
 					old_counter = long(self.aux_get(x,["COUNTER"])[0])
 					writemsg("COUNTER '%d' '%s'\n" % (old_counter, x),1)
-				except SystemExit, e:
-					raise
-				except:
+				except (ValueError, KeyError): # valueError from long(), KeyError from aux_get
 					old_counter = 0
 					writemsg("!!! BAD COUNTER in '%s'\n" % (x), noiselevel=-1)
 				if old_counter > min_counter:
@@ -5259,9 +5253,7 @@ class vardbapi(dbapi):
 				counter = long(commands.getoutput(find_counter).strip())
 				writemsg("!!! Global counter missing. Regenerated from counter files to: %s\n" % counter,
 					noiselevel=-1)
-			except SystemExit, e:
-				raise
-			except:
+			except ValueError: # Value Error for long(), probably others for commands.getoutput
 				writemsg("!!! Initializing global counter.\n", noiselevel=-1)
 				counter=long(0)
 			changed=1
@@ -5574,9 +5566,7 @@ class portdbapi(dbapi):
 			mydig   = string.join(mydigs, "/")
 
 			mysplit = mycpv.split("/")
-		except SystemExit, e:
-			raise
-		except:
+		except OSError:
 			return ""
 		return mydig+"/files/digest-"+mysplit[-1]
 
@@ -6384,9 +6374,7 @@ class binarytree(object):
 				chunk_size = long(self.settings["PORTAGE_BINHOST_CHUNKSIZE"])
 				if chunk_size < 8:
 					chunk_size = 8
-			except SystemExit, e:
-				raise
-			except:
+			except (ValueError, KeyError):
 				chunk_size = 3000
 
 			writemsg(green("Fetching binary packages info...\n"))
@@ -6489,9 +6477,7 @@ class binarytree(object):
 		mydest = self.pkgdir+"/All/"
 		try:
 			os.makedirs(mydest, 0775)
-		except SystemExit, e:
-			raise
-		except:
+		except (OSError, IOError):
 			pass
 		return getbinpkg.file_get(
 			self.settings["PORTAGE_BINHOST"] + "/" + tbz2name,
@@ -6924,7 +6910,7 @@ class dblink:
 			os.path.join(destroot, filename.lstrip(os.path.sep)))
 		try:
 			mylstat = os.lstat(destfile)
-		except OSError:
+		except (OSError, IOError):
 			return True
 
 		pkgfiles = self.getcontents()
@@ -7131,9 +7117,7 @@ class dblink:
 				sys.exit(1)
 			try:
 				os.chdir(mycwd)
-			except SystemExit, e:
-				raise
-			except:
+			except OSError:
 				pass
 
 		if os.stat(srcroot).st_dev == os.stat(destroot).st_dev:
@@ -7337,8 +7321,6 @@ class dblink:
 			# stat file once, test using S_* macros many times (faster that way)
 			try:
 				mystat=os.lstat(mysrc)
-			except SystemExit, e:
-				raise
 			except OSError, e:
 				writemsg("\n")
 				writemsg(red("!!! ERROR: There appears to be ")+bold("FILE SYSTEM CORRUPTION.")+red(" A file that is listed\n"))
