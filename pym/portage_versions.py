@@ -75,9 +75,9 @@ def vercmp(ver1, ver2, silent=1):
 	
 	# building lists of the version parts before the suffix
 	# first part is simple
-	list1 = [string.atoi(match1.group(2))]
-	list2 = [string.atoi(match2.group(2))]
-	
+	list1 = [int(match1.group(2))]
+	list2 = [int(match2.group(2))]
+
 	# this part would greatly benefit from a fixed-length version pattern
 	if len(match1.group(3)) or len(match2.group(3)):
 		vlist1 = match1.group(3)[1:].split(".")

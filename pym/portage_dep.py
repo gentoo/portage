@@ -618,9 +618,7 @@ def match_from_list(mydep, candidate_list):
 		for x in candidate_list:
 			try:
 				result = pkgcmp(pkgsplit(x), mysplit)
-			except SystemExit:
-				raise
-			except:
+			except ValueError:
 				writemsg("\nInvalid package name: %s\n" % x, noiselevel=-1)
 				raise
 			if result is None:
