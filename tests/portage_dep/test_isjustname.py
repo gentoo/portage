@@ -1,7 +1,7 @@
 # test_isjustname.py -- Portage Unit Testing Functionality
 # Copyright 2006 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: test_atoms.py 5525 2007-01-10 13:35:03Z antarus $
+# $Id$
 
 from unittest import TestCase
 from portage_dep import isjustname

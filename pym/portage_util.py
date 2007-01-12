@@ -47,16 +47,16 @@ def grabfile(myfilename, compat_level=0, recursive=0):
 	for x in mylines:
 		#the split/join thing removes leading and trailing whitespace, and converts any whitespace in the line
 		#into single spaces.
-		myline=string.join(string.split(x))
+		myline="".join(x.split())
 		if not len(myline):
 			continue
 		if myline[0]=="#":
 			# Check if we have a compat-level string. BC-integration data.
 			# '##COMPAT==>N<==' 'some string attached to it'
-			mylinetest = string.split(myline, "<==", 1)
+			mylinetest = myline.split("<==",1)
 			if len(mylinetest) == 2:
 				myline_potential = mylinetest[1]
-				mylinetest = string.split(mylinetest[0],"##COMPAT==>")
+				mylinetest = mylinetest[0].split("##COMPAT==>")
 				if len(mylinetest) == 2:
 					if compat_level >= int(mylinetest[1]):
 						# It's a compat line, and the key matches.
@@ -154,7 +154,7 @@ def stack_dicts(dicts, incremental=0, incrementals=[], ignore_none=0):
 					final_dict[y] += " "+mydict[y][:]
 				else:
 					final_dict[y]  = mydict[y][:]
-			mydict[y] = string.join(mydict[y].split()) # Remove extra spaces.
+			mydict[y] = "".join(mydict[y].split()) # Remove extra spaces.
 	return final_dict
 
 def stack_lists(lists, incremental=1):
@@ -205,7 +205,7 @@ def grabdict(myfilename, juststrings=0, empty=0, recursive=0, incremental=1):
 		#into single spaces.
 		if x[0] == "#":
 			continue
-		myline=string.split(x)
+		myline=x.split()
 		if len(myline) < 2 and empty == 0:
 			continue
 		if len(myline) < 1 and empty == 1:

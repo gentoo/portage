@@ -4,7 +4,7 @@
 # $Id: /var/cvsroot/gentoo-src/portage/pym/cvstree.py,v 1.12.2.1 2005/01/16 02:35:33 carpaski Exp $
 
 
-import string,os,time,sys,re
+import os,time,sys,re
 from stat import *
 
 # [D]/Name/Version/Date/Flags/Tags
@@ -12,7 +12,7 @@ from stat import *
 def pathdata(entries, path):
 	"""(entries,path)
 	Returns the data(dict) for a specific file/dir at the path specified."""
-	mysplit=string.split(path,"/")
+	mysplit=path.split("/")
 	myentries=entries
 	mytarget=mysplit[-1]
 	mysplit=mysplit[:-1]
@@ -191,7 +191,7 @@ def getentries(mydir,recursive=0):
 			continue
 		if line=="D": # End of entries file
 			break
-		mysplit=string.split(line, "/")
+		mysplit=line.split("/")
 		if len(mysplit)!=6:
 			print "Confused:",mysplit
 			continue

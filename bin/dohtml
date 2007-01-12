@@ -30,7 +30,6 @@
 #
 
 import os
-import string
 import sys
 import types
 
@@ -95,11 +94,11 @@ def print_help():
 	print "       [-r] [-V] <file> [file ...]"
 	print
 	print " -a   Set the list of allowed to those that are specified."
-	print "      Default:", string.join(opts.allowed_exts, ",")
+	print "      Default:", ",".join(opts.allowed_exts)
 	print " -A   Extend the list of allowed file types."
 	print " -f   Set list of allowed extensionless file names."
 	print " -x   Set directories to be excluded from recursion."
-	print "      Default:", string.join(opts.disallowed_dirs, ",")
+	print "      Default:", ",".join(opts.disallowed_dirs)
 	print " -r   Install files and directories recursively."
 	print " -V   Be verbose."
 	print
@@ -127,7 +126,7 @@ def parse_args():
 			elif arg == "-p":
 				options.doc_prefix = sys.argv[x]
 			else:
-				values = string.split(sys.argv[x], ",")
+				values = sys.argv[x].split(",")
 				if arg == "-A":
 					options.allowed_exts.extend(values)
 				elif arg == "-a":

@@ -8,7 +8,7 @@
 # actual programs on the system (and makes sure that symlinks point to
 # the right files).
 
-import string, os.path, os, sys
+import os.path, os, sys
 try:
 	import portage
 except ImportError:
@@ -23,7 +23,7 @@ def CONTENTScheck(path):
 		sys.exit(1)
 	lines = contents.readlines()
 	for line in lines:
-		items = string.split(line)
+		items = line.split()
 		# items is a list w/ size depending on the type of item listed in item[0]
 		# if items[0] = 'dir' then items[1] is the path of a directory
 		# if items[0] = 'obj' then items[1] is the path of a file,
@@ -34,9 +34,9 @@ def CONTENTScheck(path):
 		#                          items[3] is the file the symlink should point to
 		#                          items[4] is the symlink mtime 
 		if (items[0] == 'obj'):
-			md5stored = string.lower(items[2])
+			md5stored = items[2].lower()
 			# fchksum.fmdft(file) returns the file's md5sum and the file's size
-			md5real = string.lower(portage.perform_checksum(items[1])[0])
+			md5real = portage.perform_checksum(items[1])[0].lower()
 			if (md5stored != md5real):
 				if md5real:
 					print "%s has md5sum of %s instead of %s" % (items[1], md5real, md5stored)

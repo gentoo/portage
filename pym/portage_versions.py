@@ -3,7 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-import re,string
+import re
 
 # PREFIX hack: -r(\\d+) -> -r(\\d+|0\\d+\\.\\d+) (see below)
 ver_regexp = re.compile("^(cvs\\.)?(\\d+)((\\.\\d+)*)([a-z]?)((_(pre|p|beta|alpha|rc)\\d*)*)(-r(\\d+|0\\.\\d+))?$")
@@ -89,18 +89,18 @@ def vercmp(ver1, ver2, silent=1):
 			# are given the same value (in sorting, for example).
 			if len(vlist1) <= i or len(vlist1[i]) == 0:
 				list1.append(-1)
-				list2.append(string.atoi(vlist2[i]))
+				list2.append(int(vlist2[i]))
 			elif len(vlist2) <= i or len(vlist2[i]) == 0:
-				list1.append(string.atoi(vlist1[i]))
+				list1.append(int(vlist1[i]))
 				list2.append(-1)
 			# Let's make life easy and use integers unless we're forced to use floats
 			elif (vlist1[i][0] != "0" and vlist2[i][0] != "0"):
-				list1.append(string.atoi(vlist1[i]))
-				list2.append(string.atoi(vlist2[i]))
+				list1.append(int(vlist1[i]))
+				list2.append(int(vlist2[i]))
 			# now we have to use floats so 1.02 compares correctly against 1.1
 			else:
-				list1.append(string.atof("0."+vlist1[i]))
-				list2.append(string.atof("0."+vlist2[i]))
+				list1.append(float("0."+vlist1[i]))
+				list2.append(float("0."+vlist2[i]))
 
 	# and now the final letter
 	if len(match1.group(5)):
@@ -137,9 +137,9 @@ def vercmp(ver1, ver2, silent=1):
 		if s1[1] != s2[1]:
 			# it's possible that the s(1|2)[1] == ''
 			# in such a case, fudge it.
-			try:			r1 = string.atoi(s1[1])
+			try:			r1 = int(s1[1])
 			except ValueError:	r1 = 0
-			try:			r2 = string.atoi(s2[1])
+			try:			r2 = int(s2[1])
 			except ValueError:	r2 = 0
 			return r1 - r2
 	
@@ -153,16 +153,16 @@ def vercmp(ver1, ver2, silent=1):
 	# while still staying in the main tree versioning scheme.
 	if match1.group(10):
 		if match1.group(10)[0] == '0':
-			r1 = string.atof(match1.group(10)[1:])
+			r1 = float(match1.group(10)[1:])
 		else:
-			r1 = string.atoi(match1.group(10))
+			r1 = int(match1.group(10))
 	else:
 		r1 = 0
 	if match2.group(10):
 		if match2.group(10)[0] == '0':
-			r2 = string.atof(match2.group(10)[1:])
+			r2 = float(match2.group(10)[1:])
 		else:
-			r2 = string.atoi(match2.group(10))
+			r2 = int(match2.group(10))
 	else:
 		r2 = 0
 	vercmp_cache[mykey] = r1 - r2
@@ -197,8 +197,8 @@ def pkgcmp(pkg1, pkg2):
 		return 1
 	if mycmp<0:
 		return -1
-	r1=string.atof(pkg1[2][1:])
-	r2=string.atof(pkg2[2][1:])
+	r1=float(pkg1[2][1:])
+	r2=float(pkg2[2][1:])
 	if r1>r2:
 		return 1
 	if r2>r1:
@@ -215,7 +215,7 @@ def pkgsplit(mypkg,silent=1):
 		return pkgcache[mypkg][:]
 	except KeyError:
 		pass
-	myparts=string.split(mypkg,'-')
+	myparts=mypkg.split("-")
 	
 	if len(myparts)<2:
 		if not silent:
@@ -235,9 +235,9 @@ def pkgsplit(mypkg,silent=1):
 	if len(myrev) and myrev[0]=="r":
 		try:
 			# PREFIX hack: allow floats in revisions
-			string.atof(myrev[1:])
+			float(myrev[1:])
 			revok=1
-		except: 
+		except ValueError: # from int()
 			pass
 	if revok:
 		verPos = -2
@@ -256,7 +256,7 @@ def pkgsplit(mypkg,silent=1):
 					pkgcache[mypkg]=None
 					return None
 					#names can't have versiony looking parts
-			myval=[string.join(myparts[:verPos],"-"),myparts[verPos],revision]
+			myval=["-".join(myparts[:verPos]),myparts[verPos],revision]
 			pkgcache[mypkg]=myval
 			return myval
 	else:

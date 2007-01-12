@@ -153,9 +153,7 @@ def getcwd():
 	"this fixes situations where the current directory doesn't exist"
 	try:
 		return os.getcwd()
-	except SystemExit, e:
-		raise
-	except:
+	except OSError: #dir doesn't exist
 		os.chdir("/")
 		return "/"
 getcwd()
@@ -1541,7 +1539,7 @@ class config:
 		best_mod = best_from_dict(property_string,self.modules,self.module_priority)
 		try:
 			mod = load_mod(best_mod)
-		except:
+		except ImportError:
 			dump_traceback(red("Error: Failed to import module '%s'") % best_mod, noiselevel=0)
 			sys.exit(1)
 		return mod
@@ -1969,7 +1967,11 @@ class config:
 					continue
 				myvalues = virtuals_dict[k]
 				for x in myvalues:
-					if not isvalidatom(x):
+					myatom = x
+					if x.startswith("-"):
+						# allow incrementals
+						myatom = x[1:]
+					if not isvalidatom(myatom):
 						writemsg("--- Invalid atom in %s: %s\n" % \
 							(virtuals_file, x), noiselevel=-1)
 						myvalues.remove(x)
@@ -2288,17 +2290,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 							thirdpartymirrors[mirrorname].remove(cmirr)
 				# now try the official mirrors
 				if thirdpartymirrors.has_key(mirrorname):
-					try:
-						shuffle(thirdpartymirrors[mirrorname])
-					except SystemExit, e:
-						raise
-					except:
-						writemsg(red("!!! YOU HAVE A BROKEN PYTHON/GLIBC.\n"), noiselevel=-1)
-						writemsg(    "!!! You are most likely on a pentium4 box and have specified -march=pentium4\n")
-						writemsg(    "!!! or -fpmath=sse2. GCC was generating invalid sse2 instructions in versions\n")
-						writemsg(    "!!! prior to 3.2.3. Please merge the latest gcc or rebuid python with either\n")
-						writemsg(    "!!! -march=pentium3 or set -mno-sse2 in your cflags.\n\n\n")
-						time.sleep(10)
+					shuffle(thirdpartymirrors[mirrorname])
 
 					for locmirr in thirdpartymirrors[mirrorname]:
 						filedict[myfile].append(locmirr+"/"+myuri[eidx+1:])
@@ -2551,21 +2543,14 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 								# Fetch failed... Try the next one... Kill 404 files though.
 								if (mystat[stat.ST_SIZE]<100000) and (len(myfile)>4) and not ((myfile[-5:]==".html") or (myfile[-4:]==".htm")):
 									html404=re.compile("<title>.*(not found|404).*</title>",re.I|re.M)
-									try:
-										if html404.search(open(mysettings["DISTDIR"]+"/"+myfile).read()):
-											try:
-												os.unlink(mysettings["DISTDIR"]+"/"+myfile)
-												writemsg(">>> Deleting invalid distfile. (Improper 404 redirect from server.)\n")
-												fetched = 0
-												continue
-											except SystemExit, e:
-												raise
-											except:
-												pass
-									except SystemExit, e:
-										raise
-									except:
-										pass
+									if html404.search(open(mysettings["DISTDIR"]+"/"+myfile).read()):
+										try:
+											os.unlink(mysettings["DISTDIR"]+"/"+myfile)
+											writemsg(">>> Deleting invalid distfile. (Improper 404 redirect from server.)\n")
+											fetched = 0
+											continue
+										except (IOError, OSError):
+											pass
 								fetched = 1
 								continue
 							if not fetchonly:
@@ -3681,9 +3666,7 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 	destexists=1
 	try:
 		dstat=os.lstat(dest)
-	except SystemExit, e:
-		raise
-	except:
+	except (OSError, IOError):
 		dstat=os.lstat(os.path.dirname(dest))
 		destexists=0
 
@@ -5084,9 +5067,7 @@ class vardbapi(dbapi):
 			return mymatch
 		try:
 			curmtime=os.stat(self.root+VDB_PATH+"/"+mycat)[stat.ST_MTIME]
-		except SystemExit, e:
-			raise
-		except:
+		except (IOError, OSError):
 			curmtime=0
 
 		if not self.matchcache.has_key(mycat) or not self.mtdircache[mycat]==curmtime:
@@ -5249,9 +5230,7 @@ class vardbapi(dbapi):
 				try:
 					old_counter = long(self.aux_get(x,["COUNTER"])[0])
 					writemsg("COUNTER '%d' '%s'\n" % (old_counter, x),1)
-				except SystemExit, e:
-					raise
-				except:
+				except (ValueError, KeyError): # valueError from long(), KeyError from aux_get
 					old_counter = 0
 					writemsg("!!! BAD COUNTER in '%s'\n" % (x), noiselevel=-1)
 				if old_counter > min_counter:
@@ -5285,9 +5264,7 @@ class vardbapi(dbapi):
 				counter = long(commands.getoutput(find_counter).strip())
 				writemsg("!!! Global counter missing. Regenerated from counter files to: %s\n" % counter,
 					noiselevel=-1)
-			except SystemExit, e:
-				raise
-			except:
+			except ValueError: # Value Error for long(), probably others for commands.getoutput
 				writemsg("!!! Initializing global counter.\n", noiselevel=-1)
 				counter=long(0)
 			changed=1
@@ -5596,13 +5573,13 @@ class portdbapi(dbapi):
 	def finddigest(self,mycpv):
 		try:
 			mydig   = self.findname2(mycpv)[0]
+			if not mydig:
+				return ""
 			mydigs  = string.split(mydig, "/")[:-1]
 			mydig   = string.join(mydigs, "/")
 
 			mysplit = mycpv.split("/")
-		except SystemExit, e:
-			raise
-		except:
+		except OSError:
 			return ""
 		return mydig+"/files/digest-"+mysplit[-1]
 
@@ -6410,9 +6387,7 @@ class binarytree(object):
 				chunk_size = long(self.settings["PORTAGE_BINHOST_CHUNKSIZE"])
 				if chunk_size < 8:
 					chunk_size = 8
-			except SystemExit, e:
-				raise
-			except:
+			except (ValueError, KeyError):
 				chunk_size = 3000
 
 			writemsg(green("Fetching binary packages info...\n"))
@@ -6515,9 +6490,7 @@ class binarytree(object):
 		mydest = self.pkgdir+"/All/"
 		try:
 			os.makedirs(mydest, 0775)
-		except SystemExit, e:
-			raise
-		except:
+		except (OSError, IOError):
 			pass
 		return getbinpkg.file_get(
 			self.settings["PORTAGE_BINHOST"] + "/" + tbz2name,
@@ -6950,7 +6923,7 @@ class dblink:
 			os.path.join(destroot, filename.lstrip(os.path.sep)))
 		try:
 			mylstat = os.lstat(destfile)
-		except OSError:
+		except (OSError, IOError):
 			return True
 
 		pkgfiles = self.getcontents()
@@ -7157,9 +7130,7 @@ class dblink:
 				sys.exit(1)
 			try:
 				os.chdir(mycwd)
-			except SystemExit, e:
-				raise
-			except:
+			except OSError:
 				pass
 
 		if os.stat(srcroot).st_dev == os.stat(destroot).st_dev:
@@ -7363,8 +7334,6 @@ class dblink:
 			# stat file once, test using S_* macros many times (faster that way)
 			try:
 				mystat=os.lstat(mysrc)
-			except SystemExit, e:
-				raise
 			except OSError, e:
 				writemsg("\n")
 				writemsg(red("!!! ERROR: There appears to be ")+bold("FILE SYSTEM CORRUPTION.")+red(" A file that is listed\n"))

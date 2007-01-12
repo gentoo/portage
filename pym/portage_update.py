@@ -188,7 +188,13 @@ def update_config_files(config_root, protect, protect_mask, update_iter):
 					line = file_contents[x][mypos]
 					if line[0] == "#" or not line.strip():
 						continue
-					key = dep_getkey(line.split()[0])
+					myatom = line.split()[0]
+					if myatom.startswith("-"):
+						# package.mask supports incrementals
+						myatom = myatom[1:]
+					if not isvalidatom(myatom):
+						continue
+					key = dep_getkey(myatom)
 					if key == old_value:
 						file_contents[x][mypos] = \
 							line.replace(old_value, new_value)
