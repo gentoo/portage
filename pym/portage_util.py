@@ -154,7 +154,7 @@ def stack_dicts(dicts, incremental=0, incrementals=[], ignore_none=0):
 					final_dict[y] += " "+mydict[y][:]
 				else:
 					final_dict[y]  = mydict[y][:]
-			mydict[y] = "".join(mydict[y].split()) # Remove extra spaces.
+			mydict[y] = " ".join(mydict[y].split()) # Remove extra spaces.
 	return final_dict
 
 def stack_lists(lists, incremental=1):
