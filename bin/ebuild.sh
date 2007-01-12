@@ -279,6 +279,7 @@ diefunc() {
 	echo >&2
 	echo "!!! ${*:-(no error message)}" >&2
 	echo "!!! If you need support, post the topmost build error, and the call stack if relevant." >&2
+	echo "!!! A complete build log is located at '${PORTAGE_LOG_FILE}'." >&2
 	echo >&2
 	if [ -n "${EBUILD_OVERLAY_ECLASSES}" ] ; then
 		echo "This ebuild used the following eclasses from overlays:" >&2
