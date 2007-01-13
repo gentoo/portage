@@ -9,7 +9,7 @@ profile.time.clock = clock
 
 profile.run("import emerge", os.getcwd()+"/prof")
 
- class StatsProcesser:
+class StatsProcesser:
 	def __init__(self, stats):
 		self.output = []
 		self.last = ""
