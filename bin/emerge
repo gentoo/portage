@@ -4951,6 +4951,9 @@ def adjust_config(myopts, settings):
 	settings["PORTAGE_DEBUG"] = str(PORTAGE_DEBUG)
 	settings.backup_changes("PORTAGE_DEBUG")
 
+	if settings.get("NOCOLOR") not in ("yes","true"):
+		output.havecolor = 1
+
 	"""The explicit --color < y | n > option overrides the NOCOLOR environment
 	variable and stdout auto-detection."""
 	if "--color" in myopts:
@@ -4961,12 +4964,15 @@ def adjust_config(myopts, settings):
 			output.havecolor = 0
 			settings["NOCOLOR"] = "true"
 		settings.backup_changes("NOCOLOR")
-	elif not sys.stdout.isatty():
+	elif not sys.stdout.isatty() and settings.get("NOCOLOR") != "no":
 		output.havecolor = 0
 		settings["NOCOLOR"] = "true"
 		settings.backup_changes("NOCOLOR")
 
 def emerge_main():
+	# Disable color until we're sure that it should be enabled (after
+	# EMERGE_DEFAULT_OPTS has been parsed).
+	output.havecolor = 0
 	# This first pass is just for options that need to be known as early as
 	# possible, such as --config-root.  They will be parsed again later,
 	# together with EMERGE_DEFAULT_OPTS (which may vary depending on the
@@ -4997,19 +5003,6 @@ def emerge_main():
 		portdb = trees[settings["ROOT"]]["porttree"].dbapi
 
 	xterm_titles = "notitles" not in settings.features
-
-	"""Disable color as early as possible via NOCOLOR and stdout
-	auto-detection.  This initial setting may later be overridden via the
-	--color < yes | no > option."""
-	if settings.get("NOCOLOR","").lower() in ("yes","true"):
-		nocolor()
-	elif (not sys.stdout.isatty()) and \
-		settings.get("NOCOLOR","").lower() != "no":
-		# revdep-rebuild exports NOCOLOR=false, so for now, don't allow
-		# NOCOLOR=false to override the isatty() check.  This can be fixed
-		# in revdep-rebuild by using the --nocolor option when appropriate
-		# instead of exporting NOCOLOR.
-		nocolor()
 
 	tmpcmdline = []
 	if "--ignore-default-opts" not in sys.argv:
