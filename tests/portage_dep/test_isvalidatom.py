@@ -7,10 +7,10 @@ from unittest import TestCase
 from portage_dep import isvalidatom
 
 class IsValidAtom(TestCase):
-        """ A simple testcase for isvalidatom
-        """
+	""" A simple testcase for isvalidatom
+	"""
 
-        def testIsValidAtom(self):
+	def testIsValidAtom(self):
 		
 		tests = [ ( "sys-apps/portage", True ),
 			  ( "=sys-apps/portage-2.1", True ),

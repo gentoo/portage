@@ -2618,7 +2618,7 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
 	NOTE: manifestonly and overwrite are useless with manifest2 and
 	      are therefore ignored."""
 	if myportdb is None:
- 		writemsg("Warning: myportdb not specified to digestgen\n")
+		writemsg("Warning: myportdb not specified to digestgen\n")
 		global portdb
 		myportdb = portdb
 	global _doebuild_manifest_exempt_depend
