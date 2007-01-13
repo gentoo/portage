@@ -87,18 +87,22 @@ export SANDBOX_ON="0"
 
 # sandbox support functions; defined prior to profile.bashrc srcing, since the profile might need to add a default exception (/usr/lib64/conftest fex)
 addread() {
+	[[ -z $1 || -n $2 ]] && die "Usage: addread <colon-delimited list of paths>"
 	export SANDBOX_READ="$SANDBOX_READ:$1"
 }
 
 addwrite() {
+	[[ -z $1 || -n $2 ]] && die "Usage: addwrite <colon-delimited list of paths>"
 	export SANDBOX_WRITE="$SANDBOX_WRITE:$1"
 }
 
 adddeny() {
+	[[ -z $1 || -n $2 ]] && die "Usage: adddeny <colon-delimited list of paths>"
 	export SANDBOX_DENY="$SANDBOX_DENY:$1"
 }
 
 addpredict() {
+	[[ -z $1 || -n $2 ]] && die "Usage: addpredict <colon-delimited list of paths>"
 	export SANDBOX_PREDICT="$SANDBOX_PREDICT:$1"
 }
 
