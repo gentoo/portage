@@ -3578,7 +3578,10 @@ def chk_updated_cfg_files(target_root, config_protect):
 		print
 
 def is_valid_package_atom(x):
-	testkey = portage.dep_getkey(x)
+	try:
+		testkey = portage.dep_getkey(x)
+	except portage_exception.InvalidData:
+		return False
 	if testkey.startswith("null/"):
 		testatom = x.replace(testkey[5:], "cat/"+testkey[5:])
 	elif "/" not in x:
