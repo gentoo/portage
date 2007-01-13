@@ -3449,7 +3449,7 @@ def show_unmerge_failure_message(pkg, ebuild, retval):
 	msg.append("If necessary, manually remove the ebuild " )
 	msg.append("in order to skip the execution of removal phases.")
 
-	f.add_line_break()
+	f.end_paragraph(1)
 	for x in msg:
 		f.add_flowing_data(x)
 	f.end_paragraph(1)
