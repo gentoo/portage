@@ -980,8 +980,8 @@ class config:
 
 			def check_var_directory(varname, var):
 				if not os.path.isdir(var):
-					writemsg("!!! Error: %s='%s' is not a directory. " + \
-						"Please correct this.\n" % (var, varname),
+					writemsg(("!!! Error: %s='%s' is not a directory. " + \
+						"Please correct this.\n") % (var, varname),
 						noiselevel=-1)
 					raise portage_exception.DirectoryNotFound(var)
 
