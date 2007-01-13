@@ -1026,22 +1026,26 @@ class depgraph:
 		already been selected) will be required in order to handle all possible
 		cases."""
 
-		from formatter import AbstractFormatter, DumbWriter
-		f = AbstractFormatter(DumbWriter(maxcol=72))
-
-		print "\n!!! Multiple versions within a single " + \
-			"package slot have been "
-		print "!!! pulled into the dependency graph:"
-		print
+		msg = []
+		msg.append("\n!!! Multiple versions within a single " + \
+			"package slot have been \n")
+		msg.append("!!! pulled into the dependency graph:\n\n")
 		for node, parents in packages:
-			print node,
+			msg.append(str(node))
 			if parents:
-				print "pulled in by"
+				msg.append(" pulled in by\n")
 				for parent in parents:
-					print "  ", parent
+					msg.append("  ")
+					msg.append(str(parent))
+					msg.append("\n")
 			else:
-				print "(no parents)"
-			print
+				msg.append(" (no parents)\n")
+			msg.append("\n")
+		sys.stderr.write("".join(msg))
+		sys.stderr.flush()
+
+		if "--quiet" in self.myopts:
+			return
 
 		msg = []
 		msg.append("It may be possible to solve this problem ")
@@ -1053,6 +1057,8 @@ class depgraph:
 		msg.append("the dependencies of two different packages, then those ")
 		msg.append("packages can not be installed simultaneously.")
 
+		from formatter import AbstractFormatter, DumbWriter
+		f = AbstractFormatter(DumbWriter(sys.stderr, maxcol=72))
 		for x in msg:
 			f.add_flowing_data(x)
 		f.end_paragraph(1)
@@ -1064,6 +1070,7 @@ class depgraph:
 		for x in msg:
 			f.add_flowing_data(x)
 		f.end_paragraph(1)
+		f.writer.flush()
 
 	def create(self, mybigkey, myparent=None, addme=1, myuse=None,
 		priority=DepPriority(), rev_dep=False, arg=None):
@@ -3433,7 +3440,7 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 def show_unmerge_failure_message(pkg, ebuild, retval):
 
 	from formatter import AbstractFormatter, DumbWriter
-	f = AbstractFormatter(DumbWriter(maxcol=72))
+	f = AbstractFormatter(DumbWriter(sys.stderr, maxcol=72))
 
 	msg = []
 	msg.append("A removal phase of the '%s' package " % pkg)
@@ -3443,10 +3450,11 @@ def show_unmerge_failure_message(pkg, ebuild, retval):
 	msg.append("If necessary, manually remove the ebuild " )
 	msg.append("in order to skip the execution of removal phases.")
 
-	print
+	f.end_paragraph(1)
 	for x in msg:
 		f.add_flowing_data(x)
 	f.end_paragraph(1)
+	f.writer.flush()
 
 def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 
@@ -3573,7 +3581,10 @@ def chk_updated_cfg_files(target_root, config_protect):
 		print
 
 def is_valid_package_atom(x):
-	testkey = portage.dep_getkey(x)
+	try:
+		testkey = portage.dep_getkey(x)
+	except portage_exception.InvalidData:
+		return False
 	if testkey.startswith("null/"):
 		testatom = x.replace(testkey[5:], "cat/"+testkey[5:])
 	elif "/" not in x:
@@ -4854,7 +4865,7 @@ def parse_opts(tmpcmdline, silent=False):
 
 	for x in myargs:
 		if x in actions and myaction != "search":
-			if x not in ["system", "world"]:
+			if not silent and x not in ["system", "world"]:
 				print red("*** Deprecated use of action '%s', use '--%s' instead" % (x,x))
 			# special case "search" so people can search for action terms, e.g. emerge -s sync
 			if myaction:
@@ -4970,6 +4981,9 @@ def adjust_config(myopts, settings):
 	settings["PORTAGE_DEBUG"] = str(PORTAGE_DEBUG)
 	settings.backup_changes("PORTAGE_DEBUG")
 
+	if settings.get("NOCOLOR") not in ("yes","true"):
+		output.havecolor = 1
+
 	"""The explicit --color < y | n > option overrides the NOCOLOR environment
 	variable and stdout auto-detection."""
 	if "--color" in myopts:
@@ -4980,12 +4994,15 @@ def adjust_config(myopts, settings):
 			output.havecolor = 0
 			settings["NOCOLOR"] = "true"
 		settings.backup_changes("NOCOLOR")
-	elif not sys.stdout.isatty():
+	elif not sys.stdout.isatty() and settings.get("NOCOLOR") != "no":
 		output.havecolor = 0
 		settings["NOCOLOR"] = "true"
 		settings.backup_changes("NOCOLOR")
 
 def emerge_main():
+	# Disable color until we're sure that it should be enabled (after
+	# EMERGE_DEFAULT_OPTS has been parsed).
+	output.havecolor = 0
 	# This first pass is just for options that need to be known as early as
 	# possible, such as --config-root.  They will be parsed again later,
 	# together with EMERGE_DEFAULT_OPTS (which may vary depending on the
@@ -5016,19 +5033,6 @@ def emerge_main():
 		portdb = trees[settings["ROOT"]]["porttree"].dbapi
 
 	xterm_titles = "notitles" not in settings.features
-
-	"""Disable color as early as possible via NOCOLOR and stdout
-	auto-detection.  This initial setting may later be overridden via the
-	--color < yes | no > option."""
-	if settings.get("NOCOLOR","").lower() in ("yes","true"):
-		nocolor()
-	elif (not sys.stdout.isatty()) and \
-		settings.get("NOCOLOR","").lower() != "no":
-		# revdep-rebuild exports NOCOLOR=false, so for now, don't allow
-		# NOCOLOR=false to override the isatty() check.  This can be fixed
-		# in revdep-rebuild by using the --nocolor option when appropriate
-		# instead of exporting NOCOLOR.
-		nocolor()
 
 	tmpcmdline = []
 	if "--ignore-default-opts" not in sys.argv:
