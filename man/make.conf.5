@@ -317,6 +317,13 @@ the get binary pkg options are given to \fBemerge\fR.  Review \fBemerge\fR(1)
 for more information.  Note that it should point to the 'All' directory on 
 the host that creates the binary packages and not to the root of the \fBPKGDIR\fR.
 .TP
+\fBPORTAGE_COMPRESS\fR = \fI"bzip2"\fR
+This variable contains the command used to compress documentation during the
+install phase.
+.TP
+\fBPORTAGE_COMPRESS_FLAGS\fR = \fI"-9"\fR
+This variable contains flags for the \fBPORTAGE_COMPRESS\fR command.
+.TP
 \fBPORTAGE_NICENESS\fR = \fI[number]\fR
 The value of this variable will be added to the current nice level that 
 emerge is running at.  In other words, this will not set the nice level, 
