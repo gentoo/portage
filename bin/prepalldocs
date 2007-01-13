@@ -19,7 +19,7 @@ ecompressdir /usr/share/doc
 ret=$?
 
 if [[ -d ${T}/ecompressdir-html-backup ]] ; then
-	mv "${T}"/html "${D}"/usr/share/doc/${PF}/html
+	mv "${T}"/ecompressdir-html-backup "${D}"/usr/share/doc/${PF}/html
 fi
 
 exit ${ret}
