@@ -278,7 +278,9 @@ place\-holders \\${DISTDIR} and \\${URI}.
 \fBGENTOO_MIRRORS\fR = \fI[URLs]\fR
 Insert your space\-seperated list of local mirrors here.  These
 locations are used to download files before the ones listed in
-the \fIebuild scripts\fR. Merging 'mirrorselect' can help.
+the \fIebuild scripts\fR. Merging 'mirrorselect' can help.  Entries in this
+variable that have no protocol and simply start with a '/' path separator may
+be used to specify mounted filesystem mirrors.
 .TP
 \fBhttp_proxy ftp_proxy\fR = \fI[host:port]\fR
 These vars are used if the sources must be downloaded from the
