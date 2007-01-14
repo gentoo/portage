@@ -1513,6 +1513,7 @@ class config:
 		abs_profile_path = os.path.join(self["PORTAGE_CONFIGROOT"],
 			PROFILE_PATH.lstrip(os.path.sep))
 		if not os.path.islink(abs_profile_path) and \
+			not os.path.exists(os.path.join(abs_profile_path, "parent")) and \
 			os.path.exists(os.path.join(self["PORTDIR"], "profiles")):
 			writemsg("\a\n\n!!! %s is not a symlink and will probably prevent most merges.\n" % abs_profile_path,
 				noiselevel=-1)
