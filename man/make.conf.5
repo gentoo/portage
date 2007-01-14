@@ -1,4 +1,4 @@
-.TH "MAKE.CONF" "5" "Dec 2005" "Portage 2.1" "portage"
+.TH "MAKE.CONF" "5" "Jan 2007" "Portage 2.1.2" "Portage"
 .SH "NAME"
 make.conf \- custom settings for Portage
 .SH "SYNOPSIS"
@@ -66,9 +66,11 @@ step as \fI\-\-host=${CHOST}\fR.  This way you can force the build\-host.
 
 For more information:
 .br
-http://gcc.gnu.org/onlinedocs/gcc\-3.2/gcc/Submodel\-Options.html
+http://gcc.gnu.org/onlinedocs/gcc\-4.1.1/gcc/Submodel\-Options.html
 .br
 http://gcc.gnu.org/onlinedocs/gcc\-3.3/gcc/Submodel\-Options.html
+.br
+http://gcc.gnu.org/onlinedocs/gcc\-3.2/gcc/Submodel\-Options.html
 .br
 http://gcc.gnu.org/onlinedocs/gcc\-2.95.3/gcc_2.html
 .TP
@@ -104,7 +106,7 @@ informational messages.  This variable is unset by default.
 .TP
 .B EMERGE_DEFAULT_OPTS
 Options to append to the end of the \fBemerge\fR(1) command line on every invocation.
-These options will not be appended to the command line if --ignore-default-opts
+These options will not be appended to the command line if \-\-ignore\-default\-opts
 is specified.
 .TP
 .B EPAUSE_IGNORE
@@ -119,7 +121,7 @@ part of \fBFEATURES\fR and should not be disabled by default.  This is
 an incremental variable.
 .RS
 .TP
-.B assume-digests
+.B assume\-digests
 When commiting work to cvs with \fBrepoman\fR(1), assume that all existing 
 SRC_URI digests are correct.  This feature also affects digest generation via
 \fBebuild\fR(1) and \fBemerge\fR(1) (emerge generates digests only when the
@@ -147,7 +149,7 @@ feature.
 .TP
 .B digest
 Autogenerate digests for packages when running the \fBemerge\fR(1) command.  If
-the \fIassume-digests\fR feature is also enabled then existing SRC_URI digests
+the \fIassume\-digests\fR feature is also enabled then existing SRC_URI digests
 will be reused whenever they are available.
 .TP
 .B distcc
@@ -183,8 +185,8 @@ Do not delete the ${T} directory after the merge process.
 .B keepwork
 Do not delete the ${WORKDIR} directory after the merge process.
 .TP
-.B metadata-transfer
-Automatically perform a metadata transfer when `emerge --sync` is run.
+.B metadata\-transfer
+Automatically perform a metadata transfer when `emerge \-\-sync` is run.
 .TP
 .B mirror
 This will cause \fBFETCHCOMMAND\fR to always be run even if 
@@ -211,7 +213,7 @@ Prevents the stripping of binaries that are merged to the live filesystem.
 .B notitles
 Disables xterm titlebar updates (which contains status info).
 .TP
-.B parallel-fetch
+.B parallel\-fetch
 Fetch in the background while compiling.
 .TP
 .B sandbox
@@ -253,7 +255,8 @@ bits from any file that is not listed in \fI/etc/portage/suidctl.conf\fR.
 .B test
 Run package\-specific tests during each merge to help make sure 
 the package compiled properly.  See \fItest\fR in \fBebuild\fR(1) 
-and \fIsrc_test()\fR in \fBebuild\fR(5).
+and \fIsrc_test()\fR in \fBebuild\fR(5). This feature implies the "test"
+\fBUSE\fR flag.
 .TP
 .B userfetch
 When portage is run as root, drop privileges to portage:portage during the
@@ -270,7 +273,7 @@ Enable the sandbox in the compile phase, when running without root privs (\fIuse
 .B FETCHCOMMAND
 This variable contains the command used for fetching package sources from
 the internet.  It must contain the full path to the executable as well as the
-place-holders \\${DISTDIR} and \\${URI}.
+place\-holders \\${DISTDIR} and \\${URI}.
 .TP
 \fBGENTOO_MIRRORS\fR = \fI[URLs]\fR
 Insert your space\-seperated list of local mirrors here.  These
@@ -321,39 +324,42 @@ the host that creates the binary packages and not to the root of the \fBPKGDIR\f
 This variable contains the command used to compress documentation during the
 install phase.
 .TP
-\fBPORTAGE_COMPRESS_FLAGS\fR = \fI"-9"\fR
+\fBPORTAGE_COMPRESS_FLAGS\fR = \fI"\-9"\fR
 This variable contains flags for the \fBPORTAGE_COMPRESS\fR command.
 .TP
-\fBPORTAGE_NICENESS\fR = \fI[number]\fR
-The value of this variable will be added to the current nice level that 
-emerge is running at.  In other words, this will not set the nice level, 
-it will increment it.  For more information about nice levels and what 
-are acceptable ranges, see \fBnice\fR(1).
+.B PORTAGE_ELOG_CLASSES
 .TP
-\fBPORTAGE_ELOG_CLASSES\fR
+.B PORTAGE_ELOG_SYSTEM
 .TP
-\fBPORTAGE_ELOG_SYSTEM\fR
+.B PORTAGE_ELOG_COMMAND
 .TP
-\fBPORTAGE_ELOG_COMMAND\fR
+.B PORTAGE_ELOG_MAILURI
 .TP
-\fBPORTAGE_ELOG_MAILURI\fR
+.B PORTAGE_ELOG_MAILFROM
 .TP
-\fBPORTAGE_ELOG_MAILFROM\fR
-.TP
-\fBPORTAGE_ELOG_MAILSUBJECT\fR
+.B PORTAGE_ELOG_MAILSUBJECT
 Please see /etc/make.conf.example for elog documentation.
 .TP
+\fBPORTAGE_NICENESS\fR = \fI[number]\fR
+The value of this variable will be added to the current nice level that
+emerge is running at.  In other words, this will not set the nice level,
+it will increment it.  For more information about nice levels and what
+are acceptable ranges, see \fBnice\fR(1).
+.TP
 \fBPORTAGE_RSYNC_EXTRA_OPTS\fR = \fI[rsync options string]\fR
-Additional rsync options to be used by \fBemerge --sync\fR.
+Additional rsync options to be used by \fBemerge \-\-sync\fR.
 .br
 Defaults to no value.
 .TP
 \fBPORTAGE_RSYNC_OPTS\fR = \fI[rsync options string]\fR
-Default rsync options to be used by \fBemerge --sync\fR. 
+Default rsync options to be used by \fBemerge \-\-sync\fR. 
 .br
 \fBDon't change this unless you know exactly what you're doing!\fR
 .br
-Defaults to "--recursive --links --safe-links --perms --times --compress --force --whole-file --delete --delete-after --stats --timeout=180 --exclude='/distfiles' --exclude='/local' --exclude='/packages'"
+Defaults to "\-\-recursive \-\-links \-\-safe\-links \-\-perms \-\-times
+\-\-compress \-\-force \-\-whole\-file \-\-delete \-\-delete\-after \-\-stats
+\-\-timeout=180 \-\-exclude='/distfiles' \-\-exclude='/local'
+\-\-exclude='/packages'"
 .TP
 \fBPORTAGE_RSYNC_RETRIES\fR = \fI[NUMBER]\fR
 The number of times rsync should retry on failed connections before
@@ -378,11 +384,6 @@ directories.
 .br
 Defaults to no value.
 .TP
-.B RESUMECOMMAND
-This variable contains the command used for resuming package sources that
-have been partially downloaded.  It should be defined using the same format
-as \fBFETCHCOMMAND\fR.
-.TP
 \fBQA_STRICT_EXECSTACK = \fI"set"\fR
 Set this to cause portage to ignore any \fIQA_EXECSTACK\fR override
 settings from ebuilds.  See also \fBebuild\fR(5).
@@ -394,6 +395,11 @@ settings from ebuilds.  See also \fBebuild\fR(5).
 \fBQA_STRICT_TEXTRELS = \fI"set"\fR
 Set this to cause portage to ignore any \fIQA_TEXTREL\fR override
 settings from ebuilds.  See also \fBebuild\fR(5).
+.TP
+.B RESUMECOMMAND
+This variable contains the command used for resuming package sources that
+have been partially downloaded.  It should be defined using the same format
+as \fBFETCHCOMMAND\fR.
 .TP
 \fBROOT\fR = \fI[path]\fR
 Use \fBROOT\fR to specify the target root filesystem to be used for merging 
@@ -430,7 +436,7 @@ Determines the precedence of layers in the incremental stacking of the USE
 variable. Precedence decreases from left to right such that env overrides
 pkg, pkg overrides conf, and so forth.
 
-\fB***warning***\fR
+.B ***warning***
 .br
 Do not modify this value unless you're a developer and you know what
 you're doing. If you change this and something breaks, we will not help
@@ -442,7 +448,7 @@ you fix it.
 USE from the current USE environment variable if it exists
 .TP
 .B pkg
-Per-package USE from \fB/etc/portage/package.use\fR (see \fBportage\fR(5))
+Per\-package USE from \fB/etc/portage/package.use\fR (see \fBportage\fR(5))
 .TP
 .B conf
 USE from make.conf
