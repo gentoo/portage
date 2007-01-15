@@ -3352,6 +3352,10 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 			return spawn(EBUILD_SH_BINARY + " depend", mysettings)
 
+		# Validate dependency metadata here to ensure that ebuilds with invalid
+		# data are never installed (even via the ebuild command).
+		invalid_dep_exempt_phases = \
+			set(["clean", "cleanrm", "help", "prerm", "postrm"])
 		mycpv = mysettings["CATEGORY"] + "/" + mysettings["PF"]
 		dep_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
 		metadata = dict(izip(dep_keys, mydbapi.aux_get(mycpv, dep_keys)))
@@ -3367,7 +3371,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			if not mycheck[0]:
 				writemsg("%s: %s\n%s\n" % (
 					dep_type, metadata[dep_type], mycheck[1]), noiselevel=-1)
-				return 1
+				if mydo not in invalid_dep_exempt_phases:
+					return 1
 			del dep_type, mycheck
 		del mycpv, dep_keys, metadata, FakeTree, dep_check_trees
 
