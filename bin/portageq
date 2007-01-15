@@ -290,7 +290,7 @@ def usage(argv):
 	#
 	for name in globals().keys():
 		# Drop python stuff, modules, and our own support functions.
-		if (name in ("usage", "__doc__", "__name__", "main", "os", "portage", "sys", "__builtins__", "types", "string")):
+		if (name in ("usage", "__doc__", "__name__", "main", "os", "portage", "sys", "__builtins__", "types", "string","exithandler")):
 			continue
 
 		# Drop non-functions
