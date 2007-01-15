@@ -3368,6 +3368,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				writemsg("%s: %s\n%s\n" % (
 					dep_type, metadata[dep_type], mycheck[1]), noiselevel=-1)
 				return 1
+			del dep_type, mycheck
+		del mycpv, dep_keys, metadata, FakeTree, dep_check_trees
 
 		if "PORTAGE_TMPDIR" not in mysettings or \
 			not os.path.isdir(mysettings["PORTAGE_TMPDIR"]):
