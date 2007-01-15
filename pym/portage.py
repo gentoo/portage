@@ -3352,6 +3352,23 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 			return spawn(EBUILD_SH_BINARY + " depend", mysettings)
 
+		mycpv = mysettings["CATEGORY"] + "/" + mysettings["PF"]
+		dep_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
+		metadata = dict(izip(dep_keys, mydbapi.aux_get(mycpv, dep_keys)))
+		class FakeTree(object):
+			def __init__(self, mydb):
+				self.dbapi = mydb
+		dep_check_trees = {myroot:{}}
+		dep_check_trees[myroot]["porttree"] = \
+			FakeTree(fakedbapi(settings=mysettings))
+		for dep_type in dep_keys:
+			mycheck = dep_check(metadata[dep_type], None, mysettings,
+				myuse="all", myroot=myroot, trees=dep_check_trees)
+			if not mycheck[0]:
+				writemsg("%s: %s\n%s\n" % (
+					dep_type, metadata[dep_type], mycheck[1]), noiselevel=-1)
+				return 1
+
 		if "PORTAGE_TMPDIR" not in mysettings or \
 			not os.path.isdir(mysettings["PORTAGE_TMPDIR"]):
 			writemsg("The directory specified in your " + \
