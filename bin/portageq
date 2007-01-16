@@ -274,13 +274,20 @@ def get_repos(argv):
 	"""<root>
 	Returns all repos with names (repo_name file) argv[0] = $ROOT
 	"""
+	if len(argv) < 1:
+		print "ERROR: insufficient parameters!"
+		sys.exit(2)
 	print " ".join(portage.db[argv[0]]["porttree"].dbapi.getRepositories())
 
 def get_repo_path(argv):
-	"""<root> <repo_id>
+	"""<root> <repo_id>+
 	Returns the path to the repo named argv[1], argv[0] = $ROOT
 	"""
-	print portage.db[argv[0]]["porttree"].dbapi.getRepositoryPath(argv[1])
+	if len(argv) < 2:
+		print "ERROR: insufficient parameters!"
+		sys.exit(2)
+	for arg in arvg[1:]
+		print portage.db[argv[0]]["porttree"].dbapi.getRepositoryPath(argv[1])
 
 #-----------------------------------------------------------------------------
 #
