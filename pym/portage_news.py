@@ -60,6 +60,10 @@ class NewsManager(object):
 			timestamp = 0
 
 		path = os.path.join( self.portdb.getRepositoryPath( repoid ), self.NEWS_PATH )
+		# Skip reading news for repoid if the news dir does not exist.  Requested by
+		# NightMorph :)
+		if not os.path.exists( path ):
+			return None
 		news = os.listdir( path )
 		updates = []
 		for item in news:
