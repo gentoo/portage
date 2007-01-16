@@ -5547,12 +5547,11 @@ class portdbapi(dbapi):
 		self.treemap = {}
 		for path in self.porttrees:
 			repo_name_path = os.path.join( path, REPO_NAME_LOC )
-			if os.path.exists( repo_name_path ):
-				try:
-					repo_name = open( repo_name_path ,'r').readline().strip()
-					self.treemap[repo_name] = path
-				except (OSError,IOError):
-					pass
+			try:
+				repo_name = open( repo_name_path ,'r').readline().strip()
+				self.treemap[repo_name] = path
+			except (OSError,IOError):
+				pass
 		
 		self.auxdbmodule  = self.mysettings.load_best_module("portdbapi.auxdbmodule")
 		self.auxdb        = {}
