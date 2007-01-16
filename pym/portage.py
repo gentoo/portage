@@ -3917,7 +3917,15 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 		for cpv in portdb.match(match_atom):
 			# only use new-style matches
 			if cpv.startswith("virtual/"):
-				pkgs.append((cpv, pkgsplit(cpv)))
+				pkgs.append((cpv, pkgsplit(cpv), portdb))
+		if kwargs["use_binaries"] and "vartree" in trees[myroot]:
+			vardb = trees[myroot]["vartree"].dbapi
+			for cpv in vardb.match(match_atom):
+				# only use new-style matches
+				if cpv.startswith("virtual/"):
+					if cpv in pkgs:
+						continue
+					pkgs.append((cpv, pkgsplit(cpv), vardb))
 		if not (pkgs or mychoices):
 			# This one couldn't be expanded as a new-style virtual.  Old-style
 			# virtuals have already been expanded by dep_virtual, so this one
@@ -3935,7 +3943,7 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 		else:
 			a = ['||']
 		for y in pkgs:
-			depstring = " ".join(portdb.aux_get(y[0], dep_keys))
+			depstring = " ".join(y[2].aux_get(y[0], dep_keys))
 			if edebug:
 				print "Virtual Parent:   ", y[0]
 				print "Virtual Depstring:", depstring
