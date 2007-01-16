@@ -1600,8 +1600,8 @@ else:
 		commitmessage+="\n(Portage version: Unknown)"
 	if myupdates or myremoved:
 		myfiles = myupdates + myremoved
-		commitmessagefile=tempfile.mktemp(".repoman.msg")
-		mymsg=open(commitmessagefile,"w")
+		fd, commitmessagefile = tempfile.mkstemp(".repoman.msg")
+		mymsg = os.fdopen(fd, "w")
 		mymsg.write(commitmessage)
 		mymsg.close()
 
@@ -1752,8 +1752,8 @@ else:
 		if "--pretend" in myoptions:
 			print "(/usr/bin/cvs -q commit -F "+commitmessagefile+")"
 		else:
-			commitmessagefile = tempfile.mktemp(".repoman.msg")
-			mymsg=open(commitmessagefile,"w")
+			fd, commitmessagefile = tempfile.mkstemp(".repoman.msg")
+			mymsg = os.fdopen(fd, "w")
 			mymsg.write(commitmessage)
 			if signed:
 				mymsg.write("\n (Signed Manifest commit)")
