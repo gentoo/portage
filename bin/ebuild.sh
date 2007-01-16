@@ -384,13 +384,6 @@ unpack() {
 	local x
 	local y
 	local myfail
-	local tarvars
-
-	if [ "$USERLAND" == "BSD" ]; then
-		tarvars=""
-	else
-		tarvars="--no-same-owner"
-	fi
 
 	[ -z "$*" ] && die "Nothing passed to the 'unpack' command"
 
@@ -412,13 +405,13 @@ unpack() {
 		myfail="failure unpacking ${x}"
 		case "${x##*.}" in
 			tar)
-				tar xf "${srcdir}${x}" ${tarvars} || die "$myfail"
+				tar xof "${srcdir}${x}" || die "$myfail"
 				;;
 			tgz)
-				tar xzf "${srcdir}${x}" ${tarvars} || die "$myfail"
+				tar xozf "${srcdir}${x}" || die "$myfail"
 				;;
 			tbz|tbz2)
-				bzip2 -dc "${srcdir}${x}" | tar xf - ${tarvars}
+				bzip2 -dc "${srcdir}${x}" | tar xof -
 				assert "$myfail"
 				;;
 			ZIP|zip|jar)
@@ -426,14 +419,14 @@ unpack() {
 				;;
 			gz|Z|z)
 				if [ "${y}" == "tar" ]; then
-					tar zxf "${srcdir}${x}" ${tarvars} || die "$myfail"
+					tar zoxf "${srcdir}${x}" || die "$myfail"
 				else
 					gzip -dc "${srcdir}${x}" > ${x%.*} || die "$myfail"
 				fi
 				;;
 			bz2|bz)
 				if [ "${y}" == "tar" ]; then
-					bzip2 -dc "${srcdir}${x}" | tar xf - ${tarvars}
+					bzip2 -dc "${srcdir}${x}" | tar xof - ${tarvars}
 					assert "$myfail"
 				else
 					bzip2 -dc "${srcdir}${x}" > ${x%.*} || die "$myfail"
