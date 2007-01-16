@@ -40,6 +40,7 @@ import codecs
 
 from portage_manifest import Manifest
 from portage_exception import ParseError
+from portage_exec import spawn
 
 from output import bold, darkgreen, darkred, green, nocolor, red, turquoise, yellow
 
@@ -1597,7 +1598,8 @@ else:
 	except AttributeError:
 		print "Failed to insert portage version in message!"
 		commitmessage+="\n(Portage version: Unknown)"
-	if myupdates:
+	if myupdates or myremoved:
+		myfiles = myupdates + myremoved
 		unlinkfile=1
 		commitmessagefile=tempfile.mktemp(".repoman.msg")
 		if os.path.exists(commitmessagefile):
@@ -1615,9 +1617,12 @@ else:
 
 		retval = None
 		if "--pretend" in myoptions:
-			print "(/usr/bin/cvs -q commit -F "+ commitmessagefile +" "+ " ".join(myupdates)+")"
+			print "(/usr/bin/cvs -q commit -F %s %s)" % \
+				(commitmessagefile, " ".join(myfiles))
 		else:
-			retval=os.system("/usr/bin/cvs -q commit -F "+ commitmessagefile + " " +" ".join(myupdates))
+			retval = spawn(["/usr/bin/cvs", "-q", "commit",
+				"-F", commitmessagefile] + myfiles,
+				env=repoman_settings.environ())
 			if retval:
 				print "!!! Exiting on cvs (shell) error code:",retval
 				sys.exit(retval)
