@@ -3524,6 +3524,25 @@ def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 
 
 def post_emerge(settings, mtimedb, retval):
+	"""
+	Misc. things to run at the end of a merge session.
+	
+	Update Info Files
+	Update Config Files
+	Update News Items
+	Commit mtimeDB
+	Exit Emerge
+	
+	@param settings: Configuration settings (typically portage.settings)
+	@type settings: portage.config()
+	@param mtimedb: The mtimeDB to store data needed across merge invocations
+	@type mtimedb: MtimeDB class instance
+	@param retval: Emerge's return value
+	@type retval: Int
+	@rype: None
+	@returns:
+	1.  Calls sys.exit(retval)
+	"""
 	target_root = settings["ROOT"]
 	info_mtimes = mtimedb["info"]
 	config_protect = settings.get("CONFIG_PROTECT","").split()
@@ -3539,6 +3558,16 @@ def post_emerge(settings, mtimedb, retval):
 		chk_updated_info_files(target_root, infodirs, info_mtimes, retval)
 
 	chk_updated_cfg_files(target_root, config_protect)
+	
+	NEWS_PATH = os.path.join( "metadata", "news" )
+	UNREAD_PATH = os.path.join( target_root, portage.PRIVATE_PATH, 'news')
+	repo_id = 'gentoo'
+	unreadItems = checkUpdatedNewsItems(target_root, NEWS_PATH, UNREAD_PATH, repo_id)
+	if unreadItems:
+		print colorize("WARN", " * IMPORTANT:"),
+		print "%s news items need reading." % unreadItems
+		print colorize("WARN", " *"),
+		print "Type something to read the news"
 	mtimedb.commit()
 	sys.exit(retval)
 
@@ -3576,6 +3605,28 @@ def chk_updated_cfg_files(target_root, config_protect):
 			#print " "+yellow("*")+" Type "+green("emerge --help config")+" to learn how to update config files."
 			print " "+yellow("*")+" Type "+green("emerge --help config")+" to learn how to update config files."
 		print
+
+def checkUpdatedNewsItems( root, NEWS_PATH, UNREAD_PATH, repo_id ):
+	"""
+	Examines news items in repodir + '/' + NEWS_PATH and attempts to find unread items
+	Returns the number of unread (yet relevent) items.
+	
+	@param root:
+	@type root:
+	@param NEWS_PATH:
+	@type NEWS_PATH:
+	@param UNREAD_PATH:
+	@type UNREAD_PATH:
+	@param repo_id:
+	@type repo_id:
+	@rtype: Integer
+	@returns:
+	1.  The number of unread but relevant news items.
+	
+	"""
+	from portage_news import NewsManager
+	manager = NewsManager( root, NEWS_PATH, UNREAD_PATH )
+	return manager.getUnreadItems( repo_id, update=True )
 
 def is_valid_package_atom(x):
 	try:

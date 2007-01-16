@@ -270,6 +270,17 @@ def envvar(argv):
 		else:
 			print portage.settings[arg]
 
+def get_repos(argv):
+	"""<root>
+	Returns all repos with names (repo_name file) argv[0] = $ROOT
+	"""
+	print " ".join(portage.db[argv[0]]["porttree"].dbapi.getRepositories())
+
+def get_repo_path(argv):
+	"""<root> <repo_id>
+	Returns the path to the repo named argv[1], argv[0] = $ROOT
+	"""
+	print portage.db[argv[0]]["porttree"].dbapi.getRepositoryPath(argv[1])
 
 #-----------------------------------------------------------------------------
 #

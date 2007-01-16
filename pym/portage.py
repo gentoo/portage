@@ -71,7 +71,7 @@ try:
 	  MOVE_BINARY, PRELINK_BINARY, WORLD_FILE, MAKE_CONF_FILE, MAKE_DEFAULTS_FILE, \
 	  DEPRECATED_PROFILE_FILE, USER_VIRTUALS_FILE, EBUILD_SH_ENV_FILE, \
 	  INVALID_ENV_FILE, CUSTOM_MIRRORS_FILE, CONFIG_MEMORY_FILE,\
-	  INCREMENTALS, EAPI, MISC_SH_BINARY
+	  INCREMENTALS, EAPI, MISC_SH_BINARY, REPO_NAME_LOC, REPO_NAME_FILE
 
 	from portage_data import ostype, lchown, userland, secpass, uid, wheelgid, \
 	                         portage_uid, portage_gid, userpriv_groups
@@ -4527,19 +4527,34 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 	return rValue
 
 class portagetree:
-	def __init__(self, root="/", virtual=None, clone=None, settings=None):
+	def __init__(self, root="/", virtual=None, clone=None, settings=None, portroot=None):
+		"""
+		Constructor for a PortageTree
+		
+		Note: Portroot was added for GLEP 42 functionality and defaults to the $PORTDIR
+		env variable.
+		
+		@param root: ${ROOT}, defaults to '/', see make.conf(5)
+		@type root: String/Path
+		@param virtual: UNUSED
+		@type virtual: No Idea
+		@param clone: Set this if you want a copy of Clone
+		@type clone: Existing portagetree Instance
+		@param settings: Portage Configuration object (portage.settings)
+		@type settings: Instance of portage.config
+		"""
 
 		if clone:
-			self.root=clone.root
-			self.portroot=clone.portroot
-			self.pkglines=clone.pkglines
+			self.root = clone.root
+			self.portroot = clone.portroot
+			self.pkglines = clone.pkglines
 		else:
-			self.root=root
+			self.root = root
 			if settings is None:
 				settings = globals()["settings"]
 			self.settings = settings
-			self.portroot=settings["PORTDIR"]
-			self.virtual=virtual
+			self.portroot = settings["PORTDIR"]
+			self.virtual = virtual
 			self.dbapi = portdbapi(
 				settings["PORTDIR"], mysettings=settings)
 
@@ -5532,6 +5547,14 @@ class portdbapi(dbapi):
 
 		self.porttrees = [self.porttree_root] + \
 			[os.path.realpath(t) for t in self.mysettings["PORTDIR_OVERLAY"].split()]
+		self.treemap = {}
+		for path in self.porttrees:
+			try:
+				repo_name = open( os.path.join( path , REPO_NAME_LOC ) ,'r').readline().rstrip()
+				self.treemap[repo_name] = path
+			except (OSError,IOError):
+				pass
+		
 		self.auxdbmodule  = self.mysettings.load_best_module("portdbapi.auxdbmodule")
 		self.auxdb        = {}
 		self._init_cache_dirs()
@@ -5602,6 +5625,24 @@ class portdbapi(dbapi):
 
 	def findname(self,mycpv):
 		return self.findname2(mycpv)[0]
+
+	def getRepositoryPath( self, repository_id ):
+		"""
+		This function is required for GLEP 42 compliance; given a valid repository ID
+		it must return a path to the repository
+		TreeMap = { id:path }
+		"""
+		if repository_id in self.treemap:
+			return self.treemap[repository_id]
+		return None
+
+	def getRepositories( self ):
+		"""
+		This function is required for GLEP 42 compliance; it will return a list of
+		repository ID's
+		TreeMap = { id:path }
+		"""
+		return [k for k in self.treemap.keys() if k]
 
 	def findname2(self, mycpv, mytree=None):
 		""" 
