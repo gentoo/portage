@@ -1572,7 +1572,7 @@ else:
 		print "myupdates:",myupdates
 		print "myheaders:",myheaders
 		print
-	unlinkfile=0
+
 	if commitmessagefile:
 		try:
 			f = open(commitmessagefile)
@@ -1600,10 +1600,7 @@ else:
 		commitmessage+="\n(Portage version: Unknown)"
 	if myupdates or myremoved:
 		myfiles = myupdates + myremoved
-		unlinkfile=1
 		commitmessagefile=tempfile.mktemp(".repoman.msg")
-		if os.path.exists(commitmessagefile):
-			os.unlink(commitmessagefile)
 		mymsg=open(commitmessagefile,"w")
 		mymsg.write(commitmessage)
 		mymsg.close()
@@ -1623,9 +1620,13 @@ else:
 			retval = spawn(["/usr/bin/cvs", "-q", "commit",
 				"-F", commitmessagefile] + myfiles,
 				env=os.environ)
-			if retval:
-				print "!!! Exiting on cvs (shell) error code:",retval
-				sys.exit(retval)
+		try:
+			os.unlink(commitmessagefile)
+		except OSError:
+			pass
+		if retval:
+			print "!!! Exiting on cvs (shell) error code:",retval
+			sys.exit(retval)
 
 	# Setup the GPG commands
 	def gpgsign(filename):
@@ -1751,6 +1752,7 @@ else:
 		if "--pretend" in myoptions:
 			print "(/usr/bin/cvs -q commit -F "+commitmessagefile+")"
 		else:
+			commitmessagefile = tempfile.mktemp(".repoman.msg")
 			mymsg=open(commitmessagefile,"w")
 			mymsg.write(commitmessage)
 			if signed:
@@ -1759,12 +1761,14 @@ else:
 				mymsg.write("\n (Unsigned Manifest commit)")
 			mymsg.close()
 			retval=os.system("/usr/bin/cvs -q commit -F "+commitmessagefile)
+			try:
+				os.unlink(commitmessagefile)
+			except OSError:
+				pass
 			if retval:
 				print "!!! Exiting on cvs (shell) error code:",retval
 				sys.exit(retval)
 
-	if unlinkfile:
-		os.unlink(commitmessagefile)
 	print
 	if isCvs:
 		print "CVS commit complete."
