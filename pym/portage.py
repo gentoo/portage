@@ -3889,6 +3889,8 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 	def compare_pkgs(a, b):
 		return pkgcmp(b[1], a[1])
 	portdb = trees[myroot]["porttree"].dbapi
+	if kwargs["use_binaries"]:
+		portdb = trees[myroot]["bintree"].dbapi
 	myvirtuals = mysettings.getvirtuals()
 	for x in mysplit:
 		if x == "||":
