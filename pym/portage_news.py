@@ -74,13 +74,13 @@ class NewsManager(object):
 		del path
 		
 		path = os.path.join( self.UNREAD_PATH, "news-" + repoid + ".unread" )
-		lockfile( path )
+		unread_lock = lockfile( path )
 		unread_file = open( path, "a" )
 		for item in updates:
 			unread_file.write( item.path + "\n" )
 
 		unread_file.close()
-		unlockfile(path)
+		unlockfile(unread_lock)
 		
 		# Touch the timestamp file
 		f = open(self.TIMESTAMP_PATH, "w")
@@ -98,12 +98,12 @@ class NewsManager(object):
 			self.updateItems( repoid )
 
 		unreadfile = os.path.join( self.UNREAD_PATH, "news-"+ repoid +".unread" )
-		lockfile(unreadfile)
+		unread_lock = lockfile(unreadfile)
 		if os.path.exists( unreadfile ):
 			unread = open( unreadfile ).readlines()
 			if len(unread):
 				return len(unread)
-		unlockfile(unread)
+		unlockfile(unread_lock)
 
 _installedRE = re.compile("Display-If-Installed:(.*)\n")
 _profileRE = re.compile("Display-If-Profile:(.*)\n")
