@@ -4045,7 +4045,10 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 		all_available = True
 		for atom in atoms:
 			if not mydbapi.match(atom):
-				if vardb and vardb.match(atom):
+				# With --usepkgonly, count installed packages as "available".
+				# Note that --usepkgonly currently has no package.mask support.
+				# See bug #149816.
+				if use_binaries and vardb and vardb.match(atom):
 					continue
 				all_available = False
 				break
