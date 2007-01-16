@@ -1622,7 +1622,7 @@ else:
 		else:
 			retval = spawn(["/usr/bin/cvs", "-q", "commit",
 				"-F", commitmessagefile] + myfiles,
-				env=repoman_settings.environ())
+				env=os.environ)
 			if retval:
 				print "!!! Exiting on cvs (shell) error code:",retval
 				sys.exit(retval)
