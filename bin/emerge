@@ -30,6 +30,7 @@ except ImportError:
 	import portage
 del os.environ["PORTAGE_LEGACY_GLOBALS"]
 from portage import digraph, portdbapi
+from portage_const import NEWS_LIB_PATH
 
 import emergehelp, xpak, commands, errno, re, socket, time, types
 import output
@@ -3560,7 +3561,7 @@ def post_emerge(settings, mtimedb, retval):
 	chk_updated_cfg_files(target_root, config_protect)
 	
 	NEWS_PATH = os.path.join( "metadata", "news" )
-	UNREAD_PATH = os.path.join( target_root, portage.PRIVATE_PATH, 'news')
+	UNREAD_PATH = os.path.join( target_root, NEWS_LIB_PATH, 'news')
 	porttree = portdbapi( porttree_root = settings["PORTDIR"], mysettings = settings )
 	newsReaderDisplay = False
 	

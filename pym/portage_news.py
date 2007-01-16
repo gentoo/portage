@@ -3,7 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-from portage_const import PRIVATE_PATH, INCREMENTALS, PROFILE_PATH
+from portage_const import INCREMENTALS, PROFILE_PATH, NEWS_LIB_PATH
 from portage import config, vartree, vardbapi, portdbapi
 from portage_util import ensure_dirs
 from portage_data import portage_gid
@@ -29,7 +29,7 @@ class NewsManager(object):
 	def __init__( self, root, NEWS_PATH, UNREAD_PATH, LANGUAGE_ID='en' ):
 		self.NEWS_PATH = NEWS_PATH
 		self.UNREAD_PATH = UNREAD_PATH
-		self.TIMESTAMP_PATH = os.path.join( root, PRIVATE_PATH, NewsManager.TIMESTAMP_FILE )
+		self.TIMESTAMP_PATH = os.path.join( root, self.NEWS_LIB_PATH, NewsManager.TIMESTAMP_FILE )
 		self.target_root = root
 		self.LANGUAGE_ID = LANGUAGE_ID
 		self.config = config( config_root = os.environ.get("PORTAGE_CONFIGROOT", "/"),
