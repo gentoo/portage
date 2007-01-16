@@ -1542,8 +1542,6 @@ else:
 	if isCvs:
 		mycvstree=cvstree.getentries("./",recursive=1)
 		mychanged=cvstree.findchanged(mycvstree,recursive=1,basedir="./")
-		for manifest in [file for file in mychanged if '/Manifest' in file]:
-			mychanged.remove(manifest)
 		mynew=cvstree.findnew(mycvstree,recursive=1,basedir="./")
 		myremoved=cvstree.findremoved(mycvstree,recursive=1,basedir="./")
 		if not (mychanged or mynew or myremoved):
@@ -1554,6 +1552,9 @@ else:
 			print
 			sys.exit(0)
 
+	# Manifests need to be regenerated after all other commits, so don't commit
+	# them now even if they have changed.
+	mychanged = [f for f in mychanged if "Manifest" != os.path.basename(f)]
 	myupdates=mychanged+mynew
 	myheaders=[]
 	mydirty=[]
@@ -1596,7 +1597,7 @@ else:
 	except AttributeError:
 		print "Failed to insert portage version in message!"
 		commitmessage+="\n(Portage version: Unknown)"
-	if not commitmessagefile:
+	if myupdates:
 		unlinkfile=1
 		commitmessagefile=tempfile.mktemp(".repoman.msg")
 		if os.path.exists(commitmessagefile):
@@ -1653,7 +1654,7 @@ else:
 			else:
 				raise portage_exception.PortageException("!!! gpg exited with '" + str(rValue) + "' status")
 
-	need_commit = False
+	manifest_commit_required = True
 	if myheaders or myupdates or myremoved or mynew:
 		myfiles=myheaders+myupdates+myremoved+mynew
 		for x in range(len(myfiles)-1, -1, -1):
@@ -1704,8 +1705,7 @@ else:
 				if retval:
 					print "!!! Exiting on cvs (shell) error code:",retval
 					sys.exit(retval)
-		else:
-			need_commit = True
+			manifest_commit_required = False
 
 	signed = False
 	if "sign" in repoman_settings.features:
@@ -1742,7 +1742,7 @@ else:
 			portage.writemsg("!!! Disabled FEATURES='sign'\n")
 			signed = False
 
-	if need_commit or signed:
+	if manifest_commit_required or signed:
 		if "--pretend" in myoptions:
 			print "(/usr/bin/cvs -q commit -F "+commitmessagefile+")"
 		else:
