@@ -163,21 +163,14 @@ class NewsItem(object):
 			#will never match
 			if not line.startswith("D"):
 				continue
-			match = _installedRE.match( line )
-			if match:
-				self.restrictions.append( 
-					DisplayInstalledRestriction( match.groups()[0].strip().rstrip() ) )
-				continue
-			match = _profileRE.match( line )
-			if match:
-				self.restrictions.append(
-					DisplayProfileRestriction( match.groups()[0].strip().rstrip() ) )
-				continue
-			match = _keywordRE.match( line )
-			if match:
-				self.restrictions.append(
-					DisplayKeywordRestriction( match.groups()[0].strip().rstrip() ) )
-				continue
+			restricts = {  _installedRE : DisplayInstalledRestriction,
+					_profileRE : DisplayProfileRestriction,
+					_keywordRE : DisplayKeywordRestriction }
+			for regex, restriction in restricts.iteritems():
+				match = regex.match(line)
+				if match:
+					self.restrictions.append( restriction( match.groups()[0].strip() ) )
+					continue
 		self._parsed = True
 
 	def __getattr__( self, attr ):
