@@ -4,14 +4,10 @@
 # $Id$
 
 
-import errno
-import os
-import stat
-import time
-import types
-import portage_exception
-import portage_util
-import portage_data
+import errno, os, stat, time, types
+from portage_exception import InvalidData, DirectoryNotFound, FileNotFound
+from portage_data import portage_gid
+from portage_util import writemsg
 from portage_localization import _
 
 HARDLINK_FD = -2
@@ -27,7 +23,7 @@ def lockfile(mypath,wantnewlockfile=0,unlinkfile=0):
 	import fcntl
 
 	if not mypath:
-		raise portage_exception.InvalidData, "Empty path given"
+		raise InvalidData, "Empty path given"
 
 	if type(mypath) == types.StringType and mypath[-1] == '/':
 		mypath = mypath[:-1]
@@ -48,18 +44,18 @@ def lockfile(mypath,wantnewlockfile=0,unlinkfile=0):
 	
 	if type(mypath) == types.StringType:
 		if not os.path.exists(os.path.dirname(mypath)):
-			raise portage_exception.DirectoryNotFound, os.path.dirname(mypath)
+			raise DirectoryNotFound, os.path.dirname(mypath)
 		if not os.path.exists(lockfilename):
 			old_mask=os.umask(000)
 			myfd = os.open(lockfilename, os.O_CREAT|os.O_RDWR,0660)
 			try:
-				if os.stat(lockfilename).st_gid != portage_data.portage_gid:
-					os.chown(lockfilename,os.getuid(),portage_data.portage_gid)
+				if os.stat(lockfilename).st_gid != portage_gid:
+					os.chown(lockfilename,os.getuid(),portage_gid)
 			except OSError, e:
 				if e[0] == 2: # No such file or directory
 					return lockfile(mypath,wantnewlockfile,unlinkfile)
 				else:
-					portage_util.writemsg("Cannot chown a lockfile. This could cause inconvenience later.\n");
+					writemsg("Cannot chown a lockfile. This could cause inconvenience later.\n");
 			os.umask(old_mask)
 		else:
 			myfd = os.open(lockfilename, os.O_CREAT|os.O_RDWR,0660)
@@ -110,10 +106,10 @@ def lockfile(mypath,wantnewlockfile=0,unlinkfile=0):
 		myfd != HARDLINK_FD and os.fstat(myfd).st_nlink == 0:
 		# The file was deleted on us... Keep trying to make one...
 		os.close(myfd)
-		portage_util.writemsg("lockfile recurse\n",1)
+		writemsg("lockfile recurse\n",1)
 		lockfilename,myfd,unlinkfile,locking_method = lockfile(mypath,wantnewlockfile,unlinkfile)
 
-	portage_util.writemsg(str((lockfilename,myfd,unlinkfile))+"\n",1)
+	writemsg(str((lockfilename,myfd,unlinkfile))+"\n",1)
 	return (lockfilename,myfd,unlinkfile,locking_method)
 
 def unlockfile(mytuple):
@@ -126,7 +122,7 @@ def unlockfile(mytuple):
 	elif len(mytuple) == 4:
 		lockfilename,myfd,unlinkfile,locking_method = mytuple
 	else:
-		raise
+		raise InvalidData
 
 	if(myfd == HARDLINK_FD):
 		unhardlink_lockfile(lockfilename)
@@ -134,7 +130,7 @@ def unlockfile(mytuple):
 	
 	# myfd may be None here due to myfd = mypath in lockfile()
 	if type(lockfilename) == types.StringType and not os.path.exists(lockfilename):
-		portage_util.writemsg("lockfile does not exist '%s'\n" % lockfilename,1)
+		writemsg("lockfile does not exist '%s'\n" % lockfilename,1)
 		if myfd is not None:
 			os.close(myfd)
 		return False
@@ -160,18 +156,18 @@ def unlockfile(mytuple):
 			locking_method(myfd,fcntl.LOCK_EX|fcntl.LOCK_NB)
 			# We won the lock, so there isn't competition for it.
 			# We can safely delete the file.
-			portage_util.writemsg("Got the lockfile...\n",1)
+			writemsg("Got the lockfile...\n",1)
 			if os.fstat(myfd).st_nlink == 1:
 				os.unlink(lockfilename)
-				portage_util.writemsg("Unlinked lockfile...\n",1)
+				writemsg("Unlinked lockfile...\n",1)
 				locking_method(myfd,fcntl.LOCK_UN)
 			else:
-				portage_util.writemsg("lockfile does not exist '%s'\n" % lockfilename,1)
+				writemsg("lockfile does not exist '%s'\n" % lockfilename,1)
 				os.close(myfd)
 				return False
 	except Exception, e:
-		portage_util.writemsg("Failed to get lock... someone took it.\n",1)
-		portage_util.writemsg(str(e)+"\n",1)
+		writemsg("Failed to get lock... someone took it.\n",1)
+		writemsg(str(e)+"\n",1)
 
 	# why test lockfilename?  because we may have been handed an
 	# fd originally, and the caller might not like having their
@@ -212,7 +208,7 @@ def hardlink_lockfile(lockfilename, max_wait=14400):
 		os.close(myfd)
 	
 		if not os.path.exists(myhardlock):
-			raise portage_exception.FileNotFound, _("Created lockfile is missing: %(filename)s") % {"filename":myhardlock}
+			raise FileNotFound, _("Created lockfile is missing: %(filename)s") % {"filename":myhardlock}
 
 		try:
 			res = os.link(myhardlock, lockfilename)
@@ -226,7 +222,7 @@ def hardlink_lockfile(lockfilename, max_wait=14400):
 			return True
 
 		if reported_waiting:
-			portage_util.writemsg(".")
+			writemsg(".")
 		else:
 			reported_waiting = True
 			print
