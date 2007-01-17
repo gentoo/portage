@@ -71,7 +71,7 @@ try:
 	  MOVE_BINARY, PRELINK_BINARY, WORLD_FILE, MAKE_CONF_FILE, MAKE_DEFAULTS_FILE, \
 	  DEPRECATED_PROFILE_FILE, USER_VIRTUALS_FILE, EBUILD_SH_ENV_FILE, \
 	  INVALID_ENV_FILE, CUSTOM_MIRRORS_FILE, CONFIG_MEMORY_FILE,\
-	  INCREMENTALS, EAPI, MISC_SH_BINARY, REPO_NAME_LOC, REPO_NAME_FILE
+	  INCREMENTALS, EAPI, MISC_SH_BINARY
 
 	from portage_data import ostype, lchown, userland, secpass, uid, wheelgid, \
 	                         portage_uid, portage_gid, userpriv_groups
@@ -3352,30 +3352,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 			return spawn(EBUILD_SH_BINARY + " depend", mysettings)
 
-		# Validate dependency metadata here to ensure that ebuilds with invalid
-		# data are never installed (even via the ebuild command).
-		invalid_dep_exempt_phases = \
-			set(["clean", "cleanrm", "help", "prerm", "postrm"])
-		mycpv = mysettings["CATEGORY"] + "/" + mysettings["PF"]
-		dep_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
-		metadata = dict(izip(dep_keys, mydbapi.aux_get(mycpv, dep_keys)))
-		class FakeTree(object):
-			def __init__(self, mydb):
-				self.dbapi = mydb
-		dep_check_trees = {myroot:{}}
-		dep_check_trees[myroot]["porttree"] = \
-			FakeTree(fakedbapi(settings=mysettings))
-		for dep_type in dep_keys:
-			mycheck = dep_check(metadata[dep_type], None, mysettings,
-				myuse="all", myroot=myroot, trees=dep_check_trees)
-			if not mycheck[0]:
-				writemsg("%s: %s\n%s\n" % (
-					dep_type, metadata[dep_type], mycheck[1]), noiselevel=-1)
-				if mydo not in invalid_dep_exempt_phases:
-					return 1
-			del dep_type, mycheck
-		del mycpv, dep_keys, metadata, FakeTree, dep_check_trees
-
 		if "PORTAGE_TMPDIR" not in mysettings or \
 			not os.path.isdir(mysettings["PORTAGE_TMPDIR"]):
 			writemsg("The directory specified in your " + \
@@ -3917,7 +3893,15 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 		for cpv in portdb.match(match_atom):
 			# only use new-style matches
 			if cpv.startswith("virtual/"):
-				pkgs.append((cpv, pkgsplit(cpv)))
+				pkgs.append((cpv, pkgsplit(cpv), portdb))
+		if kwargs["use_binaries"] and "vartree" in trees[myroot]:
+			vardb = trees[myroot]["vartree"].dbapi
+			for cpv in vardb.match(match_atom):
+				# only use new-style matches
+				if cpv.startswith("virtual/"):
+					if cpv in pkgs:
+						continue
+					pkgs.append((cpv, pkgsplit(cpv), vardb))
 		if not (pkgs or mychoices):
 			# This one couldn't be expanded as a new-style virtual.  Old-style
 			# virtuals have already been expanded by dep_virtual, so this one
@@ -3935,7 +3919,7 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 		else:
 			a = ['||']
 		for y in pkgs:
-			depstring = " ".join(portdb.aux_get(y[0], dep_keys))
+			depstring = " ".join(y[2].aux_get(y[0], dep_keys))
 			if edebug:
 				print "Virtual Parent:   ", y[0]
 				print "Virtual Depstring:", depstring
@@ -4535,30 +4519,18 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 
 class portagetree:
 	def __init__(self, root="/", virtual=None, clone=None, settings=None):
-		"""
-		Constructor for a PortageTree
-		
-		@param root: ${ROOT}, defaults to '/', see make.conf(5)
-		@type root: String/Path
-		@param virtual: UNUSED
-		@type virtual: No Idea
-		@param clone: Set this if you want a copy of Clone
-		@type clone: Existing portagetree Instance
-		@param settings: Portage Configuration object (portage.settings)
-		@type settings: Instance of portage.config
-		"""
 
 		if clone:
-			self.root = clone.root
-			self.portroot = clone.portroot
-			self.pkglines = clone.pkglines
+			self.root=clone.root
+			self.portroot=clone.portroot
+			self.pkglines=clone.pkglines
 		else:
-			self.root = root
+			self.root=root
 			if settings is None:
 				settings = globals()["settings"]
 			self.settings = settings
-			self.portroot = settings["PORTDIR"]
-			self.virtual = virtual
+			self.portroot=settings["PORTDIR"]
+			self.virtual=virtual
 			self.dbapi = portdbapi(
 				settings["PORTDIR"], mysettings=settings)
 
@@ -5551,15 +5523,6 @@ class portdbapi(dbapi):
 
 		self.porttrees = [self.porttree_root] + \
 			[os.path.realpath(t) for t in self.mysettings["PORTDIR_OVERLAY"].split()]
-		self.treemap = {}
-		for path in self.porttrees:
-			repo_name_path = os.path.join( path, REPO_NAME_LOC )
-			try:
-				repo_name = open( repo_name_path ,'r').readline().strip()
-				self.treemap[repo_name] = path
-			except (OSError,IOError):
-				pass
-		
 		self.auxdbmodule  = self.mysettings.load_best_module("portdbapi.auxdbmodule")
 		self.auxdb        = {}
 		self._init_cache_dirs()
@@ -5630,24 +5593,6 @@ class portdbapi(dbapi):
 
 	def findname(self,mycpv):
 		return self.findname2(mycpv)[0]
-
-	def getRepositoryPath( self, repository_id ):
-		"""
-		This function is required for GLEP 42 compliance; given a valid repository ID
-		it must return a path to the repository
-		TreeMap = { id:path }
-		"""
-		if repository_id in self.treemap:
-			return self.treemap[repository_id]
-		return None
-
-	def getRepositories( self ):
-		"""
-		This function is required for GLEP 42 compliance; it will return a list of
-		repository ID's
-		TreeMap = { id:path }
-		"""
-		return [k for k in self.treemap.keys() if k]
 
 	def findname2(self, mycpv, mytree=None):
 		""" 
