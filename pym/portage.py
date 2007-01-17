@@ -3913,11 +3913,11 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 		match_atom = x
 		if isblocker:
 			match_atom = x[1:]
-		pkgs = []
+		pkgs = {}
 		for cpv in portdb.match(match_atom):
 			# only use new-style matches
 			if cpv.startswith("virtual/"):
-				pkgs.append((cpv, pkgsplit(cpv), portdb))
+				pkgs[cpv] = (cpv, pkgsplit(cpv), portdb)
 		if kwargs["use_binaries"] and "vartree" in trees[myroot]:
 			vardb = trees[myroot]["vartree"].dbapi
 			for cpv in vardb.match(match_atom):
@@ -3925,7 +3925,7 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 				if cpv.startswith("virtual/"):
 					if cpv in pkgs:
 						continue
-					pkgs.append((cpv, pkgsplit(cpv), vardb))
+					pkgs[cpv] = (cpv, pkgsplit(cpv), vardb)
 		if not (pkgs or mychoices):
 			# This one couldn't be expanded as a new-style virtual.  Old-style
 			# virtuals have already been expanded by dep_virtual, so this one
@@ -3937,6 +3937,7 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 		if not pkgs and len(mychoices) == 1:
 			newsplit.append(x.replace(mykey, mychoices[0]))
 			continue
+		pkgs = pkgs.values()
 		pkgs.sort(compare_pkgs) # Prefer higher versions.
 		if isblocker:
 			a = []
