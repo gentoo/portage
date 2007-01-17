@@ -2177,7 +2177,7 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, **keyw
 		fd_pipes = keywords.get("fd_pipes")
 		if fd_pipes is None:
 			fd_pipes = {0:0, 1:1, 2:2}
-		if 1 not in fd_pipes or 2 not in fd_pipes:
+		elif 1 not in fd_pipes or 2 not in fd_pipes:
 			raise ValueError(fd_pipes)
 		pr, pw = os.pipe()
 		mypids.extend(portage_exec.spawn(('tee', '-i', '-a', logfile),
