@@ -426,7 +426,7 @@ unpack() {
 				;;
 			bz2|bz)
 				if [ "${y}" == "tar" ]; then
-					bzip2 -dc "${srcdir}${x}" | tar xof - ${tarvars}
+					bzip2 -dc "${srcdir}${x}" | tar xof -
 					assert "$myfail"
 				else
 					bzip2 -dc "${srcdir}${x}" > ${x%.*} || die "$myfail"
