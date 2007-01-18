@@ -1,0 +1,346 @@
+<chapter id='qa-notices'>
+ <title>QA Notices</title>
+ <para>
+  Here we'll go over each QA notice and what you (as a developer) can do to fix
+  the issue.  If you're a user, you should of course go 
+  <ulink url="http://bugs.gentoo.org/">file a bug</ulink>.  We'll only cover the
+  non-obvious notices here.
+ </para>
+ <para>
+  In pretty much all cases, you should try and get these issues resolved
+  upstream rather than simply fixing them in our ebuilds.
+ </para>
+
+ <sect1 id='qa-scanelf-runpath'>
+  <title>Scanelf: Insecure RUNPATHs</title>
+  <para>
+   <programlisting>
+    QA Notice: The following files contain insecure RUNPATH's
+   </programlisting>
+  </para>
+  <para>
+   Some of the ELFs that would be installed on the system have insecure dynamic
+   RUNPATH tags.  RUNPATH tags are a hardcoded list of filesystem paths that
+   will be searched at runtime when the ELF is executed.  If the ELF has a
+   world accessible directory hardcoded in it, then a malicious person can
+   inject code at runtime by adding their own libraries to the directory.
+  </para>
+  <para>
+   Here are some of the common problems and their solutions.
+   <itemizedlist>
+    <listitem>
+     <para>Libtool - old versions of libtool would use too many -rpath flags</para>
+     <para>Solution: Regenerate the autotool code</para>
+    </listitem>
+    <listitem>
+     <para>Perl - some versions of perl would use incorrect -rpath flags</para>
+     <para>Solution: upgrade system perl build modules</para>
+    </listitem>
+    <listitem>
+     <para>Crappy build system - the custom build system uses -rpath incorrectly</para>
+     <para>Solution: review the LDFLAGS in the build system and make them not suck</para>
+    </listitem>
+    <listitem>
+     <para>Crappy ebuild - the ebuild installs ELFs instead of using the package's build system</para>
+     <para>Solution: fix the crappy ebuild to use the package's build system</para>
+    </listitem>
+   </itemizedlist>
+  </para>
+ </sect1>
+
+ <sect1 id='qa-scanelf-textrel'>
+  <title>Scanelf: Runtime Text Relocations (TEXTRELS)</title>
+  <para>
+   <programlisting>
+    QA Notice: The following files contain runtime text relocations
+   </programlisting>
+  </para>
+  <para>
+   Please see the Gentoo Hardened <ulink url="http://hardened.gentoo.org/pic-fix-guide.xml">PIC Fix Guide</ulink>.
+  </para>
+ </sect1>
+
+ <sect1 id='qa-scanelf-execstack'>
+  <title>Scanelf: Executable Stack (EXECSTACK)</title>
+  <para>
+   <programlisting>
+    QA Notice: The following files contain executable stacks
+   </programlisting>
+  </para>
+  <para>
+   Please see the Gentoo Hardened <ulink url="http://hardened.gentoo.org/gnu-stack.xml">GNU Stack Guide</ulink>.
+  </para>
+ </sect1>
+
+ <sect1 id='qa-scanelf-soname'>
+  <title>Scanelf: Missing Shared Object Name (SONAME)</title>
+  <para>
+   <programlisting>
+    QA Notice: The following shared libraries lack a SONAME
+   </programlisting>
+  </para>
+  <para>
+   A shared library that you would link against lacks an ELF SONAME tag.  With
+   simpler libraries, this can be acceptable, but with any sort of ABI sane
+   setup, you need the SONAME tag.  This tag is how the system linker tells the
+   loader what libraries a program needs at runtime.  With a missing SONAME,
+   the linker needs to guess and with many cases, this guess will not work for
+   long.
+  </para>
+  <para>
+   To fix this issue, make sure the shared library is linked with the proper
+   <option>-Wl,-soname,...</option> flag.  You will need to replace the
+   <replaceable>...</replaceable> part with the actual ABI name.  For example,
+   if the library is named <filename>libfoo.so.1.2.3</filename>, you will
+   probably want to specify <option>-Wl,-soname,libfoo.so.1</option>.
+  </para>
+  <para>
+   Note that this warning only applies to shared libraries that you would link
+   against.  It certainly does not apply to plugins that you would dynamically
+   load.  However, plugins should not exist in the main library directory, but
+   rather an application specific subdirectory in the library directory.  In
+   other words, it should be <filename>/usr/lib/app/plugin.so</filename> rather
+   than <filename>/usr/lib/plugin.so</filename>.
+  </para>
+ </sect1>
+
+ <sect1 id='qa-scanelf-needed'>
+  <title>Scanelf: Missing Needed Entries</title>
+  <para>
+   <programlisting>
+    QA Notice: The following shared libraries lack NEEDED entries
+   </programlisting>
+  </para>
+  <para>
+   This warning comes up when a library does not actually seem to need any
+   other libraries in order to run.  Rarely is this true as almost every
+   library will need at least the system C library.
+  </para>
+  <para>
+   Once you've determined that the library is indeed being generated
+   incorrectly, you will need to dig into the build system to make sure that
+   it pulls in the libraries it needs.  Often times, this is because the
+   build system invokes the system linker (<command>ld</command>) directly
+   instead of the system compiler driver (<command>gcc</command>).
+  </para>
+ </sect1>
+
+ <sect1 id='qa-abs-lib-link'>
+  <title>Absolute Symlink In Library Directory</title>
+  <para>
+   <programlisting>
+    QA Notice: Found an absolute symlink in a library directory
+   </programlisting>
+  </para>
+  <para>
+   If you want to use symlinks in library directories, please use either a
+   relative symlink or a linker script.  This can cause problems when working
+   with cross-compiler systems or when accessing systems in a different ROOT
+   directory.
+  </para>
+  <para>
+   If you have a library installed into <filename>/lib/</filename> and you want
+   to have it accessible in <filename>/usr/lib/</filename>, then you should
+   generate a linker script so that the system toolchain can handle it properly.
+   Please see the <link linkend="qa-missing-ldscript">linker script section</link>
+   for more information.
+  </para>
+ </sect1>
+
+ <sect1 id='qa-missing-ldscript'>
+  <title>Missing Linker Script</title>
+  <para>
+   <programlisting>
+    QA Notice: Missing gen_usr_ldscript
+   </programlisting>
+  </para>
+  <para>
+   If you have a shared library in <filename>/lib/</filename> and a static
+   library in <filename>/usr/lib/</filename>, but no linker script in
+   <filename>/usr/lib/</filename>, then the toolchain will choose the incorrect
+   version when linking.  The system linker will find the static library first
+   and not bother searching for a dynamic version.  To overcome this, you need
+   to use the <command>gen_usr_ldscript</command> function found in the
+   <funcsynopsisinfo>toolchain-funcs.eclass</funcsynopsisinfo>.  Refer to the
+   man page for information on how to use it.  See this
+   <ulink url="http://bugs.gentoo.org/4411">bug report</ulink> for some history
+   on this issue.
+  </para>
+ </sect1>
+
+ <sect1 id='qa-root-cruft'>
+  <title>Excessive Files in /</title>
+  <para>
+   <programlisting>
+    QA Notice: Excessive files found in the / partition
+   </programlisting>
+  </para>
+  <para>
+   You should not store files that are not critical to boot and recovery in
+   the root filesystem.  This means that static libraries and libtool scripts do
+   not belong in the <filename>/lib/</filename> directory.  Fix your ebuild so
+   it does not install there.
+  </para>
+ </sect1>
+
+ <sect1 id='qa-tempdir-libtool'>
+  <title>Portage Tempdir In Libtool Scripts</title>
+  <para>
+   <programlisting>
+    QA Notice: ... appears to contain PORTAGE_TMPDIR paths
+   </programlisting>
+  </para>
+  <para>
+   Older versions of libtool would incorrectly record the build and/or install
+   directory in the libtool script (*.la).  This would lead to problems when
+   building other things against your package as libtool would be confused by
+   the old paths.
+  </para>
+  <para>
+   You may be able to cheat and use the <command>elibtoolize</command> function
+   in the <funcsynopsisinfo>libtool.eclass</funcsynopsisinfo>.  However, if
+   that does not help, you will probably need to regenerate all of the autotool
+   files.
+  </para>
+ </sect1>
+
+ <sect1 id='qa-build-strict-aliasing'>
+  <title>Build Warning: Strict Aliasing</title>
+  <para>
+   <programlisting>
+    QA Notice: Package has poor programming practices which may compile
+               fine but exhibit random runtime failures.
+    ...: warning: dereferencing type-punned pointer will break strict-aliasing rules
+   </programlisting>
+  </para>
+  <para>
+  </para>
+ </sect1>
+
+ <sect1 id='qa-build-implicit-decl'>
+  <title>Build Warning: Implicit Declarations</title>
+  <para>
+   <programlisting>
+    QA Notice: Package has poor programming practices which may compile
+               fine but exhibit random runtime failures.
+    ...: warning: implicit declaration of function ...
+   </programlisting>
+  </para>
+  <para>
+   Your code is calling functions which lack prototypes.  In C++, this would
+   have been a build failure, but C is lazy so you just get a warning.  This
+   can be a problem as gcc has to guess at what sort of arguments a function
+   takes based upon how it was called and often times, this is not the same
+   as what the function actually takes.  The function return type is also
+   unknown so it's just assumed to be an integer (which is often times wrong).
+   This can get to be a problem when the size of the types guessed do not
+   actually match the size of the types the function expects.  Generally, this
+   corresponds directly to proper coding practices (and the lack thereof).
+   Also, by including proper prototypes, the compiler often helps by checking
+   types used, proper number of arguments passed, etc...
+  </para>
+  <para>
+   To fix this, just include the proper header files for the functions in
+   question.  If the function is a package-specific one, then you may have to
+   create a header/function prototype for it.
+  </para>
+ </sect1>
+
+ <sect1 id='qa-build-uninitialized'>
+  <title>Build Warning: Used Uninitialized</title>
+  <para>
+   <programlisting>
+    QA Notice: Package has poor programming practices which may compile
+               fine but exhibit random runtime failures.
+    ...: warning: incompatible implicit declaration of built-in function ...
+   </programlisting>
+  </para>
+  <para>
+   This means code uses a variable without actually setting it first.  In other
+   words, the code is basically using random garbage.
+  </para>
+  <para>
+   The fix here is simple: make sure variables are initialized properly before
+   using them.
+  </para>
+ </sect1>
+
+ <sect1 id='qa-build-math-compare'>
+  <title>Build Warning: Invalid X&lt;=Y&lt;=Z Comparisons</title>
+  <para>
+   <programlisting>
+    QA Notice: Package has poor programming practices which may compile
+               fine but exhibit random runtime failures.
+    ...: warning: is used uninitialized in this function
+   </programlisting>
+  </para>
+  <para>
+   This warning crops up either when the programmer expected the expression
+   to work or they just forgot to use sufficient parentheses.  For example,
+   the following code snippets are wrong (we won't get into the technical
+   argument of this being valid C code; just change the code to not be
+   ambiguous).
+   <programlisting>
+    if (x &lt;= y &lt;= z)
+      ...;
+    if (a &lt; b &lt;= c)
+      ...;
+   </programlisting>
+  </para>
+  <para>
+   To fix this, read the code to figure out what exactly the programmer meant.
+  </para>
+ </sect1>
+
+ <sect1 id='qa-build-non-null'>
+  <title>Build Warning: Non-Null Required</title>
+  <para>
+   <programlisting>
+    QA Notice: Package has poor programming practices which may compile
+               fine but exhibit random runtime failures.
+    ...: warning: comparisons like X&lt;=Y&lt;=Z do not have their mathematical meaning
+   </programlisting>
+  </para>
+  <para>
+   Many functions take pointers as arguments and require that the pointer never
+   be NULL.  To this end, you can declare function prototypes that instruct the
+   compiler to do simple checks to make sure people do not incorrectly call the
+   function with NULL values.  This warning pops up when someone calls a
+   function and they use NULL when they should not.  Depending on the library,
+   the function may actually crash (they told you not to use NULL after-all, so
+   it's your fault :P).
+  </para>
+  <para>
+   You will need to read the code and fix it so that it does not incorrectly
+   call the relevant functions with NULL values.
+  </para>
+ </sect1>
+
+ <sect1 id='qa-build-pointer-trunc'>
+  <title>Build Warning: Truncating Pointers</title>
+  <para>
+   <programlisting>
+    QA Notice: Package has poor programming practices which may compile
+               but will almost certainly crash on 64bit architectures.
+   </programlisting>
+  </para>
+  <para>
+   A large portion of code in the open source world is developed on the 32bit
+   x86 architecture.  Unfortunately, this has led to many pieces of code not
+   handling pointer types properly.  When compiled and run on a 64bit
+   architecture, the code in question will probably crash horribly.  Some
+   common examples are assuming that an integer type is large enough to hold
+   pointers.  This is true on 32bit architectures (an integer can hold 32bits
+   and a pointer is 32bits big), but not true on 64bit architectures (an
+   integer still holds just 32bits, but a pointer is 64bits big).
+  </para>
+  <para>
+   Since this issue can manifest itself in many ways (as there are many ways to
+   improperly truncate a pointer), you will need to read the source code
+   starting with the displayed warning.  Make sure types are declared, used,
+   and passed properly.  Make sure that all function prototypes are found (see
+   the <link linkend="qa-build-implicit-decl">Implicit Declarations</link>
+   section for more information).  So on and so forth.
+  </para>
+ </sect1>
+</chapter>

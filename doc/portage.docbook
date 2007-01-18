@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook V4.4//EN"
+	"http://www.oasis-open.org/docbook/xml/4.4/docbookx.dtd" [
+
+	<!ENTITY date SYSTEM "fragment/date">
+	<!ENTITY version SYSTEM "fragment/version">
+
+	<!ENTITY project "portage">
+
+	<!ENTITY qa SYSTEM "qa.docbook">
+]>
+
+<book id="portage" lang="en">
+
+<bookinfo>
+ <title>Portage Documentation</title>
+
+ <authorgroup>
+  <author>
+   <firstname>Mike</firstname>
+   <surname>Frysinger</surname>
+   <email>vapier@gentoo.org</email>
+  </author>
+ </authorgroup>
+
+ &version;
+ &date;
+</bookinfo>
+
+&qa;
+
+</book>
