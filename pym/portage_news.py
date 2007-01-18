@@ -83,7 +83,7 @@ class NewsManager(object):
 				if tmp.isRelevant( profile=os.readlink(PROFILE_PATH), config=config, vardb=self.vdb):
 					updates.append( tmp )
 		finally:
-			if newsdir_lock != None:
+			if newsdir_lock:
 				unlockdir(newsdir_lock)
 		
 		del path
