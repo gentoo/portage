@@ -54,11 +54,12 @@ class NewsManager(object):
 		if repoid not in repos:
 			raise ValueError("Invalid repoID: %s" % repoid)
 
-		if os.path.exists(self.TIMESTAMP_PATH):
+		timestamp_file = self.TIMESTAMP_PATH + repoid
+		if os.path.exists(timestamp_file):
 			# Make sure the timestamp has correct permissions.
-			apply_permissions( filename=self.TIMESTAMP_FILE, 
+			apply_permissions( filename=timestamp_file, 
 				uid=self.config["PORTAGE_INST_UID"], gid=portage_gid, mode=664 )
-			timestamp = os.stat(self.TIMESTAMP_PATH).st_mtime
+			timestamp = os.stat(timestamp_file).st_mtime
 		else:
 			timestamp = 0
 
@@ -104,7 +105,7 @@ class NewsManager(object):
 			unlockfile(unread_lock)
 		
 		# Touch the timestamp file
-		f = open(self.TIMESTAMP_PATH, "w")
+		f = open(timestamp_file, "w")
 		f.close()
 
 	def getUnreadItems( self, repoid, update=False ):
