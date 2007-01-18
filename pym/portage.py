@@ -466,40 +466,64 @@ def elog_process(cpv, mysettings):
 		return
 	# exploit listdir() file order so we process log entries in chronological order
 	mylogfiles.reverse()
-	mylogentries = {}
-	my_elog_classes = set(mysettings.get("PORTAGE_ELOG_CLASSES", "").split())
+	all_logentries = {}
 	for f in mylogfiles:
 		msgfunction, msgtype = f.split(".")
-		if msgtype.upper() not in my_elog_classes \
-				and msgtype.lower() not in my_elog_classes:
-			continue
 		if msgfunction not in portage_const.EBUILD_PHASES:
 			writemsg("!!! can't process invalid log file: %s\n" % f,
 				noiselevel=-1)
 			continue
-		if not msgfunction in mylogentries:
-			mylogentries[msgfunction] = []
+		if not msgfunction in all_logentries:
+			all_logentries[msgfunction] = []
 		msgcontent = open(mysettings["T"]+"/logging/"+f, "r").readlines()
-		mylogentries[msgfunction].append((msgtype, msgcontent))
+		all_logentries[msgfunction].append((msgtype, msgcontent))
 
-	# in case the filters matched all messages
-	if len(mylogentries) == 0:
+	def filter_loglevels(logentries, loglevels):
+		# remove unwanted entries from all logentries
+		rValue = {}
+		loglevels = map(str.upper, loglevels)
+		for phase in logentries.keys():
+			for msgtype, msgcontent in logentries[phase]:
+				if msgtype.upper() in loglevels or "*" in loglevels:
+					if not rValue.has_key(phase):
+						rValue[phase] = []
+					rValue[phase].append((msgtype, msgcontent))
+		return rValue
+	
+	my_elog_classes = set(mysettings.get("PORTAGE_ELOG_CLASSES", "").split())
+	default_logentries = filter_loglevels(all_logentries, my_elog_classes)
+
+	# in case the filters matched all messages and no module overrides exist
+	if len(default_logentries) == 0 and (not ":" in mysettings.get("PORTAGE_ELOG_SYSTEM", "")):
 		return
 
-	# generate a single string with all log messages
-	fulllog = ""
-	for phase in portage_const.EBUILD_PHASES:
-		if not phase in mylogentries:
-			continue
-		for msgtype,msgcontent in mylogentries[phase]:
-			fulllog += "%s: %s\n" % (msgtype, phase)
-			for line in msgcontent:
-				fulllog += line
-			fulllog += "\n"
+	def combine_logentries(logentries):
+		# generate a single string with all log messages
+		rValue = ""
+		for phase in portage_const.EBUILD_PHASES:
+			if not phase in logentries:
+				continue
+			for msgtype,msgcontent in logentries[phase]:
+				rValue += "%s: %s\n" % (msgtype, phase)
+				for line in msgcontent:
+					rValue += line
+				rValue += "\n"
+		return rValue
+	
+	default_fulllog = combine_logentries(default_logentries)
 
 	# pass the processing to the individual modules
 	logsystems = mysettings["PORTAGE_ELOG_SYSTEM"].split()
 	for s in logsystems:
+		# allow per module overrides of PORTAGE_ELOG_CLASSES
+		if ":" in s:
+			s, levels = s.split(":", 1)
+			levels = levels.split(",")
+			mod_logentries = filter_loglevels(all_logentries, levels)
+			mod_fulllog = combine_logentries(mod_logentries)
+		else:
+			mod_logentries = default_logentries
+			mod_fulllog = default_fulllog
 		# - is nicer than _ for module names, so allow people to use it.
 		s = s.replace("-", "_")
 		try:
@@ -516,7 +540,7 @@ def elog_process(cpv, mysettings):
 			# module gets hung).
 			signal.alarm(60)
 			try:
-				m.process(mysettings, cpv, mylogentries, fulllog)
+				m.process(mysettings, cpv, mod_logentries, mod_fulllog)
 			finally:
 				signal.alarm(0)
 			if hasattr(m, "finalize") and not m.finalize in _elog_atexit_handlers:
