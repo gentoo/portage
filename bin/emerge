@@ -3784,32 +3784,23 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			rsync_opts.append("--bwlimit=%s" % \
 			settings["RSYNC_RATELIMIT"])
 
-		servertimestampdir  = settings.depcachedir+"/"
-		servertimestampfile = settings.depcachedir+"/timestamp.chk"
-		tmpservertimestampdir  = settings["PORTAGE_TMPDIR"]+"/"
-		tmpservertimestampfile = settings["PORTAGE_TMPDIR"]+"/timestamp.chk"
+		# Real local timestamp file.
+		servertimestampfile = os.path.join(
+			myportdir, "metadata", "timestamp.chk")
+		# Temporary file for remote server timestamp comparison.
+		tmpservertimestampfile = os.path.join(
+			settings["PORTAGE_TMPDIR"], "timestamp.chk")
 
-		# We only use the backup if a timestamp exists in the portdir.
-		content=None
-		if os.path.exists(myportdir+"/metadata/timestamp.chk"):
-			content=portage.grabfile(servertimestampfile)
-		if (not content):
-			content=portage.grabfile(myportdir+"/metadata/timestamp.chk")
-
-		if (content):
+		content = portage_util.grabfile(servertimestampfile)
+		mytimestamp = 0
+		if content:
 			try:
-				mytimestamp=time.mktime(time.strptime(content[0], "%a, %d %b %Y %H:%M:%S +0000"))
-			except ValueError:
-				mytimestamp=0
-		else:
-			mytimestamp=0
+				mytimestamp = time.mktime(time.strptime(content[0],
+					"%a, %d %b %Y %H:%M:%S +0000"))
+			except OverflowError, ValueError:
+				pass
+		del content
 
-		if not os.path.exists(servertimestampdir):
-			os.mkdir(servertimestampdir)
-			os.chown(servertimestampdir, os.getuid(), portage.portage_gid)
-			os.chmod(servertimestampdir, 02775)
-
-		#exitcode=0
 		try:
 			if settings.has_key("RSYNC_RETRIES"):
 				print yellow("WARNING:")+" usage of RSYNC_RETRIES is deprecated, use PORTAGE_RSYNC_RETRIES instead"
@@ -3884,7 +3875,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 						(retries,maxretries,dosyncuri))
 				print "\n\n>>> Starting retry %d of %d with %s" % (retries,maxretries,dosyncuri)
 
-			if "--quiet" not in myopts:
+			if mytimestamp != 0 and "--quiet" not in myopts:
 				print ">>> Checking server timestamp ..."
 
 			rsynccommand = " ".join(["/usr/bin/rsync", " ".join(rsync_opts),
@@ -3893,18 +3884,32 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			if "--debug" in myopts:
 				print rsynccommand
 
-			mycommand = " ".join([rsynccommand,
-				dosyncuri + "/metadata/timestamp.chk",
-				tmpservertimestampdir])
-			exitcode=portage.spawn(mycommand,settings,free=1)
-			if (exitcode==0):
+			exitcode = os.EX_OK
+			servertimestamp = 0
+			if mytimestamp != 0:
+				mycommand = rsynccommand.split()
+				mycommand.append(dosyncuri.rstrip("/") + \
+					"/metadata/timestamp.chk")
+				mycommand.append(tmpservertimestampfile)
+				import portage_exec
 				try:
-					servertimestamp = time.mktime(time.strptime(portage.grabfile(tmpservertimestampfile)[0], "%a, %d %b %Y %H:%M:%S +0000"))
-				except SystemExit, e:
-					raise # Needed else can't exit
-				except:
-					servertimestamp = 0
-
+					exitcode = portage_exec.spawn(
+						mycommand, env=settings.environ())
+					content = portage.grabfile(tmpservertimestampfile)
+					if content:
+						try:
+							servertimestamp = time.mktime(time.strptime(
+								content[0], "%a, %d %b %Y %H:%M:%S +0000"))
+						except OverflowError, ValueError:
+							pass
+					del content
+				finally:
+					try:
+						os.unlink(tmpservertimestampfile)
+					except OSError:
+						pass
+				del mycommand
+			if exitcode == os.EX_OK:
 				if (servertimestamp != 0) and (servertimestamp == mytimestamp):
 					emergelog(xterm_titles,
 						">>> Cancelling sync -- Already current.")
@@ -3913,7 +3918,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 					print ">>> Timestamps on the server and in the local repository are the same."
 					print ">>> Cancelling all further sync action. You are already up to date."
 					print ">>>"
-					print ">>> In order to force sync, remove '%s'." % tmpservertimestampfile
+					print ">>> In order to force sync, remove '%s'." % servertimestampfile
 					print ">>>"
 					print
 					sys.exit(0)
@@ -3924,7 +3929,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 					print ">>>"
 					print ">>> SERVER OUT OF DATE: %s" % dosyncuri
 					print ">>>"
-					print ">>> In order to force sync, remove '%s'." % tmpservertimestampfile
+					print ">>> In order to force sync, remove '%s'." % servertimestampfile
 					print ">>>"
 					print
 				elif (servertimestamp == 0) or (servertimestamp > mytimestamp):
@@ -3949,18 +3954,6 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 
 		if (exitcode==0):
 			emergelog(xterm_titles, "=== Sync completed with %s" % dosyncuri)
-			# save timestamp.chk for next timestamp check.
-			try:
-				if tmpservertimestampfile is not None:
-					portage.movefile(tmpservertimestampfile,
-						servertimestampfile, mysettings=settings)
-			except SystemExit, e:
-				raise
-			except Exception, e:
-				portage.writemsg("!!! Failed to save current timestamp.\n",
-					noiselevel=-1)
-				portage.writemsg("!!! %s\n" % str(e), noiselevel=-1)
-				del e
 		elif (exitcode>0):
 			print
 			if exitcode==1:
