@@ -32,6 +32,11 @@ def writemsg_stdout(mystr,noiselevel=0):
 	writemsg(mystr, noiselevel=noiselevel, fd=sys.stdout)
 
 def normalize_path(mypath):
+	""" 
+	os.path.normpath("//foo") returns "//foo" instead of "/foo"
+	We dislike this behavior so we create our own normpath func
+	to fix it.
+	"""
 	if mypath.startswith(os.path.sep):
 		# posixpath.normpath collapses 3 or more leading slashes to just 1.
 		return os.path.normpath(2*os.path.sep + mypath)

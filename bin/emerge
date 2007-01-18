@@ -46,6 +46,7 @@ import portage_util
 import portage_locks
 import portage_exception
 from portage_data import secpass
+from portage_util import normalize_path as normpath
 
 if not hasattr(__builtins__, "set"):
 	from sets import Set as set
@@ -111,19 +112,6 @@ class stdout_spinner(object):
 
 	def update_quiet(self):
 		return
-
-
-
-def normpath(mystr):
-	""" 
-		os.path.normpath("//foo") returns "//foo" instead of "/foo"
-		We dislike this behavior so we create our own normpath func
-		to fix it.
-	"""
-	if mystr and (mystr[0]=='/'):
-		return os.path.normpath("///"+mystr)
-	else:
-		return os.path.normpath(mystr)
 
 def userquery(prompt, responses=None, colours=None):
 	"""Displays a prompt and a set of responses, then waits for a response
