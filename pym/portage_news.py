@@ -8,7 +8,7 @@ from portage import config, vartree, vardbapi, portdbapi
 from portage_util import ensure_dirs, apply_permissions
 from portage_data import portage_gid
 from portage_locks import lockfile, unlockfile, lockdir, unlockdir
-
+from portage_exception import FileNotFound
 import os, re
 
 class NewsManager(object):
@@ -64,8 +64,9 @@ class NewsManager(object):
 			timestamp = 0
 
 		path = os.path.join( self.portdb.getRepositoryPath( repoid ), self.NEWS_PATH )
+		newsdir_lock = None
 		try:
-			newsdir_lock = lockdir( self.portdb.getRepositoryPath )
+			newsdir_lock = lockdir( self.portdb.getRepositoryPath(repoid) )
 			# Skip reading news for repoid if the news dir does not exist.  Requested by
 			# NightMorph :)
 			if not os.path.exists( path ):
@@ -82,7 +83,8 @@ class NewsManager(object):
 				if tmp.isRelevant( profile=os.readlink(PROFILE_PATH), config=config, vardb=self.vdb):
 					updates.append( tmp )
 		finally:
-			unlockdir(newsdir_lock)
+			if newsdir_lock != None:
+				unlockdir(newsdir_lock)
 		
 		del path
 		
@@ -124,7 +126,7 @@ class NewsManager(object):
 			unread_lock = lockfile(unreadfile)
 			# Set correct permissions on the news-repoid.unread file
 			apply_permissions( filename=unreadfile,
-				uid=self.config["PORTAGE_INST_UID"], gid=portage_gid, mode=664 )
+				uid=int(self.config["PORTAGE_INST_UID"]), gid=portage_gid, mode=0664 )
 				
 			if os.path.exists( unreadfile ):
 				unread = open( unreadfile ).readlines()
