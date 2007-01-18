@@ -130,7 +130,7 @@ install_qa_check() {
 			# are supported at the moment.  Keep this list in sync with
 			# http://hardened.gentoo.org/gnu-stack.xml (Arch Status)
 			case ${CTARGET:-${CHOST}} in
-				i?86*|ia64*|m68k*|s390*|x86_64*)
+				i?86*|ia64*|m68k*|s390*|sh*|x86_64*)
 					# Allow devs to mark things as ignorable ... e.g. things
 					# that are binary-only and upstream isn't cooperating ...
 					# we allow ebuild authors to set QA_EXECSTACK_arch and
