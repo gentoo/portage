@@ -5,7 +5,7 @@
 
 from portage_const import INCREMENTALS, PROFILE_PATH, NEWS_LIB_PATH
 from portage import config, vartree, vardbapi, portdbapi
-from portage_util import ensure_dirs
+from portage_util import ensure_dirs, apply_permissions
 from portage_data import portage_gid
 from portage_locks import lockfile, unlockfile, lockdir, unlockdir
 
@@ -89,7 +89,8 @@ class NewsManager(object):
 			unread_lock = lockfile( path )
 			# Make sure we have the correct permissions when created
 			unread_file = open( path, "a" )
-			apply_permissions( unreadfile, 0, portage_gid, 664 )
+			apply_permissions( filename=unreadfile,
+				uid=self.config["PORTAGE_INST_UID"], gid=portage_gid, mode=664 )
 		
 			for item in updates:
 				unread_file.write( item.path + "\n" )
@@ -113,7 +114,8 @@ class NewsManager(object):
 		unreadfile = os.path.join( self.UNREAD_PATH, "news-"+ repoid +".unread" )
 		# Set correct permissions on the news-repoid.unread file
 		try:
-			apply_permissions( unreadfile, 0, portage_gid, 664 )
+			apply_permissions( filename=unreadfile, 
+				uid=self.config["PORTAGE_INST_UID"], gid=portage_gid, mode=664 )
 		except FileNotFound:
 			pass # It may not exist yet, thats ok.
 		

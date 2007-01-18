@@ -200,7 +200,7 @@ options=[
 "--searchdesc",   "--selective",
 "--skipfirst",
 "--tree",
-"--update",       
+"--update",
 "--usepkg",       "--usepkgonly",
 "--verbose",      "--version"
 ]
