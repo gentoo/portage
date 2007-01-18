@@ -524,6 +524,8 @@ def elog_process(cpv, mysettings):
 		else:
 			mod_logentries = default_logentries
 			mod_fulllog = default_fulllog
+		if len(mod_logentries) == 0:
+			continue
 		# - is nicer than _ for module names, so allow people to use it.
 		s = s.replace("-", "_")
 		try:
