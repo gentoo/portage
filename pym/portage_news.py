@@ -123,17 +123,18 @@ class NewsManager(object):
 		
 		unreadfile = os.path.join( self.UNREAD_PATH, "news-"+ repoid +".unread" )
 		try:
-			unread_lock = lockfile(unreadfile)
-			# Set correct permissions on the news-repoid.unread file
-			apply_permissions( filename=unreadfile,
-				uid=int(self.config["PORTAGE_INST_UID"]), gid=portage_gid, mode=0664 )
-				
-			if os.path.exists( unreadfile ):
-				unread = open( unreadfile ).readlines()
-				if len(unread):
-					return len(unread)
-		except FileNotFound:
-			pass # unread file may not exist
+			try;
+				unread_lock = lockfile(unreadfile)
+				# Set correct permissions on the news-repoid.unread file
+				apply_permissions( filename=unreadfile,
+					uid=int(self.config["PORTAGE_INST_UID"]), gid=portage_gid, mode=0664 )
+					
+				if os.path.exists( unreadfile ):
+					unread = open( unreadfile ).readlines()
+					if len(unread):
+						return len(unread)
+			except FileNotFound:
+				pass # unread file may not exist
 		finally:
 			if unread_lock:
 				unlockfile(unread_lock)
