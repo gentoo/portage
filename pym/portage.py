@@ -6033,8 +6033,14 @@ class portdbapi(dbapi):
 			mytrees = self.porttrees
 		for oroot in mytrees:
 			for x in listdir(oroot+"/"+mycp,EmptyOnError=1,ignorecvs=1):
-				if x[-7:]==".ebuild":
-					d[mysplit[0]+"/"+x[:-7]] = None
+				if x.endswith(".ebuild"):
+					pf = x[:-7]
+					ps = pkgsplit(pf)
+					if not ps:
+						writemsg("\nInvalid ebuild name: %s\n" % \
+							os.path.join(oroot, mycp, x), noiselevel=-1)
+						continue
+					d[mysplit[0]+"/"+pf] = None
 		return d.keys()
 
 	def freeze(self):
