@@ -56,7 +56,8 @@ class NewsManager(object):
 
 		if os.path.exists(self.TIMESTAMP_PATH):
 			# Make sure the timestamp has correct permissions.
-			apply_permissions( unreadfile, 0, portage_gid, 664 )
+			apply_permissions( filename=self.TIMESTAMP_FILE, 
+				uid=self.config["PORTAGE_INST_UID"], gid=portage_gid, mode=664 )
 			timestamp = os.stat(self.TIMESTAMP_PATH).st_mtime
 		else:
 			timestamp = 0
@@ -87,14 +88,17 @@ class NewsManager(object):
 		path = os.path.join( self.UNREAD_PATH, "news-" + repoid + ".unread" )
 		try:
 			unread_lock = lockfile( path )
+			if not os.path.exists( path ):
+				#create the file if it does not exist
+				open( path, "w" )
+			# Ensure correct perms on the unread file.
+			apply_permissions( filename=path,
+				uid=self.config["PORTAGE_INST_UID"], gid=portage_gid, mode=664 )
 			# Make sure we have the correct permissions when created
 			unread_file = open( path, "a" )
-			apply_permissions( filename=unreadfile,
-				uid=self.config["PORTAGE_INST_UID"], gid=portage_gid, mode=664 )
-		
+
 			for item in updates:
 				unread_file.write( item.path + "\n" )
-
 			unread_file.close()
 		finally:
 			unlockfile(unread_lock)
@@ -111,26 +115,22 @@ class NewsManager(object):
 		check for new items.
 		"""
 		
-		unreadfile = os.path.join( self.UNREAD_PATH, "news-"+ repoid +".unread" )
-		# Set correct permissions on the news-repoid.unread file
-		try:
-			lock = lockfile(unreadfile)
-			apply_permissions( filename=unreadfile,
-				uid=self.config["PORTAGE_INST_UID"], gid=portage_gid, mode=664 )
-		except FileNotFound:
-			pass # It may not exist yet, thats ok.
-		finally:
-			if lock:
-				unlockfile(lock)
 		if update:
 			self.updateItems( repoid )
 		
+		unreadfile = os.path.join( self.UNREAD_PATH, "news-"+ repoid +".unread" )
 		try:
 			unread_lock = lockfile(unreadfile)
+			# Set correct permissions on the news-repoid.unread file
+			apply_permissions( filename=unreadfile,
+				uid=self.config["PORTAGE_INST_UID"], gid=portage_gid, mode=664 )
+				
 			if os.path.exists( unreadfile ):
 				unread = open( unreadfile ).readlines()
 				if len(unread):
 					return len(unread)
+		except FileNotFound:
+			pass # unread file may not exist
 		finally:
 			if unread_lock:
 				unlockfile(unread_lock)
