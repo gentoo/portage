@@ -130,7 +130,7 @@ install_qa_check() {
 			# are supported at the moment.  Keep this list in sync with
 			# http://hardened.gentoo.org/gnu-stack.xml (Arch Status)
 			case ${CTARGET:-${CHOST}} in
-				i?86*|ia64*|m68k*|s390*|x86_64*)
+				arm*|i?86*|ia64*|m68k*|s390*|sh*|x86_64*)
 					# Allow devs to mark things as ignorable ... e.g. things
 					# that are binary-only and upstream isn't cooperating ...
 					# we allow ebuild authors to set QA_EXECSTACK_arch and
@@ -320,11 +320,7 @@ install_qa_check() {
 			eqawarn "           but will almost certainly crash on 64bit architectures."
 			eqawarn "${f}"
 			vecho -ne '\a\n'
-			# just warn on 32bit hosts but bail on 64bit hosts
-			case ${CHOST} in
-				alpha*|ia64*|powerpc64*|mips64*|sparc64*|x86_64*) die "this code is not 64bit clean";;
-				*) abort="yes";;
-			esac
+			abort="yes"
 		fi
 		[[ ${abort} == "yes" ]] && hasq stricter ${FEATURES} && die "poor code kills airplanes"
 	fi
