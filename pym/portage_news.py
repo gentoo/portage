@@ -29,7 +29,7 @@ class NewsManager(object):
 	def __init__( self, root, NEWS_PATH, UNREAD_PATH, LANGUAGE_ID='en' ):
 		self.NEWS_PATH = NEWS_PATH
 		self.UNREAD_PATH = UNREAD_PATH
-		self.TIMESTAMP_PATH = os.path.join( root, self.NEWS_PATH, NewsManager.TIMESTAMP_FILE )
+		self.TIMESTAMP_PATH = os.path.join( root, NEWS_LIB_PATH, NewsManager.TIMESTAMP_FILE )
 		self.target_root = root
 		self.LANGUAGE_ID = LANGUAGE_ID
 		self.config = config( config_root = os.environ.get("PORTAGE_CONFIGROOT", "/"),
