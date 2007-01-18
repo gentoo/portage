@@ -286,7 +286,7 @@ def get_repo_path(argv):
 	if len(argv) < 2:
 		print "ERROR: insufficient parameters!"
 		sys.exit(2)
-	for arg in arvg[1:]
+	for arg in arvg[1:]:
 		print portage.db[argv[0]]["porttree"].dbapi.getRepositoryPath(argv[1])
 
 #-----------------------------------------------------------------------------
