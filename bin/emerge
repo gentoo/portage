@@ -29,7 +29,8 @@ except ImportError:
 	sys.path.insert(0, "@PORTAGE_BASE@/pym")
 	import portage
 del os.environ["PORTAGE_LEGACY_GLOBALS"]
-from portage import digraph
+from portage import digraph, portdbapi
+from portage_const import NEWS_LIB_PATH
 
 import emergehelp, xpak, commands, errno, re, socket, time, types
 import output
@@ -3563,14 +3564,21 @@ def post_emerge(settings, mtimedb, retval):
 	chk_updated_cfg_files(normalize_path(target_root + EPREFIX), config_protect)
 	
 	NEWS_PATH = os.path.join( "metadata", "news" )
-	UNREAD_PATH = os.path.join( target_root, portage.PRIVATE_PATH, 'news')
-	repo_id = 'gentoo'
-	unreadItems = checkUpdatedNewsItems(target_root, NEWS_PATH, UNREAD_PATH, repo_id)
-	if unreadItems:
-		print colorize("WARN", " * IMPORTANT:"),
-		print "%s news items need reading." % unreadItems
+	UNREAD_PATH = os.path.join( target_root, NEWS_LIB_PATH, 'news')
+	porttree = portdbapi( porttree_root = settings["PORTDIR"], mysettings = settings )
+	newsReaderDisplay = False
+	
+	for repo in porttree.getRepositories():
+		unreadItems = checkUpdatedNewsItems(target_root, NEWS_PATH, UNREAD_PATH, repo)
+		if unreadItems:
+			print colorize("WARN", " * IMPORTANT:"),
+			print "%s news items need reading for repository '%s'." % (unreadItems, repo)
+			newsReaderDisplay = True
+	
+	if newsReaderDisplay:
 		print colorize("WARN", " *"),
-		print "Type something to read the news"
+		print "Use " + colorize("GOOD", "eselect news") + " to read news items."
+	
 	mtimedb.commit()
 	sys.exit(retval)
 

@@ -4535,12 +4535,9 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 	return rValue
 
 class portagetree:
-	def __init__(self, root="/", virtual=None, clone=None, settings=None, portroot=None):
+	def __init__(self, root="/", virtual=None, clone=None, settings=None):
 		"""
 		Constructor for a PortageTree
-		
-		Note: Portroot was added for GLEP 42 functionality and defaults to the $PORTDIR
-		env variable.
 		
 		@param root: ${ROOT}, defaults to '/', see make.conf(5)
 		@type root: String/Path
@@ -5557,8 +5554,9 @@ class portdbapi(dbapi):
 			[os.path.realpath(t) for t in self.mysettings["PORTDIR_OVERLAY"].split()]
 		self.treemap = {}
 		for path in self.porttrees:
+			repo_name_path = os.path.join( path, REPO_NAME_LOC )
 			try:
-				repo_name = open( os.path.join( path , REPO_NAME_LOC ) ,'r').readline().rstrip()
+				repo_name = open( repo_name_path ,'r').readline().strip()
 				self.treemap[repo_name] = path
 			except (OSError,IOError):
 				pass

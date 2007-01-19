@@ -3,7 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-from portage_const import PRIVATE_PATH, INCREMENTALS, PROFILE_PATH
+from portage_const import INCREMENTALS, PROFILE_PATH, NEWS_LIB_PATH
 from portage import config, vartree, vardbapi, portdbapi
 from portage_util import ensure_dirs
 from portage_data import portage_gid
@@ -29,7 +29,7 @@ class NewsManager(object):
 	def __init__( self, root, NEWS_PATH, UNREAD_PATH, LANGUAGE_ID='en' ):
 		self.NEWS_PATH = NEWS_PATH
 		self.UNREAD_PATH = UNREAD_PATH
-		self.TIMESTAMP_PATH = os.path.join( root, PRIVATE_PATH, NewsManager.TIMESTAMP_FILE )
+		self.TIMESTAMP_PATH = os.path.join( root, self.NEWS_LIB_PATH, NewsManager.TIMESTAMP_FILE )
 		self.target_root = root
 		self.LANGUAGE_ID = LANGUAGE_ID
 		self.config = config( config_root = os.environ.get("PORTAGE_CONFIGROOT", "/"),
@@ -60,6 +60,10 @@ class NewsManager(object):
 			timestamp = 0
 
 		path = os.path.join( self.portdb.getRepositoryPath( repoid ), self.NEWS_PATH )
+		# Skip reading news for repoid if the news dir does not exist.  Requested by
+		# NightMorph :)
+		if not os.path.exists( path ):
+			return None
 		news = os.listdir( path )
 		updates = []
 		for item in news:
@@ -74,13 +78,13 @@ class NewsManager(object):
 		del path
 		
 		path = os.path.join( self.UNREAD_PATH, "news-" + repoid + ".unread" )
-		lockfile( path )
+		unread_lock = lockfile( path )
 		unread_file = open( path, "a" )
 		for item in updates:
 			unread_file.write( item.path + "\n" )
 
 		unread_file.close()
-		unlockfile(path)
+		unlockfile(unread_lock)
 		
 		# Touch the timestamp file
 		f = open(self.TIMESTAMP_PATH, "w")
@@ -98,12 +102,12 @@ class NewsManager(object):
 			self.updateItems( repoid )
 
 		unreadfile = os.path.join( self.UNREAD_PATH, "news-"+ repoid +".unread" )
-		lockfile(unreadfile)
+		unread_lock = lockfile(unreadfile)
 		if os.path.exists( unreadfile ):
 			unread = open( unreadfile ).readlines()
 			if len(unread):
 				return len(unread)
-		unlockfile(unread)
+		unlockfile(unread_lock)
 
 _installedRE = re.compile("Display-If-Installed:(.*)\n")
 _profileRE = re.compile("Display-If-Profile:(.*)\n")
@@ -163,21 +167,14 @@ class NewsItem(object):
 			#will never match
 			if not line.startswith("D"):
 				continue
-			match = _installedRE.match( line )
-			if match:
-				self.restrictions.append( 
-					DisplayInstalledRestriction( match.groups()[0].strip().rstrip() ) )
-				continue
-			match = _profileRE.match( line )
-			if match:
-				self.restrictions.append(
-					DisplayProfileRestriction( match.groups()[0].strip().rstrip() ) )
-				continue
-			match = _keywordRE.match( line )
-			if match:
-				self.restrictions.append(
-					DisplayKeywordRestriction( match.groups()[0].strip().rstrip() ) )
-				continue
+			restricts = {  _installedRE : DisplayInstalledRestriction,
+					_profileRE : DisplayProfileRestriction,
+					_keywordRE : DisplayKeywordRestriction }
+			for regex, restriction in restricts.iteritems():
+				match = regex.match(line)
+				if match:
+					self.restrictions.append( restriction( match.groups()[0].strip() ) )
+					continue
 		self._parsed = True
 
 	def __getattr__( self, attr ):

@@ -40,6 +40,7 @@ import codecs
 
 from portage_manifest import Manifest
 from portage_exception import ParseError
+from portage_exec import spawn
 
 from output import bold, darkgreen, darkred, green, nocolor, red, turquoise, yellow
 
@@ -1689,8 +1690,6 @@ else:
 	if isCvs:
 		mycvstree=cvstree.getentries("./",recursive=1)
 		mychanged=cvstree.findchanged(mycvstree,recursive=1,basedir="./")
-		for manifest in [file for file in mychanged if '/Manifest' in file]:
-			mychanged.remove(manifest)
 		mynew=cvstree.findnew(mycvstree,recursive=1,basedir="./")
 		myremoved=cvstree.findremoved(mycvstree,recursive=1,basedir="./")
 	if isSvn:
@@ -1710,6 +1709,9 @@ else:
 			print
 			sys.exit(0)
 
+	# Manifests need to be regenerated after all other commits, so don't commit
+	# them now even if they have changed.
+	mychanged = [f for f in mychanged if "Manifest" != os.path.basename(f)]
 	myupdates=mychanged+mynew
 	myheaders=[]
 	mydirty=[]
@@ -1726,7 +1728,7 @@ else:
 		print "myupdates:",myupdates
 		print "myheaders:",myheaders
 		print
-	unlinkfile=0
+
 	if commitmessagefile:
 		try:
 			f = open(commitmessagefile)
@@ -1759,12 +1761,10 @@ else:
 	except AttributeError:
 		print "Failed to insert portage version in message!"
 		commitmessage+="\n(Portage version: Unknown)"
-	if not commitmessagefile:
-		unlinkfile=1
-		commitmessagefile=tempfile.mktemp(".repoman.msg")
-		if os.path.exists(commitmessagefile):
-			os.unlink(commitmessagefile)
-		mymsg=open(commitmessagefile,"w")
+	if myupdates or myremoved:
+		myfiles = myupdates + myremoved
+		fd, commitmessagefile = tempfile.mkstemp(".repoman.msg")
+		mymsg = os.fdopen(fd, "w")
 		mymsg.write(commitmessage)
 		mymsg.close()
 
@@ -1778,18 +1778,30 @@ else:
 		retval = None
 		if "--pretend" in myoptions:
 			if isCvs:
-				print "(cvs -q commit -F "+commitmessagefile +" "+ " ".join(myupdates)+")"
+				print "(cvs -q commit -F %s %s)" % \
+					(commitmessagefile, " ".join(myfiles))
 			if isSvn:
-				print "(svn commit -F "+commitmessagefile +" "+ " ".join(myupdates)+")"
-			retval=0
+				print "(svn commit -F %s %s)" % \
+					(commitmessagefile. " ".join(myfiles))
 		else:
+			retval = spawn(["/usr/bin/cvs", "-q", "commit",
+				"-F", commitmessagefile] + myfiles,
+				env=os.environ)
 			if isCvs:
-				retval=os.system("cvs -q commit -F "+commitmessagefile + " " +" ".join(myupdates))
+				retval = spawn(["cvs", "-q", "commit",
+					"-F", commitmessagefile] + myfiles,
+					env=os.environ)
 			if isSvn:
-				retval=os.system("svn commit -F "+commitmessagefile + " " +" ".join(myupdates))
-			if retval:
-				print "!!! Exiting on vcs (shell) error code:",retval
-				sys.exit(retval)
+				retval = spawn(["svn", "commit",
+					"-F", commitmessagefile] + myfiles,
+					env=os.environ)
+		try:
+			os.unlink(commitmessagefile)
+		except OSError:
+			pass
+		if retval:
+			print "!!! Exiting on cvs (shell) error code:",retval
+			sys.exit(retval)
 
 	# Setup the GPG commands
 	def gpgsign(filename):
@@ -1823,7 +1835,7 @@ else:
 			else:
 				raise portage_exception.PortageException("!!! gpg exited with '" + str(rValue) + "' status")
 
-	need_commit = False
+	manifest_commit_required = True
 	if myheaders or myupdates or myremoved or mynew:
 		myfiles=myheaders+myupdates+myremoved+mynew
 		for x in range(len(myfiles)-1, -1, -1):
@@ -1874,8 +1886,7 @@ else:
 				if retval:
 					print "!!! Exiting on cvs (shell) error code:",retval
 					sys.exit(retval)
-		else:
-			need_commit = True
+			manifest_commit_required = False
 
 	signed = False
 	if "sign" in repoman_settings.features:
@@ -1912,14 +1923,15 @@ else:
 			portage.writemsg("!!! Disabled FEATURES='sign'\n")
 			signed = False
 
-	if need_commit or signed:
+	if manifest_commit_required or signed:
 		if "--pretend" in myoptions:
 			if isCvs:
 				print "(cvs -q commit -F "+commitmessagefile+")"
 			if isSvn:
 				print "(svn -q commit -F "+commitmessagefile+")"
 		else:
-			mymsg=open(commitmessagefile,"w")
+			fd, commitmessagefile = tempfile.mkstemp(".repoman.msg")
+			mymsg = os.fdopen(fd, "w")
 			mymsg.write(commitmessage)
 			if signed:
 				mymsg.write("\n (Signed Manifest commit)")
@@ -1930,12 +1942,14 @@ else:
 				retval=os.system("cvs -q commit -F "+commitmessagefile)
 			if isSvn:
 				retval=os.system("svn -q commit -F "+commitmessagefile)
+			try:
+				os.unlink(commitmessagefile)
+			except OSError:
+				pass
 			if retval:
 				print "!!! Exiting on cvs (shell) error code:",retval
 				sys.exit(retval)
 
-	if unlinkfile:
-		os.unlink(commitmessagefile)
 	print
 	if isCvs or isSvn:
 		print "Commit complete."

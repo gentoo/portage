@@ -26,6 +26,7 @@ CUSTOM_PROFILE_PATH     = USER_CONFIG_PATH+"/profile"
 PORTAGE_BASE_PATH       = PORTAGE_BASE
 PORTAGE_BIN_PATH        = PORTAGE_BASE_PATH+"/bin"
 PORTAGE_PYM_PATH        = PORTAGE_BASE_PATH+"/pym"
+NEWS_LIB_PATH           = EPREFIX+"/var/lib/gentoo"
 PROFILE_PATH            = EPREFIX+"/etc/make.profile"
 LOCALE_DATA_PATH        = PORTAGE_BASE_PATH+"/locale"
 
