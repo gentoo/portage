@@ -123,7 +123,7 @@ class NewsManager(object):
 		
 		unreadfile = os.path.join( self.UNREAD_PATH, "news-"+ repoid +".unread" )
 		try:
-			try;
+			try:
 				unread_lock = lockfile(unreadfile)
 				# Set correct permissions on the news-repoid.unread file
 				apply_permissions( filename=unreadfile,
