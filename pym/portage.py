@@ -2169,6 +2169,29 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, **keyw
 		env=mysettings.environ()
 		keywords["opt_name"]="[%s]" % mysettings["PF"]
 
+	# The default policy for the sesandbox domain only allows entry (via exec)
+	# from shells and from binaries that belong to portage (the number of entry
+	# points is minimized).  The "tee" binary is not among the allowed entry
+	# points, so it is spawned outside of the sesandbox domain and reads from a
+	# pipe between two domains.
+	logfile = keywords.get("logfile")
+	mypids = []
+	pw = None
+	if logfile:
+		del keywords["logfile"]
+		fd_pipes = keywords.get("fd_pipes")
+		if fd_pipes is None:
+			fd_pipes = {0:0, 1:1, 2:2}
+		elif 1 not in fd_pipes or 2 not in fd_pipes:
+			raise ValueError(fd_pipes)
+		pr, pw = os.pipe()
+		mypids.extend(portage_exec.spawn(('tee', '-i', '-a', logfile),
+			 returnpid=True, fd_pipes={0:pr, 1:fd_pipes[1], 2:fd_pipes[2]}))
+		os.close(pr)
+		fd_pipes[1] = pw
+		fd_pipes[2] = pw
+		keywords["fd_pipes"] = fd_pipes
+
 	features = mysettings.features
 	# XXX: Negative RESTRICT word
 	droppriv=(droppriv and ("userpriv" in features) and not \
@@ -2194,12 +2217,33 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, **keyw
 		con = con.replace(mysettings["PORTAGE_T"], mysettings["PORTAGE_SANDBOX_T"])
 		selinux.setexec(con)
 
-	retval = spawn_func(mystring, env=env, **keywords)
+	returnpid = keywords.get("returnpid")
+	keywords["returnpid"] = True
+	try:
+		mypids.extend(spawn_func(mystring, env=env, **keywords))
+	finally:
+		if pw:
+			os.close(pw)
+		if sesandbox:
+			selinux.setexec(None)
 
-	if sesandbox:
-		selinux.setexec(None)
+	if returnpid:
+		return mypids
 
-	return retval
+	while mypids:
+		pid = mypids.pop(0)
+		retval = os.waitpid(pid, 0)[1]
+		portage_exec.spawned_pids.remove(pid)
+		if retval != os.EX_OK:
+			for pid in mypids:
+				if os.waitpid(pid, os.WNOHANG) == (0,0):
+					os.kill(pid, signal.SIGTERM)
+					os.waitpid(pid, 0)
+				portage_exec.spawned_pids.remove(pid)
+			if retval & 0xff:
+				return (retval & 0xff) << 8
+			return retval >> 8
+	return os.EX_OK
 
 def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",use_locks=1, try_mirrors=1):
 	"fetch files.  Will use digest file if available."
@@ -3897,6 +3941,8 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 	def compare_pkgs(a, b):
 		return pkgcmp(b[1], a[1])
 	portdb = trees[myroot]["porttree"].dbapi
+	if kwargs["use_binaries"]:
+		portdb = trees[myroot]["bintree"].dbapi
 	myvirtuals = mysettings.getvirtuals()
 	for x in mysplit:
 		if x == "||":
@@ -3919,11 +3965,19 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 		match_atom = x
 		if isblocker:
 			match_atom = x[1:]
-		pkgs = []
+		pkgs = {}
 		for cpv in portdb.match(match_atom):
 			# only use new-style matches
 			if cpv.startswith("virtual/"):
-				pkgs.append((cpv, pkgsplit(cpv)))
+				pkgs[cpv] = (cpv, pkgsplit(cpv), portdb)
+		if kwargs["use_binaries"] and "vartree" in trees[myroot]:
+			vardb = trees[myroot]["vartree"].dbapi
+			for cpv in vardb.match(match_atom):
+				# only use new-style matches
+				if cpv.startswith("virtual/"):
+					if cpv in pkgs:
+						continue
+					pkgs[cpv] = (cpv, pkgsplit(cpv), vardb)
 		if not (pkgs or mychoices):
 			# This one couldn't be expanded as a new-style virtual.  Old-style
 			# virtuals have already been expanded by dep_virtual, so this one
@@ -3935,13 +3989,14 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 		if not pkgs and len(mychoices) == 1:
 			newsplit.append(x.replace(mykey, mychoices[0]))
 			continue
+		pkgs = pkgs.values()
 		pkgs.sort(compare_pkgs) # Prefer higher versions.
 		if isblocker:
 			a = []
 		else:
 			a = ['||']
 		for y in pkgs:
-			depstring = " ".join(portdb.aux_get(y[0], dep_keys))
+			depstring = " ".join(y[2].aux_get(y[0], dep_keys))
 			if edebug:
 				print "Virtual Parent:   ", y[0]
 				print "Virtual Depstring:", depstring
@@ -4051,6 +4106,11 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 		all_available = True
 		for atom in atoms:
 			if not mydbapi.match(atom):
+				# With --usepkgonly, count installed packages as "available".
+				# Note that --usepkgonly currently has no package.mask support.
+				# See bug #149816.
+				if use_binaries and vardb and vardb.match(atom):
+					continue
 				all_available = False
 				break
 

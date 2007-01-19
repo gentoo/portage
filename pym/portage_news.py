@@ -7,7 +7,7 @@ from portage_const import INCREMENTALS, PROFILE_PATH, NEWS_LIB_PATH
 from portage import config, vartree, vardbapi, portdbapi
 from portage_util import ensure_dirs
 from portage_data import portage_gid
-from portage_locks import lockfile, unlockfile
+from portage_locks import lockfile, unlockfile, lockdir, unlockdir
 
 import os, re
 
@@ -55,36 +55,48 @@ class NewsManager(object):
 			raise ValueError("Invalid repoID: %s" % repoid)
 
 		if os.path.exists(self.TIMESTAMP_PATH):
+			# Make sure the timestamp has correct permissions.
+			apply_permissions( unreadfile, 0, portage_gid, 664 )
 			timestamp = os.stat(self.TIMESTAMP_PATH).st_mtime
 		else:
 			timestamp = 0
 
 		path = os.path.join( self.portdb.getRepositoryPath( repoid ), self.NEWS_PATH )
-		# Skip reading news for repoid if the news dir does not exist.  Requested by
-		# NightMorph :)
-		if not os.path.exists( path ):
-			return None
-		news = os.listdir( path )
-		updates = []
-		for item in news:
-			try:
-				file = os.path.join( path, item, item + "." + self.LANGUAGE_ID + ".txt")
-				tmp = NewsItem( file , timestamp )
-			except TypeError:
-				continue
+		try:
+			newsdir_lock = lockdir( self.portdb.getRepositoryPath )
+			# Skip reading news for repoid if the news dir does not exist.  Requested by
+			# NightMorph :)
+			if not os.path.exists( path ):
+				return None
+			news = os.listdir( path )
+			updates = []
+			for item in news:
+				try:
+					file = os.path.join( path, item, item + "." + self.LANGUAGE_ID + ".txt")
+					tmp = NewsItem( file , timestamp )
+				except TypeError:
+					continue
 
-			if tmp.isRelevant( profile=os.readlink(PROFILE_PATH), config=config, vardb=self.vdb):
-				updates.append( tmp )
+				if tmp.isRelevant( profile=os.readlink(PROFILE_PATH), config=config, vardb=self.vdb):
+					updates.append( tmp )
+		finally:
+			unlockdir(newsdir_lock)
+		
 		del path
 		
 		path = os.path.join( self.UNREAD_PATH, "news-" + repoid + ".unread" )
-		unread_lock = lockfile( path )
-		unread_file = open( path, "a" )
-		for item in updates:
-			unread_file.write( item.path + "\n" )
+		try:
+			unread_lock = lockfile( path )
+			# Make sure we have the correct permissions when created
+			unread_file = open( path, "a" )
+			apply_permissions( unreadfile, 0, portage_gid, 664 )
+		
+			for item in updates:
+				unread_file.write( item.path + "\n" )
 
-		unread_file.close()
-		unlockfile(unread_lock)
+			unread_file.close()
+		finally:
+			unlockfile(unread_lock)
 		
 		# Touch the timestamp file
 		f = open(self.TIMESTAMP_PATH, "w")
@@ -98,16 +110,25 @@ class NewsManager(object):
 		check for new items.
 		"""
 		
+		unreadfile = os.path.join( self.UNREAD_PATH, "news-"+ repoid +".unread" )
+		# Set correct permissions on the news-repoid.unread file
+		try:
+			apply_permissions( unreadfile, 0, portage_gid, 664 )
+		except FileNotFound:
+			pass # It may not exist yet, thats ok.
+		
 		if update:
 			self.updateItems( repoid )
-
-		unreadfile = os.path.join( self.UNREAD_PATH, "news-"+ repoid +".unread" )
-		unread_lock = lockfile(unreadfile)
-		if os.path.exists( unreadfile ):
-			unread = open( unreadfile ).readlines()
-			if len(unread):
-				return len(unread)
-		unlockfile(unread_lock)
+		
+		try:
+			unread_lock = lockfile(unreadfile)
+			if os.path.exists( unreadfile ):
+				unread = open( unreadfile ).readlines()
+				if len(unread):
+					return len(unread)
+		finally:
+			if unread_lock:
+				unlockfile(unread_lock)
 
 _installedRE = re.compile("Display-If-Installed:(.*)\n")
 _profileRE = re.compile("Display-If-Profile:(.*)\n")

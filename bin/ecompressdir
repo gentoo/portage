@@ -34,7 +34,8 @@ for dir in "$@" ; do
 	while read brokenlink ; do
 		olddest=$(readlink "${brokenlink}")
 		newdest="${olddest}${suffix}"
-		ln -snf "${newdest}" "${brokenlink}"
+		rm -f "${brokenlink}"
+		ln -snf "${newdest}" "${brokenlink}${suffix}"
 		((ret+=$?))
 	done
 done
