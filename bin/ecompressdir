@@ -25,7 +25,7 @@ for dir in "$@" ; do
 		vecho "${0##*/}: ${dir#${ED}} does not exist!"
 		continue
 	else
-		vecho "${0##*/}: $(ecompress --bin) ${dir#${ED}}"
+		vecho "${0##*/}: $(ecompress --bin) ${dir#${D}}"
 	fi
 
 	find "${dir}" -type f '!' -name '*'${suffix} -print0 | xargs -0 ecompress
