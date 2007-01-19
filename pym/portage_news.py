@@ -5,10 +5,10 @@
 
 from portage_const import INCREMENTALS, PROFILE_PATH, NEWS_LIB_PATH
 from portage import config, vartree, vardbapi, portdbapi
-from portage_util import ensure_dirs
+from portage_util import ensure_dirs, apply_permissions
 from portage_data import portage_gid
 from portage_locks import lockfile, unlockfile, lockdir, unlockdir
-
+from portage_exception import FileNotFound
 import os, re
 
 class NewsManager(object):
@@ -29,7 +29,7 @@ class NewsManager(object):
 	def __init__( self, root, NEWS_PATH, UNREAD_PATH, LANGUAGE_ID='en' ):
 		self.NEWS_PATH = NEWS_PATH
 		self.UNREAD_PATH = UNREAD_PATH
-		self.TIMESTAMP_PATH = os.path.join( root, self.NEWS_LIB_PATH, NewsManager.TIMESTAMP_FILE )
+		self.TIMESTAMP_PATH = os.path.join( root, NEWS_LIB_PATH, NewsManager.TIMESTAMP_FILE )
 		self.target_root = root
 		self.LANGUAGE_ID = LANGUAGE_ID
 		self.config = config( config_root = os.environ.get("PORTAGE_CONFIGROOT", "/"),
@@ -54,16 +54,19 @@ class NewsManager(object):
 		if repoid not in repos:
 			raise ValueError("Invalid repoID: %s" % repoid)
 
-		if os.path.exists(self.TIMESTAMP_PATH):
+		timestamp_file = self.TIMESTAMP_PATH + repoid
+		if os.path.exists(timestamp_file):
 			# Make sure the timestamp has correct permissions.
-			apply_permissions( unreadfile, 0, portage_gid, 664 )
-			timestamp = os.stat(self.TIMESTAMP_PATH).st_mtime
+			apply_permissions( filename=timestamp_file, 
+				uid=self.config["PORTAGE_INST_UID"], gid=portage_gid, mode=664 )
+			timestamp = os.stat(timestamp_file).st_mtime
 		else:
 			timestamp = 0
 
 		path = os.path.join( self.portdb.getRepositoryPath( repoid ), self.NEWS_PATH )
+		newsdir_lock = None
 		try:
-			newsdir_lock = lockdir( self.portdb.getRepositoryPath )
+			newsdir_lock = lockdir( self.portdb.getRepositoryPath(repoid) )
 			# Skip reading news for repoid if the news dir does not exist.  Requested by
 			# NightMorph :)
 			if not os.path.exists( path ):
@@ -80,26 +83,31 @@ class NewsManager(object):
 				if tmp.isRelevant( profile=os.readlink(PROFILE_PATH), config=config, vardb=self.vdb):
 					updates.append( tmp )
 		finally:
-			unlockdir(newsdir_lock)
+			if newsdir_lock:
+				unlockdir(newsdir_lock)
 		
 		del path
 		
 		path = os.path.join( self.UNREAD_PATH, "news-" + repoid + ".unread" )
 		try:
 			unread_lock = lockfile( path )
+			if not os.path.exists( path ):
+				#create the file if it does not exist
+				open( path, "w" )
+			# Ensure correct perms on the unread file.
+			apply_permissions( filename=path,
+				uid=self.config["PORTAGE_INST_UID"], gid=portage_gid, mode=664 )
 			# Make sure we have the correct permissions when created
 			unread_file = open( path, "a" )
-			apply_permissions( unreadfile, 0, portage_gid, 664 )
-		
+
 			for item in updates:
 				unread_file.write( item.path + "\n" )
-
 			unread_file.close()
 		finally:
 			unlockfile(unread_lock)
 		
 		# Touch the timestamp file
-		f = open(self.TIMESTAMP_PATH, "w")
+		f = open(timestamp_file, "w")
 		f.close()
 
 	def getUnreadItems( self, repoid, update=False ):
@@ -110,22 +118,23 @@ class NewsManager(object):
 		check for new items.
 		"""
 		
-		unreadfile = os.path.join( self.UNREAD_PATH, "news-"+ repoid +".unread" )
-		# Set correct permissions on the news-repoid.unread file
-		try:
-			apply_permissions( unreadfile, 0, portage_gid, 664 )
-		except FileNotFound:
-			pass # It may not exist yet, thats ok.
-		
 		if update:
 			self.updateItems( repoid )
 		
+		unreadfile = os.path.join( self.UNREAD_PATH, "news-"+ repoid +".unread" )
 		try:
-			unread_lock = lockfile(unreadfile)
-			if os.path.exists( unreadfile ):
-				unread = open( unreadfile ).readlines()
-				if len(unread):
-					return len(unread)
+			try:
+				unread_lock = lockfile(unreadfile)
+				# Set correct permissions on the news-repoid.unread file
+				apply_permissions( filename=unreadfile,
+					uid=int(self.config["PORTAGE_INST_UID"]), gid=portage_gid, mode=0664 )
+					
+				if os.path.exists( unreadfile ):
+					unread = open( unreadfile ).readlines()
+					if len(unread):
+						return len(unread)
+			except FileNotFound:
+				pass # unread file may not exist
 		finally:
 			if unread_lock:
 				unlockfile(unread_lock)

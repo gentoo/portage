@@ -467,40 +467,66 @@ def elog_process(cpv, mysettings):
 		return
 	# exploit listdir() file order so we process log entries in chronological order
 	mylogfiles.reverse()
-	mylogentries = {}
-	my_elog_classes = set(mysettings.get("PORTAGE_ELOG_CLASSES", "").split())
+	all_logentries = {}
 	for f in mylogfiles:
 		msgfunction, msgtype = f.split(".")
-		if msgtype.upper() not in my_elog_classes \
-				and msgtype.lower() not in my_elog_classes:
-			continue
 		if msgfunction not in portage_const.EBUILD_PHASES:
 			writemsg("!!! can't process invalid log file: %s\n" % f,
 				noiselevel=-1)
 			continue
-		if not msgfunction in mylogentries:
-			mylogentries[msgfunction] = []
+		if not msgfunction in all_logentries:
+			all_logentries[msgfunction] = []
 		msgcontent = open(mysettings["T"]+"/logging/"+f, "r").readlines()
-		mylogentries[msgfunction].append((msgtype, msgcontent))
+		all_logentries[msgfunction].append((msgtype, msgcontent))
 
-	# in case the filters matched all messages
-	if len(mylogentries) == 0:
+	def filter_loglevels(logentries, loglevels):
+		# remove unwanted entries from all logentries
+		rValue = {}
+		loglevels = map(str.upper, loglevels)
+		for phase in logentries.keys():
+			for msgtype, msgcontent in logentries[phase]:
+				if msgtype.upper() in loglevels or "*" in loglevels:
+					if not rValue.has_key(phase):
+						rValue[phase] = []
+					rValue[phase].append((msgtype, msgcontent))
+		return rValue
+	
+	my_elog_classes = set(mysettings.get("PORTAGE_ELOG_CLASSES", "").split())
+	default_logentries = filter_loglevels(all_logentries, my_elog_classes)
+
+	# in case the filters matched all messages and no module overrides exist
+	if len(default_logentries) == 0 and (not ":" in mysettings.get("PORTAGE_ELOG_SYSTEM", "")):
 		return
 
-	# generate a single string with all log messages
-	fulllog = ""
-	for phase in portage_const.EBUILD_PHASES:
-		if not phase in mylogentries:
-			continue
-		for msgtype,msgcontent in mylogentries[phase]:
-			fulllog += "%s: %s\n" % (msgtype, phase)
-			for line in msgcontent:
-				fulllog += line
-			fulllog += "\n"
+	def combine_logentries(logentries):
+		# generate a single string with all log messages
+		rValue = ""
+		for phase in portage_const.EBUILD_PHASES:
+			if not phase in logentries:
+				continue
+			for msgtype,msgcontent in logentries[phase]:
+				rValue += "%s: %s\n" % (msgtype, phase)
+				for line in msgcontent:
+					rValue += line
+				rValue += "\n"
+		return rValue
+	
+	default_fulllog = combine_logentries(default_logentries)
 
 	# pass the processing to the individual modules
 	logsystems = mysettings["PORTAGE_ELOG_SYSTEM"].split()
 	for s in logsystems:
+		# allow per module overrides of PORTAGE_ELOG_CLASSES
+		if ":" in s:
+			s, levels = s.split(":", 1)
+			levels = levels.split(",")
+			mod_logentries = filter_loglevels(all_logentries, levels)
+			mod_fulllog = combine_logentries(mod_logentries)
+		else:
+			mod_logentries = default_logentries
+			mod_fulllog = default_fulllog
+		if len(mod_logentries) == 0:
+			continue
 		# - is nicer than _ for module names, so allow people to use it.
 		s = s.replace("-", "_")
 		try:
@@ -517,7 +543,7 @@ def elog_process(cpv, mysettings):
 			# module gets hung).
 			signal.alarm(60)
 			try:
-				m.process(mysettings, cpv, mylogentries, fulllog)
+				m.process(mysettings, cpv, mod_logentries, mod_fulllog)
 			finally:
 				signal.alarm(0)
 			if hasattr(m, "finalize") and not m.finalize in _elog_atexit_handlers:
@@ -3210,7 +3236,13 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 			(mysettings["CATEGORY"], mysettings["PF"], logid_time))
 		del logid_path, logid_time
 	else:
-		mysettings["PORTAGE_LOG_FILE"] = os.path.join(mysettings["T"], "build.log")
+		# When sesandbox is enabled, only log if PORT_LOGDIR is explicitly
+		# enabled since it is possible that local SELinux security policies
+		# do not allow ouput to be piped out of the sesandbox domain.
+		if not (mysettings.selinux_enabled() and \
+			"sesandbox" in mysettings.features):
+			mysettings["PORTAGE_LOG_FILE"] = os.path.join(
+				mysettings["T"], "build.log")
 
 _doebuild_manifest_exempt_depend = 0
 _doebuild_manifest_checked = None
@@ -6015,8 +6047,14 @@ class portdbapi(dbapi):
 			mytrees = self.porttrees
 		for oroot in mytrees:
 			for x in listdir(oroot+"/"+mycp,EmptyOnError=1,ignorecvs=1):
-				if x[-7:]==".ebuild":
-					d[mysplit[0]+"/"+x[:-7]] = None
+				if x.endswith(".ebuild"):
+					pf = x[:-7]
+					ps = pkgsplit(pf)
+					if not ps:
+						writemsg("\nInvalid ebuild name: %s\n" % \
+							os.path.join(oroot, mycp, x), noiselevel=-1)
+						continue
+					d[mysplit[0]+"/"+pf] = None
 		return d.keys()
 
 	def freeze(self):

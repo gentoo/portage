@@ -607,6 +607,8 @@ def match_from_list(mydep, candidate_list):
 	elif operator == "~": # version, any revision, match
 		for x in candidate_list:
 			xs = catpkgsplit(x)
+			if xs is None:
+				raise InvalidData(x)
 			if not cpvequal(xs[0]+"/"+xs[1]+"-"+xs[2], mycpv_cps[0]+"/"+mycpv_cps[1]+"-"+mycpv_cps[2]):
 				continue
 			if xs[2] != ver:
