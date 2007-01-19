@@ -980,8 +980,8 @@ class config:
 
 			def check_var_directory(varname, var):
 				if not os.path.isdir(var):
-					writemsg("!!! Error: %s='%s' is not a directory. " + \
-						"Please correct this.\n" % (var, varname),
+					writemsg(("!!! Error: %s='%s' is not a directory. " + \
+						"Please correct this.\n") % (varname, var),
 						noiselevel=-1)
 					raise portage_exception.DirectoryNotFound(var)
 
@@ -1517,6 +1517,7 @@ class config:
 		abs_profile_path = os.path.join(self["PORTAGE_CONFIGROOT"],
 			PROFILE_PATH.lstrip(os.path.sep))
 		if not os.path.islink(abs_profile_path) and \
+			not os.path.exists(os.path.join(abs_profile_path, "parent")) and \
 			os.path.exists(os.path.join(self["PORTDIR"], "profiles")):
 			writemsg("\a\n\n!!! %s is not a symlink and will probably prevent most merges.\n" % abs_profile_path,
 				noiselevel=-1)
@@ -2622,7 +2623,7 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
 	NOTE: manifestonly and overwrite are useless with manifest2 and
 	      are therefore ignored."""
 	if myportdb is None:
- 		writemsg("Warning: myportdb not specified to digestgen\n")
+		writemsg("Warning: myportdb not specified to digestgen\n")
 		global portdb
 		myportdb = portdb
 	global _doebuild_manifest_exempt_depend

@@ -7,11 +7,11 @@ from unittest import TestCase
 from portage_dep import dep_getslot
 
 class DepGetSlot(TestCase):
-        """ A simple testcase for isvalidatom
-        """
+	""" A simple testcase for isvalidatom
+	"""
 
-        def testDepGetSlot(self):
-		
+	def testDepGetSlot(self):
+
 		slot_char = ":"
 		slots = ( "a", "1.2", "1", "IloveVapier", None )
 		cpvs = ["sys-apps/portage"]
@@ -20,7 +20,7 @@ class DepGetSlot(TestCase):
 			for slot in slots:
 				if slot:
 					self.assertEqual( dep_getslot( 
-						 cpv + slot_char + slot ), slot )
+						cpv + slot_char + slot ), slot )
 				else:
 					self.assertEqual( dep_getslot( cpv ), slot )
 

@@ -7,10 +7,10 @@ from unittest import TestCase
 from portage_dep import dep_getcpv
 
 class DepGetCPV(TestCase):
-        """ A simple testcase for isvalidatom
-        """
+	""" A simple testcase for isvalidatom
+	"""
 
-        def testDepGetCPV(self):
+	def testDepGetCPV(self):
 		
 		prefix_ops = ["<", ">", "=", "~", "!", "<=", 
 			      ">=", "!=", "!<", "!>", "!~",""]

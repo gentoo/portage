@@ -158,7 +158,8 @@ def main():
 	for x in args:
 		basename = os.path.basename(x)
 		dirname  = os.path.dirname(x)
-		success = success and install(basename, dirname, options)
+		if not install(basename, dirname, options):
+			success = False
 	
 	if success:
 		retcode = 0

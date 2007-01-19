@@ -56,16 +56,12 @@ Generally you can do two things here, if you are messing with defaults..
 dict.get(foo, some_default)
 
 will try to retrieve foo from dict, if there is a KeyError, will insert foo
-into dict with the value of some_default.  This method is preferred in most cases.
-
-You can also do something like:
+into dict with the value of some_default.  This method is preferred in cases where
+you are messing with defaults:
 
 try:
 	dict[foo]
-	...stuff here..
 except KeyError:
-	print "holy cow we totally expected a keyerror here"
+	dict[foo] = default_value
 
-in most instances however you are only catching the KeyError to set a default,
-in which case you should be using dict.get() or telling the user they are missing
-a required dict key.
+The get call is nicer (compact) and faster (try,except are slow).
