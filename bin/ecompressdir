@@ -1,4 +1,4 @@
-#!/bin/bash
+#!@BASH@
 # Copyright 1999-2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id: prepalldocs 3483 2006-06-10 21:40:40Z genone $
@@ -15,17 +15,17 @@ if [[ -z ${suffix} ]] ; then
 	exit 1
 fi
 
-source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
+source "${PORTAGE_BIN_PATH:-${EPREFIX}/usr/lib/portage/bin}"/isolated-functions.sh
 
 ret=0
 
 for dir in "$@" ; do
-	dir="${D}${dir}"
+	dir="${ED}${dir}"
 	if [[ ! -d ${dir} ]] ; then
-		vecho "${0##*/}: ${dir#${D}} does not exist!"
+		vecho "${0##*/}: ${dir#${ED}} does not exist!"
 		continue
 	else
-		vecho "${0##*/}: $(ecompress --bin) ${dir#${D}}"
+		vecho "${0##*/}: $(ecompress --bin) ${dir#${ED}}"
 	fi
 
 	find "${dir}" -type f '!' -name '*'${suffix} -print0 | xargs -0 ecompress

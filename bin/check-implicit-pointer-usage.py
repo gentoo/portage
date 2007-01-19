@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!@PYTHON@ -O
 
 # Ripped from HP and updated from Debian
 

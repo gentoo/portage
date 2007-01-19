@@ -1,4 +1,4 @@
-#!/bin/bash
+#!@BASH@
 # Copyright 1999-2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id: prepman 5507 2007-01-10 04:22:27Z zmedico $
@@ -8,7 +8,7 @@ if [[ -z $1 ]] ; then
 	exit 1
 fi
 
-source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
+source "${PORTAGE_BIN_PATH:-${EPREFIX}/usr/lib/portage/bin}"/isolated-functions.sh
 
 # setup compression stuff
 PORTAGE_COMPRESS=${PORTAGE_COMPRESS:-bzip2}
