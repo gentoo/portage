@@ -3228,7 +3228,13 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 			(mysettings["CATEGORY"], mysettings["PF"], logid_time))
 		del logid_path, logid_time
 	else:
-		mysettings["PORTAGE_LOG_FILE"] = os.path.join(mysettings["T"], "build.log")
+		# When sesandbox is enabled, only log if PORT_LOGDIR is explicitly
+		# enabled since it is possible that local SELinux security policies
+		# do not allow ouput to be piped out of the sesandbox domain.
+		if not (mysettings.selinux_enabled() and \
+			"sesandbox" in mysettings.features):
+			mysettings["PORTAGE_LOG_FILE"] = os.path.join(
+				mysettings["T"], "build.log")
 
 _doebuild_manifest_exempt_depend = 0
 _doebuild_manifest_checked = None
