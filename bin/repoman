@@ -1782,7 +1782,7 @@ else:
 					(commitmessagefile, " ".join(myfiles))
 			if isSvn:
 				print "(svn commit -F %s %s)" % \
-					(commitmessagefile. " ".join(myfiles))
+					(commitmessagefile, " ".join(myfiles))
 		else:
 			retval = spawn(["/usr/bin/cvs", "-q", "commit",
 				"-F", commitmessagefile] + myfiles,
