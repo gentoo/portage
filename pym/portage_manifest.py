@@ -120,7 +120,10 @@ class Manifest(object):
 		if not from_scratch:
 			self._read()
 		self.compat = manifest1_compat
-		self.fetchlist_dict = fetchlist_dict
+		if fetchlist_dict != None:
+			self.fetchlist_dict = fetchlist_dict
+		else:
+			self.fetchlist_dict = {}
 		self.distdir = distdir
 		self.guessType = guessManifestFileType
 
@@ -381,17 +384,21 @@ class Manifest(object):
 		""" Validate signature on Manifest """
 		raise NotImplementedError()
 	
-	def addFile(self, ftype, fname, hashdict=None):
+	def addFile(self, ftype, fname, hashdict=None, ignoreMissing=False):
 		""" Add entry to Manifest optionally using hashdict to avoid recalculation of hashes """
-		if not os.path.exists(self.pkgdir+fname):
+		if ftype == "AUX" and not fname.startswith("files/"):
+			fname = os.path.join("files", fname)
+		if not os.path.exists(self.pkgdir+fname) and not ignoreMissing:
 			raise FileNotFound(fname)
 		if not ftype in portage_const.MANIFEST2_IDENTIFIERS:
 			raise InvalidDataType(ftype)
+		if ftype == "AUX" and fname.startswith("files"):
+			fname = fname[6:]
 		self.fhashdict[ftype][fname] = {}
 		if hashdict != None:
 			self.fhashdict[ftype][fname].update(hashdict)
 		if not portage_const.MANIFEST2_REQUIRED_HASH in self.fhashdict[ftype][fname]:
-			self.updateFileHashes(ftype, fname)
+			self.updateFileHashes(ftype, fname, checkExisting=False, ignoreMissing=ignoreMissing)
 	
 	def removeFile(self, ftype, fname):
 		""" Remove given entry from Manifest """
@@ -521,10 +528,9 @@ class Manifest(object):
 				self.checkTypeHashes("MISC", ignoreMissingFiles=False)
 			ebuildname = "%s.ebuild" % self._catsplit(cpv)[1]
 			self.checkFileHashes("EBUILD", ebuildname, ignoreMissing=False)
-		if checkDistfiles:
-			if onlyDistfiles:
-				for f in self._getCpvDistfiles(cpv):
-					self.checkFileHashes("DIST", f, ignoreMissing=False)
+		if checkDistfiles or onlyDistfiles:
+			for f in self._getCpvDistfiles(cpv):
+				self.checkFileHashes("DIST", f, ignoreMissing=False)
 	
 	def _getCpvDistfiles(self, cpv):
 		""" Get a list of all DIST files associated to the given cpv """
