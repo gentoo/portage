@@ -214,6 +214,20 @@
    </programlisting>
   </para>
   <para>
+   This warning crops up when code starts casting distinct pointer types and
+   then dereferencing them.  Generally, this is a violation of aliasing rules
+   which are part of the C standard.  Historically, these warnings did not show
+   up as the optimization was not turned on by default.  With gcc-4.1.x and
+   newer though, the -O2 optimization level enables strict aliasing support.
+   For information, please review these links:
+   <ulink url="http://mail-index.netbsd.org/tech-kern/2003/08/11/0001.html">NetBSD Explanation</ulink>,
+   <ulink url="http://thread.gmane.org/gmane.linux.gentoo.devel/39495">Gentoo Dev Thread</ulink>,
+   <ulink url="http://gcc.gnu.org/bugs.html#nonbugs_c">GCC Docs</ulink>
+  </para>
+  <para>
+   To fix this issue, use the methods proposed in the links mentioned earlier.
+   If you're unable to do so, then a work around would be to append the gcc
+   -fno-strict-aliasing flag to CFLAGS in the ebuild.
   </para>
  </sect1>
 
