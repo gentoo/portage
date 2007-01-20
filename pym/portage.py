@@ -6101,8 +6101,14 @@ class portdbapi(dbapi):
 			raise KeyError
 		myslot = portage_dep.dep_getslot(mydep)
 		if myslot is not None:
-			myval = [cpv for cpv in myval \
-				if self.aux_get(cpv, ["SLOT"])[0] == myslot]
+			slotmatches = []
+			for cpv in myval:
+				try:
+					if self.aux_get(cpv, ["SLOT"])[0] == myslot:
+						slotmatches.append(cpv)
+				except KeyError:
+					pass # ebuild masked by corruption
+			myval = slotmatches
 		if self.frozen and (level not in ["match-list","bestmatch-list"]):
 			self.xcache[level][mydep]=myval
 			if origdep and origdep != mydep:
