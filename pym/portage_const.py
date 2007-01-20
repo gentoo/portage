@@ -57,6 +57,7 @@ EAPI = 0
 HASHING_BLOCKSIZE        = 32768
 MANIFEST1_HASH_FUNCTIONS = ["MD5","SHA256","RMD160"]
 MANIFEST2_HASH_FUNCTIONS = ["SHA1","SHA256","RMD160"]
+MANIFEST2_REQUIRED_HASH = "SHA1"
 
 MANIFEST2_IDENTIFIERS = ["AUX","MISC","DIST","EBUILD"]
 # ===========================================================================
