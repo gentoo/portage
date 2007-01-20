@@ -238,6 +238,7 @@
     QA Notice: Package has poor programming practices which may compile
                fine but exhibit random runtime failures.
     ...: warning: implicit declaration of function ...
+    ...: warning: incompatible implicit declaration of built-in function ...
    </programlisting>
   </para>
   <para>
@@ -266,7 +267,7 @@
    <programlisting>
     QA Notice: Package has poor programming practices which may compile
                fine but exhibit random runtime failures.
-    ...: warning: incompatible implicit declaration of built-in function ...
+    ...: warning: is used uninitialized in this function
    </programlisting>
   </para>
   <para>
@@ -285,7 +286,7 @@
    <programlisting>
     QA Notice: Package has poor programming practices which may compile
                fine but exhibit random runtime failures.
-    ...: warning: is used uninitialized in this function
+    ...: warning: comparisons like X&lt;=Y&lt;=Z do not have their mathematical meaning
    </programlisting>
   </para>
   <para>
@@ -312,7 +313,7 @@
    <programlisting>
     QA Notice: Package has poor programming practices which may compile
                fine but exhibit random runtime failures.
-    ...: warning: comparisons like X&lt;=Y&lt;=Z do not have their mathematical meaning
+    ...: warning: null argument where non-null required
    </programlisting>
   </para>
   <para>
