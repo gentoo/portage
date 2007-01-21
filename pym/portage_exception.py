@@ -76,8 +76,8 @@ class InvalidAtom(PortagePackageException):
 
 class UnsupportedAPIException(PortagePackageException):
 	"""Unsupported API"""
-	def __init__(self, cpv, api):
-		self.cpv, self.api = cpv, api
+	def __init__(self, cpv, eapi):
+		self.cpv, self.eapi = cpv, eapi
 	def __str__(self):
 		return "Unable to do any operations on '%s', due to the fact it's EAPI is higher then this portage versions.  Please upgrade to a portage version that supports EAPI %s" % (self.cpv, self.eapi)
 
