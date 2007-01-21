@@ -28,7 +28,7 @@ for dir in "$@" ; do
 		vecho "${0##*/}: $(ecompress --bin) ${dir#${D}}"
 	fi
 
-	find "${dir}" -type f '!' -name '*'${suffix} -print0 | xargs -0 ecompress
+	find "${dir}" -type f '!' -name '*'${suffix} -print0 | ${XARGS} -0 ecompress
 	((ret+=$?))
 	find -L "${dir}" -type l | \
 	while read brokenlink ; do

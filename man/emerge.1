@@ -23,10 +23,10 @@ updated packages available.  \fBemerge\fR gracefully handles updating
 installed packages to newer releases as well.  It handles both source
 and binary packages, and it can be used to create binary packages for
 distribution.
-.SH "EBUILDS, TBZ2S, SETS AND DEPENDENCIES"
+.SH "EBUILDS, TBZ2S, SETS AND ATOMS"
 \fBemerge\fR primarily installs packages.  You can specify
 packages to install in one of four main ways: an \fIebuild\fR,
-a \fItbz2file\fR, a \fIset\fR, or a \fIatom\fR.
+a \fItbz2file\fR, a \fIset\fR, or an \fIatom\fR.
 .LP
 .TP
 .BR ebuild
@@ -39,8 +39,8 @@ as \fBsys\-apps/portage\fR or \fB=python\-2.2.1\-r2\fR.
 ignores a trailing slash so that filename completion can be used.
 The \fIebuild\fR may also be an actual filename, such as
 \fB/usr/portage/app\-admin/python/python\-2.2.1\-r2.ebuild\fR.
-WARNING: The implementation of \fBemerge /path/to/ebuild\fR is broken and so 
-this syntax shouldn't be used.
+\fBWARNING:\fR The implementation of \fBemerge /path/to/ebuild\fR is broken and
+so this syntax shouldn't be used.
 .TP
 .BR tbz2file
 A \fItbz2file\fR must be a valid .tbz2 created with \fBebuild
@@ -390,9 +390,9 @@ in order to indicate their status:
 .BR "\-\-with\-bdeps < y | n >"
 In dependency calculations, pull in build time dependencies that are not
 strictly required.   This defaults to \'n\' for installation actions and
-\'y\' for the \-\-depclean action.  This setting can be added to
-EMERGE_DEFAULT_OPTS (see make.conf(5)) and later overridden via the command
-line.
+\'y\' for the \fB\-\-depclean\fR action.  This setting can be added to
+\fBEMERGE_DEFAULT_OPTS\fR (see make.conf(5)) and later overridden via the
+command line.
 .SH "ENVIRONMENT OPTIONS"
 .TP
 \fBROOT\fR = \fI[path]\fR
