@@ -6884,8 +6884,15 @@ class dblink:
 
 		self.settings.load_infodir(self.dbdir)
 		if myebuildpath:
-			doebuild_environment(myebuildpath, "prerm", self.myroot,
-				self.settings, 0, 0, self.vartree.dbapi)
+			try:
+				doebuild_environment(myebuildpath, "prerm", self.myroot,
+					self.settings, 0, 0, self.vartree.dbapi)
+			except portage_exception.UnsupportedAPIException, e:
+				# Sometimes this happens due to corruption of the EAPI file.
+				writemsg("!!! FAILED prerm: %s\n" % \
+					os.path.join(self.dbdir, "EAPI"), noiselevel=-1)
+				writemsg("%s\n" % str(e), noiselevel=-1)
+				return 1
 			catdir = os.path.dirname(self.settings["PORTAGE_BUILDDIR"])
 			portage_util.ensure_dirs(os.path.dirname(catdir),
 				uid=portage_uid, gid=portage_gid, mode=070, mask=0)
