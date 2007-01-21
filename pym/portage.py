@@ -2703,7 +2703,9 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
 		mf = Manifest(mysettings["O"], mysettings["DISTDIR"],
 			fetchlist_dict=fetchlist_dict)
 		required_hash_types = set(portage_const.MANIFEST1_HASH_FUNCTIONS)
-		required_hash_types.update(portage_const.MANIFEST2_HASH_FUNCTIONS)
+		# Don't require MANIFEST2 hashes since that can trigger excessive
+		# fetches when sufficient digests already exist.
+		#required_hash_types.update(portage_const.MANIFEST2_HASH_FUNCTIONS)
 		required_hash_types.add("size")
 		dist_hashes = mf.fhashdict.get("DIST", {})
 		missing_hashes = set()
