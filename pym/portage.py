@@ -6526,8 +6526,9 @@ class binarytree(object):
 					mytbz2 = xpak.tbz2(full_path)
 					# For invalid packages, mycat could be None.
 					mycat = mytbz2.getfile("CATEGORY")
+					mypf = mytbz2.getfile("PF")
 					mypkg = myfile[:-5]
-					if not mycat:
+					if not mycat or not mypf:
 						#old-style or corrupt package
 						writemsg("!!! Invalid binary package: '%s'\n" % full_path,
 							noiselevel=-1)
@@ -6539,7 +6540,7 @@ class binarytree(object):
 					mycat = mycat.strip()
 					if mycat != mydir and mydir != "All":
 						continue
-					if mypkg != mytbz2.getfile("PF").strip():
+					if mypkg != mypf.strip():
 						continue
 					mycpv = mycat + "/" + mypkg
 					if mycpv in pkg_paths:
@@ -6892,8 +6893,15 @@ class dblink:
 
 		self.settings.load_infodir(self.dbdir)
 		if myebuildpath:
-			doebuild_environment(myebuildpath, "prerm", self.myroot,
-				self.settings, 0, 0, self.vartree.dbapi)
+			try:
+				doebuild_environment(myebuildpath, "prerm", self.myroot,
+					self.settings, 0, 0, self.vartree.dbapi)
+			except portage_exception.UnsupportedAPIException, e:
+				# Sometimes this happens due to corruption of the EAPI file.
+				writemsg("!!! FAILED prerm: %s\n" % \
+					os.path.join(self.dbdir, "EAPI"), noiselevel=-1)
+				writemsg("%s\n" % str(e), noiselevel=-1)
+				return 1
 			catdir = os.path.dirname(self.settings["PORTAGE_BUILDDIR"])
 			portage_util.ensure_dirs(os.path.dirname(catdir),
 				uid=portage_uid, gid=portage_gid, mode=070, mask=0)
