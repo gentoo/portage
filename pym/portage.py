@@ -6211,6 +6211,8 @@ class portdbapi(dbapi):
 				if matches:
 					inc_pgroups = []
 					for x in pgroups:
+						# The -* special case should be removed once the tree 
+						# is clean of KEYWORDS=-* crap
 						if x != "-*" and x.startswith("-"):
 							try:
 								inc_pgroups.remove(x[1:])
@@ -6235,7 +6237,7 @@ class portdbapi(dbapi):
 					hastesting = True
 				elif gp[0] != "-":
 					hasstable = True
-			if not match and ((hastesting and "~*" in pgroups) or (hasstable and "*" in pgroups)):
+			if not match and ((hastesting and "~*" in pgroups) or (hasstable and "*" in pgroups) or "**" in pgroups):
 				match=1
 			if match and eapi_is_supported(eapi):
 				newlist.append(mycpv)
