@@ -6801,8 +6801,9 @@ class dblink:
 		myc.close()
 		null_byte = "\0"
 		contents_file = os.path.join(self.dbdir, "CONTENTS")
-		pos=1
+		pos = 0
 		for line in mylines:
+			pos += 1
 			if null_byte in line:
 				# Null bytes are a common indication of corruption.
 				writemsg("!!! Null byte found in contents " + \
@@ -6847,7 +6848,6 @@ class dblink:
 					return None
 			except (KeyError,IndexError):
 				print "portage: CONTENTS line",pos,"corrupt!"
-			pos += 1
 		self.contentscache=pkgfiles
 		return pkgfiles
 
