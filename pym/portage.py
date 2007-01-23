@@ -6799,8 +6799,16 @@ class dblink:
 		myc=open(self.dbdir+"/CONTENTS","r")
 		mylines=myc.readlines()
 		myc.close()
+		null_byte = "\0"
+		contents_file = os.path.join(self.dbdir, "CONTENTS")
 		pos=1
 		for line in mylines:
+			if null_byte in line:
+				# Null bytes are a common indication of corruption.
+				writemsg("!!! Null byte found in contents " + \
+					"file, line %d: '%s'\n" % (pos, contents_file),
+					noiselevel=-1)
+				continue
 			mydat = line.split()
 			# we do this so we can remove from non-root filesystems
 			# (use the ROOT var to allow maintenance on other partitions)
