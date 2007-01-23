@@ -384,13 +384,9 @@ Per\-package KEYWORDS.  Useful for mixing unstable packages in with a normally
 stable system or vice versa.  This will allow ACCEPT_KEYWORDS to be augmented
 for a single package.
 
-.nf
-\fINote:\fR There are two special KEYWORDS to help out here:
-\fB*\fR  Match any stable KEYWORD
-\fB~*\fR Match any unstable KEYWORD
-
 .I Format:
-\- comments begin with #
+.nf
+\- comment lines begin with # (no inline comments)
 \- one DEPEND atom per line followed by additional KEYWORDS
 \- lines without any KEYWORDS imply unstable host arch
 
@@ -403,6 +399,17 @@ media\-video/mplayer \-~x86
 net-analyzer/netcat
 .fi
 
+.I Note:
+.fi
+In addition to the normal values from ACCEPT_KEYWORDS package.keywords supports
+three special tokens:
+
+.nf
+\fB*\fR  package is visible if it is stable on any architecture
+\fB~*\fR package is visible if it is in testing on any architecture
+\fB**\fR package is always visible (KEYWORDS are ignored completely)
+.fi
+
 .I Additional Note:
 If you encounter the \fB-*\fR KEYWORD, this indicates that the package is known 
 to be broken on all systems which are not otherwise listed in KEYWORDS.  For 
@@ -410,10 +417,11 @@ example, a binary only package which is built for x86 will look like:
 
 games-fps/quake3-demo-1.11.ebuild:KEYWORDS="-* x86"
 
-If you wish to accept this package anyways, then add \fB-*\fR to your 
+If you wish to accept this package anyways, then use one of the other keywords in your 
 package.keywords like this:
 
-games-fps/quake3-demo -*
+games-fps/quake3-demo x86
+
 .TP
 .BR package.mask
 A list of package atoms to mask.  Useful if specific versions of packages do
@@ -422,7 +430,7 @@ versions earlier than 1.0.4496.  No problem!
 
 .I Format:
 .nf
-\- comments begin with #
+\- comment lines begin with # (no inline comments)
 \- one DEPEND atom per line
 .fi
 
