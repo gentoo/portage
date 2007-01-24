@@ -1560,7 +1560,7 @@ if mymode!="commit":
 		print green("RepoMan sez:"),"\"If everyone were like you, I'd be out of business!\""
 	if quiet < 1:
 		print
-else:
+elif "--pretend" not in myoptions:
 	if dofail:
 		print turquoise("Please fix these important QA issues first.")
 		print green("RepoMan sez:"),"\"Make your QA payment on time and you'll never see the likes of me.\"\n"
