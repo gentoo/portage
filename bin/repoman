@@ -200,6 +200,7 @@ qawarnings=[
 "DEPEND.badmaskedindev","RDEPEND.badmaskedindev","PDEPEND.badmaskedindev",
 "IUSE.invalid",
 "KEYWORDS.stupid",
+"KEYWORDS.missing",
 "ebuild.minorsyn",
 "ebuild.badheader",
 "file.size",
