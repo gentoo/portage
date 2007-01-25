@@ -51,16 +51,16 @@ except ImportError:
 
 try:
 	from portage.cache.cache_errors import CacheError
-	import cvstree
-	import xpak
-	import getbinpkg
+	import portage.cvstree
+	import portage.xpak
+	import portage.getbinpkg
 	import portage.dep
 	from portage.dep import dep_getcpv, dep_getkey, get_operator, \
 		isjustname, isspecific, isvalidatom, \
 		match_from_list, match_to_list, best_match_to_list
 
 	# XXX: This needs to get cleaned up.
-	import output
+	import portage.output
 	from portage.output import bold, colorize, green, red, yellow
 
 	import portage.const

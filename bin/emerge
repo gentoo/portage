@@ -30,23 +30,23 @@ except ImportError:
 	import portage
 del os.environ["PORTAGE_LEGACY_GLOBALS"]
 from portage import digraph, portdbapi
-from portage_const import NEWS_LIB_PATH
+from portage.const import NEWS_LIB_PATH
 
-import emergehelp, xpak, commands, errno, re, socket, time, types
+import portage.emergehelp, portage.xpak, commands, errno, re, socket, time, types
 import output
-from output import blue, bold, colorize, darkblue, darkgreen, darkred, green, \
+from portage.output import blue, bold, colorize, darkblue, darkgreen, darkred, green, \
 	havecolor, nc_len, nocolor, red, teal, turquoise, white, xtermTitle, \
 	xtermTitleReset, yellow
-from output import create_color_func
+from portage.output import create_color_func
 good = create_color_func("GOOD")
 bad = create_color_func("BAD")
 
-import portage_dep
-import portage_util
-import portage_locks
-import portage_exception
-from portage_data import secpass
-from portage_util import normalize_path as normpath
+import portage.dep
+import portage.util
+import portage.locks
+import portage.exception
+from portage.data import secpass
+from portage.util import normalize_path as normpath
 
 if not hasattr(__builtins__, "set"):
 	from sets import Set as set
@@ -236,12 +236,12 @@ def emergelog(xterm_titles, mystr, short_msg=None):
 	try:
 		file_path = "/var/log/emerge.log"
 		mylogfile = open(file_path, "a")
-		portage_util.apply_secpass_permissions(file_path,
+		portage.util.apply_secpass_permissions(file_path,
 			uid=portage.portage_uid, gid=portage.portage_gid,
 			mode=0660)
 		mylock = None
 		try:
-			mylock = portage_locks.lockfile(mylogfile)
+			mylock = portage.locks.lockfile(mylogfile)
 			# seek because we may have gotten held up by the lock.
 			# if so, we may not be positioned at the end of the file.
 			mylogfile.seek(0, 2)
@@ -249,9 +249,9 @@ def emergelog(xterm_titles, mystr, short_msg=None):
 			mylogfile.flush()
 		finally:
 			if mylock:
-				portage_locks.unlockfile(mylock)
+				portage.locks.unlockfile(mylock)
 			mylogfile.close()
-	except (IOError,OSError,portage_exception.PortageException), e:
+	except (IOError,OSError,portage.exception.PortageException), e:
 		if secpass >= 1:
 			print >> sys.stderr, "emergelog():",e
 
@@ -337,7 +337,7 @@ def getportageversion(portdir, target_root, profile, chost, vardb):
 	libcver=[]
 	libclist  = vardb.match("virtual/libc")
 	libclist += vardb.match("virtual/glibc")
-	libclist  = portage_util.unique_array(libclist)
+	libclist  = portage.util.unique_array(libclist)
 	for x in libclist:
 		xs=portage.catpkgsplit(x)
 		if libcver:
@@ -506,8 +506,8 @@ class search:
 					mycpv = match + "-" + myversion
 					myebuild = self.portdb.findname(mycpv)
 					pkgdir = os.path.dirname(myebuild)
-					import portage_manifest
-					mf = portage_manifest.Manifest(
+					import portage.manifest
+					mf = portage.manifest.Manifest(
 						pkgdir, self.settings["DISTDIR"])
 					fetchlist = self.portdb.getfetchlist(mycpv,
 						mysettings=self.settings, all=True)[1]
@@ -590,7 +590,7 @@ def getlist(settings, mode):
 def clean_world(vardb, cpv):
 	"""Remove a package from the world file when unmerged."""
 	world_filename = os.path.join(vardb.root, portage.WORLD_FILE)
-	worldlist = portage_util.grabfile(world_filename)
+	worldlist = portage.util.grabfile(world_filename)
 	mykey = portage.cpv_getkey(cpv)
 	newworldlist = []
 	for x in worldlist:
@@ -609,9 +609,9 @@ def clean_world(vardb, cpv):
 			#this doesn't match the package we're unmerging; keep it.
 			newworldlist.append(x)
 
-	portage_util.ensure_dirs(os.path.join(vardb.root, portage.PRIVATE_PATH),
+	portage.util.ensure_dirs(os.path.join(vardb.root, portage.PRIVATE_PATH),
 		gid=portage.portage_gid, mode=02770)
-	portage_util.write_atomic(world_filename, "\n".join(newworldlist))
+	portage.util.write_atomic(world_filename, "\n".join(newworldlist))
 
 def genericdict(mylist):
 	mynewdict={}
@@ -713,13 +713,13 @@ class FakeVartree(portage.vartree):
 		vdb_path = os.path.join(self.root, portage.VDB_PATH)
 		try:
 			# At least the parent needs to exist for the lock file.
-			portage_util.ensure_dirs(vdb_path)
-		except portage_exception.PortageException:
+			portage.util.ensure_dirs(vdb_path)
+		except portage.exception.PortageException:
 			pass
 		vdb_lock = None
 		try:
 			if os.access(vdb_path, os.W_OK):
-				vdb_lock = portage_locks.lockdir(vdb_path)
+				vdb_lock = portage.locks.lockdir(vdb_path)
 			mykeys = ["SLOT", "COUNTER", "PROVIDE", "USE", "IUSE",
 				"DEPEND", "RDEPEND", "PDEPEND"]
 			real_dbapi = real_vartree.dbapi
@@ -743,10 +743,10 @@ class FakeVartree(portage.vartree):
 			real_dbapi.flush_cache()
 		finally:
 			if vdb_lock:
-				portage_locks.unlockdir(vdb_lock)
+				portage.locks.unlockdir(vdb_lock)
 		# Populate the old-style virtuals using the cached values.
 		if not self.settings.treeVirtuals:
-			self.settings.treeVirtuals = portage_util.map_dictlist_vals(
+			self.settings.treeVirtuals = portage.util.map_dictlist_vals(
 				portage.getCPFromCPV, self.get_all_provides())
 
 		# Intialize variables needed for lazy cache pulls of the live ebuild
@@ -768,7 +768,7 @@ class FakeVartree(portage.vartree):
 			live_metadata = dict(izip(self._portdb_keys,
 				self._portdb.aux_get(pkg, self._portdb_keys)))
 			self.dbapi.aux_update(pkg, live_metadata)
-		except (KeyError, portage_exception.PortageException):
+		except (KeyError, portage.exception.PortageException):
 			if self._global_updates is None:
 				self._global_updates = \
 					grab_global_updates(self._portdb.porttree_root)
@@ -777,11 +777,11 @@ class FakeVartree(portage.vartree):
 		return self._aux_get(pkg, wants)
 
 def grab_global_updates(portdir):
-	from portage_update import grab_updates, parse_updates
+	from portage.update import grab_updates, parse_updates
 	updpath = os.path.join(portdir, "profiles", "updates")
 	try:
 		rawupdates = grab_updates(updpath)
-	except portage_exception.DirectoryNotFound:
+	except portage.exception.DirectoryNotFound:
 		rawupdates = []
 	upd_commands = []
 	for mykey, mystat, mycontent in rawupdates:
@@ -790,7 +790,7 @@ def grab_global_updates(portdir):
 	return upd_commands
 
 def perform_global_updates(mycpv, mydb, mycommands):
-	from portage_update import update_dbentries
+	from portage.update import update_dbentries
 	aux_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
 	aux_dict = dict(izip(aux_keys, mydb.aux_get(mycpv, aux_keys)))
 	updates = update_dbentries(mycommands, aux_dict)
@@ -867,10 +867,10 @@ class BlockerCache(DictMixin):
 		if self._modified and \
 			secpass >= 2:
 			try:
-				f = portage_util.atomic_ofstream(self._cache_filename)
+				f = portage.util.atomic_ofstream(self._cache_filename)
 				cPickle.dump(self._cache_data, f, -1)
 				f.close()
-				portage_util.apply_secpass_permissions(
+				portage.util.apply_secpass_permissions(
 					self._cache_filename, gid=portage.portage_gid, mode=0644)
 			except (IOError, OSError), e:
 				pass
@@ -1194,7 +1194,7 @@ class depgraph:
 
 			if slot_collision:
 				# Now add this node to the graph so that self.display()
-				# can show use flags and --tree output.  This node is
+				# can show use flags and --tree portage.output.  This node is
 				# only being partially added to the graph.  It must not be
 				# allowed to interfere with the other nodes that have been
 				# added.  Do not overwrite data for existing nodes in
@@ -1327,7 +1327,7 @@ class depgraph:
 						print "\n\n!!! Binary package '"+str(x)+"' does not exist."
 						print "!!! Please ensure the tbz2 exists as specified.\n"
 						sys.exit(1)
-				mytbz2=xpak.tbz2(x)
+				mytbz2=portage.xpak.tbz2(x)
 				mykey=mytbz2.getelements("CATEGORY")[0]+"/"+os.path.splitext(os.path.basename(x))[0]
 				if os.path.realpath(x) != \
 					os.path.realpath(self.trees[myroot]["bintree"].getname(mykey)):
@@ -1354,7 +1354,7 @@ class depgraph:
 						countdown(int(self.settings["EMERGE_WARNING_DELAY"]),
 							"Continuing...")
 				else:
-					raise portage_exception.PackageNotFound(
+					raise portage.exception.PackageNotFound(
 						"%s is not in a valid portage tree hierarchy or does not exist" % x)
 				if not self.create(["ebuild", myroot, mykey],
 					None, "--onlydeps" not in self.myopts):
@@ -1444,14 +1444,14 @@ class depgraph:
 		for myarg, myatom in arg_atoms:
 				try:
 					self.mysd = self.select_dep(myroot, myatom, arg=myarg)
-				except portage_exception.MissingSignature, e:
+				except portage.exception.MissingSignature, e:
 					portage.writemsg("\n\n!!! A missing gpg signature is preventing portage from calculating the\n")
 					portage.writemsg("!!! required dependencies. This is a security feature enabled by the admin\n")
 					portage.writemsg("!!! to aid in the detection of malicious intent.\n\n")
 					portage.writemsg("!!! THIS IS A POSSIBLE INDICATION OF TAMPERED FILES -- CHECK CAREFULLY.\n")
 					portage.writemsg("!!! Affected file: %s\n" % (e), noiselevel=-1)
 					sys.exit(1)
-				except portage_exception.InvalidSignature, e:
+				except portage.exception.InvalidSignature, e:
 					portage.writemsg("\n\n!!! An invalid gpg signature is preventing portage from calculating the\n")
 					portage.writemsg("!!! required dependencies. This is a security feature enabled by the admin\n")
 					portage.writemsg("!!! to aid in the detection of malicious intent.\n\n")
@@ -1520,13 +1520,13 @@ class depgraph:
 		dependencies are satisfiable. """
 		try:
 			if myparent and p_status == "nomerge":
-				portage_dep._dep_check_strict = False
+				portage.dep._dep_check_strict = False
 			mycheck = portage.dep_check(depstring, None,
 				pkgsettings, myuse=myuse,
 				use_binaries=("--usepkgonly" in self.myopts),
 				myroot=myroot, trees=self.trees)
 		finally:
-			portage_dep._dep_check_strict = True
+			portage.dep._dep_check_strict = True
 
 		if not mycheck[0]:
 			if myparent:
@@ -1804,12 +1804,12 @@ class depgraph:
 						# optimize dep_check calls by eliminating atoms via
 						# dep_wordreduce and dep_eval calls.
 						try:
-							portage_dep._dep_check_strict = False
+							portage.dep._dep_check_strict = False
 							success, atoms = portage.dep_check(depstr,
 								final_db, pkgsettings, myuse=myuse,
 								trees=dep_check_trees, myroot=myroot)
 						finally:
-							portage_dep._dep_check_strict = True
+							portage.dep._dep_check_strict = True
 						if not success:
 							slot_atom = "%s:%s" % (portage.dep_getkey(pkg),
 								vardb.aux_get(pkg, ["SLOT"])[0])
@@ -2833,7 +2833,7 @@ class MergeTask(object):
 				fetch_log = "/var/log/emerge-fetch.log"
 				logfile = open(fetch_log, "w")
 				fd_pipes = {1:logfile.fileno(), 2:logfile.fileno()}
-				portage_util.apply_secpass_permissions(fetch_log,
+				portage.util.apply_secpass_permissions(fetch_log,
 					uid=portage.portage_uid, gid=portage.portage_gid,
 					mode=0660)
 				fetch_env = os.environ.copy()
@@ -2846,7 +2846,7 @@ class MergeTask(object):
 							fetch_args.append(myopt)
 						else:
 							fetch_args.append(myopt +"="+ myarg)
-				portage.portage_exec.spawn(fetch_args, env=fetch_env,
+				portage.process.spawn(fetch_args, env=fetch_env,
 					fd_pipes=fd_pipes, returnpid=True)
 				logfile.close() # belongs to the spawned process
 
@@ -2906,20 +2906,20 @@ class MergeTask(object):
 				portage.doebuild_environment(y, "setup", myroot,
 					pkgsettings, self.edebug, 1, portdb)
 				catdir = os.path.dirname(pkgsettings["PORTAGE_BUILDDIR"])
-				portage_util.ensure_dirs(os.path.dirname(catdir),
+				portage.util.ensure_dirs(os.path.dirname(catdir),
 					uid=portage.portage_uid, gid=portage.portage_gid,
 					mode=070, mask=0)
 				builddir_lock = None
 				catdir_lock = None
 				try:
-					catdir_lock = portage_locks.lockdir(catdir)
-					portage_util.ensure_dirs(catdir,
+					catdir_lock = portage.locks.lockdir(catdir)
+					portage.util.ensure_dirs(catdir,
 						uid=portage.portage_uid, gid=portage.portage_gid,
 						mode=070, mask=0)
-					builddir_lock = portage_locks.lockdir(
+					builddir_lock = portage.locks.lockdir(
 						pkgsettings["PORTAGE_BUILDDIR"])
 					try:
-						portage_locks.unlockdir(catdir_lock)
+						portage.locks.unlockdir(catdir_lock)
 					finally:
 						catdir_lock = None
 					msg = " === (%s of %s) Cleaning (%s::%s)" % \
@@ -2983,11 +2983,11 @@ class MergeTask(object):
 							return retval
 				finally:
 					if builddir_lock:
-						portage_locks.unlockdir(builddir_lock)
+						portage.locks.unlockdir(builddir_lock)
 					try:
 						if not catdir_lock:
 							# Lock catdir for removal if empty.
-							catdir_lock = portage_locks.lockdir(catdir)
+							catdir_lock = portage.locks.lockdir(catdir)
 					finally:
 						if catdir_lock:
 							try:
@@ -2996,7 +2996,7 @@ class MergeTask(object):
 								if e.errno != errno.ENOTEMPTY:
 									raise
 								del e
-							portage_locks.unlockdir(catdir_lock)
+							portage.locks.unlockdir(catdir_lock)
 
 			elif x[0]=="binary":
 				#merge the tbz2
@@ -3006,8 +3006,8 @@ class MergeTask(object):
 					try:
 						if "distlocks" in pkgsettings.features and \
 							os.access(pkgsettings["PKGDIR"], os.W_OK):
-							portage_util.ensure_dirs(os.path.dirname(mytbz2))
-							tbz2_lock = portage_locks.lockfile(mytbz2,
+							portage.util.ensure_dirs(os.path.dirname(mytbz2))
+							tbz2_lock = portage.locks.lockfile(mytbz2,
 								wantnewlockfile=1)
 						if self.trees[myroot]["bintree"].isremote(pkg_key):
 							msg = " --- (%s of %s) Fetching Binary (%s::%s)" %\
@@ -3020,7 +3020,7 @@ class MergeTask(object):
 								return 1
 					finally:
 						if tbz2_lock:
-							portage_locks.unlockfile(tbz2_lock)
+							portage.locks.unlockfile(tbz2_lock)
 
 				if "--fetchonly" in self.myopts or \
 					"--fetch-all-uri" in self.myopts:
@@ -3160,13 +3160,13 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 	vdb_path = os.path.join(settings["ROOT"], portage.VDB_PATH)
 	try:
 		# At least the parent needs to exist for the lock file.
-		portage_util.ensure_dirs(vdb_path)
-	except portage_exception.PortageException:
+		portage.util.ensure_dirs(vdb_path)
+	except portage.exception.PortageException:
 		pass
 	vdb_lock = None
 	try:
 		if os.access(vdb_path, os.W_OK):
-			vdb_lock = portage_locks.lockdir(vdb_path)
+			vdb_lock = portage.locks.lockdir(vdb_path)
 		realsyslist = getlist(settings, "system")
 		syslist = []
 		for x in realsyslist:
@@ -3350,7 +3350,7 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 			return 0
 	finally:
 		if vdb_lock:
-			portage_locks.unlockdir(vdb_lock)
+			portage.locks.unlockdir(vdb_lock)
 	for x in pkgmap.keys():
 		for y in localtree.dep_match(x):
 			if y not in pkgmap[x]["omitted"] and \
@@ -3620,14 +3620,14 @@ def checkUpdatedNewsItems( root, NEWS_PATH, UNREAD_PATH, repo_id ):
 	1.  The number of unread but relevant news items.
 	
 	"""
-	from portage_news import NewsManager
+	from portage.news import NewsManager
 	manager = NewsManager( root, NEWS_PATH, UNREAD_PATH )
 	return manager.getUnreadItems( repo_id, update=True )
 
 def is_valid_package_atom(x):
 	try:
 		testkey = portage.dep_getkey(x)
-	except portage_exception.InvalidData:
+	except portage.exception.InvalidData:
 		return False
 	if testkey.startswith("null/"):
 		testatom = x.replace(testkey[5:], "cat/"+testkey[5:])
@@ -3791,7 +3791,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		tmpservertimestampfile = os.path.join(
 			settings["PORTAGE_TMPDIR"], "timestamp.chk")
 
-		content = portage_util.grabfile(servertimestampfile)
+		content = portage.util.grabfile(servertimestampfile)
 		mytimestamp = 0
 		if content:
 			try:
@@ -3891,9 +3891,9 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 				mycommand.append(dosyncuri.rstrip("/") + \
 					"/metadata/timestamp.chk")
 				mycommand.append(tmpservertimestampfile)
-				import portage_exec
+				import portage.process
 				try:
-					exitcode = portage_exec.spawn(
+					exitcode = portage.process.spawn(
 						mycommand, env=settings.environ())
 					content = portage.grabfile(tmpservertimestampfile)
 					if content:
@@ -4039,7 +4039,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 
 	if myaction != "metadata":
 		if os.access(portage.USER_CONFIG_PATH + "/bin/post_sync", os.X_OK):
-			retval = portage.portage_exec.spawn(
+			retval = portage.process.spawn(
 				[os.path.join(portage.USER_CONFIG_PATH, "bin", "post_sync"),
 				dosyncuri], env=settings.environ())
 			if retval != os.EX_OK:
@@ -4074,9 +4074,9 @@ def action_metadata(settings, portdb, myopts):
 	cm = settings.load_best_module("portdbapi.metadbmodule")(
 		myportdir, "metadata/cache", portage.auxdbkeys[:])
 
-	import cache.util
+	import portage.cache.util
 
-	class percentage_noise_maker(cache.util.quiet_mirroring):
+	class percentage_noise_maker(portage.cache.util.quiet_mirroring):
 		def __init__(self, dbapi):
 			self.dbapi = dbapi
 			self.cp_all = dbapi.cp_all()
@@ -4114,10 +4114,10 @@ def action_metadata(settings, portdb, myopts):
 				for y in portdb.cp_list(x):
 					yield y
 		source = quicky_cpv_generator(portdb.cp_all())
-		noise_maker = cache.util.quiet_mirroring()
+		noise_maker = portage.cache.util.quiet_mirroring()
 	else:
 		noise_maker = source = percentage_noise_maker(portdb)
-	cache.util.mirror_cache(source, cm, portdb.auxdb[myportdir],
+	portage.cache.util.mirror_cache(source, cm, portdb.auxdb[myportdir],
 		eclass_cache=ec, verbose_instance=noise_maker)
 
 	sys.stdout.flush()
@@ -4136,7 +4136,7 @@ def action_regen(settings, portdb):
 		pass
 	sys.stdout.flush()
 	mynodes = portdb.cp_all()
-	from cache.cache_errors import CacheError
+	from portage.cache.cache_errors import CacheError
 	dead_nodes = {}
 	for mytree in portdb.porttrees:
 		try:
@@ -4273,8 +4273,8 @@ def action_info(settings, trees, myopts, myfiles):
 
 	myvars  = ["sys-devel/autoconf", "sys-devel/automake", "virtual/os-headers",
 	           "sys-devel/binutils", "sys-devel/libtool",  "dev-lang/python"]
-	myvars += portage_util.grabfile(settings["PORTDIR"]+"/profiles/info_pkgs")
-	myvars  = portage_util.unique_array(myvars)
+	myvars += portage.util.grabfile(settings["PORTDIR"]+"/profiles/info_pkgs")
+	myvars  = portage.util.unique_array(myvars)
 	myvars.sort()
 
 	for x in myvars:
@@ -4303,9 +4303,9 @@ def action_info(settings, trees, myopts, myfiles):
 		          'PORTDIR_OVERLAY', 'USE', 'CHOST', 'CFLAGS', 'CXXFLAGS',
 		          'ACCEPT_KEYWORDS', 'SYNC', 'FEATURES', 'EMERGE_DEFAULT_OPTS']
 
-		myvars.extend(portage_util.grabfile(settings["PORTDIR"]+"/profiles/info_vars"))
+		myvars.extend(portage.util.grabfile(settings["PORTDIR"]+"/profiles/info_vars"))
 
-	myvars = portage_util.unique_array(myvars)
+	myvars = portage.util.unique_array(myvars)
 	unset_vars = []
 	myvars.sort()
 	for x in myvars:
@@ -4527,11 +4527,11 @@ def action_depclean(settings, trees, ldpath_mtimes,
 						print "hard"
 
 				try:
-					portage_dep._dep_check_strict = False
+					portage.dep._dep_check_strict = False
 					success, atoms = portage.dep_check(depstr, None, settings,
 						myuse=usedef, trees=dep_check_trees, myroot=myroot)
 				finally:
-					portage_dep._dep_check_strict = True
+					portage.dep._dep_check_strict = True
 				if not success:
 					show_invalid_depstring_notice(
 						("installed", myroot, pkg, "nomerge"),
@@ -4653,7 +4653,7 @@ def action_build(settings, trees, mtimedb,
 			mydepgraph = depgraph(settings, trees, myopts, myparams, spinner)
 			try:
 				retval, favorites = mydepgraph.select_files(myfiles)
-			except portage_exception.PackageNotFound, e:
+			except portage.exception.PackageNotFound, e:
 				portage.writemsg("\n!!! %s\n" % str(e), noiselevel=-1)
 				sys.exit(1)
 			if not retval:
@@ -4995,27 +4995,28 @@ def adjust_config(myopts, settings):
 	settings.backup_changes("PORTAGE_DEBUG")
 
 	if settings.get("NOCOLOR") not in ("yes","true"):
-		output.havecolor = 1
+		portage.output.havecolor = 1
 
 	"""The explicit --color < y | n > option overrides the NOCOLOR environment
 	variable and stdout auto-detection."""
 	if "--color" in myopts:
 		if "y" == myopts["--color"]:
-			output.havecolor = 1
+			portage.output.havecolor = 1
 			settings["NOCOLOR"] = "false"
 		else:
-			output.havecolor = 0
+			portage.output.havecolor = 0
 			settings["NOCOLOR"] = "true"
 		settings.backup_changes("NOCOLOR")
 	elif not sys.stdout.isatty() and settings.get("NOCOLOR") != "no":
-		output.havecolor = 0
+		portage.output.havecolor = 0
 		settings["NOCOLOR"] = "true"
 		settings.backup_changes("NOCOLOR")
 
 def emerge_main():
+	global portage	# NFC why this is necessary now - genone
 	# Disable color until we're sure that it should be enabled (after
 	# EMERGE_DEFAULT_OPTS has been parsed).
-	output.havecolor = 0
+	portage.output.havecolor = 0
 	# This first pass is just for options that need to be known as early as
 	# possible, such as --config-root.  They will be parsed again later,
 	# together with EMERGE_DEFAULT_OPTS (which may vary depending on the
@@ -5111,7 +5112,7 @@ def emerge_main():
 
 	if ("--quiet" in myopts):
 		spinner.update = spinner.update_quiet
-		portage_util.noiselimit = -1
+		portage.util.noiselimit = -1
 
 	# Always create packages if FEATURES=buildpkg
 	# Imply --buildpkg if --buildpkgonly
@@ -5168,8 +5169,8 @@ def emerge_main():
 		spinner.update = spinner.update_quiet
 		portage.debug=1
 		if "python-trace" in settings.features:
-			import portage_debug
-			portage_debug.set_trace(True)
+			import portage.debug
+			portage.debug.set_trace(True)
 
 	if ("--resume" in myopts):
 		if "--tree" in myopts:
@@ -5186,7 +5187,7 @@ def emerge_main():
 			trees[settings["ROOT"]]["vartree"].dbapi)
 		sys.exit(0)
 	elif "--help" in myopts:
-		emergehelp.help(myaction, myopts, output.havecolor)
+		portage.emergehelp.help(myaction, myopts, portage.output.havecolor)
 		sys.exit(0)
 
 	if portage.wheelgid == portage.portage_gid:
@@ -5198,7 +5199,7 @@ def emerge_main():
 		print "myopts", myopts
 
 	if not myaction and not myfiles and "--resume" not in myopts:
-		emergehelp.help(myaction, myopts, output.havecolor)
+		portage.emergehelp.help(myaction, myopts, portage.output.havecolor)
 		sys.exit(1)
 
 	# check if root user is the current user for the actions where emerge needs this
@@ -5218,7 +5219,7 @@ def emerge_main():
 					access_desc = "portage group"
 				# Always show portage_group_warning() when only portage group
 				# access is required but the user is not in the portage group.
-				from portage_data import portage_group_warning
+				from portage.data import portage_group_warning
 				if "--ask" in myopts:
 					myopts["--pretend"] = True
 					del myopts["--ask"]
@@ -5264,7 +5265,7 @@ def emerge_main():
 	def emergeexitsig(signum, frame):
 		signal.signal(signal.SIGINT, signal.SIG_IGN)
 		signal.signal(signal.SIGTERM, signal.SIG_IGN)
-		portage_util.writemsg("\n\nExiting on signal %(signal)s\n" % {"signal":signum})
+		portage.util.writemsg("\n\nExiting on signal %(signal)s\n" % {"signal":signum})
 		sys.exit(100+signum)
 	signal.signal(signal.SIGINT, emergeexitsig)
 	signal.signal(signal.SIGTERM, emergeexitsig)
