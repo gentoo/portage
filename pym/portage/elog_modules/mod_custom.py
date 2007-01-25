@@ -1,16 +1,16 @@
-import elog_modules.mod_save, portage_exec, portage_exception
+import elog_modules.mod_save, portage.exec, portage.exception
 
 def process(mysettings, cpv, logentries, fulltext):
 	elogfilename = elog_modules.mod_save.process(mysettings, cpv, logentries, fulltext)
 	
 	if (not "PORTAGE_ELOG_COMMAND" in mysettings.keys()) \
 			or len(mysettings["PORTAGE_ELOG_COMMAND"]) == 0:
-		raise portage_exception.MissingParameter("!!! Custom logging requested but PORTAGE_ELOG_COMMAND is not defined")
+		raise portage.exception.MissingParameter("!!! Custom logging requested but PORTAGE_ELOG_COMMAND is not defined")
 	else:
 		mylogcmd = mysettings["PORTAGE_ELOG_COMMAND"]
 		mylogcmd = mylogcmd.replace("${LOGFILE}", elogfilename)
 		mylogcmd = mylogcmd.replace("${PACKAGE}", cpv)
-		retval = portage_exec.spawn_bash(mylogcmd)
+		retval = portage.exec.spawn_bash(mylogcmd)
 		if retval != 0:
-			raise portage_exception.PortageException("!!! PORTAGE_ELOG_COMMAND failed with exitcode %d" % retval)
+			raise portage.exception.PortageException("!!! PORTAGE_ELOG_COMMAND failed with exitcode %d" % retval)
 	return

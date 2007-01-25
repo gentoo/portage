@@ -6,8 +6,8 @@ from cache import fs_template
 from cache import cache_errors
 import os
 from cache.template import reconstruct_eclasses
-from portage_util import writemsg, apply_secpass_permissions
-from portage_data import portage_gid
+from portage.util import writemsg, apply_secpass_permissions
+from portage.data import portage_gid
 try:
 	import sqlite3 as db_module # sqlite3 is optional with >=python-2.5
 except ImportError:

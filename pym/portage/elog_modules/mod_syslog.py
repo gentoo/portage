@@ -1,5 +1,5 @@
 import syslog
-from portage_const import EBUILD_PHASES
+from portage.const import EBUILD_PHASES
 
 def process(mysettings, cpv, logentries, fulltext):
 	syslog.openlog("portage", syslog.LOG_ERR | syslog.LOG_WARNING | syslog.LOG_INFO | syslog.LOG_NOTICE, syslog.LOG_LOCAL5)

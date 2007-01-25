@@ -5,7 +5,7 @@
 
 import os
 from cache import template
-from portage_data import portage_gid
+from portage.data import portage_gid
 
 class FsBased(template.database):
 	"""template wrapping fs needed options, and providing _ensure_access as a way to 

@@ -3,7 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id: mod_mail.py 3484 2006-06-10 22:38:44Z genone $
 
-import portage_mail, socket, os, time
+import portage.mail, socket, os, time
 from email.MIMEText import MIMEText as TextMessage
 
 _items = {}
@@ -34,7 +34,7 @@ def finalize(mysettings):
 	for cpv in _items.keys():
 		 mybody += "- %s\n" % cpv
 
-	mymessage = portage_mail.create_message(myfrom, myrecipient, mysubject, mybody, attachments=_items.values())
-	portage_mail.send_mail(mysettings, mymessage)
+	mymessage = portage.mail.create_message(myfrom, myrecipient, mysubject, mybody, attachments=_items.values())
+	portage.mail.send_mail(mysettings, mymessage)
 
 	return

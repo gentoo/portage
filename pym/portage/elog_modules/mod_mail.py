@@ -3,7 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-import portage_mail, socket
+import portage.mail, socket
 
 def process(mysettings, cpv, logentries, fulltext):
 	if mysettings.has_key("PORTAGE_ELOG_MAILURI"):
@@ -16,7 +16,7 @@ def process(mysettings, cpv, logentries, fulltext):
 	mysubject = mysubject.replace("${PACKAGE}", cpv)
 	mysubject = mysubject.replace("${HOST}", socket.getfqdn())
 
-	mymessage = portage_mail.create_message(myfrom, myrecipient, mysubject, fulltext)
-	portage_mail.send_mail(mysettings, mymessage)
+	mymessage = portage.mail.create_message(myfrom, myrecipient, mysubject, fulltext)
+	portage.mail.send_mail(mysettings, mymessage)
 
 	return
