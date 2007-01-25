@@ -6,8 +6,8 @@
 if not hasattr(__builtins__, "set"):
 	from sets import Set as set
 
-from output import red, yellow, green
-import htmllib,HTMLParser,formatter,sys,os,xpak,time,tempfile,base64,urllib2
+from portage.output import red, yellow, green
+import htmllib,HTMLParser,formatter,sys,os,portage.xpak,time,tempfile,base64,urllib2
 
 try:
 	import cPickle
@@ -32,8 +32,8 @@ def make_metadata_dict(data):
 	myid,myglob = data
 	
 	mydict = {}
-	for x in xpak.getindex_mem(myid):
-		mydict[x] = xpak.getitem(data,x)
+	for x in portage.xpak.getindex_mem(myid):
+		mydict[x] = portage.xpak.getitem(data,x)
 
 	return mydict
 
@@ -330,7 +330,7 @@ def file_get_metadata(baseurl,conn=None, chunk_size=3000):
 		raise TypeError, "Unknown protocol. '%s'" % protocol
 	
 	if data:
-		xpaksize = xpak.decodeint(data[-8:-4])
+		xpaksize = portage.xpak.decodeint(data[-8:-4])
 		if (xpaksize+8) > chunk_size:
 			myid = file_get_metadata(baseurl, conn, (xpaksize+8))
 			if not keepconnection:
@@ -340,7 +340,7 @@ def file_get_metadata(baseurl,conn=None, chunk_size=3000):
 			xpak_data = data[len(data)-(xpaksize+8):-8]
 		del data
 
-		myid = xpak.xsplit_mem(xpak_data)
+		myid = portage.xpak.xsplit_mem(xpak_data)
 		if not myid:
 			myid = None,None
 		del xpak_data

@@ -5,10 +5,10 @@
 import time
 if not hasattr(__builtins__, "set"):
 	from sets import Set as set
-from cache import template
-from cache.cache_errors import CacheCorruption
-from cache.flat_hash import database as db_rw
-from cache.metadata import database as db_ro
+from portage.cache import template
+from portage.cache.cache_errors import CacheCorruption
+from portage.cache.flat_hash import database as db_rw
+from portage.cache.metadata import database as db_ro
 
 class database(template.database):
 

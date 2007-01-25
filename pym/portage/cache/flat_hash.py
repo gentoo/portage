@@ -3,10 +3,10 @@
 # License: GPL2
 # $Id$
 
-from cache import fs_template
-from cache import cache_errors
+from portage.cache import fs_template
+from portage.cache import cache_errors
 import errno, os, stat
-from cache.template import reconstruct_eclasses
+from portage.cache.template import reconstruct_eclasses
 # store the current key order *here*.
 class database(fs_template.FsBased):
 

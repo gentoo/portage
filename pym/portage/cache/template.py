@@ -3,9 +3,9 @@
 # License: GPL2
 # $Id$
 
-from cache import cache_errors
-from cache.cache_errors import InvalidRestriction
-from cache.mappings import ProtectedDict
+from portage.cache import cache_errors
+from portage.cache.cache_errors import InvalidRestriction
+from portage.cache.mappings import ProtectedDict
 
 class database(object):
 	# this is for metadata/cache transfer.

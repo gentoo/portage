@@ -2,10 +2,10 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Header: $
 
-from cache import fs_template
-from cache import cache_errors
+from portage.cache import fs_template
+from portage.cache import cache_errors
 import os
-from cache.template import reconstruct_eclasses
+from portage.cache.template import reconstruct_eclasses
 from portage.util import writemsg, apply_secpass_permissions
 from portage.data import portage_gid
 try:

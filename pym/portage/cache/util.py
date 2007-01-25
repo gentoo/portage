@@ -6,7 +6,7 @@
 if not hasattr(__builtins__, "set"):
 	from sets import Set as set
 from itertools import chain
-from cache import cache_errors
+from portage.cache import cache_errors
 
 def mirror_cache(valid_nodes_iterable, src_cache, trg_cache, eclass_cache=None, verbose_instance=None):
 
@@ -39,7 +39,7 @@ def mirror_cache(valid_nodes_iterable, src_cache, trg_cache, eclass_cache=None, 
 		trg = None
 		try:
 			trg = trg_cache[x]
-			if long(trg["_mtime_"]) == long(entry["_mtime_"]) and eclass_cache.is_eclass_data_valid(trg["_eclasses_"]):
+			if long(trg["_mtime_"]) == long(entry["_mtime_"]) and portage.eclass_cache.is_eclass_data_valid(trg["_eclasses_"]):
 				write_it = False
 		except (cache_errors.CacheError, KeyError):
 			pass
@@ -69,11 +69,11 @@ def mirror_cache(valid_nodes_iterable, src_cache, trg_cache, eclass_cache=None, 
 					if not "_eclasses_" in entry:
 						noise.corruption(x,"missing _eclasses_ field")
 						continue
-					if not eclass_cache.is_eclass_data_valid(entry["_eclasses_"]):
+					if not portage.eclass_cache.is_eclass_data_valid(entry["_eclasses_"]):
 						noise.eclass_stale(x)
 						continue
 				else:
-					entry["_eclasses_"] = eclass_cache.get_eclass_data(entry["INHERITED"].split(), \
+					entry["_eclasses_"] = portage.eclass_cache.get_eclass_data(entry["INHERITED"].split(), \
 						from_master_only=True)
 					if not entry["_eclasses_"]:
 						noise.eclass_stale(x)

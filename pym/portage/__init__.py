@@ -50,7 +50,7 @@ except ImportError:
 	bsd_chflags = None
 
 try:
-	from cache.cache_errors import CacheError
+	from portage.cache.cache_errors import CacheError
 	import cvstree
 	import xpak
 	import getbinpkg
@@ -61,7 +61,7 @@ try:
 
 	# XXX: This needs to get cleaned up.
 	import output
-	from output import bold, colorize, green, red, yellow
+	from portage.output import bold, colorize, green, red, yellow
 
 	import portage.const
 	from portage.const import VDB_PATH, PRIVATE_PATH, CACHE_PATH, DEPCACHE_PATH, \
@@ -531,7 +531,7 @@ def elog_process(cpv, mysettings):
 		try:
 			# FIXME: ugly ad.hoc import code
 			# TODO:  implement a common portage module loader
-			logmodule = __import__("elog_modules.mod_"+s)
+			logmodule = __import__("portage.elog_modules.mod_"+s)
 			m = getattr(logmodule, "mod_"+s)
 			def timeout_handler(signum, frame):
 				raise portage.exception.PortageException(
@@ -1044,8 +1044,8 @@ class config:
 			if self.modules["user"] is None:
 				self.modules["user"] = {}
 			self.modules["default"] = {
-				"portdbapi.metadbmodule": "cache.metadata.database",
-				"portdbapi.auxdbmodule":  "cache.flat_hash.database",
+				"portdbapi.metadbmodule": "portage.cache.metadata.database",
+				"portdbapi.auxdbmodule":  "portage.cache.flat_hash.database",
 			}
 
 			self.usemask=[]
@@ -2503,7 +2503,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 										noiselevel=-1)
 									os.unlink(myfile_path)
 							else:
-								eout = output.EOutput()
+								eout = portage.output.EOutput()
 								eout.quiet = \
 									mysettings.get("PORTAGE_QUIET", None) == "1"
 								for digest_name in mydigests[myfile]:
@@ -2641,7 +2641,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 									os.unlink(mysettings["DISTDIR"]+"/"+myfile)
 									fetched=0
 								else:
-									eout = output.EOutput()
+									eout = portage.output.EOutput()
 									eout.quiet = mysettings.get("PORTAGE_QUIET", None) == "1"
 									for x_key in mydigests[myfile].keys():
 										eout.ebegin("%s %s ;-)" % (myfile, x_key))
@@ -2769,7 +2769,7 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
 				cp = os.path.sep.join(mysettings["O"].split(os.path.sep)[-2:])
 				pkgs = myportdb.cp_list(cp, mytree=mytree)
 				pkgs.sort()
-				writemsg_stdout("  digest.assumed" + output.colorize("WARN",
+				writemsg_stdout("  digest.assumed" + portage.output.colorize("WARN",
 					str(len(auto_assumed)).rjust(18)) + "\n")
 				for pkg_key in pkgs:
 					fetchlist = myportdb.getfetchlist(pkg_key,
@@ -2818,7 +2818,7 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 		if strict:
 			return 0
 	mf = Manifest(pkgdir, mysettings["DISTDIR"])
-	eout = output.EOutput()
+	eout = portage.output.EOutput()
 	eout.quiet = mysettings.get("PORTAGE_QUIET", None) == "1"
 	try:
 		eout.ebegin("checking ebuild checksums ;-)")
@@ -3051,7 +3051,7 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 	# Allow color.map to control colors associated with einfo, ewarn, etc...
 	mycolors = []
 	for c in ("GOOD", "WARN", "BAD", "HILITE", "BRACKET"):
-		mycolors.append("%s=$'%s'" % (c, output.codes[c]))
+		mycolors.append("%s=$'%s'" % (c, portage.output.codes[c]))
 	mysettings["PORTAGE_COLORMAP"] = "\n".join(mycolors)
 
 def prepare_build_dirs(myroot, mysettings, cleanup):
@@ -4877,7 +4877,7 @@ class bindbapi(fakedbapi):
 		mylist  = []
 		tbz2name = mysplit[1]+".tbz2"
 		if self.bintree and not self.bintree.isremote(mycpv):
-			tbz2 = xpak.tbz2(self.bintree.getname(mycpv))
+			tbz2 = portage.xpak.tbz2(self.bintree.getname(mycpv))
 			getitem = tbz2.getfile
 		else:
 			getitem = self.bintree.remotepkgs[tbz2name].get
@@ -4907,10 +4907,10 @@ class bindbapi(fakedbapi):
 		tbz2path = self.bintree.getname(cpv)
 		if not os.path.exists(tbz2path):
 			raise KeyError(cpv)
-		mytbz2 = xpak.tbz2(tbz2path)
+		mytbz2 = portage.xpak.tbz2(tbz2path)
 		mydata = mytbz2.get_data()
 		mydata.update(values)
-		mytbz2.recompose_mem(xpak.xpak_mem(mydata))
+		mytbz2.recompose_mem(portage.xpak.xpak_mem(mydata))
 
 	def cp_list(self, *pargs, **kwargs):
 		if not self.bintree.populated:
@@ -5629,7 +5629,7 @@ class portdbapi(dbapi):
 		if self.tmpfs and not os.access(self.tmpfs, os.R_OK):
 			self.tmpfs = None
 
-		self.eclassdb = eclass_cache.cache(self.porttree_root,
+		self.eclassdb = portage.eclass_cache.cache(self.porttree_root,
 			overlays=self.mysettings["PORTDIR_OVERLAY"].split())
 
 		self.metadbmodule = self.mysettings.load_best_module("portdbapi.metadbmodule")
@@ -5656,7 +5656,7 @@ class portdbapi(dbapi):
 		# ~harring
 		filtered_auxdbkeys = filter(lambda x: not x.startswith("UNUSED_0"), auxdbkeys)
 		if secpass < 1:
-			from cache import metadata_overlay, volatile
+			from portage.cache import metadata_overlay, volatile
 			for x in self.porttrees:
 				db_ro = self.auxdbmodule(self.depcachedir, x,
 					filtered_auxdbkeys, gid=portage_gid, readonly=True)
@@ -6305,7 +6305,7 @@ class binarytree(object):
 
 			#print ">>> Updating data in:",mycpv
 			writemsg_stdout("%")
-			mytbz2 = xpak.tbz2(tbz2path)
+			mytbz2 = portage.xpak.tbz2(tbz2path)
 			mydata = mytbz2.get_data()
 			updated_items = update_dbentries([mylist], mydata)
 			mydata.update(updated_items)
@@ -6314,7 +6314,7 @@ class binarytree(object):
 				mydata[mynewpkg+".ebuild"] = mydata[myoldpkg+".ebuild"]
 				del mydata[myoldpkg+".ebuild"]
 				mydata["PF"] = mynewpkg + "\n"
-			mytbz2.recompose_mem(xpak.xpak_mem(mydata))
+			mytbz2.recompose_mem(portage.xpak.xpak_mem(mydata))
 
 			self.dbapi.cpv_remove(mycpv)
 			del self._pkg_paths[mycpv]
@@ -6396,7 +6396,7 @@ class binarytree(object):
 				continue
 
 			#print ">>> Updating data in:",mycpv
-			mytbz2 = xpak.tbz2(tbz2path)
+			mytbz2 = portage.xpak.tbz2(tbz2path)
 			mydata = mytbz2.get_data()
 
 			slot = mydata["SLOT"]
@@ -6408,7 +6408,7 @@ class binarytree(object):
 
 			writemsg_stdout("S")
 			mydata["SLOT"] = newslot+"\n"
-			mytbz2.recompose_mem(xpak.xpak_mem(mydata))
+			mytbz2.recompose_mem(portage.xpak.xpak_mem(mydata))
 		return 1
 
 	def update_ents(self, update_iter):
@@ -6425,12 +6425,12 @@ class binarytree(object):
 				continue
 			#print ">>> Updating binary data:",mycpv
 			writemsg_stdout("*")
-			mytbz2 = xpak.tbz2(tbz2path)
+			mytbz2 = portage.xpak.tbz2(tbz2path)
 			mydata = mytbz2.get_data()
 			updated_items = update_dbentries(update_iter, mydata)
 			if len(updated_items) > 0:
 				mydata.update(updated_items)
-				mytbz2.recompose_mem(xpak.xpak_mem(mydata))
+				mytbz2.recompose_mem(portage.xpak.xpak_mem(mydata))
 		return 1
 
 	def prevent_collision(self, cpv):
@@ -6449,7 +6449,7 @@ class binarytree(object):
 		dest_path = os.path.join(self.pkgdir, mypath)
 		if os.path.exists(dest_path):
 			# For invalid packages, other_cat could be None.
-			other_cat = xpak.tbz2(dest_path).getfile("CATEGORY")
+			other_cat = portage.xpak.tbz2(dest_path).getfile("CATEGORY")
 			if other_cat:
 				other_cat = other_cat.strip()
 				self._move_from_all(other_cat + "/" + mypkg)
@@ -6517,7 +6517,7 @@ class binarytree(object):
 					full_path = os.path.join(self.pkgdir, mypath)
 					if os.path.islink(full_path):
 						continue
-					mytbz2 = xpak.tbz2(full_path)
+					mytbz2 = portage.xpak.tbz2(full_path)
 					# For invalid packages, mycat could be None.
 					mycat = mytbz2.getfile("CATEGORY")
 					mypf = mytbz2.getfile("PF")
@@ -6558,7 +6558,7 @@ class binarytree(object):
 				chunk_size = 3000
 
 			writemsg(green("Fetching binary packages info...\n"))
-			self.remotepkgs = getbinpkg.dir_get_metadata(
+			self.remotepkgs = portage.getbinpkg.dir_get_metadata(
 				self.settings["PORTAGE_BINHOST"], chunk_size=chunk_size)
 			writemsg(green("  -- DONE!\n\n"))
 
@@ -6640,7 +6640,7 @@ class binarytree(object):
 		mysplit=pkgname.split("/")
 		if self.isremote(pkgname):
 			return self.remotepkgs[mysplit[1]+".tbz2"]["USE"][:].split()
-		tbz2=xpak.tbz2(self.getname(pkgname))
+		tbz2=portage.xpak.tbz2(self.getname(pkgname))
 		return tbz2.getfile("USE").split()
 
 	def gettbz2(self,pkgname):
@@ -6659,7 +6659,7 @@ class binarytree(object):
 			os.makedirs(mydest, 0775)
 		except (OSError, IOError):
 			pass
-		return getbinpkg.file_get(
+		return portage.getbinpkg.file_get(
 			self.settings["PORTAGE_BINHOST"] + "/" + tbz2name,
 			mydest, fcmd=self.settings["RESUMECOMMAND"])
 
@@ -7879,7 +7879,7 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 		#tbz2_lock = portage.locks.lockfile(mytbz2, wantnewlockfile=1)
 
 		mypkg = os.path.basename(mytbz2)[:-5]
-		xptbz2 = xpak.tbz2(mytbz2)
+		xptbz2 = portage.xpak.tbz2(mytbz2)
 		mycat = xptbz2.getfile("CATEGORY")
 		if not mycat:
 			writemsg("!!! CATEGORY info missing from info chunk, aborting...\n",

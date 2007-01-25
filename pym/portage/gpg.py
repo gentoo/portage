@@ -1,4 +1,4 @@
-# portage.gpg.py -- core Portage functionality
+# gpg.py -- core Portage functionality
 # Copyright 2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
@@ -124,19 +124,19 @@ class FileChecker:
 		trustLevel     = UNTRUSTED
 		if result == 0:
 			trustLevel   = TRUSTED
-			#if output.find("WARNING") != -1:
+			#if portage.output.find("WARNING") != -1:
 			#	trustLevel = MARGINAL
-			if output.find("BAD") != -1:
+			if portage.output.find("BAD") != -1:
 				raise portage.exception.InvalidSignature, filename
 		elif result == 1:
 			trustLevel   = EXISTS
-			if output.find("BAD") != -1:
+			if portage.output.find("BAD") != -1:
 				raise portage.exception.InvalidSignature, filename
 		elif result == 2:
 			trustLevel   = UNTRUSTED
-			if output.find("could not be verified") != -1:
+			if portage.output.find("could not be verified") != -1:
 				raise portage.exception.MissingSignature, filename
-			if output.find("public key not found") != -1:
+			if portage.output.find("public key not found") != -1:
 				if self.keyringIsTrusted: # We trust the ring, but not the key specifically.
 					trustLevel = MARGINAL
 				else:

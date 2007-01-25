@@ -4,10 +4,10 @@
 # $Id$
 
 import os, stat, types
-from cache import flat_hash
-import eclass_cache 
-from cache.template import reconstruct_eclasses
-from cache.mappings import ProtectedDict
+from portage.cache import flat_hash
+import portage.eclass_portage.cache 
+from portage.cache.template import reconstruct_eclasses
+from portage.cache.mappings import ProtectedDict
 
 # this is the old cache format, flat_list.  count maintained here.
 magic_line_count = 22
@@ -26,7 +26,7 @@ class database(flat_hash.database):
 		loc = location
 		super(database, self).__init__(location, *args, **config)
 		self.location = os.path.join(loc, "metadata","cache")
-		self.ec = eclass_cache.cache(loc)
+		self.ec = portage.eclass_cache.cache(loc)
 
 	def __getitem__(self, cpv):
 		return flat_hash.database.__getitem__(self, cpv)

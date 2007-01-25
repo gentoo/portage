@@ -3,8 +3,8 @@
 # License: GPL2
 # $Id$
 
-from cache import template, cache_errors
-from cache.template import reconstruct_eclasses
+from portage.cache import template, cache_errors
+from portage.cache.template import reconstruct_eclasses
 
 class SQLDatabase(template.database):
 	"""template class for RDBM based caches

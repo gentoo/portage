@@ -1,5 +1,5 @@
-from cache import fs_template
-from cache import cache_errors
+from portage.cache import fs_template
+from portage.cache import cache_errors
 import errno, os, stat
 
 # store the current key order *here*.
