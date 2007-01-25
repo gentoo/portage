@@ -20,7 +20,7 @@ MODULES_FILE_PATH       = USER_CONFIG_PATH+"/modules"
 CUSTOM_PROFILE_PATH     = USER_CONFIG_PATH+"/profile"
 
 #PORTAGE_BASE_PATH       = "/usr/lib/portage"
-PORTAGE_BASE_PATH       = os.path.join(os.sep, os.sep.join(__file__.split(os.sep)[:-2]))
+PORTAGE_BASE_PATH       = os.path.join(os.sep, os.sep.join(__file__.split(os.sep)[:-3]))
 PORTAGE_BIN_PATH        = PORTAGE_BASE_PATH+"/bin"
 PORTAGE_PYM_PATH        = PORTAGE_BASE_PATH+"/pym"
 NEWS_LIB_PATH           = "/var/lib/gentoo"
