@@ -91,7 +91,7 @@ try:
 	from portage.locks import unlockfile,unlockdir,lockfile,lockdir
 	import portage.checksum
 	from portage.checksum import perform_md5,perform_checksum,prelink_capable
-	import eclass_cache
+	import portage.eclass_cache
 	from portage.localization import _
 	from portage.update import dep_transform, fixdbentries, grab_updates, \
 		parse_updates, update_config_files, update_dbentries

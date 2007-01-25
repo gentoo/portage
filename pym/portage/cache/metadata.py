@@ -5,7 +5,7 @@
 
 import os, stat, types
 from portage.cache import flat_hash
-import portage.eclass_portage.cache 
+import portage.eclass_cache 
 from portage.cache.template import reconstruct_eclasses
 from portage.cache.mappings import ProtectedDict
 
