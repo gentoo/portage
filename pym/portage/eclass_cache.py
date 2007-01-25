@@ -3,9 +3,9 @@
 # License: GPL2
 # $Id$
 
-from portage_util import normalize_path, writemsg
+from portage.util import normalize_path, writemsg
 import os, sys
-from portage_data import portage_gid
+from portage.data import portage_gid
 
 class cache:
 	"""

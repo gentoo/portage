@@ -1,18 +1,18 @@
-# portage_checksum.py -- core Portage functionality
+# portage.checksum.py -- core Portage functionality
 # Copyright 1998-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
 
-from portage_const import PRIVATE_PATH,PRELINK_BINARY,HASHING_BLOCKSIZE
+from portage.const import PRIVATE_PATH,PRELINK_BINARY,HASHING_BLOCKSIZE
 import os
 import errno
 import shutil
 import stat
-import portage_exception
-import portage_exec
-import portage_util
-import portage_locks
+import portage.exception
+import portage.process
+import portage.util
+import portage.locks
 import commands
 import sha
 
@@ -111,7 +111,7 @@ def verify_all(filename, mydict, calc_prelink=0, strict=0):
 			return False,("Filesize does not match recorded size", mysize, mydict["size"])
 	except OSError, e:
 		if e.errno == errno.ENOENT:
-			raise portage_exception.FileNotFound(filename)
+			raise portage.exception.FileNotFound(filename)
 		return False, (str(e), None, None)
 	for x in mydict.keys():
 		if   x == "size":
@@ -120,7 +120,7 @@ def verify_all(filename, mydict, calc_prelink=0, strict=0):
 			myhash = perform_checksum(filename, x, calc_prelink=calc_prelink)[0]
 			if mydict[x] != myhash:
 				if strict:
-					raise portage_exception.DigestException, "Failed to verify '$(file)s' on checksum type '%(type)s'" % {"file":filename, "type":x}
+					raise portage.exception.DigestException, "Failed to verify '$(file)s' on checksum type '%(type)s'" % {"file":filename, "type":x}
 				else:
 					file_is_ok = False
 					reason     = (("Failed on %s verification" % x), myhash,mydict[x])
@@ -168,21 +168,21 @@ def perform_checksum(filename, hashname="MD5", calc_prelink=0):
 	mylock          = None
 	try:
 		if calc_prelink and prelink_capable:
-			mylock = portage_locks.lockfile(prelink_tmpfile, wantnewlockfile=1)
+			mylock = portage.locks.lockfile(prelink_tmpfile, wantnewlockfile=1)
 			# Create non-prelinked temporary file to checksum.
 			# Files rejected by prelink are summed in place.
-			retval = portage_exec.spawn([PRELINK_BINARY, "--undo", "-o",
+			retval = portage.process.spawn([PRELINK_BINARY, "--undo", "-o",
 				prelink_tmpfile, filename], fd_pipes={})
 			if retval == os.EX_OK:
 				myfilename = prelink_tmpfile
 		try:
 			if hashname not in hashfunc_map:
-				raise portage_exception.DigestException(hashname + \
+				raise portage.exception.DigestException(hashname + \
 					" hash function not available (needs dev-python/pycrypto)")
 			myhash, mysize = hashfunc_map[hashname](myfilename)
 		except (OSError, IOError), e:
 			if e.errno == errno.ENOENT:
-				raise portage_exception.FileNotFound(myfilename)
+				raise portage.exception.FileNotFound(myfilename)
 			raise
 		if calc_prelink and prelink_capable:
 			try:
@@ -194,7 +194,7 @@ def perform_checksum(filename, hashname="MD5", calc_prelink=0):
 		return myhash, mysize
 	finally:
 		if mylock:
-			portage_locks.unlockfile(mylock)
+			portage.locks.unlockfile(mylock)
 
 def perform_multiple_checksums(filename, hashes=["MD5"], calc_prelink=0):
 	"""
@@ -214,6 +214,6 @@ def perform_multiple_checksums(filename, hashes=["MD5"], calc_prelink=0):
 	rVal = {}
 	for x in hashes:
 		if x not in hashfunc_map:
-			raise portage_exception.DigestException, x+" hash function not available (needs dev-python/pycrypto)"
+			raise portage.exception.DigestException, x+" hash function not available (needs dev-python/pycrypto)"
 		rVal[x] = perform_checksum(filename, x, calc_prelink)[0]
 	return rVal

@@ -5,10 +5,10 @@
 
 
 import os, atexit, signal, sys
-import portage_data
+import portage.data
 
-from portage_util import dump_traceback
-from portage_const import BASH_BINARY, SANDBOX_BINARY
+from portage.util import dump_traceback
+from portage.const import BASH_BINARY, SANDBOX_BINARY
 
 
 try:
@@ -85,7 +85,7 @@ def run_exitfuncs():
 		except SystemExit:
 			exc_info = sys.exc_info()
 		except: # No idea what they called, so we need this broad except here.
-			dump_traceback("Error in portage_exec.run_exitfuncs", noiselevel=0)
+			dump_traceback("Error in portage.process.run_exitfuncs", noiselevel=0)
 			exc_info = sys.exc_info()
 
 	if exc_info is not None:

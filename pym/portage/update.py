@@ -4,12 +4,12 @@
 
 import errno, os, re, sys
 
-from portage_util import ConfigProtect, grabfile, new_protect_filename, \
+from portage.util import ConfigProtect, grabfile, new_protect_filename, \
 	normalize_path, write_atomic, writemsg
-from portage_exception import DirectoryNotFound, PortageException
-from portage_versions import ververify
-from portage_dep import dep_getkey, get_operator, isvalidatom, isjustname
-from portage_const import USER_CONFIG_PATH, WORLD_FILE
+from portage.exception import DirectoryNotFound, PortageException
+from portage.versions import ververify
+from portage.dep import dep_getkey, get_operator, isvalidatom, isjustname
+from portage.const import USER_CONFIG_PATH, WORLD_FILE
 
 ignored_dbentries = ("CONTENTS", "environment.bz2")
 

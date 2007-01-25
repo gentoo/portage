@@ -19,16 +19,16 @@
 #
 
 import re,  sys, types
-import portage_exception
-from portage_exception import InvalidData
-from portage_versions import catpkgsplit, catsplit, pkgcmp, pkgsplit, ververify
+import portage.exception
+from portage.exception import InvalidData
+from portage.versions import catpkgsplit, catsplit, pkgcmp, pkgsplit, ververify
 
 def cpvequal(cpv1, cpv2):
 	split1 = catpkgsplit(cpv1)
 	split2 = catpkgsplit(cpv2)
 	
 	if not split1 or not split2:
-		raise portage_exception.PortageException("Invalid data '%s, %s', parameter was not a CPV" % (cpv1, cpv2))
+		raise portage.exception.PortageException("Invalid data '%s, %s', parameter was not a CPV" % (cpv1, cpv2))
 	
 	if split1[0] != split2[0]:
 		return False
@@ -141,9 +141,9 @@ def use_reduce(deparray, uselist=[], masklist=[], matchall=0, excludeall=[]):
 	for x in range(len(deparray)):
 		if deparray[x] in ["||","&&"]:
 			if len(deparray) - 1 == x or not isinstance(deparray[x+1], list):
-				raise portage_exception.InvalidDependString(deparray[x]+" missing atom list in \""+paren_enclose(deparray)+"\"")
+				raise portage.exception.InvalidDependString(deparray[x]+" missing atom list in \""+paren_enclose(deparray)+"\"")
 	if deparray and deparray[-1] and deparray[-1][-1] == "?":
-		raise portage_exception.InvalidDependString("Conditional without target in \""+paren_enclose(deparray)+"\"")
+		raise portage.exception.InvalidDependString("Conditional without target in \""+paren_enclose(deparray)+"\"")
 
 	global _dep_check_strict
 
@@ -158,7 +158,7 @@ def use_reduce(deparray, uselist=[], masklist=[], matchall=0, excludeall=[]):
 				rlist.append(additions)
 			elif rlist and rlist[-1] == "||":
 			#XXX: Currently some DEPEND strings have || lists without default atoms.
-			#	raise portage_exception.InvalidDependString("No default atom(s) in \""+paren_enclose(deparray)+"\"")
+			#	raise portage.exception.InvalidDependString("No default atom(s) in \""+paren_enclose(deparray)+"\"")
 				rlist.append([])
 
 		else:
@@ -210,7 +210,7 @@ def use_reduce(deparray, uselist=[], masklist=[], matchall=0, excludeall=[]):
 						# The old deprecated behavior.
 						rlist.append(target)
 					else:
-						raise portage_exception.InvalidDependString(
+						raise portage.exception.InvalidDependString(
 							"Conditional without parenthesis: '%s?'" % head)
 
 			else:
@@ -255,7 +255,7 @@ def get_operator(mydep):
 	Return the operator used in a depstring.
 
 	Example usage:
-		>>> from portage_dep import *
+		>>> from portage.dep import *
 		>>> get_operator(">=test-1.0")
 		'>='
 
@@ -536,7 +536,7 @@ def match_from_list(mydep, candidate_list):
 	if mylist is not None:
 		return mylist[:]
 
-	from portage_util import writemsg
+	from portage.util import writemsg
 	if mydep[0] == "!":
 		mydep = mydep[1:]
 

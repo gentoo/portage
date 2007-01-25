@@ -54,8 +54,8 @@ try:
 	import cvstree
 	import xpak
 	import getbinpkg
-	import portage_dep
-	from portage_dep import dep_getcpv, dep_getkey, get_operator, \
+	import portage.dep
+	from portage.dep import dep_getcpv, dep_getkey, get_operator, \
 		isjustname, isspecific, isvalidatom, \
 		match_from_list, match_to_list, best_match_to_list
 
@@ -63,8 +63,8 @@ try:
 	import output
 	from output import bold, colorize, green, red, yellow
 
-	import portage_const
-	from portage_const import VDB_PATH, PRIVATE_PATH, CACHE_PATH, DEPCACHE_PATH, \
+	import portage.const
+	from portage.const import VDB_PATH, PRIVATE_PATH, CACHE_PATH, DEPCACHE_PATH, \
 	  USER_CONFIG_PATH, MODULES_FILE_PATH, CUSTOM_PROFILE_PATH, PORTAGE_BASE_PATH, \
 	  PORTAGE_BIN_PATH, PORTAGE_PYM_PATH, PROFILE_PATH, LOCALE_DATA_PATH, \
 	  EBUILD_SH_BINARY, SANDBOX_BINARY, BASH_BINARY, \
@@ -73,36 +73,36 @@ try:
 	  INVALID_ENV_FILE, CUSTOM_MIRRORS_FILE, CONFIG_MEMORY_FILE,\
 	  INCREMENTALS, EAPI, MISC_SH_BINARY, REPO_NAME_LOC, REPO_NAME_FILE
 
-	from portage_data import ostype, lchown, userland, secpass, uid, wheelgid, \
+	from portage.data import ostype, lchown, userland, secpass, uid, wheelgid, \
 	                         portage_uid, portage_gid, userpriv_groups
-	from portage_manifest import Manifest
+	from portage.manifest import Manifest
 
-	import portage_util
-	from portage_util import atomic_ofstream, apply_secpass_permissions, apply_recursive_permissions, \
+	import portage.util
+	from portage.util import atomic_ofstream, apply_secpass_permissions, apply_recursive_permissions, \
 		dump_traceback, getconfig, grabdict, grabdict_package, grabfile, grabfile_package, \
 		map_dictlist_vals, new_protect_filename, normalize_path, \
 		pickle_read, pickle_write, stack_dictlist, stack_dicts, stack_lists, \
 		unique_array, varexpand, writedict, writemsg, writemsg_stdout, write_atomic
-	import portage_exception
-	import portage_gpg
-	import portage_locks
-	import portage_exec
-	from portage_exec import atexit_register, run_exitfuncs
-	from portage_locks import unlockfile,unlockdir,lockfile,lockdir
-	import portage_checksum
-	from portage_checksum import perform_md5,perform_checksum,prelink_capable
+	import portage.exception
+	import portage.gpg
+	import portage.locks
+	import portage.process
+	from portage.process import atexit_register, run_exitfuncs
+	from portage.locks import unlockfile,unlockdir,lockfile,lockdir
+	import portage.checksum
+	from portage.checksum import perform_md5,perform_checksum,prelink_capable
 	import eclass_cache
-	from portage_localization import _
-	from portage_update import dep_transform, fixdbentries, grab_updates, \
+	from portage.localization import _
+	from portage.update import dep_transform, fixdbentries, grab_updates, \
 		parse_updates, update_config_files, update_dbentries
 
 	# Need these functions directly in portage namespace to not break every external tool in existence
-	from portage_versions import best, catpkgsplit, catsplit, pkgcmp, \
+	from portage.versions import best, catpkgsplit, catsplit, pkgcmp, \
 		pkgsplit, vercmp, ververify
 
 	# endversion and endversion_keys are for backward compatibility only.
-	from portage_versions import endversion_keys
-	from portage_versions import suffix_value as endversion
+	from portage.versions import endversion_keys
+	from portage.versions import suffix_value as endversion
 
 except ImportError, e:
 	sys.stderr.write("\n\n")
@@ -117,7 +117,7 @@ except ImportError, e:
 
 
 try:
-	import portage_selinux as selinux
+	import portage.selinux as selinux
 except OSError, e:
 	writemsg("!!! SELinux not loaded: %s\n" % str(e), noiselevel=-1)
 	del e
@@ -184,8 +184,8 @@ def cacheddir(my_original_path, ignorecvs, ignorelist, EmptyOnError, followSymli
 		if stat.S_ISDIR(pathstat[stat.ST_MODE]):
 			mtime = pathstat[stat.ST_MTIME]
 		else:
-			raise portage_exception.DirectoryNotFound(mypath)
-	except (IOError,OSError,portage_exception.PortageException):
+			raise portage.exception.DirectoryNotFound(mypath)
+	except (IOError,OSError,portage.exception.PortageException):
 		if EmptyOnError:
 			return [], []
 		return None, None
@@ -469,7 +469,7 @@ def elog_process(cpv, mysettings):
 	all_logentries = {}
 	for f in mylogfiles:
 		msgfunction, msgtype = f.split(".")
-		if msgfunction not in portage_const.EBUILD_PHASES:
+		if msgfunction not in portage.const.EBUILD_PHASES:
 			writemsg("!!! can't process invalid log file: %s\n" % f,
 				noiselevel=-1)
 			continue
@@ -500,7 +500,7 @@ def elog_process(cpv, mysettings):
 	def combine_logentries(logentries):
 		# generate a single string with all log messages
 		rValue = ""
-		for phase in portage_const.EBUILD_PHASES:
+		for phase in portage.const.EBUILD_PHASES:
 			if not phase in logentries:
 				continue
 			for msgtype,msgcontent in logentries[phase]:
@@ -534,7 +534,7 @@ def elog_process(cpv, mysettings):
 			logmodule = __import__("elog_modules.mod_"+s)
 			m = getattr(logmodule, "mod_"+s)
 			def timeout_handler(signum, frame):
-				raise portage_exception.PortageException(
+				raise portage.exception.PortageException(
 					"Timeout in elog_process for system '%s'" % s)
 			import signal
 			signal.signal(signal.SIGALRM, timeout_handler)
@@ -552,7 +552,7 @@ def elog_process(cpv, mysettings):
 			writemsg("!!! Error while importing logging modules " + \
 				"while loading \"mod_%s\":\n" % str(s))
 			writemsg("%s\n" % str(e), noiselevel=-1)
-		except portage_exception.PortageException, e:
+		except portage.exception.PortageException, e:
 			writemsg("%s\n" % str(e), noiselevel=-1)
 
 	# clean logfiles to avoid repetitions
@@ -572,7 +572,7 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None):
 		global mtimedb
 		prev_mtimes = mtimedb["ldpath"]
 	envd_dir = os.path.join(target_root, "etc", "env.d")
-	portage_util.ensure_dirs(envd_dir, mode=0755)
+	portage.util.ensure_dirs(envd_dir, mode=0755)
 	fns = listdir(envd_dir, EmptyOnError=1)
 	fns.sort()
 	templist = []
@@ -599,7 +599,7 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None):
 		file_path = os.path.join(envd_dir, x)
 		try:
 			myconfig = getconfig(file_path, expand=False)
-		except portage_exception.ParseError, e:
+		except portage.exception.ParseError, e:
 			writemsg("!!! '%s'\n" % str(e), noiselevel=-1)
 			del e
 			continue
@@ -702,7 +702,7 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None):
 
 	mtime_changed = False
 	lib_dirs = set()
-	for lib_dir in portage_util.unique_array(specials["LDPATH"]+['usr/lib','usr/lib64','usr/lib32','lib','lib64','lib32']):
+	for lib_dir in portage.util.unique_array(specials["LDPATH"]+['usr/lib','usr/lib64','usr/lib32','lib','lib64','lib32']):
 		x = os.path.join(target_root, lib_dir.lstrip(os.sep))
 		try:
 			newldpathtime = os.stat(x)[stat.ST_MTIME]
@@ -906,9 +906,9 @@ class config:
 		@param mycpv: CPV to load up (see setcpv), this is the same as calling init with mycpv=None
 		and then calling instance.setcpv(mycpv).
 		@type mycpv: String
-		@param config_profile_path: Configurable path to the profile (usually PROFILE_PATH from portage_const)
+		@param config_profile_path: Configurable path to the profile (usually PROFILE_PATH from portage.const)
 		@type config_profile_path: String
-		@param config_incrementals: List of incremental variables (usually portage_const.INCREMENTALS)
+		@param config_incrementals: List of incremental variables (usually portage.const.INCREMENTALS)
 		@type config_incrementals: List
 		@param config_root: path to read local config from (defaults to "/", see PORTAGE_CONFIGROOT)
 		@type config_root: String
@@ -1009,7 +1009,7 @@ class config:
 					writemsg(("!!! Error: %s='%s' is not a directory. " + \
 						"Please correct this.\n") % (varname, var),
 						noiselevel=-1)
-					raise portage_exception.DirectoryNotFound(var)
+					raise portage.exception.DirectoryNotFound(var)
 
 			if config_root is None:
 				config_root = "/"
@@ -1033,7 +1033,7 @@ class config:
 
 			if not config_incrementals:
 				writemsg("incrementals not specified to class config\n")
-				self.incrementals = copy.deepcopy(portage_const.INCREMENTALS)
+				self.incrementals = copy.deepcopy(portage.const.INCREMENTALS)
 			else:
 				self.incrementals = copy.deepcopy(config_incrementals)
 
@@ -1070,7 +1070,7 @@ class config:
 					if os.path.exists(parentsFile):
 						parents = grabfile(parentsFile)
 						if not parents:
-							raise portage_exception.ParseError(
+							raise portage.exception.ParseError(
 								"Empty parent file: '%s'" % parents_file)
 						for parentPath in parents:
 							parentPath = normalize_path(os.path.join(
@@ -1078,7 +1078,7 @@ class config:
 							if os.path.exists(parentPath):
 								addProfile(parentPath)
 							else:
-								raise portage_exception.ParseError(
+								raise portage.exception.ParseError(
 									"Parent '%s' not found: '%s'" %  \
 									(parentPath, parentsFile))
 					self.profiles.append(currentPath)
@@ -1180,7 +1180,7 @@ class config:
 							self.make_defaults_use.append(cfg.get("USE", ""))
 						else:
 							self.make_defaults_use.append("")
-					self.mygcfg   = stack_dicts(mygcfg_dlists, incrementals=portage_const.INCREMENTALS, ignore_none=1)
+					self.mygcfg   = stack_dicts(mygcfg_dlists, incrementals=portage.const.INCREMENTALS, ignore_none=1)
 					#self.mygcfg = grab_stacked("make.defaults", self.profiles, getconfig)
 					if self.mygcfg is None:
 						self.mygcfg = {}
@@ -1465,7 +1465,7 @@ class config:
 				self.backup_changes(var)
 
 			self.regenerate()
-			self.features = portage_util.unique_array(self["FEATURES"].split())
+			self.features = portage.util.unique_array(self["FEATURES"].split())
 
 			if "gpg" in self.features:
 				if not os.path.exists(self["PORTAGE_GPG_DIR"]) or \
@@ -1474,7 +1474,7 @@ class config:
 						" Removing gpg from FEATURES.\n"), noiselevel=-1)
 					self.features.remove("gpg")
 
-			if not portage_exec.sandbox_capable and \
+			if not portage.process.sandbox_capable and \
 				("sandbox" in self.features or "usersandbox" in self.features):
 				if self.profile_path is not None and \
 					os.path.realpath(self.profile_path) == \
@@ -1515,8 +1515,8 @@ class config:
 		for mypath, (gid, mode, modemask) in dir_mode_map.iteritems():
 			try:
 				mydir = os.path.join(self["ROOT"], mypath)
-				portage_util.ensure_dirs(mydir, gid=gid, mode=mode, mask=modemask)
-			except portage_exception.PortageException, e:
+				portage.util.ensure_dirs(mydir, gid=gid, mode=mode, mask=modemask)
+			except portage.exception.PortageException, e:
 				writemsg("!!! Directory initialization failed: '%s'\n" % mydir,
 					noiselevel=-1)
 				writemsg("!!! %s\n" % str(e),
@@ -1751,7 +1751,7 @@ class config:
 			myuse = self["USE"]
 		else:
 			myuse = mydbapi.aux_get(mycpv, ["USE"])[0]
-		virts = flatten(portage_dep.use_reduce(portage_dep.paren_reduce(provides), uselist=myuse.split()))
+		virts = flatten(portage.dep.use_reduce(portage.dep.paren_reduce(provides), uselist=myuse.split()))
 
 		cp = dep_getkey(mycpv)
 		for virt in virts:
@@ -2159,7 +2159,7 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, **keyw
 	instead of as root.
 
 	Notes: os.system cannot be used because it messes with signal handling.  Instead we
-	use the portage_exec spawn* family of functions.
+	use the portage.process spawn* family of functions.
 
 	This function waits for the process to terminate.
 
@@ -2206,7 +2206,7 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, **keyw
 		elif 1 not in fd_pipes or 2 not in fd_pipes:
 			raise ValueError(fd_pipes)
 		pr, pw = os.pipe()
-		mypids.extend(portage_exec.spawn(('tee', '-i', '-a', logfile),
+		mypids.extend(portage.process.spawn(('tee', '-i', '-a', logfile),
 			 returnpid=True, fd_pipes={0:pr, 1:fd_pipes[1], 2:fd_pipes[2]}))
 		os.close(pr)
 		fd_pipes[1] = pw
@@ -2228,10 +2228,10 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, **keyw
 
 	if free:
 		keywords["opt_name"] += " bash"
-		spawn_func = portage_exec.spawn_bash
+		spawn_func = portage.process.spawn_bash
 	else:
 		keywords["opt_name"] += " sandbox"
-		spawn_func = portage_exec.spawn_sandbox
+		spawn_func = portage.process.spawn_sandbox
 
 	if sesandbox:
 		con = selinux.getcontext()
@@ -2254,13 +2254,13 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, **keyw
 	while mypids:
 		pid = mypids.pop(0)
 		retval = os.waitpid(pid, 0)[1]
-		portage_exec.spawned_pids.remove(pid)
+		portage.process.spawned_pids.remove(pid)
 		if retval != os.EX_OK:
 			for pid in mypids:
 				if os.waitpid(pid, os.WNOHANG) == (0,0):
 					os.kill(pid, signal.SIGTERM)
 					os.waitpid(pid, 0)
-				portage_exec.spawned_pids.remove(pid)
+				portage.process.spawned_pids.remove(pid)
 			if retval & 0xff:
 				return (retval & 0xff) << 8
 			return retval >> 8
@@ -2401,7 +2401,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 			
 			for x in distdir_dirs:
 				mydir = os.path.join(mysettings["DISTDIR"], x)
-				if portage_util.ensure_dirs(mydir, gid=portage_gid, mode=dirmode, mask=modemask):
+				if portage.util.ensure_dirs(mydir, gid=portage_gid, mode=dirmode, mask=modemask):
 					writemsg("Adjusting permissions recursively: '%s'\n" % mydir,
 						noiselevel=-1)
 					def onerror(e):
@@ -2409,9 +2409,9 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					if not apply_recursive_permissions(mydir,
 						gid=portage_gid, dirmode=dirmode, dirmask=modemask,
 						filemode=filemode, filemask=modemask, onerror=onerror):
-						raise portage_exception.OperationNotPermitted(
+						raise portage.exception.OperationNotPermitted(
 							"Failed to apply recursive permissions for the portage group.")
-		except portage_exception.PortageException, e:
+		except portage.exception.PortageException, e:
 			if not os.path.isdir(mysettings["DISTDIR"]):
 				writemsg("!!! %s\n" % str(e), noiselevel=-1)
 				writemsg("!!! Directory Not Found: DISTDIR='%s'\n" % mysettings["DISTDIR"], noiselevel=-1)
@@ -2446,9 +2446,9 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 		else:
 			if use_locks and can_fetch:
 				if locks_in_subdir:
-					file_lock = portage_locks.lockfile(mysettings["DISTDIR"]+"/"+locks_in_subdir+"/"+myfile,wantnewlockfile=1)
+					file_lock = portage.locks.lockfile(mysettings["DISTDIR"]+"/"+locks_in_subdir+"/"+myfile,wantnewlockfile=1)
 				else:
-					file_lock = portage_locks.lockfile(mysettings["DISTDIR"]+"/"+myfile,wantnewlockfile=1)
+					file_lock = portage.locks.lockfile(mysettings["DISTDIR"]+"/"+myfile,wantnewlockfile=1)
 		try:
 			if not listonly:
 				if fsmirrors and not os.path.exists(myfile_path):
@@ -2475,7 +2475,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						apply_secpass_permissions(
 							myfile_path, gid=portage_gid, mode=0664, mask=02,
 							stat_cached=mystat)
-					except portage_exception.PortageException, e:
+					except portage.exception.PortageException, e:
 						if not os.access(myfile_path, os.R_OK):
 							writemsg("!!! Failed to adjust permissions:" + \
 								" %s\n" % str(e), noiselevel=-1)
@@ -2488,7 +2488,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 							not restrict_fetch:
 							fetched = 1 # Try to resume this download.
 						else:
-							verified_ok, reason = portage_checksum.verify_all(
+							verified_ok, reason = portage.checksum.verify_all(
 								myfile_path, mydigests[myfile])
 							if not verified_ok:
 								writemsg("!!! Previously fetched" + \
@@ -2578,7 +2578,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 							con = con.replace(mysettings["PORTAGE_T"], mysettings["PORTAGE_FETCH_T"])
 							selinux.setexec(con)
 
-						myret = portage_exec.spawn_bash(myfetch,
+						myret = portage.process.spawn_bash(myfetch,
 							env=mysettings.environ(), **spawn_keywords)
 
 						if mysettings.selinux_enabled():
@@ -2588,9 +2588,9 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						try:
 							apply_secpass_permissions(myfile_path,
 								gid=portage_gid, mode=0664, mask=02)
-						except portage_exception.FileNotFound, e:
+						except portage.exception.FileNotFound, e:
 							pass
-						except portage_exception.PortageException, e:
+						except portage.exception.PortageException, e:
 							if not os.access(myfile_path, os.R_OK):
 								writemsg("!!! Failed to adjust permissions:" + \
 									" %s\n" % str(e), noiselevel=-1)
@@ -2628,7 +2628,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 								# file NOW, for those users who don't have a stable/continuous
 								# net connection. This way we have a chance to try to download
 								# from another mirror...
-								verified_ok,reason = portage_checksum.verify_all(mysettings["DISTDIR"]+"/"+myfile, mydigests[myfile])
+								verified_ok,reason = portage.checksum.verify_all(mysettings["DISTDIR"]+"/"+myfile, mydigests[myfile])
 								if not verified_ok:
 									print reason
 									writemsg("!!! Fetched file: "+str(myfile)+" VERIFY FAILED!\n",
@@ -2657,7 +2657,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 								noiselevel=-1)
 		finally:
 			if use_locks and file_lock:
-				portage_locks.unlockfile(file_lock)
+				portage.locks.unlockfile(file_lock)
 
 		if listonly:
 			writemsg_stdout("\n", noiselevel=-1)
@@ -2685,7 +2685,7 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
 	"""
 	Generates a digest file if missing.  Assumes all files are available.
 	DEPRECATED: this now only is a compability wrapper for 
-	            portage_manifest.Manifest()
+	            portage.manifest.Manifest()
 	NOTE: manifestonly and overwrite are useless with manifest2 and
 	      are therefore ignored."""
 	if myportdb is None:
@@ -2706,8 +2706,8 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
 		# fetches when sufficient digests already exist.  To ease transition
 		# while Manifest 1 is being removed, only require hashes that will
 		# exist before and after the transition.
-		required_hash_types = set(portage_const.MANIFEST1_HASH_FUNCTIONS
-			).intersection(portage_const.MANIFEST2_HASH_FUNCTIONS)
+		required_hash_types = set(portage.const.MANIFEST1_HASH_FUNCTIONS
+			).intersection(portage.const.MANIFEST2_HASH_FUNCTIONS)
 		required_hash_types.add("size")
 		dist_hashes = mf.fhashdict.get("DIST", {})
 		missing_hashes = set()
@@ -2750,7 +2750,7 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
 				assumeDistHashesSometimes=True,
 				assumeDistHashesAlways=(
 				"assume-digests" in mysettings.features))
-		except portage_exception.FileNotFound, e:
+		except portage.exception.FileNotFound, e:
 			writemsg(("!!! File %s doesn't exist, can't update " + \
 				"Manifest\n") % e, noiselevel=-1)
 			return 0
@@ -2790,7 +2790,7 @@ def digestParseFile(myfilename, mysettings=None):
 	and returns a dict with the filenames as keys and {checksumkey:checksum}
 	as the values.
 	DEPRECATED: this function is now only a compability wrapper for
-	            portage_manifest.Manifest()."""
+	            portage.manifest.Manifest()."""
 
 	mysplit = myfilename.split(os.sep)
 	if mysplit[-2] == "files" and mysplit[-1].startswith("digest-"):
@@ -2807,7 +2807,7 @@ def digestParseFile(myfilename, mysettings=None):
 def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 	"""Verifies checksums.  Assumes all files have been downloaded.
 	DEPRECATED: this is now only a compability wrapper for 
-	            portage_manifest.Manifest()."""
+	            portage.manifest.Manifest()."""
 	if not strict:
 		return 1
 	pkgdir = mysettings["O"]
@@ -2838,12 +2838,12 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 		eout.eend(1)
 		writemsg("\n!!! Missing digest for %s\n" % str(e), noiselevel=-1)
 		return 0
-	except portage_exception.FileNotFound, e:
+	except portage.exception.FileNotFound, e:
 		eout.eend(1)
 		writemsg("\n!!! A file listed in the Manifest could not be found: %s\n" % str(e),
 			noiselevel=-1)
 		return 0
-	except portage_exception.DigestException, e:
+	except portage.exception.DigestException, e:
 		eout.eend(1)
 		writemsg("\n!!! Digest verification failed:\n", noiselevel=-1)
 		writemsg("!!! %s\n" % e.value[0], noiselevel=-1)
@@ -2929,7 +2929,7 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 
 
 def eapi_is_supported(eapi):
-	return str(eapi).strip() == str(portage_const.EAPI).strip()
+	return str(eapi).strip() == str(portage.const.EAPI).strip()
 
 def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, mydbapi):
 
@@ -2944,7 +2944,7 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 	mycpv = cat+"/"+mypv
 	mysplit=pkgsplit(mypv,silent=0)
 	if mysplit is None:
-		raise portage_exception.IncorrectParameter(
+		raise portage.exception.IncorrectParameter(
 			"Invalid ebuild path: '%s'" % myebuild)
 
 	if mydo != "depend":
@@ -2985,7 +2985,7 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 	mysettings["PV"] = mysplit[1]
 	mysettings["PR"] = mysplit[2]
 
-	if portage_util.noiselimit < 0:
+	if portage.util.noiselimit < 0:
 		mysettings["PORTAGE_QUIET"] = "1"
 
 	if mydo != "depend":
@@ -2993,9 +2993,9 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 			mydbapi.aux_get(mycpv, ["EAPI", "INHERITED", "SLOT", "RESTRICT"])
 		if not eapi_is_supported(eapi):
 			# can't do anything with this.
-			raise portage_exception.UnsupportedAPIException(mycpv, eapi)
+			raise portage.exception.UnsupportedAPIException(mycpv, eapi)
 		mysettings["PORTAGE_RESTRICT"] = " ".join(flatten(
-			portage_dep.use_reduce(portage_dep.paren_reduce(
+			portage.dep.use_reduce(portage.dep.paren_reduce(
 			mysettings["RESTRICT"]), uselist=mysettings["USE"].split())))
 
 	if mysplit[2] == "r0":
@@ -3099,8 +3099,8 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 
 	try:
 		for mydir in mydirs:
-			portage_util.ensure_dirs(mydir)
-			portage_util.apply_secpass_permissions(mydir,
+			portage.util.ensure_dirs(mydir)
+			portage.util.apply_secpass_permissions(mydir,
 				gid=portage_gid, uid=portage_uid, mode=070, mask=0)
 		for dir_key in ("PORTAGE_BUILDDIR", "HOME", "PKG_LOGDIR", "T"):
 			"""These directories don't necessarily need to be group writable.
@@ -3108,16 +3108,16 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 			to the other phases being run by an unprivileged user.  Currently,
 			we use the portage group to ensure that the unprivleged user still
 			has write access to these directories in any case."""
-			portage_util.ensure_dirs(mysettings[dir_key], mode=0775)
-			portage_util.apply_secpass_permissions(mysettings[dir_key],
+			portage.util.ensure_dirs(mysettings[dir_key], mode=0775)
+			portage.util.apply_secpass_permissions(mysettings[dir_key],
 				uid=portage_uid, gid=portage_gid)
-	except portage_exception.PermissionDenied, e:
+	except portage.exception.PermissionDenied, e:
 		writemsg("Permission Denied: %s\n" % str(e), noiselevel=-1)
 		return 1
-	except portage_exception.OperationNotPermitted, e:
+	except portage.exception.OperationNotPermitted, e:
 		writemsg("Operation Not Permitted: %s\n" % str(e), noiselevel=-1)
 		return 1
-	except portage_exception.FileNotFound, e:
+	except portage.exception.FileNotFound, e:
 		writemsg("File Not Found: '%s'\n" % str(e), noiselevel=-1)
 		return 1
 
@@ -3151,7 +3151,7 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 					for subdir in kwargs["subdirs"]:
 						mydirs.append(os.path.join(basedir, subdir))
 				for mydir in mydirs:
-					modified = portage_util.ensure_dirs(mydir,
+					modified = portage.util.ensure_dirs(mydir,
 						gid=portage_gid, mode=dirmode, mask=modemask)
 					# To avoid excessive recursive stat calls, we trigger
 					# recursion when the top level directory does not initially
@@ -3166,9 +3166,9 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 						if not apply_recursive_permissions(mydir,
 						gid=portage_gid, dirmode=dirmode, dirmask=modemask,
 						filemode=filemode, filemask=modemask, onerror=onerror):
-							raise portage_exception.OperationNotPermitted(
+							raise portage.exception.OperationNotPermitted(
 								"Failed to apply recursive permissions for the portage group.")
-			except portage_exception.PortageException, e:
+			except portage.exception.PortageException, e:
 				mysettings.features.remove(myfeature)
 				mysettings["FEATURES"] = " ".join(mysettings.features)
 				writemsg("!!! %s\n" % str(e), noiselevel=-1)
@@ -3202,7 +3202,7 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 	try:
 		apply_secpass_permissions(mysettings["WORKDIR"],
 		uid=portage_uid, gid=portage_gid, mode=workdir_mode)
-	except portage_exception.FileNotFound:
+	except portage.exception.FileNotFound:
 		pass # ebuild.sh will create it
 
 	if mysettings.get("PORT_LOGDIR", "") == "":
@@ -3210,9 +3210,9 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 			del mysettings["PORT_LOGDIR"]
 	if "PORT_LOGDIR" in mysettings:
 		try:
-			portage_util.ensure_dirs(mysettings["PORT_LOGDIR"],
+			portage.util.ensure_dirs(mysettings["PORT_LOGDIR"],
 				uid=portage_uid, gid=portage_gid, mode=02770)
-		except portage_exception.PortageException, e:
+		except portage.exception.PortageException, e:
 			writemsg("!!! %s\n" % str(e), noiselevel=-1)
 			writemsg("!!! Permission issues with PORT_LOGDIR='%s'\n" % \
 				mysettings["PORT_LOGDIR"], noiselevel=-1)
@@ -3362,11 +3362,11 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			mf = Manifest(pkgdir, mysettings["DISTDIR"])
 			try:
 				mf.checkTypeHashes("EBUILD")
-			except portage_exception.FileNotFound, e:
+			except portage.exception.FileNotFound, e:
 				writemsg("!!! A file listed in the Manifest " + \
 					"could not be found: %s\n" % str(e), noiselevel=-1)
 				return 1
-			except portage_exception.DigestException, e:
+			except portage.exception.DigestException, e:
 				writemsg("!!! Digest verification failed:\n", noiselevel=-1)
 				writemsg("!!! %s\n" % e.value[0], noiselevel=-1)
 				writemsg("!!! Reason: %s\n" % e.value[1], noiselevel=-1)
@@ -3416,10 +3416,10 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				for k, v in izip(auxdbkeys, mybytes.splitlines()):
 					dbkey[k] = v
 				retval = os.waitpid(mypids[0], 0)[1]
-				portage_exec.spawned_pids.remove(mypids[0])
+				portage.process.spawned_pids.remove(mypids[0])
 				# If it got a signal, return the signal that was sent, but
 				# shift in order to distinguish it from a return value. (just
-				# like portage_exec.spawn() would do).
+				# like portage.process.spawn() would do).
 				if retval & 0xff:
 					return (retval & 0xff) << 8
 				# Otherwise, return its exit code.
@@ -3589,7 +3589,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 					myportdb=mydbapi)
 			elif "digest" in mysettings.features:
 				digestgen(aalist, mysettings, overwrite=0, myportdb=mydbapi)
-		except portage_exception.PermissionDenied, e:
+		except portage.exception.PermissionDenied, e:
 			writemsg("!!! %s\n" % str(e), noiselevel=-1)
 			if mydo in ("digest", "manifest"):
 				return 1
@@ -3666,9 +3666,9 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 		if mydo in actionmap.keys():
 			if mydo=="package":
-				portage_util.ensure_dirs(
+				portage.util.ensure_dirs(
 					os.path.join(mysettings["PKGDIR"], mysettings["CATEGORY"]))
-				portage_util.ensure_dirs(
+				portage.util.ensure_dirs(
 					os.path.join(mysettings["PKGDIR"], "All"))
 			retval = spawnebuild(mydo,
 				actionmap, mysettings, debug, logfile=logfile)
@@ -3719,7 +3719,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 	finally:
 		if builddir_lock:
-			portage_locks.unlockdir(builddir_lock)
+			portage.locks.unlockdir(builddir_lock)
 
 		# Make sure that DISTDIR is restored to it's normal value before we return!
 		if "PORTAGE_ACTUAL_DISTDIR" in mysettings:
@@ -3980,9 +3980,9 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			newsplit.append(_expand_new_virtuals(x, edebug, mydbapi,
 				mysettings, myroot=myroot, trees=trees, **kwargs))
 			continue
-		if portage_dep._dep_check_strict and \
+		if portage.dep._dep_check_strict and \
 			not isvalidatom(x, allow_blockers=True):
-			raise portage_exception.ParseError(
+			raise portage.exception.ParseError(
 				"invalid atom: '%s'" % x)
 		mykey = dep_getkey(x)
 		if not mykey.startswith("virtual/"):
@@ -4031,7 +4031,7 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			mycheck = dep_check(depstring, mydbapi, mysettings, myroot=myroot,
 				trees=trees, **kwargs)
 			if not mycheck[0]:
-				raise portage_exception.ParseError(
+				raise portage.exception.ParseError(
 					"%s: %s '%s'" % (y[0], mycheck[1], depstring))
 			if isblocker:
 				virtual_atoms = [atom for atom in mycheck[1] \
@@ -4276,7 +4276,7 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 		myusesplit=[]
 
 	#convert parenthesis to sublists
-	mysplit = portage_dep.paren_reduce(depstring)
+	mysplit = portage.dep.paren_reduce(depstring)
 
 	mymasks = set()
 	useforce = set()
@@ -4295,13 +4295,13 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 		useforce.update(mysettings.useforce)
 		useforce.difference_update(mymasks)
 	try:
-		mysplit = portage_dep.use_reduce(mysplit, uselist=myusesplit,
+		mysplit = portage.dep.use_reduce(mysplit, uselist=myusesplit,
 			masklist=mymasks, matchall=(use=="all"), excludeall=useforce)
-	except portage_exception.InvalidDependString, e:
+	except portage.exception.InvalidDependString, e:
 		return [0, str(e)]
 
 	# Do the || conversions
-	mysplit=portage_dep.dep_opconvert(mysplit)
+	mysplit=portage.dep.dep_opconvert(mysplit)
 
 	if mysplit == []:
 		#dependencies were reduced to nothing
@@ -4313,7 +4313,7 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 		mysplit = _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings,
 			use=use, mode=mode, myuse=myuse, use_cache=use_cache,
 			use_binaries=use_binaries, myroot=myroot, trees=trees)
-	except portage_exception.ParseError, e:
+	except portage.exception.ParseError, e:
 		return [0, str(e)]
 
 	mysplit2=mysplit[:]
@@ -4470,7 +4470,7 @@ def cpv_expand(mycpv, mydb=None, use_cache=1, settings=None):
 		return mykey
 
 def getmaskingreason(mycpv, settings=None, portdb=None):
-	from portage_util import grablines
+	from portage.util import grablines
 	if settings is None:
 		settings = globals()["settings"]
 	if portdb is None:
@@ -4571,7 +4571,7 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 		# error message will have already been printed to stderr.
 		return ["corruption"]
 	if not eapi_is_supported(eapi):
-		return ["required EAPI %s, supported EAPI %s" % (eapi, portage_const.EAPI)]
+		return ["required EAPI %s, supported EAPI %s" % (eapi, portage.const.EAPI)]
 	mygroups = mygroups.split()
 	pgroups = settings["ACCEPT_KEYWORDS"].split()
 	myarch = settings["ARCH"]
@@ -4733,7 +4733,7 @@ class dbapi:
 		mydep = dep_expand(origdep, mydb=self, settings=self.settings)
 		mykey=dep_getkey(mydep)
 		mylist = match_from_list(mydep,self.cp_list(mykey,use_cache=use_cache))
-		myslot = portage_dep.dep_getslot(mydep)
+		myslot = portage.dep.dep_getslot(mydep)
 		if myslot is not None:
 			mylist = [cpv for cpv in mylist \
 				if self.aux_get(cpv, ["SLOT"])[0] == myslot]
@@ -4747,7 +4747,7 @@ class dbapi:
 		if re.search("portage_lockfile$",mypath):
 			if not os.environ.has_key("PORTAGE_MASTER_PID"):
 				writemsg("Lockfile removed: %s\n" % mypath, 1)
-				portage_locks.unlockfile((mypath,None,None))
+				portage.locks.unlockfile((mypath,None,None))
 			else:
 				# Nothing we can do about it. We're probably sandboxed.
 				pass
@@ -5028,7 +5028,7 @@ class vardbapi(dbapi):
 		# sanity check
 		for cp in [origcp,newcp]:
 			if not (isvalidatom(cp) and isjustname(cp)):
-				raise portage_exception.InvalidPackageName(cp)
+				raise portage.exception.InvalidPackageName(cp)
 		origmatches=self.match(origcp,use_cache=0)
 		if not origmatches:
 			return
@@ -5087,7 +5087,7 @@ class vardbapi(dbapi):
 		newslot=mylist[3]
 
 		if not isvalidatom(pkg):
-			raise portage_exception.InvalidAtom(pkg)
+			raise portage.exception.InvalidAtom(pkg)
 
 		origmatches=self.match(pkg,use_cache=0)
 		
@@ -5186,7 +5186,7 @@ class vardbapi(dbapi):
 				del self.matchcache[mycat]
 			mymatch = match_from_list(mydep,
 				self.cp_list(mykey, use_cache=use_cache))
-			myslot = portage_dep.dep_getslot(mydep)
+			myslot = portage.dep.dep_getslot(mydep)
 			if myslot is not None:
 				mymatch = [cpv for cpv in mymatch \
 					if self.aux_get(cpv, ["SLOT"])[0] == myslot]
@@ -5202,7 +5202,7 @@ class vardbapi(dbapi):
 			self.matchcache[mycat]={}
 		if not self.matchcache[mycat].has_key(mydep):
 			mymatch=match_from_list(mydep,self.cp_list(mykey,use_cache=use_cache))
-			myslot = portage_dep.dep_getslot(mydep)
+			myslot = portage.dep.dep_getslot(mydep)
 			if myslot is not None:
 				mymatch = [cpv for cpv in mymatch \
 					if self.aux_get(cpv, ["SLOT"])[0] == myslot]
@@ -5232,7 +5232,7 @@ class vardbapi(dbapi):
 				f = atomic_ofstream(self._aux_cache_filename)
 				cPickle.dump(self._aux_cache, f, -1)
 				f.close()
-				portage_util.apply_secpass_permissions(
+				portage.util.apply_secpass_permissions(
 					self._aux_cache_filename, gid=portage_gid, mode=0644)
 			except (IOError, OSError), e:
 				pass
@@ -5440,7 +5440,7 @@ class vartree(object):
 			mylines, myuse = self.dbapi.aux_get(mycpv, ["PROVIDE","USE"])
 			if mylines:
 				myuse = myuse.split()
-				mylines = flatten(portage_dep.use_reduce(portage_dep.paren_reduce(mylines), uselist=myuse))
+				mylines = flatten(portage.dep.use_reduce(portage.dep.paren_reduce(mylines), uselist=myuse))
 				for myprovide in mylines:
 					mys = catpkgsplit(myprovide)
 					if not mys:
@@ -5606,15 +5606,15 @@ class portdbapi(dbapi):
 		self.manifestMissingCache = []
 
 		if "gpg" in self.mysettings.features:
-			self.manifestVerifyLevel   = portage_gpg.EXISTS
+			self.manifestVerifyLevel   = portage.gpg.EXISTS
 			if "strict" in self.mysettings.features:
-				self.manifestVerifyLevel = portage_gpg.MARGINAL
-				self.manifestVerifier = portage_gpg.FileChecker(self.mysettings["PORTAGE_GPG_DIR"], "gentoo.gpg", minimumTrust=self.manifestVerifyLevel)
+				self.manifestVerifyLevel = portage.gpg.MARGINAL
+				self.manifestVerifier = portage.gpg.FileChecker(self.mysettings["PORTAGE_GPG_DIR"], "gentoo.gpg", minimumTrust=self.manifestVerifyLevel)
 			elif "severe" in self.mysettings.features:
-				self.manifestVerifyLevel = portage_gpg.TRUSTED
-				self.manifestVerifier = portage_gpg.FileChecker(self.mysettings["PORTAGE_GPG_DIR"], "gentoo.gpg", requireSignedRing=True, minimumTrust=self.manifestVerifyLevel)
+				self.manifestVerifyLevel = portage.gpg.TRUSTED
+				self.manifestVerifier = portage.gpg.FileChecker(self.mysettings["PORTAGE_GPG_DIR"], "gentoo.gpg", requireSignedRing=True, minimumTrust=self.manifestVerifyLevel)
 			else:
-				self.manifestVerifier = portage_gpg.FileChecker(self.mysettings["PORTAGE_GPG_DIR"], "gentoo.gpg", minimumTrust=self.manifestVerifyLevel)
+				self.manifestVerifier = portage.gpg.FileChecker(self.mysettings["PORTAGE_GPG_DIR"], "gentoo.gpg", minimumTrust=self.manifestVerifyLevel)
 
 		#self.root=settings["PORTDIR"]
 		self.porttree_root = os.path.realpath(porttree_root)
@@ -5683,7 +5683,7 @@ class portdbapi(dbapi):
 
 		try:
 			for mydir in (self.depcachedir,):
-				if portage_util.ensure_dirs(mydir, gid=portage_gid, mode=dirmode, mask=modemask):
+				if portage.util.ensure_dirs(mydir, gid=portage_gid, mode=dirmode, mask=modemask):
 					writemsg("Adjusting permissions recursively: '%s'\n" % mydir,
 						noiselevel=-1)
 					def onerror(e):
@@ -5691,9 +5691,9 @@ class portdbapi(dbapi):
 					if not apply_recursive_permissions(mydir,
 						gid=portage_gid, dirmode=dirmode, dirmask=modemask,
 						filemode=filemode, filemask=modemask, onerror=onerror):
-						raise portage_exception.OperationNotPermitted(
+						raise portage.exception.OperationNotPermitted(
 							"Failed to apply recursive permissions for the portage group.")
-		except portage_exception.PortageException, e:
+		except portage.exception.PortageException, e:
 			pass
 
 	def close_caches(self):
@@ -5787,35 +5787,35 @@ class portdbapi(dbapi):
 		myManifestPath = "/".join(myebuild.split("/")[:-1])+"/Manifest"
 		if "gpg" in self.mysettings.features:
 			try:
-				mys = portage_gpg.fileStats(myManifestPath)
+				mys = portage.gpg.fileStats(myManifestPath)
 				if (myManifestPath in self.manifestCache) and \
 				   (self.manifestCache[myManifestPath] == mys):
 					pass
 				elif self.manifestVerifier:
 					if not self.manifestVerifier.verify(myManifestPath):
 						# Verification failed the desired level.
-						raise portage_exception.UntrustedSignature, "Untrusted Manifest: %(manifest)s" % {"manifest":myManifestPath}
+						raise portage.exception.UntrustedSignature, "Untrusted Manifest: %(manifest)s" % {"manifest":myManifestPath}
 
 				if ("severe" in self.mysettings.features) and \
-				   (mys != portage_gpg.fileStats(myManifestPath)):
-					raise portage_exception.SecurityViolation, "Manifest changed: %(manifest)s" % {"manifest":myManifestPath}
+				   (mys != portage.gpg.fileStats(myManifestPath)):
+					raise portage.exception.SecurityViolation, "Manifest changed: %(manifest)s" % {"manifest":myManifestPath}
 
-			except portage_exception.InvalidSignature, e:
+			except portage.exception.InvalidSignature, e:
 				if ("strict" in self.mysettings.features) or \
 				   ("severe" in self.mysettings.features):
 					raise
 				writemsg("!!! INVALID MANIFEST SIGNATURE DETECTED: %(manifest)s\n" % {"manifest":myManifestPath})
-			except portage_exception.MissingSignature, e:
+			except portage.exception.MissingSignature, e:
 				if ("severe" in self.mysettings.features):
 					raise
 				if ("strict" in self.mysettings.features):
 					if myManifestPath not in self.manifestMissingCache:
 						writemsg("!!! WARNING: Missing signature in: %(manifest)s\n" % {"manifest":myManifestPath})
 						self.manifestMissingCache.insert(0,myManifestPath)
-			except (OSError,portage_exception.FileNotFound), e:
+			except (OSError,portage.exception.FileNotFound), e:
 				if ("strict" in self.mysettings.features) or \
 				   ("severe" in self.mysettings.features):
-					raise portage_exception.SecurityViolation, "Error in verification of signatures: %(errormsg)s" % {"errormsg":str(e)}
+					raise portage.exception.SecurityViolation, "Error in verification of signatures: %(errormsg)s" % {"errormsg":str(e)}
 				writemsg("!!! Manifest is missing or inaccessable: %(manifest)s\n" % {"manifest":myManifestPath},
 					noiselevel=-1)
 
@@ -5911,8 +5911,8 @@ class portdbapi(dbapi):
 		if useflags is None:
 			useflags = mysettings["USE"].split()
 
-		myurilist = portage_dep.paren_reduce(myuris)
-		myurilist = portage_dep.use_reduce(myurilist,uselist=useflags,matchall=all)
+		myurilist = portage.dep.paren_reduce(myuris)
+		myurilist = portage.dep.use_reduce(myurilist,uselist=useflags,matchall=all)
 		newuris = flatten(myurilist)
 
 		myfiles = []
@@ -5979,9 +5979,9 @@ class portdbapi(dbapi):
 				reason = "digest missing"
 			else:
 				try:
-					ok, reason = portage_checksum.verify_all(
+					ok, reason = portage.checksum.verify_all(
 						os.path.join(self.mysettings["DISTDIR"], x), mysums[x])
-				except portage_exception.FileNotFound, e:
+				except portage.exception.FileNotFound, e:
 					ok = False
 					reason = "File Not Found: '%s'" % str(e)
 			if not ok:
@@ -6103,7 +6103,7 @@ class portdbapi(dbapi):
 		else:
 			print "ERROR: xmatch doesn't handle",level,"query!"
 			raise KeyError
-		myslot = portage_dep.dep_getslot(mydep)
+		myslot = portage.dep.dep_getslot(mydep)
 		if myslot is not None:
 			slotmatches = []
 			for cpv in myval:
@@ -6193,7 +6193,7 @@ class portdbapi(dbapi):
 				keys, eapi = self.aux_get(mycpv, ["KEYWORDS", "EAPI"])
 			except KeyError:
 				continue
-			except portage_exception.PortageException, e:
+			except portage.exception.PortageException, e:
 				writemsg("!!! Error: aux_get('%s', ['KEYWORDS', 'EAPI'])\n" % \
 					mycpv, noiselevel=-1)
 				writemsg("!!! %s\n" % str(e), noiselevel=-1)
@@ -6276,7 +6276,7 @@ class binarytree(object):
 		# sanity check
 		for cp in [origcp,newcp]:
 			if not (isvalidatom(cp) and isjustname(cp)):
-				raise portage_exception.InvalidPackageName(cp)
+				raise portage.exception.InvalidPackageName(cp)
 		origcat = origcp.split("/")[0]
 		mynewcat=newcp.split("/")[0]
 		origmatches=self.dbapi.cp_list(origcp)
@@ -6381,7 +6381,7 @@ class binarytree(object):
 		newslot=mylist[3]
 		
 		if not isvalidatom(pkg):
-			raise portage_exception.InvalidAtom(pkg)
+			raise portage.exception.InvalidAtom(pkg)
 		
 		origmatches=self.dbapi.match(pkg)
 		if not origmatches:
@@ -6722,7 +6722,7 @@ class dblink:
 			raise ValueError
 
 		self.myroot=myroot
-		protect_obj = portage_util.ConfigProtect(myroot,
+		protect_obj = portage.util.ConfigProtect(myroot,
 			mysettings.get("CONFIG_PROTECT","").split(),
 			mysettings.get("CONFIG_PROTECT_MASK","").split())
 		self.updateprotect = protect_obj.updateprotect
@@ -6735,12 +6735,12 @@ class dblink:
 		if self._lock_vdb:
 			raise AssertionError("Lock already held.")
 		# At least the parent needs to exist for the lock file.
-		portage_util.ensure_dirs(self.dbroot)
-		self._lock_vdb = portage_locks.lockdir(self.dbroot)
+		portage.util.ensure_dirs(self.dbroot)
+		self._lock_vdb = portage.locks.lockdir(self.dbroot)
 
 	def unlockdb(self):
 		if self._lock_vdb:
-			portage_locks.unlockdir(self._lock_vdb)
+			portage.locks.unlockdir(self._lock_vdb)
 			self._lock_vdb = None
 
 	def getpath(self):
@@ -6898,27 +6898,27 @@ class dblink:
 			try:
 				doebuild_environment(myebuildpath, "prerm", self.myroot,
 					self.settings, 0, 0, self.vartree.dbapi)
-			except portage_exception.UnsupportedAPIException, e:
+			except portage.exception.UnsupportedAPIException, e:
 				# Sometimes this happens due to corruption of the EAPI file.
 				writemsg("!!! FAILED prerm: %s\n" % \
 					os.path.join(self.dbdir, "EAPI"), noiselevel=-1)
 				writemsg("%s\n" % str(e), noiselevel=-1)
 				return 1
 			catdir = os.path.dirname(self.settings["PORTAGE_BUILDDIR"])
-			portage_util.ensure_dirs(os.path.dirname(catdir),
+			portage.util.ensure_dirs(os.path.dirname(catdir),
 				uid=portage_uid, gid=portage_gid, mode=070, mask=0)
 		builddir_lock = None
 		catdir_lock = None
 		try:
 			if myebuildpath:
-				catdir_lock = portage_locks.lockdir(catdir)
-				portage_util.ensure_dirs(catdir,
+				catdir_lock = portage.locks.lockdir(catdir)
+				portage.util.ensure_dirs(catdir,
 					uid=portage_uid, gid=portage_gid,
 					mode=070, mask=0)
-				builddir_lock = portage_locks.lockdir(
+				builddir_lock = portage.locks.lockdir(
 					self.settings["PORTAGE_BUILDDIR"])
 				try:
-					portage_locks.unlockdir(catdir_lock)
+					portage.locks.unlockdir(catdir_lock)
 				finally:
 					catdir_lock = None
 				# Eventually, we'd like to pass in the saved ebuild env here...
@@ -6951,11 +6951,11 @@ class dblink:
 
 		finally:
 			if builddir_lock:
-				portage_locks.unlockdir(builddir_lock)
+				portage.locks.unlockdir(builddir_lock)
 			try:
 				if myebuildpath and not catdir_lock:
 					# Lock catdir for removal if empty.
-					catdir_lock = portage_locks.lockdir(catdir)
+					catdir_lock = portage.locks.lockdir(catdir)
 			finally:
 				if catdir_lock:
 					try:
@@ -6964,7 +6964,7 @@ class dblink:
 						if e.errno != errno.ENOTEMPTY:
 							raise
 						del e
-					portage_locks.unlockdir(catdir_lock)
+					portage.locks.unlockdir(catdir_lock)
 		env_update(target_root=self.myroot, prev_mtimes=ldpath_mtimes,
 			contents=contents)
 		return os.EX_OK
@@ -7050,8 +7050,8 @@ class dblink:
 						continue
 					mymd5 = None
 					try:
-						mymd5 = portage_checksum.perform_md5(obj, calc_prelink=1)
-					except portage_exception.FileNotFound, e:
+						mymd5 = portage.checksum.perform_md5(obj, calc_prelink=1)
+					except portage.exception.FileNotFound, e:
 						# the file has disappeared between now and our stat call
 						writemsg_stdout("--- !obj   %s %s\n" % ("obj", obj))
 						continue
@@ -7575,14 +7575,14 @@ class dblink:
 						elif self.isprotected(mydest):
 							# Use md5 of the target in ${D} if it exists...
 							try:
-								newmd5 = portage_checksum.perform_md5(
+								newmd5 = portage.checksum.perform_md5(
 									join(srcroot, myabsto))
-							except portage_exception.FileNotFound:
+							except portage.exception.FileNotFound:
 								# Maybe the target is merged already.
 								try:
-									newmd5 = portage_checksum.perform_md5(
+									newmd5 = portage.checksum.perform_md5(
 										myrealto)
-								except portage_exception.FileNotFound:
+								except portage.exception.FileNotFound:
 									newmd5 = None
 							mydest = new_protect_filename(mydest,newmd5=newmd5)
 
@@ -7661,7 +7661,7 @@ class dblink:
 					return 1
 			elif stat.S_ISREG(mymode):
 				# we are merging a regular file
-				mymd5=portage_checksum.perform_md5(mysrc,calc_prelink=1)
+				mymd5=portage.checksum.perform_md5(mysrc,calc_prelink=1)
 				# calculate config file protection stuff
 				mydestdir=os.path.dirname(mydest)
 				moveme=1
@@ -7680,7 +7680,7 @@ class dblink:
 						# we only need to tweak mydest if cfg file management is in play.
 						if self.isprotected(mydest):
 							# we have a protection path; enable config file management.
-							destmd5=portage_checksum.perform_md5(mydest,calc_prelink=1)
+							destmd5=portage.checksum.perform_md5(mydest,calc_prelink=1)
 							if mymd5==destmd5:
 								#file already in place; simply update mtimes of destination
 								os.utime(mydest,(thismtime,thismtime))
@@ -7758,7 +7758,7 @@ class dblink:
 
 						# and now we're at the end. yay.
 						myf.close()
-						mymd5 = portage_checksum.perform_md5(mydest, calc_prelink=1)
+						mymd5 = portage.checksum.perform_md5(mydest, calc_prelink=1)
 					os.utime(mydest,(thismtime,thismtime))
 
 				if mymtime!=None:
@@ -7836,7 +7836,7 @@ class dblink:
 
 class FetchlistDict(UserDict.DictMixin):
 	"""This provide a mapping interface to retrieve fetch lists.  It's used
-	to allow portage_manifest.Manifest to access fetch lists via a standard
+	to allow portage.manifest.Manifest to access fetch lists via a standard
 	mapping interface rather than use the dbapi directly."""
 	def __init__(self, pkgdir, settings, mydbapi):
 		"""pkgdir is a directory containing ebuilds and settings is passed into
@@ -7876,7 +7876,7 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 	try:
 		""" Don't lock the tbz2 file because the filesytem could be readonly or
 		shared by a cluster."""
-		#tbz2_lock = portage_locks.lockfile(mytbz2, wantnewlockfile=1)
+		#tbz2_lock = portage.locks.lockfile(mytbz2, wantnewlockfile=1)
 
 		mypkg = os.path.basename(mytbz2)[:-5]
 		xptbz2 = xpak.tbz2(mytbz2)
@@ -7895,14 +7895,14 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 		infloc = os.path.join(builddir, "build-info")
 		myebuild = os.path.join(
 			infloc, os.path.basename(mytbz2)[:-4] + "ebuild")
-		portage_util.ensure_dirs(os.path.dirname(catdir),
+		portage.util.ensure_dirs(os.path.dirname(catdir),
 			uid=portage_uid, gid=portage_gid, mode=070, mask=0)
-		catdir_lock = portage_locks.lockdir(catdir)
-		portage_util.ensure_dirs(catdir,
+		catdir_lock = portage.locks.lockdir(catdir)
+		portage.util.ensure_dirs(catdir,
 			uid=portage_uid, gid=portage_gid, mode=070, mask=0)
-		builddir_lock = portage_locks.lockdir(builddir)
+		builddir_lock = portage.locks.lockdir(builddir)
 		try:
-			portage_locks.unlockdir(catdir_lock)
+			portage.locks.unlockdir(catdir_lock)
 		finally:
 			catdir_lock = None
 		try:
@@ -7912,14 +7912,14 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 				raise
 			del e
 		for mydir in (builddir, pkgloc, infloc):
-			portage_util.ensure_dirs(mydir, uid=portage_uid,
+			portage.util.ensure_dirs(mydir, uid=portage_uid,
 				gid=portage_gid, mode=0755)
 		writemsg_stdout(">>> Extracting info\n")
 		xptbz2.unpackinfo(infloc)
 		mysettings.load_infodir(infloc)
 		# Store the md5sum in the vdb.
 		fp = open(os.path.join(infloc, "BINPKGMD5"), "w")
-		fp.write(str(portage_checksum.perform_md5(mytbz2))+"\n")
+		fp.write(str(portage.checksum.perform_md5(mytbz2))+"\n")
 		fp.close()
 
 		debug = mysettings.get("PORTAGE_DEBUG", "") == "1"
@@ -7932,13 +7932,13 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 			return retval
 
 		writemsg_stdout(">>> Extracting %s\n" % mypkg)
-		retval = portage_exec.spawn_bash(
+		retval = portage.process.spawn_bash(
 			"bzip2 -dqc -- '%s' | tar -xp -C '%s' -f -" % (mytbz2, pkgloc),
 			env=mysettings.environ())
 		if retval != os.EX_OK:
 			writemsg("!!! Error Extracting '%s'\n" % mytbz2, noiselevel=-1)
 			return retval
-		#portage_locks.unlockfile(tbz2_lock)
+		#portage.locks.unlockfile(tbz2_lock)
 		#tbz2_lock = None
 
 		mylink = dblink(mycat, mypkg, myroot, mysettings, vartree=vartree,
@@ -7948,7 +7948,7 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 		return retval
 	finally:
 		if tbz2_lock:
-			portage_locks.unlockfile(tbz2_lock)
+			portage.locks.unlockfile(tbz2_lock)
 		if builddir_lock:
 			try:
 				shutil.rmtree(builddir)
@@ -7956,11 +7956,11 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 				if e.errno != errno.ENOENT:
 					raise
 				del e
-			portage_locks.unlockdir(builddir_lock)
+			portage.locks.unlockdir(builddir_lock)
 			try:
 				if not catdir_lock:
 					# Lock catdir for removal if empty.
-					catdir_lock = portage_locks.lockdir(catdir)
+					catdir_lock = portage.locks.lockdir(catdir)
 			finally:
 				if catdir_lock:
 					try:
@@ -7969,7 +7969,7 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 						if e.errno != errno.ENOTEMPTY:
 							raise
 						del e
-					portage_locks.unlockdir(catdir_lock)
+					portage.locks.unlockdir(catdir_lock)
 
 def deprecated_profile_check():
 	if not os.access(DEPRECATED_PROFILE_FILE, os.R_OK):
@@ -8013,7 +8013,7 @@ def commit_mtimedb(mydict=None, filename=None):
 		f = atomic_ofstream(filename)
 		cPickle.dump(d, f, -1)
 		f.close()
-		portage_util.apply_secpass_permissions(filename, uid=uid, gid=portage_gid, mode=0664)
+		portage.util.apply_secpass_permissions(filename, uid=uid, gid=portage_gid, mode=0664)
 	except (IOError, OSError), e:
 		pass
 
@@ -8051,7 +8051,7 @@ def global_updates(mysettings, trees, prev_mtimes):
 			update_data = grab_updates(updpath)
 		else:
 			update_data = grab_updates(updpath, prev_mtimes)
-	except portage_exception.DirectoryNotFound:
+	except portage.exception.DirectoryNotFound:
 		writemsg("--- 'profiles/updates' is empty or not available. Empty portage tree?\n")
 		return
 	myupd = None
@@ -8183,20 +8183,20 @@ def create_trees(config_root=None, target_root=None, trees=None):
 			del trees[myroot]["porttree"], myroot, portdb
 
 	settings = config(config_root=config_root, target_root=target_root,
-		config_incrementals=portage_const.INCREMENTALS)
+		config_incrementals=portage.const.INCREMENTALS)
 	settings.lock()
 	settings.validate()
 
 	myroots = [(settings["ROOT"], settings)]
 	if settings["ROOT"] != "/":
 		settings = config(config_root=None, target_root=None,
-			config_incrementals=portage_const.INCREMENTALS)
+			config_incrementals=portage.const.INCREMENTALS)
 		settings.lock()
 		settings.validate()
 		myroots.append((settings["ROOT"], settings))
 
 	for myroot, mysettings in myroots:
-		trees[myroot] = portage_util.LazyItemsDict(trees.get(myroot, None))
+		trees[myroot] = portage.util.LazyItemsDict(trees.get(myroot, None))
 		trees[myroot].addLazySingleton("virtuals", mysettings.getvirtuals, myroot)
 		trees[myroot].addLazySingleton(
 			"vartree", vartree, myroot, categories=mysettings.categories,

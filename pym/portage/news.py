@@ -3,12 +3,12 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-from portage_const import INCREMENTALS, PROFILE_PATH, NEWS_LIB_PATH
+from portage.const import INCREMENTALS, PROFILE_PATH, NEWS_LIB_PATH
 from portage import config, vartree, vardbapi, portdbapi
-from portage_util import ensure_dirs, apply_permissions
-from portage_data import portage_gid
-from portage_locks import lockfile, unlockfile, lockdir, unlockdir
-from portage_exception import FileNotFound
+from portage.util import ensure_dirs, apply_permissions
+from portage.data import portage_gid
+from portage.locks import lockfile, unlockfile, lockdir, unlockdir
+from portage.exception import FileNotFound
 import os, re
 
 class NewsManager(object):

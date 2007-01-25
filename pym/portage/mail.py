@@ -3,7 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id: portage.py 3483 2006-06-10 21:40:40Z genone $
 
-import portage_exception, socket, smtplib, os, sys, time
+import portage.exception, socket, smtplib, os, sys, time
 from email.MIMEText import MIMEText as TextMessage
 from email.MIMEMultipart import MIMEMultipart as MultipartMessage
 from email.MIMEBase import MIMEBase as BaseMessage
@@ -20,7 +20,7 @@ def create_message(sender, recipient, subject, body, attachments=None):
 			elif isinstance(x, str):
 				mymessage.attach(TextMessage(x))
 			else:
-				raise portage_exception.PortageException("Can't handle type of attachment: %s" % type(x))
+				raise portage.exception.PortageException("Can't handle type of attachment: %s" % type(x))
 
 	mymessage.set_unixfrom(sender)
 	mymessage["To"] = recipient
@@ -82,8 +82,8 @@ def send_mail(mysettings, message):
 			myconn.sendmail(myfrom, myrecipient, message.as_string())
 			myconn.quit()
 		except smtplib.SMTPException, e:
-			raise portage_exception.PortageException("!!! An error occured while trying to send logmail:\n"+str(e))
+			raise portage.exception.PortageException("!!! An error occured while trying to send logmail:\n"+str(e))
 		except socket.error, e:
-			raise portage_exception.PortageException("!!! A network error occured while trying to send logmail:\n"+str(e)+"\nSure you configured PORTAGE_ELOG_MAILURI correctly?")
+			raise portage.exception.PortageException("!!! A network error occured while trying to send logmail:\n"+str(e)+"\nSure you configured PORTAGE_ELOG_MAILURI correctly?")
 	return
 	

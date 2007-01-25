@@ -5,10 +5,10 @@
 
 
 import errno, os, stat, time, types
-from portage_exception import InvalidData, DirectoryNotFound, FileNotFound
-from portage_data import portage_gid
-from portage_util import writemsg
-from portage_localization import _
+from portage.exception import InvalidData, DirectoryNotFound, FileNotFound
+from portage.data import portage_gid
+from portage.util import writemsg
+from portage.localization import _
 
 HARDLINK_FD = -2
 

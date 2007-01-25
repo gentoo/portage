@@ -2,10 +2,10 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-from portage_exception import PortageException, FileNotFound, \
+from portage.exception import PortageException, FileNotFound, \
        OperationNotPermitted, PermissionDenied, ReadOnlyFileSystem
-import portage_exception
-from portage_dep import isvalidatom
+import portage.exception
+from portage.dep import isvalidatom
 
 import os, errno, shlex, stat, string, sys
 try:
@@ -88,7 +88,7 @@ def stack_dictlist(original_dicts, incremental=0, incrementals=[], ignore_none=0
 	Returns a single dict. Higher index in lists is preferenced.
 	
 	Example usage:
-	   >>> from portage_util import stack_dictlist
+	   >>> from portage.util import stack_dictlist
 		>>> print stack_dictlist( [{'a':'b'},{'x':'y'}])
 		>>> {'a':'b','x':'y'}
 		>>> print stack_dictlist( [{'a':'b'},{'a':'c'}], incremental = True )
@@ -336,7 +336,7 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 				if not tolerant:
 					writemsg("!!! Unexpected end of config file: variable "+str(key)+"\n",
 						noiselevel=-1)
-					raise portage_exception.CorruptionError("ParseError: Unexpected EOF: "+str(mycfg)+": line "+str(lex.lineno))
+					raise portage.exception.CorruptionError("ParseError: Unexpected EOF: "+str(mycfg)+": line "+str(lex.lineno))
 				else:
 					return mykeys
 			if expand:
@@ -346,7 +346,7 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 	except SystemExit, e:
 		raise
 	except Exception, e:
-		raise portage_exception.ParseError(str(e)+" in "+mycfg)
+		raise portage.exception.ParseError(str(e)+" in "+mycfg)
 	return mykeys
 	
 #cache expansions of constant strings
@@ -579,8 +579,8 @@ def apply_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 			if follow_links:
 				os.chown(filename, uid, gid)
 			else:
-				import portage_data
-				portage_data.lchown(filename, uid, gid)
+				import portage.data
+				portage.data.lchown(filename, uid, gid)
 			modified = True
 		except OSError, oe:
 			func_call = "chown('%s', %i, %i)" % (filename, uid, gid)
@@ -725,8 +725,8 @@ def apply_secpass_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 
 	all_applied = True
 
-	import portage_data # not imported globally because of circular dep
-	if portage_data.secpass < 2:
+	import portage.data # not imported globally because of circular dep
+	if portage.data.secpass < 2:
 
 		if uid != -1 and \
 		uid != stat_cached.st_uid:
@@ -1030,8 +1030,8 @@ def new_protect_filename(mydest, newmd5=None):
 		"._cfg" + str(prot_num).zfill(4) + "_" + real_filename))
 	old_pfile = normalize_path(os.path.join(real_dirname, last_pfile))
 	if last_pfile and newmd5:
-		import portage_checksum
-		if portage_checksum.perform_md5(
+		import portage.checksum
+		if portage.checksum.perform_md5(
 			os.path.join(real_dirname, last_pfile)) == newmd5:
 			return old_pfile
 	return new_pfile

@@ -5,9 +5,9 @@
 __docformat__ = "epytext"
 
 import commands,errno,os,re,shlex,sys
-from portage_const import COLOR_MAP_FILE
-from portage_util import writemsg
-from portage_exception import PortageException, ParseError, PermissionDenied, FileNotFound
+from portage.const import COLOR_MAP_FILE
+from portage.util import writemsg
+from portage.exception import PortageException, ParseError, PermissionDenied, FileNotFound
 
 havecolor=1
 dotitles=1

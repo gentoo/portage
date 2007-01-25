@@ -1,4 +1,4 @@
-# portage_versions.py -- core Portage functionality
+# portage.versions.py -- core Portage functionality
 # Copyright 1998-2006 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
@@ -10,7 +10,7 @@ suffix_regexp = re.compile("^(alpha|beta|rc|pre|p)(\\d*)$")
 suffix_value = {"pre": -2, "p": 0, "alpha": -4, "beta": -3, "rc": -1}
 endversion_keys = ["pre", "p", "alpha", "beta", "rc"]
 
-from portage_exception import InvalidData
+from portage.exception import InvalidData
 
 def ververify(myver, silent=1):
 	if ver_regexp.match(myver):
@@ -25,7 +25,7 @@ def vercmp(ver1, ver2, silent=1):
 	"""
 	Compare two versions
 	Example usage:
-		>>> from portage_versions import vercmp
+		>>> from portage.versions import vercmp
 		>>> vercmp('1.0-r1','1.2-r3')
 		negative number
 		>>> vercmp('1.3','1.2-r3')
@@ -33,16 +33,16 @@ def vercmp(ver1, ver2, silent=1):
 		>>> vercmp('1.0_p3','1.0_p3')
 		0
 	
-	@param pkg1: version to compare with (see ver_regexp in portage_versions.py)
+	@param pkg1: version to compare with (see ver_regexp in portage.versions.py)
 	@type pkg1: string (example: "2.1.2-r3")
-	@param pkg2: version to compare againts (see ver_regexp in portage_versions.py)
+	@param pkg2: version to compare againts (see ver_regexp in portage.versions.py)
 	@type pkg2: string (example: "2.1.2_rc5")
 	@rtype: None or float
 	@return:
 	1. positive if ver1 is greater than ver2
 	2. negative if ver1 is less than ver2 
 	3. 0 if ver1 equals ver2
-	4. None if ver1 or ver2 are invalid (see ver_regexp in portage_versions.py)
+	4. None if ver1 or ver2 are invalid (see ver_regexp in portage.versions.py)
 	"""
 
 	if ver1 == ver2:
@@ -159,7 +159,7 @@ def pkgcmp(pkg1, pkg2):
 	Compare 2 package versions created in pkgsplit format.
 
 	Example usage:
-		>>> from portage_versions import *
+		>>> from portage.versions import *
 		>>> pkgcmp(pkgsplit('test-1.0-r1'),pkgsplit('test-1.2-r3'))
 		-1
 		>>> pkgcmp(pkgsplit('test-1.3'),pkgsplit('test-1.2-r3'))
@@ -270,7 +270,7 @@ def catpkgsplit(mydata,silent=1):
 	
 	# Categories may contain a-zA-z0-9+_- but cannot start with -
 	global _valid_category
-	import portage_dep
+	import portage.dep
 	try:
 		if not catcache[mydata]:
 			return None
@@ -283,7 +283,7 @@ def catpkgsplit(mydata,silent=1):
 		retval=["null"]
 		p_split=pkgsplit(mydata,silent=silent)
 	elif len(mysplit)==2:
-		if portage_dep._dep_check_strict and \
+		if portage.dep._dep_check_strict and \
 			not _valid_category.match(mysplit[0]):
 			raise InvalidData("Invalid category in %s" %mydata )
 		retval=[mysplit[0]]
