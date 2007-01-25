@@ -10,7 +10,7 @@ except ImportError:
 	sys.path.insert(0, "/usr/lib/portage/pym")
 	import portage
 
-import portage_const, portage_exception
+import portage.const, portage.exception
 class WorldHandler(object):
 
 	def name():
@@ -21,7 +21,7 @@ class WorldHandler(object):
 		self.invalid = []
 		self.not_installed = []
 		self.okay = []
-		self.world_file = os.path.join("/", portage_const.WORLD_FILE)
+		self.world_file = os.path.join("/", portage.const.WORLD_FILE)
 		self.found = os.access(self.world_file, os.R_OK)
 
 		for atom in open(self.world_file).read().split():
@@ -45,7 +45,7 @@ class WorldHandler(object):
 		errors = []
 		try:
 			portage.write_atomic(self.world_file, "\n".join(self.okay))
-		except portage_exception.PortageException:
+		except portage.exception.PortageException:
 			errors.append(self.world_file + " could not be opened for writing")
 		return errors
 
@@ -60,7 +60,7 @@ class VdbKeyHandler(object):
 		self.keys = ["HOMEPAGE", "SRC_URI", "KEYWORDS", "DESCRIPTION"]
 		
 		for p in self.list:
-			mydir = os.path.join(os.sep, portage.settings["ROOT"], portage_const.VDB_PATH, p)+os.sep
+			mydir = os.path.join(os.sep, portage.settings["ROOT"], portage.const.VDB_PATH, p)+os.sep
 			ismissing = True
 			for k in self.keys:
 				if os.path.exists(mydir+k):
@@ -77,7 +77,7 @@ class VdbKeyHandler(object):
 		errors = []
 	
 		for p in self.missing:
-			mydir = os.path.join(os.sep, portage.settings["ROOT"], portage_const.VDB_PATH, p)+os.sep
+			mydir = os.path.join(os.sep, portage.settings["ROOT"], portage.const.VDB_PATH, p)+os.sep
 			if not os.access(mydir+"environment.bz2", os.R_OK):
 				errors.append("Can't access %s" % (mydir+"environment.bz2"))
 			elif not os.access(mydir, os.W_OK):

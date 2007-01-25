@@ -27,16 +27,16 @@ except ImportError:
 	sys.path.insert(0, "/usr/lib/portage/pym")
 	import portage
 
-import portage_util, portage_const
+import portage.util, portage.const
 
 # do this _after_ 'import portage' to prevent unnecessary tracing
 if debug and "python-trace" in portage.features:
-	import portage_debug
-	portage_debug.set_trace(True)
+	import portage.debug
+	portage.debug.set_trace(True)
 
 if portage.settings["NOCOLOR"] in ("yes","true") or not sys.stdout.isatty():
 	import output
-	output.nocolor()
+	portage.output.nocolor()
 
 ebuild = pargs.pop(0)
 if not os.path.isabs(ebuild):
@@ -66,7 +66,7 @@ if not portage.catpkgsplit(cpv):
 	print "!!! %s does not follow correct package syntax." % (cpv)
 	sys.exit(1)
 
-if ebuild.startswith(portage.root + portage_const.VDB_PATH):
+if ebuild.startswith(portage.root + portage.const.VDB_PATH):
 	mytree = "vartree"
 
 	portage_ebuild = portage.db[portage.root][mytree].dbapi.findname(cpv)
@@ -108,7 +108,7 @@ def discard_digests(myebuild, mysettings, mydbapi):
 		fetchlist_dict = portage.FetchlistDict(pkgdir, mysettings, mydbapi)
 		cat, pkg = pkgdir.split(os.sep)[-2:]
 		cpv = cat + "/" + os.path.basename(myebuild)[:-7]
-		from portage_manifest import Manifest
+		from portage.manifest import Manifest
 		mf = Manifest(pkgdir, mysettings["DISTDIR"],
 			fetchlist_dict=fetchlist_dict)
 		mf.create(requiredDistfiles=None,

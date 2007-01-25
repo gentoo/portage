@@ -5,10 +5,10 @@
 
 import os,sys,errno
 try:
-	import portage_locks
+	import portage.locks
 except ImportError:
 	sys.path.insert(0, "/usr/lib/portage/pym")
-	import portage_locks
+	import portage.locks
 
 if not sys.argv[1:] or "--help" in sys.argv or "-h" in sys.argv:
 	import portage
@@ -31,7 +31,7 @@ for x in sys.argv[1:]:
 	if x == "--force":
 		continue
 	try:
-		for y in portage_locks.hardlock_cleanup(x, remove_all_locks=force):
+		for y in portage.locks.hardlock_cleanup(x, remove_all_locks=force):
 			print y
 		print
 		

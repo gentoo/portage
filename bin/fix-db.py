@@ -12,7 +12,7 @@ except ImportError:
 	import portage
 
 from stat import *
-from output import *
+from portage.output import *
 from portage import lockfile,unlockfile,VDB_PATH,root
 
 

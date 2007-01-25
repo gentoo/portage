@@ -10,7 +10,7 @@ try:
 except ImportError:
 	sys.path.insert(0, "/usr/lib/portage/pym")
 	import portage
-import portage_util
+import portage.util
 
 def cstrip(mystr,mychars):
 	newstr = ""
@@ -68,7 +68,7 @@ for mycpv in hugelist:
 			continue
 		
 		if mybn not in md5sums.keys():
-			portage_util.writemsg("Missing md5sum: %s in %s\n" % (mybn, mycpv))
+			portage.util.writemsg("Missing md5sum: %s in %s\n" % (mybn, mycpv))
 		else:
 			if mybn in md5_list.keys():
 				if (md5_list[mybn]["MD5"]  != md5sums[mybn]["MD5"]) or \

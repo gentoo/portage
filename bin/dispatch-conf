@@ -25,7 +25,7 @@ except ImportError:
     import portage
 
 import dispatch_conf
-from portage_exec import find_binary
+from portage.process import find_binary
 
 FIND_EXTANT_CONFIGS  = "find '%s' %s -iname '._cfg????_%s'"
 DIFF_CONTENTS        = 'diff -Nu %s %s'
@@ -69,7 +69,7 @@ class dispatch:
         count = 0
 
 
-        self.options = dispatch_conf.read_config(MANDATORY_OPTS)
+        self.options = portage.dispatch_conf.read_config(MANDATORY_OPTS)
 
         if self.options.has_key("log-file"):
             if os.path.isfile(self.options["log-file"]):
@@ -124,9 +124,9 @@ class dispatch:
             mrgconf = re.sub(r'\._cfg', '._mrg', conf['new'])
             archive = os.path.join(self.options['archive-dir'], conf['current'].lstrip('/'))
             if self.options['use-rcs'] == 'yes':
-                mrgfail = dispatch_conf.rcs_archive(archive, conf['current'], conf['new'], mrgconf)
+                mrgfail = portage.dispatch_conf.rcs_archive(archive, conf['current'], conf['new'], mrgconf)
             else:
-                mrgfail = dispatch_conf.file_archive(archive, conf['current'], conf['new'], mrgconf)
+                mrgfail = portage.dispatch_conf.file_archive(archive, conf['current'], conf['new'], mrgconf)
             if os.path.exists(archive + '.dist'):
                 unmodified = len(commands.getoutput(DIFF_CONTENTS % (conf['current'], archive + '.dist'))) == 0
             else:
@@ -288,9 +288,9 @@ class dispatch:
     def post_process(self, curconf):
         archive = os.path.join(self.options['archive-dir'], curconf.lstrip('/'))
         if self.options['use-rcs'] == 'yes':
-            dispatch_conf.rcs_archive_post_process(archive)
+            portage.dispatch_conf.rcs_archive_post_process(archive)
         else:
-            dispatch_conf.file_archive_post_process(archive)
+            portage.dispatch_conf.file_archive_post_process(archive)
 
 
     def massage (self, newconfigs):

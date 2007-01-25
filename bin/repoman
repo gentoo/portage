@@ -30,19 +30,19 @@ except ImportError:
 	import portage
 del os.environ["PORTAGE_LEGACY_GLOBALS"]
 
-import portage_checksum
-import portage_const
-import portage_dep
-import portage_exception
+import portage.checksum
+import portage.const
+import portage.dep
+import portage.exception
 import cvstree
 import time
 import codecs
 
-from portage_manifest import Manifest
-from portage_exception import ParseError
-from portage_exec import spawn
+from portage.manifest import Manifest
+from portage.exception import ParseError
+from portage.process import spawn
 
-from output import bold, darkgreen, darkred, green, nocolor, red, turquoise, yellow
+from portage.output import bold, darkgreen, darkred, green, nocolor, red, turquoise, yellow
 
 from commands import getstatusoutput
 from fileinput import input
@@ -52,7 +52,7 @@ from stat import S_ISDIR, ST_CTIME, ST_GID, ST_MTIME
 # A sane umask is needed for files that portage creates.
 os.umask(022)
 repoman_settings = portage.config(local_config=False,
-	config_incrementals=portage_const.INCREMENTALS)
+	config_incrementals=portage.const.INCREMENTALS)
 repoman_settings.lock()
 
 if repoman_settings.get("NOCOLOR", "").lower() in ("yes", "true") or \
@@ -475,7 +475,7 @@ if quiet < 2:
 
 # Now that PORTDIR_OVERLAY is properly overridden, create the portdb.
 repoman_settings = portage.config(local_config=False,
-	config_incrementals=portage_const.INCREMENTALS)
+	config_incrementals=portage.const.INCREMENTALS)
 trees = portage.create_trees()
 trees["/"]["porttree"].settings = repoman_settings
 portdb = trees["/"]["porttree"].dbapi
@@ -885,7 +885,7 @@ for x in scanlist:
 								fails["digest.partial"].append(y+"::"+myf)
 						elif "assume-digests" not in repoman_settings.features:
 							if os.path.exists(myff):
-								if not portage_checksum.verify_all(myff, mydigests[myf]):
+								if not portage.checksum.verify_all(myff, mydigests[myf]):
 									stats["digest.fail"] += 1
 									fails["digest.fail"].append(y+"::"+myf)
 							elif repolevel == 3:
@@ -1007,7 +1007,7 @@ for x in scanlist:
 		#	if x.startswith("no"):
 		#		print "Bad RESTRICT value: %s" % x
 
-		myaux["PROVIDE"] = portage_dep.use_reduce(portage_dep.paren_reduce(myaux["PROVIDE"]), matchall=1)
+		myaux["PROVIDE"] = portage.dep.use_reduce(portage.dep.paren_reduce(myaux["PROVIDE"]), matchall=1)
 		myaux["PROVIDE"] = " ".join(portage.flatten(myaux["PROVIDE"]))
 		for myprovide in myaux["PROVIDE"].split():
 			prov_cp = portage.dep_getkey(myprovide)
@@ -1083,7 +1083,7 @@ for x in scanlist:
 
 			try:
 				# Missing closing parenthesis will result in a ValueError
-				mydeplist = portage_dep.paren_reduce(mydepstr)
+				mydeplist = portage.dep.paren_reduce(mydepstr)
 				# Missing opening parenthesis will result in a final "" element
 				if "" in mydeplist or "(" in mydeplist:
 					raise ValueError
@@ -1092,8 +1092,8 @@ for x in scanlist:
 				mydeplist = []
 
 			try:
-				portage_dep.use_reduce(mydeplist, excludeall=myiuse)
-			except portage_exception.InvalidDependString, e:
+				portage.dep.use_reduce(mydeplist, excludeall=myiuse)
+			except portage.exception.InvalidDependString, e:
 				badsyntax.append(str(e))
 
 			for token in operator_tokens:
@@ -1151,7 +1151,7 @@ for x in scanlist:
 				else:
 					dep_settings = portage.config(
 						config_profile_path=profdir,
-						config_incrementals=portage_const.INCREMENTALS,
+						config_incrementals=portage.const.INCREMENTALS,
 						local_config=False)
 					arch_caches[prof[0]] = dep_settings
 					while True:
@@ -1267,7 +1267,7 @@ for x in scanlist:
 			myuse = myaux["LICENSE"]
 			# Parse the LICENSE variable, remove USE conditions and
 			# flatten it.
-			myuse=portage_dep.use_reduce(portage_dep.paren_reduce(myuse), matchall=1)
+			myuse=portage.dep.use_reduce(portage.dep.paren_reduce(myuse), matchall=1)
 			myuse=portage.flatten(myuse)
 			# Check each entry to ensure that it exists in PORTDIR's
 			# license directory.
@@ -1369,9 +1369,9 @@ for x in scanlist:
 		fails["ebuild.allmasked"].append(x)
 
 #Pickle and save results for instant reuse in last and lfull
-if os.access(portage_const.CACHE_PATH, os.W_OK):
+if os.access(portage.const.CACHE_PATH, os.W_OK):
 	for myobj, fname in (stats, "repo.stats"), (fails, "repo.fails"):
-		fpath = os.path.join(portage_const.CACHE_PATH, fname)
+		fpath = os.path.join(portage.const.CACHE_PATH, fname)
 		savef = open(fpath, 'w')
 		pickle.dump(myobj, savef)
 		savef.close()
@@ -1465,12 +1465,12 @@ else:
 				print "!!! Exiting on ebuild digest (shell) error code:",retval
 				sys.exit(retval)
 
-	mycvstree=cvstree.getentries("./",recursive=1)
+	mycvstree=portage.cvstree.getentries("./",recursive=1)
 	if isCvs and not mycvstree:
 		print "!!! It seems we don't have a cvs tree?"
 		sys.exit(3)
 
-	myunadded=cvstree.findunadded(mycvstree,recursive=1,basedir="./")
+	myunadded=portage.cvstree.findunadded(mycvstree,recursive=1,basedir="./")
 	myautoadd=[]
 	if myunadded:
 		for x in range(len(myunadded)-1,-1,-1):
@@ -1542,10 +1542,10 @@ else:
 			sys.exit(retval)
 	
 	if isCvs:
-		mycvstree=cvstree.getentries("./",recursive=1)
-		mychanged=cvstree.findchanged(mycvstree,recursive=1,basedir="./")
-		mynew=cvstree.findnew(mycvstree,recursive=1,basedir="./")
-		myremoved=cvstree.findremoved(mycvstree,recursive=1,basedir="./")
+		mycvstree=portage.cvstree.getentries("./",recursive=1)
+		mychanged=portage.cvstree.findchanged(mycvstree,recursive=1,basedir="./")
+		mynew=portage.cvstree.findnew(mycvstree,recursive=1,basedir="./")
+		myremoved=portage.cvstree.findremoved(mycvstree,recursive=1,basedir="./")
 		if not (mychanged or mynew or myremoved):
 			print
 			print green("RepoMan sez:"), "\"Doing nothing is not always good for QA.\"\n"
@@ -1632,20 +1632,20 @@ else:
 	# Setup the GPG commands
 	def gpgsign(filename):
 		if "PORTAGE_GPG_KEY" not in repoman_settings:
-			raise portage_exception.MissingParameter("PORTAGE_GPG_KEY is unset!")
+			raise portage.exception.MissingParameter("PORTAGE_GPG_KEY is unset!")
 		if "PORTAGE_GPG_DIR" not in repoman_settings:
 			if os.environ.has_key("HOME"):
 				repoman_settings["PORTAGE_GPG_DIR"] = os.path.join(os.environ["HOME"], ".gnupg")
 				if quiet < 1:
 					print "Automatically setting PORTAGE_GPG_DIR to",repoman_settings["PORTAGE_GPG_DIR"]
 			else:
-				raise portage_exception.MissingParameter("PORTAGE_GPG_DIR is unset!")
+				raise portage.exception.MissingParameter("PORTAGE_GPG_DIR is unset!")
 		gpg_dir = repoman_settings["PORTAGE_GPG_DIR"]
 		if gpg_dir.startswith("~") and "HOME" in os.environ:
 			repoman_settings["PORTAGE_GPG_DIR"] = os.path.join(
 				os.environ["HOME"], gpg_dir[1:].lstrip(os.path.sep))
 		if not os.access(repoman_settings["PORTAGE_GPG_DIR"], os.X_OK):
-			raise portage_exception.InvalidLocation(
+			raise portage.exception.InvalidLocation(
 				"Unable to access directory: PORTAGE_GPG_DIR='%s'" % \
 				repoman_settings["PORTAGE_GPG_DIR"])
 		gpgcmd = "gpg --sign --clearsign --yes "
@@ -1659,7 +1659,7 @@ else:
 			if rValue == os.EX_OK:
 				os.rename(filename+".asc", filename)
 			else:
-				raise portage_exception.PortageException("!!! gpg exited with '" + str(rValue) + "' status")
+				raise portage.exception.PortageException("!!! gpg exited with '" + str(rValue) + "' status")
 
 	manifest_commit_required = True
 	if myheaders or myupdates or myremoved or mynew:
@@ -1744,7 +1744,7 @@ else:
 					mydone.append("/".join(xs[:2]))
 					repoman_settings["O"] = os.path.join(".", xs[0], xs[1])
 					gpgsign(os.path.join(repoman_settings["O"], "Manifest"))
-		except portage_exception.PortageException, e:
+		except portage.exception.PortageException, e:
 			portage.writemsg("!!! %s\n" % str(e))
 			portage.writemsg("!!! Disabled FEATURES='sign'\n")
 			signed = False
