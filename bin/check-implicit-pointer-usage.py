@@ -1,6 +1,8 @@
 #!/usr/bin/env python
+# coding: iso-8859-15
 
 # Ripped from HP and updated from Debian
+# Update by Gentoo to support unicode output
 
 #
 # Copyright (c) 2004 Hewlett-Packard Development Company, L.P.
@@ -16,14 +18,14 @@ import re
 import sys
 
 implicit_pattern = re.compile("([^:]*):(\d+): warning: implicit declaration "
-                              + "of function [`']([^']*)'")
+                              + "of function [`'‘]+([^'‘]*)['‘]")
 pointer_pattern = re.compile(
     "([^:]*):(\d+): warning: "
     + "("
     +  "(assignment"
     +  "|initialization"
     +  "|return"
-    +  "|passing arg \d+ of `[^']*'"
+    +  "|passing arg \d+ of [`'‘][^'‘]*['‘]"
     +  "|passing arg \d+ of pointer to function"
     +  ") makes pointer from integer without a cast"
     + "|"
