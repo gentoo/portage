@@ -4,10 +4,10 @@
 # $Id$
 
 from unittest import TestCase
-from portage_versions import vercmp
+from portage.versions import vercmp
 
 class VerCmpTestCase(TestCase):
-	""" A simple testCase for portage_versions.vercmp()
+	""" A simple testCase for portage.versions.vercmp()
 	"""
 	
 	def testVerCmpGreater(self):

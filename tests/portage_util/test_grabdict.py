@@ -4,7 +4,7 @@
 # $Id$
 
 from unittest import TestCase, TestLoader
-from portage_util import grabdict
+from portage.util import grabdict
 
 class GrabDictTestCase(TestCase):
 	

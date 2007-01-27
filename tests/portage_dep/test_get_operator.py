@@ -4,7 +4,7 @@
 # $Id$
 
 from unittest import TestCase
-from portage_dep import get_operator
+from portage.dep import get_operator
 
 class GetOperator(TestCase):
 

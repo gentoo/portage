@@ -4,7 +4,7 @@
 # $Id$
 
 from unittest import TestCase
-from portage_util import stack_dicts
+from portage.util import stack_dicts
 
 
 class StackDictsTestCase(TestCase):

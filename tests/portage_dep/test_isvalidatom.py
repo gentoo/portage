@@ -4,7 +4,7 @@
 # $Id$
 
 from unittest import TestCase
-from portage_dep import isvalidatom
+from portage.dep import isvalidatom
 
 class IsValidAtom(TestCase):
 	""" A simple testcase for isvalidatom

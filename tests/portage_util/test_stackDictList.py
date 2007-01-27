@@ -8,7 +8,7 @@ from unittest import TestCase
 class StackDictListTestCase(TestCase):
 
 	def testStackDictList(self):
-		from portage_util import stack_dictlist
+		from portage.util import stack_dictlist
 		
 		tests = [ ({'a':'b'},{'x':'y'},False,{'a':['b'],'x':['y']}) ]
 		tests.append(( {'KEYWORDS':['alpha','x86']},{'KEYWORDS':['-*']},True,{} ))

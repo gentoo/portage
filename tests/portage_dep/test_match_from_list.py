@@ -4,7 +4,7 @@
 # $Id$
 
 from unittest import TestCase
-from portage_dep import match_from_list
+from portage.dep import match_from_list
 
 class AtomCmpEqualGlob(TestCase):
         """ A simple testcase for =* glob matching

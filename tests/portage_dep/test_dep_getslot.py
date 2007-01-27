@@ -4,7 +4,7 @@
 # $Id$
 
 from unittest import TestCase
-from portage_dep import dep_getslot
+from portage.dep import dep_getslot
 
 class DepGetSlot(TestCase):
 	""" A simple testcase for isvalidatom

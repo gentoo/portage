@@ -9,7 +9,7 @@ class NormalizePathTestCase(TestCase):
 	
 	def testNormalizePath(self):
 		
-		from portage_util import normalize_path
+		from portage.util import normalize_path
 		path = "///foo/bar/baz"
 		good = "/foo/bar/baz"
 		self.assertEqual(normalize_path(path), good)

@@ -4,13 +4,13 @@
 # $Id$
 
 from unittest import TestCase
-from portage_util import unique_array
+from portage.util import unique_array
 
 class UniqueArrayTestCase(TestCase):
 	
 	def testUniqueArrayPass(self):
 		"""
-		test portage_util.uniqueArray()
+		test portage.util.uniqueArray()
 		"""
 
 		import os
