@@ -6219,6 +6219,8 @@ class portdbapi(dbapi):
 				if matches:
 					inc_pgroups = []
 					for x in pgroups:
+						# The -* special case should be removed once the tree 
+						# is clean of KEYWORDS=-* crap
 						if x != "-*" and x.startswith("-"):
 							try:
 								inc_pgroups.remove(x[1:])
@@ -6243,7 +6245,7 @@ class portdbapi(dbapi):
 					hastesting = True
 				elif gp[0] != "-":
 					hasstable = True
-			if not match and ((hastesting and "~*" in pgroups) or (hasstable and "*" in pgroups)):
+			if not match and ((hastesting and "~*" in pgroups) or (hasstable and "*" in pgroups) or "**" in pgroups):
 				match=1
 			if match and eapi_is_supported(eapi):
 				newlist.append(mycpv)
@@ -6805,8 +6807,17 @@ class dblink:
 		myc=open(self.dbdir+"/CONTENTS","r")
 		mylines=myc.readlines()
 		myc.close()
-		pos=1
+		null_byte = "\0"
+		contents_file = os.path.join(self.dbdir, "CONTENTS")
+		pos = 0
 		for line in mylines:
+			pos += 1
+			if null_byte in line:
+				# Null bytes are a common indication of corruption.
+				writemsg("!!! Null byte found in contents " + \
+					"file, line %d: '%s'\n" % (pos, contents_file),
+					noiselevel=-1)
+				continue
 			mydat = line.split()
 			# we do this so we can remove from non-root filesystems
 			# (use the ROOT var to allow maintenance on other partitions)
@@ -6845,7 +6856,6 @@ class dblink:
 					return None
 			except (KeyError,IndexError):
 				print "portage: CONTENTS line",pos,"corrupt!"
-			pos += 1
 		self.contentscache=pkgfiles
 		return pkgfiles
 
