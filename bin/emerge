@@ -5148,11 +5148,6 @@ def emerge_main():
 	if ("--usepkgonly" in myopts) and not ("--usepkg" in myopts):
 		myopts["--usepkg"] = True
 
-	# Also allow -l to apply --pretend/-p, but if already in --ask mode
-	if ("--changelog" in myopts) and not (("--pretend" in myopts) or ("--ask" in myopts)):
-		print ">>> --changelog implies --pretend... adding --pretend to options."
-		myopts["--pretend"] = True
-
 	# Allow -p to remove --ask
 	if ("--pretend" in myopts) and ("--ask" in myopts):
 		print ">>> --pretend disables --ask... removing --ask from options."
