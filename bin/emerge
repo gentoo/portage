@@ -2993,7 +2993,8 @@ class MergeTask(object):
 							try:
 								os.rmdir(catdir)
 							except OSError, e:
-								if e.errno != errno.ENOTEMPTY:
+								if e.errno not in (errno.ENOENT,
+									errno.ENOTEMPTY, errno.EEXIST):
 									raise
 								del e
 							portage.locks.unlockdir(catdir_lock)

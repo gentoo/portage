@@ -6349,7 +6349,8 @@ class binarytree(object):
 		try:
 			os.rmdir(os.path.join(self.pkgdir, mycat))
 		except OSError, e:
-			if e.errno not in (errno.ENOENT, errno.ENOTEMPTY):
+			if e.errno not in (errno.ENOENT,
+				errno.ENOTEMPTY, errno.EEXIST):
 				raise
 			del e
 
@@ -6961,7 +6962,8 @@ class dblink:
 					try:
 						os.rmdir(catdir)
 					except OSError, e:
-						if e.errno != errno.ENOTEMPTY:
+						if e.errno not in (errno.ENOENT,
+							errno.ENOTEMPTY, errno.EEXIST):
 							raise
 						del e
 					portage.locks.unlockdir(catdir_lock)
@@ -7966,7 +7968,8 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 					try:
 						os.rmdir(catdir)
 					except OSError, e:
-						if e.errno != errno.ENOTEMPTY:
+						if e.errno not in (errno.ENOENT,
+							errno.ENOTEMPTY, errno.EEXIST):
 							raise
 						del e
 					portage.locks.unlockdir(catdir_lock)
