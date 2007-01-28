@@ -34,7 +34,7 @@ import portage.checksum
 import portage.const
 import portage.dep
 import portage.exception
-import cvstree
+import portage.cvstree
 import time
 import codecs
 
@@ -298,8 +298,8 @@ def help(exitstatus=1,helpfulness=1):
 def last():
 	try:
 		#Retrieve and unpickle stats and fails from saved files
-		mystats=os.path.normpath(portage_const.CACHE_DIR+'/repo.stats')
-		myfails=os.path.normpath(portage_const.CACHE_DIR+'/repo.fails')
+		mystats=os.path.normpath(portage.const.CACHE_DIR+'/repo.stats')
+		myfails=os.path.normpath(portage.const.CACHE_DIR+'/repo.fails')
 		savedf=open(mystat,'r')
 		stats = pickle.load(savedf)
 		savedf.close()
@@ -1090,9 +1090,9 @@ for x in scanlist:
 			if mymode=="fix":
 				if "--pretend" in myoptions:
 					print "You will need to run:"
-					print "  "+portage_const.PORTAGE_BASE+"/bin/ebuild "+repodir+"/"+x+"/"+y+".ebuild digest"
+					print "  "+portage.const.PORTAGE_BASE+"/bin/ebuild "+repodir+"/"+x+"/"+y+".ebuild digest"
 				else:
-					retval=os.system(portage_const.PORTAGE_BASE+"/bin/ebuild "+repodir+"/"+x+"/"+y+".ebuild digest")
+					retval=os.system(portage.const.PORTAGE_BASE+"/bin/ebuild "+repodir+"/"+x+"/"+y+".ebuild digest")
 					if retval:
 						print "!!! Exiting on ebuild digest (shell) error code:",retval
 						sys.exit(retval)
@@ -1355,7 +1355,7 @@ for x in scanlist:
 							fails[mykey].append(x+"/"+y+".ebuild: "+keyword+"("+prof[0]+") "+repr(mydep[1]))
 
 		# this check needs work, it won't catch (\ndie)
-		if not os.system(portage_const.EPREFIX+"/usr/bin/grep -E '^[^#]*\([^)]*\<die\>' "+checkdir+"/"+y+".ebuild >/dev/null 2>&1"):
+		if not os.system(portage.const.EPREFIX+"/usr/bin/grep -E '^[^#]*\([^)]*\<die\>' "+checkdir+"/"+y+".ebuild >/dev/null 2>&1"):
 			stats["ebuild.nesteddie"]=stats["ebuild.nesteddie"]+1
 			fails["ebuild.nesteddie"].append(x+"/"+y+".ebuild")
 		# uselist checks - global
@@ -1650,10 +1650,10 @@ elif "--pretend" not in myoptions:
 	retval=["",""]
 	if isCvs:
 		print "Performing a "+green("cvs -n up")+" with a little magic grep to check for updates."
-		retval=getstatusoutput(portage_const.EPREFIX+"/usr/bin/cvs -n up 2>&1 | "+portage_const.EPREFIX+"/bin/egrep '^[^\?] .*' | "+portage_const.EPREFIX+"/bin/egrep -v '^. .*/digest-[^/]+|^cvs server: .* -- ignored$'")
+		retval=getstatusoutput(portage.const.EPREFIX+"/usr/bin/cvs -n up 2>&1 | "+portage.const.EPREFIX+"/bin/egrep '^[^\?] .*' | "+portage.const.EPREFIX+"/bin/egrep -v '^. .*/digest-[^/]+|^cvs server: .* -- ignored$'")
 	if isSvn:
 		print "Performing a "+green("svn update -u")+" with a little magic grep to check for updates."
-		retval=getstatusoutput(portage_const.EPREFIX+"/usr/bin/svn status -u 2>&1 | "+portage_const.EPREFIX+"/bin/egrep -v '^.  +.*/digest-[^/]+' | "+portage_const.EPREFIX+"/bin/egrep -v '^Status against revision:'")
+		retval=getstatusoutput(portage.const.EPREFIX+"/usr/bin/svn status -u 2>&1 | "+portage.const.EPREFIX+"/bin/egrep -v '^.  +.*/digest-[^/]+' | "+portage.const.EPREFIX+"/bin/egrep -v '^Status against revision:'")
 
 	mylines=retval[1].split("\n")
 	myupdates=[]
