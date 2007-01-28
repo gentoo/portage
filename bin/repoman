@@ -1047,7 +1047,7 @@ for x in scanlist:
 			if bad_stable_keywords:
 				stats["LIVEVCS.stable"] += 1
 				fails["LIVEVCS.stable"].append(x+"/"+y+".ebuild with stable keywords:%s " % bad_stable_keywords)
-			del keyword, bad_stable_keywords		
+			del bad_stable_keywords		
 
 		if "--ignore-arches" in myoptions:
 			arches = [[repoman_settings["ARCH"], repoman_settings["ARCH"],
