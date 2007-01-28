@@ -4,7 +4,7 @@
 
 
 import os,sys
-from output import bold, turquoise, green
+from portage.output import bold, turquoise, green
 
 def shorthelp():
 	print

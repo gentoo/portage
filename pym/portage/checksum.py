@@ -1,4 +1,4 @@
-# portage.checksum.py -- core Portage functionality
+# checksum.py -- core Portage functionality
 # Copyright 1998-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id: portage_checksum.py 3835 2006-07-11 00:59:10Z zmedico $

@@ -4,8 +4,8 @@
 # $Id: fs_template.py 1911 2005-08-25 03:44:21Z ferringb $
 
 import os
-from cache import template
-from portage_data import portage_gid
+from portage.cache import template
+from portage.data import portage_gid
 
 class FsBased(template.database):
 	"""template wrapping fs needed options, and providing _ensure_access as a way to 

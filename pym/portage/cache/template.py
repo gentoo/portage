@@ -3,9 +3,9 @@
 # License: GPL2
 # $Id: template.py 1911 2005-08-25 03:44:21Z ferringb $
 
-from cache import cache_errors
-from cache.cache_errors import InvalidRestriction
-from cache.mappings import ProtectedDict
+from portage.cache import cache_errors
+from portage.cache.cache_errors import InvalidRestriction
+from portage.cache.mappings import ProtectedDict
 
 class database(object):
 	# this is for metadata/cache transfer.

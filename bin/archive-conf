@@ -51,7 +51,7 @@ def archive_conf():
     content_files = []
     md5_match_hash = {}
 
-    options = dispatch_conf.read_config(MANDATORY_OPTS)
+    options = portage.dispatch_conf.read_config(MANDATORY_OPTS)
 
     for conf in sys.argv[1:]:
         if not os.path.isabs(conf):
@@ -92,13 +92,13 @@ def archive_conf():
     for conf in args:
         archive = os.path.join(options['archive-dir'], conf.lstrip('/'))
         if options['use-rcs'] == 'yes':
-            dispatch_conf.rcs_archive(archive, conf, md5_match_hash[conf], '')
+            portage.dispatch_conf.rcs_archive(archive, conf, md5_match_hash[conf], '')
             if md5_match_hash[conf]:
-                dispatch_conf.rcs_archive_post_process(archive)
+                portage.dispatch_conf.rcs_archive_post_process(archive)
         else:
-            dispatch_conf.file_archive(archive, conf, md5_match_hash[conf], '')
+            portage.dispatch_conf.file_archive(archive, conf, md5_match_hash[conf], '')
             if md5_match_hash[conf]:
-                dispatch_conf.file_archive_post_process(archive)
+                portage.dispatch_conf.file_archive_post_process(archive)
 
 # run
 if len(sys.argv) > 1:
