@@ -4,7 +4,7 @@
 # $Id$
 
 from unittest import TestCase, TestLoader
-from portage_util import varexpand
+from portage.util import varexpand
 
 class VarExpandTestCase(TestCase):
 	

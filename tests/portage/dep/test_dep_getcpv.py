@@ -4,7 +4,7 @@
 # $Id$
 
 from unittest import TestCase
-from portage_dep import dep_getcpv
+from portage.dep import dep_getcpv
 
 class DepGetCPV(TestCase):
 	""" A simple testcase for isvalidatom

@@ -4,7 +4,7 @@
 # $Id$
 
 from unittest import TestCase
-from portage_dep import isjustname
+from portage.dep import isjustname
 
 class IsJustName(TestCase):
 
