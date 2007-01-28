@@ -3601,7 +3601,6 @@ def chk_updated_cfg_files(target_root, config_protect):
 		if procount:
 			#print " "+yellow("*")+" Type "+green("emerge --help config")+" to learn how to update config files."
 			print " "+yellow("*")+" Type "+green("emerge --help config")+" to learn how to update config files."
-		print
 
 def checkUpdatedNewsItems( root, NEWS_PATH, UNREAD_PATH, repo_id ):
 	"""
