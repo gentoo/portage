@@ -3,7 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-import os,sys
+import os, sys, errno
 
 def usage(status):
 	print "Usage: env-update [--no-ldconfig]"
@@ -31,7 +31,7 @@ except ImportError:
 try:
 	portage.env_update(makelinks)
 except IOError, e:
-	if e.errno == 13:
+	if e.errno == errno.EACCES:
 		print "env-update: Need superuser access"
 		sys.exit(1)
 	else:
