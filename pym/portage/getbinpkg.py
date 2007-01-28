@@ -8,7 +8,7 @@ if not hasattr(__builtins__, "set"):
 
 from portage.output import red, yellow, green
 import htmllib,HTMLParser,formatter,sys,os,portage.xpak,time,tempfile,base64,urllib2
-from portage_const import CACHE_PATH
+from portage.const import CACHE_PATH
 
 try:
 	import cPickle

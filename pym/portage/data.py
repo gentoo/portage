@@ -82,10 +82,10 @@ def portage_group_warning():
 secpass=0
 
 uid=os.getuid()
-wheelgid=portage_const.wheelgid
-wheelgroup=grp.getgrgid(portage_const.wheelgid)[0]
+wheelgid=portage.const.wheelgid
+wheelgroup=grp.getgrgid(portage.const.wheelgid)[0]
 
-if uid==0 or uid==int(portage_const.rootuid):
+if uid==0 or uid==int(portage.const.rootuid):
 	secpass=2
 try:
 	if (not secpass) and (wheelgid in os.getgroups()):
@@ -99,15 +99,15 @@ except KeyError:
 
 #Discover the uid and gid of the portage user/group
 try:
-	portage_uid=pwd.getpwnam(portage_const.portageuser)[2]
-	portage_gid=grp.getgrnam(portage_const.portagegroup)[2]
+	portage_uid=pwd.getpwnam(portage.const.portageuser)[2]
+	portage_gid=grp.getgrnam(portage.const.portagegroup)[2]
 	if secpass < 1 and portage_gid in os.getgroups():
 		secpass=1
 except KeyError:
 	portage_uid=0
 	portage_gid=wheelgid
 	writemsg("\n")
-	writemsg(  red("portage: "+portage_const.portageuser+" user or group missing. Please update baselayout\n"))
+	writemsg(  red("portage: "+portage.const.portageuser+" user or group missing. Please update baselayout\n"))
 	writemsg(  red("         and merge portage user(250) and group(250) into your passwd\n"))
 	writemsg(  red("         and group files. Non-root compilation is disabled until then.\n"))
 	writemsg(      "         Also note that non-root/wheel users will need to be added to\n")
@@ -124,7 +124,7 @@ if secpass >= 2:
 	# Get a list of group IDs for the portage user.  Do not use grp.getgrall()
 	# since it is known to trigger spurious SIGPIPE problems with nss_ldap.
 	from commands import getstatusoutput
-	mystatus, myoutput = getstatusoutput("id -G " + portage_const.portageuser)
+	mystatus, myoutput = getstatusoutput("id -G " + portage.const.portageuser)
 	if mystatus == os.EX_OK:
 		for x in myoutput.split():
 			try:

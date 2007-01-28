@@ -33,7 +33,7 @@ from portage import digraph, portdbapi
 from portage.const import NEWS_LIB_PATH
 
 import portage.emergehelp, portage.xpak, commands, errno, re, socket, time, types
-import output
+import portage.output
 from portage.output import blue, bold, colorize, darkblue, darkgreen, darkred, green, \
 	havecolor, nc_len, nocolor, red, teal, turquoise, white, xtermTitle, \
 	xtermTitleReset, yellow
@@ -3545,7 +3545,7 @@ def post_emerge(settings, mtimedb, retval):
 	emergelog("notitles" not in settings.features,
 		" *** exiting successfully.")
 
-	from portage_util import normalize_path
+	from portage.util import normalize_path
 	if "noinfo" not in settings.features:
 		chk_updated_info_files(
 				normalize_path(target_root + EPREFIX),

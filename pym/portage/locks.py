@@ -9,7 +9,7 @@ from portage.exception import InvalidData, DirectoryNotFound, FileNotFound
 from portage.data import portage_gid
 from portage.util import writemsg
 from portage.localization import _
-import portage_const
+import portage.const
 
 HARDLINK_FD = -2
 
@@ -20,7 +20,7 @@ def unlockdir(mylock):
 
 def lockfile(mypath,wantnewlockfile=0,unlinkfile=0):
 	"""Creates all dirs upto, the given dir. Creates a lockfile
-	for the given directory as the file: directoryname+'.portage_lockfile'."""
+	for the given directory as the file: directoryname+'.portage.lockfile'."""
 	import fcntl
 
 	if not mypath:
@@ -37,7 +37,7 @@ def lockfile(mypath,wantnewlockfile=0,unlinkfile=0):
 		unlinkfile      = 0
 	elif wantnewlockfile:
 		base, tail = os.path.split(mypath)
-		lockfilename = os.path.join(base, "." + tail + ".portage_lockfile")
+		lockfilename = os.path.join(base, "." + tail + ".portage.lockfile")
 		del base, tail
 		unlinkfile   = 1
 	else:
@@ -229,7 +229,7 @@ def hardlink_lockfile(lockfilename, max_wait=14400):
 			print
 			print "Waiting on (hardlink) lockfile: (one '.' per 3 seconds)"
 			print "This is a feature to prevent distfiles corruption."
-			print "%s/bin/clean_locks can fix stuck locks." % portage_const.PORTAGE_BASE
+			print "%s/bin/clean_locks can fix stuck locks." % portage.const.PORTAGE_BASE
 			print "Lockfile: " + lockfilename
 		time.sleep(3)
 	
