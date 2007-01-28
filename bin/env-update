@@ -28,4 +28,11 @@ try:
 except ImportError:
 	sys.path.insert(0, "/usr/lib/portage/pym")
 	import portage
-portage.env_update(makelinks)
+try:
+	portage.env_update(makelinks)
+except IOError, e:
+	if e.errno == 13:
+		print "env-update: Need superuser access"
+		sys.exit(1)
+	else:
+		raise
