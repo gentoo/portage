@@ -1,4 +1,4 @@
-# portage_data.py -- Calculated/Discovered Data Values
+# portage.data.py -- Calculated/Discovered Data Values
 # Copyright 1998-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id: portage_data.py 4530 2006-09-25 21:16:32Z zmedico $
@@ -7,8 +7,8 @@ if not hasattr(__builtins__, "set"):
 	from sets import Set as set
 
 import os,pwd,grp
-import portage_const
-from portage_util import writemsg
+import portage.const
+from portage.util import writemsg
 from output import green,red
 from output import create_color_func
 bad = create_color_func("BAD")

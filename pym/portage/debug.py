@@ -4,8 +4,8 @@
 
 import os, sys, threading
 
-import portage_const
-from portage_util import writemsg
+import portage.const
+from portage.util import writemsg
 
 def set_trace(on=True):
 	if on:
@@ -28,7 +28,7 @@ class trace_handler(object):
 		for x in python_system_paths:
 			self.ignore_prefixes.append(x + os.sep)
 
-		self.trim_filename = prefix_trimmer(os.path.join(portage_const.PORTAGE_BASE_PATH, "pym") + os.sep).trim
+		self.trim_filename = prefix_trimmer(os.path.join(portage.const.PORTAGE_BASE_PATH, "pym") + os.sep).trim
 		self.show_local_lines = False
 		self.max_repr_length = 200
 

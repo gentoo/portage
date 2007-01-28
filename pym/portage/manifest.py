@@ -6,10 +6,10 @@ import errno, os, sets
 if not hasattr(__builtins__, "set"):
 	from sets import Set as set
 
-import portage_exception, portage_versions, portage_const
-from portage_checksum import *
-from portage_exception import *
-from portage_util import write_atomic
+import portage.exception, portage.versions, portage.const
+from portage.checksum import *
+from portage.exception import *
+from portage.util import write_atomic
 
 class FileNotInManifestException(PortageException):
 	pass
@@ -43,7 +43,7 @@ def guessManifestFileType(filename):
 
 def parseManifest2(mysplit):
 	myentry = None
-	if len(mysplit) > 4 and mysplit[0] in portage_const.MANIFEST2_IDENTIFIERS:
+	if len(mysplit) > 4 and mysplit[0] in portage.const.MANIFEST2_IDENTIFIERS:
 		mytype = mysplit[0]
 		myname = mysplit[1]
 		mysize = int(mysplit[2])
@@ -54,7 +54,7 @@ def parseManifest2(mysplit):
 
 def parseManifest1(mysplit):
 	myentry = None
-	if len(mysplit) == 4 and mysplit[0] in ["size"] + portage_const.MANIFEST1_HASH_FUNCTIONS:
+	if len(mysplit) == 4 and mysplit[0] in ["size"] + portage.const.MANIFEST1_HASH_FUNCTIONS:
 		myname = mysplit[2]
 		mytype = None
 		mytype = guessManifestFileType(myname)
@@ -110,12 +110,12 @@ class Manifest(object):
 			a Manifest (not needed for parsing and checking sums)."""
 		self.pkgdir = pkgdir.rstrip(os.sep) + os.sep
 		self.fhashdict = {}
-		self.hashes = portage_const.MANIFEST2_HASH_FUNCTIONS[:]
+		self.hashes = portage.const.MANIFEST2_HASH_FUNCTIONS[:]
 		self.hashes.append("size")
 		if manifest1_compat:
-			self.hashes.extend(portage_const.MANIFEST1_HASH_FUNCTIONS)
+			self.hashes.extend(portage.const.MANIFEST1_HASH_FUNCTIONS)
 		self.hashes = sets.Set(self.hashes)
-		for t in portage_const.MANIFEST2_IDENTIFIERS:
+		for t in portage.const.MANIFEST2_IDENTIFIERS:
 			self.fhashdict[t] = {}
 		if not from_scratch:
 			self._read()
@@ -134,7 +134,7 @@ class Manifest(object):
 	def getDigests(self):
 		""" Compability function for old digest/manifest code, returns dict of filename:{hashfunction:hashvalue} """
 		rval = {}
-		for t in portage_const.MANIFEST2_IDENTIFIERS:
+		for t in portage.const.MANIFEST2_IDENTIFIERS:
 			rval.update(self.fhashdict[t])
 		return rval
 	
@@ -245,7 +245,7 @@ class Manifest(object):
 								for hashname in \
 									new_data["DIST"][myfile].keys():
 									if hashname != "size" and hashname not in \
-										portage_const.MANIFEST1_HASH_FUNCTIONS:
+										portage.const.MANIFEST1_HASH_FUNCTIONS:
 										del new_data["DIST"][myfile][hashname]
 							if new_data["DIST"] == old_data["DIST"]:
 								update_digest = False
@@ -285,7 +285,7 @@ class Manifest(object):
 				myhashkeys = myhashdict["DIST"][f].keys()
 				myhashkeys.sort()
 				for h in myhashkeys:
-					if h not in portage_const.MANIFEST1_HASH_FUNCTIONS:
+					if h not in portage.const.MANIFEST1_HASH_FUNCTIONS:
 						continue
 					myline = " ".join([h, str(myhashdict["DIST"][f][h]), f, str(myhashdict["DIST"][f]["size"])])
 					mylines.append(myline)
@@ -295,7 +295,7 @@ class Manifest(object):
 		""" Add entries for old style digest files to Manifest file """
 		mylines = []
 		for dname in digests:
-			myhashes = perform_multiple_checksums(dname, portage_const.MANIFEST1_HASH_FUNCTIONS+["size"])
+			myhashes = perform_multiple_checksums(dname, portage.const.MANIFEST1_HASH_FUNCTIONS+["size"])
 			for h in myhashes:
 				mylines.append((" ".join([h, str(myhashes[h]), os.path.join("files", os.path.basename(dname)), str(myhashes["size"])])))
 		fd.write("\n".join(mylines))
@@ -312,14 +312,14 @@ class Manifest(object):
 					type=t, name=f, hashes=self.fhashdict[t][f].copy())
 				myhashkeys = myentry.hashes.keys()
 				for h in myhashkeys:
-					if h not in ["size"] + portage_const.MANIFEST2_HASH_FUNCTIONS:
+					if h not in ["size"] + portage.const.MANIFEST2_HASH_FUNCTIONS:
 						del myentry.hashes[h]
 				yield myentry
 				if self.compat and t != "DIST":
 					mysize = self.fhashdict[t][f]["size"]
 					myhashes = self.fhashdict[t][f]
 					for h in myhashkeys:
-						if h not in portage_const.MANIFEST1_HASH_FUNCTIONS:
+						if h not in portage.const.MANIFEST1_HASH_FUNCTIONS:
 							continue
 						yield Manifest1Entry(
 							type=t, name=f, hashes={"size":mysize, h:myhashes[h]})
@@ -331,11 +331,11 @@ class Manifest(object):
 				digest_path = os.path.join("files", "digest-%s" % self._catsplit(cpv)[1])
 				dname = os.path.join(self.pkgdir, digest_path)
 				try:
-					myhashes = perform_multiple_checksums(dname, portage_const.MANIFEST1_HASH_FUNCTIONS+["size"])
+					myhashes = perform_multiple_checksums(dname, portage.const.MANIFEST1_HASH_FUNCTIONS+["size"])
 					myhashkeys = myhashes.keys()
 					myhashkeys.sort()
 					for h in myhashkeys:
-						if h in portage_const.MANIFEST1_HASH_FUNCTIONS:
+						if h in portage.const.MANIFEST1_HASH_FUNCTIONS:
 							yield Manifest1Entry(type="AUX", name=digest_path,
 								hashes={"size":myhashes["size"], h:myhashes[h]})
 				except FileNotFound:
@@ -390,14 +390,14 @@ class Manifest(object):
 			fname = os.path.join("files", fname)
 		if not os.path.exists(self.pkgdir+fname) and not ignoreMissing:
 			raise FileNotFound(fname)
-		if not ftype in portage_const.MANIFEST2_IDENTIFIERS:
+		if not ftype in portage.const.MANIFEST2_IDENTIFIERS:
 			raise InvalidDataType(ftype)
 		if ftype == "AUX" and fname.startswith("files"):
 			fname = fname[6:]
 		self.fhashdict[ftype][fname] = {}
 		if hashdict != None:
 			self.fhashdict[ftype][fname].update(hashdict)
-		if not portage_const.MANIFEST2_REQUIRED_HASH in self.fhashdict[ftype][fname]:
+		if not portage.const.MANIFEST2_REQUIRED_HASH in self.fhashdict[ftype][fname]:
 			self.updateFileHashes(ftype, fname, checkExisting=False, ignoreMissing=ignoreMissing)
 	
 	def removeFile(self, ftype, fname):
@@ -410,7 +410,7 @@ class Manifest(object):
 	
 	def findFile(self, fname):
 		""" Return entrytype of the given file if present in Manifest or None if not present """
-		for t in portage_const.MANIFEST2_IDENTIFIERS:
+		for t in portage.const.MANIFEST2_IDENTIFIERS:
 			if fname in self.fhashdict[t]:
 				return t
 		return None
@@ -500,7 +500,7 @@ class Manifest(object):
 		return absname	
 	
 	def checkAllHashes(self, ignoreMissingFiles=False):
-		for t in portage_const.MANIFEST2_IDENTIFIERS:
+		for t in portage.const.MANIFEST2_IDENTIFIERS:
 			self.checkTypeHashes(t, ignoreMissingFiles=ignoreMissingFiles)
 	
 	def checkTypeHashes(self, idtype, ignoreMissingFiles=False):
@@ -564,7 +564,7 @@ class Manifest(object):
 	
 	def updateAllHashes(self, checkExisting=False, ignoreMissingFiles=True):
 		""" Regenerate all hashes for all files in this Manifest. """
-		for ftype in portage_const.MANIFEST2_IDENTIFIERS:
+		for ftype in portage.const.MANIFEST2_IDENTIFIERS:
 			self.updateTypeHashes(idtype, fname, checkExisting)
 
 	def updateCpvHashes(self, cpv, ignoreMissingFiles=True):
@@ -606,9 +606,9 @@ class Manifest(object):
 		myfile.close()
 		for l in lines:
 			mysplit = l.split()
-			if len(mysplit) == 4 and mysplit[0] in portage_const.MANIFEST1_HASH_FUNCTIONS and not 1 in rVal:
+			if len(mysplit) == 4 and mysplit[0] in portage.const.MANIFEST1_HASH_FUNCTIONS and not 1 in rVal:
 				rVal.append(1)
-			elif len(mysplit) > 4 and mysplit[0] in portage_const.MANIFEST2_IDENTIFIERS and ((len(mysplit) - 3) % 2) == 0 and not 2 in rVal:
+			elif len(mysplit) > 4 and mysplit[0] in portage.const.MANIFEST2_IDENTIFIERS and ((len(mysplit) - 3) % 2) == 0 and not 2 in rVal:
 				rVal.append(2)
 		return rVal
 
