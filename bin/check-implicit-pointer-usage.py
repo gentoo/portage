@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 # Ripped from HP and updated from Debian
+# Update by Gentoo to support unicode output
 
 #
 # Copyright (c) 2004 Hewlett-Packard Development Company, L.P.
@@ -16,7 +17,7 @@ import re
 import sys
 
 implicit_pattern = re.compile("([^:]*):(\d+): warning: implicit declaration "
-                              + "of function [`']([^']*)'")
+                              + "of function `([^']*)'")
 pointer_pattern = re.compile(
     "([^:]*):(\d+): warning: "
     + "("
@@ -36,6 +37,8 @@ while True:
     line = sys.stdin.readline()
     if line == '':
         break
+    # translate unicode open/close quotes to ascii ones
+    line = line.replace("\xE2\x80\x98", "`").replace("\xE2\x80\x99", "'")
     m = implicit_pattern.match(line)
     if m:
         last_implicit_filename = m.group(1)
