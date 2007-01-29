@@ -3067,7 +3067,7 @@ class MergeTask(object):
 						xsplit=portage.pkgsplit(x[2])
 						emergelog(xterm_titles, " >>> AUTOCLEAN: " + xsplit[0])
 						retval = unmerge(pkgsettings, self.myopts, vartree,
-							"clean", [xsplit[0]], ldpath_mtimes)
+							"clean", [xsplit[0]], ldpath_mtimes, autoclean=1)
 						if not retval:
 							emergelog(xterm_titles,
 								" --- AUTOCLEAN: Nothing unmerged.")
@@ -3153,7 +3153,7 @@ class MergeTask(object):
 		return os.EX_OK
 
 def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
-	ldpath_mtimes):
+	ldpath_mtimes, autoclean=0):
 	candidate_catpkgs=[]
 	global_unmerge=0
 	xterm_titles = "notitles" not in settings.features
@@ -3405,7 +3405,8 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 			print
 			return 0
 	#the real unmerging begins, after a short delay....
-	countdown(int(settings["CLEAN_DELAY"]), ">>> Unmerging")
+	if not autoclean:
+		countdown(int(settings["CLEAN_DELAY"]), ">>> Unmerging")
 
 	for x in pkgmap.keys():
 		for y in pkgmap[x]["selected"]:
@@ -4798,7 +4799,7 @@ def action_build(settings, trees, mtimedb,
 			print ">>> Auto-cleaning packages..."
 			vartree = trees[settings["ROOT"]]["vartree"]
 			unmerge(settings, myopts, vartree, "clean", ["world"],
-				ldpath_mtimes)
+				ldpath_mtimes, autoclean=1)
 		else:
 			portage.writemsg_stdout(colorize("WARN", "WARNING:")
 				+ " AUTOCLEAN is disabled.  This can cause serious"
