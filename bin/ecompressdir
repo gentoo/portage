@@ -17,6 +17,35 @@ fi
 
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
 
+# funk_up_dir(action, suffix, binary)
+#	- action: compress or decompress
+#	- suffix: the compression suffix to work with
+#	- binary: the program to execute that'll compress/decompress
+# The directory we act on is implied in the ${dir} variable
+funk_up_dir() {
+	local act=$1 suffix=$2 binary=$3
+
+	local negate=""
+	[[ ${act} == "compress" ]] && negate="!"
+
+	# first we act on all the files
+	find "${dir}" -type f ${negate} -iname '*.'${suffix} -print0 | ${XARGS} -0 ${binary}
+	((ret+=$?))
+
+	find -L "${dir}" -type l | \
+	while read brokenlink ; do
+		olddest=$(readlink "${brokenlink}")
+		[[ ${act} == "compress" ]] \
+			&& newdest="${olddest}${suffix}" \
+			|| newdest="${olddest%.${suffix}}"
+		rm -f "${brokenlink}"
+		[[ ${act} == "compress" ]] \
+			&& ln -snf "${newdest}" "${brokenlink}${suffix}" \
+			|| ln -snf "${newdest}" "${brokenlink%.${suffix}}"
+		((ret+=$?))
+	done
+}
+
 ret=0
 
 for dir in "$@" ; do
@@ -28,16 +57,13 @@ for dir in "$@" ; do
 		vecho "${0##*/}: $(ecompress --bin) ${dir#${D}}"
 	fi
 
-	find "${dir}" -type f '!' -name '*'${suffix} -print0 | ${XARGS} -0 ecompress
-	((ret+=$?))
-	find -L "${dir}" -type l | \
-	while read brokenlink ; do
-		olddest=$(readlink "${brokenlink}")
-		newdest="${olddest}${suffix}"
-		rm -f "${brokenlink}"
-		ln -snf "${newdest}" "${brokenlink}${suffix}"
-		((ret+=$?))
-	done
+	# not uncommon for packages to compress doc files themselves
+	funk_up_dir "decompress" "Z" "gunzip"
+	funk_up_dir "decompress" "gz" "gunzip"
+	funk_up_dir "decompress" "bz2" "bunzip2"
+
+	# now lets do our work
+	funk_up_dir "compress" "${suffix}" "ecompress"
 done
 
 exit ${ret}
