@@ -7,7 +7,7 @@
 
 eval $(/usr/lib/portage/bin/portageq envvar -v FEATURES FETCHCOMMAND \
 	GENTOO_MIRRORS PORTAGE_INST_UID PORTAGE_INST_GID PORTAGE_NICENESS \
-	PORTAGE_TMPDIR PORTDIR USERLAND)
+	PORTAGE_TMPDIR PORTDIR)
 DISTDIR="${PORTAGE_TMPDIR}/emerge-webrsync"
 
 # If PORTAGE_NICENESS is overriden via the env then it will
@@ -94,7 +94,9 @@ while (( $attempts <  40 )) ; do
 	# snapshot (for attempts=1, subtract 1 day from the current UTC time).
 	daysbefore=$(expr $(date -u +"%s") - 86400 \* ${attempts})
 	DATE_ARGS="-d @${daysbefore}"
-	[ "${USERLAND}" != "GNU" ] && DATE_ARGS="-r ${daysbefore}"
+	# ${USERLAND} is unreliable since the portage tree might be empty, so test
+	# success of the -r option to distinguish between gnu and bsd date.
+	date -r ${daysbefore} >&/dev/null && DATE_ARGS="-r ${daysbefore}"
 	day=$(date ${DATE_ARGS} -u +"%d")
 	month=$(date ${DATE_ARGS} -u +"%m")
 	year=$(date ${DATE_ARGS} -u +"%Y")
