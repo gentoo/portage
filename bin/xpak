@@ -14,4 +14,4 @@ except ImportError:
 	sys.path.insert(0, "@PORTAGE_BASE@/pym")
 	import portage.xpak
 
-xpak.xpak(sys.argv[1],sys.argv[2])
+portage.xpak.xpak(sys.argv[1],sys.argv[2])

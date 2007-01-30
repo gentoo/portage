@@ -96,7 +96,7 @@ do_pkg() {
 		tar vjcf "${pkg_tmp}" -C "${ROOT}" --files-from="${MYDIR}"/filelist --no-recursion
 
 		# join together the basic tbz2 and the pkg info files
-		python -c "import xpak; t=xpak.tbz2('${pkg_tmp}'); t.recompose('${MYDIR}/temp')"
+		python -c "import portage.xpak; t=portage.xpak.tbz2('${pkg_tmp}'); t.recompose('${MYDIR}/temp')"
 
 		# move the final binary package to PKGDIR
 		mv -f "${pkg_tmp}" "${pkg_dest}"

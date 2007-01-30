@@ -541,7 +541,7 @@ dyn_package() {
 		die "Failed to create tarball"
 	cd ..
 	export PYTHONPATH=${PORTAGE_PYM_PATH:-${EPREFIX}/usr/lib/portage/pym}
-	python -c "import xpak; t=xpak.tbz2('${pkg_tmp}'); t.recompose('${PORTAGE_BUILDDIR}/build-info')"
+	python -c "import portage.xpak; t=portage.xpak.tbz2('${pkg_tmp}'); t.recompose('${PORTAGE_BUILDDIR}/build-info')"
 	if [ $? -ne 0 ]; then
 		rm -f "${pkg_tmp}"
 		die "Failed to append metadata to the tbz2 file"
