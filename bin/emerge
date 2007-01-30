@@ -1,7 +1,7 @@
 #!@PYTHON@ -O
 # Copyright 1999-2006 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
+# $Id: $
 
 import sys
 # This block ensures that ^C interrupts are handled quietly.
@@ -3548,9 +3548,7 @@ def post_emerge(settings, mtimedb, retval):
 
 	from portage.util import normalize_path
 	if "noinfo" not in settings.features:
-		chk_updated_info_files(
-				normalize_path(target_root + EPREFIX),
-				infodirs, info_mtimes, retval)
+		chk_updated_info_files(normalize_path(target_root + EPREFIX), infodirs, info_mtimes, retval)
 	chk_updated_cfg_files(normalize_path(target_root + EPREFIX), config_protect)
 	
 	NEWS_PATH = os.path.join( "metadata", "news" )
@@ -3897,7 +3895,6 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 				mycommand.append(dosyncuri.rstrip("/") + \
 					"/metadata/timestamp.chk")
 				mycommand.append(tmpservertimestampfile)
-				import portage.process
 				try:
 					exitcode = portage.process.spawn(
 						mycommand, env=settings.environ())
@@ -4210,6 +4207,18 @@ def action_regen(settings, portdb):
 				raise
 			except Exception, e:
 				print "\n  error processing %(cpv)s, continuing... (%(e)s)" % {"cpv":y,"e":str(e)}
+			if dead_nodes:
+				for mytree in portdb.porttrees:
+					if portdb.findname2(y, mytree=mytree)[0]:
+						dead_nodes[mytree].discard(y)
+	if dead_nodes:
+		for mytree, nodes in dead_nodes.iteritems():
+			auxdb = portdb.auxdb[mytree]
+			for y in nodes:
+				try:
+					del auxdb[y]
+				except KeyError, CacheError:
+					pass
 	print "done!"
 
 def action_config(settings, trees, myopts, myfiles):
