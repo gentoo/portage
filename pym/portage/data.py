@@ -16,24 +16,20 @@ bad = create_color_func("BAD")
 ostype=os.uname()[0]
 
 lchown = None
+os.environ["XARGS"]="xargs -r"
 if ostype=="Linux" or ostype.lower().endswith("gnu"):
 	userland="GNU"
-	os.environ["XARGS"]="xargs -r"
 elif ostype == "Darwin":
 	userland="Darwin"
-	os.environ["XARGS"]="xargs"
 	def lchown(*pos_args, **key_args):
 		pass
 elif ostype == "SunOS":
 	userland="Solaris"
-	os.environ["XARGS"]="xargs"
 
 elif ostype.endswith("BSD") or ostype =="DragonFly":
 	userland="BSD"
-	os.environ["XARGS"]="xargs"
 elif ostype in ["BeOS","Haiku","HP-UX"]:
 	userland="GNU"
-	os.environ["XARGS"]="xargs"
 else:
 	writemsg(red("Operating system")+" \""+ostype+"\" "+red("currently unsupported. Exiting.")+"\n")
 	sys.exit(1)
