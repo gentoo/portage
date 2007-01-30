@@ -9,9 +9,9 @@ if len(sys.argv)!=3:
 	sys.exit(1)
 
 try:
-	import xpak
+	import portage.xpak
 except ImportError:
 	sys.path.insert(0, "@PORTAGE_BASE@/pym")
-	import xpak
+	import portage.xpak
 
 xpak.xpak(sys.argv[1],sys.argv[2])
