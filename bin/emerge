@@ -3843,6 +3843,8 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 							ips.append("[%s]" % addrinfo[4][0])
 						else:
 							ips.append(addrinfo[4][0])
+					from random import shuffle
+					shuffle(ips)
 				except SystemExit, e:
 					raise # Needed else can't exit
 				except Exception, e:
