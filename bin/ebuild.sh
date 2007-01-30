@@ -454,7 +454,11 @@ unpack() {
 				;;
 		esac
 	done
-	chmod -Rf a+rX,u+w,g-w,o-w .
+	local previous_dotglob=$(shopt -p dotglob)
+	# Do not chmod '.' since it's probably ${WORKDIR} and PORTAGE_WORKDIR_MODE
+	# should be preserved.
+	chmod -Rf a+rX,u+w,g-w,o-w *
+	eval ${previous_dotglob}
 }
 
 strip_duplicate_slashes() {
