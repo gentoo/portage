@@ -30,7 +30,7 @@ export PYTHONPATH=${PORTAGE_PYM_PATH}
 export PORTAGE_DB=$(portageq vdb_path)
 
 version() {
-	local svnrev='$LastChangedRevision$'
+	local svnrev='$Rev$'
 	svnrev=${svnrev#* }
 	echo "quickpkg-${svnrev% *}"
 	exit 0
