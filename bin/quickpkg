@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2006 Gentoo Foundation
+# Copyright 1999-2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
@@ -9,7 +9,7 @@
 # Resulting tbz2 file will be created in ${PKGDIR} ...
 # default is /usr/portage/packages/All/
 
-if [ "${UID}" != "0" ] ; then
+if [[ ${UID} != "0" ]] ; then
 	echo "You must run this as root"
 	exit 1
 fi
@@ -17,43 +17,74 @@ fi
 # We need to ensure a sane umask for the packages that will be created.
 umask 022
 
+# We need this portage cruft to be before --help output because
+# we utilize some of these vars in the usage info :/
 eval $(portageq envvar -v NOCOLOR PKGDIR PORTAGE_BIN_PATH PORTAGE_NICENESS \
 	PORTAGE_PYM_PATH PORTAGE_TMPDIR ROOT)
 export PKGDIR PORTAGE_TMPDIR ROOT
 
-[ -n "${PORTAGE_NICENESS}" ] && renice $PORTAGE_NICENESS $$ > /dev/null
+[[ -n ${PORTAGE_NICENESS} ]] && renice $PORTAGE_NICENESS $$ > /dev/null
 
 # Make sure the xpak module is in PYTHONPATH
 export PYTHONPATH=${PORTAGE_PYM_PATH}
 export PORTAGE_DB=$(portageq vdb_path)
 
-if [ -z "$1" ] || [ $1 == "-h" ] || [ $1 == "--help" ] ; then
-	echo "QUICKPKG ver 1.2"
-	echo "USAGE: quickpkg <list of pkgs>"
-	echo "    a pkg can be of the form:"
-	echo "        - ${PORTAGE_DB}/<CATEGORY>/<PKG-VERSION>/"
-	echo "        - single depend-type atom ..."
-	echo "              if portage can emerge it, quickpkg can make a package"
-	echo "              for exact definitions of depend atoms, see ebuild(5)"
-	echo
-	echo "EXAMPLE:"
-	echo "    quickpkg ${PORTAGE_DB}/net-www/apache-1.3.27-r1"
-	echo "        package up apache, just version 1.3.27-r1"
-	echo "    quickpkg apache"
-	echo "        package up apache, all versions of apache installed"
-	echo "    quickpkg =apache-1.3.27-r1"
-	echo "        package up apache, just version 1.3.27-r1"
-	exit 1
-fi
+version() {
+	local svnrev='$Rev: 144 $'
+	svnrev=${svnrev#* }
+	echo "quickpkg-${svnrev% *}"
+	exit 0
+}
+usage() {
+	cat <<-EOF
+	Usage: quickpkg [options] <list of pkgs>
+	
+	Options:
+	  -C, --nocolor    Disable color output
+	  -x, --debug      Run with shell debug turned on
+	  -V, --version    Print version and exit
+	  -h, --help       This cruft output
+	
+	A pkg can be of the form:
+	  - ${PORTAGE_DB}/<CATEGORY>/<PKG-VERSION>/
+	  - single depend-type atom ...
+	      if portage can emerge it, quickpkg can make a package
+	      for exact definitions of depend atoms, see ebuild(5)
+	
+	Examples:
+	    quickpkg ${PORTAGE_DB}/net-www/apache-1.3.27-r1
+	        package up apache, just version 1.3.27-r1
+	    quickpkg apache
+	        package up apache, all versions of apache installed
+	    quickpkg =apache-1.3.27-r1
+	        quickpkg =apache-1.3.27-r1
+	EOF
+	if [[ -n $1 ]] ; then
+		echo ""
+		echo "Unknown arguments: $*" 1>&2
+		exit 1
+	else
+		exit 0
+	fi
+}
 
-source "${PORTAGE_BIN_PATH}/isolated-functions.sh"
-case "${NOCOLOR:-false}" in
-	yes|true)
-		unset_colors
-		;;
-	no|false)
-		set_colors
-		;;
+SET_X="no"
+while [[ -n $1 ]] ; do
+	case $1 in
+		-C|--nocolor) export NOCOLOR="true";;
+		-x|--debug)   SET_X="yes";;
+		-V|--version) version;;
+		-h|--help)    usage;;
+		-*)           usage "$1";;
+		*)            break;;
+	esac
+	shift
+done
+[[ ${SET_X} == "yes" ]] && set -x
+
+case ${NOCOLOR:-false} in
+	yes|true) unset_colors;;
+	no|false) set_colors;;
 esac
 
 # here we make a package given a little info
