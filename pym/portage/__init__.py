@@ -5309,8 +5309,14 @@ class vardbapi(dbapi):
 
 	def _aux_get(self, mycpv, wants):
 		mydir = os.path.join(self.root, VDB_PATH, mycpv)
-		if not os.path.isdir(mydir):
-			raise KeyError(mycpv)
+		try:
+			if not stat.S_ISDIR(os.stat(mydir).st_mode):
+				raise KeyError(mycpv)
+		except OSError, e:
+			if e.errno == errno.ENOENT:
+				raise KeyError(mycpv)
+			del e
+			raise
 		results = []
 		for x in wants:
 			try:
