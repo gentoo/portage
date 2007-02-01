@@ -15,13 +15,17 @@ class DepGetSlot(TestCase):
 		slot_char = ":"
 		slots = ( "a", "1.2", "1", "IloveVapier", None )
 		cpvs = ["sys-apps/portage"]
-
+		versions = ["2.1.1","2.1-r1"]
 		for cpv in cpvs:
-			for slot in slots:
-				if slot:
-					self.assertEqual( dep_getslot( 
-						cpv + slot_char + slot ), slot )
-				else:
-					self.assertEqual( dep_getslot( cpv ), slot )
+			for version in versions:
+				for slot in slots:
+					mycpv = cpv[:]
+					if version:
+						cpv += version
+					if slot:
+						self.assertEqual( dep_getslot( 
+							cpv + slot_char + slot ), slot )
+					else:
+						self.assertEqual( dep_getslot( cpv ), slot )
 
 		self.assertEqual( dep_getslot( "sys-apps/portage:"), "" )

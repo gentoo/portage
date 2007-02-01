@@ -1131,9 +1131,8 @@ class depgraph:
 			    If the package has new iuse flags or different use flags then if
 			    --newuse is specified, we need to merge the package. """
 			if merging==0 and "--newuse" in self.myopts and \
-				mytype == "ebuild" and \
 				vardbapi.cpv_exists(mykey):
-				pkgsettings.setcpv(mykey, mydb=portdb)
+				pkgsettings.setcpv(mykey, mydb=mydbapi)
 				forced_flags = set()
 				forced_flags.update(pkgsettings.useforce)
 				forced_flags.update(pkgsettings.usemask)
@@ -3537,6 +3536,12 @@ def post_emerge(settings, mtimedb, retval):
 	"""
 	target_root = settings["ROOT"]
 	info_mtimes = mtimedb["info"]
+
+	# Load the most current variables from ${ROOT}/etc/profile.env
+	settings.unlock()
+	settings.regenerate()
+	settings.lock()
+
 	config_protect = settings.get("CONFIG_PROTECT","").split()
 	infodirs = settings.get("INFOPATH","").split(":") + \
 		settings.get("INFODIR","").split(":")

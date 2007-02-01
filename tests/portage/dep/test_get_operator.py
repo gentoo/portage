@@ -16,11 +16,16 @@ class GetOperator(TestCase):
 			  ( ">~", ">" ), ("~<", "~"), ( "=~", "=" ),
 			  ( "=>", "=" ), ("=<", "=") ]
 
-		testCP = "sys-apps/portage"
-
-		for test in tests:
-			result = get_operator( test[0] + testCP )
-			self.assertEqual( result, test[1] )
+		test_cpvs = ["sys-apps/portage","sys-apps/portage-2.1"]
+		slots = [ None,"1","linux-2.5.6" ]
+		for cpv in test_cpvs:
+			for test in tests:
+				for slot in slots:
+					atom = cpv[:]
+					if slot:
+						atom += ":" + slot
+					result = get_operator( test[0] + atom )
+					self.assertEqual( result, test[1] )
 
 		result = get_operator( "=sys-apps/portage*" )
 		self.assertEqual( result , "=*" )

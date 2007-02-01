@@ -20,7 +20,7 @@
 
 import re,  sys, types
 import portage.exception
-from portage.exception import InvalidData
+from portage.exception import InvalidData, InvalidAtom
 from portage.versions import catpkgsplit, catsplit, pkgcmp, pkgsplit, ververify
 
 def cpvequal(cpv1, cpv2):
@@ -335,6 +335,36 @@ def dep_getslot(mydep):
 	if colon != -1:
 		return mydep[colon+1:]
 	return None
+
+def dep_getusedeps( depend ):
+	"""
+	Pull a listing of USE Dependencies out of a dep atom.
+	
+	Example usage:
+		>>> dep_getusedeps('app-misc/test:3[foo][-bar]
+		['foo','-bar']
+	
+	@param depend: The depstring to process
+	@type depend: String
+	@rtype: List
+	@return: List of use flags ( or [] if no flags exist )
+	"""
+	use_list = []
+	open_bracket = depend.find('[')
+	# -1 = failure (think c++ string::npos)
+	while( open_bracket != -1 ):
+		close_bracket = depend.find(']', open_bracket )
+		if close_bracket == -1:
+			raise InvalidAtom("USE Dependency with no closing bracket: %s" % depend )
+		use = depend[open_bracket + 1: close_bracket]
+		# foo[1:1] may return '' instead of None, we don't want '' in the result
+		if len(use):
+			use_list.append(use)
+		else:
+			raise InvalidAtom("USE Dependency with no use flag ([]): %s" % depend )
+		# Find next use flag
+		open_bracket = depend.find( '[', open_bracket+1 )
+	return use_list
 
 _invalid_atom_chars_regexp = re.compile("[()|?]")
 
