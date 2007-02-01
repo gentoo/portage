@@ -18,7 +18,8 @@ class DepGetCPV(TestCase):
 		bad_prefix_ops = [ ">~", "<~", "~>", "~<" ]
 		postfix_ops = [ "*", "" ]
 
-		cpvs = ["sys-apps/portage"]
+		cpvs = ["sys-apps/portage", "sys-apps/portage-2.1", "sys-apps/portage-2.1:",
+				"sys-apps/portage-2.1:2"]
 
 		for cpv in cpvs:
 			for prefix in prefix_ops:
