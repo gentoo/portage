@@ -3470,7 +3470,7 @@ def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 			for inforoot in regen_infodirs:
 				if inforoot=='':
 					continue
-				for filename in ("dir", "dir.gz"):
+				for filename in ("dir", "dir.gz", "dir.bz2"):
 					file_path = os.path.join(inforoot, filename)
 					try:
 						os.rename(file_path, file_path + ".old")
