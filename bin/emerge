@@ -3536,6 +3536,12 @@ def post_emerge(settings, mtimedb, retval):
 	"""
 	target_root = settings["ROOT"]
 	info_mtimes = mtimedb["info"]
+
+	# Load the most current variables from ${ROOT}/etc/profile.env
+	settings.unlock()
+	settings.regenerate()
+	settings.lock()
+
 	config_protect = settings.get("CONFIG_PROTECT","").split()
 	infodirs = settings.get("INFOPATH","").split(":") + \
 		settings.get("INFODIR","").split(":")
