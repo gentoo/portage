@@ -42,12 +42,12 @@ except ImportError, e:
 	sys.stderr.write("    "+str(e)+"\n\n");
 	raise
 
-try:
-	# XXX: This should get renamed to bsd_chflags, I think.
-	import chflags
-	bsd_chflags = chflags
-except ImportError:
-	bsd_chflags = None
+bsd_chflags = None
+if os.uname()[0] in ["FreeBSD"]:
+	try:
+		import freebsd as bsd_chflags
+	except ImportError:
+		pass
 
 try:
 	from portage.cache.cache_errors import CacheError
@@ -3769,23 +3769,11 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 		destexists=0
 
 	if bsd_chflags:
-		# Check that we can actually unset schg etc flags...
-		# Clear the flags on source and destination; we'll reinstate them after merging
 		if destexists and dstat.st_flags != 0:
-			if bsd_chflags.lchflags(dest, 0) < 0:
-				writemsg("!!! Couldn't clear flags on file being merged: \n ",
-					noiselevel=-1)
-		# We might have an immutable flag on the parent dir; save and clear.
-		pflags=bsd_chflags.lgetflags(os.path.dirname(dest))
+			bsd_chflags.lchflags(dest, 0)
+		pflags = os.stat(os.path.dirname(dest)).st_flags
 		if pflags != 0:
 			bsd_chflags.lchflags(os.path.dirname(dest), 0)
-
-		if (destexists and bsd_chflags.lhasproblems(dest) > 0) or \
-			bsd_chflags.lhasproblems(os.path.dirname(dest)) > 0:
-			# This is bad: we can't merge the file with these flags set.
-			writemsg("!!! Can't merge file "+dest+" because of flags set\n",
-				noiselevel=-1)
-			return None
 
 	if destexists:
 		if stat.S_ISLNK(dstat[stat.ST_MODE]):
@@ -3889,10 +3877,8 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 
 	if bsd_chflags:
 		# Restore the flags we saved before moving
-		if pflags and bsd_chflags.lchflags(os.path.dirname(dest), pflags) < 0:
-			writemsg("!!! Couldn't restore flags (%s) on '%s'\n" % \
-				(str(pflags), os.path.dirname(dest)), noiselevel=-1)
-			return None
+		if pflags:
+			bsd_chflags.lchflags(os.path.dirname(dest), pflags)
 
 	return newmtime
 
@@ -7617,10 +7603,9 @@ class dblink:
 
 					if bsd_chflags:
 						# Save then clear flags on dest.
-						dflags=bsd_chflags.lgetflags(mydest)
-						if dflags != 0 and bsd_chflags.lchflags(mydest, 0) < 0:
-							writemsg("!!! Couldn't clear flags on '"+mydest+"'.\n",
-								noiselevel=-1)
+						dflags = os.lstat(mydest).st_flags
+						if dflags != 0:
+							bsd_chflags.lchflags(mydest, 0)
 
 					if not os.access(mydest, os.W_OK):
 						pkgstuff = pkgsplit(self.pkg)
