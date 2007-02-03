@@ -2731,19 +2731,29 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
 			if missing_files:
 				mytree = os.path.realpath(os.path.dirname(
 					os.path.dirname(mysettings["O"])))
-				myuris = []
+				fetch_settings = config(clone=mysettings)
+				debug = mysettings.get("PORTAGE_DEBUG") == "1"
 				for myfile in missing_files:
+					success = False
 					for cpv in distfiles_map[myfile]:
+						myebuild = os.path.join(mysettings["O"],
+							catsplit(cpv)[1] + ".ebuild")
+						# for RESTRICT=fetch, mirror, etc...
+						doebuild_environment(myebuild, "fetch",
+							mysettings["ROOT"], fetch_settings,
+							debug, 1, myportdb)
 						alluris, aalist = myportdb.getfetchlist(
 							cpv, mytree=mytree, all=True,
-							mysettings=mysettings)
-						for uri in alluris:
-							if os.path.basename(uri) == myfile:
-								myuris.append(uri)
-				if not fetch(myuris, mysettings):
-					writemsg(("!!! File %s doesn't exist, can't update " + \
-						"Manifest\n") % myfile, noiselevel=-1)
-					return 0
+							mysettings=fetch_settings)
+						myuris = [uri for uri in alluris \
+							if os.path.basename(uri) == myfile]
+						if fetch(myuris, fetch_settings):
+							success = True
+							break
+					if not success:
+						writemsg(("!!! File %s doesn't exist, can't update " + \
+							"Manifest\n") % myfile, noiselevel=-1)
+						return 0
 		writemsg_stdout(">>> Creating Manifest for %s\n" % mysettings["O"])
 		try:
 			mf.create(requiredDistfiles=myarchives,
