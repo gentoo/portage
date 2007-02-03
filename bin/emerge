@@ -4081,9 +4081,9 @@ def action_metadata(settings, portdb, myopts):
 	cm = settings.load_best_module("portdbapi.metadbmodule")(
 		myportdir, "metadata/cache", portage.auxdbkeys[:])
 
-	import portage.cache.util
+	from portage.cache import util
 
-	class percentage_noise_maker(portage.cache.util.quiet_mirroring):
+	class percentage_noise_maker(util.quiet_mirroring):
 		def __init__(self, dbapi):
 			self.dbapi = dbapi
 			self.cp_all = dbapi.cp_all()
