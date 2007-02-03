@@ -18,7 +18,7 @@
 # "a? ( b? ( z ) ) -- Valid
 #
 
-import re,  sys, types
+import re, sys, types
 import portage.exception
 from portage.exception import InvalidData, InvalidAtom
 from portage.versions import catpkgsplit, catsplit, pkgcmp, pkgsplit, ververify
@@ -341,7 +341,7 @@ def dep_getusedeps( depend ):
 	Pull a listing of USE Dependencies out of a dep atom.
 	
 	Example usage:
-		>>> dep_getusedeps('app-misc/test:3[foo][-bar]
+		>>> dep_getusedeps('app-misc/test:3[foo][-bar]')
 		['foo','-bar']
 	
 	@param depend: The depstring to process

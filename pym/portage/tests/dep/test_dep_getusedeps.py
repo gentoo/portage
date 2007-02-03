@@ -6,20 +6,20 @@
 from unittest import TestCase
 from portage.dep import dep_getusedeps
 
+import sys
+from portage.tests import test_cpvs, test_slots, test_versions, test_usedeps
+
 class DepGetUseDeps(TestCase):
 	""" A simple testcase for dep_getusedeps
 	"""
 
 	def testDepGetUseDeps(self):
 
-		useflags = [ '', 'foo', '-bar', ['baz','bar'], ['baz','-bar'] ]
-		cpvs = [ "sys-apps/portage" ]
-		slots = [ None, "0","1","linux-sources-2.5.7","randomstring" ]
-		versions = [ None, "2.1.1", "2.1.1-r2"]
-		for mycpv in cpvs:
-			for version in versions:
-				for slot in slots:
-					for use in useflags:
+
+		for mycpv in test_cpvs:
+			for version in test_versions:
+				for slot in test_slots:
+					for use in test_usedeps:
 						cpv = mycpv[:]
 						if version:
 							cpv += version

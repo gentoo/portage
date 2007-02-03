@@ -20,7 +20,7 @@ class IsValidAtom(TestCase):
 			  ( ">sys-apps/portage-2.1", True ),
 			  ( "<sys-apps/portage-2.1", True ),
 			  ( "~sys-apps/portage-2.1", True ),
-			  ( "sys-apps/portage-2.1:foo", True ),
+			  ( "sys-apps/portage-2.1:foo", False ),
 			  ( "sys-apps/portage-2.1:", False ),
 			  ( ">~cate-gory/foo-1.0", False ),
 			  ( ">~category/foo-1.0", False ),

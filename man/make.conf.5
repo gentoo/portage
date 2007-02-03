@@ -381,6 +381,15 @@ Defaults to /var/tmp.
 Defines the location of your Portage tree.
 .br
 Defaults to /usr/portage. 
+.br
+\fB***Warning***\fR
+.br
+Storing data such as distfiles and binary packages in PORTDIR can
+be potentially dangerous. The default emerge configuration defaults to this 
+behavior (which will work fine), however if you deviate from the default
+configuration by changing PKGDIR or DISTDIR, emerge \-\-sync may inadvertedly
+delete all your distfiles/binary packages. Please make sure to set
+\fBPORTAGE_EXTRA_RSYNC_OPTS\fR properly to insure the safety of files in PORTDIR.
 .TP
 \fBPORTDIR_OVERLAY\fR = \fI"[path] [different\-path] [etc...]"\fR
 Defines the directories in which user made ebuilds may be stored and not 

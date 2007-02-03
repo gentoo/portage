@@ -39,7 +39,9 @@ def mirror_cache(valid_nodes_iterable, src_cache, trg_cache, eclass_cache=None, 
 		trg = None
 		try:
 			trg = trg_cache[x]
-			if long(trg["_mtime_"]) == long(entry["_mtime_"]) and portage.eclass_cache.is_eclass_data_valid(trg["_eclasses_"]):
+			if long(trg["_mtime_"]) == long(entry["_mtime_"]) and \
+				eclass_cache.is_eclass_data_valid(trg["_eclasses_"]) and \
+				set(trg["_eclasses_"]) == set(entry["_eclasses_"]):
 				write_it = False
 		except (cache_errors.CacheError, KeyError):
 			pass
