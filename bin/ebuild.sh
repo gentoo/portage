@@ -456,7 +456,11 @@ unpack() {
 	done
 	# Do not chmod '.' since it's probably ${WORKDIR} and PORTAGE_WORKDIR_MODE
 	# should be preserved.
-	find . -mindepth 1 -print0 | ${XARGS} -0 chmod -f a+rX,u+w,g-w,o-w
+	local myfile
+	find . -mindepth 1 -maxdepth 1 -print0 | while read -d $'\0' myfile; do
+		[ -L "${myfile}" ] && continue # find can't exclude symlinks by itself.
+		chmod -fR a+rX,u+w,g-w,o-w "${myfile}"
+	done
 }
 
 strip_duplicate_slashes() {
