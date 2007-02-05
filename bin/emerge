@@ -506,8 +506,8 @@ class search:
 					mycpv = match + "-" + myversion
 					myebuild = self.portdb.findname(mycpv)
 					pkgdir = os.path.dirname(myebuild)
-					import portage.manifest
-					mf = portage.manifest.Manifest(
+					from portage import manifest
+					mf = manifest.Manifest(
 						pkgdir, self.settings["DISTDIR"])
 					fetchlist = self.portdb.getfetchlist(mycpv,
 						mysettings=self.settings, all=True)[1]
