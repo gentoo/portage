@@ -1804,9 +1804,22 @@ class depgraph:
 						# dep_wordreduce and dep_eval calls.
 						try:
 							portage.dep._dep_check_strict = False
-							success, atoms = portage.dep_check(depstr,
-								final_db, pkgsettings, myuse=myuse,
-								trees=dep_check_trees, myroot=myroot)
+							try:
+								success, atoms = portage.dep_check(depstr,
+									final_db, pkgsettings, myuse=myuse,
+									trees=dep_check_trees, myroot=myroot)
+							except Exception, e:
+								if isinstance(e, SystemExit):
+									raise
+								# This is helpful, for example, if a ValueError
+								# is thrown from cpv_expand due to multiple
+								# matches (this can happen if an atom lacks a
+								# category).
+								show_invalid_depstring_notice(
+									("installed", myroot, pkg, "nomerge"),
+									depstr, str(e))
+								del e
+								raise
 						finally:
 							portage.dep._dep_check_strict = True
 						if not success:
