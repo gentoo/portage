@@ -4435,6 +4435,7 @@ def cpv_expand(mycpv, mydb=None, use_cache=1, settings=None):
 				if mydb.cp_list(x+"/"+myp,use_cache=use_cache):
 					matches.append(x+"/"+myp)
 		if len(matches) > 1:
+			virtual_name_collision = False
 			if len(matches) == 2:
 				for x in matches:
 					if not x.startswith("virtual/"):
@@ -4443,8 +4444,9 @@ def cpv_expand(mycpv, mydb=None, use_cache=1, settings=None):
 						# installed packages (during reverse blocker detection,
 						# for example).
 						mykey = x
-						break
-			if mykey is None:
+					else:
+						virtual_name_collision = True
+			if not virtual_name_collision:
 				raise ValueError, matches
 		elif matches:
 			mykey=matches[0]
