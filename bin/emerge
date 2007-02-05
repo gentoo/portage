@@ -45,7 +45,6 @@ import portage.dep
 import portage.util
 import portage.locks
 import portage.exception
-import portage.cache.util
 from portage.const import EPREFIX
 from portage.data import secpass
 from portage.util import normalize_path as normpath
@@ -4129,7 +4128,9 @@ def action_metadata(settings, portdb, myopts):
 	cm = settings.load_best_module("portdbapi.metadbmodule")(
 		myportdir, "metadata/cache", portage.auxdbkeys[:])
 
-	class percentage_noise_maker(portage.cache.util.quiet_mirroring):
+	from portage.cache import util
+
+	class percentage_noise_maker(util.quiet_mirroring):
 		def __init__(self, dbapi):
 			self.dbapi = dbapi
 			self.cp_all = dbapi.cp_all()

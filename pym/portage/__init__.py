@@ -4454,8 +4454,20 @@ def cpv_expand(mycpv, mydb=None, use_cache=1, settings=None):
 			for x in settings.categories:
 				if mydb.cp_list(x+"/"+myp,use_cache=use_cache):
 					matches.append(x+"/"+myp)
-		if (len(matches)>1):
-			raise ValueError, matches
+		if len(matches) > 1:
+			virtual_name_collision = False
+			if len(matches) == 2:
+				for x in matches:
+					if not x.startswith("virtual/"):
+						# Assume that the non-virtual is desired.  This helps
+						# avoid the ValueError for invalid deps that come from
+						# installed packages (during reverse blocker detection,
+						# for example).
+						mykey = x
+					else:
+						virtual_name_collision = True
+			if not virtual_name_collision:
+				raise ValueError, matches
 		elif matches:
 			mykey=matches[0]
 

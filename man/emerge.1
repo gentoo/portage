@@ -232,6 +232,9 @@ is not a tty (by default, color is disabled unless stdout is a tty).
 Used alongside \fB\-\-pretend\fR to cause the package name, new version, 
 and old version to be displayed in an aligned format for easy cut\-n\-paste.
 .TP
+.BR \-\-config\-root=DIR
+Set the \fBPORTAGE_CONFIGROOT\fR environment variable.
+.TP
 .BR "\-\-debug " (\fB\-d\fR)
 Tells emerge to run the emerge command in \fB\-\-debug\fR mode.  In this
 mode the bash build environment will run with the \-x option, causing 
@@ -397,14 +400,16 @@ command line.
 .TP
 \fBROOT\fR = \fI[path]\fR
 Use \fBROOT\fR to specify the target root filesystem to be used for
-merging packages or ebuilds.
+merging packages or ebuilds.  This variable can be set in \fBmake.conf\fR(5)
+when \fBPORTAGE_CONFIGROOT\fR has a value other than /.
 .br
 Defaults to /.
 .TP
 \fBPORTAGE_CONFIGROOT\fR = \fI[path]\fR
 Use \fBPORTAGE_CONFIGROOT\fR to specify the location for various portage 
 configuration files
-(see \fBFILES\fR for a detailed list of configuration files).
+(see \fBFILES\fR for a detailed list of configuration files).  This variable
+can be set via the \fB\-\-config\-root\fR option.
 .br
 Defaults to /.
 .SH "OUTPUT"
