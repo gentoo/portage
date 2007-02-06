@@ -6,7 +6,7 @@ import errno, os, sets
 if not hasattr(__builtins__, "set"):
 	from sets import Set as set
 
-import portage.exception, portage.versions, portage.const
+import portage.versions, portage.const
 from portage.checksum import *
 from portage.exception import *
 from portage.util import write_atomic
@@ -341,8 +341,15 @@ class Manifest(object):
 				except FileNotFound:
 					pass
 
+	def checkIntegrity(self):
+		for t in self.fhashdict.keys():
+			for f in self.fhashdict[t]:
+				if not portage.const.MANIFEST2_REQUIRED_HASH in self.fhashdict[t][f].keys():
+					raise MissingParameter("Missing %s checksum: %s %s" % (portage.const.MANIFEST2_REQUIRED_HASH, t, f))
+
 	def write(self, sign=False, force=False):
 		""" Write Manifest instance to disk, optionally signing it """
+		self.checkIntegrity()
 		try:
 			if self.compat:
 				self._writeDigests()
@@ -478,7 +485,8 @@ class Manifest(object):
 				(assumeDistHashesAlways and mystat is None) or \
 				(assumeDistHashesAlways and mystat is not None and \
 				len(distfilehashes[f]) == len(self.hashes) and \
-				distfilehashes[f]["size"] == mystat.st_size)):
+				distfilehashes[f]["size"] == mystat.st_size)) and \
+				portage.const.MANIFEST2_REQUIRED_HASH in distfilehashes[f].keys():
 				self.fhashdict["DIST"][f] = distfilehashes[f]
 			else:
 				try:
