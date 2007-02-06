@@ -2708,6 +2708,7 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
 		# exist before and after the transition.
 		required_hash_types = set(portage.const.MANIFEST1_HASH_FUNCTIONS
 			).intersection(portage.const.MANIFEST2_HASH_FUNCTIONS)
+		required_hash_types.add(portage.const.MANIFEST2_REQUIRED_HASH)
 		required_hash_types.add("size")
 		dist_hashes = mf.fhashdict.get("DIST", {})
 		missing_hashes = set()
