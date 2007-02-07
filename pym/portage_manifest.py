@@ -459,6 +459,10 @@ class Manifest(object):
 			# repoman passes in an empty list, which implies that all distfiles
 			# are required.
 			requiredDistfiles = distlist.copy()
+		required_hash_types = set()
+		required_hash_types.add("size")
+		required_hash_types.add(portage_const.MANIFEST2_REQUIRED_HASH)
+		
 		for f in distlist:
 			fname = os.path.join(self.distdir, f)
 			mystat = None
@@ -471,7 +475,8 @@ class Manifest(object):
 				(assumeDistHashesAlways and mystat is None) or \
 				(assumeDistHashesAlways and mystat is not None and \
 				len(distfilehashes[f]) == len(self.hashes) and \
-				distfilehashes[f]["size"] == mystat.st_size)):
+				distfilehashes[f]["size"] == mystat.st_size)) and \
+				not required_hash_types.difference(distfilehashes[f]):
 				self.fhashdict["DIST"][f] = distfilehashes[f]
 			else:
 				try:

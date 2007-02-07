@@ -23,7 +23,6 @@ CUSTOM_PROFILE_PATH     = USER_CONFIG_PATH+"/profile"
 PORTAGE_BASE_PATH       = os.path.join(os.sep, os.sep.join(__file__.split(os.sep)[:-2]))
 PORTAGE_BIN_PATH        = PORTAGE_BASE_PATH+"/bin"
 PORTAGE_PYM_PATH        = PORTAGE_BASE_PATH+"/pym"
-NEWS_LIB_PATH           = "/var/lib/gentoo"
 PROFILE_PATH            = "/etc/make.profile"
 LOCALE_DATA_PATH        = PORTAGE_BASE_PATH+"/locale"
 
@@ -45,9 +44,6 @@ CUSTOM_MIRRORS_FILE     = USER_CONFIG_PATH+"/mirrors"
 CONFIG_MEMORY_FILE      = PRIVATE_PATH + "/config"
 COLOR_MAP_FILE          = USER_CONFIG_PATH + "/color.map"
 
-REPO_NAME_FILE         = "repo_name"
-REPO_NAME_LOC          = "profiles" + "/" + REPO_NAME_FILE
-
 INCREMENTALS=["USE","USE_EXPAND","USE_EXPAND_HIDDEN","FEATURES","ACCEPT_KEYWORDS","ACCEPT_LICENSE","CONFIG_PROTECT_MASK","CONFIG_PROTECT","PRELINK_PATH","PRELINK_PATH_MASK"]
 EBUILD_PHASES           = ["setup", "unpack", "compile", "test", "install",
                           "preinst", "postinst", "prerm", "postrm", "other"]
@@ -57,6 +53,7 @@ EAPI = 0
 HASHING_BLOCKSIZE        = 32768
 MANIFEST1_HASH_FUNCTIONS = ["MD5","SHA256","RMD160"]
 MANIFEST2_HASH_FUNCTIONS = ["SHA1","SHA256","RMD160"]
+MANIFEST2_REQUIRED_HASH = "SHA1"
 
 MANIFEST2_IDENTIFIERS = ["AUX","MISC","DIST","EBUILD"]
 # ===========================================================================
