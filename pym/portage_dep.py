@@ -118,8 +118,9 @@ def paren_enclose(mylist):
 
 # This is just for use by emerge so that it can enable a backward compatibility
 # mode in order to gracefully deal with installed packages that have invalid
-# atoms or dep syntax.
-_dep_check_strict = True
+# atoms or dep syntax.  For backward compatibility with api consumers, strict
+# behavior will be explicitly enabled as necessary.
+_dep_check_strict = False
 
 def use_reduce(deparray, uselist=[], masklist=[], matchall=0, excludeall=[]):
 	"""
