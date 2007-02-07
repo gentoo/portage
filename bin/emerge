@@ -42,6 +42,7 @@ good = create_color_func("GOOD")
 bad = create_color_func("BAD")
 
 import portage.dep
+portage.dep._dep_check_strict = True
 import portage.util
 import portage.locks
 import portage.exception
