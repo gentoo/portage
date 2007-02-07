@@ -3610,7 +3610,8 @@ def chk_updated_cfg_files(target_root, config_protect):
 			else:
 				mycommand = "cd '%s'; find . -maxdepth 1 -iname '._cfg????_%s'" % \
 					os.path.split(x.rstrip(os.path.sep))
-			a = commands.getstatusoutput(mycommand)
+			a = commands.getstatusoutput(mycommand + \
+				" ! -iname '.*~' ! -iname '.*.bak'")
 			if a[0] != 0:
 				print >> sys.stderr, " " + bad("*")+ " error scanning '%s'" % x
 			else:

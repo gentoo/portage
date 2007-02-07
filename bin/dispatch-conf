@@ -27,7 +27,7 @@ except ImportError:
 import dispatch_conf
 from portage.process import find_binary
 
-FIND_EXTANT_CONFIGS  = "find '%s' %s -iname '._cfg????_%s'"
+FIND_EXTANT_CONFIGS  = "find '%s' %s -iname '._cfg????_%s' ! -iname '.*~' ! -iname '.*.bak'"
 DIFF_CONTENTS        = 'diff -Nu %s %s'
 DIFF_CVS_INTERP      = 'diff -Nu %s %s | grep "^[+-][^+-]" | grep -v "# .Header:.*"'
 DIFF_WSCOMMENTS      = 'diff -Nu %s %s | grep "^[+-][^+-]" | grep -v "^[-+]#" | grep -v "^[-+][:space:]*$"'
