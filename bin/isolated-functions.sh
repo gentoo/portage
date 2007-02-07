@@ -1,6 +1,47 @@
 # Copyright 1999-2006 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header$
+# $Id$
+
+# We need this next line for "die" and "assert". It expands
+# It _must_ preceed all the calls to die and assert.
+shopt -s expand_aliases
+alias die='diefunc "$FUNCNAME" "$LINENO" "$?"'
+alias assert='_pipestatus="${PIPESTATUS[*]}"; [[ "${_pipestatus// /}" -eq 0 ]] || diefunc "$FUNCNAME" "$LINENO" "$_pipestatus"'
+alias save_IFS='[ "${IFS:-unset}" != "unset" ] && old_IFS="${IFS}"'
+alias restore_IFS='if [ "${old_IFS:-unset}" != "unset" ]; then IFS="${old_IFS}"; unset old_IFS; else unset IFS; fi'
+
+diefunc() {
+        local funcname="$1" lineno="$2" exitcode="$3"
+        shift 3
+        echo >&2
+        echo "!!! ERROR: $CATEGORY/$PF failed." >&2
+        dump_trace 2 1>&2
+        echo "  $(basename "${BASH_SOURCE[1]}"), line ${BASH_LINENO[0]}:   Called die" 1>&2
+        echo >&2
+        echo "!!! ${*:-(no error message)}" >&2
+        echo "!!! If you need support, post the topmost build error, and the call stack if relevant." >&2
+        echo "!!! A complete build log is located at '${PORTAGE_LOG_FILE}'." >&2
+        echo >&2
+        if [ -n "${EBUILD_OVERLAY_ECLASSES}" ] ; then
+                echo "This ebuild used the following eclasses from overlays:" >&2
+                echo >&2
+                for x in ${EBUILD_OVERLAY_ECLASSES} ; do
+                        echo "  ${x}" >&2
+                done
+                echo >&2
+        fi
+
+        if [ "${EBUILD_PHASE/depend}" == "${EBUILD_PHASE}" ]; then
+                local x
+                for x in $EBUILD_DEATH_HOOKS; do
+                        ${x} "$@" >&2 1>&2
+                done
+        fi
+
+        # subshell die support
+        kill -s SIGTERM ${EBUILD_MASTER_PID}
+        exit 1
+}
 
 quiet_mode() {
 	[[ ${PORTAGE_QUIET} -eq 1 ]]

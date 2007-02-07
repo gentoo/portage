@@ -64,21 +64,13 @@ unalias -a
 # Unset some variables that break things.
 unset GZIP BZIP BZIP2 CDPATH GREP_OPTIONS GREP_COLOR GLOBIGNORE
 
-# We need this next line for "die" and "assert". It expands
-# It _must_ preceed all the calls to die and assert.
-shopt -s expand_aliases
-alias die='diefunc "$FUNCNAME" "$LINENO" "$?"'
-alias assert='_pipestatus="${PIPESTATUS[*]}"; [[ "${_pipestatus// /}" -eq 0 ]] || diefunc "$FUNCNAME" "$LINENO" "$_pipestatus"'
-alias save_IFS='[ "${IFS:-unset}" != "unset" ] && old_IFS="${IFS}"'
-alias restore_IFS='if [ "${old_IFS:-unset}" != "unset" ]; then IFS="${old_IFS}"; unset old_IFS; else unset IFS; fi'
-
-OCC="$CC"
-OCXX="$CXX"
-
 export PATH="/usr/local/sbin:/sbin:/usr/sbin:${PORTAGE_BIN_PATH}:/usr/local/bin:/bin:/usr/bin:${ROOTPATH}"
 [ ! -z "$PREROOTPATH" ] && export PATH="${PREROOTPATH%%:}:$PATH"
 
 source "${PORTAGE_BIN_PATH}/isolated-functions.sh"  &>/dev/null
+
+OCC="$CC"
+OCXX="$CXX"
 
 [[ $PORTAGE_QUIET != "" ]] && export PORTAGE_QUIET
 
