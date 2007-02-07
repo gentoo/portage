@@ -3533,10 +3533,16 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		# Make sure we get the correct tree in case there are overlays.
 		mytree = os.path.realpath(
 			os.path.dirname(os.path.dirname(mysettings["O"])))
-		newuris, alist = mydbapi.getfetchlist(
-			mycpv, mytree=mytree, mysettings=mysettings)
-		alluris, aalist = mydbapi.getfetchlist(
-			mycpv, mytree=mytree, all=True, mysettings=mysettings)
+		try:
+			newuris, alist = mydbapi.getfetchlist(
+				mycpv, mytree=mytree, mysettings=mysettings)
+			alluris, aalist = mydbapi.getfetchlist(
+				mycpv, mytree=mytree, all=True, mysettings=mysettings)
+		except portage_exception.InvalidDependString, e:
+			writemsg("!!! %s\n" % str(e), noiselevel=-1)
+			writemsg("!!! Invalid SRC_URI for '%s'.\n" % mycpv, noiselevel=-1)
+			del e
+			return 1
 		mysettings["A"] = " ".join(alist)
 		mysettings["AA"] = " ".join(aalist)
 		if ("mirror" in features) or fetchall:
