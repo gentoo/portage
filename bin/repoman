@@ -33,6 +33,7 @@ del os.environ["PORTAGE_LEGACY_GLOBALS"]
 import portage.checksum
 import portage.const
 import portage.dep
+import portage.dep._dep_check_strict = True
 import portage.exception
 import cvstree
 import time
