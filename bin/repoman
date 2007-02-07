@@ -33,7 +33,8 @@ del os.environ["PORTAGE_LEGACY_GLOBALS"]
 import portage.checksum
 import portage.const
 import portage.dep
-import portage.dep._dep_check_strict = True
+import portage.dep
+portage.dep._dep_check_strict = True
 import portage.exception
 import cvstree
 import time
@@ -160,6 +161,7 @@ qahelp={
 	"PDEPEND.syntax":"Syntax error in PDEPEND (usually an extra/missing space/parenthesis)",
 	"LICENSE.syntax":"Syntax error in LICENSE (usually an extra/missing space/parenthesis)",
 	"PROVIDE.syntax":"Syntax error in PROVIDE (usually an extra/missing space/parenthesis)",
+	"SRC_URI.syntax":"Syntax error in SRC_URI (usually an extra/missing space/parenthesis)",
 	"ebuild.syntax":"Error generating cache entry for ebuild; typically caused by ebuild syntax error",
 	"ebuild.output":"A simple sourcing of the ebuild produces output; this breaks ebuild policy.",
 	"ebuild.nesteddie":"Placing 'die' inside ( ) prints an error, but doesn't stop the ebuild.",
@@ -806,6 +808,22 @@ for x in scanlist:
 	mf = Manifest(checkdir, repoman_settings["DISTDIR"])
 	mydigests=mf.getTypeDigests("DIST")
 
+	fetchlist_dict = portage.FetchlistDict(checkdir, repoman_settings, portdb)
+	myfiles_all = []
+	for mykey in fetchlist_dict:
+		try:
+			myfiles_all.extend(fetchlist_dict[mykey])
+		except portage.exception.InvalidDependString, e:
+			stats["SRC_URI.syntax"] = stats["SRC_URI.syntax"] + 1
+			fails["SRC_URI.syntax"].append(mykey+".ebuild SRC_URI: "+str(e))
+	del fetchlist_dict
+	myfiles_all = set(myfiles_all)
+	for entry in mydigests:
+		if entry not in myfiles_all:
+			stats["digestentry.unused"] += 1
+			fails["digestentry.unused"].append(checkdir+"::"+entry)
+	del myfiles_all
+
 	if os.path.exists(checkdir+"/files"):
 		filesdirlist=os.listdir(checkdir+"/files")
 		for y in filesdirlist:
@@ -835,7 +853,11 @@ for x in scanlist:
 						fails["digest.stray"].append(x+"/files/"+y)
 				else:
 					# We have an ebuild
-					myuris, myfiles = portdb.getfetchlist(mykey, all=True)
+					try:
+						myuris, myfiles = portdb.getfetchlist(mykey, all=True)
+					except portage.exception.InvalidDependString, e:
+						# Already handled above.
+						continue
 
 					uri_dict = {}
 					for myu in myuris:
@@ -900,18 +922,7 @@ for x in scanlist:
 					fails["file.name"].append("%s/files/%s: char '%s'" % (checkdir, y, c))
 					break
 
-	fetchlist_dict = portage.FetchlistDict(checkdir, repoman_settings, portdb)
-	myfiles_all = []
-	for myfiles in fetchlist_dict.itervalues():
-		myfiles_all.extend(myfiles)
-		del myfiles
-	del fetchlist_dict
-	myfiles_all = set(myfiles_all)
-	for entry in mydigests:
-		if entry not in myfiles_all:
-			stats["digestentry.unused"] += 1
-			fails["digestentry.unused"].append(checkdir+"::"+entry)
-	del mydigests, myfiles_all
+	del mydigests
 
 	if "ChangeLog" not in checkdirlist:
 		stats["changelog.missing"]+=1
