@@ -2697,9 +2697,15 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
 		_doebuild_manifest_exempt_depend += 1
 		distfiles_map = {}
 		fetchlist_dict = FetchlistDict(mysettings["O"], mysettings, myportdb)
-		for cpv, fetchlist in fetchlist_dict.iteritems():
-			for myfile in fetchlist:
-				distfiles_map.setdefault(myfile, []).append(cpv)
+		for cpv in fetchlist_dict:
+			try:
+				for myfile in fetchlist_dict[cpv]:
+					distfiles_map.setdefault(myfile, []).append(cpv)
+			except portage_exception.InvalidDependString, e:
+				writemsg("!!! %s\n" % str(e), noiselevel=-1)
+				writemsg("!!! Invalid SRC_URI for '%s'.\n" % cpv, noiselevel=-1)
+				del e
+				return 0
 		mf = Manifest(mysettings["O"], mysettings["DISTDIR"],
 			fetchlist_dict=fetchlist_dict)
 		# Don't require all hashes since that can trigger excessive
