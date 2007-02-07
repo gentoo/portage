@@ -2712,10 +2712,9 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
 		# fetches when sufficient digests already exist.  To ease transition
 		# while Manifest 1 is being removed, only require hashes that will
 		# exist before and after the transition.
-		required_hash_types = set(portage.const.MANIFEST1_HASH_FUNCTIONS
-			).intersection(portage.const.MANIFEST2_HASH_FUNCTIONS)
-		required_hash_types.add(portage.const.MANIFEST2_REQUIRED_HASH)
+		required_hash_types = set()
 		required_hash_types.add("size")
+		required_hash_types.add(portage.const.MANIFEST2_REQUIRED_HASH)
 		dist_hashes = mf.fhashdict.get("DIST", {})
 		missing_hashes = set()
 		for myfile in distfiles_map:
@@ -3581,8 +3580,11 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			# Skip files that we already have digests for.
 			mf = Manifest(mysettings["O"], mysettings["DISTDIR"])
 			mydigests = mf.getTypeDigests("DIST")
+			required_hash_types = set()
+			required_hash_types.add("size")
+			required_hash_types.add(portage.const.MANIFEST2_REQUIRED_HASH)
 			for filename, hashes in mydigests.iteritems():
-				if len(hashes) == len(mf.hashes):
+				if not required_hash_types.difference(hashes):
 					checkme = [i for i in checkme if i != filename]
 					fetchme = [i for i in fetchme \
 						if os.path.basename(i) != filename]
