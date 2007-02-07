@@ -2487,9 +2487,15 @@ class depgraph:
 					# size verbose
 					mysize=0
 					if x[0] == "ebuild" and x[-1]!="nomerge":
-						myfilesdict = portdb.getfetchsizes(
-							pkg_key, useflags=self.useFlags[myroot][pkg_key],
-							debug=self.edebug)
+						try:
+							myfilesdict = portdb.getfetchsizes(pkg_key,
+								useflags=self.useFlags[myroot][pkg_key],
+								debug=self.edebug)
+						except portage.exception.InvalidDependString, e:
+							src_uri = portdb.aux_get(pkg_key, ["SRC_URI"])[0]
+							show_invalid_depstring_notice(x, src_uri, str(e))
+							del e
+							sys.exit(1)
 						if myfilesdict is None:
 							myfilesdict="[empty/missing/bad digest]"
 						else:
