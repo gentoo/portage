@@ -10,6 +10,37 @@ alias assert='_pipestatus="${PIPESTATUS[*]}"; [[ "${_pipestatus// /}" -eq 0 ]] |
 alias save_IFS='[ "${IFS:-unset}" != "unset" ] && old_IFS="${IFS}"'
 alias restore_IFS='if [ "${old_IFS:-unset}" != "unset" ]; then IFS="${old_IFS}"; unset old_IFS; else unset IFS; fi'
 
+shopt -s extdebug
+
+# usage- first arg is the number of funcs on the stack to ignore.
+# defaults to 1 (ignoring dump_trace)
+dump_trace() {
+        local funcname="" sourcefile="" lineno="" n e s="yes"
+
+        declare -i strip=1
+
+        if [[ -n $1 ]]; then
+                strip=$(( $1 ))
+        fi
+
+        echo "Call stack:"
+        for (( n = ${#FUNCNAME[@]} - 1, p = ${#BASH_ARGV[@]} ; n > $strip ; n-- )) ; do
+                funcname=${FUNCNAME[${n} - 1]}
+                sourcefile=$(basename ${BASH_SOURCE[${n}]})
+                lineno=${BASH_LINENO[${n} - 1]}
+                # Display function arguments
+                args=
+                if [[ -n "${BASH_ARGV[@]}" ]]; then
+                        for (( j = 1 ; j <= ${BASH_ARGC[${n} - 1]} ; ++j )); do
+                                newarg=${BASH_ARGV[$(( p - j - 1 ))]}
+                                args="${args:+${args} }'${newarg}'"
+                        done
+                        (( p -= ${BASH_ARGC[${n} - 1]} ))
+                fi
+                echo "  ${sourcefile}, line ${lineno}:   Called ${funcname}${args:+ ${args}}"
+        done
+}
+
 diefunc() {
         local funcname="$1" lineno="$2" exitcode="$3"
         shift 3
