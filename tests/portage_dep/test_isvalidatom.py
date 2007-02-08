@@ -5,6 +5,8 @@
 
 from unittest import TestCase
 from portage_dep import isvalidatom
+import portage_dep
+portage_dep._dep_check_strict = True
 
 class IsValidAtom(TestCase):
 	""" A simple testcase for isvalidatom
