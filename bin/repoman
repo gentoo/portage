@@ -304,8 +304,7 @@ def last():
 			if x not in qawarnings:
 				dofail=1
 		else:
-			if mymode!="lfull":
-				continue
+			continue
 		print "  "+ x.ljust(20),
 		if stats[x]==0:
 			print green(`stats[x]`)
