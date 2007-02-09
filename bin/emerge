@@ -32,7 +32,8 @@ del os.environ["PORTAGE_LEGACY_GLOBALS"]
 from portage import digraph, portdbapi
 from portage.const import NEWS_LIB_PATH
 
-import portage.emergehelp, portage.xpak, commands, errno, re, socket, time, types
+import emerge.help
+import portage.xpak, commands, errno, re, socket, time, types
 import portage.output
 from portage.output import blue, bold, colorize, darkblue, darkgreen, darkred, green, \
 	havecolor, nc_len, nocolor, red, teal, turquoise, white, xtermTitle, \
@@ -42,6 +43,7 @@ good = create_color_func("GOOD")
 bad = create_color_func("BAD")
 
 import portage.dep
+portage.dep._dep_check_strict = True
 import portage.util
 import portage.locks
 import portage.exception
@@ -2487,9 +2489,15 @@ class depgraph:
 					# size verbose
 					mysize=0
 					if x[0] == "ebuild" and x[-1]!="nomerge":
-						myfilesdict = portdb.getfetchsizes(
-							pkg_key, useflags=self.useFlags[myroot][pkg_key],
-							debug=self.edebug)
+						try:
+							myfilesdict = portdb.getfetchsizes(pkg_key,
+								useflags=self.useFlags[myroot][pkg_key],
+								debug=self.edebug)
+						except portage.exception.InvalidDependString, e:
+							src_uri = portdb.aux_get(pkg_key, ["SRC_URI"])[0]
+							show_invalid_depstring_notice(x, src_uri, str(e))
+							del e
+							sys.exit(1)
 						if myfilesdict is None:
 							myfilesdict="[empty/missing/bad digest]"
 						else:
@@ -3604,7 +3612,8 @@ def chk_updated_cfg_files(target_root, config_protect):
 			else:
 				mycommand = "cd '%s'; find . -maxdepth 1 -iname '._cfg????_%s'" % \
 					os.path.split(x.rstrip(os.path.sep))
-			a = commands.getstatusoutput(mycommand)
+			a = commands.getstatusoutput(mycommand + \
+				" ! -iname '.*~' ! -iname '.*.bak'")
 			if a[0] != 0:
 				print >> sys.stderr, " " + bad("*")+ " error scanning '%s'" % x
 			else:
@@ -5250,7 +5259,7 @@ def emerge_main():
 			trees[settings["ROOT"]]["vartree"].dbapi)
 		sys.exit(0)
 	elif "--help" in myopts:
-		portage.emergehelp.help(myaction, myopts, portage.output.havecolor)
+		emerge.help.help(myaction, myopts, portage.output.havecolor)
 		sys.exit(0)
 
 	if "--debug" in myopts:
@@ -5258,7 +5267,7 @@ def emerge_main():
 		print "myopts", myopts
 
 	if not myaction and not myfiles and "--resume" not in myopts:
-		portage.emergehelp.help(myaction, myopts, portage.output.havecolor)
+		emerge.help.help(myaction, myopts, portage.output.havecolor)
 		sys.exit(1)
 
 	# check if root user is the current user for the actions where emerge needs this

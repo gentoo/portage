@@ -28,6 +28,8 @@ except ImportError:
 	import portage
 
 import portage.util, portage.const
+import portage.dep
+portage.dep._dep_check_strict = True
 
 # do this _after_ 'import portage' to prevent unnecessary tracing
 if debug and "python-trace" in portage.features:
