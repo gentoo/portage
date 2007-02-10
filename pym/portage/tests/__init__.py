@@ -49,7 +49,7 @@ def getTests( path, base_path ):
 			raise
 	return result
 
-test_cpvs = ['sys-apps/portage','virtual/portage']
+test_cps = ['sys-apps/portage','virtual/portage']
 test_versions = ['1.0', '1.0-r1','2.3_p4','1.0_alpha57']
 test_slots = [ None, '1','gentoo-sources-2.6.17','spankywashere']
 test_usedeps = ['foo','-bar', ['foo','bar'],['foo','-bar'] ]
