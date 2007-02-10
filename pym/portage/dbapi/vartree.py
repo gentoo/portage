@@ -254,8 +254,7 @@ class vardbapi(dbapi):
 
 	def cpv_all(self, use_cache=1):
 		returnme = []
-		basepath = self.getpath("/")
-
+		basepath = os.path.join(self.root, VDB_PATH) + os.path.sep
 		for x in self.categories:
 			for y in listdir(basepath + x, EmptyOnError=1):
 				if y.startswith("."):
