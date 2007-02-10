@@ -17,7 +17,7 @@ from portage import eclass_cache, auxdbkeys, auxdbkeylen, \
 	dep_expand, dep_getkey, catpkgsplit, match_from_list, match_to_list, \
 	eapi_is_supported, key_expand, dep_check
 
-import os, sys
+import os, stat, sys
 
 
 class portdbapi(dbapi):
