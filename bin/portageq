@@ -356,7 +356,8 @@ def main():
 		try:
 			import portage
 		except ImportError:
-			sys.path.insert(0, "/usr/lib/portage/pym")
+			from os import path as osp
+			sys.path.insert(0, osp.join(osp.dirname(osp.dirname(__file__)), "pym"))
 			import portage
 		if uses_root:
 			sys.argv[2] = portage.root

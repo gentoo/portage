@@ -8,7 +8,8 @@ import os,sys,re
 try:
 	import portage
 except ImportError:
-	sys.path.insert(0, "/usr/lib/portage/pym")
+	from os import path as osp
+	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(__file__)), "pym"))
 	import portage
 
 from stat import *

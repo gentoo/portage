@@ -26,7 +26,8 @@ os.environ["PORTAGE_LEGACY_GLOBALS"] = "false"
 try:
 	import portage
 except ImportError:
-	sys.path.insert(0, "/usr/lib/portage/pym")
+	from os import path as osp
+	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(__file__)), "pym"))
 	import portage
 del os.environ["PORTAGE_LEGACY_GLOBALS"]
 from portage import digraph, portdbapi
