@@ -3,7 +3,9 @@ from portage.data import portage_gid
 from portage.util import ensure_dirs, writemsg
 from portage.exception import OperationNotPermitted, PortageException, \
 	UntrustedSignature, SecurityViolation, InvalidSignature, MissingSignature, \
-	FileNotFound, CacheError
+	FileNotFound
+from portage.cache.cache_errors import CacheError
+from portage import config, REPO_NAME_LOC, secpass
 from portage.output import red
 from portage.manifest import Manifest
 from portage.dep import use_reduce, paren_reduce, dep_getslot
