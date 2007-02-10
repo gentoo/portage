@@ -9,7 +9,7 @@ try:
 	import portage
 except ImportError:
 	from os import path as osp
-	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(__file__)), "pym"))
+	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
 	import portage
 import portage.util
 
