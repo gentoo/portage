@@ -7,7 +7,7 @@ from unittest import TestCase
 from portage.dep import dep_getusedeps
 
 import sys
-from portage.tests import test_cpvs, test_slots, test_versions, test_usedeps
+from portage.tests import test_cps, test_slots, test_versions, test_usedeps
 
 class DepGetUseDeps(TestCase):
 	""" A simple testcase for dep_getusedeps
@@ -15,8 +15,7 @@ class DepGetUseDeps(TestCase):
 
 	def testDepGetUseDeps(self):
 
-
-		for mycpv in test_cpvs:
+		for mycpv in test_cps:
 			for version in test_versions:
 				for slot in test_slots:
 					for use in test_usedeps:

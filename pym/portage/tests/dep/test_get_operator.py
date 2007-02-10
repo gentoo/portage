@@ -1,5 +1,5 @@
-# test_match_from_list.py -- Portage Unit Testing Functionality
-# Copyright 2006 Gentoo Foundation
+# test_get_operator.py -- Portage Unit Testing Functionality
+# Copyright 2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
