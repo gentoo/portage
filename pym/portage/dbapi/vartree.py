@@ -51,7 +51,7 @@ class vardbapi(dbapi):
 			CACHE_PATH.lstrip(os.path.sep), "vdb_metadata.pickle")
 
 	def getpath(self, mykey, filename=None):
-		rValue = os.path.join(self.root, mykey)
+		rValue = os.path.join(self.root, VDB_PATH, mykey)
 		if filename != None:
 			rValue = os.path.join(rValue, filename)
 		return rValue
