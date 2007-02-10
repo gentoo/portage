@@ -24,6 +24,25 @@ from portage.exception import InvalidData, InvalidAtom
 from portage.versions import catpkgsplit, catsplit, pkgcmp, pkgsplit, ververify
 
 def cpvequal(cpv1, cpv2):
+	"""
+	
+	@param cpv1: CategoryPackageVersion (no operators) Example: "sys-apps/portage-2.1"
+	@type cpv1: String
+	@param cpv2: CategoryPackageVersion (no operators) Example: "sys-apps/portage-2.1"
+	@type cpv2: String
+	@rtype: Boolean
+	@returns:
+	1.  True if cpv1 = cpv2
+	2.  False Otherwise
+	3.  Throws PortageException if cpv1 or cpv2 is not a CPV
+
+	Example Usage:
+	>>> from portage.dep import cpvequal
+	>>> cpvequal("sys-apps/portage-2.1","sys-apps/portage-2.1")
+	>>> True
+
+	"""
+
 	split1 = catpkgsplit(cpv1)
 	split2 = catpkgsplit(cpv2)
 	
@@ -44,6 +63,7 @@ def strip_empty(myarr):
 	@rtype: Array
 	@return: The array with empty elements removed
 	"""
+
 	for x in range(len(myarr)-1, -1, -1):
 		if not myarr[x]:
 			del myarr[x]
