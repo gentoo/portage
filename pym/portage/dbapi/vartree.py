@@ -11,7 +11,7 @@ from portage.output import red, green
 
 from portage import pkgsplit, write_atomic, writemsg, isvalidatom, isjustname, \
 	catpkgsplit, writemsg_stdout, catsplit, fixdbentries, listdir, grabfile, \
-	dep_getkey, dep_expand, match_from_list, atomic_ofstream, dblink, config, \
+	dep_getkey, dep_expand, match_from_list, atomic_ofstream, config, \
 	flatten, key_expand, best, normalize_path, doebuild_environment, doebuild, \
 	elog_process, env_update, dircache, grabdict, writedict, pkgcmp, abssymlink, \
 	new_protect_filename, movefile, bsd_chflags
