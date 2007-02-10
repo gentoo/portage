@@ -241,7 +241,7 @@ class vardbapi(dbapi):
 				continue
 			ps = pkgsplit(x)
 			if not ps:
-				self.invalidentry(os.path.join(self.getpath(mysplit[0]), x)
+				self.invalidentry(os.path.join(self.getpath(mysplit[0]), x))
 				continue
 			if len(mysplit) > 1:
 				if ps[0] == mysplit[1]:
