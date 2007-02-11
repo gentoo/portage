@@ -4,6 +4,7 @@ from portage.data import portage_gid, portage_uid
 from portage.dbapi import dbapi
 from portage.dep import dep_getslot, use_reduce, paren_reduce, isvalidatom, \
 	isjustname, dep_getkey, match_from_list
+from portage.elog import elog_process
 from portage.exception import InvalidPackageName, InvalidAtom, \
 	UnsupportedAPIException, FileNotFound
 from portage.locks import lockdir, unlockdir
@@ -15,7 +16,7 @@ from portage.util import apply_secpass_permissions, ConfigProtect, ensure_dirs, 
 from portage.versions import pkgsplit, catpkgsplit, catsplit, best, pkgcmp
 
 from portage import listdir, dep_expand, config, flatten, key_expand, \
-	doebuild_environment, doebuild, elog_process, env_update, dircache, \
+	doebuild_environment, doebuild, env_update, dircache, \
 	abssymlink, movefile, bsd_chflags
 
 import os, sys, stat, cPickle, errno, commands, copy, time
