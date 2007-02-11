@@ -1,7 +1,9 @@
-from portage import dep_expand, dep_getkey, match_from_list, writemsg
-from portage.dep import dep_getslot
+from portage.dep import dep_getslot, dep_getkey, match_from_list
 from portage.locks import unlockfile
 from portage.output import red
+from portage.util import writemsg
+
+from portage import dep_expand
 
 import os, re
 

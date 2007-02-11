@@ -1,20 +1,22 @@
-from portage.dbapi import dbapi
+from portage.checksum import perform_md5
 from portage.const import VDB_PATH, CACHE_PATH
+from portage.data import portage_gid, portage_uid
+from portage.dbapi import dbapi
+from portage.dep import dep_getslot, use_reduce, paren_reduce, isvalidatom, \
+	isjustname, dep_getkey, match_from_list
 from portage.exception import InvalidPackageName, InvalidAtom, \
 	UnsupportedAPIException, FileNotFound
-from portage.dep import dep_getslot, use_reduce, paren_reduce
-from portage.util import apply_secpass_permissions, ConfigProtect, ensure_dirs
-from portage.data import portage_gid, portage_uid
 from portage.locks import lockdir, unlockdir
-from portage.checksum import perform_md5
 from portage.output import red, green
+from portage.update import fixdbentries
+from portage.util import apply_secpass_permissions, ConfigProtect, ensure_dirs, \
+	writemsg, writemsg_stdout, write_atomic, atomic_ofstream, writedict, \
+	grabfile, grabdict, normalize_path, new_protect_filename
+from portage.versions import pkgsplit, catpkgsplit, catsplit, best, pkgcmp
 
-from portage import pkgsplit, write_atomic, writemsg, isvalidatom, isjustname, \
-	catpkgsplit, writemsg_stdout, catsplit, fixdbentries, listdir, grabfile, \
-	dep_getkey, dep_expand, match_from_list, atomic_ofstream, config, \
-	flatten, key_expand, best, normalize_path, doebuild_environment, doebuild, \
-	elog_process, env_update, dircache, grabdict, writedict, pkgcmp, abssymlink, \
-	new_protect_filename, movefile, bsd_chflags
+from portage import listdir, dep_expand, config, flatten, key_expand, \
+	doebuild_environment, doebuild, elog_process, env_update, dircache, \
+	abssymlink, movefile, bsd_chflags
 
 import os, sys, stat, cPickle, errno, commands, copy, time
 from itertools import izip

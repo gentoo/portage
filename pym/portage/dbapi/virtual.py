@@ -1,5 +1,6 @@
-from portage import cpv_getkey
 from portage.dbapi import dbapi
+
+from portage import cpv_getkey
 
 class fakedbapi(dbapi):
 	"This is a dbapi to use for the emptytree function.  It's empty, but things can be added to it."

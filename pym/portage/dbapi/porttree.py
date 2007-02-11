@@ -1,21 +1,21 @@
+from portage.cache.cache_errors import CacheError
+from portage.const import REPO_NAME_LOC
+from portage.data import portage_gid, secpass
 from portage.dbapi import dbapi
-from portage.data import portage_gid
-from portage.util import ensure_dirs, writemsg
+from portage.dep import use_reduce, paren_reduce, dep_getslot, dep_getkey, \
+	match_from_list, match_to_list
 from portage.exception import OperationNotPermitted, PortageException, \
 	UntrustedSignature, SecurityViolation, InvalidSignature, MissingSignature, \
 	FileNotFound
-from portage.cache.cache_errors import CacheError
-from portage import config, REPO_NAME_LOC, secpass
-from portage.output import red
 from portage.manifest import Manifest
-from portage.dep import use_reduce, paren_reduce, dep_getslot
+from portage.output import red
+from portage.util import ensure_dirs, writemsg, apply_recursive_permissions
+from portage.versions import pkgsplit, catpkgsplit
 
 import portage.gpg, portage.checksum
 
-from portage import eclass_cache, auxdbkeys, auxdbkeylen, \
-	apply_recursive_permissions, pkgsplit, doebuild, flatten, listdir, \
-	dep_expand, dep_getkey, catpkgsplit, match_from_list, match_to_list, \
-	eapi_is_supported, key_expand, dep_check
+from portage import eclass_cache, auxdbkeys, auxdbkeylen, doebuild, flatten, \
+	listdir, dep_expand, eapi_is_supported, key_expand, dep_check, config
 
 import os, stat, sys
 
