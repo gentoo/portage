@@ -2,8 +2,8 @@ from portage.dep import isvalidatom, isjustname, dep_getkey, match_from_list
 from portage.dbapi.virtual import fakedbapi
 from portage.exception import InvalidPackageName, InvalidAtom
 from portage.output import green
-from portage.util import normalize_path, writemsg, writemsg_stdout, best
-from portage.versions import catpkgsplit, catsplit
+from portage.util import normalize_path, writemsg, writemsg_stdout
+from portage.versions import best, catpkgsplit, catsplit
 from portage.update import update_dbentries
 
 from portage import listdir, dep_expand
