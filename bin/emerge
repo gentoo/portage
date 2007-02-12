@@ -2057,6 +2057,15 @@ class depgraph:
 					self.altlist()
 				print "!!! Error: circular dependencies:"
 				print
+				# Reduce the noise level to a minimum via elimination of root
+				# nodes.
+				while True:
+					root_nodes = mygraph.root_nodes(
+						ignore_priority=DepPriority.SOFT)
+					if not root_nodes:
+						break
+					for node in root_nodes:
+						mygraph.remove(node)
 				mygraph.debug_print()
 				sys.exit(1)
 
