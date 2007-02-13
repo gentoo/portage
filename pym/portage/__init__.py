@@ -596,12 +596,18 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None):
 			newprelink.write("-b "+x+"\n")
 		newprelink.close()
 
+	# Portage stores mtimes with 1 second granularity but in >=python-2.5 finer
+	# granularity is possible.  In order to avoid the potential ambiguity of
+	# mtimes that differ by less than 1 second, sleep here if any of the
+	# directories have been modified during the current second.
+	sleep_for_mtime_granularity = False
+	current_time = long(time.time())
 	mtime_changed = False
 	lib_dirs = set()
 	for lib_dir in portage.util.unique_array(specials["LDPATH"]+['usr/lib','usr/lib64','usr/lib32','lib','lib64','lib32']):
 		x = os.path.join(target_root, lib_dir.lstrip(os.sep))
 		try:
-			newldpathtime = os.stat(x)[stat.ST_MTIME]
+			newldpathtime = long(os.stat(x).st_mtime)
 			lib_dirs.add(normalize_path(x))
 		except OSError, oe:
 			if oe.errno == errno.ENOENT:
@@ -612,6 +618,8 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None):
 				# ignore this path because it doesn't exist
 				continue
 			raise
+		if newldpathtime == current_time:
+			sleep_for_mtime_granularity = True
 		if x in prev_mtimes:
 			if prev_mtimes[x] == newldpathtime:
 				pass
@@ -682,6 +690,10 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None):
 	for x in env_keys:
 		outfile.write("setenv %s '%s'\n" % (x, env[x]))
 	outfile.close()
+
+	if sleep_for_mtime_granularity:
+		while current_time == long(time.time()):
+			sleep(1)
 
 def ExtractKernelVersion(base_dir):
 	"""
