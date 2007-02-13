@@ -1,7 +1,7 @@
 # portage.py -- core Portage functionality
 # Copyright 1998-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: mod_mail.py 5781 2007-01-25 16:25:02Z genone $
+# $Id$
 
 import portage.mail, socket
 

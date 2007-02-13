@@ -11,7 +11,8 @@ if len(sys.argv)!=3:
 try:
 	import portage.xpak
 except ImportError:
-	sys.path.insert(0, "@PORTAGE_BASE@/pym")
+	from os import path as osp
+	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
 	import portage.xpak
 
 portage.xpak.xpak(sys.argv[1],sys.argv[2])
