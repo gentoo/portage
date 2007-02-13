@@ -80,8 +80,10 @@ def elog_process(cpv, mysettings):
 		try:
 			# FIXME: ugly ad.hoc import code
 			# TODO:  implement a common portage module loader
-			logmodule = __import__("portage.elog.mod_"+s)
-			m = getattr(logmodule, "mod_"+s)
+			name = "portage.elog.mod_" + s
+			m = __import__(name)
+			for comp in name.split(".")[1:]:
+				m = getattr(m, comp)
 			def timeout_handler(signum, frame):
 				raise PortageException("Timeout in elog_process for system '%s'" % s)
 			import signal
@@ -100,7 +102,7 @@ def elog_process(cpv, mysettings):
 			writemsg("!!! Error while importing logging modules " + \
 				"while loading \"mod_%s\":\n" % str(s))
 			writemsg("%s\n" % str(e), noiselevel=-1)
-		except portage.exception.PortageException, e:
+		except PortageException, e:
 			writemsg("%s\n" % str(e), noiselevel=-1)
 
 	# clean logfiles to avoid repetitions
