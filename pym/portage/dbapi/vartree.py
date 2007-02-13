@@ -1,6 +1,6 @@
 from portage.checksum import perform_md5
-from portage.const import VDB_PATH, CACHE_PATH
-from portage.data import portage_gid, portage_uid
+from portage.const import CACHE_PATH, CONFIG_MEMORY_FILE, PRIVATE_PATH, VDB_PATH
+from portage.data import portage_gid, portage_uid, secpass
 from portage.dbapi import dbapi
 from portage.dep import dep_getslot, use_reduce, paren_reduce, isvalidatom, \
 	isjustname, dep_getkey, match_from_list
@@ -1505,7 +1505,7 @@ class dblink(object):
 		destroot = normalize_path(destroot).rstrip(sep) + sep
 		
 		# this is supposed to merge a list of files.  There will be 2 forms of argument passing.
-		if type(stufftomerge) == types.StringType:
+		if isinstance(stufftomerge, basestring):
 			#A directory is specified.  Figure out protection paths, listdir() it and process it.
 			mergelist = listdir(join(srcroot, stufftomerge))
 			offset = stufftomerge
