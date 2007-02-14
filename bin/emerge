@@ -1965,6 +1965,11 @@ class depgraph:
 	def altlist(self, reversed=False):
 		if reversed in self._altlist_cache:
 			return self._altlist_cache[reversed][:]
+		if reversed:
+			retlist = self.altlist()
+			retlist.reverse()
+			self._altlist_cache[reversed] = retlist[:]
+			return retlist
 		mygraph=self.digraph.copy()
 		myblockers = self.blocker_digraph.copy()
 		retlist=[]
