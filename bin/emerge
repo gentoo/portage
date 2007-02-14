@@ -1987,6 +1987,7 @@ class depgraph:
 		ignore_priority_range = [None]
 		ignore_priority_range.extend(
 			xrange(DepPriority.MIN, DepPriority.MEDIUM + 1))
+		tree_mode = "--tree" in self.myopts
 		while not mygraph.empty():
 			ignore_priority = None
 			nodes = None
@@ -2009,7 +2010,7 @@ class depgraph:
 			selected_nodes = None
 			if nodes:
 				if ignore_priority <= DepPriority.SOFT:
-					if ignore_priority is None and not reversed:
+					if ignore_priority is None and not tree_mode:
 						# Greedily pop all of these nodes since no relationship
 						# has been ignored.  This optimization destroys --tree
 						# output, so it's disabled in reversed mode.
