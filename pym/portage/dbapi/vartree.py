@@ -523,6 +523,39 @@ class vardbapi(dbapi):
 			write_atomic(cpath, str(counter))
 		return counter
 
+	def get_library_map(self):
+		""" Read the global library->consumer map for this vdb instance """
+		mapfilename = self.getpath(".NEEDED")
+		if not os.path.exists(mapfilename):
+			self.update_library_map()
+		rValue = {}
+		for l in open(mapfilename, "r").read().split("\n"):
+			mysplit = l.split()
+			if len(mysplit) > 1:
+				rValue[mysplit[0]] = mysplit[1].split(",")
+		return rValue
+
+	def update_library_map(self):
+		""" Update the global library->consumer map for this vdb instance. """
+		mapfilename = self.getpath(".NEEDED")
+		obj_dict = {}
+		for cpv in self.cpv_all():
+			needed_list = self.aux_get(cpv, ["NEEDED"])[0]
+			for l in needed_list.split("\n"):
+				mysplit = l.split()
+				if len(mysplit) < 2:
+					continue
+				libs = mysplit[1].split(",")
+				for lib in libs:
+					if not obj_dict.has_key(lib):
+						obj_dict[lib] = [mysplit[0]]
+					else:
+						obj_dict[lib].append(mysplit[0])
+		mapfile = open(mapfilename, "w")
+		for lib in obj_dict.keys():
+			mapfile.write(lib+" "+",".join(obj_dict[lib])+"\n")
+		mapfile.close()
+
 class vartree(object):
 	"this tree will scan a var/db/pkg database located at root (passed to init)"
 	def __init__(self, root="/", virtual=None, clone=None, categories=None,
@@ -952,6 +985,9 @@ class dblink(object):
 				doebuild(myebuildpath, "cleanrm", self.myroot, self.settings,
 					tree="vartree", mydbapi=self.vartree.dbapi,
 					vartree=self.vartree)
+			
+			# regenerate reverse NEEDED map
+			self.vartree.dbapi.update_library_map()
 
 		finally:
 			if builddir_lock:
@@ -1162,6 +1198,7 @@ class dblink(object):
 		
 		This function does the following:
 		
+		Preserve old libraries that are still used.
 		Collision Protection.
 		calls doebuild(mydo=pkg_preinst)
 		Merges the package to the livefs
@@ -1197,6 +1234,10 @@ class dblink(object):
 		if not os.path.exists(self.dbcatdir):
 			os.makedirs(self.dbcatdir)
 
+		myfilelist = listdir(srcroot, recursive=1, filesonly=1, followSymlinks=True)
+		mysymlinks = filter(os.path.islink, listdir(srcroot, recursive=1, filesonly=0, followSymlinks=False))
+		myfilelist.extend(mysymlinks)
+
 		otherversions = []
 		for v in self.vartree.dbapi.cp_list(self.mysplit[0]):
 			otherversions.append(v.split("/")[1])
@@ -1209,17 +1250,59 @@ class dblink(object):
 				catsplit(slot_matches[0])[1], destroot, self.settings,
 				vartree=self.vartree)
 
+		# Preserve old libs if they are still in use
+		if slot_matches and "preserve-libs" in self.settings.features:
+			# read global reverse NEEDED map
+			libmap = self.vartree.dbapi.get_library_map()
+
+			# get list of libraries from old package instance
+			old_contents = self._installed_instance.getcontents().keys()
+			old_libs = set([os.path.basename(x) for x in old_contents]).intersection(libmap.keys())
+
+			# get list of libraries from new package instance
+			mylibs = set([os.path.basename(x) for x in myfilelist]).intersection(libmap.keys())
+
+			# check which libs are present in the old, but not the new package instance
+			preserve_libs = old_libs.difference(mylibs)
+
+			# ignore any libs that are only internally used by the package
+			for lib in preserve_libs.copy():
+				old_contents_without_libs = [x for x in old_contents if os.path.basename(x) not in preserve_libs]
+				if len(set(libmap[lib]).intersection(old_contents_without_libs)) == len(libmap[lib]):
+					preserve_libs.remove(lib)
+			
+			# get the real paths for the libs
+			preserve_paths = [x for x in old_contents if os.path.basename(x) in preserve_libs]
+
+			# inject files that should be preserved into our image dir
+			import shutil
+			for x in preserve_paths:
+				print "injecting %s into %s" % (x, srcroot)
+				mydir = os.path.join(srcroot, os.path.dirname(x))
+				if not os.path.exists(mydir):
+					os.makedirs(mydir)
+
+				# resolve symlinks and extend preserve list
+				# NOTE: we're extending the list in the loop to emulate recursion to
+				#       also get indirect symlinks
+				if os.path.islink(x):
+					linktarget = os.readlink(x)
+					os.symlink(linktarget, os.path.join(srcroot, x.lstrip(os.sep)))
+					if linktarget[0] != os.sep:
+						linktarget = os.path.join(os.path.dirname(x), linktarget)
+					preserve_paths.append(linktarget)
+				else:
+					shutil.copy2(x, os.path.join(srcroot, x.lstrip(os.sep)))
+				
+
 		# check for package collisions
 		if "collision-protect" in self.settings.features:
 			collision_ignore = set([normalize_path(myignore) for myignore in \
 				self.settings.get("COLLISION_IGNORE", "").split()])
-			myfilelist = listdir(srcroot, recursive=1, filesonly=1, followSymlinks=False)
 
 			# the linkcheck only works if we are in srcroot
 			mycwd = os.getcwd()
 			os.chdir(srcroot)
-			mysymlinks = filter(os.path.islink, listdir(srcroot, recursive=1, filesonly=0, followSymlinks=False))
-			myfilelist.extend(mysymlinks)
 			mysymlinked_directories = [s + os.path.sep for s in mysymlinks]
 			del mysymlinks
 
@@ -1441,6 +1524,9 @@ class dblink(object):
 
 		writedict(cfgfiledict, conf_mem_file)
 		del conf_mem_file
+
+		# regenerate reverse NEEDED map
+		self.vartree.dbapi.update_library_map()
 
 		#do postinst script
 		a = doebuild(myebuild, "postinst", destroot, self.settings, use_cache=0,
