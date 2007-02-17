@@ -35,7 +35,6 @@ from portage.const import NEWS_LIB_PATH
 
 import emerge.help
 import portage.xpak, commands, errno, re, socket, time, types
-import output
 from portage.output import blue, bold, colorize, darkblue, darkgreen, darkred, green, \
 	havecolor, nc_len, nocolor, red, teal, turquoise, white, xtermTitle, \
 	xtermTitleReset, yellow
