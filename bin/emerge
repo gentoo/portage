@@ -1,12 +1,12 @@
 #!/usr/bin/python
 
 try:
-	import emerge
+	from emerge import *
 except ImportError:
 	from os import path as osp
 	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
-	import emerge
+	from emerge import *
 
 if __name__ == "__main__":
 	import sys
-	sys.exit(emerge.emerge_main())
+	sys.exit(emerge_main())
