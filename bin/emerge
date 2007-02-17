@@ -1673,9 +1673,10 @@ class depgraph:
 								mreasons = portage.getmaskingstatus(p,
 									settings=pkgsettings, portdb=portdb)
 								print "- "+p+" (masked by: "+", ".join(mreasons)+")"
-								comment = portage.getmaskingreason(p,
-									settings=pkgsettings, portdb=portdb)
+								comment, filename = portage.getmaskingreason(p,
+									settings=pkgsettings, portdb=portdb, return_location=True)
 								if comment and comment != oldcomment:
+									print filename+":"
 									print comment
 									oldcomment = comment
 							print
