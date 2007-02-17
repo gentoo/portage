@@ -232,10 +232,11 @@ shortmapping={
 
 def emergelog(xterm_titles, mystr, short_msg=None):
 	if xterm_titles:
-		if short_msg:
-			xtermTitle(short_msg)
-		else:
-			xtermTitle(mystr)
+		if short_msg == None:
+			short_msg = mystr
+		if "HOSTNAME" in os.environ.keys():
+			short_msg = os.environ["HOSTNAME"]+": "+short_msg
+		xtermTitle(short_msg)
 	try:
 		file_path = "/var/log/emerge.log"
 		mylogfile = open(file_path, "a")
