@@ -7,7 +7,7 @@
 
 eval $(/usr/lib/portage/bin/portageq envvar -v FEATURES FETCHCOMMAND \
 	GENTOO_MIRRORS PORTAGE_INST_UID PORTAGE_INST_GID PORTAGE_NICENESS \
-	PORTAGE_TMPDIR PORTDIR)
+	PORTAGE_TMPDIR PORTDIR PORTAGE_RSYNC_EXTRA_OPTS)
 DISTDIR="${PORTAGE_TMPDIR}/emerge-webrsync"
 
 # If PORTAGE_NICENESS is overriden via the env then it will
@@ -70,7 +70,7 @@ sync_local() {
 		cd portage
 		rsync -av --progress --stats --delete --delete-after \
 		--exclude='/distfiles' --exclude='/packages' \
-		--exclude='/local' . ${PORTDIR%%/}
+		--exclude='/local' ${PORTAGE_RSYNC_EXTRA_OPTS} . ${PORTDIR%%/}
 		cd ..
 		echo "cleaning up"
 		rm -rf portage
