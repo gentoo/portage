@@ -1,1 +1,1 @@
-portage/manifest.py
+portage_compat_namespace.py

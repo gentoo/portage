@@ -1,1 +1,1 @@
-portage/output.py
+portage_compat_namespace.py

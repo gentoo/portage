@@ -1,1 +1,1 @@
-portage/dispatch_conf.py
+portage_compat_namespace.py
