@@ -1522,6 +1522,10 @@ class depgraph:
 		dependencies are satisfiable. """
 		if arg:
 			mymerge = [depstring]
+			pprovided = pkgsettings.pprovideddict.get(
+				portage.dep_getkey(depstring))
+			if pprovided and portage.match_from_list(depstring, pprovided):
+				mymerge = []
 		else:
 			try:
 				if myparent and p_status == "nomerge":
