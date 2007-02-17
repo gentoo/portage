@@ -1521,23 +1521,27 @@ class depgraph:
 		#processing dependencies
 		""" Call portage.dep_check to evaluate the use? conditionals and make sure all
 		dependencies are satisfiable. """
-		try:
-			if myparent and p_status == "nomerge":
-				portage.dep._dep_check_strict = False
-			mycheck = portage.dep_check(depstring, None,
-				pkgsettings, myuse=myuse,
-				use_binaries=("--usepkgonly" in self.myopts),
-				myroot=myroot, trees=self.trees)
-		finally:
-			portage.dep._dep_check_strict = True
-
-		if not mycheck[0]:
-			if myparent:
-				show_invalid_depstring_notice(myparent, depstring, mycheck[1])
-			else:
-				sys.stderr.write("\n%s\n%s\n" % (depstring, mycheck[1]))
-			return 0
-		mymerge = mycheck[1]
+		if arg:
+			mymerge = [depstring]
+		else:
+			try:
+				if myparent and p_status == "nomerge":
+					portage.dep._dep_check_strict = False
+				mycheck = portage.dep_check(depstring, None,
+					pkgsettings, myuse=myuse,
+					use_binaries=("--usepkgonly" in self.myopts),
+					myroot=myroot, trees=self.trees)
+			finally:
+				portage.dep._dep_check_strict = True
+	
+			if not mycheck[0]:
+				if myparent:
+					show_invalid_depstring_notice(
+						myparent, depstring, mycheck[1])
+				else:
+					sys.stderr.write("\n%s\n%s\n" % (depstring, mycheck[1]))
+				return 0
+			mymerge = mycheck[1]
 
 		if not mymerge and arg and \
 			portage.best_match_to_list(depstring, self.args_keys):
