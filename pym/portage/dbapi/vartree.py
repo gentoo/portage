@@ -525,7 +525,7 @@ class vardbapi(dbapi):
 
 	def get_library_map(self):
 		""" Read the global library->consumer map for this vdb instance """
-		mapfilename = self.getpath(".NEEDED")
+		mapfilename = os.path.join(self.root, CACHE_PATH, "library_consumers")
 		if not os.path.exists(mapfilename):
 			self.update_library_map()
 		rValue = {}
@@ -537,7 +537,7 @@ class vardbapi(dbapi):
 
 	def update_library_map(self):
 		""" Update the global library->consumer map for this vdb instance. """
-		mapfilename = self.getpath(".NEEDED")
+		mapfilename = os.path.join(self.root, CACHE_PATH, "library_consumers")
 		obj_dict = {}
 		for cpv in self.cpv_all():
 			needed_list = self.aux_get(cpv, ["NEEDED"])[0]
