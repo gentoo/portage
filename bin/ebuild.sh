@@ -310,7 +310,7 @@ unpack() {
 	local x
 	local y
 	local myfail
-	local tar_opts="--exclude ." # preserve ${PORTAGE_WORKDIR_MODE}
+	local tar_opts=""
 	[ -z "$*" ] && die "Nothing passed to the 'unpack' command"
 
 	for x in "$@"; do
