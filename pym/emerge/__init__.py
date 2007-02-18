@@ -2025,8 +2025,18 @@ class depgraph:
 						# output, so it's disabled in reversed mode.
 						selected_nodes = nodes
 					else:
-						# Only pop one node for optimal merge order.
-						selected_nodes = [nodes[0]]
+						# For optimal merge order:
+						#  * Only pop one node.
+						#  * Removing a root node (node without a parent)
+						#    will not produce a leaf node, so avoid it.
+						for node in nodes:
+							if mygraph.parent_nodes(node):
+								# found a non-root node
+								selected_nodes = [node]
+								break
+						if not selected_nodes:
+							# settle for a root node
+							selected_nodes = [nodes[0]]
 				else:
 					"""Recursively gather a group of nodes that RDEPEND on
 					eachother.  This ensures that they are merged as a group
