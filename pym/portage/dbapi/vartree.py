@@ -1219,7 +1219,7 @@ class dblink(object):
 			elif len(consumers.difference(contents)) == 0:
 				otherlibs = set(otherlibs)
 				for ol in otherlibs.intersection(consumers):
-					if has_external_consumers(ol, contents, otherlibs.copy().remove(lib)):
+					if has_external_consumers(ol, contents, otherlibs.difference([lib])):
 						return True
 				return False
 			# used by external objects directly
