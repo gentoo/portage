@@ -4645,7 +4645,7 @@ def action_build(settings, trees, mtimedb,
 	myopts, myaction, myfiles, spinner):
 	ldpath_mtimes = mtimedb["ldpath"]
 	favorites=[]
-	if ("--ask" in myopts or "--pretend" in myopts) and not "--quiet" in myopts:
+	if "--quiet" not in myopts:
 		action = ""
 		if "--fetchonly" in myopts or "--fetch-all-uri" in myopts:
 			action = "fetched"
