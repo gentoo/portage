@@ -4734,7 +4734,7 @@ def action_build(settings, trees, mtimedb,
 			sys.stderr.write("\nThese are required by '--usepkgonly' -- Terminating.\n\n")
 			sys.exit(1)
 
-	if "--ask" in myopts:
+	if "--pretend" not in myopts:
 		if "--resume" in myopts:
 			validate_merge_list(trees, mtimedb["resume"]["mergelist"])
 			mymergelist = mtimedb["resume"]["mergelist"]
@@ -4777,13 +4777,13 @@ def action_build(settings, trees, mtimedb,
 			else:
 				prompt="Would you like to merge these packages?"
 		print
-		if userquery(prompt)=="No":
+		if "--ask" in myopts and userquery(prompt) == "No":
 			print
 			print "Quitting."
 			print
 			sys.exit(0)
 		# Don't ask again (e.g. when auto-cleaning packages after merge)
-		del myopts["--ask"]
+		myopts.pop("--ask", None)
 
 	if ("--pretend" in myopts) and not ("--fetchonly" in myopts or "--fetch-all-uri" in myopts):
 		if ("--resume" in myopts):
