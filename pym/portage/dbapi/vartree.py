@@ -1266,14 +1266,33 @@ class dblink(object):
 			preserve_libs = old_libs.difference(mylibs)
 
 			# ignore any libs that are only internally used by the package
-			for lib in preserve_libs.copy():
-				old_contents_without_libs = [x for x in old_contents if os.path.basename(x) not in preserve_libs]
-				if len(set(libmap[lib]).intersection(old_contents_without_libs)) == len(libmap[lib]):
-					preserve_libs.remove(lib)
+			def has_external_consumers(lib, contents, otherlibs):
+				consumers = set(libmap[lib])
+				contents_without_libs = [x for x in contents if not os.path.basename(x) in otherlibs]
+				
+				# just used by objects that will be autocleaned
+				if len(consumers.difference(contents_without_libs)) == 0:
+					return False
+				# used by objects that are referenced as well, need to check those 
+				# recursively to break any reference cycles
+				elif len(consumers.difference(contents)) == 0:
+					otherlibs = set(otherlibs)
+					for ol in otherlibs.intersection(consumers):
+						if has_external_consumers(ol, contents, otherlibs.copy().remove(lib)):
+							return True
+					return False
+				# used by external objects directly
+				else:
+					return True
+
+			for lib in list(preserve_libs):
+				if not has_external_consumers(lib, old_contents, preserve_libs):
+					preserve_libs.remove(lib)						
 			
 			# get the real paths for the libs
 			preserve_paths = [x for x in old_contents if os.path.basename(x) in preserve_libs]
-
+			del old_contents, old_libs, mylibs, preserve_libs
+			
 			# inject files that should be preserved into our image dir
 			import shutil
 			for x in preserve_paths:
@@ -1293,7 +1312,7 @@ class dblink(object):
 					preserve_paths.append(linktarget)
 				else:
 					shutil.copy2(x, os.path.join(srcroot, x.lstrip(os.sep)))
-				
+			del preserve_paths
 
 		# check for package collisions
 		if "collision-protect" in self.settings.features:
