@@ -2,7 +2,8 @@
 
 import sys, os
 from optparse import OptionParser, OptionValueError
-
+if not hasattr(__builtins__, "set"):
+	from sets import Set as set
 import re
 try:
 	import portage
@@ -21,16 +22,27 @@ class WorldHandler(object):
 	def __init__(self):
 		self.invalid = []
 		self.not_installed = []
+		self.invalid_category = []
 		self.okay = []
 		self.world_file = os.path.join("/", portage.const.WORLD_FILE)
 		self.found = os.access(self.world_file, os.R_OK)
 
+		categories = set(portage.settings.categories)
+		myroot = portage.settings["ROOT"]
+		vardb = portage.db[myroot]["vartree"].dbapi
+
 		for atom in open(self.world_file).read().split():
 			if not portage.isvalidatom(atom):
 				self.invalid.append(atom)
-			elif not portage.db["/"]["vartree"].dbapi.match(atom):
+				continue
+			okay = True
+			if not vardb.match(atom):
 				self.not_installed.append(atom)
-			else:
+				okay = False
+			if portage.catsplit(atom)[0] not in categories:
+				self.invalid_category.append(atom)
+				okay = False
+			if okay:
 				self.okay.append(atom)
 
 	def check(self):
@@ -38,6 +50,7 @@ class WorldHandler(object):
 		if self.found:
 			errors += map(lambda x: "'%s' is not a valid atom" % x, self.invalid)
 			errors += map(lambda x: "'%s' is not installed" % x, self.not_installed)
+			errors += map(lambda x: "'%s' has a category that is not listed in /etc/portage/categories" % x, self.invalid_category)
 		else:
 			errors.append(self.world_file + " could not be opened for reading")
 		return errors
