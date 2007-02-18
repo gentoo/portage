@@ -1192,136 +1192,78 @@ class dblink(object):
 		return True
 
 
-	def treewalk(self, srcroot, destroot, inforoot, myebuild, cleanup=0,
-		mydbapi=None, prev_mtimes=None):
-		"""
-		
-		This function does the following:
-		
-		Preserve old libraries that are still used.
-		Collision Protection.
-		calls doebuild(mydo=pkg_preinst)
-		Merges the package to the livefs
-		unmerges old version (if required)
-		calls doebuild(mydo=pkg_postinst)
-		calls env_update
-		
-		@param srcroot: Typically this is ${D}
-		@type srcroot: String (Path)
-		@param destroot: Path to merge to (usually ${ROOT})
-		@type destroot: String (Path)
-		@param inforoot: root of the vardb entry ?
-		@type inforoot: String (Path)
-		@param myebuild: path to the ebuild that we are processing
-		@type myebuild: String (Path)
-		@param mydbapi: dbapi which is handed to doebuild.
-		@type mydbapi: portdbapi instance
-		@param prev_mtimes: { Filename:mtime } mapping for env_update
-		@type prev_mtimes: Dictionary
-		@rtype: Boolean
-		@returns:
-		1. 0 on success
-		2. 1 on failure
-		
-		secondhand is a list of symlinks that have been skipped due to their target
-		not existing; we will merge these symlinks at a later time.
-		"""
-		if not os.path.isdir(srcroot):
-			writemsg("!!! Directory Not Found: D='%s'\n" % srcroot,
-				noiselevel=-1)
-			return 1
+	def _preserve_libs(self, srcroot, destroot, mycontents):
+		# read global reverse NEEDED map
+		libmap = self.vartree.dbapi.get_library_map()
 
-		if not os.path.exists(self.dbcatdir):
-			os.makedirs(self.dbcatdir)
+		# get list of libraries from old package instance
+		old_contents = self._installed_instance.getcontents().keys()
+		old_libs = set([os.path.basename(x) for x in old_contents]).intersection(libmap.keys())
 
-		myfilelist = listdir(srcroot, recursive=1, filesonly=1, followSymlinks=True)
-		mysymlinks = filter(os.path.islink, listdir(srcroot, recursive=1, filesonly=0, followSymlinks=False))
-		myfilelist.extend(mysymlinks)
+		# get list of libraries from new package instance
+		mylibs = set([os.path.basename(x) for x in mycontents]).intersection(libmap.keys())
 
-		otherversions = []
-		for v in self.vartree.dbapi.cp_list(self.mysplit[0]):
-			otherversions.append(v.split("/")[1])
+		# check which libs are present in the old, but not the new package instance
+		preserve_libs = old_libs.difference(mylibs)
 
-		slot_matches = self.vartree.dbapi.match(
-			"%s:%s" % (self.mysplit[0], self.settings["SLOT"]))
-		if slot_matches:
-			# Used by self.isprotected().
-			self._installed_instance = dblink(self.cat,
-				catsplit(slot_matches[0])[1], destroot, self.settings,
-				vartree=self.vartree)
-
-		# Preserve old libs if they are still in use
-		if slot_matches and "preserve-libs" in self.settings.features:
-			# read global reverse NEEDED map
-			libmap = self.vartree.dbapi.get_library_map()
-
-			# get list of libraries from old package instance
-			old_contents = self._installed_instance.getcontents().keys()
-			old_libs = set([os.path.basename(x) for x in old_contents]).intersection(libmap.keys())
-
-			# get list of libraries from new package instance
-			mylibs = set([os.path.basename(x) for x in myfilelist]).intersection(libmap.keys())
-
-			# check which libs are present in the old, but not the new package instance
-			preserve_libs = old_libs.difference(mylibs)
-
-			# ignore any libs that are only internally used by the package
-			def has_external_consumers(lib, contents, otherlibs):
-				consumers = set(libmap[lib])
-				contents_without_libs = [x for x in contents if not os.path.basename(x) in otherlibs]
-				
-				# just used by objects that will be autocleaned
-				if len(consumers.difference(contents_without_libs)) == 0:
-					return False
-				# used by objects that are referenced as well, need to check those 
-				# recursively to break any reference cycles
-				elif len(consumers.difference(contents)) == 0:
-					otherlibs = set(otherlibs)
-					for ol in otherlibs.intersection(consumers):
-						if has_external_consumers(ol, contents, otherlibs.copy().remove(lib)):
-							return True
-					return False
-				# used by external objects directly
-				else:
-					return True
-
-			for lib in list(preserve_libs):
-				if not has_external_consumers(lib, old_contents, preserve_libs):
-					preserve_libs.remove(lib)						
+		# ignore any libs that are only internally used by the package
+		def has_external_consumers(lib, contents, otherlibs):
+			consumers = set(libmap[lib])
+			contents_without_libs = [x for x in contents if not os.path.basename(x) in otherlibs]
 			
-			# get the real paths for the libs
-			preserve_paths = [x for x in old_contents if os.path.basename(x) in preserve_libs]
-			del old_contents, old_libs, mylibs, preserve_libs
+			# just used by objects that will be autocleaned
+			if len(consumers.difference(contents_without_libs)) == 0:
+				return False
+			# used by objects that are referenced as well, need to check those 
+			# recursively to break any reference cycles
+			elif len(consumers.difference(contents)) == 0:
+				otherlibs = set(otherlibs)
+				for ol in otherlibs.intersection(consumers):
+					if has_external_consumers(ol, contents, otherlibs.copy().remove(lib)):
+						return True
+				return False
+			# used by external objects directly
+			else:
+				return True
+
+		for lib in list(preserve_libs):
+			if not has_external_consumers(lib, old_contents, preserve_libs):
+				preserve_libs.remove(lib)						
 			
-			# inject files that should be preserved into our image dir
-			import shutil
-			for x in preserve_paths:
-				print "injecting %s into %s" % (x, srcroot)
-				mydir = os.path.join(srcroot, os.path.dirname(x))
-				if not os.path.exists(mydir):
-					os.makedirs(mydir)
+		# get the real paths for the libs
+		preserve_paths = [x for x in old_contents if os.path.basename(x) in preserve_libs]
+		del old_contents, old_libs, mylibs, preserve_libs
+			
+		# inject files that should be preserved into our image dir
+		import shutil
+		for x in preserve_paths:
+			print "injecting %s into %s" % (x, srcroot)
+			mydir = os.path.join(srcroot, os.path.dirname(x))
+			if not os.path.exists(mydir):
+				os.makedirs(mydir)
 
-				# resolve symlinks and extend preserve list
-				# NOTE: we're extending the list in the loop to emulate recursion to
-				#       also get indirect symlinks
-				if os.path.islink(x):
-					linktarget = os.readlink(x)
-					os.symlink(linktarget, os.path.join(srcroot, x.lstrip(os.sep)))
-					if linktarget[0] != os.sep:
-						linktarget = os.path.join(os.path.dirname(x), linktarget)
-					preserve_paths.append(linktarget)
-				else:
-					shutil.copy2(x, os.path.join(srcroot, x.lstrip(os.sep)))
-			del preserve_paths
-
-		# check for package collisions
-		if "collision-protect" in self.settings.features:
+			# resolve symlinks and extend preserve list
+			# NOTE: we're extending the list in the loop to emulate recursion to
+			#       also get indirect symlinks
+			if os.path.islink(x):
+				linktarget = os.readlink(x)
+				os.symlink(linktarget, os.path.join(srcroot, x.lstrip(os.sep)))
+				if linktarget[0] != os.sep:
+					linktarget = os.path.join(os.path.dirname(x), linktarget)
+				preserve_paths.append(linktarget)
+			else:
+				shutil.copy2(os.path.join(destroot, x), os.path.join(srcroot, x.lstrip(os.sep)))
+		del preserve_paths
+	
+	def _collision_protect(self, srcroot, destroot, otherversions, mycontents, mysymlinks):
 			collision_ignore = set([normalize_path(myignore) for myignore in \
 				self.settings.get("COLLISION_IGNORE", "").split()])
 
 			# the linkcheck only works if we are in srcroot
 			mycwd = os.getcwd()
 			os.chdir(srcroot)
+
+
 			mysymlinked_directories = [s + os.path.sep for s in mysymlinks]
 			del mysymlinks
 
@@ -1419,6 +1361,78 @@ class dblink(object):
 				os.chdir(mycwd)
 			except OSError:
 				pass
+
+	def treewalk(self, srcroot, destroot, inforoot, myebuild, cleanup=0,
+		mydbapi=None, prev_mtimes=None):
+		"""
+		
+		This function does the following:
+		
+		calls self._preserve_libs if FEATURES=preserve-libs
+		calls self._collision_protect if FEATURES=collision-protect
+		calls doebuild(mydo=pkg_preinst)
+		Merges the package to the livefs
+		unmerges old version (if required)
+		calls doebuild(mydo=pkg_postinst)
+		calls env_update
+		calls elog_process
+		
+		@param srcroot: Typically this is ${D}
+		@type srcroot: String (Path)
+		@param destroot: Path to merge to (usually ${ROOT})
+		@type destroot: String (Path)
+		@param inforoot: root of the vardb entry ?
+		@type inforoot: String (Path)
+		@param myebuild: path to the ebuild that we are processing
+		@type myebuild: String (Path)
+		@param mydbapi: dbapi which is handed to doebuild.
+		@type mydbapi: portdbapi instance
+		@param prev_mtimes: { Filename:mtime } mapping for env_update
+		@type prev_mtimes: Dictionary
+		@rtype: Boolean
+		@returns:
+		1. 0 on success
+		2. 1 on failure
+		
+		secondhand is a list of symlinks that have been skipped due to their target
+		not existing; we will merge these symlinks at a later time.
+		"""
+		if not os.path.isdir(srcroot):
+			writemsg("!!! Directory Not Found: D='%s'\n" % srcroot,
+				noiselevel=-1)
+			return 1
+
+		if not os.path.exists(self.dbcatdir):
+			os.makedirs(self.dbcatdir)
+
+		otherversions = []
+		for v in self.vartree.dbapi.cp_list(self.mysplit[0]):
+			otherversions.append(v.split("/")[1])
+
+		slot_matches = self.vartree.dbapi.match(
+			"%s:%s" % (self.mysplit[0], self.settings["SLOT"]))
+		if slot_matches:
+			# Used by self.isprotected().
+			self._installed_instance = dblink(self.cat,
+				catsplit(slot_matches[0])[1], destroot, self.settings,
+				vartree=self.vartree)
+
+		myfilelist = None
+		mylinklist = None
+
+		# Preserve old libs if they are still in use
+		if slot_matches and "preserve-libs" in self.settings.features:
+			myfilelist = listdir(srcroot, recursive=1, filesonly=1, followSymlinks=True)
+			mylinklist = filter(os.path.islink, listdir(srcroot, recursive=1, filesonly=0, followSymlinks=False))
+			self._preserve_libs(srcroot, destroot, myfilelist+mylinklist)
+
+		# check for package collisions
+		if "collision-protect" in self.settings.features:
+			if myfilelist == None:
+				myfilelist = listdir(srcroot, recursive=1, filesonly=1, followSymlinks=True)
+			if mylinklist == None:
+				mylinklist = filter(os.path.islink, listdir(srcroot, recursive=1, filesonly=0, followSymlinks=False))
+			self._collision_protect(srcroot, destroot, otherversions, myfilelist+mylinklist, mylinklist)
 
 		if os.stat(srcroot).st_dev == os.stat(destroot).st_dev:
 			""" The merge process may move files out of the image directory,
