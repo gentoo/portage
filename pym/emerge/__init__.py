@@ -2076,14 +2076,10 @@ class depgraph:
 						selected_nodes = [blocker_deps.pop()]
 
 			if not selected_nodes:
-				if reversed:
-					"""The circular deps ouput should have less noise when
-					altlist is not in reversed mode."""
-					self.altlist()
-				print "!!! Error: circular dependencies:"
-				print
-				# Reduce the noise level to a minimum via elimination of root
-				# nodes.
+				# No leaf nodes are available, so we have a circular
+				# dependency panic situation.  Reduce the noise level to a
+				# minimum via repeated elimination of root nodes since they
+				# have no parents and thus can not be part of a cycle.
 				while True:
 					root_nodes = mygraph.root_nodes(
 						ignore_priority=DepPriority.SOFT)
@@ -2091,7 +2087,18 @@ class depgraph:
 						break
 					for node in root_nodes:
 						mygraph.remove(node)
+				# Display the USE flags that are enabled on nodes that are part
+				# of dependency cycles in case that helps the user decide to
+				# disable some of them.
+				self.myopts.pop("--quiet", None)
+				self.myopts.pop("--verbose", None)
+				self.display([list(node) for node in mygraph.order])
+				print "!!! Error: circular dependencies:"
+				print
 				mygraph.debug_print()
+				print
+				print "!!! Note that circular dependencies can often be avoided by temporarily"
+				print "!!! disabling USE flags that trigger optional dependencies."
 				sys.exit(1)
 
 			for node in selected_nodes:
