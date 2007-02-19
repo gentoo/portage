@@ -2101,10 +2101,21 @@ class depgraph:
 				# Display the USE flags that are enabled on nodes that are part
 				# of dependency cycles in case that helps the user decide to
 				# disable some of them.
+				display_order = []
+				tempgraph = mygraph.copy()
+				while not tempgraph.empty():
+					nodes = tempgraph.leaf_nodes()
+					if not nodes:
+						node = tempgraph.order[0]
+					else:
+						node = nodes[0]
+					display_order.append(list(node))
+					tempgraph.remove(node)
+				display_order.reverse()
 				self.myopts.pop("--quiet", None)
 				self.myopts.pop("--verbose", None)
 				self.myopts["--tree"] = True
-				self.display([list(node) for node in mygraph.order])
+				self.display(display_order)
 				print "!!! Error: circular dependencies:"
 				print
 				mygraph.debug_print()
