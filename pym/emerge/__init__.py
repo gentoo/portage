@@ -2092,6 +2092,7 @@ class depgraph:
 				# disable some of them.
 				self.myopts.pop("--quiet", None)
 				self.myopts.pop("--verbose", None)
+				self.myopts["--tree"] = True
 				self.display([list(node) for node in mygraph.order])
 				print "!!! Error: circular dependencies:"
 				print
