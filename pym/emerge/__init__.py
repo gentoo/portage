@@ -1971,6 +1971,16 @@ class depgraph:
 				break
 		return acceptable
 
+	def _merge_order_bias(self, nodes):
+		"""Order nodes from highest to lowest overall reference count for
+		optimal leaf node selection."""
+		node_info = {}
+		for node in self._parent_child_digraph.order:
+			node_info[node] = len(self.digraph.parent_nodes(node))
+		def cmp_merge_preference(node1, node2):
+			return node_info[node2] - node_info[node1]
+		nodes.sort(cmp_merge_preference)
+
 	def altlist(self, reversed=False):
 		if reversed in self._altlist_cache:
 			return self._altlist_cache[reversed][:]
@@ -1980,6 +1990,7 @@ class depgraph:
 			self._altlist_cache[reversed] = retlist[:]
 			return retlist
 		mygraph=self.digraph.copy()
+		self._merge_order_bias(mygraph.order)
 		myblockers = self.blocker_digraph.copy()
 		retlist=[]
 		circular_blocks = False
