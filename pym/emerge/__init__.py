@@ -4764,7 +4764,8 @@ def action_build(settings, trees, mtimedb,
 			sys.stderr.write("\nThese are required by '--usepkgonly' -- Terminating.\n\n")
 			sys.exit(1)
 
-	if "--pretend" not in myopts:
+	if "--pretend" not in myopts and \
+		not ("--quiet" in myopts and "--ask" not in myopts):
 		if "--resume" in myopts:
 			validate_merge_list(trees, mtimedb["resume"]["mergelist"])
 			mymergelist = mtimedb["resume"]["mergelist"]
