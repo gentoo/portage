@@ -1689,7 +1689,7 @@ else:
 				if "/".join(xs[:2]) in mydone:
 					continue
 				mydone.append("/".join(xs[:2]))
-				repoman_settings["O"]=os.path.join(os.getcwd(), x[0], x[1])
+				repoman_settings["O"] = os.path.join(mydir, xs[0], xs[1])
 				portage.digestgen([], repoman_settings, manifestonly=1,
 					myportdb=portdb)
 		else:
