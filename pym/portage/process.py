@@ -9,7 +9,7 @@ import portage.data
 
 from portage.util import dump_traceback
 from portage.const import BASH_BINARY, SANDBOX_BINARY
-
+from portage.exception import CommandNotFound
 
 try:
 	import resource
@@ -157,7 +157,7 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 	    or not os.access(binary, os.X_OK)):
 		binary = path_lookup and find_binary(binary) or None
 		if not binary:
-			return -1
+			raise CommandNotFound(mycommand[0])
 
 	# If we haven't been told what file descriptors to use
 	# default to propogating our stdin, stdout and stderr.
