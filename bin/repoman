@@ -480,11 +480,11 @@ if mymode == "commit" and repolevel not in [1,2,3]:
 	print red("***")
 	err("Unable to identify level we're commiting from for %s" % '/'.join(reposplit))
 
-startdir=os.getcwd()
+startdir = mydir
 
 for x in range(0,repolevel-1):
 	os.chdir("..")
-repodir=os.getcwd()
+repodir = mydir
 os.chdir(startdir)
 
 def caterror(mycat):
@@ -1666,7 +1666,7 @@ else:
 				del myfiles[x]
 		mydone=[]
 		if repolevel==3:   # In a package dir
-			repoman_settings["O"]=os.getcwd()
+			repoman_settings["O"] = mydir
 			portage.digestgen([], repoman_settings, manifestonly=1,
 				myportdb=portdb)
 		elif repolevel==2: # In a category dir
@@ -1677,7 +1677,7 @@ else:
 				if xs[0] in mydone:
 					continue
 				mydone.append(xs[0])
-				repoman_settings["O"]=os.path.join(os.getcwd(), xs[0])
+				repoman_settings["O"] = os.path.join(mydir, xs[0])
 				portage.digestgen([], repoman_settings, manifestonly=1,
 					myportdb=portdb)
 		elif repolevel==1: # repo-cvsroot
