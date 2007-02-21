@@ -480,12 +480,10 @@ if mymode == "commit" and repolevel not in [1,2,3]:
 	print red("***")
 	err("Unable to identify level we're commiting from for %s" % '/'.join(reposplit))
 
-startdir = mydir
-
+startdir = normalize_path(mydir)
+repodir = startdir
 for x in range(0,repolevel-1):
-	os.chdir("..")
-repodir = mydir
-os.chdir(startdir)
+	repodir = os.path.dirname(repodir)
 
 def caterror(mycat):
 	err(mycat+" is not an official category.  Skipping QA checks in this directory.\nPlease ensure that you add "+catdir+" to "+repodir+"/profiles/categories\nif it is a new category.")
