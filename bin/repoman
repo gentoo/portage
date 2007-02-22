@@ -1746,7 +1746,7 @@ else:
 
 	if manifest_commit_required or signed:
 		if "--pretend" in myoptions:
-			print "(/usr/bin/cvs -q commit -F "+commitmessagefile+")"
+			print "(/usr/bin/cvs -q commit -F commitmessagefile)"
 		else:
 			fd, commitmessagefile = tempfile.mkstemp(".repoman.msg")
 			mymsg = os.fdopen(fd, "w")
