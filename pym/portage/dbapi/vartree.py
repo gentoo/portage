@@ -1286,8 +1286,8 @@ class dblink(object):
 
 			collisions = []
 
-			print green("*")+" checking "+str(len(myfilelist))+" files for package collisions"
-			for f in myfilelist:
+			print green("*")+" checking "+str(len(mycontents))+" files for package collisions"
+			for f in mycontents:
 				nocheck = False
 				# listdir isn't intelligent enough to exclude symlinked dirs,
 				# so we have to do it ourself
