@@ -1551,6 +1551,7 @@ else:
 
 	# Manifests need to be regenerated after all other commits, so don't commit
 	# them now even if they have changed.
+	mymanifests = [f for f in mychanged if "Manifest" == os.path.basename(f)]
 	mychanged = [f for f in mychanged if "Manifest" != os.path.basename(f)]
 	myupdates=mychanged+mynew
 	myheaders=[]
@@ -1717,6 +1718,7 @@ else:
 	signed = False
 	if "sign" in repoman_settings.features:
 		signed = True
+		myfiles = myupdates + myremoved + mymanifests
 		try:
 			if repolevel==3:   # In a package dir
 				repoman_settings["O"] = "."
@@ -1725,6 +1727,8 @@ else:
 				mydone=[]
 				for x in myfiles:
 					xs=x.split("/")
+					if len(xs) < 4-repolevel:
+						continue
 					if xs[0]==".":
 						xs=xs[1:]
 					if xs[0] in mydone:
@@ -1737,6 +1741,8 @@ else:
 				mydone=[]
 				for x in myfiles:
 					xs=x.split("/")
+					if len(xs) < 4-repolevel:
+						continue
 					if xs[0]==".":
 						xs=xs[1:]
 					if "/".join(xs[:2]) in mydone:
