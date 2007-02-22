@@ -54,7 +54,7 @@ PORTAGE_RSYNC_RETRIES="3"
 # Number of seconds rsync will wait before timing out.
 #RSYNC_TIMEOUT="180"
 
-PORTAGE_RSYNC_OPTS="--recursive --links --safe-links --perms --times --compress --force --whole-file --delete --delete-after --stats --timeout=180 --exclude=/distfiles --exclude=/local --exclude=/packages"
+PORTAGE_RSYNC_OPTS="--recursive --links --safe-links --perms --times --compress --force --whole-file --delete --delete-after --stats --timeout=180 --exclude=/distfiles --exclude=/local --exclude=/packages --filter=H_**/files/digest-*"
 
 # Minimal CONFIG_PROTECT
 CONFIG_PROTECT="/etc"
