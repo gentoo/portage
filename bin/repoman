@@ -561,9 +561,13 @@ kwlist = set(portage.grabfile(os.path.join(portdir, "profiles", "arch.list")))
 if not kwlist:
 	err("Couldn't read KEYWORDS from arch.list")
 
+manifest1_compat = not os.path.exists(
+	os.path.join(portdir, "manifest1_obsolete"))
 if portdir_overlay != portdir:
 	kwlist.update(portage.grabfile(
 		os.path.join(portdir_overlay, "profiles", "arch.list")))
+	manifest1_compat = not os.path.exists(
+		os.path.join(portdir_overlay, "manifest1_obsolete"))
 
 scanlist=[]
 if repolevel==2:
@@ -824,8 +828,10 @@ for x in scanlist:
 
 	if os.path.exists(checkdir+"/files"):
 		filesdirlist=os.listdir(checkdir+"/files")
-		for y in filesdirlist:
-			if y[:7]=="digest-":
+		if manifest1_compat:
+			for y in filesdirlist:
+				if not y.startswith("digest-"):
+					continue
 				if y[7:] not in dadded:
 					#digest not added to cvs
 					stats["digest.notadded"]=stats["digest.notadded"]+1
@@ -954,7 +960,8 @@ for x in scanlist:
 			if y in dadded:
 				stats["ebuild.disjointed"]=stats["ebuild.disjointed"]+1
 				fails["ebuild.disjointed"].append(x+"/"+y+".ebuild")
-		if not os.path.exists(checkdir+"/files/digest-"+y):
+		if manifest1_compat and \
+			not os.path.exists(os.path.join(checkdir, "files", "digest-"+y)):
 			if mymode=="fix":
 				if "--pretend" in myoptions:
 					print "You will need to run:"
@@ -1595,6 +1602,47 @@ else:
 	except AttributeError:
 		print "Failed to insert portage version in message!"
 		commitmessage+="\n(Portage version: Unknown)"
+
+	if not manifest1_compat:
+		myfiles = myupdates + myremoved + mymanifests
+		filesdirs = set()
+		if repolevel == 3:
+			filesdirs.add(os.path.join(".", "files"))
+		elif repolevel in (1, 2):
+			for x in myfiles:
+				xs = x.split(os.path.sep)
+				if len(xs) < 4-repolevel:
+					continue
+				xs = xs[0:4-repolevel]
+				xs.append("files")
+				filesdirs.add(os.path.join(*xs))
+		else:
+			raise AssertionError("repolevel=%s" % str(repolevel))
+		digest_files = []
+		for x in filesdirs:
+			dir_path = os.path.join(startdir, x)
+			if not os.path.isdir(dir_path):
+				continue
+			for y in os.listdir(dir_path):
+				if y.startswith("digest-"):
+					digest_files.append(os.path.join(x, y))
+		if digest_files:
+			digest_files.sort()
+			if "--pretend" in myoptions:
+				print "(rm %s)" % " ".join(digest_files)
+				print "(/usr/bin/cvs remove %s)" % " ".join(digest_files)
+			else:
+				for x in digest_files:
+					os.unlink(os.path.join(startdir, x))
+				retval = spawn(["/usr/bin/cvs", "remove"] + digest_files,
+					env=os.environ)
+				if retval != os.EX_OK:
+					print "!!! Exiting on cvs (shell) error code:",retval
+					sys.exit(retval)
+			myremoved.extend(digest_files)
+			myremoved = list(set(myremoved))
+			myremoved.sort()
+
 	if myupdates or myremoved:
 		myfiles = myupdates + myremoved
 		fd, commitmessagefile = tempfile.mkstemp(".repoman.msg")
