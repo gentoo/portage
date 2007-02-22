@@ -2739,6 +2739,7 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
 							mysettings=fetch_settings)
 						myuris = [uri for uri in alluris \
 							if os.path.basename(uri) == myfile]
+						fetch_settings["A"] = myfile # for use by pkg_nofetch()
 						if fetch(myuris, fetch_settings):
 							success = True
 							break
