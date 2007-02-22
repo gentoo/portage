@@ -439,7 +439,8 @@ class Manifest(object):
 		else:
 			distfilehashes = {}
 		self.__init__(self.pkgdir, self.distdir,
-			fetchlist_dict=self.fetchlist_dict, from_scratch=True)
+			fetchlist_dict=self.fetchlist_dict, from_scratch=True,
+			manifest1_compat=self.compat)
 		for pkgdir, pkgdir_dirs, pkgdir_files in os.walk(self.pkgdir):
 			break
 		for f in pkgdir_files:

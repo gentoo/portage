@@ -2614,8 +2614,11 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
 				writemsg("!!! Invalid SRC_URI for '%s'.\n" % cpv, noiselevel=-1)
 				del e
 				return 0
+		mytree = os.path.dirname(os.path.dirname(mysettings["O"]))
+		manifest1_compat = not os.path.exists(
+			os.path.join(mytree, "manifest1_obsolete"))
 		mf = Manifest(mysettings["O"], mysettings["DISTDIR"],
-			fetchlist_dict=fetchlist_dict)
+			fetchlist_dict=fetchlist_dict, manifest1_compat=manifest1_compat)
 		# Don't require all hashes since that can trigger excessive
 		# fetches when sufficient digests already exist.  To ease transition
 		# while Manifest 1 is being removed, only require hashes that will
