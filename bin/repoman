@@ -1697,13 +1697,18 @@ else:
 		# Force an unsigned commit when more than one Manifest needs to be signed.
 		if repolevel < 3 and "sign" in repoman_settings.features:
 			if "--pretend" in myoptions:
-				print "(/usr/bin/cvs -q commit -F "+commitmessagefile+")"
+				print "(/usr/bin/cvs -q commit -F commitmessagefile)"
 			else:
-				mymsg=open(commitmessagefile,"w")
+				fd, commitmessagefile = tempfile.mkstemp(".repoman.msg")
+				mymsg = os.fdopen(fd, "w")
 				mymsg.write(commitmessage)
 				mymsg.write("\n (Unsigned Manifest commit)")
 				mymsg.close()
 				retval=os.system("/usr/bin/cvs -q commit -F "+commitmessagefile)
+				try:
+					os.unlink(commitmessagefile)
+				except OSError:
+					pass
 				if retval:
 					print "!!! Exiting on cvs (shell) error code:",retval
 					sys.exit(retval)
