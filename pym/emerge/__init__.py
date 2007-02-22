@@ -3795,9 +3795,9 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 				"--delete-after", # Delete only after everything else is done
 				"--stats",        # Show final statistics about what was transfered
 				"--timeout="+str(mytimeout), # IO timeout if not done in X seconds
-				"--exclude='/distfiles'",   # Exclude distfiles from consideration
-				"--exclude='/local'",       # Exclude local     from consideration
-				"--exclude='/packages'",    # Exclude packages  from consideration
+				"--exclude=/distfiles",   # Exclude distfiles from consideration
+				"--exclude=/local",       # Exclude local     from consideration
+				"--exclude=/packages",    # Exclude packages  from consideration
 				"--filter=H_**/files/digest-*" # Exclude manifest1 digests and delete on the receiving side
 			])
 
