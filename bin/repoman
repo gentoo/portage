@@ -1664,7 +1664,7 @@ else:
 				del myfiles[x]
 		mydone=[]
 		if repolevel==3:   # In a package dir
-			repoman_settings["O"] = mydir
+			repoman_settings["O"] = startdir
 			portage.digestgen([], repoman_settings, manifestonly=1,
 				myportdb=portdb)
 		elif repolevel==2: # In a category dir
@@ -1675,7 +1675,7 @@ else:
 				if xs[0] in mydone:
 					continue
 				mydone.append(xs[0])
-				repoman_settings["O"] = os.path.join(mydir, xs[0])
+				repoman_settings["O"] = os.path.join(startdir, xs[0])
 				portage.digestgen([], repoman_settings, manifestonly=1,
 					myportdb=portdb)
 		elif repolevel==1: # repo-cvsroot
@@ -1687,7 +1687,7 @@ else:
 				if "/".join(xs[:2]) in mydone:
 					continue
 				mydone.append("/".join(xs[:2]))
-				repoman_settings["O"] = os.path.join(mydir, xs[0], xs[1])
+				repoman_settings["O"] = os.path.join(startdir, xs[0], xs[1])
 				portage.digestgen([], repoman_settings, manifestonly=1,
 					myportdb=portdb)
 		else:
