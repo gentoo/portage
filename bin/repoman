@@ -1671,24 +1671,32 @@ else:
 		elif repolevel==2: # In a category dir
 			for x in myfiles:
 				xs=x.split("/")
+				if len(xs) < 4-repolevel:
+					continue
 				if xs[0]==".":
 					xs=xs[1:]
 				if xs[0] in mydone:
 					continue
 				mydone.append(xs[0])
 				repoman_settings["O"] = os.path.join(startdir, xs[0])
+				if not os.path.isdir(repoman_settings["O"]):
+					continue
 				portage.digestgen([], repoman_settings, manifestonly=1,
 					myportdb=portdb)
 		elif repolevel==1: # repo-cvsroot
 			print green("RepoMan sez:"), "\"You're rather crazy... doing the entire repository.\"\n"
 			for x in myfiles:
 				xs=x.split("/")
+				if len(xs) < 4-repolevel:
+					continue
 				if xs[0]==".":
 					xs=xs[1:]
 				if "/".join(xs[:2]) in mydone:
 					continue
 				mydone.append("/".join(xs[:2]))
 				repoman_settings["O"] = os.path.join(startdir, xs[0], xs[1])
+				if not os.path.isdir(repoman_settings["O"]):
+					continue
 				portage.digestgen([], repoman_settings, manifestonly=1,
 					myportdb=portdb)
 		else:
@@ -1735,6 +1743,8 @@ else:
 						continue
 					mydone.append(xs[0])
 					repoman_settings["O"] = os.path.join(".", xs[0])
+					if not os.path.isdir(repoman_settings["O"]):
+						continue
 					gpgsign(os.path.join(repoman_settings["O"], "Manifest"))
 			elif repolevel==1: # repo-cvsroot
 				print green("RepoMan sez:"), "\"You're rather crazy... doing the entire repository.\"\n"
@@ -1749,6 +1759,8 @@ else:
 						continue
 					mydone.append("/".join(xs[:2]))
 					repoman_settings["O"] = os.path.join(".", xs[0], xs[1])
+					if not os.path.isdir(repoman_settings["O"]):
+						continue
 					gpgsign(os.path.join(repoman_settings["O"], "Manifest"))
 		except portage.exception.PortageException, e:
 			portage.writemsg("!!! %s\n" % str(e))
