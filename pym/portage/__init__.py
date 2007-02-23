@@ -2406,6 +2406,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 								writemsg(("!!! Got:      %s\n" + \
 									"!!! Expected: %s\n") % \
 									(reason[1], reason[2]), noiselevel=-1)
+								if reason[0] == "Insufficient data for checksum verification":
+									return 0
 								if can_fetch and not restrict_fetch:
 									writemsg("Refetching...\n\n",
 										noiselevel=-1)
@@ -2545,6 +2547,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 										noiselevel=-1)
 									writemsg("!!! Got:      %s\n!!! Expected: %s\n" % \
 										(reason[1], reason[2]), noiselevel=-1)
+									if reason[0] == "Insufficient data for checksum verification":
+										return 0
 									writemsg("Removing corrupt distfile...\n", noiselevel=-1)
 									os.unlink(mysettings["DISTDIR"]+"/"+myfile)
 									fetched=0
