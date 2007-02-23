@@ -3,6 +3,8 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+if not hasattr(__builtins__, "set"):
+	from sets import Set as set
 
 from portage.const import PRIVATE_PATH,PRELINK_BINARY,HASHING_BLOCKSIZE
 import os
@@ -113,6 +115,22 @@ def verify_all(filename, mydict, calc_prelink=0, strict=0):
 		if e.errno == errno.ENOENT:
 			raise portage.exception.FileNotFound(filename)
 		return False, (str(e), None, None)
+
+	verifiable_hash_types = set(mydict).intersection(hashfunc_map)
+	verifiable_hash_types.discard("size")
+	if not verifiable_hash_types:
+		expected = set(hashfunc_map)
+		expected.discard("size")
+		expected = list(expected)
+		expected.sort()
+		expected = " ".join(expected)
+		got = set(mydict)
+		got.discard("size")
+		got = list(got)
+		got.sort()
+		got = " ".join(got)
+		return False, ("Insufficient data for checksum verification", got, expected)
+
 	for x in mydict.keys():
 		if   x == "size":
 			continue
