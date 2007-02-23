@@ -1093,7 +1093,8 @@ class depgraph:
 						priority=priority)
 			return 1
 		
-		self.spinner.update()
+		if "--nodeps" not in self.myopts:
+			self.spinner.update()
 		if mytype == "blocks":
 			if myparent and \
 				"--buildpkgonly" not in self.myopts and \
@@ -4721,11 +4722,11 @@ def action_build(settings, trees, mtimedb,
 				myresumeopts[myopt] = myarg
 		myopts=myresumeopts
 		myparams = create_depgraph_params(myopts, myaction)
-		if not "--quiet" in myopts:
+		if "--quiet" not in myopts and "--nodeps" not in myopts:
 			print "Calculating dependencies  ",
 		mydepgraph = depgraph(settings, trees,
 			myopts, myparams, spinner)
-		if not "--quiet" in myopts:
+		if "--quiet" not in myopts and "--nodeps" not in myopts:
 			print "\b\b... done!"
 	else:
 		if ("--resume" in myopts):
@@ -4734,17 +4735,17 @@ def action_build(settings, trees, mtimedb,
 
 		myparams = create_depgraph_params(myopts, myaction)
 		if myaction in ["system","world"]:
-			if not ("--quiet" in myopts):
+			if "--quiet" not in myopts and "--nodeps" not in myopts:
 				print "Calculating",myaction,"dependencies  ",
 				sys.stdout.flush()
 			mydepgraph = depgraph(settings, trees, myopts, myparams, spinner)
 			if not mydepgraph.xcreate(myaction):
 				print "!!! Depgraph creation failed."
 				sys.exit(1)
-			if not ("--quiet" in myopts):
+			if "--quiet" not in myopts and "--nodeps" not in myopts:
 				print "\b\b... done!"
 		else:
-			if not ("--quiet" in myopts):
+			if "--quiet" not in myopts and "--nodeps" not in myopts:
 				print "Calculating dependencies  ",
 				sys.stdout.flush()
 			mydepgraph = depgraph(settings, trees, myopts, myparams, spinner)
@@ -4755,7 +4756,7 @@ def action_build(settings, trees, mtimedb,
 				sys.exit(1)
 			if not retval:
 				sys.exit(1)
-			if not ("--quiet" in myopts):
+			if "--quiet" not in myopts and "--nodeps" not in myopts:
 				print "\b\b... done!"
 
 			if ("--usepkgonly" in myopts) and mydepgraph.missingbins:
