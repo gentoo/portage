@@ -4030,7 +4030,9 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 				elif (servertimestamp == 0) or (servertimestamp > mytimestamp):
 					# actual sync
 					mycommand=rsynccommand+" "+dosyncuri+"/ "+myportdir
-					exitcode=portage.spawn(mycommand,settings,free=1)
+					mycommand = mycommand.split()
+					exitcode = portage.process.spawn(mycommand,
+						env=settings.environ())
 					if exitcode in [0,1,2,3,4,11,14,20,21]:
 						break
 			elif exitcode in [0,1,2,3,4,11,14,20,21]:
