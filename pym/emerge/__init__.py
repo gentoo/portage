@@ -4680,7 +4680,8 @@ def action_build(settings, trees, mtimedb,
 	ldpath_mtimes = mtimedb["ldpath"]
 	favorites=[]
 	if "--quiet" not in myopts and \
-		("--pretend" in myopts or "--ask" in myopts or "--tree" in myopts):
+		("--pretend" in myopts or "--ask" in myopts or \
+		"--tree" in myopts or "--verbose" in myopts):
 		action = ""
 		if "--fetchonly" in myopts or "--fetch-all-uri" in myopts:
 			action = "fetched"
@@ -4770,7 +4771,8 @@ def action_build(settings, trees, mtimedb,
 			sys.exit(1)
 
 	if "--pretend" not in myopts and \
-		("--ask" in myopts or "--tree" in myopts) and \
+		("--ask" in myopts or "--tree" in myopts or \
+		"--verbose" in myopts) and \
 		not ("--quiet" in myopts and "--ask" not in myopts):
 		if "--resume" in myopts:
 			validate_merge_list(trees, mtimedb["resume"]["mergelist"])
