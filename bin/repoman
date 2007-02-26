@@ -1648,7 +1648,7 @@ elif "--pretend" not in myoptions:
 		print "Performing a "+green("cvs -n up")+" with a little magic grep to check for updates."
 		retval=getstatusoutput(portage.const.EPREFIX+"/usr/bin/cvs -n up 2>&1 | "+portage.const.EPREFIX+"/bin/egrep '^[^\?] .*' | "+portage.const.EPREFIX+"/bin/egrep -v '^. .*/digest-[^/]+|^cvs server: .* -- ignored$'")
 	if isSvn:
-		print "Performing a "+green("svn update -u")+" with a little magic grep to check for updates."
+		print "Performing a "+green("svn status -u")+" with a little magic grep to check for updates."
 		retval=getstatusoutput(portage.const.EPREFIX+"/usr/bin/svn status -u 2>&1 | "+portage.const.EPREFIX+"/bin/egrep -v '^.  +.*/digest-[^/]+' | "+portage.const.EPREFIX+"/bin/egrep -v '^Status against revision:'")
 
 	mylines=retval[1].split("\n")
