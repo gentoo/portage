@@ -548,12 +548,10 @@ if mymode == "commit" and repolevel not in [1,2,3]:
 	print red("***")
 	err("Unable to identify level we're commiting from for %s" % '/'.join(reposplit))
 
-startdir=os.getcwd()
-
+startdir = normalize_path(mydir)
+repodir = startdir
 for x in range(0,repolevel-1):
-	os.chdir("..")
-repodir=os.getcwd()
-os.chdir(startdir)
+	repodir = os.path.dirname(repodir)
 
 def caterror(mycat):
 	err(mycat+" is not an official category.  Skipping QA checks in this directory.\nPlease ensure that you add "+catdir+" to "+repodir+"/profiles/categories\nif it is a new category.")
@@ -1708,6 +1706,7 @@ elif "--pretend" not in myoptions:
 
 	# Manifests need to be regenerated after all other commits, so don't commit
 	# them now even if they have changed.
+	mymanifests = [f for f in mychanged if "Manifest" == os.path.basename(f)]
 	mychanged = [f for f in mychanged if "Manifest" != os.path.basename(f)]
 	myupdates=mychanged+mynew
 	myheaders=[]
@@ -1837,30 +1836,38 @@ elif "--pretend" not in myoptions:
 				del myfiles[x]
 		mydone=[]
 		if repolevel==3:   # In a package dir
-			repoman_settings["O"]=os.getcwd()
+			repoman_settings["O"] = startdir
 			portage.digestgen([], repoman_settings, manifestonly=1,
 				myportdb=portdb)
 		elif repolevel==2: # In a category dir
 			for x in myfiles:
 				xs=x.split("/")
+				if len(xs) < 4-repolevel:
+					continue
 				if xs[0]==".":
 					xs=xs[1:]
 				if xs[0] in mydone:
 					continue
 				mydone.append(xs[0])
-				repoman_settings["O"]=os.path.join(os.getcwd(), xs[0])
+				repoman_settings["O"] = os.path.join(startdir, xs[0])
+				if not os.path.isdir(repoman_settings["O"]):
+					continue
 				portage.digestgen([], repoman_settings, manifestonly=1,
 					myportdb=portdb)
 		elif repolevel==1: # repo-cvsroot
 			print green("RepoMan sez:"), "\"You're rather crazy... doing the entire repository.\"\n"
 			for x in myfiles:
 				xs=x.split("/")
+				if len(xs) < 4-repolevel:
+					continue
 				if xs[0]==".":
 					xs=xs[1:]
 				if "/".join(xs[:2]) in mydone:
 					continue
 				mydone.append("/".join(xs[:2]))
-				repoman_settings["O"]=os.path.join(os.getcwd(), x[0], x[1])
+				repoman_settings["O"] = os.path.join(startdir, xs[0], xs[1])
+				if not os.path.isdir(repoman_settings["O"]):
+					continue
 				portage.digestgen([], repoman_settings, manifestonly=1,
 					myportdb=portdb)
 		else:
@@ -1870,13 +1877,18 @@ elif "--pretend" not in myoptions:
 		# Force an unsigned commit when more than one Manifest needs to be signed.
 		if repolevel < 3 and "sign" in repoman_settings.features:
 			if "--pretend" in myoptions:
-				print "(cvs -q commit -F "+commitmessagefile+")"
+				print "(cvs -q commit -F commitmessagefile)"
 			else:
-				mymsg=open(commitmessagefile,"w")
+				fd, commitmessagefile = tempfile.mkstemp(".repoman.msg")
+				mymsg = os.fdopen(fd, "w")
 				mymsg.write(commitmessage)
 				mymsg.write("\n (Unsigned Manifest commit)")
 				mymsg.close()
 				retval=os.system("cvs -q commit -F "+commitmessagefile)
+				try:
+					os.unlink(commitmessagefile)
+				except OSError:
+					pass
 				if retval:
 					print "!!! Exiting on cvs (shell) error code:",retval
 					sys.exit(retval)
@@ -1885,6 +1897,7 @@ elif "--pretend" not in myoptions:
 	signed = False
 	if "sign" in repoman_settings.features:
 		signed = True
+		myfiles = myupdates + myremoved + mymanifests
 		try:
 			if repolevel==3:   # In a package dir
 				repoman_settings["O"] = "."
@@ -1893,24 +1906,32 @@ elif "--pretend" not in myoptions:
 				mydone=[]
 				for x in myfiles:
 					xs=x.split("/")
+					if len(xs) < 4-repolevel:
+						continue
 					if xs[0]==".":
 						xs=xs[1:]
 					if xs[0] in mydone:
 						continue
 					mydone.append(xs[0])
 					repoman_settings["O"] = os.path.join(".", xs[0])
+					if not os.path.isdir(repoman_settings["O"]):
+						continue
 					gpgsign(os.path.join(repoman_settings["O"], "Manifest"))
 			elif repolevel==1: # repo-cvsroot
 				print green("RepoMan sez:"), "\"You're rather crazy... doing the entire repository.\"\n"
 				mydone=[]
 				for x in myfiles:
 					xs=x.split("/")
+					if len(xs) < 4-repolevel:
+						continue
 					if xs[0]==".":
 						xs=xs[1:]
 					if "/".join(xs[:2]) in mydone:
 						continue
 					mydone.append("/".join(xs[:2]))
 					repoman_settings["O"] = os.path.join(".", xs[0], xs[1])
+					if not os.path.isdir(repoman_settings["O"]):
+						continue
 					gpgsign(os.path.join(repoman_settings["O"], "Manifest"))
 		except portage.exception.PortageException, e:
 			portage.writemsg("!!! %s\n" % str(e))
@@ -1920,9 +1941,9 @@ elif "--pretend" not in myoptions:
 	if manifest_commit_required or signed:
 		if "--pretend" in myoptions:
 			if isCvs:
-				print "(cvs -q commit -F "+commitmessagefile+")"
+				print "(cvs -q commit -F commitmessagefile)"
 			if isSvn:
-				print "(svn -q commit -F "+commitmessagefile+")"
+				print "(svn -q commit -F commitmessagefile)"
 		else:
 			fd, commitmessagefile = tempfile.mkstemp(".repoman.msg")
 			mymsg = os.fdopen(fd, "w")
