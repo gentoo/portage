@@ -3799,7 +3799,8 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 				"--exclude=/distfiles",   # Exclude distfiles from consideration
 				"--exclude=/local",       # Exclude local     from consideration
 				"--exclude=/packages",    # Exclude packages  from consideration
-				"--filter=H_**/files/digest-*" # Exclude manifest1 digests and delete on the receiving side
+				"--filter=H_**/files/digest-*", # Exclude manifest1 digests and delete on the receiving side
+				"--prune-empty-dirs"      # Prune empty ${FILESDIR} when manifest1 digests are excluded
 			])
 
 		else:
