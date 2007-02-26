@@ -349,6 +349,8 @@ class binarytree(object):
 		if (not os.path.isdir(self.pkgdir+"/All") and not getbinpkgs):
 			return 0
 
+		categories = set(self.settings.categories)
+
 		if not getbinpkgsonly:
 			pkg_paths = {}
 			dirs = listdir(self.pkgdir, dirsonly=True, EmptyOnError=True)
@@ -387,6 +389,14 @@ class binarytree(object):
 					if mycpv in pkg_paths:
 						# All is first, so it's preferred.
 						continue
+					if mycat not in categories:
+						writemsg(("!!! Binary package has an " + \
+							"unrecognized category: '%s'\n") % full_path,
+							noiselevel=-1)
+						writemsg(("!!! '%s' has a category that is not" + \
+							" listed in /etc/portage/categories\n") % mycpv,
+							noiselevel=-1)
+						continue
 					pkg_paths[mycpv] = mypath
 					self.dbapi.cpv_inject(mycpv)
 			self._pkg_paths = pkg_paths
@@ -418,6 +428,14 @@ class binarytree(object):
 					continue
 				mycat = self.remotepkgs[mypkg]["CATEGORY"].strip()
 				fullpkg = mycat+"/"+mypkg[:-5]
+				if mycat not in categories:
+					writemsg(("!!! Remote binary package has an " + \
+						"unrecognized category: '%s'\n") % fullpkg,
+						noiselevel=-1)
+					writemsg(("!!! '%s' has a category that is not" + \
+						" listed in /etc/portage/categories\n") % fullpkg,
+						noiselevel=-1)
+					continue
 				mykey = dep_getkey(fullpkg)
 				try:
 					# invalid tbz2's can hurt things.
