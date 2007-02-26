@@ -1094,7 +1094,8 @@ class depgraph:
 						priority=priority)
 			return 1
 		
-		self.spinner.update()
+		if "--nodeps" not in self.myopts:
+			self.spinner.update()
 		if mytype == "blocks":
 			if myparent and \
 				"--buildpkgonly" not in self.myopts and \
@@ -3799,7 +3800,8 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 				"--exclude=/distfiles",   # Exclude distfiles from consideration
 				"--exclude=/local",       # Exclude local     from consideration
 				"--exclude=/packages",    # Exclude packages  from consideration
-				"--filter=H_**/files/digest-*" # Exclude manifest1 digests and delete on the receiving side
+				"--filter=H_**/files/digest-*", # Exclude manifest1 digests and delete on the receiving side
+				"--prune-empty-dirs"      # Prune empty ${FILESDIR} when manifest1 digests are excluded
 			])
 
 		else:
@@ -4031,7 +4033,9 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 				elif (servertimestamp == 0) or (servertimestamp > mytimestamp):
 					# actual sync
 					mycommand=rsynccommand+" "+dosyncuri+"/ "+myportdir
-					exitcode=portage.spawn(mycommand,settings,free=1)
+					mycommand = mycommand.split()
+					exitcode = portage.process.spawn(mycommand,
+						env=settings.environ())
 					if exitcode in [0,1,2,3,4,11,14,20,21]:
 						break
 			elif exitcode in [0,1,2,3,4,11,14,20,21]:
@@ -4724,7 +4728,9 @@ def action_build(settings, trees, mtimedb,
 	myopts, myaction, myfiles, spinner):
 	ldpath_mtimes = mtimedb["ldpath"]
 	favorites=[]
-	if "--quiet" not in myopts:
+	if "--quiet" not in myopts and \
+		("--pretend" in myopts or "--ask" in myopts or \
+		"--tree" in myopts or "--verbose" in myopts):
 		action = ""
 		if "--fetchonly" in myopts or "--fetch-all-uri" in myopts:
 			action = "fetched"
@@ -4767,11 +4773,11 @@ def action_build(settings, trees, mtimedb,
 				myresumeopts[myopt] = myarg
 		myopts=myresumeopts
 		myparams = create_depgraph_params(myopts, myaction)
-		if not "--quiet" in myopts:
+		if "--quiet" not in myopts and "--nodeps" not in myopts:
 			print "Calculating dependencies  ",
 		mydepgraph = depgraph(settings, trees,
 			myopts, myparams, spinner)
-		if not "--quiet" in myopts:
+		if "--quiet" not in myopts and "--nodeps" not in myopts:
 			print "\b\b... done!"
 	else:
 		if ("--resume" in myopts):
@@ -4780,17 +4786,17 @@ def action_build(settings, trees, mtimedb,
 
 		myparams = create_depgraph_params(myopts, myaction)
 		if myaction in ["system","world"]:
-			if not ("--quiet" in myopts):
+			if "--quiet" not in myopts and "--nodeps" not in myopts:
 				print "Calculating",myaction,"dependencies  ",
 				sys.stdout.flush()
 			mydepgraph = depgraph(settings, trees, myopts, myparams, spinner)
 			if not mydepgraph.xcreate(myaction):
 				print "!!! Depgraph creation failed."
 				sys.exit(1)
-			if not ("--quiet" in myopts):
+			if "--quiet" not in myopts and "--nodeps" not in myopts:
 				print "\b\b... done!"
 		else:
-			if not ("--quiet" in myopts):
+			if "--quiet" not in myopts and "--nodeps" not in myopts:
 				print "Calculating dependencies  ",
 				sys.stdout.flush()
 			mydepgraph = depgraph(settings, trees, myopts, myparams, spinner)
@@ -4801,7 +4807,7 @@ def action_build(settings, trees, mtimedb,
 				sys.exit(1)
 			if not retval:
 				sys.exit(1)
-			if not ("--quiet" in myopts):
+			if "--quiet" not in myopts and "--nodeps" not in myopts:
 				print "\b\b... done!"
 
 			if ("--usepkgonly" in myopts) and mydepgraph.missingbins:
@@ -4814,6 +4820,8 @@ def action_build(settings, trees, mtimedb,
 			sys.exit(1)
 
 	if "--pretend" not in myopts and \
+		("--ask" in myopts or "--tree" in myopts or \
+		"--verbose" in myopts) and \
 		not ("--quiet" in myopts and "--ask" not in myopts):
 		if "--resume" in myopts:
 			validate_merge_list(trees, mtimedb["resume"]["mergelist"])
