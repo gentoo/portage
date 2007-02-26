@@ -117,9 +117,9 @@ class Manifest(object):
 		self.hashes = sets.Set(self.hashes)
 		for t in portage.const.MANIFEST2_IDENTIFIERS:
 			self.fhashdict[t] = {}
+		self.compat = manifest1_compat
 		if not from_scratch:
 			self._read()
-		self.compat = manifest1_compat
 		if fetchlist_dict != None:
 			self.fetchlist_dict = fetchlist_dict
 		else:
@@ -181,8 +181,8 @@ class Manifest(object):
 			self._readManifest(self.getFullname(), myhashdict=self.fhashdict)
 		except FileNotFound:
 			pass
-		self._readDigests(myhashdict=self.fhashdict)
-		
+		if self.compat:
+			self._readDigests(myhashdict=self.fhashdict)
 
 	def _parseManifestLines(self, mylines):
 		"""Parse manifest lines and return a list of manifest entries."""
@@ -439,7 +439,8 @@ class Manifest(object):
 		else:
 			distfilehashes = {}
 		self.__init__(self.pkgdir, self.distdir,
-			fetchlist_dict=self.fetchlist_dict, from_scratch=True)
+			fetchlist_dict=self.fetchlist_dict, from_scratch=True,
+			manifest1_compat=self.compat)
 		for pkgdir, pkgdir_dirs, pkgdir_files in os.walk(self.pkgdir):
 			break
 		for f in pkgdir_files:
