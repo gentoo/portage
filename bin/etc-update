@@ -61,6 +61,7 @@ function scan() {
 			rfile=$(echo "${file/\/\///}" | sed -e "s:^.*/::")
 			for mpath in ${CONFIG_PROTECT_MASK}; do
 				mpath="${EROOT}${mpath}"
+				mpath=$(echo "${mpath/\/\///}")
 				if [[ "${rpath}" == "${mpath}"* ]]; then
 					mv ${rpath}/${rfile} ${rpath}/${rfile:10}
 					break
