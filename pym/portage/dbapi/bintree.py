@@ -285,6 +285,17 @@ class binarytree(object):
 		use for a given cpv.  If a collision will occur with an existing
 		package from another category, the existing package will be bumped to
 		${PKGDIR}/${CATEGORY}/${PF}.tbz2 so that both can coexist."""
+		if not self.populated:
+			# Try to avoid the population routine when possible, so that
+			# FEATURES=buildpkg doesn't always force population.
+			mycat, mypkg = catsplit(cpv)
+			myfile = mypkg + ".tbz2"
+			full_path = os.path.join(self.pkgdir, "All", myfile)
+			if not os.path.exists(full_path):
+				return
+			tbz2_cat = portage.xpak.tbz2(full_path).getfile("CATEGORY")
+			if tbz2_cat and tbz2_cat.strip() == mycat:
+				return
 		full_path = self.getname(cpv)
 		if "All" == full_path.split(os.path.sep)[-2]:
 			return

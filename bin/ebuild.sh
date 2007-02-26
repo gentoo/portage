@@ -462,7 +462,7 @@ unpack() {
 	local x
 	local y
 	local myfail
-
+	local tar_opts=""
 	[ -z "$*" ] && die "Nothing passed to the 'unpack' command"
 
 	for x in "$@"; do
@@ -483,13 +483,13 @@ unpack() {
 		myfail="failure unpacking ${x}"
 		case "${x##*.}" in
 			tar)
-				tar xof "${srcdir}${x}" || die "$myfail"
+				tar xof "${srcdir}${x}" ${tar_opts} || die "$myfail"
 				;;
 			tgz)
-				tar xozf "${srcdir}${x}" || die "$myfail"
+				tar xozf "${srcdir}${x}" ${tar_opts} || die "$myfail"
 				;;
 			tbz|tbz2)
-				bzip2 -dc "${srcdir}${x}" | tar xof -
+				bzip2 -dc "${srcdir}${x}" | tar xof - ${tar_opts}
 				assert "$myfail"
 				;;
 			ZIP|zip|jar)
@@ -497,14 +497,14 @@ unpack() {
 				;;
 			gz|Z|z)
 				if [ "${y}" == "tar" ]; then
-					tar zoxf "${srcdir}${x}" || die "$myfail"
+					tar zoxf "${srcdir}${x}" ${tar_opts} || die "$myfail"
 				else
 					gzip -dc "${srcdir}${x}" > ${x%.*} || die "$myfail"
 				fi
 				;;
 			bz2|bz)
 				if [ "${y}" == "tar" ]; then
-					bzip2 -dc "${srcdir}${x}" | tar xof -
+					bzip2 -dc "${srcdir}${x}" | tar xof - ${tar_opts}
 					assert "$myfail"
 				else
 					bzip2 -dc "${srcdir}${x}" > ${x%.*} || die "$myfail"

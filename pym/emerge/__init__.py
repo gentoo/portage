@@ -1972,6 +1972,16 @@ class depgraph:
 				break
 		return acceptable
 
+	def _merge_order_bias(self, mygraph):
+		"""Order nodes from highest to lowest overall reference count for
+		optimal leaf node selection."""
+		node_info = {}
+		for node in mygraph.order:
+			node_info[node] = len(mygraph.parent_nodes(node))
+		def cmp_merge_preference(node1, node2):
+			return node_info[node2] - node_info[node1]
+		mygraph.order.sort(cmp_merge_preference)
+
 	def altlist(self, reversed=False):
 		if reversed in self._altlist_cache:
 			return self._altlist_cache[reversed][:]
@@ -1981,6 +1991,7 @@ class depgraph:
 			self._altlist_cache[reversed] = retlist[:]
 			return retlist
 		mygraph=self.digraph.copy()
+		self._merge_order_bias(mygraph)
 		myblockers = self.blocker_digraph.copy()
 		retlist=[]
 		circular_blocks = False
@@ -2026,8 +2037,18 @@ class depgraph:
 						# output, so it's disabled in reversed mode.
 						selected_nodes = nodes
 					else:
-						# Only pop one node for optimal merge order.
-						selected_nodes = [nodes[0]]
+						# For optimal merge order:
+						#  * Only pop one node.
+						#  * Removing a root node (node without a parent)
+						#    will not produce a leaf node, so avoid it.
+						for node in nodes:
+							if mygraph.parent_nodes(node):
+								# found a non-root node
+								selected_nodes = [node]
+								break
+						if not selected_nodes:
+							# settle for a root node
+							selected_nodes = [nodes[0]]
 				else:
 					"""Recursively gather a group of nodes that RDEPEND on
 					eachother.  This ensures that they are merged as a group
@@ -2067,14 +2088,10 @@ class depgraph:
 						selected_nodes = [blocker_deps.pop()]
 
 			if not selected_nodes:
-				if reversed:
-					"""The circular deps ouput should have less noise when
-					altlist is not in reversed mode."""
-					self.altlist()
-				print "!!! Error: circular dependencies:"
-				print
-				# Reduce the noise level to a minimum via elimination of root
-				# nodes.
+				# No leaf nodes are available, so we have a circular
+				# dependency panic situation.  Reduce the noise level to a
+				# minimum via repeated elimination of root nodes since they
+				# have no parents and thus can not be part of a cycle.
 				while True:
 					root_nodes = mygraph.root_nodes(
 						ignore_priority=DepPriority.SOFT)
@@ -2082,7 +2099,30 @@ class depgraph:
 						break
 					for node in root_nodes:
 						mygraph.remove(node)
+				# Display the USE flags that are enabled on nodes that are part
+				# of dependency cycles in case that helps the user decide to
+				# disable some of them.
+				display_order = []
+				tempgraph = mygraph.copy()
+				while not tempgraph.empty():
+					nodes = tempgraph.leaf_nodes()
+					if not nodes:
+						node = tempgraph.order[0]
+					else:
+						node = nodes[0]
+					display_order.append(list(node))
+					tempgraph.remove(node)
+				display_order.reverse()
+				self.myopts.pop("--quiet", None)
+				self.myopts.pop("--verbose", None)
+				self.myopts["--tree"] = True
+				self.display(display_order)
+				print "!!! Error: circular dependencies:"
+				print
 				mygraph.debug_print()
+				print
+				print "!!! Note that circular dependencies can often be avoided by temporarily"
+				print "!!! disabling USE flags that trigger optional dependencies."
 				sys.exit(1)
 
 			for node in selected_nodes:
@@ -4683,7 +4723,7 @@ def action_build(settings, trees, mtimedb,
 	myopts, myaction, myfiles, spinner):
 	ldpath_mtimes = mtimedb["ldpath"]
 	favorites=[]
-	if ("--ask" in myopts or "--pretend" in myopts) and not "--quiet" in myopts:
+	if "--quiet" not in myopts:
 		action = ""
 		if "--fetchonly" in myopts or "--fetch-all-uri" in myopts:
 			action = "fetched"
@@ -4772,7 +4812,8 @@ def action_build(settings, trees, mtimedb,
 			sys.stderr.write("\nThese are required by '--usepkgonly' -- Terminating.\n\n")
 			sys.exit(1)
 
-	if "--ask" in myopts:
+	if "--pretend" not in myopts and \
+		not ("--quiet" in myopts and "--ask" not in myopts):
 		if "--resume" in myopts:
 			validate_merge_list(trees, mtimedb["resume"]["mergelist"])
 			mymergelist = mtimedb["resume"]["mergelist"]
@@ -4815,13 +4856,13 @@ def action_build(settings, trees, mtimedb,
 			else:
 				prompt="Would you like to merge these packages?"
 		print
-		if userquery(prompt)=="No":
+		if "--ask" in myopts and userquery(prompt) == "No":
 			print
 			print "Quitting."
 			print
 			sys.exit(0)
 		# Don't ask again (e.g. when auto-cleaning packages after merge)
-		del myopts["--ask"]
+		myopts.pop("--ask", None)
 
 	if ("--pretend" in myopts) and not ("--fetchonly" in myopts or "--fetch-all-uri" in myopts):
 		if ("--resume" in myopts):
