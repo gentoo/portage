@@ -461,7 +461,7 @@ class vardbapi(dbapi):
 
 	def counter_tick_core(self, myroot, incrementing=1, mycpv=None):
 		"This method will grab the next COUNTER value and record it back to the global file.  Returns new counter value."
-		cpath = os.path.join(myroot + EPREFIX, CACHE_PATH.lstrip(os.sep), "counter")
+		cpath = os.path.join(myroot, CACHE_PATH.lstrip(os.sep), "counter")
 		changed = 0
 		min_counter = 0
 		if mycpv:
