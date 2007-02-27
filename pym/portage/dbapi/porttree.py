@@ -10,7 +10,7 @@ from portage.exception import OperationNotPermitted, PortageException, \
 from portage.manifest import Manifest
 from portage.output import red
 from portage.util import ensure_dirs, writemsg, apply_recursive_permissions
-from portage.versions import pkgsplit, catpkgsplit
+from portage.versions import pkgsplit, catpkgsplit, best
 
 import portage.gpg, portage.checksum
 
