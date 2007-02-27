@@ -32,8 +32,9 @@ funk_up_dir() {
 	find "${dir}" -type f ${negate} -iname '*.'${suffix} -print0 | ${XARGS} -0 ${binary}
 	((ret+=$?))
 
-	find -L "${dir}" -type l | \
-	while read brokenlink ; do
+	find "${dir}" -type l -print0 | \
+	while read -d $'\0' brokenlink ; do
+		[[ -e ${brokenlink} ]] && continue
 		olddest=$(readlink "${brokenlink}")
 		[[ ${act} == "compress" ]] \
 			&& newdest="${olddest}${suffix}" \
