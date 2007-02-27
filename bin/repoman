@@ -1791,15 +1791,15 @@ elif "--pretend" not in myoptions:
 		if digest_files:
 			digest_files.sort()
 			if "--pretend" in myoptions:
-				print "(rm %s)" % " ".join(digest_files)
 				if isCvs:
+					print "(rm %s)" % " ".join(digest_files)
 					print "(cvs remove %s)" % " ".join(digest_files)
 				elif isSvn:
 					print "(svn remove %s)" % " ".join(digest_files)
 			else:
-				for x in digest_files:
-					os.unlink(os.path.join(startdir, x))
 				if isCvs:
+					for x in digest_files:
+						os.unlink(os.path.join(startdir, x))
 					retval = spawn(["cvs", "remove"] + digest_files,
 							env=os.environ)
 				elif isSvn:
