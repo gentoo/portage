@@ -4467,7 +4467,10 @@ def getmaskingreason(mycpv, settings=None, portdb=None, return_location=False):
 							# Apparently this comment applies to muliple masks, so
 							# it remains valid until a blank line is encountered.
 							comment_valid += 1
-	return None
+	if return_location:
+		return (None, None)
+	else:
+		return None
 
 def getmaskingstatus(mycpv, settings=None, portdb=None):
 	if settings is None:
