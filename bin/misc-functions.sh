@@ -238,7 +238,7 @@ install_qa_check() {
 		unset INSTALLTOD
 	fi
 
-	if use kernel_Darwin ; then
+	if hasq kernel_Darwin ${USE} ; then
 		# on Darwin, dynamic libraries are called .dylibs instead of
 		# .sos.  In addition the version component is before the
 		# extension, not after it.  Check for this, and *only* warn
