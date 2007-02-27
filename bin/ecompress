@@ -14,7 +14,7 @@ source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
 PORTAGE_COMPRESS=${PORTAGE_COMPRESS:-bzip2}
 if [[ -z ${PORTAGE_COMPRESS_FLAGS} ]] ; then
 	case ${PORTAGE_COMPRESS} in
-		bzip2|gzip)  PORTAGE_COMPRESS_FLAGS="-9";;
+		bzip2|gzip)  PORTAGE_COMPRESS_FLAGS="-f9";;
 	esac
 fi
 
