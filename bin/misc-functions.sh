@@ -238,6 +238,24 @@ install_qa_check() {
 		unset INSTALLTOD
 	fi
 
+	if kernel_Darwin ; then
+		# on Darwin, dynamic libraries are called .dylibs instead of
+		# .sos.  In addition the version component is before the
+		# extension, not after it.  Check for this, and *only* warn
+		# about it.  Packages such as python do ship .so files on Darwin
+		# and make it work (ugly!).
+		for i in $(find ${ED%/} -name "*.so" -or -name "*.so.*") ; do
+			vecho -ne '\a\n'
+			eqawarn "QA Notice: Found a .so dynamic library on Darwin:"
+			eqawarn "    ${i#${D}}"
+		done
+		for i in $(find ${ED%/} -name "*.dylib.*") ; do
+			vecho -ne '\a\n'
+			eqawarn "QA Notice: Found a wrongly named dynamic library on Darwin:"
+			eqawarn "    ${i#${D}}"
+		done
+	fi
+
 	# this should help to ensure that all (most?) shared libraries are executable
 	# and that all libtool scripts / static libraries are not executable
 	for i in "${ED}"opt/*/lib{,32,64} \
