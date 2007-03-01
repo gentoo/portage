@@ -4020,13 +4020,13 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 					# This is the same code rsync uses for timeout.
 					exitcode = 30
 				else:
-					if mypids:
-						portage.process.spawned_pids.remove(mypids[0])
 					if exitcode != os.EX_OK:
 						if exitcode & 0xff:
 							exitcode = (exitcode & 0xff) << 8
 						else:
 							exitcode >> 8
+				if mypids:
+					portage.process.spawned_pids.remove(mypids[0])
 				if content:
 					try:
 						servertimestamp = time.mktime(time.strptime(
