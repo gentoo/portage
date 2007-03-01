@@ -3427,7 +3427,7 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 					# ok, now the last-merged package
 					# is protected, and the rest are selected
 		if global_unmerge and not numselected:
-			print "\n>>> No outdated packages were found on your system.\n"
+			portage.writemsg_stdout("\n>>> No outdated packages were found on your system.\n")
 			return 0
 	
 		if not numselected:
@@ -3548,9 +3548,9 @@ def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 						regen_infodirs.append(inforoot)
 
 		if not regen_infodirs:
-			print " "+green("*")+" GNU info directory index is up-to-date."
+			portage.writemsg_stdout(" "+green("*")+" GNU info directory index is up-to-date.\n")
 		else:
-			print " "+green("*")+" Regenerating GNU info directory index..."
+			portage.writemsg_stdout(" "+green("*")+" Regenerating GNU info directory index...\n")
 
 			icount=0
 			badcount=0
@@ -4933,7 +4933,7 @@ def action_build(settings, trees, mtimedb,
 		if mtimedb.has_key("resume"):
 			del mtimedb["resume"]
 		if settings["AUTOCLEAN"] and "yes"==settings["AUTOCLEAN"]:
-			print ">>> Auto-cleaning packages..."
+			portage.writemsg_stdout(">>> Auto-cleaning packages...\n")
 			vartree = trees[settings["ROOT"]]["vartree"]
 			unmerge(settings, myopts, vartree, "clean", ["world"],
 				ldpath_mtimes, autoclean=1)
