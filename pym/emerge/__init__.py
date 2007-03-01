@@ -4031,7 +4031,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 					try:
 						servertimestamp = time.mktime(time.strptime(
 							content[0], "%a, %d %b %Y %H:%M:%S +0000"))
-					except OverflowError, ValueError:
+					except (OverflowError, ValueError):
 						pass
 				del mycommand, mypids, content
 			if exitcode == os.EX_OK:
