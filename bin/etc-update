@@ -386,7 +386,11 @@ Please select from the menu above (-1 to exit, losing this merge): "
 			my_input=$(read_int)
 			case ${my_input} in
 				1) echo "Replacing ${ofile} with ${mfile}"
-				   chmod --reference=${ofile} ${mfile}
+				   if [[ ${USERLAND} == GNU ]]; then
+				       chmod --reference="${ofile}" "${mfile}"
+				   else
+				       chmod $(stat -f %Mp%Lp "${ofile}") "${mfile}"
+				   fi
 				   mv ${mv_opts} ${mfile} ${ofile}
 				   rm ${rm_opts} ${file}
 				   return 255
@@ -437,7 +441,7 @@ trap die term
 
 
 eval $(/usr/lib/portage/bin/portageq envvar -v CONFIG_PROTECT \
-	CONFIG_PROTECT_MASK PORTAGE_CONFIGROOT PORTAGE_TMPDIR ROOT)
+	CONFIG_PROTECT_MASK PORTAGE_CONFIGROOT PORTAGE_TMPDIR ROOT USERLAND)
 export PORTAGE_TMPDIR
 
 [ -w ${PORTAGE_CONFIGROOT}etc ] || die "Need write access to ${PORTAGE_CONFIGROOT}etc" 1
