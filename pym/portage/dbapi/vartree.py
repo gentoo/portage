@@ -320,7 +320,7 @@ class vardbapi(dbapi):
 		return self.matchcache[mycat][mydep][:]
 
 	def findname(self, mycpv):
-		return self.getpath(str(mycpv), filename=catsplit(mycpv[1])+".ebuild")
+		return self.getpath(str(mycpv), filename=catsplit(mycpv)[1]+".ebuild")
 
 	def flush_cache(self):
 		"""If the current user has permission and the internal aux_get cache has
