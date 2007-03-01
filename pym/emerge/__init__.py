@@ -3989,23 +3989,51 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 				mycommand.append(dosyncuri.rstrip("/") + \
 					"/metadata/timestamp.chk")
 				mycommand.append(tmpservertimestampfile)
+				content = None
+				mypids = []
 				try:
-					exitcode = portage.process.spawn(
-						mycommand, env=settings.environ())
-					content = portage.grabfile(tmpservertimestampfile)
-					if content:
-						try:
-							servertimestamp = time.mktime(time.strptime(
-								content[0], "%a, %d %b %Y %H:%M:%S +0000"))
-						except OverflowError, ValueError:
-							pass
-					del content
-				finally:
+					def timeout_handler(signum, frame):
+						raise portage.exception.PortageException("timed out")
+					signal.signal(signal.SIGALRM, timeout_handler)
+					# Timeout here in case the server is unresponsive.  The
+					# --timeout rsync option doesn't apply to the initial
+					# connection attempt.
+					signal.alarm(15)
 					try:
-						os.unlink(tmpservertimestampfile)
-					except OSError:
+						mypids.extend(portage.process.spawn(
+							mycommand, env=settings.environ(), returnpid=True))
+						exitcode = os.waitpid(mypids[0], 0)[1]
+						content = portage.grabfile(tmpservertimestampfile)
+					finally:
+						signal.alarm(0)
+						try:
+							os.unlink(tmpservertimestampfile)
+						except OSError:
+							pass
+				except portage.exception.PortageException, e:
+					# timed out
+					print e
+					del e
+					if mypids and os.waitpid(mypids[0], os.WNOHANG) == (0,0):
+						os.kill(mypids[0], signal.SIGTERM)
+						os.waitpid(mypids[0], 0)
+					# This is the same code rsync uses for timeout.
+					exitcode = 30
+				else:
+					if mypids:
+						portage.process.spawned_pids.remove(mypids[0])
+					if exitcode != os.EX_OK:
+						if exitcode & 0xff:
+							exitcode = (exitcode & 0xff) << 8
+						else:
+							exitcode >> 8
+				if content:
+					try:
+						servertimestamp = time.mktime(time.strptime(
+							content[0], "%a, %d %b %Y %H:%M:%S +0000"))
+					except OverflowError, ValueError:
 						pass
-				del mycommand
+				del mycommand, mypids, content
 			if exitcode == os.EX_OK:
 				if (servertimestamp != 0) and (servertimestamp == mytimestamp):
 					emergelog(xterm_titles,
