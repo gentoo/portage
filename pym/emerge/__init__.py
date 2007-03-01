@@ -3893,7 +3893,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			try:
 				mytimestamp = time.mktime(time.strptime(content[0],
 					"%a, %d %b %Y %H:%M:%S +0000"))
-			except OverflowError, ValueError:
+			except (OverflowError, ValueError):
 				pass
 		del content
 
@@ -4301,7 +4301,7 @@ def action_regen(settings, portdb):
 			for y in nodes:
 				try:
 					del auxdb[y]
-				except KeyError, CacheError:
+				except (KeyError, CacheError):
 					pass
 	print "done!"
 
