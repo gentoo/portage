@@ -4063,7 +4063,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 					mycommand = mycommand.split()
 					exitcode = portage.process.spawn(mycommand,
 						env=settings.environ())
-					if exitcode in [0,1,2,3,4,11,14,20,21]:
+					if exitcode in [0,1,3,4,11,14,20,21]:
 						break
 			elif exitcode in [1,3,4,11,14,20,21]:
 				break
