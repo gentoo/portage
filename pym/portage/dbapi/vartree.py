@@ -67,7 +67,7 @@ class vardbapi(dbapi):
 		"This method will grab the COUNTER. Returns a counter value."
 		try:
 			return long(self.aux_get(mycpv, ["COUNTER"])[0])
-		except KeyError, ValueError:
+		except (KeyError, ValueError):
 			pass
 		cdir = self.getpath(mycpv)
 		cpath = self.getpath(mycpv, filename="COUNTER")
