@@ -4037,8 +4037,14 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 						env=settings.environ())
 					if exitcode in [0,1,2,3,4,11,14,20,21]:
 						break
-			elif exitcode in [0,1,2,3,4,11,14,20,21]:
+			elif exitcode in [1,3,4,11,14,20,21]:
 				break
+			else:
+				# Code 2 indicates protocol incompatibility, which is expected
+				# for servers with protocol < 29 that don't support
+				# --prune-empty-directories.  Retry for a server that supports
+				# at least rsync protocol version 29 (>=rsync-2.6.7).
+				pass
 
 			retries=retries+1
 
