@@ -4024,7 +4024,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 						if exitcode & 0xff:
 							exitcode = (exitcode & 0xff) << 8
 						else:
-							exitcode >> 8
+							exitcode = exitcode >> 8
 				if mypids:
 					portage.process.spawned_pids.remove(mypids[0])
 				if content:
