@@ -3799,7 +3799,6 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 				"--exclude=/local",       # Exclude local     from consideration
 				"--exclude=/packages",    # Exclude packages  from consideration
 				"--filter=H_**/files/digest-*", # Exclude manifest1 digests and delete on the receiving side
-				"--prune-empty-dirs"      # Prune empty ${FILESDIR} when manifest1 digests are excluded
 			])
 
 		else:
@@ -4075,7 +4074,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 				# Code 2 indicates protocol incompatibility, which is expected
 				# for servers with protocol < 29 that don't support
 				# --prune-empty-directories.  Retry for a server that supports
-				# at least rsync protocol version 29 (>=rsync-2.6.7).
+				# at least rsync protocol version 29 (>=rsync-2.6.4).
 				pass
 
 			retries=retries+1
