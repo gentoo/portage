@@ -3534,7 +3534,6 @@ def show_unmerge_failure_message(pkg, ebuild, retval):
 
 def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 
-	print
 	if os.path.exists("/usr/bin/install-info"):
 		regen_infodirs=[]
 		for z in infodirs:
