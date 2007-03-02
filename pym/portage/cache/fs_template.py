@@ -39,7 +39,7 @@ class FsBased(template.database):
 			if mtime:
 				mtime=long(mtime)
 				os.utime(path, (mtime, mtime))
-		except OSError, IOError:
+		except (OSError, IOError):
 			return False
 		return True
 

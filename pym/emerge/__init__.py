@@ -3428,7 +3428,7 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 					# ok, now the last-merged package
 					# is protected, and the rest are selected
 		if global_unmerge and not numselected:
-			print "\n>>> No outdated packages were found on your system.\n"
+			portage.writemsg_stdout("\n>>> No outdated packages were found on your system.\n")
 			return 0
 	
 		if not numselected:
@@ -3535,7 +3535,6 @@ def show_unmerge_failure_message(pkg, ebuild, retval):
 
 def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 
-	print
 	if os.path.exists(EPREFIX+"/usr/bin/install-info"):
 		regen_infodirs=[]
 		for z in infodirs:
@@ -3549,9 +3548,9 @@ def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 						regen_infodirs.append(inforoot)
 
 		if not regen_infodirs:
-			print " "+green("*")+" GNU info directory index is up-to-date."
+			portage.writemsg_stdout(" "+green("*")+" GNU info directory index is up-to-date.\n")
 		else:
-			print " "+green("*")+" Regenerating GNU info directory index..."
+			portage.writemsg_stdout(" "+green("*")+" Regenerating GNU info directory index...\n")
 
 			icount=0
 			badcount=0
@@ -3801,7 +3800,6 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 				"--exclude=/local",       # Exclude local     from consideration
 				"--exclude=/packages",    # Exclude packages  from consideration
 				"--filter=H_**/files/digest-*", # Exclude manifest1 digests and delete on the receiving side
-				"--prune-empty-dirs"      # Prune empty ${FILESDIR} when manifest1 digests are excluded
 			])
 
 		else:
@@ -3894,7 +3892,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			try:
 				mytimestamp = time.mktime(time.strptime(content[0],
 					"%a, %d %b %Y %H:%M:%S +0000"))
-			except OverflowError, ValueError:
+			except (OverflowError, ValueError):
 				pass
 		del content
 
@@ -3985,28 +3983,61 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 
 			exitcode = os.EX_OK
 			servertimestamp = 0
-			if mytimestamp != 0:
+			# Even if there's no timestamp available locally, fetch the
+			# timestamp anyway as an initial probe to verify that the server is
+			# responsive.  This protects us from hanging indefinitely on a
+			# connection attempt to an unresponsive server which rsync's
+			# --timeout option does not prevent.
+			if True:
 				mycommand = rsynccommand.split()
 				mycommand.append(dosyncuri.rstrip("/") + \
 					"/metadata/timestamp.chk")
 				mycommand.append(tmpservertimestampfile)
+				content = None
+				mypids = []
 				try:
-					exitcode = portage.process.spawn(
-						mycommand, env=settings.environ())
-					content = portage.grabfile(tmpservertimestampfile)
-					if content:
-						try:
-							servertimestamp = time.mktime(time.strptime(
-								content[0], "%a, %d %b %Y %H:%M:%S +0000"))
-						except OverflowError, ValueError:
-							pass
-					del content
-				finally:
+					def timeout_handler(signum, frame):
+						raise portage.exception.PortageException("timed out")
+					signal.signal(signal.SIGALRM, timeout_handler)
+					# Timeout here in case the server is unresponsive.  The
+					# --timeout rsync option doesn't apply to the initial
+					# connection attempt.
+					signal.alarm(15)
 					try:
-						os.unlink(tmpservertimestampfile)
-					except OSError:
+						mypids.extend(portage.process.spawn(
+							mycommand, env=settings.environ(), returnpid=True))
+						exitcode = os.waitpid(mypids[0], 0)[1]
+						content = portage.grabfile(tmpservertimestampfile)
+					finally:
+						signal.alarm(0)
+						try:
+							os.unlink(tmpservertimestampfile)
+						except OSError:
+							pass
+				except portage.exception.PortageException, e:
+					# timed out
+					print e
+					del e
+					if mypids and os.waitpid(mypids[0], os.WNOHANG) == (0,0):
+						os.kill(mypids[0], signal.SIGTERM)
+						os.waitpid(mypids[0], 0)
+					# This is the same code rsync uses for timeout.
+					exitcode = 30
+				else:
+					if exitcode != os.EX_OK:
+						if exitcode & 0xff:
+							exitcode = (exitcode & 0xff) << 8
+						else:
+							exitcode = exitcode >> 8
+				if mypids:
+					portage.process.spawned_pids.remove(mypids[0])
+				if content:
+					try:
+						servertimestamp = time.mktime(time.strptime(
+							content[0], "%a, %d %b %Y %H:%M:%S +0000"))
+					except (OverflowError, ValueError):
 						pass
-				del mycommand
+				del mycommand, mypids, content
 			if exitcode == os.EX_OK:
 				if (servertimestamp != 0) and (servertimestamp == mytimestamp):
 					emergelog(xterm_titles,
@@ -4036,7 +4067,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 					mycommand = mycommand.split()
 					exitcode = portage.process.spawn(mycommand,
 						env=settings.environ())
-					if exitcode in [0,1,2,3,4,11,14,20,21]:
+					if exitcode in [0,1,3,4,11,14,20,21]:
 						break
 			elif exitcode in [1,3,4,11,14,20,21]:
 				break
@@ -4044,7 +4075,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 				# Code 2 indicates protocol incompatibility, which is expected
 				# for servers with protocol < 29 that don't support
 				# --prune-empty-directories.  Retry for a server that supports
-				# at least rsync protocol version 29 (>=rsync-2.6.7).
+				# at least rsync protocol version 29 (>=rsync-2.6.4).
 				pass
 
 			retries=retries+1
@@ -4320,7 +4351,7 @@ def action_regen(settings, portdb):
 			for y in nodes:
 				try:
 					del auxdb[y]
-				except KeyError, CacheError:
+				except (KeyError, CacheError):
 					pass
 	print "done!"
 
@@ -4953,7 +4984,7 @@ def action_build(settings, trees, mtimedb,
 		if mtimedb.has_key("resume"):
 			del mtimedb["resume"]
 		if settings["AUTOCLEAN"] and "yes"==settings["AUTOCLEAN"]:
-			print ">>> Auto-cleaning packages..."
+			portage.writemsg_stdout(">>> Auto-cleaning packages...\n")
 			vartree = trees[settings["ROOT"]]["vartree"]
 			unmerge(settings, myopts, vartree, "clean", ["world"],
 				ldpath_mtimes, autoclean=1)
