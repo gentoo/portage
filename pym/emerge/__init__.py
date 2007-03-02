@@ -2926,7 +2926,12 @@ class MergeTask(object):
 				fetch_env["FEATURES"] = fetch_env.get("FEATURES", "") + " -cvs"
 				fetch_env["PORTAGE_NICENESS"] = "0"
 				fetch_args = [sys.argv[0], "--resume", "--fetchonly"]
-				for myopt, myarg in self.myopts.iteritems():
+				resume_opts = self.myopts.copy()
+				# For automatic resume, we need to prevent
+				# any of bad_resume_opts from leaking in
+				# via EMERGE_DEFAULT_OPTS.
+				resume_opts["--ignore-default-opts"] = True
+				for myopt, myarg in resume_opts.iteritems():
 					if myopt not in bad_resume_opts:
 						if myarg is True:
 							fetch_args.append(myopt)
@@ -2935,6 +2940,8 @@ class MergeTask(object):
 				portage.process.spawn(fetch_args, env=fetch_env,
 					fd_pipes=fd_pipes, returnpid=True)
 				logfile.close() # belongs to the spawned process
+				del fetch_log, logfile, fd_pipes, fetch_env, fetch_args, \
+					resume_opts
 
 		mergecount=0
 		for x in mymergelist:
@@ -3183,7 +3190,12 @@ class MergeTask(object):
 								mtimedb.commit()
 								portage.run_exitfuncs()
 								mynewargv=[sys.argv[0],"--resume"]
-								for myopt, myarg in self.myopts.iteritems():
+								resume_opts = self.myopts.copy()
+								# For automatic resume, we need to prevent
+								# any of bad_resume_opts from leaking in
+								# via EMERGE_DEFAULT_OPTS.
+								resume_opts["--ignore-default-opts"] = True
+								for myopt, myarg in resume_opts.iteritems():
 									if myopt not in bad_resume_opts:
 										if myarg is True:
 											mynewargv.append(myopt)
