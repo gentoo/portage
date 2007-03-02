@@ -3983,7 +3983,12 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 
 			exitcode = os.EX_OK
 			servertimestamp = 0
-			if mytimestamp != 0:
+			# Even if there's no timestamp available locally, fetch the
+			# timestamp anyway as an initial probe to verify that the server is
+			# responsive.  This protects us from hanging indefinitely on a
+			# connection attempt to an unresponsive server which rsync's
+			# --timeout option does not prevent.
+			if True:
 				mycommand = rsynccommand.split()
 				mycommand.append(dosyncuri.rstrip("/") + \
 					"/metadata/timestamp.chk")
