@@ -4358,7 +4358,7 @@ def cpv_expand(mycpv, mydb=None, use_cache=1, settings=None):
 			mykey=mycpv
 		if mydb and virts and mykey in virts:
 			writemsg("mydb.__class__: %s\n" % (mydb.__class__), 1)
-			if type(mydb)==types.InstanceType:
+			if hasattr(mydb, "cp_list"):
 				if not mydb.cp_list(mykey, use_cache=use_cache):
 					writemsg("virts[%s]: %s\n" % (str(mykey),virts[mykey]), 1)
 					mykey_orig = mykey[:]
