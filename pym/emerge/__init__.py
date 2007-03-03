@@ -2370,8 +2370,8 @@ class depgraph:
 										selected_parent = node
 										break
 							if selected_parent:
-								traversed_nodes.add(node)
-								add_parents(node, False)
+								traversed_nodes.add(selected_parent)
+								add_parents(selected_parent, False)
 						display_list.append((list(current_node),
 							len(tree_nodes), ordered))
 						tree_nodes.append(current_node)
