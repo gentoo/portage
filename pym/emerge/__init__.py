@@ -2392,7 +2392,7 @@ class depgraph:
 				continue
 			if "blocks" == graph_key[0]:
 				continue
-			if graph_key[-1] != "nomerge":
+			if ordered and graph_key[-1] != "nomerge":
 				last_merge_depth = depth
 				continue
 			if depth >= last_merge_depth or \
