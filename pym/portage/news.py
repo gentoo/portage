@@ -58,7 +58,7 @@ class NewsManager(object):
 		if os.path.exists(timestamp_file):
 			# Make sure the timestamp has correct permissions.
 			apply_permissions( filename=timestamp_file, 
-				uid=self.config["PORTAGE_INST_UID"], gid=portage_gid, mode=664 )
+				uid=int(self.config["PORTAGE_INST_UID"]), gid=portage_gid, mode=664 )
 			timestamp = os.stat(timestamp_file).st_mtime
 		else:
 			timestamp = 0
@@ -96,7 +96,7 @@ class NewsManager(object):
 				open( path, "w" )
 			# Ensure correct perms on the unread file.
 			apply_permissions( filename=path,
-				uid=self.config["PORTAGE_INST_UID"], gid=portage_gid, mode=664 )
+				uid=int(self.config["PORTAGE_INST_UID"]), gid=portage_gid, mode=664 )
 			# Make sure we have the correct permissions when created
 			unread_file = open( path, "a" )
 
