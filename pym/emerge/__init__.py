@@ -2331,42 +2331,81 @@ class depgraph:
 				for t in self.settings["PORTDIR_OVERLAY"].split()]
 
 		tree_nodes = []
-		node_depth = {}
+		display_list = []
+		mygraph = self._parent_child_digraph
 		i = 0
 		depth = 0
 		for x in mylist:
 			if "blocks" == x[0]:
+				display_list.append((x, 0, True))
 				continue
 			graph_key = tuple(x)
 			if "--tree" in self.myopts:
 				depth = len(tree_nodes)
 				while depth and graph_key not in \
-					self.digraph.child_nodes(tree_nodes[depth-1]):
+					mygraph.child_nodes(tree_nodes[depth-1]):
 						depth -= 1
-				tree_nodes = tree_nodes[:depth]
-				tree_nodes.append(graph_key)
-			node_depth[graph_key] = depth
+				if depth:
+					tree_nodes = tree_nodes[:depth]
+					tree_nodes.append(graph_key)
+					display_list.append((x, depth, True))
+				else:
+					traversed_nodes = set() # prevent endless circles
+					traversed_nodes.add(graph_key)
+					def add_parents(current_node, ordered):
+						parent_nodes = mygraph.parent_nodes(current_node)
+						if parent_nodes:
+							child_nodes = set(mygraph.child_nodes(current_node))
+							selected_parent = None
+							# First, try to avoid a direct cycle.
+							for node in parent_nodes:
+								if node not in traversed_nodes and \
+									node not in child_nodes:
+									selected_parent = node
+									break
+							if not selected_parent:
+								# A direct cycle is unavoidable.
+								for node in parent_nodes:
+									if node not in traversed_nodes:
+										selected_parent = node
+										break
+							if selected_parent:
+								traversed_nodes.add(node)
+								add_parents(node, False)
+						display_list.append((list(current_node),
+							len(tree_nodes), ordered))
+						tree_nodes.append(current_node)
+					tree_nodes = []
+					add_parents(graph_key, True)
+			else:
+				display_list.append((x, depth, True))
+		mylist = display_list
 
 		last_merge_depth = 0
 		for i in xrange(len(mylist)-1,-1,-1):
-			if "blocks" == mylist[i][0]:
+			graph_key, depth, ordered = mylist[i]
+			if not ordered and depth == 0 and i > 1 \
+				and graph_key == mylist[i-1][0]:
+				# An ordered node got a consecutive duplicate when the tree was
+				# being filled in.
+				del mylist[i]
 				continue
-			graph_key = tuple(mylist[i])
-			if mylist[i][-1] != "nomerge":
-				last_merge_depth = node_depth[graph_key]
+			if "blocks" == graph_key[0]:
 				continue
-			if node_depth[graph_key] >= last_merge_depth or \
+			if graph_key[-1] != "nomerge":
+				last_merge_depth = depth
+				continue
+			if depth >= last_merge_depth or \
 				i < len(mylist) - 1 and \
-				node_depth[graph_key] >= node_depth[tuple(mylist[i+1])]:
+				depth >= mylist[i+1][1]:
 					del mylist[i]
-					del node_depth[graph_key]
-		del tree_nodes
 
 		display_overlays=False
 		# files to fetch list - avoids counting a same file twice
 		# in size display (verbose mode)
 		myfetchlist=[]
-		for x in mylist:
+		for mylist_index in xrange(len(mylist)):
+			x, depth, ordered = mylist[mylist_index]
 			pkg_type = x[0]
 			myroot = x[1]
 			pkg_key = x[2]
@@ -2380,7 +2419,8 @@ class depgraph:
 
 			if x[0]=="blocks":
 				addl=""+red("B")+"  "+fetch+"  "
-				counters.blocks += 1
+				if ordered:
+					counters.blocks += 1
 				resolved = portage.key_expand(
 					pkg_key, mydb=vardb, settings=pkgsettings)
 				if "--columns" in self.myopts and "--quiet" in self.myopts:
@@ -2421,11 +2461,13 @@ class depgraph:
 					"fetch" in portdb.aux_get(
 					x[2], ["RESTRICT"])[0].split():
 					fetch = red("F")
-					counters.restrict_fetch += 1
+					if ordered:
+						counters.restrict_fetch += 1
 					if portdb.fetch_check(
 						pkg_key, self.useFlags[myroot][pkg_key]):
 						fetch = green("f")
-						counters.restrict_fetch_satisfied += 1
+						if ordered:
+							counters.restrict_fetch_satisfied += 1
 
 				#we need to use "--emptrytree" testing here rather than "empty" param testing because "empty"
 				#param is used for -u, where you still *do* want to see when something is being upgraded.
@@ -2433,7 +2475,8 @@ class depgraph:
 				if vardb.cpv_exists(pkg_key):
 					addl="  "+yellow("R")+fetch+"  "
 					if x[3] != "nomerge":
-						counters.reinst += 1
+						if ordered:
+							counters.reinst += 1
 				elif vardb.match(portage.dep_getkey(pkg_key)):
 					mynewslot = mydbapi.aux_get(pkg_key, ["SLOT"])[0]
 					myoldlist = self.trees[x[1]]["vartree"].dbapi.match(
@@ -2446,15 +2489,18 @@ class depgraph:
 						if portage.pkgcmp(portage.pkgsplit(x[2]), portage.pkgsplit(myoldbest)) < 0:
 							# Downgrade in slot
 							addl+=turquoise("U")+blue("D")
-							counters.downgrades += 1
+							if ordered:
+								counters.downgrades += 1
 						else:
 							# Update in slot
 							addl+=turquoise("U")+" "
-							counters.upgrades += 1
+							if ordered:
+								counters.upgrades += 1
 					else:
 						# New slot, mark it new.
 						addl=" "+green("NS")+fetch+"  "
-						counters.newslot += 1
+						if ordered:
+							counters.newslot += 1
 
 					if "--changelog" in self.myopts:
 						slot_atom = "%s:%s" % (portage.dep_getkey(pkg_key),
@@ -2466,7 +2512,8 @@ class depgraph:
 								inst_matches[0], pkg_key))
 				else:
 					addl=" "+green("N")+" "+fetch+"  "
-					counters.new += 1
+					if ordered:
+						counters.new += 1
 
 				verboseadd=""
 				
@@ -2570,7 +2617,8 @@ class depgraph:
 								if myfetchfile not in myfetchlist:
 									mysize+=myfilesdict[myfetchfile]
 									myfetchlist.append(myfetchfile)
-							counters.totalsize += mysize
+							if ordered:
+								counters.totalsize += mysize
 						verboseadd+=format_size(mysize)+" "
 
 					# overlay verbose
@@ -2605,7 +2653,7 @@ class depgraph:
 				oldlp=mywidth-30
 				newlp=oldlp-30
 
-				indent = " " * node_depth[tuple(x)]
+				indent = " " * depth
 
 				if myoldbest:
 					myoldbest=portage.pkgsplit(myoldbest)[1]+"-"+portage.pkgsplit(myoldbest)[2]
@@ -2632,7 +2680,7 @@ class depgraph:
 							myprint=myprint+myoldbest
 							myprint=myprint+darkgreen("to "+x[1])+" "+verboseadd
 					else:
-						if x[3] == "nomerge":
+						if x[-1] == "nomerge" or not ordered:
 							myprint = darkblue("[nomerge      ] ")
 						else:
 							myprint = "[" + pkg_type + " " + addl + "] "
@@ -2654,7 +2702,7 @@ class depgraph:
 								myprint=myprint+(" "*(oldlp-nc_len(myprint)))
 							myprint=myprint+myoldbest+"  "+verboseadd
 					else:
-						if x[3]=="nomerge":
+						if x[-1] == "nomerge" or not ordered:
 							myprint=darkblue("[nomerge      ] "+indent+x[2]+" "+myoldbest+" ")+verboseadd
 						else:
 							myprint="["+x[0]+" "+addl+"] "+indent+darkgreen(x[2])+" "+myoldbest+" "+verboseadd
@@ -2671,7 +2719,7 @@ class depgraph:
 					myversion = "%s-%s" % (mysplit[1], mysplit[2])
 
 				if myversion != portage.VERSION and "--quiet" not in self.myopts:
-					if mylist.index(x) < len(mylist) - 1 and \
+					if mylist_index < len(mylist) - 1 and \
 						"livecvsportage" not in self.settings.features:
 						p.append(colorize("WARN", "*** Portage will stop merging at this point and reload itself,"))
 						p.append(colorize("WARN", "    then resume the merge."))
