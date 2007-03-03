@@ -17,7 +17,7 @@ def lockdir(mydir):
 def unlockdir(mylock):
 	return unlockfile(mylock)
 
-def lockfile(mypath,wantnewlockfile=0,unlinkfile=0):
+def lockfile(mypath, wantnewlockfile=0, unlinkfile=0, waiting_msg=None):
 	"""Creates all dirs upto, the given dir. Creates a lockfile
 	for the given directory as the file: directoryname+'.portage_lockfile'."""
 	import fcntl
@@ -76,10 +76,13 @@ def lockfile(mypath,wantnewlockfile=0,unlinkfile=0):
 			raise
 		if e.errno == errno.EAGAIN:
 			# resource temp unavailable; eg, someone beat us to the lock.
-			if type(mypath) == types.IntType:
-				print "waiting for lock on fd %i" % myfd
-			else:
-				print "waiting for lock on %s" % lockfilename
+			if waiting_msg is None:
+				if isinstance(mypath, int):
+					print "waiting for lock on fd %i" % myfd
+				else:
+					print "waiting for lock on %s" % lockfilename
+			elif waiting_msg:
+				print waiting_msg
 			# try for the exclusive lock now.
 			fcntl.lockf(myfd,fcntl.LOCK_EX)
 		elif e.errno == errno.ENOLCK:

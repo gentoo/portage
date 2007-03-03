@@ -2360,10 +2360,19 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 			writemsg_stdout("\n", noiselevel=-1)
 		else:
 			if use_locks and can_fetch:
+				waiting_msg = None
+				if "parallel-fetch" in features:
+					waiting_msg = ("Downloading '%s'... " + \
+						"see /var/log/emerge-fetch.log for details.") % myfile
 				if locks_in_subdir:
-					file_lock = portage.locks.lockfile(mysettings["DISTDIR"]+"/"+locks_in_subdir+"/"+myfile,wantnewlockfile=1)
+					file_lock = portage.locks.lockfile(
+						os.path.join(mysettings["DISTDIR"],
+						locks_in_subdir, myfile), wantnewlockfile=1,
+						waiting_msg=waiting_msg)
 				else:
-					file_lock = portage.locks.lockfile(mysettings["DISTDIR"]+"/"+myfile,wantnewlockfile=1)
+					file_lock = portage.locks.lockfile(
+						myfile_path, wantnewlockfile=1,
+						waiting_msg=waiting_msg)
 		try:
 			if not listonly:
 				if fsmirrors and not os.path.exists(myfile_path):
