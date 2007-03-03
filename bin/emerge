@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # Copyright Gentoo Foundation 2006
 # Portage Emerge bits
+# $Id$
 
 try:
 	from emerge import *
