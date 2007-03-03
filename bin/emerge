@@ -1,9 +1,12 @@
 #!/usr/bin/python
+# Copyright Gentoo Foundation 2006
+# Portage Emerge bits
 
 try:
 	from emerge import *
 except ImportError:
 	from os import path as osp
+	import sys
 	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
 	from emerge import *
 
