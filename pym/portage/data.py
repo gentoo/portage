@@ -28,8 +28,8 @@ elif ostype == "SunOS":
 
 elif ostype.endswith("BSD") or ostype =="DragonFly":
 	userland="BSD"
-elif ostype in ["BeOS","Haiku","HP-UX"]:
-	userland="GNU"
+elif ostype in ["AIX"]:
+	userland="AIX"
 else:
 	writemsg(red("Operating system")+" \""+ostype+"\" "+red("currently unsupported. Exiting.")+"\n")
 	sys.exit(1)
