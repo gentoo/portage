@@ -6,7 +6,7 @@
 if not hasattr(__builtins__, "set"):
 	from sets import Set as set
 
-import os,pwd,grp
+import os, sys, pwd, grp
 from portage_util import writemsg
 from output import green,red
 from output import create_color_func
