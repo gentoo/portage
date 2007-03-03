@@ -57,7 +57,8 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0, waiting_msg=None):
 					os.chown(lockfilename,os.getuid(),portage_data.portage_gid)
 			except OSError, e:
 				if e[0] == 2: # No such file or directory
-					return lockfile(mypath,wantnewlockfile,unlinkfile)
+					return lockfile(mypath, wantnewlockfile=wantnewlockfile,
+						unlinkfile=unlinkfile, waiting_msg=waiting_msg)
 				else:
 					portage_util.writemsg("Cannot chown a lockfile. This could cause inconvenience later.\n");
 			os.umask(old_mask)
@@ -114,7 +115,9 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0, waiting_msg=None):
 		# The file was deleted on us... Keep trying to make one...
 		os.close(myfd)
 		portage_util.writemsg("lockfile recurse\n",1)
-		lockfilename,myfd,unlinkfile,locking_method = lockfile(mypath,wantnewlockfile,unlinkfile)
+		lockfilename, myfd, unlinkfile, locking_method = lockfile(
+			mypath, wantnewlockfile=wantnewlockfile, unlinkfile=unlinkfile,
+			waiting_msg=waiting_msg)
 
 	portage_util.writemsg(str((lockfilename,myfd,unlinkfile))+"\n",1)
 	return (lockfilename,myfd,unlinkfile,locking_method)
