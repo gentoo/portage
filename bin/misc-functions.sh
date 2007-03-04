@@ -203,13 +203,13 @@ install_qa_check() {
 		die "There are ${UNSAFE} unsafe files. Portage will not install them."
 	fi
 
-	if [[ -d ${ED}/${ED} ]] ; then
+	if [[ -d ${ED}/${D} ]] ; then
 		declare -i INSTALLTOD=0
-		for i in $(find "${ED}/${ED}/"); do
-			eqawarn "QA Notice: /${i##${ED}/${ED}} installed in \${ED}/\${ED}"
+		for i in $(find "${ED}/${D}/"); do
+			eqawarn "QA Notice: /${i##${ED}/${D}} installed in \${ED}/\${D}"
 			((INSTALLTOD++))
 		done
-		die "Aborting due to QA concerns: ${INSTALLTOD} files installed in ${ED}/${ED}"
+		die "Aborting due to QA concerns: ${INSTALLTOD} files installed in ${ED}/${D}"
 		unset INSTALLTOD
 	fi
 
