@@ -4658,6 +4658,8 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	dep_check_trees[myroot]["porttree"] = dep_check_trees[myroot]["vartree"]
 	syslist = getlist(settings, "system")
 	worldlist = getlist(settings, "world")
+	system_world_dict = genericdict(worldlist)
+	system_world_dict.update(genericdict(syslist))
 	fakedb = portage.fakedbapi(settings=settings)
 	myvarlist = vardb.cpv_all()
 
@@ -4694,8 +4696,12 @@ def action_depclean(settings, trees, ldpath_mtimes,
 			if not atom.startswith("!") and priority == hard:
 				unresolveable.setdefault(atom, []).append(parent)
 			continue
-		# Could put slot checking here to ensure that there aren't two
-		# packages with the same slot...
+		if portage.dep_getkey(atom) not in system_world_dict:
+			# Prune all but the best matching slot, since that's all that a
+			# deep world update would pull in.  Don't prune if the cpv is in
+			# system or world though, since those sets trigger greedy update
+			# of all slots.
+			pkgs = [portage.best(pkgs)]
 		for pkg in pkgs:
 			if fakedb.cpv_exists(pkg):
 				continue
