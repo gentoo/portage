@@ -2256,6 +2256,7 @@ class depgraph:
 				"--verbose" in self.myopts and 3 or 2)
 		changelogs=[]
 		p=[]
+		blockers = []
 
 		counters = PackageCounters()
 
@@ -2385,8 +2386,9 @@ class depgraph:
 		last_merge_depth = 0
 		for i in xrange(len(mylist)-1,-1,-1):
 			graph_key, depth, ordered = mylist[i]
-			if not ordered and depth == 0 and i > 1 \
-				and graph_key == mylist[i-1][0]:
+			if not ordered and depth == 0 and i > 0 \
+				and graph_key == mylist[i-1][0] and \
+				mylist[i-1][1] == 0:
 				# An ordered node got a consecutive duplicate when the tree was
 				# being filled in.
 				del mylist[i]
@@ -2425,17 +2427,18 @@ class depgraph:
 				resolved = portage.key_expand(
 					pkg_key, mydb=vardb, settings=pkgsettings)
 				if "--columns" in self.myopts and "--quiet" in self.myopts:
-					print addl,red(resolved),
+					addl = addl + " " + red(resolved)
 				else:
-					print "["+x[0]+" "+addl+"]",red(resolved),
+					addl = "[blocks " + addl + "] " + red(resolved)
 				block_parents = self.blocker_parents[tuple(x)]
 				block_parents = set([pnode[2] for pnode in block_parents])
 				block_parents = ", ".join(block_parents)
 				if resolved!=x[2]:
-					print bad("(\"%s\" is blocking %s)") % \
+					addl += bad(" (\"%s\" is blocking %s)") % \
 						(pkg_key, block_parents)
 				else:
-					print bad("(is blocking %s)") % block_parents
+					addl += bad(" (is blocking %s)") % block_parents
+				blockers.append(addl)
 			else:
 				mydbapi = self.trees[myroot][self.pkg_tree_map[pkg_type]].dbapi
 				binary_package = True
@@ -2728,6 +2731,8 @@ class depgraph:
 			del mysplit
 
 		for x in p:
+			print x
+		for x in blockers:
 			print x
 
 		if verbosity == 3:
@@ -4705,6 +4710,8 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	dep_check_trees[myroot]["porttree"] = dep_check_trees[myroot]["vartree"]
 	syslist = getlist(settings, "system")
 	worldlist = getlist(settings, "world")
+	system_world_dict = genericdict(worldlist)
+	system_world_dict.update(genericdict(syslist))
 	fakedb = portage.fakedbapi(settings=settings)
 	myvarlist = vardb.cpv_all()
 
@@ -4741,8 +4748,12 @@ def action_depclean(settings, trees, ldpath_mtimes,
 			if not atom.startswith("!") and priority == hard:
 				unresolveable.setdefault(atom, []).append(parent)
 			continue
-		# Could put slot checking here to ensure that there aren't two
-		# packages with the same slot...
+		if portage.dep_getkey(atom) not in system_world_dict:
+			# Prune all but the best matching slot, since that's all that a
+			# deep world update would pull in.  Don't prune if the cpv is in
+			# system or world though, since those sets trigger greedy update
+			# of all slots.
+			pkgs = [portage.best(pkgs)]
 		for pkg in pkgs:
 			if fakedb.cpv_exists(pkg):
 				continue
@@ -4799,9 +4810,10 @@ def action_depclean(settings, trees, ldpath_mtimes,
 			print atom, "required by", " ".join(unresolveable[atom])
 		print
 		print "Have you forgotten to run " + good("`emerge --update --newuse --deep world`") + " prior to"
-		print "depclean?  It may also be necessary to manually uninstalled packages that no"
-		print "longer exist in the portage tree since it may not be possible to satisfy their"
-		print "dependencies."
+		print "depclean?  It may be necessary to manually uninstall packages that no longer"
+		print "exist in the portage tree since it may not be possible to satisfy their"
+		print "dependencies.  Also, be aware of the --with-bdeps option that is documented"
+		print "in " + good("`man emerge`") + "."
 		print
 		return
 
