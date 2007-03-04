@@ -2384,7 +2384,7 @@ class depgraph:
 		last_merge_depth = 0
 		for i in xrange(len(mylist)-1,-1,-1):
 			graph_key, depth, ordered = mylist[i]
-			if not ordered and depth == 0 and i > 1 \
+			if not ordered and depth == 0 and i > 0 \
 				and graph_key == mylist[i-1][0] and \
 				mylist[i-1][1] == 0:
 				# An ordered node got a consecutive duplicate when the tree was
