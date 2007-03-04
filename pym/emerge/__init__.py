@@ -2255,6 +2255,7 @@ class depgraph:
 				"--verbose" in self.myopts and 3 or 2)
 		changelogs=[]
 		p=[]
+		blockers = []
 
 		counters = PackageCounters()
 
@@ -2425,17 +2426,18 @@ class depgraph:
 				resolved = portage.key_expand(
 					pkg_key, mydb=vardb, settings=pkgsettings)
 				if "--columns" in self.myopts and "--quiet" in self.myopts:
-					print addl,red(resolved),
+					addl = addl + " " + red(resolved)
 				else:
-					print "["+x[0]+" "+addl+"]",red(resolved),
+					addl = "[blocks " + addl + "] " + red(resolved)
 				block_parents = self.blocker_parents[tuple(x)]
 				block_parents = set([pnode[2] for pnode in block_parents])
 				block_parents = ", ".join(block_parents)
 				if resolved!=x[2]:
-					print bad("(\"%s\" is blocking %s)") % \
+					addl += bad(" (\"%s\" is blocking %s)") % \
 						(pkg_key, block_parents)
 				else:
-					print bad("(is blocking %s)") % block_parents
+					addl += bad(" (is blocking %s)") % block_parents
+				blockers.append(addl)
 			else:
 				mydbapi = self.trees[myroot][self.pkg_tree_map[pkg_type]].dbapi
 				binary_package = True
@@ -2728,6 +2730,8 @@ class depgraph:
 			del mysplit
 
 		for x in p:
+			print x
+		for x in blockers:
 			print x
 
 		if verbosity == 3:
