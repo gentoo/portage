@@ -2992,10 +2992,6 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 		else:
 			mysettings["KV"]=""
 
-	if (mydo!="depend") or not mysettings.has_key("KVERS"):
-		myso=os.uname()[2]
-		mysettings["KVERS"]=myso[1]
-
 	# Allow color.map to control colors associated with einfo, ewarn, etc...
 	mycolors = []
 	for c in ("GOOD", "WARN", "BAD", "HILITE", "BRACKET"):
