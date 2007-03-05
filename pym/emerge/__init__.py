@@ -3093,10 +3093,10 @@ class MergeTask(object):
 							tree="porttree")
 						if retval != os.EX_OK:
 							return retval
-						if "--buildpkgonly" not in self.myopts:
-							bintree = self.trees[myroot]["bintree"]
+						bintree = self.trees[myroot]["bintree"]
+						if bintree.populated:
 							bintree.inject(pkg_key)
-							mytbz2 = bintree.getname(pkg_key)
+						if "--buildpkgonly" not in self.myopts:
 							msg = " === (%s of %s) Merging (%s::%s)" % \
 								(mergecount, len(mymergelist), pkg_key, y)
 							short_msg = "emerge: (%s of %s) %s Merge" % \
