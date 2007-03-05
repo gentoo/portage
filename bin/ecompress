@@ -3,16 +3,18 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id: prepman 5507 2007-01-10 04:22:27Z zmedico $
 
+source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
+
 if [[ -z $1 ]] ; then
-	echo "${0##*/}: at least one argument needed" 1>&2
+	vecho "${0##*/}: at least one argument needed" 1>&2
 	exit 1
 fi
 
-source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
-
 # setup compression stuff
-PORTAGE_COMPRESS=${PORTAGE_COMPRESS:-bzip2}
-if [[ -z ${PORTAGE_COMPRESS_FLAGS} ]] ; then
+PORTAGE_COMPRESS=${PORTAGE_COMPRESS-bzip2}
+[[ -z ${PORTAGE_COMPRESS} ]] && exit 0
+
+if [[ ${PORTAGE_COMPRESS_FLAGS+set} != "set" ]] ; then
 	case ${PORTAGE_COMPRESS} in
 		bzip2|gzip)  PORTAGE_COMPRESS_FLAGS="-f9";;
 	esac

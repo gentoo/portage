@@ -3,19 +3,15 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id: prepalldocs 3483 2006-06-10 21:40:40Z genone $
 
+source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
+
 if [[ -z $1 ]] ; then
-	echo "${0##*/}: at least one argument needed" 1>&2
+	vecho "${0##*/}: at least one argument needed" 1>&2
 	exit 1
 fi
 
 # figure out the new suffix
 suffix=$(ecompress --suffix)
-if [[ -z ${suffix} ]] ; then
-	vecho "${0##*/}: unable to figure out compressed suffix"
-	exit 1
-fi
-
-source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
 
 # funk_up_dir(action, suffix, binary)
 #	- action: compress or decompress
@@ -54,8 +50,6 @@ for dir in "$@" ; do
 	if [[ ! -d ${dir} ]] ; then
 		vecho "${0##*/}: ${dir#${D}} does not exist!"
 		continue
-	else
-		vecho "${0##*/}: $(ecompress --bin) ${dir#${D}}"
 	fi
 
 	# not uncommon for packages to compress doc files themselves
@@ -64,6 +58,8 @@ for dir in "$@" ; do
 	funk_up_dir "decompress" "bz2" "bunzip2"
 
 	# now lets do our work
+	[[ -z ${suffix} ]] && continue
+	vecho "${0##*/}: $(ecompress --bin) ${dir#${D}}"
 	funk_up_dir "compress" "${suffix}" "ecompress"
 done
 
