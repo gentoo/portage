@@ -1356,7 +1356,7 @@ for x in scanlist:
 							fails[mykey].append(x+"/"+y+".ebuild: "+keyword+"("+prof[0]+") "+repr(mydep[1]))
 
 		# this check needs work, it won't catch (\ndie)
-		if not os.system(portage.const.EPREFIX+"/usr/bin/grep -E '^[^#]*\([^)]*\<die\>' "+checkdir+"/"+y+".ebuild >/dev/null 2>&1"):
+		if not os.system("grep -E '^[^#]*\([^)]*\<die\>' "+checkdir+"/"+y+".ebuild >/dev/null 2>&1"):
 			stats["ebuild.nesteddie"]=stats["ebuild.nesteddie"]+1
 			fails["ebuild.nesteddie"].append(x+"/"+y+".ebuild")
 		# uselist checks - global
@@ -1651,10 +1651,10 @@ elif "--pretend" not in myoptions:
 	retval=["",""]
 	if isCvs:
 		print "Performing a "+green("cvs -n up")+" with a little magic grep to check for updates."
-		retval=getstatusoutput(portage.const.EPREFIX+"/usr/bin/cvs -n up 2>&1 | "+portage.const.EPREFIX+"/bin/egrep '^[^\?] .*' | "+portage.const.EPREFIX+"/bin/egrep -v '^. .*/digest-[^/]+|^cvs server: .* -- ignored$'")
+		retval=getstatusoutput("cvs -n up 2>&1 | egrep '^[^\?] .*' | egrep -v '^. .*/digest-[^/]+|^cvs server: .* -- ignored$'")
 	if isSvn:
 		print "Performing a "+green("svn status -u")+" with a little magic grep to check for updates."
-		retval=getstatusoutput(portage.const.EPREFIX+"/usr/bin/svn status -u 2>&1 | "+portage.const.EPREFIX+"/bin/egrep -v '^.  +.*/digest-[^/]+' | "+portage.const.EPREFIX+"/usr/bin/head -n-1")
+		retval=getstatusoutput("svn status -u 2>&1 | egrep -v '^.  +.*/digest-[^/]+' | head -n-1")
 
 	mylines=retval[1].split("\n")
 	myupdates=[]
