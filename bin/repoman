@@ -436,8 +436,8 @@ if os.path.isdir(".svn"):
 	try:
 		isSvn=True
 		myrepoinfo = os.popen("svn info").readlines()
-		myurl = myrepoinfo[1][5:].rstrip()
-		myreproot = myrepoinfo[2][17:].rstrip()
+		myurl = myrepoinfo[1].split(":")[1].rstrip()
+		myreproot = myrepoinfo[2].split(":")[1].rstrip()
 		# This one is EVIL, but I don't know how to solve the problem of
 		# getting rid of /trunk/prefix-overlay.  This only works on the
 		# prefix overlay.
