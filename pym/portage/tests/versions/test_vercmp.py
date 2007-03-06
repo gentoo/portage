@@ -3,7 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-from unittest import TestCase
+from portage.tests import TestCase
 from portage.versions import vercmp
 
 class VerCmpTestCase(TestCase):

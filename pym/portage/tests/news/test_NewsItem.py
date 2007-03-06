@@ -3,7 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id: test_varExpand.py 5596 2007-01-12 08:08:53Z antarus $
 
-from unittest import TestCase, TestLoader
+from portage.tests import TestCase, TestLoader
 from portage.news import NewsItem
 from portage.const import PROFILE_PATH
 
