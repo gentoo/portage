@@ -26,6 +26,19 @@ pym/portage/tests/cache/flat_hash/test_foo.py
 
 and you would put "cache/flat_hash" into the testDirs variable in __init__.py.
 
+
+Skipping
+--------
+
+Please use the portage.tests.* classes as they support throwing a SkipException for
+tests that are known to fail.  Normally one uses testing to do Test Driven Development
+(TDD); however we do not do that here.  Therefore there are times when legitimate tests
+exist but fail due to code in trunk.  We would still like the suite to pass in some instances
+because the suite is built around two things, testing functionality in the current code as
+well as poking holes in the current code (isvalidatom is an example).  So sometimes we desire
+a test to point out that "this needs fixing" but it doesn't affect portage's overall
+functionality.  You should raise portage.tests.SkipException in that case.
+
 emerge
 ------
 

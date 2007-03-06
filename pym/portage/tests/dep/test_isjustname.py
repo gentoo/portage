@@ -3,7 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-from unittest import TestCase
+from portage.tests import TestCase
 from portage.dep import isjustname
 
 class IsJustName(TestCase):

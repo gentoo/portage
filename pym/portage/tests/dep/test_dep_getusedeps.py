@@ -3,7 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id: test_dep_getslot.py 5794 2007-01-27 18:16:08Z antarus $
 
-from unittest import TestCase
+from portage.tests import TestCase
 from portage.dep import dep_getusedeps
 
 import sys
