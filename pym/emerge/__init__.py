@@ -2603,7 +2603,7 @@ class depgraph:
 				if verbosity == 3:
 					# size verbose
 					mysize=0
-					if x[0] == "ebuild" and x[-1]!="nomerge":
+					if x[0] == "ebuild" and ordered and x[-1] != "nomerge":
 						try:
 							myfilesdict = portdb.getfetchsizes(pkg_key,
 								useflags=self.useFlags[myroot][pkg_key],
@@ -2620,8 +2620,7 @@ class depgraph:
 								if myfetchfile not in myfetchlist:
 									mysize+=myfilesdict[myfetchfile]
 									myfetchlist.append(myfetchfile)
-							if ordered:
-								counters.totalsize += mysize
+							counters.totalsize += mysize
 						verboseadd+=format_size(mysize)+" "
 
 					# overlay verbose
