@@ -12,6 +12,8 @@ class IsValidAtom(TestCase):
 	""" A simple testcase for isvalidatom
 	"""
 
+	todo = True
+
 	def testIsValidAtom(self):
 		
 		tests = [ ( "sys-apps/portage", True ),
@@ -33,7 +35,6 @@ class IsValidAtom(TestCase):
 			  ( "portage", False ) ]
 
 		for test in tests:
-			raise self.SkipException()
 			if test[1]:
 				atom_type = "valid"
 			else:

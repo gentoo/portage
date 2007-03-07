@@ -46,27 +46,23 @@ def getTests( path, base_path ):
 			raise
 	return result
 
-class SkipException(Exception):
-	pass
-
 class TextTestResult(unittest._TextTestResult):
 	"""
-	We need a subclass of unittest._TextTestResult to handle skipped
-	tests.
+	We need a subclass of unittest._TextTestResult to handle tests with TODO
 
-	This just adds an addSkip method that can be used to add
-	skipped tests to the result; these can be displayed later
+	This just adds an addTodo method that can be used to add tests
+	that are marked TODO; these can be displayed later
 	by the test runner.
 	"""
 	
 	def __init__( self, stream, descriptions, verbosity ):
 		unittest._TextTestResult.__init__( self, stream, descriptions, verbosity )
-		self.skipped = []
+		self.todoed = []
 
-	def addSkip( self, test, info ):
-		self.skipped.append((test,info))
+	def addTodo( self, test, info ):
+		self.todoed.append((test,info))
 		if self.showAll:
-			self.stream.writeln("FAIL AND SKIP")
+			self.stream.writeln("TODO")
 		elif self.dots:
 			self.stream.write(".")
 	
@@ -75,7 +71,7 @@ class TextTestResult(unittest._TextTestResult):
 			self.stream.writeln()
 			self.printErrorList('ERROR', self.errors)
 			self.printErrorList('FAIL', self.failures)
-			self.printErrorList('SKIP', self.skipped)
+			self.printErrorList('TODO', self.todoed)
 	
 class TestCase(unittest.TestCase):
 	"""
@@ -84,8 +80,6 @@ class TestCase(unittest.TestCase):
 	and then fix the code later.  This may not be a great approach
 	(broken code!!??!11oneone) but it does happen at times.
 	"""
-	
-	SkipException = SkipException
 	
 	def __init__(self, methodName='runTest'):
 		# This method exists because unittest.py in python 2.4 stores
@@ -114,9 +108,10 @@ class TestCase(unittest.TestCase):
 				testMethod()
 				ok = True
 			except self.failureException:
-				result.addFailure(self, self._exc_info())
-			except self.SkipException:
-				result.addSkip(self,"%s: Failed but Skippable" % testMethod)
+				if self.todo:
+					result.addTodo(self,"%s: TODO" % testMethod)
+				else:
+					result.addFailure(self, self._exc_info())
 			except KeyboardInterrupt:
 				raise
 			except:
