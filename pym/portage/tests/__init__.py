@@ -7,7 +7,7 @@ import os, unittest, time
 import portage.tests
 
 def main():
-	testDirs = ["util","versions", "dep", "xpak"]
+	testDirs = ["util","versions", "dep", "xpak", "env/config"]
 	suite = unittest.TestSuite()
 	basedir = os.path.dirname(__file__)
 	for mydir in testDirs:
@@ -37,13 +37,10 @@ def getTests( path, base_path ):
 	parent_module = parent_module.replace('/','.')
 	result = []
 	for mymodule in files:
-		try:
-			# Make the trailing / a . for module importing
-			modname = ".".join((parent_module, mymodule))
-			mod = my_import(modname)
-			result.append( unittest.TestLoader().loadTestsFromModule(mod) )
-		except ImportError:
-			raise
+		# Make the trailing / a . for module importing
+		modname = ".".join((parent_module, mymodule))
+		mod = my_import(modname)
+		result.append( unittest.TestLoader().loadTestsFromModule(mod) )
 	return result
 
 class TextTestResult(unittest._TextTestResult):
@@ -87,6 +84,7 @@ class TestCase(unittest.TestCase):
 		# _testMethodName.
 		self._testMethodName = methodName
 		unittest.TestCase.__init__(self, methodName)
+		self.todo = False
 		
 	def defaultTestResult(self):
 		return TextTestResult()

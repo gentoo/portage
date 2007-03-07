@@ -12,10 +12,9 @@ class IsValidAtom(TestCase):
 	""" A simple testcase for isvalidatom
 	"""
 
-	todo = True
-
 	def testIsValidAtom(self):
-		
+	
+		self.todo = True	
 		tests = [ ( "sys-apps/portage", True ),
 			  ( "=sys-apps/portage-2.1", True ),
 		 	  ( "=sys-apps/portage-2.1*", True ),
