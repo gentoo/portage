@@ -24,7 +24,7 @@ class PackageKeywordsFileTestCase(TestCase):
 			for cpv, keyword in f.iteritems():
 				self.assertEqual( cpv, self.cpv )
 				[k for k in keyword if self.assertTrue(k in self.keywords)]
-		finally;
+		finally:
 			self.NukeFile()
 	
 	def BuildFile(self):
