@@ -112,3 +112,58 @@ class PackageUseFile(PackageUse):
 						self.data[key].append(items)
 					else:
 						self.data[key] = items
+
+class PackageMask(UserDIct):
+	"""
+	A base class for Package.mask functionality
+	"""
+	data = {}
+	
+	def iteritems(self):
+		return self.data.iteritems()
+	
+	def __hash__(self):
+		return hash(self.data)
+	
+	def __contains__(self, other):
+		return other in self.data
+	
+	def keys(self):
+		return self.data.keys()
+	
+	def iterkeys(self):
+		return self.data.iterkeys()
+
+class PackageMaskFile(PackageMask):
+	"""
+	A class that implements a file-based package.mask
+	
+	Entires in package.mask are of the form:
+	atom1
+	atom2
+	or optionally
+	-atom3
+	to revert a previous mask; this only works when masking files are stacked
+	"""
+	
+	def __init__(self, filename):
+		self.fname = filename
+	
+	def load(self, recursive):
+		"""
+		Package.keywords files have comments that begin with #.
+		The entries are of the form:
+		>>> atom useflag1 useflag2 useflag3..
+		useflags may optionally be negative with a minus sign (-)
+		>>> atom useflag1 -useflag2 useflag3
+		"""
+		
+		if os.path.exists( self.fname ):
+			f = open(self.fname, 'rb')
+			for line in f:
+				if line.startswith('#'):
+					continue
+				split = line.split()
+				if len(split):
+					atom = split[0] # This is an extra assignment, but I think it makes the code more explicit in what goes into the dict
+					self.data[atom] = None # we only care about keys in the dict, basically abusing it as a list

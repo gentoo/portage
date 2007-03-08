@@ -18,12 +18,14 @@ class PackageKeywordsFileTestCase(TestCase):
 		"""
 
 		self.BuildFile()
-		f = PackageKeywordsFile(self.fname)
-		f.load(recursive=False)
-		for cpv, keyword in f.iteritems():
-			self.assertEqual( cpv, self.cpv )
-			[k for k in keyword if self.assertTrue(k in self.keywords)]
-		self.NukeFile()
+		try:
+			f = PackageKeywordsFile(self.fname)
+			f.load(recursive=False)
+			for cpv, keyword in f.iteritems():
+				self.assertEqual( cpv, self.cpv )
+				[k for k in keyword if self.assertTrue(k in self.keywords)]
+		finally;
+			self.NukeFile()
 	
 	def BuildFile(self):
 		f = open(self.fname, 'wb')
