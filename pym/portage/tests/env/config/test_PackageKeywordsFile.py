@@ -19,7 +19,7 @@ class PackageKeywordsFileTestCase(TestCase):
 
 		self.BuildFile()
 		f = PackageKeywordsFile(self.fname)
-		f.load()
+		f.load(recursive=False)
 		for cpv, keyword in f.iteritems():
 			self.assertEqual( cpv, self.cpv )
 			[k for k in keyword if self.assertTrue(k in self.keywords)]
