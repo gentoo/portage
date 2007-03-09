@@ -2162,7 +2162,7 @@ class depgraph:
 		else:
 			#world mode
 			worldlist = getlist(self.settings, "world")
-			sysdict = genericdict(getlist(self.settings, "system"))
+			mylist = getlist(self.settings, "system")
 			worlddict=genericdict(worldlist)
 
 			for x in worlddict.keys():
@@ -2171,9 +2171,7 @@ class depgraph:
 				elif not self.trees[self.target_root]["vartree"].dbapi.match(x):
 					world_problems = True
 				else:
-					sysdict[x]=worlddict[x]
-
-			mylist = sysdict.keys()
+					mylist.append(x)
 
 		newlist = []
 		for atom in mylist:
