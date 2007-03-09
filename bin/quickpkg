@@ -82,10 +82,7 @@ while [[ -n $1 ]] ; do
 done
 [[ ${SET_X} == "yes" ]] && set -x
 
-case ${NOCOLOR:-false} in
-	yes|true) unset_colors;;
-	no|false) set_colors;;
-esac
+source "${PORTAGE_BIN_PATH}/isolated-functions.sh"
 
 # here we make a package given a little info
 # $1 = package-name w/version
