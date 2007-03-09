@@ -4944,6 +4944,11 @@ def action_build(settings, trees, mtimedb,
 		else:
 			mydepgraph.display(
 				mydepgraph.altlist(reversed=("--tree" in myopts)))
+		if ("--buildpkgonly" in myopts):
+			if not mydepgraph.digraph.hasallzeros(ignore_priority=DepPriority.MEDIUM):
+				print "\n!!! --buildpkgonly requires all dependencies to be merged."
+				print "!!! You have to merge the dependencies before you can build this package.\n"
+				sys.exit(1)
 	else:
 		if ("--buildpkgonly" in myopts):
 			if not mydepgraph.digraph.hasallzeros(ignore_priority=DepPriority.MEDIUM):
