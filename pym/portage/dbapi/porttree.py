@@ -613,23 +613,6 @@ class portdbapi(dbapi):
 						except ValueError:
 							pass
 
-		revmaskdict = self.mysettings.prevmaskdict
-		if revmaskdict.has_key(mycp):
-			for x in revmaskdict[mycp]:
-				#important: only match against the still-unmasked entries...
-				#notice how we pass "newlist" to the xmatch() call below....
-				#Without this, ~ deps in the packages files are broken.
-				mymatches = self.xmatch("match-list", x, mylist=newlist)
-				if mymatches is None:
-					#error in packages file; print warning and continue:
-					print "emerge: visible(): profile packages entry \""+x+"\" is invalid, ignoring..."
-					continue
-				pos = 0
-				while pos < len(newlist):
-					if newlist[pos] not in mymatches:
-						del newlist[pos]
-					else:
-						pos += 1
 		return newlist
 
 	def gvisible(self,mylist):
