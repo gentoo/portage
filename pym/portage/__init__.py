@@ -4491,18 +4491,6 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 
 	rValue = []
 
-	# profile checking
-	revmaskdict=settings.prevmaskdict
-	if revmaskdict.has_key(mycp):
-		for x in revmaskdict[mycp]:
-			if x[0]=="*":
-				myatom = x[1:]
-			else:
-				myatom = x
-			if not match_to_list(mycpv, [myatom]):
-				rValue.append("profile")
-				break
-
 	# package.mask checking
 	maskdict=settings.pmaskdict
 	unmaskdict=settings.punmaskdict
