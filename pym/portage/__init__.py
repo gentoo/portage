@@ -4336,7 +4336,7 @@ def key_expand(mykey, mydb=None, use_cache=1, settings=None):
 	virts = settings.getvirtuals("/")
 	virts_p = settings.get_virts_p("/")
 	if len(mysplit)==1:
-		if mydb and type(mydb)==types.InstanceType:
+		if hasattr(mydb, "cp_list"):
 			for x in settings.categories:
 				if mydb.cp_list(x+"/"+mykey,use_cache=use_cache):
 					return x+"/"+mykey
@@ -4344,7 +4344,7 @@ def key_expand(mykey, mydb=None, use_cache=1, settings=None):
 				return(virts_p[mykey][0])
 		return "null/"+mykey
 	elif mydb:
-		if type(mydb)==types.InstanceType:
+		if hasattr(mydb, "cp_list"):
 			if (not mydb.cp_list(mykey,use_cache=use_cache)) and virts and virts.has_key(mykey):
 				return virts[mykey][0]
 		return mykey
@@ -4498,18 +4498,6 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 	mycp=mysplit[0]+"/"+mysplit[1]
 
 	rValue = []
-
-	# profile checking
-	revmaskdict=settings.prevmaskdict
-	if revmaskdict.has_key(mycp):
-		for x in revmaskdict[mycp]:
-			if x[0]=="*":
-				myatom = x[1:]
-			else:
-				myatom = x
-			if not match_to_list(mycpv, [myatom]):
-				rValue.append("profile")
-				break
 
 	# package.mask checking
 	maskdict=settings.pmaskdict

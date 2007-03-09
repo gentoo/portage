@@ -2163,7 +2163,7 @@ class depgraph:
 		else:
 			#world mode
 			worldlist = getlist(self.settings, "world")
-			sysdict = genericdict(getlist(self.settings, "system"))
+			mylist = getlist(self.settings, "system")
 			worlddict=genericdict(worldlist)
 
 			for x in worlddict.keys():
@@ -2172,9 +2172,7 @@ class depgraph:
 				elif not self.trees[self.target_root]["vartree"].dbapi.match(x):
 					world_problems = True
 				else:
-					sysdict[x]=worlddict[x]
-
-			mylist = sysdict.keys()
+					mylist.append(x)
 
 		newlist = []
 		for atom in mylist:
@@ -2604,7 +2602,7 @@ class depgraph:
 				if verbosity == 3:
 					# size verbose
 					mysize=0
-					if x[0] == "ebuild" and x[-1]!="nomerge":
+					if x[0] == "ebuild" and ordered and x[-1] != "nomerge":
 						try:
 							myfilesdict = portdb.getfetchsizes(pkg_key,
 								useflags=self.useFlags[myroot][pkg_key],
@@ -2621,8 +2619,7 @@ class depgraph:
 								if myfetchfile not in myfetchlist:
 									mysize+=myfilesdict[myfetchfile]
 									myfetchlist.append(myfetchfile)
-							if ordered:
-								counters.totalsize += mysize
+							counters.totalsize += mysize
 						verboseadd+=format_size(mysize)+" "
 
 					# overlay verbose
@@ -4995,6 +4992,11 @@ def action_build(settings, trees, mtimedb,
 		else:
 			mydepgraph.display(
 				mydepgraph.altlist(reversed=("--tree" in myopts)))
+		if ("--buildpkgonly" in myopts):
+			if not mydepgraph.digraph.hasallzeros(ignore_priority=DepPriority.MEDIUM):
+				print "\n!!! --buildpkgonly requires all dependencies to be merged."
+				print "!!! You have to merge the dependencies before you can build this package.\n"
+				sys.exit(1)
 	else:
 		if ("--buildpkgonly" in myopts):
 			if not mydepgraph.digraph.hasallzeros(ignore_priority=DepPriority.MEDIUM):

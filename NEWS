@@ -3,6 +3,8 @@ News (mainly features/major bug fixes)
 portage-2.1.3
 -------------
 
+* Legacy "masked by: profile" support has been removed.  Profiles should use
+  package.mask to mask unwanted versions of system packages.
 * Allow per-module setting of PORTAGE_ELOG_CLASSES
 * Add ** as new token for package.keywords to bypass the keyword visibility layer
 * Namespace sanitizing: move all portage related code into portage.* namespace,
