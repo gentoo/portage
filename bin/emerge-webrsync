@@ -5,8 +5,9 @@
 # Author: Karl Trygve Kalleberg <karltk@gentoo.org>
 # Rewritten from the old, Perl-based emerge-webrsync script
 
-eval $(/usr/lib/portage/bin/portageq envvar -v FEATURES FETCHCOMMAND \
-	GENTOO_MIRRORS PORTAGE_INST_UID PORTAGE_INST_GID PORTAGE_NICENESS \
+type portageq > /dev/null || exit $?
+eval $(portageq envvar -v FEATURES FETCHCOMMAND GENTOO_MIRRORS \
+	PORTAGE_BIN_PATH PORTAGE_INST_UID PORTAGE_INST_GID PORTAGE_NICENESS \
 	PORTAGE_TMPDIR PORTDIR PORTAGE_RSYNC_EXTRA_OPTS)
 DISTDIR="${PORTAGE_TMPDIR}/emerge-webrsync"
 
@@ -16,7 +17,7 @@ if [ -n "${PORTAGE_NICENESS}" ]; then
 	renice $PORTAGE_NICENESS $$ > /dev/null
 fi
 
-source /usr/lib/portage/bin/isolated-functions.sh || exit 1
+source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
 
 if [ ! -d $DISTDIR ] ; then
 	mkdir -p $DISTDIR

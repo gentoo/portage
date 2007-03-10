@@ -439,8 +439,8 @@ scriptname=$(basename $0)
 
 trap die term
 
-
-eval $(/usr/lib/portage/bin/portageq envvar -v CONFIG_PROTECT \
+type portageq > /dev/null || exit $?
+eval $(portageq envvar -v CONFIG_PROTECT \
 	CONFIG_PROTECT_MASK PORTAGE_CONFIGROOT PORTAGE_TMPDIR ROOT USERLAND)
 export PORTAGE_TMPDIR
 
