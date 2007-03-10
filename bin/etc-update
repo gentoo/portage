@@ -439,10 +439,9 @@ scriptname=$(basename $0)
 
 trap die term
 
-
-eval $(@PORTAGE_BASE@/bin/portageq envvar -v CONFIG_PROTECT \
-	CONFIG_PROTECT_MASK PORTAGE_CONFIGROOT PORTAGE_TMPDIR ROOT \
-	USERLAND EPREFIX)
+type portageq > /dev/null || exit $?
+eval $(portageq envvar -v CONFIG_PROTECT \
+	CONFIG_PROTECT_MASK PORTAGE_CONFIGROOT PORTAGE_TMPDIR ROOT USERLAND EPREFIX)
 export PORTAGE_TMPDIR
 export EROOT=${ROOT%/}${EPREFIX}/
 

@@ -232,10 +232,11 @@ def hardlink_lockfile(lockfilename, max_wait=14400):
 			writemsg(".")
 		else:
 			reported_waiting = True
+			from portage.const import PORTAGE_BIN_PATH
 			print
 			print "Waiting on (hardlink) lockfile: (one '.' per 3 seconds)"
 			print "This is a feature to prevent distfiles corruption."
-			print "%s/bin/clean_locks can fix stuck locks." % portage.const.PORTAGE_BASE
+			print "%s/clean_locks can fix stuck locks." % PORTAGE_BIN_PATH
 			print "Lockfile: " + lockfilename
 		time.sleep(3)
 	
