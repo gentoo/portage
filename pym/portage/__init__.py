@@ -927,7 +927,7 @@ class config:
 				config_root = "/"
 
 			config_root = \
-				normalize_path(config_root).rstrip(os.path.sep) + os.path.sep
+				normalize_path(os.path.abspath(config_root)) + os.path.sep
 
 			check_var_directory("PORTAGE_CONFIGROOT", config_root)
 
@@ -1179,7 +1179,7 @@ class config:
 				target_root = "/"
 
 			target_root = \
-				normalize_path(target_root).rstrip(os.path.sep) + os.path.sep
+				normalize_path(os.path.abspath(target_root)) + os.path.sep
 
 			check_var_directory("ROOT", target_root)
 
