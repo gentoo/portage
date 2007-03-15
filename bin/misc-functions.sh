@@ -216,7 +216,7 @@ install_qa_check() {
 	if [[ -d ${ED}/${EPREFIX} ]] ; then
 		declare -i INSTALLTOD=0
 		for i in $(find "${ED}/${EPREFIX}/") ; do
-			echo "QA Notice: ${i#${ED}} double prefix"
+			eqawarn "QA Notice: ${i#${ED}} double prefix"
 			((INSTALLTOD++))
 		done
 		die "Aborting due to QA concerns: ${INSTALLTOD} double prefix files installed"
@@ -238,22 +238,35 @@ install_qa_check() {
 		unset INSTALLTOD
 	fi
 
-	if hasq kernel_Darwin ${USE} ; then
+	if [[ ${CHOST} == *-darwin* ]] ; then
 		# on Darwin, dynamic libraries are called .dylibs instead of
 		# .sos.  In addition the version component is before the
 		# extension, not after it.  Check for this, and *only* warn
-		# about it.  Packages such as python do ship .so files on Darwin
-		# and make it work (ugly!).
+		# about it.  Some packages do ship .so files on Darwin and make
+		# it work (ugly! e.g. python does this by default).
+		f=""
 		for i in $(find ${ED%/} -name "*.so" -or -name "*.so.*") ; do
-			vecho -ne '\a\n'
-			eqawarn "QA Notice: Found a .so dynamic library on Darwin:"
-			eqawarn "    ${i#${D}}"
+			[[ $(file $i) == *"Mach-O"* ]] && f="${f} ${i#${D}}"
 		done
+		if [[ -n ${f} ]] ; then
+			f=${f# }
+			vecho -ne '\a\n'
+			eqawarn "QA Notice: Found .so dynamic libraries on Darwin:"
+			eqawarn "    ${f// /\n    }"
+		fi
+		# The naming for dynamic libraries is different on Darwin; the
+		# version component is before the extention, instead of after
+		# it, as with .sos.  Again, make this a warning only.
+		f=""
 		for i in $(find ${ED%/} -name "*.dylib.*") ; do
-			vecho -ne '\a\n'
-			eqawarn "QA Notice: Found a wrongly named dynamic library on Darwin:"
-			eqawarn "    ${i#${D}}"
+			f="${f} ${i#${D}}"
 		done
+		if [[ -n ${f} ]] ; then
+			f=${f# }
+			vecho -ne '\a\n'
+			eqawarn "QA Notice: Found wrongly named dynamic libraries on Darwin:"
+			eqawarn "    ${f// /\n    }"
+		fi
 	fi
 
 	# this should help to ensure that all (most?) shared libraries are executable
