@@ -1004,8 +1004,8 @@ class config:
 			if config_root is None:
 				config_root = "/"
 
-			config_root = \
-				normalize_path(config_root).rstrip(os.path.sep) + os.path.sep
+			config_root = normalize_path(os.path.abspath(
+				config_root)).rstrip(os.path.sep) + os.path.sep
 
 			check_var_directory("PORTAGE_CONFIGROOT", config_root)
 
@@ -1256,8 +1256,8 @@ class config:
 			if target_root is None:
 				target_root = "/"
 
-			target_root = \
-				normalize_path(target_root).rstrip(os.path.sep) + os.path.sep
+			target_root = normalize_path(os.path.abspath(
+				target_root)).rstrip(os.path.sep) + os.path.sep
 
 			check_var_directory("ROOT", target_root)
 
