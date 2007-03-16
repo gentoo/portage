@@ -16,7 +16,7 @@ PORTAGE_COMPRESS=${PORTAGE_COMPRESS-bzip2}
 
 if [[ ${PORTAGE_COMPRESS_FLAGS+set} != "set" ]] ; then
 	case ${PORTAGE_COMPRESS} in
-		bzip2|gzip)  PORTAGE_COMPRESS_FLAGS="-f9";;
+		bzip2|gzip)  PORTAGE_COMPRESS_FLAGS="-9";;
 	esac
 fi
 
@@ -41,6 +41,12 @@ case $1 in
 		echo "${PORTAGE_COMPRESS} ${PORTAGE_COMPRESS_FLAGS}"
 		;;
 	*)
+		# If a compressed version of the file already exists, simply
+		# delete it so that the compressor doesn't whine (bzip2 will
+		# complain and skip, gzip will prompt for input)
+		suffix=$(ecompress --suffix)
+		[[ -n ${suffix} ]] && rm -f "${@/%/${suffix}}"
+		# Finally, let's actually do some real work
 		exec "${PORTAGE_COMPRESS}" ${PORTAGE_COMPRESS_FLAGS} "$@"
 		;;
 esac
