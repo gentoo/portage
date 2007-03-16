@@ -1844,10 +1844,10 @@ class dblink(object):
 						sys.exit(1)
 					zing = ">>>"
 				else:
-					mymtime = thismtime
+					mymtime = long(time.time())
 					# We need to touch the destination so that on --update the
 					# old package won't yank the file with it. (non-cfgprot related)
-					os.utime(mydest, (thismtime,thismtime))
+					os.utime(mydest, (mymtime, mymtime))
 					zing = "---"
 				if self.settings["USERLAND"] == "Darwin" and myrealdest[-2:] == ".a":
 
