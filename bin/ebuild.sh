@@ -1618,6 +1618,7 @@ if [ -n "${myarg}" ] && \
 	# Save current environment and touch a success file. (echo for success)
 	umask 002
 	set | egrep -v "^SANDBOX_" > "${T}/environment" 2>/dev/null
+	export | egrep -v "^declare -x SANDBOX_" >> "${T}/environment" 2>/dev/null
 	chown portage:portage "${T}/environment" &>/dev/null
 	chmod g+w "${T}/environment" &>/dev/null
 fi
