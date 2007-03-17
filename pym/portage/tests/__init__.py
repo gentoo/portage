@@ -85,6 +85,9 @@ class TestCase(unittest.TestCase):
 		self._testMethodName = methodName
 		unittest.TestCase.__init__(self, methodName)
 		self.todo = False
+		# compat hack for older pythons
+		if not self._exc_info and self.__exc_info
+			self._exc_info = self.__exc_info
 		
 	def defaultTestResult(self):
 		return TextTestResult()
