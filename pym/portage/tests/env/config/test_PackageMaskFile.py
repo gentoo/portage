@@ -22,7 +22,7 @@ class PackageMaskFileTestCase(TestCase):
 	
 	def BuildFile(self):
 		f = open(self.fname, 'wb')
-		f.write("\n".join(atoms))
+		f.write("\n".join(self.atoms))
 		f.close()
 	
 	def NukeFile(self):
