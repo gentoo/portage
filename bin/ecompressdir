@@ -74,14 +74,13 @@ funk_up_dir() {
 # _relocate_skip_dirs(srctree, dsttree)
 # Move all the directories we want to skip running compression
 # on from srctree to dsttree.
-# TODO: this should support whitespace in paths ...
 _relocate_skip_dirs() {
 	local srctree="$1" dsttree="$2"
 
 	[[ -d ${srctree} ]] || return 0
 
-	local src dst parent
-	for src in $(find "${srctree}" -name '*.ecompress.skip') ; do
+	find "${srctree}" -name '*.ecompress.skip' -print0 | \
+	while read -d $'\0' src ; do
 		src=${src%.ecompress.skip}
 		dst="${dsttree}${src#${srctree}}"
 		parent=${dst%/*}
@@ -116,6 +115,10 @@ for dir in "$@" ; do
 	funk_up_dir "decompress" "Z" "gunzip"
 	funk_up_dir "decompress" "gz" "gunzip"
 	funk_up_dir "decompress" "bz2" "bunzip2"
+
+	# forcibly break all hard links as some compressors whine about it
+	find "${dir}" -type f -links +1 -exec env file="{}" sh -c \
+		'cp -p "${file}"{,.ecompress.break} ; mv -f "${file}"{.ecompress.break,}' \;
 
 	# now lets do our work
 	[[ -z ${suffix} ]] && continue
