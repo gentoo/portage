@@ -3,7 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-import os, unittest, time
+import os, sys, time, unittest
 import portage.tests
 
 def main():
@@ -99,7 +99,7 @@ class TestCase(unittest.TestCase):
 			except KeyboardInterrupt:
 				raise
 			except:
-				result.addError(self, self._exc_info())
+				result.addError(self, sys.exc_info())
 				return
 			ok = False
 			try:
@@ -109,17 +109,17 @@ class TestCase(unittest.TestCase):
 				if self.todo:
 					result.addTodo(self,"%s: TODO" % testMethod)
 				else:
-					result.addFailure(self, self._exc_info())
-			except KeyboardInterrupt:
+					result.addFailure(self, sys.exc_info())
+			except (KeyboardInterrupt, SystemExit):
 				raise
 			except:
-				result.addError(self, self._exc_info())
+				result.addError(self, sys.exc_info())
 			try:
 				self.tearDown()
 			except KeyboardInterrupt:
 				raise
 			except:
-				result.addError(self, self._exc_info())
+				result.addError(self, sys.exc_info())
 				ok = False
 			if ok: result.addSuccess(self)
 		finally:

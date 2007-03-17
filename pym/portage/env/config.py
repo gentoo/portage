@@ -113,7 +113,7 @@ class PackageUseFile(PackageUse):
 					else:
 						self.data[key] = items
 
-class PackageMask(UserDIct):
+class PackageMask(UserDict):
 	"""
 	A base class for Package.mask functionality
 	"""
