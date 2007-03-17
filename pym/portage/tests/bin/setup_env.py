@@ -4,11 +4,12 @@
 # $Id: test_dep_getcpv.py 6182 2007-03-06 07:35:22Z antarus $
 
 import os, shutil, sys
+from os.path import dirname, abspath, join
 from portage.tests import TestCase
 from portage.process import spawn
 
-bindir = os.path.join(os.getcwd(), "..", "..", "..", "bin")
-basedir = os.path.join(os.getcwd(), "bin", "root")
+bindir = join(dirname(dirname(abspath(__file__))), "..", "..", "..", "bin")
+basedir = join(dirname(dirname(abspath(__file__))), "bin", "root")
 os.environ["D"] = os.path.join(basedir, "image")
 os.environ["T"] = os.path.join(basedir, "temp")
 os.environ["S"] = os.path.join(basedir, "workdir")
