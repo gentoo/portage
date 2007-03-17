@@ -1494,8 +1494,14 @@ class dblink(object):
 		else:
 			cfgfiledict["IGNORE"]=0
 
+		# Timestamp for files being merged.  Use time() - 1 in order to prevent
+		# a collision with timestamps that are bumped by the utime() call
+		# inside isprotected().  This ensures that the new and old config have
+		# different timestamps (for the benefit of programs like rsync that
+		# that need distiguishable timestamps to detect file changes).
+		mymtime = long(time.time() - 1)
+
 		# set umask to 0 for merging; back up umask, save old one in prevmask (since this is a global change)
-		mymtime = long(time.time())
 		prevmask = os.umask(0)
 		secondhand = []
 
@@ -1838,10 +1844,10 @@ class dblink(object):
 						sys.exit(1)
 					zing = ">>>"
 				else:
-					mymtime = thismtime
+					mymtime = long(time.time())
 					# We need to touch the destination so that on --update the
 					# old package won't yank the file with it. (non-cfgprot related)
-					os.utime(mydest, (thismtime,thismtime))
+					os.utime(mydest, (mymtime, mymtime))
 					zing = "---"
 				if self.settings["USERLAND"] == "Darwin" and myrealdest[-2:] == ".a":
 
