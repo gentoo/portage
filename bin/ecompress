@@ -22,6 +22,8 @@ fi
 
 case $1 in
 	--suffix)
+		[[ -n $2 ]] && vecho "${0##*/}: --suffix takes no additional arguments" 1>&2
+
 		set -e
 		tmpdir="${T}"/.ecompress$$.${RANDOM}
 		mkdir "${tmpdir}"
@@ -38,7 +40,24 @@ case $1 in
 		echo "${suffix}"
 		;;
 	--bin)
+		[[ -n $2 ]] && vecho "${0##*/}: --bin takes no additional arguments" 1>&2
+
 		echo "${PORTAGE_COMPRESS} ${PORTAGE_COMPRESS_FLAGS}"
+		;;
+	--queue)
+		shift
+		exec touch "${@/%/.ecompress.file}"
+		;;
+	--dequeue)
+		[[ -n $2 ]] && vecho "${0##*/}: --dequeue takes no additional arguments" 1>&2
+		find "${D}" -name '*.ecompress.file' -print0 \
+			| sed -e 's:\.ecompress\.file::g' \
+			| ${XARGS} -0 ecompress
+		find "${D}" -name '*.ecompress.file' -print0 | ${XARGS} -0 rm -f
+		;;
+	--*)
+		vecho "${0##*/}: unknown arguments '$*'" 1>&2
+		exit 1
 		;;
 	*)
 		# If a compressed version of the file already exists, simply

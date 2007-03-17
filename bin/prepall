@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2006 Gentoo Foundation
+# Copyright 1999-2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
@@ -16,6 +16,9 @@ fi
 prepallman
 prepallinfo
 prepallstrip
+
+ecompressdir --dequeue
+ecompress --dequeue
 
 if type -p chflags &>/dev/null && type -p mtree &>/dev/null; then
 	# Restore all the file flags that were saved at the beginning of prepall.

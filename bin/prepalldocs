@@ -10,16 +10,5 @@ fi
 cd "${D}"
 [[ -d usr/share/doc ]] || exit 0
 
-# we dont want to compress the html subdir
-if [[ -d ${D}usr/share/doc/${PF}/html ]] ; then
-	mv "${D}"usr/share/doc/${PF}/html "${T}"/ecompressdir-html-backup || exit 1
-fi
-
-ecompressdir /usr/share/doc
-ret=$?
-
-if [[ -d ${T}/ecompressdir-html-backup ]] ; then
-	mv "${T}"/ecompressdir-html-backup "${D}"/usr/share/doc/${PF}/html
-fi
-
-exit ${ret}
+ecompressdir --ignore /usr/share/doc/${PF}/html
+ecompressdir --queue /usr/share/doc

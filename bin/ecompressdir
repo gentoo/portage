@@ -10,6 +10,34 @@ if [[ -z $1 ]] ; then
 	exit 1
 fi
 
+case $1 in
+	--ignore)
+		shift
+		for skip in "$@" ; do
+			[[ -d ${D}${skip} ]] && touch "${D}${skip}.ecompress.skip"
+		done
+		exit 0
+		;;
+	--queue)
+		shift
+		set -- "${@/%/.ecompress.dir}"
+		set -- "${@/#/${D}}"
+		exec touch "$@"
+		;;
+	--dequeue)
+		[[ -n $2 ]] && vecho "${0##*/}: --dequeue takes no additional arguments" 1>&2
+		find "${D}" -name '*.ecompress.dir' -print0 \
+			| sed -e 's:\.ecompress\.dir::g' -e "s:${D}:/:g" \
+			| ${XARGS} -0 ecompressdir
+		find "${D}" -name '*.ecompress.skip' -print0 | ${XARGS} -0 rm -f
+		exit 0
+		;;
+	--*)
+		vecho "${0##*/}: unknown arguments '$*'"
+		exit 1
+		;;
+esac
+
 # figure out the new suffix
 suffix=$(ecompress --suffix)
 
@@ -43,7 +71,31 @@ funk_up_dir() {
 	done
 }
 
+# _relocate_skip_dirs(srctree, dsttree)
+# Move all the directories we want to skip running compression
+# on from srctree to dsttree.
+# TODO: this should support whitespace in paths ...
+_relocate_skip_dirs() {
+	local srctree="$1" dsttree="$2"
+
+	[[ -d ${srctree} ]] || return 0
+
+	local src dst parent
+	for src in $(find "${srctree}" -name '*.ecompress.skip') ; do
+		src=${src%.ecompress.skip}
+		dst="${dsttree}${src#${srctree}}"
+		parent=${dst%/*}
+		mkdir -p "${parent}"
+		mv "${src}" "${dst}"
+		mv "${src}.ecompress.skip" "${dst}.ecompress.skip"
+	done
+}
+hide_skip_dirs()    { _relocate_skip_dirs "${D}" "${T}"/ecompress-skip/ ; }
+restore_skip_dirs() { _relocate_skip_dirs "${T}"/ecompress-skip/ "${D}" ; }
+
 ret=0
+
+rm -rf "${T}"/ecompress-skip
 
 for dir in "$@" ; do
 	dir="${D}${dir}"
@@ -51,6 +103,14 @@ for dir in "$@" ; do
 		vecho "${0##*/}: ${dir#${D}} does not exist!"
 		continue
 	fi
+
+	# hide all the stuff we want to skip
+	hide_skip_dirs "${dir}"
+
+	# since we've been requested to compress the whole dir,
+	# delete any individual queued requests
+	rm -f "${dir}.ecompress.dir"
+	find "${dir}" -type f -name '*.ecompress.file' -print0 | ${XARGS} -0 rm -f
 
 	# not uncommon for packages to compress doc files themselves
 	funk_up_dir "decompress" "Z" "gunzip"
@@ -61,6 +121,9 @@ for dir in "$@" ; do
 	[[ -z ${suffix} ]] && continue
 	vecho "${0##*/}: $(ecompress --bin) ${dir#${D}}"
 	funk_up_dir "compress" "${suffix}" "ecompress"
+
+	# finally, restore the skipped stuff
+	restore_skip_dirs
 done
 
 exit ${ret}
