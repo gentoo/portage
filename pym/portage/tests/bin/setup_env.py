@@ -33,6 +33,8 @@ class BinTestCase(TestCase):
 		binTestsInit()
 	def __del__(self):
 		binTestsCleanup()
+		if hasattr(TestCase, "__del__"):
+			TestCase.__del__(self)
 
 def _exists_in_D(path):
 	# Note: do not use os.path.join() here, we assume D to end in /
