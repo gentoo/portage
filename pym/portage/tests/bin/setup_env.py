@@ -49,6 +49,7 @@ def portage_func(func, args, exit_status=0):
 	f = open('/dev/null', 'w')
 	fd_pipes = {0:0,1:f.fileno(),2:f.fileno()}
 	spawn(func+" "+args, env=os.environ, fd_pipes=fd_pipes)
+	f.close()
 
 def create_portage_wrapper(bin):
 	def derived_func(*args):
