@@ -1713,8 +1713,11 @@ elif "--pretend" not in myoptions:
 
 	# Manifests need to be regenerated after all other commits, so don't commit
 	# them now even if they have changed.
-	mymanifests = [f for f in mychanged if "Manifest" == os.path.basename(f)]
-	mychanged = [f for f in mychanged if "Manifest" != os.path.basename(f)]
+	# However, in SVN mode, the manifest won't change, hence, if we
+	# don't sign, we can commit it right away, avoiding an extra commit
+	if not isSvn or "sign" in repoman_settings.features:
+		mymanifests = [f for f in mychanged if "Manifest" == os.path.basename(f)]
+		mychanged = [f for f in mychanged if "Manifest" != os.path.basename(f)]
 	myupdates=mychanged+mynew
 	myheaders=[]
 	mydirty=[]
