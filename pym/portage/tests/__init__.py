@@ -85,9 +85,6 @@ class TestCase(unittest.TestCase):
 		self._testMethodName = methodName
 		unittest.TestCase.__init__(self, methodName)
 		self.todo = False
-		# compat hack for older pythons
-		if not self._exc_info and self.__exc_info
-			self._exc_info = self.__exc_info
 		
 	def defaultTestResult(self):
 		return TextTestResult()
@@ -102,7 +99,7 @@ class TestCase(unittest.TestCase):
 			except KeyboardInterrupt:
 				raise
 			except:
-				result.addError(self, self._exc_info())
+				result.addError(self, sys.exc_info())
 				return
 			ok = False
 			try:
@@ -112,7 +109,7 @@ class TestCase(unittest.TestCase):
 				if self.todo:
 					result.addTodo(self,"%s: TODO" % testMethod)
 				else:
-					result.addFailure(self, self._exc_info())
+					result.addFailure(self, sys.exc_info())
 			except (KeyboardInterrupt, SystemExit):
 				raise
 			except:
@@ -122,7 +119,7 @@ class TestCase(unittest.TestCase):
 			except KeyboardInterrupt:
 				raise
 			except:
-				result.addError(self, self._exc_info())
+				result.addError(self, sys.exc_info())
 				ok = False
 			if ok: result.addSuccess(self)
 		finally:
