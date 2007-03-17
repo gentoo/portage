@@ -16,12 +16,14 @@ PORTAGE_COMPRESS=${PORTAGE_COMPRESS-bzip2}
 
 if [[ ${PORTAGE_COMPRESS_FLAGS+set} != "set" ]] ; then
 	case ${PORTAGE_COMPRESS} in
-		bzip2|gzip)  PORTAGE_COMPRESS_FLAGS="-f9";;
+		bzip2|gzip)  PORTAGE_COMPRESS_FLAGS="-9";;
 	esac
 fi
 
 case $1 in
 	--suffix)
+		[[ -n $2 ]] && vecho "${0##*/}: --suffix takes no additional arguments" 1>&2
+
 		set -e
 		tmpdir="${T}"/.ecompress$$.${RANDOM}
 		mkdir "${tmpdir}"
@@ -38,9 +40,32 @@ case $1 in
 		echo "${suffix}"
 		;;
 	--bin)
+		[[ -n $2 ]] && vecho "${0##*/}: --bin takes no additional arguments" 1>&2
+
 		echo "${PORTAGE_COMPRESS} ${PORTAGE_COMPRESS_FLAGS}"
 		;;
+	--queue)
+		shift
+		exec touch "${@/%/.ecompress.file}"
+		;;
+	--dequeue)
+		[[ -n $2 ]] && vecho "${0##*/}: --dequeue takes no additional arguments" 1>&2
+		find "${ED}" -name '*.ecompress.file' -print0 \
+			| sed -e 's:\.ecompress\.file::g' \
+			| ${XARGS} -0 ecompress
+		find "${ED}" -name '*.ecompress.file' -print0 | ${XARGS} -0 rm -f
+		;;
+	--*)
+		vecho "${0##*/}: unknown arguments '$*'" 1>&2
+		exit 1
+		;;
 	*)
+		# If a compressed version of the file already exists, simply
+		# delete it so that the compressor doesn't whine (bzip2 will
+		# complain and skip, gzip will prompt for input)
+		suffix=$(ecompress --suffix)
+		[[ -n ${suffix} ]] && rm -f "${@/%/${suffix}}"
+		# Finally, let's actually do some real work
 		exec "${PORTAGE_COMPRESS}" ${PORTAGE_COMPRESS_FLAGS} "$@"
 		;;
 esac
