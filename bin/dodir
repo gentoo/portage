@@ -3,5 +3,4 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-slash=/
-exec install -d ${DIROPTIONS} "${@/#${slash}/${D}${slash}}"
+exec install -d ${DIROPTIONS} "${@/#/${D}/}"
