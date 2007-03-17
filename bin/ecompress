@@ -32,7 +32,7 @@ case $1 in
 		# to compress as some programs will refuse to do compression
 		# if it cannot actually compress the file
 		echo {0..1000} > compressme
-		${PORTAGE_COMPRESS} ${PORTAGE_COMPRESS_FLAGS} compressme
+		${PORTAGE_COMPRESS} ${PORTAGE_COMPRESS_FLAGS} compressme > /dev/null
 		suffix=$(ls compressme*)
 		suffix=${suffix#compressme}
 		cd /
