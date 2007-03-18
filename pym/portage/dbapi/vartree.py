@@ -1423,14 +1423,14 @@ class dblink(object):
 
 		# Preserve old libs if they are still in use
 		if slot_matches and "preserve-libs" in self.settings.features:
-			myfilelist = listdir(srcroot, recursive=1, filesonly=1, followSymlinks=True)
+			myfilelist = listdir(srcroot, recursive=1, filesonly=1, followSymlinks=False)
 			mylinklist = filter(os.path.islink, listdir(srcroot, recursive=1, filesonly=0, followSymlinks=False))
 			self._preserve_libs(srcroot, destroot, myfilelist+mylinklist)
 
 		# check for package collisions
 		if "collision-protect" in self.settings.features:
 			if myfilelist == None:
-				myfilelist = listdir(srcroot, recursive=1, filesonly=1, followSymlinks=True)
+				myfilelist = listdir(srcroot, recursive=1, filesonly=1, followSymlinks=False)
 			if mylinklist == None:
 				mylinklist = filter(os.path.islink, listdir(srcroot, recursive=1, filesonly=0, followSymlinks=False))
 			self._collision_protect(srcroot, destroot, otherversions, myfilelist+mylinklist, mylinklist)
