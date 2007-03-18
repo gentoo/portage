@@ -3,4 +3,8 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-exec chmod "${@/#/${ED}/}"
+# We want all paths to be in ${ED}, whether or not relative.  The first
+# argument should be the mode, according to the man-page.  It cannot
+# come after the first argument.  That's cool for us.
+mode=$1 ; shift
+exec chmod "${mode}" "${@/#/${ED}/}"
