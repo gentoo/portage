@@ -3,4 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-exec chown "${@/#/${D}/}"
+# we can't prefix all arguments because
+# chown takes random options
+slash="/"
+exec chown "${@/#${slash}/${D}${slash}}"

@@ -3,4 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-exec chmod "${@/#/${D}/}"
+# we can't prefix all arguments because
+# chmod takes random options
+slash="/"
+exec chmod "${@/#${slash}/${D}${slash}}"
