@@ -235,7 +235,7 @@ def create_color_func(color_key):
 	return derived_func
 
 for c in compat_functions_colors:
-	locals()[c] = create_color_func(c)
+	globals()[c] = create_color_func(c)
 
 class EOutput:
 	"""
