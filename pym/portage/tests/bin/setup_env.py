@@ -66,4 +66,4 @@ for bin in os.listdir(bindir):
 	   bin.startswith("new") or \
 	   bin.startswith("prep") or \
 	   bin in ["ecompress","ecompressdir","fowners","fperms"]:
-		locals()[bin] = create_portage_wrapper(bin)
+		globals()[bin] = create_portage_wrapper(bin)
