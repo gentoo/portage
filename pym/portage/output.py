@@ -235,7 +235,7 @@ def create_color_func(color_key):
 	return derived_func
 
 for c in compat_functions_colors:
-	setattr(sys.modules[__name__], c, create_color_func(c))
+	locals()[c] = create_color_func(c)
 
 class EOutput:
 	"""
