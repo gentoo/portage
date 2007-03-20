@@ -1749,6 +1749,19 @@ class config:
 			self.reset(keeping_pkg=1,use_cache=use_cache)
 
 	def getMissingLicenses(self, licenses, cpv):
+		"""
+		Take a LICENSE string and return a list any licenses that the user may
+		may need to accept for the given package.  The returned list will not
+		contain any licenses that have already been accepted.  This method
+		can throw an InvalidDependString exception.
+
+		@param licenses: A raw LICENSE string as returned form dbapi.aux_get()
+		@type licenses: String
+		@param cpv: The package name (for evaluation of USE conditionals)
+		@type cpv: String
+		@rtype: List
+		@return: A list of licenses that have not been accepted.
+		"""
 		cpdict = self._plicensedict.get(dep_getkey(cpv), None)
 		acceptable_licenses = self._accept_license.copy()
 		if cpdict:
