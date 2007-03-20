@@ -37,7 +37,7 @@ import portage.dep
 import portage.dep
 portage.dep._dep_check_strict = True
 import portage.exception
-import cvstree
+from portage import cvstree
 import time
 import codecs
 
