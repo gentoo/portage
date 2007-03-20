@@ -1773,6 +1773,8 @@ class config:
 				if isinstance(element, list):
 					if element:
 						ret.append(self._getMissingLicenses(element))
+						if not ret[-1]:
+							return []
 				else:
 					if element in acceptable_licenses:
 						return []
