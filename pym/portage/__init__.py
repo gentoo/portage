@@ -1772,7 +1772,8 @@ class config:
 			for element in license_struct[1:]:
 				if isinstance(element, list):
 					if element:
-						ret.append(self._getMissingLicenses(element))
+						ret.append(self._getMissingLicenses(
+							element, acceptable_licenses))
 						if not ret[-1]:
 							return []
 				else:
@@ -1787,7 +1788,8 @@ class config:
 		for element in license_struct:
 			if isinstance(element, list):
 				if element:
-					ret.extend(self._getMissingLicenses(element))
+					ret.extend(self._getMissingLicenses(element,
+						acceptable_licenses))
 			else:
 				if element not in acceptable_licenses:
 					ret.append(element)
