@@ -7,7 +7,7 @@ die() {
 
 #autoheader || { echo "failed autoheader"; exit 1; };
 aclocal || die "failed aclocal"
-[ "`type -t glibtoolize`" == "file" ] && alias libtoolize=glibtoolize
+[ "`type -t glibtoolize`" = "file" ] && alias libtoolize=glibtoolize
 libtoolize --automake -c -f || die "failed libtoolize"
 autoconf || die "failed autoconf"
 touch ChangeLog 
