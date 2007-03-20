@@ -1168,7 +1168,8 @@ class config:
 			self.lookuplist.reverse()
 
 			# Blacklist vars that could interfere with portage internals.
-			for blacklisted in ["PKGUSE", "PORTAGE_CONFIGROOT", "ROOT"]:
+			for blacklisted in ["PKGUSE", "PORTAGE_CONFIGROOT", "ROOT",
+					"EPREFIX", "EROOT"]:
 				for cfg in self.lookuplist:
 					try:
 						del cfg[blacklisted]
@@ -1206,6 +1207,10 @@ class config:
 			self.backup_changes("PORTAGE_CONFIGROOT")
 			self["ROOT"] = target_root
 			self.backup_changes("ROOT")
+			self["EPREFIX"] = EPREFIX
+			self.backup_changes("EPREFIX")
+			self["EROOT"] = normalize_path(target_root + EPREFIX) + os.sep
+			self.backup_changes("EROOT")
 
 			self.pusedict = {}
 			self.pkeywordsdict = {}
