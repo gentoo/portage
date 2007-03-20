@@ -1694,8 +1694,14 @@ class depgraph:
 										oldcomment = comment
 								licenses = portdb.aux_get(p, ["LICENSE"])[0]
 								missing_licenses = []
-								for l in pkgsettings.getMissingLicenses(
-									licenses, p):
+								try:
+									missing_licenses = \
+									pkgsettings.getMissingLicenses(licenses, p)
+								except portage.exception.InvalidDependString:
+									# This will have already been reported
+									# above via mreasons.
+									pass
+								for l in missing_licenses:
 									l_path = portdb.findLicensePath(l)
 									if l in shown_licenses:
 										continue
