@@ -907,6 +907,9 @@ class config:
 			self.dirVirtuals = copy.deepcopy(clone.dirVirtuals)
 			self.treeVirtuals = copy.deepcopy(clone.treeVirtuals)
 			self.features = copy.deepcopy(clone.features)
+
+			self._accept_license = copy.deepcopy(clone._accept_license)
+			self._plicensedict = copy.deepcopy(clone._plicensedict)
 		else:
 
 			# backupenv is for calculated incremental variables.
@@ -1208,6 +1211,7 @@ class config:
 
 			self.pusedict = {}
 			self.pkeywordsdict = {}
+			self._plicensedict = {}
 			self.punmaskdict = {}
 			abs_user_config = os.path.join(config_root,
 				USER_CONFIG_PATH.lstrip(os.path.sep))
@@ -1260,6 +1264,17 @@ class config:
 					if not self.pkeywordsdict.has_key(cp):
 						self.pkeywordsdict[cp] = {}
 					self.pkeywordsdict[cp][key] = pkgdict[key]
+				
+				#package.license
+				licdict = grabdict_package(os.path.join(
+					abs_user_config, "package.license"), recursive=1)
+				for k, v in licdict.iteritems():
+					cp = dep_getkey(k)
+					cp_dict = self._plicensedict.get(cp)
+					if not cp_dict:
+						cp_dict = {}
+						self._plicensedict[cp] = cp_dict
+					cp_dict[k] = self.expandLicenseTokens(v)
 
 				#package.unmask
 				pkgunmasklines = grabfile_package(
@@ -1334,6 +1349,12 @@ class config:
 				else:
 					self.pprovideddict[mycatpkg]=[x]
 
+			# parse licensegroups
+			self._license_groups = {}
+			for x in locations:
+				self._license_groups.update(
+					grabdict(os.path.join(x, "license_groups")))
+
 			# reasonable defaults; this is important as without USE_ORDER,
 			# USE will always be "" (nothing set)!
 			if "USE_ORDER" not in self:
@@ -1369,6 +1390,18 @@ class config:
 			self["PORTAGE_PYM_PATH"] = PORTAGE_PYM_PATH
 			self.backup_changes("PORTAGE_PYM_PATH")
 
+			# Expand license groups
+			# This has to do be done for each config layer before regenerate()
+			# in order for incremental negation to work properly.
+			if local_config:
+				for c in self.configdict.itervalues():
+					v = c.get("ACCEPT_LICENSE")
+					if not v:
+						continue
+					v = " ".join(self.expandLicenseTokens(v.split()))
+					c["ACCEPT_LICENSE"] = v
+					del c, v
+
 			for var in ("PORTAGE_INST_UID", "PORTAGE_INST_GID"):
 				try:
 					self[var] = str(int(self.get(var, "0")))
@@ -1381,6 +1414,20 @@ class config:
 
 			self.regenerate()
 			self.features = portage.util.unique_array(self["FEATURES"].split())
+
+			if local_config:
+				self._accept_license = \
+					set(self.get("ACCEPT_LICENSE", "").split())
+				# In order to enforce explicit acceptance for restrictive
+				# licenses that require it, "*" will not be allowed in the
+				# user config.  Don't enforce this until license groups are
+				# fully implemented in the tree.
+				#self._accept_license.discard("*")
+				if not self._accept_license:
+					self._accept_license = set(["*"])
+			else:
+				# repoman will accept any license
+				self._accept_license = set(["*"])
 
 			if "gpg" in self.features:
 				if not os.path.exists(self["PORTAGE_GPG_DIR"]) or \
@@ -1436,6 +1483,51 @@ class config:
 					noiselevel=-1)
 				writemsg("!!! %s\n" % str(e),
 					noiselevel=-1)
+
+	def expandLicenseTokens(self, tokens):
+		""" Take a token from ACCEPT_LICENSE or package.license and expand it
+		if it's a group token (indicated by @) or just return it if it's not a
+		group.  If a group is negated then negate all group elements."""
+		expanded_tokens = []
+		for x in tokens:
+			expanded_tokens.extend(self._expandLicenseToken(x, None))
+		return expanded_tokens
+
+	def _expandLicenseToken(self, token, traversed_groups):
+		negate = False
+		rValue = []
+		if token.startswith("-"):
+			negate = True
+			license_name = token[1:]
+		else:
+			license_name = token
+		if not license_name.startswith("@"):
+			rValue.append(token)
+			return rValue
+		group_name = license_name[1:]
+		if not traversed_groups:
+			traversed_groups = set()
+		license_group = self._license_groups.get(group_name)
+		if group_name in traversed_groups:
+			writemsg(("Circular license group reference" + \
+				" detected in '%s'\n") % group_name, noiselevel=-1)
+			rValue.append("@"+group_name)
+		elif license_group:
+			traversed_groups.add(group_name)
+			for l in license_group:
+				if l.startswith("-"):
+					writemsg(("Skipping invalid element %s" + \
+						" in license group '%s'\n") % (l, group_name),
+						noiselevel=-1)
+				else:
+					rValue.extend(self._expandLicenseToken(l, traversed_groups))
+		else:
+			writemsg("Undefined license group '%s'\n" % group_name,
+				noiselevel=-1)
+			rValue.append("@"+group_name)
+		if negate:
+			rvalue = ["-" + token for token in rValue]
+		return rValue
 
 	def validate(self):
 		"""Validate miscellaneous settings and display warnings if necessary.
@@ -1655,6 +1747,49 @@ class config:
 		self.configdict["pkg"]["CATEGORY"] = mycpv.split("/")[0]
 		if has_changed:
 			self.reset(keeping_pkg=1,use_cache=use_cache)
+
+	def getMissingLicenses(self, licenses, cpv):
+		cpdict = self._plicensedict.get(dep_getkey(cpv), None)
+		acceptable_licenses = self._accept_license.copy()
+		if cpdict:
+			for atom in match_to_list(cpv, cpdict.keys()):
+				acceptable_licenses.update(cpdict[atom])
+		if "*" in acceptable_licenses:
+			return []
+		if "?" in licenses:
+			self.setcpv(cpv)
+		license_struct = portage.dep.paren_reduce(licenses)
+		license_struct = portage.dep.use_reduce(
+			license_struct, uselist=self["USE"].split())
+		license_struct = portage.dep.dep_opconvert(license_struct)
+		return self._getMissingLicenses(license_struct, acceptable_licenses)
+
+	def _getMissingLicenses(self, license_struct, acceptable_licenses):
+		if not license_struct:
+			return []
+		if license_struct[0] == "||":
+			ret = []
+			for element in license_struct[1:]:
+				if isinstance(element, list):
+					if element:
+						ret.append(self._getMissingLicenses(element))
+				else:
+					if element in acceptable_licenses:
+						return []
+					ret.append(element)
+			# Return all masked licenses, since we don't know which combination
+			# (if any) the user will decide to unmask.
+			return flatten(ret)
+
+		ret = []
+		for element in license_struct:
+			if isinstance(element, list):
+				if element:
+					ret.extend(self._getMissingLicenses(element))
+			else:
+				if element not in acceptable_licenses:
+					ret.append(element)
+		return ret
 
 	def setinst(self,mycpv,mydbapi):
 		self.modifying()
@@ -4479,7 +4614,7 @@ def getmaskingreason(mycpv, settings=None, portdb=None, return_location=False):
 
 def getmaskingstatus(mycpv, settings=None, portdb=None):
 	if settings is None:
-		settings = globals()["settings"]
+		settings = config(clone=globals()["settings"])
 	if portdb is None:
 		portdb = globals()["portdb"]
 	mysplit = catpkgsplit(mycpv)
@@ -4508,7 +4643,8 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 
 	# keywords checking
 	try:
-		mygroups, eapi = portdb.aux_get(mycpv, ["KEYWORDS", "EAPI"])
+		mygroups, licenses, eapi = portdb.aux_get(
+			mycpv, ["KEYWORDS", "LICENSE", "EAPI"])
 	except KeyError:
 		# The "depend" phase apparently failed for some reason.  An associated
 		# error message will have already been printed to stderr.
@@ -4563,6 +4699,21 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 
 	if kmask:
 		rValue.append(kmask+" keyword")
+
+	try:
+		missing_licenses = settings.getMissingLicenses(licenses, mycpv)
+		if missing_licenses:
+			allowed_tokens = set(["||", "(", ")"])
+			allowed_tokens.update(missing_licenses)
+			license_split = licenses.split()
+			license_split = [x for x in license_split \
+				if x in allowed_tokens]
+			msg = license_split[:]
+			msg.append("license(s)")
+			rValue.append(" ".join(msg))
+	except portage.exception.InvalidDependString, e:
+		rValue.append("LICENSE: "+str(e))
+
 	return rValue
 
 

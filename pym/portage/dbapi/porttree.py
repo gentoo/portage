@@ -6,7 +6,7 @@ from portage.dep import use_reduce, paren_reduce, dep_getslot, dep_getkey, \
 	match_from_list, match_to_list
 from portage.exception import OperationNotPermitted, PortageException, \
 	UntrustedSignature, SecurityViolation, InvalidSignature, MissingSignature, \
-	FileNotFound
+	FileNotFound, InvalidDependString
 from portage.manifest import Manifest
 from portage.output import red
 from portage.util import ensure_dirs, writemsg, apply_recursive_permissions
@@ -109,7 +109,7 @@ class portdbapi(dbapi):
 				self.auxdb[x] = self.auxdbmodule(
 					self.depcachedir, x, filtered_auxdbkeys, gid=portage_gid)
 		# Selectively cache metadata in order to optimize dep matching.
-		self._aux_cache_keys = set(["EAPI", "KEYWORDS", "SLOT"])
+		self._aux_cache_keys = set(["EAPI", "KEYWORDS", "LICENSE", "SLOT"])
 		self._aux_cache = {}
 
 	def _init_cache_dirs(self):
@@ -155,6 +155,15 @@ class portdbapi(dbapi):
 		except OSError:
 			return ""
 		return mydig+"/files/digest-"+mysplit[-1]
+
+	def findLicensePath(self, license_name):
+		mytrees = self.porttrees[:]
+		mytrees.reverse()
+		for x in mytrees:
+			license_path = os.path.join(x, "licenses", license_name)
+			if os.access(license_path, os.R_OK):
+				return license_path
+		return None
 
 	def findname(self,mycpv):
 		return self.findname2(mycpv)[0]
@@ -624,13 +633,14 @@ class portdbapi(dbapi):
 
 		accept_keywords = self.mysettings["ACCEPT_KEYWORDS"].split()
 		pkgdict = self.mysettings.pkeywordsdict
+		aux_keys = ["KEYWORDS", "LICENSE", "EAPI"]
 		for mycpv in mylist:
 			try:
-				keys, eapi = self.aux_get(mycpv, ["KEYWORDS", "EAPI"])
+				keys, licenses, eapi = self.aux_get(mycpv, aux_keys)
 			except KeyError:
 				continue
 			except PortageException, e:
-				writemsg("!!! Error: aux_get('%s', ['KEYWORDS', 'EAPI'])\n" % \
+				writemsg("!!! Error: aux_get('%s', %s)\n" % (mycpv, aux_keys),
 					mycpv, noiselevel=-1)
 				writemsg("!!! %s\n" % str(e), noiselevel=-1)
 				del e
@@ -675,6 +685,11 @@ class portdbapi(dbapi):
 					hasstable = True
 			if not match and ((hastesting and "~*" in pgroups) or (hasstable and "*" in pgroups) or "**" in pgroups):
 				match=1
+			try:
+				if self.mysettings.getMissingLicenses(licenses, mycpv):
+					match = 0
+			except InvalidDependString:
+				match = 0
 			if match and eapi_is_supported(eapi):
 				newlist.append(mycpv)
 		return newlist

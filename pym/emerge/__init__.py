@@ -1678,16 +1678,32 @@ class depgraph:
 							print "\n!!! "+red("All ebuilds that could satisfy ")+green(xinfo)+red(" have been masked.")
 							print "!!! One of the following masked packages is required to complete your request:"
 							oldcomment = ""
+							shown_licenses = []
 							for p in alleb:
 								mreasons = portage.getmaskingstatus(p,
 									settings=pkgsettings, portdb=portdb)
 								print "- "+p+" (masked by: "+", ".join(mreasons)+")"
-								comment, filename = portage.getmaskingreason(p,
-									settings=pkgsettings, portdb=portdb, return_location=True)
-								if comment and comment != oldcomment:
-									print filename+":"
-									print comment
-									oldcomment = comment
+								if "package.mask" in mreasons:
+									comment, filename = \
+										portage.getmaskingreason(p,
+										settings=pkgsettings, portdb=portdb,
+										return_location=True)
+									if comment and comment != oldcomment:
+										print filename+":"
+										print comment
+										oldcomment = comment
+								licenses = portdb.aux_get(p, ["LICENSE"])[0]
+								missing_licenses = []
+								for l in pkgsettings.getMissingLicenses(
+									licenses, p):
+									l_path = portdb.findLicensePath(l)
+									if l in shown_licenses:
+										continue
+									msg = ("A copy of the '%s' license" + \
+									" is located at '%s'.") % (l, l_path)
+									print msg
+									print
+									shown_licenses.append(l)
 							print
 							print "For more information, see MASKED PACKAGES section in the emerge man page or "
 							print "refer to the Gentoo Handbook."
