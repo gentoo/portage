@@ -1526,7 +1526,7 @@ class config:
 				noiselevel=-1)
 			rValue.append("@"+group_name)
 		if negate:
-			rvalue = ["-" + token for token in rValue]
+			rValue = ["-" + token for token in rValue]
 		return rValue
 
 	def validate(self):
