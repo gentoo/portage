@@ -685,8 +685,13 @@ class portdbapi(dbapi):
 					hasstable = True
 			if not match and ((hastesting and "~*" in pgroups) or (hasstable and "*" in pgroups) or "**" in pgroups):
 				match=1
+			uselist = []
+			if "?" in licenses:
+				self.mysettings.setcpv(mycpv, mydb=self)
+				uselist = self.mysettings.get("USE", "").split()
 			try:
-				if self.mysettings.getMissingLicenses(licenses, mycpv):
+				if self.mysettings.getMissingLicenses(
+					licenses, mycpv, uselist):
 					match = 0
 			except InvalidDependString:
 				match = 0

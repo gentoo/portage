@@ -1748,7 +1748,7 @@ class config:
 		if has_changed:
 			self.reset(keeping_pkg=1,use_cache=use_cache)
 
-	def getMissingLicenses(self, licenses, cpv):
+	def getMissingLicenses(self, licenses, cpv, uselist):
 		"""
 		Take a LICENSE string and return a list any licenses that the user may
 		may need to accept for the given package.  The returned list will not
@@ -1757,8 +1757,10 @@ class config:
 
 		@param licenses: A raw LICENSE string as returned form dbapi.aux_get()
 		@type licenses: String
-		@param cpv: The package name (for evaluation of USE conditionals)
+		@param cpv: The package name (for package.license support)
 		@type cpv: String
+		@param uselist: A list of flags for evaluation of USE conditionals
+		@type uselist: List
 		@rtype: List
 		@return: A list of licenses that have not been accepted.
 		"""
@@ -1769,11 +1771,9 @@ class config:
 				acceptable_licenses.update(cpdict[atom])
 		if "*" in acceptable_licenses:
 			return []
-		if "?" in licenses:
-			self.setcpv(cpv)
 		license_struct = portage.dep.paren_reduce(licenses)
 		license_struct = portage.dep.use_reduce(
-			license_struct, uselist=self["USE"].split())
+			license_struct, uselist=uselist)
 		license_struct = portage.dep.dep_opconvert(license_struct)
 		return self._getMissingLicenses(license_struct, acceptable_licenses)
 
@@ -4717,8 +4717,13 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 	if kmask:
 		rValue.append(kmask+" keyword")
 
+	uselist = []
+	if "?" in licenses:
+		settings.setcpv(mycpv, mydb=portdb)
+		uselist = settings.get("USE", "").split()
 	try:
-		missing_licenses = settings.getMissingLicenses(licenses, mycpv)
+		missing_licenses = settings.getMissingLicenses(
+			licenses, mycpv, uselist)
 		if missing_licenses:
 			allowed_tokens = set(["||", "(", ")"])
 			allowed_tokens.update(missing_licenses)
