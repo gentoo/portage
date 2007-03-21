@@ -1536,7 +1536,7 @@ class config:
 				noiselevel=-1)
 			rValue.append("@"+group_name)
 		if negate:
-			rvalue = ["-" + token for token in rValue]
+			rValue = ["-" + token for token in rValue]
 		return rValue
 
 	def validate(self):
@@ -1758,7 +1758,22 @@ class config:
 		if has_changed:
 			self.reset(keeping_pkg=1,use_cache=use_cache)
 
-	def getMissingLicenses(self, licenses, cpv):
+	def getMissingLicenses(self, licenses, cpv, uselist):
+		"""
+		Take a LICENSE string and return a list any licenses that the user may
+		may need to accept for the given package.  The returned list will not
+		contain any licenses that have already been accepted.  This method
+		can throw an InvalidDependString exception.
+
+		@param licenses: A raw LICENSE string as returned form dbapi.aux_get()
+		@type licenses: String
+		@param cpv: The package name (for package.license support)
+		@type cpv: String
+		@param uselist: A list of flags for evaluation of USE conditionals
+		@type uselist: List
+		@rtype: List
+		@return: A list of licenses that have not been accepted.
+		"""
 		cpdict = self._plicensedict.get(dep_getkey(cpv), None)
 		acceptable_licenses = self._accept_license.copy()
 		if cpdict:
@@ -1766,11 +1781,9 @@ class config:
 				acceptable_licenses.update(cpdict[atom])
 		if "*" in acceptable_licenses:
 			return []
-		if "?" in licenses:
-			self.setcpv(cpv)
 		license_struct = portage.dep.paren_reduce(licenses)
 		license_struct = portage.dep.use_reduce(
-			license_struct, uselist=self["USE"].split())
+			license_struct, uselist=uselist)
 		license_struct = portage.dep.dep_opconvert(license_struct)
 		return self._getMissingLicenses(license_struct, acceptable_licenses)
 
@@ -4717,8 +4730,13 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 	if kmask:
 		rValue.append(kmask+" keyword")
 
+	uselist = []
+	if "?" in licenses:
+		settings.setcpv(mycpv, mydb=portdb)
+		uselist = settings.get("USE", "").split()
 	try:
-		missing_licenses = settings.getMissingLicenses(licenses, mycpv)
+		missing_licenses = settings.getMissingLicenses(
+			licenses, mycpv, uselist)
 		if missing_licenses:
 			allowed_tokens = set(["||", "(", ")"])
 			allowed_tokens.update(missing_licenses)
