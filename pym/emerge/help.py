@@ -1,4 +1,4 @@
-# Copyright 1999-2006 Gentoo Foundation
+# Copyright 1999-2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
@@ -7,8 +7,7 @@ import os,sys
 from portage.output import bold, turquoise, green
 
 def shorthelp():
-	print
-	print
+	print bold("emerge:")+" the other white meat (command-line interface to the Portage system)"
 	print bold("Usage:")
 	print "   "+turquoise("emerge")+" [ "+green("options")+" ] [ "+green("action")+" ] [ "+turquoise("ebuildfile")+" | "+turquoise("tbz2file")+" | "+turquoise("dependency")+" ] [ ... ]"
 	print "   "+turquoise("emerge")+" [ "+green("options")+" ] [ "+green("action")+" ] < "+turquoise("system")+" | "+turquoise("world")+" >"
@@ -20,14 +19,12 @@ def shorthelp():
 	print      "                                                                 ["+green("--nospinner")+"]"
 	print "                                          [ "+green("--deep")+"  ] [" + green("--with-bdeps")+" < " + turquoise("y") + " | "+ turquoise("n")+" > ]"
 	print bold("Actions:")+" [ "+green("--clean")+" | "+green("--depclean")+" | "+green("--prune")+" | "+green("--regen")+" | "+green("--search")+" | "+green("--unmerge")+" ]"
-	print
 
 def help(myaction,myopts,havecolor=1):
-	if not myaction and ("--help" not in myopts):
+	if not myaction and ("--verbose" not in myopts):
 		shorthelp()
 		print
 		print "   For more help try 'emerge --help' or consult the man page."
-		print
 	elif not myaction:
 		shorthelp()
 		print
