@@ -24,7 +24,7 @@ def help(myaction,myopts,havecolor=1):
 	if not myaction and ("--verbose" not in myopts):
 		shorthelp()
 		print
-		print "   For more help try 'emerge --help' or consult the man page."
+		print "   For more help try 'emerge --help --verbose' or consult the man page."
 	elif not myaction:
 		shorthelp()
 		print
