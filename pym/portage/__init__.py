@@ -4288,10 +4288,15 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 	# into || ( highest version ... lowest version ).  We want to prefer the
 	# highest all_available version of the new-style virtual when there is a
 	# lower all_installed version.
-	for possible_upgrade in list(possible_upgrades):
+	preferred.extend(possible_upgrades)
+	possible_upgrades = preferred[1:]
+	for possible_upgrade in possible_upgrades:
 		atoms, versions, all_available = possible_upgrade
 		myslots = set(versions)
 		for other_choice in preferred:
+			if possible_upgrade is other_choice:
+				# possible_upgrade will not be promoted, so move on
+				break
 			o_atoms, o_versions, o_all_available = other_choice
 			intersecting_slots = myslots.intersection(o_versions)
 			if not intersecting_slots:
@@ -4308,11 +4313,10 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 						has_downgrade = True
 						break
 			if has_upgrade and not has_downgrade:
+				preferred.remove(possible_upgrade)
 				o_index = preferred.index(other_choice)
 				preferred.insert(o_index, possible_upgrade)
-				possible_upgrades.remove(possible_upgrade)
 				break
-	preferred.extend(possible_upgrades)
 
 	# preferred now contains a) and c) from the order above with
 	# the masked flag differentiating the two. other contains b)
