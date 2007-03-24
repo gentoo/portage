@@ -2933,6 +2933,35 @@ class MergeTask(object):
 						show_blocker_docs_link()
 					return 1
 
+		# Verify all the manifests now so that the user is notified of failure
+		# as soon as possible.
+		if "--fetchonly" not in self.myopts and \
+			"--fetch-all-uri" not in self.myopts and \
+			len(mylist) > 1 and \
+			"strict" in self.settings.features:
+			shown_verifying_msg = False
+			quiet_settings = {}
+			for myroot, pkgsettings in self.pkgsettings.iteritems():
+				quiet_config = portage.config(clone=pkgsettings)
+				quiet_config["PORTAGE_QUIET"] = "1"
+				quiet_config.backup_changes("PORTAGE_QUIET")
+				quiet_settings[myroot] = quiet_config
+				del quiet_config
+			for x in mylist:
+				if x[0] != "ebuild" or x[-1] == "nomerge":
+					continue
+				if not shown_verifying_msg:
+					shown_verifying_msg = True
+					print ">>> Verifying ebuild Manifests..."
+				mytype, myroot, mycpv, mystatus = x
+				portdb = self.trees[myroot]["porttree"].dbapi
+				quiet_config = quiet_settings[myroot]
+				quiet_config["O"] = os.path.dirname(portdb.findname(mycpv))
+				if not portage.digestcheck([], quiet_config, strict=True):
+					return 1
+				del x, mytype, myroot, mycpv, mystatus, quiet_config
+			del shown_verifying_msg, quiet_settings
+
 		#buildsyspkg: I need mysysdict also on resume (moved from the else block)
 		mysysdict = genericdict(getlist(self.settings, "system"))
 		if "--resume" in self.myopts:
