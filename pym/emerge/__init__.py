@@ -2931,12 +2931,7 @@ class MergeTask(object):
 					print   "!!!        Please use 'emerge --pretend' to determine blockers."
 					if "--quiet" not in self.myopts:
 						show_blocker_docs_link()
-					if "--pretend" not in self.myopts:
-						try:
-							del mtimedb["resume"]
-						except KeyError:
-							pass
-						sys.exit(1)
+					return 1
 
 		#buildsyspkg: I need mysysdict also on resume (moved from the else block)
 		mysysdict = genericdict(getlist(self.settings, "system"))
