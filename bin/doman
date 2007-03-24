@@ -25,10 +25,10 @@ for x in "$@" ; do
 
 	suffix=${x##*.}
 
-	if [[ ${suffix} == "gz" ]] ; then
+	# These will be automatically decompressed by ecompressdir.
+	if hasq ${suffix} Z gz bz2 ; then
 		realname=${x%.*}
 		suffix=${realname##*.}
-		eqawarn "QA Notice: File is already compressed: '${realname}'"
 	fi
 
 	mandir=${i18n}man${suffix:0:1}
