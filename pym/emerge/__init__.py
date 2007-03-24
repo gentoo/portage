@@ -2922,6 +2922,7 @@ class MergeTask(object):
 
 		#check for blocking dependencies
 		if "--fetchonly" not in self.myopts and \
+			"--fetch-all-uri" not in self.myopts and \
 			"--buildpkgonly" not in self.myopts:
 			for x in mylist:
 				if x[0]=="blocks":
