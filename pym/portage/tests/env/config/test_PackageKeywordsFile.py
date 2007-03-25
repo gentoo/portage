@@ -12,7 +12,7 @@ class PackageKeywordsFileTestCase(TestCase):
 	cpv = 'sys-apps/portage'
 	keywords = ['~x86', 'amd64', '-mips']
 	
-	def testPackageKeywordsLoad(self):
+	def testPackageKeywordsFile(self):
 		"""
 		A simple test to ensure the load works properly
 		"""
@@ -20,7 +20,7 @@ class PackageKeywordsFileTestCase(TestCase):
 		self.BuildFile()
 		try:
 			f = PackageKeywordsFile(self.fname)
-			f.load(recursive=False)
+			f.load()
 			for cpv, keyword in f.iteritems():
 				self.assertEqual( cpv, self.cpv )
 				[k for k in keyword if self.assertTrue(k in self.keywords)]

@@ -12,14 +12,14 @@ class PackageUseFileTestCase(TestCase):
 	cpv = 'sys-apps/portage'
 	useflags = ['cdrom', 'far', 'boo', 'flag', 'blat']
 	
-	def testPackageUseLoad(self):
+	def testPackageUseFile(self):
 		"""
 		A simple test to ensure the load works properly
 		"""
 		self.BuildFile()
 		try:
 			f = PackageUseFile(self.fname)
-			f.load(recursive=False)
+			f.load()
 			for cpv, use in f.iteritems():
 				self.assertEqual( cpv, self.cpv )
 				[flag for flag in use if self.assertTrue(flag in self.useflags)]
