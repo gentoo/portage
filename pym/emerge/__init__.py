@@ -2937,7 +2937,6 @@ class MergeTask(object):
 		# as soon as possible.
 		if "--fetchonly" not in self.myopts and \
 			"--fetch-all-uri" not in self.myopts and \
-			len(mylist) > 1 and \
 			"strict" in self.settings.features:
 			shown_verifying_msg = False
 			quiet_settings = {}
