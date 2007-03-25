@@ -1764,13 +1764,14 @@ class config:
 		@rtype: List
 		@return: A list of licenses that have not been accepted.
 		"""
+		if "*" in self._accept_license:
+			return []
+		acceptable_licenses = self._accept_license
 		cpdict = self._plicensedict.get(dep_getkey(cpv), None)
-		acceptable_licenses = self._accept_license.copy()
 		if cpdict:
+			acceptable_licenses = self._accept_license.copy()
 			for atom in match_to_list(cpv, cpdict.keys()):
 				acceptable_licenses.update(cpdict[atom])
-		if "*" in acceptable_licenses:
-			return []
 		license_struct = portage.dep.paren_reduce(licenses)
 		license_struct = portage.dep.use_reduce(
 			license_struct, uselist=uselist)
