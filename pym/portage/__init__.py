@@ -3783,7 +3783,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			# forget it and are using ebuild
 			if not os.path.exists(
 				os.path.join(mysettings["PORTAGE_BUILDDIR"], ".installed")):
-				writemsg("!!! mydo=qmerge, but install phase hasn't been ran\n",
+				writemsg("!!! mydo=qmerge, but the install phase has not been run\n",
 					noiselevel=-1)
 				return 1
 			# qmerge is a special phase that implies noclean.
