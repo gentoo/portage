@@ -129,6 +129,8 @@ class PortageModules(UserDict):
 	"""
 	Base Class for user level module over-rides
 	"""
+	
+	data = {}
 
 	def __init__(self, loader):
 		self._loader = loader
@@ -159,4 +161,4 @@ class PortageModulesFile(PortageModules):
 	default_loader = KeyValuePairFileLoader
 	
 	def __init__(self, filename):
-		PortageModules.__init__(self, default_loader(filename))
+		PortageModules.__init__(self, self.default_loader(filename))
