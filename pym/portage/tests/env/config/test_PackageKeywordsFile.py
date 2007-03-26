@@ -10,7 +10,7 @@ import os
 
 class PackageKeywordsFileTestCase(TestCase):
 
-	cpv = 'sys-apps/portage'
+	cpv = ['sys-apps/portage']
 	keywords = ['~x86', 'amd64', '-mips']
 	
 	def testPackageKeywordsFile(self):
@@ -22,16 +22,19 @@ class PackageKeywordsFileTestCase(TestCase):
 		try:
 			f = PackageKeywordsFile(self.fname)
 			f.load()
+			i = 0
 			for cpv, keyword in f.iteritems():
-				self.assertEqual( cpv, self.cpv )
+				self.assertEqual( cpv, self.cpv[i] )
 				[k for k in keyword if self.assertTrue(k in self.keywords)]
+				i = i + 1
 		finally:
 			self.NukeFile()
 	
 	def BuildFile(self):
 		fd, self.fname = mkstemp()
 		f = os.fdopen(fd, 'w')
-		f.write("\n".join(self.atoms))
+		for c in self.cpv:
+			f.write("%s %s\n" % (c,' '.join(self.keywords)))
 		f.close()
 
 	def NukeFile(self):
