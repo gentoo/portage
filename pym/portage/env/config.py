@@ -42,8 +42,7 @@ class PackageKeywordsFile(PackageKeywords):
 	default_loader = KeyListFileLoader
 
 	def __init__(self, filename):
-		self.loader = self.default_loader(filename)
-		PackageKeywords.__init__(self, self.loader)
+		PackageKeywords.__init__(self, self.default_loader(filename))
 	
 class PackageUse(UserDict):
 	"""
@@ -80,8 +79,7 @@ class PackageUseFile(PackageUse):
 
 	default_loader = KeyListFileLoader
 	def __init__(self, filename):
-		self.loader = self.default_loader(filename)
-		PackageUse.__init__(self, self.loader)
+		PackageUse.__init__(self, self.default_loader(filename))
 	
 class PackageMask(UserDict):
 	"""
@@ -125,5 +123,40 @@ class PackageMaskFile(PackageMask):
 	default_loader = AtomFileLoader
 
 	def __init__(self, filename):
-		self.loader = self.default_loader(filename)
-		PackageMask.__init__(self, self.loader)
+		PackageMask.__init__(self, self.default_loader(filename))
+
+class PortageModules(UserDict):
+	"""
+	Base Class for user level module over-rides
+	"""
+
+	def __init__(self, loader):
+		self._loader = loader
+
+	def load(self):
+		self.data, self.errors = self._loader.load()
+
+	def iteritems(self):
+		return self.data.iteritems()
+	
+	def __hash__(self):
+		return self.data.__hash__()
+
+	def __contains__(self, key):
+		return key in self.data
+
+	def keys(self):
+		return self.data.keys()
+	
+	def iterkeys(self):
+		return self.data.iterkeys()
+
+class PortageModulesFile(PortageModules):
+	"""
+	File Class for /etc/portage/modules
+	"""
+	
+	default_loader = KeyValuePairFileLoader
+	
+	def __init__(self, filename):
+		PortageModules.__init__(self, default_loader(filename))
