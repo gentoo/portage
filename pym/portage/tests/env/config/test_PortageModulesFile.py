@@ -3,6 +3,7 @@ import os
 from portage.tests import TestCase
 from portage.env.config import PortageModulesFile
 from tempfile import mkstemp
+from itertools import izip
 
 class PortageModulesFileTestCase(TestCase):
 
@@ -10,7 +11,8 @@ class PortageModulesFileTestCase(TestCase):
 	modules = ['spanky','zmedico','antarus','ricer']
 
 	def setUp(self):
-		for k,v in (self.keys, self.modules):
+		self.items = {}
+		for k,v in izip(self.keys, self.modules):
 			self.items[k] = v
 
 	def testPortageModulesFile(self):
@@ -21,9 +23,10 @@ class PortageModulesFileTestCase(TestCase):
 		self.NukeFile()
 
 	def BuildFile(self):
-		fd,self.fname = mkstemp()
-		f = os.fdopen(self.fname, 'wb')
-		f.write('%s %s\n' % (self.cpv, ' '.join(self.keywords)))
+		fd, self.fname = mkstemp()
+		f = os.fdopen(fd, 'wb')
+		for k,v in self.items.iteritems():
+			f.write('%s=%s\n' % (k,v))
 		f.close()
 
 	def NukeFile(self):
