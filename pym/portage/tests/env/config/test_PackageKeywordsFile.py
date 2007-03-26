@@ -5,10 +5,11 @@
 
 from portage.tests import TestCase
 from portage.env.config import PackageKeywordsFile
+from tempfile import mkstemp
+import os
 
 class PackageKeywordsFileTestCase(TestCase):
 
-	fname = 'package.keywords'
 	cpv = 'sys-apps/portage'
 	keywords = ['~x86', 'amd64', '-mips']
 	
@@ -28,8 +29,9 @@ class PackageKeywordsFileTestCase(TestCase):
 			self.NukeFile()
 	
 	def BuildFile(self):
-		f = open(self.fname, 'wb')
-		f.write('%s %s\n' % (self.cpv, ' '.join(self.keywords)))
+		fd, self.fname = mkstemp()
+		f = os.fdopen(fd, 'w')
+		f.write("\n".join(self.atoms))
 		f.close()
 
 	def NukeFile(self):

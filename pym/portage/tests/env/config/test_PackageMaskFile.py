@@ -7,6 +7,7 @@ import os
 
 from portage.env.config import PackageMaskFile
 from portage.tests import TestCase
+from tempfile import mkstemp
 
 class PackageMaskFileTestCase(TestCase):
 
@@ -22,7 +23,6 @@ class PackageMaskFileTestCase(TestCase):
 			self.NukeFile()
 	
 	def BuildFile(self):
-		from tempfile import mkstemp
 		fd, self.fname = mkstemp()
 		f = os.fdopen(fd, 'w')
 		f.write("\n".join(self.atoms))

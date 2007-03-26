@@ -3,12 +3,14 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id: test_PackageUseFile.py 6182 2007-03-06 07:35:22Z antarus $
 
+import os
 from portage.tests import TestCase
 from portage.env.config import PackageUseFile
+from tempfile import mkstemp
+
 
 class PackageUseFileTestCase(TestCase):
 
-	fname = 'package.use'
 	cpv = 'sys-apps/portage'
 	useflags = ['cdrom', 'far', 'boo', 'flag', 'blat']
 	
@@ -27,7 +29,8 @@ class PackageUseFileTestCase(TestCase):
 			self.NukeFile()
 
 	def BuildFile(self):
-		f = open(self.fname, 'wb')
+		fd, self.fname = mkstemp()
+		f = os.fdopen(self.fname, 'wb')
 		f.write("%s %s" % (self.cpv, ' '.join(self.useflags)))
 	
 	def NukeFile(self):
