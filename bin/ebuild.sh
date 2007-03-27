@@ -912,7 +912,7 @@ dyn_compile() {
 	echo "${EAPI:-0}"	> EAPI
 	set +f
 	set                     >  environment
-	export -p | sed 's:declare -rx:declare -x:' >> environment
+	export | sed 's:^declare -rx:declare -x:' >> environment
 	bzip2 -f9 environment
 
 	cp "${EBUILD}" "${PF}.ebuild"
@@ -1619,7 +1619,7 @@ if [ -n "${myarg}" ] && \
 	umask 002
 	set | egrep -v "^SANDBOX_" > "${T}/environment" 2>/dev/null
 	export | egrep -v "^declare -x SANDBOX_" | \
-		sed 's:declare -rx:declare -x:' >> "${T}/environment" 2>/dev/null
+		sed 's:^declare -rx:declare -x:' >> "${T}/environment" 2>/dev/null
 	chown portage:portage "${T}/environment" &>/dev/null
 	chmod g+w "${T}/environment" &>/dev/null
 fi
