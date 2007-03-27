@@ -57,6 +57,10 @@ for dir in "$@" ; do
 	funk_up_dir "decompress" "gz" "gunzip"
 	funk_up_dir "decompress" "bz2" "bunzip2"
 
+	# forcibly break all hard links as some compressors whine about it
+	find "${dir}" -type f -links +1 -exec env file="{}" sh -c \
+		'cp -p "${file}"{,.ecompress.break} ; mv -f "${file}"{.ecompress.break,}' \;
+
 	# now lets do our work
 	[[ -z ${suffix} ]] && continue
 	vecho "${0##*/}: $(ecompress --bin) ${dir#${D}}"
