@@ -18,6 +18,12 @@ fi
 
 declare -rx EBUILD_PHASE
 
+if [ "$*" != "depend" ] && [ "$*" != "clean" ] && [ "$*" != "nofetch" ]; then
+	if [ -f "${T}/environment" ]; then
+		source "${T}/environment" >& /dev/null
+	fi
+fi
+
 # These two functions wrap sourcing and calling respectively.  At present they
 # perform a qa check to make sure eclasses and ebuilds and profiles don't mess
 # with shell opts (shopts).  Ebuilds/eclasses changing shopts should reset them 
@@ -42,12 +48,6 @@ qa_call() {
 		eqawarn "QA Notice: Global IFS changed and was not restored while calling '$*'"
 	return 0
 }
-
-if [ "$*" != "depend" ] && [ "$*" != "clean" ] && [ "$*" != "nofetch" ]; then
-	if [ -f "${T}/environment" ]; then
-		qa_source "${T}/environment" &>/dev/null
-	fi
-fi
 
 # subshell die support
 EBUILD_MASTER_PID=$$
