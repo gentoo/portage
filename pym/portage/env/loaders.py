@@ -56,9 +56,9 @@ class AtomFileLoader(DataLoader):
 		self.fname = filename
 	
 	def load(self):
-                data = {}
-                errors = {}
-                line_count = 0
+		data = {}
+		errors = {}
+		line_count = 0
 		for file in RecursiveFileLoader(self.fname):
 			f = open(file, 'rb')
 			for line in f:
@@ -146,7 +146,7 @@ class KeyValuePairFileLoader(DataLoader):
 		data = {}
 		errors = {}
 		line_count = 0
-                for file in RecursiveFileLoader(self.fname):
+		for file in RecursiveFileLoader(self.fname):
 			f = open(file, 'rb')
 			for line in f:
 				line_count = line_count + 1 # Increment line count

@@ -11,7 +11,7 @@ BEGIN {
 	term = 0
 	print "<html>"
 	print "Merged from trunk " revs
-	print "<table border=\"1\">"
+	print "<table border=\"1\" width=\"100%\">"
 }
 {
 	if ($0 ~ /^--*$/) {
@@ -21,7 +21,7 @@ BEGIN {
 		}
 		print "<tr>"
 	} else if ($0 ~ /^r[0-9][0-9]* \| .*$/) {
-		print "<td valign=\"top\">" substr($1, 2) "<br />"
+		print "<td valign=\"top\" width=\"1%\">" substr($1, 2) "<br />"
 		if ($3 == "vapier") {
 			$3 = "SpankMan"
 		} else if ($3 == "antarus") {
