@@ -53,7 +53,7 @@ funk_up_dir() {
 	[[ ${act} == "compress" ]] && negate="!"
 
 	# first we act on all the files
-	find "${dir}" -type f ${negate} -iname '*.'${suffix} -print0 | ${XARGS} -0 ${binary}
+	find "${dir}" -type f ${negate} -iname '*'${suffix} -print0 | ${XARGS} -0 ${binary}
 	((ret+=$?))
 
 	find "${dir}" -type l -print0 | \
@@ -62,11 +62,11 @@ funk_up_dir() {
 		olddest=$(readlink "${brokenlink}")
 		[[ ${act} == "compress" ]] \
 			&& newdest="${olddest}${suffix}" \
-			|| newdest="${olddest%.${suffix}}"
+			|| newdest="${olddest%${suffix}}"
 		rm -f "${brokenlink}"
 		[[ ${act} == "compress" ]] \
 			&& ln -snf "${newdest}" "${brokenlink}${suffix}" \
-			|| ln -snf "${newdest}" "${brokenlink%.${suffix}}"
+			|| ln -snf "${newdest}" "${brokenlink%${suffix}}"
 		((ret+=$?))
 	done
 }
@@ -112,9 +112,9 @@ for dir in "$@" ; do
 	find "${dir}" -type f -name '*.ecompress.file' -print0 | ${XARGS} -0 rm -f
 
 	# not uncommon for packages to compress doc files themselves
-	funk_up_dir "decompress" "Z" "gunzip"
-	funk_up_dir "decompress" "gz" "gunzip"
-	funk_up_dir "decompress" "bz2" "bunzip2"
+	funk_up_dir "decompress" ".Z" "gunzip"
+	funk_up_dir "decompress" ".gz" "gunzip"
+	funk_up_dir "decompress" ".bz2" "bunzip2"
 
 	# forcibly break all hard links as some compressors whine about it
 	find "${dir}" -type f -links +1 -exec env file="{}" sh -c \
