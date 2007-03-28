@@ -18,6 +18,12 @@ fi
 
 declare -rx EBUILD_PHASE
 
+if [ "$*" != "depend" ] && [ "$*" != "clean" ] && [ "$*" != "nofetch" ]; then
+	if [ -f "${T}/environment" ]; then
+		source "${T}/environment" >& /dev/null
+	fi
+fi
+
 # These two functions wrap sourcing and calling respectively.  At present they
 # perform a qa check to make sure eclasses and ebuilds and profiles don't mess
 # with shell opts (shopts).  Ebuilds/eclasses changing shopts should reset them 
@@ -42,12 +48,6 @@ qa_call() {
 		eqawarn "QA Notice: Global IFS changed and was not restored while calling '$*'"
 	return 0
 }
-
-if [ "$*" != "depend" ] && [ "$*" != "clean" ] && [ "$*" != "nofetch" ]; then
-	if [ -f "${T}/environment" ]; then
-		qa_source "${T}/environment" &>/dev/null
-	fi
-fi
 
 # subshell die support
 EBUILD_MASTER_PID=$$
@@ -1067,7 +1067,7 @@ dyn_compile() {
 	echo "${EAPI:-0}"	> EAPI
 	set +f
 	set                     >  environment
-	export -p | sed 's:declare -rx:declare -x:' >> environment
+	export | sed 's:^declare -rx:declare -x:' >> environment
 	bzip2 -f9 environment
 
 	cp "${EBUILD}" "${PF}.ebuild"
@@ -1773,7 +1773,8 @@ if [ -n "${myarg}" ] && \
 	# Save current environment and touch a success file. (echo for success)
 	umask 002
 	set | @EGREP@ -v "^SANDBOX_" > "${T}/environment" 2>/dev/null
-	export | @EGREP@ -v "^declare -x SANDBOX_" >> "${T}/environment" 2>/dev/null
+	export | @EGREP@ -v "^declare -x SANDBOX_" | \
+		@SED@ 's:^declare -rx:declare -x:' >> "${T}/environment" 2>/dev/null
 	chown ${PORTAGE_USER:-portage}:${PORTAGE_GROUP:-portage} "${T}/environment" &>/dev/null
 	chmod g+w "${T}/environment" &>/dev/null
 fi
