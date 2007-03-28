@@ -17,6 +17,7 @@ BEGIN {
 	if ($0 ~ /^--*$/) {
 		if (term == 1) {
 			print "</td></tr>"
+			term = 0
 		}
 		print "<tr>"
 	} else if ($0 ~ /^r[0-9][0-9]* \| .*$/) {
@@ -28,10 +29,8 @@ BEGIN {
 		}
 		print $3 "</td><td>"
 	} else if ($0 ~ /^..*$/) {
-		if (noprint == 0) {
-			print $0
-			term = 1
-		}
+		print $0
+		term = 1
 	}
 }
 END {
