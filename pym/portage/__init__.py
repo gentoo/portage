@@ -4235,65 +4235,44 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 		else:
 			atoms = [dep]
 
+		if not vardb:
+			# called by repoman
+			other.append((atoms, None, False))
+			continue
+
 		all_available = True
+		versions = {}
 		for atom in atoms:
-			if not mydbapi.match(atom):
+			avail_pkg = best(mydbapi.match(atom))
+			if not avail_pkg and use_binaries:
 				# With --usepkgonly, count installed packages as "available".
 				# Note that --usepkgonly currently has no package.mask support.
 				# See bug #149816.
-				if use_binaries and vardb and vardb.match(atom):
-					continue
+				avail_pkg = best(vardb.match(atom))
+			if not avail_pkg:
 				all_available = False
 				break
-
-		if not vardb:
-			# called by repoman
-			preferred.append((atoms, None, all_available))
-			continue
-
-		""" The package names rather than the exact atoms are used for an
-		initial rough match against installed packages.  More specific
-		preference selection is handled later via slot and version comparison."""
-		all_installed = True
-		for atom in set([dep_getkey(atom) for atom in atoms]):
-			# New-style virtuals have zero cost to install.
-			if not vardb.match(atom) and not atom.startswith("virtual/"):
-				all_installed = False
-				break
-
-		# Check if the set of atoms will result in a downgrade of
-		# an installed package. If they will then don't prefer them
-		# over other atoms.
-		has_downgrade = False
-		versions = {}
-		if all_installed or all_available:
-			for atom in atoms:
-				mykey = dep_getkey(atom)
-				avail_pkg = best(mydbapi.match(atom))
-				if not avail_pkg:
-					continue
-				avail_slot = "%s:%s" % (mykey,
-					mydbapi.aux_get(avail_pkg, ["SLOT"])[0])
-				versions[avail_slot] = avail_pkg
-				inst_pkg = vardb.match(avail_slot)
-				if not inst_pkg:
-					continue
-				# emerge guarantees 1 package per slot here (highest counter)
-				inst_pkg = inst_pkg[0]
-				if avail_pkg != inst_pkg and \
-					avail_pkg != best([avail_pkg, inst_pkg]):
-					has_downgrade = True
-					break
+			avail_slot = "%s:%s" % (dep_getkey(atom),
+				mydbapi.aux_get(avail_pkg, ["SLOT"])[0])
+			versions[avail_slot] = avail_pkg
 
 		this_choice = (atoms, versions, all_available)
-		if not has_downgrade:
+		if all_available:
+			# The "all installed" criterion is not version or slot specific.
+			# If any version of a package is installed then we assume that it
+			# is preferred over other possible packages choices.
+			all_installed = True
+			for atom in set([dep_getkey(atom) for atom in atoms]):
+				# New-style virtuals have zero cost to install.
+				if not vardb.match(atom) and not atom.startswith("virtual/"):
+					all_installed = False
+					break
 			if all_installed:
 				preferred.append(this_choice)
-				continue
-			elif all_available:
+			else:
 				possible_upgrades.append(this_choice)
-				continue
-		other.append(this_choice)
+		else:
+			other.append(this_choice)
 
 	# Compare the "all_installed" choices against the "all_available" choices
 	# for possible missed upgrades.  The main purpose of this code is to find
@@ -4301,10 +4280,15 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 	# into || ( highest version ... lowest version ).  We want to prefer the
 	# highest all_available version of the new-style virtual when there is a
 	# lower all_installed version.
-	for possible_upgrade in list(possible_upgrades):
+	preferred.extend(possible_upgrades)
+	possible_upgrades = preferred[1:]
+	for possible_upgrade in possible_upgrades:
 		atoms, versions, all_available = possible_upgrade
 		myslots = set(versions)
 		for other_choice in preferred:
+			if possible_upgrade is other_choice:
+				# possible_upgrade will not be promoted, so move on
+				break
 			o_atoms, o_versions, o_all_available = other_choice
 			intersecting_slots = myslots.intersection(o_versions)
 			if not intersecting_slots:
@@ -4321,11 +4305,10 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 						has_downgrade = True
 						break
 			if has_upgrade and not has_downgrade:
+				preferred.remove(possible_upgrade)
 				o_index = preferred.index(other_choice)
 				preferred.insert(o_index, possible_upgrade)
-				possible_upgrades.remove(possible_upgrade)
 				break
-	preferred.extend(possible_upgrades)
 
 	# preferred now contains a) and c) from the order above with
 	# the masked flag differentiating the two. other contains b)

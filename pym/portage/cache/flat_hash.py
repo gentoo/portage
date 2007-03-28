@@ -107,7 +107,15 @@ class database(fs_template.FsBased):
 		dirs = [self.location]
 		len_base = len(self.location)
 		while len(dirs):
-			for l in os.listdir(dirs[0]):
+			try:
+				dir_list = os.listdir(dirs[0])
+			except OSError, e:
+				if e.errno != errno.ENOENT:
+					raise
+				del e
+				dirs.pop(0)
+				continue
+			for l in dir_list:
 				if l.endswith(".cpickle"):
 					continue
 				p = os.path.join(dirs[0],l)
