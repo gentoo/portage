@@ -4034,7 +4034,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		all_rsync_opts = set(rsync_opts)
 		all_rsync_opts.update(
 			settings.get("PORTAGE_RSYNC_EXTRA_OPTS","").split())
-		family = socket.AF_UNSPEC
+		family = socket.AF_INET
 		if "-4" in all_rsync_opts or "--ipv4" in all_rsync_opts:
 			family = socket.AF_INET
 		elif socket.has_ipv6 and \
