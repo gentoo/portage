@@ -1,7 +1,9 @@
 #!@BASH@
 # Copyright 1999-2006 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: /var/cvsroot/gentoo-src/portage/bin/doman,v 1.13.2.2 2005/07/29 05:55:34 vapier Exp $
+# $Id$
+
+source "${PORTAGE_BIN_PATH:-${EPREFIX}/usr/lib/portage/bin}"/isolated-functions.sh
 
 if [[ $# -lt 1 ]] ; then
 	echo "$0: at least one argument needed" 1>&2
@@ -37,14 +39,14 @@ for x in "$@" ; do
 				install -d "${ED}/usr/share/man/${mandir}"
 			fi
 
-			install -m 0644 "${x}" "${ED}/usr/share/man/${mandir}"
+			install -m0644 "${x}" "${ED}/usr/share/man/${mandir}"
 			((ret+=$?))
 		elif [[ ! -e ${x} ]] ; then
-			echo "doman: ${x} does not exist" 1>&2
+			vecho "doman: ${x} does not exist" 1>&2
 			((++ret))
 		fi
 	else
-		echo "doman: '${x}' is probably not a man page; skipping" 1>&2
+		vecho "doman: '${x}' is probably not a man page; skipping" 1>&2
 		((++ret))
 	fi
 done
