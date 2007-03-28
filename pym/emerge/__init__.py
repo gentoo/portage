@@ -1161,6 +1161,9 @@ class depgraph:
 			metadata = dict(izip(self._mydbapi_keys,
 				mydbapi.aux_get(mykey, self._mydbapi_keys)))
 			if merging == 0 and vardbapi.cpv_exists(mykey):
+				mybigkey[0] = "installed"
+				jbigkey = tuple(mybigkey)
+				mydbapi = vardbapi
 				metadata["USE"] = vardbapi.aux_get(mykey, ["USE"])[0]
 				myuse = metadata["USE"].split()
 				metadata["SLOT"] = vardbapi.aux_get(mykey, ["SLOT"])[0]
