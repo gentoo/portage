@@ -3,8 +3,8 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-import os
 from UserDict import UserDict
+from portage.env.loaders import KeyListFileLoader, KeyValuePairFileLoader, AtomFileLoader
 
 class PackageKeywords(UserDict):
 	"""
@@ -16,6 +16,12 @@ class PackageKeywords(UserDict):
 	
 	data = {}
 	
+	def __init__(self, loader):
+		self._loader = loader
+
+	def load(self):
+		self.data, self.errors = self._loader.load()
+
 	def iteritems(self):
 		return self.data.iteritems()
 	
@@ -32,33 +38,12 @@ class PackageKeywordsFile(PackageKeywords):
 	"""
 	Inherits from PackageKeywords; implements a file-based backend.  Doesn't handle recursion yet.
 	"""
-	def __init__( self, filename ):
-		self.fname = filename
-	
-	def load(self, recursive):
-		"""
-		Package.keywords files have comments that begin with #.
-		The entries are of the form:
-		>>> cpv [-~]keyword1 [-~]keyword2 keyword3
-		>>> Exceptions include -*, ~*, and ** for keywords.
-		"""
-		
-		if os.path.exists( self.fname ):
-			f = open(self.fname, 'rb')
-			for line in f:
-				if line.startswith('#'):
-					continue
-				split = line.split()
-				if len(split):
-					# Surprisingly this works for iterables of length 1
-					# fex ['sys-apps/portage','x86','amd64'] becomes {'sys-apps/portage':['x86','amd64']}
-					key, items = split[0],split[1:]
-					# if they specify the same cpv twice; stack the values (append) instead of overwriting.
-					if key in self.data:
-						self.data[key].append(items)
-					else:
-						self.data[key] = items
 
+	default_loader = KeyListFileLoader
+
+	def __init__(self, filename):
+		PackageKeywords.__init__(self, self.default_loader(filename))
+	
 class PackageUse(UserDict):
 	"""
 	A base class stub for things to inherit from; some people may want a database based package.keywords or something
@@ -69,6 +54,12 @@ class PackageUse(UserDict):
 	
 	data = {}
 	
+	def __init__(self, loader):
+		self._loader = loader
+
+	def load( self):
+		self.data, self.errors = self._loader.load()
+
 	def iteritems(self):
 		return self.data.iteritems()
 	
@@ -85,40 +76,23 @@ class PackageUseFile(PackageUse):
 	"""
 	Inherits from PackageUse; implements a file-based backend.  Doesn't handle recursion yet.
 	"""
-	def __init__(self, filename):
-		self.fname = filename
-	
-	def load(self, recursive):
-		"""
-		Package.keywords files have comments that begin with #.
-		The entries are of the form:
-		>>> atom useflag1 useflag2 useflag3..
-		useflags may optionally be negative with a minus sign (-)
-		>>> atom useflag1 -useflag2 useflag3
-		"""
-		
-		if os.path.exists( self.fname ):
-			f = open(self.fname, 'rb')
-			for line in f:
-				if line.startswith('#'):
-					continue
-				split = line.split()
-				if len(split):
-					# Surprisingly this works for iterables of length 1
-					# fex ['sys-apps/portage','foo','bar'] becomes {'sys-apps/portage':['foo','bar']}
-					key, items = split[0],split[1:]
-					# if they specify the same cpv twice; stack the values (append) instead of overwriting.
-					if key in self.data:
-						self.data[key].append(items)
-					else:
-						self.data[key] = items
 
+	default_loader = KeyListFileLoader
+	def __init__(self, filename):
+		PackageUse.__init__(self, self.default_loader(filename))
+	
 class PackageMask(UserDict):
 	"""
 	A base class for Package.mask functionality
 	"""
 	data = {}
 	
+	def __init__(self, loader):
+		self._loader = loader
+	
+	def load(self):
+		self.data, self.errors = self._loader.load()
+		
 	def iteritems(self):
 		return self.data.iteritems()
 	
@@ -146,24 +120,45 @@ class PackageMaskFile(PackageMask):
 	to revert a previous mask; this only works when masking files are stacked
 	"""
 	
+	default_loader = AtomFileLoader
+
 	def __init__(self, filename):
-		self.fname = filename
+		PackageMask.__init__(self, self.default_loader(filename))
+
+class PortageModules(UserDict):
+	"""
+	Base Class for user level module over-rides
+	"""
 	
-	def load(self, recursive):
-		"""
-		Package.keywords files have comments that begin with #.
-		The entries are of the form:
-		>>> atom useflag1 useflag2 useflag3..
-		useflags may optionally be negative with a minus sign (-)
-		>>> atom useflag1 -useflag2 useflag3
-		"""
-		
-		if os.path.exists( self.fname ):
-			f = open(self.fname, 'rb')
-			for line in f:
-				if line.startswith('#'):
-					continue
-				split = line.split()
-				if len(split):
-					atom = split[0] # This is an extra assignment, but I think it makes the code more explicit in what goes into the dict
-					self.data[atom] = None # we only care about keys in the dict, basically abusing it as a list
+	data = {}
+
+	def __init__(self, loader):
+		self._loader = loader
+
+	def load(self):
+		self.data, self.errors = self._loader.load()
+
+	def iteritems(self):
+		return self.data.iteritems()
+	
+	def __hash__(self):
+		return self.data.__hash__()
+
+	def __contains__(self, key):
+		return key in self.data
+
+	def keys(self):
+		return self.data.keys()
+	
+	def iterkeys(self):
+		return self.data.iterkeys()
+
+class PortageModulesFile(PortageModules):
+	"""
+	File Class for /etc/portage/modules
+	"""
+	
+	default_loader = KeyValuePairFileLoader
+	
+	def __init__(self, filename):
+		PortageModules.__init__(self, self.default_loader(filename))

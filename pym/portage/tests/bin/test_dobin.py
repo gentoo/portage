@@ -6,7 +6,7 @@
 from setup_env import *
 
 class DoBin(BinTestCase):
-	def testBasic(self):
+	def testDoBin(self):
 		dobin("does-not-exist", 1)
 		xexists_in_D("does-not-exist")
 		xexists_in_D("/bin/does-not-exist")

@@ -1774,13 +1774,14 @@ class config:
 		@rtype: List
 		@return: A list of licenses that have not been accepted.
 		"""
+		if "*" in self._accept_license:
+			return []
+		acceptable_licenses = self._accept_license
 		cpdict = self._plicensedict.get(dep_getkey(cpv), None)
-		acceptable_licenses = self._accept_license.copy()
 		if cpdict:
+			acceptable_licenses = self._accept_license.copy()
 			for atom in match_to_list(cpv, cpdict.keys()):
 				acceptable_licenses.update(cpdict[atom])
-		if "*" in acceptable_licenses:
-			return []
 		license_struct = portage.dep.paren_reduce(licenses)
 		license_struct = portage.dep.use_reduce(
 			license_struct, uselist=uselist)
@@ -3795,7 +3796,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			# forget it and are using ebuild
 			if not os.path.exists(
 				os.path.join(mysettings["PORTAGE_BUILDDIR"], ".installed")):
-				writemsg("!!! mydo=qmerge, but install phase hasn't been ran\n",
+				writemsg("!!! mydo=qmerge, but the install phase has not been run\n",
 					noiselevel=-1)
 				return 1
 			# qmerge is a special phase that implies noclean.
