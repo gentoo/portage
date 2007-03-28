@@ -1160,13 +1160,14 @@ class depgraph:
 		if addme:
 			metadata = dict(izip(self._mydbapi_keys,
 				mydbapi.aux_get(mykey, self._mydbapi_keys)))
-			if merging == 0 and vardbapi.cpv_exists(mykey):
+			if merging == 0 and vardbapi.cpv_exists(mykey) and \
+				mytype != "installed":
 				mybigkey[0] = "installed"
-				jbigkey = tuple(mybigkey)
 				mydbapi = vardbapi
-				metadata["USE"] = vardbapi.aux_get(mykey, ["USE"])[0]
-				myuse = metadata["USE"].split()
-				metadata["SLOT"] = vardbapi.aux_get(mykey, ["SLOT"])[0]
+				jbigkey = tuple(mybigkey)
+				metadata = dict(izip(self._mydbapi_keys,
+					mydbapi.aux_get(mykey, self._mydbapi_keys)))
+				myuse = mydbapi.aux_get(mykey, ["USE"])[0].split()
 			slot_atom = "%s:%s" % (portage.dep_getkey(mykey), metadata["SLOT"])
 			existing_node = self._slot_node_map[myroot].get(
 				slot_atom, None)
