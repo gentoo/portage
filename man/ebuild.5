@@ -282,9 +282,9 @@ appropriate, this syntax can easily be used.
 .B 	app\-games/unreal\-tournament\-goty
 .B )
 .fi
-Here we see that unreal\-tournament has a normal version and it has a goty version.
-Since they provide the same base set of files, another package can use either.
-Adding a virtual is inappropriate due to the small scope of it.
+Here we see that unreal\-tournament has a normal version and it has a goty
+version.  Since they provide the same base set of files, another package can
+use either.  Adding a virtual is inappropriate due to the small scope of it.
 .br
 Another good example is when a package can be built with multiple video 
 interfaces, but it can only ever have just one.
@@ -298,9 +298,12 @@ interfaces, but it can only ever have just one.
 .B )
 .fi
 Here only one of the packages will be chosen, and the order of preference is
-determined by the order in which they appear.  So sdl has the best chance of being
-chosen, followed by svga, then opengl, then ggi, with a default of X if the user
-does not specify any of the previous choices.
+determined by the order in which they appear.  So sdl has the best chance of
+being chosen, followed by svga, then opengl, then ggi, with a default of X if
+the user does not specify any of the previous choices.
+.br
+Note that if any of the packages listed are already merged, the package manager
+will use that to consider the dependency satisfied.
 .RE
 
 .RE
@@ -313,8 +316,8 @@ defaults to the value of \fBDEPEND\fR.
 You may use the same syntax to vary dependencies as seen above in \fBDEPEND\fR.
 .TP
 \fBPDEPEND\fR
-This should contain a list of all packages that will have to be installed after
-the program has been merged.
+This should contain a list of all packages that should be merged after this one,
+but may be merged before if need be.
 .br
 You may use the same syntax to vary dependencies as seen above in \fBDEPEND\fR.
 .TP
