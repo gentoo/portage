@@ -6,109 +6,50 @@
 from UserDict import UserDict
 from portage.env.loaders import KeyListFileLoader, KeyValuePairFileLoader, AtomFileLoader
 
-class PackageKeywords(UserDict):
+class UserConfigKlass(UserDict,object):
 	"""
-	A base class stub for things to inherit from; some people may want a database based package.keywords or something
-	
-	Internally dict has pairs of the form
-	{'cpv':['keyword1','keyword2','keyword3'...]
+	A base class stub for things to inherit from.
+	Users may want a non-file backend.
 	"""
 	
 	data = {}
 	
 	def __init__(self, loader):
+		"""
+		@param loader: A class that has a load() that returns two dicts
+			the first being a data dict, the second being a dict of errors.
+		"""
 		self._loader = loader
 
 	def load(self):
+		"""
+		Load the data from the loader.
+
+		@throws LoaderError:
+		"""
+
 		self.data, self.errors = self._loader.load()
 
-	def iteritems(self):
-		return self.data.iteritems()
-	
-	def keys(self):
-		return self.data.keys()
-	
-	def __contains__(self, other):
-		return other in self.data
-	
-	def __hash__( self ):
-		return self.data.__hash__()
-	
-class PackageKeywordsFile(PackageKeywords):
+class PackageKeywordsFile(UserConfigKlass):
 	"""
-	Inherits from PackageKeywords; implements a file-based backend.  Doesn't handle recursion yet.
+	Inherits from UserConfigKlass; implements a file-based backend.
 	"""
 
 	default_loader = KeyListFileLoader
 
 	def __init__(self, filename):
-		PackageKeywords.__init__(self, self.default_loader(filename))
+		super(PackageKeywordsFile,self).__init__(self.default_loader(filename))
 	
-class PackageUse(UserDict):
-	"""
-	A base class stub for things to inherit from; some people may want a database based package.keywords or something
-	
-	Internally dict has pairs of the form
-	{'cpv':['flag1','flag22','flag3'...]
-	"""
-	
-	data = {}
-	
-	def __init__(self, loader):
-		self._loader = loader
-
-	def load( self):
-		self.data, self.errors = self._loader.load()
-
-	def iteritems(self):
-		return self.data.iteritems()
-	
-	def __hash__(self):
-		return hash(self.data)
-	
-	def __contains__(self, other):
-		return other in self.data
-	
-	def keys(self):
-		return self.data.keys()
-
-class PackageUseFile(PackageUse):
+class PackageUseFile(UserConfigKlass):
 	"""
 	Inherits from PackageUse; implements a file-based backend.  Doesn't handle recursion yet.
 	"""
 
 	default_loader = KeyListFileLoader
 	def __init__(self, filename):
-		PackageUse.__init__(self, self.default_loader(filename))
+		super(PackageUseFile,self).__init__(self.default_loader(filename))
 	
-class PackageMask(UserDict):
-	"""
-	A base class for Package.mask functionality
-	"""
-	data = {}
-	
-	def __init__(self, loader):
-		self._loader = loader
-	
-	def load(self):
-		self.data, self.errors = self._loader.load()
-		
-	def iteritems(self):
-		return self.data.iteritems()
-	
-	def __hash__(self):
-		return hash(self.data)
-	
-	def __contains__(self, other):
-		return other in self.data
-	
-	def keys(self):
-		return self.data.keys()
-	
-	def iterkeys(self):
-		return self.data.iterkeys()
-
-class PackageMaskFile(PackageMask):
+class PackageMaskFile(UserConfigKlass):
 	"""
 	A class that implements a file-based package.mask
 	
@@ -123,37 +64,9 @@ class PackageMaskFile(PackageMask):
 	default_loader = AtomFileLoader
 
 	def __init__(self, filename):
-		PackageMask.__init__(self, self.default_loader(filename))
+		super(PackageMaskFile,self).__init__(self.default_loader(filename))
 
-class PortageModules(UserDict):
-	"""
-	Base Class for user level module over-rides
-	"""
-	
-	data = {}
-
-	def __init__(self, loader):
-		self._loader = loader
-
-	def load(self):
-		self.data, self.errors = self._loader.load()
-
-	def iteritems(self):
-		return self.data.iteritems()
-	
-	def __hash__(self):
-		return self.data.__hash__()
-
-	def __contains__(self, key):
-		return key in self.data
-
-	def keys(self):
-		return self.data.keys()
-	
-	def iterkeys(self):
-		return self.data.iterkeys()
-
-class PortageModulesFile(PortageModules):
+class PortageModulesFile(UserConfigKlass):
 	"""
 	File Class for /etc/portage/modules
 	"""
@@ -161,4 +74,4 @@ class PortageModulesFile(PortageModules):
 	default_loader = KeyValuePairFileLoader
 	
 	def __init__(self, filename):
-		PortageModules.__init__(self, self.default_loader(filename))
+		super(PortageModulesFile,self).__init__(self.default_loader(filename))

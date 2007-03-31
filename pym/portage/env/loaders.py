@@ -5,6 +5,22 @@
 
 import os
 
+class LoaderError(Exception):
+	
+	def __init__(self, resource, error_msg):
+		"""
+		@param resource: Resource that failed to load (file/sql/etc)
+		@type resource: String
+		@param error_msg: Error from underlying Loader system
+		@type error_msg: String
+		"""
+
+		self.resource
+	
+	def __str__(self):
+		return "Failed while loading resource: %s, error was: %s" % (
+			resource, error_msg)
+
 def RecursiveFileLoader(filename):
 	"""
 	If filename is of type file, return [filename]
@@ -164,3 +180,4 @@ class KeyValuePairFileLoader(DataLoader):
 				else:
 					data[key] = value
 		return (data,errors)
+
