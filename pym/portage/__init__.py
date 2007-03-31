@@ -2326,6 +2326,7 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, **keyw
 		if retval != os.EX_OK:
 			for pid in mypids:
 				if os.waitpid(pid, os.WNOHANG) == (0,0):
+					import signal
 					os.kill(pid, signal.SIGTERM)
 					os.waitpid(pid, 0)
 				portage.process.spawned_pids.remove(pid)
