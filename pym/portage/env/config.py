@@ -4,7 +4,7 @@
 # $Id$
 
 from UserDict import UserDict
-from portage.env.loaders import KeyListFileLoader, KeyValuePairFileLoader, AtomFileLoader
+from portage.env.loaders import KeyListFileLoader, KeyValuePairFileLoader, ItemFileLoader
 
 class UserConfigKlass(UserDict,object):
 	"""
@@ -61,7 +61,7 @@ class PackageMaskFile(UserConfigKlass):
 	to revert a previous mask; this only works when masking files are stacked
 	"""
 	
-	default_loader = AtomFileLoader
+	default_loader = ItemFileLoader
 
 	def __init__(self, filename):
 		super(PackageMaskFile,self).__init__(self.default_loader(filename))
