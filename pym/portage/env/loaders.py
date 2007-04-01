@@ -4,7 +4,6 @@
 # $Id$
 
 import os
-from itertools import izip, count
 
 class LoaderError(Exception):
 	
@@ -91,19 +90,19 @@ class ItemFileLoader(DataLoader):
 		errors = {}
 		for file in RecursiveFileLoader(self.fname):
 			f = open(file, 'rb')
-			for line_num, line in izip(count(1),f):
+			for line_num, line in enumerate(f):
 				if line.startswith('#'):
 					continue
 				split = line.strip().split()
 				if not len(split):
 					errors.setdefault(self.fname,[]).append(
 					"Malformed data at line: %s, data: %s"
-					% (line_num, split))
+					% (line_num + 1, split))
 				key = split[0]
 				if not self._validator.validate(key):
 					errors.setdefault(self.fname,[]).append(
 					"Validation failed at line: %s, data %s"
-					% (line_num, split))
+					% (line_num + 1, split))
 					continue
 				data[key] = None
 		return (data,errors)
@@ -128,21 +127,21 @@ class KeyListFileLoader(DataLoader):
 		errors = {}
 		for file in RecursiveFileLoader(self.fname):
 			f = open(file, 'rb')
-			for line_num, line in izip(count(1),f):
+			for line_num, line in enumerate(f):
 				if line.startswith('#'):
 					continue
 				split = line.strip().split()
 				if len(split) < 2:
 					errors.setdefault(self.fname,[]).append(
 					"Malformed data at line: %s, data: %s"
-					% (line_num, split))
+					% (line_num + 1, split))
 					continue
 				key = split[0]
 				value = split[1:]
 				if not self._validator.validate(key):
 					errors.setdefault(self.fname,[]).append(
 					"Validation failed at line: %s, data %s"
-					% (line_num, split))
+					% (line_num + 1, split))
 					continue
 				if key in data:
 					data[key].append(value)
@@ -185,21 +184,20 @@ class KeyValuePairFileLoader(DataLoader):
 		errors = {}
 		for file in RecursiveFileLoader(self.fname):
 			f = open(file, 'rb')
-			for line_num, line in izip(count(1),f):
-				line_count = line_count + 1 # Increment line count
+			for line_num, line in enumerate(f):
 				if line.startswith('#'):
 					continue
 				split = line.strip().split('=')
 				if len(split) < 2:
 					errors.setdefault(self.fname,[]).append(
 					"Malformed data at line: %s, data %s"
-					% (line_count, split))
+					% (line_num + 1, split))
 				key = split[0]
 				value = split[1:]
 				if not self._validator.validate(key):
 					errors.setdefault(self.fname,[]).append(
 					"Validation failed at line: %s, data %s"
-					% (line_count, split))
+					% (line_num + 1, split))
 					continue
 				if key in data:
 					data[key].append(value)
