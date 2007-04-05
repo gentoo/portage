@@ -44,8 +44,6 @@ if not lchown:
 					" exist.  Please rebuild python.\n", noiselevel=-1)
 			lchown()
 
-os.environ["USERLAND"]=userland
-
 def portage_group_warning():
 	warn_prefix = bad("*** WARNING ***  ")
 	mylines = [

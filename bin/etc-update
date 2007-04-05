@@ -386,7 +386,7 @@ Please select from the menu above (-1 to exit, losing this merge): "
 			my_input=$(read_int)
 			case ${my_input} in
 				1) echo "Replacing ${ofile} with ${mfile}"
-				   if [[ ${USERLAND} == GNU ]]; then
+				   if [[ ${USERLAND:-GNU} == GNU ]]; then
 				       chmod --reference="${ofile}" "${mfile}"
 				   else
 				       chmod $(stat -f %Mp%Lp "${ofile}") "${mfile}"

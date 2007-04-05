@@ -5145,8 +5145,10 @@ def parse_opts(tmpcmdline, silent=False):
 def validate_ebuild_environment(trees):
 	for myroot in trees:
 		mysettings = trees[myroot]["vartree"].settings
-		if not mysettings.get("ARCH", None):
-			print >> sys.stderr, bad("\a!!! ARCH is not set... " + \
+		for var in "ARCH", "USERLAND":
+			if mysettings.get(var):
+				continue
+			print >> sys.stderr, bad(("\a!!! %s is not set... " % var) + \
 				"Are you missing the '%setc/make.profile' symlink?" % \
 				mysettings["PORTAGE_CONFIGROOT"])
 			print >> sys.stderr, bad("\a!!! Is the symlink correct? " + \
