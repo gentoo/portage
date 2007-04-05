@@ -15,7 +15,7 @@ bad = create_color_func("BAD")
 ostype=os.uname()[0]
 
 userland = None
-lchown = getattr(os, "lchown")
+lchown = getattr(os, "lchown", None)
 os.environ.setdefault("XARGS", "xargs")
 if ostype=="Linux" or ostype.lower().endswith("gnu"):
 	userland="GNU"
