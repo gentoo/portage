@@ -151,32 +151,6 @@ def userquery(prompt, responses=None, colours=None):
 		print "Interrupted."
 		sys.exit(1)
 
-def sorted_versions(verlist):
-	ret = []
-	for ver in verlist:
-		verparts = ver.split("-")
-		if len(verparts) == 2:
-			verrev = int(verparts[1][1:])
-		else:
-			verrev = 0
-		x = 0
-		while x < len(ret):
-			retparts = ret[x].split("-")
-			verdiff = portage.vercmp(retparts[0], verparts[0])
-			if verdiff > 0:
-				break
-			elif verdiff == 0:
-				if len(retparts) == 2:
-					retrev = int(retparts[1][1:])
-				else:
-					retrev = 0
-				if retrev >= verrev:
-					break
-			x += 1
-		ret.insert(x, ver)
-	return ret
-
-
 actions=[
 "clean", "config", "depclean",
 "info", "metadata",
@@ -4533,15 +4507,16 @@ def action_info(settings, trees, myopts, myfiles):
 	for x in myvars:
 		if portage.isvalidatom(x):
 			pkg_matches = trees["/"]["vartree"].dbapi.match(x)
+			pkg_matches = [portage.catpkgsplit(cpv)[1:] for cpv in pkg_matches]
+			pkg_matches.sort(portage.pkgcmp)
 			pkgs = []
-			for y in pkg_matches:
-				mycpv   = portage.catpkgsplit(y)
-				if(mycpv[3] != "r0"):
-					pkgs += [mycpv[2] + "-" + mycpv[3]]
+			for pn, ver, rev in pkg_matches:
+				if rev != "r0":
+					pkgs.append(ver + "-" + rev)
 				else:
-					pkgs += [mycpv[2]]
+					pkgs.append(ver)
 			if pkgs:
-				pkgs = ", ".join(sorted_versions(pkgs))
+				pkgs = ", ".join(pkgs)
 				print "%-20s %s" % (x+":", pkgs)
 		else:
 			print "%-20s %s" % (x+":", "[NOT VALID]")
