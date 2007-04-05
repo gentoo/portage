@@ -153,18 +153,25 @@ def vercmp(ver1, ver2, silent=1):
 	# while still staying in the main tree versioning scheme.
 	if match1.group(10):
 		if match1.group(10)[0] == '0':
-			r1 = float(match1.group(10)[1:])
+			t = match1.group(10)[1:].split(".")
+			r1 = int(t[1])
+			r3 = int(t[2])
 		else:
 			r1 = int(match1.group(10))
 	else:
 		r1 = 0
 	if match2.group(10):
 		if match2.group(10)[0] == '0':
-			r2 = float(match2.group(10)[1:])
+			t = match2.group(10)[1:].split(".")
+			r2 = int(t[1])
+			r4 = int(t[2])
 		else:
 			r2 = int(match2.group(10))
 	else:
 		r2 = 0
+	if r1 == r2 and (r3 != 0 or r4 != 0):
+		r1 = r3
+		r2 = r4
 	vercmp_cache[mykey] = r1 - r2
 	return r1 - r2
 	

@@ -157,7 +157,7 @@ def sorted_versions(verlist):
 	for ver in verlist:
 		verparts = ver.split("-")
 		if len(verparts) == 2:
-			verrev = int(verparts[1][1:])
+			verrev = verparts[1][1:]
 		else:
 			verrev = 0
 		x = 0
