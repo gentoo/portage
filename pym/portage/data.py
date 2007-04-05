@@ -7,7 +7,7 @@ if not hasattr(__builtins__, "set"):
 	from sets import Set as set
 
 import os, sys, pwd, grp
-from portage.const import wheelgid, rootuid, portageuser, portagegroup
+from portage.const import wheelgid, rootuid, portageuser, portagegroup, EPREFIX
 from portage.util import writemsg
 from portage.output import green,red
 from portage.output import create_color_func
@@ -17,22 +17,16 @@ ostype=os.uname()[0]
 
 lchown = None
 os.environ["XARGS"]="xargs -r"
-if ostype=="Linux" or ostype.lower().endswith("gnu"):
-	userland="GNU"
-elif ostype == "Darwin":
-	userland="Darwin"
+# default userland is GNU ...
+userland="GNU"
+# ... but BSD in non-prefix has BSD userland
+if EPREFIX == "" and (ostype.endswith("BSD") or ostype =="DragonFly"):
+	userland="BSD"
+
+# "fix" for lchown on Darwin
+if ostype == "Darwin":
 	def lchown(*pos_args, **key_args):
 		pass
-elif ostype == "SunOS":
-	userland="Solaris"
-
-elif ostype.endswith("BSD") or ostype =="DragonFly":
-	userland="BSD"
-elif ostype in ["AIX"]:
-	userland="AIX"
-else:
-	writemsg(red("Operating system")+" \""+ostype+"\" "+red("currently unsupported. Exiting.")+"\n")
-	sys.exit(1)
 
 if not lchown:
 	if "lchown" in dir(os):
