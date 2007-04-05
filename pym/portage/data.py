@@ -14,7 +14,8 @@ bad = create_color_func("BAD")
 
 ostype=os.uname()[0]
 
-lchown = None
+userland = None
+lchown = getattr(os, "lchown")
 if ostype=="Linux" or ostype.lower().endswith("gnu"):
 	userland="GNU"
 	os.environ["XARGS"]="xargs -r"
@@ -26,9 +27,6 @@ elif ostype == "Darwin":
 elif ostype.endswith("BSD") or ostype =="DragonFly":
 	userland="BSD"
 	os.environ["XARGS"]="xargs"
-else:
-	writemsg(red("Operating system")+" \""+ostype+"\" "+red("currently unsupported. Exiting.")+"\n")
-	sys.exit(1)
 
 if not lchown:
 	if "lchown" in dir(os):
