@@ -14,6 +14,7 @@ from portage.output import create_color_func
 bad = create_color_func("BAD")
 
 ostype=os.uname()[0]
+userland="don't_use_this_thing"	# included by portage, not used
 
 lchown = None
 os.environ["XARGS"]="xargs -r"
