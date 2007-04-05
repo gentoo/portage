@@ -17,11 +17,6 @@ ostype=os.uname()[0]
 
 lchown = None
 os.environ["XARGS"]="xargs -r"
-# default userland is GNU ...
-userland="GNU"
-# ... but BSD in non-prefix has BSD userland
-if EPREFIX == "" and (ostype.endswith("BSD") or ostype =="DragonFly"):
-	userland="BSD"
 
 # "fix" for lchown on Darwin
 if ostype == "Darwin":
@@ -41,8 +36,6 @@ if not lchown:
 				writemsg(red("!!!") + " It seems that os.lchown does not" + \
 					" exist.  Please rebuild python.\n", noiselevel=-1)
 			lchown()
-
-os.environ["USERLAND"]=userland
 
 def portage_group_warning():
 	warn_prefix = bad("*** WARNING ***  ")
