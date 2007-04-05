@@ -5,6 +5,22 @@
 
 import os
 
+class LoaderError(Exception):
+	
+	def __init__(self, resource, error_msg):
+		"""
+		@param resource: Resource that failed to load (file/sql/etc)
+		@type resource: String
+		@param error_msg: Error from underlying Loader system
+		@type error_msg: String
+		"""
+
+		self.resource
+	
+	def __str__(self):
+		return "Failed while loading resource: %s, error was: %s" % (
+			resource, error_msg)
+
 def RecursiveFileLoader(filename):
 	"""
 	If filename is of type file, return [filename]
@@ -32,21 +48,35 @@ def RecursiveFileLoader(filename):
 
 class DataLoader(object):
 
+	def __init__(self, validator=None):
+		f = validator
+		if f is None:
+			# if they pass in no validator, just make a fake one
+			# that always returns true
+			class AlwaysTrue():
+				def validate(self, key):
+					return True
+			f = AlwaysTrue()
+		self._validator = f
+
 	def load(self):
 		"""
 		Function to do the actual work of a Loader
 		"""
 		pass
 
-class AtomFileLoader(DataLoader):
+class ItemFileLoader(DataLoader):
 	"""
-	Class to load data from a file full of atoms one per line
+	Class to load data from a file full of items one per line
 	
-	>>> atom1
-	>>> atom2
-	>>> atom3
+	>>> item1
+	>>> item2
+	>>> item3
+	>>> item1
 	
-	becomes ['atom1', 'atom2', 'atom3']
+	becomes { 'item1':None, 'item2':None, 'item3':None }
+	Note that due to the data store being a dict, duplicates
+	are removed.
 	"""
 	
 	_recursive = False
@@ -58,20 +88,23 @@ class AtomFileLoader(DataLoader):
 	def load(self):
 		data = {}
 		errors = {}
-		line_count = 0
 		for file in RecursiveFileLoader(self.fname):
 			f = open(file, 'rb')
-			for line in f:
-				line_count = line_count + 1
+			for line_num, line in enumerate(f):
 				if line.startswith('#'):
 					continue
 				split = line.strip().split()
 				if not len(split):
 					errors.setdefault(self.fname,[]).append(
 					"Malformed data at line: %s, data: %s"
-					% (line_count, split))
+					% (line_num + 1, split))
 				key = split[0]
-				data[key] = None			
+				if not self._validator.validate(key):
+					errors.setdefault(self.fname,[]).append(
+					"Validation failed at line: %s, data %s"
+					% (line_num + 1, split))
+					continue
+				data[key] = None
 		return (data,errors)
 
 class KeyListFileLoader(DataLoader):
@@ -92,20 +125,24 @@ class KeyListFileLoader(DataLoader):
 	def load(self):
 		data = {}
 		errors = {}
-		line_count = 0
 		for file in RecursiveFileLoader(self.fname):
 			f = open(file, 'rb')
-			for line in f:
-				line_count = line_count + 1
+			for line_num, line in enumerate(f):
 				if line.startswith('#'):
 					continue
 				split = line.strip().split()
 				if len(split) < 2:
 					errors.setdefault(self.fname,[]).append(
 					"Malformed data at line: %s, data: %s"
-					% (line_count, split))
+					% (line_num + 1, split))
+					continue
 				key = split[0]
 				value = split[1:]
+				if not self._validator.validate(key):
+					errors.setdefault(self.fname,[]).append(
+					"Validation failed at line: %s, data %s"
+					% (line_num + 1, split))
+					continue
 				if key in data:
 					data[key].append(value)
 				else:
@@ -145,20 +182,23 @@ class KeyValuePairFileLoader(DataLoader):
 		DataLoader.load(self)
 		data = {}
 		errors = {}
-		line_count = 0
 		for file in RecursiveFileLoader(self.fname):
 			f = open(file, 'rb')
-			for line in f:
-				line_count = line_count + 1 # Increment line count
+			for line_num, line in enumerate(f):
 				if line.startswith('#'):
 					continue
 				split = line.strip().split('=')
 				if len(split) < 2:
 					errors.setdefault(self.fname,[]).append(
 					"Malformed data at line: %s, data %s"
-					% (line_count, split))
+					% (line_num + 1, split))
 				key = split[0]
 				value = split[1:]
+				if not self._validator.validate(key):
+					errors.setdefault(self.fname,[]).append(
+					"Validation failed at line: %s, data %s"
+					% (line_num + 1, split))
+					continue
 				if key in data:
 					data[key].append(value)
 				else:

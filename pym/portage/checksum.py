@@ -181,6 +181,7 @@ def perform_checksum(filename, hashname="MD5", calc_prelink=0):
 	@rtype: Tuple
 	@return: The hash and size of the data
 	"""
+	global prelink_capable
 	myfilename      = filename[:]
 	prelink_tmpfile = os.path.join("/", PRIVATE_PATH, "prelink-checksum.tmp." + str(os.getpid()))
 	mylock          = None
@@ -189,10 +190,14 @@ def perform_checksum(filename, hashname="MD5", calc_prelink=0):
 			mylock = portage.locks.lockfile(prelink_tmpfile, wantnewlockfile=1)
 			# Create non-prelinked temporary file to checksum.
 			# Files rejected by prelink are summed in place.
-			retval = portage.process.spawn([PRELINK_BINARY, "--undo", "-o",
-				prelink_tmpfile, filename], fd_pipes={})
-			if retval == os.EX_OK:
-				myfilename = prelink_tmpfile
+			try:
+				retval = portage.process.spawn([PRELINK_BINARY, "--undo", "-o",
+					prelink_tmpfile, filename], fd_pipes={})
+				if retval == os.EX_OK:
+					myfilename = prelink_tmpfile
+			except portage.exception.CommandNotFound:
+				# This happens during uninstallation of prelink.
+				prelink_capable = False
 		try:
 			if hashname not in hashfunc_map:
 				raise portage.exception.DigestException(hashname + \
