@@ -1,22 +1,23 @@
 # data.py -- Calculated/Discovered Data Values
 # Copyright 1998-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: portage_data.py 4530 2006-09-25 21:16:32Z zmedico $
+# $Id:$
 
 if not hasattr(__builtins__, "set"):
 	from sets import Set as set
 
 import os, sys, pwd, grp
-from portage.const import wheelgid, rootuid, portageuser, portagegroup, EPREFIX
+from portage.const import wheelgid, rootuid, portageuser, portagegroup
 from portage.util import writemsg
 from portage.output import green,red
 from portage.output import create_color_func
 bad = create_color_func("BAD")
 
 ostype=os.uname()[0]
-userland="don't_use_this_thing"	# included by portage, not used
 
-lchown = None
+userland = None
+lchown = getattr(os, "lchown", None)
+os.environ.setdefault("XARGS", "xargs")
 os.environ["XARGS"]="xargs -r"
 
 # "fix" for lchown on Darwin

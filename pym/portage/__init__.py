@@ -915,10 +915,6 @@ class config:
 
 			# backupenv is for calculated incremental variables.
 			self.backupenv = os.environ.copy()
-			if not local_config:
-				# Clean up pollution from portage.data so that it doesn't
-				# interfere with repoman.
-				self.backupenv.pop("USERLAND", None)
 
 			def check_var_directory(varname, var):
 				if not os.path.isdir(var):
@@ -1161,10 +1157,6 @@ class config:
 
 			self.configlist.append(os.environ.copy())
 			self.configdict["env"]=self.configlist[-1]
-			if not local_config:
-				# Clean up pollution from portage.data so that it doesn't
-				# interfere with repoman.
-				self.configdict["env"].pop("USERLAND", None)
 
 			# make lookuplist for loading package.*
 			self.lookuplist=self.configlist[:]
