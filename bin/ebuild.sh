@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2006 Gentoo Foundation
+# Copyright 1999-2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
@@ -270,7 +270,7 @@ register_die_hook() {
 umask 022
 export DESTTREE=/usr
 export INSDESTTREE=""
-export EXEDESTTREE=""
+export _E_EXEDESTTREE_=""
 export _E_DOCDESTTREE_=""
 export INSOPTIONS="-m0644"
 export EXEOPTIONS="-m0755"
@@ -750,11 +750,11 @@ insinto() {
 
 exeinto() {
 	if [ "$1" == "/" ]; then
-		export EXEDESTTREE=""
+		export _E_EXEDESTTREE_=""
 	else
-		export EXEDESTTREE="$1"
-		if [ ! -d "${D}${EXEDESTTREE}" ]; then
-			install -d "${D}${EXEDESTTREE}"
+		export _E_EXEDESTTREE_="$1"
+		if [ ! -d "${D}${_E_EXEDESTTREE_}" ]; then
+			install -d "${D}${_E_EXEDESTTREE_}"
 		fi
 	fi
 }
@@ -762,7 +762,6 @@ exeinto() {
 docinto() {
 	if [ "$1" == "/" ]; then
 		export _E_DOCDESTTREE_=""
-		eqawarn "QA Notice: invalid usage of docinto"
 	else
 		export _E_DOCDESTTREE_="$1"
 		if [ ! -d "${D}usr/share/doc/${PF}/${_E_DOCDESTTREE_}" ]; then
