@@ -800,17 +800,17 @@ Performs chown (\fBfowners\fR) or chmod (\fBfperms\fR), applying
 \fIpermissions\fR to \fIfiles\fR.
 .TP
 \fBinsinto\fR \fI[path]\fR
-Sets the root (\fIINSDESTTREE\fR) for the \fBdoins\fR function.
+Sets the destination path for the \fBdoins\fR function.
 .br
-The default root is /.
+The default path is /.
 .TP
 \fBinsopts\fR \fI[options for install(1)]\fR
 Can be used to define options for the install function used in
 \fBdoins\fR.  The default is \fI\-m0644\fR.
 .TP
 \fBdoins\fR \fI<file> [list of more files]\fR
-Installs files into \fIINSDESTTREE\fR.  This function uses \fBinstall\fR(1).  
-Creates all necessary dirs.
+Installs files into the path controlled by the \fBinsinto\fR.  This function
+uses \fBinstall\fR(1).  Creates all necessary dirs.
 .TP
 \fBexeinto\fR \fI[path]\fR
 Sets the root (\fIEXEDESTTREE\fR) for the \fBdoexe\fR function.
@@ -825,12 +825,13 @@ The default is \fI\-m0755\fR.
 Installs a executable or a list of executable into \fIEXEDESTTREE\fR.
 This function uses \fBinstall\fR(1).  Creates all necessary dirs.
 .TP
-\fBdocinto\fR \fI[path]\fR
-Sets the relative subdir (\fIDOCDESTTREE\fR) used by \fBdodoc\fR.
+\fBdocinto\fR \fI<path>\fR
+Sets the subdir used by \fBdodoc\fR when installing into the document tree
+(based in /usr/share/doc/${PF}/).  Default is no subdir, or just "".
 .TP
 \fBdodoc\fR \fI<document> [list of more documents]\fR
-Installs a document or a list of document into /usr/share/doc/${PF}/\fIDOCDESTTREE\fR.
-Files are automatically gzipped.  Creates all necessary dirs.
+Installs a document or a list of documents into /usr/share/doc/${PF}/\fI<docinto path>\fR.
+Documents are marked for compression.  Creates all necessary dirs.
 
 .PD 0
 .TP
