@@ -66,8 +66,17 @@ use.desc
 use.local.desc
 .fi
 .TP
+.BR /var/cache/edb/
+misc internal cache files
+.TP
+.BR /var/db/pkg/
+database to track installed packages
+.TP
 .BR /var/lib/portage/
+.nf
+config
 world
+.fi
 .SH "GLOSSARY"
 In the following sections, some terminology may be foreign to you or used 
 with meaning specific to Portage.  Please see the referenced manpages for 
@@ -646,8 +655,45 @@ games\-emulation/xmess:net \- Adds network support
 .fi
 .RE
 .TP
+.BR /var/cache/edb/
+.RS
+This directory is used to store internal portage cache files.  The names and
+purpose of these files are not documented on purpose so as to keep down bitrot
+as internals change.  If you aren't working on portage internally, then the
+details most likely do not matter to you.
+
+This entire directory can be safely deleted.  It is highly recommended you do
+not do this however as it can be a time consuming process to generate them all
+again.
+.RE
+.TP
+.BR /var/db/pkg/
+.RS
+All installed package information is recorded here.  If portage thinks you have
+a package installed, it is usually because it is listed here.
+
+The format follows somewhat closely that of the portage tree.  There is a
+directory for each category and a package-version subdirectory for each package
+you have installed.
+
+Inside each package directory are misc files that describe the installed
+contents of the package as well as build time information (so that the package
+can be unmerged without needing the portage tree).
+
+The exact file contents and format are not described here again so that things
+can be changed quickly.  Generally though there is one file per environment
+variable that "matters" (like CFLAGS) with the contents stored inside of it.
+Another common file is the CONTENTS file which lists the path and hashes of
+all objects that the package installed onto your system.
+.RE
+.TP
 .BR /var/lib/portage/
 .RS
+.TP
+.BR config
+Hashes which are used to determine whether files in config protected
+directories have been modified since being installed.  Files which have not
+been modified will automatically be unmerged.
 .TP
 .BR world
 Every time you emerge a package, the package that you requested is 

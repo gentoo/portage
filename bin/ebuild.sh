@@ -1,5 +1,5 @@
 #!@BASH@
-# Copyright 1999-2006 Gentoo Foundation
+# Copyright 1999-2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
@@ -422,8 +422,8 @@ register_die_hook() {
 umask 022
 export DESTTREE=/usr
 export INSDESTTREE=""
-export EXEDESTTREE=""
-export DOCDESTTREE=""
+export _E_EXEDESTTREE_=""
+export _E_DOCDESTTREE_=""
 export INSOPTIONS="-m0644"
 export EXEOPTIONS="-m0755"
 export LIBOPTIONS="-m0644"
@@ -905,22 +905,22 @@ insinto() {
 
 exeinto() {
 	if [ "$1" == "/" ]; then
-		export EXEDESTTREE=""
+		export _E_EXEDESTTREE_=""
 	else
 		export EXEDESTTREE="$1"
-		if [ ! -d "${ED}${EXEDESTTREE}" ]; then
-			install -d "${ED}${EXEDESTTREE}"
+		if [ ! -d "${ED}${_E_EXEDESTTREE_}" ]; then
+			install -d "${ED}${_E_EXEDESTTREE_}"
 		fi
 	fi
 }
 
 docinto() {
 	if [ "$1" == "/" ]; then
-		export DOCDESTTREE=""
+		export _E_DOCDESTTREE_=""
 	else
 		export DOCDESTTREE="$1"
-		if [ ! -d "${ED}usr/share/doc/${PF}/${DOCDESTTREE}" ]; then
-			install -d "${ED}usr/share/doc/${PF}/${DOCDESTTREE}"
+		if [ ! -d "${ED}usr/share/doc/${PF}/${_E_DOCDESTTREE_}" ]; then
+			install -d "${ED}usr/share/doc/${PF}/${_E_DOCDESTTREE_}"
 		fi
 	fi
 }
