@@ -271,7 +271,7 @@ umask 022
 export DESTTREE=/usr
 export INSDESTTREE=""
 export EXEDESTTREE=""
-export DOCDESTTREE=""
+export _E_DOCDESTTREE_=""
 export INSOPTIONS="-m0644"
 export EXEOPTIONS="-m0755"
 export LIBOPTIONS="-m0644"
@@ -761,11 +761,12 @@ exeinto() {
 
 docinto() {
 	if [ "$1" == "/" ]; then
-		export DOCDESTTREE=""
+		export _E_DOCDESTTREE_=""
+		eqawarn "QA Notice: invalid usage of docinto"
 	else
-		export DOCDESTTREE="$1"
-		if [ ! -d "${D}usr/share/doc/${PF}/${DOCDESTTREE}" ]; then
-			install -d "${D}usr/share/doc/${PF}/${DOCDESTTREE}"
+		export _E_DOCDESTTREE_="$1"
+		if [ ! -d "${D}usr/share/doc/${PF}/${_E_DOCDESTTREE_}" ]; then
+			install -d "${D}usr/share/doc/${PF}/${_E_DOCDESTTREE_}"
 		fi
 	fi
 }
