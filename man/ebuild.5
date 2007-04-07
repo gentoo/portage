@@ -809,23 +809,23 @@ Can be used to define options for the install function used in
 \fBdoins\fR.  The default is \fI\-m0644\fR.
 .TP
 \fBdoins\fR \fI<file> [list of more files]\fR
-Installs files into the path controlled by the \fBinsinto\fR.  This function
+Installs files into the path controlled by \fBinsinto\fR.  This function
 uses \fBinstall\fR(1).  Creates all necessary dirs.
 .TP
 \fBexeinto\fR \fI[path]\fR
-Sets the root (\fIEXEDESTTREE\fR) for the \fBdoexe\fR function.
+Sets the destination path for the \fBdoexe\fR function.
 .br
-The default root is /.
+The default path is /.
 .TP
 \fBexeopts\fR \fI[options for install(1)]\fR
 Can be used to define options for the install function used in \fBdoexe\fR.
 The default is \fI\-m0755\fR.
 .TP
 \fBdoexe\fR \fI<executable> [list of more executables]\fR
-Installs a executable or a list of executable into \fIEXEDESTTREE\fR.
-This function uses \fBinstall\fR(1).  Creates all necessary dirs.
+Installs executables into the path controlled by \fBexecinto\fR.  This function
+uses \fBinstall\fR(1).  Creates all necessary dirs.
 .TP
-\fBdocinto\fR \fI<path>\fR
+\fBdocinto\fR \fI[path]\fR
 Sets the subdir used by \fBdodoc\fR when installing into the document tree
 (based in /usr/share/doc/${PF}/).  Default is no subdir, or just "".
 .TP
