@@ -3219,12 +3219,12 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 		"confcache":{
 			"basedir_var":"CONFCACHE_DIR",
 			"default_dir":os.path.join(mysettings["PORTAGE_TMPDIR"], "confcache"),
-			"always_recurse":True},
+			"always_recurse":False},
 		"distcc":{
 			"basedir_var":"DISTCC_DIR",
 			"default_dir":os.path.join(mysettings["BUILD_PREFIX"], ".distcc"),
 			"subdirs":("lock", "state"),
-			"always_recurse":True}
+			"always_recurse":False}
 	}
 	dirmode  = 02070
 	filemode =   060
@@ -3241,11 +3241,10 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 					for subdir in kwargs["subdirs"]:
 						mydirs.append(os.path.join(basedir, subdir))
 				for mydir in mydirs:
-					modified = portage.util.ensure_dirs(mydir,
-						gid=portage_gid, mode=dirmode, mask=modemask)
-					# To avoid excessive recursive stat calls, we trigger
-					# recursion when the top level directory does not initially
-					# match our permission requirements.
+					modified = portage.util.ensure_dirs(mydir)
+					# Generally, we only want to apply permissions for
+					# initial creation.  Otherwise, we don't know exactly what
+					# permissions the user wants, so should leave them as-is.
 					if modified or kwargs["always_recurse"]:
 						if modified:
 							writemsg("Adjusting permissions recursively: '%s'\n" % mydir,
