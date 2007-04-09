@@ -1627,6 +1627,10 @@ class config:
 			myre = re.compile('^[A-Z]+$')
 			null_byte = "\0"
 			for filename in listdir(infodir,filesonly=1,EmptyOnError=1):
+				if filename == "FEATURES":
+					# FEATURES from the build host shouldn't be interpreted as
+					# FEATURES on the client system.
+					continue
 				if myre.match(filename):
 					try:
 						file_path = os.path.join(infodir, filename)
