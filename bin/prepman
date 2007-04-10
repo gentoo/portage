@@ -16,15 +16,4 @@ if [[ ! -d ${mandir} ]] ; then
 	exit 0
 fi
 
-shopt -s nullglob
-
-ret=0
-
-# compress and fixup links in each dir
-for subdir in "${mandir}"/man* "${mandir}"/*/man* ; do
-	[[ -d ${subdir} ]] || continue # ignore files named 'man*'
-	ecompressdir "/${subdir#${D}}"
-	((ret+=$?))
-done
-
-exit ${ret}
+exec ecompressdir "${mandir#${D}}"
