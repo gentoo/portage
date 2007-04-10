@@ -48,7 +48,7 @@ class vardbapi(dbapi):
 			vartree = db[root]["vartree"]
 		self.vartree = vartree
 		self._aux_cache_keys = set(["SLOT", "COUNTER", "PROVIDE", "USE",
-			"IUSE", "DEPEND", "RDEPEND", "PDEPEND"])
+			"IUSE", "DEPEND", "RDEPEND", "PDEPEND", "NEEDED"])
 		self._aux_cache = None
 		self._aux_cache_version = "1"
 		self._aux_cache_filename = os.path.join(self.root,
@@ -396,13 +396,16 @@ class vardbapi(dbapi):
 		if pkg_data:
 			cache_mtime, metadata = pkg_data
 			cache_valid = cache_mtime == mydir_mtime
-			if cache_valid and set(metadata) != self._aux_cache_keys:
-				# Allow self._aux_cache_keys to change without a cache version
-				# bump.
-				cache_valid = False
 		if cache_valid:
+			cache_incomplete = self._aux_cache_keys.difference(metadata)
+			if cache_incomplete:
+				# Allow self._aux_cache_keys to change without a cache version
+				# bump and efficiently recycle partial cache whenever possible.
+				cache_valid = False
+				pull_me = cache_incomplete.union(wants)
+			else:
+				pull_me = set(wants).difference(self._aux_cache_keys)
 			mydata.update(metadata)
-			pull_me = set(wants).difference(self._aux_cache_keys)
 		else:
 			pull_me = self._aux_cache_keys.union(wants)
 		if pull_me:
