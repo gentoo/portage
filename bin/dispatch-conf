@@ -29,9 +29,9 @@ import portage.dispatch_conf, portage.const
 from portage.process import find_binary
 
 FIND_EXTANT_CONFIGS  = "find '%s' %s -iname '._cfg????_%s' ! -iname '.*~' ! -iname '.*.bak'"
-DIFF_CONTENTS		= 'diff -Nu %s %s'
-DIFF_CVS_INTERP	  = 'diff -Nu %s %s | grep "^[+-][^+-]" | grep -v "# .Header:.*"'
-DIFF_WSCOMMENTS	  = 'diff -Nu %s %s | grep "^[+-][^+-]" | grep -v "^[-+]#" | grep -v "^[-+][:space:]*$"'
+DIFF_CONTENTS        = 'diff -Nu %s %s'
+DIFF_CVS_INTERP      = 'diff -Nu %s %s | grep "^[+-][^+-]" | grep -v "# .Header:.*"'
+DIFF_WSCOMMENTS      = 'diff -Nu %s %s | grep "^[+-][^+-]" | grep -v "^[-+]#" | grep -v "^[-+][:space:]*$"'
 
 # We need a secure scratch dir and python does silly verbose errors on the use of tempnam
 oldmask = os.umask(0077)
