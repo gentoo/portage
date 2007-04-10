@@ -1,7 +1,7 @@
 #!@PYTHON@ -O
 # Copyright 1999-2006 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: /var/cvsroot/gentoo-src/portage/bin/dispatch-conf,v 1.7.2.10 2005/05/12 15:20:22 jstubbs Exp $
+# $Id: $
 
 #
 # dispatch-conf -- Integrate modified configs, post-emerge
@@ -25,7 +25,7 @@ except ImportError:
 	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
 	import portage
 
-import dispatch_conf, portage_const
+import portage.dispatch_conf, portage.const
 from portage.process import find_binary
 
 FIND_EXTANT_CONFIGS  = "find '%s' %s -iname '._cfg????_%s' ! -iname '.*~' ! -iname '.*.bak'"
@@ -38,7 +38,7 @@ oldmask = os.umask(0077)
 SCRATCH_DIR = None
 while SCRATCH_DIR is None:
 	try:
-		mydir = portage_const.EPREFIX+"/var/tmp/dispatch-conf."
+		mydir = portage.const.EPREFIX+"/var/tmp/dispatch-conf."
 		for x in range(0,8):
 			if int(random() * 3) == 0:
 				mydir += chr(int(65+random()*26.0))
@@ -87,7 +87,7 @@ class dispatch:
 		#
 
 		for path in config_paths.split ():
-			path = portage.normalize_path(portage_const.EPREFIX + path)
+			path = portage.normalize_path(portage.const.EPREFIX + path)
 			try:
 				mymode = os.stat(path).st_mode
 			except OSError:

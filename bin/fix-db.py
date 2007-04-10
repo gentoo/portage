@@ -15,10 +15,10 @@ except ImportError:
 from stat import *
 from portage.output import *
 from portage import lockfile,unlockfile,VDB_PATH,root
-import portage_const
+import portage.const
 
 
-mylog = open(portage_const.EPREFIX+"/var/log/emerge_fix-db.log", "a")
+mylog = open(portage.const.EPREFIX+"/var/log/emerge_fix-db.log", "a")
 def writemsg(msg):
 	if msg[-1] != '\n':
 		msg += "\n"
@@ -28,7 +28,7 @@ def writemsg(msg):
 	mylog.flush()
 
 def fix_global_counter(value):
-	myf = open(portage_const.EPREFIX+"/var/cache/edb/counter")
+	myf = open(portage.const.EPREFIX+"/var/cache/edb/counter")
 	newvalue = value+1000
 	myf.write(str(newvalue))
 	myf.flush()
@@ -40,7 +40,7 @@ counters = {}
 times = {}
 
 try:
-	real_counter = long(open(portage_const.EPREFIX+"/var/cache/edb/counter").read())
+	real_counter = long(open(portage.const.EPREFIX+"/var/cache/edb/counter").read())
 except SystemExit, e:
 	raise  # This needs to be propogated
 except:
