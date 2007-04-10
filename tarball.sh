@@ -15,7 +15,7 @@ export V="$1"
 export DEST="${TMP}/${PKG}-${V}"
 #export PREVEB="2.0.49_pre2"
 
-./tabcheck.py `grep #!@PYTHON@ bin/* | cut -d: -f1` `find ./ -type f -name '*.py'`
+./tabcheck.py `grep "#\!@PYTHON@" bin/* | cut -d: -f1` `find ./ -type f -name '*.py'`
 
 if [ -e ${DEST} ]; then
 	echo EXISTS ALREADY
