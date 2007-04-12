@@ -30,23 +30,19 @@ SLOT="0"
 KEYWORDS="~x86"
 IUSE=""
 
-DEPEND="virtual/libc"
-RDEPEND="virtual/libc"
+RDEPEND=""
+DEPEND="nls? ( sys-devel/gettext )"
 
 src_compile() {
-	econf || die "could not configure"
+	econf \\
+		\-\-bindir=/bin \\
+		|| die "could not configure"
 	emake || die "emake failed"
 }
 
 src_install() {
-	into /usr
-	doinfo doc/sed.info
-	doman doc/sed.1
-	into /
-	dobin sed/sed || die "dobin sed failed"
-	dodir /usr/bin
-	dosym /bin/sed /usr/bin/sed
-	dodoc NEWS README* THANKS TODO AUTHORS BUGS ANNOUNCE
+	emake install DESTDIR="${D}" || die "Install failed"
+	dodoc NEWS README* THANKS AUTHORS BUGS ChangeLog
 }
 .fi
 .SH "VARIABLES"
