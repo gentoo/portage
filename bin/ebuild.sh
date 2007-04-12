@@ -524,7 +524,19 @@ unpack() {
 			LHa|LHA|lha|lzh)
 				lha xqf "${srcdir}/${x}" || die "$myfail"
 				;;
-			a|deb)
+			deb)
+				# unpacking .deb archives can only be done with a GNU
+				# binutils (compatible) ar.  So if we don't have that,
+				# which only is on AIX for the moment, use deb2targz and
+				# unpack that one
+				if [[ ${CHOST} == *-aix* ]]; then
+					deb2targz "${srcdir}/${x}" || die "$myfail"
+					mv "${srcdir}/${x/.deb/.tar.gz}" data.tar.gz
+				else
+					ar x "${srcdir}/${x}" || die "$myfail"
+				fi
+				;;
+			a)
 				ar x "${srcdir}/${x}" || die "$myfail"
 				;;
 			*)
