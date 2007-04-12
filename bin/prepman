@@ -16,4 +16,15 @@ if [[ ! -d ${mandir} ]] ; then
 	exit 0
 fi
 
-exec ecompressdir "${mandir#${D}}"
+shopt -s nullglob
+
+really_is_mandir=0
+
+# use some heuristics to test if this is a real mandir
+for subdir in "${mandir}"/man* "${mandir}"/*/man* ; do
+	[[ -d ${subdir} ]] && really_is_mandir=1 && break
+done
+
+[[ ${really_is_mandir} == 1 ]] && exec ecompressdir "${mandir#${D}}"
+
+exit 0
