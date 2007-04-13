@@ -102,6 +102,9 @@ for dir in "$@" ; do
 		vecho "${0##*/}: ${dir#${D}} does not exist!"
 		continue
 	fi
+	cd "${dir}"
+	actual_dir=${dir}
+	dir=. # use relative path to avoid 'Argument list too long' errors
 
 	# hide all the stuff we want to skip
 	hide_skip_dirs "${dir}"
@@ -122,7 +125,7 @@ for dir in "$@" ; do
 
 	# now lets do our work
 	[[ -z ${suffix} ]] && continue
-	vecho "${0##*/}: $(ecompress --bin) ${dir#${D}}"
+	vecho "${0##*/}: $(ecompress --bin) ${actual_dir#${D}}"
 	funk_up_dir "compress" "${suffix}" "ecompress"
 
 	# finally, restore the skipped stuff
