@@ -767,7 +767,7 @@ exeinto() {
 	if [ "$1" == "/" ]; then
 		export _E_EXEDESTTREE_=""
 	else
-		export EXEDESTTREE="$1"
+		export _E_EXEDESTTREE_="$1"
 		if [ ! -d "${ED}${_E_EXEDESTTREE_}" ]; then
 			install -d "${ED}${_E_EXEDESTTREE_}"
 		fi
@@ -778,7 +778,7 @@ docinto() {
 	if [ "$1" == "/" ]; then
 		export _E_DOCDESTTREE_=""
 	else
-		export DOCDESTTREE="$1"
+		export _E_DOCDESTTREE_="$1"
 		if [ ! -d "${ED}usr/share/doc/${PF}/${_E_DOCDESTTREE_}" ]; then
 			install -d "${ED}usr/share/doc/${PF}/${_E_DOCDESTTREE_}"
 		fi

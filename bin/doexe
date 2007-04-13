@@ -1,23 +1,25 @@
 #!@BASH@
 # Copyright 1999-2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: /var/cvsroot/gentoo-src/portage/bin/doexe,v 1.10.2.1 2004/12/06 03:01:43 carpaski Exp $
+# $Id: $
+
+source "${PORTAGE_BIN_PATH:-${EPREFIX}/usr/lib/portage/bin}"/isolated-functions.sh
 
 if [[ $# -lt 1 ]] ; then
 	echo "$0: at least one argument needed" 1>&2
 	exit 1
 fi
 
-if [[ ! -d ${ED}${EXEDESTTREE} ]] ; then
+if [[ ! -d ${ED}${_E_EXEDESTTREE_} ]] ; then
 	install -d "${ED}${_E_EXEDESTTREE_}"
 fi
 
 for x in "$@" ; do
 	if [ -L "${x}" ] ; then
 		cp "${x}" "${T}"
-		mysrc="${T}"/`basename "${x}"`
+		mysrc="${T}"/$(basename "${x}")
 	elif [ -d "${x}" ] ; then
-		echo "doexe: warning, skipping directory ${x}"
+		vecho "doexe: warning, skipping directory ${x}"
 		continue
 	else
 		mysrc="${x}"
