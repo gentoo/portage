@@ -45,18 +45,6 @@ install_qa_check() {
 	cd "${D}" || die "cd failed"
 	prepall
 
-	declare -i UNSAFE=0
-	for i in $(find "${D}/" -type f -perm -2002); do
-		((UNSAFE++))
-		vecho "UNSAFE SetGID: $i"
-		chmod -s,o-w "$i"
-	done
-	for i in $(find "${D}/" -type f -perm -4002); do
-		((UNSAFE++))
-		vecho "UNSAFE SetUID: $i"
-		chmod -s,o-w "$i"
-	done
-
 	# Now we look for all world writable files.
 	for i in $(find "${D}/" -type f -perm -2); do
 		vecho -ne '\a'
@@ -199,8 +187,11 @@ install_qa_check() {
 		PORTAGE_QUIET=${tmp_quiet}
 	fi
 
-	if [[ ${UNSAFE} > 0 ]] ; then
-		die "There are ${UNSAFE} unsafe files. Portage will not install them."
+	local unsafe_files=$(find "${D}" -type f '(' -perm -2002 -o -perm -4002 ')')
+	if [[ -n ${unsafe_files} ]] ; then
+		eqawarn "QA Notice: Unsafe files detected (set*id and world writable)"
+		eqawarn "${unsafe_files}"
+		die "Unsafe files found in \${D}.  Portage will not install them."
 	fi
 
 	if [[ -d ${D}/${D} ]] ; then
