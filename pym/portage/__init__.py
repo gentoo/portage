@@ -1162,12 +1162,10 @@ class config:
 			self.lookuplist.reverse()
 
 			# Blacklist vars that could interfere with portage internals.
-			for blacklisted in ["PKGUSE", "PORTAGE_CONFIGROOT", "ROOT"]:
+			for blacklisted in "CATEGORY", "PKGUSE", "PORTAGE_CONFIGROOT", \
+				"ROOT":
 				for cfg in self.lookuplist:
-					try:
-						del cfg[blacklisted]
-					except KeyError:
-						pass
+					cfg.pop(blacklisted, None)
 			del blacklisted, cfg
 
 			if target_root is None:
