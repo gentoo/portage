@@ -700,8 +700,8 @@ class portdbapi(dbapi):
 				match=1
 			uselist = []
 			if "?" in licenses:
-				self.mysettings.setcpv(mycpv, mydb=self)
-				uselist = self.mysettings.get("USE", "").split()
+				self.doebuild_settings.setcpv(mycpv, mydb=self)
+				uselist = self.doebuild_settings.get("USE", "").split()
 			try:
 				if self.mysettings.getMissingLicenses(
 					licenses, mycpv, uselist):
