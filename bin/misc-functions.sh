@@ -46,7 +46,8 @@ install_qa_check() {
 	prepall
 
 	# Now we look for all world writable files.
-	for i in $(find "${ED}/" -type f -perm -2); do
+	find "${ED%/}" -type f -perm -2 | \
+	while read i ; do
 		vecho -ne '\a'
 		vecho "QA Security Notice:"
 		vecho "- ${i:${#ED}:${#i}} will be a world writable file."
@@ -196,7 +197,8 @@ install_qa_check() {
 
 	if [[ -d ${ED}/${D} ]] ; then
 		declare -i INSTALLTOD=0
-		for i in $(find "${ED}/${D}/"); do
+		find "${ED}/${D}" | \
+		while read i ; do
 			eqawarn "QA Notice: /${i##${ED}/${D}} installed in \${ED}/\${D}"
 			((INSTALLTOD++))
 		done
@@ -206,7 +208,8 @@ install_qa_check() {
 
 	if [[ -d ${ED}/${EPREFIX} ]] ; then
 		declare -i INSTALLTOD=0
-		for i in $(find "${ED}/${EPREFIX}/") ; do
+		find "${ED}/${EPREFIX}/" | \
+		while read i ; do
 			eqawarn "QA Notice: ${i#${ED}} double prefix"
 			((INSTALLTOD++))
 		done
@@ -216,7 +219,8 @@ install_qa_check() {
 
 	if [[ -d ${D} ]] ; then
 		declare -i INSTALLTOD=0
-		for i in $(find ${D%/} | sed -e "s|^${D%/}||g") ; do
+		find ${D%/} | sed -e "s|^${D%/}||g" | \
+		while read i ; do
 			if [[ ${#EPREFIX} -gt ${#i} && ${EPREFIX:0:${#i}} != ${i} ]] ; then
 				echo "QA Notice: ${i} outside of prefix"
 				((INSTALLTOD++))
@@ -236,7 +240,8 @@ install_qa_check() {
 		# about it.  Some packages do ship .so files on Darwin and make
 		# it work (ugly! e.g. python does this by default).
 		f=""
-		for i in $(find ${ED%/} -name "*.so" -or -name "*.so.*") ; do
+		find ${ED%/} -name "*.so" -or -name "*.so.*" | \
+		while read i ; do
 			[[ $(file $i) == *"Mach-O"* ]] && f="${f} ${i#${D}}"
 		done
 		if [[ -n ${f} ]] ; then
@@ -249,7 +254,8 @@ install_qa_check() {
 		# version component is before the extention, instead of after
 		# it, as with .sos.  Again, make this a warning only.
 		f=""
-		for i in $(find ${ED%/} -name "*.dylib.*") ; do
+		find ${ED%/} -name "*.dylib.*" | \
+		while read i ; do
 			f="${f} ${i#${D}}"
 		done
 		if [[ -n ${f} ]] ; then
@@ -387,7 +393,8 @@ install_qa_check() {
 		MULTILIB_STRICT_EXEMPT=$(echo ${MULTILIB_STRICT_EXEMPT} | sed -e 's:\([(|)]\):\\\1:g')
 		for dir in ${MULTILIB_STRICT_DIRS} ; do
 			[[ -d ${ED}/${dir} ]] || continue
-			for file in $(find ${ED}/${dir} -type f | grep -v "^${ED}/${dir}/${MULTILIB_STRICT_EXEMPT}"); do
+			find ${ED}/${dir} -type f | grep -v "^${ED}/${dir}/${MULTILIB_STRICT_EXEMPT}" | \
+			while read file ; do
 				if file ${file} | egrep -q "${MULTILIB_STRICT_DENY}" ; then
 					if [[ ${firstrun} == yes ]] ; then
 						echo "Files matching a file type that is not allowed:"
@@ -470,12 +477,14 @@ preinst_sfperms() {
 	fi
 	# Smart FileSystem Permissions
 	if hasq sfperms $FEATURES; then
-		for i in $(find ${IMAGE}/ -type f -perm -4000); do
+		find ${IMAGE}/ -type f -perm -4000 | \
+		while read i ; do
 			ebegin ">>> SetUID: [chmod go-r] $i "
 			chmod go-r "$i"
 			eend $?
 		done
-		for i in $(find ${IMAGE}/ -type f -perm -2000); do
+		find ${IMAGE}/ -type f -perm -2000 | \
+		while read i ; do
 			ebegin ">>> SetGID: [chmod o-r] $i "
 			chmod o-r "$i"
 			eend $?
@@ -492,7 +501,8 @@ preinst_suid_scan() {
 	if hasq suidctl $FEATURES; then
 		sfconf=${EPREFIX}/etc/portage/suidctl.conf
 		vecho ">>> Performing suid scan in ${IMAGE}"
-		for i in $(find ${IMAGE}/ -type f \( -perm -4000 -o -perm -2000 \) ); do
+		find ${IMAGE}/ -type f \( -perm -4000 -o -perm -2000 \) | \
+		while read i ; do
 			if [ -s "${sfconf}" ]; then
 				suid="$(grep ^${i/${IMAGE}/}$ ${sfconf})"
 				if [ "${suid}" = "${i/${IMAGE}/}" ]; then
