@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2006 Gentoo Foundation
+# Copyright 1999-2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
@@ -8,6 +8,7 @@ if [[ $# -ne 2 ]] ; then
 	exit 1
 fi
 
-target=$1
-linkname=$2
-exec ln -f "${D}${target}" "${D}${linkname}"
+destdir=${2%/*}
+[[ ! -d ${D}${destdir} ]] && dodir "${destdir}"
+
+exec ln -f "$1" "${D}$2"
