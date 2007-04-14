@@ -11,4 +11,4 @@ fi
 destdir=${2%/*}
 [[ ! -d ${D}${destdir} ]] && dodir "${destdir}"
 
-exec ln -f "$1" "${D}$2"
+exec ln -f "${D}$1" "${D}$2"
