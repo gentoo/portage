@@ -15,10 +15,11 @@ fi
 
 prepallman
 prepallinfo
-prepallstrip
 
 ecompressdir --dequeue
 ecompress --dequeue
+
+prepallstrip
 
 if type -p chflags &>/dev/null && type -p mtree &>/dev/null; then
 	# Restore all the file flags that were saved at the beginning of prepall.
