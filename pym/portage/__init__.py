@@ -1163,13 +1163,10 @@ class config:
 			self.lookuplist.reverse()
 
 			# Blacklist vars that could interfere with portage internals.
-			for blacklisted in ["PKGUSE", "PORTAGE_CONFIGROOT", "ROOT",
-					"EPREFIX", "EROOT"]:
+			for blacklisted in "CATEGORY", "PKGUSE", "PORTAGE_CONFIGROOT", \
+				"ROOT", "EPREFIX", "EROOT":
 				for cfg in self.lookuplist:
-					try:
-						del cfg[blacklisted]
-					except KeyError:
-						pass
+					cfg.pop(blacklisted, None)
 			del blacklisted, cfg
 
 			if target_root is None:
@@ -4098,7 +4095,7 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 		for cpv in portdb.match(match_atom):
 			# only use new-style matches
 			if cpv.startswith("virtual/"):
-				pkgs[cpv] = (cpv, pkgsplit(cpv), portdb)
+				pkgs[cpv] = (cpv, catpkgsplit(cpv)[1:], portdb)
 		if kwargs["use_binaries"] and "vartree" in trees[myroot]:
 			vardb = trees[myroot]["vartree"].dbapi
 			for cpv in vardb.match(match_atom):
@@ -4106,7 +4103,7 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 				if cpv.startswith("virtual/"):
 					if cpv in pkgs:
 						continue
-					pkgs[cpv] = (cpv, pkgsplit(cpv), vardb)
+					pkgs[cpv] = (cpv, catpkgsplit(cpv)[1:], vardb)
 		if not (pkgs or mychoices):
 			# This one couldn't be expanded as a new-style virtual.  Old-style
 			# virtuals have already been expanded by dep_virtual, so this one
