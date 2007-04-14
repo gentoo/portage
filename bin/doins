@@ -1,36 +1,36 @@
 #!/bin/bash
-# Copyright 1999-2006 Gentoo Foundation
+# Copyright 1999-2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
 
 if [ $# -lt 1 ] ; then
-	echo "${0}: at least one argument needed"
+	echo "${0##*/}: at least one argument needed" 1>&2
 	exit 1
 fi
 
-if [ "${1}" == "-r" ] ; then
+if [[ "$1" == "-r" ]] ; then
 	DOINSRECUR=y
 	shift
 else
 	DOINSRECUR=n
 fi
-[ -z "${INSDEPTH}" ] && declare -i INSDEPTH=0
-if [ ${INSDEPTH} -gt 30 ] ; then
-	echo "${0}: sanity check ... 30 directories is too much :("
+[[ -z ${INSDEPTH} ]] && declare -i INSDEPTH=0
+if [[ ${INSDEPTH} -gt 30 ]] ; then
+	echo "${0##*/}: sanity check ... 30 directories is too much :(" 2>&1
 	exit 1
 fi
 
-if [ "${INSDESTTREE%${D}*}" == "" ]; then
+if [[ ${INSDESTTREE#${D}} != "${INSDESTTREE}" ]]; then
 	vecho "-------------------------------------------------------" 1>&2
 	vecho "You should not use \${D} with helpers." 1>&2
 	vecho "  --> ${INSDESTTREE}" 1>&2
 	vecho "-------------------------------------------------------" 1>&2
-	#exit 1
+	exit 1
 fi
 
-[ ! -d "${D}${INSDESTTREE}" ] && dodir "${INSDESTTREE}"
+[[ ! -d ${D}${INSDESTTREE} ]] && dodir "${INSDESTTREE}"
 
 for x in "$@" ; do
 	if [ -L "$x" ] ; then
