@@ -22,12 +22,12 @@ if [ ${INSDEPTH} -gt 30 ] ; then
 	exit 1
 fi
 
-if [ "${INSDESTTREE%${D}*}" == "" ]; then
+if [[ ${INSDESTTREE#${D}} != "${INSDESTTREE}" ]]; then
 	vecho "-------------------------------------------------------" 1>&2
 	vecho "You should not use \${D} with helpers." 1>&2
 	vecho "  --> ${INSDESTTREE}" 1>&2
 	vecho "-------------------------------------------------------" 1>&2
-	#exit 1
+	exit 1
 fi
 
 [ ! -d "${D}${INSDESTTREE}" ] && dodir "${INSDESTTREE}"
