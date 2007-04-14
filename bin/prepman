@@ -25,6 +25,6 @@ for subdir in "${mandir}"/man* "${mandir}"/*/man* ; do
 	[[ -d ${subdir} ]] && really_is_mandir=1 && break
 done
 
-[[ ${really_is_mandir} == 1 ]] && exec ecompressdir "${mandir#${D}}"
+[[ ${really_is_mandir} == 1 ]] && exec ecompressdir --queue "${mandir#${D}}"
 
 exit 0

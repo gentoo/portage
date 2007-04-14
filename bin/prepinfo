@@ -28,4 +28,4 @@ find "${D}${infodir}" -type d -print0 | while read -d $'\0' x ; do
 	rm -f "${x}"/dir{,.info}{,.gz,.bz2}
 done
 
-exec ecompressdir "${infodir}"
+exec ecompressdir --queue "${infodir}"
