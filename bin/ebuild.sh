@@ -373,11 +373,12 @@ unpack() {
 				lha xqf "${srcdir}/${x}" || die "$myfail"
 				;;
 			deb)
-				# unpacking .deb archives can only be done with a GNU
-				# binutils (compatible) ar.  So if we don't have that,
-				# which only is on AIX for the moment, use deb2targz and
-				# unpack that one
-				if [[ ${CHOST} == *-aix* ]]; then
+				# Unpacking .deb archives can not always be done with
+				# `ar`.  For instance on AIX this doesn't work out.  If
+				# we have `deb2targz` installed, prefer it over `ar` for
+				# that reason.  We just make sure on AIX `deb2targz` is
+				# installed.
+				if type -p deb2targz &>/dev/null; then
 					deb2targz "${srcdir}/${x}" || die "$myfail"
 					mv "${srcdir}/${x/.deb/.tar.gz}" data.tar.gz
 				else
