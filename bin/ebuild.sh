@@ -378,7 +378,7 @@ unpack() {
 				# we have `deb2targz` installed, prefer it over `ar` for
 				# that reason.  We just make sure on AIX `deb2targz` is
 				# installed.
-				if type -P deb2targz &>/dev/null; then
+				if type -P deb2targz > /dev/null; then
 					deb2targz "${srcdir}/${x}" || die "$myfail"
 					mv "${srcdir}/${x/.deb/.tar.gz}" data.tar.gz
 				else
