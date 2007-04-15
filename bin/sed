@@ -6,7 +6,7 @@ scriptpath="${BASH_SOURCE[0]}"
 
 if [[ -n ${ESED} ]]; then
 	exec ${ESED} "$@"
-elif type -p gsed > /dev/null ; then
+elif type -P gsed > /dev/null ; then
 	exec gsed "$@"
 else
 	old_IFS="${IFS}"

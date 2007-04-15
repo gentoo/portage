@@ -10,7 +10,7 @@
 # Leo Lipelis <aeoo@gentoo.org>
 # Karl Trygve Kalleberg <karltk@gentoo.org>
 
-if type -p gsed >/dev/null ; then
+if type -P gsed >/dev/null ; then
 	function sed() { gsed "$@"; }
 fi
 

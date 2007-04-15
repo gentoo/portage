@@ -14,9 +14,9 @@ then
 fi
 
 STRIP=${STRIP:-${CHOST}-strip}
-type -p -- ${STRIP} > /dev/null || STRIP=strip
+type -P -- ${STRIP} > /dev/null || STRIP=strip
 OBJCOPY=${OBJCOPY:-${CHOST}-objcopy}
-type -p -- ${OBJCOPY} > /dev/null || OBJCOPY=objcopy
+type -P -- ${OBJCOPY} > /dev/null || OBJCOPY=objcopy
 
 export PORTAGE_STRIP_FLAGS=${PORTAGE_STRIP_FLAGS:---strip-unneeded}
 

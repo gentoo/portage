@@ -56,7 +56,7 @@ install_qa_check() {
 		sleep 1
 	done
 
-	if type -p scanelf > /dev/null && ! hasq binchecks ${RESTRICT}; then
+	if type -P scanelf > /dev/null && ! hasq binchecks ${RESTRICT}; then
 		local qa_var insecure_rpath=0 tmp_quiet=${PORTAGE_QUIET}
 		
 		# display warnings when using stricter because we die afterwards
@@ -433,8 +433,8 @@ install_mask() {
 }
 
 preinst_bsdflags() {
-	type -p chflags &>/dev/null || return 0
-	type -p mtree &>/dev/null || return 1
+	type -P chflags > /dev/null || return 0
+	type -P mtree > /dev/null || return 1
 	# Save all the file flags for restoration after installation.
 	mtree -c -p "${ED}" -k flags > "${T}/bsdflags.mtree"
 	# Remove all the file flags so that the merge phase can do anything
@@ -444,8 +444,8 @@ preinst_bsdflags() {
 }
 
 postinst_bsdflags() {
-	type -p chflags &>/dev/null || return 0
-	type -p mtree &>/dev/null || return 1
+	type -P chflags > /dev/null || return 0
+	type -P mtree > /dev/null || return 1
 	# Restore all the file flags that were saved before installation.
 	mtree -e -p "${EROOT}" -U -k flags < "${T}/bsdflags.mtree" &> /dev/null
 }
