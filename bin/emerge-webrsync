@@ -38,9 +38,9 @@ else
 	fi
 fi
 
-if type -p md5sum > /dev/null; then
+if type -P md5sum > /dev/null; then
 	md5_com='md5sum -c "${FILE}.md5sum"'
-elif type -p md5 > /dev/null; then
+elif type -P md5 > /dev/null; then
 	md5_com='[ "$(md5 -q ${FILE})" == "$(cut -d \  -f 1 ${FILE}.md5sum)" ]'
 else
 	echo "warning, unable to do md5 verification of the snapshot!"
@@ -50,7 +50,7 @@ fi
 
 sync_local() {
 	echo Syncing local tree...
-	if type -p tarsync &> /dev/null; then
+	if type -P tarsync &> /dev/null; then
 		# tarsync doesn't take numeric uid/gid so we need to convert them.
 		local inst_user="$(python -c "import pwd; print pwd.getpwuid(int('${PORTAGE_INST_UID:-0}'))[0]")"
 		local inst_group="$(python -c "import grp; print grp.getgrgid(int('${PORTAGE_INST_GID:-0}'))[0]")"

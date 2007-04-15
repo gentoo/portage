@@ -449,7 +449,7 @@ econf() {
 
 		local TMP_CONFCACHE_DIR CONFCACHE_ARG
 		if hasq confcache $FEATURES && ! hasq confcache $RESTRICT; then
-			CONFCACHE="$(type -p confcache)"
+			CONFCACHE="$(type -P confcache)"
 			if [ -z "${CONFCACHE}" ]; then
 				ewarn "disabling confcache, binary cannot be found"
 			else
@@ -687,7 +687,7 @@ dyn_clean() {
 		return 1
 	fi
 
-	if type -p chflags &>/dev/null; then
+	if type -P chflags > /dev/null ; then
 		chflags -R noschg,nouchg,nosappnd,nouappnd "${PORTAGE_BUILDDIR}"
 		chflags -R nosunlnk,nouunlnk "${PORTAGE_BUILDDIR}" 2>/dev/null
 	fi
@@ -1405,7 +1405,7 @@ QA_INTERCEPTORS="javac java-config python python-config perl grep egrep fgrep se
 # level the QA interceptors if we're in depend
 if hasq "depend" "${EBUILD_SH_ARGS}"; then
 	for BIN in ${QA_INTERCEPTORS}; do
-		BIN_PATH=$(type -pf ${BIN})
+		BIN_PATH=$(type -Pf ${BIN})
 		if [ "$?" != "0" ]; then
 			BODY="echo \"*** missing command: ${BIN}\" >&2; return 127"
 		else
