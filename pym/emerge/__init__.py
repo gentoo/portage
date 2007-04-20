@@ -4375,7 +4375,7 @@ def action_regen(settings, portdb):
 			dead_nodes = None
 			break
 	for x in mynodes:
-		mymatches = portdb.xmatch("match-all",x)
+		mymatches = portdb.cp_list(x)
 		portage.writemsg_stdout("processing %s\n" % x)
 		for y in mymatches:
 			try:
