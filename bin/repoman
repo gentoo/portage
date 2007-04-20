@@ -1000,8 +1000,14 @@ for x in scanlist:
 		#for x in myaux[allvars.index("RESTRICT")].split():
 		#	if x.startswith("no"):
 		#		print "Bad RESTRICT value: %s" % x
-
-		myaux["PROVIDE"] = portage.dep.use_reduce(portage.dep.paren_reduce(myaux["PROVIDE"]), matchall=1)
+		try:
+			myaux["PROVIDE"] = portage.dep.use_reduce(
+				portage.dep.paren_reduce(myaux["PROVIDE"]), matchall=1)
+		except portage.exception.InvalidDependString, e:
+			stats["PROVIDE.syntax"] = stats["PROVIDE.syntax"] + 1
+			fails["PROVIDE.syntax"].append(mykey+".ebuild PROVIDE: "+str(e))
+			del e
+			continue
 		myaux["PROVIDE"] = " ".join(portage.flatten(myaux["PROVIDE"]))
 		for myprovide in myaux["PROVIDE"].split():
 			prov_cp = portage.dep_getkey(myprovide)
