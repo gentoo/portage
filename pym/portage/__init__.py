@@ -3529,7 +3529,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			set(["clean", "cleanrm", "help", "prerm", "postrm"])
 		mycpv = mysettings["CATEGORY"] + "/" + mysettings["PF"]
 		dep_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
-		misc_keys = ["LICENSE", "PROVIDE"]
+		misc_keys = ["LICENSE", "PROVIDE", "SRC_URI"]
 		all_keys = dep_keys + misc_keys
 		metadata = dict(izip(all_keys, mydbapi.aux_get(mycpv, all_keys)))
 		class FakeTree(object):
