@@ -1542,8 +1542,14 @@ class depgraph:
 			if p_status == "merge":
 				# Update old-style virtuals if this package provides any.
 				# These are needed for dep_virtual calls inside dep_check.
-				self.pkgsettings[p_root].setinst(p_key,
-					self.trees[p_root][self.pkg_tree_map[p_type]].dbapi)
+				p_db = self.trees[p_root][self.pkg_tree_map[p_type]].dbapi
+				try:
+					self.pkgsettings[p_root].setinst(p_key, p_db)
+				except portage.exception.InvalidDependString, e:
+					provide = p_db.aux_get(p_key, ["PROVIDE"])[0]
+					show_invalid_depstring_notice(myparent, provide, str(e))
+					del e
+					return 0
 
 		if "--debug" in self.myopts:
 			print "Candidates:",mymerge
