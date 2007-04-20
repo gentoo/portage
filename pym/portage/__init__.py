@@ -3529,7 +3529,9 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			set(["clean", "cleanrm", "help", "prerm", "postrm"])
 		mycpv = mysettings["CATEGORY"] + "/" + mysettings["PF"]
 		dep_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
-		metadata = dict(izip(dep_keys, mydbapi.aux_get(mycpv, dep_keys)))
+		misc_keys = ["LICENSE", "PROVIDE"]
+		all_keys = dep_keys + misc_keys
+		metadata = dict(izip(all_keys, mydbapi.aux_get(mycpv, all_keys)))
 		class FakeTree(object):
 			def __init__(self, mydb):
 				self.dbapi = mydb
@@ -3545,7 +3547,18 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				if mydo not in invalid_dep_exempt_phases:
 					return 1
 			del dep_type, mycheck
-		del mycpv, dep_keys, metadata, FakeTree, dep_check_trees
+		for k in misc_keys:
+			try:
+				portage.dep.use_reduce(
+					portage.dep.paren_reduce(metadata[k]), matchall=True)
+			except portage.exception.InvalidDependString, e:
+				writemsg("%s: %s\n%s\n" % (
+					k, metadata[k], str(e)), noiselevel=-1)
+				del e
+				if mydo not in invalid_dep_exempt_phases:
+					return 1
+			del k
+		del mycpv, dep_keys, metadata, misc_keys, FakeTree, dep_check_trees
 
 		if "PORTAGE_TMPDIR" not in mysettings or \
 			not os.path.isdir(mysettings["PORTAGE_TMPDIR"]):
