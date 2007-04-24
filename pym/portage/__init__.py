@@ -4209,6 +4209,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 	# d) is the first item
 
 	preferred = []
+	preferred_any_slot = []
 	possible_upgrades = []
 	other = []
 
@@ -4262,8 +4263,20 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 				if not vardb.match(atom) and not atom.startswith("virtual/"):
 					all_installed = False
 					break
+			all_installed_slots = False
 			if all_installed:
-				preferred.append(this_choice)
+				all_installed_slots = True
+				for slot_atom in versions:
+					# New-style virtuals have zero cost to install.
+					if not vardb.match(slot_atom) and \
+						not slot_atom.startswith("virtual/"):
+						all_installed_slots = False
+						break
+			if all_installed:
+				if all_installed_slots:
+					preferred.append(this_choice)
+				else:
+					preferred_any_slot.append(this_choice)
 			else:
 				possible_upgrades.append(this_choice)
 		else:
@@ -4275,6 +4288,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 	# into || ( highest version ... lowest version ).  We want to prefer the
 	# highest all_available version of the new-style virtual when there is a
 	# lower all_installed version.
+	preferred.extend(preferred_any_slot)
 	preferred.extend(possible_upgrades)
 	possible_upgrades = preferred[1:]
 	for possible_upgrade in possible_upgrades:
