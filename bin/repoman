@@ -7,9 +7,22 @@
 # Then, check to make sure deps are satisfiable (to avoid "can't find match for" problems)
 # that last one is tricky because multiple profiles need to be checked.
 
-import errno, os, shutil, sys
+import errno
+import os
+import shutil
+import sys
+import signal
+import re
+import tempfile
+
+try:
+	import cPickle as picke
+except ImportError:
+	import pickle
+
 if not hasattr(__builtins__, "set"):
 	from sets import Set as set
+
 exename=os.path.basename(sys.argv[0])	
 version="1.2"	
 
@@ -19,8 +32,6 @@ map(allowed_filename_chars_set.setdefault, map(chr, range(ord('a'), ord('z')+1))
 map(allowed_filename_chars_set.setdefault, map(chr, range(ord('A'), ord('Z')+1)))
 map(allowed_filename_chars_set.setdefault, map(chr, range(ord('0'), ord('9')+1)))
 map(allowed_filename_chars_set.setdefault, map(chr, map(ord, [".", "-", "_", "+", ":"])))
-
-import signal,re,pickle,tempfile
 
 os.environ["PORTAGE_LEGACY_GLOBALS"] = "false"
 try:
