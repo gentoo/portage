@@ -16,7 +16,7 @@ import re
 import tempfile
 
 try:
-	import cPickle as picke
+	import cPickle as pickle
 except ImportError:
 	import pickle
 
