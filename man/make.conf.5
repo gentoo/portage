@@ -177,7 +177,8 @@ Check the signatures of Manifests and make sure they are correct.
 .TP
 .B installsources
 Install source code into /usr/src/debug/${CATEGORY}/${PF} (also see
-\fBsplitdebug\fR). This feature works only if debugedit is installed.
+\fBsplitdebug\fR). This feature works only if debugedit is installed and CFLAGS
+is set to include debug information (such as with the \-ggdb flag).
 .TP
 .B keeptemp
 Do not delete the ${T} directory after the merge process.
