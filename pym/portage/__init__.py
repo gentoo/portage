@@ -3226,7 +3226,7 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 			"basedir_var":"DISTCC_DIR",
 			"default_dir":os.path.join(mysettings["BUILD_PREFIX"], ".distcc"),
 			"subdirs":("lock", "state"),
-			"always_recurse":False}
+			"always_recurse":True}
 	}
 	dirmode  = 02070
 	filemode =   060
