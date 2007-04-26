@@ -3735,7 +3735,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			os.mkdir(edpath)
 			apply_secpass_permissions(edpath, uid=portage_uid, mode=0755)
 			try:
-				for file in aalist:
+				for file in alist:
 					os.symlink(os.path.join(orig_distdir, file),
 						os.path.join(edpath, file))
 			except OSError:
