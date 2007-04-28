@@ -2921,12 +2921,13 @@ class MergeTask(object):
 			# We're resuming.
 			print colorize("GOOD", "*** Resuming merge...")
 			emergelog(xterm_titles, " *** Resuming merge...")
-			mymergelist = mtimedb["resume"]["mergelist"][:]
-			if "--skipfirst" in self.myopts and mymergelist:
+			mylist = mtimedb["resume"]["mergelist"][:]
+			if "--skipfirst" in self.myopts and mylist:
 				del mtimedb["resume"]["mergelist"][0]
-				del mymergelist[0]
+				del mylist[0]
 				mtimedb.commit()
-			validate_merge_list(self.trees, mymergelist)
+			validate_merge_list(self.trees, mylist)
+			mymergelist = mylist
 
 		# Verify all the manifests now so that the user is notified of failure
 		# as soon as possible.
@@ -2941,7 +2942,7 @@ class MergeTask(object):
 				quiet_config.backup_changes("PORTAGE_QUIET")
 				quiet_settings[myroot] = quiet_config
 				del quiet_config
-			for x in mymergelist:
+			for x in mylist:
 				if x[0] != "ebuild" or x[-1] == "nomerge":
 					continue
 				if not shown_verifying_msg:
