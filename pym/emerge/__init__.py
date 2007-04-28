@@ -4868,6 +4868,15 @@ def action_build(settings, trees, mtimedb,
 			if myopt not in myresumeopts:
 				myresumeopts[myopt] = myarg
 		myopts=myresumeopts
+
+		# Adjust config according to options of the command being resumed.
+		for myroot in trees:
+			mysettings =  trees[myroot]["vartree"].settings
+			mysettings.unlock()
+			adjust_config(myopts, mysettings)
+			mysettings.lock()
+			del myroot, mysettings
+
 		myparams = create_depgraph_params(myopts, myaction)
 		if "--quiet" not in myopts and "--nodeps" not in myopts:
 			print "Calculating dependencies  ",
