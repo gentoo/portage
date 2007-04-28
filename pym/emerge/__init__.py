@@ -2917,6 +2917,17 @@ class MergeTask(object):
 						show_blocker_docs_link()
 					return 1
 
+		if "--resume" in self.myopts:
+			# We're resuming.
+			print colorize("GOOD", "*** Resuming merge...")
+			emergelog(xterm_titles, " *** Resuming merge...")
+			mymergelist = mtimedb["resume"]["mergelist"][:]
+			if "--skipfirst" in self.myopts and mymergelist:
+				del mtimedb["resume"]["mergelist"][0]
+				del mymergelist[0]
+				mtimedb.commit()
+			validate_merge_list(self.trees, mymergelist)
+
 		# Verify all the manifests now so that the user is notified of failure
 		# as soon as possible.
 		if "--fetchonly" not in self.myopts and \
@@ -2930,7 +2941,7 @@ class MergeTask(object):
 				quiet_config.backup_changes("PORTAGE_QUIET")
 				quiet_settings[myroot] = quiet_config
 				del quiet_config
-			for x in mylist:
+			for x in mymergelist:
 				if x[0] != "ebuild" or x[-1] == "nomerge":
 					continue
 				if not shown_verifying_msg:
@@ -2947,17 +2958,7 @@ class MergeTask(object):
 
 		#buildsyspkg: I need mysysdict also on resume (moved from the else block)
 		mysysdict = genericdict(getlist(self.settings, "system"))
-		if "--resume" in self.myopts:
-			# We're resuming.
-			print colorize("GOOD", "*** Resuming merge...")
-			emergelog(xterm_titles, " *** Resuming merge...")
-			mymergelist=mtimedb["resume"]["mergelist"][:]
-			if "--skipfirst" in self.myopts and mymergelist:
-				del mtimedb["resume"]["mergelist"][0]
-				del mymergelist[0]
-				mtimedb.commit()
-			validate_merge_list(self.trees, mymergelist)
-		else:
+		if "--resume" not in self.myopts:
 			myfavs = portage.grabfile(
 				os.path.join(self.target_root, portage.WORLD_FILE))
 			myfavdict=genericdict(myfavs)
