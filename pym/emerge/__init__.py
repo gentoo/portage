@@ -4291,6 +4291,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			pass
 
 		dosyncuri = syncuri
+		updatecache_flg = True
 	else:
 		print "!!! rsync setting: ",syncuri,"not recognized; exiting."
 		sys.exit(1)
