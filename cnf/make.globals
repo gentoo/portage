@@ -29,8 +29,8 @@ RPMDIR=/usr/portage/rpm
 PORTAGE_TMPDIR=/var/tmp
 
 # Fetching command (5 tries, passive ftp for firewall compatibility)
-FETCHCOMMAND="/usr/bin/wget -t 5 -T 60 --passive-ftp -P \${DISTDIR} \${URI}"
-RESUMECOMMAND="/usr/bin/wget -c -t 5 -T 60 --passive-ftp -P \${DISTDIR} \${URI}"
+FETCHCOMMAND="/usr/bin/wget -t 5 -T 60 --passive-ftp -P \\\"\${DISTDIR}\\\" \\\"\${URI}\\\""
+RESUMECOMMAND="/usr/bin/wget -c -t 5 -T 60 --passive-ftp -P \\\"\${DISTDIR}\\\" \\\"\${URI}\\\""
 
 # Default user options
 FEATURES="sandbox distlocks metadata-transfer"
