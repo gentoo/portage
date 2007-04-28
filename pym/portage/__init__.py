@@ -3238,7 +3238,7 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 			"basedir_var":"DISTCC_DIR",
 			"default_dir":os.path.join(mysettings["BUILD_PREFIX"], ".distcc"),
 			"subdirs":("lock", "state"),
-			"always_recurse":False}
+			"always_recurse":True}
 	}
 	dirmode  = 02070
 	filemode =   060
@@ -3541,7 +3541,9 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			set(["clean", "cleanrm", "help", "prerm", "postrm"])
 		mycpv = mysettings["CATEGORY"] + "/" + mysettings["PF"]
 		dep_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
-		metadata = dict(izip(dep_keys, mydbapi.aux_get(mycpv, dep_keys)))
+		misc_keys = ["LICENSE", "PROVIDE", "RESTRICT", "SRC_URI"]
+		all_keys = dep_keys + misc_keys
+		metadata = dict(izip(all_keys, mydbapi.aux_get(mycpv, all_keys)))
 		class FakeTree(object):
 			def __init__(self, mydb):
 				self.dbapi = mydb
@@ -3557,7 +3559,18 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				if mydo not in invalid_dep_exempt_phases:
 					return 1
 			del dep_type, mycheck
-		del mycpv, dep_keys, metadata, FakeTree, dep_check_trees
+		for k in misc_keys:
+			try:
+				portage.dep.use_reduce(
+					portage.dep.paren_reduce(metadata[k]), matchall=True)
+			except portage.exception.InvalidDependString, e:
+				writemsg("%s: %s\n%s\n" % (
+					k, metadata[k], str(e)), noiselevel=-1)
+				del e
+				if mydo not in invalid_dep_exempt_phases:
+					return 1
+			del k
+		del mycpv, dep_keys, metadata, misc_keys, FakeTree, dep_check_trees
 
 		if "PORTAGE_TMPDIR" not in mysettings or \
 			not os.path.isdir(mysettings["PORTAGE_TMPDIR"]):
@@ -3734,7 +3747,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			os.mkdir(edpath)
 			apply_secpass_permissions(edpath, uid=portage_uid, mode=0755)
 			try:
-				for file in aalist:
+				for file in alist:
 					os.symlink(os.path.join(orig_distdir, file),
 						os.path.join(edpath, file))
 			except OSError:
@@ -4208,6 +4221,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 	# d) is the first item
 
 	preferred = []
+	preferred_any_slot = []
 	possible_upgrades = []
 	other = []
 
@@ -4261,8 +4275,20 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 				if not vardb.match(atom) and not atom.startswith("virtual/"):
 					all_installed = False
 					break
+			all_installed_slots = False
 			if all_installed:
-				preferred.append(this_choice)
+				all_installed_slots = True
+				for slot_atom in versions:
+					# New-style virtuals have zero cost to install.
+					if not vardb.match(slot_atom) and \
+						not slot_atom.startswith("virtual/"):
+						all_installed_slots = False
+						break
+			if all_installed:
+				if all_installed_slots:
+					preferred.append(this_choice)
+				else:
+					preferred_any_slot.append(this_choice)
 			else:
 				possible_upgrades.append(this_choice)
 		else:
@@ -4274,6 +4300,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 	# into || ( highest version ... lowest version ).  We want to prefer the
 	# highest all_available version of the new-style virtual when there is a
 	# lower all_installed version.
+	preferred.extend(preferred_any_slot)
 	preferred.extend(possible_upgrades)
 	possible_upgrades = preferred[1:]
 	for possible_upgrade in possible_upgrades:

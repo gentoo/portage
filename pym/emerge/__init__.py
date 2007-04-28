@@ -1543,8 +1543,14 @@ class depgraph:
 			if p_status == "merge":
 				# Update old-style virtuals if this package provides any.
 				# These are needed for dep_virtual calls inside dep_check.
-				self.pkgsettings[p_root].setinst(p_key,
-					self.trees[p_root][self.pkg_tree_map[p_type]].dbapi)
+				p_db = self.trees[p_root][self.pkg_tree_map[p_type]].dbapi
+				try:
+					self.pkgsettings[p_root].setinst(p_key, p_db)
+				except portage.exception.InvalidDependString, e:
+					provide = p_db.aux_get(p_key, ["PROVIDE"])[0]
+					show_invalid_depstring_notice(myparent, provide, str(e))
+					del e
+					return 0
 
 		if "--debug" in self.myopts:
 			print "Candidates:",mymerge
@@ -2912,6 +2918,18 @@ class MergeTask(object):
 						show_blocker_docs_link()
 					return 1
 
+		if "--resume" in self.myopts:
+			# We're resuming.
+			print colorize("GOOD", "*** Resuming merge...")
+			emergelog(xterm_titles, " *** Resuming merge...")
+			mylist = mtimedb["resume"]["mergelist"][:]
+			if "--skipfirst" in self.myopts and mylist:
+				del mtimedb["resume"]["mergelist"][0]
+				del mylist[0]
+				mtimedb.commit()
+			validate_merge_list(self.trees, mylist)
+			mymergelist = mylist
+
 		# Verify all the manifests now so that the user is notified of failure
 		# as soon as possible.
 		if "--fetchonly" not in self.myopts and \
@@ -2942,17 +2960,7 @@ class MergeTask(object):
 
 		#buildsyspkg: I need mysysdict also on resume (moved from the else block)
 		mysysdict = genericdict(getlist(self.settings, "system"))
-		if "--resume" in self.myopts:
-			# We're resuming.
-			print colorize("GOOD", "*** Resuming merge...")
-			emergelog(xterm_titles, " *** Resuming merge...")
-			mymergelist=mtimedb["resume"]["mergelist"][:]
-			if "--skipfirst" in self.myopts and mymergelist:
-				del mtimedb["resume"]["mergelist"][0]
-				del mymergelist[0]
-				mtimedb.commit()
-			validate_merge_list(self.trees, mymergelist)
-		else:
+		if "--resume" not in self.myopts:
 			myfavs = portage.grabfile(
 				os.path.join(self.target_root, portage.WORLD_FILE))
 			myfavdict=genericdict(myfavs)
@@ -4422,7 +4430,7 @@ def action_regen(settings, portdb):
 			dead_nodes = None
 			break
 	for x in mynodes:
-		mymatches = portdb.xmatch("match-all",x)
+		mymatches = portdb.cp_list(x)
 		portage.writemsg_stdout("processing %s\n" % x)
 		for y in mymatches:
 			try:
