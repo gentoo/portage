@@ -50,7 +50,7 @@ fi
 
 sync_local() {
 	echo Syncing local tree...
-	if type -P tarsync > /dev/null; then
+	if type -P tarsync &> /dev/null; then
 		# tarsync doesn't take numeric uid/gid so we need to convert them.
 		local inst_user="$(python -c "import pwd; print pwd.getpwuid(int('${PORTAGE_INST_UID:-0}'))[0]")"
 		local inst_group="$(python -c "import grp; print grp.getgrgid(int('${PORTAGE_INST_GID:-0}'))[0]")"
