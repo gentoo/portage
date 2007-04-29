@@ -2534,9 +2534,6 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 				else:
 					resumecommand=mysettings["RESUMECOMMAND"]
 
-				fetchcommand=fetchcommand.replace("${DISTDIR}",mysettings["DISTDIR"])
-				resumecommand=resumecommand.replace("${DISTDIR}",mysettings["DISTDIR"])
-
 				if not can_fetch:
 					if fetched != 2:
 						if fetched == 0:
@@ -2566,8 +2563,14 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						locfetch=fetchcommand
 					writemsg_stdout(">>> Downloading '%s'\n" % \
 						re.sub(r'//(.+):.+@(.+)/',r'//\1:*password*@\2/', loc))
-					myfetch=locfetch.replace("${URI}",loc)
-					myfetch=myfetch.replace("${FILE}",myfile)
+					myfetch = locfetch.split()
+					variables = {"${DISTDIR}":mysettings["DISTDIR"],
+						"${URI}":loc, "${FILE}":myfile}
+					for i in xrange(len(myfetch)):
+						token = myfetch[i].strip("\"'")
+						value = variables.get(token)
+						if value is not None:
+							myfetch[i] = value
 
 					spawn_keywords = {}
 					if "userfetch" in mysettings.features and \
@@ -2585,7 +2588,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 							con = con.replace(mysettings["PORTAGE_T"], mysettings["PORTAGE_FETCH_T"])
 							selinux.setexec(con)
 
-						myret = portage_exec.spawn_bash(myfetch,
+						myret = portage_exec.spawn(myfetch,
 							env=mysettings.environ(), **spawn_keywords)
 
 						if mysettings.selinux_enabled():
