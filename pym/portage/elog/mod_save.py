@@ -1,3 +1,8 @@
+# elog/mod_save.py - elog dispatch module
+# Copyright 2006-2007 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Id$
+
 import os, time
 from portage.data import portage_uid, portage_gid
 
