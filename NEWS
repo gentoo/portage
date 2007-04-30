@@ -10,6 +10,10 @@ portage-2.1.3
 * Namespace sanitizing: move all portage related code into portage.* namespace,
   rename portage_foo modules to portage.foo (but keep symlinks for compability)
 * Add license visibility filtering (GLEP 23)
+* Add new elog module "echo" to simply display messages when emerge exits
+* Enable "echo" and "save_summary" elog modules by default
+* Fix -* handling in package.keywords to work as intended (reset the accepted 
+  keywords list), also see RELEASE-NOTES.
 
 portage-2.1.2
 -------------

@@ -668,24 +668,26 @@ class portdbapi(dbapi):
 				for atom in matches:
 					pgroups.extend(pkgdict[cp][atom])
 				if matches:
+					# normalize pgroups with incrementals logic so it 
+					# matches ACCEPT_KEYWORDS behavior
 					inc_pgroups = []
 					for x in pgroups:
-						# The -* special case should be removed once the tree 
-						# is clean of KEYWORDS=-* crap
-						if x != "-*" and x.startswith("-"):
+						if x == "-*":
+							inc_pgroups = []
+						elif x[0] == "-":
 							try:
 								inc_pgroups.remove(x[1:])
 							except ValueError:
 								pass
-						if x not in inc_pgroups:
+						elif x not in inc_pgroups:
 							inc_pgroups.append(x)
 					pgroups = inc_pgroups
 					del inc_pgroups
 			hasstable = False
 			hastesting = False
 			for gp in mygroups:
-				if gp=="*":
-					writemsg("--- WARNING: Package '%s' uses '*' keyword.\n" % mycpv,
+				if gp == "*" or (gp == "-*" and len(mygroups) == 1):
+					writemsg("--- WARNING: Package '%s' uses '%s' keyword.\n" % (mycpv, gp),
 						noiselevel=-1)
 					match=1
 					break

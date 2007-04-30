@@ -1,3 +1,8 @@
+# elog/__init__.py - elog core functions
+# Copyright 2006-2007 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Id$
+
 from portage.const import EBUILD_PHASES
 from portage.exception import PortageException
 from portage.process import atexit_register

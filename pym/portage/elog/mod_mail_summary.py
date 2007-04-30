@@ -1,7 +1,7 @@
-# portage.py -- core Portage functionality
-# Copyright 1998-2004 Gentoo Foundation
+# elog/mod_mail_summary.py - elog dispatch module
+# Copyright 2006-2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: mod_mail.py 3484 2006-06-10 22:38:44Z genone $
+# $Id$
 
 import portage.mail, socket, os, time
 from email.MIMEText import MIMEText as TextMessage
