@@ -1676,7 +1676,11 @@ class depgraph:
 										print filename+":"
 										print comment
 										oldcomment = comment
-								licenses = portdb.aux_get(p, ["LICENSE"])[0]
+								try:
+									licenses = portdb.aux_get(p, ["LICENSE"])[0]
+								except KeyError:
+									# Corruption will have been reported above.
+									continue
 								uselist = []
 								if "?" in licenses:
 									pkgsettings.setcpv(p, mydb=portdb)
