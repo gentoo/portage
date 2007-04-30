@@ -4693,12 +4693,14 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 		if matches:
 			inc_pgroups = []
 			for x in pgroups:
-				if x != "-*" and x.startswith("-"):
+				if x == "-*":
+					inc_pgroups = []
+				elif x[0] == "-":
 					try:
 						inc_pgroups.remove(x[1:])
 					except ValueError:
 						pass
-				if x not in inc_pgroups:
+				elif x not in inc_pgroups:
 					inc_pgroups.append(x)
 			pgroups = inc_pgroups
 			del inc_pgroups
@@ -4715,10 +4717,10 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 			if gp=="*":
 				kmask=None
 				break
-			elif gp=="-"+myarch:
+			elif gp=="-"+myarch and myarch in pgroups:
 				kmask="-"+myarch
 				break
-			elif gp=="~"+myarch:
+			elif gp=="~"+myarch and myarch in pgroups:
 				kmask="~"+myarch
 				break
 
