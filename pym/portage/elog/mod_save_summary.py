@@ -5,12 +5,13 @@
 
 import os, time
 from portage.data import portage_uid, portage_gid
+from portage.const import EPREFIX
 
 def process(mysettings, cpv, logentries, fulltext):
 	if mysettings["PORT_LOGDIR"] != "":
 		elogdir = os.path.join(mysettings["PORT_LOGDIR"], "elog")
 	else:
-		elogdir = os.path.join(os.sep, "var", "log", "portage", "elog")
+		elogdir = os.path.join(EPREFIX, "var", "log", "portage", "elog")
 	if not os.path.exists(elogdir):
 		os.makedirs(elogdir)
 	os.chown(elogdir, portage_uid, portage_gid)
