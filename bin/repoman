@@ -1735,6 +1735,8 @@ elif "--pretend" not in myoptions:
 	if not isSvn or "sign" in repoman_settings.features:
 		mymanifests = [f for f in mychanged if "Manifest" == os.path.basename(f)]
 		mychanged = [f for f in mychanged if "Manifest" != os.path.basename(f)]
+	else:
+		mymanifests = [] # avoid undefined error
 	myupdates=mychanged+mynew
 	myheaders=[]
 	mydirty=[]
