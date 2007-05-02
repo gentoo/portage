@@ -111,7 +111,7 @@ for dir in "$@" ; do
 
 	# since we've been requested to compress the whole dir,
 	# delete any individual queued requests
-	rm -f "${dir}.ecompress.dir"
+	rm -f "${actual_dir}.ecompress.dir"
 	find "${dir}" -type f -name '*.ecompress.file' -print0 | ${XARGS} -0 rm -f
 
 	# not uncommon for packages to compress doc files themselves
