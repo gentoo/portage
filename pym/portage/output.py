@@ -277,6 +277,9 @@ class EOutput:
 				pass
 		if columns <= 0:
 			columns = 80
+		# Adjust columns so that eend works properly on a standard BSD console.
+		if os.environ.get("TERM") == "cons25":
+			columns = columns - 1
 		self.term_columns = columns
 
 	def __eend(self, caller, errno, msg):
