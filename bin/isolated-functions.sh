@@ -279,6 +279,8 @@ set_colors() {
 	(( COLS == 0 )) && COLS=$(set -- $(stty size 2>/dev/null) ; echo $2)
 	(( COLS > 0 )) || (( COLS = 80 ))
 	COLS=$((${COLS} - 8))	# width of [ ok ] == 7
+	# Adjust COLS so that eend works properly on a standard BSD console.
+	[ "${TERM}" = "cons25" ] && COLS=$((${COLS} - 1))
 
 	ENDCOL=$'\e[A\e['${COLS}'C'    # Now, ${ENDCOL} will move us to the end of the
 	                               # column;  irregardless of character width
