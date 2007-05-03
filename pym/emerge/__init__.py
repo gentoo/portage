@@ -1933,7 +1933,7 @@ class depgraph:
 							# this block.
 							upgrade_node = \
 								self.pkg_node_map[proot][upgrade_matches[0]]
-							depends_on_order.add(upgrade_node)
+							depends_on_order.add((upgrade_node, parent))
 							continue
 					# None of the above blocker resolutions techniques apply,
 					# so apparently this one is unresolvable.
@@ -1949,13 +1949,27 @@ class depgraph:
 						# This blocker will be handled the next time that a
 						# merge of either package is triggered.
 						continue
+					if not parent_static and pstatus == "nomerge" and \
+						slot_atom in modified_slots[myroot]:
+						replacement = final_db.match(pslot_atom)
+						if replacement:
+							replacement_node = \
+								self.pkg_node_map[proot][replacement[0]]
+							if replacement_node not in \
+								self.blocker_parents[blocker]:
+								# Apparently a replacement may be able to
+								# invalidate this block.
+								blocked_node = self.pkg_node_map[proot][cpv]
+								depends_on_order.add(
+									(replacement_node, blocked_node))
+								continue
 					# None of the above blocker resolutions techniques apply,
 					# so apparently this one is unresolvable.
 					unresolved_blocks = True
 				if not unresolved_blocks and depends_on_order:
-					for node in depends_on_order:
+					for node, pnode in depends_on_order:
 						# Enforce correct merge order with a hard dep.
-						self.digraph.addnode(node, parent,
+						self.digraph.addnode(node, pnode,
 							priority=DepPriority(buildtime=True))
 						# Count references to this blocker so that it can be
 						# invalidated after nodes referencing it have been
