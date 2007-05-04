@@ -18,6 +18,13 @@ bzipped tarball package out of the image, and more.
 This must be a valid ebuild script.  For further information read
 \fBebuild\fR(5).
 .SH "COMMANDS"
+By default, portage will execute all the functions in order up to the
+one actually specified.  For example, simply issuing the command \fBcompile\fR
+will trigger the functions before it to also be run (such as \fBsetup\fR
+and \fBunpack\fR).  If you wish to only have the specified command run, then
+you should use the \fInoauto\fR option in the \fBFEATURES\fR environment
+variable.  See the \fBmake.conf\fR(5) man page for more information.
+
 .TP
 .BR help
 Shows a condensed form of this man page along with a lot of package
