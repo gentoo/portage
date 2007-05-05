@@ -2635,9 +2635,9 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						"${URI}":loc, "${FILE}":myfile}
 					for i in xrange(len(myfetch)):
 						token = myfetch[i].strip("\"'")
-						value = variables.get(token)
-						if value is not None:
-							myfetch[i] = value
+						for var, value in variables.iteritems():
+							token = token.replace(var, value)
+						myfetch[i] = token
 
 					spawn_keywords = {}
 					if "userfetch" in mysettings.features and \
