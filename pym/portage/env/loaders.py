@@ -53,7 +53,7 @@ class DataLoader(object):
 		if f is None:
 			# if they pass in no validator, just make a fake one
 			# that always returns true
-			class AlwaysTrue():
+			class AlwaysTrue(object):
 				def validate(self, key):
 					return True
 			f = AlwaysTrue()
