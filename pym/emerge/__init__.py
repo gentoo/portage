@@ -1903,7 +1903,6 @@ class depgraph:
 				blocked_slots_final[cpv] = \
 					"%s:%s" % (portage.dep_getkey(cpv),
 						final_db.aux_get(cpv, ["SLOT"])[0])
-			blocked_slots_final_values = set(blocked_slots_final.itervalues())
 			for parent in list(self.blocker_parents[blocker]):
 				ptype, proot, pcpv, pstatus = parent
 				pdbapi = self.trees[proot][self.pkg_tree_map[ptype]].dbapi
@@ -1926,15 +1925,16 @@ class depgraph:
 						# merge of either package is triggered.
 						continue
 					if pstatus == "merge" and \
-						slot_atom not in blocked_slots_final_values:
-						upgrade_matches = final_db.match(slot_atom)
-						if upgrade_matches:
-							# Apparently an upgrade may be able to invalidate
-							# this block.
-							upgrade_node = \
-								self.pkg_node_map[proot][upgrade_matches[0]]
-							depends_on_order.add((upgrade_node, parent))
-							continue
+						slot_atom in modified_slots[myroot]:
+						replacement = final_db.match(slot_atom)
+						if replacement:
+							if not portage.match_from_list(mydep, replacement):
+								# Apparently a replacement may be able to
+								# invalidate this block.
+								replacement_node = \
+									self.pkg_node_map[proot][replacement[0]]
+								depends_on_order.add((replacement_node, parent))
+								continue
 					# None of the above blocker resolutions techniques apply,
 					# so apparently this one is unresolvable.
 					unresolved_blocks = True
