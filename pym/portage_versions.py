@@ -123,12 +123,13 @@ def vercmp(ver1, ver2, silent=1):
 	list2 = match2.group(6).split("_")[1:]
 	
 	for i in range(0, max(len(list1), len(list2))):
+		# Implicit _p0 is given a value of -1, so that 1 < 1_p0
 		if len(list1) <= i:
-			s1 = ("p","0")
+			s1 = ("p","-1")
 		else:
 			s1 = suffix_regexp.match(list1[i]).groups()
 		if len(list2) <= i:
-			s2 = ("p","0")
+			s2 = ("p","-1")
 		else:
 			s2 = suffix_regexp.match(list2[i]).groups()
 		if s1[0] != s2[0]:
@@ -140,7 +141,8 @@ def vercmp(ver1, ver2, silent=1):
 			except ValueError:	r1 = 0
 			try:			r2 = int(s2[1])
 			except ValueError:	r2 = 0
-			return r1 - r2
+			if r1 - r2:
+				return r1 - r2
 	
 	# the suffix part is equal to, so finally check the revision
 	if match1.group(10):
