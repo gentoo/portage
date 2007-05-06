@@ -2631,13 +2631,14 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					writemsg_stdout(">>> Downloading '%s'\n" % \
 						re.sub(r'//(.+):.+@(.+)/',r'//\1:*password*@\2/', loc))
 					myfetch = locfetch.split()
-					variables = {"${DISTDIR}":mysettings["DISTDIR"],
-						"${URI}":loc, "${FILE}":myfile}
+					variables = {
+						"DISTDIR": mysettings["DISTDIR"],
+						"URI":     loc,
+						"FILE":    myfile
+					}
+					
 					for i in xrange(len(myfetch)):
-						token = myfetch[i].strip("\"'")
-						for var, value in variables.iteritems():
-							token = token.replace(var, value)
-						myfetch[i] = token
+						myfetch[i] = varexpand(myfetch[i], mydict=variables)
 
 					spawn_keywords = {}
 					if "userfetch" in mysettings.features and \
