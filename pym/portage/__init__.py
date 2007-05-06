@@ -2630,15 +2630,15 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						locfetch=fetchcommand
 					writemsg_stdout(">>> Downloading '%s'\n" % \
 						re.sub(r'//(.+):.+@(.+)/',r'//\1:*password*@\2/', loc))
-					myfetch = locfetch.split()
 					variables = {
 						"DISTDIR": mysettings["DISTDIR"],
 						"URI":     loc,
 						"FILE":    myfile
 					}
-					
-					for i in xrange(len(myfetch)):
-						myfetch[i] = varexpand(myfetch[i], mydict=variables)
+					import shlex, StringIO
+					lexer = shlex.shlex(StringIO.StringIO(locfetch), posix=True)
+					lexer.whitespace_split = True
+					myfetch = [varexpand(x, mydict=variables) for x in lexer]
 
 					spawn_keywords = {}
 					if "userfetch" in mysettings.features and \
