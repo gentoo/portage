@@ -3896,7 +3896,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		mytimeout=180
 
 		rsync_opts = []
-
+		import shlex, StringIO
 		if settings["PORTAGE_RSYNC_OPTS"] == "":
 			portage.writemsg("PORTAGE_RSYNC_OPTS empty or unset, using hardcoded defaults\n")
 			rsync_opts.extend([
@@ -3923,7 +3923,11 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			# defaults.
 
 			portage.writemsg("Using PORTAGE_RSYNC_OPTS instead of hardcoded defaults\n", 1)
-			rsync_opts.extend(settings["PORTAGE_RSYNC_OPTS"].split())
+			lexer = shlex.shlex(StringIO.StringIO(
+				settings.get("PORTAGE_RSYNC_OPTS","")), posix=True)
+			lexer.whitespace_split = True
+			rsync_opts.extend(lexer)
+			del lexer
 
 			for opt in ("--recursive", "--times"):
 				if opt not in rsync_opts:
@@ -4032,8 +4036,12 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			user_name=""
 		updatecache_flg=True
 		all_rsync_opts = set(rsync_opts)
-		all_rsync_opts.update(
-			settings.get("PORTAGE_RSYNC_EXTRA_OPTS","").split())
+		lexer = shlex.shlex(StringIO.StringIO(
+			settings.get("PORTAGE_RSYNC_EXTRA_OPTS","")), posix=True)
+		lexer.whitespace_split = True
+		extra_rsync_opts = list(lexer)
+		del lexer
+		all_rsync_opts.update(extra_rsync_opts)
 		family = socket.AF_INET
 		if "-4" in all_rsync_opts or "--ipv4" in all_rsync_opts:
 			family = socket.AF_INET
@@ -4091,8 +4099,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			if mytimestamp != 0 and "--quiet" not in myopts:
 				print ">>> Checking server timestamp ..."
 
-			rsynccommand = " ".join(["/usr/bin/rsync", " ".join(rsync_opts),
-				settings.get("PORTAGE_RSYNC_EXTRA_OPTS","")])
+			rsynccommand = ["/usr/bin/rsync"] + rsync_opts + extra_rsync_opts
 
 			if "--debug" in myopts:
 				print rsynccommand
@@ -4105,7 +4112,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			# connection attempt to an unresponsive server which rsync's
 			# --timeout option does not prevent.
 			if True:
-				mycommand = rsynccommand.split()
+				mycommand = rsynccommand[:]
 				mycommand.append(dosyncuri.rstrip("/") + \
 					"/metadata/timestamp.chk")
 				mycommand.append(tmpservertimestampfile)
@@ -4179,8 +4186,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 					print
 				elif (servertimestamp == 0) or (servertimestamp > mytimestamp):
 					# actual sync
-					mycommand=rsynccommand+" "+dosyncuri+"/ "+myportdir
-					mycommand = mycommand.split()
+					mycommand = rsynccommand + [dosyncuri+"/", myportdir]
 					exitcode = portage.process.spawn(mycommand,
 						env=settings.environ())
 					if exitcode in [0,1,3,4,11,14,20,21]:
