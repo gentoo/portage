@@ -978,6 +978,7 @@ class depgraph:
 		self.args_keys = []
 		self.blocker_digraph = digraph()
 		self.blocker_parents = {}
+		self._unresolved_blocker_parents = {}
 		self._slot_collision_info = []
 		# Slot collision nodes are not allowed to block other packages since
 		# blocker validation is only able to account for one package per slot.
@@ -1904,7 +1905,6 @@ class depgraph:
 				blocked_slots_final[cpv] = \
 					"%s:%s" % (portage.dep_getkey(cpv),
 						final_db.aux_get(cpv, ["SLOT"])[0])
-			blocked_slots_final_values = set(blocked_slots_final.itervalues())
 			for parent in list(self.blocker_parents[blocker]):
 				ptype, proot, pcpv, pstatus = parent
 				pdbapi = self.trees[proot][self.pkg_tree_map[ptype]].dbapi
@@ -1927,15 +1927,16 @@ class depgraph:
 						# merge of either package is triggered.
 						continue
 					if pstatus == "merge" and \
-						slot_atom not in blocked_slots_final_values:
-						upgrade_matches = final_db.match(slot_atom)
-						if upgrade_matches:
-							# Apparently an upgrade may be able to invalidate
-							# this block.
-							upgrade_node = \
-								self.pkg_node_map[proot][upgrade_matches[0]]
-							depends_on_order.add((upgrade_node, parent))
-							continue
+						slot_atom in modified_slots[myroot]:
+						replacement = final_db.match(slot_atom)
+						if replacement:
+							if not portage.match_from_list(mydep, replacement):
+								# Apparently a replacement may be able to
+								# invalidate this block.
+								replacement_node = \
+									self.pkg_node_map[proot][replacement[0]]
+								depends_on_order.add((replacement_node, parent))
+								continue
 					# None of the above blocker resolutions techniques apply,
 					# so apparently this one is unresolvable.
 					unresolved_blocks = True
@@ -1978,6 +1979,9 @@ class depgraph:
 						self.blocker_digraph.addnode(node, blocker)
 				if not unresolved_blocks and not depends_on_order:
 					self.blocker_parents[blocker].remove(parent)
+				if unresolved_blocks:
+					self._unresolved_blocker_parents.setdefault(
+						blocker, set()).add(parent)
 			if not self.blocker_parents[blocker]:
 				del self.blocker_parents[blocker]
 		# Validate blockers that depend on merge order.
@@ -2164,7 +2168,12 @@ class depgraph:
 					for blocker in myblockers.root_nodes():
 						if not myblockers.child_nodes(blocker):
 							myblockers.remove(blocker)
-							del self.blocker_parents[blocker]
+							unresolved = \
+								self._unresolved_blocker_parents.get(blocker)
+							if unresolved:
+								self.blocker_parents[blocker] = unresolved
+							else:
+								del self.blocker_parents[blocker]
 
 		if not reversed:
 			"""Blocker validation does not work with reverse mode,
@@ -3897,7 +3906,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		mytimeout=180
 
 		rsync_opts = []
-
+		import shlex, StringIO
 		if settings["PORTAGE_RSYNC_OPTS"] == "":
 			portage.writemsg("PORTAGE_RSYNC_OPTS empty or unset, using hardcoded defaults\n")
 			rsync_opts.extend([
@@ -3924,7 +3933,11 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			# defaults.
 
 			portage.writemsg("Using PORTAGE_RSYNC_OPTS instead of hardcoded defaults\n", 1)
-			rsync_opts.extend(settings["PORTAGE_RSYNC_OPTS"].split())
+			lexer = shlex.shlex(StringIO.StringIO(
+				settings.get("PORTAGE_RSYNC_OPTS","")), posix=True)
+			lexer.whitespace_split = True
+			rsync_opts.extend(lexer)
+			del lexer
 
 			for opt in ("--recursive", "--times"):
 				if opt not in rsync_opts:
@@ -4033,8 +4046,12 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			user_name=""
 		updatecache_flg=True
 		all_rsync_opts = set(rsync_opts)
-		all_rsync_opts.update(
-			settings.get("PORTAGE_RSYNC_EXTRA_OPTS","").split())
+		lexer = shlex.shlex(StringIO.StringIO(
+			settings.get("PORTAGE_RSYNC_EXTRA_OPTS","")), posix=True)
+		lexer.whitespace_split = True
+		extra_rsync_opts = list(lexer)
+		del lexer
+		all_rsync_opts.update(extra_rsync_opts)
 		family = socket.AF_INET
 		if "-4" in all_rsync_opts or "--ipv4" in all_rsync_opts:
 			family = socket.AF_INET
@@ -4092,8 +4109,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			if mytimestamp != 0 and "--quiet" not in myopts:
 				print ">>> Checking server timestamp ..."
 
-			rsynccommand = " ".join([EPREFIX, "/usr/bin/rsync", " ".join(rsync_opts),
-				settings.get("PORTAGE_RSYNC_EXTRA_OPTS","")])
+			rsynccommand = [EPREFIX+"/usr/bin/rsync"] + rsync_opts + extra_rsync_opts
 
 			if "--debug" in myopts:
 				print rsynccommand
@@ -4106,7 +4122,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			# connection attempt to an unresponsive server which rsync's
 			# --timeout option does not prevent.
 			if True:
-				mycommand = rsynccommand.split()
+				mycommand = rsynccommand[:]
 				mycommand.append(dosyncuri.rstrip("/") + \
 					"/metadata/timestamp.chk")
 				mycommand.append(tmpservertimestampfile)
@@ -4180,8 +4196,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 					print
 				elif (servertimestamp == 0) or (servertimestamp > mytimestamp):
 					# actual sync
-					mycommand=rsynccommand+" "+dosyncuri+"/ "+myportdir
-					mycommand = mycommand.split()
+					mycommand = rsynccommand + [dosyncuri+"/", myportdir]
 					exitcode = portage.process.spawn(mycommand,
 						env=settings.environ())
 					if exitcode in [0,1,3,4,11,14,20,21]:
