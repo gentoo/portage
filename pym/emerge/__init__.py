@@ -977,6 +977,7 @@ class depgraph:
 		self.args_keys = []
 		self.blocker_digraph = digraph()
 		self.blocker_parents = {}
+		self._unresolved_blocker_parents = {}
 		self._slot_collision_info = []
 		# Slot collision nodes are not allowed to block other packages since
 		# blocker validation is only able to account for one package per slot.
@@ -1977,6 +1978,9 @@ class depgraph:
 						self.blocker_digraph.addnode(node, blocker)
 				if not unresolved_blocks and not depends_on_order:
 					self.blocker_parents[blocker].remove(parent)
+				if unresolved_blocks:
+					self._unresolved_blocker_parents.setdefault(
+						blocker, set()).add(parent)
 			if not self.blocker_parents[blocker]:
 				del self.blocker_parents[blocker]
 		# Validate blockers that depend on merge order.
@@ -2163,7 +2167,12 @@ class depgraph:
 					for blocker in myblockers.root_nodes():
 						if not myblockers.child_nodes(blocker):
 							myblockers.remove(blocker)
-							del self.blocker_parents[blocker]
+							unresolved = \
+								self._unresolved_blocker_parents.get(blocker)
+							if unresolved:
+								self.blocker_parents[blocker] = unresolved
+							else:
+								del self.blocker_parents[blocker]
 
 		if not reversed:
 			"""Blocker validation does not work with reverse mode,
