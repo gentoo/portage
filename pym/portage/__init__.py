@@ -12,12 +12,7 @@ VERSION="$Rev$"[6:-2] + "-svn"
 
 try:
 	import sys
-except ImportError:
-	print "Failed to import sys! Something is _VERY_ wrong with python."
-	raise
-
-try:
-	import copy, errno, os, re, shutil, time, types
+  import copy, errno, os, re, shutil, time, types
 	try:
 		import cPickle
 	except ImportError:
