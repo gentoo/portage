@@ -12,12 +12,12 @@ VERSION="$Rev$"[6:-2] + "-svn"
 
 try:
 	import sys
-  import copy
-  import errno
-  import os
-  import re
-  import shutil
-  import time
+	import copy
+	import errno
+	import os
+	import re
+	import shutil
+	import time
 	try:
 		import cPickle
 	except ImportError:
