@@ -351,13 +351,13 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 	
 #cache expansions of constant strings
 cexpand={}
-def varexpand(mystring,mydict={}):
+def varexpand(mystring, mydict={}):
 	newstring = cexpand.get(" "+mystring, None)
 	if newstring is not None:
 		return newstring
 
 	"""
-	new variable expansion code.  Removes quotes, handles \n, etc.
+	new variable expansion code.  Preserves quotes, handles \n, etc.
 	This code is used by the configfile code, as well as others (parser)
 	This would be a good bunch of code to port to C.
 	"""
@@ -373,6 +373,7 @@ def varexpand(mystring,mydict={}):
 			if (indoub):
 				newstring=newstring+"'"
 			else:
+				newstring += "'" # Quote removal is handled by shlex.
 				insing=not insing
 			pos=pos+1
 			continue
@@ -380,6 +381,7 @@ def varexpand(mystring,mydict={}):
 			if (insing):
 				newstring=newstring+'"'
 			else:
+				newstring += '"' # Quote removal is handled by shlex.
 				indoub=not indoub
 			pos=pos+1
 			continue
