@@ -12,7 +12,12 @@ VERSION="$Rev$"[6:-2] + "-svn"
 
 try:
 	import sys
-  import copy, errno, os, re, shutil, time, types
+  import copy
+  import errno
+  import os
+  import re
+  import shutil
+  import time
 	try:
 		import cPickle
 	except ImportError:
@@ -290,7 +295,7 @@ def flatten(mytokens):
 	a [1,2,3] list and returns it."""
 	newlist=[]
 	for x in mytokens:
-		if type(x)==types.ListType:
+		if isinstance(x, list):
 			newlist.extend(flatten(x))
 		else:
 			newlist.append(x)
@@ -2147,7 +2152,7 @@ class config:
 
 	def __setitem__(self,mykey,myvalue):
 		"set a value; will be thrown away at reset() time"
-		if type(myvalue) != types.StringType:
+		if not isinstance(myvalue, str):
 			raise ValueError("Invalid type being used as a value: '%s': '%s'" % (str(mykey),str(myvalue)))
 		self.modifying()
 		self.modifiedkeys += [mykey]
@@ -2239,7 +2244,7 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, **keyw
 	1. The return code of the spawned process.
 	"""
 
-	if type(mysettings) == types.DictType:
+	if isinstance(mysettings, dict):
 		env=mysettings
 		keywords["opt_name"]="[ %s ]" % "portage"
 	else:
@@ -4029,7 +4034,7 @@ def dep_virtual(mysplit, mysettings):
 	newsplit=[]
 	myvirtuals = mysettings.getvirtuals()
 	for x in mysplit:
-		if type(x)==types.ListType:
+		if isinstance(x, list):
 			newsplit.append(dep_virtual(x, mysettings))
 		else:
 			mykey=dep_getkey(x)
@@ -4157,7 +4162,7 @@ def dep_eval(deplist):
 	if deplist[0]=="||":
 		#or list; we just need one "1"
 		for x in deplist[1:]:
-			if type(x)==types.ListType:
+			if isinstance(x, list):
 				if dep_eval(x)==1:
 					return 1
 			elif x==1:
@@ -4170,7 +4175,7 @@ def dep_eval(deplist):
 		return 0
 	else:
 		for x in deplist:
-			if type(x)==types.ListType:
+			if isinstance(x, list):
 				if dep_eval(x)==0:
 					return 0
 			elif x==0 or x==2:
@@ -4436,7 +4441,7 @@ def dep_wordreduce(mydeplist,mysettings,mydbapi,mode,use_cache=1):
 	"Reduces the deplist to ones and zeros"
 	deplist=mydeplist[:]
 	for mypos in xrange(len(deplist)):
-		if type(deplist[mypos])==types.ListType:
+		if isinstance(deplist[mypos], list):
 			#recurse
 			deplist[mypos]=dep_wordreduce(deplist[mypos],mysettings,mydbapi,mode,use_cache=use_cache)
 		elif deplist[mypos]=="||":
@@ -4562,7 +4567,7 @@ def cpv_expand(mycpv, mydb=None, use_cache=1, settings=None):
 		elif matches:
 			mykey=matches[0]
 
-		if not mykey and type(mydb)!=types.ListType:
+		if not mykey and not isinstance(mydb, list):
 			if virts_p.has_key(myp):
 				mykey=virts_p[myp][0]
 			#again, we only perform virtual expansion if we have a dbapi (not a list)
