@@ -28,7 +28,7 @@ def RecursiveFileLoader(filename):
 	full of files in that directory to process.
 	
 	Ignore files beginning with . or ending in ~.
-	Prune CVS directories.	
+	Prune CVS directories.
 
 	@param filename: name of a file/directory to traverse
 	@rtype: list
@@ -81,8 +81,8 @@ class ItemFileLoader(DataLoader):
 	
 	_recursive = False
 
-	def __init__(self, filename):
-		DataLoader.__init__(self)
+	def __init__(self, filename, validator):
+		DataLoader.__init__(self, validator)
 		self.fname = filename
 	
 	def load(self):
@@ -118,8 +118,8 @@ class KeyListFileLoader(DataLoader):
 
 	_recursive = False
 
-	def __init__(self, filename):
-		DataLoader.__init__(self)
+	def __init__(self, filename, validator):
+		DataLoader.__init__(self, validator)
 		self.fname = filename
 
 	def load(self):
@@ -162,8 +162,8 @@ class KeyValuePairFileLoader(DataLoader):
 
 	_recursive = False
 
-	def __init__(self, filename):
-		DataLoader.__init__(self)
+	def __init__(self, filename, validator):
+		DataLoader.__init__(self, validator)
 		self.fname = filename
 
 	def load(self):
