@@ -133,6 +133,9 @@ for arg in pargs:
 			print "Forcing test."
 			tmpsettings["EBUILD_FORCE_TEST"] = "1"
 			tmpsettings.backupenv["EBUILD_FORCE_TEST"] = "1"
+			tmpsettings.features.append("test")
+			tmpsettings["FEATURES"] = " ".join(tmpsettings.features)
+			tmpsettings.backup_changes("FEATURES")
 		if arg == "digest" and force:
 			discard_digests(ebuild, tmpsettings, portage.portdb)
 		a = portage.doebuild(ebuild, arg, portage.root, tmpsettings,
