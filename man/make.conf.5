@@ -184,7 +184,10 @@ is set to include debug information (such as with the \-ggdb flag).
 Do not delete the ${T} directory after the merge process.
 .TP
 .B keepwork
-Do not delete the ${WORKDIR} directory after the merge process.
+Do not delete the ${WORKDIR} directory after the merge process.  This also
+disables most the clean phase that is run prior to each build.  This causes it
+to interfere with normal emerge operation and therefore it should not be left
+enabled for more than a short period of time.
 .TP
 .B metadata\-transfer
 Automatically perform a metadata transfer when `emerge \-\-sync` is run.
