@@ -105,7 +105,7 @@ class ItemFileLoader(DataLoader):
 					% (line_num + 1, split))
 					continue
 				data[key] = None
-		return (data,errors)
+		return (data, errors)
 
 class KeyListFileLoader(DataLoader):
 	"""
@@ -147,7 +147,7 @@ class KeyListFileLoader(DataLoader):
 					data[key].append(value)
 				else:
 					data[key] = value
-		return (data,errors)
+		return (data, errors)
 
 class KeyValuePairFileLoader(DataLoader):
 	"""
@@ -203,4 +203,4 @@ class KeyValuePairFileLoader(DataLoader):
 					data[key].append(value)
 				else:
 					data[key] = value
-		return (data,errors)
+		return (data, errors)
