@@ -196,25 +196,19 @@ install_qa_check() {
 	fi
 
 	if [[ -d ${ED}/${D} ]] ; then
-		declare -i INSTALLTOD=0
 		find "${ED}/${D}" | \
 		while read i ; do
 			eqawarn "QA Notice: /${i##${ED}/${D}} installed in \${ED}/\${D}"
-			((INSTALLTOD++))
 		done
 		die "Aborting due to QA concerns: ${INSTALLTOD} files installed in ${ED}/${D}"
-		unset INSTALLTOD
 	fi
 
 	if [[ -d ${ED}/${EPREFIX} ]] ; then
-		declare -i INSTALLTOD=0
 		find "${ED}/${EPREFIX}/" | \
 		while read i ; do
 			eqawarn "QA Notice: ${i#${ED}} double prefix"
-			((INSTALLTOD++))
 		done
 		die "Aborting due to QA concerns: ${INSTALLTOD} double prefix files installed"
-		unset INSTALLTOD
 	fi
 
 	if [[ -d ${D} ]] ; then
@@ -222,14 +216,14 @@ install_qa_check() {
 		find ${D%/} | sed -e "s|^${D%/}||g" | \
 		while read i ; do
 			if [[ ${#EPREFIX} -gt ${#i} && ${EPREFIX:0:${#i}} != ${i} ]] ; then
-				echo "QA Notice: ${i} outside of prefix"
-				((INSTALLTOD++))
+				eqawarn "QA Notice: ${i} outside of prefix"
+				INSTALLTOD=1
 			elif [[ ${#EPREFIX} -le ${#i} && ${i:0:${#EPREFIX}} != ${EPREFIX} ]] ; then
-				echo "QA Notice: ${i} outside of prefix"
-				((INSTALLTOD++))
+				eqawarn "QA Notice: ${i} outside of prefix"
+				INSTALLTOD=1
 			fi
 		done
-		[[ $INSTALLTOD > 0 ]] && die "Aborting due to QA concerns: ${INSTALLTOD} files installed outside the prefix"
+		[[ $INSTALLTOD > 0 ]] && die "Aborting due to QA concerns: there are files installed outside the prefix"
 		unset INSTALLTOD
 	fi
 
