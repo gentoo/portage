@@ -928,7 +928,12 @@ dyn_compile() {
 }
 
 dyn_test() {
-	[ "${EBUILD_FORCE_TEST}" == "1" ] && rm -f "${PORTAGE_BUILDDIR}/.tested"
+	if [ "${EBUILD_FORCE_TEST}" == "1" ] ; then
+		rm -f "${PORTAGE_BUILDDIR}/.tested"
+		# If USE came from ${T}/environment then it might not have USE=test
+		# like it's supposed to here.
+		! hasq test ${USE} && export USE="${USE} test"
+	fi
 	[ "$(type -t pre_src_test)" == "function" ] && qa_call pre_src_test
 	if [ "${PORTAGE_BUILDDIR}/.tested" -nt "${WORKDIR}" ]; then
 		vecho ">>> It appears that ${PN} has already been tested; skipping."
