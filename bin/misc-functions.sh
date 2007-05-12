@@ -223,7 +223,7 @@ install_qa_check() {
 				INSTALLTOD=1
 			fi
 		done
-		[[ $INSTALLTOD > 0 ]] && die "Aborting due to QA concerns: there are files installed outside the prefix"
+		[[ $INSTALLTOD -gt 0 ]] && die "Aborting due to QA concerns: there are files installed outside the prefix"
 		unset INSTALLTOD
 	fi
 
