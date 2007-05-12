@@ -1915,10 +1915,10 @@ class depgraph:
 				for cpv in blocked_initial:
 					slot_atom = blocked_slots_initial[cpv]
 					if slot_atom == pslot_atom:
-						# The parent blocks an initial package in the same
-						# slot as itself.  The merge/nomerge status of neither
-						# node matters.  In any case, this particular block is
-						# automatically resolved.
+						# TODO: Support blocks within slots in cases where it
+						# might make sense.  For example, a new version might
+						# require that the old version be uninstalled at build
+						# time.
 						continue
 					if parent_static and \
 						slot_atom not in modified_slots[myroot]:
@@ -1942,8 +1942,7 @@ class depgraph:
 				for cpv in blocked_final:
 					slot_atom = blocked_slots_final[cpv]
 					if slot_atom == pslot_atom:
-						# The parent blocks itself, so the merge order does not
-						# need to be enforced.
+						# TODO: Support blocks within slots.
 						continue
 					if parent_static and \
 						slot_atom not in modified_slots[myroot]:
