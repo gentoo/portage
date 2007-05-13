@@ -200,7 +200,7 @@ install_qa_check() {
 		while read i ; do
 			eqawarn "QA Notice: /${i##${ED}/${D}} installed in \${ED}/\${D}"
 		done
-		die "Aborting due to QA concerns: ${INSTALLTOD} files installed in ${ED}/${D}"
+		die "Aborting due to QA concerns: files installed in ${ED}/${D}"
 	fi
 
 	if [[ -d ${ED}/${EPREFIX} ]] ; then
@@ -208,23 +208,16 @@ install_qa_check() {
 		while read i ; do
 			eqawarn "QA Notice: ${i#${ED}} double prefix"
 		done
-		die "Aborting due to QA concerns: ${INSTALLTOD} double prefix files installed"
+		die "Aborting due to QA concerns: double prefix files installed"
 	fi
 
 	if [[ -d ${D} ]] ; then
-		declare -i INSTALLTOD=0
-		find ${D%/} | sed -e "s|^${D%/}||g" | \
-		while read i ; do
-			if [[ ${#EPREFIX} -gt ${#i} && ${EPREFIX:0:${#i}} != ${i} ]] ; then
-				eqawarn "QA Notice: ${i} outside of prefix"
-				INSTALLTOD=1
-			elif [[ ${#EPREFIX} -le ${#i} && ${i:0:${#EPREFIX}} != ${EPREFIX} ]] ; then
-				eqawarn "QA Notice: ${i} outside of prefix"
-				INSTALLTOD=1
-			fi
-		done
-		[[ $INSTALLTOD -gt 0 ]] && die "Aborting due to QA concerns: there are files installed outside the prefix"
-		unset INSTALLTOD
+		INSTALLTOD=$(find ${D%/} | egrep -v "^${ED}" | sed -e "s|^${D%/}||" | awk '{if (length($0) <= length("'"${EPREFIX}"'")) { if (substr("'"${EPREFIX}"'", 1, length($0)) != $0) {print $0;} } else if (substr($0, 1, length("'"${EPREFIX}"'")) != "'"${EPREFIX}"'") {print $0;} }') 
+		if [[ -n ${INSTALLTOD} ]] ; then
+			eqawarn "QA Notice: the following files are outside of the prefix:"
+			eqawarn "${INSTALLTOD}"
+			die "Aborting due to QA concerns: there are files installed outside the prefix"
+		fi
 	fi
 
 	if [[ ${CHOST} == *-darwin* ]] ; then
