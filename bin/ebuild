@@ -38,7 +38,6 @@ if debug and "python-trace" in portage.features:
 	portage.debug.set_trace(True)
 
 if portage.settings["NOCOLOR"] in ("yes","true") or not sys.stdout.isatty():
-	import output
 	portage.output.nocolor()
 
 ebuild = pargs.pop(0)
