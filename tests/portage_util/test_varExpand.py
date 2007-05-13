@@ -25,7 +25,7 @@ class VarExpandTestCase(TestCase):
 	def testVarExpandDoubleQuotes(self):
 		
 		varDict = { "a":"5" }
-		tests = [ ("\"${a}\"", "5") ]
+		tests = [ ("\"${a}\"", "\"5\"") ]
 		for test in tests:
 			result = varexpand( test[0], varDict )
 			self.failIf( result != test[1],
@@ -35,7 +35,7 @@ class VarExpandTestCase(TestCase):
 	def testVarExpandSingleQuotes(self):
 		
 		varDict = { "a":"5" }
-		tests = [ ("\'${a}\'", "${a}") ]
+		tests = [ ("\'${a}\'", "\'${a}\'") ]
 		for test in tests:
 			result = varexpand( test[0], varDict )
 			self.failIf( result != test[1],
