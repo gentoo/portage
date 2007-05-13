@@ -238,8 +238,11 @@ class Manifest(object):
 					f = open(dname, "r")
 					old_data = self._parseDigests(f)
 					f.close()
-					if len(old_data) == 1 and "DIST" in old_data:
-						new_data = self._getDigestData(distlist)
+					new_data = self._getDigestData(distlist)
+					if not old_data and not new_data:
+						# SRC_URI is empty
+						update_digest = False
+					elif len(old_data) == 1 and "DIST" in old_data:
 						if "DIST" in new_data:
 							for myfile in new_data["DIST"]:
 								for hashname in \
