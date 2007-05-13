@@ -25,7 +25,7 @@ except ImportError:
     sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
     import portage
 
-import dispatch_conf
+from portage import dispatch_conf
 from portage.process import find_binary
 
 FIND_EXTANT_CONFIGS  = "find '%s' %s -iname '._cfg????_%s' ! -iname '.*~' ! -iname '.*.bak'"
