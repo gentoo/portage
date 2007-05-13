@@ -13,7 +13,7 @@
 #
 
 if not hasattr(__builtins__, "set"):
-	from sets import Set as set
+    from sets import Set as set
 
 from stat import *
 from random import *
@@ -21,8 +21,8 @@ import atexit, commands, os, re, shutil, stat, sys
 try:
     import portage
 except ImportError:
-	from os import path as osp
-	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
+    from os import path as osp
+    sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
     import portage
 
 import dispatch_conf
