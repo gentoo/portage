@@ -5368,7 +5368,8 @@ def emerge_main():
 	if "candy" in settings.features:
 		spinner.update = spinner.update_scroll
 
-	portage.deprecated_profile_check()
+	if not myopts["--quiet"]:
+		portage.deprecated_profile_check()
 
 	#Freeze the portdbapi for enhanced performance:
 	for myroot in trees:
