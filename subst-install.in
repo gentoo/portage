@@ -17,7 +17,7 @@ me=${mydir}/${myname}
 
 . ${mydir}/subst-install.vars
 
-substinstall_tmpdir=${TMP-/tmp}/${myname}.$$
+substinstall_tmpdir=${TMPDIR-/tmp}/${myname}.$$
 trap "${RM} -rf \${substinstall_tmpdir}" "0"
 mkdir -p ${substinstall_tmpdir} \
 || { echo "cannot create directory ${substinstall_tmpdir}" >&2 ; exit 1 ; }
