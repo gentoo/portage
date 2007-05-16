@@ -1961,7 +1961,7 @@ class config:
 			mysplit = curdb["USE"].split()
 			for x in mysplit:
 				if x == "-*":
-					myflags = use_expand_protected[:]
+					myflags = []
 					continue
 
 				if x[0] == "+":
