@@ -2297,17 +2297,16 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, **keyw
 		keywords["fd_pipes"] = fd_pipes
 
 	features = mysettings.features
-	# XXX: Negative RESTRICT word
-	droppriv=(droppriv and ("userpriv" in features) and not \
-		(("nouserpriv" in mysettings["RESTRICT"].split()) or \
-		 ("userpriv" in mysettings["RESTRICT"].split())))
-
+	restrict = mysettings.get("RESTRICT", "").split()
+	droppriv=(droppriv and "userpriv" in features and not \
+		("nouserpriv" in restrict or "userpriv" in restrict))
 	if droppriv and not uid and portage_gid and portage_uid:
-		keywords.update({"uid":portage_uid,"gid":portage_gid,"groups":userpriv_groups,"umask":002})
-
+		keywords.update({"uid":portage_uid,"gid":portage_gid,
+			"groups":userpriv_groups,"umask":002})
 	if not free:
 		free=((droppriv and "usersandbox" not in features) or \
-			(not droppriv and "sandbox" not in features and "usersandbox" not in features))
+			(not droppriv and "sandbox" not in features and \
+			"usersandbox" not in features))
 
 	if free:
 		keywords["opt_name"] += " bash"
@@ -2318,7 +2317,8 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, **keyw
 
 	if sesandbox:
 		con = selinux.getcontext()
-		con = con.replace(mysettings["PORTAGE_T"], mysettings["PORTAGE_SANDBOX_T"])
+		con = con.replace(mysettings["PORTAGE_T"],
+			mysettings["PORTAGE_SANDBOX_T"])
 		selinux.setexec(con)
 
 	returnpid = keywords.get("returnpid")
