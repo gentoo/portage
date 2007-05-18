@@ -20,9 +20,13 @@ from portage import listdir, dep_expand, config, flatten, key_expand, \
 	doebuild_environment, doebuild, env_update, dircache, \
 	abssymlink, movefile, bsd_chflags
 
-import os, sys, stat, cPickle, errno, commands, copy, time
+import os, sys, stat, errno, commands, copy, time
 from itertools import izip
 
+try:
+	import cPickle
+except ImportError:
+	import pickle as cPickle
 
 class PreservedLibsRegistry(object):
 	""" This class handles the tracking of preserved library objects """
