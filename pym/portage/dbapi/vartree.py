@@ -23,6 +23,133 @@ from portage import listdir, dep_expand, config, flatten, key_expand, \
 import os, sys, stat, cPickle, errno, commands, copy, time
 from itertools import izip
 
+
+class PreservedLibsRegistry(object):
+	""" This class handles the tracking of preserved library objects """
+	def __init__(self, filename, autocommit=True):
+		""" @param filename: absolute path for saving the preserved libs records
+		    @type filename: String
+			@param autocommit: determines if the file is written after every update
+			@type autocommit: Boolean
+		"""
+		self._filename = filename
+		self._autocommit = autocommit
+		self.load()
+	
+	def load(self):
+		""" Reload the registry data from file """
+		try:
+			self._data = cPickle.load(open(self._filename, "r"))
+		except IOError, e:
+			if e.errno == errno.ENOENT:
+				self._data = {}
+			else:
+				raise e
+		
+	def store(self):
+		""" Store the registry data to file. No need to call this if autocommit
+		    was enabled.
+		"""
+		cPickle.dump(self._data, open(self._filename, "w"))
+	
+	def register(self, cpv, slot, counter, paths):
+		""" Register new objects in the registry. If there is a record with the
+			same packagename (internally derived from cpv) and slot it is 
+			overwritten with the new data.
+			@param cpv: package instance that owns the objects
+			@type cpv: CPV (as String)
+			@param slot: the value of SLOT of the given package instance
+			@type slot: String
+			@param counter: vdb counter value for the package instace
+			@type counter: Integer
+			@param paths: absolute paths of objects that got preserved during an update
+			@type paths: List
+		"""
+		cp = "/".join(catpkgsplit(cpv)[:2])
+		cps = cp+":"+slot
+		if len(paths) == 0 and self._data.has_key(cps) \
+				and self._data[cps][0] == cpv and int(self._data[cps][1]) == int(counter):
+			del self._data[cps]
+		elif len(paths) > 0:
+			self._data[cps] = (cpv, counter, paths)
+		if self._autocommit:
+			self.store()
+	
+	def unregister(self, cpv, slot, counter):
+		""" Remove a previous registration of preserved objects for the given package.
+			@param cpv: package instance whose records should be removed
+			@type cpv: CPV (as String)
+			@param slot: the value of SLOT of the given package instance
+			@type slot: String
+		"""
+		self.register(cpv, slot, counter, [])
+	
+	def pruneNonExisting(self):
+		""" Remove all records for objects that no longer exist on the filesystem. """
+		for cps in self._data.keys():
+			cpv, counter, paths = self._data[cps]
+			paths = [f for f in paths if os.path.exists(f)]
+			if len(paths) > 0:
+				self._data[cps] = (cpv, counter, paths)
+			else:
+				del self._data[cps]
+		if self._autocommit:
+			self.store()
+	
+	def hasEntries(self):
+		""" Check if this registry contains any records. """
+		return (len(self._data.keys()) > 0)
+	
+	def getPreservedLibs(self):
+		""" Return a mapping of packages->preserved objects.
+			@returns mapping of package instances to preserved objects
+			@rtype Dict cpv->list-of-paths
+		"""
+		rValue = {}
+		for cps in self._data.keys():
+			rValue[self._data[cps][0]] = self._data[cps][2]
+		return rValue
+
+class LibraryPackageMap(object):
+	""" This class provides a library->consumer mapping generated from VDB data """
+	def __init__(self, filename, vardbapi):
+		self._filename = filename
+		self._dbapi = vardbapi
+
+	def get(self):
+		""" Read the global library->consumer map for the given vdb instance.
+		    @returns mapping of library objects (just basenames) to consumers (absolute paths)
+			@rtype filename->list-of-paths
+		"""
+		if not os.path.exists(self._filename):
+			self.update()
+		rValue = {}
+		for l in open(self._filename, "r").read().split("\n"):
+			mysplit = l.split()
+			if len(mysplit) > 1:
+				rValue[mysplit[0]] = mysplit[1].split(",")
+		return rValue
+
+	def update(self):
+		""" Update the global library->consumer map for the given vdb instance. """
+		obj_dict = {}
+		for cpv in self._dbapi.cpv_all():
+			needed_list = self._dbapi.aux_get(cpv, ["NEEDED"])[0]
+			for l in needed_list.split("\n"):
+				mysplit = l.split()
+				if len(mysplit) < 2:
+					continue
+				libs = mysplit[1].split(",")
+				for lib in libs:
+					if not obj_dict.has_key(lib):
+						obj_dict[lib] = [mysplit[0]]
+					else:
+						obj_dict[lib].append(mysplit[0])
+		mapfile = open(self._filename, "w")
+		for lib in obj_dict.keys():
+			mapfile.write(lib+" "+",".join(obj_dict[lib])+"\n")
+		mapfile.close()
+
 class vardbapi(dbapi):
 	def __init__(self, root, categories=None, settings=None, vartree=None):
 		self.root = root[:]
@@ -53,6 +180,9 @@ class vardbapi(dbapi):
 		self._aux_cache_version = "1"
 		self._aux_cache_filename = os.path.join(self.root,
 			CACHE_PATH.lstrip(os.path.sep), "vdb_metadata.pickle")
+
+		self.libmap = LibraryPackageMap(os.path.join(self.root, CACHE_PATH, "library_consumers"), self)
+		self.plib_registry = PreservedLibsRegistry(os.path.join(self.root, CACHE_PATH, "preserved_libs_registry"))
 
 	def getpath(self, mykey, filename=None):
 		rValue = os.path.join(self.root, VDB_PATH, mykey)
@@ -527,39 +657,6 @@ class vardbapi(dbapi):
 			write_atomic(cpath, str(counter))
 		return counter
 
-	def get_library_map(self):
-		""" Read the global library->consumer map for this vdb instance """
-		mapfilename = os.path.join(self.root, CACHE_PATH, "library_consumers")
-		if not os.path.exists(mapfilename):
-			self.update_library_map()
-		rValue = {}
-		for l in open(mapfilename, "r").read().split("\n"):
-			mysplit = l.split()
-			if len(mysplit) > 1:
-				rValue[mysplit[0]] = mysplit[1].split(",")
-		return rValue
-
-	def update_library_map(self):
-		""" Update the global library->consumer map for this vdb instance. """
-		mapfilename = os.path.join(self.root, CACHE_PATH, "library_consumers")
-		obj_dict = {}
-		for cpv in self.cpv_all():
-			needed_list = self.aux_get(cpv, ["NEEDED"])[0]
-			for l in needed_list.split("\n"):
-				mysplit = l.split()
-				if len(mysplit) < 2:
-					continue
-				libs = mysplit[1].split(",")
-				for lib in libs:
-					if not obj_dict.has_key(lib):
-						obj_dict[lib] = [mysplit[0]]
-					else:
-						obj_dict[lib].append(mysplit[0])
-		mapfile = open(mapfilename, "w")
-		for lib in obj_dict.keys():
-			mapfile.write(lib+" "+",".join(obj_dict[lib])+"\n")
-		mapfile.close()
-
 class vartree(object):
 	"this tree will scan a var/db/pkg database located at root (passed to init)"
 	def __init__(self, root="/", virtual=None, clone=None, categories=None,
@@ -973,6 +1070,9 @@ class dblink(object):
 					return retval
 
 			self._unmerge_pkgfiles(pkgfiles)
+			
+			# Remove the registration of preserved libs for this pkg instance
+			self.vartree.dbapi.plib_registry.unregister(self.mycpv, self.settings["SLOT"], self.settings["COUNTER"])
 
 			if myebuildpath:
 				retval = doebuild(myebuildpath, "postrm", self.myroot,
@@ -991,7 +1091,7 @@ class dblink(object):
 					vartree=self.vartree)
 			
 			# regenerate reverse NEEDED map
-			self.vartree.dbapi.update_library_map()
+			self.vartree.dbapi.libmap.update()
 
 		finally:
 			if builddir_lock:
@@ -1196,9 +1296,9 @@ class dblink(object):
 		return True
 
 
-	def _preserve_libs(self, srcroot, destroot, mycontents):
+	def _preserve_libs(self, srcroot, destroot, mycontents, counter):
 		# read global reverse NEEDED map
-		libmap = self.vartree.dbapi.get_library_map()
+		libmap = self.vartree.dbapi.libmap.get()
 
 		# get list of libraries from old package instance
 		old_contents = self._installed_instance.getcontents().keys()
@@ -1257,6 +1357,10 @@ class dblink(object):
 				preserve_paths.append(linktarget)
 			else:
 				shutil.copy2(os.path.join(destroot, x), os.path.join(srcroot, x.lstrip(os.sep)))
+
+		# keep track of the libs we preserved
+		self.vartree.dbapi.plib_registry.register(self.mycpv, self.settings["SLOT"], counter, preserve_paths)
+
 		del preserve_paths
 	
 	def _collision_protect(self, srcroot, destroot, otherversions, mycontents, mysymlinks):
@@ -1421,21 +1525,31 @@ class dblink(object):
 				catsplit(slot_matches[0])[1], destroot, self.settings,
 				vartree=self.vartree)
 
+		# get current counter value (counter_tick also takes care of incrementing it)
+		# XXX Need to make this destroot, but it needs to be initialized first. XXX
+		# XXX bis: leads to some invalidentry() call through cp_all().
+		# Note: The counter is generated here but written later because preserve_libs
+		#       needs the counter value but has to be before dbtmpdir is made (which
+		#       has to be before the counter is written) - genone
+		counter = self.vartree.dbapi.counter_tick(self.myroot, mycpv=self.mycpv)
+
 		myfilelist = None
 		mylinklist = None
 
 		# Preserve old libs if they are still in use
 		if slot_matches and "preserve-libs" in self.settings.features:
 			myfilelist = listdir(srcroot, recursive=1, filesonly=1, followSymlinks=False)
-			mylinklist = filter(os.path.islink, listdir(srcroot, recursive=1, filesonly=0, followSymlinks=False))
-			self._preserve_libs(srcroot, destroot, myfilelist+mylinklist)
+			mylinklist = filter(os.path.islink, [os.path.join(srcroot, x) for x in listdir(srcroot, recursive=1, filesonly=0, followSymlinks=False)])
+			mylinklist = [x[len(srcroot):] for x in mylinklist]
+			self._preserve_libs(srcroot, destroot, myfilelist+mylinklist, counter)
 
 		# check for package collisions
 		if "collision-protect" in self.settings.features:
 			if myfilelist == None:
 				myfilelist = listdir(srcroot, recursive=1, filesonly=1, followSymlinks=False)
 			if mylinklist == None:
-				mylinklist = filter(os.path.islink, listdir(srcroot, recursive=1, filesonly=0, followSymlinks=False))
+				mylinklist = filter(os.path.islink, [os.path.join(srcroot, x) for x in listdir(srcroot, recursive=1, filesonly=0, followSymlinks=False)])
+				mylinklist = [x[len(srcroot):] for x in mylinklist]
 			self._collision_protect(srcroot, destroot, otherversions, myfilelist+mylinklist, mylinklist)
 
 		if os.stat(srcroot).st_dev == os.stat(destroot).st_dev:
@@ -1475,10 +1589,6 @@ class dblink(object):
 		for x in listdir(inforoot):
 			self.copyfile(inforoot+"/"+x)
 
-		# get current counter value (counter_tick also takes care of incrementing it)
-		# XXX Need to make this destroot, but it needs to be initialized first. XXX
-		# XXX bis: leads to some invalidentry() call through cp_all().
-		counter = self.vartree.dbapi.counter_tick(self.myroot, mycpv=self.mycpv)
 		# write local package counter for recording
 		lcfile = open(os.path.join(self.dbtmpdir, "COUNTER"),"w")
 		lcfile.write(str(counter))
@@ -1569,7 +1679,7 @@ class dblink(object):
 		del conf_mem_file
 
 		# regenerate reverse NEEDED map
-		self.vartree.dbapi.update_library_map()
+		self.vartree.dbapi.libmap.update()
 
 		#do postinst script
 		a = doebuild(myebuild, "postinst", destroot, self.settings, use_cache=0,

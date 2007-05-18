@@ -31,7 +31,7 @@ except ImportError:
 	import portage
 del os.environ["PORTAGE_LEGACY_GLOBALS"]
 from portage import digraph, portdbapi
-from portage.const import NEWS_LIB_PATH
+from portage.const import NEWS_LIB_PATH, CACHE_PATH
 
 import emerge.help
 import portage.xpak, commands, errno, re, socket, time, types
@@ -3781,6 +3781,19 @@ def post_emerge(settings, mtimedb, retval):
 	if newsReaderDisplay:
 		print colorize("WARN", " *"),
 		print "Use " + colorize("GOOD", "eselect news") + " to read news items."
+	
+	from portage.dbapi.vartree import PreservedLibsRegistry
+	plib_registry = PreservedLibsRegistry(os.path.join(target_root, CACHE_PATH, "preserved_libs_registry"))
+	if plib_registry.hasEntries():
+		print
+		print colorize("WARN", "!!!") + " existing preserved libs:"
+		plibdata = plib_registry.getPreservedLibs()
+		for cpv in plibdata.keys():
+			print colorize("WARN", ">>>") + " package: %s" % cpv
+			for f in plibdata[cpv]:
+				print colorize("WARN", " * ") + " - %s" % f
+		print "Use " + colorize("GOOD", "revdep-rebuild") + " to rebuild packages using these libraries"
+		print "and then remerge the packages listed above."
 	
 	mtimedb.commit()
 	sys.exit(retval)
