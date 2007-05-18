@@ -12,6 +12,10 @@ portage-2.1.3
 * Enable "echo" and "save_summary" elog modules by default
 * Fix -* handling in package.keywords to work as intended (reset the accepted 
   keywords list), also see RELEASE-NOTES.
+* Experimental support for preserving old library files on package upgrades
+  based on FEATURES=preserve-libs, USE AT YOUR OWN RISK!!!
+* Make elog functionality available to python code
+* Add support for news items (GLEP 42)
 
 portage-2.1.2
 -------------
