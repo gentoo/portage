@@ -7,19 +7,19 @@ from portage.output import EOutput
 from portage.const import EBUILD_PHASES
 
 _items = {}
-def process(mysettings, cpv, logentries, fulltext):
-	_items[cpv] = logentries
+def process(mysettings, key, logentries, fulltext):
+	_items[key] = logentries
 
 def finalize(mysettings):
 	printer = EOutput()
-	for cpv in _items.keys():
+	for key in _items.keys():
 		print
-		printer.einfo("Messages for package %s:" % cpv)
+		printer.einfo("Messages for package %s:" % key)
 		print
 		for phase in EBUILD_PHASES:
-			if not phase in _items[cpv]:
+			if not phase in _items[key]:
 				continue
-			for msgtype, msgcontent in _items[cpv][phase]:
+			for msgtype, msgcontent in _items[key][phase]:
 				fmap = {"INFO": printer.einfo,
 						"WARN": printer.ewarn,
 						"ERROR": printer.eerror,
