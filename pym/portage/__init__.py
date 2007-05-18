@@ -2341,7 +2341,10 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, **keyw
 	if input_pid:
 		# cat is blocking on stdin, so it must be killed.
 		import signal
-		os.kill(input_pid, signal.SIGTERM)
+		try:
+			os.kill(input_pid, signal.SIGTERM)
+		except OSError:
+			pass # it died by itself
 		os.waitpid(input_pid, 0)
 		portage.process.spawned_pids.remove(input_pid)
 	pid = mypids[-1]
