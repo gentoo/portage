@@ -3730,20 +3730,22 @@ def display_news_notification(settings):
 	UNREAD_PATH = os.path.join(target_root, NEWS_LIB_PATH, "news")
 	porttree = portdbapi(porttree_root=settings["PORTDIR"], mysettings=settings)
 	newsReaderDisplay = False
-	
-	print
+
 	for repo in porttree.getRepositories():
 		unreadItems = checkUpdatedNewsItems(target_root, NEWS_PATH, UNREAD_PATH, repo)
 		if unreadItems:
+			if not newsReaderDisplay:
+				newsReaderDisplay = True
+				print
 			print colorize("WARN", " * IMPORTANT:"),
 			print "%s news items need reading for repository '%s'." % (unreadItems, repo)
-			newsReaderDisplay = True
+			
 	
 	if newsReaderDisplay:
 		print colorize("WARN", " *"),
 		print "Use " + colorize("GOOD", "eselect news") + " to read news items."
+		print
 
-	print
 def post_emerge(settings, mtimedb, retval):
 	"""
 	Misc. things to run at the end of a merge session.
