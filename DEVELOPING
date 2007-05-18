@@ -64,4 +64,4 @@ try:
 except KeyError:
 	dict[foo] = default_value
 
-The get call is nicer (compact) and faster (try,except are slow). 
+The get call is nicer (compact) and faster (try,except are slow).
