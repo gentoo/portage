@@ -2414,14 +2414,11 @@ class depgraph:
 										selected_parent = node
 										break
 							if selected_parent:
-								edge = (current_node, selected_parent)
-								if edge not in shown_edges:
-									traversed_nodes.add(selected_parent)
-									add_parents(selected_parent, False)
+								shown_edges.add((current_node, selected_parent))
+								traversed_nodes.add(selected_parent)
+								add_parents(selected_parent, False)
 						display_list.append((list(current_node),
 							len(tree_nodes), ordered))
-						if tree_nodes:
-							shown_edges.add((current_node, tree_nodes[-1]))
 						tree_nodes.append(current_node)
 					tree_nodes = []
 					add_parents(graph_key, True)
