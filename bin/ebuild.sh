@@ -565,7 +565,7 @@ src_unpack() {
 }
 
 src_compile() {
-	if [ -x ./configure ]; then
+	if [ -x "${ECONF_SOURCE:-.}/configure" ] ; then
 		econf
 	fi
 	if [ -f Makefile ] || [ -f GNUmakefile ] || [ -f makefile ]; then
