@@ -2371,6 +2371,7 @@ class depgraph:
 		mygraph = self._parent_child_digraph
 		i = 0
 		depth = 0
+		shown_edges = set()
 		for x in mylist:
 			if "blocks" == x[0]:
 				display_list.append((x, 0, True))
@@ -2385,6 +2386,7 @@ class depgraph:
 					tree_nodes = tree_nodes[:depth]
 					tree_nodes.append(graph_key)
 					display_list.append((x, depth, True))
+					shown_edges.add((graph_key, tree_nodes[depth-1]))
 				else:
 					traversed_nodes = set() # prevent endless circles
 					traversed_nodes.add(graph_key)
@@ -2397,19 +2399,29 @@ class depgraph:
 							for node in parent_nodes:
 								if node not in traversed_nodes and \
 									node not in child_nodes:
+									edge = (current_node, node)
+									if edge in shown_edges:
+										continue
 									selected_parent = node
 									break
 							if not selected_parent:
 								# A direct cycle is unavoidable.
 								for node in parent_nodes:
 									if node not in traversed_nodes:
+										edge = (current_node, node)
+										if edge in shown_edges:
+											continue
 										selected_parent = node
 										break
 							if selected_parent:
-								traversed_nodes.add(selected_parent)
-								add_parents(selected_parent, False)
+								edge = (current_node, selected_parent)
+								if edge not in shown_edges:
+									traversed_nodes.add(selected_parent)
+									add_parents(selected_parent, False)
 						display_list.append((list(current_node),
 							len(tree_nodes), ordered))
+						if tree_nodes:
+							shown_edges.add((current_node, tree_nodes[-1]))
 						tree_nodes.append(current_node)
 					tree_nodes = []
 					add_parents(graph_key, True)
