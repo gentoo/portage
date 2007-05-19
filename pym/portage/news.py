@@ -66,7 +66,12 @@ class NewsManager(object):
 		path = os.path.join(self.portdb.getRepositoryPath(repoid), self.NEWS_PATH)
 		newsdir_lock = None
 		try:
-			newsdir_lock = lockdir(self.portdb.getRepositoryPath(repoid))
+			repo_path = self.portdb.getRepositoryPath(repoid)
+			if os.access(os.path.dirname(repo_path), os.W_OK):
+				# This lock file should really be mapped into /var somewhere
+				# since the repo_path or it's parent directory may not even be
+				# writable.
+				newsdir_lock = lockdir(repo_path)
 			# Skip reading news for repoid if the news dir does not exist.  Requested by
 			# NightMorph :)
 			if not os.path.exists(path):
