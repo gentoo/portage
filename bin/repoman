@@ -93,6 +93,7 @@ signal.signal(signal.SIGINT,exithandler)
 shortmodes={"ci":"commit"}
 modeshelp={
 "scan"   : "Scan directory tree for QA issues (default)",
+"manifest" : "Generate a Manifest (fetches files if necessary)",
 "fix"    : "Fix simple QA issues (stray digests, missing digests)",
 "full"   : "Scan directory tree for QA issues (full listing)",
 "help"   : "Show this screen",
@@ -498,7 +499,9 @@ for x in range(0,repolevel-1):
 
 def caterror(mycat):
 	err(mycat+" is not an official category.  Skipping QA checks in this directory.\nPlease ensure that you add "+catdir+" to "+repodir+"/profiles/categories\nif it is a new category.")
-if "--pretend" in myoptions:
+if mymode == "manifest":
+	pass
+elif "--pretend" in myoptions:
 	print green("\nRepoMan does a once-over of the neighborhood...")
 elif quiet < 1:
 	print green("\nRepoMan scours the neighborhood...")
@@ -722,7 +725,7 @@ def x11_deprecation_check(depstr):
 				return True
 	return False
 
-
+dofail = 0
 arch_caches={}
 arch_xmatch_caches = {}
 for x in scanlist:
@@ -733,6 +736,14 @@ for x in scanlist:
 	dadded=[]
 	catdir,pkgdir=x.split("/")
 	checkdir=repodir+"/"+x
+
+	if mymode == "manifest":
+		repoman_settings["O"] = checkdir
+		if not portage.digestgen([], repoman_settings, myportdb=portdb):
+			print "Unable to generate manifest."
+			dofail = 1
+		continue
+
 	checkdirlist=os.listdir(checkdir)
 	ebuildlist=[]
 	for y in checkdirlist:
@@ -1386,6 +1397,9 @@ for x in scanlist:
 	if allmasked and repolevel == 3:
 		stats["ebuild.allmasked"]+=1
 		fails["ebuild.allmasked"].append(x)
+
+if mymode == "manifest":
+	sys.exit(dofail)
 
 #Pickle and save results for instant reuse in last and lfull
 if os.access(portage.const.CACHE_PATH, os.W_OK):
