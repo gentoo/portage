@@ -667,6 +667,7 @@ for x in qacats:
 	stats[x]=0
 	fails[x]=[]
 xmllint_capable = False
+metadata_dtd = os.path.join(repoman_settings["DISTDIR"], 'metadata.dtd')
 if getstatusoutput('which xmllint')[0] != 0:
 	print red("!!! xmllint not found. Can't check metadata.xml.\n")
 	if "--xmlparse" in myoptions or repolevel==3:
@@ -679,7 +680,7 @@ else:
 	try:
 		# if it's been over a week since fetching (or the system clock is fscked), grab an updated copy of metadata.dtd 
 		# clock is fscked or it's been a week. time to grab a new one.
-		ct=os.stat(portage.CACHE_PATH + '/metadata.dtd')[ST_CTIME]
+		ct = os.stat(metadata_dtd)[ST_CTIME]
 		if abs(time.time() - ct) > (60*60*24*7):
 			# don't trap the exception, we're watching for errno 2 (file not found), anything else is a bug.
 			backup_exists=1
@@ -695,18 +696,16 @@ else:
 		print 
 		print green("***")+" the local copy of metadata.dtd needs to be refetched, doing that now"
 		print
+		val = 0
 		try:
-			if os.path.exists(repoman_settings["DISTDIR"]+'/metadata.dtd'):
-				os.remove(repoman_settings["DISTDIR"]+'/metadata.dtd')
+			try:
+				os.unlink(metadata_dtd)
+			except OSError, e:
+				if e.errno != errno.ENOENT:
+					raise
+				del e
 			val=portage.fetch(['http://www.gentoo.org/dtd/metadata.dtd'],repoman_settings,fetchonly=0, \
 				try_mirrors=0)
-			if val:
-				if backup_exists:
-					os.remove(portage.CACHE_PATH+'/metadata.dtd')
-				shutil.copy(repoman_settings["DISTDIR"]+'/metadata.dtd',portage.CACHE_PATH+'/metadata.dtd')
-				os.chown(portage.CACHE_PATH+'/metadata.dtd',os.getuid(),portage.portage_gid)
-				os.chmod(portage.CACHE_PATH+'/metadata.dtd',0664)
-
 
 		except SystemExit, e:
 			raise  # Need to propogate this
@@ -979,10 +978,10 @@ for x in scanlist:
 	else:
 		#Only carry out if in package directory or check forced
 		if xmllint_capable:
-			st=getstatusoutput("xmllint --nonet --noout --dtdvalid %s/metadata.dtd %s/metadata.xml" % (portage.CACHE_PATH, checkdir))
-			if st[0] != 0:
-				for z in st[1].split("\n"):
-					print red("!!! ")+z
+			st = spawn(["xmllint", "--nonet", "--noout", "--nowarning", "--dtdvalid",
+				metadata_dtd, os.path.join(checkdir, "metadata.xml")])
+			if st != os.EX_OK:
+				print red("!!! metadata.xml is invalid")
 				stats["metadata.bad"]+=1
 				fails["metadata.bad"].append(x+"/metadata.xml")
 
