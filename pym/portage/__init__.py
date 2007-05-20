@@ -2405,8 +2405,13 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 		if try_mirrors:
 			mymirrors += [x.rstrip("/") for x in mysettings["GENTOO_MIRRORS"].split() if x]
 
-	mydigests = Manifest(
-		mysettings["O"], mysettings["DISTDIR"]).getTypeDigests("DIST")
+	pkgdir = mysettings.get("O")
+	if pkgdir:
+		mydigests = Manifest(
+			pkgdir, mysettings["DISTDIR"]).getTypeDigests("DIST")
+	else:
+		# no digests because fetch was not called for a specific package
+		mydigests = {}
 
 	fsmirrors = []
 	for x in range(len(mymirrors)-1,-1,-1):
