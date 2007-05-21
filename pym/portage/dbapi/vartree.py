@@ -1211,6 +1211,10 @@ class dblink(object):
 						writemsg_stdout("--- !md5   %s %s\n" % ("obj", obj))
 						continue
 					try:
+						if statobj.st_nlink > 1:
+							portage.writemsg("There are "+str(st.st_nlink-1)+" hardlinks to " + obj)
+						# Always blind chmod 0 before unlinking to avoid race conditions.
+						os.chmod(obj, 0000)
 						os.unlink(obj)
 					except (OSError, IOError), e:
 						pass
