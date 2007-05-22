@@ -515,7 +515,7 @@ class binarytree(object):
 					f.close()
 
 		if getbinpkgs and not self.settings["PORTAGE_BINHOST"]:
-			writemsg(red("!!! PORTAGE_BINHOST unset, but use is requested.\n"),
+			writemsg("!!! PORTAGE_BINHOST unset, but use is requested.\n",
 				noiselevel=-1)
 
 		if getbinpkgs and \
