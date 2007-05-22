@@ -115,6 +115,7 @@ class binarytree(object):
 			self._pkg_paths = {}
 			self._all_directory = os.path.isdir(
 				os.path.join(self.pkgdir, "All"))
+			self._pkgindex_keys = set(["CPV", "SLOT", "MTIME", "SIZE"])
 
 	def move_ent(self, mylist):
 		if not self.populated:
@@ -371,20 +372,66 @@ class binarytree(object):
 				dirs.remove("All")
 			dirs.sort()
 			dirs.insert(0, "All")
+			pkgfile = os.path.join(self.pkgdir, "Packages")
+			metadata = {}
+			header = {}
+			try:
+				f = open(pkgfile)
+			except EnvironmentError:
+				pass
+			else:
+				try:
+					header = portage.getbinpkg.readpkgindex(f)
+					while True:
+						d = portage.getbinpkg.readpkgindex(f)
+						if not d:
+							break
+						mycpv = d.get("CPV")
+						if not mycpv:
+							continue
+						d.setdefault("SLOT", "0")
+						metadata[mycpv] = d
+				finally:
+					f.close()
+					del f
+			update_pkgindex = False
 			for mydir in dirs:
 				for myfile in listdir(os.path.join(self.pkgdir, mydir)):
 					if not myfile.endswith(".tbz2"):
 						continue
 					mypath = os.path.join(mydir, myfile)
 					full_path = os.path.join(self.pkgdir, mypath)
-					if os.path.islink(full_path):
+					s = os.lstat(full_path)
+					if stat.S_ISLNK(s.st_mode):
 						continue
+					if mydir != "All":
+						# Validate data from the package index and try to avoid
+						# reading the xpak if possible.
+						mycpv = mydir + "/" + myfile[:-5]
+						d = metadata.get(mycpv)
+						skip = False
+						if d:
+							try:
+								if long(d.get("MTIME")) == long(s.st_mtime):
+									skip = True
+							except ValueError:
+								pass
+						if skip and not self._pkgindex_keys.difference(d):
+							pkg_paths[mycpv] = mypath
+							self.dbapi.cpv_inject(mycpv)
+							if not self.dbapi._aux_cache_keys.difference(d):
+								aux_cache = {}
+								for k in self.dbapi._aux_cache_keys:
+									aux_cache[k] = d[k]
+								self.dbapi._aux_cache[mycpv] = aux_cache
+							continue
 					mytbz2 = portage.xpak.tbz2(full_path)
 					# For invalid packages, mycat could be None.
 					mycat = mytbz2.getfile("CATEGORY")
 					mypf = mytbz2.getfile("PF")
+					slot = mytbz2.getfile("SLOT")
 					mypkg = myfile[:-5]
-					if not mycat or not mypf:
+					if not mycat or not mypf or not slot:
 						#old-style or corrupt package
 						writemsg("!!! Invalid binary package: '%s'\n" % full_path,
 							noiselevel=-1)
@@ -394,6 +441,7 @@ class binarytree(object):
 						self.invalids.append(mypkg)
 						continue
 					mycat = mycat.strip()
+					slot = slot.strip()
 					if mycat != mydir and mydir != "All":
 						continue
 					if mypkg != mypf.strip():
@@ -412,7 +460,59 @@ class binarytree(object):
 						continue
 					pkg_paths[mycpv] = mypath
 					self.dbapi.cpv_inject(mycpv)
+					update_pkgindex = True
+					d = metadata.get(mycpv, {})
+					if d:
+						# Reuse metadata such as MD5, since we won't calculate
+						# MD5 here due to the performance hit.
+						mtime = d.get("MTIME")
+						if mtime:
+							# genpgkindex really should include the mtime and
+							# then this mtime check should be forced.
+							try:
+								if long(mtime) != long(s.st_mtime):
+									d.clear()
+							except ValueError:
+								d.clear()
+					if d:
+						try:
+							if long(d.get("SIZE")) != long(s.st_size):
+								d.clear()
+						except ValueError:
+							d.clear()
+
+					d["CPV"] = mycpv
+					d["SLOT"] = slot
+					d["MTIME"] = str(long(s.st_mtime))
+					d["SIZE"] = str(s.st_size)
+					metadata[mycpv] = d
+					if not self.dbapi._aux_cache_keys.difference(d):
+						aux_cache = {}
+						for k in self.dbapi._aux_cache_keys:
+							aux_cache[k] = d[k]
+						self.dbapi._aux_cache[mycpv] = aux_cache
+
 			self._pkg_paths = pkg_paths
+			if update_pkgindex and os.access(self.pkgdir, os.W_OK):
+				cpv_all = self._pkg_paths.keys()
+				stale = set(metadata).difference(cpv_all)
+				for cpv in stale:
+					del metadata[cpv]
+				cpv_all.sort()
+				import time
+				from portage.util import atomic_ofstream
+				header["TIMESTAMP"] = str(long(time.time()))
+				header["PACKAGES"] = str(len(cpv_all))
+				f = atomic_ofstream(pkgfile)
+				try:
+					portage.getbinpkg.writepkgindex(f, header.iteritems())
+					for cpv in cpv_all:
+						d = metadata[cpv]
+						if d["SLOT"] == "0":
+							del d["SLOT"]
+						portage.getbinpkg.writepkgindex(f, d.iteritems())
+				finally:
+					f.close()
 
 		if getbinpkgs and not self.settings["PORTAGE_BINHOST"]:
 			writemsg(red("!!! PORTAGE_BINHOST unset, but use is requested.\n"),

@@ -570,3 +570,23 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 		conn.close()
 	
 	return metadata[baseurl]["data"]
+
+def readpkgindex(pkgfile):
+	d = {}
+	for line in pkgfile:
+		line = line.rstrip("\n")
+		if not line:
+			break
+		line = line.split(":", 1)
+		if not len(line) == 2:
+			continue
+		k, v = line
+		if v:
+			v = v[1:]
+		d[k] = v
+	return d
+
+def writepkgindex(pkgfile, items):
+	for k, v in items:
+		pkgfile.write("%s: %s\n" % (k, v))
+	pkgfile.write("\n")
