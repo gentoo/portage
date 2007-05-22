@@ -412,9 +412,9 @@ class binarytree(object):
 						skip = False
 						if d:
 							try:
-								if long(d.get("MTIME")) == long(s.st_mtime):
+								if long(d["MTIME"]) == long(s.st_mtime):
 									skip = True
-							except ValueError:
+							except (KeyError, ValueError):
 								pass
 						if skip and not self._pkgindex_keys.difference(d):
 							pkg_paths[mycpv] = mypath
