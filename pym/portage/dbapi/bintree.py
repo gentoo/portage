@@ -115,6 +115,7 @@ class binarytree(object):
 			self._pkg_paths = {}
 			self._all_directory = os.path.isdir(
 				os.path.join(self.pkgdir, "All"))
+			self._pkgindex = None
 			self._pkgindex_keys = set(["CPV", "SLOT", "MTIME", "SIZE"])
 
 	def move_ent(self, mylist):
@@ -373,24 +374,16 @@ class binarytree(object):
 			dirs.sort()
 			dirs.insert(0, "All")
 			pkgfile = os.path.join(self.pkgdir, "Packages")
-			metadata = {}
-			header = {}
+			self._pkgindex = portage.getbinpkg.PackageIndex()
+			header = self._pkgindex.header
+			metadata = self._pkgindex.packages
 			try:
 				f = open(pkgfile)
 			except EnvironmentError:
 				pass
 			else:
 				try:
-					header = portage.getbinpkg.readpkgindex(f)
-					while True:
-						d = portage.getbinpkg.readpkgindex(f)
-						if not d:
-							break
-						mycpv = d.get("CPV")
-						if not mycpv:
-							continue
-						d.setdefault("SLOT", "0")
-						metadata[mycpv] = d
+					self._pkgindex.read(f)
 				finally:
 					f.close()
 					del f
@@ -498,19 +491,10 @@ class binarytree(object):
 				stale = set(metadata).difference(cpv_all)
 				for cpv in stale:
 					del metadata[cpv]
-				cpv_all.sort()
-				import time
 				from portage.util import atomic_ofstream
-				header["TIMESTAMP"] = str(long(time.time()))
-				header["PACKAGES"] = str(len(cpv_all))
 				f = atomic_ofstream(pkgfile)
 				try:
-					portage.getbinpkg.writepkgindex(f, header.iteritems())
-					for cpv in cpv_all:
-						d = metadata[cpv]
-						if d["SLOT"] == "0":
-							del d["SLOT"]
-						portage.getbinpkg.writepkgindex(f, d.iteritems())
+					self._pkgindex.write(f)
 				finally:
 					f.close()
 

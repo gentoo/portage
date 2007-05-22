@@ -590,3 +590,35 @@ def writepkgindex(pkgfile, items):
 	for k, v in items:
 		pkgfile.write("%s: %s\n" % (k, v))
 	pkgfile.write("\n")
+
+class PackageIndex(object):
+
+	def __init__(self):
+		self.header = {}
+		self.packages = {}
+
+	def read(self, pkgfile):
+		self.header.update(readpkgindex(pkgfile))
+		while True:
+			d = readpkgindex(pkgfile)
+			if not d:
+				break
+			mycpv = d.get("CPV")
+			if not mycpv:
+				continue
+			d.setdefault("SLOT", "0")
+			self.packages[mycpv] = d
+
+	def write(self, pkgfile):
+		cpv_all = self.packages.keys()
+		cpv_all.sort()
+		import time
+		self.header["TIMESTAMP"] = str(long(time.time()))
+		self.header["PACKAGES"] = str(len(cpv_all))
+		writepkgindex(pkgfile, self.header.iteritems())
+		for cpv in cpv_all:
+			metadata = self.packages[cpv]
+			if metadata["SLOT"] == "0":
+				metadata = metadata.copy()
+				del metadata["SLOT"]
+			writepkgindex(pkgfile, metadata.iteritems())
