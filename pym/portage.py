@@ -6554,8 +6554,6 @@ class binarytree(object):
 		"populates the binarytree"
 		if (not os.path.isdir(self.pkgdir) and not getbinpkgs):
 			return 0
-		if (not os.path.isdir(self.pkgdir+"/All") and not getbinpkgs):
-			return 0
 
 		categories = set(self.settings.categories)
 
