@@ -476,9 +476,9 @@ class binarytree(object):
 								d.clear()
 					if d:
 						try:
-							if long(d.get("SIZE")) != long(s.st_size):
+							if long(d["SIZE"]) != long(s.st_size):
 								d.clear()
-						except ValueError:
+						except (KeyError, ValueError):
 							d.clear()
 
 					d["CPV"] = mycpv
