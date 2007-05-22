@@ -3816,11 +3816,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				actionmap[x]["dep"] = ' '.join(actionmap_deps[x])
 
 		if mydo in actionmap.keys():
-			if mydo=="package":
-				portage.util.ensure_dirs(
-					os.path.join(mysettings["PKGDIR"], mysettings["CATEGORY"]))
-				portage.util.ensure_dirs(
-					os.path.join(mysettings["PKGDIR"], "All"))
 			retval = spawnebuild(mydo,
 				actionmap, mysettings, debug, logfile=logfile)
 		elif mydo=="qmerge":

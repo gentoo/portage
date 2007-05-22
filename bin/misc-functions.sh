@@ -496,13 +496,18 @@ preinst_selinux_labels() {
 dyn_package() {
 	cd "${PORTAGE_BUILDDIR}/image"
 	install_mask "${PORTAGE_BUILDDIR}/image" ${PKG_INSTALL_MASK}
-	local pkg_dest="${PKGDIR}/All/${PF}.tbz2"
-	local pkg_tmp="${PKGDIR}/All/${PF}.tbz2.$$"
+	if [ -d "${PKGDIR}/All" ] ; then
+		local pkg_dest="${PKGDIR}/All/${PF}.tbz2"
+	else
+		local pkg_dest="${PKGDIR}/${CATEGORY}/${PF}.tbz2"
+	fi
+	local pkg_tmp="${pkg_dest}.$$"
 	local tar_options=""
 	[ "${PORTAGE_QUIET}" == "1" ] ||  tar_options="${tar_options} -v"
 	# Sandbox is disabled in case the user wants to use a symlink
 	# for $PKGDIR and/or $PKGDIR/All.
 	export SANDBOX_ON="0"
+	mkdir -p "${pkg_tmp%/*}" || die "mkdir failed"
 	tar ${tar_options} -cf - . | bzip2 -f > "${pkg_tmp}" || \
 		die "Failed to create tarball"
 	cd ..
@@ -513,7 +518,10 @@ dyn_package() {
 		die "Failed to append metadata to the tbz2 file"
 	fi
 	mv -f "${pkg_tmp}" "${pkg_dest}" || die "Failed to move tbz2 to ${pkg_dest}"
-	ln -sf "../All/${PF}.tbz2" "${PKGDIR}/${CATEGORY}/${PF}.tbz2" || die "Failed to create symlink in ${PKGDIR}/${CATEGORY}"
+	if [ -d "${PKGDIR}/All" ] ; then
+		ln -sf "../All/${PF}.tbz2" "${PKGDIR}/${CATEGORY}/${PF}.tbz2" || \
+			die "Failed to create symlink in ${PKGDIR}/${CATEGORY}"
+	fi
 	vecho ">>> Done."
 	cd "${PORTAGE_BUILDDIR}"
 	touch .packaged || die "Failed to 'touch .packaged' in ${PORTAGE_BUILDDIR}"

@@ -113,6 +113,8 @@ class binarytree(object):
 			self.invalids = []
 			self.settings = settings
 			self._pkg_paths = {}
+			self._all_directory = os.path.isdir(
+				os.path.join(self.pkgdir, "All"))
 
 	def move_ent(self, mylist):
 		if not self.populated:
@@ -285,6 +287,8 @@ class binarytree(object):
 		use for a given cpv.  If a collision will occur with an existing
 		package from another category, the existing package will be bumped to
 		${PKGDIR}/${CATEGORY}/${PF}.tbz2 so that both can coexist."""
+		if not self._all_directory:
+			return
 		if not self.populated:
 			# Try to avoid the population routine when possible, so that
 			# FEATURES=buildpkg doesn't always force population.
@@ -356,8 +360,6 @@ class binarytree(object):
 	def populate(self, getbinpkgs=0, getbinpkgsonly=0):
 		"populates the binarytree"
 		if (not os.path.isdir(self.pkgdir) and not getbinpkgs):
-			return 0
-		if (not os.path.isdir(self.pkgdir+"/All") and not getbinpkgs):
 			return 0
 
 		categories = set(self.settings.categories)
@@ -500,8 +502,11 @@ class binarytree(object):
 		if mypath:
 			return os.path.join(self.pkgdir, mypath)
 		mycat, mypkg = catsplit(mycpv)
-		mypath = os.path.join("All", mypkg + ".tbz2")
-		if mypath in self._pkg_paths.values():
+		if self._all_directory:
+			mypath = os.path.join("All", mypkg + ".tbz2")
+			if mypath in self._pkg_paths.values():
+				mypath = os.path.join(mycat, mypkg + ".tbz2")
+		else:
 			mypath = os.path.join(mycat, mypkg + ".tbz2")
 		self._pkg_paths[mycpv] = mypath # cache for future lookups
 		return os.path.join(self.pkgdir, mypath)
