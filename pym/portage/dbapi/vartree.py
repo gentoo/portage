@@ -1211,7 +1211,7 @@ class dblink(object):
 						writemsg_stdout("--- !md5   %s %s\n" % ("obj", obj))
 						continue
 					try:
-						if statobj.st_mode & S_ISUID or statobj.st_mode & S_ISGID:
+						if statobj.st_mode & (stat.S_ISUID | stat.S_ISGID):
 							# Always blind chmod 0 before unlinking to avoid race conditions.
 							os.chmod(obj, 0000)
 							if statobj.st_nlink > 1:
