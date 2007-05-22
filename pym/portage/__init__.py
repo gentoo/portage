@@ -2687,6 +2687,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 							con = selinux.getcontext()
 							con = con.replace(mysettings["PORTAGE_T"], mysettings["PORTAGE_FETCH_T"])
 							selinux.setexec(con)
+							# bash is an allowed entrypoint, while most binaries are not
+							myfetch = ["bash", "-c", "exec \"$@\"", myfetch[0]] + myfetch
 
 						myret = portage.process.spawn(myfetch,
 							env=mysettings.environ(), **spawn_keywords)
