@@ -456,17 +456,11 @@ class binarytree(object):
 					update_pkgindex = True
 					d = metadata.get(mycpv, {})
 					if d:
-						# Reuse metadata such as MD5, since we won't calculate
-						# MD5 here due to the performance hit.
-						mtime = d.get("MTIME")
-						if mtime:
-							# genpgkindex really should include the mtime and
-							# then this mtime check should be forced.
-							try:
-								if long(mtime) != long(s.st_mtime):
-									d.clear()
-							except ValueError:
+						try:
+							if long(d["MTIME"]) != long(s.st_mtime):
 								d.clear()
+						except (KeyError, ValueError):
+							d.clear()
 					if d:
 						try:
 							if long(d["SIZE"]) != long(s.st_size):
