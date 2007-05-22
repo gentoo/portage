@@ -565,9 +565,9 @@ src_unpack() {
 }
 
 src_compile() {
-	if [ -x ./configure ] ; then
-		econf
-	elif [ "${EAPI:-0}" != 0 ] && [ -x "${ECONF_SOURCE:-.}/configure" ] ; then
+	if [ "${EAPI:-0}" == 0 ] ; then
+		[ -x ./configure ] && econf
+	elif [ -x "${ECONF_SOURCE:-.}/configure" ] ; then
 		econf
 	fi
 	if [ -f Makefile ] || [ -f GNUmakefile ] || [ -f makefile ]; then
