@@ -441,19 +441,6 @@ class portdbapi(dbapi):
 			return False
 		return True
 
-	def getsize(self, mypkg, useflags=None, debug=0):
-		# returns the total size of remaining downloads
-		#
-		# we use getfetchsizes() now, so this function would be obsoleted
-		#
-		filesdict = self.getfetchsizes(mypkg, useflags=useflags, debug=debug)
-		if filesdict is None:
-			return "[empty/missing/bad digest]"
-		mysize=0
-		for myfile in filesdict.keys():
-			mysum += filesdict[myfile]
-		return mysum
-
 	def cpv_exists(self, mykey):
 		"Tells us whether an actual ebuild exists on disk (no masking)"
 		cps2 = mykey.split("/")
