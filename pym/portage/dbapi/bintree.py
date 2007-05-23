@@ -115,6 +115,7 @@ class binarytree(object):
 			self._pkg_paths = {}
 			self._all_directory = os.path.isdir(
 				os.path.join(self.pkgdir, "All"))
+			self._pkgindex_file = os.path.join(self.pkgdir, "Packages")
 			self._pkgindex = None
 			self._pkgindex_keys = set(["CPV", "SLOT", "MTIME", "SIZE"])
 
@@ -365,7 +366,7 @@ class binarytree(object):
 		pkgindex_lock = None
 		try:
 			if not self._all_directory and os.access(self.pkgdir, os.W_OK):
-				pkgindex_lock = lockfile(os.path.join(self.pkgdir, "Packages"),
+				pkgindex_lock = lockfile(self._pkgindex_file,
 					wantnewlockfile=1)
 			self._populate(getbinpkgs, getbinpkgsonly)
 		finally:
@@ -385,12 +386,11 @@ class binarytree(object):
 				dirs.remove("All")
 			dirs.sort()
 			dirs.insert(0, "All")
-			pkgfile = os.path.join(self.pkgdir, "Packages")
 			self._pkgindex = portage.getbinpkg.PackageIndex()
 			header = self._pkgindex.header
 			metadata = self._pkgindex.packages
 			try:
-				f = open(pkgfile)
+				f = open(self._pkgindex_file)
 			except EnvironmentError:
 				pass
 			else:
@@ -502,7 +502,7 @@ class binarytree(object):
 				for cpv in stale:
 					del metadata[cpv]
 				from portage.util import atomic_ofstream
-				f = atomic_ofstream(pkgfile)
+				f = atomic_ofstream(self._pkgindex_file)
 				try:
 					self._pkgindex.write(f)
 				finally:
