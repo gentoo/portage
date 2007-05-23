@@ -2372,6 +2372,7 @@ class depgraph:
 		mygraph = self._parent_child_digraph
 		i = 0
 		depth = 0
+		shown_edges = set()
 		for x in mylist:
 			if "blocks" == x[0]:
 				display_list.append((x, 0, True))
@@ -2386,6 +2387,7 @@ class depgraph:
 					tree_nodes = tree_nodes[:depth]
 					tree_nodes.append(graph_key)
 					display_list.append((x, depth, True))
+					shown_edges.add((graph_key, tree_nodes[depth-1]))
 				else:
 					traversed_nodes = set() # prevent endless circles
 					traversed_nodes.add(graph_key)
@@ -2398,15 +2400,22 @@ class depgraph:
 							for node in parent_nodes:
 								if node not in traversed_nodes and \
 									node not in child_nodes:
+									edge = (current_node, node)
+									if edge in shown_edges:
+										continue
 									selected_parent = node
 									break
 							if not selected_parent:
 								# A direct cycle is unavoidable.
 								for node in parent_nodes:
 									if node not in traversed_nodes:
+										edge = (current_node, node)
+										if edge in shown_edges:
+											continue
 										selected_parent = node
 										break
 							if selected_parent:
+								shown_edges.add((current_node, selected_parent))
 								traversed_nodes.add(selected_parent)
 								add_parents(selected_parent, False)
 						display_list.append((list(current_node),
@@ -3731,20 +3740,22 @@ def display_news_notification(settings):
 	UNREAD_PATH = os.path.join(target_root, NEWS_LIB_PATH, "news")
 	porttree = portdbapi(porttree_root=settings["PORTDIR"], mysettings=settings)
 	newsReaderDisplay = False
-	
-	print
+
 	for repo in porttree.getRepositories():
 		unreadItems = checkUpdatedNewsItems(target_root, NEWS_PATH, UNREAD_PATH, repo)
 		if unreadItems:
+			if not newsReaderDisplay:
+				newsReaderDisplay = True
+				print
 			print colorize("WARN", " * IMPORTANT:"),
 			print "%s news items need reading for repository '%s'." % (unreadItems, repo)
-			newsReaderDisplay = True
+			
 	
 	if newsReaderDisplay:
 		print colorize("WARN", " *"),
 		print "Use " + colorize("GOOD", "eselect news") + " to read news items."
+		print
 
-	print
 def post_emerge(settings, mtimedb, retval):
 	"""
 	Misc. things to run at the end of a merge session.

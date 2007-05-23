@@ -16,7 +16,7 @@ ignored_dbentries = ("CONTENTS", "environment.bz2")
 def update_dbentry(update_cmd, mycontent):
 	if update_cmd[0] == "move":
 		old_value, new_value = update_cmd[1], update_cmd[2]
-		if mycontent.count(old_value):
+		if old_value in mycontent:
 			old_value = re.escape(old_value);
 			mycontent = re.sub(old_value+"(:|$|\\s)", new_value+"\\1", mycontent)
 			def myreplace(matchobj):
@@ -28,7 +28,7 @@ def update_dbentry(update_cmd, mycontent):
 	elif update_cmd[0] == "slotmove" and get_operator(update_cmd[1]) is None:
 		pkg, origslot, newslot = update_cmd[1:]
 		old_value = "%s:%s" % (pkg, origslot)
-		if mycontent.count(old_value):
+		if old_value in mycontent:
 			old_value = re.escape(old_value)
 			new_value = "%s:%s" % (pkg, newslot)
 			mycontent = re.sub(old_value+"($|\\s)", new_value+"\\1", mycontent)

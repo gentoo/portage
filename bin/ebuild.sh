@@ -522,6 +522,7 @@ econf() {
 
 einstall() {
 	# CONF_PREFIX is only set if they didn't pass in libdir above.
+	local LOCAL_EXTRA_EINSTALL="${EXTRA_EINSTALL}"
 	LIBDIR_VAR="LIBDIR_${ABI}"
 	if [ -n "${ABI}" -a -n "${!LIBDIR_VAR}" ]; then
 		CONF_LIBDIR="${!LIBDIR_VAR}"
@@ -530,7 +531,7 @@ einstall() {
 	if [ -n "${CONF_LIBDIR}" ] && [ "${CONF_PREFIX:-unset}" != "unset" ]; then
 		EI_DESTLIBDIR="${D}/${CONF_PREFIX}/${CONF_LIBDIR}"
 		EI_DESTLIBDIR="$(strip_duplicate_slashes ${EI_DESTLIBDIR})"
-		EXTRA_EINSTALL="libdir=${EI_DESTLIBDIR} ${EXTRA_EINSTALL}"
+		LOCAL_EXTRA_EINSTALL="libdir=${EI_DESTLIBDIR} ${LOCAL_EXTRA_EINSTALL}"
 		unset EI_DESTLIBDIR
 	fi
 
@@ -542,7 +543,7 @@ einstall() {
 				localstatedir="${ED}/var/lib" \
 				mandir="${ED}/usr/share/man" \
 				sysconfdir="${ED}/etc" \
-				${EXTRA_EINSTALL} \
+				${LOCAL_EXTRA_EINSTALL} \
 				"$@" install
 		fi
 		make prefix="${ED}/usr" \
@@ -551,7 +552,7 @@ einstall() {
 			localstatedir="${ED}/var/lib" \
 			mandir="${ED}/usr/share/man" \
 			sysconfdir="${ED}/etc" \
-			${EXTRA_EINSTALL} \
+			${LOCAL_EXTRA_EINSTALL} \
 			"$@" install || die "einstall failed"
 	else
 		die "no Makefile found"
@@ -577,7 +578,7 @@ src_unpack() {
 }
 
 src_compile() {
-	if [ -x ./configure ]; then
+	if [ -x "${ECONF_SOURCE:-.}/configure" ] ; then
 		econf
 	fi
 	if [ -f Makefile ] || [ -f GNUmakefile ] || [ -f makefile ]; then
