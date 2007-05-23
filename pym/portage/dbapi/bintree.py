@@ -480,7 +480,11 @@ class binarytree(object):
 						self.dbapi._aux_cache[mycpv] = aux_cache
 
 			self._pkg_paths = pkg_paths
-			if update_pkgindex and os.access(self.pkgdir, os.W_OK):
+			# Do not bother to write the Packages index if $PKGDIR/All/ exists
+			# since it will provide no benefit due to the need to read CATEGORY
+			# from xpak.
+			if update_pkgindex and not self._all_directory and \
+				os.access(self.pkgdir, os.W_OK):
 				cpv_all = self._pkg_paths.keys()
 				stale = set(metadata).difference(cpv_all)
 				for cpv in stale:
@@ -543,7 +547,49 @@ class binarytree(object):
 		self.populated=1
 
 	def inject(self, cpv):
-		return self.dbapi.cpv_inject(cpv)
+		"""Add a freshly built package to the database.  This updates
+		$PKGDIR/Packages with the new package metadata (including MD5)."""
+		if not self.populated and self._all_directory:
+			# There's nothing to update in this case, since the Packages
+			# index is not created when $PKGDIR/All/ exists.
+			return
+		if not self.populated:
+			self.populate()
+		full_path = self.getname(cpv)
+		try:
+			s = os.stat(full_path)
+		except OSError, e:
+			if e.errno != errno.ENOENT:
+				raise
+			del e
+			writemsg("!!! Binary package does not exist: '%s'\n" % full_path,
+				noiselevel=-1)
+			return
+		mytbz2 = portage.xpak.tbz2(full_path)
+		slot = mytbz2.getfile("SLOT")
+		if slot is None:
+			writemsg("!!! Invalid binary package: '%s'\n" % full_path,
+				noiselevel=-1)
+			return
+		slot = slot.strip()
+		from portage.checksum import perform_md5
+		md5 = perform_md5(full_path)
+		self.dbapi.cpv_inject(cpv)
+		self.dbapi._aux_cache.pop(cpv, None)
+		self._pkgindex.packages.pop(cpv, None)
+		d = {}
+		d["CPV"] = cpv
+		d["SLOT"] = slot
+		d["MTIME"] = str(long(s.st_mtime))
+		d["SIZE"] = str(s.st_size)
+		d["MD5"] = str(md5)
+		self._pkgindex.packages[cpv] = d
+		from portage.util import atomic_ofstream
+		f = atomic_ofstream(os.path.join(self.pkgdir, "Packages"))
+		try:
+			self._pkgindex.write(f)
+		finally:
+			f.close()
 
 	def exists_specific(self, cpv):
 		if not self.populated:

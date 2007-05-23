@@ -3163,8 +3163,7 @@ class MergeTask(object):
 						if retval != os.EX_OK:
 							return retval
 						bintree = self.trees[myroot]["bintree"]
-						if bintree.populated:
-							bintree.inject(pkg_key)
+						bintree.inject(pkg_key)
 						if "--buildpkgonly" not in self.myopts:
 							msg = " === (%s of %s) Merging (%s::%s)" % \
 								(mergecount, len(mymergelist), pkg_key, y)
