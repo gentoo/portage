@@ -9,7 +9,7 @@ from portage.elog import elog_process
 from portage.exception import InvalidPackageName, InvalidAtom, \
 	UnsupportedAPIException, FileNotFound
 from portage.locks import lockdir, unlockdir
-from portage.output import red, green
+from portage.output import bold, red, green
 from portage.update import fixdbentries
 from portage.util import apply_secpass_permissions, ConfigProtect, ensure_dirs, \
 	writemsg, writemsg_stdout, write_atomic, atomic_ofstream, writedict, \
@@ -1215,7 +1215,7 @@ class dblink(object):
 							# Always blind chmod 0 before unlinking to avoid race conditions.
 							os.chmod(obj, 0000)
 							if statobj.st_nlink > 1:
-								portage.writemsg("setXid: "+str(st.st_nlink-1)+ \
+								writemsg("setXid: "+str(statobj.st_nlink-1)+ \
 									" hardlinks to '%s'\n" % obj)
 						os.unlink(obj)
 					except (OSError, IOError), e:

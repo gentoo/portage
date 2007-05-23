@@ -115,6 +115,7 @@ class binarytree(object):
 			self._pkg_paths = {}
 			self._all_directory = os.path.isdir(
 				os.path.join(self.pkgdir, "All"))
+			self._pkgindex_file = os.path.join(self.pkgdir, "Packages")
 			self._pkgindex_keys = set(["CPV", "SLOT", "MTIME", "SIZE"])
 
 	def move_ent(self, mylist):
@@ -360,6 +361,18 @@ class binarytree(object):
 
 	def populate(self, getbinpkgs=0, getbinpkgsonly=0):
 		"populates the binarytree"
+		from portage.locks import lockfile, unlockfile
+		pkgindex_lock = None
+		try:
+			if not self._all_directory and os.access(self.pkgdir, os.W_OK):
+				pkgindex_lock = lockfile(self._pkgindex_file,
+					wantnewlockfile=1)
+			self._populate(getbinpkgs, getbinpkgsonly)
+		finally:
+			if pkgindex_lock:
+				unlockfile(pkgindex_lock)
+
+	def _populate(self, getbinpkgs, getbinpkgsonly):
 		if (not os.path.isdir(self.pkgdir) and not getbinpkgs):
 			return 0
 
@@ -372,25 +385,16 @@ class binarytree(object):
 				dirs.remove("All")
 			dirs.sort()
 			dirs.insert(0, "All")
-			pkgfile = os.path.join(self.pkgdir, "Packages")
-			metadata = {}
-			header = {}
+			pkgindex = portage.getbinpkg.PackageIndex()
+			header = pkgindex.header
+			metadata = pkgindex.packages
 			try:
-				f = open(pkgfile)
+				f = open(self._pkgindex_file)
 			except EnvironmentError:
 				pass
 			else:
 				try:
-					header = portage.getbinpkg.readpkgindex(f)
-					while True:
-						d = portage.getbinpkg.readpkgindex(f)
-						if not d:
-							break
-						mycpv = d.get("CPV")
-						if not mycpv:
-							continue
-						d.setdefault("SLOT", "0")
-						metadata[mycpv] = d
+					pkgindex.read(f)
 				finally:
 					f.close()
 					del f
@@ -463,17 +467,11 @@ class binarytree(object):
 					update_pkgindex = True
 					d = metadata.get(mycpv, {})
 					if d:
-						# Reuse metadata such as MD5, since we won't calculate
-						# MD5 here due to the performance hit.
-						mtime = d.get("MTIME")
-						if mtime:
-							# genpgkindex really should include the mtime and
-							# then this mtime check should be forced.
-							try:
-								if long(mtime) != long(s.st_mtime):
-									d.clear()
-							except ValueError:
+						try:
+							if long(d["MTIME"]) != long(s.st_mtime):
 								d.clear()
+						except (KeyError, ValueError):
+							d.clear()
 					if d:
 						try:
 							if long(d["SIZE"]) != long(s.st_size):
@@ -493,29 +491,24 @@ class binarytree(object):
 						self.dbapi._aux_cache[mycpv] = aux_cache
 
 			self._pkg_paths = pkg_paths
-			if update_pkgindex and os.access(self.pkgdir, os.W_OK):
+			# Do not bother to write the Packages index if $PKGDIR/All/ exists
+			# since it will provide no benefit due to the need to read CATEGORY
+			# from xpak.
+			if update_pkgindex and not self._all_directory and \
+				os.access(self.pkgdir, os.W_OK):
 				cpv_all = self._pkg_paths.keys()
 				stale = set(metadata).difference(cpv_all)
 				for cpv in stale:
 					del metadata[cpv]
-				cpv_all.sort()
-				import time
 				from portage.util import atomic_ofstream
-				header["TIMESTAMP"] = str(long(time.time()))
-				header["PACKAGES"] = str(len(cpv_all))
-				f = atomic_ofstream(pkgfile)
+				f = atomic_ofstream(self._pkgindex_file)
 				try:
-					portage.getbinpkg.writepkgindex(f, header.iteritems())
-					for cpv in cpv_all:
-						d = metadata[cpv]
-						if d["SLOT"] == "0":
-							del d["SLOT"]
-						portage.getbinpkg.writepkgindex(f, d.iteritems())
+					pkgindex.write(f)
 				finally:
 					f.close()
 
 		if getbinpkgs and not self.settings["PORTAGE_BINHOST"]:
-			writemsg(red("!!! PORTAGE_BINHOST unset, but use is requested.\n"),
+			writemsg("!!! PORTAGE_BINHOST unset, but use is requested.\n",
 				noiselevel=-1)
 
 		if getbinpkgs and \
@@ -565,7 +558,73 @@ class binarytree(object):
 		self.populated=1
 
 	def inject(self, cpv):
-		return self.dbapi.cpv_inject(cpv)
+		"""Add a freshly built package to the database.  This updates
+		$PKGDIR/Packages with the new package metadata (including MD5)."""
+		if not self.populated and self._all_directory:
+			# There's nothing to update in this case, since the Packages
+			# index is not created when $PKGDIR/All/ exists.
+			return
+		if not self.populated:
+			self.populate()
+		full_path = self.getname(cpv)
+		try:
+			s = os.stat(full_path)
+		except OSError, e:
+			if e.errno != errno.ENOENT:
+				raise
+			del e
+			writemsg("!!! Binary package does not exist: '%s'\n" % full_path,
+				noiselevel=-1)
+			return
+		mytbz2 = portage.xpak.tbz2(full_path)
+		slot = mytbz2.getfile("SLOT")
+		if slot is None:
+			writemsg("!!! Invalid binary package: '%s'\n" % full_path,
+				noiselevel=-1)
+			return
+		slot = slot.strip()
+		from portage.checksum import perform_md5
+		md5 = perform_md5(full_path)
+		self.dbapi.cpv_inject(cpv)
+		self.dbapi._aux_cache.pop(cpv, None)
+
+		if self._all_directory:
+			return
+
+		# Reread the Packages index (in case it's been changed by another
+		# process) and then updated it, all while holding a lock.
+		from portage.locks import lockfile, unlockfile
+		pkgindex_lock = None
+		try:
+			pkgindex_lock = lockfile(self._pkgindex_file,
+				wantnewlockfile=1)
+			pkgindex = portage.getbinpkg.PackageIndex()
+			try:
+				f = open(self._pkgindex_file)
+			except EnvironmentError:
+				pass
+			else:
+				try:
+					pkgindex.read(f)
+				finally:
+					f.close()
+					del f
+			d = {}
+			d["CPV"] = cpv
+			d["SLOT"] = slot
+			d["MTIME"] = str(long(s.st_mtime))
+			d["SIZE"] = str(s.st_size)
+			d["MD5"] = str(md5)
+			pkgindex.packages[cpv] = d
+			from portage.util import atomic_ofstream
+			f = atomic_ofstream(os.path.join(self.pkgdir, "Packages"))
+			try:
+				pkgindex.write(f)
+			finally:
+				f.close()
+		finally:
+			if pkgindex_lock:
+				unlockfile(pkgindex_lock)
 
 	def exists_specific(self, cpv):
 		if not self.populated:
