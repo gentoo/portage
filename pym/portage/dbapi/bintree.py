@@ -116,7 +116,6 @@ class binarytree(object):
 			self._all_directory = os.path.isdir(
 				os.path.join(self.pkgdir, "All"))
 			self._pkgindex_file = os.path.join(self.pkgdir, "Packages")
-			self._pkgindex = None
 			self._pkgindex_keys = set(["CPV", "SLOT", "MTIME", "SIZE"])
 
 	def move_ent(self, mylist):
@@ -386,16 +385,16 @@ class binarytree(object):
 				dirs.remove("All")
 			dirs.sort()
 			dirs.insert(0, "All")
-			self._pkgindex = portage.getbinpkg.PackageIndex()
-			header = self._pkgindex.header
-			metadata = self._pkgindex.packages
+			pkgindex = portage.getbinpkg.PackageIndex()
+			header = pkgindex.header
+			metadata = pkgindex.packages
 			try:
 				f = open(self._pkgindex_file)
 			except EnvironmentError:
 				pass
 			else:
 				try:
-					self._pkgindex.read(f)
+					pkgindex.read(f)
 				finally:
 					f.close()
 					del f
@@ -504,7 +503,7 @@ class binarytree(object):
 				from portage.util import atomic_ofstream
 				f = atomic_ofstream(self._pkgindex_file)
 				try:
-					self._pkgindex.write(f)
+					pkgindex.write(f)
 				finally:
 					f.close()
 
@@ -599,14 +598,14 @@ class binarytree(object):
 		try:
 			pkgindex_lock = lockfile(self._pkgindex_file,
 				wantnewlockfile=1)
-			self._pkgindex = portage.getbinpkg.PackageIndex()
+			pkgindex = portage.getbinpkg.PackageIndex()
 			try:
 				f = open(self._pkgindex_file)
 			except EnvironmentError:
 				pass
 			else:
 				try:
-					self._pkgindex.read(f)
+					pkgindex.read(f)
 				finally:
 					f.close()
 					del f
@@ -616,11 +615,11 @@ class binarytree(object):
 			d["MTIME"] = str(long(s.st_mtime))
 			d["SIZE"] = str(s.st_size)
 			d["MD5"] = str(md5)
-			self._pkgindex.packages[cpv] = d
+			pkgindex.packages[cpv] = d
 			from portage.util import atomic_ofstream
 			f = atomic_ofstream(os.path.join(self.pkgdir, "Packages"))
 			try:
-				self._pkgindex.write(f)
+				pkgindex.write(f)
 			finally:
 				f.close()
 		finally:
