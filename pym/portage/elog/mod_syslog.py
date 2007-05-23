@@ -6,7 +6,7 @@
 import syslog
 from portage.const import EBUILD_PHASES
 
-def process(mysettings, cpv, logentries, fulltext):
+def process(mysettings, key, logentries, fulltext):
 	syslog.openlog("portage", syslog.LOG_ERR | syslog.LOG_WARNING | syslog.LOG_INFO | syslog.LOG_NOTICE, syslog.LOG_LOCAL5)
 	for phase in EBUILD_PHASES:
 		if not phase in logentries:
@@ -18,5 +18,5 @@ def process(mysettings, cpv, logentries, fulltext):
 				"LOG": syslog.LOG_NOTICE,
 				"QA": syslog.LOG_WARNING}
 			msgtext = "".join(msgcontent)
-			syslog.syslog(pri[msgtype], "%s: %s: %s" % (cpv, phase, msgtext))
+			syslog.syslog(pri[msgtype], "%s: %s: %s" % (key, phase, msgtext))
 	syslog.closelog()

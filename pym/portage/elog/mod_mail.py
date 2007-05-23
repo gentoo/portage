@@ -5,7 +5,7 @@
 
 import portage.mail, socket
 
-def process(mysettings, cpv, logentries, fulltext):
+def process(mysettings, key, logentries, fulltext):
 	if mysettings.has_key("PORTAGE_ELOG_MAILURI"):
 		myrecipient = mysettings["PORTAGE_ELOG_MAILURI"].split()[0]
 	else:
@@ -13,7 +13,7 @@ def process(mysettings, cpv, logentries, fulltext):
 	
 	myfrom = mysettings["PORTAGE_ELOG_MAILFROM"]
 	mysubject = mysettings["PORTAGE_ELOG_MAILSUBJECT"]
-	mysubject = mysubject.replace("${PACKAGE}", cpv)
+	mysubject = mysubject.replace("${PACKAGE}", key)
 	mysubject = mysubject.replace("${HOST}", socket.getfqdn())
 
 	mymessage = portage.mail.create_message(myfrom, myrecipient, mysubject, fulltext)

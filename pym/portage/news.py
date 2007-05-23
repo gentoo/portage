@@ -26,24 +26,24 @@ class NewsManager(object):
 
 	TIMESTAMP_FILE = "news-timestamp"
 
-	def __init__( self, root, NEWS_PATH, UNREAD_PATH, LANGUAGE_ID='en' ):
+	def __init__(self, root, NEWS_PATH, UNREAD_PATH, LANGUAGE_ID='en'):
 		self.NEWS_PATH = NEWS_PATH
 		self.UNREAD_PATH = UNREAD_PATH
-		self.TIMESTAMP_PATH = os.path.join( root, NEWS_LIB_PATH, NewsManager.TIMESTAMP_FILE )
+		self.TIMESTAMP_PATH = os.path.join(root, NEWS_LIB_PATH, NewsManager.TIMESTAMP_FILE)
 		self.target_root = root
 		self.LANGUAGE_ID = LANGUAGE_ID
-		self.config = config( config_root = os.environ.get("PORTAGE_CONFIGROOT", "/"),
+		self.config = config(config_root = os.environ.get("PORTAGE_CONFIGROOT", "/"),
 				target_root = root, config_incrementals = INCREMENTALS)
-		self.vdb = vardbapi( settings = self.config, root = root,
-			vartree = vartree( root = root, settings = self.config ) )
-		self.portdb = portdbapi( porttree_root = self.config["PORTDIR"], mysettings = self.config )
+		self.vdb = vardbapi(settings = self.config, root = root,
+			vartree = vartree(root = root, settings = self.config))
+		self.portdb = portdbapi(porttree_root = self.config["PORTDIR"], mysettings = self.config)
 
 		# Ensure that the unread path exists and is writable.
 		dirmode  = 02070
 		modemask =    02
 		ensure_dirs(self.UNREAD_PATH, mode=dirmode, mask=modemask, gid=portage_gid)
 
-	def updateItems( self, repoid ):
+	def updateItems(self, repoid):
 		"""
 		Figure out which news items from NEWS_PATH are both unread and relevant to
 		the user (according to the GLEP 42 standards of relevancy).  Then add these
@@ -57,51 +57,50 @@ class NewsManager(object):
 		timestamp_file = self.TIMESTAMP_PATH + repoid
 		if os.path.exists(timestamp_file):
 			# Make sure the timestamp has correct permissions.
-			apply_permissions( filename=timestamp_file, 
-				uid=int(self.config["PORTAGE_INST_UID"]), gid=portage_gid, mode=664 )
+			apply_permissions(filename=timestamp_file, 
+				uid=int(self.config["PORTAGE_INST_UID"]), gid=portage_gid, mode=0664)
 			timestamp = os.stat(timestamp_file).st_mtime
 		else:
 			timestamp = 0
 
-		path = os.path.join( self.portdb.getRepositoryPath( repoid ), self.NEWS_PATH )
+		path = os.path.join(self.portdb.getRepositoryPath(repoid), self.NEWS_PATH)
 		newsdir_lock = None
 		try:
-			newsdir_lock = lockdir( self.portdb.getRepositoryPath(repoid) )
+			newsdir_lock = lockdir(self.portdb.getRepositoryPath(repoid))
 			# Skip reading news for repoid if the news dir does not exist.  Requested by
 			# NightMorph :)
-			if not os.path.exists( path ):
+			if not os.path.exists(path):
 				return None
-			news = os.listdir( path )
+			news = os.listdir(path)
 			updates = []
-			for item in news:
+			for itemid in news:
 				try:
-					file = os.path.join( path, item, item + "." + self.LANGUAGE_ID + ".txt")
-					tmp = NewsItem( file , timestamp )
-				except TypeError:
+					filename = os.path.join(path, itemid, itemid + "." + self.LANGUAGE_ID + ".txt")
+					item = NewsItem(filename, itemid, timestamp)
+				except (TypeError, ValueError), e:
 					continue
-
-				if tmp.isRelevant( profile=os.readlink(PROFILE_PATH), config=config, vardb=self.vdb):
-					updates.append( tmp )
+				if item.isRelevant(profile=os.readlink(PROFILE_PATH), config=config, vardb=self.vdb):
+					updates.append(item)
 		finally:
 			if newsdir_lock:
 				unlockdir(newsdir_lock)
 		
 		del path
 		
-		path = os.path.join( self.UNREAD_PATH, "news-" + repoid + ".unread" )
+		path = os.path.join(self.UNREAD_PATH, "news-"+repoid+".unread")
 		try:
-			unread_lock = lockfile( path )
-			if not os.path.exists( path ):
+			unread_lock = lockfile(path)
+			if not os.path.exists(path):
 				#create the file if it does not exist
-				open( path, "w" )
+				open(path, "w")
 			# Ensure correct perms on the unread file.
 			apply_permissions( filename=path,
-				uid=int(self.config["PORTAGE_INST_UID"]), gid=portage_gid, mode=664 )
+				uid=int(self.config["PORTAGE_INST_UID"]), gid=portage_gid, mode=0664)
 			# Make sure we have the correct permissions when created
-			unread_file = open( path, "a" )
+			unread_file = open(path, "a")
 
 			for item in updates:
-				unread_file.write( item.path + "\n" )
+				unread_file.write(item.name + "\n")
 			unread_file.close()
 		finally:
 			unlockfile(unread_lock)
@@ -110,7 +109,7 @@ class NewsManager(object):
 		f = open(timestamp_file, "w")
 		f.close()
 
-	def getUnreadItems( self, repoid, update=False ):
+	def getUnreadItems(self, repoid, update=False):
 		"""
 		Determine if there are unread relevant items in news.repoid.unread.
 		If there are unread items return their number.
@@ -119,18 +118,18 @@ class NewsManager(object):
 		"""
 		
 		if update:
-			self.updateItems( repoid )
+			self.updateItems(repoid)
 		
-		unreadfile = os.path.join( self.UNREAD_PATH, "news-"+ repoid +".unread" )
+		unreadfile = os.path.join(self.UNREAD_PATH, "news-"+repoid+".unread")
 		try:
 			try:
 				unread_lock = lockfile(unreadfile)
 				# Set correct permissions on the news-repoid.unread file
-				apply_permissions( filename=unreadfile,
-					uid=int(self.config["PORTAGE_INST_UID"]), gid=portage_gid, mode=0664 )
+				apply_permissions(filename=unreadfile,
+					uid=int(self.config["PORTAGE_INST_UID"]), gid=portage_gid, mode=0664)
 					
-				if os.path.exists( unreadfile ):
-					unread = open( unreadfile ).readlines()
+				if os.path.exists(unreadfile):
+					unread = open(unreadfile).readlines()
 					if len(unread):
 						return len(unread)
 			except FileNotFound:
@@ -155,19 +154,20 @@ class NewsItem(object):
 
 	"""
 	
-	def __init__( self, path, cache_mtime = 0 ):
+	def __init__(self, path, name, cache_mtime = 0):
 		""" 
 		For a given news item we only want if it path is a file and it's 
 		mtime is newer than the cache'd timestamp.
 		"""
-		if not os.path.isfile( path ):
-			raise TypeError
-		if not os.stat( path ).st_mtime > cache_mtime:
-			raise TypeError
+		if not os.path.isfile(path):
+			raise TypeError("%s is no regular file" % path)
+		if not os.stat(path).st_mtime > cache_mtime:
+			raise ValueError("%s / %s timestamp mismatch" % (str(os.stat(path).st_mtime), str(cache_mtime)))
 		self.path = path
+		self.name = name
 		self._parsed = False
 
-	def isRelevant( self, vardb, config, profile ):
+	def isRelevant(self, vardb, config, profile):
 		"""
 		This function takes a dict of keyword arguments; one should pass in any
 		objects need to do to lookups (like what keywords we are on, what profile,
@@ -184,12 +184,12 @@ class NewsItem(object):
 			   'profile' : profile }
 
 		for restriction in self.restrictions:
-			if restriction.checkRestriction( **kwargs ):
+			if restriction.checkRestriction(**kwargs):
 				return True
 			
 		return False # No restrictions were met; thus we aren't relevant :(
 
-	def parse( self ):
+	def parse(self):
 		lines = open(self.path).readlines()
 		self.restrictions = []
 		for line in lines:
@@ -203,11 +203,11 @@ class NewsItem(object):
 			for regex, restriction in restricts.iteritems():
 				match = regex.match(line)
 				if match:
-					self.restrictions.append( restriction( match.groups()[0].strip() ) )
+					self.restrictions.append(restriction(match.groups()[0].strip()))
 					continue
 		self._parsed = True
 
-	def __getattr__( self, attr ):
+	def __getattr__(self, attr):
 		if not self._parsed:
 			self.parse()
 		return self.__dict__[attr]
@@ -221,7 +221,7 @@ class DisplayRestriction(object):
 	are met, then it is displayed
 	"""
 
-	def checkRestriction( self, **kwargs ):
+	def checkRestriction(self, **kwargs):
 		raise NotImplementedError("Derived class should over-ride this method")
 
 class DisplayProfileRestriction(DisplayRestriction):
@@ -230,10 +230,10 @@ class DisplayProfileRestriction(DisplayRestriction):
 	if the user is running a specific profile.
 	"""
 
-	def __init__( self, profile ):
+	def __init__(self, profile):
 		self.profile = profile
 
-	def checkRestriction( self, **kwargs ):
+	def checkRestriction(self, **kwargs):
 		if self.profile == kwargs['profile']:
 			return True
 		return False
@@ -244,10 +244,10 @@ class DisplayKeywordRestriction(DisplayRestriction):
 	if the user is running a specific keyword.
 	"""
 
-	def __init__( self, keyword ):
+	def __init__(self, keyword):
 		self.keyword = keyword
 
-	def checkRestriction( self, **kwargs ):
+	def checkRestriction(self, **kwargs):
 		if kwargs['config']["ARCH"] == self.keyword:
 			return True
 		return False
@@ -258,11 +258,11 @@ class DisplayInstalledRestriction(DisplayRestriction):
 	if the user has that item installed.
 	"""
 	
-	def __init__( self, cpv ):
+	def __init__(self, cpv):
 		self.cpv = cpv
 
-	def checkRestriction( self, **kwargs ):
+	def checkRestriction(self, **kwargs):
 		vdb = kwargs['vardb']
-		if vdb.match( self.cpv ):
+		if vdb.match(self.cpv):
 			return True
 		return False

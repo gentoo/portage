@@ -31,7 +31,7 @@ except ImportError:
 	import portage
 del os.environ["PORTAGE_LEGACY_GLOBALS"]
 from portage import digraph, portdbapi
-from portage.const import NEWS_LIB_PATH
+from portage.const import NEWS_LIB_PATH, CACHE_PATH
 
 import emerge.help
 import portage.xpak, commands, errno, re, socket, time, types
@@ -3725,6 +3725,26 @@ def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 				print " "+green("*")+" Processed",icount,"info files."
 
 
+def display_news_notification(settings):
+	target_root = settings["ROOT"]
+	NEWS_PATH = os.path.join("metadata", "news")
+	UNREAD_PATH = os.path.join(target_root, NEWS_LIB_PATH, "news")
+	porttree = portdbapi(porttree_root=settings["PORTDIR"], mysettings=settings)
+	newsReaderDisplay = False
+	
+	print
+	for repo in porttree.getRepositories():
+		unreadItems = checkUpdatedNewsItems(target_root, NEWS_PATH, UNREAD_PATH, repo)
+		if unreadItems:
+			print colorize("WARN", " * IMPORTANT:"),
+			print "%s news items need reading for repository '%s'." % (unreadItems, repo)
+			newsReaderDisplay = True
+	
+	if newsReaderDisplay:
+		print colorize("WARN", " *"),
+		print "Use " + colorize("GOOD", "eselect news") + " to read news items."
+
+	print
 def post_emerge(settings, mtimedb, retval):
 	"""
 	Misc. things to run at the end of a merge session.
@@ -3733,6 +3753,7 @@ def post_emerge(settings, mtimedb, retval):
 	Update Config Files
 	Update News Items
 	Commit mtimeDB
+	Display preserved libs warnings
 	Exit Emerge
 	
 	@param settings: Configuration settings (typically portage.settings)
@@ -3767,21 +3788,19 @@ def post_emerge(settings, mtimedb, retval):
 		chk_updated_info_files(normalize_path(target_root + EPREFIX), infodirs, info_mtimes, retval)
 	chk_updated_cfg_files(normalize_path(target_root + EPREFIX), config_protect)
 	
-	NEWS_PATH = os.path.join( "metadata", "news" )
-	UNREAD_PATH = os.path.join( target_root, NEWS_LIB_PATH, 'news')
-	porttree = portdbapi( porttree_root = settings["PORTDIR"], mysettings = settings )
-	newsReaderDisplay = False
+	display_news_notification(settings)
 	
-	for repo in porttree.getRepositories():
-		unreadItems = checkUpdatedNewsItems(target_root, NEWS_PATH, UNREAD_PATH, repo)
-		if unreadItems:
-			print colorize("WARN", " * IMPORTANT:"),
-			print "%s news items need reading for repository '%s'." % (unreadItems, repo)
-			newsReaderDisplay = True
-	
-	if newsReaderDisplay:
-		print colorize("WARN", " *"),
-		print "Use " + colorize("GOOD", "eselect news") + " to read news items."
+	from portage.dbapi.vartree import PreservedLibsRegistry
+	plib_registry = PreservedLibsRegistry(os.path.join(target_root, CACHE_PATH, "preserved_libs_registry"))
+	if plib_registry.hasEntries():
+		print colorize("WARN", "!!!") + " existing preserved libs:"
+		plibdata = plib_registry.getPreservedLibs()
+		for cpv in plibdata.keys():
+			print colorize("WARN", ">>>") + " package: %s" % cpv
+			for f in plibdata[cpv]:
+				print colorize("WARN", " * ") + " - %s" % f
+		print "Use " + colorize("GOOD", "revdep-rebuild") + " to rebuild packages using these libraries"
+		print "and then remerge the packages listed above."
 	
 	mtimedb.commit()
 	sys.exit(retval)
@@ -4368,6 +4387,8 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		print red(" * ")+"configuration files."
 		print red(" * ")+"To update portage, run 'emerge portage'."
 		print
+	
+	display_news_notification(settings)
 
 def action_metadata(settings, portdb, myopts):
 	portage.writemsg_stdout("\n>>> Updating Portage cache:      ")
@@ -5658,10 +5679,14 @@ def emerge_main():
 	# "update", "system", or just process files:
 	else:
 		validate_ebuild_environment(trees)
+		if "--pretend" not in myopts:
+			display_news_notification(settings)
 		action_build(settings, trees, mtimedb,
 			myopts, myaction, myfiles, spinner)
 		if "--pretend" not in myopts:
 			post_emerge(settings, mtimedb, 0)
+		else:
+			display_news_notification(settings)
 
 if __name__ == "__main__":
 	retval = emerge_main()
