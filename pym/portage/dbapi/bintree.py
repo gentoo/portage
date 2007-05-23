@@ -361,6 +361,18 @@ class binarytree(object):
 
 	def populate(self, getbinpkgs=0, getbinpkgsonly=0):
 		"populates the binarytree"
+		from portage.locks import lockfile, unlockfile
+		pkgindex_lock = None
+		try:
+			if not self._all_directory and os.access(self.pkgdir, os.W_OK):
+				pkgindex_lock = lockfile(os.path.join(self.pkgdir, "Packages"),
+					wantnewlockfile=1)
+			self._populate(getbinpkgs, getbinpkgsonly)
+		finally:
+			if pkgindex_lock:
+				unlockfile(pkgindex_lock)
+
+	def _populate(self, getbinpkgs, getbinpkgsonly):
 		if (not os.path.isdir(self.pkgdir) and not getbinpkgs):
 			return 0
 
