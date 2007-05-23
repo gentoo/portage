@@ -588,20 +588,44 @@ class binarytree(object):
 		md5 = perform_md5(full_path)
 		self.dbapi.cpv_inject(cpv)
 		self.dbapi._aux_cache.pop(cpv, None)
-		self._pkgindex.packages.pop(cpv, None)
-		d = {}
-		d["CPV"] = cpv
-		d["SLOT"] = slot
-		d["MTIME"] = str(long(s.st_mtime))
-		d["SIZE"] = str(s.st_size)
-		d["MD5"] = str(md5)
-		self._pkgindex.packages[cpv] = d
-		from portage.util import atomic_ofstream
-		f = atomic_ofstream(os.path.join(self.pkgdir, "Packages"))
+
+		if self._all_directory:
+			return
+
+		# Reread the Packages index (in case it's been changed by another
+		# process) and then updated it, all while holding a lock.
+		from portage.locks import lockfile, unlockfile
+		pkgindex_lock = None
 		try:
-			self._pkgindex.write(f)
+			pkgindex_lock = lockfile(self._pkgindex_file,
+				wantnewlockfile=1)
+			self._pkgindex = portage.getbinpkg.PackageIndex()
+			try:
+				f = open(self._pkgindex_file)
+			except EnvironmentError:
+				pass
+			else:
+				try:
+					self._pkgindex.read(f)
+				finally:
+					f.close()
+					del f
+			d = {}
+			d["CPV"] = cpv
+			d["SLOT"] = slot
+			d["MTIME"] = str(long(s.st_mtime))
+			d["SIZE"] = str(s.st_size)
+			d["MD5"] = str(md5)
+			self._pkgindex.packages[cpv] = d
+			from portage.util import atomic_ofstream
+			f = atomic_ofstream(os.path.join(self.pkgdir, "Packages"))
+			try:
+				self._pkgindex.write(f)
+			finally:
+				f.close()
 		finally:
-			f.close()
+			if pkgindex_lock:
+				unlockfile(pkgindex_lock)
 
 	def exists_specific(self, cpv):
 		if not self.populated:
