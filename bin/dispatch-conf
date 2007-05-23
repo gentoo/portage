@@ -140,18 +140,26 @@ class dispatch:
 			else:
 				newconf = conf['new']
 
-			mystatus, myoutput = commands.getstatusoutput(
-				DIFF_CONTENTS  % (conf ['current'], newconf))
-			same_file = 0 == len(myoutput)
-			if mystatus >> 8 == 2:
-				# Binary files differ
-				same_cvs = False
-				same_wsc = False
-			else:
-				same_cvs = 0 == len(commands.getoutput(
-					DIFF_CVS_INTERP % (conf ['current'], newconf)))
-				same_wsc = 0 == len(commands.getoutput(
-					DIFF_WSCOMMENTS % (conf ['current'], newconf)))
+            if newconf == mrgconf and \
+                self.options.get('ignore-previously-merged') != 'yes' and \
+                len(commands.getoutput(DIFF_CONTENTS % (conf['current'], mrgconf))) == 0:
+                # The current update is identical to the archived .dist
+                # version that has previously been merged.
+                os.unlink(mrgconf)
+                newconf = conf['new']
+
+            mystatus, myoutput = commands.getstatusoutput(
+                DIFF_CONTENTS  % (conf ['current'], newconf))
+            same_file = 0 == len(myoutput)
+            if mystatus >> 8 == 2:
+                # Binary files differ
+                same_cvs = False
+                same_wsc = False
+            else:
+                same_cvs = 0 == len(commands.getoutput(
+                    DIFF_CVS_INTERP % (conf ['current'], newconf)))
+                same_wsc = 0 == len(commands.getoutput(
+                    DIFF_WSCOMMENTS % (conf ['current'], newconf)))
 
 			# Do options permit?
 			same_cvs = same_cvs and self.options['replace-cvs'] == 'yes'
