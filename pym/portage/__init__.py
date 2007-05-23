@@ -2414,8 +2414,13 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 		if try_mirrors:
 			mymirrors += [x.rstrip("/") for x in mysettings["GENTOO_MIRRORS"].split() if x]
 
-	mydigests = Manifest(
-		mysettings["O"], mysettings["DISTDIR"]).getTypeDigests("DIST")
+	pkgdir = mysettings.get("O")
+	if pkgdir:
+		mydigests = Manifest(
+			pkgdir, mysettings["DISTDIR"]).getTypeDigests("DIST")
+	else:
+		# no digests because fetch was not called for a specific package
+		mydigests = {}
 
 	fsmirrors = []
 	for x in range(len(mymirrors)-1,-1,-1):
@@ -2691,6 +2696,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 							con = selinux.getcontext()
 							con = con.replace(mysettings["PORTAGE_T"], mysettings["PORTAGE_FETCH_T"])
 							selinux.setexec(con)
+							# bash is an allowed entrypoint, while most binaries are not
+							myfetch = ["bash", "-c", "exec \"$@\"", myfetch[0]] + myfetch
 
 						myret = portage.process.spawn(myfetch,
 							env=mysettings.environ(), **spawn_keywords)
@@ -3821,11 +3828,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				actionmap[x]["dep"] = ' '.join(actionmap_deps[x])
 
 		if mydo in actionmap.keys():
-			if mydo=="package":
-				portage.util.ensure_dirs(
-					os.path.join(mysettings["PKGDIR"], mysettings["CATEGORY"]))
-				portage.util.ensure_dirs(
-					os.path.join(mysettings["PKGDIR"], "All"))
 			retval = spawnebuild(mydo,
 				actionmap, mysettings, debug, logfile=logfile)
 		elif mydo=="qmerge":
