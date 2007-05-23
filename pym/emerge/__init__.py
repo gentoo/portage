@@ -3157,13 +3157,18 @@ class MergeTask(object):
 							(mergecount, len(mymergelist), pkg_key)
 						emergelog(xterm_titles, msg, short_msg=short_msg)
 						self.trees[myroot]["bintree"].prevent_collision(pkg_key)
+						binpkg_tmpfile = os.path.join(pkgsettings["PKGDIR"],
+							pkg_key + ".tbz2." + str(os.getpid()))
+						pkgsettings["PORTAGE_BINPKG_TMPFILE"] = binpkg_tmpfile
+						pkgsettings.backup_changes("PORTAGE_BINPKG_TMPFILE")
 						retval = portage.doebuild(y, "package", myroot,
 							pkgsettings, self.edebug, mydbapi=portdb,
 							tree="porttree")
+						del pkgsettings["PORTAGE_BINPKG_TMPFILE"]
 						if retval != os.EX_OK:
 							return retval
 						bintree = self.trees[myroot]["bintree"]
-						bintree.inject(pkg_key)
+						bintree.inject(pkg_key, filename=binpkg_tmpfile)
 						if "--buildpkgonly" not in self.myopts:
 							msg = " === (%s of %s) Merging (%s::%s)" % \
 								(mergecount, len(mymergelist), pkg_key, y)

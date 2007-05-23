@@ -557,16 +557,32 @@ class binarytree(object):
 					continue
 		self.populated=1
 
-	def inject(self, cpv):
+	def inject(self, cpv, filename=None):
 		"""Add a freshly built package to the database.  This updates
-		$PKGDIR/Packages with the new package metadata (including MD5)."""
+		$PKGDIR/Packages with the new package metadata (including MD5).
+		@param cpv: The cpv of the new package to inject
+		@type cpv: string
+		@param filename: File path of the package to inject, or None if it's
+			already in the location returned by getname()
+		@type filename: string
+		@rtype: None
+		"""
+		mycat, mypkg = catsplit(cpv)
 		if not self.populated and self._all_directory:
+			if filename is not None:
+				# In order to avoid population, don't call getname() here.
+				os.rename(filename, os.path.join(
+					self.pkgdir, "All", mypkg + ".tbz2"))
+			self._create_symlink(cpv)
 			# There's nothing to update in this case, since the Packages
 			# index is not created when $PKGDIR/All/ exists.
 			return
 		if not self.populated:
 			self.populate()
-		full_path = self.getname(cpv)
+		if filename is None:
+			full_path = self.getname(cpv)
+		else:
+			full_path = filename
 		try:
 			s = os.stat(full_path)
 		except OSError, e:
@@ -589,6 +605,9 @@ class binarytree(object):
 		self.dbapi._aux_cache.pop(cpv, None)
 
 		if self._all_directory:
+			if filename is not None:
+				os.rename(filename, self.getname(cpv))
+			self._create_symlink(cpv)
 			return
 
 		# Reread the Packages index (in case it's been changed by another
@@ -598,6 +617,8 @@ class binarytree(object):
 		try:
 			pkgindex_lock = lockfile(self._pkgindex_file,
 				wantnewlockfile=1)
+			if filename is not None:
+				os.rename(filename, self.getname(cpv))
 			pkgindex = portage.getbinpkg.PackageIndex()
 			try:
 				f = open(self._pkgindex_file)

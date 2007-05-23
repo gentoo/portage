@@ -496,31 +496,20 @@ preinst_selinux_labels() {
 dyn_package() {
 	cd "${PORTAGE_BUILDDIR}/image"
 	install_mask "${PORTAGE_BUILDDIR}/image" ${PKG_INSTALL_MASK}
-	if [ -d "${PKGDIR}/All" ] ; then
-		local pkg_dest="${PKGDIR}/All/${PF}.tbz2"
-	else
-		local pkg_dest="${PKGDIR}/${CATEGORY}/${PF}.tbz2"
-	fi
-	local pkg_tmp="${pkg_dest}.$$"
 	local tar_options=""
 	[ "${PORTAGE_QUIET}" == "1" ] ||  tar_options="${tar_options} -v"
 	# Sandbox is disabled in case the user wants to use a symlink
 	# for $PKGDIR and/or $PKGDIR/All.
 	export SANDBOX_ON="0"
-	mkdir -p "${pkg_tmp%/*}" || die "mkdir failed"
-	tar ${tar_options} -cf - . | bzip2 -f > "${pkg_tmp}" || \
+	mkdir -p "${PORTAGE_BINPKG_TMPFILE%/*}" || die "mkdir failed"
+	tar ${tar_options} -cf - . | bzip2 -f > "${PORTAGE_BINPKG_TMPFILE}" || \
 		die "Failed to create tarball"
 	cd ..
 	export PYTHONPATH="${PORTAGE_PYM_PATH:-/usr/lib/portage/pym}:${PYTHONPATH}"
-	python -c "from portage import xpak; t=xpak.tbz2('${pkg_tmp}'); t.recompose('${PORTAGE_BUILDDIR}/build-info')"
+	python -c "from portage import xpak; t=xpak.tbz2('${PORTAGE_BINPKG_TMPFILE}'); t.recompose('${PORTAGE_BUILDDIR}/build-info')"
 	if [ $? -ne 0 ]; then
-		rm -f "${pkg_tmp}"
+		rm -f "${PORTAGE_BINPKG_TMPFILE}"
 		die "Failed to append metadata to the tbz2 file"
-	fi
-	mv -f "${pkg_tmp}" "${pkg_dest}" || die "Failed to move tbz2 to ${pkg_dest}"
-	if [ -d "${PKGDIR}/All" ] ; then
-		ln -sf "../All/${PF}.tbz2" "${PKGDIR}/${CATEGORY}/${PF}.tbz2" || \
-			die "Failed to create symlink in ${PKGDIR}/${CATEGORY}"
 	fi
 	vecho ">>> Done."
 	cd "${PORTAGE_BUILDDIR}"
