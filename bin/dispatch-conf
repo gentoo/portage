@@ -141,6 +141,14 @@ class dispatch:
             else:
                 newconf = conf['new']
 
+            if newconf == mrgconf and \
+                self.options.get('ignore-previously-merged') != 'yes' and \
+                len(commands.getoutput(DIFF_CONTENTS % (conf['current'], mrgconf))) == 0:
+                # The current update is identical to the archived .dist
+                # version that has previously been merged.
+                os.unlink(mrgconf)
+                newconf = conf['new']
+
             mystatus, myoutput = commands.getstatusoutput(
                 DIFF_CONTENTS  % (conf ['current'], newconf))
             same_file = 0 == len(myoutput)
