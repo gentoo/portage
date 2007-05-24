@@ -261,7 +261,7 @@ install_qa_check() {
 	         "${ED}"usr/X11R6/lib{,32,64} ; do
 		[[ ! -d ${i} ]] && continue
 
-		for j in "${i}"/*.so.* "${i}"/*.so ; do
+		for j in "${i}"/*.so.* "${i}"/*.so "${i}"/*.dylib ; do
 			[[ ! -e ${j} ]] && continue
 			if [[ -L ${j} ]] ; then
 				linkdest=$(readlink "${j}")
@@ -294,7 +294,9 @@ install_qa_check() {
 	# http://bugs.gentoo.org/4411
 	abort="no"
 	for a in "${ED}"usr/lib*/*.a ; do
-		s=${a%.a}.so
+		[[ ${CHOST} == *-darwin* ]] \
+			&& s=${a%.a}.dylib \
+			|| s=${a%.a}.so
 		if [[ ! -e ${s} ]] ; then
 			s=${s%usr/*}${s##*/usr/}
 			if [[ -e ${s} ]] ; then
