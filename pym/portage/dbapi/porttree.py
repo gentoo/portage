@@ -676,8 +676,9 @@ class portdbapi(dbapi):
 				if gp == "*" or (gp == "-*" and len(mygroups) == 1):
 					writemsg("--- WARNING: Package '%s' uses '%s' keyword.\n" % (mycpv, gp),
 						noiselevel=-1)
-					match=1
-					break
+					if gp == "*":
+						match = 1
+						break
 				elif gp in pgroups:
 					match=1
 					break
