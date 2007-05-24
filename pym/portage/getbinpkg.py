@@ -619,10 +619,11 @@ class PackageIndex(object):
 		keys.sort()
 		writepkgindex(pkgfile, [(k, self.header[k]) for k in keys])
 		for cpv in cpv_all:
-			metadata = self.packages[cpv]
-			if metadata["SLOT"] == "0":
-				metadata = metadata.copy()
+			metadata = self.packages[cpv].copy()
+			if metadata.get("SLOT") == "0":
 				del metadata["SLOT"]
+			if metadata.get("USE") == "":
+				del metadata["USE"]
 			keys = metadata.keys()
 			keys.sort()
 			writepkgindex(pkgfile, [(k, metadata[k]) for k in keys])
