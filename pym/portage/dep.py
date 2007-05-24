@@ -118,6 +118,7 @@ class paren_normalize(list):
 	"""Take a dependency structure as returned by paren_reduce or use_reduce
 	and generate an equivalent structure that has no redundant lists."""
 	def __init__(self, src):
+		list.__init__(self)
 		self._zap_parens(src, self)
 
 	def _zap_parens(self, src, dest, disjunction=False):
