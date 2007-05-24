@@ -114,6 +114,44 @@ def paren_reduce(mystr,tokenize=1):
 			mylist = mylist + [subsec]
 	return mylist
 
+class paren_normalize(list):
+	"""Take a dependency structure as returned by paren_reduce or use_reduce
+	and generate an equivalent structure that has no redundant lists."""
+	def __init__(self, src):
+		self._zap_parens(src, self)
+
+	def _zap_parens(self, src, dest, disjunction=False):
+		if not src:
+			return dest
+		i = iter(src)
+		for x in i:
+			if isinstance(x, basestring):
+				if x == '||':
+					x = i.next()
+					if len(x) == 1:
+						if isinstance(x[0], basestring):
+							dest.append(x[0])
+						else:
+							self._zap_parens(x, dest, disjunction=disjunction)
+					else:
+						dest.append("||")
+						dest.append(self._zap_parens(x, [], disjunction=True))
+				elif x.endswith("?"):
+					dest.append(x)
+					dest.append(self._zap_parens(i.next(), []))
+				else:
+					dest.append(x)
+			else:
+				if disjunction:
+					x = self._zap_parens(x, [])
+					if len(x) == 1:
+						dest.append(x[0])
+					else:
+						dest.append(x)
+				else:
+					self._zap_parens(x, dest)
+		return dest
+
 def paren_enclose(mylist):
 	"""
 	Convert a list to a string with sublists enclosed with parens.
