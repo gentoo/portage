@@ -636,6 +636,29 @@ class binarytree(object):
 			d["MTIME"] = str(long(s.st_mtime))
 			d["SIZE"] = str(s.st_size)
 			d["MD5"] = str(md5)
+			keys = ["USE", "IUSE", "DESCRIPTION", "LICENSE", "PROVIDE", \
+				"RDEPEND", "DEPEND", "PDEPEND"]
+			from itertools import izip
+			d.update(izip(keys, self.dbapi.aux_get(cpv, keys)))
+			use = d["USE"].split()
+			iuse = set(d["IUSE"].split())
+			use = [f for f in use if f in iuse]
+			del iuse, d["IUSE"]
+			use.sort()
+			d["USE"] = " ".join(use)
+			d["DESC"] = d["DESCRIPTION"]
+			del d["DESCRIPTION"]
+			from portage.dep import paren_reduce, use_reduce, \
+				paren_normalize, paren_enclose
+			for k in "LICENSE", "RDEPEND", "DEPEND", "PDEPEND", "PROVIDE":
+				deps = paren_reduce(d[k])
+				deps = use_reduce(deps, uselist=use)
+				deps = paren_normalize(deps)
+				deps = paren_enclose(deps)
+				if deps:
+					d[k] = deps
+				else:
+					del d[k]
 			pkgindex.packages[cpv] = d
 			from portage.util import atomic_ofstream
 			f = atomic_ofstream(os.path.join(self.pkgdir, "Packages"))

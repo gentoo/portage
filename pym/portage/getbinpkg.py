@@ -616,10 +616,15 @@ class PackageIndex(object):
 		import time
 		self.header["TIMESTAMP"] = str(long(time.time()))
 		self.header["PACKAGES"] = str(len(cpv_all))
-		writepkgindex(pkgfile, self.header.iteritems())
+		keys = self.header.keys()
+		keys.sort()
+		writepkgindex(pkgfile, [(k, self.header[k]) for k in keys])
 		for cpv in cpv_all:
-			metadata = self.packages[cpv]
-			if metadata["SLOT"] == "0":
-				metadata = metadata.copy()
+			metadata = self.packages[cpv].copy()
+			if metadata.get("SLOT") == "0":
 				del metadata["SLOT"]
-			writepkgindex(pkgfile, metadata.iteritems())
+			if metadata.get("USE") == "":
+				del metadata["USE"]
+			keys = metadata.keys()
+			keys.sort()
+			writepkgindex(pkgfile, [(k, metadata[k]) for k in keys])
