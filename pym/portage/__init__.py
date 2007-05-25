@@ -1934,26 +1934,7 @@ class config:
 		else:
 			self.configdict["auto"]["USE"] = ""
 
-		use_expand_protected = []
 		use_expand = self.get("USE_EXPAND", "").split()
-		for var in use_expand:
-			var_lower = var.lower()
-			for x in self.get(var, "").split():
-				# Any incremental USE_EXPAND variables have already been
-				# processed, so leading +/- operators are invalid here.
-				if x[0] == "+":
-					writemsg(colorize("BAD", "Invalid '+' operator in " + \
-						"non-incremental variable '%s': '%s'\n" % (var, x)),
-						noiselevel=-1)
-					x = x[1:]
-				if x[0] == "-":
-					writemsg(colorize("BAD", "Invalid '-' operator in " + \
-						"non-incremental variable '%s': '%s'\n" % (var, x)),
-						noiselevel=-1)
-					continue
-				mystr = var_lower + "_" + x
-				if mystr not in use_expand_protected:
-					use_expand_protected.append(mystr)
 
 		if not self.uvlist:
 			for x in self["USE_ORDER"].split(":"):
@@ -1961,11 +1942,12 @@ class config:
 					self.uvlist.append(self.configdict[x])
 			self.uvlist.reverse()
 
-		myflags = use_expand_protected[:]
+		myflags = []
 		for curdb in self.uvlist:
-			if "USE" not in curdb:
+			cur_use_expand = [x for x in use_expand if x in curdb]
+			mysplit = curdb.get("USE", "").split()
+			if not mysplit and not cur_use_expand:
 				continue
-			mysplit = curdb["USE"].split()
 			for x in mysplit:
 				if x == "-*":
 					myflags = []
@@ -1985,8 +1967,27 @@ class config:
 						pass
 					continue
 
-				if x not in myflags:
-					myflags.append(x)
+				myflags.append(x)
+
+			for var in cur_use_expand:
+				var_lower = var.lower()
+				if var not in myincrementals:
+					prefix = var_lower + "_"
+					myflags = [x for x in myflags if not x.startswith(prefix)]
+				for x in curdb[var].split():
+					# Any incremental USE_EXPAND variables have already been
+					# processed, so leading +/- operators are invalid here.
+					if x[0] == "+":
+						writemsg(colorize("BAD", "Invalid '+' operator in " + \
+							"non-incremental variable '%s': '%s'\n" % (var, x)),
+							noiselevel=-1)
+						x = x[1:]
+					if x[0] == "-":
+						writemsg(colorize("BAD", "Invalid '-' operator in " + \
+							"non-incremental variable '%s': '%s'\n" % (var, x)),
+							noiselevel=-1)
+						continue
+					myflags.append(var_lower + "_" + x)
 
 		myflags = set(myflags)
 		myflags.update(self.useforce)
