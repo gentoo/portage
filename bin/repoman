@@ -42,7 +42,7 @@ import codecs
 
 from portage_manifest import Manifest
 from portage_exception import ParseError
-from portage_exec import spawn
+from portage_exec import find_binary, spawn
 
 from output import bold, darkgreen, darkred, green, nocolor, red, turquoise, yellow
 
@@ -656,7 +656,9 @@ for x in qacats:
 	fails[x]=[]
 xmllint_capable = False
 metadata_dtd = os.path.join(repoman_settings["DISTDIR"], 'metadata.dtd')
-if getstatusoutput('which xmllint')[0] != 0:
+if mymode == "manifest":
+	pass
+elif not find_binary('xmllint'):
 	print red("!!! xmllint not found. Can't check metadata.xml.\n")
 	if "--xmlparse" in myoptions or repolevel==3:
 		print red("!!!")+" sorry, xmllint is needed.  failing\n"
