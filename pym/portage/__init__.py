@@ -1942,7 +1942,7 @@ class config:
 					self.uvlist.append(self.configdict[x])
 			self.uvlist.reverse()
 
-		myflags = []
+		myflags = set()
 		for curdb in self.uvlist:
 			cur_use_expand = [x for x in use_expand if x in curdb]
 			mysplit = curdb.get("USE", "").split()
@@ -1950,7 +1950,7 @@ class config:
 				continue
 			for x in mysplit:
 				if x == "-*":
-					myflags = []
+					myflags.clear()
 					continue
 
 				if x[0] == "+":
@@ -1961,19 +1961,18 @@ class config:
 						continue
 
 				if x[0] == "-":
-					try:
-						myflags.remove(x[1:])
-					except ValueError:
-						pass
+					myflags.discard(x[1:])
 					continue
 
-				myflags.append(x)
+				myflags.add(x)
 
 			for var in cur_use_expand:
 				var_lower = var.lower()
 				if var not in myincrementals:
 					prefix = var_lower + "_"
-					myflags = [x for x in myflags if not x.startswith(prefix)]
+					for x in list(myflags):
+						if x.startswith(prefix):
+							myflags.remove(x)
 				for x in curdb[var].split():
 					# Any incremental USE_EXPAND variables have already been
 					# processed, so leading +/- operators are invalid here.
@@ -1987,9 +1986,8 @@ class config:
 							"non-incremental variable '%s': '%s'\n" % (var, x)),
 							noiselevel=-1)
 						continue
-					myflags.append(var_lower + "_" + x)
+					myflags.add(var_lower + "_" + x)
 
-		myflags = set(myflags)
 		myflags.update(self.useforce)
 
 		# FEATURES=test should imply USE=test
