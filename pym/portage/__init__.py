@@ -1557,11 +1557,18 @@ class config:
 
 	def load_best_module(self,property_string):
 		best_mod = best_from_dict(property_string,self.modules,self.module_priority)
+		mod = None
 		try:
 			mod = load_mod(best_mod)
 		except ImportError:
-			dump_traceback(red("Error: Failed to import module '%s'") % best_mod, noiselevel=0)
-			sys.exit(1)
+			if best_mod.startswith("cache."):
+				best_mod = "portage." + best_mod
+				try:
+					mod = load_mod(best_mod)
+				except ImportError:
+					pass
+		if mod is None:
+			raise
 		return mod
 
 	def lock(self):
