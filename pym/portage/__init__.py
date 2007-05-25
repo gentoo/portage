@@ -2284,9 +2284,9 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, **keyw
 		# Disable the ECHO attribute so the terminal behaves properly
 		# if the subprocess needs to read input from stdin.
 		import termios
-		term_attr = termios.tcgetattr(master_fd)
+		term_attr = termios.tcgetattr(slave_fd)
 		term_attr[3] &= ~termios.ECHO
-		termios.tcsetattr(master_fd, termios.TCSAFLUSH, term_attr)
+		termios.tcsetattr(slave_fd, termios.TCSAFLUSH, term_attr)
 		# tee will always exit with an IO error, so ignore it's stderr.
 		null_file = open('/dev/null', 'w')
 		mypids.extend(portage.process.spawn(['tee', '-i', '-a', logfile],
