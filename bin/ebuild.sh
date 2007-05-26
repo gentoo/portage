@@ -497,7 +497,7 @@ econf() {
 
 			if [ -s config.log ]; then
 				echo
-				echo "!!! Please attach the following file when filing a report to bugs.gentoo.org:"
+				echo "!!! Please attach the following file when seeking support at bugs.gentoo.org:"
 				echo "!!! ${PWD}/config.log"
 			fi
 			die "econf failed"
