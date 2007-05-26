@@ -980,10 +980,15 @@ for x in scanlist:
 	else:
 		#Only carry out if in package directory or check forced
 		if xmllint_capable:
-			st = spawn(["xmllint", "--nonet", "--noout", "--nowarning", "--dtdvalid",
-				metadata_dtd, os.path.join(checkdir, "metadata.xml")])
+			# xmlint can produce garbage output even on success, so only dump
+			# the ouput when it fails.
+			st, out = getstatusoutput(
+				"xmllint --nonet --noout --dtdvalid '%s' '%s'" % \
+				 (metadata_dtd, os.path.join(checkdir, "metadata.xml")))
 			if st != os.EX_OK:
-				print red("!!! metadata.xml is invalid")
+				print red("!!!") + " metadata.xml is invalid:"
+				for z in out.splitlines():
+					print red("!!! ")+z
 				stats["metadata.bad"]+=1
 				fails["metadata.bad"].append(x+"/metadata.xml")
 
