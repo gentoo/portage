@@ -291,17 +291,6 @@ class binarytree(object):
 		${PKGDIR}/${CATEGORY}/${PF}.tbz2 so that both can coexist."""
 		if not self._all_directory:
 			return
-		if not self.populated:
-			# Try to avoid the population routine when possible, so that
-			# FEATURES=buildpkg doesn't always force population.
-			mycat, mypkg = catsplit(cpv)
-			myfile = mypkg + ".tbz2"
-			full_path = os.path.join(self.pkgdir, "All", myfile)
-			if not os.path.exists(full_path):
-				return
-			tbz2_cat = portage.xpak.tbz2(full_path).getfile("CATEGORY")
-			if tbz2_cat and tbz2_cat.strip() == mycat:
-				return
 		full_path = self.getname(cpv)
 		if "All" == full_path.split(os.path.sep)[-2]:
 			return
@@ -364,7 +353,7 @@ class binarytree(object):
 		from portage.locks import lockfile, unlockfile
 		pkgindex_lock = None
 		try:
-			if not self._all_directory and os.access(self.pkgdir, os.W_OK):
+			if os.access(self.pkgdir, os.W_OK):
 				pkgindex_lock = lockfile(self._pkgindex_file,
 					wantnewlockfile=1)
 			self._populate(getbinpkgs, getbinpkgsonly)
@@ -388,6 +377,7 @@ class binarytree(object):
 			pkgindex = portage.getbinpkg.PackageIndex()
 			header = pkgindex.header
 			metadata = pkgindex.packages
+			pf_index = None
 			try:
 				f = open(self._pkgindex_file)
 			except EnvironmentError:
@@ -408,19 +398,41 @@ class binarytree(object):
 					s = os.lstat(full_path)
 					if stat.S_ISLNK(s.st_mode):
 						continue
+
+					# Validate data from the package index and try to avoid
+					# reading the xpak if possible.
 					if mydir != "All":
-						# Validate data from the package index and try to avoid
-						# reading the xpak if possible.
 						mycpv = mydir + "/" + myfile[:-5]
-						d = metadata.get(mycpv)
-						skip = False
-						if d:
+						possibilities = [metadata.get(mycpv)]
+					else:
+						if pf_index is None:
+							pf_index = {}
+							for mycpv in metadata:
+								mycat, mypf = catsplit(mycpv)
+								pf_index.setdefault(
+									mypf, []).append(metadata[mycpv])
+						possibilities = pf_index.get(myfile[:-5])
+					if possibilities:
+						match = None
+						for d in possibilities:
 							try:
-								if long(d["MTIME"]) == long(s.st_mtime):
-									skip = True
+								if long(d["MTIME"]) != long(s.st_mtime):
+									continue
 							except (KeyError, ValueError):
-								pass
-						if skip and not self._pkgindex_keys.difference(d):
+								continue
+							try:
+								if long(d["SIZE"]) != long(s.st_size):
+									continue
+							except (KeyError, ValueError):
+								continue
+							if not self._pkgindex_keys.difference(d):
+								match = d
+								break
+						if match:
+							mycpv = match["CPV"]
+							if mycpv in pkg_paths:
+								# discard duplicates (All/ is preferred)
+								continue
 							pkg_paths[mycpv] = mypath
 							self.dbapi.cpv_inject(mycpv)
 							if not self.dbapi._aux_cache_keys.difference(d):
@@ -494,8 +506,7 @@ class binarytree(object):
 			# Do not bother to write the Packages index if $PKGDIR/All/ exists
 			# since it will provide no benefit due to the need to read CATEGORY
 			# from xpak.
-			if update_pkgindex and not self._all_directory and \
-				os.access(self.pkgdir, os.W_OK):
+			if update_pkgindex and os.access(self.pkgdir, os.W_OK):
 				cpv_all = self._pkg_paths.keys()
 				stale = set(metadata).difference(cpv_all)
 				for cpv in stale:
@@ -568,15 +579,6 @@ class binarytree(object):
 		@rtype: None
 		"""
 		mycat, mypkg = catsplit(cpv)
-		if not self.populated and self._all_directory:
-			if filename is not None:
-				# In order to avoid population, don't call getname() here.
-				os.rename(filename, os.path.join(
-					self.pkgdir, "All", mypkg + ".tbz2"))
-			self._create_symlink(cpv)
-			# There's nothing to update in this case, since the Packages
-			# index is not created when $PKGDIR/All/ exists.
-			return
 		if not self.populated:
 			self.populate()
 		if filename is None:
@@ -604,12 +606,6 @@ class binarytree(object):
 		self.dbapi.cpv_inject(cpv)
 		self.dbapi._aux_cache.pop(cpv, None)
 
-		if self._all_directory:
-			if filename is not None:
-				os.rename(filename, self.getname(cpv))
-			self._create_symlink(cpv)
-			return
-
 		# Reread the Packages index (in case it's been changed by another
 		# process) and then updated it, all while holding a lock.
 		from portage.locks import lockfile, unlockfile
@@ -619,6 +615,9 @@ class binarytree(object):
 				wantnewlockfile=1)
 			if filename is not None:
 				os.rename(filename, self.getname(cpv))
+			if self._all_directory and \
+				self.getname(cpv).split(os.path.sep)[-2] == "All":
+				self._create_symlink(cpv)
 			pkgindex = portage.getbinpkg.PackageIndex()
 			try:
 				f = open(self._pkgindex_file)
