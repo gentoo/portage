@@ -1968,23 +1968,31 @@ class config:
 
 			for var in cur_use_expand:
 				var_lower = var.lower()
-				if var not in myincrementals:
+				is_not_incremental = var not in myincrementals
+				if is_not_incremental:
 					prefix = var_lower + "_"
 					for x in list(myflags):
 						if x.startswith(prefix):
 							myflags.remove(x)
 				for x in curdb[var].split():
-					# Any incremental USE_EXPAND variables have already been
-					# processed, so leading +/- operators are invalid here.
 					if x[0] == "+":
-						writemsg(colorize("BAD", "Invalid '+' operator in " + \
-							"non-incremental variable '%s': '%s'\n" % (var, x)),
-							noiselevel=-1)
+						if is_not_incremental:
+							writemsg(colorize("BAD", "Invalid '+' " + \
+								"operator in non-incremental variable " + \
+								 "'%s': '%s'\n" % (var, x)), noiselevel=-1)
+							continue
+						else:
+							writemsg(colorize("BAD", "Invalid '+' " + \
+								"operator in incremental variable " + \
+								 "'%s': '%s'\n" % (var, x)), noiselevel=-1)
 						x = x[1:]
 					if x[0] == "-":
-						writemsg(colorize("BAD", "Invalid '-' operator in " + \
-							"non-incremental variable '%s': '%s'\n" % (var, x)),
-							noiselevel=-1)
+						if is_not_incremental:
+							writemsg(colorize("BAD", "Invalid '-' " + \
+								"operator in non-incremental variable " + \
+								 "'%s': '%s'\n" % (var, x)), noiselevel=-1)
+							continue
+						myflags.discard(var_lower + "_" + x[1:])
 						continue
 					myflags.add(var_lower + "_" + x)
 
