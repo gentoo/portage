@@ -402,8 +402,10 @@ class binarytree(object):
 					# Validate data from the package index and try to avoid
 					# reading the xpak if possible.
 					if mydir != "All":
-						mycpv = mydir + "/" + myfile[:-5]
-						possibilities = [metadata.get(mycpv)]
+						possibilities = None
+						d = metadata.get(mydir+"/"+myfile[:-5])
+						if d:
+							possibilities = [d]
 					else:
 						if pf_index is None:
 							pf_index = {}
