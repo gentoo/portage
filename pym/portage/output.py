@@ -4,7 +4,7 @@
 
 __docformat__ = "epytext"
 
-import commands,errno,os,re,shlex,sys
+import commands, errno, os, re, shlex, sys, time
 from portage.const import COLOR_MAP_FILE
 from portage.util import writemsg
 from portage.exception import PortageException, ParseError, PermissionDenied, FileNotFound
@@ -237,6 +237,29 @@ def create_color_func(color_key):
 for c in compat_functions_colors:
 	globals()[c] = create_color_func(c)
 
+def get_term_size():
+	"""
+	Get the number of lines and columns of the tty that is connected to
+	stdout.  Returns a tuple of (lines, columns) or (-1, -1) if an error
+	occurs. The curses module is used if available, otherwise the output of
+	`stty size` is parsed.
+	"""
+	try:
+		import curses
+		curses.setupterm()
+		return curses.tigetnum('lines'), curses.tigetnum('cols')
+	except ImportError:
+		pass
+	st, out = commands.getstatusoutput('stty size')
+	if st == os.EX_OK:
+		out = out.split()
+		if len(out) == 2:
+			try:
+				return int(out[0]), int(out[1])
+			except ValueError:
+				pass
+	return -1, -1
+
 class EOutput:
 	"""
 	Performs fancy terminal formatting for status and informational messages.
@@ -264,17 +287,7 @@ class EOutput:
 		self.__last_e_cmd = ""
 		self.__last_e_len = 0
 		self.quiet = False
-		columns = 0
-		try:
-			columns = int(os.getenv("COLUMNS", 0))
-		except ValueError:
-			pass
-		if columns <= 0:
-			try:
-				columns = int(commands.getoutput(
-					'set -- `stty size 2>/dev/null` ; echo "$2"'))
-			except ValueError:
-				pass
+		lines, columns = get_term_size()
 		if columns <= 0:
 			columns = 80
 		# Adjust columns so that eend works properly on a standard BSD console.
@@ -394,3 +407,129 @@ class EOutput:
 		if not self.quiet:
 			self.__eend("ewend", errno, msg)
 		self.__last_e_cmd = "ewend"
+
+class ProgressBar(object):
+	"""The interface is copied from the ProgressBar class from the EasyDialogs
+	module (which is Mac only)."""
+	def __init__(self, title=None, maxval=0, label=None):
+		self._title = title
+		self._maxval = maxval
+		self._label = maxval
+		self._curval = 0
+
+	@property
+	def curval(self):
+		"""
+		The current value (of type integer or long integer) of the progress
+		bar. The normal access methods coerce curval between 0 and maxval. This
+		attribute should not be altered directly.
+		"""
+		return self._curval
+
+	@property
+	def maxval(self):
+		"""
+		The maximum value (of type integer or long integer) of the progress
+		bar; the progress bar (thermometer style) is full when curval equals
+		maxval. If maxval is 0, the bar will be indeterminate (barber-pole).
+		This attribute should not be altered directly.
+		"""
+		return self._maxval
+
+	def title(self, newstr):
+		"""Sets the text in the title bar of the progress dialog to newstr."""
+		self._title = newstr
+
+	def label(self, newstr):
+		"""Sets the text in the progress box of the progress dialog to newstr."""
+		self._label = newstr
+
+	def set(self, value, maxval=None):
+		"""
+		Sets the progress bar's curval to value, and also maxval to max if the
+		latter is provided. value is first coerced between 0 and maxval. The
+		thermometer bar is updated to reflect the changes, including a change
+		from indeterminate to determinate or vice versa.
+		"""
+		if maxval is not None:
+			self._maxval = maxval
+		if value < 0:
+			value = 0
+		elif value > maxval:
+			value = maxval
+		self._curval = value
+
+	def inc(self, n=1):
+		"""Increments the progress bar's curval by n, or by 1 if n is not
+		provided. (Note that n may be negative, in which case the effect is a
+		decrement.) The progress bar is updated to reflect the change. If the
+		bar is indeterminate, this causes one ``spin'' of the barber pole. The
+		resulting curval is coerced between 0 and maxval if incrementing causes
+		it to fall outside this range.
+		"""
+		self.set(self._curval+n)
+
+class TermProgressBar(ProgressBar):
+	"""A tty progress bar similar to wget's."""
+	def __init__(self, **kwargs):
+		ProgressBar.__init__(self, **kwargs)
+		lines, self.term_columns = get_term_size()
+		self.file = sys.stdout
+		self._min_columns = 11
+		# for indeterminate mode, ranges from 0.0 to 1.0
+		self._position = 0.0
+
+	def set(self, value, maxval=None):
+		ProgressBar.set(self, value, maxval=maxval)
+		self._display_image(self._create_image())
+
+	def _display_image(self, image):
+		self.file.write('\r')
+		self.file.write(image)
+		self.file.flush()
+
+	def _create_image(self):
+		cols = self.term_columns
+		min_columns = self._min_columns
+		curval = self._curval
+		maxval = self._maxval
+		position = self._position
+		if cols < 3:
+			return ""
+		bar_space = cols - 6
+		if maxval == 0:
+			max_bar_width = bar_space-3
+			image = "    "
+			if cols < min_columns:
+				return image
+			if position <= 0.5:
+				offset = 2 * position
+			else:
+				offset = 2 * (1 - position)
+			delta = 0.5 / max_bar_width
+			position += delta
+			if position >= 1.0:
+				position = 0.0
+			# make sure it touches the ends
+			if 1.0 - position < delta:
+				position = 1.0
+			if position < 0.5 and 0.5 - position < delta:
+				position = 0.5
+			self._position = position
+			bar_width = int(offset * max_bar_width)
+			image = image + "[" + (bar_width * " ") + \
+				"<=>" + ((max_bar_width - bar_width) * " ") + "]"
+			return image
+		else:
+			max_bar_width = bar_space-1
+			percentage = int(100 * float(curval) / maxval)
+			if percentage == 100:
+				percentage = 99
+			image = ("%d%% " % percentage).rjust(4)
+			if cols < min_columns:
+				return image
+			offset = float(curval) / maxval
+			bar_width = int(offset * max_bar_width)
+			image = image + "[" + (bar_width * "=") + \
+				">" + ((max_bar_width - bar_width) * " ") + "]"
+			return image

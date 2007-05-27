@@ -1,6 +1,6 @@
 #!@PYTHON@ -O
 
-import sys, os
+import sys, os, time, signal
 from optparse import OptionParser, OptionValueError
 if not hasattr(__builtins__, "set"):
 	from sets import Set as set
@@ -12,7 +12,7 @@ except ImportError:
 	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
 	import portage
 
-import portage.const, portage.exception
+import portage.const, portage.exception, portage.output
 class WorldHandler(object):
 
 	def name():
@@ -27,13 +27,20 @@ class WorldHandler(object):
 		self.world_file = os.path.join("/", portage.const.WORLD_FILE)
 		self.found = os.access(self.world_file, os.R_OK)
 
+	def _check_world(self, onProgress):
 		categories = set(portage.settings.categories)
 		myroot = portage.settings["ROOT"]
 		vardb = portage.db[myroot]["vartree"].dbapi
 
-		for atom in open(self.world_file).read().split():
+		world_atoms = open(self.world_file).read().split()
+		maxval = len(world_atoms)
+		if onProgress:
+			onProgress(maxval, 0)
+		for i, atom in enumerate(world_atoms):
 			if not portage.isvalidatom(atom):
 				self.invalid.append(atom)
+				if onProgress:
+					onProgress(maxval, i+1)
 				continue
 			okay = True
 			if not vardb.match(atom):
@@ -44,8 +51,11 @@ class WorldHandler(object):
 				okay = False
 			if okay:
 				self.okay.append(atom)
+			if onProgress:
+				onProgress(maxval, i+1)
 
-	def check(self):
+	def check(self, onProgress=None):
+		self._check_world(onProgress)
 		errors = []
 		if self.found:
 			errors += map(lambda x: "'%s' is not a valid atom" % x, self.invalid)
@@ -55,13 +65,103 @@ class WorldHandler(object):
 			errors.append(self.world_file + " could not be opened for reading")
 		return errors
 
-	def fix(self):
+	def fix(self, onProgress=None):
+		self._check_world(onProgress)
 		errors = []
 		try:
 			portage.write_atomic(self.world_file, "\n".join(self.okay))
 		except portage.exception.PortageException:
 			errors.append(self.world_file + " could not be opened for writing")
 		return errors
+
+class BinhostHandler(object):
+
+	def name():
+		return "binhost"
+	name = staticmethod(name)
+
+	def __init__(self):
+		myroot = portage.settings["ROOT"]
+		self._bintree = portage.db[myroot]["bintree"]
+		self._bintree.populate()
+		self._pkgindex_file = os.path.join(self._bintree.pkgdir, "Packages")
+		from portage import getbinpkg
+		self._pkgindex = getbinpkg.PackageIndex()
+		f = open(self._pkgindex_file, 'r')
+		try:
+			self._pkgindex.read(f)
+		finally:
+			f.close()
+
+	def check(self, onProgress=None):
+		missing = []
+		cpv_all = self._bintree.dbapi.cpv_all()
+		cpv_all.sort()
+		maxval = len(cpv_all)
+		if onProgress:
+			onProgress(maxval, 0)
+		pkgindex = self._pkgindex
+		missing = []
+		for i, cpv in enumerate(cpv_all):
+			d = pkgindex.packages.get(cpv)
+			if not d or "MD5" not in d:
+				missing.append(cpv)
+			if onProgress:
+				onProgress(maxval, i+1)
+		errors = ["'%s' is not in Packages" % cpv for cpv in missing]
+		stale = set(pkgindex.packages).difference(cpv_all)
+		for cpv in stale:
+			errors.append("'%s' is not in the repository" % cpv)
+		return errors
+
+	def fix(self, onProgress=None):
+		bintree = self._bintree
+		cpv_all = self._bintree.dbapi.cpv_all()
+		cpv_all.sort()
+		missing = []
+		maxval = len(cpv_all)
+		if onProgress:
+			onProgress(maxval, 0)
+		pkgindex = self._pkgindex
+		missing = []
+		for i, cpv in enumerate(cpv_all):
+			d = pkgindex.packages.get(cpv)
+			if not d or "MD5" not in d:
+				bintree.inject(cpv)
+			if onProgress:
+				onProgress(maxval, i+1)
+		stale = set(pkgindex.packages).difference(cpv_all)
+		if stale:
+			from portage import locks
+			pkgindex_lock = locks.lockfile(
+				self._pkgindex_file, wantnewlockfile=1)
+			try:
+				from portage import getbinpkg
+				del pkgindex
+				self._pkgindex = getbinpkg.PackageIndex()
+				f = open(self._pkgindex_file, 'r')
+				try:
+					self._pkgindex.read(f)
+				finally:
+					f.close()
+				from portage.dbapi.bintree import binarytree
+				self._bintree = binarytree(bintree.root, bintree.pkgdir,
+					settings=bintree.settings)
+				del bintree
+				portage.db[self._bintree.root]["bintree"] = self._bintree
+				self._bintree._populate()
+				for cpv in set(self._pkgindex.packages).difference(
+					self._bintree.dbapi.cpv_all()):
+					del self._pkgindex.packages[cpv]
+				from portage.util import atomic_ofstream
+				f = atomic_ofstream(self._pkgindex_file)
+				try:
+					self._pkgindex.write(f)
+				finally:
+					f.close()
+			finally:
+				locks.unlockfile(pkgindex_lock)
+		return None
 
 class VdbKeyHandler(object):
 	def name():
@@ -121,11 +221,32 @@ class VdbKeyHandler(object):
 		
 		return errors
 
+class ProgressHandler(object):
+	def __init__(self):
+		self.curval = 0
+		self.maxval = 0
+		self.last_update = 0
+		self.min_display_latency = 0.2
+
+	def onProgress(self, maxval, curval):
+		self.maxval = maxval
+		self.curval = curval
+		cur_time = time.time()
+		if cur_time - self.last_update >= self.min_display_latency:
+			self.last_update = cur_time
+			self.display()
+
+	def display(self):
+		raise NotImplementedError(self)
+
 def emaint_main(myargv):
 
 	# TODO: Create a system that allows external modules to be added without
 	#       the need for hard coding.
-	modules = {"world" : WorldHandler}
+	modules = {
+		"world" : WorldHandler,
+		"binhost":BinhostHandler
+	}
 
 	module_names = modules.keys()
 	module_names.sort()
@@ -180,11 +301,28 @@ def emaint_main(myargv):
 		status = "Attempting to fix %s"
 		func = "fix"
 
-
+	isatty = sys.stdout.isatty()
 	for task in tasks:
 		print status % task.name()
 		inst = task()
-		result = getattr(inst, func)()
+		onProgress = None
+		if isatty:
+			progressBar = portage.output.TermProgressBar()
+			progressHandler = ProgressHandler()
+			onProgress = progressHandler.onProgress
+			def display():
+				progressBar.set(progressHandler.curval, progressHandler.maxval)
+			progressHandler.display = display
+			def sigwinch_handler(signum, frame):
+				lines, progressBar.term_columns = \
+					portage.output.get_term_size()
+			signal.signal(signal.SIGWINCH, sigwinch_handler)
+		result = getattr(inst, func)(onProgress=onProgress)
+		if isatty:
+			# make sure the final progress is displayed
+			progressHandler.display()
+			print
+			signal.signal(signal.SIGWINCH, signal.SIG_DFL)
 		if result:
 			print
 			print "\n".join(result)
