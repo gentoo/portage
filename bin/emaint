@@ -27,13 +27,20 @@ class WorldHandler(object):
 		self.world_file = os.path.join("/", portage.const.WORLD_FILE)
 		self.found = os.access(self.world_file, os.R_OK)
 
+	def _check_world(self, onProgress):
 		categories = set(portage.settings.categories)
 		myroot = portage.settings["ROOT"]
 		vardb = portage.db[myroot]["vartree"].dbapi
 
-		for atom in open(self.world_file).read().split():
+		world_atoms = open(self.world_file).read().split()
+		maxval = len(world_atoms)
+		if onProgress:
+			onProgress(maxval, 0)
+		for i, atom in enumerate(world_atoms):
 			if not portage.isvalidatom(atom):
 				self.invalid.append(atom)
+				if onProgress:
+					onProgress(maxval, i+1)
 				continue
 			okay = True
 			if not vardb.match(atom):
@@ -44,8 +51,11 @@ class WorldHandler(object):
 				okay = False
 			if okay:
 				self.okay.append(atom)
+			if onProgress:
+				onProgress(maxval, i+1)
 
-	def check(self):
+	def check(self, onProgress=None):
+		self._check_world(onProgress)
 		errors = []
 		if self.found:
 			errors += map(lambda x: "'%s' is not a valid atom" % x, self.invalid)
@@ -55,7 +65,8 @@ class WorldHandler(object):
 			errors.append(self.world_file + " could not be opened for reading")
 		return errors
 
-	def fix(self):
+	def fix(self, onProgress=None):
+		self._check_world(onProgress)
 		errors = []
 		try:
 			portage.write_atomic(self.world_file, "\n".join(self.okay))
