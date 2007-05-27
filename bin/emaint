@@ -74,6 +74,61 @@ class WorldHandler(object):
 			errors.append(self.world_file + " could not be opened for writing")
 		return errors
 
+class BinhostHandler(object):
+
+	def name():
+		return "binhost"
+	name = staticmethod(name)
+
+	def __init__(self):
+		myroot = portage.settings["ROOT"]
+		self._bintree = portage.db[myroot]["bintree"]
+		self._bintree.populate()
+		self._pkgindex_file = os.path.join(self._bintree.pkgdir, "Packages")
+		from portage import getbinpkg
+		self._pkgindex = getbinpkg.PackageIndex()
+		f = open(self._pkgindex_file, 'r')
+		try:
+			self._pkgindex.read(f)
+		finally:
+			f.close()
+
+	def check(self, onProgress=None):
+		errors = []
+		missing = []
+		cpv_all = self._bintree.dbapi.cpv_all()
+		cpv_all.sort()
+		maxval = len(cpv_all)
+		if onProgress:
+			onProgress(maxval, 0)
+		pkgindex = self._pkgindex
+		missing = []
+		for i, cpv in enumerate(cpv_all):
+			d = pkgindex.packages.get(cpv)
+			if not d or "MD5" not in d:
+				missing.append(cpv)
+			if onProgress:
+				onProgress(maxval, i+1)
+		return ["'%s' is not in Packages" % cpv for cpv in missing]
+
+	def fix(self, onProgress=None):
+		bintree = self._bintree
+		cpv_all = self._bintree.dbapi.cpv_all()
+		cpv_all.sort()
+		missing = []
+		maxval = len(cpv_all)
+		if onProgress:
+			onProgress(maxval, 0)
+		pkgindex = self._pkgindex
+		missing = []
+		for i, cpv in enumerate(cpv_all):
+			d = pkgindex.packages.get(cpv)
+			if not d or "MD5" not in d:
+				bintree.inject(cpv)
+			if onProgress:
+				onProgress(maxval, i+1)
+		return None
+
 class VdbKeyHandler(object):
 	def name():
 		return "vdbkeys"
@@ -154,7 +209,10 @@ def emaint_main(myargv):
 
 	# TODO: Create a system that allows external modules to be added without
 	#       the need for hard coding.
-	modules = {"world" : WorldHandler}
+	modules = {
+		"world" : WorldHandler,
+		"binhost":BinhostHandler
+	}
 
 	module_names = modules.keys()
 	module_names.sort()
