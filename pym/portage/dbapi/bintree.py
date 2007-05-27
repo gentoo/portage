@@ -361,7 +361,7 @@ class binarytree(object):
 			if pkgindex_lock:
 				unlockfile(pkgindex_lock)
 
-	def _populate(self, getbinpkgs, getbinpkgsonly):
+	def _populate(self, getbinpkgs=0, getbinpkgsonly=0):
 		if (not os.path.isdir(self.pkgdir) and not getbinpkgs):
 			return 0
 

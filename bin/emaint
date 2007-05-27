@@ -94,7 +94,6 @@ class BinhostHandler(object):
 			f.close()
 
 	def check(self, onProgress=None):
-		errors = []
 		missing = []
 		cpv_all = self._bintree.dbapi.cpv_all()
 		cpv_all.sort()
@@ -109,7 +108,11 @@ class BinhostHandler(object):
 				missing.append(cpv)
 			if onProgress:
 				onProgress(maxval, i+1)
-		return ["'%s' is not in Packages" % cpv for cpv in missing]
+		errors = ["'%s' is not in Packages" % cpv for cpv in missing]
+		stale = set(pkgindex.packages).difference(cpv_all)
+		for cpv in stale:
+			errors.append("'%s' is not in the repository" % cpv)
+		return errors
 
 	def fix(self, onProgress=None):
 		bintree = self._bintree
@@ -127,6 +130,37 @@ class BinhostHandler(object):
 				bintree.inject(cpv)
 			if onProgress:
 				onProgress(maxval, i+1)
+		stale = set(pkgindex.packages).difference(cpv_all)
+		if stale:
+			from portage import locks
+			pkgindex_lock = locks.lockfile(
+				self._pkgindex_file, wantnewlockfile=1)
+			try:
+				from portage import getbinpkg
+				del pkgindex
+				self._pkgindex = getbinpkg.PackageIndex()
+				f = open(self._pkgindex_file, 'r')
+				try:
+					self._pkgindex.read(f)
+				finally:
+					f.close()
+				from portage.dbapi.bintree import binarytree
+				self._bintree = binarytree(bintree.root, bintree.pkgdir,
+					settings=bintree.settings)
+				del bintree
+				portage.db[self._bintree.root]["bintree"] = self._bintree
+				self._bintree._populate()
+				for cpv in set(self._pkgindex.packages).difference(
+					self._bintree.dbapi.cpv_all()):
+					del self._pkgindex.packages[cpv]
+				from portage.util import atomic_ofstream
+				f = atomic_ofstream(self._pkgindex_file)
+				try:
+					self._pkgindex.write(f)
+				finally:
+					f.close()
+			finally:
+				locks.unlockfile(pkgindex_lock)
 		return None
 
 class VdbKeyHandler(object):
