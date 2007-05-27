@@ -455,8 +455,8 @@ class ProgressBar(object):
 			self._maxval = maxval
 		if value < 0:
 			value = 0
-		elif value > maxval:
-			value = maxval
+		elif value > self._maxval:
+			value = self._maxval
 		self._curval = value
 
 	def inc(self, n=1):
