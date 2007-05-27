@@ -1,6 +1,6 @@
 #!/usr/bin/python -O
 
-import sys, os, time
+import sys, os, time, signal
 from optparse import OptionParser, OptionValueError
 if not hasattr(__builtins__, "set"):
 	from sets import Set as set
@@ -218,13 +218,18 @@ def emaint_main(myargv):
 			progressBar = portage.output.TermProgressBar()
 			progressHandler = ProgressHandler()
 			def display():
-				progressBar.set(progressHandler.maxval, progressHandler.curval)
+				progressBar.set(progressHandler.curval, progressHandler.maxval)
 			progressHandler.display = display
+			def sigwinch_handler(signum, frame):
+				lines, progressBar.term_columns = \
+					portage.output.get_term_size()
+			signal.signal(signal.SIGWINCH, sigwinch_handler)
 		result = getattr(inst, func)(onProgress=progressHandler.onProgress)
 		if isatty:
 			# make sure the final progress is displayed
 			progressHandler.display()
 			print
+			signal.signal(signal.SIGWINCH, signal.SIG_DFL)
 		if result:
 			print
 			print "\n".join(result)
