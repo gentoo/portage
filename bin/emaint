@@ -217,6 +217,7 @@ def emaint_main(myargv):
 		if isatty:
 			progressBar = portage.output.TermProgressBar()
 			progressHandler = ProgressHandler()
+			onProgress = progressHandler.progressHandler
 			def display():
 				progressBar.set(progressHandler.curval, progressHandler.maxval)
 			progressHandler.display = display
@@ -224,7 +225,7 @@ def emaint_main(myargv):
 				lines, progressBar.term_columns = \
 					portage.output.get_term_size()
 			signal.signal(signal.SIGWINCH, sigwinch_handler)
-		result = getattr(inst, func)(onProgress=progressHandler.onProgress)
+		result = getattr(inst, func)(onProgress=onProgress)
 		if isatty:
 			# make sure the final progress is displayed
 			progressHandler.display()
