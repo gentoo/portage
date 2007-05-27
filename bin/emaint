@@ -1,6 +1,6 @@
 #!/usr/bin/python -O
 
-import sys, os
+import sys, os, time
 from optparse import OptionParser, OptionValueError
 if not hasattr(__builtins__, "set"):
 	from sets import Set as set
@@ -12,7 +12,7 @@ except ImportError:
 	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
 	import portage
 
-import portage.const, portage.exception
+import portage.const, portage.exception, portage.output
 class WorldHandler(object):
 
 	def name():
@@ -132,6 +132,24 @@ class VdbKeyHandler(object):
 		
 		return errors
 
+class ProgressHandler(object):
+	def __init__(self):
+		self.curval = 0
+		self.maxval = 0
+		self.last_update = 0
+		self.min_display_latency = 0.2
+
+	def onProgress(self, maxval, curval):
+		self.maxval = maxval
+		self.curval = curval
+		cur_time = time.time()
+		if cur_time - self.last_update >= self.min_display_latency:
+			self.last_update = cur_time
+			self.display()
+
+	def display(self):
+		raise NotImplementedError(self)
+
 def emaint_main(myargv):
 
 	# TODO: Create a system that allows external modules to be added without
@@ -191,11 +209,22 @@ def emaint_main(myargv):
 		status = "Attempting to fix %s"
 		func = "fix"
 
-
+	isatty = sys.stdout.isatty()
 	for task in tasks:
 		print status % task.name()
 		inst = task()
-		result = getattr(inst, func)()
+		onProgress = None
+		if isatty:
+			progressBar = portage.output.TermProgressBar()
+			progressHandler = ProgressHandler()
+			def display():
+				progressBar.set(progressHandler.maxval, progressHandler.curval)
+			progressHandler.display = display
+		result = getattr(inst, func)(onProgress=progressHandler.onProgress)
+		if isatty:
+			# make sure the final progress is displayed
+			progressHandler.display()
+			print
 		if result:
 			print
 			print "\n".join(result)
