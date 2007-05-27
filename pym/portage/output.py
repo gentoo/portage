@@ -237,6 +237,29 @@ def create_color_func(color_key):
 for c in compat_functions_colors:
 	globals()[c] = create_color_func(c)
 
+def get_term_size():
+	"""
+	Get the number of lines and columns of the tty that is connected to
+	stdout.  Returns a tuple of (lines, columns) or (-1, -1) if an error
+	occurs. The curses module is used if available, otherwise the output of
+	`stty size` is parsed.
+	"""
+	try:
+		import curses
+		curses.setupterm()
+		return curses.tigetnum('lines'), curses.tigetnum('cols')
+	except ImportError:
+		pass
+	st, out = commands.getstatusoutput('stty size')
+	if st == os.EX_OK:
+		out = out.split()
+		if len(out) == 2:
+			try:
+				return int(out[0]), int(out[1])
+			except ValueError:
+				pass
+	return -1, -1
+
 class EOutput:
 	"""
 	Performs fancy terminal formatting for status and informational messages.
@@ -264,17 +287,7 @@ class EOutput:
 		self.__last_e_cmd = ""
 		self.__last_e_len = 0
 		self.quiet = False
-		columns = 0
-		try:
-			columns = int(os.getenv("COLUMNS", 0))
-		except ValueError:
-			pass
-		if columns <= 0:
-			try:
-				columns = int(commands.getoutput(
-					'set -- `stty size 2>/dev/null` ; echo "$2"'))
-			except ValueError:
-				pass
+		lines, columns = get_term_size()
 		if columns <= 0:
 			columns = 80
 		# Adjust columns so that eend works properly on a standard BSD console.
