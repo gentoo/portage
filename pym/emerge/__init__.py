@@ -4059,6 +4059,12 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		del content
 
 		try:
+			rsync_initial_timeout = \
+				int(settings.get("PORTAGE_RSYNC_INITIAL_TIMEOUT", "15"))
+		except ValueError:
+			rsync_initial_timeout = 15
+
+		try:
 			if settings.has_key("RSYNC_RETRIES"):
 				print yellow("WARNING:")+" usage of RSYNC_RETRIES is deprecated, use PORTAGE_RSYNC_RETRIES instead"
 				maxretries=int(settings["RSYNC_RETRIES"])				
@@ -4167,14 +4173,16 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 					# Timeout here in case the server is unresponsive.  The
 					# --timeout rsync option doesn't apply to the initial
 					# connection attempt.
-					signal.alarm(15)
+					if rsync_initial_timeout:
+						signal.alarm(rsync_initial_timeout)
 					try:
 						mypids.extend(portage.process.spawn(
 							mycommand, env=settings.environ(), returnpid=True))
 						exitcode = os.waitpid(mypids[0], 0)[1]
 						content = portage.grabfile(tmpservertimestampfile)
 					finally:
-						signal.alarm(0)
+						if rsync_initial_timeout:
+							signal.alarm(0)
 						try:
 							os.unlink(tmpservertimestampfile)
 						except OSError:
