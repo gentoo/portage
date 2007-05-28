@@ -5058,13 +5058,23 @@ def global_updates(mysettings, trees, prev_mtimes):
 
 		trees["/"]["bintree"] = binarytree("/", mysettings["PKGDIR"],
 			settings=mysettings)
+		vardb = trees["/"]["vartree"].dbapi
+		bindb = trees["/"]["bintree"].dbapi
 		for update_cmd in myupd:
 			if update_cmd[0] == "move":
-				trees["/"]["vartree"].dbapi.move_ent(update_cmd)
-				trees["/"]["bintree"].move_ent(update_cmd)
+				moves = vardb.move_ent(update_cmd)
+				if moves:
+					writemsg_stdout(moves * "@")
+				moves = bindb.move_ent(update_cmd)
+				if moves:
+					writemsg_stdout(moves * "%")
 			elif update_cmd[0] == "slotmove":
-				trees["/"]["vartree"].dbapi.move_slot_ent(update_cmd)
-				trees["/"]["bintree"].move_slot_ent(update_cmd)
+				moves = vardb.move_slot_ent(update_cmd)
+				if moves:
+					writemsg_stdout(moves * "s")
+				moves = bindb.move_slot_ent(update_cmd)
+				if moves:
+					writemsg_stdout(moves * "S")
 
 		# The above global updates proceed quickly, so they
 		# are considered a single mtimedb transaction.

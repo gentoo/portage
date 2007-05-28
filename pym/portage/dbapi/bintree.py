@@ -15,6 +15,8 @@ import os, errno, stat
 class bindbapi(fakedbapi):
 	def __init__(self, mybintree=None, settings=None):
 		self.bintree = mybintree
+		self.move_ent = mybintree.move_ent
+		self.move_slot_ent = mybintree.move_slot_ent
 		self.cpvdict={}
 		self.cpdict={}
 		if settings is None:
@@ -130,8 +132,9 @@ class binarytree(object):
 		origcat = origcp.split("/")[0]
 		mynewcat = newcp.split("/")[0]
 		origmatches=self.dbapi.cp_list(origcp)
+		moves = 0
 		if not origmatches:
-			return
+			return moves
 		for mycpv in origmatches:
 
 			mycpsplit = catpkgsplit(mycpv)
@@ -153,8 +156,7 @@ class binarytree(object):
 					noiselevel=-1)
 				continue
 
-			#print ">>> Updating data in:",mycpv
-			writemsg_stdout("%")
+			moves += 1
 			mytbz2 = portage.xpak.tbz2(tbz2path)
 			mydata = mytbz2.get_data()
 			updated_items = update_dbentries([mylist], mydata)
@@ -184,7 +186,7 @@ class binarytree(object):
 					self._create_symlink(mynewcpv)
 			self.dbapi.cpv_inject(mynewcpv)
 
-		return 1
+		return moves
 
 	def _remove_symlink(self, cpv):
 		"""Remove a ${PKGDIR}/${CATEGORY}/${PF}.tbz2 symlink and also remove
@@ -235,8 +237,9 @@ class binarytree(object):
 			raise InvalidAtom(pkg)
 		
 		origmatches = self.dbapi.match(pkg)
+		moves = 0
 		if not origmatches:
-			return
+			return moves
 		for mycpv in origmatches:
 			mycpsplit = catpkgsplit(mycpv)
 			myoldpkg = mycpv.split("/")[1]
@@ -257,10 +260,10 @@ class binarytree(object):
 			if (slot[0] != origslot):
 				continue
 
-			writemsg_stdout("S")
+			moves += 1
 			mydata["SLOT"] = newslot+"\n"
 			mytbz2.recompose_mem(portage.xpak.xpak_mem(mydata))
-		return 1
+		return moves
 
 	def update_ents(self, update_iter):
 		if len(update_iter) == 0:
