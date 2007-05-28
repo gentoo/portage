@@ -398,10 +398,10 @@ class search:
 		print "Searching...   ",
 
 		regexsearch = False
-		if self.searchkey[0] == '%':
+		if self.searchkey.startswith('%'):
 			regexsearch = True
 			self.searchkey = self.searchkey[1:]
-		if self.searchkey[0] == '@':
+		if self.searchkey.startswith('@'):
 			match_category = 1
 			self.searchkey = self.searchkey[1:]
 		if regexsearch:
