@@ -647,7 +647,8 @@ class binarytree(object):
 			use = d["USE"].split()
 			iuse = set(d["IUSE"].split())
 			use = [f for f in use if f in iuse]
-			del iuse, d["IUSE"]
+			if not iuse:
+				del d["IUSE"]
 			use.sort()
 			d["USE"] = " ".join(use)
 			d["DESC"] = d["DESCRIPTION"]
