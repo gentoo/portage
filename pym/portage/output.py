@@ -476,6 +476,7 @@ class TermProgressBar(ProgressBar):
 		lines, self.term_columns = get_term_size()
 		self.file = sys.stdout
 		self._min_columns = 11
+		self._max_columns = 80
 		# for indeterminate mode, ranges from 0.0 to 1.0
 		self._position = 0.0
 
@@ -490,6 +491,8 @@ class TermProgressBar(ProgressBar):
 
 	def _create_image(self):
 		cols = self.term_columns
+		if cols > self._max_columns:
+			cols = self._max_columns
 		min_columns = self._min_columns
 		curval = self._curval
 		maxval = self._maxval
