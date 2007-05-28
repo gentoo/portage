@@ -743,14 +743,16 @@ class binarytree(object):
 			else:
 				writemsg("Resuming download of this tbz2, but it is possible that it is corrupt.\n",
 					noiselevel=-1)
-		mydest = self.pkgdir + "/All/"
+		mydest = os.path.dirname(self.getname(pkgname))
 		try:
 			os.makedirs(mydest, 0775)
 		except (OSError, IOError):
 			pass
-		return portage.getbinpkg.file_get(
+		success = portage.getbinpkg.file_get(
 			self.settings["PORTAGE_BINHOST"] + "/" + tbz2name,
 			mydest, fcmd=self.settings["RESUMECOMMAND"])
+		self.inject(pkgname)
+		return success
 
 	def getslot(self, mycatpkg):
 		"Get a slot for a catpkg; assume it exists."
