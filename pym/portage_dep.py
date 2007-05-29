@@ -337,6 +337,12 @@ def dep_getslot(mydep):
 		return mydep[colon+1:]
 	return None
 
+def remove_slot(mydep):
+	colon = mydep.rfind(":")
+	if colon != -1:
+		mydep = mydep[:colon]
+	return mydep
+
 _invalid_atom_chars_regexp = re.compile("[()|?]")
 
 def isvalidatom(atom, allow_blockers=False):
@@ -573,7 +579,8 @@ def match_from_list(mydep, candidate_list):
 			mylist.append(x)
 
 	elif operator == "=": # Exact match
-		mylist = [cpv for cpv in candidate_list if cpvequal(cpv, mycpv)]
+		mylist = [cpv for cpv in candidate_list if \
+			cpvequal(remove_slot(cpv), mycpv)]
 
 	elif operator == "=*": # glob match
 		# XXX: Nasty special casing for leading zeros
@@ -585,7 +592,7 @@ def match_from_list(mydep, candidate_list):
 			myver = "0"+myver
 		mycpv = mysplit[0]+"/"+mysplit[1]+"-"+myver
 		for x in candidate_list:
-			xs = catpkgsplit(x)
+			xs = catpkgsplit(remove_slot(x))
 			myver = xs[2].lstrip("0")
 			if not myver or not myver[0].isdigit():
 				myver = "0"+myver
@@ -595,7 +602,7 @@ def match_from_list(mydep, candidate_list):
 
 	elif operator == "~": # version, any revision, match
 		for x in candidate_list:
-			xs = catpkgsplit(x)
+			xs = catpkgsplit(remove_slot(x))
 			if xs is None:
 				raise InvalidData(x)
 			if not cpvequal(xs[0]+"/"+xs[1]+"-"+xs[2], mycpv_cps[0]+"/"+mycpv_cps[1]+"-"+mycpv_cps[2]):
@@ -608,7 +615,7 @@ def match_from_list(mydep, candidate_list):
 		mysplit = ["%s/%s" % (cat, pkg), ver, rev]
 		for x in candidate_list:
 			try:
-				result = pkgcmp(pkgsplit(x), mysplit)
+				result = pkgcmp(pkgsplit(remove_slot(x)), mysplit)
 			except ValueError: # pkgcmp may return ValueError during int() conversion
 				writemsg("\nInvalid package name: %s\n" % x, noiselevel=-1)
 				raise
