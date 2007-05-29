@@ -359,6 +359,8 @@ def dep_getcpv(mydep):
 	if retval is not None:
 		return retval
 	mydep_orig = mydep
+	if mydep:
+		mydep = remove_slot(mydep)
 	if mydep and mydep[0] == "*":
 		mydep = mydep[1:]
 	if mydep and mydep[-1] == "*":
@@ -369,9 +371,6 @@ def dep_getcpv(mydep):
 		mydep = mydep[2:]
 	elif mydep[:1] in "=<>~":
 		mydep = mydep[1:]
-	colon = mydep.rfind(":")
-	if colon != -1:
-		mydep = mydep[:colon]
 	_dep_getcpv_cache[mydep_orig] = mydep
 	return mydep
 
