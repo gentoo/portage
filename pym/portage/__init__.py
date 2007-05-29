@@ -1737,7 +1737,10 @@ class config:
 		oldpuse = self.puse
 		self.puse = ""
 		if self.pusedict.has_key(cp):
-			self.pusekey = best_match_to_list(self.mycpv, self.pusedict[cp].keys())
+			cpv_slot = self.mycpv
+			if mydb:
+				cpv_slot += ":" + mydb.aux_get(self.mycpv, ["SLOT"])[0]
+			self.pusekey = best_match_to_list(cpv_slot, self.pusedict[cp].keys())
 			if self.pusekey:
 				self.puse = " ".join(self.pusedict[cp][self.pusekey])
 		if oldpuse != self.puse:

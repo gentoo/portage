@@ -654,19 +654,7 @@ def match_from_list(mydep, candidate_list):
 
 	if operator is None:
 		for x in candidate_list:
-			xs = pkgsplit(x)
-			if xs is None:
-				xcpv = dep_getcpv(x)
-				if slot is not None:
-					xslot = dep_getslot(x)
-					if xslot is not None and xslot != slot:
-						"""  This function isn't given enough information to
-						reject atoms based on slot unless *both* compared atoms
-						specify slots."""
-						continue
-				if xcpv != mycpv:
-					continue
-			elif xs[0] != mycpv:
+			if dep_getkey(x) != mycpv:
 				continue
 			mylist.append(x)
 
@@ -728,6 +716,15 @@ def match_from_list(mydep, candidate_list):
 				raise KeyError("Unknown operator: %s" % mydep)
 	else:
 		raise KeyError("Unknown operator: %s" % mydep)
+
+	if slot is not None:
+		candidate_list = mylist
+		mylist = []
+		for x in candidate_list:
+			xslot = dep_getslot(x)
+			if xslot is not None and xslot != slot:
+				continue
+			mylist.append(x)
 
 	_match_from_list_cache[cache_key] = mylist
 	return mylist
