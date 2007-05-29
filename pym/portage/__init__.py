@@ -1690,11 +1690,13 @@ class config:
 		has_changed = False
 		self.mycpv = mycpv
 		cp = dep_getkey(mycpv)
+		cpv_slot = self.mycpv
 		pkginternaluse = ""
 		if mydb:
-			pkginternaluse = " ".join([x[1:] \
-				for x in mydb.aux_get(mycpv, ["IUSE"])[0].split() \
-				if x.startswith("+")])
+			slot, iuse = mydb.aux_get(self.mycpv, ["SLOT", "IUSE"])
+			cpv_slot = "%s:%s" % (self.mycpv, slot)
+			pkginternaluse = [x[1:] for x in iuse.split() if x.startswith("+")]
+			pkginternaluse = " ".join(pkginternaluse)
 		if pkginternaluse != self.configdict["pkginternal"].get("USE", ""):
 			self.configdict["pkginternal"]["USE"] = pkginternaluse
 			has_changed = True
@@ -1703,7 +1705,7 @@ class config:
 			defaults.append(self.make_defaults_use[i])
 			cpdict = self.pkgprofileuse[i].get(cp, None)
 			if cpdict:
-				best_match = best_match_to_list(self.mycpv, cpdict.keys())
+				best_match = best_match_to_list(cpv_slot, cpdict.keys())
 				if best_match:
 					defaults.append(cpdict[best_match])
 		defaults = " ".join(defaults)
@@ -1715,7 +1717,7 @@ class config:
 			useforce.append(self.useforce_list[i])
 			cpdict = self.puseforce_list[i].get(cp, None)
 			if cpdict:
-				best_match = best_match_to_list(self.mycpv, cpdict.keys())
+				best_match = best_match_to_list(cpv_slot, cpdict.keys())
 				if best_match:
 					useforce.append(cpdict[best_match])
 		useforce = set(stack_lists(useforce, incremental=True))
@@ -1727,7 +1729,7 @@ class config:
 			usemask.append(self.usemask_list[i])
 			cpdict = self.pusemask_list[i].get(cp, None)
 			if cpdict:
-				best_match = best_match_to_list(self.mycpv, cpdict.keys())
+				best_match = best_match_to_list(cpv_slot, cpdict.keys())
 				if best_match:
 					usemask.append(cpdict[best_match])
 		usemask = set(stack_lists(usemask, incremental=True))
@@ -1736,13 +1738,11 @@ class config:
 			has_changed = True
 		oldpuse = self.puse
 		self.puse = ""
-		if self.pusedict.has_key(cp):
-			cpv_slot = self.mycpv
-			if mydb:
-				cpv_slot += ":" + mydb.aux_get(self.mycpv, ["SLOT"])[0]
-			self.pusekey = best_match_to_list(cpv_slot, self.pusedict[cp].keys())
+		cpdict = self.pusedict.get(cp)
+		if cpdict:
+			self.pusekey = best_match_to_list(cpv_slot, cpdict.keys())
 			if self.pusekey:
-				self.puse = " ".join(self.pusedict[cp][self.pusekey])
+				self.puse = " ".join(cpdict[self.pusekey])
 		if oldpuse != self.puse:
 			has_changed = True
 		self.configdict["pkg"]["PKGUSE"] = self.puse[:] # For saving to PUSE file
