@@ -266,6 +266,8 @@ def get_operator(mydep):
 	@return: The operator. One of:
 		'~', '=', '>', '<', '=*', '>=', or '<='
 	"""
+	if mydep:
+		mydep = remove_slot(mydep)
 	if mydep[0] == "~":
 		operator = "~"
 	elif mydep[0] == "=":
@@ -515,7 +517,6 @@ def best_match_to_list(mypkg, mylist):
 			if maxvalue < 3:
 				maxvalue = 3
 				bestm = x
-			continue
 		op_val = operator_values[get_operator(x)]
 		if op_val > maxvalue:
 			maxvalue = op_val
