@@ -241,10 +241,17 @@ def use_reduce(deparray, uselist=[], masklist=[], matchall=0, excludeall=[]):
 
 				# Check that each flag matches
 				ismatch = True
+				missing_flag = False
 				for head in newdeparray[:-1]:
 					head = head[:-1]
-					if head[0] == "!":
+					if not head:
+						missing_flag = True
+						break
+					if head.startswith("!"):
 						head_key = head[1:]
+						if not head_key:
+							missing_flag = True
+							break
 						if not matchall and head_key in uselist or \
 							head_key in excludeall:
 							ismatch = False
@@ -255,6 +262,10 @@ def use_reduce(deparray, uselist=[], masklist=[], matchall=0, excludeall=[]):
 							break
 					else:
 						ismatch = False
+				if missing_flag:
+					raise portage_exception.InvalidDependString(
+						"Conditional without flag: \"" + \
+						paren_enclose([head+"?", newdeparray[-1]])+"\"")
 
 				# If they all match, process the target
 				if ismatch:
