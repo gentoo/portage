@@ -669,6 +669,8 @@ class vartree(object):
 	def __init__(self, root="/", virtual=None, clone=None, categories=None,
 		settings=None):
 		if clone:
+			writemsg("vartree.__init__(): deprecated " + \
+				"use of clone parameter\n", noiselevel=-1)
 			self.root = clone.root[:]
 			self.dbapi = copy.deepcopy(clone.dbapi)
 			self.populated = 1

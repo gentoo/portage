@@ -95,6 +95,8 @@ class binarytree(object):
 	"this tree scans for a list of all packages available in PKGDIR"
 	def __init__(self, root, pkgdir, virtual=None, settings=None, clone=None):
 		if clone:
+			writemsg("binartree.__init__(): deprecated " + \
+				"use of clone parameter\n", noiselevel=-1)
 			# XXX This isn't cloning. It's an instance of the same thing.
 			self.root = clone.root
 			self.pkgdir = clone.pkgdir
