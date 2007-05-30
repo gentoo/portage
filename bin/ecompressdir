@@ -115,9 +115,9 @@ for dir in "$@" ; do
 	find "${dir}" -type f -name '*.ecompress.file' -print0 | ${XARGS} -0 rm -f
 
 	# not uncommon for packages to compress doc files themselves
-	funk_up_dir "decompress" ".Z" "gunzip"
-	funk_up_dir "decompress" ".gz" "gunzip"
-	funk_up_dir "decompress" ".bz2" "bunzip2"
+	funk_up_dir "decompress" ".Z" "gunzip -f"
+	funk_up_dir "decompress" ".gz" "gunzip -f"
+	funk_up_dir "decompress" ".bz2" "bunzip2 -f"
 
 	# forcibly break all hard links as some compressors whine about it
 	find "${dir}" -type f -links +1 -exec env file="{}" sh -c \
