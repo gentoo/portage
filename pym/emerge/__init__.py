@@ -598,7 +598,7 @@ def genericdict(mylist):
 
 def filter_iuse_defaults(iuse):
 	for flag in iuse:
-		if flag.startswith("+"):
+		if flag.startswith("+") or flag.startswith("-"):
 			yield flag[1:]
 		else:
 			yield flag

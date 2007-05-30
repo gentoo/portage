@@ -1695,7 +1695,12 @@ class config:
 		if mydb:
 			slot, iuse = mydb.aux_get(self.mycpv, ["SLOT", "IUSE"])
 			cpv_slot = "%s:%s" % (self.mycpv, slot)
-			pkginternaluse = [x[1:] for x in iuse.split() if x.startswith("+")]
+			pkginternaluse = []
+			for x in iuse.split():
+				if x.startswith("+"):
+					pkginternaluse.append(x[1:])
+				elif x.startswith("-"):
+					pkginternaluse.append(x)
 			pkginternaluse = " ".join(pkginternaluse)
 		if pkginternaluse != self.configdict["pkginternal"].get("USE", ""):
 			self.configdict["pkginternal"]["USE"] = pkginternaluse

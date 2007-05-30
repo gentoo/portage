@@ -1501,7 +1501,7 @@ if [ "${EBUILD_PHASE}" != "depend" ]; then
 	# Make IUSE defaults backward compatible with all the old shell code.
 	iuse_temp=""
 	for x in ${IUSE} ; do
-		if [[ ${x} == +* ]]; then
+		if [[ ${x} == +* ]] || [[ ${x} == -* ]] ; then
 			iuse_temp="${iuse_temp} ${x:1}"
 		else
 			iuse_temp="${iuse_temp} ${x}"
