@@ -733,4 +733,4 @@ def match_from_list(mydep, candidate_list):
 			mylist.append(x)
 
 	_match_from_list_cache[cache_key] = mylist
-	return mylist
+	return mylist[:]
