@@ -635,13 +635,12 @@ def match_from_list(mydep, candidate_list):
 
 	mycpv     = dep_getcpv(mydep)
 	mycpv_cps = catpkgsplit(mycpv) # Can be None if not specific
-	slot      = None
+	slot      = dep_getslot(mydep)
 
 	if not mycpv_cps:
 		cat, pkg = catsplit(mycpv)
 		ver      = None
 		rev      = None
-		slot = dep_getslot(mydep)
 	else:
 		cat, pkg, ver, rev = mycpv_cps
 		if mydep == mycpv:
