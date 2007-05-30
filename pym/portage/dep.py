@@ -335,6 +335,8 @@ def get_operator(mydep):
 	"""
 	if mydep:
 		mydep = remove_slot(mydep)
+	if not mydep:
+		return None
 	if mydep[0] == "~":
 		operator = "~"
 	elif mydep[0] == "=":
