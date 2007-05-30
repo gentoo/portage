@@ -4709,6 +4709,8 @@ class portagetree:
 	def __init__(self, root="/", virtual=None, clone=None, settings=None):
 
 		if clone:
+			writemsg("portagetree.__init__(): deprecated " + \
+				"use of clone parameter\n", noiselevel=-1)
 			self.root=clone.root
 			self.portroot=clone.portroot
 			self.pkglines=clone.pkglines
@@ -5492,6 +5494,8 @@ class vartree(object):
 	def __init__(self, root="/", virtual=None, clone=None, categories=None,
 		settings=None):
 		if clone:
+			writemsg("vartree.__init__(): deprecated " + \
+				"use of clone parameter\n", noiselevel=-1)
 			self.root       = clone.root[:]
 			self.dbapi      = copy.deepcopy(clone.dbapi)
 			self.populated  = 1
@@ -6292,6 +6296,8 @@ class binarytree(object):
 	"this tree scans for a list of all packages available in PKGDIR"
 	def __init__(self, root, pkgdir, virtual=None, settings=None, clone=None):
 		if clone:
+			writemsg("binarytree.__init__(): deprecated " + \
+				"use of clone parameter\n", noiselevel=-1)
 			# XXX This isn't cloning. It's an instance of the same thing.
 			self.root=clone.root
 			self.pkgdir=clone.pkgdir
