@@ -1699,11 +1699,18 @@ class config:
 		has_changed = False
 		self.mycpv = mycpv
 		cp = dep_getkey(mycpv)
+		cpv_slot = self.mycpv
 		pkginternaluse = ""
 		if mydb:
-			pkginternaluse = " ".join([x[1:] \
-				for x in mydb.aux_get(mycpv, ["IUSE"])[0].split() \
-				if x.startswith("+")])
+			slot, iuse = mydb.aux_get(self.mycpv, ["SLOT", "IUSE"])
+			cpv_slot = "%s:%s" % (self.mycpv, slot)
+			pkginternaluse = []
+			for x in iuse.split():
+				if x.startswith("+"):
+					pkginternaluse.append(x[1:])
+				elif x.startswith("-"):
+					pkginternaluse.append(x)
+			pkginternaluse = " ".join(pkginternaluse)
 		if pkginternaluse != self.configdict["pkginternal"].get("USE", ""):
 			self.configdict["pkginternal"]["USE"] = pkginternaluse
 			has_changed = True
@@ -1712,7 +1719,7 @@ class config:
 			defaults.append(self.make_defaults_use[i])
 			cpdict = self.pkgprofileuse[i].get(cp, None)
 			if cpdict:
-				best_match = best_match_to_list(self.mycpv, cpdict.keys())
+				best_match = best_match_to_list(cpv_slot, cpdict.keys())
 				if best_match:
 					defaults.append(cpdict[best_match])
 		defaults = " ".join(defaults)
@@ -1724,7 +1731,7 @@ class config:
 			useforce.append(self.useforce_list[i])
 			cpdict = self.puseforce_list[i].get(cp, None)
 			if cpdict:
-				best_match = best_match_to_list(self.mycpv, cpdict.keys())
+				best_match = best_match_to_list(cpv_slot, cpdict.keys())
 				if best_match:
 					useforce.append(cpdict[best_match])
 		useforce = set(stack_lists(useforce, incremental=True))
@@ -1736,7 +1743,7 @@ class config:
 			usemask.append(self.usemask_list[i])
 			cpdict = self.pusemask_list[i].get(cp, None)
 			if cpdict:
-				best_match = best_match_to_list(self.mycpv, cpdict.keys())
+				best_match = best_match_to_list(cpv_slot, cpdict.keys())
 				if best_match:
 					usemask.append(cpdict[best_match])
 		usemask = set(stack_lists(usemask, incremental=True))
@@ -1745,10 +1752,11 @@ class config:
 			has_changed = True
 		oldpuse = self.puse
 		self.puse = ""
-		if self.pusedict.has_key(cp):
-			self.pusekey = best_match_to_list(self.mycpv, self.pusedict[cp].keys())
+		cpdict = self.pusedict.get(cp)
+		if cpdict:
+			self.pusekey = best_match_to_list(cpv_slot, cpdict.keys())
 			if self.pusekey:
-				self.puse = " ".join(self.pusedict[cp][self.pusekey])
+				self.puse = " ".join(cpdict[self.pusekey])
 		if oldpuse != self.puse:
 			has_changed = True
 		self.configdict["pkg"]["PKGUSE"] = self.puse[:] # For saving to PUSE file
@@ -5070,13 +5078,23 @@ def global_updates(mysettings, trees, prev_mtimes):
 
 		trees["/"]["bintree"] = binarytree("/", mysettings["PKGDIR"],
 			settings=mysettings)
+		vardb = trees["/"]["vartree"].dbapi
+		bindb = trees["/"]["bintree"].dbapi
 		for update_cmd in myupd:
 			if update_cmd[0] == "move":
-				trees["/"]["vartree"].dbapi.move_ent(update_cmd)
-				trees["/"]["bintree"].move_ent(update_cmd)
+				moves = vardb.move_ent(update_cmd)
+				if moves:
+					writemsg_stdout(moves * "@")
+				moves = bindb.move_ent(update_cmd)
+				if moves:
+					writemsg_stdout(moves * "%")
 			elif update_cmd[0] == "slotmove":
-				trees["/"]["vartree"].dbapi.move_slot_ent(update_cmd)
-				trees["/"]["bintree"].move_slot_ent(update_cmd)
+				moves = vardb.move_slot_ent(update_cmd)
+				if moves:
+					writemsg_stdout(moves * "s")
+				moves = bindb.move_slot_ent(update_cmd)
+				if moves:
+					writemsg_stdout(moves * "S")
 
 		# The above global updates proceed quickly, so they
 		# are considered a single mtimedb transaction.

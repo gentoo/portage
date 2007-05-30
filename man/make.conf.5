@@ -356,6 +356,12 @@ emerge is running at.  In other words, this will not set the nice level,
 it will increment it.  For more information about nice levels and what
 are acceptable ranges, see \fBnice\fR(1).
 .TP
+\fBPORTAGE_RSYNC_INITIAL_TIMEOUT\fR = \fIinteger\fR
+Used by \fBemerge \-\-sync\fR as a timeout for the initial connection to an
+rsync server.
+.br
+Defaults to 15 seconds.
+.TP
 \fBPORTAGE_RSYNC_EXTRA_OPTS\fR = \fI[rsync options string]\fR
 Additional rsync options to be used by \fBemerge \-\-sync\fR.
 .br

@@ -276,8 +276,9 @@ class vardbapi(dbapi):
 			if not (isvalidatom(cp) and isjustname(cp)):
 				raise InvalidPackageName(cp)
 		origmatches = self.match(origcp, use_cache=0)
+		moves = 0
 		if not origmatches:
-			return
+			return moves
 		for mycpv in origmatches:
 			mycpsplit = catpkgsplit(mycpv)
 			mynewcpv = newcp + "-" + mycpsplit[2]
@@ -288,7 +289,7 @@ class vardbapi(dbapi):
 			origpath = self.getpath(mycpv)
 			if not os.path.exists(origpath):
 				continue
-			writemsg_stdout("@")
+			moves += 1
 			if not os.path.exists(self.getpath(mynewcat)):
 				#create the directory
 				os.makedirs(self.getpath(mynewcat))
@@ -313,6 +314,7 @@ class vardbapi(dbapi):
 
 			write_atomic(os.path.join(newpath, "CATEGORY"), mynewcat+"\n")
 			fixdbentries([mylist], newpath)
+		return moves
 
 	def update_ents(self, update_iter):
 		"""Run fixdbentries on all installed packages (time consuming).  Like
@@ -336,9 +338,9 @@ class vardbapi(dbapi):
 			raise InvalidAtom(pkg)
 
 		origmatches = self.match(pkg, use_cache=0)
-		
+		moves = 0
 		if not origmatches:
-			return
+			return moves
 		for mycpv in origmatches:
 			origpath = self.getpath(mycpv)
 			if not os.path.exists(origpath):
@@ -351,8 +353,9 @@ class vardbapi(dbapi):
 			if (slot[0] != origslot):
 				continue
 
-			writemsg_stdout("s")
+			moves += 1
 			write_atomic(os.path.join(origpath, "SLOT"), newslot+"\n")
+		return moves
 
 	def cp_list(self, mycp, use_cache=1):
 		mysplit=catsplit(mycp)
