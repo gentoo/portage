@@ -16,7 +16,6 @@ class bindbapi(fakedbapi):
 	def __init__(self, mybintree=None, settings=None):
 		self.bintree = mybintree
 		self.move_ent = mybintree.move_ent
-		self.move_slot_ent = mybintree.move_slot_ent
 		self.cpvdict={}
 		self.cpdict={}
 		if settings is None:
@@ -90,6 +89,10 @@ class bindbapi(fakedbapi):
 			self.bintree.populate()
 		return fakedbapi.cpv_all(self)
 
+	def move_slot_ent(self, mylist):
+		if not self.bintree.populated:
+			self.bintree.populate()
+		return fakedbapi.move_slot_ent(self, mylist)
 
 class binarytree(object):
 	"this tree scans for a list of all packages available in PKGDIR"
@@ -112,6 +115,7 @@ class binarytree(object):
 			self.pkgdir = normalize_path(pkgdir)
 			self.dbapi = bindbapi(self, settings=settings)
 			self.update_ents = self.dbapi.update_ents
+			self.move_slot_ent = self.dbapi.move_slot_ent
 			self.populated = 0
 			self.tree = {}
 			self.remotepkgs = {}
@@ -228,45 +232,6 @@ class binarytree(object):
 				raise
 			del e
 		os.symlink(os.path.join("..", "All", mypkg + ".tbz2"), full_path)
-
-	def move_slot_ent(self, mylist):
-		if not self.populated:
-			self.populate()
-		pkg = mylist[1]
-		origslot = mylist[2]
-		newslot = mylist[3]
-		
-		if not isvalidatom(pkg):
-			raise InvalidAtom(pkg)
-		
-		origmatches = self.dbapi.match(pkg)
-		moves = 0
-		if not origmatches:
-			return moves
-		for mycpv in origmatches:
-			mycpsplit = catpkgsplit(mycpv)
-			myoldpkg = mycpv.split("/")[1]
-			tbz2path = self.getname(mycpv)
-			if os.path.exists(tbz2path) and not os.access(tbz2path,os.W_OK):
-				writemsg("!!! Cannot update readonly binary: "+mycpv+"\n",
-					noiselevel=-1)
-				continue
-
-			#print ">>> Updating data in:",mycpv
-			mytbz2 = portage.xpak.tbz2(tbz2path)
-			mydata = mytbz2.get_data()
-
-			slot = mydata["SLOT"]
-			if (not slot):
-				continue
-
-			if (slot[0] != origslot):
-				continue
-
-			moves += 1
-			mydata["SLOT"] = newslot+"\n"
-			mytbz2.recompose_mem(portage.xpak.xpak_mem(mydata))
-		return moves
 
 	def prevent_collision(self, cpv):
 		"""Make sure that the file location ${PKGDIR}/All/${PF}.tbz2 is safe to

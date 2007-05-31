@@ -78,3 +78,21 @@ class dbapi(object):
 				aux_update(cpv, metadata_updates)
 			if onProgress:
 				onProgress(maxval, i+1)
+
+	def move_slot_ent(self, mylist):
+		pkg = mylist[1]
+		origslot = mylist[2]
+		newslot = mylist[3]
+		origmatches = self.match(pkg)
+		moves = 0
+		if not origmatches:
+			return moves
+		from portage.versions import catsplit
+		for mycpv in origmatches:
+			slot = self.aux_get(mycpv, ["SLOT"])[0]
+			if slot != origslot:
+				continue
+			moves += 1
+			mydata = {"SLOT": newslot+"\n"}
+			self.aux_update(mycpv, mydata)
+		return moves
