@@ -316,47 +316,6 @@ class vardbapi(dbapi):
 			fixdbentries([mylist], newpath)
 		return moves
 
-	def update_ents(self, update_iter):
-		"""Run fixdbentries on all installed packages (time consuming).  Like
-		fixpackages, this should be run from a helper script and display
-		a progress indicator."""
-		dbdir = os.path.join(self.root, VDB_PATH)
-		for catdir in listdir(dbdir):
-			catdir = dbdir+"/"+catdir
-			if os.path.isdir(catdir):
-				for pkgdir in listdir(catdir):
-					pkgdir = catdir+"/"+pkgdir
-					if os.path.isdir(pkgdir):
-						fixdbentries(update_iter, pkgdir)
-
-	def move_slot_ent(self, mylist):
-		pkg = mylist[1]
-		origslot = mylist[2]
-		newslot = mylist[3]
-
-		if not isvalidatom(pkg):
-			raise InvalidAtom(pkg)
-
-		origmatches = self.match(pkg, use_cache=0)
-		moves = 0
-		if not origmatches:
-			return moves
-		for mycpv in origmatches:
-			origpath = self.getpath(mycpv)
-			if not os.path.exists(origpath):
-				continue
-
-			slot = grabfile(os.path.join(origpath, "SLOT"));
-			if (not slot):
-				continue
-
-			if (slot[0] != origslot):
-				continue
-
-			moves += 1
-			write_atomic(os.path.join(origpath, "SLOT"), newslot+"\n")
-		return moves
-
 	def cp_list(self, mycp, use_cache=1):
 		mysplit=catsplit(mycp)
 		if mysplit[0] == '*':
@@ -592,7 +551,13 @@ class vardbapi(dbapi):
 		if not mylink.exists():
 			raise KeyError(cpv)
 		for k, v in values.iteritems():
-			mylink.setfile(k, v)
+			if v:
+				mylink.setfile(k, v)
+			else:
+				try:
+					os.unlink(os.path.join(self.getpath(cpv), k))
+				except EnvironmentError:
+					pass
 
 	def counter_tick(self, myroot, mycpv=None):
 		return self.counter_tick_core(myroot, incrementing=1, mycpv=mycpv)
@@ -669,6 +634,8 @@ class vartree(object):
 	def __init__(self, root="/", virtual=None, clone=None, categories=None,
 		settings=None):
 		if clone:
+			writemsg("vartree.__init__(): deprecated " + \
+				"use of clone parameter\n", noiselevel=-1)
 			self.root = clone.root[:]
 			self.dbapi = copy.deepcopy(clone.dbapi)
 			self.populated = 1

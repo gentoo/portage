@@ -53,3 +53,46 @@ class dbapi(object):
 		else:
 			writemsg("!!! Invalid db entry: %s\n" % mypath, noiselevel=-1)
 
+	def update_ents(self, updates, onProgress=None):
+		"""
+		Update metadata of all packages for packages moves.
+		@param updates: A list of move commands
+		@type updates: List
+		@param onProgress: A progress callback function
+		@type onProgress: a callable that takes 2 integer arguments: maxval and curval
+		"""
+		cpv_all = self.cpv_all()
+		cpv_all.sort()
+		maxval = len(cpv_all)
+		aux_get = self.aux_get
+		aux_update = self.aux_update
+		update_keys = ["DEPEND", "RDEPEND", "PDEPEND", "PROVIDE"]
+		from itertools import izip
+		from portage.update import update_dbentries
+		if onProgress:
+			onProgress(maxval, 0)
+		for i, cpv in enumerate(cpv_all):
+			metadata = dict(izip(update_keys, aux_get(cpv, update_keys)))
+			metadata_updates = update_dbentries(updates, metadata)
+			if metadata_updates:
+				aux_update(cpv, metadata_updates)
+			if onProgress:
+				onProgress(maxval, i+1)
+
+	def move_slot_ent(self, mylist):
+		pkg = mylist[1]
+		origslot = mylist[2]
+		newslot = mylist[3]
+		origmatches = self.match(pkg)
+		moves = 0
+		if not origmatches:
+			return moves
+		from portage.versions import catsplit
+		for mycpv in origmatches:
+			slot = self.aux_get(mycpv, ["SLOT"])[0]
+			if slot != origslot:
+				continue
+			moves += 1
+			mydata = {"SLOT": newslot+"\n"}
+			self.aux_update(mycpv, mydata)
+		return moves

@@ -727,6 +727,8 @@ class portagetree(object):
 		"""
 
 		if clone:
+			writemsg("portagetree.__init__(): deprecated " + \
+				"use of clone parameter\n", noiselevel=-1)
 			self.root = clone.root
 			self.portroot = clone.portroot
 			self.pkglines = clone.pkglines

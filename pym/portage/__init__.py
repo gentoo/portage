@@ -5021,12 +5021,10 @@ def portageexit():
 
 atexit_register(portageexit)
 
-def global_updates(mysettings, trees, prev_mtimes):
+def _global_updates(trees, prev_mtimes):
 	"""
 	Perform new global updates if they exist in $PORTDIR/profiles/updates/.
 
-	@param mysettings: A config instance for ROOT="/".
-	@type mysettings: config
 	@param trees: A dictionary containing portage trees.
 	@type trees: dict
 	@param prev_mtimes: A dictionary containing mtimes of files located in
@@ -5040,6 +5038,7 @@ def global_updates(mysettings, trees, prev_mtimes):
 	global secpass
 	if secpass < 2 or "SANDBOX_ACTIVE" in os.environ:
 		return
+	mysettings = trees["/"]["vartree"].settings
 	updpath = os.path.join(mysettings["PORTDIR"], "profiles", "updates")
 
 	try:
@@ -5080,21 +5079,25 @@ def global_updates(mysettings, trees, prev_mtimes):
 			settings=mysettings)
 		vardb = trees["/"]["vartree"].dbapi
 		bindb = trees["/"]["bintree"].dbapi
+		if not os.access(bindb.bintree.pkgdir, os.W_OK):
+			bindb = None
 		for update_cmd in myupd:
 			if update_cmd[0] == "move":
 				moves = vardb.move_ent(update_cmd)
 				if moves:
 					writemsg_stdout(moves * "@")
-				moves = bindb.move_ent(update_cmd)
-				if moves:
-					writemsg_stdout(moves * "%")
+				if bindb:
+					moves = bindb.move_ent(update_cmd)
+					if moves:
+						writemsg_stdout(moves * "%")
 			elif update_cmd[0] == "slotmove":
 				moves = vardb.move_slot_ent(update_cmd)
 				if moves:
 					writemsg_stdout(moves * "s")
-				moves = bindb.move_slot_ent(update_cmd)
-				if moves:
-					writemsg_stdout(moves * "S")
+				if bindb:
+					moves = bindb.move_slot_ent(update_cmd)
+					if moves:
+						writemsg_stdout(moves * "S")
 
 		# The above global updates proceed quickly, so they
 		# are considered a single mtimedb transaction.
@@ -5109,7 +5112,11 @@ def global_updates(mysettings, trees, prev_mtimes):
 		# We gotta do the brute force updates for these now.
 		if mysettings["PORTAGE_CALLER"] == "fixpackages" or \
 		"fixpackages" in mysettings.features:
-			trees["/"]["bintree"].update_ents(myupd)
+			def onProgress(maxval, curval):
+				writemsg_stdout("*")
+			vardb.update_ents(myupd, onProgress=onProgress)
+			if bindb:
+				bindb.update_ents(myupd, onProgress=onProgress)
 		else:
 			do_upgrade_packagesmessage = 1
 
@@ -5119,8 +5126,8 @@ def global_updates(mysettings, trees, prev_mtimes):
 		print
 		print
 
-		if do_upgrade_packagesmessage and \
-			listdir(os.path.join(mysettings["PKGDIR"], "All"), EmptyOnError=1):
+		if do_upgrade_packagesmessage and bindb and \
+			bindb.cpv_all():
 			writemsg_stdout(" ** Skipping packages. Run 'fixpackages' or set it in FEATURES to fix the")
 			writemsg_stdout("\n    tbz2's in the packages directory. "+bold("Note: This can take a very long time."))
 			writemsg_stdout("\n")

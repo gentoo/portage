@@ -246,23 +246,7 @@ class MoveHandler(object):
 
 		# Searching for updates in all the metadata is relatively slow, so this
 		# is where the progress bar comes out of indeterminate mode.
-		cpv_all = self._tree.dbapi.cpv_all()
-		cpv_all.sort()
-		maxval = len(cpv_all)
-		aux_get = self._tree.dbapi.aux_get
-		aux_update = self._tree.dbapi.aux_update
-		update_keys = self._update_keys
-		from itertools import izip
-		from portage.update import update_dbentries
-		if onProgress:
-			onProgress(maxval, 0)
-		for i, cpv in enumerate(cpv_all):
-			metadata = dict(izip(update_keys, aux_get(cpv, update_keys)))
-			metadata_updates = update_dbentries(updates, metadata)
-			if metadata_updates:
-				aux_update(cpv, metadata_updates)
-			if onProgress:
-				onProgress(maxval, i+1)
+		self._tree.dbapi.update_ents(updates, onProgress=onProgress)
 		return errors
 
 class MoveInstalled(MoveHandler):
