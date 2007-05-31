@@ -88,15 +88,10 @@ class bindbapi(fakedbapi):
 			self.bintree.populate()
 		return fakedbapi.cp_list(self, *pargs, **kwargs)
 
-	def cpv_all(self):
+	def cp_all(self):
 		if not self.bintree.populated:
 			self.bintree.populate()
-		return fakedbapi.cpv_all(self)
-
-	def move_slot_ent(self, mylist):
-		if not self.bintree.populated:
-			self.bintree.populate()
-		return fakedbapi.move_slot_ent(self, mylist)
+		return fakedbapi.cp_all(self)
 
 class binarytree(object):
 	"this tree scans for a list of all packages available in PKGDIR"
