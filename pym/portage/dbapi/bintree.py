@@ -43,11 +43,12 @@ class bindbapi(fakedbapi):
 		mysplit = mycpv.split("/")
 		mylist = []
 		tbz2name = mysplit[1]+".tbz2"
-		if self.bintree and not self.bintree.isremote(mycpv):
-			tbz2 = portage.xpak.tbz2(self.bintree.getname(mycpv))
-			getitem = tbz2.getfile
+		if not self.bintree._remotepkgs or \
+			not self.bintree.isremote(mycpv):
+			tbz2_path = self.bintree.getname(mycpv)
+			getitem = portage.xpak.tbz2(tbz2_path).getfile
 		else:
-			getitem = self.bintree.remotepkgs[tbz2name].get
+			getitem = self.bintree._remotepkgs[mycpv].get
 		mydata = {}
 		mykeys = wants
 		if cache_me:
@@ -535,12 +536,8 @@ class binarytree(object):
 				self._remotepkgs = pkgindex.packages
 				self._remote_has_index = True
 				self.remotepkgs = {}
-				for cpv, metadata in self._remotepkgs.iteritems():
+				for cpv in self._remotepkgs:
 					self.dbapi.cpv_inject(cpv)
-					cat, pf = catsplit(cpv)
-					# backward compat
-					self.remotepkgs[pf+".tbz2"] = metadata
-					metadata["CATEGORY"] = cat
 				self.populated = 1
 				return
 			self._remotepkgs = {}
@@ -739,16 +736,14 @@ class binarytree(object):
 
 	def isremote(self, pkgname):
 		"Returns true if the package is kept remotely."
-		mysplit = pkgname.split("/")
-		remote = (not os.path.exists(self.getname(pkgname))) and self.remotepkgs.has_key(mysplit[1]+".tbz2")
+		remote = pkgname in self._remotepkgs and \
+			not os.path.exists(self.getname(pkgname))
 		return remote
 
 	def get_use(self, pkgname):
-		mysplit=pkgname.split("/")
-		if self.isremote(pkgname):
-			return self.remotepkgs[mysplit[1]+".tbz2"]["USE"][:].split()
-		tbz2=portage.xpak.tbz2(self.getname(pkgname))
-		return tbz2.getfile("USE").split()
+		writemsg("deprecated use of binarytree.get_use()," + \
+			" use dbapi.aux_get() instead", noiselevel=-1)
+		return self.dbapi.aux_get(pkgname, ["USE"])[0].split()
 
 	def gettbz2(self, pkgname):
 		"fetches the package from a remote site, if necessary."
