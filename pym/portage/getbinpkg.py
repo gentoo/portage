@@ -596,9 +596,16 @@ class PackageIndex(object):
 	def __init__(self):
 		self.header = {}
 		self.packages = {}
+		self.modified = True
 
 	def read(self, pkgfile):
+		self.readHeader(pkgfile)
+		self.readBody(pkgfile)
+
+	def readHeader(self, pkgfile):
 		self.header.update(readpkgindex(pkgfile))
+
+	def readBody(self, pkgfile):
 		while True:
 			d = readpkgindex(pkgfile)
 			if not d:
@@ -612,9 +619,10 @@ class PackageIndex(object):
 	def write(self, pkgfile):
 		cpv_all = self.packages.keys()
 		cpv_all.sort()
-		import time
-		self.header["TIMESTAMP"] = str(long(time.time()))
-		self.header["PACKAGES"] = str(len(cpv_all))
+		if self.modified:
+			import time
+			self.header["TIMESTAMP"] = str(long(time.time()))
+			self.header["PACKAGES"] = str(len(cpv_all))
 		keys = self.header.keys()
 		keys.sort()
 		writepkgindex(pkgfile, [(k, self.header[k]) for k in keys])

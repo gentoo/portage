@@ -122,7 +122,9 @@ class binarytree(object):
 			self.move_slot_ent = self.dbapi.move_slot_ent
 			self.populated = 0
 			self.tree = {}
-			self.remotepkgs = {}
+			self._remote_has_index = False
+			self._remotepkgs = None # remote metadata indexed by cpv
+			self.remotepkgs = {}  # indexed by tbz2 name (deprecated)
 			self.invalids = []
 			self.settings = settings
 			self._pkg_paths = {}
@@ -478,15 +480,77 @@ class binarytree(object):
 				noiselevel=-1)
 
 		if getbinpkgs and \
-			self.settings["PORTAGE_BINHOST"] and not self.remotepkgs:
+			"PORTAGE_BINHOST" in self.settings and \
+			not self._remotepkgs:
+
+			base_url = self.settings["PORTAGE_BINHOST"]
+			from portage.const import CACHE_PATH
+			from urlparse import urlparse
+			urldata = urlparse(base_url)
+			pkgindex_file = os.path.join(CACHE_PATH, "binhost",
+				urldata[1] + urldata[2], "Packages")
+			pkgindex = portage.getbinpkg.PackageIndex()
+			try:
+				f = open(pkgindex_file)
+				try:
+					pkgindex.read(f)
+				finally:
+					f.close()
+			except EnvironmentError, e:
+				if e.errno != errno.ENOENT:
+					raise
+			local_timestamp = pkgindex.header.get("TIMESTAMP", None)
+			import urllib, urlparse
+			rmt_idx = portage.getbinpkg.PackageIndex()
+			try:
+				f = urllib.urlopen(urlparse.urljoin(base_url, "Packages"))
+				try:
+					rmt_idx.readHeader(f)
+					remote_timestamp = rmt_idx.header.get("TIMESTAMP", None)
+					if not remote_timestamp:
+						# no timestamp in the header, something's wrong
+						pkgindex = None
+					else:
+						if local_timestamp != remote_timestamp:
+							rmt_idx.readBody(f)
+							pkgindex = rmt_idx
+				finally:
+					f.close()
+			except EnvironmentError, e:
+				writemsg("\n\n!!! Error fetching binhost package" + \
+					" info from '%s'\n" % base_url)
+				writemsg("!!! %s\n\n" % str(e))
+				del e
+				pkgindex = None
+			if pkgindex is rmt_idx:
+				pkgindex.modified = False # don't update the header
+				from portage.util import atomic_ofstream, ensure_dirs
+				ensure_dirs(os.path.dirname(pkgindex_file))
+				f = atomic_ofstream(pkgindex_file)
+				try:
+					pkgindex.write(f)
+				finally:
+					f.close()
+			if pkgindex:
+				self._remotepkgs = pkgindex.packages
+				self._remote_has_index = True
+				self.remotepkgs = {}
+				for cpv, metadata in self._remotepkgs.iteritems():
+					self.dbapi.cpv_inject(cpv)
+					cat, pf = catsplit(cpv)
+					# backward compat
+					self.remotepkgs[pf+".tbz2"] = metadata
+					metadata["CATEGORY"] = cat
+				self.populated = 1
+				return
+			self._remotepkgs = {}
 			try:
 				chunk_size = long(self.settings["PORTAGE_BINHOST_CHUNKSIZE"])
 				if chunk_size < 8:
 					chunk_size = 8
 			except (ValueError, KeyError):
 				chunk_size = 3000
-
-			writemsg(green("Fetching binary packages info...\n"))
+			writemsg_stdout(green("Fetching binary packages info...\n"))
 			self.remotepkgs = portage.getbinpkg.dir_get_metadata(
 				self.settings["PORTAGE_BINHOST"], chunk_size=chunk_size)
 			writemsg(green("  -- DONE!\n\n"))
@@ -513,6 +577,10 @@ class binarytree(object):
 					# invalid tbz2's can hurt things.
 					#print "cpv_inject("+str(fullpkg)+")"
 					self.dbapi.cpv_inject(fullpkg)
+					metadata = self.remotepkgs[mypkg]
+					for k, v in metadata.items():
+						metadata[k] = v.strip()
+					self._remotepkgs[fullpkg] = metadata
 					#print "  -- Injected"
 				except SystemExit, e:
 					raise
@@ -698,10 +766,25 @@ class binarytree(object):
 			os.makedirs(mydest, 0775)
 		except (OSError, IOError):
 			pass
-		success = portage.getbinpkg.file_get(
-			self.settings["PORTAGE_BINHOST"] + "/" + tbz2name,
-			mydest, fcmd=self.settings["RESUMECOMMAND"])
-		self.inject(pkgname)
+		from urlparse import urljoin
+		base_url = self.settings["PORTAGE_BINHOST"]
+		fcmd = self.settings["RESUMECOMMAND"]
+		if self._remote_has_index:
+			url = urljoin(base_url, pkgname+".tbz2")
+			success = portage.getbinpkg.file_get(url, mydest, fcmd=fcmd)
+			if not success:
+				try:
+					os.unlink(self.getname(pkgname))
+				except OSError:
+					pass
+				# Fall back to the "All" directory
+				uri = urljoin(base_url, "All/"+tbz2name)
+				success = portage.getbinpkg.file_get(url, mydest, fcmd=fcmd)
+		else:
+			uri = urljoin(base_url, tbz2name)
+			success = portage.getbinpkg.file_get(url, mydest, fcmd=fcmd)
+		if success:
+			self.inject(pkgname)
 		return success
 
 	def getslot(self, mycatpkg):
