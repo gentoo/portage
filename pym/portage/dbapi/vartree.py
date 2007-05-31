@@ -551,7 +551,13 @@ class vardbapi(dbapi):
 		if not mylink.exists():
 			raise KeyError(cpv)
 		for k, v in values.iteritems():
-			mylink.setfile(k, v)
+			if v:
+				mylink.setfile(k, v)
+			else:
+				try:
+					os.unlink(os.path.join(self.getpath(cpv), k))
+				except EnvironmentError:
+					pass
 
 	def counter_tick(self, myroot, mycpv=None):
 		return self.counter_tick_core(myroot, incrementing=1, mycpv=mycpv)

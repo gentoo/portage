@@ -77,6 +77,9 @@ class bindbapi(fakedbapi):
 		mytbz2 = portage.xpak.tbz2(tbz2path)
 		mydata = mytbz2.get_data()
 		mydata.update(values)
+		for k, v in mydata.items():
+			if not v:
+				del mydata[k]
 		mytbz2.recompose_mem(portage.xpak.xpak_mem(mydata))
 
 	def cp_list(self, *pargs, **kwargs):
