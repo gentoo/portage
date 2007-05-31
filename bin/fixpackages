@@ -24,7 +24,7 @@ except (OSError, ValueError), e:
 	portage.writemsg("!!! %s\n" % str(e))
 	del e
 
-portage.global_updates(mysettings, mytrees, mtimedb["updates"])
+portage._global_updates(mytrees, mtimedb["updates"])
 
 print
 print "Done."

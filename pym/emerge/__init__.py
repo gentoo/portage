@@ -4338,7 +4338,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 	if os.path.exists(myportdir+"/metadata/cache") and updatecache_flg:
 		action_metadata(settings, portdb, myopts)
 
-	if portage.global_updates(settings, trees, mtimedb["updates"]):
+	if portage._global_updates(trees, mtimedb["updates"]):
 		mtimedb.commit()
 		# Reload the whole config from scratch.
 		settings, trees, mtimedb = load_emerge_config(trees=trees)
@@ -5384,7 +5384,7 @@ def emerge_main():
 		portage.writemsg("!!! %s\n" % str(e))
 		del e
 
-	if portage.global_updates(settings, trees, mtimedb["updates"]):
+	if portage._global_updates(trees, mtimedb["updates"]):
 		mtimedb.commit()
 		# Reload the whole config from scratch.
 		settings, trees, mtimedb = load_emerge_config(trees=trees)
