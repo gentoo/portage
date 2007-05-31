@@ -778,10 +778,10 @@ class binarytree(object):
 				except OSError:
 					pass
 				# Fall back to the "All" directory
-				uri = urljoin(base_url, "All/"+tbz2name)
+				url = urljoin(base_url, "All/"+tbz2name)
 				success = portage.getbinpkg.file_get(url, mydest, fcmd=fcmd)
 		else:
-			uri = urljoin(base_url, tbz2name)
+			url = urljoin(base_url, tbz2name)
 			success = portage.getbinpkg.file_get(url, mydest, fcmd=fcmd)
 		if success:
 			self.inject(pkgname)
