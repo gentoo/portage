@@ -111,6 +111,7 @@ class binarytree(object):
 			#self.pkgdir=settings["PKGDIR"]
 			self.pkgdir = normalize_path(pkgdir)
 			self.dbapi = bindbapi(self, settings=settings)
+			self.update_ents = self.dbapi.update_ents
 			self.populated = 0
 			self.tree = {}
 			self.remotepkgs = {}
@@ -266,28 +267,6 @@ class binarytree(object):
 			mydata["SLOT"] = newslot+"\n"
 			mytbz2.recompose_mem(portage.xpak.xpak_mem(mydata))
 		return moves
-
-	def update_ents(self, update_iter):
-		if len(update_iter) == 0:
-			return
-		if not self.populated:
-			self.populate()
-
-		for mycpv in self.dbapi.cp_all():
-			tbz2path = self.getname(mycpv)
-			if os.path.exists(tbz2path) and not os.access(tbz2path,os.W_OK):
-				writemsg("!!! Cannot update readonly binary: "+mycpv+"\n",
-					noiselevel=-1)
-				continue
-			#print ">>> Updating binary data:",mycpv
-			writemsg_stdout("*")
-			mytbz2 = portage.xpak.tbz2(tbz2path)
-			mydata = mytbz2.get_data()
-			updated_items = update_dbentries(update_iter, mydata)
-			if len(updated_items) > 0:
-				mydata.update(updated_items)
-				mytbz2.recompose_mem(portage.xpak.xpak_mem(mydata))
-		return 1
 
 	def prevent_collision(self, cpv):
 		"""Make sure that the file location ${PKGDIR}/All/${PF}.tbz2 is safe to

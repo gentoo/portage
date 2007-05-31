@@ -316,19 +316,6 @@ class vardbapi(dbapi):
 			fixdbentries([mylist], newpath)
 		return moves
 
-	def update_ents(self, update_iter):
-		"""Run fixdbentries on all installed packages (time consuming).  Like
-		fixpackages, this should be run from a helper script and display
-		a progress indicator."""
-		dbdir = os.path.join(self.root, VDB_PATH)
-		for catdir in listdir(dbdir):
-			catdir = dbdir+"/"+catdir
-			if os.path.isdir(catdir):
-				for pkgdir in listdir(catdir):
-					pkgdir = catdir+"/"+pkgdir
-					if os.path.isdir(pkgdir):
-						fixdbentries(update_iter, pkgdir)
-
 	def move_slot_ent(self, mylist):
 		pkg = mylist[1]
 		origslot = mylist[2]

@@ -5097,7 +5097,10 @@ def global_updates(mysettings, trees, prev_mtimes):
 		# We gotta do the brute force updates for these now.
 		if mysettings["PORTAGE_CALLER"] == "fixpackages" or \
 		"fixpackages" in mysettings.features:
-			trees["/"]["bintree"].update_ents(myupd)
+			def onProgress(maxval, curval):
+				writemsg_stdout("*")
+			vardb.update_ents(myupd, onProgress=onProgress)
+			bindb.update_ents(myupd, onProgress=onProgress)
 		else:
 			do_upgrade_packagesmessage = 1
 
