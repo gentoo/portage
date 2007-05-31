@@ -5067,21 +5067,25 @@ def _global_updates(trees, prev_mtimes):
 			settings=mysettings)
 		vardb = trees["/"]["vartree"].dbapi
 		bindb = trees["/"]["bintree"].dbapi
+		if not os.access(bindb.bintree.pkgdir, os.W_OK):
+			bindb = None
 		for update_cmd in myupd:
 			if update_cmd[0] == "move":
 				moves = vardb.move_ent(update_cmd)
 				if moves:
 					writemsg_stdout(moves * "@")
-				moves = bindb.move_ent(update_cmd)
-				if moves:
-					writemsg_stdout(moves * "%")
+				if bindb:
+					moves = bindb.move_ent(update_cmd)
+					if moves:
+						writemsg_stdout(moves * "%")
 			elif update_cmd[0] == "slotmove":
 				moves = vardb.move_slot_ent(update_cmd)
 				if moves:
 					writemsg_stdout(moves * "s")
-				moves = bindb.move_slot_ent(update_cmd)
-				if moves:
-					writemsg_stdout(moves * "S")
+				if bindb:
+					moves = bindb.move_slot_ent(update_cmd)
+					if moves:
+						writemsg_stdout(moves * "S")
 
 		# The above global updates proceed quickly, so they
 		# are considered a single mtimedb transaction.
@@ -5099,7 +5103,8 @@ def _global_updates(trees, prev_mtimes):
 			def onProgress(maxval, curval):
 				writemsg_stdout("*")
 			vardb.update_ents(myupd, onProgress=onProgress)
-			bindb.update_ents(myupd, onProgress=onProgress)
+			if bindb:
+				bindb.update_ents(myupd, onProgress=onProgress)
 		else:
 			do_upgrade_packagesmessage = 1
 
@@ -5109,8 +5114,8 @@ def _global_updates(trees, prev_mtimes):
 		print
 		print
 
-		if do_upgrade_packagesmessage and \
-			listdir(os.path.join(mysettings["PKGDIR"], "All"), EmptyOnError=1):
+		if do_upgrade_packagesmessage and bindb and \
+			bindb.cpv_all():
 			writemsg_stdout(" ** Skipping packages. Run 'fixpackages' or set it in FEATURES to fix the")
 			writemsg_stdout("\n    tbz2's in the packages directory. "+bold("Note: This can take a very long time."))
 			writemsg_stdout("\n")
