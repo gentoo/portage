@@ -64,32 +64,22 @@ class NewsManager(object):
 			timestamp = 0
 
 		path = os.path.join(self.portdb.getRepositoryPath(repoid), self.NEWS_PATH)
-		newsdir_lock = None
-		try:
-			repo_path = self.portdb.getRepositoryPath(repoid)
-			if os.access(os.path.dirname(repo_path), os.W_OK):
-				# This lock file should really be mapped into /var somewhere
-				# since the repo_path or it's parent directory may not even be
-				# writable.
-				newsdir_lock = lockdir(repo_path)
-			# Skip reading news for repoid if the news dir does not exist.  Requested by
-			# NightMorph :)
-			if not os.path.exists(path):
-				return None
-			news = os.listdir(path)
-			updates = []
-			for itemid in news:
-				try:
-					filename = os.path.join(path, itemid, itemid + "." + self.LANGUAGE_ID + ".txt")
-					item = NewsItem(filename, itemid, timestamp)
-				except (TypeError, ValueError), e:
-					continue
-				if item.isRelevant(profile=os.readlink(PROFILE_PATH), config=config, vardb=self.vdb):
-					updates.append(item)
-		finally:
-			if newsdir_lock:
-				unlockdir(newsdir_lock)
-		
+
+		repo_path = self.portdb.getRepositoryPath(repoid)
+		# Skip reading news for repoid if the news dir does not exist.  Requested by
+		# NightMorph :)
+		if not os.path.exists(path):
+			return None
+		news = os.listdir(path)
+		updates = []
+		for itemid in news:
+			try:
+				filename = os.path.join(path, itemid, itemid + "." + self.LANGUAGE_ID + ".txt")
+				item = NewsItem(filename, itemid, timestamp)
+			except (TypeError, ValueError), e:
+				continue
+			if item.isRelevant(profile=os.readlink(PROFILE_PATH), config=config, vardb=self.vdb):
+				updates.append(item)
 		del path
 		
 		path = os.path.join(self.UNREAD_PATH, "news-"+repoid+".unread")
