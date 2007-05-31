@@ -12,7 +12,11 @@ if len(sys.argv) <= 2:
 	sys.exit(1)
 
 
-opts, pargs = getopt.getopt(sys.argv[1:], '', ['debug', 'force'])
+try:
+	opts, pargs = getopt.getopt(sys.argv[1:], '', ['debug', 'force'])
+except getopt.GetoptError, e:
+	print e
+	sys.exit(1)
 debug = ("--debug",'') in opts
 force = ("--force",'') in opts
 
