@@ -2809,10 +2809,14 @@ class depgraph:
 			sys.stderr.write("".join(msg))
 
 	def calc_changelog(self,ebuildpath,current,next):
+		if ebuildpath == None or not os.path.exists(ebuildpath):
+			return []
 		current = '-'.join(portage.catpkgsplit(current)[1:])
-		if current.endswith('-r0'): current = current[:-3]
+		if current.endswith('-r0'):
+			current = current[:-3]
 		next = '-'.join(portage.catpkgsplit(next)[1:])
-		if next.endswith('-r0'): next = next[:-3]
+		if next.endswith('-r0'):
+			next = next[:-3]
 		changelogpath = os.path.join(os.path.split(ebuildpath)[0],'ChangeLog')
 		try:
 			changelog = open(changelogpath).read()
