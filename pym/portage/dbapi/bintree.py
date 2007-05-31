@@ -93,6 +93,11 @@ class bindbapi(fakedbapi):
 			self.bintree.populate()
 		return fakedbapi.cp_all(self)
 
+	def cpv_all(self):
+		if not self.bintree.populated:
+			self.bintree.populate()
+		return fakedbapi.cpv_all(self)
+
 class binarytree(object):
 	"this tree scans for a list of all packages available in PKGDIR"
 	def __init__(self, root, pkgdir, virtual=None, settings=None, clone=None):
