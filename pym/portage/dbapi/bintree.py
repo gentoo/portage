@@ -81,6 +81,7 @@ class bindbapi(fakedbapi):
 			if not v:
 				del mydata[k]
 		mytbz2.recompose_mem(portage.xpak.xpak_mem(mydata))
+		self.bintree.inject(cpv)
 
 	def cp_list(self, *pargs, **kwargs):
 		if not self.bintree.populated:
@@ -194,7 +195,7 @@ class binarytree(object):
 				self._remove_symlink(mycpv)
 				if new_path.split(os.path.sep)[-2] == "All":
 					self._create_symlink(mynewcpv)
-			self.dbapi.cpv_inject(mynewcpv)
+			self.inject(mynewcpv)
 
 		return moves
 
