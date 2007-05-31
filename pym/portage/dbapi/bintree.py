@@ -46,7 +46,7 @@ class bindbapi(fakedbapi):
 		if not self.bintree._remotepkgs or \
 			not self.bintree.isremote(mycpv):
 			tbz2_path = self.bintree.getname(mycpv)
-			if not os.path.exists(mycpv):
+			if not os.path.exists(tbz2_path):
 				raise KeyError(mycpv)
 			getitem = portage.xpak.tbz2(tbz2_path).getfile
 		else:
