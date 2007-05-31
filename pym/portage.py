@@ -8123,12 +8123,10 @@ def portageexit():
 
 atexit_register(portageexit)
 
-def global_updates(mysettings, trees, prev_mtimes):
+def _global_updates(trees, prev_mtimes):
 	"""
 	Perform new global updates if they exist in $PORTDIR/profiles/updates/.
 
-	@param mysettings: A config instance for ROOT="/".
-	@type mysettings: config
 	@param trees: A dictionary containing portage trees.
 	@type trees: dict
 	@param prev_mtimes: A dictionary containing mtimes of files located in
@@ -8142,6 +8140,7 @@ def global_updates(mysettings, trees, prev_mtimes):
 	global secpass
 	if secpass < 2 or "SANDBOX_ACTIVE" in os.environ:
 		return
+	mysettings = trees["/"]["vartree"].settings
 	updpath = os.path.join(mysettings["PORTDIR"], "profiles", "updates")
 
 	try:
