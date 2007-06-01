@@ -739,6 +739,9 @@ class binarytree(object):
 		profile_path = profile_path.lstrip(profiles_base)
 		header["PROFILE"] = profile_path
 		header["VERSION"] = str(self._pkgindex_version)
+		binhost = self.settings.get("PORTAGE_BINHOST")
+		if binhost:
+			header["URI"] = binhost
 		for k in self._pkgindex_header_keys:
 			v = self.settings.get(k, None)
 			if v:
