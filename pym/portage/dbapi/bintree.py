@@ -266,10 +266,14 @@ class binarytree(object):
 			other_cat = portage.xpak.tbz2(dest_path).getfile("CATEGORY")
 			if other_cat:
 				other_cat = other_cat.strip()
-				self._move_from_all(other_cat + "/" + mypkg)
+				other_cpv = other_cat + "/" + mypkg
+				self._move_from_all(other_cpv)
+				self.inject(other_cpv)
 		"""The file may or may not exist. Move it if necessary and update
 		internal state for future calls to getname()."""
 		self._move_to_all(cpv)
+		if os.path.exists(full_path):
+			self.inject(cpv)
 
 	def _move_to_all(self, cpv):
 		"""If the file exists, move it.  Whether or not it exists, update state
