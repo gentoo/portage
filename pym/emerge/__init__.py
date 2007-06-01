@@ -49,6 +49,7 @@ import portage.locks
 import portage.exception
 from portage.data import secpass
 from portage.util import normalize_path as normpath
+from portage.util import writemsg
 
 if not hasattr(__builtins__, "set"):
 	from sets import Set as set
@@ -2939,6 +2940,8 @@ class MergeTask(object):
 
 	def merge(self, mylist, favorites, mtimedb):
 		failed_fetches = []
+		fetchonly = "--fetchonly" in self.myopts or \
+			"--fetch-all-uri" in self.myopts
 		mymergelist=[]
 		ldpath_mtimes = mtimedb["ldpath"]
 		xterm_titles = "notitles" not in self.settings.features
@@ -3239,9 +3242,29 @@ class MergeTask(object):
 							short_msg = "emerge: (%s of %s) %s Fetch" % \
 								(mergecount, len(mymergelist), pkg_key)
 							emergelog(xterm_titles, msg, short_msg=short_msg)
-							if not self.trees[myroot]["bintree"].gettbz2(
-								pkg_key):
-								return 1
+							try:
+								self.trees[myroot]["bintree"].gettbz2(pkg_key)
+							except portage.exception.FileNotFound:
+								writemsg("!!! Fetching Binary failed " + \
+									"for '%s'\n" % pkg_key, noiselevel=-1)
+								if not fetchonly:
+									return 1
+								failed_fetches.append(pkg_key)
+							except portage.exception.DigestException, e:
+								writemsg("\n!!! Digest verification failed:\n",
+									noiselevel=-1)
+								writemsg("!!! %s\n" % e.value[0],
+									noiselevel=-1)
+								writemsg("!!! Reason: %s\n" % e.value[1],
+									noiselevel=-1)
+								writemsg("!!! Got: %s\n" % e.value[2],
+									noiselevel=-1)
+								writemsg("!!! Expected: %s\n" % e.value[3],
+									noiselevel=-1)
+								os.unlink(mytbz2)
+								if not fetchonly:
+									return 1
+								failed_fetches.append(pkg_key)
 					finally:
 						if tbz2_lock:
 							portage.locks.unlockfile(tbz2_lock)

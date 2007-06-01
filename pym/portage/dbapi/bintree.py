@@ -775,6 +775,7 @@ class binarytree(object):
 			else:
 				writemsg("Resuming download of this tbz2, but it is possible that it is corrupt.\n",
 					noiselevel=-1)
+		tbz2_path = self.getname(pkgname)
 		mydest = os.path.dirname(self.getname(pkgname))
 		try:
 			os.makedirs(mydest, 0775)
@@ -797,9 +798,30 @@ class binarytree(object):
 		else:
 			url = urljoin(base_url, tbz2name)
 			success = portage.getbinpkg.file_get(url, mydest, fcmd=fcmd)
-		if success:
-			self.inject(pkgname)
-		return success
+		if success and "strict" in self.settings.features:
+			metadata = self._remotepkgs[pkgname]
+			digests = {}
+			if "MD5" in metadata:
+				digests["MD5"] = self._remotepkgs[pkgname]["MD5"]
+			if "SIZE" in metadata:
+				try:
+					digests["size"] = long(self._remotepkgs[pkgname]["SIZE"])
+				except ValueError:
+					writemsg("!!! Malformed SIZE attribute in remote " + \
+					"metadata for '%s'\n" % pkgname)
+			if digests:
+				from portage.checksum import verify_all
+				ok, reason = verify_all(tbz2_path, digests)
+				if not ok:
+					raise portage.exception.DigestException(
+						tuple([tbz2_path]+list(reason)))
+		if not success:
+			try:
+				os.unlink(self.getname(pkgname))
+			except OSError:
+				pass
+			raise portage.exception.FileNotFound(mydest)
+		self.inject(pkgname)
 
 	def getslot(self, mycatpkg):
 		"Get a slot for a catpkg; assume it exists."
