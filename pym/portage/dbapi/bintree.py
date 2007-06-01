@@ -133,6 +133,7 @@ class binarytree(object):
 			self._pkg_paths = {}
 			self._all_directory = os.path.isdir(
 				os.path.join(self.pkgdir, "All"))
+			self._pkgindex_version = 0
 			self._pkgindex_file = os.path.join(self.pkgdir, "Packages")
 			self._pkgindex_keys = set(["CPV", "SLOT", "MTIME", "SIZE"])
 			self._pkgindex_header_keys = set(["ACCEPT_KEYWORDS", "CBUILD",
@@ -340,8 +341,6 @@ class binarytree(object):
 			dirs.sort()
 			dirs.insert(0, "All")
 			pkgindex = portage.getbinpkg.PackageIndex()
-			header = pkgindex.header
-			metadata = pkgindex.packages
 			pf_index = None
 			try:
 				f = open(self._pkgindex_file)
@@ -353,6 +352,10 @@ class binarytree(object):
 				finally:
 					f.close()
 					del f
+			if not self._pkgindex_version_supported(pkgindex):
+				pkgindex = portage.getbinpkg.PackageIndex()
+			header = pkgindex.header
+			metadata = pkgindex.packages
 			update_pkgindex = False
 			for mydir in dirs:
 				for myfile in listdir(os.path.join(self.pkgdir, mydir)):
@@ -538,7 +541,12 @@ class binarytree(object):
 						# no timestamp in the header, something's wrong
 						pkgindex = None
 					else:
-						if local_timestamp != remote_timestamp:
+						if not self._pkgindex_version_supported(rmt_idx):
+							writemsg("\n\n!!! Binhost package index version" + \
+							" is not supported: '%s'\n" % \
+							rmt_idx.header.get("VERSION"), noiselevel=-1)
+							pkgindex = None
+						elif local_timestamp != remote_timestamp:
 							rmt_idx.readBody(f)
 							pkgindex = rmt_idx
 				finally:
@@ -675,6 +683,8 @@ class binarytree(object):
 				finally:
 					f.close()
 					del f
+			if not self._pkgindex_version_supported(pkgindex):
+				pkgindex = portage.getbinpkg.PackageIndex()
 			d = {}
 			d["CPV"] = cpv
 			d["SLOT"] = slot
@@ -727,12 +737,23 @@ class binarytree(object):
 		profile_path = normalize_path(os.path.realpath(self.settings.profile_path))
 		profile_path = profile_path.lstrip(profiles_base)
 		header["PROFILE"] = profile_path
+		header["VERSION"] = str(self._pkgindex_version)
 		for k in self._pkgindex_header_keys:
 			v = self.settings.get(k, None)
 			if v:
 				header[k] = v
 			else:
 				header.pop(k, None)
+
+	def _pkgindex_version_supported(self, pkgindex):
+		version = pkgindex.header.get("VERSION")
+		if version:
+			try:
+				if int(version) <= self._pkgindex_version:
+					return True
+			except ValueError:
+				pass
+		return False
 
 	def exists_specific(self, cpv):
 		if not self.populated:
