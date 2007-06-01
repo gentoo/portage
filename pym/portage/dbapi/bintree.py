@@ -134,6 +134,7 @@ class binarytree(object):
 			self._all_directory = os.path.isdir(
 				os.path.join(self.pkgdir, "All"))
 			self._pkgindex_version = 0
+			self._pkgindex_hashes = ["MD5","SHA1"]
 			self._pkgindex_file = os.path.join(self.pkgdir, "Packages")
 			self._pkgindex_keys = set(["CPV", "SLOT", "MTIME", "SIZE"])
 			self._pkgindex_header_keys = set(["ACCEPT_KEYWORDS", "CBUILD",
@@ -655,8 +656,9 @@ class binarytree(object):
 				noiselevel=-1)
 			return
 		slot = slot.strip()
-		from portage.checksum import perform_md5
-		md5 = perform_md5(full_path)
+		from portage.checksum import perform_multiple_checksums
+		digests = perform_multiple_checksums(
+			full_path, hashes=self._pkgindex_hashes)
 		self.dbapi.cpv_inject(cpv)
 		self.dbapi._aux_cache.pop(cpv, None)
 
@@ -685,12 +687,11 @@ class binarytree(object):
 					del f
 			if not self._pkgindex_version_supported(pkgindex):
 				pkgindex = portage.getbinpkg.PackageIndex()
-			d = {}
+			d = digests
 			d["CPV"] = cpv
 			d["SLOT"] = slot
 			d["MTIME"] = str(long(s.st_mtime))
 			d["SIZE"] = str(s.st_size)
-			d["MD5"] = str(md5)
 			rel_path = self._pkg_paths[cpv]
 			# record location if it's non-default
 			if rel_path != cpv + ".tbz2":
@@ -842,8 +843,12 @@ class binarytree(object):
 		if success and "strict" in self.settings.features:
 			metadata = self._remotepkgs[pkgname]
 			digests = {}
-			if "MD5" in metadata:
-				digests["MD5"] = self._remotepkgs[pkgname]["MD5"]
+			from portage.checksum import hashfunc_map, verify_all
+			for k in hashfunc_map:
+				v = metadata.get(k)
+				if not v:
+					continue
+				digests[k] = v
 			if "SIZE" in metadata:
 				try:
 					digests["size"] = long(self._remotepkgs[pkgname]["SIZE"])
@@ -851,7 +856,6 @@ class binarytree(object):
 					writemsg("!!! Malformed SIZE attribute in remote " + \
 					"metadata for '%s'\n" % pkgname)
 			if digests:
-				from portage.checksum import verify_all
 				ok, reason = verify_all(tbz2_path, digests)
 				if not ok:
 					raise portage.exception.DigestException(
