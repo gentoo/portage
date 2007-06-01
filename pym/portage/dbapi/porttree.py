@@ -371,6 +371,8 @@ class portdbapi(dbapi):
 		myfiles = []
 		for x in newuris:
 			mya = os.path.basename(x)
+			if not mya:
+				raise portage.exception.InvalidDependString("URI has no basename: '%s'" % x)
 			if not mya in myfiles:
 				myfiles.append(mya)
 		return [newuris, myfiles]
