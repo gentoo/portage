@@ -4954,9 +4954,12 @@ class bindbapi(fakedbapi):
 		mysplit = mycpv.split("/")
 		mylist  = []
 		tbz2name = mysplit[1]+".tbz2"
-		if self.bintree and not self.bintree.isremote(mycpv):
-			tbz2 = xpak.tbz2(self.bintree.getname(mycpv))
-			getitem = tbz2.getfile
+		if not self.bintree.remotepkgs or \
+			not self.bintree.isremote(mycpv):
+			tbz2_path = self.bintree.getname(mycpv)
+			if not os.path.exists(tbz2_path):
+				raise KeyError(mycpv)
+			getitem = xpak.tbz2(tbz2_path).getfile
 		else:
 			getitem = self.bintree.remotepkgs[tbz2name].get
 		mydata = {}
