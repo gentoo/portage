@@ -796,15 +796,10 @@ for x in scanlist:
 			fails["file.UTF8"].append("%s/%s: line %i, just after: '%s'" % (checkdir, y, line, s))
 
 	if isCvs:
-		try:
-			mystat=os.stat(checkdir+"/files")[0]
-			if len(ebuildlist) and not S_ISDIR(mystat):
-				raise Exception
-		except SystemExit, e:
-			raise  # Need to propogate this
-		except:
-			stats["filedir.missing"] += 1
-			fails["filedir.missing"].append(checkdir)
+		if not os.path.isdir(os.path.join(checkdir, "files")):
+			if manifest1_compat:
+				stats["filedir.missing"] += 1
+				fails["filedir.missing"].append(checkdir)
 			continue
 		try:
 			myf=open(checkdir+"/CVS/Entries","r")
