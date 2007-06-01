@@ -362,8 +362,10 @@ class portdbapi(dbapi):
 		try:
 			myuris = self.aux_get(mypkg, ["SRC_URI"], mytree=mytree)[0]
 		except KeyError:
-			print red("getfetchlist():")+" aux_get() error reading "+mypkg+"; aborting."
-			sys.exit(1)
+			# Convert this to an InvalidDependString exception since callers
+			# already handle it.
+			raise portage.exception.InvalidDependString(
+				"getfetchlist(): aux_get() error reading "+mypkg+"; aborting.")
 
 		if useflags is None:
 			useflags = mysettings["USE"].split()
