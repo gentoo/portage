@@ -111,6 +111,7 @@ class portdbapi(dbapi):
 		# Selectively cache metadata in order to optimize dep matching.
 		self._aux_cache_keys = set(["EAPI", "KEYWORDS", "LICENSE", "SLOT"])
 		self._aux_cache = {}
+		self._broken_ebuilds = set()
 
 	def _init_cache_dirs(self):
 		"""Create /var/cache/edb/dep and adjust permissions for the portage
@@ -301,6 +302,8 @@ class portdbapi(dbapi):
 		writemsg("auxdb is valid: "+str(not doregen)+" "+str(pkg)+"\n", 2)
 
 		if doregen:
+			if myebuild in self._broken_ebuilds:
+				raise KeyError(mycpv)
 			writemsg("doregen: %s %s\n" % (doregen, mycpv), 2)
 			writemsg("Generating cache entry(0) for: "+str(myebuild)+"\n", 1)
 
@@ -310,6 +313,7 @@ class portdbapi(dbapi):
 				self.doebuild_settings["ROOT"], self.doebuild_settings,
 				dbkey=mydata, tree="porttree", mydbapi=self)
 			if myret != os.EX_OK:
+				self._broken_ebuilds.add(myebuild)
 				raise KeyError(mycpv)
 
 			if "EAPI" not in mydata or not mydata["EAPI"].strip():
@@ -358,8 +362,10 @@ class portdbapi(dbapi):
 		try:
 			myuris = self.aux_get(mypkg, ["SRC_URI"], mytree=mytree)[0]
 		except KeyError:
-			print red("getfetchlist():")+" aux_get() error reading "+mypkg+"; aborting."
-			sys.exit(1)
+			# Convert this to an InvalidDependString exception since callers
+			# already handle it.
+			raise portage.exception.InvalidDependString(
+				"getfetchlist(): aux_get() error reading "+mypkg+"; aborting.")
 
 		if useflags is None:
 			useflags = mysettings["USE"].split()
@@ -371,6 +377,8 @@ class portdbapi(dbapi):
 		myfiles = []
 		for x in newuris:
 			mya = os.path.basename(x)
+			if not mya:
+				raise portage.exception.InvalidDependString("URI has no basename: '%s'" % x)
 			if not mya in myfiles:
 				myfiles.append(mya)
 		return [newuris, myfiles]

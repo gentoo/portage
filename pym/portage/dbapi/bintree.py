@@ -43,11 +43,14 @@ class bindbapi(fakedbapi):
 		mysplit = mycpv.split("/")
 		mylist = []
 		tbz2name = mysplit[1]+".tbz2"
-		if self.bintree and not self.bintree.isremote(mycpv):
-			tbz2 = portage.xpak.tbz2(self.bintree.getname(mycpv))
-			getitem = tbz2.getfile
+		if not self.bintree._remotepkgs or \
+			not self.bintree.isremote(mycpv):
+			tbz2_path = self.bintree.getname(mycpv)
+			if not os.path.exists(tbz2_path):
+				raise KeyError(mycpv)
+			getitem = portage.xpak.tbz2(tbz2_path).getfile
 		else:
-			getitem = self.bintree.remotepkgs[tbz2name].get
+			getitem = self.bintree._remotepkgs[mycpv].get
 		mydata = {}
 		mykeys = wants
 		if cache_me:
@@ -132,6 +135,9 @@ class binarytree(object):
 				os.path.join(self.pkgdir, "All"))
 			self._pkgindex_file = os.path.join(self.pkgdir, "Packages")
 			self._pkgindex_keys = set(["CPV", "SLOT", "MTIME", "SIZE"])
+			self._pkgindex_header_keys = set(["ACCEPT_KEYWORDS", "CBUILD",
+				"CHOST", "CONFIG_PROTECT", "CONFIG_PROTECT_MASK", "FEATURES",
+				"GENTOO_MIRRORS", "INSTALL_MASK", "SYNC", "USE"])
 
 	def move_ent(self, mylist):
 		if not self.populated:
@@ -535,12 +541,8 @@ class binarytree(object):
 				self._remotepkgs = pkgindex.packages
 				self._remote_has_index = True
 				self.remotepkgs = {}
-				for cpv, metadata in self._remotepkgs.iteritems():
+				for cpv in self._remotepkgs:
 					self.dbapi.cpv_inject(cpv)
-					cat, pf = catsplit(cpv)
-					# backward compat
-					self.remotepkgs[pf+".tbz2"] = metadata
-					metadata["CATEGORY"] = cat
 				self.populated = 1
 				return
 			self._remotepkgs = {}
@@ -683,6 +685,7 @@ class binarytree(object):
 				else:
 					del d[k]
 			pkgindex.packages[cpv] = d
+			self._update_pkgindex_header(pkgindex.header)
 			from portage.util import atomic_ofstream
 			f = atomic_ofstream(os.path.join(self.pkgdir, "Packages"))
 			try:
@@ -692,6 +695,19 @@ class binarytree(object):
 		finally:
 			if pkgindex_lock:
 				unlockfile(pkgindex_lock)
+
+	def _update_pkgindex_header(self, header):
+		portdir = normalize_path(os.path.realpath(self.settings["PORTDIR"]))
+		profiles_base = os.path.join(portdir, "profiles")
+		profile_path = normalize_path(os.path.realpath(self.settings.profile_path))
+		profile_path = profile_path.lstrip(profiles_base)
+		header["PROFILE"] = profile_path
+		for k in self._pkgindex_header_keys:
+			v = self.settings.get(k, None)
+			if v:
+				header[k] = v
+			else:
+				header.pop(k, None)
 
 	def exists_specific(self, cpv):
 		if not self.populated:
@@ -739,16 +755,14 @@ class binarytree(object):
 
 	def isremote(self, pkgname):
 		"Returns true if the package is kept remotely."
-		mysplit = pkgname.split("/")
-		remote = (not os.path.exists(self.getname(pkgname))) and self.remotepkgs.has_key(mysplit[1]+".tbz2")
+		remote = pkgname in self._remotepkgs and \
+			not os.path.exists(self.getname(pkgname))
 		return remote
 
 	def get_use(self, pkgname):
-		mysplit=pkgname.split("/")
-		if self.isremote(pkgname):
-			return self.remotepkgs[mysplit[1]+".tbz2"]["USE"][:].split()
-		tbz2=portage.xpak.tbz2(self.getname(pkgname))
-		return tbz2.getfile("USE").split()
+		writemsg("deprecated use of binarytree.get_use()," + \
+			" use dbapi.aux_get() instead", noiselevel=-1)
+		return self.dbapi.aux_get(pkgname, ["USE"])[0].split()
 
 	def gettbz2(self, pkgname):
 		"fetches the package from a remote site, if necessary."
@@ -761,6 +775,7 @@ class binarytree(object):
 			else:
 				writemsg("Resuming download of this tbz2, but it is possible that it is corrupt.\n",
 					noiselevel=-1)
+		tbz2_path = self.getname(pkgname)
 		mydest = os.path.dirname(self.getname(pkgname))
 		try:
 			os.makedirs(mydest, 0775)
@@ -783,9 +798,30 @@ class binarytree(object):
 		else:
 			url = urljoin(base_url, tbz2name)
 			success = portage.getbinpkg.file_get(url, mydest, fcmd=fcmd)
-		if success:
-			self.inject(pkgname)
-		return success
+		if success and "strict" in self.settings.features:
+			metadata = self._remotepkgs[pkgname]
+			digests = {}
+			if "MD5" in metadata:
+				digests["MD5"] = self._remotepkgs[pkgname]["MD5"]
+			if "SIZE" in metadata:
+				try:
+					digests["size"] = long(self._remotepkgs[pkgname]["SIZE"])
+				except ValueError:
+					writemsg("!!! Malformed SIZE attribute in remote " + \
+					"metadata for '%s'\n" % pkgname)
+			if digests:
+				from portage.checksum import verify_all
+				ok, reason = verify_all(tbz2_path, digests)
+				if not ok:
+					raise portage.exception.DigestException(
+						tuple([tbz2_path]+list(reason)))
+		if not success:
+			try:
+				os.unlink(self.getname(pkgname))
+			except OSError:
+				pass
+			raise portage.exception.FileNotFound(mydest)
+		self.inject(pkgname)
 
 	def getslot(self, mycatpkg):
 		"Get a slot for a catpkg; assume it exists."
