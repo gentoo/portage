@@ -397,6 +397,18 @@ class binarytree(object):
 								# discard duplicates (All/ is preferred)
 								continue
 							pkg_paths[mycpv] = mypath
+							# update the path if the package has been moved
+							oldpath = d.get("PATH")
+							if oldpath and oldpath != mypath:
+								update_pkgindex = True
+							if mypath != mycpv + ".tbz2":
+								d["PATH"] = mypath
+								if not oldpath:
+									update_pkgindex = True
+							else:
+								d.pop("PATH", None)
+								if oldpath:
+									update_pkgindex = True
 							self.dbapi.cpv_inject(mycpv)
 							if not self.dbapi._aux_cache_keys.difference(d):
 								aux_cache = {}
@@ -458,6 +470,11 @@ class binarytree(object):
 					d["SLOT"] = slot
 					d["MTIME"] = str(long(s.st_mtime))
 					d["SIZE"] = str(s.st_size)
+					# record location if it's non-default
+					if mypath != mycpv + ".tbz2":
+						d["PATH"] = mypath
+					else:
+						d.pop("PATH", None)
 					metadata[mycpv] = d
 					if not self.dbapi._aux_cache_keys.difference(d):
 						aux_cache = {}
@@ -660,6 +677,10 @@ class binarytree(object):
 			d["MTIME"] = str(long(s.st_mtime))
 			d["SIZE"] = str(s.st_size)
 			d["MD5"] = str(md5)
+			rel_path = self._pkg_paths[cpv]
+			# record location if it's non-default
+			if rel_path != cpv + ".tbz2":
+				d["PATH"] = rel_path
 			keys = ["USE", "IUSE", "DESCRIPTION", "LICENSE", "PROVIDE", \
 				"RDEPEND", "DEPEND", "PDEPEND"]
 			from itertools import izip
@@ -785,16 +806,11 @@ class binarytree(object):
 		base_url = self.settings["PORTAGE_BINHOST"]
 		fcmd = self.settings["RESUMECOMMAND"]
 		if self._remote_has_index:
-			url = urljoin(base_url, pkgname+".tbz2")
+			rel_url = self._remotepkgs[pkgname].get("PATH")
+			if not rel_url:
+				rel_url = pkgname+".tbz2"
+			url = urljoin(base_url, rel_url)
 			success = portage.getbinpkg.file_get(url, mydest, fcmd=fcmd)
-			if not success:
-				try:
-					os.unlink(self.getname(pkgname))
-				except OSError:
-					pass
-				# Fall back to the "All" directory
-				url = urljoin(base_url, "All/"+tbz2name)
-				success = portage.getbinpkg.file_get(url, mydest, fcmd=fcmd)
 		else:
 			url = urljoin(base_url, tbz2name)
 			success = portage.getbinpkg.file_get(url, mydest, fcmd=fcmd)
