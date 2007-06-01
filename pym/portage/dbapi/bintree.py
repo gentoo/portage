@@ -135,6 +135,9 @@ class binarytree(object):
 				os.path.join(self.pkgdir, "All"))
 			self._pkgindex_file = os.path.join(self.pkgdir, "Packages")
 			self._pkgindex_keys = set(["CPV", "SLOT", "MTIME", "SIZE"])
+			self._pkgindex_header_keys = set(["ACCEPT_KEYWORDS", "CBUILD",
+				"CHOST", "CONFIG_PROTECT", "CONFIG_PROTECT_MASK", "FEATURES",
+				"GENTOO_MIRRORS", "INSTALL_MASK", "SYNC", "USE"])
 
 	def move_ent(self, mylist):
 		if not self.populated:
@@ -682,6 +685,7 @@ class binarytree(object):
 				else:
 					del d[k]
 			pkgindex.packages[cpv] = d
+			self._update_pkgindex_header(pkgindex.header)
 			from portage.util import atomic_ofstream
 			f = atomic_ofstream(os.path.join(self.pkgdir, "Packages"))
 			try:
@@ -691,6 +695,19 @@ class binarytree(object):
 		finally:
 			if pkgindex_lock:
 				unlockfile(pkgindex_lock)
+
+	def _update_pkgindex_header(self, header):
+		portdir = normalize_path(os.path.realpath(self.settings["PORTDIR"]))
+		profiles_base = os.path.join(portdir, "profiles")
+		profile_path = normalize_path(os.path.realpath(self.settings.profile_path))
+		profile_path = profile_path.lstrip(profiles_base)
+		header["PROFILE"] = profile_path
+		for k in self._pkgindex_header_keys:
+			v = self.settings.get(k, None)
+			if v:
+				header[k] = v
+			else:
+				header.pop(k, None)
 
 	def exists_specific(self, cpv):
 		if not self.populated:
