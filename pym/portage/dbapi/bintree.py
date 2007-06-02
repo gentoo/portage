@@ -1,3 +1,7 @@
+# Copyright 1998-2007 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Id$
+
 from portage.dep import isvalidatom, isjustname, dep_getkey, match_from_list
 from portage.dbapi.virtual import fakedbapi
 from portage.exception import InvalidPackageName, InvalidAtom

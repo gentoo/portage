@@ -1,3 +1,7 @@
+# Copyright 1998-2007 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Id$
+
 from portage.checksum import perform_md5
 from portage.const import CACHE_PATH, CONFIG_MEMORY_FILE, PORTAGE_BIN_PATH, \
 	PRIVATE_PATH, VDB_PATH

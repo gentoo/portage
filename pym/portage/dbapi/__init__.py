@@ -1,3 +1,8 @@
+# Copyright 1998-2007 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Id$
+
+
 from portage.dep import dep_getslot, dep_getkey, match_from_list
 from portage.locks import unlockfile
 from portage.output import red
