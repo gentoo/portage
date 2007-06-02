@@ -322,13 +322,26 @@ Defaults to /usr/portage/packages.
 This variable defines the directory in which per\-ebuild logs are kept.
 Logs are created only when this is set and writable.
 .TP
-\fBPORTAGE_BINHOST\fR = \fI"ftp://login:pass@grp.mirror.site/pub/grp/i686/athlon\-xp"\fR
+\fBPORTAGE_BINHOST\fR = \fI"ftp://login:pass@grp.mirror.site/pub/grp/i686/athlon\-xp/"\fR
 This is the host from which portage will grab prebuilt\-binary packages.  
 The list is a single entry specifying the full address of the directory 
 serving the tbz2's for your system.  This is only used when running with 
 the get binary pkg options are given to \fBemerge\fR.  Review \fBemerge\fR(1) 
-for more information.  Note that it should point to the 'All' directory on 
-the host that creates the binary packages and not to the root of the \fBPKGDIR\fR.
+for more information.  For versions of portage less that 2.2, this variable
+should point to the 'All' directory on the host that creates the binary
+packages and not to the root of the \fBPKGDIR\fR.  Starting with portage 2.2,
+it should point to a directory containing a 'Packages' index file.  If
+${PORTAGE_BINHOST}/Packages does not exist then portage will attempt to use
+the older protocol.
+.TP
+\fBPORTAGE_BINHOST_HEADER_URI\fR = \fI"ftp://login:pass@grp.mirror.site/pub/grp/i686/athlon\-xp/"\fR
+This variable only makes sense on a system that will serve as a binhost and
+build packages for clients.  It defines the URI header field for the package
+index file which is located at ${PKGDIR}/Packages. Clients that have
+\fBPORTAGE_BINHOST\fR properly configured will be able to fetch the index and
+use the URI header field as a base URI for fetching binary packages. If the URI
+header field is not defined then the client will use it's ${PORTAGE_BINHOST}
+setting as the base URI.
 .TP
 \fBPORTAGE_COMPRESS\fR = \fI"bzip2"\fR
 This variable contains the command used to compress documentation during the

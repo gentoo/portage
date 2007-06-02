@@ -130,6 +130,7 @@ class binarytree(object):
 			self.populated = 0
 			self.tree = {}
 			self._remote_has_index = False
+			self._remote_base_uri = None
 			self._remotepkgs = None # remote metadata indexed by cpv
 			self.remotepkgs = {}  # indexed by tbz2 name (deprecated)
 			self.invalids = []
@@ -574,6 +575,7 @@ class binarytree(object):
 			if pkgindex:
 				self._remotepkgs = pkgindex.packages
 				self._remote_has_index = True
+				self._remote_base_uri = pkgindex.header.get("URI", base_url)
 				self.remotepkgs = {}
 				for cpv in self._remotepkgs:
 					self.dbapi.cpv_inject(cpv)
@@ -743,9 +745,11 @@ class binarytree(object):
 		profile_path = profile_path.lstrip(profiles_base)
 		header["PROFILE"] = profile_path
 		header["VERSION"] = str(self._pkgindex_version)
-		binhost = self.settings.get("PORTAGE_BINHOST")
-		if binhost:
-			header["URI"] = binhost
+		base_uri = self.settings.get("PORTAGE_BINHOST_HEADER_URI")
+		if base_uri:
+			header["URI"] = base_uri
+		else:
+			header.pop("URI", None)
 		for k in self._pkgindex_header_keys:
 			v = self.settings.get(k, None)
 			if v:
@@ -836,7 +840,7 @@ class binarytree(object):
 		except (OSError, IOError):
 			pass
 		from urlparse import urljoin
-		base_url = self.settings["PORTAGE_BINHOST"]
+		base_url = self._remote_base_uri
 		fcmd = self.settings["RESUMECOMMAND"]
 		if self._remote_has_index:
 			rel_url = self._remotepkgs[pkgname].get("PATH")
