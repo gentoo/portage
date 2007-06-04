@@ -1080,8 +1080,7 @@ class depgraph:
 				self.blocker_parents.setdefault(
 					tuple(mybigkey), set()).add(myparent)
 			return 1
-		if not arg and myroot == self.target_root:
-			arg = portage.best_match_to_list(mykey, self.args_keys)
+
 		# select the correct /var database that we'll be checking against
 		vardbapi = self.trees[myroot]["vartree"].dbapi
 		portdb = self.trees[myroot]["porttree"].dbapi
@@ -1092,6 +1091,10 @@ class depgraph:
 		# directive, otherwise we add a "merge" directive.
 
 		mydbapi = self.trees[myroot][self.pkg_tree_map[mytype]].dbapi
+
+		if not arg and myroot == self.target_root:
+			cpv_slot = "%s:%s" % (mykey, mydbapi.aux_get(mykey, ["SLOT"])[0])
+			arg = portage.best_match_to_list(cpv_slot, self.args_keys)
 
 		if myuse is None:
 			self.pkgsettings[myroot].setcpv(mykey, mydb=portdb)
