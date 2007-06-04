@@ -27,7 +27,7 @@ def quickpkg_main(options, args, eout):
 			atom = dep_expand(arg, mydb=vardb, settings=vartree.settings)
 		except ValueError, e:
 			# Multiple matches thrown from cpv_expand
-			eout.error("Please use a more specific atom: " % \
+			eout.eerror("Please use a more specific atom: %s" % \
 				" ".join(e.args[0]))
 			del e
 			missing.append(arg)
