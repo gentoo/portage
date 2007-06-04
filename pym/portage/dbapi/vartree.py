@@ -2060,3 +2060,54 @@ class dblink(object):
 	def isregular(self):
 		"Is this a regular package (does it have a CATEGORY file?  A dblink can be virtual *and* regular)"
 		return os.path.exists(os.path.join(self.dbdir, "CATEGORY"))
+
+def tar_contents(contents, root, tar, onProgress=None):
+	from portage import normalize_path
+	root = normalize_path(root).rstrip(os.path.sep) + os.path.sep
+	id_strings = {}
+	maxval = len(contents)
+	curval = 0
+	if onProgress:
+		onProgress(maxval, 0)
+	paths = contents.keys()
+	paths.sort()
+	for path in paths:
+		curval += 1
+		try:
+			lst = os.lstat(path)
+		except OSError, e:
+			if e.errno != errno.ENOENT:
+				raise
+			del e
+			if onProgress:
+				onProgress(maxval, curval)
+			continue
+		contents_type = contents[path][0]
+		if path.startswith(root):
+			arcname = path[len(root):]
+		else:
+			raise ValueError("invalid root argument: '%s'" % root)
+		live_path = path
+		if 'dir' == contents_type and \
+			not stat.S_ISDIR(lst.st_mode) and \
+			os.path.isdir(live_path):
+			# Even though this was a directory in the original ${D}, it exists
+			# as a symlink to a directory in the live filesystem.  It must be
+			# recorded as a real directory in the tar file to ensure that tar
+			# can properly extract it's children.
+			live_path = os.path.realpath(live_path)
+		tarinfo = tar.gettarinfo(live_path, arcname)
+		# store numbers instead of real names like tar's --numeric-owner
+		tarinfo.uname = id_strings.setdefault(tarinfo.uid, str(tarinfo.uid))
+		tarinfo.gname = id_strings.setdefault(tarinfo.gid, str(tarinfo.gid))
+
+		if stat.S_ISREG(lst.st_mode):
+			f = file(path)
+			try:
+				tar.addfile(tarinfo, f)
+			finally:
+				f.close()
+		else:
+			tar.addfile(tarinfo)
+		if onProgress:
+			onProgress(maxval, curval)

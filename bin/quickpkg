@@ -1,198 +1,139 @@
-#!/bin/bash
+#!/usr/bin/python
 # Copyright 1999-2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-# This script tries to quickly create a Gentoo binary package using the
-# VDB_PATH/category/pkg/*  files
-#
-# Resulting tbz2 file will be created in ${PKGDIR} ...
-# default is /usr/portage/packages/All/
+import errno, signal, sys, os
 
-if [[ ${UID} != "0" ]] ; then
-	echo "You must run this as root"
-	exit 1
-fi
-
-# We need to ensure a sane umask for the packages that will be created.
-umask 022
-
-# We need this portage cruft to be before --help output because
-# we utilize some of these vars in the usage info :/
-eval $(portageq envvar -v NOCOLOR PKGDIR PORTAGE_BIN_PATH PORTAGE_NICENESS \
-	PORTAGE_PYM_PATH PORTAGE_TMPDIR ROOT)
-export PKGDIR PORTAGE_TMPDIR ROOT
-
-[[ -n ${PORTAGE_NICENESS} ]] && renice $PORTAGE_NICENESS $$ > /dev/null
-
-# Make sure the xpak module is in PYTHONPATH
-export PYTHONPATH=${PORTAGE_PYM_PATH}
-export PORTAGE_DB=$(portageq vdb_path)
-
-version() {
-	local svnrev='$Rev$'
-	svnrev=${svnrev#* }
-	echo "quickpkg-${svnrev% *}"
-	exit 0
-}
-usage() {
-	cat <<-EOF
-	Usage: quickpkg [options] <list of pkgs>
-	
-	Options:
-	  -C, --nocolor    Disable color output
-	  -x, --debug      Run with shell debug turned on
-	  -V, --version    Print version and exit
-	  -h, --help       This cruft output
-	
-	A pkg can be of the form:
-	  - ${PORTAGE_DB}/<CATEGORY>/<PKG-VERSION>/
-	  - single depend-type atom ...
-	      if portage can emerge it, quickpkg can make a package
-	      for exact definitions of depend atoms, see ebuild(5)
-	
-	Examples:
-	    quickpkg ${PORTAGE_DB}/net-www/apache-1.3.27-r1
-	        package up apache, just version 1.3.27-r1
-	    quickpkg apache
-	        package up apache, all versions of apache installed
-	    quickpkg =apache-1.3.27-r1
-	        quickpkg =apache-1.3.27-r1
-	EOF
-	if [[ -n $1 ]] ; then
-		echo ""
-		echo "Unknown arguments: $*" 1>&2
-		exit 1
-	else
-		exit 0
-	fi
-}
-
-SET_X="no"
-while [[ -n $1 ]] ; do
-	case $1 in
-		-C|--nocolor) export NOCOLOR="true";;
-		-x|--debug)   SET_X="yes";;
-		-V|--version) version;;
-		-h|--help)    usage;;
-		-*)           usage "$1";;
-		*)            break;;
-	esac
-	shift
-done
-[[ ${SET_X} == "yes" ]] && set -x
-
-source "${PORTAGE_BIN_PATH}/isolated-functions.sh"
-
-# here we make a package given a little info
-# $1 = package-name w/version
-# $2 = category
-do_pkg() {
-	mkdir -p "${PORTAGE_TMPDIR}/binpkgs" || exit 1
-	chmod 0750 "${PORTAGE_TMPDIR}/binpkgs"
-	MYDIR="${PORTAGE_TMPDIR}/binpkgs/$1"
-	SRCDIR="${PORTAGE_DB}/$2/$1"
-	LOG="${PORTAGE_TMPDIR}/binpkgs/$1-quickpkglog"
-
-	ebegin "Building package for $1"
-	(
-		# clean up temp directory
-		rm -rf "${MYDIR}"
-
-		# get pkg info files
-		mkdir -p "${MYDIR}"/temp
-		cp "${SRCDIR}"/* "${MYDIR}"/temp/
-		[ -d "${PKGDIR}"/All ] ||  mkdir -p "${PKGDIR}"/All
-		local pkg_dest="${PKGDIR}/All/${1}.tbz2"
-		local pkg_tmp="${PKGDIR}/All/${1}.tbz2.$$"
-
-		# create filelist and a basic tbz2
-		gawk '{
-			if ($1 != "dir") {
-				if ($1 == "obj")
-					NF=NF-2
-				else if ($1 == "sym")
-					NF=NF-3
-			}
-			print
-		}' "${SRCDIR}"/CONTENTS | cut -f2- -d" " - | sed -e 's:^/:./:' | \
-		while read f; do
-			[ -d "${ROOT}/${f}" ] && [ -h "${ROOT}/${f}" ] && continue
-			echo "$f"
-		done > "${MYDIR}"/filelist
-		tar vjcf "${pkg_tmp}" -C "${ROOT}" --files-from="${MYDIR}"/filelist --no-recursion
-
-		# join together the basic tbz2 and the pkg info files
-		python -c "import xpak; t=xpak.tbz2('${pkg_tmp}'); t.recompose('${MYDIR}/temp')"
-
-		# move the final binary package to PKGDIR
-		mv -f "${pkg_tmp}" "${pkg_dest}"
-		[ -d "${PKGDIR}/$2" ] || mkdir -p "${PKGDIR}/$2"
-		( cd "${PKGDIR}/$2" && ln -s ../All/$1.tbz2 )
-
-		# cleanup again
-		rm -rf "${MYDIR}"
-	) >& "${LOG}"
-
-	if [ -e "${PKGDIR}/All/$1.tbz2" ] ; then
-		rm -f "${LOG}"
-		PKGSTATS="${PKGSTATS}"$'\n'"$(einfo $1: $(du -h "${PKGDIR}/All/$1.tbz2" | gawk '{print $1}'))"
-		eend 0
-	else
-		cat ${LOG}
-		PKGSTATS="${PKGSTATS}"$'\n'"$(ewarn $1: not created)"
-		eend 1
-	fi
-}
-
-# here we parse the parameters given to use on the cmdline
-export PKGERROR=""
-export PKGSTATS=""
-for x in "$@" ; do
-
-	# they gave us full path
-	if [ -e "${x}"/CONTENTS ] ; then
-		x=$(readlink -f $x)
-		pkg=$(echo ${x} | cut -d/ -f6)
-		cat=$(echo ${x} | cut -d/ -f5)
-		do_pkg "${pkg}" "${cat}"
-
-	# lets figure out what they want
-	else
-		DIRLIST=$(portageq match "${ROOT}" "${x}")
-		if [ -z "${DIRLIST}" ] ; then
-			eerror "Could not find anything to match '${x}'; skipping"
-			export PKGERROR="${PKGERROR} ${x}"
+def quickpkg_main(options, args, eout):
+	from portage import dblink, dep_expand, catsplit, isvalidatom, xpak
+	from portage.util import ensure_dirs
+	from portage.exception import InvalidData
+	from portage.dbapi.vartree import tar_contents
+	import tarfile
+	import portage
+	root = portage.settings["ROOT"]
+	trees = portage.db[root]
+	vartree = trees["vartree"]
+	vardb = vartree.dbapi
+	bintree = trees["bintree"]
+	if not os.access(bintree.pkgdir, os.W_OK):
+		eout.eerror("No write access to '%s'" % bintree.pkgdir)
+		return errno.EACCES
+	successes = []
+	missing = []
+	for arg in args:
+		try:
+			atom = dep_expand(arg, mydb=vardb, settings=vartree.settings)
+		except ValueError, e:
+			# Multiple matches thrown from cpv_expand
+			eout.error("Please use a more specific atom: " % \
+				" ".join(e.args[0]))
+			del e
+			missing.append(arg)
 			continue
-		fi
+		except InvalidData, e:
+			eout.eerror("Invalid atom: %s" % str(e))
+			del e
+			missing.append(arg)
+			continue
+		if not isvalidatom(atom):
+			eout.eerror("Invalid atom: %s" % atom)
+			missing.append(arg)
+			continue
+		matches = vardb.match(atom)
+		pkgs_for_arg = 0
+		for cpv in matches:
+			bintree.prevent_collision(cpv)
+			cat, pkg = catsplit(cpv)
+			dblnk = dblink(cat, pkg, root,
+				vartree.settings, treetype="vartree",
+				vartree=vartree)
+			dblnk.lockdb()
+			try:
+				if not dblnk.exists():
+					# unmerged by a concurrent process
+					continue
+				eout.ebegin("Building package for %s" % cpv)
+				pkgs_for_arg += 1
+				contents = dblnk.getcontents()
+				xpdata = xpak.xpak(dblnk.dbdir)
+				binpkg_tmpfile = os.path.join(bintree.pkgdir,
+					cpv + ".tbz2." + str(os.getpid()))
+				ensure_dirs(os.path.dirname(binpkg_tmpfile))
+				tar = tarfile.open(binpkg_tmpfile, "w:bz2")
+				tar_contents(contents, root, tar)
+				tar.close()
+				xpak.tbz2(binpkg_tmpfile).recompose_mem(xpdata)
+			finally:
+				dblnk.unlockdb()
+			bintree.inject(cpv, filename=binpkg_tmpfile)
+			binpkg_path = bintree.getname(cpv)
+			try:
+				s = os.stat(binpkg_path)
+			except OSError, e:
+				# Sanity check, shouldn't happen normally.
+				eout.eend(1)
+				eout.eerror(str(e))
+				del e
+				eout.eerror("Failed to create package: '%s'" % binpkg_path)
+			else:
+				eout.eend(0)
+				successes.append((cpv, s.st_size))
+		if not pkgs_for_arg:
+			eout.eerror("Could not find anything " + \
+				"to match '%s'; skipping" % arg)
+			missing.append(arg)
+	if not successes:
+		eout.eerror("No packages found")
+		return 1
+	print
+	eout.einfo("Packages now in '%s':" % bintree.pkgdir)
+	import math
+	units = {10:'K', 20:'M', 30:'G', 40:'T',
+		50:'P', 60:'E', 70:'Z', 80:'Y'}
+	for cpv, size in successes:
+		if not size:
+			# avoid OverflowError in math.log()
+			size_str = "0"
+		else:
+			power_of_2 = math.log(size, 2)
+			power_of_2 = 10*int(power_of_2/10)
+			unit = units.get(power_of_2)
+			if unit:
+				size = float(size)/(2**power_of_2)
+				size_str = "%.1f" % size
+				if len(size_str) > 4:
+					# emulate `du -h`, don't show too many sig figs
+					size_str = str(int(size))
+				size_str += unit
+			else:
+				size_str = str(size)
+		eout.einfo("%s: %s" % (cpv, size_str))
+	if missing:
+		print
+		eout.ewarn("The following packages could not be found:")
+		eout.ewarn(" ".join(missing))
+		return 2
+	return os.EX_OK
 
-		for d in ${DIRLIST} ; do
-			pkg=$(echo ${d} | cut -d/ -f2)
-			cat=$(echo ${d} | cut -d/ -f1)
-			if [ -f "${PORTAGE_DB}/${cat}/${pkg}/CONTENTS" ] ; then
-				do_pkg ${pkg} ${cat}
-			elif [ -d "${PORTAGE_DB}/${cat}/${pkg}" ] ; then
-				ewarn "Package '${cat}/${pkg}' was injected; skipping"
-			else
-				eerror "Unhandled case (${cat}/${pkg}) !"
-				eerror "Please file a bug at http://bugs.gentoo.org/"
-				exit 10
-			fi
-		done
-	fi
-
-done
-
-if [ -z "${PKGSTATS}" ] ; then
-	eerror "No packages found"
-	exit 1
-else
-	echo $'\n'"$(einfo Packages now in ${PKGDIR}:)${PKGSTATS}"
-fi
-if [ ! -z "${PKGERROR}" ] ; then
-	ewarn "The following packages could not be found:"
-	ewarn "${PKGERROR}"
-	exit 2
-fi
-
-exit 0
+if __name__ == "__main__":
+	usage = "Usage: quickpkg [options] <list of package atoms>"
+	from optparse import OptionParser
+	parser = OptionParser(usage=usage)
+	options, args = parser.parse_args(sys.argv[1:])
+	if not args:
+		parser.error("no packages atoms given")
+	# We need to ensure a sane umask for the packages that will be created.
+	old_umask = os.umask(022)
+	from portage.output import get_term_size, EOutput
+	eout = EOutput()
+	def sigwinch_handler(signum, frame):
+		lines, eout.term_columns = get_term_size()
+	signal.signal(signal.SIGWINCH, sigwinch_handler)
+	try:
+		retval = quickpkg_main(options, args, eout)
+	finally:
+		os.umask(old_umask)
+		signal.signal(signal.SIGWINCH, signal.SIG_DFL)
+	sys.exit(retval)
