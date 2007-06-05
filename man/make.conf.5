@@ -118,6 +118,10 @@ Defines whether or not to ignore short pauses that occur when displaying
 important informational messages.  This variable is unset by default.
 If it is set to any value pauses are ignored.
 .TP
+\fBEXTRA_ECONF\fR = \fI[configure options string]\fR
+Contains additional options that \fBeconf\fR will append to configure
+script arguments (see \fBebuild\fR(5)).
+.TP
 \fBFEATURES\fR = \fI"sandbox ccache"\fR
 Defines actions portage takes by default.  These options should
 not be changed by anyone but developers and/or maintainers.  'sandbox' is an important
