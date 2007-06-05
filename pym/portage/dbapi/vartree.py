@@ -1505,6 +1505,14 @@ class dblink(object):
 			"%s:%s" % (self.mysplit[0], self.settings["SLOT"]))
 		if slot_matches:
 			# Used by self.isprotected().
+			max_cpv = None
+			max_counter = -1
+			for cur_cpv in slot_matches:
+				cur_counter = self.vartree.dbapi.cpv_counter(cur_cpv)
+				if cur_counter > max_counter:
+					max_counter = cur_counter
+					max_cpv = cur_cpv
+			slot_matches = [max_cpv]
 			self._installed_instance = dblink(self.cat,
 				catsplit(slot_matches[0])[1], destroot, self.settings,
 				vartree=self.vartree)
