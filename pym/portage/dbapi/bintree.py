@@ -1,3 +1,7 @@
+# Copyright 1998-2007 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Id$
+
 from portage.dep import isvalidatom, isjustname, dep_getkey, match_from_list
 from portage.dbapi.virtual import fakedbapi
 from portage.exception import InvalidPackageName, InvalidAtom
@@ -126,6 +130,7 @@ class binarytree(object):
 			self.populated = 0
 			self.tree = {}
 			self._remote_has_index = False
+			self._remote_base_uri = None
 			self._remotepkgs = None # remote metadata indexed by cpv
 			self.remotepkgs = {}  # indexed by tbz2 name (deprecated)
 			self.invalids = []
@@ -133,6 +138,8 @@ class binarytree(object):
 			self._pkg_paths = {}
 			self._all_directory = os.path.isdir(
 				os.path.join(self.pkgdir, "All"))
+			self._pkgindex_version = 0
+			self._pkgindex_hashes = ["MD5","SHA1"]
 			self._pkgindex_file = os.path.join(self.pkgdir, "Packages")
 			self._pkgindex_keys = set(["CPV", "SLOT", "MTIME", "SIZE"])
 			self._pkgindex_header_keys = set(["ACCEPT_KEYWORDS", "CBUILD",
@@ -266,10 +273,14 @@ class binarytree(object):
 			other_cat = portage.xpak.tbz2(dest_path).getfile("CATEGORY")
 			if other_cat:
 				other_cat = other_cat.strip()
-				self._move_from_all(other_cat + "/" + mypkg)
+				other_cpv = other_cat + "/" + mypkg
+				self._move_from_all(other_cpv)
+				self.inject(other_cpv)
 		"""The file may or may not exist. Move it if necessary and update
 		internal state for future calls to getname()."""
 		self._move_to_all(cpv)
+		if os.path.exists(full_path):
+			self.inject(cpv)
 
 	def _move_to_all(self, cpv):
 		"""If the file exists, move it.  Whether or not it exists, update state
@@ -336,8 +347,6 @@ class binarytree(object):
 			dirs.sort()
 			dirs.insert(0, "All")
 			pkgindex = portage.getbinpkg.PackageIndex()
-			header = pkgindex.header
-			metadata = pkgindex.packages
 			pf_index = None
 			try:
 				f = open(self._pkgindex_file)
@@ -349,6 +358,10 @@ class binarytree(object):
 				finally:
 					f.close()
 					del f
+			if not self._pkgindex_version_supported(pkgindex):
+				pkgindex = portage.getbinpkg.PackageIndex()
+			header = pkgindex.header
+			metadata = pkgindex.packages
 			update_pkgindex = False
 			for mydir in dirs:
 				for myfile in listdir(os.path.join(self.pkgdir, mydir)):
@@ -534,7 +547,12 @@ class binarytree(object):
 						# no timestamp in the header, something's wrong
 						pkgindex = None
 					else:
-						if local_timestamp != remote_timestamp:
+						if not self._pkgindex_version_supported(rmt_idx):
+							writemsg("\n\n!!! Binhost package index version" + \
+							" is not supported: '%s'\n" % \
+							rmt_idx.header.get("VERSION"), noiselevel=-1)
+							pkgindex = None
+						elif local_timestamp != remote_timestamp:
 							rmt_idx.readBody(f)
 							pkgindex = rmt_idx
 				finally:
@@ -557,6 +575,7 @@ class binarytree(object):
 			if pkgindex:
 				self._remotepkgs = pkgindex.packages
 				self._remote_has_index = True
+				self._remote_base_uri = pkgindex.header.get("URI", base_url)
 				self.remotepkgs = {}
 				for cpv in self._remotepkgs:
 					self.dbapi.cpv_inject(cpv)
@@ -643,8 +662,9 @@ class binarytree(object):
 				noiselevel=-1)
 			return
 		slot = slot.strip()
-		from portage.checksum import perform_md5
-		md5 = perform_md5(full_path)
+		from portage.checksum import perform_multiple_checksums
+		digests = perform_multiple_checksums(
+			full_path, hashes=self._pkgindex_hashes)
 		self.dbapi.cpv_inject(cpv)
 		self.dbapi._aux_cache.pop(cpv, None)
 
@@ -671,12 +691,13 @@ class binarytree(object):
 				finally:
 					f.close()
 					del f
-			d = {}
+			if not self._pkgindex_version_supported(pkgindex):
+				pkgindex = portage.getbinpkg.PackageIndex()
+			d = digests
 			d["CPV"] = cpv
 			d["SLOT"] = slot
 			d["MTIME"] = str(long(s.st_mtime))
 			d["SIZE"] = str(s.st_size)
-			d["MD5"] = str(md5)
 			rel_path = self._pkg_paths[cpv]
 			# record location if it's non-default
 			if rel_path != cpv + ".tbz2":
@@ -719,16 +740,33 @@ class binarytree(object):
 
 	def _update_pkgindex_header(self, header):
 		portdir = normalize_path(os.path.realpath(self.settings["PORTDIR"]))
-		profiles_base = os.path.join(portdir, "profiles")
+		profiles_base = os.path.join(portdir, "profiles") + os.path.sep
 		profile_path = normalize_path(os.path.realpath(self.settings.profile_path))
-		profile_path = profile_path.lstrip(profiles_base)
+		if profile_path.startswith(profiles_base):
+			profile_path = profile_path[len(profiles_base):]
 		header["PROFILE"] = profile_path
+		header["VERSION"] = str(self._pkgindex_version)
+		base_uri = self.settings.get("PORTAGE_BINHOST_HEADER_URI")
+		if base_uri:
+			header["URI"] = base_uri
+		else:
+			header.pop("URI", None)
 		for k in self._pkgindex_header_keys:
 			v = self.settings.get(k, None)
 			if v:
 				header[k] = v
 			else:
 				header.pop(k, None)
+
+	def _pkgindex_version_supported(self, pkgindex):
+		version = pkgindex.header.get("VERSION")
+		if version:
+			try:
+				if int(version) <= self._pkgindex_version:
+					return True
+			except ValueError:
+				pass
+		return False
 
 	def exists_specific(self, cpv):
 		if not self.populated:
@@ -803,7 +841,7 @@ class binarytree(object):
 		except (OSError, IOError):
 			pass
 		from urlparse import urljoin
-		base_url = self.settings["PORTAGE_BINHOST"]
+		base_url = self._remote_base_uri
 		fcmd = self.settings["RESUMECOMMAND"]
 		if self._remote_has_index:
 			rel_url = self._remotepkgs[pkgname].get("PATH")
@@ -817,8 +855,12 @@ class binarytree(object):
 		if success and "strict" in self.settings.features:
 			metadata = self._remotepkgs[pkgname]
 			digests = {}
-			if "MD5" in metadata:
-				digests["MD5"] = self._remotepkgs[pkgname]["MD5"]
+			from portage.checksum import hashfunc_map, verify_all
+			for k in hashfunc_map:
+				v = metadata.get(k)
+				if not v:
+					continue
+				digests[k] = v
 			if "SIZE" in metadata:
 				try:
 					digests["size"] = long(self._remotepkgs[pkgname]["SIZE"])
@@ -826,7 +868,6 @@ class binarytree(object):
 					writemsg("!!! Malformed SIZE attribute in remote " + \
 					"metadata for '%s'\n" % pkgname)
 			if digests:
-				from portage.checksum import verify_all
 				ok, reason = verify_all(tbz2_path, digests)
 				if not ok:
 					raise portage.exception.DigestException(

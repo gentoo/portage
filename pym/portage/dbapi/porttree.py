@@ -1,3 +1,7 @@
+# Copyright 1998-2007 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Id$
+
 from portage.cache.cache_errors import CacheError
 from portage.const import REPO_NAME_LOC
 from portage.data import portage_gid, secpass
