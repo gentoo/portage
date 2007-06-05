@@ -583,7 +583,7 @@ directory. The function will append \fIsource\fR to the \fBDISTDIR\fR variable.
 \fBeconf\fR \fI[configure options]\fR
 This is used as a replacement for configure.  Performs:
 .nf
-configure \\
+${\fIECONF_SOURCE\fR:-.}/configure \\
 	\-\-prefix=/usr \\
 	\-\-host=${CHOST} \\
 	\-\-mandir=/usr/share/man \\
