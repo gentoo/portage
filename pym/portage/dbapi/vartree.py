@@ -852,9 +852,9 @@ class dblink(object):
 			mysettings.get("CONFIG_PROTECT","").split(),
 			mysettings.get("CONFIG_PROTECT_MASK","").split())
 		self.updateprotect = protect_obj.updateprotect
-		self._config_protect = protect_obj
+		self.isprotected = protect_obj.isprotected
 		self._installed_instance = None
-		self.contentscache=[]
+		self.contentscache = None
 		self._contents_inodes = None
 
 	def lockdb(self):
@@ -910,7 +910,7 @@ class dblink(object):
 		contents_file = os.path.join(self.dbdir, "CONTENTS")
 		if not os.path.exists(contents_file):
 			return None
-		if self.contentscache != []:
+		if self.contentscache is not None:
 			return self.contentscache
 		pkgfiles = {}
 		myc = open(contents_file,"r")
@@ -968,7 +968,7 @@ class dblink(object):
 		return pkgfiles
 
 	def unmerge(self, pkgfiles=None, trimworld=1, cleanup=1,
-		ldpath_mtimes=None):
+		ldpath_mtimes=None, new_contents=None):
 		"""
 		Calls prerm
 		Unmerges a given package (CPV)
@@ -984,6 +984,8 @@ class dblink(object):
 		@type cleanup: Boolean
 		@param ldpath_mtimes: mtimes to pass to env_update (see env_update)
 		@type ldpath_mtimes: Dictionary
+		@param new_contents: contents from a new instance that will replace this one
+		@type new_contents: Dictionary
 		@rtype: Integer
 		@returns:
 		1. os.EX_OK if everything went well.
@@ -1047,7 +1049,7 @@ class dblink(object):
 					writemsg("!!! FAILED prerm: %s\n" % retval, noiselevel=-1)
 					return retval
 
-			self._unmerge_pkgfiles(pkgfiles)
+			self._unmerge_pkgfiles(pkgfiles, new_contents=new_contents)
 			
 			# Remove the registration of preserved libs for this pkg instance
 			self.vartree.dbapi.plib_registry.unregister(self.mycpv, self.settings["SLOT"], self.settings["COUNTER"])
@@ -1092,7 +1094,7 @@ class dblink(object):
 			contents=contents)
 		return os.EX_OK
 
-	def _unmerge_pkgfiles(self, pkgfiles):
+	def _unmerge_pkgfiles(self, pkgfiles, new_contents=None):
 		"""
 		
 		Unmerges the contents of a package from the liveFS
@@ -1100,6 +1102,8 @@ class dblink(object):
 		
 		@param pkgfiles: typically self.getcontents()
 		@type pkgfiles: Dictionary { filename: [ 'type', '?', 'md5sum' ] }
+		@param new_contents: contents from a new instance that will replace this one
+		@type new_contents: Dictionary
 		@rtype: None
 		"""
 		global dircache
@@ -1108,6 +1112,28 @@ class dblink(object):
 		if not pkgfiles:
 			writemsg_stdout("No package files given... Grabbing a set.\n")
 			pkgfiles = self.getcontents()
+
+		if not new_contents:
+			counter = self.vartree.dbapi.cpv_counter(self.mycpv)
+			slot = self.vartree.dbapi.aux_get(self.mycpv, ["SLOT"])[0]
+			slot_matches = self.vartree.dbapi.match(
+				"%s:%s" % (dep_getkey(self.mycpv), slot))
+			new_cpv = None
+			if slot_matches:
+				max_counter = -1
+				for cur_cpv in slot_matches:
+					cur_counter = self.vartree.dbapi.cpv_counter(cur_cpv)
+					if cur_counter == counter and \
+						cur_cpv == self.mycpv:
+						continue
+					if cur_counter > max_counter:
+						max_counter = cur_counter
+						new_cpv = cur_cpv
+			if new_cpv:
+				# The current instance has been replaced by a newer instance.
+				new_cat, new_pkg = catsplit(new_cpv)
+				new_contents = dblink(new_cat, new_pkg, self.vartree.root,
+					self.settings, vartree=self.vartree).getcontents()
 
 		if pkgfiles:
 			mykeys = pkgfiles.keys()
@@ -1119,8 +1145,12 @@ class dblink(object):
 			modprotect = "/lib/modules/"
 			for objkey in mykeys:
 				obj = normalize_path(objkey)
-				if obj[:2] == "//":
-					obj = obj[1:]
+				if new_contents and new_contents.get(obj) == pkgfiles[objkey]:
+					# A new instance of this package claims the file, so don't
+					# unmerge it.
+					writemsg_stdout("--- !owned %s %s\n" % \
+						(pkgfiles[objkey][0], obj))
+					continue
 				statobj = None
 				try:
 					statobj = os.stat(obj)
@@ -1253,32 +1283,6 @@ class dblink(object):
 				 return True
 
 		return False
-
-	def isprotected(self, filename):
-		"""In cases where an installed package in the same slot owns a
-		protected file that will be merged, bump the mtime on the installed
-		file in order to ensure that it isn't unmerged."""
-		if not self._config_protect.isprotected(filename):
-			return False
-		if self._installed_instance is None:
-			return True
-		mydata = self._installed_instance.getcontents().get(filename, None)
-		if mydata is None:
-			return True
-
-		# Bump the mtime in order to ensure that the old config file doesn't
-		# get unmerged.  The user will have an opportunity to merge the new
-		# config with the old one.
-		try:
-			os.utime(filename, None)
-		except OSError, e:
-			if e.errno != errno.ENOENT:
-				raise
-			del e
-			# The file has disappeared, so it's not protected.
-			return False
-		return True
-
 
 	def _preserve_libs(self, srcroot, destroot, mycontents, counter):
 		# read global reverse NEEDED map
@@ -1555,9 +1559,6 @@ class dblink(object):
 					raise
 				del e
 
-		# get old contents info for later unmerging
-		oldcontents = self.getcontents()
-
 		self.dbdir = self.dbtmpdir
 		self.delete()
 		if not os.path.exists(self.dbtmpdir):
@@ -1599,12 +1600,11 @@ class dblink(object):
 		else:
 			cfgfiledict["IGNORE"]=0
 
-		# Timestamp for files being merged.  Use time() - 1 in order to prevent
-		# a collision with timestamps that are bumped by the utime() call
-		# inside isprotected().  This ensures that the new and old config have
-		# different timestamps (for the benefit of programs like rsync that
-		# that need distiguishable timestamps to detect file changes).
-		mymtime = long(time.time() - 1)
+		# Don't bump mtimes on merge since some application require
+		# preservation of timestamps.  This means that the unmerge phase must
+		# check to see if file belongs to an installed instance in the same
+		# slot.
+		mymtime = None
 
 		# set umask to 0 for merging; back up umask, save old one in prevmask (since this is a global change)
 		prevmask = os.umask(0)
@@ -1643,12 +1643,14 @@ class dblink(object):
 		#if we opened it, close it
 		outfile.flush()
 		outfile.close()
+		self.contentscache = None
+		new_contents = self.getcontents()
 
 		if os.path.exists(self.dbpkgdir):
 			writemsg_stdout(">>> Safely unmerging already-installed instance...\n")
-			self.dbdir = self.dbpkgdir
-			self.unmerge(oldcontents, trimworld=0, ldpath_mtimes=prev_mtimes)
-			self.dbdir = self.dbtmpdir
+			dblink(self.cat, self.pkg, destroot, self.settings,
+				vartree=self.vartree).unmerge(trimworld=0,
+					ldpath_mtimes=prev_mtimes, new_contents=new_contents)
 			writemsg_stdout(">>> Original instance of package unmerged safely.\n")
 
 		# We hold both directory locks.
@@ -1917,9 +1919,7 @@ class dblink(object):
 							destmd5 = perform_md5(mydest, calc_prelink=1)
 							if mymd5 == destmd5:
 								#file already in place; simply update mtimes of destination
-								os.utime(mydest, (thismtime, thismtime))
-								zing = "---"
-								moveme = 0
+								moveme = 1
 							else:
 								if mymd5 == cfgfiledict.get(myrealdest, [None])[0]:
 									""" An identical update has previously been
@@ -1948,52 +1948,6 @@ class dblink(object):
 					if mymtime is None:
 						sys.exit(1)
 					zing = ">>>"
-				else:
-					mymtime = long(time.time())
-					# We need to touch the destination so that on --update the
-					# old package won't yank the file with it. (non-cfgprot related)
-					os.utime(mydest, (mymtime, mymtime))
-					zing = "---"
-				if self.settings["USERLAND"] == "Darwin" and myrealdest[-2:] == ".a":
-
-					# XXX kludge, can be killed when portage stops relying on
-					# md5+mtime, and uses refcounts
-					# alright, we've fooled w/ mtime on the file; this pisses off static archives
-					# basically internal mtime != file's mtime, so the linker (falsely) thinks
-					# the archive is stale, and needs to have it's toc rebuilt.
-
-					myf = open(mydest, "r+")
-
-					# ar mtime field is digits padded with spaces, 12 bytes.
-					lms = str(thismtime+5).ljust(12)
-					myf.seek(0)
-					magic = myf.read(8)
-					if magic != "!<arch>\n":
-						# not an archive (dolib.a from portage.py makes it here fex)
-						myf.close()
-					else:
-						st = os.stat(mydest)
-						while myf.tell() < st.st_size - 12:
-							# skip object name
-							myf.seek(16, 1)
-
-							# update mtime
-							myf.write(lms)
-
-							# skip uid/gid/mperm
-							myf.seek(20, 1)
-
-							# read the archive member's size
-							x = long(myf.read(10))
-
-							# skip the trailing newlines, and add the potential
-							# extra padding byte if it's not an even size
-							myf.seek(x + 2 + (x % 2),1)
-
-						# and now we're at the end. yay.
-						myf.close()
-						mymd5 = perform_md5(mydest, calc_prelink=1)
-					os.utime(mydest, (thismtime, thismtime))
 
 				if mymtime != None:
 					zing = ">>>"
