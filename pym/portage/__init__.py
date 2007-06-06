@@ -517,7 +517,7 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None):
 		mylist = []
 		for myconfig in config_list:
 			if var in myconfig:
-				for item in myconfig[var].split(":"):
+				for item in myconfig[var].split():
 					if item and not item in mylist:
 						mylist.append(item)
 				del myconfig[var] # prepare for env.update(myconfig)
