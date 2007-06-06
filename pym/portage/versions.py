@@ -245,7 +245,7 @@ def pkgsplit(mypkg,silent=1):
 					#names can't have versiony looking parts
 			myval=["-".join(myparts[:verPos]),myparts[verPos],revision]
 			pkgcache[mypkg]=myval
-			return myval
+			return myval[:]
 	else:
 		pkgcache[mypkg]=None
 		return None
@@ -289,7 +289,7 @@ def catpkgsplit(mydata,silent=1):
 		return None
 	retval.extend(p_split)
 	catcache[mydata]=retval
-	return retval
+	return retval[:]
 
 def catsplit(mydep):
         return mydep.split("/", 1)
