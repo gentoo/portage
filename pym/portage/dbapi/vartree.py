@@ -1145,7 +1145,7 @@ class dblink(object):
 			modprotect = "/lib/modules/"
 			for objkey in mykeys:
 				obj = normalize_path(objkey)
-				if new_contents and new_contents.get(obj) == pkgfiles[objkey]:
+				if new_contents and obj in new_contents:
 					# A new instance of this package claims the file, so don't
 					# unmerge it.
 					writemsg_stdout("--- !owned %s %s\n" % \
