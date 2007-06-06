@@ -3365,8 +3365,10 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 			del mysettings["PORT_LOGDIR"]
 	if "PORT_LOGDIR" in mysettings:
 		try:
-			portage.util.ensure_dirs(mysettings["PORT_LOGDIR"],
-				uid=portage_uid, gid=portage_gid, mode=02770)
+			modified = portage.util.ensure_dirs(mysettings["PORT_LOGDIR"])
+			if modified:
+				apply_secpass_permissions(mysettings["PORT_LOGDIR"],
+					uid=portage_uid, gid=portage_gid, mode=02770)
 		except portage.exception.PortageException, e:
 			writemsg("!!! %s\n" % str(e), noiselevel=-1)
 			writemsg("!!! Permission issues with PORT_LOGDIR='%s'\n" % \
