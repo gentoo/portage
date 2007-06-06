@@ -3971,6 +3971,8 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 			else:
 				os.symlink(target,dest)
 			lchown(dest,sstat[stat.ST_UID],sstat[stat.ST_GID])
+			# utime() only works on the target of a symlink, so it's not
+			# possible to perserve mtime on symlinks.
 			return os.lstat(dest)[stat.ST_MTIME]
 		except SystemExit, e:
 			raise
