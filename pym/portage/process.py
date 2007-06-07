@@ -112,7 +112,7 @@ def cleanup():
 atexit_register(cleanup)
 
 # Make sure the original terminal attributes are reverted at exit.
-if sys.stdin.isatty():
+if hasattr(sys.stdin, "isatty") and sys.stdin.isatty():
 	import termios
 	_stdin_termios = termios.tcgetattr(sys.stdin.fileno())
 	def _reset_stdin_termios(stdin_termios):
