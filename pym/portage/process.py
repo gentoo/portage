@@ -111,9 +111,19 @@ def cleanup():
 
 atexit_register(cleanup)
 
+# Make sure the original terminal attributes are reverted at exit.
+if sys.stdin.isatty():
+	import termios
+	_stdin_termios = termios.tcgetattr(sys.stdin.fileno())
+	def _reset_stdin_termios(stdin_termios):
+		import termios
+		termios.tcsetattr(sys.stdin.fileno(), termios.TCSAFLUSH, stdin_termios)
+	atexit_register(_reset_stdin_termios, _stdin_termios)
+	del termios, _stdin_termios, _reset_stdin_termios
+
 def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
           uid=None, gid=None, groups=None, umask=None, logfile=None,
-          path_lookup=True):
+          path_lookup=True, pre_exec=None):
 	"""
 	Spawns a given command.
 	
@@ -140,6 +150,8 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 	@type logfile: String
 	@param path_lookup: If the binary is not fully specified then look for it in PATH
 	@type path_lookup: Boolean
+	@param pre_exec: A function to be called with no arguments just prior to the exec call.
+	@type pre_exec: callable
 	
 	logfile requires stdout and stderr to be assigned to this process (ie not pointed
 	   somewhere else.)
@@ -194,7 +206,7 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 	if not pid:
 		try:
 			_exec(binary, mycommand, opt_name, fd_pipes,
-			      env, gid, groups, uid, umask)
+			      env, gid, groups, uid, umask, pre_exec)
 		except Exception, e:
 			# We need to catch _any_ exception so that it doesn't
 			# propogate out of this function and cause exiting
@@ -251,7 +263,8 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 	# Everything succeeded
 	return 0
 
-def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask):
+def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask,
+	pre_exec):
 
 	"""
 	Execute a given binary with options
@@ -274,6 +287,8 @@ def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask):
 	@type uid: Integer
 	@param umask: an int representing a unix umask (see man chmod for umask details)
 	@type umask: Integer
+	@param pre_exec: A function to be called with no arguments just prior to the exec call.
+	@type pre_exec: callable
 	@rtype: None
 	@returns: Never returns (calls os.execve)
 	"""
@@ -315,6 +330,8 @@ def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask):
 		os.setuid(uid)
 	if umask:
 		os.umask(umask)
+	if pre_exec:
+		pre_exec()
 
 	# And switch to the new process.
 	os.execve(binary, myargs, env)

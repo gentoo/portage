@@ -2290,6 +2290,8 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, **keyw
 	slave_fd = None
 	output_pid = None
 	input_pid = None
+	stdin_termios = None
+	stdin_fd = None
 	if logfile:
 		del keywords["logfile"]
 		fd_pipes = keywords.get("fd_pipes")
@@ -2299,12 +2301,41 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, **keyw
 			raise ValueError(fd_pipes)
 		from pty import openpty
 		master_fd, slave_fd = openpty()
-		# Disable the ECHO attribute so the terminal behaves properly
-		# if the subprocess needs to read input from stdin.
-		import termios
-		term_attr = termios.tcgetattr(slave_fd)
-		term_attr[3] &= ~termios.ECHO
-		termios.tcsetattr(slave_fd, termios.TCSAFLUSH, term_attr)
+		fd_pipes.setdefault(0, sys.stdin.fileno())
+		stdin_fd = fd_pipes[0]
+		if os.isatty(stdin_fd):
+			# Copy the termios attributes from stdin_fd to the slave_fd and put
+			# the stdin_fd into raw mode with ECHO disabled.  The stdin
+			# termios attributes are reverted before returning, or via the
+			# atexit hook in portage.process when killed by a signal.
+			import termios, tty
+			stdin_termios = termios.tcgetattr(stdin_fd)
+			tty.setraw(stdin_fd)
+			term_attr = termios.tcgetattr(stdin_fd)
+			term_attr[3] &= ~termios.ECHO
+			termios.tcsetattr(stdin_fd, termios.TCSAFLUSH, term_attr)
+			termios.tcsetattr(slave_fd, termios.TCSAFLUSH, stdin_termios)
+			from output import get_term_size, set_term_size
+			rows, columns = get_term_size()
+			set_term_size(rows, columns, slave_fd)
+			pre_exec = keywords.get("pre_exec")
+			def setup_ctty():
+				os.setsid()
+				# Make it into the "controlling terminal".
+				import termios
+				if hasattr(termios, "TIOCSCTTY"):
+					# BSD 4.3 approach
+					import fcntl
+					fcntl.ioctl(0, termios.TIOCSCTTY)
+				else:
+					# SVR4 approach
+					fd = os.open(os.ttyname(0), os.O_RDWR)
+					for x in 0, 1, 2:
+						os.dup2(fd, x)
+					os.close(fd)
+				if pre_exec:
+					pre_exec()
+			keywords["pre_exec"] = setup_ctty
 		# tee will always exit with an IO error, so ignore it's stderr.
 		null_file = open('/dev/null', 'w')
 		mypids.extend(portage.process.spawn(['tee', '-i', '-a', logfile],
@@ -2374,8 +2405,12 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, **keyw
 		os.waitpid(input_pid, 0)
 		portage.process.spawned_pids.remove(input_pid)
 	pid = mypids[-1]
-	retval = os.waitpid(pid, 0)[1]
-	portage.process.spawned_pids.remove(pid)
+	try:
+		retval = os.waitpid(pid, 0)[1]
+		portage.process.spawned_pids.remove(pid)
+	finally:
+		if stdin_termios:
+			termios.tcsetattr(stdin_fd, termios.TCSAFLUSH, stdin_termios)
 	if retval != os.EX_OK:
 		if retval & 0xff:
 			return (retval & 0xff) << 8
