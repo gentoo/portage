@@ -2684,7 +2684,7 @@ class depgraph:
 					else:
 						verboseadd += "[No ebuild?]"
 
-				xs=portage.pkgsplit(x[2])
+				xs = list(portage.pkgsplit(x[2]))
 				if xs[2]=="r0":
 					xs[2]=""
 				else:

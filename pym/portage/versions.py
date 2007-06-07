@@ -200,7 +200,7 @@ def pkgsplit(mypkg,silent=1):
 	try:
 		if not pkgcache[mypkg]:
 			return None
-		return pkgcache[mypkg][:]
+		return pkgcache[mypkg]
 	except KeyError:
 		pass
 	myparts=mypkg.split("-")
@@ -243,9 +243,9 @@ def pkgsplit(mypkg,silent=1):
 					pkgcache[mypkg]=None
 					return None
 					#names can't have versiony looking parts
-			myval=["-".join(myparts[:verPos]),myparts[verPos],revision]
+			myval=("-".join(myparts[:verPos]),myparts[verPos],revision)
 			pkgcache[mypkg]=myval
-			return myval[:]
+			return myval
 	else:
 		pkgcache[mypkg]=None
 		return None
@@ -273,7 +273,7 @@ def catpkgsplit(mydata,silent=1):
 	try:
 		if not catcache[mydata]:
 			return None
-		return catcache[mydata][:]
+		return catcache[mydata]
 	except KeyError:
 		pass
 	mysplit=mydata.split("/")
@@ -288,8 +288,9 @@ def catpkgsplit(mydata,silent=1):
 		catcache[mydata]=None
 		return None
 	retval.extend(p_split)
+	retval = tuple(retval)
 	catcache[mydata]=retval
-	return retval[:]
+	return retval
 
 def catsplit(mydep):
         return mydep.split("/", 1)
