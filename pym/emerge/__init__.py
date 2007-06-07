@@ -2490,6 +2490,7 @@ class depgraph:
 				blockers.append(addl)
 			else:
 				mydbapi = self.trees[myroot][self.pkg_tree_map[pkg_type]].dbapi
+				pkg_status = x[3]
 				binary_package = True
 				if "ebuild" == pkg_type:
 					if "merge" == x[3] or \
@@ -2515,10 +2516,12 @@ class depgraph:
 						mydbapi.aux_get(pkg_key, ["RESTRICT"])[0]),
 						uselist=self.useFlags[myroot][pkg_key]))
 				except portage.exception.InvalidDependString, e:
-					restrict = mydbapi.aux_get(pkg_key, ["RESTRICT"])[0]
-					show_invalid_depstring_notice(x, restrict, str(e))
-					del e
-					sys.exit(1)
+					if pkg_status != "nomerge":
+						restrict = mydbapi.aux_get(pkg_key, ["RESTRICT"])[0]
+						show_invalid_depstring_notice(x, restrict, str(e))
+						del e
+						sys.exit(1)
+					restrict = []
 				if "ebuild" == pkg_type and x[3] != "nomerge" and \
 					"fetch" in restrict:
 					fetch = red("F")
