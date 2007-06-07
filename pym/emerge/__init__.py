@@ -2450,6 +2450,8 @@ class depgraph:
 				depth >= mylist[i+1][1]:
 					del mylist[i]
 
+		from portage import flatten
+		from portage.dep import use_reduce, paren_reduce
 		display_overlays=False
 		# files to fetch list - avoids counting a same file twice
 		# in size display (verbose mode)
@@ -2508,9 +2510,17 @@ class depgraph:
 					self.useFlags[myroot][pkg_key] = mydbapi.aux_get(
 						pkg_key, ["USE"])[0].split()
 
+				try:
+					restrict = flatten(use_reduce(paren_reduce(
+						mydbapi.aux_get(pkg_key, ["RESTRICT"])[0]),
+						uselist=self.useFlags[myroot][pkg_key]))
+				except portage.exception.InvalidDependString, e:
+					restrict = mydbapi.aux_get(pkg_key, ["RESTRICT"])[0]
+					show_invalid_depstring_notice(x, restrict, str(e))
+					del e
+					sys.exit(1)
 				if "ebuild" == pkg_type and x[3] != "nomerge" and \
-					"fetch" in portdb.aux_get(
-					x[2], ["RESTRICT"])[0].split():
+					"fetch" in restrict:
 					fetch = red("F")
 					if ordered:
 						counters.restrict_fetch += 1
