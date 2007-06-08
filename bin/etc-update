@@ -176,7 +176,8 @@ configuration file is followed by a list of possible replacement files."
 			fi
 			if [[ ${input} == -5 ]] ; then
 				input=-3
-				export mv_opts=""
+				export mv_opts=" ${mv_opts} "
+				mv_opts="${mv_opts// -i / }"
 			fi
 			if [[ ${input} == -3 ]] ; then
 				input=0
