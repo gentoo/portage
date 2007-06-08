@@ -502,6 +502,8 @@ econf() {
 			fi
 			die "econf failed"
 		fi
+	elif [ -f "${ECONF_SOURCE:-.}/configure" ]; then
+		die "configure is not executable"
 	else
 		die "no configure script found"
 	fi
