@@ -144,9 +144,13 @@ the cache.  After a portage update, rsync users may find it convenient to run
 a sync operation.
 .TP
 .BR "\-\-resume"
-Resumes the last merge operation.  Please note that this operation
-will only return an error on failure.  If there is nothing for portage
-to do, then portage will exit with a message and a success condition.
+Resumes the most recent merge list that has been aborted due to an error.
+Please note that this operation will only return an error on failure.  If there
+is nothing for portage to do, then portage will exit with a message and a
+success condition. A resume list will persist until it has been completed in
+entirety or until another aborted merge list replaces it.  The resume history
+is capable of storing two merge lists.  After one resume list completes, it is
+possible to invoke \-\-resume once again in order to resume an older list.
 .TP
 .BR "\-\-search " (\fB\-s\fR)
 Searches for matches of the supplied string in the portage tree.

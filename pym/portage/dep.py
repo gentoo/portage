@@ -263,7 +263,7 @@ def use_reduce(deparray, uselist=[], masklist=[], matchall=0, excludeall=[]):
 					else:
 						ismatch = False
 				if missing_flag:
-					raise portage_exception.InvalidDependString(
+					raise portage.exception.InvalidDependString(
 						"Conditional without flag: \"" + \
 						paren_enclose([head+"?", newdeparray[-1]])+"\"")
 

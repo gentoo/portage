@@ -2451,6 +2451,8 @@ class depgraph:
 				depth >= mylist[i+1][1]:
 					del mylist[i]
 
+		from portage import flatten
+		from portage.dep import use_reduce, paren_reduce
 		display_overlays=False
 		# files to fetch list - avoids counting a same file twice
 		# in size display (verbose mode)
@@ -2489,6 +2491,7 @@ class depgraph:
 				blockers.append(addl)
 			else:
 				mydbapi = self.trees[myroot][self.pkg_tree_map[pkg_type]].dbapi
+				pkg_status = x[3]
 				binary_package = True
 				if "ebuild" == pkg_type:
 					if "merge" == x[3] or \
@@ -2509,9 +2512,19 @@ class depgraph:
 					self.useFlags[myroot][pkg_key] = mydbapi.aux_get(
 						pkg_key, ["USE"])[0].split()
 
+				try:
+					restrict = flatten(use_reduce(paren_reduce(
+						mydbapi.aux_get(pkg_key, ["RESTRICT"])[0]),
+						uselist=self.useFlags[myroot][pkg_key]))
+				except portage.exception.InvalidDependString, e:
+					if pkg_status != "nomerge":
+						restrict = mydbapi.aux_get(pkg_key, ["RESTRICT"])[0]
+						show_invalid_depstring_notice(x, restrict, str(e))
+						del e
+						sys.exit(1)
+					restrict = []
 				if "ebuild" == pkg_type and x[3] != "nomerge" and \
-					"fetch" in portdb.aux_get(
-					x[2], ["RESTRICT"])[0].split():
+					"fetch" in restrict:
 					fetch = red("F")
 					if ordered:
 						counters.restrict_fetch += 1
@@ -2685,7 +2698,7 @@ class depgraph:
 					else:
 						verboseadd += "[No ebuild?]"
 
-				xs=portage.pkgsplit(x[2])
+				xs = list(portage.pkgsplit(x[2]))
 				if xs[2]=="r0":
 					xs[2]=""
 				else:

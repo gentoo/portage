@@ -260,6 +260,15 @@ def get_term_size():
 				pass
 	return -1, -1
 
+def set_term_size(lines, columns, fd):
+	"""
+	Set the number of lines and columns for the tty that is connected to fd.
+	For portability, this simply calls `stty rows $lines columns $columns`.
+	"""
+	from portage.process import spawn
+	cmd = ["stty", "rows", str(lines), "columns", str(columns)]
+	spawn(cmd, env=os.environ, fd_pipes={0:fd})
+
 class EOutput:
 	"""
 	Performs fancy terminal formatting for status and informational messages.

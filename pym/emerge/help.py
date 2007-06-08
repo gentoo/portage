@@ -100,10 +100,15 @@ def help(myaction,myopts,havecolor=1):
 		print "              Rsync users should simply 'emerge --sync' to regenerate."
 		print
 		print "       "+green("--resume")
-		print "              Resumes the last merge operation. It can be treated just like a"
-		print "              regular emerge: --pretend and other options work alongside it."
-		print "              'emerge --resume' only returns an error on failure. When there is"
-		print "              nothing to do, it exits with a message and a success condition."
+		print "              Resumes the most recent merge list that has been aborted due to an"
+		print "              error. Please note that this operation will only return an error"
+		print "              on failure. If there is nothing for portage to do, then portage"
+		print "              will exit with a message and a success condition. A resume list"
+		print "              will persist until it has been completed in entirety or until"
+		print "              another aborted merge list replaces it. The resume history is"
+		print "              capable of storing two merge lists. After one resume list"
+		print "              completes, it is possible to invoke --resume once again in order"
+		print "              to resume an older list."
 		print
 		print "       "+green("--search")+" ("+green("-s")+" short option)"
 		print "              Searches for matches of the supplied string in the current local"

@@ -518,7 +518,9 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None):
 		mylist = []
 		for myconfig in config_list:
 			if var in myconfig:
-				mylist.extend(filter(None, myconfig[var].split()))
+				for item in myconfig[var].split():
+					if item and not item in mylist:
+						mylist.append(item)
 				del myconfig[var] # prepare for env.update(myconfig)
 		if mylist:
 			env[var] = " ".join(mylist)
@@ -528,7 +530,9 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None):
 		mylist = []
 		for myconfig in config_list:
 			if var in myconfig:
-				mylist.extend(filter(None, myconfig[var].split(":")))
+				for item in myconfig[var].split(":"):
+					if item and not item in mylist:
+						mylist.append(item)
 				del myconfig[var] # prepare for env.update(myconfig)
 		if mylist:
 			env[var] = ":".join(mylist)
@@ -2295,6 +2299,8 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, **keyw
 	slave_fd = None
 	output_pid = None
 	input_pid = None
+	stdin_termios = None
+	stdin_fd = None
 	if logfile:
 		del keywords["logfile"]
 		fd_pipes = keywords.get("fd_pipes")
@@ -2304,12 +2310,41 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, **keyw
 			raise ValueError(fd_pipes)
 		from pty import openpty
 		master_fd, slave_fd = openpty()
-		# Disable the ECHO attribute so the terminal behaves properly
-		# if the subprocess needs to read input from stdin.
-		import termios
-		term_attr = termios.tcgetattr(slave_fd)
-		term_attr[3] &= ~termios.ECHO
-		termios.tcsetattr(slave_fd, termios.TCSAFLUSH, term_attr)
+		fd_pipes.setdefault(0, sys.stdin.fileno())
+		stdin_fd = fd_pipes[0]
+		if os.isatty(stdin_fd):
+			# Copy the termios attributes from stdin_fd to the slave_fd and put
+			# the stdin_fd into raw mode with ECHO disabled.  The stdin
+			# termios attributes are reverted before returning, or via the
+			# atexit hook in portage.process when killed by a signal.
+			import termios, tty
+			stdin_termios = termios.tcgetattr(stdin_fd)
+			tty.setraw(stdin_fd)
+			term_attr = termios.tcgetattr(stdin_fd)
+			term_attr[3] &= ~termios.ECHO
+			termios.tcsetattr(stdin_fd, termios.TCSAFLUSH, term_attr)
+			termios.tcsetattr(slave_fd, termios.TCSAFLUSH, stdin_termios)
+			from output import get_term_size, set_term_size
+			rows, columns = get_term_size()
+			set_term_size(rows, columns, slave_fd)
+			pre_exec = keywords.get("pre_exec")
+			def setup_ctty():
+				os.setsid()
+				# Make it into the "controlling terminal".
+				import termios
+				if hasattr(termios, "TIOCSCTTY"):
+					# BSD 4.3 approach
+					import fcntl
+					fcntl.ioctl(0, termios.TIOCSCTTY)
+				else:
+					# SVR4 approach
+					fd = os.open(os.ttyname(0), os.O_RDWR)
+					for x in 0, 1, 2:
+						os.dup2(fd, x)
+					os.close(fd)
+				if pre_exec:
+					pre_exec()
+			keywords["pre_exec"] = setup_ctty
 		# tee will always exit with an IO error, so ignore it's stderr.
 		null_file = open('/dev/null', 'w')
 		mypids.extend(portage.process.spawn(['tee', '-i', '-a', logfile],
@@ -2328,7 +2363,7 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, **keyw
 		keywords["fd_pipes"] = fd_pipes
 
 	features = mysettings.features
-	restrict = mysettings.get("RESTRICT", "").split()
+	restrict = mysettings.get("PORTAGE_RESTRICT","").split()
 	droppriv=(droppriv and "userpriv" in features and not \
 		("nouserpriv" in restrict or "userpriv" in restrict))
 	if droppriv and not uid and portage_gid and portage_uid:
@@ -2379,8 +2414,12 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, **keyw
 		os.waitpid(input_pid, 0)
 		portage.process.spawned_pids.remove(input_pid)
 	pid = mypids[-1]
-	retval = os.waitpid(pid, 0)[1]
-	portage.process.spawned_pids.remove(pid)
+	try:
+		retval = os.waitpid(pid, 0)[1]
+		portage.process.spawned_pids.remove(pid)
+	finally:
+		if stdin_termios:
+			termios.tcsetattr(stdin_fd, termios.TCSAFLUSH, stdin_termios)
 	if retval != os.EX_OK:
 		if retval & 0xff:
 			return (retval & 0xff) << 8
@@ -2391,9 +2430,10 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 	"fetch files.  Will use digest file if available."
 
 	features = mysettings.features
+	restrict = mysettings.get("PORTAGE_RESTRICT","").split()
 	# 'nomirror' is bad/negative logic. You Restrict mirroring, not no-mirroring.
-	if ("mirror" in mysettings["RESTRICT"].split()) or \
-	   ("nomirror" in mysettings["RESTRICT"].split()):
+	if "mirror" in restrict or \
+	   "nomirror" in restrict:
 		if ("mirror" in features) and ("lmirror" not in features):
 			# lmirror should allow you to bypass mirror restrictions.
 			# XXX: This is not a good thing, and is temporary at best.
@@ -2428,8 +2468,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 	if custommirrors.has_key("local"):
 		mymirrors += custommirrors["local"]
 
-	if ("nomirror" in mysettings["RESTRICT"].split()) or \
-	   ("mirror"   in mysettings["RESTRICT"].split()):
+	if "nomirror" in restrict or \
+	   "mirror" in restrict:
 		# We don't add any mirrors.
 		pass
 	else:
@@ -2450,7 +2490,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 			fsmirrors += [mymirrors[x]]
 			del mymirrors[x]
 
-	restrict_fetch = "fetch" in mysettings["RESTRICT"].split()
+	restrict_fetch = "fetch" in restrict
 	custom_local_mirrors = custommirrors.get("local", [])
 	if restrict_fetch:
 		# With fetch restriction, a normal uri may only be fetched from
@@ -2497,7 +2537,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 			if restrict_fetch:
 				# Only fetch from specific mirrors is allowed.
 				continue
-			if "primaryuri" in mysettings["RESTRICT"].split():
+			if "primaryuri" in restrict:
 				# Use the source site first.
 				if primaryuri_indexes.has_key(myfile):
 					primaryuri_indexes[myfile] += 1
@@ -3373,8 +3413,10 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 			del mysettings["PORT_LOGDIR"]
 	if "PORT_LOGDIR" in mysettings:
 		try:
-			portage.util.ensure_dirs(mysettings["PORT_LOGDIR"],
-				uid=portage_uid, gid=portage_gid, mode=02770)
+			modified = portage.util.ensure_dirs(mysettings["PORT_LOGDIR"])
+			if modified:
+				apply_secpass_permissions(mysettings["PORT_LOGDIR"],
+					uid=portage_uid, gid=portage_gid, mode=02770)
 		except portage.exception.PortageException, e:
 			writemsg("!!! %s\n" % str(e), noiselevel=-1)
 			writemsg("!!! Permission issues with PORT_LOGDIR='%s'\n" % \
@@ -3816,13 +3858,14 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 		#initial dep checks complete; time to process main commands
 
+		restrict = mysettings["PORTAGE_RESTRICT"].split()
 		nosandbox = (("userpriv" in features) and \
 			("usersandbox" not in features) and \
-			("userpriv" not in mysettings["RESTRICT"]) and \
-			("nouserpriv" not in mysettings["RESTRICT"]))
+			"userpriv" not in restrict and \
+			"nouserpriv" not in restrict)
 		if nosandbox and ("userpriv" not in features or \
-			"userpriv" in mysettings["RESTRICT"] or \
-			"nouserpriv" in mysettings["RESTRICT"]):
+			"userpriv" in restrict or \
+			"nouserpriv" in restrict):
 			nosandbox = ("sandbox" not in features and \
 				"usersandbox" not in features)
 
@@ -3979,6 +4022,8 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 			else:
 				os.symlink(target,dest)
 			lchown(dest,sstat[stat.ST_UID],sstat[stat.ST_GID])
+			# utime() only works on the target of a symlink, so it's not
+			# possible to perserve mtime on symlinks.
 			return os.lstat(dest)[stat.ST_MTIME]
 		except SystemExit, e:
 			raise
