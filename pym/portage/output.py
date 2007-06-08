@@ -194,7 +194,8 @@ def xtermTitleReset():
 		if prompt_command == "":
 			default_xterm_title = ""
 		elif prompt_command is not None:
-			default_xterm_title = commands.getoutput(prompt_command)
+			os.system(prompt_command)
+			return
 		else:
 			pwd = os.getenv('PWD','')
 			home = os.getenv('HOME', '')
