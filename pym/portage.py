@@ -2230,11 +2230,9 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, **keyw
 		keywords["fd_pipes"] = fd_pipes
 
 	features = mysettings.features
-	# XXX: Negative RESTRICT word
-	droppriv=(droppriv and ("userpriv" in features) and not \
-		(("nouserpriv" in mysettings["RESTRICT"].split()) or \
-		 ("userpriv" in mysettings["RESTRICT"].split())))
-
+	restrict = mysettings.get("PORTAGE_RESTRICT","").split()
+	droppriv=(droppriv and "userpriv" in features and not \
+		("nouserpriv" in restrict or "userpriv" in restrict))
 	if droppriv and not uid and portage_gid and portage_uid:
 		keywords.update({"uid":portage_uid,"gid":portage_gid,"groups":userpriv_groups,"umask":002})
 
@@ -2287,9 +2285,10 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 	"fetch files.  Will use digest file if available."
 
 	features = mysettings.features
+	restrict = mysettings.get("PORTAGE_RESTRICT","").split()
 	# 'nomirror' is bad/negative logic. You Restrict mirroring, not no-mirroring.
-	if ("mirror" in mysettings["RESTRICT"].split()) or \
-	   ("nomirror" in mysettings["RESTRICT"].split()):
+	if "mirror" in restrict or \
+	   "nomirror" in restrict:
 		if ("mirror" in features) and ("lmirror" not in features):
 			# lmirror should allow you to bypass mirror restrictions.
 			# XXX: This is not a good thing, and is temporary at best.
@@ -2324,8 +2323,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 	if custommirrors.has_key("local"):
 		mymirrors += custommirrors["local"]
 
-	if ("nomirror" in mysettings["RESTRICT"].split()) or \
-	   ("mirror"   in mysettings["RESTRICT"].split()):
+	if "nomirror" in restrict or \
+	   "mirror" in restrict:
 		# We don't add any mirrors.
 		pass
 	else:
@@ -2346,7 +2345,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 			fsmirrors += [mymirrors[x]]
 			del mymirrors[x]
 
-	restrict_fetch = "fetch" in mysettings["RESTRICT"].split()
+	restrict_fetch = "fetch" in restrict
 	custom_local_mirrors = custommirrors.get("local", [])
 	if restrict_fetch:
 		# With fetch restriction, a normal uri may only be fetched from
@@ -2393,7 +2392,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 			if restrict_fetch:
 				# Only fetch from specific mirrors is allowed.
 				continue
-			if "primaryuri" in mysettings["RESTRICT"].split():
+			if "primaryuri" in restrict:
 				# Use the source site first.
 				if primaryuri_indexes.has_key(myfile):
 					primaryuri_indexes[myfile] += 1
@@ -3711,13 +3710,14 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 		#initial dep checks complete; time to process main commands
 
+		restrict = mysettings["PORTAGE_RESTRICT"].split()
 		nosandbox = (("userpriv" in features) and \
 			("usersandbox" not in features) and \
-			("userpriv" not in mysettings["RESTRICT"]) and \
-			("nouserpriv" not in mysettings["RESTRICT"]))
+			"userpriv" not in restrict and \
+			"nouserpriv" not in restrict)
 		if nosandbox and ("userpriv" not in features or \
-			"userpriv" in mysettings["RESTRICT"] or \
-			"nouserpriv" in mysettings["RESTRICT"]):
+			"userpriv" in restrict or \
+			"nouserpriv" in restrict):
 			nosandbox = ("sandbox" not in features and \
 				"usersandbox" not in features)
 
