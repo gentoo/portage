@@ -117,8 +117,10 @@ def quickpkg_main(options, args, eout):
 				xpak.tbz2(binpkg_tmpfile).recompose_mem(xpdata)
 			finally:
 				dblnk.unlockdb()
-			bintree.inject(cpv)
 			binpkg_path = bintree.getname(cpv)
+			ensure_dirs(os.path.dirname(binpkg_path))
+			os.rename(binpkg_tmpfile, binpkg_path)
+			bintree.inject(cpv)
 			try:
 				s = os.stat(binpkg_path)
 			except OSError, e:
