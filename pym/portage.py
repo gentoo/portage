@@ -7848,7 +7848,7 @@ class dblink:
 									cfgprot = cfgfiledict["IGNORE"]
 									if not moveme:
 										zing = "-o-"
-										mymtime = long(mydstat.st_mtime)
+										mymtime = long(mystat.st_mtime)
 								else:
 									moveme = 1
 									cfgprot = 1
