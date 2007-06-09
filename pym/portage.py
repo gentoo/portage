@@ -7677,13 +7677,15 @@ class dblink:
 			# handy variables; mydest is the target object on the live filesystems;
 			# mysrc is the source object in the temporary install dir
 			try:
-				mydmode = os.lstat(mydest).st_mode
+				mydstat = os.lstat(mydest)
+				mydmode = mydstat.st_mode
 			except OSError, e:
 				if e.errno != errno.ENOENT:
 					raise
 				del e
 				#dest file doesn't exist
-				mydmode=None
+				mydstat = None
+				mydmode = None
 
 			if stat.S_ISLNK(mymode):
 				# we are merging a symbolic link
@@ -7803,6 +7805,7 @@ class dblink:
 				mydestdir=os.path.dirname(mydest)
 				moveme=1
 				zing="!!!"
+				mymtime = None
 				if mydmode!=None:
 					# destination file exists
 					if stat.S_ISDIR(mydmode):
@@ -7826,9 +7829,11 @@ class dblink:
 									""" An identical update has previously been
 									merged.  Skip it unless the user has chosen
 									--noconfmem."""
-									zing = "-o-"
 									moveme = cfgfiledict["IGNORE"]
 									cfgprot = cfgfiledict["IGNORE"]
+									if not moveme:
+										zing = "-o-"
+										mymtime = long(mydstat.st_mtime)
 								else:
 									moveme = 1
 									cfgprot = 1
