@@ -1091,7 +1091,7 @@ class dblink(object):
 						del e
 					unlockdir(catdir_lock)
 		env_update(target_root=self.myroot, prev_mtimes=ldpath_mtimes,
-			contents=contents)
+			contents=contents, env=self.settings.environ())
 		return os.EX_OK
 
 	def _unmerge_pkgfiles(self, pkgfiles, new_contents=None):
@@ -1692,7 +1692,7 @@ class dblink(object):
 		#update environment settings, library paths. DO NOT change symlinks.
 		env_update(makelinks=(not downgrade),
 			target_root=self.settings["ROOT"], prev_mtimes=prev_mtimes,
-			contents=contents)
+			contents=contents, env=self.settings.environ())
 		#dircache may break autoclean because it remembers the -MERGING-pkg file
 		global dircache
 		if dircache.has_key(self.dbcatdir):
