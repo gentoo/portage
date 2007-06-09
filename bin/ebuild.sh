@@ -1512,6 +1512,11 @@ if [ "${EBUILD_PHASE}" != "depend" ]; then
 	done
 	export IUSE=${iuse_temp}
 	unset iuse_temp
+	# unset USE_EXPAND variables that contain only the special "*" token
+	for x in ${USE_EXPAND} ; do
+		[ "${!x}" == "*" ] && unset ${x}
+	done
+	unset x
 	# Lock the dbkey variables after the global phase
 	declare -r DEPEND RDEPEND SLOT SRC_URI RESTRICT HOMEPAGE LICENSE DESCRIPTION
 	declare -r KEYWORDS INHERITED IUSE PDEPEND PROVIDE

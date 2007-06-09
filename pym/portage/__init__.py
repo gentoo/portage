@@ -2035,6 +2035,8 @@ class config:
 
 		# Use the calculated USE flags to regenerate the USE_EXPAND flags so
 		# that they are consistent.
+		iuse = self.configdict["pkg"].get("IUSE","").split()
+		iuse = set([ x.lstrip("+-") for x in iuse ])
 		for var in use_expand:
 			prefix = var.lower() + "_"
 			prefix_len = len(prefix)
@@ -2045,23 +2047,34 @@ class config:
 			# like LINGUAS.
 			var_split = [ x for x in var_split if x in expand_flags ]
 			var_split.extend(expand_flags.difference(var_split))
-			if var_split or var in self:
+			if (var_split or var in self) and \
+				"*" not in var_split:
 				# Don't export empty USE_EXPAND vars unless the user config
 				# exports them as empty.  This is required for vars such as
 				# LINGUAS, where unset and empty have different meanings.
 				self[var] = " ".join(var_split)
-			else:
-				# if unset, we enable everything in IUSE that's not masked
-				iuse = self.configdict["pkg"].get("IUSE")
-				if iuse:
-					var_split = []
-					for x in iuse.split():
-						x = x.lstrip("+-")
-						if x.startswith(prefix) and x not in self.usemask:
-							var_split.append(x[prefix_len:])
-							usesplit.append(x)
-					if var_split:
-						self[var] = " ".join(var_split)
+			elif "*" in var_split:
+				# * means to enable everything in IUSE that's not masked
+				filtered_split = []
+				for x in var_split:
+					if x == "*":
+						continue
+					if (prefix + x) in iuse:
+						filtered_split.append(x)
+				var_split = filtered_split
+				for x in iuse:
+					if x.startswith(prefix) and x not in self.usemask:
+						suffix = x[prefix_len:]
+						if suffix in var_split:
+							continue
+						var_split.append(suffix)
+						usesplit.append(x)
+				if var_split:
+					self[var] = " ".join(var_split)
+				elif var in self:
+					# ebuild.sh will see this and unset the variable so
+					# that things like LINGUAS work properly
+					self[var] = "*"
 
 		# Pre-Pend ARCH variable to USE settings so '-*' in env doesn't kill arch.
 		if self.configdict["defaults"].has_key("ARCH"):
