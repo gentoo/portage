@@ -1706,6 +1706,7 @@ class config:
 		cp = dep_getkey(mycpv)
 		cpv_slot = self.mycpv
 		pkginternaluse = ""
+		iuse = ""
 		if mydb:
 			slot, iuse = mydb.aux_get(self.mycpv, ["SLOT", "IUSE"])
 			cpv_slot = "%s:%s" % (self.mycpv, slot)
@@ -1766,6 +1767,9 @@ class config:
 			has_changed = True
 		self.configdict["pkg"]["PKGUSE"] = self.puse[:] # For saving to PUSE file
 		self.configdict["pkg"]["USE"]    = self.puse[:] # this gets appended to USE
+		if iuse != self.configdict["pkg"].get("IUSE",""):
+			self.configdict["pkg"]["IUSE"] = iuse
+			has_changed = True
 		# CATEGORY is essential for doebuild calls
 		self.configdict["pkg"]["CATEGORY"] = mycpv.split("/")[0]
 		if has_changed:
@@ -2029,8 +2033,6 @@ class config:
 		usesplit = [ x for x in myflags if \
 			x not in self.usemask]
 
-		usesplit.sort()
-
 		# Use the calculated USE flags to regenerate the USE_EXPAND flags so
 		# that they are consistent.
 		for var in use_expand:
@@ -2048,6 +2050,18 @@ class config:
 				# exports them as empty.  This is required for vars such as
 				# LINGUAS, where unset and empty have different meanings.
 				self[var] = " ".join(var_split)
+			else:
+				# if unset, we enable everything in IUSE that's not masked
+				iuse = self.configdict["pkg"].get("IUSE")
+				if iuse:
+					var_split = []
+					for x in iuse.split():
+						x = x.lstrip("+-")
+						if x.startswith(prefix) and x not in self.usemask:
+							var_split.append(x[prefix_len:])
+							usesplit.append(x)
+					if var_split:
+						self[var] = " ".join(var_split)
 
 		# Pre-Pend ARCH variable to USE settings so '-*' in env doesn't kill arch.
 		if self.configdict["defaults"].has_key("ARCH"):
@@ -2055,6 +2069,7 @@ class config:
 				if self.configdict["defaults"]["ARCH"] not in usesplit:
 					usesplit.insert(0,self.configdict["defaults"]["ARCH"])
 
+		usesplit.sort()
 		self.configlist[-1]["USE"]= " ".join(usesplit)
 
 		self.already_in_regenerate = 0
