@@ -1226,12 +1226,9 @@ class dblink(object):
 						writemsg_stdout("--- !md5   %s %s\n" % ("obj", obj))
 						continue
 					try:
-						if statobj.st_mode & (stat.S_ISUID | stat.S_ISGID):
-							# Always blind chmod 0 before unlinking to avoid race conditions.
-							os.chmod(obj, 0000)
-							if statobj.st_nlink > 1:
-								writemsg("setXid: "+str(statobj.st_nlink-1)+ \
-									" hardlinks to '%s'\n" % obj)
+						# Remove permissions to ensure that any hardlinks to
+						# suid/sgid files are rendered harmless.
+						os.chmod(obj, 0)
 						os.unlink(obj)
 					except (OSError, IOError), e:
 						pass
