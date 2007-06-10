@@ -2036,7 +2036,7 @@ class config:
 		# Use the calculated USE flags to regenerate the USE_EXPAND flags so
 		# that they are consistent.
 		iuse = self.configdict["pkg"].get("IUSE","").split()
-		iuse = set([ x.lstrip("+-") for x in iuse ])
+		iuse = [ x.lstrip("+-") for x in iuse ]
 		for var in use_expand:
 			prefix = var.lower() + "_"
 			prefix_len = len(prefix)
