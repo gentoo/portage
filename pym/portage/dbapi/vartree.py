@@ -1483,7 +1483,8 @@ class dblink(object):
 					raise
 				del e
 				continue
-			if s.st_nlink > 1 and \
+			if stat.S_ISREG(s.st_mode) and \
+				s.st_nlink > 1 and \
 				s.st_mode & (stat.S_ISUID | stat.S_ISGID):
 				k = (s.st_dev, s.st_ino)
 				inode_map.setdefault(k, []).append((path, s))
