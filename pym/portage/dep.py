@@ -89,13 +89,23 @@ def paren_reduce(mystr,tokenize=1):
 	"""
 	mylist = []
 	while mystr:
-		if ("(" not in mystr) and (")" not in mystr):
+		left_paren = mystr.find("(")
+		has_left_paren = left_paren != -1
+		right_paren = mystr.find(")")
+		has_right_paren = right_paren != -1
+		if not has_left_paren and not has_right_paren:
 			freesec = mystr
 			subsec = None
 			tail = ""
 		elif mystr[0] == ")":
 			return [mylist,mystr[1:]]
-		elif ("(" in mystr) and (mystr.index("(") < mystr.index(")")):
+		elif has_left_paren and not has_right_paren:
+			raise portage.exception.InvalidDependString(
+				"missing right parenthesis: '%s'" % mystr)
+		elif has_right_paren and not has_left_paren:
+			raise portage.exception.InvalidDependString(
+				"missing left parenthesis: '%s'" % mystr)
+		elif has_left_paren and left_paren < right_paren:
 			freesec,subsec = mystr.split("(",1)
 			subsec,tail = paren_reduce(subsec,tokenize)
 		else:

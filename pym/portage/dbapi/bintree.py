@@ -718,10 +718,19 @@ class binarytree(object):
 			from portage.dep import paren_reduce, use_reduce, \
 				paren_normalize, paren_enclose
 			for k in "LICENSE", "RDEPEND", "DEPEND", "PDEPEND", "PROVIDE":
-				deps = paren_reduce(d[k])
-				deps = use_reduce(deps, uselist=use)
-				deps = paren_normalize(deps)
-				deps = paren_enclose(deps)
+				try:
+					deps = paren_reduce(d[k])
+					deps = use_reduce(deps, uselist=use)
+					deps = paren_normalize(deps)
+					deps = paren_enclose(deps)
+				except portage.exception.InvalidDependString, e:
+					writemsg("%s: %s\n" % (k, str(e)),
+						noiselevel=-1)
+					del e
+					writemsg("!!! Invalid binary package: '%s'\n" % \
+						self.getname(cpv), noiselevel=-1)
+					self.dbapi.cpv_remove(cpv)
+					return
 				if deps:
 					d[k] = deps
 				else:
