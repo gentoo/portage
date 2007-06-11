@@ -3092,9 +3092,14 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 		if not eapi_is_supported(eapi):
 			# can't do anything with this.
 			raise portage_exception.UnsupportedAPIException(mycpv, eapi)
-		mysettings["PORTAGE_RESTRICT"] = " ".join(flatten(
-			portage_dep.use_reduce(portage_dep.paren_reduce(
-			mysettings["RESTRICT"]), uselist=mysettings["USE"].split())))
+		try:
+			mysettings["PORTAGE_RESTRICT"] = " ".join(flatten(
+				portage_dep.use_reduce(portage_dep.paren_reduce(
+				mysettings.get("RESTRICT","")),
+				uselist=mysettings.get("USE","").split())))
+		except portage_exception.InvalidDependString:
+			# RESTRICT is validated again inside doebuild, so let this go
+			mysettings["PORTAGE_RESTRICT"] = ""
 
 	if mysplit[2] == "r0":
 		mysettings["PVR"]=mysplit[1]
@@ -4398,7 +4403,10 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 		myusesplit=[]
 
 	#convert parenthesis to sublists
-	mysplit = portage_dep.paren_reduce(depstring)
+	try:
+		mysplit = portage_dep.paren_reduce(depstring)
+	except portage_exception.InvalidDependString, e:
+		return [0, str(e)]
 
 	mymasks = set()
 	useforce = set()

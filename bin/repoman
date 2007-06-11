@@ -1129,6 +1129,10 @@ for x in scanlist:
 			except ValueError:
 				badsyntax.append("parenthesis mismatch")
 				mydeplist = []
+			except portage_exception.InvalidDependString, e:
+				badsyntax.append(str(e))
+				del e
+				mydeplist = []
 
 			try:
 				portage_dep.use_reduce(mydeplist, excludeall=myiuse)
