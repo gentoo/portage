@@ -127,6 +127,7 @@ codes["BRACKET"]    = codes["blue"]
 # Portage functions
 codes["INFORM"] = codes["darkgreen"]
 codes["UNMERGE_WARN"] = codes["red"]
+codes["SECURITY_WARN"] = codes["red"]
 codes["MERGE_LIST_PROGRESS"] = codes["yellow"]
 
 def parse_color_map():
@@ -194,7 +195,18 @@ def xtermTitleReset():
 		if prompt_command == "":
 			default_xterm_title = ""
 		elif prompt_command is not None:
-			default_xterm_title = commands.getoutput(prompt_command)
+			if dotitles and "TERM" in os.environ and sys.stderr.isatty():
+				from portage.process import find_binary, spawn
+				shell = os.environ.get("SHELL")
+				if not shell or not os.access(shell, os.EX_OK):
+					shell = find_binary("sh")
+				if shell:
+					spawn([shell, "-c", prompt_command], env=os.environ,
+						fdpipes={0:sys.stdin.fileno(),1:sys.stderr.fileno(),
+						2:sys.stderr.fileno()})
+				else:
+					os.system(prompt_command)
+			return
 		else:
 			pwd = os.getenv('PWD','')
 			home = os.getenv('HOME', '')

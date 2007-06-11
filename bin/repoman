@@ -1259,6 +1259,10 @@ for x in scanlist:
 			except ValueError:
 				badsyntax.append("parenthesis mismatch")
 				mydeplist = []
+			except portage.exception.InvalidDependString, e:
+				badsyntax.append(str(e))
+				del e
+				mydeplist = []
 
 			try:
 				portage.dep.use_reduce(mydeplist, excludeall=myiuse)
@@ -1412,13 +1416,12 @@ for x in scanlist:
 		myuse = []
 		default_use = []
 		for myflag in myaux["IUSE"].split():
-			if myflag.startswith("+"):
+			flag_name = myflag.lstrip("+-")
+			if myflag != flag_name:
 				default_use.append(myflag)
-				myflag = myflag[1:]
-			myuse.append(myflag)
-		for mypos in range(len(myuse)-1,-1,-1):
-			if myuse[mypos] and (myuse[mypos] in uselist):
-				del myuse[mypos]
+			if flag_name not in uselist:
+				myuse.append(flag_name)
+
 		# uselist checks - local
 		mykey = portage.dep_getkey(catpkg)
 		if luselist.has_key(mykey):

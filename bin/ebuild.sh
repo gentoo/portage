@@ -515,6 +515,8 @@ econf() {
 			fi
 			die "econf failed"
 		fi
+	elif [ -f "${ECONF_SOURCE:-.}/configure" ]; then
+		die "configure is not executable"
 	else
 		die "no configure script found"
 	fi
@@ -1159,7 +1161,8 @@ inherit() {
 		export ECLASS="$1"
 
 		if [ "${EBUILD_PHASE}" != "depend" ] && \
-			[[ ${EBUILD_PHASE} != *rm ]]; then
+			[[ ${EBUILD_PHASE} != *rm ]] && \
+			[[ ${EMERGE_FROM} != "binary" ]] ; then
 			# This is disabled in the *rm phases because they frequently give
 			# false alarms due to INHERITED in /var/db/pkg being outdated
 			# in comparison the the eclasses from the portage tree.
@@ -1525,6 +1528,11 @@ if [ "${EBUILD_PHASE}" != "depend" ]; then
 	done
 	export IUSE=${iuse_temp}
 	unset iuse_temp
+	# unset USE_EXPAND variables that contain only the special "*" token
+	for x in ${USE_EXPAND} ; do
+		[ "${!x}" == "*" ] && unset ${x}
+	done
+	unset x
 	# Lock the dbkey variables after the global phase
 	declare -r DEPEND RDEPEND SLOT SRC_URI RESTRICT HOMEPAGE LICENSE DESCRIPTION
 	declare -r KEYWORDS INHERITED IUSE PDEPEND PROVIDE

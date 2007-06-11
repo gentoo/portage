@@ -461,13 +461,16 @@ class digraph:
 
 #parse /etc/env.d and generate /etc/profile.env
 
-def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None):
+def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
+	env=None):
 	if target_root is None:
 		global root
 		target_root = root
 	if prev_mtimes is None:
 		global mtimedb
 		prev_mtimes = mtimedb["ldpath"]
+	if env is None:
+		env = os.environ
 	envd_dir = os.path.join(target_root + EPREFIX, "etc", "env.d")
 	portage.util.ensure_dirs(envd_dir, mode=0755)
 	fns = listdir(envd_dir, EmptyOnError=1)
@@ -652,8 +655,14 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None):
 		if not libdir_contents_changed:
 			makelinks = False
 
+	ldconfig = EPREFIX+"/sbin/ldconfig"
+	if "CHOST" in env and "CBUILD" in env and \
+		env["CHOST"] != env["CBUILD"]:
+		from portage.process import find_binary
+		ldconfig = find_binary("%s-ldconfig" % env["CHOST"])
+
 	# Only run ldconfig as needed
-	if (ld_cache_update or makelinks):
+	if (ld_cache_update or makelinks) and ldconfig:
 		# ldconfig has very different behaviour between FreeBSD and Linux
 		if ostype=="Linux" or ostype.lower().endswith("gnu"):
 			# We can't update links if we haven't cleaned other versions first, as
@@ -662,14 +671,15 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None):
 			# we can safely create links.
 			writemsg(">>> Regenerating %s/etc/ld.so.cache...\n" % (target_root+EPREFIX))
 			if makelinks:
-				commands.getstatusoutput("cd / ; "+EPREFIX+"/sbin/ldconfig -r '%s'" % target_root)
+				os.system("cd / ; %s -r '%s'" % (ldconfig, target_root))
 			else:
-				commands.getstatusoutput("cd / ; "+EPREFIX+"/sbin/ldconfig -X -r '%s'" % target_root)
+				os.system("cd / ; %s -X -r '%s'" % (ldconfig, target_root))
 		elif ostype in ("FreeBSD","DragonFly"):
-			writemsg(">>> Regenerating %svar/run/ld-elf.so.hints...\n" % target_root+EPREFIX+os.sep)
-			commands.getstatusoutput(
-				"cd / ; "+EPREFIX+"/sbin/ldconfig -elf -i -f '%s/var/run/ld-elf.so.hints' '%s/etc/ld.so.conf'" % \
-				(target_root+EPREFIX, target_root+EPREFIX))
+			writemsg(">>> Regenerating %svar/run/ld-elf.so.hints...\n" % \
+				target_root+EPREFIX)
+			os.system(("cd / ; %s -elf -i " + \
+				"-f '%svar/run/ld-elf.so.hints' '%setc/ld.so.conf'") % \
+				(ldconfig, target_root+EPREFIX, target_root+EPREFIX))
 
 	del specials["LDPATH"]
 
@@ -1705,6 +1715,7 @@ class config:
 		cp = dep_getkey(mycpv)
 		cpv_slot = self.mycpv
 		pkginternaluse = ""
+		iuse = ""
 		if mydb:
 			slot, iuse = mydb.aux_get(self.mycpv, ["SLOT", "IUSE"])
 			cpv_slot = "%s:%s" % (self.mycpv, slot)
@@ -1765,6 +1776,9 @@ class config:
 			has_changed = True
 		self.configdict["pkg"]["PKGUSE"] = self.puse[:] # For saving to PUSE file
 		self.configdict["pkg"]["USE"]    = self.puse[:] # this gets appended to USE
+		if iuse != self.configdict["pkg"].get("IUSE",""):
+			self.configdict["pkg"]["IUSE"] = iuse
+			has_changed = True
 		# CATEGORY is essential for doebuild calls
 		self.configdict["pkg"]["CATEGORY"] = mycpv.split("/")[0]
 		if has_changed:
@@ -2028,10 +2042,10 @@ class config:
 		usesplit = [ x for x in myflags if \
 			x not in self.usemask]
 
-		usesplit.sort()
-
 		# Use the calculated USE flags to regenerate the USE_EXPAND flags so
 		# that they are consistent.
+		iuse = self.configdict["pkg"].get("IUSE","").split()
+		iuse = [ x.lstrip("+-") for x in iuse ]
 		for var in use_expand:
 			prefix = var.lower() + "_"
 			prefix_len = len(prefix)
@@ -2042,11 +2056,34 @@ class config:
 			# like LINGUAS.
 			var_split = [ x for x in var_split if x in expand_flags ]
 			var_split.extend(expand_flags.difference(var_split))
-			if var_split or var in self:
+			if (var_split or var in self) and \
+				"*" not in var_split:
 				# Don't export empty USE_EXPAND vars unless the user config
 				# exports them as empty.  This is required for vars such as
 				# LINGUAS, where unset and empty have different meanings.
 				self[var] = " ".join(var_split)
+			elif "*" in var_split:
+				# * means to enable everything in IUSE that's not masked
+				filtered_split = []
+				for x in var_split:
+					if x == "*":
+						continue
+					if (prefix + x) in iuse:
+						filtered_split.append(x)
+				var_split = filtered_split
+				for x in iuse:
+					if x.startswith(prefix) and x not in self.usemask:
+						suffix = x[prefix_len:]
+						if suffix in var_split:
+							continue
+						var_split.append(suffix)
+						usesplit.append(x)
+				if var_split:
+					self[var] = " ".join(var_split)
+				elif var in self:
+					# ebuild.sh will see this and unset the variable so
+					# that things like LINGUAS work properly
+					self[var] = "*"
 
 		# Pre-Pend ARCH variable to USE settings so '-*' in env doesn't kill arch.
 		if self.configdict["defaults"].has_key("ARCH"):
@@ -2054,6 +2091,7 @@ class config:
 				if self.configdict["defaults"]["ARCH"] not in usesplit:
 					usesplit.insert(0,self.configdict["defaults"]["ARCH"])
 
+		usesplit.sort()
 		self.configlist[-1]["USE"]= " ".join(usesplit)
 
 		self.already_in_regenerate = 0
@@ -3201,9 +3239,14 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 		if not eapi_is_supported(eapi):
 			# can't do anything with this.
 			raise portage.exception.UnsupportedAPIException(mycpv, eapi)
-		mysettings["PORTAGE_RESTRICT"] = " ".join(flatten(
-			portage.dep.use_reduce(portage.dep.paren_reduce(
-			mysettings["RESTRICT"]), uselist=mysettings["USE"].split())))
+		try:
+			mysettings["PORTAGE_RESTRICT"] = " ".join(flatten(
+				portage.dep.use_reduce(portage.dep.paren_reduce(
+				mysettings.get("RESTRICT","")),
+				uselist=mysettings.get("USE","").split())))
+		except portage.exception.InvalidDependString:
+			# RESTRICT is validated again inside doebuild, so let this go
+			mysettings["PORTAGE_RESTRICT"] = ""
 
 	if mysplit[2] == "r0":
 		mysettings["PVR"]=mysplit[1]
@@ -4489,7 +4532,10 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 		myusesplit=[]
 
 	#convert parenthesis to sublists
-	mysplit = portage.dep.paren_reduce(depstring)
+	try:
+		mysplit = portage.dep.paren_reduce(depstring)
+	except portage.exception.InvalidDependString, e:
+		return [0, str(e)]
 
 	mymasks = set()
 	useforce = set()

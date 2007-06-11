@@ -1,7 +1,7 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
-portage-2.1.3
+portage-2.2
 ==================================
 
 * The python namespace for portage has been sanitized, all portage related code

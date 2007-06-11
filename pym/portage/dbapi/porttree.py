@@ -648,10 +648,10 @@ class portdbapi(dbapi):
 
 		accept_keywords = self.mysettings["ACCEPT_KEYWORDS"].split()
 		pkgdict = self.mysettings.pkeywordsdict
-		aux_keys = ["KEYWORDS", "LICENSE", "EAPI"]
+		aux_keys = ["KEYWORDS", "LICENSE", "EAPI", "SLOT"]
 		for mycpv in mylist:
 			try:
-				keys, licenses, eapi = self.aux_get(mycpv, aux_keys)
+				keys, licenses, eapi, slot = self.aux_get(mycpv, aux_keys)
 			except KeyError:
 				continue
 			except PortageException, e:
@@ -666,7 +666,8 @@ class portdbapi(dbapi):
 			match=0
 			cp = dep_getkey(mycpv)
 			if pkgdict.has_key(cp):
-				matches = match_to_list(mycpv, pkgdict[cp].keys())
+				cpv_slot = "%s:%s" % (mycpv, slot)
+				matches = match_to_list(cpv_slot, pkgdict[cp].keys())
 				for atom in matches:
 					pgroups.extend(pkgdict[cp][atom])
 				if matches:

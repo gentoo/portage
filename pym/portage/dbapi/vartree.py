@@ -996,6 +996,17 @@ class dblink(object):
 		before and after this method.
 		"""
 
+		# When new_contents is supplied, the security check has already been
+		# done for this slot, so it shouldn't be repeated until the next
+		# replacement or unmerge operation.
+		if new_contents is None:
+			slot = self.vartree.dbapi.aux_get(self.mycpv, ["SLOT"])[0]
+			slot_matches = self.vartree.dbapi.match(
+				"%s:%s" % (dep_getkey(self.mycpv), slot))
+			retval = self._security_check(slot_matches)
+			if retval:
+				return retval
+
 		contents = self.getcontents()
 		# Now, don't assume that the name of the ebuild is the same as the
 		# name of the dir; the package may have been moved.
@@ -1091,7 +1102,7 @@ class dblink(object):
 						del e
 					unlockdir(catdir_lock)
 		env_update(target_root=self.myroot, prev_mtimes=ldpath_mtimes,
-			contents=contents)
+			contents=contents, env=self.settings.environ())
 		return os.EX_OK
 
 	def _unmerge_pkgfiles(self, pkgfiles, new_contents=None):
@@ -1215,12 +1226,9 @@ class dblink(object):
 						writemsg_stdout("--- !md5   %s %s\n" % ("obj", obj))
 						continue
 					try:
-						if statobj.st_mode & (stat.S_ISUID | stat.S_ISGID):
-							# Always blind chmod 0 before unlinking to avoid race conditions.
-							os.chmod(obj, 0000)
-							if statobj.st_nlink > 1:
-								writemsg("setXid: "+str(statobj.st_nlink-1)+ \
-									" hardlinks to '%s'\n" % obj)
+						# Remove permissions to ensure that any hardlinks to
+						# suid/sgid files are rendered harmless.
+						os.chmod(obj, 0)
 						os.unlink(obj)
 					except (OSError, IOError), e:
 						pass
@@ -1458,6 +1466,48 @@ class dblink(object):
 			except OSError:
 				pass
 
+	def _security_check(self, slot_matches):
+		if not slot_matches:
+			return 0
+		file_paths = set()
+		for cpv in slot_matches:
+			file_paths.update(dblink(self.cat, catsplit(cpv)[1],
+				self.vartree.root, self.settings,
+				vartree=self.vartree).getcontents())
+		inode_map = {}
+		for path in file_paths:
+			try:
+				s = os.lstat(path)
+			except OSError, e:
+				if e.errno != errno.ENOENT:
+					raise
+				del e
+				continue
+			if stat.S_ISREG(s.st_mode) and \
+				s.st_nlink > 1 and \
+				s.st_mode & (stat.S_ISUID | stat.S_ISGID):
+				k = (s.st_dev, s.st_ino)
+				inode_map.setdefault(k, []).append((path, s))
+		suspicious_hardlinks = []
+		for path_list in inode_map.itervalues():
+			path, s = path_list[0]
+			if len(path_list) == s.st_nlink:
+				# All hardlinks seem to be owned by this package.
+				continue
+			suspicious_hardlinks.append(path_list)
+		if not suspicious_hardlinks:
+			return 0
+		from portage.output import colorize
+		prefix = colorize("SECURITY_WARN", "*") + " WARNING: "
+		writemsg(prefix + "suid/sgid file(s) " + \
+			"with suspicious hardlink(s):\n", noiselevel=-1)
+		for path_list in suspicious_hardlinks:
+			for path, s in path_list:
+				writemsg(prefix + "  '%s'\n" % path, noiselevel=-1)
+		writemsg(prefix + "See the Gentoo Security Handbook " + \
+			"guide for advice on how to proceed.\n", noiselevel=-1)
+		return 1
+
 	def treewalk(self, srcroot, destroot, inforoot, myebuild, cleanup=0,
 		mydbapi=None, prev_mtimes=None):
 		"""
@@ -1507,6 +1557,10 @@ class dblink(object):
 
 		slot_matches = self.vartree.dbapi.match(
 			"%s:%s" % (self.mysplit[0], self.settings["SLOT"]))
+		retval = self._security_check(slot_matches)
+		if retval:
+			return retval
+
 		if slot_matches:
 			# Used by self.isprotected().
 			max_cpv = None
@@ -1692,7 +1746,7 @@ class dblink(object):
 		#update environment settings, library paths. DO NOT change symlinks.
 		env_update(makelinks=(not downgrade),
 			target_root=self.settings["ROOT"], prev_mtimes=prev_mtimes,
-			contents=contents)
+			contents=contents, env=self.settings.environ())
 		#dircache may break autoclean because it remembers the -MERGING-pkg file
 		global dircache
 		if dircache.has_key(self.dbcatdir):
@@ -1777,12 +1831,14 @@ class dblink(object):
 			# handy variables; mydest is the target object on the live filesystems;
 			# mysrc is the source object in the temporary install dir
 			try:
-				mydmode = os.lstat(mydest).st_mode
+				mydstat = os.lstat(mydest)
+				mydmode = mydstat.st_mode
 			except OSError, e:
 				if e.errno != errno.ENOENT:
 					raise
 				del e
 				#dest file doesn't exist
+				mydstat = None
 				mydmode = None
 
 			if stat.S_ISLNK(mymode):
@@ -1902,6 +1958,7 @@ class dblink(object):
 				mydestdir = os.path.dirname(mydest)
 				moveme = 1
 				zing = "!!!"
+				mymtime = None
 				if mydmode != None:
 					# destination file exists
 					if stat.S_ISDIR(mydmode):
@@ -1925,9 +1982,11 @@ class dblink(object):
 									""" An identical update has previously been
 									merged.  Skip it unless the user has chosen
 									--noconfmem."""
-									zing = "-o-"
 									moveme = cfgfiledict["IGNORE"]
 									cfgprot = cfgfiledict["IGNORE"]
+									if not moveme:
+										zing = "-o-"
+										mymtime = long(mystat.st_mtime)
 								else:
 									moveme = 1
 									cfgprot = 1
