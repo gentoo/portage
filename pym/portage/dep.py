@@ -102,9 +102,6 @@ def paren_reduce(mystr,tokenize=1):
 		elif has_left_paren and not has_right_paren:
 			raise portage.exception.InvalidDependString(
 				"missing right parenthesis: '%s'" % mystr)
-		elif has_right_paren and not has_left_paren:
-			raise portage.exception.InvalidDependString(
-				"missing left parenthesis: '%s'" % mystr)
 		elif has_left_paren and left_paren < right_paren:
 			freesec,subsec = mystr.split("(",1)
 			subsec,tail = paren_reduce(subsec,tokenize)
