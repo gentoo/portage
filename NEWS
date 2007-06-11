@@ -1,5 +1,12 @@
 News (mainly features/major bug fixes)
 
+portage-2.1.3
+-------------
+
+* USE_EXPAND variables such as LINGUAS support a * wildcard that will enable
+  all of the corresponding flags that are listed in IUSE for a given package.
+  USE_EXPAND wildcards such as linguas_* are supported in USE and package.use.
+
 portage-2.1.2
 -------------
 
