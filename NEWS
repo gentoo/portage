@@ -4,7 +4,6 @@ portage-2.2
 -------------
 
 * Allow per-module setting of PORTAGE_ELOG_CLASSES
-* Add ** as new token for package.keywords to bypass the keyword visibility layer
 * Namespace sanitizing: move all portage related code into portage.* namespace,
   rename portage_foo modules to portage.foo (but keep symlinks for compability)
 * Add license visibility filtering (GLEP 23)
@@ -20,6 +19,7 @@ portage-2.2
 portage-2.1.3
 -------------
 
+* Add ** as new token for package.keywords to bypass the keyword visibility layer
 * USE_EXPAND variables such as LINGUAS support a * wildcard that will enable
   all of the corresponding flags that are listed in IUSE for a given package.
   USE_EXPAND wildcards such as linguas_* are supported in USE and package.use.
