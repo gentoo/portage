@@ -1124,27 +1124,21 @@ class dblink(object):
 			writemsg_stdout("No package files given... Grabbing a set.\n")
 			pkgfiles = self.getcontents()
 
-		if not new_contents:
-			counter = self.vartree.dbapi.cpv_counter(self.mycpv)
-			slot = self.vartree.dbapi.aux_get(self.mycpv, ["SLOT"])[0]
-			slot_matches = self.vartree.dbapi.match(
-				"%s:%s" % (dep_getkey(self.mycpv), slot))
-			new_cpv = None
-			if slot_matches:
-				max_counter = -1
-				for cur_cpv in slot_matches:
-					cur_counter = self.vartree.dbapi.cpv_counter(cur_cpv)
-					if cur_counter == counter and \
-						cur_cpv == self.mycpv:
-						continue
-					if cur_counter > max_counter:
-						max_counter = cur_counter
-						new_cpv = cur_cpv
-			if new_cpv:
-				# The current instance has been replaced by a newer instance.
-				new_cat, new_pkg = catsplit(new_cpv)
-				new_contents = dblink(new_cat, new_pkg, self.vartree.root,
-					self.settings, vartree=self.vartree).getcontents()
+		counter = self.vartree.dbapi.cpv_counter(self.mycpv)
+		slot = self.vartree.dbapi.aux_get(self.mycpv, ["SLOT"])[0]
+		slot_matches = self.vartree.dbapi.match(
+			"%s:%s" % (dep_getkey(self.mycpv), slot))
+		claimed_paths = set()
+		if new_contents:
+			claimed_paths.update(new_contents)
+		for cur_cpv in slot_matches:
+			cur_counter = self.vartree.dbapi.cpv_counter(cur_cpv)
+			if cur_counter == counter and \
+				cur_cpv == self.mycpv:
+				continue
+			claimed_paths.update(dblink(self.cat, catsplit(cur_cpv)[1],
+				self.vartree.root, self.settings,
+				vartree=self.vartree).getcontents())
 
 		if pkgfiles:
 			mykeys = pkgfiles.keys()
@@ -1156,7 +1150,7 @@ class dblink(object):
 			modprotect = "/lib/modules/"
 			for objkey in mykeys:
 				obj = normalize_path(objkey)
-				if new_contents and obj in new_contents:
+				if obj in claimed_paths:
 					# A new instance of this package claims the file, so don't
 					# unmerge it.
 					writemsg_stdout("--- !owned %s %s\n" % \
