@@ -908,12 +908,17 @@ class dblink(object):
 		Get the installed files of a given package (aka what that package installed)
 		"""
 		contents_file = os.path.join(self.dbdir, "CONTENTS")
-		if not os.path.exists(contents_file):
-			return None
 		if self.contentscache is not None:
 			return self.contentscache
 		pkgfiles = {}
-		myc = open(contents_file,"r")
+		try:
+			myc = open(contents_file,"r")
+		except EnvironmentError, e:
+			if e.errno != errno.ENOENT:
+				raise
+			del e
+			self.contentscache = pkgfiles
+			return pkgfiles
 		mylines = myc.readlines()
 		myc.close()
 		null_byte = "\0"
@@ -961,9 +966,11 @@ class dblink(object):
 					#format: type
 					pkgfiles[" ".join(mydat[1:])] = [mydat[0]]
 				else:
-					return None
+					writemsg("!!! Unrecognized CONTENTS entry on " + \
+						"line %d: '%s'\n" % (pos, line), noiselevel=-1)
 			except (KeyError, IndexError):
-				print "portage: CONTENTS line", pos, "corrupt!"
+				writemsg("!!! Unrecognized CONTENTS entry on " + \
+					"line %d: '%s'\n" % (pos, line), noiselevel=-1)
 		self.contentscache = pkgfiles
 		return pkgfiles
 
