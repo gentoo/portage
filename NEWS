@@ -3,14 +3,17 @@ News (mainly features/major bug fixes)
 portage-2.1.3
 -------------
 
+* Add ** as new token for package.keywords to bypass the keyword visibility layer
 * USE_EXPAND variables such as LINGUAS support a * wildcard that will enable
   all of the corresponding flags that are listed in IUSE for a given package.
   USE_EXPAND wildcards such as linguas_* are supported in USE and package.use.
+* The merge process preserves the modification timestamp of files that it
+  installs. The unmerge process will not uninstall files that are claimed by
+  another package in the same slot.
 
 portage-2.1.2
 -------------
 
-* Add ** as new token for package.keywords to bypass the keyword visibility layer
 * Ebuilds support default USE flags via +flag in IUSE.
 * New-style virtuals are now usable for packages that depend on themselves for
   bootstrap.
