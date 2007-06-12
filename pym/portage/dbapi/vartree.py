@@ -21,7 +21,7 @@ from portage.util import apply_secpass_permissions, ConfigProtect, ensure_dirs, 
 from portage.versions import pkgsplit, catpkgsplit, catsplit, best, pkgcmp
 
 from portage import listdir, dep_expand, config, flatten, key_expand, \
-	doebuild_environment, doebuild, env_update, dircache, \
+	doebuild_environment, doebuild, env_update, \
 	abssymlink, movefile, bsd_chflags
 
 import os, sys, stat, errno, commands, copy, time
@@ -1124,8 +1124,6 @@ class dblink(object):
 		@type new_contents: Dictionary
 		@rtype: None
 		"""
-		global dircache
-		dircache={}
 
 		if not pkgfiles:
 			writemsg_stdout("No package files given... Grabbing a set.\n")
@@ -1748,10 +1746,7 @@ class dblink(object):
 		env_update(makelinks=(not downgrade),
 			target_root=self.settings["ROOT"], prev_mtimes=prev_mtimes,
 			contents=contents, env=self.settings.environ())
-		#dircache may break autoclean because it remembers the -MERGING-pkg file
-		global dircache
-		if dircache.has_key(self.dbcatdir):
-			del dircache[self.dbcatdir]
+
 		writemsg_stdout(">>> %s %s\n" % (self.mycpv,"merged."))
 
 		# Process ebuild logfiles
