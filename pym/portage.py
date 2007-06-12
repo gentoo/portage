@@ -7823,7 +7823,7 @@ class dblink:
 
 					if bsd_chflags:
 						# Save then clear flags on dest.
-						dflags = os.lstat(mydest).st_flags
+						dflags = mydstat.st_flags
 						if dflags != 0:
 							bsd_chflags.lchflags(mydest, 0)
 
