@@ -4,7 +4,6 @@
 # $Id$
 
 from portage.const import INCREMENTALS, PROFILE_PATH, NEWS_LIB_PATH
-from portage import config, vartree, vardbapi, portdbapi
 from portage.util import ensure_dirs, apply_permissions
 from portage.data import portage_gid
 from portage.locks import lockfile, unlockfile, lockdir, unlockdir
@@ -26,17 +25,16 @@ class NewsManager(object):
 
 	TIMESTAMP_FILE = "news-timestamp"
 
-	def __init__(self, root, NEWS_PATH, UNREAD_PATH, LANGUAGE_ID='en'):
+	def __init__(self, portdb, vardb, NEWS_PATH, UNREAD_PATH, LANGUAGE_ID='en'):
 		self.NEWS_PATH = NEWS_PATH
 		self.UNREAD_PATH = UNREAD_PATH
-		self.TIMESTAMP_PATH = os.path.join(root, NEWS_LIB_PATH, NewsManager.TIMESTAMP_FILE)
-		self.target_root = root
+		self.TIMESTAMP_PATH = os.path.join(vardb.root,
+			NEWS_LIB_PATH, NewsManager.TIMESTAMP_FILE)
+		self.target_root = vardb.root
 		self.LANGUAGE_ID = LANGUAGE_ID
-		self.config = config(config_root = os.environ.get("PORTAGE_CONFIGROOT", "/"),
-				target_root = root, config_incrementals = INCREMENTALS)
-		self.vdb = vardbapi(settings = self.config, root = root,
-			vartree = vartree(root = root, settings = self.config))
-		self.portdb = portdbapi(porttree_root = self.config["PORTDIR"], mysettings = self.config)
+		self.config = vardb.settings
+		self.vdb = vardb
+		self.portdb = portdb
 
 		# Ensure that the unread path exists and is writable.
 		dirmode  = 02070

@@ -3793,13 +3793,15 @@ def display_news_notification(trees):
 		if len(trees) > 1 and target_root != "/":
 			break
 	settings = trees[target_root]["vartree"].settings
-	porttree = trees[target_root]["porttree"].dbapi
+	portdb = trees[target_root]["porttree"].dbapi
+	vardb = trees[target_root]["vartree"].dbapi
 	NEWS_PATH = os.path.join("metadata", "news")
 	UNREAD_PATH = os.path.join(target_root, NEWS_LIB_PATH, "news")
 	newsReaderDisplay = False
 
-	for repo in porttree.getRepositories():
-		unreadItems = checkUpdatedNewsItems(target_root, NEWS_PATH, UNREAD_PATH, repo)
+	for repo in portdb.getRepositories():
+		unreadItems = checkUpdatedNewsItems(
+			portdb, vardb, NEWS_PATH, UNREAD_PATH, repo)
 		if unreadItems:
 			if not newsReaderDisplay:
 				newsReaderDisplay = True
@@ -3910,13 +3912,15 @@ def chk_updated_cfg_files(target_root, config_protect):
 			#print " "+yellow("*")+" Type "+green("emerge --help config")+" to learn how to update config files."
 			print " "+yellow("*")+" Type "+green("emerge --help config")+" to learn how to update config files."
 
-def checkUpdatedNewsItems( root, NEWS_PATH, UNREAD_PATH, repo_id ):
+def checkUpdatedNewsItems(portdb, vardb, NEWS_PATH, UNREAD_PATH, repo_id):
 	"""
 	Examines news items in repodir + '/' + NEWS_PATH and attempts to find unread items
 	Returns the number of unread (yet relevent) items.
 	
-	@param root:
-	@type root:
+	@param portdb: a portage tree database
+	@type portdb: pordbapi
+	@param vardb: an installed package database
+	@type vardb: vardbapi
 	@param NEWS_PATH:
 	@type NEWS_PATH:
 	@param UNREAD_PATH:
@@ -3929,7 +3933,7 @@ def checkUpdatedNewsItems( root, NEWS_PATH, UNREAD_PATH, repo_id ):
 	
 	"""
 	from portage.news import NewsManager
-	manager = NewsManager( root, NEWS_PATH, UNREAD_PATH )
+	manager = NewsManager(portdb, vardb, NEWS_PATH, UNREAD_PATH)
 	return manager.getUnreadItems( repo_id, update=True )
 
 def is_valid_package_atom(x):
