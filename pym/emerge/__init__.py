@@ -2120,8 +2120,16 @@ class depgraph:
 					if not circular_blocks:
 						circular_blocks = True
 						blocker_deps = myblockers.leaf_nodes()
-					if blocker_deps:
-						selected_nodes = [blocker_deps.pop()]
+					while blocker_deps:
+						# Some of these nodes might have already been selected
+						# by the normal node selection process after the
+						# circular_blocks flag has been set.  Therefore, we
+						# have to verify that they're still in the graph so
+						# that they're not selected more than once.
+						node = blocker_deps.pop()
+						if mygraph.contains(node):
+							selected_nodes = [node]
+							break
 
 			if not selected_nodes:
 				# No leaf nodes are available, so we have a circular
