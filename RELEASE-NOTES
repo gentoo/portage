@@ -1,6 +1,15 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.1.3
+==================================
+
+* The unmerge process will remove any file that is not claimed by another
+  package in the same slot and is not protected by CONFIG_PROTECT, even if the
+  modification time or checksum differs from the file that was originally
+  installed.  The old behavior is still available by adding -unmerge-orphans
+  to FEATURES.
+
 portage-2.1.2
 ==================================
 
