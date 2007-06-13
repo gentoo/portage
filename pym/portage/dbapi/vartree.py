@@ -1562,6 +1562,11 @@ class dblink(object):
 
 		slot_matches = self.vartree.dbapi.match(
 			"%s:%s" % (self.mysplit[0], self.settings["SLOT"]))
+		if self.mycpv not in slot_matches and \
+			self.vartree.dbapi.cpv_exists(self.mycpv):
+			# handle multislot or unapplied slotmove
+			slot_matches.append(self.mycpv)
+
 		others_in_slot = []
 		for cur_cpv in slot_matches:
 			others_in_slot.append(dblink(self.cat, catsplit(cur_cpv)[1],
