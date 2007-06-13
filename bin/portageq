@@ -44,7 +44,6 @@ import types
 # and will automaticly add a command by the same name as the function!
 #
 
-
 def has_version(argv):
 	"""<root> <category/package>
 	Return code 0 if it's available, 1 otherwise.
@@ -294,6 +293,24 @@ def get_repo_path(argv):
 	for arg in arvg[1:]:
 		print portage.db[argv[0]]["porttree"].dbapi.getRepositoryPath(argv[1])
 
+def list_preserved_libs(argv):
+	"""<root>
+	Print a list of libraries preserved during a package update in the form
+	package: path. Returns 0 if no preserved libraries could be found, 
+	1 otherwise.
+	"""
+
+	if len(argv) != 1:
+		print "ERROR: wrong number of arguments"
+		sys.exit(2)
+	mylibs = portage.db[argv[0]]["vartree"].dbapi.plib_registry.getPreservedLibs()
+	rValue = 0
+	for cpv in mylibs.keys():
+		for path in mylibs[cpv]:
+			print "%s: %s" % (cpv, path)
+			rValue = 1
+	return rValue
+
 #-----------------------------------------------------------------------------
 #
 # DO NOT CHANGE CODE BEYOND THIS POINT - IT'S NOT NEEDED!
@@ -311,11 +328,12 @@ def usage(argv):
 	# Show our commands -- we do this by scanning the functions in this
 	# file, and formatting each functions documentation.
 	#
-	for name in globals().keys():
-		# Drop python stuff, modules, and our own support functions.
-		if (name in ("usage", "__doc__", "__name__", "main", "os", "portage", "sys", "__builtins__", "types", "string","exithandler")):
-			continue
+	commands = [x for x in globals().keys() if x not in \
+				("usage", "__doc__", "__name__", "main", "os", "portage", \
+				"sys", "__builtins__", "types", "string","exithandler")]
+	commands.sort()
 
+	for name in commands:
 		# Drop non-functions
 		obj = globals()[name]
 		if  (type(obj) != types.FunctionType):

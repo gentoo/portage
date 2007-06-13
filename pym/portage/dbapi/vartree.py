@@ -189,8 +189,8 @@ class vardbapi(dbapi):
 		self._aux_cache_filename = os.path.join(self.root,
 			CACHE_PATH.lstrip(os.path.sep), "vdb_metadata.pickle")
 
-		self.libmap = LibraryPackageMap(os.path.join(self.root, CACHE_PATH, "library_consumers"), self)
-		self.plib_registry = PreservedLibsRegistry(os.path.join(self.root, CACHE_PATH, "preserved_libs_registry"))
+		self.libmap = LibraryPackageMap(os.path.join(self.root, CACHE_PATH.lstrip(os.sep), "library_consumers"), self)
+		self.plib_registry = PreservedLibsRegistry(os.path.join(self.root, PRIVATE_PATH, "preserved_libs_registry"))
 
 	def getpath(self, mykey, filename=None):
 		rValue = os.path.join(self.root, VDB_PATH, mykey)
