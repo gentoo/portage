@@ -31,7 +31,7 @@ except ImportError:
 	import portage
 del os.environ["PORTAGE_LEGACY_GLOBALS"]
 from portage import digraph, portdbapi
-from portage.const import NEWS_LIB_PATH, CACHE_PATH
+from portage.const import NEWS_LIB_PATH, CACHE_PATH, PRIVATE_PATH
 
 import emerge.help
 import portage.xpak, commands, errno, re, socket, time, types
@@ -3802,7 +3802,7 @@ def display_news_notification(settings):
 		print "Use " + colorize("GOOD", "eselect news") + " to read news items."
 		print
 
-def post_emerge(settings, mtimedb, retval):
+def post_emerge(settings, mtimedb, retval, vardbapi):
 	"""
 	Misc. things to run at the end of a merge session.
 	
@@ -3847,11 +3847,9 @@ def post_emerge(settings, mtimedb, retval):
 	
 	display_news_notification(settings)
 	
-	from portage.dbapi.vartree import PreservedLibsRegistry
-	plib_registry = PreservedLibsRegistry(os.path.join(target_root, CACHE_PATH, "preserved_libs_registry"))
-	if plib_registry.hasEntries():
+	if vardbapi.plib_registry.hasEntries():
 		print colorize("WARN", "!!!") + " existing preserved libs:"
-		plibdata = plib_registry.getPreservedLibs()
+		plibdata = vardbapi.plib_registry.getPreservedLibs()
 		for cpv in plibdata.keys():
 			print colorize("WARN", ">>>") + " package: %s" % cpv
 			for f in plibdata[cpv]:
@@ -5689,14 +5687,14 @@ def emerge_main():
 		if 1 == unmerge(settings, myopts, vartree, myaction, myfiles,
 			mtimedb["ldpath"]):
 			if "--pretend" not in myopts:
-				post_emerge(settings, mtimedb, 0)
+				post_emerge(settings, mtimedb, 0, trees[settings["ROOT"]]["vartree"].dbapi)
 
 	elif "depclean"==myaction:
 		validate_ebuild_environment(trees)
 		action_depclean(settings, trees, mtimedb["ldpath"],
 			myopts, spinner)
 		if "--pretend" not in myopts:
-			post_emerge(settings, mtimedb, 0)
+			post_emerge(settings, mtimedb, 0, trees[settings["ROOT"]]["vartree"].dbapi)
 	# "update", "system", or just process files:
 	else:
 		validate_ebuild_environment(trees)
@@ -5705,7 +5703,7 @@ def emerge_main():
 		action_build(settings, trees, mtimedb,
 			myopts, myaction, myfiles, spinner)
 		if "--pretend" not in myopts:
-			post_emerge(settings, mtimedb, 0)
+			post_emerge(settings, mtimedb, 0, trees[settings["ROOT"]]["vartree"].dbapi)
 		else:
 			display_news_notification(settings)
 
