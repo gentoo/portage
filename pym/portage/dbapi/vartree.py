@@ -1363,7 +1363,7 @@ class dblink(object):
 
 		del preserve_paths
 	
-	def _collision_protect(self, srcroot, destroot, otherversions, mycontents, mysymlinks):
+	def _collision_protect(self, srcroot, destroot, mypkglist, mycontents, mysymlinks):
 			collision_ignore = set([normalize_path(myignore) for myignore in \
 				self.settings.get("COLLISION_IGNORE", "").split()])
 
@@ -1377,21 +1377,6 @@ class dblink(object):
 
 			stopmerge = False
 			i=0
-
-			otherpkg=[]
-			mypkglist=[]
-
-			if self.pkg in otherversions:
-				otherversions.remove(self.pkg)	# we already checked this package
-
-			myslot = self.settings["SLOT"]
-			for v in otherversions:
-				# only allow versions with same slot to overwrite files
-				if myslot == self.vartree.dbapi.aux_get("/".join((self.cat, v)), ["SLOT"])[0]:
-					mypkglist.append(
-						dblink(self.cat, v, destroot, self.settings,
-							vartree=self.vartree))
-
 			collisions = []
 
 			print green("*")+" checking "+str(len(mycontents))+" files for package collisions"
@@ -1604,7 +1589,8 @@ class dblink(object):
 			if mylinklist == None:
 				mylinklist = filter(os.path.islink, [os.path.join(srcroot, x) for x in listdir(srcroot, recursive=1, filesonly=0, followSymlinks=False)])
 				mylinklist = [x[len(srcroot):] for x in mylinklist]
-			self._collision_protect(srcroot, destroot, otherversions, myfilelist+mylinklist, mylinklist)
+			self._collision_protect(srcroot, destroot, others_in_slot,
+				myfilelist+mylinklist, mylinklist)
 
 		if os.stat(srcroot).st_dev == os.stat(destroot).st_dev:
 			""" The merge process may move files out of the image directory,
