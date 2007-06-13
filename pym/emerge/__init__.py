@@ -3788,11 +3788,14 @@ def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 				print " "+green("*")+" Processed",icount,"info files."
 
 
-def display_news_notification(settings):
-	target_root = settings["ROOT"]
+def display_news_notification(trees):
+	for target_root in trees:
+		if len(trees) > 1 and target_root != "/":
+			break
+	settings = trees[target_root]["vartree"].settings
+	porttree = trees[target_root]["porttree"].dbapi
 	NEWS_PATH = os.path.join("metadata", "news")
 	UNREAD_PATH = os.path.join(target_root, NEWS_LIB_PATH, "news")
-	porttree = portdbapi(porttree_root=settings["PORTDIR"], mysettings=settings)
 	newsReaderDisplay = False
 
 	for repo in porttree.getRepositories():
@@ -3857,7 +3860,7 @@ def post_emerge(trees, mtimedb, retval):
 
 	chk_updated_cfg_files(target_root, config_protect)
 	
-	display_news_notification(settings)
+	display_news_notification(trees)
 	
 	if vardbapi.plib_registry.hasEntries():
 		print colorize("WARN", "!!!") + " existing preserved libs:"
@@ -4416,7 +4419,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		print red(" * ")+"To update portage, run 'emerge portage'."
 		print
 	
-	display_news_notification(settings)
+	display_news_notification(trees)
 
 def action_metadata(settings, portdb, myopts):
 	portage.writemsg_stdout("\n>>> Updating Portage cache:      ")
@@ -5711,13 +5714,13 @@ def emerge_main():
 	else:
 		validate_ebuild_environment(trees)
 		if "--pretend" not in myopts:
-			display_news_notification(settings)
+			display_news_notification(trees)
 		action_build(settings, trees, mtimedb,
 			myopts, myaction, myfiles, spinner)
 		if "--pretend" not in myopts:
 			post_emerge(trees, mtimedb, os.EX_OK)
 		else:
-			display_news_notification(settings)
+			display_news_notification(trees)
 
 if __name__ == "__main__":
 	retval = emerge_main()
