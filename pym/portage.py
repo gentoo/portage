@@ -7166,16 +7166,20 @@ class dblink:
 		for dblnk in others_in_slot:
 			claimed_paths.update(dblnk.getcontents())
 
+		unmerge_orphans = "unmerge-orphans" in self.settings.features
+
 		if pkgfiles:
 			mykeys=pkgfiles.keys()
 			mykeys.sort()
 			mykeys.reverse()
 
 			#process symlinks second-to-last, directories last.
-			mydirs=[]
-			modprotect="/lib/modules/"
+			mydirs = []
+			modprotect = os.path.join(self.vartree.root, "lib/modules/")
 			for objkey in mykeys:
 				obj = normalize_path(objkey)
+				file_data = pkgfiles[objkey]
+				file_type = file_data[0]
 				if obj in claimed_paths:
 					# A new instance of this package claims the file, so don't
 					# unmerge it.
@@ -7193,7 +7197,7 @@ class dblink:
 				except (OSError, AttributeError):
 					pass
 				islink = lstatobj is not None and stat.S_ISLNK(lstatobj.st_mode)
-				if statobj is None:
+				if not unmerge_orphans and statobj is None:
 					if not islink:
 						#we skip this if we're dealing with a symlink
 						#because os.stat() will operate on the
@@ -7207,6 +7211,20 @@ class dblink:
 				# should be able to be independently specified.
 				if obj.startswith(modprotect):
 					writemsg_stdout("--- cfgpro %s %s\n" % (pkgfiles[objkey][0], obj))
+					continue
+
+				if unmerge_orphans and \
+					lstatobj and not stat.S_ISDIR(lstatobj.st_mode) and \
+					not self.isprotected(obj):
+					try:
+						# Remove permissions to ensure that any hardlinks to
+						# suid/sgid files are rendered harmless.
+						if statobj:
+							os.chmod(obj, 0)
+						os.unlink(obj)
+					except EnvironmentError, e:
+						pass
+					writemsg_stdout("<<<        %s %s\n" % (file_type, obj))
 					continue
 
 				lmtime=str(lstatobj[stat.ST_MTIME])

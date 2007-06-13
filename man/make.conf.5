@@ -271,6 +271,11 @@ the package compiled properly.  See \fItest\fR in \fBebuild\fR(1)
 and \fIsrc_test()\fR in \fBebuild\fR(5). This feature implies the "test"
 \fBUSE\fR flag.
 .TP
+.B unmerge-orphans
+If a file is not claimed by another package in the same slot and it is not
+protected by \fICONFIG_PROTECT\fR, unmerge it even if the modification time or
+checksum differs from the file that was originally installed.
+.TP
 .B userfetch
 When portage is run as root, drop privileges to portage:portage during the
 fetching of package sources.
