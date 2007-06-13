@@ -3810,7 +3810,7 @@ def display_news_notification(settings):
 		print "Use " + colorize("GOOD", "eselect news") + " to read news items."
 		print
 
-def post_emerge(settings, mtimedb, retval, vardbapi):
+def post_emerge(trees, mtimedb, retval):
 	"""
 	Misc. things to run at the end of a merge session.
 	
@@ -3820,9 +3820,9 @@ def post_emerge(settings, mtimedb, retval, vardbapi):
 	Commit mtimeDB
 	Display preserved libs warnings
 	Exit Emerge
-	
-	@param settings: Configuration settings (typically portage.settings)
-	@type settings: portage.config()
+
+	@param trees: A dictionary mapping each ROOT to it's package databases
+	@type trees: dict
 	@param mtimedb: The mtimeDB to store data needed across merge invocations
 	@type mtimedb: MtimeDB class instance
 	@param retval: Emerge's return value
@@ -3831,7 +3831,11 @@ def post_emerge(settings, mtimedb, retval, vardbapi):
 	@returns:
 	1.  Calls sys.exit(retval)
 	"""
-	target_root = settings["ROOT"]
+	for target_root in trees:
+		if len(trees) > 1 and target_root != "/":
+			break
+	vardbapi = trees[target_root]["vartree"].dbapi
+	settings = vardbapi.settings
 	info_mtimes = mtimedb["info"]
 
 	# Load the most current variables from ${ROOT}/etc/profile.env
@@ -5695,14 +5699,14 @@ def emerge_main():
 		if 1 == unmerge(settings, myopts, vartree, myaction, myfiles,
 			mtimedb["ldpath"]):
 			if "--pretend" not in myopts:
-				post_emerge(settings, mtimedb, 0, trees[settings["ROOT"]]["vartree"].dbapi)
+				post_emerge(trees, mtimedb, os.EX_OK)
 
 	elif "depclean"==myaction:
 		validate_ebuild_environment(trees)
 		action_depclean(settings, trees, mtimedb["ldpath"],
 			myopts, spinner)
 		if "--pretend" not in myopts:
-			post_emerge(settings, mtimedb, 0, trees[settings["ROOT"]]["vartree"].dbapi)
+			post_emerge(trees, mtimedb, os.EX_OK)
 	# "update", "system", or just process files:
 	else:
 		validate_ebuild_environment(trees)
@@ -5711,7 +5715,7 @@ def emerge_main():
 		action_build(settings, trees, mtimedb,
 			myopts, myaction, myfiles, spinner)
 		if "--pretend" not in myopts:
-			post_emerge(settings, mtimedb, 0, trees[settings["ROOT"]]["vartree"].dbapi)
+			post_emerge(trees, mtimedb, os.EX_OK)
 		else:
 			display_news_notification(settings)
 
