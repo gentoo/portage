@@ -6997,7 +6997,7 @@ class dblink:
 		return pkgfiles
 
 	def unmerge(self, pkgfiles=None, trimworld=1, cleanup=1,
-		ldpath_mtimes=None, new_contents=None):
+		ldpath_mtimes=None, others_in_slot=None):
 		"""
 		Calls prerm
 		Unmerges a given package (CPV)
@@ -7013,8 +7013,8 @@ class dblink:
 		@type cleanup: Boolean
 		@param ldpath_mtimes: mtimes to pass to env_update (see env_update)
 		@type ldpath_mtimes: Dictionary
-		@param new_contents: contents from a new instance that will replace this one
-		@type new_contents: Dictionary
+		@param others_in_slot: all dblink instances in this slot, excluding self
+		@type others_in_slot: list
 		@rtype: Integer
 		@returns:
 		1. os.EX_OK if everything went well.
@@ -7025,14 +7025,20 @@ class dblink:
 		before and after this method.
 		"""
 
-		# When new_contents is supplied, the security check has already been
+		# When others_in_slot is supplied, the security check has already been
 		# done for this slot, so it shouldn't be repeated until the next
 		# replacement or unmerge operation.
-		if new_contents is None:
+		if others_in_slot is None:
 			slot = self.vartree.dbapi.aux_get(self.mycpv, ["SLOT"])[0]
 			slot_matches = self.vartree.dbapi.match(
 				"%s:%s" % (dep_getkey(self.mycpv), slot))
-			retval = self._security_check(slot_matches)
+			others_in_slot = []
+			for cur_cpv in slot_matches:
+				if cur_cpv == self.mycpv:
+					continue
+				others_in_slot.append(dblink(self.cat, catsplit(cur_cpv)[1],
+					self.vartree.root, self.settings, vartree=self.vartree))
+			retval = self._security_check([self] + others_in_slot)
 			if retval:
 				return retval
 
@@ -7089,7 +7095,7 @@ class dblink:
 					writemsg("!!! FAILED prerm: %s\n" % retval, noiselevel=-1)
 					return retval
 
-			self._unmerge_pkgfiles(pkgfiles, new_contents=new_contents)
+			self._unmerge_pkgfiles(pkgfiles, others_in_slot)
 
 			if myebuildpath:
 				retval = doebuild(myebuildpath, "postrm", self.myroot,
@@ -7128,7 +7134,7 @@ class dblink:
 			contents=contents, env=self.settings.environ())
 		return os.EX_OK
 
-	def _unmerge_pkgfiles(self, pkgfiles, new_contents=None):
+	def _unmerge_pkgfiles(self, pkgfiles, others_in_slot):
 		"""
 		
 		Unmerges the contents of a package from the liveFS
@@ -7136,8 +7142,8 @@ class dblink:
 		
 		@param pkgfiles: typically self.getcontents()
 		@type pkgfiles: Dictionary { filename: [ 'type', '?', 'md5sum' ] }
-		@param new_contents: contents from a new instance that will replace this one
-		@type new_contents: Dictionary
+		@param others_in_slot: all dblink instances in this slot, excluding self
+		@type others_in_slot: list
 		@rtype: None
 		"""
 
@@ -7145,21 +7151,20 @@ class dblink:
 			writemsg_stdout("No package files given... Grabbing a set.\n")
 			pkgfiles=self.getcontents()
 
-		counter = self.vartree.dbapi.cpv_counter(self.mycpv)
-		slot = self.vartree.dbapi.aux_get(self.mycpv, ["SLOT"])[0]
-		slot_matches = self.vartree.dbapi.match(
-			"%s:%s" % (dep_getkey(self.mycpv), slot))
+		if others_in_slot is None:
+			others_in_slot = []
+			slot = self.vartree.dbapi.aux_get(self.mycpv, ["SLOT"])[0]
+			slot_matches = self.vartree.dbapi.match(
+				"%s:%s" % (dep_getkey(self.mycpv), slot))
+			for cur_cpv in slot_matches:
+				if cur_cpv == self.mycpv:
+					continue
+				others_in_slot.append(dblink(self.cat, catsplit(cur_cpv)[1],
+					self.vartree.root, self.settings,
+					vartree=self.vartree))
 		claimed_paths = set()
-		if new_contents:
-			claimed_paths.update(new_contents)
-		for cur_cpv in slot_matches:
-			cur_counter = self.vartree.dbapi.cpv_counter(cur_cpv)
-			if cur_counter == counter and \
-				cur_cpv == self.mycpv:
-				continue
-			claimed_paths.update(dblink(self.cat, catsplit(cur_cpv)[1],
-				self.vartree.root, self.settings,
-				vartree=self.vartree).getcontents())
+		for dblnk in others_in_slot:
+			claimed_paths.update(dblnk.getcontents())
 
 		if pkgfiles:
 			mykeys=pkgfiles.keys()
@@ -7307,14 +7312,12 @@ class dblink:
 
 		return False
 
-	def _security_check(self, slot_matches):
-		if not slot_matches:
+	def _security_check(self, installed_instances):
+		if not installed_instances:
 			return 0
 		file_paths = set()
-		for cpv in slot_matches:
-			file_paths.update(dblink(self.cat, catsplit(cpv)[1],
-				self.vartree.root, self.settings,
-				vartree=self.vartree).getcontents())
+		for dblnk in installed_instances:
+			file_paths.update(dblnk.getcontents())
 		inode_map = {}
 		for path in file_paths:
 			try:
@@ -7396,23 +7399,25 @@ class dblink:
 
 		slot_matches = self.vartree.dbapi.match(
 			"%s:%s" % (self.mysplit[0], self.settings["SLOT"]))
-		retval = self._security_check(slot_matches)
+		others_in_slot = []
+		for cur_cpv in slot_matches:
+			others_in_slot.append(dblink(self.cat, catsplit(cur_cpv)[1],
+				self.vartree.root, self.settings,
+				vartree=self.vartree))
+		retval = self._security_check(others_in_slot)
 		if retval:
 			return retval
 
 		if slot_matches:
 			# Used by self.isprotected().
-			max_cpv = None
+			max_dblnk = None
 			max_counter = -1
-			for cur_cpv in slot_matches:
-				cur_counter = self.vartree.dbapi.cpv_counter(cur_cpv)
+			for dblnk in others_in_slot:
+				cur_counter = self.vartree.dbapi.cpv_counter(dblnk.mycpv)
 				if cur_counter > max_counter:
 					max_counter = cur_counter
-					max_cpv = cur_cpv
-			slot_matches = [max_cpv]
-			self._installed_instance = dblink(self.cat,
-				catsplit(slot_matches[0])[1], destroot, self.settings,
-				vartree=self.vartree)
+					max_dblnk = dblnk
+			self._installed_instance = max_dblnk
 
 		# check for package collisions
 		if "collision-protect" in self.settings.features:
@@ -7625,15 +7630,18 @@ class dblink:
 		#if we opened it, close it
 		outfile.flush()
 		outfile.close()
-		self.contentscache = None
-		new_contents = self.getcontents()
 
-		if os.path.exists(self.dbpkgdir):
+		for dblnk in others_in_slot:
+			if dblnk.mycpv != self.mycpv:
+				continue
 			writemsg_stdout(">>> Safely unmerging already-installed instance...\n")
-			dblink(self.cat, self.pkg, destroot, self.settings,
-				vartree=self.vartree).unmerge(trimworld=0,
-					ldpath_mtimes=prev_mtimes, new_contents=new_contents)
+			self.contentscache = None
+			others_in_slot.append(self)  # self has just been merged
+			others_in_slot.remove(dblnk) # dblnk will unmerge itself now
+			dblnk.unmerge(trimworld=0, ldpath_mtimes=prev_mtimes,
+				others_in_slot=others_in_slot)
 			writemsg_stdout(">>> Original instance of package unmerged safely.\n")
+			break
 
 		# We hold both directory locks.
 		self.dbdir = self.dbpkgdir
