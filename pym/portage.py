@@ -7437,21 +7437,6 @@ class dblink:
 			stopmerge=False
 			starttime=time.time()
 			i=0
-
-			otherpkg=[]
-			mypkglist=[]
-
-			if self.pkg in otherversions:
-				otherversions.remove(self.pkg)	# we already checked this package
-
-			myslot = self.settings["SLOT"]
-			for v in otherversions:
-				# only allow versions with same slot to overwrite files
-				if myslot == self.vartree.dbapi.aux_get("/".join((self.cat, v)), ["SLOT"])[0]:
-					mypkglist.append(
-						dblink(self.cat, v, destroot, self.settings,
-							vartree=self.vartree))
-
 			collisions = []
 
 			print green("*")+" checking "+str(len(myfilelist))+" files for package collisions"
@@ -7471,7 +7456,7 @@ class dblink:
 				if f[0] != "/":
 					f="/"+f
 				isowned = False
-				for ver in [self]+mypkglist:
+				for ver in [self] + others_in_slot:
 					if (ver.isowner(f, destroot) or ver.isprotected(f)):
 						isowned = True
 						break
