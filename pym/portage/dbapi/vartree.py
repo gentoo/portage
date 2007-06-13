@@ -1280,7 +1280,7 @@ class dblink(object):
 			return True
 
 		pkgfiles = self.getcontents()
-		if pkgfiles and filename in pkgfiles:
+		if pkgfiles and destfile in pkgfiles:
 			return True
 		if pkgfiles:
 			if self._contents_inodes is None:
