@@ -4875,7 +4875,46 @@ class dbapi:
 		else:
 			writemsg("!!! Invalid db entry: %s\n" % mypath, noiselevel=-1)
 
+	def update_ents(self, updates, onProgress=None):
+		"""
+		Update metadata of all packages for packages moves.
+		@param updates: A list of move commands
+		@type updates: List
+		@param onProgress: A progress callback function
+		@type onProgress: a callable that takes 2 integer arguments: maxval and curval
+		"""
+		cpv_all = self.cpv_all()
+		cpv_all.sort()
+		maxval = len(cpv_all)
+		aux_get = self.aux_get
+		aux_update = self.aux_update
+		update_keys = ["DEPEND", "RDEPEND", "PDEPEND", "PROVIDE"]
+		if onProgress:
+			onProgress(maxval, 0)
+		for i, cpv in enumerate(cpv_all):
+			metadata = dict(izip(update_keys, aux_get(cpv, update_keys)))
+			metadata_updates = update_dbentries(updates, metadata)
+			if metadata_updates:
+				aux_update(cpv, metadata_updates)
+			if onProgress:
+				onProgress(maxval, i+1)
 
+	def move_slot_ent(self, mylist):
+		pkg = mylist[1]
+		origslot = mylist[2]
+		newslot = mylist[3]
+		origmatches = self.match(pkg)
+		moves = 0
+		if not origmatches:
+			return moves
+		for mycpv in origmatches:
+			slot = self.aux_get(mycpv, ["SLOT"])[0]
+			if slot != origslot:
+				continue
+			moves += 1
+			mydata = {"SLOT": newslot+"\n"}
+			self.aux_update(mycpv, mydata)
+		return moves
 
 class fakedbapi(dbapi):
 	"This is a dbapi to use for the emptytree function.  It's empty, but things can be added to it."
@@ -4967,6 +5006,7 @@ class fakedbapi(dbapi):
 class bindbapi(fakedbapi):
 	def __init__(self, mybintree=None, settings=None):
 		self.bintree = mybintree
+		self.move_ent = mybintree.move_ent
 		self.cpvdict={}
 		self.cpdict={}
 		if settings is None:
@@ -5037,6 +5077,11 @@ class bindbapi(fakedbapi):
 		if not self.bintree.populated:
 			self.bintree.populate()
 		return fakedbapi.cp_list(self, *pargs, **kwargs)
+
+	def cp_all(self):
+		if not self.bintree.populated:
+			self.bintree.populate()
+		return fakedbapi.cp_all(self)
 
 	def cpv_all(self):
 		if not self.bintree.populated:
@@ -5151,8 +5196,9 @@ class vardbapi(dbapi):
 			if not (isvalidatom(cp) and isjustname(cp)):
 				raise portage_exception.InvalidPackageName(cp)
 		origmatches=self.match(origcp,use_cache=0)
+		moves = 0
 		if not origmatches:
-			return
+			return moves
 		for mycpv in origmatches:
 			mycpsplit=catpkgsplit(mycpv)
 			mynewcpv=newcp+"-"+mycpsplit[2]
@@ -5163,7 +5209,7 @@ class vardbapi(dbapi):
 			origpath=self.root+VDB_PATH+"/"+mycpv
 			if not os.path.exists(origpath):
 				continue
-			writemsg_stdout("@")
+			moves += 1
 			if not os.path.exists(self.root+VDB_PATH+"/"+mynewcat):
 				#create the directory
 				os.makedirs(self.root+VDB_PATH+"/"+mynewcat)
@@ -5188,46 +5234,7 @@ class vardbapi(dbapi):
 
 			write_atomic(os.path.join(newpath, "CATEGORY"), mynewcat+"\n")
 			fixdbentries([mylist], newpath)
-
-	def update_ents(self, update_iter):
-		"""Run fixdbentries on all installed packages (time consuming).  Like
-		fixpackages, this should be run from a helper script and display
-		a progress indicator."""
-		dbdir = os.path.join(self.root, VDB_PATH)
-		for catdir in listdir(dbdir):
-			catdir = dbdir+"/"+catdir
-			if os.path.isdir(catdir):
-				for pkgdir in listdir(catdir):
-					pkgdir = catdir+"/"+pkgdir
-					if os.path.isdir(pkgdir):
-						fixdbentries(update_iter, pkgdir)
-
-	def move_slot_ent(self,mylist):
-		pkg=mylist[1]
-		origslot=mylist[2]
-		newslot=mylist[3]
-
-		if not isvalidatom(pkg):
-			raise portage_exception.InvalidAtom(pkg)
-
-		origmatches=self.match(pkg,use_cache=0)
-		
-		if not origmatches:
-			return
-		for mycpv in origmatches:
-			origpath=self.root+VDB_PATH+"/"+mycpv
-			if not os.path.exists(origpath):
-				continue
-
-			slot=grabfile(origpath+"/SLOT");
-			if (not slot):
-				continue
-
-			if (slot[0]!=origslot):
-				continue
-
-			writemsg_stdout("s")
-			write_atomic(os.path.join(origpath, "SLOT"), newslot+"\n")
+		return moves
 
 	def cp_list(self,mycp,use_cache=1):
 		mysplit=mycp.split("/")
@@ -6370,6 +6377,8 @@ class binarytree(object):
 			#self.pkgdir=settings["PKGDIR"]
 			self.pkgdir = normalize_path(pkgdir)
 			self.dbapi = bindbapi(self, settings=settings)
+			self.update_ents = self.dbapi.update_ents
+			self.move_slot_ent = self.dbapi.move_slot_ent
 			self.populated=0
 			self.tree={}
 			self.remotepkgs={}
@@ -6389,8 +6398,9 @@ class binarytree(object):
 		origcat = origcp.split("/")[0]
 		mynewcat=newcp.split("/")[0]
 		origmatches=self.dbapi.cp_list(origcp)
+		moves = 0
 		if not origmatches:
-			return
+			return moves
 		for mycpv in origmatches:
 
 			mycpsplit=catpkgsplit(mycpv)
@@ -6412,8 +6422,7 @@ class binarytree(object):
 					noiselevel=-1)
 				continue
 
-			#print ">>> Updating data in:",mycpv
-			writemsg_stdout("%")
+			moves += 1
 			mytbz2 = xpak.tbz2(tbz2path)
 			mydata = mytbz2.get_data()
 			updated_items = update_dbentries([mylist], mydata)
@@ -6443,7 +6452,7 @@ class binarytree(object):
 					self._create_symlink(mynewcpv)
 			self.dbapi.cpv_inject(mynewcpv)
 
-		return 1
+		return moves
 
 	def _remove_symlink(self, cpv):
 		"""Remove a ${PKGDIR}/${CATEGORY}/${PF}.tbz2 symlink and also remove
@@ -6482,66 +6491,6 @@ class binarytree(object):
 				raise
 			del e
 		os.symlink(os.path.join("..", "All", mypkg + ".tbz2"), full_path)
-
-	def move_slot_ent(self, mylist):
-		if not self.populated:
-			self.populate()
-		pkg=mylist[1]
-		origslot=mylist[2]
-		newslot=mylist[3]
-		
-		if not isvalidatom(pkg):
-			raise portage_exception.InvalidAtom(pkg)
-		
-		origmatches=self.dbapi.match(pkg)
-		if not origmatches:
-			return
-		for mycpv in origmatches:
-			mycpsplit=catpkgsplit(mycpv)
-			myoldpkg=mycpv.split("/")[1]
-			tbz2path=self.getname(mycpv)
-			if os.path.exists(tbz2path) and not os.access(tbz2path,os.W_OK):
-				writemsg("!!! Cannot update readonly binary: "+mycpv+"\n",
-					noiselevel=-1)
-				continue
-
-			#print ">>> Updating data in:",mycpv
-			mytbz2 = xpak.tbz2(tbz2path)
-			mydata = mytbz2.get_data()
-
-			slot = mydata["SLOT"]
-			if (not slot):
-				continue
-
-			if (slot[0]!=origslot):
-				continue
-
-			writemsg_stdout("S")
-			mydata["SLOT"] = newslot+"\n"
-			mytbz2.recompose_mem(xpak.xpak_mem(mydata))
-		return 1
-
-	def update_ents(self, update_iter):
-		if len(update_iter) == 0:
-			return
-		if not self.populated:
-			self.populate()
-
-		for mycpv in self.dbapi.cp_all():
-			tbz2path=self.getname(mycpv)
-			if os.path.exists(tbz2path) and not os.access(tbz2path,os.W_OK):
-				writemsg("!!! Cannot update readonly binary: "+mycpv+"\n",
-					noiselevel=-1)
-				continue
-			#print ">>> Updating binary data:",mycpv
-			writemsg_stdout("*")
-			mytbz2 = xpak.tbz2(tbz2path)
-			mydata = mytbz2.get_data()
-			updated_items = update_dbentries(update_iter, mydata)
-			if len(updated_items) > 0:
-				mydata.update(updated_items)
-				mytbz2.recompose_mem(xpak.xpak_mem(mydata))
-		return 1
 
 	def prevent_collision(self, cpv):
 		"""Make sure that the file location ${PKGDIR}/All/${PF}.tbz2 is safe to
@@ -8266,13 +8215,27 @@ def _global_updates(trees, prev_mtimes):
 
 		trees["/"]["bintree"] = binarytree("/", mysettings["PKGDIR"],
 			settings=mysettings)
+		vardb = trees["/"]["vartree"].dbapi
+		bindb = trees["/"]["bintree"].dbapi
+		if not os.access(bindb.bintree.pkgdir, os.W_OK):
+			bindb = None
 		for update_cmd in myupd:
 			if update_cmd[0] == "move":
-				trees["/"]["vartree"].dbapi.move_ent(update_cmd)
-				trees["/"]["bintree"].move_ent(update_cmd)
+				moves = vardb.move_ent(update_cmd)
+				if moves:
+					writemsg_stdout(moves * "@")
+				if bindb:
+					moves = bindb.move_ent(update_cmd)
+					if moves:
+						writemsg_stdout(moves * "%")
 			elif update_cmd[0] == "slotmove":
-				trees["/"]["vartree"].dbapi.move_slot_ent(update_cmd)
-				trees["/"]["bintree"].move_slot_ent(update_cmd)
+				moves = vardb.move_slot_ent(update_cmd)
+				if moves:
+					writemsg_stdout(moves * "s")
+				if bindb:
+					moves = bindb.move_slot_ent(update_cmd)
+					if moves:
+						writemsg_stdout(moves * "S")
 
 		# The above global updates proceed quickly, so they
 		# are considered a single mtimedb transaction.
@@ -8287,7 +8250,11 @@ def _global_updates(trees, prev_mtimes):
 		# We gotta do the brute force updates for these now.
 		if mysettings["PORTAGE_CALLER"] == "fixpackages" or \
 		"fixpackages" in mysettings.features:
-			trees["/"]["bintree"].update_ents(myupd)
+			def onProgress(maxval, curval):
+				writemsg_stdout("*")
+			vardb.update_ents(myupd, onProgress=onProgress)
+			if bindb:
+				bindb.update_ents(myupd, onProgress=onProgress)
 		else:
 			do_upgrade_packagesmessage = 1
 
@@ -8297,8 +8264,8 @@ def _global_updates(trees, prev_mtimes):
 		print
 		print
 
-		if do_upgrade_packagesmessage and \
-			listdir(os.path.join(mysettings["PKGDIR"], "All"), EmptyOnError=1):
+		if do_upgrade_packagesmessage and bindb and \
+			bindb.cpv_all():
 			writemsg_stdout(" ** Skipping packages. Run 'fixpackages' or set it in FEATURES to fix the")
 			writemsg_stdout("\n    tbz2's in the packages directory. "+bold("Note: This can take a very long time."))
 			writemsg_stdout("\n")
