@@ -7146,12 +7146,8 @@ class dblink:
 				except (OSError, AttributeError):
 					pass
 				islink = lstatobj is not None and stat.S_ISLNK(lstatobj.st_mode)
-				if not unmerge_orphans and statobj is None:
-					if not islink:
-						#we skip this if we're dealing with a symlink
-						#because os.stat() will operate on the
-						#link target rather than the link itself.
-						writemsg_stdout("--- !found "+str(pkgfiles[objkey][0])+ " %s\n" % obj)
+				if lstatobj is None:
+						writemsg_stdout("--- !found %s %s\n" % (file_type, obj))
 						continue
 				# next line includes a tweak to protect modules from being unmerged,
 				# but we don't protect modules from being overwritten if they are
