@@ -1224,11 +1224,13 @@ class dblink(object):
 					if not islink:
 						writemsg_stdout("--- !sym   %s %s\n" % ("sym", obj))
 						continue
-					# Don't unlink symlinks to directories here since that can
-					# remove /lib and /usr/lib symlinks.
-					if statobj and stat.S_ISDIR(statobj.st_mode):
-						writemsg_stdout("--- !sym   %s %s\n" % ("sym", obj))
-						continue
+					# Go ahead and unlink symlinks to directories here when
+					# they're actually recorded as symlinks in the contents.
+					# Normally, symlinks such as /lib -> lib64 are not recorded
+					# as symlinks in the contents of a package.  If a package
+					# installs something into ${D}/lib/, it is recorded in the
+					# contents as a directory even if it happens to correspond
+					# to a symlink when it's merged to the live filesystem.
 					try:
 						os.unlink(obj)
 						writemsg_stdout("<<<        %s %s\n" % ("sym", obj))
