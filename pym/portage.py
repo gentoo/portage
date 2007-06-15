@@ -7429,6 +7429,15 @@ class dblink:
 				i=i+1
 				if i % 1000 == 0:
 					print str(i)+" files checked ..."
+				dest_path = normalize_path(
+					os.path.join(destroot, f.lstrip(os.path.sep)))
+				try:
+					dest_lstat = os.lstat(dest_path)
+				except EnvironmentError, e:
+					if e.errno != errno.ENOENT:
+						raise
+					del e
+					continue
 				if f[0] != "/":
 					f="/"+f
 				isowned = False
