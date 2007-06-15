@@ -1485,6 +1485,10 @@ if mymode!="commit":
 			print green("RepoMan sez:"),"\"OK for now, but I'll be back ...\""
 	elif not dofail:
 		print green("RepoMan sez:"),"\"If everyone were like you, I'd be out of business!\""
+	elif dofail:
+		print turquoise("Please fix these important QA issues first.")
+		print green("RepoMan sez:"),"\"Make your QA payment on time and you'll never see the likes of me.\"\n"
+		sys.exit(1)
 	if quiet < 1:
 		print
 else:
