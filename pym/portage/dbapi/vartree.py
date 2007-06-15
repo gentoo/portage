@@ -1193,8 +1193,11 @@ class dblink(object):
 					writemsg_stdout("--- cfgpro %s %s\n" % (pkgfiles[objkey][0], obj))
 					continue
 
+				# Don't unlink symlinks to directories here since that can
+				# remove /lib and /usr/lib symlinks.
 				if unmerge_orphans and \
 					lstatobj and not stat.S_ISDIR(lstatobj.st_mode) and \
+					not (islink and statobj and stat.S_ISDIR(statobj.st_mode)) and \
 					not self.isprotected(obj):
 					try:
 						# Remove permissions to ensure that any hardlinks to
