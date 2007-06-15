@@ -202,7 +202,7 @@ def xtermTitleReset():
 					shell = find_binary("sh")
 				if shell:
 					spawn([shell, "-c", prompt_command], env=os.environ,
-						fdpipes={0:sys.stdin.fileno(),1:sys.stderr.fileno(),
+						fd_pipes={0:sys.stdin.fileno(),1:sys.stderr.fileno(),
 						2:sys.stderr.fileno()})
 				else:
 					os.system(prompt_command)
