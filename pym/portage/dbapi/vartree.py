@@ -1224,6 +1224,11 @@ class dblink(object):
 					if not islink:
 						writemsg_stdout("--- !sym   %s %s\n" % ("sym", obj))
 						continue
+					# Don't unlink symlinks to directories here since that can
+					# remove /lib and /usr/lib symlinks.
+					if statobj and stat.S_ISDIR(statobj.st_mode):
+						writemsg_stdout("--- !sym   %s %s\n" % ("sym", obj))
+						continue
 					try:
 						os.unlink(obj)
 						writemsg_stdout("<<<        %s %s\n" % ("sym", obj))
