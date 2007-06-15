@@ -7164,7 +7164,7 @@ class dblink:
 					try:
 						# Remove permissions to ensure that any hardlinks to
 						# suid/sgid files are rendered harmless.
-						if statobj:
+						if statobj and not islink:
 							os.chmod(obj, 0)
 						os.unlink(obj)
 					except EnvironmentError, e:
