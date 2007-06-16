@@ -36,6 +36,15 @@ class NewsManager(object):
 		self.vdb = vardb
 		self.portdb = portdb
 
+		portdir = portdb.porttree_root
+		profiles_base = os.path.join(portdir, "profiles") + os.path.sep
+		from portage.util import normalize_path
+		profile_path = normalize_path(
+			os.path.realpath(portdb.mysettings.profile_path))
+		if profile_path.startswith(profiles_base):
+			profile_path = profile_path[len(profiles_base):]
+		self._profile_path = profile_path
+
 		# Ensure that the unread path exists and is writable.
 		dirmode  = 02070
 		modemask =    02
@@ -76,7 +85,8 @@ class NewsManager(object):
 				item = NewsItem(filename, itemid, timestamp)
 			except (TypeError, ValueError), e:
 				continue
-			if item.isRelevant(profile=os.readlink(PROFILE_PATH), config=config, vardb=self.vdb):
+			if item.isRelevant(profile=self._profile_path,
+				config=self.config, vardb=self.vdb):
 				updates.append(item)
 		del path
 		
