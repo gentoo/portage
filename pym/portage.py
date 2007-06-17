@@ -7270,15 +7270,18 @@ class dblink:
 		"""
 		destfile = normalize_path(
 			os.path.join(destroot, filename.lstrip(os.path.sep)))
-		try:
-			mylstat = os.lstat(destfile)
-		except (OSError, IOError):
-			return True
 
 		pkgfiles = self.getcontents()
 		if pkgfiles and destfile in pkgfiles:
 			return True
 		if pkgfiles:
+			try:
+				mylstat = os.lstat(destfile)
+			except EnvironmentError, e:
+				if e.errno != errno.ENOENT:
+					raise
+				del e
+				return True
 			if self._contents_inodes is None:
 				self._contents_inodes = set()
 				for x in pkgfiles:
