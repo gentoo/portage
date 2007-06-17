@@ -1146,9 +1146,9 @@ class dblink(object):
 				others_in_slot.append(dblink(self.cat, catsplit(cur_cpv)[1],
 					self.vartree.root, self.settings,
 					vartree=self.vartree))
-		claimed_paths = set()
-		for dblnk in others_in_slot:
-			claimed_paths.update(dblnk.getcontents())
+		dest_root = normalize_path(self.vartree.root).rstrip(os.path.sep) + \
+			os.path.sep
+		dest_root_len = len(dest_root)
 
 		unmerge_orphans = "unmerge-orphans" in self.settings.features
 
@@ -1164,12 +1164,6 @@ class dblink(object):
 				obj = normalize_path(objkey)
 				file_data = pkgfiles[objkey]
 				file_type = file_data[0]
-				if obj in claimed_paths:
-					# A new instance of this package claims the file, so don't
-					# unmerge it.
-					writemsg_stdout("--- !owned %s %s\n" % \
-						(pkgfiles[objkey][0], obj))
-					continue
 				statobj = None
 				try:
 					statobj = os.stat(obj)
@@ -1183,6 +1177,19 @@ class dblink(object):
 				islink = lstatobj is not None and stat.S_ISLNK(lstatobj.st_mode)
 				if lstatobj is None:
 						writemsg_stdout("--- !found %s %s\n" % (file_type, obj))
+						continue
+				if obj.startswith(dest_root):
+					relative_path = obj[dest_root_len:]
+					is_owned = False
+					for dblnk in others_in_slot:
+						if dblnk.isowner(relative_path, dest_root):
+							is_owned = True
+							break
+					if is_owned:
+						# A new instance of this package claims the file, so
+						# don't unmerge it.
+						writemsg_stdout("--- !owned %s %s\n" % \
+							(file_type, obj))
 						continue
 				# next line includes a tweak to protect modules from being unmerged,
 				# but we don't protect modules from being overwritten if they are
