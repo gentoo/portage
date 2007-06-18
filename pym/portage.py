@@ -7228,7 +7228,8 @@ class dblink:
 					try:
 						# Remove permissions to ensure that any hardlinks to
 						# suid/sgid files are rendered harmless.
-						os.chmod(obj, 0)
+						if not islink:
+							os.chmod(obj, 0)
 						os.unlink(obj)
 					except (OSError,IOError),e:
 						pass
