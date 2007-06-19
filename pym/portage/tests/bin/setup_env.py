@@ -7,6 +7,7 @@ import os, shutil, sys
 from os.path import dirname, abspath, join
 from portage.tests import TestCase
 from portage.process import spawn
+from portage.const import PORTAGE_BIN_PATH
 
 bindir = join(dirname(dirname(abspath(__file__))), "..", "..", "..", "bin")
 basedir = join(dirname(dirname(abspath(__file__))), "bin", "root")
@@ -15,6 +16,7 @@ os.environ["T"] = os.path.join(basedir, "temp")
 os.environ["S"] = os.path.join(basedir, "workdir")
 os.environ["PF"] = "portage-tests-0.09-r1"
 os.environ["PATH"] = bindir + ":" + os.environ["PATH"]
+os.environ["PORTAGE_BIN_PATH"] = PORTAGE_BIN_PATH
 
 def binTestsCleanup():
 	if os.access(basedir, os.W_OK):
