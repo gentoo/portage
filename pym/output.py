@@ -258,8 +258,11 @@ def get_term_size():
 	"""
 	try:
 		import curses
-		curses.setupterm()
-		return curses.tigetnum('lines'), curses.tigetnum('cols')
+		try:
+			curses.setupterm()
+			return curses.tigetnum('lines'), curses.tigetnum('cols')
+		except curses.error:
+			pass
 	except ImportError:
 		pass
 	st, out = commands.getstatusoutput('stty size')
