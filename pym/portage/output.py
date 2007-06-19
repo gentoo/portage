@@ -256,6 +256,8 @@ def get_term_size():
 	occurs. The curses module is used if available, otherwise the output of
 	`stty size` is parsed.
 	"""
+	if not sys.stdout.isatty():
+		return -1, -1
 	try:
 		import curses
 		try:
