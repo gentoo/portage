@@ -7,7 +7,8 @@ import os, sys, time, unittest
 import portage.tests
 
 def main():
-	testDirs = ["bin", "util","versions", "dep", "xpak", "env/config"]
+	testDirs = ["bin", "dep", "ebuild",
+		"env/config", "util", "versions", "xpak"]
 	suite = unittest.TestSuite()
 	basedir = os.path.dirname(__file__)
 	for mydir in testDirs:
