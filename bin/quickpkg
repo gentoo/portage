@@ -173,11 +173,20 @@ if __name__ == "__main__":
 	usage = "Usage: quickpkg [options] <list of package atoms>"
 	from optparse import OptionParser
 	parser = OptionParser(usage=usage)
-	options, args = parser.parse_args(sys.argv[1:])
+	parser.add_option("--umask",
+		default="0077",
+		help="umask used during package creation (default is 0077)")
+	from portage import settings
+	default_opts = settings.get("QUICKPKG_DEFAULT_OPTS","").split()
+	options, args = parser.parse_args(default_opts + sys.argv[1:])
 	if not args:
 		parser.error("no packages atoms given")
+	try:
+		umask = int(options.umask, 8)
+	except ValueError:
+		parser.error("invalid umask: %s" % options.umask)
 	# We need to ensure a sane umask for the packages that will be created.
-	old_umask = os.umask(022)
+	old_umask = os.umask(umask)
 	from output import get_term_size, EOutput
 	eout = EOutput()
 	def sigwinch_handler(signum, frame):
