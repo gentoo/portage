@@ -193,7 +193,15 @@ def cacheddir(my_original_path, ignorecvs, ignorelist, EmptyOnError, followSymli
 	if mtime != cached_mtime or time.time() - mtime < 4:
 		if dircache.has_key(mypath):
 			cacheStale += 1
-		list = os.listdir(mypath)
+		try:
+			list = os.listdir(mypath)
+		except EnvironmentError, e:
+			if e.errno != errno.EACCES:
+				raise
+			del e
+			if EmptyOnError:
+				return [], []
+			raise portage.exception.PermissionDenied(mypath)
 		ftype = []
 		for x in list:
 			try:
