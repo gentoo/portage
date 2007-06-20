@@ -185,7 +185,14 @@ def cacheddir(my_original_path, ignorecvs, ignorelist, EmptyOnError, followSymli
 			mtime = pathstat[stat.ST_MTIME]
 		else:
 			raise portage.exception.DirectoryNotFound(mypath)
-	except (IOError,OSError,portage.exception.PortageException):
+	except EnvironmentError, e:
+		if e.errno == portage.exception.PermissionDenied.errno:
+			raise portage.exception.PermissionDenied(mypath)
+		del e
+		if EmptyOnError:
+			return [], []
+		return None, None
+	except portage.exception.PortageException:
 		if EmptyOnError:
 			return [], []
 		return None, None
@@ -199,8 +206,6 @@ def cacheddir(my_original_path, ignorecvs, ignorelist, EmptyOnError, followSymli
 			if e.errno != errno.EACCES:
 				raise
 			del e
-			if EmptyOnError:
-				return [], []
 			raise portage.exception.PermissionDenied(mypath)
 		ftype = []
 		for x in list:

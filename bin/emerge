@@ -13,4 +13,10 @@ except ImportError:
 
 if __name__ == "__main__":
 	import sys
-	sys.exit(emerge_main())
+	from portage.exception import PermissionDenied
+	try:
+		retval = emerge_main()
+	except PermissionDenied, e:
+		sys.stderr.write("Permission denied: '%s'\n" % str(e))
+		sys.exit(e.errno)
+	sys.exit(retval)
