@@ -224,7 +224,7 @@ def xpand(myid,mydest):
 		startpos=startpos+namelen+12
 	os.chdir(origdir)
 
-class tbz2:
+class tbz2(object):
 	def __init__(self,myfile):
 		self.file=myfile
 		self.filestat=None

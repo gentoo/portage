@@ -7,7 +7,7 @@ from portage.util import normalize_path, writemsg
 import os, sys
 from portage.data import portage_gid
 
-class cache:
+class cache(object):
 	"""
 	Maintains the cache information about eclasses used in ebuild.
 	"""

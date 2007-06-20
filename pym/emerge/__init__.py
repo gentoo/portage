@@ -362,7 +362,7 @@ def create_depgraph_params(myopts, myaction):
 	return myparams
 
 # search functionality
-class search:
+class search(object):
 
 	#
 	# class constants
@@ -910,7 +910,7 @@ def show_invalid_depstring_notice(parent_node, depstring, error_msg):
 		f.add_flowing_data(x)
 	f.end_paragraph(1)
 
-class depgraph:
+class depgraph(object):
 
 	pkg_tree_map = {
 		"ebuild":"porttree",

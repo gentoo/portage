@@ -286,7 +286,7 @@ def set_term_size(lines, columns, fd):
 	cmd = ["stty", "rows", str(lines), "columns", str(columns)]
 	spawn(cmd, env=os.environ, fd_pipes={0:fd})
 
-class EOutput:
+class EOutput(object):
 	"""
 	Performs fancy terminal formatting for status and informational messages.
 

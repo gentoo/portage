@@ -30,7 +30,7 @@ def fileStats(filepath):
 	return mya
 
 
-class FileChecker:
+class FileChecker(object):
 	def __init__(self,keydir=None,keyring=None,requireSignedRing=False,minimumTrust=EXISTS):
 		self.minimumTrust     = TRUSTED  # Default we require trust. For rings.
 		self.keydir           = None
