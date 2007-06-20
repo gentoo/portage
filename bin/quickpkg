@@ -176,9 +176,14 @@ if __name__ == "__main__":
 	parser.add_option("--umask",
 		default="0077",
 		help="umask used during package creation (default is 0077)")
-	from portage import settings
-	default_opts = settings.get("QUICKPKG_DEFAULT_OPTS","").split()
-	options, args = parser.parse_args(default_opts + sys.argv[1:])
+	parser.add_option("--ignore-default-opts",
+		action="store_true",
+		help="do not use the QUICKPKG_DEFAULT_OPTS environment variable")
+	options, args = parser.parse_args(sys.argv[1:])
+	if not options.ignore_default_opts:
+		from portage import settings
+		default_opts = settings.get("QUICKPKG_DEFAULT_OPTS","").split()
+		options, args = parser.parse_args(default_opts + sys.argv[1:])
 	if not args:
 		parser.error("no packages atoms given")
 	try:
