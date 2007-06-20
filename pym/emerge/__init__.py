@@ -2217,10 +2217,22 @@ class depgraph:
 			for x in worlddict.keys():
 				if not portage.isvalidatom(x):
 					world_problems = True
-				elif not self.trees[self.target_root]["vartree"].dbapi.match(x):
-					world_problems = True
-				else:
-					mylist.append(x)
+					continue
+				elif not vardb.match(x):
+					available = False
+					if "--usepkgonly" not in self.myopts and \
+						portdb.match(x):
+						available = True
+					elif "--usepkg" in self.myopts:
+						mymatches = bindb.match(x)
+						if "--usepkgonly" not in self.myopts:
+							mymatches = visible(mymatches)
+						if mymatches:
+							available = True
+					if not available:
+						world_problems = True
+						continue
+				mylist.append(x)
 
 		newlist = []
 		for atom in mylist:
