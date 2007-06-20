@@ -2219,6 +2219,7 @@ class depgraph(object):
 					world_problems = True
 					continue
 				elif not vardb.match(x):
+					world_problems = True
 					available = False
 					if "--usepkgonly" not in self.myopts and \
 						portdb.match(x):
@@ -2230,7 +2231,6 @@ class depgraph(object):
 						if mymatches:
 							available = True
 					if not available:
-						world_problems = True
 						continue
 				mylist.append(x)
 
