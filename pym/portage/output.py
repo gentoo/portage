@@ -523,9 +523,11 @@ class TermProgressBar(ProgressBar):
 		curval = self._curval
 		maxval = self._maxval
 		position = self._position
-		if cols < 3:
+		percentage_str_width = 4
+		square_brackets_width = 2
+		if cols < percentage_str_width:
 			return ""
-		bar_space = cols - 6
+		bar_space = cols - percentage_str_width - square_brackets_width
 		if maxval == 0:
 			max_bar_width = bar_space-3
 			image = "    "
@@ -550,11 +552,12 @@ class TermProgressBar(ProgressBar):
 				"<=>" + ((max_bar_width - bar_width) * " ") + "]"
 			return image
 		else:
-			max_bar_width = bar_space-1
 			percentage = int(100 * float(curval) / maxval)
 			if percentage == 100:
-				percentage = 99
-			image = ("%d%% " % percentage).rjust(4)
+				percentage_str_width += 1
+				bar_space -= 1
+			max_bar_width = bar_space - 1
+			image = ("%d%% " % percentage).rjust(percentage_str_width)
 			if cols < min_columns:
 				return image
 			offset = float(curval) / maxval
