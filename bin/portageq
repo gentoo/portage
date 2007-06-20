@@ -22,7 +22,7 @@ except KeyboardInterrupt:
 import os
 
 import types
-
+import portage_exception
 #-----------------------------------------------------------------------------
 #
 # To add functionality to this tool, add a function below.
@@ -342,6 +342,9 @@ def main():
 	except KeyError:
 		usage(sys.argv)
 		sys.exit(os.EX_USAGE)
+	except portage_exception.PermissionDenied, e:
+		sys.stderr.write("Permission denied: '%s'\n" % str(e))
+		sys.exit(e.errno)
 
 main()
 
