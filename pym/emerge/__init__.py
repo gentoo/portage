@@ -5461,7 +5461,7 @@ def emerge_main():
 	xterm_titles = "notitles" not in settings.features
 
 	tmpcmdline = []
-	if "--ignore-default-opts" not in sys.argv:
+	if "--ignore-default-opts" not in myopts:
 		tmpcmdline.extend(settings["EMERGE_DEFAULT_OPTS"].split())
 	tmpcmdline.extend(sys.argv[1:])
 	myaction, myopts, myfiles = parse_opts(tmpcmdline)
