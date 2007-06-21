@@ -441,7 +441,7 @@ class search(object):
 				if self.searchre.search(full_desc):
 					self.matches["desc"].append([full_package,masked])
 		self.mlen=0
-		for mtype in self.matches.keys():
+		for mtype in self.matches:
 			self.matches[mtype].sort()
 			self.mlen += len(self.matches[mtype])
 
@@ -450,7 +450,7 @@ class search(object):
 		print "\b\b  \n[ Results for search key : "+white(self.searchkey)+" ]"
 		print "[ Applications found : "+white(str(self.mlen))+" ]"
 		print " "
-		for mtype in self.matches.keys():
+		for mtype in self.matches:
 			for match,masked in self.matches[mtype]:
 				if mtype=="pkg":
 					catpack=match
@@ -2214,7 +2214,7 @@ class depgraph(object):
 			mylist = getlist(self.settings, "system")
 			worlddict=genericdict(worldlist)
 
-			for x in worlddict.keys():
+			for x in worlddict:
 				if not portage.isvalidatom(x):
 					world_problems = True
 					continue
@@ -2697,7 +2697,7 @@ class depgraph(object):
 						if myfilesdict is None:
 							myfilesdict="[empty/missing/bad digest]"
 						else:
-							for myfetchfile in myfilesdict.keys():
+							for myfetchfile in myfilesdict:
 								if myfetchfile not in myfetchlist:
 									mysize+=myfilesdict[myfetchfile]
 									myfetchlist.append(myfetchfile)
@@ -3612,7 +3612,7 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 					if not slotmap.has_key(myslot):
 						slotmap[myslot]={}
 					slotmap[myslot][localtree.dbapi.cpv_counter(mypkg)]=mypkg
-				for myslot in slotmap.keys():
+				for myslot in slotmap:
 					counterkeys=slotmap[myslot].keys()
 					counterkeys.sort()
 					if not counterkeys:
@@ -3639,7 +3639,7 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 	finally:
 		if vdb_lock:
 			portage.locks.unlockdir(vdb_lock)
-	for x in pkgmap.keys():
+	for x in pkgmap:
 		for y in localtree.dep_match(x):
 			if y not in pkgmap[x]["omitted"] and \
 			   y not in pkgmap[x]["selected"] and \
@@ -3695,7 +3695,7 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 	if not autoclean:
 		countdown(int(settings["CLEAN_DELAY"]), ">>> Unmerging")
 
-	for x in pkgmap.keys():
+	for x in pkgmap:
 		for y in pkgmap[x]["selected"]:
 			print ">>> Unmerging "+y+"..."
 			emergelog(xterm_titles, "=== Unmerging... ("+y+")")
@@ -3879,7 +3879,7 @@ def post_emerge(trees, mtimedb, retval):
 	if vardbapi.plib_registry.hasEntries():
 		print colorize("WARN", "!!!") + " existing preserved libs:"
 		plibdata = vardbapi.plib_registry.getPreservedLibs()
-		for cpv in plibdata.keys():
+		for cpv in plibdata:
 			print colorize("WARN", ">>>") + " package: %s" % cpv
 			for f in plibdata[cpv]:
 				print colorize("WARN", " * ") + " - %s" % f
