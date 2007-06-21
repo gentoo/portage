@@ -7322,6 +7322,7 @@ class dblink:
 		for dblnk in installed_instances:
 			file_paths.update(dblnk.getcontents())
 		inode_map = {}
+		real_paths = set()
 		for path in file_paths:
 			try:
 				s = os.lstat(path)
@@ -7330,8 +7331,13 @@ class dblink:
 					raise
 				del e
 				continue
-			if stat.S_ISREG(s.st_mode) and \
-				s.st_nlink > 1 and \
+			if not stat.S_ISREG(s.st_mode):
+				continue
+			path = os.path.realpath(path)
+			if path in real_paths:
+				continue
+			real_paths.add(path)
+			if s.st_nlink > 1 and \
 				s.st_mode & (stat.S_ISUID | stat.S_ISGID):
 				k = (s.st_dev, s.st_ino)
 				inode_map.setdefault(k, []).append((path, s))
