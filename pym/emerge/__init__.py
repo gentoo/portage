@@ -208,7 +208,7 @@ def emergelog(xterm_titles, mystr, short_msg=None):
 	if xterm_titles:
 		if short_msg == None:
 			short_msg = mystr
-		if "HOSTNAME" in os.environ.keys():
+		if "HOSTNAME" in os.environ:
 			short_msg = os.environ["HOSTNAME"]+": "+short_msg
 		xtermTitle(short_msg)
 	try:
