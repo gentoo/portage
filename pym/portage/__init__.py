@@ -2202,14 +2202,14 @@ class config(object):
 		return match
 
 	def has_key(self,mykey):
-		for x in self.lookuplist:
-			if x.has_key(mykey):
-				return 1
-		return 0
+		return mykey in self
 
 	def __contains__(self, mykey):
 		"""Called to implement membership test operators (in and not in)."""
-		return bool(self.has_key(mykey))
+		for d in self.lookuplist:
+			if mykey in d:
+				return True
+		return False
 
 	def setdefault(self, k, x=None):
 		if k in self:
