@@ -60,7 +60,7 @@ class database(fs_template.FsBased):
 	def _delitem(self, cpv):
 		del self.__db[cpv]
 
-	def iterkeys(self):
+	def __iter__(self):
 		return iter(self.__db.keys())
 
 	def __contains__(self, cpv):

@@ -86,7 +86,7 @@ class database(fs_template.FsBased):
 		return os.path.exists(os.path.join(self._base, cpv))
 
 
-	def iterkeys(self):
+	def __iter__(self):
 		"""generator for walking the dir struct"""
 		dirs = [self._base]
 		len_base = len(self._base)
