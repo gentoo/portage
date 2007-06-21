@@ -40,7 +40,7 @@ class fakedbapi(dbapi):
 
 	def cp_all(self):
 		returnme=[]
-		for x in self.cpdict.keys():
+		for x in self.cpdict:
 			returnme.extend(self.cpdict[x])
 		return returnme
 

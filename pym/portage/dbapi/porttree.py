@@ -144,7 +144,7 @@ class portdbapi(dbapi):
 		if not hasattr(self, "auxdb"):
 			# unhandled exception thrown from constructor
 			return
-		for x in self.auxdb.keys():
+		for x in self.auxdb:
 			self.auxdb[x].sync()
 		self.auxdb.clear()
 
@@ -192,7 +192,7 @@ class portdbapi(dbapi):
 		repository ID's
 		TreeMap = {id: path}
 		"""
-		return [k for k in self.treemap.keys() if k]
+		return [k for k in self.treemap if k]
 
 	def findname2(self, mycpv, mytree=None):
 		""" 
@@ -348,7 +348,7 @@ class portdbapi(dbapi):
 		returnme = []
 		for x in mylist:
 			if x == "INHERITED":
-				returnme.append(' '.join(mydata.get("_eclasses_", {}).keys()))
+				returnme.append(' '.join(mydata.get("_eclasses_", [])))
 			else:
 				returnme.append(mydata.get(x,""))
 

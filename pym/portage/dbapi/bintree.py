@@ -506,8 +506,7 @@ class binarytree(object):
 			# since it will provide no benefit due to the need to read CATEGORY
 			# from xpak.
 			if update_pkgindex and os.access(self.pkgdir, os.W_OK):
-				cpv_all = self._pkg_paths.keys()
-				stale = set(metadata).difference(cpv_all)
+				stale = [cpv for cpv in metadata if cpv not in self._pkg_paths]
 				for cpv in stale:
 					del metadata[cpv]
 				from portage.util import atomic_ofstream

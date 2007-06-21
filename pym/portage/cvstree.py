@@ -64,12 +64,12 @@ def findnew(entries,recursive=0,basedir=""):
 	if basedir and basedir[-1]!="/":
 		basedir=basedir+"/"
 	mylist=[]
-	for myfile in entries["files"].keys():
+	for myfile in entries["files"]:
 		if "cvs" in entries["files"][myfile]["status"]:
 			if "0" == entries["files"][myfile]["revision"]:
 				mylist.append(basedir+myfile)
 	if recursive:
-		for mydir in entries["dirs"].keys():
+		for mydir in entries["dirs"]:
 			mylist+=findnew(entries["dirs"][mydir],recursive,basedir+mydir)
 	return mylist
 					
@@ -81,14 +81,14 @@ def findchanged(entries,recursive=0,basedir=""):
 	if basedir and basedir[-1]!="/":
 		basedir=basedir+"/"
 	mylist=[]
-	for myfile in entries["files"].keys():
+	for myfile in entries["files"]:
 		if "cvs" in entries["files"][myfile]["status"]:
 			if "current" not in entries["files"][myfile]["status"]:
 				if "exists" in entries["files"][myfile]["status"]:
 					if entries["files"][myfile]["revision"]!="0":
 						mylist.append(basedir+myfile)
 	if recursive:
-		for mydir in entries["dirs"].keys():
+		for mydir in entries["dirs"]:
 			mylist+=findchanged(entries["dirs"][mydir],recursive,basedir+mydir)
 	return mylist
 	
@@ -100,13 +100,13 @@ def findmissing(entries,recursive=0,basedir=""):
 	if basedir and basedir[-1]!="/":
 		basedir=basedir+"/"
 	mylist=[]
-	for myfile in entries["files"].keys():
+	for myfile in entries["files"]:
 		if "cvs" in entries["files"][myfile]["status"]:
 			if "exists" not in entries["files"][myfile]["status"]:
 				if "removed" not in entries["files"][myfile]["status"]:
 					mylist.append(basedir+myfile)
 	if recursive:
-		for mydir in entries["dirs"].keys():
+		for mydir in entries["dirs"]:
 			mylist+=findmissing(entries["dirs"][mydir],recursive,basedir+mydir)
 	return mylist
 
@@ -120,11 +120,11 @@ def findunadded(entries,recursive=0,basedir=""):
 	mylist=[]
 
 	#ignore what cvs ignores.
-	for myfile in entries["files"].keys():
+	for myfile in entries["files"]:
 		if "cvs" not in entries["files"][myfile]["status"]:
 			mylist.append(basedir+myfile)
 	if recursive:
-		for mydir in entries["dirs"].keys():
+		for mydir in entries["dirs"]:
 			mylist+=findunadded(entries["dirs"][mydir],recursive,basedir+mydir)
 	return mylist
 
@@ -135,11 +135,11 @@ def findremoved(entries,recursive=0,basedir=""):
 	if basedir and basedir[-1]!="/":
 		basedir=basedir+"/"
 	mylist=[]
-	for myfile in entries["files"].keys():
+	for myfile in entries["files"]:
 		if "removed" in entries["files"][myfile]["status"]:
 			mylist.append(basedir+myfile)
 	if recursive:
-		for mydir in entries["dirs"].keys():
+		for mydir in entries["dirs"]:
 			mylist+=findremoved(entries["dirs"][mydir],recursive,basedir+mydir)
 	return mylist
 
