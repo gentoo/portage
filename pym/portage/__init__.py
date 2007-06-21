@@ -2230,11 +2230,11 @@ class config(object):
 	def __iter__(self):
 		keys = set()
 		for d in self.lookuplist:
-			for k in d:
-				if k in keys:
-					continue
-				keys.add(k)
-				yield k
+			keys.update(d)
+		return iter(keys)
+
+	def iterkeys(self):
+		return iter(self)
 
 	def __setitem__(self,mykey,myvalue):
 		"set a value; will be thrown away at reset() time"
