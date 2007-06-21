@@ -2192,14 +2192,16 @@ class config(object):
 					del x[mykey]
 
 	def __getitem__(self,mykey):
-		match = ''
-		for x in self.lookuplist:
-			if x is None:
-				writemsg("!!! lookuplist is null.\n")
-			elif x.has_key(mykey):
-				match = x[mykey]
-				break
-		return match
+		for d in self.lookuplist:
+			if mykey in d:
+				return d[mykey]
+		return '' # for backward compat, don't raise KeyError
+
+	def get(self, k, x=None):
+		for d in self.lookuplist:
+			if k in d:
+				return d[k]
+		return x
 
 	def has_key(self,mykey):
 		return mykey in self
@@ -2212,16 +2214,11 @@ class config(object):
 		return False
 
 	def setdefault(self, k, x=None):
-		if k in self:
-			return self[k]
+		v = self.get(k)
+		if v is not None:
+			return v
 		else:
 			self[k] = x
-			return x
-
-	def get(self, k, x=None):
-		if k in self:
-			return self[k]
-		else:
 			return x
 
 	def keys(self):
