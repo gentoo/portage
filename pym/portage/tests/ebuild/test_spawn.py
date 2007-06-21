@@ -16,10 +16,8 @@ class SpawnTestCase(TestCase):
 			os.close(fd)
 			null_fd = os.open('/dev/null', os.O_RDWR)
 			test_string = 2 * "blah blah blah\n"
-			# use free=1 to disable sandbox so that this test can run inside a
-			# sandbox (sandbox in sandbox is not currently allowed)
 			spawn("echo -n '%s'" % test_string, settings, logfile=logfile,
-				free=1, fd_pipes={0:sys.stdin.fileno(), 1:null_fd, 2:null_fd})
+				fd_pipes={0:sys.stdin.fileno(), 1:null_fd, 2:null_fd})
 			os.close(null_fd)
 			f = open(logfile, 'r')
 			log_content = f.read()

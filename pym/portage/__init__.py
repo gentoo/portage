@@ -2423,7 +2423,7 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, **keyw
 			(not droppriv and "sandbox" not in features and \
 			"usersandbox" not in features))
 
-	if free:
+	if free or "SANDBOX_ACTIVE" in os.environ:
 		keywords["opt_name"] += " bash"
 		spawn_func = portage.process.spawn_bash
 	else:
