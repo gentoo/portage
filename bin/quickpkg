@@ -104,6 +104,12 @@ def quickpkg_main(options, args, eout):
 				if not dblnk.exists():
 					# unmerged by a concurrent process
 					continue
+				iuse, use = vardb.aux_get(cpv, ["IUSE","USE"])
+				iuse = [ x.lstrip("+-") for x in iuse.split() ]
+				use = use.split()
+				if "bindist" in iuse and "bindist" not in use:
+					eout.ewarn("%s: package was emerged with USE=-bindist!" % cpv)
+					eout.ewarn("%s: it may not be legal to redistribute this." % cpv)
 				eout.ebegin("Building package for %s" % cpv)
 				pkgs_for_arg += 1
 				contents = dblnk.getcontents()
