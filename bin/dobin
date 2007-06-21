@@ -3,8 +3,10 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
+
 if [[ $# -lt 1 ]] ; then
-	echo "$0: at least one argument needed" 1>&2
+	vecho "$0: at least one argument needed" 1>&2
 	exit 1
 fi
 
@@ -18,7 +20,7 @@ for x in "$@" ; do
 	if [[ -e ${x} ]] ; then
 		install -m0755 -o ${PORTAGE_INST_UID:-0} -g ${PORTAGE_INST_GID:-0} "${x}" "${D}${DESTTREE}/bin"
 	else
-		echo "!!! ${0##*/}: ${x} does not exist" 1>&2
+		vecho "!!! ${0##*/}: ${x} does not exist" 1>&2
 		false
 	fi
 	((ret+=$?))
