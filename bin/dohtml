@@ -77,8 +77,8 @@ class OptionsClass:
 			self.PF = os.environ["PF"]
 		if os.environ.has_key("D"):
 			self.D = os.environ["D"]
-		if os.environ.has_key("DOCDESTTREE"):
-			self.DOCDESTTREE = os.environ["DOCDESTTREE"]
+		if os.environ.has_key("_E_DOCDESTTREE_"):
+			self.DOCDESTTREE = os.environ["_E_DOCDESTTREE_"]
 		
 		self.allowed_exts = [ 'png', 'gif', 'html', 'htm', 'jpg', 'css', 'js' ]
 		self.allowed_files = []
