@@ -18,7 +18,10 @@ type -P -- ${STRIP} > /dev/null || STRIP=strip
 OBJCOPY=${OBJCOPY:-${CHOST}-objcopy}
 type -P -- ${OBJCOPY} > /dev/null || OBJCOPY=objcopy
 
-export PORTAGE_STRIP_FLAGS=${PORTAGE_STRIP_FLAGS:---strip-unneeded}
+# We'll leave out -R .note for now until we can check out the relevance
+# of the section when it has the ALLOC flag set on it ...
+export SAFE_STRIP_FLAGS="--strip-unneeded"
+export PORTAGE_STRIP_FLAGS=${PORTAGE_STRIP_FLAGS-${SAFE_STRIP_FLAGS} -R .comment}
 
 banner=1
 
@@ -86,11 +89,14 @@ for x in $(scanelf -yqRBF '#k%F' -k '.symtab' "$@") $(for y in "$@"; do find "${
 		vecho "   ${x:${#D}}"
 		[[ -n ${NOSTRIP} ]] && continue
 		[[ ${stripitbaby} -eq 1 ]] && ${STRIP} -g "${x}"
-	fi
-	if [[ ${f} == *"SB executable"* || ${f} == *"SB shared object"* ]] ; then
+	elif [[ ${f} == *"SB executable"* || ${f} == *"SB shared object"* || ${f} == *"SB relocatable"* ]] ; then
 		vecho "   ${x:${#D}}"
 		save_elf_debug "${x}"
 		[[ -n ${NOSTRIP} ]] && continue
-		[[ ${stripitbaby} -eq 1 ]] && ${STRIP} ${PORTAGE_STRIP_FLAGS} "${x}"
+		if [[ ${stripitbaby} -eq 1 ]] ; then
+			[[ ${f} == *"SB relocatable"* ]] \
+				&& ${STRIP} ${SAFE_STRIP_FLAGS} "${x}" \
+				|| ${STRIP} ${PORTAGE_STRIP_FLAGS} "${x}"
+		fi
 	fi
 done
