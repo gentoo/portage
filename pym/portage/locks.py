@@ -284,13 +284,13 @@ def hardlock_cleanup(path, remove_all_locks=False):
 
 	results.append("Found %(count)s locks" % {"count":mycount})
 	
-	for x in mylist.keys():
+	for x in mylist:
 		if mylist[x].has_key(myhost) or remove_all_locks:
 			mylockname = hardlock_name(path+"/"+x)
 			if hardlink_is_mine(mylockname, path+"/"+x) or \
 			   not os.path.exists(path+"/"+x) or \
 				 remove_all_locks:
-				for y in mylist[x].keys():
+				for y in mylist[x]:
 					for z in mylist[x][y]:
 						filename = path+"/"+x+".hardlock-"+y+"-"+z
 						if filename == mylockname:

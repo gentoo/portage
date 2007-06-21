@@ -515,8 +515,7 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 	for x in tbz2list:
 		x = os.path.basename(x)
 		binpkg_filenames.add(x)
-		if ((not metadata[baseurl]["data"].has_key(x)) or \
-		    (x not in metadata[baseurl]["data"].keys())):
+		if x not in metadata[baseurl]["data"]:
 			sys.stderr.write(yellow("x"))
 			metadata[baseurl]["modified"] = 1
 			myid = None

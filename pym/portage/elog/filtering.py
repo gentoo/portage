@@ -7,7 +7,7 @@ def filter_loglevels(logentries, loglevels):
 	# remove unwanted entries from all logentries
 	rValue = {}
 	loglevels = map(str.upper, loglevels)
-	for phase in logentries.keys():
+	for phase in logentries:
 		for msgtype, msgcontent in logentries[phase]:
 			if msgtype.upper() in loglevels or "*" in loglevels:
 				if not rValue.has_key(phase):

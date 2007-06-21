@@ -15,7 +15,8 @@ import os
 
 def _merge_logentries(a, b):
 	rValue = {}
-	phases = set(a.keys()+b.keys())
+	phases = set(a)
+	phases.update(b)
 	for p in phases:
 		rValue[p] = []
 		if a.has_key(p):
@@ -51,7 +52,7 @@ def elog_process(cpv, mysettings):
 	my_elog_classes = set(mysettings.get("PORTAGE_ELOG_CLASSES", "").split())
 
 
-	for key in all_logentries.keys():
+	for key in all_logentries:
 		default_logentries = filter_loglevels(all_logentries[key], my_elog_classes)
 
 		# in case the filters matched all messages and no module overrides exist
