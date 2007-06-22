@@ -3760,6 +3760,11 @@ def post_emerge(settings, mtimedb, retval):
 	emergelog("notitles" not in settings.features,
 		" *** exiting successfully.")
 
+	# Dump the mod_echo output now so that our other notifications are shown
+	# last.
+	from elog_modules import mod_echo
+	mod_echo.finalize()
+
 	if "noinfo" not in settings.features:
 		chk_updated_info_files(target_root, infodirs, info_mtimes, retval)
 

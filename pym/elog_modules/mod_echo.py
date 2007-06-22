@@ -8,18 +8,27 @@ from portage_const import EBUILD_PHASES
 
 _items = {}
 def process(mysettings, key, logentries, fulltext):
-	_items[key] = logentries
+	global _items
+	config_root = mysettings["PORTAGE_CONFIGROOT"]
+	mysettings, items = _items.setdefault(config_root, (mysettings, {}))
+	items[key] = logentries
 
-def finalize(mysettings):
+def finalize():
+	global _items
+	for mysettings, items in _items.itervalues():
+		_finalize(mysettings, items)
+	_items.clear()
+
+def _finalize(mysettings, items):
 	printer = EOutput()
-	for key in _items:
+	for key, logentries in items.iteritems():
 		print
 		printer.einfo("Messages for package %s:" % key)
 		print
 		for phase in EBUILD_PHASES:
-			if not phase in _items[key]:
+			if phase not in logentries:
 				continue
-			for msgtype, msgcontent in _items[key][phase]:
+			for msgtype, msgcontent in logentries[phase]:
 				fmap = {"INFO": printer.einfo,
 						"WARN": printer.ewarn,
 						"ERROR": printer.eerror,
