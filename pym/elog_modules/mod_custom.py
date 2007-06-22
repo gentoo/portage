@@ -3,8 +3,7 @@ import elog_modules.mod_save, portage_exec, portage_exception
 def process(mysettings, cpv, logentries, fulltext):
 	elogfilename = elog_modules.mod_save.process(mysettings, cpv, logentries, fulltext)
 	
-	if (not "PORTAGE_ELOG_COMMAND" in mysettings.keys()) \
-			or len(mysettings["PORTAGE_ELOG_COMMAND"]) == 0:
+	if not mysettings.get("PORTAGE_ELOG_COMMAND"):
 		raise portage_exception.MissingParameter("!!! Custom logging requested but PORTAGE_ELOG_COMMAND is not defined")
 	else:
 		mylogcmd = mysettings["PORTAGE_ELOG_COMMAND"]

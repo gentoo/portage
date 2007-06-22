@@ -79,8 +79,7 @@ class ManifestEntry(object):
 
 class Manifest1Entry(ManifestEntry):
 	def __str__(self):
-		myhashkeys = self.hashes.keys()
-		for hashkey in myhashkeys:
+		for hashkey in self.hashes:
 			if hashkey != "size":
 				break
 		hashvalue = self.hashes[hashkey]

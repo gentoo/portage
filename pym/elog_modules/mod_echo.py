@@ -12,7 +12,7 @@ def process(mysettings, key, logentries, fulltext):
 
 def finalize(mysettings):
 	printer = EOutput()
-	for key in _items.keys():
+	for key in _items:
 		print
 		printer.einfo("Messages for package %s:" % key)
 		print
