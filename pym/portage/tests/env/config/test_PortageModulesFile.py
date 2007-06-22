@@ -18,7 +18,7 @@ class PortageModulesFileTestCase(TestCase):
 	def testPortageModulesFile(self):
 		self.BuildFile()
 		f = PortageModulesFile(self.fname)
-		for k in f.keys():
+		for k in f:
 			self.assertEqual( f[k], self.items[k] )
 		self.NukeFile()
 

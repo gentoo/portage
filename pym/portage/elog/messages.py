@@ -84,6 +84,6 @@ def _make_msgfunction(level, color):
 	return _elog
 
 import sys
-for f in _functions.keys():
+for f in _functions:
 	setattr(sys.modules[__name__], f, _make_msgfunction(_functions[f][0], _functions[f][1]))
 del f, _functions

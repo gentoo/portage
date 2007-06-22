@@ -77,7 +77,7 @@ def map_dictlist_vals(func,myDict):
 	"""Performs a function on each value of each key in a dictlist.
 	Returns a new dictlist."""
 	new_dl = {}
-	for key in myDict.keys():
+	for key in myDict:
 		new_dl[key] = []
 		new_dl[key] = map(func,myDict[key])
 	return new_dl
@@ -119,7 +119,7 @@ def stack_dictlist(original_dicts, incremental=0, incrementals=[], ignore_none=0
 	for mydict in original_dicts:
 		if mydict is None:
 			continue
-		for y in mydict.keys():
+		for y in mydict:
 			if not y in final_dict:
 				final_dict[y] = []
 			
@@ -281,7 +281,7 @@ def writedict(mydict,myfilename,writekey=True):
 			for x in mydict.values():
 				myfile.write(x+"\n")
 		else:
-			for x in mydict.keys():
+			for x in mydict:
 				myfile.write("%s %s\n" % (x, " ".join(mydict[x])))
 		myfile.close()
 	except IOError:

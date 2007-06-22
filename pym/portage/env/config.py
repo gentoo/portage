@@ -30,6 +30,9 @@ class UserConfigKlass(UserDict,object):
 
 		self.data, self.errors = self._loader.load()
 
+	def __iter__(self):
+		return iter(self.data)
+
 class PackageKeywordsFile(UserConfigKlass):
 	"""
 	Inherits from UserConfigKlass; implements a file-based backend.

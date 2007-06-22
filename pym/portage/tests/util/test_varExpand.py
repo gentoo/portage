@@ -11,7 +11,7 @@ class VarExpandTestCase(TestCase):
 	def testVarExpandPass(self):
 
 		varDict = { "a":"5", "b":"7", "c":"-5" }
-		for key in varDict.keys():
+		for key in varDict:
 			result = varexpand( "$%s" % key, varDict )
 			
 			self.failIf( result != varDict[key],

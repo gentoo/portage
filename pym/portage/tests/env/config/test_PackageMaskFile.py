@@ -18,7 +18,8 @@ class PackageMaskFileTestCase(TestCase):
 		try:
 			f = PackageMaskFile(self.fname)
 			f.load()
-			[atom for atom in f.keys() if self.assertTrue(atom in self.atoms)]
+			for atom in f:
+				self.assertTrue(atom in self.atoms)
 		finally:
 			self.NukeFile()
 	

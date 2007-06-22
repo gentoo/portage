@@ -68,10 +68,10 @@ for mycpv in hugelist:
 		else:
 			continue
 		
-		if mybn not in md5sums.keys():
+		if mybn not in md5sums:
 			portage.util.writemsg("Missing md5sum: %s in %s\n" % (mybn, mycpv))
 		else:
-			if mybn in md5_list.keys():
+			if mybn in md5_list:
 				if (md5_list[mybn]["MD5"]  != md5sums[mybn]["MD5"]) or \
 				   (md5_list[mybn]["size"] != md5sums[mybn]["size"]):
 
@@ -89,12 +89,12 @@ for mycpv in hugelist:
 			del md5sums[mybn]
 		
 	#portage.writemsg(str(bn_list)+"\n")
-	for x in md5sums.keys():
+	for x in md5sums:
 		if x not in bn_list:
 			portage.writemsg("Extra md5sum: %s in %s\n" % (x, mycpv))
 
 
 print col_list
 print
-print str(len(md5_list.keys()))+" unique distfile md5s."
+print str(len(md5_list))+" unique distfile md5s."
 print str(len(bn_list))+" unique distfile names."

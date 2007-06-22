@@ -18,8 +18,7 @@ def mirror_cache(valid_nodes_iterable, src_cache, trg_cache, eclass_cache=None, 
 	else:
 		noise=verbose_instance
 
-	dead_nodes = {}
-	dead_nodes = dict.fromkeys(trg_cache.keys())
+	dead_nodes = set(trg_cache.iterkeys())
 	count=0
 
 	if not trg_cache.autocommits:
@@ -28,8 +27,7 @@ def mirror_cache(valid_nodes_iterable, src_cache, trg_cache, eclass_cache=None, 
 	for x in valid_nodes_iterable:
 #		print "processing x=",x
 		count+=1
-		if dead_nodes.has_key(x):
-			del dead_nodes[x]
+		dead_nodes.discard(x)
 		try:	entry = src_cache[x]
 		except KeyError, e:
 			noise.missing_entry(x)
@@ -99,7 +97,6 @@ def mirror_cache(valid_nodes_iterable, src_cache, trg_cache, eclass_cache=None, 
 		except cache_errors.CacheError, ce:
 			noise.exception(ce)
 			del ce
-	dead_nodes.clear()
 	noise.finish()
 
 

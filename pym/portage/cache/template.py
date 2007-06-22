@@ -145,7 +145,7 @@ class database(object):
 			if key not in self.__known_keys:
 				raise InvalidRestriction(key, match, "Key isn't valid")
 
-		for cpv in self.keys():
+		for cpv in self.iterkeys():
 			cont = True
 			vals = self[cpv]
 			for key, match in restricts.iteritems():

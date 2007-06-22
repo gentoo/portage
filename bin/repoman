@@ -353,9 +353,9 @@ myoptions=[]
 if len(sys.argv)>1:
 	x=1
 	while x < len(sys.argv):
-		if sys.argv[x] in shortmodes.keys():
+		if sys.argv[x] in shortmodes:
 			sys.argv[x]=shortmodes[sys.argv[x]]
-		elif sys.argv[x] in repoman_shortoptions.keys():
+		elif sys.argv[x] in repoman_shortoptions:
 			sys.argv[x] = repoman_shortoptions[sys.argv[x]]
 		if sys.argv[x] in modes:
 			if mymode is None:
@@ -1597,7 +1597,7 @@ def grouplist(mylist,seperator="/"):
 		xs=x.split(seperator)
 		if xs[0]==".":
 			xs=xs[1:]
-		if xs[0] not in mygroups.keys():
+		if xs[0] not in mygroups:
 			mygroups[xs[0]]=[seperator.join(xs[1:])]
 		else:
 			mygroups[xs[0]]+=[seperator.join(xs[1:])]

@@ -295,7 +295,7 @@ def list_preserved_libs(argv):
 		sys.exit(2)
 	mylibs = portage.db[argv[0]]["vartree"].dbapi.plib_registry.getPreservedLibs()
 	rValue = 0
-	for cpv in mylibs.keys():
+	for cpv in mylibs:
 		for path in mylibs[cpv]:
 			print "%s: %s" % (cpv, path)
 			rValue = 1
@@ -318,7 +318,7 @@ def usage(argv):
 	# Show our commands -- we do this by scanning the functions in this
 	# file, and formatting each functions documentation.
 	#
-	commands = [x for x in globals().keys() if x not in \
+	commands = [x for x in globals() if x not in \
 				("usage", "__doc__", "__name__", "main", "os", "portage", \
 				"sys", "__builtins__", "types", "string","exithandler")]
 	commands.sort()

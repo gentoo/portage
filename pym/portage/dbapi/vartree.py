@@ -106,7 +106,7 @@ class PreservedLibsRegistry(object):
 	
 	def hasEntries(self):
 		""" Check if this registry contains any records. """
-		return (len(self._data.keys()) > 0)
+		return len(self._data) > 0
 	
 	def getPreservedLibs(self):
 		""" Return a mapping of packages->preserved objects.
@@ -114,7 +114,7 @@ class PreservedLibsRegistry(object):
 			@rtype Dict cpv->list-of-paths
 		"""
 		rValue = {}
-		for cps in self._data.keys():
+		for cps in self._data:
 			rValue[self._data[cps][0]] = self._data[cps][2]
 		return rValue
 
@@ -154,7 +154,7 @@ class LibraryPackageMap(object):
 					else:
 						obj_dict[lib].append(mysplit[0])
 		mapfile = open(self._filename, "w")
-		for lib in obj_dict.keys():
+		for lib in obj_dict:
 			mapfile.write(lib+" "+",".join(obj_dict[lib])+"\n")
 		mapfile.close()
 
@@ -1337,10 +1337,10 @@ class dblink(object):
 
 		# get list of libraries from old package instance
 		old_contents = self._installed_instance.getcontents().keys()
-		old_libs = set([os.path.basename(x) for x in old_contents]).intersection(libmap.keys())
+		old_libs = set([os.path.basename(x) for x in old_contents]).intersection(libmap)
 
 		# get list of libraries from new package instance
-		mylibs = set([os.path.basename(x) for x in mycontents]).intersection(libmap.keys())
+		mylibs = set([os.path.basename(x) for x in mycontents]).intersection(libmap)
 
 		# check which libs are present in the old, but not the new package instance
 		preserve_libs = old_libs.difference(mylibs)
@@ -1506,6 +1506,7 @@ class dblink(object):
 		for dblnk in installed_instances:
 			file_paths.update(dblnk.getcontents())
 		inode_map = {}
+		real_paths = set()
 		for path in file_paths:
 			try:
 				s = os.lstat(path)
@@ -1514,8 +1515,13 @@ class dblink(object):
 					raise
 				del e
 				continue
-			if stat.S_ISREG(s.st_mode) and \
-				s.st_nlink > 1 and \
+			if not stat.S_ISREG(s.st_mode):
+				continue
+			path = os.path.realpath(path)
+			if path in real_paths:
+				continue
+			real_paths.add(path)
+			if s.st_nlink > 1 and \
 				s.st_mode & (stat.S_ISUID | stat.S_ISGID):
 				k = (s.st_dev, s.st_ino)
 				inode_map.setdefault(k, []).append((path, s))

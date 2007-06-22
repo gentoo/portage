@@ -1653,9 +1653,8 @@ class config(object):
 
 	def load_infodir(self,infodir):
 		self.modifying()
-		if self.configdict.has_key("pkg"):
-			for x in self.configdict["pkg"].keys():
-				del self.configdict["pkg"][x]
+		if "pkg" in self.configdict:
+			self.configdict["pkg"].clear()
 		else:
 			writemsg("No pkg setup for settings instance?\n",
 				noiselevel=-1)
@@ -2114,8 +2113,7 @@ class config(object):
 			return self.virts_p
 		virts = self.getvirtuals(myroot)
 		if virts:
-			myvkeys = virts.keys()
-			for x in myvkeys:
+			for x in virts:
 				vkeysplit = x.split("/")
 				if not self.virts_p.has_key(vkeysplit[1]):
 					self.virts_p[vkeysplit[1]] = virts[x]
@@ -2213,14 +2211,14 @@ class config(object):
 		return match
 
 	def has_key(self,mykey):
-		for x in self.lookuplist:
-			if x.has_key(mykey):
-				return 1
-		return 0
+		return mykey in self
 
 	def __contains__(self, mykey):
 		"""Called to implement membership test operators (in and not in)."""
-		return bool(self.has_key(mykey))
+		for d in self.lookuplist:
+			if mykey in d:
+				return True
+		return False
 
 	def setdefault(self, k, x=None):
 		if k in self:
@@ -2236,7 +2234,16 @@ class config(object):
 			return x
 
 	def keys(self):
-		return unique_array(flatten([x.keys() for x in self.lookuplist]))
+		return list(self)
+
+	def __iter__(self):
+		keys = set()
+		for d in self.lookuplist:
+			for k in d:
+				if k in keys:
+					continue
+				keys.add(k)
+				yield k
 
 	def __setitem__(self,mykey,myvalue):
 		"set a value; will be thrown away at reset() time"
@@ -2249,7 +2256,7 @@ class config(object):
 	def environ(self):
 		"return our locally-maintained environment"
 		mydict={}
-		for x in self.keys():
+		for x in self:
 			myvalue = self[x]
 			if not isinstance(myvalue, basestring):
 				writemsg("!!! Non-string value in config: %s=%s\n" % \
@@ -2425,7 +2432,7 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, **keyw
 			(not droppriv and "sandbox" not in features and \
 			"usersandbox" not in features))
 
-	if free:
+	if free or "SANDBOX_ACTIVE" in os.environ:
 		keywords["opt_name"] += " bash"
 		spawn_func = portage.process.spawn_bash
 	else:
@@ -2648,7 +2655,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					noiselevel=-1)
 				return 0
 			del distlocks_subdir
-	for myfile in filedict.keys():
+	for myfile in filedict:
 		"""
 		fetched  status
 		0        nonexistent
@@ -2879,7 +2886,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 								else:
 									eout = portage.output.EOutput()
 									eout.quiet = mysettings.get("PORTAGE_QUIET", None) == "1"
-									for x_key in mydigests[myfile].keys():
+									for x_key in mydigests[myfile]:
 										eout.ebegin("%s %s ;-)" % (myfile, x_key))
 										eout.eend(0)
 									fetched=2
@@ -3135,7 +3142,7 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 	if alwaysdep or "noauto" not in mysettings.features:
 		# process dependency first
-		if "dep" in actionmap[mydo].keys():
+		if "dep" in actionmap[mydo]:
 			retval=spawnebuild(actionmap[mydo]["dep"],actionmap,mysettings,debug,alwaysdep=alwaysdep,logfile=logfile)
 			if retval:
 				return retval
@@ -3944,11 +3951,11 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 		# merge the deps in so we have again a 'full' actionmap
 		# be glad when this can die.
-		for x in actionmap.keys():
+		for x in actionmap:
 			if len(actionmap_deps.get(x, [])):
 				actionmap[x]["dep"] = ' '.join(actionmap_deps[x])
 
-		if mydo in actionmap.keys():
+		if mydo in actionmap:
 			retval = spawnebuild(mydo,
 				actionmap, mysettings, debug, logfile=logfile)
 		elif mydo=="qmerge":
@@ -4954,9 +4961,11 @@ class FetchlistDict(UserDict.DictMixin):
 		"""Returns the complete fetch list for a given package."""
 		return self.portdb.getfetchlist(pkg_key, mysettings=self.settings,
 			all=True, mytree=self.mytree)[1]
+	def __contains__(self):
+		return pkg_key in self.keys()
 	def has_key(self, pkg_key):
 		"""Returns true if the given package exists within pkgdir."""
-		return pkg_key in self.keys()
+		return pkg_key in self
 	def keys(self):
 		"""Returns keys for all packages within pkgdir"""
 		return self.portdb.cp_list(self.cp, mytree=self.mytree)
