@@ -180,10 +180,6 @@ _`ccache`
 	in the users environment, then  portage will default to ${PORTAGE_TMPDIR}/ccache 
 	(with userpriv) and to /root/.ccache otherwise.
 
-_`confcache`
-	Enable  confcache support; global configure caching, speeds up autotool based 
-	configure calls via the econf helper function. See ebuild(5) for more information.
-
 _`collision-protect`
 	A QA-feature to ensure that a package doesn't overwrite files it doesn't own.
 	The `COLLISION_IGNORE`_ variable can be used to selectively disable this feature.
