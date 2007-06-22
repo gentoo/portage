@@ -21,7 +21,7 @@ from portage.util import apply_secpass_permissions, ConfigProtect, ensure_dirs, 
 from portage.versions import pkgsplit, catpkgsplit, catsplit, best, pkgcmp
 
 from portage import listdir, dep_expand, config, flatten, key_expand, \
-	doebuild_environment, doebuild, env_update, dircache, \
+	doebuild_environment, doebuild, env_update, \
 	abssymlink, movefile, bsd_chflags
 
 import os, sys, stat, errno, commands, copy, time
@@ -908,12 +908,17 @@ class dblink(object):
 		Get the installed files of a given package (aka what that package installed)
 		"""
 		contents_file = os.path.join(self.dbdir, "CONTENTS")
-		if not os.path.exists(contents_file):
-			return None
 		if self.contentscache is not None:
 			return self.contentscache
 		pkgfiles = {}
-		myc = open(contents_file,"r")
+		try:
+			myc = open(contents_file,"r")
+		except EnvironmentError, e:
+			if e.errno != errno.ENOENT:
+				raise
+			del e
+			self.contentscache = pkgfiles
+			return pkgfiles
 		mylines = myc.readlines()
 		myc.close()
 		null_byte = "\0"
@@ -961,14 +966,16 @@ class dblink(object):
 					#format: type
 					pkgfiles[" ".join(mydat[1:])] = [mydat[0]]
 				else:
-					return None
+					writemsg("!!! Unrecognized CONTENTS entry on " + \
+						"line %d: '%s'\n" % (pos, line), noiselevel=-1)
 			except (KeyError, IndexError):
-				print "portage: CONTENTS line", pos, "corrupt!"
+				writemsg("!!! Unrecognized CONTENTS entry on " + \
+					"line %d: '%s'\n" % (pos, line), noiselevel=-1)
 		self.contentscache = pkgfiles
 		return pkgfiles
 
 	def unmerge(self, pkgfiles=None, trimworld=1, cleanup=1,
-		ldpath_mtimes=None, new_contents=None):
+		ldpath_mtimes=None, others_in_slot=None):
 		"""
 		Calls prerm
 		Unmerges a given package (CPV)
@@ -984,8 +991,8 @@ class dblink(object):
 		@type cleanup: Boolean
 		@param ldpath_mtimes: mtimes to pass to env_update (see env_update)
 		@type ldpath_mtimes: Dictionary
-		@param new_contents: contents from a new instance that will replace this one
-		@type new_contents: Dictionary
+		@param others_in_slot: all dblink instances in this slot, excluding self
+		@type others_in_slot: list
 		@rtype: Integer
 		@returns:
 		1. os.EX_OK if everything went well.
@@ -996,14 +1003,20 @@ class dblink(object):
 		before and after this method.
 		"""
 
-		# When new_contents is supplied, the security check has already been
+		# When others_in_slot is supplied, the security check has already been
 		# done for this slot, so it shouldn't be repeated until the next
 		# replacement or unmerge operation.
-		if new_contents is None:
+		if others_in_slot is None:
 			slot = self.vartree.dbapi.aux_get(self.mycpv, ["SLOT"])[0]
 			slot_matches = self.vartree.dbapi.match(
 				"%s:%s" % (dep_getkey(self.mycpv), slot))
-			retval = self._security_check(slot_matches)
+			others_in_slot = []
+			for cur_cpv in slot_matches:
+				if cur_cpv == self.mycpv:
+					continue
+				others_in_slot.append(dblink(self.cat, catsplit(cur_cpv)[1],
+					self.vartree.root, self.settings, vartree=self.vartree))
+			retval = self._security_check([self] + others_in_slot)
 			if retval:
 				return retval
 
@@ -1060,7 +1073,7 @@ class dblink(object):
 					writemsg("!!! FAILED prerm: %s\n" % retval, noiselevel=-1)
 					return retval
 
-			self._unmerge_pkgfiles(pkgfiles, new_contents=new_contents)
+			self._unmerge_pkgfiles(pkgfiles, others_in_slot)
 			
 			# Remove the registration of preserved libs for this pkg instance
 			self.vartree.dbapi.plib_registry.unregister(self.mycpv, self.settings["SLOT"], self.settings["COUNTER"])
@@ -1105,7 +1118,7 @@ class dblink(object):
 			contents=contents, env=self.settings.environ())
 		return os.EX_OK
 
-	def _unmerge_pkgfiles(self, pkgfiles, new_contents=None):
+	def _unmerge_pkgfiles(self, pkgfiles, others_in_slot):
 		"""
 		
 		Unmerges the contents of a package from the liveFS
@@ -1113,38 +1126,31 @@ class dblink(object):
 		
 		@param pkgfiles: typically self.getcontents()
 		@type pkgfiles: Dictionary { filename: [ 'type', '?', 'md5sum' ] }
-		@param new_contents: contents from a new instance that will replace this one
-		@type new_contents: Dictionary
+		@param others_in_slot: all dblink instances in this slot, excluding self
+		@type others_in_slot: list
 		@rtype: None
 		"""
-		global dircache
-		dircache={}
 
 		if not pkgfiles:
 			writemsg_stdout("No package files given... Grabbing a set.\n")
 			pkgfiles = self.getcontents()
 
-		if not new_contents:
-			counter = self.vartree.dbapi.cpv_counter(self.mycpv)
+		if others_in_slot is None:
+			others_in_slot = []
 			slot = self.vartree.dbapi.aux_get(self.mycpv, ["SLOT"])[0]
 			slot_matches = self.vartree.dbapi.match(
 				"%s:%s" % (dep_getkey(self.mycpv), slot))
-			new_cpv = None
-			if slot_matches:
-				max_counter = -1
-				for cur_cpv in slot_matches:
-					cur_counter = self.vartree.dbapi.cpv_counter(cur_cpv)
-					if cur_counter == counter and \
-						cur_cpv == self.mycpv:
-						continue
-					if cur_counter > max_counter:
-						max_counter = cur_counter
-						new_cpv = cur_cpv
-			if new_cpv:
-				# The current instance has been replaced by a newer instance.
-				new_cat, new_pkg = catsplit(new_cpv)
-				new_contents = dblink(new_cat, new_pkg, self.vartree.root,
-					self.settings, vartree=self.vartree).getcontents()
+			for cur_cpv in slot_matches:
+				if cur_cpv == self.mycpv:
+					continue
+				others_in_slot.append(dblink(self.cat, catsplit(cur_cpv)[1],
+					self.vartree.root, self.settings,
+					vartree=self.vartree))
+		claimed_paths = set()
+		for dblnk in others_in_slot:
+			claimed_paths.update(dblnk.getcontents())
+
+		unmerge_orphans = "unmerge-orphans" in self.settings.features
 
 		if pkgfiles:
 			mykeys = pkgfiles.keys()
@@ -1153,10 +1159,12 @@ class dblink(object):
 
 			#process symlinks second-to-last, directories last.
 			mydirs = []
-			modprotect = "/lib/modules/"
+			modprotect = os.path.join(self.vartree.root, "lib/modules/")
 			for objkey in mykeys:
 				obj = normalize_path(objkey)
-				if new_contents and obj in new_contents:
+				file_data = pkgfiles[objkey]
+				file_type = file_data[0]
+				if obj in claimed_paths:
 					# A new instance of this package claims the file, so don't
 					# unmerge it.
 					writemsg_stdout("--- !owned %s %s\n" % \
@@ -1173,7 +1181,7 @@ class dblink(object):
 				except (OSError, AttributeError):
 					pass
 				islink = lstatobj is not None and stat.S_ISLNK(lstatobj.st_mode)
-				if statobj is None:
+				if not unmerge_orphans and statobj is None:
 					if not islink:
 						#we skip this if we're dealing with a symlink
 						#because os.stat() will operate on the
@@ -1187,6 +1195,20 @@ class dblink(object):
 				# should be able to be independently specified.
 				if obj.startswith(modprotect):
 					writemsg_stdout("--- cfgpro %s %s\n" % (pkgfiles[objkey][0], obj))
+					continue
+
+				if unmerge_orphans and \
+					lstatobj and not stat.S_ISDIR(lstatobj.st_mode) and \
+					not self.isprotected(obj):
+					try:
+						# Remove permissions to ensure that any hardlinks to
+						# suid/sgid files are rendered harmless.
+						if statobj:
+							os.chmod(obj, 0)
+						os.unlink(obj)
+					except EnvironmentError, e:
+						pass
+					writemsg_stdout("<<<        %s %s\n" % (file_type, obj))
 					continue
 
 				lmtime = str(lstatobj[stat.ST_MTIME])
@@ -1276,7 +1298,7 @@ class dblink(object):
 			return True
 
 		pkgfiles = self.getcontents()
-		if pkgfiles and filename in pkgfiles:
+		if pkgfiles and destfile in pkgfiles:
 			return True
 		if pkgfiles:
 			if self._contents_inodes is None:
@@ -1359,7 +1381,7 @@ class dblink(object):
 
 		del preserve_paths
 	
-	def _collision_protect(self, srcroot, destroot, otherversions, mycontents, mysymlinks):
+	def _collision_protect(self, srcroot, destroot, mypkglist, mycontents, mysymlinks):
 			collision_ignore = set([normalize_path(myignore) for myignore in \
 				self.settings.get("COLLISION_IGNORE", "").split()])
 
@@ -1373,21 +1395,6 @@ class dblink(object):
 
 			stopmerge = False
 			i=0
-
-			otherpkg=[]
-			mypkglist=[]
-
-			if self.pkg in otherversions:
-				otherversions.remove(self.pkg)	# we already checked this package
-
-			myslot = self.settings["SLOT"]
-			for v in otherversions:
-				# only allow versions with same slot to overwrite files
-				if myslot == self.vartree.dbapi.aux_get("/".join((self.cat, v)), ["SLOT"])[0]:
-					mypkglist.append(
-						dblink(self.cat, v, destroot, self.settings,
-							vartree=self.vartree))
-
 			collisions = []
 
 			print green("*")+" checking "+str(len(mycontents))+" files for package collisions"
@@ -1466,14 +1473,12 @@ class dblink(object):
 			except OSError:
 				pass
 
-	def _security_check(self, slot_matches):
-		if not slot_matches:
+	def _security_check(self, installed_instances):
+		if not installed_instances:
 			return 0
 		file_paths = set()
-		for cpv in slot_matches:
-			file_paths.update(dblink(self.cat, catsplit(cpv)[1],
-				self.vartree.root, self.settings,
-				vartree=self.vartree).getcontents())
+		for dblnk in installed_instances:
+			file_paths.update(dblnk.getcontents())
 		inode_map = {}
 		for path in file_paths:
 			try:
@@ -1557,23 +1562,30 @@ class dblink(object):
 
 		slot_matches = self.vartree.dbapi.match(
 			"%s:%s" % (self.mysplit[0], self.settings["SLOT"]))
-		retval = self._security_check(slot_matches)
+		if self.mycpv not in slot_matches and \
+			self.vartree.dbapi.cpv_exists(self.mycpv):
+			# handle multislot or unapplied slotmove
+			slot_matches.append(self.mycpv)
+
+		others_in_slot = []
+		for cur_cpv in slot_matches:
+			others_in_slot.append(dblink(self.cat, catsplit(cur_cpv)[1],
+				self.vartree.root, self.settings,
+				vartree=self.vartree))
+		retval = self._security_check(others_in_slot)
 		if retval:
 			return retval
 
 		if slot_matches:
 			# Used by self.isprotected().
-			max_cpv = None
+			max_dblnk = None
 			max_counter = -1
-			for cur_cpv in slot_matches:
-				cur_counter = self.vartree.dbapi.cpv_counter(cur_cpv)
+			for dblnk in others_in_slot:
+				cur_counter = self.vartree.dbapi.cpv_counter(dblnk.mycpv)
 				if cur_counter > max_counter:
 					max_counter = cur_counter
-					max_cpv = cur_cpv
-			slot_matches = [max_cpv]
-			self._installed_instance = dblink(self.cat,
-				catsplit(slot_matches[0])[1], destroot, self.settings,
-				vartree=self.vartree)
+					max_dblnk = dblnk
+			self._installed_instance = max_dblnk
 
 		# get current counter value (counter_tick also takes care of incrementing it)
 		# XXX Need to make this destroot, but it needs to be initialized first. XXX
@@ -1600,7 +1612,8 @@ class dblink(object):
 			if mylinklist == None:
 				mylinklist = filter(os.path.islink, [os.path.join(srcroot, x) for x in listdir(srcroot, recursive=1, filesonly=0, followSymlinks=False)])
 				mylinklist = [x[len(srcroot):] for x in mylinklist]
-			self._collision_protect(srcroot, destroot, otherversions, myfilelist+mylinklist, mylinklist)
+			self._collision_protect(srcroot, destroot, others_in_slot,
+				myfilelist+mylinklist, mylinklist)
 
 		if os.stat(srcroot).st_dev == os.stat(destroot).st_dev:
 			""" The merge process may move files out of the image directory,
@@ -1697,15 +1710,18 @@ class dblink(object):
 		#if we opened it, close it
 		outfile.flush()
 		outfile.close()
-		self.contentscache = None
-		new_contents = self.getcontents()
 
-		if os.path.exists(self.dbpkgdir):
+		for dblnk in others_in_slot:
+			if dblnk.mycpv != self.mycpv:
+				continue
 			writemsg_stdout(">>> Safely unmerging already-installed instance...\n")
-			dblink(self.cat, self.pkg, destroot, self.settings,
-				vartree=self.vartree).unmerge(trimworld=0,
-					ldpath_mtimes=prev_mtimes, new_contents=new_contents)
+			self.contentscache = None
+			others_in_slot.append(self)  # self has just been merged
+			others_in_slot.remove(dblnk) # dblnk will unmerge itself now
+			dblnk.unmerge(trimworld=0, ldpath_mtimes=prev_mtimes,
+				others_in_slot=others_in_slot)
 			writemsg_stdout(">>> Original instance of package unmerged safely.\n")
+			break
 
 		# We hold both directory locks.
 		self.dbdir = self.dbpkgdir
@@ -1747,10 +1763,7 @@ class dblink(object):
 		env_update(makelinks=(not downgrade),
 			target_root=self.settings["ROOT"], prev_mtimes=prev_mtimes,
 			contents=contents, env=self.settings.environ())
-		#dircache may break autoclean because it remembers the -MERGING-pkg file
-		global dircache
-		if dircache.has_key(self.dbcatdir):
-			del dircache[self.dbcatdir]
+
 		writemsg_stdout(">>> %s %s\n" % (self.mycpv,"merged."))
 
 		# Process ebuild logfiles
@@ -1900,7 +1913,7 @@ class dblink(object):
 
 					if bsd_chflags:
 						# Save then clear flags on dest.
-						dflags = os.lstat(mydest).st_flags
+						dflags = mydstat.st_flags
 						if dflags != 0:
 							bsd_chflags.lchflags(mydest, 0)
 
