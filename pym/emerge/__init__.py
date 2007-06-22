@@ -3869,6 +3869,14 @@ def post_emerge(trees, mtimedb, retval):
 	emergelog("notitles" not in settings.features,
 		" *** exiting successfully.")
 
+	# Dump the mod_echo output now so that our other notifications are shown
+	# last.  FIXME: handle finalize for multiple config instances
+	# (PORTAGE_CONFIGROOT support).
+	from portage.elog import mod_echo
+	if mod_echo._items:
+		mod_echo.finalize(settings)
+		mod_echo._items.clear()
+
 	if "noinfo" not in settings.features:
 		chk_updated_info_files(target_root, infodirs, info_mtimes, retval)
 
