@@ -2127,8 +2127,8 @@ class dblink(object):
 		"Is this a regular package (does it have a CATEGORY file?  A dblink can be virtual *and* regular)"
 		return os.path.exists(os.path.join(self.dbdir, "CATEGORY"))
 
-def tar_contents(contents, root, tar, onProgress=None):
-	from portage import normalize_path
+def tar_contents(contents, root, tar, protect=None, onProgress=None):
+	from portage.util import normalize_path
 	root = normalize_path(root).rstrip(os.path.sep) + os.path.sep
 	id_strings = {}
 	maxval = len(contents)
@@ -2168,11 +2168,17 @@ def tar_contents(contents, root, tar, onProgress=None):
 		tarinfo.gname = id_strings.setdefault(tarinfo.gid, str(tarinfo.gid))
 
 		if stat.S_ISREG(lst.st_mode):
-			f = file(path)
-			try:
-				tar.addfile(tarinfo, f)
-			finally:
-				f.close()
+			if protect and protect(path):
+				# Create an empty file as a place holder in order to avoid
+				# potential collision-protect issues.
+				tarinfo.size = 0
+				tar.addfile(tarinfo)
+			else:
+				f = open(path)
+				try:
+					tar.addfile(tarinfo, f)
+				finally:
+					f.close()
 		else:
 			tar.addfile(tarinfo)
 		if onProgress:
