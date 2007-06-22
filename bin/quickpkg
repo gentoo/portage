@@ -5,8 +5,8 @@
 
 import errno, signal, stat, sys, os
 
-def tar_contents(contents, root, tar, onProgress=None):
-	from portage import normalize_path
+def tar_contents(contents, root, tar, protect=None, onProgress=None):
+	from portage_util import normalize_path
 	root = normalize_path(root).rstrip(os.path.sep) + os.path.sep
 	id_strings = {}
 	maxval = len(contents)
@@ -46,11 +46,17 @@ def tar_contents(contents, root, tar, onProgress=None):
 		tarinfo.gname = id_strings.setdefault(tarinfo.gid, str(tarinfo.gid))
 
 		if stat.S_ISREG(lst.st_mode):
-			f = file(path)
-			try:
-				tar.addfile(tarinfo, f)
-			finally:
-				f.close()
+			if protect and protect(path):
+				# Create an empty file as a place holder in order to avoid
+				# potential collision-protect issues.
+				tarinfo.size = 0
+				tar.addfile(tarinfo)
+			else:
+				f = open(path)
+				try:
+					tar.addfile(tarinfo, f)
+				finally:
+					f.close()
 		else:
 			tar.addfile(tarinfo)
 		if onProgress:
@@ -59,8 +65,9 @@ def tar_contents(contents, root, tar, onProgress=None):
 def quickpkg_main(options, args, eout):
 	from portage import catsplit, dblink, dep_expand, flatten, isvalidatom, xpak
 	from portage_dep import use_reduce, paren_reduce
-	from portage_util import ensure_dirs
+	from portage_util import ConfigProtect, ensure_dirs
 	from portage_exception import InvalidData, InvalidDependString
+	from portage_checksum import perform_md5
 	import tarfile
 	import portage
 	root = portage.settings["ROOT"]
@@ -73,6 +80,9 @@ def quickpkg_main(options, args, eout):
 		return errno.EACCES
 	successes = []
 	missing = []
+	config_files_excluded = 0
+	include_config = options.include_config == "y"
+	include_unmodified_config = options.include_unmodified_config == "y"
 	for arg in args:
 		try:
 			atom = dep_expand(arg, mydb=vardb, settings=vartree.settings)
@@ -95,6 +105,7 @@ def quickpkg_main(options, args, eout):
 		matches = vardb.match(atom)
 		pkgs_for_arg = 0
 		for cpv in matches:
+			excluded_config_files = []
 			bintree.prevent_collision(cpv)
 			cat, pkg = catsplit(cpv)
 			dblnk = dblink(cat, pkg, root,
@@ -126,12 +137,29 @@ def quickpkg_main(options, args, eout):
 				eout.ebegin("Building package for %s" % cpv)
 				pkgs_for_arg += 1
 				contents = dblnk.getcontents()
+				protect = None
+				if not include_config:
+					confprot = ConfigProtect(root,
+						portage.settings.get("CONFIG_PROTECT","").split(),
+						portage.settings.get("CONFIG_PROTECT_MASK","").split())
+					def protect(filename):
+						if not confprot.isprotected(filename):
+							return False
+						if include_unmodified_config:
+							file_data = contents[filename]
+							if file_data[0] == "obj":
+								orig_md5 = file_data[2].lower()
+								cur_md5 = perform_md5(filename, calc_prelink=1)
+								if orig_md5 == cur_md5:
+									return False
+						excluded_config_files.append(filename)
+						return True
 				xpdata = xpak.xpak(dblnk.dbdir)
 				binpkg_tmpfile = os.path.join(bintree.pkgdir,
 					cpv + ".tbz2." + str(os.getpid()))
 				ensure_dirs(os.path.dirname(binpkg_tmpfile))
 				tar = tarfile.open(binpkg_tmpfile, "w:bz2")
-				tar_contents(contents, root, tar)
+				tar_contents(contents, root, tar, protect=protect)
 				tar.close()
 				xpak.tbz2(binpkg_tmpfile).recompose_mem(xpdata)
 			finally:
@@ -151,6 +179,9 @@ def quickpkg_main(options, args, eout):
 			else:
 				eout.eend(0)
 				successes.append((cpv, s.st_size))
+				config_files_excluded += len(excluded_config_files)
+				for filename in excluded_config_files:
+					eout.ewarn("Excluded config: '%s'" % filename)
 		if not pkgs_for_arg:
 			eout.eerror("Could not find anything " + \
 				"to match '%s'; skipping" % arg)
@@ -181,6 +212,10 @@ def quickpkg_main(options, args, eout):
 			else:
 				size_str = str(size)
 		eout.einfo("%s: %s" % (cpv, size_str))
+	if config_files_excluded:
+		print
+		eout.ewarn("Excluded config files: %d" % config_files_excluded)
+		eout.ewarn("See --help if you would like to include config files.")
 	if missing:
 		print
 		eout.ewarn("The following packages could not be found:")
@@ -198,6 +233,18 @@ if __name__ == "__main__":
 	parser.add_option("--ignore-default-opts",
 		action="store_true",
 		help="do not use the QUICKPKG_DEFAULT_OPTS environment variable")
+	parser.add_option("--include-config",
+		type="choice",
+		choices=["y","n"],
+		default="n",
+		metavar="<y|n>",
+		help="include all files protected by CONFIG_PROTECT (as a security precaution, default is 'n')")
+	parser.add_option("--include-unmodified-config",
+		type="choice",
+		choices=["y","n"],
+		default="n",
+		metavar="<y|n>",
+		help="include files protected by CONFIG_PROTECT that have not been modified since installation (as a security precaution, default is 'n')")
 	options, args = parser.parse_args(sys.argv[1:])
 	if not options.ignore_default_opts:
 		from portage import settings
