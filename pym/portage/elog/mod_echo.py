@@ -21,9 +21,12 @@ def finalize():
 
 def _finalize(mysettings, items):
 	printer = EOutput()
+	root_msg = ""
+	if mysettings["ROOT"] != "/":
+		root_msg = " merged to %s" % mysettings["ROOT"]
 	for key, logentries in items.iteritems():
 		print
-		printer.einfo("Messages for package %s:" % key)
+		printer.einfo("Messages for package %s%s:" % (key, root_msg))
 		print
 		for phase in EBUILD_PHASES:
 			if phase not in logentries:
