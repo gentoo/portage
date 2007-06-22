@@ -223,7 +223,7 @@ class database(fs_template.FsBased):
 		else:
 			raise cache_errors.CacheCorruption(cpv, "key is not unique")
 
-	def iterkeys(self):
+	def __iter__(self):
 		"""generator for walking the dir struct"""
 		cursor = self._db_cursor
 		cursor.execute("SELECT %s FROM %s" % \

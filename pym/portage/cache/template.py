@@ -95,7 +95,7 @@ class database(object):
 		return tuple(self.iterkeys())
 
 	def iterkeys(self):
-		raise NotImplementedError
+		return iter(self)
 
 	def iteritems(self):
 		for x in self.iterkeys():
@@ -122,6 +122,22 @@ class database(object):
 			# prevent a possible recursive loop
 			raise NotImplementedError
 		return self.has_key(cpv)
+
+	def __iter__(self):
+		"""This method should always be overridden.  It is provided only for
+		backward compatibility with modules that override iterkeys instead.  It
+		will automatically raise a NotImplementedError if iterkeys has not been
+		overridden."""
+		if self.iterkeys is database.iterkeys:
+			# prevent a possible recursive loop
+			raise NotImplementedError(self)
+		return self.iterkeys()
+
+	def get(self, k, x=None):
+		try:
+			return self[k]
+		except KeyError:
+			return x
 
 	def get_matches(self, match_dict):
 		"""generic function for walking the entire cache db, matching restrictions to

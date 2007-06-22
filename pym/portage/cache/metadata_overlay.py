@@ -75,14 +75,14 @@ class database(template.database):
 			return False
 		return True
 
-	def iterkeys(self):
+	def __iter__(self):
 		s = set()
-		for cpv in self.db_rw.iterkeys():
-			if self.has_key(cpv): # validates whiteout when necessary
+		for cpv in self.db_rw:
+			if cpv in self: # validates whiteout when necessary
 				yield cpv
 			# set includes whiteouts so they won't be yielded later
 			s.add(cpv)
-		for cpv in self.db_ro.iterkeys():
+		for cpv in self.db_ro:
 			if cpv not in s:
 				yield cpv
 
