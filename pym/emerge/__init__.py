@@ -31,7 +31,7 @@ except ImportError:
 	import portage
 del os.environ["PORTAGE_LEGACY_GLOBALS"]
 from portage import digraph, portdbapi
-from portage.const import NEWS_LIB_PATH, CACHE_PATH
+from portage.const import NEWS_LIB_PATH, CACHE_PATH, PRIVATE_PATH
 
 import emerge.help
 import portage.xpak, commands, errno, re, socket, time, types
@@ -2121,8 +2121,16 @@ class depgraph:
 					if not circular_blocks:
 						circular_blocks = True
 						blocker_deps = myblockers.leaf_nodes()
-					if blocker_deps:
-						selected_nodes = [blocker_deps.pop()]
+					while blocker_deps:
+						# Some of these nodes might have already been selected
+						# by the normal node selection process after the
+						# circular_blocks flag has been set.  Therefore, we
+						# have to verify that they're still in the graph so
+						# that they're not selected more than once.
+						node = blocker_deps.pop()
+						if mygraph.contains(node):
+							selected_nodes = [node]
+							break
 
 			if not selected_nodes:
 				# No leaf nodes are available, so we have a circular
@@ -3781,15 +3789,20 @@ def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 				print " "+green("*")+" Processed",icount,"info files."
 
 
-def display_news_notification(settings):
-	target_root = settings["ROOT"]
+def display_news_notification(trees):
+	for target_root in trees:
+		if len(trees) > 1 and target_root != "/":
+			break
+	settings = trees[target_root]["vartree"].settings
+	portdb = trees[target_root]["porttree"].dbapi
+	vardb = trees[target_root]["vartree"].dbapi
 	NEWS_PATH = os.path.join("metadata", "news")
 	UNREAD_PATH = os.path.join(target_root, NEWS_LIB_PATH, "news")
-	porttree = portdbapi(porttree_root=settings["PORTDIR"], mysettings=settings)
 	newsReaderDisplay = False
 
-	for repo in porttree.getRepositories():
-		unreadItems = checkUpdatedNewsItems(target_root, NEWS_PATH, UNREAD_PATH, repo)
+	for repo in portdb.getRepositories():
+		unreadItems = checkUpdatedNewsItems(
+			portdb, vardb, NEWS_PATH, UNREAD_PATH, repo)
 		if unreadItems:
 			if not newsReaderDisplay:
 				newsReaderDisplay = True
@@ -3803,7 +3816,7 @@ def display_news_notification(settings):
 		print "Use " + colorize("GOOD", "eselect news") + " to read news items."
 		print
 
-def post_emerge(settings, mtimedb, retval):
+def post_emerge(trees, mtimedb, retval):
 	"""
 	Misc. things to run at the end of a merge session.
 	
@@ -3813,9 +3826,9 @@ def post_emerge(settings, mtimedb, retval):
 	Commit mtimeDB
 	Display preserved libs warnings
 	Exit Emerge
-	
-	@param settings: Configuration settings (typically portage.settings)
-	@type settings: portage.config()
+
+	@param trees: A dictionary mapping each ROOT to it's package databases
+	@type trees: dict
 	@param mtimedb: The mtimeDB to store data needed across merge invocations
 	@type mtimedb: MtimeDB class instance
 	@param retval: Emerge's return value
@@ -3824,7 +3837,11 @@ def post_emerge(settings, mtimedb, retval):
 	@returns:
 	1.  Calls sys.exit(retval)
 	"""
-	target_root = settings["ROOT"]
+	for target_root in trees:
+		if len(trees) > 1 and target_root != "/":
+			break
+	vardbapi = trees[target_root]["vartree"].dbapi
+	settings = vardbapi.settings
 	info_mtimes = mtimedb["info"]
 
 	# Load the most current variables from ${ROOT}/etc/profile.env
@@ -3846,13 +3863,11 @@ def post_emerge(settings, mtimedb, retval):
 		chk_updated_info_files(normalize_path(target_root + EPREFIX), infodirs, info_mtimes, retval)
 	chk_updated_cfg_files(normalize_path(target_root + EPREFIX), config_protect)
 	
-	display_news_notification(settings)
+	display_news_notification(trees)
 	
-	from portage.dbapi.vartree import PreservedLibsRegistry
-	plib_registry = PreservedLibsRegistry(os.path.join(target_root, CACHE_PATH, "preserved_libs_registry"))
-	if plib_registry.hasEntries():
+	if vardbapi.plib_registry.hasEntries():
 		print colorize("WARN", "!!!") + " existing preserved libs:"
-		plibdata = plib_registry.getPreservedLibs()
+		plibdata = vardbapi.plib_registry.getPreservedLibs()
 		for cpv in plibdata.keys():
 			print colorize("WARN", ">>>") + " package: %s" % cpv
 			for f in plibdata[cpv]:
@@ -3898,13 +3913,15 @@ def chk_updated_cfg_files(target_root, config_protect):
 			#print " "+yellow("*")+" Type "+green("emerge --help config")+" to learn how to update config files."
 			print " "+yellow("*")+" Type "+green("emerge --help config")+" to learn how to update config files."
 
-def checkUpdatedNewsItems( root, NEWS_PATH, UNREAD_PATH, repo_id ):
+def checkUpdatedNewsItems(portdb, vardb, NEWS_PATH, UNREAD_PATH, repo_id):
 	"""
 	Examines news items in repodir + '/' + NEWS_PATH and attempts to find unread items
 	Returns the number of unread (yet relevent) items.
 	
-	@param root:
-	@type root:
+	@param portdb: a portage tree database
+	@type portdb: pordbapi
+	@param vardb: an installed package database
+	@type vardb: vardbapi
 	@param NEWS_PATH:
 	@type NEWS_PATH:
 	@param UNREAD_PATH:
@@ -3917,7 +3934,7 @@ def checkUpdatedNewsItems( root, NEWS_PATH, UNREAD_PATH, repo_id ):
 	
 	"""
 	from portage.news import NewsManager
-	manager = NewsManager( root, NEWS_PATH, UNREAD_PATH )
+	manager = NewsManager(portdb, vardb, NEWS_PATH, UNREAD_PATH)
 	return manager.getUnreadItems( repo_id, update=True )
 
 def is_valid_package_atom(x):
@@ -4454,7 +4471,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		print red(" * ")+"To update portage, run 'emerge portage'."
 		print
 	
-	display_news_notification(settings)
+	display_news_notification(trees)
 
 def action_metadata(settings, portdb, myopts):
 	portage.writemsg_stdout("\n>>> Updating Portage cache:      ")
@@ -5647,12 +5664,12 @@ def emerge_main():
 				if "--ask" in myopts:
 					myopts["--pretend"] = True
 					del myopts["--ask"]
-					print ("%s access would be required... " + \
+					print ("%s access is required... " + \
 						"adding --pretend to options.\n") % access_desc
 					if portage.secpass < 1 and not need_superuser:
 						portage_group_warning()
 				else:
-					sys.stderr.write(("emerge: %s access would be " + \
+					sys.stderr.write(("emerge: %s access is " + \
 						"required.\n\n") % access_desc)
 					if portage.secpass < 1 and not need_superuser:
 						portage_group_warning()
@@ -5734,25 +5751,25 @@ def emerge_main():
 		if 1 == unmerge(settings, myopts, vartree, myaction, myfiles,
 			mtimedb["ldpath"]):
 			if "--pretend" not in myopts:
-				post_emerge(settings, mtimedb, 0)
+				post_emerge(trees, mtimedb, os.EX_OK)
 
 	elif "depclean"==myaction:
 		validate_ebuild_environment(trees)
 		action_depclean(settings, trees, mtimedb["ldpath"],
 			myopts, spinner)
 		if "--pretend" not in myopts:
-			post_emerge(settings, mtimedb, 0)
+			post_emerge(trees, mtimedb, os.EX_OK)
 	# "update", "system", or just process files:
 	else:
 		validate_ebuild_environment(trees)
 		if "--pretend" not in myopts:
-			display_news_notification(settings)
+			display_news_notification(trees)
 		action_build(settings, trees, mtimedb,
 			myopts, myaction, myfiles, spinner)
 		if "--pretend" not in myopts:
-			post_emerge(settings, mtimedb, 0)
+			post_emerge(trees, mtimedb, os.EX_OK)
 		else:
-			display_news_notification(settings)
+			display_news_notification(trees)
 
 if __name__ == "__main__":
 	retval = emerge_main()

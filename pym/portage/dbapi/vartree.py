@@ -189,8 +189,8 @@ class vardbapi(dbapi):
 		self._aux_cache_filename = os.path.join(self.root,
 			CACHE_PATH.lstrip(os.path.sep), "vdb_metadata.pickle")
 
-		self.libmap = LibraryPackageMap(os.path.join(self.root, CACHE_PATH, "library_consumers"), self)
-		self.plib_registry = PreservedLibsRegistry(os.path.join(self.root, CACHE_PATH, "preserved_libs_registry"))
+		self.libmap = LibraryPackageMap(os.path.join(self.root, CACHE_PATH.lstrip(os.sep), "library_consumers"), self)
+		self.plib_registry = PreservedLibsRegistry(os.path.join(self.root, PRIVATE_PATH, "preserved_libs_registry"))
 
 	def getpath(self, mykey, filename=None):
 		rValue = os.path.join(self.root, VDB_PATH, mykey)
@@ -1181,12 +1181,8 @@ class dblink(object):
 				except (OSError, AttributeError):
 					pass
 				islink = lstatobj is not None and stat.S_ISLNK(lstatobj.st_mode)
-				if not unmerge_orphans and statobj is None:
-					if not islink:
-						#we skip this if we're dealing with a symlink
-						#because os.stat() will operate on the
-						#link target rather than the link itself.
-						writemsg_stdout("--- !found " + str(pkgfiles[objkey][0]) + " %s\n" % obj)
+				if lstatobj is None:
+						writemsg_stdout("--- !found %s %s\n" % (file_type, obj))
 						continue
 				# next line includes a tweak to protect modules from being unmerged,
 				# but we don't protect modules from being overwritten if they are
@@ -1197,13 +1193,16 @@ class dblink(object):
 					writemsg_stdout("--- cfgpro %s %s\n" % (pkgfiles[objkey][0], obj))
 					continue
 
+				# Don't unlink symlinks to directories here since that can
+				# remove /lib and /usr/lib symlinks.
 				if unmerge_orphans and \
 					lstatobj and not stat.S_ISDIR(lstatobj.st_mode) and \
+					not (islink and statobj and stat.S_ISDIR(statobj.st_mode)) and \
 					not self.isprotected(obj):
 					try:
 						# Remove permissions to ensure that any hardlinks to
 						# suid/sgid files are rendered harmless.
-						if statobj:
+						if statobj and not islink:
 							os.chmod(obj, 0)
 						os.unlink(obj)
 					except EnvironmentError, e:
@@ -1225,6 +1224,13 @@ class dblink(object):
 					if not islink:
 						writemsg_stdout("--- !sym   %s %s\n" % ("sym", obj))
 						continue
+					# Go ahead and unlink symlinks to directories here when
+					# they're actually recorded as symlinks in the contents.
+					# Normally, symlinks such as /lib -> lib64 are not recorded
+					# as symlinks in the contents of a package.  If a package
+					# installs something into ${D}/lib/, it is recorded in the
+					# contents as a directory even if it happens to correspond
+					# to a symlink when it's merged to the live filesystem.
 					try:
 						os.unlink(obj)
 						writemsg_stdout("<<<        %s %s\n" % ("sym", obj))
@@ -1411,6 +1417,15 @@ class dblink(object):
 				i = i + 1
 				if i % 1000 == 0:
 					print str(i)+" files checked ..."
+				dest_path = normalize_path(
+					os.path.join(destroot, f.lstrip(os.path.sep)))
+				try:
+					dest_lstat = os.lstat(dest_path)
+				except EnvironmentError, e:
+					if e.errno != errno.ENOENT:
+						raise
+					del e
+					continue
 				if f[0] != "/":
 					f="/"+f
 				isowned = False
