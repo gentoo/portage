@@ -57,9 +57,10 @@ def tar_contents(contents, root, tar, onProgress=None):
 			onProgress(maxval, curval)
 
 def quickpkg_main(options, args, eout):
-	from portage import dblink, dep_expand, catsplit, isvalidatom, xpak
+	from portage import catsplit, dblink, dep_expand, flatten, isvalidatom, xpak
+	from portage_dep import use_reduce, paren_reduce
 	from portage_util import ensure_dirs
-	from portage_exception import InvalidData
+	from portage_exception import InvalidData, InvalidDependString
 	import tarfile
 	import portage
 	root = portage.settings["ROOT"]
@@ -104,11 +105,23 @@ def quickpkg_main(options, args, eout):
 				if not dblnk.exists():
 					# unmerged by a concurrent process
 					continue
-				iuse, use = vardb.aux_get(cpv, ["IUSE","USE"])
+				iuse, use, restrict = vardb.aux_get(cpv,
+					["IUSE","USE","RESTRICT"])
 				iuse = [ x.lstrip("+-") for x in iuse.split() ]
 				use = use.split()
+				try:
+					restrict = flatten(use_reduce(
+						paren_reduce(restrict), uselist=use))
+				except InvalidDependString, e:
+					eout.eerror("Invalid RESTRICT metadata " + \
+						"for '%s': %s; skipping" % (cpv, str(e)))
+					del e
+					continue
 				if "bindist" in iuse and "bindist" not in use:
 					eout.ewarn("%s: package was emerged with USE=-bindist!" % cpv)
+					eout.ewarn("%s: it may not be legal to redistribute this." % cpv)
+				elif "bindist" in restrict:
+					eout.ewarn("%s: package has RESTRICT=bindist!" % cpv)
 					eout.ewarn("%s: it may not be legal to redistribute this." % cpv)
 				eout.ebegin("Building package for %s" % cpv)
 				pkgs_for_arg += 1
