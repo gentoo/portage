@@ -16,7 +16,7 @@ class database(template.database):
 		config.pop("gid", None)
 		super(database, self).__init__(*args, **config)
 		self._data = {}
-		self.iterkeys = self._data.iterkeys
+		self.__iter__ = self._data.__iter__
 		self._delitem = self._data.__delitem__
 		self.__contains__ = self._data.__contains__
 

@@ -209,7 +209,7 @@ class SQLDatabase(template.database):
 		return self.con.rowcount > 0
 
 
-	def iterkeys(self):
+	def __iter__(self):
 		if not self.autocommits:
 			try:	self.commit()
 			except self._BaseError, e:
