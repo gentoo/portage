@@ -22,20 +22,23 @@ fi
 
 case $1 in
 	--suffix)
-		set -e
-		tmpdir="${T}"/.ecompress$$.${RANDOM}
-		mkdir "${tmpdir}"
-		cd "${tmpdir}"
-		# we have to fill the file enough so that there is something
-		# to compress as some programs will refuse to do compression
-		# if it cannot actually compress the file
-		echo {0..1000} > compressme
-		${PORTAGE_COMPRESS} ${PORTAGE_COMPRESS_FLAGS} compressme > /dev/null
-		suffix=$(ls compressme*)
-		suffix=${suffix#compressme}
-		cd /
-		rm -rf "${tmpdir}"
-		echo "${suffix}"
+		if [[ ! -e ${T}/.ecompress.suffix ]] ; then
+			set -e
+			tmpdir="${T}"/.ecompress$$.${RANDOM}
+			mkdir "${tmpdir}"
+			cd "${tmpdir}"
+			# we have to fill the file enough so that there is something
+			# to compress as some programs will refuse to do compression
+			# if it cannot actually compress the file
+			echo {0..1000} > compressme
+			${PORTAGE_COMPRESS} ${PORTAGE_COMPRESS_FLAGS} compressme > /dev/null
+			suffix=$(ls compressme*)
+			suffix=${suffix#compressme}
+			cd /
+			rm -rf "${tmpdir}"
+			echo "${suffix}" > "${T}/.ecompress.suffix"
+		fi
+		cat "${T}/.ecompress.suffix"
 		;;
 	--bin)
 		echo "${PORTAGE_COMPRESS} ${PORTAGE_COMPRESS_FLAGS}"
