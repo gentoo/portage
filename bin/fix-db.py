@@ -136,7 +136,7 @@ for cat in os.listdir(vardbdir):
 
 actions = {}
 writemsg("\n\n")
-for catpkg in bad.keys():
+for catpkg in bad:
 	bad[catpkg].sort()
 
 	mystr = ""
@@ -155,7 +155,7 @@ for catpkg in bad.keys():
 
 if (len(sys.argv) > 1) and (sys.argv[1] == "--fix"):
 	writemsg("These are only directions, at the moment.")
-	for catpkg in actions.keys():
+	for catpkg in actions:
 		action = actions[catpkg]
 		writemsg("We will now '%s' '%s'..." % (action, catpkg))
 		#if action == 
