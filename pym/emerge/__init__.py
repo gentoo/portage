@@ -363,7 +363,7 @@ def create_depgraph_params(myopts, myaction):
 	return myparams
 
 # search functionality
-class search:
+class search(object):
 
 	#
 	# class constants
@@ -911,7 +911,7 @@ def show_invalid_depstring_notice(parent_node, depstring, error_msg):
 		f.add_flowing_data(x)
 	f.end_paragraph(1)
 
-class depgraph:
+class depgraph(object):
 
 	pkg_tree_map = {
 		"ebuild":"porttree",
@@ -2218,10 +2218,22 @@ class depgraph:
 			for x in worlddict.keys():
 				if not portage.isvalidatom(x):
 					world_problems = True
-				elif not self.trees[self.target_root]["vartree"].dbapi.match(x):
+					continue
+				elif not vardb.match(x):
 					world_problems = True
-				else:
-					mylist.append(x)
+					available = False
+					if "--usepkgonly" not in self.myopts and \
+						portdb.match(x):
+						available = True
+					elif "--usepkg" in self.myopts:
+						mymatches = bindb.match(x)
+						if "--usepkgonly" not in self.myopts:
+							mymatches = visible(mymatches)
+						if mymatches:
+							available = True
+					if not available:
+						continue
+				mylist.append(x)
 
 		newlist = []
 		for atom in mylist:

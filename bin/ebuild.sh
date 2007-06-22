@@ -67,7 +67,7 @@ unset GZIP BZIP BZIP2 CDPATH GREP_OPTIONS GREP_COLOR GLOBIGNORE
 export PATH="${DEFAULT_PATH}:${PORTAGE_BIN_PATH}:${ROOTPATH}"
 [ ! -z "$PREROOTPATH" ] && export PATH="${PREROOTPATH%%:}:$PATH"
 
-source "@PORTAGE_BASE@"/bin/isolated-functions.sh &>/dev/null
+source "${PORTAGE_BIN_PATH}/isolated-functions.sh"  &>/dev/null
 
 OCC="$CC"
 OCXX="$CXX"
@@ -182,18 +182,26 @@ has_version() {
 	fi
 	# return shell-true/shell-false if exists.
 	# Takes single depend-type atoms.
-	if "@PORTAGE_BASE@"/bin/portageq 'has_version' "${ROOT}" "$1"; then
-		return 0
-	else
-		return 1
-	fi
+	"${PORTAGE_BIN_PATH}"/portageq has_version "${ROOT}" "$1"
+	local retval=$?
+	case "${retval}" in
+		0)
+			return 0
+			;;
+		1)
+			return 1
+			;;
+		*)
+			die "unexpected portageq exit code: ${retval}"
+			;;
+	esac
 }
 
 portageq() {
 	if [ "${EBUILD_PHASE}" == "depend" ]; then
 		die "portageq calls are not allowed in the global scope"
 	fi
-	"@PORTAGE_BASE@"/bin/portageq "$@"
+	"${PORTAGE_BIN_PATH}/portageq" "$@"
 }
 
 
@@ -208,7 +216,7 @@ best_version() {
 	fi
 	# returns the best/most-current match.
 	# Takes single depend-type atoms.
-	"@PORTAGE_BASE@"/bin/portageq 'best_version' "${ROOT}" "$1"
+	"${PORTAGE_BIN_PATH}/portageq" 'best_version' "${ROOT}" "$1"
 }
 
 use_with() {
@@ -499,7 +507,7 @@ econf() {
 
 		if ! ${CONFCACHE} ${CONFCACHE_ARG} ${TMP_CONFCACHE_DIR} "${ECONF_SOURCE}/configure" \
 			--prefix="${EPREFIX}"/usr \
-			--host="${CHOST}" \
+			--host=${CHOST} \
 			--mandir="${EPREFIX}"/usr/share/man \
 			--infodir="${EPREFIX}"/usr/share/info \
 			--datadir="${EPREFIX}"/usr/share \
@@ -1650,9 +1658,9 @@ if [ -n "${myarg}" ] && \
 	unset myarg
 	# Save current environment and touch a success file. (echo for success)
 	umask 002
-	set | @EGREP@ -v "^SANDBOX_" > "${T}/environment" 2>/dev/null
-	export | @EGREP@ -v "^declare -x SANDBOX_" | \
-		@SED@ 's:^declare -rx:declare -x:' >> "${T}/environment" 2>/dev/null
+	set | egrep -v "^SANDBOX_" > "${T}/environment" 2>/dev/null
+	export | egrep -v "^declare -x SANDBOX_" | \
+		sed 's:^declare -rx:declare -x:' >> "${T}/environment" 2>/dev/null
 	chown ${PORTAGE_USER:-portage}:${PORTAGE_GROUP:-portage} "${T}/environment" &>/dev/null
 	chmod g+w "${T}/environment" &>/dev/null
 fi

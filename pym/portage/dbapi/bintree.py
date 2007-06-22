@@ -429,6 +429,12 @@ class binarytree(object):
 									aux_cache[k] = d[k]
 								self.dbapi._aux_cache[mycpv] = aux_cache
 							continue
+					if not os.access(full_path, os.R_OK):
+						writemsg("!!! Permission denied to read " + \
+							"binary package: '%s'\n" % full_path,
+							noiselevel=-1)
+						self.invalids.append(myfile[:-5])
+						continue
 					mytbz2 = portage.xpak.tbz2(full_path)
 					# For invalid packages, mycat could be None.
 					mycat = mytbz2.getfile("CATEGORY")

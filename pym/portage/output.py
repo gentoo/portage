@@ -256,10 +256,15 @@ def get_term_size():
 	occurs. The curses module is used if available, otherwise the output of
 	`stty size` is parsed.
 	"""
+	if not sys.stdout.isatty():
+		return -1, -1
 	try:
 		import curses
-		curses.setupterm()
-		return curses.tigetnum('lines'), curses.tigetnum('cols')
+		try:
+			curses.setupterm()
+			return curses.tigetnum('lines'), curses.tigetnum('cols')
+		except curses.error:
+			pass
 	except ImportError:
 		pass
 	st, out = commands.getstatusoutput('stty size')
@@ -281,7 +286,7 @@ def set_term_size(lines, columns, fd):
 	cmd = ["stty", "rows", str(lines), "columns", str(columns)]
 	spawn(cmd, env=os.environ, fd_pipes={0:fd})
 
-class EOutput:
+class EOutput(object):
 	"""
 	Performs fancy terminal formatting for status and informational messages.
 
@@ -518,9 +523,11 @@ class TermProgressBar(ProgressBar):
 		curval = self._curval
 		maxval = self._maxval
 		position = self._position
-		if cols < 3:
+		percentage_str_width = 4
+		square_brackets_width = 2
+		if cols < percentage_str_width:
 			return ""
-		bar_space = cols - 6
+		bar_space = cols - percentage_str_width - square_brackets_width
 		if maxval == 0:
 			max_bar_width = bar_space-3
 			image = "    "
@@ -545,11 +552,12 @@ class TermProgressBar(ProgressBar):
 				"<=>" + ((max_bar_width - bar_width) * " ") + "]"
 			return image
 		else:
-			max_bar_width = bar_space-1
 			percentage = int(100 * float(curval) / maxval)
 			if percentage == 100:
-				percentage = 99
-			image = ("%d%% " % percentage).rjust(4)
+				percentage_str_width += 1
+				bar_space -= 1
+			max_bar_width = bar_space - 1
+			image = ("%d%% " % percentage).rjust(percentage_str_width)
 			if cols < min_columns:
 				return image
 			offset = float(curval) / maxval

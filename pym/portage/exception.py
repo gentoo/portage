@@ -53,6 +53,7 @@ class OperationNotPermitted(PortageException):
 	"""An operation was not permitted operating system"""
 
 class PermissionDenied(PortageException):
+	from errno import EACCES as errno
 	"""Permission denied"""
 
 class ReadOnlyFileSystem(PortageException):
