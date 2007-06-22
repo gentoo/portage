@@ -4999,7 +4999,7 @@ class fakedbapi(dbapi):
 
 	def cp_all(self):
 		returnme=[]
-		for x in self.cpdict.keys():
+		for x in self.cpdict:
 			returnme.extend(self.cpdict[x])
 		return returnme
 
@@ -5878,7 +5878,7 @@ class portdbapi(dbapi):
 			pass
 
 	def close_caches(self):
-		for x in self.auxdb.keys():
+		for x in self.auxdb:
 			self.auxdb[x].sync()
 		self.auxdb.clear()
 
@@ -6053,7 +6053,7 @@ class portdbapi(dbapi):
 		returnme = []
 		for x in mylist:
 			if x == "INHERITED":
-				returnme.append(' '.join(mydata.get("_eclasses_", {}).keys()))
+				returnme.append(' '.join(mydata.get("_eclasses_", [])))
 			else:
 				returnme.append(mydata.get(x,""))
 

@@ -79,7 +79,7 @@ def perform_md5(x, calc_prelink=0):
 
 def perform_all(x, calc_prelink=0):
 	mydict = {}
-	for k in hashfunc_map.keys():
+	for k in hashfunc_map:
 		mydict[k] = perform_checksum(x, hashfunc_map[k], calc_prelink)[0]
 	return mydict
 
@@ -131,10 +131,10 @@ def verify_all(filename, mydict, calc_prelink=0, strict=0):
 		got = " ".join(got)
 		return False, ("Insufficient data for checksum verification", got, expected)
 
-	for x in mydict.keys():
+	for x in mydict:
 		if   x == "size":
 			continue
-		elif x in hashfunc_map.keys():
+		elif x in hashfunc_map:
 			myhash = perform_checksum(filename, x, calc_prelink=calc_prelink)[0]
 			if mydict[x] != myhash:
 				if strict:
