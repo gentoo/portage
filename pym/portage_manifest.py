@@ -344,8 +344,15 @@ class Manifest(object):
 				except FileNotFound:
 					pass
 
+	def checkIntegrity(self):
+		for t in self.fhashdict:
+			for f in self.fhashdict[t]:
+				if portage_const.MANIFEST2_REQUIRED_HASH not in self.fhashdict[t][f]:
+					raise MissingParameter("Missing %s checksum: %s %s" % (portage_const.MANIFEST2_REQUIRED_HASH, t, f))
+
 	def write(self, sign=False, force=False):
 		""" Write Manifest instance to disk, optionally signing it """
+		self.checkIntegrity()
 		try:
 			if self.compat:
 				self._writeDigests()
