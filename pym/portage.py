@@ -4636,7 +4636,7 @@ def cpv_expand(mycpv, mydb=None, use_cache=1, settings=None):
 	else:
 		return mykey
 
-def getmaskingreason(mycpv, settings=None, portdb=None):
+def getmaskingreason(mycpv, settings=None, portdb=None, return_location=False):
 	from portage_util import grablines
 	if settings is None:
 		settings = globals()["settings"]
@@ -4659,11 +4659,7 @@ def getmaskingreason(mycpv, settings=None, portdb=None):
 	locations.append(os.path.join(settings["PORTAGE_CONFIGROOT"],
 		USER_CONFIG_PATH.lstrip(os.path.sep)))
 	locations.reverse()
-	pmasklists = [grablines(os.path.join(x, "package.mask"), recursive=1) for x in locations]
-	pmasklines = []
-	while pmasklists: # stack_lists doesn't preserve order so it can't be used
-		pmasklines.extend(pmasklists.pop(0))
-	del pmasklists
+	pmasklists = [(x, grablines(os.path.join(x, "package.mask"), recursive=1)) for x in locations]
 
 	if settings.pmaskdict.has_key(mycp):
 		for x in settings.pmaskdict[mycp]:
@@ -4671,23 +4667,31 @@ def getmaskingreason(mycpv, settings=None, portdb=None):
 				comment = ""
 				l = "\n"
 				comment_valid = -1
-				for i in xrange(len(pmasklines)):
-					l = pmasklines[i].strip()
-					if l == "":
-						comment = ""
-						comment_valid = -1
-					elif l[0] == "#":
-						comment += (l+"\n")
-						comment_valid = i + 1
-					elif l == x:
-						if comment_valid != i:
+				for pmask in pmasklists:
+					pmask_filename = os.path.join(pmask[0], "package.mask")
+					for i in xrange(len(pmask[1])):
+						l = pmask[1][i].strip()
+						if l == "":
 							comment = ""
-						return comment
-					elif comment_valid != -1:
-						# Apparently this comment applies to muliple masks, so
-						# it remains valid until a blank line is encountered.
-						comment_valid += 1
-	return None
+							comment_valid = -1
+						elif l[0] == "#":
+							comment += (l+"\n")
+							comment_valid = i + 1
+						elif l == x:
+							if comment_valid != i:
+								comment = ""
+							if return_location:
+								return (comment, pmask_filename)
+							else:
+								return comment
+						elif comment_valid != -1:
+							# Apparently this comment applies to muliple masks, so
+							# it remains valid until a blank line is encountered.
+							comment_valid += 1
+	if return_location:
+		return (None, None)
+	else:
+		return None
 
 def getmaskingstatus(mycpv, settings=None, portdb=None):
 	if settings is None:
