@@ -95,6 +95,11 @@ def elog_process(cpv, mysettings):
 					m.process(mysettings, str(key), mod_logentries, mod_fulllog)
 				finally:
 					signal.alarm(0)
+				# FIXME: when installing to more than one $ROOT, the finalizer
+				# will only be registered with a config instance from one of
+				# the roots (randomly).  With PORTAGE_CONFIGROOT, the config
+				# instances can have completely different settings, so
+				# logs can end up in the wrong PORT_LOGDIR for example.
 				if hasattr(m, "finalize") and not m.finalize in _elog_atexit_handlers:
 					_elog_atexit_handlers.append(m.finalize)
 					atexit_register(m.finalize, mysettings)
