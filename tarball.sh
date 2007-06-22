@@ -24,7 +24,7 @@ fi
 
 install -d -m0755 ${DEST}
 cp -pPR . ${DEST}
-sed -i -e '/^VERSION=/s/^.*$/VERSION="'${V}'"/' ${DEST}/pym/portage/__init__.py
+sed -i -e '/^VERSION=/s/^.*$/VERSION="'${V}-prefix'"/' ${DEST}/pym/portage/__init__.py
 sed -i -e "s/##VERSION##/${V}/g" ${DEST}/man/emerge.1
 #rm ${DEST}/man/*.eclass.5
 

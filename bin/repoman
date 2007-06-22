@@ -1819,7 +1819,7 @@ elif "--pretend" not in myoptions:
 				exithandler()
 	try:
 		unameout=getstatusoutput("uname -srp")[1]
-		commitmessage+="\n(Portage "+str(portage.VERSION)+"-prefix/"
+		commitmessage+="\n(Portage "+str(portage.VERSION)+"/"
 		if isCvs:
 			commitmessage+="CVS"
 		elif isSvn:
