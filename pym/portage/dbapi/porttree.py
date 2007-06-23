@@ -19,7 +19,7 @@ from portage.versions import pkgsplit, catpkgsplit, best
 import portage.gpg, portage.checksum
 
 from portage import eclass_cache, auxdbkeys, auxdbkeylen, doebuild, flatten, \
-	listdir, dep_expand, eapi_is_supported, key_expand, dep_check, config
+	listdir, dep_expand, eapi_is_supported, key_expand, dep_check
 
 import os, stat, sys
 
@@ -31,6 +31,7 @@ class portdbapi(dbapi):
 	def __init__(self, porttree_root, mysettings=None):
 		portdbapi.portdbapi_instances.append(self)
 
+		from portage import config
 		if mysettings:
 			self.mysettings = mysettings
 		else:
