@@ -586,10 +586,12 @@ def clean_world(vardb, cpv):
 		else:
 			#this doesn't match the package we're unmerging; keep it.
 			newworldlist.append(x)
-
+	
+	newworldlist.sort()
+	
 	portage.util.ensure_dirs(os.path.join(vardb.root, portage.PRIVATE_PATH),
 		gid=portage.portage_gid, mode=02770)
-	portage.util.write_atomic(world_filename, "\n".join(newworldlist))
+	portage.util.write_atomic(world_filename, "\n".join(newworldlist)+"\n")
 
 def genericdict(mylist):
 	mynewdict={}
@@ -3339,7 +3341,7 @@ class MergeTask(object):
 							") Updating world file ("+x[pkgindex]+")")
 						portage.write_atomic(
 						os.path.join(myroot, portage.WORLD_FILE),
-						"\n".join(myfavdict.values()))
+						"\n".join(sorted(myfavdict.values()))+"\n")
 
 				if "--pretend" not in self.myopts and \
 					"--fetchonly" not in self.myopts and \
