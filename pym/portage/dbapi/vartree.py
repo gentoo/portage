@@ -24,7 +24,7 @@ from portage import listdir, dep_expand, config, flatten, key_expand, \
 	doebuild_environment, doebuild, env_update, \
 	abssymlink, movefile, bsd_chflags
 
-import os, sys, stat, errno, commands, copy, time
+import commands, copy, errno, os, shutil, stat, sys
 from itertools import izip
 
 try:
@@ -301,14 +301,14 @@ class vardbapi(dbapi):
 			if os.path.exists(newpath):
 				#dest already exists; keep this puppy where it is.
 				continue
-			os.rename(origpath, newpath)
+			shutil.move(origpath, newpath)
 
 			# We need to rename the ebuild now.
 			old_pf = catsplit(mycpv)[1]
 			new_pf = catsplit(mynewcpv)[1]
 			if new_pf != old_pf:
 				try:
-					os.rename(os.path.join(newpath, old_pf + ".ebuild"),
+					shutil.move(os.path.join(newpath, old_pf + ".ebuild"),
 						os.path.join(newpath, new_pf + ".ebuild"))
 				except OSError, e:
 					if e.errno != errno.ENOENT:
@@ -1031,7 +1031,7 @@ class dblink(object):
 				if x[:-7] != self.pkg:
 					# Clean up after vardbapi.move_ent() breakage in
 					# portage versions before 2.1.2
-					os.rename(os.path.join(self.dbdir, x), myebuildpath)
+					shutil.move(os.path.join(self.dbdir, x), myebuildpath)
 					write_atomic(os.path.join(self.dbdir, "PF"), self.pkg+"\n")
 				break
 
