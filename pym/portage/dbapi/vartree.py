@@ -310,7 +310,7 @@ class vardbapi(dbapi):
 				try:
 					shutil.move(os.path.join(newpath, old_pf + ".ebuild"),
 						os.path.join(newpath, new_pf + ".ebuild"))
-				except OSError, e:
+				except EnvironmentError, e:
 					if e.errno != errno.ENOENT:
 						raise
 					del e
