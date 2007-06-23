@@ -2478,6 +2478,8 @@ class depgraph(object):
 		# files to fetch list - avoids counting a same file twice
 		# in size display (verbose mode)
 		myfetchlist=[]
+		worldlist = getlist(self.settings, "world")
+
 		for mylist_index in xrange(len(mylist)):
 			x, depth, ordered = mylist[mylist_index]
 			pkg_type = x[0]
@@ -2746,17 +2748,23 @@ class depgraph(object):
 						myoldbest=myoldbest[:-3]
 					myoldbest=blue("["+myoldbest+"]")
 
+				if xs[0] in worldlist:
+					pkgprint = bold
+				else:
+					def pkgprint(pkg):
+						return pkg
+
 				if x[1]!="/":
 					if myoldbest:
 						myoldbest +=" "
 					if "--columns" in self.myopts:
 						if "--quiet" in self.myopts:
-							myprint=addl+" "+indent+darkgreen(xs[0])
+							myprint=addl+" "+indent+darkgreen(pkgprint(xs[0]))
 							myprint=myprint+darkblue(" "+xs[1]+xs[2])+" "
 							myprint=myprint+myoldbest
 							myprint=myprint+darkgreen("to "+x[1])
 						else:
-							myprint="["+x[0]+" "+addl+"] "+indent+darkgreen(xs[0])
+							myprint="["+x[0]+" "+addl+"] "+indent+darkgreen(pkgprint(xs[0]))
 							if (newlp-nc_len(myprint)) > 0:
 								myprint=myprint+(" "*(newlp-nc_len(myprint)))
 							myprint=myprint+"["+darkblue(xs[1]+xs[2])+"] "
@@ -2769,17 +2777,17 @@ class depgraph(object):
 							myprint = darkblue("[nomerge      ] ")
 						else:
 							myprint = "[" + pkg_type + " " + addl + "] "
-						myprint += indent + darkgreen(pkg_key) + " " + \
+						myprint += indent + darkgreen(pkrprint(pkg_key)) + " " + \
 							myoldbest + darkgreen("to " + myroot) + " " + \
 							verboseadd
 				else:
 					if "--columns" in self.myopts:
 						if "--quiet" in self.myopts:
-							myprint=addl+" "+indent+darkgreen(xs[0])
+							myprint=addl+" "+indent+darkgreen(pkgprint(xs[0]))
 							myprint=myprint+" "+green(xs[1]+xs[2])+" "
 							myprint=myprint+myoldbest
 						else:
-							myprint="["+x[0]+" "+addl+"] "+indent+darkgreen(xs[0])
+							myprint="["+x[0]+" "+addl+"] "+indent+darkgreen(pkgprint(xs[0]))
 							if (newlp-nc_len(myprint)) > 0:
 								myprint=myprint+(" "*(newlp-nc_len(myprint)))
 							myprint=myprint+green(" ["+xs[1]+xs[2]+"] ")
@@ -2788,9 +2796,9 @@ class depgraph(object):
 							myprint=myprint+myoldbest+"  "+verboseadd
 					else:
 						if x[-1] == "nomerge" or not ordered:
-							myprint=darkblue("[nomerge      ] "+indent+x[2]+" "+myoldbest+" ")+verboseadd
+							myprint=darkblue("[nomerge      ] "+indent+pkgprint(x[2])+" "+myoldbest+" ")+verboseadd
 						else:
-							myprint="["+x[0]+" "+addl+"] "+indent+darkgreen(x[2])+" "+myoldbest+" "+verboseadd
+							myprint="["+x[0]+" "+addl+"] "+indent+darkgreen(pkgprint(x[2]))+" "+myoldbest+" "+verboseadd
 				p.append(myprint)
 
 			mysplit = portage.pkgsplit(x[2])
