@@ -3696,17 +3696,14 @@ def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 
 			icount=0
 			badcount=0
-			import shutil
 			for inforoot in regen_infodirs:
 				if inforoot=='':
 					continue
 				for filename in ("dir", "dir.gz", "dir.bz2"):
 					file_path = os.path.join(inforoot, filename)
-					if not os.path.exists(file_path):
-						continue
 					try:
-						shutil.move(file_path, file_path + ".old")
-					except EnvironmentError, e:
+						os.rename(file_path, file_path + ".old")
+					except OSError, e:
 						if e.errno != errno.ENOENT:
 							raise
 						del e

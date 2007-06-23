@@ -5264,16 +5264,16 @@ class vardbapi(dbapi):
 			if os.path.exists(newpath):
 				#dest already exists; keep this puppy where it is.
 				continue
-			shutil.move(origpath, newpath)
+			os.rename(origpath, newpath)
 
 			# We need to rename the ebuild now.
 			old_pf = catsplit(mycpv)[1]
 			new_pf = catsplit(mynewcpv)[1]
 			if new_pf != old_pf:
 				try:
-					shutil.move(os.path.join(newpath, old_pf + ".ebuild"),
+					os.rename(os.path.join(newpath, old_pf + ".ebuild"),
 						os.path.join(newpath, new_pf + ".ebuild"))
-				except EnvironmentError, e:
+				except OSError, e:
 					if e.errno != errno.ENOENT:
 						raise
 					del e
@@ -6489,7 +6489,7 @@ class binarytree(object):
 					if e.errno != errno.EEXIST:
 						raise
 					del e
-				shutil.move(tbz2path, new_path)
+				os.rename(tbz2path, new_path)
 				self._remove_symlink(mycpv)
 				if new_path.split(os.path.sep)[-2] == "All":
 					self._create_symlink(mynewcpv)
@@ -6587,7 +6587,7 @@ class binarytree(object):
 				if e.errno != errno.EEXIST:
 					raise
 				del e
-			shutil.move(src_path, os.path.join(self.pkgdir, "All", myfile))
+			os.rename(src_path, os.path.join(self.pkgdir, "All", myfile))
 			self._create_symlink(cpv)
 		self._pkg_paths[cpv] = os.path.join("All", myfile)
 
@@ -6605,7 +6605,7 @@ class binarytree(object):
 			if e.errno != errno.EEXIST:
 				raise
 			del e
-		shutil.move(os.path.join(self.pkgdir, "All", myfile), dest_path)
+		os.rename(os.path.join(self.pkgdir, "All", myfile), dest_path)
 		self._pkg_paths[cpv] = mypath
 
 	def populate(self, getbinpkgs=0,getbinpkgsonly=0):
@@ -7051,7 +7051,7 @@ class dblink:
 				if x[:-7] != self.pkg:
 					# Clean up after vardbapi.move_ent() breakage in
 					# portage versions before 2.1.2
-					shutil.move(os.path.join(self.dbdir, x), myebuildpath)
+					os.rename(os.path.join(self.dbdir, x), myebuildpath)
 					write_atomic(os.path.join(self.dbdir, "PF"), self.pkg+"\n")
 				break
 
