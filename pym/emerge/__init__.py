@@ -5623,7 +5623,7 @@ def emerge_main():
 				("--fetchonly" in myopts or \
 				"--fetch-all-uri" in myopts or \
 				myaction in ("metadata", "regen") or \
-				(myaction == "sync" and os.access(settings["PORTDIR"], os.W_OK))
+				(myaction == "sync" and os.access(settings["PORTDIR"], os.W_OK)))
 			if portage.secpass < 1 or \
 				need_superuser:
 				if need_superuser:
