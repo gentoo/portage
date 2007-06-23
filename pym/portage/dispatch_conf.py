@@ -7,7 +7,7 @@
 # Library by Wayne Davison <gentoo@blorf.net>, derived from code
 # written by Jeremy Wohl (http://igmus.org)
 
-from stat import ST_GID, ST_MODE, ST_UID
+from stat import *
 import os, sys, commands, shutil
 
 import portage
@@ -72,7 +72,7 @@ def rcs_archive(archive, curconf, newconf, mrgconf):
         os.system(RCS_GET + ' -r' + RCS_BRANCH + ' ' + archive)
         has_branch = os.path.exists(archive)
         if has_branch:
-            shutil.move(archive, archive + '.dist')
+            os.rename(archive, archive + '.dist')
 
         try:
             shutil.copy2(newconf, archive)
@@ -87,7 +87,7 @@ def rcs_archive(archive, curconf, newconf, mrgconf):
                 mystat = os.lstat(newconf)
                 os.chmod(mrgconf, mystat[ST_MODE])
                 os.chown(mrgconf, mystat[ST_UID], mystat[ST_GID])
-        shutil.move(archive, archive + '.dist.new')
+        os.rename(archive, archive + '.dist.new')
     return ret
 
 
@@ -112,10 +112,10 @@ def file_archive(archive, curconf, newconf, mrgconf):
             suf += 1
 
         while suf > 1:
-            shutil.move(archive + '.' + str(suf-1), archive + '.' + str(suf))
+            os.rename(archive + '.' + str(suf-1), archive + '.' + str(suf))
             suf -= 1
 
-        shutil.move(archive, archive + '.1')
+        os.rename(archive, archive + '.1')
 
     try:
         shutil.copy2(curconf, archive)
@@ -145,7 +145,7 @@ def file_archive(archive, curconf, newconf, mrgconf):
 def rcs_archive_post_process(archive):
     """Check in the archive file with the .dist.new suffix on the branch
     and remove the one with the .dist suffix."""
-    shutil.move(archive + '.dist.new', archive)
+    os.rename(archive + '.dist.new', archive)
     if os.path.exists(archive + '.dist'):
         # Commit the last-distributed version onto the branch.
         os.system(RCS_LOCK + RCS_BRANCH + ' ' + archive)
@@ -158,4 +158,4 @@ def rcs_archive_post_process(archive):
 
 def file_archive_post_process(archive):
     """Rename the archive file with the .dist.new suffix to a .dist suffix"""
-    shutil.move(archive + '.dist.new', archive + '.dist')
+    os.rename(archive + '.dist.new', archive + '.dist')

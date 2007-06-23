@@ -14,7 +14,7 @@ from portage import listdir, dep_expand
 
 import portage.xpak, portage.getbinpkg
 
-import os, errno, shutil, stat
+import os, errno, stat
 
 class bindbapi(fakedbapi):
 	def __init__(self, mybintree=None, settings=None):
@@ -206,7 +206,7 @@ class binarytree(object):
 					if e.errno != errno.EEXIST:
 						raise
 					del e
-				shutil.move(tbz2path, new_path)
+				os.rename(tbz2path, new_path)
 				self._remove_symlink(mycpv)
 				if new_path.split(os.path.sep)[-2] == "All":
 					self._create_symlink(mynewcpv)
@@ -299,7 +299,7 @@ class binarytree(object):
 				if e.errno != errno.EEXIST:
 					raise
 				del e
-			shutil.move(src_path, os.path.join(self.pkgdir, "All", myfile))
+			os.rename(src_path, os.path.join(self.pkgdir, "All", myfile))
 			self._create_symlink(cpv)
 		self._pkg_paths[cpv] = os.path.join("All", myfile)
 
@@ -317,7 +317,7 @@ class binarytree(object):
 			if e.errno != errno.EEXIST:
 				raise
 			del e
-		shutil.move(os.path.join(self.pkgdir, "All", myfile), dest_path)
+		os.rename(os.path.join(self.pkgdir, "All", myfile), dest_path)
 		self._pkg_paths[cpv] = mypath
 
 	def populate(self, getbinpkgs=0, getbinpkgsonly=0):
@@ -681,7 +681,7 @@ class binarytree(object):
 			pkgindex_lock = lockfile(self._pkgindex_file,
 				wantnewlockfile=1)
 			if filename is not None:
-				shutil.move(filename, self.getname(cpv))
+				os.rename(filename, self.getname(cpv))
 			if self._all_directory and \
 				self.getname(cpv).split(os.path.sep)[-2] == "All":
 				self._create_symlink(cpv)
