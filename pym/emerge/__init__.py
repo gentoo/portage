@@ -5618,12 +5618,12 @@ def emerge_main():
 	# check if root user is the current user for the actions where emerge needs this
 	if portage.secpass < 2:
 		# We've already allowed "--version" and "--help" above.
-		if "--pretend" not in myopts and \
-		myaction not in ("search","info"):
+		if "--pretend" not in myopts and myaction not in ("search","info"):
 			need_superuser = not \
 				("--fetchonly" in myopts or \
 				"--fetch-all-uri" in myopts or \
-				myaction in ("metadata", "regen"))
+				myaction in ("metadata", "regen") or \
+				(myaction == "sync" and os.access(settings["PORTDIR"], os.W_OK))
 			if portage.secpass < 1 or \
 				need_superuser:
 				if need_superuser:
