@@ -3072,7 +3072,7 @@ class MergeTask(object):
 				"--pretend" in self.myopts):
 				portage.write_atomic(
 					os.path.join(self.target_root, portage.WORLD_FILE),
-					"\n".join(myfavdict.values()))
+						"\n".join(sorted(myfavdict.values())) + "\n")
 
 			mtimedb["resume"]["mergelist"]=mymergelist[:]
 			mtimedb.commit()
