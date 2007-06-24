@@ -1647,7 +1647,7 @@ class dblink(object):
 			self._collision_protect(srcroot, destroot, others_in_slot,
 				myfilelist+mylinklist, mylinklist)
 
-		if os.stat(srcroot).st_dev == os.stat(destroot).st_dev:
+		if True:
 			""" The merge process may move files out of the image directory,
 			which causes invalidation of the .installed flag."""
 			try:
