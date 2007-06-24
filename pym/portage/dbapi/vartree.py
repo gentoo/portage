@@ -1160,6 +1160,9 @@ class dblink(object):
 			#process symlinks second-to-last, directories last.
 			mydirs = []
 			modprotect = os.path.join(self.vartree.root, "lib/modules/")
+			def show_unmerge(zing, desc, file_type, file_name):
+					writemsg_stdout("%s %s %s %s\n" % \
+						(zing, desc.ljust(8), file_type, obj))
 			for objkey in mykeys:
 				obj = normalize_path(objkey)
 				file_data = pkgfiles[objkey]
@@ -1176,7 +1179,7 @@ class dblink(object):
 					pass
 				islink = lstatobj is not None and stat.S_ISLNK(lstatobj.st_mode)
 				if lstatobj is None:
-						writemsg_stdout("--- !found %s %s\n" % (file_type, obj))
+						show_unmerge("---", "!found", file_type, obj)
 						continue
 				if obj.startswith(dest_root):
 					relative_path = obj[dest_root_len:]
@@ -1188,8 +1191,7 @@ class dblink(object):
 					if is_owned:
 						# A new instance of this package claims the file, so
 						# don't unmerge it.
-						writemsg_stdout("--- replaced %s %s\n" % \
-							(file_type, obj))
+						show_unmerge("---", "replaced", file_type, obj)
 						continue
 				# next line includes a tweak to protect modules from being unmerged,
 				# but we don't protect modules from being overwritten if they are
@@ -1197,7 +1199,7 @@ class dblink(object):
 				# functionality for /lib/modules. For portage-ng both capabilities
 				# should be able to be independently specified.
 				if obj.startswith(modprotect):
-					writemsg_stdout("--- cfgpro %s %s\n" % (pkgfiles[objkey][0], obj))
+					show_unmerge("---", "cfgpro", file_type, obj)
 					continue
 
 				# Don't unlink symlinks to directories here since that can
@@ -1214,22 +1216,22 @@ class dblink(object):
 						os.unlink(obj)
 					except EnvironmentError, e:
 						pass
-					writemsg_stdout("<<<        %s %s\n" % (file_type, obj))
+					show_unmerge("<<<", "", file_type, obj)
 					continue
 
 				lmtime = str(lstatobj[stat.ST_MTIME])
 				if (pkgfiles[objkey][0] not in ("dir", "fif", "dev")) and (lmtime != pkgfiles[objkey][1]):
-					writemsg_stdout("--- !mtime %s %s\n" % (pkgfiles[objkey][0], obj))
+					show_unmerge("---", "!mtime", file_type, obj)
 					continue
 
 				if pkgfiles[objkey][0] == "dir":
 					if statobj is None or not stat.S_ISDIR(statobj.st_mode):
-						writemsg_stdout("--- !dir   %s %s\n" % ("dir", obj))
+						show_unmerge("---", "!dir", file_type, obj)
 						continue
 					mydirs.append(obj)
 				elif pkgfiles[objkey][0] == "sym":
 					if not islink:
-						writemsg_stdout("--- !sym   %s %s\n" % ("sym", obj))
+						show_unmerge("---", "!sym", file_type, obj)
 						continue
 					# Go ahead and unlink symlinks to directories here when
 					# they're actually recorded as symlinks in the contents.
@@ -1240,25 +1242,25 @@ class dblink(object):
 					# to a symlink when it's merged to the live filesystem.
 					try:
 						os.unlink(obj)
-						writemsg_stdout("<<<        %s %s\n" % ("sym", obj))
+						show_unmerge("<<<", "", file_type, obj)
 					except (OSError, IOError),e:
-						writemsg_stdout("!!!        %s %s\n" % ("sym", obj))
+						show_unmerge("!!!", "", file_type, obj)
 				elif pkgfiles[objkey][0] == "obj":
 					if statobj is None or not stat.S_ISREG(statobj.st_mode):
-						writemsg_stdout("--- !obj   %s %s\n" % ("obj", obj))
+						show_unmerge("---", "!obj", file_type, obj)
 						continue
 					mymd5 = None
 					try:
 						mymd5 = perform_md5(obj, calc_prelink=1)
 					except FileNotFound, e:
 						# the file has disappeared between now and our stat call
-						writemsg_stdout("--- !obj   %s %s\n" % ("obj", obj))
+						show_unmerge("---", "!obj", file_type, obj)
 						continue
 
 					# string.lower is needed because db entries used to be in upper-case.  The
 					# string.lower allows for backwards compatibility.
 					if mymd5 != pkgfiles[objkey][2].lower():
-						writemsg_stdout("--- !md5   %s %s\n" % ("obj", obj))
+						show_unmerge("---", "!md5", file_type, obj)
 						continue
 					try:
 						# Remove permissions to ensure that any hardlinks to
@@ -1268,14 +1270,14 @@ class dblink(object):
 						os.unlink(obj)
 					except (OSError, IOError), e:
 						pass
-					writemsg_stdout("<<<        %s %s\n" % ("obj", obj))
+					show_unmerge("<<<", "fif", file_type, obj)
 				elif pkgfiles[objkey][0] == "fif":
 					if not stat.S_ISFIFO(lstatobj[stat.ST_MODE]):
-						writemsg_stdout("--- !fif   %s %s\n" % ("fif", obj))
+						show_unmerge("---", "!fif", file_type, obj)
 						continue
-					writemsg_stdout("---        %s %s\n" % ("fif", obj))
+					show_unmerge("---", "fif", file_type, obj)
 				elif pkgfiles[objkey][0] == "dev":
-					writemsg_stdout("---        %s %s\n" % ("dev", obj))
+					show_unmerge("---", "dev", file_type, obj)
 
 			mydirs.sort()
 			mydirs.reverse()
@@ -1283,9 +1285,9 @@ class dblink(object):
 			for obj in mydirs:
 				try:
 					os.rmdir(obj)
-					writemsg_stdout("<<<        %s %s\n" % ("dir", obj))
-				except (OSError, IOError):
-					writemsg_stdout("--- !empty dir %s\n" % obj)
+					show_unmerge("<<<", "dir", file_type, obj)
+				except EnvironmentError:
+					show_unmerge("---", "!empty", file_type, obj)
 
 		#remove self from vartree database so that our own virtual gets zapped if we're the last node
 		self.vartree.zap(self.mycpv)
