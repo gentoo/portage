@@ -22,7 +22,7 @@ from portage.versions import pkgsplit, catpkgsplit, catsplit, best, pkgcmp
 
 from portage import listdir, dep_expand, config, flatten, key_expand, \
 	doebuild_environment, doebuild, env_update, \
-	abssymlink, movefile, bsd_chflags
+	abssymlink, movefile, _movefile, bsd_chflags
 
 import os, sys, stat, errno, commands, copy, time
 from itertools import izip
@@ -301,7 +301,7 @@ class vardbapi(dbapi):
 			if os.path.exists(newpath):
 				#dest already exists; keep this puppy where it is.
 				continue
-			os.rename(origpath, newpath)
+			_movefile(origpath, newpath, mysettings=self.settings)
 
 			# We need to rename the ebuild now.
 			old_pf = catsplit(mycpv)[1]
@@ -1758,7 +1758,7 @@ class dblink(object):
 		# We hold both directory locks.
 		self.dbdir = self.dbpkgdir
 		self.delete()
-		movefile(self.dbtmpdir, self.dbpkgdir, mysettings=self.settings)
+		_movefile(self.dbtmpdir, self.dbpkgdir, mysettings=self.settings)
 		contents = self.getcontents()
 
 		#write out our collection of md5sums

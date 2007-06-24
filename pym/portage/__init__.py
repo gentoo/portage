@@ -4011,6 +4011,12 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 expandcache={}
 
+def _movefile(src, dest, **kwargs):
+	"""Calls movefile and raises a PortageException if an error occurs."""
+	if movefile(src, dest, **kwargs) is None:
+		raise portage.exception.PortageException(
+			"mv '%s' '%s'" % (src, dest))
+
 def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 	"""moves a file from src to dest, preserving all permissions and attributes; mtime will
 	be preserved even when moving across filesystems.  Returns true on success and false on
