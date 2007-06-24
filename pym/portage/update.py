@@ -207,7 +207,8 @@ def update_config_files(config_root, protect, protect_mask, update_iter):
 						sys.stdout.write("p")
 						sys.stdout.flush()
 
-	write_atomic(os.path.join(config_root, WORLD_FILE), "\n".join(worldlist))
+	worldlist.sort()
+	write_atomic(os.path.join(config_root, WORLD_FILE), "\n".join(worldlist)+"\n")
 
 	protect_obj = ConfigProtect(
 		config_root, protect, protect_mask)

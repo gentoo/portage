@@ -3,9 +3,6 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id: portage_checksum.py 3835 2006-07-11 00:59:10Z zmedico $
 
-if not hasattr(__builtins__, "set"):
-	from sets import Set as set
-
 from portage.const import PRIVATE_PATH,PRELINK_BINARY,HASHING_BLOCKSIZE
 import os
 import errno
@@ -16,50 +13,88 @@ import portage.process
 import portage.util
 import portage.locks
 import commands
-import sha
-
-
-# actual hash functions first
+import md5, sha
 
 #dict of all available hash functions
 hashfunc_map = {}
+hashorigin_map = {}
 
-# We _try_ to load this module. If it fails we do the slightly slower fallback.
+def _generate_hash_function(hashtype, hashobject, origin="unknown"):
+	def pyhash(filename):
+		"""
+		Run a checksum against a file.
+	
+		@param filename: File to run the checksum against
+		@type filename: String
+		@return: The hash and size of the data
+		"""
+		f = open(filename, 'rb')
+		blocksize = HASHING_BLOCKSIZE
+		data = f.read(blocksize)
+		size = 0L
+		sum = hashobject()
+		while data:
+			sum.update(data)
+			size = size + len(data)
+			data = f.read(blocksize)
+		f.close()
+
+		return (sum.hexdigest(), size)
+	hashfunc_map[hashtype] = pyhash
+	hashorigin_map[hashtype] = origin
+	return pyhash
+
+# Define hash functions, try to use the best module available. Later definitions
+# override earlier ones
+
+# Use the internal modules as last fallback
+md5hash = _generate_hash_function("MD5", md5.new, origin="internal")
+sha1hash = _generate_hash_function("SHA1", sha.new, origin="internal")
+
+# Use pycrypto when available, prefer it over the internal fallbacks
+try:
+	from Crypto.Hash import MD5, SHA, SHA256, RIPEMD
+	
+	md5hash = _generate_hash_function("MD5", MD5.new, origin="pycrypto")
+	sha1hash = _generate_hash_function("SHA1", SHA.new, origin="pycrypto")
+	sha256hash = _generate_hash_function("SHA256", SHA256.new, origin="pycrypto")
+	rmd160hash = _generate_hash_function("RMD160", RIPEMD.new, origin="pycrypto")
+except ImportError, e:
+	pass
+
+# Use hashlib from python-2.5 if available and prefer it over pycrypto and internal fallbacks.
+# Need special handling for RMD160 as it may not always be provided by hashlib.
+try:
+	import hashlib
+	
+	md5hash = _generate_hash_function("MD5", hashlib.md5, origin="hashlib")
+	sha1hash = _generate_hash_function("SHA1", hashlib.sha1, origin="hashlib")
+	sha256hash = _generate_hash_function("SHA256", hashlib.sha256, origin="hashlib")
+	try:
+		hashlib.new('ripemd160')
+	except ValueError:
+		pass
+	else:
+		def rmd160():
+			return hashlib.new('ripemd160')
+		rmd160hash = _generate_hash_function("RMD160", rmd160, origin="hashlib")
+except ImportError, e:
+	pass
+	
+
+# Use python-fchksum if available, prefer it over all other MD5 implementations
 try:
 	import fchksum
 	
 	def md5hash(filename):
 		return fchksum.fmd5t(filename)
+	hashfunc_map["MD5"] = md5hash
+	hashorigin_map["MD5"] = "python-fchksum"
 
-except ImportError:
-	import md5
-	def md5hash(filename):
-		return pyhash(filename, md5)
-hashfunc_map["MD5"] = md5hash
-
-def sha1hash(filename):
-	return pyhash(filename, sha)
-hashfunc_map["SHA1"] = sha1hash
-	
-# Keep pycrypto optional for now, there are no internal fallbacks for these
-try:
-	import Crypto.Hash.SHA256
-	
-	def sha256hash(filename):
-		return pyhash(filename, Crypto.Hash.SHA256)
-	hashfunc_map["SHA256"] = sha256hash
 except ImportError:
 	pass
 
-try:
-	import Crypto.Hash.RIPEMD
-	
-	def rmd160hash(filename):
-		return pyhash(filename, Crypto.Hash.RIPEMD)
-	hashfunc_map["RMD160"] = rmd160hash
-except ImportError:
-	pass
-
+# There is only one implementation for size
 def getsize(filename):
 	size = os.stat(filename).st_size
 	return (size, size)
@@ -85,6 +120,11 @@ def perform_all(x, calc_prelink=0):
 
 def get_valid_checksum_keys():
 	return hashfunc_map.keys()
+
+def get_hash_origin(hashtype):
+	if not hashtype in hashfunc_map.keys():
+		raise KeyError(hashtype)
+	return hashorigin_map.get(hashtype, "unknown")
 
 def verify_all(filename, mydict, calc_prelink=0, strict=0):
 	"""
@@ -144,29 +184,6 @@ def verify_all(filename, mydict, calc_prelink=0, strict=0):
 					reason     = (("Failed on %s verification" % x), myhash,mydict[x])
 					break
 	return file_is_ok,reason
-
-def pyhash(filename, hashobject):
-	"""
-	Run a checksum against a file.
-
-	@param filename: File to run the checksum against
-	@type filename: String
-	@param hashname: The hash object that will execute the checksum on the file
-	@type hashname: Object
-	@return: The hash and size of the data
-	"""
-	f = open(filename, 'rb')
-	blocksize = HASHING_BLOCKSIZE
-	data = f.read(blocksize)
-	size = 0L
-	sum = hashobject.new()
-	while data:
-		sum.update(data)
-		size = size + len(data)
-		data = f.read(blocksize)
-	f.close()
-
-	return (sum.hexdigest(), size)
 
 def perform_checksum(filename, hashname="MD5", calc_prelink=0):
 	"""
@@ -237,6 +254,6 @@ def perform_multiple_checksums(filename, hashes=["MD5"], calc_prelink=0):
 	rVal = {}
 	for x in hashes:
 		if x not in hashfunc_map:
-			raise portage.exception.DigestException, x+" hash function not available (needs dev-python/pycrypto)"
+			raise portage.exception.DigestException, x+" hash function not available (needs dev-python/pycrypto or >=dev-lang/python-2.5)"
 		rVal[x] = perform_checksum(filename, x, calc_prelink)[0]
 	return rVal

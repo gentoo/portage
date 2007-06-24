@@ -1188,7 +1188,7 @@ class dblink(object):
 					if is_owned:
 						# A new instance of this package claims the file, so
 						# don't unmerge it.
-						writemsg_stdout("--- !owned %s %s\n" % \
+						writemsg_stdout("--- replaced %s %s\n" % \
 							(file_type, obj))
 						continue
 				# next line includes a tweak to protect modules from being unmerged,

@@ -587,10 +587,12 @@ def clean_world(vardb, cpv):
 		else:
 			#this doesn't match the package we're unmerging; keep it.
 			newworldlist.append(x)
-
+	
+	newworldlist.sort()
+	
 	portage.util.ensure_dirs(os.path.join(vardb.root, portage.PRIVATE_PATH),
 		gid=portage.portage_gid, mode=02770)
-	portage.util.write_atomic(world_filename, "\n".join(newworldlist))
+	portage.util.write_atomic(world_filename, "\n".join(newworldlist)+"\n")
 
 def genericdict(mylist):
 	mynewdict={}
@@ -2477,6 +2479,8 @@ class depgraph(object):
 		# files to fetch list - avoids counting a same file twice
 		# in size display (verbose mode)
 		myfetchlist=[]
+		worldlist = getlist(self.settings, "world")
+
 		for mylist_index in xrange(len(mylist)):
 			x, depth, ordered = mylist[mylist_index]
 			pkg_type = x[0]
@@ -2745,17 +2749,23 @@ class depgraph(object):
 						myoldbest=myoldbest[:-3]
 					myoldbest=blue("["+myoldbest+"]")
 
+				if xs[0] in worldlist:
+					pkgprint = bold
+				else:
+					def pkgprint(pkg):
+						return pkg
+
 				if x[1]!="/":
 					if myoldbest:
 						myoldbest +=" "
 					if "--columns" in self.myopts:
 						if "--quiet" in self.myopts:
-							myprint=addl+" "+indent+darkgreen(xs[0])
+							myprint=addl+" "+indent+darkgreen(pkgprint(xs[0]))
 							myprint=myprint+darkblue(" "+xs[1]+xs[2])+" "
 							myprint=myprint+myoldbest
 							myprint=myprint+darkgreen("to "+x[1])
 						else:
-							myprint="["+x[0]+" "+addl+"] "+indent+darkgreen(xs[0])
+							myprint="["+x[0]+" "+addl+"] "+indent+darkgreen(pkgprint(xs[0]))
 							if (newlp-nc_len(myprint)) > 0:
 								myprint=myprint+(" "*(newlp-nc_len(myprint)))
 							myprint=myprint+"["+darkblue(xs[1]+xs[2])+"] "
@@ -2768,17 +2778,17 @@ class depgraph(object):
 							myprint = darkblue("[nomerge      ] ")
 						else:
 							myprint = "[" + pkg_type + " " + addl + "] "
-						myprint += indent + darkgreen(pkg_key) + " " + \
+						myprint += indent + darkgreen(pkrprint(pkg_key)) + " " + \
 							myoldbest + darkgreen("to " + myroot) + " " + \
 							verboseadd
 				else:
 					if "--columns" in self.myopts:
 						if "--quiet" in self.myopts:
-							myprint=addl+" "+indent+darkgreen(xs[0])
+							myprint=addl+" "+indent+darkgreen(pkgprint(xs[0]))
 							myprint=myprint+" "+green(xs[1]+xs[2])+" "
 							myprint=myprint+myoldbest
 						else:
-							myprint="["+x[0]+" "+addl+"] "+indent+darkgreen(xs[0])
+							myprint="["+x[0]+" "+addl+"] "+indent+darkgreen(pkgprint(xs[0]))
 							if (newlp-nc_len(myprint)) > 0:
 								myprint=myprint+(" "*(newlp-nc_len(myprint)))
 							myprint=myprint+green(" ["+xs[1]+xs[2]+"] ")
@@ -2787,9 +2797,9 @@ class depgraph(object):
 							myprint=myprint+myoldbest+"  "+verboseadd
 					else:
 						if x[-1] == "nomerge" or not ordered:
-							myprint=darkblue("[nomerge      ] "+indent+x[2]+" "+myoldbest+" ")+verboseadd
+							myprint=darkblue("[nomerge      ] "+indent+pkgprint(x[2])+" "+myoldbest+" ")+verboseadd
 						else:
-							myprint="["+x[0]+" "+addl+"] "+indent+darkgreen(x[2])+" "+myoldbest+" "+verboseadd
+							myprint="["+x[0]+" "+addl+"] "+indent+darkgreen(pkgprint(x[2]))+" "+myoldbest+" "+verboseadd
 				p.append(myprint)
 
 			mysplit = portage.pkgsplit(x[2])
@@ -3340,7 +3350,7 @@ class MergeTask(object):
 							") Updating world file ("+x[pkgindex]+")")
 						portage.write_atomic(
 						os.path.join(myroot, portage.WORLD_FILE),
-						"\n".join(myfavdict.values()))
+						"\n".join(sorted(myfavdict.values()))+"\n")
 
 				if "--pretend" not in self.myopts and \
 					"--fetchonly" not in self.myopts and \
@@ -5663,12 +5673,12 @@ def emerge_main():
 	# check if root user is the current user for the actions where emerge needs this
 	if portage.secpass < 2:
 		# We've already allowed "--version" and "--help" above.
-		if "--pretend" not in myopts and \
-		myaction not in ("search","info"):
+		if "--pretend" not in myopts and myaction not in ("search","info"):
 			need_superuser = not \
 				("--fetchonly" in myopts or \
 				"--fetch-all-uri" in myopts or \
-				myaction in ("metadata", "regen"))
+				myaction in ("metadata", "regen") or \
+				(myaction == "sync" and os.access(settings["PORTDIR"], os.W_OK)))
 			if portage.secpass < 1 or \
 				need_superuser:
 				if need_superuser:

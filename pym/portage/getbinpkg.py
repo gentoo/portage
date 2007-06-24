@@ -79,14 +79,20 @@ def create_conn(baseurl,conn=None):
 	"""(baseurl,conn) --- Takes a protocol://site:port/address url, and an
 	optional connection. If connection is already active, it is passed on.
 	baseurl is reduced to address and is returned in tuple (conn,address)"""
+
 	parts = baseurl.split("://",1)
 	if len(parts) != 2:
 		raise ValueError, "Provided URL does not contain protocol identifier. '%s'" % baseurl
 	protocol,url_parts = parts
 	del parts
-	host,address = url_parts.split("/",1)
+
+	url_parts = url_parts.split("/")
+	host = url_parts[0]
+	if len(url_parts) < 2:
+		address = "/"
+	else:
+		address = "/"+"/".join(url_parts[1:])
 	del url_parts
-	address = "/"+address
 
 	userpass_host = host.split("@",1)
 	if len(userpass_host) == 1:
