@@ -6,11 +6,9 @@
 from portage.const import PRIVATE_PATH,PRELINK_BINARY,HASHING_BLOCKSIZE
 import os
 import errno
-import shutil
 import stat
 import portage.exception
 import portage.process
-import portage.util
 import portage.locks
 import commands
 import md5, sha
@@ -122,7 +120,7 @@ def get_valid_checksum_keys():
 	return hashfunc_map.keys()
 
 def get_hash_origin(hashtype):
-	if not hashtype in hashfunc_map.keys():
+	if hashtype not in hashfunc_map:
 		raise KeyError(hashtype)
 	return hashorigin_map.get(hashtype, "unknown")
 
