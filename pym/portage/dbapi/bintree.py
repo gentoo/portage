@@ -857,16 +857,15 @@ class binarytree(object):
 		except (OSError, IOError):
 			pass
 		from urlparse import urljoin
-		base_url = self._remote_base_uri
 		fcmd = self.settings["RESUMECOMMAND"]
 		if self._remote_has_index:
 			rel_url = self._remotepkgs[pkgname].get("PATH")
 			if not rel_url:
 				rel_url = pkgname+".tbz2"
-			url = urljoin(base_url, rel_url)
+			url = urljoin(self._remote_base_uri, rel_url)
 			success = portage.getbinpkg.file_get(url, mydest, fcmd=fcmd)
 		else:
-			url = urljoin(base_url, tbz2name)
+			url = urljoin(self.settings["PORTAGE_BINHOST"], tbz2name)
 			success = portage.getbinpkg.file_get(url, mydest, fcmd=fcmd)
 		if success and "strict" in self.settings.features:
 			metadata = self._remotepkgs[pkgname]
