@@ -11,7 +11,7 @@ from portage.dep import dep_getslot, use_reduce, paren_reduce, isvalidatom, \
 	isjustname, dep_getkey, match_from_list
 from portage.elog import elog_process
 from portage.exception import InvalidPackageName, InvalidAtom, \
-	UnsupportedAPIException, FileNotFound
+	FileNotFound, PermissionDenied, UnsupportedAPIException
 from portage.locks import lockdir, unlockdir
 from portage.output import bold, red, green
 from portage.update import fixdbentries
@@ -51,6 +51,8 @@ class PreservedLibsRegistry(object):
 		except IOError, e:
 			if e.errno == errno.ENOENT:
 				self._data = {}
+			elif e.errno == PermissionDenied.errno:
+				raise PermissionDenied(self._filename)
 			else:
 				raise e
 		
@@ -190,7 +192,12 @@ class vardbapi(dbapi):
 			CACHE_PATH.lstrip(os.path.sep), "vdb_metadata.pickle")
 
 		self.libmap = LibraryPackageMap(os.path.join(self.root, CACHE_PATH.lstrip(os.sep), "library_consumers"), self)
-		self.plib_registry = PreservedLibsRegistry(os.path.join(self.root, PRIVATE_PATH, "preserved_libs_registry"))
+		try:
+			self.plib_registry = PreservedLibsRegistry(
+				os.path.join(self.root, PRIVATE_PATH, "preserved_libs_registry"))
+		except PermissionDenied:
+			# apparently this user isn't allowed to access PRIVATE_PATH
+			self.plib_registry = None
 
 	def getpath(self, mykey, filename=None):
 		rValue = os.path.join(self.root, VDB_PATH, mykey)
