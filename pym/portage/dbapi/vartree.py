@@ -1277,14 +1277,14 @@ class dblink(object):
 						os.unlink(obj)
 					except (OSError, IOError), e:
 						pass
-					show_unmerge("<<<", "fif", file_type, obj)
+					show_unmerge("<<<", "", file_type, obj)
 				elif pkgfiles[objkey][0] == "fif":
 					if not stat.S_ISFIFO(lstatobj[stat.ST_MODE]):
 						show_unmerge("---", "!fif", file_type, obj)
 						continue
-					show_unmerge("---", "fif", file_type, obj)
+					show_unmerge("---", "", file_type, obj)
 				elif pkgfiles[objkey][0] == "dev":
-					show_unmerge("---", "dev", file_type, obj)
+					show_unmerge("---", "", file_type, obj)
 
 			mydirs.sort()
 			mydirs.reverse()
@@ -1292,9 +1292,9 @@ class dblink(object):
 			for obj in mydirs:
 				try:
 					os.rmdir(obj)
-					show_unmerge("<<<", "dir", file_type, obj)
+					show_unmerge("<<<", "", "dir", obj)
 				except EnvironmentError:
-					show_unmerge("---", "!empty", file_type, obj)
+					show_unmerge("---", "!empty", "dir", obj)
 
 		#remove self from vartree database so that our own virtual gets zapped if we're the last node
 		self.vartree.zap(self.mycpv)
