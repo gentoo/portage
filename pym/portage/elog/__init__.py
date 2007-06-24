@@ -97,7 +97,7 @@ def elog_process(cpv, mysettings):
 					signal.alarm(0)
 				if hasattr(m, "finalize") and not m.finalize in _elog_atexit_handlers:
 					_elog_atexit_handlers.append(m.finalize)
-					atexit_register(m.finalize, mysettings)
+					atexit_register(m.finalize)
 			except (ImportError, AttributeError), e:
 				writemsg("!!! Error while importing logging modules " + \
 					"while loading \"mod_%s\":\n" % str(s))

@@ -166,7 +166,7 @@ def quickpkg_main(options, args, eout):
 	return os.EX_OK
 
 if __name__ == "__main__":
-	usage = "Usage: quickpkg [options] <list of package atoms>"
+	usage = "quickpkg [options] <list of package atoms>"
 	from optparse import OptionParser
 	parser = OptionParser(usage=usage)
 	parser.add_option("--umask",

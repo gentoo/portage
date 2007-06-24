@@ -320,6 +320,7 @@ You may use the same syntax to vary dependencies as seen above in \fBDEPEND\fR.
 .TP
 \fBRESTRICT\fR = \fI[strip,mirror,fetch,userpriv]\fR
 This should be a space delimited list of portage features to restrict.
+You may use conditional syntax to vary restrictions as seen above in DEPEND.
 .PD 0
 .RS
 .TP
@@ -330,8 +331,8 @@ example, can safely be skipped since they have no binaries).  If the binary
 checks need to be skipped for other reasons (such as proprietary binaries),
 see the \fBQA CONTROL VARIABLES\fR section for more specific exemptions.
 .TP
-.I confcache
-Prevent econf from using confcache.
+.I bindist
+Distribution of binary packages is restricted.
 .TP
 .I fetch
 like \fImirror\fR but the files will not be fetched via \fBSRC_URI\fR either.

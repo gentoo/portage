@@ -3871,6 +3871,11 @@ def post_emerge(trees, mtimedb, retval):
 		" *** exiting successfully.")
 
 	from portage.util import normalize_path
+	# Dump the mod_echo output now so that our other notifications are shown
+	# last.
+	from portage.elog import mod_echo
+	mod_echo.finalize()
+
 	if "noinfo" not in settings.features:
 		chk_updated_info_files(normalize_path(target_root + EPREFIX), infodirs, info_mtimes, retval)
 	chk_updated_cfg_files(normalize_path(target_root + EPREFIX), config_protect)
