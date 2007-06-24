@@ -455,7 +455,9 @@ settings from ebuilds.  See also \fBebuild\fR(5).
 .B RESUMECOMMAND
 This variable contains the command used for resuming package sources that
 have been partially downloaded.  It should be defined using the same format
-as \fBFETCHCOMMAND\fR.
+as \fBFETCHCOMMAND\fR, and must include any additional option(s) that may
+be necessary in order to continue a partially downloaded file located at
+\\${DISTDIR}/\\${FILE}.
 .TP
 \fBROOT\fR = \fI[path]\fR
 Use \fBROOT\fR to specify the target root filesystem to be used for merging 
