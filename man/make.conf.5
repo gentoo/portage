@@ -290,7 +290,8 @@ Enable the sandbox in the compile phase, when running without root privs (\fIuse
 .B FETCHCOMMAND
 This variable contains the command used for fetching package sources from
 the internet.  It must contain the full path to the executable as well as the
-place\-holders \\${DISTDIR} and \\${URI}.
+place\-holders \\${DISTDIR}, \\${FILE} and \\${URI}.  The command should be
+written to place the fetched file at \\${DISTDIR}/\\${FILE}.
 Also see \fBRESUMECOMMAND\fR.
 .TP
 \fBGENTOO_MIRRORS\fR = \fI[URLs]\fR
