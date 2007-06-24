@@ -1162,7 +1162,7 @@ class dblink(object):
 			modprotect = os.path.join(self.vartree.root, "lib/modules/")
 			def show_unmerge(zing, desc, file_type, file_name):
 					writemsg_stdout("%s %s %s %s\n" % \
-						(zing, desc.ljust(8), file_type, obj))
+						(zing, desc.ljust(8), file_type, file_name))
 			for objkey in mykeys:
 				obj = normalize_path(objkey)
 				file_data = pkgfiles[objkey]
