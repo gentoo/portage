@@ -6781,11 +6781,16 @@ class binarytree(object):
 		self._pkg_paths[mycpv] = mypath # cache for future lookups
 		return os.path.join(self.pkgdir, mypath)
 
-	def isremote(self,pkgname):
-		"Returns true if the package is kept remotely."
-		mysplit=pkgname.split("/")
-		remote = (not os.path.exists(self.getname(pkgname))) and self.remotepkgs.has_key(mysplit[1]+".tbz2")
-		return remote
+	def isremote(self, pkgname):
+		"""Returns true if the package is kept remotely and it has not been
+		downloaded (or it is only partially downloaded)."""
+		pkg_path = self.getname(pkgname)
+		if os.path.basename(pkg_path) not in self.remotepkgs:
+			return False
+		if os.path.exists(pkg_path) and \
+			os.path.basename(pkg_path) not in self.invalids:
+			return False
+		return True
 
 	def get_use(self,pkgname):
 		mysplit=pkgname.split("/")
@@ -6795,7 +6800,8 @@ class binarytree(object):
 		return tbz2.getfile("USE").split()
 
 	def gettbz2(self,pkgname):
-		"fetches the package from a remote site, if necessary."
+		"""Fetches the package from a remote site, if necessary.  Attempts to
+		resume if the file appears to be partially downloaded."""
 		print "Fetching '"+str(pkgname)+"'"
 		mysplit  = pkgname.split("/")
 		tbz2name = mysplit[1]+".tbz2"
