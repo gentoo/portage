@@ -654,7 +654,8 @@ class portdbapi(dbapi):
 		# Hack: Need to check the env directly here as otherwise stacking 
 		# doesn't work properly as negative values are lost in the config
 		# object (bug #139600)
-		egroups = os.environ.get("ACCEPT_KEYWORDS", "").split()
+		egroups = self.mysettings.configdict["backupenv"].get(
+			"ACCEPT_KEYWORDS", "").split()
 
 		for mycpv in mylist:
 			try:
