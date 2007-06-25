@@ -2995,6 +2995,7 @@ class MergeTask(object):
 				portage.config(clone=trees["/"]["vartree"].settings)
 
 	def merge(self, mylist, favorites, mtimedb):
+		from portage.elog import elog_process
 		failed_fetches = []
 		fetchonly = "--fetchonly" in self.myopts or \
 			"--fetch-all-uri" in self.myopts
@@ -3228,6 +3229,8 @@ class MergeTask(object):
 							pkgsettings, self.edebug, mydbapi=portdb,
 							tree="porttree")
 						del pkgsettings["PORTAGE_BINPKG_TMPFILE"]
+						if "--buildpkgonly" in self.myopts:
+							elog_process(pkg_key, pkgsettings)
 						if retval != os.EX_OK:
 							return retval
 						bintree = self.trees[myroot]["bintree"]
