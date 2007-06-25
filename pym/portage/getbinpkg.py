@@ -422,6 +422,8 @@ def file_get_lib(baseurl,dest,conn=None):
 		rc = 0
 		try:
 			f = conn.open(address)
+		except SystemExit:
+			raise
 		except Exception:
 			rc = 1
 		else:
