@@ -2777,7 +2777,7 @@ class depgraph(object):
 							myprint = darkblue("[nomerge      ] ")
 						else:
 							myprint = "[" + pkg_type + " " + addl + "] "
-						myprint += indent + darkgreen(pkrprint(pkg_key)) + " " + \
+						myprint += indent + darkgreen(pkgprint(pkg_key)) + " " + \
 							myoldbest + darkgreen("to " + myroot) + " " + \
 							verboseadd
 				else:
