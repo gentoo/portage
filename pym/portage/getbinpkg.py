@@ -141,6 +141,15 @@ def create_conn(baseurl,conn=None):
 				conn.login(username)
 			conn.set_pasv(passive)
 			conn.set_debuglevel(0)
+		elif protocol == "sftp":
+			try:
+				import paramiko
+			except ImportError:
+				raise NotImplementedError(
+					"paramiko must be installed for sftp support")
+			t = paramiko.Transport(host)
+			t.connect(username=username, password=password)
+			conn = paramiko.SFTPClient.from_transport(t)
 		else:
 			raise NotImplementedError, "%s is not a supported protocol." % protocol
 
@@ -307,6 +316,8 @@ def dir_get_list(baseurl,conn=None):
 			del olddir
 		else:
 			listing = conn.nlst(address)
+	elif protocol == "sftp":
+		listing = conn.listdir(address)
 	else:
 		raise TypeError, "Unknown protocol. '%s'" % protocol
 
@@ -332,6 +343,13 @@ def file_get_metadata(baseurl,conn=None, chunk_size=3000):
 		data,rc,msg = make_http_request(conn, address, params, headers)
 	elif protocol in ["ftp"]:
 		data,rc,msg = make_ftp_request(conn, address, -chunk_size)
+	elif protocol == "sftp":
+		f = conn.open(address)
+		try:
+			f.seek(-chunk_size, 2)
+			data = f.read()
+		finally:
+			f.close()
 	else:
 		raise TypeError, "Unknown protocol. '%s'" % protocol
 	
@@ -400,6 +418,8 @@ def file_get_lib(baseurl,dest,conn=None):
 		data,rc,msg = make_http_request(conn, address, params, headers, dest=dest)
 	elif protocol in ["ftp"]:
 		data,rc,msg = make_ftp_request(conn, address, dest=dest)
+	elif protocol == "sftp":
+		conn.get(address, dest)
 	else:
 		raise TypeError, "Unknown protocol. '%s'" % protocol
 	
