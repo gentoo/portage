@@ -864,14 +864,15 @@ class binarytree(object):
 			os.makedirs(mydest, 0775)
 		except (OSError, IOError):
 			pass
-		from urlparse import urljoin, urlparse
+		from urlparse import urlparse
+		# urljoin doesn't work correctly with unrecognized protocols like sftp
 		if self._remote_has_index:
 			rel_url = self._remotepkgs[pkgname].get("PATH")
 			if not rel_url:
 				rel_url = pkgname+".tbz2"
-			url = urljoin(self._remote_base_uri, rel_url)
+			url = self._remote_base_uri.rstrip("/") + "/" + rel_url.lstrip("/")
 		else:
-			url = urljoin(self.settings["PORTAGE_BINHOST"], tbz2name)
+			url = self.settings["PORTAGE_BINHOST"].rstrip("/") + "/" + tbz2name
 		protocol = urlparse(url)[0]
 		fcmd_prefix = "FETCHCOMMAND"
 		if resume:
