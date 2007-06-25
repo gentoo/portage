@@ -419,7 +419,22 @@ def file_get_lib(baseurl,dest,conn=None):
 	elif protocol in ["ftp"]:
 		data,rc,msg = make_ftp_request(conn, address, dest=dest)
 	elif protocol == "sftp":
-		conn.get(address, dest)
+		rc = 0
+		try:
+			f = conn.open(address)
+		except Exception:
+			rc = 1
+		else:
+			try:
+				if dest:
+					bufsize = 8192
+					while True:
+						data = f.read(bufsize)
+						if not data:
+							break
+						dest.write(data)
+			finally:
+				f.close()
 	else:
 		raise TypeError, "Unknown protocol. '%s'" % protocol
 	
