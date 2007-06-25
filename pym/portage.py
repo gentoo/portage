@@ -6818,8 +6818,9 @@ class binarytree(object):
 			os.makedirs(mydest, 0775)
 		except (OSError, IOError):
 			pass
-		from urlparse import urljoin, urlparse
-		url = urljoin(self.settings["PORTAGE_BINHOST"], tbz2name)
+		from urlparse import urlparse
+		# urljoin doesn't work correctly with unrecognized protocols like sftp
+		url = self.settings["PORTAGE_BINHOST"].rstrip("/") + "/" + tbz2name
 		protocol = urlparse(url)[0]
 		fcmd_prefix = "FETCHCOMMAND"
 		if resume:
