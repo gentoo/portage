@@ -848,17 +848,17 @@ class binarytree(object):
 		"""Fetches the package from a remote site, if necessary.  Attempts to
 		resume if the file appears to be partially downloaded."""
 		print "Fetching '"+str(pkgname)+"'"
-		mysplit  = pkgname.split("/")
-		tbz2name = mysplit[1]+".tbz2"
+		tbz2_path = self.getname(pkgname)
+		tbz2name = os.path.basename(tbz2_path)
 		resume = False
-		if not self.isremote(pkgname):
+		if os.path.exists(tbz2name):
 			if (tbz2name not in self.invalids):
 				return
 			else:
 				resume = True
 				writemsg("Resuming download of this tbz2, but it is possible that it is corrupt.\n",
 					noiselevel=-1)
-		tbz2_path = self.getname(pkgname)
+		
 		mydest = os.path.dirname(self.getname(pkgname))
 		try:
 			os.makedirs(mydest, 0775)
