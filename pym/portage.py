@@ -6827,7 +6827,8 @@ class binarytree(object):
 		fcmd = self.settings.get(fcmd_prefix + "_" + protocol.upper())
 		if not fcmd:
 			fcmd = self.settings.get(fcmd_prefix)
-		return getbinpkg.file_get(url, mydest, fcmd=fcmd)
+		if not getbinpkg.file_get(url, mydest, fcmd=fcmd):
+			raise portage_exception.FileNotFound(tbz2_path)
 
 	def getslot(self,mycatpkg):
 		"Get a slot for a catpkg; assume it exists."
