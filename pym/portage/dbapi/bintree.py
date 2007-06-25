@@ -850,10 +850,12 @@ class binarytree(object):
 		print "Fetching '"+str(pkgname)+"'"
 		mysplit  = pkgname.split("/")
 		tbz2name = mysplit[1]+".tbz2"
+		resume = False
 		if not self.isremote(pkgname):
 			if (tbz2name not in self.invalids):
 				return
 			else:
+				resume = True
 				writemsg("Resuming download of this tbz2, but it is possible that it is corrupt.\n",
 					noiselevel=-1)
 		tbz2_path = self.getname(pkgname)
@@ -862,17 +864,22 @@ class binarytree(object):
 			os.makedirs(mydest, 0775)
 		except (OSError, IOError):
 			pass
-		from urlparse import urljoin
-		fcmd = self.settings["RESUMECOMMAND"]
+		from urlparse import urljoin, urlparse
 		if self._remote_has_index:
 			rel_url = self._remotepkgs[pkgname].get("PATH")
 			if not rel_url:
 				rel_url = pkgname+".tbz2"
 			url = urljoin(self._remote_base_uri, rel_url)
-			success = portage.getbinpkg.file_get(url, mydest, fcmd=fcmd)
 		else:
 			url = urljoin(self.settings["PORTAGE_BINHOST"], tbz2name)
-			success = portage.getbinpkg.file_get(url, mydest, fcmd=fcmd)
+		protocol = urlparse(url)[0]
+		fcmd_prefix = "FETCHCOMMAND"
+		if resume:
+			fcmd_prefix = "RESUMECOMMAND"
+		fcmd = self.settings.get(fcmd_prefix + "_" + protocol.upper())
+		if not fcmd:
+			fcmd = self.settings.get(fcmd_prefix)
+		success = portage.getbinpkg.file_get(url, mydest, fcmd=fcmd)
 		if success and "strict" in self.settings.features:
 			metadata = self._remotepkgs[pkgname]
 			digests = {}
