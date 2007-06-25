@@ -3192,6 +3192,8 @@ class MergeTask(object):
 						retval = portage.doebuild(y, "package", myroot,
 							pkgsettings, self.edebug, mydbapi=portdb,
 							tree="porttree")
+						if "--buildpkgonly" in self.myopts:
+							portage.elog_process(pkg_key, pkgsettings)
 						if retval != os.EX_OK:
 							return retval
 						bintree = self.trees[myroot]["bintree"]
