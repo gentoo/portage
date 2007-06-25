@@ -366,28 +366,19 @@ def file_get(baseurl,dest,conn=None,fcmd=None):
 	if not fcmd:
 		return file_get_lib(baseurl,dest,conn)
 
-	fcmd = fcmd.replace("${DISTDIR}",dest)
-	fcmd = fcmd.replace("${URI}", baseurl)
-	fcmd = fcmd.replace("${FILE}", os.path.basename(baseurl))
-	mysplit = fcmd.split()
-	mycmd   = mysplit[0]
-	myargs  = [os.path.basename(mycmd)]+mysplit[1:]
-	mypid=os.fork()
-	if mypid == 0:
-		try:
-			os.execv(mycmd,myargs)
-		except OSError:
-			pass
-		sys.stderr.write("!!! Failed to spawn fetcher.\n")
-		sys.stderr.flush()
-		os._exit(1)
-	retval=os.waitpid(mypid,0)[1]
-	if (retval & 0xff) == 0:
-		retval = retval >> 8
-	else:
-		sys.stderr.write("Spawned processes caught a signal.\n")
-		sys.exit(1)
-	if retval != 0:
+	variables = {
+		"DISTDIR": dest,
+		"URI":     baseurl,
+		"FILE":    os.path.basename(baseurl)
+	}
+	import shlex, StringIO
+	from portage_util import varexpand
+	from portage_exec import spawn
+	lexer = shlex.shlex(StringIO.StringIO(fcmd), posix=True)
+	lexer.whitespace_split = True
+	myfetch = [varexpand(x, mydict=variables) for x in lexer]
+	retval = spawn(myfetch, env=os.environ.copy())
+	if retval != os.EX_OK:
 		sys.stderr.write("Fetcher exited with a failure condition.\n")
 		return 0
 	return 1
