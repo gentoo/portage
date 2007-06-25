@@ -6805,10 +6805,12 @@ class binarytree(object):
 		print "Fetching '"+str(pkgname)+"'"
 		mysplit  = pkgname.split("/")
 		tbz2name = mysplit[1]+".tbz2"
+		resume = False
 		if not self.isremote(pkgname):
 			if (tbz2name not in self.invalids):
 				return
 			else:
+				resume = True
 				writemsg("Resuming download of this tbz2, but it is possible that it is corrupt.\n",
 					noiselevel=-1)
 		mydest = self.pkgdir+"/All/"
@@ -6816,9 +6818,16 @@ class binarytree(object):
 			os.makedirs(mydest, 0775)
 		except (OSError, IOError):
 			pass
-		return getbinpkg.file_get(
-			self.settings["PORTAGE_BINHOST"] + "/" + tbz2name,
-			mydest, fcmd=self.settings["RESUMECOMMAND"])
+		from urlparse import urljoin, urlparse
+		url = urljoin(self.settings["PORTAGE_BINHOST"], tbz2name)
+		protocol = urlparse(url)[0]
+		fcmd_prefix = "FETCHCOMMAND"
+		if resume:
+			fcmd_prefix = "RESUMECOMMAND"
+		fcmd = self.settings.get(fcmd_prefix + "_" + protocol.upper())
+		if not fcmd:
+			fcmd = self.settings.get(fcmd_prefix)
+		return getbinpkg.file_get(url, mydest, fcmd=fcmd)
 
 	def getslot(self,mycatpkg):
 		"Get a slot for a catpkg; assume it exists."
