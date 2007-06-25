@@ -829,10 +829,15 @@ class binarytree(object):
 		return os.path.join(self.pkgdir, mypath)
 
 	def isremote(self, pkgname):
-		"Returns true if the package is kept remotely."
-		remote = pkgname in self._remotepkgs and \
-			not os.path.exists(self.getname(pkgname))
-		return remote
+		"""Returns true if the package is kept remotely and it has not been
+		downloaded (or it is only partially downloaded)."""
+		if pkgname not in self._remotepkgs:
+			return False
+		pkg_path = self.getname(pkgname)
+		if os.path.exists(pkg_path) and \
+			os.path.basename(pkg_path) not in self.invalids:
+			return False
+		return True
 
 	def get_use(self, pkgname):
 		writemsg("deprecated use of binarytree.get_use()," + \
@@ -840,34 +845,42 @@ class binarytree(object):
 		return self.dbapi.aux_get(pkgname, ["USE"])[0].split()
 
 	def gettbz2(self, pkgname):
-		"fetches the package from a remote site, if necessary."
+		"""Fetches the package from a remote site, if necessary.  Attempts to
+		resume if the file appears to be partially downloaded."""
 		print "Fetching '"+str(pkgname)+"'"
-		mysplit  = pkgname.split("/")
-		tbz2name = mysplit[1]+".tbz2"
-		if not self.isremote(pkgname):
+		tbz2_path = self.getname(pkgname)
+		tbz2name = os.path.basename(tbz2_path)
+		resume = False
+		if os.path.exists(tbz2_path):
 			if (tbz2name not in self.invalids):
 				return
 			else:
+				resume = True
 				writemsg("Resuming download of this tbz2, but it is possible that it is corrupt.\n",
 					noiselevel=-1)
-		tbz2_path = self.getname(pkgname)
+		
 		mydest = os.path.dirname(self.getname(pkgname))
 		try:
 			os.makedirs(mydest, 0775)
 		except (OSError, IOError):
 			pass
-		from urlparse import urljoin
-		base_url = self._remote_base_uri
-		fcmd = self.settings["RESUMECOMMAND"]
+		from urlparse import urlparse
+		# urljoin doesn't work correctly with unrecognized protocols like sftp
 		if self._remote_has_index:
 			rel_url = self._remotepkgs[pkgname].get("PATH")
 			if not rel_url:
 				rel_url = pkgname+".tbz2"
-			url = urljoin(base_url, rel_url)
-			success = portage.getbinpkg.file_get(url, mydest, fcmd=fcmd)
+			url = self._remote_base_uri.rstrip("/") + "/" + rel_url.lstrip("/")
 		else:
-			url = urljoin(base_url, tbz2name)
-			success = portage.getbinpkg.file_get(url, mydest, fcmd=fcmd)
+			url = self.settings["PORTAGE_BINHOST"].rstrip("/") + "/" + tbz2name
+		protocol = urlparse(url)[0]
+		fcmd_prefix = "FETCHCOMMAND"
+		if resume:
+			fcmd_prefix = "RESUMECOMMAND"
+		fcmd = self.settings.get(fcmd_prefix + "_" + protocol.upper())
+		if not fcmd:
+			fcmd = self.settings.get(fcmd_prefix)
+		success = portage.getbinpkg.file_get(url, mydest, fcmd=fcmd)
 		if success and "strict" in self.settings.features:
 			metadata = self._remotepkgs[pkgname]
 			digests = {}

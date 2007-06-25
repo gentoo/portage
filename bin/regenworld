@@ -92,4 +92,5 @@ for mykey in biglist:
 			print "add to world:",myfavkey
 			worldlist.append(myfavkey)
 
-portage.write_atomic(os.path.join("/", portage.WORLD_FILE), "\n".join(worldlist))
+portage.write_atomic(os.path.join("/", portage.WORLD_FILE),
+	"\n".join(sorted(worldlist)) + "\n")

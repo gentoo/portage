@@ -142,6 +142,15 @@ def create_conn(baseurl,conn=None):
 				conn.login(username)
 			conn.set_pasv(passive)
 			conn.set_debuglevel(0)
+		elif protocol == "sftp":
+			try:
+				import paramiko
+			except ImportError:
+				raise NotImplementedError(
+					"paramiko must be installed for sftp support")
+			t = paramiko.Transport(host)
+			t.connect(username=username, password=password)
+			conn = paramiko.SFTPClient.from_transport(t)
 		else:
 			raise NotImplementedError, "%s is not a supported protocol." % protocol
 
@@ -308,6 +317,8 @@ def dir_get_list(baseurl,conn=None):
 			del olddir
 		else:
 			listing = conn.nlst(address)
+	elif protocol == "sftp":
+		listing = conn.listdir(address)
 	else:
 		raise TypeError, "Unknown protocol. '%s'" % protocol
 
@@ -333,6 +344,13 @@ def file_get_metadata(baseurl,conn=None, chunk_size=3000):
 		data,rc,msg = make_http_request(conn, address, params, headers)
 	elif protocol in ["ftp"]:
 		data,rc,msg = make_ftp_request(conn, address, -chunk_size)
+	elif protocol == "sftp":
+		f = conn.open(address)
+		try:
+			f.seek(-chunk_size, 2)
+			data = f.read()
+		finally:
+			f.close()
 	else:
 		raise TypeError, "Unknown protocol. '%s'" % protocol
 	
@@ -367,28 +385,19 @@ def file_get(baseurl,dest,conn=None,fcmd=None):
 	if not fcmd:
 		return file_get_lib(baseurl,dest,conn)
 
-	fcmd = fcmd.replace("${DISTDIR}",dest)
-	fcmd = fcmd.replace("${URI}", baseurl)
-	fcmd = fcmd.replace("${FILE}", os.path.basename(baseurl))
-	mysplit = fcmd.split()
-	mycmd   = mysplit[0]
-	myargs  = [os.path.basename(mycmd)]+mysplit[1:]
-	mypid=os.fork()
-	if mypid == 0:
-		try:
-			os.execv(mycmd,myargs)
-		except OSError:
-			pass
-		sys.stderr.write("!!! Failed to spawn fetcher.\n")
-		sys.stderr.flush()
-		os._exit(1)
-	retval=os.waitpid(mypid,0)[1]
-	if (retval & 0xff) == 0:
-		retval = retval >> 8
-	else:
-		sys.stderr.write("Spawned processes caught a signal.\n")
-		sys.exit(1)
-	if retval != 0:
+	variables = {
+		"DISTDIR": dest,
+		"URI":     baseurl,
+		"FILE":    os.path.basename(baseurl)
+	}
+	import shlex, StringIO
+	from portage.util import varexpand
+	from portage.process import spawn
+	lexer = shlex.shlex(StringIO.StringIO(fcmd), posix=True)
+	lexer.whitespace_split = True
+	myfetch = [varexpand(x, mydict=variables) for x in lexer]
+	retval = spawn(myfetch, env=os.environ.copy())
+	if retval != os.EX_OK:
 		sys.stderr.write("Fetcher exited with a failure condition.\n")
 		return 0
 	return 1
@@ -410,6 +419,25 @@ def file_get_lib(baseurl,dest,conn=None):
 		data,rc,msg = make_http_request(conn, address, params, headers, dest=dest)
 	elif protocol in ["ftp"]:
 		data,rc,msg = make_ftp_request(conn, address, dest=dest)
+	elif protocol == "sftp":
+		rc = 0
+		try:
+			f = conn.open(address)
+		except SystemExit:
+			raise
+		except Exception:
+			rc = 1
+		else:
+			try:
+				if dest:
+					bufsize = 8192
+					while True:
+						data = f.read(bufsize)
+						if not data:
+							break
+						dest.write(data)
+			finally:
+				f.close()
 	else:
 		raise TypeError, "Unknown protocol. '%s'" % protocol
 	

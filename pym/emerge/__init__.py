@@ -2479,7 +2479,7 @@ class depgraph(object):
 		# files to fetch list - avoids counting a same file twice
 		# in size display (verbose mode)
 		myfetchlist=[]
-		worldlist = getlist(self.settings, "world")
+		worldlist = set(getlist(self.settings, "world"))
 
 		for mylist_index in xrange(len(mylist)):
 			x, depth, ordered = mylist[mylist_index]
@@ -2516,6 +2516,7 @@ class depgraph(object):
 			else:
 				mydbapi = self.trees[myroot][self.pkg_tree_map[pkg_type]].dbapi
 				pkg_status = x[3]
+				pkg_merge = ordered and pkg_status != "nomerge"
 				binary_package = True
 				if "ebuild" == pkg_type:
 					if "merge" == x[3] or \
@@ -2689,7 +2690,7 @@ class depgraph(object):
 				if verbosity == 3:
 					# size verbose
 					mysize=0
-					if x[0] == "ebuild" and ordered and x[-1] != "nomerge":
+					if pkg_type == "ebuild" and pkg_merge:
 						try:
 							myfilesdict = portdb.getfetchsizes(pkg_key,
 								useflags=self.useFlags[myroot][pkg_key],
@@ -2749,23 +2750,32 @@ class depgraph(object):
 						myoldbest=myoldbest[:-3]
 					myoldbest=blue("["+myoldbest+"]")
 
-				if xs[0] in worldlist:
-					pkgprint = bold
-				else:
-					def pkgprint(pkg):
-						return pkg
+				pkg_cp = xs[0]
+				pkg_world = pkg_cp in worldlist
+
+				def pkgprint(pkg):
+					if pkg_merge:
+						if pkg_world:
+							return colorize("PKG_MERGE_WORLD", pkg)
+						else:
+							return colorize("PKG_MERGE", pkg)
+					else:
+						if pkg_world:
+							return colorize("PKG_NOMERGE_WORLD", pkg)
+						else:
+							return colorize("PKG_NOMERGE", pkg)
 
 				if x[1]!="/":
 					if myoldbest:
 						myoldbest +=" "
 					if "--columns" in self.myopts:
 						if "--quiet" in self.myopts:
-							myprint=addl+" "+indent+darkgreen(pkgprint(xs[0]))
+							myprint=addl+" "+indent+pkgprint(pkg_cp)
 							myprint=myprint+darkblue(" "+xs[1]+xs[2])+" "
 							myprint=myprint+myoldbest
 							myprint=myprint+darkgreen("to "+x[1])
 						else:
-							myprint="["+x[0]+" "+addl+"] "+indent+darkgreen(pkgprint(xs[0]))
+							myprint="["+pkgprint(pkg_type)+" "+addl+"] "+indent+pkgprint(pkg_cp)
 							if (newlp-nc_len(myprint)) > 0:
 								myprint=myprint+(" "*(newlp-nc_len(myprint)))
 							myprint=myprint+"["+darkblue(xs[1]+xs[2])+"] "
@@ -2774,21 +2784,21 @@ class depgraph(object):
 							myprint=myprint+myoldbest
 							myprint=myprint+darkgreen("to "+x[1])+" "+verboseadd
 					else:
-						if x[-1] == "nomerge" or not ordered:
-							myprint = darkblue("[nomerge      ] ")
+						if not pkg_merge:
+							myprint = "[%s      ] " % pkgprint("nomerge")
 						else:
 							myprint = "[" + pkg_type + " " + addl + "] "
-						myprint += indent + darkgreen(pkrprint(pkg_key)) + " " + \
+						myprint += indent + pkgprint(pkg_key) + " " + \
 							myoldbest + darkgreen("to " + myroot) + " " + \
 							verboseadd
 				else:
 					if "--columns" in self.myopts:
 						if "--quiet" in self.myopts:
-							myprint=addl+" "+indent+darkgreen(pkgprint(xs[0]))
+							myprint=addl+" "+indent+pkgprint(pkg_cp)
 							myprint=myprint+" "+green(xs[1]+xs[2])+" "
 							myprint=myprint+myoldbest
 						else:
-							myprint="["+x[0]+" "+addl+"] "+indent+darkgreen(pkgprint(xs[0]))
+							myprint="["+pkgprint(pkg_type)+" "+addl+"] "+indent+pkgprint(pkg_cp)
 							if (newlp-nc_len(myprint)) > 0:
 								myprint=myprint+(" "*(newlp-nc_len(myprint)))
 							myprint=myprint+green(" ["+xs[1]+xs[2]+"] ")
@@ -2796,10 +2806,10 @@ class depgraph(object):
 								myprint=myprint+(" "*(oldlp-nc_len(myprint)))
 							myprint=myprint+myoldbest+"  "+verboseadd
 					else:
-						if x[-1] == "nomerge" or not ordered:
-							myprint=darkblue("[nomerge      ] "+indent+pkgprint(x[2])+" "+myoldbest+" ")+verboseadd
+						if not pkg_merge:
+							myprint="["+pkgprint("nomerge")+"      ] "+indent+pkgprint(pkg_key)+" "+myoldbest+" "+verboseadd
 						else:
-							myprint="["+x[0]+" "+addl+"] "+indent+darkgreen(pkgprint(x[2]))+" "+myoldbest+" "+verboseadd
+							myprint="["+pkgprint(pkg_type)+" "+addl+"] "+indent+pkgprint(pkg_key)+" "+myoldbest+" "+verboseadd
 				p.append(myprint)
 
 			mysplit = portage.pkgsplit(x[2])
@@ -3073,7 +3083,7 @@ class MergeTask(object):
 				"--pretend" in self.myopts):
 				portage.write_atomic(
 					os.path.join(self.target_root, portage.WORLD_FILE),
-					"\n".join(myfavdict.values()))
+						"\n".join(sorted(myfavdict.values())) + "\n")
 
 			mtimedb["resume"]["mergelist"]=mymergelist[:]
 			mtimedb.commit()

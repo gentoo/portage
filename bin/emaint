@@ -69,7 +69,8 @@ class WorldHandler(object):
 		self._check_world(onProgress)
 		errors = []
 		try:
-			portage.write_atomic(self.world_file, "\n".join(self.okay))
+			portage.write_atomic(self.world_file,
+				"\n".join(sorted(self.okay)) + "\n")
 		except portage.exception.PortageException:
 			errors.append(self.world_file + " could not be opened for writing")
 		return errors
