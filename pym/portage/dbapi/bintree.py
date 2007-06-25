@@ -851,7 +851,7 @@ class binarytree(object):
 		tbz2_path = self.getname(pkgname)
 		tbz2name = os.path.basename(tbz2_path)
 		resume = False
-		if os.path.exists(tbz2name):
+		if os.path.exists(tbz2_path):
 			if (tbz2name not in self.invalids):
 				return
 			else:
