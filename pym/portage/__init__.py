@@ -820,8 +820,7 @@ def autouse(myvartree, use_cache=1, mysettings=None):
 
 def check_config_instance(test):
 	if not isinstance(test, config):
-	#	raise TypeError("Invalid type for config object: %s (should be %s)" % (test.__class__, config))
-		print "WARNING: Invalid type for config object: %s (should be %s)" % (test.__class__, config)
+		raise TypeError("Invalid type for config object: %s (should be %s)" % (test.__class__, config))
 
 class config(object):
 	"""
