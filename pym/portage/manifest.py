@@ -487,12 +487,12 @@ class Manifest(object):
 			except OSError:
 				pass
 			if f in distfilehashes and \
+				not required_hash_types.difference(distfilehashes[f]) and \
 				((assumeDistHashesSometimes and mystat is None) or \
 				(assumeDistHashesAlways and mystat is None) or \
 				(assumeDistHashesAlways and mystat is not None and \
 				len(distfilehashes[f]) == len(self.hashes) and \
-				distfilehashes[f]["size"] == mystat.st_size)) and \
-				not required_hash_types.difference(distfilehashes[f]):
+				distfilehashes[f]["size"] == mystat.st_size)):
 				self.fhashdict["DIST"][f] = distfilehashes[f]
 			else:
 				try:
