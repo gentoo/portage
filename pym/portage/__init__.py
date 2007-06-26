@@ -2978,6 +2978,8 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
 				continue
 			if required_hash_types.difference(myhashes):
 				missing_hashes.add(myfile)
+			if myhashes["size"] == 0:
+				missing_hashes.add(myfile)
 		if missing_hashes:
 			missing_files = []
 			for myfile in missing_hashes:
