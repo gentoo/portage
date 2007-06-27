@@ -343,6 +343,7 @@ def create_depgraph_params(myopts, myaction):
 	sub=[]
 	if "--update" in myopts or \
 		"--newuse" in myopts or \
+		"--reinstall" in myopts or \
 		"--noreplace" in myopts or \
 		myaction in ("system", "world"):
 		add.extend(["selective"])
@@ -1041,6 +1042,21 @@ class depgraph(object):
 		f.end_paragraph(1)
 		f.writer.flush()
 
+	def _reinstall_for_flags(self, forced_flags,
+		orig_use, org_iuse, cur_use, cur_iuse):
+		if "--newuse" in self.myopts:
+			if org_iuse.symmetric_difference(
+				cur_iuse).difference(forced_flags):
+				return True
+			elif org_iuse.intersection(orig_use) != \
+				cur_iuse.intersection(cur_use):
+				return True
+		elif "changed-use" in self.myopts.get("--reinstall","").split(","):
+			if org_iuse.intersection(orig_use) != \
+				cur_iuse.intersection(cur_use):
+				return True
+		return False
+
 	def create(self, mybigkey, myparent=None, addme=1, myuse=None,
 		priority=DepPriority(), rev_dep=False, arg=None):
 		"""
@@ -1114,7 +1130,9 @@ class depgraph(object):
 			""" If we aren't merging, perform the --newuse check.
 			    If the package has new iuse flags or different use flags then if
 			    --newuse is specified, we need to merge the package. """
-			if merging==0 and "--newuse" in self.myopts and \
+			if merging == 0 and \
+				("--newuse" in self.myopts or
+				"--reinstall" in self.myopts) and \
 				vardbapi.cpv_exists(mykey):
 				pkgsettings.setcpv(mykey, mydb=mydbapi)
 				forced_flags = set()
@@ -1125,12 +1143,9 @@ class depgraph(object):
 					mydbapi.aux_get(mykey, ["IUSE"])[0].split()))
 				old_iuse = set(filter_iuse_defaults(
 					vardbapi.aux_get(mykey, ["IUSE"])[0].split()))
-				if iuses.symmetric_difference(
-					old_iuse).difference(forced_flags):
+				if self._reinstall_for_flags(
+					forced_flags, old_use, old_iuse, myuse, iuses):
 					merging = 1
-				elif old_iuse.intersection(old_use) != \
-					iuses.intersection(myuse):
-					merging=1
 
 		if addme and merging == 1:
 			mybigkey.append("merge")
@@ -1596,7 +1611,9 @@ class depgraph(object):
 					if myeb_pkg_matches:
 						myeb_pkg = portage.best(myeb_pkg_matches)
 
-				if myeb_pkg and "--newuse" in self.myopts:
+				if myeb_pkg and \
+					("--newuse" in self.myopts or \
+					"--reinstall" in self.myopts):
 					iuses = set(filter_iuse_defaults(
 						bindb.aux_get(myeb_pkg, ["IUSE"])[0].split()))
 					old_use = bindb.aux_get(myeb_pkg, ["USE"])[0].split()
@@ -1615,11 +1632,8 @@ class depgraph(object):
 					if "--usepkgonly" not in self.myopts and myeb:
 						cur_iuse = set(filter_iuse_defaults(
 							portdb.aux_get(myeb, ["IUSE"])[0].split()))
-					if iuses.symmetric_difference(
-						cur_iuse).difference(forced_flags):
-						myeb_pkg = None
-					elif iuses.intersection(old_use) != \
-						cur_iuse.intersection(now_use):
+					if self._reinstall_for_flags(
+						forced_flags, old_use, iuses, now_use, cur_iuse):
 						myeb_pkg = None
 				if myeb_pkg:
 					binpkguseflags = \
@@ -5270,6 +5284,9 @@ def parse_opts(tmpcmdline, silent=False):
 			"help":"include unnecessary build time dependencies",
 			"type":"choice",
 			"choices":("y", "n")
+		},
+		"--reinstall": {
+			"help":"specify conditions to trigger package reinstallation"
 		}
 	}
 
