@@ -287,7 +287,7 @@ diefunc() {
 	eerror
 	eerror "ERROR: $CATEGORY/$PF failed."
 	dump_trace 2
-	eerror "$(basename "${BASH_SOURCE[1]}"), line ${BASH_LINENO[0]}:   Called die"
+	eerror "  ${BASH_SOURCE[1]##*/}, line ${BASH_LINENO[0]}:   Called die"
 	eerror
 	eerror "${*:-(no error message)}"
 	eerror "If you need support, post the topmost build error, and the call stack if relevant."
@@ -343,7 +343,7 @@ dump_trace() {
 			done
 			(( p -= ${BASH_ARGC[${n} - 1]} ))
 		fi
-		eerror "${sourcefile}, line ${lineno}: Called ${funcname}${args:+ ${args}}"
+		eerror "  ${sourcefile}, line ${lineno}:   Called ${funcname}${args:+ ${args}}"
 	done
 }
 
