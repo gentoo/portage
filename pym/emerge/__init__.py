@@ -978,7 +978,7 @@ class depgraph(object):
 		self._parent_child_digraph = digraph()
 		self.orderedkeys=[]
 		self.outdatedpackages=[]
-		self.args_keys = []
+		self._args_atoms = {}
 		self.blocker_digraph = digraph()
 		self.blocker_parents = {}
 		self._unresolved_blocker_parents = {}
@@ -1112,7 +1112,9 @@ class depgraph(object):
 
 		if not arg and myroot == self.target_root:
 			cpv_slot = "%s:%s" % (mykey, mydbapi.aux_get(mykey, ["SLOT"])[0])
-			arg = portage.best_match_to_list(cpv_slot, self.args_keys)
+			cp = portage.dep_getkey(mykey)
+			if cp in self._args_atoms:
+				arg = portage.best_match_to_list(cpv_slot, self._args_atoms[cp])
 
 		if myuse is None:
 			self.pkgsettings[myroot].setcpv(mykey, mydb=portdb)
@@ -1443,7 +1445,9 @@ class depgraph(object):
 
 		""" These are used inside self.create() in order to ensure packages
 		that happen to match arguments are not incorrectly marked as nomerge."""
-		self.args_keys = [x[1] for x in arg_atoms]
+		for myarg, myatom in arg_atoms:
+			self._args_atoms.setdefault(
+				portage.dep_getkey(myatom), []).append(myatom)
 		for myarg, myatom in arg_atoms:
 				try:
 					self.mysd = self.select_dep(myroot, myatom, arg=myarg)
@@ -1547,11 +1551,13 @@ class depgraph(object):
 				return 0
 			mymerge = mycheck[1]
 
-		if not mymerge and arg and \
-			portage.best_match_to_list(depstring, self.args_keys):
+		if not mymerge and arg:
 			# A provided package has been specified on the command line.  The
 			# package will not be merged and a warning will be displayed.
-			self._pprovided_args.append(arg)
+			cp = portage.dep_getkey(depstring)
+			if cp in self._args_atoms and \
+				portage.match_to_list(depstring, self._args_atoms[cp]):
+				self._pprovided_args.append(arg)
 
 		if myparent:
 			# The parent is added after it's own dep_check call so that it
