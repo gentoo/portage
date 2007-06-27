@@ -979,6 +979,8 @@ class depgraph(object):
 		self.orderedkeys=[]
 		self.outdatedpackages=[]
 		self._args_atoms = {}
+		self._args_virtual = None
+		self._args_nodes = set()
 		self.blocker_digraph = digraph()
 		self.blocker_parents = {}
 		self._unresolved_blocker_parents = {}
@@ -1111,10 +1113,7 @@ class depgraph(object):
 		mydbapi = self.trees[myroot][self.pkg_tree_map[mytype]].dbapi
 
 		if not arg and myroot == self.target_root:
-			cpv_slot = "%s:%s" % (mykey, mydbapi.aux_get(mykey, ["SLOT"])[0])
-			cp = portage.dep_getkey(mykey)
-			if cp in self._args_atoms:
-				arg = portage.best_match_to_list(cpv_slot, self._args_atoms[cp])
+			arg = self._get_arg(mytype, mykey)
 
 		if myuse is None:
 			self.pkgsettings[myroot].setcpv(mykey, mydb=portdb)
@@ -1222,6 +1221,9 @@ class depgraph(object):
 			else:
 				self.digraph.addnode(jbigkey, myparent,
 					priority=priority)
+
+		if arg:
+			self._args_nodes.add(jbigkey)
 
 		# Do this even when addme is False (--onlydeps) so that the
 		# parent/child relationship is always known in case
@@ -1554,6 +1556,7 @@ class depgraph(object):
 		if not mymerge and arg:
 			# A provided package has been specified on the command line.  The
 			# package will not be merged and a warning will be displayed.
+			
 			cp = portage.dep_getkey(depstring)
 			if cp in self._args_atoms and \
 				portage.match_to_list(depstring, self._args_atoms[cp]):
@@ -2304,7 +2307,11 @@ class depgraph(object):
 						if available:
 							newlist.append(myslot_atom)
 		mylist = newlist
-		
+
+		for myatom in mylist:
+			self._args_atoms.setdefault(
+				portage.dep_getkey(myatom), []).append(myatom)
+
 		missing_atoms = []
 		for mydep in mylist:
 			try:
@@ -2329,6 +2336,34 @@ class depgraph(object):
 			print >> sys.stderr, " ".join(missing_atoms) + "\n"
 
 		return 1
+
+	def _get_arg(self, pkg_type, cpv):
+		"""Return the best match for a given package from the arguments, or
+		None if there are no matches.  This matches virtual arguments against
+		the current virtual settings."""
+		mydbapi = self.trees[self.target_root][self.pkg_tree_map[pkg_type]].dbapi
+		cpv_slot = "%s:%s" % (cpv, mydbapi.aux_get(cpv, ["SLOT"])[0])
+		cp = portage.dep_getkey(cpv)
+		atoms = self._args_atoms.get(cp)
+		if atoms:
+			best_match = portage.best_match_to_list(cpv_slot, atoms)
+			if best_match:
+				return best_match
+		if self._args_virtual is None:
+			self._args_virtual = {}
+			for cp in self._args_atoms:
+				if cp.startswith("virtual/"):
+					self._args_virtual[cp] = self._args_atoms[cp]
+		virts = self.pkgsettings[self.target_root].getvirtuals()
+		for cp, atoms in self._args_virtual.iteritems():
+			choices = virts.get(cp)
+			if choices:
+				for choice in choices:
+					transformed_atoms = [atom.replace(cp, choice) for atom in atoms]
+					best_match = portage.best_match_to_list(cpv_slot, transformed_atoms)
+					if best_match:
+						return atoms[transformed_atoms.index(best_match)]
+		return None
 
 	def display(self,mylist,verbosity=None):
 		if verbosity is None:
