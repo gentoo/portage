@@ -3144,6 +3144,7 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 	mysettings["FILESDIR"] = pkg_dir+"/files"
 	mysettings["PF"]       = mypv
 
+	mysettings["PORTDIR"] = os.path.realpath(mysettings["PORTDIR"])
 	mysettings["ECLASSDIR"]   = mysettings["PORTDIR"]+"/eclass"
 	mysettings["SANDBOX_LOG"] = mycpv.replace("/", "_-_")
 
@@ -3895,19 +3896,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			print "!!! Unknown mydo:",mydo
 			return 1
 
-		if retval != os.EX_OK and tree == "porttree":
-			for i in xrange(len(mydbapi.porttrees)-1):
-				t = mydbapi.porttrees[i+1]
-				if myebuild.startswith(t):
-					# Display the non-cannonical path, in case it's different, to
-					# prevent confusion.
-					overlays = mysettings["PORTDIR_OVERLAY"].split()
-					try:
-						writemsg("!!! This ebuild is from an overlay: '%s'\n" % \
-							overlays[i], noiselevel=-1)
-					except IndexError:
-						pass
-					break
 		return retval
 
 	finally:
@@ -7131,6 +7119,7 @@ class dblink:
 				uid=portage_uid, gid=portage_gid, mode=070, mask=0)
 		builddir_lock = None
 		catdir_lock = None
+		retval = -1
 		try:
 			if myebuildpath:
 				catdir_lock = portage_locks.lockdir(catdir)
@@ -7160,20 +7149,24 @@ class dblink:
 					 self.settings, use_cache=0, tree="vartree",
 					 mydbapi=self.vartree.dbapi, vartree=self.vartree)
 
-				# process logs created during pre/postrm
-				elog_process(self.mycpv, self.settings)
-
 				# XXX: Decide how to handle failures here.
 				if retval != os.EX_OK:
 					writemsg("!!! FAILED postrm: %s\n" % retval, noiselevel=-1)
 					return retval
-				doebuild(myebuildpath, "cleanrm", self.myroot, self.settings,
-					tree="vartree", mydbapi=self.vartree.dbapi,
-					vartree=self.vartree)
 
 		finally:
 			if builddir_lock:
-				portage_locks.unlockdir(builddir_lock)
+				try:
+					if myebuildpath:
+						# process logs created during pre/postrm
+						elog_process(self.mycpv, self.settings)
+						if retval == os.EX_OK:
+							doebuild(myebuildpath, "cleanrm", self.myroot,
+								self.settings, tree="vartree",
+								mydbapi=self.vartree.dbapi,
+								vartree=self.vartree)
+				finally:
+					unlockdir(builddir_lock)
 			try:
 				if myebuildpath and not catdir_lock:
 					# Lock catdir for removal if empty.
@@ -7507,8 +7500,10 @@ class dblink:
 
 		others_in_slot = []
 		for cur_cpv in slot_matches:
+			# Clone the config in case one of these has to be unmerged since
+			# we need it to have private ${T} etc... for things like elog.
 			others_in_slot.append(dblink(self.cat, catsplit(cur_cpv)[1],
-				self.vartree.root, self.settings,
+				self.vartree.root, config(clone=self.settings),
 				vartree=self.vartree))
 		retval = self._security_check(others_in_slot)
 		if retval:
@@ -7782,12 +7777,6 @@ class dblink:
 			contents=contents, env=self.settings.environ())
 
 		writemsg_stdout(">>> %s %s\n" % (self.mycpv,"merged."))
-
-		# Process ebuild logfiles
-		elog_process(self.mycpv, self.settings)
-		if "noclean" not in self.settings.features:
-			doebuild(myebuild, "clean", destroot, self.settings,
-				tree=self.treetype, mydbapi=mydbapi, vartree=self.vartree)
 		return os.EX_OK
 
 	def mergeme(self,srcroot,destroot,outfile,secondhand,stufftomerge,cfgfiledict,thismtime):
@@ -8058,12 +8047,21 @@ class dblink:
 
 	def merge(self, mergeroot, inforoot, myroot, myebuild=None, cleanup=0,
 		mydbapi=None, prev_mtimes=None):
+		retval = -1
+		self.lockdb()
 		try:
-			self.lockdb()
-			return self.treewalk(mergeroot, myroot, inforoot, myebuild,
+			retval = self.treewalk(mergeroot, myroot, inforoot, myebuild,
 				cleanup=cleanup, mydbapi=mydbapi, prev_mtimes=prev_mtimes)
+			# Process ebuild logfiles
+			elog_process(self.mycpv, self.settings)
+			if retval == os.EX_OK and "noclean" not in self.settings.features:
+				if myebuild is None:
+					myebuild = os.path.join(inforoot, self.pkg + ".ebuild")
+				doebuild(myebuild, "clean", myroot, self.settings,
+					tree=self.treetype, mydbapi=mydbapi, vartree=self.vartree)
 		finally:
 			self.unlockdb()
+		return retval
 
 	def getstring(self,name):
 		"returns contents of a file with whitespace converted to spaces"
