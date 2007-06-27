@@ -2764,7 +2764,7 @@ class depgraph(object):
 					myoldbest=blue("["+myoldbest+"]")
 
 				pkg_cp = xs[0]
-				pkg_world = pkg_cp in worldlist
+				pkg_world = pkg_cp in worldlist and myroot == self.target_root
 
 				def pkgprint(pkg):
 					if pkg_merge:
