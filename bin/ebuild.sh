@@ -294,7 +294,11 @@ diefunc() {
 	[ -n "${PORTAGE_LOG_FILE}" ] && \
 		eerror "A complete build log is located at '${PORTAGE_LOG_FILE}'."
 	if [ -n "${EBUILD_OVERLAY_ECLASSES}" ] ; then
-			eerror "This ebuild used eclasses from overlays: ${EBUILD_OVERLAY_ECLASSES}"
+		eerror "This ebuild used the following eclasses from overlays:"
+		local x
+		for x in ${EBUILD_OVERLAY_ECLASSES} ; do
+			eerror "  ${x}"
+		done
 	fi
 	if [ ${EBUILD#${PORTDIR}/} == ${EBUILD} ] ; then
 		local overlay=${EBUILD%/*}
