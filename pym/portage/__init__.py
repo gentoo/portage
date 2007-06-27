@@ -3254,6 +3254,7 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 	mysettings["FILESDIR"] = pkg_dir+"/files"
 	mysettings["PF"]       = mypv
 
+	mysettings["PORTDIR"] = os.path.realpath(mysettings["PORTDIR"])
 	mysettings["ECLASSDIR"]   = mysettings["PORTDIR"]+"/eclass"
 	mysettings["SANDBOX_LOG"] = mycpv.replace("/", "_-_")
 
@@ -4000,19 +4001,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			print "!!! Unknown mydo:",mydo
 			return 1
 
-		if retval != os.EX_OK and tree == "porttree":
-			for i in xrange(len(mydbapi.porttrees)-1):
-				t = mydbapi.porttrees[i+1]
-				if myebuild.startswith(t):
-					# Display the non-cannonical path, in case it's different, to
-					# prevent confusion.
-					overlays = mysettings["PORTDIR_OVERLAY"].split()
-					try:
-						writemsg("!!! This ebuild is from an overlay: '%s'\n" % \
-							overlays[i], noiselevel=-1)
-					except IndexError:
-						pass
-					break
 		return retval
 
 	finally:

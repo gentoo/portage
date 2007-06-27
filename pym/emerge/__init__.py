@@ -3229,7 +3229,8 @@ class MergeTask(object):
 							pkgsettings, self.edebug, mydbapi=portdb,
 							tree="porttree")
 						del pkgsettings["PORTAGE_BINPKG_TMPFILE"]
-						if "--buildpkgonly" in self.myopts:
+						if retval != os.EX_OK or \
+							"--buildpkgonly" in self.myopts:
 							elog_process(pkg_key, pkgsettings)
 						if retval != os.EX_OK:
 							return retval

@@ -23,7 +23,7 @@ dump_trace() {
                 strip=$(( $1 ))
         fi
 
-        echo "Call stack:"
+        eerror "Call stack:"
         for (( n = ${#FUNCNAME[@]} - 1, p = ${#BASH_ARGV[@]} ; n > $strip ; n-- )) ; do
                 funcname=${FUNCNAME[${n} - 1]}
                 sourcefile=$(basename ${BASH_SOURCE[${n}]})
@@ -37,31 +37,32 @@ dump_trace() {
                         done
                         (( p -= ${BASH_ARGC[${n} - 1]} ))
                 fi
-                echo "  ${sourcefile}, line ${lineno}:   Called ${funcname}${args:+ ${args}}"
+                eerror "${sourcefile}, line ${lineno}: Called ${funcname}${args:+ ${args}}"
         done
 }
 
 diefunc() {
         local funcname="$1" lineno="$2" exitcode="$3"
         shift 3
-        echo >&2
-        echo "!!! ERROR: $CATEGORY/$PF failed." >&2
-        dump_trace 2 1>&2
-        echo "  $(basename "${BASH_SOURCE[1]}"), line ${BASH_LINENO[0]}:   Called die" 1>&2
-        echo >&2
-        echo "!!! ${*:-(no error message)}" >&2
-        echo "!!! If you need support, post the topmost build error, and the call stack if relevant." >&2
+        eerror
+        eerror "ERROR: $CATEGORY/$PF failed."
+        dump_trace 2
+        eerror "$(basename "${BASH_SOURCE[1]}"), line ${BASH_LINENO[0]}:   Called die"
+        eerror
+        eerror "${*:-(no error message)}"
+        eerror "If you need support, post the topmost build error, and the call stack if relevant."
         [ -n "${PORTAGE_LOG_FILE}" ] && \
-            echo "!!! A complete build log is located at '${PORTAGE_LOG_FILE}'." >&2
-        echo >&2
+            eerror "A complete build log is located at '${PORTAGE_LOG_FILE}'."
         if [ -n "${EBUILD_OVERLAY_ECLASSES}" ] ; then
-                echo "This ebuild used the following eclasses from overlays:" >&2
-                echo >&2
-                for x in ${EBUILD_OVERLAY_ECLASSES} ; do
-                        echo "  ${x}" >&2
-                done
-                echo >&2
+                eerror "This ebuild used eclasses from overlays: ${EBUILD_OVERLAY_ECLASSES}"
         fi
+        if [ ${EBUILD#${PORTDIR}/} == ${EBUILD} ] ; then
+            local overlay=${EBUILD%/*}
+            overlay=${overlay%/*}
+            overlay=${overlay%/*}
+            eerror "This ebuild is from an overlay: '${overlay}/'"
+        fi
+        eerror
 
         if [ "${EBUILD_PHASE/depend}" == "${EBUILD_PHASE}" ]; then
                 local x
