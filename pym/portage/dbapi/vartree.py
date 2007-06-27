@@ -20,7 +20,7 @@ from portage.util import apply_secpass_permissions, ConfigProtect, ensure_dirs, 
 	grabfile, grabdict, normalize_path, new_protect_filename
 from portage.versions import pkgsplit, catpkgsplit, catsplit, best, pkgcmp
 
-from portage import listdir, dep_expand, config, flatten, key_expand, \
+from portage import listdir, dep_expand, flatten, key_expand, \
 	doebuild_environment, doebuild, env_update, \
 	abssymlink, movefile, _movefile, bsd_chflags
 
@@ -650,6 +650,7 @@ class vartree(object):
 			self.root = clone.root[:]
 			self.dbapi = copy.deepcopy(clone.dbapi)
 			self.populated = 1
+			from portage import config
 			self.settings = config(clone=clone.settings)
 		else:
 			self.root = root[:]
@@ -1058,6 +1059,7 @@ class dblink(object):
 				uid=portage_uid, gid=portage_gid, mode=070, mask=0)
 		builddir_lock = None
 		catdir_lock = None
+		retval = -1
 		try:
 			if myebuildpath:
 				catdir_lock = lockdir(catdir)
@@ -1090,23 +1092,27 @@ class dblink(object):
 					 self.settings, use_cache=0, tree="vartree",
 					 mydbapi=self.vartree.dbapi, vartree=self.vartree)
 
-				# process logs created during pre/postrm
-				elog_process(self.mycpv, self.settings)
-
 				# XXX: Decide how to handle failures here.
 				if retval != os.EX_OK:
 					writemsg("!!! FAILED postrm: %s\n" % retval, noiselevel=-1)
 					return retval
-				doebuild(myebuildpath, "cleanrm", self.myroot, self.settings,
-					tree="vartree", mydbapi=self.vartree.dbapi,
-					vartree=self.vartree)
-			
+
 			# regenerate reverse NEEDED map
 			self.vartree.dbapi.libmap.update()
 
 		finally:
 			if builddir_lock:
-				unlockdir(builddir_lock)
+				try:
+					if myebuildpath:
+						# process logs created during pre/postrm
+						elog_process(self.mycpv, self.settings)
+						if retval == os.EX_OK:
+							doebuild(myebuildpath, "cleanrm", self.myroot,
+								self.settings, tree="vartree",
+								mydbapi=self.vartree.dbapi,
+								vartree=self.vartree)
+				finally:
+					unlockdir(builddir_lock)
 			try:
 				if myebuildpath and not catdir_lock:
 					# Lock catdir for removal if empty.
@@ -1609,9 +1615,12 @@ class dblink(object):
 			slot_matches.append(self.mycpv)
 
 		others_in_slot = []
+		from portage import config
 		for cur_cpv in slot_matches:
+			# Clone the config in case one of these has to be unmerged since
+			# we need it to have private ${T} etc... for things like elog.
 			others_in_slot.append(dblink(self.cat, catsplit(cur_cpv)[1],
-				self.vartree.root, self.settings,
+				self.vartree.root, config(clone=self.settings),
 				vartree=self.vartree))
 		retval = self._security_check(others_in_slot)
 		if retval:
@@ -1806,12 +1815,6 @@ class dblink(object):
 			contents=contents, env=self.settings.environ())
 
 		writemsg_stdout(">>> %s %s\n" % (self.mycpv,"merged."))
-
-		# Process ebuild logfiles
-		elog_process(self.mycpv, self.settings)
-		if "noclean" not in self.settings.features:
-			doebuild(myebuild, "clean", destroot, self.settings,
-				tree=self.treetype, mydbapi=mydbapi, vartree=self.vartree)
 		return os.EX_OK
 
 	def mergeme(self, srcroot, destroot, outfile, secondhand, stufftomerge, cfgfiledict, thismtime):
@@ -2083,12 +2086,21 @@ class dblink(object):
 
 	def merge(self, mergeroot, inforoot, myroot, myebuild=None, cleanup=0,
 		mydbapi=None, prev_mtimes=None):
+		retval = -1
+		self.lockdb()
 		try:
-			self.lockdb()
-			return self.treewalk(mergeroot, myroot, inforoot, myebuild,
+			retval = self.treewalk(mergeroot, myroot, inforoot, myebuild,
 				cleanup=cleanup, mydbapi=mydbapi, prev_mtimes=prev_mtimes)
+			# Process ebuild logfiles
+			elog_process(self.mycpv, self.settings)
+			if retval == os.EX_OK and "noclean" not in self.settings.features:
+				if myebuild is None:
+					myebuild = os.path.join(inforoot, self.pkg + ".ebuild")
+				doebuild(myebuild, "clean", myroot, self.settings,
+					tree=self.treetype, mydbapi=mydbapi, vartree=self.vartree)
 		finally:
 			self.unlockdb()
+		return retval
 
 	def getstring(self,name):
 		"returns contents of a file with whitespace converted to spaces"

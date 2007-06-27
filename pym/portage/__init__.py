@@ -2709,7 +2709,16 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						if not os.access(myfile_path, os.R_OK):
 							writemsg("!!! Failed to adjust permissions:" + \
 								" %s\n" % str(e), noiselevel=-1)
-					if myfile not in mydigests:
+
+					# If the file is empty then it's obviously invalid. Remove
+					# the empty file and try to download if possible.
+					if mystat.st_size == 0:
+						if can_fetch:
+							try:
+								os.unlink(myfile_path)
+							except EnvironmentError:
+								pass
+					elif myfile not in mydigests:
 						# We don't have a digest, but the file exists.  We must
 						# assume that it is fully downloaded.
 						continue
@@ -2832,6 +2841,17 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 							if not os.access(myfile_path, os.R_OK):
 								writemsg("!!! Failed to adjust permissions:" + \
 									" %s\n" % str(e), noiselevel=-1)
+
+					# If the file is empty then it's obviously invalid.  Don't
+					# trust the return value from the fetcher.  Remove the
+					# empty file and try to download again.
+					try:
+						if os.stat(myfile_path).st_size == 0:
+							os.unlink(myfile_path)
+							fetched = 0
+							continue
+					except EnvironmentError:
+						pass
 
 					if mydigests!=None and mydigests.has_key(myfile):
 						try:
@@ -2967,16 +2987,23 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
 				continue
 			if required_hash_types.difference(myhashes):
 				missing_hashes.add(myfile)
+				continue
+			if myhashes["size"] == 0:
+				missing_hashes.add(myfile)
 		if missing_hashes:
 			missing_files = []
 			for myfile in missing_hashes:
 				try:
-					os.stat(os.path.join(mysettings["DISTDIR"], myfile))
+					st = os.stat(os.path.join(mysettings["DISTDIR"], myfile))
 				except OSError, e:
 					if e.errno != errno.ENOENT:
 						raise
 					del e
 					missing_files.append(myfile)
+				else:
+					# If the file is empty then it's obviously invalid.
+					if st.st_size == 0:
+						missing_files.append(myfile)
 			if missing_files:
 				mytree = os.path.realpath(os.path.dirname(
 					os.path.dirname(mysettings["O"])))
@@ -3238,8 +3265,9 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 	mysettings["FILESDIR"] = os.path.join(pkg_dir, "files")
 	mysettings["PF"]       = mypv
 
-	mysettings["ECLASSDIR"]   = os.path.join(mysettings["PORTDIR"], "eclass")
-	mysettings["SANDBOX_LOG"] = mycpv.replace(os.path.sep, "_-_")
+	mysettings["PORTDIR"] = os.path.realpath(mysettings["PORTDIR"])
+	mysettings["ECLASSDIR"]   = mysettings["PORTDIR"]+"/eclass"
+	mysettings["SANDBOX_LOG"] = mycpv.replace("/", "_-_")
 
 	mysettings["PROFILE_PATHS"] = "\n".join(mysettings.profiles)+"\n"+CUSTOM_PROFILE_PATH
 	mysettings["P"]  = mysplit[0]+"-"+mysplit[1]
@@ -3985,19 +4013,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			print "!!! Unknown mydo:",mydo
 			return 1
 
-		if retval != os.EX_OK and tree == "porttree":
-			for i in xrange(len(mydbapi.porttrees)-1):
-				t = mydbapi.porttrees[i+1]
-				if myebuild.startswith(t):
-					# Display the non-cannonical path, in case it's different, to
-					# prevent confusion.
-					overlays = mysettings["PORTDIR_OVERLAY"].split()
-					try:
-						writemsg("!!! This ebuild is from an overlay: '%s'\n" % \
-							overlays[i], noiselevel=-1)
-					except IndexError:
-						pass
-					break
 		return retval
 
 	finally:
