@@ -6,25 +6,18 @@
 from output import EOutput
 from portage_const import EBUILD_PHASES
 
-_items = {}
+_items = []
 def process(mysettings, key, logentries, fulltext):
 	global _items
-	config_root = mysettings["PORTAGE_CONFIGROOT"]
-	mysettings, items = _items.setdefault(config_root, (mysettings, {}))
-	items[key] = logentries
+	_items.append((mysettings, key, logentries))
 
 def finalize():
 	global _items
-	for mysettings, items in _items.itervalues():
-		_finalize(mysettings, items)
-	_items.clear()
-
-def _finalize(mysettings, items):
 	printer = EOutput()
-	root_msg = ""
-	if mysettings["ROOT"] != "/":
-		root_msg = " merged to %s" % mysettings["ROOT"]
-	for key, logentries in items.iteritems():
+	for mysettings, key, logentries in _items:
+		root_msg = ""
+		if mysettings["ROOT"] != "/":
+			root_msg = " merged to %s" % mysettings["ROOT"]
 		print
 		printer.einfo("Messages for package %s%s:" % (key, root_msg))
 		print
@@ -39,4 +32,5 @@ def _finalize(mysettings, items):
 						"QA": printer.ewarn}
 				for line in msgcontent:
 					fmap[msgtype](line.strip("\n"))
+	_items = []
 	return
