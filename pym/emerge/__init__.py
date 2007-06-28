@@ -1047,16 +1047,16 @@ class depgraph(object):
 		f.writer.flush()
 
 	def _reinstall_for_flags(self, forced_flags,
-		orig_use, org_iuse, cur_use, cur_iuse):
+		orig_use, orig_iuse, cur_use, cur_iuse):
 		if "--newuse" in self.myopts:
-			if org_iuse.symmetric_difference(
+			if orig_iuse.symmetric_difference(
 				cur_iuse).difference(forced_flags):
 				return True
-			elif org_iuse.intersection(orig_use) != \
+			elif orig_iuse.intersection(orig_use) != \
 				cur_iuse.intersection(cur_use):
 				return True
 		elif "changed-use" == self.myopts.get("--reinstall"):
-			if org_iuse.intersection(orig_use) != \
+			if orig_iuse.intersection(orig_use) != \
 				cur_iuse.intersection(cur_use):
 				return True
 		return False
