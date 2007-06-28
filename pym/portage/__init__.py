@@ -1020,7 +1020,14 @@ class config(object):
 									"Parent '%s' not found: '%s'" %  \
 									(parentPath, parentsFile))
 					self.profiles.append(currentPath)
-				addProfile(os.path.realpath(self.profile_path))
+				try:
+					addProfile(os.path.realpath(self.profile_path))
+				except portage.exception.ParseError, e:
+					writemsg("!!! Unable to parse profile: '%s'\n" % \
+						self.profile_path, noiselevel=-1)
+					writemsg("!!! ParseError: %s\n" % str(e), noiselevel=-1)
+					del e
+					self.profiles = []
 			if local_config:
 				custom_prof = os.path.join(
 					config_root, CUSTOM_PROFILE_PATH.lstrip(os.path.sep))
