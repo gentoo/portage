@@ -936,7 +936,8 @@ class depgraph(object):
 		# Maps slot atom to digraph node for all nodes added to the graph.
 		self._slot_node_map = {}
 		self.mydbapi = {}
-		self._mydbapi_keys = ["SLOT", "DEPEND", "RDEPEND", "PDEPEND"]
+		self._mydbapi_keys = ["SLOT", "DEPEND", "RDEPEND", "PDEPEND",
+			"USE", "IUSE", "PROVIDE"]
 		self.useFlags = {}
 		self.trees = {}
 		for myroot in trees:
@@ -979,7 +980,10 @@ class depgraph(object):
 		self._parent_child_digraph = digraph()
 		self.orderedkeys=[]
 		self.outdatedpackages=[]
-		self.args_keys = []
+		self._args_atoms = {}
+		self._args_nodes = set()
+		self._sets = {}
+		self._sets_nodes = {}
 		self.blocker_digraph = digraph()
 		self.blocker_parents = {}
 		self._unresolved_blocker_parents = {}
@@ -1052,7 +1056,7 @@ class depgraph(object):
 			elif org_iuse.intersection(orig_use) != \
 				cur_iuse.intersection(cur_use):
 				return True
-		elif "changed-use" in self.myopts.get("--reinstall","").split(","):
+		elif "changed-use" == self.myopts.get("--reinstall"):
 			if org_iuse.intersection(orig_use) != \
 				cur_iuse.intersection(cur_use):
 				return True
@@ -1110,14 +1114,22 @@ class depgraph(object):
 		# directive, otherwise we add a "merge" directive.
 
 		mydbapi = self.trees[myroot][self.pkg_tree_map[mytype]].dbapi
+		metadata = dict(izip(self._mydbapi_keys,
+			mydbapi.aux_get(mykey, self._mydbapi_keys)))
+		if mytype == "ebuild":
+			pkgsettings.setcpv(mykey, mydb=portdb)
+			metadata["USE"] = pkgsettings["USE"]
+			myuse = pkgsettings["USE"].split()
 
 		if not arg and myroot == self.target_root:
-			cpv_slot = "%s:%s" % (mykey, mydbapi.aux_get(mykey, ["SLOT"])[0])
-			arg = portage.best_match_to_list(cpv_slot, self.args_keys)
-
-		if myuse is None:
-			self.pkgsettings[myroot].setcpv(mykey, mydb=portdb)
-			myuse = self.pkgsettings[myroot]["USE"].split()
+			try:
+				arg = self._find_atom_for_pkg(self._args_atoms, mykey, metadata)
+			except portage.exception.InvalidDependString, e:
+				if mytype != "installed":
+					show_invalid_depstring_notice(tuple(mybigkey+["merge"]),
+						metadata["PROVIDE"], str(e))
+					return 0
+				del e
 
 		merging=1
 		if mytype == "installed":
@@ -1140,8 +1152,7 @@ class depgraph(object):
 				forced_flags.update(pkgsettings.useforce)
 				forced_flags.update(pkgsettings.usemask)
 				old_use = vardbapi.aux_get(mykey, ["USE"])[0].split()
-				iuses = set(filter_iuse_defaults(
-					mydbapi.aux_get(mykey, ["IUSE"])[0].split()))
+				iuses = set(filter_iuse_defaults(metadata["IUSE"].split()))
 				old_iuse = set(filter_iuse_defaults(
 					vardbapi.aux_get(mykey, ["IUSE"])[0].split()))
 				if self._reinstall_for_flags(
@@ -1155,16 +1166,15 @@ class depgraph(object):
 		jbigkey = tuple(mybigkey)
 
 		if addme:
-			metadata = dict(izip(self._mydbapi_keys,
-				mydbapi.aux_get(mykey, self._mydbapi_keys)))
 			if merging == 0 and vardbapi.cpv_exists(mykey) and \
 				mytype != "installed":
+				mytype = "installed"
 				mybigkey[0] = "installed"
 				mydbapi = vardbapi
 				jbigkey = tuple(mybigkey)
 				metadata = dict(izip(self._mydbapi_keys,
 					mydbapi.aux_get(mykey, self._mydbapi_keys)))
-				myuse = mydbapi.aux_get(mykey, ["USE"])[0].split()
+				myuse = metadata["USE"].split()
 			slot_atom = "%s:%s" % (portage.dep_getkey(mykey), metadata["SLOT"])
 			existing_node = self._slot_node_map[myroot].get(
 				slot_atom, None)
@@ -1222,6 +1232,20 @@ class depgraph(object):
 				self.digraph.addnode(jbigkey, myparent,
 					priority=priority)
 
+		if arg:
+			self._args_nodes.add(jbigkey)
+			try:
+				for set_name, pkg_set in self._sets.iteritems():
+					atom = self._find_atom_for_pkg(pkg_set, mykey, metadata)
+					if atom:
+						self._sets_nodes[set_name].add(jbigkey)
+ 			except portage.exception.InvalidDependString, e:
+				if mytype != "installed":
+					show_invalid_depstring_notice(jbigkey,
+						metadata["PROVIDE"], str(e))
+					return 0
+				del e
+
 		# Do this even when addme is False (--onlydeps) so that the
 		# parent/child relationship is always known in case
 		# self._show_slot_collision_notice() needs to be called later.
@@ -1245,9 +1269,8 @@ class depgraph(object):
 
 		edepend={}
 		depkeys = ["DEPEND","RDEPEND","PDEPEND"]
-		depvalues = mydbapi.aux_get(mykey, depkeys)
-		for i in xrange(len(depkeys)):
-			edepend[depkeys[i]] = depvalues[i]
+		for k in depkeys:
+			edepend[k] = metadata[k]
 
 		if mytype == "ebuild":
 			if "--buildpkgonly" in self.myopts:
@@ -1444,7 +1467,9 @@ class depgraph(object):
 
 		""" These are used inside self.create() in order to ensure packages
 		that happen to match arguments are not incorrectly marked as nomerge."""
-		self.args_keys = [x[1] for x in arg_atoms]
+		for myarg, myatom in arg_atoms:
+			self._args_atoms.setdefault(
+				portage.dep_getkey(myatom), []).append(myatom)
 		for myarg, myatom in arg_atoms:
 				try:
 					self.mysd = self.select_dep(myroot, myatom, arg=myarg)
@@ -1548,11 +1573,12 @@ class depgraph(object):
 				return 0
 			mymerge = mycheck[1]
 
-		if not mymerge and arg and \
-			portage.best_match_to_list(depstring, self.args_keys):
+		if not mymerge and arg:
 			# A provided package has been specified on the command line.  The
 			# package will not be merged and a warning will be displayed.
-			self._pprovided_args.append(arg)
+			cp = portage.dep_getkey(depstring)
+			if cp in self._args_atoms and depstring in self._args_atoms[cp]:
+				self._pprovided_args.append(arg)
 
 		if myparent:
 			# The parent is added after it's own dep_check call so that it
@@ -2044,6 +2070,9 @@ class depgraph(object):
 			self._altlist_cache[reversed] = retlist[:]
 			return retlist
 		mygraph=self.digraph.copy()
+		for node in mygraph.order[:]:
+			if node[-1] == "nomerge":
+				mygraph.remove(node)
 		self._merge_order_bias(mygraph)
 		myblockers = self.blocker_digraph.copy()
 		retlist=[]
@@ -2222,13 +2251,24 @@ class depgraph(object):
 			matches = portdb.gvisible(portdb.visible(mylist))
 			return [x for x in mylist \
 				if x in matches or not portdb.cpv_exists(x)]
+		def create_cp_dict(atom_list):
+			cp_dict = {}
+			for atom in atom_list:
+				cp_dict.setdefault(portage.dep_getkey(atom), []).append(atom)
+			return cp_dict
 		world_problems = False
 		if mode=="system":
 			mylist = getlist(self.settings, "system")
+			self._sets["system"] = create_cp_dict(mylist)
+			self._sets_nodes["system"] = set()
 		else:
 			#world mode
 			worldlist = getlist(self.settings, "world")
+			self._sets["world"] = create_cp_dict(worldlist)
+			self._sets_nodes["world"] = set()
 			mylist = getlist(self.settings, "system")
+			self._sets["system"] = create_cp_dict(mylist)
+			self._sets_nodes["system"] = set()
 			worlddict=genericdict(worldlist)
 
 			for x in worlddict:
@@ -2299,7 +2339,11 @@ class depgraph(object):
 						if available:
 							newlist.append(myslot_atom)
 		mylist = newlist
-		
+
+		for myatom in mylist:
+			self._args_atoms.setdefault(
+				portage.dep_getkey(myatom), []).append(myatom)
+
 		missing_atoms = []
 		for mydep in mylist:
 			try:
@@ -2324,6 +2368,31 @@ class depgraph(object):
 			print >> sys.stderr, " ".join(missing_atoms) + "\n"
 
 		return 1
+
+	def _find_atom_for_pkg(self, pkg_set, cpv, metadata):
+		"""Return the best match for a given package from the arguments, or
+		None if there are no matches.  This matches virtual arguments against
+		the PROVIDE metadata.  This can raise an InvalidDependString exception
+		if an error occurs while parsing PROVIDE."""
+		cpv_slot = "%s:%s" % (cpv, metadata["SLOT"])
+		cp = portage.dep_getkey(cpv)
+		atoms = pkg_set.get(cp)
+		if atoms:
+			best_match = portage.best_match_to_list(cpv_slot, atoms)
+			if best_match:
+				return best_match
+		provides = portage.flatten(portage.dep.use_reduce(
+			portage.dep.paren_reduce(metadata["PROVIDE"]),
+			uselist=metadata["USE"].split()))
+		for provide in provides:
+			provided_cp = portage.dep_getkey(provide)
+			atoms = pkg_set.get(provided_cp)
+			if atoms:
+				transformed_atoms = [atom.replace(provided_cp, cp) for atom in atoms]
+				best_match = portage.best_match_to_list(cpv_slot, transformed_atoms)
+				if best_match:
+					return atoms[transformed_atoms.index(best_match)]
+		return None
 
 	def display(self,mylist,verbosity=None):
 		if verbosity is None:
@@ -2432,7 +2501,12 @@ class depgraph(object):
 					traversed_nodes = set() # prevent endless circles
 					traversed_nodes.add(graph_key)
 					def add_parents(current_node, ordered):
-						parent_nodes = mygraph.parent_nodes(current_node)
+						parent_nodes = None
+						# Do not traverse to parents if this node is an
+						# an argument or a direct member of a set that has
+						# been specified as an argument (system or world).
+						if current_node not in self._args_nodes:
+							parent_nodes = mygraph.parent_nodes(current_node)
 						if parent_nodes:
 							child_nodes = set(mygraph.child_nodes(current_node))
 							selected_parent = None
@@ -2493,7 +2567,6 @@ class depgraph(object):
 		# files to fetch list - avoids counting a same file twice
 		# in size display (verbose mode)
 		myfetchlist=[]
-		worldlist = set(getlist(self.settings, "world"))
 
 		for mylist_index in xrange(len(mylist)):
 			x, depth, ordered = mylist[mylist_index]
@@ -2765,17 +2838,40 @@ class depgraph(object):
 					myoldbest=blue("["+myoldbest+"]")
 
 				pkg_cp = xs[0]
-				pkg_world = pkg_cp in worldlist
+				pkg_arg    = False
+				pkg_world  = False
+				pkg_system = False
+				pkg_node = tuple(x)
+				if pkg_node in self._args_nodes:
+					pkg_arg = True
+					world_nodes = self._sets_nodes.get("world")
+					if world_nodes and pkg_node in world_nodes:
+						pkg_world = True
+					if world_nodes is None:
+						# Don't colorize system package when in "world" mode.
+						system_nodes = self._sets_nodes.get("system")
+						if system_nodes and pkg_node in system_nodes:
+							pkg_system = True
 
 				def pkgprint(pkg):
 					if pkg_merge:
-						if pkg_world:
-							return colorize("PKG_MERGE_WORLD", pkg)
+						if pkg_arg:
+							if pkg_world:
+								return colorize("PKG_MERGE_WORLD", pkg)
+							elif pkg_system:
+								return colorize("PKG_MERGE_SYSTEM", pkg)
+							else:
+								return colorize("PKG_MERGE_ARG", pkg)
 						else:
 							return colorize("PKG_MERGE", pkg)
 					else:
-						if pkg_world:
-							return colorize("PKG_NOMERGE_WORLD", pkg)
+						if pkg_arg:
+							if pkg_world:
+								return colorize("PKG_NOMERGE_WORLD", pkg)
+							elif pkg_system:
+								return colorize("PKG_NOMERGE_SYSTEM", pkg)
+							else:
+								return colorize("PKG_NOMERGE_ARG", pkg)
 						else:
 							return colorize("PKG_NOMERGE", pkg)
 
@@ -5335,7 +5431,9 @@ def parse_opts(tmpcmdline, silent=False):
 			"choices":("y", "n")
 		},
 		"--reinstall": {
-			"help":"specify conditions to trigger package reinstallation"
+			"help":"specify conditions to trigger package reinstallation",
+			"type":"choice",
+			"choices":["changed-use"]
 		}
 	}
 
