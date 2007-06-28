@@ -2054,6 +2054,9 @@ class depgraph(object):
 			self._altlist_cache[reversed] = retlist[:]
 			return retlist
 		mygraph=self.digraph.copy()
+		for node in mygraph.order[:]:
+			if node[-1] == "nomerge":
+				mygraph.remove(node)
 		self._merge_order_bias(mygraph)
 		myblockers = self.blocker_digraph.copy()
 		retlist=[]
