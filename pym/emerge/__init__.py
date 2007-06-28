@@ -2847,9 +2847,11 @@ class depgraph(object):
 					world_nodes = self._sets_nodes.get("world")
 					if world_nodes and pkg_node in world_nodes:
 						pkg_world = True
-					system_nodes = self._sets_nodes.get("system")
-					if system_nodes and pkg_node in system_nodes:
-						pkg_system = True
+					if world_nodes is None:
+						# Don't colorize system package when in "world" mode.
+						system_nodes = self._sets_nodes.get("system")
+						if system_nodes and pkg_node in system_nodes:
+							pkg_system = True
 
 				def pkgprint(pkg):
 					if pkg_merge:
