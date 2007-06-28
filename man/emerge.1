@@ -355,6 +355,12 @@ the printout:
 Results may vary, but the general outcome is a reduced or condensed
 output from portage's displays.
 .TP
+.BR "\-\-reinstall changed\-use"
+Tells emerge to include installed packages where USE flags have
+changed since installation.  Unlike \fB\-\-newuse\fR, this option does
+not trigger reinstallation when flags that the user has not
+enabled are added or removed.
+.TP
 .BR "\-\-skipfirst"
 This option is only valid when used with \fB\-\-resume\fR.  It removes the 
 first package in the resume list so that a merge may continue in the presence 
