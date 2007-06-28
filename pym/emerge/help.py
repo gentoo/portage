@@ -16,7 +16,7 @@ def shorthelp():
 	print "   "+turquoise("emerge")+" "+turquoise("--help")+" [ "+green("system")+" | "+green("world")+" | "+green("config")+" | "+green("--sync")+" ] "
 	print bold("Options:")+" "+green("-")+"["+green("abBcCdDefgGhikKlnNoOpqPsStuvV")+"] ["+green("--oneshot")+"] ["+green("--newuse")+"] ["+green("--noconfmem")+"]"
 	print      "                                          [ " + green("--color")+" < " + turquoise("y") + " | "+ turquoise("n")+" >  ] [ "+green("--columns")+" ]"
-	print      "                                                                 ["+green("--nospinner")+"]"
+	print      "                                     [ "+green("--reinstall ")+turquoise("changed-use")+" ] ["+green("--nospinner")+"]"
 	print "                                          [ "+green("--deep")+"  ] [" + green("--with-bdeps")+" < " + turquoise("y") + " | "+ turquoise("n")+" > ]"
 	print bold("Actions:")+" [ "+green("--clean")+" | "+green("--depclean")+" | "+green("--prune")+" | "+green("--regen")+" | "+green("--search")+" | "+green("--unmerge")+" ]"
 
@@ -292,6 +292,12 @@ def help(myaction,myopts,havecolor=1):
 		print "       "+green("--quiet")+" ("+green("-q")+" short option)"
 		print "              Effects vary, but the general outcome is a reduced or condensed"
 		print "              output from portage's displays."
+		print
+		print "       "+green("--reinstall ") + turquoise("changed-use")
+		print "              Tells emerge to include installed packages where USE flags have"
+		print "              changed since installation.  Unlike --newuse, this option does"
+		print "              not trigger reinstallation when flags that the user has not"
+		print "              enabled are added or removed."
 		print
 		print "       "+green("--skipfirst")
 		print "              This option is only valid in a resume situation. It removes the"
