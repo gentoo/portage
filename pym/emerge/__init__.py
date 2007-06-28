@@ -2566,7 +2566,6 @@ class depgraph(object):
 		# files to fetch list - avoids counting a same file twice
 		# in size display (verbose mode)
 		myfetchlist=[]
-		worldlist = set(getlist(self.settings, "world"))
 
 		for mylist_index in xrange(len(mylist)):
 			x, depth, ordered = mylist[mylist_index]
