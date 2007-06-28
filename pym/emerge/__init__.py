@@ -1053,7 +1053,7 @@ class depgraph(object):
 			elif org_iuse.intersection(orig_use) != \
 				cur_iuse.intersection(cur_use):
 				return True
-		elif "changed-use" in self.myopts.get("--reinstall","").split(","):
+		elif "changed-use" == self.myopts.get("--reinstall"):
 			if org_iuse.intersection(orig_use) != \
 				cur_iuse.intersection(cur_use):
 				return True
@@ -5329,7 +5329,9 @@ def parse_opts(tmpcmdline, silent=False):
 			"choices":("y", "n")
 		},
 		"--reinstall": {
-			"help":"specify conditions to trigger package reinstallation"
+			"help":"specify conditions to trigger package reinstallation",
+			"type":"choice",
+			"choices":["changed-use"]
 		}
 	}
 
