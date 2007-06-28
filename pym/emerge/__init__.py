@@ -981,6 +981,8 @@ class depgraph(object):
 		self.outdatedpackages=[]
 		self._args_atoms = {}
 		self._args_nodes = set()
+		self._sets = {}
+		self._sets_nodes = {}
 		self.blocker_digraph = digraph()
 		self.blocker_parents = {}
 		self._unresolved_blocker_parents = {}
@@ -1120,12 +1122,13 @@ class depgraph(object):
 
 		if not arg and myroot == self.target_root:
 			try:
-				arg = self._get_arg(mykey, metadata)
+				arg = self._find_atom_for_pkg(self._args_atoms, mykey, metadata)
 			except portage.exception.InvalidDependString, e:
-				show_invalid_depstring_notice(tuple(mybigkey+["merge"]),
-					metadata["PROVIDE"], str(e))
+				if mytype != "installed":
+					show_invalid_depstring_notice(tuple(mybigkey+["merge"]),
+						metadata["PROVIDE"], str(e))
+					return 0
 				del e
-				return 0
 
 		merging=1
 		if mytype == "installed":
@@ -1164,6 +1167,7 @@ class depgraph(object):
 		if addme:
 			if merging == 0 and vardbapi.cpv_exists(mykey) and \
 				mytype != "installed":
+				mytype = "installed"
 				mybigkey[0] = "installed"
 				mydbapi = vardbapi
 				jbigkey = tuple(mybigkey)
@@ -1229,6 +1233,17 @@ class depgraph(object):
 
 		if arg:
 			self._args_nodes.add(jbigkey)
+			try:
+				for set_name, pkg_set in self._sets.iteritems():
+					atom = self._find_atom_for_pkg(pkg_set, mykey, metadata)
+					if atom:
+						self._sets_nodes[set_name].add(jbigkey)
+ 			except portage.exception.InvalidDependString, e:
+				if mytype != "installed":
+					show_invalid_depstring_notice(jbigkey,
+						metadata["PROVIDE"], str(e))
+					return 0
+				del e
 
 		# Do this even when addme is False (--onlydeps) so that the
 		# parent/child relationship is always known in case
@@ -2235,13 +2250,24 @@ class depgraph(object):
 			matches = portdb.gvisible(portdb.visible(mylist))
 			return [x for x in mylist \
 				if x in matches or not portdb.cpv_exists(x)]
+		def create_cp_dict(atom_list):
+			cp_dict = {}
+			for atom in atom_list:
+				cp_dict.setdefault(portage.dep_getkey(atom), []).append(atom)
+			return cp_dict
 		world_problems = False
 		if mode=="system":
 			mylist = getlist(self.settings, "system")
+			self._sets["system"] = create_cp_dict(mylist)
+			self._sets_nodes["system"] = set()
 		else:
 			#world mode
 			worldlist = getlist(self.settings, "world")
+			self._sets["world"] = create_cp_dict(worldlist)
+			self._sets_nodes["world"] = set()
 			mylist = getlist(self.settings, "system")
+			self._sets["system"] = create_cp_dict(mylist)
+			self._sets_nodes["system"] = set()
 			worlddict=genericdict(worldlist)
 
 			for x in worlddict:
@@ -2342,14 +2368,14 @@ class depgraph(object):
 
 		return 1
 
-	def _get_arg(self, cpv, metadata):
+	def _find_atom_for_pkg(self, pkg_set, cpv, metadata):
 		"""Return the best match for a given package from the arguments, or
 		None if there are no matches.  This matches virtual arguments against
 		the PROVIDE metadata.  This can raise an InvalidDependString exception
 		if an error occurs while parsing PROVIDE."""
 		cpv_slot = "%s:%s" % (cpv, metadata["SLOT"])
 		cp = portage.dep_getkey(cpv)
-		atoms = self._args_atoms.get(cp)
+		atoms = pkg_set.get(cp)
 		if atoms:
 			best_match = portage.best_match_to_list(cpv_slot, atoms)
 			if best_match:
@@ -2359,7 +2385,7 @@ class depgraph(object):
 			uselist=metadata["USE"].split()))
 		for provide in provides:
 			provided_cp = portage.dep_getkey(provide)
-			atoms = self._args_atoms.get(provided_cp)
+			atoms = pkg_set.get(provided_cp)
 			if atoms:
 				transformed_atoms = [atom.replace(provided_cp, cp) for atom in atoms]
 				best_match = portage.best_match_to_list(cpv_slot, transformed_atoms)
@@ -2812,17 +2838,38 @@ class depgraph(object):
 					myoldbest=blue("["+myoldbest+"]")
 
 				pkg_cp = xs[0]
-				pkg_world = pkg_cp in worldlist and myroot == self.target_root
+				pkg_arg    = False
+				pkg_world  = False
+				pkg_system = False
+				pkg_node = tuple(x)
+				if pkg_node in self._args_nodes:
+					pkg_arg = True
+					world_nodes = self._sets_nodes.get("world")
+					if world_nodes and pkg_node in world_nodes:
+						pkg_world = True
+					system_nodes = self._sets_nodes.get("system")
+					if system_nodes and pkg_node in system_nodes:
+						pkg_system = True
 
 				def pkgprint(pkg):
 					if pkg_merge:
-						if pkg_world:
-							return colorize("PKG_MERGE_WORLD", pkg)
+						if pkg_arg:
+							if pkg_world:
+								return colorize("PKG_MERGE_WORLD", pkg)
+							elif pkg_system:
+								return colorize("PKG_MERGE_SYSTEM", pkg)
+							else:
+								return colorize("PKG_MERGE_ARG", pkg)
 						else:
 							return colorize("PKG_MERGE", pkg)
 					else:
-						if pkg_world:
-							return colorize("PKG_NOMERGE_WORLD", pkg)
+						if pkg_arg:
+							if pkg_world:
+								return colorize("PKG_NOMERGE_WORLD", pkg)
+							elif pkg_system:
+								return colorize("PKG_NOMERGE_SYSTEM", pkg)
+							else:
+								return colorize("PKG_NOMERGE_ARG", pkg)
 						else:
 							return colorize("PKG_NOMERGE", pkg)
 

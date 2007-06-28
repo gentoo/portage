@@ -130,8 +130,12 @@ codes["UNMERGE_WARN"] = codes["red"]
 codes["SECURITY_WARN"] = codes["red"]
 codes["MERGE_LIST_PROGRESS"] = codes["yellow"]
 codes["PKG_MERGE"]           = codes["darkgreen"]
+codes["PKG_MERGE_ARG"]       = codes["darkgreen"]
+codes["PKG_MERGE_SYSTEM"]    = codes["green"]
 codes["PKG_MERGE_WORLD"]     = codes["green"]
 codes["PKG_NOMERGE"]         = codes["darkblue"]
+codes["PKG_NOMERGE_ARG"]     = codes["darkblue"]
+codes["PKG_NOMERGE_SYSTEM"]  = codes["blue"]
 codes["PKG_NOMERGE_WORLD"]   = codes["blue"]
 
 def parse_color_map():
