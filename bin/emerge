@@ -2443,7 +2443,12 @@ class depgraph:
 					traversed_nodes = set() # prevent endless circles
 					traversed_nodes.add(graph_key)
 					def add_parents(current_node, ordered):
-						parent_nodes = mygraph.parent_nodes(current_node)
+						parent_nodes = None
+						# Do not traverse to parents if this node is an
+						# an argument or a direct member of a set that has
+						# been specified as an argument (system or world).
+						if current_node not in self._args_nodes:
+							parent_nodes = mygraph.parent_nodes(current_node)
 						if parent_nodes:
 							child_nodes = set(mygraph.child_nodes(current_node))
 							selected_parent = None
