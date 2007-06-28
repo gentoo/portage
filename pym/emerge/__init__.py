@@ -1560,10 +1560,8 @@ class depgraph(object):
 		if not mymerge and arg:
 			# A provided package has been specified on the command line.  The
 			# package will not be merged and a warning will be displayed.
-			
 			cp = portage.dep_getkey(depstring)
-			if cp in self._args_atoms and \
-				portage.match_to_list(depstring, self._args_atoms[cp]):
+			if cp in self._args_atoms and depstring in self._args_atoms[cp]:
 				self._pprovided_args.append(arg)
 
 		if myparent:
