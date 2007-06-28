@@ -935,7 +935,8 @@ class depgraph(object):
 		# Maps slot atom to digraph node for all nodes added to the graph.
 		self._slot_node_map = {}
 		self.mydbapi = {}
-		self._mydbapi_keys = ["SLOT", "DEPEND", "RDEPEND", "PDEPEND"]
+		self._mydbapi_keys = ["SLOT", "DEPEND", "RDEPEND", "PDEPEND",
+			"USE", "IUSE", "PROVIDE"]
 		self.useFlags = {}
 		self.trees = {}
 		for myroot in trees:
@@ -979,7 +980,6 @@ class depgraph(object):
 		self.orderedkeys=[]
 		self.outdatedpackages=[]
 		self._args_atoms = {}
-		self._args_virtual = None
 		self._args_nodes = set()
 		self.blocker_digraph = digraph()
 		self.blocker_parents = {}
@@ -1111,13 +1111,21 @@ class depgraph(object):
 		# directive, otherwise we add a "merge" directive.
 
 		mydbapi = self.trees[myroot][self.pkg_tree_map[mytype]].dbapi
+		metadata = dict(izip(self._mydbapi_keys,
+			mydbapi.aux_get(mykey, self._mydbapi_keys)))
+		if mytype == "ebuild":
+			pkgsettings.setcpv(mykey, mydb=portdb)
+			metadata["USE"] = pkgsettings["USE"]
+			myuse = pkgsettings["USE"].split()
 
 		if not arg and myroot == self.target_root:
-			arg = self._get_arg(mytype, mykey)
-
-		if myuse is None:
-			self.pkgsettings[myroot].setcpv(mykey, mydb=portdb)
-			myuse = self.pkgsettings[myroot]["USE"].split()
+			try:
+				arg = self._get_arg(mykey, metadata)
+			except portage.exception.InvalidDependString, e:
+				show_invalid_depstring_notice(tuple(mybigkey+["merge"]),
+					metadata["PROVIDE"], str(e))
+				del e
+				return 0
 
 		merging=1
 		if mytype == "installed":
@@ -1140,8 +1148,7 @@ class depgraph(object):
 				forced_flags.update(pkgsettings.useforce)
 				forced_flags.update(pkgsettings.usemask)
 				old_use = vardbapi.aux_get(mykey, ["USE"])[0].split()
-				iuses = set(filter_iuse_defaults(
-					mydbapi.aux_get(mykey, ["IUSE"])[0].split()))
+				iuses = set(filter_iuse_defaults(metadata["IUSE"].split()))
 				old_iuse = set(filter_iuse_defaults(
 					vardbapi.aux_get(mykey, ["IUSE"])[0].split()))
 				if self._reinstall_for_flags(
@@ -1155,8 +1162,6 @@ class depgraph(object):
 		jbigkey = tuple(mybigkey)
 
 		if addme:
-			metadata = dict(izip(self._mydbapi_keys,
-				mydbapi.aux_get(mykey, self._mydbapi_keys)))
 			if merging == 0 and vardbapi.cpv_exists(mykey) and \
 				mytype != "installed":
 				mybigkey[0] = "installed"
@@ -1164,7 +1169,7 @@ class depgraph(object):
 				jbigkey = tuple(mybigkey)
 				metadata = dict(izip(self._mydbapi_keys,
 					mydbapi.aux_get(mykey, self._mydbapi_keys)))
-				myuse = mydbapi.aux_get(mykey, ["USE"])[0].split()
+				myuse = metadata["USE"].split()
 			slot_atom = "%s:%s" % (portage.dep_getkey(mykey), metadata["SLOT"])
 			existing_node = self._slot_node_map[myroot].get(
 				slot_atom, None)
@@ -1248,9 +1253,8 @@ class depgraph(object):
 
 		edepend={}
 		depkeys = ["DEPEND","RDEPEND","PDEPEND"]
-		depvalues = mydbapi.aux_get(mykey, depkeys)
-		for i in xrange(len(depkeys)):
-			edepend[depkeys[i]] = depvalues[i]
+		for k in depkeys:
+			edepend[k] = metadata[k]
 
 		if mytype == "ebuild":
 			if "--buildpkgonly" in self.myopts:
@@ -2337,32 +2341,29 @@ class depgraph(object):
 
 		return 1
 
-	def _get_arg(self, pkg_type, cpv):
+	def _get_arg(self, cpv, metadata):
 		"""Return the best match for a given package from the arguments, or
 		None if there are no matches.  This matches virtual arguments against
-		the current virtual settings."""
-		mydbapi = self.trees[self.target_root][self.pkg_tree_map[pkg_type]].dbapi
-		cpv_slot = "%s:%s" % (cpv, mydbapi.aux_get(cpv, ["SLOT"])[0])
+		the PROVIDE metadata.  This can raise an InvalidDependString exception
+		if an error occurs while parsing PROVIDE."""
+		cpv_slot = "%s:%s" % (cpv, metadata["SLOT"])
 		cp = portage.dep_getkey(cpv)
 		atoms = self._args_atoms.get(cp)
 		if atoms:
 			best_match = portage.best_match_to_list(cpv_slot, atoms)
 			if best_match:
 				return best_match
-		if self._args_virtual is None:
-			self._args_virtual = {}
-			for cp in self._args_atoms:
-				if cp.startswith("virtual/"):
-					self._args_virtual[cp] = self._args_atoms[cp]
-		virts = self.pkgsettings[self.target_root].getvirtuals()
-		for cp, atoms in self._args_virtual.iteritems():
-			choices = virts.get(cp)
-			if choices:
-				for choice in choices:
-					transformed_atoms = [atom.replace(cp, choice) for atom in atoms]
-					best_match = portage.best_match_to_list(cpv_slot, transformed_atoms)
-					if best_match:
-						return atoms[transformed_atoms.index(best_match)]
+		provides = portage.flatten(portage.dep.use_reduce(
+			portage.dep.paren_reduce(metadata["PROVIDE"]),
+			uselist=metadata["USE"].split()))
+		for provide in provides:
+			provided_cp = portage.dep_getkey(provide)
+			atoms = self._args_atoms.get(provided_cp)
+			if atoms:
+				transformed_atoms = [atom.replace(provided_cp, cp) for atom in atoms]
+				best_match = portage.best_match_to_list(cpv_slot, transformed_atoms)
+				if best_match:
+					return atoms[transformed_atoms.index(best_match)]
 		return None
 
 	def display(self,mylist,verbosity=None):
