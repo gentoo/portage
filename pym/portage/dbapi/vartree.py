@@ -185,7 +185,7 @@ class vardbapi(dbapi):
 			vartree = db[root]["vartree"]
 		self.vartree = vartree
 		self._aux_cache_keys = set(["SLOT", "COUNTER", "PROVIDE", "USE",
-			"IUSE", "DEPEND", "RDEPEND", "PDEPEND", "NEEDED"])
+			"IUSE", "DEPEND", "RDEPEND", "PDEPEND", "NEEDED", "repository"])
 		self._aux_cache = None
 		self._aux_cache_version = "1"
 		self._aux_cache_filename = os.path.join(self.root,
@@ -1698,6 +1698,16 @@ class dblink(object):
 		# copy "info" files (like SLOT, CFLAGS, etc.) into the database
 		for x in listdir(inforoot):
 			self.copyfile(inforoot+"/"+x)
+
+		# do we have a origin repository name for the current package
+		repopath = os.sep.join(self.settings["O"].split(os.sep)[:-2])
+		if mydbapi != None:
+			for reponame in mydbapi.getRepositories():
+				if mydbapi.getRepositoryPath(reponame) == repopath:
+					fd = open(os.path.join(self.dbtmpdir, "repository"), "w")
+					fd.write(reponame+"\n")
+					fd.close()
+					break
 
 		# write local package counter for recording
 		lcfile = open(os.path.join(self.dbtmpdir, "COUNTER"),"w")
