@@ -1577,7 +1577,7 @@ class depgraph(object):
 			# package will not be merged and a warning will be displayed.
 			cp = portage.dep_getkey(depstring)
 			if cp in self._args_atoms and depstring in self._args_atoms[cp]:
-				self._pprovided_args.append(arg)
+				self._pprovided_args.append((arg, depstring))
 
 		if myparent:
 			# The parent is added after it's own dep_check call so that it
@@ -2987,6 +2987,14 @@ class depgraph(object):
 				sys.stdout.write(text)
 
 		if self._pprovided_args:
+			arg_refs = {}
+			for arg_atom in self._pprovided_args:
+				arg, atom = arg_atom
+				arg_refs[arg_atom] = []
+				cp = portage.dep_getkey(atom)
+				for set_name, pkg_set in self._sets.iteritems():
+					if cp in pkg_set and atom in pkg_set[cp]:
+						arg_refs[arg_atom].append(set_name)
 			msg = []
 			msg.append(bad("\nWARNING: "))
 			if len(self._pprovided_args) > 1:
@@ -2995,10 +3003,24 @@ class depgraph(object):
 			else:
 				msg.append("A requested package will not be " + \
 					"merged because it is listed in\n")
-			msg.append("         package.provided:\n\n")
-			for arg in self._pprovided_args:
-				msg.append("             " + arg + "\n")
+			msg.append("package.provided:\n\n")
+			problems_sets = set()
+			for (arg, atom), refs in arg_refs.iteritems():
+				ref_string = ""
+				if refs:
+					problems_sets.update(refs)
+					refs.sort()
+					ref_string = ", ".join(["'%s'" % name for name in refs])
+					ref_string = " pulled in by " + ref_string
+				msg.append("  %s%s\n" % (colorize("INFORM", arg), ref_string))
 			msg.append("\n")
+			if "world" in problems_sets:
+				msg.append("This problem can be solved in one of the following ways:\n\n")
+				msg.append("  A) Use emaint to clean offending packages from world (if not installed).\n")
+				msg.append("  B) Uninstall offending packages (cleans them from world).\n")
+				msg.append("  C) Remove offending entries from package.provided.\n\n")
+				msg.append("The best course of action depends on the reason that an offending\n")
+				msg.append("package.provided entry exists.\n\n")
 			sys.stderr.write("".join(msg))
 
 	def calc_changelog(self,ebuildpath,current,next):
