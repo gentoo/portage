@@ -306,10 +306,13 @@ def list_preserved_libs(argv):
 	mylibs = portage.db[argv[0]]["vartree"].dbapi.plib_registry.getPreservedLibs()
 	rValue = 0
 	for cpv in mylibs:
+		print cpv,
 		for path in mylibs[cpv]:
-			print "%s: %s" % (cpv, path)
+			print path,
 			rValue = 1
+		print
 	return rValue
+list_preserved_libs.uses_root = True
 
 #-----------------------------------------------------------------------------
 #
