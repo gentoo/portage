@@ -1701,7 +1701,8 @@ class dblink(object):
 
 		# do we have a origin repository name for the current package
 		repopath = os.sep.join(self.settings["O"].split(os.sep)[:-2])
-		if mydbapi != None:
+		# bindbapi has no getRepositories() method
+		if mydbapi and hasattr(mydbapi, "getRepositories"):
 			for reponame in mydbapi.getRepositories():
 				if mydbapi.getRepositoryPath(reponame) == repopath:
 					fd = open(os.path.join(self.dbtmpdir, "repository"), "w")
