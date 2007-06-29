@@ -702,7 +702,7 @@ class FakeVartree(portage.vartree):
 			if os.access(vdb_path, os.W_OK):
 				vdb_lock = portage.locks.lockdir(vdb_path)
 			mykeys = ["SLOT", "COUNTER", "PROVIDE", "USE", "IUSE",
-				"DEPEND", "RDEPEND", "PDEPEND"]
+				"DEPEND", "RDEPEND", "PDEPEND", "repository"]
 			real_dbapi = real_vartree.dbapi
 			slot_counters = {}
 			for cpv in real_dbapi.cpv_all():
@@ -936,7 +936,7 @@ class depgraph(object):
 		self._slot_node_map = {}
 		self.mydbapi = {}
 		self._mydbapi_keys = ["SLOT", "DEPEND", "RDEPEND", "PDEPEND",
-			"USE", "IUSE", "PROVIDE"]
+			"USE", "IUSE", "PROVIDE", "repository"]
 		self.useFlags = {}
 		self.trees = {}
 		for myroot in trees:
@@ -2801,11 +2801,35 @@ class depgraph(object):
 					# x = ['binary', '/', 'sys-apps/pcmcia-cs-3.2.7.2.6', 'merge']
 					file_name = portdb.findname(pkg_key)
 					if file_name: # It might not exist in the tree
+						newrepo = pkgsettings["PORTDIR"]
+						newrepoindex = "0"
+						if self.trees[x[1]]["vartree"].dbapi.cpv_exists(pkg):
+							oldrepo = self.trees[x[1]]["vartree"].dbapi.aux_get(pkg, ["repository"])[0]
+						else:
+							oldrepo = ""
+						if oldrepo != "":
+							oldrepo = portdb.getRepositoryPath(oldrepo)
 						dir_name=os.path.abspath(os.path.dirname(file_name)+"/../..")
-						if (overlays_real.count(dir_name)>0):
-							verboseadd+=teal("["+str(overlays_real.index(
-								os.path.normpath(dir_name))+1)+"]")+" "
-							display_overlays=True
+						if (overlays_real.count(dir_name) > 0):
+							newrepoindex = overlays_real.index(os.path.normpath(dir_name))
+							newrepo = overlays_real[newrepoindex]
+							newrepoindex += 1
+						
+						# assing lookup indexes
+						if oldrepo == "":
+							oldrepoindex = "?"
+						elif oldrepo == pkgsettings["PORTDIR"]:
+							oldrepoindex = "0"
+						else:
+							oldrepoindex = str(overlays_real.index(os.path.normpath(oldrepo)) + 1)
+						if oldrepoindex == newrepoindex \
+								or not self.trees[x[1]]["vartree"].dbapi.cpv_exists(pkg):
+							repoadd = newrepoindex
+						else:
+							repoadd = "%s=>%s" % (oldrepoindex, newrepoindex)
+
+						verboseadd+=teal("[%s]" % repoadd)+" "
+						display_overlays=True
 					else:
 						verboseadd += "[No ebuild?]"
 
@@ -2948,11 +2972,13 @@ class depgraph(object):
 			print
 			print counters
 			if overlays and display_overlays:
-				print "Portage overlays:"
+				print "Portage tree and overlays:"
 				y=0
+				print " "+teal("[0]"), self.settings["PORTDIR"]
 				for x in overlays:
 					y=y+1
 					print " "+teal("["+str(y)+"]"),x
+				print " "+teal("[?]"), "indicates that the source repository could not be determined"
 
 		if "--changelog" in self.myopts:
 			print
