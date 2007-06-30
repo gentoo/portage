@@ -183,6 +183,7 @@ qahelp={
 	"IUSE.invalid":"This ebuild has a variable in IUSE that is not in the use.desc or use.local.desc file",
 	"LICENSE.invalid":"This ebuild is listing a license that doesnt exist in portages license/ dir.",
 	"KEYWORDS.invalid":"This ebuild contains KEYWORDS that are not listed in profiles/arch.list or for which no valid profile was found",
+	"RESTRICT.invalid":"This ebuild contains invalid RESTRICT values.",
 	"ebuild.nostable":"There are no ebuilds that are marked as stable for your ARCH",
 	"ebuild.allmasked":"All ebuilds are masked for this package (Package level only)",
 	"ebuild.majorsyn":"This ebuild has a major syntax error that may cause the ebuild to fail partially or fully",
@@ -217,6 +218,7 @@ qawarnings=[
 "IUSE.invalid",
 "KEYWORDS.stupid",
 "KEYWORDS.missing",
+"RESTRICT.invalid",
 "ebuild.minorsyn",
 "ebuild.badheader",
 "file.size",
@@ -240,6 +242,8 @@ for x in missingvars:
 		qacats.append(x)
 		qawarnings.append(x)
 
+valid_restrict = frozenset(["binchecks", "bindist", "fetch", "mirror",
+	"primaryuri", "strip", "test", "userpriv"])
 
 verbose=0
 quiet=0
@@ -1347,6 +1351,14 @@ for x in scanlist:
 				elif not profiles.has_key(myskey):
 					stats["KEYWORDS.invalid"] += 1
 					fails["KEYWORDS.invalid"].append(x+"/"+y+".ebuild: %s (profile invalid)" % mykey)
+
+		#restrict checks
+		myrestrict = set(myaux["RESTRICT"].split())
+		mybadrestrict = myrestrict.difference(valid_restrict)
+		if mybadrestrict:
+			stats["RESTRICT.invalid"] += len(mybadrestrict)
+			for mybad in mybadrestrict:
+				fails["RESTRICT.invalid"].append(x+"/"+y+".ebuild: %s" % mybad)
 
 		#syntax checks
 		myear = time.gmtime(os.stat(checkdir+"/"+y+".ebuild")[ST_MTIME])[0]
