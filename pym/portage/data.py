@@ -78,10 +78,6 @@ if uid==0:
 try:
 	wheelgid=grp.getgrnam("wheel")[2]
 except KeyError:
-	writemsg("portage initialization: your system doesn't have a 'wheel' group.\n")
-	writemsg("Please fix this as it is a normal system requirement. 'wheel' is GID 10\n")
-	writemsg("`emerge baselayout` and a config update with dispatch-conf, etc-update\n")
-	writemsg("or cfg-update should remedy this problem.\n")
 	pass
 
 #Discover the uid and gid of the portage user/group

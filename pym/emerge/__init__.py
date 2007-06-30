@@ -5790,10 +5790,6 @@ def emerge_main():
 		emerge.help.help(myaction, myopts, portage.output.havecolor)
 		sys.exit(0)
 
-	if portage.wheelgid == portage.portage_gid:
-		print "emerge: wheel group use is being deprecated. Please update group and passwd to"
-		print "        include the portage user as noted above, and then use group portage."
-
 	if "--debug" in myopts:
 		print "myaction", myaction
 		print "myopts", myopts
