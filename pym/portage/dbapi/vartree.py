@@ -24,6 +24,8 @@ from portage import listdir, dep_expand, flatten, key_expand, \
 	doebuild_environment, doebuild, env_update, \
 	abssymlink, movefile, _movefile, bsd_chflags
 
+from portage.elog.messages import ewarn
+
 import os, sys, stat, errno, commands, copy, time
 from itertools import izip
 
@@ -1703,12 +1705,16 @@ class dblink(object):
 		repopath = os.sep.join(self.settings["O"].split(os.sep)[:-2])
 		# bindbapi has no getRepositories() method
 		if mydbapi and hasattr(mydbapi, "getRepositories"):
+			foundname = False
 			for reponame in mydbapi.getRepositories():
 				if mydbapi.getRepositoryPath(reponame) == repopath:
 					fd = open(os.path.join(self.dbtmpdir, "repository"), "w")
 					fd.write(reponame+"\n")
 					fd.close()
+					foundname = True
 					break
+			if not foundname:
+				ewarn("Could not determine name of source repository at %s" % repopath, phase="preinst", key=self.mycpv)
 
 		# write local package counter for recording
 		lcfile = open(os.path.join(self.dbtmpdir, "COUNTER"),"w")
