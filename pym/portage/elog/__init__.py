@@ -41,7 +41,8 @@ def _combine_logentries(logentries):
 	return rValue
 
 _elog_atexit_handlers = []
-def elog_process(cpv, mysettings):
+_preserve_logentries = {}
+def elog_process(cpv, mysettings, phasefilter=None):
 	ebuild_logentries = collect_ebuild_messages(os.path.join(mysettings["T"], "logging"))
 	all_logentries = collect_messages()
 	if all_logentries.has_key(cpv):
@@ -49,8 +50,18 @@ def elog_process(cpv, mysettings):
 	else:
 		all_logentries[cpv] = ebuild_logentries
 
-	my_elog_classes = set(mysettings.get("PORTAGE_ELOG_CLASSES", "").split())
+	for key in _preserve_logentries.keys():
+		if all_logentries.has_key(key):
+			all_logentries[key] = _merge_logentries(_preserve_logentries[key], all_logentries[key])
+		else:
+			all_logentries[key] = _preserve_logentries[key]
+		del _preserve_logentries[key]
 
+	if phasefilter != None:
+		for key in all_logentries:
+			all_logentries[key], _preserve_logentries[key] = phasefilter(all_logentries[key])
+
+	my_elog_classes = set(mysettings.get("PORTAGE_ELOG_CLASSES", "").split())
 
 	for key in all_logentries:
 		default_logentries = filter_loglevels(all_logentries[key], my_elog_classes)
