@@ -1,4 +1,4 @@
-.TH "PORTAGE" "5" "Dec 2005" "Portage 2.1" "Portage"
+.TH "PORTAGE" "5" "Jun 2007" "Portage 2.1.3" "Portage"
 .SH NAME
 portage \- the heart of Gentoo
 .SH "DESCRIPTION"
@@ -41,6 +41,7 @@ virtuals
 .BR /etc/portage/
 .nf
 bashrc
+color.map
 modules
 package.keywords
 package.mask
@@ -367,6 +368,9 @@ summed together as if it were a single file.
 If needed, this file can be used to set up a special environment for ebuilds,
 different from the standard root environment.  The syntax is the same as for
 any other bash script.
+.TP
+.BR color.map
+Contains variables customizing colors. See \fBcolor.map\fR(5).
 .TP
 .BR modules
 This file can be used to override the metadata cache implementation.  In
@@ -731,4 +735,5 @@ Drake Wyrm <wyrm@haell.com>
 .BR emerge (1),
 .BR ebuild (1),
 .BR ebuild (5),
-.BR make.conf (5)
+.BR make.conf (5),
+.BR color.map (5)
