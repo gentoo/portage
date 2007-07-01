@@ -678,8 +678,10 @@ class DepPriority(object):
 		myvalue = self.__int__()
 		if myvalue > self.MEDIUM:
 			return "hard"
-		if myvalue > self.SOFT:
+		if myvalue > self.MEDIUM_SOFT:
 			return "medium"
+		if myvalue > self.SOFT:
+			return "medium-soft"
 		return "soft"
 
 class FakeVartree(portage.vartree):
