@@ -630,13 +630,15 @@ class DepPriority(object):
 		levels:
 
 		MEDIUM   The upper boundary for medium dependencies.
+		MEDIUM_SOFT   The upper boundary for medium-soft dependencies.
 		SOFT     The upper boundary for soft dependencies.
 		MIN      The lower boundary for soft dependencies.
 	"""
-	__slots__ = ("__weakref__", "satisfied", "buildtime", "runtime")
+	__slots__ = ("__weakref__", "satisfied", "buildtime", "runtime", "runtime_post")
 	MEDIUM = -1
-	SOFT   = -2
-	MIN    = -4
+	MEDIUM_SOFT = -2
+	SOFT   = -3
+	MIN    = -6
 	def __init__(self, **kwargs):
 		for myattr in self.__slots__:
 			if myattr == "__weakref__":
@@ -649,11 +651,15 @@ class DepPriority(object):
 				return 0
 			if self.runtime:
 				return -1
+			if self.runtime_post:
+				return -2
 		if self.buildtime:
-			return -2
-		if self.runtime:
 			return -3
-		return -4
+		if self.runtime:
+			return -4
+		if self.runtime_post:
+			return -5
+		return -6
 	def __lt__(self, other):
 		return self.__int__() < other
 	def __le__(self, other):
@@ -1304,7 +1310,7 @@ class depgraph(object):
 				# Post Depend -- Add to the list without a parent, as it depends
 				# on a package being present AND must be built after that package.
 				if not self.select_dep(myroot, edepend["PDEPEND"], myparent=mp,
-					myuse=myuse, priority=DepPriority(), rev_deps=True,
+					myuse=myuse, priority=DepPriority(runtime_post=True),
 					parent_arg=arg):
 					return 0
 		except ValueError, e:
@@ -2134,26 +2140,49 @@ class depgraph(object):
 					"""Recursively gather a group of nodes that RDEPEND on
 					eachother.  This ensures that they are merged as a group
 					and get their RDEPENDs satisfied as soon as possible."""
-					def gather_deps(mergeable_nodes, selected_nodes, node):
+					def gather_deps(ignore_priority,
+						mergeable_nodes, selected_nodes, node):
 						if node in selected_nodes:
 							return True
 						if node not in mergeable_nodes:
 							return False
 						selected_nodes.add(node)
 						for child in mygraph.child_nodes(node,
-							ignore_priority=DepPriority.SOFT):
-							if not gather_deps(
+							ignore_priority=ignore_priority):
+							if not gather_deps(ignore_priority,
 								mergeable_nodes, selected_nodes, child):
 								return False
 						return True
 					mergeable_nodes = set(nodes)
-					for node in nodes:
-						selected_nodes = set()
-						if gather_deps(
-							mergeable_nodes, selected_nodes, node):
+					for ignore_priority in xrange(DepPriority.SOFT,
+						DepPriority.MEDIUM_SOFT + 1):
+						for node in nodes:
+							selected_nodes = set()
+							if gather_deps(ignore_priority,
+								mergeable_nodes, selected_nodes, node):
+								break
+							else:
+								selected_nodes = None
+						if selected_nodes:
 							break
-						else:
-							selected_nodes = None
+
+					if selected_nodes and ignore_priority > DepPriority.SOFT:
+						# Try to merge ignored medium deps as soon as possible.
+						for node in selected_nodes:
+							children = set(mygraph.child_nodes(node))
+							soft = children.difference(
+								mygraph.child_nodes(node,
+								ignore_priority=DepPriority.SOFT))
+							medium_soft = children.difference(
+								mygraph.child_nodes(node,
+								ignore_priority=DepPriority.MEDIUM_SOFT))
+							medium_soft.difference_update(soft)
+							for child in medium_soft:
+								if child in selected_nodes:
+									continue
+								# TODO: Try harder to make these nodes get
+								# merged absolutely as soon as possible.
+								asap_nodes.append(child)
 
 			if not selected_nodes:
 				if not myblockers.is_empty():
