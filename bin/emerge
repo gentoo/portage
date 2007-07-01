@@ -2124,6 +2124,10 @@ class depgraph:
 								mergeable_nodes, selected_nodes, child):
 								return False
 						return True
+					# If necessary, resample the leaf nodes so that they
+					# include all nodes whose hard deps are satisfied.
+					if ignore_priority < DepPriority.MEDIUM:
+						nodes = get_nodes(ignore_priority=DepPriority.MEDIUM)
 					mergeable_nodes = set(nodes)
 					for ignore_priority in xrange(DepPriority.SOFT,
 						DepPriority.MEDIUM_SOFT + 1):
@@ -2150,6 +2154,8 @@ class depgraph:
 							medium_soft.difference_update(soft)
 							for child in medium_soft:
 								if child in selected_nodes:
+									continue
+								if child in asap_nodes:
 									continue
 								# TODO: Try harder to make these nodes get
 								# merged absolutely as soon as possible.
