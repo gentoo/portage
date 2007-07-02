@@ -1,11 +1,11 @@
-# Copyright: 2005 Gentoo Foundation
-# Author(s): Brian Harring (ferringb@gentoo.org)
-# License: GPL2
-# $Id:$
+# Copyright: 2005-2007 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Id: $
 
 # all vars that are to wind up in portage_const must have their name listed in __all__
 
-__all__ = ["EPREFIX", "SYSCONFDIR", "PORTAGE_BASE", "portageuser", "portagegroup", "rootuser", "rootuid"]
+__all__ = ["EPREFIX", "SYSCONFDIR", "PORTAGE_BASE", "portageuser",
+		"portagegroup", "rootuser", "rootuid"]
 
 from os import path
 
@@ -15,4 +15,4 @@ PORTAGE_BASE=path.normpath("@PORTAGE_BASE@")
 portagegroup="@portagegroup@"
 portageuser="@portageuser@"
 rootuser="@rootuser@"
-rootuid=int("@rootuid@")
+rootuid=@rootuid@

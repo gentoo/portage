@@ -69,7 +69,7 @@ secpass=0
 uid=os.getuid()
 wheelgid=0
 
-if uid==int(rootuid):
+if uid==rootuid:
 	secpass=2
 try:
 	wheelgid=grp.getgrnam("wheel")[2]

@@ -42,11 +42,6 @@ AC_DEFUN([GENTOO_PATH_XCU_ID],
 [
   AC_PATH_PROG([XCU_ID], [id], no, $1)
 
-  dnl is is there at all?
-  if test "$PYTHON" = "no" ; then
-    AC_MSG_ERROR([no python found in your path])
-  fi
-
   dnl does it support all the bells and whistles we need?
   AC_MSG_CHECKING([whether $XCU_ID is good enough])
   for a in '' '-G' '-Gn' '-g' '-gn' '-gr' '-gnr' '-u' '-un' '-ur' '-unr' ; do

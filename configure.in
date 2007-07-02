@@ -46,32 +46,9 @@ GENTOO_PATH_GNUPROG(FIND, [find])
 GENTOO_PATH_GNUPROG(XARGS, [xargs])
 GENTOO_PATH_GNUPROG(GREP, [grep])
 
-dnl Checks for libraries.
-dnl Replace `main' with a function in -lc:
-AC_CHECK_LIB(c, main)
-dnl Replace `main' with a function in -ldl:
-AC_CHECK_LIB(dl, main)
-dnl Replace `main' with a function in -lgcc:
-AC_CHECK_LIB(gcc, main)
-dnl Replace `main' with a function in -lpthread:
-AC_CHECK_LIB(pthread, main)
-
 dnl Checks for header files.
-AC_HEADER_DIRENT
 AC_HEADER_STDC
-AC_HEADER_SYS_WAIT
-AC_CHECK_HEADERS(fcntl.h limits.h strings.h sys/file.h sys/time.h unistd.h getopt.h stdio.h)
-
-dnl Checks for typedefs, structures, and compiler characteristics.
-AC_C_CONST
-AC_TYPE_UID_T
-AC_TYPE_MODE_T
-AC_TYPE_SIZE_T
-
-dnl Checks for library functions.
-AC_FUNC_ALLOCA
-AC_TYPE_SIGNAL
-AC_CHECK_FUNCS(getcwd mkdir regcomp rmdir strdup strerror strspn strstr)
+AC_CHECK_HEADERS([string.h errno.h unistd.h stdio.h stdlib.h sys/stat.h sys/types.h])
 
 AC_ARG_ENABLE(tbz2tool,
 AC_HELP_STRING([--enable-tbz2tool],[build tbz2tool, tool for creating binpkgs (default yes)]),
@@ -82,16 +59,6 @@ AC_HELP_STRING([--enable-tbz2tool],[build tbz2tool, tool for creating binpkgs (d
 esac],
 [enable_tbz2tool=true])
 
-AC_ARG_ENABLE(missingos,
-AC_HELP_STRING([--enable-missingos],[build compatibility missingos code for python 2.2 (default auto)]),
-[case "${enableval}" in
-  yes)	enable_missingos=true;;
-  no)	enable_missingos=false;;
-  auto)	enable_missingos=auto;;
-  *)	AC_MSG_ERROR(bad value ${enableval} for --enable-missingos);;
-esac],
-[enable_missingos=auto])
-
 AC_ARG_ENABLE(just-compiled-sources,
 AC_HELP_STRING([--enable-just-compiled-sources],[install just the bytecode, not the sources (default no)]),
 [case "${enableval}" in
@@ -101,30 +68,29 @@ AC_HELP_STRING([--enable-just-compiled-sources],[install just the bytecode, not 
 esac],
 [enable_py_sources=true])
 
-AC_ARG_WITH(user,
-AC_HELP_STRING([--with-user=me],[use user 'me' for portage to work as (default portage)]),
+AC_ARG_WITH(portage-user,
+AC_HELP_STRING([--with-portage-user=myuser],[use user 'myuser' as portage owner (default portage)]),
 [case "${withval}" in
-  ""|yes) AC_MSG_ERROR(bad value ${withval} for --with-user);;
+  ""|yes) AC_MSG_ERROR(bad value ${withval} for --with-portage-user);;
   *) portageuser="${withval}";;
 esac],
 [portageuser="portage"])
 
-AC_ARG_WITH(group,
-AC_HELP_STRING([--with-group=mygroup],[use group 'mygroup' for portage to work as (default portage)]),
+AC_ARG_WITH(portage-group,
+AC_HELP_STRING([--with-portage-group=mygroup],[use group 'mygroup' as portage users group (default portage)]),
 [case "${withval}" in
-  ""|yes) AC_MSG_ERROR(bad value ${withval} for --with-group);;
+  ""|yes) AC_MSG_ERROR(bad value ${withval} for --with-portage-group);;
   *) portagegroup="${withval}";;
 esac],
 [portagegroup="portage"])
 
 AC_ARG_WITH(rootuser,
-AC_HELP_STRING([--with-rootuser=me],[declares 'me' as the portage owner (default root)]),
+AC_HELP_STRING([--with-rootuser=myuser],[uses 'myuser' as owner of installed files (default is portage-user)]),
 [case "${withval}" in
   ""|yes) AC_MSG_ERROR(bad value ${withval} for --with-rootuser);;
-  *) rootuser=${withval}
-     rootuid=`id -u ${withval}`;;
+  *) rootuser=${withval};;
 esac],
-[rootuser=root])
+[rootuser=${portageuser}])
 
 AC_MSG_CHECKING([for user id of ${rootuser}])
 dnl grab uid of rootuser
@@ -134,6 +100,14 @@ then
 	AC_MSG_RESULT([${rootuid}])
 else
 	AC_MSG_ERROR([error finding the user id of ${rootuser}])
+fi
+AC_MSG_CHECKING([for group id of ${rootuser}])
+rootgid=`${XCU_ID} -g ${rootuser}`
+if [[ `echo ${rootgid} | ${EGREP} '^[[:digit:]]+$'` ]]
+then
+	AC_MSG_RESULT([${rootgid}])
+else
+	AC_MSG_ERROR([error finding the group id of ${rootuser}])
 fi
 
 AC_ARG_WITH(offset-prefix, 
@@ -147,17 +121,6 @@ AC_HELP_STRING([--with-default-path], [specify additional PATHs available to the
 [DEFAULT_PATH="${DEFAULT_PATH}":$withval],
 [DEFAULT_PATH="${DEFAULT_PATH}"])
 
-
-if test x$enable_missingos = xauto
-then
-  pyver=[`python -c 'import sys;print sys.version[0:3]';`]
-  case ${pyver} in
-    2.4)  ;;
-    2.3)  ;;
-    2.2)  enable_missingos=true;;
-    *)    AC_MSG_WARN([unable to determine python version, ${pyver}]);;
-  esac
-fi
 
 AC_MSG_CHECKING([for ARCH to be used])
 dnl detect ARCH from target_cpu
@@ -178,7 +141,6 @@ AC_CONFIG_FILES([ subst-install ])
 AC_CONFIG_FILES([ subst-install.vars.in ])
 AC_CONFIG_FILES([ src/Makefile ])
 AC_CONFIG_FILES([ man/Makefile ])
-AC_CONFIG_FILES([ src/python-missingos/Makefile ])
 AC_CONFIG_FILES([ bin/Makefile ])
 AC_CONFIG_FILES([ pym/Makefile ])
 AC_CONFIG_FILES([ cnf/Makefile ])
@@ -187,14 +149,13 @@ AC_SUBST(portageuser)
 AC_SUBST(portagegroup)
 AC_SUBST(rootuser)
 AC_SUBST(rootuid)
+AC_SUBST(rootgid)
 AC_SUBST(DOMAIN_PREFIX)
 AC_SUBST(DEFAULT_PATH)
 AC_SUBST(ARCH)
 AC_SUBST(PORTAGE_BASE,['${exec_prefix}/lib/portage'])
 AM_CONDITIONAL(INSTALL_PYTHON_SOURCES, test x$enable_py_sources = xtrue)
 AM_CONDITIONAL(BUILD_TBZ2TOOL, test x$enable_tbz2tool = xtrue)
-AM_CONDITIONAL(BUILD_MISSINGOS, test x$enable_missingos = xtrue)
-#AM_CONDITIONAL(BUILD_FILTER_ENV, test x$enable_filter_env = xtrue)
 
 AC_MSG_CHECKING([for a list of variables known by configure])
 pt_configvars=`sed -n -e "/^ac_subst_vars='/,/'$/p" ${srcdir}/configure | sed -e "s/^ac_subst_vars='//" -e "s/'$//"`
