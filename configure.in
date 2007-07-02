@@ -117,14 +117,6 @@ AC_HELP_STRING([--with-group=mygroup],[use group 'mygroup' for portage to work a
 esac],
 [portagegroup="portage"])
 
-AC_ARG_WITH(wheelgid,
-AC_HELP_STRING([--with-wheelgid=wheelgid],[let portage use 'wheelgid' as wheel group (default 0)]),
-[case "${withval}" in
-  ""|yes) AC_MSG_ERROR(bad value ${withval} for --with-wheelgid);;
-  *) wheelgid="${withval}";;
-esac],
-[wheelgid="0"])
-
 AC_ARG_WITH(rootuser,
 AC_HELP_STRING([--with-rootuser=me],[declares 'me' as the portage owner (default root)]),
 [case "${withval}" in
@@ -193,7 +185,6 @@ AC_CONFIG_FILES([ cnf/Makefile ])
 
 AC_SUBST(portageuser)
 AC_SUBST(portagegroup)
-AC_SUBST(wheelgid)
 AC_SUBST(rootuser)
 AC_SUBST(rootuid)
 AC_SUBST(DOMAIN_PREFIX)
