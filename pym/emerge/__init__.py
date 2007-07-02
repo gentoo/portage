@@ -2098,20 +2098,25 @@ class depgraph(object):
 		ignore_priority_soft_range.extend(
 			xrange(DepPriority.MIN, DepPriority.SOFT + 1))
 		tree_mode = "--tree" in self.myopts
+		# Tracks whether or not the current iteration should prefer asap_nodes
+		# if available.  This is set to False when the previous iteration
+		# failed to select any nodes.  It is reset whenever nodes are
+		# successfully selected.
+		prefer_asap = True
 		while not mygraph.empty():
 			selected_nodes = None
-			if asap_nodes:
+			if prefer_asap and asap_nodes:
 				"""ASAP nodes are merged before their soft deps."""
-				for node in asap_nodes[:]:
-					if not mygraph.contains(node):
-						asap_nodes.remove(node)
-						continue
+				asap_nodes = [node for node in asap_nodes \
+					if mygraph.contains(node)]
+				for node in asap_nodes:
 					if not mygraph.child_nodes(node,
 						ignore_priority=DepPriority.SOFT):
 						selected_nodes = [node]
 						asap_nodes.remove(node)
 						break
-			if not selected_nodes:
+			if not selected_nodes and \
+				not (prefer_asap and asap_nodes):
 				for ignore_priority in ignore_priority_soft_range:
 					nodes = get_nodes(ignore_priority=ignore_priority)
 					if nodes:
@@ -2155,6 +2160,8 @@ class depgraph(object):
 								return False
 						return True
 					mergeable_nodes = set(nodes)
+					if prefer_asap and asap_nodes:
+						nodes = asap_nodes
 					for ignore_priority in xrange(DepPriority.SOFT,
 						DepPriority.MEDIUM_SOFT + 1):
 						for node in nodes:
@@ -2166,6 +2173,12 @@ class depgraph(object):
 								selected_nodes = None
 						if selected_nodes:
 							break
+
+					if prefer_asap and asap_nodes and not selected_nodes:
+						# We failed to find any asap nodes to merge, so ignore
+						# them for the next iteration.
+						prefer_asap = False
+						continue
 
 					if selected_nodes and ignore_priority > DepPriority.SOFT:
 						# Try to merge ignored medium deps as soon as possible.
@@ -2245,6 +2258,10 @@ class depgraph(object):
 				print "!!! Note that circular dependencies can often be avoided by temporarily"
 				print "!!! disabling USE flags that trigger optional dependencies."
 				sys.exit(1)
+
+			# At this point, we've succeeded in selecting one or more nodes, so
+			# it's now safe to reset the prefer_asap to it's default state.
+			prefer_asap = True
 
 			for node in selected_nodes:
 				retlist.append(list(node))
