@@ -174,6 +174,7 @@ qahelp={
 	"PDEPEND.syntax":"Syntax error in PDEPEND (usually an extra/missing space/parenthesis)",
 	"LICENSE.syntax":"Syntax error in LICENSE (usually an extra/missing space/parenthesis)",
 	"PROVIDE.syntax":"Syntax error in PROVIDE (usually an extra/missing space/parenthesis)",
+	"RESTRICT.syntax":"Syntax error in RESTRICT (usually an extra/missing space/parenthesis)",
 	"SRC_URI.syntax":"Syntax error in SRC_URI (usually an extra/missing space/parenthesis)",
 	"ebuild.syntax":"Error generating cache entry for ebuild; typically caused by ebuild syntax error",
 	"ebuild.output":"A simple sourcing of the ebuild produces output; this breaks ebuild policy.",
@@ -1353,12 +1354,21 @@ for x in scanlist:
 					fails["KEYWORDS.invalid"].append(x+"/"+y+".ebuild: %s (profile invalid)" % mykey)
 
 		#restrict checks
-		myrestrict = set(myaux["RESTRICT"].split())
-		mybadrestrict = myrestrict.difference(valid_restrict)
-		if mybadrestrict:
-			stats["RESTRICT.invalid"] += len(mybadrestrict)
-			for mybad in mybadrestrict:
-				fails["RESTRICT.invalid"].append(x+"/"+y+".ebuild: %s" % mybad)
+		myrestrict = None
+		try:
+			myrestrict = portage.dep.use_reduce(
+				portage.dep.paren_reduce(myaux["RESTRICT"]), matchall=1)
+		except portage.exception.InvalidDependString, e:
+			stats["RESTRICT.syntax"] = stats["RESTRICT.syntax"] + 1
+			fails["RESTRICT.syntax"].append(mykey+".ebuild RESTRICT: "+str(e))
+			del e
+		if myrestrict:
+			myrestrict = set(portage.flatten(myrestrict))
+			mybadrestrict = myrestrict.difference(valid_restrict)
+			if mybadrestrict:
+				stats["RESTRICT.invalid"] += len(mybadrestrict)
+				for mybad in mybadrestrict:
+					fails["RESTRICT.invalid"].append(x+"/"+y+".ebuild: %s" % mybad)
 
 		#syntax checks
 		myear = time.gmtime(os.stat(checkdir+"/"+y+".ebuild")[ST_MTIME])[0]
