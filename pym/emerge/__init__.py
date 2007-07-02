@@ -631,13 +631,15 @@ class DepPriority(object):
 		levels:
 
 		MEDIUM   The upper boundary for medium dependencies.
+		MEDIUM_SOFT   The upper boundary for medium-soft dependencies.
 		SOFT     The upper boundary for soft dependencies.
 		MIN      The lower boundary for soft dependencies.
 	"""
-	__slots__ = ("__weakref__", "satisfied", "buildtime", "runtime")
+	__slots__ = ("__weakref__", "satisfied", "buildtime", "runtime", "runtime_post")
 	MEDIUM = -1
-	SOFT   = -2
-	MIN    = -4
+	MEDIUM_SOFT = -2
+	SOFT   = -3
+	MIN    = -6
 	def __init__(self, **kwargs):
 		for myattr in self.__slots__:
 			if myattr == "__weakref__":
@@ -650,11 +652,15 @@ class DepPriority(object):
 				return 0
 			if self.runtime:
 				return -1
+			if self.runtime_post:
+				return -2
 		if self.buildtime:
-			return -2
-		if self.runtime:
 			return -3
-		return -4
+		if self.runtime:
+			return -4
+		if self.runtime_post:
+			return -5
+		return -6
 	def __lt__(self, other):
 		return self.__int__() < other
 	def __le__(self, other):
@@ -674,8 +680,10 @@ class DepPriority(object):
 		myvalue = self.__int__()
 		if myvalue > self.MEDIUM:
 			return "hard"
-		if myvalue > self.SOFT:
+		if myvalue > self.MEDIUM_SOFT:
 			return "medium"
+		if myvalue > self.SOFT:
+			return "medium-soft"
 		return "soft"
 
 class FakeVartree(portage.vartree):
@@ -1305,7 +1313,7 @@ class depgraph(object):
 				# Post Depend -- Add to the list without a parent, as it depends
 				# on a package being present AND must be built after that package.
 				if not self.select_dep(myroot, edepend["PDEPEND"], myparent=mp,
-					myuse=myuse, priority=DepPriority(), rev_deps=True,
+					myuse=myuse, priority=DepPriority(runtime_post=True),
 					parent_arg=arg):
 					return 0
 		except ValueError, e:
@@ -1578,7 +1586,7 @@ class depgraph(object):
 			# package will not be merged and a warning will be displayed.
 			cp = portage.dep_getkey(depstring)
 			if cp in self._args_atoms and depstring in self._args_atoms[cp]:
-				self._pprovided_args.append(arg)
+				self._pprovided_args.append((arg, depstring))
 
 		if myparent:
 			# The parent is added after it's own dep_check call so that it
@@ -2087,32 +2095,34 @@ class depgraph(object):
 				if "portage" == portage.catsplit(portage.dep_getkey(cpv))[-1]:
 					asap_nodes.append(node)
 					break
-		ignore_priority_range = [None]
-		ignore_priority_range.extend(
-			xrange(DepPriority.MIN, DepPriority.MEDIUM + 1))
+		ignore_priority_soft_range = [None]
+		ignore_priority_soft_range.extend(
+			xrange(DepPriority.MIN, DepPriority.SOFT + 1))
 		tree_mode = "--tree" in self.myopts
+		# Tracks whether or not the current iteration should prefer asap_nodes
+		# if available.  This is set to False when the previous iteration
+		# failed to select any nodes.  It is reset whenever nodes are
+		# successfully selected.
+		prefer_asap = True
 		while not mygraph.empty():
-			ignore_priority = None
-			nodes = None
-			if asap_nodes:
+			selected_nodes = None
+			if prefer_asap and asap_nodes:
 				"""ASAP nodes are merged before their soft deps."""
+				asap_nodes = [node for node in asap_nodes \
+					if mygraph.contains(node)]
 				for node in asap_nodes:
-					if not mygraph.contains(node):
-						asap_nodes.remove(node)
-						continue
 					if not mygraph.child_nodes(node,
 						ignore_priority=DepPriority.SOFT):
-						nodes = [node]
+						selected_nodes = [node]
 						asap_nodes.remove(node)
 						break
-			if not nodes:
-				for ignore_priority in ignore_priority_range:
+			if not selected_nodes and \
+				not (prefer_asap and asap_nodes):
+				for ignore_priority in ignore_priority_soft_range:
 					nodes = get_nodes(ignore_priority=ignore_priority)
 					if nodes:
 						break
-			selected_nodes = None
-			if nodes:
-				if ignore_priority <= DepPriority.SOFT:
+				if nodes:
 					if ignore_priority is None and not tree_mode:
 						# Greedily pop all of these nodes since no relationship
 						# has been ignored.  This optimization destroys --tree
@@ -2131,30 +2141,65 @@ class depgraph(object):
 						if not selected_nodes:
 							# settle for a root node
 							selected_nodes = [nodes[0]]
-				else:
+			if not selected_nodes:
+				nodes = get_nodes(ignore_priority=DepPriority.MEDIUM)
+				if nodes:
 					"""Recursively gather a group of nodes that RDEPEND on
 					eachother.  This ensures that they are merged as a group
 					and get their RDEPENDs satisfied as soon as possible."""
-					def gather_deps(mergeable_nodes, selected_nodes, node):
+					def gather_deps(ignore_priority,
+						mergeable_nodes, selected_nodes, node):
 						if node in selected_nodes:
 							return True
 						if node not in mergeable_nodes:
 							return False
 						selected_nodes.add(node)
 						for child in mygraph.child_nodes(node,
-							ignore_priority=DepPriority.SOFT):
-							if not gather_deps(
+							ignore_priority=ignore_priority):
+							if not gather_deps(ignore_priority,
 								mergeable_nodes, selected_nodes, child):
 								return False
 						return True
 					mergeable_nodes = set(nodes)
-					for node in nodes:
-						selected_nodes = set()
-						if gather_deps(
-							mergeable_nodes, selected_nodes, node):
+					if prefer_asap and asap_nodes:
+						nodes = asap_nodes
+					for ignore_priority in xrange(DepPriority.SOFT,
+						DepPriority.MEDIUM_SOFT + 1):
+						for node in nodes:
+							selected_nodes = set()
+							if gather_deps(ignore_priority,
+								mergeable_nodes, selected_nodes, node):
+								break
+							else:
+								selected_nodes = None
+						if selected_nodes:
 							break
-						else:
-							selected_nodes = None
+
+					if prefer_asap and asap_nodes and not selected_nodes:
+						# We failed to find any asap nodes to merge, so ignore
+						# them for the next iteration.
+						prefer_asap = False
+						continue
+
+					if selected_nodes and ignore_priority > DepPriority.SOFT:
+						# Try to merge ignored medium deps as soon as possible.
+						for node in selected_nodes:
+							children = set(mygraph.child_nodes(node))
+							soft = children.difference(
+								mygraph.child_nodes(node,
+								ignore_priority=DepPriority.SOFT))
+							medium_soft = children.difference(
+								mygraph.child_nodes(node,
+								ignore_priority=DepPriority.MEDIUM_SOFT))
+							medium_soft.difference_update(soft)
+							for child in medium_soft:
+								if child in selected_nodes:
+									continue
+								if child in asap_nodes:
+									continue
+								# TODO: Try harder to make these nodes get
+								# merged absolutely as soon as possible.
+								asap_nodes.append(child)
 
 			if not selected_nodes:
 				if not myblockers.is_empty():
@@ -2214,6 +2259,10 @@ class depgraph(object):
 				print "!!! Note that circular dependencies can often be avoided by temporarily"
 				print "!!! disabling USE flags that trigger optional dependencies."
 				sys.exit(1)
+
+			# At this point, we've succeeded in selecting one or more nodes, so
+			# it's now safe to reset the prefer_asap to it's default state.
+			prefer_asap = True
 
 			for node in selected_nodes:
 				retlist.append(list(node))
@@ -2988,6 +3037,14 @@ class depgraph(object):
 				sys.stdout.write(text)
 
 		if self._pprovided_args:
+			arg_refs = {}
+			for arg_atom in self._pprovided_args:
+				arg, atom = arg_atom
+				arg_refs[arg_atom] = []
+				cp = portage.dep_getkey(atom)
+				for set_name, pkg_set in self._sets.iteritems():
+					if cp in pkg_set and atom in pkg_set[cp]:
+						arg_refs[arg_atom].append(set_name)
 			msg = []
 			msg.append(bad("\nWARNING: "))
 			if len(self._pprovided_args) > 1:
@@ -2996,10 +3053,24 @@ class depgraph(object):
 			else:
 				msg.append("A requested package will not be " + \
 					"merged because it is listed in\n")
-			msg.append("         package.provided:\n\n")
-			for arg in self._pprovided_args:
-				msg.append("             " + arg + "\n")
+			msg.append("package.provided:\n\n")
+			problems_sets = set()
+			for (arg, atom), refs in arg_refs.iteritems():
+				ref_string = ""
+				if refs:
+					problems_sets.update(refs)
+					refs.sort()
+					ref_string = ", ".join(["'%s'" % name for name in refs])
+					ref_string = " pulled in by " + ref_string
+				msg.append("  %s%s\n" % (colorize("INFORM", arg), ref_string))
 			msg.append("\n")
+			if "world" in problems_sets:
+				msg.append("This problem can be solved in one of the following ways:\n\n")
+				msg.append("  A) Use emaint to clean offending packages from world (if not installed).\n")
+				msg.append("  B) Uninstall offending packages (cleans them from world).\n")
+				msg.append("  C) Remove offending entries from package.provided.\n\n")
+				msg.append("The best course of action depends on the reason that an offending\n")
+				msg.append("package.provided entry exists.\n\n")
 			sys.stderr.write("".join(msg))
 
 	def calc_changelog(self,ebuildpath,current,next):

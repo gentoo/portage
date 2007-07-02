@@ -113,7 +113,9 @@ codes["white"]     = codes["0xFFFFFF"]
 codes["lightgray"] = codes["0xAAAAAA"]
 
 codes["darkteal"]   = codes["turquoise"]
-codes["darkyellow"] = codes["brown"]
+# Some terminals have darkyellow instead of brown.
+codes["0xAAAA00"]   = codes["brown"]
+codes["darkyellow"] = codes["0xAAAA00"]
 codes["fuscia"]     = codes["fuchsia"]
 codes["white"]      = codes["bold"]
 

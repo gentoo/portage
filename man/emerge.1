@@ -1,4 +1,4 @@
-.TH "EMERGE" "1" "Dec 2006" "Portage 2.1" "Portage"
+.TH "EMERGE" "1" "Jun 2007" "Portage 2.1.3" "Portage"
 .SH "NAME"
 emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
@@ -578,6 +578,9 @@ Contains variables for the build process, overriding those in
 \fBmake.globals\fR.  \fBYou should edit this file instead of the ones
 listed below\fR.
 .TP
+.B /etc/portage/color.map
+Contains variables customizing colors.
+.TP
 .B /etc/dispatch\-conf.conf
 Contains settings to handle automatic updates/backups of configuration 
 files.
@@ -610,6 +613,7 @@ this file\fR.
 .BR ebuild (1),
 .BR ebuild (5),
 .BR make.conf (5),
+.BR color.map (5),
 .BR portage (5)
 .LP
 A number of helper applications reside in \fI@PORTAGE_BASE@bin\fR.

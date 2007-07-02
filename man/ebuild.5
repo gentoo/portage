@@ -1,4 +1,4 @@
-.TH "EBUILD" "5" "Jan 2007" "Portage 2.1.2" "Portage"
+.TH "EBUILD" "5" "Jun 2007" "Portage 2.1.3" "Portage"
 .SH "NAME"
 ebuild \- the internal format, variables, and functions in an ebuild script
 .SH "DESCRIPTION"
@@ -869,7 +869,7 @@ Achim Gottinger <achim@gentoo.org>
 Mark Guertin <gerk@gentoo.org>
 Nicholas Jones <carpaski@gentoo.org>
 Mike Frysinger <vapier@gentoo.org>
-Arfrever Frehtes Taifersar Arahesis <FFTA@WP.PL>
+Arfrever Frehtes Taifersar Arahesis <Arfrever.FTA@gmail.com>
 .fi
 .SH "FILES"
 .TP
@@ -877,12 +877,16 @@ The \fI/usr/sbin/ebuild.sh\fR script.
 .TP
 The helper apps in \fI@PORTAGE_BASE@/bin\fR.
 .TP
-\fB/etc/make.conf\fR 
+.B /etc/make.conf
 Contains variables for the build\-process and overwrites those in make.defaults.
 .TP
-\fB/etc/make.globals\fR
+.B /etc/make.globals
 Contains the default variables for the build\-process, you should edit
 \fI/etc/make.conf\fR instead.
+.TP
+.B /etc/portage/color.map
+Contains variables customizing colors.
 .SH "SEE ALSO"
 .BR ebuild (1),
-.BR make.conf (5)
+.BR make.conf (5),
+.BR color.map (5)

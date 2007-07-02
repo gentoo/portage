@@ -1,14 +1,14 @@
 # data.py -- Calculated/Discovered Data Values
 # Copyright 1998-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id:$
+# $Id: $
 
 if not hasattr(__builtins__, "set"):
 	from sets import Set as set
 
 import os, sys, pwd, grp
-from portage.const import wheelgid, rootuid, portageuser, portagegroup
 from portage.util import writemsg
+from portage.const import rootuid, portageuser, portagegroup
 from portage.output import green,red
 from portage.output import create_color_func
 bad = create_color_func("BAD")
@@ -67,18 +67,13 @@ def portage_group_warning():
 secpass=0
 
 uid=os.getuid()
-wheelgroup=grp.getgrgid(wheelgid)[0]
+wheelgid=0
 
-if uid==0 or uid==int(rootuid):
+if uid==int(rootuid):
 	secpass=2
 try:
-	if (not secpass) and (wheelgid in os.getgroups()):
-		secpass=1
+	wheelgid=grp.getgrnam("wheel")[2]
 except KeyError:
-	writemsg("portage initialization: your system doesn't have a '%s' group.\n" % wheelgroup)
-	writemsg("Please fix this as it is a normal system requirement. '%s' is GID %d\n" % (wheelgroup, wheelgid))
-	writemsg("`emerge baselayout` and a config update with dispatch-conf, etc-update\n")
-	writemsg("or cfg-update should remedy this problem.\n")
 	pass
 
 #Discover the uid and gid of the portage user/group
@@ -89,17 +84,12 @@ try:
 		secpass=1
 except KeyError:
 	portage_uid=0
-	portage_gid=wheelgid
+	portage_gid=0
 	writemsg("\n")
-	writemsg(  red("portage: "+portageuser+" user or group missing. Please update baselayout\n"))
-	writemsg(  red("         and merge portage user(250) and group(250) into your passwd\n"))
-	writemsg(  red("         and group files. Non-root compilation is disabled until then.\n"))
-	writemsg(      "         Also note that non-root/wheel users will need to be added to\n")
-	writemsg(      "         the portage group to do portage commands.\n")
-	writemsg("\n")
-	writemsg(      "         For the defaults, line 1 goes into passwd, and 2 into group.\n")
-	writemsg(green("         portage:x:250:250:portage:/var/tmp/portage:/bin/false\n"))
-	writemsg(green("         portage::250:portage\n"))
+	writemsg(  red("portage: "+portageuser+" user or group missing.i\n"))
+	writemsg(  red("         In Prefix Portage this is quite dramatic\n"))
+	writemsg(  red("         since it means you have thrown away yourself.\n"))
+	writemsg(      "         Re-add yourself, or rebootstrap Gentoo Prefix.\n")
 	writemsg("\n")
 	portage_group_warning()
 
