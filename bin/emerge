@@ -2065,7 +2065,7 @@ class depgraph:
 					break
 		ignore_priority_range = [None]
 		ignore_priority_range.extend(
-			xrange(DepPriority.MIN, DepPriority.MEDIUM + 1))
+			xrange(DepPriority.MIN, DepPriority.SOFT + 1))
 		tree_mode = "--tree" in self.myopts
 		while not mygraph.empty():
 			ignore_priority = None
@@ -2107,7 +2107,9 @@ class depgraph:
 						if not selected_nodes:
 							# settle for a root node
 							selected_nodes = [nodes[0]]
-				else:
+			if not nodes:
+				nodes = get_nodes(ignore_priority=DepPriority.MEDIUM)
+				if nodes:
 					"""Recursively gather a group of nodes that RDEPEND on
 					eachother.  This ensures that they are merged as a group
 					and get their RDEPENDs satisfied as soon as possible."""
@@ -2124,10 +2126,6 @@ class depgraph:
 								mergeable_nodes, selected_nodes, child):
 								return False
 						return True
-					# If necessary, resample the leaf nodes so that they
-					# include all nodes whose hard deps are satisfied.
-					if ignore_priority < DepPriority.MEDIUM:
-						nodes = get_nodes(ignore_priority=DepPriority.MEDIUM)
 					mergeable_nodes = set(nodes)
 					for ignore_priority in xrange(DepPriority.SOFT,
 						DepPriority.MEDIUM_SOFT + 1):
