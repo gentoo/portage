@@ -2102,7 +2102,7 @@ class depgraph(object):
 			selected_nodes = None
 			if asap_nodes:
 				"""ASAP nodes are merged before their soft deps."""
-				for node in asap_nodes:
+				for node in asap_nodes[:]:
 					if not mygraph.contains(node):
 						asap_nodes.remove(node)
 						continue
