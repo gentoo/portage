@@ -1451,8 +1451,7 @@ class depgraph(object):
 				if not self.create(["binary", myroot, mykey],
 					None, "--onlydeps" not in self.myopts):
 					return (0,myfavorites)
-				elif not "--oneshot" in self.myopts:
-					myfavorites.append("="+mykey)
+				arg_atoms.append((x, "="+mykey))
 			elif ext==".ebuild":
 				x = os.path.realpath(x)
 				mykey=os.path.basename(os.path.normpath(x+"/../.."))+"/"+os.path.splitext(os.path.basename(x))[0]
@@ -1474,8 +1473,7 @@ class depgraph(object):
 				if not self.create(["ebuild", myroot, mykey],
 					None, "--onlydeps" not in self.myopts):
 					return (0,myfavorites)
-				elif not "--oneshot" in self.myopts:
-					myfavorites.append("="+mykey)
+				arg_atoms.append((x, "="+mykey))
 			else:
 				if not is_valid_package_atom(x):
 					portage.writemsg("\n\n!!! '%s' is not a valid package atom.\n" % x,
@@ -1490,16 +1488,12 @@ class depgraph(object):
 							settings=pkgsettings)
 					if (mykey and not mykey.startswith("null/")) or \
 						"--usepkgonly" in self.myopts:
-						if "--oneshot" not in self.myopts:
-							myfavorites.append(mykey)
 						arg_atoms.append((x, mykey))
 						continue
 
 					mykey = portage.dep_expand(x,
 						mydb=portdb, settings=pkgsettings)
 					arg_atoms.append((x, mykey))
-					if "--oneshot" not in self.myopts:
-						myfavorites.append(mykey)
 				except ValueError, errpkgs:
 					print "\n\n!!! The short ebuild name \"" + x + "\" is ambiguous.  Please specify"
 					print "!!! one of the following fully-qualified ebuild names instead:\n"
@@ -1560,7 +1554,10 @@ class depgraph(object):
 		""" These are used inside self.create() in order to ensure packages
 		that happen to match arguments are not incorrectly marked as nomerge."""
 		for myarg, myatom in arg_atoms:
+			if myatom in self._args_atoms:
+				continue
 			self._args_atoms.add(myatom)
+			myfavorites.append(myatom)
 		for myarg, myatom in arg_atoms:
 				try:
 					self.mysd = self.select_dep(myroot, myatom, arg=myarg)
@@ -3178,7 +3175,8 @@ class depgraph(object):
 	def saveNomergeFavorites(self, mergelist, favorites):
 		"""Find atoms in favorites that are not in the mergelist and add them
 		to the world file if necessary."""
-		for x in ("--onlydeps", "--pretend", "--fetchonly", "--fetch-all-uri"):
+		for x in ("--fetchonly", "--fetch-all-uri",
+			"--oneshot", "--onlydeps", "--pretend"):
 			if x in self.myopts:
 				return
 		favorites_set = AtomSet(favorites)
