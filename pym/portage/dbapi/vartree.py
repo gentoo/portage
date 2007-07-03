@@ -666,10 +666,7 @@ class vartree(object):
 			self.populated = 1
 
 	def getpath(self, mykey, filename=None):
-		rValue = self.getpath(mykey)
-		if filename != None:
-			rValue = os.path.join(rValue, filename)
-		return rValue
+		return self.dbapi.getpath(mykey, filename=filename)
 
 	def zap(self, mycpv):
 		return
@@ -694,7 +691,7 @@ class vartree(object):
 		except SystemExit, e:
 			raise
 		except Exception, e:
-			mydir = self.getpath(mycpv)
+			mydir = os.path.join(self.root, VDB_PATH, mycpv)
 			writemsg("\nParse Error reading PROVIDE and USE in '%s'\n" % mydir,
 				noiselevel=-1)
 			if mylines:

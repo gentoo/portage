@@ -42,11 +42,12 @@ class WorldHandler(object):
 				if onProgress:
 					onProgress(maxval, i+1)
 				continue
+			cp = portage.dep_getkey(atom)
 			okay = True
 			if not vardb.match(atom):
 				self.not_installed.append(atom)
 				okay = False
-			if portage.catsplit(atom)[0] not in categories:
+			if portage.catsplit(cp)[0] not in categories:
 				self.invalid_category.append(atom)
 				okay = False
 			if okay:
