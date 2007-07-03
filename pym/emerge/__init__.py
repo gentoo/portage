@@ -1483,6 +1483,8 @@ class depgraph(object):
 							settings=pkgsettings)
 					if (mykey and not mykey.startswith("null/")) or \
 						"--usepkgonly" in self.myopts:
+						if "--oneshot" not in self.myopts:
+							myfavorites.append(mykey)
 						arg_atoms.append((x, mykey))
 						continue
 
