@@ -3413,7 +3413,7 @@ class MergeTask(object):
 					resume_opts
 
 		metadata_keys = [k for k in portage.auxdbkeys \
-			if not k.startswith("UNUSED_")]
+			if not k.startswith("UNUSED_")] + ["USE"]
 
 		mergecount=0
 		for x in mymergelist:
