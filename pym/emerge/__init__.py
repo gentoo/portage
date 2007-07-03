@@ -1551,7 +1551,7 @@ class depgraph(object):
 							greedy_atoms.append((myarg, myslot_atom))
 			arg_atoms = greedy_atoms
 
-		oneshot = "--oneshot" in self.myopts
+		oneshot = "--oneshot" in self.myopts or "--onlydeps" in self.myopts
 		""" These are used inside self.create() in order to ensure packages
 		that happen to match arguments are not incorrectly marked as nomerge."""
 		for myarg, myatom in arg_atoms:
@@ -3174,62 +3174,39 @@ class depgraph(object):
 			if release.endswith('-r0'):
 				release = release[:-3]
 
-	def saveNomergeFavorites(self, mergelist, favorites):
+	def saveNomergeFavorites(self):
 		"""Find atoms in favorites that are not in the mergelist and add them
 		to the world file if necessary."""
 		for x in ("--fetchonly", "--fetch-all-uri",
 			"--oneshot", "--onlydeps", "--pretend"):
 			if x in self.myopts:
 				return
-		favorites_set = AtomSet(favorites)
 		system_set = SystemSet(self.settings)
 		world_set = WorldSet(self.settings)
 		world_set.lock()
 		world_set.load()
-		merge_atoms = set()
-		atom_pkgs = {}
-		for x in mergelist:
-			pkg_type = x[0]
-			if pkg_type not in self.pkg_tree_map:
-				continue
+		added_favorites = set()
+		for x in self._args_nodes:
 			pkg_type, root, pkg_key, pkg_status = x
-			if root != self.target_root:
+			if pkg_status != "nomerge":
 				continue
 			metadata = dict(izip(self._mydbapi_keys,
 				self.mydbapi[root].aux_get(pkg_key, self._mydbapi_keys)))
 			try:
-				atom = favorites_set.findAtomForPackage(pkg_key, metadata)
+				if not (system_set.findAtomForPackage(pkg_key, metadata) or \
+					world_set.findAtomForPackage(pkg_key, metadata)):
+					myfavkey = portage.cpv_getkey(pkg_key)
+					if myfavkey in added_favorites:
+						continue
+					added_favorites.add(myfavkey)
+					world_set.add(myfavkey)
+					print ">>> Recording",myfavkey,"in \"world\" favorites file..."
 			except portage.exception.InvalidDependString, e:
 				writemsg("\n\n!!! '%s' has invalid PROVIDE: %s\n" % \
 					(pkg_key, str(e)), noiselevel=-1)
 				writemsg("!!! see '%s'\n\n" % os.path.join(
 					root, portage.VDB_PATH, pkg_key, "PROVIDE"), noiselevel=-1)
 				del e
-			if atom:
-				merge_atoms.add(atom)
-		added_favorites = set()
-		root = self.target_root
-		for atom in set(favorites_set).difference(merge_atoms):
-			pkgs = self.mydbapi[root].match(atom)
-			for pkg_key in pkgs:
-				metadata = dict(izip(self._mydbapi_keys,
-					self.mydbapi[root].aux_get(pkg_key, self._mydbapi_keys)))
-				try:
-					if not (system_set.findAtomForPackage(pkg_key, metadata) or \
-						world_set.findAtomForPackage(pkg_key, metadata)):
-						myfavkey = portage.cpv_getkey(pkg_key)
-						if myfavkey in added_favorites:
-							continue
-						added_favorites.add(myfavkey)
-						world_set.add(myfavkey)
-						modified = True
-						print ">>> Recording",myfavkey,"in \"world\" favorites file..."
-				except portage.exception.InvalidDependString, e:
-					writemsg("\n\n!!! '%s' has invalid PROVIDE: %s\n" % \
-						(pkg_key, str(e)), noiselevel=-1)
-					writemsg("!!! see '%s'\n\n" % os.path.join(
-						root, portage.VDB_PATH, pkg_key, "PROVIDE"), noiselevel=-1)
-					del e
 		if added_favorites:
 			world_set.save()
 		world_set.unlock()
@@ -5556,7 +5533,7 @@ def action_build(settings, trees, mtimedb,
 			else:
 				pkglist = mydepgraph.altlist()
 			if favorites:
-				mydepgraph.saveNomergeFavorites(pkglist, favorites)
+				mydepgraph.saveNomergeFavorites()
 			del mydepgraph
 			mergetask = MergeTask(settings, trees, myopts)
 			retval = mergetask.merge(pkglist, favorites, mtimedb)
