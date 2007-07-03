@@ -959,6 +959,13 @@ class BlockerCache(DictMixin):
 		"""
 		return self.BlockerData(*self._cache_data["blockers"][cpv])
 
+	def keys(self):
+		"""This needs to be implemented so that self.__repr__() doesn't raise
+		an AttributeError."""
+		if self._cache_data and "blockers" in self._cache_data:
+			return self._cache_data["blockers"].keys()
+		return []
+
 def show_invalid_depstring_notice(parent_node, depstring, error_msg):
 
 	from formatter import AbstractFormatter, DumbWriter
