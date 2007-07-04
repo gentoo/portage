@@ -2418,7 +2418,7 @@ class depgraph:
 			mykey = portage.dep_getkey(atom)
 			if True:
 				newlist.append(atom)
-				if mode == "world" and atom not in world_set:
+				if mode == "system" or atom not in world_set:
 					# only world is greedy for slots, not system
 					continue
 				# Make sure all installed slots are updated when possible.
