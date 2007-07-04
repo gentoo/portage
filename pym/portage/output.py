@@ -201,9 +201,10 @@ def parse_color_map(onerror=None):
 			if ansi_code_pattern.match(v):
 				codes[k] = esc_seq + v
 			else:
+				code_list = []
 				for x in v.split(" "):
 					if x in codes:
-						codes[k] = codes[k] + codes[x]
+						code_list.append(codes[x])
 					else:
 						e = ParseError("%s%s'%s'" % (
 							s.error_leader(myfile, s.lineno),
@@ -212,6 +213,7 @@ def parse_color_map(onerror=None):
 							onerror(e)
 						else:
 							raise e
+				codes[k] = "".join(code_list)
 	except (IOError, OSError), e:
 		if e.errno == errno.ENOENT:
 			raise FileNotFound(myfile)
