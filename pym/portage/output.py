@@ -154,7 +154,16 @@ codes["PKG_NOMERGE_WORLD"]       = codes["blue"]
 codes["PKG_NOMERGE_ARG_SYSTEM"]  = codes["blue"]
 codes["PKG_NOMERGE_ARG_WORLD"]   = codes["blue"]
 
-def parse_color_map():
+def parse_color_map(onerror=None):
+	"""
+	Parse /etc/portage/color.map and return a dict of error codes.
+
+	@param onerror: an optional callback to handle any ParseError that would
+		otherwise be raised
+	@type onerror: callable
+	@rtype: dict
+	@return: a dictionary mapping color classes to color codes
+	"""
 	myfile = COLOR_MAP_FILE
 	ansi_code_pattern = re.compile("^[0-9;]*m$")
 	def strip_quotes(token, quotes):
@@ -170,11 +179,24 @@ def parse_color_map():
 			if k is s.eof:
 				break
 			if o != "=":
-				raise ParseError("%s%s'%s'" % (s.error_leader(myfile, s.lineno), "expected '=' operator: ", o))
+				e = ParseError("%s%s'%s'" % (
+					s.error_leader(myfile, s.lineno),
+					"expected '=' operator: ", o))
+				if onerror:
+					onerror(e)
+				else:
+					raise e
+				continue
 			k = strip_quotes(k, s.quotes)
 			v = strip_quotes(v, s.quotes)
 			if not k in codes:
-				print ParseError("%s%s'%s'" % (s.error_leader(myfile, s.lineno), "Unknown variable: ", k))
+				e = ParseError("%s%s'%s'" % (
+					s.error_leader(myfile, s.lineno),
+					"Unknown variable: ", k))
+				if onerror:
+					onerror(e)
+				else:
+					raise e
 				continue
 			if ansi_code_pattern.match(v):
 				codes[k] = esc_seq + v
@@ -183,7 +205,13 @@ def parse_color_map():
 					if x in codes:
 						codes[k] = codes[k] + codes[x]
 					else:
-						print ParseError("%s%s'%s'" % (s.error_leader(myfile, s.lineno), "Undefined: ", x))
+						e = ParseError("%s%s'%s'" % (
+							s.error_leader(myfile, s.lineno),
+							"Undefined: ", x))
+						if onerror:
+							onerror(e)
+						else:
+							raise e
 	except (IOError, OSError), e:
 		if e.errno == errno.ENOENT:
 			raise FileNotFound(myfile)
@@ -192,7 +220,7 @@ def parse_color_map():
 		raise
 
 try:
-	parse_color_map()
+	parse_color_map(onerror=lambda e: writemsg("%s\n" % str(e), noiselevel=-1))
 except FileNotFound, e:
 	pass
 except PortageException, e:
