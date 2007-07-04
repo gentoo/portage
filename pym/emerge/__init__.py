@@ -674,6 +674,35 @@ class WorldSet(AtomSet):
 		portage.locks.unlockfile(self._lock)
 		self._lock = None
 
+def create_world_atom(pkg_key, metadata, args_set, world_set, portdb):
+	"""Create a new atom for the world file if one does not exist.  If the
+	argument atom is precise enough to identify a specific slot then a slot
+	atom will be returned. The system set is not used in deciding which
+	atoms to store since system atoms can only match one slot while world
+	atoms can be greedy with respect to slots."""
+	arg_atom = args_set.findAtomForPackage(pkg_key, metadata)
+	cp = portage.dep_getkey(arg_atom)
+	new_world_atom = cp
+	if arg_atom != cp:
+		# If the user gave a specific atom, store it as a
+		# slot atom in the world file.
+		slot_atom = "%s:%s" % (cp, metadata["SLOT"])
+		# First verify the slot is in the portage tree to avoid
+		# adding a bogus slot like that produced by multislot.
+		if portdb.match(slot_atom):
+			# Now verify that the argument is precise enough to identify a
+			# specific slot.
+			matches = portdb.match(arg_atom)
+			matched_slots = set()
+			for cpv in matches:
+				matched_slots.add(portdb.aux_get(cpv, ["SLOT"])[0])
+			if len(matched_slots) == 1:
+				new_world_atom = slot_atom
+	if new_world_atom == world_set.findAtomForPackage(pkg_key, metadata):
+		# Both atoms would be identical, so there's nothing to add.
+		return None
+	return new_world_atom
+
 def filter_iuse_defaults(iuse):
 	for flag in iuse:
 		if flag.startswith("+") or flag.startswith("-"):
@@ -2420,9 +2449,12 @@ class depgraph(object):
 			mykey = portage.dep_getkey(atom)
 			if True:
 				newlist.append(atom)
-				"""Make sure all installed slots are updated when possible.
-				Do this with --emptytree also, to ensure that all slots are
-				remerged."""
+				if mode == "world" and atom not in world_set:
+					# only world is greedy for slots, not system
+					continue
+				# Make sure all installed slots are updated when possible.
+				# Do this with --emptytree also, to ensure that all slots are
+				# remerged.
 				myslots = set()
 				for cpv in vardb.match(mykey):
 					myslots.add(vardb.aux_get(cpv, ["SLOT"])[0])
@@ -3181,10 +3213,11 @@ class depgraph(object):
 			"--oneshot", "--onlydeps", "--pretend"):
 			if x in self.myopts:
 				return
-		system_set = SystemSet(self.settings)
 		world_set = WorldSet(self.settings)
 		world_set.lock()
 		world_set.load()
+		args_set = self._args_atoms
+		portdb = self.trees[self.target_root]["porttree"].dbapi
 		added_favorites = set()
 		for x in self._args_nodes:
 			pkg_type, root, pkg_key, pkg_status = x
@@ -3193,9 +3226,9 @@ class depgraph(object):
 			metadata = dict(izip(self._mydbapi_keys,
 				self.mydbapi[root].aux_get(pkg_key, self._mydbapi_keys)))
 			try:
-				if not (system_set.findAtomForPackage(pkg_key, metadata) or \
-					world_set.findAtomForPackage(pkg_key, metadata)):
-					myfavkey = portage.cpv_getkey(pkg_key)
+				myfavkey = create_world_atom(pkg_key, metadata,
+					args_set, world_set, portdb)
+				if myfavkey:
 					if myfavkey in added_favorites:
 						continue
 					added_favorites.add(myfavkey)
@@ -3348,9 +3381,8 @@ class MergeTask(object):
 				del x, mytype, myroot, mycpv, mystatus, quiet_config
 			del shown_verifying_msg, quiet_settings
 
-		#buildsyspkg: I need mysysdict also on resume (moved from the else block)
 		system_set = SystemSet(self.settings)
-		favorites_set = AtomSet(favorites)
+		args_set = AtomSet(favorites)
 		world_set = WorldSet(self.settings)
 		if "--resume" not in self.myopts:
 			mymergelist = mylist
@@ -3447,7 +3479,7 @@ class MergeTask(object):
 			#buildsyspkg: Check if we need to _force_ binary package creation
 			issyspkg = ("buildsyspkg" in myfeat) \
 					and x[0] != "blocks" \
-					and mysysdict.has_key(portage.cpv_getkey(x[2])) \
+					and system_set.findAtomForPackage(pkg_key, metadata) \
 					and "--buildpkg" not in self.myopts
 			if x[0] in ["ebuild","blocks"]:
 				if x[0] == "blocks" and "--fetchonly" not in self.myopts:
@@ -3637,13 +3669,12 @@ class MergeTask(object):
 				self.trees[x[1]]["vartree"].inject(x[2])
 				myfavkey = portage.cpv_getkey(x[2])
 				if not fetchonly and not pretend and \
-					favorites_set.findAtomForPackage(pkg_key, metadata):
+					args_set.findAtomForPackage(pkg_key, metadata):
 					world_set.lock()
 					world_set.load()
-					#don't record if already in system profile or already recorded
-					if not system_set.findAtomForPackage(pkg_key, metadata) and \
-						not world_set.findAtomForPackage(pkg_key, metadata):
-						#we don't have a favorites entry for this package yet; add one
+					myfavkey = create_world_atom(pkg_key, metadata,
+						args_set, world_set, portdb)
+					if myfavkey:
 						world_set.add(myfavkey)
 						print ">>> Recording",myfavkey,"in \"world\" favorites file..."
 						emergelog(xterm_titles, " === ("+\
@@ -5160,10 +5191,11 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	vardb = dep_check_trees[myroot]["vartree"].dbapi
 	# Constrain dependency selection to the installed packages.
 	dep_check_trees[myroot]["porttree"] = dep_check_trees[myroot]["vartree"]
-	syslist = getlist(settings, "system")
-	worldlist = getlist(settings, "world")
-	system_and_world = AtomSet(syslist)
-	system_and_world.update(worldlist)
+	system_set = SystemSet(settings)
+	syslist = list(system_set)
+	world_set = WorldSet(settings)
+	world_set.load()
+	worldlist = list(world_set)
 	fakedb = portage.fakedbapi(settings=settings)
 	myvarlist = vardb.cpv_all()
 
@@ -5201,29 +5233,11 @@ def action_depclean(settings, trees, ldpath_mtimes,
 			if not atom.startswith("!") and priority == hard:
 				unresolveable.setdefault(atom, []).append(parent)
 			continue
-		system_or_world = False
-		if parent in ('world', 'system'):
-			system_or_world = True
-		else:
-			for pkg in pkgs:
-				metadata = dict(izip(metadata_keys,
-					vardb.aux_get(pkg, metadata_keys)))
-				try:
-					if system_and_world.findAtomForPackage(pkg, metadata):
-						system_or_world = True
-						break
-				except portage.exception.InvalidDependString, e:
-					writemsg("\n\n!!! '%s' has invalid PROVIDE: %s\n" % \
-						(pkg, str(e)), noiselevel=-1)
-					writemsg("!!! see '%s'\n\n" % os.path.join(
-						myroot, portage.VDB_PATH, pkg, "PROVIDE"),
-						noiselevel=-1)
-					del e
-		if not system_or_world:
+		if len(pkgs) > 1 and parent != "world":
 			# Prune all but the best matching slot, since that's all that a
-			# deep world update would pull in.  Don't prune if the cpv is in
-			# system or world though, since those sets trigger greedy update
-			# of all slots.
+			# deep world update would pull in.  Don't prune if this atom comes
+			# directly from world though, since world atoms are greedy when
+			# they don't specify a slot.
 			pkgs = [portage.best(pkgs)]
 		for pkg in pkgs:
 			if fakedb.cpv_exists(pkg):
