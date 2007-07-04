@@ -12,6 +12,12 @@ portage-2.1.3
   modification time or checksum differs from the file that was originally
   installed.  The old behavior is still available by adding -unmerge-orphans
   to FEATURES.
+* The world file now supports slot atoms such as 'sys-devel/gcc:3.4'. In some
+  cases, emerge --depclean may remove slots that it would not have removed
+  in the past. The emerge --noreplace command can be used to add an atom to the
+  world file and prevent matching packages from being removed.  A slot atom
+  will be recorded in the world file for any atom that is precise enough to
+  identify a specific slot.
 
 portage-2.1.2
 ==================================
