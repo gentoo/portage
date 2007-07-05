@@ -73,6 +73,7 @@ codes["standout"]  = esc_seq + "03m"
 codes["underline"] = esc_seq + "04m"
 codes["blink"]     = esc_seq + "05m"
 codes["overline"]  = esc_seq + "06m"  # Who made this up? Seriously.
+codes["reverse"]   = esc_seq + "07m"
 
 ansi_color_codes = []
 for x in xrange(30, 38):
@@ -119,6 +120,15 @@ codes["darkyellow"] = codes["0xAAAA00"]
 codes["fuscia"]     = codes["fuchsia"]
 codes["white"]      = codes["bold"]
 
+codes["bg_black"]   = esc_seq + "40m"
+codes["bg_red"]     = esc_seq + "41m"
+codes["bg_green"]   = esc_seq + "42m"
+codes["bg_brown"]   = esc_seq + "43m"
+codes["bg_blue"]    = esc_seq + "44m"
+codes["bg_magenta"] = esc_seq + "45m"
+codes["bg_cyan"]    = esc_seq + "46m"
+codes["bg_white"]   = esc_seq + "47m"
+
 # Colors from /sbin/functions.sh
 codes["GOOD"]       = codes["green"]
 codes["WARN"]       = codes["yellow"]
@@ -127,20 +137,33 @@ codes["HILITE"]     = codes["teal"]
 codes["BRACKET"]    = codes["blue"]
 
 # Portage functions
-codes["INFORM"] = codes["darkgreen"]
-codes["UNMERGE_WARN"] = codes["red"]
-codes["SECURITY_WARN"] = codes["red"]
-codes["MERGE_LIST_PROGRESS"] = codes["yellow"]
-codes["PKG_MERGE"]           = codes["darkgreen"]
-codes["PKG_MERGE_ARG"]       = codes["darkgreen"]
-codes["PKG_MERGE_SYSTEM"]    = codes["green"]
-codes["PKG_MERGE_WORLD"]     = codes["green"]
-codes["PKG_NOMERGE"]         = codes["darkblue"]
-codes["PKG_NOMERGE_ARG"]     = codes["darkblue"]
-codes["PKG_NOMERGE_SYSTEM"]  = codes["blue"]
-codes["PKG_NOMERGE_WORLD"]   = codes["blue"]
+codes["INFORM"]                  = codes["darkgreen"]
+codes["UNMERGE_WARN"]            = codes["red"]
+codes["SECURITY_WARN"]           = codes["red"]
+codes["MERGE_LIST_PROGRESS"]     = codes["yellow"]
+codes["PKG_MERGE"]               = codes["darkgreen"]
+codes["PKG_MERGE_ARG"]           = codes["darkgreen"]
+codes["PKG_MERGE_SYSTEM"]        = codes["green"]
+codes["PKG_MERGE_WORLD"]         = codes["green"]
+codes["PKG_MERGE_ARG_SYSTEM"]    = codes["green"]
+codes["PKG_MERGE_ARG_WORLD"]     = codes["green"]
+codes["PKG_NOMERGE"]             = codes["darkblue"]
+codes["PKG_NOMERGE_ARG"]         = codes["darkblue"]
+codes["PKG_NOMERGE_SYSTEM"]      = codes["blue"]
+codes["PKG_NOMERGE_WORLD"]       = codes["blue"]
+codes["PKG_NOMERGE_ARG_SYSTEM"]  = codes["blue"]
+codes["PKG_NOMERGE_ARG_WORLD"]   = codes["blue"]
 
-def parse_color_map():
+def parse_color_map(onerror=None):
+	"""
+	Parse /etc/portage/color.map and return a dict of error codes.
+
+	@param onerror: an optional callback to handle any ParseError that would
+		otherwise be raised
+	@type onerror: callable
+	@rtype: dict
+	@return: a dictionary mapping color classes to color codes
+	"""
 	myfile = COLOR_MAP_FILE
 	ansi_code_pattern = re.compile("^[0-9;]*m$")
 	def strip_quotes(token, quotes):
@@ -156,16 +179,41 @@ def parse_color_map():
 			if k is s.eof:
 				break
 			if o != "=":
-				raise ParseError("%s%s'%s'" % (s.error_leader(myfile, s.lineno), "expected '=' operator: ", o))
+				e = ParseError("%s%s'%s'" % (
+					s.error_leader(myfile, s.lineno),
+					"expected '=' operator: ", o))
+				if onerror:
+					onerror(e)
+				else:
+					raise e
+				continue
 			k = strip_quotes(k, s.quotes)
 			v = strip_quotes(v, s.quotes)
+			if not k in codes:
+				e = ParseError("%s%s'%s'" % (
+					s.error_leader(myfile, s.lineno),
+					"Unknown variable: ", k))
+				if onerror:
+					onerror(e)
+				else:
+					raise e
+				continue
 			if ansi_code_pattern.match(v):
 				codes[k] = esc_seq + v
 			else:
-				if v in codes:
-					codes[k] = codes[v]
-				else:
-					raise ParseError("%s%s'%s'" % (s.error_leader(myfile, s.lineno), "Undefined: ", v))
+				code_list = []
+				for x in v.split(" "):
+					if x in codes:
+						code_list.append(codes[x])
+					else:
+						e = ParseError("%s%s'%s'" % (
+							s.error_leader(myfile, s.lineno),
+							"Undefined: ", x))
+						if onerror:
+							onerror(e)
+						else:
+							raise e
+				codes[k] = "".join(code_list)
 	except (IOError, OSError), e:
 		if e.errno == errno.ENOENT:
 			raise FileNotFound(myfile)
@@ -174,7 +222,7 @@ def parse_color_map():
 		raise
 
 try:
-	parse_color_map()
+	parse_color_map(onerror=lambda e: writemsg("%s\n" % str(e), noiselevel=-1))
 except FileNotFound, e:
 	pass
 except PortageException, e:
