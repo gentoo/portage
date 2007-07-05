@@ -5854,6 +5854,17 @@ class portdbapi(dbapi):
 
 		self.porttrees = [self.porttree_root] + \
 			[os.path.realpath(t) for t in self.mysettings["PORTDIR_OVERLAY"].split()]
+		self.treemap = {}
+		for path in self.porttrees:
+			repo_name_path = os.path.join(path, portage_const.REPO_NAME_LOC)
+			try:
+				repo_name = open(repo_name_path, 'r').readline().strip()
+				self.treemap[repo_name] = path
+			except (OSError,IOError):
+				writemsg("Note: The repository at %s does not have a profiles/repo_name entry.\n" % path \
+						+ "      This can reduce the functionality of the repository in some cases.\n")
+				pass
+
 		self.auxdbmodule  = self.mysettings.load_best_module("portdbapi.auxdbmodule")
 		self.auxdb        = {}
 		self._init_cache_dirs()
@@ -5925,6 +5936,24 @@ class portdbapi(dbapi):
 
 	def findname(self,mycpv):
 		return self.findname2(mycpv)[0]
+
+	def getRepositoryPath(self, repository_id):
+		"""
+		This function is required for GLEP 42 compliance; given a valid repository ID
+		it must return a path to the repository
+		TreeMap = { id:path }
+		"""
+		if repository_id in self.treemap:
+			return self.treemap[repository_id]
+		return None
+
+	def getRepositories(self):
+		"""
+		This function is required for GLEP 42 compliance; it will return a list of
+		repository ID's
+		TreeMap = {id: path}
+		"""
+		return [k for k in self.treemap if k]
 
 	def findname2(self, mycpv, mytree=None):
 		""" 
