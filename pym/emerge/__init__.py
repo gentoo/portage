@@ -2782,7 +2782,7 @@ class depgraph(object):
 						restrict = mydbapi.aux_get(pkg_key, ["RESTRICT"])[0]
 						show_invalid_depstring_notice(x, restrict, str(e))
 						del e
-						sys.exit(1)
+						return 1
 					restrict = []
 				if "ebuild" == pkg_type and x[3] != "nomerge" and \
 					"fetch" in restrict:
@@ -2935,7 +2935,7 @@ class depgraph(object):
 							src_uri = portdb.aux_get(pkg_key, ["SRC_URI"])[0]
 							show_invalid_depstring_notice(x, src_uri, str(e))
 							del e
-							sys.exit(1)
+							return 1
 						if myfilesdict is None:
 							myfilesdict="[empty/missing/bad digest]"
 						else:
@@ -5418,7 +5418,7 @@ def action_build(settings, trees, mtimedb,
 	else:
 		if ("--resume" in myopts):
 			print darkgreen("emerge: It seems we have nothing to resume...")
-			sys.exit(0)
+			return os.EX_OK
 
 		myparams = create_depgraph_params(myopts, myaction)
 		if myaction in ["system","world"]:
@@ -5428,7 +5428,7 @@ def action_build(settings, trees, mtimedb,
 			mydepgraph = depgraph(settings, trees, myopts, myparams, spinner)
 			if not mydepgraph.xcreate(myaction):
 				print "!!! Depgraph creation failed."
-				sys.exit(1)
+				return 1
 			if "--quiet" not in myopts and "--nodeps" not in myopts:
 				print "\b\b... done!"
 		else:
@@ -5440,9 +5440,9 @@ def action_build(settings, trees, mtimedb,
 				retval, favorites = mydepgraph.select_files(myfiles)
 			except portage.exception.PackageNotFound, e:
 				portage.writemsg("\n!!! %s\n" % str(e), noiselevel=-1)
-				sys.exit(1)
+				return 1
 			if not retval:
-				sys.exit(1)
+				return 1
 			if "--quiet" not in myopts and "--nodeps" not in myopts:
 				print "\b\b... done!"
 
@@ -5453,7 +5453,7 @@ def action_build(settings, trees, mtimedb,
 			for x in mydepgraph.missingbins:
 				sys.stderr.write("   "+str(x)+"\n")
 			sys.stderr.write("\nThese are required by '--usepkgonly' -- Terminating.\n\n")
-			sys.exit(1)
+			return 1
 
 	if "--pretend" not in myopts and \
 		("--ask" in myopts or "--tree" in myopts or \
@@ -5466,7 +5466,7 @@ def action_build(settings, trees, mtimedb,
 				mymergelist = mymergelist[1:]
 			if len(mymergelist) == 0:
 				print colorize("INFORM", "emerge: It seems we have nothing to resume...")
-				sys.exit(0)
+				return os.EX_OK
 			favorites = mtimedb["resume"]["favorites"]
 			retval = mydepgraph.display(mymergelist, favorites=favorites)
 			if retval != os.EX_OK:
@@ -5488,7 +5488,7 @@ def action_build(settings, trees, mtimedb,
 					print   "!!!        at the same time on the same system."
 					if "--quiet" not in myopts:
 						show_blocker_docs_link()
-					sys.exit(1)
+					return 1
 			if mergecount==0:
 				if "--noreplace" in myopts and favorites:
 					print
@@ -5501,7 +5501,7 @@ def action_build(settings, trees, mtimedb,
 					print
 					print "Nothing to merge; quitting."
 					print
-					sys.exit(0)
+					return os.EX_OK
 			elif "--fetchonly" in myopts or "--fetch-all-uri" in myopts:
 				prompt="Would you like to fetch the source files for these packages?"
 			else:
@@ -5511,7 +5511,7 @@ def action_build(settings, trees, mtimedb,
 			print
 			print "Quitting."
 			print
-			sys.exit(0)
+			return os.EX_OK
 		# Don't ask again (e.g. when auto-cleaning packages after merge)
 		myopts.pop("--ask", None)
 
@@ -5523,7 +5523,7 @@ def action_build(settings, trees, mtimedb,
 				mymergelist = mymergelist[1:]
 			if len(mymergelist) == 0:
 				print colorize("INFORM", "emerge: It seems we have nothing to resume...")
-				sys.exit(0)
+				return os.EX_OK
 			favorites = mtimedb["resume"]["favorites"]
 			retval = mydepgraph.display(mymergelist, favorites=favorites)
 			if retval != os.EX_OK:
@@ -5538,13 +5538,13 @@ def action_build(settings, trees, mtimedb,
 				not mydepgraph.digraph.hasallzeros(ignore_priority=DepPriority.MEDIUM):
 					print "\n!!! --buildpkgonly requires all dependencies to be merged."
 					print "!!! You have to merge the dependencies before you can build this package.\n"
-					sys.exit(1)
+					return 1
 	else:
 		if ("--buildpkgonly" in myopts):
 			if not mydepgraph.digraph.hasallzeros(ignore_priority=DepPriority.MEDIUM):
 				print "\n!!! --buildpkgonly requires all dependencies to be merged."
 				print "!!! Cannot merge requested packages. Merge deps and try again.\n"
-				sys.exit(1)
+				return 1
 
 		if ("--resume" in myopts):
 			favorites=mtimedb["resume"]["favorites"]
@@ -5558,7 +5558,7 @@ def action_build(settings, trees, mtimedb,
 			retval = mergetask.merge(
 				mtimedb["resume"]["mergelist"], favorites, mtimedb)
 			if retval != os.EX_OK:
-				sys.exit(retval)
+				return retval
 		else:
 			if "resume" in mtimedb and \
 			"mergelist" in mtimedb["resume"] and \
@@ -5597,7 +5597,7 @@ def action_build(settings, trees, mtimedb,
 			mergetask = MergeTask(settings, trees, myopts)
 			retval = mergetask.merge(pkglist, favorites, mtimedb)
 			if retval != os.EX_OK:
-				sys.exit(retval)
+				return retval
 
 		if mtimedb.has_key("resume"):
 			del mtimedb["resume"]
