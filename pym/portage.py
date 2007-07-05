@@ -7667,6 +7667,19 @@ class dblink:
 		for x in listdir(inforoot):
 			self.copyfile(inforoot+"/"+x)
 
+		# do we have a origin repository name for the current package
+		repopath = os.sep.join(self.settings["O"].split(os.sep)[:-2])
+		# bindbapi has no getRepositories() method
+		if mydbapi and hasattr(mydbapi, "getRepositories"):
+			foundname = False
+			for reponame in mydbapi.getRepositories():
+				if mydbapi.getRepositoryPath(reponame) == repopath:
+					fd = open(os.path.join(self.dbtmpdir, "repository"), "w")
+					fd.write(reponame+"\n")
+					fd.close()
+					foundname = True
+					break
+
 		# get current counter value (counter_tick also takes care of incrementing it)
 		# XXX Need to make this destroot, but it needs to be initialized first. XXX
 		# XXX bis: leads to some invalidentry() call through cp_all().
