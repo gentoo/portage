@@ -4810,9 +4810,8 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		print
 		print red(" * ")+bold("An update to portage is available.")+" It is _highly_ recommended"
 		print red(" * ")+"that you update portage now, before any other packages are updated."
-		print red(" * ")+"Please run 'emerge portage' and then update "+bold("ALL")+" of your"
-		print red(" * ")+"configuration files."
-		print red(" * ")+"To update portage, run 'emerge portage'."
+		print
+		print red(" * ")+"To update portage, run 'emerge portage' now."
 		print
 	
 	display_news_notification(trees)
