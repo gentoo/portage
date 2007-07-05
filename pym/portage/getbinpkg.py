@@ -3,9 +3,6 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-if not hasattr(__builtins__, "set"):
-	from sets import Set as set
-
 from portage.output import red, yellow, green
 import htmllib,HTMLParser,formatter,sys,os,portage.xpak,time,tempfile,base64,urllib2
 

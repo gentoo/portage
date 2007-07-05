@@ -4,6 +4,8 @@ Features/major bugfixes are listed in NEWS
 portage-2.2
 ==================================
 
+* Portage now requires >=python-2.4, but doesn't need pycrypto anymore if 
+  >=python-2.5 is installed and openssl supports the rmd160 hash.
 * The python namespace for portage has been sanitized, all portage related code
   is now contained within the portage namespace. External script should be updated
   accordingly, though links exist for backward compability.

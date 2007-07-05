@@ -9,7 +9,6 @@ from portage.data import portage_gid, portage_uid, secpass
 from portage.dbapi import dbapi
 from portage.dep import dep_getslot, use_reduce, paren_reduce, isvalidatom, \
 	isjustname, dep_getkey, match_from_list
-from portage.elog import elog_process
 from portage.exception import InvalidPackageName, InvalidAtom, \
 	FileNotFound, PermissionDenied, UnsupportedAPIException
 from portage.locks import lockdir, unlockdir
@@ -24,7 +23,9 @@ from portage import listdir, dep_expand, flatten, key_expand, \
 	doebuild_environment, doebuild, env_update, \
 	abssymlink, movefile, _movefile, bsd_chflags
 
+from portage.elog import elog_process
 from portage.elog.messages import ewarn
+from portage.elog.filtering import filter_mergephases, filter_unmergephases
 
 import os, sys, stat, errno, commands, copy, time
 from itertools import izip
@@ -1104,7 +1105,7 @@ class dblink(object):
 				try:
 					if myebuildpath:
 						# process logs created during pre/postrm
-						elog_process(self.mycpv, self.settings)
+						elog_process(self.mycpv, self.settings, phasefilter=filter_unmergephases)
 						if retval == os.EX_OK:
 							doebuild(myebuildpath, "cleanrm", self.myroot,
 								self.settings, tree="vartree",
@@ -2106,7 +2107,7 @@ class dblink(object):
 			retval = self.treewalk(mergeroot, myroot, inforoot, myebuild,
 				cleanup=cleanup, mydbapi=mydbapi, prev_mtimes=prev_mtimes)
 			# Process ebuild logfiles
-			elog_process(self.mycpv, self.settings)
+			elog_process(self.mycpv, self.settings, phasefilter=filter_mergephases)
 			if retval == os.EX_OK and "noclean" not in self.settings.features:
 				if myebuild is None:
 					myebuild = os.path.join(inforoot, self.pkg + ".ebuild")

@@ -3,9 +3,6 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-if not hasattr(__builtins__, "set"):
-	from sets import Set as set
-
 import os, sys, pwd, grp
 from portage.util import writemsg
 from portage.output import green,red

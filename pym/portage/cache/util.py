@@ -3,8 +3,6 @@
 # License: GPL2
 # $Id$
 
-if not hasattr(__builtins__, "set"):
-	from sets import Set as set
 from itertools import chain
 from portage.cache import cache_errors
 

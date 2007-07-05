@@ -51,8 +51,6 @@ from portage.data import secpass
 from portage.util import normalize_path as normpath
 from portage.util import writemsg
 
-if not hasattr(__builtins__, "set"):
-	from sets import Set as set
 from itertools import chain, izip
 from UserDict import DictMixin
 
@@ -3353,6 +3351,7 @@ class MergeTask(object):
 
 	def merge(self, mylist, favorites, mtimedb):
 		from portage.elog import elog_process
+		from portage.elog.filtering import filter_mergephases
 		failed_fetches = []
 		fetchonly = "--fetchonly" in self.myopts or \
 			"--fetch-all-uri" in self.myopts
@@ -3585,7 +3584,7 @@ class MergeTask(object):
 						del pkgsettings["PORTAGE_BINPKG_TMPFILE"]
 						if retval != os.EX_OK or \
 							"--buildpkgonly" in self.myopts:
-							elog_process(pkg_key, pkgsettings)
+							elog_process(pkg_key, pkgsettings, phasefilter=filter_mergephases)
 						if retval != os.EX_OK:
 							return retval
 						bintree = self.trees[myroot]["bintree"]
