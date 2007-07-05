@@ -688,16 +688,20 @@ class RootConfig(object):
 		system_set = SystemSet(self.settings)
 		self.sets["system"] = system_set
 
-def create_world_atom(pkg_key, metadata, args_set, world_set, portdb):
+def create_world_atom(pkg_key, metadata, args_set, sets, portdb):
 	"""Create a new atom for the world file if one does not exist.  If the
 	argument atom is precise enough to identify a specific slot then a slot
-	atom will be returned. The system set is not used in deciding which
-	atoms to store since system atoms can only match one slot while world
-	atoms can be greedy with respect to slots."""
+	atom will be returned. Atoms that are in the system set may also be stored
+	in world since system atoms can only match one slot while world atoms can
+	be greedy with respect to slots.  Unslotted system packages will not be
+	not be stored in world."""
 	arg_atom = args_set.findAtomForPackage(pkg_key, metadata)
 	cp = portage.dep_getkey(arg_atom)
 	new_world_atom = cp
-	if arg_atom != cp:
+	available_slots = set(portdb.aux_get(cpv, ["SLOT"])[0] \
+		for cpv in portdb.match(cp))
+	slotted = len(available_slots) > 1 or "0" not in available_slots
+	if slotted and arg_atom != cp:
 		# If the user gave a specific atom, store it as a
 		# slot atom in the world file.
 		slot_atom = "%s:%s" % (cp, metadata["SLOT"])
@@ -712,8 +716,10 @@ def create_world_atom(pkg_key, metadata, args_set, world_set, portdb):
 				matched_slots.add(portdb.aux_get(cpv, ["SLOT"])[0])
 			if len(matched_slots) == 1:
 				new_world_atom = slot_atom
-	if new_world_atom == world_set.findAtomForPackage(pkg_key, metadata):
+	if new_world_atom == sets["world"].findAtomForPackage(pkg_key, metadata):
 		# Both atoms would be identical, so there's nothing to add.
+		return None
+	if not slotted and sets["system"].findAtomForPackage(pkg_key, metadata):
 		return None
 	return new_world_atom
 
@@ -3249,7 +3255,8 @@ class depgraph(object):
 			"--oneshot", "--onlydeps", "--pretend"):
 			if x in self.myopts:
 				return
-		world_set = WorldSet(self.settings)
+		root_config = self.roots[self.target_root]
+		world_set = root_config.sets["world"]
 		world_set.lock()
 		world_set.load()
 		args_set = self._sets["args"]
@@ -3263,7 +3270,7 @@ class depgraph(object):
 				self.mydbapi[root].aux_get(pkg_key, self._mydbapi_keys)))
 			try:
 				myfavkey = create_world_atom(pkg_key, metadata,
-					args_set, world_set, portdb)
+					args_set, root_config.sets, portdb)
 				if myfavkey:
 					if myfavkey in added_favorites:
 						continue
@@ -3710,7 +3717,8 @@ class MergeTask(object):
 					world_set.lock()
 					world_set.load()
 					myfavkey = create_world_atom(pkg_key, metadata,
-						args_set, world_set, portdb)
+						args_set, {"world":world_set, "system":system_set},
+						portdb)
 					if myfavkey:
 						world_set.add(myfavkey)
 						print ">>> Recording",myfavkey,"in \"world\" favorites file..."
