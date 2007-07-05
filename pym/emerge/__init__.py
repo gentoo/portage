@@ -1113,13 +1113,15 @@ class depgraph(object):
 		self._parent_child_digraph = digraph()
 		self.orderedkeys=[]
 		self.outdatedpackages=[]
-		self._args_atoms = AtomSet()
-		self._args_nodes = set()
-		# contains all sets added to the graph by self.xcreate()
+		# contains all sets added to the graph
 		self._sets = {}
+		# contains atoms given as arguments
+		self._sets["args"] = AtomSet()
 		# contains all atoms from all sets added to the graph, including
 		# atoms given as arguments
 		self._set_atoms = AtomSet()
+		# contains all nodes pulled in by self._set_atoms
+		self._set_nodes = set()
 		self.blocker_digraph = digraph()
 		self.blocker_parents = {}
 		self._unresolved_blocker_parents = {}
@@ -1369,7 +1371,7 @@ class depgraph(object):
 					priority=priority)
 
 		if arg:
-			self._args_nodes.add(jbigkey)
+			self._set_nodes.add(jbigkey)
 
 		# Do this even when addme is False (--onlydeps) so that the
 		# parent/child relationship is always known in case
@@ -1591,10 +1593,11 @@ class depgraph(object):
 		oneshot = "--oneshot" in self.myopts or "--onlydeps" in self.myopts
 		""" These are used inside self.create() in order to ensure packages
 		that happen to match arguments are not incorrectly marked as nomerge."""
+		args_set = self._sets["args"]
 		for myarg, myatom in arg_atoms:
-			if myatom in self._args_atoms:
+			if myatom in args_set:
 				continue
-			self._args_atoms.add(myatom)
+			args_set.add(myatom)
 			self._set_atoms.add(myatom)
 			if not oneshot:
 				myfavorites.append(myatom)
@@ -2529,7 +2532,7 @@ class depgraph(object):
 			verbosity = ("--quiet" in self.myopts and 1 or \
 				"--verbose" in self.myopts and 3 or 2)
 		if "--resume" in self.myopts and favorites:
-			self._args_atoms.update(favorites)
+			self._sets["args"].update(favorites)
 		favorites_set = AtomSet()
 		favorites_set.update(favorites)
 		changelogs=[]
@@ -2639,7 +2642,7 @@ class depgraph(object):
 						# Do not traverse to parents if this node is an
 						# an argument or a direct member of a set that has
 						# been specified as an argument (system or world).
-						if current_node not in self._args_nodes:
+						if current_node not in self._set_nodes:
 							parent_nodes = mygraph.parent_nodes(current_node)
 						if parent_nodes:
 							child_nodes = set(mygraph.child_nodes(current_node))
@@ -3012,15 +3015,17 @@ class depgraph(object):
 				root_config = self.roots[myroot]
 				system_set = root_config.sets["system"]
 				world_set  = root_config.sets["world"]
+				args_set = self._sets["args"]
 
 				pkg_arg = False
 				pkg_system = False
 				pkg_world = False
 				try:
-					pkg_arg = self._args_atoms.findAtomForPackage(pkg_key, metadata)
+					if myroot == self.target_root:
+						pkg_arg = args_set.findAtomForPackage(pkg_key, metadata)
 					pkg_system = system_set.findAtomForPackage(pkg_key, metadata)
 					pkg_world  = world_set.findAtomForPackage(pkg_key, metadata)
-					if not pkg_world:
+					if not pkg_world and myroot == self.target_root:
 						# Maybe it will be added to world now.
 						pkg_world = favorites_set.findAtomForPackage(pkg_key, metadata)
 				except portage.exception.InvalidDependString:
@@ -3247,10 +3252,10 @@ class depgraph(object):
 		world_set = WorldSet(self.settings)
 		world_set.lock()
 		world_set.load()
-		args_set = self._args_atoms
+		args_set = self._sets["args"]
 		portdb = self.trees[self.target_root]["porttree"].dbapi
 		added_favorites = set()
-		for x in self._args_nodes:
+		for x in self._set_nodes:
 			pkg_type, root, pkg_key, pkg_status = x
 			if pkg_status != "nomerge":
 				continue
