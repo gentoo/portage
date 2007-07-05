@@ -14,9 +14,6 @@ try:
 except ImportError:
 	import pickle as cPickle
 
-if not hasattr(__builtins__, "set"):
-	from sets import Set as set
-
 noiselimit = 0
 
 def writemsg(mystr,noiselevel=0,fd=None):

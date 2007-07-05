@@ -3,9 +3,6 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id: getbinpkg.py 3483 2006-06-10 21:40:40Z genone $
 
-if not hasattr(__builtins__, "set"):
-	from sets import Set as set
-
 from portage.output import red, yellow, green
 import htmllib,HTMLParser,formatter,sys,os,portage.xpak,time,tempfile,base64,urllib2
 from portage.const import CACHE_PATH

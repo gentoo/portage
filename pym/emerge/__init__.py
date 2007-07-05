@@ -52,8 +52,6 @@ from portage.data import secpass
 from portage.util import normalize_path as normpath
 from portage.util import writemsg
 
-if not hasattr(__builtins__, "set"):
-	from sets import Set as set
 from itertools import chain, izip
 from UserDict import DictMixin
 
@@ -631,6 +629,8 @@ class AtomSet(object):
 			best_match = portage.best_match_to_list(cpv_slot, atoms)
 			if best_match:
 				return best_match
+		if not metadata["PROVIDE"]:
+			return None
 		provides = portage.flatten(portage.dep.use_reduce(
 			portage.dep.paren_reduce(metadata["PROVIDE"]),
 			uselist=metadata["USE"].split()))
@@ -674,6 +674,49 @@ class WorldSet(AtomSet):
 	def unlock(self):
 		portage.locks.unlockfile(self._lock)
 		self._lock = None
+
+class RootConfig(object):
+	"""This is used internally by depgraph to track information about a
+	particular $ROOT."""
+	def __init__(self, trees):
+		self.trees = trees
+		self.settings = trees["vartree"].settings
+		self.root = self.settings["ROOT"]
+		self.sets = {}
+		world_set = WorldSet(self.settings)
+		world_set.load()
+		self.sets["world"] = world_set
+		system_set = SystemSet(self.settings)
+		self.sets["system"] = system_set
+
+def create_world_atom(pkg_key, metadata, args_set, world_set, portdb):
+	"""Create a new atom for the world file if one does not exist.  If the
+	argument atom is precise enough to identify a specific slot then a slot
+	atom will be returned. The system set is not used in deciding which
+	atoms to store since system atoms can only match one slot while world
+	atoms can be greedy with respect to slots."""
+	arg_atom = args_set.findAtomForPackage(pkg_key, metadata)
+	cp = portage.dep_getkey(arg_atom)
+	new_world_atom = cp
+	if arg_atom != cp:
+		# If the user gave a specific atom, store it as a
+		# slot atom in the world file.
+		slot_atom = "%s:%s" % (cp, metadata["SLOT"])
+		# First verify the slot is in the portage tree to avoid
+		# adding a bogus slot like that produced by multislot.
+		if portdb.match(slot_atom):
+			# Now verify that the argument is precise enough to identify a
+			# specific slot.
+			matches = portdb.match(arg_atom)
+			matched_slots = set()
+			for cpv in matches:
+				matched_slots.add(portdb.aux_get(cpv, ["SLOT"])[0])
+			if len(matched_slots) == 1:
+				new_world_atom = slot_atom
+	if new_world_atom == world_set.findAtomForPackage(pkg_key, metadata):
+		# Both atoms would be identical, so there's nothing to add.
+		return None
+	return new_world_atom
 
 def filter_iuse_defaults(iuse):
 	for flag in iuse:
@@ -785,7 +828,7 @@ class FakeVartree(portage.vartree):
 			if os.access(vdb_path, os.W_OK):
 				vdb_lock = portage.locks.lockdir(vdb_path)
 			mykeys = ["SLOT", "COUNTER", "PROVIDE", "USE", "IUSE",
-				"DEPEND", "RDEPEND", "PDEPEND", "repository"]
+				"RESTRICT", "DEPEND", "RDEPEND", "PDEPEND", "repository"]
 			real_dbapi = real_vartree.dbapi
 			slot_counters = {}
 			for cpv in real_dbapi.cpv_all():
@@ -1026,9 +1069,10 @@ class depgraph(object):
 		self._slot_node_map = {}
 		self.mydbapi = {}
 		self._mydbapi_keys = ["SLOT", "DEPEND", "RDEPEND", "PDEPEND",
-			"USE", "IUSE", "PROVIDE", "repository"]
+			"USE", "IUSE", "PROVIDE", "RESTRICT", "repository"]
 		self.useFlags = {}
 		self.trees = {}
+		self.roots = {}
 		for myroot in trees:
 			self.trees[myroot] = {}
 			for tree in ("porttree", "bintree"):
@@ -1041,6 +1085,7 @@ class depgraph(object):
 			self.pkg_node_map[myroot] = {}
 			self._slot_node_map[myroot] = {}
 			vardb = self.trees[myroot]["vartree"].dbapi
+			self.roots[myroot] = RootConfig(self.trees[myroot])
 			# This fakedbapi instance will model the state that the vdb will
 			# have after new packages have been installed.
 			fakedb = portage.fakedbapi(settings=self.pkgsettings[myroot])
@@ -1069,10 +1114,15 @@ class depgraph(object):
 		self._parent_child_digraph = digraph()
 		self.orderedkeys=[]
 		self.outdatedpackages=[]
-		self._args_atoms = AtomSet()
-		self._args_nodes = set()
+		# contains all sets added to the graph
 		self._sets = {}
-		self._sets_nodes = {}
+		# contains atoms given as arguments
+		self._sets["args"] = AtomSet()
+		# contains all atoms from all sets added to the graph, including
+		# atoms given as arguments
+		self._set_atoms = AtomSet()
+		# contains all nodes pulled in by self._set_atoms
+		self._set_nodes = set()
 		self.blocker_digraph = digraph()
 		self.blocker_parents = {}
 		self._unresolved_blocker_parents = {}
@@ -1212,7 +1262,7 @@ class depgraph(object):
 
 		if not arg and myroot == self.target_root:
 			try:
-				arg = self._args_atoms.findAtomForPackage(mykey, metadata)
+				arg = self._set_atoms.findAtomForPackage(mykey, metadata)
 			except portage.exception.InvalidDependString, e:
 				if mytype != "installed":
 					show_invalid_depstring_notice(tuple(mybigkey+["merge"]),
@@ -1322,18 +1372,7 @@ class depgraph(object):
 					priority=priority)
 
 		if arg:
-			self._args_nodes.add(jbigkey)
-			try:
-				for set_name, atom_set in self._sets.iteritems():
-					atom = atom_set.findAtomForPackage(mykey, metadata)
-					if atom:
-						self._sets_nodes[set_name].add(jbigkey)
- 			except portage.exception.InvalidDependString, e:
-				if mytype != "installed":
-					show_invalid_depstring_notice(jbigkey,
-						metadata["PROVIDE"], str(e))
-					return 0
-				del e
+			self._set_nodes.add(jbigkey)
 
 		# Do this even when addme is False (--onlydeps) so that the
 		# parent/child relationship is always known in case
@@ -1452,8 +1491,7 @@ class depgraph(object):
 				if not self.create(["binary", myroot, mykey],
 					None, "--onlydeps" not in self.myopts):
 					return (0,myfavorites)
-				elif not "--oneshot" in self.myopts:
-					myfavorites.append("="+mykey)
+				arg_atoms.append((x, "="+mykey))
 			elif ext==".ebuild":
 				x = os.path.realpath(x)
 				mykey=os.path.basename(os.path.normpath(x+"/../.."))+"/"+os.path.splitext(os.path.basename(x))[0]
@@ -1475,8 +1513,7 @@ class depgraph(object):
 				if not self.create(["ebuild", myroot, mykey],
 					None, "--onlydeps" not in self.myopts):
 					return (0,myfavorites)
-				elif not "--oneshot" in self.myopts:
-					myfavorites.append("="+mykey)
+				arg_atoms.append((x, "="+mykey))
 			else:
 				if not is_valid_package_atom(x):
 					portage.writemsg("\n\n!!! '%s' is not a valid package atom.\n" % x,
@@ -1491,16 +1528,12 @@ class depgraph(object):
 							settings=pkgsettings)
 					if (mykey and not mykey.startswith("null/")) or \
 						"--usepkgonly" in self.myopts:
-						if "--oneshot" not in self.myopts:
-							myfavorites.append(mykey)
 						arg_atoms.append((x, mykey))
 						continue
 
 					mykey = portage.dep_expand(x,
 						mydb=portdb, settings=pkgsettings)
 					arg_atoms.append((x, mykey))
-					if "--oneshot" not in self.myopts:
-						myfavorites.append(mykey)
 				except ValueError, errpkgs:
 					print "\n\n!!! The short ebuild name \"" + x + "\" is ambiguous.  Please specify"
 					print "!!! one of the following fully-qualified ebuild names instead:\n"
@@ -1558,10 +1591,17 @@ class depgraph(object):
 							greedy_atoms.append((myarg, myslot_atom))
 			arg_atoms = greedy_atoms
 
+		oneshot = "--oneshot" in self.myopts or "--onlydeps" in self.myopts
 		""" These are used inside self.create() in order to ensure packages
 		that happen to match arguments are not incorrectly marked as nomerge."""
+		args_set = self._sets["args"]
 		for myarg, myatom in arg_atoms:
-			self._args_atoms.add(myatom)
+			if myatom in args_set:
+				continue
+			args_set.add(myatom)
+			self._set_atoms.add(myatom)
+			if not oneshot:
+				myfavorites.append(myatom)
 		for myarg, myatom in arg_atoms:
 				try:
 					self.mysd = self.select_dep(myroot, myatom, arg=myarg)
@@ -1664,7 +1704,7 @@ class depgraph(object):
 		if not mymerge and arg:
 			# A provided package has been specified on the command line.  The
 			# package will not be merged and a warning will be displayed.
-			if depstring in self._args_atoms:
+			if depstring in self._set_atoms:
 				self._pprovided_args.append((arg, depstring))
 
 		if myparent:
@@ -2380,24 +2420,15 @@ class depgraph(object):
 			return [x for x in mylist \
 				if x in matches or not portdb.cpv_exists(x)]
 		world_problems = False
-		if mode=="system":
-			system_set = SystemSet(self.settings)
-			mylist = list(system_set)
-			self._sets["system"] = system_set
-			self._sets_nodes["system"] = set()
-		else:
-			#world mode
-			world_set = WorldSet(self.settings)
-			world_set.load()
-			worldlist = list(world_set)
-			self._sets["world"] = world_set
-			self._sets_nodes["world"] = set()
-			system_set = SystemSet(self.settings)
-			mylist = list(system_set)
-			self._sets["system"] = system_set
-			self._sets_nodes["system"] = set()
 
-			for x in worldlist:
+		root_config = self.roots[self.target_root]
+		world_set = root_config.sets["world"]
+		system_set = root_config.sets["system"]
+		mylist = list(system_set)
+		self._sets["system"] = system_set
+		if mode == "world":
+			self._sets["world"] = world_set
+			for x in world_set:
 				if not portage.isvalidatom(x):
 					world_problems = True
 					continue
@@ -2422,9 +2453,12 @@ class depgraph(object):
 			mykey = portage.dep_getkey(atom)
 			if True:
 				newlist.append(atom)
-				"""Make sure all installed slots are updated when possible.
-				Do this with --emptytree also, to ensure that all slots are
-				remerged."""
+				if mode == "system" or atom not in world_set:
+					# only world is greedy for slots, not system
+					continue
+				# Make sure all installed slots are updated when possible.
+				# Do this with --emptytree also, to ensure that all slots are
+				# remerged.
 				myslots = set()
 				for cpv in vardb.match(mykey):
 					myslots.add(vardb.aux_get(cpv, ["SLOT"])[0])
@@ -2467,7 +2501,7 @@ class depgraph(object):
 		mylist = newlist
 
 		for myatom in mylist:
-			self._args_atoms.add(myatom)
+			self._set_atoms.add(myatom)
 
 		missing_atoms = []
 		for mydep in mylist:
@@ -2494,10 +2528,14 @@ class depgraph(object):
 
 		return 1
 
-	def display(self,mylist,verbosity=None):
+	def display(self, mylist, favorites=[], verbosity=None):
 		if verbosity is None:
 			verbosity = ("--quiet" in self.myopts and 1 or \
 				"--verbose" in self.myopts and 3 or 2)
+		if "--resume" in self.myopts and favorites:
+			self._sets["args"].update(favorites)
+		favorites_set = AtomSet()
+		favorites_set.update(favorites)
 		changelogs=[]
 		p=[]
 		blockers = []
@@ -2605,7 +2643,7 @@ class depgraph(object):
 						# Do not traverse to parents if this node is an
 						# an argument or a direct member of a set that has
 						# been specified as an argument (system or world).
-						if current_node not in self._args_nodes:
+						if current_node not in self._set_nodes:
 							parent_nodes = mygraph.parent_nodes(current_node)
 						if parent_nodes:
 							child_nodes = set(mygraph.child_nodes(current_node))
@@ -2718,6 +2756,19 @@ class depgraph(object):
 					else:
 						# An ebuild "nomerge" node, so USE come from the vardb.
 						mydbapi = vartree.dbapi
+				# reuse cached metadata from when the depgraph was built
+				if "--resume" in self.myopts:
+					# Populate the fakedb with relevant metadata, just like
+					# would have happened when the depgraph was originally
+					# built.
+					metadata = dict(izip(self._mydbapi_keys,
+						mydbapi.aux_get(pkg_key, self._mydbapi_keys)))
+					self.mydbapi[myroot].cpv_inject(pkg_key, metadata=metadata)
+				else:
+					metadata = dict(izip(self._mydbapi_keys,
+						self.mydbapi[myroot].aux_get(
+						pkg_key, self._mydbapi_keys)))
+				mydbapi = self.mydbapi[myroot] # use the cached metadata
 				if pkg_key not in self.useFlags[myroot]:
 					"""If this is a --resume then the USE flags need to be
 					fetched from the appropriate locations here."""
@@ -2733,7 +2784,7 @@ class depgraph(object):
 						restrict = mydbapi.aux_get(pkg_key, ["RESTRICT"])[0]
 						show_invalid_depstring_notice(x, restrict, str(e))
 						del e
-						sys.exit(1)
+						return 1
 					restrict = []
 				if "ebuild" == pkg_type and x[3] != "nomerge" and \
 					"fetch" in restrict:
@@ -2886,7 +2937,7 @@ class depgraph(object):
 							src_uri = portdb.aux_get(pkg_key, ["SRC_URI"])[0]
 							show_invalid_depstring_notice(x, src_uri, str(e))
 							del e
-							sys.exit(1)
+							return 1
 						if myfilesdict is None:
 							myfilesdict="[empty/missing/bad digest]"
 						else:
@@ -2962,42 +3013,57 @@ class depgraph(object):
 					myoldbest=blue("["+myoldbest+"]")
 
 				pkg_cp = xs[0]
-				pkg_arg    = False
-				pkg_world  = False
+				root_config = self.roots[myroot]
+				system_set = root_config.sets["system"]
+				world_set  = root_config.sets["world"]
+				args_set = self._sets["args"]
+
+				pkg_arg = False
 				pkg_system = False
-				pkg_node = tuple(x)
-				if pkg_node in self._args_nodes:
-					pkg_arg = True
-					world_nodes = self._sets_nodes.get("world")
-					if world_nodes and pkg_node in world_nodes:
-						pkg_world = True
-					if world_nodes is None:
-						# Don't colorize system package when in "world" mode.
-						system_nodes = self._sets_nodes.get("system")
-						if system_nodes and pkg_node in system_nodes:
-							pkg_system = True
+				pkg_world = False
+				try:
+					if myroot == self.target_root:
+						pkg_arg = args_set.findAtomForPackage(pkg_key, metadata)
+					pkg_system = system_set.findAtomForPackage(pkg_key, metadata)
+					pkg_world  = world_set.findAtomForPackage(pkg_key, metadata)
+					if not pkg_world and myroot == self.target_root:
+						# Maybe it will be added to world now.
+						pkg_world = favorites_set.findAtomForPackage(pkg_key, metadata)
+				except portage.exception.InvalidDependString:
+					# This is reported elsewhere if relevant.
+					pass
 
 				def pkgprint(pkg):
 					if pkg_merge:
 						if pkg_arg:
 							if pkg_world:
+								return colorize("PKG_MERGE_ARG_WORLD", pkg)
+							elif pkg_system:
+								return colorize("PKG_MERGE_ARG_SYSTEM", pkg)
+							else:
+								return colorize("PKG_MERGE_ARG", pkg)
+						else:
+							if pkg_world:
 								return colorize("PKG_MERGE_WORLD", pkg)
 							elif pkg_system:
 								return colorize("PKG_MERGE_SYSTEM", pkg)
 							else:
-								return colorize("PKG_MERGE_ARG", pkg)
-						else:
-							return colorize("PKG_MERGE", pkg)
+								return colorize("PKG_MERGE", pkg)
 					else:
 						if pkg_arg:
+							if pkg_world:
+								return colorize("PKG_NOMERGE_ARG_WORLD", pkg)
+							elif pkg_system:
+								return colorize("PKG_NOMERGE_ARG_SYSTEM", pkg)
+							else:
+								return colorize("PKG_NOMERGE_ARG", pkg)
+						else:
 							if pkg_world:
 								return colorize("PKG_NOMERGE_WORLD", pkg)
 							elif pkg_system:
 								return colorize("PKG_NOMERGE_SYSTEM", pkg)
 							else:
-								return colorize("PKG_NOMERGE_ARG", pkg)
-						else:
-							return colorize("PKG_NOMERGE", pkg)
+								return colorize("PKG_NOMERGE", pkg)
 
 				if x[1]!="/":
 					if myoldbest:
@@ -3123,6 +3189,7 @@ class depgraph(object):
 				msg.append("The best course of action depends on the reason that an offending\n")
 				msg.append("package.provided entry exists.\n\n")
 			sys.stderr.write("".join(msg))
+		return os.EX_OK
 
 	def calc_changelog(self,ebuildpath,current,next):
 		if ebuildpath == None or not os.path.exists(ebuildpath):
@@ -3176,61 +3243,40 @@ class depgraph(object):
 			if release.endswith('-r0'):
 				release = release[:-3]
 
-	def saveNomergeFavorites(self, mergelist, favorites):
+	def saveNomergeFavorites(self):
 		"""Find atoms in favorites that are not in the mergelist and add them
 		to the world file if necessary."""
-		for x in ("--onlydeps", "--pretend", "--fetchonly", "--fetch-all-uri"):
+		for x in ("--fetchonly", "--fetch-all-uri",
+			"--oneshot", "--onlydeps", "--pretend"):
 			if x in self.myopts:
 				return
-		favorites_set = AtomSet(favorites)
-		system_set = SystemSet(self.settings)
 		world_set = WorldSet(self.settings)
 		world_set.lock()
 		world_set.load()
-		merge_atoms = set()
-		atom_pkgs = {}
-		for x in mergelist:
-			pkg_type = x[0]
-			if pkg_type not in self.pkg_tree_map:
-				continue
+		args_set = self._sets["args"]
+		portdb = self.trees[self.target_root]["porttree"].dbapi
+		added_favorites = set()
+		for x in self._set_nodes:
 			pkg_type, root, pkg_key, pkg_status = x
-			if root != self.target_root:
+			if pkg_status != "nomerge":
 				continue
 			metadata = dict(izip(self._mydbapi_keys,
 				self.mydbapi[root].aux_get(pkg_key, self._mydbapi_keys)))
 			try:
-				atom = favorites_set.findAtomForPackage(pkg_key, metadata)
+				myfavkey = create_world_atom(pkg_key, metadata,
+					args_set, world_set, portdb)
+				if myfavkey:
+					if myfavkey in added_favorites:
+						continue
+					added_favorites.add(myfavkey)
+					world_set.add(myfavkey)
+					print ">>> Recording",myfavkey,"in \"world\" favorites file..."
 			except portage.exception.InvalidDependString, e:
 				writemsg("\n\n!!! '%s' has invalid PROVIDE: %s\n" % \
 					(pkg_key, str(e)), noiselevel=-1)
 				writemsg("!!! see '%s'\n\n" % os.path.join(
 					root, portage.VDB_PATH, pkg_key, "PROVIDE"), noiselevel=-1)
 				del e
-			if atom:
-				merge_atoms.add(atom)
-		added_favorites = set()
-		root = self.target_root
-		for atom in set(favorites_set).difference(merge_atoms):
-			pkgs = self.mydbapi[root].match(atom)
-			for pkg_key in pkgs:
-				metadata = dict(izip(self._mydbapi_keys,
-					self.mydbapi[root].aux_get(pkg_key, self._mydbapi_keys)))
-				try:
-					if not (system_set.findAtomForPackage(pkg_key, metadata) or \
-						world_set.findAtomForPackage(pkg_key, metadata)):
-						myfavkey = portage.cpv_getkey(pkg_key)
-						if myfavkey in added_favorites:
-							continue
-						added_favorites.add(myfavkey)
-						world_set.add(myfavkey)
-						modified = True
-						print ">>> Recording",myfavkey,"in \"world\" favorites file..."
-				except portage.exception.InvalidDependString, e:
-					writemsg("\n\n!!! '%s' has invalid PROVIDE: %s\n" % \
-						(pkg_key, str(e)), noiselevel=-1)
-					writemsg("!!! see '%s'\n\n" % os.path.join(
-						root, portage.VDB_PATH, pkg_key, "PROVIDE"), noiselevel=-1)
-					del e
 		if added_favorites:
 			world_set.save()
 		world_set.unlock()
@@ -3311,6 +3357,7 @@ class MergeTask(object):
 
 	def merge(self, mylist, favorites, mtimedb):
 		from portage.elog import elog_process
+		from portage.elog.filtering import filter_mergephases
 		failed_fetches = []
 		fetchonly = "--fetchonly" in self.myopts or \
 			"--fetch-all-uri" in self.myopts
@@ -3372,9 +3419,8 @@ class MergeTask(object):
 				del x, mytype, myroot, mycpv, mystatus, quiet_config
 			del shown_verifying_msg, quiet_settings
 
-		#buildsyspkg: I need mysysdict also on resume (moved from the else block)
 		system_set = SystemSet(self.settings)
-		favorites_set = AtomSet(favorites)
+		args_set = AtomSet(favorites)
 		world_set = WorldSet(self.settings)
 		if "--resume" not in self.myopts:
 			mymergelist = mylist
@@ -3471,7 +3517,7 @@ class MergeTask(object):
 			#buildsyspkg: Check if we need to _force_ binary package creation
 			issyspkg = ("buildsyspkg" in myfeat) \
 					and x[0] != "blocks" \
-					and mysysdict.has_key(portage.cpv_getkey(x[2])) \
+					and system_set.findAtomForPackage(pkg_key, metadata) \
 					and "--buildpkg" not in self.myopts
 			if x[0] in ["ebuild","blocks"]:
 				if x[0] == "blocks" and "--fetchonly" not in self.myopts:
@@ -3544,7 +3590,7 @@ class MergeTask(object):
 						del pkgsettings["PORTAGE_BINPKG_TMPFILE"]
 						if retval != os.EX_OK or \
 							"--buildpkgonly" in self.myopts:
-							elog_process(pkg_key, pkgsettings)
+							elog_process(pkg_key, pkgsettings, phasefilter=filter_mergephases)
 						if retval != os.EX_OK:
 							return retval
 						bintree = self.trees[myroot]["bintree"]
@@ -3661,13 +3707,12 @@ class MergeTask(object):
 				self.trees[x[1]]["vartree"].inject(x[2])
 				myfavkey = portage.cpv_getkey(x[2])
 				if not fetchonly and not pretend and \
-					favorites_set.findAtomForPackage(pkg_key, metadata):
+					args_set.findAtomForPackage(pkg_key, metadata):
 					world_set.lock()
 					world_set.load()
-					#don't record if already in system profile or already recorded
-					if not system_set.findAtomForPackage(pkg_key, metadata) and \
-						not world_set.findAtomForPackage(pkg_key, metadata):
-						#we don't have a favorites entry for this package yet; add one
+					myfavkey = create_world_atom(pkg_key, metadata,
+						args_set, world_set, portdb)
+					if myfavkey:
 						world_set.add(myfavkey)
 						print ">>> Recording",myfavkey,"in \"world\" favorites file..."
 						emergelog(xterm_titles, " === ("+\
@@ -4818,9 +4863,8 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		print
 		print red(" * ")+bold("An update to portage is available.")+" It is _highly_ recommended"
 		print red(" * ")+"that you update portage now, before any other packages are updated."
-		print red(" * ")+"Please run 'emerge portage' and then update "+bold("ALL")+" of your"
-		print red(" * ")+"configuration files."
-		print red(" * ")+"To update portage, run 'emerge portage'."
+		print
+		print red(" * ")+"To update portage, run 'emerge portage' now."
 		print
 	
 	display_news_notification(trees)
@@ -5232,10 +5276,11 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	vardb = dep_check_trees[myroot]["vartree"].dbapi
 	# Constrain dependency selection to the installed packages.
 	dep_check_trees[myroot]["porttree"] = dep_check_trees[myroot]["vartree"]
-	syslist = getlist(settings, "system")
-	worldlist = getlist(settings, "world")
-	system_and_world = AtomSet(syslist)
-	system_and_world.update(worldlist)
+	system_set = SystemSet(settings)
+	syslist = list(system_set)
+	world_set = WorldSet(settings)
+	world_set.load()
+	worldlist = list(world_set)
 	fakedb = portage.fakedbapi(settings=settings)
 	myvarlist = vardb.cpv_all()
 
@@ -5273,29 +5318,11 @@ def action_depclean(settings, trees, ldpath_mtimes,
 			if not atom.startswith("!") and priority == hard:
 				unresolveable.setdefault(atom, []).append(parent)
 			continue
-		system_or_world = False
-		if parent in ('world', 'system'):
-			system_or_world = True
-		else:
-			for pkg in pkgs:
-				metadata = dict(izip(metadata_keys,
-					vardb.aux_get(pkg, metadata_keys)))
-				try:
-					if system_and_world.findAtomForPackage(pkg, metadata):
-						system_or_world = True
-						break
-				except portage.exception.InvalidDependString, e:
-					writemsg("\n\n!!! '%s' has invalid PROVIDE: %s\n" % \
-						(pkg, str(e)), noiselevel=-1)
-					writemsg("!!! see '%s'\n\n" % os.path.join(
-						myroot, portage.VDB_PATH, pkg, "PROVIDE"),
-						noiselevel=-1)
-					del e
-		if not system_or_world:
+		if len(pkgs) > 1 and parent != "world":
 			# Prune all but the best matching slot, since that's all that a
-			# deep world update would pull in.  Don't prune if the cpv is in
-			# system or world though, since those sets trigger greedy update
-			# of all slots.
+			# deep world update would pull in.  Don't prune if this atom comes
+			# directly from world though, since world atoms are greedy when
+			# they don't specify a slot.
 			pkgs = [portage.best(pkgs)]
 		for pkg in pkgs:
 			if fakedb.cpv_exists(pkg):
@@ -5443,7 +5470,7 @@ def action_build(settings, trees, mtimedb,
 	else:
 		if ("--resume" in myopts):
 			print darkgreen("emerge: It seems we have nothing to resume...")
-			sys.exit(0)
+			return os.EX_OK
 
 		myparams = create_depgraph_params(myopts, myaction)
 		if myaction in ["system","world"]:
@@ -5453,7 +5480,7 @@ def action_build(settings, trees, mtimedb,
 			mydepgraph = depgraph(settings, trees, myopts, myparams, spinner)
 			if not mydepgraph.xcreate(myaction):
 				print "!!! Depgraph creation failed."
-				sys.exit(1)
+				return 1
 			if "--quiet" not in myopts and "--nodeps" not in myopts:
 				print "\b\b... done!"
 		else:
@@ -5465,9 +5492,9 @@ def action_build(settings, trees, mtimedb,
 				retval, favorites = mydepgraph.select_files(myfiles)
 			except portage.exception.PackageNotFound, e:
 				portage.writemsg("\n!!! %s\n" % str(e), noiselevel=-1)
-				sys.exit(1)
+				return 1
 			if not retval:
-				sys.exit(1)
+				return 1
 			if "--quiet" not in myopts and "--nodeps" not in myopts:
 				print "\b\b... done!"
 
@@ -5478,7 +5505,7 @@ def action_build(settings, trees, mtimedb,
 			for x in mydepgraph.missingbins:
 				sys.stderr.write("   "+str(x)+"\n")
 			sys.stderr.write("\nThese are required by '--usepkgonly' -- Terminating.\n\n")
-			sys.exit(1)
+			return 1
 
 	if "--pretend" not in myopts and \
 		("--ask" in myopts or "--tree" in myopts or \
@@ -5491,12 +5518,18 @@ def action_build(settings, trees, mtimedb,
 				mymergelist = mymergelist[1:]
 			if len(mymergelist) == 0:
 				print colorize("INFORM", "emerge: It seems we have nothing to resume...")
-				sys.exit(0)
-			mydepgraph.display(mymergelist)
+				return os.EX_OK
+			favorites = mtimedb["resume"]["favorites"]
+			retval = mydepgraph.display(mymergelist, favorites=favorites)
+			if retval != os.EX_OK:
+				return retval
 			prompt="Would you like to resume merging these packages?"
 		else:
-			mydepgraph.display(
-				mydepgraph.altlist(reversed=("--tree" in myopts)))
+			retval = mydepgraph.display(
+				mydepgraph.altlist(reversed=("--tree" in myopts)),
+				favorites=favorites)
+			if retval != os.EX_OK:
+				return retval
 			mergecount=0
 			for x in mydepgraph.altlist():
 				if x[0] != "blocks" and x[3] != "nomerge":
@@ -5507,7 +5540,7 @@ def action_build(settings, trees, mtimedb,
 					print   "!!!        at the same time on the same system."
 					if "--quiet" not in myopts:
 						show_blocker_docs_link()
-					sys.exit(1)
+					return 1
 			if mergecount==0:
 				if "--noreplace" in myopts and favorites:
 					print
@@ -5520,7 +5553,7 @@ def action_build(settings, trees, mtimedb,
 					print
 					print "Nothing to merge; quitting."
 					print
-					sys.exit(0)
+					return os.EX_OK
 			elif "--fetchonly" in myopts or "--fetch-all-uri" in myopts:
 				prompt="Would you like to fetch the source files for these packages?"
 			else:
@@ -5530,7 +5563,7 @@ def action_build(settings, trees, mtimedb,
 			print
 			print "Quitting."
 			print
-			sys.exit(0)
+			return os.EX_OK
 		# Don't ask again (e.g. when auto-cleaning packages after merge)
 		myopts.pop("--ask", None)
 
@@ -5542,22 +5575,28 @@ def action_build(settings, trees, mtimedb,
 				mymergelist = mymergelist[1:]
 			if len(mymergelist) == 0:
 				print colorize("INFORM", "emerge: It seems we have nothing to resume...")
-				sys.exit(0)
-			mydepgraph.display(mymergelist)
+				return os.EX_OK
+			favorites = mtimedb["resume"]["favorites"]
+			retval = mydepgraph.display(mymergelist, favorites=favorites)
+			if retval != os.EX_OK:
+				return retval
 		else:
-			mydepgraph.display(
-				mydepgraph.altlist(reversed=("--tree" in myopts)))
+			retval = mydepgraph.display(
+				mydepgraph.altlist(reversed=("--tree" in myopts)),
+				favorites=favorites)
+			if retval != os.EX_OK:
+				return retval
 			if "--buildpkgonly" in myopts and \
 				not mydepgraph.digraph.hasallzeros(ignore_priority=DepPriority.MEDIUM):
 					print "\n!!! --buildpkgonly requires all dependencies to be merged."
 					print "!!! You have to merge the dependencies before you can build this package.\n"
-					sys.exit(1)
+					return 1
 	else:
 		if ("--buildpkgonly" in myopts):
 			if not mydepgraph.digraph.hasallzeros(ignore_priority=DepPriority.MEDIUM):
 				print "\n!!! --buildpkgonly requires all dependencies to be merged."
 				print "!!! Cannot merge requested packages. Merge deps and try again.\n"
-				sys.exit(1)
+				return 1
 
 		if ("--resume" in myopts):
 			favorites=mtimedb["resume"]["favorites"]
@@ -5571,7 +5610,7 @@ def action_build(settings, trees, mtimedb,
 			retval = mergetask.merge(
 				mtimedb["resume"]["mergelist"], favorites, mtimedb)
 			if retval != os.EX_OK:
-				sys.exit(retval)
+				return retval
 		else:
 			if "resume" in mtimedb and \
 			"mergelist" in mtimedb["resume"] and \
@@ -5605,12 +5644,12 @@ def action_build(settings, trees, mtimedb,
 			else:
 				pkglist = mydepgraph.altlist()
 			if favorites:
-				mydepgraph.saveNomergeFavorites(pkglist, favorites)
+				mydepgraph.saveNomergeFavorites()
 			del mydepgraph
 			mergetask = MergeTask(settings, trees, myopts)
 			retval = mergetask.merge(pkglist, favorites, mtimedb)
 			if retval != os.EX_OK:
-				sys.exit(retval)
+				return retval
 
 		if mtimedb.has_key("resume"):
 			del mtimedb["resume"]
@@ -6142,12 +6181,13 @@ def emerge_main():
 		validate_ebuild_environment(trees)
 		if "--pretend" not in myopts:
 			display_news_notification(trees)
-		action_build(settings, trees, mtimedb,
+		retval = action_build(settings, trees, mtimedb,
 			myopts, myaction, myfiles, spinner)
 		if "--pretend" not in myopts:
-			post_emerge(trees, mtimedb, os.EX_OK)
+			post_emerge(trees, mtimedb, retval)
 		else:
 			display_news_notification(trees)
+		return retval
 
 if __name__ == "__main__":
 	retval = emerge_main()

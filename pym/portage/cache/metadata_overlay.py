@@ -3,8 +3,6 @@
 # $Header: $
 
 import time
-if not hasattr(__builtins__, "set"):
-	from sets import Set as set
 from portage.cache import template
 from portage.cache.cache_errors import CacheCorruption
 from portage.cache.flat_hash import database as db_rw

@@ -3,8 +3,6 @@
 # License: GPL2
 # $Id: util.py 1911 2005-08-25 03:44:21Z ferringb $
 
-if not hasattr(__builtins__, "set"):
-	from sets import Set as set
 from itertools import chain
 from portage.cache import cache_errors
 

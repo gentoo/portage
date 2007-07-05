@@ -28,8 +28,6 @@ try:
 	from time import sleep
 	from random import shuffle
 	import UserDict
-	if getattr(__builtins__, "set", None) is None:
-		from sets import Set as set
 	from itertools import chain, izip
 except ImportError, e:
 	sys.stderr.write("\n\n")

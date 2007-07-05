@@ -2,9 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Header: $
 
-import errno, os, sets
-if not hasattr(__builtins__, "set"):
-	from sets import Set as set
+import errno, os
 
 import portage.versions, portage.const
 from portage.checksum import *
@@ -113,7 +111,7 @@ class Manifest(object):
 		self.hashes.append("size")
 		if manifest1_compat:
 			self.hashes.extend(portage.const.MANIFEST1_HASH_FUNCTIONS)
-		self.hashes = sets.Set(self.hashes)
+		self.hashes = set(self.hashes)
 		for t in portage.const.MANIFEST2_IDENTIFIERS:
 			self.fhashdict[t] = {}
 		self.compat = manifest1_compat
