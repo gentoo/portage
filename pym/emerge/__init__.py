@@ -4038,9 +4038,13 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 			if "--pretend" not in myopts and "--ask" not in myopts:
 				countdown(int(settings["EMERGE_WARNING_DELAY"]),
 					colorize("UNMERGE_WARN", "Press Ctrl-C to Stop"))
-		print "\n "+white(x)
+		if "--quiet" not in myopts:
+			print "\n "+white(x)
+		else:
+			print white(x)+": ",
 		for mytype in ["selected","protected","omitted"]:
-			portage.writemsg_stdout((mytype + ": ").rjust(14), noiselevel=-1)
+			if "--quiet" not in myopts:
+				portage.writemsg_stdout((mytype + ": ").rjust(14), noiselevel=-1)
 			if pkgmap[x][mytype]:
 				for mypkg in pkgmap[x][mytype]:
 					mysplit=portage.catpkgsplit(mypkg)
@@ -4055,7 +4059,10 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 						portage.writemsg_stdout(
 							colorize("GOOD", myversion + " "), noiselevel=-1)
 			else:
-				portage.writemsg_stdout("none", noiselevel=-1)
+				portage.writemsg_stdout("none ", noiselevel=-1)
+			if "--quiet" not in myopts:
+				portage.writemsg_stdout("\n", noiselevel=-1)
+		if "--quiet" in myopts:
 			portage.writemsg_stdout("\n", noiselevel=-1)
 
 	portage.writemsg_stdout("\n>>> " + colorize("UNMERGE_WARN", "'Selected'") + \
