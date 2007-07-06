@@ -2981,54 +2981,37 @@ class depgraph:
 				root_config = self.roots[myroot]
 				system_set = root_config.sets["system"]
 				world_set  = root_config.sets["world"]
-				args_set = self._sets["args"]
 
-				pkg_arg = False
 				pkg_system = False
 				pkg_world = False
 				try:
-					if myroot == self.target_root:
-						pkg_arg = args_set.findAtomForPackage(pkg_key, metadata)
 					pkg_system = system_set.findAtomForPackage(pkg_key, metadata)
 					pkg_world  = world_set.findAtomForPackage(pkg_key, metadata)
-					if not pkg_world and myroot == self.target_root:
+					if not pkg_world and myroot == self.target_root and \
+						favorites_set.findAtomForPackage(pkg_key, metadata):
 						# Maybe it will be added to world now.
-						pkg_world = favorites_set.findAtomForPackage(pkg_key, metadata)
+						if create_world_atom(pkg_key, metadata,
+							favorites_set, root_config.sets, portdb):
+							pkg_world = True
 				except portage_exception.InvalidDependString:
 					# This is reported elsewhere if relevant.
 					pass
 
 				def pkgprint(pkg):
 					if pkg_merge:
-						if pkg_arg:
-							if pkg_world:
-								return colorize("PKG_MERGE_ARG_WORLD", pkg)
-							elif pkg_system:
-								return colorize("PKG_MERGE_ARG_SYSTEM", pkg)
-							else:
-								return colorize("PKG_MERGE_ARG", pkg)
+						if pkg_world:
+							return colorize("PKG_MERGE_WORLD", pkg)
+						elif pkg_system:
+							return colorize("PKG_MERGE_SYSTEM", pkg)
 						else:
-							if pkg_world:
-								return colorize("PKG_MERGE_WORLD", pkg)
-							elif pkg_system:
-								return colorize("PKG_MERGE_SYSTEM", pkg)
-							else:
-								return colorize("PKG_MERGE", pkg)
+							return colorize("PKG_MERGE", pkg)
 					else:
-						if pkg_arg:
-							if pkg_world:
-								return colorize("PKG_NOMERGE_ARG_WORLD", pkg)
-							elif pkg_system:
-								return colorize("PKG_NOMERGE_ARG_SYSTEM", pkg)
-							else:
-								return colorize("PKG_NOMERGE_ARG", pkg)
+						if pkg_world:
+							return colorize("PKG_NOMERGE_WORLD", pkg)
+						elif pkg_system:
+							return colorize("PKG_NOMERGE_SYSTEM", pkg)
 						else:
-							if pkg_world:
-								return colorize("PKG_NOMERGE_WORLD", pkg)
-							elif pkg_system:
-								return colorize("PKG_NOMERGE_SYSTEM", pkg)
-							else:
-								return colorize("PKG_NOMERGE", pkg)
+							return colorize("PKG_NOMERGE", pkg)
 
 				if x[1]!="/":
 					if myoldbest:
