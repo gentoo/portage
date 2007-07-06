@@ -1498,13 +1498,25 @@ class depgraph(object):
 					return (0,myfavorites)
 				arg_atoms.append((x, "="+mykey))
 			elif ext==".ebuild":
-				x = os.path.realpath(x)
-				mykey=os.path.basename(os.path.normpath(x+"/../.."))+"/"+os.path.splitext(os.path.basename(x))[0]
+				ebuild_path = portage.util.normalize_path(os.path.abspath(x))
+				pkgdir = os.path.dirname(ebuild_path)
+				tree_root = os.path.dirname(os.path.dirname(pkgdir))
+				cp = pkgdir[len(tree_root)+1:]
+				e = portage.exception.PackageNotFound(
+					("%s is not in a valid portage tree " + \
+					"hierarchy or does not exist") % x)
+				if not portage.isvalidatom(cp):
+					raise e
+				cat = portage.catsplit(cp)[0]
+				mykey = cat + "/" + os.path.basename(ebuild_path[:-7])
+				if not portage.isvalidatom("="+mykey):
+					raise e
 				ebuild_path = portdb.findname(mykey)
 				if ebuild_path:
-					if os.path.realpath(ebuild_path) != x:
+					if ebuild_path != os.path.join(os.path.realpath(tree_root),
+						cp, os.path.basename(ebuild_path)):
 						print colorize("BAD", "\n*** You need to adjust PORTDIR or PORTDIR_OVERLAY to emerge this package.\n")
-						sys.exit(1)
+						return 0, myfavorites
 					if mykey not in portdb.xmatch(
 						"match-visible", portage.dep_getkey(mykey)):
 						print colorize("BAD", "\n*** You are emerging a masked package. It is MUCH better to use")
@@ -1516,7 +1528,7 @@ class depgraph(object):
 					raise portage.exception.PackageNotFound(
 						"%s is not in a valid portage tree hierarchy or does not exist" % x)
 				if not self.create(["ebuild", myroot, mykey],
-					None, "--onlydeps" not in self.myopts):
+					None, "--onlydeps" not in self.myopts, arg=x):
 					return (0,myfavorites)
 				arg_atoms.append((x, "="+mykey))
 			else:
