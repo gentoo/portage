@@ -1813,22 +1813,29 @@ class config:
 			self.getvirtuals()
 		# Grab the virtuals this package provides and add them into the tree virtuals.
 		provides = mydbapi.aux_get(mycpv, ["PROVIDE"])[0]
+		if not provides:
+			return
 		if isinstance(mydbapi, portdbapi):
+			self.setcpv(mycpv, mydb=mydbapi)
 			myuse = self["USE"]
 		else:
 			myuse = mydbapi.aux_get(mycpv, ["USE"])[0]
 		virts = flatten(portage_dep.use_reduce(portage_dep.paren_reduce(provides), uselist=myuse.split()))
 
+		modified = False
 		cp = dep_getkey(mycpv)
 		for virt in virts:
 			virt = dep_getkey(virt)
-			if not self.treeVirtuals.has_key(virt):
-				self.treeVirtuals[virt] = []
-			# XXX: Is this bad? -- It's a permanent modification
-			if cp not in self.treeVirtuals[virt]:
-				self.treeVirtuals[virt].append(cp)
+			providers = self.treeVirtuals.get(virt)
+			if providers is None:
+				providers = []
+				self.treeVirtuals[virt] = providers
+			if cp not in providers:
+				providers.append(cp)
+				modified = True
 
-		self.virtuals = self.__getvirtuals_compile()
+		if modified:
+			self.virtuals = self.__getvirtuals_compile()
 
 
 	def regenerate(self,useonly=0,use_cache=1):
