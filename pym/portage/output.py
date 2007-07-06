@@ -117,17 +117,17 @@ codes["darkteal"]   = codes["turquoise"]
 # Some terminals have darkyellow instead of brown.
 codes["0xAAAA00"]   = codes["brown"]
 codes["darkyellow"] = codes["0xAAAA00"]
-codes["fuscia"]     = codes["fuchsia"]
-codes["white"]      = codes["bold"]
 
-codes["bg_black"]   = esc_seq + "40m"
-codes["bg_red"]     = esc_seq + "41m"
-codes["bg_green"]   = esc_seq + "42m"
-codes["bg_brown"]   = esc_seq + "43m"
-codes["bg_blue"]    = esc_seq + "44m"
-codes["bg_magenta"] = esc_seq + "45m"
-codes["bg_cyan"]    = esc_seq + "46m"
-codes["bg_white"]   = esc_seq + "47m"
+codes["bg_black"]      = esc_seq + "40m"
+codes["bg_darkred"]    = esc_seq + "41m"
+codes["bg_darkgreen"]  = esc_seq + "42m"
+codes["bg_brown"]      = esc_seq + "43m"
+codes["bg_darkblue"]   = esc_seq + "44m"
+codes["bg_purple"]     = esc_seq + "45m"
+codes["bg_teal"]       = esc_seq + "46m"
+codes["bg_lightgray"]  = esc_seq + "47m"
+
+codes["bg_darkyellow"] = codes["bg_brown"]
 
 # Colors from /sbin/functions.sh
 codes["GOOD"]       = codes["green"]
@@ -288,7 +288,7 @@ def colorize(color_key, text):
 		return text
 
 compat_functions_colors = ["bold","white","teal","turquoise","darkteal",
-	"fuscia","fuchsia","purple","blue","darkblue","green","darkgreen","yellow",
+	"fuchsia","purple","blue","darkblue","green","darkgreen","yellow",
 	"brown","darkyellow","red","darkred"]
 
 def create_color_func(color_key):

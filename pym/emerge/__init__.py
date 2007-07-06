@@ -694,7 +694,7 @@ def create_world_atom(pkg_key, metadata, args_set, sets, portdb):
 	atom will be returned. Atoms that are in the system set may also be stored
 	in world since system atoms can only match one slot while world atoms can
 	be greedy with respect to slots.  Unslotted system packages will not be
-	not be stored in world."""
+	stored in world."""
 	arg_atom = args_set.findAtomForPackage(pkg_key, metadata)
 	cp = portage.dep_getkey(arg_atom)
 	new_world_atom = cp
@@ -3060,17 +3060,17 @@ class depgraph(object):
 
 				def pkgprint(pkg):
 					if pkg_merge:
-						if pkg_world:
-							return colorize("PKG_MERGE_WORLD", pkg)
-						elif pkg_system:
+						if pkg_system:
 							return colorize("PKG_MERGE_SYSTEM", pkg)
+						elif pkg_world:
+							return colorize("PKG_MERGE_WORLD", pkg)
 						else:
 							return colorize("PKG_MERGE", pkg)
 					else:
-						if pkg_world:
-							return colorize("PKG_NOMERGE_WORLD", pkg)
-						elif pkg_system:
+						if pkg_system:
 							return colorize("PKG_NOMERGE_SYSTEM", pkg)
+						elif pkg_world:
+							return colorize("PKG_NOMERGE_WORLD", pkg)
 						else:
 							return colorize("PKG_NOMERGE", pkg)
 
