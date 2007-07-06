@@ -3356,6 +3356,7 @@ class MergeTask(object):
 		if self.target_root != "/":
 			self.pkgsettings["/"] = \
 				portage.config(clone=trees["/"]["vartree"].settings)
+		self.curval = 0
 
 	def merge(self, mylist, favorites, mtimedb):
 		from portage.elog import elog_process
@@ -3541,6 +3542,7 @@ class MergeTask(object):
 						print "!!! Fetch for",y,"failed, continuing..."
 						print
 						failed_fetches.append(pkg_key)
+					self.curval += 1
 					continue
 
 				portage.doebuild_environment(y, "setup", myroot,
@@ -3692,6 +3694,7 @@ class MergeTask(object):
 
 				if "--fetchonly" in self.myopts or \
 					"--fetch-all-uri" in self.myopts:
+					self.curval += 1
 					continue
 
 				short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Merge Binary"
@@ -3798,6 +3801,7 @@ class MergeTask(object):
 			# in the event that portage is not allowed to exit normally
 			# due to power failure, SIGKILL, etc...
 			mtimedb.commit()
+			self.curval += 1
 
 		if "--pretend" not in self.myopts:
 			emergelog(xterm_titles, " *** Finished. Cleaning up...")
@@ -5369,6 +5373,12 @@ def action_build(settings, trees, mtimedb,
 	myopts, myaction, myfiles, spinner):
 	ldpath_mtimes = mtimedb["ldpath"]
 	favorites=[]
+	merge_count = 0
+	pretend = "--pretend" in myopts
+	fetchonly = "--fetchonly" in myopts or "--fetch-all-uri" in myopts
+	if pretend or fetchonly:
+		# make the mtimedb readonly
+		mtimedb.filename = None
 	if "--quiet" not in myopts and \
 		("--pretend" in myopts or "--ask" in myopts or \
 		"--tree" in myopts or "--verbose" in myopts):
@@ -5571,8 +5581,7 @@ def action_build(settings, trees, mtimedb,
 			del mydepgraph
 			retval = mergetask.merge(
 				mtimedb["resume"]["mergelist"], favorites, mtimedb)
-			if retval != os.EX_OK:
-				return retval
+			merge_count = mergetask.curval
 		else:
 			if "resume" in mtimedb and \
 			"mergelist" in mtimedb["resume"] and \
@@ -5610,20 +5619,23 @@ def action_build(settings, trees, mtimedb,
 			del mydepgraph
 			mergetask = MergeTask(settings, trees, myopts)
 			retval = mergetask.merge(pkglist, favorites, mtimedb)
-			if retval != os.EX_OK:
-				return retval
+			merge_count = mergetask.curval
 
-		if mtimedb.has_key("resume"):
-			del mtimedb["resume"]
-		if settings["AUTOCLEAN"] and "yes"==settings["AUTOCLEAN"]:
-			portage.writemsg_stdout(">>> Auto-cleaning packages...\n")
-			vartree = trees[settings["ROOT"]]["vartree"]
-			unmerge(settings, myopts, vartree, "clean", ["world"],
-				ldpath_mtimes, autoclean=1)
-		else:
-			portage.writemsg_stdout(colorize("WARN", "WARNING:")
-				+ " AUTOCLEAN is disabled.  This can cause serious"
-				+ " problems due to overlapping packages.\n")
+		if retval == os.EX_OK and not (pretend or fetchonly):
+			mtimedb.pop("resume", None)
+			if "yes" == settings.get("AUTOCLEAN"):
+				portage.writemsg_stdout(">>> Auto-cleaning packages...\n")
+				vartree = trees[settings["ROOT"]]["vartree"]
+				unmerge(settings, myopts, vartree, "clean", ["world"],
+					ldpath_mtimes, autoclean=1)
+			else:
+				portage.writemsg_stdout(colorize("WARN", "WARNING:")
+					+ " AUTOCLEAN is disabled.  This can cause serious"
+					+ " problems due to overlapping packages.\n")
+
+		if merge_count and not (pretend or fetchonly):
+			post_emerge(trees, mtimedb, retval)
+		return retval
 
 def multiple_actions(action1, action2):
 	sys.stderr.write("\n!!! Multiple actions requested... Please choose one only.\n")
@@ -6144,9 +6156,7 @@ def emerge_main():
 			display_news_notification(trees)
 		retval = action_build(settings, trees, mtimedb,
 			myopts, myaction, myfiles, spinner)
-		if "--pretend" not in myopts:
-			post_emerge(trees, mtimedb, retval)
-		else:
+		if "--pretend" in myopts:
 			display_news_notification(trees)
 		return retval
 
