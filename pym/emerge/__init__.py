@@ -1486,15 +1486,16 @@ class depgraph(object):
 					else:
 						print "\n\n!!! Binary package '"+str(x)+"' does not exist."
 						print "!!! Please ensure the tbz2 exists as specified.\n"
-						sys.exit(1)
+						return 0, myfavorites
 				mytbz2=portage.xpak.tbz2(x)
 				mykey=mytbz2.getelements("CATEGORY")[0]+"/"+os.path.splitext(os.path.basename(x))[0]
 				if os.path.realpath(x) != \
 					os.path.realpath(self.trees[myroot]["bintree"].getname(mykey)):
 					print colorize("BAD", "\n*** You need to adjust PKGDIR to emerge this package.\n")
-					sys.exit(1)
+					return 0, myfavorites
 				if not self.create(["binary", myroot, mykey],
-					None, "--onlydeps" not in self.myopts):
+					None, "--onlydeps" not in self.myopts,
+					myuse=mytbz2.getelements("USE"), arg=x):
 					return (0,myfavorites)
 				arg_atoms.append((x, "="+mykey))
 			elif ext==".ebuild":
@@ -5940,7 +5941,6 @@ def emerge_main():
 	for x in myfiles:
 		ext = os.path.splitext(x)[1]
 		if (ext == ".ebuild" or ext == ".tbz2") and os.path.exists(os.path.abspath(x)):
-			print "emerging by path implies --oneshot... adding --oneshot to options."
 			print colorize("BAD", "\n*** emerging by path is broken and may not always work!!!\n")
 			break
 
