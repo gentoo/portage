@@ -1744,9 +1744,14 @@ class depgraph(object):
 			if p_status == "merge":
 				# Update old-style virtuals if this package provides any.
 				# These are needed for dep_virtual calls inside dep_check.
-				p_db = self.trees[p_root][self.pkg_tree_map[p_type]].dbapi
+				p_db = self.mydbapi[p_root] # contains cached metadata
 				try:
 					self.pkgsettings[p_root].setinst(p_key, p_db)
+					# For consistency, also update the global virtuals.
+					settings = self.roots[p_root].settings
+					settings.unlock()
+					settings.setinst(p_key, p_db)
+					settings.lock()
 				except portage.exception.InvalidDependString, e:
 					provide = p_db.aux_get(p_key, ["PROVIDE"])[0]
 					show_invalid_depstring_notice(myparent, provide, str(e))
