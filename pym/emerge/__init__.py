@@ -41,6 +41,8 @@ from portage.output import blue, bold, colorize, darkblue, darkgreen, darkred, g
 from portage.output import create_color_func
 good = create_color_func("GOOD")
 bad = create_color_func("BAD")
+# white looks bad on terminals with white background
+from portage.output import bold as white
 
 import portage.dep
 portage.dep._dep_check_strict = True
