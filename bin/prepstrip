@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2006 Gentoo Foundation
+# Copyright 1999-2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
@@ -51,7 +51,6 @@ save_elf_debug() {
 	${OBJCOPY} --only-keep-debug "${x}" "${y}"
 	${OBJCOPY} --add-gnu-debuglink="${y}" "${x}"
 	chmod a-x,o-w "${y}"
-
 }
 
 # The existance of the section .symtab tells us that a binary is stripped.
@@ -66,7 +65,10 @@ if [[ -n "${f}" ]] ; then
 fi
 
 # Now we look for unstripped binaries.
-for x in $(scanelf -yqRBF '#k%F' -k '.symtab' "$@") $(for y in "$@"; do find "${y}" -type f -name '*.a' -print ; done); do
+for x in \
+	$(scanelf -yqRBF '#k%F' -k '.symtab' "$@") \
+	$(find "$@" -type f -name '*.a')
+do
 	if [[ ${banner} -eq 1 ]] ; then
 		[[ -z ${NOSTRIP} ]] && vecho "strip: ${STRIP} ${PORTAGE_STRIP_FLAGS}"
 		banner=0
@@ -91,7 +93,7 @@ for x in $(scanelf -yqRBF '#k%F' -k '.symtab' "$@") $(for y in "$@"; do find "${
 		[[ ${stripitbaby} -eq 1 ]] && ${STRIP} -g "${x}"
 	elif [[ ${f} == *"SB executable"* || ${f} == *"SB shared object"* || ${f} == *"SB relocatable"* ]] ; then
 		vecho "   ${x:${#D}}"
-		save_elf_debug "${x}"
+		[[ ${f} != *"SB relocatable"* ]] && save_elf_debug "${x}"
 		[[ -n ${NOSTRIP} ]] && continue
 		if [[ ${stripitbaby} -eq 1 ]] ; then
 			[[ ${f} == *"SB relocatable"* ]] \
