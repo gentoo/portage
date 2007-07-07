@@ -2563,8 +2563,6 @@ class depgraph(object):
 		if verbosity is None:
 			verbosity = ("--quiet" in self.myopts and 1 or \
 				"--verbose" in self.myopts and 3 or 2)
-		if "--resume" in self.myopts and favorites:
-			self._sets["args"].update(favorites)
 		favorites_set = AtomSet()
 		favorites_set.update(favorites)
 		changelogs=[]
@@ -2773,32 +2771,10 @@ class depgraph(object):
 				mydbapi = self.trees[myroot][self.pkg_tree_map[pkg_type]].dbapi
 				pkg_status = x[3]
 				pkg_merge = ordered and pkg_status != "nomerge"
-				binary_package = True
-				if "ebuild" == pkg_type:
-					if "merge" == x[3] or \
-						not vartree.dbapi.cpv_exists(pkg_key):
-						"""An ebuild "merge" node or a --onlydeps "nomerge"
-						node."""
-						binary_package = False
-						pkgsettings.setcpv(pkg_key, mydb=portdb)
-						if pkg_key not in self.useFlags[myroot]:
-							self.useFlags[myroot][pkg_key] = \
-								pkgsettings["USE"].split()
-					else:
-						# An ebuild "nomerge" node, so USE come from the vardb.
-						mydbapi = vartree.dbapi
-				# reuse cached metadata from when the depgraph was built
-				if "--resume" in self.myopts:
-					# Populate the fakedb with relevant metadata, just like
-					# would have happened when the depgraph was originally
-					# built.
-					metadata = dict(izip(self._mydbapi_keys,
-						mydbapi.aux_get(pkg_key, self._mydbapi_keys)))
-					self.mydbapi[myroot].cpv_inject(pkg_key, metadata=metadata)
-				else:
-					metadata = dict(izip(self._mydbapi_keys,
-						self.mydbapi[myroot].aux_get(
-						pkg_key, self._mydbapi_keys)))
+				binary_package = pkg_type != "ebuild"
+				metadata = dict(izip(self._mydbapi_keys,
+					self.mydbapi[myroot].aux_get(
+					pkg_key, self._mydbapi_keys)))
 				mydbapi = self.mydbapi[myroot] # use the cached metadata
 				if pkg_key not in self.useFlags[myroot]:
 					"""If this is a --resume then the USE flags need to be
@@ -3296,6 +3272,42 @@ class depgraph(object):
 			world_set.save()
 		world_set.unlock()
 
+	def loadResumeCommand(self, resume_data):
+		"""
+		Add a resume command to the graph and validate it in the process.  This
+		will raise a PackageNotFound exception if a package is not available.
+		"""
+		# "myopts" is a list for backward compatibility.
+		resume_opts = dict((k,True) for k in resume_data["myopts"])
+		for opt in ("--skipfirst", "--ask", "--tree"):
+			resume_opts.pop(opt, None)
+		self.myopts.update(resume_opts)
+		self._sets["args"].update(resume_data.get("favorites", []))
+		mergelist = resume_data.get("mergelist", [])
+		fakedb = self.mydbapi
+		trees = self.trees
+		for x in mergelist:
+			if len(x) != 4:
+				continue
+			pkg_type, myroot, pkg_key, action = x
+			if pkg_type not in self.pkg_tree_map:
+				continue
+			if action != "merge":
+				continue
+			mydb = trees[myroot][self.pkg_tree_map[pkg_type]].dbapi
+			try:
+				metadata = dict(izip(self._mydbapi_keys,
+					mydb.aux_get(pkg_key, self._mydbapi_keys)))
+			except KeyError:
+				# It does no exist or it is corrupt.
+				raise portage.exception.PackageNotFound(pkg_key)
+			fakedb[myroot].cpv_inject(pkg_key, metadata=metadata)
+			if pkg_type == "ebuild":
+				pkgsettings = self.pkgsettings[myroot]
+				pkgsettings.setcpv(pkg_key, mydb=fakedb[myroot])
+				fakedb[myroot].aux_update(pkg_key, {"USE":pkgsettings["USE"]})
+			self.spinner.update()
+
 class PackageCounters(object):
 
 	def __init__(self):
@@ -3404,7 +3416,6 @@ class MergeTask(object):
 				del mtimedb["resume"]["mergelist"][0]
 				del mylist[0]
 				mtimedb.commit()
-			validate_merge_list(self.trees, mylist)
 			mymergelist = mylist
 
 		# Verify all the manifests now so that the user is notified of failure
@@ -4373,20 +4384,6 @@ def is_valid_package_atom(x):
 	else:
 		testatom = x
 	return portage.isvalidatom(testatom)
-
-def validate_merge_list(trees, mergelist):
-	"""Validate the list to make sure all the packages are still available.
-	This is needed for --resume."""
-	for (pkg_type, myroot, pkg_key, action) in mergelist:
-		if pkg_type == "binary" and \
-			not trees[myroot]["bintree"].dbapi.match("="+pkg_key) or \
-			pkg_type == "ebuild" and \
-			not trees[myroot]["porttree"].dbapi.xmatch(
-			"match-all", "="+pkg_key):
-			print red("!!! Error: The resume list contains packages that are no longer")
-			print red("!!!        available to be emerged. Please restart/continue")
-			print red("!!!        the merge operation manually.")
-			sys.exit(1)
 
 def show_blocker_docs_link():
 	print
@@ -5426,16 +5423,6 @@ def action_build(settings, trees, mtimedb,
 			mtimedb["resume"] = mtimedb["resume_backup"]
 			del mtimedb["resume_backup"]
 			mtimedb.commit()
-		# XXX: "myopts" is a list for backward compatibility.
-		myresumeopts = dict([(k,True) for k in mtimedb["resume"]["myopts"]])
-
-		for opt in ("--skipfirst", "--ask", "--tree"):
-			myresumeopts.pop(opt, None)
-
-		for myopt, myarg in myopts.iteritems():
-			if myopt not in myresumeopts:
-				myresumeopts[myopt] = myarg
-		myopts=myresumeopts
 
 		# Adjust config according to options of the command being resumed.
 		for myroot in trees:
@@ -5450,6 +5437,17 @@ def action_build(settings, trees, mtimedb,
 			print "Calculating dependencies  ",
 		mydepgraph = depgraph(settings, trees,
 			myopts, myparams, spinner)
+		try:
+			mydepgraph.loadResumeCommand(mtimedb["resume"])
+		except portage.exception.PackageNotFound:
+			if "--quiet" not in myopts:
+				print
+			from portage.output import EOutput
+			out = EOutput()
+			out.eerror("Error: The resume list contains packages that are no longer")
+			out.eerror("       available to be emerged. Please restart/continue")
+			out.eerror("       the merge operation manually.")
+			return 1
 		if "--quiet" not in myopts and "--nodeps" not in myopts:
 			print "\b\b... done!"
 	else:
@@ -5497,7 +5495,6 @@ def action_build(settings, trees, mtimedb,
 		"--verbose" in myopts) and \
 		not ("--quiet" in myopts and "--ask" not in myopts):
 		if "--resume" in myopts:
-			validate_merge_list(trees, mtimedb["resume"]["mergelist"])
 			mymergelist = mtimedb["resume"]["mergelist"]
 			if "--skipfirst" in myopts:
 				mymergelist = mymergelist[1:]
@@ -5554,7 +5551,6 @@ def action_build(settings, trees, mtimedb,
 
 	if ("--pretend" in myopts) and not ("--fetchonly" in myopts or "--fetch-all-uri" in myopts):
 		if ("--resume" in myopts):
-			validate_merge_list(trees, mtimedb["resume"]["mergelist"])
 			mymergelist = mtimedb["resume"]["mergelist"]
 			if "--skipfirst" in myopts:
 				mymergelist = mymergelist[1:]
