@@ -5247,6 +5247,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 
 	xterm_titles = "notitles" not in settings.features
 	myroot = settings["ROOT"]
+	portdb = trees[myroot]["porttree"].dbapi
 	dep_check_trees = {}
 	dep_check_trees[myroot] = {}
 	dep_check_trees[myroot]["vartree"] = \
@@ -5301,6 +5302,12 @@ def action_depclean(settings, trees, ldpath_mtimes,
 			# deep world update would pull in.  Don't prune if this atom comes
 			# directly from world though, since world atoms are greedy when
 			# they don't specify a slot.
+			visible_in_portdb = [cpv for cpv in pkgs if portdb.match("="+cpv)]
+			if visible_in_portdb:
+				# For consistency with the update algorithm, keep the highest
+				# visible version and prune any versions that are either masked
+				# or no longer exist in the portage tree.
+				pkgs = visible_in_portdb
 			pkgs = [portage.best(pkgs)]
 		for pkg in pkgs:
 			if fakedb.cpv_exists(pkg):
