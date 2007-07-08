@@ -93,7 +93,13 @@ do
 		[[ ${stripitbaby} -eq 1 ]] && ${STRIP} -g "${x}"
 	elif [[ ${f} == *"SB executable"* || ${f} == *"SB shared object"* || ${f} == *"SB relocatable"* ]] ; then
 		vecho "   ${x:${#D}}"
-		[[ ${f} != *"SB relocatable"* ]] && save_elf_debug "${x}"
+		if [[ ${f} != *"SB relocatable"* ]] || [[ ${x} == *.ko ]] ; then
+			# only split debug info for final linked objects
+			# or kernel modules as debuginfo for intermediatary
+			# files (think crt*.o from gcc/glibc) is useless and
+			# actually causes problems
+			save_elf_debug "${x}"
+		fi
 		[[ -n ${NOSTRIP} ]] && continue
 		if [[ ${stripitbaby} -eq 1 ]] ; then
 			[[ ${f} == *"SB relocatable"* ]] \
