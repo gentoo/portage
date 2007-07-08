@@ -147,6 +147,8 @@ codes["PKG_MERGE_WORLD"]         = codes["green"]
 codes["PKG_NOMERGE"]             = codes["darkblue"]
 codes["PKG_NOMERGE_SYSTEM"]      = codes["darkblue"]
 codes["PKG_NOMERGE_WORLD"]       = codes["blue"]
+codes["PROMPT_CHOICE_DEFAULT"]   = codes["green"]
+codes["PROMPT_CHOICE_OTHER"]     = codes["red"]
 
 def parse_color_map(onerror=None):
 	"""
