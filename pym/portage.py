@@ -3506,7 +3506,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	features = mysettings.features
 
 	validcommands = ["help","clean","prerm","postrm","cleanrm","preinst","postinst",
-	                "config","setup","depend","fetch","digest",
+	                "config","info","setup","depend","fetch","digest",
 	                "unpack","compile","test","install","rpm","qmerge","merge",
 	                "package","unmerge", "manifest"]
 
@@ -3731,7 +3731,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 					writemsg("!!! post postinst failed; exiting.\n",
 						noiselevel=-1)
 			return phase_retval
-		elif mydo in ["prerm","postrm","config"]:
+		elif mydo in ("prerm", "postrm", "config", "info"):
 			mysettings.load_infodir(mysettings["O"])
 			return spawn(EBUILD_SH_BINARY + " " + mydo,
 				mysettings, debug=debug, free=1, logfile=logfile)

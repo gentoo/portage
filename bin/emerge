@@ -5016,7 +5016,12 @@ def action_info(settings, trees, myopts, myfiles):
 
 		# Loop through each package
 		# Only print settings if they differ from global settings
-		header_printed = False
+		header_title = "Package Settings"
+		print header_width * "="
+		print header_title.rjust(int(header_width/2 + len(header_title)/2))
+		print header_width * "="
+		from output import EOutput
+		out = EOutput()
 		for pkg in mypkgs:
 			# Get all package specific variables
 			auxvalues = vardb.aux_get(pkg, auxkeys)
@@ -5046,16 +5051,6 @@ def action_info(settings, trees, myopts, myfiles):
 			# If a difference was found, print the info for
 			# this package.
 			if diff_values:
-
-				# If we have not yet printed the header, 
-				# print it now
-				if not header_printed:
-					header_title = "Package Settings"
-					print header_width * "="
-					print header_title.rjust(int(header_width/2 + len(header_title)/2))
-					print header_width * "="
-					header_printed = True
-
 				# Print package info
 				print "%s was built with the following:" % pkg
 				for myvar in mydesiredvars + ["USE"]:
@@ -5064,6 +5059,15 @@ def action_info(settings, trees, myopts, myfiles):
 						mylist.sort()
 						print "%s=\"%s\"" % (myvar, " ".join(mylist))
 				print
+			print ">>> Attempting to run pkg_info() for '%s'" % pkg
+			ebuildpath = vardb.findname(pkg)
+			if not ebuildpath or not os.path.exists(ebuildpath):
+				out.ewarn("No ebuild found for '%s'" % pkg)
+				continue
+			portage.doebuild(ebuildpath, "info", pkgsettings["ROOT"],
+				pkgsettings, debug=(settings.get("PORTAGE_DEBUG", "") == 1),
+				mydbapi=trees[settings["ROOT"]]["vartree"].dbapi,
+				tree="vartree")
 
 def action_search(settings, portdb, vartree, myopts, myfiles, spinner):
 	if not myfiles:
