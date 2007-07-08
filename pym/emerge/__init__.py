@@ -135,7 +135,11 @@ def userquery(prompt, responses=None, colours=None):
 	KeyboardInterrupt is converted to SystemExit to avoid tracebacks being
 	printed."""
 	if responses is None:
-		responses, colours = ["Yes", "No"], [green, red]
+		responses = ["Yes", "No"]
+		colours = [
+			create_color_func("PROMPT_CHOICE_DEFAULT"),
+			create_color_func("PROMPT_CHOICE_OTHER")
+		]
 	elif colours is None:
 		colours=[bold]
 	colours=(colours*len(responses))[:len(responses)]
