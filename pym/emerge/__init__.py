@@ -725,12 +725,16 @@ def create_world_atom(pkg_key, metadata, args_set, sets, portdb):
 		# Unlike world atoms, system atoms are not greedy for slots, so they
 		# can't be safely excluded from world if they are slotted.
 		system_atom = sets["system"].findAtomForPackage(pkg_key, metadata)
-		if system_atom and \
-			not portage.dep_getkey(system_atom).startswith("virtual/"):
+		if system_atom:
+			if not portage.dep_getkey(system_atom).startswith("virtual/"):
+				return None
 			# System virtuals aren't safe to exclude from world since they can
 			# match multiple old-style virtuals but only one of them will be
 			# pulled in by update or depclean.
-			return None
+			providers = portdb.mysettings.getvirtuals().get(
+				portage.dep_getkey(system_atom))
+			if providers and len(providers) == 1 and providers[0] == cp:
+				return None
 	return new_world_atom
 
 def filter_iuse_defaults(iuse):
