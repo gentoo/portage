@@ -342,12 +342,13 @@ class vardbapi(dbapi):
 			cpc = self.cpcache[mycp]
 			if cpc[0] == mystat:
 				return cpc[1]
+		cat_dir = self.getpath(mysplit[0])
 		try:
-			dir_list = os.listdir(self.getpath(mysplit[0]))
+			dir_list = os.listdir(cat_dir)
 		except EnvironmentError, e:
 			from portage.exception import PermissionDenied
 			if e.errno == PermissionDenied.errno:
-				raise PermissionDenied(e)
+				raise PermissionDenied(cat_dir)
 			del e
 			dir_list = []
 
