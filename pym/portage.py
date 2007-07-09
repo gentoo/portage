@@ -1,4 +1,4 @@
-# portage.py -- core Portage functionality
+repo_name = open(repo_name_path# portage.py -- core Portage functionality
 # Copyright 1998-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
@@ -5873,8 +5873,9 @@ class portdbapi(dbapi):
 				repo_name = open(repo_name_path, 'r').readline().strip()
 				self.treemap[repo_name] = path
 			except (OSError,IOError):
-				writemsg("Note: The repository at %s does not have a profiles/repo_name entry.\n" % path \
-						+ "      This can reduce the functionality of the repository in some cases.\n")
+				# warn about missing repo_name at some other time, since we
+				# don't want to see a warning every time the portage module is
+				# imported.
 				pass
 
 		self.auxdbmodule  = self.mysettings.load_best_module("portdbapi.auxdbmodule")
