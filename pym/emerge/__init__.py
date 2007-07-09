@@ -3279,11 +3279,6 @@ class depgraph(object):
 		Add a resume command to the graph and validate it in the process.  This
 		will raise a PackageNotFound exception if a package is not available.
 		"""
-		# "myopts" is a list for backward compatibility.
-		resume_opts = dict((k,True) for k in resume_data["myopts"])
-		for opt in ("--skipfirst", "--ask", "--tree"):
-			resume_opts.pop(opt, None)
-		self.myopts.update(resume_opts)
 		self._sets["args"].update(resume_data.get("favorites", []))
 		mergelist = resume_data.get("mergelist", [])
 		fakedb = self.mydbapi
@@ -5445,15 +5440,25 @@ def action_build(settings, trees, mtimedb,
 			mysettings.lock()
 			del myroot, mysettings
 
-		myparams = create_depgraph_params(myopts, myaction)
-		if "--quiet" not in myopts and "--nodeps" not in myopts:
+		# "myopts" is a list for backward compatibility.
+		resume_opts = mtimedb["resume"].get("myopts", [])
+		if isinstance(resume_opts, list):
+			resume_opts = dict((k,True) for k in resume_opts)
+		for opt in ("--skipfirst", "--ask", "--tree"):
+			resume_opts.pop(opt, None)
+		myopts.update(resume_opts)
+		show_spinner = "--quiet" not in myopts and "--nodeps" not in myopts
+		if not show_spinner:
+			spinner.update = spinner.update_quiet
+		if show_spinner:
 			print "Calculating dependencies  ",
+		myparams = create_depgraph_params(myopts, myaction)
 		mydepgraph = depgraph(settings, trees,
 			myopts, myparams, spinner)
 		try:
 			mydepgraph.loadResumeCommand(mtimedb["resume"])
 		except portage.exception.PackageNotFound:
-			if "--quiet" not in myopts:
+			if show_spinner:
 				print
 			from portage.output import EOutput
 			out = EOutput()
@@ -5461,7 +5466,7 @@ def action_build(settings, trees, mtimedb,
 			out.eerror("       available to be emerged. Please restart/continue")
 			out.eerror("       the merge operation manually.")
 			return 1
-		if "--quiet" not in myopts and "--nodeps" not in myopts:
+		if show_spinner:
 			print "\b\b... done!"
 	else:
 		if ("--resume" in myopts):
