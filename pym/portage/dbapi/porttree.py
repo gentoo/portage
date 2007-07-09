@@ -91,7 +91,7 @@ class portdbapi(dbapi):
 				repo_name = open(repo_name_path, 'r').readline().strip()
 				self.treemap[repo_name] = path
 			except (OSError,IOError):
-				writemsg("Note: The repository at %s does not have a profiles/repo_name entry.\n" % path \
+				writemsg_stdout("Note: The repository at %s does not have a profiles/repo_name entry.\n" % path \
 						+ "      This can reduce the functionality of the repository in some cases.\n")
 				pass
 		
