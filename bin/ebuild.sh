@@ -1554,7 +1554,12 @@ for myarg in ${EBUILD_SH_ARGS} ; do
 		qa_call pkg_nofetch
 		exit 1
 		;;
-	prerm|postrm|postinst|config)
+	prerm|postrm|postinst|config|info)
+		if [ "${myarg}" == "info" ] && \
+			[ "$(type -t pkg_${myarg})" != "function" ]; then
+			ewarn  "pkg_${myarg}() is not defined: '${EBUILD##*/}'"
+			continue
+		fi
 		export SANDBOX_ON="0"
 		if [ "$PORTAGE_DEBUG" != "1" ]; then
 			[ "$(type -t pre_pkg_${myarg})" == "function" ] && qa_call pre_pkg_${myarg}

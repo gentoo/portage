@@ -41,6 +41,8 @@ from portage.output import blue, bold, colorize, darkblue, darkgreen, darkred, g
 from portage.output import create_color_func
 good = create_color_func("GOOD")
 bad = create_color_func("BAD")
+# white looks bad on terminals with white background
+from portage.output import bold as white
 
 import portage.dep
 portage.dep._dep_check_strict = True
@@ -134,7 +136,11 @@ def userquery(prompt, responses=None, colours=None):
 	KeyboardInterrupt is converted to SystemExit to avoid tracebacks being
 	printed."""
 	if responses is None:
-		responses, colours = ["Yes", "No"], [green, red]
+		responses = ["Yes", "No"]
+		colours = [
+			create_color_func("PROMPT_CHOICE_DEFAULT"),
+			create_color_func("PROMPT_CHOICE_OTHER")
+		]
 	elif colours is None:
 		colours=[bold]
 	colours=(colours*len(responses))[:len(responses)]
@@ -337,28 +343,20 @@ def create_depgraph_params(myopts, myaction):
 	# recurse:   go into the dependencies
 	# deep:      go into the dependencies of already merged packages
 	# empty:     pretend nothing is merged
-	myparams = ["recurse"]
-	add=[]
-	sub=[]
+	myparams = set(["recurse"])
 	if "--update" in myopts or \
 		"--newuse" in myopts or \
 		"--reinstall" in myopts or \
 		"--noreplace" in myopts or \
 		myaction in ("system", "world"):
-		add.extend(["selective"])
+		myparams.add("selective")
 	if "--emptytree" in myopts:
-		add.extend(["empty"])
-		sub.extend(["selective"])
+		myparams.add("empty")
+		myparams.remove("selective")
 	if "--nodeps" in myopts:
-		sub.extend(["recurse"])
+		myparams.remove("recurse")
 	if "--deep" in myopts:
-		add.extend(["deep"])
-	for x in add:
-		if (x not in myparams) and (x not in sub):
-			myparams.append(x)
-	for x in sub:
-		if x in myparams:
-			myparams.remove(x)
+		myparams.add("deep")
 	return myparams
 
 # search functionality
@@ -689,16 +687,20 @@ class RootConfig(object):
 		system_set = SystemSet(self.settings)
 		self.sets["system"] = system_set
 
-def create_world_atom(pkg_key, metadata, args_set, world_set, portdb):
+def create_world_atom(pkg_key, metadata, args_set, sets, portdb):
 	"""Create a new atom for the world file if one does not exist.  If the
 	argument atom is precise enough to identify a specific slot then a slot
-	atom will be returned. The system set is not used in deciding which
-	atoms to store since system atoms can only match one slot while world
-	atoms can be greedy with respect to slots."""
+	atom will be returned. Atoms that are in the system set may also be stored
+	in world since system atoms can only match one slot while world atoms can
+	be greedy with respect to slots.  Unslotted system packages will not be
+	stored in world."""
 	arg_atom = args_set.findAtomForPackage(pkg_key, metadata)
 	cp = portage.dep_getkey(arg_atom)
 	new_world_atom = cp
-	if arg_atom != cp:
+	available_slots = set(portdb.aux_get(cpv, ["SLOT"])[0] \
+		for cpv in portdb.match(cp))
+	slotted = len(available_slots) > 1 or "0" not in available_slots
+	if slotted and arg_atom != cp:
 		# If the user gave a specific atom, store it as a
 		# slot atom in the world file.
 		slot_atom = "%s:%s" % (cp, metadata["SLOT"])
@@ -713,9 +715,23 @@ def create_world_atom(pkg_key, metadata, args_set, world_set, portdb):
 				matched_slots.add(portdb.aux_get(cpv, ["SLOT"])[0])
 			if len(matched_slots) == 1:
 				new_world_atom = slot_atom
-	if new_world_atom == world_set.findAtomForPackage(pkg_key, metadata):
+	if new_world_atom == sets["world"].findAtomForPackage(pkg_key, metadata):
 		# Both atoms would be identical, so there's nothing to add.
 		return None
+	if not slotted:
+		# Unlike world atoms, system atoms are not greedy for slots, so they
+		# can't be safely excluded from world if they are slotted.
+		system_atom = sets["system"].findAtomForPackage(pkg_key, metadata)
+		if system_atom:
+			if not portage.dep_getkey(system_atom).startswith("virtual/"):
+				return None
+			# System virtuals aren't safe to exclude from world since they can
+			# match multiple old-style virtuals but only one of them will be
+			# pulled in by update or depclean.
+			providers = portdb.mysettings.getvirtuals().get(
+				portage.dep_getkey(system_atom))
+			if providers and len(providers) == 1 and providers[0] == cp:
+				return None
 	return new_world_atom
 
 def filter_iuse_defaults(iuse):
@@ -1481,25 +1497,38 @@ class depgraph(object):
 					else:
 						print "\n\n!!! Binary package '"+str(x)+"' does not exist."
 						print "!!! Please ensure the tbz2 exists as specified.\n"
-						sys.exit(1)
+						return 0, myfavorites
 				mytbz2=portage.xpak.tbz2(x)
 				mykey=mytbz2.getelements("CATEGORY")[0]+"/"+os.path.splitext(os.path.basename(x))[0]
 				if os.path.realpath(x) != \
 					os.path.realpath(self.trees[myroot]["bintree"].getname(mykey)):
 					print colorize("BAD", "\n*** You need to adjust PKGDIR to emerge this package.\n")
-					sys.exit(1)
+					return 0, myfavorites
 				if not self.create(["binary", myroot, mykey],
-					None, "--onlydeps" not in self.myopts):
+					None, "--onlydeps" not in self.myopts,
+					myuse=mytbz2.getelements("USE"), arg=x):
 					return (0,myfavorites)
 				arg_atoms.append((x, "="+mykey))
 			elif ext==".ebuild":
-				x = os.path.realpath(x)
-				mykey=os.path.basename(os.path.normpath(x+"/../.."))+"/"+os.path.splitext(os.path.basename(x))[0]
+				ebuild_path = portage.util.normalize_path(os.path.abspath(x))
+				pkgdir = os.path.dirname(ebuild_path)
+				tree_root = os.path.dirname(os.path.dirname(pkgdir))
+				cp = pkgdir[len(tree_root)+1:]
+				e = portage.exception.PackageNotFound(
+					("%s is not in a valid portage tree " + \
+					"hierarchy or does not exist") % x)
+				if not portage.isvalidatom(cp):
+					raise e
+				cat = portage.catsplit(cp)[0]
+				mykey = cat + "/" + os.path.basename(ebuild_path[:-7])
+				if not portage.isvalidatom("="+mykey):
+					raise e
 				ebuild_path = portdb.findname(mykey)
 				if ebuild_path:
-					if os.path.realpath(ebuild_path) != x:
+					if ebuild_path != os.path.join(os.path.realpath(tree_root),
+						cp, os.path.basename(ebuild_path)):
 						print colorize("BAD", "\n*** You need to adjust PORTDIR or PORTDIR_OVERLAY to emerge this package.\n")
-						sys.exit(1)
+						return 0, myfavorites
 					if mykey not in portdb.xmatch(
 						"match-visible", portage.dep_getkey(mykey)):
 						print colorize("BAD", "\n*** You are emerging a masked package. It is MUCH better to use")
@@ -1511,7 +1540,7 @@ class depgraph(object):
 					raise portage.exception.PackageNotFound(
 						"%s is not in a valid portage tree hierarchy or does not exist" % x)
 				if not self.create(["ebuild", myroot, mykey],
-					None, "--onlydeps" not in self.myopts):
+					None, "--onlydeps" not in self.myopts, arg=x):
 					return (0,myfavorites)
 				arg_atoms.append((x, "="+mykey))
 			else:
@@ -1718,9 +1747,14 @@ class depgraph(object):
 			if p_status == "merge":
 				# Update old-style virtuals if this package provides any.
 				# These are needed for dep_virtual calls inside dep_check.
-				p_db = self.trees[p_root][self.pkg_tree_map[p_type]].dbapi
+				p_db = self.mydbapi[p_root] # contains cached metadata
 				try:
 					self.pkgsettings[p_root].setinst(p_key, p_db)
+					# For consistency, also update the global virtuals.
+					settings = self.roots[p_root].settings
+					settings.unlock()
+					settings.setinst(p_key, p_db)
+					settings.lock()
 				except portage.exception.InvalidDependString, e:
 					provide = p_db.aux_get(p_key, ["PROVIDE"])[0]
 					show_invalid_depstring_notice(myparent, provide, str(e))
@@ -2532,8 +2566,6 @@ class depgraph(object):
 		if verbosity is None:
 			verbosity = ("--quiet" in self.myopts and 1 or \
 				"--verbose" in self.myopts and 3 or 2)
-		if "--resume" in self.myopts and favorites:
-			self._sets["args"].update(favorites)
 		favorites_set = AtomSet()
 		favorites_set.update(favorites)
 		changelogs=[]
@@ -2742,32 +2774,10 @@ class depgraph(object):
 				mydbapi = self.trees[myroot][self.pkg_tree_map[pkg_type]].dbapi
 				pkg_status = x[3]
 				pkg_merge = ordered and pkg_status != "nomerge"
-				binary_package = True
-				if "ebuild" == pkg_type:
-					if "merge" == x[3] or \
-						not vartree.dbapi.cpv_exists(pkg_key):
-						"""An ebuild "merge" node or a --onlydeps "nomerge"
-						node."""
-						binary_package = False
-						pkgsettings.setcpv(pkg_key, mydb=portdb)
-						if pkg_key not in self.useFlags[myroot]:
-							self.useFlags[myroot][pkg_key] = \
-								pkgsettings["USE"].split()
-					else:
-						# An ebuild "nomerge" node, so USE come from the vardb.
-						mydbapi = vartree.dbapi
-				# reuse cached metadata from when the depgraph was built
-				if "--resume" in self.myopts:
-					# Populate the fakedb with relevant metadata, just like
-					# would have happened when the depgraph was originally
-					# built.
-					metadata = dict(izip(self._mydbapi_keys,
-						mydbapi.aux_get(pkg_key, self._mydbapi_keys)))
-					self.mydbapi[myroot].cpv_inject(pkg_key, metadata=metadata)
-				else:
-					metadata = dict(izip(self._mydbapi_keys,
-						self.mydbapi[myroot].aux_get(
-						pkg_key, self._mydbapi_keys)))
+				binary_package = pkg_type != "ebuild"
+				metadata = dict(izip(self._mydbapi_keys,
+					self.mydbapi[myroot].aux_get(
+					pkg_key, self._mydbapi_keys)))
 				mydbapi = self.mydbapi[myroot] # use the cached metadata
 				if pkg_key not in self.useFlags[myroot]:
 					"""If this is a --resume then the USE flags need to be
@@ -3016,54 +3026,37 @@ class depgraph(object):
 				root_config = self.roots[myroot]
 				system_set = root_config.sets["system"]
 				world_set  = root_config.sets["world"]
-				args_set = self._sets["args"]
 
-				pkg_arg = False
 				pkg_system = False
 				pkg_world = False
 				try:
-					if myroot == self.target_root:
-						pkg_arg = args_set.findAtomForPackage(pkg_key, metadata)
 					pkg_system = system_set.findAtomForPackage(pkg_key, metadata)
 					pkg_world  = world_set.findAtomForPackage(pkg_key, metadata)
-					if not pkg_world and myroot == self.target_root:
+					if not pkg_world and myroot == self.target_root and \
+						favorites_set.findAtomForPackage(pkg_key, metadata):
 						# Maybe it will be added to world now.
-						pkg_world = favorites_set.findAtomForPackage(pkg_key, metadata)
+						if create_world_atom(pkg_key, metadata,
+							favorites_set, root_config.sets, portdb):
+							pkg_world = True
 				except portage.exception.InvalidDependString:
 					# This is reported elsewhere if relevant.
 					pass
 
 				def pkgprint(pkg):
 					if pkg_merge:
-						if pkg_arg:
-							if pkg_world:
-								return colorize("PKG_MERGE_ARG_WORLD", pkg)
-							elif pkg_system:
-								return colorize("PKG_MERGE_ARG_SYSTEM", pkg)
-							else:
-								return colorize("PKG_MERGE_ARG", pkg)
+						if pkg_system:
+							return colorize("PKG_MERGE_SYSTEM", pkg)
+						elif pkg_world:
+							return colorize("PKG_MERGE_WORLD", pkg)
 						else:
-							if pkg_world:
-								return colorize("PKG_MERGE_WORLD", pkg)
-							elif pkg_system:
-								return colorize("PKG_MERGE_SYSTEM", pkg)
-							else:
-								return colorize("PKG_MERGE", pkg)
+							return colorize("PKG_MERGE", pkg)
 					else:
-						if pkg_arg:
-							if pkg_world:
-								return colorize("PKG_NOMERGE_ARG_WORLD", pkg)
-							elif pkg_system:
-								return colorize("PKG_NOMERGE_ARG_SYSTEM", pkg)
-							else:
-								return colorize("PKG_NOMERGE_ARG", pkg)
+						if pkg_system:
+							return colorize("PKG_NOMERGE_SYSTEM", pkg)
+						elif pkg_world:
+							return colorize("PKG_NOMERGE_WORLD", pkg)
 						else:
-							if pkg_world:
-								return colorize("PKG_NOMERGE_WORLD", pkg)
-							elif pkg_system:
-								return colorize("PKG_NOMERGE_SYSTEM", pkg)
-							else:
-								return colorize("PKG_NOMERGE", pkg)
+							return colorize("PKG_NOMERGE", pkg)
 
 				if x[1]!="/":
 					if myoldbest:
@@ -3250,7 +3243,8 @@ class depgraph(object):
 			"--oneshot", "--onlydeps", "--pretend"):
 			if x in self.myopts:
 				return
-		world_set = WorldSet(self.settings)
+		root_config = self.roots[self.target_root]
+		world_set = root_config.sets["world"]
 		world_set.lock()
 		world_set.load()
 		args_set = self._sets["args"]
@@ -3264,7 +3258,7 @@ class depgraph(object):
 				self.mydbapi[root].aux_get(pkg_key, self._mydbapi_keys)))
 			try:
 				myfavkey = create_world_atom(pkg_key, metadata,
-					args_set, world_set, portdb)
+					args_set, root_config.sets, portdb)
 				if myfavkey:
 					if myfavkey in added_favorites:
 						continue
@@ -3280,6 +3274,37 @@ class depgraph(object):
 		if added_favorites:
 			world_set.save()
 		world_set.unlock()
+
+	def loadResumeCommand(self, resume_data):
+		"""
+		Add a resume command to the graph and validate it in the process.  This
+		will raise a PackageNotFound exception if a package is not available.
+		"""
+		self._sets["args"].update(resume_data.get("favorites", []))
+		mergelist = resume_data.get("mergelist", [])
+		fakedb = self.mydbapi
+		trees = self.trees
+		for x in mergelist:
+			if len(x) != 4:
+				continue
+			pkg_type, myroot, pkg_key, action = x
+			if pkg_type not in self.pkg_tree_map:
+				continue
+			if action != "merge":
+				continue
+			mydb = trees[myroot][self.pkg_tree_map[pkg_type]].dbapi
+			try:
+				metadata = dict(izip(self._mydbapi_keys,
+					mydb.aux_get(pkg_key, self._mydbapi_keys)))
+			except KeyError:
+				# It does no exist or it is corrupt.
+				raise portage.exception.PackageNotFound(pkg_key)
+			fakedb[myroot].cpv_inject(pkg_key, metadata=metadata)
+			if pkg_type == "ebuild":
+				pkgsettings = self.pkgsettings[myroot]
+				pkgsettings.setcpv(pkg_key, mydb=fakedb[myroot])
+				fakedb[myroot].aux_update(pkg_key, {"USE":pkgsettings["USE"]})
+			self.spinner.update()
 
 class PackageCounters(object):
 
@@ -3354,6 +3379,7 @@ class MergeTask(object):
 		if self.target_root != "/":
 			self.pkgsettings["/"] = \
 				portage.config(clone=trees["/"]["vartree"].settings)
+		self.curval = 0
 
 	def merge(self, mylist, favorites, mtimedb):
 		from portage.elog import elog_process
@@ -3388,7 +3414,6 @@ class MergeTask(object):
 				del mtimedb["resume"]["mergelist"][0]
 				del mylist[0]
 				mtimedb.commit()
-			validate_merge_list(self.trees, mylist)
 			mymergelist = mylist
 
 		# Verify all the manifests now so that the user is notified of failure
@@ -3539,6 +3564,7 @@ class MergeTask(object):
 						print "!!! Fetch for",y,"failed, continuing..."
 						print
 						failed_fetches.append(pkg_key)
+					self.curval += 1
 					continue
 
 				portage.doebuild_environment(y, "setup", myroot,
@@ -3690,6 +3716,7 @@ class MergeTask(object):
 
 				if "--fetchonly" in self.myopts or \
 					"--fetch-all-uri" in self.myopts:
+					self.curval += 1
 					continue
 
 				short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Merge Binary"
@@ -3711,7 +3738,8 @@ class MergeTask(object):
 					world_set.lock()
 					world_set.load()
 					myfavkey = create_world_atom(pkg_key, metadata,
-						args_set, world_set, portdb)
+						args_set, {"world":world_set, "system":system_set},
+						portdb)
 					if myfavkey:
 						world_set.add(myfavkey)
 						print ">>> Recording",myfavkey,"in \"world\" favorites file..."
@@ -3795,6 +3823,7 @@ class MergeTask(object):
 			# in the event that portage is not allowed to exit normally
 			# due to power failure, SIGKILL, etc...
 			mtimedb.commit()
+			self.curval += 1
 
 		if "--pretend" not in self.myopts:
 			emergelog(xterm_titles, " *** Finished. Cleaning up...")
@@ -4035,9 +4064,13 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 			if "--pretend" not in myopts and "--ask" not in myopts:
 				countdown(int(settings["EMERGE_WARNING_DELAY"]),
 					colorize("UNMERGE_WARN", "Press Ctrl-C to Stop"))
-		print "\n "+white(x)
+		if "--quiet" not in myopts:
+			print "\n "+white(x)
+		else:
+			print white(x)+": ",
 		for mytype in ["selected","protected","omitted"]:
-			portage.writemsg_stdout((mytype + ": ").rjust(14), noiselevel=-1)
+			if "--quiet" not in myopts:
+				portage.writemsg_stdout((mytype + ": ").rjust(14), noiselevel=-1)
 			if pkgmap[x][mytype]:
 				for mypkg in pkgmap[x][mytype]:
 					mysplit=portage.catpkgsplit(mypkg)
@@ -4052,7 +4085,10 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 						portage.writemsg_stdout(
 							colorize("GOOD", myversion + " "), noiselevel=-1)
 			else:
-				portage.writemsg_stdout("none", noiselevel=-1)
+				portage.writemsg_stdout("none ", noiselevel=-1)
+			if "--quiet" not in myopts:
+				portage.writemsg_stdout("\n", noiselevel=-1)
+		if "--quiet" in myopts:
 			portage.writemsg_stdout("\n", noiselevel=-1)
 
 	portage.writemsg_stdout("\n>>> " + colorize("UNMERGE_WARN", "'Selected'") + \
@@ -4346,20 +4382,6 @@ def is_valid_package_atom(x):
 	else:
 		testatom = x
 	return portage.isvalidatom(testatom)
-
-def validate_merge_list(trees, mergelist):
-	"""Validate the list to make sure all the packages are still available.
-	This is needed for --resume."""
-	for (pkg_type, myroot, pkg_key, action) in mergelist:
-		if pkg_type == "binary" and \
-			not trees[myroot]["bintree"].dbapi.match("="+pkg_key) or \
-			pkg_type == "ebuild" and \
-			not trees[myroot]["porttree"].dbapi.xmatch(
-			"match-all", "="+pkg_key):
-			print red("!!! Error: The resume list contains packages that are no longer")
-			print red("!!!        available to be emerged. Please restart/continue")
-			print red("!!!        the merge operation manually.")
-			sys.exit(1)
 
 def show_blocker_docs_link():
 	print
@@ -5180,7 +5202,12 @@ def action_info(settings, trees, myopts, myfiles):
 
 		# Loop through each package
 		# Only print settings if they differ from global settings
-		header_printed = False
+		header_title = "Package Settings"
+		print header_width * "="
+		print header_title.rjust(int(header_width/2 + len(header_title)/2))
+		print header_width * "="
+		from portage.output import EOutput
+		out = EOutput()
 		for pkg in mypkgs:
 			# Get all package specific variables
 			auxvalues = vardb.aux_get(pkg, auxkeys)
@@ -5210,16 +5237,6 @@ def action_info(settings, trees, myopts, myfiles):
 			# If a difference was found, print the info for
 			# this package.
 			if diff_values:
-
-				# If we have not yet printed the header, 
-				# print it now
-				if not header_printed:
-					header_title = "Package Settings"
-					print header_width * "="
-					print header_title.rjust(int(header_width/2 + len(header_title)/2))
-					print header_width * "="
-					header_printed = True
-
 				# Print package info
 				print "%s was built with the following:" % pkg
 				for myvar in mydesiredvars + ["USE"]:
@@ -5228,6 +5245,15 @@ def action_info(settings, trees, myopts, myfiles):
 						mylist.sort()
 						print "%s=\"%s\"" % (myvar, " ".join(mylist))
 				print
+			print ">>> Attempting to run pkg_info() for '%s'" % pkg
+			ebuildpath = vardb.findname(pkg)
+			if not ebuildpath or not os.path.exists(ebuildpath):
+				out.ewarn("No ebuild found for '%s'" % pkg)
+				continue
+			portage.doebuild(ebuildpath, "info", pkgsettings["ROOT"],
+				pkgsettings, debug=(settings.get("PORTAGE_DEBUG", "") == 1),
+				mydbapi=trees[settings["ROOT"]]["vartree"].dbapi,
+				tree="vartree")
 
 def action_search(settings, portdb, vartree, myopts, myfiles, spinner):
 	if not myfiles:
@@ -5269,6 +5295,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 
 	xterm_titles = "notitles" not in settings.features
 	myroot = settings["ROOT"]
+	portdb = trees[myroot]["porttree"].dbapi
 	dep_check_trees = {}
 	dep_check_trees[myroot] = {}
 	dep_check_trees[myroot]["vartree"] = \
@@ -5323,6 +5350,12 @@ def action_depclean(settings, trees, ldpath_mtimes,
 			# deep world update would pull in.  Don't prune if this atom comes
 			# directly from world though, since world atoms are greedy when
 			# they don't specify a slot.
+			visible_in_portdb = [cpv for cpv in pkgs if portdb.match("="+cpv)]
+			if visible_in_portdb:
+				# For consistency with the update algorithm, keep the highest
+				# visible version and prune any versions that are either masked
+				# or no longer exist in the portage tree.
+				pkgs = visible_in_portdb
 			pkgs = [portage.best(pkgs)]
 		for pkg in pkgs:
 			if fakedb.cpv_exists(pkg):
@@ -5407,6 +5440,12 @@ def action_build(settings, trees, mtimedb,
 	myopts, myaction, myfiles, spinner):
 	ldpath_mtimes = mtimedb["ldpath"]
 	favorites=[]
+	merge_count = 0
+	pretend = "--pretend" in myopts
+	fetchonly = "--fetchonly" in myopts or "--fetch-all-uri" in myopts
+	if pretend or fetchonly:
+		# make the mtimedb readonly
+		mtimedb.filename = None
 	if "--quiet" not in myopts and \
 		("--pretend" in myopts or "--ask" in myopts or \
 		"--tree" in myopts or "--verbose" in myopts):
@@ -5441,16 +5480,6 @@ def action_build(settings, trees, mtimedb,
 			mtimedb["resume"] = mtimedb["resume_backup"]
 			del mtimedb["resume_backup"]
 			mtimedb.commit()
-		# XXX: "myopts" is a list for backward compatibility.
-		myresumeopts = dict([(k,True) for k in mtimedb["resume"]["myopts"]])
-
-		for opt in ("--skipfirst", "--ask", "--tree"):
-			myresumeopts.pop(opt, None)
-
-		for myopt, myarg in myopts.iteritems():
-			if myopt not in myresumeopts:
-				myresumeopts[myopt] = myarg
-		myopts=myresumeopts
 
 		# Adjust config according to options of the command being resumed.
 		for myroot in trees:
@@ -5460,12 +5489,33 @@ def action_build(settings, trees, mtimedb,
 			mysettings.lock()
 			del myroot, mysettings
 
-		myparams = create_depgraph_params(myopts, myaction)
-		if "--quiet" not in myopts and "--nodeps" not in myopts:
+		# "myopts" is a list for backward compatibility.
+		resume_opts = mtimedb["resume"].get("myopts", [])
+		if isinstance(resume_opts, list):
+			resume_opts = dict((k,True) for k in resume_opts)
+		for opt in ("--skipfirst", "--ask", "--tree"):
+			resume_opts.pop(opt, None)
+		myopts.update(resume_opts)
+		show_spinner = "--quiet" not in myopts and "--nodeps" not in myopts
+		if not show_spinner:
+			spinner.update = spinner.update_quiet
+		if show_spinner:
 			print "Calculating dependencies  ",
+		myparams = create_depgraph_params(myopts, myaction)
 		mydepgraph = depgraph(settings, trees,
 			myopts, myparams, spinner)
-		if "--quiet" not in myopts and "--nodeps" not in myopts:
+		try:
+			mydepgraph.loadResumeCommand(mtimedb["resume"])
+		except portage.exception.PackageNotFound:
+			if show_spinner:
+				print
+			from portage.output import EOutput
+			out = EOutput()
+			out.eerror("Error: The resume list contains packages that are no longer")
+			out.eerror("       available to be emerged. Please restart/continue")
+			out.eerror("       the merge operation manually.")
+			return 1
+		if show_spinner:
 			print "\b\b... done!"
 	else:
 		if ("--resume" in myopts):
@@ -5512,7 +5562,6 @@ def action_build(settings, trees, mtimedb,
 		"--verbose" in myopts) and \
 		not ("--quiet" in myopts and "--ask" not in myopts):
 		if "--resume" in myopts:
-			validate_merge_list(trees, mtimedb["resume"]["mergelist"])
 			mymergelist = mtimedb["resume"]["mergelist"]
 			if "--skipfirst" in myopts:
 				mymergelist = mymergelist[1:]
@@ -5569,7 +5618,6 @@ def action_build(settings, trees, mtimedb,
 
 	if ("--pretend" in myopts) and not ("--fetchonly" in myopts or "--fetch-all-uri" in myopts):
 		if ("--resume" in myopts):
-			validate_merge_list(trees, mtimedb["resume"]["mergelist"])
 			mymergelist = mtimedb["resume"]["mergelist"]
 			if "--skipfirst" in myopts:
 				mymergelist = mymergelist[1:]
@@ -5609,8 +5657,7 @@ def action_build(settings, trees, mtimedb,
 			del mydepgraph
 			retval = mergetask.merge(
 				mtimedb["resume"]["mergelist"], favorites, mtimedb)
-			if retval != os.EX_OK:
-				return retval
+			merge_count = mergetask.curval
 		else:
 			if "resume" in mtimedb and \
 			"mergelist" in mtimedb["resume"] and \
@@ -5648,20 +5695,23 @@ def action_build(settings, trees, mtimedb,
 			del mydepgraph
 			mergetask = MergeTask(settings, trees, myopts)
 			retval = mergetask.merge(pkglist, favorites, mtimedb)
-			if retval != os.EX_OK:
-				return retval
+			merge_count = mergetask.curval
 
-		if mtimedb.has_key("resume"):
-			del mtimedb["resume"]
-		if settings["AUTOCLEAN"] and "yes"==settings["AUTOCLEAN"]:
-			portage.writemsg_stdout(">>> Auto-cleaning packages...\n")
-			vartree = trees[settings["ROOT"]]["vartree"]
-			unmerge(settings, myopts, vartree, "clean", ["world"],
-				ldpath_mtimes, autoclean=1)
-		else:
-			portage.writemsg_stdout(colorize("WARN", "WARNING:")
-				+ " AUTOCLEAN is disabled.  This can cause serious"
-				+ " problems due to overlapping packages.\n")
+		if retval == os.EX_OK and not (pretend or fetchonly):
+			mtimedb.pop("resume", None)
+			if "yes" == settings.get("AUTOCLEAN"):
+				portage.writemsg_stdout(">>> Auto-cleaning packages...\n")
+				vartree = trees[settings["ROOT"]]["vartree"]
+				unmerge(settings, myopts, vartree, "clean", ["world"],
+					ldpath_mtimes, autoclean=1)
+			else:
+				portage.writemsg_stdout(colorize("WARN", "WARNING:")
+					+ " AUTOCLEAN is disabled.  This can cause serious"
+					+ " problems due to overlapping packages.\n")
+
+		if merge_count and not (pretend or fetchonly):
+			post_emerge(trees, mtimedb, retval)
+		return retval
 
 def multiple_actions(action1, action2):
 	sys.stderr.write("\n!!! Multiple actions requested... Please choose one only.\n")
@@ -5969,7 +6019,6 @@ def emerge_main():
 	for x in myfiles:
 		ext = os.path.splitext(x)[1]
 		if (ext == ".ebuild" or ext == ".tbz2") and os.path.exists(os.path.abspath(x)):
-			print "emerging by path implies --oneshot... adding --oneshot to options."
 			print colorize("BAD", "\n*** emerging by path is broken and may not always work!!!\n")
 			break
 
@@ -6183,9 +6232,7 @@ def emerge_main():
 			display_news_notification(trees)
 		retval = action_build(settings, trees, mtimedb,
 			myopts, myaction, myfiles, spinner)
-		if "--pretend" not in myopts:
-			post_emerge(trees, mtimedb, retval)
-		else:
+		if "--pretend" in myopts:
 			display_news_notification(trees)
 		return retval
 

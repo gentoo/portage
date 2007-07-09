@@ -1868,22 +1868,29 @@ class config(object):
 			self.getvirtuals()
 		# Grab the virtuals this package provides and add them into the tree virtuals.
 		provides = mydbapi.aux_get(mycpv, ["PROVIDE"])[0]
+		if not provides:
+			return
 		if isinstance(mydbapi, portdbapi):
+			self.setcpv(mycpv, mydb=mydbapi)
 			myuse = self["USE"]
 		else:
 			myuse = mydbapi.aux_get(mycpv, ["USE"])[0]
 		virts = flatten(portage.dep.use_reduce(portage.dep.paren_reduce(provides), uselist=myuse.split()))
 
+		modified = False
 		cp = dep_getkey(mycpv)
 		for virt in virts:
 			virt = dep_getkey(virt)
-			if not self.treeVirtuals.has_key(virt):
-				self.treeVirtuals[virt] = []
-			# XXX: Is this bad? -- It's a permanent modification
-			if cp not in self.treeVirtuals[virt]:
-				self.treeVirtuals[virt].append(cp)
+			providers = self.treeVirtuals.get(virt)
+			if providers is None:
+				providers = []
+				self.treeVirtuals[virt] = providers
+			if cp not in providers:
+				providers.append(cp)
+				modified = True
 
-		self.virtuals = self.__getvirtuals_compile()
+		if modified:
+			self.virtuals = self.__getvirtuals_compile()
 
 
 	def regenerate(self,useonly=0,use_cache=1):
@@ -3619,7 +3626,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	features = mysettings.features
 
 	validcommands = ["help","clean","prerm","postrm","cleanrm","preinst","postinst",
-	                "config","setup","depend","fetch","digest",
+	                "config","info","setup","depend","fetch","digest",
 	                "unpack","compile","test","install","rpm","qmerge","merge",
 	                "package","unmerge", "manifest"]
 
@@ -3844,7 +3851,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 					writemsg("!!! post postinst failed; exiting.\n",
 						noiselevel=-1)
 			return phase_retval
-		elif mydo in ["prerm","postrm","config"]:
+		elif mydo in ("prerm", "postrm", "config", "info"):
 			mysettings.load_infodir(mysettings["O"])
 			return spawn(EBUILD_SH_BINARY + " " + mydo,
 				mysettings, debug=debug, free=1, logfile=logfile)

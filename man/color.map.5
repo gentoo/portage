@@ -1,4 +1,4 @@
-.TH "COLOR.MAP" "5" "Jun 2007" "Portage 2.1.3" "Portage"
+.TH "COLOR.MAP" "5" "Jul 2007" "Portage 2.1.3" "Portage"
 .SH "NAME"
 color.map \- custom color settings for Portage
 .SH "SYNOPSIS"
@@ -8,80 +8,133 @@ This file contains variables that define color classes used by Portage.
 Portage will check this file first for color classes settings. If no setting
 of given color class is found in /etc/portage/color.map, Portage uses default
 value defined internally.
+.SH "SYNTAX"
+\fBVARIABLE\fR = \fI[space delimited list of attributes]\fR
 .SH "VARIABLES"
 .TP
-\fBBAD\fR = \fI"0xFF5555"\fR
+\fBBAD\fR = \fI"red"\fR
 Defines color used for some words occuring in bad context.
 .TP
-\fBBRACKET\fR = \fI"0x5555FF"\fR
+\fBBRACKET\fR = \fI"blue"\fR
 Defines color used for brackets.
 .TP
-\fBGOOD\fR = \fI"0x55FF55"\fR
+\fBGOOD\fR = \fI"green"\fR
 Defines color used for some words occuring in good context.
 .TP
-\fBHILITE\fR = \fI"0x00AAAA"\fR
+\fBHILITE\fR = \fI"teal"\fR
 Defines color used for highlighted words.
 .TP
-\fBINFORM\fR = \fI"0x00AA00"\fR
+\fBINFORM\fR = \fI"darkgreen"\fR
 Defines color used for informational words.
 .TP
-\fBMERGE_LIST_PROGRESS\fR = \fI"0xFFFF55"\fR
-Defines color used for numbers used in merge progress lists.
+\fBMERGE_LIST_PROGRESS\fR = \fI"yellow"\fR
+Defines color used for numbers indicating merge progress.
 .TP
-\fBPKG_MERGE\fR = \fI"0x00AA00"\fR
+\fBPKG_MERGE\fR = \fI"darkgreen"\fR
 Defines color used for packages planned to be merged.
 .TP
-\fBPKG_MERGE_ARG\fR = \fI"0x00AA00"\fR
-Defines color used for packages planned to be merged and given as command line
-arguments.
+\fBPKG_MERGE_SYSTEM\fR = \fI"darkgreen"\fR
+Defines color used for system packages planned to be merged.
 .TP
-\fBPKG_MERGE_SYSTEM\fR = \fI"0x55FF55"\fR
-Defines color used for packages planned to be merged and belonging to
-system set.
+\fBPKG_MERGE_WORLD\fR = \fI"green"\fR
+Defines color used for world packages planned to be merged.
 .TP
-\fBPKG_MERGE_ARG_SYSTEM\fR = \fI"0x55FF55"\fR
-Defines color used for system packages planned to be merged and given as
-command line arguments.
-.TP
-\fBPKG_MERGE_WORLD\fR = \fI"0x55FF55"\fR
-Defines color used for packages planned to be merged and belonging to
-world set.
-.TP
-\fBPKG_MERGE_ARG_WORLD\fR = \fI"0x55FF55"\fR
-Defines color used for world packages planned to be merged and given as
-command line arguments.
-.TP
-\fBPKG_NOMERGE\fR = \fI"0x0000AA"\fR
+\fBPKG_NOMERGE\fR = \fI"darkblue"\fR
 Defines color used for packages not planned to be merged.
 .TP
-\fBPKG_NOMERGE_ARG\fR = \fI"0x0000AA"\fR
-Defines color used for packages not planned to be merged and given as command
-line arguments.
+\fBPKG_NOMERGE_SYSTEM\fR = \fI"darkblue"\fR
+Defines color used for system packages not planned to be merged.
 .TP
-\fBPKG_NOMERGE_SYSTEM\fR = \fI"0x5555FF"\fR
-Defines color used for packages not planned to be merged and belonging to
-system set.
+\fBPKG_NOMERGE_WORLD\fR = \fI"blue"\fR
+Defines color used for world packages not planned to be merged.
 .TP
-\fBPKG_NOMERGE_ARG_SYSTEM\fR = \fI"0x5555FF"\fR
-Defines color used for system packages not planned to be merged and given as
-command line arguments.
+\fBPROMPT_CHOICE_DEFAULT\fR = \fI"green"\fR
+Defines color used for the default choice at a prompt.
 .TP
-\fBPKG_NOMERGE_WORLD\fR = \fI"0x5555FF"\fR
-Defines color used for packages not planned to be merged and belonging to
-world set.
+\fBPROMPT_CHOICE_OTHER\fR = \fI"red"\fR
+Defines color used for a non\-default choice at a prompt.
 .TP
-\fBPKG_NOMERGE_ARG_WORLD\fR = \fI"0x5555FF"\fR
-Defines color used for world packages not planned to be merged and given as
-command line arguments.
-.TP
-\fBSECURITY_WARN\fR = \fI"0xFF5555"\fR
+\fBSECURITY_WARN\fR = \fI"red"\fR
 Defines color used for security warnings.
 .TP
-\fBUNMERGE_WARN\fR = \fI"0xFF5555"\fR
+\fBUNMERGE_WARN\fR = \fI"red"\fR
 Defines color used for unmerge warnings.
 .TP
-\fBWARN\fR = \fI"0xFFFF55"\fR
+\fBWARN\fR = \fI"yellow"\fR
 Defines color used for warnings.
+.SH "LIST OF VALID ATTRIBUTES"
+.TP
+.B Foreground colors
+.RS
+.TP
+.B black
+.TP
+.B darkgray
+.TP
+.B darkred
+.TP
+.B red
+.TP
+.B darkgreen
+.TP
+.B green
+.TP
+\fBbrown\fR = \fBdarkyellow\fR
+.TP
+.B yellow
+.TP
+.B darkblue
+.TP
+.B blue
+.TP
+.B purple
+.TP
+.B fuchsia
+.TP
+.B teal
+.TP
+.B turquoise
+.TP
+.B lightgray
+.TP
+.B white
+.RE
+.TP
+.B Background colors
+.RS
+.TP
+.B bg_black
+.TP
+.B bg_darkred
+.TP
+.B bg_darkgreen
+.TP
+\fBbg_brown\fR = \fBbg_darkyellow\fR
+.TP
+.B bg_darkblue
+.TP
+.B bg_purple
+.TP
+.B bg_teal
+.TP
+.B bg_lightgray
+.RE
+.TP
+.B Other attributes
+.RS
+.TP
+.B bold
+.TP
+.B faint
+.TP
+.B standout
+.TP
+.B underline
+.TP
+.B blink
+.TP
+.B reverse
+.RE
 .SH "REPORTING BUGS"
 Please report bugs via http://bugs.gentoo.org/
 .SH "AUTHORS"
@@ -96,6 +149,7 @@ Contains variables customizing colors.
 .B /etc/make.conf
 Contains other variables.
 .SH "SEE ALSO"
+.BR console_codes (4),
 .BR make.conf (5),
 .BR portage (5),
 .BR emerge (1),
