@@ -2075,34 +2075,49 @@ class config(object):
 			# like LINGUAS.
 			var_split = [ x for x in var_split if x in expand_flags ]
 			var_split.extend(expand_flags.difference(var_split))
-			if (var_split or var in self) and \
-				"*" not in var_split:
+			has_wildcard = "*" in var_split
+			if has_wildcard:
+				var_split = [ x for x in var_split if x != "*" ]
+			has_iuse = False
+			for x in iuse:
+				if x.startswith(prefix):
+					has_iuse = True
+					break
+			if has_wildcard:
+				# * means to enable everything in IUSE that's not masked
+				if has_iuse:
+					for x in iuse:
+						if x.startswith(prefix) and x not in self.usemask:
+							suffix = x[prefix_len:]
+							if suffix in var_split:
+								continue
+							var_split.append(suffix)
+							usesplit.append(x)
+				else:
+					# If there is a wildcard and no matching flags in IUSE then
+					# LINGUAS should be unset so that all .mo files are
+					# installed.
+					var_split = []
+			if var_split:
+				self[var] = " ".join(var_split)
+			else:
 				# Don't export empty USE_EXPAND vars unless the user config
 				# exports them as empty.  This is required for vars such as
 				# LINGUAS, where unset and empty have different meanings.
-				self[var] = " ".join(var_split)
-			elif "*" in var_split:
-				# * means to enable everything in IUSE that's not masked
-				filtered_split = []
-				for x in var_split:
-					if x == "*":
-						continue
-					if (prefix + x) in iuse:
-						filtered_split.append(x)
-				var_split = filtered_split
-				for x in iuse:
-					if x.startswith(prefix) and x not in self.usemask:
-						suffix = x[prefix_len:]
-						if suffix in var_split:
-							continue
-						var_split.append(suffix)
-						usesplit.append(x)
-				if var_split:
-					self[var] = " ".join(var_split)
-				elif var in self:
+				if has_wildcard:
 					# ebuild.sh will see this and unset the variable so
 					# that things like LINGUAS work properly
 					self[var] = "*"
+				else:
+					if has_iuse:
+						self[var] = ""
+					else:
+						# It's not in IUSE, so just allow the variable content
+						# to pass through if it is defined somewhere.  This
+						# allows packages that support LINGUAS but don't
+						# declare it in IUSE to use the variable outside of the
+						# USE_EXPAND context.
+						pass
 
 		# Pre-Pend ARCH variable to USE settings so '-*' in env doesn't kill arch.
 		if self.configdict["defaults"].has_key("ARCH"):
