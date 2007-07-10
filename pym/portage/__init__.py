@@ -705,8 +705,12 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
 
 	env_keys = [ x for x in env if x != "LDPATH" ]
 	env_keys.sort()
-	for x in env_keys:
-		outfile.write("export %s='%s'\n" % (x, env[x]))
+	for k in env_keys:
+		v = env[k]
+		if v.startswith('$') and not v.startswith('${'):
+			outfile.write("export %s=$'%s'\n" % (k, v[1:]))
+		else:
+			outfile.write("export %s='%s'\n" % (k, v))
 	outfile.close()
 
 	#create /etc/csh.env for (t)csh support
