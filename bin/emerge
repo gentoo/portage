@@ -1756,6 +1756,9 @@ class depgraph:
 				# Update old-style virtuals if this package provides any.
 				# These are needed for dep_virtual calls inside dep_check.
 				p_db = self.mydbapi[p_root] # contains cached metadata
+				if myparent in self._slot_collision_nodes:
+					# The metadata isn't cached due to the slot collision.
+					p_db = self.trees[p_root][self.pkg_tree_map[p_type]].dbapi
 				try:
 					self.pkgsettings[p_root].setinst(p_key, p_db)
 					# For consistency, also update the global virtuals.
@@ -2718,6 +2721,7 @@ class depgraph:
 
 		for mylist_index in xrange(len(mylist)):
 			x, depth, ordered = mylist[mylist_index]
+			pkg_node = tuple(x)
 			pkg_type = x[0]
 			myroot = x[1]
 			pkg_key = x[2]
@@ -2749,14 +2753,16 @@ class depgraph:
 					addl += bad(" (is blocking %s)") % block_parents
 				blockers.append(addl)
 			else:
-				mydbapi = self.trees[myroot][self.pkg_tree_map[pkg_type]].dbapi
 				pkg_status = x[3]
 				pkg_merge = ordered and pkg_status != "nomerge"
 				binary_package = pkg_type != "ebuild"
+				if pkg_node in self._slot_collision_nodes:
+					# The metadata isn't cached due to the slot collision.
+					mydbapi = self.trees[myroot][self.pkg_tree_map[pkg_type]].dbapi
+				else:
+					mydbapi = self.mydbapi[myroot] # contains cached metadata
 				metadata = dict(izip(self._mydbapi_keys,
-					self.mydbapi[myroot].aux_get(
-					pkg_key, self._mydbapi_keys)))
-				mydbapi = self.mydbapi[myroot] # use the cached metadata
+					mydbapi.aux_get(pkg_key, self._mydbapi_keys)))
 				if pkg_key not in self.useFlags[myroot]:
 					"""If this is a --resume then the USE flags need to be
 					fetched from the appropriate locations here."""

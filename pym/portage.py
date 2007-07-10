@@ -1,5 +1,5 @@
-repo_name = open(repo_name_path# portage.py -- core Portage functionality
-# Copyright 1998-2004 Gentoo Foundation
+# portage.py -- core Portage functionality
+# Copyright 1998-2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
