@@ -351,9 +351,9 @@ def create_depgraph_params(myopts, myaction):
 		myparams.add("selective")
 	if "--emptytree" in myopts:
 		myparams.add("empty")
-		myparams.remove("selective")
+		myparams.discard("selective")
 	if "--nodeps" in myopts:
-		myparams.remove("recurse")
+		myparams.discard("recurse")
 	if "--deep" in myopts:
 		myparams.add("deep")
 	return myparams
