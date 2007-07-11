@@ -2756,8 +2756,10 @@ class depgraph:
 				pkg_status = x[3]
 				pkg_merge = ordered and pkg_status != "nomerge"
 				binary_package = pkg_type != "ebuild"
-				if pkg_node in self._slot_collision_nodes:
-					# The metadata isn't cached due to the slot collision.
+				if pkg_node in self._slot_collision_nodes or \
+					(pkg_status == "nomerge" and pkg_type != "installed"):
+					# The metadata isn't cached due to a slot collision or
+					# --onlydeps.
 					mydbapi = self.trees[myroot][self.pkg_tree_map[pkg_type]].dbapi
 				else:
 					mydbapi = self.mydbapi[myroot] # contains cached metadata
