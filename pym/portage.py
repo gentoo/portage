@@ -7655,7 +7655,7 @@ class dblink:
 						if not dest_lstat:
 							raise AssertionError(
 								"unable to find non-directory " + \
-								"parent for '%s'" % parent_path)
+								"parent for '%s'" % dest_path)
 						dest_path = parent_path
 						f = os.path.sep + dest_path[len(destroot):]
 						if f in collisions:
