@@ -5232,23 +5232,27 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	# Kill packages that aren't explicitly merged or are required as a
 	# dependency of another package. World file is explicit.
 
-	warn_prefix = colorize("BAD", "*** WARNING ***  ")
-	print
-	print warn_prefix + "Depclean may break link level dependencies.  Thus, it is"
-	print warn_prefix + "recommended to use a tool such as " + good("`revdep-rebuild`") + " (from"
-	print warn_prefix + "app-portage/gentoolkit) in order to detect such breakage."
-	print warn_prefix
-	print warn_prefix + "Also study the list of packages to be cleaned for any obvious"
-	print warn_prefix + "mistakes. Packages that are part of the world set will always"
-	print warn_prefix + "be kept.  They can be manually added to this set with"
-	print warn_prefix + good("`emerge --noreplace <atom>`") + ".  Packages that are listed in"
-	print warn_prefix + "package.provided (see portage(5)) will be removed by"
-	print warn_prefix + "depclean, even if they are part of the world set."
-	print warn_prefix
-	print warn_prefix + "As a safety measure, depclean will not remove any packages"
-	print warn_prefix + "unless *all* required dependencies have been resolved.  As a"
-	print warn_prefix + "consequence, it is often necessary to run "
-	print warn_prefix + good("`emerge --update --newuse --deep world`") + " prior to depclean."
+	msg = []
+	msg.append("Depclean may break link level dependencies.  Thus, it is\n")
+	msg.append("Depclean may break link level dependencies.  Thus, it is\n")
+	msg.append("recommended to use a tool such as " + good("`revdep-rebuild`") + " (from\n")
+	msg.append("app-portage/gentoolkit) in order to detect such breakage.\n")
+	msg.append("\n")
+	msg.append("Also study the list of packages to be cleaned for any obvious\n")
+	msg.append("mistakes. Packages that are part of the world set will always\n")
+	msg.append("be kept.  They can be manually added to this set with\n")
+	msg.append(good("`emerge --noreplace <atom>`") + ".  Packages that are listed in\n")
+	msg.append("package.provided (see portage(5)) will be removed by\n")
+	msg.append("depclean, even if they are part of the world set.\n")
+	msg.append("\n")
+	msg.append("As a safety measure, depclean will not remove any packages\n")
+	msg.append("unless *all* required dependencies have been resolved.  As a\n")
+	msg.append("consequence, it is often necessary to run\n")
+	msg.append(good("`emerge --update --newuse --deep world`") + " prior to depclean.\n")
+
+	portage.writemsg_stdout("\n")
+	for x in msg:
+		portage.writemsg_stdout(colorize("BAD", "*** WARNING ***  ") + x)
 
 	xterm_titles = "notitles" not in settings.features
 	myroot = settings["ROOT"]
