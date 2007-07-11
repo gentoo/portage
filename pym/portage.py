@@ -7613,7 +7613,8 @@ class dblink:
 			starttime=time.time()
 			i=0
 			collisions = []
-
+			destroot = normalize_path(destroot).rstrip(os.path.sep) + \
+				os.path.sep
 			print green("*")+" checking "+str(len(myfilelist))+" files for package collisions"
 			for f in myfilelist:
 				nocheck = False
@@ -7633,10 +7634,34 @@ class dblink:
 				try:
 					dest_lstat = os.lstat(dest_path)
 				except EnvironmentError, e:
-					if e.errno != errno.ENOENT:
+					if e.errno == errno.ENOENT:
+						del e
+						continue
+					elif e.errno == errno.ENOTDIR:
+						del e
+						# A non-directory is in a location where this package
+						# expects to have a directory.
+						dest_lstat = None
+						parent_path = dest_path
+						while len(parent_path) > len(destroot):
+							parent_path = os.path.dirname(parent_path)
+							try:
+								dest_lstat = os.lstat(parent_path)
+								break
+							except EnvironmentError, e:
+								if e.errno != errno.ENOTDIR:
+									raise
+								del e
+						if not dest_lstat:
+							raise AssertionError(
+								"unable to find non-directory " + \
+								"parent for '%s'" % parent_path)
+						dest_path = parent_path
+						f = os.path.sep + dest_path[len(destroot):]
+						if f in collisions:
+							continue
+					else:
 						raise
-					del e
-					continue
 				if f[0] != "/":
 					f="/"+f
 				isowned = False
