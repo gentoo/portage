@@ -1210,10 +1210,8 @@ class depgraph(object):
 		if "--newuse" in self.myopts:
 			flags = orig_iuse.symmetric_difference(
 				cur_iuse).difference(forced_flags)
-			if flags:
-				return flags
-			flags = orig_iuse.intersection(orig_use).symmetric_difference(
-				cur_iuse.intersection(cur_use))
+			flags.update(orig_iuse.intersection(orig_use).symmetric_difference(
+				cur_iuse.intersection(cur_use)))
 			if flags:
 				return flags
 		elif "changed-use" == self.myopts.get("--reinstall"):
