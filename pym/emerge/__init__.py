@@ -3015,7 +3015,7 @@ class depgraph(object):
 							newrepoindex += 1
 						
 						# assing lookup indexes
-						if oldrepo == "":
+						if not oldrepo:
 							oldrepoindex = "?"
 						elif oldrepo == pkgsettings["PORTDIR"]:
 							oldrepoindex = "0"
