@@ -930,6 +930,7 @@ dyn_compile() {
 	bzip2 -f9 environment
 
 	cp "${EBUILD}" "${PF}.ebuild"
+	[ -n "${PORTAGE_REPO_NAME}" ]  && echo "${PORTAGE_REPO_NAME}" > repository
 	if hasq nostrip ${FEATURES} ${RESTRICT} || hasq strip ${RESTRICT}
 	then
 		touch DEBUGBUILD
