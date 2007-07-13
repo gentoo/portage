@@ -50,6 +50,8 @@ save_elf_debug() {
 	mkdir -p $(dirname "${y}")
 	${OBJCOPY} --only-keep-debug "${x}" "${y}"
 	${OBJCOPY} --add-gnu-debuglink="${y}" "${x}"
+	[ -g "${x}" ] && chmod go-r "${y}"
+	[ -u "${x}" ] && chmod go-r "${y}"
 	chmod a-x,o-w "${y}"
 }
 

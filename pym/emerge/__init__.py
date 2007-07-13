@@ -352,9 +352,9 @@ def create_depgraph_params(myopts, myaction):
 		myparams.add("selective")
 	if "--emptytree" in myopts:
 		myparams.add("empty")
-		myparams.remove("selective")
+		myparams.discard("selective")
 	if "--nodeps" in myopts:
-		myparams.remove("recurse")
+		myparams.discard("recurse")
 	if "--deep" in myopts:
 		myparams.add("deep")
 	return myparams
@@ -1083,6 +1083,8 @@ class depgraph(object):
 		self.pkg_node_map = {}
 		# Maps slot atom to digraph node for all nodes added to the graph.
 		self._slot_node_map = {}
+		# Maps nodes to the reasons they were selected for reinstallation.
+		self._reinstall_nodes = {}
 		self.mydbapi = {}
 		self._mydbapi_keys = ["SLOT", "DEPEND", "RDEPEND", "PDEPEND",
 			"USE", "IUSE", "PROVIDE", "RESTRICT", "repository"]
@@ -1204,18 +1206,21 @@ class depgraph(object):
 
 	def _reinstall_for_flags(self, forced_flags,
 		orig_use, orig_iuse, cur_use, cur_iuse):
+		"""Return a set of flags that trigger reinstallation, or None if there
+		are no such flags."""
 		if "--newuse" in self.myopts:
-			if orig_iuse.symmetric_difference(
-				cur_iuse).difference(forced_flags):
-				return True
-			elif orig_iuse.intersection(orig_use) != \
-				cur_iuse.intersection(cur_use):
-				return True
+			flags = orig_iuse.symmetric_difference(
+				cur_iuse).difference(forced_flags)
+			flags.update(orig_iuse.intersection(orig_use).symmetric_difference(
+				cur_iuse.intersection(cur_use)))
+			if flags:
+				return flags
 		elif "changed-use" == self.myopts.get("--reinstall"):
-			if orig_iuse.intersection(orig_use) != \
-				cur_iuse.intersection(cur_use):
-				return True
-		return False
+			flags = orig_iuse.intersection(orig_use).symmetric_difference(
+				cur_iuse.intersection(cur_use))
+			if flags:
+				return flags
+		return None
 
 	def create(self, mybigkey, myparent=None, addme=1, myuse=None,
 		priority=DepPriority(), rev_dep=False, arg=None):
@@ -1286,6 +1291,7 @@ class depgraph(object):
 					return 0
 				del e
 
+		reinstall_for_flags = None
 		merging=1
 		if mytype == "installed":
 			merging = 0
@@ -1299,6 +1305,7 @@ class depgraph(object):
 			    If the package has new iuse flags or different use flags then if
 			    --newuse is specified, we need to merge the package. """
 			if merging == 0 and \
+				myroot == self.target_root and \
 				("--newuse" in self.myopts or
 				"--reinstall" in self.myopts) and \
 				vardbapi.cpv_exists(mykey):
@@ -1310,8 +1317,9 @@ class depgraph(object):
 				iuses = set(filter_iuse_defaults(metadata["IUSE"].split()))
 				old_iuse = set(filter_iuse_defaults(
 					vardbapi.aux_get(mykey, ["IUSE"])[0].split()))
-				if self._reinstall_for_flags(
-					forced_flags, old_use, old_iuse, myuse, iuses):
+				reinstall_for_flags = self._reinstall_for_flags(
+					forced_flags, old_use, old_iuse, myuse, iuses)
+				if reinstall_for_flags:
 					merging = 1
 
 		if addme and merging == 1:
@@ -1379,6 +1387,8 @@ class depgraph(object):
 				self._slot_node_map[myroot][slot_atom] = jbigkey
 				self.pkg_node_map[myroot][mykey] = jbigkey
 				self.useFlags[myroot][mykey] = myuse
+				if reinstall_for_flags:
+					self._reinstall_nodes[jbigkey] = reinstall_for_flags
 
 			if rev_dep and myparent:
 				self.digraph.addnode(myparent, jbigkey,
@@ -1748,6 +1758,9 @@ class depgraph(object):
 				# Update old-style virtuals if this package provides any.
 				# These are needed for dep_virtual calls inside dep_check.
 				p_db = self.mydbapi[p_root] # contains cached metadata
+				if myparent in self._slot_collision_nodes:
+					# The metadata isn't cached due to the slot collision.
+					p_db = self.trees[p_root][self.pkg_tree_map[p_type]].dbapi
 				try:
 					self.pkgsettings[p_root].setinst(p_key, p_db)
 					# For consistency, also update the global virtuals.
@@ -2740,6 +2753,7 @@ class depgraph(object):
 
 		for mylist_index in xrange(len(mylist)):
 			x, depth, ordered = mylist[mylist_index]
+			pkg_node = tuple(x)
 			pkg_type = x[0]
 			myroot = x[1]
 			pkg_key = x[2]
@@ -2771,14 +2785,18 @@ class depgraph(object):
 					addl += bad(" (is blocking %s)") % block_parents
 				blockers.append(addl)
 			else:
-				mydbapi = self.trees[myroot][self.pkg_tree_map[pkg_type]].dbapi
 				pkg_status = x[3]
 				pkg_merge = ordered and pkg_status != "nomerge"
 				binary_package = pkg_type != "ebuild"
+				if pkg_node in self._slot_collision_nodes or \
+					(pkg_status == "nomerge" and pkg_type != "installed"):
+					# The metadata isn't cached due to a slot collision or
+					# --onlydeps.
+					mydbapi = self.trees[myroot][self.pkg_tree_map[pkg_type]].dbapi
+				else:
+					mydbapi = self.mydbapi[myroot] # contains cached metadata
 				metadata = dict(izip(self._mydbapi_keys,
-					self.mydbapi[myroot].aux_get(
-					pkg_key, self._mydbapi_keys)))
-				mydbapi = self.mydbapi[myroot] # use the cached metadata
+					mydbapi.aux_get(pkg_key, self._mydbapi_keys)))
 				if pkg_key not in self.useFlags[myroot]:
 					"""If this is a --resume then the USE flags need to be
 					fetched from the appropriate locations here."""
@@ -2896,7 +2914,8 @@ class depgraph(object):
 					use_expand_hidden = \
 						pkgsettings["USE_EXPAND_HIDDEN"].lower().split()
 
-					def map_to_use_expand(myvals, forcedFlags=False):
+					def map_to_use_expand(myvals, forcedFlags=False,
+						removeHidden=True):
 						ret = {}
 						forced = {}
 						for exp in use_expand:
@@ -2911,12 +2930,31 @@ class depgraph(object):
 						ret["USE"] = myvals
 						forced["USE"] = [val for val in myvals \
 							if val in forced_flags]
-						for exp in use_expand_hidden:
-							if exp in ret:
-								del ret[exp]
+						if removeHidden:
+							for exp in use_expand_hidden:
+								ret.pop(exp, None)
 						if forcedFlags:
 							return ret, forced
 						return ret
+
+					# Prevent USE_EXPAND_HIDDEN flags from being hidden if they
+					# are the only thing that triggered reinstallation.
+					reinst_flags_map = None
+					reinstall_for_flags = self._reinstall_nodes.get(pkg_node)
+					if reinstall_for_flags:
+						reinst_flags_map = map_to_use_expand(
+							list(reinstall_for_flags), removeHidden=False)
+						if reinst_flags_map["USE"]:
+							reinst_flags_map = None
+						else:
+							for k in reinst_flags_map.keys():
+								if not reinst_flags_map[k]:
+									del reinst_flags_map[k]
+					if reinst_flags_map and \
+						not set(reinst_flags_map).difference(
+						use_expand_hidden):
+						use_expand_hidden = set(use_expand_hidden).difference(
+							reinst_flags_map)
 
 					cur_iuse_map, iuse_forced = \
 						map_to_use_expand(cur_iuse, forcedFlags=True)
@@ -2978,7 +3016,7 @@ class depgraph(object):
 							newrepoindex += 1
 						
 						# assing lookup indexes
-						if oldrepo == "":
+						if not oldrepo:
 							oldrepoindex = "?"
 						elif oldrepo == pkgsettings["PORTDIR"]:
 							oldrepoindex = "0"
@@ -5275,23 +5313,26 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	# Kill packages that aren't explicitly merged or are required as a
 	# dependency of another package. World file is explicit.
 
-	warn_prefix = colorize("BAD", "*** WARNING ***  ")
-	print
-	print warn_prefix + "Depclean may break link level dependencies.  Thus, it is"
-	print warn_prefix + "recommended to use a tool such as " + good("`revdep-rebuild`") + " (from"
-	print warn_prefix + "app-portage/gentoolkit) in order to detect such breakage."
-	print warn_prefix
-	print warn_prefix + "Also study the list of packages to be cleaned for any obvious"
-	print warn_prefix + "mistakes. Packages that are part of the world set will always"
-	print warn_prefix + "be kept.  They can be manually added to this set with"
-	print warn_prefix + good("`emerge --noreplace <atom>`") + ".  Packages that are listed in"
-	print warn_prefix + "package.provided (see portage(5)) will be removed by"
-	print warn_prefix + "depclean, even if they are part of the world set."
-	print warn_prefix
-	print warn_prefix + "As a safety measure, depclean will not remove any packages"
-	print warn_prefix + "unless *all* required dependencies have been resolved.  As a"
-	print warn_prefix + "consequence, it is often necessary to run "
-	print warn_prefix + good("`emerge --update --newuse --deep world`") + " prior to depclean."
+	msg = []
+	msg.append("Depclean may break link level dependencies.  Thus, it is\n")
+	msg.append("recommended to use a tool such as " + good("`revdep-rebuild`") + " (from\n")
+	msg.append("app-portage/gentoolkit) in order to detect such breakage.\n")
+	msg.append("\n")
+	msg.append("Also study the list of packages to be cleaned for any obvious\n")
+	msg.append("mistakes. Packages that are part of the world set will always\n")
+	msg.append("be kept.  They can be manually added to this set with\n")
+	msg.append(good("`emerge --noreplace <atom>`") + ".  Packages that are listed in\n")
+	msg.append("package.provided (see portage(5)) will be removed by\n")
+	msg.append("depclean, even if they are part of the world set.\n")
+	msg.append("\n")
+	msg.append("As a safety measure, depclean will not remove any packages\n")
+	msg.append("unless *all* required dependencies have been resolved.  As a\n")
+	msg.append("consequence, it is often necessary to run\n")
+	msg.append(good("`emerge --update --newuse --deep world`") + " prior to depclean.\n")
+
+	portage.writemsg_stdout("\n")
+	for x in msg:
+		portage.writemsg_stdout(colorize("BAD", "*** WARNING ***  ") + x)
 
 	xterm_titles = "notitles" not in settings.features
 	myroot = settings["ROOT"]

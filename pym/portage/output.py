@@ -129,7 +129,8 @@ codes["bg_lightgray"]  = esc_seq + "47m"
 
 codes["bg_darkyellow"] = codes["bg_brown"]
 
-# Colors from /sbin/functions.sh
+# Colors from /etc/init.d/functions.sh
+codes["NORMAL"]     = esc_seq + "0m"
 codes["GOOD"]       = codes["green"]
 codes["WARN"]       = codes["yellow"]
 codes["BAD"]        = codes["red"]
