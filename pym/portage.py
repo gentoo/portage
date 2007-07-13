@@ -3171,6 +3171,16 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 	mysettings["ROOT"]     = myroot
 	mysettings["STARTDIR"] = getcwd()
 
+	mysettings["PORTAGE_REPO_NAME"] = ""
+	# bindbapi has no getRepositories() method
+	if mydbapi and hasattr(mydbapi, "getRepositories"):
+		# do we have a origin repository name for the current package
+		repopath = os.sep.join(pkg_dir.split(os.path.sep)[:-2])
+		for reponame in mydbapi.getRepositories():
+			if mydbapi.getRepositoryPath(reponame) == repopath:
+				mysettings["PORTAGE_REPO_NAME"] = reponame
+				break
+
 	mysettings["EBUILD"]   = ebuild_path
 	mysettings["O"]        = pkg_dir
 	mysettings.configdict["pkg"]["CATEGORY"] = cat
@@ -7758,19 +7768,6 @@ class dblink:
 		# copy "info" files (like SLOT, CFLAGS, etc.) into the database
 		for x in listdir(inforoot):
 			self.copyfile(inforoot+"/"+x)
-
-		# do we have a origin repository name for the current package
-		repopath = os.sep.join(self.settings["O"].split(os.sep)[:-2])
-		# bindbapi has no getRepositories() method
-		if mydbapi and hasattr(mydbapi, "getRepositories"):
-			foundname = False
-			for reponame in mydbapi.getRepositories():
-				if mydbapi.getRepositoryPath(reponame) == repopath:
-					fd = open(os.path.join(self.dbtmpdir, "repository"), "w")
-					fd.write(reponame+"\n")
-					fd.close()
-					foundname = True
-					break
 
 		# get current counter value (counter_tick also takes care of incrementing it)
 		# XXX Need to make this destroot, but it needs to be initialized first. XXX
