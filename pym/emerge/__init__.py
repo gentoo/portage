@@ -3018,7 +3018,7 @@ class depgraph(object):
 						# assing lookup indexes
 						if not oldrepo:
 							oldrepoindex = "?"
-						elif oldrepo == pkgsettings["PORTDIR"]:
+						elif oldrepo == os.path.realpath(pkgsettings["PORTDIR"]):
 							oldrepoindex = "0"
 						else:
 							oldrepoindex = str(overlays_real.index(os.path.normpath(oldrepo)) + 1)
