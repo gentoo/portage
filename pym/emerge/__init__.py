@@ -2814,7 +2814,6 @@ class depgraph(object):
 			else:
 				pkg_status = x[3]
 				pkg_merge = ordered and pkg_status != "nomerge"
-				binary_package = pkg_type != "ebuild"
 				if pkg_node in self._slot_collision_nodes or \
 					(pkg_status == "nomerge" and pkg_type != "installed"):
 					# The metadata isn't cached due to a slot collision or
@@ -2920,9 +2919,8 @@ class depgraph(object):
 						mydbapi.aux_get(pkg_key, ["IUSE"])[0].split()))
 
 					forced_flags = set()
-					if not binary_package:
-						forced_flags.update(pkgsettings.useforce)
-						forced_flags.update(pkgsettings.usemask)
+					forced_flags.update(pkgsettings.useforce)
+					forced_flags.update(pkgsettings.usemask)
 
 					cur_iuse = portage.unique_array(cur_iuse)
 					cur_iuse.sort()
