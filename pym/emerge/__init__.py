@@ -2666,7 +2666,6 @@ class depgraph(object):
 			for repo_path in repo_paths ]
 		# Track which ones are show so the list can be pruned to save space.
 		shown_repos = {}
-		unknown_repo = False
 		def repo_str(portdb, repo_name):
 			repo_path_real = portdb.getRepositoryPath(repo_name)
 			real_index = -1
@@ -2677,7 +2676,7 @@ class depgraph(object):
 					pass
 			if real_index == -1:
 				s = "?"
-				unknown_repo = True
+				repo_str.unknown_repo = True
 			else:
 				repo_path = repo_paths[real_index]
 				index = shown_repos.get(repo_path)
@@ -2686,6 +2685,7 @@ class depgraph(object):
 					shown_repos[repo_path] = index
 				s = str(index)
 			return s
+		repo_str.unknown_repo = False
 
 		tree_nodes = []
 		display_list = []
@@ -3195,7 +3195,7 @@ class depgraph(object):
 		if verbosity == 3:
 			print
 			print counters
-			if shown_repos or unknown_repo:
+			if shown_repos or repo_str.unknown_repo:
 				print "Portage tree and overlays:"
 			show_repo_paths = list(shown_repos)
 			for repo_path, repo_index in shown_repos.iteritems():
@@ -3203,7 +3203,7 @@ class depgraph(object):
 			if show_repo_paths:
 				for index, repo_path in enumerate(show_repo_paths):
 					print " "+teal("["+str(index)+"]"),repo_path
-			if unknown_repo:
+			if repo_str.unknown_repo:
 				print " "+teal("[?]"), "indicates that the source repository could not be determined"
 
 		if "--changelog" in self.myopts:
