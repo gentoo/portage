@@ -2666,14 +2666,10 @@ class depgraph(object):
 			for repo_path in repo_paths ]
 		# Track which ones are show so the list can be pruned to save space.
 		shown_repos = {}
-		def repo_str(portdb, repo_name):
-			repo_path_real = portdb.getRepositoryPath(repo_name)
+		def repo_str(portdb, repo_path_real):
 			real_index = -1
 			if repo_path_real:
-				try:
-					real_index = repo_paths_real.index(repo_path_real)
-				except ValueError:
-					pass
+				real_index = repo_paths_real.index(repo_path_real)
 			if real_index == -1:
 				s = "?"
 				repo_str.unknown_repo = True
@@ -2829,14 +2825,16 @@ class depgraph(object):
 					ebuild_path = portdb.findname(pkg_key)
 					if not ebuild_path: # shouldn't happen
 						raise portage.exception.PackageNotFound(pkg_key)
-					repo_path = os.path.sep.join(
-						ebuild_path.split(os.path.sep)[:-3])
+					repo_path_real = os.path.dirname(os.path.dirname(
+						os.path.dirname(ebuild_path)))
 					for repo_name in portdb.getRepositories():
-						if portdb.getRepositoryPath(repo_name) == repo_path:
+						if portdb.getRepositoryPath(repo_name) == repo_path_real:
 							repo_name = repo_name
 							break
 						else:
 							repo_name = None
+				else:
+					repo_path_real = portdb.getRepositoryPath(repo_name)
 				if pkg_key not in self.useFlags[myroot]:
 					"""If this is a --resume then the USE flags need to be
 					fetched from the appropriate locations here."""
@@ -3050,10 +3048,15 @@ class depgraph(object):
 					# now use the data to generate output
 					repoadd = None
 					if pkg_status == "nomerge" or not has_previous:
-						repoadd = repo_str(portdb, repo_name)
+						repoadd = repo_str(portdb, repo_path_real)
 					else:
-						repoadd = "%s=>%s" % (repo_str(portdb, repo_name_prev),
-							repo_str(portdb, repo_name))
+						repo_path_prev = None
+						if repo_name_prev:
+							repo_path_prev = portdb.getRepositoryPath(
+								repo_name_prev)
+						repoadd = "%s=>%s" % (
+							repo_str(portdb, repo_path_prev),
+							repo_str(portdb, repo_path_real))
 					if repoadd:
 						verboseadd += teal("[%s]" % repoadd)
 
