@@ -1736,21 +1736,6 @@ class dblink(object):
 		for x in listdir(inforoot):
 			self.copyfile(inforoot+"/"+x)
 
-		# do we have a origin repository name for the current package
-		repopath = os.sep.join(self.settings["O"].split(os.sep)[:-2])
-		# bindbapi has no getRepositories() method
-		if mydbapi and hasattr(mydbapi, "getRepositories"):
-			foundname = False
-			for reponame in mydbapi.getRepositories():
-				if mydbapi.getRepositoryPath(reponame) == repopath:
-					fd = open(os.path.join(self.dbtmpdir, "repository"), "w")
-					fd.write(reponame+"\n")
-					fd.close()
-					foundname = True
-					break
-			if not foundname:
-				ewarn("Could not determine name of source repository at %s" % repopath, phase="preinst", key=self.mycpv)
-
 		# write local package counter for recording
 		lcfile = open(os.path.join(self.dbtmpdir, "COUNTER"),"w")
 		lcfile.write(str(counter))
