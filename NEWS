@@ -13,6 +13,9 @@ portage-2.1.3
 * The merge process preserves the modification timestamp of files that it
   installs. The unmerge process will not uninstall files that are claimed by
   another package in the same slot.
+* PDEPEND is now installed as soon as possible so that it behaves more like
+  RDEPEND.  This makes PDEPEND more useful for breaking the dependency cycles
+  that are sometimes triggered by RDEPEND and DEPEND.
 
 portage-2.1.2
 -------------
