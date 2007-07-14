@@ -2797,12 +2797,6 @@ class depgraph(object):
 						raise portage.exception.PackageNotFound(pkg_key)
 					repo_path_real = os.path.dirname(os.path.dirname(
 						os.path.dirname(ebuild_path)))
-					for repo_name in portdb.getRepositories():
-						if portdb.getRepositoryPath(repo_name) == repo_path_real:
-							repo_name = repo_name
-							break
-						else:
-							repo_name = None
 				else:
 					repo_path_real = portdb.getRepositoryPath(repo_name)
 				if pkg_key not in self.useFlags[myroot]:
