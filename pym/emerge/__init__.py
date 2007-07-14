@@ -2683,6 +2683,13 @@ class depgraph(object):
 			return s
 		repo_str.unknown_repo = False
 
+		# pre-allocate index for PORTDIR so that it always has index 0.
+		for root_config in self.roots.itervalues():
+			portdb = root_config.trees["porttree"].dbapi
+			portdir = portdb.porttree_root
+			if portdir:
+				repo_str(portdb, portdir)
+
 		tree_nodes = []
 		display_list = []
 		mygraph = self._parent_child_digraph
