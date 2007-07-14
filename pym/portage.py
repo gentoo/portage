@@ -5219,7 +5219,7 @@ class vardbapi(dbapi):
 			vartree = globals()["db"][root]["vartree"]
 		self.vartree = vartree
 		self._aux_cache_keys = set(["SLOT", "COUNTER", "PROVIDE", "USE",
-			"IUSE", "DEPEND", "RDEPEND", "PDEPEND"])
+			"IUSE", "DEPEND", "RDEPEND", "PDEPEND", "repository"])
 		self._aux_cache = None
 		self._aux_cache_version = "1"
 		self._aux_cache_filename = os.path.join(self.root,
