@@ -2651,44 +2651,7 @@ class depgraph(object):
 					ret = '%s="%s" ' % (name, ret)
 				return ret
 
-		# Get repo data for verbose repo display.
-		repo_paths = set()
-		for root_config in self.roots.itervalues():
-			portdir = root_config.settings.get("PORTDIR")
-			if portdir:
-				repo_paths.add(portdir)
-			overlays = root_config.settings.get("PORTDIR_OVERLAY")
-			if overlays:
-				repo_paths.update(overlays.split())
-		repo_paths = list(repo_paths)
-		repo_paths.sort()
-		repo_paths_real = [ os.path.realpath(repo_path) \
-			for repo_path in repo_paths ]
-		# Track which ones are show so the list can be pruned to save space.
-		shown_repos = {}
-		def repo_str(portdb, repo_path_real):
-			real_index = -1
-			if repo_path_real:
-				real_index = repo_paths_real.index(repo_path_real)
-			if real_index == -1:
-				s = "?"
-				repo_str.unknown_repo = True
-			else:
-				repo_path = repo_paths[real_index]
-				index = shown_repos.get(repo_path)
-				if index is None:
-					index = len(shown_repos)
-					shown_repos[repo_path] = index
-				s = str(index)
-			return s
-		repo_str.unknown_repo = False
-
-		# pre-allocate index for PORTDIR so that it always has index 0.
-		for root_config in self.roots.itervalues():
-			portdb = root_config.trees["porttree"].dbapi
-			portdir = portdb.porttree_root
-			if portdir:
-				repo_str(portdb, portdir)
+		repo_display = RepoDisplay(self.roots)
 
 		tree_nodes = []
 		display_list = []
@@ -3055,15 +3018,15 @@ class depgraph(object):
 					# now use the data to generate output
 					repoadd = None
 					if pkg_status == "nomerge" or not has_previous:
-						repoadd = repo_str(portdb, repo_path_real)
+						repoadd = repo_display.repoStr(repo_path_real)
 					else:
 						repo_path_prev = None
 						if repo_name_prev:
 							repo_path_prev = portdb.getRepositoryPath(
 								repo_name_prev)
 						repoadd = "%s=>%s" % (
-							repo_str(portdb, repo_path_prev),
-							repo_str(portdb, repo_path_real))
+							repo_display.repoStr(repo_path_prev),
+							repo_display.repoStr(repo_path_real))
 					if repoadd:
 						verboseadd += teal("[%s]" % repoadd)
 
@@ -3203,16 +3166,7 @@ class depgraph(object):
 		if verbosity == 3:
 			print
 			print counters
-			if shown_repos or repo_str.unknown_repo:
-				print "Portage tree and overlays:"
-			show_repo_paths = list(shown_repos)
-			for repo_path, repo_index in shown_repos.iteritems():
-				show_repo_paths[repo_index] = repo_path
-			if show_repo_paths:
-				for index, repo_path in enumerate(show_repo_paths):
-					print " "+teal("["+str(index)+"]"),repo_path
-			if repo_str.unknown_repo:
-				print " "+teal("[?]"), "indicates that the source repository could not be determined"
+			print repo_display,
 
 		if "--changelog" in self.myopts:
 			print
@@ -3379,6 +3333,65 @@ class depgraph(object):
 				pkgsettings.setcpv(pkg_key, mydb=fakedb[myroot])
 				fakedb[myroot].aux_update(pkg_key, {"USE":pkgsettings["USE"]})
 			self.spinner.update()
+
+class RepoDisplay(object):
+	def __init__(self, roots):
+		self._shown_repos = {}
+		self._unknown_repo = False
+		repo_paths = set()
+		for root_config in roots.itervalues():
+			portdir = root_config.settings.get("PORTDIR")
+			if portdir:
+				repo_paths.add(portdir)
+			overlays = root_config.settings.get("PORTDIR_OVERLAY")
+			if overlays:
+				repo_paths.update(overlays.split())
+		repo_paths = list(repo_paths)
+		self._repo_paths = repo_paths
+		self._repo_paths_real = [ os.path.realpath(repo_path) \
+			for repo_path in repo_paths ]
+
+		# pre-allocate index for PORTDIR so that it always has index 0.
+		for root_config in roots.itervalues():
+			portdb = root_config.trees["porttree"].dbapi
+			portdir = portdb.porttree_root
+			if portdir:
+				self.repoStr(portdir)
+
+	def repoStr(self, repo_path_real):
+		real_index = -1
+		if repo_path_real:
+			real_index = self._repo_paths_real.index(repo_path_real)
+		if real_index == -1:
+			s = "?"
+			self._unknown_repo = True
+		else:
+			shown_repos = self._shown_repos
+			repo_paths = self._repo_paths
+			repo_path = repo_paths[real_index]
+			index = shown_repos.get(repo_path)
+			if index is None:
+				index = len(shown_repos)
+				shown_repos[repo_path] = index
+			s = str(index)
+		return s
+
+	def __str__(self):
+		output = []
+		shown_repos = self._shown_repos
+		unknown_repo = self._unknown_repo
+		if shown_repos or self._unknown_repo:
+			output.append("Portage tree and overlays:\n")
+		show_repo_paths = list(shown_repos)
+		for repo_path, repo_index in shown_repos.iteritems():
+			show_repo_paths[repo_index] = repo_path
+		if show_repo_paths:
+			for index, repo_path in enumerate(show_repo_paths):
+				output.append(" "+teal("["+str(index)+"]")+" %s\n" % repo_path)
+		if unknown_repo:
+			output.append(" "+teal("[?]") + \
+				" indicates that the source repository could not be determined\n")
+		return "".join(output)
 
 class PackageCounters(object):
 
