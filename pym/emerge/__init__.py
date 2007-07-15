@@ -3537,8 +3537,8 @@ class MergeTask(object):
 
 		root_config = RootConfig(self.trees[self.target_root])
 		system_set = root_config.sets["system"]
-		args_set = root_config.sets["world"]
-		world_set = WorldSet(self.settings)
+		args_set = AtomSet(favorites)
+		world_set = root_config.sets["world"]
 		if "--resume" not in self.myopts:
 			mymergelist = mylist
 			mtimedb["resume"]["mergelist"]=mymergelist[:]
