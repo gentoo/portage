@@ -2622,13 +2622,6 @@ class depgraph:
 					ret = '%s="%s" ' % (name, ret)
 				return ret
 
-		if verbosity == 3:
-			# FIXME: account for the possibility of different overlays in
-			# /etc/make.conf vs. ${PORTAGE_CONFIGROOT}/etc/make.conf
-			overlays = self.settings["PORTDIR_OVERLAY"].split()
-			overlays_real = [os.path.realpath(t) \
-				for t in self.settings["PORTDIR_OVERLAY"].split()]
-
 		repo_display = RepoDisplay(self.roots)
 
 		tree_nodes = []
@@ -2718,7 +2711,6 @@ class depgraph:
 
 		from portage import flatten
 		from portage_dep import use_reduce, paren_reduce
-		display_overlays=False
 		# files to fetch list - avoids counting a same file twice
 		# in size display (verbose mode)
 		myfetchlist=[]
