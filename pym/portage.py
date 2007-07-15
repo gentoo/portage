@@ -6831,7 +6831,8 @@ class binarytree(object):
 		self.populated=1
 
 	def inject(self,cpv):
-		return self.dbapi.cpv_inject(cpv)
+		self.dbapi.cpv_inject(cpv)
+		self._create_symlink(cpv)
 
 	def exists_specific(self,cpv):
 		if not self.populated:
