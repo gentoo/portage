@@ -687,7 +687,7 @@ class RootConfig(object):
 		system_set = SystemSet(self.settings)
 		self.sets["system"] = system_set
 
-def create_world_atom(pkg_key, metadata, args_set, sets, portdb):
+def create_world_atom(pkg_key, metadata, args_set, root_config):
 	"""Create a new atom for the world file if one does not exist.  If the
 	argument atom is precise enough to identify a specific slot then a slot
 	atom will be returned. Atoms that are in the system set may also be stored
@@ -697,9 +697,19 @@ def create_world_atom(pkg_key, metadata, args_set, sets, portdb):
 	arg_atom = args_set.findAtomForPackage(pkg_key, metadata)
 	cp = portage.dep_getkey(arg_atom)
 	new_world_atom = cp
+	sets = root_config.sets
+	portdb = root_config.trees["porttree"].dbapi
+	vardb = root_config.trees["vartree"].dbapi
 	available_slots = set(portdb.aux_get(cpv, ["SLOT"])[0] \
 		for cpv in portdb.match(cp))
-	slotted = len(available_slots) > 1 or "0" not in available_slots
+	slotted = len(available_slots) > 1 or \
+		(len(available_slots) == 1 and "0" not in available_slots)
+	if not slotted:
+		# check the vdb in case this is multislot
+		available_slots = set(vardb.aux_get(cpv, ["SLOT"])[0] \
+			for cpv in vardb.match(cp))
+		slotted = len(available_slots) > 1 or \
+			(len(available_slots) == 1 and "0" not in available_slots)
 	if slotted and arg_atom != cp:
 		# If the user gave a specific atom, store it as a
 		# slot atom in the world file.
@@ -2652,41 +2662,7 @@ class depgraph(object):
 					ret = '%s="%s" ' % (name, ret)
 				return ret
 
-		# Get repo data for verbose repo display.
-		repo_paths = set()
-		for root_config in self.roots.itervalues():
-			portdir = root_config.settings.get("PORTDIR")
-			if portdir:
-				repo_paths.add(portdir)
-			overlays = root_config.settings.get("PORTDIR_OVERLAY")
-			if overlays:
-				repo_paths.update(overlays.split())
-		repo_paths = list(repo_paths)
-		repo_paths.sort()
-		repo_paths_real = [ os.path.realpath(repo_path) \
-			for repo_path in repo_paths ]
-		# Track which ones are show so the list can be pruned to save space.
-		shown_repos = {}
-		def repo_str(portdb, repo_name):
-			repo_path_real = portdb.getRepositoryPath(repo_name)
-			real_index = -1
-			if repo_path_real:
-				try:
-					real_index = repo_paths_real.index(repo_path_real)
-				except ValueError:
-					pass
-			if real_index == -1:
-				s = "?"
-				repo_str.unknown_repo = True
-			else:
-				repo_path = repo_paths[real_index]
-				index = shown_repos.get(repo_path)
-				if index is None:
-					index = len(shown_repos)
-					shown_repos[repo_path] = index
-				s = str(index)
-			return s
-		repo_str.unknown_repo = False
+		repo_display = RepoDisplay(self.roots)
 
 		tree_nodes = []
 		display_list = []
@@ -2815,7 +2791,6 @@ class depgraph(object):
 			else:
 				pkg_status = x[3]
 				pkg_merge = ordered and pkg_status != "nomerge"
-				binary_package = pkg_type != "ebuild"
 				if pkg_node in self._slot_collision_nodes or \
 					(pkg_status == "nomerge" and pkg_type != "installed"):
 					# The metadata isn't cached due to a slot collision or
@@ -2831,14 +2806,10 @@ class depgraph(object):
 					ebuild_path = portdb.findname(pkg_key)
 					if not ebuild_path: # shouldn't happen
 						raise portage.exception.PackageNotFound(pkg_key)
-					repo_path = os.path.sep.join(
-						ebuild_path.split(os.path.sep)[:-3])
-					for repo_name in portdb.getRepositories():
-						if portdb.getRepositoryPath(repo_name) == repo_path:
-							repo_name = repo_name
-							break
-						else:
-							repo_name = None
+					repo_path_real = os.path.dirname(os.path.dirname(
+						os.path.dirname(ebuild_path)))
+				else:
+					repo_path_real = portdb.getRepositoryPath(repo_name)
 				if pkg_key not in self.useFlags[myroot]:
 					"""If this is a --resume then the USE flags need to be
 					fetched from the appropriate locations here."""
@@ -2921,9 +2892,8 @@ class depgraph(object):
 						mydbapi.aux_get(pkg_key, ["IUSE"])[0].split()))
 
 					forced_flags = set()
-					if not binary_package:
-						forced_flags.update(pkgsettings.useforce)
-						forced_flags.update(pkgsettings.usemask)
+					forced_flags.update(pkgsettings.useforce)
+					forced_flags.update(pkgsettings.usemask)
 
 					cur_iuse = portage.unique_array(cur_iuse)
 					cur_iuse.sort()
@@ -3053,10 +3023,15 @@ class depgraph(object):
 					# now use the data to generate output
 					repoadd = None
 					if pkg_status == "nomerge" or not has_previous:
-						repoadd = repo_str(portdb, repo_name)
+						repoadd = repo_display.repoStr(repo_path_real)
 					else:
-						repoadd = "%s=>%s" % (repo_str(portdb, repo_name_prev),
-							repo_str(portdb, repo_name))
+						repo_path_prev = None
+						if repo_name_prev:
+							repo_path_prev = portdb.getRepositoryPath(
+								repo_name_prev)
+						repoadd = "%s=>%s" % (
+							repo_display.repoStr(repo_path_prev),
+							repo_display.repoStr(repo_path_real))
 					if repoadd:
 						verboseadd += teal("[%s]" % repoadd)
 
@@ -3101,7 +3076,7 @@ class depgraph(object):
 						favorites_set.findAtomForPackage(pkg_key, metadata):
 						# Maybe it will be added to world now.
 						if create_world_atom(pkg_key, metadata,
-							favorites_set, root_config.sets, portdb):
+							favorites_set, root_config):
 							pkg_world = True
 				except portage.exception.InvalidDependString:
 					# This is reported elsewhere if relevant.
@@ -3196,16 +3171,7 @@ class depgraph(object):
 		if verbosity == 3:
 			print
 			print counters
-			if shown_repos or repo_str.unknown_repo:
-				print "Portage tree and overlays:"
-			show_repo_paths = list(shown_repos)
-			for repo_path, repo_index in shown_repos.iteritems():
-				show_repo_paths[repo_index] = repo_path
-			if show_repo_paths:
-				for index, repo_path in enumerate(show_repo_paths):
-					print " "+teal("["+str(index)+"]"),repo_path
-			if repo_str.unknown_repo:
-				print " "+teal("[?]"), "indicates that the source repository could not be determined"
+			sys.stdout.write(str(repo_display))
 
 		if "--changelog" in self.myopts:
 			print
@@ -3325,7 +3291,7 @@ class depgraph(object):
 				self.mydbapi[root].aux_get(pkg_key, self._mydbapi_keys)))
 			try:
 				myfavkey = create_world_atom(pkg_key, metadata,
-					args_set, root_config.sets, portdb)
+					args_set, root_config)
 				if myfavkey:
 					if myfavkey in added_favorites:
 						continue
@@ -3372,6 +3338,65 @@ class depgraph(object):
 				pkgsettings.setcpv(pkg_key, mydb=fakedb[myroot])
 				fakedb[myroot].aux_update(pkg_key, {"USE":pkgsettings["USE"]})
 			self.spinner.update()
+
+class RepoDisplay(object):
+	def __init__(self, roots):
+		self._shown_repos = {}
+		self._unknown_repo = False
+		repo_paths = set()
+		for root_config in roots.itervalues():
+			portdir = root_config.settings.get("PORTDIR")
+			if portdir:
+				repo_paths.add(portdir)
+			overlays = root_config.settings.get("PORTDIR_OVERLAY")
+			if overlays:
+				repo_paths.update(overlays.split())
+		repo_paths = list(repo_paths)
+		self._repo_paths = repo_paths
+		self._repo_paths_real = [ os.path.realpath(repo_path) \
+			for repo_path in repo_paths ]
+
+		# pre-allocate index for PORTDIR so that it always has index 0.
+		for root_config in roots.itervalues():
+			portdb = root_config.trees["porttree"].dbapi
+			portdir = portdb.porttree_root
+			if portdir:
+				self.repoStr(portdir)
+
+	def repoStr(self, repo_path_real):
+		real_index = -1
+		if repo_path_real:
+			real_index = self._repo_paths_real.index(repo_path_real)
+		if real_index == -1:
+			s = "?"
+			self._unknown_repo = True
+		else:
+			shown_repos = self._shown_repos
+			repo_paths = self._repo_paths
+			repo_path = repo_paths[real_index]
+			index = shown_repos.get(repo_path)
+			if index is None:
+				index = len(shown_repos)
+				shown_repos[repo_path] = index
+			s = str(index)
+		return s
+
+	def __str__(self):
+		output = []
+		shown_repos = self._shown_repos
+		unknown_repo = self._unknown_repo
+		if shown_repos or self._unknown_repo:
+			output.append("Portage tree and overlays:\n")
+		show_repo_paths = list(shown_repos)
+		for repo_path, repo_index in shown_repos.iteritems():
+			show_repo_paths[repo_index] = repo_path
+		if show_repo_paths:
+			for index, repo_path in enumerate(show_repo_paths):
+				output.append(" "+teal("["+str(index)+"]")+" %s\n" % repo_path)
+		if unknown_repo:
+			output.append(" "+teal("[?]") + \
+				" indicates that the source repository could not be determined\n")
+		return "".join(output)
 
 class PackageCounters(object):
 
@@ -3511,9 +3536,10 @@ class MergeTask(object):
 				del x, mytype, myroot, mycpv, mystatus, quiet_config
 			del shown_verifying_msg, quiet_settings
 
-		system_set = SystemSet(self.settings)
+		root_config = RootConfig(self.trees[self.target_root])
+		system_set = root_config.sets["system"]
 		args_set = AtomSet(favorites)
-		world_set = WorldSet(self.settings)
+		world_set = root_config.sets["world"]
 		if "--resume" not in self.myopts:
 			mymergelist = mylist
 			mtimedb["resume"]["mergelist"]=mymergelist[:]
@@ -3805,8 +3831,7 @@ class MergeTask(object):
 					world_set.lock()
 					world_set.load()
 					myfavkey = create_world_atom(pkg_key, metadata,
-						args_set, {"world":world_set, "system":system_set},
-						portdb)
+						args_set, root_config)
 					if myfavkey:
 						world_set.add(myfavkey)
 						print ">>> Recording",myfavkey,"in \"world\" favorites file..."
