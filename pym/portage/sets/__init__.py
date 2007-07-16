@@ -18,7 +18,8 @@ class PackageSet(object):
 	# package sets, the latter doesn't make sense for some sets like "system"
 	# or "security" and therefore isn't supported by them.
 	_operations = ["merge"]
-
+	description = "generic package set"
+	
 	def __init__(self, name):
 		self._name = name
 		self._atoms = set()
@@ -58,6 +59,12 @@ class PackageSet(object):
 			if match_from_list(a, cpv):
 				return True
 		return False
+	
+	def getMetadata(self, key):
+		if hasattr(self, key.lower()):
+			return getattr(self, key.lower())
+		else:
+			return ""
 	
 
 class EditablePackageSet(PackageSet):
@@ -107,7 +114,9 @@ def make_default_sets(configroot, root, profile_paths, settings=None,
 	from portage.sets.dbapi import EverythingSet
 	
 	rValue = set()
-	rValue.add(StaticFileSet("world", os.path.join(root, PRIVATE_PATH, "world")))
+	worldset = StaticFileSet("world", os.path.join(root, PRIVATE_PATH, "world"))
+	worldset.description = "Set of packages that were directly installed"
+	rValue.add(worldset)
 	for suffix in ["mask", "unmask", "keywords", "use"]:
 		myname = "package_"+suffix
 		myset = ConfigFileSet(myname, os.path.join(configroot, USER_CONFIG_PATH.lstrip(os.sep), "package."+suffix))
@@ -156,6 +165,7 @@ if __name__ == "__main__":
 		l = [s for s in l.union(l2) if s.getName() in sys.argv[1:]]
 	for x in l:
 		print x.getName()+":"
+		print "DESCRIPTION = %s" % x.getMetadata("Description")
 		for n in sorted(x.getAtoms()):
 			print "- "+n
 		print

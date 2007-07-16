@@ -12,6 +12,7 @@ class CommandOutputSet(PackageSet):
 	def __init__(self, name, command):
 		super(CommandOutputSet, self).__init__(name)
 		self._command = command
+		self.description = "Package set generated from output of '%s'" % self._command
 	
 	def load(self):
 		pipe = subprocess.Popen(self._command, stdout=subprocess.PIPE, shell=True)

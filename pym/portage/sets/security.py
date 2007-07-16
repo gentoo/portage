@@ -13,6 +13,8 @@ class SecuritySet(PackageSet):
 	_operations = ["merge"]
 	_skip_applied = False
 	
+	description = "package set that includes all packages possibly affected by a GLSA"
+		
 	def __init__(self, name, settings, vardbapi, portdbapi):
 		super(SecuritySet, self).__init__(name)
 		self._settings = settings
@@ -53,10 +55,14 @@ class SecuritySet(PackageSet):
 	
 class NewGlsaSet(SecuritySet):
 	_skip_applied = True
+	description = "Package set that includes all packages possibly affected by an unapplied GLSA"
 
 class AffectedSet(SecuritySet):
+	description = "Package set that includes all packages affected by an unapplied GLSA"
+
 	def useGlsa(self, myglsa):
 		return myglsa.isVulnerable()
 
 class NewAffectedSet(AffectedSet):
 	_skip_applied = True
+	description = "Package set that includes all packages affected by an unapplied GLSA"

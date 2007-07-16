@@ -8,7 +8,8 @@ from portage.sets import PackageSet
 
 class EverythingSet(PackageSet):
 	_operations = ["merge", "unmerge"]
-
+	description = "Package set containing all installed packages"
+	
 	def __init__(self, name, vdbapi):
 		super(EverythingSet, self).__init__(name)
 		self._db = vdbapi
@@ -32,6 +33,11 @@ class CategorySet(PackageSet):
 		self._db = portdbapi
 		self._category = category
 		self._check = only_visible
+		if only_visible:
+			s="visible"
+		else:
+			s="all"
+		self.description = "Package set containing %s packages of category %s" % (s, self._category)
 			
 	def load(self):
 		myatoms = []
