@@ -31,10 +31,8 @@ class PackageSet(object):
 	
 	def getAtoms(self):
 		if not self._loaded:
-			# Order is important for the next two statements as load() may change
-			# _loaded to a more specific value for editable subclasses
-			self._loaded = True
 			self.load()
+			self._loaded = True
 		return self._atoms
 
 	def _setAtoms(self, atoms):
@@ -63,6 +61,10 @@ class PackageSet(object):
 	
 
 class EditablePackageSet(PackageSet):
+	def getAtoms(self):
+		self.load()
+		return self._atoms
+
 	def updateAtoms(self, atoms):
 		self.load()
 		self._atoms.update(atoms)
