@@ -15,21 +15,15 @@ class SecuritySet(PackageSet):
 		self._vardbapi = vardbapi
 		self._portdbapi = portdbapi
 		
-	def loadCheckfile(self):
-		self._appliedlist = grabfile(os.path.join(os.sep, self._settings["ROOT"], CACHE_PATH, "glsa"))
-	
 	def load(self):
 		glsaindexlist = glsa.get_glsa_list(self._settings)
-		nodelist = []
+		atomlist = []
 		for glsaid in glsaindexlist:
 			myglsa = glsa.Glsa(glsaid, self._settings, self._vardbapi, self._portdbapi)
 			#print glsaid, myglsa.isVulnerable(), myglsa.isApplied(), myglsa.getMergeList()
 			if self.useGlsa(myglsa):
-				nodelist += myglsa.getMergeList(least_change=False)
-		self._setNodes(nodelist)
-	
-	def useGlsaId(self, glsaid):
-		return True
+				atomlist += myglsa.getMergeList(least_change=False)
+		self._setAtoms(atomlist)
 	
 	def useGlsa(self, myglsa):
 		return True

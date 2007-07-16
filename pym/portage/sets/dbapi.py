@@ -14,15 +14,15 @@ class EverythingSet(PackageSet):
 		self._db = vdbapi
 	
 	def load(self):
-		mynodes = []
+		myatoms = []
 		for cp in self._db.cp_all():
 			if len(self._db.cp_list(cp)) > 1:
 				for cpv in self._db.cp_list(cp):
 					myslot = self._db.aux_get(cpv, ["SLOT"])[0]
-					mynodes.append(cp+":"+myslot)
+					myatoms.append(cp+":"+myslot)
 			else:
-				mynodes.append(cp)
-		self._setNodes(mynodes)
+				myatoms.append(cp)
+		self._setAtoms(myatoms)
 
 class CategorySet(PackageSet):
 	_operations = ["merge", "unmerge"]
@@ -34,10 +34,10 @@ class CategorySet(PackageSet):
 		self._check = only_visible
 			
 	def load(self):
-		mynodes = []
+		myatoms = []
 		for cp in self._db.cp_all():
 			if catsplit(cp)[0] == self._category:
 				if (not self._check) or len(self._db.match(cp)) > 0:
-					mynodes.append(cp)
-		self._setNodes(mynodes)
+					myatoms.append(cp)
+		self._setAtoms(myatoms)
 	

@@ -6,18 +6,22 @@ import os
 
 from portage.const import PRIVATE_PATH, USER_CONFIG_PATH
 from portage.exception import InvalidAtom
-from portage.dep import isvalidatom
+from portage.dep import isvalidatom, match_from_list, dep_getkey
 
 OPERATIONS = ["merge", "unmerge", "edit"]
 DEFAULT_SETS = ["world", "system", "everything", "security"] \
 	+["package_"+x for x in ["mask", "unmask", "use", "keywords"]]
 
 class PackageSet(object):
+	# That this to operations that are supported by this set class. While 
+	# technically there is no difference between "merge" and "unmerge" regarding
+	# package sets, the latter doesn't make sense for some sets like "system"
+	# or "security" and therefore isn't supported by them.
 	_operations = ["merge"]
 
 	def __init__(self, name):
 		self._name = name
-		self._nodes = []
+		self._atoms = []
 		self._loaded = False
 	
 	def supportsOperation(self, op):
@@ -25,48 +29,66 @@ class PackageSet(object):
 			raise ValueError(op)
 		return op in self._operations
 	
-	def getNodes(self):
+	def getAtoms(self):
 		if not self._loaded:
 			self.load()
 			self._loaded = True
-		return self._nodes
+		return self._atoms
 
-	def _setNodes(self, nodes):
-		nodes = map(str.strip, nodes)
-		for n in nodes[:]:
-			if n == "":
-				nodes.remove(n)
-			elif not isvalidatom(n):
-				raise InvalidAtom(n)
-		self._nodes = nodes
+	def _setAtoms(self, atoms):
+		atoms = map(str.strip, atoms)
+		for a in atoms[:]:
+			if a == "":
+				atoms.remove(a)
+			elif not isvalidatom(a):
+				raise InvalidAtom(a)
+		self._atoms = atoms
 	
 	def getName(self):
 		return self._name
 	
-	def addNode(self, node):
+	def addAtom(self, atom):
 		if self.supportsOperation("edit"):
 			self.load()
-			self._nodes.append(node)
+			self._atoms.append(atom)
 			self.write()
 		else:
 			raise NotImplementedError()
 
-	def removeNode(self, node):
+	def removeAtom(self, atom):
 		if self.supportsOperation("edit"):
 			self.load()
-			self._nodes.remove(node)
+			self._atoms.remove(atom)
 			self.write()
 		else:
 			raise NotImplementedError()
+
+	def removePackageAtoms(self, cp):
+		for a in self.getAtoms():
+			if dep_getkey(a) == cp:
+				self.removeAtom(a)
 
 	def write(self):
+		# This method must be overwritten in subclasses that should be editable
 		raise NotImplementedError()
 
 	def load(self):
+		# This method must be overwritten by subclasses
 		raise NotImplementedError()
 
-class EmptyPackageSet(PackageSet):
-	_operations = ["merge", "unmerge"]
+	def containsCPV(self, cpv):
+		for a in self.getAtoms():
+			if match_from_list(a, cpv):
+				return True
+		return False
+	
+
+class InternalPackageSet(PackageSet):
+	_operations = ["merge", "unmerge", "edit"]
+	
+	def load(self):
+		pass
+
 
 def make_default_sets(configroot, root, profile_paths, settings=None, 
 		vdbapi=None, portdbapi=None):
@@ -85,11 +107,11 @@ def make_default_sets(configroot, root, profile_paths, settings=None,
 	if settings != None and portdbapi != None:
 		rValue.add(AffectedSet("security", settings, vdbapi, portdbapi))
 	else:
-		rValue.add(EmptyPackageSet("security"))
+		rValue.add(InternalPackageSet("security"))
 	if vdbapi != None:
 		rValue.add(EverythingSet("everything", vdbapi))
 	else:
-		rValue.add(EmptyPackageSet("everything"))
+		rValue.add(InternalPackageSet("everything"))
 
 	return rValue
 
@@ -108,13 +130,23 @@ def make_extra_static_sets(configroot):
 		rValue.add(StaticFileSet(fname, os.path.join(mydir, myname)))
 	return rValue
 
+def make_category_sets(portdbapi, settings, only_visible=True):
+	from portage.sets.dbapi import CategorySet
+	rValue = set()
+	for c in settings.categories:
+		rValue.add(CategorySet("category_%s" % c, c, portdbapi, only_visible=only_visible))
+	return rValue
+
 # adhoc test code
 if __name__ == "__main__":
-	import portage
+	import portage, sys
 	l = make_default_sets("/", "/", portage.settings.profiles, portage.settings, portage.db["/"]["vartree"].dbapi, portage.db["/"]["porttree"].dbapi)
 	l.update(make_extra_static_sets("/"))
+	l2 = make_category_sets(portage.db["/"]["porttree"].dbapi, portage.settings)
+	if len(sys.argv) > 1:
+		l = [s for s in l.union(l2) if s.getName() in sys.argv[1:]]
 	for x in l:
 		print x.getName()+":"
-		for n in sorted(x.getNodes()):
+		for n in sorted(x.getAtoms()):
 			print "- "+n
 		print

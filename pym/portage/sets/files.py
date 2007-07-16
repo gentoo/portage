@@ -14,10 +14,10 @@ class StaticFileSet(PackageSet):
 		self._filename = filename
 	
 	def write(self):
-		write_atomic(self._filename, "\n".join(self._nodes)+"\n")
+		write_atomic(self._filename, "\n".join(self._atoms)+"\n")
 	
 	def load(self):
-		self._setNodes(grabfile_package(self._filename, recursive=True))
+		self._setAtoms(grabfile_package(self._filename, recursive=True))
 	
 class ConfigFileSet(StaticFileSet):
 	_operations = ["merge", "unmerge"]
@@ -26,5 +26,5 @@ class ConfigFileSet(StaticFileSet):
 		raise NotImplementedError()
 	
 	def load(self):
-		self._setNodes(grabdict_package(self._filename, recursive=True).keys())
+		self._setAtoms(grabdict_package(self._filename, recursive=True).keys())
 

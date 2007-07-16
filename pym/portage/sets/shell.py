@@ -17,5 +17,5 @@ class CommandOutputSet(PackageSet):
 		pipe = subprocess.Popen(self._command, stdout=subprocess.PIPE, shell=True)
 		if pipe.wait() == os.EX_OK:
 			text = pipe.stdout.read()
-			self._setNodes(text.split("\n"))
+			self._setAtoms(text.split("\n"))
 		
