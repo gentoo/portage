@@ -157,12 +157,22 @@ def make_category_sets(portdbapi, settings, only_visible=True):
 
 # adhoc test code
 if __name__ == "__main__":
-	import portage, sys
+	import portage, sys, os
+	from portage.sets.dbapi import CategorySet
+	from portage.sets.files import StaticFileSet
 	l = make_default_sets("/", "/", portage.settings.profiles, portage.settings, portage.db["/"]["vartree"].dbapi, portage.db["/"]["porttree"].dbapi)
 	l.update(make_extra_static_sets("/"))
-	l2 = make_category_sets(portage.db["/"]["porttree"].dbapi, portage.settings)
 	if len(sys.argv) > 1:
-		l = [s for s in l.union(l2) if s.getName() in sys.argv[1:]]
+		for s in sys.argv[1:]:
+			if s.startswith("category_"):
+				c = s[9:]
+				l.add(CategorySet("category_%s" % c, c, portdbapi, only_visible=only_visible))
+			elif os.path.exists(s):
+				l.add(StaticFileSet(os.path.basename(s), s))
+			elif s != "*":
+				print "ERROR: could not create set '%s'" % s
+		if not "*" in sys.argv:
+			l = [s for s in l if s.getName() in sys.argv[1:]]
 	for x in l:
 		print x.getName()+":"
 		print "DESCRIPTION = %s" % x.getMetadata("Description")

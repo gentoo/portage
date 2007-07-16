@@ -18,6 +18,7 @@ class StaticFileSet(EditablePackageSet):
 		metadata = grabfile(self._filename + ".metadata")
 		key = None
 		for line in metadata:
+			line = line.strip()
 			if len(line) == 0 and key != None:
 				setattr(self, key, " ".join(value))
 				key = None
@@ -28,6 +29,9 @@ class StaticFileSet(EditablePackageSet):
 				value.append(line)
 			else:
 				pass
+		else:
+			if key != None:
+				setattr(self, key, " ".join(value))
 	
 	def write(self):
 		write_atomic(self._filename, "\n".join(self._atoms)+"\n")
