@@ -37,7 +37,7 @@ class StaticFileSet(EditablePackageSet):
 				setattr(self, key, " ".join(value))
 	
 	def write(self):
-		write_atomic(self._filename, "\n".join(self._atoms)+"\n")
+		write_atomic(self._filename, "\n".join(sorted(self._atoms))+"\n")
 	
 	def load(self):
 		try:
