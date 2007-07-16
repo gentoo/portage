@@ -16,6 +16,21 @@ def process(mysettings, key, logentries, fulltext):
 	mysubject = mysubject.replace("${PACKAGE}", key)
 	mysubject = mysubject.replace("${HOST}", socket.getfqdn())
 
+	# look at the phases listed in our logentries to figure out what action was performed
+	action = "merged"
+	for phase in logentries.keys():
+		# if we found a *rm phase assume that the package was unmerged
+		if phase in ["postrm", "prerm"]:
+			action = "unmerged"
+	# if we think that the package was unmerged, make sure there was no unexpected
+	# phase recorded to avoid misinformation
+	if action == "unmerged":
+		for phase in logentries.keys():
+			if phase not in ["postrm", "prerm", "other"]:
+				action = "unknown"
+
+	mysubject = mysubject.replace("${ACTION}", action)
+
 	mymessage = portage.mail.create_message(myfrom, myrecipient, mysubject, fulltext)
 	portage.mail.send_mail(mysettings, mymessage)
 
