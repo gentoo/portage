@@ -27,7 +27,8 @@ class PackageSet(object):
 		self._atoms = set()
 		self._atommap = {}
 		self._loaded = False
-	
+		self._loading = False
+
 	def __contains__(self, atom):
 		return atom in self.getAtoms()
 	
@@ -41,9 +42,11 @@ class PackageSet(object):
 		return op in self._operations
 	
 	def getAtoms(self):
-		if not self._loaded:
+		if not self._loaded and not self._loading:
+			self._loading = True
 			self.load()
 			self._loaded = True
+			self._loading = False
 		return self._atoms
 
 	def _setAtoms(self, atoms):
