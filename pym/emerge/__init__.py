@@ -53,6 +53,7 @@ from portage.data import secpass
 from portage.util import normalize_path as normpath
 from portage.util import writemsg
 from portage.sets import InternalPackageSet
+from portage.sets.profiles import PackagesSystemSet as SystemSet
 
 from itertools import chain, izip
 from UserDict import DictMixin
@@ -592,11 +593,6 @@ def clean_world(vardb, cpv):
 	world_set.save()
 	world_set.unlock()
 
-class SystemSet(InternalPackageSet):
-	def __init__(self, settings, **kwargs):
-		InternalPackageSet.__init__(self, **kwargs)
-		self.update(getlist(settings, "system"))
-
 class WorldSet(InternalPackageSet):
 	def __init__(self, settings, **kwargs):
 		InternalPackageSet.__init__(self, **kwargs)
@@ -630,7 +626,7 @@ class RootConfig(object):
 		world_set = WorldSet(self.settings)
 		world_set.xload()
 		self.sets["world"] = world_set
-		system_set = SystemSet(self.settings)
+		system_set = SystemSet("system", self.settings.profiles)
 		self.sets["system"] = system_set
 
 def create_world_atom(pkg_key, metadata, args_set, root_config):
@@ -5295,7 +5291,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	vardb = dep_check_trees[myroot]["vartree"].dbapi
 	# Constrain dependency selection to the installed packages.
 	dep_check_trees[myroot]["porttree"] = dep_check_trees[myroot]["vartree"]
-	system_set = SystemSet(settings)
+	system_set = SystemSet("system", settings.profiles)
 	syslist = list(system_set)
 	world_set = WorldSet(settings)
 	world_set.xload()
