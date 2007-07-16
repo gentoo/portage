@@ -556,7 +556,7 @@ class Glsa:
 		@rtype:		Boolean
 		@returns:	True if the GLSA was applied, False if not
 		"""
-		aList = grabfile(os.path.join(os.sep, self.config["ROOT"], CACHE_PATH.lstrip(os.sep)))
+		aList = grabfile(os.path.join(os.sep, self.config["ROOT"], CACHE_PATH.lstrip(os.sep), "glsa"))
 		return (self.nr in aList)
 
 	def inject(self):
@@ -569,7 +569,7 @@ class Glsa:
 		@returns:	None
 		"""
 		if not self.isApplied():
-			checkfile = open(os.path.join(os.sep, self.config["ROOT"], CACHE_PATH.lstrip(os.sep)), "a+")
+			checkfile = open(os.path.join(os.sep, self.config["ROOT"], CACHE_PATH.lstrip(os.sep), "glsa"), "a+")
 			checkfile.write(self.nr+"\n")
 			checkfile.close()
 		return None

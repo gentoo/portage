@@ -103,7 +103,7 @@ def make_default_sets(configroot, root, profile_paths, settings=None,
 		vdbapi=None, portdbapi=None):
 	from portage.sets.files import StaticFileSet, ConfigFileSet
 	from portage.sets.profiles import PackagesSystemSet
-	from portage.sets.security import AffectedSet
+	from portage.sets.security import NewAffectedSet
 	from portage.sets.dbapi import EverythingSet
 	
 	rValue = set()
@@ -114,7 +114,7 @@ def make_default_sets(configroot, root, profile_paths, settings=None,
 		rValue.add(myset)
 	rValue.add(PackagesSystemSet("system", profile_paths))
 	if settings != None and portdbapi != None:
-		rValue.add(AffectedSet("security", settings, vdbapi, portdbapi))
+		rValue.add(NewAffectedSet("security", settings, vdbapi, portdbapi))
 	else:
 		rValue.add(InternalPackageSet("security"))
 	if vdbapi != None:
