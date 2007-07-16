@@ -54,6 +54,7 @@ from portage.util import normalize_path as normpath
 from portage.util import writemsg
 from portage.sets import InternalPackageSet
 from portage.sets.profiles import PackagesSystemSet as SystemSet
+from portage.sets.files import WorldSet
 
 from itertools import chain, izip
 from UserDict import DictMixin
@@ -566,9 +567,8 @@ def getlist(settings, mode):
 
 def clean_world(vardb, cpv):
 	"""Remove a package from the world file when unmerged."""
-	world_set = WorldSet(vardb.settings)
+	world_set = WorldSet("world", vardb.settings["ROOT"])
 	world_set.lock()
-	world_set.xload()
 	worldlist = list(world_set)
 	mykey = portage.cpv_getkey(cpv)
 	newworldlist = []
@@ -588,32 +588,9 @@ def clean_world(vardb, cpv):
 			#this doesn't match the package we're unmerging; keep it.
 			newworldlist.append(x)
 
-	world_set.clear()
-	world_set.update(newworldlist)
-	world_set.save()
+	world_set.replace(newworldlist)
 	world_set.unlock()
 
-class WorldSet(InternalPackageSet):
-	def __init__(self, settings, **kwargs):
-		InternalPackageSet.__init__(self, **kwargs)
-		self.world_file = os.path.join(settings["ROOT"], portage.WORLD_FILE)
-		self._lock = None
-	def _ensure_dirs(self):
-		portage.util.ensure_dirs(os.path.dirname(self.world_file),
-			gid=portage.portage_gid, mode=02750, mask=02)
-	def xload(self):
-		self.clear()
-		self.update(portage.util.grabfile_package(self.world_file))
-	def save(self):
-		self._ensure_dirs()
-		portage.write_atomic(self.world_file,
-			"\n".join(sorted(self)) + "\n")
-	def lock(self):
-		self._ensure_dirs()
-		self._lock = portage.locks.lockfile(self.world_file, wantnewlockfile=1)
-	def unlock(self):
-		portage.locks.unlockfile(self._lock)
-		self._lock = None
 
 class RootConfig(object):
 	"""This is used internally by depgraph to track information about a
@@ -623,8 +600,7 @@ class RootConfig(object):
 		self.settings = trees["vartree"].settings
 		self.root = self.settings["ROOT"]
 		self.sets = {}
-		world_set = WorldSet(self.settings)
-		world_set.xload()
+		world_set = WorldSet("world", self.root)
 		self.sets["world"] = world_set
 		system_set = SystemSet("system", self.settings.profiles)
 		self.sets["system"] = system_set
@@ -3220,7 +3196,6 @@ class depgraph(object):
 		root_config = self.roots[self.target_root]
 		world_set = root_config.sets["world"]
 		world_set.lock()
-		world_set.xload()
 		args_set = self._sets["args"]
 		portdb = self.trees[self.target_root]["porttree"].dbapi
 		added_favorites = set()
@@ -3245,8 +3220,6 @@ class depgraph(object):
 				writemsg("!!! see '%s'\n\n" % os.path.join(
 					root, portage.VDB_PATH, pkg_key, "PROVIDE"), noiselevel=-1)
 				del e
-		if added_favorites:
-			world_set.save()
 		world_set.unlock()
 
 	def loadResumeCommand(self, resume_data):
@@ -3770,17 +3743,15 @@ class MergeTask(object):
 				if not fetchonly and not pretend and \
 					args_set.containsCPV(pkg_key):
 					world_set.lock()
-					world_set.xload()
 					myfavkey = create_world_atom(pkg_key, metadata,
 						args_set, root_config)
 					if myfavkey:
-						world_set.add(myfavkey)
 						print ">>> Recording",myfavkey,"in \"world\" favorites file..."
 						emergelog(xterm_titles, " === ("+\
 							str(mergecount)+" of "+\
 							str(len(mymergelist))+\
 							") Updating world file ("+x[pkgindex]+")")
-						world_set.save()
+						world_set.add(myfavkey)
 					world_set.unlock()
 
 				if "--pretend" not in self.myopts and \
@@ -5293,8 +5264,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	dep_check_trees[myroot]["porttree"] = dep_check_trees[myroot]["vartree"]
 	system_set = SystemSet("system", settings.profiles)
 	syslist = list(system_set)
-	world_set = WorldSet(settings)
-	world_set.xload()
+	world_set = WorldSet("world", myroot)
 	worldlist = list(world_set)
 	fakedb = portage.fakedbapi(settings=settings)
 	myvarlist = vardb.cpv_all()
