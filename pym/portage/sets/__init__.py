@@ -8,7 +8,7 @@ from portage.const import PRIVATE_PATH, USER_CONFIG_PATH
 from portage.exception import InvalidAtom
 from portage.dep import isvalidatom, match_from_list, dep_getkey
 
-OPERATIONS = ["merge", "unmerge", "edit"]
+OPERATIONS = ["merge", "unmerge"]
 DEFAULT_SETS = ["world", "system", "everything", "security"] \
 	+["package_"+x for x in ["mask", "unmask", "use", "keywords"]]
 
@@ -22,7 +22,7 @@ class PackageSet(object):
 	def __init__(self, name):
 		self._name = name
 		self._atoms = set()
-		self._mtime = None
+		self._loaded = False
 	
 	def supportsOperation(self, op):
 		if not op in OPERATIONS:
@@ -30,7 +30,10 @@ class PackageSet(object):
 		return op in self._operations
 	
 	def getAtoms(self):
-		if not self._mtime or self.supportsOperation("edit"):
+		if not self._loaded:
+			# Order is important for the next two statements as load() may change
+			# _loaded to a more specific value for editable subclasses
+			self._loaded = True
 			self.load()
 		return self._atoms
 
@@ -42,40 +45,10 @@ class PackageSet(object):
 			elif not isvalidatom(a):
 				raise InvalidAtom(a)
 		self._atoms = atoms
-		if not self.supportsOperation("edit"):
-			self._mtime = True
 	
 	def getName(self):
 		return self._name
 	
-	def updateAtoms(self, atoms):
-		if self.supportsOperation("edit"):
-			self.load()
-			self._atoms.update(atoms)
-			self.write()
-		else:
-			raise NotImplementedError()
-	
-	def addAtom(self, atom):
-		self.updateAtoms([atom])
-
-	def removeAtom(self, atom):
-		if self.supportsOperation("edit"):
-			self.load()
-			self._atoms.discard(atom)
-			self.write()
-		else:
-			raise NotImplementedError()
-
-	def removePackageAtoms(self, cp):
-		for a in self.getAtoms():
-			if dep_getkey(a) == cp:
-				self.removeAtom(a)
-
-	def write(self):
-		# This method must be overwritten in subclasses that should be editable
-		raise NotImplementedError()
-
 	def load(self):
 		# This method must be overwritten by subclasses
 		# Editable sets should use the value of self._mtime to determine if they
@@ -89,8 +62,34 @@ class PackageSet(object):
 		return False
 	
 
-class InternalPackageSet(PackageSet):
-	_operations = ["merge", "unmerge", "edit"]
+class EditablePackageSet(PackageSet):
+	def updateAtoms(self, atoms):
+		self.load()
+		self._atoms.update(atoms)
+		self.write()
+	
+	def addAtom(self, atom):
+		self.updateAtoms([atom])
+
+	def removeAtom(self, atom):
+		self.load()
+		self._atoms.discard(atom)
+		self.write()
+
+	def removePackageAtoms(self, cp):
+		self.load()
+		for a in self.getAtoms():
+			if dep_getkey(a) == cp:
+				self._atoms.discard(a)
+		self.write()
+
+	def write(self):
+		# This method must be overwritten in subclasses that should be editable
+		raise NotImplementedError()
+
+
+class InternalPackageSet(EditablePackageSet):
+	_operations = ["merge", "unmerge"]
 	
 	def load(self):
 		pass
