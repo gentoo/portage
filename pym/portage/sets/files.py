@@ -3,6 +3,7 @@
 # $Id$
 
 from portage.util import grabfile_package, grabdict_package, write_atomic
+import os
 
 from portage.sets import PackageSet
 
@@ -17,6 +18,12 @@ class StaticFileSet(PackageSet):
 		write_atomic(self._filename, "\n".join(self._atoms)+"\n")
 	
 	def load(self):
+		mtime = os.stat(self._filename).st_mtime
+		if not self._mtime or self._mtime != mtime:
+			self._load()
+			self._mtime = mtime
+	
+	def _load(self):
 		self._setAtoms(grabfile_package(self._filename, recursive=True))
 	
 class ConfigFileSet(StaticFileSet):
@@ -25,6 +32,6 @@ class ConfigFileSet(StaticFileSet):
 	def write(self):
 		raise NotImplementedError()
 	
-	def load(self):
+	def _load(self):
 		self._setAtoms(grabdict_package(self._filename, recursive=True).keys())
 

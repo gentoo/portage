@@ -13,7 +13,7 @@ DEFAULT_SETS = ["world", "system", "everything", "security"] \
 	+["package_"+x for x in ["mask", "unmask", "use", "keywords"]]
 
 class PackageSet(object):
-	# That this to operations that are supported by this set class. While 
+	# Set this to operations that are supported by your subclass. While 
 	# technically there is no difference between "merge" and "unmerge" regarding
 	# package sets, the latter doesn't make sense for some sets like "system"
 	# or "security" and therefore isn't supported by them.
@@ -21,8 +21,8 @@ class PackageSet(object):
 
 	def __init__(self, name):
 		self._name = name
-		self._atoms = []
-		self._loaded = False
+		self._atoms = set()
+		self._mtime = None
 	
 	def supportsOperation(self, op):
 		if not op in OPERATIONS:
@@ -30,9 +30,8 @@ class PackageSet(object):
 		return op in self._operations
 	
 	def getAtoms(self):
-		if not self._loaded:
+		if not self._mtime or self.supportsOperation("edit"):
 			self.load()
-			self._loaded = True
 		return self._atoms
 
 	def _setAtoms(self, atoms):
@@ -43,22 +42,27 @@ class PackageSet(object):
 			elif not isvalidatom(a):
 				raise InvalidAtom(a)
 		self._atoms = atoms
+		if not self.supportsOperation("edit"):
+			self._mtime = True
 	
 	def getName(self):
 		return self._name
 	
-	def addAtom(self, atom):
+	def updateAtoms(self, atoms):
 		if self.supportsOperation("edit"):
 			self.load()
-			self._atoms.append(atom)
+			self._atoms.update(atoms)
 			self.write()
 		else:
 			raise NotImplementedError()
+	
+	def addAtom(self, atom):
+		self.updateAtoms([atom])
 
 	def removeAtom(self, atom):
 		if self.supportsOperation("edit"):
 			self.load()
-			self._atoms.remove(atom)
+			self._atoms.discard(atom)
 			self.write()
 		else:
 			raise NotImplementedError()
@@ -74,6 +78,8 @@ class PackageSet(object):
 
 	def load(self):
 		# This method must be overwritten by subclasses
+		# Editable sets should use the value of self._mtime to determine if they
+		# need to reload themselves
 		raise NotImplementedError()
 
 	def containsCPV(self, cpv):
@@ -89,6 +95,8 @@ class InternalPackageSet(PackageSet):
 	def load(self):
 		pass
 
+	def write(self):
+		pass
 
 def make_default_sets(configroot, root, profile_paths, settings=None, 
 		vdbapi=None, portdbapi=None):
