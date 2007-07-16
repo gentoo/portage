@@ -42,7 +42,7 @@ class PackageSet(object):
 		return op in self._operations
 	
 	def getAtoms(self):
-		if not self._loaded and not self._loading:
+		if not (self._loaded or self._loading):
 			self._loading = True
 			self.load()
 			self._loaded = True
@@ -78,7 +78,7 @@ class PackageSet(object):
 			return ""
 	
 	def _updateAtomMap(self):
-		for a in self.getAtoms():
+		for a in self._atoms:
 			cp = dep_getkey(a)
 			self._atommap.setdefault(cp, set())
 			self._atommap[cp].add(a)
