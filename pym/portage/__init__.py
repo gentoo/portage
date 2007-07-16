@@ -1483,6 +1483,9 @@ class config(object):
 					self.features.remove("usersandbox")
 
 			self.features.sort()
+			if "gpg" in self.features:
+				writemsg(colorize("WARN", "!!! FEATURES=gpg is unmaintained, incomplete and broken. Disabling it."), noiselevel=-1)
+				self.features.remove("gpg")
 			self["FEATURES"] = " ".join(self.features)
 			self.backup_changes("FEATURES")
 

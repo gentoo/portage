@@ -53,6 +53,9 @@ from portage.const import EPREFIX
 from portage.data import secpass
 from portage.util import normalize_path as normpath
 from portage.util import writemsg
+from portage.sets import InternalPackageSet
+from portage.sets.profiles import PackagesSystemSet as SystemSet
+from portage.sets.files import WorldSet
 
 from itertools import chain, izip
 from UserDict import DictMixin
@@ -565,9 +568,8 @@ def getlist(settings, mode):
 
 def clean_world(vardb, cpv):
 	"""Remove a package from the world file when unmerged."""
-	world_set = WorldSet(vardb.settings)
+	world_set = WorldSet("world", vardb.settings["ROOT"])
 	world_set.lock()
-	world_set.load()
 	worldlist = list(world_set)
 	mykey = portage.cpv_getkey(cpv)
 	newworldlist = []
@@ -587,91 +589,9 @@ def clean_world(vardb, cpv):
 			#this doesn't match the package we're unmerging; keep it.
 			newworldlist.append(x)
 
-	world_set.clear()
-	world_set.update(newworldlist)
-	world_set.save()
+	world_set.replace(newworldlist)
 	world_set.unlock()
 
-class AtomSet(object):
-	def __init__(self, atoms=None):
-		self._atoms = {}
-		if atoms:
-			self.update(atoms)
-	def clear(self):
-		self._atoms.clear()
-	def add(self, atom):
-		cp = portage.dep_getkey(atom)
-		cp_list = self._atoms.get(cp)
-		if cp_list is None:
-			cp_list = []
-			self._atoms[cp] = cp_list
-		if atom not in cp_list:
-			cp_list.append(atom)
-	def update(self, atoms):
-		for atom in atoms:
-			self.add(atom)
-	def __contains__(self, atom):
-		cp = portage.dep_getkey(atom)
-		if cp in self._atoms and atom in self._atoms[cp]:
-			return True
-		return False
-	def findAtomForPackage(self, cpv, metadata):
-		"""Return the best match for a given package from the arguments, or
-		None if there are no matches.  This matches virtual arguments against
-		the PROVIDE metadata.  This can raise an InvalidDependString exception
-		if an error occurs while parsing PROVIDE."""
-		cpv_slot = "%s:%s" % (cpv, metadata["SLOT"])
-		cp = portage.dep_getkey(cpv)
-		atoms = self._atoms.get(cp)
-		if atoms:
-			best_match = portage.best_match_to_list(cpv_slot, atoms)
-			if best_match:
-				return best_match
-		if not metadata["PROVIDE"]:
-			return None
-		provides = portage.flatten(portage.dep.use_reduce(
-			portage.dep.paren_reduce(metadata["PROVIDE"]),
-			uselist=metadata["USE"].split()))
-		for provide in provides:
-			provided_cp = portage.dep_getkey(provide)
-			atoms = self._atoms.get(provided_cp)
-			if atoms:
-				transformed_atoms = [atom.replace(provided_cp, cp) for atom in atoms]
-				best_match = portage.best_match_to_list(cpv_slot, transformed_atoms)
-				if best_match:
-					return atoms[transformed_atoms.index(best_match)]
-		return None
-	def __iter__(self):
-		for atoms in self._atoms.itervalues():
-			for atom in atoms:
-				yield atom
-
-class SystemSet(AtomSet):
-	def __init__(self, settings, **kwargs):
-		AtomSet.__init__(self, **kwargs)
-		self.update(getlist(settings, "system"))
-
-class WorldSet(AtomSet):
-	def __init__(self, settings, **kwargs):
-		AtomSet.__init__(self, **kwargs)
-		self.world_file = os.path.join(settings["ROOT"], portage.WORLD_FILE)
-		self._lock = None
-	def _ensure_dirs(self):
-		portage.util.ensure_dirs(os.path.dirname(self.world_file),
-			gid=portage.portage_gid, mode=02750, mask=02)
-	def load(self):
-		self.clear()
-		self.update(portage.util.grabfile_package(self.world_file))
-	def save(self):
-		self._ensure_dirs()
-		portage.write_atomic(self.world_file,
-			"\n".join(sorted(self)) + "\n")
-	def lock(self):
-		self._ensure_dirs()
-		self._lock = portage.locks.lockfile(self.world_file, wantnewlockfile=1)
-	def unlock(self):
-		portage.locks.unlockfile(self._lock)
-		self._lock = None
 
 class RootConfig(object):
 	"""This is used internally by depgraph to track information about a
@@ -681,10 +601,9 @@ class RootConfig(object):
 		self.settings = trees["vartree"].settings
 		self.root = self.settings["ROOT"]
 		self.sets = {}
-		world_set = WorldSet(self.settings)
-		world_set.load()
+		world_set = WorldSet("world", self.root)
 		self.sets["world"] = world_set
-		system_set = SystemSet(self.settings)
+		system_set = SystemSet("system", self.settings.profiles)
 		self.sets["system"] = system_set
 
 def create_world_atom(pkg_key, metadata, args_set, root_config):
@@ -1145,10 +1064,10 @@ class depgraph(object):
 		# contains all sets added to the graph
 		self._sets = {}
 		# contains atoms given as arguments
-		self._sets["args"] = AtomSet()
+		self._sets["args"] = InternalPackageSet()
 		# contains all atoms from all sets added to the graph, including
 		# atoms given as arguments
-		self._set_atoms = AtomSet()
+		self._set_atoms = InternalPackageSet()
 		# contains all nodes pulled in by self._set_atoms
 		self._set_nodes = set()
 		self.blocker_digraph = digraph()
@@ -2589,8 +2508,7 @@ class depgraph(object):
 		if verbosity is None:
 			verbosity = ("--quiet" in self.myopts and 1 or \
 				"--verbose" in self.myopts and 3 or 2)
-		favorites_set = AtomSet()
-		favorites_set.update(favorites)
+		favorites_set = InternalPackageSet(favorites)
 		changelogs=[]
 		p=[]
 		blockers = []
@@ -3070,10 +2988,10 @@ class depgraph(object):
 				pkg_system = False
 				pkg_world = False
 				try:
-					pkg_system = system_set.findAtomForPackage(pkg_key, metadata)
-					pkg_world  = world_set.findAtomForPackage(pkg_key, metadata)
+					pkg_system = system_set.containsCPV(pkg_key)
+					pkg_world  = world_set.containsCPV(pkg_key)
 					if not pkg_world and myroot == self.target_root and \
-						favorites_set.findAtomForPackage(pkg_key, metadata):
+						favorites_set.containsCPV(pkg_key):
 						# Maybe it will be added to world now.
 						if create_world_atom(pkg_key, metadata,
 							favorites_set, root_config):
@@ -3279,7 +3197,6 @@ class depgraph(object):
 		root_config = self.roots[self.target_root]
 		world_set = root_config.sets["world"]
 		world_set.lock()
-		world_set.load()
 		args_set = self._sets["args"]
 		portdb = self.trees[self.target_root]["porttree"].dbapi
 		added_favorites = set()
@@ -3304,8 +3221,6 @@ class depgraph(object):
 				writemsg("!!! see '%s'\n\n" % os.path.join(
 					root, portage.VDB_PATH, pkg_key, "PROVIDE"), noiselevel=-1)
 				del e
-		if added_favorites:
-			world_set.save()
 		world_set.unlock()
 
 	def loadResumeCommand(self, resume_data):
@@ -3538,7 +3453,7 @@ class MergeTask(object):
 
 		root_config = RootConfig(self.trees[self.target_root])
 		system_set = root_config.sets["system"]
-		args_set = AtomSet(favorites)
+		args_set = InternalPackageSet(favorites)
 		world_set = root_config.sets["world"]
 		if "--resume" not in self.myopts:
 			mymergelist = mylist
@@ -3635,7 +3550,7 @@ class MergeTask(object):
 			#buildsyspkg: Check if we need to _force_ binary package creation
 			issyspkg = ("buildsyspkg" in myfeat) \
 					and x[0] != "blocks" \
-					and system_set.findAtomForPackage(pkg_key, metadata) \
+					and system_set.containsCPV(pkg_key) \
 					and "--buildpkg" not in self.myopts
 			if x[0] in ["ebuild","blocks"]:
 				if x[0] == "blocks" and "--fetchonly" not in self.myopts:
@@ -3827,19 +3742,17 @@ class MergeTask(object):
 				self.trees[x[1]]["vartree"].inject(x[2])
 				myfavkey = portage.cpv_getkey(x[2])
 				if not fetchonly and not pretend and \
-					args_set.findAtomForPackage(pkg_key, metadata):
+					args_set.containsCPV(pkg_key):
 					world_set.lock()
-					world_set.load()
 					myfavkey = create_world_atom(pkg_key, metadata,
 						args_set, root_config)
 					if myfavkey:
-						world_set.add(myfavkey)
 						print ">>> Recording",myfavkey,"in \"world\" favorites file..."
 						emergelog(xterm_titles, " === ("+\
 							str(mergecount)+" of "+\
 							str(len(mymergelist))+\
 							") Updating world file ("+x[pkgindex]+")")
-						world_set.save()
+						world_set.add(myfavkey)
 					world_set.unlock()
 
 				if "--pretend" not in self.myopts and \
@@ -5398,10 +5311,9 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	vardb = dep_check_trees[myroot]["vartree"].dbapi
 	# Constrain dependency selection to the installed packages.
 	dep_check_trees[myroot]["porttree"] = dep_check_trees[myroot]["vartree"]
-	system_set = SystemSet(settings)
+	system_set = SystemSet("system", settings.profiles)
 	syslist = list(system_set)
-	world_set = WorldSet(settings)
-	world_set.load()
+	world_set = WorldSet("world", myroot)
 	worldlist = list(world_set)
 	fakedb = portage.fakedbapi(settings=settings)
 	myvarlist = vardb.cpv_all()

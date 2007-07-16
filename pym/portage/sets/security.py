@@ -3,41 +3,66 @@
 # $Id$
 
 import portage.glsa as glsa
+from portage.util import grabfile
+from portage.const import CACHE_PATH
+import os
 
 from portage.sets import PackageSet
 
 class SecuritySet(PackageSet):
 	_operations = ["merge"]
-
+	_skip_applied = False
+	
+	description = "package set that includes all packages possibly affected by a GLSA"
+		
 	def __init__(self, name, settings, vardbapi, portdbapi):
 		super(SecuritySet, self).__init__(name)
 		self._settings = settings
 		self._vardbapi = vardbapi
 		self._portdbapi = portdbapi
-		
-	def loadCheckfile(self):
-		self._appliedlist = grabfile(os.path.join(os.sep, self._settings["ROOT"], CACHE_PATH, "glsa"))
-	
-	def load(self):
+		self._checkfile = os.path.join(os.sep, self._settings["ROOT"], CACHE_PATH.lstrip(os.sep), "glsa")
+
+	def getGlsaList(self, skip_applied):
 		glsaindexlist = glsa.get_glsa_list(self._settings)
-		nodelist = []
+		if skip_applied:
+			applied_list = grabfile(self._checkfile)
+			glsaindexlist = set(glsaindexlist).difference(applied_list)
+			glsaindexlist = list(glsaindexlist)
+		glsaindexlist.sort()
+		return glsaindexlist
+		
+	def load(self):
+		glsaindexlist = self.getGlsaList(self._skip_applied)
+		atomlist = []
 		for glsaid in glsaindexlist:
 			myglsa = glsa.Glsa(glsaid, self._settings, self._vardbapi, self._portdbapi)
 			#print glsaid, myglsa.isVulnerable(), myglsa.isApplied(), myglsa.getMergeList()
 			if self.useGlsa(myglsa):
-				nodelist += myglsa.getMergeList(least_change=False)
-		self._setNodes(nodelist)
-	
-	def useGlsaId(self, glsaid):
-		return True
+				atomlist += myglsa.getMergeList(least_change=False)
+		self._setAtoms(atomlist)
 	
 	def useGlsa(self, myglsa):
 		return True
+
+	def updateAppliedList(self):
+		glsaindexlist = self.getGlsaList(True)
+		applied_list = grabfile(self._checkfile)
+		for glsaid in glsaindexlist:
+			myglsa = glsa.Glsa(glsaid, self._settings, self._vardbapi, self._portdbapi)
+			if not myglsa.isVulnerable():
+				applied_list.append(glsaid)
+		write_atomic(self._checkfile, "\n".join(applied_list))
 	
 class NewGlsaSet(SecuritySet):
-	def useGlsa(self, myglsa):
-		return not myglsa.isApplied()
+	_skip_applied = True
+	description = "Package set that includes all packages possibly affected by an unapplied GLSA"
 
 class AffectedSet(SecuritySet):
+	description = "Package set that includes all packages affected by an unapplied GLSA"
+
 	def useGlsa(self, myglsa):
 		return myglsa.isVulnerable()
+
+class NewAffectedSet(AffectedSet):
+	_skip_applied = True
+	description = "Package set that includes all packages affected by an unapplied GLSA"

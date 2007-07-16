@@ -45,7 +45,7 @@ save_elf_debug() {
 	hasq splitdebug ${FEATURES} || return 0
 
 	local x=$1
-	local y="${ED}usr/lib/debug/${x:${#ED}}.debug"
+	local y="${ED}usr/lib/debug/${x:${#D}}.debug"
 
 	# dont save debug info twice
 	[[ ${x} == *".debug" ]] && return 0
@@ -116,7 +116,7 @@ do
 			${STRIP} ${PORTAGE_STRIP_FLAGS} "${x}"
 		fi
 	elif [[ ${f} == *"SB relocatable"* ]] ; then
-		vecho "   ${x:${#D}}"
+		vecho "   ${x:${#ED}}"
 		save_elf_sources "${x}"
 		if ${strip_this} ; then
 			[[ ${x} == *.ko ]] && save_elf_debug "${x}"
