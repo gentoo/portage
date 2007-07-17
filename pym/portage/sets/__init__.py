@@ -135,7 +135,7 @@ class EditablePackageSet(PackageSet):
 		self.write()
 
 	def removePackageAtoms(self, cp):
-		for a in self.getAtoms():
+		for a in list(self.getAtoms()):
 			if dep_getkey(a) == cp:
 				self.remove(a)
 		self.write()
