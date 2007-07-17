@@ -56,7 +56,7 @@ class PackageSet(object):
 				atoms.remove(a)
 			elif not isvalidatom(a):
 				raise InvalidAtom(a)
-		self._atoms = atoms
+		self._atoms = set(atoms)
 		self._updateAtomMap()
 
 	def load(self):
