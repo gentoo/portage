@@ -1414,6 +1414,7 @@ class depgraph(object):
 		"given a list of .tbz2s, .ebuilds and deps, create the appropriate depgraph and return a favorite list"
 		myfavorites=[]
 		myroot = self.target_root
+		vardb = self.trees[myroot]["vartree"].dbapi
 		portdb = self.trees[myroot]["porttree"].dbapi
 		bindb = self.trees[myroot]["bintree"].dbapi
 		pkgsettings = self.pkgsettings[myroot]
@@ -1493,13 +1494,19 @@ class depgraph(object):
 					if "--usepkg" in self.myopts:
 						mykey = portage.dep_expand(x, mydb=bindb,
 							settings=pkgsettings)
-					if (mykey and not mykey.startswith("null/")) or \
-						"--usepkgonly" in self.myopts:
+					if "--usepkgonly" in self.myopts or \
+						(mykey and not portage.dep_getkey(mykey).startswith("null/")):
 						arg_atoms.append((x, mykey))
 						continue
 
-					mykey = portage.dep_expand(x,
-						mydb=portdb, settings=pkgsettings)
+					try:
+						mykey = portage.dep_expand(x,
+							mydb=portdb, settings=pkgsettings)
+					except ValueError:
+						mykey = portage.dep_expand(x,
+							mydb=vardb, settings=pkgsettings)
+						if portage.dep_getkey(mykey).startswith("null/"):
+							raise
 					arg_atoms.append((x, mykey))
 				except ValueError, errpkgs:
 					print "\n\n!!! The short ebuild name \"" + x + "\" is ambiguous.  Please specify"
