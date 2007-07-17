@@ -1502,11 +1502,14 @@ class depgraph(object):
 					try:
 						mykey = portage.dep_expand(x,
 							mydb=portdb, settings=pkgsettings)
-					except ValueError:
+					except ValueError, e:
 						mykey = portage.dep_expand(x,
 							mydb=vardb, settings=pkgsettings)
-						if portage.dep_getkey(mykey).startswith("null/"):
+						cp = portage.dep_getkey(mykey)
+						if cp.startswith("null/") or \
+							cp not in e[0]:
 							raise
+						del e
 					arg_atoms.append((x, mykey))
 				except ValueError, errpkgs:
 					print "\n\n!!! The short ebuild name \"" + x + "\" is ambiguous.  Please specify"
