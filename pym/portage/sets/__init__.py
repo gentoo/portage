@@ -114,12 +114,9 @@ class PackageSet(object):
 		return None
 
 class EditablePackageSet(PackageSet):
-	def getAtoms(self):
-		self.load()
-		return self._atoms
 
 	def update(self, atoms):
-		self.load()
+		self.getAtoms()
 		self._atoms.update(atoms)
 		self._updateAtomMap()
 		self.write()
@@ -132,13 +129,12 @@ class EditablePackageSet(PackageSet):
 		self.write()
 
 	def remove(self, atom):
-		self.load()
+		self.getAtoms()
 		self._atoms.discard(atom)
 		self._updateAtomMap()
 		self.write()
 
 	def removePackageAtoms(self, cp):
-		self.load()
 		for a in self.getAtoms():
 			if dep_getkey(a) == cp:
 				self.remove(a)
