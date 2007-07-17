@@ -91,6 +91,7 @@ class PackageSet(object):
 		if an error occurs while parsing PROVIDE."""
 		cpv_slot = "%s:%s" % (cpv, metadata["SLOT"])
 		cp = dep_getkey(cpv)
+		self.getAtoms() # make sure the atoms are loaded
 		atoms = self._atommap.get(cp)
 		if atoms:
 			best_match = best_match_to_list(cpv_slot, atoms)
