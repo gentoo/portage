@@ -569,7 +569,7 @@ def clean_world(vardb, cpv):
 	"""Remove a package from the world file when unmerged."""
 	world_set = WorldSet("world", vardb.settings["ROOT"])
 	world_set.lock()
-	worldlist = list(world_set)
+	worldlist = list(world_set) # loads latest from disk
 	mykey = portage.cpv_getkey(cpv)
 	newworldlist = []
 	for x in worldlist:
@@ -3196,6 +3196,7 @@ class depgraph(object):
 		root_config = self.roots[self.target_root]
 		world_set = root_config.sets["world"]
 		world_set.lock()
+		world_set.load() # maybe it's changed on disk
 		args_set = self._sets["args"]
 		portdb = self.trees[self.target_root]["porttree"].dbapi
 		added_favorites = set()
@@ -3743,6 +3744,7 @@ class MergeTask(object):
 				if not fetchonly and not pretend and \
 					args_set.containsCPV(pkg_key):
 					world_set.lock()
+					world_set.load() # maybe it's changed on disk
 					myfavkey = create_world_atom(pkg_key, metadata,
 						args_set, root_config)
 					if myfavkey:
