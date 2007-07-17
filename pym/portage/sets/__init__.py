@@ -78,6 +78,7 @@ class PackageSet(object):
 			return ""
 	
 	def _updateAtomMap(self):
+		self._atommap.clear()
 		for a in self._atoms:
 			cp = dep_getkey(a)
 			self._atommap.setdefault(cp, set())
