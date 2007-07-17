@@ -1016,7 +1016,6 @@ class depgraph(object):
 		self.mydbapi = {}
 		self._mydbapi_keys = ["SLOT", "DEPEND", "RDEPEND", "PDEPEND",
 			"USE", "IUSE", "PROVIDE", "RESTRICT", "repository"]
-		self.useFlags = {}
 		self.trees = {}
 		self.roots = {}
 		for myroot in trees:
@@ -1046,7 +1045,6 @@ class depgraph(object):
 						metadata=dict(izip(self._mydbapi_keys,
 						vardb.aux_get(pkg, self._mydbapi_keys))))
 			del vardb, fakedb
-			self.useFlags[myroot] = {}
 			if "--usepkg" in self.myopts:
 				self.trees[myroot]["bintree"].populate(
 					"--getbinpkg" in self.myopts,
@@ -1208,6 +1206,10 @@ class depgraph(object):
 			pkgsettings.setcpv(mykey, mydb=portdb)
 			metadata["USE"] = pkgsettings["USE"]
 			myuse = pkgsettings["USE"].split()
+		else:
+			# The myuse parameter to this method is deprecated, so get it
+			# directly from the metadata here.
+			myuse = metadata["USE"].split()
 
 		if not arg and myroot == self.target_root:
 			try:
@@ -1306,7 +1308,6 @@ class depgraph(object):
 				# self.pkg_node_map and self.mydbapi since that data will
 				# be used for blocker validation.
 				self.pkg_node_map[myroot].setdefault(mykey, jbigkey)
-				self.useFlags[myroot].setdefault(mykey, myuse)
 				# Even though the graph is now invalid, continue to process
 				# dependencies so that things like --fetchonly can still
 				# function despite collisions.
@@ -1314,7 +1315,6 @@ class depgraph(object):
 				self.mydbapi[myroot].cpv_inject(mykey, metadata=metadata)
 				self._slot_node_map[myroot][slot_atom] = jbigkey
 				self.pkg_node_map[myroot][mykey] = jbigkey
-				self.useFlags[myroot][mykey] = myuse
 				if reinstall_for_flags:
 					self._reinstall_nodes[jbigkey] = reinstall_for_flags
 
@@ -1898,8 +1898,9 @@ class depgraph(object):
 					e_type, myroot, e_cpv, e_status = existing_node
 					if portage.match_from_list(x, [e_cpv]):
 						# The existing node can be reused.
-						selected_pkg = [e_type, myroot, e_cpv,
-							self.useFlags[myroot][e_cpv]]
+						# Just pass in None for myuse since
+						# self.create() doesn't use it anymore.
+						selected_pkg = [e_type, myroot, e_cpv, None]
 
 			if myparent:
 				#we are a dependency, so we want to be unconditionally added
@@ -2735,18 +2736,15 @@ class depgraph(object):
 						raise portage.exception.PackageNotFound(pkg_key)
 					repo_path_real = os.path.dirname(os.path.dirname(
 						os.path.dirname(ebuild_path)))
+					pkgsettings.setcpv(pkg_key)
+					metadata["USE"] = pkgsettings["USE"]
 				else:
 					repo_path_real = portdb.getRepositoryPath(repo_name)
-				if pkg_key not in self.useFlags[myroot]:
-					"""If this is a --resume then the USE flags need to be
-					fetched from the appropriate locations here."""
-					self.useFlags[myroot][pkg_key] = mydbapi.aux_get(
-						pkg_key, ["USE"])[0].split()
-
+				pkg_use = metadata["USE"].split()
 				try:
 					restrict = flatten(use_reduce(paren_reduce(
 						mydbapi.aux_get(pkg_key, ["RESTRICT"])[0]),
-						uselist=self.useFlags[myroot][pkg_key]))
+						uselist=pkg_use))
 				except portage.exception.InvalidDependString, e:
 					if pkg_status != "nomerge":
 						restrict = mydbapi.aux_get(pkg_key, ["RESTRICT"])[0]
@@ -2759,8 +2757,7 @@ class depgraph(object):
 					fetch = red("F")
 					if ordered:
 						counters.restrict_fetch += 1
-					if portdb.fetch_check(
-						pkg_key, self.useFlags[myroot][pkg_key]):
+					if portdb.fetch_check(pkg_key, pkg_use):
 						fetch = green("f")
 						if ordered:
 							counters.restrict_fetch_satisfied += 1
@@ -2813,7 +2810,7 @@ class depgraph(object):
 
 				verboseadd=""
 				
-				if pkg_key in self.useFlags[myroot]:
+				if True:
 					# USE flag display
 					cur_iuse = list(filter_iuse_defaults(
 						mydbapi.aux_get(pkg_key, ["IUSE"])[0].split()))
@@ -2825,7 +2822,7 @@ class depgraph(object):
 
 					cur_iuse = portage.unique_array(cur_iuse)
 					cur_iuse.sort()
-					cur_use = self.useFlags[myroot][pkg_key]
+					cur_use = pkg_use
 					cur_use = [flag for flag in cur_use if flag in cur_iuse]
 
 					if myoldbest:
@@ -2919,8 +2916,7 @@ class depgraph(object):
 					if pkg_type == "ebuild" and pkg_merge:
 						try:
 							myfilesdict = portdb.getfetchsizes(pkg_key,
-								useflags=self.useFlags[myroot][pkg_key],
-								debug=self.edebug)
+								useflags=pkg_use, debug=self.edebug)
 						except portage.exception.InvalidDependString, e:
 							src_uri = portdb.aux_get(pkg_key, ["SRC_URI"])[0]
 							show_invalid_depstring_notice(x, src_uri, str(e))
