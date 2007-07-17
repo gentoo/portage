@@ -3088,7 +3088,8 @@ class depgraph(object):
 		if verbosity == 3:
 			print
 			print counters
-			sys.stdout.write(str(repo_display))
+			if p:
+				sys.stdout.write(str(repo_display))
 
 		if "--changelog" in self.myopts:
 			print
