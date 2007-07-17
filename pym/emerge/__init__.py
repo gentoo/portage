@@ -2987,10 +2987,10 @@ class depgraph(object):
 				pkg_system = False
 				pkg_world = False
 				try:
-					pkg_system = system_set.containsCPV(pkg_key)
-					pkg_world  = world_set.containsCPV(pkg_key)
+					pkg_system = system_set.findAtomForPackage(pkg_key, metadata)
+					pkg_world  = world_set.findAtomForPackage(pkg_key, metadata)
 					if not pkg_world and myroot == self.target_root and \
-						favorites_set.containsCPV(pkg_key):
+						favorites_set.findAtomForPackage(pkg_key, metadata):
 						# Maybe it will be added to world now.
 						if create_world_atom(pkg_key, metadata,
 							favorites_set, root_config):
@@ -3550,7 +3550,7 @@ class MergeTask(object):
 			#buildsyspkg: Check if we need to _force_ binary package creation
 			issyspkg = ("buildsyspkg" in myfeat) \
 					and x[0] != "blocks" \
-					and system_set.containsCPV(pkg_key) \
+					and system_set.findAtomForPackage(pkg_key, metadata) \
 					and "--buildpkg" not in self.myopts
 			if x[0] in ["ebuild","blocks"]:
 				if x[0] == "blocks" and "--fetchonly" not in self.myopts:
@@ -3742,7 +3742,7 @@ class MergeTask(object):
 				self.trees[x[1]]["vartree"].inject(x[2])
 				myfavkey = portage.cpv_getkey(x[2])
 				if not fetchonly and not pretend and \
-					args_set.containsCPV(pkg_key):
+					args_set.findAtomForPackage(pkg_key, metadata):
 					world_set.lock()
 					world_set.load() # maybe it's changed on disk
 					myfavkey = create_world_atom(pkg_key, metadata,
