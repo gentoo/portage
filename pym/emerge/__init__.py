@@ -5237,7 +5237,7 @@ def action_search(settings, portdb, vartree, myopts, myfiles, spinner):
 			searchinstance.output()
 
 def action_depclean(settings, trees, ldpath_mtimes,
-	myopts, spinner):
+	myopts, action, myfiles, spinner):
 	# Kill packages that aren't explicitly merged or are required as a
 	# dependency of another package. World file is explicit.
 
@@ -5258,9 +5258,10 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	msg.append("consequence, it is often necessary to run\n")
 	msg.append(good("`emerge --update --newuse --deep world`") + " prior to depclean.\n")
 
-	portage.writemsg_stdout("\n")
-	for x in msg:
-		portage.writemsg_stdout(colorize("BAD", "*** WARNING ***  ") + x)
+	if action == "depclean":
+		portage.writemsg_stdout("\n")
+		for x in msg:
+			portage.writemsg_stdout(colorize("BAD", "*** WARNING ***  ") + x)
 
 	xterm_titles = "notitles" not in settings.features
 	myroot = settings["ROOT"]
@@ -5276,6 +5277,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	syslist = list(system_set)
 	world_set = WorldSet("world", myroot)
 	worldlist = list(world_set)
+	args_set = InternalPackageSet()
 	fakedb = portage.fakedbapi(settings=settings)
 	myvarlist = vardb.cpv_all()
 
@@ -5292,16 +5294,44 @@ def action_depclean(settings, trees, ldpath_mtimes,
 		if "--pretend" not in myopts:
 			countdown(int(settings["EMERGE_WARNING_DELAY"]), ">>> Depclean")
 
-	if not "--pretend" in myopts: #just check pretend, since --ask implies pretend
+	if action == "depclean":
 		emergelog(xterm_titles, " >>> depclean")
+	elif action == "prune":
+		for x in myfiles:
+			if not is_valid_package_atom(x):
+				portage.writemsg("!!! '%s' is not a valid package atom.\n" % x,
+					noiselevel=-1)
+				portage.writemsg("!!! Please check ebuild(5) for full details.\n")
+				return
+			try:
+				atom = portage.dep_expand(x, mydb=vardb, settings=settings)
+			except ValueError, e:
+				print "!!! The short ebuild name \"" + x + "\" is ambiguous.  Please specify"
+				print "!!! one of the following fully-qualified ebuild names instead:\n"
+				for i in e[0]:
+					print "    " + colorize("INFORM", i)
+				print
+				return
+			args_set.add(atom)
 
 	if "--quiet" not in myopts:
 		print "\nCalculating dependencies  ",
 
 	soft = 0
 	hard = 1
-	remaining_atoms = [(atom, 'world', hard) for atom in worldlist if vardb.match(atom)]
-	remaining_atoms += [(atom, 'system', hard) for atom in syslist if vardb.match(atom)]
+	remaining_atoms = []
+	if action == "depclean":
+		for atom in worldlist:
+			if vardb.match(atom):
+				remaining_atoms.append((atom, 'world', hard))
+		for atom in syslist:
+			if vardb.match(atom):
+				remaining_atoms.append((atom, 'system', hard))
+	elif action == "prune":
+		# Pull in everything that's installed since we don't want to prune a
+		# package if something depends on it.
+		remaining_atoms.extend((atom, 'world', hard) for atom in vardb.cp_all())
+
 	unresolveable = {}
 	aux_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
 	metadata_keys = ["PROVIDE", "SLOT", "USE"]
@@ -5313,7 +5343,25 @@ def action_depclean(settings, trees, ldpath_mtimes,
 			if not atom.startswith("!") and priority == hard:
 				unresolveable.setdefault(atom, []).append(parent)
 			continue
-		if len(pkgs) > 1 and parent != "world":
+		prune_this = False
+		if action == "prune":
+			for pkg in pkgs:
+				metadata = dict(izip(metadata_keys,
+					vardb.aux_get(pkg, metadata_keys)))
+				try:
+					arg_atom = args_set.findAtomForPackage(pkg, metadata)
+				except portage.exception.InvalidDependString, e:
+					file_path = os.path.join(myroot, VDB_PATH, pkg, "PROVIDE")
+					portage.writemsg("\n\nInvalid PROVIDE: %s\n" % str(s),
+						noiselevel=-1)
+					portage.writemsg("See '%s'\n" % file_path,
+						noiselevel=-1)
+					del e
+					continue
+				if arg_atom:
+					prune_this = True
+					break
+		if len(pkgs) > 1 and (parent != "world" or prune_this):
 			# Prune all but the best matching slot, since that's all that a
 			# deep world update would pull in.  Don't prune if this atom comes
 			# directly from world though, since world atoms are greedy when
@@ -5379,6 +5427,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 		print
 		for atom in unresolveable:
 			print atom, "required by", " ".join(unresolveable[atom])
+	if unresolveable and action == "depclean":
 		print
 		print "Have you forgotten to run " + good("`emerge --update --newuse --deep world`") + " prior to"
 		print "depclean?  It may be necessary to manually uninstall packages that no longer"
@@ -5388,11 +5437,26 @@ def action_depclean(settings, trees, ldpath_mtimes,
 		print
 		return
 
-	cleanlist = [pkg for pkg in vardb.cpv_all() if not fakedb.cpv_exists(pkg)]
+	cleanlist = []
+	if action == "depclean":
+		for pkg in vardb.cpv_all():
+			if not fakedb.cpv_exists(pkg):
+				cleanlist.append(pkg)
+	elif action == "prune":
+		for atom in args_set:
+			for pkg in vardb.match(atom):
+				if not fakedb.cpv_exists(pkg):
+					cleanlist.append(pkg)
+		if not cleanlist:
+			portage.writemsg_stdout(
+				">>> No packages selected for removal by %s\n" % action)
 
 	if len(cleanlist):
 		unmerge(settings, myopts, trees[settings["ROOT"]]["vartree"],
 			"unmerge", cleanlist, ldpath_mtimes)
+
+	if action == "prune":
+		return
 
 	print "Packages installed:   "+str(len(myvarlist))
 	print "Packages in world:    "+str(len(worldlist))
@@ -6179,7 +6243,8 @@ def emerge_main():
 		validate_ebuild_environment(trees)
 		action_search(settings, portdb, trees["/"]["vartree"],
 			myopts, myfiles, spinner)
-	elif "unmerge"==myaction or "prune"==myaction or "clean"==myaction:
+	elif myaction in ("clean", "unmerge") or \
+		(myaction == "prune" and "--nodeps" in myopts):
 		validate_ebuild_environment(trees)
 		vartree = trees[settings["ROOT"]]["vartree"]
 		if 1 == unmerge(settings, myopts, vartree, myaction, myfiles,
@@ -6187,10 +6252,10 @@ def emerge_main():
 			if "--pretend" not in myopts:
 				post_emerge(trees, mtimedb, os.EX_OK)
 
-	elif "depclean"==myaction:
+	elif myaction in ("depclean", "prune"):
 		validate_ebuild_environment(trees)
 		action_depclean(settings, trees, mtimedb["ldpath"],
-			myopts, spinner)
+			myopts, myaction, myfiles, spinner)
 		if "--pretend" not in myopts:
 			post_emerge(trees, mtimedb, os.EX_OK)
 	# "update", "system", or just process files:
