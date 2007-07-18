@@ -5258,7 +5258,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	msg.append("consequence, it is often necessary to run\n")
 	msg.append(good("`emerge --update --newuse --deep world`") + " prior to depclean.\n")
 
-	if action == "depclean":
+	if action == "depclean" and "--quiet" not in myopts and not myfiles:
 		portage.writemsg_stdout("\n")
 		for x in msg:
 			portage.writemsg_stdout(colorize("BAD", "*** WARNING ***  ") + x)
@@ -5296,7 +5296,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 
 	if action == "depclean":
 		emergelog(xterm_titles, " >>> depclean")
-	elif action == "prune":
+	if myfiles:
 		for x in myfiles:
 			if not is_valid_package_atom(x):
 				portage.writemsg("!!! '%s' is not a valid package atom.\n" % x,
@@ -5343,6 +5343,26 @@ def action_depclean(settings, trees, ldpath_mtimes,
 			if not atom.startswith("!") and priority == hard:
 				unresolveable.setdefault(atom, []).append(parent)
 			continue
+		if action == "depclean" and parent == "world" and myfiles:
+			# Filter out packages given as arguments since the user wants
+			# to remove those.
+			filtered_pkgs = []
+			for pkg in pkgs:
+				metadata = dict(izip(metadata_keys,
+					vardb.aux_get(pkg, metadata_keys)))
+				arg_atom = None
+				try:
+					arg_atom = args_set.findAtomForPackage(pkg, metadata)
+				except portage.exception.InvalidDependString, e:
+					file_path = os.path.join(myroot, VDB_PATH, pkg, "PROVIDE")
+					portage.writemsg("\n\nInvalid PROVIDE: %s\n" % str(s),
+						noiselevel=-1)
+					portage.writemsg("See '%s'\n" % file_path,
+						noiselevel=-1)
+					del e
+				if not arg_atom:
+					filtered_pkgs.append(pkg)
+			pkgs = filtered_pkgs
 		prune_this = False
 		if action == "prune":
 			for pkg in pkgs:
@@ -5439,9 +5459,22 @@ def action_depclean(settings, trees, ldpath_mtimes,
 
 	cleanlist = []
 	if action == "depclean":
-		for pkg in vardb.cpv_all():
-			if not fakedb.cpv_exists(pkg):
-				cleanlist.append(pkg)
+		if myfiles:
+			for pkg in vardb.cpv_all():
+				metadata = dict(izip(metadata_keys,
+					vardb.aux_get(pkg, metadata_keys)))
+				arg_atom = None
+				try:
+					arg_atom = args_set.findAtomForPackage(pkg, metadata)
+				except portage.exception.InvalidDependString:
+					# this error has already been displayed by now
+					continue
+				if arg_atom and not fakedb.cpv_exists(pkg):
+					cleanlist.append(pkg)
+		else:
+			for pkg in vardb.cpv_all():
+				if not fakedb.cpv_exists(pkg):
+					cleanlist.append(pkg)
 	elif action == "prune":
 		for atom in args_set:
 			for pkg in vardb.match(atom):
