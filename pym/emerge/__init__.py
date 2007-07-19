@@ -5331,6 +5331,11 @@ def action_depclean(settings, trees, ldpath_mtimes,
 		# Pull in everything that's installed since we don't want to prune a
 		# package if something depends on it.
 		remaining_atoms.extend((atom, 'world', hard) for atom in vardb.cp_all())
+		if not myfiles:
+			# Try to prune everything that's slotted.
+			for cp in vardb.cp_all():
+				if len(vardb.cp_list(cp)) > 1:
+					args_set.add(cp)
 
 	unresolveable = {}
 	aux_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
