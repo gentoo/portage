@@ -5335,6 +5335,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	unresolveable = {}
 	aux_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
 	metadata_keys = ["PROVIDE", "SLOT", "USE"]
+	graph = digraph()
 
 	while remaining_atoms:
 		atom, parent, priority = remaining_atoms.pop()
@@ -5394,6 +5395,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 				pkgs = visible_in_portdb
 			pkgs = [portage.best(pkgs)]
 		for pkg in pkgs:
+			graph.add(pkg, parent)
 			if fakedb.cpv_exists(pkg):
 				continue
 			spinner.update()
@@ -5457,6 +5459,16 @@ def action_depclean(settings, trees, ldpath_mtimes,
 		print
 		return
 
+	def show_parents(child_node):
+		parent_nodes = graph.parent_nodes(child_node)
+		parent_nodes.sort()
+		msg = []
+		msg.append("  %s pulled in by:\n" % str(child_node))
+		for parent_node in parent_nodes:
+			msg.append("    %s\n" % str(parent_node))
+		msg.append("\n")
+		portage.writemsg_stdout("".join(msg), noiselevel=-1)
+
 	cleanlist = []
 	if action == "depclean":
 		if myfiles:
@@ -5469,8 +5481,11 @@ def action_depclean(settings, trees, ldpath_mtimes,
 				except portage.exception.InvalidDependString:
 					# this error has already been displayed by now
 					continue
-				if arg_atom and not fakedb.cpv_exists(pkg):
-					cleanlist.append(pkg)
+				if arg_atom:
+					if not fakedb.cpv_exists(pkg):
+						cleanlist.append(pkg)
+					elif "--verbose" in myopts:
+						show_parents(pkg)
 		else:
 			for pkg in vardb.cpv_all():
 				if not fakedb.cpv_exists(pkg):
@@ -5480,9 +5495,16 @@ def action_depclean(settings, trees, ldpath_mtimes,
 			for pkg in vardb.match(atom):
 				if not fakedb.cpv_exists(pkg):
 					cleanlist.append(pkg)
-		if not cleanlist:
+				elif "--verbose" in myopts:
+					show_parents(pkg)
+
+	if myfiles and not cleanlist:
+		portage.writemsg_stdout(
+			">>> No packages selected for removal by %s\n" % action)
+		if "--verbose" not in myopts:
 			portage.writemsg_stdout(
-				">>> No packages selected for removal by %s\n" % action)
+				">>> To see reverse dependencies, use %s\n" % \
+					good("--verbose"))
 
 	if len(cleanlist):
 		unmerge(settings, myopts, trees[settings["ROOT"]]["vartree"],
