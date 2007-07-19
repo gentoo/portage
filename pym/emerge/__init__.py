@@ -570,7 +570,7 @@ def clean_world(vardb, cpv):
 	"""Remove a package from the world file when unmerged."""
 	world_set = WorldSet("world", vardb.settings["ROOT"])
 	world_set.lock()
-	worldlist = list(world_set)
+	worldlist = list(world_set) # loads latest from disk
 	mykey = portage.cpv_getkey(cpv)
 	newworldlist = []
 	for x in worldlist:
@@ -1017,7 +1017,6 @@ class depgraph(object):
 		self.mydbapi = {}
 		self._mydbapi_keys = ["SLOT", "DEPEND", "RDEPEND", "PDEPEND",
 			"USE", "IUSE", "PROVIDE", "RESTRICT", "repository"]
-		self.useFlags = {}
 		self.trees = {}
 		self.roots = {}
 		for myroot in trees:
@@ -1047,7 +1046,6 @@ class depgraph(object):
 						metadata=dict(izip(self._mydbapi_keys,
 						vardb.aux_get(pkg, self._mydbapi_keys))))
 			del vardb, fakedb
-			self.useFlags[myroot] = {}
 			if "--usepkg" in self.myopts:
 				self.trees[myroot]["bintree"].populate(
 					"--getbinpkg" in self.myopts,
@@ -1209,6 +1207,10 @@ class depgraph(object):
 			pkgsettings.setcpv(mykey, mydb=portdb)
 			metadata["USE"] = pkgsettings["USE"]
 			myuse = pkgsettings["USE"].split()
+		else:
+			# The myuse parameter to this method is deprecated, so get it
+			# directly from the metadata here.
+			myuse = metadata["USE"].split()
 
 		if not arg and myroot == self.target_root:
 			try:
@@ -1307,7 +1309,6 @@ class depgraph(object):
 				# self.pkg_node_map and self.mydbapi since that data will
 				# be used for blocker validation.
 				self.pkg_node_map[myroot].setdefault(mykey, jbigkey)
-				self.useFlags[myroot].setdefault(mykey, myuse)
 				# Even though the graph is now invalid, continue to process
 				# dependencies so that things like --fetchonly can still
 				# function despite collisions.
@@ -1315,7 +1316,6 @@ class depgraph(object):
 				self.mydbapi[myroot].cpv_inject(mykey, metadata=metadata)
 				self._slot_node_map[myroot][slot_atom] = jbigkey
 				self.pkg_node_map[myroot][mykey] = jbigkey
-				self.useFlags[myroot][mykey] = myuse
 				if reinstall_for_flags:
 					self._reinstall_nodes[jbigkey] = reinstall_for_flags
 
@@ -1415,6 +1415,7 @@ class depgraph(object):
 		"given a list of .tbz2s, .ebuilds and deps, create the appropriate depgraph and return a favorite list"
 		myfavorites=[]
 		myroot = self.target_root
+		vardb = self.trees[myroot]["vartree"].dbapi
 		portdb = self.trees[myroot]["porttree"].dbapi
 		bindb = self.trees[myroot]["bintree"].dbapi
 		pkgsettings = self.pkgsettings[myroot]
@@ -1494,13 +1495,22 @@ class depgraph(object):
 					if "--usepkg" in self.myopts:
 						mykey = portage.dep_expand(x, mydb=bindb,
 							settings=pkgsettings)
-					if (mykey and not mykey.startswith("null/")) or \
-						"--usepkgonly" in self.myopts:
+					if "--usepkgonly" in self.myopts or \
+						(mykey and not portage.dep_getkey(mykey).startswith("null/")):
 						arg_atoms.append((x, mykey))
 						continue
 
-					mykey = portage.dep_expand(x,
-						mydb=portdb, settings=pkgsettings)
+					try:
+						mykey = portage.dep_expand(x,
+							mydb=portdb, settings=pkgsettings)
+					except ValueError, e:
+						mykey = portage.dep_expand(x,
+							mydb=vardb, settings=pkgsettings)
+						cp = portage.dep_getkey(mykey)
+						if cp.startswith("null/") or \
+							cp not in e[0]:
+							raise
+						del e
 					arg_atoms.append((x, mykey))
 				except ValueError, errpkgs:
 					print "\n\n!!! The short ebuild name \"" + x + "\" is ambiguous.  Please specify"
@@ -1889,8 +1899,9 @@ class depgraph(object):
 					e_type, myroot, e_cpv, e_status = existing_node
 					if portage.match_from_list(x, [e_cpv]):
 						# The existing node can be reused.
-						selected_pkg = [e_type, myroot, e_cpv,
-							self.useFlags[myroot][e_cpv]]
+						# Just pass in None for myuse since
+						# self.create() doesn't use it anymore.
+						selected_pkg = [e_type, myroot, e_cpv, None]
 
 			if myparent:
 				#we are a dependency, so we want to be unconditionally added
@@ -2726,18 +2737,15 @@ class depgraph(object):
 						raise portage.exception.PackageNotFound(pkg_key)
 					repo_path_real = os.path.dirname(os.path.dirname(
 						os.path.dirname(ebuild_path)))
+					pkgsettings.setcpv(pkg_key)
+					metadata["USE"] = pkgsettings["USE"]
 				else:
 					repo_path_real = portdb.getRepositoryPath(repo_name)
-				if pkg_key not in self.useFlags[myroot]:
-					"""If this is a --resume then the USE flags need to be
-					fetched from the appropriate locations here."""
-					self.useFlags[myroot][pkg_key] = mydbapi.aux_get(
-						pkg_key, ["USE"])[0].split()
-
+				pkg_use = metadata["USE"].split()
 				try:
 					restrict = flatten(use_reduce(paren_reduce(
 						mydbapi.aux_get(pkg_key, ["RESTRICT"])[0]),
-						uselist=self.useFlags[myroot][pkg_key]))
+						uselist=pkg_use))
 				except portage.exception.InvalidDependString, e:
 					if pkg_status != "nomerge":
 						restrict = mydbapi.aux_get(pkg_key, ["RESTRICT"])[0]
@@ -2750,8 +2758,7 @@ class depgraph(object):
 					fetch = red("F")
 					if ordered:
 						counters.restrict_fetch += 1
-					if portdb.fetch_check(
-						pkg_key, self.useFlags[myroot][pkg_key]):
+					if portdb.fetch_check(pkg_key, pkg_use):
 						fetch = green("f")
 						if ordered:
 							counters.restrict_fetch_satisfied += 1
@@ -2804,18 +2811,19 @@ class depgraph(object):
 
 				verboseadd=""
 				
-				if pkg_key in self.useFlags[myroot]:
+				if True:
 					# USE flag display
 					cur_iuse = list(filter_iuse_defaults(
 						mydbapi.aux_get(pkg_key, ["IUSE"])[0].split()))
 
 					forced_flags = set()
+					pkgsettings.setcpv(pkg_key) # for package.use.{mask,force}
 					forced_flags.update(pkgsettings.useforce)
 					forced_flags.update(pkgsettings.usemask)
 
 					cur_iuse = portage.unique_array(cur_iuse)
 					cur_iuse.sort()
-					cur_use = self.useFlags[myroot][pkg_key]
+					cur_use = pkg_use
 					cur_use = [flag for flag in cur_use if flag in cur_iuse]
 
 					if myoldbest:
@@ -2909,8 +2917,7 @@ class depgraph(object):
 					if pkg_type == "ebuild" and pkg_merge:
 						try:
 							myfilesdict = portdb.getfetchsizes(pkg_key,
-								useflags=self.useFlags[myroot][pkg_key],
-								debug=self.edebug)
+								useflags=pkg_use, debug=self.edebug)
 						except portage.exception.InvalidDependString, e:
 							src_uri = portdb.aux_get(pkg_key, ["SRC_URI"])[0]
 							show_invalid_depstring_notice(x, src_uri, str(e))
@@ -2988,10 +2995,10 @@ class depgraph(object):
 				pkg_system = False
 				pkg_world = False
 				try:
-					pkg_system = system_set.containsCPV(pkg_key)
-					pkg_world  = world_set.containsCPV(pkg_key)
+					pkg_system = system_set.findAtomForPackage(pkg_key, metadata)
+					pkg_world  = world_set.findAtomForPackage(pkg_key, metadata)
 					if not pkg_world and myroot == self.target_root and \
-						favorites_set.containsCPV(pkg_key):
+						favorites_set.findAtomForPackage(pkg_key, metadata):
 						# Maybe it will be added to world now.
 						if create_world_atom(pkg_key, metadata,
 							favorites_set, root_config):
@@ -3089,7 +3096,8 @@ class depgraph(object):
 		if verbosity == 3:
 			print
 			print counters
-			sys.stdout.write(str(repo_display))
+			if p:
+				sys.stdout.write(str(repo_display))
 
 		if "--changelog" in self.myopts:
 			print
@@ -3197,6 +3205,7 @@ class depgraph(object):
 		root_config = self.roots[self.target_root]
 		world_set = root_config.sets["world"]
 		world_set.lock()
+		world_set.load() # maybe it's changed on disk
 		args_set = self._sets["args"]
 		portdb = self.trees[self.target_root]["porttree"].dbapi
 		added_favorites = set()
@@ -3550,7 +3559,7 @@ class MergeTask(object):
 			#buildsyspkg: Check if we need to _force_ binary package creation
 			issyspkg = ("buildsyspkg" in myfeat) \
 					and x[0] != "blocks" \
-					and system_set.containsCPV(pkg_key) \
+					and system_set.findAtomForPackage(pkg_key, metadata) \
 					and "--buildpkg" not in self.myopts
 			if x[0] in ["ebuild","blocks"]:
 				if x[0] == "blocks" and "--fetchonly" not in self.myopts:
@@ -3742,8 +3751,9 @@ class MergeTask(object):
 				self.trees[x[1]]["vartree"].inject(x[2])
 				myfavkey = portage.cpv_getkey(x[2])
 				if not fetchonly and not pretend and \
-					args_set.containsCPV(pkg_key):
+					args_set.findAtomForPackage(pkg_key, metadata):
 					world_set.lock()
+					world_set.load() # maybe it's changed on disk
 					myfavkey = create_world_atom(pkg_key, metadata,
 						args_set, root_config)
 					if myfavkey:
@@ -5276,7 +5286,7 @@ def action_search(settings, portdb, vartree, myopts, myfiles, spinner):
 			searchinstance.output()
 
 def action_depclean(settings, trees, ldpath_mtimes,
-	myopts, spinner):
+	myopts, action, myfiles, spinner):
 	# Kill packages that aren't explicitly merged or are required as a
 	# dependency of another package. World file is explicit.
 
@@ -5297,9 +5307,10 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	msg.append("consequence, it is often necessary to run\n")
 	msg.append(good("`emerge --update --newuse --deep world`") + " prior to depclean.\n")
 
-	portage.writemsg_stdout("\n")
-	for x in msg:
-		portage.writemsg_stdout(colorize("BAD", "*** WARNING ***  ") + x)
+	if action == "depclean" and "--quiet" not in myopts and not myfiles:
+		portage.writemsg_stdout("\n")
+		for x in msg:
+			portage.writemsg_stdout(colorize("BAD", "*** WARNING ***  ") + x)
 
 	xterm_titles = "notitles" not in settings.features
 	myroot = settings["ROOT"]
@@ -5315,6 +5326,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	syslist = list(system_set)
 	world_set = WorldSet("world", myroot)
 	worldlist = list(world_set)
+	args_set = InternalPackageSet()
 	fakedb = portage.fakedbapi(settings=settings)
 	myvarlist = vardb.cpv_all()
 
@@ -5331,16 +5343,44 @@ def action_depclean(settings, trees, ldpath_mtimes,
 		if "--pretend" not in myopts:
 			countdown(int(settings["EMERGE_WARNING_DELAY"]), ">>> Depclean")
 
-	if not "--pretend" in myopts: #just check pretend, since --ask implies pretend
+	if action == "depclean":
 		emergelog(xterm_titles, " >>> depclean")
+	if myfiles:
+		for x in myfiles:
+			if not is_valid_package_atom(x):
+				portage.writemsg("!!! '%s' is not a valid package atom.\n" % x,
+					noiselevel=-1)
+				portage.writemsg("!!! Please check ebuild(5) for full details.\n")
+				return
+			try:
+				atom = portage.dep_expand(x, mydb=vardb, settings=settings)
+			except ValueError, e:
+				print "!!! The short ebuild name \"" + x + "\" is ambiguous.  Please specify"
+				print "!!! one of the following fully-qualified ebuild names instead:\n"
+				for i in e[0]:
+					print "    " + colorize("INFORM", i)
+				print
+				return
+			args_set.add(atom)
 
 	if "--quiet" not in myopts:
 		print "\nCalculating dependencies  ",
 
 	soft = 0
 	hard = 1
-	remaining_atoms = [(atom, 'world', hard) for atom in worldlist if vardb.match(atom)]
-	remaining_atoms += [(atom, 'system', hard) for atom in syslist if vardb.match(atom)]
+	remaining_atoms = []
+	if action == "depclean":
+		for atom in worldlist:
+			if vardb.match(atom):
+				remaining_atoms.append((atom, 'world', hard))
+		for atom in syslist:
+			if vardb.match(atom):
+				remaining_atoms.append((atom, 'system', hard))
+	elif action == "prune":
+		# Pull in everything that's installed since we don't want to prune a
+		# package if something depends on it.
+		remaining_atoms.extend((atom, 'world', hard) for atom in vardb.cp_all())
+
 	unresolveable = {}
 	aux_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
 	metadata_keys = ["PROVIDE", "SLOT", "USE"]
@@ -5352,7 +5392,45 @@ def action_depclean(settings, trees, ldpath_mtimes,
 			if not atom.startswith("!") and priority == hard:
 				unresolveable.setdefault(atom, []).append(parent)
 			continue
-		if len(pkgs) > 1 and parent != "world":
+		if action == "depclean" and parent == "world" and myfiles:
+			# Filter out packages given as arguments since the user wants
+			# to remove those.
+			filtered_pkgs = []
+			for pkg in pkgs:
+				metadata = dict(izip(metadata_keys,
+					vardb.aux_get(pkg, metadata_keys)))
+				arg_atom = None
+				try:
+					arg_atom = args_set.findAtomForPackage(pkg, metadata)
+				except portage.exception.InvalidDependString, e:
+					file_path = os.path.join(myroot, VDB_PATH, pkg, "PROVIDE")
+					portage.writemsg("\n\nInvalid PROVIDE: %s\n" % str(s),
+						noiselevel=-1)
+					portage.writemsg("See '%s'\n" % file_path,
+						noiselevel=-1)
+					del e
+				if not arg_atom:
+					filtered_pkgs.append(pkg)
+			pkgs = filtered_pkgs
+		prune_this = False
+		if action == "prune":
+			for pkg in pkgs:
+				metadata = dict(izip(metadata_keys,
+					vardb.aux_get(pkg, metadata_keys)))
+				try:
+					arg_atom = args_set.findAtomForPackage(pkg, metadata)
+				except portage.exception.InvalidDependString, e:
+					file_path = os.path.join(myroot, VDB_PATH, pkg, "PROVIDE")
+					portage.writemsg("\n\nInvalid PROVIDE: %s\n" % str(s),
+						noiselevel=-1)
+					portage.writemsg("See '%s'\n" % file_path,
+						noiselevel=-1)
+					del e
+					continue
+				if arg_atom:
+					prune_this = True
+					break
+		if len(pkgs) > 1 and (parent != "world" or prune_this):
 			# Prune all but the best matching slot, since that's all that a
 			# deep world update would pull in.  Don't prune if this atom comes
 			# directly from world though, since world atoms are greedy when
@@ -5418,6 +5496,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 		print
 		for atom in unresolveable:
 			print atom, "required by", " ".join(unresolveable[atom])
+	if unresolveable and action == "depclean":
 		print
 		print "Have you forgotten to run " + good("`emerge --update --newuse --deep world`") + " prior to"
 		print "depclean?  It may be necessary to manually uninstall packages that no longer"
@@ -5427,11 +5506,39 @@ def action_depclean(settings, trees, ldpath_mtimes,
 		print
 		return
 
-	cleanlist = [pkg for pkg in vardb.cpv_all() if not fakedb.cpv_exists(pkg)]
+	cleanlist = []
+	if action == "depclean":
+		if myfiles:
+			for pkg in vardb.cpv_all():
+				metadata = dict(izip(metadata_keys,
+					vardb.aux_get(pkg, metadata_keys)))
+				arg_atom = None
+				try:
+					arg_atom = args_set.findAtomForPackage(pkg, metadata)
+				except portage.exception.InvalidDependString:
+					# this error has already been displayed by now
+					continue
+				if arg_atom and not fakedb.cpv_exists(pkg):
+					cleanlist.append(pkg)
+		else:
+			for pkg in vardb.cpv_all():
+				if not fakedb.cpv_exists(pkg):
+					cleanlist.append(pkg)
+	elif action == "prune":
+		for atom in args_set:
+			for pkg in vardb.match(atom):
+				if not fakedb.cpv_exists(pkg):
+					cleanlist.append(pkg)
+		if not cleanlist:
+			portage.writemsg_stdout(
+				">>> No packages selected for removal by %s\n" % action)
 
 	if len(cleanlist):
 		unmerge(settings, myopts, trees[settings["ROOT"]]["vartree"],
 			"unmerge", cleanlist, ldpath_mtimes)
+
+	if action == "prune":
+		return
 
 	print "Packages installed:   "+str(len(myvarlist))
 	print "Packages in world:    "+str(len(worldlist))
@@ -6218,7 +6325,8 @@ def emerge_main():
 		validate_ebuild_environment(trees)
 		action_search(settings, portdb, trees["/"]["vartree"],
 			myopts, myfiles, spinner)
-	elif "unmerge"==myaction or "prune"==myaction or "clean"==myaction:
+	elif myaction in ("clean", "unmerge") or \
+		(myaction == "prune" and "--nodeps" in myopts):
 		validate_ebuild_environment(trees)
 		vartree = trees[settings["ROOT"]]["vartree"]
 		if 1 == unmerge(settings, myopts, vartree, myaction, myfiles,
@@ -6226,10 +6334,10 @@ def emerge_main():
 			if "--pretend" not in myopts:
 				post_emerge(trees, mtimedb, os.EX_OK)
 
-	elif "depclean"==myaction:
+	elif myaction in ("depclean", "prune"):
 		validate_ebuild_environment(trees)
 		action_depclean(settings, trees, mtimedb["ldpath"],
-			myopts, spinner)
+			myopts, myaction, myfiles, spinner)
 		if "--pretend" not in myopts:
 			post_emerge(trees, mtimedb, os.EX_OK)
 	# "update", "system", or just process files:

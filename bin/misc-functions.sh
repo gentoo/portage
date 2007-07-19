@@ -557,7 +557,7 @@ dyn_package() {
 	# for $PKGDIR and/or $PKGDIR/All.
 	export SANDBOX_ON="0"
 	[ -z "${PORTAGE_BINPKG_TMPFILE}" ] && \
-		PORTAGE_BINPKG_TMPFILE="${PKGDIR}/${CATEGORY}/${PVR}.tbz2"
+		PORTAGE_BINPKG_TMPFILE="${PKGDIR}/${CATEGORY}/${PF}.tbz2"
 	mkdir -p "${PORTAGE_BINPKG_TMPFILE%/*}" || die "mkdir failed"
 	tar ${tar_options} -cf - . | bzip2 -f > "${PORTAGE_BINPKG_TMPFILE}" || \
 		die "Failed to create tarball"

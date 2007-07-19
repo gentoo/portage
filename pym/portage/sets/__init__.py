@@ -56,7 +56,7 @@ class PackageSet(object):
 				atoms.remove(a)
 			elif not isvalidatom(a):
 				raise InvalidAtom(a)
-		self._atoms = atoms
+		self._atoms = set(atoms)
 		self._updateAtomMap()
 
 	def load(self):
@@ -78,6 +78,7 @@ class PackageSet(object):
 			return ""
 	
 	def _updateAtomMap(self):
+		self._atommap.clear()
 		for a in self._atoms:
 			cp = dep_getkey(a)
 			self._atommap.setdefault(cp, set())
@@ -91,6 +92,7 @@ class PackageSet(object):
 		if an error occurs while parsing PROVIDE."""
 		cpv_slot = "%s:%s" % (cpv, metadata["SLOT"])
 		cp = dep_getkey(cpv)
+		self.getAtoms() # make sure the atoms are loaded
 		atoms = self._atommap.get(cp)
 		if atoms:
 			best_match = best_match_to_list(cpv_slot, atoms)
@@ -112,12 +114,9 @@ class PackageSet(object):
 		return None
 
 class EditablePackageSet(PackageSet):
-	def getAtoms(self):
-		self.load()
-		return self._atoms
 
 	def update(self, atoms):
-		self.load()
+		self.getAtoms()
 		self._atoms.update(atoms)
 		self._updateAtomMap()
 		self.write()
@@ -130,14 +129,13 @@ class EditablePackageSet(PackageSet):
 		self.write()
 
 	def remove(self, atom):
-		self.load()
+		self.getAtoms()
 		self._atoms.discard(atom)
 		self._updateAtomMap()
 		self.write()
 
 	def removePackageAtoms(self, cp):
-		self.load()
-		for a in self.getAtoms():
+		for a in list(self.getAtoms()):
 			if dep_getkey(a) == cp:
 				self.remove(a)
 		self.write()
