@@ -18,6 +18,12 @@ portage-2.1.3
   world file and prevent matching packages from being removed.  A slot atom
   will be recorded in the world file for any atom that is precise enough to
   identify a specific slot.
+* For safer operation, emerge --prune will not unmerge packages that have
+  reverse dependencies. Use --verbose to display reverse dependencies. Use
+  --nodeps to completely ignore dependencies.
+* emerge --depclean now accepts atoms and will unmerge only the specified
+  packages if nothing depends on them. Use --verbose to display reverse
+  dependencies.
 
 portage-2.1.2
 ==================================
