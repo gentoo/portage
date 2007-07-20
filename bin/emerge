@@ -4073,9 +4073,32 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 						if y not in pkgmap[mykey]["selected"]:
 							pkgmap[mykey]["selected"].append(y)
 							numselected=numselected+len(mymatch)
-	
+			elif unmerge_action == "prune":
+				if len(mymatch) == 1:
+					continue
+				best_version = mymatch[0]
+				best_slot = vartree.getslot(best_version)
+				best_counter = vartree.dbapi.cpv_counter(best_version)
+				for mypkg in mymatch[1:]:
+					myslot = vartree.getslot(mypkg)
+					mycounter = vartree.dbapi.cpv_counter(mypkg)
+					if (myslot == best_slot and mycounter > best_counter) or \
+						mypkg == portage.best([mypkg, best_version]):
+						if myslot == best_slot:
+							if mycounter < best_counter:
+								# On slot collision, keep the one with the
+								# highest counter since it is the most
+								# recently installed.
+								continue
+						best_version = mypkg
+						best_slot = myslot
+						best_counter = mycounter
+				pkgmap[mykey]["protected"].append(best_version)
+				pkgmap[mykey]["selected"] = [mypkg for mypkg in mymatch \
+					if mypkg != best_version]
+				numselected = numselected + len(pkgmap[mykey]["selected"])
 			else:
-				#unmerge_action in ["prune", clean"]
+				# unmerge_action == "clean"
 				slotmap={}
 				for mypkg in mymatch:
 					if unmerge_action=="clean":
