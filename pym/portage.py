@@ -5059,10 +5059,7 @@ class fakedbapi(dbapi):
 			return self.cpdict[mycp]
 
 	def cp_all(self):
-		returnme=[]
-		for x in self.cpdict:
-			returnme.extend(self.cpdict[x])
-		return returnme
+		return list(self.cpdict)
 
 	def cpv_all(self):
 		return self.cpvdict.keys()
