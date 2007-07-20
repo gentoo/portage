@@ -87,7 +87,7 @@ def help(myaction,myopts,havecolor=1):
 		print
 		print "       "+green("--prune")+" ("+green("-P")+" short option)"
 		print "              "+turquoise("WARNING: This action can remove important packages!")
-		print "              Removes all but the most recently installed version of a package"
+		print "              Removes all but the highest installed version of a package"
 		print "              from your system. This action doesn't verify the possible binary"
 		print "              compatibility between versions and can thus remove essential"
 		print "              dependencies from your system."
