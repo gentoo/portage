@@ -4029,9 +4029,10 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 				best_slot = vartree.getslot(best_version)
 				best_counter = vartree.dbapi.cpv_counter(best_version)
 				for mypkg in mymatch[1:]:
-					if mypkg == portage.best([mypkg, best_version]):
-						myslot = vartree.getslot(mypkg)
-						mycounter = vartree.dbapi.cpv_counter(mypkg)
+					myslot = vartree.getslot(mypkg)
+					mycounter = vartree.dbapi.cpv_counter(mypkg)
+					if (myslot == best_slot and mycounter > best_counter) or \
+						mypkg == portage.best([mypkg, best_version]):
 						if myslot == best_slot:
 							if mycounter < best_counter:
 								# On slot collision, keep the one with the
