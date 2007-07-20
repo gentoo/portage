@@ -83,7 +83,7 @@ except KeyError:
 	portage_uid=0
 	portage_gid=0
 	writemsg("\n")
-	writemsg(  red("portage: "+portageuser+" user or group missing.i\n"))
+	writemsg(  red("portage: "+portageuser+" user or group missing.\n"))
 	writemsg(  red("         In Prefix Portage this is quite dramatic\n"))
 	writemsg(  red("         since it means you have thrown away yourself.\n"))
 	writemsg(      "         Re-add yourself, or rebootstrap Gentoo Prefix.\n")
