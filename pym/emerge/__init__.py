@@ -5339,6 +5339,15 @@ def action_depclean(settings, trees, ldpath_mtimes,
 				print
 				return
 			args_set.add(atom)
+		matched_packages = False
+		for x in args_set:
+			if vardb.match(x):
+				matched_packages = True
+				break
+		if not matched_packages:
+			portage.writemsg_stdout(
+				">>> No packages selected for removal by %s\n" % action)
+			return
 
 	if "--quiet" not in myopts:
 		print "\nCalculating dependencies  ",
