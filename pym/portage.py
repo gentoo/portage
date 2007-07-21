@@ -2654,9 +2654,15 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 								if reason[0] == "Insufficient data for checksum verification":
 									return 0
 								if can_fetch and not restrict_fetch:
-									writemsg("Refetching...\n\n",
-										noiselevel=-1)
-									os.unlink(myfile_path)
+									from tempfile import mkstemp
+									fd, temp_filename = mkstemp("",
+										myfile + "._checksum_failure_.",
+										mysettings["DISTDIR"])
+									os.close(fd)
+									os.rename(myfile_path, temp_filename)
+									writemsg_stdout("Refetching... " + \
+										"File renamed to '%s'\n\n" % \
+										temp_filename, noiselevel=-1)
 							else:
 								eout = output.EOutput()
 								eout.quiet = \
@@ -2819,8 +2825,15 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 										(reason[1], reason[2]), noiselevel=-1)
 									if reason[0] == "Insufficient data for checksum verification":
 										return 0
-									writemsg("Removing corrupt distfile...\n", noiselevel=-1)
-									os.unlink(mysettings["DISTDIR"]+"/"+myfile)
+									from tempfile import mkstemp
+									fd, temp_filename = mkstemp("",
+										myfile + "._checksum_failure_.",
+										mysettings["DISTDIR"])
+									os.close(fd)
+									os.rename(myfile_path, temp_filename)
+									writemsg_stdout("Refetching... " + \
+										"File renamed to '%s'\n\n" % \
+										temp_filename, noiselevel=-1)
 									fetched=0
 								else:
 									eout = output.EOutput()
