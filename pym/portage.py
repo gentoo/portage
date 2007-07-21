@@ -2728,6 +2728,14 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					myfetch = [varexpand(x, mydict=variables) for x in lexer]
 
 					spawn_keywords = {}
+					# Redirect all output to stdout since some fetchers like
+					# wget pollute stderr (if portage detects a problem then it
+					# can send it's own message to stderr).
+					spawn_keywords["fd_pipes"] = {
+						0:sys.stdin.fileno(),
+						1:sys.stdout.fileno(),
+						2:sys.stdout.fileno()
+					}
 					if "userfetch" in mysettings.features and \
 						os.getuid() == 0 and portage_gid and portage_uid:
 						spawn_keywords.update({
