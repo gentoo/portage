@@ -1790,6 +1790,23 @@ else:
 			else:
 				raise portage_exception.PortageException("!!! gpg exited with '" + str(rValue) + "' status")
 
+	# When files are removed and re-added, the cvs server will put /Attic/
+	# inside the $Header path. This code detects the problem and corrects it
+	# so that the Manifest will generate correctly. See bug #169500.
+	from portage_util import write_atomic
+	cvs_header = re.compile(r'^#\s*\$Header.*\$$')
+	for x in myheaders:
+		f = open(x)
+		mylines = f.readlines()
+		f.close()
+		modified = False
+		for i, line in enumerate(mylines):
+			if cvs_header.match(line) and "/Attic/" in line:
+				mylines[i] = line.replace("/Attic/", "/")
+				modified = True
+		if modified:
+			write_atomic(x, "".join(mylines))
+
 	manifest_commit_required = True
 	if myheaders or myupdates or myremoved or mynew:
 		myfiles=myheaders+myupdates+myremoved+mynew
