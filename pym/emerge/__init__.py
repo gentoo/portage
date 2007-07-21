@@ -2953,9 +2953,12 @@ class depgraph(object):
 						if repo_name_prev:
 							repo_path_prev = portdb.getRepositoryPath(
 								repo_name_prev)
-						repoadd = "%s=>%s" % (
-							repo_display.repoStr(repo_path_prev),
-							repo_display.repoStr(repo_path_real))
+						if repo_path_prev == repo_path_real:
+							repoadd = repo_display.repoStr(repo_path_real)
+						else:
+							repoadd = "%s=>%s" % (
+								repo_display.repoStr(repo_path_prev),
+								repo_display.repoStr(repo_path_real))
 					if repoadd:
 						verboseadd += teal("[%s]" % repoadd)
 
