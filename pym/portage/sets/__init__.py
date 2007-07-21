@@ -77,9 +77,12 @@ class PackageSet(object):
 		else:
 			return ""
 	
-	def _updateAtomMap(self):
-		self._atommap.clear()
-		for a in self._atoms:
+	def _updateAtomMap(self, atoms=None):
+		"""Update self._atommap for specific atoms or all atoms."""
+		if not atoms:
+			self._atommap.clear()
+			atoms = self._atoms
+		for a in atoms:
 			cp = dep_getkey(a)
 			self._atommap.setdefault(cp, set())
 			self._atommap[cp].add(a)
@@ -118,7 +121,7 @@ class EditablePackageSet(PackageSet):
 	def update(self, atoms):
 		self.getAtoms()
 		self._atoms.update(atoms)
-		self._updateAtomMap()
+		self._updateAtomMap(atoms=atoms)
 		self.write()
 	
 	def add(self, atom):
