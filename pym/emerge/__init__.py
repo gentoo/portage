@@ -5521,6 +5521,8 @@ def action_depclean(settings, trees, ldpath_mtimes,
 			for pkg in vardb.cpv_all():
 				if not fakedb.cpv_exists(pkg):
 					cleanlist.append(pkg)
+				elif "--verbose" in myopts:
+					show_parents(pkg)
 	elif action == "prune":
 		for atom in args_set:
 			for pkg in vardb.match(atom):
@@ -5529,13 +5531,17 @@ def action_depclean(settings, trees, ldpath_mtimes,
 				elif "--verbose" in myopts:
 					show_parents(pkg)
 
-	if myfiles and not cleanlist:
+	if not cleanlist:
 		portage.writemsg_stdout(
 			">>> No packages selected for removal by %s\n" % action)
 		if "--verbose" not in myopts:
 			portage.writemsg_stdout(
 				">>> To see reverse dependencies, use %s\n" % \
 					good("--verbose"))
+		if action == "prune":
+			portage.writemsg_stdout(
+				">>> To ignore dependencies, use %s\n" % \
+					good("--nodeps"))
 
 	if len(cleanlist):
 		unmerge(settings, myopts, trees[settings["ROOT"]]["vartree"],
