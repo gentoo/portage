@@ -2954,9 +2954,12 @@ class depgraph(object):
 						if repo_name_prev:
 							repo_path_prev = portdb.getRepositoryPath(
 								repo_name_prev)
-						repoadd = "%s=>%s" % (
-							repo_display.repoStr(repo_path_prev),
-							repo_display.repoStr(repo_path_real))
+						if repo_path_prev == repo_path_real:
+							repoadd = repo_display.repoStr(repo_path_real)
+						else:
+							repoadd = "%s=>%s" % (
+								repo_display.repoStr(repo_path_prev),
+								repo_display.repoStr(repo_path_real))
 					if repoadd:
 						verboseadd += teal("[%s]" % repoadd)
 
@@ -4023,9 +4026,32 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 						if y not in pkgmap[mykey]["selected"]:
 							pkgmap[mykey]["selected"].append(y)
 							numselected=numselected+len(mymatch)
-	
+			elif unmerge_action == "prune":
+				if len(mymatch) == 1:
+					continue
+				best_version = mymatch[0]
+				best_slot = vartree.getslot(best_version)
+				best_counter = vartree.dbapi.cpv_counter(best_version)
+				for mypkg in mymatch[1:]:
+					myslot = vartree.getslot(mypkg)
+					mycounter = vartree.dbapi.cpv_counter(mypkg)
+					if (myslot == best_slot and mycounter > best_counter) or \
+						mypkg == portage.best([mypkg, best_version]):
+						if myslot == best_slot:
+							if mycounter < best_counter:
+								# On slot collision, keep the one with the
+								# highest counter since it is the most
+								# recently installed.
+								continue
+						best_version = mypkg
+						best_slot = myslot
+						best_counter = mycounter
+				pkgmap[mykey]["protected"].append(best_version)
+				pkgmap[mykey]["selected"] = [mypkg for mypkg in mymatch \
+					if mypkg != best_version]
+				numselected = numselected + len(pkgmap[mykey]["selected"])
 			else:
-				#unmerge_action in ["prune", clean"]
+				# unmerge_action == "clean"
 				slotmap={}
 				for mypkg in mymatch:
 					if unmerge_action=="clean":
@@ -5362,6 +5388,15 @@ def action_depclean(settings, trees, ldpath_mtimes,
 				print
 				return
 			args_set.add(atom)
+		matched_packages = False
+		for x in args_set:
+			if vardb.match(x):
+				matched_packages = True
+				break
+		if not matched_packages:
+			portage.writemsg_stdout(
+				">>> No packages selected for removal by %s\n" % action)
+			return
 
 	if "--quiet" not in myopts:
 		print "\nCalculating dependencies  ",
@@ -5380,10 +5415,16 @@ def action_depclean(settings, trees, ldpath_mtimes,
 		# Pull in everything that's installed since we don't want to prune a
 		# package if something depends on it.
 		remaining_atoms.extend((atom, 'world', hard) for atom in vardb.cp_all())
+		if not myfiles:
+			# Try to prune everything that's slotted.
+			for cp in vardb.cp_all():
+				if len(vardb.cp_list(cp)) > 1:
+					args_set.add(cp)
 
 	unresolveable = {}
 	aux_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
 	metadata_keys = ["PROVIDE", "SLOT", "USE"]
+	graph = digraph()
 
 	while remaining_atoms:
 		atom, parent, priority = remaining_atoms.pop()
@@ -5443,6 +5484,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 				pkgs = visible_in_portdb
 			pkgs = [portage.best(pkgs)]
 		for pkg in pkgs:
+			graph.add(pkg, parent)
 			if fakedb.cpv_exists(pkg):
 				continue
 			spinner.update()
@@ -5496,15 +5538,28 @@ def action_depclean(settings, trees, ldpath_mtimes,
 		print
 		for atom in unresolveable:
 			print atom, "required by", " ".join(unresolveable[atom])
-	if unresolveable and action == "depclean":
+	if unresolveable:
 		print
 		print "Have you forgotten to run " + good("`emerge --update --newuse --deep world`") + " prior to"
-		print "depclean?  It may be necessary to manually uninstall packages that no longer"
+		print "%s?  It may be necessary to manually uninstall packages that no longer" % action
 		print "exist in the portage tree since it may not be possible to satisfy their"
 		print "dependencies.  Also, be aware of the --with-bdeps option that is documented"
 		print "in " + good("`man emerge`") + "."
 		print
+		if action == "prune":
+			print "If you would like to ignore dependencies then use %s." % \
+				good("--nodeps")
 		return
+
+	def show_parents(child_node):
+		parent_nodes = graph.parent_nodes(child_node)
+		parent_nodes.sort()
+		msg = []
+		msg.append("  %s pulled in by:\n" % str(child_node))
+		for parent_node in parent_nodes:
+			msg.append("    %s\n" % str(parent_node))
+		msg.append("\n")
+		portage.writemsg_stdout("".join(msg), noiselevel=-1)
 
 	cleanlist = []
 	if action == "depclean":
@@ -5518,20 +5573,39 @@ def action_depclean(settings, trees, ldpath_mtimes,
 				except portage.exception.InvalidDependString:
 					# this error has already been displayed by now
 					continue
-				if arg_atom and not fakedb.cpv_exists(pkg):
-					cleanlist.append(pkg)
+				if arg_atom:
+					if not fakedb.cpv_exists(pkg):
+						cleanlist.append(pkg)
+					elif "--verbose" in myopts:
+						show_parents(pkg)
 		else:
 			for pkg in vardb.cpv_all():
 				if not fakedb.cpv_exists(pkg):
 					cleanlist.append(pkg)
+				elif "--verbose" in myopts:
+					show_parents(pkg)
 	elif action == "prune":
+		# Prune really uses all installed instead of world.  It's not a real
+		# reverse dependency so don't display it as such.
+		graph.remove("world")
 		for atom in args_set:
 			for pkg in vardb.match(atom):
 				if not fakedb.cpv_exists(pkg):
 					cleanlist.append(pkg)
-		if not cleanlist:
+				elif "--verbose" in myopts:
+					show_parents(pkg)
+
+	if not cleanlist:
+		portage.writemsg_stdout(
+			">>> No packages selected for removal by %s\n" % action)
+		if "--verbose" not in myopts:
 			portage.writemsg_stdout(
-				">>> No packages selected for removal by %s\n" % action)
+				">>> To see reverse dependencies, use %s\n" % \
+					good("--verbose"))
+		if action == "prune":
+			portage.writemsg_stdout(
+				">>> To ignore dependencies, use %s\n" % \
+					good("--nodeps"))
 
 	if len(cleanlist):
 		unmerge(settings, myopts, trees[settings["ROOT"]]["vartree"],

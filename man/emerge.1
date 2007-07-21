@@ -125,12 +125,10 @@ package data.  It does not populate cache for the overlays listed in
 PORTDIR_OVERLAY.  In order to generate cache for overlays, use \fB\-\-regen\fR.
 .TP
 .BR "\-\-prune " (\fB\-P\fR)
-\fBWARNING: This action can remove important packages!\fR  Prune looks at each
-installed package and attempts to \fBremove\fR all but the \fBmost recently 
-installed version.  \fRPrune ignores \fBslots\fR, if you require a slot\-aware
-Prune use \fB emerge \-\-clean\fR.  Prune may inadvertently remove important 
-packages from your system.  Use \fB\-\-clean\fR instead unless you really 
-know what you're doing.
+\fBWARNING: This action can remove important packages!\fR  Removes all but the
+highest installed version of a package from your system. This action doesn't
+verify the possible binary compatibility between versions and can thus remove
+essential dependencies from your system.
 .TP
 .BR \-\-regen
 Causes portage to check and update the dependency cache of all ebuilds in the 

@@ -2774,9 +2774,15 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 								if reason[0] == "Insufficient data for checksum verification":
 									return 0
 								if can_fetch and not restrict_fetch:
-									writemsg("Refetching...\n\n",
-										noiselevel=-1)
-									os.unlink(myfile_path)
+									from tempfile import mkstemp
+									fd, temp_filename = mkstemp("",
+										myfile + "._checksum_failure_.",
+										mysettings["DISTDIR"])
+									os.close(fd)
+									os.rename(myfile_path, temp_filename)
+									writemsg_stdout("Refetching... " + \
+										"File renamed to '%s'\n\n" % \
+										temp_filename, noiselevel=-1)
 							else:
 								eout = portage.output.EOutput()
 								eout.quiet = \
@@ -2842,6 +2848,14 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					myfetch = [varexpand(x, mydict=variables) for x in lexer]
 
 					spawn_keywords = {}
+					# Redirect all output to stdout since some fetchers like
+					# wget pollute stderr (if portage detects a problem then it
+					# can send it's own message to stderr).
+					spawn_keywords["fd_pipes"] = {
+						0:sys.stdin.fileno(),
+						1:sys.stdout.fileno(),
+						2:sys.stdout.fileno()
+					}
 					if "userfetch" in mysettings.features and \
 						os.getuid() == 0 and portage_gid and portage_uid:
 						spawn_keywords.update({
@@ -2849,7 +2863,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 							"gid"    : portage_gid,
 							"groups" : userpriv_groups,
 							"umask"  : 002})
-
+					myret = -1
 					try:
 
 						if mysettings.selinux_enabled():
@@ -2898,7 +2912,15 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						else:
 							# no exception?  file exists. let digestcheck() report
 							# an appropriately for size or checksum errors
-							if (mystat[stat.ST_SIZE]<mydigests[myfile]["size"]):
+
+							# If the fetcher reported success and the file is
+							# too small, it's probably because the digest is
+							# bad (upstream changed the distfile).  In this
+							# case we don't want to attempt to resume. Show a
+							# digest verification failure to that the user gets
+							# a clue about what just happened.
+							if myret != os.EX_OK and \
+								mystat.st_size < mydigests[myfile]["size"]:
 								# Fetch failed... Try the next one... Kill 404 files though.
 								if (mystat[stat.ST_SIZE]<100000) and (len(myfile)>4) and not ((myfile[-5:]==".html") or (myfile[-4:]==".htm")):
 									html404=re.compile("<title>.*(not found|404).*</title>",re.I|re.M)
@@ -2931,8 +2953,15 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 										(reason[1], reason[2]), noiselevel=-1)
 									if reason[0] == "Insufficient data for checksum verification":
 										return 0
-									writemsg("Removing corrupt distfile...\n", noiselevel=-1)
-									os.unlink(mysettings["DISTDIR"]+"/"+myfile)
+									from tempfile import mkstemp
+									fd, temp_filename = mkstemp("",
+										myfile + "._checksum_failure_.",
+										mysettings["DISTDIR"])
+									os.close(fd)
+									os.rename(myfile_path, temp_filename)
+									writemsg_stdout("Refetching... " + \
+										"File renamed to '%s'\n\n" % \
+										temp_filename, noiselevel=-1)
 									fetched=0
 								else:
 									eout = portage.output.EOutput()
