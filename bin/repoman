@@ -519,12 +519,6 @@ for x in range(0,repolevel-1):
 
 def caterror(mycat):
 	err(mycat+" is not an official category.  Skipping QA checks in this directory.\nPlease ensure that you add "+catdir+" to "+repodir+"/profiles/categories\nif it is a new category.")
-if mymode == "manifest":
-	pass
-elif "--pretend" in myoptions:
-	print green("\nRepoMan does a once-over of the neighborhood...")
-elif quiet < 1:
-	print green("\nRepoMan scours the neighborhood...")
 
 def parse_use_local_desc(mylines, usedict=None):
 	"""returns a dict of the form {cpv:set(flags)}"""
@@ -745,6 +739,49 @@ def x11_deprecation_check(depstr):
 			if token.find("virtual/x11") != -1 and (not ok_stack or not ok_stack[-1]):
 				return True
 	return False
+
+if mymode == "commit":
+	retval = ("","")
+	if isCvs:
+		print
+		print "Performing a " + green("cvs -n up") + \
+			" with a little magic grep to check for updates."
+		retval = getstatusoutput("/usr/bin/cvs -n up 2>&1 | " + \
+			"egrep '^[^\?] .*' | " + \
+			"egrep -v '^. .*/digest-[^/]+|^cvs server: .* -- ignored$'")
+
+	mylines = retval[1].splitlines()
+	myupdates = []
+	for x in mylines:
+		if not x:
+			continue
+		if x[0] not in "UPMAR": # Updates,Patches,Modified,Added,Removed
+			print red("!!! Please fix the following issues reported " + \
+				"from cvs: ")+green("(U,P,M,A,R are ok)")
+			print red("!!! Note: This is a pretend/no-modify pass...")
+			print retval[1]
+			print
+			sys.exit(1)
+		elif x[0] in "UP":
+			myupdates.append(x[2:])
+
+	if myupdates:
+		print green("Fetching trivial updates...")
+		if "--pretend" in myoptions:
+			print "(/usr/bin/cvs up "+" ".join(myupdates)+")"
+			retval = os.EX_OK
+		else:
+			retval = os.system("/usr/bin/cvs up " + " ".join(myupdates))
+		if retval != os.EX_OK:
+			print "!!! cvs exited with an error. Terminating."
+			sys.exit(retval)
+
+if mymode == "manifest":
+	pass
+elif "--pretend" in myoptions:
+	print green("\nRepoMan does a once-over of the neighborhood...")
+elif quiet < 1:
+	print green("\nRepoMan scours the neighborhood...")
 
 dofail = 0
 arch_caches={}
@@ -1592,44 +1629,13 @@ else:
 		print
 		sys.exit(1)
 
-	retval=["",""]
-	if isCvs:
-		print "Performing a "+green("cvs -n up")+" with a little magic grep to check for updates."
-		retval=getstatusoutput("/usr/bin/cvs -n up 2>&1 | egrep '^[^\?] .*' | egrep -v '^. .*/digest-[^/]+|^cvs server: .* -- ignored$'")
-		
-	mylines=retval[1].split("\n")
-	myupdates=[]
-	for x in mylines:
-		if not x:
-			continue
-		if x[0] not in "UPMAR": # Updates,Patches,Modified,Added,Removed
-			print red("!!! Please fix the following issues reported from cvs: ")+green("(U,P,M,A,R are ok)")
-			print red("!!! Note: This is a pretend/no-modify pass...")
-			print retval[1]
-			print
-			sys.exit(1)
-		elif x[0] in ["U","P"]:
-			myupdates+=[x[2:]]
-	
-	if myupdates:
-		print green("Fetching trivial updates...")
-		if "--pretend" in myoptions:
-			print "(/usr/bin/cvs up "+" ".join(myupdates)+")"
-			retval=0
-		else:
-			retval=os.system("/usr/bin/cvs up "+" ".join(myupdates))
-		if retval!=0:
-			print "!!! cvs exited with an error. Terminating."
-			sys.exit(retval)
-	
 	if isCvs:
 		mycvstree=cvstree.getentries("./",recursive=1)
 		mychanged=cvstree.findchanged(mycvstree,recursive=1,basedir="./")
 		mynew=cvstree.findnew(mycvstree,recursive=1,basedir="./")
 		myremoved=cvstree.findremoved(mycvstree,recursive=1,basedir="./")
 		if not (mychanged or mynew or myremoved):
-			print
-			print green("RepoMan sez:"), "\"Doing nothing is not always good for QA.\"\n"
+			print green("RepoMan sez:"), "\"Doing nothing is not always good for QA.\""
 			print
 			print "(Didn't find any changed files...)"
 			print
