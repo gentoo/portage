@@ -12,6 +12,7 @@ from portage import flatten
 OPERATIONS = ["merge", "unmerge"]
 DEFAULT_SETS = ["world", "system", "everything", "security"] \
 	+["package_"+x for x in ["mask", "unmask", "use", "keywords"]]
+del x
 
 class PackageSet(object):
 	# Set this to operations that are supported by your subclass. While 
@@ -203,7 +204,7 @@ def make_extra_static_sets(configroot):
 	for myname in mysets:
 		if myname in DEFAULT_SETS:
 			continue
-		rValue.add(StaticFileSet(fname, os.path.join(mydir, myname)))
+		rValue.add(StaticFileSet(myname, os.path.join(mydir, myname)))
 	return rValue
 
 def make_category_sets(portdbapi, settings, only_visible=True):
@@ -224,7 +225,7 @@ if __name__ == "__main__":
 		for s in sys.argv[1:]:
 			if s.startswith("category_"):
 				c = s[9:]
-				l.add(CategorySet("category_%s" % c, c, portdbapi, only_visible=only_visible))
+				l.add(CategorySet("category_%s" % c, c, portage.db['/']['porttree'].dbapi, only_visible=False))
 			elif os.path.exists(s):
 				l.add(StaticFileSet(os.path.basename(s), s))
 			elif s != "*":

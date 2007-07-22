@@ -126,7 +126,6 @@ def xsplit_mem(mydat):
 	if mydat[-8:]!="XPAKSTOP":
 		return None
 	indexsize=decodeint(mydat[8:12])
-	datasize=decodeint(mydat[12:16])
 	return (mydat[16:indexsize+16], mydat[indexsize+16:-8])
 
 def getindex(infile):
@@ -251,7 +250,7 @@ class tbz2(object):
 		return self.unpackinfo(datadir)
 	def compose(self,datadir,cleanup=0):
 		"""Alias for recompose()."""
-		return recompose(datadir,cleanup)
+		return self.recompose(datadir,cleanup)
 	def recompose(self,datadir,cleanup=0):
 		"""Creates an xpak segment from the datadir provided, truncates the tbz2
 		to the end of regular data if an xpak segment already exists, and adds
