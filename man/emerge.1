@@ -90,18 +90,23 @@ has completed.  This usually entails configuration file setup or other similar
 setups that the user may wish to run.
 .TP
 .BR \-\-depclean
-Determines all packages installed on the system that have no 
-explicit reason for being there.  \fBemerge\fR generates a list 
-of packages which it expects to be installed by checking the 
-\fBsystem\fR package list and the \fBworld\fR file.  It then 
-compares that list to the list of packages which are actually 
-installed; the differences are listed as unnecessary packages 
-and then unmerged after a short timeout.  \fBWARNING: Removing some 
+Cleans the system by removing packages that are not associated
+with explicitly merged packages. Depclean works by creating the
+full dependency tree from the system list and the world file,
+then comparing it to installed packages. Packages installed, but
+not associated with an explicit merge are listed as candidates
+for unmerging. Inexperienced users are advised to use \fB\-\-pretend\fR
+with this option in order to see a preview of which packages
+will be uninstalled. \fBWARNING: Removing some
 packages may cause packages which link to the removed package 
-to stop working and complain about missing libraries.\fR 
-Re\-emerge the complaining package to fix this issue.  Also see
+to stop working and complain about missing libraries.\fR
+Rebuild the complaining package to fix this issue.  Also see
 \fB\-\-with\-bdeps\fR for behavior with respect to build time dependencies that
-are not strictly required.
+are not strictly required. Depclean serves as a dependency aware
+version of \fB\-\-unmerge\fR. When given one or more atoms, it will
+unmerge matched packages that have no reverse dependencies. Use
+\fB\-\-depclean\fR together with \fB\-\-verbose\fR to show reverse
+dependencies.
 .TP
 .BR "\-\-help " (\fB\-h\fR)
 Displays help information for emerge.  Adding one of the additional
@@ -128,7 +133,9 @@ PORTDIR_OVERLAY.  In order to generate cache for overlays, use \fB\-\-regen\fR.
 \fBWARNING: This action can remove important packages!\fR  Removes all but the
 highest installed version of a package from your system. This action doesn't
 verify the possible binary compatibility between versions and can thus remove
-essential dependencies from your system.
+essential dependencies from your system. Use \fB\-\-prune\fR together with
+\fB\-\-verbose\fR to show reverse dependencies or with \fB\-\-nodeps\fR to
+ignore all dependencies.
 .TP
 .BR \-\-regen
 Causes portage to check and update the dependency cache of all ebuilds in the 
@@ -178,8 +185,9 @@ description of PORTDIR_OVERLAY for a method to avoid deletions.
 \fBWARNING: This action can remove important packages!\fR Removes
 all matching packages.  This does no checking of dependencies, so
 it may remove packages necessary for the proper operation of your
-system.  Its arguments can be \fIebuilds\fR, \fIsets\fR, or
-\fIatoms\fR.
+system.  Its arguments can be \fIatoms\fR or
+\fIebuilds\fR. For a dependency aware version of \fB\-\-unmerge\fR,
+use \fB\-\-depclean\fR or \fB\-\-prune\fR.
 .TP
 .BR "\-\-update " (\fB\-u\fR)
 Updates packages to the best version available, which may not always be the 

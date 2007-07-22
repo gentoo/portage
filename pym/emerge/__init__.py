@@ -1569,7 +1569,9 @@ class depgraph(object):
 							greedy_atoms.append((myarg, myslot_atom))
 			arg_atoms = greedy_atoms
 
-		oneshot = "--oneshot" in self.myopts or "--onlydeps" in self.myopts
+		oneshot = "--oneshot" in self.myopts or \
+			"--onlydeps" in self.myopts or \
+			"--update" in self.myopts
 		""" These are used inside self.create() in order to ensure packages
 		that happen to match arguments are not incorrectly marked as nomerge."""
 		args_set = self._sets["args"]
@@ -5412,6 +5414,9 @@ def action_depclean(settings, trees, ldpath_mtimes,
 			if vardb.match(atom):
 				remaining_atoms.append((atom, 'system', hard))
 	elif action == "prune":
+		for atom in syslist:
+			if vardb.match(atom):
+				remaining_atoms.append((atom, 'system', hard))
 		# Pull in everything that's installed since we don't want to prune a
 		# package if something depends on it.
 		remaining_atoms.extend((atom, 'world', hard) for atom in vardb.cp_all())
@@ -5553,6 +5558,11 @@ def action_depclean(settings, trees, ldpath_mtimes,
 
 	def show_parents(child_node):
 		parent_nodes = graph.parent_nodes(child_node)
+		if not parent_nodes:
+			# With --prune, the highest version can be pulled in without any
+			# real parent since all installed packages are pulled in.  In that
+			# case there's nothing to show here.
+			return
 		parent_nodes.sort()
 		msg = []
 		msg.append("  %s pulled in by:\n" % str(child_node))
@@ -5587,7 +5597,8 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	elif action == "prune":
 		# Prune really uses all installed instead of world.  It's not a real
 		# reverse dependency so don't display it as such.
-		graph.remove("world")
+		if graph.contains("world"):
+			graph.remove("world")
 		for atom in args_set:
 			for pkg in vardb.match(atom):
 				if not fakedb.cpv_exists(pkg):

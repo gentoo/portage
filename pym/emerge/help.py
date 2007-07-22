@@ -64,10 +64,17 @@ def help(myaction,myopts,havecolor=1):
 		print "              full dependency tree from the system list and the world file,"
 		print "              then comparing it to installed packages. Packages installed, but"
 		print "              not associated with an explicit merge are listed as candidates"
-		print "              for unmerging."+turquoise(" WARNING: This can seriously affect your system by")
-		print "              "+turquoise("removing packages that may have been linked against, but due to")
-		print "              "+turquoise("changes in USE flags may no longer be part of the dep tree. Use")
-		print "              "+turquoise("caution when employing this feature.")
+		print "              for unmerging. Inexperienced users are advised to use --pretend"
+		print "              with this option in order to see a preview of which packages will"
+		print "              be uninstalled. "+turquoise(" WARNING: Removing some packages may cause")
+		print "              "+turquoise("packages which link to the removed package to stop working and")
+		print "              "+turquoise("complain about missing libraries. Rebuild the complaining package")
+		print "              "+turquoise("to fix this issue.")+" Also see --with-bdeps for behavior with"
+		print "              respect to build time dependencies that are not strictly"
+		print "              required. Depclean serves as a dependency aware version of"
+		print "              --unmerge. When given one or more atoms, it will unmerge matched"
+		print "              packages that have no reverse dependencies. Use --depclean"
+		print "              together with --verbose to show reverse dependencies."
 		print
 		print "       "+green("--info")
 		print "              Displays important portage variables that will be exported to"
@@ -90,8 +97,9 @@ def help(myaction,myopts,havecolor=1):
 		print "              Removes all but the highest installed version of a package"
 		print "              from your system. This action doesn't verify the possible binary"
 		print "              compatibility between versions and can thus remove essential"
-		print "              dependencies from your system."
-		print "              The argument format is the same as for the "+bold("--clean")+" action."
+		print "              dependencies from your system. Use --prune together with"
+		print "              --verbose to show reverse dependencies or with --nodeps to"
+		print "              ignore all dependencies."
 		print
 		print "       "+green("--regen")
 		print "              Causes portage to check and update the dependency cache of all"
@@ -137,9 +145,11 @@ def help(myaction,myopts,havecolor=1):
 		print
 		print "       "+green("--unmerge")+" ("+green("-C")+" short option)"
 		print "              "+turquoise("WARNING: This action can remove important packages!")
-		print "              Removes all matching packages "+bold("completely")+" from"
-		print "              your system. Specify arguments using the dependency specification"
-		print "              format described in the "+bold("--clean")+" action above."
+		print "              Removes all matching packages. This does no checking of"
+		print "              dependencies, so it may remove packages necessary for the proper"
+		print "              operation of your system. Its arguments can be atoms or"
+		print "              ebuilds. For a dependency aware version of --unmerge, use"
+		print "              --depclean or --prune."
 		print
 		print "       "+green("--update")+" ("+green("-u")+" short option)"
 		print "              Updates packages to the best version available, which may not"
