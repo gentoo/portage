@@ -30,14 +30,14 @@ def _generate_hash_function(hashtype, hashobject, origin="unknown"):
 		blocksize = HASHING_BLOCKSIZE
 		data = f.read(blocksize)
 		size = 0L
-		sum = hashobject()
+		checksum = hashobject()
 		while data:
-			sum.update(data)
+			checksum.update(data)
 			size = size + len(data)
 			data = f.read(blocksize)
 		f.close()
 
-		return (sum.hexdigest(), size)
+		return (checksum.hexdigest(), size)
 	hashfunc_map[hashtype] = pyhash
 	hashorigin_map[hashtype] = origin
 	return pyhash
