@@ -3,7 +3,7 @@
 # $Id$
 
 import portage.glsa as glsa
-from portage.util import grabfile
+from portage.util import grabfile, write_atomic
 from portage.const import CACHE_PATH
 import os
 

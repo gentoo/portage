@@ -20,6 +20,7 @@ class StaticFileSet(EditablePackageSet):
 		self.description = "Package set loaded from file %s" % self._filename
 		metadata = grabfile(self._filename + ".metadata")
 		key = None
+		value = []
 		for line in metadata:
 			line = line.strip()
 			if len(line) == 0 and key != None:
