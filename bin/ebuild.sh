@@ -378,7 +378,7 @@ unpack() {
 				unrar x -idq -o+ "${srcdir}/${x}" || die "$myfail"
 				;;
 			LHa|LHA|lha|lzh)
-				lha xqf "${srcdir}/${x}" || die "$myfail"
+				lha xfq "${srcdir}/${x}" || die "$myfail"
 				;;
 			a|deb)
 				ar x "${srcdir}/${x}" || die "$myfail"
