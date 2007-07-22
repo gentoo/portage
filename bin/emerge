@@ -5326,6 +5326,9 @@ def action_depclean(settings, trees, ldpath_mtimes,
 			if vardb.match(atom):
 				remaining_atoms.append((atom, 'system', hard))
 	elif action == "prune":
+		for atom in syslist:
+			if vardb.match(atom):
+				remaining_atoms.append((atom, 'system', hard))
 		# Pull in everything that's installed since we don't want to prune a
 		# package if something depends on it.
 		remaining_atoms.extend((atom, 'world', hard) for atom in vardb.cp_all())
