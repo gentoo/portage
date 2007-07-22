@@ -5509,6 +5509,11 @@ def action_depclean(settings, trees, ldpath_mtimes,
 
 	def show_parents(child_node):
 		parent_nodes = graph.parent_nodes(child_node)
+		if not parent_nodes:
+			# With --prune, the highest version can be pulled in without any
+			# real parent since all installed packages are pulled in.  In that
+			# case there's nothing to show here.
+			return
 		parent_nodes.sort()
 		msg = []
 		msg.append("  %s pulled in by:\n" % str(child_node))
