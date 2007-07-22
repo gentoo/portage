@@ -5541,7 +5541,8 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	elif action == "prune":
 		# Prune really uses all installed instead of world.  It's not a real
 		# reverse dependency so don't display it as such.
-		graph.remove("world")
+		if graph.contains("world"):
+			graph.remove("world")
 		for atom in args_set:
 			for pkg in vardb.match(atom):
 				if not fakedb.cpv_exists(pkg):
