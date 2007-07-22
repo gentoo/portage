@@ -3,6 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+from portage.process import find_binary
 from portage.tests import TestCase, test_cps
 from portage.sets.shell import CommandOutputSet
 
@@ -18,7 +19,8 @@ class CommandOutputSetTestCase(TestCase):
 	def testCommand(self):
 		
 		input = set(test_cps)
-		command = "/usr/bin/echo -e "
+		command = find_binary("echo")
+		command += " -e "
 		for a in input:
 		  command += "\"%s\n\"" % a
 		s = CommandOutputSet('testset', command)
