@@ -1568,7 +1568,9 @@ class depgraph(object):
 							greedy_atoms.append((myarg, myslot_atom))
 			arg_atoms = greedy_atoms
 
-		oneshot = "--oneshot" in self.myopts or "--onlydeps" in self.myopts
+		oneshot = "--oneshot" in self.myopts or \
+			"--onlydeps" in self.myopts or \
+			"--update" in self.myopts
 		""" These are used inside self.create() in order to ensure packages
 		that happen to match arguments are not incorrectly marked as nomerge."""
 		args_set = self._sets["args"]
