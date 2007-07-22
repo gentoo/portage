@@ -65,3 +65,40 @@ except KeyError:
 	dict[foo] = default_value
 
 The get call is nicer (compact) and faster (try,except are slow).
+
+Imports
+-------
+
+Import things one per line
+
+YES:
+  import os
+  import time
+  import sys
+
+NO:
+  import os,sys,time
+
+When importing from a module, you may import more than 1 thing at a time.
+
+YES:
+  from portage.module import foo, bar, baz
+
+Multiline imports are ok (for now :))
+
+Try to group system and package imports separately.
+
+YES:
+  import os
+  import sys
+  import time
+
+  from portage.locks import lockfile
+  from portage.versions import vercmp
+
+NO:
+  import os
+  import portage
+  import portage.util
+  import time
+  import sys
