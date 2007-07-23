@@ -5,7 +5,7 @@
 import subprocess
 import os
 
-from portage.sets import PackageSet
+from portage.sets.dbapi import PackageSet
 
 class CommandOutputSet(PackageSet):
 	"""This class creates a PackageSet from the output of a shell command.
