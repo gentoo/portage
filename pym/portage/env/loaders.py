@@ -23,9 +23,9 @@ class LoaderError(Exception):
 
 def RecursiveFileLoader(filename):
 	"""
-	If filename is of type file, return [filename]
-	else if filename is of type directory, return an array
-	full of files in that directory to process.
+	If filename is of type file, return a generate that yields filename
+	else if filename is of type directory, return a generator that fields
+	files in that directory.
 	
 	Ignore files beginning with . or ending in ~.
 	Prune CVS directories.
@@ -39,8 +39,8 @@ def RecursiveFileLoader(filename):
 		for root, dirs, files in os.walk(self.fname):
 			if 'CVS' in dirs:
 				dirs.remove('CVS')
-			files = filter(files,startswith('.'))
-			files = filter(files,endswith('~'))
+			files = filter(files, startswith('.'))
+			files = filter(files, endswith('~'))
 			for file in files:
 				yield file
 	else:
@@ -48,7 +48,7 @@ def RecursiveFileLoader(filename):
 
 class DataLoader(object):
 
-	def __init__(self, validator=None):
+	def __init__(self, validator):
 		f = validator
 		if f is None:
 			# if they pass in no validator, just make a fake one
@@ -189,13 +189,13 @@ class KeyValuePairFileLoader(DataLoader):
 					continue
 				split = line.strip().split('=')
 				if len(split) < 2:
-					errors.setdefault(self.fname,[]).append(
+					errors.setdefault(self.fname, []).append(
 					"Malformed data at line: %s, data %s"
 					% (line_num + 1, split))
 				key = split[0]
 				value = split[1:]
 				if not self._validator.validate(key):
-					errors.setdefault(self.fname,[]).append(
+					errors.setdefault(self.fname, []).append(
 					"Validation failed at line: %s, data %s"
 					% (line_num + 1, split))
 					continue
