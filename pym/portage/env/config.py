@@ -6,7 +6,7 @@
 from UserDict import UserDict
 from portage.env.loaders import KeyListFileLoader, KeyValuePairFileLoader, ItemFileLoader
 
-class UserConfigKlass(UserDict,object):
+class UserConfigKlass(UserDict, object):
 	"""
 	A base class stub for things to inherit from.
 	Users may want a non-file backend.
@@ -19,6 +19,7 @@ class UserConfigKlass(UserDict,object):
 		@param loader: A class that has a load() that returns two dicts
 			the first being a data dict, the second being a dict of errors.
 		"""
+		UserDict.__init__(self)
 		self._loader = loader
 
 	def load(self):
