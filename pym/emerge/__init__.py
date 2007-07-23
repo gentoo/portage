@@ -52,7 +52,7 @@ import portage.exception
 from portage.data import secpass
 from portage.util import normalize_path as normpath
 from portage.util import writemsg
-from portage.sets import InternalPackageSet
+from portage.sets.dbapi import InternalPackageSet
 from portage.sets.profiles import PackagesSystemSet as SystemSet
 from portage.sets.files import WorldSet
 
