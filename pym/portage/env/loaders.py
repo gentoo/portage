@@ -56,11 +56,10 @@ class DataLoader(object):
 		if f is None:
 			# if they pass in no validator, just make a fake one
 			# that always returns true
-			class AlwaysTrue(object):
-				def validate(self, key):
-					return True
-			f = AlwaysTrue()
-		self._validator = f
+			def validate(key):
+				return True
+			f = validate
+		self._validate = f
 
 	def load(self):
 		"""
@@ -147,10 +146,10 @@ class ItemFileLoader(FileLoader):
 				% (line_num + 1, line))
 			return
 		key = split[0]
-		if not self._validator.validate(key):
+		if not self._validate(key):
 			errors.setdefault(self.fname, []).append(
-			"Validation failed at line: %s, data %s"
-			% (line_num + 1, key))
+				"Validation failed at line: %s, data %s"
+				% (line_num + 1, key))
 			return
 		data[key] = None
 
@@ -176,15 +175,15 @@ class KeyListFileLoader(FileLoader):
 		split = line.split()
 		if len(split) < 2:
 			errors.setdefault(self.fname, []).append(
-			"Malformed data at line: %s, data: %s"
-			% (line_num + 1, line))
+				"Malformed data at line: %s, data: %s"
+				% (line_num + 1, line))
 			return
 		key = split[0]
 		value = split[1:]
-		if not self._validator.validate(key):
+		if not self._validate(key):
 			errors.setdefault(self.fname, []).append(
-			"Validation failed at line: %s, data %s"
-			% (line_num + 1, key))
+				"Validation failed at line: %s, data %s"
+				% (line_num + 1, key))
 			return
 		if key in data:
 			data[key].append(value)
@@ -216,15 +215,20 @@ class KeyValuePairFileLoader(FileLoader):
 		split = line.split('=')
 		if len(split) < 2:
 			errors.setdefault(self.fname, []).append(
-			"Malformed data at line: %s, data %s"
-			% (line_num + 1, line))
+				"Malformed data at line: %s, data %s"
+				% (line_num + 1, line))
 			return
 		key = split[0]
 		value = split[1:]
-		if not self._validator.validate(key):
+		if not key:
 			errors.setdefault(self.fname, []).append(
-			"Validation failed at line: %s, data %s"
-			% (line_num + 1, key))
+				"Malformed key at line: %s, key %s"
+				% (line_num + 1, key))
+			return
+		if not self._validate(key):
+			errors.setdefault(self.fname, []).append(
+				"Validation failed at line: %s, data %s"
+				% (line_num + 1, key))
 			return
 		if key in data:
 			data[key].append(value)

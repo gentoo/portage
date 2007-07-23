@@ -6,13 +6,11 @@
 from UserDict import UserDict
 from portage.env.loaders import KeyListFileLoader, KeyValuePairFileLoader, ItemFileLoader
 
-class UserConfigKlass(UserDict, object):
+class ConfigLoaderKlass(UserDict, object):
 	"""
 	A base class stub for things to inherit from.
 	Users may want a non-file backend.
 	"""
-	
-	data = {}
 	
 	def __init__(self, loader):
 		"""
@@ -34,9 +32,32 @@ class UserConfigKlass(UserDict, object):
 	def __iter__(self):
 		return iter(self.data)
 
-class PackageKeywordsFile(UserConfigKlass):
+class GenericFile(UserDict):
 	"""
-	Inherits from UserConfigKlass; implements a file-based backend.
+	Inherits from ConfigLoaderKlass, attempts to use all known loaders
+	until it gets <something> in data.  This is probably really slow but is
+	helpful when you really have no idea what you are loading (hint hint the file
+	should perhaps declare  what type it is? ;)
+	"""
+	
+	loaders = [KeyListFileLoader, KeyValuePairFileLoader, ItemFileLoader]
+	
+	def __init__(self, filename):
+		UserDict.__init__(self)
+		self.filename = filename
+	
+	def load(self):
+		for loader in self.loaders:
+			l = loader(self.filename, None)
+			data, errors = l.load()
+			if len(data) and not len(errors):
+				(self.data, self.errors) = (data, errors)
+				return
+
+
+class PackageKeywordsFile(ConfigLoaderKlass):
+	"""
+	Inherits from ConfigLoaderKlass; implements a file-based backend.
 	"""
 
 	default_loader = KeyListFileLoader
@@ -45,7 +66,7 @@ class PackageKeywordsFile(UserConfigKlass):
 		super(PackageKeywordsFile, self).__init__(
 			self.default_loader(filename, validator=None))
 	
-class PackageUseFile(UserConfigKlass):
+class PackageUseFile(ConfigLoaderKlass):
 	"""
 	Inherits from PackageUse; implements a file-based backend.  Doesn't handle recursion yet.
 	"""
@@ -55,7 +76,7 @@ class PackageUseFile(UserConfigKlass):
 		super(PackageUseFile, self).__init__(
 			self.default_loader(filename, validator=None))
 	
-class PackageMaskFile(UserConfigKlass):
+class PackageMaskFile(ConfigLoaderKlass):
 	"""
 	A class that implements a file-based package.mask
 	
@@ -73,7 +94,7 @@ class PackageMaskFile(UserConfigKlass):
 		super(PackageMaskFile, self).__init__(
 			self.default_loader(filename, validator=None))
 
-class PortageModulesFile(UserConfigKlass):
+class PortageModulesFile(ConfigLoaderKlass):
 	"""
 	File Class for /etc/portage/modules
 	"""
