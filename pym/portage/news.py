@@ -72,7 +72,6 @@ class NewsManager(object):
 
 		path = os.path.join(self.portdb.getRepositoryPath(repoid), self.NEWS_PATH)
 
-		repo_path = self.portdb.getRepositoryPath(repoid)
 		# Skip reading news for repoid if the news dir does not exist.  Requested by
 		# NightMorph :)
 		if not os.path.exists(path):
@@ -83,7 +82,7 @@ class NewsManager(object):
 			try:
 				filename = os.path.join(path, itemid, itemid + "." + self.LANGUAGE_ID + ".txt")
 				item = NewsItem(filename, itemid, timestamp)
-			except (TypeError, ValueError), e:
+			except (TypeError, ValueError):
 				continue
 			if item.isRelevant(profile=self._profile_path,
 				config=self.config, vardb=self.vdb):

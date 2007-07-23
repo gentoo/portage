@@ -2,24 +2,31 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-from portage.util import grabfile, grabfile_package, grabdict_package, write_atomic, ensure_dirs
+import os
+
+from portage.util import grabfile, write_atomic, ensure_dirs
 from portage.const import PRIVATE_PATH
 from portage.locks import lockfile, unlockfile
 from portage import portage_gid
-import os
-
-from portage.sets import PackageSet, EditablePackageSet
+from portage.sets.dbapi import PackageSet, EditablePackageSet
+from portage.env.config import ConfigLoaderKlass, GenericFile
+from portage.env.loaders import ItemFileLoader, KeyListFileLoader
+from portage.env.validators import PackagesFileValidator, ValidAtomValidator
 
 class StaticFileSet(EditablePackageSet):
 	_operations = ["merge", "unmerge"]
 	
-	def __init__(self, name, filename):
+	def __init__(self, name, filename, loader=None):
 		super(StaticFileSet, self).__init__(name)
 		self._filename = filename
 		self._mtime = None
 		self.description = "Package set loaded from file %s" % self._filename
+		if loader is None:
+			self.loader = ConfigLoaderKlass(ItemFileLoader(filename=self._filename,
+				validator=PackagesFileValidator))
 		metadata = grabfile(self._filename + ".metadata")
 		key = None
+		value = []
 		for line in metadata:
 			line = line.strip()
 			if len(line) == 0 and key != None:
@@ -45,17 +52,23 @@ class StaticFileSet(EditablePackageSet):
 		except (OSError, IOError):
 			mtime = None
 		if (not self._loaded or self._mtime != mtime):
-			self._setAtoms(grabfile_package(self._filename, recursive=True))
+			self.loader.load()
+			self._setAtoms(self.loader.keys())
 			self._mtime = mtime
 	
 class ConfigFileSet(PackageSet):
-	def __init__(self, name, filename):
+	def __init__(self, name, filename, loader=None, validator=None):
 		super(ConfigFileSet, self).__init__(name)
 		self._filename = filename
 		self.description = "Package set generated from %s" % self._filename
+		if loader is None:
+			self.loader = GenericFile(filename=self._filename)
+		else:
+			self.loader = loader(filename, validator)
 
 	def load(self):
-		self._setAtoms(grabdict_package(self._filename, recursive=True).keys())
+		self.loader.load()
+		self._setAtoms(self.loader.keys())
 
 class WorldSet(StaticFileSet):
 	description = "Set of packages that were directly installed by the user"

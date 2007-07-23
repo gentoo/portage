@@ -4,8 +4,10 @@
 # $Id$
 
 
-import os, atexit, signal, sys
-import portage.data
+import os
+import atexit
+import signal
+import sys
 
 from portage.util import dump_traceback
 from portage.const import BASH_BINARY, SANDBOX_BINARY

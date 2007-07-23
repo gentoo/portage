@@ -4,7 +4,12 @@
 
 __docformat__ = "epytext"
 
-import commands, errno, os, re, shlex, sys, time
+import commands
+import errno
+import os
+import re
+import shlex
+import sys
 from portage.const import COLOR_MAP_FILE
 from portage.util import writemsg
 from portage.exception import PortageException, ParseError, PermissionDenied, FileNotFound
@@ -170,7 +175,6 @@ def parse_color_map(onerror=None):
 	try:
 		s = shlex.shlex(open(myfile))
 		s.wordchars = s.wordchars + ";" # for ansi codes
-		d = {}
 		while True:
 			k, o, v = s.get_token(), s.get_token(), s.get_token()
 			if k is s.eof:
@@ -220,10 +224,11 @@ def parse_color_map(onerror=None):
 
 try:
 	parse_color_map(onerror=lambda e: writemsg("%s\n" % str(e), noiselevel=-1))
-except FileNotFound, e:
+except FileNotFound:
 	pass
 except PortageException, e:
 	writemsg("%s\n" % str(e))
+	del e
 
 def nc_len(mystr):
 	tmp = re.sub(esc_seq + "^m]+m", "", mystr);

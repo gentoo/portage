@@ -2,12 +2,11 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-import portage.glsa as glsa
-from portage.util import grabfile
-from portage.const import CACHE_PATH
 import os
-
-from portage.sets import PackageSet
+import portage.glsa as glsa
+from portage.util import grabfile, write_atomic
+from portage.const import CACHE_PATH
+from portage.sets.dbapi import PackageSet
 
 class SecuritySet(PackageSet):
 	_operations = ["merge"]

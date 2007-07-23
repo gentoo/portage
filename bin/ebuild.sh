@@ -378,7 +378,7 @@ unpack() {
 				unrar x -idq -o+ "${srcdir}/${x}" || die "$myfail"
 				;;
 			LHa|LHA|lha|lzh)
-				lha xqf "${srcdir}/${x}" || die "$myfail"
+				lha xfq "${srcdir}/${x}" || die "$myfail"
 				;;
 			deb)
 				# Unpacking .deb archives can not always be done with

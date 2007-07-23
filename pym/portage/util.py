@@ -2,13 +2,20 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id: portage_util.py 4603 2006-10-06 03:28:25Z zmedico $
 
+
+import os
+import errno
+import shlex
+import stat
+import string
+import sys
+
 from portage.exception import PortageException, FileNotFound, \
        OperationNotPermitted, PermissionDenied, ReadOnlyFileSystem
 import portage.exception
 from portage.dep import isvalidatom
 from portage.const import EPREFIX
 
-import os, errno, shlex, stat, string, sys
 try:
 	import cPickle
 except ImportError:
@@ -223,6 +230,8 @@ def grabdict(myfilename, juststrings=0, empty=0, recursive=0, incremental=1):
 	return newdict
 
 def grabdict_package(myfilename, juststrings=0, recursive=0):
+	""" Does the same thing as grabdict except it validates keys
+	    with isvalidatom()"""
 	pkgs=grabdict(myfilename, juststrings, empty=1, recursive=recursive)
 	# We need to call keys() here in order to avoid the possibility of
 	# "RuntimeError: dictionary changed size during iteration"
@@ -238,9 +247,7 @@ def grabfile_package(myfilename, compatlevel=0, recursive=0):
 	pkgs=grabfile(myfilename, compatlevel, recursive=recursive)
 	for x in range(len(pkgs)-1, -1, -1):
 		pkg = pkgs[x]
-		if pkg[0] == "-":
-			pkg = pkg[1:]
-		if pkg[0] == "*": # Kill this so we can deal the "packages" file too
+		if pkg[0] in  ["-","*"]: # -atom *pkg for packages file
 			pkg = pkg[1:]
 		if not isvalidatom(pkg):
 			writemsg("--- Invalid atom in %s: %s\n" % (myfilename, pkgs[x]),

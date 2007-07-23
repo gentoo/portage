@@ -4,7 +4,14 @@
 # $Id: getbinpkg.py 3483 2006-06-10 21:40:40Z genone $
 
 from portage.output import red, yellow, green
-import htmllib,HTMLParser,formatter,sys,os,portage.xpak,time,tempfile,base64,urllib2
+import portage.xpak
+import HTMLParser
+import sys
+import os
+import time
+import tempfile
+import base64
+import urllib2
 from portage.const import CACHE_PATH
 
 try:
@@ -14,16 +21,12 @@ except ImportError:
 
 try:
 	import ftplib
-except SystemExit, e:
-	raise
-except Exception, e:
+except ImportError, e:
 	sys.stderr.write(red("!!! CANNOT IMPORT FTPLIB: ")+str(e)+"\n")
 
 try:
 	import httplib
-except SystemExit, e:
-	raise
-except Exception, e:
+except ImportError, e:
 	sys.stderr.write(red("!!! CANNOT IMPORT HTTPLIB: ")+str(e)+"\n")
 
 def make_metadata_dict(data):
@@ -267,11 +270,11 @@ def match_in_array(array, prefix="", suffix="", match_both=1, allow_overlap=0):
 
 		if not allow_overlap: # Not allow to overlap prefix and suffix
 			if len(x) >= (len(prefix)+len(suffix)):
-				y = x[len(prefix):]
+				pass
 			else:
 				continue          # Too short to match.
 		else:
-			y = x               # Do whatever... We're overlapping.
+			pass                      # Do whatever... We're overlapping.
 		
 		if suffix and (len(x) >= len(suffix)) and (x[-len(suffix):] == suffix):
 			myarray.append(x)   # It matches
@@ -457,8 +460,6 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 
 	conn,protocol,address,params,headers = create_conn(baseurl, conn)
 
-	filedict = {}
-
 	try:
 		metadatafile = open(CACHE_PATH+"/remote_metadata.pickle")
 		metadata = cPickle.load(metadatafile)
@@ -485,7 +486,6 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 	# Determine if our metadata file is current.
 	metalist.sort()
 	metalist.reverse() # makes the order new-to-old.
-	havecache=0
 	for mfile in metalist:
 		if usingcache and \
 		   ((metadata[baseurl]["indexname"] != mfile) or \
@@ -651,7 +651,6 @@ class PackageIndex(object):
 		cpv_all = self.packages.keys()
 		cpv_all.sort()
 		if self.modified:
-			import time
 			self.header["TIMESTAMP"] = str(long(time.time()))
 			self.header["PACKAGES"] = str(len(cpv_all))
 		keys = self.header.keys()

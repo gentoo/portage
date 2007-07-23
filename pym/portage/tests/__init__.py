@@ -3,17 +3,19 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-import os, sys, time, unittest
-import portage.tests
+import os
+import sys
+import time
+import unittest
 
 def main():
 	testDirs = ["bin", "dep", "ebuild",
-		"env/config", "util", "versions", "xpak"]
+		"env/config", "util", "versions", "xpak", "sets/shell"]
 	suite = unittest.TestSuite()
 	basedir = os.path.dirname(__file__)
 	for mydir in testDirs:
 		suite.addTests(getTests(os.path.join(basedir, mydir), basedir) )
-	return portage.tests.TextTestRunner(verbosity=2).run(suite)
+	return TextTestRunner(verbosity=2).run(suite)
 
 def my_import(name):
 	mod = __import__(name)
@@ -22,7 +24,7 @@ def my_import(name):
 		mod = getattr(mod, comp)
 	return mod
 
-def getTests( path, base_path ):
+def getTests(path, base_path):
 	"""
 
 	path is the path to a given subdir ( 'portage/' for example)
@@ -30,18 +32,17 @@ def getTests( path, base_path ):
 	to import
 
 	"""
-	import os
-	files = os.listdir( path )
-	files = [ f[:-3] for f in files if f.startswith("test_") and f.endswith(".py") ]
+	files = os.listdir(path)
+	files = [ f[:-3] for f in files if f.startswith("test") and f.endswith(".py") ]
 	parent_path = path[len(base_path)+1:]
-	parent_module = ".".join(("portage","tests", parent_path))
-	parent_module = parent_module.replace('/','.')
+	parent_module = ".".join(("portage", "tests", parent_path))
+	parent_module = parent_module.replace('/', '.')
 	result = []
 	for mymodule in files:
 		# Make the trailing / a . for module importing
 		modname = ".".join((parent_module, mymodule))
 		mod = my_import(modname)
-		result.append( unittest.TestLoader().loadTestsFromModule(mod) )
+		result.append(unittest.TestLoader().loadTestsFromModule(mod))
 	return result
 
 class TextTestResult(unittest._TextTestResult):
@@ -53,18 +54,18 @@ class TextTestResult(unittest._TextTestResult):
 	by the test runner.
 	"""
 	
-	def __init__( self, stream, descriptions, verbosity ):
+	def __init__(self, stream, descriptions, verbosity):
 		unittest._TextTestResult.__init__( self, stream, descriptions, verbosity )
 		self.todoed = []
 
-	def addTodo( self, test, info ):
+	def addTodo(self, test, info):
 		self.todoed.append((test,info))
 		if self.showAll:
 			self.stream.writeln("TODO")
 		elif self.dots:
 			self.stream.write(".")
 	
-	def printErrors( self ):
+	def printErrors(self):
 		if self.dots or self.showAll:
 			self.stream.writeln()
 			self.printErrorList('ERROR', self.errors)
@@ -90,7 +91,7 @@ class TestCase(unittest.TestCase):
 	def defaultTestResult(self):
 		return TextTestResult()
 
-	def run( self, result=None ):
+	def run(self, result=None):
 		if result is None: result = self.defaultTestResult()
 		result.startTest(self)
 		testMethod = getattr(self, self._testMethodName)
@@ -134,7 +135,7 @@ class TextTestRunner(unittest.TextTestRunner):
 	def _makeResult(self):
 	        return TextTestResult(self.stream, self.descriptions, self.verbosity)
 
-	def run( self, test ):
+	def run(self, test):
 		"""
 		Run the given test case or test suite.
 		"""

@@ -1,34 +1,38 @@
-import os
 
 from portage.tests import TestCase
 from portage.env.config import PortageModulesFile
 from tempfile import mkstemp
 from itertools import izip
+import os
 
 class PortageModulesFileTestCase(TestCase):
 
 	keys = ['foo.bar','baz','bob','extra_key']
-	modules = ['spanky','zmedico','antarus','ricer']
+	invalid_keys = ['',""]
+	modules = ['spanky','zmedico','antarus','ricer','5','6']
 
 	def setUp(self):
 		self.items = {}
-		for k,v in izip(self.keys, self.modules):
+		for k, v in izip(self.keys + self.invalid_keys, 
+				self.modules):
 			self.items[k] = v
 
 	def testPortageModulesFile(self):
 		self.BuildFile()
 		f = PortageModulesFile(self.fname)
-		for k in f:
-			self.assertEqual( f[k], self.items[k] )
+		f.load()
+		for k in self.keys:
+			self.assertEqual(f[k], [self.items[k]])
+		for ik in self.invalid_keys:
+			self.assertEqual(False, ik in f)
 		self.NukeFile()
 
 	def BuildFile(self):
 		fd, self.fname = mkstemp()
 		f = os.fdopen(fd, 'wb')
-		for k,v in self.items.iteritems():
+		for k, v in self.items.iteritems():
 			f.write('%s=%s\n' % (k,v))
 		f.close()
 
 	def NukeFile(self):
-		import os
 		os.unlink(self.fname)
