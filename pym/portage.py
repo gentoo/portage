@@ -2345,8 +2345,6 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, **keyw
 
 	features = mysettings.features
 	restrict = mysettings.get("PORTAGE_RESTRICT","").split()
-	droppriv=(droppriv and "userpriv" in features and not \
-		("nouserpriv" in restrict or "userpriv" in restrict))
 	if droppriv and not uid and portage_gid and portage_uid:
 		keywords.update({"uid":portage_uid,"gid":portage_gid,"groups":userpriv_groups,"umask":002})
 
@@ -3909,19 +3907,23 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 		sesandbox = mysettings.selinux_enabled() and \
 			"sesandbox" in mysettings.features
+
+		droppriv = "userpriv" in mysettings.features and \
+			"userpriv" not in restrict
+
 		ebuild_sh = EBUILD_SH_BINARY + " %s"
 		misc_sh = MISC_SH_BINARY + " dyn_%s"
 
 		# args are for the to spawn function
 		actionmap = {
-"depend": {"cmd":ebuild_sh, "args":{"droppriv":1, "free":0,         "sesandbox":0}},
-"setup":  {"cmd":ebuild_sh, "args":{"droppriv":0, "free":1,         "sesandbox":0}},
-"unpack": {"cmd":ebuild_sh, "args":{"droppriv":1, "free":0,         "sesandbox":sesandbox}},
-"compile":{"cmd":ebuild_sh, "args":{"droppriv":1, "free":nosandbox, "sesandbox":sesandbox}},
-"test":   {"cmd":ebuild_sh, "args":{"droppriv":1, "free":nosandbox, "sesandbox":sesandbox}},
-"install":{"cmd":ebuild_sh, "args":{"droppriv":0, "free":0,         "sesandbox":sesandbox}},
-"rpm":    {"cmd":misc_sh,   "args":{"droppriv":0, "free":0,         "sesandbox":0}},
-"package":{"cmd":misc_sh,   "args":{"droppriv":0, "free":0,         "sesandbox":0}},
+"depend": {"cmd":ebuild_sh, "args":{"droppriv":1,        "free":0,         "sesandbox":0}},
+"setup":  {"cmd":ebuild_sh, "args":{"droppriv":0,        "free":1,         "sesandbox":0}},
+"unpack": {"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":0,         "sesandbox":sesandbox}},
+"compile":{"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":nosandbox, "sesandbox":sesandbox}},
+"test":   {"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":nosandbox, "sesandbox":sesandbox}},
+"install":{"cmd":ebuild_sh, "args":{"droppriv":0,        "free":0,         "sesandbox":sesandbox}},
+"rpm":    {"cmd":misc_sh,   "args":{"droppriv":0,        "free":0,         "sesandbox":0}},
+"package":{"cmd":misc_sh,   "args":{"droppriv":0,        "free":0,         "sesandbox":0}},
 		}
 
 		# merge the deps in so we have again a 'full' actionmap
