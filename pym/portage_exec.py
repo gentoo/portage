@@ -8,7 +8,7 @@ import os, atexit, signal, sys
 import portage_data
 
 from portage_util import dump_traceback
-from portage_const import BASH_BINARY, SANDBOX_BINARY
+from portage_const import BASH_BINARY, SANDBOX_BINARY, FAKEROOT_BINARY
 from portage_exception import CommandNotFound
 
 try:
@@ -26,6 +26,9 @@ else:
 
 sandbox_capable = (os.path.isfile(SANDBOX_BINARY) and
                    os.access(SANDBOX_BINARY, os.X_OK))
+
+fakeroot_capable = (os.path.isfile(FAKEROOT_BINARY) and
+                    os.access(FAKEROOT_BINARY, os.X_OK))
 
 def spawn_bash(mycommand, debug=False, opt_name=None, **keywords):
 	"""
@@ -57,6 +60,22 @@ def spawn_sandbox(mycommand, opt_name=None, **keywords):
 	args=[SANDBOX_BINARY]
 	if not opt_name:
 		opt_name = os.path.basename(mycommand.split()[0])
+	args.append(mycommand)
+	return spawn(args, opt_name=opt_name, **keywords)
+
+def spawn_fakeroot(mycommand, fakeroot_state=None, opt_name=None, **keywords):
+	args=[FAKEROOT_BINARY]
+	if not opt_name:
+		opt_name = os.path.basename(mycommand.split()[0])
+	if fakeroot_state:
+		open(fakeroot_state, "a").close()
+		args.append("-s")
+		args.append(fakeroot_state)
+		args.append("-i")
+		args.append(fakeroot_state)
+	args.append("--")
+	args.append(BASH_BINARY)
+	args.append("-c")
 	args.append(mycommand)
 	return spawn(args, opt_name=opt_name, **keywords)
 

@@ -2277,7 +2277,7 @@ class config:
 
 # XXX This would be to replace getstatusoutput completely.
 # XXX Issue: cannot block execution. Deadlock condition.
-def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, **keywords):
+def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakeroot=0, **keywords):
 	"""
 	Spawn a subprocess with extra portage-specific options.
 	Optiosn include:
@@ -2305,6 +2305,8 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, **keyw
 	@type droppriv: Boolean
 	@param sesandbox: Enable SELinux Sandboxing (toggles a context switch)
 	@type sesandbox: Boolean
+	@param fakeroot: Run this command with faked root privileges
+	@type fakeroot: Boolean
 	@param keywords: Extra options encoded as a dict, to be passed to spawn
 	@type keywords: Dictionary
 	@rtype: Integer
@@ -2344,7 +2346,10 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, **keyw
 		keywords["fd_pipes"] = fd_pipes
 
 	features = mysettings.features
-	restrict = mysettings.get("PORTAGE_RESTRICT","").split()
+	# TODO: Enable fakeroot to be used together with droppriv.  The
+	# fake ownership/permissions will have to be converted to real
+	# permissions in the merge phase.
+	fakeroot = fakeroot and uid != 0 and portage_exec.fakeroot_capable
 	if droppriv and not uid and portage_gid and portage_uid:
 		keywords.update({"uid":portage_uid,"gid":portage_gid,"groups":userpriv_groups,"umask":002})
 
@@ -2355,6 +2360,10 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, **keyw
 	if free:
 		keywords["opt_name"] += " bash"
 		spawn_func = portage_exec.spawn_bash
+	elif fakeroot:
+		keywords["opt_name"] += " fakeroot"
+		keywords["fakeroot_state"] = os.path.join(mysettings["T"], "fakeroot.state")
+		spawn_func = portage_exec.spawn_fakeroot
 	else:
 		keywords["opt_name"] += " sandbox"
 		spawn_func = portage_exec.spawn_sandbox
@@ -3911,19 +3920,21 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		droppriv = "userpriv" in mysettings.features and \
 			"userpriv" not in restrict
 
+		fakeroot = "fakeroot" in mysettings.features
+
 		ebuild_sh = EBUILD_SH_BINARY + " %s"
 		misc_sh = MISC_SH_BINARY + " dyn_%s"
 
 		# args are for the to spawn function
 		actionmap = {
-"depend": {"cmd":ebuild_sh, "args":{"droppriv":1,        "free":0,         "sesandbox":0}},
-"setup":  {"cmd":ebuild_sh, "args":{"droppriv":0,        "free":1,         "sesandbox":0}},
-"unpack": {"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":0,         "sesandbox":sesandbox}},
-"compile":{"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":nosandbox, "sesandbox":sesandbox}},
-"test":   {"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":nosandbox, "sesandbox":sesandbox}},
-"install":{"cmd":ebuild_sh, "args":{"droppriv":0,        "free":0,         "sesandbox":sesandbox}},
-"rpm":    {"cmd":misc_sh,   "args":{"droppriv":0,        "free":0,         "sesandbox":0}},
-"package":{"cmd":misc_sh,   "args":{"droppriv":0,        "free":0,         "sesandbox":0}},
+"depend": {"cmd":ebuild_sh, "args":{"droppriv":1,        "free":0,         "sesandbox":0,         "fakeroot":0}},
+"setup":  {"cmd":ebuild_sh, "args":{"droppriv":0,        "free":1,         "sesandbox":0,         "fakeroot":0}},
+"unpack": {"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":0,         "sesandbox":sesandbox, "fakeroot":0}},
+"compile":{"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":nosandbox, "sesandbox":sesandbox, "fakeroot":0}},
+"test":   {"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":nosandbox, "sesandbox":sesandbox, "fakeroot":0}},
+"install":{"cmd":ebuild_sh, "args":{"droppriv":0,        "free":0,         "sesandbox":sesandbox, "fakeroot":fakeroot}},
+"rpm":    {"cmd":misc_sh,   "args":{"droppriv":0,        "free":0,         "sesandbox":0,         "fakeroot":fakeroot}},
+"package":{"cmd":misc_sh,   "args":{"droppriv":0,        "free":0,         "sesandbox":0,         "fakeroot":fakeroot}},
 		}
 
 		# merge the deps in so we have again a 'full' actionmap
@@ -5969,17 +5980,8 @@ class portdbapi(dbapi):
 		modemask =    02
 
 		try:
-			for mydir in (self.depcachedir,):
-				if portage_util.ensure_dirs(mydir, gid=portage_gid, mode=dirmode, mask=modemask):
-					writemsg("Adjusting permissions recursively: '%s'\n" % mydir,
-						noiselevel=-1)
-					def onerror(e):
-						raise # bail out on the first error that occurs during recursion
-					if not apply_recursive_permissions(mydir,
-						gid=portage_gid, dirmode=dirmode, dirmask=modemask,
-						filemode=filemode, filemask=modemask, onerror=onerror):
-						raise portage_exception.OperationNotPermitted(
-							"Failed to apply recursive permissions for the portage group.")
+			portage_util.ensure_dirs(self.depcachedir, gid=portage_gid,
+				mode=dirmode, mask=modemask)
 		except portage_exception.PortageException, e:
 			pass
 

@@ -1726,8 +1726,8 @@ if [ -n "${myarg}" ] && \
 	unset myarg
 	# Save current environment and touch a success file. (echo for success)
 	umask 002
-	set | egrep -v "^SANDBOX_" > "${T}/environment" 2>/dev/null
-	export | egrep -v "^declare -x SANDBOX_" | \
+	set | egrep -v -e "^SANDBOX_" -e "^LD_PRELOAD=" -e "^FAKEROOTKEY=" > "${T}/environment" 2>/dev/null
+	export | egrep -v -e "^declare -x SANDBOX_" -e "^declare -x LD_PRELOAD=" -e "^declare -x FAKEROOTKEY=" | \
 		sed 's:^declare -rx:declare -x:' >> "${T}/environment" 2>/dev/null
 	chown portage:portage "${T}/environment" &>/dev/null
 	chmod g+w "${T}/environment" &>/dev/null
