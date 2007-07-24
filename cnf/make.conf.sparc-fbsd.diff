@@ -23,13 +23,13 @@
  
  # Portage Directories
  # ===================
-@@ -287,7 +294,8 @@
+@@ -279,7 +286,8 @@
  #  'notitles'    disables xterm titlebar updates (which contain status info). 
  #  'parallel-fetch'
  #                do fetching in parallel to compilation
 -#  'sandbox'     enables sandboxing when running emerge and ebuild.
 +#  'sandbox'     enables sandboxing when running emerge and ebuild. Doesn't
 +#                work on *BSD-based systems.
- #  'strict'      causes portage to react strongly to conditions that are
- #                potentially dangerous, like missing/incorrect Manifest files.
- #  'userfetch'   when portage is run as root, drop privileges to
+ #  'splitdebug'  Prior to stripping ELF etdyn and etexec files, the debugging
+ #                info is stored for later use by various debuggers.  This
+ #                feature is disabled by 'nostrip'.  For installation of source
