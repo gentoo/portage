@@ -3791,7 +3791,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				mysettings["dbkey"] = \
 					os.path.join(mysettings.depcachedir, "aux_db_key_temp")
 
-			return spawn(EBUILD_SH_BINARY + " depend", mysettings)
+			return spawn(EBUILD_SH_BINARY + " depend", mysettings, droppriv=1)
 
 		# Validate dependency metadata here to ensure that ebuilds with invalid
 		# data are never installed (even via the ebuild command).
