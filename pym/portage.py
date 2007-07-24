@@ -3652,7 +3652,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				pr, pw = os.pipe()
 				fd_pipes = {0:0, 1:1, 2:2, 9:pw}
 				mypids = spawn(EBUILD_SH_BINARY + " depend", mysettings,
-					fd_pipes=fd_pipes, returnpid=True)
+					fd_pipes=fd_pipes, returnpid=True, droppriv=1)
 				os.close(pw) # belongs exclusively to the child process now
 				maxbytes = 1024
 				mybytes = []
