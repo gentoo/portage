@@ -14,8 +14,10 @@ from portage.const_autotool import *
 # START OF CONSTANTS -- START OF CONSTANTS -- START OF CONSTANTS -- START OF
 # ===========================================================================
 
-VDB_PATH                = "var/db/pkg"
-PRIVATE_PATH            = "var/lib/portage"
+EPREFIX_LSTRIP          = EPREFIX.lstrip(os.path.sep)
+
+VDB_PATH                = EPREFIX_LSTRIP+os.path.sep+"var/db/pkg"
+PRIVATE_PATH            = EPREFIX_LSTRIP+os.path.sep+"var/lib/portage"
 CACHE_PATH              = EPREFIX+"/var/cache/edb"
 DEPCACHE_PATH           = CACHE_PATH+"/dep"
 
