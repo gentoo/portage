@@ -1500,7 +1500,7 @@ class config(object):
 			"tmp"             : (-1,          01777, 0),
 			"var/tmp"         : (-1,          01777, 0),
 			PRIVATE_PATH      : (portage_gid, 02750, 02),
-			CACHE_PATH        : (portage_gid, 0755, 02)
+			CACHE_PATH.lstrip(os.path.sep) : (portage_gid, 0755, 02)
 		}
 
 		for mypath, (gid, mode, modemask) in dir_mode_map.iteritems():
