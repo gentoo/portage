@@ -33,7 +33,7 @@ FETCHCOMMAND="wget -t 5 -T 60 --passive-ftp -O \${DISTDIR}/\${FILE} \${URI}"
 RESUMECOMMAND="wget -c -t 5 -T 60 --passive-ftp -O \${DISTDIR}/\${FILE} \${URI}"
 
 # Default user options
-FEATURES="sandbox distlocks metadata-transfer unmerge-orphans"
+FEATURES="distlocks metadata-transfer sandbox sfperms strict unmerge-orphans userfetch"
 
 # Default chunksize for binhost comms
 PORTAGE_BINHOST_CHUNKSIZE="3000"

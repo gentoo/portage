@@ -25,6 +25,11 @@ type -P -- ${OBJCOPY} > /dev/null || OBJCOPY=objcopy
 export SAFE_STRIP_FLAGS="--strip-unneeded"
 export PORTAGE_STRIP_FLAGS=${PORTAGE_STRIP_FLAGS-${SAFE_STRIP_FLAGS} -R .comment}
 
+if hasq installsources ${FEATURES} && ! type -P debugedit >/dev/null ; then
+	ewarn "FEATURES=installsources is enabled but the debugedit binary could not"
+	ewarn "be found. This feature will not work unless debugedit is installed!"
+fi
+
 save_elf_sources() {
 	hasq installsources ${FEATURES} || return 0
 	type -P debugedit >/dev/null || return 0

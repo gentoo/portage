@@ -63,14 +63,14 @@ try:
 
 	import portage.const
 	from portage.const import VDB_PATH, PRIVATE_PATH, CACHE_PATH, DEPCACHE_PATH, \
-	  USER_CONFIG_PATH, MODULES_FILE_PATH, CUSTOM_PROFILE_PATH, PORTAGE_BASE_PATH, \
-	  PORTAGE_BIN_PATH, PORTAGE_PYM_PATH, PROFILE_PATH, LOCALE_DATA_PATH, \
-	  EBUILD_SH_BINARY, SANDBOX_BINARY, BASH_BINARY, \
-	  MOVE_BINARY, PRELINK_BINARY, WORLD_FILE, MAKE_CONF_FILE, MAKE_DEFAULTS_FILE, \
-	  DEPRECATED_PROFILE_FILE, USER_VIRTUALS_FILE, EBUILD_SH_ENV_FILE, \
-	  INVALID_ENV_FILE, CUSTOM_MIRRORS_FILE, CONFIG_MEMORY_FILE,\
-	  INCREMENTALS, EAPI, MISC_SH_BINARY, REPO_NAME_LOC, REPO_NAME_FILE, \
-	  EPREFIX
+		USER_CONFIG_PATH, MODULES_FILE_PATH, CUSTOM_PROFILE_PATH, PORTAGE_BASE_PATH, \
+		PORTAGE_BIN_PATH, PORTAGE_PYM_PATH, PROFILE_PATH, LOCALE_DATA_PATH, \
+		EBUILD_SH_BINARY, SANDBOX_BINARY, BASH_BINARY, \
+		MOVE_BINARY, PRELINK_BINARY, WORLD_FILE, MAKE_CONF_FILE, MAKE_DEFAULTS_FILE, \
+		DEPRECATED_PROFILE_FILE, USER_VIRTUALS_FILE, EBUILD_SH_ENV_FILE, \
+		INVALID_ENV_FILE, CUSTOM_MIRRORS_FILE, CONFIG_MEMORY_FILE,\
+		INCREMENTALS, EAPI, MISC_SH_BINARY, REPO_NAME_LOC, REPO_NAME_FILE, \
+		EPREFIX
 
 	from portage.data import ostype, lchown, userland, secpass, uid, wheelgid, \
 	                         portage_uid, portage_gid, userpriv_groups
@@ -1506,10 +1506,10 @@ class config(object):
 			return
 
 		dir_mode_map = {
-			"tmp"             :(-1,          01777, 0),
-			"var/tmp"         :(-1,          01777, 0),
-			"var/lib/portage" :(portage_gid, 02750, 02),
-			"var/cache/edb"   :(portage_gid,  0755, 02)
+			"tmp"             : (-1,          01777, 0),
+			"var/tmp"         : (-1,          01777, 0),
+			PRIVATE_PATH      : (portage_gid, 02750, 02),
+			CACHE_PATH.lstrip(os.path.sep) : (portage_gid, 0755, 02)
 		}
 
 		for mypath, (gid, mode, modemask) in dir_mode_map.iteritems():
@@ -2335,7 +2335,7 @@ class config(object):
 
 # XXX This would be to replace getstatusoutput completely.
 # XXX Issue: cannot block execution. Deadlock condition.
-def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, **keywords):
+def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakeroot=0, **keywords):
 	"""
 	Spawn a subprocess with extra portage-specific options.
 	Optiosn include:
@@ -2363,6 +2363,8 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, **keyw
 	@type droppriv: Boolean
 	@param sesandbox: Enable SELinux Sandboxing (toggles a context switch)
 	@type sesandbox: Boolean
+	@param fakeroot: Run this command with faked root privileges
+	@type fakeroot: Boolean
 	@param keywords: Extra options encoded as a dict, to be passed to spawn
 	@type keywords: Dictionary
 	@rtype: Integer
@@ -2385,11 +2387,9 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, **keyw
 	# pseudo-terminal that connects two domains.
 	logfile = keywords.get("logfile")
 	mypids = []
+	master_fd = None
 	slave_fd = None
-	output_pid = None
-	input_pid = None
-	stdin_termios = None
-	stdin_fd = None
+	fd_pipes_orig = None
 	if logfile:
 		del keywords["logfile"]
 		fd_pipes = keywords.get("fd_pipes")
@@ -2400,61 +2400,22 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, **keyw
 		from pty import openpty
 		master_fd, slave_fd = openpty()
 		fd_pipes.setdefault(0, sys.stdin.fileno())
+		fd_pipes_orig = fd_pipes.copy()
 		stdin_fd = fd_pipes[0]
 		if os.isatty(stdin_fd):
-			# Copy the termios attributes from stdin_fd to the slave_fd and put
-			# the stdin_fd into raw mode with ECHO disabled.  The stdin
-			# termios attributes are reverted before returning, or via the
-			# atexit hook in portage.process when killed by a signal.
-			import termios, tty
-			stdin_termios = termios.tcgetattr(stdin_fd)
-			tty.setraw(stdin_fd)
-			term_attr = termios.tcgetattr(stdin_fd)
-			term_attr[3] &= ~termios.ECHO
-			termios.tcsetattr(stdin_fd, termios.TCSAFLUSH, term_attr)
-			termios.tcsetattr(slave_fd, termios.TCSAFLUSH, stdin_termios)
 			from output import get_term_size, set_term_size
 			rows, columns = get_term_size()
 			set_term_size(rows, columns, slave_fd)
-			pre_exec = keywords.get("pre_exec")
-			def setup_ctty():
-				os.setsid()
-				# Make it into the "controlling terminal".
-				import termios
-				if hasattr(termios, "TIOCSCTTY"):
-					# BSD 4.3 approach
-					import fcntl
-					fcntl.ioctl(0, termios.TIOCSCTTY)
-				else:
-					# SVR4 approach
-					fd = os.open(os.ttyname(0), os.O_RDWR)
-					for x in 0, 1, 2:
-						os.dup2(fd, x)
-					os.close(fd)
-				if pre_exec:
-					pre_exec()
-			keywords["pre_exec"] = setup_ctty
-		# tee will always exit with an IO error, so ignore it's stderr.
-		null_file = open('/dev/null', 'w')
-		mypids.extend(portage.process.spawn(['tee', '-i', '-a', logfile],
-			returnpid=True, fd_pipes={0:master_fd, 1:fd_pipes[1],
-			2:null_file.fileno()}))
-		output_pid = mypids[-1]
-		mypids.extend(portage.process.spawn(['cat'],
-			returnpid=True, fd_pipes={0:fd_pipes[0], 1:master_fd,
-			2:null_file.fileno()}))
-		input_pid = mypids[-1]
-		os.close(master_fd)
-		null_file.close()
-		fd_pipes[0] = slave_fd
+		fd_pipes[0] = fd_pipes_orig[0]
 		fd_pipes[1] = slave_fd
 		fd_pipes[2] = slave_fd
 		keywords["fd_pipes"] = fd_pipes
 
 	features = mysettings.features
-	restrict = mysettings.get("PORTAGE_RESTRICT","").split()
-	droppriv=(droppriv and "userpriv" in features and not \
-		("nouserpriv" in restrict or "userpriv" in restrict))
+	# TODO: Enable fakeroot to be used together with droppriv.  The
+	# fake ownership/permissions will have to be converted to real
+	# permissions in the merge phase.
+	fakeroot = fakeroot and uid != 0 and portage.process.fakeroot_capable
 	if droppriv and not uid and portage_gid and portage_uid:
 		keywords.update({"uid":portage_uid,"gid":portage_gid,
 			"groups":userpriv_groups,"umask":002})
@@ -2466,6 +2427,10 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, **keyw
 	if free or "SANDBOX_ACTIVE" in os.environ:
 		keywords["opt_name"] += " bash"
 		spawn_func = portage.process.spawn_bash
+	elif fakeroot:
+		keywords["opt_name"] += " fakeroot"
+		keywords["fakeroot_state"] = os.path.join(mysettings["T"], "fakeroot.state")
+		spawn_func = portage.process.spawn_fakeroot
 	else:
 		keywords["opt_name"] += " sandbox"
 		spawn_func = portage.process.spawn_sandbox
@@ -2489,26 +2454,48 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, **keyw
 	if returnpid:
 		return mypids
 
-	if output_pid:
-		# tee will exit when the other end of the pseudo-terminal is closed.
-		os.waitpid(output_pid, 0)
-		portage.process.spawned_pids.remove(output_pid)
-	if input_pid:
-		# cat is blocking on stdin, so it must be killed.
-		import signal
-		try:
-			os.kill(input_pid, signal.SIGTERM)
-		except OSError:
-			pass # it died by itself
-		os.waitpid(input_pid, 0)
-		portage.process.spawned_pids.remove(input_pid)
+	if logfile:
+		log_file = open(logfile, 'a')
+		stdout_file = os.fdopen(os.dup(fd_pipes_orig[1]), 'w')
+		master_file = os.fdopen(master_fd, 'w+')
+		iwtd = [master_file]
+		owtd = []
+		ewtd = []
+		import array, fcntl, select
+		fd_flags = {}
+		for f in iwtd:
+			fd_flags[f] = fcntl.fcntl(f.fileno(), fcntl.F_GETFL)
+		buffsize = 65536
+		eof = False
+		while not eof:
+			events = select.select(iwtd, owtd, ewtd)
+			for f in events[0]:
+				# Use non-blocking mode to prevent read
+				# calls from blocking indefinitely.
+				fcntl.fcntl(f.fileno(), fcntl.F_SETFL,
+					fd_flags[f] | os.O_NONBLOCK)
+				buf = array.array('B')
+				try:
+					buf.fromfile(f, buffsize)
+				except EOFError:
+					pass
+				fcntl.fcntl(f.fileno(), fcntl.F_SETFL, fd_flags[f])
+				if not buf:
+					eof = True
+					break
+				# Use blocking mode for writes since we'd rather block than
+				# trigger a EWOULDBLOCK error.
+				if f is master_file:
+					buf.tofile(stdout_file)
+					stdout_file.flush()
+					buf.tofile(log_file)
+					log_file.flush()
+		log_file.close()
+		stdout_file.close()
+		master_file.close()
 	pid = mypids[-1]
-	try:
-		retval = os.waitpid(pid, 0)[1]
-		portage.process.spawned_pids.remove(pid)
-	finally:
-		if stdin_termios:
-			termios.tcsetattr(stdin_fd, termios.TCSAFLUSH, stdin_termios)
+	retval = os.waitpid(pid, 0)[1]
+	portage.process.spawned_pids.remove(pid)
 	if retval != os.EX_OK:
 		if retval & 0xff:
 			return (retval & 0xff) << 8
@@ -3768,7 +3755,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				pr, pw = os.pipe()
 				fd_pipes = {0:0, 1:1, 2:2, 9:pw}
 				mypids = spawn(EBUILD_SH_BINARY + " depend", mysettings,
-					fd_pipes=fd_pipes, returnpid=True)
+					fd_pipes=fd_pipes, returnpid=True, droppriv=1)
 				os.close(pw) # belongs exclusively to the child process now
 				maxbytes = 1024
 				mybytes = []
@@ -3796,7 +3783,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				mysettings["dbkey"] = \
 					os.path.join(mysettings.depcachedir, "aux_db_key_temp")
 
-			return spawn(EBUILD_SH_BINARY + " depend", mysettings)
+			return spawn(EBUILD_SH_BINARY + " depend", mysettings, droppriv=1)
 
 		# Validate dependency metadata here to ensure that ebuilds with invalid
 		# data are never installed (even via the ebuild command).
@@ -4032,19 +4019,25 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 		sesandbox = mysettings.selinux_enabled() and \
 			"sesandbox" in mysettings.features
+
+		droppriv = "userpriv" in mysettings.features and \
+			"userpriv" not in restrict
+
+		fakeroot = "fakeroot" in mysettings.features
+
 		ebuild_sh = EBUILD_SH_BINARY + " %s"
 		misc_sh = MISC_SH_BINARY + " dyn_%s"
 
 		# args are for the to spawn function
 		actionmap = {
-"depend": {"cmd":ebuild_sh, "args":{"droppriv":1, "free":0,         "sesandbox":0}},
-"setup":  {"cmd":ebuild_sh, "args":{"droppriv":0, "free":1,         "sesandbox":0}},
-"unpack": {"cmd":ebuild_sh, "args":{"droppriv":1, "free":0,         "sesandbox":sesandbox}},
-"compile":{"cmd":ebuild_sh, "args":{"droppriv":1, "free":nosandbox, "sesandbox":sesandbox}},
-"test":   {"cmd":ebuild_sh, "args":{"droppriv":1, "free":nosandbox, "sesandbox":sesandbox}},
-"install":{"cmd":ebuild_sh, "args":{"droppriv":0, "free":0,         "sesandbox":sesandbox}},
-"rpm":    {"cmd":misc_sh,   "args":{"droppriv":0, "free":0,         "sesandbox":0}},
-"package":{"cmd":misc_sh,   "args":{"droppriv":0, "free":0,         "sesandbox":0}},
+"depend": {"cmd":ebuild_sh, "args":{"droppriv":1,        "free":0,         "sesandbox":0,         "fakeroot":0}},
+"setup":  {"cmd":ebuild_sh, "args":{"droppriv":0,        "free":1,         "sesandbox":0,         "fakeroot":0}},
+"unpack": {"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":0,         "sesandbox":sesandbox, "fakeroot":0}},
+"compile":{"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":nosandbox, "sesandbox":sesandbox, "fakeroot":0}},
+"test":   {"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":nosandbox, "sesandbox":sesandbox, "fakeroot":0}},
+"install":{"cmd":ebuild_sh, "args":{"droppriv":0,        "free":0,         "sesandbox":sesandbox, "fakeroot":fakeroot}},
+"rpm":    {"cmd":misc_sh,   "args":{"droppriv":0,        "free":0,         "sesandbox":0,         "fakeroot":fakeroot}},
+"package":{"cmd":misc_sh,   "args":{"droppriv":0,        "free":0,         "sesandbox":0,         "fakeroot":fakeroot}},
 		}
 
 		# merge the deps in so we have again a 'full' actionmap

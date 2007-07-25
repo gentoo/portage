@@ -130,17 +130,8 @@ class portdbapi(dbapi):
 		modemask =    02
 
 		try:
-			for mydir in (self.depcachedir,):
-				if ensure_dirs(mydir, gid=portage_gid, mode=dirmode, mask=modemask):
-					writemsg("Adjusting permissions recursively: '%s'\n" % mydir,
-						noiselevel=-1)
-					def onerror(e):
-						raise # bail out on the first error that occurs during recursion
-					if not apply_recursive_permissions(mydir,
-						gid=portage_gid, dirmode=dirmode, dirmask=modemask,
-						filemode=filemode, filemask=modemask, onerror=onerror):
-						raise OperationNotPermitted(
-							"Failed to apply recursive permissions for the portage group.")
+			ensure_dirs(self.depcachedir, gid=portage_gid,
+				mode=dirmode, mask=modemask)
 		except PortageException, e:
 			pass
 

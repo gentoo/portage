@@ -10,7 +10,7 @@ import signal
 import sys
 
 from portage.util import dump_traceback
-from portage.const import BASH_BINARY, SANDBOX_BINARY
+from portage.const import BASH_BINARY, SANDBOX_BINARY, FAKEROOT_BINARY
 from portage.exception import CommandNotFound
 
 try:
@@ -28,6 +28,9 @@ else:
 
 sandbox_capable = (os.path.isfile(SANDBOX_BINARY) and
                    os.access(SANDBOX_BINARY, os.X_OK))
+
+fakeroot_capable = (os.path.isfile(FAKEROOT_BINARY) and
+                    os.access(FAKEROOT_BINARY, os.X_OK))
 
 def spawn_bash(mycommand, debug=False, opt_name=None, **keywords):
 	"""
@@ -59,6 +62,22 @@ def spawn_sandbox(mycommand, opt_name=None, **keywords):
 	args=[SANDBOX_BINARY]
 	if not opt_name:
 		opt_name = os.path.basename(mycommand.split()[0])
+	args.append(mycommand)
+	return spawn(args, opt_name=opt_name, **keywords)
+
+def spawn_fakeroot(mycommand, fakeroot_state=None, opt_name=None, **keywords):
+	args=[FAKEROOT_BINARY]
+	if not opt_name:
+		opt_name = os.path.basename(mycommand.split()[0])
+	if fakeroot_state:
+		open(fakeroot_state, "a").close()
+		args.append("-s")
+		args.append(fakeroot_state)
+		args.append("-i")
+		args.append(fakeroot_state)
+	args.append("--")
+	args.append(BASH_BINARY)
+	args.append("-c")
 	args.append(mycommand)
 	return spawn(args, opt_name=opt_name, **keywords)
 
@@ -112,16 +131,6 @@ def cleanup():
 			pass
 
 atexit_register(cleanup)
-
-# Make sure the original terminal attributes are reverted at exit.
-if hasattr(sys.stdin, "isatty") and sys.stdin.isatty():
-	import termios
-	_stdin_termios = termios.tcgetattr(sys.stdin.fileno())
-	def _reset_stdin_termios(stdin_termios):
-		import termios
-		termios.tcsetattr(sys.stdin.fileno(), termios.TCSAFLUSH, stdin_termios)
-	atexit_register(_reset_stdin_termios, _stdin_termios)
-	del termios, _stdin_termios, _reset_stdin_termios
 
 def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
           uid=None, gid=None, groups=None, umask=None, logfile=None,
