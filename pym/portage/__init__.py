@@ -2378,11 +2378,10 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 	# pseudo-terminal that connects two domains.
 	logfile = keywords.get("logfile")
 	mypids = []
+	master_fd = None
 	slave_fd = None
-	output_pid = None
-	input_pid = None
 	stdin_termios = None
-	stdin_fd = None
+	fd_pipes_orig = None
 	if logfile:
 		del keywords["logfile"]
 		fd_pipes = keywords.get("fd_pipes")
@@ -2393,6 +2392,7 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 		from pty import openpty
 		master_fd, slave_fd = openpty()
 		fd_pipes.setdefault(0, sys.stdin.fileno())
+		fd_pipes_orig = fd_pipes.copy()
 		stdin_fd = fd_pipes[0]
 		if os.isatty(stdin_fd):
 			# Copy the termios attributes from stdin_fd to the slave_fd and put
@@ -2427,18 +2427,6 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 				if pre_exec:
 					pre_exec()
 			keywords["pre_exec"] = setup_ctty
-		# tee will always exit with an IO error, so ignore it's stderr.
-		null_file = open('/dev/null', 'w')
-		mypids.extend(portage.process.spawn(['tee', '-i', '-a', logfile],
-			returnpid=True, fd_pipes={0:master_fd, 1:fd_pipes[1],
-			2:null_file.fileno()}))
-		output_pid = mypids[-1]
-		mypids.extend(portage.process.spawn(['cat'],
-			returnpid=True, fd_pipes={0:fd_pipes[0], 1:master_fd,
-			2:null_file.fileno()}))
-		input_pid = mypids[-1]
-		os.close(master_fd)
-		null_file.close()
 		fd_pipes[0] = slave_fd
 		fd_pipes[1] = slave_fd
 		fd_pipes[2] = slave_fd
@@ -2487,26 +2475,53 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 	if returnpid:
 		return mypids
 
-	if output_pid:
-		# tee will exit when the other end of the pseudo-terminal is closed.
-		os.waitpid(output_pid, 0)
-		portage.process.spawned_pids.remove(output_pid)
-	if input_pid:
-		# cat is blocking on stdin, so it must be killed.
-		import signal
-		try:
-			os.kill(input_pid, signal.SIGTERM)
-		except OSError:
-			pass # it died by itself
-		os.waitpid(input_pid, 0)
-		portage.process.spawned_pids.remove(input_pid)
+	if logfile:
+		log_file = open(logfile, 'a')
+		import array, fcntl, select
+		# Use non-blocking mode to prevent read
+		# calls from blocking indefinitely.
+		for fd in fd_pipes_orig[0], master_fd:
+			fd_flags = fcntl.fcntl(fd, fcntl.F_GETFL)
+			fcntl.fcntl(fd, fcntl.F_SETFL, fd_flags | os.O_NONBLOCK)
+		stdin_file = os.fdopen(os.dup(fd_pipes_orig[0]), 'r')
+		stdout_file = os.fdopen(os.dup(fd_pipes_orig[1]), 'w')
+		master_file = os.fdopen(master_fd, 'w+')
+		iwtd = [stdin_file, master_file]
+		owtd = []
+		ewtd = []
+		buffsize = 65536
+		eof = False
+		while not eof:
+			events = select.select(iwtd, owtd, ewtd)
+			for f in events[0]:
+				buf = array.array('B')
+				try:
+					buf.fromfile(f, buffsize)
+				except EOFError:
+					pass
+				if not buf:
+					eof = True
+					break
+				if f is stdin_file:
+					buf.tofile(master_file)
+					master_file.flush()
+				else:
+					buf.tofile(stdout_file)
+					stdout_file.flush()
+					buf.tofile(log_file)
+					log_file.flush()
+		log_file.close()
+		stdin_file.close()
+		stdout_file.close()
+		master_file.close()
 	pid = mypids[-1]
 	try:
 		retval = os.waitpid(pid, 0)[1]
 		portage.process.spawned_pids.remove(pid)
 	finally:
 		if stdin_termios:
-			termios.tcsetattr(stdin_fd, termios.TCSAFLUSH, stdin_termios)
+			termios.tcsetattr(fd_pipes_orig[0],
+				termios.TCSAFLUSH, stdin_termios)
 	if retval != os.EX_OK:
 		if retval & 0xff:
 			return (retval & 0xff) << 8
