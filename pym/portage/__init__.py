@@ -2477,18 +2477,20 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 
 	if logfile:
 		log_file = open(logfile, 'a')
-		import array, fcntl, select
-		# Use non-blocking mode to prevent read
-		# calls from blocking indefinitely.
-		for fd in fd_pipes_orig[0], master_fd:
-			fd_flags = fcntl.fcntl(fd, fcntl.F_GETFL)
-			fcntl.fcntl(fd, fcntl.F_SETFL, fd_flags | os.O_NONBLOCK)
 		stdin_file = os.fdopen(os.dup(fd_pipes_orig[0]), 'r')
 		stdout_file = os.fdopen(os.dup(fd_pipes_orig[1]), 'w')
 		master_file = os.fdopen(master_fd, 'w+')
 		iwtd = [stdin_file, master_file]
 		owtd = []
 		ewtd = []
+		import array, fcntl, select
+		# Use non-blocking mode to prevent read
+		# calls from blocking indefinitely.
+		fd_flags = {}
+		for f in iwtd:
+			fd_flags[f] = fcntl.fcntl(f.fileno(), fcntl.F_GETFL)
+			fcntl.fcntl(f.fileno(), fcntl.F_SETFL,
+				fd_flags[f] | os.O_NONBLOCK)
 		buffsize = 65536
 		eof = False
 		while not eof:
@@ -2502,14 +2504,28 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 				if not buf:
 					eof = True
 					break
+				# Use blocking mode for writes since we'd rather block than
+				# trigger a EWOULDBLOCK error.
 				if f is stdin_file:
+					fcntl.fcntl(master_file.fileno(),
+						fcntl.F_SETFL, fd_flags[f])
 					buf.tofile(master_file)
 					master_file.flush()
+					fcntl.fcntl(master_file.fileno(),
+						fcntl.F_SETFL, fd_flags[f] | os.O_NONBLOCK)
 				else:
+					# stdout usually shares the O_NONBLOCK flag with stdin
+					fcntl.fcntl(stdin_file.fileno(),
+						fcntl.F_SETFL, fd_flags[f])
 					buf.tofile(stdout_file)
 					stdout_file.flush()
+					fcntl.fcntl(stdin_file.fileno(),
+						fcntl.F_SETFL, fd_flags[f] | os.O_NONBLOCK)
 					buf.tofile(log_file)
 					log_file.flush()
+		# Restore them to blocking mode.
+		for f in iwtd:
+			fcntl.fcntl(f.fileno(), fcntl.F_SETFL, fd_flags[f])
 		log_file.close()
 		stdin_file.close()
 		stdout_file.close()
