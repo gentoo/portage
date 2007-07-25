@@ -2314,7 +2314,7 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 	1. The return code of the spawned process.
 	"""
 
-	if type(mysettings) == types.DictType:
+	if isinstance(mysettings, dict):
 		env=mysettings
 		keywords["opt_name"]="[ %s ]" % "portage"
 	else:
@@ -2326,10 +2326,12 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 	# from shells and from binaries that belong to portage (the number of entry
 	# points is minimized).  The "tee" binary is not among the allowed entry
 	# points, so it is spawned outside of the sesandbox domain and reads from a
-	# pipe between two domains.
+	# pseudo-terminal that connects two domains.
 	logfile = keywords.get("logfile")
 	mypids = []
-	pw = None
+	master_fd = None
+	slave_fd = None
+	fd_pipes_orig = None
 	if logfile:
 		del keywords["logfile"]
 		fd_pipes = keywords.get("fd_pipes")
@@ -2337,12 +2339,18 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 			fd_pipes = {0:0, 1:1, 2:2}
 		elif 1 not in fd_pipes or 2 not in fd_pipes:
 			raise ValueError(fd_pipes)
-		pr, pw = os.pipe()
-		mypids.extend(portage_exec.spawn(('tee', '-i', '-a', logfile),
-			 returnpid=True, fd_pipes={0:pr, 1:fd_pipes[1], 2:fd_pipes[2]}))
-		os.close(pr)
-		fd_pipes[1] = pw
-		fd_pipes[2] = pw
+		from pty import openpty
+		master_fd, slave_fd = openpty()
+		fd_pipes.setdefault(0, sys.stdin.fileno())
+		fd_pipes_orig = fd_pipes.copy()
+		stdin_fd = fd_pipes[0]
+		if os.isatty(stdin_fd):
+			from output import get_term_size, set_term_size
+			rows, columns = get_term_size()
+			set_term_size(rows, columns, slave_fd)
+		fd_pipes[0] = fd_pipes_orig[0]
+		fd_pipes[1] = slave_fd
+		fd_pipes[2] = slave_fd
 		keywords["fd_pipes"] = fd_pipes
 
 	features = mysettings.features
@@ -2351,13 +2359,14 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 	# permissions in the merge phase.
 	fakeroot = fakeroot and uid != 0 and portage_exec.fakeroot_capable
 	if droppriv and not uid and portage_gid and portage_uid:
-		keywords.update({"uid":portage_uid,"gid":portage_gid,"groups":userpriv_groups,"umask":002})
-
+		keywords.update({"uid":portage_uid,"gid":portage_gid,
+			"groups":userpriv_groups,"umask":002})
 	if not free:
 		free=((droppriv and "usersandbox" not in features) or \
-			(not droppriv and "sandbox" not in features and "usersandbox" not in features))
+			(not droppriv and "sandbox" not in features and \
+			"usersandbox" not in features))
 
-	if free:
+	if free or "SANDBOX_ACTIVE" in os.environ:
 		keywords["opt_name"] += " bash"
 		spawn_func = portage_exec.spawn_bash
 	elif fakeroot:
@@ -2370,7 +2379,8 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 
 	if sesandbox:
 		con = selinux.getcontext()
-		con = con.replace(mysettings["PORTAGE_T"], mysettings["PORTAGE_SANDBOX_T"])
+		con = con.replace(mysettings["PORTAGE_T"],
+			mysettings["PORTAGE_SANDBOX_T"])
 		selinux.setexec(con)
 
 	returnpid = keywords.get("returnpid")
@@ -2378,29 +2388,61 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 	try:
 		mypids.extend(spawn_func(mystring, env=env, **keywords))
 	finally:
-		if pw:
-			os.close(pw)
+		if slave_fd:
+			os.close(slave_fd)
 		if sesandbox:
 			selinux.setexec(None)
 
 	if returnpid:
 		return mypids
 
-	while mypids:
-		pid = mypids.pop(0)
-		retval = os.waitpid(pid, 0)[1]
-		portage_exec.spawned_pids.remove(pid)
-		if retval != os.EX_OK:
-			for pid in mypids:
-				if os.waitpid(pid, os.WNOHANG) == (0,0):
-					import signal
-					os.kill(pid, signal.SIGTERM)
-					os.waitpid(pid, 0)
-				portage_exec.spawned_pids.remove(pid)
-			if retval & 0xff:
-				return (retval & 0xff) << 8
-			return retval >> 8
-	return os.EX_OK
+	if logfile:
+		log_file = open(logfile, 'a')
+		stdout_file = os.fdopen(os.dup(fd_pipes_orig[1]), 'w')
+		master_file = os.fdopen(master_fd, 'w+')
+		iwtd = [master_file]
+		owtd = []
+		ewtd = []
+		import array, fcntl, select
+		fd_flags = {}
+		for f in iwtd:
+			fd_flags[f] = fcntl.fcntl(f.fileno(), fcntl.F_GETFL)
+		buffsize = 65536
+		eof = False
+		while not eof:
+			events = select.select(iwtd, owtd, ewtd)
+			for f in events[0]:
+				# Use non-blocking mode to prevent read
+				# calls from blocking indefinitely.
+				fcntl.fcntl(f.fileno(), fcntl.F_SETFL,
+					fd_flags[f] | os.O_NONBLOCK)
+				buf = array.array('B')
+				try:
+					buf.fromfile(f, buffsize)
+				except EOFError:
+					pass
+				fcntl.fcntl(f.fileno(), fcntl.F_SETFL, fd_flags[f])
+				if not buf:
+					eof = True
+					break
+				# Use blocking mode for writes since we'd rather block than
+				# trigger a EWOULDBLOCK error.
+				if f is master_file:
+					buf.tofile(stdout_file)
+					stdout_file.flush()
+					buf.tofile(log_file)
+					log_file.flush()
+		log_file.close()
+		stdout_file.close()
+		master_file.close()
+	pid = mypids[-1]
+	retval = os.waitpid(pid, 0)[1]
+	portage_exec.spawned_pids.remove(pid)
+	if retval != os.EX_OK:
+		if retval & 0xff:
+			return (retval & 0xff) << 8
+		return retval >> 8
+	return retval
 
 def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",use_locks=1, try_mirrors=1):
 	"fetch files.  Will use digest file if available."
