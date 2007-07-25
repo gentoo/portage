@@ -14,8 +14,8 @@ from portage.const_autotool import *
 # START OF CONSTANTS -- START OF CONSTANTS -- START OF CONSTANTS -- START OF
 # ===========================================================================
 
-VDB_PATH                = EPREFIX+"/var/db/pkg"
-PRIVATE_PATH            = EPREFIX+"/var/lib/portage"
+VDB_PATH                = "var/db/pkg"
+PRIVATE_PATH            = "var/lib/portage"
 CACHE_PATH              = EPREFIX+"/var/cache/edb"
 DEPCACHE_PATH           = CACHE_PATH+"/dep"
 
@@ -33,6 +33,7 @@ LOCALE_DATA_PATH        = PORTAGE_BASE_PATH+"/locale"
 EBUILD_SH_BINARY        = PORTAGE_BIN_PATH+"/ebuild.sh"
 MISC_SH_BINARY          = PORTAGE_BIN_PATH+"/misc-functions.sh"
 SANDBOX_BINARY          = EPREFIX+"/usr/bin/sandbox"
+FAKEROOT_BINARY         = EPREFIX+"/usr/bin/fakeroot"
 BASH_BINARY             = "bash"
 MOVE_BINARY             = "mv"
 PRELINK_BINARY          = "prelink"
