@@ -2380,7 +2380,6 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 	mypids = []
 	master_fd = None
 	slave_fd = None
-	stdin_termios = None
 	fd_pipes_orig = None
 	if logfile:
 		del keywords["logfile"]
@@ -2395,39 +2394,10 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 		fd_pipes_orig = fd_pipes.copy()
 		stdin_fd = fd_pipes[0]
 		if os.isatty(stdin_fd):
-			# Copy the termios attributes from stdin_fd to the slave_fd and put
-			# the stdin_fd into raw mode with ECHO disabled.  The stdin
-			# termios attributes are reverted before returning, or via the
-			# atexit hook in portage.process when killed by a signal.
-			import termios, tty
-			stdin_termios = termios.tcgetattr(stdin_fd)
-			tty.setraw(stdin_fd)
-			term_attr = termios.tcgetattr(stdin_fd)
-			term_attr[3] &= ~termios.ECHO
-			termios.tcsetattr(stdin_fd, termios.TCSAFLUSH, term_attr)
-			termios.tcsetattr(slave_fd, termios.TCSAFLUSH, stdin_termios)
 			from output import get_term_size, set_term_size
 			rows, columns = get_term_size()
 			set_term_size(rows, columns, slave_fd)
-			pre_exec = keywords.get("pre_exec")
-			def setup_ctty():
-				os.setsid()
-				# Make it into the "controlling terminal".
-				import termios
-				if hasattr(termios, "TIOCSCTTY"):
-					# BSD 4.3 approach
-					import fcntl
-					fcntl.ioctl(0, termios.TIOCSCTTY)
-				else:
-					# SVR4 approach
-					fd = os.open(os.ttyname(0), os.O_RDWR)
-					for x in 0, 1, 2:
-						os.dup2(fd, x)
-					os.close(fd)
-				if pre_exec:
-					pre_exec()
-			keywords["pre_exec"] = setup_ctty
-		fd_pipes[0] = slave_fd
+		fd_pipes[0] = fd_pipes_orig[0]
 		fd_pipes[1] = slave_fd
 		fd_pipes[2] = slave_fd
 		keywords["fd_pipes"] = fd_pipes
@@ -2477,10 +2447,9 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 
 	if logfile:
 		log_file = open(logfile, 'a')
-		stdin_file = os.fdopen(os.dup(fd_pipes_orig[0]), 'r')
 		stdout_file = os.fdopen(os.dup(fd_pipes_orig[1]), 'w')
 		master_file = os.fdopen(master_fd, 'w+')
-		iwtd = [stdin_file, master_file]
+		iwtd = [master_file]
 		owtd = []
 		ewtd = []
 		import array, fcntl, select
@@ -2507,26 +2476,17 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 					break
 				# Use blocking mode for writes since we'd rather block than
 				# trigger a EWOULDBLOCK error.
-				if f is stdin_file:
-					buf.tofile(master_file)
-					master_file.flush()
-				else:
+				if f is master_file:
 					buf.tofile(stdout_file)
 					stdout_file.flush()
 					buf.tofile(log_file)
 					log_file.flush()
 		log_file.close()
-		stdin_file.close()
 		stdout_file.close()
 		master_file.close()
 	pid = mypids[-1]
-	try:
-		retval = os.waitpid(pid, 0)[1]
-		portage.process.spawned_pids.remove(pid)
-	finally:
-		if stdin_termios:
-			termios.tcsetattr(fd_pipes_orig[0],
-				termios.TCSAFLUSH, stdin_termios)
+	retval = os.waitpid(pid, 0)[1]
+	portage.process.spawned_pids.remove(pid)
 	if retval != os.EX_OK:
 		if retval & 0xff:
 			return (retval & 0xff) << 8

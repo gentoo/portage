@@ -132,16 +132,6 @@ def cleanup():
 
 atexit_register(cleanup)
 
-# Make sure the original terminal attributes are reverted at exit.
-if hasattr(sys.stdin, "isatty") and sys.stdin.isatty():
-	import termios
-	_stdin_termios = termios.tcgetattr(sys.stdin.fileno())
-	def _reset_stdin_termios(stdin_termios):
-		import termios
-		termios.tcsetattr(sys.stdin.fileno(), termios.TCSAFLUSH, stdin_termios)
-	atexit_register(_reset_stdin_termios, _stdin_termios)
-	del termios, _stdin_termios, _reset_stdin_termios
-
 def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
           uid=None, gid=None, groups=None, umask=None, logfile=None,
           path_lookup=True, pre_exec=None):
