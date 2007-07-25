@@ -63,13 +63,13 @@ try:
 
 	import portage.const
 	from portage.const import VDB_PATH, PRIVATE_PATH, CACHE_PATH, DEPCACHE_PATH, \
-	  USER_CONFIG_PATH, MODULES_FILE_PATH, CUSTOM_PROFILE_PATH, PORTAGE_BASE_PATH, \
-	  PORTAGE_BIN_PATH, PORTAGE_PYM_PATH, PROFILE_PATH, LOCALE_DATA_PATH, \
-	  EBUILD_SH_BINARY, SANDBOX_BINARY, BASH_BINARY, \
-	  MOVE_BINARY, PRELINK_BINARY, WORLD_FILE, MAKE_CONF_FILE, MAKE_DEFAULTS_FILE, \
-	  DEPRECATED_PROFILE_FILE, USER_VIRTUALS_FILE, EBUILD_SH_ENV_FILE, \
-	  INVALID_ENV_FILE, CUSTOM_MIRRORS_FILE, CONFIG_MEMORY_FILE,\
-	  INCREMENTALS, EAPI, MISC_SH_BINARY, REPO_NAME_LOC, REPO_NAME_FILE
+		USER_CONFIG_PATH, MODULES_FILE_PATH, CUSTOM_PROFILE_PATH, PORTAGE_BASE_PATH, \
+		PORTAGE_BIN_PATH, PORTAGE_PYM_PATH, PROFILE_PATH, LOCALE_DATA_PATH, \
+		EBUILD_SH_BINARY, SANDBOX_BINARY, BASH_BINARY, \
+		MOVE_BINARY, PRELINK_BINARY, WORLD_FILE, MAKE_CONF_FILE, MAKE_DEFAULTS_FILE, \
+		DEPRECATED_PROFILE_FILE, USER_VIRTUALS_FILE, EBUILD_SH_ENV_FILE, \
+		INVALID_ENV_FILE, CUSTOM_MIRRORS_FILE, CONFIG_MEMORY_FILE,\
+		INCREMENTALS, EAPI, MISC_SH_BINARY, REPO_NAME_LOC, REPO_NAME_FILE
 
 	from portage.data import ostype, lchown, userland, secpass, uid, wheelgid, \
 	                         portage_uid, portage_gid, userpriv_groups
@@ -1497,10 +1497,10 @@ class config(object):
 			return
 
 		dir_mode_map = {
-			"tmp"             :(-1,          01777, 0),
-			"var/tmp"         :(-1,          01777, 0),
-			"var/lib/portage" :(portage_gid, 02750, 02),
-			"var/cache/edb"   :(portage_gid,  0755, 02)
+			"tmp"             : (-1,          01777, 0),
+			"var/tmp"         : (-1,          01777, 0),
+			PRIVATE_PATH      : (portage_gid, 02750, 02),
+			CACHE_PATH        : (portage_gid, 0755, 02)
 		}
 
 		for mypath, (gid, mode, modemask) in dir_mode_map.iteritems():
