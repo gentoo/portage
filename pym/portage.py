@@ -2343,8 +2343,7 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 		master_fd, slave_fd = openpty()
 		fd_pipes.setdefault(0, sys.stdin.fileno())
 		fd_pipes_orig = fd_pipes.copy()
-		stdin_fd = fd_pipes[0]
-		if os.isatty(stdin_fd):
+		if os.isatty(fd_pipes_orig[1]):
 			from output import get_term_size, set_term_size
 			rows, columns = get_term_size()
 			set_term_size(rows, columns, slave_fd)
