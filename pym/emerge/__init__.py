@@ -5602,6 +5602,8 @@ def action_build(settings, trees, mtimedb,
 		action = ""
 		if "--fetchonly" in myopts or "--fetch-all-uri" in myopts:
 			action = "fetched"
+		elif "--buildpkgonly" in myopts:
+			action = "built"
 		else:
 			action = "merged"
 		if "--tree" in myopts and action != "fetched": # Tree doesn't work with fetching
