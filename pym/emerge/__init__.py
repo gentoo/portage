@@ -2533,7 +2533,8 @@ class depgraph(object):
 		else:
 			def create_use_string(name, cur_iuse, iuse_forced, cur_use,
 				old_iuse, old_use,
-				is_new, all_flags=(verbosity == 3 or "--quiet" in self.myopts),
+				is_new, reinst_flags,
+				all_flags=(verbosity == 3 or "--quiet" in self.myopts),
 				alphabetical=("--alphabetical" in self.myopts)):
 				enabled = []
 				if alphabetical:
@@ -2551,16 +2552,18 @@ class depgraph(object):
 				for flag in any_iuse:
 					flag_str = None
 					isEnabled = False
+					reinst_flag = reinst_flags and flag in reinst_flags
 					if flag in enabled_flags:
 						isEnabled = True
-						if is_new or flag in old_use and all_flags:
+						if is_new or flag in old_use and \
+							(all_flags or reinst_flag):
 							flag_str = red(flag)
 						elif flag not in old_iuse:
 							flag_str = yellow(flag) + "%*"
 						elif flag not in old_use:
 							flag_str = green(flag) + "*"
 					elif flag in removed_iuse:
-						if all_flags:
+						if all_flags or reinst_flag:
 							flag_str = yellow("-" + flag) + "%"
 							if flag in old_use:
 								flag_str += "*"
@@ -2568,7 +2571,9 @@ class depgraph(object):
 							removed.append(flag_str)
 						continue
 					else:
-						if is_new or flag in old_iuse and flag not in old_use and all_flags:
+						if is_new or flag in old_iuse and \
+							flag not in old_use and \
+							(all_flags or reinst_flag):
 							flag_str = blue("-" + flag)
 						elif flag not in old_iuse:
 							flag_str = yellow("-" + flag)
@@ -2878,22 +2883,24 @@ class depgraph(object):
 
 					# Prevent USE_EXPAND_HIDDEN flags from being hidden if they
 					# are the only thing that triggered reinstallation.
-					reinst_flags_map = None
+					reinst_flags_map = {}
 					reinstall_for_flags = self._reinstall_nodes.get(pkg_node)
+					reinst_expand_map = None
 					if reinstall_for_flags:
 						reinst_flags_map = map_to_use_expand(
 							list(reinstall_for_flags), removeHidden=False)
-						if reinst_flags_map["USE"]:
-							reinst_flags_map = None
-						else:
-							for k in reinst_flags_map.keys():
-								if not reinst_flags_map[k]:
-									del reinst_flags_map[k]
-					if reinst_flags_map and \
-						not set(reinst_flags_map).difference(
+						for k in list(reinst_flags_map):
+							if not reinst_flags_map[k]:
+								del reinst_flags_map[k]
+						if not reinst_flags_map.get("USE"):
+							reinst_expand_map = reinst_flags_map.copy()
+							reinst_expand_map.pop("USE", None)
+					if reinst_expand_map and \
+						not set(reinst_expand_map).difference(
 						use_expand_hidden):
-						use_expand_hidden = set(use_expand_hidden).difference(
-							reinst_flags_map)
+						use_expand_hidden = \
+							set(use_expand_hidden).difference(
+							reinst_expand_map)
 
 					cur_iuse_map, iuse_forced = \
 						map_to_use_expand(cur_iuse, forcedFlags=True)
@@ -2910,7 +2917,8 @@ class depgraph(object):
 						verboseadd += create_use_string(key.upper(),
 							cur_iuse_map[key], iuse_forced[key],
 							cur_use_map[key], old_iuse_map[key],
-							old_use_map[key], is_new)
+							old_use_map[key], is_new,
+							reinst_flags_map.get(key))
 
 				if verbosity == 3:
 					# size verbose
