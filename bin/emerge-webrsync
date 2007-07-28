@@ -8,8 +8,9 @@
 type portageq > /dev/null || exit $?
 eval $(portageq envvar -v FEATURES FETCHCOMMAND GENTOO_MIRRORS \
 	PORTAGE_BIN_PATH PORTAGE_INST_UID PORTAGE_INST_GID PORTAGE_NICENESS \
-	PORTAGE_TMPDIR PORTDIR PORTAGE_RSYNC_EXTRA_OPTS)
+	PORTAGE_TMPDIR PORTDIR PORTAGE_RSYNC_EXTRA_OPTS http_proxy ftp_proxy)
 DISTDIR="${PORTAGE_TMPDIR}/emerge-webrsync"
+export http_proxy ftp_proxy
 
 # If PORTAGE_NICENESS is overriden via the env then it will
 # still pass through the portageq call and override properly.
