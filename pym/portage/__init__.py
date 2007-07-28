@@ -4056,6 +4056,12 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		elif mydo=="merge":
 			retval = spawnebuild("install", actionmap, mysettings, debug,
 				alwaysdep=1, logfile=logfile)
+			if retval != os.EX_OK:
+				# The merge phase handles this already.  Callers don't know how
+				# far this function got, so we have to call elog_process() here
+				# so that it's only called once.
+				from portage.elog import elog_process
+				elog_process(mysettings.mycpv, mysettings)
 			if retval == os.EX_OK:
 				retval = merge(mysettings["CATEGORY"], mysettings["PF"],
 					mysettings["D"], os.path.join(mysettings["PORTAGE_BUILDDIR"],
@@ -5057,6 +5063,9 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 	tbz2_lock = None
 	builddir_lock = None
 	catdir_lock = None
+	mycat = None
+	mypkg = None
+	did_merge_phase = False
 	try:
 		""" Don't lock the tbz2 file because the filesytem could be readonly or
 		shared by a cluster."""
@@ -5129,11 +5138,18 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 			treetype="bintree")
 		retval = mylink.merge(pkgloc, infloc, myroot, myebuild, cleanup=0,
 			mydbapi=mydbapi, prev_mtimes=prev_mtimes)
+		did_merge_phase = True
 		return retval
 	finally:
 		if tbz2_lock:
 			portage.locks.unlockfile(tbz2_lock)
 		if builddir_lock:
+			if not did_merge_phase:
+				# The merge phase handles this already.  Callers don't know how
+				# far this function got, so we have to call elog_process() here
+				# so that it's only called once.
+				from portage.elog import elog_process
+				elog_process(mycat + "/" + mypkg, mysettings)
 			try:
 				shutil.rmtree(builddir)
 			except (IOError, OSError), e:
