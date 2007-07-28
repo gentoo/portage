@@ -2381,6 +2381,7 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 	master_fd = None
 	slave_fd = None
 	fd_pipes_orig = None
+	got_pty = False
 	if logfile:
 		del keywords["logfile"]
 		fd_pipes = keywords.get("fd_pipes")
@@ -2389,10 +2390,16 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 		elif 1 not in fd_pipes or 2 not in fd_pipes:
 			raise ValueError(fd_pipes)
 		from pty import openpty
-		master_fd, slave_fd = openpty()
+		try:
+			master_fd, slave_fd = openpty()
+			got_pty = True
+		except EnvironmentError, e:
+			writemsg("openpty failed: '%s'\n" % str(e), noiselevel=1)
+			del e
+			master_fd, slave_fd = os.pipe()
 		fd_pipes.setdefault(0, sys.stdin.fileno())
 		fd_pipes_orig = fd_pipes.copy()
-		if os.isatty(fd_pipes_orig[1]):
+		if got_pty and os.isatty(fd_pipes_orig[1]):
 			from output import get_term_size, set_term_size
 			rows, columns = get_term_size()
 			set_term_size(rows, columns, slave_fd)
@@ -2447,7 +2454,7 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 	if logfile:
 		log_file = open(logfile, 'a')
 		stdout_file = os.fdopen(os.dup(fd_pipes_orig[1]), 'w')
-		master_file = os.fdopen(master_fd, 'w+')
+		master_file = os.fdopen(master_fd, 'r')
 		iwtd = [master_file]
 		owtd = []
 		ewtd = []
