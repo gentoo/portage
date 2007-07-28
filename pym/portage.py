@@ -3770,10 +3770,12 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			return 1
 
 		# Build directory creation isn't required for any of these.
+		have_build_dirs = False
 		if mydo not in ("digest", "fetch", "help", "manifest"):
 			mystatus = prepare_build_dirs(myroot, mysettings, cleanup)
 			if mystatus:
 				return mystatus
+			have_build_dirs = True
 			# PORTAGE_LOG_FILE is set above by the prepare_build_dirs() call.
 			logfile = mysettings.get("PORTAGE_LOG_FILE", None)
 		if mydo == "unmerge":
@@ -3888,6 +3890,17 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			mydo not in ("digest", "manifest") and "noauto" not in features)
 		if need_distfiles and not fetch(
 			fetchme, mysettings, listonly=listonly, fetchonly=fetchonly):
+			if have_build_dirs:
+				# Create an elog message for this fetch failure since the
+				# mod_echo module might push the original message off of the
+				# top of the terminal and prevent the user from being able to
+				# see it.
+				mysettings["EBUILD_PHASE"] = "unpack"
+				cmd = "source '%s/isolated-functions.sh' ; " % PORTAGE_BIN_PATH
+				cmd += "eerror \"Fetch failed for '%s'\"" % mycpv
+				portage_exec.spawn(["bash", "-c", cmd],
+					env=mysettings.environ())
+				elog_process(mysettings.mycpv, mysettings)
 			return 1
 
 		if mydo == "fetch" and listonly:
