@@ -2420,8 +2420,16 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 			for f in events[0]:
 				# Use non-blocking mode to prevent read
 				# calls from blocking indefinitely.
-				fcntl.fcntl(f.fileno(), fcntl.F_SETFL,
-					fd_flags[f] | os.O_NONBLOCK)
+				try:
+					fcntl.fcntl(f.fileno(), fcntl.F_SETFL,
+						fd_flags[f] | os.O_NONBLOCK)
+				except EnvironmentError, e:
+					if e.errno != errno.EAGAIN:
+						raise
+					del e
+					# The EAGAIN error signals eof on FreeBSD.
+					eof = True
+					break
 				buf = array.array('B')
 				try:
 					buf.fromfile(f, buffsize)
