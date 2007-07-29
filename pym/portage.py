@@ -1477,7 +1477,7 @@ class config:
 			# reasonable defaults; this is important as without USE_ORDER,
 			# USE will always be "" (nothing set)!
 			if "USE_ORDER" not in self:
-				self.backupenv["USE_ORDER"] = "env:pkg:conf:defaults:pkginternal"
+				self.backupenv["USE_ORDER"] = "env:pkg:conf:defaults:pkginternal:env.d"
 
 			self["PORTAGE_GID"] = str(portage_gid)
 			self.backup_changes("PORTAGE_GID")
