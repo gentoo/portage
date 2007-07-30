@@ -609,7 +609,7 @@ einstall() {
 
 	if [ -f ./[mM]akefile -o -f ./GNUmakefile ] ; then
 		if [ "${PORTAGE_DEBUG}" == "1" ]; then
-			make -n prefix="${D}/usr" \
+			${MAKE:-make} -n prefix="${D}/usr" \
 				datadir="${D}/usr/share" \
 				infodir="${D}/usr/share/info" \
 				localstatedir="${D}/var/lib" \
@@ -618,7 +618,7 @@ einstall() {
 				${LOCAL_EXTRA_EINSTALL} \
 				"$@" install
 		fi
-		make prefix="${D}/usr" \
+		${MAKE:-make} prefix="${D}/usr" \
 			datadir="${D}/usr/share" \
 			infodir="${D}/usr/share/info" \
 			localstatedir="${D}/var/lib" \
