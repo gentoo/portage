@@ -6266,13 +6266,14 @@ class portdbapi(dbapi):
 
 		accept_keywords = self.mysettings["ACCEPT_KEYWORDS"].split()
 		pkgdict = self.mysettings.pkeywordsdict
+		aux_keys = ["KEYWORDS", "EAPI", "SLOT"]
 		for mycpv in mylist:
 			try:
-				keys, eapi = self.aux_get(mycpv, ["KEYWORDS", "EAPI"])
+				keys, eapi, slot = self.aux_get(mycpv, aux_keys)
 			except KeyError:
 				continue
 			except portage_exception.PortageException, e:
-				writemsg("!!! Error: aux_get('%s', ['KEYWORDS', 'EAPI'])\n" % \
+				writemsg("!!! Error: aux_get('%s', %s)\n" % (mycpv, aux_keys),
 					mycpv, noiselevel=-1)
 				writemsg("!!! %s\n" % str(e), noiselevel=-1)
 				del e
@@ -6283,7 +6284,8 @@ class portdbapi(dbapi):
 			match=0
 			cp = dep_getkey(mycpv)
 			if pkgdict.has_key(cp):
-				matches = match_to_list(mycpv, pkgdict[cp].keys())
+				cpv_slot = "%s:%s" % (mycpv, slot)
+				matches = match_to_list(cpv_slot, pkgdict[cp].keys())
 				for atom in matches:
 					pgroups.extend(pkgdict[cp][atom])
 				if matches:
