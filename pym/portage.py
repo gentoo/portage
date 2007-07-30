@@ -6619,6 +6619,12 @@ class binarytree(object):
 					full_path = os.path.join(self.pkgdir, mypath)
 					if os.path.islink(full_path):
 						continue
+					if not os.access(full_path, os.R_OK):
+						writemsg("!!! Permission denied to read " + \
+							"binary package: '%s'\n" % full_path,
+							noiselevel=-1)
+						self.invalids.append(myfile[:-5])
+						continue
 					mytbz2 = xpak.tbz2(full_path)
 					# For invalid packages, mycat could be None.
 					mycat = mytbz2.getfile("CATEGORY")
