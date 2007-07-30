@@ -7211,8 +7211,6 @@ class dblink:
 		@type pkgfiles: Dictionary { filename: [ 'type', '?', 'md5sum' ] }
 		@rtype: None
 		"""
-		global dircache
-		dircache={}
 
 		if not pkgfiles:
 			writemsg_stdout("No package files given... Grabbing a set.\n")
@@ -7715,10 +7713,7 @@ class dblink:
 		env_update(makelinks=(not downgrade),
 			target_root=self.settings["ROOT"], prev_mtimes=prev_mtimes,
 			contents=contents, env=self.settings.environ())
-		#dircache may break autoclean because it remembers the -MERGING-pkg file
-		global dircache
-		if dircache.has_key(self.dbcatdir):
-			del dircache[self.dbcatdir]
+
 		writemsg_stdout(">>> %s %s\n" % (self.mycpv,"merged."))
 
 		# Process ebuild logfiles
