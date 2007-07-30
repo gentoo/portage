@@ -2823,7 +2823,7 @@ class depgraph(object):
 						mydbapi.aux_get(pkg_key, ["IUSE"])[0].split()))
 
 					forced_flags = set()
-					pkgsettings.setcpv(pkg_key) # for package.use.{mask,force}
+					pkgsettings.setcpv(pkg_key, mydb=mydbapi) # for package.use.{mask,force}
 					forced_flags.update(pkgsettings.useforce)
 					forced_flags.update(pkgsettings.usemask)
 
