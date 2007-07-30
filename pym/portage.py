@@ -6946,7 +6946,7 @@ class dblink:
 		self.updateprotect = protect_obj.updateprotect
 		self._config_protect = protect_obj
 		self._installed_instance = None
-		self.contentscache=[]
+		self.contentscache = None
 		self._contents_inodes = None
 
 	def lockdb(self):
