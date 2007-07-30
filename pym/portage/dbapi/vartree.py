@@ -2192,6 +2192,7 @@ class dblink(object):
 
 def tar_contents(contents, root, tar, protect=None, onProgress=None):
 	from portage.util import normalize_path
+	import tarfile
 	root = normalize_path(root).rstrip(os.path.sep) + os.path.sep
 	id_strings = {}
 	maxval = len(contents)
@@ -2231,6 +2232,8 @@ def tar_contents(contents, root, tar, protect=None, onProgress=None):
 		tarinfo.gname = id_strings.setdefault(tarinfo.gid, str(tarinfo.gid))
 
 		if stat.S_ISREG(lst.st_mode):
+			# break hardlinks due to bug #185305
+			tarinfo.type = tarfile.REGTYPE
 			if protect and protect(path):
 				# Create an empty file as a place holder in order to avoid
 				# potential collision-protect issues.
