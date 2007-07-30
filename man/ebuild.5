@@ -1,4 +1,4 @@
-.TH "EBUILD" "5" "Jun 2007" "Portage 2.1.3" "Portage"
+.TH "EBUILD" "5" "Jan 2007" "Portage 2.1.2" "Portage"
 .SH "NAME"
 ebuild \- the internal format, variables, and functions in an ebuild script
 .SH "DESCRIPTION"
@@ -279,9 +279,9 @@ appropriate, this syntax can easily be used.
 .B 	app\-games/unreal\-tournament\-goty
 .B )
 .fi
-Here we see that unreal\-tournament has a normal version and it has a goty
-version.  Since they provide the same base set of files, another package can
-use either.  Adding a virtual is inappropriate due to the small scope of it.
+Here we see that unreal\-tournament has a normal version and it has a goty version.
+Since they provide the same base set of files, another package can use either.
+Adding a virtual is inappropriate due to the small scope of it.
 .br
 Another good example is when a package can be built with multiple video 
 interfaces, but it can only ever have just one.
@@ -295,12 +295,9 @@ interfaces, but it can only ever have just one.
 .B )
 .fi
 Here only one of the packages will be chosen, and the order of preference is
-determined by the order in which they appear.  So sdl has the best chance of
-being chosen, followed by svga, then opengl, then ggi, with a default of X if
-the user does not specify any of the previous choices.
-.br
-Note that if any of the packages listed are already merged, the package manager
-will use that to consider the dependency satisfied.
+determined by the order in which they appear.  So sdl has the best chance of being
+chosen, followed by svga, then opengl, then ggi, with a default of X if the user
+does not specify any of the previous choices.
 .RE
 
 .RE
@@ -313,14 +310,13 @@ defaults to the value of \fBDEPEND\fR.
 You may use the same syntax to vary dependencies as seen above in \fBDEPEND\fR.
 .TP
 \fBPDEPEND\fR
-This should contain a list of all packages that should be merged after this one,
-but may be merged before if need be.
+This should contain a list of all packages that will have to be installed after
+the program has been merged.
 .br
 You may use the same syntax to vary dependencies as seen above in \fBDEPEND\fR.
 .TP
 \fBRESTRICT\fR = \fI[strip,mirror,fetch,userpriv]\fR
 This should be a space delimited list of portage features to restrict.
-You may use conditional syntax to vary restrictions as seen above in DEPEND.
 .PD 0
 .RS
 .TP
@@ -331,8 +327,8 @@ example, can safely be skipped since they have no binaries).  If the binary
 checks need to be skipped for other reasons (such as proprietary binaries),
 see the \fBQA CONTROL VARIABLES\fR section for more specific exemptions.
 .TP
-.I bindist
-Distribution of binary packages is restricted.
+.I confcache
+Prevent econf from using confcache.
 .TP
 .I fetch
 like \fImirror\fR but the files will not be fetched via \fBSRC_URI\fR either.
@@ -775,8 +771,8 @@ Performs the ln command as either a hard link or symlink.
 .TP
 \fBdohtml\fR \fI [\-a filetypes] [\-r] [\-x list\-of\-dirs\-to\-ignore] [list\-of\-files\-and\-dirs]\fR
 Installs the files in the list of files (space\-separated list) into
-/usr/share/doc/${PF}/html provided the file ends in .html, .htm, .gif, .jpg, .png, .js, or .css.
-Setting \fI\-a\fR limits what types of files will be included,
+/usr/share/doc/${PF}/html provided the file ends in .html, .png, .js, .jpg,
+or .css.  Setting \fI\-a\fR limits what types of files will be included,
 \fI\-A\fR appends to the default list, setting \fI\-x\fR sets which dirs to
 exclude (CVS excluded by default), \fI\-r\fR sets recursive.
 .TP
@@ -869,7 +865,7 @@ Achim Gottinger <achim@gentoo.org>
 Mark Guertin <gerk@gentoo.org>
 Nicholas Jones <carpaski@gentoo.org>
 Mike Frysinger <vapier@gentoo.org>
-Arfrever Frehtes Taifersar Arahesis <Arfrever.FTA@gmail.com>
+Arfrever Frehtes Taifersar Arahesis <FFTA@WP.PL>
 .fi
 .SH "FILES"
 .TP
@@ -877,16 +873,12 @@ The \fI/usr/sbin/ebuild.sh\fR script.
 .TP
 The helper apps in \fI/usr/lib/portage/bin\fR.
 .TP
-.B /etc/make.conf
+\fB/etc/make.conf\fR 
 Contains variables for the build\-process and overwrites those in make.defaults.
 .TP
-.B /etc/make.globals
+\fB/etc/make.globals\fR
 Contains the default variables for the build\-process, you should edit
 \fI/etc/make.conf\fR instead.
-.TP
-.B /etc/portage/color.map
-Contains variables customizing colors.
 .SH "SEE ALSO"
 .BR ebuild (1),
-.BR make.conf (5),
-.BR color.map (5)
+.BR make.conf (5)
