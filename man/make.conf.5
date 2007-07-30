@@ -1,4 +1,4 @@
-.TH "MAKE.CONF" "5" "Jun 2007" "Portage 2.1.3" "Portage"
+.TH "MAKE.CONF" "5" "Jan 2007" "Portage 2.1.2" "Portage"
 .SH "NAME"
 make.conf \- custom settings for Portage
 .SH "SYNOPSIS"
@@ -96,9 +96,7 @@ This variable is passed by the \fIebuild scripts\fR to the \fIconfigure\fR
 as \fI\-\-target=${CTARGET}\fR only if it is defined.
 .TP
 \fBDISTDIR\fR = \fI[path]\fR
-Defines the location of your local source file repository.  Note
-that locations under /usr/portage are not necessarily safe for data storage.
-See the \fBPORTDIR\fR documentation for more information.
+Defines the location of your local source file repository.
 .br
 Defaults to /usr/portage/distfiles.
 .TP
@@ -148,6 +146,10 @@ Enable portage support for the ccache package.  If the ccache dir is not
 present in the user's environment, then portage will default to 
 ${PORTAGE_TMPDIR}/ccache.
 .TP
+.B confcache
+Enable confcache support; global configure caching, speeds up autotool based configure 
+calls via the econf helper function. See \fBebuild\fR(5) for more information.
+.TP
 .B collision\-protect
 A QA\-feature to ensure that a package doesn't overwrite files it doesn't own.
 The \fICOLLISION_IGNORE\fR variable can be used to selectively disable this
@@ -168,10 +170,6 @@ heartache on less intelligent remote filesystems like NFSv2 and some
 strangely configured Samba server (oplocks off, NFS re\-export). A tool
 /usr/lib/portage/bin/clean_locks exists to help handle lock issues
 when a problem arises (normally due to a crash or disconnect).
-.TP
-.B fakeroot
-Enable fakeroot for the install and package phases when a non-root user runs
-the \fBebuild\fR(1) command.
 .TP
 .B fixpackages
 Runs the script that will fix the dependencies in all binary packages.  This is 
@@ -234,9 +232,6 @@ Fetch in the background while compiling.
 .B sandbox
 Enable sandbox\-ing when running \fBemerge\fR(1) and \fBebuild\fR(1).
 .TP
-.B sesandbox
-Enable SELinux sandbox\-ing.  Do not toggle this \fBFEATURE\fR yourself.
-.TP
 .B severe
 When checking Manifests, only accept ones that have been signed by a
 key which you trust.
@@ -259,7 +254,7 @@ stored for later use by various debuggers.  This feature is disabled by
 .TP
 .B strict
 Have portage react strongly to conditions that have the potential to be 
-dangerous (like missing or incorrect digests for ebuilds or distfiles).
+dangerous (like missing or incorrect Manifests).
 .TP
 .B stricter
 Have portage react strongly to conditions that may conflict with system
@@ -276,11 +271,6 @@ the package compiled properly.  See \fItest\fR in \fBebuild\fR(1)
 and \fIsrc_test()\fR in \fBebuild\fR(5). This feature implies the "test"
 \fBUSE\fR flag.
 .TP
-.B unmerge-orphans
-If a file is not claimed by another package in the same slot and it is not
-protected by \fICONFIG_PROTECT\fR, unmerge it even if the modification time or
-checksum differs from the file that was originally installed.
-.TP
 .B userfetch
 When portage is run as root, drop privileges to portage:portage during the
 fetching of package sources.
@@ -296,9 +286,7 @@ Enable the sandbox in the compile phase, when running without root privs (\fIuse
 .B FETCHCOMMAND
 This variable contains the command used for fetching package sources from
 the internet.  It must contain the full path to the executable as well as the
-place\-holders \\${DISTDIR}, \\${FILE} and \\${URI}.  The command should be
-written to place the fetched file at \\${DISTDIR}/\\${FILE}.
-Also see \fBRESUMECOMMAND\fR.
+place\-holders \\${DISTDIR} and \\${URI}.
 .TP
 \fBGENTOO_MIRRORS\fR = \fI[URLs]\fR
 Insert your space\-seperated list of local mirrors here.  These
@@ -331,19 +319,13 @@ Defines if color should be disabled by default.
 Defaults to false.
 .TP
 \fBPKGDIR\fR = \fI[path]\fR
-Defines the location where created .tbz2 binary packages will be stored.  Note
-that locations under /usr/portage are not necessarily safe for data storage.
-See the \fBPORTDIR\fR documentation for more information.
+Defines the location where created .tbz2 binary packages will be stored.
 .br
 Defaults to /usr/portage/packages.
 .TP
 .B PORT_LOGDIR
 This variable defines the directory in which per\-ebuild logs are kept.
-Logs are created only when this is set. They are stored as
-${CATEGORY}:${PF}:YYYYMMDD\-HHMMSS.log in the directory specified. If the
-direcory does not exist, it will be created automatically and group permissions
-will be applied to it.  If the directory already exists, portage will not
-modify it's permissions.
+Logs are created only when this is set and writable.
 .TP
 \fBPORTAGE_BINHOST\fR = \fI"ftp://login:pass@grp.mirror.site/pub/grp/i686/athlon\-xp"\fR
 This is the host from which portage will grab prebuilt\-binary packages.  
@@ -411,23 +393,19 @@ Defines the location of the temporary build directories.
 .br
 Defaults to /var/tmp.
 .TP
-\fBPORTAGE_WORKDIR_MODE\fR = \fI"0700"\fR
-This variable controls permissions for \fIWORKDIR\fR (see \fBebuild\fR(5)).
-.TP
 \fBPORTDIR\fR = \fI[path]\fR
-Defines the location of the Portage tree. This is the repository for all
-profile information as well as all ebuilds. If you change this, you must update
-your /etc/make.profile symlink accordingly.
+Defines the location of your Portage tree.
 .br
 Defaults to /usr/portage. 
 .br
 \fB***Warning***\fR
 .br
-Data stored inside \fBPORTDIR\fR is in peril of being overwritten or deleted by
-the emerge \-\-sync command. The default value of
-\fBPORTAGE_RSYNC_OPTS\fR will protect the default locations of
-\fBDISTDIR\fR and \fBPKGDIR\fR, but users are warned that any other locations
-inside \fBPORTDIR\fR are not necessarily safe for data storage.
+Storing data such as distfiles and binary packages in PORTDIR can
+be potentially dangerous. The default emerge configuration defaults to this 
+behavior (which will work fine), however if you deviate from the default
+configuration by changing PKGDIR or DISTDIR, emerge \-\-sync may inadvertedly
+delete all your distfiles/binary packages. Please make sure to set
+\fBPORTAGE_EXTRA_RSYNC_OPTS\fR properly to insure the safety of files in PORTDIR.
 .TP
 \fBPORTDIR_OVERLAY\fR = \fI"[path] [different\-path] [etc...]"\fR
 Defines the directories in which user made ebuilds may be stored and not 
@@ -451,9 +429,7 @@ settings from ebuilds.  See also \fBebuild\fR(5).
 .B RESUMECOMMAND
 This variable contains the command used for resuming package sources that
 have been partially downloaded.  It should be defined using the same format
-as \fBFETCHCOMMAND\fR, and must include any additional option(s) that may
-be necessary in order to continue a partially downloaded file located at
-\\${DISTDIR}/\\${FILE}.
+as \fBFETCHCOMMAND\fR.
 .TP
 \fBROOT\fR = \fI[path]\fR
 Use \fBROOT\fR to specify the target root filesystem to be used for merging 
@@ -481,16 +457,11 @@ This variable contains options that control the build behavior of several
 packages.  More information in \fBebuild\fR(5).  Possible USE values
 can be found in \fI/usr/portage/profiles/use.desc\fR.
 .TP
-\fBUSE_EXPAND\fR = \fI[space delimited list of variable names]\fR
-Any variable listed here will be used to augment USE by inserting a new flag
-for every value in that variable, so USE_EXPAND="FOO" and FOO="bar bla" results
-in USE="foo_bar foo_bla".
-.TP
 \fBUSE_EXPAND_HIDDEN\fR = \fI[space delimited list of variable names]\fR
 Names of \fBUSE_EXPAND\fR variables that should not be shown in the verbose merge
 list output of the \fBemerge\fR(1) command.
 .TP
-\fBUSE_ORDER\fR = \fI"env:pkg:conf:defaults:pkginternal:env.d"\fR
+\fBUSE_ORDER\fR = \fI"env:pkg:conf:defaults:pkginternal"\fR
 Determines the precedence of layers in the incremental stacking of the USE
 variable. Precedence decreases from left to right such that env overrides
 pkg, pkg overrides conf, and so forth.
@@ -504,7 +475,7 @@ you fix it.
 .RS
 .TP
 .B env
-USE from the current environment variables (USE and those listed in USE_EXPAND)
+USE from the current USE environment variable if it exists
 .TP
 .B pkg
 Per\-package USE from \fB/etc/portage/package.use\fR (see \fBportage\fR(5))
@@ -517,9 +488,6 @@ USE from make.defaults and package.use in the profile (see \fBportage\fR(5))
 .TP
 .B pkginternal
 USE from ebuild IUSE defaults (flags enabled via a + prefix; see \fBebuild\fR(5))
-.TP
-.B env.d
-USE from the environment variables defined by files in \fI/etc/env.d/\fR
 .RE
 
 .SH "REPORTING BUGS"
@@ -533,19 +501,16 @@ Saleem Abdulrasool <compnerd@gentoo.org>
 .fi
 .SH "FILES"
 .TP
-.B /etc/make.conf
+\fB/etc/make.conf\fR 
 Contains variables for the build\-process and overwrites those in make.defaults.
 .TP
-.B /etc/make.globals
+\fB/etc/make.globals\fR 
 Contains the default variables for the build\-process, you should edit \fI/etc/make.conf\fR instead.
 .TP
-.B /etc/portage/color.map
-Contains variables customizing colors.
-.TP
-.B /usr/portage/profiles/use.desc
+\fB/usr/portage/profiles/use.desc\fR
 Contains a list of all global USE flags.
 .TP
-.B /usr/portage/profiles/use.local.desc
+\fB/usr/portage/profiles/use.local.desc\fR
 Contains a list of all local USE variables.
 .SH "SEE ALSO"
 .BR emerge (1),
