@@ -2632,9 +2632,9 @@ class depgraph:
 						mydbapi.aux_get(pkg_key, ["IUSE"])[0].split()))
 
 					forced_flags = set()
-					if not binary_package:
-						forced_flags.update(pkgsettings.useforce)
-						forced_flags.update(pkgsettings.usemask)
+					pkgsettings.setcpv(pkg_key, mydb=mydbapi) # for package.use.{mask,force}
+					forced_flags.update(pkgsettings.useforce)
+					forced_flags.update(pkgsettings.usemask)
 
 					cur_iuse = portage.unique_array(cur_iuse)
 					cur_iuse.sort()
