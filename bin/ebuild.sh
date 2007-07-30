@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2007 Gentoo Foundation
+# Copyright 1999-2006 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
@@ -190,19 +190,11 @@ has_version() {
 	fi
 	# return shell-true/shell-false if exists.
 	# Takes single depend-type atoms.
-	"${PORTAGE_BIN_PATH}"/portageq has_version "${ROOT}" "$1"
-	local retval=$?
-	case "${retval}" in
-		0)
-			return 0
-			;;
-		1)
-			return 1
-			;;
-		*)
-			die "unexpected portageq exit code: ${retval}"
-			;;
-	esac
+	if "${PORTAGE_BIN_PATH}/portageq" 'has_version' "${ROOT}" "$1"; then
+		return 0
+	else
+		return 1
+	fi
 }
 
 portageq() {
@@ -284,29 +276,24 @@ register_die_hook() {
 diefunc() {
 	local funcname="$1" lineno="$2" exitcode="$3"
 	shift 3
-	eerror
-	eerror "ERROR: $CATEGORY/$PF failed."
-	dump_trace 2
-	eerror "  ${BASH_SOURCE[1]##*/}, line ${BASH_LINENO[0]}:   Called die"
-	eerror
-	eerror "${*:-(no error message)}"
-	eerror "If you need support, post the topmost build error, and the call stack if relevant."
+	echo >&2
+	echo "!!! ERROR: $CATEGORY/$PF failed." >&2
+	dump_trace 2 1>&2
+	echo "  $(basename "${BASH_SOURCE[1]}"), line ${BASH_LINENO[0]}:   Called die" 1>&2
+	echo >&2
+	echo "!!! ${*:-(no error message)}" >&2
+	echo "!!! If you need support, post the topmost build error, and the call stack if relevant." >&2
 	[ -n "${PORTAGE_LOG_FILE}" ] && \
-		eerror "A complete build log is located at '${PORTAGE_LOG_FILE}'."
+		echo "!!! A complete build log is located at '${PORTAGE_LOG_FILE}'." >&2
+	echo >&2
 	if [ -n "${EBUILD_OVERLAY_ECLASSES}" ] ; then
-		eerror "This ebuild used the following eclasses from overlays:"
-		local x
+		echo "This ebuild used the following eclasses from overlays:" >&2
+		echo >&2
 		for x in ${EBUILD_OVERLAY_ECLASSES} ; do
-			eerror "  ${x}"
+			echo "  ${x}" >&2
 		done
+		echo >&2
 	fi
-	if [ "${EBUILD#${PORTDIR}/}" == "${EBUILD}" ] ; then
-		local overlay=${EBUILD%/*}
-		overlay=${overlay%/*}
-		overlay=${overlay%/*}
-		eerror "This ebuild is from an overlay: '${overlay}/'"
-	fi
-	eerror
 
 	if [ "${EBUILD_PHASE/depend}" == "${EBUILD_PHASE}" ]; then
 		local x
@@ -333,7 +320,7 @@ dump_trace() {
 		strip=$(( $1 ))
 	fi
 	
-	eerror "Call stack:"
+	echo "Call stack:"
 	for (( n = ${#FUNCNAME[@]} - 1, p = ${#BASH_ARGV[@]} ; n > $strip ; n-- )) ; do
 		funcname=${FUNCNAME[${n} - 1]}
 		sourcefile=$(basename ${BASH_SOURCE[${n}]})
@@ -347,7 +334,7 @@ dump_trace() {
 			done
 			(( p -= ${BASH_ARGC[${n} - 1]} ))
 		fi
-		eerror "  ${sourcefile}, line ${lineno}:   Called ${funcname}${args:+ ${args}}"
+		echo "  ${sourcefile}, line ${lineno}:   Called ${funcname}${args:+ ${args}}"
 	done
 }
 
@@ -358,8 +345,8 @@ dump_trace() {
 umask 022
 export DESTTREE=/usr
 export INSDESTTREE=""
-export _E_EXEDESTTREE_=""
-export _E_DOCDESTTREE_=""
+export EXEDESTTREE=""
+export DOCDESTTREE=""
 export INSOPTIONS="-m0644"
 export EXEOPTIONS="-m0755"
 export LIBOPTIONS="-m0644"
@@ -458,7 +445,7 @@ unpack() {
 				unrar x -idq -o+ "${srcdir}/${x}" || die "$myfail"
 				;;
 			LHa|LHA|lha|lzh)
-				lha xfq "${srcdir}/${x}" || die "$myfail"
+				lha xqf "${srcdir}/${x}" || die "$myfail"
 				;;
 			a|deb)
 				ar x "${srcdir}/${x}" || die "$myfail"
@@ -614,7 +601,7 @@ einstall() {
 
 	if [ -f ./[mM]akefile -o -f ./GNUmakefile ] ; then
 		if [ "${PORTAGE_DEBUG}" == "1" ]; then
-			${MAKE:-make} -n prefix="${D}/usr" \
+			make -n prefix="${D}/usr" \
 				datadir="${D}/usr/share" \
 				infodir="${D}/usr/share/info" \
 				localstatedir="${D}/var/lib" \
@@ -623,7 +610,7 @@ einstall() {
 				${LOCAL_EXTRA_EINSTALL} \
 				"$@" install
 		fi
-		${MAKE:-make} prefix="${D}/usr" \
+		make prefix="${D}/usr" \
 			datadir="${D}/usr/share" \
 			infodir="${D}/usr/share/info" \
 			localstatedir="${D}/var/lib" \
@@ -842,22 +829,22 @@ insinto() {
 
 exeinto() {
 	if [ "$1" == "/" ]; then
-		export _E_EXEDESTTREE_=""
+		export EXEDESTTREE=""
 	else
-		export _E_EXEDESTTREE_="$1"
-		if [ ! -d "${D}${_E_EXEDESTTREE_}" ]; then
-			install -d "${D}${_E_EXEDESTTREE_}"
+		export EXEDESTTREE="$1"
+		if [ ! -d "${D}${EXEDESTTREE}" ]; then
+			install -d "${D}${EXEDESTTREE}"
 		fi
 	fi
 }
 
 docinto() {
 	if [ "$1" == "/" ]; then
-		export _E_DOCDESTTREE_=""
+		export DOCDESTTREE=""
 	else
-		export _E_DOCDESTTREE_="$1"
-		if [ ! -d "${D}usr/share/doc/${PF}/${_E_DOCDESTTREE_}" ]; then
-			install -d "${D}usr/share/doc/${PF}/${_E_DOCDESTTREE_}"
+		export DOCDESTTREE="$1"
+		if [ ! -d "${D}usr/share/doc/${PF}/${DOCDESTTREE}" ]; then
+			install -d "${D}usr/share/doc/${PF}/${DOCDESTTREE}"
 		fi
 	fi
 }
@@ -1008,7 +995,6 @@ dyn_compile() {
 	bzip2 -f9 environment
 
 	cp "${EBUILD}" "${PF}.ebuild"
-	[ -n "${PORTAGE_REPO_NAME}" ]  && echo "${PORTAGE_REPO_NAME}" > repository
 	if hasq nostrip ${FEATURES} ${RESTRICT} || hasq strip ${RESTRICT}
 	then
 		touch DEBUGBUILD
@@ -1232,8 +1218,7 @@ inherit() {
 		export ECLASS="$1"
 
 		if [ "${EBUILD_PHASE}" != "depend" ] && \
-			[[ ${EBUILD_PHASE} != *rm ]] && \
-			[[ ${EMERGE_FROM} != "binary" ]] ; then
+			[[ ${EBUILD_PHASE} != *rm ]]; then
 			# This is disabled in the *rm phases because they frequently give
 			# false alarms due to INHERITED in /var/db/pkg being outdated
 			# in comparison the the eclasses from the portage tree.
@@ -1599,11 +1584,6 @@ if [ "${EBUILD_PHASE}" != "depend" ]; then
 	done
 	export IUSE=${iuse_temp}
 	unset iuse_temp
-	# unset USE_EXPAND variables that contain only the special "*" token
-	for x in ${USE_EXPAND} ; do
-		[ "${!x}" == "*" ] && unset ${x}
-	done
-	unset x
 	# Lock the dbkey variables after the global phase
 	declare -r DEPEND RDEPEND SLOT SRC_URI RESTRICT HOMEPAGE LICENSE DESCRIPTION
 	declare -r KEYWORDS INHERITED IUSE PDEPEND PROVIDE
@@ -1617,12 +1597,7 @@ for myarg in ${EBUILD_SH_ARGS} ; do
 		qa_call pkg_nofetch
 		exit 1
 		;;
-	prerm|postrm|postinst|config|info)
-		if [ "${myarg}" == "info" ] && \
-			[ "$(type -t pkg_${myarg})" != "function" ]; then
-			ewarn  "pkg_${myarg}() is not defined: '${EBUILD##*/}'"
-			continue
-		fi
+	prerm|postrm|postinst|config)
 		export SANDBOX_ON="0"
 		if [ "$PORTAGE_DEBUG" != "1" ]; then
 			[ "$(type -t pre_pkg_${myarg})" == "function" ] && qa_call pre_pkg_${myarg}
@@ -1726,8 +1701,8 @@ if [ -n "${myarg}" ] && \
 	unset myarg
 	# Save current environment and touch a success file. (echo for success)
 	umask 002
-	set | egrep -v -e "^SANDBOX_" -e "^LD_PRELOAD=" -e "^FAKEROOTKEY=" > "${T}/environment" 2>/dev/null
-	export | egrep -v -e "^declare -x SANDBOX_" -e "^declare -x LD_PRELOAD=" -e "^declare -x FAKEROOTKEY=" | \
+	set | egrep -v "^SANDBOX_" > "${T}/environment" 2>/dev/null
+	export | egrep -v "^declare -x SANDBOX_" | \
 		sed 's:^declare -rx:declare -x:' >> "${T}/environment" 2>/dev/null
 	chown portage:portage "${T}/environment" &>/dev/null
 	chmod g+w "${T}/environment" &>/dev/null
