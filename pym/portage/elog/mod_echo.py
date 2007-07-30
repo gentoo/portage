@@ -11,7 +11,10 @@ def process(mysettings, key, logentries, fulltext):
 	global _items
 	_items.append((mysettings, key, logentries))
 
-def finalize():
+def finalize(mysettings=None):
+	"""The mysettings parameter is just for backward compatibility since
+	an older version of portage will import the module from a newer version
+	when it upgrades itself."""
 	global _items
 	printer = EOutput()
 	for mysettings, key, logentries in _items:
