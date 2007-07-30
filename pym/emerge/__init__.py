@@ -2824,7 +2824,7 @@ class depgraph(object):
 						mydbapi.aux_get(pkg_key, ["IUSE"])[0].split()))
 
 					forced_flags = set()
-					pkgsettings.setcpv(pkg_key) # for package.use.{mask,force}
+					pkgsettings.setcpv(pkg_key, mydb=mydbapi) # for package.use.{mask,force}
 					forced_flags.update(pkgsettings.useforce)
 					forced_flags.update(pkgsettings.usemask)
 
@@ -4398,8 +4398,9 @@ def chk_updated_cfg_files(target_root, config_protect):
 						 print "config file '%s' needs updating." % x
 
 		if procount:
-			#print " "+yellow("*")+" Type "+green("emerge --help config")+" to learn how to update config files."
-			print " "+yellow("*")+" Type "+green("emerge --help config")+" to learn how to update config files."
+			print " "+yellow("*")+" See the "+colorize("INFORM","CONFIGURATION FILES")+ \
+				" section of the " + bold("emerge")
+			print " "+yellow("*")+" man page to learn how to update config files."
 
 def checkUpdatedNewsItems(portdb, vardb, NEWS_PATH, UNREAD_PATH, repo_id):
 	"""
