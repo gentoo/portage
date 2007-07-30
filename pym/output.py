@@ -73,7 +73,6 @@ codes["standout"]  = esc_seq + "03m"
 codes["underline"] = esc_seq + "04m"
 codes["blink"]     = esc_seq + "05m"
 codes["overline"]  = esc_seq + "06m"  # Who made this up? Seriously.
-codes["reverse"]   = esc_seq + "07m"
 
 ansi_color_codes = []
 for x in xrange(30, 38):
@@ -114,23 +113,11 @@ codes["white"]     = codes["0xFFFFFF"]
 codes["lightgray"] = codes["0xAAAAAA"]
 
 codes["darkteal"]   = codes["turquoise"]
-# Some terminals have darkyellow instead of brown.
-codes["0xAAAA00"]   = codes["brown"]
-codes["darkyellow"] = codes["0xAAAA00"]
+codes["darkyellow"] = codes["brown"]
+codes["fuscia"]     = codes["fuchsia"]
+codes["white"]      = codes["bold"]
 
-codes["bg_black"]      = esc_seq + "40m"
-codes["bg_darkred"]    = esc_seq + "41m"
-codes["bg_darkgreen"]  = esc_seq + "42m"
-codes["bg_brown"]      = esc_seq + "43m"
-codes["bg_darkblue"]   = esc_seq + "44m"
-codes["bg_purple"]     = esc_seq + "45m"
-codes["bg_teal"]       = esc_seq + "46m"
-codes["bg_lightgray"]  = esc_seq + "47m"
-
-codes["bg_darkyellow"] = codes["bg_brown"]
-
-# Colors from /etc/init.d/functions.sh
-codes["NORMAL"]     = esc_seq + "0m"
+# Colors from /sbin/functions.sh
 codes["GOOD"]       = codes["green"]
 codes["WARN"]       = codes["yellow"]
 codes["BAD"]        = codes["red"]
@@ -138,29 +125,11 @@ codes["HILITE"]     = codes["teal"]
 codes["BRACKET"]    = codes["blue"]
 
 # Portage functions
-codes["INFORM"]                  = codes["darkgreen"]
-codes["UNMERGE_WARN"]            = codes["red"]
-codes["SECURITY_WARN"]           = codes["red"]
-codes["MERGE_LIST_PROGRESS"]     = codes["yellow"]
-codes["PKG_MERGE"]               = codes["darkgreen"]
-codes["PKG_MERGE_SYSTEM"]        = codes["darkgreen"]
-codes["PKG_MERGE_WORLD"]         = codes["green"]
-codes["PKG_NOMERGE"]             = codes["darkblue"]
-codes["PKG_NOMERGE_SYSTEM"]      = codes["darkblue"]
-codes["PKG_NOMERGE_WORLD"]       = codes["blue"]
-codes["PROMPT_CHOICE_DEFAULT"]   = codes["green"]
-codes["PROMPT_CHOICE_OTHER"]     = codes["red"]
+codes["INFORM"] = codes["darkgreen"]
+codes["UNMERGE_WARN"] = codes["red"]
+codes["MERGE_LIST_PROGRESS"] = codes["yellow"]
 
-def parse_color_map(onerror=None):
-	"""
-	Parse /etc/portage/color.map and return a dict of error codes.
-
-	@param onerror: an optional callback to handle any ParseError that would
-		otherwise be raised
-	@type onerror: callable
-	@rtype: dict
-	@return: a dictionary mapping color classes to color codes
-	"""
+def parse_color_map():
 	myfile = COLOR_MAP_FILE
 	ansi_code_pattern = re.compile("^[0-9;]*m$")
 	def strip_quotes(token, quotes):
@@ -176,41 +145,16 @@ def parse_color_map(onerror=None):
 			if k is s.eof:
 				break
 			if o != "=":
-				e = ParseError("%s%s'%s'" % (
-					s.error_leader(myfile, s.lineno),
-					"expected '=' operator: ", o))
-				if onerror:
-					onerror(e)
-				else:
-					raise e
-				continue
+				raise ParseError("%s%s'%s'" % (s.error_leader(myfile, s.lineno), "expected '=' operator: ", o))
 			k = strip_quotes(k, s.quotes)
 			v = strip_quotes(v, s.quotes)
-			if not k in codes:
-				e = ParseError("%s%s'%s'" % (
-					s.error_leader(myfile, s.lineno),
-					"Unknown variable: ", k))
-				if onerror:
-					onerror(e)
-				else:
-					raise e
-				continue
 			if ansi_code_pattern.match(v):
 				codes[k] = esc_seq + v
 			else:
-				code_list = []
-				for x in v.split(" "):
-					if x in codes:
-						code_list.append(codes[x])
-					else:
-						e = ParseError("%s%s'%s'" % (
-							s.error_leader(myfile, s.lineno),
-							"Undefined: ", x))
-						if onerror:
-							onerror(e)
-						else:
-							raise e
-				codes[k] = "".join(code_list)
+				if v in codes:
+					codes[k] = codes[v]
+				else:
+					raise ParseError("%s%s'%s'" % (s.error_leader(myfile, s.lineno), "Undefined: ", v))
 	except (IOError, OSError), e:
 		if e.errno == errno.ENOENT:
 			raise FileNotFound(myfile)
@@ -219,7 +163,7 @@ def parse_color_map(onerror=None):
 		raise
 
 try:
-	parse_color_map(onerror=lambda e: writemsg("%s\n" % str(e), noiselevel=-1))
+	parse_color_map()
 except FileNotFound, e:
 	pass
 except PortageException, e:
@@ -291,7 +235,7 @@ def colorize(color_key, text):
 		return text
 
 compat_functions_colors = ["bold","white","teal","turquoise","darkteal",
-	"fuchsia","purple","blue","darkblue","green","darkgreen","yellow",
+	"fuscia","fuchsia","purple","blue","darkblue","green","darkgreen","yellow",
 	"brown","darkyellow","red","darkred"]
 
 def create_color_func(color_key):
@@ -303,43 +247,6 @@ def create_color_func(color_key):
 
 for c in compat_functions_colors:
 	setattr(sys.modules[__name__], c, create_color_func(c))
-
-def get_term_size():
-	"""
-	Get the number of lines and columns of the tty that is connected to
-	stdout.  Returns a tuple of (lines, columns) or (-1, -1) if an error
-	occurs. The curses module is used if available, otherwise the output of
-	`stty size` is parsed.
-	"""
-	if not sys.stdout.isatty():
-		return -1, -1
-	try:
-		import curses
-		try:
-			curses.setupterm()
-			return curses.tigetnum('lines'), curses.tigetnum('cols')
-		except curses.error:
-			pass
-	except ImportError:
-		pass
-	st, out = commands.getstatusoutput('stty size')
-	if st == os.EX_OK:
-		out = out.split()
-		if len(out) == 2:
-			try:
-				return int(out[0]), int(out[1])
-			except ValueError:
-				pass
-	return -1, -1
-
-def set_term_size(lines, columns, fd):
-	"""
-	Set the number of lines and columns for the tty that is connected to fd.
-	For portability, this simply calls `stty rows $lines columns $columns`.
-	"""
-	from portage_exec import spawn
-	cmd = ["stty", "rows", str(lines), "columns", str(columns)]
-	spawn(cmd, env=os.environ, fd_pipes={0:fd})
 
 class EOutput:
 	"""
@@ -368,7 +275,17 @@ class EOutput:
 		self.__last_e_cmd = ""
 		self.__last_e_len = 0
 		self.quiet = False
-		lines, columns = get_term_size()
+		columns = 0
+		try:
+			columns = int(os.getenv("COLUMNS", 0))
+		except ValueError:
+			pass
+		if columns <= 0:
+			try:
+				columns = int(commands.getoutput(
+					'set -- `stty size 2>/dev/null` ; echo "$2"'))
+			except ValueError:
+				pass
 		if columns <= 0:
 			columns = 80
 		# Adjust columns so that eend works properly on a standard BSD console.
