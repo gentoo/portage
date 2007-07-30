@@ -391,48 +391,4 @@ def help(myaction,myopts,havecolor=1):
 		print "       versions or newer ebuilds have become available since you last did a"
 		print "       sync and update."
 		print
-	elif myaction=="config":
-		outstuff=green("Config file management support (preliminary)")+"""
-
-Portage has a special feature called "config file protection".  The purpose of
-this feature is to prevent new package installs from clobbering existing
-configuration files.  By default, config file protection is turned on for /etc
-and the KDE configuration dirs; more may be added in the future.
-
-When Portage installs a file into a protected directory tree like /etc, any
-existing files will not be overwritten.  If a file of the same name already
-exists, Portage will change the name of the to-be-installed file from 'foo' to
-'._cfg0000_foo'.  If '._cfg0000_foo' already exists, this name becomes
-'._cfg0001_foo', etc.  In this way, existing files are not overwritten,
-allowing the administrator to manually merge the new config files and avoid any
-unexpected changes.
-
-In addition to protecting overwritten files, Portage will not delete any files
-from a protected directory when a package is unmerged.  While this may be a
-little bit untidy, it does prevent potentially valuable config files from being
-deleted, which is of paramount importance.
-
-Protected directories are set using the CONFIG_PROTECT variable, normally
-defined in /etc/make.globals.  Directory exceptions to the CONFIG_PROTECTed
-directories can be specified using the CONFIG_PROTECT_MASK variable.  To find
-files that need to be updated in /etc, type:
-
-# find /etc -iname '._cfg????_*'
-
-You can disable this feature by setting CONFIG_PROTECT="-*" in /etc/make.conf.
-Then, Portage will mercilessly auto-update your config files.  Alternatively,
-you can leave Config File Protection on but tell Portage that it can overwrite
-files in certain specific /etc subdirectories.  For example, if you wanted
-Portage to automatically update your rc scripts and your wget configuration,
-but didn't want any other changes made without your explicit approval, you'd
-add this to /etc/make.conf:
-
-CONFIG_PROTECT_MASK="/etc/wget /etc/rc.d"
-
-Tools such as dispatch-conf, cfg-update, and etc-update are also available to
-aid in the merging of these files. They provide interactive merging and can
-auto-merge trivial changes.
-
-"""
-		print outstuff
 
