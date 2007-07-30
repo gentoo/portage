@@ -79,7 +79,8 @@ class ManifestEntry(object):
 
 class Manifest1Entry(ManifestEntry):
 	def __str__(self):
-		for hashkey in self.hashes:
+		myhashkeys = self.hashes.keys()
+		for hashkey in myhashkeys:
 			if hashkey != "size":
 				break
 		hashvalue = self.hashes[hashkey]
@@ -343,15 +344,8 @@ class Manifest(object):
 				except FileNotFound:
 					pass
 
-	def checkIntegrity(self):
-		for t in self.fhashdict:
-			for f in self.fhashdict[t]:
-				if portage_const.MANIFEST2_REQUIRED_HASH not in self.fhashdict[t][f]:
-					raise MissingParameter("Missing %s checksum: %s %s" % (portage_const.MANIFEST2_REQUIRED_HASH, t, f))
-
 	def write(self, sign=False, force=False):
 		""" Write Manifest instance to disk, optionally signing it """
-		self.checkIntegrity()
 		try:
 			if self.compat:
 				self._writeDigests()
@@ -488,12 +482,12 @@ class Manifest(object):
 			except OSError:
 				pass
 			if f in distfilehashes and \
-				not required_hash_types.difference(distfilehashes[f]) and \
 				((assumeDistHashesSometimes and mystat is None) or \
 				(assumeDistHashesAlways and mystat is None) or \
 				(assumeDistHashesAlways and mystat is not None and \
 				len(distfilehashes[f]) == len(self.hashes) and \
-				distfilehashes[f]["size"] == mystat.st_size)):
+				distfilehashes[f]["size"] == mystat.st_size)) and \
+				not required_hash_types.difference(distfilehashes[f]):
 				self.fhashdict["DIST"][f] = distfilehashes[f]
 			else:
 				try:
