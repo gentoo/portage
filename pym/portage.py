@@ -538,13 +538,16 @@ def elog_process(cpv, mysettings):
 
 #parse /etc/env.d and generate /etc/profile.env
 
-def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None):
+def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
+	env=None):
 	if target_root is None:
 		global root
 		target_root = root
 	if prev_mtimes is None:
 		global mtimedb
 		prev_mtimes = mtimedb["ldpath"]
+	if env is None:
+		env = os.environ
 	envd_dir = os.path.join(target_root, "etc", "env.d")
 	portage_util.ensure_dirs(envd_dir, mode=0755)
 	fns = listdir(envd_dir, EmptyOnError=1)
@@ -729,8 +732,14 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None):
 		if not libdir_contents_changed:
 			makelinks = False
 
+	ldconfig = "/sbin/ldconfig"
+	if "CHOST" in env and "CBUILD" in env and \
+		env["CHOST"] != env["CBUILD"]:
+		from portage_exec import find_binary
+		ldconfig = find_binary("%s-ldconfig" % env["CHOST"])
+
 	# Only run ldconfig as needed
-	if (ld_cache_update or makelinks):
+	if (ld_cache_update or makelinks) and ldconfig:
 		# ldconfig has very different behaviour between FreeBSD and Linux
 		if ostype=="Linux" or ostype.lower().endswith("gnu"):
 			# We can't update links if we haven't cleaned other versions first, as
@@ -739,14 +748,15 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None):
 			# we can safely create links.
 			writemsg(">>> Regenerating %setc/ld.so.cache...\n" % target_root)
 			if makelinks:
-				commands.getstatusoutput("cd / ; /sbin/ldconfig -r '%s'" % target_root)
+				os.system("cd / ; %s -r '%s'" % (ldconfig, target_root))
 			else:
-				commands.getstatusoutput("cd / ; /sbin/ldconfig -X -r '%s'" % target_root)
+				os.system("cd / ; %s -X -r '%s'" % (ldconfig, target_root))
 		elif ostype in ("FreeBSD","DragonFly"):
-			writemsg(">>> Regenerating %svar/run/ld-elf.so.hints...\n" % target_root)
-			commands.getstatusoutput(
-				"cd / ; /sbin/ldconfig -elf -i -f '%svar/run/ld-elf.so.hints' '%setc/ld.so.conf'" % \
-				(target_root, target_root))
+			writemsg(">>> Regenerating %svar/run/ld-elf.so.hints...\n" % \
+				target_root)
+			os.system(("cd / ; %s -elf -i " + \
+				"-f '%svar/run/ld-elf.so.hints' '%setc/ld.so.conf'") % \
+				(ldconfig, target_root, target_root))
 
 	del specials["LDPATH"]
 
@@ -7065,7 +7075,7 @@ class dblink:
 						del e
 					portage_locks.unlockdir(catdir_lock)
 		env_update(target_root=self.myroot, prev_mtimes=ldpath_mtimes,
-			contents=contents)
+			contents=contents, env=self.settings.environ())
 		return os.EX_OK
 
 	def _unmerge_pkgfiles(self, pkgfiles):
@@ -7575,7 +7585,7 @@ class dblink:
 		#update environment settings, library paths. DO NOT change symlinks.
 		env_update(makelinks=(not downgrade),
 			target_root=self.settings["ROOT"], prev_mtimes=prev_mtimes,
-			contents=contents)
+			contents=contents, env=self.settings.environ())
 		#dircache may break autoclean because it remembers the -MERGING-pkg file
 		global dircache
 		if dircache.has_key(self.dbcatdir):
