@@ -33,7 +33,7 @@ FETCHCOMMAND="/usr/bin/wget -t 5 -T 60 --passive-ftp -O \${DISTDIR}/\${FILE} \${
 RESUMECOMMAND="/usr/bin/wget -c -t 5 -T 60 --passive-ftp -O \${DISTDIR}/\${FILE} \${URI}"
 
 # Default user options
-FEATURES="distlocks metadata-transfer sandbox sfperms strict unmerge-orphans userfetch"
+FEATURES="sandbox distlocks metadata-transfer"
 
 # Default chunksize for binhost comms
 PORTAGE_BINHOST_CHUNKSIZE="3000"
@@ -61,7 +61,7 @@ CONFIG_PROTECT="/etc"
 CONFIG_PROTECT_MASK="/etc/env.d"
 
 # Disable auto-use
-USE_ORDER="env:pkg:conf:defaults:pkginternal:env.d"
+USE_ORDER="env:pkg:conf:defaults:pkginternal"
 
 # Default ownership of installed files.
 PORTAGE_INST_UID="0"
@@ -72,7 +72,6 @@ PORTAGE_WORKDIR_MODE="0700"
 
 # Some defaults for elog
 PORTAGE_ELOG_CLASSES="log warn error"
-PORTAGE_ELOG_SYSTEM="save_summary echo"
 
 PORTAGE_ELOG_MAILURI="root"
 PORTAGE_ELOG_MAILSUBJECT="[portage] ebuild log for \${PACKAGE} on \${HOST}"
