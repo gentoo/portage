@@ -1,4 +1,4 @@
-# Copyright 1999-2007 Gentoo Foundation
+# Copyright 1999-2006 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
@@ -7,7 +7,8 @@ import os,sys
 from output import bold, turquoise, green
 
 def shorthelp():
-	print bold("emerge:")+" the other white meat (command-line interface to the Portage system)"
+	print
+	print
 	print bold("Usage:")
 	print "   "+turquoise("emerge")+" [ "+green("options")+" ] [ "+green("action")+" ] [ "+turquoise("ebuildfile")+" | "+turquoise("tbz2file")+" | "+turquoise("dependency")+" ] [ ... ]"
 	print "   "+turquoise("emerge")+" [ "+green("options")+" ] [ "+green("action")+" ] < "+turquoise("system")+" | "+turquoise("world")+" >"
@@ -16,15 +17,17 @@ def shorthelp():
 	print "   "+turquoise("emerge")+" "+turquoise("--help")+" [ "+green("system")+" | "+green("world")+" | "+green("config")+" | "+green("--sync")+" ] "
 	print bold("Options:")+" "+green("-")+"["+green("abBcCdDefgGhikKlnNoOpqPsStuvV")+"] ["+green("--oneshot")+"] ["+green("--newuse")+"] ["+green("--noconfmem")+"]"
 	print      "                                          [ " + green("--color")+" < " + turquoise("y") + " | "+ turquoise("n")+" >  ] [ "+green("--columns")+" ]"
-	print      "                                     [ "+green("--reinstall ")+turquoise("changed-use")+" ] ["+green("--nospinner")+"]"
+	print      "                                                                 ["+green("--nospinner")+"]"
 	print "                                          [ "+green("--deep")+"  ] [" + green("--with-bdeps")+" < " + turquoise("y") + " | "+ turquoise("n")+" > ]"
 	print bold("Actions:")+" [ "+green("--clean")+" | "+green("--depclean")+" | "+green("--prune")+" | "+green("--regen")+" | "+green("--search")+" | "+green("--unmerge")+" ]"
+	print
 
 def help(myaction,myopts,havecolor=1):
-	if not myaction and ("--verbose" not in myopts):
+	if not myaction and ("--help" not in myopts):
 		shorthelp()
 		print
-		print "   For more help try 'emerge --help --verbose' or consult the man page."
+		print "   For more help try 'emerge --help' or consult the man page."
+		print
 	elif not myaction:
 		shorthelp()
 		print
@@ -64,17 +67,10 @@ def help(myaction,myopts,havecolor=1):
 		print "              full dependency tree from the system list and the world file,"
 		print "              then comparing it to installed packages. Packages installed, but"
 		print "              not associated with an explicit merge are listed as candidates"
-		print "              for unmerging. Inexperienced users are advised to use --pretend"
-		print "              with this option in order to see a preview of which packages will"
-		print "              be uninstalled. "+turquoise(" WARNING: Removing some packages may cause")
-		print "              "+turquoise("packages which link to the removed package to stop working and")
-		print "              "+turquoise("complain about missing libraries. Rebuild the complaining package")
-		print "              "+turquoise("to fix this issue.")+" Also see --with-bdeps for behavior with"
-		print "              respect to build time dependencies that are not strictly"
-		print "              required. Depclean serves as a dependency aware version of"
-		print "              --unmerge. When given one or more atoms, it will unmerge matched"
-		print "              packages that have no reverse dependencies. Use --depclean"
-		print "              together with --verbose to show reverse dependencies."
+		print "              for unmerging."+turquoise(" WARNING: This can seriously affect your system by")
+		print "              "+turquoise("removing packages that may have been linked against, but due to")
+		print "              "+turquoise("changes in USE flags may no longer be part of the dep tree. Use")
+		print "              "+turquoise("caution when employing this feature.")
 		print
 		print "       "+green("--info")
 		print "              Displays important portage variables that will be exported to"
@@ -94,12 +90,11 @@ def help(myaction,myopts,havecolor=1):
 		print
 		print "       "+green("--prune")+" ("+green("-P")+" short option)"
 		print "              "+turquoise("WARNING: This action can remove important packages!")
-		print "              Removes all but the highest installed version of a package"
+		print "              Removes all but the most recently installed version of a package"
 		print "              from your system. This action doesn't verify the possible binary"
 		print "              compatibility between versions and can thus remove essential"
-		print "              dependencies from your system. Use --prune together with"
-		print "              --verbose to show reverse dependencies or with --nodeps to"
-		print "              ignore all dependencies."
+		print "              dependencies from your system."
+		print "              The argument format is the same as for the "+bold("--clean")+" action."
 		print
 		print "       "+green("--regen")
 		print "              Causes portage to check and update the dependency cache of all"
@@ -145,11 +140,9 @@ def help(myaction,myopts,havecolor=1):
 		print
 		print "       "+green("--unmerge")+" ("+green("-C")+" short option)"
 		print "              "+turquoise("WARNING: This action can remove important packages!")
-		print "              Removes all matching packages. This does no checking of"
-		print "              dependencies, so it may remove packages necessary for the proper"
-		print "              operation of your system. Its arguments can be atoms or"
-		print "              ebuilds. For a dependency aware version of --unmerge, use"
-		print "              --depclean or --prune."
+		print "              Removes all matching packages "+bold("completely")+" from"
+		print "              your system. Specify arguments using the dependency specification"
+		print "              format described in the "+bold("--clean")+" action above."
 		print
 		print "       "+green("--update")+" ("+green("-u")+" short option)"
 		print "              Updates packages to the best version available, which may not"
@@ -303,12 +296,6 @@ def help(myaction,myopts,havecolor=1):
 		print "              Effects vary, but the general outcome is a reduced or condensed"
 		print "              output from portage's displays."
 		print
-		print "       "+green("--reinstall ") + turquoise("changed-use")
-		print "              Tells emerge to include installed packages where USE flags have"
-		print "              changed since installation.  Unlike --newuse, this option does"
-		print "              not trigger reinstallation when flags that the user has not"
-		print "              enabled are added or removed."
-		print
 		print "       "+green("--skipfirst")
 		print "              This option is only valid in a resume situation. It removes the"
 		print "              first package in the resume list so that a merge may continue in"
@@ -391,4 +378,48 @@ def help(myaction,myopts,havecolor=1):
 		print "       versions or newer ebuilds have become available since you last did a"
 		print "       sync and update."
 		print
+	elif myaction=="config":
+		outstuff=green("Config file management support (preliminary)")+"""
+
+Portage has a special feature called "config file protection".  The purpose of
+this feature is to prevent new package installs from clobbering existing
+configuration files.  By default, config file protection is turned on for /etc
+and the KDE configuration dirs; more may be added in the future.
+
+When Portage installs a file into a protected directory tree like /etc, any
+existing files will not be overwritten.  If a file of the same name already
+exists, Portage will change the name of the to-be-installed file from 'foo' to
+'._cfg0000_foo'.  If '._cfg0000_foo' already exists, this name becomes
+'._cfg0001_foo', etc.  In this way, existing files are not overwritten,
+allowing the administrator to manually merge the new config files and avoid any
+unexpected changes.
+
+In addition to protecting overwritten files, Portage will not delete any files
+from a protected directory when a package is unmerged.  While this may be a
+little bit untidy, it does prevent potentially valuable config files from being
+deleted, which is of paramount importance.
+
+Protected directories are set using the CONFIG_PROTECT variable, normally
+defined in /etc/make.globals.  Directory exceptions to the CONFIG_PROTECTed
+directories can be specified using the CONFIG_PROTECT_MASK variable.  To find
+files that need to be updated in /etc, type:
+
+# find /etc -iname '._cfg????_*'
+
+You can disable this feature by setting CONFIG_PROTECT="-*" in /etc/make.conf.
+Then, Portage will mercilessly auto-update your config files.  Alternatively,
+you can leave Config File Protection on but tell Portage that it can overwrite
+files in certain specific /etc subdirectories.  For example, if you wanted
+Portage to automatically update your rc scripts and your wget configuration,
+but didn't want any other changes made without your explicit approval, you'd
+add this to /etc/make.conf:
+
+CONFIG_PROTECT_MASK="/etc/wget /etc/rc.d"
+
+Tools such as dispatch-conf, cfg-update, and etc-update are also available to
+aid in the merging of these files. They provide interactive merging and can
+auto-merge trivial changes.
+
+"""
+		print outstuff
 
