@@ -1389,7 +1389,7 @@ class config(object):
 			# reasonable defaults; this is important as without USE_ORDER,
 			# USE will always be "" (nothing set)!
 			if "USE_ORDER" not in self:
-				self.backupenv["USE_ORDER"] = "env:pkg:conf:defaults:pkginternal"
+				self.backupenv["USE_ORDER"] = "env:pkg:conf:defaults:pkginternal:env.d"
 
 			self["PORTAGE_GID"] = str(portage_gid)
 			self.backup_changes("PORTAGE_GID")
@@ -2390,6 +2390,7 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 	master_fd = None
 	slave_fd = None
 	fd_pipes_orig = None
+	got_pty = False
 	if logfile:
 		del keywords["logfile"]
 		fd_pipes = keywords.get("fd_pipes")
@@ -2398,12 +2399,17 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 		elif 1 not in fd_pipes or 2 not in fd_pipes:
 			raise ValueError(fd_pipes)
 		from pty import openpty
-		master_fd, slave_fd = openpty()
+		try:
+			master_fd, slave_fd = openpty()
+			got_pty = True
+		except EnvironmentError, e:
+			writemsg("openpty failed: '%s'\n" % str(e), noiselevel=1)
+			del e
+			master_fd, slave_fd = os.pipe()
 		fd_pipes.setdefault(0, sys.stdin.fileno())
 		fd_pipes_orig = fd_pipes.copy()
-		stdin_fd = fd_pipes[0]
-		if os.isatty(stdin_fd):
-			from output import get_term_size, set_term_size
+		if got_pty and os.isatty(fd_pipes_orig[1]):
+			from portage.output import get_term_size, set_term_size
 			rows, columns = get_term_size()
 			set_term_size(rows, columns, slave_fd)
 		fd_pipes[0] = fd_pipes_orig[0]
@@ -2457,7 +2463,7 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 	if logfile:
 		log_file = open(logfile, 'a')
 		stdout_file = os.fdopen(os.dup(fd_pipes_orig[1]), 'w')
-		master_file = os.fdopen(master_fd, 'w+')
+		master_file = os.fdopen(master_fd, 'r')
 		iwtd = [master_file]
 		owtd = []
 		ewtd = []
@@ -2472,8 +2478,16 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 			for f in events[0]:
 				# Use non-blocking mode to prevent read
 				# calls from blocking indefinitely.
-				fcntl.fcntl(f.fileno(), fcntl.F_SETFL,
-					fd_flags[f] | os.O_NONBLOCK)
+				try:
+					fcntl.fcntl(f.fileno(), fcntl.F_SETFL,
+						fd_flags[f] | os.O_NONBLOCK)
+				except EnvironmentError, e:
+					if e.errno != errno.EAGAIN:
+						raise
+					del e
+					# The EAGAIN error signals eof on FreeBSD.
+					eof = True
+					break
 				buf = array.array('B')
 				try:
 					buf.fromfile(f, buffsize)
@@ -3832,10 +3846,12 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			return 1
 
 		# Build directory creation isn't required for any of these.
+		have_build_dirs = False
 		if mydo not in ("digest", "fetch", "help", "manifest"):
 			mystatus = prepare_build_dirs(myroot, mysettings, cleanup)
 			if mystatus:
 				return mystatus
+			have_build_dirs = True
 			# PORTAGE_LOG_FILE is set above by the prepare_build_dirs() call.
 			logfile = mysettings.get("PORTAGE_LOG_FILE", None)
 		if mydo == "unmerge":
@@ -3950,6 +3966,18 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			mydo not in ("digest", "manifest") and "noauto" not in features)
 		if need_distfiles and not fetch(
 			fetchme, mysettings, listonly=listonly, fetchonly=fetchonly):
+			if have_build_dirs:
+				# Create an elog message for this fetch failure since the
+				# mod_echo module might push the original message off of the
+				# top of the terminal and prevent the user from being able to
+				# see it.
+				mysettings["EBUILD_PHASE"] = "unpack"
+				cmd = "source '%s/isolated-functions.sh' ; " % PORTAGE_BIN_PATH
+				cmd += "eerror \"Fetch failed for '%s'\"" % mycpv
+				portage.process.spawn(["bash", "-c", cmd],
+					env=mysettings.environ())
+				from portage.elog import elog_process
+				elog_process(mysettings.mycpv, mysettings)
 			return 1
 
 		if mydo == "fetch" and listonly:
@@ -4069,6 +4097,12 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		elif mydo=="merge":
 			retval = spawnebuild("install", actionmap, mysettings, debug,
 				alwaysdep=1, logfile=logfile)
+			if retval != os.EX_OK:
+				# The merge phase handles this already.  Callers don't know how
+				# far this function got, so we have to call elog_process() here
+				# so that it's only called once.
+				from portage.elog import elog_process
+				elog_process(mysettings.mycpv, mysettings)
 			if retval == os.EX_OK:
 				retval = merge(mysettings["CATEGORY"], mysettings["PF"],
 					mysettings["D"], os.path.join(mysettings["PORTAGE_BUILDDIR"],
@@ -5070,6 +5104,9 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 	tbz2_lock = None
 	builddir_lock = None
 	catdir_lock = None
+	mycat = None
+	mypkg = None
+	did_merge_phase = False
 	try:
 		""" Don't lock the tbz2 file because the filesytem could be readonly or
 		shared by a cluster."""
@@ -5142,11 +5179,18 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 			treetype="bintree")
 		retval = mylink.merge(pkgloc, infloc, myroot, myebuild, cleanup=0,
 			mydbapi=mydbapi, prev_mtimes=prev_mtimes)
+		did_merge_phase = True
 		return retval
 	finally:
 		if tbz2_lock:
 			portage.locks.unlockfile(tbz2_lock)
 		if builddir_lock:
+			if not did_merge_phase:
+				# The merge phase handles this already.  Callers don't know how
+				# far this function got, so we have to call elog_process() here
+				# so that it's only called once.
+				from portage.elog import elog_process
+				elog_process(mycat + "/" + mypkg, mysettings)
 			try:
 				shutil.rmtree(builddir)
 			except (IOError, OSError), e:
