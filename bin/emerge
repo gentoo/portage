@@ -5582,5 +5582,10 @@ def emerge_main():
 			post_emerge(settings, mtimedb, 0)
 
 if __name__ == "__main__":
-	retval = emerge_main()
+	from portage_exception import PermissionDenied
+	try:
+		retval = emerge_main()
+	except PermissionDenied, e:
+		sys.stderr.write("Permission denied: '%s'\n" % str(e))
+		sys.exit(e.errno)
 	sys.exit(retval)

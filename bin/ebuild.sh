@@ -190,11 +190,19 @@ has_version() {
 	fi
 	# return shell-true/shell-false if exists.
 	# Takes single depend-type atoms.
-	if "${PORTAGE_BIN_PATH}/portageq" 'has_version' "${ROOT}" "$1"; then
-		return 0
-	else
-		return 1
-	fi
+	"${PORTAGE_BIN_PATH}"/portageq has_version "${ROOT}" "$1"
+	local retval=$?
+	case "${retval}" in
+		0)
+			return 0
+			;;
+		1)
+			return 1
+			;;
+		*)
+			die "unexpected portageq exit code: ${retval}"
+			;;
+	esac
 }
 
 portageq() {

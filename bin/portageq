@@ -133,12 +133,7 @@ def best_visible(argv):
 		sys.exit(2)
 	try:
 		mylist=portage.db[argv[0]]["porttree"].dbapi.match(argv[1])
-		visible=portage.best(mylist)
-		if visible:
-			print visible
-			sys.exit(0)
-		else:
-			sys.exit(1)
+		print portage.best(mylist)
 	except KeyError:
 		sys.exit(1)
 best_visible.uses_root = True
