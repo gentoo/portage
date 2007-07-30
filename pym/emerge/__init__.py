@@ -2743,7 +2743,7 @@ class depgraph(object):
 						raise portage.exception.PackageNotFound(pkg_key)
 					repo_path_real = os.path.dirname(os.path.dirname(
 						os.path.dirname(ebuild_path)))
-					pkgsettings.setcpv(pkg_key)
+					pkgsettings.setcpv(pkg_key, mydb=mydbapi)
 					metadata["USE"] = pkgsettings["USE"]
 				else:
 					repo_path_real = portdb.getRepositoryPath(repo_name)
