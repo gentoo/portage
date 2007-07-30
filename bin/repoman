@@ -7,21 +7,9 @@
 # Then, check to make sure deps are satisfiable (to avoid "can't find match for" problems)
 # that last one is tricky because multiple profiles need to be checked.
 
-import errno
-import os
-import sys
-import signal
-import re
-import tempfile
-
-try:
-	import cPickle as pickle
-except ImportError:
-	import pickle
-
+import errno, os, shutil, sys
 if not hasattr(__builtins__, "set"):
 	from sets import Set as set
-
 exename=os.path.basename(sys.argv[0])	
 version="1.2"	
 
@@ -31,6 +19,8 @@ map(allowed_filename_chars_set.setdefault, map(chr, range(ord('a'), ord('z')+1))
 map(allowed_filename_chars_set.setdefault, map(chr, range(ord('A'), ord('Z')+1)))
 map(allowed_filename_chars_set.setdefault, map(chr, range(ord('0'), ord('9')+1)))
 map(allowed_filename_chars_set.setdefault, map(chr, map(ord, [".", "-", "_", "+", ":"])))
+
+import signal,re,pickle,tempfile
 
 os.environ["PORTAGE_LEGACY_GLOBALS"] = "false"
 try:
@@ -172,7 +162,6 @@ qahelp={
 	"PDEPEND.syntax":"Syntax error in PDEPEND (usually an extra/missing space/parenthesis)",
 	"LICENSE.syntax":"Syntax error in LICENSE (usually an extra/missing space/parenthesis)",
 	"PROVIDE.syntax":"Syntax error in PROVIDE (usually an extra/missing space/parenthesis)",
-	"RESTRICT.syntax":"Syntax error in RESTRICT (usually an extra/missing space/parenthesis)",
 	"SRC_URI.syntax":"Syntax error in SRC_URI (usually an extra/missing space/parenthesis)",
 	"ebuild.syntax":"Error generating cache entry for ebuild; typically caused by ebuild syntax error",
 	"ebuild.output":"A simple sourcing of the ebuild produces output; this breaks ebuild policy.",
@@ -182,7 +171,6 @@ qahelp={
 	"IUSE.invalid":"This ebuild has a variable in IUSE that is not in the use.desc or use.local.desc file",
 	"LICENSE.invalid":"This ebuild is listing a license that doesnt exist in portages license/ dir.",
 	"KEYWORDS.invalid":"This ebuild contains KEYWORDS that are not listed in profiles/arch.list or for which no valid profile was found",
-	"RESTRICT.invalid":"This ebuild contains invalid RESTRICT values.",
 	"ebuild.nostable":"There are no ebuilds that are marked as stable for your ARCH",
 	"ebuild.allmasked":"All ebuilds are masked for this package (Package level only)",
 	"ebuild.majorsyn":"This ebuild has a major syntax error that may cause the ebuild to fail partially or fully",
@@ -217,7 +205,6 @@ qawarnings=[
 "IUSE.invalid",
 "KEYWORDS.stupid",
 "KEYWORDS.missing",
-"RESTRICT.invalid",
 "ebuild.minorsyn",
 "ebuild.badheader",
 "file.size",
@@ -241,8 +228,6 @@ for x in missingvars:
 		qacats.append(x)
 		qawarnings.append(x)
 
-valid_restrict = frozenset(["binchecks", "bindist", "fetch", "mirror",
-	"primaryuri", "strip", "test", "userpriv"])
 
 verbose=0
 quiet=0
@@ -354,9 +339,9 @@ myoptions=[]
 if len(sys.argv)>1:
 	x=1
 	while x < len(sys.argv):
-		if sys.argv[x] in shortmodes:
+		if sys.argv[x] in shortmodes.keys():
 			sys.argv[x]=shortmodes[sys.argv[x]]
-		elif sys.argv[x] in repoman_shortoptions:
+		elif sys.argv[x] in repoman_shortoptions.keys():
 			sys.argv[x] = repoman_shortoptions[sys.argv[x]]
 		if sys.argv[x] in modes:
 			if mymode is None:
@@ -519,6 +504,12 @@ for x in range(0,repolevel-1):
 
 def caterror(mycat):
 	err(mycat+" is not an official category.  Skipping QA checks in this directory.\nPlease ensure that you add "+catdir+" to "+repodir+"/profiles/categories\nif it is a new category.")
+if mymode == "manifest":
+	pass
+elif "--pretend" in myoptions:
+	print green("\nRepoMan does a once-over of the neighborhood...")
+elif quiet < 1:
+	print green("\nRepoMan scours the neighborhood...")
 
 def parse_use_local_desc(mylines, usedict=None):
 	"""returns a dict of the form {cpv:set(flags)}"""
@@ -739,49 +730,6 @@ def x11_deprecation_check(depstr):
 			if token.find("virtual/x11") != -1 and (not ok_stack or not ok_stack[-1]):
 				return True
 	return False
-
-if mymode == "commit":
-	retval = ("","")
-	if isCvs:
-		print
-		print "Performing a " + green("cvs -n up") + \
-			" with a little magic grep to check for updates."
-		retval = getstatusoutput("/usr/bin/cvs -n up 2>&1 | " + \
-			"egrep '^[^\?] .*' | " + \
-			"egrep -v '^. .*/digest-[^/]+|^cvs server: .* -- ignored$'")
-
-	mylines = retval[1].splitlines()
-	myupdates = []
-	for x in mylines:
-		if not x:
-			continue
-		if x[0] not in "UPMAR": # Updates,Patches,Modified,Added,Removed
-			print red("!!! Please fix the following issues reported " + \
-				"from cvs: ")+green("(U,P,M,A,R are ok)")
-			print red("!!! Note: This is a pretend/no-modify pass...")
-			print retval[1]
-			print
-			sys.exit(1)
-		elif x[0] in "UP":
-			myupdates.append(x[2:])
-
-	if myupdates:
-		print green("Fetching trivial updates...")
-		if "--pretend" in myoptions:
-			print "(/usr/bin/cvs up "+" ".join(myupdates)+")"
-			retval = os.EX_OK
-		else:
-			retval = os.system("/usr/bin/cvs up " + " ".join(myupdates))
-		if retval != os.EX_OK:
-			print "!!! cvs exited with an error. Terminating."
-			sys.exit(retval)
-
-if mymode == "manifest":
-	pass
-elif "--pretend" in myoptions:
-	print green("\nRepoMan does a once-over of the neighborhood...")
-elif quiet < 1:
-	print green("\nRepoMan scours the neighborhood...")
 
 dofail = 0
 arch_caches={}
@@ -1181,10 +1129,6 @@ for x in scanlist:
 			except ValueError:
 				badsyntax.append("parenthesis mismatch")
 				mydeplist = []
-			except portage_exception.InvalidDependString, e:
-				badsyntax.append(str(e))
-				del e
-				mydeplist = []
 
 			try:
 				portage_dep.use_reduce(mydeplist, excludeall=myiuse)
@@ -1338,12 +1282,13 @@ for x in scanlist:
 		myuse = []
 		default_use = []
 		for myflag in myaux["IUSE"].split():
-			flag_name = myflag.lstrip("+-")
-			if myflag != flag_name:
+			if myflag.startswith("+"):
 				default_use.append(myflag)
-			if flag_name not in uselist:
-				myuse.append(flag_name)
-
+				myflag = myflag[1:]
+			myuse.append(myflag)
+		for mypos in range(len(myuse)-1,-1,-1):
+			if myuse[mypos] and (myuse[mypos] in uselist):
+				del myuse[mypos]
 		# uselist checks - local
 		mykey = portage.dep_getkey(catpkg)
 		if luselist.has_key(mykey):
@@ -1387,23 +1332,6 @@ for x in scanlist:
 				elif not profiles.has_key(myskey):
 					stats["KEYWORDS.invalid"] += 1
 					fails["KEYWORDS.invalid"].append(x+"/"+y+".ebuild: %s (profile invalid)" % mykey)
-
-		#restrict checks
-		myrestrict = None
-		try:
-			myrestrict = portage_dep.use_reduce(
-				portage_dep.paren_reduce(myaux["RESTRICT"]), matchall=1)
-		except portage_exception.InvalidDependString, e:
-			stats["RESTRICT.syntax"] = stats["RESTRICT.syntax"] + 1
-			fails["RESTRICT.syntax"].append(mykey+".ebuild RESTRICT: "+str(e))
-			del e
-		if myrestrict:
-			myrestrict = set(portage.flatten(myrestrict))
-			mybadrestrict = myrestrict.difference(valid_restrict)
-			if mybadrestrict:
-				stats["RESTRICT.invalid"] += len(mybadrestrict)
-				for mybad in mybadrestrict:
-					fails["RESTRICT.invalid"].append(x+"/"+y+".ebuild: %s" % mybad)
 
 		#syntax checks
 		myear = time.gmtime(os.stat(checkdir+"/"+y+".ebuild")[ST_MTIME])[0]
@@ -1536,7 +1464,7 @@ def grouplist(mylist,seperator="/"):
 		xs=x.split(seperator)
 		if xs[0]==".":
 			xs=xs[1:]
-		if xs[0] not in mygroups:
+		if xs[0] not in mygroups.keys():
 			mygroups[xs[0]]=[seperator.join(xs[1:])]
 		else:
 			mygroups[xs[0]]+=[seperator.join(xs[1:])]
@@ -1554,10 +1482,6 @@ if mymode!="commit":
 			print green("RepoMan sez:"),"\"OK for now, but I'll be back ...\""
 	elif not dofail:
 		print green("RepoMan sez:"),"\"If everyone were like you, I'd be out of business!\""
-	elif dofail:
-		print turquoise("Please fix these important QA issues first.")
-		print green("RepoMan sez:"),"\"Make your QA payment on time and you'll never see the likes of me.\"\n"
-		sys.exit(1)
 	if quiet < 1:
 		print
 else:
@@ -1629,13 +1553,44 @@ else:
 		print
 		sys.exit(1)
 
+	retval=["",""]
+	if isCvs:
+		print "Performing a "+green("cvs -n up")+" with a little magic grep to check for updates."
+		retval=getstatusoutput("/usr/bin/cvs -n up 2>&1 | egrep '^[^\?] .*' | egrep -v '^. .*/digest-[^/]+|^cvs server: .* -- ignored$'")
+		
+	mylines=retval[1].split("\n")
+	myupdates=[]
+	for x in mylines:
+		if not x:
+			continue
+		if x[0] not in "UPMAR": # Updates,Patches,Modified,Added,Removed
+			print red("!!! Please fix the following issues reported from cvs: ")+green("(U,P,M,A,R are ok)")
+			print red("!!! Note: This is a pretend/no-modify pass...")
+			print retval[1]
+			print
+			sys.exit(1)
+		elif x[0] in ["U","P"]:
+			myupdates+=[x[2:]]
+	
+	if myupdates:
+		print green("Fetching trivial updates...")
+		if "--pretend" in myoptions:
+			print "(/usr/bin/cvs up "+" ".join(myupdates)+")"
+			retval=0
+		else:
+			retval=os.system("/usr/bin/cvs up "+" ".join(myupdates))
+		if retval!=0:
+			print "!!! cvs exited with an error. Terminating."
+			sys.exit(retval)
+	
 	if isCvs:
 		mycvstree=cvstree.getentries("./",recursive=1)
 		mychanged=cvstree.findchanged(mycvstree,recursive=1,basedir="./")
 		mynew=cvstree.findnew(mycvstree,recursive=1,basedir="./")
 		myremoved=cvstree.findremoved(mycvstree,recursive=1,basedir="./")
 		if not (mychanged or mynew or myremoved):
-			print green("RepoMan sez:"), "\"Doing nothing is not always good for QA.\""
+			print
+			print green("RepoMan sez:"), "\"Doing nothing is not always good for QA.\"\n"
 			print
 			print "(Didn't find any changed files...)"
 			print
@@ -1789,23 +1744,6 @@ else:
 				os.rename(filename+".asc", filename)
 			else:
 				raise portage_exception.PortageException("!!! gpg exited with '" + str(rValue) + "' status")
-
-	# When files are removed and re-added, the cvs server will put /Attic/
-	# inside the $Header path. This code detects the problem and corrects it
-	# so that the Manifest will generate correctly. See bug #169500.
-	from portage_util import write_atomic
-	cvs_header = re.compile(r'^#\s*\$Header.*\$$')
-	for x in myheaders:
-		f = open(x)
-		mylines = f.readlines()
-		f.close()
-		modified = False
-		for i, line in enumerate(mylines):
-			if cvs_header.match(line) and "/Attic/" in line:
-				mylines[i] = line.replace("/Attic/", "/")
-				modified = True
-		if modified:
-			write_atomic(x, "".join(mylines))
 
 	manifest_commit_required = True
 	if myheaders or myupdates or myremoved or mynew:
