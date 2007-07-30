@@ -6909,12 +6909,18 @@ class dblink:
 		"""
 		Get the installed files of a given package (aka what that package installed)
 		"""
-		if not os.path.exists(self.dbdir+"/CONTENTS"):
-			return None
-		if self.contentscache != []:
+		contents_file = os.path.join(self.dbdir, "CONTENTS")
+		if self.contentscache is not None:
 			return self.contentscache
-		pkgfiles={}
-		myc=open(self.dbdir+"/CONTENTS","r")
+		pkgfiles = {}
+		try:
+			myc = open(contents_file,"r")
+		except EnvironmentError, e:
+			if e.errno != errno.ENOENT:
+				raise
+			del e
+			self.contentscache = pkgfiles
+			return pkgfiles
 		mylines=myc.readlines()
 		myc.close()
 		null_byte = "\0"
@@ -6963,10 +6969,12 @@ class dblink:
 					#format: type
 					pkgfiles[" ".join(mydat[1:])]=[mydat[0]]
 				else:
-					return None
-			except (KeyError,IndexError):
-				print "portage: CONTENTS line",pos,"corrupt!"
-		self.contentscache=pkgfiles
+					writemsg("!!! Unrecognized CONTENTS entry on " + \
+						"line %d: '%s'\n" % (pos, line), noiselevel=-1)
+			except (KeyError, IndexError):
+				writemsg("!!! Unrecognized CONTENTS entry on " + \
+					"line %d: '%s'\n" % (pos, line), noiselevel=-1)
+		self.contentscache = pkgfiles
 		return pkgfiles
 
 	def unmerge(self, pkgfiles=None, trimworld=1, cleanup=1,
