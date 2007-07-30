@@ -3911,6 +3911,12 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 expandcache={}
 
+def _movefile(src, dest, **kwargs):
+	"""Calls movefile and raises a PortageException if an error occurs."""
+	if movefile(src, dest, **kwargs) is None:
+		raise portage_exception.PortageException(
+			"mv '%s' '%s'" % (src, dest))
+
 def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 	"""moves a file from src to dest, preserving all permissions and attributes; mtime will
 	be preserved even when moving across filesystems.  Returns true on success and false on
@@ -5228,7 +5234,7 @@ class vardbapi(dbapi):
 			if os.path.exists(newpath):
 				#dest already exists; keep this puppy where it is.
 				continue
-			os.rename(origpath, newpath)
+			_movefile(origpath, newpath, mysettings=self.settings)
 
 			# We need to rename the ebuild now.
 			old_pf = catsplit(mycpv)[1]
@@ -6498,7 +6504,7 @@ class binarytree(object):
 					if e.errno != errno.EEXIST:
 						raise
 					del e
-				os.rename(tbz2path, new_path)
+				_movefile(tbz2path, new_path, mysettings=self.settings)
 				self._remove_symlink(mycpv)
 				if new_path.split(os.path.sep)[-2] == "All":
 					self._create_symlink(mynewcpv)
@@ -6656,7 +6662,8 @@ class binarytree(object):
 				if e.errno != errno.EEXIST:
 					raise
 				del e
-			os.rename(src_path, os.path.join(self.pkgdir, "All", myfile))
+			dest_path = os.path.join(self.pkgdir, "All", myfile)
+			_movefile(src_path, dest_path, mysettings=self.settings)
 			self._create_symlink(cpv)
 		self._pkg_paths[cpv] = os.path.join("All", myfile)
 
@@ -6674,7 +6681,8 @@ class binarytree(object):
 			if e.errno != errno.EEXIST:
 				raise
 			del e
-		os.rename(os.path.join(self.pkgdir, "All", myfile), dest_path)
+		src_path = os.path.join(self.pkgdir, "All", myfile)
+		_movefile(src_path, dest_path, mysettings=self.settings)
 		self._pkg_paths[cpv] = mypath
 
 	def populate(self, getbinpkgs=0,getbinpkgsonly=0):
@@ -7657,7 +7665,7 @@ class dblink:
 		# We hold both directory locks.
 		self.dbdir = self.dbpkgdir
 		self.delete()
-		movefile(self.dbtmpdir, self.dbpkgdir, mysettings=self.settings)
+		_movefile(self.dbtmpdir, self.dbpkgdir, mysettings=self.settings)
 		contents = self.getcontents()
 
 		#write out our collection of md5sums
