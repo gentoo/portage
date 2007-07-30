@@ -1291,6 +1291,7 @@ class config:
 			target_root = normalize_path(os.path.abspath(
 				target_root)).rstrip(os.path.sep) + os.path.sep
 
+			portage_util.ensure_dirs(target_root)
 			check_var_directory("ROOT", target_root)
 
 			env_d = getconfig(
