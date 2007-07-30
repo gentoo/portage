@@ -3856,8 +3856,9 @@ def chk_updated_cfg_files(target_root, config_protect):
 						 print "config file '%s' needs updating." % x
 
 		if procount:
-			#print " "+yellow("*")+" Type "+green("emerge --help config")+" to learn how to update config files."
-			print " "+yellow("*")+" Type "+green("emerge --help config")+" to learn how to update config files."
+			print " "+yellow("*")+" See the "+colorize("INFORM","CONFIGURATION FILES")+ \
+				" section of the " + bold("emerge")
+			print " "+yellow("*")+" man page to learn how to update config files."
 
 def is_valid_package_atom(x):
 	try:
