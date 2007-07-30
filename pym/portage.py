@@ -5304,12 +5304,17 @@ class vardbapi(dbapi):
 			cpc=self.cpcache[mycp]
 			if cpc[0]==mystat:
 				return cpc[1]
-		list=listdir(self.root+VDB_PATH+"/"+mysplit[0],EmptyOnError=1)
+		cat_dir = os.path.join(self.root, VDB_PATH, mysplit[0])
+		try:
+			dir_list = os.listdir(cat_dir)
+		except EnvironmentError, e:
+			if e.errno == portage_exception.PermissionDenied.errno:
+				raise portage_exception.PermissionDenied(cat_dir)
+			del e
+			dir_list = []
 
-		if (list is None):
-			return []
-		returnme=[]
-		for x in list:
+		returnme = []
+		for x in dir_list:
 			if x.startswith("."):
 				continue
 			if x[0] == '-':
@@ -6980,7 +6985,7 @@ class dblink:
 		if not os.path.exists(self.dbdir):
 			return
 		try:
-			for x in listdir(self.dbdir):
+			for x in os.listdir(self.dbdir):
 				os.unlink(self.dbdir+"/"+x)
 			os.rmdir(self.dbdir)
 		except OSError, e:
@@ -6991,6 +6996,12 @@ class dblink:
 			print "!!! "+str(e)
 			print
 			sys.exit(1)
+
+		# Due to mtime granularity, mtime checks do not always properly
+		# invalidate vardbapi caches.
+		self.vartree.dbapi.mtdircache.pop(self.cat, None)
+		self.vartree.dbapi.matchcache.pop(self.cat, None)
+		self.vartree.dbapi.cpcache.pop(self.mysplit[0], None)
 
 	def clearcontents(self):
 		"""
@@ -7666,6 +7677,11 @@ class dblink:
 		self.dbdir = self.dbpkgdir
 		self.delete()
 		_movefile(self.dbtmpdir, self.dbpkgdir, mysettings=self.settings)
+		# Due to mtime granularity, mtime checks do not always properly
+		# invalidate vardbapi caches.
+		self.vartree.dbapi.mtdircache.pop(self.cat, None)
+		self.vartree.dbapi.matchcache.pop(self.cat, None)
+		self.vartree.dbapi.cpcache.pop(self.mysplit[0], None)
 		contents = self.getcontents()
 
 		#write out our collection of md5sums
