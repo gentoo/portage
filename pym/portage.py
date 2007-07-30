@@ -1,5 +1,5 @@
 # portage.py -- core Portage functionality
-# Copyright 1998-2007 Gentoo Foundation
+# Copyright 1998-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
@@ -42,12 +42,12 @@ except ImportError, e:
 	sys.stderr.write("    "+str(e)+"\n\n");
 	raise
 
-bsd_chflags = None
-if os.uname()[0] in ["FreeBSD"]:
-	try:
-		import freebsd as bsd_chflags
-	except ImportError:
-		pass
+try:
+	# XXX: This should get renamed to bsd_chflags, I think.
+	import chflags
+	bsd_chflags = chflags
+except ImportError:
+	bsd_chflags = None
 
 try:
 	from cache.cache_errors import CacheError
@@ -185,14 +185,7 @@ def cacheddir(my_original_path, ignorecvs, ignorelist, EmptyOnError, followSymli
 			mtime = pathstat[stat.ST_MTIME]
 		else:
 			raise portage_exception.DirectoryNotFound(mypath)
-	except EnvironmentError, e:
-		if e.errno == portage_exception.PermissionDenied.errno:
-			raise portage_exception.PermissionDenied(mypath)
-		del e
-		if EmptyOnError:
-			return [], []
-		return None, None
-	except portage_exception.PortageException:
+	except (IOError,OSError,portage_exception.PortageException):
 		if EmptyOnError:
 			return [], []
 		return None, None
@@ -200,13 +193,7 @@ def cacheddir(my_original_path, ignorecvs, ignorelist, EmptyOnError, followSymli
 	if mtime != cached_mtime or time.time() - mtime < 4:
 		if dircache.has_key(mypath):
 			cacheStale += 1
-		try:
-			list = os.listdir(mypath)
-		except EnvironmentError, e:
-			if e.errno != errno.EACCES:
-				raise
-			del e
-			raise portage_exception.PermissionDenied(mypath)
+		list = os.listdir(mypath)
 		ftype = []
 		for x in list:
 			try:
@@ -479,66 +466,40 @@ def elog_process(cpv, mysettings):
 		return
 	# exploit listdir() file order so we process log entries in chronological order
 	mylogfiles.reverse()
-	all_logentries = {}
+	mylogentries = {}
+	my_elog_classes = set(mysettings.get("PORTAGE_ELOG_CLASSES", "").split())
 	for f in mylogfiles:
 		msgfunction, msgtype = f.split(".")
+		if msgtype.upper() not in my_elog_classes \
+				and msgtype.lower() not in my_elog_classes:
+			continue
 		if msgfunction not in portage_const.EBUILD_PHASES:
 			writemsg("!!! can't process invalid log file: %s\n" % f,
 				noiselevel=-1)
 			continue
-		if not msgfunction in all_logentries:
-			all_logentries[msgfunction] = []
+		if not msgfunction in mylogentries:
+			mylogentries[msgfunction] = []
 		msgcontent = open(mysettings["T"]+"/logging/"+f, "r").readlines()
-		all_logentries[msgfunction].append((msgtype, msgcontent))
+		mylogentries[msgfunction].append((msgtype, msgcontent))
 
-	def filter_loglevels(logentries, loglevels):
-		# remove unwanted entries from all logentries
-		rValue = {}
-		loglevels = map(str.upper, loglevels)
-		for phase in logentries:
-			for msgtype, msgcontent in logentries[phase]:
-				if msgtype.upper() in loglevels or "*" in loglevels:
-					if not rValue.has_key(phase):
-						rValue[phase] = []
-					rValue[phase].append((msgtype, msgcontent))
-		return rValue
-
-	my_elog_classes = set(mysettings.get("PORTAGE_ELOG_CLASSES", "").split())
-	default_logentries = filter_loglevels(all_logentries, my_elog_classes)
-
-	# in case the filters matched all messages and no module overrides exist
-	if len(default_logentries) == 0 and (not ":" in mysettings.get("PORTAGE_ELOG_SYSTEM", "")):
+	# in case the filters matched all messages
+	if len(mylogentries) == 0:
 		return
 
-	def combine_logentries(logentries):
-		# generate a single string with all log messages
-		rValue = ""
-		for phase in portage_const.EBUILD_PHASES:
-			if not phase in logentries:
-				continue
-			for msgtype,msgcontent in logentries[phase]:
-				rValue += "%s: %s\n" % (msgtype, phase)
-				for line in msgcontent:
-					rValue += line
-				rValue += "\n"
-		return rValue
-	
-	default_fulllog = combine_logentries(default_logentries)
+	# generate a single string with all log messages
+	fulllog = ""
+	for phase in portage_const.EBUILD_PHASES:
+		if not phase in mylogentries:
+			continue
+		for msgtype,msgcontent in mylogentries[phase]:
+			fulllog += "%s: %s\n" % (msgtype, phase)
+			for line in msgcontent:
+				fulllog += line
+			fulllog += "\n"
 
 	# pass the processing to the individual modules
 	logsystems = mysettings["PORTAGE_ELOG_SYSTEM"].split()
 	for s in logsystems:
-		# allow per module overrides of PORTAGE_ELOG_CLASSES
-		if ":" in s:
-			s, levels = s.split(":", 1)
-			levels = levels.split(",")
-			mod_logentries = filter_loglevels(all_logentries, levels)
-			mod_fulllog = combine_logentries(mod_logentries)
-		else:
-			mod_logentries = default_logentries
-			mod_fulllog = default_fulllog
-		if len(mod_logentries) == 0:
-			continue
 		# - is nicer than _ for module names, so allow people to use it.
 		s = s.replace("-", "_")
 		try:
@@ -555,12 +516,12 @@ def elog_process(cpv, mysettings):
 			# module gets hung).
 			signal.alarm(60)
 			try:
-				m.process(mysettings, cpv, mod_logentries, mod_fulllog)
+				m.process(mysettings, cpv, mylogentries, fulllog)
 			finally:
 				signal.alarm(0)
 			if hasattr(m, "finalize") and not m.finalize in _elog_atexit_handlers:
 				_elog_atexit_handlers.append(m.finalize)
-				atexit_register(m.finalize)
+				atexit_register(m.finalize, mysettings)
 		except (ImportError, AttributeError), e:
 			writemsg("!!! Error while importing logging modules " + \
 				"while loading \"mod_%s\":\n" % str(s))
@@ -577,16 +538,13 @@ def elog_process(cpv, mysettings):
 
 #parse /etc/env.d and generate /etc/profile.env
 
-def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
-	env=None):
+def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None):
 	if target_root is None:
 		global root
 		target_root = root
 	if prev_mtimes is None:
 		global mtimedb
 		prev_mtimes = mtimedb["ldpath"]
-	if env is None:
-		env = os.environ
 	envd_dir = os.path.join(target_root, "etc", "env.d")
 	portage_util.ensure_dirs(envd_dir, mode=0755)
 	fns = listdir(envd_dir, EmptyOnError=1)
@@ -637,9 +595,7 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
 		mylist = []
 		for myconfig in config_list:
 			if var in myconfig:
-				for item in myconfig[var].split():
-					if item and not item in mylist:
-						mylist.append(item)
+				mylist.extend(filter(None, myconfig[var].split()))
 				del myconfig[var] # prepare for env.update(myconfig)
 		if mylist:
 			env[var] = " ".join(mylist)
@@ -649,9 +605,7 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
 		mylist = []
 		for myconfig in config_list:
 			if var in myconfig:
-				for item in myconfig[var].split(":"):
-					if item and not item in mylist:
-						mylist.append(item)
+				mylist.extend(filter(None, myconfig[var].split(":")))
 				del myconfig[var] # prepare for env.update(myconfig)
 		if mylist:
 			env[var] = ":".join(mylist)
@@ -771,14 +725,8 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
 		if not libdir_contents_changed:
 			makelinks = False
 
-	ldconfig = "/sbin/ldconfig"
-	if "CHOST" in env and "CBUILD" in env and \
-		env["CHOST"] != env["CBUILD"]:
-		from portage_exec import find_binary
-		ldconfig = find_binary("%s-ldconfig" % env["CHOST"])
-
 	# Only run ldconfig as needed
-	if (ld_cache_update or makelinks) and ldconfig:
+	if (ld_cache_update or makelinks):
 		# ldconfig has very different behaviour between FreeBSD and Linux
 		if ostype=="Linux" or ostype.lower().endswith("gnu"):
 			# We can't update links if we haven't cleaned other versions first, as
@@ -787,15 +735,14 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
 			# we can safely create links.
 			writemsg(">>> Regenerating %setc/ld.so.cache...\n" % target_root)
 			if makelinks:
-				os.system("cd / ; %s -r '%s'" % (ldconfig, target_root))
+				commands.getstatusoutput("cd / ; /sbin/ldconfig -r '%s'" % target_root)
 			else:
-				os.system("cd / ; %s -X -r '%s'" % (ldconfig, target_root))
+				commands.getstatusoutput("cd / ; /sbin/ldconfig -X -r '%s'" % target_root)
 		elif ostype in ("FreeBSD","DragonFly"):
-			writemsg(">>> Regenerating %svar/run/ld-elf.so.hints...\n" % \
-				target_root)
-			os.system(("cd / ; %s -elf -i " + \
-				"-f '%svar/run/ld-elf.so.hints' '%setc/ld.so.conf'") % \
-				(ldconfig, target_root, target_root))
+			writemsg(">>> Regenerating %svar/run/ld-elf.so.hints...\n" % target_root)
+			commands.getstatusoutput(
+				"cd / ; /sbin/ldconfig -elf -i -f '%svar/run/ld-elf.so.hints' '%setc/ld.so.conf'" % \
+				(target_root, target_root))
 
 	del specials["LDPATH"]
 
@@ -811,12 +758,8 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
 
 	env_keys = [ x for x in env if x != "LDPATH" ]
 	env_keys.sort()
-	for k in env_keys:
-		v = env[k]
-		if v.startswith('$') and not v.startswith('${'):
-			outfile.write("export %s=$'%s'\n" % (k, v[1:]))
-		else:
-			outfile.write("export %s='%s'\n" % (k, v))
+	for x in env_keys:
+		outfile.write("export %s='%s'\n" % (x, env[x]))
 	outfile.close()
 
 	#create /etc/csh.env for (t)csh support
@@ -1129,14 +1072,7 @@ class config:
 									"Parent '%s' not found: '%s'" %  \
 									(parentPath, parentsFile))
 					self.profiles.append(currentPath)
-				try:
-					addProfile(os.path.realpath(self.profile_path))
-				except portage_exception.ParseError, e:
-					writemsg("!!! Unable to parse profile: '%s'\n" % \
-						self.profile_path, noiselevel=-1)
-					writemsg("!!! ParseError: %s\n" % str(e), noiselevel=-1)
-					del e
-					self.profiles = []
+				addProfile(os.path.realpath(self.profile_path))
 			if local_config:
 				custom_prof = os.path.join(
 					config_root, CUSTOM_PROFILE_PATH.lstrip(os.path.sep))
@@ -1477,7 +1413,7 @@ class config:
 			# reasonable defaults; this is important as without USE_ORDER,
 			# USE will always be "" (nothing set)!
 			if "USE_ORDER" not in self:
-				self.backupenv["USE_ORDER"] = "env:pkg:conf:defaults:pkginternal:env.d"
+				self.backupenv["USE_ORDER"] = "env:pkg:conf:defaults:pkginternal"
 
 			self["PORTAGE_GID"] = str(portage_gid)
 			self.backup_changes("PORTAGE_GID")
@@ -1668,8 +1604,9 @@ class config:
 
 	def load_infodir(self,infodir):
 		self.modifying()
-		if "pkg" in self.configdict:
-			self.configdict["pkg"].clear()
+		if self.configdict.has_key("pkg"):
+			for x in self.configdict["pkg"].keys():
+				del self.configdict["pkg"][x]
 		else:
 			writemsg("No pkg setup for settings instance?\n",
 				noiselevel=-1)
@@ -1742,7 +1679,6 @@ class config:
 		cp = dep_getkey(mycpv)
 		cpv_slot = self.mycpv
 		pkginternaluse = ""
-		iuse = ""
 		if mydb:
 			slot, iuse = mydb.aux_get(self.mycpv, ["SLOT", "IUSE"])
 			cpv_slot = "%s:%s" % (self.mycpv, slot)
@@ -1803,9 +1739,6 @@ class config:
 			has_changed = True
 		self.configdict["pkg"]["PKGUSE"] = self.puse[:] # For saving to PUSE file
 		self.configdict["pkg"]["USE"]    = self.puse[:] # this gets appended to USE
-		if iuse != self.configdict["pkg"].get("IUSE",""):
-			self.configdict["pkg"]["IUSE"] = iuse
-			has_changed = True
 		# CATEGORY is essential for doebuild calls
 		self.configdict["pkg"]["CATEGORY"] = mycpv.split("/")[0]
 		if has_changed:
@@ -1817,29 +1750,22 @@ class config:
 			self.getvirtuals()
 		# Grab the virtuals this package provides and add them into the tree virtuals.
 		provides = mydbapi.aux_get(mycpv, ["PROVIDE"])[0]
-		if not provides:
-			return
 		if isinstance(mydbapi, portdbapi):
-			self.setcpv(mycpv, mydb=mydbapi)
 			myuse = self["USE"]
 		else:
 			myuse = mydbapi.aux_get(mycpv, ["USE"])[0]
 		virts = flatten(portage_dep.use_reduce(portage_dep.paren_reduce(provides), uselist=myuse.split()))
 
-		modified = False
 		cp = dep_getkey(mycpv)
 		for virt in virts:
 			virt = dep_getkey(virt)
-			providers = self.treeVirtuals.get(virt)
-			if providers is None:
-				providers = []
-				self.treeVirtuals[virt] = providers
-			if cp not in providers:
-				providers.append(cp)
-				modified = True
+			if not self.treeVirtuals.has_key(virt):
+				self.treeVirtuals[virt] = []
+			# XXX: Is this bad? -- It's a permanent modification
+			if cp not in self.treeVirtuals[virt]:
+				self.treeVirtuals[virt].append(cp)
 
-		if modified:
-			self.virtuals = self.__getvirtuals_compile()
+		self.virtuals = self.__getvirtuals_compile()
 
 
 	def regenerate(self,useonly=0,use_cache=1):
@@ -2015,10 +1941,10 @@ class config:
 		usesplit = [ x for x in myflags if \
 			x not in self.usemask]
 
+		usesplit.sort()
+
 		# Use the calculated USE flags to regenerate the USE_EXPAND flags so
 		# that they are consistent.
-		iuse = self.configdict["pkg"].get("IUSE","").split()
-		iuse = [ x.lstrip("+-") for x in iuse ]
 		for var in use_expand:
 			prefix = var.lower() + "_"
 			prefix_len = len(prefix)
@@ -2029,49 +1955,11 @@ class config:
 			# like LINGUAS.
 			var_split = [ x for x in var_split if x in expand_flags ]
 			var_split.extend(expand_flags.difference(var_split))
-			has_wildcard = "*" in var_split
-			if has_wildcard:
-				var_split = [ x for x in var_split if x != "*" ]
-			has_iuse = False
-			for x in iuse:
-				if x.startswith(prefix):
-					has_iuse = True
-					break
-			if has_wildcard:
-				# * means to enable everything in IUSE that's not masked
-				if has_iuse:
-					for x in iuse:
-						if x.startswith(prefix) and x not in self.usemask:
-							suffix = x[prefix_len:]
-							if suffix in var_split:
-								continue
-							var_split.append(suffix)
-							usesplit.append(x)
-				else:
-					# If there is a wildcard and no matching flags in IUSE then
-					# LINGUAS should be unset so that all .mo files are
-					# installed.
-					var_split = []
-			if var_split:
-				self[var] = " ".join(var_split)
-			else:
+			if var_split or var in self:
 				# Don't export empty USE_EXPAND vars unless the user config
 				# exports them as empty.  This is required for vars such as
 				# LINGUAS, where unset and empty have different meanings.
-				if has_wildcard:
-					# ebuild.sh will see this and unset the variable so
-					# that things like LINGUAS work properly
-					self[var] = "*"
-				else:
-					if has_iuse:
-						self[var] = ""
-					else:
-						# It's not in IUSE, so just allow the variable content
-						# to pass through if it is defined somewhere.  This
-						# allows packages that support LINGUAS but don't
-						# declare it in IUSE to use the variable outside of the
-						# USE_EXPAND context.
-						pass
+				self[var] = " ".join(var_split)
 
 		# Pre-Pend ARCH variable to USE settings so '-*' in env doesn't kill arch.
 		if self.configdict["defaults"].has_key("ARCH"):
@@ -2079,7 +1967,6 @@ class config:
 				if self.configdict["defaults"]["ARCH"] not in usesplit:
 					usesplit.insert(0,self.configdict["defaults"]["ARCH"])
 
-		usesplit.sort()
 		self.configlist[-1]["USE"]= " ".join(usesplit)
 
 		self.already_in_regenerate = 0
@@ -2089,7 +1976,8 @@ class config:
 			return self.virts_p
 		virts = self.getvirtuals(myroot)
 		if virts:
-			for x in virts:
+			myvkeys = virts.keys()
+			for x in myvkeys:
 				vkeysplit = x.split("/")
 				if not self.virts_p.has_key(vkeysplit[1]):
 					self.virts_p[vkeysplit[1]] = virts[x]
@@ -2177,46 +2065,40 @@ class config:
 					del x[mykey]
 
 	def __getitem__(self,mykey):
-		for d in self.lookuplist:
-			if mykey in d:
-				return d[mykey]
-		return '' # for backward compat, don't raise KeyError
-
-	def get(self, k, x=None):
-		for d in self.lookuplist:
-			if k in d:
-				return d[k]
-		return x
+		match = ''
+		for x in self.lookuplist:
+			if x is None:
+				writemsg("!!! lookuplist is null.\n")
+			elif x.has_key(mykey):
+				match = x[mykey]
+				break
+		return match
 
 	def has_key(self,mykey):
-		return mykey in self
+		for x in self.lookuplist:
+			if x.has_key(mykey):
+				return 1
+		return 0
 
 	def __contains__(self, mykey):
 		"""Called to implement membership test operators (in and not in)."""
-		for d in self.lookuplist:
-			if mykey in d:
-				return True
-		return False
+		return bool(self.has_key(mykey))
 
 	def setdefault(self, k, x=None):
-		v = self.get(k)
-		if v is not None:
-			return v
+		if k in self:
+			return self[k]
 		else:
 			self[k] = x
 			return x
 
+	def get(self, k, x=None):
+		if k in self:
+			return self[k]
+		else:
+			return x
+
 	def keys(self):
-		return list(self)
-
-	def __iter__(self):
-		keys = set()
-		for d in self.lookuplist:
-			keys.update(d)
-		return iter(keys)
-
-	def iterkeys(self):
-		return iter(self)
+		return unique_array(flatten([x.keys() for x in self.lookuplist]))
 
 	def __setitem__(self,mykey,myvalue):
 		"set a value; will be thrown away at reset() time"
@@ -2229,7 +2111,7 @@ class config:
 	def environ(self):
 		"return our locally-maintained environment"
 		mydict={}
-		for x in self:
+		for x in self.keys():
 			myvalue = self[x]
 			if not isinstance(myvalue, basestring):
 				writemsg("!!! Non-string value in config: %s=%s\n" % \
@@ -2277,7 +2159,7 @@ class config:
 
 # XXX This would be to replace getstatusoutput completely.
 # XXX Issue: cannot block execution. Deadlock condition.
-def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakeroot=0, **keywords):
+def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, **keywords):
 	"""
 	Spawn a subprocess with extra portage-specific options.
 	Optiosn include:
@@ -2305,8 +2187,6 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 	@type droppriv: Boolean
 	@param sesandbox: Enable SELinux Sandboxing (toggles a context switch)
 	@type sesandbox: Boolean
-	@param fakeroot: Run this command with faked root privileges
-	@type fakeroot: Boolean
 	@param keywords: Extra options encoded as a dict, to be passed to spawn
 	@type keywords: Dictionary
 	@rtype: Integer
@@ -2314,7 +2194,7 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 	1. The return code of the spawned process.
 	"""
 
-	if isinstance(mysettings, dict):
+	if type(mysettings) == types.DictType:
 		env=mysettings
 		keywords["opt_name"]="[ %s ]" % "portage"
 	else:
@@ -2326,13 +2206,10 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 	# from shells and from binaries that belong to portage (the number of entry
 	# points is minimized).  The "tee" binary is not among the allowed entry
 	# points, so it is spawned outside of the sesandbox domain and reads from a
-	# pseudo-terminal that connects two domains.
+	# pipe between two domains.
 	logfile = keywords.get("logfile")
 	mypids = []
-	master_fd = None
-	slave_fd = None
-	fd_pipes_orig = None
-	got_pty = False
+	pw = None
 	if logfile:
 		del keywords["logfile"]
 		fd_pipes = keywords.get("fd_pipes")
@@ -2340,53 +2217,37 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 			fd_pipes = {0:0, 1:1, 2:2}
 		elif 1 not in fd_pipes or 2 not in fd_pipes:
 			raise ValueError(fd_pipes)
-		from pty import openpty
-		try:
-			master_fd, slave_fd = openpty()
-			got_pty = True
-		except EnvironmentError, e:
-			writemsg("openpty failed: '%s'\n" % str(e), noiselevel=1)
-			del e
-			master_fd, slave_fd = os.pipe()
-		fd_pipes.setdefault(0, sys.stdin.fileno())
-		fd_pipes_orig = fd_pipes.copy()
-		if got_pty and os.isatty(fd_pipes_orig[1]):
-			from output import get_term_size, set_term_size
-			rows, columns = get_term_size()
-			set_term_size(rows, columns, slave_fd)
-		fd_pipes[0] = fd_pipes_orig[0]
-		fd_pipes[1] = slave_fd
-		fd_pipes[2] = slave_fd
+		pr, pw = os.pipe()
+		mypids.extend(portage_exec.spawn(('tee', '-i', '-a', logfile),
+			 returnpid=True, fd_pipes={0:pr, 1:fd_pipes[1], 2:fd_pipes[2]}))
+		os.close(pr)
+		fd_pipes[1] = pw
+		fd_pipes[2] = pw
 		keywords["fd_pipes"] = fd_pipes
 
 	features = mysettings.features
-	# TODO: Enable fakeroot to be used together with droppriv.  The
-	# fake ownership/permissions will have to be converted to real
-	# permissions in the merge phase.
-	fakeroot = fakeroot and uid != 0 and portage_exec.fakeroot_capable
+	# XXX: Negative RESTRICT word
+	droppriv=(droppriv and ("userpriv" in features) and not \
+		(("nouserpriv" in mysettings["RESTRICT"].split()) or \
+		 ("userpriv" in mysettings["RESTRICT"].split())))
+
 	if droppriv and not uid and portage_gid and portage_uid:
-		keywords.update({"uid":portage_uid,"gid":portage_gid,
-			"groups":userpriv_groups,"umask":002})
+		keywords.update({"uid":portage_uid,"gid":portage_gid,"groups":userpriv_groups,"umask":002})
+
 	if not free:
 		free=((droppriv and "usersandbox" not in features) or \
-			(not droppriv and "sandbox" not in features and \
-			"usersandbox" not in features))
+			(not droppriv and "sandbox" not in features and "usersandbox" not in features))
 
-	if free or "SANDBOX_ACTIVE" in os.environ:
+	if free:
 		keywords["opt_name"] += " bash"
 		spawn_func = portage_exec.spawn_bash
-	elif fakeroot:
-		keywords["opt_name"] += " fakeroot"
-		keywords["fakeroot_state"] = os.path.join(mysettings["T"], "fakeroot.state")
-		spawn_func = portage_exec.spawn_fakeroot
 	else:
 		keywords["opt_name"] += " sandbox"
 		spawn_func = portage_exec.spawn_sandbox
 
 	if sesandbox:
 		con = selinux.getcontext()
-		con = con.replace(mysettings["PORTAGE_T"],
-			mysettings["PORTAGE_SANDBOX_T"])
+		con = con.replace(mysettings["PORTAGE_T"], mysettings["PORTAGE_SANDBOX_T"])
 		selinux.setexec(con)
 
 	returnpid = keywords.get("returnpid")
@@ -2394,78 +2255,37 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 	try:
 		mypids.extend(spawn_func(mystring, env=env, **keywords))
 	finally:
-		if slave_fd:
-			os.close(slave_fd)
+		if pw:
+			os.close(pw)
 		if sesandbox:
 			selinux.setexec(None)
 
 	if returnpid:
 		return mypids
 
-	if logfile:
-		log_file = open(logfile, 'a')
-		stdout_file = os.fdopen(os.dup(fd_pipes_orig[1]), 'w')
-		master_file = os.fdopen(master_fd, 'r')
-		iwtd = [master_file]
-		owtd = []
-		ewtd = []
-		import array, fcntl, select
-		fd_flags = {}
-		for f in iwtd:
-			fd_flags[f] = fcntl.fcntl(f.fileno(), fcntl.F_GETFL)
-		buffsize = 65536
-		eof = False
-		while not eof:
-			events = select.select(iwtd, owtd, ewtd)
-			for f in events[0]:
-				# Use non-blocking mode to prevent read
-				# calls from blocking indefinitely.
-				try:
-					fcntl.fcntl(f.fileno(), fcntl.F_SETFL,
-						fd_flags[f] | os.O_NONBLOCK)
-				except EnvironmentError, e:
-					if e.errno != errno.EAGAIN:
-						raise
-					del e
-					# The EAGAIN error signals eof on FreeBSD.
-					eof = True
-					break
-				buf = array.array('B')
-				try:
-					buf.fromfile(f, buffsize)
-				except EOFError:
-					pass
-				fcntl.fcntl(f.fileno(), fcntl.F_SETFL, fd_flags[f])
-				if not buf:
-					eof = True
-					break
-				# Use blocking mode for writes since we'd rather block than
-				# trigger a EWOULDBLOCK error.
-				if f is master_file:
-					buf.tofile(stdout_file)
-					stdout_file.flush()
-					buf.tofile(log_file)
-					log_file.flush()
-		log_file.close()
-		stdout_file.close()
-		master_file.close()
-	pid = mypids[-1]
-	retval = os.waitpid(pid, 0)[1]
-	portage_exec.spawned_pids.remove(pid)
-	if retval != os.EX_OK:
-		if retval & 0xff:
-			return (retval & 0xff) << 8
-		return retval >> 8
-	return retval
+	while mypids:
+		pid = mypids.pop(0)
+		retval = os.waitpid(pid, 0)[1]
+		portage_exec.spawned_pids.remove(pid)
+		if retval != os.EX_OK:
+			for pid in mypids:
+				if os.waitpid(pid, os.WNOHANG) == (0,0):
+					import signal
+					os.kill(pid, signal.SIGTERM)
+					os.waitpid(pid, 0)
+				portage_exec.spawned_pids.remove(pid)
+			if retval & 0xff:
+				return (retval & 0xff) << 8
+			return retval >> 8
+	return os.EX_OK
 
 def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",use_locks=1, try_mirrors=1):
 	"fetch files.  Will use digest file if available."
 
 	features = mysettings.features
-	restrict = mysettings.get("PORTAGE_RESTRICT","").split()
 	# 'nomirror' is bad/negative logic. You Restrict mirroring, not no-mirroring.
-	if "mirror" in restrict or \
-	   "nomirror" in restrict:
+	if ("mirror" in mysettings["RESTRICT"].split()) or \
+	   ("nomirror" in mysettings["RESTRICT"].split()):
 		if ("mirror" in features) and ("lmirror" not in features):
 			# lmirror should allow you to bypass mirror restrictions.
 			# XXX: This is not a good thing, and is temporary at best.
@@ -2500,8 +2320,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 	if custommirrors.has_key("local"):
 		mymirrors += custommirrors["local"]
 
-	if "nomirror" in restrict or \
-	   "mirror" in restrict:
+	if ("nomirror" in mysettings["RESTRICT"].split()) or \
+	   ("mirror"   in mysettings["RESTRICT"].split()):
 		# We don't add any mirrors.
 		pass
 	else:
@@ -2522,7 +2342,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 			fsmirrors += [mymirrors[x]]
 			del mymirrors[x]
 
-	restrict_fetch = "fetch" in restrict
+	restrict_fetch = "fetch" in mysettings["RESTRICT"].split()
 	custom_local_mirrors = custommirrors.get("local", [])
 	if restrict_fetch:
 		# With fetch restriction, a normal uri may only be fetched from
@@ -2569,7 +2389,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 			if restrict_fetch:
 				# Only fetch from specific mirrors is allowed.
 				continue
-			if "primaryuri" in restrict:
+			if "primaryuri" in mysettings["RESTRICT"].split():
 				# Use the source site first.
 				if primaryuri_indexes.has_key(myfile):
 					primaryuri_indexes[myfile] += 1
@@ -2629,7 +2449,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					noiselevel=-1)
 				return 0
 			del distlocks_subdir
-	for myfile in filedict:
+	for myfile in filedict.keys():
 		"""
 		fetched  status
 		0        nonexistent
@@ -2686,16 +2506,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						if not os.access(myfile_path, os.R_OK):
 							writemsg("!!! Failed to adjust permissions:" + \
 								" %s\n" % str(e), noiselevel=-1)
-
-					# If the file is empty then it's obviously invalid. Remove
-					# the empty file and try to download if possible.
-					if mystat.st_size == 0:
-						if can_fetch:
-							try:
-								os.unlink(myfile_path)
-							except EnvironmentError:
-								pass
-					elif myfile not in mydigests:
+					if myfile not in mydigests:
 						# We don't have a digest, but the file exists.  We must
 						# assume that it is fully downloaded.
 						continue
@@ -2717,15 +2528,9 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 								if reason[0] == "Insufficient data for checksum verification":
 									return 0
 								if can_fetch and not restrict_fetch:
-									from tempfile import mkstemp
-									fd, temp_filename = mkstemp("",
-										myfile + "._checksum_failure_.",
-										mysettings["DISTDIR"])
-									os.close(fd)
-									os.rename(myfile_path, temp_filename)
-									writemsg_stdout("Refetching... " + \
-										"File renamed to '%s'\n\n" % \
-										temp_filename, noiselevel=-1)
+									writemsg("Refetching...\n\n",
+										noiselevel=-1)
+									os.unlink(myfile_path)
 							else:
 								eout = output.EOutput()
 								eout.quiet = \
@@ -2791,14 +2596,6 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					myfetch = [varexpand(x, mydict=variables) for x in lexer]
 
 					spawn_keywords = {}
-					# Redirect all output to stdout since some fetchers like
-					# wget pollute stderr (if portage detects a problem then it
-					# can send it's own message to stderr).
-					spawn_keywords["fd_pipes"] = {
-						0:sys.stdin.fileno(),
-						1:sys.stdout.fileno(),
-						2:sys.stdout.fileno()
-					}
 					if "userfetch" in mysettings.features and \
 						os.getuid() == 0 and portage_gid and portage_uid:
 						spawn_keywords.update({
@@ -2806,7 +2603,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 							"gid"    : portage_gid,
 							"groups" : userpriv_groups,
 							"umask"  : 002})
-					myret = -1
+
 					try:
 
 						if mysettings.selinux_enabled():
@@ -2833,17 +2630,6 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 								writemsg("!!! Failed to adjust permissions:" + \
 									" %s\n" % str(e), noiselevel=-1)
 
-					# If the file is empty then it's obviously invalid.  Don't
-					# trust the return value from the fetcher.  Remove the
-					# empty file and try to download again.
-					try:
-						if os.stat(myfile_path).st_size == 0:
-							os.unlink(myfile_path)
-							fetched = 0
-							continue
-					except EnvironmentError:
-						pass
-
 					if mydigests!=None and mydigests.has_key(myfile):
 						try:
 							mystat = os.stat(myfile_path)
@@ -2855,15 +2641,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						else:
 							# no exception?  file exists. let digestcheck() report
 							# an appropriately for size or checksum errors
-
-							# If the fetcher reported success and the file is
-							# too small, it's probably because the digest is
-							# bad (upstream changed the distfile).  In this
-							# case we don't want to attempt to resume. Show a
-							# digest verification failure to that the user gets
-							# a clue about what just happened.
-							if myret != os.EX_OK and \
-								mystat.st_size < mydigests[myfile]["size"]:
+							if (mystat[stat.ST_SIZE]<mydigests[myfile]["size"]):
 								# Fetch failed... Try the next one... Kill 404 files though.
 								if (mystat[stat.ST_SIZE]<100000) and (len(myfile)>4) and not ((myfile[-5:]==".html") or (myfile[-4:]==".htm")):
 									html404=re.compile("<title>.*(not found|404).*</title>",re.I|re.M)
@@ -2896,20 +2674,13 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 										(reason[1], reason[2]), noiselevel=-1)
 									if reason[0] == "Insufficient data for checksum verification":
 										return 0
-									from tempfile import mkstemp
-									fd, temp_filename = mkstemp("",
-										myfile + "._checksum_failure_.",
-										mysettings["DISTDIR"])
-									os.close(fd)
-									os.rename(myfile_path, temp_filename)
-									writemsg_stdout("Refetching... " + \
-										"File renamed to '%s'\n\n" % \
-										temp_filename, noiselevel=-1)
+									writemsg("Removing corrupt distfile...\n", noiselevel=-1)
+									os.unlink(mysettings["DISTDIR"]+"/"+myfile)
 									fetched=0
 								else:
 									eout = output.EOutput()
 									eout.quiet = mysettings.get("PORTAGE_QUIET", None) == "1"
-									for x_key in mydigests[myfile]:
+									for x_key in mydigests[myfile].keys():
 										eout.ebegin("%s %s ;-)" % (myfile, x_key))
 										eout.eend(0)
 									fetched=2
@@ -2993,23 +2764,16 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
 				continue
 			if required_hash_types.difference(myhashes):
 				missing_hashes.add(myfile)
-				continue
-			if myhashes["size"] == 0:
-				missing_hashes.add(myfile)
 		if missing_hashes:
 			missing_files = []
 			for myfile in missing_hashes:
 				try:
-					st = os.stat(os.path.join(mysettings["DISTDIR"], myfile))
+					os.stat(os.path.join(mysettings["DISTDIR"], myfile))
 				except OSError, e:
 					if e.errno != errno.ENOENT:
 						raise
 					del e
 					missing_files.append(myfile)
-				else:
-					# If the file is empty then it's obviously invalid.
-					if st.st_size == 0:
-						missing_files.append(myfile)
 			if missing_files:
 				mytree = os.path.realpath(os.path.dirname(
 					os.path.dirname(mysettings["O"])))
@@ -3172,7 +2936,7 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 	if alwaysdep or "noauto" not in mysettings.features:
 		# process dependency first
-		if "dep" in actionmap[mydo]:
+		if "dep" in actionmap[mydo].keys():
 			retval=spawnebuild(actionmap[mydo]["dep"],actionmap,mysettings,debug,alwaysdep=alwaysdep,logfile=logfile)
 			if retval:
 				return retval
@@ -3263,23 +3027,12 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 	mysettings["ROOT"]     = myroot
 	mysettings["STARTDIR"] = getcwd()
 
-	mysettings["PORTAGE_REPO_NAME"] = ""
-	# bindbapi has no getRepositories() method
-	if mydbapi and hasattr(mydbapi, "getRepositories"):
-		# do we have a origin repository name for the current package
-		repopath = os.sep.join(pkg_dir.split(os.path.sep)[:-2])
-		for reponame in mydbapi.getRepositories():
-			if mydbapi.getRepositoryPath(reponame) == repopath:
-				mysettings["PORTAGE_REPO_NAME"] = reponame
-				break
-
 	mysettings["EBUILD"]   = ebuild_path
 	mysettings["O"]        = pkg_dir
 	mysettings.configdict["pkg"]["CATEGORY"] = cat
 	mysettings["FILESDIR"] = pkg_dir+"/files"
 	mysettings["PF"]       = mypv
 
-	mysettings["PORTDIR"] = os.path.realpath(mysettings["PORTDIR"])
 	mysettings["ECLASSDIR"]   = mysettings["PORTDIR"]+"/eclass"
 	mysettings["SANDBOX_LOG"] = mycpv.replace("/", "_-_")
 
@@ -3298,14 +3051,9 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 		if not eapi_is_supported(eapi):
 			# can't do anything with this.
 			raise portage_exception.UnsupportedAPIException(mycpv, eapi)
-		try:
-			mysettings["PORTAGE_RESTRICT"] = " ".join(flatten(
-				portage_dep.use_reduce(portage_dep.paren_reduce(
-				mysettings.get("RESTRICT","")),
-				uselist=mysettings.get("USE","").split())))
-		except portage_exception.InvalidDependString:
-			# RESTRICT is validated again inside doebuild, so let this go
-			mysettings["PORTAGE_RESTRICT"] = ""
+		mysettings["PORTAGE_RESTRICT"] = " ".join(flatten(
+			portage_dep.use_reduce(portage_dep.paren_reduce(
+			mysettings["RESTRICT"]), uselist=mysettings["USE"].split())))
 
 	if mysplit[2] == "r0":
 		mysettings["PVR"]=mysplit[1]
@@ -3514,10 +3262,8 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 			del mysettings["PORT_LOGDIR"]
 	if "PORT_LOGDIR" in mysettings:
 		try:
-			modified = portage_util.ensure_dirs(mysettings["PORT_LOGDIR"])
-			if modified:
-				apply_secpass_permissions(mysettings["PORT_LOGDIR"],
-					uid=portage_uid, gid=portage_gid, mode=02770)
+			portage_util.ensure_dirs(mysettings["PORT_LOGDIR"],
+				uid=portage_uid, gid=portage_gid, mode=02770)
 		except portage_exception.PortageException, e:
 			writemsg("!!! %s\n" % str(e), noiselevel=-1)
 			writemsg("!!! Permission issues with PORT_LOGDIR='%s'\n" % \
@@ -3627,7 +3373,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	features = mysettings.features
 
 	validcommands = ["help","clean","prerm","postrm","cleanrm","preinst","postinst",
-	                "config","info","setup","depend","fetch","digest",
+	                "config","setup","depend","fetch","digest",
 	                "unpack","compile","test","install","rpm","qmerge","merge",
 	                "package","unmerge", "manifest"]
 
@@ -3708,7 +3454,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				pr, pw = os.pipe()
 				fd_pipes = {0:0, 1:1, 2:2, 9:pw}
 				mypids = spawn(EBUILD_SH_BINARY + " depend", mysettings,
-					fd_pipes=fd_pipes, returnpid=True, droppriv=1)
+					fd_pipes=fd_pipes, returnpid=True)
 				os.close(pw) # belongs exclusively to the child process now
 				maxbytes = 1024
 				mybytes = []
@@ -3736,7 +3482,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				mysettings["dbkey"] = \
 					os.path.join(mysettings.depcachedir, "aux_db_key_temp")
 
-			return spawn(EBUILD_SH_BINARY + " depend", mysettings, droppriv=1)
+			return spawn(EBUILD_SH_BINARY + " depend", mysettings)
 
 		# Validate dependency metadata here to ensure that ebuilds with invalid
 		# data are never installed (even via the ebuild command).
@@ -3785,12 +3531,10 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			return 1
 
 		# Build directory creation isn't required for any of these.
-		have_build_dirs = False
 		if mydo not in ("digest", "fetch", "help", "manifest"):
 			mystatus = prepare_build_dirs(myroot, mysettings, cleanup)
 			if mystatus:
 				return mystatus
-			have_build_dirs = True
 			# PORTAGE_LOG_FILE is set above by the prepare_build_dirs() call.
 			logfile = mysettings.get("PORTAGE_LOG_FILE", None)
 		if mydo == "unmerge":
@@ -3854,7 +3598,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 					writemsg("!!! post postinst failed; exiting.\n",
 						noiselevel=-1)
 			return phase_retval
-		elif mydo in ("prerm", "postrm", "config", "info"):
+		elif mydo in ["prerm","postrm","config"]:
 			mysettings.load_infodir(mysettings["O"])
 			return spawn(EBUILD_SH_BINARY + " " + mydo,
 				mysettings, debug=debug, free=1, logfile=logfile)
@@ -3905,17 +3649,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			mydo not in ("digest", "manifest") and "noauto" not in features)
 		if need_distfiles and not fetch(
 			fetchme, mysettings, listonly=listonly, fetchonly=fetchonly):
-			if have_build_dirs:
-				# Create an elog message for this fetch failure since the
-				# mod_echo module might push the original message off of the
-				# top of the terminal and prevent the user from being able to
-				# see it.
-				mysettings["EBUILD_PHASE"] = "unpack"
-				cmd = "source '%s/isolated-functions.sh' ; " % PORTAGE_BIN_PATH
-				cmd += "eerror \"Fetch failed for '%s'\"" % mycpv
-				portage_exec.spawn(["bash", "-c", cmd],
-					env=mysettings.environ())
-				elog_process(mysettings.mycpv, mysettings)
 			return 1
 
 		if mydo == "fetch" and listonly:
@@ -3972,47 +3705,40 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 		#initial dep checks complete; time to process main commands
 
-		restrict = mysettings["PORTAGE_RESTRICT"].split()
 		nosandbox = (("userpriv" in features) and \
 			("usersandbox" not in features) and \
-			"userpriv" not in restrict and \
-			"nouserpriv" not in restrict)
+			("userpriv" not in mysettings["RESTRICT"]) and \
+			("nouserpriv" not in mysettings["RESTRICT"]))
 		if nosandbox and ("userpriv" not in features or \
-			"userpriv" in restrict or \
-			"nouserpriv" in restrict):
+			"userpriv" in mysettings["RESTRICT"] or \
+			"nouserpriv" in mysettings["RESTRICT"]):
 			nosandbox = ("sandbox" not in features and \
 				"usersandbox" not in features)
 
 		sesandbox = mysettings.selinux_enabled() and \
 			"sesandbox" in mysettings.features
-
-		droppriv = "userpriv" in mysettings.features and \
-			"userpriv" not in restrict
-
-		fakeroot = "fakeroot" in mysettings.features
-
 		ebuild_sh = EBUILD_SH_BINARY + " %s"
 		misc_sh = MISC_SH_BINARY + " dyn_%s"
 
 		# args are for the to spawn function
 		actionmap = {
-"depend": {"cmd":ebuild_sh, "args":{"droppriv":1,        "free":0,         "sesandbox":0,         "fakeroot":0}},
-"setup":  {"cmd":ebuild_sh, "args":{"droppriv":0,        "free":1,         "sesandbox":0,         "fakeroot":0}},
-"unpack": {"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":0,         "sesandbox":sesandbox, "fakeroot":0}},
-"compile":{"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":nosandbox, "sesandbox":sesandbox, "fakeroot":0}},
-"test":   {"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":nosandbox, "sesandbox":sesandbox, "fakeroot":0}},
-"install":{"cmd":ebuild_sh, "args":{"droppriv":0,        "free":0,         "sesandbox":sesandbox, "fakeroot":fakeroot}},
-"rpm":    {"cmd":misc_sh,   "args":{"droppriv":0,        "free":0,         "sesandbox":0,         "fakeroot":fakeroot}},
-"package":{"cmd":misc_sh,   "args":{"droppriv":0,        "free":0,         "sesandbox":0,         "fakeroot":fakeroot}},
+"depend": {"cmd":ebuild_sh, "args":{"droppriv":1, "free":0,         "sesandbox":0}},
+"setup":  {"cmd":ebuild_sh, "args":{"droppriv":0, "free":1,         "sesandbox":0}},
+"unpack": {"cmd":ebuild_sh, "args":{"droppriv":1, "free":0,         "sesandbox":sesandbox}},
+"compile":{"cmd":ebuild_sh, "args":{"droppriv":1, "free":nosandbox, "sesandbox":sesandbox}},
+"test":   {"cmd":ebuild_sh, "args":{"droppriv":1, "free":nosandbox, "sesandbox":sesandbox}},
+"install":{"cmd":ebuild_sh, "args":{"droppriv":0, "free":0,         "sesandbox":sesandbox}},
+"rpm":    {"cmd":misc_sh,   "args":{"droppriv":0, "free":0,         "sesandbox":0}},
+"package":{"cmd":misc_sh,   "args":{"droppriv":0, "free":0,         "sesandbox":0}},
 		}
 
 		# merge the deps in so we have again a 'full' actionmap
 		# be glad when this can die.
-		for x in actionmap:
+		for x in actionmap.keys():
 			if len(actionmap_deps.get(x, [])):
 				actionmap[x]["dep"] = ' '.join(actionmap_deps[x])
 
-		if mydo in actionmap:
+		if mydo in actionmap.keys():
 			if mydo=="package":
 				portage_util.ensure_dirs(
 					os.path.join(mysettings["PKGDIR"], mysettings["CATEGORY"]))
@@ -4025,7 +3751,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			# forget it and are using ebuild
 			if not os.path.exists(
 				os.path.join(mysettings["PORTAGE_BUILDDIR"], ".installed")):
-				writemsg("!!! mydo=qmerge, but the install phase has not been run\n",
+				writemsg("!!! mydo=qmerge, but install phase hasn't been ran\n",
 					noiselevel=-1)
 				return 1
 			# qmerge is a special phase that implies noclean.
@@ -4040,11 +3766,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		elif mydo=="merge":
 			retval = spawnebuild("install", actionmap, mysettings, debug,
 				alwaysdep=1, logfile=logfile)
-			if retval != os.EX_OK:
-				# The merge phase handles this already.  Callers don't know how
-				# far this function got, so we have to call elog_process() here
-				# so that it's only called once.
-				elog_process(mysettings.mycpv, mysettings)
 			if retval == os.EX_OK:
 				retval = merge(mysettings["CATEGORY"], mysettings["PF"],
 					mysettings["D"], os.path.join(mysettings["PORTAGE_BUILDDIR"],
@@ -4055,6 +3776,19 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			print "!!! Unknown mydo:",mydo
 			return 1
 
+		if retval != os.EX_OK and tree == "porttree":
+			for i in xrange(len(mydbapi.porttrees)-1):
+				t = mydbapi.porttrees[i+1]
+				if myebuild.startswith(t):
+					# Display the non-cannonical path, in case it's different, to
+					# prevent confusion.
+					overlays = mysettings["PORTDIR_OVERLAY"].split()
+					try:
+						writemsg("!!! This ebuild is from an overlay: '%s'\n" % \
+							overlays[i], noiselevel=-1)
+					except IndexError:
+						pass
+					break
 		return retval
 
 	finally:
@@ -4079,12 +3813,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			_doebuild_manifest_exempt_depend -= 1
 
 expandcache={}
-
-def _movefile(src, dest, **kwargs):
-	"""Calls movefile and raises a PortageException if an error occurs."""
-	if movefile(src, dest, **kwargs) is None:
-		raise portage_exception.PortageException(
-			"mv '%s' '%s'" % (src, dest))
 
 def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 	"""moves a file from src to dest, preserving all permissions and attributes; mtime will
@@ -4115,11 +3843,23 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 		destexists=0
 
 	if bsd_chflags:
+		# Check that we can actually unset schg etc flags...
+		# Clear the flags on source and destination; we'll reinstate them after merging
 		if destexists and dstat.st_flags != 0:
-			bsd_chflags.lchflags(dest, 0)
-		pflags = os.stat(os.path.dirname(dest)).st_flags
+			if bsd_chflags.lchflags(dest, 0) < 0:
+				writemsg("!!! Couldn't clear flags on file being merged: \n ",
+					noiselevel=-1)
+		# We might have an immutable flag on the parent dir; save and clear.
+		pflags=bsd_chflags.lgetflags(os.path.dirname(dest))
 		if pflags != 0:
 			bsd_chflags.lchflags(os.path.dirname(dest), 0)
+
+		if (destexists and bsd_chflags.lhasproblems(dest) > 0) or \
+			bsd_chflags.lhasproblems(os.path.dirname(dest)) > 0:
+			# This is bad: we can't merge the file with these flags set.
+			writemsg("!!! Can't merge file "+dest+" because of flags set\n",
+				noiselevel=-1)
+			return None
 
 	if destexists:
 		if stat.S_ISLNK(dstat[stat.ST_MODE]):
@@ -4145,8 +3885,6 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 			else:
 				os.symlink(target,dest)
 			lchown(dest,sstat[stat.ST_UID],sstat[stat.ST_GID])
-			# utime() only works on the target of a symlink, so it's not
-			# possible to perserve mtime on symlinks.
 			return os.lstat(dest)[stat.ST_MTIME]
 		except SystemExit, e:
 			raise
@@ -4225,8 +3963,10 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 
 	if bsd_chflags:
 		# Restore the flags we saved before moving
-		if pflags:
-			bsd_chflags.lchflags(os.path.dirname(dest), pflags)
+		if pflags and bsd_chflags.lchflags(os.path.dirname(dest), pflags) < 0:
+			writemsg("!!! Couldn't restore flags (%s) on '%s'\n" % \
+				(str(pflags), os.path.dirname(dest)), noiselevel=-1)
+			return None
 
 	return newmtime
 
@@ -4612,10 +4352,7 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 		myusesplit=[]
 
 	#convert parenthesis to sublists
-	try:
-		mysplit = portage_dep.paren_reduce(depstring)
-	except portage_exception.InvalidDependString, e:
-		return [0, str(e)]
+	mysplit = portage_dep.paren_reduce(depstring)
 
 	mymasks = set()
 	useforce = set()
@@ -4820,7 +4557,7 @@ def cpv_expand(mycpv, mydb=None, use_cache=1, settings=None):
 	else:
 		return mykey
 
-def getmaskingreason(mycpv, settings=None, portdb=None, return_location=False):
+def getmaskingreason(mycpv, settings=None, portdb=None):
 	from portage_util import grablines
 	if settings is None:
 		settings = globals()["settings"]
@@ -4843,7 +4580,11 @@ def getmaskingreason(mycpv, settings=None, portdb=None, return_location=False):
 	locations.append(os.path.join(settings["PORTAGE_CONFIGROOT"],
 		USER_CONFIG_PATH.lstrip(os.path.sep)))
 	locations.reverse()
-	pmasklists = [(x, grablines(os.path.join(x, "package.mask"), recursive=1)) for x in locations]
+	pmasklists = [grablines(os.path.join(x, "package.mask"), recursive=1) for x in locations]
+	pmasklines = []
+	while pmasklists: # stack_lists doesn't preserve order so it can't be used
+		pmasklines.extend(pmasklists.pop(0))
+	del pmasklists
 
 	if settings.pmaskdict.has_key(mycp):
 		for x in settings.pmaskdict[mycp]:
@@ -4851,31 +4592,23 @@ def getmaskingreason(mycpv, settings=None, portdb=None, return_location=False):
 				comment = ""
 				l = "\n"
 				comment_valid = -1
-				for pmask in pmasklists:
-					pmask_filename = os.path.join(pmask[0], "package.mask")
-					for i in xrange(len(pmask[1])):
-						l = pmask[1][i].strip()
-						if l == "":
+				for i in xrange(len(pmasklines)):
+					l = pmasklines[i].strip()
+					if l == "":
+						comment = ""
+						comment_valid = -1
+					elif l[0] == "#":
+						comment += (l+"\n")
+						comment_valid = i + 1
+					elif l == x:
+						if comment_valid != i:
 							comment = ""
-							comment_valid = -1
-						elif l[0] == "#":
-							comment += (l+"\n")
-							comment_valid = i + 1
-						elif l == x:
-							if comment_valid != i:
-								comment = ""
-							if return_location:
-								return (comment, pmask_filename)
-							else:
-								return comment
-						elif comment_valid != -1:
-							# Apparently this comment applies to muliple masks, so
-							# it remains valid until a blank line is encountered.
-							comment_valid += 1
-	if return_location:
-		return (None, None)
-	else:
-		return None
+						return comment
+					elif comment_valid != -1:
+						# Apparently this comment applies to muliple masks, so
+						# it remains valid until a blank line is encountered.
+						comment_valid += 1
+	return None
 
 def getmaskingstatus(mycpv, settings=None, portdb=None):
 	if settings is None:
@@ -5102,46 +4835,7 @@ class dbapi:
 		else:
 			writemsg("!!! Invalid db entry: %s\n" % mypath, noiselevel=-1)
 
-	def update_ents(self, updates, onProgress=None):
-		"""
-		Update metadata of all packages for packages moves.
-		@param updates: A list of move commands
-		@type updates: List
-		@param onProgress: A progress callback function
-		@type onProgress: a callable that takes 2 integer arguments: maxval and curval
-		"""
-		cpv_all = self.cpv_all()
-		cpv_all.sort()
-		maxval = len(cpv_all)
-		aux_get = self.aux_get
-		aux_update = self.aux_update
-		update_keys = ["DEPEND", "RDEPEND", "PDEPEND", "PROVIDE"]
-		if onProgress:
-			onProgress(maxval, 0)
-		for i, cpv in enumerate(cpv_all):
-			metadata = dict(izip(update_keys, aux_get(cpv, update_keys)))
-			metadata_updates = update_dbentries(updates, metadata)
-			if metadata_updates:
-				aux_update(cpv, metadata_updates)
-			if onProgress:
-				onProgress(maxval, i+1)
 
-	def move_slot_ent(self, mylist):
-		pkg = mylist[1]
-		origslot = mylist[2]
-		newslot = mylist[3]
-		origmatches = self.match(pkg)
-		moves = 0
-		if not origmatches:
-			return moves
-		for mycpv in origmatches:
-			slot = self.aux_get(mycpv, ["SLOT"])[0]
-			if slot != origslot:
-				continue
-			moves += 1
-			mydata = {"SLOT": newslot+"\n"}
-			self.aux_update(mycpv, mydata)
-		return moves
 
 class fakedbapi(dbapi):
 	"This is a dbapi to use for the emptytree function.  It's empty, but things can be added to it."
@@ -5175,7 +4869,10 @@ class fakedbapi(dbapi):
 			return self.cpdict[mycp]
 
 	def cp_all(self):
-		return list(self.cpdict)
+		returnme=[]
+		for x in self.cpdict.keys():
+			returnme.extend(self.cpdict[x])
+		return returnme
 
 	def cpv_all(self):
 		return self.cpvdict.keys()
@@ -5230,7 +4927,6 @@ class fakedbapi(dbapi):
 class bindbapi(fakedbapi):
 	def __init__(self, mybintree=None, settings=None):
 		self.bintree = mybintree
-		self.move_ent = mybintree.move_ent
 		self.cpvdict={}
 		self.cpdict={}
 		if settings is None:
@@ -5258,12 +4954,9 @@ class bindbapi(fakedbapi):
 		mysplit = mycpv.split("/")
 		mylist  = []
 		tbz2name = mysplit[1]+".tbz2"
-		if not self.bintree.remotepkgs or \
-			not self.bintree.isremote(mycpv):
-			tbz2_path = self.bintree.getname(mycpv)
-			if not os.path.exists(tbz2_path):
-				raise KeyError(mycpv)
-			getitem = xpak.tbz2(tbz2_path).getfile
+		if self.bintree and not self.bintree.isremote(mycpv):
+			tbz2 = xpak.tbz2(self.bintree.getname(mycpv))
+			getitem = tbz2.getfile
 		else:
 			getitem = self.bintree.remotepkgs[tbz2name].get
 		mydata = {}
@@ -5302,11 +4995,6 @@ class bindbapi(fakedbapi):
 			self.bintree.populate()
 		return fakedbapi.cp_list(self, *pargs, **kwargs)
 
-	def cp_all(self):
-		if not self.bintree.populated:
-			self.bintree.populate()
-		return fakedbapi.cp_all(self)
-
 	def cpv_all(self):
 		if not self.bintree.populated:
 			self.bintree.populate()
@@ -5332,7 +5020,7 @@ class vardbapi(dbapi):
 			vartree = globals()["db"][root]["vartree"]
 		self.vartree = vartree
 		self._aux_cache_keys = set(["SLOT", "COUNTER", "PROVIDE", "USE",
-			"IUSE", "DEPEND", "RDEPEND", "PDEPEND", "repository"])
+			"IUSE", "DEPEND", "RDEPEND", "PDEPEND"])
 		self._aux_cache = None
 		self._aux_cache_version = "1"
 		self._aux_cache_filename = os.path.join(self.root,
@@ -5420,9 +5108,8 @@ class vardbapi(dbapi):
 			if not (isvalidatom(cp) and isjustname(cp)):
 				raise portage_exception.InvalidPackageName(cp)
 		origmatches=self.match(origcp,use_cache=0)
-		moves = 0
 		if not origmatches:
-			return moves
+			return
 		for mycpv in origmatches:
 			mycpsplit=catpkgsplit(mycpv)
 			mynewcpv=newcp+"-"+mycpsplit[2]
@@ -5433,7 +5120,7 @@ class vardbapi(dbapi):
 			origpath=self.root+VDB_PATH+"/"+mycpv
 			if not os.path.exists(origpath):
 				continue
-			moves += 1
+			writemsg_stdout("@")
 			if not os.path.exists(self.root+VDB_PATH+"/"+mynewcat):
 				#create the directory
 				os.makedirs(self.root+VDB_PATH+"/"+mynewcat)
@@ -5441,7 +5128,7 @@ class vardbapi(dbapi):
 			if os.path.exists(newpath):
 				#dest already exists; keep this puppy where it is.
 				continue
-			_movefile(origpath, newpath, mysettings=self.settings)
+			os.rename(origpath, newpath)
 
 			# We need to rename the ebuild now.
 			old_pf = catsplit(mycpv)[1]
@@ -5458,7 +5145,46 @@ class vardbapi(dbapi):
 
 			write_atomic(os.path.join(newpath, "CATEGORY"), mynewcat+"\n")
 			fixdbentries([mylist], newpath)
-		return moves
+
+	def update_ents(self, update_iter):
+		"""Run fixdbentries on all installed packages (time consuming).  Like
+		fixpackages, this should be run from a helper script and display
+		a progress indicator."""
+		dbdir = os.path.join(self.root, VDB_PATH)
+		for catdir in listdir(dbdir):
+			catdir = dbdir+"/"+catdir
+			if os.path.isdir(catdir):
+				for pkgdir in listdir(catdir):
+					pkgdir = catdir+"/"+pkgdir
+					if os.path.isdir(pkgdir):
+						fixdbentries(update_iter, pkgdir)
+
+	def move_slot_ent(self,mylist):
+		pkg=mylist[1]
+		origslot=mylist[2]
+		newslot=mylist[3]
+
+		if not isvalidatom(pkg):
+			raise portage_exception.InvalidAtom(pkg)
+
+		origmatches=self.match(pkg,use_cache=0)
+		
+		if not origmatches:
+			return
+		for mycpv in origmatches:
+			origpath=self.root+VDB_PATH+"/"+mycpv
+			if not os.path.exists(origpath):
+				continue
+
+			slot=grabfile(origpath+"/SLOT");
+			if (not slot):
+				continue
+
+			if (slot[0]!=origslot):
+				continue
+
+			writemsg_stdout("s")
+			write_atomic(os.path.join(origpath, "SLOT"), newslot+"\n")
 
 	def cp_list(self,mycp,use_cache=1):
 		mysplit=mycp.split("/")
@@ -5472,17 +5198,12 @@ class vardbapi(dbapi):
 			cpc=self.cpcache[mycp]
 			if cpc[0]==mystat:
 				return cpc[1]
-		cat_dir = os.path.join(self.root, VDB_PATH, mysplit[0])
-		try:
-			dir_list = os.listdir(cat_dir)
-		except EnvironmentError, e:
-			if e.errno == portage_exception.PermissionDenied.errno:
-				raise portage_exception.PermissionDenied(cat_dir)
-			del e
-			dir_list = []
+		list=listdir(self.root+VDB_PATH+"/"+mysplit[0],EmptyOnError=1)
 
-		returnme = []
-		for x in dir_list:
+		if (list is None):
+			return []
+		returnme=[]
+		for x in list:
 			if x.startswith("."):
 				continue
 			if x[0] == '-':
@@ -6008,18 +5729,6 @@ class portdbapi(dbapi):
 
 		self.porttrees = [self.porttree_root] + \
 			[os.path.realpath(t) for t in self.mysettings["PORTDIR_OVERLAY"].split()]
-		self.treemap = {}
-		for path in self.porttrees:
-			repo_name_path = os.path.join(path, portage_const.REPO_NAME_LOC)
-			try:
-				repo_name = open(repo_name_path, 'r').readline().strip()
-				self.treemap[repo_name] = path
-			except (OSError,IOError):
-				# warn about missing repo_name at some other time, since we
-				# don't want to see a warning every time the portage module is
-				# imported.
-				pass
-
 		self.auxdbmodule  = self.mysettings.load_best_module("portdbapi.auxdbmodule")
 		self.auxdb        = {}
 		self._init_cache_dirs()
@@ -6043,7 +5752,6 @@ class portdbapi(dbapi):
 		# Selectively cache metadata in order to optimize dep matching.
 		self._aux_cache_keys = set(["EAPI", "KEYWORDS", "SLOT"])
 		self._aux_cache = {}
-		self._broken_ebuilds = set()
 
 	def _init_cache_dirs(self):
 		"""Create /var/cache/edb/dep and adjust permissions for the portage
@@ -6054,13 +5762,22 @@ class portdbapi(dbapi):
 		modemask =    02
 
 		try:
-			portage_util.ensure_dirs(self.depcachedir, gid=portage_gid,
-				mode=dirmode, mask=modemask)
+			for mydir in (self.depcachedir,):
+				if portage_util.ensure_dirs(mydir, gid=portage_gid, mode=dirmode, mask=modemask):
+					writemsg("Adjusting permissions recursively: '%s'\n" % mydir,
+						noiselevel=-1)
+					def onerror(e):
+						raise # bail out on the first error that occurs during recursion
+					if not apply_recursive_permissions(mydir,
+						gid=portage_gid, dirmode=dirmode, dirmask=modemask,
+						filemode=filemode, filemask=modemask, onerror=onerror):
+						raise portage_exception.OperationNotPermitted(
+							"Failed to apply recursive permissions for the portage group.")
 		except portage_exception.PortageException, e:
 			pass
 
 	def close_caches(self):
-		for x in self.auxdb:
+		for x in self.auxdb.keys():
 			self.auxdb[x].sync()
 		self.auxdb.clear()
 
@@ -6082,24 +5799,6 @@ class portdbapi(dbapi):
 
 	def findname(self,mycpv):
 		return self.findname2(mycpv)[0]
-
-	def getRepositoryPath(self, repository_id):
-		"""
-		This function is required for GLEP 42 compliance; given a valid repository ID
-		it must return a path to the repository
-		TreeMap = { id:path }
-		"""
-		if repository_id in self.treemap:
-			return self.treemap[repository_id]
-		return None
-
-	def getRepositories(self):
-		"""
-		This function is required for GLEP 42 compliance; it will return a list of
-		repository ID's
-		TreeMap = {id: path}
-		"""
-		return [k for k in self.treemap if k]
 
 	def findname2(self, mycpv, mytree=None):
 		""" 
@@ -6211,8 +5910,6 @@ class portdbapi(dbapi):
 		writemsg("auxdb is valid: "+str(not doregen)+" "+str(pkg)+"\n", 2)
 
 		if doregen:
-			if myebuild in self._broken_ebuilds:
-				raise KeyError(mycpv)
 			writemsg("doregen: %s %s\n" % (doregen,mycpv), 2)
 			writemsg("Generating cache entry(0) for: "+str(myebuild)+"\n",1)
 
@@ -6222,7 +5919,6 @@ class portdbapi(dbapi):
 				self.doebuild_settings["ROOT"], self.doebuild_settings,
 				dbkey=mydata, tree="porttree", mydbapi=self)
 			if myret != os.EX_OK:
-				self._broken_ebuilds.add(myebuild)
 				raise KeyError(mycpv)
 
 			if "EAPI" not in mydata or not mydata["EAPI"].strip():
@@ -6253,7 +5949,7 @@ class portdbapi(dbapi):
 		returnme = []
 		for x in mylist:
 			if x == "INHERITED":
-				returnme.append(' '.join(mydata.get("_eclasses_", [])))
+				returnme.append(' '.join(mydata.get("_eclasses_", {}).keys()))
 			else:
 				returnme.append(mydata.get(x,""))
 
@@ -6271,10 +5967,8 @@ class portdbapi(dbapi):
 		try:
 			myuris = self.aux_get(mypkg, ["SRC_URI"], mytree=mytree)[0]
 		except KeyError:
-			# Convert this to an InvalidDependString exception since callers
-			# already handle it.
-			raise portage_exception.InvalidDependString(
-				"getfetchlist(): aux_get() error reading "+mypkg+"; aborting.")
+			print red("getfetchlist():")+" aux_get() error reading "+mypkg+"; aborting."
+			sys.exit(1)
 
 		if useflags is None:
 			useflags = mysettings["USE"].split()
@@ -6286,8 +5980,6 @@ class portdbapi(dbapi):
 		myfiles = []
 		for x in newuris:
 			mya = os.path.basename(x)
-			if not mya:
-				raise portage_exception.InvalidDependString("URI has no basename: '%s'" % x)
 			if not mya in myfiles:
 				myfiles.append(mya)
 		return [newuris, myfiles]
@@ -6522,9 +6214,9 @@ class portdbapi(dbapi):
 						except ValueError:
 							pass
 
-		profile_atoms = self.mysettings.prevmaskdict.get(mycp)
-		if profile_atoms:
-			for x in profile_atoms:
+		revmaskdict=self.mysettings.prevmaskdict
+		if revmaskdict.has_key(mycp):
+			for x in revmaskdict[mycp]:
 				#important: only match against the still-unmasked entries...
 				#notice how we pass "newlist" to the xmatch() call below....
 				#Without this, ~ deps in the packages files are broken.
@@ -6533,8 +6225,12 @@ class portdbapi(dbapi):
 					#error in packages file; print warning and continue:
 					print "emerge: visible(): profile packages entry \""+x+"\" is invalid, ignoring..."
 					continue
-				newlist = [cpv for cpv in newlist if cpv in mymatches]
-
+				pos=0
+				while pos<len(newlist):
+					if newlist[pos] not in mymatches:
+						del newlist[pos]
+					else:
+						pos += 1
 		return newlist
 
 	def gvisible(self,mylist):
@@ -6546,21 +6242,13 @@ class portdbapi(dbapi):
 
 		accept_keywords = self.mysettings["ACCEPT_KEYWORDS"].split()
 		pkgdict = self.mysettings.pkeywordsdict
-		aux_keys = ["KEYWORDS", "EAPI", "SLOT"]
-
-		# Hack: Need to check the env directly here as otherwise stacking 
-		# doesn't work properly as negative values are lost in the config
-		# object (bug #139600)
-		egroups = self.mysettings.configdict["backupenv"].get(
-			"ACCEPT_KEYWORDS", "").split()
-
 		for mycpv in mylist:
 			try:
-				keys, eapi, slot = self.aux_get(mycpv, aux_keys)
+				keys, eapi = self.aux_get(mycpv, ["KEYWORDS", "EAPI"])
 			except KeyError:
 				continue
 			except portage_exception.PortageException, e:
-				writemsg("!!! Error: aux_get('%s', %s)\n" % (mycpv, aux_keys),
+				writemsg("!!! Error: aux_get('%s', ['KEYWORDS', 'EAPI'])\n" % \
 					mycpv, noiselevel=-1)
 				writemsg("!!! %s\n" % str(e), noiselevel=-1)
 				del e
@@ -6571,11 +6259,9 @@ class portdbapi(dbapi):
 			match=0
 			cp = dep_getkey(mycpv)
 			if pkgdict.has_key(cp):
-				cpv_slot = "%s:%s" % (mycpv, slot)
-				matches = match_to_list(cpv_slot, pkgdict[cp].keys())
+				matches = match_to_list(mycpv, pkgdict[cp].keys())
 				for atom in matches:
 					pgroups.extend(pkgdict[cp][atom])
-				pgroups.extend(egroups)
 				if matches:
 					inc_pgroups = []
 					for x in pgroups:
@@ -6631,8 +6317,6 @@ class binarytree(object):
 			#self.pkgdir=settings["PKGDIR"]
 			self.pkgdir = normalize_path(pkgdir)
 			self.dbapi = bindbapi(self, settings=settings)
-			self.update_ents = self.dbapi.update_ents
-			self.move_slot_ent = self.dbapi.move_slot_ent
 			self.populated=0
 			self.tree={}
 			self.remotepkgs={}
@@ -6652,9 +6336,8 @@ class binarytree(object):
 		origcat = origcp.split("/")[0]
 		mynewcat=newcp.split("/")[0]
 		origmatches=self.dbapi.cp_list(origcp)
-		moves = 0
 		if not origmatches:
-			return moves
+			return
 		for mycpv in origmatches:
 
 			mycpsplit=catpkgsplit(mycpv)
@@ -6676,7 +6359,8 @@ class binarytree(object):
 					noiselevel=-1)
 				continue
 
-			moves += 1
+			#print ">>> Updating data in:",mycpv
+			writemsg_stdout("%")
 			mytbz2 = xpak.tbz2(tbz2path)
 			mydata = mytbz2.get_data()
 			updated_items = update_dbentries([mylist], mydata)
@@ -6700,13 +6384,13 @@ class binarytree(object):
 					if e.errno != errno.EEXIST:
 						raise
 					del e
-				_movefile(tbz2path, new_path, mysettings=self.settings)
+				os.rename(tbz2path, new_path)
 				self._remove_symlink(mycpv)
 				if new_path.split(os.path.sep)[-2] == "All":
 					self._create_symlink(mynewcpv)
 			self.dbapi.cpv_inject(mynewcpv)
 
-		return moves
+		return 1
 
 	def _remove_symlink(self, cpv):
 		"""Remove a ${PKGDIR}/${CATEGORY}/${PF}.tbz2 symlink and also remove
@@ -6745,6 +6429,66 @@ class binarytree(object):
 				raise
 			del e
 		os.symlink(os.path.join("..", "All", mypkg + ".tbz2"), full_path)
+
+	def move_slot_ent(self, mylist):
+		if not self.populated:
+			self.populate()
+		pkg=mylist[1]
+		origslot=mylist[2]
+		newslot=mylist[3]
+		
+		if not isvalidatom(pkg):
+			raise portage_exception.InvalidAtom(pkg)
+		
+		origmatches=self.dbapi.match(pkg)
+		if not origmatches:
+			return
+		for mycpv in origmatches:
+			mycpsplit=catpkgsplit(mycpv)
+			myoldpkg=mycpv.split("/")[1]
+			tbz2path=self.getname(mycpv)
+			if os.path.exists(tbz2path) and not os.access(tbz2path,os.W_OK):
+				writemsg("!!! Cannot update readonly binary: "+mycpv+"\n",
+					noiselevel=-1)
+				continue
+
+			#print ">>> Updating data in:",mycpv
+			mytbz2 = xpak.tbz2(tbz2path)
+			mydata = mytbz2.get_data()
+
+			slot = mydata["SLOT"]
+			if (not slot):
+				continue
+
+			if (slot[0]!=origslot):
+				continue
+
+			writemsg_stdout("S")
+			mydata["SLOT"] = newslot+"\n"
+			mytbz2.recompose_mem(xpak.xpak_mem(mydata))
+		return 1
+
+	def update_ents(self, update_iter):
+		if len(update_iter) == 0:
+			return
+		if not self.populated:
+			self.populate()
+
+		for mycpv in self.dbapi.cp_all():
+			tbz2path=self.getname(mycpv)
+			if os.path.exists(tbz2path) and not os.access(tbz2path,os.W_OK):
+				writemsg("!!! Cannot update readonly binary: "+mycpv+"\n",
+					noiselevel=-1)
+				continue
+			#print ">>> Updating binary data:",mycpv
+			writemsg_stdout("*")
+			mytbz2 = xpak.tbz2(tbz2path)
+			mydata = mytbz2.get_data()
+			updated_items = update_dbentries(update_iter, mydata)
+			if len(updated_items) > 0:
+				mydata.update(updated_items)
+				mytbz2.recompose_mem(xpak.xpak_mem(mydata))
+		return 1
 
 	def prevent_collision(self, cpv):
 		"""Make sure that the file location ${PKGDIR}/All/${PF}.tbz2 is safe to
@@ -6798,8 +6542,7 @@ class binarytree(object):
 				if e.errno != errno.EEXIST:
 					raise
 				del e
-			dest_path = os.path.join(self.pkgdir, "All", myfile)
-			_movefile(src_path, dest_path, mysettings=self.settings)
+			os.rename(src_path, os.path.join(self.pkgdir, "All", myfile))
 			self._create_symlink(cpv)
 		self._pkg_paths[cpv] = os.path.join("All", myfile)
 
@@ -6817,8 +6560,7 @@ class binarytree(object):
 			if e.errno != errno.EEXIST:
 				raise
 			del e
-		src_path = os.path.join(self.pkgdir, "All", myfile)
-		_movefile(src_path, dest_path, mysettings=self.settings)
+		os.rename(os.path.join(self.pkgdir, "All", myfile), dest_path)
 		self._pkg_paths[cpv] = mypath
 
 	def populate(self, getbinpkgs=0,getbinpkgsonly=0):
@@ -6842,12 +6584,6 @@ class binarytree(object):
 					mypath = os.path.join(mydir, myfile)
 					full_path = os.path.join(self.pkgdir, mypath)
 					if os.path.islink(full_path):
-						continue
-					if not os.access(full_path, os.R_OK):
-						writemsg("!!! Permission denied to read " + \
-							"binary package: '%s'\n" % full_path,
-							noiselevel=-1)
-						self.invalids.append(myfile[:-5])
 						continue
 					mytbz2 = xpak.tbz2(full_path)
 					# For invalid packages, mycat could be None.
@@ -6935,8 +6671,7 @@ class binarytree(object):
 		self.populated=1
 
 	def inject(self,cpv):
-		self.dbapi.cpv_inject(cpv)
-		self._create_symlink(cpv)
+		return self.dbapi.cpv_inject(cpv)
 
 	def exists_specific(self,cpv):
 		if not self.populated:
@@ -6979,16 +6714,11 @@ class binarytree(object):
 		self._pkg_paths[mycpv] = mypath # cache for future lookups
 		return os.path.join(self.pkgdir, mypath)
 
-	def isremote(self, pkgname):
-		"""Returns true if the package is kept remotely and it has not been
-		downloaded (or it is only partially downloaded)."""
-		pkg_path = self.getname(pkgname)
-		if os.path.basename(pkg_path) not in self.remotepkgs:
-			return False
-		if os.path.exists(pkg_path) and \
-			os.path.basename(pkg_path) not in self.invalids:
-			return False
-		return True
+	def isremote(self,pkgname):
+		"Returns true if the package is kept remotely."
+		mysplit=pkgname.split("/")
+		remote = (not os.path.exists(self.getname(pkgname))) and self.remotepkgs.has_key(mysplit[1]+".tbz2")
+		return remote
 
 	def get_use(self,pkgname):
 		mysplit=pkgname.split("/")
@@ -6998,17 +6728,14 @@ class binarytree(object):
 		return tbz2.getfile("USE").split()
 
 	def gettbz2(self,pkgname):
-		"""Fetches the package from a remote site, if necessary.  Attempts to
-		resume if the file appears to be partially downloaded."""
+		"fetches the package from a remote site, if necessary."
 		print "Fetching '"+str(pkgname)+"'"
-		tbz2_path = self.getname(pkgname)
-		tbz2name = os.path.basename(tbz2_path)
-		resume = False
-		if os.path.exists(tbz2_path):
+		mysplit  = pkgname.split("/")
+		tbz2name = mysplit[1]+".tbz2"
+		if not self.isremote(pkgname):
 			if (tbz2name not in self.invalids):
-				return 1
+				return
 			else:
-				resume = True
 				writemsg("Resuming download of this tbz2, but it is possible that it is corrupt.\n",
 					noiselevel=-1)
 		mydest = self.pkgdir+"/All/"
@@ -7016,18 +6743,9 @@ class binarytree(object):
 			os.makedirs(mydest, 0775)
 		except (OSError, IOError):
 			pass
-		from urlparse import urlparse
-		# urljoin doesn't work correctly with unrecognized protocols like sftp
-		url = self.settings["PORTAGE_BINHOST"].rstrip("/") + "/" + tbz2name
-		protocol = urlparse(url)[0]
-		fcmd_prefix = "FETCHCOMMAND"
-		if resume:
-			fcmd_prefix = "RESUMECOMMAND"
-		fcmd = self.settings.get(fcmd_prefix + "_" + protocol.upper())
-		if not fcmd:
-			fcmd = self.settings.get(fcmd_prefix)
-		if not getbinpkg.file_get(url, mydest, fcmd=fcmd):
-			raise portage_exception.FileNotFound(tbz2_path)
+		return getbinpkg.file_get(
+			self.settings["PORTAGE_BINHOST"] + "/" + tbz2name,
+			mydest, fcmd=self.settings["RESUMECOMMAND"])
 
 	def getslot(self,mycatpkg):
 		"Get a slot for a catpkg; assume it exists."
@@ -7092,9 +6810,9 @@ class dblink:
 			mysettings.get("CONFIG_PROTECT","").split(),
 			mysettings.get("CONFIG_PROTECT_MASK","").split())
 		self.updateprotect = protect_obj.updateprotect
-		self.isprotected = protect_obj.isprotected
+		self._config_protect = protect_obj
 		self._installed_instance = None
-		self.contentscache = None
+		self.contentscache=[]
 		self._contents_inodes = None
 
 	def lockdb(self):
@@ -7134,7 +6852,7 @@ class dblink:
 		if not os.path.exists(self.dbdir):
 			return
 		try:
-			for x in os.listdir(self.dbdir):
+			for x in listdir(self.dbdir):
 				os.unlink(self.dbdir+"/"+x)
 			os.rmdir(self.dbdir)
 		except OSError, e:
@@ -7145,12 +6863,6 @@ class dblink:
 			print "!!! "+str(e)
 			print
 			sys.exit(1)
-
-		# Due to mtime granularity, mtime checks do not always properly
-		# invalidate vardbapi caches.
-		self.vartree.dbapi.mtdircache.pop(self.cat, None)
-		self.vartree.dbapi.matchcache.pop(self.cat, None)
-		self.vartree.dbapi.cpcache.pop(self.mysplit[0], None)
 
 	def clearcontents(self):
 		"""
@@ -7163,18 +6875,12 @@ class dblink:
 		"""
 		Get the installed files of a given package (aka what that package installed)
 		"""
-		contents_file = os.path.join(self.dbdir, "CONTENTS")
-		if self.contentscache is not None:
+		if not os.path.exists(self.dbdir+"/CONTENTS"):
+			return None
+		if self.contentscache != []:
 			return self.contentscache
-  		pkgfiles = {}
-		try:
-			myc = open(contents_file,"r")
-		except EnvironmentError, e:
-			if e.errno != errno.ENOENT:
-				raise
-			del e
-			self.contentscache = pkgfiles
-			return pkgfiles
+		pkgfiles={}
+		myc=open(self.dbdir+"/CONTENTS","r")
 		mylines=myc.readlines()
 		myc.close()
 		null_byte = "\0"
@@ -7223,16 +6929,14 @@ class dblink:
 					#format: type
 					pkgfiles[" ".join(mydat[1:])]=[mydat[0]]
 				else:
-					writemsg("!!! Unrecognized CONTENTS entry on " + \
-						"line %d: '%s'\n" % (pos, line), noiselevel=-1)
-			except (KeyError, IndexError):
-				writemsg("!!! Unrecognized CONTENTS entry on " + \
-					"line %d: '%s'\n" % (pos, line), noiselevel=-1)
-		self.contentscache = pkgfiles
+					return None
+			except (KeyError,IndexError):
+				print "portage: CONTENTS line",pos,"corrupt!"
+		self.contentscache=pkgfiles
 		return pkgfiles
 
 	def unmerge(self, pkgfiles=None, trimworld=1, cleanup=1,
-		ldpath_mtimes=None, others_in_slot=None):
+		ldpath_mtimes=None):
 		"""
 		Calls prerm
 		Unmerges a given package (CPV)
@@ -7248,8 +6952,6 @@ class dblink:
 		@type cleanup: Boolean
 		@param ldpath_mtimes: mtimes to pass to env_update (see env_update)
 		@type ldpath_mtimes: Dictionary
-		@param others_in_slot: all dblink instances in this slot, excluding self
-		@type others_in_slot: list
 		@rtype: Integer
 		@returns:
 		1. os.EX_OK if everything went well.
@@ -7259,23 +6961,6 @@ class dblink:
 		The caller must ensure that lockdb() and unlockdb() are called
 		before and after this method.
 		"""
-
-		# When others_in_slot is supplied, the security check has already been
-		# done for this slot, so it shouldn't be repeated until the next
-		# replacement or unmerge operation.
-		if others_in_slot is None:
-			slot = self.vartree.dbapi.aux_get(self.mycpv, ["SLOT"])[0]
-			slot_matches = self.vartree.dbapi.match(
-				"%s:%s" % (dep_getkey(self.mycpv), slot))
-			others_in_slot = []
-			for cur_cpv in slot_matches:
-				if cur_cpv == self.mycpv:
-					continue
-				others_in_slot.append(dblink(self.cat, catsplit(cur_cpv)[1],
-					self.vartree.root, self.settings, vartree=self.vartree))
-			retval = self._security_check([self] + others_in_slot)
-			if retval:
-				return retval
 
 		contents = self.getcontents()
 		# Now, don't assume that the name of the ebuild is the same as the
@@ -7308,7 +6993,6 @@ class dblink:
 				uid=portage_uid, gid=portage_gid, mode=070, mask=0)
 		builddir_lock = None
 		catdir_lock = None
-		retval = -1
 		try:
 			if myebuildpath:
 				catdir_lock = portage_locks.lockdir(catdir)
@@ -7331,31 +7015,27 @@ class dblink:
 					writemsg("!!! FAILED prerm: %s\n" % retval, noiselevel=-1)
 					return retval
 
-			self._unmerge_pkgfiles(pkgfiles, others_in_slot)
+			self._unmerge_pkgfiles(pkgfiles)
 
 			if myebuildpath:
 				retval = doebuild(myebuildpath, "postrm", self.myroot,
 					 self.settings, use_cache=0, tree="vartree",
 					 mydbapi=self.vartree.dbapi, vartree=self.vartree)
 
+				# process logs created during pre/postrm
+				elog_process(self.mycpv, self.settings)
+
 				# XXX: Decide how to handle failures here.
 				if retval != os.EX_OK:
 					writemsg("!!! FAILED postrm: %s\n" % retval, noiselevel=-1)
 					return retval
+				doebuild(myebuildpath, "cleanrm", self.myroot, self.settings,
+					tree="vartree", mydbapi=self.vartree.dbapi,
+					vartree=self.vartree)
 
 		finally:
 			if builddir_lock:
-				try:
-					if myebuildpath:
-						# process logs created during pre/postrm
-						elog_process(self.mycpv, self.settings)
-						if retval == os.EX_OK:
-							doebuild(myebuildpath, "cleanrm", self.myroot,
-								self.settings, tree="vartree",
-								mydbapi=self.vartree.dbapi,
-								vartree=self.vartree)
-				finally:
-					unlockdir(builddir_lock)
+				portage_locks.unlockdir(builddir_lock)
 			try:
 				if myebuildpath and not catdir_lock:
 					# Lock catdir for removal if empty.
@@ -7371,10 +7051,10 @@ class dblink:
 						del e
 					portage_locks.unlockdir(catdir_lock)
 		env_update(target_root=self.myroot, prev_mtimes=ldpath_mtimes,
-			contents=contents, env=self.settings.environ())
+			contents=contents)
 		return os.EX_OK
 
-	def _unmerge_pkgfiles(self, pkgfiles, others_in_slot):
+	def _unmerge_pkgfiles(self, pkgfiles):
 		"""
 		
 		Unmerges the contents of a package from the liveFS
@@ -7382,31 +7062,14 @@ class dblink:
 		
 		@param pkgfiles: typically self.getcontents()
 		@type pkgfiles: Dictionary { filename: [ 'type', '?', 'md5sum' ] }
-		@param others_in_slot: all dblink instances in this slot, excluding self
-		@type others_in_slot: list
 		@rtype: None
 		"""
+		global dircache
+		dircache={}
 
 		if not pkgfiles:
 			writemsg_stdout("No package files given... Grabbing a set.\n")
 			pkgfiles=self.getcontents()
-
-		if others_in_slot is None:
-			others_in_slot = []
-			slot = self.vartree.dbapi.aux_get(self.mycpv, ["SLOT"])[0]
-			slot_matches = self.vartree.dbapi.match(
-				"%s:%s" % (dep_getkey(self.mycpv), slot))
-			for cur_cpv in slot_matches:
-				if cur_cpv == self.mycpv:
-					continue
-				others_in_slot.append(dblink(self.cat, catsplit(cur_cpv)[1],
-					self.vartree.root, self.settings,
-					vartree=self.vartree))
-		dest_root = normalize_path(self.vartree.root).rstrip(os.path.sep) + \
-			os.path.sep
-		dest_root_len = len(dest_root)
-
-		unmerge_orphans = "unmerge-orphans" in self.settings.features
 
 		if pkgfiles:
 			mykeys=pkgfiles.keys()
@@ -7414,15 +7077,12 @@ class dblink:
 			mykeys.reverse()
 
 			#process symlinks second-to-last, directories last.
-			mydirs = []
-			modprotect = os.path.join(self.vartree.root, "lib/modules/")
-			def show_unmerge(zing, desc, file_type, file_name):
-					writemsg_stdout("%s %s %s %s\n" % \
-						(zing, desc.ljust(8), file_type, file_name))
+			mydirs=[]
+			modprotect="/lib/modules/"
 			for objkey in mykeys:
 				obj = normalize_path(objkey)
-				file_data = pkgfiles[objkey]
-				file_type = file_data[0]
+				if obj[:2]=="//":
+					obj=obj[1:]
 				statobj = None
 				try:
 					statobj = os.stat(obj)
@@ -7434,20 +7094,12 @@ class dblink:
 				except (OSError, AttributeError):
 					pass
 				islink = lstatobj is not None and stat.S_ISLNK(lstatobj.st_mode)
-				if lstatobj is None:
-						show_unmerge("---", "!found", file_type, obj)
-						continue
-				if obj.startswith(dest_root):
-					relative_path = obj[dest_root_len:]
-					is_owned = False
-					for dblnk in others_in_slot:
-						if dblnk.isowner(relative_path, dest_root):
-							is_owned = True
-							break
-					if is_owned:
-						# A new instance of this package claims the file, so
-						# don't unmerge it.
-						show_unmerge("---", "replaced", file_type, obj)
+				if statobj is None:
+					if not islink:
+						#we skip this if we're dealing with a symlink
+						#because os.stat() will operate on the
+						#link target rather than the link itself.
+						writemsg_stdout("--- !found "+str(pkgfiles[objkey][0])+ " %s\n" % obj)
 						continue
 				# next line includes a tweak to protect modules from being unmerged,
 				# but we don't protect modules from being overwritten if they are
@@ -7455,85 +7107,63 @@ class dblink:
 				# functionality for /lib/modules. For portage-ng both capabilities
 				# should be able to be independently specified.
 				if obj.startswith(modprotect):
-					show_unmerge("---", "cfgpro", file_type, obj)
+					writemsg_stdout("--- cfgpro %s %s\n" % (pkgfiles[objkey][0], obj))
 					continue
 
-				# Don't unlink symlinks to directories here since that can
-				# remove /lib and /usr/lib symlinks.
-				if unmerge_orphans and \
-					lstatobj and not stat.S_ISDIR(lstatobj.st_mode) and \
-					not (islink and statobj and stat.S_ISDIR(statobj.st_mode)) and \
-					not self.isprotected(obj):
-					try:
-						# Remove permissions to ensure that any hardlinks to
-						# suid/sgid files are rendered harmless.
-						if statobj and not islink:
-							os.chmod(obj, 0)
-						os.unlink(obj)
-					except EnvironmentError, e:
-						pass
-					show_unmerge("<<<", "", file_type, obj)
-					continue
-
-				lmtime = str(lstatobj[stat.ST_MTIME])
+				lmtime=str(lstatobj[stat.ST_MTIME])
 				if (pkgfiles[objkey][0] not in ("dir","fif","dev")) and (lmtime != pkgfiles[objkey][1]):
-					show_unmerge("---", "!mtime", file_type, obj)
+					writemsg_stdout("--- !mtime %s %s\n" % (pkgfiles[objkey][0], obj))
 					continue
 
-				if pkgfiles[objkey][0] == "dir":
+				if pkgfiles[objkey][0]=="dir":
 					if statobj is None or not stat.S_ISDIR(statobj.st_mode):
-						show_unmerge("---", "!dir", file_type, obj)
+						writemsg_stdout("--- !dir   %s %s\n" % ("dir", obj))
 						continue
 					mydirs.append(obj)
-				elif pkgfiles[objkey][0] == "sym":
+				elif pkgfiles[objkey][0]=="sym":
 					if not islink:
-						show_unmerge("---", "!sym", file_type, obj)
+						writemsg_stdout("--- !sym   %s %s\n" % ("sym", obj))
 						continue
-					# Go ahead and unlink symlinks to directories here when
-					# they're actually recorded as symlinks in the contents.
-					# Normally, symlinks such as /lib -> lib64 are not recorded
-					# as symlinks in the contents of a package.  If a package
-					# installs something into ${D}/lib/, it is recorded in the
-					# contents as a directory even if it happens to correspond
-					# to a symlink when it's merged to the live filesystem.
 					try:
 						os.unlink(obj)
-						show_unmerge("<<<", "", file_type, obj)
+						writemsg_stdout("<<<        %s %s\n" % ("sym",obj))
 					except (OSError,IOError),e:
-						show_unmerge("!!!", "", file_type, obj)
-				elif pkgfiles[objkey][0] == "obj":
+						writemsg_stdout("!!!        %s %s\n" % ("sym",obj))
+				elif pkgfiles[objkey][0]=="obj":
 					if statobj is None or not stat.S_ISREG(statobj.st_mode):
-						show_unmerge("---", "!obj", file_type, obj)
+						writemsg_stdout("--- !obj   %s %s\n" % ("obj", obj))
 						continue
 					mymd5 = None
 					try:
 						mymd5 = portage_checksum.perform_md5(obj, calc_prelink=1)
 					except portage_exception.FileNotFound, e:
 						# the file has disappeared between now and our stat call
-						show_unmerge("---", "!obj", file_type, obj)
+						writemsg_stdout("--- !obj   %s %s\n" % ("obj", obj))
 						continue
 
 					# string.lower is needed because db entries used to be in upper-case.  The
 					# string.lower allows for backwards compatibility.
 					if mymd5 != pkgfiles[objkey][2].lower():
-						show_unmerge("---", "!md5", file_type, obj)
+						writemsg_stdout("--- !md5   %s %s\n" % ("obj", obj))
 						continue
 					try:
-						# Remove permissions to ensure that any hardlinks to
-						# suid/sgid files are rendered harmless.
-						if not islink:
-							os.chmod(obj, 0)
+						if statobj.st_mode & (stat.S_ISUID | stat.S_ISGID):
+							# Always blind chmod 0 before unlinking to avoid race conditions.
+							os.chmod(obj, 0000)
+							if statobj.st_nlink > 1:
+								writemsg("setXid: "+str(statobj.st_nlink-1)+ \
+									" hardlinks to '%s'\n" % obj)
 						os.unlink(obj)
 					except (OSError,IOError),e:
 						pass
-					show_unmerge("<<<", "", file_type, obj)
-				elif pkgfiles[objkey][0] == "fif":
+					writemsg_stdout("<<<        %s %s\n" % ("obj",obj))
+				elif pkgfiles[objkey][0]=="fif":
 					if not stat.S_ISFIFO(lstatobj[stat.ST_MODE]):
-						show_unmerge("---", "!fif", file_type, obj)
+						writemsg_stdout("--- !fif   %s %s\n" % ("fif", obj))
 						continue
-					show_unmerge("---", "", file_type, obj)
-				elif pkgfiles[objkey][0] == "dev":
-					show_unmerge("---", "", file_type, obj)
+					writemsg_stdout("---        %s %s\n" % ("fif",obj))
+				elif pkgfiles[objkey][0]=="dev":
+					writemsg_stdout("---        %s %s\n" % ("dev",obj))
 
 			mydirs.sort()
 			mydirs.reverse()
@@ -7541,9 +7171,9 @@ class dblink:
 			for obj in mydirs:
 				try:
 					os.rmdir(obj)
-					show_unmerge("<<<", "", "dir", obj)
+					writemsg_stdout("<<<        %s %s\n" % ("dir",obj))
 				except (OSError, IOError):
-					show_unmerge("---", "!empty", "dir", obj)
+					writemsg_stdout("--- !empty dir %s\n" % obj)
 
 		#remove self from vartree database so that our own virtual gets zapped if we're the last node
 		self.vartree.zap(self.mycpv)
@@ -7564,18 +7194,15 @@ class dblink:
 		"""
 		destfile = normalize_path(
 			os.path.join(destroot, filename.lstrip(os.path.sep)))
+		try:
+			mylstat = os.lstat(destfile)
+		except (OSError, IOError):
+			return True
 
 		pkgfiles = self.getcontents()
-		if pkgfiles and destfile in pkgfiles:
+		if pkgfiles and filename in pkgfiles:
 			return True
 		if pkgfiles:
-			try:
-				mylstat = os.lstat(destfile)
-			except EnvironmentError, e:
-				if e.errno != errno.ENOENT:
-					raise
-				del e
-				return True
 			if self._contents_inodes is None:
 				self._contents_inodes = set()
 				for x in pkgfiles:
@@ -7589,51 +7216,30 @@ class dblink:
 
 		return False
 
-	def _security_check(self, installed_instances):
-		if not installed_instances:
-			return 0
-		file_paths = set()
-		for dblnk in installed_instances:
-			file_paths.update(dblnk.getcontents())
-		inode_map = {}
-		real_paths = set()
-		for path in file_paths:
-			try:
-				s = os.lstat(path)
-			except OSError, e:
-				if e.errno != errno.ENOENT:
-					raise
-				del e
-				continue
-			if not stat.S_ISREG(s.st_mode):
-				continue
-			path = os.path.realpath(path)
-			if path in real_paths:
-				continue
-			real_paths.add(path)
-			if s.st_nlink > 1 and \
-				s.st_mode & (stat.S_ISUID | stat.S_ISGID):
-				k = (s.st_dev, s.st_ino)
-				inode_map.setdefault(k, []).append((path, s))
-		suspicious_hardlinks = []
-		for path_list in inode_map.itervalues():
-			path, s = path_list[0]
-			if len(path_list) == s.st_nlink:
-				# All hardlinks seem to be owned by this package.
-				continue
-			suspicious_hardlinks.append(path_list)
-		if not suspicious_hardlinks:
-			return 0
-		from output import colorize
-		prefix = colorize("SECURITY_WARN", "*") + " WARNING: "
-		writemsg(prefix + "suid/sgid file(s) " + \
-			"with suspicious hardlink(s):\n", noiselevel=-1)
-		for path_list in suspicious_hardlinks:
-			for path, s in path_list:
-				writemsg(prefix + "  '%s'\n" % path, noiselevel=-1)
-		writemsg(prefix + "See the Gentoo Security Handbook " + \
-			"guide for advice on how to proceed.\n", noiselevel=-1)
-		return 1
+	def isprotected(self, filename):
+		"""In cases where an installed package in the same slot owns a
+		protected file that will be merged, bump the mtime on the installed
+		file in order to ensure that it isn't unmerged."""
+		if not self._config_protect.isprotected(filename):
+			return False
+		if self._installed_instance is None:
+			return True
+		mydata = self._installed_instance.getcontents().get(filename, None)
+		if mydata is None:
+			return True
+
+		# Bump the mtime in order to ensure that the old config file doesn't
+		# get unmerged.  The user will have an opportunity to merge the new
+		# config with the old one.
+		try:
+			os.utime(filename, None)
+		except OSError, e:
+			if e.errno != errno.ENOENT:
+				raise
+			del e
+			# The file has disappeared, so it's not protected.
+			return False
+		return True
 
 	def treewalk(self, srcroot, destroot, inforoot, myebuild, cleanup=0,
 		mydbapi=None, prev_mtimes=None):
@@ -7682,32 +7288,11 @@ class dblink:
 
 		slot_matches = self.vartree.dbapi.match(
 			"%s:%s" % (self.mysplit[0], self.settings["SLOT"]))
-		if self.mycpv not in slot_matches and \
-			self.vartree.dbapi.cpv_exists(self.mycpv):
-			# handle multislot or unapplied slotmove
-			slot_matches.append(self.mycpv)
-
-		others_in_slot = []
-		for cur_cpv in slot_matches:
-			# Clone the config in case one of these has to be unmerged since
-			# we need it to have private ${T} etc... for things like elog.
-			others_in_slot.append(dblink(self.cat, catsplit(cur_cpv)[1],
-				self.vartree.root, config(clone=self.settings),
-				vartree=self.vartree))
-		retval = self._security_check(others_in_slot)
-		if retval:
-			return retval
-
 		if slot_matches:
 			# Used by self.isprotected().
-			max_dblnk = None
-			max_counter = -1
-			for dblnk in others_in_slot:
-				cur_counter = self.vartree.dbapi.cpv_counter(dblnk.mycpv)
-				if cur_counter > max_counter:
-					max_counter = cur_counter
-					max_dblnk = dblnk
-			self._installed_instance = max_dblnk
+			self._installed_instance = dblink(self.cat,
+				catsplit(slot_matches[0])[1], destroot, self.settings,
+				vartree=self.vartree)
 
 		# check for package collisions
 		if "collision-protect" in self.settings.features:
@@ -7727,9 +7312,23 @@ class dblink:
 			stopmerge=False
 			starttime=time.time()
 			i=0
+
+			otherpkg=[]
+			mypkglist=[]
+
+			if self.pkg in otherversions:
+				otherversions.remove(self.pkg)	# we already checked this package
+
+			myslot = self.settings["SLOT"]
+			for v in otherversions:
+				# only allow versions with same slot to overwrite files
+				if myslot == self.vartree.dbapi.aux_get("/".join((self.cat, v)), ["SLOT"])[0]:
+					mypkglist.append(
+						dblink(self.cat, v, destroot, self.settings,
+							vartree=self.vartree))
+
 			collisions = []
-			destroot = normalize_path(destroot).rstrip(os.path.sep) + \
-				os.path.sep
+
 			print green("*")+" checking "+str(len(myfilelist))+" files for package collisions"
 			for f in myfilelist:
 				nocheck = False
@@ -7744,43 +7343,10 @@ class dblink:
 				i=i+1
 				if i % 1000 == 0:
 					print str(i)+" files checked ..."
-				dest_path = normalize_path(
-					os.path.join(destroot, f.lstrip(os.path.sep)))
-				try:
-					dest_lstat = os.lstat(dest_path)
-				except EnvironmentError, e:
-					if e.errno == errno.ENOENT:
-						del e
-						continue
-					elif e.errno == errno.ENOTDIR:
-						del e
-						# A non-directory is in a location where this package
-						# expects to have a directory.
-						dest_lstat = None
-						parent_path = dest_path
-						while len(parent_path) > len(destroot):
-							parent_path = os.path.dirname(parent_path)
-							try:
-								dest_lstat = os.lstat(parent_path)
-								break
-							except EnvironmentError, e:
-								if e.errno != errno.ENOTDIR:
-									raise
-								del e
-						if not dest_lstat:
-							raise AssertionError(
-								"unable to find non-directory " + \
-								"parent for '%s'" % dest_path)
-						dest_path = parent_path
-						f = os.path.sep + dest_path[len(destroot):]
-						if f in collisions:
-							continue
-					else:
-						raise
 				if f[0] != "/":
 					f="/"+f
 				isowned = False
-				for ver in [self] + others_in_slot:
+				for ver in [self]+mypkglist:
 					if (ver.isowner(f, destroot) or ver.isprotected(f)):
 						isowned = True
 						break
@@ -7851,6 +7417,9 @@ class dblink:
 					raise
 				del e
 
+		# get old contents info for later unmerging
+		oldcontents = self.getcontents()
+
 		self.dbdir = self.dbtmpdir
 		self.delete()
 		if not os.path.exists(self.dbtmpdir):
@@ -7896,11 +7465,12 @@ class dblink:
 		else:
 			cfgfiledict["IGNORE"]=0
 
-		# Don't bump mtimes on merge since some application require
-		# preservation of timestamps.  This means that the unmerge phase must
-		# check to see if file belongs to an installed instance in the same
-		# slot.
-		mymtime = None
+		# Timestamp for files being merged.  Use time() - 1 in order to prevent
+		# a collision with timestamps that are bumped by the utime() call
+		# inside isprotected().  This ensures that the new and old config have
+		# different timestamps (for the benefit of programs like rsync that
+		# that need distiguishable timestamps to detect file changes).
+		mymtime = long(time.time() - 1)
 
 		# set umask to 0 for merging; back up umask, save old one in prevmask (since this is a global change)
 		prevmask   = os.umask(0)
@@ -7940,27 +7510,17 @@ class dblink:
 		outfile.flush()
 		outfile.close()
 
-		for dblnk in others_in_slot:
-			if dblnk.mycpv != self.mycpv:
-				continue
+		if os.path.exists(self.dbpkgdir):
 			writemsg_stdout(">>> Safely unmerging already-installed instance...\n")
-			self.contentscache = None
-			others_in_slot.append(self)  # self has just been merged
-			others_in_slot.remove(dblnk) # dblnk will unmerge itself now
-			dblnk.unmerge(trimworld=0, ldpath_mtimes=prev_mtimes,
-				others_in_slot=others_in_slot)
+			self.dbdir = self.dbpkgdir
+			self.unmerge(oldcontents, trimworld=0, ldpath_mtimes=prev_mtimes)
+			self.dbdir = self.dbtmpdir
 			writemsg_stdout(">>> Original instance of package unmerged safely.\n")
-			break
 
 		# We hold both directory locks.
 		self.dbdir = self.dbpkgdir
 		self.delete()
-		_movefile(self.dbtmpdir, self.dbpkgdir, mysettings=self.settings)
-		# Due to mtime granularity, mtime checks do not always properly
-		# invalidate vardbapi caches.
-		self.vartree.dbapi.mtdircache.pop(self.cat, None)
-		self.vartree.dbapi.matchcache.pop(self.cat, None)
-		self.vartree.dbapi.cpcache.pop(self.mysplit[0], None)
+		movefile(self.dbtmpdir, self.dbpkgdir, mysettings=self.settings)
 		contents = self.getcontents()
 
 		#write out our collection of md5sums
@@ -7993,9 +7553,18 @@ class dblink:
 		#update environment settings, library paths. DO NOT change symlinks.
 		env_update(makelinks=(not downgrade),
 			target_root=self.settings["ROOT"], prev_mtimes=prev_mtimes,
-			contents=contents, env=self.settings.environ())
-
+			contents=contents)
+		#dircache may break autoclean because it remembers the -MERGING-pkg file
+		global dircache
+		if dircache.has_key(self.dbcatdir):
+			del dircache[self.dbcatdir]
 		writemsg_stdout(">>> %s %s\n" % (self.mycpv,"merged."))
+
+		# Process ebuild logfiles
+		elog_process(self.mycpv, self.settings)
+		if "noclean" not in self.settings.features:
+			doebuild(myebuild, "clean", destroot, self.settings,
+				tree=self.treetype, mydbapi=mydbapi, vartree=self.vartree)
 		return os.EX_OK
 
 	def mergeme(self,srcroot,destroot,outfile,secondhand,stufftomerge,cfgfiledict,thismtime):
@@ -8068,15 +7637,13 @@ class dblink:
 			# handy variables; mydest is the target object on the live filesystems;
 			# mysrc is the source object in the temporary install dir
 			try:
-				mydstat = os.lstat(mydest)
-				mydmode = mydstat.st_mode
+				mydmode = os.lstat(mydest).st_mode
 			except OSError, e:
 				if e.errno != errno.ENOENT:
 					raise
 				del e
 				#dest file doesn't exist
-				mydstat = None
-				mydmode = None
+				mydmode=None
 
 			if stat.S_ISLNK(mymode):
 				# we are merging a symbolic link
@@ -8139,9 +7706,10 @@ class dblink:
 
 					if bsd_chflags:
 						# Save then clear flags on dest.
-						dflags = mydstat.st_flags
-						if dflags != 0:
-							bsd_chflags.lchflags(mydest, 0)
+						dflags=bsd_chflags.lgetflags(mydest)
+						if dflags != 0 and bsd_chflags.lchflags(mydest, 0) < 0:
+							writemsg("!!! Couldn't clear flags on '"+mydest+"'.\n",
+								noiselevel=-1)
 
 					if not os.access(mydest, os.W_OK):
 						pkgstuff = pkgsplit(self.pkg)
@@ -8195,7 +7763,6 @@ class dblink:
 				mydestdir=os.path.dirname(mydest)
 				moveme=1
 				zing="!!!"
-				mymtime = None
 				if mydmode!=None:
 					# destination file exists
 					if stat.S_ISDIR(mydmode):
@@ -8213,17 +7780,17 @@ class dblink:
 							destmd5=portage_checksum.perform_md5(mydest,calc_prelink=1)
 							if mymd5==destmd5:
 								#file already in place; simply update mtimes of destination
-								moveme = 1
+								os.utime(mydest,(thismtime,thismtime))
+								zing="---"
+								moveme=0
 							else:
 								if mymd5 == cfgfiledict.get(myrealdest, [None])[0]:
 									""" An identical update has previously been
 									merged.  Skip it unless the user has chosen
 									--noconfmem."""
+									zing = "-o-"
 									moveme = cfgfiledict["IGNORE"]
 									cfgprot = cfgfiledict["IGNORE"]
-									if not moveme:
-										zing = "-o-"
-										mymtime = long(mystat.st_mtime)
 								else:
 									moveme = 1
 									cfgprot = 1
@@ -8244,6 +7811,52 @@ class dblink:
 					if mymtime is None:
 						sys.exit(1)
 					zing=">>>"
+				else:
+					mymtime = long(time.time())
+					# We need to touch the destination so that on --update the
+					# old package won't yank the file with it. (non-cfgprot related)
+					os.utime(mydest, (mymtime, mymtime))
+					zing="---"
+				if self.settings["USERLAND"] == "Darwin" and myrealdest[-2:] == ".a":
+
+					# XXX kludge, can be killed when portage stops relying on
+					# md5+mtime, and uses refcounts
+					# alright, we've fooled w/ mtime on the file; this pisses off static archives
+					# basically internal mtime != file's mtime, so the linker (falsely) thinks
+					# the archive is stale, and needs to have it's toc rebuilt.
+
+					myf = open(mydest, "r+")
+
+					# ar mtime field is digits padded with spaces, 12 bytes.
+					lms=str(thismtime+5).ljust(12)
+					myf.seek(0)
+					magic=myf.read(8)
+					if magic != "!<arch>\n":
+						# not an archive (dolib.a from portage.py makes it here fex)
+						myf.close()
+					else:
+						st = os.stat(mydest)
+						while myf.tell() < st.st_size - 12:
+							# skip object name
+							myf.seek(16,1)
+
+							# update mtime
+							myf.write(lms)
+
+							# skip uid/gid/mperm
+							myf.seek(20,1)
+
+							# read the archive member's size
+							x=long(myf.read(10))
+
+							# skip the trailing newlines, and add the potential
+							# extra padding byte if it's not an even size
+							myf.seek(x + 2 + (x % 2),1)
+
+						# and now we're at the end. yay.
+						myf.close()
+						mymd5 = portage_checksum.perform_md5(mydest, calc_prelink=1)
+					os.utime(mydest,(thismtime,thismtime))
 
 				if mymtime!=None:
 					zing=">>>"
@@ -8266,21 +7879,12 @@ class dblink:
 
 	def merge(self, mergeroot, inforoot, myroot, myebuild=None, cleanup=0,
 		mydbapi=None, prev_mtimes=None):
-		retval = -1
-		self.lockdb()
 		try:
-			retval = self.treewalk(mergeroot, myroot, inforoot, myebuild,
+			self.lockdb()
+			return self.treewalk(mergeroot, myroot, inforoot, myebuild,
 				cleanup=cleanup, mydbapi=mydbapi, prev_mtimes=prev_mtimes)
-			# Process ebuild logfiles
-			elog_process(self.mycpv, self.settings)
-			if retval == os.EX_OK and "noclean" not in self.settings.features:
-				if myebuild is None:
-					myebuild = os.path.join(inforoot, self.pkg + ".ebuild")
-				doebuild(myebuild, "clean", myroot, self.settings,
-					tree=self.treetype, mydbapi=mydbapi, vartree=self.vartree)
 		finally:
 			self.unlockdb()
-		return retval
 
 	def getstring(self,name):
 		"returns contents of a file with whitespace converted to spaces"
@@ -8343,11 +7947,9 @@ class FetchlistDict(UserDict.DictMixin):
 		"""Returns the complete fetch list for a given package."""
 		return self.portdb.getfetchlist(pkg_key, mysettings=self.settings,
 			all=True, mytree=self.mytree)[1]
-	def __contains__(self):
-		return pkg_key in self.keys()
 	def has_key(self, pkg_key):
 		"""Returns true if the given package exists within pkgdir."""
-		return pkg_key in self
+		return pkg_key in self.keys()
 	def keys(self):
 		"""Returns keys for all packages within pkgdir"""
 		return self.portdb.cp_list(self.cp, mytree=self.mytree)
@@ -8368,9 +7970,6 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 	tbz2_lock = None
 	builddir_lock = None
 	catdir_lock = None
-	mycat = None
-	mypkg = None
-	did_merge_phase = False
 	try:
 		""" Don't lock the tbz2 file because the filesytem could be readonly or
 		shared by a cluster."""
@@ -8443,17 +8042,11 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 			treetype="bintree")
 		retval = mylink.merge(pkgloc, infloc, myroot, myebuild, cleanup=0,
 			mydbapi=mydbapi, prev_mtimes=prev_mtimes)
-		did_merge_phase = True
 		return retval
 	finally:
 		if tbz2_lock:
 			portage_locks.unlockfile(tbz2_lock)
 		if builddir_lock:
-			if not did_merge_phase:
-				# The merge phase handles this already.  Callers don't know how
-				# far this function got, so we have to call elog_process() here
-				# so that it's only called once.
-				elog_process(mycat + "/" + mypkg, mysettings)
 			try:
 				shutil.rmtree(builddir)
 			except (IOError, OSError), e:
@@ -8530,10 +8123,12 @@ def portageexit():
 
 atexit_register(portageexit)
 
-def _global_updates(trees, prev_mtimes):
+def global_updates(mysettings, trees, prev_mtimes):
 	"""
 	Perform new global updates if they exist in $PORTDIR/profiles/updates/.
 
+	@param mysettings: A config instance for ROOT="/".
+	@type mysettings: config
 	@param trees: A dictionary containing portage trees.
 	@type trees: dict
 	@param prev_mtimes: A dictionary containing mtimes of files located in
@@ -8547,7 +8142,6 @@ def _global_updates(trees, prev_mtimes):
 	global secpass
 	if secpass < 2 or "SANDBOX_ACTIVE" in os.environ:
 		return
-	mysettings = trees["/"]["vartree"].settings
 	updpath = os.path.join(mysettings["PORTDIR"], "profiles", "updates")
 
 	try:
@@ -8586,27 +8180,13 @@ def _global_updates(trees, prev_mtimes):
 
 		trees["/"]["bintree"] = binarytree("/", mysettings["PKGDIR"],
 			settings=mysettings)
-		vardb = trees["/"]["vartree"].dbapi
-		bindb = trees["/"]["bintree"].dbapi
-		if not os.access(bindb.bintree.pkgdir, os.W_OK):
-			bindb = None
 		for update_cmd in myupd:
 			if update_cmd[0] == "move":
-				moves = vardb.move_ent(update_cmd)
-				if moves:
-					writemsg_stdout(moves * "@")
-				if bindb:
-					moves = bindb.move_ent(update_cmd)
-					if moves:
-						writemsg_stdout(moves * "%")
+				trees["/"]["vartree"].dbapi.move_ent(update_cmd)
+				trees["/"]["bintree"].move_ent(update_cmd)
 			elif update_cmd[0] == "slotmove":
-				moves = vardb.move_slot_ent(update_cmd)
-				if moves:
-					writemsg_stdout(moves * "s")
-				if bindb:
-					moves = bindb.move_slot_ent(update_cmd)
-					if moves:
-						writemsg_stdout(moves * "S")
+				trees["/"]["vartree"].dbapi.move_slot_ent(update_cmd)
+				trees["/"]["bintree"].move_slot_ent(update_cmd)
 
 		# The above global updates proceed quickly, so they
 		# are considered a single mtimedb transaction.
@@ -8621,11 +8201,7 @@ def _global_updates(trees, prev_mtimes):
 		# We gotta do the brute force updates for these now.
 		if mysettings["PORTAGE_CALLER"] == "fixpackages" or \
 		"fixpackages" in mysettings.features:
-			def onProgress(maxval, curval):
-				writemsg_stdout("*")
-			vardb.update_ents(myupd, onProgress=onProgress)
-			if bindb:
-				bindb.update_ents(myupd, onProgress=onProgress)
+			trees["/"]["bintree"].update_ents(myupd)
 		else:
 			do_upgrade_packagesmessage = 1
 
@@ -8635,8 +8211,8 @@ def _global_updates(trees, prev_mtimes):
 		print
 		print
 
-		if do_upgrade_packagesmessage and bindb and \
-			bindb.cpv_all():
+		if do_upgrade_packagesmessage and \
+			listdir(os.path.join(mysettings["PKGDIR"], "All"), EmptyOnError=1):
 			writemsg_stdout(" ** Skipping packages. Run 'fixpackages' or set it in FEATURES to fix the")
 			writemsg_stdout("\n    tbz2's in the packages directory. "+bold("Note: This can take a very long time."))
 			writemsg_stdout("\n")
