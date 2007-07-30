@@ -96,7 +96,9 @@ This variable is passed by the \fIebuild scripts\fR to the \fIconfigure\fR
 as \fI\-\-target=${CTARGET}\fR only if it is defined.
 .TP
 \fBDISTDIR\fR = \fI[path]\fR
-Defines the location of your local source file repository.
+Defines the location of your local source file repository.  Note
+that locations under /usr/portage are not necessarily safe for data storage.
+See the \fBPORTDIR\fR documentation for more information.
 .br
 Defaults to /usr/portage/distfiles.
 .TP
@@ -321,7 +323,9 @@ Defines if color should be disabled by default.
 Defaults to false.
 .TP
 \fBPKGDIR\fR = \fI[path]\fR
-Defines the location where created .tbz2 binary packages will be stored.
+Defines the location where created .tbz2 binary packages will be stored.  Note
+that locations under /usr/portage are not necessarily safe for data storage.
+See the \fBPORTDIR\fR documentation for more information.
 .br
 Defaults to /usr/portage/packages.
 .TP
@@ -400,18 +404,19 @@ Defines the location of the temporary build directories.
 Defaults to /var/tmp.
 .TP
 \fBPORTDIR\fR = \fI[path]\fR
-Defines the location of your Portage tree.
+Defines the location of the Portage tree. This is the repository for all
+profile information as well as all ebuilds. If you change this, you must update
+your /etc/make.profile symlink accordingly.
 .br
 Defaults to /usr/portage. 
 .br
 \fB***Warning***\fR
 .br
-Storing data such as distfiles and binary packages in PORTDIR can
-be potentially dangerous. The default emerge configuration defaults to this 
-behavior (which will work fine), however if you deviate from the default
-configuration by changing PKGDIR or DISTDIR, emerge \-\-sync may inadvertedly
-delete all your distfiles/binary packages. Please make sure to set
-\fBPORTAGE_EXTRA_RSYNC_OPTS\fR properly to insure the safety of files in PORTDIR.
+Data stored inside \fBPORTDIR\fR is in peril of being overwritten or deleted by
+the emerge \-\-sync command. The default value of
+\fBPORTAGE_RSYNC_OPTS\fR will protect the default locations of
+\fBDISTDIR\fR and \fBPKGDIR\fR, but users are warned that any other locations
+inside \fBPORTDIR\fR are not necessarily safe for data storage.
 .TP
 \fBPORTDIR_OVERLAY\fR = \fI"[path] [different\-path] [etc...]"\fR
 Defines the directories in which user made ebuilds may be stored and not 
