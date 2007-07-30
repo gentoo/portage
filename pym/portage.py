@@ -6284,6 +6284,13 @@ class portdbapi(dbapi):
 		accept_keywords = self.mysettings["ACCEPT_KEYWORDS"].split()
 		pkgdict = self.mysettings.pkeywordsdict
 		aux_keys = ["KEYWORDS", "EAPI", "SLOT"]
+
+		# Hack: Need to check the env directly here as otherwise stacking 
+		# doesn't work properly as negative values are lost in the config
+		# object (bug #139600)
+		egroups = self.mysettings.configdict["backupenv"].get(
+			"ACCEPT_KEYWORDS", "").split()
+
 		for mycpv in mylist:
 			try:
 				keys, eapi, slot = self.aux_get(mycpv, aux_keys)
@@ -6305,6 +6312,7 @@ class portdbapi(dbapi):
 				matches = match_to_list(cpv_slot, pkgdict[cp].keys())
 				for atom in matches:
 					pgroups.extend(pkgdict[cp][atom])
+				pgroups.extend(egroups)
 				if matches:
 					inc_pgroups = []
 					for x in pgroups:
