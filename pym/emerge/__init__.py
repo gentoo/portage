@@ -701,7 +701,7 @@ class DepPriority(object):
 	MEDIUM = -1
 	MEDIUM_SOFT = -2
 	SOFT   = -3
-	MIN    = -6
+	MIN    = -5
 	def __init__(self, **kwargs):
 		for myattr in self.__slots__:
 			if myattr == "__weakref__":
@@ -722,7 +722,7 @@ class DepPriority(object):
 			return -4
 		if self.runtime_post:
 			return -5
-		return -6
+		return -5
 	def __lt__(self, other):
 		return self.__int__() < other
 	def __le__(self, other):
@@ -2744,7 +2744,7 @@ class depgraph(object):
 						raise portage.exception.PackageNotFound(pkg_key)
 					repo_path_real = os.path.dirname(os.path.dirname(
 						os.path.dirname(ebuild_path)))
-					pkgsettings.setcpv(pkg_key)
+					pkgsettings.setcpv(pkg_key, mydb=mydbapi)
 					metadata["USE"] = pkgsettings["USE"]
 				else:
 					repo_path_real = portdb.getRepositoryPath(repo_name)

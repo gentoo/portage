@@ -15,7 +15,10 @@ def process(mysettings, key, logentries, fulltext):
 	mysettings, items = _items.setdefault(config_root, (mysettings, {}))
 	items[key] = header + fulltext
 
-def finalize():
+def finalize(mysettings=None):
+	"""The mysettings parameter is just for backward compatibility since
+	an older version of portage will import the module from a newer version
+	when it upgrades itself."""
 	global _items
 	for mysettings, items in _items.itervalues():
 		_finalize(mysettings, items)
