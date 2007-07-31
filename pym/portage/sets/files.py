@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+import errno
 import os
 
 from portage.util import grabfile, write_atomic, ensure_dirs
@@ -52,7 +53,12 @@ class StaticFileSet(EditablePackageSet):
 		except (OSError, IOError):
 			mtime = None
 		if (not self._loaded or self._mtime != mtime):
-			self.loader.load()
+			try:
+				self.loader.load()
+			except EnvironmentError, e:
+				if e.errno != errno.ENOENT:
+					raise
+				del e
 			self._setAtoms(self.loader.keys())
 			self._mtime = mtime
 	
