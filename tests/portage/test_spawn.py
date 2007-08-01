@@ -3,7 +3,7 @@
 # $Id$
 
 import errno, os, sys
-from portage.tests import TestCase
+from unittest import TestCase
 
 class SpawnTestCase(TestCase):
 
