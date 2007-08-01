@@ -4342,8 +4342,12 @@ def post_emerge(trees, mtimedb, retval):
 
 	# Dump the mod_echo output now so that our other notifications are shown
 	# last.
-	from portage.elog import mod_echo
-	mod_echo.finalize()
+	try:
+		from portage.elog import mod_echo
+	except ImportError:
+		pass # happens during downgrade to a version without the module
+	else:
+		mod_echo.finalize()
 
 	if "noinfo" not in settings.features:
 		chk_updated_info_files(target_root, infodirs, info_mtimes, retval)
