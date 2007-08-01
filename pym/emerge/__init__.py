@@ -2598,6 +2598,7 @@ class depgraph(object):
 				return ret
 
 		repo_display = RepoDisplay(self.roots)
+		show_repos = False
 
 		tree_nodes = []
 		display_list = []
@@ -2973,7 +2974,8 @@ class depgraph(object):
 							repoadd = "%s=>%s" % (
 								repo_display.repoStr(repo_path_prev),
 								repo_display.repoStr(repo_path_real))
-					if repoadd:
+					if repoadd and repoadd != "0":
+						show_repos = True
 						verboseadd += teal("[%s]" % repoadd)
 
 				xs = list(portage.pkgsplit(x[2]))
@@ -3112,7 +3114,7 @@ class depgraph(object):
 		if verbosity == 3:
 			print
 			print counters
-			if p:
+			if show_repos:
 				sys.stdout.write(str(repo_display))
 
 		if "--changelog" in self.myopts:
