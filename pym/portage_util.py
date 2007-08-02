@@ -76,7 +76,7 @@ def map_dictlist_vals(func,myDict):
 	"""Performs a function on each value of each key in a dictlist.
 	Returns a new dictlist."""
 	new_dl = {}
-	for key in myDict:
+	for key in myDict.keys():
 		new_dl[key] = []
 		new_dl[key] = map(func,myDict[key])
 	return new_dl
@@ -118,7 +118,7 @@ def stack_dictlist(original_dicts, incremental=0, incrementals=[], ignore_none=0
 	for mydict in original_dicts:
 		if mydict is None:
 			continue
-		for y in mydict:
+		for y in mydict.keys():
 			if not y in final_dict:
 				final_dict[y] = []
 			
@@ -280,7 +280,7 @@ def writedict(mydict,myfilename,writekey=True):
 			for x in mydict.values():
 				myfile.write(x+"\n")
 		else:
-			for x in mydict:
+			for x in mydict.keys():
 				myfile.write("%s %s\n" % (x, " ".join(mydict[x])))
 		myfile.close()
 	except IOError:
@@ -852,7 +852,7 @@ def ensure_dirs(dir_path, *args, **kwargs):
 		created_dir = True
 	except OSError, oe:
 		func_call = "makedirs('%s')" % dir_path
-		if errno.EEXIST == oe.errno:
+		if oe.errno in (errno.EEXIST, errno.EISDIR):
 			pass
 		elif oe.errno == errno.EPERM:
 			raise OperationNotPermitted(func_call)
