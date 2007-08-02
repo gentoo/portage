@@ -6562,7 +6562,7 @@ class portdbapi(dbapi):
 				continue
 			except portage_exception.PortageException, e:
 				writemsg("!!! Error: aux_get('%s', %s)\n" % (mycpv, aux_keys),
-					mycpv, noiselevel=-1)
+					noiselevel=-1)
 				writemsg("!!! %s\n" % str(e), noiselevel=-1)
 				del e
 				continue
