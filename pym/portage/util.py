@@ -856,7 +856,7 @@ def ensure_dirs(dir_path, *args, **kwargs):
 		created_dir = True
 	except OSError, oe:
 		func_call = "makedirs('%s')" % dir_path
-		if errno.EEXIST == oe.errno:
+		if oe.errno in (errno.EEXIST, errno.EISDIR):
 			pass
 		elif oe.errno == errno.EPERM:
 			raise OperationNotPermitted(func_call)
