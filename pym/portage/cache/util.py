@@ -1,7 +1,7 @@
 # Copyright: 2005 Gentoo Foundation
 # Author(s): Brian Harring (ferringb@gentoo.org)
 # License: GPL2
-# $Id: util.py 1911 2005-08-25 03:44:21Z ferringb $
+# $Id: $
 
 from itertools import chain
 from portage.cache import cache_errors
@@ -56,7 +56,13 @@ def mirror_cache(valid_nodes_iterable, src_cache, trg_cache, eclass_cache=None, 
 					break
 
 		if write_it:
-			if entry.get("INHERITED",""):
+			try:
+				inherited = entry.get("INHERITED", None)
+			except cache_errors.CacheError, ce:
+				noise.exception(x, ce)
+				del ce
+				continue
+			if inherited:
 				if src_cache.complete_eclass_entries:
 					if not "_eclasses_" in entry:
 						noise.corruption(x,"missing _eclasses_ field")
