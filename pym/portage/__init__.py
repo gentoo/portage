@@ -3749,12 +3749,13 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		# get possible slot information from the deps file
 		if mydo == "depend":
 			writemsg("!!! DEBUG: dbkey: %s\n" % str(dbkey), 2)
+			droppriv = "userpriv" in mysettings.features
 			if isinstance(dbkey, dict):
 				mysettings["dbkey"] = ""
 				pr, pw = os.pipe()
 				fd_pipes = {0:0, 1:1, 2:2, 9:pw}
 				mypids = spawn(EBUILD_SH_BINARY + " depend", mysettings,
-					fd_pipes=fd_pipes, returnpid=True, droppriv=1)
+					fd_pipes=fd_pipes, returnpid=True, droppriv=droppriv)
 				os.close(pw) # belongs exclusively to the child process now
 				maxbytes = 1024
 				mybytes = []
@@ -3782,7 +3783,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				mysettings["dbkey"] = \
 					os.path.join(mysettings.depcachedir, "aux_db_key_temp")
 
-			return spawn(EBUILD_SH_BINARY + " depend", mysettings, droppriv=1)
+			return spawn(EBUILD_SH_BINARY + " depend", mysettings,
+				droppriv=droppriv)
 
 		# Validate dependency metadata here to ensure that ebuilds with invalid
 		# data are never installed (even via the ebuild command).
