@@ -61,11 +61,11 @@ def mirror_cache(valid_nodes_iterable, src_cache, trg_cache, eclass_cache=None, 
 					if not "_eclasses_" in entry:
 						noise.corruption(x,"missing _eclasses_ field")
 						continue
-					if not portage.eclass_cache.is_eclass_data_valid(entry["_eclasses_"]):
+					if not eclass_cache.is_eclass_data_valid(entry["_eclasses_"]):
 						noise.eclass_stale(x)
 						continue
 				else:
-					entry["_eclasses_"] = portage.eclass_cache.get_eclass_data(entry["INHERITED"].split(), \
+					entry["_eclasses_"] = eclass_cache.get_eclass_data(entry["INHERITED"].split(), \
 						from_master_only=True)
 					if not entry["_eclasses_"]:
 						noise.eclass_stale(x)
