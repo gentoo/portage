@@ -2416,32 +2416,28 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 			fd_flags[f] = fcntl.fcntl(f.fileno(), fcntl.F_GETFL)
 		buffsize = 65536
 		eof = False
+		# Use non-blocking mode to prevent read
+		# calls from blocking indefinitely.
+		try:
+			fcntl.fcntl(master_file.fileno(), fcntl.F_SETFL,
+				fd_flags[master_file] | os.O_NONBLOCK)
+		except EnvironmentError, e:
+			if e.errno != errno.EAGAIN:
+				raise
+			del e
+			# The EAGAIN error signals eof on FreeBSD.
+			eof = True
 		while not eof:
 			events = select.select(iwtd, owtd, ewtd)
 			for f in events[0]:
-				# Use non-blocking mode to prevent read
-				# calls from blocking indefinitely.
-				try:
-					fcntl.fcntl(f.fileno(), fcntl.F_SETFL,
-						fd_flags[f] | os.O_NONBLOCK)
-				except EnvironmentError, e:
-					if e.errno != errno.EAGAIN:
-						raise
-					del e
-					# The EAGAIN error signals eof on FreeBSD.
-					eof = True
-					break
 				buf = array.array('B')
 				try:
 					buf.fromfile(f, buffsize)
 				except EOFError:
 					pass
-				fcntl.fcntl(f.fileno(), fcntl.F_SETFL, fd_flags[f])
 				if not buf:
 					eof = True
 					break
-				# Use blocking mode for writes since we'd rather block than
-				# trigger a EWOULDBLOCK error.
 				if f is master_file:
 					buf.tofile(stdout_file)
 					stdout_file.flush()
