@@ -899,6 +899,9 @@ dyn_compile() {
 	if [ -d "${S}" ]; then
 		srcdir=${S}
 		cd "${S}"
+	else
+		eqawarn "QA Notice: Directory does not exist: S=\"${S}\""
+		cd "${WORKDIR}"
 	fi
 	#our custom version of libtool uses $S and $D to fix
 	#invalid paths in .la files
@@ -957,6 +960,9 @@ dyn_test() {
 	trap "abort_test" SIGINT SIGQUIT
 	if [ -d "${S}" ]; then
 		cd "${S}"
+	else
+		eqawarn "QA Notice: Directory does not exist: S=\"${S}\""
+		cd "${WORKDIR}"
 	fi
 	if ! hasq test $FEATURES && [ "${EBUILD_FORCE_TEST}" != "1" ]; then
 		vecho ">>> Test phase [not enabled]: ${CATEGORY}/${PF}"
@@ -993,6 +999,9 @@ dyn_install() {
 	mkdir "${PORTAGE_BUILDDIR}/image"
 	if [ -d "${S}" ]; then
 		cd "${S}"
+	else
+		eqawarn "QA Notice: Directory does not exist: S=\"${S}\""
+		cd "${WORKDIR}"
 	fi
 	vecho
 	vecho ">>> Install ${PF} into ${D} category ${CATEGORY}"
