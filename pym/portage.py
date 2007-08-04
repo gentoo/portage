@@ -3605,7 +3605,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	# chunked out deps for each phase, so that ebuild binary can use it 
 	# to collapse targets down.
 	actionmap_deps={
-	"depend": [],
 	"setup":  [],
 	"unpack": ["setup"],
 	"compile":["unpack"],
@@ -3995,7 +3994,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 		# args are for the to spawn function
 		actionmap = {
-"depend": {"cmd":ebuild_sh, "args":{"droppriv":1,        "free":0,         "sesandbox":0,         "fakeroot":0}},
 "setup":  {"cmd":ebuild_sh, "args":{"droppriv":0,        "free":1,         "sesandbox":0,         "fakeroot":0}},
 "unpack": {"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":0,         "sesandbox":sesandbox, "fakeroot":0}},
 "compile":{"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":nosandbox, "sesandbox":sesandbox, "fakeroot":0}},
