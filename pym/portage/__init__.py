@@ -3666,7 +3666,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	# chunked out deps for each phase, so that ebuild binary can use it 
 	# to collapse targets down.
 	actionmap_deps={
-	"depend": [],
 	"setup":  [],
 	"unpack": ["setup"],
 	"compile":["unpack"],
@@ -3761,12 +3760,13 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		# get possible slot information from the deps file
 		if mydo == "depend":
 			writemsg("!!! DEBUG: dbkey: %s\n" % str(dbkey), 2)
+			droppriv = "userpriv" in mysettings.features
 			if isinstance(dbkey, dict):
 				mysettings["dbkey"] = ""
 				pr, pw = os.pipe()
 				fd_pipes = {0:0, 1:1, 2:2, 9:pw}
 				mypids = spawn(EBUILD_SH_BINARY + " depend", mysettings,
-					fd_pipes=fd_pipes, returnpid=True, droppriv=1)
+					fd_pipes=fd_pipes, returnpid=True, droppriv=droppriv)
 				os.close(pw) # belongs exclusively to the child process now
 				maxbytes = 1024
 				mybytes = []
@@ -3794,7 +3794,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				mysettings["dbkey"] = \
 					os.path.join(mysettings.depcachedir, "aux_db_key_temp")
 
-			return spawn(EBUILD_SH_BINARY + " depend", mysettings, droppriv=1)
+			return spawn(EBUILD_SH_BINARY + " depend", mysettings,
+				droppriv=droppriv)
 
 		# Validate dependency metadata here to ensure that ebuilds with invalid
 		# data are never installed (even via the ebuild command).
@@ -4055,7 +4056,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 		# args are for the to spawn function
 		actionmap = {
-"depend": {"cmd":ebuild_sh, "args":{"droppriv":1,        "free":0,         "sesandbox":0,         "fakeroot":0}},
 "setup":  {"cmd":ebuild_sh, "args":{"droppriv":0,        "free":1,         "sesandbox":0,         "fakeroot":0}},
 "unpack": {"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":0,         "sesandbox":sesandbox, "fakeroot":0}},
 "compile":{"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":nosandbox, "sesandbox":sesandbox, "fakeroot":0}},
