@@ -3,6 +3,8 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id: prepall 2230 2005-11-01 01:35:59Z vapier $
 
+source "${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}"/isolated-functions.sh
+
 if type -P chflags > /dev/null && type -P mtree > /dev/null ; then
 	# Save all the file flags for restoration at the end of prepall.
 	mtree -c -p "${ED}" -k flags > "${T}/bsdflags.mtree"
