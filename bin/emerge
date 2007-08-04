@@ -2314,7 +2314,7 @@ class depgraph:
 							return True
 						if node not in mergeable_nodes:
 							return False
-						if node is portage_node and mygraph.child_nodes(node,
+						if node == portage_node and mygraph.child_nodes(node,
 							ignore_priority=DepPriority.MEDIUM_SOFT):
 							# Make sure that portage always has all of it's
 							# RDEPENDs installed first.
