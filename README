@@ -1,0 +1,6 @@
+This is the prefix branch of portage, a branch that deals with portage
+setup as packagemanager for a given offset in the filesystem running
+with user privileges.
+
+If you are not looking for something Gentoo/Alt:Prefix like, then this
+is not the right place.
