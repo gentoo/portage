@@ -2194,12 +2194,14 @@ class depgraph(object):
 		circular_blocks = False
 		blocker_deps = None
 		asap_nodes = []
+		portage_node = None
 		if reversed:
 			get_nodes = mygraph.root_nodes
 		else:
 			get_nodes = mygraph.leaf_nodes
 			for cpv, node in self.pkg_node_map["/"].iteritems():
 				if "portage" == portage.catsplit(portage.dep_getkey(cpv))[-1]:
+					portage_node = node
 					asap_nodes.append(node)
 					break
 		ignore_priority_soft_range = [None]
@@ -2259,6 +2261,11 @@ class depgraph(object):
 						if node in selected_nodes:
 							return True
 						if node not in mergeable_nodes:
+							return False
+						if node is portage_node and mygraph.child_nodes(node,
+							ignore_priority=DepPriority.MEDIUM_SOFT):
+							# Make sure that portage always has all of it's
+							# RDEPENDs installed first.
 							return False
 						selected_nodes.add(node)
 						for child in mygraph.child_nodes(node,
