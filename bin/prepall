@@ -16,9 +16,6 @@ fi
 prepallman
 prepallinfo
 
-ecompressdir --dequeue
-ecompress --dequeue
-
 prepallstrip
 
 if type -P chflags > /dev/null && type -P mtree > /dev/null; then

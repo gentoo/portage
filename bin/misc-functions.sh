@@ -43,6 +43,8 @@ install_symlink_html_docs() {
 
 install_qa_check() {
 	cd "${D}" || die "cd failed"
+	ecompressdir --dequeue
+	ecompress --dequeue
 	prepall
 
 	# Now we look for all world writable files.
