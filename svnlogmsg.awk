@@ -39,4 +39,4 @@ END {
 	}
 	print "</table></html>"
 }
-' | elinks -dump
+' | elinks -dump | sed -e '/+-\++/d' -e 's/|[-+]\+|//'
