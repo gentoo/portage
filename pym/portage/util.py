@@ -1,6 +1,6 @@
 # Copyright 2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: portage_util.py 4603 2006-10-06 03:28:25Z zmedico $
+# $Id$
 
 
 import os
@@ -14,7 +14,7 @@ from portage.exception import PortageException, FileNotFound, \
        OperationNotPermitted, PermissionDenied, ReadOnlyFileSystem
 import portage.exception
 from portage.dep import isvalidatom
-from portage.const import EPREFIX
+from portage.const import EPREFIX, EPREFIX_LSTRIP
 
 try:
 	import cPickle
@@ -939,7 +939,7 @@ class ConfigProtect(object):
 		self._dirs = set()
 		for x in self.protect_list:
 			ppath = normalize_path(
-				os.path.join(self.myroot + EPREFIX, x.lstrip(os.path.sep)))
+				os.path.join(self.myroot + EPREFIX_LSTRIP, x.lstrip(os.path.sep)))
 			mystat = None
 			try:
 				if stat.S_ISDIR(os.stat(ppath).st_mode):
@@ -952,7 +952,7 @@ class ConfigProtect(object):
 		self.protectmask = []
 		for x in self.mask_list:
 			ppath = normalize_path(
-				os.path.join(self.myroot + EPREFIX, x.lstrip(os.path.sep)))
+				os.path.join(self.myroot + EPREFIX_LSTRIP, x.lstrip(os.path.sep)))
 			mystat = None
 			try:
 				"""Use lstat so that anything, even a broken symlink can be
