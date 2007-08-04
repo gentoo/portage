@@ -43,9 +43,10 @@ install_symlink_html_docs() {
 
 install_qa_check() {
 	cd "${D}" || die "cd failed"
+
+	prepall
 	ecompressdir --dequeue
 	ecompress --dequeue
-	prepall
 
 	# Now we look for all world writable files.
 	for i in $(find "${D}/" -type f -perm -2); do
