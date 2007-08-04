@@ -4393,7 +4393,10 @@ def chk_updated_cfg_files(target_root, config_protect):
 				print >> sys.stderr, " " + bad("*")+ " error scanning '%s'" % x
 			else:
 				files = a[1].split('\0')
-				if files != ['']:
+				# split always produces an empty string as the last element
+				if files and not files[-1]:
+					del files[-1]
+				if files:
 					procount += 1
 					print colorize("WARN", " * IMPORTANT:"),
 					if stat.S_ISDIR(mymode):
