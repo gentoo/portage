@@ -1,6 +1,6 @@
 # Copyright 1998-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: output.py 4554 2006-09-29 02:10:29Z zmedico $
+# $Id$
 
 __docformat__ = "epytext"
 

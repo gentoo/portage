@@ -1,7 +1,7 @@
 # data.py -- Calculated/Discovered Data Values
 # Copyright 1998-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: $
+# $Id$
 
 import os, sys, pwd, grp
 from portage.util import writemsg

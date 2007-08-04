@@ -1,7 +1,7 @@
 #!@PYTHON@ -O
 # Copyright 1999-2006 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: $
+# $Id$
 
 import sys
 # This block ensures that ^C interrupts are handled quietly.

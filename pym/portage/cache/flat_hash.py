@@ -1,7 +1,7 @@
 # Copyright: 2005 Gentoo Foundation
 # Author(s): Brian Harring (ferringb@gentoo.org)
 # License: GPL2
-# $Id: flat_list.py 1911 2005-08-25 03:44:21Z ferringb $
+# $Id$
 
 from portage.cache import fs_template
 from portage.cache import cache_errors

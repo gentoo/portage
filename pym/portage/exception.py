@@ -1,6 +1,6 @@
 # Copyright 1998-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: portage_exception.py 3483 2006-06-10 21:40:40Z genone $
+# $Id$
 
 
 class PortageException(Exception):
