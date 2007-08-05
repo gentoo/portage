@@ -4480,7 +4480,6 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 	if myaction == "metadata":
 		print "skipping sync"
 		updatecache_flg = True
-		tmpservertimestampfile = None
 	elif syncuri[:8]=="rsync://":
 		if not os.path.exists("/usr/bin/rsync"):
 			print "!!! /usr/bin/rsync does not exist, so rsync support is disabled."
@@ -4595,9 +4594,6 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		# Real local timestamp file.
 		servertimestampfile = os.path.join(
 			myportdir, "metadata", "timestamp.chk")
-		# Temporary file for remote server timestamp comparison.
-		tmpservertimestampfile = os.path.join(
-			settings["PORTAGE_TMPDIR"], "timestamp.chk")
 
 		content = portage.util.grabfile(servertimestampfile)
 		mytimestamp = 0
@@ -4711,6 +4707,10 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			# connection attempt to an unresponsive server which rsync's
 			# --timeout option does not prevent.
 			if True:
+				# Temporary file for remote server timestamp comparison.
+				from tempfile import mkstemp
+				fd, tmpservertimestampfile = mkstemp()
+				os.close(fd)
 				mycommand = rsynccommand[:]
 				mycommand.append(dosyncuri.rstrip("/") + \
 					"/metadata/timestamp.chk")
