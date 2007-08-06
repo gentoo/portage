@@ -135,8 +135,6 @@ qahelp={
 	"digest.fail":"Digest does not match the specified local file",
 	"digest.stray":"Digest files that do not have a corresponding ebuild",
 	"digest.missing":"Digest files that are missing (ebuild exists, digest doesn't)",
-	"digest.disjointed":"Digests not added to cvs when the matching ebuild has been added",
-	"digest.notadded":"Digests that exist but have not been added to cvs",
 	"digest.unmatch":"Digests which are incomplete (please check if your USE/ARCH includes all files)",
 	"ebuild.invalidname":"Ebuild files with a non-parseable or syntactically incorrect name (or using 2.1 versioning extensions)",
 	"ebuild.namenomatch":"Ebuild files that do not have the same name as their parent directory",
@@ -207,8 +205,6 @@ qawarnings=[
 "ebuild.allmasked",
 "ebuild.nesteddie",
 "digest.assumed",
-"digest.notadded",
-"digest.disjointed",
 "digest.missing",
 "digestentry.unused",
 "DEPEND.badmasked","RDEPEND.badmasked","PDEPEND.badmasked",
@@ -910,14 +906,6 @@ for x in scanlist:
 			for y in filesdirlist:
 				if not y.startswith("digest-"):
 					continue
-				if y[7:] not in dadded:
-					#digest not added to cvs
-					stats["digest.notadded"]=stats["digest.notadded"]+1
-					fails["digest.notadded"].append(x+"/files/"+y)
-					if y[7:] in eadded:
-						stats["digest.disjointed"]=stats["digest.disjointed"]+1
-						fails["digest.disjointed"].append(x+"/files/"+y)
-						
 				if os.stat(checkdir+"/files/"+y)[0] & 0x0248:
 					stats["file.executable"] += 1
 					fails["file.executable"].append(x+"/files/"+y)
