@@ -247,7 +247,7 @@ def grabfile_package(myfilename, compatlevel=0, recursive=0):
 	pkgs=grabfile(myfilename, compatlevel, recursive=recursive)
 	for x in range(len(pkgs)-1, -1, -1):
 		pkg = pkgs[x]
-		if pkg[0] in  ["-","*"]: # -atom *pkg for packages file
+		if pkg[0] in '-*': # -atom *pkg for packages file
 			pkg = pkg[1:]
 		if not isvalidatom(pkg):
 			writemsg("--- Invalid atom in %s: %s\n" % (myfilename, pkgs[x]),
