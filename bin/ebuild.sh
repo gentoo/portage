@@ -900,7 +900,6 @@ dyn_compile() {
 		srcdir=${S}
 		cd "${S}"
 	else
-		eqawarn "QA Notice: Directory does not exist: S=\"${S}\""
 		cd "${WORKDIR}"
 	fi
 	#our custom version of libtool uses $S and $D to fix
@@ -961,7 +960,6 @@ dyn_test() {
 	if [ -d "${S}" ]; then
 		cd "${S}"
 	else
-		eqawarn "QA Notice: Directory does not exist: S=\"${S}\""
 		cd "${WORKDIR}"
 	fi
 	if ! hasq test $FEATURES && [ "${EBUILD_FORCE_TEST}" != "1" ]; then
@@ -1000,7 +998,6 @@ dyn_install() {
 	if [ -d "${S}" ]; then
 		cd "${S}"
 	else
-		eqawarn "QA Notice: Directory does not exist: S=\"${S}\""
 		cd "${WORKDIR}"
 	fi
 	vecho
