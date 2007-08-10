@@ -1507,15 +1507,15 @@ class config(object):
 			return
 
 		dir_mode_map = {
-			"tmp"             : (-1,          01777, 0),
-			"var/tmp"         : (-1,          01777, 0),
-			PRIVATE_PATH      : (portage_gid, 02750, 02),
+			EPREFIX_LSTRIP+"/tmp"      : (-1,          01777, 0),
+			EPREFIX_LSTRIP+"/var/tmp"  : (-1,          01777, 0),
+			PRIVATE_PATH               : (portage_gid, 02750, 02),
 			CACHE_PATH.lstrip(os.path.sep) : (portage_gid, 0755, 02)
 		}
 
 		for mypath, (gid, mode, modemask) in dir_mode_map.iteritems():
 			try:
-				mydir = normalize_path(os.path.join(self["ROOT"] + EPREFIX, mypath))
+				mydir = normalize_path(os.path.join(self["ROOT"], mypath))
 				portage.util.ensure_dirs(mydir, gid=gid, mode=mode, mask=modemask)
 			except portage.exception.PortageException, e:
 				writemsg("!!! Directory initialization failed: '%s'\n" % mydir,
