@@ -986,6 +986,7 @@ class config:
 
 		self.user_profile_dir = None
 		self.local_config = local_config
+		self._use_wildcards = False
 
 		if clone:
 			self.incrementals = copy.deepcopy(clone.incrementals)
@@ -1042,6 +1043,7 @@ class config:
 			self.dirVirtuals = copy.deepcopy(clone.dirVirtuals)
 			self.treeVirtuals = copy.deepcopy(clone.treeVirtuals)
 			self.features = copy.deepcopy(clone.features)
+			self._use_wildcards = copy.deepcopy(clone._use_wildcards)
 		else:
 
 			# backupenv is for calculated incremental variables.
@@ -1380,6 +1382,11 @@ class config:
 					if not self.pusedict.has_key(cp):
 						self.pusedict[cp] = {}
 					self.pusedict[cp][key] = pusedict[key]
+					if not self._use_wildcards:
+						for x in pusedict[key]:
+							if x.endswith("_*"):
+								self._use_wildcards = True
+								break
 
 				#package.keywords
 				pkgdict = grabdict_package(
@@ -1806,7 +1813,10 @@ class config:
 		self.configdict["pkg"]["USE"]    = self.puse[:] # this gets appended to USE
 		if iuse != self.configdict["pkg"].get("IUSE",""):
 			self.configdict["pkg"]["IUSE"] = iuse
-			has_changed = True
+			if self._use_wildcards:
+				# Without this conditional, regenerate() would be called
+				# *every* time.
+				has_changed = True
 		# CATEGORY is essential for doebuild calls
 		self.configdict["pkg"]["CATEGORY"] = mycpv.split("/")[0]
 		if has_changed:
@@ -2033,6 +2043,7 @@ class config:
 			has_wildcard = "*" in var_split
 			if has_wildcard:
 				var_split = [ x for x in var_split if x != "*" ]
+				self._use_wildcards = True
 			has_iuse = False
 			for x in iuse:
 				if x.startswith(prefix):
