@@ -42,7 +42,7 @@
 +# feature.  Note: you should also include -mabi=altivec flag if using this option.
  #
 -#CFLAGS="-O2 -pipe"
-+# -O3 for the most part seems ok but should be used with caution as
++# -O2 for the most part seems ok but should be used with caution as
 +# for instance app-editors/vim has problems if it is used. -O2 is a
 +# good selection.
 +#
