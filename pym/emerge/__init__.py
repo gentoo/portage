@@ -4232,28 +4232,43 @@ def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 		else:
 			portage.writemsg_stdout(" "+green("*")+" Regenerating GNU info directory index...\n")
 
+			dir_extensions = ("", ".gz", ".bz2")
 			icount=0
 			badcount=0
 			for inforoot in regen_infodirs:
 				if inforoot=='':
 					continue
-				for filename in ("dir", "dir.gz", "dir.bz2"):
-					file_path = os.path.join(inforoot, filename)
-					try:
-						os.rename(file_path, file_path + ".old")
-					except OSError, e:
-						if e.errno != errno.ENOENT:
-							raise
-						del e
 
 				if not os.path.isdir(inforoot):
 					continue
 				errmsg = ""
 				file_list = os.listdir(inforoot)
 				file_list.sort()
+				dir_file = os.path.join(inforoot, "dir")
+				moved_old_dir = False
+				processed_count = 0
 				for x in file_list:
-					if (x[0] == ".") or (x in ["dir","dir.old"]) or (os.path.isdir(inforoot+"/"+x)):
+					if x.startswith(".") or \
+						os.path.isdir(os.path.join(inforoot, x)):
 						continue
+					if x.startswith("dir"):
+						skip = False
+						for ext in dir_extensions:
+							if x == "dir" + ext:
+								skip = True
+								break
+						if skip:
+							continue
+					if processed_count == 0:
+						for ext in dir_extensions:
+							try:
+								os.rename(dir_file + ext, dir_file + ext + ".old")
+								moved_old_dir = True
+							except EnvironmentError, e:
+								if e.errno != errno.ENOENT:
+									raise
+								del e
+					processed_count += 1
 					myso=commands.getstatusoutput("LANG=C LANGUAGE=C /usr/bin/install-info --dir-file="+inforoot+"/dir "+inforoot+"/"+x)[1]
 					existsstr="already exists, for file `"
 					if myso!="":
@@ -4269,6 +4284,17 @@ def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 							badcount=badcount+1
 							errmsg += myso + "\n"
 					icount=icount+1
+
+				if moved_old_dir and not os.path.exists(dir_file):
+					# We didn't generate a new dir file, so put the old file
+					# back where it was originally found.
+					for ext in dir_extensions:
+						try:
+							os.rename(dir_file + ext + ".old", dir_file + ext)
+						except EnvironmentError, e:
+							if e.errno != errno.ENOENT:
+								raise
+							del e
 
 				#update mtime so we can potentially avoid regenerating.
 				prev_mtimes[inforoot] = long(os.stat(inforoot).st_mtime)
