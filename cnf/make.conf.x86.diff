@@ -79,8 +79,8 @@
 +# NOTE: the -On optimization levels are set with the letter O, not -0 (zero).
 +#
 +# Decent examples:
-+#CFLAGS="-mcpu=athlon-xp -O3 -pipe"
-+#CFLAGS="-march=pentium3 -O3 -pipe"
++#CFLAGS="-mcpu=athlon-xp -O2 -pipe"
++#CFLAGS="-march=pentium3 -O2 -pipe"
 +
  # If you set a CFLAGS above, then this line will set your default C++ flags to
  # the same settings.

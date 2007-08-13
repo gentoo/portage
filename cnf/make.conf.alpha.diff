@@ -33,8 +33,8 @@
  #
 +# Decent examples:
 +#
-+#CFLAGS="-mcpu=ev67 -O3 -pipe "
-+CFLAGS="-mcpu=ev5 -O3 -pipe "
++#CFLAGS="-mcpu=ev67 -O2 -pipe "
++CFLAGS="-mcpu=ev5 -O2 -pipe "
 +
  # If you set a CFLAGS above, then this line will set your default C++ flags to
  # the same settings.

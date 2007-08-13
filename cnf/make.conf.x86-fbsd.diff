@@ -48,8 +48,8 @@
  #
 +# Decent examples:
 +#
-+#CFLAGS="-mtune=athlon-xp -O3 -pipe"
-+#CFLAGS="-march=pentium3 -O3 -pipe"
++#CFLAGS="-mtune=athlon-xp -O2 -pipe"
++#CFLAGS="-march=pentium3 -O2 -pipe"
 +
  # If you set a CFLAGS above, then this line will set your default C++ flags to
  # the same settings.

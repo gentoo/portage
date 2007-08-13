@@ -48,8 +48,8 @@
 +#
 +# Decent examples:
 +#
-+#CFLAGS="-mcpu=supersparc -O3 -pipe"
-+#CFLAGS="-mcpu=ultrasparc -O3 -pipe"
++#CFLAGS="-mcpu=supersparc -O2 -pipe"
++#CFLAGS="-mcpu=ultrasparc -O2 -pipe"
 +#CFLAGS="-mcpu=v8 -mtune=v9 -O2 -pipe"
 +
  # If you set a CFLAGS above, then this line will set your default C++ flags to
