@@ -35,7 +35,7 @@
 +# example, -march=xscale code will not run on a StrongARM 11x0, and
 +# -march=strongarm110 code will not run on a regular StrongARM).
 +#
-+# Don't use -O2.  Even -O2 may be risky in some cases.
++# Don't use -O3.  Even -O2 may be risky in some cases.
 +#
 +# For a full listing of supported CPU models, please refer to the GCC website:
 +# http://gcc.gnu.org/onlinedocs/gcc-3.3/gcc/ARM-Options.html
