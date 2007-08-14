@@ -2185,9 +2185,6 @@ class depgraph(object):
 			self._altlist_cache[reversed] = retlist[:]
 			return retlist
 		mygraph=self.digraph.copy()
-		for node in mygraph.order[:]:
-			if node[-1] == "nomerge":
-				mygraph.remove(node)
 		self._merge_order_bias(mygraph)
 		myblockers = self.blocker_digraph.copy()
 		retlist=[]
@@ -2379,7 +2376,8 @@ class depgraph(object):
 			prefer_asap = True
 
 			for node in selected_nodes:
-				retlist.append(list(node))
+				if node[-1] != "nomerge":
+					retlist.append(list(node))
 				mygraph.remove(node)
 				if not reversed and not circular_blocks and myblockers.contains(node):
 					"""This node may have invalidated one or more blockers."""
