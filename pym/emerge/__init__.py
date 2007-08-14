@@ -4252,7 +4252,8 @@ def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 					if x.startswith("dir"):
 						skip = False
 						for ext in dir_extensions:
-							if x == "dir" + ext:
+							if x == "dir" + ext or \
+								x == "dir" + ext + ".old":
 								skip = True
 								break
 						if skip:
