@@ -696,11 +696,11 @@ class DepPriority(object):
 		SOFT     The upper boundary for soft dependencies.
 		MIN      The lower boundary for soft dependencies.
 	"""
-	__slots__ = ("__weakref__", "satisfied", "buildtime", "runtime", "runtime_post")
+	__slots__ = ("__weakref__", "satisfied", "buildtime", "runtime", "runtime_post", "rebuild")
 	MEDIUM = -1
 	MEDIUM_SOFT = -2
 	SOFT   = -3
-	MIN    = -5
+	MIN    = -6
 	def __init__(self, **kwargs):
 		for myattr in self.__slots__:
 			if myattr == "__weakref__":
@@ -715,13 +715,15 @@ class DepPriority(object):
 				return -1
 			if self.runtime_post:
 				return -2
-		if self.buildtime:
+		if self.rebuild:
 			return -3
-		if self.runtime:
+		if self.buildtime:
 			return -4
-		if self.runtime_post:
+		if self.runtime:
 			return -5
-		return -5
+		if self.runtime_post:
+			return -6
+		return -6
 	def __lt__(self, other):
 		return self.__int__() < other
 	def __le__(self, other):
@@ -1162,24 +1164,7 @@ class depgraph(object):
 		#"no downgrade" emerge
 		"""
 		mytype, myroot, mykey = mybigkey
-		existing_node = None
-		if addme:
-			existing_node = self.pkg_node_map[myroot].get(mykey)
-		if existing_node:
-			self._parent_child_digraph.add(existing_node, myparent)
-			if existing_node != myparent:
-				# Refuse to make a node depend on itself so that the we don't
-				# don't create a bogus circular dependency in self.altlist().
-				if rev_dep and myparent:
-					self.digraph.addnode(myparent, existing_node,
-						priority=priority)
-				else:
-					self.digraph.addnode(existing_node, myparent,
-						priority=priority)
-			return 1
-		
-		if "--nodeps" not in self.myopts:
-			self.spinner.update()
+
 		if mytype == "blocks":
 			if myparent and \
 				"--buildpkgonly" not in self.myopts and \
@@ -1220,6 +1205,36 @@ class depgraph(object):
 						metadata["PROVIDE"], str(e))
 					return 0
 				del e
+
+		# normal arg, not system or world
+		if arg and len(self._sets) == 1 and \
+			"selective" not in self.myparams:
+			# For revdep-rebuild, dependencies on packages specified as
+			# arguments are given higher priority since the currently
+			# installed version has been rendered useless by ABI breakage.
+			# It's okay to increase the priority here even if the caller
+			# is not revdep-rebuild.
+			if priority.satisfied:
+				priority.rebuild = True
+
+		existing_node = None
+		if addme:
+			existing_node = self.pkg_node_map[myroot].get(mykey)
+		if existing_node:
+			self._parent_child_digraph.add(existing_node, myparent)
+			if existing_node != myparent:
+				# Refuse to make a node depend on itself so that the we don't
+				# don't create a bogus circular dependency in self.altlist().
+				if rev_dep and myparent:
+					self.digraph.addnode(myparent, existing_node,
+						priority=priority)
+				else:
+					self.digraph.addnode(existing_node, myparent,
+						priority=priority)
+			return 1
+		
+		if "--nodeps" not in self.myopts:
+			self.spinner.update()
 
 		reinstall_for_flags = None
 		merging=1
