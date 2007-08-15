@@ -17,15 +17,14 @@
  # Host and optimization settings 
  # ==============================
  #
-@@ -33,10 +43,34 @@
+@@ -33,10 +42,34 @@
  # package (and in some cases the libraries it uses) at default optimizations
  # before reporting errors to developers.
  #
 -# Please refer to the GCC manual for a list of possible values.
 +# -mtune=<cpu-type> means optimize code for the particular type of CPU without
 +# breaking compatibility with other CPUs.
- #
--#CFLAGS="-O2 -pipe"
++#
 +# -march=<cpu-type> means to take full advantage of the ABI and instructions
 +# for the particular CPU; this will break compatibility with older CPUs (for
 +# example, -march=athlon-xp code will not run on a regular Athlon, and
@@ -46,15 +45,16 @@
 +# Pentium-M CPU's should not enable sse2 until at least gcc-3.4. Bug 50616. #
 +# ************************************************************************* #
  #
+-#CFLAGS="-O2 -pipe"
 +# Decent examples:
-+#
-+#CFLAGS="-mtune=athlon-xp -O3 -pipe"
-+#CFLAGS="-march=pentium3 -O3 -pipe"
+ #
++#CFLAGS="-mtune=athlon-xp -O2 -pipe"
++#CFLAGS="-march=pentium3 -O2 -pipe"
 +
  # If you set a CFLAGS above, then this line will set your default C++ flags to
  # the same settings.
  #CXXFLAGS="${CFLAGS}"
-@@ -61,7 +95,7 @@
+@@ -61,7 +80,7 @@
  # DO NOT PUT ANYTHING BUT YOUR SPECIFIC ~ARCHITECTURE IN THE LIST.
  # IF YOU ARE UNSURE OF YOUR ARCH, OR THE IMPLICATIONS, DO NOT MODIFY THIS.
  #
@@ -63,13 +63,12 @@
  
  # Portage Directories
  # ===================
-@@ -279,7 +313,8 @@
+@@ -268,7 +289,8 @@
  #  'notitles'    disables xterm titlebar updates (which contain status info). 
  #  'parallel-fetch'
  #                do fetching in parallel to compilation
 -#  'sandbox'     enables sandboxing when running emerge and ebuild.
 +#  'sandbox'     enables sandboxing when running emerge and ebuild. Doesn't 
 +#                work on *BSD-based systems.
- #  'splitdebug'  Prior to stripping ELF etdyn and etexec files, the debugging
- #                info is stored for later use by various debuggers.  This
- #                feature is disabled by 'nostrip'.  For installation of source
+ #  'strict'      causes portage to react strongly to conditions that are
+ #                potentially dangerous, like missing/incorrect Manifest files.

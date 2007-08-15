@@ -55,7 +55,7 @@
 +# all G3 and pre machines.  (note it will not hurt pre G3 machines either to 
 +# use this mcpu option as it is the default for gcc 3.2.x anyway)
 +#
-+#CFLAGS="-O3 -pipe -mcpu=G3 -fno-strict-aliasing"
++#CFLAGS="-O2 -pipe -mcpu=G3 -fno-strict-aliasing"
 +
 +# Recommended settings for GCC 2.95.3 only (Gentoo 1.2 or older):
 +#
