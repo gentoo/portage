@@ -5,4 +5,6 @@
 
 /var/log/portage/elog/summary.log {
     missingok
+    nocreate
+    delaycompress
 }

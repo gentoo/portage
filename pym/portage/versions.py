@@ -99,8 +99,17 @@ def vercmp(ver1, ver2, silent=1):
 				list2.append(int(vlist2[i]))
 			# now we have to use floats so 1.02 compares correctly against 1.1
 			else:
-				list1.append(float("0."+vlist1[i]))
-				list2.append(float("0."+vlist2[i]))
+				# list1.append(float("0."+vlist1[i]))
+				# list2.append(float("0."+vlist2[i]))
+				# Since python floats have limited range, we multiply both
+				# floating point representations by a constant so that they are
+				# transformed into whole numbers. This allows the practically
+				# infinite range of a python int to be exploited. The
+				# multiplication is done by padding both literal strings with
+				# zeros as necessary to ensure equal length.
+				max_len = max(len(vlist1[i]), len(vlist2[i]))
+				list1.append(int(vlist1[i].ljust(max_len, "0")))
+				list2.append(int(vlist2[i].ljust(max_len, "0")))
 
 	# and now the final letter
 	if len(match1.group(5)):
