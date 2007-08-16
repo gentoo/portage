@@ -265,12 +265,11 @@ sure the result is what you expect.
 .TP
 .BR "\-\-fetchonly " (\fB\-f\fR)
 Instead of doing any package building, just perform fetches for all
-packages (the main package as well as all dependencies).
+packages (fetch things from SRC_URI based upon USE setting).
 .TP
 .BR "\-\-fetch\-all\-uri " (\fB\-F\fR)
 Instead of doing any package building, just perform fetches for all
-packages (the main package as well as all dependencies), grabbing all potential
-files.
+packages (fetch everything in SRC_URI irregardless of USE setting).
 .TP
 .BR "\-\-getbinpkg " (\fB\-g\fR)
 Using the server and location defined in \fIPORTAGE_BINHOST\fR (see 
