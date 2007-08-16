@@ -1211,10 +1211,6 @@ class depgraph(object):
 					return 0
 				del e
 
-		existing_node = None
-		if addme:
-			existing_node = self.pkg_node_map[myroot].get(mykey)
-
 		if "--nodeps" not in self.myopts:
 			self.spinner.update()
 
@@ -1266,6 +1262,19 @@ class depgraph(object):
 					mydbapi.aux_get(mykey, self._mydbapi_keys)))
 				myuse = metadata["USE"].split()
 			slot_atom = "%s:%s" % (portage.dep_getkey(mykey), metadata["SLOT"])
+			if merging and \
+				"empty" not in self.myparams and \
+				vardbapi.match(slot_atom):
+				# Increase the priority of dependencies on packages that
+				# are being rebuilt. This optimizes merge order so that
+				# dependencies are rebuilt/updated as soon as possible,
+				# which is needed especially when emerge is called by
+				# revdep-rebuild since dependencies may be affected by ABI
+				# breakage that has rendered them useless. Don't adjust
+				# priority here when in "empty" mode since all packages
+				# are being merged in that case.
+				priority.rebuild = True
+
 			existing_node = self._slot_node_map[myroot].get(
 				slot_atom, None)
 			slot_collision = False
@@ -1282,6 +1291,8 @@ class depgraph(object):
 							priority=priority)
 					return 1
 				else:
+					if jbigkey in self._slot_collision_nodes:
+						return 1
 					# A slot collision has occurred.  Sometimes this coincides
 					# with unresolvable blockers, so the slot collision will be
 					# shown later if there are no unresolvable blockers.
@@ -1314,19 +1325,6 @@ class depgraph(object):
 				if reinstall_for_flags:
 					self._reinstall_nodes[jbigkey] = reinstall_for_flags
 
-			if merging and \
-				"empty" not in self.myparams and \
-				vardbapi.match(slot_atom):
-				# Increase the priority of dependencies on packages that
-				# are being rebuilt. This optimizes merge order so that
-				# dependencies are rebuilt/updated as soon as possible,
-				# which is needed especially when emerge is called by
-				# revdep-rebuild since dependencies may be affected by ABI
-				# breakage that has rendered them useless. Don't adjust
-				# priority here when in "empty" mode since all packages
-				# are being merged in that case.
-				priority.rebuild = True
-
 			if rev_dep and myparent:
 				self.digraph.addnode(myparent, jbigkey,
 					priority=priority)
@@ -1352,9 +1350,6 @@ class depgraph(object):
 			not ("--update" in self.myopts and arg and merging):
 			return 1
 		elif "recurse" not in self.myparams:
-			return 1
-
-		if existing_node:
 			return 1
 
 		""" Check DEPEND/RDEPEND/PDEPEND/SLOT
