@@ -1288,17 +1288,6 @@ class depgraph:
 					return 0
 				del e
 
-		# normal arg, not system or world
-		if arg and len(self._sets) == 1 and \
-			"selective" not in self.myparams:
-			# For revdep-rebuild, dependencies on packages specified as
-			# arguments are given higher priority since the currently
-			# installed version has been rendered useless by ABI breakage.
-			# It's okay to increase the priority here even if the caller
-			# is not revdep-rebuild.
-			if priority.satisfied:
-				priority.rebuild = True
-
 		existing_node = None
 		if addme:
 			existing_node = self.pkg_node_map[myroot].get(mykey)
@@ -1414,6 +1403,19 @@ class depgraph:
 				self.pkg_node_map[myroot][mykey] = jbigkey
 				if reinstall_for_flags:
 					self._reinstall_nodes[jbigkey] = reinstall_for_flags
+
+			if merging and \
+				"empty" not in self.myparams and \
+				vardbapi.match(slot_atom):
+				# Increase the priority of dependencies on packages that
+				# are being rebuilt. This optimizes merge order so that
+				# dependencies are rebuilt/updated as soon as possible,
+				# which is needed especially when emerge is called by
+				# revdep-rebuild since dependencies may be affected by ABI
+				# breakage that has rendered them useless. Don't adjust
+				# priority here when in "empty" mode since all packages
+				# are being merged in that case.
+				priority.rebuild = True
 
 			if rev_dep and myparent:
 				self.digraph.addnode(myparent, jbigkey,
