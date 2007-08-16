@@ -1069,7 +1069,6 @@ class depgraph:
 
 		# unused parameters
 		rev_dep = False
-		myuse = None
 
 		mytype, myroot, mykey = mybigkey
 
