@@ -1163,6 +1163,11 @@ class depgraph(object):
 		#IUSE-aware emerge -> USE DEP aware depgraph
 		#"no downgrade" emerge
 		"""
+
+		# unused parameters
+		rev_dep = False
+		myuse = None
+
 		mytype, myroot, mykey = mybigkey
 
 		if mytype == "blocks":
@@ -1209,19 +1214,7 @@ class depgraph(object):
 		existing_node = None
 		if addme:
 			existing_node = self.pkg_node_map[myroot].get(mykey)
-		if existing_node:
-			self._parent_child_digraph.add(existing_node, myparent)
-			if existing_node != myparent:
-				# Refuse to make a node depend on itself so that the we don't
-				# don't create a bogus circular dependency in self.altlist().
-				if rev_dep and myparent:
-					self.digraph.addnode(myparent, existing_node,
-						priority=priority)
-				else:
-					self.digraph.addnode(existing_node, myparent,
-						priority=priority)
-			return 1
-		
+
 		if "--nodeps" not in self.myopts:
 			self.spinner.update()
 
@@ -1280,12 +1273,11 @@ class depgraph(object):
 				e_type, myroot, e_cpv, e_status = existing_node
 				if mykey == e_cpv:
 					# The existing node can be reused.
-					self._parent_child_digraph.add(existing_node, myparent)
-					if rev_dep and myparent:
-						ptype, proot, pkey, pstatus = myparent
-						self.digraph.addnode(myparent, existing_node,
-							priority=priority)
-					else:
+					if existing_node != myparent:
+						# Refuse to make a node depend on itself so that
+						# we don't create a bogus circular dependency
+						# in self.altlist().
+						self._parent_child_digraph.add(existing_node, myparent)
 						self.digraph.addnode(existing_node, myparent,
 							priority=priority)
 					return 1
@@ -1360,6 +1352,9 @@ class depgraph(object):
 			not ("--update" in self.myopts and arg and merging):
 			return 1
 		elif "recurse" not in self.myparams:
+			return 1
+
+		if existing_node:
 			return 1
 
 		""" Check DEPEND/RDEPEND/PDEPEND/SLOT
