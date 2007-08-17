@@ -60,12 +60,12 @@ install_qa_check() {
 
 	if type -P scanelf > /dev/null && ! hasq binchecks ${RESTRICT}; then
 		local qa_var insecure_rpath=0 tmp_quiet=${PORTAGE_QUIET}
-		
+
 		# display warnings when using stricter because we die afterwards
 		if has stricter ${FEATURES} ; then
 			unset PORTAGE_QUIET
 		fi
-		
+
 		# Make sure we disallow insecure RUNPATH/RPATH's
 		# Don't want paths that point to the tree where the package was built
 		# (older, broken libtools would do this).  Also check for null paths
@@ -94,7 +94,7 @@ install_qa_check() {
 		qa_var="QA_TEXTRELS_${ARCH/-/_}"
 		[[ -n ${!qa_var} ]] && QA_TEXTRELS=${!qa_var}
 		[[ -n ${QA_STRICT_TEXTRELS} ]] && QA_TEXTRELS=""
-		export QA_TEXTRELS
+		export QA_TEXTRELS="${QA_TEXTRELS} lib*/modules/*.ko"
 		f=$(scanelf -qyRF '%t %p' "${D}" | grep -v 'usr/lib/debug/')
 		if [[ -n ${f} ]] ; then
 			scanelf -qyRF '%T %p' "${PORTAGE_BUILDDIR}"/ &> "${T}"/scanelf-textrel.log
@@ -134,7 +134,8 @@ install_qa_check() {
 					qa_var="QA_WX_LOAD_${ARCH/-/_}"
 					[[ -n ${!qa_var} ]] && QA_WX_LOAD=${!qa_var}
 					[[ -n ${QA_STRICT_WX_LOAD} ]] && QA_WX_LOAD=""
-					export QA_EXECSTACK QA_WX_LOAD
+					export QA_EXECSTACK="${QA_EXECSTACK} lib*/modules/*.ko"
+					export QA_WX_LOAD="${QA_WX_LOAD} lib*/modules/*.ko"
 					f=$(scanelf -qyRF '%e %p' "${D}" | grep -v 'usr/lib/debug/')
 					;;
 			esac
