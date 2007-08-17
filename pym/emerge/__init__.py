@@ -4140,12 +4140,14 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 			if "--quiet" not in myopts:
 				portage.writemsg_stdout((mytype + ": ").rjust(14), noiselevel=-1)
 			if pkgmap[x][mytype]:
-				for mypkg in pkgmap[x][mytype]:
-					mysplit=portage.catpkgsplit(mypkg)
-					if mysplit[3]=="r0":
-						myversion=mysplit[2]
+				sorted_pkgs = [portage.catpkgsplit(mypkg)[1:] \
+					for mypkg in pkgmap[x][mytype]]
+				sorted_pkgs.sort(portage.pkgcmp)
+				for pn, ver, rev in sorted_pkgs:
+					if rev == "r0":
+						myversion = ver
 					else:
-						myversion=mysplit[2]+"-"+mysplit[3]
+						myversion = ver + "-" + rev
 					if mytype=="selected":
 						portage.writemsg_stdout(
 							colorize("UNMERGE_WARN", myversion + " "), noiselevel=-1)
