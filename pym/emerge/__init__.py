@@ -1164,6 +1164,11 @@ class depgraph(object):
 		#IUSE-aware emerge -> USE DEP aware depgraph
 		#"no downgrade" emerge
 		"""
+
+		# unused parameters
+		rev_dep = False
+		myuse = None
+
 		mytype, myroot, mykey = mybigkey
 
 		if mytype == "blocks":
@@ -1207,33 +1212,6 @@ class depgraph(object):
 					return 0
 				del e
 
-		# normal arg, not system or world
-		if arg and len(self._sets) == 1 and \
-			"selective" not in self.myparams:
-			# For revdep-rebuild, dependencies on packages specified as
-			# arguments are given higher priority since the currently
-			# installed version has been rendered useless by ABI breakage.
-			# It's okay to increase the priority here even if the caller
-			# is not revdep-rebuild.
-			if priority.satisfied:
-				priority.rebuild = True
-
-		existing_node = None
-		if addme:
-			existing_node = self.pkg_node_map[myroot].get(mykey)
-		if existing_node:
-			self._parent_child_digraph.add(existing_node, myparent)
-			if existing_node != myparent:
-				# Refuse to make a node depend on itself so that the we don't
-				# don't create a bogus circular dependency in self.altlist().
-				if rev_dep and myparent:
-					self.digraph.addnode(myparent, existing_node,
-						priority=priority)
-				else:
-					self.digraph.addnode(existing_node, myparent,
-						priority=priority)
-			return 1
-		
 		if "--nodeps" not in self.myopts:
 			self.spinner.update()
 
@@ -1285,6 +1263,19 @@ class depgraph(object):
 					mydbapi.aux_get(mykey, self._mydbapi_keys)))
 				myuse = metadata["USE"].split()
 			slot_atom = "%s:%s" % (portage.dep_getkey(mykey), metadata["SLOT"])
+			if merging and \
+				"empty" not in self.myparams and \
+				vardbapi.match(slot_atom):
+				# Increase the priority of dependencies on packages that
+				# are being rebuilt. This optimizes merge order so that
+				# dependencies are rebuilt/updated as soon as possible,
+				# which is needed especially when emerge is called by
+				# revdep-rebuild since dependencies may be affected by ABI
+				# breakage that has rendered them useless. Don't adjust
+				# priority here when in "empty" mode since all packages
+				# are being merged in that case.
+				priority.rebuild = True
+
 			existing_node = self._slot_node_map[myroot].get(
 				slot_atom, None)
 			slot_collision = False
@@ -1292,16 +1283,17 @@ class depgraph(object):
 				e_type, myroot, e_cpv, e_status = existing_node
 				if mykey == e_cpv:
 					# The existing node can be reused.
-					self._parent_child_digraph.add(existing_node, myparent)
-					if rev_dep and myparent:
-						ptype, proot, pkey, pstatus = myparent
-						self.digraph.addnode(myparent, existing_node,
-							priority=priority)
-					else:
+					if existing_node != myparent:
+						# Refuse to make a node depend on itself so that
+						# we don't create a bogus circular dependency
+						# in self.altlist().
+						self._parent_child_digraph.add(existing_node, myparent)
 						self.digraph.addnode(existing_node, myparent,
 							priority=priority)
 					return 1
 				else:
+					if jbigkey in self._slot_collision_nodes:
+						return 1
 					# A slot collision has occurred.  Sometimes this coincides
 					# with unresolvable blockers, so the slot collision will be
 					# shown later if there are no unresolvable blockers.
@@ -4149,12 +4141,14 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 			if "--quiet" not in myopts:
 				portage.writemsg_stdout((mytype + ": ").rjust(14), noiselevel=-1)
 			if pkgmap[x][mytype]:
-				for mypkg in pkgmap[x][mytype]:
-					mysplit=portage.catpkgsplit(mypkg)
-					if mysplit[3]=="r0":
-						myversion=mysplit[2]
+				sorted_pkgs = [portage.catpkgsplit(mypkg)[1:] \
+					for mypkg in pkgmap[x][mytype]]
+				sorted_pkgs.sort(portage.pkgcmp)
+				for pn, ver, rev in sorted_pkgs:
+					if rev == "r0":
+						myversion = ver
 					else:
-						myversion=mysplit[2]+"-"+mysplit[3]
+						myversion = ver + "-" + rev
 					if mytype=="selected":
 						portage.writemsg_stdout(
 							colorize("UNMERGE_WARN", myversion + " "), noiselevel=-1)
