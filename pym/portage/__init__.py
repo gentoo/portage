@@ -1576,7 +1576,9 @@ class config(object):
 			writemsg("--- 'profiles/arch.list' is empty or not available. Empty portage tree?\n")
 		else:
 			for group in groups:
-				if group not in archlist and group[0] != '-':
+				if group not in archlist and \
+					not (group.startswith("-") and group[1:] in archlist) and \
+					group != "**":
 					writemsg("!!! INVALID ACCEPT_KEYWORDS: %s\n" % str(group),
 						noiselevel=-1)
 
