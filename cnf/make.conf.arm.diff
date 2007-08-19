@@ -20,7 +20,7 @@
  # Host and optimization settings 
  # ==============================
  #
-@@ -33,10 +46,24 @@
+@@ -33,10 +46,22 @@
  # package (and in some cases the libraries it uses) at default optimizations
  # before reporting errors to developers.
  #
@@ -34,8 +34,6 @@
 +# for the particular CPU; this will break compatibility with older CPUs (for
 +# example, -march=xscale code will not run on a StrongARM 11x0, and
 +# -march=strongarm110 code will not run on a regular StrongARM).
-+#
-+# Don't use -O3.  Even -O2 may be risky in some cases.
 +#
 +# For a full listing of supported CPU models, please refer to the GCC website:
 +# http://gcc.gnu.org/onlinedocs/gcc-3.3/gcc/ARM-Options.html
