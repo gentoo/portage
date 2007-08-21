@@ -5136,12 +5136,19 @@ def action_info(settings, trees, myopts, myfiles):
 		print header_title.rjust(int(header_width/2 + len(header_title)/2))
 	print header_width * "="
 	print "System uname: "+unameout
-	gentoo_release = portage.grabfile(os.path.join(
-		settings["PORTAGE_CONFIGROOT"], "etc", "gentoo-release"))
-	if gentoo_release:
-		print gentoo_release[0]
-	else:
+
+	files = ('gentoo-release', 'redhat-release', 'lsb-release')
+	os_found = False
+	for f in files:
+		path = os.path.join(settings["ROOT"], '/etc/', f)
+		if os.path.exists(path):
+			lines = open(path).readlines()
+			map(writemsg, lines)
+			os_found = True
+			break
+	if not os_found:
 		print "Unknown Host Operating System"
+
 	lastSync = portage.grabfile(os.path.join(
 		settings["PORTDIR"], "metadata", "timestamp.chk"))
 	print "Timestamp of tree:",
