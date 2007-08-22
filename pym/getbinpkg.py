@@ -458,13 +458,15 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 		makepickle = "/var/cache/edb/metadata.idx.most_recent"
 
 	conn,protocol,address,params,headers = create_conn(baseurl, conn)
+	out = sys.stdout
 
 	filedict = {}
 
 	try:
 		metadatafile = open("/var/cache/edb/remote_metadata.pickle")
 		metadata = cPickle.load(metadatafile)
-		sys.stderr.write("Loaded metadata pickle.\n")
+		out.write("Loaded metadata pickle.\n")
+		out.flush()
 		metadatafile.close()
 	except (cPickle.UnpicklingError, OSError, IOError, EOFError):
 		metadata = {}
@@ -505,10 +507,12 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 					sys.stderr.write("--- "+str(e)+"\n")
 					if trynum < 3:
 						sys.stderr.write("Retrying...\n")
+					sys.stderr.flush()
 					mytempfile.close()
 					continue
 				if match_in_array([mfile],suffix=".gz"):
-					sys.stderr.write("gzip'd\n")
+					out.write("gzip'd\n")
+					out.flush()
 					try:
 						import gzip
 						mytempfile.seek(0)
@@ -519,6 +523,7 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 					except Exception, e:
 						mytempfile.close()
 						sys.stderr.write("!!! Failed to use gzip: "+str(e)+"\n")
+						sys.stderr.flush()
 					mytempfile.close()
 				try:
 					metadata[baseurl]["data"] = cPickle.loads(data)
@@ -526,13 +531,15 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 					metadata[baseurl]["indexname"] = mfile
 					metadata[baseurl]["timestamp"] = int(time.time())
 					metadata[baseurl]["modified"]  = 0 # It's not, right after download.
-					sys.stderr.write("Pickle loaded.\n")
+					out.write("Pickle loaded.\n")
+					out.flush()
 					break
 				except SystemExit, e:
 					raise
 				except Exception, e:
 					sys.stderr.write("!!! Failed to read data from index: "+str(mfile)+"\n")
 					sys.stderr.write("!!! "+str(e)+"\n")
+					sys.stderr.flush()
 			try:
 				metadatafile = open("/var/cache/edb/remote_metadata.pickle", "w+")
 				cPickle.dump(metadata,metadatafile)
@@ -542,19 +549,21 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 			except Exception, e:
 				sys.stderr.write("!!! Failed to write binary metadata to disk!\n")
 				sys.stderr.write("!!! "+str(e)+"\n")
+				sys.stderr.flush()
 			break
 	# We may have metadata... now we run through the tbz2 list and check.
 	ext_miss = 0
 	ext_hit = 0
-	sys.stderr.write(yellow("cache miss: '"+str(ext_miss)+"'")+" --- "+green("cache hit: '"+str(ext_hit)+"'"))
+	out.write(yellow("cache miss: '"+str(ext_miss)+"'")+" --- "+green("cache hit: '"+str(ext_hit)+"'"))
+	out.flush()
 	binpkg_filenames = set()
 	for x in tbz2list:
 		x = os.path.basename(x)
 		binpkg_filenames.add(x)
 		if x not in metadata[baseurl]["data"]:
 			ext_miss += 1
-			sys.stderr.write("\r"+yellow("cache miss: '"+str(ext_miss)+"'")+" --- "+green("cache hit: '"+str(ext_hit)+"'"))
-			sys.stderr.flush()
+			out.write("\r"+yellow("cache miss: '"+str(ext_miss)+"'")+" --- "+green("cache hit: '"+str(ext_hit)+"'"))
+			out.flush()
 			metadata[baseurl]["modified"] = 1
 			myid = None
 			for retry in xrange(3):
@@ -575,10 +584,11 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 				metadata[baseurl]["data"][x] = make_metadata_dict(myid)
 			elif verbose:
 				sys.stderr.write(red("!!! Failed to retrieve metadata on: ")+str(x)+"\n")
+				sys.stderr.flush()
 		else:
 			ext_hit += 1
-			sys.stderr.write("\r"+yellow("cache miss: '"+str(ext_miss)+"'")+" --- "+green("cache hit: '"+str(ext_hit)+"'"))
-			sys.stderr.flush()
+			out.write("\r"+yellow("cache miss: '"+str(ext_miss)+"'")+" --- "+green("cache hit: '"+str(ext_hit)+"'"))
+			out.flush()
 	# Cleanse stale cache for files that don't exist on the server anymore.
 	stale_cache = set(metadata[baseurl]["data"]).difference(binpkg_filenames)
 	if stale_cache:
@@ -587,8 +597,9 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 		metadata[baseurl]["modified"] = 1
 	del stale_cache
 	del binpkg_filenames
-	sys.stderr.write("\n")
-	
+	out.write("\n")
+	out.flush()
+
 	try:
 		if metadata[baseurl].has_key("modified") and metadata[baseurl]["modified"]:
 			metadata[baseurl]["timestamp"] = int(time.time())
@@ -604,6 +615,7 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 	except Exception, e:
 		sys.stderr.write("!!! Failed to write binary metadata to disk!\n")
 		sys.stderr.write("!!! "+str(e)+"\n")
+		sys.stderr.flush()
 
 	if not keepconnection:
 		conn.close()
