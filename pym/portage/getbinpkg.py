@@ -548,18 +548,37 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 				sys.stderr.flush()
 			break
 	# We may have metadata... now we run through the tbz2 list and check.
-	ext_miss = 0
-	ext_hit = 0
-	out.write(yellow("cache miss: '"+str(ext_miss)+"'")+" --- "+green("cache hit: '"+str(ext_hit)+"'"))
-	out.flush()
+
+	class CacheStats(object):
+		from time import time
+		def __init__(self, out):
+			self.misses = 0
+			self.hits = 0
+			self.last_update = 0
+			self.out = out
+			self.min_display_latency = 0.2
+		def update(self):
+			cur_time = self.time()
+			if cur_time - self.last_update >= self.min_display_latency:
+				self.last_update = cur_time
+				self.display()
+		def display(self):
+			self.out.write("\r"+yellow("cache miss: '"+str(self.misses)+"'")+\
+				" --- "+green("cache hit: '"+str(self.hits)+"'"))
+			self.out.flush()
+
+	cache_stats = CacheStats(out)
+	have_tty = out.isatty()
+	if have_tty:
+		cache_stats.display()
 	binpkg_filenames = set()
 	for x in tbz2list:
 		x = os.path.basename(x)
 		binpkg_filenames.add(x)
 		if x not in metadata[baseurl]["data"]:
-			ext_miss += 1
-			out.write("\r"+yellow("cache miss: '"+str(ext_miss)+"'")+" --- "+green("cache hit: '"+str(ext_hit)+"'"))
-			out.flush()
+			cache_stats.misses += 1
+			if have_tty:
+				cache_stats.update()
 			metadata[baseurl]["modified"] = 1
 			myid = None
 			for retry in xrange(3):
@@ -582,9 +601,10 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 				sys.stderr.write(red("!!! Failed to retrieve metadata on: ")+str(x)+"\n")
 				sys.stderr.flush()
 		else:
-			ext_hit += 1
-			out.write("\r"+yellow("cache miss: '"+str(ext_miss)+"'")+" --- "+green("cache hit: '"+str(ext_hit)+"'"))
-			out.flush()
+			cache_stats.hits += 1
+			if have_tty:
+				cache_stats.update()
+	cache_stats.display()
 	# Cleanse stale cache for files that don't exist on the server anymore.
 	stale_cache = set(metadata[baseurl]["data"]).difference(binpkg_filenames)
 	if stale_cache:
