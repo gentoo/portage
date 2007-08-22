@@ -8,7 +8,8 @@ from portage_util import ConfigProtect, grabfile, new_protect_filename, \
 	normalize_path, write_atomic, writemsg
 from portage_exception import DirectoryNotFound, PortageException
 from portage_versions import ververify
-from portage_dep import dep_getkey, get_operator, isvalidatom, isjustname
+from portage_dep import dep_getkey, get_operator, isvalidatom, isjustname, \
+	remove_slot
 from portage_const import USER_CONFIG_PATH, WORLD_FILE
 
 ignored_dbentries = ("CONTENTS", "environment.bz2")
@@ -20,7 +21,11 @@ def update_dbentry(update_cmd, mycontent):
 			old_value = re.escape(old_value);
 			mycontent = re.sub(old_value+"(:|$|\\s)", new_value+"\\1", mycontent)
 			def myreplace(matchobj):
-				if ververify(matchobj.group(2)):
+				# Strip slot and * operator if necessary
+				# so that ververify works.
+				ver = remove_slot(matchobj.group(2))
+				ver = ver.rstrip("*")
+				if ververify(ver):
 					return "%s-%s" % (new_value, matchobj.group(2))
 				else:
 					return "".join(matchobj.groups())
