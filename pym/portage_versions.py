@@ -311,10 +311,10 @@ def catsplit(mydep):
 
 def best(mymatches):
 	"""Accepts None arguments; assumes matches are valid."""
-	if mymatches is None:
+	if not mymatches:
 		return ""
-	if not len(mymatches):
-		return ""
+	if len(mymatches) == 1:
+		return mymatches[0]
 	bestmatch = mymatches[0]
 	p2 = catpkgsplit(bestmatch)[1:]
 	for x in mymatches[1:]:
