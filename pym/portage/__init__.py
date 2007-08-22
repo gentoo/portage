@@ -3240,7 +3240,8 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 	phase_retval = spawn(actionmap[mydo]["cmd"] % mydo, mysettings, debug=debug, logfile=logfile, **kwargs)
 	mysettings["EBUILD_PHASE"] = ""
 
-	if not kwargs["droppriv"] and secpass >= 2:
+	if "userpriv" in mysettings.features and \
+		not kwargs["droppriv"] and secpass >= 2:
 		""" Privileged phases may have left files that need to be made
 		writable to a less privileged user."""
 		apply_recursive_permissions(mysettings["T"],
