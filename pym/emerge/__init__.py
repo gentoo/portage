@@ -1738,11 +1738,17 @@ class depgraph(object):
 				matched_packages = []
 				myeb_matches = portdb.xmatch("match-visible", x)
 				myeb = None
-				if "--usepkgonly" not in self.myopts:
+				ebuild_merge_node = None
+				if myeb_matches and \
+					"--usepkgonly" not in self.myopts:
 					myeb = portage.best(myeb_matches)
+					ebuild_merge_node = ("ebuild", myroot, myeb, "merge")
 
 				myeb_pkg=None
-				if "--usepkg" in self.myopts:
+				binary_merge_node = None
+				if "--usepkg" in self.myopts and \
+					not (ebuild_merge_node and \
+					self.digraph.contains(ebuild_merge_node)):
 					# The next line assumes the binarytree has been populated.
 					# XXX: Need to work out how we use the binary tree with roots.
 					myeb_pkg_matches = bindb.match(x)
@@ -1753,10 +1759,17 @@ class depgraph(object):
 							not portdb.cpv_exists(pkg)]
 					if myeb_pkg_matches:
 						myeb_pkg = portage.best(myeb_pkg_matches)
+						mydb = bindb
+						binary_merge_node = ("binary", myroot, myeb_pkg, "merge")
+						if self.digraph.contains(binary_merge_node) and \
+							binary_merge_node not in self._slot_collision_nodes:
+							# reuse cached metadata
+							mydb = self.mydbapi[myroot]
 						metadata = dict(izip(self._mydbapi_keys,
-							bindb.aux_get(myeb_pkg, self._mydbapi_keys)))
+							mydb.aux_get(myeb_pkg, self._mydbapi_keys)))
 
 				if myeb_pkg and \
+					not self.digraph.contains(binary_merge_node) and \
 					("--newuse" in self.myopts or \
 					"--reinstall" in self.myopts):
 					iuses = set(filter_iuse_defaults(metadata["IUSE"].split()))
@@ -1784,10 +1797,16 @@ class depgraph(object):
 						(["binary", myroot, myeb_pkg], metadata))
 
 				if "--usepkgonly" not in self.myopts and myeb_matches:
+					mydb = portdb
+					if self.digraph.contains(ebuild_merge_node) and \
+						ebuild_merge_node not in self._slot_collision_nodes:
+						# reuse cached metadata
+						mydb = self.mydbapi[myroot]
 					metadata = dict(izip(self._mydbapi_keys,
-						portdb.aux_get(myeb, self._mydbapi_keys)))
-					pkgsettings.setcpv(myeb, mydb=portdb)
-					metadata["USE"] = pkgsettings["USE"]
+						mydb.aux_get(myeb, self._mydbapi_keys)))
+					if mydb is portdb:
+						pkgsettings.setcpv(myeb, mydb=portdb)
+						metadata["USE"] = pkgsettings["USE"]
 					matched_packages.append(
 						(["ebuild", myroot, myeb], metadata))
 
