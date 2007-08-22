@@ -1220,6 +1220,10 @@ class depgraph(object):
 				if "empty" not in self.myparams and vardbapi.cpv_exists(mykey):
 					merging=0
 
+			merge_node = (mytype, myroot, mykey, "merge")
+			if self.digraph.contains(merge_node):
+				merging = 1
+
 			""" If we aren't merging, perform the --newuse check.
 			    If the package has new iuse flags or different use flags then if
 			    --newuse is specified, we need to merge the package. """
