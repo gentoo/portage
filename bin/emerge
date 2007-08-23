@@ -1820,20 +1820,30 @@ class depgraph:
 				matched_packages = []
 				myeb_matches = portdb.xmatch("match-visible", x)
 				myeb = None
-				ebuild_merge_node = None
-				installed_node = None
-				if myeb_matches and \
-					"--usepkgonly" not in self.myopts:
+				myeb_pkg = None
+				metadata = None
+				existing_node = None
+				if myeb_matches:
 					myeb = portage.best(myeb_matches)
-					ebuild_merge_node = ("ebuild", myroot, myeb, "merge")
-					installed_node = ("installed", myroot, myeb, "nomerge")
+					# For best performance, try to reuse an exising node
+					# and it's cached metadata. The portdbapi caches SLOT
+					# metadata in memory so it's really only pulled once.
+					slot_atom = "%s:%s" % (portage.dep_getkey(myeb),
+						portdb.aux_get(myeb, ["SLOT"])[0])
+					existing_node = self._slot_node_map[myroot].get(slot_atom)
+					if existing_node:
+						e_type, myroot, e_cpv, e_status = existing_node
+						metadata = dict(izip(self._mydbapi_keys,
+							self.mydbapi[myroot].aux_get(e_cpv, self._mydbapi_keys)))
+						cpv_slot = "%s:%s" % (e_cpv, metadata["SLOT"])
+						if portage.match_from_list(x, [cpv_slot]):
+							matched_packages.append(
+								([e_type, myroot, e_cpv], metadata))
+						else:
+							existing_node = None
 
-				myeb_pkg=None
-				binary_merge_node = None
-				if "--usepkg" in self.myopts and \
-					not (ebuild_merge_node and \
-					(self.digraph.contains(ebuild_merge_node) or \
-					self.digraph.contains(installed_node))):
+				if not existing_node and \
+					"--usepkg" in self.myopts:
 					# The next line assumes the binarytree has been populated.
 					# XXX: Need to work out how we use the binary tree with roots.
 					myeb_pkg_matches = bindb.match(x)
@@ -1844,17 +1854,31 @@ class depgraph:
 							not portdb.cpv_exists(pkg)]
 					if myeb_pkg_matches:
 						myeb_pkg = portage.best(myeb_pkg_matches)
-						mydb = bindb
-						binary_merge_node = ("binary", myroot, myeb_pkg, "merge")
-						if self.digraph.contains(binary_merge_node) and \
-							binary_merge_node not in self._slot_collision_nodes:
-							# reuse cached metadata
-							mydb = self.mydbapi[myroot]
-						metadata = dict(izip(self._mydbapi_keys,
-							mydb.aux_get(myeb_pkg, self._mydbapi_keys)))
+						# For best performance, try to reuse an exising node
+						# and it's cached metadata. The bindbapi caches SLOT
+						# metadata in memory so it's really only pulled once.
+						slot_atom = "%s:%s" % (portage.dep_getkey(myeb_pkg),
+							bindb.aux_get(myeb_pkg, ["SLOT"])[0])
+						existing_node = self._slot_node_map[myroot].get(slot_atom)
+						if existing_node:
+							e_type, myroot, e_cpv, e_status = existing_node
+							metadata = dict(izip(self._mydbapi_keys,
+								self.mydbapi[myroot].aux_get(e_cpv, self._mydbapi_keys)))
+							cpv_slot = "%s:%s" % (e_cpv, metadata["SLOT"])
+							if portage.match_from_list(x, [cpv_slot]):
+								myeb_pkg = None
+								matched_packages.append(
+									([e_type, myroot, e_cpv], metadata))
+							else:
+								existing_node = None
+						if not existing_node:
+							# For best performance, avoid pulling
+							# metadata whenever possible.
+							metadata = dict(izip(self._mydbapi_keys,
+								bindb.aux_get(myeb_pkg, self._mydbapi_keys)))
 
-				if myeb_pkg and \
-					not self.digraph.contains(binary_merge_node) and \
+				if not existing_node and \
+					myeb_pkg and \
 					("--newuse" in self.myopts or \
 					"--reinstall" in self.myopts):
 					iuses = set(filter_iuse_defaults(metadata["IUSE"].split()))
@@ -1881,25 +1905,15 @@ class depgraph:
 					matched_packages.append(
 						(["binary", myroot, myeb_pkg], metadata))
 
-				if "--usepkgonly" not in self.myopts and myeb_matches:
-					mydb = portdb
-					mytype = "ebuild"
-					if self.digraph.contains(ebuild_merge_node) and \
-						ebuild_merge_node not in self._slot_collision_nodes:
-						# reuse cached metadata
-						mydb = self.mydbapi[myroot]
-					elif self.digraph.contains(installed_node) and \
-						installed_node not in self._slot_collision_nodes:
-						# reuse cached metadata
-						mydb = self.mydbapi[myroot]
-						mytype = "installed"
+				if not existing_node and \
+					myeb and \
+					"--usepkgonly" not in self.myopts:
 					metadata = dict(izip(self._mydbapi_keys,
-						mydb.aux_get(myeb, self._mydbapi_keys)))
-					if mydb is portdb:
-						pkgsettings.setcpv(myeb, mydb=portdb)
-						metadata["USE"] = pkgsettings["USE"]
+						portdb.aux_get(myeb, self._mydbapi_keys)))
+					pkgsettings.setcpv(myeb, mydb=portdb)
+					metadata["USE"] = pkgsettings["USE"]
 					matched_packages.append(
-						([mytype, myroot, myeb], metadata))
+						(["ebuild", myroot, myeb], metadata))
 
 				if not matched_packages and \
 					not (arg and "selective" not in self.myparams):
@@ -1973,19 +1987,6 @@ class depgraph:
 
 				# ordered by type preference ("ebuild" type is the last resort)
 				selected_pkg =  matched_packages[0]
-				(pkgtype, myroot, mycpv), metadata = selected_pkg
-				mydbapi = self.trees[myroot][self.pkg_tree_map[pkgtype]].dbapi
-				slot_atom = "%s:%s" % (portage.dep_getkey(mycpv),
-					metadata["SLOT"])
-				existing_node = self._slot_node_map[myroot].get(
-					slot_atom, None)
-				if existing_node:
-					e_type, myroot, e_cpv, e_status = existing_node
-					metadata = dict(izip(self._mydbapi_keys,
-						self.mydbapi[myroot].aux_get(e_cpv, self._mydbapi_keys)))
-					cpv_slot = "%s:%s" % (e_cpv, metadata["SLOT"])
-					if portage.match_from_list(x, [cpv_slot]):
-						selected_pkg = ([e_type, myroot, e_cpv], metadata)
 
 			if myparent:
 				#we are a dependency, so we want to be unconditionally added
