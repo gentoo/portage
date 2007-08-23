@@ -1193,7 +1193,7 @@ debug-print() {
 		fi
 
 		# default target
-		echo "$1" >> "${T}/eclass-debug.log"
+		echo "$1" 2>/dev/null >> "${T}/eclass-debug.log"
 		# let the portage user own/write to this file
 		chmod g+w "${T}/eclass-debug.log" &>/dev/null
 
