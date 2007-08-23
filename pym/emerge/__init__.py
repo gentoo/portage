@@ -1830,7 +1830,7 @@ class depgraph(object):
 						myeb_inst = portage.best(myeb_inst_matches)
 					if myeb_inst:
 						metadata = dict(izip(self._mydbapi_keys,
-							bindb.aux_get(vardb, self._mydbapi_keys)))
+							vardb.aux_get(myeb_inst, self._mydbapi_keys)))
 						matched_packages.append(
 							(["installed", myroot, myeb_inst], metadata))
 
