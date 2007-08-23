@@ -1743,16 +1743,19 @@ class depgraph(object):
 				myeb_matches = portdb.xmatch("match-visible", x)
 				myeb = None
 				ebuild_merge_node = None
+				installed_node = None
 				if myeb_matches and \
 					"--usepkgonly" not in self.myopts:
 					myeb = portage.best(myeb_matches)
 					ebuild_merge_node = ("ebuild", myroot, myeb, "merge")
+					installed_node = ("installed", myroot, myeb, "nomerge")
 
 				myeb_pkg=None
 				binary_merge_node = None
 				if "--usepkg" in self.myopts and \
 					not (ebuild_merge_node and \
-					self.digraph.contains(ebuild_merge_node)):
+					(self.digraph.contains(ebuild_merge_node) or \
+					self.digraph.contains(installed_node))):
 					# The next line assumes the binarytree has been populated.
 					# XXX: Need to work out how we use the binary tree with roots.
 					myeb_pkg_matches = bindb.match(x)
@@ -1802,17 +1805,23 @@ class depgraph(object):
 
 				if "--usepkgonly" not in self.myopts and myeb_matches:
 					mydb = portdb
+					mytype = "ebuild"
 					if self.digraph.contains(ebuild_merge_node) and \
 						ebuild_merge_node not in self._slot_collision_nodes:
 						# reuse cached metadata
 						mydb = self.mydbapi[myroot]
+					elif self.digraph.contains(installed_node) and \
+						installed_node not in self._slot_collision_nodes:
+						# reuse cached metadata
+						mydb = self.mydbapi[myroot]
+						mytype = "installed"
 					metadata = dict(izip(self._mydbapi_keys,
 						mydb.aux_get(myeb, self._mydbapi_keys)))
 					if mydb is portdb:
 						pkgsettings.setcpv(myeb, mydb=portdb)
 						metadata["USE"] = pkgsettings["USE"]
 					matched_packages.append(
-						(["ebuild", myroot, myeb], metadata))
+						([mytype, myroot, myeb], metadata))
 
 				if not matched_packages and \
 					not (arg and "selective" not in self.myparams):
