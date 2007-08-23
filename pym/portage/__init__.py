@@ -881,6 +881,7 @@ class config(object):
 		self.user_profile_dir = None
 		self.local_config = local_config
 		self._use_wildcards = False
+		self._env_d_mtime = 0
 
 		if clone:
 			self.incrementals = copy.deepcopy(clone.incrementals)
@@ -1930,12 +1931,18 @@ class config(object):
 			self.already_in_regenerate = 1
 
 		# We grab the latest profile.env here since it changes frequently.
-		self.configdict["env.d"].clear()
-		env_d = getconfig(
-			os.path.join(self["ROOT"], "etc", "profile.env"), expand=False)
-		if env_d:
-			# env_d will be None if profile.env doesn't exist.
-			self.configdict["env.d"].update(env_d)
+		env_d_filename = os.path.join(self["ROOT"], "etc", "profile.env")
+		try:
+			cur_timestamp = os.stat(env_d_filename).st_mtime
+		except OSError:
+			cur_timestamp = 0
+		if cur_timestamp != self._env_d_mtime:
+			self._env_d_mtime = cur_timestamp
+			self.configdict["env.d"].clear()
+			env_d = getconfig(env_d_filename, expand=False)
+			if env_d:
+				# env_d will be None if profile.env doesn't exist.
+				self.configdict["env.d"].update(env_d)
 
 		if useonly:
 			myincrementals=["USE"]
