@@ -1579,7 +1579,7 @@ class config(object):
 			for group in groups:
 				if group not in archlist and \
 					not (group.startswith("-") and group[1:] in archlist) and \
-					group != "**":
+					group not in ("*", "~*", "**"):
 					writemsg("!!! INVALID ACCEPT_KEYWORDS: %s\n" % str(group),
 						noiselevel=-1)
 
