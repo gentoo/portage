@@ -881,7 +881,6 @@ class config(object):
 		self.user_profile_dir = None
 		self.local_config = local_config
 		self._use_wildcards = False
-		self._env_d_mtime = 0
 
 		if clone:
 			self.incrementals = copy.deepcopy(clone.incrementals)
@@ -1904,6 +1903,14 @@ class config(object):
 		if modified:
 			self.virtuals = self.__getvirtuals_compile()
 
+	def reload(self):
+		"""Reload things like /etc/profile.env that can change during runtime."""
+		env_d_filename = os.path.join(self["ROOT"], "etc", "profile.env")
+		self.configdict["env.d"].clear()
+		env_d = getconfig(env_d_filename, expand=False)
+		if env_d:
+			# env_d will be None if profile.env doesn't exist.
+			self.configdict["env.d"].update(env_d)
 
 	def regenerate(self,useonly=0,use_cache=1):
 		"""
@@ -1929,20 +1936,6 @@ class config(object):
 			return
 		else:
 			self.already_in_regenerate = 1
-
-		# We grab the latest profile.env here since it changes frequently.
-		env_d_filename = os.path.join(self["ROOT"], "etc", "profile.env")
-		try:
-			cur_timestamp = os.stat(env_d_filename).st_mtime
-		except OSError:
-			cur_timestamp = 0
-		if cur_timestamp != self._env_d_mtime:
-			self._env_d_mtime = cur_timestamp
-			self.configdict["env.d"].clear()
-			env_d = getconfig(env_d_filename, expand=False)
-			if env_d:
-				# env_d will be None if profile.env doesn't exist.
-				self.configdict["env.d"].update(env_d)
 
 		if useonly:
 			myincrementals=["USE"]
@@ -3313,6 +3306,7 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 		detects a package-specific change in config.  For the ebuild
 		environment, a reset call is forced in order to ensure that the
 		latest env.d variables are used."""
+		mysettings.reload()
 		mysettings.reset(use_cache=use_cache)
 		mysettings.setcpv(mycpv, use_cache=use_cache, mydb=mydbapi)
 

@@ -4401,7 +4401,7 @@ def post_emerge(trees, mtimedb, retval):
 
 	# Load the most current variables from ${ROOT}/etc/profile.env
 	settings.unlock()
-	settings.regenerate()
+	settings.reload()
 	settings.lock()
 
 	config_protect = settings.get("CONFIG_PROTECT","").split()
