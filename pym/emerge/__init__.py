@@ -5168,26 +5168,6 @@ def action_info(settings, trees, myopts, myfiles):
 	print header_width * "="
 	print "System uname: "+unameout
 
-	release_files = set(['gentoo-release', 'centos-release', 'debian_version',
-		'fedora-release', 'lsb-release', 'redhat-release', 'SuSE-release',
-		'yellowdog-release'])
-	etc_dir = os.path.join(settings["ROOT"], 'etc')
-	try:
-		dir_list = os.listdir(etc_dir)
-	except OSError:
-		dir_list = []
-	release_files = release_files.intersection(dir_list)
-	if not release_files:
-		print "Unknown Host Operating System"
-	else:
-		my_release_file = None
-		if 'gentoo-release' in release_files:
-			my_release_file = 'gentoo-release'
-		else:
-			my_release_file = release_files.pop()
-		lines = portage.util.grablines(os.path.join(etc_dir, my_release_file))
-		map(portage.writemsg_stdout, lines)
-
 	lastSync = portage.grabfile(os.path.join(
 		settings["PORTDIR"], "metadata", "timestamp.chk"))
 	print "Timestamp of tree:",
