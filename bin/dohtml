@@ -14,8 +14,8 @@
 # Detailed usage:
 # dohtml <list-of-files> 
 #  - will install the files in the list of files (space-separated list) into 
-#    /usr/share/doc/${PF}/html, provided the file ends in .html, .png, .jpg 
-#     or .css
+#    /usr/share/doc/${PF}/html, provided the file ends in .htm, .html, .css,
+#      .js, ,gif, .jpeg, .jpg, or .png.
 # dohtml -r <list-of-files-and-directories>
 #  - will do as 'dohtml', but recurse into all directories, as long as the 
 #    directory name is not CVS
@@ -80,7 +80,8 @@ class OptionsClass:
 		if os.environ.has_key("_E_DOCDESTTREE_"):
 			self.DOCDESTTREE = os.environ["_E_DOCDESTTREE_"]
 		
-		self.allowed_exts = [ 'png', 'gif', 'html', 'htm', 'jpg', 'css', 'js' ]
+		self.allowed_exts = [ 'htm', 'html', 'css', 'js',
+			'gif', 'jpeg', 'jpg', 'png' ]
 		self.allowed_files = []
 		self.disallowed_dirs = [ 'CVS' ]
 		self.recurse = False

@@ -73,8 +73,8 @@ The revdep-rebuild tool is provided by app-portage/gentoolkit.
 
 	def _processItem( self, item ):
 
-		path = os.path.join( settings["PORTAGE_TMPDIR"], str(time.time())
-		f = open( os.path.join( path )
+		path = os.path.join(settings["PORTAGE_TMPDIR"], str(time.time()))
+		f = open(path)
 		f.write(item)
 		f.close
 		try:

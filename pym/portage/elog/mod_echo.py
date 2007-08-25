@@ -3,7 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-from portage.output import EOutput
+from portage.output import EOutput, colorize
 from portage.const import EBUILD_PHASES
 
 _items = []
@@ -22,7 +22,8 @@ def finalize(mysettings=None):
 		if mysettings["ROOT"] != "/":
 			root_msg = " merged to %s" % mysettings["ROOT"]
 		print
-		printer.einfo("Messages for package %s%s:" % (key, root_msg))
+		printer.einfo("Messages for package %s%s:" % \
+			(colorize("INFORM", key), root_msg))
 		print
 		for phase in EBUILD_PHASES:
 			if phase not in logentries:

@@ -1151,7 +1151,7 @@ class depgraph(object):
 				return flags
 		return None
 
-	def create(self, mybigkey, myparent=None, addme=1, myuse=None,
+	def create(self, mybigkey, myparent=None, addme=1, metadata=None,
 		priority=DepPriority(), rev_dep=False, arg=None):
 		"""
 		Fills the digraph with nodes comprised of packages to merge.
@@ -1167,7 +1167,6 @@ class depgraph(object):
 
 		# unused parameters
 		rev_dep = False
-		myuse = None
 
 		mytype, myroot, mykey = mybigkey
 
@@ -1191,16 +1190,13 @@ class depgraph(object):
 		# directive, otherwise we add a "merge" directive.
 
 		mydbapi = self.trees[myroot][self.pkg_tree_map[mytype]].dbapi
-		metadata = dict(izip(self._mydbapi_keys,
-			mydbapi.aux_get(mykey, self._mydbapi_keys)))
-		if mytype == "ebuild":
-			pkgsettings.setcpv(mykey, mydb=portdb)
-			metadata["USE"] = pkgsettings["USE"]
-			myuse = pkgsettings["USE"].split()
-		else:
-			# The myuse parameter to this method is deprecated, so get it
-			# directly from the metadata here.
-			myuse = metadata["USE"].split()
+		if metadata is None:
+			metadata = dict(izip(self._mydbapi_keys,
+				mydbapi.aux_get(mykey, self._mydbapi_keys)))
+			if mytype == "ebuild":
+				pkgsettings.setcpv(mykey, mydb=portdb)
+				metadata["USE"] = pkgsettings["USE"]
+		myuse = metadata["USE"].split()
 
 		if not arg and myroot == self.target_root:
 			try:
@@ -1224,6 +1220,10 @@ class depgraph(object):
 			if "selective" in self.myparams or not arg:
 				if "empty" not in self.myparams and vardbapi.cpv_exists(mykey):
 					merging=0
+
+			merge_node = (mytype, myroot, mykey, "merge")
+			if self.digraph.contains(merge_node):
+				merging = 1
 
 			""" If we aren't merging, perform the --newuse check.
 			    If the package has new iuse flags or different use flags then if
@@ -1452,8 +1452,7 @@ class depgraph(object):
 					print colorize("BAD", "\n*** You need to adjust PKGDIR to emerge this package.\n")
 					return 0, myfavorites
 				if not self.create(["binary", myroot, mykey],
-					None, "--onlydeps" not in self.myopts,
-					myuse=mytbz2.getelements("USE"), arg=x):
+					addme=("--onlydeps" not in self.myopts), arg=x):
 					return (0,myfavorites)
 				arg_atoms.append((x, "="+mykey))
 			elif ext==".ebuild":
@@ -1727,7 +1726,7 @@ class depgraph(object):
 		for x in mymerge:
 			selected_pkg = None
 			if x[0]=="!":
-				selected_pkg = ["blocks", myroot, x[1:], None]
+				selected_pkg = (["blocks", myroot, x[1:]], None)
 			else:
 				#We are not processing a blocker but a normal dependency
 				if myparent:
@@ -1744,11 +1743,30 @@ class depgraph(object):
 				matched_packages = []
 				myeb_matches = portdb.xmatch("match-visible", x)
 				myeb = None
-				if "--usepkgonly" not in self.myopts:
+				myeb_pkg = None
+				metadata = None
+				existing_node = None
+				if myeb_matches:
 					myeb = portage.best(myeb_matches)
+					# For best performance, try to reuse an exising node
+					# and it's cached metadata. The portdbapi caches SLOT
+					# metadata in memory so it's really only pulled once.
+					slot_atom = "%s:%s" % (portage.dep_getkey(myeb),
+						portdb.aux_get(myeb, ["SLOT"])[0])
+					existing_node = self._slot_node_map[myroot].get(slot_atom)
+					if existing_node:
+						e_type, myroot, e_cpv, e_status = existing_node
+						metadata = dict(izip(self._mydbapi_keys,
+							self.mydbapi[myroot].aux_get(e_cpv, self._mydbapi_keys)))
+						cpv_slot = "%s:%s" % (e_cpv, metadata["SLOT"])
+						if portage.match_from_list(x, [cpv_slot]):
+							matched_packages.append(
+								([e_type, myroot, e_cpv], metadata))
+						else:
+							existing_node = None
 
-				myeb_pkg=None
-				if "--usepkg" in self.myopts:
+				if not existing_node and \
+					"--usepkg" in self.myopts:
 					# The next line assumes the binarytree has been populated.
 					# XXX: Need to work out how we use the binary tree with roots.
 					myeb_pkg_matches = bindb.match(x)
@@ -1759,13 +1777,35 @@ class depgraph(object):
 							not portdb.cpv_exists(pkg)]
 					if myeb_pkg_matches:
 						myeb_pkg = portage.best(myeb_pkg_matches)
+						# For best performance, try to reuse an exising node
+						# and it's cached metadata. The bindbapi caches SLOT
+						# metadata in memory so it's really only pulled once.
+						slot_atom = "%s:%s" % (portage.dep_getkey(myeb_pkg),
+							bindb.aux_get(myeb_pkg, ["SLOT"])[0])
+						existing_node = self._slot_node_map[myroot].get(slot_atom)
+						if existing_node:
+							e_type, myroot, e_cpv, e_status = existing_node
+							metadata = dict(izip(self._mydbapi_keys,
+								self.mydbapi[myroot].aux_get(e_cpv, self._mydbapi_keys)))
+							cpv_slot = "%s:%s" % (e_cpv, metadata["SLOT"])
+							if portage.match_from_list(x, [cpv_slot]):
+								myeb_pkg = None
+								matched_packages.append(
+									([e_type, myroot, e_cpv], metadata))
+							else:
+								existing_node = None
+						if not existing_node:
+							# For best performance, avoid pulling
+							# metadata whenever possible.
+							metadata = dict(izip(self._mydbapi_keys,
+								bindb.aux_get(myeb_pkg, self._mydbapi_keys)))
 
-				if myeb_pkg and \
+				if not existing_node and \
+					myeb_pkg and \
 					("--newuse" in self.myopts or \
 					"--reinstall" in self.myopts):
-					iuses = set(filter_iuse_defaults(
-						bindb.aux_get(myeb_pkg, ["IUSE"])[0].split()))
-					old_use = bindb.aux_get(myeb_pkg, ["USE"])[0].split()
+					iuses = set(filter_iuse_defaults(metadata["IUSE"].split()))
+					old_use = metadata["USE"].split()
 					mydb = None
 					if "--usepkgonly" not in self.myopts and myeb:
 						mydb = portdb
@@ -1785,15 +1825,18 @@ class depgraph(object):
 						forced_flags, old_use, iuses, now_use, cur_iuse):
 						myeb_pkg = None
 				if myeb_pkg:
-					binpkguseflags = \
-						self.trees[myroot]["bintree"].dbapi.aux_get(
-							myeb_pkg, ["USE"])[0].split()
 					matched_packages.append(
-						["binary", myroot, myeb_pkg, binpkguseflags])
+						(["binary", myroot, myeb_pkg], metadata))
 
-				if "--usepkgonly" not in self.myopts and myeb_matches:
+				if not existing_node and \
+					myeb and \
+					"--usepkgonly" not in self.myopts:
+					metadata = dict(izip(self._mydbapi_keys,
+						portdb.aux_get(myeb, self._mydbapi_keys)))
+					pkgsettings.setcpv(myeb, mydb=portdb)
+					metadata["USE"] = pkgsettings["USE"]
 					matched_packages.append(
-						["ebuild", myroot, myeb, None])
+						(["ebuild", myroot, myeb], metadata))
 
 				if not matched_packages and \
 					not (arg and "selective" not in self.myparams):
@@ -1810,10 +1853,10 @@ class depgraph(object):
 					if myeb_inst_matches:
 						myeb_inst = portage.best(myeb_inst_matches)
 					if myeb_inst:
-						binpkguseflags = vardb.aux_get(
-							myeb_inst, ["USE"])[0].split()
+						metadata = dict(izip(self._mydbapi_keys,
+							vardb.aux_get(myeb_inst, self._mydbapi_keys)))
 						matched_packages.append(
-							["installed", myroot, myeb_inst, binpkguseflags])
+							(["installed", myroot, myeb_inst], metadata))
 
 				if not matched_packages:
 					if raise_on_missing:
@@ -1887,46 +1930,33 @@ class depgraph(object):
 					return 0
 
 				if "--debug" in self.myopts:
-					for pkg in matched_packages:
+					for pkg, metadata in matched_packages:
 						print (pkg[0] + ":").rjust(10), pkg[2]
 
 				if len(matched_packages) > 1:
 					bestmatch = portage.best(
-						[pkg[2] for pkg in matched_packages])
+						[pkg[2] for pkg, metadata in matched_packages])
 					matched_packages = [pkg for pkg in matched_packages \
-						if pkg[2] == bestmatch]
+						if pkg[0][2] == bestmatch]
 
 				# ordered by type preference ("ebuild" type is the last resort)
 				selected_pkg =  matched_packages[0]
-				pkgtype, myroot, mycpv, myuse = selected_pkg
-				mydbapi = self.trees[myroot][self.pkg_tree_map[pkgtype]].dbapi
-				slot_atom = "%s:%s" % (portage.dep_getkey(mycpv),
-					mydbapi.aux_get(mycpv, ["SLOT"])[0])
-				existing_node = self._slot_node_map[myroot].get(
-					slot_atom, None)
-				if existing_node:
-					e_type, myroot, e_cpv, e_status = existing_node
-					if portage.match_from_list(x, [e_cpv]):
-						# The existing node can be reused.
-						# Just pass in None for myuse since
-						# self.create() doesn't use it anymore.
-						selected_pkg = [e_type, myroot, e_cpv, None]
 
 			if myparent:
 				#we are a dependency, so we want to be unconditionally added
 				mypriority = priority.copy()
 				if vardb.match(x):
 					mypriority.satisfied = True
-				if not self.create(selected_pkg[0:3], myparent,
-					myuse=selected_pkg[-1], priority=mypriority,
+				if not self.create(selected_pkg[0], myparent=myparent,
+					metadata=selected_pkg[1], priority=mypriority,
 					rev_dep=rev_deps, arg=arg):
 					return 0
 			else:
 				#if mysource is not set, then we are a command-line dependency and should not be added
 				#if --onlydeps is specified.
-				if not self.create(selected_pkg[0:3], myparent,
+				if not self.create(selected_pkg[0], myparent=myparent,
 					addme=("--onlydeps" not in self.myopts),
-					myuse=selected_pkg[-1], rev_dep=rev_deps, arg=arg):
+					metadata=selected_pkg[1], rev_dep=rev_deps, arg=arg):
 					return 0
 
 		if "--debug" in self.myopts:
@@ -4372,6 +4402,7 @@ def post_emerge(trees, mtimedb, retval):
 
 	# Load the most current variables from ${ROOT}/etc/profile.env
 	settings.unlock()
+	settings.reload()
 	settings.regenerate()
 	settings.lock()
 
@@ -5183,12 +5214,6 @@ def action_info(settings, trees, myopts, myfiles):
 		print header_title.rjust(int(header_width/2 + len(header_title)/2))
 	print header_width * "="
 	print "System uname: "+unameout
-	gentoo_release = portage.grabfile(os.path.join(
-		settings["PORTAGE_CONFIGROOT"] + EPREFIX, "etc", "gentoo-release"))
-	if gentoo_release:
-		print gentoo_release[0]
-	else:
-		print "Unknown Host Operating System"
 	lastSync = portage.grabfile(os.path.join(
 		settings["PORTDIR"], "metadata", "timestamp.chk"))
 	print "Timestamp of tree:",

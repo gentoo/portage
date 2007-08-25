@@ -1585,7 +1585,9 @@ class config(object):
 			writemsg("--- 'profiles/arch.list' is empty or not available. Empty portage tree?\n")
 		else:
 			for group in groups:
-				if group not in archlist and group[0] != '-':
+				if group not in archlist and \
+					not (group.startswith("-") and group[1:] in archlist) and \
+					group not in ("*", "~*", "**"):
 					writemsg("!!! INVALID ACCEPT_KEYWORDS: %s\n" % str(group),
 						noiselevel=-1)
 
@@ -1910,6 +1912,14 @@ class config(object):
 		if modified:
 			self.virtuals = self.__getvirtuals_compile()
 
+	def reload(self):
+		"""Reload things like /etc/profile.env that can change during runtime."""
+		env_d_filename = os.path.join(self["ROOT"], EPREFIX_LSTRIP, "etc", "profile.env")
+		self.configdict["env.d"].clear()
+		env_d = getconfig(env_d_filename, expand=False)
+		if env_d:
+			# env_d will be None if profile.env doesn't exist.
+			self.configdict["env.d"].update(env_d)
 
 	def regenerate(self,useonly=0,use_cache=1):
 		"""
@@ -1935,14 +1945,6 @@ class config(object):
 			return
 		else:
 			self.already_in_regenerate = 1
-
-		# We grab the latest profile.env here since it changes frequently.
-		self.configdict["env.d"].clear()
-		env_d = getconfig(
-			os.path.join(self["ROOT"], EPREFIX_LSTRIP, "etc", "profile.env"), expand=False)
-		if env_d:
-			# env_d will be None if profile.env doesn't exist.
-			self.configdict["env.d"].update(env_d)
 
 		if useonly:
 			myincrementals=["USE"]
@@ -3001,6 +3003,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					"ebuild's files must be downloaded"
 				print "!!! manually.  See the comments in" + \
 					" the ebuild for more information.\n"
+				mysettings["EBUILD_PHASE"] = "unpack"
 				spawn(EBUILD_SH_BINARY + " nofetch", mysettings)
 			elif listonly:
 				continue
@@ -3247,7 +3250,8 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 	phase_retval = spawn(actionmap[mydo]["cmd"] % mydo, mysettings, debug=debug, logfile=logfile, **kwargs)
 	mysettings["EBUILD_PHASE"] = ""
 
-	if not kwargs["droppriv"] and secpass >= 2:
+	if "userpriv" in mysettings.features and \
+		not kwargs["droppriv"] and secpass >= 2:
 		""" Privileged phases may have left files that need to be made
 		writable to a less privileged user."""
 		apply_recursive_permissions(mysettings["T"],
@@ -3311,6 +3315,7 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 		detects a package-specific change in config.  For the ebuild
 		environment, a reset call is forced in order to ensure that the
 		latest env.d variables are used."""
+		mysettings.reload()
 		mysettings.reset(use_cache=use_cache)
 		mysettings.setcpv(mycpv, use_cache=use_cache, mydb=mydbapi)
 
