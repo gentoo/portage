@@ -4,9 +4,27 @@
 # probably can be done much better, but I got tired of copy 'n' paste
 # from mutt into a commit message ...
 
+# just one big reminder for myself: svn log and svn merge/diff theirs -r
+# argument are *NOT* semantically the same!  The former is some
+# inclusive thing, where the later is exclusive on the start range.
+# e.g.: svn log make.conf.arm.diff -r4689:4690
+# results in the log for revision 4689, but
+# svn diff make.conf.arm.diff -r4689:4690
+# results in an empty set
+
 [[ -z $1 ]] && exit -1
 
-svn log ../../trunk -r$1 | awk -v revs=$1 '
+if [[ ${1/:/} != $1 ]] ; then
+	t1=${1%:*} ; t1=${t1#r}
+	t2=${1#*:}
+	# see above
+	t1=$((t1 + 1))
+	r=${t1}:${t2}
+else
+	r=$1
+fi
+
+svn log ../../trunk -r$r | awk -v revs=$1 '
 BEGIN {
 	term = 0
 	print "<html>"
