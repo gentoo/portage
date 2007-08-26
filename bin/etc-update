@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2006 Gentoo Foundation
+# Copyright 1999-2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
@@ -9,6 +9,8 @@
 # Jochem Kossen <j.kossen@home.nl>
 # Leo Lipelis <aeoo@gentoo.org>
 # Karl Trygve Kalleberg <karltk@gentoo.org>
+
+cd /
 
 if type -P gsed >/dev/null ; then
 	function sed() { gsed "$@"; }
