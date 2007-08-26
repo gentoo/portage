@@ -41,7 +41,7 @@ cd $TMP
 rm -f ${PKG}-${V}/bin/emerge.py ${PKG}-${V}/bin/{pmake,sandbox} ${PKG}-${V}/{bin,pym}/'.#'* ${PKG}-${V}/{bin,pym}/*.{orig,diff} ${PKG}-${V}/{bin,pym}/*.py[oc]
 cd $TMP/${PKG}-${V}
 chmod a+x autogen.sh && ./autogen.sh || { echo "autogen failed!"; exit -1; };
-rm -f AUTHORS NEWS autogen.sh make-man-tarball.sh tabcheck.py tarball.sh ChangeLog.000 COPYING
+rm -f autogen.sh make-man-tarball.sh tabcheck.py tarball.sh ChangeLog.000 COPYING
 cd $TMP
 tar -jcf ${TMP}/${PKG}-${V}.tar.bz2 ${PKG}-${V}
 rm -R ${TMP}/${PKG}-${V}
