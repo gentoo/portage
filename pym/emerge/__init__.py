@@ -1170,16 +1170,6 @@ class depgraph(object):
 
 		mytype, myroot, mykey = mybigkey
 
-		if mytype == "blocks":
-			if myparent and \
-				"--buildpkgonly" not in self.myopts and \
-				"--nodeps" not in self.myopts and \
-				myparent not in self._slot_collision_nodes:
-				mybigkey[1] = myparent[1]
-				self.blocker_parents.setdefault(
-					tuple(mybigkey), set()).add(myparent)
-			return 1
-
 		# select the correct /var database that we'll be checking against
 		vardbapi = self.trees[myroot]["vartree"].dbapi
 		portdb = self.trees[myroot]["porttree"].dbapi
@@ -1725,8 +1715,17 @@ class depgraph(object):
 			print "Candidates:",mymerge
 		for x in mymerge:
 			selected_pkg = None
-			if x[0]=="!":
-				selected_pkg = (["blocks", myroot, x[1:]], None)
+			if x.startswith("!"):
+				if "--buildpkgonly" not in self.myopts and \
+					"--nodeps" not in self.myopts and \
+					myparent not in self._slot_collision_nodes:
+					p_type, p_root, p_key, p_status = myparent
+					if  p_type != "installed" and p_status != "merge":
+						# It's safe to ignore blockers from --onlydeps nodes.
+						continue
+					self.blocker_parents.setdefault(
+						("blocks", p_root, x[1:]), set()).add(myparent)
+				continue
 			else:
 				#We are not processing a blocker but a normal dependency
 				if myparent:

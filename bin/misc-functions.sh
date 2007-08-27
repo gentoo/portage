@@ -578,7 +578,9 @@ dyn_package() {
 }
 
 dyn_spec() {
-	tar czf "/usr/src/redhat/SOURCES/${PF}.tar.gz" "${O}/${PF}.ebuild" "${O}/files" || die "Failed to create base rpm tarball."
+	tar czf "/usr/src/rpm/SOURCES/${PF}.tar.gz" \
+		"${O}/${PF}.ebuild" "${O}/files" || \
+		die "Failed to create base rpm tarball."
 
 	cat <<__END1__ > ${PF}.spec
 Summary: ${DESCRIPTION}
@@ -610,11 +612,13 @@ __END1__
 }
 
 dyn_rpm() {
-	addwrite /usr/src/redhat/
-	addwrite ${RPMDIR}
+	addwrite /usr/src/rpm
+	addwrite "${RPMDIR}"
 	dyn_spec
 	rpmbuild -bb "${PF}.spec" || die "Failed to integrate rpm spec file"
-	install -D "/usr/src/redhat/RPMS/i386/${PN}-${PV}-${PR}.i386.rpm" "${RPMDIR}/${CATEGORY}/${PN}-${PV}-${PR}.rpm" || die "Failed to move rpm"
+	install -D "/usr/src/rpm/RPMS/i386/${PN}-${PV}-${PR}.i386.rpm" \
+		"${RPMDIR}/${CATEGORY}/${PN}-${PV}-${PR}.rpm" || \
+		die "Failed to move rpm"
 }
 
 if [ -n "${MISC_FUNCTIONS_ARGS}" ]; then
