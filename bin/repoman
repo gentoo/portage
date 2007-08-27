@@ -151,6 +151,7 @@ qahelp={
 	"file.name":"File/dir name must be composed of only the following chars: %s " % allowed_filename_chars,
 	"file.UTF8":"File is not UTF8 compliant",
 	"KEYWORDS.missing":"Ebuilds that have a missing or empty KEYWORDS variable",
+	"KEYWORDS.stable":"Ebuilds that have been added directly with stable KEYWORDS",
 	"KEYWORDS.stupid":"Ebuilds that use KEYWORDS=-* instead of package.mask", 
 	"LICENSE.missing":"Ebuilds that have a missing or empty LICENSE variable",
 	"DESCRIPTION.missing":"Ebuilds that have a missing or empty DESCRIPTION variable",
@@ -782,6 +783,13 @@ elif "--pretend" in myoptions:
 elif quiet < 1:
 	print green("\nRepoMan scours the neighborhood...")
 
+new_ebuilds = set()
+if isCvs:
+	mycvstree = cvstree.getentries("./", recursive=1)
+	mynew = cvstree.findnew(mycvstree, recursive=1, basedir="./")
+	new_ebuilds.update(x for x in mynew if x.endswith(".ebuild"))
+	del mycvstree, mynew
+
 dofail = 0
 arch_caches={}
 arch_xmatch_caches = {}
@@ -1099,6 +1107,26 @@ for x in scanlist:
 				myqakey=missingvars[pos]+".missing"
 				stats[myqakey]=stats[myqakey]+1
 				fails[myqakey].append(x+"/"+y+".ebuild")
+
+		keywords = myaux["KEYWORDS"].split()
+		stable_keywords = []
+		for keyword in keywords:
+			if not keyword.startswith("~") and \
+				not keyword.startswith("-"):
+				stable_keywords.append(keyword)
+		if stable_keywords:
+			ebuild_path = y + ".ebuild"
+			if repolevel < 3:
+				ebuild_path = os.path.join(pkgdir, ebuild_path)
+			if repolevel < 2:
+				ebuild_path = os.path.join(catdir, ebuild_path)
+			ebuild_path = os.path.join(".", ebuild_path)
+			if ebuild_path in new_ebuilds:
+				stable_keywords.sort()
+				stats["KEYWORDS.stable"] += 1
+				fails["KEYWORDS.stable"].append(
+					x + "/" + y + ".ebuild added with stable keywords: %s" % \
+						" ".join(stable_keywords))
 
 		# KEYWORDS="-*" is a stupid replacement for package.mask and screws general KEYWORDS semantics
 		if "-*" in myaux["KEYWORDS"].split():
