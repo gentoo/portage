@@ -5137,14 +5137,15 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 			return 1
 		mycat = mycat.strip()
 
-		eapi = xptbz2.getfile("EAPI")
-		if not eapi:
-			writemsg("!!! EAPI info missing from info chunk, aborting...\n",
+		buildprefix = xptbz2.getfile("EPREFIX")
+		if not buildprefix:
+			writemsg("!!! EPREFIX info missing from info chunk, this is a non-prefix package, aborting...\n",
 				noiselevel=-1)
 			return 1
-		elif eapi.strip() != portage.const.EAPI:
-			writemsg("!!! EAPI mismatch, got: %s, supported: %s\n" %
-				(eapi.strip(), portage.const.EAPI), noiselevel=-1)
+		buildprefix = buildprefix.strip()
+		if len(buildprefix) < len(EPREFIX):
+			writemsg("!!! Unsuitable binary package, prefix absent or length is too small for this system\n",
+				noiselevel=-1)
 			return 1
 
 		# These are the same directories that would be used at build time.
@@ -5186,11 +5187,6 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 		debug = mysettings.get("PORTAGE_DEBUG", "") == "1"
 
 		# We want to install in "our" prefix, not the binary one
-		buildprefix = mysettings.get("EPREFIX", "")
-		if len(buildprefix) < len(EPREFIX):
-			writemsg("!!! Unsuitable binary package, prefix absent or length is too small for this system\n",
-				noiselevel=-1)
-			return 1
 		mysettings["EPREFIX"] = EPREFIX
 
 		# Let's assure that what we dump into our system has also a
