@@ -5134,6 +5134,16 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 			return 1
 		mycat = mycat.strip()
 
+		eapi = xptbz2.getfile("EAPI")
+		if not eapi:
+			writemsg("!!! EAPI info missing from info chunk, aborting...\n",
+				noiselevel=-1)
+			return 1
+		elif eapi.strip() != portage.const.EAPI:
+			writemsg("!!! EAPI mismatch, got: %s, supported: %s\n" %
+				(eapi.strip(), portage.const.EAPI), noiselevel=-1)
+			return 1
+
 		# These are the same directories that would be used at build time.
 		builddir = os.path.join(
 			mysettings["PORTAGE_TMPDIR"], "portage", mycat, mypkg)
@@ -5148,6 +5158,7 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 		portage.util.ensure_dirs(catdir,
 			uid=portage_uid, gid=portage_gid, mode=070, mask=0)
 		builddir_lock = portage.locks.lockdir(builddir)
+		chost = mysettings["CHOST"]
 		try:
 			portage.locks.unlockdir(catdir_lock)
 		finally:
@@ -5171,6 +5182,21 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 
 		debug = mysettings.get("PORTAGE_DEBUG", "") == "1"
 
+		# We want to install in "our" prefix, not the binary one
+		buildprefix = mysettings.get("EPREFIX", "")
+		if len(buildprefix) < len(EPREFIX):
+			writemsg("!!! Unsuitable binary package, prefix absent or length is too small for this system\n",
+				noiselevel=-1)
+			return 1
+		mysettings["EPREFIX"] = EPREFIX
+
+		# Let's assure that what we dump into our system has also a
+		# chance of being able to run...
+		if mysettings.get("CHOST", "") != chost:
+			writemsg("!!! Incompatible binary package: made for %s, you are on %s\n" % mysettings.get("CHOST", ""), chost,
+				noiselevel=-1)
+			return 1
+
 		# Eventually we'd like to pass in the saved ebuild env here.
 		retval = doebuild(myebuild, "setup", myroot, mysettings, debug=debug,
 			tree="bintree", mydbapi=mydbapi, vartree=vartree)
@@ -5180,13 +5206,20 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 
 		writemsg_stdout(">>> Extracting %s\n" % mypkg)
 		retval = portage.process.spawn_bash(
-			"bzip2 -dqc -- '%s' | tar -xp -C '%s' -f -" % (mytbz2, pkgloc),
+			"bzip2 -dqc -- '%s' | chpathtool - - '%s' '%s' | tar -xp -C '%s' -f -" % (mytbz2, buildprefix, EPREFIX, pkgloc),
 			env=mysettings.environ())
 		if retval != os.EX_OK:
 			writemsg("!!! Error Extracting '%s'\n" % mytbz2, noiselevel=-1)
 			return retval
 		#portage.locks.unlockfile(tbz2_lock)
 		#tbz2_lock = None
+
+		# the extracted package put everything in buildprefix, so we
+		# just have to move it to the right EPREFIX
+		if buildprefix != EPREFIX:
+			shutil.copytree(os.path.join(pkgloc,
+				buildprefix.lstrip(os.path.sep)), os.path.join(pkgloc,
+					EPREFIX_LSTRIP), symlinks=true)
 
 		mylink = dblink(mycat, mypkg, myroot, mysettings, vartree=vartree,
 			treetype="bintree")
