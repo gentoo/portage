@@ -1249,6 +1249,12 @@ for x in scanlist:
 				stats["usage.obsolete"] += 1
 				fails["usage.obsolete"].append("%s/%s.ebuild: not migrated to modular X" % (x, y))
 
+		if "--force" in myoptions:
+			# The dep_check() calls are the most expensive QA test. If --force
+			# is enabled, there's no point in wasting time on these since the
+			# user is intent on forcing the commit anyway.
+			continue
+
 		for keyword,arch,groups in arches:
 
 			if not profiles.has_key(arch):
