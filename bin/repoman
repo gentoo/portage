@@ -106,6 +106,7 @@ repoman_options={
 "--commitmsg"      : "Adds a commit message via the command line",
 "--commitmsgfile"  : "Adds a commit message from the specified file",
 "--help"           : "Show this screen",
+"--force"          : "Force commit to proceed, regardless of QA issues",
 "--ignore-arches"  : "Ignore arch-specific failures (where arch != host)",
 "--ignore-masked"  : "Ignore masked packages (not allowed with commit mode)",
 "--pretend"        : "Don't commit or fix anything; just show what would be done",
@@ -150,6 +151,7 @@ qahelp={
 	"file.name":"File/dir name must be composed of only the following chars: %s " % allowed_filename_chars,
 	"file.UTF8":"File is not UTF8 compliant",
 	"KEYWORDS.missing":"Ebuilds that have a missing or empty KEYWORDS variable",
+	"KEYWORDS.stable":"Ebuilds that have been added directly with stable KEYWORDS",
 	"KEYWORDS.stupid":"Ebuilds that use KEYWORDS=-* instead of package.mask", 
 	"LICENSE.missing":"Ebuilds that have a missing or empty LICENSE variable",
 	"DESCRIPTION.missing":"Ebuilds that have a missing or empty DESCRIPTION variable",
@@ -350,7 +352,7 @@ def last():
 	sys.exit(1)
 
 mymode=None
-myoptions=[]
+myoptions = {}
 if len(sys.argv)>1:
 	x=1
 	while x < len(sys.argv):
@@ -375,8 +377,8 @@ if len(sys.argv)>1:
 				verbose+=1
 			elif (optionx=="--quiet"):
 				quiet+=1
-			elif optionx not in myoptions:
-				myoptions.append(optionx)
+			else:
+				myoptions[optionx] = True
 		else:
 			err_help("\""+sys.argv[x]+"\" is not a valid mode or option.")
 		x=x+1
@@ -389,8 +391,7 @@ if ("--version" in myoptions):
 if mymode=="last" or (mymode=="lfull"):
 	last()
 if mymode == "commit":
-	while "--ignore-masked" in myoptions:
-		myoptions.remove("--ignore-masked")
+	myoptions.pop("--ignore-masked", None)
 
 from portage import normalize_path
 isCvs=False
@@ -466,7 +467,7 @@ if mymode == "commit" and \
 	"--pretend" not in myoptions:
 	print
 	print darkgreen("Not in a CVS or SVN repository; enabling pretend mode.")
-	myoptions.append("--pretend");
+	myoptions["--pretend"] = True
 
 
 def have_profile_dir(path, maxdepth=3):
@@ -862,6 +863,13 @@ elif "--pretend" in myoptions:
 elif quiet < 1:
 	print green("\nRepoMan scours the neighborhood...")
 
+new_ebuilds = set()
+if isCvs:
+	mycvstree = cvstree.getentries("./", recursive=1)
+	mynew = cvstree.findnew(mycvstree, recursive=1, basedir="./")
+	new_ebuilds.update(x for x in mynew if x.endswith(".ebuild"))
+	del mycvstree, mynew
+
 dofail = 0
 arch_caches={}
 arch_xmatch_caches = {}
@@ -1230,6 +1238,26 @@ for x in scanlist:
 				stats[myqakey]=stats[myqakey]+1
 				fails[myqakey].append(x+"/"+y+".ebuild")
 
+		keywords = myaux["KEYWORDS"].split()
+		stable_keywords = []
+		for keyword in keywords:
+			if not keyword.startswith("~") and \
+				not keyword.startswith("-"):
+				stable_keywords.append(keyword)
+		if stable_keywords:
+			ebuild_path = y + ".ebuild"
+			if repolevel < 3:
+				ebuild_path = os.path.join(pkgdir, ebuild_path)
+			if repolevel < 2:
+				ebuild_path = os.path.join(catdir, ebuild_path)
+			ebuild_path = os.path.join(".", ebuild_path)
+			if ebuild_path in new_ebuilds:
+				stable_keywords.sort()
+				stats["KEYWORDS.stable"] += 1
+				fails["KEYWORDS.stable"].append(
+					x + "/" + y + ".ebuild added with stable keywords: %s" % \
+						" ".join(stable_keywords))
+
 		# KEYWORDS="-*" is a stupid replacement for package.mask and screws general KEYWORDS semantics
 		if "-*" in myaux["KEYWORDS"].split():
 			haskeyword = False
@@ -1350,6 +1378,12 @@ for x in scanlist:
 			if x11_deprecation_check(" ".join([myaux["DEPEND"], myaux["RDEPEND"], myaux["PDEPEND"]])):
 				stats["usage.obsolete"] += 1
 				fails["usage.obsolete"].append("%s/%s.ebuild: not migrated to modular X" % (x, y))
+
+		if "--force" in myoptions:
+			# The dep_check() calls are the most expensive QA test. If --force
+			# is enabled, there's no point in wasting time on these since the
+			# user is intent on forcing the commit anyway.
+			continue
 
 		for keyword,arch,groups in arches:
 
@@ -1682,7 +1716,11 @@ if mymode!="commit":
 	if quiet < 1:
 		print
 elif "--pretend" not in myoptions:
-	if dofail:
+	if dofail and "--force" in myoptions and "--pretend" not in myoptions:
+		print green("RepoMan sez:") + \
+			" \"You want to commit even with these QA issues?\n" + \
+			"              I'll take it this time, but I'm not happy.\"\n"
+	elif dofail:
 		print turquoise("Please fix these important QA issues first.")
 		print green("RepoMan sez:"),"\"Make your QA payment on time and you'll never see the likes of me.\"\n"
 		sys.exit(1)
@@ -1841,18 +1879,21 @@ elif "--pretend" not in myoptions:
 				commitmessage=raw_input(green("> "))
 			except KeyboardInterrupt: 
 				exithandler()
-	try:
-		unameout=getstatusoutput("uname -srp")[1]
-		commitmessage+="\n(Portage "+str(portage.VERSION)+"/"
-		if isCvs:
-			commitmessage+="CVS"
-		elif isSvn:
-			commitmessage+="SVN"
-		commitmessage+="/"+unameout+")"
-	except AttributeError:
-		print "Failed to insert portage version in message!"
-		commitmessage+="\n(Portage version: Unknown)"
-
+	portage_version = getattr(portage, "VERSION", None)
+	if portage_version is None:
+		sys.stderr.write("Failed to insert portage version in message!\n")
+		sys.stderr.flush()
+		portage_version = "Unknown"
+	unameout=getstatusoutput("uname -srp")[1]
+	commitmessage+="\n(Portage version: "+str(portage_version)+"/"
+	if isCvs:
+		commitmessage+="CVS"
+	elif isSvn:
+		commitmessage+="SVN"
+	commitmessage+="/"+unameout
+	if "--force" in myoptions:
+		commitmessage += ", RepoMan options: --force"
+	commitmessage += ")"
 	if not manifest1_compat:
 		myfiles = myupdates + myremoved + mymanifests
 		filesdirs = set()
