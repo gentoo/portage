@@ -350,7 +350,7 @@ def last():
 	sys.exit(1)
 
 mymode=None
-myoptions=[]
+myoptions = {}
 if len(sys.argv)>1:
 	x=1
 	while x < len(sys.argv):
@@ -375,8 +375,8 @@ if len(sys.argv)>1:
 				verbose+=1
 			elif (optionx=="--quiet"):
 				quiet+=1
-			elif optionx not in myoptions:
-				myoptions.append(optionx)
+			else:
+				myoptions[optionx] = True
 		else:
 			err_help("\""+sys.argv[x]+"\" is not a valid mode or option.")
 		x=x+1
@@ -389,8 +389,7 @@ if ("--version" in myoptions):
 if mymode=="last" or (mymode=="lfull"):
 	last()
 if mymode == "commit":
-	while "--ignore-masked" in myoptions:
-		myoptions.remove("--ignore-masked")
+	myoptions.pop("--ignore-masked", None)
 
 from portage import normalize_path
 isCvs=False
@@ -403,7 +402,7 @@ if mymode == "commit" and \
 	"--pretend" not in myoptions:
 	print
 	print darkgreen("Not in a CVS repository; enabling pretend mode.")
-	myoptions.append("--pretend");
+	myoptions["--pretend"] = True
 
 
 def have_profile_dir(path, maxdepth=3):
