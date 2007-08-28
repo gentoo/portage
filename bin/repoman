@@ -1710,12 +1710,15 @@ else:
 				commitmessage=raw_input(green("> "))
 			except KeyboardInterrupt: 
 				exithandler()
-	try:
-		commitmessage+="\n(Portage version: "+str(portage.VERSION)+")"
-	except AttributeError:
-		print "Failed to insert portage version in message!"
-		commitmessage+="\n(Portage version: Unknown)"
-
+	portage_version = getattr(portage, "VERSION", None)
+	if portage_version is None:
+		sys.stderr.write("Failed to insert portage version in message!\n")
+		sys.stderr.flush()
+		portage_version = "Unknown"
+	commitmessage += "\n(Portage version: "+str(portage_version)
+	if "--force" in myoptions:
+		commitmessage += ", RepoMan options: --force"
+	commitmessage += ")"
 	if not manifest1_compat:
 		myfiles = myupdates + myremoved + mymanifests
 		filesdirs = set()
