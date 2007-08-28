@@ -5192,7 +5192,7 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 		# Let's assure that what we dump into our system has also a
 		# chance of being able to run...
 		if mysettings.get("CHOST", "") != chost:
-			writemsg("!!! Incompatible binary package: made for %s, you are on %s\n" % mysettings.get("CHOST", ""), chost,
+			writemsg("!!! Incompatible binary package: made for %s, you are on %s\n" % (mysettings.get("CHOST", ""), chost),
 				noiselevel=-1)
 			return 1
 
