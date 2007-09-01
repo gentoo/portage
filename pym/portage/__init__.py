@@ -5218,7 +5218,7 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 		if buildprefix != EPREFIX:
 			shutil.copytree(os.path.join(pkgloc,
 				buildprefix.lstrip(os.path.sep)), os.path.join(pkgloc,
-					EPREFIX_LSTRIP), symlinks=true)
+					EPREFIX_LSTRIP), symlinks="true")
 
 		mylink = dblink(mycat, mypkg, myroot, mysettings, vartree=vartree,
 			treetype="bintree")
