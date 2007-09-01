@@ -1498,7 +1498,6 @@ class dblink(object):
 						break
 				if not isowned:
 					collisions.append(f)
-					print "existing file "+f+" is not owned by this package"
 					stopmerge = True
 					if collision_ignore:
 						if f in collision_ignore:
@@ -1510,12 +1509,18 @@ class dblink(object):
 									break
 			if stopmerge:
 				print red("*")+" This package is blocked because it wants to overwrite"
-				print red("*")+" files belonging to other packages (see messages above)."
+				print red("*")+" files belonging to other packages (see list below)."
 				print red("*")+" If you have no clue what this is all about report it "
 				print red("*")+" as a bug for this package on http://bugs.gentoo.org"
 				print
 				print red("package "+self.cat+"/"+self.pkg+" NOT merged")
 				print
+				print "Detected file collision(s):"
+				print
+				from portage.output import colorize
+				for f in collisions:
+					print "     '%s'" % colorize("INFORM",
+						os.path.join(destroot, f.lstrip(os.path.sep)))
 				print
 				print "Searching all installed packages for file collisions..."
 				print "Press Ctrl-C to Stop"
