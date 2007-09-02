@@ -326,13 +326,39 @@ install_qa_check() {
 	abort="no"
 	for a in "${ED}"usr/lib*/*.la ; do
 		s=${a##*/}
-		if grep -qs "${ED}" "${a}" ; then
+		if grep -qs "${D}" "${a}" ; then
 			vecho -ne '\a\n'
 			eqawarn "QA Notice: ${s} appears to contain PORTAGE_TMPDIR paths"
 			abort="yes"
 		fi
 	done
 	[[ ${abort} == "yes" ]] && die "soiled libtool library files found"
+
+	# Check that we don't get kernel traps at runtime because of broken
+	# install_names on Darwin
+	abort="no"
+	[[ ${CHOST} == *-darwin* ]] && find "${ED}" -type f | while read f ; do
+		otool -LX "${f}" \
+			| grep -v "Archive : " \
+			| sed -e 's/^\t//' -e 's/ (compa.*$//' \
+			| while read r ;
+		do
+			if [[ ! -e ${r} && ! -e ${D}${r} ]] ; then
+				# try to "repair" this if possible, happens because of
+				# gen_usr_ldscript tactics
+				s=${r%usr/*}${r##*/usr/}
+				if [[ -e ${D}${s} ]] ; then
+					ewarn "correcting install_name from ${r} to ${s} in ${f#${D}}"
+					install_name_tool -change \
+						"${r}" "${s}" "${f}"
+				else
+					eqawarn "QA Notice: invalid reference to ${r} in ${f}"
+					abort="yes"
+				fi
+			fi
+		done
+	done
+	[[ ${abort} == "yes" ]] && die "invalid install_names found, objects will crash at runtime"
 
 	# Evaluate misc gcc warnings
 	if [[ -n ${PORTAGE_LOG_FILE} && -r ${PORTAGE_LOG_FILE} ]] ; then
