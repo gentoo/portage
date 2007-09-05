@@ -2246,6 +2246,26 @@ class depgraph(object):
 		# failed to select any nodes.  It is reset whenever nodes are
 		# successfully selected.
 		prefer_asap = True
+
+		# By default, try to avoid selecting root nodes whenever possible. This
+		# helps ensure that the maximimum possible number of soft dependencies
+		# have been removed from the graph before their parent nodes have
+		# selected. This is especially important when those dependencies are
+		# going to be rebuilt by revdep-rebuild or `emerge -e system` after the
+		# CHOST has been changed (like when building a stage3 from a stage2).
+		accept_root_node = False
+
+		# State of prefer_asap and accept_root_node flags for successive
+		# iterations that loosen the criteria for node selection.
+		#
+		# iteration   prefer_asap   accept_root_node
+		# 1           True          False
+		# 2           False         False
+		# 3           False         True
+		#
+		# If no nodes are selected on the 4th iteration, it is due to
+		# unresolved blockers or circular dependencies.
+
 		while not mygraph.empty():
 			selected_nodes = None
 			if prefer_asap and asap_nodes:
@@ -2280,7 +2300,8 @@ class depgraph(object):
 								# found a non-root node
 								selected_nodes = [node]
 								break
-						if not selected_nodes:
+						if not selected_nodes and \
+							(accept_root_node or ignore_priority is None):
 							# settle for a root node
 							selected_nodes = [nodes[0]]
 			if not selected_nodes:
@@ -2313,6 +2334,9 @@ class depgraph(object):
 					for ignore_priority in xrange(DepPriority.SOFT,
 						DepPriority.MEDIUM_SOFT + 1):
 						for node in nodes:
+							if not accept_root_node and \
+								not mygraph.parent_nodes(node):
+								continue
 							selected_nodes = set()
 							if gather_deps(ignore_priority,
 								mergeable_nodes, selected_nodes, node):
@@ -2326,6 +2350,12 @@ class depgraph(object):
 						# We failed to find any asap nodes to merge, so ignore
 						# them for the next iteration.
 						prefer_asap = False
+						continue
+
+					if not selected_nodes and not accept_root_node:
+						# Maybe there are only root nodes left, so accept them
+						# for the next iteration.
+						accept_root_node = True
 						continue
 
 					if selected_nodes and ignore_priority > DepPriority.SOFT:
@@ -2408,8 +2438,10 @@ class depgraph(object):
 				sys.exit(1)
 
 			# At this point, we've succeeded in selecting one or more nodes, so
-			# it's now safe to reset the prefer_asap to it's default state.
+			# it's now safe to reset the prefer_asap and accept_root_node flags
+			# to their default states.
 			prefer_asap = True
+			accept_root_node = False
 
 			for node in selected_nodes:
 				if node[-1] != "nomerge":
