@@ -3299,6 +3299,9 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 	mysettings["PF"]       = mypv
 
 	mysettings["PORTDIR"] = os.path.realpath(mysettings["PORTDIR"])
+	mysettings["DISTDIR"] = os.path.realpath(mysettings["DISTDIR"])
+	mysettings["RPMDIR"]  = os.path.realpath(mysettings["RPMDIR"])
+
 	mysettings["ECLASSDIR"]   = mysettings["PORTDIR"]+"/eclass"
 	mysettings["SANDBOX_LOG"] = mycpv.replace("/", "_-_")
 
