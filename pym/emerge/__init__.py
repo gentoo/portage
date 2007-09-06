@@ -2263,7 +2263,7 @@ class depgraph(object):
 		# 2           False         False
 		# 3           False         True
 		#
-		# If no nodes are selected on the 4th iteration, it is due to
+		# If no nodes are selected on the 3rd iteration, it is due to
 		# unresolved blockers or circular dependencies.
 
 		while not mygraph.empty():
