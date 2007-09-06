@@ -72,7 +72,24 @@ def findnew(entries,recursive=0,basedir=""):
 		for mydir in entries["dirs"]:
 			mylist+=findnew(entries["dirs"][mydir],recursive,basedir+mydir)
 	return mylist
-					
+
+def findoption(entries, pattern, recursive=0, basedir=""):
+	"""(entries, pattern, recursive=0, basedir="")
+	Iterate over paths of cvs entries for which the pattern.search() method
+	finds a match. Returns a list of paths, optionally prepended with a
+	basedir."""
+	if not basedir.endswith("/"):
+		basedir += "/"
+	for myfile, mydata in entries["files"].iteritems():
+		if "cvs" in mydata["status"]:
+			if pattern.search(mydata["flags"]):
+				yield basedir+myfile
+	if recursive:
+		for mydir, mydata in entries["dirs"].iteritems():
+			for x in findoption(mydata, pattern,
+				recursive, basedir+mydir):
+				yield x
+
 def findchanged(entries,recursive=0,basedir=""):
 	"""(entries,recursive=0,basedir="")
 	Recurses the entries tree to find all elements that exist in the cvs tree

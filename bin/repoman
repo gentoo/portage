@@ -1617,11 +1617,14 @@ else:
 		print
 		sys.exit(1)
 
-	if isCvs:
+	if True:
 		mycvstree=cvstree.getentries("./",recursive=1)
 		mychanged=cvstree.findchanged(mycvstree,recursive=1,basedir="./")
 		mynew=cvstree.findnew(mycvstree,recursive=1,basedir="./")
 		myremoved=cvstree.findremoved(mycvstree,recursive=1,basedir="./")
+		bin_blob_pattern = re.compile("^-kb$")
+		bin_blobs = set(cvstree.findoption(mycvstree,
+			bin_blob_pattern, recursive=1, basedir="./"))
 		if not (mychanged or mynew or myremoved):
 			print green("RepoMan sez:"), "\"Doing nothing is not always good for QA.\""
 			print
@@ -1639,6 +1642,8 @@ else:
 	headerstring="'\$(Header|Id)"
 	headerstring+=".*\$'"
 	for myfile in myupdates:
+		if myfile in bin_blobs:
+			continue
 		myout=getstatusoutput("egrep -q "+headerstring+" "+myfile)
 		if myout[0]==0:
 			myheaders.append(myfile)
