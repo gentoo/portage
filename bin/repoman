@@ -1580,7 +1580,7 @@ if mymode!="commit":
 else:
 	if dofail and "--force" in myoptions and "--pretend" not in myoptions:
 		print green("RepoMan sez:") + \
-			" \"You want commit even with these QA issues?\n" + \
+			" \"You want to commit even with these QA issues?\n" + \
 			"              I'll take it this time, but I'm not happy.\"\n"
 	elif dofail:
 		print turquoise("Please fix these important QA issues first.")
