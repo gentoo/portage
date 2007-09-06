@@ -104,6 +104,7 @@ repoman_options={
 "--commitmsg"      : "Adds a commit message via the command line",
 "--commitmsgfile"  : "Adds a commit message from the specified file",
 "--help"           : "Show this screen",
+"--force"          : "Force commit to proceed, regardless of QA issues",
 "--ignore-arches"  : "Ignore arch-specific failures (where arch != host)",
 "--ignore-masked"  : "Ignore masked packages (not allowed with commit mode)",
 "--pretend"        : "Don't commit or fix anything; just show what would be done",
@@ -1549,7 +1550,11 @@ if mymode!="commit":
 	if quiet < 1:
 		print
 else:
-	if dofail:
+	if dofail and "--force" in myoptions and "--pretend" not in myoptions:
+		print green("RepoMan sez:") + \
+			" \"You want commit even with these QA issues?\n" + \
+			"              I'll take it this time, but I'm not happy.\"\n"
+	elif dofail:
 		print turquoise("Please fix these important QA issues first.")
 		print green("RepoMan sez:"),"\"Make your QA payment on time and you'll never see the likes of me.\"\n"
 		sys.exit(1)
