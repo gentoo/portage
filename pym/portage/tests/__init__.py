@@ -9,10 +9,21 @@ import time
 import unittest
 
 def main():
-	testDirs = ["bin", "dep", "ebuild",
-		"env/config", "util", "versions", "xpak", "sets/shell"]
+
+	TEST_FILE = '__test__'
 	suite = unittest.TestSuite()
 	basedir = os.path.dirname(__file__)
+	testDirs = []
+
+  # the os.walk help mentions relative paths as being quirky
+	# I was tired of adding dirs to the list, so now we add __test__
+	# to each dir we want tested.
+	for root, dirs, files in os.walk(os.getcwd()):
+		if ".svn" in dirs:
+			dirs.remove('.svn')
+		if TEST_FILE in files:
+			testDirs.append(root)
+
 	for mydir in testDirs:
 		suite.addTests(getTests(os.path.join(basedir, mydir), basedir) )
 	return TextTestRunner(verbosity=2).run(suite)
