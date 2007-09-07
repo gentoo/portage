@@ -3,17 +3,30 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id: testShell.py 7363 2007-07-22 23:21:14Z zmedico $
 
+import tempfile, os
+
 from portage.tests import TestCase, test_cps
 from portage.sets.files import ConfigFileSet
 
 class ConfigFileSetTestCase(TestCase):
-	"""Simple Test Case for CommandOutputSet"""
+	"""Simple Test Case for ConfigFileSet"""
 
 	def setUp(self):
-		pass
+		fd, self.testfile = tempfile.mkstemp(suffix=".testdata", prefix=self.__class__.__name__, text=True)
+		for i in range(0, len(test_cps)):
+			atom = test_cps[i]
+			if i % 2 == 0:
+				os.write(fd, atom+" abc def"+"\n")
+			else:
+				os.write(fd, atom+"\n")
+		os.close(fd)
 
 	def tearDown(self):
+#		os.unlink(self.testfile)
 		pass
 
-	def testConfigFileSet(self):
-		pass
+	def testConfigStaticFileSet(self):
+		s = ConfigFileSet('test', self.testfile)
+		s.load()
+		self.assertEqual(set(test_cps), s.getAtoms())
+

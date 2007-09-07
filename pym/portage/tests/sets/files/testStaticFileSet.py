@@ -3,28 +3,26 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id: testShell.py 7363 2007-07-22 23:21:14Z zmedico $
 
+import tempfile, os
+
 from portage.tests import TestCase, test_cps
 from portage.sets.files import StaticFileSet
 from portage.env.loaders import TestTextLoader
 from portage.env.config import ConfigLoaderKlass
 
 class StaticFileSetTestCase(TestCase):
-	"""Simple Test Case for StaicFileSet"""
+	"""Simple Test Case for StaticFileSet"""
 
 	def setUp(self):
-		pass
+		fd, self.testfile = tempfile.mkstemp(suffix=".testdata", prefix=self.__class__.__name__, text=True)
+		os.write(fd, "\n".join(test_cps))
+		os.close(fd)
 
 	def tearDown(self):
-		pass
+		os.unlink(self.testfile)
 
 	def testSampleStaticFileSet(self):
-		d = {}
-		for item in test_cps:
-			d[item] = None
-		loader = TestTextLoader(validator=None)
-		loader.setData(d)
-		data = ConfigLoaderKlass(loader)
-		s = StaticFileSet('test', '/dev/null', data=data)
+		s = StaticFileSet('test', self.testfile)
 		s.load()
 		self.assertEqual(set(test_cps), s.getAtoms())
 
