@@ -44,7 +44,7 @@ def RecursiveFileLoader(filename):
 			files = [f for f in files if not f.startswith('.')]
 			files = [f for f in files if not f.endswith('~')]
 			for f in files:
-				yield f
+				yield os.path.join(root, f)
 	else:
 		yield filename
 
