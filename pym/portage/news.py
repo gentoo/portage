@@ -3,12 +3,13 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+import os
+import re
 from portage.const import INCREMENTALS, PROFILE_PATH, NEWS_LIB_PATH
-from portage.util import ensure_dirs, apply_permissions
+from portage.util import ensure_dirs, apply_permissions, normalize_path
 from portage.data import portage_gid
 from portage.locks import lockfile, unlockfile, lockdir, unlockdir
 from portage.exception import FileNotFound
-import os, re
 
 class NewsManager(object):
 	"""
@@ -23,7 +24,7 @@ class NewsManager(object):
 	
 	"""
 
-	TIMESTAMP_FILE = "news-timestamp"
+	TIMESTAMP_FILE = 'news-timestamp'
 
 	def __init__(self, portdb, vardb, NEWS_PATH, UNREAD_PATH, LANGUAGE_ID='en'):
 		self.NEWS_PATH = NEWS_PATH
@@ -37,8 +38,7 @@ class NewsManager(object):
 		self.portdb = portdb
 
 		portdir = portdb.porttree_root
-		profiles_base = os.path.join(portdir, "profiles") + os.path.sep
-		from portage.util import normalize_path
+		profiles_base = os.path.join(portdir, 'profiles') + os.path.sep
 		profile_path = normalize_path(
 			os.path.realpath(portdb.mysettings.profile_path))
 		if profile_path.startswith(profiles_base):
@@ -89,7 +89,7 @@ class NewsManager(object):
 				updates.append(item)
 		del path
 		
-		path = os.path.join(self.UNREAD_PATH, "news-"+repoid+".unread")
+		path = os.path.join(self.UNREAD_PATH, 'news-' + repoid + '.unread')
 		try:
 			unread_lock = lockfile(path)
 			if not os.path.exists(path):
@@ -97,9 +97,9 @@ class NewsManager(object):
 				open(path, "w")
 			# Ensure correct perms on the unread file.
 			apply_permissions( filename=path,
-				uid=int(self.config["PORTAGE_INST_UID"]), gid=portage_gid, mode=0664)
+				uid=int(self.config['PORTAGE_INST_UID']), gid=portage_gid, mode=0664)
 			# Make sure we have the correct permissions when created
-			unread_file = open(path, "a")
+			unread_file = open(path, 'a')
 
 			for item in updates:
 				unread_file.write(item.name + "\n")
@@ -108,7 +108,7 @@ class NewsManager(object):
 			unlockfile(unread_lock)
 		
 		# Touch the timestamp file
-		f = open(timestamp_file, "w")
+		f = open(timestamp_file, 'w')
 		f.close()
 
 	def getUnreadItems(self, repoid, update=False):
@@ -122,13 +122,13 @@ class NewsManager(object):
 		if update:
 			self.updateItems(repoid)
 		
-		unreadfile = os.path.join(self.UNREAD_PATH, "news-"+repoid+".unread")
+		unreadfile = os.path.join(self.UNREAD_PATH, 'news-' + repoid + '.unread')
 		try:
 			try:
 				unread_lock = lockfile(unreadfile)
 				# Set correct permissions on the news-repoid.unread file
 				apply_permissions(filename=unreadfile,
-					uid=int(self.config["PORTAGE_INST_UID"]), gid=portage_gid, mode=0664)
+					uid=int(self.config['PORTAGE_INST_UID']), gid=portage_gid, mode=0664)
 					
 				if os.path.exists(unreadfile):
 					unread = open(unreadfile).readlines()
@@ -181,9 +181,10 @@ class NewsItem(object):
 		if not len(self.restrictions):
 			return True # no restrictions to match means everyone should see it
 		
-		kwargs = { 'vardb' : vardb,
-			   'config' : config,
-			   'profile' : profile }
+		kwargs = \
+			{ 'vardb' : vardb,
+				'config' : config,
+				'profile' : profile }
 
 		for restriction in self.restrictions:
 			if restriction.checkRestriction(**kwargs):
@@ -197,7 +198,7 @@ class NewsItem(object):
 		for line in lines:
 			#Optimization to ignore regex matchines on lines that
 			#will never match
-			if not line.startswith("D"):
+			if not line.startswith('D'):
 				continue
 			restricts = {  _installedRE : DisplayInstalledRestriction,
 					_profileRE : DisplayProfileRestriction,
@@ -224,7 +225,7 @@ class DisplayRestriction(object):
 	"""
 
 	def checkRestriction(self, **kwargs):
-		raise NotImplementedError("Derived class should over-ride this method")
+		raise NotImplementedError('Derived class should over-ride this method')
 
 class DisplayProfileRestriction(DisplayRestriction):
 	"""
@@ -250,7 +251,7 @@ class DisplayKeywordRestriction(DisplayRestriction):
 		self.keyword = keyword
 
 	def checkRestriction(self, **kwargs):
-		if kwargs['config']["ARCH"] == self.keyword:
+		if kwargs['config']['ARCH'] == self.keyword:
 			return True
 		return False
 

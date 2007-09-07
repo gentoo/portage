@@ -67,6 +67,40 @@ class DataLoader(object):
 		"""
 		raise NotImplementedError("Please override in a subclass")
 
+class EnvLoader(DataLoader):
+	""" Class to access data in the environment """
+	def __init__(self, validator):
+		DataLoader.__init__(self, validator)
+
+	def load(self):
+		return os.environ
+
+class TestTextLoader(DataLoader):
+	""" You give it some data, it 'loads' it for you, no filesystem access
+	"""
+	def __init__(self, validator):
+		DataLoader.__init__(self, validator)
+		self.data = {}
+		self.errors = {}
+
+	def setData(self, text):
+		"""Explicitly set the data field
+		Args:
+			text - a dict of data typical of Loaders
+		Returns:
+			None
+		"""
+		if isinstance(text, dict):
+			self.data = text
+		else:
+			raise ValueError("setData requires a dict argument")
+
+	def setErrors(self, errors):
+		self.errors = errors
+	
+	def load(self):
+		return (self.data, self.errors)
+
 
 class FileLoader(DataLoader):
 	""" Class to access data in files """
@@ -234,4 +268,3 @@ class KeyValuePairFileLoader(FileLoader):
 			data[key].append(value)
 		else:
 			data[key] = value
-

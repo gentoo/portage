@@ -17,13 +17,14 @@ from portage.env.validators import PackagesFileValidator, ValidAtomValidator
 class StaticFileSet(EditablePackageSet):
 	_operations = ["merge", "unmerge"]
 	
-	def __init__(self, name, filename, loader=None):
+	def __init__(self, name, filename, data = None):
 		super(StaticFileSet, self).__init__(name)
 		self._filename = filename
 		self._mtime = None
 		self.description = "Package set loaded from file %s" % self._filename
-		if loader is None:
-			self.loader = ConfigLoaderKlass(ItemFileLoader(filename=self._filename,
+		self.data = data
+		if data is None:
+			self.data = ConfigLoaderKlass(ItemFileLoader(filename=self._filename,
 				validator=PackagesFileValidator))
 		metadata = grabfile(self._filename + ".metadata")
 		key = None
@@ -54,12 +55,12 @@ class StaticFileSet(EditablePackageSet):
 			mtime = None
 		if (not self._loaded or self._mtime != mtime):
 			try:
-				self.loader.load()
+				self.data.load()
 			except EnvironmentError, e:
 				if e.errno != errno.ENOENT:
 					raise
 				del e
-			self._setAtoms(self.loader.keys())
+			self._setAtoms(self.data.keys())
 			self._mtime = mtime
 	
 class ConfigFileSet(PackageSet):
