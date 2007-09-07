@@ -41,8 +41,8 @@ def RecursiveFileLoader(filename):
 		for root, dirs, files in os.walk(filename):
 			if 'CVS' in dirs:
 				dirs.remove('CVS')
-			files = filter(files, str.startswith('.'))
-			files = filter(files, str.endswith('~'))
+			files = [f for f in files if not f.startswith('.')]
+			files = [f for f in files if not f.endswith('~')]
 			for f in files:
 				yield f
 	else:
