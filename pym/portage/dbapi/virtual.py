@@ -4,11 +4,12 @@
 
 
 from portage.dbapi import dbapi
-
 from portage import cpv_getkey
 
 class fakedbapi(dbapi):
-	"This is a dbapi to use for the emptytree function.  It's empty, but things can be added to it."
+	"""A fake dbapi that allows consumers to inject/remove packages to/from it
+	portage.settings is required to maintain the dbAPI.
+	"""
 	def __init__(self, settings=None):
 		self.cpvdict = {}
 		self.cpdict = {}
@@ -90,3 +91,19 @@ class fakedbapi(dbapi):
 	def aux_update(self, cpv, values):
 		self._clear_cache()
 		self.cpvdict[cpv].update(values)
+
+class testdbapi(object):
+	"""A dbapi instance with completely fake functions to get by hitting disk
+	TODO(antarus): 
+	This class really needs to be rewritten to have better stubs; but these work for now.
+	The dbapi classes themselves need unit tests...and that will be a lot of work.
+	"""
+
+	def __init__(self):
+		self.cpvs = {}
+		def f(*args, **kwargs):
+			return True
+		fake_api = dir(dbapi)
+		for call in fake_api:
+			if not hasattr(self, call):
+				setattr(self, call, f)
