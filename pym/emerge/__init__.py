@@ -2334,7 +2334,8 @@ class depgraph(object):
 					for ignore_priority in xrange(DepPriority.SOFT,
 						DepPriority.MEDIUM_SOFT + 1):
 						for node in nodes:
-							if not accept_root_node and \
+							if nodes is not asap_nodes and \
+								not accept_root_node and \
 								not mygraph.parent_nodes(node):
 								continue
 							selected_nodes = set()
