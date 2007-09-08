@@ -1201,8 +1201,7 @@ class config(object):
 
 			# Blacklist vars that could interfere with portage internals.
 			for blacklisted in "CATEGORY", "PKGUSE", "PORTAGE_CONFIGROOT", \
-				"ROOT", "SANDBOX_DENY", "SANDBOX_PREDICT", "SANDBOX_READ", \
-				"SANDBOX_WRITE":
+				"ROOT":
 				for cfg in self.lookuplist:
 					cfg.pop(blacklisted, None)
 			del blacklisted, cfg
