@@ -9,8 +9,8 @@ from portage.sets import PackageSet
 class PackagesSystemSet(PackageSet):
 	_operations = ["merge"]
 
-	def __init__(self, name, profile_paths):
-		super(PackagesSystemSet, self).__init__(name)
+	def __init__(self, profile_paths):
+		super(PackagesSystemSet, self).__init__()
 		self._profile_paths = profile_paths
 		self.description = "System packages for profile %s" % self._profile_paths[-1]
 	

@@ -22,7 +22,7 @@ class StaticFileSetTestCase(TestCase):
 		os.unlink(self.testfile)
 
 	def testSampleStaticFileSet(self):
-		s = StaticFileSet('test', self.testfile)
+		s = StaticFileSet(self.testfile)
 		s.load()
 		self.assertEqual(set(test_cps), s.getAtoms())
 

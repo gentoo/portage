@@ -23,8 +23,8 @@ class CommandOutputSet(PackageSet):
 	"""
 	_operations = ["merge", "unmerge"]
 
-	def __init__(self, name, command):
-		super(CommandOutputSet, self).__init__(name)
+	def __init__(self, command):
+		super(CommandOutputSet, self).__init__()
 		self._command = command
 		self.description = "Package set generated from output of '%s'" % self._command
 	

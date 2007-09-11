@@ -23,6 +23,6 @@ class CommandOutputSetTestCase(TestCase):
 		command += " -e "
 		for a in input:
 		  command += "\"%s\n\"" % a
-		s = CommandOutputSet('testset', command)
+		s = CommandOutputSet(command)
 		atoms = s.getAtoms()
 		self.assertEqual(atoms, input)

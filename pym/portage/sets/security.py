@@ -14,8 +14,8 @@ class SecuritySet(PackageSet):
 	
 	description = "package set that includes all packages possibly affected by a GLSA"
 		
-	def __init__(self, name, settings, vardbapi, portdbapi):
-		super(SecuritySet, self).__init__(name)
+	def __init__(self, settings, vardbapi, portdbapi):
+		super(SecuritySet, self).__init__()
 		self._settings = settings
 		self._vardbapi = vardbapi
 		self._portdbapi = portdbapi
