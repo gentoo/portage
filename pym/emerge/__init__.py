@@ -567,7 +567,7 @@ def getlist(settings, mode):
 
 def clean_world(vardb, cpv):
 	"""Remove a package from the world file when unmerged."""
-	world_set = WorldSet("world", vardb.settings["ROOT"])
+	world_set = WorldSet(vardb.settings["ROOT"])
 	world_set.lock()
 	worldlist = list(world_set) # loads latest from disk
 	mykey = portage.cpv_getkey(cpv)
@@ -600,9 +600,9 @@ class RootConfig(object):
 		self.settings = trees["vartree"].settings
 		self.root = self.settings["ROOT"]
 		self.sets = {}
-		world_set = WorldSet("world", self.root)
+		world_set = WorldSet(self.root)
 		self.sets["world"] = world_set
-		system_set = SystemSet("system", self.settings.profiles)
+		system_set = SystemSet(self.settings.profiles)
 		self.sets["system"] = system_set
 
 def create_world_atom(pkg_key, metadata, args_set, root_config):
@@ -5422,9 +5422,9 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	vardb = dep_check_trees[myroot]["vartree"].dbapi
 	# Constrain dependency selection to the installed packages.
 	dep_check_trees[myroot]["porttree"] = dep_check_trees[myroot]["vartree"]
-	system_set = SystemSet("system", settings.profiles)
+	system_set = SystemSet(settings.profiles)
 	syslist = list(system_set)
-	world_set = WorldSet("world", myroot)
+	world_set = WorldSet(myroot)
 	worldlist = list(world_set)
 	args_set = InternalPackageSet()
 	fakedb = portage.fakedbapi(settings=settings)
