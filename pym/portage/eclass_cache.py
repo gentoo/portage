@@ -4,8 +4,9 @@
 # $Id$
 
 from portage.util import normalize_path, writemsg
-import os, sys
+import errno, os, sys
 from portage.data import portage_gid
+from portage.exception import PermissionDenied
 
 class cache(object):
 	"""
@@ -44,7 +45,19 @@ class cache(object):
 		for x in [normalize_path(os.path.join(y,"eclass")) for y in self.porttrees]:
 			if not os.path.isdir(x):
 				continue
-			for y in [y for y in os.listdir(x) if y.endswith(".eclass")]:
+			eclass_filenames = []
+			try:
+				for y in os.listdir(x):
+					if y.endswith(".eclass"):
+						eclass_filenames.append(y)
+			except OSError, e:
+				if e.errno == errno.ENOENT:
+					del e
+					continue
+				elif e.errno == PermissionDenied.errno:
+					raise PermissionDenied(x)
+				raise
+			for y in eclass_filenames:
 				try:
 					mtime = long(os.stat(os.path.join(x, y)).st_mtime)
 				except OSError:
