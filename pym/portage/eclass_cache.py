@@ -43,8 +43,6 @@ class cache(object):
 		self._eclass_locations = {}
 		eclass_len = len(".eclass")
 		for x in [normalize_path(os.path.join(y,"eclass")) for y in self.porttrees]:
-			if not os.path.isdir(x):
-				continue
 			eclass_filenames = []
 			try:
 				for y in os.listdir(x):
@@ -52,6 +50,9 @@ class cache(object):
 						eclass_filenames.append(y)
 			except OSError, e:
 				if e.errno == errno.ENOENT:
+					del e
+					continue
+				elif e.errno == errno.ENOTDIR:
 					del e
 					continue
 				elif e.errno == PermissionDenied.errno:
