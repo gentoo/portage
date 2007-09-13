@@ -6106,6 +6106,43 @@ def validate_ebuild_environment(trees):
 			print >> sys.stderr, bad("\a!!! Is the symlink correct? " + \
 				"Is your portage tree complete?\n")
 			sys.exit(9)
+		if myroot == "/" and \
+			portage.data.ostype == "FreeBSD":
+			ignore_missing = "ignore-missing-freebsd-module"
+			msg = None
+			die = False
+			if portage.bsd_chflags is not None and \
+				ignore_missing in mysettings.features:
+				msg = \
+				"Do NOT forget to remove \"%s\" " % ignore_missing + \
+				"from FEATURES as soon as " + \
+				"the freebsd python module has been properly " + \
+				"installed."
+			elif portage.bsd_chflags is None and \
+				ignore_missing not in mysettings.features:
+				die = True
+				msg = \
+				"An error occurred while attempting to import the " + \
+				"freebsd python module. This usually means that " + \
+				"python has just been upgraded and the py-freebsd " + \
+				"package has not yet been rebuilt by python-updater. " + \
+				"The freebsd python module is required for proper " + \
+				"operation. Please install or rebuild py-freebsd as " + \
+				"soon as possible. In order to bypass this error, " + \
+				"add \"%s\" to FEATURES. " % ignore_missing + \
+				"Do NOT forget to remove it from FEATURES as soon as " + \
+				"the freebsd python module has been properly " + \
+				"installed."
+			if msg:
+				width = 72 # leave room for the " * " prefix
+				from textwrap import wrap
+				for line in wrap(msg, width):
+					sys.stderr.write(bad(" * "))
+					sys.stderr.write(line)
+					sys.stderr.write("\n")
+				sys.stderr.flush()
+			if die:
+				sys.exit(9)
 		del myroot, mysettings
 
 def load_emerge_config(trees=None):
