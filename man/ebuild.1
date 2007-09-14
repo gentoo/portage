@@ -66,8 +66,11 @@ and ebuild exits with an error code of 1.
 .BR digest
 Creates a digest file for the package in
 /usr/portage/[category]/[package]/files/.  This digest file lists the
-md5sums of all the files found in the SRC_URI.  If the fetched source
-of the package is corrupt/bogus in some way, the md5sum will catch this.
+checksums of all the files found in the SRC_URI. See the \fB\-\-force\fR
+option if you would like to prevent digests from being assumed. For further
+information regarding the behavior of this command, see the documentation for
+the \fIassume\-digests\fR value of the \fBFEATURES\fR variable in
+\fBmake.conf\fR(5).
 .TP
 .BR manifest
 Updates the manifest file for the package.  This performs the second half
@@ -167,6 +170,12 @@ ${PKGDIR}/${CATEGORY} that points to the package in ${PKGDIR}/All.
 Builds a RedHat RPM package from the files in the temporary
 \fIinstall directory\fR.  At the moment, the ebuild's dependency
 information is not incorporated into the RPM.
+.SH OPTIONS
+.TP
+\fB--force\fR
+When used together with the digest command, this option forces regeneration of
+digests for all distfiles associated with the current ebuild. Any distfiles
+that do not already exist in ${DISTDIR} will be automatically fetched.
 .SH "REPORTING BUGS"
 Please report bugs via http://bugs.gentoo.org/
 .SH "AUTHORS"
