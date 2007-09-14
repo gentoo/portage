@@ -15,8 +15,8 @@ from portage.env.validators import ValidAtomValidator
 class StaticFileSet(EditablePackageSet):
 	_operations = ["merge", "unmerge"]
 	
-	def __init__(self, name, filename):
-		super(StaticFileSet, self).__init__(name)
+	def __init__(self, filename):
+		super(StaticFileSet, self).__init__()
 		self._filename = filename
 		self._mtime = None
 		self.description = "Package set loaded from file %s" % self._filename
@@ -56,12 +56,13 @@ class StaticFileSet(EditablePackageSet):
 				if e.errno != errno.ENOENT:
 					raise
 				del e
+				data = {}
 			self._setAtoms(data.keys())
 			self._mtime = mtime
 	
 class ConfigFileSet(PackageSet):
-	def __init__(self, name, filename):
-		super(ConfigFileSet, self).__init__(name)
+	def __init__(self, filename):
+		super(ConfigFileSet, self).__init__()
 		self._filename = filename
 		self.description = "Package set generated from %s" % self._filename
 		self.loader = KeyListFileLoader(self._filename, ValidAtomValidator)
@@ -73,8 +74,8 @@ class ConfigFileSet(PackageSet):
 class WorldSet(StaticFileSet):
 	description = "Set of packages that were directly installed by the user"
 	
-	def __init__(self, name, root):
-		super(WorldSet, self).__init__(name, os.path.join(os.sep, root, PRIVATE_PATH, "world"))
+	def __init__(self, root):
+		super(WorldSet, self).__init__(os.path.join(os.sep, root, PRIVATE_PATH, "world"))
 		self._lock = None
 
 	def _ensure_dirs(self):

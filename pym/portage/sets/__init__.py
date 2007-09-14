@@ -19,11 +19,9 @@ class PackageSet(object):
 	# package sets, the latter doesn't make sense for some sets like "system"
 	# or "security" and therefore isn't supported by them.
 	_operations = ["merge"]
-	_atommap = {}
 	description = "generic package set"
 	
-	def __init__(self, name):
-		self.name = name
+	def __init__(self):
 		self._atoms = set()
 		self._atommap = {}
 		self._loaded = False
@@ -150,7 +148,7 @@ class EditablePackageSet(PackageSet):
 
 class InternalPackageSet(EditablePackageSet):
 	def __init__(self, initial_atoms=None):
-		super(InternalPackageSet, self).__init__("")
+		super(InternalPackageSet, self).__init__()
 		if initial_atoms != None:
 			self.update(initial_atoms)
 
@@ -174,23 +172,23 @@ def make_default_sets(configroot, root, profile_paths, settings=None,
 	from portage.sets.dbapi import EverythingSet
 	from portage.const import PRIVATE_PATH, USER_CONFIG_PATH
 	
-	rValue = set()
-	worldset = StaticFileSet("world", os.path.join(root, PRIVATE_PATH, "world"))
+	rValue = {}
+	worldset = StaticFileSet(os.path.join(root, PRIVATE_PATH, "world"))
 	worldset.description = "Set of packages that were directly installed"
-	rValue.add(worldset)
+	rValue["world"] = worldset
 	for suffix in ["mask", "unmask", "keywords", "use"]:
 		myname = "package_"+suffix
-		myset = ConfigFileSet(myname, os.path.join(configroot, USER_CONFIG_PATH.lstrip(os.sep), "package."+suffix))
-		rValue.add(myset)
-	rValue.add(PackagesSystemSet("system", profile_paths))
+		myset = ConfigFileSet(os.path.join(configroot, USER_CONFIG_PATH.lstrip(os.sep), "package."+suffix))
+		rValue[myname] = myset
+	rValue["system"] = PackagesSystemSet(profile_paths)
 	if settings != None and portdbapi != None:
-		rValue.add(NewAffectedSet("security", settings, vdbapi, portdbapi))
+		rValue["security"] = NewAffectedSet(settings, vdbapi, portdbapi)
 	else:
-		rValue.add(InternalPackageSet("security"))
+		rValue["security"] = InternalPackageSet()
 	if vdbapi != None:
-		rValue.add(EverythingSet("everything", vdbapi))
+		rValue["everything"] = EverythingSet(vdbapi)
 	else:
-		rValue.add(InternalPackageSet("everything"))
+		rValue["everything"] = InternalPackageSet()
 
 	return rValue
 
@@ -198,7 +196,7 @@ def make_extra_static_sets(configroot):
 	from portage.sets.files import StaticFileSet
 	from portage.const import PRIVATE_PATH, USER_CONFIG_PATH
 	
-	rValue = set()
+	rValue = {}
 	mydir = os.path.join(configroot, USER_CONFIG_PATH.lstrip(os.sep), "sets")
 	try:
 		mysets = os.listdir(mydir)
@@ -207,14 +205,14 @@ def make_extra_static_sets(configroot):
 	for myname in mysets:
 		if myname in DEFAULT_SETS:
 			continue
-		rValue.add(StaticFileSet(myname, os.path.join(mydir, myname)))
+		rValue[myname] = StaticFileSet(os.path.join(mydir, myname))
 	return rValue
 
 def make_category_sets(portdbapi, settings, only_visible=True):
 	from portage.sets.dbapi import CategorySet
-	rValue = set()
+	rValue = {}
 	for c in settings.categories:
-		rValue.add(CategorySet("category_%s" % c, c, portdbapi, only_visible=only_visible))
+		rValue["category_%s" % c] = CategorySet(c, portdbapi, only_visible=only_visible)
 	return rValue
 
 # adhoc test code
@@ -228,16 +226,18 @@ if __name__ == "__main__":
 		for s in sys.argv[1:]:
 			if s.startswith("category_"):
 				c = s[9:]
-				l.add(CategorySet("category_%s" % c, c, portage.db['/']['porttree'].dbapi, only_visible=False))
+				l["category_%s" % c] = CategorySet(c, portage.db['/']['porttree'].dbapi, only_visible=False)
 			elif os.path.exists(s):
-				l.add(StaticFileSet(os.path.basename(s), s))
+				l[os.path.basename(s)] = StaticFileSet(s)
 			elif s != "*":
 				print "ERROR: could not create set '%s'" % s
 		if not "*" in sys.argv:
-			l = [s for s in l if s.name in sys.argv[1:]]
+			for n in l:
+				if n not in sys.argv[1:]:
+					del l[n]
 	for x in l:
-		print x.name+":"
-		print "DESCRIPTION = %s" % x.getMetadata("Description")
-		for n in sorted(x.getAtoms()):
+		print x+":"
+		print "DESCRIPTION = %s" % l[x].getMetadata("Description")
+		for n in sorted(l[x].getAtoms()):
 			print "- "+n
 		print

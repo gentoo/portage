@@ -22,11 +22,10 @@ class ConfigFileSetTestCase(TestCase):
 		os.close(fd)
 
 	def tearDown(self):
-#		os.unlink(self.testfile)
-		pass
+		os.unlink(self.testfile)
 
 	def testConfigStaticFileSet(self):
-		s = ConfigFileSet('test', self.testfile)
+		s = ConfigFileSet(self.testfile)
 		s.load()
 		self.assertEqual(set(test_cps), s.getAtoms())
 

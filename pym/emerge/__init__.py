@@ -53,7 +53,7 @@ from portage.const import EPREFIX
 from portage.data import secpass
 from portage.util import normalize_path as normpath
 from portage.util import writemsg
-from portage.sets.dbapi import InternalPackageSet
+from portage.sets import InternalPackageSet
 from portage.sets.profiles import PackagesSystemSet as SystemSet
 from portage.sets.files import WorldSet
 
@@ -568,7 +568,7 @@ def getlist(settings, mode):
 
 def clean_world(vardb, cpv):
 	"""Remove a package from the world file when unmerged."""
-	world_set = WorldSet("world", vardb.settings["ROOT"])
+	world_set = WorldSet(vardb.settings["ROOT"])
 	world_set.lock()
 	worldlist = list(world_set) # loads latest from disk
 	mykey = portage.cpv_getkey(cpv)
@@ -601,9 +601,9 @@ class RootConfig(object):
 		self.settings = trees["vartree"].settings
 		self.root = self.settings["ROOT"]
 		self.sets = {}
-		world_set = WorldSet("world", self.root)
+		world_set = WorldSet(self.root)
 		self.sets["world"] = world_set
-		system_set = SystemSet("system", self.settings.profiles)
+		system_set = SystemSet(self.settings.profiles)
 		self.sets["system"] = system_set
 
 def create_world_atom(pkg_key, metadata, args_set, root_config):
@@ -2335,7 +2335,8 @@ class depgraph(object):
 					for ignore_priority in xrange(DepPriority.SOFT,
 						DepPriority.MEDIUM_SOFT + 1):
 						for node in nodes:
-							if not accept_root_node and \
+							if nodes is not asap_nodes and \
+								not accept_root_node and \
 								not mygraph.parent_nodes(node):
 								continue
 							selected_nodes = set()
@@ -5468,9 +5469,9 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	vardb = dep_check_trees[myroot]["vartree"].dbapi
 	# Constrain dependency selection to the installed packages.
 	dep_check_trees[myroot]["porttree"] = dep_check_trees[myroot]["vartree"]
-	system_set = SystemSet("system", settings.profiles)
+	system_set = SystemSet(settings.profiles)
 	syslist = list(system_set)
-	world_set = WorldSet("world", myroot)
+	world_set = WorldSet(myroot)
 	worldlist = list(world_set)
 	args_set = InternalPackageSet()
 	fakedb = portage.fakedbapi(settings=settings)

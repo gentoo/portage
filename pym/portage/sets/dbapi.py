@@ -9,8 +9,8 @@ class EverythingSet(PackageSet):
 	_operations = ["merge", "unmerge"]
 	description = "Package set containing all installed packages"
 	
-	def __init__(self, name, vdbapi):
-		super(EverythingSet, self).__init__(name)
+	def __init__(self, vdbapi):
+		super(EverythingSet, self).__init__()
 		self._db = vdbapi
 	
 	def load(self):
@@ -27,9 +27,9 @@ class EverythingSet(PackageSet):
 class CategorySet(PackageSet):
 	_operations = ["merge", "unmerge"]
 	
-	def __init__(self, name, category, portdbapi, only_visible=True):
-		super(CategorySet, self).__init__(name)
-		self._db = portdbapi
+	def __init__(self, category, dbapi, only_visible=True):
+		super(CategorySet, self).__init__()
+		self._db = dbapi
 		self._category = category
 		self._check = only_visible
 		if only_visible:
