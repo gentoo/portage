@@ -41,10 +41,10 @@ def RecursiveFileLoader(filename):
 		for root, dirs, files in os.walk(filename):
 			if 'CVS' in dirs:
 				dirs.remove('CVS')
-			files = filter(files, str.startswith('.'))
-			files = filter(files, str.endswith('~'))
+			files = [f for f in files if not f.startswith('.')]
+			files = [f for f in files if not f.endswith('~')]
 			for f in files:
-				yield f
+				yield os.path.join(root, f)
 	else:
 		yield filename
 
@@ -66,6 +66,40 @@ class DataLoader(object):
 		Function to do the actual work of a Loader
 		"""
 		raise NotImplementedError("Please override in a subclass")
+
+class EnvLoader(DataLoader):
+	""" Class to access data in the environment """
+	def __init__(self, validator):
+		DataLoader.__init__(self, validator)
+
+	def load(self):
+		return os.environ
+
+class TestTextLoader(DataLoader):
+	""" You give it some data, it 'loads' it for you, no filesystem access
+	"""
+	def __init__(self, validator):
+		DataLoader.__init__(self, validator)
+		self.data = {}
+		self.errors = {}
+
+	def setData(self, text):
+		"""Explicitly set the data field
+		Args:
+			text - a dict of data typical of Loaders
+		Returns:
+			None
+		"""
+		if isinstance(text, dict):
+			self.data = text
+		else:
+			raise ValueError("setData requires a dict argument")
+
+	def setErrors(self, errors):
+		self.errors = errors
+	
+	def load(self):
+		return (self.data, self.errors)
 
 
 class FileLoader(DataLoader):
@@ -162,9 +196,17 @@ class KeyListFileLoader(FileLoader):
 	{'key':['foo1','foo2','foo3']}
 	"""
 
-	def __init__(self, filename, validator):
+	def __init__(self, filename, validator=None, valuevalidator=None):
 		FileLoader.__init__(self, filename, validator)
 
+		f = valuevalidator
+		if f is None:
+			# if they pass in no validator, just make a fake one
+			# that always returns true
+			def validate(key):
+				return True
+			f = validate
+		self._valueValidate = f
 
 	def lineParser(self, line, line_num, data, errors):
 		line = line.strip()
@@ -173,7 +215,7 @@ class KeyListFileLoader(FileLoader):
 		if not len(line): # skip empty lines
 			return
 		split = line.split()
-		if len(split) < 2:
+		if len(split) < 1:
 			errors.setdefault(self.fname, []).append(
 				"Malformed data at line: %s, data: %s"
 				% (line_num + 1, line))
@@ -182,8 +224,13 @@ class KeyListFileLoader(FileLoader):
 		value = split[1:]
 		if not self._validate(key):
 			errors.setdefault(self.fname, []).append(
-				"Validation failed at line: %s, data %s"
+				"Key validation failed at line: %s, data %s"
 				% (line_num + 1, key))
+			return
+		if not self._valueValidate(value):
+			errors.setdefault(self.fname, []).append(
+				"Value validation failed at line: %s, data %s"
+				% (line_num + 1, value))
 			return
 		if key in data:
 			data[key].append(value)
@@ -202,8 +249,17 @@ class KeyValuePairFileLoader(FileLoader):
 	 'foo':'bar'}
 	"""
 
-	def __init__(self, filename, validator):
+	def __init__(self, filename, validator, valuevalidator=None):
 		FileLoader.__init__(self, filename, validator)
+
+		f = valuevalidator
+		if f is None:
+			# if they pass in no validator, just make a fake one
+			# that always returns true
+			def validate(key):
+				return True
+			f = validate
+		self._valueValidate = f
 
 
 	def lineParser(self, line, line_num, data, errors):
@@ -227,11 +283,15 @@ class KeyValuePairFileLoader(FileLoader):
 			return
 		if not self._validate(key):
 			errors.setdefault(self.fname, []).append(
-				"Validation failed at line: %s, data %s"
+				"Key validation failed at line: %s, data %s"
 				% (line_num + 1, key))
+			return
+		if not self._valueValidate(value):
+			errors.setdefault(self.fname, []).append(
+				"Value validation failed at line: %s, data %s"
+				% (line_num + 1, value))
 			return
 		if key in data:
 			data[key].append(value)
 		else:
 			data[key] = value
-

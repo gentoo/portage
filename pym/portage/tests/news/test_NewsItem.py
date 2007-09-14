@@ -3,13 +3,17 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id: test_varExpand.py 5596 2007-01-12 08:08:53Z antarus $
 
-from portage.tests import TestCase, TestLoader
+import os
+from portage.tests import TestCase
 from portage.news import NewsItem
 from portage.const import PROFILE_PATH
+from portage.dbapi.virtual import testdbapi
+from tempfile import mkstemp
+# TODO(antarus) Make newsitem use a loader so we can load using a string instead of a tempfile
 
 class NewsItemTestCase(TestCase):
-	
-	self.fakeItem = """
+	"""These tests suck: they use your running config instead of making their own"""
+	fakeItem = """
 Title: YourSQL Upgrades from 4.0 to 4.1
 Author: Ciaran McCreesh <ciaranm@gentoo.org>
 Content-Type: text/plain
@@ -39,45 +43,55 @@ against YourSQL:
 
 The revdep-rebuild tool is provided by app-portage/gentoolkit.
 """
+	def setUp(self):
+		self.profile = "/usr/portage/profiles/default-linux/x86/2007.0/"
+		self.keywords = "x86"
+		# Use fake/test dbapi to avoid slow tests
+		self.vardb = testdbapi()
+		# self.vardb.inject_cpv('sys-apps/portage-2.0', { 'SLOT' : 0 })
+		# Consumers only use ARCH, so avoid portage.settings by using a dict
+		self.settings = { 'ARCH' : 'x86' }
 
-	from portage import settings
-	import time
+	def testDisplayIfProfile(self):
+		tmpItem = self.fakeItem[:].replace("#Display-If-Profile:", "Display-If-Profile: %s" %
+			self.profile)
 
-	def testDisplayIfProfile():
-		from portage.const import PROFILE_PATH
-		tmpItem = self.fakeItem.replace("#Display-If-Profile:", "Display-If-Profile: %s" %
-			os.readlink( PROFILE_PATH ) )
+		try:
+			item = self._processItem(tmpItem)
+			self.assertTrue(item.isRelevant(self.vardb, self.settings, self.profile),
+				msg="Expected %s to be relevant, but it was not!" % tmpItem)
+		finally:
+			os.unlink(item.path)
 
-		item = _processItem(tmpItem)
-		self.assertTrue( item.isRelevant( os.readlink( PROFILE_PATH ) ),
-			msg="Expected %s to be relevant, but it was not!" % tmpItem )
+	def testDisplayIfInstalled(self):
+		tmpItem = self.fakeItem[:].replace("#Display-If-Installed:", "Display-If-Installed: %s" %
+			"sys-apps/portage")
 
-	def testDisplayIfInstalled():
-		tmpItem = self.fakeItem.replace("#Display-If-Installed:", "Display-If-Profile: %s" %
-			"sys-apps/portage" )
+		try:
+			item = self._processItem(tmpItem)
+			self.assertTrue(item.isRelevant(self.vardb, self.settings, self.profile),
+				msg="Expected %s to be relevant, but it was not!" % tmpItem)
+		finally:
+			os.unlink(item.path)
 
-		item = _processItem(tmpItem)
-		self.assertTrue( item.isRelevant( portage.settings ),
-			msg="Expected %s to be relevant, but it was not!" % tmpItem )
+	def testDisplayIfKeyword(self):
+		tmpItem = self.fakeItem[:].replace("#Display-If-Keyword:", "Display-If-Keyword: %s" %
+			self.keywords)
 
+		try:
+			item = self._processItem(tmpItem)
+			self.assertTrue(item.isRelevant(self.vardb, self.settings, self.profile),
+				msg="Expected %s to be relevant, but it was not!" % tmpItem)
+		finally:
+			os.unlink(item.path)
 
-	def testDisplayIfKeyword():
-		from portage import settings
-		tmpItem = self.fakeItem.replace("#Display-If-Keyword:", "Display-If-Keyword: %s" %
-			settings["ACCEPT_KEYWORDS"].split()[0] )
-
-		item = _processItem(tmpItem)
-		self.assertTrue( item.isRelevant( os.readlink( PROFILE_PATH ) ),
-			msg="Expected %s to be relevant, but it was not!" % tmpItem )
-		
-
-	def _processItem( self, item ):
-
-		path = os.path.join(settings["PORTAGE_TMPDIR"], str(time.time()))
-		f = open(path)
+	def _processItem(self, item):
+		filename = None
+		fd, filename = mkstemp()
+		f = os.fdopen(fd, 'wb')
 		f.write(item)
 		f.close
 		try:
-			return NewsItem( path, 0 )
+			return NewsItem(filename, 0)
 		except TypeError:
-			self.fail("Error while processing news item %s" % path )
+			self.fail("Error while processing news item %s" % filename)

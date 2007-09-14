@@ -4,7 +4,7 @@
 
 import os
 from portage.util import grabfile_package, stack_lists
-from portage.sets.dbapi import PackageSet
+from portage.sets import PackageSet
 
 class PackagesSystemSet(PackageSet):
 	_operations = ["merge"]

@@ -2,15 +2,15 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-
+import os
+import re
 from portage.dep import dep_getslot, dep_getkey, match_from_list
 from portage.locks import unlockfile
 from portage.output import red
 from portage.util import writemsg
-
 from portage import dep_expand
+from portage.versions import catsplit
 
-import os, re
 
 class dbapi(object):
 	def __init__(self):
@@ -23,18 +23,61 @@ class dbapi(object):
 		return
 
 	def cpv_all(self):
+		"""Return all CPVs in the db
+		Args:
+			None
+		Returns:
+			A list of Strings, 1 per CPV
+
+		This function relies on a subclass implementing cp_all, this is why the hasattr is there
+		"""
+
+		if not hasattr(self, "cp_all"):
+			raise NotImplementedError
 		cpv_list = []
 		for cp in self.cp_all():
 			cpv_list.extend(self.cp_list(cp))
 		return cpv_list
 
+	def cp_all(self):
+		""" Implement this in a child class
+		Args
+			None
+		Returns:
+			A list of strings 1 per CP in the datastore
+		"""
+		return NotImplementedError
+
 	def aux_get(self, mycpv, mylist):
-		"stub code for returning auxiliary db information, such as SLOT, DEPEND, etc."
-		'input: "sys-apps/foo-1.0",["SLOT","DEPEND","HOMEPAGE"]'
-		'return: ["0",">=sys-libs/bar-1.0","http://www.foo.com"] or [] if mycpv not found'
+		"""Return the metadata keys in mylist for mycpv
+		Args:
+			mycpv - "sys-apps/foo-1.0"
+			mylist - ["SLOT","DEPEND","HOMEPAGE"]
+		Returns: 
+			a list of results, in order of keys in mylist, such as:
+			["0",">=sys-libs/bar-1.0","http://www.foo.com"] or [] if mycpv not found'
+		"""
+		raise NotImplementedError
+	
+	def aux_update(self, cpv, metadata_updates):
+		"""
+		Args:
+		  cpv - "sys-apps/foo-1.0"
+			metadata_updates = { key : newvalue }
+		Returns:
+			None
+		"""
 		raise NotImplementedError
 
 	def match(self, origdep, use_cache=1):
+		"""Given a dependency, try to find packages that match
+		Args:
+			origdep - Depend atom
+			use_cache - Boolean indicating if we should use the cache or not
+			NOTE: Do we ever not want the cache?
+		Returns:
+			a list of packages that match origdep
+		"""
 		mydep = dep_expand(origdep, mydb=self, settings=self.settings)
 		mykey = dep_getkey(mydep)
 		mylist = match_from_list(mydep, self.cp_list(mykey, use_cache=use_cache))
@@ -45,14 +88,14 @@ class dbapi(object):
 		return mylist
 
 	def invalidentry(self, mypath):
-		if re.search("portage_lockfile$", mypath):
+		if mypath.endswith('portage_lockfile'):
 			if not os.environ.has_key("PORTAGE_MASTER_PID"):
 				writemsg("Lockfile removed: %s\n" % mypath, 1)
 				unlockfile((mypath, None, None))
 			else:
 				# Nothing we can do about it. We're probably sandboxed.
 				pass
-		elif re.search(".*/-MERGING-(.*)", mypath):
+		elif '/-MERGING-' in mypath:
 			if os.path.exists(mypath):
 				writemsg(red("INCOMPLETE MERGE:")+" "+mypath+"\n", noiselevel=-1)
 		else:
@@ -60,7 +103,7 @@ class dbapi(object):
 
 	def update_ents(self, updates, onProgress=None):
 		"""
-		Update metadata of all packages for packages moves.
+		Update metadata of all packages for package moves.
 		@param updates: A list of move commands
 		@type updates: List
 		@param onProgress: A progress callback function
@@ -85,6 +128,12 @@ class dbapi(object):
 				onProgress(maxval, i+1)
 
 	def move_slot_ent(self, mylist):
+		"""This function takes a sequence:
+		Args:
+			mylist: a sequence of (package, originalslot, newslot)
+		Returns:
+			The number of slotmoves this function did
+		"""
 		pkg = mylist[1]
 		origslot = mylist[2]
 		newslot = mylist[3]
@@ -92,7 +141,6 @@ class dbapi(object):
 		moves = 0
 		if not origmatches:
 			return moves
-		from portage.versions import catsplit
 		for mycpv in origmatches:
 			slot = self.aux_get(mycpv, ["SLOT"])[0]
 			if slot != origslot:
