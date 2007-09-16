@@ -395,72 +395,12 @@ if mymode == "commit":
 
 from portage import normalize_path
 isCvs=False
-myreporoot=None
 if os.path.isdir("CVS"):
 	isCvs = True
 
-	try:
-		isCvs=True
-		myrepofile=open("CVS/Repository")
-		myreporoot=myrepofile.readline()[:-1]
-		myrepofile.close()
-		myrepofile=open("CVS/Root")
-		myreporootpath=string.split(myrepofile.readline()[:-1], ":")[-1]
-		myrepofile.close()
-		if myreporootpath == myreporoot[:len(myreporootpath)]:
-			# goofy os x cvs co.
-			myreporoot = myreporoot[len(myreporootpath):]
-			while myreporoot and myreporoot[0] == '/':
-				myreporoot = myreporoot[1:]
-	except SystemExit, e:
-		raise  # Need to propogate this
-	except:
-		err("Error grabbing repository information; exiting.")
-	myreporootpath=os.path.normpath(myreporootpath)
-	if myreporootpath=="/space/cvsroot":
-		print
-		print
-		print red("You're using the wrong cvsroot. For Manifests to be correct, you must")
-		print red("use the same base cvsroot path that the servers use. Please try the")
-		print red("following script to remedy this:")
-		print
-		print "cd my_cvs_tree"
-		print
-		print "rm -Rf [a-z]*"
-		print "cvs up"
-		print
-		if portage.userland=="BSD" or portage.userland=="Darwin":
-			print "find ./ -type f -regex '.*/CVS/Root$' -print0 | xargs -0 sed \\"
-		else:
-			print "find ./ -type f -regex '.*/CVS/Root$' -print0 | xargs -0r sed \\"
-		fi
-		print "  -i 's:/space/cvsroot$:/home/cvsroot:'"
-		print
-		print red("You must clear and re-update your tree as all header tags will cause")
-		print red("problems in manifests for all rsync and /home/cvsroot users.")
-		print
-		print "You should do this to any other gentoo trees your have as well,"
-		print "excluding the deletions. 'gentoo-src' should be /home/cvsroot."
-		print
-		sys.exit(123)
-
 isSvn=False
-myreporoot=None
 if os.path.isdir(".svn"):
-	try:
-		isSvn=True
-		myrepoinfo = os.popen("svn info").readlines()
-		myurl = myrepoinfo[1].split(":")[1].rstrip()
-		myreproot = myrepoinfo[2].split(":")[1].rstrip()
-		# This one is EVIL, but I don't know how to solve the problem of
-		# getting rid of /trunk/prefix-overlay.  This only works on the
-		# prefix overlay.
-		myreporoot = "/".join(myurl[len(myreproot):].split("/")[2:])
-		myreporootpath = "/" + "/".join(myreproot.split("/")[3:])
-	except SystemExit, e:
-		raise  # Need to propogate this
-	except:
-		err("Error grabbing repository information; exiting.")
+	isSvn=True
 
 if mymode == "commit" and \
 	not isCvs and not isSvn and \
@@ -559,14 +499,10 @@ portdb.mysettings = repoman_settings
 # dep_zapdeps looks at the vardbapi, but it shouldn't for repoman.
 del trees["/"]["vartree"]
 
-if not myreporoot:
-	myreporoot = os.path.basename(portdir_overlay)
-	myreporoot += mydir[len(portdir_overlay):-1]
+myreporoot = os.path.basename(portdir_overlay)
+myreporoot += mydir[len(portdir_overlay):-1]
 
-if isSvn:
-	reposplit=myreporoot.split("/")
-else:
-	reposplit=myreporoot.split("/")
+reposplit=myreporoot.split("/")
 repolevel=len(reposplit)
 
 # check if it's in $PORTDIR/$CATEGORY/$PN , otherwise bail if commiting.
@@ -825,8 +761,8 @@ if mymode == "commit":
 			"egrep -v '^.  +.*/digest-[^/]+' | " + \
 			"head -n-1")
 
-	mylines=retval[1].splitlines()
-	myupdates=[]
+	mylines = retval[1].splitlines()
+	myupdates = []
 	for x in mylines:
 		if not x:
 			continue
@@ -841,7 +777,7 @@ if mymode == "commit":
 			myupdates.append(x[2:])
 		elif isSvn and x[8] == '*':
 			myupdates.append(x[9:].lstrip(" 1234567890"))
-	
+
 	if myupdates:
 		print green("Fetching trivial updates...")
 		if "--pretend" in myoptions:
@@ -1380,7 +1316,7 @@ for x in scanlist:
 				fails["usage.obsolete"].append("%s/%s.ebuild: not migrated to modular X" % (x, y))
 
 		# this check needs work, it won't catch (\ndie)
-		if not os.system("grep -E '^[^#]*\([^)]*\<die\>' "+checkdir+"/"+y+".ebuild >/dev/null 2>&1"):
+		if not os.system("egrep '^[^#]*\([^)]*\<die\>' "+checkdir+"/"+y+".ebuild >/dev/null 2>&1"):
 			stats["ebuild.nesteddie"]=stats["ebuild.nesteddie"]+1
 			fails["ebuild.nesteddie"].append(x+"/"+y+".ebuild")
 		# uselist checks - global
@@ -1833,7 +1769,8 @@ elif "--pretend" not in myoptions:
 	# Manifests need to be regenerated after all other commits, so don't commit
 	# them now even if they have changed.
 	# However, in SVN mode, the manifest won't change, hence, if we
-	# don't sign, we can commit it right away, avoiding an extra commit
+	# don't sign, we can commit it right away, avoiding an extra commit,
+	# og course this assumes SVN doesn't do Header: expansion.
 	if not isSvn or "sign" in repoman_settings.features:
 		mymanifests = [f for f in mychanged if "Manifest" == os.path.basename(f)]
 		mychanged = [f for f in mychanged if "Manifest" != os.path.basename(f)]
@@ -1871,9 +1808,8 @@ elif "--pretend" not in myoptions:
 				raise
 		# We've read the content so the file is no longer needed.
 		commitmessagefile = None
-	
-	if not (commitmessage or commitmessagefile):
-		print "Please enter a commit message at the prompt:"
+	if not commitmessage:
+		print "Please enter a CVS commit message at the prompt:"
 		while not commitmessage:
 			try:
 				commitmessage=raw_input(green("> "))
