@@ -1770,7 +1770,7 @@ elif "--pretend" not in myoptions:
 	# them now even if they have changed.
 	# However, in SVN mode, the manifest won't change, hence, if we
 	# don't sign, we can commit it right away, avoiding an extra commit,
-	# og course this assumes SVN doesn't do Header: expansion.
+	# of course this assumes SVN doesn't do Header: expansion.
 	if not isSvn or "sign" in repoman_settings.features:
 		mymanifests = [f for f in mychanged if "Manifest" == os.path.basename(f)]
 		mychanged = [f for f in mychanged if "Manifest" != os.path.basename(f)]
