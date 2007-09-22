@@ -5400,6 +5400,10 @@ def action_info(settings, trees, myopts, myfiles):
 			if not ebuildpath or not os.path.exists(ebuildpath):
 				out.ewarn("No ebuild found for '%s'" % pkg)
 				continue
+			# In some cases the above print statements don't flush stdout, so
+			# it needs to be flushed before allowing a child process to use it
+			# so that output always shows in the correct order.
+			sys.stdout.flush()
 			portage.doebuild(ebuildpath, "info", pkgsettings["ROOT"],
 				pkgsettings, debug=(settings.get("PORTAGE_DEBUG", "") == 1),
 				mydbapi=trees[settings["ROOT"]]["vartree"].dbapi,
