@@ -456,6 +456,7 @@ function die() {
 #
 scriptname=$(basename $0)
 
+TMP="${PORTAGE_TMPDIR}/etc-update-$$"
 trap die term
 
 type portageq > /dev/null || exit $?
@@ -469,7 +470,6 @@ export PORTAGE_TMPDIR
 #echo $CONFIG_PROTECT_MASK
 #export PORTAGE_TMPDIR=$(/usr/lib/portage/bin/portageq envvar PORTAGE_TMPDIR)
 
-TMP="${PORTAGE_TMPDIR}/etc-update-$$"
 rm -rf "${TMP}" 2> /dev/null
 mkdir "${TMP}" || die "failed to create temp dir" 1
 # make sure we have a secure directory to work in
