@@ -17,15 +17,21 @@ if type -P gsed >/dev/null ; then
 fi
 
 function get_config() {
-	item=$1
-
-	# First strip off comment lines, then grab the configuration
-	# item. If there's more than one of the same configuration item,
-	# then allow the last setting to take precedence.
-	local result
-	result=$(cut -d'#' -f1-1 ${PORTAGE_CONFIGROOT}etc/etc-update.conf | \
-		sed -ne "s/^ *$item *= *\([\"']\{0,1\}\)\(.*\)\1/\2/p" |sed -e '$p;d')
-	eval echo $result
+	# the sed here does:
+	#  - strip off comments
+	#  - match lines that set item in question
+	#    - delete the "item =" part
+	#    - store the actual value into the hold space
+	#  - on the last line, restore the hold space and print it
+	# If there's more than one of the same configuration item, then
+	# the store to the hold space clobbers previous value so the last
+	# setting takes precedence.
+	local item=$1
+	eval echo $(sed -n \
+		-e 's:[[:space:]]*#.*$::' \
+		-e "/^[[:space:]]*$item[[:space:]]*=/{s:[^=]*=[[:space:]]*\([\"']\{0,1\}\)\(.*\)\1:\2:;h}" \
+		-e '${g;p}' \
+		"${PORTAGE_CONFIGROOT}"etc/etc-update.conf)
 }
 
 function scan() {
