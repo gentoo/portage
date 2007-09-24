@@ -1184,6 +1184,7 @@ class dblink(object):
 
 			#process symlinks second-to-last, directories last.
 			mydirs = []
+			ignored_unlink_errnos = (errno.ENOENT, errno.EISDIR)
 			modprotect = os.path.join(self.vartree.root, "lib/modules/")
 			def show_unmerge(zing, desc, file_type, file_name):
 					writemsg_stdout("%s %s %s %s\n" % \
@@ -1240,7 +1241,9 @@ class dblink(object):
 							os.chmod(obj, 0)
 						os.unlink(obj)
 					except EnvironmentError, e:
-						pass
+						if e.errno not in ignored_unlink_errnos:
+							raise
+						del e
 					show_unmerge("<<<", "", file_type, obj)
 					continue
 
@@ -1269,6 +1272,9 @@ class dblink(object):
 						os.unlink(obj)
 						show_unmerge("<<<", "", file_type, obj)
 					except (OSError, IOError),e:
+						if e.errno not in ignored_unlink_errnos:
+							raise
+						del e
 						show_unmerge("!!!", "", file_type, obj)
 				elif pkgfiles[objkey][0] == "obj":
 					if statobj is None or not stat.S_ISREG(statobj.st_mode):
@@ -1294,7 +1300,9 @@ class dblink(object):
 							os.chmod(obj, 0)
 						os.unlink(obj)
 					except (OSError, IOError), e:
-						pass
+						if e.errno not in ignored_unlink_errnos:
+							raise
+						del e
 					show_unmerge("<<<", "", file_type, obj)
 				elif pkgfiles[objkey][0] == "fif":
 					if not stat.S_ISFIFO(lstatobj[stat.ST_MODE]):
@@ -1311,8 +1319,14 @@ class dblink(object):
 				try:
 					os.rmdir(obj)
 					show_unmerge("<<<", "", "dir", obj)
-				except EnvironmentError:
-					show_unmerge("---", "!empty", "dir", obj)
+				except EnvironmentError, e:
+					if e.errno not in (errno.ENOENT,
+						errno.EEXIST, errno.ENOTEMPTY,
+						errno.ENOTDIR):
+						raise
+					if e.errno != errno.ENOENT:
+						show_unmerge("---", "!empty", "dir", obj)
+					del e
 
 		#remove self from vartree database so that our own virtual gets zapped if we're the last node
 		self.vartree.zap(self.mycpv)
