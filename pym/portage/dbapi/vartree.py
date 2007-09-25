@@ -1331,7 +1331,22 @@ class dblink(object):
 
 			for obj in mydirs:
 				try:
-					os.rmdir(obj)
+					if bsd_chflags:
+						lstatobj = os.lstat(obj)
+						if lstatobj.st_flags != 0:
+							bsd_chflags.lchflags(obj, 0)
+						parent_name = os.path.dirname(obj)
+						# Use normal stat/chflags for the parent since we want to
+						# follow any symlinks to the real parent directory.
+						pflags = os.stat(parent_name).st_flags
+						if pflags != 0:
+							bsd_chflags.chflags(parent_name, 0)
+					try:
+						os.rmdir(obj)
+					finally:
+						if bsd_chflags and pflags != 0:
+							# Restore the parent flags we saved before unlinking
+							bsd_chflags.chflags(parent_name, pflags)
 					show_unmerge("<<<", "", "dir", obj)
 				except EnvironmentError, e:
 					if e.errno not in (errno.ENOENT,
