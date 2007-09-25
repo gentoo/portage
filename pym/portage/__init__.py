@@ -4188,9 +4188,11 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 	if bsd_chflags:
 		if destexists and dstat.st_flags != 0:
 			bsd_chflags.lchflags(dest, 0)
+		# Use normal stat/chflags for the parent since we want to
+		# follow any symlinks to the real parent directory.
 		pflags = os.stat(os.path.dirname(dest)).st_flags
 		if pflags != 0:
-			bsd_chflags.lchflags(os.path.dirname(dest), 0)
+			bsd_chflags.chflags(os.path.dirname(dest), 0)
 
 	if destexists:
 		if stat.S_ISLNK(dstat[stat.ST_MODE]):
@@ -4297,7 +4299,7 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 	if bsd_chflags:
 		# Restore the flags we saved before moving
 		if pflags:
-			bsd_chflags.lchflags(os.path.dirname(dest), pflags)
+			bsd_chflags.chflags(os.path.dirname(dest), pflags)
 
 	return newmtime
 
