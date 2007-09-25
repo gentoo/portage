@@ -1186,6 +1186,28 @@ class dblink(object):
 			mydirs = []
 			ignored_unlink_errnos = (errno.ENOENT, errno.EISDIR)
 			modprotect = os.path.join(self.vartree.root, "lib/modules/")
+
+			def unlink(file_name, lstatobj):
+				if bsd_chflags:
+					if lstatobj.st_flags != 0:
+						bsd_chflags.lchflags(file_name, 0)
+					parent_name = os.path.dirname(file_name)
+					# Use normal stat/chflags for the parent since we want to
+					# follow any symlinks to the real parent directory.
+					pflags = os.stat(parent_name).st_flags
+					if pflags != 0:
+						bsd_chflags.chflags(parent_name, 0)
+				try:
+					if not stat.S_ISLNK(lstatobj.st_mode):
+						# Remove permissions to ensure that any hardlinks to
+						# suid/sgid files are rendered harmless.
+						os.chmod(file_name, 0)
+					os.unlink(file_name)
+				finally:
+					if bsd_chflags and pflags != 0:
+						# Restore the parent flags we saved before unlinking
+						bsd_chflags.chflags(parent_name, pflags)
+
 			def show_unmerge(zing, desc, file_type, file_name):
 					writemsg_stdout("%s %s %s %s\n" % \
 						(zing, desc.ljust(8), file_type, file_name))
@@ -1235,11 +1257,7 @@ class dblink(object):
 					not (islink and statobj and stat.S_ISDIR(statobj.st_mode)) and \
 					not self.isprotected(obj):
 					try:
-						# Remove permissions to ensure that any hardlinks to
-						# suid/sgid files are rendered harmless.
-						if statobj and not islink:
-							os.chmod(obj, 0)
-						os.unlink(obj)
+						unlink(obj, lstatobj)
 					except EnvironmentError, e:
 						if e.errno not in ignored_unlink_errnos:
 							raise
@@ -1269,7 +1287,7 @@ class dblink(object):
 					# contents as a directory even if it happens to correspond
 					# to a symlink when it's merged to the live filesystem.
 					try:
-						os.unlink(obj)
+						unlink(obj, lstatobj)
 						show_unmerge("<<<", "", file_type, obj)
 					except (OSError, IOError),e:
 						if e.errno not in ignored_unlink_errnos:
@@ -1294,11 +1312,7 @@ class dblink(object):
 						show_unmerge("---", "!md5", file_type, obj)
 						continue
 					try:
-						# Remove permissions to ensure that any hardlinks to
-						# suid/sgid files are rendered harmless.
-						if not islink:
-							os.chmod(obj, 0)
-						os.unlink(obj)
+						unlink(obj, lstatobj)
 					except (OSError, IOError), e:
 						if e.errno not in ignored_unlink_errnos:
 							raise
