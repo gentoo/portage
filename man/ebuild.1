@@ -167,6 +167,12 @@ ${PKGDIR}/${CATEGORY} that points to the package in ${PKGDIR}/All.
 Builds a RedHat RPM package from the files in the temporary
 \fIinstall directory\fR.  At the moment, the ebuild's dependency
 information is not incorporated into the RPM.
+.SH OPTIONS
+.TP
+\fB--force\fR
+When used together with the digest command, this option forces regeneration of
+digests for all distfiles associated with the current ebuild. Any distfiles
+that do not already exist in ${DISTDIR} will be automatically fetched.
 .SH "REPORTING BUGS"
 Please report bugs via http://bugs.gentoo.org/
 .SH "AUTHORS"
