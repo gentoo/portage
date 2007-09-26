@@ -1433,11 +1433,20 @@ class depgraph:
 			if "--buildpkgonly" in self.myopts:
 				edepend["RDEPEND"] = ""
 				edepend["PDEPEND"] = ""
-		if not (arg and "--onlydeps" in self.myopts and \
-			mytype == "ebuild") and \
-			self.myopts.get("--with-bdeps", "n") == "n" and \
-			(mytype == "binary" or mybigkey[3] == "nomerge"):
-			edepend["DEPEND"] = ""
+		bdeps_satisfied = False
+		if mytype in ("installed", "binary"):
+			if self.myopts.get("--with-bdeps", "n") == "y":
+				# Pull in build time deps as requested, but marked them as
+				# "satisfied" since they are not strictly required. This allows
+				# more freedom in the merge order calculation for solving
+				# circular dependencies. Don't convert to PDEPEND since that
+				# could make --with-bdeps=y less effective if it is used to
+				# adjust merge order to prevent built_with_use() calls from
+				# failing.
+				bdeps_satisfied = True
+			else:
+				# built packages do not have build time dependencies.
+				edepend["DEPEND"] = ""
 
 		""" We have retrieve the dependency information, now we need to recursively
 		    process them.  DEPEND gets processed for root = "/", {R,P}DEPEND in myroot. """
@@ -1446,7 +1455,8 @@ class depgraph:
 
 		try:
 			if not self.select_dep("/", edepend["DEPEND"], myparent=mp,
-				myuse=myuse, priority=DepPriority(buildtime=True),
+				myuse=myuse, priority=DepPriority(buildtime=True,
+				satisfied=bdeps_satisfied),
 				parent_arg=arg):
 				return 0
 			"""RDEPEND is soft by definition.  However, in order to ensure
