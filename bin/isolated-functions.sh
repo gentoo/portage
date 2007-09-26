@@ -12,19 +12,16 @@ alias restore_IFS='if [ "${old_IFS:-unset}" != "unset" ]; then IFS="${old_IFS}";
 
 shopt -s extdebug
 
-# usage- first arg is the number of funcs on the stack to ignore.
-# defaults to 1 (ignoring dump_trace)
+# dump_trace([number of funcs on stack to skip],
+#            [whitespacing for filenames],
+#            [whitespacing for line numbers])
 dump_trace() {
 	local funcname="" sourcefile="" lineno="" n e s="yes"
-
-	declare -i strip=1
-
-	if [[ -n $1 ]]; then
-		strip=$(( $1 ))
-	fi
+	declare -i strip=${1:-1}
+	local filespacing=$2 linespacing=$3
 
 	eerror "Call stack:"
-	for (( n = ${#FUNCNAME[@]} - 1, p = ${#BASH_ARGV[@]} ; n > $strip ; n-- )) ; do
+	for (( n = ${#FUNCNAME[@]} - 1, p = ${#BASH_ARGV[@]} ; n > ${strip} ; n-- )) ; do
 		funcname=${FUNCNAME[${n} - 1]}
 		sourcefile=$(basename ${BASH_SOURCE[${n}]})
 		lineno=${BASH_LINENO[${n} - 1]}
@@ -37,19 +34,30 @@ dump_trace() {
 			done
 			(( p -= ${BASH_ARGC[${n} - 1]} ))
 		fi
-		eerror "  ${sourcefile}, line ${lineno}:   Called ${funcname}${args:+ ${args}}"
+		eerror "  $(printf "%${filespacing}s" "${sourcefile}"), line $(printf "%${linespacing}s" "${lineno}"):  Called ${funcname}${args:+ ${args}}"
 	done
 }
 
 diefunc() {
 	local funcname="$1" lineno="$2" exitcode="$3"
 	shift 3
+
+	local n filespacing=0 linespacing=0
+	# setup spacing to make output easier to read
+	for ((n = ${#FUNCNAME[@]} - 1; n >= 0; --n)); do
+		sourcefile=${BASH_SOURCE[${n}]} sourcefile=${sourcefile##*/}
+		lineno=${BASH_LINENO[${n}]}
+		((filespacing < ${#sourcefile})) && filespacing=${#sourcefile}
+		((linespacing < ${#lineno}))     && linespacing=${#lineno}
+	done
+
 	eerror
 	eerror "ERROR: $CATEGORY/$PF failed."
-	dump_trace 2
-	eerror "  ${BASH_SOURCE[1]##*/}, line ${BASH_LINENO[0]}:   Called die"
+	dump_trace 2 ${filespacing} ${linespacing}
+	eerror "  $(printf "%${filespacing}s" "${BASH_SOURCE[1]##*/}"), line $(printf "%${linespacing}s" "${BASH_LINENO[0]}"):  Called die"
 	eerror
-	eerror "${*:-(no error message)}"
+	eerror " ${*:-(no error message)}"
+	eerror
 	eerror "If you need support, post the topmost build error, and the call stack if relevant."
 	[[ -n ${PORTAGE_LOG_FILE} ]] \
 		&& eerror "A complete build log is located at '${PORTAGE_LOG_FILE}'."
