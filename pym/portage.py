@@ -44,10 +44,23 @@ except ImportError, e:
 
 bsd_chflags = None
 if os.uname()[0] in ["FreeBSD"]:
-	try:
-		import freebsd as bsd_chflags
-	except ImportError:
+	def bsd_chflags():
 		pass
+	def _chflags(path, flags, opts=""):
+		cmd = "chflags %s %o '%s'" % (opts, flags, path)
+		status, output = commands.getstatusoutput(cmd)
+		retval = os.WEXITSTATUS(status)
+		if os.WIFEXITED(status) and retval == os.EX_OK:
+			return
+		e = OSError(retval, output)
+		e.errno = retval
+		e.filename = path
+		e.message = output
+		raise e
+	def _lchflags(path, flags):
+		return _chflags(path, flags, opts="-h")
+	bsd_chflags.chflags = _chflags
+	bsd_chflags.lchflags = _lchflags
 
 try:
 	from cache.cache_errors import CacheError
