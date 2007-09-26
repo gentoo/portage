@@ -1844,12 +1844,19 @@ class depgraph:
 					"--usepkg" in self.myopts:
 					# The next line assumes the binarytree has been populated.
 					# XXX: Need to work out how we use the binary tree with roots.
-					myeb_pkg_matches = bindb.match(x)
-					if "--usepkgonly" not in self.myopts:
-						# Remove any binary package entries that are masked in the portage tree (#55871)
-						myeb_pkg_matches = [pkg for pkg in myeb_pkg_matches \
-							if pkg in myeb_matches or  \
-							not portdb.cpv_exists(pkg)]
+					usepkgonly = "--usepkgonly" in self.myopts
+					chost = pkgsettings["CHOST"]
+					myeb_pkg_matches = []
+					for pkg in bindb.match(x):
+						if chost != bindb.aux_get(pkg, ["CHOST"])[0]:
+							continue
+						# Remove any binary package entries that are
+						# masked in the portage tree (#55871).
+						if not usepkgonly and \
+							not (pkg in myeb_matches or \
+							not portdb.cpv_exists(pkg)):
+							continue
+						myeb_pkg_matches.append(pkg)
 					if myeb_pkg_matches:
 						myeb_pkg = portage.best(myeb_pkg_matches)
 						# For best performance, try to reuse an exising node
@@ -1964,6 +1971,15 @@ class depgraph:
 							print "For more information, see MASKED PACKAGES section in the emerge man page or "
 							print "refer to the Gentoo Handbook."
 						else:
+							alleb = bindb.match(x)
+							if alleb:
+								chost = pkgsettings["CHOST"]
+								for p in alleb:
+									mreasons = []
+									pkg_chost =  bindb.aux_get(p, ["CHOST"])[0]
+									if chost != pkg_chost:
+										mreasons.append("CHOST: %s" % pkg_chost)
+									print "- "+p+" (masked by: "+", ".join(mreasons)+")"
 							print "\n!!! "+red("There are no packages available to satisfy: ")+green(xinfo)
 							print "!!! Either add a suitable binary package or compile from an ebuild."
 					else:
