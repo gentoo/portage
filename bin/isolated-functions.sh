@@ -15,69 +15,69 @@ shopt -s extdebug
 # usage- first arg is the number of funcs on the stack to ignore.
 # defaults to 1 (ignoring dump_trace)
 dump_trace() {
-        local funcname="" sourcefile="" lineno="" n e s="yes"
+	local funcname="" sourcefile="" lineno="" n e s="yes"
 
-        declare -i strip=1
+	declare -i strip=1
 
-        if [[ -n $1 ]]; then
-                strip=$(( $1 ))
-        fi
+	if [[ -n $1 ]]; then
+		strip=$(( $1 ))
+	fi
 
-        eerror "Call stack:"
-        for (( n = ${#FUNCNAME[@]} - 1, p = ${#BASH_ARGV[@]} ; n > $strip ; n-- )) ; do
-                funcname=${FUNCNAME[${n} - 1]}
-                sourcefile=$(basename ${BASH_SOURCE[${n}]})
-                lineno=${BASH_LINENO[${n} - 1]}
-                # Display function arguments
-                args=
-                if [[ -n "${BASH_ARGV[@]}" ]]; then
-                        for (( j = 1 ; j <= ${BASH_ARGC[${n} - 1]} ; ++j )); do
-                                newarg=${BASH_ARGV[$(( p - j - 1 ))]}
-                                args="${args:+${args} }'${newarg}'"
-                        done
-                        (( p -= ${BASH_ARGC[${n} - 1]} ))
-                fi
-                eerror "  ${sourcefile}, line ${lineno}:   Called ${funcname}${args:+ ${args}}"
-        done
+	eerror "Call stack:"
+	for (( n = ${#FUNCNAME[@]} - 1, p = ${#BASH_ARGV[@]} ; n > $strip ; n-- )) ; do
+		funcname=${FUNCNAME[${n} - 1]}
+		sourcefile=$(basename ${BASH_SOURCE[${n}]})
+		lineno=${BASH_LINENO[${n} - 1]}
+		# Display function arguments
+		args=
+		if [[ -n "${BASH_ARGV[@]}" ]]; then
+			for (( j = 1 ; j <= ${BASH_ARGC[${n} - 1]} ; ++j )); do
+				newarg=${BASH_ARGV[$(( p - j - 1 ))]}
+				args="${args:+${args} }'${newarg}'"
+			done
+			(( p -= ${BASH_ARGC[${n} - 1]} ))
+		fi
+		eerror "  ${sourcefile}, line ${lineno}:   Called ${funcname}${args:+ ${args}}"
+	done
 }
 
 diefunc() {
-        local funcname="$1" lineno="$2" exitcode="$3"
-        shift 3
-        eerror
-        eerror "ERROR: $CATEGORY/$PF failed."
-        dump_trace 2
-        eerror "  ${BASH_SOURCE[1]##*/}, line ${BASH_LINENO[0]}:   Called die"
-        eerror
-        eerror "${*:-(no error message)}"
-        eerror "If you need support, post the topmost build error, and the call stack if relevant."
-        [ -n "${PORTAGE_LOG_FILE}" ] && \
-            eerror "A complete build log is located at '${PORTAGE_LOG_FILE}'."
-        if [ -n "${EBUILD_OVERLAY_ECLASSES}" ] ; then
-            eerror "This ebuild used the following eclasses from overlays:"
-            local x
-            for x in ${EBUILD_OVERLAY_ECLASSES} ; do
-                 eerror "  ${x}"
-            done
-        fi
-        if [ "${EBUILD#${PORTDIR}/}" == "${EBUILD}" ] ; then
-            local overlay=${EBUILD%/*}
-            overlay=${overlay%/*}
-            overlay=${overlay%/*}
-            eerror "This ebuild is from an overlay: '${overlay}/'"
-        fi
-        eerror
+	local funcname="$1" lineno="$2" exitcode="$3"
+	shift 3
+	eerror
+	eerror "ERROR: $CATEGORY/$PF failed."
+	dump_trace 2
+	eerror "  ${BASH_SOURCE[1]##*/}, line ${BASH_LINENO[0]}:   Called die"
+	eerror
+	eerror "${*:-(no error message)}"
+	eerror "If you need support, post the topmost build error, and the call stack if relevant."
+	[[ -n ${PORTAGE_LOG_FILE} ]] \
+		&& eerror "A complete build log is located at '${PORTAGE_LOG_FILE}'."
+	if [[ -n ${EBUILD_OVERLAY_ECLASSES} ]] ; then
+		eerror "This ebuild used the following eclasses from overlays:"
+		local x
+		for x in ${EBUILD_OVERLAY_ECLASSES} ; do
+			eerror "  ${x}"
+		done
+	fi
+	if [[ "${EBUILD#${PORTDIR}/}" == "${EBUILD}" ]] ; then
+		local overlay=${EBUILD%/*}
+		overlay=${overlay%/*}
+		overlay=${overlay%/*}
+		eerror "This ebuild is from an overlay: '${overlay}/'"
+	fi
+	eerror
 
-        if [ "${EBUILD_PHASE/depend}" == "${EBUILD_PHASE}" ]; then
-                local x
-                for x in $EBUILD_DEATH_HOOKS; do
-                        ${x} "$@" >&2 1>&2
-                done
-        fi
+	if [[ "${EBUILD_PHASE/depend}" == "${EBUILD_PHASE}" ]] ; then
+		local x
+		for x in $EBUILD_DEATH_HOOKS; do
+			${x} "$@" >&2 1>&2
+		done
+	fi
 
-        # subshell die support
-        kill -s SIGTERM ${EBUILD_MASTER_PID}
-        exit 1
+	# subshell die support
+	kill -s SIGTERM ${EBUILD_MASTER_PID}
+	exit 1
 }
 
 quiet_mode() {
@@ -287,8 +287,9 @@ set_colors() {
 	# Adjust COLS so that eend works properly on a standard BSD console.
 	[ "${TERM}" = "cons25" ] && COLS=$((${COLS} - 1))
 
-	ENDCOL=$'\e[A\e['${COLS}'C'    # Now, ${ENDCOL} will move us to the end of the
-	                               # column;  irregardless of character width
+	# Now, ${ENDCOL} will move us to the end of the
+	# column;  irregardless of character width
+	ENDCOL=$'\e[A\e['${COLS}'C'
 	if [ -n "${PORTAGE_COLORMAP}" ] ; then
 		eval ${PORTAGE_COLORMAP}
 	else
