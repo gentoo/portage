@@ -298,6 +298,10 @@ def dir_get_list(baseurl,conn=None):
 
 	listing = None
 	if protocol in ["http","https"]:
+		if not address.endswith("/"):
+			# http servers can return a 400 error here
+			# if the address doesn't end with a slash.
+			address += "/"
 		page,rc,msg = make_http_request(conn,address,params,headers)
 		
 		if page:
