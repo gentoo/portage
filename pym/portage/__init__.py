@@ -47,11 +47,20 @@ if os.uname()[0] in ["FreeBSD"]:
 	def _chflags(path, flags, opts=""):
 		cmd = "chflags %s %o '%s'" % (opts, flags, path)
 		status, output = commands.getstatusoutput(cmd)
-		retval = os.WEXITSTATUS(status)
-		if os.WIFEXITED(status) and retval == os.EX_OK:
+		if os.WIFEXITED(status) and os.WEXITSTATUS(status) == os.EX_OK:
 			return
-		e = OSError(retval, output)
-		e.errno = retval
+		# Try to generate an ENOENT error if appropriate.
+		if "h" in opts:
+			os.lstat(path)
+		else:
+			os.stat(path)
+		# Make sure the binary exists.
+		if not portage.process.find_binary("chflags"):
+			raise portage.exception.CommandNotFound("chflags")
+		# Now we're not sure exactly why it failed or what
+		# the real errno was, so just report EPERM.
+		e = OSError(errno.EPERM, output)
+		e.errno = errno.EPERM
 		e.filename = path
 		e.message = output
 		raise e
