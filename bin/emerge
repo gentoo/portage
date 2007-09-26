@@ -4413,6 +4413,16 @@ def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 								raise
 							del e
 
+				# Clean dir.old cruft so that they don't prevent
+				# unmerge of otherwise empty directories.
+				for ext in dir_extensions:
+					try:
+						os.unlink(dir_file + ext + ".old")
+					except EnvironmentError, e:
+						if e.errno != errno.ENOENT:
+							raise
+						del e
+
 				#update mtime so we can potentially avoid regenerating.
 				prev_mtimes[inforoot] = long(os.stat(inforoot).st_mtime)
 
