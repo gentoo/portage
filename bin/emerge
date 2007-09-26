@@ -797,9 +797,9 @@ class DepPriority(object):
 				return -1
 			if self.runtime_post:
 				return -2
-		if self.rebuild:
-			return -3
 		if self.buildtime:
+			if self.rebuild:
+				return -3
 			return -4
 		if self.runtime:
 			return -5
@@ -1813,17 +1813,6 @@ class depgraph:
 						("blocks", p_root, x[1:]), set()).add(myparent)
 				continue
 			else:
-				#We are not processing a blocker but a normal dependency
-				if myparent:
-					"""In some cases, dep_check will return deps that shouldn't
-					be proccessed any further, so they are identified and
-					discarded here."""
-					if "empty" not in self.myparams and \
-						"deep" not in self.myparams and \
-						not ("--update" in self.myopts and parent_arg) and \
-						vardb.match(x):
-						continue
-
 				# List of acceptable packages, ordered by type preference.
 				matched_packages = []
 				myeb_matches = portdb.xmatch("match-visible", x)
@@ -2011,6 +2000,29 @@ class depgraph:
 
 				# ordered by type preference ("ebuild" type is the last resort)
 				selected_pkg =  matched_packages[0]
+
+				# In some cases, dep_check will return deps that shouldn't
+				# be proccessed any further, so they are identified and
+				# discarded here. Try to discard as few as possible since
+				# discarded dependencies reduce the amount of information
+				# available for optimization of merge order.
+				if myparent and not arg and vardb.match(x) and \
+					not existing_node and \
+					"empty" not in self.myparams and \
+					"deep" not in self.myparams and \
+					not ("--update" in self.myopts and parent_arg):
+					(mytype, myroot, mykey), metadata = selected_pkg
+					myarg = None
+					if myroot == self.target_root:
+						try:
+							myarg = self._set_atoms.findAtomForPackage(
+								mykey, metadata)
+						except portage.exception.InvalidDependString:
+							# This is already handled inside
+							# self.create() when necessary.
+							pass
+					if not myarg:
+						continue
 
 			if myparent:
 				#we are a dependency, so we want to be unconditionally added
