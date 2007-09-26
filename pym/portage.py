@@ -2400,6 +2400,16 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 			writemsg("openpty failed: '%s'\n" % str(e), noiselevel=1)
 			del e
 			master_fd, slave_fd = os.pipe()
+
+		# We must set non-blocking mode before we close the slave_fd
+		# since otherwise the fcntl call can fail on FreeBSD (the child
+		# process might have already exited and closed slave_fd so we
+		# have to keep it open in order to avoid FreeBSD potentially
+		# generating an EAGAIN exception).
+		import fcntl
+		fcntl.fcntl(master_fd, fcntl.F_SETFL,
+			fcntl.fcntl(master_fd, fcntl.F_GETFL) | os.O_NONBLOCK)
+
 		fd_pipes.setdefault(0, sys.stdin.fileno())
 		fd_pipes_orig = fd_pipes.copy()
 		if got_pty and os.isatty(fd_pipes_orig[1]):
@@ -2446,7 +2456,7 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 	try:
 		mypids.extend(spawn_func(mystring, env=env, **keywords))
 	finally:
-		if slave_fd:
+		if logfile:
 			os.close(slave_fd)
 		if sesandbox:
 			selinux.setexec(None)
@@ -2461,26 +2471,14 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 		iwtd = [master_file]
 		owtd = []
 		ewtd = []
-		import array, fcntl, select
-		fd_flags = {}
-		for f in iwtd:
-			fd_flags[f] = fcntl.fcntl(f.fileno(), fcntl.F_GETFL)
+		import array, select
 		buffsize = 65536
 		eof = False
-		# Use non-blocking mode to prevent read
-		# calls from blocking indefinitely.
-		try:
-			fcntl.fcntl(master_file.fileno(), fcntl.F_SETFL,
-				fd_flags[master_file] | os.O_NONBLOCK)
-		except EnvironmentError, e:
-			if e.errno != errno.EAGAIN:
-				raise
-			del e
-			# The EAGAIN error signals eof on FreeBSD.
-			eof = True
 		while not eof:
 			events = select.select(iwtd, owtd, ewtd)
 			for f in events[0]:
+				# Use non-blocking mode to prevent read
+				# calls from blocking indefinitely.
 				buf = array.array('B')
 				try:
 					buf.fromfile(f, buffsize)
