@@ -2343,6 +2343,18 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 		env=mysettings.environ()
 		keywords["opt_name"]="[%s]" % mysettings["PF"]
 
+	fd_pipes = keywords.get("fd_pipes")
+	if fd_pipes is None:
+		fd_pipes = {0:0, 1:1, 2:2}
+	# In some cases the above print statements don't flush stdout, so
+	# it needs to be flushed before allowing a child process to use it
+	# so that output always shows in the correct order.
+	for fd in fd_pipes.itervalues():
+		if fd == sys.stdout.fileno():
+			sys.stdout.flush()
+		if fd == sys.stderr.fileno():
+			sys.stderr.flush()
+
 	# The default policy for the sesandbox domain only allows entry (via exec)
 	# from shells and from binaries that belong to portage (the number of entry
 	# points is minimized).  The "tee" binary is not among the allowed entry
@@ -2356,10 +2368,7 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 	got_pty = False
 	if logfile:
 		del keywords["logfile"]
-		fd_pipes = keywords.get("fd_pipes")
-		if fd_pipes is None:
-			fd_pipes = {0:0, 1:1, 2:2}
-		elif 1 not in fd_pipes or 2 not in fd_pipes:
+		if 1 not in fd_pipes or 2 not in fd_pipes:
 			raise ValueError(fd_pipes)
 		from pty import openpty
 		try:
