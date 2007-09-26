@@ -16,9 +16,9 @@ RCS_BRANCH = '1.1.1'
 RCS_LOCK = 'rcs -ko -M -l'
 RCS_PUT = 'ci -t-"Archived config file." -m"dispatch-conf update."'
 RCS_GET = 'co'
-RCS_MERGE = 'rcsmerge -p -r' + RCS_BRANCH + ' %s >%s'
+RCS_MERGE = "rcsmerge -p -r" + RCS_BRANCH + " '%s' > '%s'"
 
-DIFF3_MERGE = 'diff3 -mE %s %s %s >%s'
+DIFF3_MERGE = "diff3 -mE '%s' '%s' '%s' > '%s'"
 
 def read_config(mandatory_opts):
     try:
@@ -33,7 +33,7 @@ def read_config(mandatory_opts):
     for key in mandatory_opts:
         if not opts.has_key(key):
             if key == "merge":
-                opts["merge"] = "sdiff --suppress-common-lines --output=%s %s %s"
+                opts["merge"] = "sdiff --suppress-common-lines --output='%s' '%s' '%s'"
             else:
                 print >> sys.stderr, 'dispatch-conf: Missing option "%s" in /etc/dispatch-conf.conf; fatal' % (key,)
 
@@ -106,7 +106,7 @@ def file_archive(archive, curconf, newconf, mrgconf):
 
     # Archive the current config file if it isn't already saved
     if os.path.exists(archive) \
-     and len(commands.getoutput('diff -aq %s %s' % (curconf,archive))) != 0:
+     and len(commands.getoutput("diff -aq '%s' '%s'" % (curconf,archive))) != 0:
         suf = 1
         while suf < 9 and os.path.exists(archive + '.' + str(suf)):
             suf += 1
