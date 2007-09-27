@@ -42,23 +42,20 @@ class cache(object):
 		self.eclasses = {}
 		self._eclass_locations = {}
 		eclass_len = len(".eclass")
+		ignored_listdir_errnos = (errno.ENOENT, errno.ENOTDIR)
 		for x in [normalize_path(os.path.join(y,"eclass")) for y in self.porttrees]:
-			eclass_filenames = []
 			try:
-				for y in os.listdir(x):
-					if y.endswith(".eclass"):
-						eclass_filenames.append(y)
+				eclass_filenames = os.listdir(x)
 			except OSError, e:
-				if e.errno == errno.ENOENT:
-					del e
-					continue
-				elif e.errno == errno.ENOTDIR:
+				if e.errno in ignored_listdir_errnos:
 					del e
 					continue
 				elif e.errno == PermissionDenied.errno:
 					raise PermissionDenied(x)
 				raise
 			for y in eclass_filenames:
+				if not y.endswith(".eclass"):
+					continue
 				try:
 					mtime = long(os.stat(os.path.join(x, y)).st_mtime)
 				except OSError:
