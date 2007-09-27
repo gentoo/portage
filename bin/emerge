@@ -1970,6 +1970,7 @@ class depgraph:
 							print "For more information, see MASKED PACKAGES section in the emerge man page or "
 							print "refer to the Gentoo Handbook."
 						else:
+							print
 							alleb = bindb.match(x)
 							if alleb:
 								chost = pkgsettings["CHOST"]
@@ -1979,7 +1980,7 @@ class depgraph:
 									if chost != pkg_chost:
 										mreasons.append("CHOST: %s" % pkg_chost)
 									print "- "+p+" (masked by: "+", ".join(mreasons)+")"
-							print "\n!!! "+red("There are no packages available to satisfy: ")+green(xinfo)
+							print "!!! "+red("There are no packages available to satisfy: ")+green(xinfo)
 							print "!!! Either add a suitable binary package or compile from an ebuild."
 					else:
 						print "\nemerge: there are no ebuilds to satisfy "+green(xinfo)+"."
