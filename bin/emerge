@@ -2018,7 +2018,7 @@ class depgraph:
 						try:
 							myarg = self._set_atoms.findAtomForPackage(
 								mykey, metadata)
-						except portage.exception.InvalidDependString:
+						except portage_exception.InvalidDependString:
 							# This is already handled inside
 							# self.create() when necessary.
 							pass
