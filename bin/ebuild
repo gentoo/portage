@@ -141,23 +141,31 @@ if "test" in pargs and "test" not in tmpsettings.features:
 build_dir_phases = set(["setup", "unpack", "compile",
 	"test", "install", "package", "rpm"])
 
-if "clean" not in pargs and \
-	"noauto" not in tmpsettings.features and \
-	tmpsettings.get("PORTAGE_QUIET") != "1" and \
-	build_dir_phases.intersection(pargs):
-	portage.doebuild_environment(ebuild, "setup", portage.root,
-		tmpsettings, debug, 1, portage.portdb)
-	env_filename = os.path.join(tmpsettings["T"], "environment")
-	if os.path.exists(env_filename):
-		msg = ("Existing ${T}/environment for '%s' will be sourced. " + \
-			"Run 'clean' to start with a fresh environment.") % \
-			(tmpsettings["PF"], )
-		from textwrap import wrap
-		msg = wrap(msg, 70)
-		for x in msg:
-			portage.writemsg(">>> %s\n" % x)
+def stale_env_warning():
+	if "clean" not in pargs and \
+		"noauto" not in tmpsettings.features and \
+		tmpsettings.get("PORTAGE_QUIET") != "1" and \
+		build_dir_phases.intersection(pargs):
+		portage.doebuild_environment(ebuild, "setup", portage.root,
+			tmpsettings, debug, 1, portage.portdb)
+		env_filename = os.path.join(tmpsettings["T"], "environment")
+		if os.path.exists(env_filename):
+			msg = ("Existing ${T}/environment for '%s' will be sourced. " + \
+				"Run 'clean' to start with a fresh environment.") % \
+				(tmpsettings["PF"], )
+			from textwrap import wrap
+			msg = wrap(msg, 70)
+			for x in msg:
+				portage.writemsg(">>> %s\n" % x)
+
+checked_for_stale_env = False
 
 for arg in pargs:
+	if not checked_for_stale_env and arg not in ("digest","manifest"):
+		# This has to go after manifest generation since otherwise
+		# aux_get() might fail due to invalid ebuild digests.
+		stale_env_warning()
+		checked_for_stale_env = True
 	try:
 		if arg == "digest" and force:
 			discard_digests(ebuild, tmpsettings, portage.portdb)
