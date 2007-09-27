@@ -7468,7 +7468,7 @@ class dblink:
 
 			#process symlinks second-to-last, directories last.
 			mydirs = []
-			ignored_unlink_errnos = (errno.ENOENT, errno.EISDIR)
+			ignored_unlink_errnos = (errno.ENOENT, errno.ENOTDIR, errno.EISDIR)
 			modprotect = os.path.join(self.vartree.root, "lib/modules/")
 
 			def unlink(file_name, lstatobj):
