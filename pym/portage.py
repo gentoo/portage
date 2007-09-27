@@ -6113,6 +6113,9 @@ class portdbapi(dbapi):
 			pass
 
 	def close_caches(self):
+		if not hasattr(self, "auxdb"):
+			# unhandled exception thrown from constructor
+			return
 		for x in self.auxdb:
 			self.auxdb[x].sync()
 		self.auxdb.clear()
