@@ -4502,8 +4502,15 @@ def post_emerge(trees, mtimedb, retval):
 	else:
 		mod_echo.finalize()
 
-	if "noinfo" not in settings.features:
-		chk_updated_info_files(target_root, infodirs, info_mtimes, retval)
+	vdb_path = os.path.join(target_root, portage.VDB_PATH)
+	portage.util.ensure_dirs(vdb_path)
+	vdb_lock = portage.locks.lockdir(vdb_path)
+	try:
+		if "noinfo" not in settings.features:
+			chk_updated_info_files(target_root, infodirs, info_mtimes, retval)
+		mtimedb.commit()
+	finally:
+		portage.locks.unlockdir(vdb_lock)
 
 	chk_updated_cfg_files(target_root, config_protect)
 	
@@ -4518,8 +4525,7 @@ def post_emerge(trees, mtimedb, retval):
 				print colorize("WARN", " * ") + " - %s" % f
 		print "Use " + colorize("GOOD", "revdep-rebuild") + " to rebuild packages using these libraries"
 		print "and then remerge the packages listed above."
-	
-	mtimedb.commit()
+
 	sys.exit(retval)
 
 
