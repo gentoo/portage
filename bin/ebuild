@@ -138,6 +138,25 @@ if "test" in pargs and "test" not in tmpsettings.features:
 	tmpsettings["FEATURES"] = " ".join(tmpsettings.features)
 	tmpsettings.backup_changes("FEATURES")
 
+build_dir_phases = set(["setup", "unpack", "compile",
+	"test", "install", "package", "rpm"])
+
+if "clean" not in pargs and \
+	"noauto" not in tmpsettings.features and \
+	tmpsettings.get("PORTAGE_QUIET") != "1" and \
+	build_dir_phases.intersection(pargs):
+	portage.doebuild_environment(ebuild, "setup", portage.root,
+		tmpsettings, debug, 1, portage.portdb)
+	env_filename = os.path.join(tmpsettings["T"], "environment")
+	if os.path.exists(env_filename):
+		msg = ("Existing ${T}/environment for '%s' will be sourced. " + \
+			"Run 'clean' to start with a fresh environment.") % \
+			(tmpsettings["PF"], )
+		from textwrap import wrap
+		msg = wrap(msg, 70)
+		for x in msg:
+			portage.writemsg(">>> %s\n" % x)
+
 for arg in pargs:
 	try:
 		if arg == "digest" and force:
