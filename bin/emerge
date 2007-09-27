@@ -4497,11 +4497,18 @@ def post_emerge(settings, mtimedb, retval):
 	else:
 		mod_echo.finalize()
 
-	if "noinfo" not in settings.features:
-		chk_updated_info_files(target_root, infodirs, info_mtimes, retval)
+	vdb_path = os.path.join(target_root, portage.VDB_PATH)
+	portage_util.ensure_dirs(vdb_path)
+	vdb_lock = portage_locks.lockdir(vdb_path)
+	try:
+		if "noinfo" not in settings.features:
+			chk_updated_info_files(target_root, infodirs, info_mtimes, retval)
+		mtimedb.commit()
+	finally:
+		portage_locks.unlockdir(vdb_lock)
 
 	chk_updated_cfg_files(target_root, config_protect)
-	mtimedb.commit()
+
 	sys.exit(retval)
 
 
