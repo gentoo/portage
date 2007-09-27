@@ -13,7 +13,6 @@ import stat
 import tempfile
 import portage_exception
 import portage_exec
-import portage_locks
 import commands
 import md5, sha
 
@@ -203,7 +202,6 @@ def perform_checksum(filename, hashname="MD5", calc_prelink=0):
 	global prelink_capable
 	myfilename      = filename[:]
 	prelink_tmpfile = None
-	mylock          = None
 	try:
 		if calc_prelink and prelink_capable:
 			# Create non-prelinked temporary file to checksum.
@@ -229,6 +227,8 @@ def perform_checksum(filename, hashname="MD5", calc_prelink=0):
 			if e.errno == errno.ENOENT:
 				raise portage_exception.FileNotFound(myfilename)
 			raise
+		return myhash, mysize
+	finally:
 		if prelink_tmpfile:
 			try:
 				os.unlink(prelink_tmpfile)
@@ -236,10 +236,6 @@ def perform_checksum(filename, hashname="MD5", calc_prelink=0):
 				if e.errno != errno.ENOENT:
 					raise
 				del e
-		return myhash, mysize
-	finally:
-		if mylock:
-			portage_locks.unlockfile(mylock)
 
 def perform_multiple_checksums(filename, hashes=["MD5"], calc_prelink=0):
 	"""
