@@ -48,7 +48,8 @@ case $1 in
 		# delete it so that the compressor doesn't whine (bzip2 will
 		# complain and skip, gzip will prompt for input)
 		suffix=$(ecompress --suffix)
-		[[ -n ${suffix} ]] && rm -f "${@/%/${suffix}}"
+		[[ -n ${suffix} ]] && echo ${@/%/${suffix}$'\001'} | \
+			tr '\001' '\000' | ${XARGS} -0 rm -f
 		# Finally, let's actually do some real work
 		exec "${PORTAGE_COMPRESS}" ${PORTAGE_COMPRESS_FLAGS} "$@"
 		;;
