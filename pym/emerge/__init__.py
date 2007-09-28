@@ -4548,7 +4548,8 @@ def chk_updated_cfg_files(target_root, config_protect):
 			a = commands.getstatusoutput(mycommand + \
 				" ! -iname '.*~' ! -iname '.*.bak' -print0")
 			if a[0] != 0:
-				print >> sys.stderr, " " + bad("*")+ " error scanning '%s'" % x
+				print >> sys.stderr, " " + bad("*")+ \
+					" error scanning '%s': %s" % (x, a[1])
 			else:
 				files = a[1].split('\0')
 				# split always produces an empty string as the last element
