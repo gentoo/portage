@@ -4523,6 +4523,15 @@ def chk_updated_cfg_files(target_root, config_protect):
 				mymode = os.lstat(x).st_mode
 			except OSError:
 				continue
+			if stat.S_ISLNK(mymode):
+				# We want to treat it like a directory if it
+				# is a symlink to an existing directory.
+				try:
+					real_mode = os.stat(x).st_mode
+					if stat.S_ISDIR(real_mode):
+						mymode = real_mode
+				except OSError:
+					pass
 			if stat.S_ISDIR(mymode):
 				mycommand = "find '%s' -iname '._cfg????_*'" % x
 			else:
