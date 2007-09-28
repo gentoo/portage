@@ -7471,7 +7471,13 @@ class dblink:
 
 			#process symlinks second-to-last, directories last.
 			mydirs = []
-			ignored_unlink_errnos = (errno.ENOENT, errno.ENOTDIR, errno.EISDIR)
+			ignored_unlink_errnos = (
+				errno.EBUSY, errno.ENOENT,
+				errno.ENOTDIR, errno.EISDIR)
+			ignored_rmdir_errnos = (
+				errno.EEXIST, errno.ENOTEMPTY,
+				errno.EBUSY, errno.ENOENT,
+				errno.ENOTDIR, errno.EISDIR)
 			modprotect = os.path.join(self.vartree.root, "lib/modules/")
 
 			def unlink(file_name, lstatobj):
@@ -7636,9 +7642,7 @@ class dblink:
 							bsd_chflags.chflags(parent_name, pflags)
 					show_unmerge("<<<", "", "dir", obj)
 				except EnvironmentError, e:
-					if e.errno not in (errno.ENOENT,
-						errno.EEXIST, errno.ENOTEMPTY,
-						errno.ENOTDIR):
+					if e.errno not in ignored_rmdir_errnos:
 						raise
 					if e.errno != errno.ENOENT:
 						show_unmerge("---", "!empty", "dir", obj)
