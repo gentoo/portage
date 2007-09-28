@@ -4554,11 +4554,13 @@ def chk_updated_cfg_files(target_root, config_protect):
 			else:
 				mycommand = "find '%s' -maxdepth 1 -iname '._cfg????_%s'" % \
 					os.path.split(x.rstrip(os.path.sep))
-			a = commands.getstatusoutput(mycommand + \
-				" ! -iname '.*~' ! -iname '.*.bak' -print0")
+			mycommand += " ! -iname '.*~' ! -iname '.*.bak' -print0"
+			a = commands.getstatusoutput(mycommand)
 			if a[0] != 0:
-				print >> sys.stderr, " " + bad("*")+ \
-					" error scanning '%s': %s" % (x, a[1])
+				sys.stderr.write(" %s error scanning '%s': " % (bad("*"), x))
+				sys.stderr.flush()
+				# Show the error message alone, sending stdout to /dev/null.
+				os.system(mycommand + " 1>/dev/null")
 			else:
 				files = a[1].split('\0')
 				# split always produces an empty string as the last element
