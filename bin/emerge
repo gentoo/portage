@@ -5709,6 +5709,9 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	if action == "prune":
 		return
 
+	if not cleanlist and "--quiet" in myopts:
+		return
+
 	print "Packages installed:   "+str(len(myvarlist))
 	print "Packages in world:    "+str(len(worldlist))
 	print "Packages in system:   "+str(len(syslist))
