@@ -456,8 +456,6 @@ function die() {
 #
 scriptname=$(basename $0)
 
-trap die term
-
 type portageq > /dev/null || exit $?
 eval $(portageq envvar -v CONFIG_PROTECT \
 	CONFIG_PROTECT_MASK PORTAGE_CONFIGROOT PORTAGE_TMPDIR ROOT USERLAND EPREFIX)
@@ -465,6 +463,7 @@ export PORTAGE_TMPDIR
 export EROOT=${ROOT%/}${EPREFIX}/
 
 TMP="${PORTAGE_TMPDIR}/etc-update-$$"
+trap die term
 
 # quick hack to get prefix support in
 PORTAGE_CONFIGROOT=${PORTAGE_CONFIGROOT}${EPREFIX}/
