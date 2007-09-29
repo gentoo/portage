@@ -203,6 +203,8 @@ class dispatch:
         # Interactively process remaining
         #
 
+        valid_input = "qhtnmlezu"
+
         for conf in confs:
             count = count + 1
 
@@ -223,7 +225,16 @@ class dispatch:
                 print '>> (%i of %i) -- %s' % (count, len(confs), conf ['current'])
                 print '>> q quit, h help, n next, e edit-new, z zap-new, u use-new\n   m merge, t toggle-merge, l look-merge: ',
 
-                c = getch ()
+                # In some cases getch() will return some spurious characters
+                # that do not represent valid input. If we don't validate the
+                # input then the spurious characters can cause us to jump
+                # back into the above "diff" command immediatly after the user
+                # has exited it (which can be quite confusing and gives an
+                # "out of control" feeling).
+                while True:
+                    c = getch()
+                    if c in valid_input:
+                        break
 
                 if c == 'q':
                     sys.exit (0)
@@ -274,7 +285,7 @@ class dispatch:
                         os.unlink(mrgconf)
                     break
                 else:
-                    continue
+                    raise AssertionError("Invalid Input: %s" % c)
 
         if auto_zapped:
             print
