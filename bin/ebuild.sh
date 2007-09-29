@@ -306,10 +306,10 @@ keepdir() {
 	local x
 	if [ "$1" == "-R" ] || [ "$1" == "-r" ]; then
 		shift
-		find "$@" -type d -printf "${ED}/%p/.keep_${CATEGORY}_${PN}-${SLOT}\n" | tr "\n" "\0" | $XARGS -0 -n100 touch || die "Failed to recursively create .keep files"
+		find "$@" -type d -printf "${ED}%p/.keep_${CATEGORY}_${PN}-${SLOT}\n" | tr "\n" "\0" | $XARGS -0 -n100 touch || die "Failed to recursively create .keep files"
 	else
 		for x in "$@"; do
-			touch "${ED}/${x}/.keep_${CATEGORY}_${PN}-${SLOT}" || die "Failed to create .keep in ${ED}/${x}"
+			touch "${ED}${x}/.keep_${CATEGORY}_${PN}-${SLOT}" || die "Failed to create .keep in ${ED}${x}"
 		done
 	fi
 }
@@ -547,21 +547,21 @@ einstall() {
 
 	if [ -f ./[mM]akefile -o -f ./GNUmakefile ] ; then
 		if [ "${PORTAGE_DEBUG}" == "1" ]; then
-			${MAKE:-make} -n prefix="${ED}/usr" \
-				datadir="${ED}/usr/share" \
-				infodir="${ED}/usr/share/info" \
-				localstatedir="${ED}/var/lib" \
-				mandir="${ED}/usr/share/man" \
-				sysconfdir="${ED}/etc" \
+			${MAKE:-make} -n prefix="${ED}usr" \
+				datadir="${ED}usr/share" \
+				infodir="${ED}usr/share/info" \
+				localstatedir="${ED}var/lib" \
+				mandir="${ED}usr/share/man" \
+				sysconfdir="${ED}etc" \
 				${LOCAL_EXTRA_EINSTALL} \
 				"$@" install
 		fi
-		${MAKE:-make} prefix="${ED}/usr" \
-			datadir="${ED}/usr/share" \
-			infodir="${ED}/usr/share/info" \
-			localstatedir="${ED}/var/lib" \
-			mandir="${ED}/usr/share/man" \
-			sysconfdir="${ED}/etc" \
+		${MAKE:-make} prefix="${ED}usr" \
+			datadir="${ED}usr/share" \
+			infodir="${ED}usr/share/info" \
+			localstatedir="${ED}var/lib" \
+			mandir="${ED}usr/share/man" \
+			sysconfdir="${ED}etc" \
 			${LOCAL_EXTRA_EINSTALL} \
 			"$@" install || die "einstall failed"
 	else
