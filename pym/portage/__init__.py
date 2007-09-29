@@ -5162,7 +5162,6 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 		portage.util.ensure_dirs(catdir,
 			uid=portage_uid, gid=portage_gid, mode=070, mask=0)
 		builddir_lock = portage.locks.lockdir(builddir)
-		chost = mysettings["CHOST"]
 		try:
 			portage.locks.unlockdir(catdir_lock)
 		finally:
@@ -5188,13 +5187,6 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 
 		# We want to install in "our" prefix, not the binary one
 		mysettings["EPREFIX"] = EPREFIX
-
-		# Let's assure that what we dump into our system has also a
-		# chance of being able to run...
-		if mysettings.get("CHOST", "") != chost:
-			writemsg("!!! Incompatible binary package: made for %s, you are on %s\n" % (mysettings.get("CHOST", ""), chost),
-				noiselevel=-1)
-			return 1
 
 		# Eventually we'd like to pass in the saved ebuild env here.
 		retval = doebuild(myebuild, "setup", myroot, mysettings, debug=debug,
