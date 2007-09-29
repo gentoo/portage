@@ -1768,10 +1768,19 @@ class depgraph(object):
 					# XXX: Need to work out how we use the binary tree with roots.
 					usepkgonly = "--usepkgonly" in self.myopts
 					chost = pkgsettings["CHOST"]
+					eprefix = pkgsettings["EPREFIX"]
 					myeb_pkg_matches = []
 					for pkg in bindb.match(x):
 						if chost != bindb.aux_get(pkg, ["CHOST"])[0]:
 							continue
+
+						pkg_eprefix = bindb.aux_get(pkg, ["EPREFIX"])[0]
+						if not pkg_eprefix:
+							continue
+						pkg_eprefix = pkg_eprefix.strip();
+						if len(pkg_eprefix) < len(eprefix):
+							continue
+
 						# Remove any binary package entries that are
 						# masked in the portage tree (#55871).
 						if not usepkgonly and \
@@ -1928,11 +1937,17 @@ class depgraph(object):
 							alleb = bindb.match(x)
 							if alleb:
 								chost = pkgsettings["CHOST"]
+								eprefix = pkgsettings["EPREFIX"]
 								for p in alleb:
 									mreasons = []
 									pkg_chost =  bindb.aux_get(p, ["CHOST"])[0]
 									if chost != pkg_chost:
 										mreasons.append("CHOST: %s" % pkg_chost)
+									pkg_eprefix = bindb.aux_get(p, ["EPREFIX"])[0]
+									if not pkg_eprefix:
+										mreasons.append("missing EPREFIX")
+									elif len(pkg_eprefix.strip()) < len(eprefix):
+										mreasons.append("EPREFIX too small")
 									print "- "+p+" (masked by: "+", ".join(mreasons)+")"
 							print "!!! "+red("There are no packages available to satisfy: ")+green(xinfo)
 							print "!!! Either add a suitable binary package or compile from an ebuild."

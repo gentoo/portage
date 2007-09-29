@@ -5169,15 +5169,11 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 		mycat = mycat.strip()
 
 		buildprefix = xptbz2.getfile("EPREFIX")
-		if not buildprefix:
-			writemsg("!!! EPREFIX info missing from info chunk, this is a non-prefix package, aborting...\n",
+		if not mycat:
+			writemsg("!!! EPREFIX info missing from info chunk, aborting...\n",
 				noiselevel=-1)
 			return 1
 		buildprefix = buildprefix.strip()
-		if len(buildprefix) < len(EPREFIX):
-			writemsg("!!! Unsuitable binary package, prefix absent or length is too small for this system\n",
-				noiselevel=-1)
-			return 1
 
 		# These are the same directories that would be used at build time.
 		builddir = os.path.join(
