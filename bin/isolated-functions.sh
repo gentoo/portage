@@ -12,72 +12,102 @@ alias restore_IFS='if [ "${old_IFS:-unset}" != "unset" ]; then IFS="${old_IFS}";
 
 shopt -s extdebug
 
-# usage- first arg is the number of funcs on the stack to ignore.
-# defaults to 1 (ignoring dump_trace)
+# dump_trace([number of funcs on stack to skip],
+#            [whitespacing for filenames],
+#            [whitespacing for line numbers])
 dump_trace() {
-        local funcname="" sourcefile="" lineno="" n e s="yes"
+	local funcname="" sourcefile="" lineno="" n e s="yes"
+	declare -i strip=${1:-1}
+	local filespacing=$2 linespacing=$3
 
-        declare -i strip=1
-
-        if [[ -n $1 ]]; then
-                strip=$(( $1 ))
-        fi
-
-        eerror "Call stack:"
-        for (( n = ${#FUNCNAME[@]} - 1, p = ${#BASH_ARGV[@]} ; n > $strip ; n-- )) ; do
-                funcname=${FUNCNAME[${n} - 1]}
-                sourcefile=$(basename ${BASH_SOURCE[${n}]})
-                lineno=${BASH_LINENO[${n} - 1]}
-                # Display function arguments
-                args=
-                if [[ -n "${BASH_ARGV[@]}" ]]; then
-                        for (( j = 1 ; j <= ${BASH_ARGC[${n} - 1]} ; ++j )); do
-                                newarg=${BASH_ARGV[$(( p - j - 1 ))]}
-                                args="${args:+${args} }'${newarg}'"
-                        done
-                        (( p -= ${BASH_ARGC[${n} - 1]} ))
-                fi
-                eerror "  ${sourcefile}, line ${lineno}:   Called ${funcname}${args:+ ${args}}"
-        done
+	eerror "Call stack:"
+	for (( n = ${#FUNCNAME[@]} - 1, p = ${#BASH_ARGV[@]} ; n > ${strip} ; n-- )) ; do
+		funcname=${FUNCNAME[${n} - 1]}
+		sourcefile=$(basename ${BASH_SOURCE[${n}]})
+		lineno=${BASH_LINENO[${n} - 1]}
+		# Display function arguments
+		args=
+		if [[ -n "${BASH_ARGV[@]}" ]]; then
+			for (( j = 1 ; j <= ${BASH_ARGC[${n} - 1]} ; ++j )); do
+				newarg=${BASH_ARGV[$(( p - j - 1 ))]}
+				args="${args:+${args} }'${newarg}'"
+			done
+			(( p -= ${BASH_ARGC[${n} - 1]} ))
+		fi
+		eerror "  $(printf "%${filespacing}s" "${sourcefile}"), line $(printf "%${linespacing}s" "${lineno}"):  Called ${funcname}${args:+ ${args}}"
+	done
 }
 
 diefunc() {
-        local funcname="$1" lineno="$2" exitcode="$3"
-        shift 3
-        eerror
-        eerror "ERROR: $CATEGORY/$PF failed."
-        dump_trace 2
-        eerror "  ${BASH_SOURCE[1]##*/}, line ${BASH_LINENO[0]}:   Called die"
-        eerror
-        eerror "${*:-(no error message)}"
-        eerror "If you need support, post the topmost build error, and the call stack if relevant."
-        [ -n "${PORTAGE_LOG_FILE}" ] && \
-            eerror "A complete build log is located at '${PORTAGE_LOG_FILE}'."
-        if [ -n "${EBUILD_OVERLAY_ECLASSES}" ] ; then
-            eerror "This ebuild used the following eclasses from overlays:"
-            local x
-            for x in ${EBUILD_OVERLAY_ECLASSES} ; do
-                 eerror "  ${x}"
-            done
-        fi
-        if [ "${EBUILD#${PORTDIR}/}" == "${EBUILD}" ] ; then
-            local overlay=${EBUILD%/*}
-            overlay=${overlay%/*}
-            overlay=${overlay%/*}
-            eerror "This ebuild is from an overlay: '${overlay}/'"
-        fi
-        eerror
+	local funcname="$1" lineno="$2" exitcode="$3"
+	shift 3
 
-        if [ "${EBUILD_PHASE/depend}" == "${EBUILD_PHASE}" ]; then
-                local x
-                for x in $EBUILD_DEATH_HOOKS; do
-                        ${x} "$@" >&2 1>&2
-                done
-        fi
+	local n filespacing=0 linespacing=0
+	# setup spacing to make output easier to read
+	for ((n = ${#FUNCNAME[@]} - 1; n >= 0; --n)); do
+		sourcefile=${BASH_SOURCE[${n}]} sourcefile=${sourcefile##*/}
+		lineno=${BASH_LINENO[${n}]}
+		((filespacing < ${#sourcefile})) && filespacing=${#sourcefile}
+		((linespacing < ${#lineno}))     && linespacing=${#lineno}
+	done
 
-        # subshell die support
-        kill -s SIGTERM ${EBUILD_MASTER_PID}
-        exit 1
+	eerror
+	eerror "ERROR: $CATEGORY/$PF failed."
+	dump_trace 2 ${filespacing} ${linespacing}
+	eerror "  $(printf "%${filespacing}s" "${BASH_SOURCE[1]##*/}"), line $(printf "%${linespacing}s" "${BASH_LINENO[0]}"):  Called die"
+	eerror "The specific snippet of code:"
+	# This scans the file that called die and prints out the logic that
+	# ended in the call to die.  This really only handles lines that end
+	# with '|| die' and any preceding lines with line continuations (\).
+	# This tends to be the most common usage though, so let's do it.
+	# Due to the usage of appending to the hold space (even when empty),
+	# we always end up with the first line being a blank (thus the 2nd sed).
+	sed -n \
+		-e "# When we get to the line that failed, append it to the
+		    # hold space, move the hold space to the pattern space,
+		    # then print out the pattern space and quit immediately
+		    ${BASH_LINENO[0]}{H;g;p;q}" \
+		-e '# If this line ends with a line continuation, append it
+		    # to the hold space
+		    /\\$/H' \
+		-e '# If this line does not end with a line continuation,
+		    # erase the line and set the hold buffer to it (thus
+		    # erasing the hold buffer in the process)
+		    /[^\]$/{s:^.*$::;h}' \
+		${BASH_SOURCE[1]} \
+		| sed -e '1d' -e 's:^:RETAIN-LEADING-SPACE:' \
+		| while read -r n ; do eerror "  ${n#RETAIN-LEADING-SPACE}" ; done
+	eerror " The die message:"
+	eerror "  ${*:-(no error message)}"
+	eerror
+	eerror "If you need support, post the topmost build error, and the call stack if relevant."
+	[[ -n ${PORTAGE_LOG_FILE} ]] \
+		&& eerror "A complete build log is located at '${PORTAGE_LOG_FILE}'."
+	if [[ -n ${EBUILD_OVERLAY_ECLASSES} ]] ; then
+		eerror "This ebuild used the following eclasses from overlays:"
+		local x
+		for x in ${EBUILD_OVERLAY_ECLASSES} ; do
+			eerror "  ${x}"
+		done
+	fi
+	if [[ "${EBUILD#${PORTDIR}/}" == "${EBUILD}" ]] ; then
+		local overlay=${EBUILD%/*}
+		overlay=${overlay%/*}
+		overlay=${overlay%/*}
+		eerror "This ebuild is from an overlay: '${overlay}/'"
+	fi
+	eerror
+
+	if [[ "${EBUILD_PHASE/depend}" == "${EBUILD_PHASE}" ]] ; then
+		local x
+		for x in $EBUILD_DEATH_HOOKS; do
+			${x} "$@" >&2 1>&2
+		done
+	fi
+
+	# subshell die support
+	kill -s SIGTERM ${EBUILD_MASTER_PID}
+	exit 1
 }
 
 quiet_mode() {
@@ -289,8 +319,9 @@ set_colors() {
 	# Adjust COLS so that eend works properly on a standard BSD console.
 	[ "${TERM}" = "cons25" ] && COLS=$((${COLS} - 1))
 
-	ENDCOL=$'\e[A\e['${COLS}'C'    # Now, ${ENDCOL} will move us to the end of the
-	                               # column;  irregardless of character width
+	# Now, ${ENDCOL} will move us to the end of the
+	# column;  irregardless of character width
+	ENDCOL=$'\e[A\e['${COLS}'C'
 	if [ -n "${PORTAGE_COLORMAP}" ] ; then
 		eval ${PORTAGE_COLORMAP}
 	else

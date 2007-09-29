@@ -1924,6 +1924,7 @@ class depgraph(object):
 							print "For more information, see MASKED PACKAGES section in the emerge man page or "
 							print "refer to the Gentoo Handbook."
 						else:
+							print
 							alleb = bindb.match(x)
 							if alleb:
 								chost = pkgsettings["CHOST"]
@@ -1933,7 +1934,7 @@ class depgraph(object):
 									if chost != pkg_chost:
 										mreasons.append("CHOST: %s" % pkg_chost)
 									print "- "+p+" (masked by: "+", ".join(mreasons)+")"
-							print "\n!!! "+red("There are no packages available to satisfy: ")+green(xinfo)
+							print "!!! "+red("There are no packages available to satisfy: ")+green(xinfo)
 							print "!!! Either add a suitable binary package or compile from an ebuild."
 					else:
 						print "\nemerge: there are no ebuilds to satisfy "+green(xinfo)+"."
@@ -4504,9 +4505,17 @@ def post_emerge(trees, mtimedb, retval):
 	else:
 		mod_echo.finalize()
 
-	if "noinfo" not in settings.features:
-		chk_updated_info_files(normalize_path(target_root + EPREFIX), infodirs, info_mtimes, retval)
-	chk_updated_cfg_files(normalize_path(target_root + EPREFIX), config_protect)
+	vdb_path = os.path.join(target_root, portage.VDB_PATH)
+	portage.util.ensure_dirs(vdb_path)
+	vdb_lock = portage.locks.lockdir(vdb_path)
+	try:
+		if "noinfo" not in settings.features:
+			chk_updated_info_files(target_root + EPREFIX, infodirs, info_mtimes, retval)
+		mtimedb.commit()
+	finally:
+		portage.locks.unlockdir(vdb_lock)
+
+	chk_updated_cfg_files(target_root + EPREFIX, config_protect)
 	
 	display_news_notification(trees)
 	
@@ -4519,8 +4528,7 @@ def post_emerge(trees, mtimedb, retval):
 				print colorize("WARN", " * ") + " - %s" % f
 		print "Use " + colorize("GOOD", "revdep-rebuild") + " to rebuild packages using these libraries"
 		print "and then remerge the packages listed above."
-	
-	mtimedb.commit()
+
 	sys.exit(retval)
 
 
@@ -4534,15 +4542,27 @@ def chk_updated_cfg_files(target_root, config_protect):
 				mymode = os.lstat(x).st_mode
 			except OSError:
 				continue
+			if stat.S_ISLNK(mymode):
+				# We want to treat it like a directory if it
+				# is a symlink to an existing directory.
+				try:
+					real_mode = os.stat(x).st_mode
+					if stat.S_ISDIR(real_mode):
+						mymode = real_mode
+				except OSError:
+					pass
 			if stat.S_ISDIR(mymode):
 				mycommand = "find '%s' -iname '._cfg????_*'" % x
 			else:
 				mycommand = "find '%s' -maxdepth 1 -iname '._cfg????_%s'" % \
 					os.path.split(x.rstrip(os.path.sep))
-			a = commands.getstatusoutput(mycommand + \
-				" ! -iname '.*~' ! -iname '.*.bak' -print0")
+			mycommand += " ! -iname '.*~' ! -iname '.*.bak' -print0"
+			a = commands.getstatusoutput(mycommand)
 			if a[0] != 0:
-				print >> sys.stderr, " " + bad("*")+ " error scanning '%s'" % x
+				sys.stderr.write(" %s error scanning '%s': " % (bad("*"), x))
+				sys.stderr.flush()
+				# Show the error message alone, sending stdout to /dev/null.
+				os.system(mycommand + " 1>/dev/null")
 			else:
 				files = a[1].split('\0')
 				# split always produces an empty string as the last element
