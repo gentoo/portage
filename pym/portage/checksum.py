@@ -7,6 +7,7 @@ from portage.const import PRIVATE_PATH,PRELINK_BINARY,HASHING_BLOCKSIZE
 import os
 import errno
 import stat
+import tempfile
 import portage.exception
 import portage.process
 import portage.locks
@@ -198,16 +199,19 @@ def perform_checksum(filename, hashname="MD5", calc_prelink=0):
 	"""
 	global prelink_capable
 	myfilename      = filename[:]
-	prelink_tmpfile = os.path.join("/", PRIVATE_PATH, "prelink-checksum.tmp." + str(os.getpid()))
+	prelink_tmpfile = None
 	mylock          = None
 	try:
 		if calc_prelink and prelink_capable:
-			mylock = portage.locks.lockfile(prelink_tmpfile, wantnewlockfile=1)
 			# Create non-prelinked temporary file to checksum.
 			# Files rejected by prelink are summed in place.
 			try:
-				retval = portage.process.spawn([PRELINK_BINARY, "--undo", "-o",
-					prelink_tmpfile, filename], fd_pipes={})
+				tmpfile_fd, prelink_tmpfile = tempfile.mkstemp()
+				try:
+					retval = portage.process.spawn([PRELINK_BINARY,
+						"--verify", filename], fd_pipes={1:tmpfile_fd})
+				finally:
+					os.close(tmpfile_fd)
 				if retval == os.EX_OK:
 					myfilename = prelink_tmpfile
 			except portage.exception.CommandNotFound:
@@ -222,7 +226,7 @@ def perform_checksum(filename, hashname="MD5", calc_prelink=0):
 			if e.errno == errno.ENOENT:
 				raise portage.exception.FileNotFound(myfilename)
 			raise
-		if calc_prelink and prelink_capable:
+		if prelink_tmpfile:
 			try:
 				os.unlink(prelink_tmpfile)
 			except OSError, e:

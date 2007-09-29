@@ -716,9 +716,9 @@ class DepPriority(object):
 				return -1
 			if self.runtime_post:
 				return -2
-		if self.rebuild:
-			return -3
 		if self.buildtime:
+			if self.rebuild:
+				return -3
 			return -4
 		if self.runtime:
 			return -5
@@ -1356,11 +1356,20 @@ class depgraph(object):
 			if "--buildpkgonly" in self.myopts:
 				edepend["RDEPEND"] = ""
 				edepend["PDEPEND"] = ""
-		if not (arg and "--onlydeps" in self.myopts and \
-			mytype == "ebuild") and \
-			self.myopts.get("--with-bdeps", "n") == "n" and \
-			(mytype == "binary" or mybigkey[3] == "nomerge"):
-			edepend["DEPEND"] = ""
+		bdeps_satisfied = False
+		if mytype in ("installed", "binary"):
+			if self.myopts.get("--with-bdeps", "n") == "y":
+				# Pull in build time deps as requested, but marked them as
+				# "satisfied" since they are not strictly required. This allows
+				# more freedom in the merge order calculation for solving
+				# circular dependencies. Don't convert to PDEPEND since that
+				# could make --with-bdeps=y less effective if it is used to
+				# adjust merge order to prevent built_with_use() calls from
+				# failing.
+				bdeps_satisfied = True
+			else:
+				# built packages do not have build time dependencies.
+				edepend["DEPEND"] = ""
 
 		""" We have retrieve the dependency information, now we need to recursively
 		    process them.  DEPEND gets processed for root = "/", {R,P}DEPEND in myroot. """
@@ -1369,7 +1378,8 @@ class depgraph(object):
 
 		try:
 			if not self.select_dep("/", edepend["DEPEND"], myparent=mp,
-				myuse=myuse, priority=DepPriority(buildtime=True),
+				myuse=myuse, priority=DepPriority(buildtime=True,
+				satisfied=bdeps_satisfied),
 				parent_arg=arg):
 				return 0
 			"""RDEPEND is soft by definition.  However, in order to ensure
@@ -1726,17 +1736,6 @@ class depgraph(object):
 						("blocks", p_root, x[1:]), set()).add(myparent)
 				continue
 			else:
-				#We are not processing a blocker but a normal dependency
-				if myparent:
-					"""In some cases, dep_check will return deps that shouldn't
-					be proccessed any further, so they are identified and
-					discarded here."""
-					if "empty" not in self.myparams and \
-						"deep" not in self.myparams and \
-						not ("--update" in self.myopts and parent_arg) and \
-						vardb.match(x):
-						continue
-
 				# List of acceptable packages, ordered by type preference.
 				matched_packages = []
 				myeb_matches = portdb.xmatch("match-visible", x)
@@ -1955,6 +1954,29 @@ class depgraph(object):
 
 				# ordered by type preference ("ebuild" type is the last resort)
 				selected_pkg =  matched_packages[0]
+
+				# In some cases, dep_check will return deps that shouldn't
+				# be proccessed any further, so they are identified and
+				# discarded here. Try to discard as few as possible since
+				# discarded dependencies reduce the amount of information
+				# available for optimization of merge order.
+				if myparent and not arg and vardb.match(x) and \
+					not existing_node and \
+					"empty" not in self.myparams and \
+					"deep" not in self.myparams and \
+					not ("--update" in self.myopts and parent_arg):
+					(mytype, myroot, mykey), metadata = selected_pkg
+					myarg = None
+					if myroot == self.target_root:
+						try:
+							myarg = self._set_atoms.findAtomForPackage(
+								mykey, metadata)
+						except portage.exception.InvalidDependString:
+							# This is already handled inside
+							# self.create() when necessary.
+							pass
+					if not myarg:
+						continue
 
 			if myparent:
 				#we are a dependency, so we want to be unconditionally added
@@ -5767,6 +5789,9 @@ def action_depclean(settings, trees, ldpath_mtimes,
 			"unmerge", cleanlist, ldpath_mtimes)
 
 	if action == "prune":
+		return
+
+	if not cleanlist and "--quiet" in myopts:
 		return
 
 	print "Packages installed:   "+str(len(myvarlist))

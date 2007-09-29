@@ -42,10 +42,32 @@ except ImportError, e:
 
 bsd_chflags = None
 if os.uname()[0] in ["FreeBSD"]:
-	try:
-		import freebsd as bsd_chflags
-	except ImportError:
+	def bsd_chflags():
 		pass
+	def _chflags(path, flags, opts=""):
+		cmd = "chflags %s %o '%s'" % (opts, flags, path)
+		status, output = commands.getstatusoutput(cmd)
+		if os.WIFEXITED(status) and os.WEXITSTATUS(status) == os.EX_OK:
+			return
+		# Try to generate an ENOENT error if appropriate.
+		if "h" in opts:
+			os.lstat(path)
+		else:
+			os.stat(path)
+		# Make sure the binary exists.
+		if not portage.process.find_binary("chflags"):
+			raise portage.exception.CommandNotFound("chflags")
+		# Now we're not sure exactly why it failed or what
+		# the real errno was, so just report EPERM.
+		e = OSError(errno.EPERM, output)
+		e.errno = errno.EPERM
+		e.filename = path
+		e.message = output
+		raise e
+	def _lchflags(path, flags):
+		return _chflags(path, flags, opts="-h")
+	bsd_chflags.chflags = _chflags
+	bsd_chflags.lchflags = _lchflags
 
 try:
 	from portage.cache.cache_errors import CacheError
@@ -2394,6 +2416,18 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 		env=mysettings.environ()
 		keywords["opt_name"]="[%s]" % mysettings["PF"]
 
+	fd_pipes = keywords.get("fd_pipes")
+	if fd_pipes is None:
+		fd_pipes = {0:0, 1:1, 2:2}
+	# In some cases the above print statements don't flush stdout, so
+	# it needs to be flushed before allowing a child process to use it
+	# so that output always shows in the correct order.
+	for fd in fd_pipes.itervalues():
+		if fd == sys.stdout.fileno():
+			sys.stdout.flush()
+		if fd == sys.stderr.fileno():
+			sys.stderr.flush()
+
 	# The default policy for the sesandbox domain only allows entry (via exec)
 	# from shells and from binaries that belong to portage (the number of entry
 	# points is minimized).  The "tee" binary is not among the allowed entry
@@ -2407,10 +2441,7 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 	got_pty = False
 	if logfile:
 		del keywords["logfile"]
-		fd_pipes = keywords.get("fd_pipes")
-		if fd_pipes is None:
-			fd_pipes = {0:0, 1:1, 2:2}
-		elif 1 not in fd_pipes or 2 not in fd_pipes:
+		if 1 not in fd_pipes or 2 not in fd_pipes:
 			raise ValueError(fd_pipes)
 		from pty import openpty
 		try:
@@ -2420,6 +2451,16 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 			writemsg("openpty failed: '%s'\n" % str(e), noiselevel=1)
 			del e
 			master_fd, slave_fd = os.pipe()
+
+		# We must set non-blocking mode before we close the slave_fd
+		# since otherwise the fcntl call can fail on FreeBSD (the child
+		# process might have already exited and closed slave_fd so we
+		# have to keep it open in order to avoid FreeBSD potentially
+		# generating an EAGAIN exception).
+		import fcntl
+		fcntl.fcntl(master_fd, fcntl.F_SETFL,
+			fcntl.fcntl(master_fd, fcntl.F_GETFL) | os.O_NONBLOCK)
+
 		fd_pipes.setdefault(0, sys.stdin.fileno())
 		fd_pipes_orig = fd_pipes.copy()
 		if got_pty and os.isatty(fd_pipes_orig[1]):
@@ -2466,7 +2507,7 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 	try:
 		mypids.extend(spawn_func(mystring, env=env, **keywords))
 	finally:
-		if slave_fd:
+		if logfile:
 			os.close(slave_fd)
 		if sesandbox:
 			selinux.setexec(None)
@@ -2481,26 +2522,14 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 		iwtd = [master_file]
 		owtd = []
 		ewtd = []
-		import array, fcntl, select
-		fd_flags = {}
-		for f in iwtd:
-			fd_flags[f] = fcntl.fcntl(f.fileno(), fcntl.F_GETFL)
+		import array, select
 		buffsize = 65536
 		eof = False
-		# Use non-blocking mode to prevent read
-		# calls from blocking indefinitely.
-		try:
-			fcntl.fcntl(master_file.fileno(), fcntl.F_SETFL,
-				fd_flags[master_file] | os.O_NONBLOCK)
-		except EnvironmentError, e:
-			if e.errno != errno.EAGAIN:
-				raise
-			del e
-			# The EAGAIN error signals eof on FreeBSD.
-			eof = True
 		while not eof:
 			events = select.select(iwtd, owtd, ewtd)
 			for f in events[0]:
+				# Use non-blocking mode to prevent read
+				# calls from blocking indefinitely.
 				buf = array.array('B')
 				try:
 					buf.fromfile(f, buffsize)
@@ -4191,9 +4220,11 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 	if bsd_chflags:
 		if destexists and dstat.st_flags != 0:
 			bsd_chflags.lchflags(dest, 0)
+		# Use normal stat/chflags for the parent since we want to
+		# follow any symlinks to the real parent directory.
 		pflags = os.stat(os.path.dirname(dest)).st_flags
 		if pflags != 0:
-			bsd_chflags.lchflags(os.path.dirname(dest), 0)
+			bsd_chflags.chflags(os.path.dirname(dest), 0)
 
 	if destexists:
 		if stat.S_ISLNK(dstat[stat.ST_MODE]):
@@ -4300,7 +4331,7 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 	if bsd_chflags:
 		# Restore the flags we saved before moving
 		if pflags:
-			bsd_chflags.lchflags(os.path.dirname(dest), pflags)
+			bsd_chflags.chflags(os.path.dirname(dest), pflags)
 
 	return newmtime
 

@@ -17,15 +17,21 @@ if type -P gsed >/dev/null ; then
 fi
 
 function get_config() {
-	item=$1
-
-	# First strip off comment lines, then grab the configuration
-	# item. If there's more than one of the same configuration item,
-	# then allow the last setting to take precedence.
-	local result
-	result=$(cut -d'#' -f1-1 ${PORTAGE_CONFIGROOT}etc/etc-update.conf | \
-		sed -ne "s/^ *$item *= *\([\"']\{0,1\}\)\(.*\)\1/\2/p" |sed -e '$p;d')
-	eval echo $result
+	# the sed here does:
+	#  - strip off comments
+	#  - match lines that set item in question
+	#    - delete the "item =" part
+	#    - store the actual value into the hold space
+	#  - on the last line, restore the hold space and print it
+	# If there's more than one of the same configuration item, then
+	# the store to the hold space clobbers previous value so the last
+	# setting takes precedence.
+	local item=$1
+	eval echo $(sed -n \
+		-e 's:[[:space:]]*#.*$::' \
+		-e "/^[[:space:]]*$item[[:space:]]*=/{s:[^=]*=[[:space:]]*\([\"']\{0,1\}\)\(.*\)\1:\2:;h}" \
+		-e '${g;p}' \
+		"${PORTAGE_CONFIGROOT}"etc/etc-update.conf)
 }
 
 function scan() {
@@ -361,17 +367,25 @@ Please select from the menu above (-1 to ignore this update): "
 }
 
 function do_merge() {
+	# make sure we keep the merged file in the secure tempdir
+	# so we dont leak any information contained in said file
+	# (think of case where the file has 0600 perms; during the
+	# merging process, the temp file gets umask perms!)
 
 	local file="${1}"
 	local ofile="${2}"
-	local mfile="${2}.merged"
+	local mfile="${TMP}/${2}.merged"
 	local -i my_input=0
 	echo "${file} ${ofile} ${mfile}"
 
-	if [ -e ${mfile} ] ; then
+	if [[ -e ${mfile} ]] ; then
 		echo "A previous version of the merged file exists, cleaning..."
-		rm ${rm_opts} ${mfile}
+		rm ${rm_opts} "${mfile}"
 	fi
+
+	# since mfile will be like $TMP/path/to/original-file.merged, we
+	# need to make sure the full /path/to/ exists ahead of time
+	mkdir -p "${mfile%/*}"
 
 	until (( ${my_input} == -1 )); do
 		echo "Merging ${file} and ${ofile}"
@@ -396,8 +410,8 @@ Please select from the menu above (-1 to exit, losing this merge): "
 				       chown "$(stat -f %Su:%Sg "${ofile}")" "${mfile}"
 				       chmod $(stat -f %Mp%Lp "${ofile}") "${mfile}"
 				   fi
-				   mv ${mv_opts} ${mfile} ${ofile}
-				   rm ${rm_opts} ${file}
+				   mv ${mv_opts} "${mfile}" "${ofile}"
+				   rm ${rm_opts} "${file}"
 				   return 255
 				   ;;
 				2) ( echo "Showing differences between ${ofile} and ${mfile}"
@@ -411,7 +425,7 @@ Please select from the menu above (-1 to exit, losing this merge): "
 				4) ${EDITOR:-nano -w} "${mfile}"
 				   continue
 					 ;;
-				5) rm ${rm_opts} ${mfile}
+				5) rm ${rm_opts} "${mfile}"
 				   return 0
 				   ;;
 				*) continue
@@ -419,7 +433,7 @@ Please select from the menu above (-1 to exit, losing this merge): "
 			esac
 		done
 	done
-	rm ${rm_opts} ${mfile}
+	rm ${rm_opts} "${mfile}"
 	return 255
 }
 
@@ -433,7 +447,7 @@ function die() {
 		[ ${count} -gt 0 ] && echo "NOTE: ${count} updates remaining"
 	fi
 
-	rm -rf ${TMP}
+	rm -rf "${TMP}"
 	exit ${2}
 }
 
@@ -442,6 +456,7 @@ function die() {
 #
 scriptname=$(basename $0)
 
+TMP="${PORTAGE_TMPDIR}/etc-update-$$"
 trap die term
 
 type portageq > /dev/null || exit $?
@@ -459,9 +474,11 @@ PORTAGE_CONFIGROOT=${PORTAGE_CONFIGROOT}${EPREFIX}/
 #echo $CONFIG_PROTECT_MASK
 #export PORTAGE_TMPDIR=$(/usr/lib/portage/bin/portageq envvar PORTAGE_TMPDIR)
 
-TMP="${PORTAGE_TMPDIR}/$$"
-rm -rf ${TMP} 2> /dev/null
-mkdir ${TMP} || die "failed mkdir command!" 1
+rm -rf "${TMP}" 2> /dev/null
+mkdir "${TMP}" || die "failed to create temp dir" 1
+# make sure we have a secure directory to work in
+chmod 0700 "${TMP}" || die "failed to set perms on temp dir" 1
+chown ${UID:-0}:${GID:-0} "${TMP}" || die "failed to set ownership on temp dir" 1
 
 # I need the CONFIG_PROTECT value
 #CONFIG_PROTECT=$(@PORTAGE_BASE@/bin/portageq envvar CONFIG_PROTECT)

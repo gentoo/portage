@@ -1184,7 +1184,30 @@ class dblink(object):
 
 			#process symlinks second-to-last, directories last.
 			mydirs = []
+			ignored_unlink_errnos = (errno.ENOENT, errno.EISDIR)
 			modprotect = os.path.join(self.vartree.root, "lib/modules/")
+
+			def unlink(file_name, lstatobj):
+				if bsd_chflags:
+					if lstatobj.st_flags != 0:
+						bsd_chflags.lchflags(file_name, 0)
+					parent_name = os.path.dirname(file_name)
+					# Use normal stat/chflags for the parent since we want to
+					# follow any symlinks to the real parent directory.
+					pflags = os.stat(parent_name).st_flags
+					if pflags != 0:
+						bsd_chflags.chflags(parent_name, 0)
+				try:
+					if not stat.S_ISLNK(lstatobj.st_mode):
+						# Remove permissions to ensure that any hardlinks to
+						# suid/sgid files are rendered harmless.
+						os.chmod(file_name, 0)
+					os.unlink(file_name)
+				finally:
+					if bsd_chflags and pflags != 0:
+						# Restore the parent flags we saved before unlinking
+						bsd_chflags.chflags(parent_name, pflags)
+
 			def show_unmerge(zing, desc, file_type, file_name):
 					writemsg_stdout("%s %s %s %s\n" % \
 						(zing, desc.ljust(8), file_type, file_name))
@@ -1234,13 +1257,11 @@ class dblink(object):
 					not (islink and statobj and stat.S_ISDIR(statobj.st_mode)) and \
 					not self.isprotected(obj):
 					try:
-						# Remove permissions to ensure that any hardlinks to
-						# suid/sgid files are rendered harmless.
-						if statobj and not islink:
-							os.chmod(obj, 0)
-						os.unlink(obj)
+						unlink(obj, lstatobj)
 					except EnvironmentError, e:
-						pass
+						if e.errno not in ignored_unlink_errnos:
+							raise
+						del e
 					show_unmerge("<<<", "", file_type, obj)
 					continue
 
@@ -1266,9 +1287,12 @@ class dblink(object):
 					# contents as a directory even if it happens to correspond
 					# to a symlink when it's merged to the live filesystem.
 					try:
-						os.unlink(obj)
+						unlink(obj, lstatobj)
 						show_unmerge("<<<", "", file_type, obj)
 					except (OSError, IOError),e:
+						if e.errno not in ignored_unlink_errnos:
+							raise
+						del e
 						show_unmerge("!!!", "", file_type, obj)
 				elif pkgfiles[objkey][0] == "obj":
 					if statobj is None or not stat.S_ISREG(statobj.st_mode):
@@ -1288,13 +1312,11 @@ class dblink(object):
 						show_unmerge("---", "!md5", file_type, obj)
 						continue
 					try:
-						# Remove permissions to ensure that any hardlinks to
-						# suid/sgid files are rendered harmless.
-						if not islink:
-							os.chmod(obj, 0)
-						os.unlink(obj)
+						unlink(obj, lstatobj)
 					except (OSError, IOError), e:
-						pass
+						if e.errno not in ignored_unlink_errnos:
+							raise
+						del e
 					show_unmerge("<<<", "", file_type, obj)
 				elif pkgfiles[objkey][0] == "fif":
 					if not stat.S_ISFIFO(lstatobj[stat.ST_MODE]):
@@ -1309,10 +1331,31 @@ class dblink(object):
 
 			for obj in mydirs:
 				try:
-					os.rmdir(obj)
+					if bsd_chflags:
+						lstatobj = os.lstat(obj)
+						if lstatobj.st_flags != 0:
+							bsd_chflags.lchflags(obj, 0)
+						parent_name = os.path.dirname(obj)
+						# Use normal stat/chflags for the parent since we want to
+						# follow any symlinks to the real parent directory.
+						pflags = os.stat(parent_name).st_flags
+						if pflags != 0:
+							bsd_chflags.chflags(parent_name, 0)
+					try:
+						os.rmdir(obj)
+					finally:
+						if bsd_chflags and pflags != 0:
+							# Restore the parent flags we saved before unlinking
+							bsd_chflags.chflags(parent_name, pflags)
 					show_unmerge("<<<", "", "dir", obj)
-				except EnvironmentError:
-					show_unmerge("---", "!empty", "dir", obj)
+				except EnvironmentError, e:
+					if e.errno not in (errno.ENOENT,
+						errno.EEXIST, errno.ENOTEMPTY,
+						errno.ENOTDIR):
+						raise
+					if e.errno != errno.ENOENT:
+						show_unmerge("---", "!empty", "dir", obj)
+					del e
 
 		#remove self from vartree database so that our own virtual gets zapped if we're the last node
 		self.vartree.zap(self.mycpv)
