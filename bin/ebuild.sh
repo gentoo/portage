@@ -1480,7 +1480,7 @@ fi
 
 #a reasonable default for $S
 if [ "$S" = "" ]; then
-	export S=${WORKDIR}/${P}
+	export S="${WORKDIR}/${P}"
 fi
 
 #wipe the interceptors.  we don't want saved.
