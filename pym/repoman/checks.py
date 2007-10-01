@@ -9,7 +9,7 @@ import os
 
 from repoman.errors import COPYRIGHT_ERROR, LICENSE_ERROR, CVS_HEADER_ERROR, \
 	LEADING_SPACES_ERROR, READONLY_ASSIGNMENT_ERROR, TRAILING_WHITESPACE_ERROR, \
-	MISSING_QUOTES_ERROR
+	MISSING_QUOTES_ERROR, NESTED_DIE_ERROR
 
 
 class ContentCheckException(Exception):
@@ -41,7 +41,7 @@ class ContentCheck(object):
 		pass
 
 
-class EbuildHeaderCheck(ContentCheck):
+class EbuildHeader(ContentCheck):
 	"""Ensure ebuilds have proper headers
 	
 	Args:
@@ -84,7 +84,7 @@ class EbuildHeaderCheck(ContentCheck):
 		return errors
 
 
-class EbuildWhitespaceCheck(ContentCheck):
+class EbuildWhitespace(ContentCheck):
 	"""Ensure ebuilds have proper whitespacing"""
 
 	repoman_check_name = 'ebuild.minorsyn'
@@ -114,7 +114,7 @@ class EbuildWhitespaceCheck(ContentCheck):
 		return errors
 
 
-class EbuildQuoteCheck(ContentCheck):
+class EbuildQuote(ContentCheck):
 	"""Ensure ebuilds have valid quoting around things like D,FILESDIR, etc..."""
 
 	repoman_check_name = 'ebuild.minorsyn'
@@ -146,7 +146,7 @@ class EbuildQuoteCheck(ContentCheck):
 		return errors
 
 
-class EbuildAssignmentCheck(ContentCheck):
+class EbuildAssignment(ContentCheck):
 	"""Ensure ebuilds don't assign to readonly variables."""
 
 	repoman_check_name = 'variable.readonly'
@@ -174,4 +174,21 @@ class EbuildAssignmentCheck(ContentCheck):
 			if match and (not previous_line or not self.line_continuation.match(previous_line)):
 				errors.append((num + 1, READONLY_ASSIGNMENT_ERROR))
 			previous_line = line
+		return errors
+
+class EbuildNestedDie(ContentCheck):
+	"""Check ebuild for nested die statements (die statements in subshells"""
+	
+	repoman_check_name = 'ebuild.nesteddie'
+	nesteddie_re = re.compile(r'^[^#]*\([^)]*\bdie\b')
+	
+	def __init__(self, contents):
+		ContentCheck.__init__(self, contents)
+
+	def Run(self):
+		errors = []
+		for num, line in enumerate(self.contents):
+			match = self.nesteddie_re.match(line)
+			if match:
+				errors.append((num + 1, NESTED_DIE_ERROR))
 		return errors
