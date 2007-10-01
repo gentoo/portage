@@ -215,6 +215,7 @@ class dispatch:
             show_new_diff = 0
 
             while 1:
+                clear_screen()
                 if show_new_diff:
                     os.system((self.options['diff']) % (conf['new'], mrgconf))
                     show_new_diff = 0
@@ -377,6 +378,19 @@ def getch ():
         termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
     return ch
 
+def clear_screen():
+    try:
+        import curses
+        try:
+            curses.setupterm()
+            sys.stdout.write(curses.tigetstr("clear"))
+            sys.stdout.flush()
+            return
+        except curses.error:
+            pass
+    except ImportError:
+        pass
+    os.system("clear 2>/dev/null")
 
 # run
 d = dispatch ()
