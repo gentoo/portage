@@ -149,7 +149,7 @@ class EbuildQuoteCheck(ContentCheck):
 class EbuildAssignmentCheck(ContentCheck):
 	"""Ensure ebuilds don't assign to readonly variables."""
 
-	repoman_check_name = 'ebuild.majorsyn'
+	repoman_check_name = 'variable.readonly'
 
 	readonly_assignment = re.compile(r'^\s*(export\s+)?(A|CATEGORY|P|PV|PN|PR|PVR|PF|D|WORKDIR|FILESDIR|FEATURES|USE)=')
 	line_continuation = re.compile(r'([^#]*\S)(\s+|\t)\\$')
