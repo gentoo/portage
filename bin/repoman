@@ -1339,8 +1339,7 @@ for x in scanlist:
 		# Syntax Checks
 		path = checkdir + '/' + y + '.ebuild'
 		myear = time.gmtime(os.stat(path)[ST_MTIME])[0]
-		file_contents = open(path, 'rb').readlines()
-		contents = StringIO.StringIO(''.join(file_contents))
+		contents = StringIO.StringIO(open(path, 'rb').read())
 		for check in (EbuildWhitespaceCheck, EbuildQuoteCheck, EbuildAssignmentCheck):
 			c = check(contents)
 			errors = c.Run()
@@ -1354,8 +1353,7 @@ for x in scanlist:
 		for e in errors:
 			stats[check.repoman_check_name] += 1
 			fails[check.repoman_check_name].append(x + '/' + y + '.ebuild: %s' % e[1] % e[0])
-		del check, errors
-
+		del check, errors, path, contents, myear
 
 		if "--force" in myoptions:
 			# The dep_check() calls are the most expensive QA test. If --force
