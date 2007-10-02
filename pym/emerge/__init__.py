@@ -4507,8 +4507,11 @@ def post_emerge(trees, mtimedb, retval):
 
 	os.chdir("/")
 
-	emergelog("notitles" not in settings.features,
-		" *** exiting successfully.")
+	if retval == os.EX_OK:
+		exit_msg = " *** exiting successfully."
+	else:
+		exit_msg = " *** exiting unsuccessfully with status '%s'." % retval
+	emergelog("notitles" not in settings.features, exit_msg)
 
 	from portage.util import normalize_path
 	# Dump the mod_echo output now so that our other notifications are shown
