@@ -118,10 +118,15 @@ class EbuildQuote(ContentCheck):
 	"""Ensure ebuilds have valid quoting around things like D,FILESDIR, etc..."""
 
 	repoman_check_name = 'ebuild.minorsyn'
-
-	missing_quotes = re.compile(r'[^"]\${?(D|S|T|ROOT|FILESDIR|WORKDIR)}?\W')
-	missing_quotes_exclude = re.compile(r'\[\[.*[^"]\${?(D|S|T|ROOT|FILESDIR|WORKDIR)}?\W.*\]\]')
-	ignore_line = re.compile(r'(^$)|(^(\t)*#)')
+	ignore_line = re.compile(r'(^$)|(^\s*#.*)')
+	var_names = r'(D|S|T|ROOT|FILESDIR|WORKDIR)'
+	var_reference = re.compile(r'\$({'+var_names+'}|' + \
+		r'\$' + var_names + '\W)')
+	missing_quotes = re.compile(r'(\s|^)[^"\s]*\${?' + var_names + \
+		r'}?[^"\s]*(\s|$)')
+	var_assignment = re.compile(r'^\s*\w*=.*')
+	cond_begin =  re.compile(r'(^|\s+)\[\[($|\\$|\s+)')
+	cond_end =  re.compile(r'(^|\s+)\]\]($|\\$|\s+)')
 	
 	def __init__(self, contents):
 		ContentCheck.__init__(self, contents)
@@ -133,16 +138,46 @@ class EbuildQuote(ContentCheck):
 
 		errors = []
 		for num, line in enumerate(self.contents):
-			match = self.ignore_line.match(line)
-			if match:
+			if self.ignore_line.match(line) is not None:
 				continue
-			missing_quotes_line = self.missing_quotes.search(line)
-			if missing_quotes_line:
-				for group in missing_quotes_line.group():
-					match = self.missing_quotes_exclude.search(group)
-					if not match:
-						errors.append((num + 1, MISSING_QUOTES_ERROR))
-						break
+			if self.var_reference.search(line) is None:
+				continue
+			# There can be multiple matches / violations on a single line. We
+			# have to make sure none of the matches are violators. Once we've
+			# found one violator, any remaining matches on the same line can
+			# be ignored.
+			pos = 0
+			while pos <= len(line) - 1:
+				missing_quotes = self.missing_quotes.search(line, pos)
+				if not missing_quotes:
+					break
+				# If the last character of the previous match is a whitespace
+				# character, that character may be needed for the next
+				# missing_quotes match, so search overlaps by 1 character.
+				group = missing_quotes.group()
+				pos = missing_quotes.end() - 1
+
+				# Filter out some false positives that can
+				# get through the missing_quotes regex.
+				if self.var_reference.search(group) is None:
+					continue
+				if self.var_assignment.search(group) is not None:
+					continue
+
+				# This is an attempt to avoid false positives without getting
+				# too complex, while possibly allowing some (hopefully
+				# unlikely) violations to slip through. We just assume
+				# everything is correct if the there is a ' [[ ' or a ' ]] '
+				# anywhere in the whole line (possibly continued over one
+				# line).
+				if self.cond_begin.search(line) is not None:
+					continue
+				if self.cond_end.search(line) is not None:
+					continue
+
+				errors.append((num + 1, MISSING_QUOTES_ERROR))
+				# Any remaining matches on the same line can be ignored.
+				break
 		return errors
 
 
