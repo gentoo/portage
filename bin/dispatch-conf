@@ -13,17 +13,17 @@
 #
 
 if not hasattr(__builtins__, "set"):
-	from sets import Set as set
+    from sets import Set as set
 
 from stat import *
 from random import *
 import atexit, commands, os, re, shutil, stat, sys
 try:
-	import portage
+    import portage
 except ImportError:
-	from os import path as osp
-	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
-	import portage
+    from os import path as osp
+    sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
+    import portage
 
 from portage import dispatch_conf, const
 from portage.process import find_binary
@@ -37,181 +37,181 @@ DIFF_WSCOMMENTS      = "diff -Nu '%s' '%s' | grep '^[+-][^+-]' | grep -v '^[-+]#
 oldmask = os.umask(0077)
 SCRATCH_DIR = None
 while SCRATCH_DIR is None:
-	try:
-		mydir = portage.const.EPREFIX+"/var/tmp/dispatch-conf."
-		for x in range(0,8):
-			if int(random() * 3) == 0:
-				mydir += chr(int(65+random()*26.0))
-			elif int(random() * 2) == 0:
-				mydir += chr(int(97+random()*26.0))
-			else:
-				mydir += chr(int(48+random()*10.0))
-		if os.path.exists(mydir):
-			continue
-		os.mkdir(mydir)
-		SCRATCH_DIR = mydir
-	except OSError, e:
-		if e.errno != 17:
-			raise
+    try:
+        mydir = portage.const.EPREFIX+"/var/tmp/dispatch-conf."
+        for x in range(0,8):
+            if int(random() * 3) == 0:
+                mydir += chr(int(65+random()*26.0))
+            elif int(random() * 2) == 0:
+                mydir += chr(int(97+random()*26.0))
+            else:
+                mydir += chr(int(48+random()*10.0))
+        if os.path.exists(mydir):
+            continue
+        os.mkdir(mydir)
+        SCRATCH_DIR = mydir
+    except OSError, e:
+        if e.errno != 17:
+            raise
 os.umask(oldmask)
 
 # Ensure the scratch dir is deleted
 def cleanup(mydir=SCRATCH_DIR):
-	shutil.rmtree(mydir)
+    shutil.rmtree(mydir)
 atexit.register(cleanup)
 
 MANDATORY_OPTS  = [ 'archive-dir', 'diff', 'replace-cvs', 'replace-wscomments', 'merge' ]
 
 class dispatch:
-	options = {}
+    options = {}
 
-	def grind (self, config_paths):
-		confs = []
-		count = 0
-
-
-		self.options = portage.dispatch_conf.read_config(MANDATORY_OPTS)
-
-		if self.options.has_key("log-file"):
-			if os.path.isfile(self.options["log-file"]):
-				shutil.copy(self.options["log-file"], self.options["log-file"] + '.old')
-			if os.path.isfile(self.options["log-file"]) \
-					or not os.path.exists(self.options["log-file"]):
-				open(self.options["log-file"], 'w').close() # Truncate it
-				os.chmod(self.options["log-file"], 0600)
-		else:
-			self.options["log-file"] = "/dev/null"
-
-		#
-		# Build list of extant configs
-		#
-
-		for path in config_paths.split ():
-			path = portage.normalize_path(portage.const.EPREFIX + path)
-			try:
-				mymode = os.stat(path).st_mode
-			except OSError:
-				continue
-			basename = "*"
-			find_opts = ""
-			if not stat.S_ISDIR(mymode):
-				path, basename = os.path.split(path)
-				find_opts = "-maxdepth 1"
-
-			confs += self.massage(os.popen(FIND_EXTANT_CONFIGS % (path, find_opts, basename)).readlines())
-
-		if self.options['use-rcs'] == 'yes' and ((os.system( "which rcs >/dev/null 2>&1" ) == 256)
-												 or (os.system( "which ci >/dev/null 2>&1" ) == 256)
-												 or (os.system( "which co >/dev/null 2>&1" ) == 256) 
-												 or (os.system( "which rcsmerge >/dev/null 2>&1" ) == 256)):
-			print >> sys.stderr, 'dispatch-conf: Error finding all RCS utils and use-rcs=yes in config; fatal'
-			return False
+    def grind (self, config_paths):
+        confs = []
+        count = 0
 
 
-		# config file freezing support
-		frozen_files = set(self.options.get("frozen-files", "").split())
-		auto_zapped = []
+        self.options = portage.dispatch_conf.read_config(MANDATORY_OPTS)
 
-		#
-		# Remove new configs identical to current
-		#				  and
-		# Auto-replace configs a) whose differences are simply CVS interpolations,
-		#				  or  b) whose differences are simply ws or comments,
-		#				  or  c) in paths now unprotected by CONFIG_PROTECT_MASK,
-		#
+        if self.options.has_key("log-file"):
+            if os.path.isfile(self.options["log-file"]):
+                shutil.copy(self.options["log-file"], self.options["log-file"] + '.old')
+            if os.path.isfile(self.options["log-file"]) \
+                    or not os.path.exists(self.options["log-file"]):
+                open(self.options["log-file"], 'w').close() # Truncate it
+                os.chmod(self.options["log-file"], 0600)
+        else:
+            self.options["log-file"] = "/dev/null"
 
-		def f (conf):
-			mrgconf = re.sub(r'\._cfg', '._mrg', conf['new'])
-			archive = os.path.join(self.options['archive-dir'], conf['current'].lstrip('/'))
-			if self.options['use-rcs'] == 'yes':
-				mrgfail = portage.dispatch_conf.rcs_archive(archive, conf['current'], conf['new'], mrgconf)
-			else:
-				mrgfail = portage.dispatch_conf.file_archive(archive, conf['current'], conf['new'], mrgconf)
-			if os.path.exists(archive + '.dist'):
-				unmodified = len(commands.getoutput(DIFF_CONTENTS % (conf['current'], archive + '.dist'))) == 0
-			else:
-				unmodified = 0
-			if os.path.exists(mrgconf):
-				if mrgfail or len(commands.getoutput(DIFF_CONTENTS % (conf['new'], mrgconf))) == 0:
-					os.unlink(mrgconf)
-					newconf = conf['new']
-				else:
-					newconf = mrgconf
-			else:
-				newconf = conf['new']
+        #
+        # Build list of extant configs
+        #
 
-			if newconf == mrgconf and \
-				self.options.get('ignore-previously-merged') != 'yes' and \
-				os.path.exists(archive+'.dist') and \
-				len(commands.getoutput(DIFF_CONTENTS % (archive+'.dist', conf['new']))) == 0:
-				# The current update is identical to the archived .dist
-				# version that has previously been merged.
-				os.unlink(mrgconf)
-				newconf = conf['new']
+        for path in config_paths.split ():
+            path = portage.normalize_path(portage.const.EPREFIX + path)
+            try:
+                mymode = os.stat(path).st_mode
+            except OSError:
+                continue
+            basename = "*"
+            find_opts = ""
+            if not stat.S_ISDIR(mymode):
+                path, basename = os.path.split(path)
+                find_opts = "-maxdepth 1"
 
-			mystatus, myoutput = commands.getstatusoutput(
-				DIFF_CONTENTS  % (conf ['current'], newconf))
-			same_file = 0 == len(myoutput)
-			if mystatus >> 8 == 2:
-				# Binary files differ
-				same_cvs = False
-				same_wsc = False
-			else:
-				same_cvs = 0 == len(commands.getoutput(
-					DIFF_CVS_INTERP % (conf ['current'], newconf)))
-				same_wsc = 0 == len(commands.getoutput(
-					DIFF_WSCOMMENTS % (conf ['current'], newconf)))
+            confs += self.massage(os.popen(FIND_EXTANT_CONFIGS % (path, find_opts, basename)).readlines())
 
-			# Do options permit?
-			same_cvs = same_cvs and self.options['replace-cvs'] == 'yes'
-			same_wsc = same_wsc and self.options['replace-wscomments'] == 'yes'
-			unmodified = unmodified and self.options['replace-unmodified'] == 'yes'
+        if self.options['use-rcs'] == 'yes' and ((os.system( "which rcs >/dev/null 2>&1" ) == 256)
+                                                 or (os.system( "which ci >/dev/null 2>&1" ) == 256)
+                                                 or (os.system( "which co >/dev/null 2>&1" ) == 256) 
+                                                 or (os.system( "which rcsmerge >/dev/null 2>&1" ) == 256)):
+            print >> sys.stderr, 'dispatch-conf: Error finding all RCS utils and use-rcs=yes in config; fatal'
+            return False
 
-			if same_file:
-				os.unlink (conf ['new'])
-				self.post_process(conf['current'])
-				if os.path.exists(mrgconf):
-					os.unlink(mrgconf)
-				return False
-			elif conf['current'] in frozen_files:
-				"""Frozen files are automatically zapped. The new config has
-				already been archived with a .new suffix.  When zapped, it is
-				left with the .new suffix (post_process is skipped), since it
-				hasn't been merged into the current config."""
-				auto_zapped.append(conf['current'])
-				os.unlink(conf['new'])
-				try:
-					os.unlink(mrgconf)
-				except OSError:
-					pass
-				return False
-			elif unmodified or same_cvs or same_wsc or conf ['dir'] in portage.settings ['CONFIG_PROTECT_MASK'].split ():
-				self.replace(newconf, conf['current'])
-				self.post_process(conf['current'])
-				if newconf == mrgconf:
-					os.unlink(conf['new'])
-				elif os.path.exists(mrgconf):
-					os.unlink(mrgconf)
-				return False
-			else:
-				return True
 
-		confs = filter (f, confs)
+        # config file freezing support
+        frozen_files = set(self.options.get("frozen-files", "").split())
+        auto_zapped = []
 
-		#
-		# Interactively process remaining
-		#
+        #
+        # Remove new configs identical to current
+        #                  and
+        # Auto-replace configs a) whose differences are simply CVS interpolations,
+        #                  or  b) whose differences are simply ws or comments,
+        #                  or  c) in paths now unprotected by CONFIG_PROTECT_MASK,
+        #
+
+        def f (conf):
+            mrgconf = re.sub(r'\._cfg', '._mrg', conf['new'])
+            archive = os.path.join(self.options['archive-dir'], conf['current'].lstrip('/'))
+            if self.options['use-rcs'] == 'yes':
+                mrgfail = portage.dispatch_conf.rcs_archive(archive, conf['current'], conf['new'], mrgconf)
+            else:
+                mrgfail = portage.dispatch_conf.file_archive(archive, conf['current'], conf['new'], mrgconf)
+            if os.path.exists(archive + '.dist'):
+                unmodified = len(commands.getoutput(DIFF_CONTENTS % (conf['current'], archive + '.dist'))) == 0
+            else:
+                unmodified = 0
+            if os.path.exists(mrgconf):
+                if mrgfail or len(commands.getoutput(DIFF_CONTENTS % (conf['new'], mrgconf))) == 0:
+                    os.unlink(mrgconf)
+                    newconf = conf['new']
+                else:
+                    newconf = mrgconf
+            else:
+                newconf = conf['new']
+
+            if newconf == mrgconf and \
+                self.options.get('ignore-previously-merged') != 'yes' and \
+                os.path.exists(archive+'.dist') and \
+                len(commands.getoutput(DIFF_CONTENTS % (archive+'.dist', conf['new']))) == 0:
+                # The current update is identical to the archived .dist
+                # version that has previously been merged.
+                os.unlink(mrgconf)
+                newconf = conf['new']
+
+            mystatus, myoutput = commands.getstatusoutput(
+                DIFF_CONTENTS  % (conf ['current'], newconf))
+            same_file = 0 == len(myoutput)
+            if mystatus >> 8 == 2:
+                # Binary files differ
+                same_cvs = False
+                same_wsc = False
+            else:
+                same_cvs = 0 == len(commands.getoutput(
+                    DIFF_CVS_INTERP % (conf ['current'], newconf)))
+                same_wsc = 0 == len(commands.getoutput(
+                    DIFF_WSCOMMENTS % (conf ['current'], newconf)))
+
+            # Do options permit?
+            same_cvs = same_cvs and self.options['replace-cvs'] == 'yes'
+            same_wsc = same_wsc and self.options['replace-wscomments'] == 'yes'
+            unmodified = unmodified and self.options['replace-unmodified'] == 'yes'
+
+            if same_file:
+                os.unlink (conf ['new'])
+                self.post_process(conf['current'])
+                if os.path.exists(mrgconf):
+                    os.unlink(mrgconf)
+                return False
+            elif conf['current'] in frozen_files:
+                """Frozen files are automatically zapped. The new config has
+                already been archived with a .new suffix.  When zapped, it is
+                left with the .new suffix (post_process is skipped), since it
+                hasn't been merged into the current config."""
+                auto_zapped.append(conf['current'])
+                os.unlink(conf['new'])
+                try:
+                    os.unlink(mrgconf)
+                except OSError:
+                    pass
+                return False
+            elif unmodified or same_cvs or same_wsc or conf ['dir'] in portage.settings ['CONFIG_PROTECT_MASK'].split ():
+                self.replace(newconf, conf['current'])
+                self.post_process(conf['current'])
+                if newconf == mrgconf:
+                    os.unlink(conf['new'])
+                elif os.path.exists(mrgconf):
+                    os.unlink(mrgconf)
+                return False
+            else:
+                return True
+
+        confs = filter (f, confs)
+
+        #
+        # Interactively process remaining
+        #
 
         valid_input = "qhtnmlezu"
 
         for conf in confs:
             count = count + 1
 
-			newconf = conf['new']
-			mrgconf = re.sub(r'\._cfg', '._mrg', newconf)
-			if os.path.exists(mrgconf):
-				newconf = mrgconf
-			show_new_diff = 0
+            newconf = conf['new']
+            mrgconf = re.sub(r'\._cfg', '._mrg', newconf)
+            if os.path.exists(mrgconf):
+                newconf = mrgconf
+            show_new_diff = 0
 
             while 1:
                 clear_screen()
@@ -221,9 +221,9 @@ class dispatch:
                 else:
                     os.system((self.options['diff']) % (conf['current'], newconf))
 
-				print
-				print '>> (%i of %i) -- %s' % (count, len(confs), conf ['current'])
-				print '>> q quit, h help, n next, e edit-new, z zap-new, u use-new\n   m merge, t toggle-merge, l look-merge: ',
+                print
+                print '>> (%i of %i) -- %s' % (count, len(confs), conf ['current'])
+                print '>> q quit, h help, n next, e edit-new, z zap-new, u use-new\n   m merge, t toggle-merge, l look-merge: ',
 
                 # In some cases getch() will return some spurious characters
                 # that do not represent valid input. If we don't validate the
@@ -287,96 +287,96 @@ class dispatch:
                 else:
                     raise AssertionError("Invalid Input: %s" % c)
 
-		if auto_zapped:
-			print
-			print " One or more updates are frozen and have been automatically zapped:"
-			print
-			for frozen in auto_zapped:
-				print "  * '%s'" % frozen
-			print
+        if auto_zapped:
+            print
+            print " One or more updates are frozen and have been automatically zapped:"
+            print
+            for frozen in auto_zapped:
+                print "  * '%s'" % frozen
+            print
 
-	def replace (self, newconf, curconf):
-		"""Replace current config with the new/merged version.  Also logs
-		the diff of what changed into the configured log file."""
-		os.system((DIFF_CONTENTS % (curconf, newconf)) + '>>' + self.options["log-file"])
-		try:
-			shutil.copyfile(newconf, curconf)
-			os.remove(newconf)
-		except (IOError, os.error), why:
-			print >> sys.stderr, 'dispatch-conf: Error renaming %s to %s: %s; fatal' % \
-				  (newconf, curconf, str(why))
-
-
-	def post_process(self, curconf):
-		archive = os.path.join(self.options['archive-dir'], curconf.lstrip('/'))
-		if self.options['use-rcs'] == 'yes':
-			portage.dispatch_conf.rcs_archive_post_process(archive)
-		else:
-			portage.dispatch_conf.file_archive_post_process(archive)
+    def replace (self, newconf, curconf):
+        """Replace current config with the new/merged version.  Also logs
+        the diff of what changed into the configured log file."""
+        os.system((DIFF_CONTENTS % (curconf, newconf)) + '>>' + self.options["log-file"])
+        try:
+            shutil.copyfile(newconf, curconf)
+            os.remove(newconf)
+        except (IOError, os.error), why:
+            print >> sys.stderr, 'dispatch-conf: Error renaming %s to %s: %s; fatal' % \
+                  (newconf, curconf, str(why))
 
 
-	def massage (self, newconfigs):
-		"""Sort, rstrip, remove old versions, break into triad hash.
-
-		Triad is dictionary of current (/etc/make.conf), new (/etc/._cfg0003_make.conf)
-		and dir (/etc).
-
-		We keep ._cfg0002_conf over ._cfg0001_conf and ._cfg0000_conf.
-		"""
-		h = {}
-
-		newconfigs.sort ()
-
-		for nconf in newconfigs:
-			nconf = nconf.rstrip ()
-			conf  = re.sub (r'\._cfg\d+_', '', nconf)
-			dir   = re.match (r'^(.+)/', nconf).group (1)
-
-			if h.has_key (conf):
-				mrgconf = re.sub(r'\._cfg', '._mrg', h[conf]['new'])
-				if os.path.exists(mrgconf):
-					os.unlink(mrgconf)
-				os.unlink(h[conf]['new'])
-
-			h [conf] = { 'current' : conf, 'dir' : dir, 'new' : nconf }
-
-		configs = h.values ()
-		configs.sort (lambda a, b: cmp(a ['current'], b ['current']))
-
-		return configs
+    def post_process(self, curconf):
+        archive = os.path.join(self.options['archive-dir'], curconf.lstrip('/'))
+        if self.options['use-rcs'] == 'yes':
+            portage.dispatch_conf.rcs_archive_post_process(archive)
+        else:
+            portage.dispatch_conf.file_archive_post_process(archive)
 
 
-	def do_help (self):
-		print; print
+    def massage (self, newconfigs):
+        """Sort, rstrip, remove old versions, break into triad hash.
 
-		print '  u -- update current config with new config and continue'
-		print '  z -- zap (delete) new config and continue'
-		print '  n -- skip to next config, leave all intact'
-		print '  e -- edit new config'
-		print '  m -- interactively merge current and new configs'
-		print '  l -- look at diff between pre-merged and merged configs'
-		print '  t -- toggle new config between merged and pre-merged state'
-		print '  h -- this screen'
-		print '  q -- quit'
+        Triad is dictionary of current (/etc/make.conf), new (/etc/._cfg0003_make.conf)
+        and dir (/etc).
 
-		print; print 'press any key to return to diff...',
+        We keep ._cfg0002_conf over ._cfg0001_conf and ._cfg0000_conf.
+        """
+        h = {}
 
-		getch ()
+        newconfigs.sort ()
+
+        for nconf in newconfigs:
+            nconf = nconf.rstrip ()
+            conf  = re.sub (r'\._cfg\d+_', '', nconf)
+            dir   = re.match (r'^(.+)/', nconf).group (1)
+
+            if h.has_key (conf):
+                mrgconf = re.sub(r'\._cfg', '._mrg', h[conf]['new'])
+                if os.path.exists(mrgconf):
+                    os.unlink(mrgconf)
+                os.unlink(h[conf]['new'])
+
+            h [conf] = { 'current' : conf, 'dir' : dir, 'new' : nconf }
+
+        configs = h.values ()
+        configs.sort (lambda a, b: cmp(a ['current'], b ['current']))
+
+        return configs
+
+
+    def do_help (self):
+        print; print
+
+        print '  u -- update current config with new config and continue'
+        print '  z -- zap (delete) new config and continue'
+        print '  n -- skip to next config, leave all intact'
+        print '  e -- edit new config'
+        print '  m -- interactively merge current and new configs'
+        print '  l -- look at diff between pre-merged and merged configs'
+        print '  t -- toggle new config between merged and pre-merged state'
+        print '  h -- this screen'
+        print '  q -- quit'
+
+        print; print 'press any key to return to diff...',
+
+        getch ()
 
 
 def getch ():
-	# from ASPN - Danny Yoo
-	#
-	import sys, tty, termios
+    # from ASPN - Danny Yoo
+    #
+    import sys, tty, termios
 
-	fd = sys.stdin.fileno()
-	old_settings = termios.tcgetattr(fd)
-	try:
-		tty.setraw(sys.stdin.fileno())
-		ch = sys.stdin.read(1)
-	finally:
-		termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-	return ch
+    fd = sys.stdin.fileno()
+    old_settings = termios.tcgetattr(fd)
+    try:
+        tty.setraw(sys.stdin.fileno())
+        ch = sys.stdin.read(1)
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+    return ch
 
 def clear_screen():
     try:
@@ -396,7 +396,7 @@ def clear_screen():
 d = dispatch ()
 
 if len(sys.argv) > 1:
-	# for testing
-	d.grind (" ".join(sys.argv[1:]))
+    # for testing
+    d.grind (" ".join(sys.argv[1:]))
 else:
-	d.grind (portage.settings ['CONFIG_PROTECT'])
+    d.grind (portage.settings ['CONFIG_PROTECT'])
