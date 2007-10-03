@@ -13,10 +13,10 @@
 cd /
 
 if type -P gsed >/dev/null ; then
-	function sed() { gsed "$@"; }
+	sed() { gsed "$@"; }
 fi
 
-function get_config() {
+get_config() {
 	# the sed here does:
 	#  - strip off comments
 	#  - match lines that set item in question
@@ -34,7 +34,7 @@ function get_config() {
 		"${PORTAGE_CONFIGROOT}"etc/etc-update.conf)
 }
 
-function scan() {
+scan() {
 
 	echo "Scanning Configuration files..."
 	rm -rf ${TMP}/files > /dev/null 2>&1
@@ -120,7 +120,7 @@ function scan() {
 
 }
 
-function sel_file() {
+sel_file() {
 	local -i isfirst=0
 	until [[ -f ${TMP}/files/${input} ]] || \
 	      [[ ${input} == -1 ]] || \
@@ -198,7 +198,7 @@ configuration file is followed by a list of possible replacement files."
 	done
 }
 
-function user_special() {
+user_special() {
 	if [ -r ${PORTAGE_CONFIGROOT}etc/etc-update.special ]; then
 		if [ -z "$1" ]; then
 			echo "ERROR: user_special() called without arguments"
@@ -211,7 +211,7 @@ function user_special() {
 	return 1
 }
 
-function read_int() {
+read_int() {
 	# Read an integer from stdin.  Continously loops until a valid integer is
 	# read.  This is a workaround for odd behavior of bash when an attempt is
 	# made to store a value such as "1y" into an integer-only variable.
@@ -225,7 +225,7 @@ function read_int() {
 	echo ${my_input}
 }
 
-function do_file() {
+do_file() {
 	echo
 	local -i my_input
 	local -i fcount=0
@@ -300,7 +300,7 @@ function do_file() {
 	count=${count}-1
 }
 
-function do_cfg() {
+do_cfg() {
 
 	local file="${1}"
 	local ofile="${2}"
@@ -366,7 +366,7 @@ Please select from the menu above (-1 to ignore this update): "
 	done
 }
 
-function do_merge() {
+do_merge() {
 	# make sure we keep the merged file in the secure tempdir
 	# so we dont leak any information contained in said file
 	# (think of case where the file has 0600 perms; during the
@@ -437,7 +437,7 @@ Please select from the menu above (-1 to exit, losing this merge): "
 	return 255
 }
 
-function die() {
+die() {
 	trap "" TERM
 	trap "" KILL
 	echo "Exiting: ${1}"
