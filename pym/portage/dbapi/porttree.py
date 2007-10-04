@@ -282,11 +282,17 @@ class portdbapi(dbapi):
 
 		try:
 			mydata = self.auxdb[mylocation][mycpv]
+			eapi = mydata.get("EAPI","").strip()
+			if not eapi:
+				eapi = 0
 			try:
-				eapi = int(mydata.get("EAPI", 0))
+				eapi = int(eapi)
 			except ValueError:
-				raise KeyError()
-			if eapi < 0 and eapi_is_supported(-eapi):
+				# Non-integer EAPI isn't supported. In case it's supported in
+				# the future, assume that it's valid (rather than trigger a
+				# regen).
+				eapi = None
+			if eapi is not None and eapi < 0 and eapi_is_supported(-eapi):
 				doregen = True
 			elif emtime != long(mydata.get("_mtime_", 0)):
 				doregen = True
