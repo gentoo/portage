@@ -3065,7 +3065,6 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
 					distfiles_map.setdefault(myfile, []).append(cpv)
 			except portage.exception.InvalidDependString, e:
 				writemsg("!!! %s\n" % str(e), noiselevel=-1)
-				writemsg("!!! Invalid SRC_URI for '%s'.\n" % cpv, noiselevel=-1)
 				del e
 				return 0
 		mytree = os.path.dirname(os.path.dirname(mysettings["O"]))

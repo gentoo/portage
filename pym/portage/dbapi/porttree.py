@@ -383,7 +383,8 @@ class portdbapi(dbapi):
 			# Convert this to an InvalidDependString exception
 			# since callers already handle it.
 			raise portage.exception.InvalidDependString(
-				"getfetchlist(): Unsupported EAPI: '%s'" % eapi.lstrip("-"))
+				"getfetchlist(): '%s' has unsupported EAPI: '%s'" % \
+				(mypkg, eapi.lstrip("-")))
 
 		if useflags is None:
 			useflags = mysettings["USE"].split()
@@ -396,7 +397,9 @@ class portdbapi(dbapi):
 		for x in newuris:
 			mya = os.path.basename(x)
 			if not mya:
-				raise portage.exception.InvalidDependString("URI has no basename: '%s'" % x)
+				raise portage.exception.InvalidDependString(
+					"getfetchlist(): '%s' SRC_URI has no file name: '%s'" % \
+					(mypkg, x))
 			if not mya in myfiles:
 				myfiles.append(mya)
 		return [newuris, myfiles]
