@@ -1768,8 +1768,13 @@ class depgraph(object):
 					usepkgonly = "--usepkgonly" in self.myopts
 					chost = pkgsettings["CHOST"]
 					myeb_pkg_matches = []
+					bindb_keys = ["CHOST","EAPI"]
 					for pkg in bindb.match(x):
-						if chost != bindb.aux_get(pkg, ["CHOST"])[0]:
+						metadata = dict(izip(bindb_keys,
+							bindb.aux_get(pkg, bindb_keys)))
+						if chost != metadata["CHOST"]:
+							continue
+						if not portage.eapi_is_supported(metadata["EAPI"]):
 							continue
 						# Remove any binary package entries that are
 						# masked in the portage tree (#55871).
@@ -1927,11 +1932,20 @@ class depgraph(object):
 							alleb = bindb.match(x)
 							if alleb:
 								chost = pkgsettings["CHOST"]
+								bindb_keys = ["CHOST","EAPI"]
 								for p in alleb:
 									mreasons = []
-									pkg_chost =  bindb.aux_get(p, ["CHOST"])[0]
-									if chost != pkg_chost:
-										mreasons.append("CHOST: %s" % pkg_chost)
+									metadata = dict(izip(bindb_keys,
+										bindb.aux_get(pkg, bindb_keys)))
+									if chost != metadata["CHOST"]:
+										mreasons.append("CHOST: %s" % \
+											metadata["CHOST"])
+									if not portage.eapi_is_supported(
+										metadata["EAPI"]):
+										mreasons.append(("required EAPI %s" + \
+											", supported EAPI %s") % \
+											(metadata["EAPI"],
+											portage.const.EAPI))
 									print "- "+p+" (masked by: "+", ".join(mreasons)+")"
 							print "!!! "+red("There are no packages available to satisfy: ")+green(xinfo)
 							print "!!! Either add a suitable binary package or compile from an ebuild."
