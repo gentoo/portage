@@ -1606,7 +1606,7 @@ else:
 			" \"You want to commit even with these QA issues?\n" + \
 			"              I'll take it this time, but I'm not happy.\"\n"
 	elif dofail:
-		if "--force" in myoptions:
+		if "--force" in myoptions and not can_force:
 			print bad("The --force option has been disabled due to extraordinary issues.")
 		print turquoise("Please fix these important QA issues first.")
 		print green("RepoMan sez:"),"\"Make your QA payment on time and you'll never see the likes of me.\"\n"
