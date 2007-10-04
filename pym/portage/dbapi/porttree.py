@@ -282,7 +282,13 @@ class portdbapi(dbapi):
 
 		try:
 			mydata = self.auxdb[mylocation][mycpv]
-			if emtime != long(mydata.get("_mtime_", 0)):
+			try:
+				eapi = int(mydata.get("EAPI", 0))
+			except ValueError:
+				raise KeyError()
+			if eapi < 0 and eapi_is_supported(-eapi):
+				doregen = True
+			elif emtime != long(mydata.get("_mtime_", 0)):
 				doregen = True
 			elif len(mydata.get("_eclasses_", [])) > 0:
 				doregen = not self.eclassdb.is_eclass_data_valid(mydata["_eclasses_"])
