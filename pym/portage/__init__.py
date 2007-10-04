@@ -3319,7 +3319,13 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 
 
 def eapi_is_supported(eapi):
-	return str(eapi).strip() == str(portage.const.EAPI).strip()
+	try:
+		eapi = int(str(eapi).strip())
+	except ValueError:
+		eapi = -1
+	if eapi < 0:
+		return False
+	return eapi <= portage.const.EAPI
 
 def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, mydbapi):
 
