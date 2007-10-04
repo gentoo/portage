@@ -158,6 +158,7 @@ def stale_env_warning():
 			for x in msg:
 				portage.writemsg(">>> %s\n" % x)
 
+from portage.exception import UnsupportedAPIException
 checked_for_stale_env = False
 
 for arg in pargs:
@@ -177,6 +178,13 @@ for arg in pargs:
 		a = 1
 	except KeyError:
 		# aux_get error
+		a = 1
+	except UnsupportedAPIException, e:
+		from textwrap import wrap
+		msg = wrap(str(e), 70)
+		del e
+		for x in msg:
+			portage.writemsg("!!! %s\n" % x, noiselevel=-1)
 		a = 1
 	if a == None:
 		print "Could not run the required binary?"
