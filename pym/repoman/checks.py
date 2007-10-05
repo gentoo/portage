@@ -118,13 +118,12 @@ class EbuildQuote(ContentCheck):
 	"""Ensure ebuilds have valid quoting around things like D,FILESDIR, etc..."""
 
 	repoman_check_name = 'ebuild.minorsyn'
-	ignore_line = re.compile(r'(^$)|(^\s*#.*)')
+	ignore_line = re.compile(r'(^$)|(^\s*#.*)|(^\s*\w+=.*)')
 	var_names = r'(D|S|T|ROOT|FILESDIR|WORKDIR)'
 	var_reference = re.compile(r'\$({'+var_names+'}|' + \
 		r'\$' + var_names + '\W)')
 	missing_quotes = re.compile(r'(\s|^)[^"\s]*\${?' + var_names + \
 		r'}?[^"\s]*(\s|$)')
-	var_assignment = re.compile(r'^\s*\w*=.*')
 	cond_begin =  re.compile(r'(^|\s+)\[\[($|\\$|\s+)')
 	cond_end =  re.compile(r'(^|\s+)\]\]($|\\$|\s+)')
 	
@@ -160,8 +159,6 @@ class EbuildQuote(ContentCheck):
 				# Filter out some false positives that can
 				# get through the missing_quotes regex.
 				if self.var_reference.search(group) is None:
-					continue
-				if self.var_assignment.search(group) is not None:
 					continue
 
 				# This is an attempt to avoid false positives without getting
