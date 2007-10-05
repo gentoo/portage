@@ -4990,6 +4990,8 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 		# The "depend" phase apparently failed for some reason.  An associated
 		# error message will have already been printed to stderr.
 		return ["corruption"]
+	if eapi.startswith("-"):
+		eapi = eapi[1:]
 	if not eapi_is_supported(eapi):
 		return ["required EAPI %s, supported EAPI %s" % (eapi, portage_const.EAPI)]
 	mygroups = mygroups.split()
