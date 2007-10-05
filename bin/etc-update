@@ -456,13 +456,13 @@ function die() {
 #
 scriptname=$(basename $0)
 
-TMP="${PORTAGE_TMPDIR}/etc-update-$$"
-trap die term
-
 type portageq > /dev/null || exit $?
 eval $(portageq envvar -v CONFIG_PROTECT \
 	CONFIG_PROTECT_MASK PORTAGE_CONFIGROOT PORTAGE_TMPDIR ROOT USERLAND)
 export PORTAGE_TMPDIR
+
+TMP="${PORTAGE_TMPDIR}/etc-update-$$"
+trap die term
 
 [ -w ${PORTAGE_CONFIGROOT}etc ] || die "Need write access to ${PORTAGE_CONFIGROOT}etc" 1
 #echo $PORTAGE_TMPDIR
