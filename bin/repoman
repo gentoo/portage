@@ -755,7 +755,7 @@ class EbuildQuote(object):
 	"""Ensure ebuilds have valid quoting around things like D,FILESDIR, etc..."""
 
 	repoman_check_name = 'ebuild.minorsyn'
-	ignore_line = re.compile(r'(^$)|(^\s*#.*)|(^\s*\w+=.*)')
+	ignore_line = re.compile(r'(^$)|(^\s*#.*)|(^\s*\w+=.*)|(^\s*(local|export)\s+)')
 	var_names = r'(D|S|T|ROOT|FILESDIR|WORKDIR)'
 	var_reference = re.compile(r'\$({'+var_names+'}|' + \
 		r'\$' + var_names + '\W)')
