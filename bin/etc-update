@@ -504,7 +504,7 @@ fi
 
 declare -i count=0
 declare input=0
-declare title="Gentoolkit's etc-update tool!"
+declare title="Gentoo's etc-update tool!"
 
 scan
 
