@@ -6407,6 +6407,7 @@ def emerge_main():
 	setconfig = make_default_config(settings, trees[settings["ROOT"]])
 	del setconfigpaths
 	if myaction not in ["search", "metadata", "sync"]:
+		oldargs = myfiles[:]
 		packagesets, setconfig_errors = setconfig.getSetsWithAliases()
 		for s in packagesets:
 			if s in myfiles:
@@ -6414,10 +6415,19 @@ def emerge_main():
 				if myaction in ["unmerge", "prune", "clean", "depclean"] and not packagesets[s].supportsOperation("unmerge"):
 					print "emerge: the given set %s does not support unmerge operations" % s
 					sys.exit(1)
-				myfiles.extend(packagesets[s].getAtoms())
+				if not packagesets[s].getAtoms():
+					print "emerge: '%s' is an empty set" % s
+				else:
+					myfiles.extend(packagesets[s].getAtoms())
 				for e in packagesets[s].errors:
 					print e
 				myfiles.remove(s)
+		# Need to handle empty sets specially, otherwise emerge will react 
+		# with the help message for empty argument lists
+		if oldargs and not myfiles:
+			print "emerge: no targets left after set expansion"
+			sys.exit(0)
+		del oldargs
 
 	if ("--tree" in myopts) and ("--columns" in myopts):
 		print "emerge: can't specify both of \"--tree\" and \"--columns\"."
