@@ -1589,9 +1589,7 @@ then
 fi
 
 #a reasonable default for $S
-if [ "$S" = "" ]; then
-	export S=${WORKDIR}/${P}
-fi
+[[ -z ${S} ]] && export S=${WORKDIR}/${P}
 
 #wipe the interceptors.  we don't want saved.
 if hasq "depend" "${EBUILD_SH_ARGS}"; then
