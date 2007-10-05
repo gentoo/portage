@@ -247,6 +247,18 @@ etc... and not match version '1.0', '3.0', '4.1', etc...
 \fI~\fR means match any revision of the base version specified.  So in the
 above example, we would match versions '1.0.2a', '1.0.2a\-r1', '1.0.2a\-r2',
 etc...
+.TP
+.B Atom Slots
+Beginning with \fBEAPI 1\fR, any atom can be constrained to match a specific
+\fBSLOT\fR. This is accomplished by appending a colon followed by a
+\fBSLOT\fR:
+
+.nf
+x11\-libs/qt:3
+\fI~\fRx11\-libs/qt-3.3.8:3
+\fI>=\fRx11\-libs/qt-3.3.8:3
+\fI=\fRx11\-libs/qt-3.3*:3
+.fi
 .RE
 .TP
 .B Dynamic DEPENDs
