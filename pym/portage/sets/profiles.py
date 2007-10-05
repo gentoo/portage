@@ -18,3 +18,7 @@ class PackagesSystemSet(PackageSet):
 		mylist = [grabfile_package(os.path.join(x, "packages")) for x in self._profile_paths]
 		mylist = stack_lists(mylist, incremental=1)
 		self._setAtoms([x[1:] for x in mylist if x[0] == "*"])
+
+	def singleBuilder(self, options, settings, trees):
+		return PackagesSystemSet(settings.profiles)
+	singleBuilder = classmethod(singleBuilder)

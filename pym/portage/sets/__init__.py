@@ -3,7 +3,8 @@
 # $Id$
 
 import os
-from portage import flatten
+from ConfigParser import SafeConfigParser, NoOptionError
+from portage import flatten, load_mod
 from portage.dep import isvalidatom, match_from_list, \
      best_match_to_list, dep_getkey, use_reduce, paren_reduce
 from portage.exception import InvalidAtom
@@ -26,6 +27,7 @@ class PackageSet(object):
 		self._atommap = {}
 		self._loaded = False
 		self._loading = False
+		self.errors = []
 
 	def __contains__(self, atom):
 		return atom in self.getAtoms()
@@ -145,7 +147,6 @@ class EditablePackageSet(PackageSet):
 		# This method must be overwritten in subclasses that should be editable
 		raise NotImplementedError()
 
-
 class InternalPackageSet(EditablePackageSet):
 	def __init__(self, initial_atoms=None):
 		super(InternalPackageSet, self).__init__()
@@ -163,78 +164,113 @@ class InternalPackageSet(EditablePackageSet):
 		pass
 
 
+class SetConfigError(Exception):
+	pass
 
-def make_default_sets(configroot, root, profile_paths, settings=None, 
-		vdbapi=None, portdbapi=None):
-	from portage.sets.files import StaticFileSet, ConfigFileSet
-	from portage.sets.profiles import PackagesSystemSet
-	from portage.sets.security import NewAffectedSet
-	from portage.sets.dbapi import EverythingSet
-	from portage.const import PRIVATE_PATH, USER_CONFIG_PATH
+class SetConfig(SafeConfigParser):
+	def __init__(self, paths, settings, trees):
+		SafeConfigParser.__init__(self)
+		self.read(paths)
+		self.errors = []
+		self.psets = {}
+		self.trees = trees
+		self.settings = settings
+		self._parsed = False
+	def _parse(self):
+		if self._parsed:
+			return
+		for sname in self.sections():
+			# find classname for current section, default to file based sets
+			if not self.has_option(sname, "class"):
+				classname = "portage.sets.files.StaticFileSet"
+			else:
+				classname = self.get(sname, "class")
+			
+			# try to import the specified class
+			try:
+				setclass = load_mod(classname)
+			except (ImportError, AttributeError):
+				self.errors.append("Could not import '%s' for section '%s'" % (classname, sname))
+				continue
+			# prepare option dict for the current section
+			optdict = {}
+			for oname in self.options(sname):
+				optdict[oname] = self.get(sname, oname)
+			
+			# create single or multiple instances of the given class depending on configuration
+			if self.has_option(sname, "multiset") and self.getboolean(sname, "multiset"):
+				if hasattr(setclass, "multiBuilder"):
+					try:
+						self.psets.update(setclass.multiBuilder(optdict, self.settings, self.trees))
+					except SetConfigError, e:
+						self.errors.append("Configuration error in section '%s': %s" % (sname, str(e)))
+						continue
+				else:
+					self.errors.append("Section '%s' is configured as multiset, but '%s' doesn't support that configuration" % (sname, classname))
+					continue
+			else:
+				try:
+					setname = self.get(sname, "name")
+				except NoOptionError:
+					setname = "sets/"+sname
+				if hasattr(setclass, "singleBuilder"):
+					try:
+						self.psets[setname] = setclass.singleBuilder(optdict, self.settings, self.trees)
+					except SetConfigError, e:
+						self.errors.append("Configuration error in section '%s': %s" % (sname, str(e)))
+						continue
+				else:
+					self.errors.append("'%s' does not support individual set creation, section '%s' must be configured as multiset" % (classname, sname))
+					continue
+		self._parsed = True
 	
-	rValue = {}
-	worldset = StaticFileSet(os.path.join(root, PRIVATE_PATH, "world"))
-	worldset.description = "Set of packages that were directly installed"
-	rValue["world"] = worldset
-	for suffix in ["mask", "unmask", "keywords", "use"]:
-		myname = "package_"+suffix
-		myset = ConfigFileSet(os.path.join(configroot, USER_CONFIG_PATH.lstrip(os.sep), "package."+suffix))
-		rValue[myname] = myset
-	rValue["system"] = PackagesSystemSet(profile_paths)
-	if settings != None and portdbapi != None:
-		rValue["security"] = NewAffectedSet(settings, vdbapi, portdbapi)
-	else:
-		rValue["security"] = InternalPackageSet()
-	if vdbapi != None:
-		rValue["everything"] = EverythingSet(vdbapi)
-	else:
-		rValue["everything"] = InternalPackageSet()
+	def getSets(self):
+		self._parse()
+		return (self.psets, self.errors)
 
-	return rValue
+	def getSetsWithAliases(self):
+		self._parse()
+		shortnames = {}
+		for name in self.psets:
+			mysplit = name.split("/")
+			if len(mysplit) > 1 and mysplit[0] == "sets" and mysplit[-1] != "":
+				if mysplit[-1] in shortnames:
+					del shortnames[mysplit[-1]]
+				else:
+					shortnames[mysplit[-1]] = self.psets[name]
+		shortnames.update(self.psets)
+		return (shortnames, self.errors)
 
-def make_extra_static_sets(configroot):
-	from portage.sets.files import StaticFileSet
-	from portage.const import PRIVATE_PATH, USER_CONFIG_PATH
+def make_default_config(settings, trees):
+	sc = SetConfig([], settings, trees)
+	sc.add_section("security")
+	sc.set("security", "class", "portage.sets.security.NewAffectedSet")
 	
-	rValue = {}
-	mydir = os.path.join(configroot, USER_CONFIG_PATH.lstrip(os.sep), "sets")
-	try:
-		mysets = os.listdir(mydir)
-	except (OSError, IOError):
-		return rValue
-	for myname in mysets:
-		if myname in DEFAULT_SETS:
-			continue
-		rValue[myname] = StaticFileSet(os.path.join(mydir, myname))
-	return rValue
+	sc.add_section("system")
+	sc.set("system", "class", "portage.sets.profiles.PackagesSystemSet")
+	
+	sc.add_section("world")
+	sc.set("world", "class", "portage.sets.files.WorldSet")
+	
+	sc.add_section("everything")
+	sc.set("everything", "class", "portage.sets.dbapi.EverythingSet")
 
-def make_category_sets(portdbapi, settings, only_visible=True):
-	from portage.sets.dbapi import CategorySet
-	rValue = {}
-	for c in settings.categories:
-		rValue["category_%s" % c] = CategorySet(c, portdbapi, only_visible=only_visible)
-	return rValue
+	sc.add_section("config")
+	sc.set("config", "class", "portage.sets.files.ConfigFileSet")
+	sc.set("config", "multiset", "true")
+	
+	sc.add_section("user_sets")
+	sc.set("user_sets", "class", "portage.sets.files.StaticFileSet")
+	sc.set("user_sets", "multiset", "true")
+	
+	return sc
 
 # adhoc test code
 if __name__ == "__main__":
-	import portage, sys, os
-	from portage.sets.dbapi import CategorySet
-	from portage.sets.files import StaticFileSet
-	l = make_default_sets("/", "/", portage.settings.profiles, portage.settings, portage.db["/"]["vartree"].dbapi, portage.db["/"]["porttree"].dbapi)
-	l.update(make_extra_static_sets("/"))
-	if len(sys.argv) > 1:
-		for s in sys.argv[1:]:
-			if s.startswith("category_"):
-				c = s[9:]
-				l["category_%s" % c] = CategorySet(c, portage.db['/']['porttree'].dbapi, only_visible=False)
-			elif os.path.exists(s):
-				l[os.path.basename(s)] = StaticFileSet(s)
-			elif s != "*":
-				print "ERROR: could not create set '%s'" % s
-		if not "*" in sys.argv:
-			for n in l:
-				if n not in sys.argv[1:]:
-					del l[n]
+	import portage
+	sc = make_default_config(portage.settings, portage.db["/"])
+	l, e = sc.getSets()
+	print l, e
 	for x in l:
 		print x+":"
 		print "DESCRIPTION = %s" % l[x].getMetadata("Description")

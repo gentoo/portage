@@ -529,12 +529,11 @@ and bugs resulting from misusing masked packages drains Gentoo
 developer time.  Please be sure you are capable of handling any problems
 that may ensue.\fR
 .LP
-Masks in \fBportage\fR provide three primary functions: they allow a
+Masks in \fBportage\fR have many uses: they allow a
 testing period where the packages can be used in live machines; they
 prevent the use of a package when it will fail; and they mask existing
-packages that are broken or could pose a security risk.  Masking can be
-done by two methods: \fBpackage.mask\fR and \fBKEYWORDS\fR.  Read below
-to find out how to unmask in either case.  Also note that if you give 
+packages that are broken or could pose a security risk.  Read below
+to find out how to unmask in various cases.  Also note that if you give 
 \fBemerge\fR an ebuild, then all forms of masking will be ignored and
 \fBemerge\fR will attempt to emerge the package.
 .TP
@@ -542,6 +541,12 @@ to find out how to unmask in either case.  Also note that if you give
 The \fBpackage.mask\fR file primarily blocks the use of packages that cause
 problems or are known to have issues on different systems.  It resides in
 \fI/usr/portage/profiles\fR.
+.TP
+.BR CHOST
+The \CHOST\fR variable in \fBmake.conf\fR(5) is used to mask binary packages
+that have been built with a different \CHOST\fR setting. The only
+way to unmask such a binary package is to change the \CHOST\fR environment
+variable so that it exactly matches that of the binary package.
 .TP
 .BR EAPI
 The \fBEAPI\fR variable in an \fBebuild\fR(5) file is used to mask packages
