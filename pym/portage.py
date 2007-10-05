@@ -1848,6 +1848,13 @@ class config:
 			self.reset(keeping_pkg=1,use_cache=use_cache)
 
 	def setinst(self,mycpv,mydbapi):
+		"""This updates the preferences for old-style virtuals,
+		affecting the behavior of dep_expand() and dep_check()
+		calls. It can change dbapi.match() behavior since that
+		calls dep_expand(). However, dbapi instances have
+		internal match caches that are not invalidated when
+		preferences are updated here. This can potentially
+		lead to some inconsistency (relevant to bug #1343)."""
 		self.modifying()
 		if len(self.virtuals) == 0:
 			self.getvirtuals()
