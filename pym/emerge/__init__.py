@@ -374,7 +374,7 @@ class search(object):
 	# public interface
 	#
 	def __init__(self, settings, portdb, vartree, spinner, searchdesc,
-		verbose):
+		verbose, setconfig):
 		"""Searches the available and installed packages for the supplied search key.
 		The list of available and installed packages is created at object instantiation.
 		This makes successive searches faster."""
@@ -384,6 +384,7 @@ class search(object):
 		self.spinner = spinner
 		self.verbose = verbose
 		self.searchdesc = searchdesc
+		self.setconfig = setconfig
 
 	def execute(self,searchkey):
 		"""Performs the search for the supplied search key"""
@@ -392,10 +393,10 @@ class search(object):
 		self.packagematches = []
 		if self.searchdesc:
 			self.searchdesc=1
-			self.matches = {"pkg":[], "desc":[]}
+			self.matches = {"pkg":[], "desc":[], "set":[]}
 		else:
 			self.searchdesc=0
-			self.matches = {"pkg":[]}
+			self.matches = {"pkg":[], "set":[]}
 		print "Searching...   ",
 
 		regexsearch = False
@@ -440,6 +441,21 @@ class search(object):
 					continue
 				if self.searchre.search(full_desc):
 					self.matches["desc"].append([full_package,masked])
+
+		self.sdict = self.setconfig.getSets()[0]
+		for setname in self.sdict:
+			self.spinner.update()
+			if match_category:
+				match_string = setname
+			else:
+				match_string = setname.split("/")[-1]
+			
+			if self.searchre.search(match_string):
+				self.matches["set"].append([setname, False])
+			elif self.searchdesc:
+				if self.searchre.search(sdict[setname].getMetadata("DESCRIPTION")):
+					self.matches["set"].append([setname, False])
+			
 		self.mlen=0
 		for mtype in self.matches:
 			self.matches[mtype].sort()
@@ -452,8 +468,9 @@ class search(object):
 		print " "
 		for mtype in self.matches:
 			for match,masked in self.matches[mtype]:
-				if mtype=="pkg":
-					catpack=match
+				full_package = None
+				if mtype == "pkg":
+					catpack = match
 					full_package = self.portdb.xmatch(
 						"bestmatch-visible", match)
 					if not full_package:
@@ -461,10 +478,13 @@ class search(object):
 						masked=1
 						full_package = portage.best(
 							self.portdb.xmatch("match-all",match))
-				else:
+				elif mtype == "desc":
 					full_package = match
 					match        = portage.pkgsplit(match)[0]
-
+				elif mtype == "set":
+					print green("*")+"  "+white(match)
+					print "     ", darkgreen("Description:")+"  ", self.sdict[match].getMetadata("DESCRIPTION")
+					print
 				if full_package:
 					try:
 						desc, homepage, license = self.portdb.aux_get(
@@ -5453,13 +5473,13 @@ def action_info(settings, trees, myopts, myfiles):
 				mydbapi=trees[settings["ROOT"]]["vartree"].dbapi,
 				tree="vartree")
 
-def action_search(settings, portdb, vartree, myopts, myfiles, spinner):
+def action_search(settings, portdb, vartree, myopts, myfiles, spinner, setconfig):
 	if not myfiles:
 		print "emerge: no search terms provided."
 	else:
 		searchinstance = search(settings, portdb,
 			vartree, spinner, "--searchdesc" in myopts,
-			"--quiet" not in myopts)
+			"--quiet" not in myopts, setconfig)
 		for mysearch in myfiles:
 			try:
 				searchinstance.execute(mysearch)
@@ -6381,12 +6401,12 @@ def emerge_main():
 			print colorize("BAD", "\n*** emerging by path is broken and may not always work!!!\n")
 			break
 
+	setconfigpaths = ["/usr/share/portage/config/sets.conf", os.path.join(settings["PORTDIR"], "sets.conf"), \
+		os.path.join(os.sep, settings["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH, "sets.conf")]
+	#setconfig = SetConfig(setconfigpaths, settings, trees[settings["ROOT"]])
+	setconfig = make_default_config(settings, trees[settings["ROOT"]])
+	del setconfigpaths
 	if myaction not in ["search", "metadata", "sync"]:
-		setconfigpaths = ["/usr/share/portage/config/sets.conf", os.path.join(settings["PORTDIR"], "sets.conf"), \
-			os.path.join(os.sep, settings["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH, "sets.conf")]
-		#setconfig = SetConfig(setconfigpaths, settings, trees[settings["ROOT"]])
-		setconfig = make_default_config(settings, trees[settings["ROOT"]])
-		del setconfigpaths
 		packagesets, setconfig_errors = setconfig.getSetsWithAliases()
 		for s in packagesets:
 			if s in myfiles:
@@ -6587,7 +6607,7 @@ def emerge_main():
 	elif "search"==myaction:
 		validate_ebuild_environment(trees)
 		action_search(settings, portdb, trees["/"]["vartree"],
-			myopts, myfiles, spinner)
+			myopts, myfiles, spinner, setconfig)
 	elif myaction in ("clean", "unmerge") or \
 		(myaction == "prune" and "--nodeps" in myopts):
 		validate_ebuild_environment(trees)
