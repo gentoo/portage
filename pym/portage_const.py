@@ -55,7 +55,7 @@ INCREMENTALS = ["USE", "USE_EXPAND", "USE_EXPAND_HIDDEN", "FEATURES",
 EBUILD_PHASES           = ["setup", "unpack", "compile", "test", "install",
                           "preinst", "postinst", "prerm", "postrm", "other"]
 
-EAPI = 0
+EAPI = 1
 
 HASHING_BLOCKSIZE        = 32768
 MANIFEST1_HASH_FUNCTIONS = ["MD5","SHA256","RMD160"]
