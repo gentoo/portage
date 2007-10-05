@@ -543,6 +543,11 @@ The \fBpackage.mask\fR file primarily blocks the use of packages that cause
 problems or are known to have issues on different systems.  It resides in
 \fI/usr/portage/profiles\fR.
 .TP
+.BR EAPI
+The \fBEAPI\fR variable in an \fBebuild\fR(5) file is used to mask packages
+that are not supported by the current version of portage. Packages masked by
+\fBEAPI\fR can only be installed after portage has been upgraded.
+.TP
 .BR KEYWORDS
 The \fBKEYWORDS\fR variable in an \fBebuild\fR file is also used for masking 
 a package still in testing.  There are architecture\-specific keywords for 

@@ -1,0 +1,4 @@
+TODO for portage-2.2 release:
+=============================
+- package set integration in emerge (genone)
+- user interface for preserve-libs FEATURE (genone, fuzzyray?)

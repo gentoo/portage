@@ -36,8 +36,9 @@ def RecursiveFileLoader(filename):
 	@rtype: list
 	@returns: List of files to process
 	"""
-
-	if os.path.isdir(filename):
+	if not os.path.exists(filename):
+		return
+	elif os.path.isdir(filename):
 		for root, dirs, files in os.walk(filename):
 			if 'CVS' in dirs:
 				dirs.remove('CVS')

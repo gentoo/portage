@@ -126,6 +126,17 @@ the tree prefixed by ${ROOT}.  Do not modify this variable.
 \fBDESCRIPTION\fR = \fI"A happy little package"\fR
 Should contain a short description of the package.
 .TP
+\fBEAPI\fR = \fI"0"\fR
+Defines the ebuild API version to which this package conforms. If not
+defined then it defaults to "0". If portage does not recognize the
+EAPI value then it will mask the package and refuse to perform any
+operations with it since this means that a newer version of portage
+needs to be installed first. For maximum backward compatiblity, a
+package should conform to the lowest possible EAPI. Note that anyone
+who uses the \fBebuild\fR(1) and \fBrepoman\fR(1) commands with this
+package will be required to have a version of portage that recognizes
+the EAPI to which this package conforms.
+.TP
 \fBSRC_URI\fR = \fI"http://happy.com/little/${P}.tar.gz"\fR
 Contains a list of URI's for the required source files.  It can contain
 multiple URI's for a single source file.  The list is processed in order
