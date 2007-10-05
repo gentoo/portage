@@ -172,7 +172,11 @@ must add it first.
 \fBIUSE\fR
 This should be a list of any and all USE flags that are leveraged within
 your build script.  The only USE flags that should not be listed here are
-arch related flags (see \fBKEYWORDS\fR).
+arch related flags (see \fBKEYWORDS\fR). Beginning with \fBEAPI 1\fR, it
+is possible to prefix flags with + or - in order to create default settings
+that respectively enable or disable the corresponding \fBUSE\fR flags. For
+details about \fBUSE\fR flag stacking order, refer to the \fBUSE_ORDER\fR
+variable in \fBmake.conf\fR(5).
 .TP
 \fBDEPEND\fR
 This should contain a list of all packages that are required for the
