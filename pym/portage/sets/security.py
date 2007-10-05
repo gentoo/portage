@@ -14,12 +14,13 @@ class SecuritySet(PackageSet):
 	
 	description = "package set that includes all packages possibly affected by a GLSA"
 		
-	def __init__(self, settings, vardbapi, portdbapi):
+	def __init__(self, settings, vardbapi, portdbapi, least_change=True):
 		super(SecuritySet, self).__init__()
 		self._settings = settings
 		self._vardbapi = vardbapi
 		self._portdbapi = portdbapi
 		self._checkfile = os.path.join(os.sep, self._settings["ROOT"], CACHE_PATH.lstrip(os.sep), "glsa")
+		self._least_change = least_change
 
 	def getGlsaList(self, skip_applied):
 		glsaindexlist = glsa.get_glsa_list(self._settings)
@@ -37,7 +38,7 @@ class SecuritySet(PackageSet):
 			myglsa = glsa.Glsa(glsaid, self._settings, self._vardbapi, self._portdbapi)
 			#print glsaid, myglsa.isVulnerable(), myglsa.isApplied(), myglsa.getMergeList()
 			if self.useGlsa(myglsa):
-				atomlist += myglsa.getMergeList(least_change=False)
+				atomlist += myglsa.getMergeList(least_change=self._least_change)
 		self._setAtoms(atomlist)
 	
 	def useGlsa(self, myglsa):
@@ -51,6 +52,15 @@ class SecuritySet(PackageSet):
 			if not myglsa.isVulnerable():
 				applied_list.append(glsaid)
 		write_atomic(self._checkfile, "\n".join(applied_list))
+	
+	def singleBuilder(cls, options, settings, trees):
+		if "use_emerge_resoler" in options \
+				and options.get("use_emerge_resolver").lower() in ["1", "yes", "true", "on"]:
+			least_change = False
+		else:
+			least_change = True
+		return cls(settings, trees["vartree"].dbapi, trees["porttree"].dbapi, least_change=least_change)
+	singleBuilder = classmethod(singleBuilder)
 	
 class NewGlsaSet(SecuritySet):
 	_skip_applied = True

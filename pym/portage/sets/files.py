@@ -6,10 +6,10 @@ import errno
 import os
 
 from portage.util import grabfile, write_atomic, ensure_dirs
-from portage.const import PRIVATE_PATH
+from portage.const import PRIVATE_PATH, USER_CONFIG_PATH
 from portage.locks import lockfile, unlockfile
 from portage import portage_gid
-from portage.sets import PackageSet, EditablePackageSet
+from portage.sets import PackageSet, EditablePackageSet, SetConfigError
 from portage.env.loaders import ItemFileLoader, KeyListFileLoader
 from portage.env.validators import ValidAtomValidator
 
@@ -60,6 +60,25 @@ class StaticFileSet(EditablePackageSet):
 				data = {}
 			self._setAtoms(data.keys())
 			self._mtime = mtime
+		
+	def singleBuilder(self, options, settings, trees):
+		if not "filename" in options:
+			raise SetConfigError("no filename specified")
+		return ConfigFileSet(options[filename])
+	singleBuilder = classmethod(singleBuilder)
+	
+	def multiBuilder(self, options, settings, trees):
+		rValue = {}
+		directory = options.get("directory", os.path.join(settings["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH.lstrip(os.sep), "sets"))
+		name_pattern = options.get("name_pattern", "sets/$name")
+		if not "$name" in name_pattern and not "${name}" in name_pattern:
+			raise SetConfigError("name_pattern doesn't include $name placeholder")
+		for filename in os.listdir(directory):
+			myname = name_pattern.replace("$name", filename)
+			myname = myname.replace("${name}", filename)
+			rValue[myname] = StaticFileSet(os.path.join(directory, filename))
+		return rValue
+	multiBuilder = classmethod(multiBuilder)
 	
 class ConfigFileSet(PackageSet):
 	def __init__(self, filename):
@@ -71,12 +90,31 @@ class ConfigFileSet(PackageSet):
 	def load(self):
 		data, errors = self.loader.load()
 		self._setAtoms(data.keys())
+	
+	def singleBuilder(self, options, settings, trees):
+		if not "filename" in options:
+			raise SetConfigError("no filename specified")
+		return ConfigFileSet(options[filename])
+	singleBuilder = classmethod(singleBuilder)
+	
+	def multiBuilder(self, options, settings, trees):
+		rValue = {}
+		directory = options.get("directory", os.path.join(settings["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH.lstrip(os.sep)))
+		name_pattern = options.get("name_pattern", "sets/package_$suffix")
+		if not "$suffix" in name_pattern and not "${suffix}" in name_pattern:
+			raise SetConfigError("name_pattern doesn't include $suffix placeholder")
+		for suffix in ["keywords", "use", "mask", "unmask"]:
+			myname = name_pattern.replace("$suffix", suffix)
+			myname = myname.replace("${suffix}", suffix)
+			rValue[myname] = ConfigFileSet(os.path.join(directory, "package."+suffix))
+		return rValue
+	multiBuilder = classmethod(multiBuilder)
 
 class WorldSet(StaticFileSet):
 	description = "Set of packages that were directly installed by the user"
 	
 	def __init__(self, root):
-		super(WorldSet, self).__init__(os.path.join(os.sep, root, PRIVATE_PATH, "world"))
+		super(WorldSet, self).__init__(os.path.join(os.sep, root, PRIVATE_PATH.lstrip(os.sep), "world"))
 		self._lock = None
 
 	def _ensure_dirs(self):
@@ -89,3 +127,8 @@ class WorldSet(StaticFileSet):
 	def unlock(self):
 		unlockfile(self._lock)
 		self._lock = None
+
+	def singleBuilder(self, options, settings, trees):
+		print "world.build"
+		return WorldSet(settings["ROOT"])
+	singleBuilder = classmethod(singleBuilder)

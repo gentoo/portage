@@ -3,7 +3,7 @@
 # $Id$
 
 from portage.versions import catsplit
-from portage.sets import PackageSet
+from portage.sets import PackageSet, SetConfigError
 
 class EverythingSet(PackageSet):
 	_operations = ["merge", "unmerge"]
@@ -23,6 +23,10 @@ class EverythingSet(PackageSet):
 			else:
 				myatoms.append(cp)
 		self._setAtoms(myatoms)
+	
+	def singleBuilder(self, options, settings, trees):
+		return EverythingSet(trees["vartree"].dbapi)
+	singleBuilder = classmethod(singleBuilder)
 
 class CategorySet(PackageSet):
 	_operations = ["merge", "unmerge"]
@@ -46,3 +50,56 @@ class CategorySet(PackageSet):
 					myatoms.append(cp)
 		self._setAtoms(myatoms)
 	
+	def _builderGetRepository(cls, options, repositories):
+		repository = options.get("repository", "porttree")
+		if not repository in repositories:
+			raise SetConfigError("invalid repository class '%s'" % repository)
+		return repository
+	_builderGetRepository = classmethod(_builderGetRepository)
+
+	def _builderGetVisible(cls, options):
+		visible = options.get("only_visible", "true").lower()
+		if visible not in ["1", "0", "yes", "no", "true", "false", "on", "off"]:
+			raise SetConfigError("invalid value for only_visible: %s" % visible)
+		return bool(visible in ["1", "yes", "true", "on"])
+	_builderGetVisible = classmethod(_builderGetVisible)
+		
+	def singleBuilder(cls, options, settings, trees):
+		if not "category" in options:
+			raise SetConfigError("no category given")
+
+		category = options["category"]
+		if not category in categories:
+			raise SetConfigError("invalid category name '%s'" % category)
+
+		repository = cls._builderGetRepository(options, trees.keys())
+		visible = cls._builderGetVisible(options)
+		
+		return CategorySet(category, dbapi=trees[repository].dbapi, only_visible=visible)
+	singleBuilder = classmethod(singleBuilder)
+
+	def multiBuilder(cls, options, settings, trees):
+		rValue = {}
+	
+		if "categories" in options:
+			categories = options["categories"].split()
+			invalid = set(categories).difference(settings.categories)
+			if invalid:
+				raise SetConfigError("invalid categories: %s" % ", ".join(list(invalid)))
+		else:
+			categories = settings.categories
+	
+		repository = cls._builderGetRepository(options, trees.keys())
+		visible = cls._builderGetVisible(options)
+		name_pattern = options.get("name_pattern", "$category/*")
+	
+		if not "$category" in name_pattern and not "${category}" in name_pattern:
+			raise SetConfigError("name_pattern doesn't include $category placeholder")
+	
+		for cat in categories:
+			myset = CategorySet(cat, trees[repository].dbapi, only_visible=visible)
+			myname = name_pattern.replace("$category", cat)
+			myname = myname.replace("${category}", cat)
+			rValue[myname] = myset
+		return rValue
+	multiBuilder = classmethod(multiBuilder)

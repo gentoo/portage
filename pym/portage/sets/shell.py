@@ -5,7 +5,7 @@
 import subprocess
 import os
 
-from portage.sets import PackageSet
+from portage.sets import PackageSet, SetConfigError
 
 class CommandOutputSet(PackageSet):
 	"""This class creates a PackageSet from the output of a shell command.
@@ -34,3 +34,7 @@ class CommandOutputSet(PackageSet):
 			text = pipe.stdout.read()
 			self._setAtoms(text.split("\n"))
 		
+	def singleBuilder(self, options, settings, trees):
+		if not command in options:
+			raise SetConfigError("no command specified")
+		return CommandOutputSet(options["command"])
