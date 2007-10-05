@@ -183,6 +183,9 @@ def match(argv):
 		sys.exit(2)
 	try:
 		print "\n".join(portage.db[argv[0]]["vartree"].dbapi.match(argv[1]))
+	except KeyError, e:
+		portage.writemsg("%s\n" % str(e), noiselevel=-1)
+		sys.exit(1)
 match.uses_root = True
 
 
