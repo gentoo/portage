@@ -174,8 +174,10 @@ class SetConfig(SafeConfigParser):
 		self.psets = {}
 		self.trees = trees
 		self.settings = settings
-	
+		self._parsed = False
 	def _parse(self):
+		if self._parsed:
+			return
 		for sname in self.sections():
 			# find classname for current section, default to file based sets
 			if not self.has_option(sname, "class"):
@@ -219,10 +221,24 @@ class SetConfig(SafeConfigParser):
 				else:
 					self.errors.append("'%s' does not support individual set creation, section '%s' must be configured as multiset" % (classname, sname))
 					continue
+		self._parsed = True
 	
 	def getSets(self):
 		self._parse()
 		return (self.psets, self.errors)
+
+	def getSetsWithAliases(self):
+		self._parse()
+		shortnames = {}
+		for name in self.psets:
+			mysplit = name.split("/")
+			if len(mysplit) > 1 and mysplit[-1] != "":
+				if mysplit[-1] in shortnames:
+					del shortnames[mysplit[-1]]
+				else:
+					shortnames[mysplit[-1]] = self.psets[name]
+		shortnames.update(self.psets)
+		return (shortnames, self.errors)
 
 def make_default_config(settings, trees):
 	sc = SetConfig([], settings, trees)

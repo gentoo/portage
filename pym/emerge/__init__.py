@@ -31,7 +31,7 @@ except ImportError:
 	import portage
 del os.environ["PORTAGE_LEGACY_GLOBALS"]
 from portage import digraph, portdbapi
-from portage.const import NEWS_LIB_PATH, CACHE_PATH, PRIVATE_PATH
+from portage.const import NEWS_LIB_PATH, CACHE_PATH, PRIVATE_PATH, USER_CONFIG_PATH
 
 import emerge.help
 import portage.xpak, commands, errno, re, socket, time, types
@@ -52,7 +52,7 @@ import portage.exception
 from portage.data import secpass
 from portage.util import normalize_path as normpath
 from portage.util import writemsg
-from portage.sets import InternalPackageSet
+from portage.sets import InternalPackageSet, SetConfig, make_default_config
 from portage.sets.profiles import PackagesSystemSet as SystemSet
 from portage.sets.files import WorldSet
 
@@ -6380,6 +6380,22 @@ def emerge_main():
 		if (ext == ".ebuild" or ext == ".tbz2") and os.path.exists(os.path.abspath(x)):
 			print colorize("BAD", "\n*** emerging by path is broken and may not always work!!!\n")
 			break
+
+	if myaction not in ["search", "metadata", "sync"]:
+		setconfigpaths = ["/usr/share/portage/config/sets.conf", os.path.join(settings["PORTDIR"], "sets.conf"), \
+			os.path.join(os.sep, settings["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH, "sets.conf")]
+		#setconfig = SetConfig(setconfigpaths, settings, trees[settings["ROOT"]])
+		setconfig = make_default_config(settings, trees[settings["ROOT"]])
+		del setconfigpaths
+		packagesets, setconfig_errors = setconfig.getSetsWithAliases()
+		for s in packagesets:
+			if s in myfiles:
+				# TODO: check if the current setname also resolves to a package name
+				if myaction in ["unmerge", "prune", "clean", "depclean"] and not packagesets[s].supportsOperation("unmerge"):
+					print "emerge: the given set %s does not support unmerge operations" % s
+					sys.exit(1)
+				myfiles.extend(packagesets[s].getAtoms())
+				myfiles.remove(s)
 
 	if ("--tree" in myopts) and ("--columns" in myopts):
 		print "emerge: can't specify both of \"--tree\" and \"--columns\"."
