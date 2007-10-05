@@ -737,6 +737,69 @@ def x11_deprecation_check(depstr):
 				return True
 	return False
 
+class EbuildQuote(object):
+	"""Ensure ebuilds have valid quoting around things like D,FILESDIR, etc..."""
+
+	repoman_check_name = 'ebuild.minorsyn'
+	ignore_line = re.compile(r'(^$)|(^\s*#.*)|(^\s*\w+=.*)')
+	var_names = r'(D|S|T|ROOT|FILESDIR|WORKDIR)'
+	var_reference = re.compile(r'\$({'+var_names+'}|' + \
+		r'\$' + var_names + '\W)')
+	missing_quotes = re.compile(r'(\s|^)[^"\s]*\${?' + var_names + \
+		r'}?[^"\s]*(\s|$)')
+	cond_begin =  re.compile(r'(^|\s+)\[\[($|\\$|\s+)')
+	cond_end =  re.compile(r'(^|\s+)\]\]($|\\$|\s+)')
+	
+	def __init__(self, contents):
+		self.contents = contents
+
+	def Run(self):
+		"""Locate simple errors in ebuilds:
+		Missing quotes around variables that may contain spaces
+		"""
+
+		errors = []
+		for num, line in enumerate(self.contents):
+			if self.ignore_line.match(line) is not None:
+				continue
+			if self.var_reference.search(line) is None:
+				continue
+			# There can be multiple matches / violations on a single line. We
+			# have to make sure none of the matches are violators. Once we've
+			# found one violator, any remaining matches on the same line can
+			# be ignored.
+			pos = 0
+			while pos <= len(line) - 1:
+				missing_quotes = self.missing_quotes.search(line, pos)
+				if not missing_quotes:
+					break
+				# If the last character of the previous match is a whitespace
+				# character, that character may be needed for the next
+				# missing_quotes match, so search overlaps by 1 character.
+				group = missing_quotes.group()
+				pos = missing_quotes.end() - 1
+
+				# Filter out some false positives that can
+				# get through the missing_quotes regex.
+				if self.var_reference.search(group) is None:
+					continue
+
+				# This is an attempt to avoid false positives without getting
+				# too complex, while possibly allowing some (hopefully
+				# unlikely) violations to slip through. We just assume
+				# everything is correct if the there is a ' [[ ' or a ' ]] '
+				# anywhere in the whole line (possibly continued over one
+				# line).
+				if self.cond_begin.search(line) is not None:
+					continue
+				if self.cond_end.search(line) is not None:
+					continue
+
+				errors.append((num + 1, 'Unquoted Variable on line: %d'))
+				# Any remaining matches on the same line can be ignored.
+				break
+		return errors
+
 if mymode == "commit":
 	retval = ("","")
 	if isCvs:
@@ -1320,9 +1383,23 @@ for x in scanlist:
 				stats["RESTRICT.invalid"] += len(mybadrestrict)
 				for mybad in mybadrestrict:
 					fails["RESTRICT.invalid"].append(x+"/"+y+".ebuild: %s" % mybad)
+		# Syntax Checks
+		path = checkdir + '/' + y + '.ebuild'
+		myear = time.gmtime(os.stat(path)[ST_MTIME])[0]
+		f = open(path, 'rb')
+		try:
+			contents = f.readlines()
+		finally:
+			f.close()
+			del f
+		for check in (EbuildQuote, ):
+			c = check(contents)
+			errors = c.Run()
+			for e in errors:
+				stats[c.repoman_check_name] += 1
+				fails[c.repoman_check_name].append(x + '/' + y + '.ebuild: %s' % e[1] % e[0])
+		del check
 
-		#syntax checks
-		myear = time.gmtime(os.stat(checkdir+"/"+y+".ebuild")[ST_MTIME])[0]
 		gentoo_copyright = re.compile(r'^# Copyright ((1999|200\d)-)?' + str(myear) + r' Gentoo Foundation')
 		gentoo_license = re.compile(r'^# Distributed under the terms of the GNU General Public License v2$')
 		cvs_header = re.compile(r'^#\s*\$Header.*\$$')
@@ -1333,7 +1410,7 @@ for x in scanlist:
 		line_continuation = re.compile(r'([^#]*\S)(\s+|\t)\\$')
 		linenum=0
 		previous_line = None
-		for line in input(checkdir+"/"+y+".ebuild"):
+		for line in contents:
 			linenum += 1
 			# Gentoo copyright check
 			if linenum == 1:
