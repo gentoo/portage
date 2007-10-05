@@ -371,12 +371,20 @@ class portdbapi(dbapi):
 		if mysettings is None:
 			mysettings = self.mysettings
 		try:
-			myuris = self.aux_get(mypkg, ["SRC_URI"], mytree=mytree)[0]
+			eapi, myuris = self.aux_get(mypkg,
+				["EAPI", "SRC_URI"], mytree=mytree)
 		except KeyError:
 			# Convert this to an InvalidDependString exception since callers
 			# already handle it.
 			raise portage.exception.InvalidDependString(
 				"getfetchlist(): aux_get() error reading "+mypkg+"; aborting.")
+
+		if not eapi_is_supported(eapi):
+			# Convert this to an InvalidDependString exception
+			# since callers already handle it.
+			raise portage.exception.InvalidDependString(
+				"getfetchlist(): '%s' has unsupported EAPI: '%s'" % \
+				(mypkg, eapi.lstrip("-")))
 
 		if useflags is None:
 			useflags = mysettings["USE"].split()
@@ -389,7 +397,9 @@ class portdbapi(dbapi):
 		for x in newuris:
 			mya = os.path.basename(x)
 			if not mya:
-				raise portage.exception.InvalidDependString("URI has no basename: '%s'" % x)
+				raise portage.exception.InvalidDependString(
+					"getfetchlist(): '%s' SRC_URI has no file name: '%s'" % \
+					(mypkg, x))
 			if not mya in myfiles:
 				myfiles.append(mya)
 		return [newuris, myfiles]
