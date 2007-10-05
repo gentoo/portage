@@ -6547,58 +6547,64 @@ class portdbapi(dbapi):
 	def match(self,mydep,use_cache=1):
 		return self.xmatch("match-visible",mydep)
 
-	def visible(self,mylist):
+	def visible(self, mylist):
 		"""two functions in one.  Accepts a list of cpv values and uses the package.mask *and*
 		packages file to remove invisible entries, returning remaining items.  This function assumes
 		that all entries in mylist have the same category and package name."""
-		if (mylist is None) or (len(mylist)==0):
+		if not mylist:
 			return []
-		newlist=mylist[:]
-		#first, we mask out packages in the package.mask file
-		mykey=newlist[0]
-		cpv=catpkgsplit(mykey)
-		if not cpv:
+
+		mysplit = catpkgsplit(mylist[0])
+		if not mysplit:
 			#invalid cat/pkg-v
-			print "visible(): invalid cat/pkg-v:",mykey
+			writemsg("visible(): invalid cat/pkg-v: %s\n" % (mylist[0], ),
+				noiselevel=-1)
 			return []
-		mycp=cpv[0]+"/"+cpv[1]
-		maskdict=self.mysettings.pmaskdict
-		unmaskdict=self.mysettings.punmaskdict
-		if maskdict.has_key(mycp):
-			for x in maskdict[mycp]:
-				mymatches=self.xmatch("match-all",x)
-				if mymatches is None:
-					#error in package.mask file; print warning and continue:
-					print "visible(): package.mask entry \""+x+"\" is invalid, ignoring..."
-					continue
-				for y in mymatches:
-					unmask=0
-					if unmaskdict.has_key(mycp):
-						for z in unmaskdict[mycp]:
-							mymatches_unmask=self.xmatch("match-all",z)
-							if y in mymatches_unmask:
-								unmask=1
-								break
-					if unmask==0:
-						try:
-							newlist.remove(y)
-						except ValueError:
-							pass
+		mycp = "%s/%s" % (mysplit[0], mysplit[1])
 
-		profile_atoms = self.mysettings.prevmaskdict.get(mycp)
-		if profile_atoms:
-			for x in profile_atoms:
-				#important: only match against the still-unmasked entries...
-				#notice how we pass "newlist" to the xmatch() call below....
-				#Without this, ~ deps in the packages files are broken.
-				mymatches=self.xmatch("match-list",x,mylist=newlist)
-				if mymatches is None:
-					#error in packages file; print warning and continue:
-					print "emerge: visible(): profile packages entry \""+x+"\" is invalid, ignoring..."
-					continue
-				newlist = [cpv for cpv in newlist if cpv in mymatches]
+		cpv_slots = []
+		for cpv in mylist:
+			try:
+				myslot = self.aux_get(cpv, ["SLOT"])[0]
+			except KeyError:
+				# masked by corruption
+				continue
+			cpv_slots.append("%s:%s" % (cpv, myslot))
 
-		return newlist
+		if cpv_slots:
+			mask_atoms = self.mysettings.pmaskdict.get(mycp)
+			if mask_atoms:
+				unmask_atoms = self.mysettings.punmaskdict.get(mycp)
+				for x in mask_atoms:
+					masked_pkgs = match_from_list(x, cpv_slots)
+					if not masked_pkgs:
+						continue
+					if unmask_atoms:
+						for y in unmask_atoms:
+							unmasked_pkgs = match_from_list(y, masked_pkgs)
+							if unmasked_pkgs:
+								masked_pkgs = [pkg for pkg in masked_pkgs \
+									if pkg not in unmasked_pkgs]
+								if not masked_pkgs:
+									break
+					if masked_pkgs:
+						cpv_slots = [pkg for pkg in cpv_slots \
+							if pkg not in masked_pkgs]
+						if not cpv_slots:
+							break
+
+		if cpv_slots:
+			profile_atoms = self.mysettings.prevmaskdict.get(mycp)
+			if profile_atoms:
+				for x in profile_atoms:
+					cpv_slots = match_from_list(x.lstrip("*"), cpv_slots)
+					if not cpv_slots:
+						break
+
+		if not cpv_slots:
+			return cpv_slots
+
+		return [portage_dep.remove_slot(pkg) for pkg in cpv_slots]
 
 	def gvisible(self,mylist):
 		"strip out group-masked (not in current group) entries"
