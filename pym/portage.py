@@ -3023,7 +3023,6 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
 					distfiles_map.setdefault(myfile, []).append(cpv)
 			except portage_exception.InvalidDependString, e:
 				writemsg("!!! %s\n" % str(e), noiselevel=-1)
-				writemsg("!!! Invalid SRC_URI for '%s'.\n" % cpv, noiselevel=-1)
 				del e
 				return 0
 		mytree = os.path.dirname(os.path.dirname(mysettings["O"]))
@@ -6355,7 +6354,8 @@ class portdbapi(dbapi):
 			# Convert this to an InvalidDependString exception
 			# since callers already handle it.
 			raise portage_exception.InvalidDependString(
-				"getfetchlist(): Unsupported EAPI: '%s'" % eapi.lstrip("-"))
+				"getfetchlist(): '%s' has unsupported EAPI: '%s'" % \
+				(mypkg, eapi.lstrip("-")))
 
 		if useflags is None:
 			useflags = mysettings["USE"].split()
@@ -6368,7 +6368,9 @@ class portdbapi(dbapi):
 		for x in newuris:
 			mya = os.path.basename(x)
 			if not mya:
-				raise portage_exception.InvalidDependString("URI has no basename: '%s'" % x)
+				raise portage_exception.InvalidDependString(
+					"getfetchlist(): '%s' SRC_URI has no file name: '%s'" % \
+					(mypkg, x))
 			if not mya in myfiles:
 				myfiles.append(mya)
 		return [newuris, myfiles]
