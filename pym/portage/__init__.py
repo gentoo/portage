@@ -3328,7 +3328,20 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 
 
 def eapi_is_supported(eapi):
-	return str(eapi).strip() == str(portage.const.EAPI).strip()
+	# PREFIX HACK: in prefix we still use EAPI="prefix".  To avoid
+	# getting eapi = -1 here and an error by Python because
+	# portage.const.EAPI is a string, we revert to a string compare for
+	# now.  Once we use a number, we should remove this crude hack.
+	if portage.const.EAPI == "prefix":
+		return str(eapi).strip() == str(portage.const.EAPI).strip()
+
+	try:
+		eapi = int(str(eapi).strip())
+	except ValueError:
+		eapi = -1
+	if eapi < 0:
+		return False
+	return eapi <= portage.const.EAPI
 
 def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, mydbapi):
 

@@ -1770,8 +1770,11 @@ class depgraph(object):
 					chost = pkgsettings["CHOST"]
 					eprefix = pkgsettings["EPREFIX"]
 					myeb_pkg_matches = []
+					bindb_keys = ["CHOST","EAPI"]
 					for pkg in bindb.match(x):
-						if chost != bindb.aux_get(pkg, ["CHOST"])[0]:
+						metadata = dict(izip(bindb_keys,
+							bindb.aux_get(pkg, bindb_keys)))
+						if chost != metadata["CHOST"]:
 							continue
 
 						pkg_eprefix = bindb.aux_get(pkg, ["EPREFIX"])[0]
@@ -1781,6 +1784,8 @@ class depgraph(object):
 						if len(pkg_eprefix) < len(eprefix):
 							continue
 
+						if not portage.eapi_is_supported(metadata["EAPI"]):
+							continue
 						# Remove any binary package entries that are
 						# masked in the portage tree (#55871).
 						if not usepkgonly and \
@@ -1938,15 +1943,24 @@ class depgraph(object):
 							if alleb:
 								chost = pkgsettings["CHOST"]
 								eprefix = pkgsettings["EPREFIX"]
+								bindb_keys = ["CHOST","EAPI","EPREFIX"]
 								for p in alleb:
 									mreasons = []
-									pkg_chost =  bindb.aux_get(p, ["CHOST"])[0]
-									if chost != pkg_chost:
-										mreasons.append("CHOST: %s" % pkg_chost)
-									pkg_eprefix = bindb.aux_get(p, ["EPREFIX"])[0]
-									if not pkg_eprefix:
+									metadata = dict(izip(bindb_keys,
+										bindb.aux_get(pkg, bindb_keys)))
+									if chost != metadata["CHOST"]:
+										mreasons.append("CHOST: %s" % \
+											metadata["CHOST"])
+									if not portage.eapi_is_supported(
+										metadata["EAPI"]):
+										mreasons.append(("required EAPI %s" + \
+											", supported EAPI %s") % \
+											(metadata["EAPI"],
+											portage.const.EAPI))
+									if not metadata["EPREFIX"]:
 										mreasons.append("missing EPREFIX")
-									elif len(pkg_eprefix.strip()) < len(eprefix):
+									elif len(metadata["EPREFIX"].strip()) < \
+											len(eprefix):
 										mreasons.append("EPREFIX too small")
 									print "- "+p+" (masked by: "+", ".join(mreasons)+")"
 							print "!!! "+red("There are no packages available to satisfy: ")+green(xinfo)
