@@ -27,6 +27,7 @@ class PackageSet(object):
 		self._atommap = {}
 		self._loaded = False
 		self._loading = False
+		self.errors = []
 
 	def __contains__(self, atom):
 		return atom in self.getAtoms()
@@ -258,11 +259,9 @@ def make_default_config(settings, trees):
 	sc.set("config", "class", "portage.sets.files.ConfigFileSet")
 	sc.set("config", "multiset", "true")
 	
-	sc.add_section("categories_installed")
-	sc.set("categories_installed", "class", "portage.sets.dbapi.CategorySet")
-	sc.set("categories_installed", "multiset", "true")
-	sc.set("categories_installed", "repository", "vartree")
-	sc.set("categories_installed", "name_pattern", "installed/$category")
+	sc.add_section("user_sets")
+	sc.set("user_sets", "class", "portage.sets.files.StaticFileSet")
+	sc.set("user_sets", "multiset", "true")
 	
 	return sc
 

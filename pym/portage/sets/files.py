@@ -53,6 +53,9 @@ class StaticFileSet(EditablePackageSet):
 		if (not self._loaded or self._mtime != mtime):
 			try:
 				data, errors = self.loader.load()
+				for fname in errors:
+					for e in errors[fname]:
+						self.errors.append(fname+": "+e)
 			except EnvironmentError, e:
 				if e.errno != errno.ENOENT:
 					raise
@@ -73,10 +76,11 @@ class StaticFileSet(EditablePackageSet):
 		name_pattern = options.get("name_pattern", "sets/$name")
 		if not "$name" in name_pattern and not "${name}" in name_pattern:
 			raise SetConfigError("name_pattern doesn't include $name placeholder")
-		for filename in os.listdir(directory):
-			myname = name_pattern.replace("$name", filename)
-			myname = myname.replace("${name}", filename)
-			rValue[myname] = StaticFileSet(os.path.join(directory, filename))
+		if os.path.isdir(directory):
+			for filename in os.listdir(directory):
+				myname = name_pattern.replace("$name", filename)
+				myname = myname.replace("${name}", filename)
+				rValue[myname] = StaticFileSet(os.path.join(directory, filename))
 		return rValue
 	multiBuilder = classmethod(multiBuilder)
 	
@@ -129,6 +133,5 @@ class WorldSet(StaticFileSet):
 		self._lock = None
 
 	def singleBuilder(self, options, settings, trees):
-		print "world.build"
 		return WorldSet(settings["ROOT"])
 	singleBuilder = classmethod(singleBuilder)

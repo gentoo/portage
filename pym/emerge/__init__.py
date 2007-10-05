@@ -6395,6 +6395,8 @@ def emerge_main():
 					print "emerge: the given set %s does not support unmerge operations" % s
 					sys.exit(1)
 				myfiles.extend(packagesets[s].getAtoms())
+				for e in packagesets[s].errors:
+					print e
 				myfiles.remove(s)
 
 	if ("--tree" in myopts) and ("--columns" in myopts):
