@@ -232,7 +232,7 @@ class SetConfig(SafeConfigParser):
 		shortnames = {}
 		for name in self.psets:
 			mysplit = name.split("/")
-			if len(mysplit) > 1 and mysplit[-1] != "":
+			if len(mysplit) > 1 and mysplit[0] == "sets" and mysplit[-1] != "":
 				if mysplit[-1] in shortnames:
 					del shortnames[mysplit[-1]]
 				else:
