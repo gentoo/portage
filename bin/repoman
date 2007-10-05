@@ -997,18 +997,33 @@ for x in scanlist:
 
 	fetchlist_dict = portage.FetchlistDict(checkdir, repoman_settings, portdb)
 	myfiles_all = []
+	src_uri_error = False
 	for mykey in fetchlist_dict:
 		try:
 			myfiles_all.extend(fetchlist_dict[mykey])
 		except portage_exception.InvalidDependString, e:
-			stats["SRC_URI.syntax"] = stats["SRC_URI.syntax"] + 1
-			fails["SRC_URI.syntax"].append(mykey+".ebuild SRC_URI: "+str(e))
+			src_uri_error = True
+			try:
+				portdb.aux_get(mykey, ["SRC_URI"])
+			except KeyError:
+				# This will be reported as an "ebuild.syntax" error.
+				pass
+			else:
+				stats["SRC_URI.syntax"] = stats["SRC_URI.syntax"] + 1
+				fails["SRC_URI.syntax"].append(
+					"%s.ebuild SRC_URI: %s" % (mykey, e))
 	del fetchlist_dict
-	myfiles_all = set(myfiles_all)
-	for entry in mydigests:
-		if entry not in myfiles_all:
-			stats["digestentry.unused"] += 1
-			fails["digestentry.unused"].append(checkdir+"::"+entry)
+	if not src_uri_error:
+		# This test can produce false positives if SRC_URI could not
+		# be parsed for one or more ebuilds. There's no point in
+		# producing a false error here since the root cause will
+		# produce a valid error elsewhere, such as "SRC_URI.syntax"
+		# or "ebuild.sytax".
+		myfiles_all = set(myfiles_all)
+		for entry in mydigests:
+			if entry not in myfiles_all:
+				stats["digestentry.unused"] += 1
+				fails["digestentry.unused"].append(checkdir+"::"+entry)
 	del myfiles_all
 
 	if os.path.exists(checkdir+"/files"):
