@@ -8,9 +8,11 @@
 # that last one is tricky because multiple profiles need to be checked.
 
 import errno
+from itertools import izip
 import os
 import sys
 import signal
+import stat
 import re
 import tempfile
 
@@ -54,7 +56,10 @@ from portage_manifest import Manifest
 from portage_exception import ParseError
 from portage_exec import find_binary, spawn
 
-from output import bold, darkgreen, darkred, green, nocolor, red, turquoise, yellow
+from output import bold, create_color_func, darkgreen, \
+	green, nocolor, red, turquoise, yellow
+
+bad = create_color_func("BAD")
 
 from commands import getstatusoutput
 from fileinput import input
@@ -153,6 +158,7 @@ qahelp={
 	"KEYWORDS.stupid":"Ebuilds that use KEYWORDS=-* instead of package.mask", 
 	"LICENSE.missing":"Ebuilds that have a missing or empty LICENSE variable",
 	"DESCRIPTION.missing":"Ebuilds that have a missing or empty DESCRIPTION variable",
+	"EAPI.unsupported":"Ebuilds that have an unsupported EAPI version (you must upgrade portage)",
 	"SLOT.missing":"Ebuilds that have a missing or empty SLOT variable",
 	"HOMEPAGE.missing":"Ebuilds that have a missing or empty HOMEPAGE variable",
 	"DEPEND.bad":"User-visible ebuilds with bad DEPEND settings (matched against *visible* ebuilds)",
@@ -241,6 +247,9 @@ for x in missingvars:
 
 valid_restrict = frozenset(["binchecks", "bindist", "fetch", "mirror",
 	"primaryuri", "strip", "test", "userpriv"])
+
+# file.executable
+no_exec = frozenset(["Manifest","ChangeLog","metadata.xml"])
 
 verbose=0
 quiet=0
@@ -388,6 +397,11 @@ if mymode=="last" or (mymode=="lfull"):
 	last()
 if mymode == "commit":
 	myoptions.pop("--ignore-masked", None)
+
+# Set this to False when an extraordinary issue (generally
+# something other than a QA issue) makes it impossible to
+# commit (like if Manifest generation fails).
+can_force = True
 
 from portage import normalize_path
 isCvs=False
@@ -871,14 +885,40 @@ for x in scanlist:
 
 	checkdirlist=os.listdir(checkdir)
 	ebuildlist=[]
+	ebuild_metadata = {}
 	for y in checkdirlist:
-		if y[-7:]==".ebuild":
-			ebuildlist.append(y[:-7])
-		if y in ["Manifest","ChangeLog","metadata.xml"]:
-			if os.stat(checkdir+"/"+y)[0] & 0x0248:
+		if y in no_exec and \
+			stat.S_IMODE(os.stat(os.path.join(checkdir, y)).st_mode) & 0111:
 				stats["file.executable"] += 1
-				fails["file.executable"].append(checkdir+"/"+y)
-	digestlist=[]
+				fails["file.executable"].append(os.path.join(checkdir, y))
+		if y.endswith(".ebuild"):
+			pf = y[:-7]
+			ebuildlist.append(pf)
+			cpv = "%s/%s" % (catdir, pf)
+			try:
+				myaux = dict(izip(allvars, portdb.aux_get(cpv, allvars)))
+			except KeyError:
+				stats["ebuild.syntax"] += 1
+				fails["ebuild.syntax"].append(os.path.join(x, y))
+				continue
+			except IOError:
+				stats["ebuild.output"] += 1
+				fails["ebuild.output"].append(os.path.join(x, y))
+				continue
+			if not portage.eapi_is_supported(myaux["EAPI"]):
+				stats["EAPI.unsupported"] += 1
+				fails["EAPI.unsupported"].append(os.path.join(x, y))
+				continue
+			ebuild_metadata[pf] = myaux
+
+	if len(ebuild_metadata) != len(ebuildlist):
+		# If we can't access all the metadata then it's totally unsafe to
+		# commit since there's no way to generate a correct Manifest.
+		# Do not try to do any more QA checks on this package since missing
+		# metadata leads to false positives for several checks, and false
+		# positives confuse users.
+		can_force = False
+		continue
 
 	for y in checkdirlist:
 		for c in y.strip(os.path.sep):
@@ -1126,17 +1166,8 @@ for x in scanlist:
 			stats["ebuild.namenomatch"]=stats["ebuild.namenomatch"]+1
 			fails["ebuild.namenomatch"].append(x+"/"+y+".ebuild")
 			continue
-		try:
-			myaux = dict(
-				zip(allvars, portdb.aux_get(os.path.join(catdir, y), allvars)))
-		except KeyError:
-			stats["ebuild.syntax"]=stats["ebuild.syntax"]+1
-			fails["ebuild.syntax"].append(x+"/"+y+".ebuild")
-			continue
-		except IOError:
-			stats["ebuild.output"]=stats["ebuild.output"]+1
-			fails["ebuild.output"].append(x+"/"+y+".ebuild")
-			continue
+
+		myaux = ebuild_metadata[y]
 
 		# Test for negative logic and bad words in the RESTRICT var.
 		#for x in myaux[allvars.index("RESTRICT")].split():
@@ -1660,11 +1691,13 @@ if mymode!="commit":
 	if quiet < 1:
 		print
 else:
-	if dofail and "--force" in myoptions and "--pretend" not in myoptions:
+	if dofail and can_force and "--force" in myoptions and "--pretend" not in myoptions:
 		print green("RepoMan sez:") + \
 			" \"You want to commit even with these QA issues?\n" + \
 			"              I'll take it this time, but I'm not happy.\"\n"
 	elif dofail:
+		if "--force" in myoptions:
+			print bad("The --force option has been disabled due to extraordinary issues.")
 		print turquoise("Please fix these important QA issues first.")
 		print green("RepoMan sez:"),"\"Make your QA payment on time and you'll never see the likes of me.\"\n"
 		sys.exit(1)
