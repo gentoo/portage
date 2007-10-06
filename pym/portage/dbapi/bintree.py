@@ -709,7 +709,7 @@ class binarytree(object):
 			# record location if it's non-default
 			if rel_path != cpv + ".tbz2":
 				d["PATH"] = rel_path
-			keys = ["USE", "IUSE", "DESCRIPTION", "LICENSE", "PROVIDE", \
+			keys = ["USE", "IUSE", "DESCRIPTION", "EAPI", "LICENSE", "PROVIDE", \
 				"RDEPEND", "DEPEND", "PDEPEND"]
 			from itertools import izip
 			d.update(izip(keys, self.dbapi.aux_get(cpv, keys)))

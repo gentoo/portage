@@ -684,6 +684,7 @@ class PackageIndex(object):
 			mycpv = d.get("CPV")
 			if not mycpv:
 				continue
+			d.setdefault("EAPI", "0")
 			d.setdefault("SLOT", "0")
 			self.packages[mycpv] = d
 
@@ -698,6 +699,8 @@ class PackageIndex(object):
 		writepkgindex(pkgfile, [(k, self.header[k]) for k in keys])
 		for cpv in cpv_all:
 			metadata = self.packages[cpv].copy()
+			if metadata.get("EAPI") == "0":
+				del metadata["EAPI"]
 			if metadata.get("SLOT") == "0":
 				del metadata["SLOT"]
 			if metadata.get("USE") == "":
