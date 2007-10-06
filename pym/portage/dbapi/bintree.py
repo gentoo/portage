@@ -15,6 +15,7 @@ from portage import dep_expand, listdir, _movefile
 import portage.xpak, portage.getbinpkg
 
 import os, errno, stat
+from itertools import izip
 
 class bindbapi(fakedbapi):
 	def __init__(self, mybintree=None, settings=None):
@@ -27,7 +28,8 @@ class bindbapi(fakedbapi):
 		self.settings = settings
 		self._match_cache = {}
 		# Selectively cache metadata in order to optimize dep matching.
-		self._aux_cache_keys = set(["CHOST","EAPI","SLOT"])
+		self._aux_cache_keys = set(
+			["CHOST", "EAPI", "KEYWORDS", "LICENSE", "SLOT"])
 		self._aux_cache = {}
 
 	def match(self, *pargs, **kwargs):
@@ -136,12 +138,14 @@ class binarytree(object):
 			self.invalids = []
 			self.settings = settings
 			self._pkg_paths = {}
+			self._populating = False
 			self._all_directory = os.path.isdir(
 				os.path.join(self.pkgdir, "All"))
 			self._pkgindex_version = 0
 			self._pkgindex_hashes = ["MD5","SHA1"]
 			self._pkgindex_file = os.path.join(self.pkgdir, "Packages")
-			self._pkgindex_keys = set(["CPV", "SLOT", "MTIME", "SIZE"])
+			self._pkgindex_keys = self.dbapi._aux_cache_keys.copy()
+			self._pkgindex_keys.update(["CPV", "MTIME", "SIZE"])
 			self._pkgindex_header_keys = set(["ACCEPT_KEYWORDS", "CBUILD",
 				"CHOST", "CONFIG_PROTECT", "CONFIG_PROTECT_MASK", "FEATURES",
 				"GENTOO_MIRRORS", "INSTALL_MASK", "SYNC", "USE"])
@@ -324,16 +328,20 @@ class binarytree(object):
 
 	def populate(self, getbinpkgs=0, getbinpkgsonly=0):
 		"populates the binarytree"
+		if self._populating:
+			return
 		from portage.locks import lockfile, unlockfile
 		pkgindex_lock = None
 		try:
 			if os.access(self.pkgdir, os.W_OK):
 				pkgindex_lock = lockfile(self._pkgindex_file,
 					wantnewlockfile=1)
+			self._populating = True
 			self._populate(getbinpkgs, getbinpkgsonly)
 		finally:
 			if pkgindex_lock:
 				unlockfile(pkgindex_lock)
+			self._populating = False
 
 	def _populate(self, getbinpkgs=0, getbinpkgsonly=0):
 		if (not os.path.isdir(self.pkgdir) and not getbinpkgs):
@@ -343,6 +351,7 @@ class binarytree(object):
 
 		if not getbinpkgsonly:
 			pkg_paths = {}
+			self._pkg_paths = pkg_paths
 			dirs = listdir(self.pkgdir, dirsonly=True, EmptyOnError=True)
 			if "All" in dirs:
 				dirs.remove("All")
@@ -491,6 +500,11 @@ class binarytree(object):
 					d["SLOT"] = slot
 					d["MTIME"] = str(long(s.st_mtime))
 					d["SIZE"] = str(s.st_size)
+
+					aux_keys = list(self.dbapi._aux_cache_keys)
+					d.update(izip(aux_keys,
+						self.dbapi.aux_get(mycpv, aux_keys)))
+
 					# record location if it's non-default
 					if mypath != mycpv + ".tbz2":
 						d["PATH"] = mypath
@@ -503,7 +517,6 @@ class binarytree(object):
 							aux_cache[k] = d[k]
 						self.dbapi._aux_cache[mycpv] = aux_cache
 
-			self._pkg_paths = pkg_paths
 			# Do not bother to write the Packages index if $PKGDIR/All/ exists
 			# since it will provide no benefit due to the need to read CATEGORY
 			# from xpak.
@@ -511,6 +524,8 @@ class binarytree(object):
 				stale = [cpv for cpv in metadata if cpv not in self._pkg_paths]
 				for cpv in stale:
 					del metadata[cpv]
+				#
+				self._update_pkgindex_header(pkgindex.header)
 				from portage.util import atomic_ofstream
 				f = atomic_ofstream(self._pkgindex_file)
 				try:
