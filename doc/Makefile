@@ -5,7 +5,7 @@ man pdf txt xhtml xhtml-nochunks:
 	xmlto $@ $(XMLTO_FLAGS_$@) portage.docbook
 
 clean distclean:
-	rm -f *.1 *.html
+	rm -f *.1 *.html portage.txt
 
 .PHONY: all clean distclean \
         man pdf txt xhtml xhtml-nochunks
