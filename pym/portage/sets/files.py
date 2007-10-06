@@ -13,6 +13,8 @@ from portage.sets import PackageSet, EditablePackageSet, SetConfigError
 from portage.env.loaders import ItemFileLoader, KeyListFileLoader
 from portage.env.validators import ValidAtomValidator
 
+__all__ = ["StaticFileSet", "ConfigFileSet", "WorldSet"]
+
 class StaticFileSet(EditablePackageSet):
 	_operations = ["merge", "unmerge"]
 	
