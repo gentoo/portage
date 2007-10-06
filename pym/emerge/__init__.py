@@ -1904,6 +1904,7 @@ class depgraph(object):
 							print "!!! One of the following masked packages is required to complete your request:"
 							oldcomment = ""
 							shown_licenses = []
+							portdb_keys = ["LICENSE","SLOT"]
 							for p in alleb:
 								mreasons = portage.getmaskingstatus(p,
 									settings=pkgsettings, portdb=portdb)
@@ -1918,19 +1919,20 @@ class depgraph(object):
 										print comment
 										oldcomment = comment
 								try:
-									licenses = portdb.aux_get(p, ["LICENSE"])[0]
+									metadata = dict(izip(portdb_keys,
+										portdb.aux_get(p, portdb_keys)))
 								except KeyError:
 									# Corruption will have been reported above.
 									continue
-								uselist = []
-								if "?" in licenses:
+								metadata["USE"] = ""
+								if "?" in metadata["LICENSE"]:
 									pkgsettings.setcpv(p, mydb=portdb)
-									uselist = pkgsettings.get("USE", "").split()
+									metadata["USE"] = pkgsettings.get("USE", "")
 								missing_licenses = []
 								try:
 									missing_licenses = \
 										pkgsettings.getMissingLicenses(
-											licenses, p, uselist)
+											p, metadata)
 								except portage.exception.InvalidDependString:
 									# This will have already been reported
 									# above via mreasons.
