@@ -700,8 +700,11 @@ class PackageIndex(object):
 		keys = self.header.keys()
 		keys.sort()
 		writepkgindex(pkgfile, [(k, self.header[k]) for k in keys])
+		header_chost = self.header.get("CHOST")
 		for cpv in cpv_all:
 			metadata = self.packages[cpv].copy()
+			if metadata.get("CHOST") == header_chost:
+				del metadata["CHOST"]
 			if metadata.get("EAPI") == "0":
 				del metadata["EAPI"]
 			if metadata.get("SLOT") == "0":
