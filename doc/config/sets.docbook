@@ -1,0 +1,114 @@
+<chapter id='config-set'>
+	<title>Package Set Configuration</title>
+	<sect1 id='config-set-locations'>
+		<title>sets.conf locations</title>
+		<para>
+		There are multiple locations where portage looks for set configuration 
+		files, which are usually named <filename>sets.conf</filename>. Not all 
+		of these locations have to contain a sets.conf, missing files are simply 
+		ignored.
+		</para>
+		<para>
+		At first it looks for the default configuration in 
+		<filename>/usr/share/portage/config</filename>.
+		The default config includes sets that are expected on all systems and 
+		often critical for normal operation, like <varname>world</varname>, 
+		<varname>system</varname> or <varname>security</varname>.
+		<!-- TODO: Add reference to currently non-existing documentation about
+		set usage and default sets -->
+		After that it will read repository specific configurations from 
+		<envar>PORTDIR</envar> and <envar>PORTDIR_OVERLAY</envar>that might
+		include definitions of sets included in the repository.
+		Finally a system-specific set configuration may reside in 
+		<filename>/etc/portage</filename> to either define additional sets or
+		alter the default and repository sets.
+		</para>
+	</sect1>
+	<sect1 id='config-set-syntax'>
+		<title>sets.conf Syntax</title>
+		<para>
+		Unlike other Portage configuration files <filename>sets.conf</filename> 
+		uses Pythons <classname>ConfigParser</classname> module, which implements
+		the syntax usually found in .ini files. At it's core it allows various
+		named sections that each can contain any number of key-value pairs, see
+		the <ulink url="http://doc.python.org/lib/module-ConfigParser.html" type="text/html">Python documentation</ulink>
+		for the full details.
+		</para>
+		<para>
+		In a <filename>sets.conf</filename> file, a section can define either a 
+		single package set, or a complete class of sets. These cases are handled 
+		in different ways, and will be explained in detail in the following sections.
+		</para>
+		<sect2 id='config-set-syntax-single'>
+			<title>Single Set Configuration</title>
+			<para>
+			The configuration of a single set can be very simple as in most cases
+			it only requires a single option <varname>class</varname> to be 
+			complete. That option defines which handler class should be used to 
+			create the set. Another universal option available for single sets is
+			<varname>name</varname>, however it's usually not needed as the name
+			of the set is generated from the section name if <varname>name</varname>
+			is missing. Some handler classes might require additional
+			options for their configuration, these will be covered later in 
+			this chapter.
+			</para>
+			<para>
+			Here are a few examples for single sets taken from the default 
+			configuration file:
+			<programlisting>
+			# The classic world set
+			[world]
+			class = portage.sets.files.WorldSet
+			
+			# The classic system set
+			[system]
+			class = portage.sets.profiles.PackagesSystemSet
+			</programlisting>
+			<!-- TODO: reference list of available set handler classes here -->
+			</para>
+		</sect2>
+		<sect2 id='config-set-syntax-multi'>
+			<title>Multi Set Configuration</title>
+			<para>
+			As configuring each single set manually could be quite annoying if 
+			you want many sets with the same options Portage also allows to
+			define whole classes of sets in a single section. Like with single
+			sets each section still requires the <varname>class</varname> option,
+			but to indicate that the section should generate multiple sets it's
+			also necessary to set the <varname>multiset</varname> option to 
+			<parameter>true</parameter>.
+			</para>
+			<para>
+			As it doesn't make much sense to specify a single name for multiple sets
+			the <varname>name</varname> option isn't available for multiset sections.
+			Most handler classes will have a reasonable default for generating names,
+			and usually you can (but don't have to) set the 
+			<varname>name_pattern</varname> option to change the naming rules. That 
+			option generally has to include a (handler-specific) placeholder that 
+			will be replaced with a unique identifier (e.g. for category sets the 
+			category name). As with single sets handler classes might require and/or 
+			support additional options, these will be discussed later.
+			</para>
+			<para>
+			Some examples for multiset configurations:
+			<programlisting>
+			# generate a set for each file in /etc/portage/sets
+			# this section is also in the default configuration
+			[user sets]
+			class = portage.sets.files.StaticFileSet
+			multiset = true
+			directory = /etc/portage/sets
+			
+			# Generate a set for each category that includes all installed packages
+			# from that category. The sets will be named &lt;category&gt;/*
+			[installed category packages]
+			class = portage.sets.dbapi.CategorySet
+			multiset = true
+			repository = vartree
+			name_pattern = $category/*
+			</programlisting>
+			</para>
+			<!-- TODO: reference list of available set handler classes here -->
+		</sect2>
+	</sect1>
+</chapter>
