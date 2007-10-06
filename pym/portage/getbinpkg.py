@@ -677,6 +677,7 @@ class PackageIndex(object):
 		self.header.update(readpkgindex(pkgfile))
 
 	def readBody(self, pkgfile):
+		header_chost = self.header.get("CHOST")
 		while True:
 			d = readpkgindex(pkgfile)
 			if not d:
@@ -686,6 +687,8 @@ class PackageIndex(object):
 				continue
 			d.setdefault("EAPI", "0")
 			d.setdefault("SLOT", "0")
+			if header_chost:
+				d.setdefault("CHOST", header_chost)
 			self.packages[mycpv] = d
 
 	def write(self, pkgfile):
