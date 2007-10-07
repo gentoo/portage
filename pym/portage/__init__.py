@@ -1834,6 +1834,82 @@ class config(object):
 		if has_changed:
 			self.reset(keeping_pkg=1,use_cache=use_cache)
 
+	def getMissingKeywords(self, cpv, metadata):
+		"""
+		Take a package and return a list of any KEYWORDS that the user may
+		may need to accept for the given package. If the KEYWORDS are empty
+		and the the ** keyword has not been accepted, the returned list will
+		contain ** alone (in order to distiguish from the case of "none
+		missing").
+
+		@param cpv: The package name (for package.keywords support)
+		@type cpv: String
+		@param metadata: A dictionary of raw package metadata
+		@type metadata: dict
+		@rtype: List
+		@return: A list of KEYWORDS that have not been accepted.
+		"""
+
+		# Hack: Need to check the env directly here as otherwise stacking 
+		# doesn't work properly as negative values are lost in the config
+		# object (bug #139600)
+		egroups = self.configdict["backupenv"].get(
+			"ACCEPT_KEYWORDS", "").split()
+		mygroups = metadata["KEYWORDS"].split()
+		# Repoman may modify this attribute as necessary.
+		pgroups = self["ACCEPT_KEYWORDS"].split()
+		match=0
+		cp = dep_getkey(cpv)
+		pkgdict = self.pkeywordsdict.get(cp)
+		if pkgdict:
+			cpv_slot = "%s:%s" % (cpv, metadata["SLOT"])
+			matches = match_to_list(cpv_slot, pkgdict.keys())
+			for atom in matches:
+				pgroups.extend(pkgdict[atom])
+			pgroups.extend(egroups)
+			if matches:
+				# normalize pgroups with incrementals logic so it 
+				# matches ACCEPT_KEYWORDS behavior
+				inc_pgroups = set()
+				for x in pgroups:
+					if x == "-*":
+						inc_pgroups.clear()
+					elif x.startswith("-"):
+						inc_pgroups.discard(x[1:])
+					elif x not in inc_pgroups:
+						inc_pgroups.add(x)
+				pgroups = inc_pgroups
+				del inc_pgroups
+		hasstable = False
+		hastesting = False
+		for gp in mygroups:
+			if gp == "*" or (gp == "-*" and len(mygroups) == 1):
+				writemsg(("--- WARNING: Package '%s' uses" + \
+					" '%s' keyword.\n") % (cpv, gp), noiselevel=-1)
+				if gp == "*":
+					match = 1
+					break
+			elif gp in pgroups:
+				match=1
+				break
+			elif gp.startswith("~"):
+				hastesting = True
+			elif not gp.startswith("-"):
+				hasstable = True
+		if not match and \
+			((hastesting and "~*" in pgroups) or \
+			(hasstable and "*" in pgroups) or "**" in pgroups):
+			match=1
+		if match:
+			missing = []
+		else:
+			if not mygroups:
+				# If KEYWORDS is empty then we still have to return something
+				# in order to distiguish from the case of "none missing".
+				mygroups.append("**")
+			missing = mygroups
+		return missing
+
 	def getMissingLicenses(self, cpv, metadata):
 		"""
 		Take a LICENSE string and return a list any licenses that the user may

@@ -22,7 +22,7 @@ from portage import eclass_cache, auxdbkeys, auxdbkeylen, doebuild, flatten, \
 	listdir, dep_expand, eapi_is_supported, key_expand, dep_check
 
 import os, stat, sys
-
+from itertools import izip
 
 class portdbapi(dbapi):
 	"""this tree will scan a portage directory located at root (passed to init)"""
@@ -661,20 +661,12 @@ class portdbapi(dbapi):
 		if mylist is None:
 			return []
 		newlist=[]
-
-		accept_keywords = self.mysettings["ACCEPT_KEYWORDS"].split()
-		pkgdict = self.mysettings.pkeywordsdict
 		aux_keys = ["KEYWORDS", "LICENSE", "EAPI", "SLOT"]
-
-		# Hack: Need to check the env directly here as otherwise stacking 
-		# doesn't work properly as negative values are lost in the config
-		# object (bug #139600)
-		egroups = self.mysettings.configdict["backupenv"].get(
-			"ACCEPT_KEYWORDS", "").split()
-
+		metadata = {}
 		for mycpv in mylist:
+			metadata.clear()
 			try:
-				keys, licenses, eapi, slot = self.aux_get(mycpv, aux_keys)
+				metadata.update(izip(aux_keys, self.aux_get(mycpv, aux_keys)))
 			except KeyError:
 				continue
 			except PortageException, e:
@@ -683,65 +675,21 @@ class portdbapi(dbapi):
 				writemsg("!!! %s\n" % str(e), noiselevel=-1)
 				del e
 				continue
-			mygroups = keys.split()
-			# Repoman may modify this attribute as necessary.
-			pgroups = accept_keywords[:]
-			match=0
-			cp = dep_getkey(mycpv)
-			if pkgdict.has_key(cp):
-				cpv_slot = "%s:%s" % (mycpv, slot)
-				matches = match_to_list(cpv_slot, pkgdict[cp].keys())
-				for atom in matches:
-					pgroups.extend(pkgdict[cp][atom])
-				pgroups.extend(egroups)
-				if matches:
-					# normalize pgroups with incrementals logic so it 
-					# matches ACCEPT_KEYWORDS behavior
-					inc_pgroups = []
-					for x in pgroups:
-						if x == "-*":
-							inc_pgroups = []
-						elif x[0] == "-":
-							try:
-								inc_pgroups.remove(x[1:])
-							except ValueError:
-								pass
-						elif x not in inc_pgroups:
-							inc_pgroups.append(x)
-					pgroups = inc_pgroups
-					del inc_pgroups
-			hasstable = False
-			hastesting = False
-			for gp in mygroups:
-				if gp == "*" or (gp == "-*" and len(mygroups) == 1):
-					writemsg("--- WARNING: Package '%s' uses '%s' keyword.\n" % (mycpv, gp),
-						noiselevel=-1)
-					if gp == "*":
-						match = 1
-						break
-				elif gp in pgroups:
-					match=1
-					break
-				elif gp[0] == "~":
-					hastesting = True
-				elif gp[0] != "-":
-					hasstable = True
-			if not match and ((hastesting and "~*" in pgroups) or (hasstable and "*" in pgroups) or "**" in pgroups):
-				match=1
-			use = ""
-			if "?" in licenses:
+			if not eapi_is_supported(metadata["EAPI"]):
+				continue
+			if self.mysettings.getMissingKeywords(mycpv, metadata):
+				continue
+			metadata["USE"] = ""
+			if "?" in metadata["LICENSE"]:
 				self.doebuild_settings.setcpv(mycpv, mydb=self)
-				use = self.doebuild_settings.get("USE", "")
+				metadata["USE"] = self.doebuild_settings.get("USE", "")
 			try:
-				if self.mysettings.getMissingLicenses(mycpv,
-					{"LICENSE":licenses, "SLOT":slot, "USE":use}):
-					match = 0
+				if self.mysettings.getMissingLicenses(mycpv, metadata):
+					continue
 			except InvalidDependString:
-				match = 0
-			if match and eapi_is_supported(eapi):
-				newlist.append(mycpv)
+				continue
+			newlist.append(mycpv)
 		return newlist
-
 
 def close_portdbapi_caches():
 	for i in portdbapi.portdbapi_instances:
