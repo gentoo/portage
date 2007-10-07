@@ -1764,7 +1764,11 @@ class config(object):
 		pkginternaluse = ""
 		iuse = ""
 		if mydb:
-			slot, iuse = mydb.aux_get(self.mycpv, ["SLOT", "IUSE"])
+			if isinstance(mydb, dict):
+				slot = mydb["SLOT"]
+				iuse = mydb["IUSE"]
+			else:
+				slot, iuse = mydb.aux_get(self.mycpv, ["SLOT", "IUSE"])
 			cpv_slot = "%s:%s" % (self.mycpv, slot)
 			pkginternaluse = []
 			for x in iuse.split():

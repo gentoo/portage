@@ -661,7 +661,7 @@ class portdbapi(dbapi):
 		if mylist is None:
 			return []
 		newlist=[]
-		aux_keys = ["KEYWORDS", "LICENSE", "EAPI", "SLOT"]
+		aux_keys = ["IUSE", "KEYWORDS", "LICENSE", "EAPI", "SLOT"]
 		metadata = {}
 		for mycpv in mylist:
 			metadata.clear()
@@ -681,7 +681,7 @@ class portdbapi(dbapi):
 				continue
 			metadata["USE"] = ""
 			if "?" in metadata["LICENSE"]:
-				self.doebuild_settings.setcpv(mycpv, mydb=self)
+				self.doebuild_settings.setcpv(mycpv, mydb=metadata)
 				metadata["USE"] = self.doebuild_settings.get("USE", "")
 			try:
 				if self.mysettings.getMissingLicenses(mycpv, metadata):
