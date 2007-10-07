@@ -840,13 +840,6 @@ for x in scanlist:
 		elif dofail:
 			sys.exit(1)
 
-	if mymode in ("fix", "commit") and \
-		"--pretend" not in myoptions:
-		repoman_settings["O"] = checkdir
-		if not portage.digestgen([], repoman_settings, myportdb=portdb):
-			print "Unable to generate manifest."
-			sys.exit(1)
-
 	checkdirlist=os.listdir(checkdir)
 	ebuildlist=[]
 	ebuild_metadata = {}
