@@ -1838,6 +1838,64 @@ class config(object):
 		if has_changed:
 			self.reset(keeping_pkg=1,use_cache=use_cache)
 
+	def getMaskAtom(self, cpv, metadata):
+		"""
+		Take a package and return a matching package.mask atom, or None if no
+		such atom exists or it has been cancelled by package.unmask. PROVIDE
+		is not checked, so atoms will not be found for old-style virtuals.
+
+		@param cpv: The package name
+		@type cpv: String
+		@param metadata: A dictionary of raw package metadata
+		@type metadata: dict
+		@rtype: String
+		@return: An matching atom string or None if one is not found.
+		"""
+
+		cp = cpv_getkey(cpv)
+		mask_atoms = self.pmaskdict.get(cp)
+		if mask_atoms:
+			pkg_list = ["%s:%s" % (cpv, metadata["SLOT"])]
+			unmask_atoms = self.punmaskdict.get(cp)
+			for x in mask_atoms:
+				if not match_from_list(x, pkg_list):
+					continue
+				masked = True
+				if unmask_atoms:
+					for y in unmask_atoms:
+						if match_from_list(y, pkg_list):
+							masked = False
+							break
+				if not masked:
+					continue
+				return x
+		return None
+
+	def getProfileMaskAtom(self, cpv, metadata):
+		"""
+		Take a package and return a matching profile atom, or None if no
+		such atom exists. Note that a profile atom may or may not have a "*"
+		prefix. PROVIDE is not checked, so atoms will not be found for
+		old-style virtuals.
+
+		@param cpv: The package name
+		@type cpv: String
+		@param metadata: A dictionary of raw package metadata
+		@type metadata: dict
+		@rtype: String
+		@return: An matching profile atom string or None if one is not found.
+		"""
+
+		cp = cpv_getkey(cpv)
+		profile_atoms = self.prevmaskdict.get(cp)
+		if profile_atoms:
+			pkg_list = ["%s:%s" % (cpv, metadata["SLOT"])]
+			for x in profile_atoms:
+				if match_from_list(x.lstrip("*"), pkg_list):
+					continue
+				return x
+		return None
+
 	def getMissingKeywords(self, cpv, metadata):
 		"""
 		Take a package and return a list of any KEYWORDS that the user may

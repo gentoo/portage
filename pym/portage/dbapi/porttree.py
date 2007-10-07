@@ -604,57 +604,22 @@ class portdbapi(dbapi):
 		if not mylist:
 			return []
 
-		mysplit = catpkgsplit(mylist[0])
-		if not mysplit:
-			#invalid cat/pkg-v
-			writemsg("visible(): invalid cat/pkg-v: %s\n" % (mylist[0], ),
-				noiselevel=-1)
-			return []
-		mycp = "%s/%s" % (mysplit[0], mysplit[1])
-
-		cpv_slots = []
+		db_keys = ["SLOT"]
+		visible = []
+		getMaskAtom = self.mysettings.getMaskAtom
+		getProfileMaskAtom = self.mysettings.getProfileMaskAtom
 		for cpv in mylist:
 			try:
-				myslot = self.aux_get(cpv, ["SLOT"])[0]
+				metadata = dict(izip(db_keys, self.aux_get(cpv, db_keys)))
 			except KeyError:
 				# masked by corruption
 				continue
-			cpv_slots.append("%s:%s" % (cpv, myslot))
-
-		if cpv_slots:
-			mask_atoms = self.mysettings.pmaskdict.get(mycp)
-			if mask_atoms:
-				unmask_atoms = self.mysettings.punmaskdict.get(mycp)
-				for x in mask_atoms:
-					masked_pkgs = match_from_list(x, cpv_slots)
-					if not masked_pkgs:
-						continue
-					if unmask_atoms:
-						for y in unmask_atoms:
-							unmasked_pkgs = match_from_list(y, masked_pkgs)
-							if unmasked_pkgs:
-								masked_pkgs = [pkg for pkg in masked_pkgs \
-									if pkg not in unmasked_pkgs]
-								if not masked_pkgs:
-									break
-					if masked_pkgs:
-						cpv_slots = [pkg for pkg in cpv_slots \
-							if pkg not in masked_pkgs]
-						if not cpv_slots:
-							break
-
-		if cpv_slots:
-			profile_atoms = self.mysettings.prevmaskdict.get(mycp)
-			if profile_atoms:
-				for x in profile_atoms:
-					cpv_slots = match_from_list(x.lstrip("*"), cpv_slots)
-					if not cpv_slots:
-						break
-
-		if not cpv_slots:
-			return cpv_slots
-
-		return [remove_slot(pkg) for pkg in cpv_slots]
+			if getMaskAtom(cpv, metadata):
+				continue
+			if getProfileMaskAtom(cpv, metadata):
+				continue
+			visible.append(cpv)
+		return visible
 
 	def gvisible(self,mylist):
 		"strip out group-masked (not in current group) entries"
