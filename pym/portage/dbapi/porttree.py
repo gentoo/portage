@@ -117,7 +117,8 @@ class portdbapi(dbapi):
 				self.auxdb[x] = self.auxdbmodule(
 					self.depcachedir, x, filtered_auxdbkeys, gid=portage_gid)
 		# Selectively cache metadata in order to optimize dep matching.
-		self._aux_cache_keys = set(["EAPI", "KEYWORDS", "LICENSE", "SLOT"])
+		self._aux_cache_keys = set(
+			["EAPI", "IUSE", "KEYWORDS", "LICENSE", "SLOT"])
 		self._aux_cache = {}
 		self._broken_ebuilds = set()
 
