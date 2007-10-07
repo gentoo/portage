@@ -34,6 +34,11 @@ get_config() {
 		"${PORTAGE_CONFIGROOT}"etc/etc-update.conf)
 }
 
+diff_command() {
+	local cmd=${diff_command//%file1/$1}
+	${cmd//%file2/$2}
+}
+
 scan() {
 
 	echo "Scanning Configuration files..."
@@ -43,12 +48,6 @@ scan() {
 	input=0
 	local find_opts
 	local my_basename
-
-	# Sanity check to make sure diff exists and works
-	if ! diff -v &>/dev/null ; then
-		echo "ERROR: 'diff' does not seem to work, aborting"
-		exit 1
-	fi
 
 	for path in ${CONFIG_PROTECT} ; do
 		path="${ROOT}${path}"
@@ -312,17 +311,14 @@ do_cfg() {
 		elif [[ "${DELETE_ALL}" == "yes" ]] && ! user_special "${ofile}"; then
 			my_input=2
 		else
-			showdiffcmd=$(echo "${diff_command}" |
-				sed -e "s:%file1:${ofile}:" -e "s:%file2:${file}:")
-
 			if [ "${using_editor}" == 0 ]; then
 				(
 					echo "Showing differences between ${ofile} and ${file}"
-					${showdiffcmd}
+					diff_command "${ofile}" "${file}"
 				) | ${pager}
 			else
 				echo "Beginning of differences between ${ofile} and ${file}"
-				${showdiffcmd}
+				diff_command "${ofile}" "${file}"
 				echo "End of differences between ${ofile} and ${file}"
 			fi
 			if [ -L "${file}" ]; then
@@ -415,9 +411,7 @@ Please select from the menu above (-1 to exit, losing this merge): "
 				   return 255
 				   ;;
 				2) ( echo "Showing differences between ${ofile} and ${mfile}"
-					 $(echo "${diff_command}" | \
-					  sed -e "s:%file1:${ofile}:" \
-					  	  -e "s:%file2:${mfile}:") ) | ${pager}
+					 diff_command "${ofile}" "${mfile}" ) | ${pager}
 				   continue
 				   ;;
 				3) break
@@ -490,8 +484,17 @@ diff_command=$(get_config diff_command)
 using_editor=$(get_config using_editor)
 merge_command=$(get_config merge_command)
 declare -i mode=$(get_config mode)
-[ -z ${mode} ] && mode=0
-[ -z "${pager}" ] && pager="cat"
+[[ -z ${mode} ]] && mode=0
+[[ -z ${pager} ]] && pager="cat"
+
+# Sanity check to make sure diff exists and works
+echo > "${TMP}"/.diff-test-1
+echo > "${TMP}"/.diff-test-2
+
+if ! diff_command "${TMP}"/.diff-test-1 "${TMP}"/.diff-test-2 &> /dev/null ; then
+	echo "ERROR: '${diff_command}' does not seem to work, aborting"
+	exit 1
+fi
 
 #echo "rm_opts: $rm_opts, mv_opts: $mv_opts, cp_opts: $cp_opts"
 #echo "pager: $pager, diff_command: $diff_command, merge_command: $merge_command"
