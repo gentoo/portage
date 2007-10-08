@@ -22,7 +22,7 @@ from portage import eclass_cache, auxdbkeys, auxdbkeylen, doebuild, flatten, \
 	listdir, dep_expand, eapi_is_supported, key_expand, dep_check
 
 import os, stat, sys
-
+from itertools import izip
 
 class portdbapi(dbapi):
 	"""this tree will scan a portage directory located at root (passed to init)"""
@@ -117,7 +117,8 @@ class portdbapi(dbapi):
 				self.auxdb[x] = self.auxdbmodule(
 					self.depcachedir, x, filtered_auxdbkeys, gid=portage_gid)
 		# Selectively cache metadata in order to optimize dep matching.
-		self._aux_cache_keys = set(["EAPI", "KEYWORDS", "LICENSE", "SLOT"])
+		self._aux_cache_keys = set(
+			["EAPI", "IUSE", "KEYWORDS", "LICENSE", "SLOT"])
 		self._aux_cache = {}
 		self._broken_ebuilds = set()
 
@@ -603,57 +604,22 @@ class portdbapi(dbapi):
 		if not mylist:
 			return []
 
-		mysplit = catpkgsplit(mylist[0])
-		if not mysplit:
-			#invalid cat/pkg-v
-			writemsg("visible(): invalid cat/pkg-v: %s\n" % (mylist[0], ),
-				noiselevel=-1)
-			return []
-		mycp = "%s/%s" % (mysplit[0], mysplit[1])
-
-		cpv_slots = []
+		db_keys = ["SLOT"]
+		visible = []
+		getMaskAtom = self.mysettings.getMaskAtom
+		getProfileMaskAtom = self.mysettings.getProfileMaskAtom
 		for cpv in mylist:
 			try:
-				myslot = self.aux_get(cpv, ["SLOT"])[0]
+				metadata = dict(izip(db_keys, self.aux_get(cpv, db_keys)))
 			except KeyError:
 				# masked by corruption
 				continue
-			cpv_slots.append("%s:%s" % (cpv, myslot))
-
-		if cpv_slots:
-			mask_atoms = self.mysettings.pmaskdict.get(mycp)
-			if mask_atoms:
-				unmask_atoms = self.mysettings.punmaskdict.get(mycp)
-				for x in mask_atoms:
-					masked_pkgs = match_from_list(x, cpv_slots)
-					if not masked_pkgs:
-						continue
-					if unmask_atoms:
-						for y in unmask_atoms:
-							unmasked_pkgs = match_from_list(y, masked_pkgs)
-							if unmasked_pkgs:
-								masked_pkgs = [pkg for pkg in masked_pkgs \
-									if pkg not in unmasked_pkgs]
-								if not masked_pkgs:
-									break
-					if masked_pkgs:
-						cpv_slots = [pkg for pkg in cpv_slots \
-							if pkg not in masked_pkgs]
-						if not cpv_slots:
-							break
-
-		if cpv_slots:
-			profile_atoms = self.mysettings.prevmaskdict.get(mycp)
-			if profile_atoms:
-				for x in profile_atoms:
-					cpv_slots = match_from_list(x.lstrip("*"), cpv_slots)
-					if not cpv_slots:
-						break
-
-		if not cpv_slots:
-			return cpv_slots
-
-		return [remove_slot(pkg) for pkg in cpv_slots]
+			if getMaskAtom(cpv, metadata):
+				continue
+			if getProfileMaskAtom(cpv, metadata):
+				continue
+			visible.append(cpv)
+		return visible
 
 	def gvisible(self,mylist):
 		"strip out group-masked (not in current group) entries"
@@ -661,20 +627,12 @@ class portdbapi(dbapi):
 		if mylist is None:
 			return []
 		newlist=[]
-
-		accept_keywords = self.mysettings["ACCEPT_KEYWORDS"].split()
-		pkgdict = self.mysettings.pkeywordsdict
-		aux_keys = ["KEYWORDS", "LICENSE", "EAPI", "SLOT"]
-
-		# Hack: Need to check the env directly here as otherwise stacking 
-		# doesn't work properly as negative values are lost in the config
-		# object (bug #139600)
-		egroups = self.mysettings.configdict["backupenv"].get(
-			"ACCEPT_KEYWORDS", "").split()
-
+		aux_keys = ["IUSE", "KEYWORDS", "LICENSE", "EAPI", "SLOT"]
+		metadata = {}
 		for mycpv in mylist:
+			metadata.clear()
 			try:
-				keys, licenses, eapi, slot = self.aux_get(mycpv, aux_keys)
+				metadata.update(izip(aux_keys, self.aux_get(mycpv, aux_keys)))
 			except KeyError:
 				continue
 			except PortageException, e:
@@ -683,65 +641,21 @@ class portdbapi(dbapi):
 				writemsg("!!! %s\n" % str(e), noiselevel=-1)
 				del e
 				continue
-			mygroups = keys.split()
-			# Repoman may modify this attribute as necessary.
-			pgroups = accept_keywords[:]
-			match=0
-			cp = dep_getkey(mycpv)
-			if pkgdict.has_key(cp):
-				cpv_slot = "%s:%s" % (mycpv, slot)
-				matches = match_to_list(cpv_slot, pkgdict[cp].keys())
-				for atom in matches:
-					pgroups.extend(pkgdict[cp][atom])
-				pgroups.extend(egroups)
-				if matches:
-					# normalize pgroups with incrementals logic so it 
-					# matches ACCEPT_KEYWORDS behavior
-					inc_pgroups = []
-					for x in pgroups:
-						if x == "-*":
-							inc_pgroups = []
-						elif x[0] == "-":
-							try:
-								inc_pgroups.remove(x[1:])
-							except ValueError:
-								pass
-						elif x not in inc_pgroups:
-							inc_pgroups.append(x)
-					pgroups = inc_pgroups
-					del inc_pgroups
-			hasstable = False
-			hastesting = False
-			for gp in mygroups:
-				if gp == "*" or (gp == "-*" and len(mygroups) == 1):
-					writemsg("--- WARNING: Package '%s' uses '%s' keyword.\n" % (mycpv, gp),
-						noiselevel=-1)
-					if gp == "*":
-						match = 1
-						break
-				elif gp in pgroups:
-					match=1
-					break
-				elif gp[0] == "~":
-					hastesting = True
-				elif gp[0] != "-":
-					hasstable = True
-			if not match and ((hastesting and "~*" in pgroups) or (hasstable and "*" in pgroups) or "**" in pgroups):
-				match=1
-			use = ""
-			if "?" in licenses:
-				self.doebuild_settings.setcpv(mycpv, mydb=self)
-				use = self.doebuild_settings.get("USE", "")
+			if not eapi_is_supported(metadata["EAPI"]):
+				continue
+			if self.mysettings.getMissingKeywords(mycpv, metadata):
+				continue
+			metadata["USE"] = ""
+			if "?" in metadata["LICENSE"]:
+				self.doebuild_settings.setcpv(mycpv, mydb=metadata)
+				metadata["USE"] = self.doebuild_settings.get("USE", "")
 			try:
-				if self.mysettings.getMissingLicenses(mycpv,
-					{"LICENSE":licenses, "SLOT":slot, "USE":use}):
-					match = 0
+				if self.mysettings.getMissingLicenses(mycpv, metadata):
+					continue
 			except InvalidDependString:
-				match = 0
-			if match and eapi_is_supported(eapi):
-				newlist.append(mycpv)
+				continue
+			newlist.append(mycpv)
 		return newlist
-
 
 def close_portdbapi_caches():
 	for i in portdbapi.portdbapi_instances:

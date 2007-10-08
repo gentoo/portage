@@ -846,12 +846,16 @@ for x in scanlist:
 	catdir,pkgdir=x.split("/")
 	checkdir=repodir+"/"+x
 
-	if mymode == "manifest":
+	if mymode == "manifest" or \
+		mymode in ("commit", "fix") and "--pretend" not in myoptions:
 		repoman_settings["O"] = checkdir
 		if not portage.digestgen([], repoman_settings, myportdb=portdb):
 			print "Unable to generate manifest."
 			dofail = 1
-		continue
+		if mymode == "manifest":
+			continue
+		elif dofail:
+			sys.exit(1)
 
 	checkdirlist=os.listdir(checkdir)
 	ebuildlist=[]
@@ -1000,13 +1004,6 @@ for x in scanlist:
 				stats["svn.IO_error"] += 1
 				fails["svn.IO_error"].append(checkdir+"/files svn info")
 			continue
-
-	if mymode in ("fix", "commit") and \
-		"--pretend" not in myoptions:
-		repoman_settings["O"] = checkdir
-		if not portage.digestgen([], repoman_settings, myportdb=portdb):
-			print "Unable to generate manifest."
-			sys.exit(1)
 
 	mf = Manifest(checkdir, repoman_settings["DISTDIR"])
 	mydigests=mf.getTypeDigests("DIST")
