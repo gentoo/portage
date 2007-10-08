@@ -8,6 +8,8 @@
 	<!ENTITY project "portage">
 
 	<!ENTITY qa SYSTEM "qa.docbook">
+	<!ENTITY config SYSTEM "config.docbook">
+	<!ENTITY config_set SYSTEM "config/sets.docbook">
 ]>
 
 <book id="portage" lang="en">
@@ -27,6 +29,7 @@
  &date;
 </bookinfo>
 
+&config;
 &qa;
 
 </book>

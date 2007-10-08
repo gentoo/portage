@@ -5,6 +5,8 @@
 from portage.versions import catsplit
 from portage.sets import PackageSet, SetConfigError
 
+__all__ = ["CategorySet", "EverythingSet"]
+
 class EverythingSet(PackageSet):
 	_operations = ["merge", "unmerge"]
 	description = "Package set containing all installed packages"

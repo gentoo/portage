@@ -7,6 +7,8 @@ import os
 
 from portage.sets import PackageSet, SetConfigError
 
+__all__ = ["CommandOutputSet"]
+
 class CommandOutputSet(PackageSet):
 	"""This class creates a PackageSet from the output of a shell command.
 	   The shell command should produce one atom per line, that is:

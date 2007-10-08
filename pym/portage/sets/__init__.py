@@ -14,6 +14,9 @@ DEFAULT_SETS = ["world", "system", "everything", "security"] \
 	+["package_"+x for x in ["mask", "unmask", "use", "keywords"]]
 del x
 
+__all__ = ["PackageSet", "EditablePackageSet", "InternalPackageSet", \
+			"SetConfigError", "SetConfig", "make_default_config"]
+
 class PackageSet(object):
 	# Set this to operations that are supported by your subclass. While 
 	# technically there is no difference between "merge" and "unmerge" regarding
@@ -270,7 +273,6 @@ if __name__ == "__main__":
 	import portage
 	sc = make_default_config(portage.settings, portage.db["/"])
 	l, e = sc.getSets()
-	print l, e
 	for x in l:
 		print x+":"
 		print "DESCRIPTION = %s" % l[x].getMetadata("Description")

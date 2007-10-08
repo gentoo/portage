@@ -8,6 +8,8 @@ from portage.util import grabfile, write_atomic
 from portage.const import CACHE_PATH
 from portage.sets import PackageSet
 
+__all__ = ["SecuritySet", "NewGlsaSet", "NewAffectedSet", "AffectedSet"]
+
 class SecuritySet(PackageSet):
 	_operations = ["merge"]
 	_skip_applied = False

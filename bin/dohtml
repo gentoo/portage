@@ -34,17 +34,17 @@ import sys
 import types
 
 def dodir(path):
-	os.system("install -d '%s'" % path)
+	os.spawnlp(os.P_WAIT, "install", "install", "-d", path)
 
 def dofile(src,dst):
-
-	os.system("install -m 0644 '%s' '%s'" % (src, dst))
+	os.spawnlp(os.P_WAIT, "install", "install", "-m0644", src, dst)
 
 def install(basename, dirname, options, prefix=""):
-
 	fullpath = basename
-	if prefix: fullpath = prefix + "/" + fullpath
-	if dirname: fullpath = dirname + "/" + fullpath
+	if prefix:
+		fullpath = prefix + "/" + fullpath
+	if dirname:
+		fullpath = dirname + "/" + fullpath
 
 	if options.DOCDESTTREE:
 		destdir = options.ED + "/usr/share/doc/" + options.PF + "/" + options.DOCDESTTREE + "/" + options.doc_prefix + "/" + prefix
