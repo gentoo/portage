@@ -34,8 +34,12 @@ get_config() {
 		"${PORTAGE_CONFIGROOT}"etc/etc-update.conf)
 }
 
-scan() {
+diff_command() {
+	local cmd=${diff_command//%file1/$1}
+	${cmd//%file2/$2}
+}
 
+scan() {
 	echo "Scanning Configuration files..."
 	rm -rf ${TMP}/files > /dev/null 2>&1
 	mkdir ${TMP}/files || die "Failed mkdir command!" 1
@@ -43,12 +47,6 @@ scan() {
 	input=0
 	local find_opts
 	local my_basename
-
-	# Sanity check to make sure diff exists and works
-	if ! diff -v &>/dev/null ; then
-		echo "ERROR: 'diff' does not seem to work, aborting"
-		exit 1
-	fi
 
 	for path in ${CONFIG_PROTECT} ; do
 		path="${EROOT}${path}"
@@ -65,6 +63,7 @@ scan() {
 		for file in $(set -f; find ${path}/ ${find_opts} ! -iname '.*~' ! -iname '.*.bak' |
 			   sed -e "s:\(^.*/\)\(\._cfg[0-9]*_\)\(.*$\):\1\2\3\%\2\%\3:" |
 			   sort -t'%' -k3 -k2 | LANG=POSIX LC_ALL=POSIX cut -f1 -d'%'); do
+
 			rpath=$(echo "${file/\/\///}" | sed -e "s:/[^/]*$::")
 			rfile=$(echo "${file/\/\///}" | sed -e "s:^.*/::")
 			for mpath in ${CONFIG_PROTECT_MASK}; do
@@ -75,8 +74,10 @@ scan() {
 					break
 				fi
 			done
-			[ ! -f ${file} ] && continue
-
+			if [[ ! -f ${file} ]] ; then
+				echo "Skipping non-file ${file} ..."
+				continue
+			fi
 
 			if [[ "${ofile:10}" != "${rfile:10}" ]] ||
 			   [[ ${opath} != ${rpath} ]]; then
@@ -312,17 +313,14 @@ do_cfg() {
 		elif [[ "${DELETE_ALL}" == "yes" ]] && ! user_special "${ofile}"; then
 			my_input=2
 		else
-			showdiffcmd=$(echo "${diff_command}" |
-				sed -e "s:%file1:${ofile}:" -e "s:%file2:${file}:")
-
 			if [ "${using_editor}" == 0 ]; then
 				(
 					echo "Showing differences between ${ofile} and ${file}"
-					${showdiffcmd}
+					diff_command "${ofile}" "${file}"
 				) | ${pager}
 			else
 				echo "Beginning of differences between ${ofile} and ${file}"
-				${showdiffcmd}
+				diff_command "${ofile}" "${file}"
 				echo "End of differences between ${ofile} and ${file}"
 			fi
 			if [ -L "${file}" ]; then
@@ -415,9 +413,7 @@ Please select from the menu above (-1 to exit, losing this merge): "
 				   return 255
 				   ;;
 				2) ( echo "Showing differences between ${ofile} and ${mfile}"
-					 $(echo "${diff_command}" | \
-					  sed -e "s:%file1:${ofile}:" \
-					  	  -e "s:%file2:${mfile}:") ) | ${pager}
+					 diff_command "${ofile}" "${mfile}" ) | ${pager}
 				   continue
 				   ;;
 				3) break
@@ -451,10 +447,38 @@ die() {
 	exit ${2}
 }
 
+usage() {
+	cat <<-EOF
+	etc-update: Handle configuration file updates
+
+	Usage: etc-update [options]
+
+	Options:
+	  -d, --debug    Enable shell debugging
+	  -h, --help     Show help and run away
+	  -V, --version  Show version and trundle away
+	EOF
+
+	[[ -n ${*:2} ]] && printf "\nError: %s\n" "${*:2}" 1>&2
+
+	exit ${1:-0}
+}
+
 #
 # Run the script
 #
-scriptname=$(basename $0)
+
+SET_X=false
+while [[ -n $1 ]] ; do
+	case $1 in
+		-d|--debug)   SET_X=true;;
+		-h|--help)    usage;;
+		-V|--version) echo '$Id$'; exit 0;;
+		*)            usage 1 "Invalid option '$1'";;
+	esac
+	shift
+done
+${SET_X} && set -x
 
 type portageq > /dev/null || exit $?
 eval $(portageq envvar -v CONFIG_PROTECT \
@@ -493,8 +517,17 @@ diff_command=$(get_config diff_command)
 using_editor=$(get_config using_editor)
 merge_command=$(get_config merge_command)
 declare -i mode=$(get_config mode)
-[ -z ${mode} ] && mode=0
-[ -z "${pager}" ] && pager="cat"
+[[ -z ${mode} ]] && mode=0
+[[ -z ${pager} ]] && pager="cat"
+
+# Sanity check to make sure diff exists and works
+echo > "${TMP}"/.diff-test-1
+echo > "${TMP}"/.diff-test-2
+
+if ! diff_command "${TMP}"/.diff-test-1 "${TMP}"/.diff-test-2 &> /dev/null ; then
+	echo "ERROR: '${diff_command}' does not seem to work, aborting"
+	exit 1
+fi
 
 #echo "rm_opts: $rm_opts, mv_opts: $mv_opts, cp_opts: $cp_opts"
 #echo "pager: $pager, diff_command: $diff_command, merge_command: $merge_command"

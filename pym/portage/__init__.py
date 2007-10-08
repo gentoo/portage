@@ -1843,19 +1843,17 @@ class config(object):
 		if has_changed:
 			self.reset(keeping_pkg=1,use_cache=use_cache)
 
-	def getMissingLicenses(self, licenses, cpv, uselist):
+	def getMissingLicenses(self, cpv, metadata):
 		"""
 		Take a LICENSE string and return a list any licenses that the user may
 		may need to accept for the given package.  The returned list will not
 		contain any licenses that have already been accepted.  This method
 		can throw an InvalidDependString exception.
 
-		@param licenses: A raw LICENSE string as returned form dbapi.aux_get()
-		@type licenses: String
 		@param cpv: The package name (for package.license support)
 		@type cpv: String
-		@param uselist: A list of flags for evaluation of USE conditionals
-		@type uselist: List
+		@param metadata: A dictionary of raw package metadata
+		@type metadata: dict
 		@rtype: List
 		@return: A list of licenses that have not been accepted.
 		"""
@@ -1865,11 +1863,12 @@ class config(object):
 		cpdict = self._plicensedict.get(dep_getkey(cpv), None)
 		if cpdict:
 			acceptable_licenses = self._accept_license.copy()
-			for atom in match_to_list(cpv, cpdict.keys()):
+			cpv_slot = "%s:%s" % (cpv, metadata["SLOT"])
+			for atom in match_to_list(cpv_slot, cpdict.keys()):
 				acceptable_licenses.update(cpdict[atom])
-		license_struct = portage.dep.paren_reduce(licenses)
+		license_struct = portage.dep.paren_reduce(metadata["LICENSE"])
 		license_struct = portage.dep.use_reduce(
-			license_struct, uselist=uselist)
+			license_struct, uselist=metadata["USE"].split())
 		license_struct = portage.dep.dep_opconvert(license_struct)
 		return self._getMissingLicenses(license_struct, acceptable_licenses)
 
@@ -5032,8 +5031,8 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 
 	# keywords checking
 	try:
-		mygroups, licenses, eapi = portdb.aux_get(
-			mycpv, ["KEYWORDS", "LICENSE", "EAPI"])
+		eapi, mygroups, licenses, slot = portdb.aux_get(
+			mycpv, ["EAPI", "KEYWORDS", "LICENSE", "SLOT"])
 	except KeyError:
 		# The "depend" phase apparently failed for some reason.  An associated
 		# error message will have already been printed to stderr.
@@ -5093,13 +5092,13 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 	if kmask:
 		rValue.append(kmask+" keyword")
 
-	uselist = []
+	use = ""
 	if "?" in licenses:
 		settings.setcpv(mycpv, mydb=portdb)
-		uselist = settings.get("USE", "").split()
+		use = settings.get("USE", "")
 	try:
 		missing_licenses = settings.getMissingLicenses(
-			licenses, mycpv, uselist)
+			mycpv, {"LICENSE":licenses, "SLOT":slot, "USE":use})
 		if missing_licenses:
 			allowed_tokens = set(["||", "(", ")"])
 			allowed_tokens.update(missing_licenses)

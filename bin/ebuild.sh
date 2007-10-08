@@ -396,6 +396,14 @@ unpack() {
 			a)
 				ar x "${srcdir}/${x}" || die "$myfail"
 				;;
+			lzma)
+				if [ "${y}" == "tar" ]; then
+					lzma -dc "${srcdir}${x}" | tar xof - ${tar_opts}
+					assert "$myfail"
+				else
+					lzma -dc "${srcdir}${x}" > ${x%.*} || die "$myfail"
+				fi
+				;;
 			*)
 				vecho "unpack ${x}: file format not recognized. Ignoring."
 				;;
