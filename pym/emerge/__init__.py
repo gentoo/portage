@@ -2863,6 +2863,11 @@ class depgraph(object):
 		for myatom in mylist:
 			self._set_atoms.add(myatom)
 
+		# Since populate_filtered_repo() was called with the exclude_installed
+		# flag, these atoms will need to be processed again in case installed
+		# packages are required to satisfy dependencies.
+		self._filtered_trees[self.target_root]["atoms"].clear()
+
 		missing_atoms = []
 		for mydep in mylist:
 			try:
