@@ -35,6 +35,7 @@ install:
 	; $(INSTALL_cnfsubst) $(srcdir)/dispatch-conf.conf $(DESTDIR)$(sysconfdir)/dispatch-conf.conf \
 	; echo "$(INSTALL_cnfsubst) $(srcdir)/etc-update.conf $(DESTDIR)$(sysconfdir)/etc-update.conf" \
 	; $(INSTALL_cnfsubst) $(srcdir)/etc-update.conf $(DESTDIR)$(sysconfdir)/etc-update.conf \
+	$(INSTALL) -d -m 755 -o $(portageuser) -g $(portagegroup) $(DESTDIR)$(datarootdir)/portage \
 	; echo "$(INSTALL_cnfsubst) $(srcdir)/sets.conf $(DESTDIR)$(datarootdir)/portage/sets.conf" \
 	; $(INSTALL_cnfsubst) $(srcdir)/sets.conf $(DESTDIR)$(datarootdir)/portage/sets.conf
 	
