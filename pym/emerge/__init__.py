@@ -2008,11 +2008,13 @@ class depgraph(object):
 					if "?" in metadata["LICENSE"]:
 						pkgsettings.setcpv(cpv, mydb=metadata)
 						metadata["USE"] = pkgsettings["USE"]
+					else:
+						metadata["USE"] = ""
 					try:
 						if not visible(pkgsettings, cpv, metadata,
 							built=False, installed=False):
 							continue
-					except InvalidDependString:
+					except portage.exception.InvalidDependString:
 						# masked by corruption
 						continue
 
@@ -2053,7 +2055,7 @@ class depgraph(object):
 							if not visible(pkgsettings, pkg, metadata,
 								built=True, installed=False):
 								continue
-						except InvalidDependString:
+						except portage.exception.InvalidDependString:
 							# masked by corruption
 							continue
 						myeb_pkg_matches.append(pkg)
