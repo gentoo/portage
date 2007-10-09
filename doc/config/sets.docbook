@@ -44,7 +44,10 @@
 			<para>
 			The configuration of a single set can be very simple as in most cases
 			it only requires a single option <varname>class</varname> to be 
-			complete. That option defines which handler class should be used to 
+			complete <footnote><para>Technically the <varname>class</varname> option
+			isn't stricly required, but it should always be used as the default 
+			handler might be changed in future versions</para></footnote>.
+			That option defines which handler class should be used to 
 			create the set. Another universal option available for single sets is
 			<varname>name</varname>, however it's usually not needed as the name
 			of the set is generated from the section name if <varname>name</varname>
@@ -109,6 +112,172 @@
 			</programlisting>
 			</para>
 			<!-- TODO: reference list of available set handler classes here -->
+		</sect2>
+	</sect1>
+	<sect1 id='config-set-classes'>
+		<title>Available Set Handler Classes</title>
+		<para>
+		The following sections contain the available handler classes that can be
+		used for the <varname>class</varname> option in 
+		<filename>sets.conf</filename>, together with a description about required
+		and optional configuration options for single and multi set configurations.
+		Note that not all classes support both configuration styles.
+		</para>
+		
+		<sect2 id='config-set-classes-StaticFileSet' xreflabel='StaticFileSet'>
+		<title>portage.sets.files.StaticFileSet</title>
+		<para>
+		This class implements a simple file based package set. All atoms from 
+		configured file are used to form the set, and currently only simple and 
+		versioned atoms	are supported (no use conditionals or any-of constructs).
+		For descriptive purposes the file can be accompanied by a file with the 
+		same name plus a <filename>.metadata</filename> suffix which can contain
+		metadata sections for description, author, location and so on. Each section
+		has the form <msgtext>key: value</msgtext> where <varname>value</varname>
+		can contain multiple lines. Therefore sections have to be separated by 
+		blank lines. For example:
+		<programlisting>
+		description: This is a somewhat
+		longer description than usual. So it 
+		needs more than one line.
+		
+		homepage: http://www.foobar.org
+		
+		author: John Doe &lt;john@doe.com&gt;
+		</programlisting>
+		</para>
+		
+			<sect3>
+			<title>Single Set Configuration</title>
+			<para>
+			In a single set configuration this class supports the following options:
+			<itemizedlist>
+			<listitem><varname>filename</varname>: Required. Specifies the path to the file
+				that should be used for the package set.</listitem>
+			</itemizedlist>
+			</para>
+			</sect3>
+
+			<sect3>
+			<title>Multi Set Configuration</title>
+			<para>
+			In a multi set configuration this class supports the following options:
+			<itemizedlist>
+			<listitem><varname>directory</varname>: Optional, defaults to 
+				<filename>/etc/portage/sets</filename>. Specifies the path to a directory
+				containing package set files. For each file (excluding metadata files) in 
+				that location a separate package set is created.
+			</listitem>
+			<listitem><varname>name_pattern</varname>: Optional, defaults to 
+				<parameter>sets/$name</parameter>. This describes the naming pattern
+				to be used for creating the sets. It must contain either 
+				<parameter>$name</parameter> or <parameter>${name}</parameter>, which 
+				will be replaced by the filename (without any directory components).
+			</listitem>
+			</itemizedlist>
+			</para>
+			</sect3>
+		</sect2>
+		
+		<sect2 id='config-set-classes-ConfigFileSet'>
+		<title>portage.sets.files.ConfigFileSet</title>
+		<para>
+		Similar to <classname>StaticFileSet</classname>, but uses Portage configuration files.
+		Namely it can work with <filename>package.use</filename>, 
+		<filename>package.keywords</filename>, <filename>package.mask</filename>
+		and <filename>package.unmask</filename>. It does not support 
+		<filename>.metadata</filename> files, but ignores the extra data (like 
+		USE flags or keywords) typically found in those files.
+		</para>
+		
+			<sect3>
+			<title>Single Set Configuration</title>
+			<para>
+			In a single set configuration this class supports the following options:
+			<itemizedlist>
+			<listitem><varname>filename</varname>: See 
+				<xref linkend='config-set-classes-StaticFileSet'>StaticFileSet</xref>
+			</listitem>
+			</itemizedlist>
+			</para>
+			</sect3>
+			
+			<sect3>
+			<title>Multi Set Configuration</title>
+			<para>
+			In a multi set configuration this class supprts the following options:
+			<itemizedlist>
+			<listitem><varname>directory</varname>: Optional, defaults to 
+				<filename>/etc/portage</filename>. Specifies the path to a directory
+				containing one or more of the following portage configuration files:
+				<filename>package.use</filename>, <filename>package.keywords</filename>,
+				<filename>package.mask</filename> or <filename>package.unmask</filename>.
+				No other files in that directory will be used.
+			</listitem>
+			<listitem><varname>name_pattern</varname>: Optional, defaults to 
+				<parameter>sets/package_$suffix</parameter>. This describes the naming 
+				pattern to be used for creating the sets. It must contain either
+				<parameter>$suffix</parameter> or <parameter>${suffix}</parameter>, 
+				which will be replaced by the file suffix (e.g. 
+				<parameter>use</parameter> or <parameter>mask</parameter>).
+			</listitem>
+			</itemizedlist>
+			</para>
+			</sect3>
+		</sect2>
+		
+		<sect2 id='config-set-classes-WorldSet'>
+		<title>portage.sets.files.WorldSet</title>
+		<para>
+		</para>
+		</sect2>
+		
+		<sect2 id='config-set-classes-PackagesSystemSet'>
+		<title>portage.sets.profiles.PackagesSystemSet</title>
+		<para>
+		</para>
+		</sect2>
+		
+		<sect2 id='config-set-classes-SecuritySet'>
+		<title>portage.sets.security.SecuritySet</title>
+		<para>
+		</para>
+		</sect2>
+		
+		<sect2 id='config-set-classes-NewGlsaSet'>
+		<title>portage.sets.security.NewGlsaSet</title>
+		<para>
+		</para>
+		</sect2>
+		
+		<sect2 id='config-set-classes-NewAffectedSet'>
+		<title>portage.sets.security.NewAffectedSet</title>
+		<para>
+		</para>
+		</sect2>
+		
+		<sect2 id='config-set-classes-AffectedSet'>
+		<title>portage.sets.security.AffectedSet</title>
+		<para>
+		</para>
+		</sect2>
+		
+		<sect2 id='config-set-classes-CommandOutputSet'>
+		<title>portage.sets.shell.CommandOutputSet</title>
+		<para>
+		</para>
+		</sect2>
+		
+		<sect2 id='config-set-classes-CategorySet'>
+		<title>portage.sets.dbapi.CategorySet</title>
+		<para>
+		</para>
+		</sect2>
+		
+		<sect2 id='config-set-classes-EverythingSet'>
+		<title>portage.sets.dbapi.EverythingSet</title>
+		<para>
+		</para>
 		</sect2>
 	</sect1>
 </chapter>
