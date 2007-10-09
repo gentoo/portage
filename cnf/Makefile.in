@@ -1,5 +1,5 @@
 sysconfdir = @sysconfdir@
-datarootdir = @datarootdir@
+datadir = @datadir@
 DEFAULT_PATH = @DEFAULT_PATH@
 ARCH = @ARCH@
 
@@ -20,24 +20,18 @@ list_sourcedir = \
 		   -o -name 'make.*' -type f -print \
 		   -o -name 'dispatch-conf.conf' -type f -print \
 		   -o -name 'etc-update.conf' -type f -print \
-		   -o -name 'sets.conf' -type f -print \
 	 )
 
 all:
 
 install:
-	$(INSTALL) -d -m 755 -o $(portageuser) -g $(portagegroup) $(DESTDIR)$(sysconfdir) \
-	; echo "$(INSTALL_cnfsubst) $(srcdir)/make.globals $(DESTDIR)$(sysconfdir)/make.globals" \
-	; $(INSTALL_cnfsubst) $(srcdir)/make.globals $(DESTDIR)$(sysconfdir)/make.globals \
-	; echo "$(INSTALL_cnfsubst) $(srcdir)/make.conf $(DESTDIR)$(sysconfdir)/make.conf.example" \
-	; $(INSTALL_cnfsubst) $(srcdir)/make.conf $(DESTDIR)$(sysconfdir)/make.conf.example \
-	; echo "$(INSTALL_cnfsubst) $(srcdir)/dispatch-conf.conf $(DESTDIR)$(sysconfdir)/dispatch-conf.conf" \
-	; $(INSTALL_cnfsubst) $(srcdir)/dispatch-conf.conf $(DESTDIR)$(sysconfdir)/dispatch-conf.conf \
-	; echo "$(INSTALL_cnfsubst) $(srcdir)/etc-update.conf $(DESTDIR)$(sysconfdir)/etc-update.conf" \
-	; $(INSTALL_cnfsubst) $(srcdir)/etc-update.conf $(DESTDIR)$(sysconfdir)/etc-update.conf \
-	$(INSTALL) -d -m 755 -o $(portageuser) -g $(portagegroup) $(DESTDIR)$(datarootdir)/portage \
-	; echo "$(INSTALL_cnfsubst) $(srcdir)/sets.conf $(DESTDIR)$(datarootdir)/portage/sets.conf" \
-	; $(INSTALL_cnfsubst) $(srcdir)/sets.conf $(DESTDIR)$(datarootdir)/portage/sets.conf
+	$(INSTALL) -d -m 755 -o $(portageuser) -g $(portagegroup) $(DESTDIR)$(sysconfdir)
+	$(INSTALL_cnfsubst) $(srcdir)/make.globals $(DESTDIR)$(sysconfdir)/make.globals
+	$(INSTALL_cnfsubst) $(srcdir)/make.conf $(DESTDIR)$(sysconfdir)/make.conf.example
+	$(INSTALL_cnfsubst) $(srcdir)/dispatch-conf.conf $(DESTDIR)$(sysconfdir)/dispatch-conf.conf
+	$(INSTALL_cnfsubst) $(srcdir)/etc-update.conf $(DESTDIR)$(sysconfdir)/etc-update.conf
+	$(INSTALL) -d -m 755 -o $(portageuser) -g $(portagegroup) $(DESTDIR)$(datadir)/portage
+	$(INSTALL_cnfsubst) $(srcdir)/sets.conf $(DESTDIR)$(datadir)/portage/sets.conf
 	
 uninstall:
 	@ echo rm -f $(DESTDIR)$(sysconfdir)/make.conf.example \
