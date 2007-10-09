@@ -1,4 +1,5 @@
 sysconfdir = @sysconfdir@
+datarootdir = @datarootdir@
 DEFAULT_PATH = @DEFAULT_PATH@
 ARCH = @ARCH@
 
