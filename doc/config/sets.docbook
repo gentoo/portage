@@ -266,6 +266,11 @@
 		<sect2 id='config-set-classes-SecuritySet' xreflabel='SecuritySet'>
 		<title>portage.sets.security.SecuritySet</title>
 		<para>
+		The set created by this class contains all atoms that need to be installed 
+		to apply all GLSAs in the ebuild repository, no matter if they are already 
+		applied or no (it's equivalent to the <parameter>all</parameter> target of
+		glsa-check). Generally it should be avoided in configurations in favor of
+		<classname>NewAffectedSet</classname> described below.
 		</para>
 
 			<sect3>
@@ -282,6 +287,7 @@
 				algorithm and use the lowest version that matches the GLSA and is 
 				higher than the currently installed version (least change policy).
 			</listitem>
+			</itemizedlist>
 			</para>
 			</sect3>
 		</sect2>
@@ -289,6 +295,8 @@
 		<sect2 id='config-set-classes-NewGlsaSet'>
 		<title>portage.sets.security.NewGlsaSet</title>
 		<para>
+		Like <xref linkend='config-set-classes-SecuritySet'>SecuritySet</xref>,
+		but ignores all GLSAs that were already applied or injected previously.
 		</para>
 
 			<sect3>
@@ -307,6 +315,10 @@
 		<sect2 id='config-set-classes-NewAffectedSet'>
 		<title>portage.sets.security.NewAffectedSet</title>
 		<para>
+		Like <xref linkend='config-set-classes-SecuritySet'>SecuritySet</xref>,
+		but ignores all GLSAs that were already applied or inejcted previously,
+		and all GLSAs that don't affect the current system. Practically there
+		should be no difference to <classname>NewGlsaSet</classname> though.
 		</para>
 
 			<sect3>
@@ -325,6 +337,9 @@
 		<sect2 id='config-set-classes-AffectedSet'>
 		<title>portage.sets.security.AffectedSet</title>
 		<para>
+		Like <xref linkend='config-set-classes-SecuritySet'>SecuritySet</xref>,
+		but ignores all GLSAs that don't affect the current system. Practically
+		there should be no difference to <classname>SecuritySet</classname> though.
 		</para>
 
 			<sect3>
@@ -343,6 +358,9 @@
 		<sect2 id='config-set-classes-CommandOutputSet'>
 		<title>portage.sets.shell.CommandOutputSet</title>
 		<para>
+		As the name says, this class creates a package set based on the output of
+		a given command. The command is run once when the set is accessed 
+		for the first time during the current session.
 		</para>
 
 			<sect3>
@@ -351,7 +369,9 @@
 			In single set configurations this class supports the following options:
 			<itemizedlist>
 			<listitem><varname>command</varname>: Required. Specifies the command
-				that should be executed to generate the package set.
+				that should be executed to generate the package set. It should 
+				output a newline separated list of simple and/or versioned atoms
+				on stdout.
 			</listitem>
 			</itemizedlist>
 			</para>
