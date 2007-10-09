@@ -31,7 +31,7 @@ except ImportError:
 	import portage
 del os.environ["PORTAGE_LEGACY_GLOBALS"]
 from portage import digraph, portdbapi
-from portage.const import NEWS_LIB_PATH, CACHE_PATH, PRIVATE_PATH, USER_CONFIG_PATH
+from portage.const import NEWS_LIB_PATH, CACHE_PATH, PRIVATE_PATH, USER_CONFIG_PATH, GLOBAL_CONFIG_PATH
 
 import emerge.help
 import portage.xpak, commands, errno, re, socket, time, types
@@ -6639,7 +6639,7 @@ def emerge_main():
 			print colorize("BAD", "\n*** emerging by path is broken and may not always work!!!\n")
 			break
 
-	setconfigpaths = ["/usr/share/portage/config/sets.conf"]
+	setconfigpaths = [os.path.join(GLOBAL_CONFIG_PATH, "sets.conf")]
 	setconfigpaths.append(os.path.join(settings["PORTDIR"], "sets.conf"))
 	setconfigpaths += [os.path.join(x, "sets.conf") for x in settings["PORDIR_OVERLAY"].split()]
 	setconfigpaths.append(os.path.join(os.sep, settings["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH, "sets.conf"))

@@ -18,6 +18,7 @@ DEPCACHE_PATH           = CACHE_PATH+"/dep"
 USER_CONFIG_PATH        = "/etc/portage"
 MODULES_FILE_PATH       = USER_CONFIG_PATH+"/modules"
 CUSTOM_PROFILE_PATH     = USER_CONFIG_PATH+"/profile"
+GLOBAL_CONFIG_PATH      = "/usr/share/portage/config"
 
 #PORTAGE_BASE_PATH       = "/usr/lib/portage"
 PORTAGE_BASE_PATH       = os.path.join(os.sep, os.sep.join(__file__.split(os.sep)[:-3]))
