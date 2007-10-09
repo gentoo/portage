@@ -2156,80 +2156,84 @@ class depgraph(object):
 						xfrom = '(dependency required by '+ \
 							green('"%s"' % myparent[2]) + \
 							red(' [%s]' % myparent[0]) + ')'
-					alleb = portdb.xmatch("match-all", x)
-					if alleb:
-						if "--usepkgonly" not in self.myopts:
-							print "\n!!! "+red("All ebuilds that could satisfy ")+green(xinfo)+red(" have been masked.")
-							print "!!! One of the following masked packages is required to complete your request:"
-							oldcomment = ""
-							shown_licenses = []
-							portdb_keys = ["LICENSE","SLOT"]
-							for p in alleb:
-								mreasons = portage.getmaskingstatus(p,
-									settings=pkgsettings, portdb=portdb)
-								print "- "+p+" (masked by: "+", ".join(mreasons)+")"
-								if "package.mask" in mreasons:
-									comment, filename = \
-										portage.getmaskingreason(p,
-										settings=pkgsettings, portdb=portdb,
-										return_location=True)
-									if comment and comment != oldcomment:
-										print filename+":"
-										print comment
-										oldcomment = comment
-								try:
-									metadata = dict(izip(portdb_keys,
-										portdb.aux_get(p, portdb_keys)))
-								except KeyError:
-									# Corruption will have been reported above.
-									continue
-								metadata["USE"] = ""
+					masked_packages = []
+					missing_licenses = []
+					dbs = self._filtered_trees[myroot]["dbs"]
+					for db, pkg_type, built, installed, db_keys in dbs:
+						match = db.match
+						if hasattr(db, "xmatch"):
+							def match(atom):
+								return db.xmatch("match-all", atom)
+						cpv_list = match(x)
+						cpv_sort_descending(cpv_list)
+						for cpv in cpv_list:
+							try:
+								metadata = dict(izip(db_keys,
+									db.aux_get(cpv, db_keys)))
+							except KeyError:
+								mreasons = ["corruption"]
+								metadata = None
+							if metadata and not built:
 								if "?" in metadata["LICENSE"]:
 									pkgsettings.setcpv(p, mydb=portdb)
 									metadata["USE"] = pkgsettings.get("USE", "")
-								missing_licenses = []
+								else:
+									metadata["USE"] = ""
+							mreasons = portage.getmaskingstatus(
+								cpv, metadata=metadata,
+								settings=pkgsettings, portdb=portdb)
+							comment, filename = None, None
+							if "package.mask" in mreasons:
+								comment, filename = \
+									portage.getmaskingreason(
+									cpv, metadata=metadata,
+									settings=pkgsettings, portdb=portdb,
+									return_location=True)
+							if built and \
+								metadata["CHOST"] != pkgsettings["CHOST"]:
+								mreasons.append("CHOST: %s" % \
+									metadata["CHOST"])
+							missing_licenses = []
+							if metadata:
 								try:
 									missing_licenses = \
 										pkgsettings.getMissingLicenses(
-											p, metadata)
+											cpv, metadata)
 								except portage.exception.InvalidDependString:
 									# This will have already been reported
 									# above via mreasons.
 									pass
-								for l in missing_licenses:
-									l_path = portdb.findLicensePath(l)
-									if l in shown_licenses:
-										continue
-									msg = ("A copy of the '%s' license" + \
-									" is located at '%s'.") % (l, l_path)
-									print msg
-									print
-									shown_licenses.append(l)
-							print
-							print "For more information, see MASKED PACKAGES section in the emerge man page or "
-							print "refer to the Gentoo Handbook."
-						else:
-							print
-							alleb = bindb.match(x)
-							if alleb:
-								chost = pkgsettings["CHOST"]
-								bindb_keys = ["CHOST","EAPI"]
-								for p in alleb:
-									mreasons = []
-									metadata = dict(izip(bindb_keys,
-										bindb.aux_get(pkg, bindb_keys)))
-									if chost != metadata["CHOST"]:
-										mreasons.append("CHOST: %s" % \
-											metadata["CHOST"])
-									if not portage.eapi_is_supported(
-										metadata["EAPI"]):
-										mreasons.append(("required EAPI %s" + \
-											", supported EAPI %s") % \
-											(metadata["EAPI"],
-											portage.const.EAPI))
-									print "- "+p+" (masked by: "+", ".join(mreasons)+")"
-							print "!!! "+red("There are no packages available to satisfy: ")+green(xinfo)
-							print "!!! Either add a suitable binary package or compile from an ebuild."
+							masked_packages.append((cpv, mreasons,
+								comment, filename, missing_licenses))
+					if masked_packages:
+						print "\n!!! "+red("All ebuilds that could satisfy ")+green(xinfo)+red(" have been masked.")
+						print "!!! One of the following masked packages is required to complete your request:"
+						shown_licenses = set()
+						shown_comments = set()
+						# Maybe there is both an ebuild and a binary. Only
+						# show one of them to avoid redundant appearance.
+						shown_cpvs = set()
+						for cpv, mreasons, comment, filename, missing_licenses in masked_packages:
+							if cpv in shown_cpvs:
+								continue
+							shown_cpvs.add(cpv)
+							print "- "+cpv+" (masked by: "+", ".join(mreasons)+")"
+							if comment and comment not in shown_comments:
+								print filename+":"
+								print comment
+								shown_comments.add(comment)
+							for l in missing_licenses:
+								l_path = portdb.findLicensePath(l)
+								if l in shown_licenses:
+									continue
+								msg = ("A copy of the '%s' license" + \
+								" is located at '%s'.") % (l, l_path)
+								print msg
+								print
+								shown_licenses.add(l)
+						print
+						print "For more information, see MASKED PACKAGES section in the emerge man page or "
+						print "refer to the Gentoo Handbook."
 					else:
 						print "\nemerge: there are no ebuilds to satisfy "+green(xinfo)+"."
 					if myparent:

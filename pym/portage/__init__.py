@@ -5062,7 +5062,7 @@ def cpv_expand(mycpv, mydb=None, use_cache=1, settings=None):
 	else:
 		return mykey
 
-def getmaskingreason(mycpv, settings=None, portdb=None, return_location=False):
+def getmaskingreason(mycpv, metadata=None, settings=None, portdb=None, return_location=False):
 	from portage.util import grablines
 	if settings is None:
 		settings = globals()["settings"]
@@ -5071,8 +5071,18 @@ def getmaskingreason(mycpv, settings=None, portdb=None, return_location=False):
 	mysplit = catpkgsplit(mycpv)
 	if not mysplit:
 		raise ValueError("invalid CPV: %s" % mycpv)
-	if not portdb.cpv_exists(mycpv):
-		raise KeyError("CPV %s does not exist" % mycpv)
+	if metadata is None:
+		db_keys = list(portdb._aux_cache_keys)
+		try:
+			metadata = dict(izip(db_keys, portdb.aux_get(mycpv, db_keys)))
+		except KeyError:
+			if not portdb.cpv_exists(mycpv):
+				raise
+	if metadata is None:
+		# Can't access SLOT due to corruption.
+		cpv_slot_list = [mycpv]
+	else:
+		cpv_slot_list = ["%s:%s" % (mycpv, metadata["SLOT"])]
 	mycp=mysplit[0]+"/"+mysplit[1]
 
 	# XXX- This is a temporary duplicate of code from the config constructor.
@@ -5089,7 +5099,7 @@ def getmaskingreason(mycpv, settings=None, portdb=None, return_location=False):
 
 	if settings.pmaskdict.has_key(mycp):
 		for x in settings.pmaskdict[mycp]:
-			if mycpv in portdb.xmatch("match-all", x):
+			if match_from_list(x, cpv_slot_list):
 				comment = ""
 				l = "\n"
 				comment_valid = -1
@@ -5119,7 +5129,7 @@ def getmaskingreason(mycpv, settings=None, portdb=None, return_location=False):
 	else:
 		return None
 
-def getmaskingstatus(mycpv, settings=None, portdb=None):
+def getmaskingstatus(mycpv, metadata=None, settings=None, portdb=None):
 	if settings is None:
 		settings = config(clone=globals()["settings"])
 	if portdb is None:
@@ -5127,47 +5137,37 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 	mysplit = catpkgsplit(mycpv)
 	if not mysplit:
 		raise ValueError("invalid CPV: %s" % mycpv)
-	if not portdb.cpv_exists(mycpv):
-		raise KeyError("CPV %s does not exist" % mycpv)
+	if metadata is None:
+		db_keys = list(portdb._aux_cache_keys)
+		try:
+			metadata = dict(izip(db_keys, portdb.aux_get(mycpv, db_keys)))
+		except KeyError:
+			if not portdb.cpv_exists(mycpv):
+				raise
+			return ["corruption"]
+		if "?" in metadata["LICENSE"]:
+			settings.setcpv(p, mydb=metadata)
+			metadata["USE"] = settings.get("USE", "")
+		else:
+			metadata["USE"] = ""
+	cpv_slot_list = ["%s:%s" % (mycpv, metadata["SLOT"])]
 	mycp=mysplit[0]+"/"+mysplit[1]
 
 	rValue = []
 
 	# profile checking
-	revmaskdict=settings.prevmaskdict
-	if revmaskdict.has_key(mycp):
-		for x in revmaskdict[mycp]:
-			if x[0]=="*":
-				myatom = x[1:]
-			else:
-				myatom = x
-			if not match_to_list(mycpv, [myatom]):
-				rValue.append("profile")
-				break
+	if settings.getProfileMaskAtom(mycpv, metadata):
+		rValue.append("profile")
 
 	# package.mask checking
-	maskdict=settings.pmaskdict
-	unmaskdict=settings.punmaskdict
-	if maskdict.has_key(mycp):
-		for x in maskdict[mycp]:
-			if mycpv in portdb.xmatch("match-all", x):
-				unmask=0
-				if unmaskdict.has_key(mycp):
-					for z in unmaskdict[mycp]:
-						if mycpv in portdb.xmatch("match-all",z):
-							unmask=1
-							break
-				if unmask==0:
-					rValue.append("package.mask")
+	if settings.getMaskAtom(mycpv, metadata):
+		rValue.append("package.mask")
 
 	# keywords checking
-	try:
-		eapi, mygroups, licenses, slot = portdb.aux_get(
-			mycpv, ["EAPI", "KEYWORDS", "LICENSE", "SLOT"])
-	except KeyError:
-		# The "depend" phase apparently failed for some reason.  An associated
-		# error message will have already been printed to stderr.
-		return ["corruption"]
+	eapi = metadata["EAPI"]
+	mygroups = metadata["KEYWORDS"]
+	licenses = metadata["LICENSE"]
+	slot = metadata["SLOT"]
 	if eapi.startswith("-"):
 		eapi = eapi[1:]
 	if not eapi_is_supported(eapi):
@@ -5183,7 +5183,10 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 
 	cp = dep_getkey(mycpv)
 	if pkgdict.has_key(cp):
-		matches = match_to_list(mycpv, pkgdict[cp].keys())
+		matches = []
+		for match in pkgdict[cp]:
+			if match_from_list(match, cpv_slot_list):
+				matches.append(match)
 		for match in matches:
 			pgroups.extend(pkgdict[cp][match])
 		if matches:
@@ -5223,13 +5226,8 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 	if kmask:
 		rValue.append(kmask+" keyword")
 
-	use = ""
-	if "?" in licenses:
-		settings.setcpv(mycpv, mydb=portdb)
-		use = settings.get("USE", "")
 	try:
-		missing_licenses = settings.getMissingLicenses(
-			mycpv, {"LICENSE":licenses, "SLOT":slot, "USE":use})
+		missing_licenses = settings.getMissingLicenses(mycpv, metadata)
 		if missing_licenses:
 			allowed_tokens = set(["||", "(", ")"])
 			allowed_tokens.update(missing_licenses)
