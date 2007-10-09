@@ -2005,6 +2005,9 @@ class depgraph(object):
 					except KeyError:
 						# masked by corruption
 						continue
+					if "?" in metadata["LICENSE"]:
+						pkgsettings.setcpv(cpv, mydb=metadata)
+						metadata["USE"] = pkgsettings["USE"]
 					try:
 						if not visible(pkgsettings, cpv, metadata,
 							built=False, installed=False):
