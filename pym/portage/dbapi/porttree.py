@@ -501,7 +501,8 @@ class portdbapi(dbapi):
 	def cp_list(self, mycp, use_cache=1, mytree=None):
 		if self.frozen and mytree is None:
 			mylist = self.xcache["match-all"].get(mycp)
-			if mylist is not None:
+			# cp_list() doesn't expand old-style virtuals
+			if mylist and mylist[0].startswith(mycp):
 				return mylist[:]
 		mysplit = mycp.split("/")
 		invalid_category = mysplit[0] not in self._categories
@@ -527,7 +528,8 @@ class portdbapi(dbapi):
 		else:
 			mylist = d.keys()
 		if self.frozen and mytree is None:
-			self.xcache["match-all"][mycp] = mylist[:]
+			if not (not mylist and mycp.startswith("virtual/")):
+				self.xcache["match-all"][mycp] = mylist[:]
 		return mylist
 
 	def freeze(self):
