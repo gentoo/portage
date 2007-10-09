@@ -2070,6 +2070,7 @@ class depgraph(object):
 								continue
 						except portage.exception.InvalidDependString:
 							# masked by corruption
+							continue
 						myeb_pkg_matches.append(pkg)
 						break
 					if myeb_pkg_matches:
