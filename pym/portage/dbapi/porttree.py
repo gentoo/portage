@@ -220,6 +220,8 @@ class portdbapi(dbapi):
 		'input: "sys-apps/foo-1.0",["SLOT","DEPEND","HOMEPAGE"]'
 		'return: ["0",">=sys-libs/bar-1.0","http://www.foo.com"] or raise KeyError if error'
 		cache_me = False
+		if not mytree:
+			cache_me = True
 		if not mytree and not set(mylist).difference(self._aux_cache_keys):
 			aux_cache = self._aux_cache.get(mycpv)
 			if aux_cache is not None:
