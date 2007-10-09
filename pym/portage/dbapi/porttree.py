@@ -499,6 +499,10 @@ class portdbapi(dbapi):
 		return d.keys()
 
 	def cp_list(self, mycp, use_cache=1, mytree=None):
+		if self.frozen and mytree is None:
+			mylist = self.xcache["match-all"].get(mycp)
+			if mylist is not None:
+				return mylist[:]
 		mysplit = mycp.split("/")
 		invalid_category = mysplit[0] not in self._categories
 		d={}
@@ -519,8 +523,12 @@ class portdbapi(dbapi):
 		if invalid_category and d:
 			writemsg(("\n!!! '%s' has a category that is not listed in " + \
 				"/etc/portage/categories\n") % mycp, noiselevel=-1)
-			return []
-		return d.keys()
+			mylist = []
+		else:
+			mylist = d.keys()
+		if self.frozen and mytree is None:
+			self.xcache["match-all"][mycp] = mylist[:]
+		return mylist
 
 	def freeze(self):
 		for x in ["list-visible", "bestmatch-visible", "match-visible", "match-all"]:
@@ -573,8 +581,10 @@ class portdbapi(dbapi):
 				self.xmatch("list-visible", mykey, mydep=mykey, mykey=mykey))
 		elif level == "match-all":
 			#match *all* visible *and* masked packages
-			
-			myval = match_from_list(mydep, self.cp_list(mykey))
+			if mydep == mykey:
+				myval = self.cp_list(mykey)
+			else:
+				myval = match_from_list(mydep, self.cp_list(mykey))
 		else:
 			print "ERROR: xmatch doesn't handle", level, "query!"
 			raise KeyError
