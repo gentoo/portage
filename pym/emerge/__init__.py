@@ -1823,12 +1823,12 @@ class depgraph(object):
 					if slot is not None:
 						if slot != metadata["SLOT"]:
 							continue
-					if not built and \
-						(is_virt or "?" in metadata["LICENSE"]):
-						pkgsettings.setcpv(cpv, mydb=metadata)
-						metadata["USE"] = pkgsettings["USE"]
-					else:
-						metadata["USE"] = ""
+					if not built:
+						if (is_virt or "?" in metadata["LICENSE"]):
+							pkgsettings.setcpv(cpv, mydb=metadata)
+							metadata["USE"] = pkgsettings["USE"]
+						else:
+							metadata["USE"] = ""
 
 					try:
 						if not visible(pkgsettings, cpv, metadata,
