@@ -19,6 +19,7 @@ list_sourcedir = \
 		   -o -name 'make.*' -type f -print \
 		   -o -name 'dispatch-conf.conf' -type f -print \
 		   -o -name 'etc-update.conf' -type f -print \
+		   -o -name 'sets.conf' -type f -print \
 	 )
 
 all:
@@ -32,7 +33,9 @@ install:
 	; echo "$(INSTALL_cnfsubst) $(srcdir)/dispatch-conf.conf $(DESTDIR)$(sysconfdir)/dispatch-conf.conf" \
 	; $(INSTALL_cnfsubst) $(srcdir)/dispatch-conf.conf $(DESTDIR)$(sysconfdir)/dispatch-conf.conf \
 	; echo "$(INSTALL_cnfsubst) $(srcdir)/etc-update.conf $(DESTDIR)$(sysconfdir)/etc-update.conf" \
-	; $(INSTALL_cnfsubst) $(srcdir)/etc-update.conf $(DESTDIR)$(sysconfdir)/etc-update.conf
+	; $(INSTALL_cnfsubst) $(srcdir)/etc-update.conf $(DESTDIR)$(sysconfdir)/etc-update.conf \
+	; echo "$(INSTALL_cnfsubst) $(srcdir)/sets.conf $(DESTDIR)$(datarootdir)/portage/sets.conf" \
+	; $(INSTALL_cnfsubst) $(srcdir)/sets.conf $(DESTDIR)$(datarootdir)/portage/sets.conf
 	
 uninstall:
 	@ echo rm -f $(DESTDIR)$(sysconfdir)/make.conf.example \
