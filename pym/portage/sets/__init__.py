@@ -179,6 +179,7 @@ class SetConfig(SafeConfigParser):
 		self.trees = trees
 		self.settings = settings
 		self._parsed = False
+
 	def _parse(self):
 		if self._parsed:
 			return
