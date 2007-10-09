@@ -446,4 +446,26 @@
 			</sect3>
 		</sect2>
 	</sect1>
+	
+	<sect1 id='config-set-defaults'>
+	<title>Default Sets</title>
+	<para>
+	By default, Portage already creates a few default sets that can be used 
+	without further configuration. See <xref linkend='config-set-locations'/>
+	and <xref linkend='config-set-syntax'/> for details on how to change those
+	defaults.
+	</para>
+	<para>
+	The default sets are:
+	<itemizedlist>
+	<listitem><varname>system</varname>: uses <classname>PackagesSystemSet</classname></listitem>
+	<listitem><varname>world</varname>: uses <classname>WorldSet</classname></listitem>
+	<listitem><varname>security</varname>: uses <classname>NewAffectedSet</classname> with default options</listitem>
+	<listitem><varname>everything</varname>: uses <classname>EverythingSet</classname></listitem>
+	</itemizedlist>
+	Additionally the default configuration includes a multi set section based on
+	the <classname>StaticFileSet</classname> defaults that creates a set for each 
+	file in <filename>/etc/portage/sets</filename> for convenience.
+	</para>
+	</sect1>
 </chapter>
