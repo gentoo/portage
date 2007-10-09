@@ -31,7 +31,7 @@ except ImportError:
 	import portage
 del os.environ["PORTAGE_LEGACY_GLOBALS"]
 from portage import digraph, portdbapi
-from portage.const import NEWS_LIB_PATH, CACHE_PATH, PRIVATE_PATH, USER_CONFIG_PATH
+from portage.const import NEWS_LIB_PATH, CACHE_PATH, PRIVATE_PATH, USER_CONFIG_PATH, GLOBAL_CONFIG_PATH
 
 import emerge.help
 import portage.xpak, commands, errno, re, socket, time, types
@@ -780,9 +780,13 @@ class FakeVartree(portage.vartree):
 	user doesn't necessarily need write access to the vardb in cases where
 	global updates are necessary (updates are performed when necessary if there
 	is not a matching ebuild in the tree)."""
-	def __init__(self, real_vartree, portdb):
+	def __init__(self, real_vartree, portdb, db_keys):
 		self.root = real_vartree.root
 		self.settings = real_vartree.settings
+		mykeys = db_keys[:]
+		for required_key in ("COUNTER", "SLOT"):
+			if required_key not in mykeys:
+				mykeys.append(required_key)
 		self.dbapi = portage.fakedbapi(settings=real_vartree.settings)
 		vdb_path = os.path.join(self.root, portage.VDB_PATH)
 		try:
@@ -794,8 +798,6 @@ class FakeVartree(portage.vartree):
 		try:
 			if os.access(vdb_path, os.W_OK):
 				vdb_lock = portage.locks.lockdir(vdb_path)
-			mykeys = ["SLOT", "COUNTER", "PROVIDE", "USE", "IUSE",
-				"RESTRICT", "DEPEND", "RDEPEND", "PDEPEND", "repository"]
 			real_dbapi = real_vartree.dbapi
 			slot_counters = {}
 			for cpv in real_dbapi.cpv_all():
@@ -870,6 +872,61 @@ def perform_global_updates(mycpv, mydb, mycommands):
 	updates = update_dbentries(mycommands, aux_dict)
 	if updates:
 		mydb.aux_update(mycpv, updates)
+
+def cpv_sort_descending(cpv_list):
+	"""Sort in place, returns None."""
+	if len(cpv_list) <= 1:
+		return
+	first_split = portage.catpkgsplit(cpv_list[0])
+	cat = first_split[0]
+	cpv_list[0] = first_split[1:]
+	for i in xrange(1, len(cpv_list)):
+		cpv_list[i] = portage.catpkgsplit(cpv_list[i])[1:]
+	cpv_list.sort(portage.pkgcmp, reverse=True)
+	for i, (pn, ver, rev) in enumerate(cpv_list):
+		if rev == "r0":
+			cpv = cat + "/" + pn + "-" + ver
+		else:
+			cpv = cat + "/" + pn + "-" + ver + "-" + rev
+		cpv_list[i] = cpv
+
+def visible(pkgsettings, cpv, metadata, built=False, installed=False):
+	"""
+	Check if a package is visible. This can raise an InvalidDependString
+	exception if LICENSE is invalid.
+	TODO: optionally generate a list of masking reasons
+	@rtype: Boolean
+	@returns: True if the package is visible, False otherwise.
+	"""
+	if built and not installed and \
+		metadata["CHOST"] != pkgsettings["CHOST"]:
+		return False
+	if not portage.eapi_is_supported(metadata["EAPI"]):
+		return False
+	if pkgsettings.getMissingKeywords(cpv, metadata):
+		return False
+	if pkgsettings.getMaskAtom(cpv, metadata):
+		return False
+	if pkgsettings.getProfileMaskAtom(cpv, metadata):
+		return False
+	if pkgsettings.getMissingLicenses(cpv, metadata):
+		return False
+	return True
+
+def iter_atoms(deps):
+	"""Take a dependency structure as returned by paren_reduce or use_reduce
+	and iterate over all the atoms."""
+	i = iter(deps)
+	for x in i:
+		if isinstance(x, basestring):
+			if x == '||' or x.endswith('?'):
+				for x in iter_atoms(i.next()):
+					yield x
+			else:
+				yield x
+		else:
+			for x in iter_atoms(x):
+				yield x
 
 class BlockerCache(DictMixin):
 	"""This caches blockers of installed packages so that dep_check does not
@@ -1020,6 +1077,13 @@ class depgraph(object):
 		"binary":"bintree",
 		"installed":"vartree"}
 
+	_mydbapi_keys = [
+		"CHOST", "DEPEND", "EAPI", "IUSE", "KEYWORDS",
+		"LICENSE", "PDEPEND", "PROVIDE", "RDEPEND",
+		"repository", "RESTRICT", "SLOT", "USE"]
+
+	_dep_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
+
 	def __init__(self, settings, trees, myopts, myparams, spinner):
 		self.settings = settings
 		self.target_root = settings["ROOT"]
@@ -1037,17 +1101,19 @@ class depgraph(object):
 		# Maps nodes to the reasons they were selected for reinstallation.
 		self._reinstall_nodes = {}
 		self.mydbapi = {}
-		self._mydbapi_keys = ["SLOT", "DEPEND", "RDEPEND", "PDEPEND",
-			"USE", "IUSE", "PROVIDE", "RESTRICT", "repository"]
 		self.trees = {}
 		self.roots = {}
+		# Contains a filtered view of preferred packages that are selected
+		# from available repositories.
+		self._filtered_trees = {}
 		for myroot in trees:
 			self.trees[myroot] = {}
 			for tree in ("porttree", "bintree"):
 				self.trees[myroot][tree] = trees[myroot][tree]
 			self.trees[myroot]["vartree"] = \
 				FakeVartree(trees[myroot]["vartree"],
-					trees[myroot]["porttree"].dbapi)
+					trees[myroot]["porttree"].dbapi,
+					self._mydbapi_keys)
 			self.pkgsettings[myroot] = portage.config(
 				clone=self.trees[myroot]["vartree"].settings)
 			self.pkg_node_map[myroot] = {}
@@ -1068,6 +1134,14 @@ class depgraph(object):
 						metadata=dict(izip(self._mydbapi_keys,
 						vardb.aux_get(pkg, self._mydbapi_keys))))
 			del vardb, fakedb
+			self._filtered_trees[myroot] = {}
+			self._filtered_trees[myroot]["vartree"] = self.trees[myroot]["vartree"]
+			def filtered_tree():
+				pass
+			filtered_tree.dbapi = portage.fakedbapi(
+				settings=self.pkgsettings[myroot], exclusive_slots=False)
+			self._filtered_trees[myroot]["porttree"] = filtered_tree
+			self._filtered_trees[myroot]["atoms"] = set()
 			if "--usepkg" in self.myopts:
 				self.trees[myroot]["bintree"].populate(
 					"--getbinpkg" in self.myopts,
@@ -1649,6 +1723,158 @@ class depgraph(object):
 		# We're true here unless we are missing binaries.
 		return (not missing,myfavorites)
 
+	def _populate_filtered_repo(self, myroot, depstring,
+			myparent=None, myuse=None, exclude_installed=False):
+		"""Extract all of the atoms from the depstring, select preferred
+		packages from appropriate repositories, and use them to populate
+		the filtered repository."""
+
+		filtered_db = self._filtered_trees[myroot]["porttree"].dbapi
+		pkgsettings = self.pkgsettings[myroot]
+		if myparent:
+			p_type, p_root, p_key, p_status = myparent
+
+		from portage.dep import paren_reduce, use_reduce
+		try:
+			if myparent and p_type == "installed":
+				portage.dep._dep_check_strict = False
+			try:
+				atoms = paren_reduce(depstring)
+				atoms = use_reduce(atoms, uselist=myuse)
+				atoms = list(iter_atoms(atoms))
+				for x in atoms:
+					if portage.dep._dep_check_strict and \
+						not portage.isvalidatom(x, allow_blockers=True):
+						raise portage.exception.InvalidDependString(
+							"Invalid atom: %s" % x)
+			except portage.exception.InvalidDependString, e:
+				if myparent:
+					show_invalid_depstring_notice(
+						myparent, depstring, str(e))
+				else:
+					sys.stderr.write("\n%s\n%s\n" % (depstring, str(e)))
+				return 0
+		finally:
+			portage.dep._dep_check_strict = True
+
+		filtered_atoms = self._filtered_trees[myroot]["atoms"]
+		dbs = self._filtered_trees[myroot].get("dbs")
+		if dbs is None:
+			dbs = []
+			portdb = self.trees[myroot]["porttree"].dbapi
+			bindb  = self.trees[myroot]["bintree"].dbapi
+			vardb  = self.trees[myroot]["vartree"].dbapi
+			#               (db, pkg_type, built, installed, db_keys)
+			if "--usepkgonly" not in self.myopts:
+				db_keys = list(portdb._aux_cache_keys)
+				dbs.append((portdb, "ebuild", False, False, db_keys))
+			if "--usepkg" in self.myopts:
+				db_keys = list(bindb._aux_cache_keys)
+				dbs.append((bindb,  "binary", True, False, db_keys))
+			if "--usepkgonly" in self.myopts:
+				db_keys = self._mydbapi_keys
+				dbs.append((vardb, "installed", True, True, db_keys))
+			self._filtered_trees[myroot]["dbs"] = dbs
+		old_virts = pkgsettings.getvirtuals()
+		while atoms:
+			x = atoms.pop()
+			if x.startswith("!"):
+				continue
+			if x in filtered_atoms:
+				continue
+			filtered_atoms.add(x)
+			cp = portage.dep_getkey(x)
+			cat = portage.catsplit(cp)[0]
+			slot = portage.dep.dep_getslot(x)
+			is_virt = cp.startswith("virtual/")
+			atom_populated = False
+			for db, pkg_type, built, installed, db_keys in dbs:
+				if installed and exclude_installed:
+					continue
+				cpv_list = db.cp_list(cp)
+				if not cpv_list:
+					if is_virt:
+						# old-style virtual
+						# Create a transformed atom for each choice
+						# and add it to the stack for processing.
+						for choice in old_virts.get(cp, []):
+							atoms.append(x.replace(cp, choice))
+						# Maybe a new-style virtual exists in another db, so
+						# we have to try all of them to prevent the old-style
+						# virtuals from overriding available new-styles.
+					continue
+				cpv_sort_descending(cpv_list)
+				for cpv in cpv_list:
+					if filtered_db.cpv_exists(cpv):
+						continue
+					if not portage.match_from_list(x, [cpv]):
+						continue
+					if is_virt:
+						mykeys = db_keys[:]
+						mykeys.extend(self._dep_keys)
+					else:
+						mykeys = db_keys
+					try:
+						metadata = dict(izip(mykeys,
+							db.aux_get(cpv, mykeys)))
+					except KeyError:
+						# masked by corruption
+						continue
+					if slot is not None:
+						if slot != metadata["SLOT"]:
+							continue
+					if not built and \
+						(is_virt or "?" in metadata["LICENSE"]):
+						pkgsettings.setcpv(cpv, mydb=metadata)
+						metadata["USE"] = pkgsettings["USE"]
+					else:
+						metadata["USE"] = ""
+
+					try:
+						if not visible(pkgsettings, cpv, metadata,
+							built=built, installed=installed):
+							continue
+					except portage.exception.InvalidDependString:
+						# masked by corruption
+						continue
+
+					filtered_db.cpv_inject(cpv, metadata=metadata)
+					if not is_virt:
+						# break here since we only want the best version
+						# for now (eventually will be configurable).
+						atom_populated = True
+						break
+					# For new-style virtuals, we explore all available
+					# versions and recurse on their deps. This is a
+					# preparation for the lookahead that happens when
+					# new-style virtuals are expanded by dep_check().
+					virtual_deps = " ".join(metadata[k] \
+						for k in self._dep_keys)
+					try:
+						if installed:
+							portage.dep._dep_check_strict = False
+						try:
+							deps = paren_reduce(virtual_deps)
+							deps = use_reduce(deps,
+								uselist=metadata["USE"].split())
+							for y in iter_atoms(deps):
+								if portage.dep._dep_check_strict and \
+									not portage.isvalidatom(y,
+									allow_blockers=True):
+									raise portage.exception.InvalidDependString(
+										"Invalid atom: %s" % y)
+								atoms.append(y)
+						except portage.exception.InvalidDependString, e:
+							show_invalid_depstring_notice(
+								(pkg_type, myroot, cpv, "nomerge"),
+								virtual_deps, str(e))
+							return 0
+					finally:
+						portage.dep._dep_check_strict = True
+				if atom_populated:
+					break
+		return 1
+
 	def select_dep(self, myroot, depstring, myparent=None, arg=None,
 		myuse=None, raise_on_missing=False, priority=DepPriority(),
 		rev_deps=False, parent_arg=None):
@@ -1662,6 +1888,10 @@ class depgraph(object):
 		    return 1 on success, 0 for failure
 		"""
 
+		if not depstring:
+			return 1 # nothing to do
+
+		filtered_db = self._filtered_trees[myroot]["porttree"].dbapi
 		portdb = self.trees[myroot]["porttree"].dbapi
 		bindb  = self.trees[myroot]["bintree"].dbapi
 		vardb  = self.trees[myroot]["vartree"].dbapi
@@ -1677,6 +1907,10 @@ class depgraph(object):
 				print "Reverse:", rev_deps
 			print "Priority:", priority
 
+		if not self._populate_filtered_repo(
+			myroot, depstring, myparent=myparent, myuse=myuse):
+			return 0
+
 		#processing dependencies
 		""" Call portage.dep_check to evaluate the use? conditionals and make sure all
 		dependencies are satisfiable. """
@@ -1688,12 +1922,11 @@ class depgraph(object):
 				mymerge = []
 		else:
 			try:
-				if myparent and p_status == "nomerge":
+				if myparent and p_type == "installed":
 					portage.dep._dep_check_strict = False
 				mycheck = portage.dep_check(depstring, None,
 					pkgsettings, myuse=myuse,
-					use_binaries=("--usepkgonly" in self.myopts),
-					myroot=myroot, trees=self.trees)
+					myroot=myroot, trees=self._filtered_trees)
 			finally:
 				portage.dep._dep_check_strict = True
 	
@@ -1758,18 +1991,40 @@ class depgraph(object):
 			else:
 				# List of acceptable packages, ordered by type preference.
 				matched_packages = []
-				myeb_matches = portdb.xmatch("match-visible", x)
+				slot = portage.dep.dep_getslot(x)
+				cpv_list = portdb.xmatch("match-all", x)
+				cpv_sort_descending(cpv_list)
 				myeb = None
 				myeb_pkg = None
 				metadata = None
 				existing_node = None
-				if myeb_matches:
-					myeb = portage.best(myeb_matches)
+				db_keys = list(portdb._aux_cache_keys)
+				for cpv in cpv_list:
+					try:
+						metadata = dict(izip(db_keys,
+							portdb.aux_get(cpv, db_keys)))
+					except KeyError:
+						# masked by corruption
+						continue
+					if "?" in metadata["LICENSE"]:
+						pkgsettings.setcpv(cpv, mydb=metadata)
+						metadata["USE"] = pkgsettings["USE"]
+					else:
+						metadata["USE"] = ""
+					try:
+						if not visible(pkgsettings, cpv, metadata,
+							built=False, installed=False):
+							continue
+					except portage.exception.InvalidDependString:
+						# masked by corruption
+						continue
+
+					myeb = cpv
 					# For best performance, try to reuse an exising node
 					# and it's cached metadata. The portdbapi caches SLOT
 					# metadata in memory so it's really only pulled once.
-					slot_atom = "%s:%s" % (portage.dep_getkey(myeb),
-						portdb.aux_get(myeb, ["SLOT"])[0])
+					slot_atom = "%s:%s" % (portage.cpv_getkey(myeb),
+						metadata["SLOT"])
 					existing_node = self._slot_node_map[myroot].get(slot_atom)
 					if existing_node:
 						e_type, myroot, e_cpv, e_status = existing_node
@@ -1781,20 +2036,20 @@ class depgraph(object):
 								([e_type, myroot, e_cpv], metadata))
 						else:
 							existing_node = None
+					break
 
 				if not existing_node and \
 					"--usepkg" in self.myopts:
 					# The next line assumes the binarytree has been populated.
 					# XXX: Need to work out how we use the binary tree with roots.
 					usepkgonly = "--usepkgonly" in self.myopts
-					chost = pkgsettings["CHOST"]
 					eprefix = pkgsettings["EPREFIX"]
 					myeb_pkg_matches = []
-					bindb_keys = ["CHOST","EAPI"]
-					for pkg in bindb.match(x):
-						metadata = dict(izip(bindb_keys,
-							bindb.aux_get(pkg, bindb_keys)))
-						if chost != metadata["CHOST"]:
+					cpv_list = bindb.match(x)
+					cpv_sort_descending(cpv_list)
+					db_keys = list(bindb._aux_cache_keys)
+					for pkg in cpv_list:
+						if not filtered_db.cpv_exists(pkg):
 							continue
 
 						pkg_eprefix = bindb.aux_get(pkg, ["EPREFIX"])[0]
@@ -1806,13 +2061,17 @@ class depgraph(object):
 
 						if not portage.eapi_is_supported(metadata["EAPI"]):
 							continue
-						# Remove any binary package entries that are
-						# masked in the portage tree (#55871).
-						if not usepkgonly and \
-							not (pkg in myeb_matches or \
-							not portdb.cpv_exists(pkg)):
-							continue
+
+						metadata = dict(izip(db_keys,
+							bindb.aux_get(pkg, db_keys)))
+						try:
+							if not visible(pkgsettings, pkg, metadata,
+								built=True, installed=False):
+								continue
+						except portage.exception.InvalidDependString:
+							# masked by corruption
 						myeb_pkg_matches.append(pkg)
+						break
 					if myeb_pkg_matches:
 						myeb_pkg = portage.best(myeb_pkg_matches)
 						# For best performance, try to reuse an exising node
@@ -1881,20 +2140,22 @@ class depgraph(object):
 					"""Fall back to the installed package database.  This is a
 					last resort because the metadata tends to diverge from that
 					of the ebuild in the tree."""
-					myeb_inst_matches = vardb.match(x)
-					if "--usepkgonly" not in self.myopts:
-						""" TODO: Improve masking check for installed and
-						binary packages. bug #149816"""
-						myeb_inst_matches = [pkg for pkg in myeb_inst_matches \
-							if not portdb.cpv_exists(pkg)]
-					myeb_inst = None
-					if myeb_inst_matches:
-						myeb_inst = portage.best(myeb_inst_matches)
-					if myeb_inst:
+					cpv_list = vardb.match(x)
+					cpv_sort_descending(cpv_list)
+					for cpv in cpv_list:
 						metadata = dict(izip(self._mydbapi_keys,
-							vardb.aux_get(myeb_inst, self._mydbapi_keys)))
+							vardb.aux_get(cpv, self._mydbapi_keys)))
+						# TODO: Handle masking for installed packages.
+						#try:
+						#	if not visible(pkgsettings, cpv, metadata,
+						#		built=True, installed=True):
+						#		continue
+						#except: InvalidDependString:
+						#	# masked by corruption
+						#	continue
 						matched_packages.append(
-							(["installed", myroot, myeb_inst], metadata))
+							(["installed", myroot, cpv], metadata))
+						break
 
 				if not matched_packages:
 					if raise_on_missing:
@@ -2565,12 +2826,7 @@ class depgraph(object):
 
 	def xcreate(self,mode="system"):
 		vardb = self.trees[self.target_root]["vartree"].dbapi
-		portdb = self.trees[self.target_root]["porttree"].dbapi
-		bindb = self.trees[self.target_root]["bintree"].dbapi
-		def visible(mylist):
-			matches = portdb.gvisible(portdb.visible(mylist))
-			return [x for x in mylist \
-				if x in matches or not portdb.cpv_exists(x)]
+		filtered_db = self._filtered_trees[self.target_root]["porttree"].dbapi
 		world_problems = False
 
 		root_config = self.roots[self.target_root]
@@ -2586,17 +2842,10 @@ class depgraph(object):
 					continue
 				elif not vardb.match(x):
 					world_problems = True
-					available = False
-					if "--usepkgonly" not in self.myopts and \
-						portdb.match(x):
-						available = True
-					elif "--usepkg" in self.myopts:
-						mymatches = bindb.match(x)
-						if "--usepkgonly" not in self.myopts:
-							mymatches = visible(mymatches)
-						if mymatches:
-							available = True
-					if not available:
+					if not self._populate_filtered_repo(self.target_root, x,
+						exclude_installed=True):
+						return 0
+					if not filtered_db.match(x):
 						continue
 				mylist.append(x)
 
@@ -2615,45 +2864,32 @@ class depgraph(object):
 				for cpv in vardb.match(mykey):
 					myslots.add(vardb.aux_get(cpv, ["SLOT"])[0])
 				if myslots:
-					best_pkgs = []
-					if "--usepkg" in self.myopts:
-						mymatches = bindb.match(atom)
-						if "--usepkgonly" not in self.myopts:
-							mymatches = visible(mymatches)
-						best_pkg = portage.best(mymatches)
-						if best_pkg:
-							best_slot = bindb.aux_get(best_pkg, ["SLOT"])[0]
-							best_pkgs.append(("binary", best_pkg, best_slot))
-					if "--usepkgonly" not in self.myopts:
-						best_pkg = portage.best(portdb.match(atom))
-						if best_pkg:
-							best_slot = portdb.aux_get(best_pkg, ["SLOT"])[0]
-							best_pkgs.append(("ebuild", best_pkg, best_slot))
-					if best_pkgs:
-						best_pkg = portage.best([x[1] for x in best_pkgs])
-						best_pkgs = [x for x in best_pkgs if x[1] == best_pkg]
-						best_slot = best_pkgs[0][2]
+					if not self._populate_filtered_repo(self.target_root, atom,
+						exclude_installed=True):
+						return 0
+					mymatches = filtered_db.match(atom)
+					best_pkg = portage.best(mymatches)
+					if best_pkg:
+						best_slot = filtered_db.aux_get(best_pkg, ["SLOT"])[0]
 						myslots.add(best_slot)
 				if len(myslots) > 1:
 					for myslot in myslots:
 						myslot_atom = "%s:%s" % (mykey, myslot)
-						available = False
-						if "--usepkgonly" not in self.myopts and \
-							self.trees[self.target_root][
-							"porttree"].dbapi.match(myslot_atom):
-							available = True
-						elif "--usepkg" in self.myopts:
-							mymatches = bindb.match(myslot_atom)
-							if "--usepkgonly" not in self.myopts:
-								mymatches = visible(mymatches)
-							if mymatches:
-								available = True
-						if available:
+						if not self._populate_filtered_repo(
+							self.target_root, myslot_atom,
+							exclude_installed=True):
+							return 0
+						if filtered_db.match(myslot_atom):
 							newlist.append(myslot_atom)
 		mylist = newlist
 
 		for myatom in mylist:
 			self._set_atoms.add(myatom)
+
+		# Since populate_filtered_repo() was called with the exclude_installed
+		# flag, these atoms will need to be processed again in case installed
+		# packages are required to satisfy dependencies.
+		self._filtered_trees[self.target_root]["atoms"].clear()
 
 		missing_atoms = []
 		for mydep in mylist:
@@ -5586,7 +5822,9 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	dep_check_trees = {}
 	dep_check_trees[myroot] = {}
 	dep_check_trees[myroot]["vartree"] = \
-		FakeVartree(trees[myroot]["vartree"], trees[myroot]["porttree"].dbapi)
+		FakeVartree(trees[myroot]["vartree"],
+		trees[myroot]["porttree"].dbapi,
+		depgraph._mydbapi_keys)
 	vardb = dep_check_trees[myroot]["vartree"].dbapi
 	# Constrain dependency selection to the installed packages.
 	dep_check_trees[myroot]["porttree"] = dep_check_trees[myroot]["vartree"]
@@ -6466,7 +6704,7 @@ def emerge_main():
 			print colorize("BAD", "\n*** emerging by path is broken and may not always work!!!\n")
 			break
 
-	setconfigpaths = ["/usr/share/portage/config/sets.conf"]
+	setconfigpaths = [os.path.join(GLOBAL_CONFIG_PATH, "sets.conf")]
 	setconfigpaths.append(os.path.join(settings["PORTDIR"], "sets.conf"))
 	setconfigpaths += [os.path.join(x, "sets.conf") for x in settings["PORDIR_OVERLAY"].split()]
 	setconfigpaths.append(os.path.join(os.sep, settings["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH, "sets.conf"))

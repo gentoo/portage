@@ -24,6 +24,7 @@ DEPCACHE_PATH           = CACHE_PATH+"/dep"
 USER_CONFIG_PATH        = EPREFIX+"/etc/portage"
 MODULES_FILE_PATH       = USER_CONFIG_PATH+"/modules"
 CUSTOM_PROFILE_PATH     = USER_CONFIG_PATH+"/profile"
+GLOBAL_CONFIG_PATH      = EPREFIX+"/usr/share/portage/config"
 
 PORTAGE_BASE_PATH       = PORTAGE_BASE
 PORTAGE_BIN_PATH        = PORTAGE_BASE_PATH+"/bin"

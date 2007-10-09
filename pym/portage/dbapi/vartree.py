@@ -187,8 +187,10 @@ class vardbapi(dbapi):
 			from portage import db
 			vartree = db[root]["vartree"]
 		self.vartree = vartree
-		self._aux_cache_keys = set(["SLOT", "COUNTER", "PROVIDE", "USE",
-			"IUSE", "DEPEND", "RDEPEND", "PDEPEND", "NEEDED", "repository"])
+		self._aux_cache_keys = set(
+			["CHOST", "COUNTER", "DEPEND", "EAPI", "IUSE", "KEYWORDS",
+			"LICENSE", "PDEPEND", "PROVIDE", "RDEPEND", "NEEDED",
+			"repository", "RESTRICT" , "SLOT", "USE"])
 		self._aux_cache = None
 		self._aux_cache_version = "1"
 		self._aux_cache_filename = os.path.join(self.root,

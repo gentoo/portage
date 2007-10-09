@@ -18,18 +18,15 @@ import os, errno, stat
 from itertools import izip
 
 class bindbapi(fakedbapi):
-	def __init__(self, mybintree=None, settings=None):
+	def __init__(self, mybintree=None, **kwargs):
+		fakedbapi.__init__(self, **kwargs)
 		self.bintree = mybintree
 		self.move_ent = mybintree.move_ent
 		self.cpvdict={}
 		self.cpdict={}
-		if settings is None:
-			from portage import settings
-		self.settings = settings
-		self._match_cache = {}
 		# Selectively cache metadata in order to optimize dep matching.
 		self._aux_cache_keys = set(
-			["CHOST", "EAPI", "KEYWORDS", "LICENSE", "SLOT", "EPREFIX"])
+			["CHOST", "EAPI", "KEYWORDS", "LICENSE", "SLOT", "USE", "EPREFIX"])
 		self._aux_cache = {}
 
 	def match(self, *pargs, **kwargs):

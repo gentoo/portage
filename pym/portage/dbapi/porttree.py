@@ -220,6 +220,8 @@ class portdbapi(dbapi):
 		'input: "sys-apps/foo-1.0",["SLOT","DEPEND","HOMEPAGE"]'
 		'return: ["0",">=sys-libs/bar-1.0","http://www.foo.com"] or raise KeyError if error'
 		cache_me = False
+		if not mytree:
+			cache_me = True
 		if not mytree and not set(mylist).difference(self._aux_cache_keys):
 			aux_cache = self._aux_cache.get(mycpv)
 			if aux_cache is not None:
@@ -272,14 +274,14 @@ class portdbapi(dbapi):
 					noiselevel=-1)
 
 
-		if os.access(myebuild, os.R_OK):
+		try:
 			emtime = os.stat(myebuild)[stat.ST_MTIME]
-		else:
+		except OSError:
 			writemsg("!!! aux_get(): ebuild for '%(cpv)s' does not exist at:\n" % {"cpv":mycpv},
 				noiselevel=-1)
 			writemsg("!!!            %s\n" % myebuild,
 				noiselevel=-1)
-			raise KeyError
+			raise KeyError(mycpv)
 
 		try:
 			mydata = self.auxdb[mylocation][mycpv]
@@ -499,6 +501,11 @@ class portdbapi(dbapi):
 		return d.keys()
 
 	def cp_list(self, mycp, use_cache=1, mytree=None):
+		if self.frozen and mytree is None:
+			mylist = self.xcache["match-all"].get(mycp)
+			# cp_list() doesn't expand old-style virtuals
+			if mylist and mylist[0].startswith(mycp):
+				return mylist[:]
 		mysplit = mycp.split("/")
 		invalid_category = mysplit[0] not in self._categories
 		d={}
@@ -519,8 +526,13 @@ class portdbapi(dbapi):
 		if invalid_category and d:
 			writemsg(("\n!!! '%s' has a category that is not listed in " + \
 				"/etc/portage/categories\n") % mycp, noiselevel=-1)
-			return []
-		return d.keys()
+			mylist = []
+		else:
+			mylist = d.keys()
+		if self.frozen and mytree is None:
+			if not (not mylist and mycp.startswith("virtual/")):
+				self.xcache["match-all"][mycp] = mylist[:]
+		return mylist
 
 	def freeze(self):
 		for x in ["list-visible", "bestmatch-visible", "match-visible", "match-all"]:
@@ -573,8 +585,10 @@ class portdbapi(dbapi):
 				self.xmatch("list-visible", mykey, mydep=mykey, mykey=mykey))
 		elif level == "match-all":
 			#match *all* visible *and* masked packages
-			
-			myval = match_from_list(mydep, self.cp_list(mykey))
+			if mydep == mykey:
+				myval = self.cp_list(mykey)
+			else:
+				myval = match_from_list(mydep, self.cp_list(mykey))
 		else:
 			print "ERROR: xmatch doesn't handle", level, "query!"
 			raise KeyError
