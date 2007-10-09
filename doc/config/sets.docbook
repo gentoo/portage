@@ -24,6 +24,7 @@
 		alter the default and repository sets.
 		</para>
 	</sect1>
+	
 	<sect1 id='config-set-syntax'>
 		<title>sets.conf Syntax</title>
 		<para>
@@ -70,6 +71,7 @@
 			<!-- TODO: reference list of available set handler classes here -->
 			</para>
 		</sect2>
+	
 		<sect2 id='config-set-syntax-multi'>
 			<title>Multi Set Configuration</title>
 			<para>
@@ -114,6 +116,7 @@
 			<!-- TODO: reference list of available set handler classes here -->
 		</sect2>
 	</sect1>
+
 	<sect1 id='config-set-classes'>
 		<title>Available Set Handler Classes</title>
 		<para>
@@ -205,7 +208,7 @@
 			<sect3>
 			<title>Multi Set Configuration</title>
 			<para>
-			In a multi set configuration this class supprts the following options:
+			In a multi set configuration this class supports the following options:
 			<itemizedlist>
 			<listitem><varname>directory</varname>: Optional, defaults to 
 				<filename>/etc/portage</filename>. Specifies the path to a directory
@@ -229,55 +232,170 @@
 		<sect2 id='config-set-classes-WorldSet'>
 		<title>portage.sets.files.WorldSet</title>
 		<para>
+		A minor variation of <classname>StaticFileSet</classname>, mainly for implementation 
+		reasons. It should never be used in user configurations as it's already configured
+		by default, doesn't support any options and will eventually be removed in a future version.
 		</para>
+		
+			<sect3>
+			<title>Single Set Configuraton</title>
+			<para>
+			This class does not support any options.
+			</para>
+			</sect3>
 		</sect2>
 		
 		<sect2 id='config-set-classes-PackagesSystemSet'>
 		<title>portage.sets.profiles.PackagesSystemSet</title>
 		<para>
+		This class implements the classic <parameter>system</parameter> set, based on the 
+		<filename>packages</filename> files in the profile.
+		<!-- TODO: Add reference to profile documentation regarding "packages" -->
+		There is no reason to use this in a user configuration as it is already
+		confgured by default and doesn't support any options.
 		</para>
+		
+			<sect3>
+			<title>Single Set Configuration</title>
+			<para>
+			This class does not support any options.
+			</para>
+			</sect3>
 		</sect2>
 		
 		<sect2 id='config-set-classes-SecuritySet'>
 		<title>portage.sets.security.SecuritySet</title>
 		<para>
 		</para>
+
+			<sect3>
+			<title>Single Set Configuration</title>
+			<para>
+			This class does not support any options.
+			</para>
+			</sect3>
 		</sect2>
 		
 		<sect2 id='config-set-classes-NewGlsaSet'>
 		<title>portage.sets.security.NewGlsaSet</title>
 		<para>
 		</para>
+
+			<sect3>
+			<title>Single Set Configuration</title>
+			<para>
+			This class does not support any options.
+			</para>
+			</sect3>
 		</sect2>
 		
 		<sect2 id='config-set-classes-NewAffectedSet'>
 		<title>portage.sets.security.NewAffectedSet</title>
 		<para>
 		</para>
+
+			<sect3>
+			<title>Single Set Configuration</title>
+			<para>
+			This class does not support any options.
+			</para>
+			</sect3>
 		</sect2>
 		
 		<sect2 id='config-set-classes-AffectedSet'>
 		<title>portage.sets.security.AffectedSet</title>
 		<para>
 		</para>
+
+			<sect3>
+			<title>Single Set Configuration</title>
+			<para>
+			This class does not support any options.
+			</para>
+			</sect3>
 		</sect2>
 		
 		<sect2 id='config-set-classes-CommandOutputSet'>
 		<title>portage.sets.shell.CommandOutputSet</title>
 		<para>
 		</para>
+
+			<sect3>
+			<title>Single Set Configuration</title>
+			<para>
+			In single set configurations this class supports the following options:
+			<itemizedlist>
+			<listitem><varname>command</varname>: Required. Specifies the command
+				that should be executed to generate the package set.
+			</listitem>
+			</itemizedlist>
+			</para>
+			</sect3>
 		</sect2>
 		
 		<sect2 id='config-set-classes-CategorySet'>
 		<title>portage.sets.dbapi.CategorySet</title>
 		<para>
 		</para>
+
+			<sect3>
+			<title>Single Set Configuration</title>
+			<para>
+			In single set configurations this class supports the following options:
+			<itemizedlist>
+			<listitem><varname>category</varname>: Required. The name of an existing ebuild
+				category which should be used to create the package set.
+			</listitem>
+			<listitem><varname>repository</varname>: Optional, defaults to 
+				<parameter>porttree</parameter>. It determines which repository class should
+				be used to create the package set. Valid values for this option are:
+				<parameter>porttree</parameter> (normal ebuild repository), 
+				<parameter>vartree</parameter> (installed package repository)
+				and <parameter>bintree</parameter> (local binary package repository).
+			</listitem>
+			<listitem><varname>only_visible</varname>: Optional, defaults to <parameter>true</parameter>.
+				When set to <parameter>true</parameter> the set will only include visible packages, 
+				when set to <parameter>false</parameter> it will also include masked packages.
+				It's currently only effective in in combination with the <parameter>porttree</parameter>
+				repository.
+			</listitem>
+			</itemizedlist>
+			</para>
+			</sect3>
+			
+			<sect3>
+			<title>Multi Set Configuration</title>
+			<para>
+			In multi set configurations this class supports the following options:
+			<itemizedlist>
+			<listitem><varname>categories</varname>: Optional, defaults to all categories.
+				If set it must be a space separated list of existing ebuild categories for
+				which package sets should be created.
+			</listitem>
+			<listitem><varname>repository</varname>: See previous section.</listitem>
+			<listitem><varname>only_visible</varname>: See previous section.</listitem>
+			<listitem><varname>name_pattern</varname>: Optional, defaults to 
+				<parameter>$category/*</parameter>. This describes the naming pattern
+				to be used for creating the sets. It must contain either 
+				<parameter>$category</parameter> or <parameter>${category}</parameter>, which 
+				will be replaced by the category name.
+			</listitem>
+			</itemizedlist>
+			</para>
+			</sect3>
 		</sect2>
 		
 		<sect2 id='config-set-classes-EverythingSet'>
 		<title>portage.sets.dbapi.EverythingSet</title>
 		<para>
 		</para>
+
+			<sect3>
+			<title>Single Set Configuration</title>
+			<para>
+			This class does not support any options.
+			</para>
+			</sect3>
 		</sect2>
 	</sect1>
 </chapter>
