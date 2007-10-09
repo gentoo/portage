@@ -10,7 +10,14 @@ class fakedbapi(dbapi):
 	"""A fake dbapi that allows consumers to inject/remove packages to/from it
 	portage.settings is required to maintain the dbAPI.
 	"""
-	def __init__(self, settings=None):
+	def __init__(self, settings=None, exclusive_slots=True):
+		"""
+		@param exclusive_slots: When True, injecting a package with SLOT
+			metadata causes an existing package in the same slot to be
+			automatically removed (default is True).
+		@type exclusive_slots: Boolean
+		"""
+		self._exclusive_slots = exclusive_slots
 		self.cpvdict = {}
 		self.cpdict = {}
 		if settings is None:
@@ -46,12 +53,19 @@ class fakedbapi(dbapi):
 		return self.cpvdict.keys()
 
 	def cpv_inject(self, mycpv, metadata=None):
-		"""Adds a cpv from the list of available packages."""
+		"""Adds a cpv to the list of available packages. See the
+		exclusive_slots constructor parameter for behavior with
+		respect to SLOT metadata.
+		@param mycpv: cpv for the package to inject
+		@type mycpv: str
+		@param metadata: dictionary of raw metadata for aux_get() calls
+		@param metadata: dict
+		"""
 		self._clear_cache()
 		mycp = cpv_getkey(mycpv)
 		self.cpvdict[mycpv] = metadata
 		myslot = None
-		if metadata:
+		if self._exclusive_slots and metadata:
 			myslot = metadata.get("SLOT", None)
 		if myslot and mycp in self.cpdict:
 			# If necessary, remove another package in the same SLOT.
