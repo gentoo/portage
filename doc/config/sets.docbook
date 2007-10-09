@@ -263,7 +263,7 @@
 			</sect3>
 		</sect2>
 		
-		<sect2 id='config-set-classes-SecuritySet'>
+		<sect2 id='config-set-classes-SecuritySet' xreflabel='SecuritySet'>
 		<title>portage.sets.security.SecuritySet</title>
 		<para>
 		</para>
@@ -271,7 +271,17 @@
 			<sect3>
 			<title>Single Set Configuration</title>
 			<para>
-			This class does not support any options.
+			In single set configurations this class supports the following options:
+			<itemizedlist>
+			<listitem><varname>use_emerge_resolver</varname>: Optional, defaults to 
+				<parameter>false</parameter>. This option determines which resolver 
+				strategy should be used for the set atoms. When set to 
+				<parameter>true</parameter>, it	will use the default emerge algorithm 
+				and use the highest visible version that matches the GLSA. If set 
+				to <parameter>false</parameter> it will use the default glsa-check 
+				algorithm and use the lowest version that matches the GLSA and is 
+				higher than the currently installed version (least change policy).
+			</listitem>
 			</para>
 			</sect3>
 		</sect2>
@@ -284,7 +294,12 @@
 			<sect3>
 			<title>Single Set Configuration</title>
 			<para>
-			This class does not support any options.
+			In single set configurations this class supports the following options:
+			<itemizedlist>
+			<listitem><varname>use_emerge_resolver</varname>: See
+				<xref linkend='config-set-classes-SecuritySet'>SecuritySet</xref>
+			</listitem>
+			</itemizedlist>
 			</para>
 			</sect3>
 		</sect2>
@@ -297,7 +312,12 @@
 			<sect3>
 			<title>Single Set Configuration</title>
 			<para>
-			This class does not support any options.
+			In single set configurations this class supports the following options:
+			<itemizedlist>
+			<listitem><varname>use_emerge_resolver</varname>: See
+				<xref linkend='config-set-classes-SecuritySet'>SecuritySet</xref>
+			</listitem>
+			</itemizedlist>
 			</para>
 			</sect3>
 		</sect2>
@@ -310,7 +330,12 @@
 			<sect3>
 			<title>Single Set Configuration</title>
 			<para>
-			This class does not support any options.
+			In single set configurations this class supports the following options:
+			<itemizedlist>
+			<listitem><varname>use_emerge_resolver</varname>: See
+				<xref linkend='config-set-classes-SecuritySet'>SecuritySet</xref>
+			</listitem>
+			</itemizedlist>
 			</para>
 			</sect3>
 		</sect2>
