@@ -79,6 +79,8 @@ class StaticFileSet(EditablePackageSet):
 			raise SetConfigError("name_pattern doesn't include $name placeholder")
 		if os.path.isdir(directory):
 			for filename in os.listdir(directory):
+				if filename.endswith(".metadata"):
+					continue
 				myname = name_pattern.replace("$name", filename)
 				myname = myname.replace("${name}", filename)
 				rValue[myname] = StaticFileSet(os.path.join(directory, filename))
