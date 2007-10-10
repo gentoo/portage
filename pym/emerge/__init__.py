@@ -1141,6 +1141,21 @@ class depgraph(object):
 				settings=self.pkgsettings[myroot], exclusive_slots=False)
 			self._filtered_trees[myroot]["porttree"] = filtered_tree
 			self._filtered_trees[myroot]["atoms"] = set()
+			dbs = []
+			portdb = self.trees[myroot]["porttree"].dbapi
+			bindb  = self.trees[myroot]["bintree"].dbapi
+			vardb  = self.trees[myroot]["vartree"].dbapi
+			#               (db, pkg_type, built, installed, db_keys)
+			if "--usepkgonly" not in self.myopts:
+				db_keys = list(portdb._aux_cache_keys)
+				dbs.append((portdb, "ebuild", False, False, db_keys))
+			if "--usepkg" in self.myopts:
+				db_keys = list(bindb._aux_cache_keys)
+				dbs.append((bindb,  "binary", True, False, db_keys))
+			if "--usepkgonly" in self.myopts:
+				db_keys = self._mydbapi_keys
+				dbs.append((vardb, "installed", True, True, db_keys))
+			self._filtered_trees[myroot]["dbs"] = dbs
 			if "--usepkg" in self.myopts:
 				self.trees[myroot]["bintree"].populate(
 					"--getbinpkg" in self.myopts,
@@ -1757,23 +1772,7 @@ class depgraph(object):
 			portage.dep._dep_check_strict = True
 
 		filtered_atoms = self._filtered_trees[myroot]["atoms"]
-		dbs = self._filtered_trees[myroot].get("dbs")
-		if dbs is None:
-			dbs = []
-			portdb = self.trees[myroot]["porttree"].dbapi
-			bindb  = self.trees[myroot]["bintree"].dbapi
-			vardb  = self.trees[myroot]["vartree"].dbapi
-			#               (db, pkg_type, built, installed, db_keys)
-			if "--usepkgonly" not in self.myopts:
-				db_keys = list(portdb._aux_cache_keys)
-				dbs.append((portdb, "ebuild", False, False, db_keys))
-			if "--usepkg" in self.myopts:
-				db_keys = list(bindb._aux_cache_keys)
-				dbs.append((bindb,  "binary", True, False, db_keys))
-			if "--usepkgonly" in self.myopts:
-				db_keys = self._mydbapi_keys
-				dbs.append((vardb, "installed", True, True, db_keys))
-			self._filtered_trees[myroot]["dbs"] = dbs
+		dbs = self._filtered_trees[myroot]["dbs"]
 		old_virts = pkgsettings.getvirtuals()
 		while atoms:
 			x = atoms.pop()
