@@ -2065,6 +2065,12 @@ class depgraph(object):
 									old_use, iuses,
 									now_use, cur_iuse):
 									break
+							# Metadata accessed above is cached internally by
+							# each db in order to optimize visibility checks.
+							# Now that all possible checks visibility checks
+							# are complete, it's time to pull the rest of the
+							# metadata (including *DEPEND). This part is more
+							# expensive, so avoid it whenever possible.
 							metadata.update(izip(self._mydbapi_keys,
 								db.aux_get(cpv, self._mydbapi_keys)))
 							if not built:
