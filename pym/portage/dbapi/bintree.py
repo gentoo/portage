@@ -26,7 +26,7 @@ class bindbapi(fakedbapi):
 		self.cpdict={}
 		# Selectively cache metadata in order to optimize dep matching.
 		self._aux_cache_keys = set(
-			["CHOST", "EAPI", "KEYWORDS", "LICENSE", "SLOT", "USE"])
+			["CHOST", "EAPI", "IUSE", "KEYWORDS", "LICENSE", "SLOT", "USE"])
 		self._aux_cache = {}
 
 	def match(self, *pargs, **kwargs):
@@ -501,6 +501,12 @@ class binarytree(object):
 					aux_keys = list(self.dbapi._aux_cache_keys)
 					d.update(izip(aux_keys,
 						self.dbapi.aux_get(mycpv, aux_keys)))
+
+					use = d["USE"].split()
+					iuse = set(d["IUSE"].split())
+					use = [f for f in use if f in iuse]
+					use.sort()
+					d["USE"] = " ".join(use)
 
 					# record location if it's non-default
 					if mypath != mycpv + ".tbz2":
