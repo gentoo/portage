@@ -3102,10 +3102,15 @@ class depgraph(object):
 							counters.reinst += 1
 				elif vardb.match(portage.dep_getkey(pkg_key)):
 					mynewslot = mydbapi.aux_get(pkg_key, ["SLOT"])[0]
-					myoldlist = self.trees[x[1]]["vartree"].dbapi.match(
-						portage.pkgsplit(x[2])[0])
-					myinslotlist = [inst_pkg for inst_pkg in myoldlist
-						if mynewslot == vardb.aux_get(inst_pkg, ["SLOT"])[0]]
+					slot_atom = "%s:%s" % \
+						(portage.cpv_getkey(pkg_key), mynewslot)
+					myinslotlist = vardb.match(slot_atom)
+					# If this is the first install of a new-style virtual, we
+					# need to filter out old-style virtual matches.
+					if myinslotlist and \
+						portage.cpv_getkey(myinslotlist[0]) != \
+						portage.cpv_getkey(pkg_key):
+						myinslotlist = None
 					if myinslotlist:
 						myoldbest=portage.best(myinslotlist)
 						addl="   "+fetch
