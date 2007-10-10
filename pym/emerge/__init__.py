@@ -1530,15 +1530,13 @@ class depgraph(object):
 		"given a list of .tbz2s, .ebuilds and deps, create the appropriate depgraph and return a favorite list"
 		myfavorites=[]
 		myroot = self.target_root
+		dbs = self._filtered_trees[myroot]["dbs"]
+		filtered_db = self._filtered_trees[myroot]["porttree"].dbapi
 		vardb = self.trees[myroot]["vartree"].dbapi
 		portdb = self.trees[myroot]["porttree"].dbapi
 		bindb = self.trees[myroot]["bintree"].dbapi
 		pkgsettings = self.pkgsettings[myroot]
 		arg_atoms = []
-		def visible(mylist):
-			matches = portdb.gvisible(portdb.visible(mylist))
-			return [x for x in mylist \
-				if x in matches or not portdb.cpv_exists(x)]
 		for x in myfiles:
 			ext = os.path.splitext(x)[1]
 			if ext==".tbz2":
@@ -1605,19 +1603,17 @@ class depgraph(object):
 					portage.writemsg("!!! (Did you specify a version but forget to prefix with '='?)\n")
 					return (0,[])
 				try:
-					mykey = None
-					if "--usepkg" in self.myopts:
-						mykey = portage.dep_expand(x, mydb=bindb,
-							settings=pkgsettings)
-					if "--usepkgonly" in self.myopts or \
-						(mykey and not portage.dep_getkey(mykey).startswith("null/")):
-						arg_atoms.append((x, mykey))
-						continue
-
 					try:
-						mykey = portage.dep_expand(x,
-							mydb=portdb, settings=pkgsettings)
+						for db, pkg_type, built, installed, db_keys in dbs:
+							mykey = portage.dep_expand(x,
+								mydb=db, settings=pkgsettings)
+							if portage.dep_getkey(mykey).startswith("null/"):
+								continue
+							break
 					except ValueError, e:
+						if not e.args or not isinstance(e.args[0], list) or \
+							len(e.args[0]) < 2:
+							raise
 						mykey = portage.dep_expand(x,
 							mydb=vardb, settings=pkgsettings)
 						cp = portage.dep_getkey(mykey)
@@ -1627,61 +1623,51 @@ class depgraph(object):
 						del e
 					arg_atoms.append((x, mykey))
 				except ValueError, errpkgs:
+					if not e.args or not isinstance(e.args[0], list) or \
+						len(e.args[0]) < 2:
+						raise
 					print "\n\n!!! The short ebuild name \"" + x + "\" is ambiguous.  Please specify"
 					print "!!! one of the following fully-qualified ebuild names instead:\n"
 					for i in errpkgs[0]:
 						print "    " + green(i)
 					print
-					sys.exit(1)
+					return False, myfavorites
 
 		if "--update" in self.myopts:
 			"""Make sure all installed slots are updated when possible. Do this
 			with --emptytree also, to ensure that all slots are remerged."""
-			vardb = self.trees[self.target_root]["vartree"].dbapi
 			greedy_atoms = []
-			for myarg, myatom in arg_atoms:
-				greedy_atoms.append((myarg, myatom))
+			for myarg, atom in arg_atoms:
+				greedy_atoms.append((myarg, atom))
+				mykey = portage.dep_getkey(atom)
 				myslots = set()
-				for cpv in vardb.match(myatom):
+				for cpv in vardb.match(mykey):
 					myslots.add(vardb.aux_get(cpv, ["SLOT"])[0])
 				if myslots:
-					best_pkgs = []
-					if "--usepkg" in self.myopts:
-						mymatches = bindb.match(myatom)
-						if "--usepkgonly" not in self.myopts:
-							mymatches = visible(mymatches)
-						best_pkg = portage.best(mymatches)
-						if best_pkg:
-							best_slot = bindb.aux_get(best_pkg, ["SLOT"])[0]
-							best_pkgs.append(("binary", best_pkg, best_slot))
-					if "--usepkgonly" not in self.myopts:
-						best_pkg = portage.best(portdb.match(myatom))
-						if best_pkg:
-							best_slot = portdb.aux_get(best_pkg, ["SLOT"])[0]
-							best_pkgs.append(("ebuild", best_pkg, best_slot))
-					if best_pkgs:
-						best_pkg = portage.best([x[1] for x in best_pkgs])
-						best_pkgs = [x for x in best_pkgs if x[1] == best_pkg]
-						best_slot = best_pkgs[0][2]
+					if not self._populate_filtered_repo(myroot, atom,
+						exclude_installed=True):
+						return False, myfavorites
+					mymatches = filtered_db.match(atom)
+					best_pkg = portage.best(mymatches)
+					if best_pkg:
+						best_slot = filtered_db.aux_get(best_pkg, ["SLOT"])[0]
 						myslots.add(best_slot)
 				if len(myslots) > 1:
 					for myslot in myslots:
-						myslot_atom = "%s:%s" % \
-							(portage.dep_getkey(myatom), myslot)
-						available = False
-						if "--usepkgonly" not in self.myopts and \
-							self.trees[self.target_root][
-							"porttree"].dbapi.match(myslot_atom):
-							available = True
-						elif "--usepkg" in self.myopts:
-							mymatches = bindb.match(myslot_atom)
-							if "--usepkgonly" not in self.myopts:
-								mymatches = visible(mymatches)
-							if mymatches:
-								available = True
-						if available:
+						myslot_atom = "%s:%s" % (mykey, myslot)
+						if not self._populate_filtered_repo(
+							myroot, myslot_atom,
+							exclude_installed=True):
+							return False, myfavorites
+						if filtered_db.match(myslot_atom):
 							greedy_atoms.append((myarg, myslot_atom))
 			arg_atoms = greedy_atoms
+
+			# Since populate_filtered_repo() was called with the
+			# exclude_installed flag, these atoms will need to be processed
+			# again in case installed packages are required to satisfy
+			# dependencies.
+			self._filtered_trees[myroot]["atoms"].clear()
 
 		oneshot = "--oneshot" in self.myopts or \
 			"--onlydeps" in self.myopts
