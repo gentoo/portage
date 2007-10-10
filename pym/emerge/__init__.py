@@ -1876,6 +1876,7 @@ class depgraph(object):
 			return 1 # nothing to do
 
 		filtered_db = self._filtered_trees[myroot]["porttree"].dbapi
+		dbs = self._filtered_trees[myroot]["dbs"]
 		portdb = self.trees[myroot]["porttree"].dbapi
 		bindb  = self.trees[myroot]["bintree"].dbapi
 		vardb  = self.trees[myroot]["vartree"].dbapi
@@ -1975,160 +1976,104 @@ class depgraph(object):
 			else:
 				# List of acceptable packages, ordered by type preference.
 				matched_packages = []
-				slot = portage.dep.dep_getslot(x)
-				cpv_list = portdb.xmatch("match-all", x)
-				cpv_sort_descending(cpv_list)
-				myeb = None
-				myeb_pkg = None
-				metadata = None
 				existing_node = None
-				db_keys = list(portdb._aux_cache_keys)
-				for cpv in cpv_list:
-					try:
-						metadata = dict(izip(db_keys,
-							portdb.aux_get(cpv, db_keys)))
-					except KeyError:
-						# masked by corruption
-						continue
-					if "?" in metadata["LICENSE"]:
-						pkgsettings.setcpv(cpv, mydb=metadata)
-						metadata["USE"] = pkgsettings["USE"]
-					else:
-						metadata["USE"] = ""
-					try:
-						if not visible(pkgsettings, cpv, metadata,
-							built=False, installed=False):
-							continue
-					except portage.exception.InvalidDependString:
-						# masked by corruption
-						continue
-
-					myeb = cpv
-					# For best performance, try to reuse an exising node
-					# and it's cached metadata. The portdbapi caches SLOT
-					# metadata in memory so it's really only pulled once.
-					slot_atom = "%s:%s" % (portage.cpv_getkey(myeb),
-						metadata["SLOT"])
-					existing_node = self._slot_node_map[myroot].get(slot_atom)
+				myeb = None
+				usepkgonly = "--usepkgonly" in self.myopts
+				for find_existing_node in True, False:
 					if existing_node:
-						e_type, myroot, e_cpv, e_status = existing_node
-						metadata = dict(izip(self._mydbapi_keys,
-							self.mydbapi[myroot].aux_get(e_cpv, self._mydbapi_keys)))
-						cpv_slot = "%s:%s" % (e_cpv, metadata["SLOT"])
-						if portage.match_from_list(x, [cpv_slot]):
-							matched_packages.append(
-								([e_type, myroot, e_cpv], metadata))
-						else:
-							existing_node = None
-					break
-
-				if not existing_node and \
-					"--usepkg" in self.myopts:
-					# The next line assumes the binarytree has been populated.
-					# XXX: Need to work out how we use the binary tree with roots.
-					usepkgonly = "--usepkgonly" in self.myopts
-					myeb_pkg_matches = []
-					cpv_list = bindb.match(x)
-					cpv_sort_descending(cpv_list)
-					db_keys = list(bindb._aux_cache_keys)
-					for pkg in cpv_list:
-						if not filtered_db.cpv_exists(pkg):
-							continue
-						metadata = dict(izip(db_keys,
-							bindb.aux_get(pkg, db_keys)))
-						try:
-							if not visible(pkgsettings, pkg, metadata,
-								built=True, installed=False):
-								continue
-						except portage.exception.InvalidDependString:
-							# masked by corruption
-							continue
-						myeb_pkg_matches.append(pkg)
 						break
-					if myeb_pkg_matches:
-						myeb_pkg = portage.best(myeb_pkg_matches)
-						# For best performance, try to reuse an exising node
-						# and it's cached metadata. The bindbapi caches SLOT
-						# metadata in memory so it's really only pulled once.
-						slot_atom = "%s:%s" % (portage.dep_getkey(myeb_pkg),
-							bindb.aux_get(myeb_pkg, ["SLOT"])[0])
-						existing_node = self._slot_node_map[myroot].get(slot_atom)
+					for db, pkg_type, built, installed, db_keys in dbs:
 						if existing_node:
-							e_type, myroot, e_cpv, e_status = existing_node
-							metadata = dict(izip(self._mydbapi_keys,
-								self.mydbapi[myroot].aux_get(e_cpv, self._mydbapi_keys)))
-							cpv_slot = "%s:%s" % (e_cpv, metadata["SLOT"])
-							if portage.match_from_list(x, [cpv_slot]):
-								myeb_pkg = None
-								matched_packages.append(
-									([e_type, myroot, e_cpv], metadata))
-							else:
-								existing_node = None
-						if not existing_node:
-							# For best performance, avoid pulling
-							# metadata whenever possible.
-							metadata = dict(izip(self._mydbapi_keys,
-								bindb.aux_get(myeb_pkg, self._mydbapi_keys)))
-
-				if not existing_node and \
-					myeb_pkg and \
-					("--newuse" in self.myopts or \
-					"--reinstall" in self.myopts):
-					iuses = set(filter_iuse_defaults(metadata["IUSE"].split()))
-					old_use = metadata["USE"].split()
-					mydb = None
-					if "--usepkgonly" not in self.myopts and myeb:
-						mydb = portdb
-					if myeb:
-						pkgsettings.setcpv(myeb, mydb=mydb)
-					else:
-						pkgsettings.setcpv(myeb_pkg, mydb=mydb)
-					now_use = pkgsettings["USE"].split()
-					forced_flags = set()
-					forced_flags.update(pkgsettings.useforce)
-					forced_flags.update(pkgsettings.usemask)
-					cur_iuse = iuses
-					if "--usepkgonly" not in self.myopts and myeb:
-						cur_iuse = set(filter_iuse_defaults(
-							portdb.aux_get(myeb, ["IUSE"])[0].split()))
-					if self._reinstall_for_flags(
-						forced_flags, old_use, iuses, now_use, cur_iuse):
-						myeb_pkg = None
-				if myeb_pkg:
-					matched_packages.append(
-						(["binary", myroot, myeb_pkg], metadata))
-
-				if not existing_node and \
-					myeb and \
-					"--usepkgonly" not in self.myopts:
-					metadata = dict(izip(self._mydbapi_keys,
-						portdb.aux_get(myeb, self._mydbapi_keys)))
-					pkgsettings.setcpv(myeb, mydb=portdb)
-					metadata["USE"] = pkgsettings["USE"]
-					matched_packages.append(
-						(["ebuild", myroot, myeb], metadata))
-
-				if not matched_packages and \
-					not (arg and "selective" not in self.myparams):
-					"""Fall back to the installed package database.  This is a
-					last resort because the metadata tends to diverge from that
-					of the ebuild in the tree."""
-					cpv_list = vardb.match(x)
-					cpv_sort_descending(cpv_list)
-					for cpv in cpv_list:
-						metadata = dict(izip(self._mydbapi_keys,
-							vardb.aux_get(cpv, self._mydbapi_keys)))
-						# TODO: Handle masking for installed packages.
-						#try:
-						#	if not visible(pkgsettings, cpv, metadata,
-						#		built=True, installed=True):
-						#		continue
-						#except: InvalidDependString:
-						#	# masked by corruption
-						#	continue
-						matched_packages.append(
-							(["installed", myroot, cpv], metadata))
-						break
+							break
+						if installed and \
+							(matched_packages or \
+							(arg and "selective" not in self.myparams)):
+							# We only need to select an installed package here
+							# if there is no other choice.
+							continue
+						if hasattr(db, "xmatch"):
+							cpv_list = db.xmatch("match-all", x)
+						else:
+							cpv_list = db.match(x)
+						cpv_sort_descending(cpv_list)
+						for cpv in cpv_list:
+							try:
+								metadata = dict(izip(db_keys,
+									db.aux_get(cpv, db_keys)))
+							except KeyError:
+								continue
+							if not built:
+								if "?" in metadata["LICENSE"]:
+									pkgsettings.setcpv(cpv, mydb=metadata)
+									metadata["USE"] = pkgsettings.get("USE","")
+								else:
+									metadata["USE"] = ""
+							if not installed:
+								try:
+									if not visible(pkgsettings, cpv, metadata,
+										built=built, installed=installed):
+										continue
+								except portage.exception.InvalidDependString:
+									# masked by corruption
+									continue
+							# At this point, we've found the highest visible
+							# match from the current repo. Any lower versions
+							# from this repo are ignored, so this so the loop
+							# will always end with a break statement below
+							# this point.
+							if find_existing_node:
+								slot_atom = "%s:%s" % (
+									portage.cpv_getkey(cpv), metadata["SLOT"])
+								existing_node = self._slot_node_map[myroot].get(
+									slot_atom)
+								if not existing_node:
+									break
+								e_type, myroot, e_cpv, e_status = existing_node
+								metadata = dict(izip(self._mydbapi_keys,
+									self.mydbapi[myroot].aux_get(
+									e_cpv, self._mydbapi_keys)))
+								cpv_slot = "%s:%s" % (e_cpv, metadata["SLOT"])
+								if portage.dep.match_from_list(x, [cpv_slot]):
+									matched_packages.append(
+										([e_type, myroot, e_cpv], metadata))
+								else:
+									existing_node = None
+								break
+							if built and not installed and \
+								("--newuse" in self.myopts or \
+								"--reinstall" in self.myopts):
+								iuses = set(filter_iuse_defaults(
+									metadata["IUSE"].split()))
+								old_use = metadata["USE"].split()
+								mydb = metadata
+								if myeb and not usepkgonly:
+									mydb = portdb
+								if myeb:
+									pkgsettings.setcpv(myeb, mydb=mydb)
+								else:
+									pkgsettings.setcpv(cpv, mydb=mydb)
+								now_use = pkgsettings["USE"].split()
+								forced_flags = set()
+								forced_flags.update(pkgsettings.useforce)
+								forced_flags.update(pkgsettings.usemask)
+								cur_iuse = iuses
+								if myeb and not usepkgonly:
+									cur_iuse = set(filter_iuse_defaults(
+										portdb.aux_get(myeb,
+										["IUSE"])[0].split()))
+								if self._reinstall_for_flags(forced_flags,
+									old_use, iuses,
+									now_use, cur_iuse):
+									break
+							metadata.update(izip(self._mydbapi_keys,
+								db.aux_get(cpv, self._mydbapi_keys)))
+							if not built:
+								pkgsettings.setcpv(cpv, mydb=metadata)
+								metadata["USE"] = pkgsettings.get("USE","")
+								myeb = cpv
+							matched_packages.append(
+								([pkg_type, myroot, cpv], metadata))
+							break
 
 				if not matched_packages:
 					if raise_on_missing:
@@ -2237,7 +2182,7 @@ class depgraph(object):
 						if pkg[0][2] == bestmatch]
 
 				# ordered by type preference ("ebuild" type is the last resort)
-				selected_pkg =  matched_packages[0]
+				selected_pkg =  matched_packages[-1]
 
 				# In some cases, dep_check will return deps that shouldn't
 				# be proccessed any further, so they are identified and
