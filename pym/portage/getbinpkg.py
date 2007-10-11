@@ -710,14 +710,9 @@ class PackageIndex(object):
 				del metadata["CHOST"]
 			if metadata.get("EAPI") == "0":
 				del metadata["EAPI"]
-			if metadata.get("IUSE") == "":
-				del metadata["IUSE"]
-			if metadata.get("PROVIDE") == "":
-				del metadata["PROVIDE"]
 			if metadata.get("SLOT") == "0":
 				del metadata["SLOT"]
-			if metadata.get("USE") == "":
-				del metadata["USE"]
 			keys = metadata.keys()
 			keys.sort()
-			writepkgindex(pkgfile, [(k, metadata[k]) for k in keys])
+			writepkgindex(pkgfile,
+				[(k, metadata[k]) for k in keys if metadata[k]])

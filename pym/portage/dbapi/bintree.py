@@ -732,35 +732,15 @@ class binarytree(object):
 				"RDEPEND", "DEPEND", "PDEPEND"]
 			from itertools import izip
 			d.update(izip(keys, self.dbapi.aux_get(cpv, keys)))
-			use = d["USE"].split()
-			iuse = set(d["IUSE"].split())
-			use = [f for f in use if f in iuse]
-			if not iuse:
-				del d["IUSE"]
-			use.sort()
-			d["USE"] = " ".join(use)
 			d["DESC"] = d["DESCRIPTION"]
 			del d["DESCRIPTION"]
-			from portage.dep import paren_reduce, use_reduce, \
-				paren_normalize, paren_enclose
-			for k in "LICENSE", "RDEPEND", "DEPEND", "PDEPEND", "PROVIDE":
-				try:
-					deps = paren_reduce(d[k])
-					deps = use_reduce(deps, uselist=use)
-					deps = paren_normalize(deps)
-					deps = paren_enclose(deps)
-				except portage.exception.InvalidDependString, e:
-					writemsg("%s: %s\n" % (k, str(e)),
-						noiselevel=-1)
-					del e
-					writemsg("!!! Invalid binary package: '%s'\n" % \
-						self.getname(cpv), noiselevel=-1)
-					self.dbapi.cpv_remove(cpv)
-					return
-				if deps:
-					d[k] = deps
-				else:
-					del d[k]
+			try:
+				self._eval_use_flags(cpv, d)
+			except portage.exception.InvalidDependString, e:
+				writemsg("!!! Invalid binary package: '%s'\n" % \
+					self.getname(cpv), noiselevel=-1)
+				self.dbapi.cpv_remove(cpv)
+				return
 			pkgindex.packages[cpv] = d
 			self._update_pkgindex_header(pkgindex.header)
 			from portage.util import atomic_ofstream
@@ -802,6 +782,26 @@ class binarytree(object):
 			except ValueError:
 				pass
 		return False
+
+	def _eval_use_flags(self, cpv, metadata):
+		use = metadata["USE"].split()
+		iuse = set(metadata["IUSE"].split())
+		use = [f for f in use if f in iuse]
+		use.sort()
+		metadata["USE"] = " ".join(use)
+		from portage.dep import paren_reduce, use_reduce, \
+			paren_normalize, paren_enclose
+		for k in "LICENSE", "RDEPEND", "DEPEND", "PDEPEND", "PROVIDE":
+			try:
+				deps = paren_reduce(metadata[k])
+				deps = use_reduce(deps, uselist=use)
+				deps = paren_normalize(deps)
+				deps = paren_enclose(deps)
+			except portage.exception.InvalidDependString, e:
+				writemsg("%s: %s\n" % (k, str(e)),
+					noiselevel=-1)
+				raise
+			metadata[k] = deps
 
 	def exists_specific(self, cpv):
 		if not self.populated:
