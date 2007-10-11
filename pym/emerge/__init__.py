@@ -1944,7 +1944,8 @@ class depgraph(object):
 					for db, pkg_type, built, installed, db_keys in dbs:
 						if existing_node:
 							break
-						if installed and (matched_packages or empty):
+						if installed and not find_existing_node and \
+							(matched_packages or empty):
 							# We only need to select an installed package here
 							# if there is no other choice.
 							continue
