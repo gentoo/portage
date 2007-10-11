@@ -1152,9 +1152,8 @@ class depgraph(object):
 			if "--usepkg" in self.myopts:
 				db_keys = list(bindb._aux_cache_keys)
 				dbs.append((bindb,  "binary", True, False, db_keys))
-			if "--usepkgonly" in self.myopts:
-				db_keys = self._mydbapi_keys
-				dbs.append((vardb, "installed", True, True, db_keys))
+			db_keys = self._mydbapi_keys
+			dbs.append((vardb, "installed", True, True, db_keys))
 			self._filtered_trees[myroot]["dbs"] = dbs
 			if "--usepkg" in self.myopts:
 				self.trees[myroot]["bintree"].populate(
@@ -1309,57 +1308,15 @@ class depgraph(object):
 		if "--nodeps" not in self.myopts:
 			self.spinner.update()
 
-		reinstall_for_flags = None
-		merging=1
-		if mytype == "installed":
-			merging = 0
+		merging = mytype != "installed"
+
 		if addme and mytype != "installed":
-		# this is where we add the node to the list of packages to merge
-			if "selective" in self.myparams or not arg:
-				if "empty" not in self.myparams and vardbapi.cpv_exists(mykey):
-					merging=0
-
-			merge_node = (mytype, myroot, mykey, "merge")
-			if self.digraph.contains(merge_node):
-				merging = 1
-
-			""" If we aren't merging, perform the --newuse check.
-			    If the package has new iuse flags or different use flags then if
-			    --newuse is specified, we need to merge the package. """
-			if merging == 0 and \
-				myroot == self.target_root and \
-				("--newuse" in self.myopts or
-				"--reinstall" in self.myopts) and \
-				vardbapi.cpv_exists(mykey):
-				pkgsettings.setcpv(mykey, mydb=mydbapi)
-				forced_flags = set()
-				forced_flags.update(pkgsettings.useforce)
-				forced_flags.update(pkgsettings.usemask)
-				old_use = vardbapi.aux_get(mykey, ["USE"])[0].split()
-				iuses = set(filter_iuse_defaults(metadata["IUSE"].split()))
-				old_iuse = set(filter_iuse_defaults(
-					vardbapi.aux_get(mykey, ["IUSE"])[0].split()))
-				reinstall_for_flags = self._reinstall_for_flags(
-					forced_flags, old_use, old_iuse, myuse, iuses)
-				if reinstall_for_flags:
-					merging = 1
-
-		if addme and merging == 1:
 			mybigkey.append("merge")
 		else:
 			mybigkey.append("nomerge")
 		jbigkey = tuple(mybigkey)
 
 		if addme:
-			if merging == 0 and vardbapi.cpv_exists(mykey) and \
-				mytype != "installed":
-				mytype = "installed"
-				mybigkey[0] = "installed"
-				mydbapi = vardbapi
-				jbigkey = tuple(mybigkey)
-				metadata = dict(izip(self._mydbapi_keys,
-					mydbapi.aux_get(mykey, self._mydbapi_keys)))
-				myuse = metadata["USE"].split()
 			slot_atom = "%s:%s" % (portage.dep_getkey(mykey), metadata["SLOT"])
 			if merging and \
 				"empty" not in self.myparams and \
@@ -1421,8 +1378,6 @@ class depgraph(object):
 				self.mydbapi[myroot].cpv_inject(mykey, metadata=metadata)
 				self._slot_node_map[myroot][slot_atom] = jbigkey
 				self.pkg_node_map[myroot][mykey] = jbigkey
-				if reinstall_for_flags:
-					self._reinstall_nodes[jbigkey] = reinstall_for_flags
 
 			if rev_dep and myparent:
 				self.digraph.addnode(myparent, jbigkey,
@@ -1731,6 +1686,7 @@ class depgraph(object):
 
 		filtered_db = self._filtered_trees[myroot]["porttree"].dbapi
 		pkgsettings = self.pkgsettings[myroot]
+		usepkgonly = "--usepkgonly" in self.myopts
 		if myparent:
 			p_type, p_root, p_key, p_status = myparent
 
@@ -1773,7 +1729,8 @@ class depgraph(object):
 			is_virt = cp.startswith("virtual/")
 			atom_populated = False
 			for db, pkg_type, built, installed, db_keys in dbs:
-				if installed and exclude_installed:
+				if installed and \
+					(exclude_installed or not usepkgonly):
 					continue
 				cpv_list = db.cp_list(cp)
 				if not cpv_list:
@@ -1985,9 +1942,7 @@ class depgraph(object):
 					for db, pkg_type, built, installed, db_keys in dbs:
 						if existing_node:
 							break
-						if installed and \
-							(matched_packages or \
-							(arg and "selective" not in self.myparams)):
+						if installed and matched_packages:
 							# We only need to select an installed package here
 							# if there is no other choice.
 							continue
@@ -1997,6 +1952,7 @@ class depgraph(object):
 							cpv_list = db.match(x)
 						cpv_sort_descending(cpv_list)
 						for cpv in cpv_list:
+							reinstall_for_flags = None
 							try:
 								metadata = dict(izip(db_keys,
 									db.aux_get(cpv, db_keys)))
@@ -2039,6 +1995,8 @@ class depgraph(object):
 								else:
 									existing_node = None
 								break
+							# Compare built package to current config and
+							# reject the built package if necessary.
 							if built and not installed and \
 								("--newuse" in self.myopts or \
 								"--reinstall" in self.myopts):
@@ -2065,6 +2023,44 @@ class depgraph(object):
 									old_use, iuses,
 									now_use, cur_iuse):
 									break
+							# Compare current config to installed package
+							# and do not reinstall if possible.
+							if not installed and \
+								("--newuse" in self.myopts or \
+								"--reinstall" in self.myopts) and \
+								vardb.cpv_exists(cpv):
+								pkgsettings.setcpv(cpv, mydb=metadata)
+								forced_flags = set()
+								forced_flags.update(pkgsettings.useforce)
+								forced_flags.update(pkgsettings.usemask)
+								old_use = vardb.aux_get(cpv, ["USE"])[0].split()
+								old_iuse = set(filter_iuse_defaults(
+									vardb.aux_get(cpv, ["IUSE"])[0].split()))
+								cur_use = pkgsettings["USE"].split()
+								cur_iuse = set(filter_iuse_defaults(metadata["IUSE"].split()))
+								reinstall_for_flags = \
+									self._reinstall_for_flags(
+									forced_flags, old_use, old_iuse,
+									cur_use, cur_iuse)
+							myarg = arg
+							if not myarg and \
+								myroot == self.target_root:
+								try:
+									myarg = self._set_atoms.findAtomForPackage(
+										cpv, metadata)
+								except portage.exception.InvalidDependString, e:
+									if mytype != "installed":
+										pkg_node = (pkg_type, myroot, cpv, "merge")
+										show_invalid_depstring_notice(pkg_node,
+											metadata["PROVIDE"], str(e))
+										return 0
+									del e
+							if not installed and not reinstall_for_flags and \
+								("selective" in self.myparams or \
+								not myarg) and \
+								"empty" not in self.myparams and \
+								vardb.cpv_exists(cpv):
+								break
 							# Metadata accessed above is cached internally by
 							# each db in order to optimize visibility checks.
 							# Now that all possible checks visibility checks
@@ -2079,6 +2075,10 @@ class depgraph(object):
 								myeb = cpv
 							matched_packages.append(
 								([pkg_type, myroot, cpv], metadata))
+							if reinstall_for_flags:
+								pkg_node = (pkg_type, myroot, cpv, "merge")
+								self._reinstall_nodes[pkg_node] = \
+									reinstall_for_flags
 							break
 
 				if not matched_packages:
