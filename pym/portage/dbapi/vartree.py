@@ -148,7 +148,7 @@ class LibraryPackageMap(object):
 		obj_dict = {}
 		for cpv in self._dbapi.cpv_all():
 			needed_list = grabfile(self._dbapi.getpath(cpv, "NEEDED"))
-			for l in needed_list
+			for l in needed_list:
 				mysplit = l.split()
 				if len(mysplit) < 2:
 					continue
