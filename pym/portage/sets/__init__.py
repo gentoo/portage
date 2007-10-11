@@ -263,9 +263,12 @@ def make_default_config(settings, trees):
 	sc.set("config", "class", "portage.sets.files.ConfigFileSet")
 	sc.set("config", "multiset", "true")
 	
-	sc.add_section("user_sets")
-	sc.set("user_sets", "class", "portage.sets.files.StaticFileSet")
-	sc.set("user_sets", "multiset", "true")
+	sc.add_section("user-sets")
+	sc.set("user-sets", "class", "portage.sets.files.StaticFileSet")
+	sc.set("user-sets", "multiset", "true")
+
+	sc.add_section("rebuild-needed")
+	sc.set("rebuild-needed", "class", "portage.sets.dbapi.PreservedLibraryConsumerSet")
 	
 	return sc
 

@@ -2,8 +2,11 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-from portage.versions import catsplit
+from portage.versions import catsplit, catpkgsplit
 from portage.sets import PackageSet, SetConfigError
+from portage.dbapi.vartree import dblink
+
+import os
 
 __all__ = ["CategorySet", "EverythingSet"]
 
@@ -105,3 +108,33 @@ class CategorySet(PackageSet):
 			rValue[myname] = myset
 		return rValue
 	multiBuilder = classmethod(multiBuilder)
+
+class PreservedLibraryConsumerSet(PackageSet):
+	_operations = ["merge", "unmerge"]
+	
+	def __init__(self, vardbapi):
+		super(PreservedLibraryConsumerSet, self).__init__()
+		self.dbapi = vardbapi
+	
+	def load(self):
+		reg = self.dbapi.plib_registry
+		libmap = self.dbapi.libmap.get()
+		atoms = set()
+		consumers = set()
+		if reg:
+			for libs in reg.getPreservedLibs().values():
+				for lib in libs:
+					paths = libmap.get(os.path.basename(lib), [])
+					consumers.update(paths)
+		for cpv in self.dbapi.cpv_all():
+			mysplit = catsplit(cpv)
+			link = dblink(mysplit[0], mysplit[1], myroot=self.dbapi.root, \
+					mysettings=self.dbapi.settings, treetype='vartree', \
+					vartree=self.dbapi.vartree)
+			if consumers.intersection(link.getcontents().keys()):
+				atoms.add("/".join(catpkgsplit(cpv)[:2]))
+		self._setAtoms(atoms)
+
+	def singleBuilder(cls, options, settings, trees):
+		return PreservedLibraryConsumerSet(trees["vartree"].dbapi)
+	singleBuilder = classmethod(singleBuilder)
