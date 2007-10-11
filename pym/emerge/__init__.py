@@ -1936,13 +1936,15 @@ class depgraph(object):
 				existing_node = None
 				myeb = None
 				usepkgonly = "--usepkgonly" in self.myopts
+				empty = "empty" in self.myparams
+				selective = "selective" in self.myparams
 				for find_existing_node in True, False:
 					if existing_node:
 						break
 					for db, pkg_type, built, installed, db_keys in dbs:
 						if existing_node:
 							break
-						if installed and matched_packages:
+						if installed and (matched_packages or empty):
 							# We only need to select an installed package here
 							# if there is no other choice.
 							continue
@@ -2060,6 +2062,8 @@ class depgraph(object):
 								not myarg) and \
 								"empty" not in self.myparams and \
 								vardb.cpv_exists(cpv):
+								break
+							if installed and not (selective or not myarg):
 								break
 							# Metadata accessed above is cached internally by
 							# each db in order to optimize visibility checks.
