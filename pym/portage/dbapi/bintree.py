@@ -9,6 +9,7 @@ from portage.output import green
 from portage.util import normalize_path, writemsg, writemsg_stdout
 from portage.versions import best, catpkgsplit, catsplit
 from portage.update import update_dbentries
+from portage.const import EAPI
 
 from portage import dep_expand, listdir, _movefile
 
@@ -151,9 +152,9 @@ class binarytree(object):
 			self._pkgindex_aux_keys = list(self._pkgindex_aux_keys)
 			self._pkgindex_header_keys = set(["ACCEPT_KEYWORDS", "CBUILD",
 				"CHOST", "CONFIG_PROTECT", "CONFIG_PROTECT_MASK", "FEATURES",
-				"GENTOO_MIRRORS", "INSTALL_MASK", "SYNC", "USE", "EPREFIX"])
+				"GENTOO_MIRRORS", "INSTALL_MASK", "SYNC", "USE", "EAPI", "EPREFIX"])
 			self._pkgindex_default_pkg_data = {
-				"EAPI"    : "0",
+				"EAPI"    : EAPI,
 				"IUSE"    : "",
 				"PROVIDE" : "",
 				"SLOT"    : "0",
