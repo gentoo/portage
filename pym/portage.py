@@ -7863,7 +7863,7 @@ class dblink:
 			self._installed_instance = max_dblnk
 
 		# check for package collisions
-		if "collision-protect" in self.settings.features:
+		if True:
 			collision_ignore = set([normalize_path(myignore) for myignore in \
 				self.settings.get("COLLISION_IGNORE", "").split()])
 			myfilelist = listdir(srcroot, recursive=1, filesonly=1, followSymlinks=False)
@@ -7938,7 +7938,6 @@ class dblink:
 						isowned = True
 						break
 				if not isowned:
-					collisions.append(f)
 					stopmerge=True
 					if collision_ignore:
 						if f in collision_ignore:
@@ -7948,8 +7947,9 @@ class dblink:
 								if f.startswith(myignore + os.path.sep):
 									stopmerge = False
 									break
-			#print green("*")+" spent "+str(time.time()-starttime)+" seconds checking for file collisions"
-			if stopmerge:
+					if stopmerge:
+						collisions.append(f)
+			if stopmerge and "collision-protect" in self.settings.features:
 				print red("*")+" This package is blocked because it wants to overwrite"
 				print red("*")+" files belonging to other packages (see list below)."
 				print red("*")+" If you have no clue what this is all about report it "
@@ -8022,6 +8022,39 @@ class dblink:
 		a = doebuild(myebuild, "preinst", destroot, self.settings, cleanup=cleanup,
 			use_cache=0, tree=self.treetype, mydbapi=mydbapi,
 			vartree=self.vartree)
+
+		if collisions:
+			msg = "This package wants to overwrite one or more files that" + \
+			" may belong to other packages (see list below)." + \
+			" Add \"collision-protect\" to FEATURES in make.conf" + \
+			" if you would like the merge to abort in cases like this." + \
+			" If you have determined that one or more of the files" + \
+			" actually belong to another installed package then" + \
+			" go to http://bugs.gentoo.org and report it as a bug." + \
+			" Be sure to identify both this package and the other" + \
+			" installed package in the bug report. Use a command such as " + \
+			" \\`equery belongs <filename>\\` to identify the installed" + \
+			" package that owns a file. Do NOT file a bug without" + \
+			" reporting exactly which two packages install the same file(s)."
+
+			self.settings["EBUILD_PHASE"] = "preinst"
+			cmd = "source '%s/isolated-functions.sh' ; " % PORTAGE_BIN_PATH
+			from textwrap import wrap
+			msg = wrap(msg, 70)
+			for line in msg:
+				cmd += "eerror \"%s\" ; " % line
+			cmd += "eerror ; "
+			cmd += "eerror \"Detected file collision(s):\" ; "
+			cmd += "eerror ; "
+
+			from output import colorize
+			for f in collisions:
+				cmd += "eerror \"     '%s'\" ; " % colorize("INFORM",
+					os.path.join(destroot, f.lstrip(os.path.sep)))
+
+			portage_exec.spawn(["bash", "-c", cmd],
+				env=self.settings.environ())
+			elog_process(self.settings.mycpv, self.settings)
 
 		# XXX: Decide how to handle failures here.
 		if a != os.EX_OK:
