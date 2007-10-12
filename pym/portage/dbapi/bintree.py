@@ -560,6 +560,9 @@ class binarytree(object):
 			not self._remotepkgs:
 
 			base_url = self.settings["PORTAGE_BINHOST"]
+			# ensure the URL ends with a /, otherwise urljoin strips off
+			# the last directory, before it adds "Packages"
+			base_url = base_url.rstrip("/") + "/"
 			from portage.const import CACHE_PATH
 			from urlparse import urlparse
 			urldata = urlparse(base_url)
