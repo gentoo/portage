@@ -1786,12 +1786,18 @@ class dblink(object):
 			vartree=self.vartree)
 
 		if collisions:
-			msg = "This package wants to overwrite" + \
-			" files belonging to other packages (see list below)." + \
+			msg = "This package wants to overwrite one or more files that" + \
+			" may belong to other packages (see list below)." + \
 			" Add \"collision-protect\" to FEATURES in make.conf" + \
 			" if you would like the merge to abort in cases like this." + \
-			" If you have no clue what this is all about then go to" + \
-			" http://bugs.gentoo.org and report it as a bug for this package."
+			" If you have determined that one or more of the files" + \
+			" actually belong to another installed package then" + \
+			" go to http://bugs.gentoo.org and report it as a bug." + \
+			" Be sure to identify both this package and the other" + \
+			" installed package in the bug report. Use a command such as " + \
+			" \\`equery belongs <filename>\\` to identify the installed" + \
+			" package that owns a file. Do NOT file a bug without" + \
+			" reporting exactly which two packages install the same file(s)."
 
 			self.settings["EBUILD_PHASE"] = "preinst"
 			cmd = "source '%s/isolated-functions.sh' ; " % PORTAGE_BIN_PATH
