@@ -2,8 +2,12 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-from portage.versions import catsplit
+from portage.versions import catsplit, catpkgsplit
 from portage.sets import PackageSet, SetConfigError
+from portage.dbapi.vartree import dblink
+from portage.util import grabfile
+
+import os
 
 __all__ = ["CategorySet", "EverythingSet"]
 
@@ -105,3 +109,64 @@ class CategorySet(PackageSet):
 			rValue[myname] = myset
 		return rValue
 	multiBuilder = classmethod(multiBuilder)
+
+class LibraryConsumerSet(PackageSet):
+	_operations = ["merge", "unmerge"]
+
+	def __init__(self, vardbapi):
+		super(LibraryConsumerSet, self).__init__()
+		self.dbapi = vardbapi
+
+	def mapPathsToAtoms(self, paths):
+		rValue = set()
+		for cpv in self.dbapi.cpv_all():
+			mysplit = catsplit(cpv)
+			link = dblink(mysplit[0], mysplit[1], myroot=self.dbapi.root, \
+					mysettings=self.dbapi.settings, treetype='vartree', \
+					vartree=self.dbapi.vartree)
+			if paths.intersection(link.getcontents().keys()):
+				rValue.add("/".join(catpkgsplit(cpv)[:2]))
+		return rValue
+	
+
+class PreservedLibraryConsumerSet(LibraryConsumerSet):
+	def load(self):
+		reg = self.dbapi.plib_registry
+		libmap = self.dbapi.libmap.get()
+		consumers = set()
+		if reg:
+			for libs in reg.getPreservedLibs().values():
+				for lib in libs:
+					paths = libmap.get(os.path.basename(lib), [])
+					consumers.update(paths)
+		else:
+			return
+		if not consumers:
+			return
+		self._setAtoms(self.mapPathsToAtoms(consumers))
+
+	def singleBuilder(cls, options, settings, trees):
+		return PreservedLibraryConsumerSet(trees["vartree"].dbapi)
+	singleBuilder = classmethod(singleBuilder)
+
+class MissingLibraryConsumerSet(LibraryConsumerSet):
+	_operations = ["merge", "unmerge"]
+	
+	def load(self):
+		atoms = set()
+		consumers = set()
+		for lib in self.dbapi.libmap.get():
+			found=False
+			for searchdir in grabfile(os.path.join(os.sep, self.dbapi.root, "etc/ld.so.conf")):
+				if os.path.exists(os.path.join(searchdir, lib)):
+					found=True
+					break
+			if not found:
+				consumers.update(self.dbapi.libmap.get()[lib])
+		if not consumers:
+			return
+		self._setAtoms(self.mapPathsToAtoms(consumers))
+	
+	def singleBuilder(cls, options, settings, trees):
+		return MissingLibraryConsumerSet(trees["vartree"].dbapi)
+	singleBuilder = classmethod(singleBuilder)

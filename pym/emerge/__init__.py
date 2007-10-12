@@ -1937,13 +1937,16 @@ class depgraph(object):
 				existing_node = None
 				myeb = None
 				usepkgonly = "--usepkgonly" in self.myopts
+				empty = "empty" in self.myparams
+				selective = "selective" in self.myparams
 				for find_existing_node in True, False:
 					if existing_node:
 						break
 					for db, pkg_type, built, installed, db_keys in dbs:
 						if existing_node:
 							break
-						if installed and matched_packages:
+						if installed and not find_existing_node and \
+							(matched_packages or empty):
 							# We only need to select an installed package here
 							# if there is no other choice.
 							continue
@@ -2061,6 +2064,8 @@ class depgraph(object):
 								not myarg) and \
 								"empty" not in self.myparams and \
 								vardb.cpv_exists(cpv):
+								break
+							if installed and not (selective or not myarg):
 								break
 							# Metadata accessed above is cached internally by
 							# each db in order to optimize visibility checks.
@@ -6640,7 +6645,8 @@ def emerge_main():
 	setconfigpaths = [os.path.join(GLOBAL_CONFIG_PATH, "sets.conf")]
 	setconfigpaths.append(os.path.join(settings["PORTDIR"], "sets.conf"))
 	setconfigpaths += [os.path.join(x, "sets.conf") for x in settings["PORDIR_OVERLAY"].split()]
-	setconfigpaths.append(os.path.join(os.sep, settings["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH, "sets.conf"))
+	setconfigpaths.append(os.path.join(settings["PORTAGE_CONFIGROOT"],
+		USER_CONFIG_PATH.lstrip(os.path.sep), "sets.conf"))
 	#setconfig = SetConfig(setconfigpaths, settings, trees[settings["ROOT"]])
 	setconfig = make_default_config(settings, trees[settings["ROOT"]])
 	del setconfigpaths

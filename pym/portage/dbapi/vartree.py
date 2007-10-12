@@ -147,8 +147,8 @@ class LibraryPackageMap(object):
 		""" Update the global library->consumer map for the given vdb instance. """
 		obj_dict = {}
 		for cpv in self._dbapi.cpv_all():
-			needed_list = self._dbapi.aux_get(cpv, ["NEEDED"])[0]
-			for l in needed_list.split("\n"):
+			needed_list = grabfile(self._dbapi.getpath(cpv, "NEEDED"))
+			for l in needed_list:
 				mysplit = l.split()
 				if len(mysplit) < 2:
 					continue
