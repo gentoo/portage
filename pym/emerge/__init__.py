@@ -2139,7 +2139,7 @@ class depgraph(object):
 								if not metadata["EPREFIX"]:
 									mreasons.append("missing EPREFIX")
 								elif len(metadata["EPREFIX"].strip()) < len(pkgsettings["EPREFIX"]):
-									mreasons.append("EPREFIX: '%s' too small" % metadata["EPREFIX")
+									mreasons.append("EPREFIX: '%s' too small" % metadata["EPREFIX"])
 							missing_licenses = []
 							if metadata:
 								try:
