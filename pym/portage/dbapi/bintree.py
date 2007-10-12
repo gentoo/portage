@@ -147,11 +147,11 @@ class binarytree(object):
 			self._pkgindex_aux_keys = \
 				["CHOST", "DEPEND", "DESCRIPTION", "EAPI",
 				"IUSE", "KEYWORDS", "LICENSE", "PDEPEND",
-				"PROVIDE", "RDEPEND", "SLOT", "USE"]
+				"PROVIDE", "RDEPEND", "SLOT", "USE", "EPREFIX"]
 			self._pkgindex_aux_keys = list(self._pkgindex_aux_keys)
 			self._pkgindex_header_keys = set(["ACCEPT_KEYWORDS", "CBUILD",
 				"CHOST", "CONFIG_PROTECT", "CONFIG_PROTECT_MASK", "FEATURES",
-				"GENTOO_MIRRORS", "INSTALL_MASK", "SYNC", "USE"])
+				"GENTOO_MIRRORS", "INSTALL_MASK", "SYNC", "USE", "EPREFIX"])
 			self._pkgindex_default_pkg_data = {
 				"EAPI"    : "0",
 				"IUSE"    : "",
@@ -159,7 +159,7 @@ class binarytree(object):
 				"SLOT"    : "0",
 				"USE"     : ""
 			}
-			self._pkgindex_inherited_keys = ["CHOST"]
+			self._pkgindex_inherited_keys = ["CHOST", "EPREFIX"]
 
 	def move_ent(self, mylist):
 		if not self.populated:

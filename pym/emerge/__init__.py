@@ -901,6 +901,11 @@ def visible(pkgsettings, cpv, metadata, built=False, installed=False):
 	if built and not installed and \
 		metadata["CHOST"] != pkgsettings["CHOST"]:
 		return False
+	if built:
+		if not metadata["EPREFIX"]:
+			return False
+		if len(metadata["EPREFIX"].strip()) < len(pkgsettings["EPREFIX"]):
+			return False
 	if not portage.eapi_is_supported(metadata["EAPI"]):
 		return False
 	if pkgsettings.getMissingKeywords(cpv, metadata):
@@ -5649,7 +5654,7 @@ def action_info(settings, trees, myopts, myfiles):
 	if mypkgs:
 		# Get our global settings (we only print stuff if it varies from
 		# the current config)
-		mydesiredvars = [ 'CHOST', 'CFLAGS', 'CXXFLAGS' ]
+		mydesiredvars = [ 'CHOST', 'CFLAGS', 'CXXFLAGS', 'EPREFIX' ]
 		auxkeys = mydesiredvars + [ "USE", "IUSE"]
 		global_vals = {}
 		pkgsettings = portage.config(clone=settings)
