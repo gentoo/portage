@@ -144,6 +144,11 @@ class binarytree(object):
 			self._pkgindex_file = os.path.join(self.pkgdir, "Packages")
 			self._pkgindex_keys = self.dbapi._aux_cache_keys.copy()
 			self._pkgindex_keys.update(["CPV", "MTIME", "SIZE"])
+			self._pkgindex_aux_keys = \
+				["CHOST", "DEPEND", "DESCRIPTION", "EAPI",
+				"IUSE", "KEYWORDS", "LICENSE", "PDEPEND",
+				"PROVIDE", "RDEPEND", "SLOT", "USE"]
+			self._pkgindex_aux_keys = list(self._pkgindex_aux_keys)
 			self._pkgindex_header_keys = set(["ACCEPT_KEYWORDS", "CBUILD",
 				"CHOST", "CONFIG_PROTECT", "CONFIG_PROTECT_MASK", "FEATURES",
 				"GENTOO_MIRRORS", "INSTALL_MASK", "SYNC", "USE"])
@@ -499,15 +504,15 @@ class binarytree(object):
 					d["MTIME"] = str(long(s.st_mtime))
 					d["SIZE"] = str(s.st_size)
 
-					aux_keys = list(self.dbapi._aux_cache_keys)
-					d.update(izip(aux_keys,
-						self.dbapi.aux_get(mycpv, aux_keys)))
-
-					use = d["USE"].split()
-					iuse = set(d["IUSE"].split())
-					use = [f for f in use if f in iuse]
-					use.sort()
-					d["USE"] = " ".join(use)
+					d.update(izip(self._pkgindex_aux_keys,
+						self.dbapi.aux_get(mycpv, self._pkgindex_aux_keys)))
+					try:
+						self._eval_use_flags(mycpv, d)
+					except portage.exception.InvalidDependString:
+						writemsg("!!! Invalid binary package: '%s'\n" % \
+							self.getname(mycpv), noiselevel=-1)
+						self.dbapi.cpv_remove(cpv)
+						del pkg_paths[mycpv]
 
 					# record location if it's non-default
 					if mypath != mycpv + ".tbz2":
@@ -728,18 +733,16 @@ class binarytree(object):
 			# record location if it's non-default
 			if rel_path != cpv + ".tbz2":
 				d["PATH"] = rel_path
-			keys = ["USE", "IUSE", "DESCRIPTION", "EAPI", "LICENSE", "PROVIDE", \
-				"RDEPEND", "DEPEND", "PDEPEND"]
 			from itertools import izip
-			d.update(izip(keys, self.dbapi.aux_get(cpv, keys)))
-			d["DESC"] = d["DESCRIPTION"]
-			del d["DESCRIPTION"]
+			d.update(izip(self._pkgindex_aux_keys,
+				self.dbapi.aux_get(cpv, self._pkgindex_aux_keys)))
 			try:
 				self._eval_use_flags(cpv, d)
-			except portage.exception.InvalidDependString, e:
+			except portage.exception.InvalidDependString:
 				writemsg("!!! Invalid binary package: '%s'\n" % \
 					self.getname(cpv), noiselevel=-1)
 				self.dbapi.cpv_remove(cpv)
+				del self._pkg_paths[cpv]
 				return
 			pkgindex.packages[cpv] = d
 			self._update_pkgindex_header(pkgindex.header)
@@ -784,6 +787,8 @@ class binarytree(object):
 		return False
 
 	def _eval_use_flags(self, cpv, metadata):
+		metadata["DESC"] = metadata["DESCRIPTION"]
+		del metadata["DESCRIPTION"]
 		use = metadata["USE"].split()
 		iuse = set(metadata["IUSE"].split())
 		use = [f for f in use if f in iuse]
