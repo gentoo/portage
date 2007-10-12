@@ -24,6 +24,7 @@
 		alter the default and repository sets.
 		</para>
 	</sect1>
+	
 	<sect1 id='config-set-syntax'>
 		<title>sets.conf Syntax</title>
 		<para>
@@ -44,7 +45,10 @@
 			<para>
 			The configuration of a single set can be very simple as in most cases
 			it only requires a single option <varname>class</varname> to be 
-			complete. That option defines which handler class should be used to 
+			complete <footnote><para>Technically the <varname>class</varname> option
+			isn't stricly required, but it should always be used as the default 
+			handler might be changed in future versions</para></footnote>.
+			That option defines which handler class should be used to 
 			create the set. Another universal option available for single sets is
 			<varname>name</varname>, however it's usually not needed as the name
 			of the set is generated from the section name if <varname>name</varname>
@@ -67,6 +71,7 @@
 			<!-- TODO: reference list of available set handler classes here -->
 			</para>
 		</sect2>
+	
 		<sect2 id='config-set-syntax-multi'>
 			<title>Multi Set Configuration</title>
 			<para>
@@ -110,5 +115,357 @@
 			</para>
 			<!-- TODO: reference list of available set handler classes here -->
 		</sect2>
+	</sect1>
+
+	<sect1 id='config-set-classes'>
+		<title>Available Set Handler Classes</title>
+		<para>
+		The following sections contain the available handler classes that can be
+		used for the <varname>class</varname> option in 
+		<filename>sets.conf</filename>, together with a description about required
+		and optional configuration options for single and multi set configurations.
+		Note that not all classes support both configuration styles.
+		</para>
+		
+		<sect2 id='config-set-classes-StaticFileSet' xreflabel='StaticFileSet'>
+		<title>portage.sets.files.StaticFileSet</title>
+		<para>
+		This class implements a simple file based package set. All atoms from 
+		configured file are used to form the set, and currently only simple and 
+		versioned atoms	are supported (no use conditionals or any-of constructs).
+		For descriptive purposes the file can be accompanied by a file with the 
+		same name plus a <filename>.metadata</filename> suffix which can contain
+		metadata sections for description, author, location and so on. Each section
+		has the form <msgtext>key: value</msgtext> where <varname>value</varname>
+		can contain multiple lines. Therefore sections have to be separated by 
+		blank lines. For example:
+		<programlisting>
+		description: This is a somewhat
+		longer description than usual. So it 
+		needs more than one line.
+		
+		homepage: http://www.foobar.org
+		
+		author: John Doe &lt;john@doe.com&gt;
+		</programlisting>
+		</para>
+		
+			<sect3>
+			<title>Single Set Configuration</title>
+			<para>
+			In a single set configuration this class supports the following options:
+			<itemizedlist>
+			<listitem><varname>filename</varname>: Required. Specifies the path to the file
+				that should be used for the package set.</listitem>
+			</itemizedlist>
+			</para>
+			</sect3>
+
+			<sect3>
+			<title>Multi Set Configuration</title>
+			<para>
+			In a multi set configuration this class supports the following options:
+			<itemizedlist>
+			<listitem><varname>directory</varname>: Optional, defaults to 
+				<filename>/etc/portage/sets</filename>. Specifies the path to a directory
+				containing package set files. For each file (excluding metadata files) in 
+				that location a separate package set is created.
+			</listitem>
+			<listitem><varname>name_pattern</varname>: Optional, defaults to 
+				<parameter>sets/$name</parameter>. This describes the naming pattern
+				to be used for creating the sets. It must contain either 
+				<parameter>$name</parameter> or <parameter>${name}</parameter>, which 
+				will be replaced by the filename (without any directory components).
+			</listitem>
+			</itemizedlist>
+			</para>
+			</sect3>
+		</sect2>
+		
+		<sect2 id='config-set-classes-ConfigFileSet'>
+		<title>portage.sets.files.ConfigFileSet</title>
+		<para>
+		Similar to <classname>StaticFileSet</classname>, but uses Portage configuration files.
+		Namely it can work with <filename>package.use</filename>, 
+		<filename>package.keywords</filename>, <filename>package.mask</filename>
+		and <filename>package.unmask</filename>. It does not support 
+		<filename>.metadata</filename> files, but ignores the extra data (like 
+		USE flags or keywords) typically found in those files.
+		</para>
+		
+			<sect3>
+			<title>Single Set Configuration</title>
+			<para>
+			In a single set configuration this class supports the following options:
+			<itemizedlist>
+			<listitem><varname>filename</varname>: See 
+				<xref linkend='config-set-classes-StaticFileSet'>StaticFileSet</xref>
+			</listitem>
+			</itemizedlist>
+			</para>
+			</sect3>
+			
+			<sect3>
+			<title>Multi Set Configuration</title>
+			<para>
+			In a multi set configuration this class supports the following options:
+			<itemizedlist>
+			<listitem><varname>directory</varname>: Optional, defaults to 
+				<filename>/etc/portage</filename>. Specifies the path to a directory
+				containing one or more of the following portage configuration files:
+				<filename>package.use</filename>, <filename>package.keywords</filename>,
+				<filename>package.mask</filename> or <filename>package.unmask</filename>.
+				No other files in that directory will be used.
+			</listitem>
+			<listitem><varname>name_pattern</varname>: Optional, defaults to 
+				<parameter>sets/package_$suffix</parameter>. This describes the naming 
+				pattern to be used for creating the sets. It must contain either
+				<parameter>$suffix</parameter> or <parameter>${suffix}</parameter>, 
+				which will be replaced by the file suffix (e.g. 
+				<parameter>use</parameter> or <parameter>mask</parameter>).
+			</listitem>
+			</itemizedlist>
+			</para>
+			</sect3>
+		</sect2>
+		
+		<sect2 id='config-set-classes-WorldSet'>
+		<title>portage.sets.files.WorldSet</title>
+		<para>
+		A minor variation of <classname>StaticFileSet</classname>, mainly for implementation 
+		reasons. It should never be used in user configurations as it's already configured
+		by default, doesn't support any options and will eventually be removed in a future version.
+		</para>
+		
+			<sect3>
+			<title>Single Set Configuraton</title>
+			<para>
+			This class does not support any options.
+			</para>
+			</sect3>
+		</sect2>
+		
+		<sect2 id='config-set-classes-PackagesSystemSet'>
+		<title>portage.sets.profiles.PackagesSystemSet</title>
+		<para>
+		This class implements the classic <parameter>system</parameter> set, based on the 
+		<filename>packages</filename> files in the profile.
+		<!-- TODO: Add reference to profile documentation regarding "packages" -->
+		There is no reason to use this in a user configuration as it is already
+		confgured by default and doesn't support any options.
+		</para>
+		
+			<sect3>
+			<title>Single Set Configuration</title>
+			<para>
+			This class does not support any options.
+			</para>
+			</sect3>
+		</sect2>
+		
+		<sect2 id='config-set-classes-SecuritySet' xreflabel='SecuritySet'>
+		<title>portage.sets.security.SecuritySet</title>
+		<para>
+		The set created by this class contains all atoms that need to be installed 
+		to apply all GLSAs in the ebuild repository, no matter if they are already 
+		applied or no (it's equivalent to the <parameter>all</parameter> target of
+		glsa-check). Generally it should be avoided in configurations in favor of
+		<classname>NewAffectedSet</classname> described below.
+		</para>
+
+			<sect3>
+			<title>Single Set Configuration</title>
+			<para>
+			In single set configurations this class supports the following options:
+			<itemizedlist>
+			<listitem><varname>use_emerge_resolver</varname>: Optional, defaults to 
+				<parameter>false</parameter>. This option determines which resolver 
+				strategy should be used for the set atoms. When set to 
+				<parameter>true</parameter>, it	will use the default emerge algorithm 
+				and use the highest visible version that matches the GLSA. If set 
+				to <parameter>false</parameter> it will use the default glsa-check 
+				algorithm and use the lowest version that matches the GLSA and is 
+				higher than the currently installed version (least change policy).
+			</listitem>
+			</itemizedlist>
+			</para>
+			</sect3>
+		</sect2>
+		
+		<sect2 id='config-set-classes-NewGlsaSet'>
+		<title>portage.sets.security.NewGlsaSet</title>
+		<para>
+		Like <xref linkend='config-set-classes-SecuritySet'>SecuritySet</xref>,
+		but ignores all GLSAs that were already applied or injected previously.
+		</para>
+
+			<sect3>
+			<title>Single Set Configuration</title>
+			<para>
+			In single set configurations this class supports the following options:
+			<itemizedlist>
+			<listitem><varname>use_emerge_resolver</varname>: See
+				<xref linkend='config-set-classes-SecuritySet'>SecuritySet</xref>
+			</listitem>
+			</itemizedlist>
+			</para>
+			</sect3>
+		</sect2>
+		
+		<sect2 id='config-set-classes-NewAffectedSet'>
+		<title>portage.sets.security.NewAffectedSet</title>
+		<para>
+		Like <xref linkend='config-set-classes-SecuritySet'>SecuritySet</xref>,
+		but ignores all GLSAs that were already applied or inejcted previously,
+		and all GLSAs that don't affect the current system. Practically there
+		should be no difference to <classname>NewGlsaSet</classname> though.
+		</para>
+
+			<sect3>
+			<title>Single Set Configuration</title>
+			<para>
+			In single set configurations this class supports the following options:
+			<itemizedlist>
+			<listitem><varname>use_emerge_resolver</varname>: See
+				<xref linkend='config-set-classes-SecuritySet'>SecuritySet</xref>
+			</listitem>
+			</itemizedlist>
+			</para>
+			</sect3>
+		</sect2>
+		
+		<sect2 id='config-set-classes-AffectedSet'>
+		<title>portage.sets.security.AffectedSet</title>
+		<para>
+		Like <xref linkend='config-set-classes-SecuritySet'>SecuritySet</xref>,
+		but ignores all GLSAs that don't affect the current system. Practically
+		there should be no difference to <classname>SecuritySet</classname> though.
+		</para>
+
+			<sect3>
+			<title>Single Set Configuration</title>
+			<para>
+			In single set configurations this class supports the following options:
+			<itemizedlist>
+			<listitem><varname>use_emerge_resolver</varname>: See
+				<xref linkend='config-set-classes-SecuritySet'>SecuritySet</xref>
+			</listitem>
+			</itemizedlist>
+			</para>
+			</sect3>
+		</sect2>
+		
+		<sect2 id='config-set-classes-CommandOutputSet'>
+		<title>portage.sets.shell.CommandOutputSet</title>
+		<para>
+		As the name says, this class creates a package set based on the output of
+		a given command. The command is run once when the set is accessed 
+		for the first time during the current session.
+		</para>
+
+			<sect3>
+			<title>Single Set Configuration</title>
+			<para>
+			In single set configurations this class supports the following options:
+			<itemizedlist>
+			<listitem><varname>command</varname>: Required. Specifies the command
+				that should be executed to generate the package set. It should 
+				output a newline separated list of simple and/or versioned atoms
+				on stdout.
+			</listitem>
+			</itemizedlist>
+			</para>
+			</sect3>
+		</sect2>
+		
+		<sect2 id='config-set-classes-CategorySet'>
+		<title>portage.sets.dbapi.CategorySet</title>
+		<para>
+		This class simply creates a set with all packages in a given category.
+		</para>
+
+			<sect3>
+			<title>Single Set Configuration</title>
+			<para>
+			In single set configurations this class supports the following options:
+			<itemizedlist>
+			<listitem><varname>category</varname>: Required. The name of an existing ebuild
+				category which should be used to create the package set.
+			</listitem>
+			<listitem><varname>repository</varname>: Optional, defaults to 
+				<parameter>porttree</parameter>. It determines which repository class should
+				be used to create the package set. Valid values for this option are:
+				<parameter>porttree</parameter> (normal ebuild repository), 
+				<parameter>vartree</parameter> (installed package repository)
+				and <parameter>bintree</parameter> (local binary package repository).
+			</listitem>
+			<listitem><varname>only_visible</varname>: Optional, defaults to <parameter>true</parameter>.
+				When set to <parameter>true</parameter> the set will only include visible packages, 
+				when set to <parameter>false</parameter> it will also include masked packages.
+				It's currently only effective in in combination with the <parameter>porttree</parameter>
+				repository.
+			</listitem>
+			</itemizedlist>
+			</para>
+			</sect3>
+			
+			<sect3>
+			<title>Multi Set Configuration</title>
+			<para>
+			In multi set configurations this class supports the following options:
+			<itemizedlist>
+			<listitem><varname>categories</varname>: Optional, defaults to all categories.
+				If set it must be a space separated list of existing ebuild categories for
+				which package sets should be created.
+			</listitem>
+			<listitem><varname>repository</varname>: See previous section.</listitem>
+			<listitem><varname>only_visible</varname>: See previous section.</listitem>
+			<listitem><varname>name_pattern</varname>: Optional, defaults to 
+				<parameter>$category/*</parameter>. This describes the naming pattern
+				to be used for creating the sets. It must contain either 
+				<parameter>$category</parameter> or <parameter>${category}</parameter>, which 
+				will be replaced by the category name.
+			</listitem>
+			</itemizedlist>
+			</para>
+			</sect3>
+		</sect2>
+		
+		<sect2 id='config-set-classes-EverythingSet'>
+		<title>portage.sets.dbapi.EverythingSet</title>
+		<para>
+		A superset of the classic <parameter>world</parameter> target, a set created
+		by this class contains all installed packages.
+		</para>
+
+			<sect3>
+			<title>Single Set Configuration</title>
+			<para>
+			This class does not support any options.
+			</para>
+			</sect3>
+		</sect2>
+	</sect1>
+	
+	<sect1 id='config-set-defaults'>
+	<title>Default Sets</title>
+	<para>
+	By default, Portage already creates a few default sets that can be used 
+	without further configuration. See <xref linkend='config-set-locations'/>
+	and <xref linkend='config-set-syntax'/> for details on how to change those
+	defaults.
+	</para>
+	<para>
+	The default sets are:
+	<itemizedlist>
+	<listitem><varname>system</varname>: uses <classname>PackagesSystemSet</classname></listitem>
+	<listitem><varname>world</varname>: uses <classname>WorldSet</classname></listitem>
+	<listitem><varname>security</varname>: uses <classname>NewAffectedSet</classname> with default options</listitem>
+	<listitem><varname>everything</varname>: uses <classname>EverythingSet</classname></listitem>
+	</itemizedlist>
+	Additionally the default configuration includes a multi set section based on
+	the <classname>StaticFileSet</classname> defaults that creates a set for each 
+	file in <filename>/etc/portage/sets</filename> for convenience.
+	</para>
 	</sect1>
 </chapter>
