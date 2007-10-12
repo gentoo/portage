@@ -16,10 +16,24 @@
 #include <string.h>
 #include <strings.h>
 #include <errno.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <dirent.h>
+#include <unistd.h>
+#include <alloca.h>
 
 /* Don't allocate too much, or you'll be paying for waiting on IO,
  * size -1 to align in memory. */
 #define BUFSIZE 8095
+/* POSIX says 256 on this one, but I can hardly believe that really is
+ * the limit of most popular systems.  XOPEN says 1024, taking that
+ * value, hoping it is enough */
+#define MAX_PATH 1024
+
+static char *magic;
+static char *value;
+static size_t magiclen;
+static size_t valuelen;
 
 /**
  * Writes padding zero-bytes after the first encountered zero-byte.
@@ -71,63 +85,29 @@ static char *memstr(const char *buf, const char *needle, size_t len) {
 	return(NULL);
 }
 
-int main(int argc, char **argv) {
+static int chpath(const char *fi, const char *fo) {
 	FILE *fin;
 	FILE *fout;
-	char *magic;
-	char *value;
-	char buf[BUFSIZE + 1];
-	char *tmp;
 	size_t len;
 	size_t pos;
 	size_t padding;
-	size_t magiclen;
-	size_t valuelen;
-
-	if (argc != 5) {
-		fprintf(stderr, "usage: in-file out-file magic value\n");
-		return(-1);
-	}
-
-	magic    = argv[3];
-	value    = argv[4];
-	magiclen = strlen(magic);
-	valuelen = strlen(value);
-
-	if (magiclen < valuelen) {
-		fprintf(stderr, "value length (%zd) is bigger than "
-				"the magic length (%zd)\n", valuelen, magiclen);
-		return(-1);
-	}
-	if (magiclen > BUFSIZE) {
-		fprintf(stderr, "magic length (%zd) is bigger than "
-				"BUFSIZE (%d), unable to process\n", magiclen, BUFSIZE);
-		return(-1);
-	}
-
-	if (strcmp(argv[1], "-") == 0) {
-		fin  = stdin;
-	} else {
-		fin  = fopen(argv[1], "r");
-	}
-	if (fin == NULL) {
-		fprintf(stderr, "unable to open %s: %s\n", argv[1], strerror(errno));
-		return(-1);
-	}
-
-	if (strcmp(argv[2], "-") == 0) {
-		fout = stdout;
-	} else {
-		fout = fopen(argv[2], "w");
-	}
-	if (fin == NULL) {
-		fprintf(stderr, "unable to open %s: %s\n", argv[2], strerror(errno));
-		return(-1);
-	}
+	char *tmp;
+	char buf[BUFSIZE + 1];
 
 	/* make sure there is a trailing zero-byte, such that strstr and
 	 * strchr won't go out of bounds causing segfaults.  */
 	buf[BUFSIZE] = '\0';
+
+	fin  = fopen(fi, "r");
+	if (fin == NULL) {
+		fprintf(stderr, "unable to open %s: %s\n", fi, strerror(errno));
+		return(-1);
+	}
+	fout = fopen(fo, "w");
+	if (fout == NULL) {
+		fprintf(stderr, "unable to open %s: %s\n", fo, strerror(errno));
+		return(-1);
+	}
 
 	pos = 0;
 	padding = 0;
@@ -170,8 +150,181 @@ int main(int argc, char **argv) {
 
 	if (padding != 0) {
 		fprintf(stdout, "warning: couldn't find a location to write "
-				"%zd padding bytes\n", padding);
+				"%zd padding bytes for %s\n", padding, fi);
 	}
 
 	return(0);
 }
+
+int dirwalk(char *src, char *srcp, char *trg, char *trgp) {
+	DIR *d;
+	struct dirent *de;
+	struct stat s;
+	char *st;
+	char *tt;
+
+	if (stat(trg, &s) != 0) {
+		/* try to create the target directory, retaining attributes */
+		if (stat(src, &s) != 0) {
+			fprintf(stderr, "cannot stat %s: %s\n", src, strerror(errno));
+			return(-1);
+		}
+		if (mkdir(trg, s.st_mode) != 0) {
+			fprintf(stderr, "failed to create directory %s: %s\n",
+					trg, strerror(errno));
+			return(-1);
+		}
+		if (lchown(trg, s.st_uid, s.st_gid) != 0) {
+			fprintf(stderr, "failed to set ownership of %s: %s\n",
+					trg, strerror(errno));
+			return(-1);
+		}
+	}
+
+	if ((d = opendir(src)) == NULL) {
+		fprintf(stderr, "cannot read directory %s: %s\n", src, strerror(errno));
+		return(-1);
+	}
+	/* store the end of the string pointer */
+	st = srcp;
+	tt = trgp;
+	while ((de = readdir(d)) != NULL) {
+		if (strcmp(de->d_name, "..") == 0 || strcmp(de->d_name, ".") == 0)
+			continue;
+
+		*st = '/';
+		strcpy(st + 1, de->d_name);
+		*tt = '/';
+		strcpy(tt + 1, de->d_name);
+		st += 1 + strlen(de->d_name);
+		tt += 1 + strlen(de->d_name);
+
+		if (stat(src, &s) != 0) {
+			fprintf(stderr, "cannot stat %s: %s\n", src, strerror(errno));
+			closedir(d);
+			return(-1);
+		}
+		if (
+				S_ISBLK(s.st_mode) ||
+				S_ISCHR(s.st_mode) ||
+				S_ISFIFO(s.st_mode) ||
+#ifndef _POSIX_C_SOURCE
+				S_ISWHT(s.st_mode) ||
+#endif
+				S_ISSOCK(s.st_mode)
+		   )
+		{
+			fprintf(stderr, "missing implementation for copying "
+					"object %s\n", src);
+			closedir(d);
+			return(-1);
+		} else if (
+				S_ISDIR(s.st_mode)
+				)
+		{
+			/* recurse */
+			if (dirwalk(src, st, trg, tt) != 0)
+				return(-1);
+		} else if (
+				S_ISREG(s.st_mode)
+				)
+		{
+			/* FIXME: handle hard links! */
+			/* copy */
+			if (chpath(src, trg) != 0) {
+				closedir(d);
+				return(-1);
+			}
+			/* fix permissions */
+			if (stat(src, &s) != 0) {
+				fprintf(stderr, "cannot stat %s: %s\n",
+						src, strerror(errno));
+				return(-1);
+			}
+			if (chmod(trg, s.st_mode) != 0) {
+				fprintf(stderr, "failed to set permissions of %s: %s\n",
+						trg, strerror(errno));
+				return(-1);
+			}
+			if (lchown(trg, s.st_uid, s.st_gid) != 0) {
+				fprintf(stderr, "failed to set ownership of %s: %s\n",
+						trg, strerror(errno));
+				return(-1);
+			}
+		} else if (
+				S_ISLNK(s.st_mode)
+				)
+		{
+			char buf[MAX_PATH];
+			char rep[MAX_PATH];
+			char *pb = buf;
+			char *pr = rep;
+			char *p = NULL;
+			int len = readlink(trg, buf, MAX_PATH - 1);
+			buf[len] = '\0';
+			/* replace occurences of magic by value in the string */
+			while ((p = strstr(pb, magic)) != NULL) {
+				memcpy(pr, pb, p - pb);
+				pr += p - pb;
+				memcpy(pr, value, valuelen);
+				pr += valuelen;
+				pb += magiclen;
+			}
+			memcpy(pr, pb, (&buf[0] + len) - pb);
+
+			symlink(trg, rep);
+		}
+
+		/* restore modified path */
+		st = srcp;
+		tt = trgp;
+		*st = *tt = '\0';
+	}
+	closedir(d);
+
+	return(0);
+}
+
+int main(int argc, char **argv) {
+	struct stat file;
+
+	if (argc != 5) {
+		fprintf(stderr, "usage: in-file out-file magic value\n");
+		fprintf(stderr, "       if in-file is a directory, out-file is "
+				"treated as one too\n");
+		return(-1);
+	}
+
+	magic    = argv[3];
+	value    = argv[4];
+	magiclen = strlen(magic);
+	valuelen = strlen(value);
+
+	if (magiclen < valuelen) {
+		fprintf(stderr, "value length (%zd) is bigger than "
+				"the magic length (%zd)\n", valuelen, magiclen);
+		return(-1);
+	}
+	if (magiclen > BUFSIZE) {
+		fprintf(stderr, "magic length (%zd) is bigger than "
+				"BUFSIZE (%d), unable to process\n", magiclen, BUFSIZE);
+		return(-1);
+	}
+
+	if (stat(argv[1], &file) != 0) {
+		fprintf(stderr, "unable to stat %s: %s\n", argv[1], strerror(errno));
+		return(-1);
+	}
+	if (S_ISDIR(file.st_mode)) {
+		char *src = alloca(sizeof(char) * MAX_PATH);
+		char *trg = alloca(sizeof(char) * MAX_PATH);
+		strcpy(src, argv[1]);
+		strcpy(trg, argv[2]);
+		/* walk this directory and process recursively */
+		return(dirwalk(src, src + strlen(argv[1]), trg, trg + strlen(argv[2])));
+	} else {
+		/* process as normal file */
+		return(chpath(argv[1], argv[2]));
+	}
+}
+

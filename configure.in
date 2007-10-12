@@ -48,7 +48,13 @@ GENTOO_PATH_GNUPROG(GREP, [grep])
 
 dnl Checks for header files.
 AC_HEADER_STDC
-AC_CHECK_HEADERS([string.h errno.h unistd.h stdio.h stdlib.h sys/stat.h sys/types.h])
+AC_CHECK_HEADERS([string.h errno.h unistd.h stdio.h stdlib.h])
+AC_CHECK_HEADERS([sys/stat.h sys/types.h dirent.h])
+
+AC_CHECK_LIBS([readdir], [c])
+AC_CHECK_LIBS([strcpy], [c])
+AC_CHECK_LIBS([strstr], [c])
+AC_CHECK_LIBS([memcpy], [c])
 
 AC_ARG_ENABLE(tbz2tool,
 AC_HELP_STRING([--enable-tbz2tool],[build tbz2tool, tool for creating binpkgs (default yes)]),
