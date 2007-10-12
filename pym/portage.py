@@ -8024,7 +8024,7 @@ class dblink:
 			vartree=self.vartree)
 
 		if collisions:
-			msg = "This package wants to overwrite one or more files that" + \
+			msg = "This package will overwrite one or more files that" + \
 			" may belong to other packages (see list below)." + \
 			" Add \"collision-protect\" to FEATURES in make.conf" + \
 			" if you would like the merge to abort in cases like this." + \
