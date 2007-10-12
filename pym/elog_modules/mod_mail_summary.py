@@ -4,6 +4,8 @@
 # $Id: mod_mail.py 3484 2006-06-10 22:38:44Z genone $
 
 import portage_mail, socket, os, time
+from portage_exception import PortageException
+from portage_util import writemsg
 from email.MIMEText import MIMEText as TextMessage
 
 _items = {}
@@ -48,6 +50,9 @@ def _finalize(mysettings, items):
 
 	mymessage = portage_mail.create_message(myfrom, myrecipient, mysubject,
 		mybody, attachments=items.values())
-	portage_mail.send_mail(mysettings, mymessage)
+	try:
+		portage_mail.send_mail(mysettings, mymessage)
+	except PortageException, e:
+		writemsg("%s\n" % str(e), noiselevel=-1)
 
 	return

@@ -74,7 +74,11 @@ def send_mail(mysettings, message):
 		try:
 			if int(mymailport) > 100000:
 				myconn = smtplib.SMTP(mymailhost, int(mymailport) - 100000)
+				myconn.ehlo()
+				if not myconn.has_extn("STARTTLS"):
+					raise portage_exception.PortageException("!!! TLS support requested for logmail but not suported by server")
 				myconn.starttls()
+				myconn.ehlo()
 			else:
 				myconn = smtplib.SMTP(mymailhost, mymailport)
 			if mymailuser != "" and mymailpasswd != "":
