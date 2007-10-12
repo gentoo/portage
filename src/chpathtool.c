@@ -1,6 +1,6 @@
 /* Copyright Gentoo Foundation 2006-2007
  * Author: Fabian Groffen <grobian@gentoo.org>
- * $Id: $
+ * $Id$
  *
  * chpathtool replaces a given string (magic) into another (value),
  * thereby paying attention to the original size of magic in order not
@@ -169,7 +169,7 @@ int main(int argc, char **argv) {
 	fclose(fin);
 
 	if (padding != 0) {
-		fprintf(stderr, "warning: couldn't find a location to write "
+		fprintf(stdout, "warning: couldn't find a location to write "
 				"%zd padding bytes\n", padding);
 	}
 
