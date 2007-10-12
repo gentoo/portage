@@ -3076,7 +3076,10 @@ class depgraph(object):
 				metadata = dict(izip(self._mydbapi_keys,
 					mydbapi.aux_get(pkg_key, self._mydbapi_keys)))
 				ebuild_path = None
-				repo_name = metadata["repository"]
+				if pkg_type == "binary":
+					repo_name = self.roots[myroot].settings.get("PORTAGE_BINHOST")
+				else:
+					repo_name = metadata["repository"]
 				if pkg_type == "ebuild":
 					ebuild_path = portdb.findname(pkg_key)
 					if not ebuild_path: # shouldn't happen
@@ -3086,7 +3089,7 @@ class depgraph(object):
 					pkgsettings.setcpv(pkg_key, mydb=mydbapi)
 					metadata["USE"] = pkgsettings["USE"]
 				else:
-					repo_path_real = portdb.getRepositoryPath(repo_name)
+					repo_path_real = repo_name
 				pkg_use = metadata["USE"].split()
 				try:
 					restrict = flatten(use_reduce(paren_reduce(
@@ -3641,6 +3644,11 @@ class RepoDisplay(object):
 		self._repo_paths = repo_paths
 		self._repo_paths_real = [ os.path.realpath(repo_path) \
 			for repo_path in repo_paths ]
+
+		if root_config.settings.get("PORTAGE_BINHOST"):
+			binhost = root_config.settings.get("PORTAGE_BINHOST")
+			self._repo_paths.append(binhost)
+			self._repo_paths_real.append(binhost)
 
 		# pre-allocate index for PORTDIR so that it always has index 0.
 		for root_config in roots.itervalues():
