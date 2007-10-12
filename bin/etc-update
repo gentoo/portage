@@ -445,10 +445,34 @@ die() {
 	exit ${2}
 }
 
+usage() {
+	cat <<-EOF
+	etc-update: Handle configuration file updates
+
+	Usage: etc-update [options]
+
+	Options:
+	  -h, --help     Show help and run away
+	  -V, --version  Show version and trundle away
+	EOF
+
+	[[ -n ${*:2} ]] && printf "\nError: %s\n" "${*:2}" 1>&2
+
+	exit ${1:-0}
+}
+
 #
 # Run the script
 #
-scriptname=$(basename $0)
+
+while [[ -n $1 ]] ; do
+	case $1 in
+		-h|--help)    usage;;
+		-V|--version) echo '$Id$'; exit 0;;
+		*)            usage 1 "Invalid option '$1'";;
+	esac
+	shift
+done
 
 type portageq > /dev/null || exit $?
 eval $(portageq envvar -v CONFIG_PROTECT \
