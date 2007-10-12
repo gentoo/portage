@@ -8054,7 +8054,6 @@ class dblink:
 
 			portage_exec.spawn(["bash", "-c", cmd],
 				env=self.settings.environ())
-			elog_process(self.settings.mycpv, self.settings)
 
 		# XXX: Decide how to handle failures here.
 		if a != os.EX_OK:
