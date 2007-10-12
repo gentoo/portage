@@ -664,7 +664,8 @@ def writepkgindex(pkgfile, items):
 
 class PackageIndex(object):
 
-	def __init__(self):
+	def __init__(self, default_pkg_data=None):
+		self._default_pkg_data = default_pkg_data
 		self.header = {}
 		self.packages = {}
 		self.modified = True
@@ -685,11 +686,9 @@ class PackageIndex(object):
 			mycpv = d.get("CPV")
 			if not mycpv:
 				continue
-			d.setdefault("EAPI", "0")
-			d.setdefault("IUSE", "")
-			d.setdefault("PROVIDE", "")
-			d.setdefault("SLOT", "0")
-			d.setdefault("USE", "")
+			if self._default_pkg_data:
+				for k, v in self._default_pkg_data.iteritems():
+					d.setdefault(k, v)
 			if header_chost:
 				d.setdefault("CHOST", header_chost)
 			self.packages[mycpv] = d
@@ -708,10 +707,10 @@ class PackageIndex(object):
 			metadata = self.packages[cpv].copy()
 			if metadata.get("CHOST") == header_chost:
 				del metadata["CHOST"]
-			if metadata.get("EAPI") == "0":
-				del metadata["EAPI"]
-			if metadata.get("SLOT") == "0":
-				del metadata["SLOT"]
+			if self._default_pkg_data:
+				for k, v in self._default_pkg_data.iteritems():
+					if metadata.get(k) == v:
+						metadata.pop(k, None)
 			keys = metadata.keys()
 			keys.sort()
 			writepkgindex(pkgfile,
