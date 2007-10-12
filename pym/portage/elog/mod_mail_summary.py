@@ -5,6 +5,7 @@
 
 import portage.mail, socket, os, time
 from portage.exception import PortageException
+from portage.util import writemsg
 from email.MIMEText import MIMEText as TextMessage
 
 _items = {}
@@ -52,6 +53,6 @@ def _finalize(mysettings, items):
 	try:
 		portage.mail.send_mail(mysettings, mymessage)
 	except PortageException, e:
-		print str(e)
+		writemsg("%s\n" % str(e), noiselevel=-1)
 
 	return

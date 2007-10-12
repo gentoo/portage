@@ -665,7 +665,9 @@ def writepkgindex(pkgfile, items):
 
 class PackageIndex(object):
 
-	def __init__(self):
+	def __init__(self, default_pkg_data=None, inherited_keys=None):
+		self._default_pkg_data = default_pkg_data
+		self._inherited_keys = inherited_keys
 		self.header = {}
 		self.packages = {}
 		self.modified = True
@@ -678,7 +680,6 @@ class PackageIndex(object):
 		self.header.update(readpkgindex(pkgfile))
 
 	def readBody(self, pkgfile):
-		header_chost = self.header.get("CHOST")
 		while True:
 			d = readpkgindex(pkgfile)
 			if not d:
@@ -686,13 +687,14 @@ class PackageIndex(object):
 			mycpv = d.get("CPV")
 			if not mycpv:
 				continue
-			d.setdefault("EAPI", "0")
-			d.setdefault("IUSE", "")
-			d.setdefault("PROVIDE", "")
-			d.setdefault("SLOT", "0")
-			d.setdefault("USE", "")
-			if header_chost:
-				d.setdefault("CHOST", header_chost)
+			if self._default_pkg_data:
+				for k, v in self._default_pkg_data.iteritems():
+					d.setdefault(k, v)
+			if self._inherited_keys:
+				for k in self._inherited_keys:
+					v = self.header.get(k)
+					if v is not None:
+						d.setdefault(k, v)
 			self.packages[mycpv] = d
 
 	def write(self, pkgfile):
@@ -704,21 +706,18 @@ class PackageIndex(object):
 		keys = self.header.keys()
 		keys.sort()
 		writepkgindex(pkgfile, [(k, self.header[k]) for k in keys])
-		header_chost = self.header.get("CHOST")
 		for cpv in cpv_all:
 			metadata = self.packages[cpv].copy()
-			if metadata.get("CHOST") == header_chost:
-				del metadata["CHOST"]
-			if metadata.get("EAPI") == "0":
-				del metadata["EAPI"]
-			if metadata.get("IUSE") == "":
-				del metadata["IUSE"]
-			if metadata.get("PROVIDE") == "":
-				del metadata["PROVIDE"]
-			if metadata.get("SLOT") == "0":
-				del metadata["SLOT"]
-			if metadata.get("USE") == "":
-				del metadata["USE"]
+			if self._inherited_keys:
+				for k in self._inherited_keys:
+					v = self.header.get(k)
+					if v is not None and v == metadata.get(k):
+						del metadata[k]
+			if self._default_pkg_data:
+				for k, v in self._default_pkg_data.iteritems():
+					if metadata.get(k) == v:
+						metadata.pop(k, None)
 			keys = metadata.keys()
 			keys.sort()
-			writepkgindex(pkgfile, [(k, metadata[k]) for k in keys])
+			writepkgindex(pkgfile,
+				[(k, metadata[k]) for k in keys if metadata[k]])

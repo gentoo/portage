@@ -144,9 +144,22 @@ class binarytree(object):
 			self._pkgindex_file = os.path.join(self.pkgdir, "Packages")
 			self._pkgindex_keys = self.dbapi._aux_cache_keys.copy()
 			self._pkgindex_keys.update(["CPV", "MTIME", "SIZE"])
+			self._pkgindex_aux_keys = \
+				["CHOST", "DEPEND", "DESCRIPTION", "EAPI",
+				"IUSE", "KEYWORDS", "LICENSE", "PDEPEND",
+				"PROVIDE", "RDEPEND", "SLOT", "USE"]
+			self._pkgindex_aux_keys = list(self._pkgindex_aux_keys)
 			self._pkgindex_header_keys = set(["ACCEPT_KEYWORDS", "CBUILD",
 				"CHOST", "CONFIG_PROTECT", "CONFIG_PROTECT_MASK", "FEATURES",
 				"GENTOO_MIRRORS", "INSTALL_MASK", "SYNC", "USE"])
+			self._pkgindex_default_pkg_data = {
+				"EAPI"    : "0",
+				"IUSE"    : "",
+				"PROVIDE" : "",
+				"SLOT"    : "0",
+				"USE"     : ""
+			}
+			self._pkgindex_inherited_keys = ["CHOST"]
 
 	def move_ent(self, mylist):
 		if not self.populated:
@@ -355,7 +368,7 @@ class binarytree(object):
 				dirs.remove("All")
 			dirs.sort()
 			dirs.insert(0, "All")
-			pkgindex = portage.getbinpkg.PackageIndex()
+			pkgindex = self._new_pkgindex()
 			pf_index = None
 			try:
 				f = open(self._pkgindex_file)
@@ -368,7 +381,7 @@ class binarytree(object):
 					f.close()
 					del f
 			if not self._pkgindex_version_supported(pkgindex):
-				pkgindex = portage.getbinpkg.PackageIndex()
+				pkgindex = self._new_pkgindex()
 			header = pkgindex.header
 			metadata = pkgindex.packages
 			update_pkgindex = False
@@ -499,15 +512,15 @@ class binarytree(object):
 					d["MTIME"] = str(long(s.st_mtime))
 					d["SIZE"] = str(s.st_size)
 
-					aux_keys = list(self.dbapi._aux_cache_keys)
-					d.update(izip(aux_keys,
-						self.dbapi.aux_get(mycpv, aux_keys)))
-
-					use = d["USE"].split()
-					iuse = set(d["IUSE"].split())
-					use = [f for f in use if f in iuse]
-					use.sort()
-					d["USE"] = " ".join(use)
+					d.update(izip(self._pkgindex_aux_keys,
+						self.dbapi.aux_get(mycpv, self._pkgindex_aux_keys)))
+					try:
+						self._eval_use_flags(mycpv, d)
+					except portage.exception.InvalidDependString:
+						writemsg("!!! Invalid binary package: '%s'\n" % \
+							self.getname(mycpv), noiselevel=-1)
+						self.dbapi.cpv_remove(cpv)
+						del pkg_paths[mycpv]
 
 					# record location if it's non-default
 					if mypath != mycpv + ".tbz2":
@@ -551,7 +564,7 @@ class binarytree(object):
 			urldata = urlparse(base_url)
 			pkgindex_file = os.path.join(CACHE_PATH, "binhost",
 				urldata[1] + urldata[2], "Packages")
-			pkgindex = portage.getbinpkg.PackageIndex()
+			pkgindex = self._new_pkgindex()
 			try:
 				f = open(pkgindex_file)
 				try:
@@ -563,7 +576,7 @@ class binarytree(object):
 					raise
 			local_timestamp = pkgindex.header.get("TIMESTAMP", None)
 			import urllib, urlparse
-			rmt_idx = portage.getbinpkg.PackageIndex()
+			rmt_idx = self._new_pkgindex()
 			try:
 				f = urllib.urlopen(urlparse.urljoin(base_url, "Packages"))
 				try:
@@ -706,7 +719,7 @@ class binarytree(object):
 			if self._all_directory and \
 				self.getname(cpv).split(os.path.sep)[-2] == "All":
 				self._create_symlink(cpv)
-			pkgindex = portage.getbinpkg.PackageIndex()
+			pkgindex = self._new_pkgindex()
 			try:
 				f = open(self._pkgindex_file)
 			except EnvironmentError:
@@ -718,7 +731,7 @@ class binarytree(object):
 					f.close()
 					del f
 			if not self._pkgindex_version_supported(pkgindex):
-				pkgindex = portage.getbinpkg.PackageIndex()
+				pkgindex = self._new_pkgindex()
 			d = digests
 			d["CPV"] = cpv
 			d["SLOT"] = slot
@@ -728,39 +741,17 @@ class binarytree(object):
 			# record location if it's non-default
 			if rel_path != cpv + ".tbz2":
 				d["PATH"] = rel_path
-			keys = ["USE", "IUSE", "DESCRIPTION", "EAPI", "LICENSE", "PROVIDE", \
-				"RDEPEND", "DEPEND", "PDEPEND"]
 			from itertools import izip
-			d.update(izip(keys, self.dbapi.aux_get(cpv, keys)))
-			use = d["USE"].split()
-			iuse = set(d["IUSE"].split())
-			use = [f for f in use if f in iuse]
-			if not iuse:
-				del d["IUSE"]
-			use.sort()
-			d["USE"] = " ".join(use)
-			d["DESC"] = d["DESCRIPTION"]
-			del d["DESCRIPTION"]
-			from portage.dep import paren_reduce, use_reduce, \
-				paren_normalize, paren_enclose
-			for k in "LICENSE", "RDEPEND", "DEPEND", "PDEPEND", "PROVIDE":
-				try:
-					deps = paren_reduce(d[k])
-					deps = use_reduce(deps, uselist=use)
-					deps = paren_normalize(deps)
-					deps = paren_enclose(deps)
-				except portage.exception.InvalidDependString, e:
-					writemsg("%s: %s\n" % (k, str(e)),
-						noiselevel=-1)
-					del e
-					writemsg("!!! Invalid binary package: '%s'\n" % \
-						self.getname(cpv), noiselevel=-1)
-					self.dbapi.cpv_remove(cpv)
-					return
-				if deps:
-					d[k] = deps
-				else:
-					del d[k]
+			d.update(izip(self._pkgindex_aux_keys,
+				self.dbapi.aux_get(cpv, self._pkgindex_aux_keys)))
+			try:
+				self._eval_use_flags(cpv, d)
+			except portage.exception.InvalidDependString:
+				writemsg("!!! Invalid binary package: '%s'\n" % \
+					self.getname(cpv), noiselevel=-1)
+				self.dbapi.cpv_remove(cpv)
+				del self._pkg_paths[cpv]
+				return
 			pkgindex.packages[cpv] = d
 			self._update_pkgindex_header(pkgindex.header)
 			from portage.util import atomic_ofstream
@@ -772,6 +763,11 @@ class binarytree(object):
 		finally:
 			if pkgindex_lock:
 				unlockfile(pkgindex_lock)
+
+	def _new_pkgindex(self):
+		return portage.getbinpkg.PackageIndex(
+			default_pkg_data=self._pkgindex_default_pkg_data,
+			inherited_keys=self._pkgindex_inherited_keys)
 
 	def _update_pkgindex_header(self, header):
 		portdir = normalize_path(os.path.realpath(self.settings["PORTDIR"]))
@@ -802,6 +798,28 @@ class binarytree(object):
 			except ValueError:
 				pass
 		return False
+
+	def _eval_use_flags(self, cpv, metadata):
+		metadata["DESC"] = metadata["DESCRIPTION"]
+		del metadata["DESCRIPTION"]
+		use = metadata["USE"].split()
+		iuse = set(metadata["IUSE"].split())
+		use = [f for f in use if f in iuse]
+		use.sort()
+		metadata["USE"] = " ".join(use)
+		from portage.dep import paren_reduce, use_reduce, \
+			paren_normalize, paren_enclose
+		for k in "LICENSE", "RDEPEND", "DEPEND", "PDEPEND", "PROVIDE":
+			try:
+				deps = paren_reduce(metadata[k])
+				deps = use_reduce(deps, uselist=use)
+				deps = paren_normalize(deps)
+				deps = paren_enclose(deps)
+			except portage.exception.InvalidDependString, e:
+				writemsg("%s: %s\n" % (k, str(e)),
+					noiselevel=-1)
+				raise
+			metadata[k] = deps
 
 	def exists_specific(self, cpv):
 		if not self.populated:
