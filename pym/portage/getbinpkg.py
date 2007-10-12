@@ -664,8 +664,9 @@ def writepkgindex(pkgfile, items):
 
 class PackageIndex(object):
 
-	def __init__(self, default_pkg_data=None):
+	def __init__(self, default_pkg_data=None, inherited_keys=None):
 		self._default_pkg_data = default_pkg_data
+		self._inherited_keys = inherited_keys
 		self.header = {}
 		self.packages = {}
 		self.modified = True
@@ -678,7 +679,6 @@ class PackageIndex(object):
 		self.header.update(readpkgindex(pkgfile))
 
 	def readBody(self, pkgfile):
-		header_chost = self.header.get("CHOST")
 		while True:
 			d = readpkgindex(pkgfile)
 			if not d:
@@ -689,8 +689,11 @@ class PackageIndex(object):
 			if self._default_pkg_data:
 				for k, v in self._default_pkg_data.iteritems():
 					d.setdefault(k, v)
-			if header_chost:
-				d.setdefault("CHOST", header_chost)
+			if self._inherited_keys:
+				for k in self._inherited_keys:
+					v = self.header.get(k)
+					if v is not None:
+						d.setdefault(k, v)
 			self.packages[mycpv] = d
 
 	def write(self, pkgfile):
@@ -702,11 +705,13 @@ class PackageIndex(object):
 		keys = self.header.keys()
 		keys.sort()
 		writepkgindex(pkgfile, [(k, self.header[k]) for k in keys])
-		header_chost = self.header.get("CHOST")
 		for cpv in cpv_all:
 			metadata = self.packages[cpv].copy()
-			if metadata.get("CHOST") == header_chost:
-				del metadata["CHOST"]
+			if self._inherited_keys:
+				for k in self._inherited_keys:
+					v = self.header.get(k)
+					if v is not None and v == metadata.get(k):
+						del metadata[k]
 			if self._default_pkg_data:
 				for k, v in self._default_pkg_data.iteritems():
 					if metadata.get(k) == v:

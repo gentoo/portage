@@ -159,6 +159,7 @@ class binarytree(object):
 				"SLOT"    : "0",
 				"USE"     : ""
 			}
+			self._pkgindex_inherited_keys = ["CHOST"]
 
 	def move_ent(self, mylist):
 		if not self.populated:
@@ -367,8 +368,7 @@ class binarytree(object):
 				dirs.remove("All")
 			dirs.sort()
 			dirs.insert(0, "All")
-			pkgindex = portage.getbinpkg.PackageIndex(
-				default_pkg_data=self._pkgindex_default_pkg_data)
+			pkgindex = self._new_pkgindex()
 			pf_index = None
 			try:
 				f = open(self._pkgindex_file)
@@ -381,8 +381,7 @@ class binarytree(object):
 					f.close()
 					del f
 			if not self._pkgindex_version_supported(pkgindex):
-				pkgindex = portage.getbinpkg.PackageIndex(
-					default_pkg_data=self._pkgindex_default_pkg_data)
+				pkgindex = self._new_pkgindex()
 			header = pkgindex.header
 			metadata = pkgindex.packages
 			update_pkgindex = False
@@ -565,8 +564,7 @@ class binarytree(object):
 			urldata = urlparse(base_url)
 			pkgindex_file = os.path.join(CACHE_PATH, "binhost",
 				urldata[1] + urldata[2], "Packages")
-			pkgindex = portage.getbinpkg.PackageIndex(
-				default_pkg_data=self._pkgindex_default_pkg_data)
+			pkgindex = self._new_pkgindex()
 			try:
 				f = open(pkgindex_file)
 				try:
@@ -578,8 +576,7 @@ class binarytree(object):
 					raise
 			local_timestamp = pkgindex.header.get("TIMESTAMP", None)
 			import urllib, urlparse
-			rmt_idx = portage.getbinpkg.PackageIndex(
-				default_pkg_data=self._pkgindex_default_pkg_data)
+			rmt_idx = self._new_pkgindex()
 			try:
 				f = urllib.urlopen(urlparse.urljoin(base_url, "Packages"))
 				try:
@@ -722,8 +719,7 @@ class binarytree(object):
 			if self._all_directory and \
 				self.getname(cpv).split(os.path.sep)[-2] == "All":
 				self._create_symlink(cpv)
-			pkgindex = portage.getbinpkg.PackageIndex(
-				default_pkg_data=self._pkgindex_default_pkg_data)
+			pkgindex = self._new_pkgindex()
 			try:
 				f = open(self._pkgindex_file)
 			except EnvironmentError:
@@ -735,8 +731,7 @@ class binarytree(object):
 					f.close()
 					del f
 			if not self._pkgindex_version_supported(pkgindex):
-				pkgindex = portage.getbinpkg.PackageIndex(
-					default_pkg_data=self._pkgindex_default_pkg_data)
+				pkgindex = self._new_pkgindex()
 			d = digests
 			d["CPV"] = cpv
 			d["SLOT"] = slot
@@ -768,6 +763,11 @@ class binarytree(object):
 		finally:
 			if pkgindex_lock:
 				unlockfile(pkgindex_lock)
+
+	def _new_pkgindex(self):
+		return portage.getbinpkg.PackageIndex(
+			default_pkg_data=self._pkgindex_default_pkg_data,
+			inherited_keys=self._pkgindex_inherited_keys)
 
 	def _update_pkgindex_header(self, header):
 		portdir = normalize_path(os.path.realpath(self.settings["PORTDIR"]))
