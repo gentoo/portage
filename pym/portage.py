@@ -6253,14 +6253,14 @@ class portdbapi(dbapi):
 					noiselevel=-1)
 
 
-		if os.access(myebuild, os.R_OK):
+		try:
 			emtime=os.stat(myebuild)[stat.ST_MTIME]
-		else:
+		except OSError:
 			writemsg("!!! aux_get(): ebuild for '%(cpv)s' does not exist at:\n" % {"cpv":mycpv},
 				noiselevel=-1)
 			writemsg("!!!            %s\n" % myebuild,
 				noiselevel=-1)
-			raise KeyError
+			raise KeyError(mycpv)
 
 		try:
 			mydata = self.auxdb[mylocation][mycpv]
