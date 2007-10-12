@@ -688,6 +688,7 @@ class PackageIndex(object):
 				continue
 			d.setdefault("EAPI", "0")
 			d.setdefault("IUSE", "")
+			d.setdefault("PROVIDE", "")
 			d.setdefault("SLOT", "0")
 			d.setdefault("USE", "")
 			if header_chost:
@@ -712,6 +713,8 @@ class PackageIndex(object):
 				del metadata["EAPI"]
 			if metadata.get("IUSE") == "":
 				del metadata["IUSE"]
+			if metadata.get("PROVIDE") == "":
+				del metadata["PROVIDE"]
 			if metadata.get("SLOT") == "0":
 				del metadata["SLOT"]
 			if metadata.get("USE") == "":
