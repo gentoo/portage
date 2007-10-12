@@ -1947,7 +1947,7 @@ class depgraph:
 
 				if not matched_packages:
 					if raise_on_missing:
-						raise ValueError
+						raise portage_exception.PackageNotFound(x)
 					if not arg:
 						xinfo='"'+x+'"'
 					else:
@@ -2673,7 +2673,7 @@ class depgraph:
 					self.target_root, mydep, raise_on_missing=True, arg=mydep):
 					print >> sys.stderr, "\n\n!!! Problem resolving dependencies for", mydep
 					return 0
-			except ValueError:
+			except portage_exception.PackageNotFound:
 				missing_atoms.append(mydep)
 
 		if not self.validate_blockers():
