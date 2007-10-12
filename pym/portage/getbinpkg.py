@@ -687,7 +687,9 @@ class PackageIndex(object):
 			if not mycpv:
 				continue
 			d.setdefault("EAPI", "0")
+			d.setdefault("IUSE", "")
 			d.setdefault("SLOT", "0")
+			d.setdefault("USE", "")
 			if header_chost:
 				d.setdefault("CHOST", header_chost)
 			self.packages[mycpv] = d
@@ -708,6 +710,8 @@ class PackageIndex(object):
 				del metadata["CHOST"]
 			if metadata.get("EAPI") == "0":
 				del metadata["EAPI"]
+			if metadata.get("IUSE") == "":
+				del metadata["IUSE"]
 			if metadata.get("SLOT") == "0":
 				del metadata["SLOT"]
 			if metadata.get("USE") == "":

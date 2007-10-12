@@ -1142,6 +1142,21 @@ class depgraph(object):
 				settings=self.pkgsettings[myroot], exclusive_slots=False)
 			self._filtered_trees[myroot]["porttree"] = filtered_tree
 			self._filtered_trees[myroot]["atoms"] = set()
+			dbs = []
+			portdb = self.trees[myroot]["porttree"].dbapi
+			bindb  = self.trees[myroot]["bintree"].dbapi
+			vardb  = self.trees[myroot]["vartree"].dbapi
+			#               (db, pkg_type, built, installed, db_keys)
+			if "--usepkgonly" not in self.myopts:
+				db_keys = list(portdb._aux_cache_keys)
+				dbs.append((portdb, "ebuild", False, False, db_keys))
+			if "--usepkg" in self.myopts:
+				db_keys = list(bindb._aux_cache_keys)
+				dbs.append((bindb,  "binary", True, False, db_keys))
+			if "--usepkgonly" in self.myopts:
+				db_keys = self._mydbapi_keys
+				dbs.append((vardb, "installed", True, True, db_keys))
+			self._filtered_trees[myroot]["dbs"] = dbs
 			if "--usepkg" in self.myopts:
 				self.trees[myroot]["bintree"].populate(
 					"--getbinpkg" in self.myopts,
@@ -1516,15 +1531,13 @@ class depgraph(object):
 		"given a list of .tbz2s, .ebuilds and deps, create the appropriate depgraph and return a favorite list"
 		myfavorites=[]
 		myroot = self.target_root
+		dbs = self._filtered_trees[myroot]["dbs"]
+		filtered_db = self._filtered_trees[myroot]["porttree"].dbapi
 		vardb = self.trees[myroot]["vartree"].dbapi
 		portdb = self.trees[myroot]["porttree"].dbapi
 		bindb = self.trees[myroot]["bintree"].dbapi
 		pkgsettings = self.pkgsettings[myroot]
 		arg_atoms = []
-		def visible(mylist):
-			matches = portdb.gvisible(portdb.visible(mylist))
-			return [x for x in mylist \
-				if x in matches or not portdb.cpv_exists(x)]
 		for x in myfiles:
 			ext = os.path.splitext(x)[1]
 			if ext==".tbz2":
@@ -1591,19 +1604,17 @@ class depgraph(object):
 					portage.writemsg("!!! (Did you specify a version but forget to prefix with '='?)\n")
 					return (0,[])
 				try:
-					mykey = None
-					if "--usepkg" in self.myopts:
-						mykey = portage.dep_expand(x, mydb=bindb,
-							settings=pkgsettings)
-					if "--usepkgonly" in self.myopts or \
-						(mykey and not portage.dep_getkey(mykey).startswith("null/")):
-						arg_atoms.append((x, mykey))
-						continue
-
 					try:
-						mykey = portage.dep_expand(x,
-							mydb=portdb, settings=pkgsettings)
+						for db, pkg_type, built, installed, db_keys in dbs:
+							mykey = portage.dep_expand(x,
+								mydb=db, settings=pkgsettings)
+							if portage.dep_getkey(mykey).startswith("null/"):
+								continue
+							break
 					except ValueError, e:
+						if not e.args or not isinstance(e.args[0], list) or \
+							len(e.args[0]) < 2:
+							raise
 						mykey = portage.dep_expand(x,
 							mydb=vardb, settings=pkgsettings)
 						cp = portage.dep_getkey(mykey)
@@ -1613,61 +1624,51 @@ class depgraph(object):
 						del e
 					arg_atoms.append((x, mykey))
 				except ValueError, errpkgs:
+					if not e.args or not isinstance(e.args[0], list) or \
+						len(e.args[0]) < 2:
+						raise
 					print "\n\n!!! The short ebuild name \"" + x + "\" is ambiguous.  Please specify"
 					print "!!! one of the following fully-qualified ebuild names instead:\n"
 					for i in errpkgs[0]:
 						print "    " + green(i)
 					print
-					sys.exit(1)
+					return False, myfavorites
 
 		if "--update" in self.myopts:
 			"""Make sure all installed slots are updated when possible. Do this
 			with --emptytree also, to ensure that all slots are remerged."""
-			vardb = self.trees[self.target_root]["vartree"].dbapi
 			greedy_atoms = []
-			for myarg, myatom in arg_atoms:
-				greedy_atoms.append((myarg, myatom))
+			for myarg, atom in arg_atoms:
+				greedy_atoms.append((myarg, atom))
+				mykey = portage.dep_getkey(atom)
 				myslots = set()
-				for cpv in vardb.match(myatom):
+				for cpv in vardb.match(mykey):
 					myslots.add(vardb.aux_get(cpv, ["SLOT"])[0])
 				if myslots:
-					best_pkgs = []
-					if "--usepkg" in self.myopts:
-						mymatches = bindb.match(myatom)
-						if "--usepkgonly" not in self.myopts:
-							mymatches = visible(mymatches)
-						best_pkg = portage.best(mymatches)
-						if best_pkg:
-							best_slot = bindb.aux_get(best_pkg, ["SLOT"])[0]
-							best_pkgs.append(("binary", best_pkg, best_slot))
-					if "--usepkgonly" not in self.myopts:
-						best_pkg = portage.best(portdb.match(myatom))
-						if best_pkg:
-							best_slot = portdb.aux_get(best_pkg, ["SLOT"])[0]
-							best_pkgs.append(("ebuild", best_pkg, best_slot))
-					if best_pkgs:
-						best_pkg = portage.best([x[1] for x in best_pkgs])
-						best_pkgs = [x for x in best_pkgs if x[1] == best_pkg]
-						best_slot = best_pkgs[0][2]
+					if not self._populate_filtered_repo(myroot, atom,
+						exclude_installed=True):
+						return False, myfavorites
+					mymatches = filtered_db.match(atom)
+					best_pkg = portage.best(mymatches)
+					if best_pkg:
+						best_slot = filtered_db.aux_get(best_pkg, ["SLOT"])[0]
 						myslots.add(best_slot)
 				if len(myslots) > 1:
 					for myslot in myslots:
-						myslot_atom = "%s:%s" % \
-							(portage.dep_getkey(myatom), myslot)
-						available = False
-						if "--usepkgonly" not in self.myopts and \
-							self.trees[self.target_root][
-							"porttree"].dbapi.match(myslot_atom):
-							available = True
-						elif "--usepkg" in self.myopts:
-							mymatches = bindb.match(myslot_atom)
-							if "--usepkgonly" not in self.myopts:
-								mymatches = visible(mymatches)
-							if mymatches:
-								available = True
-						if available:
+						myslot_atom = "%s:%s" % (mykey, myslot)
+						if not self._populate_filtered_repo(
+							myroot, myslot_atom,
+							exclude_installed=True):
+							return False, myfavorites
+						if filtered_db.match(myslot_atom):
 							greedy_atoms.append((myarg, myslot_atom))
 			arg_atoms = greedy_atoms
+
+			# Since populate_filtered_repo() was called with the
+			# exclude_installed flag, these atoms will need to be processed
+			# again in case installed packages are required to satisfy
+			# dependencies.
+			self._filtered_trees[myroot]["atoms"].clear()
 
 		oneshot = "--oneshot" in self.myopts or \
 			"--onlydeps" in self.myopts
@@ -1758,23 +1759,7 @@ class depgraph(object):
 			portage.dep._dep_check_strict = True
 
 		filtered_atoms = self._filtered_trees[myroot]["atoms"]
-		dbs = self._filtered_trees[myroot].get("dbs")
-		if dbs is None:
-			dbs = []
-			portdb = self.trees[myroot]["porttree"].dbapi
-			bindb  = self.trees[myroot]["bintree"].dbapi
-			vardb  = self.trees[myroot]["vartree"].dbapi
-			#               (db, pkg_type, built, installed, db_keys)
-			if "--usepkgonly" not in self.myopts:
-				db_keys = list(portdb._aux_cache_keys)
-				dbs.append((portdb, "ebuild", False, False, db_keys))
-			if "--usepkg" in self.myopts:
-				db_keys = list(bindb._aux_cache_keys)
-				dbs.append((bindb,  "binary", True, False, db_keys))
-			if "--usepkgonly" in self.myopts:
-				db_keys = self._mydbapi_keys
-				dbs.append((vardb, "installed", True, True, db_keys))
-			self._filtered_trees[myroot]["dbs"] = dbs
+		dbs = self._filtered_trees[myroot]["dbs"]
 		old_virts = pkgsettings.getvirtuals()
 		while atoms:
 			x = atoms.pop()
@@ -2169,86 +2154,89 @@ class depgraph(object):
 						xfrom = '(dependency required by '+ \
 							green('"%s"' % myparent[2]) + \
 							red(' [%s]' % myparent[0]) + ')'
-					alleb = portdb.xmatch("match-all", x)
-					if alleb:
-						if "--usepkgonly" not in self.myopts:
-							print "\n!!! "+red("All ebuilds that could satisfy ")+green(xinfo)+red(" have been masked.")
-							print "!!! One of the following masked packages is required to complete your request:"
-							oldcomment = ""
-							shown_licenses = []
-							portdb_keys = ["LICENSE","SLOT"]
-							for p in alleb:
-								mreasons = portage.getmaskingstatus(p,
-									settings=pkgsettings, portdb=portdb)
-								print "- "+p+" (masked by: "+", ".join(mreasons)+")"
-								if "package.mask" in mreasons:
-									comment, filename = \
-										portage.getmaskingreason(p,
-										settings=pkgsettings, portdb=portdb,
-										return_location=True)
-									if comment and comment != oldcomment:
-										print filename+":"
-										print comment
-										oldcomment = comment
-								try:
-									metadata = dict(izip(portdb_keys,
-										portdb.aux_get(p, portdb_keys)))
-								except KeyError:
-									# Corruption will have been reported above.
-									continue
-								metadata["USE"] = ""
+					masked_packages = []
+					missing_licenses = []
+					dbs = self._filtered_trees[myroot]["dbs"]
+					for db, pkg_type, built, installed, db_keys in dbs:
+						match = db.match
+						if hasattr(db, "xmatch"):
+							def match(atom):
+								return db.xmatch("match-all", atom)
+						cpv_list = match(x)
+						cpv_sort_descending(cpv_list)
+						for cpv in cpv_list:
+							try:
+								metadata = dict(izip(db_keys,
+									db.aux_get(cpv, db_keys)))
+							except KeyError:
+								mreasons = ["corruption"]
+								metadata = None
+							if metadata and not built:
 								if "?" in metadata["LICENSE"]:
 									pkgsettings.setcpv(p, mydb=portdb)
 									metadata["USE"] = pkgsettings.get("USE", "")
-								missing_licenses = []
+								else:
+									metadata["USE"] = ""
+							mreasons = portage.getmaskingstatus(
+								cpv, metadata=metadata,
+								settings=pkgsettings, portdb=portdb)
+							comment, filename = None, None
+							if "package.mask" in mreasons:
+								comment, filename = \
+									portage.getmaskingreason(
+									cpv, metadata=metadata,
+									settings=pkgsettings, portdb=portdb,
+									return_location=True)
+							if built and \
+								metadata["CHOST"] != pkgsettings["CHOST"]:
+								mreasons.append("CHOST: %s" % \
+									metadata["CHOST"])
+							if built:
+								if not metadata["EPREFIX"]:
+									mreasons.append("missing EPREFIX")
+								elif len(metadata["EPREFIX"].strip()) < len(pkgsettings["EPREFIX"]):
+									mreasons.append("EPREFIX: '%s' too small" % metadata["EPREFIX")
+							missing_licenses = []
+							if metadata:
 								try:
 									missing_licenses = \
 										pkgsettings.getMissingLicenses(
-											p, metadata)
+											cpv, metadata)
 								except portage.exception.InvalidDependString:
 									# This will have already been reported
 									# above via mreasons.
 									pass
-								for l in missing_licenses:
-									l_path = portdb.findLicensePath(l)
-									if l in shown_licenses:
-										continue
-									msg = ("A copy of the '%s' license" + \
-									" is located at '%s'.") % (l, l_path)
-									print msg
-									print
-									shown_licenses.append(l)
-							print
-							print "For more information, see MASKED PACKAGES section in the emerge man page or "
-							print "refer to the Gentoo Handbook."
-						else:
-							print
-							alleb = bindb.match(x)
-							if alleb:
-								chost = pkgsettings["CHOST"]
-								eprefix = pkgsettings["EPREFIX"]
-								bindb_keys = ["CHOST","EAPI","EPREFIX"]
-								for p in alleb:
-									mreasons = []
-									metadata = dict(izip(bindb_keys,
-										bindb.aux_get(pkg, bindb_keys)))
-									if chost != metadata["CHOST"]:
-										mreasons.append("CHOST: %s" % \
-											metadata["CHOST"])
-									if not portage.eapi_is_supported(
-										metadata["EAPI"]):
-										mreasons.append(("required EAPI %s" + \
-											", supported EAPI %s") % \
-											(metadata["EAPI"],
-											portage.const.EAPI))
-									if not metadata["EPREFIX"]:
-										mreasons.append("missing EPREFIX")
-									elif len(metadata["EPREFIX"].strip()) < \
-											len(eprefix):
-										mreasons.append("EPREFIX too small")
-									print "- "+p+" (masked by: "+", ".join(mreasons)+")"
-							print "!!! "+red("There are no packages available to satisfy: ")+green(xinfo)
-							print "!!! Either add a suitable binary package or compile from an ebuild."
+							masked_packages.append((cpv, mreasons,
+								comment, filename, missing_licenses))
+					if masked_packages:
+						print "\n!!! "+red("All ebuilds that could satisfy ")+green(xinfo)+red(" have been masked.")
+						print "!!! One of the following masked packages is required to complete your request:"
+						shown_licenses = set()
+						shown_comments = set()
+						# Maybe there is both an ebuild and a binary. Only
+						# show one of them to avoid redundant appearance.
+						shown_cpvs = set()
+						for cpv, mreasons, comment, filename, missing_licenses in masked_packages:
+							if cpv in shown_cpvs:
+								continue
+							shown_cpvs.add(cpv)
+							print "- "+cpv+" (masked by: "+", ".join(mreasons)+")"
+							if comment and comment not in shown_comments:
+								print filename+":"
+								print comment
+								shown_comments.add(comment)
+							for l in missing_licenses:
+								l_path = portdb.findLicensePath(l)
+								if l in shown_licenses:
+									continue
+								msg = ("A copy of the '%s' license" + \
+								" is located at '%s'.") % (l, l_path)
+								print msg
+								print
+								shown_licenses.add(l)
+						print
+						print "For more information, see MASKED PACKAGES section in the emerge man page or "
+						print "refer to the Gentoo Handbook."
 					else:
 						print "\nemerge: there are no ebuilds to satisfy "+green(xinfo)+"."
 					if myparent:
