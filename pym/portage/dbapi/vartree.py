@@ -1546,7 +1546,6 @@ class dblink(object):
 						isowned = True
 						break
 				if not isowned:
-					collisions.append(f)
 					stopmerge = True
 					if collision_ignore:
 						if f in collision_ignore:
@@ -1556,7 +1555,9 @@ class dblink(object):
 								if f.startswith(myignore + os.path.sep):
 									stopmerge = False
 									break
-			if stopmerge:
+					if stopmerge:
+						collisions.append(f)
+			if stopmerge and "collision-protect" in self.settings.features:
 				print red("*")+" This package is blocked because it wants to overwrite"
 				print red("*")+" files belonging to other packages (see list below)."
 				print red("*")+" If you have no clue what this is all about report it "
@@ -1604,6 +1605,7 @@ class dblink(object):
 				os.chdir(mycwd)
 			except OSError:
 				pass
+			return collisions
 
 	def _security_check(self, installed_instances):
 		if not installed_instances:
@@ -1747,14 +1749,16 @@ class dblink(object):
 			self._preserve_libs(srcroot, destroot, myfilelist+mylinklist, counter)
 
 		# check for package collisions
-		if "collision-protect" in self.settings.features:
-			if myfilelist == None:
-				myfilelist = listdir(srcroot, recursive=1, filesonly=1, followSymlinks=False)
-			if mylinklist == None:
-				mylinklist = filter(os.path.islink, [os.path.join(srcroot, x) for x in listdir(srcroot, recursive=1, filesonly=0, followSymlinks=False)])
-				mylinklist = [x[len(srcroot):] for x in mylinklist]
-			self._collision_protect(srcroot, destroot, others_in_slot,
-				myfilelist+mylinklist, mylinklist)
+		if myfilelist is None:
+			myfilelist = listdir(srcroot, recursive=1,
+				filesonly=1, followSymlinks=False)
+		if mylinklist is None:
+			mylinklist = filter(os.path.islink, [os.path.join(srcroot, x) \
+				for x in listdir(srcroot, recursive=1,
+					filesonly=0, followSymlinks=False)])
+			mylinklist = [x[len(srcroot):] for x in mylinklist]
+		collisions = self._collision_protect(srcroot, destroot, others_in_slot,
+			myfilelist+mylinklist, mylinklist)
 
 		if True:
 			""" The merge process may move files out of the image directory,
@@ -1780,6 +1784,35 @@ class dblink(object):
 		a = doebuild(myebuild, "preinst", destroot, self.settings, cleanup=cleanup,
 			use_cache=0, tree=self.treetype, mydbapi=mydbapi,
 			vartree=self.vartree)
+
+		if collisions:
+			msg = "This package wants to overwrite" + \
+			" files belonging to other packages (see list below)." + \
+			" Add \"collision-protect\" to FEATURES in make.conf" + \
+			" if you would like the merge to abort in cases like this." + \
+			" If you have no clue what this is all about then go to" + \
+			" http://bugs.gentoo.org and report it as a bug for this package."
+
+			self.settings["EBUILD_PHASE"] = "preinst"
+			cmd = "source '%s/isolated-functions.sh' ; " % PORTAGE_BIN_PATH
+			from textwrap import wrap
+			msg = wrap(msg, 70)
+			for line in msg:
+				cmd += "eerror \"%s\" ; " % line
+			cmd += "eerror ; "
+			cmd += "eerror \"Detected file collision(s):\" ; "
+			cmd += "eerror ; "
+
+			from portage.output import colorize
+			for f in collisions:
+				cmd += "eerror \"     '%s'\" ; " % colorize("INFORM",
+					os.path.join(destroot, f.lstrip(os.path.sep)))
+
+			from portage import process
+			process.spawn(["bash", "-c", cmd],
+				env=self.settings.environ())
+			from portage.elog import elog_process
+			elog_process(self.settings.mycpv, self.settings)
 
 		# XXX: Decide how to handle failures here.
 		if a != os.EX_OK:
