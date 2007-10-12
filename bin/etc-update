@@ -40,7 +40,6 @@ diff_command() {
 }
 
 scan() {
-
 	echo "Scanning Configuration files..."
 	rm -rf ${TMP}/files > /dev/null 2>&1
 	mkdir ${TMP}/files || die "Failed mkdir command!" 1
@@ -64,6 +63,7 @@ scan() {
 		for file in $(set -f; find ${path}/ ${find_opts} ! -iname '.*~' ! -iname '.*.bak' |
 			   sed -e "s:\(^.*/\)\(\._cfg[0-9]*_\)\(.*$\):\1\2\3\%\2\%\3:" |
 			   sort -t'%' -k3 -k2 | LANG=POSIX LC_ALL=POSIX cut -f1 -d'%'); do
+
 			rpath=$(echo "${file/\/\///}" | sed -e "s:/[^/]*$::")
 			rfile=$(echo "${file/\/\///}" | sed -e "s:^.*/::")
 			for mpath in ${CONFIG_PROTECT_MASK}; do
@@ -74,8 +74,10 @@ scan() {
 					break
 				fi
 			done
-			[ ! -f ${file} ] && continue
-
+			if [[ ! -f ${file} ]] ; then
+				echo "Skipping non-file ${file} ..."
+				continue
+			fi
 
 			if [[ "${ofile:10}" != "${rfile:10}" ]] ||
 			   [[ ${opath} != ${rpath} ]]; then
@@ -452,6 +454,7 @@ usage() {
 	Usage: etc-update [options]
 
 	Options:
+	  -d, --debug    Enable shell debugging
 	  -h, --help     Show help and run away
 	  -V, --version  Show version and trundle away
 	EOF
@@ -465,14 +468,17 @@ usage() {
 # Run the script
 #
 
+SET_X=false
 while [[ -n $1 ]] ; do
 	case $1 in
+		-d|--debug)   SET_X=true;;
 		-h|--help)    usage;;
 		-V|--version) echo '$Id$'; exit 0;;
 		*)            usage 1 "Invalid option '$1'";;
 	esac
 	shift
 done
+${SET_X} && set -x
 
 type portageq > /dev/null || exit $?
 eval $(portageq envvar -v CONFIG_PROTECT \
