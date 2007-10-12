@@ -1817,8 +1817,6 @@ class dblink(object):
 			from portage import process
 			process.spawn(["bash", "-c", cmd],
 				env=self.settings.environ())
-			from portage.elog import elog_process
-			elog_process(self.settings.mycpv, self.settings)
 
 		# XXX: Decide how to handle failures here.
 		if a != os.EX_OK:
