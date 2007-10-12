@@ -5403,9 +5403,16 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 		# the extracted package put everything in buildprefix, so we
 		# just have to move it to the right EPREFIX
 		if buildprefix != EPREFIX:
-			shutil.copytree(os.path.join(pkgloc,
-				buildprefix.lstrip(os.path.sep)), os.path.join(pkgloc,
-					EPREFIX_LSTRIP), symlinks=True)
+			try:
+				shutil.copytree(os.path.join(pkgloc,
+					buildprefix.lstrip(os.path.sep)), os.path.join(pkgloc,
+						EPREFIX_LSTRIP), symlinks=True)
+			except OSError:
+				if not os.path.exists(os.path.join(pkgloc, EPREFIX_LSTRIP)):
+					writemsg("!!! Package was was built in a wrong way, " +
+							"please rebuild the package with a recent " +
+							"Portage\n", noiselevel=-1)
+					return os.EX_OSERR
 
 		mylink = dblink(mycat, mypkg, myroot, mysettings, vartree=vartree,
 			treetype="bintree")
