@@ -8057,10 +8057,9 @@ class dblink:
 			cmd += "eerror \"Detected file collision(s):\" ; "
 			cmd += "eerror ; "
 
-			from output import colorize
 			for f in collisions:
-				cmd += "eerror \"     '%s'\" ; " % colorize("INFORM",
-					os.path.join(destroot, f.lstrip(os.path.sep)))
+				cmd += "eerror \"     '%s'\" ; " % \
+					os.path.join(destroot, f.lstrip(os.path.sep))
 
 			portage_exec.spawn(["bash", "-c", cmd],
 				env=self.settings.environ())
