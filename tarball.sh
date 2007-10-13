@@ -23,7 +23,7 @@ if [ -e ${DEST} ]; then
 fi
 
 install -d -m0755 ${DEST}
-cp -pPR . ${DEST}
+rsync -a --exclude='.svn' . ${DEST}
 sed -i -e '/^VERSION=/s/^.*$/VERSION="'${V}-prefix'"/' ${DEST}/pym/portage/__init__.py
 sed -i -e "s/##VERSION##/${V}/g" ${DEST}/man/emerge.1
 #rm ${DEST}/man/*.eclass.5
@@ -31,8 +31,6 @@ sed -i -e "s/##VERSION##/${V}/g" ${DEST}/man/emerge.1
 #sed -i -e "s:\t:  :g" ${DEST}/ChangeLog
 
 cd ${DEST}
-find -name CVS -type d | xargs --no-run-if-empty rm -rf
-find -name '.svn' -type d | xargs --no-run-if-empty rm -rf
 find -name '*~' | xargs --no-run-if-empty rm -f
 find -name '*.pyc' | xargs --no-run-if-empty rm -f
 find -name '*.pyo' | xargs --no-run-if-empty rm -f
