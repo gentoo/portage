@@ -1805,8 +1805,8 @@ class dblink(object):
 
 			from portage.output import colorize
 			for f in collisions:
-				cmd += "eerror \"     '%s'\" ; " % colorize("INFORM",
-					os.path.join(destroot, f.lstrip(os.path.sep)))
+				cmd += "eerror \"     '%s'\" ; " % \
+					os.path.join(destroot, f.lstrip(os.path.sep))
 
 			from portage import process
 			process.spawn(["bash", "-c", cmd],
