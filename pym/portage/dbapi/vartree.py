@@ -1992,7 +1992,7 @@ class dblink(object):
 		# this is supposed to merge a list of files.  There will be 2 forms of argument passing.
 		if isinstance(stufftomerge, basestring):
 			#A directory is specified.  Figure out protection paths, listdir() it and process it.
-			mergelist = listdir(join(srcroot, stufftomerge))
+			mergelist = os.listdir(join(srcroot, stufftomerge))
 			offset = stufftomerge
 		else:
 			mergelist = stufftomerge
