@@ -13,6 +13,7 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <strings.h>
 #include <errno.h>
@@ -20,7 +21,9 @@
 #include <sys/stat.h>
 #include <dirent.h>
 #include <unistd.h>
+#ifdef HAVE_ALLOCA_H
 #include <alloca.h>
+#endif
 #include <sys/time.h>
 
 /* Don't allocate too much, or you'll be paying for waiting on IO,
@@ -207,7 +210,7 @@ int dirwalk(char *src, char *srcp, char *trg, char *trgp) {
 				S_ISBLK(s.st_mode) ||
 				S_ISCHR(s.st_mode) ||
 				S_ISFIFO(s.st_mode) ||
-#ifndef _POSIX_C_SOURCE
+#ifdef _POSIX_C_SOURCE
 				S_ISWHT(s.st_mode) ||
 #endif
 				S_ISSOCK(s.st_mode)
