@@ -4,6 +4,8 @@
 # $Id$
 
 import portage.mail, socket
+from portage.exception import PortageException
+from portage.util import writemsg
 
 def process(mysettings, key, logentries, fulltext):
 	if mysettings.has_key("PORTAGE_ELOG_MAILURI"):
@@ -32,6 +34,9 @@ def process(mysettings, key, logentries, fulltext):
 	mysubject = mysubject.replace("${ACTION}", action)
 
 	mymessage = portage.mail.create_message(myfrom, myrecipient, mysubject, fulltext)
-	portage.mail.send_mail(mysettings, mymessage)
+	try:
+		portage.mail.send_mail(mysettings, mymessage)
+	except PortageException, e:
+		writemsg("%s\n" % str(e), noiselevel=-1)
 
 	return
