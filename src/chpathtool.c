@@ -25,6 +25,7 @@
 #include <alloca.h>
 #endif
 #include <sys/time.h>
+#include <fcntl.h>
 
 /* Don't allocate too much, or you'll be paying for waiting on IO,
  * size -1 to align in memory. */
@@ -255,10 +256,10 @@ int dirwalk(char *src, char *srcp, char *trg, char *trgp) {
 						trg, strerror(errno));
 				return(-1);
 			}
-			times[0].tv_sec = s.st_atimespec.tv_sec;
-			times[0].tv_usec = s.st_atimespec.tv_nsec;
-			times[1].tv_sec = s.st_mtimespec.tv_sec;
-			times[1].tv_usec = s.st_mtimespec.tv_nsec;
+			times[0].tv_sec = s.ATIMESPEC.tv_sec;
+			times[0].tv_usec = s.ATIMESPEC.tv_nsec;
+			times[1].tv_sec = s.MTIMESPEC.tv_sec;
+			times[1].tv_usec = s.MTIMESPEC.tv_nsec;
 			if (utimes(trg, times) != 0) {
 				fprintf(stderr, "failed to set utimes of %s: %s\n",
 						trg, strerror(errno));
@@ -327,10 +328,10 @@ int dirwalk(char *src, char *srcp, char *trg, char *trgp) {
 				trg, strerror(errno));
 		return(-1);
 	}
-	times[0].tv_sec = s.st_atimespec.tv_sec;
-	times[0].tv_usec = s.st_atimespec.tv_nsec;
-	times[1].tv_sec = s.st_mtimespec.tv_sec;
-	times[1].tv_usec = s.st_mtimespec.tv_nsec;
+	times[0].tv_sec = s.ATIMESPEC.tv_sec;
+	times[0].tv_usec = s.ATIMESPEC.tv_nsec;
+	times[1].tv_sec = s.MTIMESPEC.tv_sec;
+	times[1].tv_usec = s.MTIMESPEC.tv_nsec;
 	if (utimes(trg, times) != 0) {
 		fprintf(stderr, "failed to set utimes of %s: %s\n",
 				trg, strerror(errno));
