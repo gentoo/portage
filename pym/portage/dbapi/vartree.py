@@ -1803,7 +1803,6 @@ class dblink(object):
 			cmd += "eerror \"Detected file collision(s):\" ; "
 			cmd += "eerror ; "
 
-			from portage.output import colorize
 			for f in collisions:
 				cmd += "eerror \"     '%s'\" ; " % \
 					os.path.join(destroot, f.lstrip(os.path.sep))
