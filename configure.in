@@ -48,8 +48,8 @@ GENTOO_PATH_GNUPROG(GREP, [grep])
 
 dnl Checks for header files.
 AC_HEADER_STDC
-AC_CHECK_HEADERS([string.h errno.h unistd.h stdio.h stdlib.h])
-AC_CHECK_HEADERS([sys/stat.h sys/types.h dirent.h])
+AC_CHECK_HEADERS([string.h strings.h errno.h unistd.h stdio.h stdlib.h])
+AC_CHECK_HEADERS([sys/stat.h sys/types.h dirent.h sys/time.h])
 
 AC_CHECK_LIBS([readdir], [c])
 AC_CHECK_LIBS([strcpy], [c])

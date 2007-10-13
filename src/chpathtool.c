@@ -21,6 +21,7 @@
 #include <dirent.h>
 #include <unistd.h>
 #include <alloca.h>
+#include <sys/time.h>
 
 /* Don't allocate too much, or you'll be paying for waiting on IO,
  * size -1 to align in memory. */
@@ -160,25 +161,22 @@ int dirwalk(char *src, char *srcp, char *trg, char *trgp) {
 	DIR *d;
 	struct dirent *de;
 	struct stat s;
+	struct timeval times[2];
 	char *st;
 	char *tt;
 
-	if (stat(trg, &s) != 0) {
-		/* try to create the target directory, retaining attributes */
-		if (stat(src, &s) != 0) {
-			fprintf(stderr, "cannot stat %s: %s\n", src, strerror(errno));
-			return(-1);
-		}
-		if (mkdir(trg, s.st_mode) != 0) {
+	if (lstat(trg, &s) != 0) {
+		/* initially create directory read/writably by owner, set
+		 * permissions like src when we're done processing this
+		 * directory. */
+		if (mkdir(trg, S_IRWXU) != 0) {
 			fprintf(stderr, "failed to create directory %s: %s\n",
 					trg, strerror(errno));
 			return(-1);
 		}
-		if (lchown(trg, s.st_uid, s.st_gid) != 0) {
-			fprintf(stderr, "failed to set ownership of %s: %s\n",
-					trg, strerror(errno));
-			return(-1);
-		}
+	} else {
+		fprintf(stderr, "directory already exists: %s\n", trg);
+		return(-1);
 	}
 
 	if ((d = opendir(src)) == NULL) {
@@ -199,7 +197,7 @@ int dirwalk(char *src, char *srcp, char *trg, char *trgp) {
 		st += 1 + strlen(de->d_name);
 		tt += 1 + strlen(de->d_name);
 
-		if (stat(src, &s) != 0) {
+		if (lstat(src, &s) != 0) {
 			fprintf(stderr, "cannot stat %s: %s\n", src, strerror(errno));
 			closedir(d);
 			return(-1);
@@ -229,7 +227,9 @@ int dirwalk(char *src, char *srcp, char *trg, char *trgp) {
 				S_ISREG(s.st_mode)
 				)
 		{
-			/* FIXME: handle hard links! */
+			/* FIXME: handle hard links! (keep track of files with >1
+			 * refs, match those with a list of known files */
+
 			/* copy */
 			if (chpath(src, trg) != 0) {
 				closedir(d);
@@ -251,6 +251,15 @@ int dirwalk(char *src, char *srcp, char *trg, char *trgp) {
 						trg, strerror(errno));
 				return(-1);
 			}
+			times[0].tv_sec = s.st_atimespec.tv_sec;
+			times[0].tv_usec = s.st_atimespec.tv_nsec;
+			times[1].tv_sec = s.st_mtimespec.tv_sec;
+			times[1].tv_usec = s.st_mtimespec.tv_nsec;
+			if (utimes(trg, times) != 0) {
+				fprintf(stderr, "failed to set utimes of %s: %s\n",
+						trg, strerror(errno));
+				return(-1);
+			}
 		} else if (
 				S_ISLNK(s.st_mode)
 				)
@@ -260,10 +269,11 @@ int dirwalk(char *src, char *srcp, char *trg, char *trgp) {
 			char *pb = buf;
 			char *pr = rep;
 			char *p = NULL;
-			int len = readlink(trg, buf, MAX_PATH - 1);
+			int len = readlink(src, buf, MAX_PATH - 1);
 			buf[len] = '\0';
-			/* replace occurences of magic by value in the string */
-			while ((p = strstr(pb, magic)) != NULL) {
+			/* replace occurences of magic by value in the string if
+			 * absolute */
+			if (buf[0] == '/') while ((p = strstr(pb, magic)) != NULL) {
 				memcpy(pr, pb, p - pb);
 				pr += p - pb;
 				memcpy(pr, value, valuelen);
@@ -272,7 +282,23 @@ int dirwalk(char *src, char *srcp, char *trg, char *trgp) {
 			}
 			memcpy(pr, pb, (&buf[0] + len) - pb);
 
-			symlink(trg, rep);
+			if (symlink(rep, trg) != 0) {
+				fprintf(stderr, "failed to create symlink %s -> %s: %s\n",
+						trg, rep, strerror(errno));
+				return(-1);
+			}
+
+			/* fix permissions */
+			if (stat(src, &s) != 0) {
+				fprintf(stderr, "cannot stat %s: %s\n",
+						src, strerror(errno));
+				return(-1);
+			}
+			if (lchown(trg, s.st_uid, s.st_gid) != 0) {
+				fprintf(stderr, "failed to set ownership of %s: %s\n",
+						trg, strerror(errno));
+				return(-1);
+			}
 		}
 
 		/* restore modified path */
@@ -281,6 +307,31 @@ int dirwalk(char *src, char *srcp, char *trg, char *trgp) {
 		*st = *tt = '\0';
 	}
 	closedir(d);
+
+	/* fix permissions/ownership etc. */
+	if (stat(src, &s) != 0) {
+		fprintf(stderr, "cannot stat %s: %s\n", src, strerror(errno));
+		return(-1);
+	}
+	if (chmod(trg, s.st_mode) != 0) {
+		fprintf(stderr, "failed to set permissions of %s: %s\n",
+				trg, strerror(errno));
+		return(-1);
+	}
+	if (lchown(trg, s.st_uid, s.st_gid) != 0) {
+		fprintf(stderr, "failed to set ownership of %s: %s\n",
+				trg, strerror(errno));
+		return(-1);
+	}
+	times[0].tv_sec = s.st_atimespec.tv_sec;
+	times[0].tv_usec = s.st_atimespec.tv_nsec;
+	times[1].tv_sec = s.st_mtimespec.tv_sec;
+	times[1].tv_usec = s.st_mtimespec.tv_nsec;
+	if (utimes(trg, times) != 0) {
+		fprintf(stderr, "failed to set utimes of %s: %s\n",
+				trg, strerror(errno));
+		return(-1);
+	}
 
 	return(0);
 }
