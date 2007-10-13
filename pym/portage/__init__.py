@@ -5347,7 +5347,11 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 		builddir = os.path.join(
 			mysettings["PORTAGE_TMPDIR"], "portage", mycat, mypkg)
 		catdir = os.path.dirname(builddir)
-		pkgloc = os.path.join(builddir, "image")
+		# if the prefix differs, we copy it to the image after extraction
+		if (buildprefix != EPREFIX):
+			pkgloc = os.path.join(builddir, "work")
+		else
+			pkgloc = os.path.join(builddir, "image")
 		infloc = os.path.join(builddir, "build-info")
 		myebuild = os.path.join(
 			infloc, os.path.basename(mytbz2)[:-4] + "ebuild")
@@ -5392,7 +5396,7 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 
 		writemsg_stdout(">>> Extracting %s\n" % mypkg)
 		retval = portage.process.spawn_bash(
-			"bzip2 -dqc -- '%s' | chpathtool - - '%s' '%s' | tar -xp -C '%s' -f -" % (mytbz2, buildprefix, EPREFIX, pkgloc),
+			"bzip2 -dqc -- '%s' | tar -xp -C '%s' -f -" % (mytbz2, pkgloc),
 			env=mysettings.environ())
 		if retval != os.EX_OK:
 			writemsg("!!! Error Extracting '%s'\n" % mytbz2, noiselevel=-1)
@@ -5403,16 +5407,20 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 		# the extracted package put everything in buildprefix, so we
 		# just have to move it to the right EPREFIX
 		if buildprefix != EPREFIX:
-			try:
-				shutil.copytree(os.path.join(pkgloc,
-					buildprefix.lstrip(os.path.sep)), os.path.join(pkgloc,
-						EPREFIX_LSTRIP), symlinks=True)
-			except OSError:
-				if not os.path.exists(os.path.join(pkgloc, EPREFIX_LSTRIP)):
-					writemsg("!!! Package was was built in a wrong way, " +
-							"please rebuild the package with a recent " +
-							"Portage\n", noiselevel=-1)
-					return os.EX_OSERR
+			writemsg_stdout(">>> Adjusting Prefix to %s\n" % EPREFIX)
+			b = os.path.join(pkgloc, buildprefix.lstrip(os.path.sep))
+			i = os.path.join(builddir, "image", EPREFIX_LSTRIP)
+			# make sure the directory structure for EPREFIX is set up in
+			# the image, but avoid the last directory being there,
+			# otherwise chpathtool will complain
+			portage.util.ensure_dirs(i)
+			os.rmdir(i)
+			retval = portage.process.spawn_bash(
+				"chpathtool '%s' '%s' '%s' '%s'" % (b, i, buildprefix, EPREFIX),
+				env=mysettings.environ())
+			if retval != os.EX_OK:
+				writemsg("!!! Adjusing to Prefix failed!\n", noiselevel=-1)
+				return retval
 
 		mylink = dblink(mycat, mypkg, myroot, mysettings, vartree=vartree,
 			treetype="bintree")
