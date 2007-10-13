@@ -7821,6 +7821,9 @@ class dblink:
 		secondhand is a list of symlinks that have been skipped due to their target
 		not existing; we will merge these symlinks at a later time.
 		"""
+
+		srcroot = normalize_path(srcroot).rstrip(os.path.sep) + os.path.sep
+
 		if not os.path.isdir(srcroot):
 			writemsg("!!! Directory Not Found: D='%s'\n" % srcroot,
 			noiselevel=-1)
@@ -7862,20 +7865,29 @@ class dblink:
 					max_dblnk = dblnk
 			self._installed_instance = max_dblnk
 
+		myfilelist = []
+		mylinklist = []
+		def onerror(e):
+			raise
+		for parent, dirs, files in os.walk(srcroot, onerror=onerror):
+			for f in files:
+				file_path = os.path.join(parent, f)
+				file_mode = os.lstat(file_path).st_mode
+				if stat.S_ISREG(file_mode):
+					myfilelist.append(file_path[len(srcroot):])
+				elif stat.S_ISLNK(file_mode):
+					mylinklist.append(file_path[len(srcroot):])
+
+		myfilelist.extend(mylinklist)
+		mysymlinks = mylinklist
+		del mylinklist
+
 		# check for package collisions
 		if True:
 			collision_ignore = set([normalize_path(myignore) for myignore in \
 				self.settings.get("COLLISION_IGNORE", "").split()])
-			myfilelist = listdir(srcroot, recursive=1, filesonly=1, followSymlinks=False)
-
-			# the linkcheck only works if we are in srcroot
-			mycwd = getcwd()
-			os.chdir(srcroot)
-			mysymlinks = filter(os.path.islink, listdir(srcroot, recursive=1, filesonly=0, followSymlinks=False))
-			myfilelist.extend(mysymlinks)
 			mysymlinked_directories = [s + os.path.sep for s in mysymlinks]
 			del mysymlinks
-
 
 			stopmerge=False
 			starttime=time.time()
@@ -7993,10 +8005,6 @@ class dblink:
 					print "None of the installed packages claim the above file(s)."
 					print
 				sys.exit(1)
-			try:
-				os.chdir(mycwd)
-			except OSError:
-				pass
 
 		if os.stat(srcroot).st_dev == os.stat(destroot).st_dev:
 			""" The merge process may move files out of the image directory,
@@ -8227,7 +8235,7 @@ class dblink:
 		# this is supposed to merge a list of files.  There will be 2 forms of argument passing.
 		if type(stufftomerge)==types.StringType:
 			#A directory is specified.  Figure out protection paths, listdir() it and process it.
-			mergelist = listdir(join(srcroot, stufftomerge))
+			mergelist = os.listdir(join(srcroot, stufftomerge))
 			offset=stufftomerge
 		else:
 			mergelist=stufftomerge
