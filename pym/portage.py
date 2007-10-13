@@ -2325,6 +2325,10 @@ class config:
 					pass
 		return self._selinux_enabled
 
+# In some cases, openpty can be slow when it fails. Therefore,
+# stop trying to use it after the first failure.
+_disable_openpty = False
+
 # XXX This would be to replace getstatusoutput completely.
 # XXX Issue: cannot block execution. Deadlock condition.
 def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakeroot=0, **keywords):
@@ -2399,14 +2403,19 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 		del keywords["logfile"]
 		if 1 not in fd_pipes or 2 not in fd_pipes:
 			raise ValueError(fd_pipes)
-		from pty import openpty
-		try:
-			master_fd, slave_fd = openpty()
-			got_pty = True
-		except EnvironmentError, e:
-			writemsg("openpty failed: '%s'\n" % str(e), noiselevel=1)
-			del e
+		global _disable_openpty
+		if _disable_openpty:
 			master_fd, slave_fd = os.pipe()
+		else:
+			from pty import openpty
+			try:
+				master_fd, slave_fd = openpty()
+				got_pty = True
+			except EnvironmentError, e:
+				_disable_openpty = True
+				writemsg("openpty failed: '%s'\n" % str(e), noiselevel=1)
+				del e
+				master_fd, slave_fd = os.pipe()
 
 		# We must set non-blocking mode before we close the slave_fd
 		# since otherwise the fcntl call can fail on FreeBSD (the child
