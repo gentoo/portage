@@ -35,6 +35,7 @@ static char *magic;
 static char *value;
 static size_t magiclen;
 static size_t valuelen;
+static char quiet;
 
 /**
  * Writes padding zero-bytes after the first encountered zero-byte.
@@ -149,9 +150,9 @@ static int chpath(const char *fi, const char *fo) {
 	fclose(fout);
 	fclose(fin);
 
-	if (padding != 0) {
+	if (padding != 0 && quiet == 0) {
 		fprintf(stdout, "warning: couldn't find a location to write "
-				"%zd padding bytes for %s\n", padding, fi);
+				"%zd padding bytes in %s\n", padding, fo);
 	}
 
 	return(0);
@@ -338,16 +339,24 @@ int dirwalk(char *src, char *srcp, char *trg, char *trgp) {
 
 int main(int argc, char **argv) {
 	struct stat file;
+	int o = 0;
+
+	quiet = 0;
+	if (argc >= 2 && strcmp(argv[1], "-q") == 0) {
+		argc--;
+		o++;
+		quiet = 1;
+	}
 
 	if (argc != 5) {
-		fprintf(stderr, "usage: in-file out-file magic value\n");
+		fprintf(stderr, "usage: [-q] in-file out-file magic value\n");
 		fprintf(stderr, "       if in-file is a directory, out-file is "
 				"treated as one too\n");
 		return(-1);
 	}
 
-	magic    = argv[3];
-	value    = argv[4];
+	magic    = argv[o + 3];
+	value    = argv[o + 4];
 	magiclen = strlen(magic);
 	valuelen = strlen(value);
 
@@ -362,20 +371,22 @@ int main(int argc, char **argv) {
 		return(-1);
 	}
 
-	if (stat(argv[1], &file) != 0) {
-		fprintf(stderr, "unable to stat %s: %s\n", argv[1], strerror(errno));
+	if (stat(argv[o + 1], &file) != 0) {
+		fprintf(stderr, "unable to stat %s: %s\n",
+				argv[o + 1], strerror(errno));
 		return(-1);
 	}
 	if (S_ISDIR(file.st_mode)) {
 		char *src = alloca(sizeof(char) * MAX_PATH);
 		char *trg = alloca(sizeof(char) * MAX_PATH);
-		strcpy(src, argv[1]);
-		strcpy(trg, argv[2]);
+		strcpy(src, argv[o + 1]);
+		strcpy(trg, argv[o + 2]);
 		/* walk this directory and process recursively */
-		return(dirwalk(src, src + strlen(argv[1]), trg, trg + strlen(argv[2])));
+		return(dirwalk(src, src + strlen(argv[o + 1]),
+					trg, trg + strlen(argv[o + 2])));
 	} else {
 		/* process as normal file */
-		return(chpath(argv[1], argv[2]));
+		return(chpath(argv[o + 1], argv[o + 2]));
 	}
 }
 

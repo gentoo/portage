@@ -5416,7 +5416,7 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 			portage.util.ensure_dirs(i)
 			os.rmdir(i)
 			retval = portage.process.spawn_bash(
-				"chpathtool '%s' '%s' '%s' '%s'" % (b, i, buildprefix, EPREFIX),
+				"chpathtool -q '%s' '%s' '%s' '%s'" % (b, i, buildprefix, EPREFIX),
 				env=mysettings.environ())
 			if retval != os.EX_OK:
 				writemsg("!!! Adjusing to Prefix failed!\n", noiselevel=-1)
