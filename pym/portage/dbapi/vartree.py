@@ -1688,6 +1688,9 @@ class dblink(object):
 		secondhand is a list of symlinks that have been skipped due to their target
 		not existing; we will merge these symlinks at a later time.
 		"""
+
+		srcroot = normalize_path(srcroot).rstrip(os.path.sep) + os.path.sep
+
 		if not os.path.isdir(srcroot):
 			writemsg("!!! Directory Not Found: D='%s'\n" % srcroot,
 				noiselevel=-1)
@@ -1738,25 +1741,24 @@ class dblink(object):
 		#       has to be before the counter is written) - genone
 		counter = self.vartree.dbapi.counter_tick(self.myroot, mycpv=self.mycpv)
 
-		myfilelist = None
-		mylinklist = None
+		myfilelist = []
+		mylinklist = []
+		def onerror(e):
+			raise
+		for parent, dirs, files in os.walk(srcroot, onerror=onerror):
+			for f in files:
+				file_path = os.path.join(parent, f)
+				file_mode = os.lstat(file_path).st_mode
+				if stat.S_ISREG(file_mode):
+					myfilelist.append(file_path[len(srcroot):])
+				elif stat.S_ISLNK(file_mode):
+					mylinklist.append(file_path[len(srcroot):])
 
 		# Preserve old libs if they are still in use
 		if slot_matches and "preserve-libs" in self.settings.features:
-			myfilelist = listdir(srcroot, recursive=1, filesonly=1, followSymlinks=False)
-			mylinklist = filter(os.path.islink, [os.path.join(srcroot, x) for x in listdir(srcroot, recursive=1, filesonly=0, followSymlinks=False)])
-			mylinklist = [x[len(srcroot):] for x in mylinklist]
 			self._preserve_libs(srcroot, destroot, myfilelist+mylinklist, counter)
 
 		# check for package collisions
-		if myfilelist is None:
-			myfilelist = listdir(srcroot, recursive=1,
-				filesonly=1, followSymlinks=False)
-		if mylinklist is None:
-			mylinklist = filter(os.path.islink, [os.path.join(srcroot, x) \
-				for x in listdir(srcroot, recursive=1,
-					filesonly=0, followSymlinks=False)])
-			mylinklist = [x[len(srcroot):] for x in mylinklist]
 		collisions = self._collision_protect(srcroot, destroot, others_in_slot,
 			myfilelist+mylinklist, mylinklist)
 
