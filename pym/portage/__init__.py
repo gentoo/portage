@@ -5350,7 +5350,7 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 		# if the prefix differs, we copy it to the image after extraction
 		if (buildprefix != EPREFIX):
 			pkgloc = os.path.join(builddir, "work")
-		else
+		else:
 			pkgloc = os.path.join(builddir, "image")
 		infloc = os.path.join(builddir, "build-info")
 		myebuild = os.path.join(
