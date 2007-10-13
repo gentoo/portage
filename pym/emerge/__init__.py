@@ -3115,12 +3115,16 @@ class depgraph(object):
 				#we need to use "--emptrytree" testing here rather than "empty" param testing because "empty"
 				#param is used for -u, where you still *do* want to see when something is being upgraded.
 				myoldbest=""
+				installed_versions = vardb.match(portage.cpv_getkey(pkg_key))
 				if vardb.cpv_exists(pkg_key):
 					addl="  "+yellow("R")+fetch+"  "
 					if x[3] != "nomerge":
 						if ordered:
 							counters.reinst += 1
-				elif vardb.match(portage.dep_getkey(pkg_key)):
+				# filter out old-style virtual matches
+				elif installed_versions and \
+					portage.cpv_getkey(installed_versions[0]) == \
+					portage.cpv_getkey(pkg_key):
 					mynewslot = mydbapi.aux_get(pkg_key, ["SLOT"])[0]
 					slot_atom = "%s:%s" % \
 						(portage.cpv_getkey(pkg_key), mynewslot)
