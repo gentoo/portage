@@ -1477,12 +1477,6 @@ class dblink(object):
 	def _collision_protect(self, srcroot, destroot, mypkglist, mycontents, mysymlinks):
 			collision_ignore = set([normalize_path(myignore) for myignore in \
 				self.settings.get("COLLISION_IGNORE", "").split()])
-
-			# the linkcheck only works if we are in srcroot
-			mycwd = os.getcwd()
-			os.chdir(srcroot)
-
-
 			mysymlinked_directories = [s + os.path.sep for s in mysymlinks]
 			del mysymlinks
 
@@ -1601,10 +1595,6 @@ class dblink(object):
 					print "None of the installed packages claim the above file(s)."
 					print
 				sys.exit(1)
-			try:
-				os.chdir(mycwd)
-			except OSError:
-				pass
 			return collisions
 
 	def _security_check(self, installed_instances):
