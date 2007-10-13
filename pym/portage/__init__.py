@@ -5421,6 +5421,7 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 			if retval != os.EX_OK:
 				writemsg("!!! Adjusing to Prefix failed!\n", noiselevel=-1)
 				return retval
+			pkgloc = os.path.join(builddir, "image")
 
 		mylink = dblink(mycat, mypkg, myroot, mysettings, vartree=vartree,
 			treetype="bintree")
