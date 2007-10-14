@@ -1474,11 +1474,9 @@ class dblink(object):
 
 		del preserve_paths
 	
-	def _collision_protect(self, srcroot, destroot, mypkglist, mycontents, mysymlinks):
+	def _collision_protect(self, srcroot, destroot, mypkglist, mycontents):
 			collision_ignore = set([normalize_path(myignore) for myignore in \
 				self.settings.get("COLLISION_IGNORE", "").split()])
-			mysymlinked_directories = [s + os.path.sep for s in mysymlinks]
-			del mysymlinks
 
 			stopmerge = False
 			i=0
@@ -1487,15 +1485,6 @@ class dblink(object):
 				os.path.sep
 			print green("*")+" checking "+str(len(mycontents))+" files for package collisions"
 			for f in mycontents:
-				nocheck = False
-				# listdir isn't intelligent enough to exclude symlinked dirs,
-				# so we have to do it ourself
-				for s in mysymlinked_directories:
-					if f.startswith(s):
-						nocheck = True
-						break
-				if nocheck:
-					continue
 				i = i + 1
 				if i % 1000 == 0:
 					print str(i)+" files checked ..."
@@ -1750,7 +1739,7 @@ class dblink(object):
 
 		# check for package collisions
 		collisions = self._collision_protect(srcroot, destroot, others_in_slot,
-			myfilelist+mylinklist, mylinklist)
+			myfilelist+mylinklist)
 
 		if True:
 			""" The merge process may move files out of the image directory,
