@@ -412,8 +412,16 @@ Please select from the menu above (-1 to exit, losing this merge): "
 				   rm ${rm_opts} "${file}"
 				   return 255
 				   ;;
-				2) ( echo "Showing differences between ${ofile} and ${mfile}"
-					 diff_command "${ofile}" "${mfile}" ) | ${pager}
+				2)	if [ "${using_editor}" == 0 ]; then
+						(
+							echo "Showing differences between ${ofile} and ${mfile}"
+							diff_command "${ofile}" "${mfile}"
+						) | ${pager}
+					else
+						echo "Beginning of differences between ${ofile} and ${mfile}"
+						diff_command "${ofile}" "${mfile}"
+						echo "End of differences between ${ofile} and ${mfile}"
+					fi
 				   continue
 				   ;;
 				3) break
