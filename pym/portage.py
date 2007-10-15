@@ -7885,18 +7885,18 @@ class dblink:
 				if stat.S_ISREG(file_mode):
 					myfilelist.append(file_path[len(srcroot):])
 				elif stat.S_ISLNK(file_mode):
+					# Note: os.walk puts symlinks to directories in the "dirs"
+					# list and it does not traverse them since that could lead
+					# to an infinite recursion loop.
 					mylinklist.append(file_path[len(srcroot):])
 
 		myfilelist.extend(mylinklist)
-		mysymlinks = mylinklist
 		del mylinklist
 
 		# check for package collisions
 		if True:
 			collision_ignore = set([normalize_path(myignore) for myignore in \
 				self.settings.get("COLLISION_IGNORE", "").split()])
-			mysymlinked_directories = [s + os.path.sep for s in mysymlinks]
-			del mysymlinks
 
 			stopmerge=False
 			starttime=time.time()
@@ -7906,15 +7906,6 @@ class dblink:
 				os.path.sep
 			print green("*")+" checking "+str(len(myfilelist))+" files for package collisions"
 			for f in myfilelist:
-				nocheck = False
-				# listdir isn't intelligent enough to exclude symlinked dirs,
-				# so we have to do it ourself
-				for s in mysymlinked_directories:
-					if f.startswith(s):
-						nocheck = True
-						break
-				if nocheck:
-					continue
 				i=i+1
 				if i % 1000 == 0:
 					print str(i)+" files checked ..."
