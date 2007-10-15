@@ -288,7 +288,7 @@ def help(exitstatus=1,helpfulness=1):
 	print bold(" Usage:"),turquoise(exename),"[",green("options"),"] [",green("mode"),"]"
 	if helpfulness:
 		print bold(" Modes:"),turquoise("scan (default)"),
-		for x in modes[1:]:
+		for x in modes:
 			if x == "scan":
 				continue
 			print "|",turquoise(x),
