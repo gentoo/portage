@@ -53,10 +53,8 @@ AC_CHECK_HEADERS([sys/stat.h sys/types.h dirent.h sys/time.h alloca.h])
 AC_CHECK_HEADERS([fcntl.h])
 
 AC_CHECK_LIB([c], [readdir])
-AC_CHECK_LIB([c], [strcpy])
-AC_CHECK_LIB([c], [strstr])
-AC_CHECK_LIB([c], [memcpy])
 
+AC_MSG_CHECKING([for the *time fields in struct stat])
 AC_TRY_LINK([
 			 #include <sys/types.h>
 			 #include <sys/stat.h>
@@ -70,6 +68,7 @@ AC_TRY_LINK([
 		 ], [
 			 AC_DEFINE(ATIMESPEC, st_atimespec, [atime for this platform])
 			 AC_DEFINE(MTIMESPEC, st_mtimespec, [mtime for this platform])
+			 AC_MSG_RESULT([st_*timespec])
 		 ], [
 AC_TRY_LINK([
 			 #include <sys/types.h>
@@ -84,8 +83,29 @@ AC_TRY_LINK([
 		 ], [
 			 AC_DEFINE(ATIMESPEC, st_atim, [atime for this platform])
 			 AC_DEFINE(MTIMESPEC, st_mtim, [mtime for this platform])
+			 AC_MSG_RESULT([st_*tim])
 		 ]
 )
+		 ], [
+			AC_MSG_ERROR([cannot determine])
+		 ]
+)
+
+AC_MSG_CHECKING([if S_ISWHT can be used])
+AC_TRY_LINK([
+			 #include <sys/types.h>
+			 #include <sys/stat.h>
+			 #ifdef HAVE_FCNTL_H
+			 #include <fcntl.h>
+			 #endif
+		 ], [
+			 struct stat s;
+			 if (S_ISWHT(s.st_mode)) {}
+		 ], [
+			 AC_DEFINE(HAVE_S_ISWHT, 1, [defined when S_ISWHT exists])
+			 AC_MSG_RESULT([yes])
+		 ], [
+			 AC_MSG_RESULT([no])
 		 ]
 )
 

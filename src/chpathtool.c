@@ -211,7 +211,7 @@ int dirwalk(char *src, char *srcp, char *trg, char *trgp) {
 				S_ISBLK(s.st_mode) ||
 				S_ISCHR(s.st_mode) ||
 				S_ISFIFO(s.st_mode) ||
-#ifdef _POSIX_C_SOURCE
+#ifdef HAVE_S_ISWHT
 				S_ISWHT(s.st_mode) ||
 #endif
 				S_ISSOCK(s.st_mode)
