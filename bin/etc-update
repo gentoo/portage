@@ -517,13 +517,20 @@ declare -i mode=$(get_config mode)
 [[ -z ${mode} ]] && mode=0
 [[ -z ${pager} ]] && pager="cat"
 
-# Sanity check to make sure diff exists and works
-echo > "${TMP}"/.diff-test-1
-echo > "${TMP}"/.diff-test-2
-
-if ! diff_command "${TMP}"/.diff-test-1 "${TMP}"/.diff-test-2 &> /dev/null ; then
-	echo "ERROR: '${diff_command}' does not seem to work, aborting"
-	exit 1
+if [ "${using_editor}" == 0 ]; then
+	# Sanity check to make sure diff exists and works
+	echo > "${TMP}"/.diff-test-1
+	echo > "${TMP}"/.diff-test-2
+	
+	if ! diff_command "${TMP}"/.diff-test-1 "${TMP}"/.diff-test-2 ; then
+		echo "ERROR: '${diff_command}' does not seem to work, aborting"
+		exit 1
+	fi
+else
+	if ! type ${diff_command%% *} >/dev/null; then
+		echo "ERROR: '${diff_command}' does not seem to work, aborting"
+		exit 1
+	fi
 fi
 
 #echo "rm_opts: $rm_opts, mv_opts: $mv_opts, cp_opts: $cp_opts"
