@@ -872,6 +872,8 @@ class dblink(object):
 		self._installed_instance = None
 		self.contentscache = None
 		self._contents_inodes = None
+		import re
+		self._normalize_needed = re.compile(r'//|^[^/]|.+/$')
 
 	def lockdb(self):
 		if self._lock_vdb:
@@ -944,6 +946,10 @@ class dblink(object):
 		mylines = myc.readlines()
 		myc.close()
 		null_byte = "\0"
+		normalize_needed = self._normalize_needed
+		myroot = self.myroot
+		if myroot == os.path.sep:
+			myroot = None
 		pos = 0
 		for line in mylines:
 			pos += 1
@@ -957,8 +963,12 @@ class dblink(object):
 			# we do this so we can remove from non-root filesystems
 			# (use the ROOT var to allow maintenance on other partitions)
 			try:
-				mydat[1] = normalize_path(os.path.join(
-					self.myroot, mydat[1].lstrip(os.path.sep)))
+				if normalize_needed.match(mydat[1]):
+					mydat[1] = normalize_path(mydat[1])
+					if not mydat[1].startswith(os.path.sep):
+						mydat[1] = os.path.sep + mydat[1]
+				if myroot:
+					mydat[1] = os.path.join(myroot, mydat[1].lstrip(os.path.sep))
 				if mydat[0] == "obj":
 					#format: type, mtime, md5sum
 					pkgfiles[" ".join(mydat[1:-2])] = [mydat[0], mydat[-1], mydat[-2]]
