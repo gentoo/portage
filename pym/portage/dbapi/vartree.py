@@ -821,6 +821,10 @@ class dblink(object):
 	This class provides an interface to the installed package database
 	At present this is implemented as a text backend in /var/db/pkg.
 	"""
+
+	import re
+	_normalize_needed = re.compile(r'//|^[^/]|.+/$')
+
 	def __init__(self, cat, pkg, myroot, mysettings, treetype=None,
 		vartree=None):
 		"""
@@ -872,8 +876,6 @@ class dblink(object):
 		self._installed_instance = None
 		self.contentscache = None
 		self._contents_inodes = None
-		import re
-		self._normalize_needed = re.compile(r'//|^[^/]|.+/$')
 
 	def lockdb(self):
 		if self._lock_vdb:
