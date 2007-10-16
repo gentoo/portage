@@ -560,37 +560,6 @@ class search(object):
 		return result
 
 
-#build our package digraph
-def getlist(settings, mode):
-	if mode=="system":
-		mylines = settings.packages
-	elif mode=="world":
-		try:
-			file_path = os.path.join(settings["ROOT"], portage.WORLD_FILE)
-			myfile = open(file_path, "r")
-			mylines = myfile.readlines()
-			myfile.close()
-		except (OSError, IOError), e:
-			if e.errno == errno.ENOENT:
-				portage.writemsg("\n!!! World file does not exist: '%s'\n" % file_path)
-				mylines=[]
-			else:
-				raise
-	mynewlines=[]
-	for x in mylines:
-		myline=" ".join(x.split())
-		if not len(myline):
-			continue
-		elif myline[0]=="#":
-			continue
-		elif mode=="system":
-			if myline[0]!="*":
-				continue
-			myline=myline[1:]
-		mynewlines.append(myline.strip())
-
-	return mynewlines
-
 def clean_world(vardb, cpv):
 	"""Remove a package from the world file when unmerged."""
 	world_set = WorldSet(vardb.settings["ROOT"])
@@ -4240,7 +4209,7 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 	try:
 		if os.access(vdb_path, os.W_OK):
 			vdb_lock = portage.locks.lockdir(vdb_path)
-		realsyslist = getlist(settings, "system")
+		realsyslist = settings.setconfig.getSetsWithAliases()["system"].getAtoms()
 		syslist = []
 		for x in realsyslist:
 			mycp = portage.dep_getkey(x)
@@ -4275,7 +4244,7 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 			if not unmerge_files or "world" in unmerge_files:
 				candidate_catpkgs.extend(vartree.dbapi.cp_all())
 			elif "system" in unmerge_files:
-				candidate_catpkgs.extend(getlist(settings, "system"))
+				candidate_catpkgs.extend(settings.setconfig.getSetsWithAliaes()["system"].getAtoms())
 		else:
 			#we've got command-line arguments
 			if not unmerge_files:
