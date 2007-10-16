@@ -361,6 +361,12 @@ def create_depgraph_params(myopts, myaction):
 		myparams.add("deep")
 	return myparams
 
+
+class EmergeConfig(portage.config):
+	def __init__(self, portage_config, setconfig):
+		portage.config.__init__(self, clone=portage_config)
+		self.setconfig = setconfig
+
 # search functionality
 class search(object):
 
@@ -374,7 +380,7 @@ class search(object):
 	# public interface
 	#
 	def __init__(self, settings, portdb, vartree, spinner, searchdesc,
-		verbose, setconfig):
+		verbose):
 		"""Searches the available and installed packages for the supplied search key.
 		The list of available and installed packages is created at object instantiation.
 		This makes successive searches faster."""
@@ -384,7 +390,7 @@ class search(object):
 		self.spinner = spinner
 		self.verbose = verbose
 		self.searchdesc = searchdesc
-		self.setconfig = setconfig
+		self.setconfig = settings.setconfig
 
 	def execute(self,searchkey):
 		"""Performs the search for the supplied search key"""
@@ -442,7 +448,7 @@ class search(object):
 				if self.searchre.search(full_desc):
 					self.matches["desc"].append([full_package,masked])
 
-		self.sdict = self.setconfig.getSets()[0]
+		self.sdict = self.setconfig.getSets()
 		for setname in self.sdict:
 			self.spinner.update()
 			if match_category:
@@ -5663,13 +5669,13 @@ def action_info(settings, trees, myopts, myfiles):
 				mydbapi=trees[settings["ROOT"]]["vartree"].dbapi,
 				tree="vartree")
 
-def action_search(settings, portdb, vartree, myopts, myfiles, spinner, setconfig):
+def action_search(settings, portdb, vartree, myopts, myfiles, spinner):
 	if not myfiles:
 		print "emerge: no search terms provided."
 	else:
 		searchinstance = search(settings, portdb,
 			vartree, spinner, "--searchdesc" in myopts,
-			"--quiet" not in myopts, setconfig)
+			"--quiet" not in myopts)
 		for mysearch in myfiles:
 			try:
 				searchinstance.execute(mysearch)
@@ -6404,6 +6410,17 @@ def load_emerge_config(trees=None):
 
 	settings = trees["/"]["vartree"].settings
 
+	setconfigpaths = [os.path.join(GLOBAL_CONFIG_PATH, "sets.conf")]
+	setconfigpaths.append(os.path.join(settings["PORTDIR"], "sets.conf"))
+	setconfigpaths += [os.path.join(x, "sets.conf") for x in settings["PORDIR_OVERLAY"].split()]
+	setconfigpaths.append(os.path.join(settings["PORTAGE_CONFIGROOT"],
+		USER_CONFIG_PATH.lstrip(os.path.sep), "sets.conf"))
+	#setconfig = SetConfig(setconfigpaths, settings, trees[settings["ROOT"]])
+	setconfig = make_default_config(settings, trees[settings["ROOT"]])
+	del setconfigpaths
+
+	settings = EmergeConfig(trees["/"]["vartree"].settings, setconfig)
+
 	for myroot in trees:
 		if myroot != "/":
 			settings = trees[myroot]["vartree"].settings
@@ -6593,17 +6610,10 @@ def emerge_main():
 			print colorize("BAD", "\n*** emerging by path is broken and may not always work!!!\n")
 			break
 
-	setconfigpaths = [os.path.join(GLOBAL_CONFIG_PATH, "sets.conf")]
-	setconfigpaths.append(os.path.join(settings["PORTDIR"], "sets.conf"))
-	setconfigpaths += [os.path.join(x, "sets.conf") for x in settings["PORDIR_OVERLAY"].split()]
-	setconfigpaths.append(os.path.join(settings["PORTAGE_CONFIGROOT"],
-		USER_CONFIG_PATH.lstrip(os.path.sep), "sets.conf"))
-	#setconfig = SetConfig(setconfigpaths, settings, trees[settings["ROOT"]])
-	setconfig = make_default_config(settings, trees[settings["ROOT"]])
-	del setconfigpaths
+	# only expand sets for actions taking package arguments
 	if myaction not in ["search", "metadata", "sync"]:
 		oldargs = myfiles[:]
-		packagesets, setconfig_errors = setconfig.getSetsWithAliases()
+		packagesets = settings.setconfig.getSetsWithAliases()
 		for s in packagesets:
 			if s in myfiles:
 				# TODO: check if the current setname also resolves to a package name
@@ -6812,7 +6822,7 @@ def emerge_main():
 	elif "search"==myaction:
 		validate_ebuild_environment(trees)
 		action_search(settings, portdb, trees["/"]["vartree"],
-			myopts, myfiles, spinner, setconfig)
+			myopts, myfiles, spinner)
 	elif myaction in ("clean", "unmerge") or \
 		(myaction == "prune" and "--nodeps" in myopts):
 		validate_ebuild_environment(trees)
