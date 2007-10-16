@@ -4,18 +4,18 @@
 # $Id$
 
 try:
-	from emerge import *
+	import _emerge
 except ImportError:
 	from os import path as osp
 	import sys
 	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
-	from emerge import *
+	import _emerge
 
 if __name__ == "__main__":
 	import sys
 	from portage.exception import PermissionDenied
 	try:
-		retval = emerge_main()
+		retval = _emerge.emerge_main()
 	except PermissionDenied, e:
 		sys.stderr.write("Permission denied: '%s'\n" % str(e))
 		sys.exit(e.errno)
