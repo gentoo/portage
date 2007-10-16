@@ -6,7 +6,7 @@
 import os
 import re
 from portage.const import INCREMENTALS, PROFILE_PATH, NEWS_LIB_PATH
-from portage.util import ensure_dirs, apply_permissions, normalize_path
+from portage.util import ensure_dirs, apply_permissions, normalize_path, grabfile, write_atomic
 from portage.data import portage_gid
 from portage.locks import lockfile, unlockfile, lockdir, unlockdir
 from portage.exception import FileNotFound
@@ -19,20 +19,16 @@ class NewsManager(object):
 	
 	Creating a news manager requires:
 	root - typically ${ROOT} see man make.conf and man emerge for details
-	NEWS_PATH - path to news items; usually $REPODIR/metadata/news
-	UNREAD_PATH - path to the news.repoid.unread file; this helps us track news items
+	news_path - path to news items; usually $REPODIR/metadata/news
+	unread_path - path to the news.repoid.unread file; this helps us track news items
 	
 	"""
 
-	TIMESTAMP_FILE = 'news-timestamp'
-
-	def __init__(self, portdb, vardb, NEWS_PATH, UNREAD_PATH, LANGUAGE_ID='en'):
-		self.NEWS_PATH = NEWS_PATH
-		self.UNREAD_PATH = UNREAD_PATH
-		self.TIMESTAMP_PATH = os.path.join(vardb.root,
-			NEWS_LIB_PATH, NewsManager.TIMESTAMP_FILE)
+	def __init__(self, portdb, vardb, news_path, unread_path, language_id='en'):
+		self.news_path = news_path
+		self.unread_path = unread_path
 		self.target_root = vardb.root
-		self.LANGUAGE_ID = LANGUAGE_ID
+		self.language_id = language_id
 		self.config = vardb.settings
 		self.vdb = vardb
 		self.portdb = portdb
@@ -48,7 +44,7 @@ class NewsManager(object):
 		# Ensure that the unread path exists and is writable.
 		dirmode  = 02070
 		modemask =    02
-		ensure_dirs(self.UNREAD_PATH, mode=dirmode, mask=modemask, gid=portage_gid)
+		ensure_dirs(self.unread_path, mode=dirmode, mask=modemask, gid=portage_gid)
 
 	def updateItems(self, repoid):
 		"""
@@ -61,35 +57,31 @@ class NewsManager(object):
 		if repoid not in repos:
 			raise ValueError("Invalid repoID: %s" % repoid)
 
-		timestamp_file = self.TIMESTAMP_PATH + repoid
-		if os.path.exists(timestamp_file):
-			# Make sure the timestamp has correct permissions.
-			apply_permissions(filename=timestamp_file, 
-				uid=int(self.config["PORTAGE_INST_UID"]), gid=portage_gid, mode=0664)
-			timestamp = os.stat(timestamp_file).st_mtime
-		else:
-			timestamp = 0
-
-		path = os.path.join(self.portdb.getRepositoryPath(repoid), self.NEWS_PATH)
+		path = os.path.join(self.portdb.getRepositoryPath(repoid), self.news_path)
 
 		# Skip reading news for repoid if the news dir does not exist.  Requested by
 		# NightMorph :)
 		if not os.path.exists(path):
 			return None
 		news = os.listdir(path)
+
+		skipfile = os.path.join(self.unread_path, "news-%s.skip" % repoid)
+		skiplist = grabfile(skipfile)
 		updates = []
 		for itemid in news:
+			if itemid in skiplist:
+				continue
 			try:
-				filename = os.path.join(path, itemid, itemid + "." + self.LANGUAGE_ID + ".txt")
-				item = NewsItem(filename, itemid, timestamp)
-			except (TypeError, ValueError):
+				filename = os.path.join(path, itemid, itemid + "." + self.language_id + ".txt")
+				item = NewsItem(filename, itemid)
+			except (TypeError):
 				continue
 			if item.isRelevant(profile=self._profile_path,
 				config=self.config, vardb=self.vdb):
 				updates.append(item)
 		del path
 		
-		path = os.path.join(self.UNREAD_PATH, 'news-' + repoid + '.unread')
+		path = os.path.join(self.unread_path, 'news-%s.unread' % repoid)
 		try:
 			unread_lock = lockfile(path)
 			if not os.path.exists(path):
@@ -103,13 +95,13 @@ class NewsManager(object):
 
 			for item in updates:
 				unread_file.write(item.name + "\n")
+				skiplist.append(item.name)
 			unread_file.close()
 		finally:
 			unlockfile(unread_lock)
-		
-		# Touch the timestamp file
-		f = open(timestamp_file, 'w')
-		f.close()
+			write_atomic(skipfile, "\n".join(skiplist)+"\n")
+		apply_permissions(filename=skipfile, 
+				uid=int(self.config["PORTAGE_INST_UID"]), gid=portage_gid, mode=0664)
 
 	def getUnreadItems(self, repoid, update=False):
 		"""
@@ -122,7 +114,7 @@ class NewsManager(object):
 		if update:
 			self.updateItems(repoid)
 		
-		unreadfile = os.path.join(self.UNREAD_PATH, 'news-' + repoid + '.unread')
+		unreadfile = os.path.join(self.unread_path, 'news-%s.unread' % repoid)
 		try:
 			try:
 				unread_lock = lockfile(unreadfile)
@@ -156,15 +148,12 @@ class NewsItem(object):
 
 	"""
 	
-	def __init__(self, path, name, cache_mtime = 0):
+	def __init__(self, path, name):
 		""" 
-		For a given news item we only want if it path is a file and it's 
-		mtime is newer than the cache'd timestamp.
+		For a given news item we only want if it path is a file.
 		"""
 		if not os.path.isfile(path):
 			raise TypeError("%s is no regular file" % path)
-		if not os.stat(path).st_mtime > cache_mtime:
-			raise ValueError("%s / %s timestamp mismatch" % (str(os.stat(path).st_mtime), str(cache_mtime)))
 		self.path = path
 		self.name = name
 		self._parsed = False
