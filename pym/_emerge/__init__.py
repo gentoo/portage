@@ -372,8 +372,8 @@ class EmergeConfig(portage.config):
 			setconfigpaths += [os.path.join(x, "sets.conf") for x in settings["PORDIR_OVERLAY"].split()]
 			setconfigpaths.append(os.path.join(settings["PORTAGE_CONFIGROOT"],
 				USER_CONFIG_PATH.lstrip(os.path.sep), "sets.conf"))
-			#setconfig = SetConfig(setconfigpaths, settings, trees[settings["ROOT"]])
-			setconfig = make_default_config(settings, trees[settings["ROOT"]])
+			#setconfig = SetConfig(setconfigpaths, settings, trees)
+			setconfig = make_default_config(settings, trees)
 		self.setconfig = setconfig
 		self.sets = self.setconfig.getSetsWithAliases()
 
@@ -575,13 +575,8 @@ class RootConfig(object):
 	particular $ROOT."""
 	def __init__(self, trees):
 		self.trees = trees
-		self.settings = trees["vartree"].settings
+		self.settings = EmergeConfig(trees["vartree"].settings, trees=trees)
 		self.root = self.settings["ROOT"]
-		self.sets = {}
-		world_set = WorldSet(self.root)
-		self.sets["world"] = world_set
-		system_set = SystemSet(self.settings.profiles)
-		self.sets["system"] = system_set
 
 def create_world_atom(pkg_key, metadata, args_set, root_config):
 	"""Create a new atom for the world file if one does not exist.  If the
@@ -593,7 +588,7 @@ def create_world_atom(pkg_key, metadata, args_set, root_config):
 	arg_atom = args_set.findAtomForPackage(pkg_key, metadata)
 	cp = portage.dep_getkey(arg_atom)
 	new_world_atom = cp
-	sets = root_config.sets
+	sets = root_config.settings.sets
 	portdb = root_config.trees["porttree"].dbapi
 	vardb = root_config.trees["vartree"].dbapi
 	available_slots = set(portdb.aux_get(cpv, ["SLOT"])[0] \
@@ -2715,8 +2710,8 @@ class depgraph(object):
 		world_problems = False
 
 		root_config = self.roots[self.target_root]
-		world_set = root_config.sets["world"]
-		system_set = root_config.sets["system"]
+		world_set = root_config.settings.sets["world"]
+		system_set = root_config.settings.sets["system"]
 		mylist = list(system_set)
 		self._sets["system"] = system_set
 		if mode == "world":
@@ -3301,8 +3296,8 @@ class depgraph(object):
 
 				pkg_cp = xs[0]
 				root_config = self.roots[myroot]
-				system_set = root_config.sets["system"]
-				world_set  = root_config.sets["world"]
+				system_set = root_config.settings.sets["system"]
+				world_set  = root_config.settings.sets["world"]
 
 				pkg_system = False
 				pkg_world = False
@@ -3515,7 +3510,7 @@ class depgraph(object):
 			if x in self.myopts:
 				return
 		root_config = self.roots[self.target_root]
-		world_set = root_config.sets["world"]
+		world_set = root_config.settings.sets["world"]
 		world_set.lock()
 		world_set.load() # maybe it's changed on disk
 		args_set = self._sets["args"]
@@ -3773,9 +3768,9 @@ class MergeTask(object):
 			del shown_verifying_msg, quiet_settings
 
 		root_config = RootConfig(self.trees[self.target_root])
-		system_set = root_config.sets["system"]
+		system_set = root_config.settings.sets["system"]
 		args_set = InternalPackageSet(favorites)
-		world_set = root_config.sets["world"]
+		world_set = root_config.settings.sets["world"]
 		if "--resume" not in self.myopts:
 			mymergelist = mylist
 			mtimedb["resume"]["mergelist"]=mymergelist[:]
@@ -6367,7 +6362,7 @@ def load_emerge_config(trees=None):
 			settings = trees[myroot]["vartree"].settings
 			break
 	
-	settings = EmergeConfig(settings, trees=trees)
+	settings = EmergeConfig(settings, trees=trees[settings["ROOT"]])
 
 	mtimedbfile = os.path.join("/", portage.CACHE_PATH.lstrip(os.path.sep), "mtimedb")
 	mtimedb = portage.MtimeDB(mtimedbfile)
