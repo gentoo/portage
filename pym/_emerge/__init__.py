@@ -375,6 +375,7 @@ class EmergeConfig(portage.config):
 			#setconfig = SetConfig(setconfigpaths, settings, trees[settings["ROOT"]])
 			setconfig = make_default_config(settings, trees[settings["ROOT"]])
 		self.setconfig = setconfig
+		self.sets = self.setconfig.getSetsWithAliases()
 
 # search functionality
 class search(object):
@@ -567,33 +568,6 @@ class search(object):
 		else:
 			result = ""
 		return result
-
-
-def clean_world(vardb, cpv):
-	"""Remove a package from the world file when unmerged."""
-	world_set = WorldSet(vardb.settings["ROOT"])
-	world_set.lock()
-	worldlist = list(world_set) # loads latest from disk
-	mykey = portage.cpv_getkey(cpv)
-	newworldlist = []
-	for x in worldlist:
-		if portage.dep_getkey(x) == mykey:
-			matches = vardb.match(x, use_cache=0)
-			if not matches:
-				#zap our world entry
-				pass
-			elif len(matches) == 1 and matches[0] == cpv:
-				#zap our world entry
-				pass
-			else:
-				#others are around; keep it.
-				newworldlist.append(x)
-		else:
-			#this doesn't match the package we're unmerging; keep it.
-			newworldlist.append(x)
-
-	world_set.replace(newworldlist)
-	world_set.unlock()
 
 
 class RootConfig(object):
@@ -4218,7 +4192,7 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 	try:
 		if os.access(vdb_path, os.W_OK):
 			vdb_lock = portage.locks.lockdir(vdb_path)
-		realsyslist = settings.setconfig.getSetsWithAliases()["system"].getAtoms()
+		realsyslist = settings.sets["system"].getAtoms()
 		syslist = []
 		for x in realsyslist:
 			mycp = portage.dep_getkey(x)
@@ -4253,7 +4227,7 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 			if not unmerge_files or "world" in unmerge_files:
 				candidate_catpkgs.extend(vartree.dbapi.cp_all())
 			elif "system" in unmerge_files:
-				candidate_catpkgs.extend(settings.setconfig.getSetsWithAliases()["system"].getAtoms())
+				candidate_catpkgs.extend(settings.sets["system"].getAtoms())
 		else:
 			#we've got command-line arguments
 			if not unmerge_files:
@@ -4505,7 +4479,7 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 				show_unmerge_failure_message(y, ebuild, retval)
 				sys.exit(retval)
 			else:
-				clean_world(vartree.dbapi, y)
+				settings.sets["world"].cleanPackage(vartree.dbapi, y)
 				emergelog(xterm_titles, " >>> unmerge success: "+y)
 	return 1
 
@@ -6583,18 +6557,17 @@ def emerge_main():
 	# only expand sets for actions taking package arguments
 	if myaction not in ["search", "metadata", "sync"]:
 		oldargs = myfiles[:]
-		packagesets = settings.setconfig.getSetsWithAliases()
-		for s in packagesets:
+		for s in settings.sets:
 			if s in myfiles:
 				# TODO: check if the current setname also resolves to a package name
 				if myaction in ["unmerge", "prune", "clean", "depclean"] and not packagesets[s].supportsOperation("unmerge"):
 					print "emerge: the given set %s does not support unmerge operations" % s
 					sys.exit(1)
-				if not packagesets[s].getAtoms():
+				if not settings.sets[s].getAtoms():
 					print "emerge: '%s' is an empty set" % s
 				else:
-					myfiles.extend(packagesets[s].getAtoms())
-				for e in packagesets[s].errors:
+					myfiles.extend(settings.sets[s].getAtoms())
+				for e in settings.sets[s].errors:
 					print e
 				myfiles.remove(s)
 		# Need to handle empty sets specially, otherwise emerge will react 
