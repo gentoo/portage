@@ -4244,7 +4244,7 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 			if not unmerge_files or "world" in unmerge_files:
 				candidate_catpkgs.extend(vartree.dbapi.cp_all())
 			elif "system" in unmerge_files:
-				candidate_catpkgs.extend(settings.setconfig.getSetsWithAliaes()["system"].getAtoms())
+				candidate_catpkgs.extend(settings.setconfig.getSetsWithAliases()["system"].getAtoms())
 		else:
 			#we've got command-line arguments
 			if not unmerge_files:
