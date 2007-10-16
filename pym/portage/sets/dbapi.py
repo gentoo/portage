@@ -113,9 +113,10 @@ class CategorySet(PackageSet):
 class LibraryConsumerSet(PackageSet):
 	_operations = ["merge", "unmerge"]
 
-	def __init__(self, vardbapi):
+	def __init__(self, vardbapi, debug=False):
 		super(LibraryConsumerSet, self).__init__()
 		self.dbapi = vardbapi
+		self.debug = debug
 
 	def mapPathsToAtoms(self, paths):
 		rValue = set()
@@ -162,11 +163,19 @@ class MissingLibraryConsumerSet(LibraryConsumerSet):
 					found=True
 					break
 			if not found:
+				print "missing library: %s" % lib
+				print "consumers:"
+				for x in self.dbapi.libmap.get()[lib]:
+					print "    ", x
 				consumers.update(self.dbapi.libmap.get()[lib])
 		if not consumers:
 			return
 		self._setAtoms(self.mapPathsToAtoms(consumers))
 	
 	def singleBuilder(cls, options, settings, trees):
-		return MissingLibraryConsumerSet(trees["vartree"].dbapi)
+		if options.get("debug", "true").lower() in ["true", "on", "1", "yes"]:
+			debug = True
+		else:
+			debug = False
+		return MissingLibraryConsumerSet(trees["vartree"].dbapi, debug=debug)
 	singleBuilder = classmethod(singleBuilder)
