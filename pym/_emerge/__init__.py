@@ -363,8 +363,17 @@ def create_depgraph_params(myopts, myaction):
 
 
 class EmergeConfig(portage.config):
-	def __init__(self, portage_config, setconfig):
-		portage.config.__init__(self, clone=portage_config)
+	def __init__(self, settings, trees=None, setconfig=None):
+		""" You have to specify one of trees or setconfig """
+		portage.config.__init__(self, clone=settings)
+		if not setconfig:
+			setconfigpaths = [os.path.join(GLOBAL_CONFIG_PATH, "sets.conf")]
+			setconfigpaths.append(os.path.join(settings["PORTDIR"], "sets.conf"))
+			setconfigpaths += [os.path.join(x, "sets.conf") for x in settings["PORDIR_OVERLAY"].split()]
+			setconfigpaths.append(os.path.join(settings["PORTAGE_CONFIGROOT"],
+				USER_CONFIG_PATH.lstrip(os.path.sep), "sets.conf"))
+			#setconfig = SetConfig(setconfigpaths, settings, trees[settings["ROOT"]])
+			setconfig = make_default_config(settings, trees[settings["ROOT"]])
 		self.setconfig = setconfig
 
 # search functionality
@@ -3720,10 +3729,10 @@ class MergeTask(object):
 		if settings.get("PORTAGE_DEBUG", "") == "1":
 			self.edebug = 1
 		self.pkgsettings = {}
-		self.pkgsettings[self.target_root] = portage.config(clone=settings)
+		self.pkgsettings[self.target_root] = EmergeConfig(settings, setconfig=settings.setconfig)
 		if self.target_root != "/":
 			self.pkgsettings["/"] = \
-				portage.config(clone=trees["/"]["vartree"].settings)
+				EmergeConfig(trees["/"]["vartree"].settings, setconfig=settings.setconfig)
 		self.curval = 0
 
 	def merge(self, mylist, favorites, mtimedb):
@@ -6379,24 +6388,16 @@ def load_emerge_config(trees=None):
 
 	settings = trees["/"]["vartree"].settings
 
-	setconfigpaths = [os.path.join(GLOBAL_CONFIG_PATH, "sets.conf")]
-	setconfigpaths.append(os.path.join(settings["PORTDIR"], "sets.conf"))
-	setconfigpaths += [os.path.join(x, "sets.conf") for x in settings["PORDIR_OVERLAY"].split()]
-	setconfigpaths.append(os.path.join(settings["PORTAGE_CONFIGROOT"],
-		USER_CONFIG_PATH.lstrip(os.path.sep), "sets.conf"))
-	#setconfig = SetConfig(setconfigpaths, settings, trees[settings["ROOT"]])
-	setconfig = make_default_config(settings, trees[settings["ROOT"]])
-	del setconfigpaths
-
-	settings = EmergeConfig(trees["/"]["vartree"].settings, setconfig)
-
 	for myroot in trees:
 		if myroot != "/":
 			settings = trees[myroot]["vartree"].settings
 			break
+	
+	settings = EmergeConfig(settings, trees=trees)
 
 	mtimedbfile = os.path.join("/", portage.CACHE_PATH.lstrip(os.path.sep), "mtimedb")
 	mtimedb = portage.MtimeDB(mtimedbfile)
+	
 	return settings, trees, mtimedb
 
 def adjust_config(myopts, settings):
