@@ -8071,15 +8071,21 @@ class dblink:
 			" Add \"collision-protect\" to FEATURES in make.conf" + \
 			" if you would like the merge to abort in cases like this."
 			if self.settings.get("PORTAGE_QUIET") != "1":
-				msg += " If you have determined that one or more of the" + \
-				" files actually belong to another installed package then" + \
-				" go to http://bugs.gentoo.org and report it as a bug." + \
-				" Be sure to identify both this package and the other" + \
-				" installed package in the bug report. Use a command such" + \
-				" as \\`equery belongs <filename>\\` to identify the" + \
-				" installed package that owns a file. Do NOT file a bug" + \
-				" without reporting exactly which two packages install" + \
-				" the same file(s)."
+				msg += " You can use a command such as" + \
+				" \\`portageq owners / <filename>\\` to identify the" + \
+				" installed package that owns a file. If portageq" + \
+				" reports that only one package owns a file then do NOT" + \
+				" file a bug report. A bug report is only useful if it" + \
+				" identifies at least two or more packages that are known" + \
+				" install the same file(s). If a collision occurs and you" + \
+				" can not explain where the file came from then you" + \
+				" should simply ignore the collision since there is not" + \
+				" enough information to determine if a real problem" + \
+				" exists. Please do NOT file a bug report at" + \
+				" http://bugs.gentoo.org unless you report exactly which" + \
+				" two packages install the same file(s). Once again," + \
+				" please do NOT file a bug report unless you have" + \
+				" completely understood the above message."
 
 			self.settings["EBUILD_PHASE"] = "preinst"
 			cmd = "source '%s/isolated-functions.sh' ; " % PORTAGE_BIN_PATH
