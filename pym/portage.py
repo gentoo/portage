@@ -7723,9 +7723,14 @@ class dblink:
 
 	def isowner(self,filename,destroot):
 		""" 
-		Check if filename is a new file or belongs to this package
-		(for this or a previous version)
-		
+		Check if a file belongs to this package. This may
+		result in a stat call for the parent directory of
+		every installed file, since the inode numbers are
+		used to work around the problem of ambiguous paths
+		caused by symlinked directories. The results of
+		stat calls are cached to optimize multiple calls
+		to this method.
+
 		@param filename:
 		@type filename:
 		@param destroot:
@@ -7742,23 +7747,46 @@ class dblink:
 		if pkgfiles and destfile in pkgfiles:
 			return True
 		if pkgfiles:
+			# Use stat rather than lstat since we want to follow
+			# any symlinks to the real parent directory.
+			parent_path = os.path.dirname(destfile)
 			try:
-				mylstat = os.lstat(destfile)
+				parent_stat = os.stat(parent_path)
 			except EnvironmentError, e:
 				if e.errno != errno.ENOENT:
 					raise
 				del e
-				return True
+				return False
 			if self._contents_inodes is None:
-				self._contents_inodes = set()
+				self._contents_inodes = {}
+				parent_paths = set()
 				for x in pkgfiles:
+					p_path = os.path.dirname(x)
+					if p_path in parent_paths:
+						continue
+					parent_paths.add(p_path)
 					try:
-						lstat = os.lstat(x)
-						self._contents_inodes.add((lstat.st_dev, lstat.st_ino))
+						s = os.stat(p_path)
 					except OSError:
 						pass
-			if (mylstat.st_dev, mylstat.st_ino) in self._contents_inodes:
-				 return True
+					else:
+						inode_key = (s.st_dev, s.st_ino)
+						# Use lists of paths in case multiple
+						# paths reference the same inode.
+						p_path_list = self._contents_inodes.get(inode_key)
+						if p_path_list is None:
+							p_path_list = []
+							self._contents_inodes[inode_key] = p_path_list
+						if p_path not in p_path_list:
+							p_path_list.append(p_path)
+			p_path_list = self._contents_inodes.get(
+				(parent_stat.st_dev, parent_stat.st_ino))
+			if p_path_list:
+				basename = os.path.basename(destfile)
+				for p_path in p_path_list:
+					x = os.path.join(p_path, basename)
+					if x in pkgfiles:
+						return True
 
 		return False
 
@@ -7990,11 +8018,6 @@ class dblink:
 				print "Searching all installed packages for file collisions..."
 				print "Press Ctrl-C to Stop"
 				print
-				""" Note: The isowner calls result in a stat call for *every*
-				single installed file, since the inode numbers are used to work
-				around the problem of ambiguous paths caused by symlinked files
-				and/or directories.  Though it is slow, it is as accurate as
-				possible."""
 				found_owner = False
 				for cpv in self.vartree.dbapi.cpv_all():
 					cat, pkg = catsplit(cpv)
