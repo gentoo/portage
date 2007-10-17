@@ -8040,7 +8040,7 @@ class dblink:
 					print
 				sys.exit(1)
 
-		if os.stat(srcroot).st_dev == os.stat(destroot).st_dev:
+		if True:
 			""" The merge process may move files out of the image directory,
 			which causes invalidation of the .installed flag."""
 			try:
