@@ -8000,45 +8000,6 @@ class dblink:
 									break
 					if stopmerge:
 						collisions.append(f)
-			if stopmerge and "collision-protect" in self.settings.features:
-				print red("*")+" This package is blocked because it wants to overwrite"
-				print red("*")+" files belonging to other packages (see list below)."
-				print red("*")+" If you have no clue what this is all about report it "
-				print red("*")+" as a bug for this package on http://bugs.gentoo.org"
-				print
-				print red("package "+self.cat+"/"+self.pkg+" NOT merged")
-				print
-				print "Detected file collision(s):"
-				print
-				from output import colorize
-				for f in collisions:
-					print "     '%s'" % colorize("INFORM",
-						os.path.join(destroot, f.lstrip(os.path.sep)))
-				print
-				print "Searching all installed packages for file collisions..."
-				print "Press Ctrl-C to Stop"
-				print
-				found_owner = False
-				for cpv in self.vartree.dbapi.cpv_all():
-					cat, pkg = catsplit(cpv)
-					mylink = dblink(cat, pkg, destroot, self.settings,
-						vartree=self.vartree)
-					mycollisions = []
-					for f in collisions:
-						if mylink.isowner(f, destroot):
-							mycollisions.append(f)
-					if mycollisions:
-						found_owner = True
-						print " * %s:" % cpv
-						print
-						for f in mycollisions:
-							print "     '%s'" % \
-								os.path.join(destroot, f.lstrip(os.path.sep))
-						print
-				if not found_owner:
-					print "None of the installed packages claim the above file(s)."
-					print
-				sys.exit(1)
 
 		if True:
 			""" The merge process may move files out of the image directory,
@@ -8065,11 +8026,21 @@ class dblink:
 			use_cache=0, tree=self.treetype, mydbapi=mydbapi,
 			vartree=self.vartree)
 
+		def eerror(lines):
+			cmd = "source '%s/isolated-functions.sh' ; " % PORTAGE_BIN_PATH
+			for line in lines:
+				cmd += "eerror \"%s\" ; " % line
+			portage_exec.spawn(["bash", "-c", cmd],
+				env=self.settings.environ())
+
 		if collisions:
+			collision_protect = "collision-protect" in self.settings.features
 			msg = "This package will overwrite one or more files that" + \
-			" may belong to other packages (see list below)." + \
-			" Add \"collision-protect\" to FEATURES in make.conf" + \
-			" if you would like the merge to abort in cases like this."
+			" may belong to other packages (see list below)."
+			if not collision_protect:
+				msg += " Add \"collision-protect\" to FEATURES in" + \
+				" make.conf if you would like the merge to abort" + \
+				" in cases like this."
 			if self.settings.get("PORTAGE_QUIET") != "1":
 				msg += " You can use a command such as" + \
 				" \\`portageq owners / <filename>\\` to identify the" + \
@@ -8089,21 +8060,52 @@ class dblink:
 				" completely understood the above message."
 
 			self.settings["EBUILD_PHASE"] = "preinst"
-			cmd = "source '%s/isolated-functions.sh' ; " % PORTAGE_BIN_PATH
 			from textwrap import wrap
 			msg = wrap(msg, 70)
-			for line in msg:
-				cmd += "eerror \"%s\" ; " % line
-			cmd += "eerror ; "
-			cmd += "eerror \"Detected file collision(s):\" ; "
-			cmd += "eerror ; "
+			if collision_protect:
+				msg.append("")
+				msg.append("package %s NOT merged" % self.settings.mycpv)
+			msg.append("")
+			msg.append("Detected file collision(s):")
+			msg.append("")
 
 			for f in collisions:
-				cmd += "eerror \"     '%s'\" ; " % \
-					os.path.join(destroot, f.lstrip(os.path.sep))
+				msg.append("     '%s'" % \
+					os.path.join(destroot, f.lstrip(os.path.sep)))
 
-			portage_exec.spawn(["bash", "-c", cmd],
-				env=self.settings.environ())
+			eerror(msg)
+
+			if collision_protect:
+				msg = []
+				msg.append("")
+				msg.append("Searching all installed" + \
+					" packages for file collisions...")
+				msg.append("")
+				msg.append("Press Ctrl-C to Stop")
+				msg.append("")
+				eerror(msg)
+
+				found_owner = False
+				for cpv in self.vartree.dbapi.cpv_all():
+					cat, pkg = catsplit(cpv)
+					mylink = dblink(cat, pkg, destroot, self.settings,
+						vartree=self.vartree)
+					mycollisions = []
+					for f in collisions:
+						if mylink.isowner(f, destroot):
+							mycollisions.append(f)
+					if mycollisions:
+						found_owner = True
+						msg = []
+						msg.append("%s" % cpv)
+						for f in mycollisions:
+							msg.append("\t%s" % os.path.join(destroot,
+								f.lstrip(os.path.sep)))
+						eerror(msg)
+				if not found_owner:
+					eerror(["None of the installed" + \
+						" packages claim the file(s)."])
+				return 1
 
 		# XXX: Decide how to handle failures here.
 		if a != os.EX_OK:
