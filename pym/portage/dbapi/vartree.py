@@ -1816,7 +1816,8 @@ class dblink(object):
 				" reports that only one package owns a file then do NOT" + \
 				" file a bug report. A bug report is only useful if it" + \
 				" identifies at least two or more packages that are known" + \
-				" install the same file(s). If a collision occurs and you" + \
+				" to install the same file(s)." + \
+				" If a collision occurs and you" + \
 				" can not explain where the file came from then you" + \
 				" should simply ignore the collision since there is not" + \
 				" enough information to determine if a real problem" + \
