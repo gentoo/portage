@@ -7162,7 +7162,7 @@ class dblink:
 	"""
 
 	import re
-	_normalize_needed = re.compile(r'//|^[^/]|.+/$')
+	_normalize_needed = re.compile(r'.*//.*|^[^/]|.+/$|(^|.*/)\.\.?(/.*|$)')
 
 	def __init__(self, cat, pkg, myroot, mysettings, treetype=None,
 		vartree=None):
