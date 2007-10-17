@@ -123,6 +123,69 @@ def metadata(argv):
 
 metadata.uses_root = True
 
+def owners(argv):
+	"""<root> [<filename>]+
+	Given a list of files, print the packages that own the files and which
+	files belong to each package. Files owned by a package are listed on
+	the lines below it, indented by a single tab character (\\t). All file
+	paths must start with <root>. Returns 1 if no owners could be found,
+	and 0 otherwise.
+	"""
+	if len(argv) < 2:
+		sys.stderr.write("ERROR: insufficient parameters!\n")
+		sys.stderr.flush()
+		return 2
+
+	from portage import catsplit, dblink
+	settings = portage.settings
+	root = settings["ROOT"]
+	vardb = portage.db[root]["vartree"].dbapi
+
+	cwd = None
+	try:
+		cwd = os.getcwd()
+	except OSError:
+		pass
+
+	files = []
+	for f in argv[1:]:
+		f = portage.normalize_path(f)
+		if not f.startswith(os.path.sep):
+			if cwd is None:
+				sys.stderr.write("ERROR: cwd does not exist!\n")
+				sys.stderr.flush()
+				return 2
+			f = os.path.join(cwd, f)
+			f = portage.normalize_path(f)
+		if not f.startswith(root):
+			sys.stderr.write("ERROR: file paths must begin with <root>!\n")
+			sys.stderr.flush()
+			return 2
+		files.append(f[len(root):])
+
+	found_owner = False
+	for cpv in vardb.cpv_all():
+		cat, pkg = catsplit(cpv)
+		mylink = dblink(cat, pkg, root, settings, vartree=vardb.vartree)
+		myfiles = []
+		for f in files:
+			if mylink.isowner(f, root):
+				myfiles.append(f)
+		if myfiles:
+			found_owner = True
+			sys.stdout.write("%s\n" % cpv)
+			for f in myfiles:
+				sys.stdout.write("\t%s\n" % \
+					os.path.join(root, f.lstrip(os.path.sep)))
+			sys.stdout.flush()
+	if not found_owner:
+		sys.stderr.write("None of the installed packages claim the file(s).\n")
+		sys.stderr.flush()
+		return 1
+	return 0
+
+owners.uses_root = True
+
 def best_visible(argv):
 	"""<root> [<category/package>]+
 	Returns category/package-version (without .ebuild).
@@ -373,7 +436,9 @@ def main():
 			import portage
 		if uses_root:
 			sys.argv[2] = portage.root
-		function(sys.argv[2:])
+		retval = function(sys.argv[2:])
+		if retval:
+			sys.exit(retval)
 	except KeyError:
 		usage(sys.argv)
 		sys.exit(os.EX_USAGE)
