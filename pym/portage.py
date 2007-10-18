@@ -8012,7 +8012,7 @@ class dblink:
 		def eerror(lines):
 			cmd = "source '%s/isolated-functions.sh' ; " % PORTAGE_BIN_PATH
 			for line in lines:
-				cmd += "eerror \"%s\" ; " % line
+				cmd += "eerror '%s' ; " % line
 			portage_exec.spawn(["bash", "-c", cmd],
 				env=self.settings.environ())
 
@@ -8026,7 +8026,7 @@ class dblink:
 				" in cases like this."
 			if self.settings.get("PORTAGE_QUIET") != "1":
 				msg += " You can use a command such as" + \
-				" \\`portageq owners / <filename>\\` to identify the" + \
+				" `portageq owners / <filename>` to identify the" + \
 				" installed package that owns a file. If portageq" + \
 				" reports that only one package owns a file then do NOT" + \
 				" file a bug report. A bug report is only useful if it" + \
@@ -8053,7 +8053,7 @@ class dblink:
 			msg.append("")
 
 			for f in collisions:
-				msg.append("     '%s'" % \
+				msg.append("\t%s" % \
 					os.path.join(destroot, f.lstrip(os.path.sep)))
 
 			eerror(msg)
