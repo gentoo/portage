@@ -7877,6 +7877,22 @@ class dblink:
 			noiselevel=-1)
 			return 1
 
+		inforoot_slot_file = os.path.join(inforoot, "SLOT")
+		try:
+			f = open(inforoot_slot_file)
+			try:
+				slot = f.read().strip()
+			finally:
+				f.close()
+		except OSError, e:
+			writemsg("!!! Error reading '%s': %s\n" % (inforoot_slot_file, e),
+				noiselevel=-1)
+			return 1
+
+		if slot != self.settings["SLOT"]:
+			writemsg("!!! WARNING: Expected SLOT='%s', got '%s'\n" % \
+				(self.settings["SLOT"], slot))
+
 		if not os.path.exists(self.dbcatdir):
 			os.makedirs(self.dbcatdir)
 
@@ -7885,7 +7901,7 @@ class dblink:
 			otherversions.append(v.split("/")[1])
 
 		slot_matches = self.vartree.dbapi.match(
-			"%s:%s" % (self.mysplit[0], self.settings["SLOT"]))
+			"%s:%s" % (self.mysplit[0], slot))
 		if self.mycpv not in slot_matches and \
 			self.vartree.dbapi.cpv_exists(self.mycpv):
 			# handle multislot or unapplied slotmove
