@@ -20,7 +20,7 @@ from portage.util import apply_secpass_permissions, ConfigProtect, ensure_dirs, 
 from portage.versions import pkgsplit, catpkgsplit, catsplit, best, pkgcmp
 
 from portage import listdir, dep_expand, flatten, key_expand, \
-	doebuild_environment, doebuild, env_update, \
+	doebuild_environment, doebuild, env_update, prepare_build_dirs, \
 	abssymlink, movefile, _movefile, bsd_chflags
 
 from portage.elog import elog_process
@@ -1740,30 +1740,13 @@ class dblink(object):
 		collisions = self._collision_protect(srcroot, destroot, others_in_slot,
 			myfilelist+mylinklist)
 
-		if True:
-			""" The merge process may move files out of the image directory,
-			which causes invalidation of the .installed flag."""
-			try:
-				os.unlink(os.path.join(
-					os.path.dirname(normalize_path(srcroot)), ".installed"))
-			except OSError, e:
-				if e.errno != errno.ENOENT:
-					raise
-				del e
-
-		self.dbdir = self.dbtmpdir
-		self.delete()
-		if not os.path.exists(self.dbtmpdir):
-			os.makedirs(self.dbtmpdir)
-
-		writemsg_stdout(">>> Merging %s %s %s\n" % (self.mycpv,"to",destroot))
-
-		# run preinst script
+		# Make sure the ebuild environment is initialized and that ${T}/elog
+		# exists for logging of collision-protect eerror messages.
 		if myebuild is None:
 			myebuild = os.path.join(inforoot, self.pkg + ".ebuild")
-		a = doebuild(myebuild, "preinst", destroot, self.settings, cleanup=cleanup,
-			use_cache=0, tree=self.treetype, mydbapi=mydbapi,
-			vartree=self.vartree)
+		doebuild_environment(myebuild, "preinst", destroot,
+			self.settings, 0, 0, mydbapi)
+		prepare_build_dirs(destroot, self.settings, cleanup)
 
 		def eerror(lines):
 			cmd = "source '%s/isolated-functions.sh' ; " % PORTAGE_BIN_PATH
@@ -1846,6 +1829,27 @@ class dblink(object):
 					eerror(["None of the installed" + \
 						" packages claim the file(s)."])
 				return 1
+
+		writemsg_stdout(">>> Merging %s to %s\n" % (self.mycpv, destroot))
+
+		# The merge process may move files out of the image directory,
+		# which causes invalidation of the .installed flag.
+		try:
+			os.unlink(os.path.join(
+				os.path.dirname(normalize_path(srcroot)), ".installed"))
+		except OSError, e:
+			if e.errno != errno.ENOENT:
+				raise
+			del e
+
+		self.dbdir = self.dbtmpdir
+		self.delete()
+		ensure_dirs(self.dbtmpdir)
+
+		# run preinst script
+		a = doebuild(myebuild, "preinst", destroot, self.settings,
+			use_cache=0, tree=self.treetype, mydbapi=mydbapi,
+			vartree=self.vartree)
 
 		# XXX: Decide how to handle failures here.
 		if a != os.EX_OK:
