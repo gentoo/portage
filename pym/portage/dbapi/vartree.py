@@ -1672,16 +1672,20 @@ class dblink(object):
 			return 1
 
 		inforoot_slot_file = os.path.join(inforoot, "SLOT")
+		slot = None
 		try:
 			f = open(inforoot_slot_file)
 			try:
 				slot = f.read().strip()
 			finally:
 				f.close()
-		except OSError, e:
-			writemsg("!!! Error reading '%s': %s\n" % (inforoot_slot_file, e),
-				noiselevel=-1)
-			return 1
+		except EnvironmentError, e:
+			if e.errno != errno.ENOENT:
+				raise
+			del e
+
+		if slot is None:
+			slot = ""
 
 		if slot != self.settings["SLOT"]:
 			writemsg("!!! WARNING: Expected SLOT='%s', got '%s'\n" % \
