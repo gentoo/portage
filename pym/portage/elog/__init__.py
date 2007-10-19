@@ -18,13 +18,12 @@ def _merge_logentries(a, b):
 	phases = set(a)
 	phases.update(b)
 	for p in phases:
-		rValue[p] = []
-		if a.has_key(p):
-			for x in a[p]:
-				rValue[p].append(x)
-		if b.has_key(p):
-			for x in b[p]:
-				rValue[p].append(x)
+		merged_msgs = []
+		rValue[p] = merged_msgs
+		for d in a, b:
+			msgs = d.get(p)
+			if msgs:
+				merged_msgs.extend(msgs)
 	return rValue
 
 def _combine_logentries(logentries):
