@@ -33,8 +33,11 @@ def _combine_logentries(logentries):
 	for phase in EBUILD_PHASES:
 		if not phase in logentries:
 			continue
+		previous_type = None
 		for msgtype, msgcontent in logentries[phase]:
-			rValue += "%s: %s\n" % (msgtype, phase)
+			if previous_type != msgtype:
+				previous_type = msgtype
+				rValue += "%s: %s\n" % (msgtype, phase)
 			for line in msgcontent:
 				rValue += line
 			rValue += "\n"
