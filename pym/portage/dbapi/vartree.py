@@ -1768,13 +1768,10 @@ class dblink(object):
 			self.settings, 0, 0, mydbapi)
 		prepare_build_dirs(destroot, self.settings, cleanup)
 
+		from portage.elog.messages import eerror as _eerror
 		def eerror(lines):
-			cmd = "source '%s/isolated-functions.sh' ; " % PORTAGE_BIN_PATH
-			for line in lines:
-				cmd += "eerror '%s' ; " % line
-			from portage import process
-			process.spawn(["bash", "-c", cmd],
-				env=self.settings.environ())
+			for l in lines:
+				_eerror(l, phase="preinst", key=self.pkg)
 
 		if collisions:
 			collision_protect = "collision-protect" in self.settings.features
