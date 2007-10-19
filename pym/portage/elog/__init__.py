@@ -80,7 +80,7 @@ def elog_process(cpv, mysettings, phasefilter=None):
 				s, levels = s.split(":", 1)
 				levels = levels.split(",")
 				mod_logentries = filter_loglevels(all_logentries[key], levels)
-				mod_fulllog = combine_logentries(mod_logentries)
+				mod_fulllog = _combine_logentries(mod_logentries)
 			else:
 				mod_logentries = default_logentries
 				mod_fulllog = default_fulllog
