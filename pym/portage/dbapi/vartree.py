@@ -1771,7 +1771,7 @@ class dblink(object):
 		from portage.elog.messages import eerror as _eerror
 		def eerror(lines):
 			for l in lines:
-				_eerror(l, phase="preinst", key=self.pkg)
+				_eerror(l, phase="preinst", key=self.settings.mycpv)
 
 		if collisions:
 			collision_protect = "collision-protect" in self.settings.features
