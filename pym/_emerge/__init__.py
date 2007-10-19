@@ -6783,7 +6783,7 @@ def emerge_main():
 			display_news_notification(trees)
 		retval = action_build(settings, trees, mtimedb,
 			myopts, myaction, myfiles, spinner)
-		if "--pretend" in myopts:
+		if "--pretend" not in myopts:
 			display_news_notification(trees)
 		return retval
 
