@@ -29,7 +29,7 @@ def _merge_logentries(a, b):
 
 def _combine_logentries(logentries):
 	# generate a single string with all log messages
-	rValue = ""
+	rValue = []
 	for phase in EBUILD_PHASES:
 		if not phase in logentries:
 			continue
@@ -37,11 +37,11 @@ def _combine_logentries(logentries):
 		for msgtype, msgcontent in logentries[phase]:
 			if previous_type != msgtype:
 				previous_type = msgtype
-				rValue += "%s: %s\n" % (msgtype, phase)
+				rValue.append("%s: %s\n" % (msgtype, phase))
 			for line in msgcontent:
-				rValue += line
-			rValue += "\n"
-	return rValue
+				rValue.append(line)
+			rValue.append("\n")
+	return "".join(rValue)
 
 _elog_atexit_handlers = []
 _preserve_logentries = {}
