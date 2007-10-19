@@ -74,7 +74,7 @@ _functions = { "einfo": ("INFO", "GOOD"),
 		"elog": ("LOG", "GOOD"),
 		"ewarn": ("WARN", "WARN"),
 		"eqawarn": ("QA", "WARN"),
-		"eerror": ("ERROR", "ERROR"),
+		"eerror": ("ERROR", "BAD"),
 }
 
 def _make_msgfunction(level, color):
