@@ -880,6 +880,16 @@ def iter_atoms(deps):
 			for x in iter_atoms(x):
 				yield x
 
+class Package(object):
+	__slots__ = ("__weakref__", "built", "cpv",
+		"installed", "metadata", "root", "type_name")
+	def __init__(self, **kwargs):
+		for myattr in self.__slots__:
+			if myattr == "__weakref__":
+				continue
+			myvalue = kwargs.get(myattr, None)
+			setattr(self, myattr, myvalue)
+
 class BlockerCache(DictMixin):
 	"""This caches blockers of installed packages so that dep_check does not
 	have to be done for every single installed package on every invocation of
@@ -1211,8 +1221,8 @@ class depgraph(object):
 				return flags
 		return None
 
-	def create(self, mybigkey, myparent=None, addme=1, metadata=None,
-		priority=DepPriority(), rev_dep=False, arg=None):
+	def create(self, pkg, myparent=None, addme=1,
+		priority=None, arg=None):
 		"""
 		Fills the digraph with nodes comprised of packages to merge.
 		mybigkey is the package spec of the package to merge.
@@ -1228,7 +1238,11 @@ class depgraph(object):
 		# unused parameters
 		rev_dep = False
 
-		mytype, myroot, mykey = mybigkey
+		mytype = pkg.type_name
+		myroot = pkg.root
+		mykey = pkg.cpv
+		metadata = pkg.metadata
+		mybigkey = [mytype, myroot, mykey]
 
 		# select the correct /var database that we'll be checking against
 		vardbapi = self.trees[myroot]["vartree"].dbapi
@@ -1271,7 +1285,8 @@ class depgraph(object):
 
 		if addme:
 			slot_atom = "%s:%s" % (portage.dep_getkey(mykey), metadata["SLOT"])
-			if merging and \
+			if myparent and \
+				merging and \
 				"empty" not in self.myparams and \
 				vardbapi.match(slot_atom):
 				# Increase the priority of dependencies on packages that
@@ -1461,6 +1476,7 @@ class depgraph(object):
 		bindb = self.trees[myroot]["bintree"].dbapi
 		pkgsettings = self.pkgsettings[myroot]
 		arg_atoms = []
+		addme = "--onlydeps" not in self.myopts
 		for x in myfiles:
 			ext = os.path.splitext(x)[1]
 			if ext==".tbz2":
@@ -1481,9 +1497,10 @@ class depgraph(object):
 					os.path.realpath(self.trees[myroot]["bintree"].getname(mykey)):
 					print colorize("BAD", "\n*** You need to adjust PKGDIR to emerge this package.\n")
 					return 0, myfavorites
-				if not self.create(["binary", myroot, mykey],
-					addme=("--onlydeps" not in self.myopts), arg=x):
-					return (0,myfavorites)
+				pkg = Package(type_name="binary", root=myroot,
+					cpv=mykey, built=True)
+				if not self.create(pkg, addme=addme, arg=x):
+					return 0, myfavorites
 				arg_atoms.append((x, "="+mykey))
 			elif ext==".ebuild":
 				ebuild_path = portage.util.normalize_path(os.path.abspath(x))
@@ -1515,9 +1532,10 @@ class depgraph(object):
 				else:
 					raise portage.exception.PackageNotFound(
 						"%s is not in a valid portage tree hierarchy or does not exist" % x)
-				if not self.create(["ebuild", myroot, mykey],
-					None, "--onlydeps" not in self.myopts, arg=x):
-					return (0,myfavorites)
+				pkg = Package(type_name="ebuild", root=myroot,
+					cpv=mykey)
+				if not self.create(pkg, addme=addme, arg=x):
+					return 0, myfavorites
 				arg_atoms.append((x, "="+mykey))
 			else:
 				if not is_valid_package_atom(x):
@@ -1807,7 +1825,9 @@ class depgraph(object):
 		bindb  = self.trees[myroot]["bintree"].dbapi
 		vardb  = self.trees[myroot]["vartree"].dbapi
 		pkgsettings = self.pkgsettings[myroot]
+		addme = "--onlydeps" not in self.myopts
 		if myparent:
+			addme = True
 			p_type, p_root, p_key, p_status = myparent
 
 		if "--debug" in self.myopts:
@@ -2159,22 +2179,17 @@ class depgraph(object):
 					if not myarg:
 						continue
 
+			(mytype, myroot, mykey), metadata = selected_pkg
+			pkg = Package(type_name=mytype, root=myroot,
+				cpv=mykey, metadata=metadata)
+			mypriority = None
 			if myparent:
-				#we are a dependency, so we want to be unconditionally added
 				mypriority = priority.copy()
 				if vardb.match(x):
 					mypriority.satisfied = True
-				if not self.create(selected_pkg[0], myparent=myparent,
-					metadata=selected_pkg[1], priority=mypriority,
-					rev_dep=rev_deps, arg=arg):
-					return 0
-			else:
-				#if mysource is not set, then we are a command-line dependency and should not be added
-				#if --onlydeps is specified.
-				if not self.create(selected_pkg[0], myparent=myparent,
-					addme=("--onlydeps" not in self.myopts),
-					metadata=selected_pkg[1], rev_dep=rev_deps, arg=arg):
-					return 0
+			if not self.create(pkg, myparent=myparent, addme=addme,
+				priority=mypriority, arg=arg):
+				return 0
 
 		if "--debug" in self.myopts:
 			print "Exiting...",myparent
