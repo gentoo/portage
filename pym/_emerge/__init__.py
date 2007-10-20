@@ -1840,34 +1840,6 @@ class depgraph(object):
 			if depstring in self._set_atoms:
 				self._pprovided_args.append((arg, depstring))
 
-		if myparent:
-			# The parent is added after it's own dep_check call so that it
-			# isn't allowed to satisfy a direct bootstrap dependency on itself
-			# via an old-style virtual.  This isn't a problem with new-style
-			# virtuals, which are preferenced in dep_zapdeps by looking only at
-			# the depstring, vdb, and available packages.
-
-			p_type, p_root, p_key, p_status = myparent
-			if p_status == "merge":
-				# Update old-style virtuals if this package provides any.
-				# These are needed for dep_virtual calls inside dep_check.
-				p_db = self.mydbapi[p_root] # contains cached metadata
-				if myparent in self._slot_collision_nodes:
-					# The metadata isn't cached due to the slot collision.
-					p_db = self.trees[p_root][self.pkg_tree_map[p_type]].dbapi
-				try:
-					self.pkgsettings[p_root].setinst(p_key, p_db)
-					# For consistency, also update the global virtuals.
-					settings = self.roots[p_root].settings
-					settings.unlock()
-					settings.setinst(p_key, p_db)
-					settings.lock()
-				except portage.exception.InvalidDependString, e:
-					provide = p_db.aux_get(p_key, ["PROVIDE"])[0]
-					show_invalid_depstring_notice(myparent, provide, str(e))
-					del e
-					return 0
-
 		if "--debug" in self.myopts:
 			print "Candidates:",mymerge
 		for x in mymerge:
