@@ -899,6 +899,8 @@ class config(object):
 		self.userVirtuals = {}
 		# Virtual negatives from user specifications.
 		self.negVirtuals  = {}
+		# Virtuals added by the depgraph via self.setinst().
+		self._depgraphVirtuals = {}
 
 		self.user_profile_dir = None
 		self.local_config = local_config
@@ -921,6 +923,7 @@ class config(object):
 			self.treeVirtuals = copy.deepcopy(clone.treeVirtuals)
 			self.userVirtuals = copy.deepcopy(clone.userVirtuals)
 			self.negVirtuals  = copy.deepcopy(clone.negVirtuals)
+			self._depgraphVirtuals = copy.deepcopy(clone._depgraphVirtuals)
 
 			self.use_defs = copy.deepcopy(clone.use_defs)
 			self.usemask  = copy.deepcopy(clone.usemask)
@@ -2044,12 +2047,17 @@ class config(object):
 		if len(self.virtuals) == 0:
 			self.getvirtuals()
 		# Grab the virtuals this package provides and add them into the tree virtuals.
-		provides = mydbapi.aux_get(mycpv, ["PROVIDE"])[0]
+		if isinstance(mydbapi, dict):
+			provides = mydbapi["PROVIDE"]
+		else:
+			provides = mydbapi.aux_get(mycpv, ["PROVIDE"])[0]
 		if not provides:
 			return
 		if isinstance(mydbapi, portdbapi):
 			self.setcpv(mycpv, mydb=mydbapi)
 			myuse = self["USE"]
+		elif isinstance(mydbapi, dict):
+			myuse = mydbapi["USE"]
 		else:
 			myuse = mydbapi.aux_get(mycpv, ["USE"])[0]
 		virts = flatten(portage.dep.use_reduce(portage.dep.paren_reduce(provides), uselist=myuse.split()))
@@ -2058,10 +2066,10 @@ class config(object):
 		cp = dep_getkey(mycpv)
 		for virt in virts:
 			virt = dep_getkey(virt)
-			providers = self.treeVirtuals.get(virt)
+			providers = self._depgraphVirtuals.get(virt)
 			if providers is None:
 				providers = []
-				self.treeVirtuals[virt] = providers
+				self._depgraphVirtuals[virt] = providers
 			if cp not in providers:
 				providers.append(cp)
 				modified = True
@@ -2395,7 +2403,7 @@ class config(object):
 					ptVirtuals[virt].append(cp)
 
 		virtuals = stack_dictlist([ptVirtuals, self.treeVirtuals,
-			self.dirVirtuals])
+			self.dirVirtuals, self._depgraphVirtuals])
 		return virtuals
 
 	def __delitem__(self,mykey):

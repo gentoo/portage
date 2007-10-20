@@ -1339,6 +1339,22 @@ class depgraph(object):
 				self.digraph.addnode(jbigkey, myparent,
 					priority=priority)
 
+			if mytype != "installed":
+				# Allow this package to satisfy old-style virtuals in case it
+				# doesn't already. Any pre-existing providers will be preferred
+				# over this one.
+				try:
+					pkgsettings.setinst(mykey, metadata)
+					# For consistency, also update the global virtuals.
+					settings = self.roots[myroot].settings
+					settings.unlock()
+					settings.setinst(mykey, metadata)
+					settings.lock()
+				except portage.exception.InvalidDependString, e:
+					show_invalid_depstring_notice(jbigkey, metadata["PROVIDE"], str(e))
+					del e
+					return 0
+
 		if arg:
 			self._set_nodes.add(jbigkey)
 
