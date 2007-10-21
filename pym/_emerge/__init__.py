@@ -1249,17 +1249,6 @@ class depgraph(object):
 		portdb = self.trees[myroot]["porttree"].dbapi
 		bindb = self.trees[myroot]["bintree"].dbapi
 		pkgsettings = self.pkgsettings[myroot]
-
-		# if the package is already on the system, we add a "nomerge"
-		# directive, otherwise we add a "merge" directive.
-
-		mydbapi = self.trees[myroot][self.pkg_tree_map[mytype]].dbapi
-		if metadata is None:
-			metadata = dict(izip(self._mydbapi_keys,
-				mydbapi.aux_get(mykey, self._mydbapi_keys)))
-			if mytype == "ebuild":
-				pkgsettings.setcpv(mykey, mydb=portdb)
-				metadata["USE"] = pkgsettings["USE"]
 		myuse = metadata["USE"].split()
 
 		if not arg and myroot == self.target_root:
@@ -1491,8 +1480,10 @@ class depgraph(object):
 					os.path.realpath(self.trees[myroot]["bintree"].getname(mykey)):
 					print colorize("BAD", "\n*** You need to adjust PKGDIR to emerge this package.\n")
 					return 0, myfavorites
+				metadata = dict(izip(self._mydbapi_keys,
+					bindb.aux_get(mykey, self._mydbapi_keys)))
 				pkg = Package(type_name="binary", root=myroot,
-					cpv=mykey, built=True)
+					cpv=mykey, built=True, metadata=metadata)
 				if not self.create(pkg, addme=addme, arg=x):
 					return 0, myfavorites
 				arg_atoms.append((x, "="+mykey))
@@ -1526,8 +1517,12 @@ class depgraph(object):
 				else:
 					raise portage.exception.PackageNotFound(
 						"%s is not in a valid portage tree hierarchy or does not exist" % x)
+				metadata = dict(izip(self._mydbapi_keys,
+					portdb.aux_get(mykey, self._mydbapi_keys)))
+				pkgsettings.setcpv(mykey, mydb=metadata)
+				metadata["USE"] = pkgsettings["USE"]
 				pkg = Package(type_name="ebuild", root=myroot,
-					cpv=mykey)
+					cpv=mykey, metadata=metadata)
 				if not self.create(pkg, addme=addme, arg=x):
 					return 0, myfavorites
 				arg_atoms.append((x, "="+mykey))
