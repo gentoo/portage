@@ -13,6 +13,7 @@ portage-2.2
   based on FEATURES=preserve-libs, USE AT YOUR OWN RISK!!!
 * Make elog functionality available to python code
 * Add support for news items (GLEP 42)
+* Add support for generic package sets (also see RELEASE-NOTES)
 
 portage-2.1.3
 -------------
