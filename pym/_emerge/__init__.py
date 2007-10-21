@@ -1586,9 +1586,8 @@ class depgraph(object):
 				for cpv in vardb.match(mykey):
 					myslots.add(vardb.aux_get(cpv, ["SLOT"])[0])
 				if myslots:
-					if not self._populate_filtered_repo(myroot, atom,
-						exclude_installed=True):
-						return False, myfavorites
+					self._populate_filtered_repo(myroot, atom,
+						exclude_installed=True)
 					mymatches = filtered_db.match(atom)
 					best_pkg = portage.best(mymatches)
 					if best_pkg:
@@ -1597,10 +1596,9 @@ class depgraph(object):
 				if len(myslots) > 1:
 					for myslot in myslots:
 						myslot_atom = "%s:%s" % (mykey, myslot)
-						if not self._populate_filtered_repo(
+						self._populate_filtered_repo(
 							myroot, myslot_atom,
-							exclude_installed=True):
-							return False, myfavorites
+							exclude_installed=True)
 						if filtered_db.match(myslot_atom):
 							greedy_atoms.append((myarg, myslot_atom))
 			arg_atoms = greedy_atoms
@@ -1669,7 +1667,8 @@ class depgraph(object):
 			myparent=None, myuse=None, exclude_installed=False):
 		"""Extract all of the atoms from the depstring, select preferred
 		packages from appropriate repositories, and use them to populate
-		the filtered repository."""
+		the filtered repository. This will raise InvalidDependString when
+		necessary."""
 
 		filtered_db = self._filtered_trees[myroot]["porttree"].dbapi
 		pkgsettings = self.pkgsettings[myroot]
@@ -1681,22 +1680,14 @@ class depgraph(object):
 		try:
 			if myparent and p_type == "installed":
 				portage.dep._dep_check_strict = False
-			try:
-				atoms = paren_reduce(depstring)
-				atoms = use_reduce(atoms, uselist=myuse)
-				atoms = list(iter_atoms(atoms))
-				for x in atoms:
-					if portage.dep._dep_check_strict and \
-						not portage.isvalidatom(x, allow_blockers=True):
-						raise portage.exception.InvalidDependString(
-							"Invalid atom: %s" % x)
-			except portage.exception.InvalidDependString, e:
-				if myparent:
-					show_invalid_depstring_notice(
-						myparent, depstring, str(e))
-				else:
-					sys.stderr.write("\n%s\n%s\n" % (depstring, str(e)))
-				return 0
+			atoms = paren_reduce(depstring)
+			atoms = use_reduce(atoms, uselist=myuse)
+			atoms = list(iter_atoms(atoms))
+			for x in atoms:
+				if portage.dep._dep_check_strict and \
+					not portage.isvalidatom(x, allow_blockers=True):
+					raise portage.exception.InvalidDependString(
+						"Invalid atom: %s" % x)
 		finally:
 			portage.dep._dep_check_strict = True
 
@@ -1793,15 +1784,12 @@ class depgraph(object):
 										"Invalid atom: %s" % y)
 								atoms.append(y)
 						except portage.exception.InvalidDependString, e:
-							show_invalid_depstring_notice(
-								(pkg_type, myroot, cpv, "nomerge"),
-								virtual_deps, str(e))
-							return 0
+							# Masked by corruption
+							filtered_db.cpv_remove(cpv)
 					finally:
 						portage.dep._dep_check_strict = True
 				if atom_populated:
 					break
-		return 1
 
 	def _select_atoms(self, root, depstring, myuse=None, arg=None,
 		strict=True):
@@ -2135,11 +2123,9 @@ class depgraph(object):
 				print "Reverse:", rev_deps
 			print "Priority:", priority
 
-		if not self._populate_filtered_repo(
-			myroot, depstring, myparent=myparent, myuse=myuse):
-			return 0
-
 		try:
+			self._populate_filtered_repo(
+				myroot, depstring, myparent=myparent, myuse=myuse)
 			mymerge = self._select_atoms(myroot, depstring,
 				myuse=myuse, arg=arg, strict=strict)
 		except portage.exception.InvalidDependString, e:
@@ -2739,9 +2725,8 @@ class depgraph(object):
 					continue
 				elif not vardb.match(x):
 					world_problems = True
-					if not self._populate_filtered_repo(self.target_root, x,
-						exclude_installed=True):
-						return 0
+					self._populate_filtered_repo(self.target_root, x,
+						exclude_installed=True)
 					if not filtered_db.match(x):
 						continue
 				mylist.append(x)
@@ -2761,9 +2746,8 @@ class depgraph(object):
 				for cpv in vardb.match(mykey):
 					myslots.add(vardb.aux_get(cpv, ["SLOT"])[0])
 				if myslots:
-					if not self._populate_filtered_repo(self.target_root, atom,
-						exclude_installed=True):
-						return 0
+					self._populate_filtered_repo(self.target_root, atom,
+						exclude_installed=True)
 					mymatches = filtered_db.match(atom)
 					best_pkg = portage.best(mymatches)
 					if best_pkg:
@@ -2772,10 +2756,9 @@ class depgraph(object):
 				if len(myslots) > 1:
 					for myslot in myslots:
 						myslot_atom = "%s:%s" % (mykey, myslot)
-						if not self._populate_filtered_repo(
+						self._populate_filtered_repo(
 							self.target_root, myslot_atom,
-							exclude_installed=True):
-							return 0
+							exclude_installed=True)
 						if filtered_db.match(myslot_atom):
 							newlist.append(myslot_atom)
 		mylist = newlist
