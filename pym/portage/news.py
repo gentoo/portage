@@ -3,6 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+import errno
 import os
 import re
 from portage.const import INCREMENTALS, PROFILE_PATH, NEWS_LIB_PATH
@@ -128,22 +129,24 @@ class NewsManager(object):
 			self.updateItems(repoid)
 		
 		unreadfile = os.path.join(self.unread_path, 'news-%s.unread' % repoid)
-		if not os.access(os.path.dirname(unreadfile), os.W_OK):
-			return 0
 		unread_lock = None
 		try:
-			try:
+			if os.access(os.path.dirname(unreadfile), os.W_OK):
+				# TODO: implement shared readonly locks
 				unread_lock = lockfile(unreadfile)
-				# Set correct permissions on the news-repoid.unread file
-				apply_permissions(filename=unreadfile,
-					uid=int(self.config['PORTAGE_INST_UID']), gid=portage_gid, mode=0664)
-					
-				if os.path.exists(unreadfile):
-					unread = open(unreadfile).readlines()
-					if len(unread):
-						return len(unread)
-			except FileNotFound:
-				pass # unread file may not exist
+			try:
+				f = open(unreadfile)
+				try:
+					unread = f.readlines()
+				finally:
+					f.close()
+			except EnvironmentError, e:
+				if e.errno != errno.ENOENT:
+					raise
+				del e
+				return 0
+			if len(unread):
+				return len(unread)
 		finally:
 			if unread_lock:
 				unlockfile(unread_lock)
