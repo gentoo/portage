@@ -1803,6 +1803,33 @@ class depgraph(object):
 					break
 		return 1
 
+	def _select_atoms(self, root, depstring, myuse=None, arg=None,
+		strict=True):
+		"""This will raise InvalidDependString if necessary."""
+		pkgsettings = self.pkgsettings[root]
+		if arg:
+			selected_atoms = [depstring]
+			pprovided = pkgsettings.pprovideddict.get(
+				portage.dep_getkey(depstring))
+			if pprovided and portage.match_from_list(depstring, pprovided):
+				selected_atoms.pop()
+				# A provided package has been specified on the command line.
+				if depstring in self._set_atoms:
+					self._pprovided_args.append((arg, depstring))
+		else:
+			try:
+				if not strict:
+					portage.dep._dep_check_strict = False
+				mycheck = portage.dep_check(depstring, None,
+					pkgsettings, myuse=myuse,
+					myroot=root, trees=self._filtered_trees)
+			finally:
+				portage.dep._dep_check_strict = True
+			if not mycheck[0]:
+				raise portage.exception.InvalidDependString(mycheck[1])
+			selected_atoms = mycheck[1]
+		return selected_atoms
+
 	def _show_unsatisfied_dep(self, root, atom, myparent=None, arg=None):
 		xinfo = '"%s"' % atom
 		if arg:
@@ -2091,16 +2118,14 @@ class depgraph(object):
 		if not depstring:
 			return 1 # nothing to do
 
-		filtered_db = self._filtered_trees[myroot]["porttree"].dbapi
-		dbs = self._filtered_trees[myroot]["dbs"]
-		portdb = self.trees[myroot]["porttree"].dbapi
-		bindb  = self.trees[myroot]["bintree"].dbapi
-		vardb  = self.trees[myroot]["vartree"].dbapi
-		pkgsettings = self.pkgsettings[myroot]
+		vardb  = self.roots[myroot].trees["vartree"].dbapi
 		addme = "--onlydeps" not in self.myopts
+		strict = True
 		if myparent:
 			addme = True
 			p_type, p_root, p_key, p_status = myparent
+			if p_type == "installed":
+				strict = False
 
 		if "--debug" in self.myopts:
 			print
@@ -2114,39 +2139,16 @@ class depgraph(object):
 			myroot, depstring, myparent=myparent, myuse=myuse):
 			return 0
 
-		#processing dependencies
-		""" Call portage.dep_check to evaluate the use? conditionals and make sure all
-		dependencies are satisfiable. """
-		if arg:
-			mymerge = [depstring]
-			pprovided = pkgsettings.pprovideddict.get(
-				portage.dep_getkey(depstring))
-			if pprovided and portage.match_from_list(depstring, pprovided):
-				mymerge = []
-		else:
-			try:
-				if myparent and p_type == "installed":
-					portage.dep._dep_check_strict = False
-				mycheck = portage.dep_check(depstring, None,
-					pkgsettings, myuse=myuse,
-					myroot=myroot, trees=self._filtered_trees)
-			finally:
-				portage.dep._dep_check_strict = True
-	
-			if not mycheck[0]:
-				if myparent:
-					show_invalid_depstring_notice(
-						myparent, depstring, mycheck[1])
-				else:
-					sys.stderr.write("\n%s\n%s\n" % (depstring, mycheck[1]))
-				return 0
-			mymerge = mycheck[1]
-
-		if not mymerge and arg:
-			# A provided package has been specified on the command line.  The
-			# package will not be merged and a warning will be displayed.
-			if depstring in self._set_atoms:
-				self._pprovided_args.append((arg, depstring))
+		try:
+			mymerge = self._select_atoms(myroot, depstring,
+				myuse=myuse, arg=arg, strict=strict)
+		except portage.exception.InvalidDependString, e:
+			if myparent:
+				show_invalid_depstring_notice(
+					myparent, depstring, str(e))
+			else:
+				sys.stderr.write("\n%s\n%s\n" % (depstring, str(e)))
+			return 0
 
 		if "--debug" in self.myopts:
 			print "Candidates:",mymerge
