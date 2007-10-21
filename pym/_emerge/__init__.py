@@ -33,7 +33,7 @@ del os.environ["PORTAGE_LEGACY_GLOBALS"]
 from portage import digraph, portdbapi
 from portage.const import NEWS_LIB_PATH, CACHE_PATH, PRIVATE_PATH, USER_CONFIG_PATH, GLOBAL_CONFIG_PATH
 
-import emerge.help
+import _emerge.help
 import portage.xpak, commands, errno, re, socket, time, types
 from portage.output import blue, bold, colorize, darkblue, darkgreen, darkred, green, \
 	havecolor, nc_len, nocolor, red, teal, turquoise, white, xtermTitle, \
@@ -6767,7 +6767,7 @@ def emerge_main():
 			trees[settings["ROOT"]]["vartree"].dbapi)
 		sys.exit(0)
 	elif "--help" in myopts:
-		emerge.help.help(myaction, myopts, portage.output.havecolor)
+		_emerge.help.help(myaction, myopts, portage.output.havecolor)
 		sys.exit(0)
 
 	if "--debug" in myopts:
@@ -6775,7 +6775,7 @@ def emerge_main():
 		print "myopts", myopts
 
 	if not myaction and not myfiles and "--resume" not in myopts:
-		emerge.help.help(myaction, myopts, portage.output.havecolor)
+		_emerge.help.help(myaction, myopts, portage.output.havecolor)
 		sys.exit(1)
 
 	# check if root user is the current user for the actions where emerge needs this
