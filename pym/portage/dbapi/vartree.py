@@ -20,7 +20,7 @@ from portage.util import apply_secpass_permissions, ConfigProtect, ensure_dirs, 
 from portage.versions import pkgsplit, catpkgsplit, catsplit, best, pkgcmp
 
 from portage import listdir, dep_expand, flatten, key_expand, \
-	doebuild_environment, doebuild, env_update, \
+	doebuild_environment, doebuild, env_update, prepare_build_dirs, \
 	abssymlink, movefile, _movefile, bsd_chflags
 
 from portage.elog import elog_process
@@ -821,6 +821,10 @@ class dblink(object):
 	This class provides an interface to the installed package database
 	At present this is implemented as a text backend in /var/db/pkg.
 	"""
+
+	import re
+	_normalize_needed = re.compile(r'.*//.*|^[^/]|.+/$|(^|.*/)\.\.?(/.*|$)')
+
 	def __init__(self, cat, pkg, myroot, mysettings, treetype=None,
 		vartree=None):
 		"""
@@ -944,6 +948,10 @@ class dblink(object):
 		mylines = myc.readlines()
 		myc.close()
 		null_byte = "\0"
+		normalize_needed = self._normalize_needed
+		myroot = self.myroot
+		if myroot == os.path.sep:
+			myroot = None
 		pos = 0
 		for line in mylines:
 			pos += 1
@@ -957,8 +965,12 @@ class dblink(object):
 			# we do this so we can remove from non-root filesystems
 			# (use the ROOT var to allow maintenance on other partitions)
 			try:
-				mydat[1] = normalize_path(os.path.join(
-					self.myroot, mydat[1].lstrip(os.path.sep)))
+				if normalize_needed.match(mydat[1]):
+					mydat[1] = normalize_path(mydat[1])
+					if not mydat[1].startswith(os.path.sep):
+						mydat[1] = os.path.sep + mydat[1]
+				if myroot:
+					mydat[1] = os.path.join(myroot, mydat[1].lstrip(os.path.sep))
 				if mydat[0] == "obj":
 					#format: type, mtime, md5sum
 					pkgfiles[" ".join(mydat[1:-2])] = [mydat[0], mydat[-1], mydat[-2]]
@@ -1368,9 +1380,14 @@ class dblink(object):
 
 	def isowner(self,filename, destroot):
 		""" 
-		Check if filename is a new file or belongs to this package
-		(for this or a previous version)
-		
+		Check if a file belongs to this package. This may
+		result in a stat call for the parent directory of
+		every installed file, since the inode numbers are
+		used to work around the problem of ambiguous paths
+		caused by symlinked directories. The results of
+		stat calls are cached to optimize multiple calls
+		to this method.
+
 		@param filename:
 		@type filename:
 		@param destroot:
@@ -1387,23 +1404,46 @@ class dblink(object):
 		if pkgfiles and destfile in pkgfiles:
 			return True
 		if pkgfiles:
+			# Use stat rather than lstat since we want to follow
+			# any symlinks to the real parent directory.
+			parent_path = os.path.dirname(destfile)
 			try:
-				mylstat = os.lstat(destfile)
+				parent_stat = os.stat(parent_path)
 			except EnvironmentError, e:
 				if e.errno != errno.ENOENT:
 					raise
 				del e
-				return True
+				return False
 			if self._contents_inodes is None:
-				self._contents_inodes = set()
+				self._contents_inodes = {}
+				parent_paths = set()
 				for x in pkgfiles:
+					p_path = os.path.dirname(x)
+					if p_path in parent_paths:
+						continue
+					parent_paths.add(p_path)
 					try:
-						lstat = os.lstat(x)
-						self._contents_inodes.add((lstat.st_dev, lstat.st_ino))
+						s = os.stat(p_path)
 					except OSError:
 						pass
-			if (mylstat.st_dev, mylstat.st_ino) in self._contents_inodes:
-				 return True
+					else:
+						inode_key = (s.st_dev, s.st_ino)
+						# Use lists of paths in case multiple
+						# paths reference the same inode.
+						p_path_list = self._contents_inodes.get(inode_key)
+						if p_path_list is None:
+							p_path_list = []
+							self._contents_inodes[inode_key] = p_path_list
+						if p_path not in p_path_list:
+							p_path_list.append(p_path)
+			p_path_list = self._contents_inodes.get(
+				(parent_stat.st_dev, parent_stat.st_ino))
+			if p_path_list:
+				basename = os.path.basename(destfile)
+				for p_path in p_path_list:
+					x = os.path.join(p_path, basename)
+					if x in pkgfiles:
+						return True
 
 		return False
 
@@ -1540,50 +1580,6 @@ class dblink(object):
 									break
 					if stopmerge:
 						collisions.append(f)
-			if stopmerge and "collision-protect" in self.settings.features:
-				print red("*")+" This package is blocked because it wants to overwrite"
-				print red("*")+" files belonging to other packages (see list below)."
-				print red("*")+" If you have no clue what this is all about report it "
-				print red("*")+" as a bug for this package on http://bugs.gentoo.org"
-				print
-				print red("package "+self.cat+"/"+self.pkg+" NOT merged")
-				print
-				print "Detected file collision(s):"
-				print
-				from portage.output import colorize
-				for f in collisions:
-					print "     '%s'" % colorize("INFORM",
-						os.path.join(destroot, f.lstrip(os.path.sep)))
-				print
-				print "Searching all installed packages for file collisions..."
-				print "Press Ctrl-C to Stop"
-				print
-				""" Note: The isowner calls result in a stat call for *every*
-				single installed file, since the inode numbers are used to work
-				around the problem of ambiguous paths caused by symlinked files
-				and/or directories.  Though it is slow, it is as accurate as
-				possible."""
-				found_owner = False
-				for cpv in self.vartree.dbapi.cpv_all():
-					cat, pkg = catsplit(cpv)
-					mylink = dblink(cat, pkg, destroot, self.settings,
-						vartree=self.vartree)
-					mycollisions = []
-					for f in collisions:
-						if mylink.isowner(f, destroot):
-							mycollisions.append(f)
-					if mycollisions:
-						found_owner = True
-						print " * %s:" % cpv
-						print
-						for f in mycollisions:
-							print "     '%s'" % \
-								os.path.join(destroot, f.lstrip(os.path.sep))
-						print
-				if not found_owner:
-					print "None of the installed packages claim the above file(s)."
-					print
-				sys.exit(1)
 			return collisions
 
 	def _security_check(self, installed_instances):
@@ -1675,6 +1671,26 @@ class dblink(object):
 				noiselevel=-1)
 			return 1
 
+		inforoot_slot_file = os.path.join(inforoot, "SLOT")
+		slot = None
+		try:
+			f = open(inforoot_slot_file)
+			try:
+				slot = f.read().strip()
+			finally:
+				f.close()
+		except EnvironmentError, e:
+			if e.errno != errno.ENOENT:
+				raise
+			del e
+
+		if slot is None:
+			slot = ""
+
+		if slot != self.settings["SLOT"]:
+			writemsg("!!! WARNING: Expected SLOT='%s', got '%s'\n" % \
+				(self.settings["SLOT"], slot))
+
 		if not os.path.exists(self.dbcatdir):
 			os.makedirs(self.dbcatdir)
 
@@ -1683,7 +1699,7 @@ class dblink(object):
 			otherversions.append(v.split("/")[1])
 
 		slot_matches = self.vartree.dbapi.match(
-			"%s:%s" % (self.mysplit[0], self.settings["SLOT"]))
+			"%s:%s" % (self.mysplit[0], slot))
 		if self.mycpv not in slot_matches and \
 			self.vartree.dbapi.cpv_exists(self.mycpv):
 			# handle multislot or unapplied slotmove
@@ -1744,64 +1760,116 @@ class dblink(object):
 		collisions = self._collision_protect(srcroot, destroot, others_in_slot,
 			myfilelist+mylinklist)
 
-		if True:
-			""" The merge process may move files out of the image directory,
-			which causes invalidation of the .installed flag."""
-			try:
-				os.unlink(os.path.join(
-					os.path.dirname(normalize_path(srcroot)), ".installed"))
-			except OSError, e:
-				if e.errno != errno.ENOENT:
-					raise
-				del e
-
-		self.dbdir = self.dbtmpdir
-		self.delete()
-		if not os.path.exists(self.dbtmpdir):
-			os.makedirs(self.dbtmpdir)
-
-		writemsg_stdout(">>> Merging %s %s %s\n" % (self.mycpv,"to",destroot))
-
-		# run preinst script
+		# Make sure the ebuild environment is initialized and that ${T}/elog
+		# exists for logging of collision-protect eerror messages.
 		if myebuild is None:
 			myebuild = os.path.join(inforoot, self.pkg + ".ebuild")
-		a = doebuild(myebuild, "preinst", destroot, self.settings, cleanup=cleanup,
-			use_cache=0, tree=self.treetype, mydbapi=mydbapi,
-			vartree=self.vartree)
+		doebuild_environment(myebuild, "preinst", destroot,
+			self.settings, 0, 0, mydbapi)
+		prepare_build_dirs(destroot, self.settings, cleanup)
 
-		if collisions:
-			msg = "This package will overwrite one or more files that" + \
-			" may belong to other packages (see list below)." + \
-			" Add \"collision-protect\" to FEATURES in make.conf" + \
-			" if you would like the merge to abort in cases like this."
-			if self.settings.get("PORTAGE_QUIET") != "1":
-				msg += " If you have determined that one or more of the" + \
-				" files actually belong to another installed package then" + \
-				" go to http://bugs.gentoo.org and report it as a bug." + \
-				" Be sure to identify both this package and the other" + \
-				" installed package in the bug report. Use a command such" + \
-				" as \\`equery belongs <filename>\\` to identify the" + \
-				" installed package that owns a file. Do NOT file a bug" + \
-				" without reporting exactly which two packages install" + \
-				" the same file(s)."
-
-			self.settings["EBUILD_PHASE"] = "preinst"
+		def eerror(lines):
 			cmd = "source '%s/isolated-functions.sh' ; " % PORTAGE_BIN_PATH
-			from textwrap import wrap
-			msg = wrap(msg, 70)
-			for line in msg:
-				cmd += "eerror \"%s\" ; " % line
-			cmd += "eerror ; "
-			cmd += "eerror \"Detected file collision(s):\" ; "
-			cmd += "eerror ; "
-
-			for f in collisions:
-				cmd += "eerror \"     '%s'\" ; " % \
-					os.path.join(destroot, f.lstrip(os.path.sep))
-
+			for line in lines:
+				cmd += "eerror '%s' ; " % line
 			from portage import process
 			process.spawn(["bash", "-c", cmd],
 				env=self.settings.environ())
+
+		if collisions:
+			collision_protect = "collision-protect" in self.settings.features
+			msg = "This package will overwrite one or more files that" + \
+			" may belong to other packages (see list below)."
+			if not collision_protect:
+				msg += " Add \"collision-protect\" to FEATURES in" + \
+				" make.conf if you would like the merge to abort" + \
+				" in cases like this."
+			if self.settings.get("PORTAGE_QUIET") != "1":
+				msg += " You can use a command such as" + \
+				" `portageq owners / <filename>` to identify the" + \
+				" installed package that owns a file. If portageq" + \
+				" reports that only one package owns a file then do NOT" + \
+				" file a bug report. A bug report is only useful if it" + \
+				" identifies at least two or more packages that are known" + \
+				" to install the same file(s)." + \
+				" If a collision occurs and you" + \
+				" can not explain where the file came from then you" + \
+				" should simply ignore the collision since there is not" + \
+				" enough information to determine if a real problem" + \
+				" exists. Please do NOT file a bug report at" + \
+				" http://bugs.gentoo.org unless you report exactly which" + \
+				" two packages install the same file(s). Once again," + \
+				" please do NOT file a bug report unless you have" + \
+				" completely understood the above message."
+
+			self.settings["EBUILD_PHASE"] = "preinst"
+			from textwrap import wrap
+			msg = wrap(msg, 70)
+			if collision_protect:
+				msg.append("")
+				msg.append("package %s NOT merged" % self.settings.mycpv)
+			msg.append("")
+			msg.append("Detected file collision(s):")
+			msg.append("")
+
+			for f in collisions:
+				msg.append("\t%s" % \
+					os.path.join(destroot, f.lstrip(os.path.sep)))
+
+			eerror(msg)
+
+			if collision_protect:
+				msg = []
+				msg.append("")
+				msg.append("Searching all installed" + \
+					" packages for file collisions...")
+				msg.append("")
+				msg.append("Press Ctrl-C to Stop")
+				msg.append("")
+				eerror(msg)
+
+				found_owner = False
+				for cpv in self.vartree.dbapi.cpv_all():
+					cat, pkg = catsplit(cpv)
+					mylink = dblink(cat, pkg, destroot, self.settings,
+						vartree=self.vartree)
+					mycollisions = []
+					for f in collisions:
+						if mylink.isowner(f, destroot):
+							mycollisions.append(f)
+					if mycollisions:
+						found_owner = True
+						msg = []
+						msg.append("%s" % cpv)
+						for f in mycollisions:
+							msg.append("\t%s" % os.path.join(destroot,
+								f.lstrip(os.path.sep)))
+						eerror(msg)
+				if not found_owner:
+					eerror(["None of the installed" + \
+						" packages claim the file(s)."])
+				return 1
+
+		writemsg_stdout(">>> Merging %s to %s\n" % (self.mycpv, destroot))
+
+		# The merge process may move files out of the image directory,
+		# which causes invalidation of the .installed flag.
+		try:
+			os.unlink(os.path.join(
+				os.path.dirname(normalize_path(srcroot)), ".installed"))
+		except OSError, e:
+			if e.errno != errno.ENOENT:
+				raise
+			del e
+
+		self.dbdir = self.dbtmpdir
+		self.delete()
+		ensure_dirs(self.dbtmpdir)
+
+		# run preinst script
+		a = doebuild(myebuild, "preinst", destroot, self.settings,
+			use_cache=0, tree=self.treetype, mydbapi=mydbapi,
+			vartree=self.vartree)
 
 		# XXX: Decide how to handle failures here.
 		if a != os.EX_OK:
