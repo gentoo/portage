@@ -1418,31 +1418,23 @@ class depgraph(object):
 				# built packages do not have build time dependencies.
 				edepend["DEPEND"] = ""
 
-		""" We have retrieve the dependency information, now we need to recursively
-		    process them.  DEPEND gets processed for root = "/", {R,P}DEPEND in myroot. """
+		deps = (
+			("/", edepend["DEPEND"],
+				DepPriority(buildtime=True, satisfied=bdeps_satisfied)),
+			(myroot, edepend["RDEPEND"], DepPriority(runtime=True)),
+			(myroot, edepend["PDEPEND"], DepPriority(runtime_post=True))
+		)
 
 		if arg:
 			depth = 0
 		depth += 1
 
 		try:
-			if not self._select_dep("/", edepend["DEPEND"], myuse,
-				jbigkey, depth,
-				DepPriority(buildtime=True, satisfied=bdeps_satisfied)):
-				return 0
-			"""RDEPEND is soft by definition.  However, in order to ensure
-			correct merge order, we make it a hard dependency.  Otherwise, a
-			build time dependency might not be usable due to it's run time
-			dependencies not being installed yet.
-			"""
-			if not self._select_dep(myroot, edepend["RDEPEND"], myuse,
-				jbigkey, depth, DepPriority(runtime=True)):
-				return 0
-			if edepend.has_key("PDEPEND") and edepend["PDEPEND"]:
-				# Post Depend -- Add to the list without a parent, as it depends
-				# on a package being present AND must be built after that package.
-				if not self._select_dep(myroot, edepend["PDEPEND"], myuse,
-					jbigkey, depth, DepPriority(runtime_post=True)):
+			for dep_root, dep_string, dep_priority in deps:
+				if not dep_string:
+					continue
+				if not self._select_dep(dep_root, dep_string, myuse,
+					jbigkey, depth, dep_priority):
 					return 0
 		except ValueError, e:
 			if not e.args or not isinstance(e.args[0], list) or \
