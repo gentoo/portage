@@ -1731,6 +1731,9 @@ class dblink(object):
 				if stat.S_ISREG(file_mode):
 					myfilelist.append(file_path[len(srcroot):])
 				elif stat.S_ISLNK(file_mode):
+					# Note: os.walk puts symlinks to directories in the "dirs"
+					# list and it does not traverse them since that could lead
+					# to an infinite recursion loop.
 					mylinklist.append(file_path[len(srcroot):])
 
 		# Preserve old libs if they are still in use

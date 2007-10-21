@@ -121,6 +121,7 @@ modeshelp={
 "lfull"  : "Remember report from last run (full listing)"
 }
 modes=modeshelp.keys()
+modes.sort()
 repoman_options={
 "--commitmsg"      : "Adds a commit message via the command line",
 "--commitmsgfile"  : "Adds a commit message from the specified file",
@@ -287,7 +288,9 @@ def help(exitstatus=1,helpfulness=1):
 	print bold(" Usage:"),turquoise(exename),"[",green("options"),"] [",green("mode"),"]"
 	if helpfulness:
 		print bold(" Modes:"),turquoise("scan (default)"),
-		for x in modes[1:]:
+		for x in modes:
+			if x == "scan":
+				continue
 			print "|",turquoise(x),
 		print
 	print

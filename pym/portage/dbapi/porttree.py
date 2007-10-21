@@ -65,14 +65,6 @@ class portdbapi(dbapi):
 
 		self.depcachedir = self.mysettings.depcachedir[:]
 
-		self.tmpfs = self.mysettings["PORTAGE_TMPFS"]
-		if self.tmpfs and not os.path.exists(self.tmpfs):
-			self.tmpfs = None
-		if self.tmpfs and not os.access(self.tmpfs, os.W_OK):
-			self.tmpfs = None
-		if self.tmpfs and not os.access(self.tmpfs, os.R_OK):
-			self.tmpfs = None
-
 		self.eclassdb = eclass_cache.cache(self.porttree_root,
 			overlays=self.mysettings["PORTDIR_OVERLAY"].split())
 
