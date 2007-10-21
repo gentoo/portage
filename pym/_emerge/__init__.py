@@ -1564,13 +1564,13 @@ class depgraph(object):
 							raise
 						del e
 					arg_atoms.append((x, mykey))
-				except ValueError, errpkgs:
+				except ValueError, e:
 					if not e.args or not isinstance(e.args[0], list) or \
 						len(e.args[0]) < 2:
 						raise
 					print "\n\n!!! The short ebuild name \"" + x + "\" is ambiguous.  Please specify"
 					print "!!! one of the following fully-qualified ebuild names instead:\n"
-					for i in errpkgs[0]:
+					for i in e.args[0]:
 						print "    " + green(i)
 					print
 					return False, myfavorites
