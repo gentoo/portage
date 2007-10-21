@@ -1623,7 +1623,8 @@ class depgraph(object):
 				myfavorites.append(myatom)
 		for myarg, myatom in arg_atoms:
 				try:
-					self.mysd = self.select_dep(myroot, myatom, arg=myarg)
+					if not self._select_arg(myroot, myatom, myarg, addme):
+						return 0, myfavorites
 				except portage.exception.MissingSignature, e:
 					portage.writemsg("\n\n!!! A missing gpg signature is preventing portage from calculating the\n")
 					portage.writemsg("!!! required dependencies. This is a security feature enabled by the admin\n")
@@ -1644,9 +1645,6 @@ class depgraph(object):
 					print >> sys.stderr, "\n\n!!! Problem in '%s' dependencies." % mykey
 					print >> sys.stderr, "!!!", str(e), getattr(e, "__module__", None)
 					raise
-
-				if not self.mysd:
-					return (0,myfavorites)
 
 		missing=0
 		if "--usepkgonly" in self.myopts:
@@ -1791,20 +1789,10 @@ class depgraph(object):
 				if atom_populated:
 					break
 
-	def _select_atoms(self, root, depstring, myuse=None, arg=None,
-		strict=True):
+	def _select_atoms(self, root, depstring, myuse=None, strict=True):
 		"""This will raise InvalidDependString if necessary."""
 		pkgsettings = self.pkgsettings[root]
-		if arg:
-			selected_atoms = [depstring]
-			pprovided = pkgsettings.pprovideddict.get(
-				portage.dep_getkey(depstring))
-			if pprovided and portage.match_from_list(depstring, pprovided):
-				selected_atoms.pop()
-				# A provided package has been specified on the command line.
-				if depstring in self._set_atoms:
-					self._pprovided_args.append((arg, depstring))
-		else:
+		if True:
 			try:
 				if not strict:
 					portage.dep._dep_check_strict = False
@@ -2090,7 +2078,7 @@ class depgraph(object):
 		# ordered by type preference ("ebuild" type is the last resort)
 		return  matched_packages[-1], existing_node
 
-	def select_dep(self, myroot, depstring, myparent=None, arg=None,
+	def select_dep(self, myroot, depstring, myparent=None,
 		myuse=None, priority=DepPriority(),
 		rev_deps=False, parent_arg=None):
 		""" Given a depstring, create the depgraph such that all dependencies are satisfied.
@@ -2125,7 +2113,7 @@ class depgraph(object):
 			self._populate_filtered_repo(
 				myroot, depstring, myparent=myparent, myuse=myuse)
 			mymerge = self._select_atoms(myroot, depstring,
-				myuse=myuse, arg=arg, strict=strict)
+				myuse=myuse, strict=strict)
 		except portage.exception.InvalidDependString, e:
 			if myparent:
 				show_invalid_depstring_notice(
@@ -2151,9 +2139,9 @@ class depgraph(object):
 				continue
 			else:
 
-				pkg, existing_node = self._select_package(myroot, x, arg=arg)
+				pkg, existing_node = self._select_package(myroot, x)
 				if not pkg:
-					self._show_unsatisfied_dep(myroot, x, myparent=myparent, arg=arg)
+					self._show_unsatisfied_dep(myroot, x, myparent=myparent)
 					return 0
 
 				# In some cases, dep_check will return deps that shouldn't
@@ -2161,7 +2149,7 @@ class depgraph(object):
 				# discarded here. Try to discard as few as possible since
 				# discarded dependencies reduce the amount of information
 				# available for optimization of merge order.
-				if myparent and not arg and vardb.match(x) and \
+				if myparent and vardb.match(x) and \
 					not existing_node and \
 					"empty" not in self.myparams and \
 					"deep" not in self.myparams and \
@@ -2184,12 +2172,26 @@ class depgraph(object):
 				if vardb.match(x):
 					mypriority.satisfied = True
 			if not self.create(pkg, myparent=myparent, addme=addme,
-				priority=mypriority, arg=arg):
+				priority=mypriority):
 				return 0
 
 		if "--debug" in self.myopts:
 			print "Exiting...",myparent
 		return 1
+
+	def _select_arg(self, root, atom, arg, addme):
+		pprovided = self.pkgsettings[root].pprovideddict.get(
+			portage.dep_getkey(atom))
+		if pprovided and portage.match_from_list(atom, pprovided):
+			# A provided package has been specified on the command line.
+			self._pprovided_args.append((arg, atom))
+			return 1
+		self._populate_filtered_repo(root, atom)
+		pkg, existing_node = self._select_package(root, atom)
+		if not pkg:
+			self._show_unsatisfied_dep(root, atom, arg=arg)
+			return 0
+		return self.create(pkg, addme=addme)
 
 	def validate_blockers(self):
 		"""Remove any blockers from the digraph that do not match any of the
@@ -2774,10 +2776,9 @@ class depgraph(object):
 		# flag, these atoms will need to be processed again in case installed
 		# packages are required to satisfy dependencies.
 		self._filtered_trees[self.target_root]["atoms"].clear()
-
+		addme = "--onlydeps" not in self.myopts
 		for mydep in mylist:
-			if not self.select_dep(
-				self.target_root, mydep, arg=mydep):
+			if not self._select_arg(self.target_root, mydep, mydep, addme):
 				print >> sys.stderr, "\n\n!!! Problem resolving dependencies for", mydep
 				return 0
 
