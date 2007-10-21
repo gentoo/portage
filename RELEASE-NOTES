@@ -26,7 +26,7 @@ portage-2.2
 	are still handled specially), or in the case of --unmerge all atoms in a set
 	will be unmerged even if they are depended upon by other packages
   - sets shadow packages with the same name
-	
+  - sets can not contain other sets	
 
 portage-2.1.3
 ==================================
