@@ -100,8 +100,17 @@ class NewsManager(object):
 		finally:
 			unlockfile(unread_lock)
 			write_atomic(skipfile, "\n".join(skiplist)+"\n")
-		apply_permissions(filename=skipfile, 
+		try:
+			apply_permissions(filename=skipfile, 
 				uid=int(self.config["PORTAGE_INST_UID"]), gid=portage_gid, mode=0664)
+		except OSError, e:
+			import errno
+			# skip "permission denied" errors as we're likely running in pretend mode
+			# with reduced priviledges
+			if e.errno == errno.EPERM:
+				pass
+			else:
+				raise
 
 	def getUnreadItems(self, repoid, update=False):
 		"""
