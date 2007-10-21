@@ -1899,7 +1899,7 @@ class depgraph(object):
 			print xfrom
 		print
 
-	def _select_package(self, root, atom, arg=None):
+	def _select_package(self, root, atom):
 		pkgsettings = self.pkgsettings[root]
 		dbs = self._filtered_trees[root]["dbs"]
 		vardb = self.roots[root].trees["vartree"].dbapi
@@ -2020,9 +2020,8 @@ class depgraph(object):
 							self._reinstall_for_flags(
 							forced_flags, old_use, old_iuse,
 							cur_use, cur_iuse)
-					myarg = arg
-					if not myarg and \
-						root == self.target_root:
+					myarg = None
+					if root == self.target_root:
 						try:
 							myarg = self._set_atoms.findAtomForPackage(
 								cpv, metadata)
@@ -2093,10 +2092,8 @@ class depgraph(object):
 			return 1 # nothing to do
 
 		vardb  = self.roots[myroot].trees["vartree"].dbapi
-		addme = "--onlydeps" not in self.myopts
 		strict = True
 		if myparent:
-			addme = True
 			p_type, p_root, p_key, p_status = myparent
 			if p_type == "installed":
 				strict = False
@@ -2169,7 +2166,7 @@ class depgraph(object):
 				mypriority = priority.copy()
 				if vardb.match(x):
 					mypriority.satisfied = True
-			if not self.create(pkg, myparent=myparent, addme=addme,
+			if not self.create(pkg, myparent=myparent,
 				priority=mypriority, depth=depth):
 				return 0
 
