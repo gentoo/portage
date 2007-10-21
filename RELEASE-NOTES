@@ -17,6 +17,16 @@ portage-2.2
 * Portage now warns if an ebuild repository does not have a name, as several new
   features in 2.2 make use of or require named repositories. The repository name
   is stored in profiles/repo_name in each repository.
+* Package set support: There are several important notes regarding package sets:
+  - they may currently only include simple and versioned atom, use conditionals
+    or any-of constructs aren't possible yet
+  - emerge makes no difference atm wether you pass a setname or all atoms contained
+    in the set to it, this means that without options packages will be remerged if 
+	already installed and added to the worldfile (exception: "world" and "system"
+	are still handled specially), or in the case of --unmerge all atoms in a set
+	will be unmerged even if they are depended upon by other packages
+  - sets shadow packages with the same name
+	
 
 portage-2.1.3
 ==================================
