@@ -3,13 +3,14 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+import errno
 import os
 import re
 from portage.const import INCREMENTALS, PROFILE_PATH, NEWS_LIB_PATH
 from portage.util import ensure_dirs, apply_permissions, normalize_path, grabfile, write_atomic
 from portage.data import portage_gid
 from portage.locks import lockfile, unlockfile, lockdir, unlockdir
-from portage.exception import FileNotFound
+from portage.exception import FileNotFound, OperationNotPermitted
 
 class NewsManager(object):
 	"""
@@ -44,7 +45,11 @@ class NewsManager(object):
 		# Ensure that the unread path exists and is writable.
 		dirmode  = 02070
 		modemask =    02
-		ensure_dirs(self.unread_path, mode=dirmode, mask=modemask, gid=portage_gid)
+		try:
+			ensure_dirs(self.unread_path, mode=dirmode,
+				mask=modemask, gid=portage_gid)
+		except OperationNotPermitted:
+			pass
 
 	def updateItems(self, repoid):
 		"""
@@ -103,7 +108,7 @@ class NewsManager(object):
 		try:
 			apply_permissions(filename=skipfile, 
 				uid=int(self.config["PORTAGE_INST_UID"]), gid=portage_gid, mode=0664)
-		except OSError, e:
+		except OperationNotPermitted, e:
 			import errno
 			# skip "permission denied" errors as we're likely running in pretend mode
 			# with reduced priviledges
@@ -124,19 +129,24 @@ class NewsManager(object):
 			self.updateItems(repoid)
 		
 		unreadfile = os.path.join(self.unread_path, 'news-%s.unread' % repoid)
+		unread_lock = None
 		try:
-			try:
+			if os.access(os.path.dirname(unreadfile), os.W_OK):
+				# TODO: implement shared readonly locks
 				unread_lock = lockfile(unreadfile)
-				# Set correct permissions on the news-repoid.unread file
-				apply_permissions(filename=unreadfile,
-					uid=int(self.config['PORTAGE_INST_UID']), gid=portage_gid, mode=0664)
-					
-				if os.path.exists(unreadfile):
-					unread = open(unreadfile).readlines()
-					if len(unread):
-						return len(unread)
-			except FileNotFound:
-				pass # unread file may not exist
+			try:
+				f = open(unreadfile)
+				try:
+					unread = f.readlines()
+				finally:
+					f.close()
+			except EnvironmentError, e:
+				if e.errno != errno.ENOENT:
+					raise
+				del e
+				return 0
+			if len(unread):
+				return len(unread)
 		finally:
 			if unread_lock:
 				unlockfile(unread_lock)

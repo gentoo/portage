@@ -50,6 +50,7 @@ class DirectoryNotFound(InvalidLocation):
 	"""A directory was not found when it was expected to exist"""
 
 class OperationNotPermitted(PortageException):
+	from errno import EPERM as errno
 	"""An operation was not permitted operating system"""
 
 class PermissionDenied(PortageException):
