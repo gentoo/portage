@@ -383,11 +383,20 @@ def main():
 		sys.exit(os.EX_USAGE)
 
 	cmd = sys.argv[1]
+	function = globals().get(cmd)
+	if function is None:
+		usage(sys.argv)
+		sys.exit(os.EX_USAGE)
+	function = globals()[cmd]
+	uses_root = getattr(function, "uses_root", False) and len(sys.argv) > 2
+	if uses_root:
+		if not os.path.isdir(sys.argv[2]):
+			sys.stderr.write("Not a directory: '%s'\n" % sys.argv[2])
+			sys.stderr.write("Run portageq with --help for info\n")
+			sys.stderr.flush()
+			sys.exit(os.EX_USAGE)
+		os.environ["ROOT"] = sys.argv[2]
 	try:
-		function = globals()[cmd]
-		uses_root = (getattr(function, "uses_root", False) and len(sys.argv) > 2)
-		if uses_root:
-			os.environ["ROOT"] = sys.argv[2]
 		global portage
 		try:
 			import portage
@@ -400,9 +409,6 @@ def main():
 		retval = function(sys.argv[2:])
 		if retval:
 			sys.exit(retval)
-	except KeyError:
-		usage(sys.argv)
-		sys.exit(os.EX_USAGE)
 	except portage_exception.PermissionDenied, e:
 		sys.stderr.write("Permission denied: '%s'\n" % str(e))
 		sys.exit(e.errno)
