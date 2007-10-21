@@ -9,7 +9,7 @@ from portage.const import INCREMENTALS, PROFILE_PATH, NEWS_LIB_PATH
 from portage.util import ensure_dirs, apply_permissions, normalize_path, grabfile, write_atomic
 from portage.data import portage_gid
 from portage.locks import lockfile, unlockfile, lockdir, unlockdir
-from portage.exception import FileNotFound
+from portage.exception import FileNotFound, OperationNotPermitted
 
 class NewsManager(object):
 	"""
@@ -44,7 +44,11 @@ class NewsManager(object):
 		# Ensure that the unread path exists and is writable.
 		dirmode  = 02070
 		modemask =    02
-		ensure_dirs(self.unread_path, mode=dirmode, mask=modemask, gid=portage_gid)
+		try:
+			ensure_dirs(self.unread_path, mode=dirmode,
+				mask=modemask, gid=portage_gid)
+		except OperationNotPermitted:
+			pass
 
 	def updateItems(self, repoid):
 		"""
@@ -103,7 +107,7 @@ class NewsManager(object):
 		try:
 			apply_permissions(filename=skipfile, 
 				uid=int(self.config["PORTAGE_INST_UID"]), gid=portage_gid, mode=0664)
-		except OSError, e:
+		except OperationNotPermitted, e:
 			import errno
 			# skip "permission denied" errors as we're likely running in pretend mode
 			# with reduced priviledges
@@ -124,6 +128,9 @@ class NewsManager(object):
 			self.updateItems(repoid)
 		
 		unreadfile = os.path.join(self.unread_path, 'news-%s.unread' % repoid)
+		if not os.access(os.path.dirname(unreadfile), os.W_OK):
+			return 0
+		unread_lock = None
 		try:
 			try:
 				unread_lock = lockfile(unreadfile)
