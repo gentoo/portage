@@ -2091,15 +2091,13 @@ class depgraph(object):
 		return  matched_packages[-1], existing_node
 
 	def select_dep(self, myroot, depstring, myparent=None, arg=None,
-		myuse=None, raise_on_missing=False, priority=DepPriority(),
+		myuse=None, priority=DepPriority(),
 		rev_deps=False, parent_arg=None):
 		""" Given a depstring, create the depgraph such that all dependencies are satisfied.
 		    myroot = $ROOT from environment, where {R,P}DEPENDs are merged to.
 		    myparent = the node whose depstring is being passed in
 		    arg = package was specified on the command line, merge even if it's already installed
 		    myuse = USE flags at present
-		    raise_on_missing = Given that the depgraph is not proper, raise an exception if true
-		    else continue trying.
 		    return 1 on success, 0 for failure
 		"""
 
@@ -2155,8 +2153,6 @@ class depgraph(object):
 
 				pkg, existing_node = self._select_package(myroot, x, arg=arg)
 				if not pkg:
-					if raise_on_missing:
-						raise portage.exception.PackageNotFound(x)
 					self._show_unsatisfied_dep(myroot, x, myparent=myparent, arg=arg)
 					return 0
 
@@ -2732,7 +2728,15 @@ class depgraph(object):
 				mylist.append(x)
 
 		newlist = []
+		missing_atoms = []
+		empty = "empty" in self.myparams
 		for atom in mylist:
+			self._populate_filtered_repo(self.target_root, atom,
+				exclude_installed=True)
+			if not filtered_db.match(atom):
+				if empty or not vardb.match(atom):
+					missing_atoms.append(atom)
+				continue
 			mykey = portage.dep_getkey(atom)
 			if True:
 				newlist.append(atom)
@@ -2771,15 +2775,11 @@ class depgraph(object):
 		# packages are required to satisfy dependencies.
 		self._filtered_trees[self.target_root]["atoms"].clear()
 
-		missing_atoms = []
 		for mydep in mylist:
-			try:
-				if not self.select_dep(
-					self.target_root, mydep, raise_on_missing=True, arg=mydep):
-					print >> sys.stderr, "\n\n!!! Problem resolving dependencies for", mydep
-					return 0
-			except portage.exception.PackageNotFound:
-				missing_atoms.append(mydep)
+			if not self.select_dep(
+				self.target_root, mydep, arg=mydep):
+				print >> sys.stderr, "\n\n!!! Problem resolving dependencies for", mydep
+				return 0
 
 		if not self.validate_blockers():
 			return False
