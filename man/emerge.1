@@ -222,9 +222,10 @@ buffer is not cleared prior to the prompt, so an accidental press of the
 Tells emerge to build binary packages for all ebuilds processed in
 addition to actually merging the packages.  Useful for maintainers
 or if you administrate multiple Gentoo Linux systems (build once,
-emerge tbz2s everywhere).  The package will be created in the
+emerge tbz2s everywhere) as well as disaster recovery. The package
+will be created in the
 \fI${PKGDIR}/All\fR directory.  An alternative for already\-merged
-packages is to use \fBquickpkg\fR which creates a tbz2 from the
+packages is to use \fBquickpkg\fR(1) which creates a tbz2 from the
 live filesystem.
 .TP
 .BR "\-\-buildpkgonly " (\fB\-B\fR)
@@ -664,6 +665,7 @@ Contains the default variables for the build process.  \fBDo not edit
 this file\fR.
 .SH "SEE ALSO"
 .BR "emerge \-\-help",
+.BR quickpkg (1),
 .BR ebuild (1),
 .BR ebuild (5),
 .BR make.conf (5),

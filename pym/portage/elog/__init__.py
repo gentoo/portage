@@ -18,27 +18,29 @@ def _merge_logentries(a, b):
 	phases = set(a)
 	phases.update(b)
 	for p in phases:
-		rValue[p] = []
-		if a.has_key(p):
-			for x in a[p]:
-				rValue[p].append(x)
-		if b.has_key(p):
-			for x in b[p]:
-				rValue[p].append(x)
+		merged_msgs = []
+		rValue[p] = merged_msgs
+		for d in a, b:
+			msgs = d.get(p)
+			if msgs:
+				merged_msgs.extend(msgs)
 	return rValue
 
 def _combine_logentries(logentries):
 	# generate a single string with all log messages
-	rValue = ""
+	rValue = []
 	for phase in EBUILD_PHASES:
 		if not phase in logentries:
 			continue
+		previous_type = None
 		for msgtype, msgcontent in logentries[phase]:
-			rValue += "%s: %s\n" % (msgtype, phase)
+			if previous_type != msgtype:
+				previous_type = msgtype
+				rValue.append("%s: %s\n" % (msgtype, phase))
 			for line in msgcontent:
-				rValue += line
-			rValue += "\n"
-	return rValue
+				rValue.append(line)
+			rValue.append("\n")
+	return "".join(rValue)
 
 _elog_atexit_handlers = []
 _preserve_logentries = {}
@@ -80,7 +82,7 @@ def elog_process(cpv, mysettings, phasefilter=None):
 				s, levels = s.split(":", 1)
 				levels = levels.split(",")
 				mod_logentries = filter_loglevels(all_logentries[key], levels)
-				mod_fulllog = combine_logentries(mod_logentries)
+				mod_fulllog = _combine_logentries(mod_logentries)
 			else:
 				mod_logentries = default_logentries
 				mod_fulllog = default_fulllog

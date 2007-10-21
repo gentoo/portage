@@ -34,6 +34,8 @@ def finalize(mysettings=None):
 						"ERROR": printer.eerror,
 						"LOG": printer.einfo,
 						"QA": printer.ewarn}
+				if isinstance(msgcontent, basestring):
+					msgcontent = [msgcontent]
 				for line in msgcontent:
 					fmap[msgtype](line.strip("\n"))
 	_items = []
