@@ -1445,6 +1445,9 @@ class depgraph(object):
 					jbigkey, depth, DepPriority(runtime_post=True)):
 					return 0
 		except ValueError, e:
+			if not e.args or not isinstance(e.args[0], list) or \
+				len(e.args[0]) < 2:
+				raise
 			pkgs = e.args[0]
 			portage.writemsg("\n\n!!! An atom in the dependencies " + \
 				"is not fully-qualified. Multiple matches:\n\n", noiselevel=-1)
