@@ -6779,7 +6779,7 @@ def emerge_main():
 			display_news_notification(trees)
 		retval = action_build(settings, trees, mtimedb,
 			myopts, myaction, myfiles, spinner)
-		# if --pretend was enabled then display_news_notification 
+		# if --pretend was not enabled then display_news_notification 
 		# was already called by post_emerge
 		if "--pretend" in myopts:
 			display_news_notification(trees)
