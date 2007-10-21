@@ -92,7 +92,7 @@ try:
 		DEPRECATED_PROFILE_FILE, USER_VIRTUALS_FILE, EBUILD_SH_ENV_FILE, \
 		INVALID_ENV_FILE, CUSTOM_MIRRORS_FILE, CONFIG_MEMORY_FILE,\
 		INCREMENTALS, EAPI, MISC_SH_BINARY, REPO_NAME_LOC, REPO_NAME_FILE, \
-		EPREFIX, EPREFIX_LSTRIP
+		EPREFIX, EPREFIX_LSTRIP, BPREFIX
 
 	from portage.data import ostype, lchown, userland, secpass, uid, wheelgid, \
 	                         portage_uid, portage_gid, userpriv_groups
@@ -1128,7 +1128,7 @@ class config(object):
 			del rawpuseforce
 
 			try:
-				self.mygcfg   = getconfig(os.path.join(config_root, EPREFIX_LSTRIP, "etc", "make.globals"))
+				self.mygcfg   = getconfig(os.path.join(config_root, BPREFIX.lstrip(os.path.sep), "etc", "make.globals"))
 
 				if self.mygcfg is None:
 					self.mygcfg = {}

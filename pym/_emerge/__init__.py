@@ -49,7 +49,7 @@ portage.dep._dep_check_strict = True
 import portage.util
 import portage.locks
 import portage.exception
-from portage.const import EPREFIX
+from portage.const import EPREFIX, BPREFIX
 from portage.data import secpass
 from portage.util import normalize_path as normpath
 from portage.util import writemsg
@@ -3400,7 +3400,8 @@ class depgraph(object):
 
 				if myversion != portage.VERSION and "--quiet" not in self.myopts:
 					if mylist_index < len(mylist) - 1 and \
-						"livecvsportage" not in self.settings.features:
+						"livecvsportage" not in self.settings.features and \
+						EPREFIX == BPREFIX:
 						p.append(colorize("WARN", "*** Portage will stop merging at this point and reload itself,"))
 						p.append(colorize("WARN", "    then resume the merge."))
 						print
@@ -4112,7 +4113,8 @@ class MergeTask(object):
 						if myver[-3:]=='-r0':
 							myver=myver[:-3]
 						if (myver != portage.VERSION) and \
-						   "livecvsportage" not in self.settings.features:
+						   "livecvsportage" not in self.settings.features and \
+						   EPREFIX == BPREFIX:
 							if len(mymergelist) > mergecount:
 								emergelog(xterm_titles,
 									" ::: completed emerge ("+ \
