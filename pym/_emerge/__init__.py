@@ -1222,7 +1222,7 @@ class depgraph(object):
 		return None
 
 	def create(self, pkg, myparent=None, addme=1,
-		priority=None, arg=None):
+		priority=None, arg=None, depth=0):
 		"""
 		Fills the digraph with nodes comprised of packages to merge.
 		mybigkey is the package spec of the package to merge.
@@ -1420,30 +1420,29 @@ class depgraph(object):
 
 		""" We have retrieve the dependency information, now we need to recursively
 		    process them.  DEPEND gets processed for root = "/", {R,P}DEPEND in myroot. """
-		
-		mp = tuple(mybigkey)
+
+		if arg:
+			depth = 0
+		depth += 1
 
 		try:
-			if not self.select_dep("/", edepend["DEPEND"], myparent=mp,
-				myuse=myuse, priority=DepPriority(buildtime=True,
-				satisfied=bdeps_satisfied),
-				parent_arg=arg):
+			if not self._select_dep("/", edepend["DEPEND"], myuse,
+				jbigkey, depth,
+				DepPriority(buildtime=True, satisfied=bdeps_satisfied)):
 				return 0
 			"""RDEPEND is soft by definition.  However, in order to ensure
 			correct merge order, we make it a hard dependency.  Otherwise, a
 			build time dependency might not be usable due to it's run time
 			dependencies not being installed yet.
 			"""
-			if not self.select_dep(myroot,edepend["RDEPEND"], myparent=mp,
-				myuse=myuse, priority=DepPriority(runtime=True),
-				parent_arg=arg):
+			if not self._select_dep(myroot, edepend["RDEPEND"], myuse,
+				jbigkey, depth, DepPriority(runtime=True)):
 				return 0
 			if edepend.has_key("PDEPEND") and edepend["PDEPEND"]:
 				# Post Depend -- Add to the list without a parent, as it depends
 				# on a package being present AND must be built after that package.
-				if not self.select_dep(myroot, edepend["PDEPEND"], myparent=mp,
-					myuse=myuse, priority=DepPriority(runtime_post=True),
-					parent_arg=arg):
+				if not self._select_dep(myroot, edepend["PDEPEND"], myuse,
+					jbigkey, depth, DepPriority(runtime_post=True)):
 					return 0
 		except ValueError, e:
 			pkgs = e.args[0]
@@ -2078,15 +2077,16 @@ class depgraph(object):
 		# ordered by type preference ("ebuild" type is the last resort)
 		return  matched_packages[-1], existing_node
 
-	def select_dep(self, myroot, depstring, myparent=None,
-		myuse=None, priority=DepPriority(),
-		rev_deps=False, parent_arg=None):
+	def _select_dep(self, myroot, depstring, myuse,
+		myparent, depth, priority):
 		""" Given a depstring, create the depgraph such that all dependencies are satisfied.
-		    myroot = $ROOT from environment, where {R,P}DEPENDs are merged to.
-		    myparent = the node whose depstring is being passed in
-		    arg = package was specified on the command line, merge even if it's already installed
-		    myuse = USE flags at present
-		    return 1 on success, 0 for failure
+		@param myroot: $ROOT where these dependencies should be merged to.
+		@param myuse: List of USE flags enabled for myparent.
+		@param myparent: The node whose depstring is being passed in.
+		@param priority: DepPriority indicating the dependency type.
+		@param depth: The depth of recursion in dependencies relative to the
+			nearest argument atom.
+		@returns: 1 on success and 0 on failure
 		"""
 
 		if not depstring:
@@ -2105,8 +2105,6 @@ class depgraph(object):
 			print
 			print "Parent:   ",myparent
 			print "Depstring:",depstring
-			if rev_deps:
-				print "Reverse:", rev_deps
 			print "Priority:", priority
 
 		try:
@@ -2153,7 +2151,7 @@ class depgraph(object):
 					not existing_node and \
 					"empty" not in self.myparams and \
 					"deep" not in self.myparams and \
-					not ("--update" in self.myopts and parent_arg):
+					not ("--update" in self.myopts and depth <= 1):
 					myarg = None
 					if myroot == self.target_root:
 						try:
@@ -2172,7 +2170,7 @@ class depgraph(object):
 				if vardb.match(x):
 					mypriority.satisfied = True
 			if not self.create(pkg, myparent=myparent, addme=addme,
-				priority=mypriority):
+				priority=mypriority, depth=depth):
 				return 0
 
 		if "--debug" in self.myopts:
