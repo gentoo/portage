@@ -362,6 +362,22 @@ def create_depgraph_params(myopts, myaction):
 		myparams.add("deep")
 	return myparams
 
+
+class EmergeConfig(portage.config):
+	def __init__(self, settings, trees=None, setconfig=None):
+		""" You have to specify one of trees or setconfig """
+		portage.config.__init__(self, clone=settings)
+		if not setconfig:
+			setconfigpaths = [os.path.join(GLOBAL_CONFIG_PATH, "sets.conf")]
+			setconfigpaths.append(os.path.join(settings["PORTDIR"], "sets.conf"))
+			setconfigpaths += [os.path.join(x, "sets.conf") for x in settings["PORDIR_OVERLAY"].split()]
+			setconfigpaths.append(os.path.join(settings["PORTAGE_CONFIGROOT"],
+				USER_CONFIG_PATH.lstrip(os.path.sep), "sets.conf"))
+			#setconfig = SetConfig(setconfigpaths, settings, trees)
+			setconfig = make_default_config(settings, trees)
+		self.setconfig = setconfig
+		self.sets = self.setconfig.getSetsWithAliases()
+
 # search functionality
 class search(object):
 
@@ -375,7 +391,7 @@ class search(object):
 	# public interface
 	#
 	def __init__(self, settings, portdb, vartree, spinner, searchdesc,
-		verbose, setconfig):
+		verbose):
 		"""Searches the available and installed packages for the supplied search key.
 		The list of available and installed packages is created at object instantiation.
 		This makes successive searches faster."""
@@ -385,7 +401,7 @@ class search(object):
 		self.spinner = spinner
 		self.verbose = verbose
 		self.searchdesc = searchdesc
-		self.setconfig = setconfig
+		self.setconfig = settings.setconfig
 
 	def execute(self,searchkey):
 		"""Performs the search for the supplied search key"""
@@ -443,7 +459,7 @@ class search(object):
 				if self.searchre.search(full_desc):
 					self.matches["desc"].append([full_package,masked])
 
-		self.sdict = self.setconfig.getSets()[0]
+		self.sdict = self.setconfig.getSets()
 		for setname in self.sdict:
 			self.spinner.update()
 			if match_category:
@@ -555,76 +571,13 @@ class search(object):
 		return result
 
 
-#build our package digraph
-def getlist(settings, mode):
-	if mode=="system":
-		mylines = settings.packages
-	elif mode=="world":
-		try:
-			file_path = os.path.join(settings["ROOT"], portage.WORLD_FILE)
-			myfile = open(file_path, "r")
-			mylines = myfile.readlines()
-			myfile.close()
-		except (OSError, IOError), e:
-			if e.errno == errno.ENOENT:
-				portage.writemsg("\n!!! World file does not exist: '%s'\n" % file_path)
-				mylines=[]
-			else:
-				raise
-	mynewlines=[]
-	for x in mylines:
-		myline=" ".join(x.split())
-		if not len(myline):
-			continue
-		elif myline[0]=="#":
-			continue
-		elif mode=="system":
-			if myline[0]!="*":
-				continue
-			myline=myline[1:]
-		mynewlines.append(myline.strip())
-
-	return mynewlines
-
-def clean_world(vardb, cpv):
-	"""Remove a package from the world file when unmerged."""
-	world_set = WorldSet(vardb.settings["ROOT"])
-	world_set.lock()
-	worldlist = list(world_set) # loads latest from disk
-	mykey = portage.cpv_getkey(cpv)
-	newworldlist = []
-	for x in worldlist:
-		if portage.dep_getkey(x) == mykey:
-			matches = vardb.match(x, use_cache=0)
-			if not matches:
-				#zap our world entry
-				pass
-			elif len(matches) == 1 and matches[0] == cpv:
-				#zap our world entry
-				pass
-			else:
-				#others are around; keep it.
-				newworldlist.append(x)
-		else:
-			#this doesn't match the package we're unmerging; keep it.
-			newworldlist.append(x)
-
-	world_set.replace(newworldlist)
-	world_set.unlock()
-
-
 class RootConfig(object):
 	"""This is used internally by depgraph to track information about a
 	particular $ROOT."""
 	def __init__(self, trees):
 		self.trees = trees
-		self.settings = trees["vartree"].settings
+		self.settings = EmergeConfig(trees["vartree"].settings, trees=trees)
 		self.root = self.settings["ROOT"]
-		self.sets = {}
-		world_set = WorldSet(self.root)
-		self.sets["world"] = world_set
-		system_set = SystemSet(self.settings.profiles)
-		self.sets["system"] = system_set
 
 def create_world_atom(pkg_key, metadata, args_set, root_config):
 	"""Create a new atom for the world file if one does not exist.  If the
@@ -636,7 +589,7 @@ def create_world_atom(pkg_key, metadata, args_set, root_config):
 	arg_atom = args_set.findAtomForPackage(pkg_key, metadata)
 	cp = portage.dep_getkey(arg_atom)
 	new_world_atom = cp
-	sets = root_config.sets
+	sets = root_config.settings.sets
 	portdb = root_config.trees["porttree"].dbapi
 	vardb = root_config.trees["vartree"].dbapi
 	available_slots = set(portdb.aux_get(cpv, ["SLOT"])[0] \
@@ -2769,8 +2722,8 @@ class depgraph(object):
 		world_problems = False
 
 		root_config = self.roots[self.target_root]
-		world_set = root_config.sets["world"]
-		system_set = root_config.sets["system"]
+		world_set = root_config.settings.sets["world"]
+		system_set = root_config.settings.sets["system"]
 		mylist = list(system_set)
 		self._sets["system"] = system_set
 		if mode == "world":
@@ -3358,8 +3311,8 @@ class depgraph(object):
 
 				pkg_cp = xs[0]
 				root_config = self.roots[myroot]
-				system_set = root_config.sets["system"]
-				world_set  = root_config.sets["world"]
+				system_set = root_config.settings.sets["system"]
+				world_set  = root_config.settings.sets["world"]
 
 				pkg_system = False
 				pkg_world = False
@@ -3572,7 +3525,7 @@ class depgraph(object):
 			if x in self.myopts:
 				return
 		root_config = self.roots[self.target_root]
-		world_set = root_config.sets["world"]
+		world_set = root_config.settings.sets["world"]
 		world_set.lock()
 		world_set.load() # maybe it's changed on disk
 		args_set = self._sets["args"]
@@ -3765,10 +3718,10 @@ class MergeTask(object):
 		if settings.get("PORTAGE_DEBUG", "") == "1":
 			self.edebug = 1
 		self.pkgsettings = {}
-		self.pkgsettings[self.target_root] = portage.config(clone=settings)
+		self.pkgsettings[self.target_root] = EmergeConfig(settings, setconfig=settings.setconfig)
 		if self.target_root != "/":
 			self.pkgsettings["/"] = \
-				portage.config(clone=trees["/"]["vartree"].settings)
+				EmergeConfig(trees["/"]["vartree"].settings, setconfig=settings.setconfig)
 		self.curval = 0
 
 	def merge(self, mylist, favorites, mtimedb):
@@ -3835,9 +3788,9 @@ class MergeTask(object):
 			del shown_verifying_msg, quiet_settings
 
 		root_config = RootConfig(self.trees[self.target_root])
-		system_set = root_config.sets["system"]
+		system_set = root_config.settings.sets["system"]
 		args_set = InternalPackageSet(favorites)
-		world_set = root_config.sets["world"]
+		world_set = root_config.settings.sets["world"]
 		if "--resume" not in self.myopts:
 			mymergelist = mylist
 			mtimedb["resume"]["mergelist"]=mymergelist[:]
@@ -4254,7 +4207,7 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 	try:
 		if os.access(vdb_path, os.W_OK):
 			vdb_lock = portage.locks.lockdir(vdb_path)
-		realsyslist = getlist(settings, "system")
+		realsyslist = settings.sets["system"].getAtoms()
 		syslist = []
 		for x in realsyslist:
 			mycp = portage.dep_getkey(x)
@@ -4289,7 +4242,7 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 			if not unmerge_files or "world" in unmerge_files:
 				candidate_catpkgs.extend(vartree.dbapi.cp_all())
 			elif "system" in unmerge_files:
-				candidate_catpkgs.extend(getlist(settings, "system"))
+				candidate_catpkgs.extend(settings.sets["system"].getAtoms())
 		else:
 			#we've got command-line arguments
 			if not unmerge_files:
@@ -4541,7 +4494,7 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 				show_unmerge_failure_message(y, ebuild, retval)
 				sys.exit(retval)
 			else:
-				clean_world(vartree.dbapi, y)
+				settings.sets["world"].cleanPackage(vartree.dbapi, y)
 				emergelog(xterm_titles, " >>> unmerge success: "+y)
 	return 1
 
@@ -5730,13 +5683,13 @@ def action_info(settings, trees, myopts, myfiles):
 				mydbapi=trees[settings["ROOT"]]["vartree"].dbapi,
 				tree="vartree")
 
-def action_search(settings, portdb, vartree, myopts, myfiles, spinner, setconfig):
+def action_search(settings, portdb, vartree, myopts, myfiles, spinner):
 	if not myfiles:
 		print "emerge: no search terms provided."
 	else:
 		searchinstance = search(settings, portdb,
 			vartree, spinner, "--searchdesc" in myopts,
-			"--quiet" not in myopts, setconfig)
+			"--quiet" not in myopts)
 		for mysearch in myfiles:
 			try:
 				searchinstance.execute(mysearch)
@@ -6475,9 +6428,12 @@ def load_emerge_config(trees=None):
 		if myroot != "/":
 			settings = trees[myroot]["vartree"].settings
 			break
+	
+	settings = EmergeConfig(settings, trees=trees[settings["ROOT"]])
 
 	mtimedbfile = os.path.join("/", portage.CACHE_PATH.lstrip(os.path.sep), "mtimedb")
 	mtimedb = portage.MtimeDB(mtimedbfile)
+	
 	return settings, trees, mtimedb
 
 def adjust_config(myopts, settings):
@@ -6660,28 +6616,20 @@ def emerge_main():
 			print colorize("BAD", "\n*** emerging by path is broken and may not always work!!!\n")
 			break
 
-	setconfigpaths = [os.path.join(GLOBAL_CONFIG_PATH, "sets.conf")]
-	setconfigpaths.append(os.path.join(settings["PORTDIR"], "sets.conf"))
-	setconfigpaths += [os.path.join(x, "sets.conf") for x in settings["PORDIR_OVERLAY"].split()]
-	setconfigpaths.append(os.path.join(settings["PORTAGE_CONFIGROOT"],
-		USER_CONFIG_PATH.lstrip(os.path.sep), "sets.conf"))
-	#setconfig = SetConfig(setconfigpaths, settings, trees[settings["ROOT"]])
-	setconfig = make_default_config(settings, trees[settings["ROOT"]])
-	del setconfigpaths
+	# only expand sets for actions taking package arguments
 	if myaction not in ["search", "metadata", "sync"]:
 		oldargs = myfiles[:]
-		packagesets, setconfig_errors = setconfig.getSetsWithAliases()
-		for s in packagesets:
+		for s in settings.sets:
 			if s in myfiles:
 				# TODO: check if the current setname also resolves to a package name
 				if myaction in ["unmerge", "prune", "clean", "depclean"] and not packagesets[s].supportsOperation("unmerge"):
 					print "emerge: the given set %s does not support unmerge operations" % s
 					sys.exit(1)
-				if not packagesets[s].getAtoms():
+				if not settings.sets[s].getAtoms():
 					print "emerge: '%s' is an empty set" % s
 				else:
-					myfiles.extend(packagesets[s].getAtoms())
-				for e in packagesets[s].errors:
+					myfiles.extend(settings.sets[s].getAtoms())
+				for e in settings.sets[s].errors:
 					print e
 				myfiles.remove(s)
 		# Need to handle empty sets specially, otherwise emerge will react 
@@ -6879,7 +6827,7 @@ def emerge_main():
 	elif "search"==myaction:
 		validate_ebuild_environment(trees)
 		action_search(settings, portdb, trees["/"]["vartree"],
-			myopts, myfiles, spinner, setconfig)
+			myopts, myfiles, spinner)
 	elif myaction in ("clean", "unmerge") or \
 		(myaction == "prune" and "--nodeps" in myopts):
 		validate_ebuild_environment(trees)

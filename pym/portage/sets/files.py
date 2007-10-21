@@ -11,6 +11,7 @@ from portage import portage_gid
 from portage.sets import PackageSet, EditablePackageSet, SetConfigError
 from portage.env.loaders import ItemFileLoader, KeyListFileLoader
 from portage.env.validators import ValidAtomValidator
+from portage import dep_getkey, cpv_getkey
 
 __all__ = ["StaticFileSet", "ConfigFileSet", "WorldSet"]
 
@@ -134,6 +135,30 @@ class WorldSet(StaticFileSet):
 	def unlock(self):
 		unlockfile(self._lock)
 		self._lock = None
+
+	def cleanPackage(self, vardb, cpv):
+		self.lock()
+		worldlist = list(self.getAtoms()) # loads latest from disk
+		mykey = cpv_getkey(cpv)
+		newworldlist = []
+		for x in worldlist:
+			if dep_getkey(x) == mykey:
+				matches = vardb.match(x, use_cache=0)
+				if not matches:
+					#zap our world entry
+					pass
+				elif len(matches) == 1 and matches[0] == cpv:
+					#zap our world entry
+					pass
+				else:
+					#others are around; keep it.
+					newworldlist.append(x)
+			else:
+				#this doesn't match the package we're unmerging; keep it.
+				newworldlist.append(x)
+
+		self.replace(newworldlist)
+		self.unlock()
 
 	def singleBuilder(self, options, settings, trees):
 		return WorldSet(settings["ROOT"])
