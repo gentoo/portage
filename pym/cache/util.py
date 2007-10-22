@@ -33,6 +33,10 @@ def mirror_cache(valid_nodes_iterable, src_cache, trg_cache, eclass_cache=None, 
 			noise.missing_entry(x)
 			del e
 			continue
+		except cache_errors.CacheError, ce:
+			noise.exception(x, ce)
+			del ce
+			continue
 		write_it = True
 		trg = None
 		try:
