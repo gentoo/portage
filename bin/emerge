@@ -1411,7 +1411,7 @@ class depgraph:
 					settings.unlock()
 					settings.setinst(mykey, metadata)
 					settings.lock()
-				except portage.exception.InvalidDependString, e:
+				except portage_exception.InvalidDependString, e:
 					show_invalid_depstring_notice(jbigkey, metadata["PROVIDE"], str(e))
 					del e
 					return 0
