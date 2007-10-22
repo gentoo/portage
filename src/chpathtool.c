@@ -256,10 +256,18 @@ int dirwalk(char *src, char *srcp, char *trg, char *trgp) {
 						trg, strerror(errno));
 				return(-1);
 			}
-			times[0].tv_sec = s.ATIMESPEC.tv_sec;
-			times[0].tv_usec = s.ATIMESPEC.tv_nsec;
-			times[1].tv_sec = s.MTIMESPEC.tv_sec;
-			times[1].tv_usec = s.MTIMESPEC.tv_nsec;
+			times[0].tv_sec = s.ATIME_SEC;
+#ifdef ATIME_NSEC
+			times[0].tv_usec = (s.ATIME_NSEC) / 1000;
+#else
+			times[0].tv_usec = 0;
+#endif
+			times[1].tv_sec = s.MTIME_SEC;
+#ifdef MTIME_NSEC
+			times[1].tv_usec = (s.MTIME_NSEC) / 1000;
+#else
+			times[1].tv_usec = 0;
+#endif
 			if (utimes(trg, times) != 0) {
 				fprintf(stderr, "failed to set utimes of %s: %s\n",
 						trg, strerror(errno));
@@ -328,10 +336,18 @@ int dirwalk(char *src, char *srcp, char *trg, char *trgp) {
 				trg, strerror(errno));
 		return(-1);
 	}
-	times[0].tv_sec = s.ATIMESPEC.tv_sec;
-	times[0].tv_usec = s.ATIMESPEC.tv_nsec;
-	times[1].tv_sec = s.MTIMESPEC.tv_sec;
-	times[1].tv_usec = s.MTIMESPEC.tv_nsec;
+	times[0].tv_sec = s.ATIME_SEC;
+#ifdef ATIME_NSEC
+	times[0].tv_usec = (s.ATIME_NSEC) / 1000;
+#else
+	times[0].tv_usec = 0;
+#endif
+	times[1].tv_sec = s.MTIME_SEC;
+#ifdef MTIME_NSEC
+	times[1].tv_usec = (s.MTIME_NSEC) / 1000;
+#else
+	times[1].tv_usec = 0;
+#endif
 	if (utimes(trg, times) != 0) {
 		fprintf(stderr, "failed to set utimes of %s: %s\n",
 				trg, strerror(errno));

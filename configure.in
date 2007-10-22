@@ -52,7 +52,10 @@ AC_CHECK_HEADERS([string.h strings.h errno.h unistd.h stdio.h stdlib.h])
 AC_CHECK_HEADERS([sys/stat.h sys/types.h dirent.h sys/time.h alloca.h])
 AC_CHECK_HEADERS([fcntl.h])
 
-AC_CHECK_LIB([c], [readdir])
+AC_SEARCH_LIBS([readdir], [c])
+AC_SEARCH_LIBS([strcpy], [c])
+AC_SEARCH_LIBS([strstr], [c])
+AC_SEARCH_LIBS([memcpy], [c])
 
 AC_MSG_CHECKING([for the *time fields in struct stat])
 AC_TRY_LINK([
@@ -66,8 +69,10 @@ AC_TRY_LINK([
 			 s.st_atimespec.tv_sec = 0;
 			 s.st_mtimespec.tv_sec = 0;
 		 ], [
-			 AC_DEFINE(ATIMESPEC, st_atimespec, [atime for this platform])
-			 AC_DEFINE(MTIMESPEC, st_mtimespec, [mtime for this platform])
+			 AC_DEFINE(ATIME_SEC, st_atimespec.tv_sec, [atime seconds for this platform])
+			 AC_DEFINE(ATIME_NSEC, st_atimespec.tv_nsec, [atime nanoseconds for this platform])
+			 AC_DEFINE(MTIME_SEC, st_mtimespec.tv_sec, [mtime seconds for this platform])
+			 AC_DEFINE(MTIME_NSEC, st_mtimespec.tv_nsec, [mtime nanoseconds for this platform])
 			 AC_MSG_RESULT([st_*timespec])
 		 ], [
 AC_TRY_LINK([
@@ -81,13 +86,32 @@ AC_TRY_LINK([
 			 s.st_atim.tv_sec = 0;
 			 s.st_mtim.tv_sec = 0;
 		 ], [
-			 AC_DEFINE(ATIMESPEC, st_atim, [atime for this platform])
-			 AC_DEFINE(MTIMESPEC, st_mtim, [mtime for this platform])
+			 AC_DEFINE(ATIME_SEC, st_atim, [atime seconds for this platform])
+			 AC_DEFINE(ATIME_NSEC, st_atim.tv_nsec, [atime nanoseconds for this platform])
+			 AC_DEFINE(MTIME_SEC, st_mtim, [mtime seconds for this platform])
+			 AC_DEFINE(MTIME_NSEC, st_mtim.tv_nsec, [mtime nanoseconds for this platform])
 			 AC_MSG_RESULT([st_*tim])
-		 ]
-)
+		 ], [
+AC_TRY_LINK([
+			 #include <sys/types.h>
+			 #include <sys/stat.h>
+			 #ifdef HAVE_FCNTL_H
+			 #include <fcntl.h>
+			 #endif
+		 ], [
+			 struct stat s;
+			 s.st_atime = 0;
+			 s.st_mtime = 0;
+		 ], [
+			 AC_DEFINE(ATIME_SEC, st_atime, [atime seconds for this platform])
+			 AC_DEFINE(MTIME_SEC, st_mtime, [mtime seconds for this platform])
+			 AC_MSG_RESULT([st_*time])
 		 ], [
 			AC_MSG_ERROR([cannot determine])
+		 ]
+)
+		 ]
+)
 		 ]
 )
 
