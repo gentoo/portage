@@ -21,6 +21,11 @@ def shorthelp():
 	print bold("Actions:")+" [ "+green("--clean")+" | "+green("--depclean")+" | "+green("--prune")+" | "+green("--regen")+" | "+green("--search")+" | "+green("--unmerge")+" ]"
 
 def help(myaction,myopts,havecolor=1):
+	# TODO: Implement a wrap() that accounts for console color escape codes.
+	from textwrap import wrap
+	desc_left_margin = 14
+	desc_indent = desc_left_margin * " "
+	desc_width = 80 - desc_left_margin - 5
 	if not myaction and ("--verbose" not in myopts):
 		shorthelp()
 		print
@@ -184,11 +189,16 @@ def help(myaction,myopts,havecolor=1):
 		print "              time prior to the prompt will be interpreted as a choice!"
 		print
 		print "       "+green("--buildpkg")+" ("+green("-b")+" short option)"
-		print "              Tell emerge to build binary packages for all ebuilds processed"
-		print "              (in addition to actually merging the packages.  Useful for"
-		print "              maintainers or if you administrate multiple Gentoo Linux"
-		print "              systems (build once, emerge tbz2s everywhere) as well as disaster"
-		print "              recovery."
+		desc = "Tells emerge to build binary packages for all ebuilds processed in" + \
+			" addition to actually merging the packages. Useful for maintainers" + \
+			" or if you administrate multiple Gentoo Linux systems (build once," + \
+			" emerge tbz2s everywhere) as well as disaster recovery. The package" + \
+			" will be created in the" + \
+			" ${PKGDIR}/All directory. An alternative for already-merged" + \
+			" packages is to use quickpkg(1) which creates a tbz2 from the" + \
+			" live filesystem."
+		for line in wrap(desc, desc_width):
+			print desc_indent + line
 		print
 		print "       "+green("--buildpkgonly")+" ("+green("-B")+" short option)"
 		print "              Creates a binary package, but does not merge it to the"
