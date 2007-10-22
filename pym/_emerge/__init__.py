@@ -1256,17 +1256,6 @@ class depgraph(object):
 		portdb = self.trees[myroot]["porttree"].dbapi
 		bindb = self.trees[myroot]["bintree"].dbapi
 		pkgsettings = self.pkgsettings[myroot]
-
-		# if the package is already on the system, we add a "nomerge"
-		# directive, otherwise we add a "merge" directive.
-
-		mydbapi = self.trees[myroot][self.pkg_tree_map[mytype]].dbapi
-		if metadata is None:
-			metadata = dict(izip(self._mydbapi_keys,
-				mydbapi.aux_get(mykey, self._mydbapi_keys)))
-			if mytype == "ebuild":
-				pkgsettings.setcpv(mykey, mydb=portdb)
-				metadata["USE"] = pkgsettings["USE"]
 		myuse = metadata["USE"].split()
 
 		if not arg and myroot == self.target_root:
@@ -1312,14 +1301,13 @@ class depgraph(object):
 			if existing_node:
 				e_type, myroot, e_cpv, e_status = existing_node
 				if mykey == e_cpv:
-					# The existing node can be reused.
-					if existing_node != myparent:
-						# Refuse to make a node depend on itself so that
-						# we don't create a bogus circular dependency
-						# in self.altlist().
-						self._parent_child_digraph.add(existing_node, myparent)
-						self.digraph.addnode(existing_node, myparent,
-							priority=priority)
+					# The existing node can be reused. It's okay for a
+					# node to depend on itself here if priority.satisfied
+					# is True, otherwise it is a circular dependency that
+					# can not be ignored.
+					self._parent_child_digraph.add(existing_node, myparent)
+					self.digraph.addnode(existing_node, myparent,
+						priority=priority)
 					return 1
 				else:
 					if jbigkey in self._slot_collision_nodes:
@@ -1425,33 +1413,94 @@ class depgraph(object):
 				# built packages do not have build time dependencies.
 				edepend["DEPEND"] = ""
 
-		""" We have retrieve the dependency information, now we need to recursively
-		    process them.  DEPEND gets processed for root = "/", {R,P}DEPEND in myroot. """
+		deps = (
+			("/", edepend["DEPEND"],
+				DepPriority(buildtime=True, satisfied=bdeps_satisfied)),
+			(myroot, edepend["RDEPEND"], DepPriority(runtime=True)),
+			(myroot, edepend["PDEPEND"], DepPriority(runtime_post=True))
+		)
 
 		if arg:
 			depth = 0
 		depth += 1
-
+		update = "--update" in self.myopts and depth <= 1
+		debug = "--debug" in self.myopts
+		buildpkgonly = "--buildpkgonly" in self.myopts
+		nodeps = "--nodeps" in self.myopts
+		empty = "empty" in self.myparams
+		deep = "deep" in self.myparams
+		strict = mytype != "installed"
 		try:
-			if not self._select_dep("/", edepend["DEPEND"], myuse,
-				jbigkey, depth,
-				DepPriority(buildtime=True, satisfied=bdeps_satisfied)):
-				return 0
-			"""RDEPEND is soft by definition.  However, in order to ensure
-			correct merge order, we make it a hard dependency.  Otherwise, a
-			build time dependency might not be usable due to it's run time
-			dependencies not being installed yet.
-			"""
-			if not self._select_dep(myroot, edepend["RDEPEND"], myuse,
-				jbigkey, depth, DepPriority(runtime=True)):
-				return 0
-			if edepend.has_key("PDEPEND") and edepend["PDEPEND"]:
-				# Post Depend -- Add to the list without a parent, as it depends
-				# on a package being present AND must be built after that package.
-				if not self._select_dep(myroot, edepend["PDEPEND"], myuse,
-					jbigkey, depth, DepPriority(runtime_post=True)):
+			for dep_root, dep_string, dep_priority in deps:
+				if not dep_string:
+					continue
+				if debug:
+					print
+					print "Parent:   ", jbigkey
+					print "Depstring:", dep_string
+					print "Priority:", dep_priority
+				vardb = self.roots[dep_root].trees["vartree"].dbapi
+				try:
+					self._populate_filtered_repo(dep_root, dep_string,
+						myuse=myuse, strict=strict)
+					selected_atoms = self._select_atoms(dep_root,
+						dep_string, myuse=myuse, strict=strict)
+				except portage.exception.InvalidDependString, e:
+					show_invalid_depstring_notice(jbigkey, dep_string, str(e))
 					return 0
+				if debug:
+					print "Candidates:", selected_atoms
+				for x in selected_atoms:
+					selected_pkg = None
+					if x.startswith("!"):
+						if not buildpkgonly and \
+							not nodeps and \
+							jbigkey not in self._slot_collision_nodes:
+							if mytype != "installed" and not addme:
+								# It's safe to ignore blockers if the
+								# parent is an --onlydeps node.
+								continue
+							# The blocker applies to the root where
+							# th parent is or will be installed.
+							self.blocker_parents.setdefault(
+								("blocks", myroot, x[1:]), set()).add(jbigkey)
+						continue
+					dep_pkg, existing_node = self._select_package(dep_root, x)
+					if not dep_pkg:
+						self._show_unsatisfied_dep(dep_root, x,
+							myparent=jbigkey)
+						return 0
+					# In some cases, dep_check will return deps that shouldn't
+					# be proccessed any further, so they are identified and
+					# discarded here. Try to discard as few as possible since
+					# discarded dependencies reduce the amount of information
+					# available for optimization of merge order.
+					if vardb.match(x) and \
+						not (existing_node or empty or deep or update):
+						myarg = None
+						if dep_root == self.target_root:
+							try:
+								myarg = self._set_atoms.findAtomForPackage(
+									dep_pkg.cpv, dep_pkg.metadata)
+							except portage.exception.InvalidDependString:
+								if not dep_pkg.installed:
+									# This shouldn't happen since the package
+									# should have been masked.
+									raise
+						if not myarg:
+							continue
+					mypriority = dep_priority.copy()
+					if vardb.match(x):
+						mypriority.satisfied = True
+					if not self.create(dep_pkg, myparent=jbigkey,
+						priority=mypriority, depth=depth):
+						return 0
+				if debug:
+					print "Exiting...", jbigkey
 		except ValueError, e:
+			if not e.args or not isinstance(e.args[0], list) or \
+				len(e.args[0]) < 2:
+				raise
 			pkgs = e.args[0]
 			portage.writemsg("\n\n!!! An atom in the dependencies " + \
 				"is not fully-qualified. Multiple matches:\n\n", noiselevel=-1)
@@ -1503,8 +1552,10 @@ class depgraph(object):
 					os.path.realpath(self.trees[myroot]["bintree"].getname(mykey)):
 					print colorize("BAD", "\n*** You need to adjust PKGDIR to emerge this package.\n")
 					return 0, myfavorites
+				metadata = dict(izip(self._mydbapi_keys,
+					bindb.aux_get(mykey, self._mydbapi_keys)))
 				pkg = Package(type_name="binary", root=myroot,
-					cpv=mykey, built=True)
+					cpv=mykey, built=True, metadata=metadata)
 				if not self.create(pkg, addme=addme, arg=x):
 					return 0, myfavorites
 				arg_atoms.append((x, "="+mykey))
@@ -1538,8 +1589,12 @@ class depgraph(object):
 				else:
 					raise portage.exception.PackageNotFound(
 						"%s is not in a valid portage tree hierarchy or does not exist" % x)
+				metadata = dict(izip(self._mydbapi_keys,
+					portdb.aux_get(mykey, self._mydbapi_keys)))
+				pkgsettings.setcpv(mykey, mydb=metadata)
+				metadata["USE"] = pkgsettings["USE"]
 				pkg = Package(type_name="ebuild", root=myroot,
-					cpv=mykey)
+					cpv=mykey, metadata=metadata)
 				if not self.create(pkg, addme=addme, arg=x):
 					return 0, myfavorites
 				arg_atoms.append((x, "="+mykey))
@@ -1668,7 +1723,7 @@ class depgraph(object):
 		return (not missing,myfavorites)
 
 	def _populate_filtered_repo(self, myroot, depstring,
-			myparent=None, myuse=None, exclude_installed=False):
+			strict=True, myuse=None, exclude_installed=False):
 		"""Extract all of the atoms from the depstring, select preferred
 		packages from appropriate repositories, and use them to populate
 		the filtered repository. This will raise InvalidDependString when
@@ -1677,13 +1732,10 @@ class depgraph(object):
 		filtered_db = self._filtered_trees[myroot]["porttree"].dbapi
 		pkgsettings = self.pkgsettings[myroot]
 		usepkgonly = "--usepkgonly" in self.myopts
-		if myparent:
-			p_type, p_root, p_key, p_status = myparent
 
 		from portage.dep import paren_reduce, use_reduce
 		try:
-			if myparent and p_type == "installed":
-				portage.dep._dep_check_strict = False
+			portage.dep._dep_check_strict = strict
 			atoms = paren_reduce(depstring)
 			atoms = use_reduce(atoms, uselist=myuse)
 			atoms = list(iter_atoms(atoms))
@@ -1978,9 +2030,12 @@ class depgraph(object):
 							e_cpv, self._mydbapi_keys)))
 						cpv_slot = "%s:%s" % (e_cpv, metadata["SLOT"])
 						if portage.dep.match_from_list(atom, [cpv_slot]):
+							e_installed = e_type == "installed"
+							e_built = e_type != "ebuild"
 							matched_packages.append(
 								Package(type_name=e_type, root=root,
-									cpv=e_cpv, metadata=metadata))
+									cpv=e_cpv, metadata=metadata,
+									built=e_built, installed=e_installed))
 						else:
 							existing_node = None
 						break
@@ -2087,104 +2142,6 @@ class depgraph(object):
 
 		# ordered by type preference ("ebuild" type is the last resort)
 		return  matched_packages[-1], existing_node
-
-	def _select_dep(self, myroot, depstring, myuse,
-		myparent, depth, priority):
-		""" Given a depstring, create the depgraph such that all dependencies are satisfied.
-		@param myroot: $ROOT where these dependencies should be merged to.
-		@param myuse: List of USE flags enabled for myparent.
-		@param myparent: The node whose depstring is being passed in.
-		@param priority: DepPriority indicating the dependency type.
-		@param depth: The depth of recursion in dependencies relative to the
-			nearest argument atom.
-		@returns: 1 on success and 0 on failure
-		"""
-
-		if not depstring:
-			return 1 # nothing to do
-
-		vardb  = self.roots[myroot].trees["vartree"].dbapi
-		strict = True
-		if myparent:
-			p_type, p_root, p_key, p_status = myparent
-			if p_type == "installed":
-				strict = False
-
-		if "--debug" in self.myopts:
-			print
-			print "Parent:   ",myparent
-			print "Depstring:",depstring
-			print "Priority:", priority
-
-		try:
-			self._populate_filtered_repo(
-				myroot, depstring, myparent=myparent, myuse=myuse)
-			mymerge = self._select_atoms(myroot, depstring,
-				myuse=myuse, strict=strict)
-		except portage.exception.InvalidDependString, e:
-			if myparent:
-				show_invalid_depstring_notice(
-					myparent, depstring, str(e))
-			else:
-				sys.stderr.write("\n%s\n%s\n" % (depstring, str(e)))
-			return 0
-
-		if "--debug" in self.myopts:
-			print "Candidates:",mymerge
-		for x in mymerge:
-			selected_pkg = None
-			if x.startswith("!"):
-				if "--buildpkgonly" not in self.myopts and \
-					"--nodeps" not in self.myopts and \
-					myparent not in self._slot_collision_nodes:
-					p_type, p_root, p_key, p_status = myparent
-					if  p_type != "installed" and p_status != "merge":
-						# It's safe to ignore blockers from --onlydeps nodes.
-						continue
-					self.blocker_parents.setdefault(
-						("blocks", p_root, x[1:]), set()).add(myparent)
-				continue
-			else:
-
-				pkg, existing_node = self._select_package(myroot, x)
-				if not pkg:
-					self._show_unsatisfied_dep(myroot, x, myparent=myparent)
-					return 0
-
-				# In some cases, dep_check will return deps that shouldn't
-				# be proccessed any further, so they are identified and
-				# discarded here. Try to discard as few as possible since
-				# discarded dependencies reduce the amount of information
-				# available for optimization of merge order.
-				if myparent and vardb.match(x) and \
-					not existing_node and \
-					"empty" not in self.myparams and \
-					"deep" not in self.myparams and \
-					not ("--update" in self.myopts and depth <= 1):
-					myarg = None
-					if myroot == self.target_root:
-						try:
-							myarg = self._set_atoms.findAtomForPackage(
-								pkg.cpv, pkg.metadata)
-						except portage.exception.InvalidDependString:
-							# This is already handled inside
-							# self.create() when necessary.
-							pass
-					if not myarg:
-						continue
-
-			mypriority = None
-			if myparent:
-				mypriority = priority.copy()
-				if vardb.match(x):
-					mypriority.satisfied = True
-			if not self.create(pkg, myparent=myparent,
-				priority=mypriority, depth=depth):
-				return 0
-
-		if "--debug" in self.myopts:
-			print "Exiting...",myparent
-		return 1
 
 	def _select_arg(self, root, atom, arg, addme):
 		pprovided = self.pkgsettings[root].pprovideddict.get(
