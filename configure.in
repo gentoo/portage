@@ -86,9 +86,9 @@ AC_TRY_LINK([
 			 s.st_atim.tv_sec = 0;
 			 s.st_mtim.tv_sec = 0;
 		 ], [
-			 AC_DEFINE(ATIME_SEC, st_atim, [atime seconds for this platform])
+			 AC_DEFINE(ATIME_SEC, st_atim.tv_sec, [atime seconds for this platform])
 			 AC_DEFINE(ATIME_NSEC, st_atim.tv_nsec, [atime nanoseconds for this platform])
-			 AC_DEFINE(MTIME_SEC, st_mtim, [mtime seconds for this platform])
+			 AC_DEFINE(MTIME_SEC, st_mtim.tv_sec, [mtime seconds for this platform])
 			 AC_DEFINE(MTIME_NSEC, st_mtim.tv_nsec, [mtime nanoseconds for this platform])
 			 AC_MSG_RESULT([st_*tim])
 		 ], [
