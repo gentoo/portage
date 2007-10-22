@@ -1350,14 +1350,13 @@ class depgraph:
 			if existing_node:
 				e_type, myroot, e_cpv, e_status = existing_node
 				if mykey == e_cpv:
-					# The existing node can be reused.
-					if existing_node != myparent:
-						# Refuse to make a node depend on itself so that
-						# we don't create a bogus circular dependency
-						# in self.altlist().
-						self._parent_child_digraph.add(existing_node, myparent)
-						self.digraph.addnode(existing_node, myparent,
-							priority=priority)
+					# The existing node can be reused. It's okay for a
+					# node to depend on itself here if priority.satisfied
+					# is True, otherwise it is a circular dependency that
+					# can not be ignored.
+					self._parent_child_digraph.add(existing_node, myparent)
+					self.digraph.addnode(existing_node, myparent,
+						priority=priority)
 					return 1
 				else:
 					if jbigkey in self._slot_collision_nodes:
@@ -1400,6 +1399,22 @@ class depgraph:
 			else:
 				self.digraph.addnode(jbigkey, myparent,
 					priority=priority)
+
+			if mytype != "installed":
+				# Allow this package to satisfy old-style virtuals in case it
+				# doesn't already. Any pre-existing providers will be preferred
+				# over this one.
+				try:
+					pkgsettings.setinst(mykey, metadata)
+					# For consistency, also update the global virtuals.
+					settings = self.roots[myroot].settings
+					settings.unlock()
+					settings.setinst(mykey, metadata)
+					settings.lock()
+				except portage.exception.InvalidDependString, e:
+					show_invalid_depstring_notice(jbigkey, metadata["PROVIDE"], str(e))
+					del e
+					return 0
 
 		if arg:
 			self._set_nodes.add(jbigkey)
@@ -1769,34 +1784,6 @@ class depgraph:
 			# package will not be merged and a warning will be displayed.
 			if depstring in self._set_atoms:
 				self._pprovided_args.append((arg, depstring))
-
-		if myparent:
-			# The parent is added after it's own dep_check call so that it
-			# isn't allowed to satisfy a direct bootstrap dependency on itself
-			# via an old-style virtual.  This isn't a problem with new-style
-			# virtuals, which are preferenced in dep_zapdeps by looking only at
-			# the depstring, vdb, and available packages.
-
-			p_type, p_root, p_key, p_status = myparent
-			if p_status == "merge":
-				# Update old-style virtuals if this package provides any.
-				# These are needed for dep_virtual calls inside dep_check.
-				p_db = self.mydbapi[p_root] # contains cached metadata
-				if myparent in self._slot_collision_nodes:
-					# The metadata isn't cached due to the slot collision.
-					p_db = self.trees[p_root][self.pkg_tree_map[p_type]].dbapi
-				try:
-					self.pkgsettings[p_root].setinst(p_key, p_db)
-					# For consistency, also update the global virtuals.
-					settings = self.roots[p_root].settings
-					settings.unlock()
-					settings.setinst(p_key, p_db)
-					settings.lock()
-				except portage_exception.InvalidDependString, e:
-					provide = p_db.aux_get(p_key, ["PROVIDE"])[0]
-					show_invalid_depstring_notice(myparent, provide, str(e))
-					del e
-					return 0
 
 		if "--debug" in self.myopts:
 			print "Candidates:",mymerge
