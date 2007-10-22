@@ -481,20 +481,20 @@ unpack() {
 				;;
 			7Z|7z)
 				local my_output
-				my_output="$(7z x -y "${srcdir}/${x}")"
+				my_output="$(7z x -y "${srcdir}${x}")"
 				if [ $? -ne 0 ]; then
 					echo "${my_output}" >&2
 					die "$myfail"
 				fi
 				;;
 			RAR|rar)
-				unrar x -idq -o+ "${srcdir}/${x}" || die "$myfail"
+				unrar x -idq -o+ "${srcdir}${x}" || die "$myfail"
 				;;
 			LHa|LHA|lha|lzh)
-				lha xfq "${srcdir}/${x}" || die "$myfail"
+				lha xfq "${srcdir}${x}" || die "$myfail"
 				;;
 			a|deb)
-				ar x "${srcdir}/${x}" || die "$myfail"
+				ar x "${srcdir}${x}" || die "$myfail"
 				;;
 			lzma)
 				if [ "${y}" == "tar" ]; then
