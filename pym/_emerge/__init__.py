@@ -1294,13 +1294,16 @@ class depgraph(object):
 			if existing_node:
 				e_type, myroot, e_cpv, e_status = existing_node
 				if mykey == e_cpv:
-					# The existing node can be reused. It's okay for a
-					# node to depend on itself here if priority.satisfied
-					# is True, otherwise it is a circular dependency that
-					# can not be ignored.
+					# The existing node can be reused.
 					self._parent_child_digraph.add(existing_node, myparent)
-					self.digraph.addnode(existing_node, myparent,
-						priority=priority)
+					# If a direct circular dependency is not an unsatisfied
+					# buildtime dependency then drop it here since otherwise
+					# it can skew the merge order calculation in an unwanted
+					# way.
+					if existing_node != myparent or \
+						(priority.buildtime and not priority.satisfied):
+						self.digraph.addnode(existing_node, myparent,
+							priority=priority)
 					return 1
 				else:
 					if jbigkey in self._slot_collision_nodes:
