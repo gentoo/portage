@@ -50,8 +50,8 @@ except ImportError:
 del os.environ["PORTAGE_LEGACY_GLOBALS"]
 
 try:
-	from repoman.checks import EbuildWhitespaceCheck, EbuildHeaderCheck, EbuildQuoteCheck, \
-		EbuildAssignmentCheck
+	from repoman.checks import EbuildWhitespace, EbuildHeader, EbuildQuote, \
+		EbuildAssignment, EbuildNestedDie
 except ImportError:
 	from os import path as osp
 	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), 'pym'))
