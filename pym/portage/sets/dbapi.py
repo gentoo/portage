@@ -3,7 +3,8 @@
 # $Id$
 
 from portage.versions import catsplit, catpkgsplit
-from portage.sets import PackageSet, SetConfigError
+from portage.sets.base import PackageSet
+from portage.sets import SetConfigError
 from portage.dbapi.vartree import dblink
 from portage.util import grabfile
 

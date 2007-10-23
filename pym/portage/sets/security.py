@@ -6,7 +6,7 @@ import os
 import portage.glsa as glsa
 from portage.util import grabfile, write_atomic
 from portage.const import CACHE_PATH
-from portage.sets import PackageSet
+from portage.sets.base import PackageSet
 
 __all__ = ["SecuritySet", "NewGlsaSet", "NewAffectedSet", "AffectedSet"]
 
