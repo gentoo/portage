@@ -2007,6 +2007,15 @@ class depgraph(object):
 							metadata["USE"] = pkgsettings.get("USE","")
 						else:
 							metadata["USE"] = ""
+					myarg = None
+					if root == self.target_root:
+						try:
+							myarg = self._set_atoms.findAtomForPackage(
+								cpv, metadata)
+						except portage.exception.InvalidDependString:
+							if not installed:
+								# masked by corruption
+								continue
 					if not installed:
 						try:
 							if not visible(pkgsettings, cpv, metadata,
@@ -2090,15 +2099,6 @@ class depgraph(object):
 							self._reinstall_for_flags(
 							forced_flags, old_use, old_iuse,
 							cur_use, cur_iuse)
-					myarg = None
-					if root == self.target_root:
-						try:
-							myarg = self._set_atoms.findAtomForPackage(
-								cpv, metadata)
-						except portage.exception.InvalidDependString:
-							if not installed:
-								# masked by corruption
-								continue
 					if not installed:
 						if myarg:
 							found_available_arg = True
