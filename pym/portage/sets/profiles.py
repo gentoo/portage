@@ -21,6 +21,6 @@ class PackagesSystemSet(PackageSet):
 		mylist = stack_lists(mylist, incremental=1)
 		self._setAtoms([x[1:] for x in mylist if x[0] == "*"])
 
-	def singleBuilder(self, options, settings, trees):
-		return PackagesSystemSet(settings.profiles)
+	def singleBuilder(self, options, setconfig):
+		return PackagesSystemSet(setconfig.settings.profiles)
 	singleBuilder = classmethod(singleBuilder)

@@ -207,7 +207,7 @@ class SetConfig(SafeConfigParser):
 			if self.has_option(sname, "multiset") and self.getboolean(sname, "multiset"):
 				if hasattr(setclass, "multiBuilder"):
 					try:
-						self.psets.update(setclass.multiBuilder(optdict, self.settings, self.trees))
+						self.psets.update(setclass.multiBuilder(optdict, self))
 					except SetConfigError, e:
 						self.errors.append("Configuration error in section '%s': %s" % (sname, str(e)))
 						continue
@@ -221,7 +221,7 @@ class SetConfig(SafeConfigParser):
 					setname = "sets/"+sname
 				if hasattr(setclass, "singleBuilder"):
 					try:
-						self.psets[setname] = setclass.singleBuilder(optdict, self.settings, self.trees)
+						self.psets[setname] = setclass.singleBuilder(optdict, self)
 					except SetConfigError, e:
 						self.errors.append("Configuration error in section '%s': %s" % (sname, str(e)))
 						continue

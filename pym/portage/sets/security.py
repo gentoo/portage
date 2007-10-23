@@ -55,13 +55,14 @@ class SecuritySet(PackageSet):
 				applied_list.append(glsaid)
 		write_atomic(self._checkfile, "\n".join(applied_list))
 	
-	def singleBuilder(cls, options, settings, trees):
+	def singleBuilder(cls, options, setconfig):
 		if "use_emerge_resoler" in options \
 				and options.get("use_emerge_resolver").lower() in ["1", "yes", "true", "on"]:
 			least_change = False
 		else:
 			least_change = True
-		return cls(settings, trees["vartree"].dbapi, trees["porttree"].dbapi, least_change=least_change)
+		return cls(setconfig.settings, setconfig.trees["vartree"].dbapi, \
+					setconfig.trees["porttree"].dbapi, least_change=least_change)
 	singleBuilder = classmethod(singleBuilder)
 	
 class NewGlsaSet(SecuritySet):

@@ -36,7 +36,7 @@ class CommandOutputSet(PackageSet):
 			text = pipe.stdout.read()
 			self._setAtoms(text.split("\n"))
 		
-	def singleBuilder(self, options, settings, trees):
+	def singleBuilder(self, options, setconfig):
 		if not command in options:
 			raise SetConfigError("no command specified")
 		return CommandOutputSet(options["command"])
