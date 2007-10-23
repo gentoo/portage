@@ -1027,6 +1027,7 @@ class config:
 			self.packages = copy.deepcopy(clone.packages)
 			self.virtuals = copy.deepcopy(clone.virtuals)
 
+			self.dirVirtuals = copy.deepcopy(clone.dirVirtuals)
 			self.treeVirtuals = copy.deepcopy(clone.treeVirtuals)
 			self.userVirtuals = copy.deepcopy(clone.userVirtuals)
 			self.negVirtuals  = copy.deepcopy(clone.negVirtuals)
@@ -1066,8 +1067,6 @@ class config:
 			self.punmaskdict = copy.deepcopy(clone.punmaskdict)
 			self.prevmaskdict = copy.deepcopy(clone.prevmaskdict)
 			self.pprovideddict = copy.deepcopy(clone.pprovideddict)
-			self.dirVirtuals = copy.deepcopy(clone.dirVirtuals)
-			self.treeVirtuals = copy.deepcopy(clone.treeVirtuals)
 			self.features = copy.deepcopy(clone.features)
 			self._use_wildcards = copy.deepcopy(clone._use_wildcards)
 		else:
