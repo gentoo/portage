@@ -1212,7 +1212,7 @@ for x in scanlist:
 
 		if options.ignore_arches:
 			arches = [[repoman_settings["ARCH"], repoman_settings["ARCH"],
-			repoman_settings["ACCEPT_KEYWORDS"].split()]]
+				repoman_settings["ACCEPT_KEYWORDS"].split()]]
 		else:
 			arches=[]
 			for keyword in myaux["KEYWORDS"].split():
