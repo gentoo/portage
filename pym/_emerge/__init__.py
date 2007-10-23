@@ -2017,6 +2017,8 @@ class depgraph(object):
 								# masked by corruption
 								continue
 					if not installed:
+						if myarg:
+							found_available_arg = True
 						try:
 							if not visible(pkgsettings, cpv, metadata,
 								built=built, installed=installed):
@@ -2100,8 +2102,6 @@ class depgraph(object):
 							forced_flags, old_use, old_iuse,
 							cur_use, cur_iuse)
 					if not installed:
-						if myarg:
-							found_available_arg = True
 						must_reinstall = empty or \
 							(myarg and not selective)
 						if not reinstall_for_flags and \
