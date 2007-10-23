@@ -1523,11 +1523,12 @@ class dblink(object):
 			collisions = []
 			destroot = normalize_path(destroot).rstrip(os.path.sep) + \
 				os.path.sep
-			print green("*")+" checking "+str(len(mycontents))+" files for package collisions"
+			writemsg_stdout("%s checking %d files for package collisions\n" % \
+				(green("*"), len(mycontents)))
 			for f in mycontents:
 				i = i + 1
 				if i % 1000 == 0:
-					print str(i)+" files checked ..."
+					writemsg_stdout("%d files checked ...\n" % i)
 				dest_path = normalize_path(
 					os.path.join(destroot, f.lstrip(os.path.sep)))
 				try:
