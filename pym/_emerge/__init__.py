@@ -349,8 +349,7 @@ def create_depgraph_params(myopts, myaction):
 	if "--update" in myopts or \
 		"--newuse" in myopts or \
 		"--reinstall" in myopts or \
-		"--noreplace" in myopts or \
-		myaction in ("system", "world"):
+		"--noreplace" in myopts:
 		myparams.add("selective")
 	if "--emptytree" in myopts:
 		myparams.add("empty")
