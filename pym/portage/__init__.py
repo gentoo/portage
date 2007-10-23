@@ -1193,6 +1193,12 @@ class config(object):
 						"this. Do not use them.\n", noiselevel=-1)
 				sys.exit(1)
 
+
+			# Don't allow the user to override certain variables in make.conf
+			for key in self.mygcfg.keys():
+				if key in self.configdict["defaults"].get("PROFILE_ONLY_VARIABLES", "").split():
+					del self.mygcfg[key]
+			
 			# Allow ROOT setting to come from make.conf if it's not overridden
 			# by the constructor argument (from the calling environment).  As a
 			# special exception for a very common use case, config_root == "/"
@@ -1216,7 +1222,13 @@ class config(object):
 			self.configlist.append(self.backupenv) # XXX Why though?
 			self.configdict["backupenv"]=self.configlist[-1]
 
-			self.configlist.append(os.environ.copy())
+			myenv = os.environ.copy()		
+			# Don't allow the user to override certain variables in the env
+			for key in myenv.keys():
+				if key in self.configdict["defaults"].get("PROFILE_ONLY_VARIABLES", "").split():
+					del myenv[key]
+
+			self.configlist.append(myenv)
 			self.configdict["env"]=self.configlist[-1]
 
 			# make lookuplist for loading package.*
