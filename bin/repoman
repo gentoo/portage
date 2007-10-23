@@ -51,12 +51,12 @@ del os.environ["PORTAGE_LEGACY_GLOBALS"]
 
 try:
 	from repoman.checks import EbuildWhitespace, EbuildHeader, EbuildQuote, \
-		EbuildAssignment, EbuildNestedDie
+		EbuildAssignment, EbuildNestedDie, EbuildUselessDodoc
 except ImportError:
 	from os import path as osp
 	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), 'pym'))
 	from repoman.checks import EbuildWhitespace, EbuildHeader, EbuildQuote, \
-		EbuildAssignment, EbuildNestedDie
+		EbuildAssignment, EbuildNestedDie, EbuildUselessDodoc
 
 import portage.checksum
 import portage.const
@@ -1382,7 +1382,8 @@ for x in scanlist:
 		path = checkdir + '/' + y + '.ebuild'
 		myear = time.gmtime(os.stat(path)[ST_MTIME])[0]
 		contents = StringIO.StringIO(open(path, 'rb').read())
-		for check in (EbuildWhitespace, EbuildQuote, EbuildAssignment):
+		for check in (EbuildWhitespace, EbuildQuote,
+			EbuildAssignment, EbuildUselessDodoc):
 			c = check(contents)
 			errors = c.Run()
 			for e in errors:

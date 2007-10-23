@@ -224,3 +224,22 @@ class EbuildNestedDie(ContentCheck):
 			if match:
 				errors.append((num + 1, NESTED_DIE_ERROR))
 		return errors
+
+class EbuildUselessDodoc(ContentCheck):
+	"""Check ebuild for useless files in dodoc arguments."""
+	repoman_check_name = 'ebuild.minorsyn'
+	uselessdodoc_re = re.compile(
+		r'^\s*dodoc(\s+|\s+.*\s+)(ABOUT-NLS|COPYING|LICENSE)($|\s)')
+
+	def __init__(self, contents):
+		ContentCheck.__init__(self, contents)
+
+	def Run(self):
+		errors = []
+		uselessdodoc_re = self.uselessdodoc_re
+		for num, line in enumerate(self.contents):
+			match = uselessdodoc_re.match(line)
+			if match:
+				errors.append((num + 1, "Useless dodoc '%s'" % \
+					(match.group(2), ) + " on line: %d"))
+		return errors
