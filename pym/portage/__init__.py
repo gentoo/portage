@@ -2065,6 +2065,9 @@ class config(object):
 		cp = dep_getkey(mycpv)
 		for virt in virts:
 			virt = dep_getkey(virt)
+			providers = self.virtuals.get(virt)
+			if providers and cp in providers:
+				continue
 			providers = self._depgraphVirtuals.get(virt)
 			if providers is None:
 				providers = []
