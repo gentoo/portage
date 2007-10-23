@@ -1966,6 +1966,18 @@ class depgraph(object):
 		usepkgonly = "--usepkgonly" in self.myopts
 		empty = "empty" in self.myparams
 		selective = "selective" in self.myparams
+		# Behavior of the "selective" parameter depends on
+		# whether or not a package matches an argument atom.
+		# If an installed package provides an old-style
+		# virtual that is no longer provided by an available
+		# package, the installed package may match an argument
+		# atom even though none of the available packages do.
+		# Therefore, "selective" logic does not consider
+		# whether or not an installed package matches an
+		# argument atom. It only considers whether or not
+		# available packages match argument atoms, which is
+		# represented by the found_available_arg flag.
+		found_available_arg = False
 		for find_existing_node in True, False:
 			if existing_node:
 				break
@@ -2084,18 +2096,23 @@ class depgraph(object):
 							myarg = self._set_atoms.findAtomForPackage(
 								cpv, metadata)
 						except portage.exception.InvalidDependString:
-							# If relevant this error will be shown
-							# in the masked package display.
 							if not installed:
-								break
-					if not installed and not reinstall_for_flags and \
-						("selective" in self.myparams or \
-						not myarg) and \
-						not empty and \
-						vardb.cpv_exists(cpv):
-						break
-					if installed and not (selective or not myarg):
-						break
+								# masked by corruption
+								continue
+					if not installed:
+						if myarg:
+							found_available_arg = True
+						must_reinstall = empty or \
+							(myarg and not selective)
+						if not reinstall_for_flags and \
+							not must_reinstall and \
+							vardb.cpv_exists(cpv):
+							break
+					if installed:
+						must_reinstall = empty or \
+							(found_available_arg and not selective)
+						if must_reinstall:
+							break
 					# Metadata accessed above is cached internally by
 					# each db in order to optimize visibility checks.
 					# Now that all possible checks visibility checks
