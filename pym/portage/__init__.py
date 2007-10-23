@@ -1195,9 +1195,10 @@ class config(object):
 
 
 			# Don't allow the user to override certain variables in make.conf
-			for key in self.mygcfg.keys():
-				if key in self.configdict["defaults"].get("PROFILE_ONLY_VARIABLES", "").split():
-					del self.mygcfg[key]
+			profile_only_variables = self.configdict["defaults"].get(
+				"PROFILE_ONLY_VARIABLES", "").split()
+			for k in profile_only_variables:
+				self.mygcfg.pop(k, None)
 			
 			# Allow ROOT setting to come from make.conf if it's not overridden
 			# by the constructor argument (from the calling environment).  As a
@@ -1224,9 +1225,8 @@ class config(object):
 
 			myenv = os.environ.copy()		
 			# Don't allow the user to override certain variables in the env
-			for key in myenv.keys():
-				if key in self.configdict["defaults"].get("PROFILE_ONLY_VARIABLES", "").split():
-					del myenv[key]
+			for k in profile_only_variables:
+				myenv.pop(k, None)
 
 			self.configlist.append(myenv)
 			self.configdict["env"]=self.configlist[-1]
