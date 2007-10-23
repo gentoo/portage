@@ -68,16 +68,15 @@ class StaticFileSet(EditablePackageSet):
 			self._setAtoms(data.keys())
 			self._mtime = mtime
 		
-	def singleBuilder(self, options, setconfig):
+	def singleBuilder(self, options, settings, trees):
 		if not "filename" in options:
 			raise SetConfigError("no filename specified")
 		return ConfigFileSet(options[filename])
 	singleBuilder = classmethod(singleBuilder)
 	
-	def multiBuilder(self, options, setconfig):
+	def multiBuilder(self, options, settings, trees):
 		rValue = {}
-		directory = options.get("directory", \
-			os.path.join(setconfig.settings["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH.lstrip(os.sep), "sets"))
+		directory = options.get("directory", os.path.join(settings["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH.lstrip(os.sep), "sets"))
 		name_pattern = options.get("name_pattern", "sets/$name")
 		if not "$name" in name_pattern and not "${name}" in name_pattern:
 			raise SetConfigError("name_pattern doesn't include $name placeholder")
@@ -102,16 +101,15 @@ class ConfigFileSet(PackageSet):
 		data, errors = self.loader.load()
 		self._setAtoms(data.keys())
 	
-	def singleBuilder(self, options, setconfig):
+	def singleBuilder(self, options, settings, trees):
 		if not "filename" in options:
 			raise SetConfigError("no filename specified")
 		return ConfigFileSet(options[filename])
 	singleBuilder = classmethod(singleBuilder)
 	
-	def multiBuilder(self, options, setconfig):
+	def multiBuilder(self, options, settings, trees):
 		rValue = {}
-		directory = options.get("directory", \
-			os.path.join(setconfig.settings["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH.lstrip(os.sep)))
+		directory = options.get("directory", os.path.join(settings["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH.lstrip(os.sep)))
 		name_pattern = options.get("name_pattern", "sets/package_$suffix")
 		if not "$suffix" in name_pattern and not "${suffix}" in name_pattern:
 			raise SetConfigError("name_pattern doesn't include $suffix placeholder")
@@ -164,6 +162,6 @@ class WorldSet(StaticFileSet):
 		self.replace(newworldlist)
 		self.unlock()
 
-	def singleBuilder(self, options, setconfig):
-		return WorldSet(setconfig.settings["ROOT"])
+	def singleBuilder(self, options, settings, trees):
+		return WorldSet(settings["ROOT"])
 	singleBuilder = classmethod(singleBuilder)

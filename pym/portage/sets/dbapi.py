@@ -31,8 +31,8 @@ class EverythingSet(PackageSet):
 				myatoms.append(cp)
 		self._setAtoms(myatoms)
 	
-	def singleBuilder(self, options, setconfig):
-		return EverythingSet(setconfig.trees["vartree"].dbapi)
+	def singleBuilder(self, options, settings, trees):
+		return EverythingSet(trees["vartree"].dbapi)
 	singleBuilder = classmethod(singleBuilder)
 
 class CategorySet(PackageSet):
@@ -71,7 +71,7 @@ class CategorySet(PackageSet):
 		return bool(visible in ["1", "yes", "true", "on"])
 	_builderGetVisible = classmethod(_builderGetVisible)
 		
-	def singleBuilder(cls, options, setconfig):
+	def singleBuilder(cls, options, settings, trees):
 		if not "category" in options:
 			raise SetConfigError("no category given")
 
@@ -79,24 +79,24 @@ class CategorySet(PackageSet):
 		if not category in categories:
 			raise SetConfigError("invalid category name '%s'" % category)
 
-		repository = cls._builderGetRepository(options, setconfig.trees.keys())
+		repository = cls._builderGetRepository(options, trees.keys())
 		visible = cls._builderGetVisible(options)
 		
-		return CategorySet(category, dbapi=setconfig.trees[repository].dbapi, only_visible=visible)
+		return CategorySet(category, dbapi=trees[repository].dbapi, only_visible=visible)
 	singleBuilder = classmethod(singleBuilder)
 
-	def multiBuilder(cls, options, setconfig):
+	def multiBuilder(cls, options, settings, trees):
 		rValue = {}
 	
 		if "categories" in options:
 			categories = options["categories"].split()
-			invalid = set(categories).difference(setconfig.settings.categories)
+			invalid = set(categories).difference(settings.categories)
 			if invalid:
 				raise SetConfigError("invalid categories: %s" % ", ".join(list(invalid)))
 		else:
-			categories = setconfig.settings.categories
+			categories = settings.categories
 	
-		repository = cls._builderGetRepository(options, setconfig.trees.keys())
+		repository = cls._builderGetRepository(options, trees.keys())
 		visible = cls._builderGetVisible(options)
 		name_pattern = options.get("name_pattern", "$category/*")
 	
@@ -104,7 +104,7 @@ class CategorySet(PackageSet):
 			raise SetConfigError("name_pattern doesn't include $category placeholder")
 	
 		for cat in categories:
-			myset = CategorySet(cat, setconfig.trees[repository].dbapi, only_visible=visible)
+			myset = CategorySet(cat, trees[repository].dbapi, only_visible=visible)
 			myname = name_pattern.replace("$category", cat)
 			myname = myname.replace("${category}", cat)
 			rValue[myname] = myset
@@ -147,8 +147,8 @@ class PreservedLibraryConsumerSet(LibraryConsumerSet):
 			return
 		self._setAtoms(self.mapPathsToAtoms(consumers))
 
-	def singleBuilder(cls, options, setconfig):
-		return PreservedLibraryConsumerSet(setconfig.trees["vartree"].dbapi)
+	def singleBuilder(cls, options, settings, trees):
+		return PreservedLibraryConsumerSet(trees["vartree"].dbapi)
 	singleBuilder = classmethod(singleBuilder)
 
 class MissingLibraryConsumerSet(LibraryConsumerSet):
@@ -173,10 +173,10 @@ class MissingLibraryConsumerSet(LibraryConsumerSet):
 			return
 		self._setAtoms(self.mapPathsToAtoms(consumers))
 	
-	def singleBuilder(cls, options, setconfig):
+	def singleBuilder(cls, options, settings, trees):
 		if options.get("debug", "true").lower() in ["true", "on", "1", "yes"]:
 			debug = True
 		else:
 			debug = False
-		return MissingLibraryConsumerSet(setconfig.trees["vartree"].dbapi, debug=debug)
+		return MissingLibraryConsumerSet(trees["vartree"].dbapi, debug=debug)
 	singleBuilder = classmethod(singleBuilder)
