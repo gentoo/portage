@@ -7973,11 +7973,12 @@ class dblink:
 			collisions = []
 			destroot = normalize_path(destroot).rstrip(os.path.sep) + \
 				os.path.sep
-			print green("*")+" checking "+str(len(myfilelist))+" files for package collisions"
+			writemsg_stdout("%s checking %d files for package collisions\n" % \
+				(green("*"), len(myfilelist)))
 			for f in myfilelist:
 				i=i+1
 				if i % 1000 == 0:
-					print str(i)+" files checked ..."
+					writemsg_stdout("%d files checked ...\n" % i)
 				dest_path = normalize_path(
 					os.path.join(destroot, f.lstrip(os.path.sep)))
 				try:
