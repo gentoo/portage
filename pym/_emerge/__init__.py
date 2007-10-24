@@ -1517,6 +1517,38 @@ class depgraph(object):
 			return 0
 		return 1
 
+	def _greedy_slot_atoms(self, root, atom):
+		"""Generate SLOT atoms for the highest available match and
+		any matching installed SLOTs that are also available."""
+		vardb = self.roots[root].trees["vartree"].dbapi
+		filtered_db = self._filtered_trees[root]["porttree"].dbapi
+		mykey = portage.dep_getkey(atom)
+		myslots = set()
+		for cpv in vardb.match(mykey):
+			myslots.add(vardb.aux_get(cpv, ["SLOT"])[0])
+		if myslots:
+			self._populate_filtered_repo(root, atom,
+				exclude_installed=True)
+			mymatches = filtered_db.match(atom)
+			best_pkg = portage.best(mymatches)
+			if best_pkg:
+				best_slot = filtered_db.aux_get(best_pkg, ["SLOT"])[0]
+				myslots.add(best_slot)
+		if len(myslots) > 1:
+			for myslot in myslots:
+				myslot_atom = "%s:%s" % (mykey, myslot)
+				self._populate_filtered_repo(
+					root, myslot_atom,
+					exclude_installed=True)
+				if filtered_db.match(myslot_atom):
+					yield myslot_atom
+
+		# Since populate_filtered_repo() was called with the
+		# exclude_installed flag, these atoms will need to be processed
+		# again in case installed packages are required to satisfy
+		# dependencies.
+		self._filtered_trees[root]["atoms"].clear()
+
 	def _get_parent_sets(self, root, atom):
 		refs = []
 		for set_name, atom_set in self._sets.iteritems():
@@ -1644,6 +1676,17 @@ class depgraph(object):
 						print "    " + green(i)
 					print
 					return False, myfavorites
+
+		if "--update" in self.myopts and not mysets:
+			# Enable greedy SLOT atoms for atoms given as arguments.
+			# This is currently disabled for sets since greedy SLOT
+			# atoms could be a property of the set itself.
+			greedy_atoms = []
+			for myarg, atom in arg_atoms:
+				greedy_atoms.append((myarg, atom))
+				for greedy_atom in self._greedy_slot_atoms(myroot, atom):
+					greedy_atoms.append((myarg, greedy_atom))
+			arg_atoms = greedy_atoms
 
 		oneshot = "--oneshot" in self.myopts or \
 			"--onlydeps" in self.myopts
