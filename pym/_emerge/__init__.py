@@ -1632,40 +1632,6 @@ class depgraph(object):
 					print
 					return False, myfavorites
 
-		if "--update" in self.myopts:
-			"""Make sure all installed slots are updated when possible. Do this
-			with --emptytree also, to ensure that all slots are remerged."""
-			greedy_atoms = []
-			for myarg, atom in arg_atoms:
-				greedy_atoms.append((myarg, atom))
-				mykey = portage.dep_getkey(atom)
-				myslots = set()
-				for cpv in vardb.match(mykey):
-					myslots.add(vardb.aux_get(cpv, ["SLOT"])[0])
-				if myslots:
-					self._populate_filtered_repo(myroot, atom,
-						exclude_installed=True)
-					mymatches = filtered_db.match(atom)
-					best_pkg = portage.best(mymatches)
-					if best_pkg:
-						best_slot = filtered_db.aux_get(best_pkg, ["SLOT"])[0]
-						myslots.add(best_slot)
-				if len(myslots) > 1:
-					for myslot in myslots:
-						myslot_atom = "%s:%s" % (mykey, myslot)
-						self._populate_filtered_repo(
-							myroot, myslot_atom,
-							exclude_installed=True)
-						if filtered_db.match(myslot_atom):
-							greedy_atoms.append((myarg, myslot_atom))
-			arg_atoms = greedy_atoms
-
-			# Since populate_filtered_repo() was called with the
-			# exclude_installed flag, these atoms will need to be processed
-			# again in case installed packages are required to satisfy
-			# dependencies.
-			self._filtered_trees[myroot]["atoms"].clear()
-
 		oneshot = "--oneshot" in self.myopts or \
 			"--onlydeps" in self.myopts
 		""" These are used inside self.create() in order to ensure packages
