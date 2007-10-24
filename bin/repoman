@@ -1828,7 +1828,7 @@ else:
 	commitmessage+="/"+unameout
 	if options.force:
 		commitmessage += ", RepoMan options: --force"
-		commitmessage += ")"
+	commitmessage += ")"
 	if not manifest1_compat:
 		myfiles = myupdates + myremoved + mymanifests
 		filesdirs = set()
