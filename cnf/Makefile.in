@@ -1,3 +1,4 @@
+prefix = @prefix@
 sysconfdir = @sysconfdir@
 datadir = @datadir@
 DEFAULT_PATH = @DEFAULT_PATH@
