@@ -1156,6 +1156,7 @@ class depgraph(object):
 		self._slot_collision_nodes = set()
 		self._altlist_cache = {}
 		self._pprovided_args = []
+		self._missing_args = []
 
 	def _show_slot_collision_notice(self, packages):
 		"""Show an informational message advising the user to mask one of the
@@ -1523,8 +1524,20 @@ class depgraph(object):
 			return 0
 		return 1
 
-	def select_files(self,myfiles):
+	def _get_parent_sets(self, root, atom):
+		refs = []
+		for set_name, atom_set in self._sets.iteritems():
+			if set_name in refs:
+				continue
+			if atom in atom_set:
+				refs.append(set_name)
+		if len(refs) > 1 and "args" in refs:
+			refs.remove("args")
+		return refs
+
+	def select_files(self, myfiles, mysets):
 		"given a list of .tbz2s, .ebuilds and deps, create the appropriate depgraph and return a favorite list"
+		self._sets.update(mysets)
 		myfavorites=[]
 		myroot = self.target_root
 		dbs = self._filtered_trees[myroot]["dbs"]
@@ -1651,9 +1664,26 @@ class depgraph(object):
 			self._set_atoms.add(myatom)
 			if not oneshot:
 				myfavorites.append(myatom)
-		for myarg, myatom in arg_atoms:
+		pprovideddict = pkgsettings.pprovideddict
+		for arg, atom in arg_atoms:
 				try:
-					if not self._select_arg(myroot, myatom, myarg, addme):
+					pprovided = pprovideddict.get(portage.dep_getkey(atom))
+					if pprovided and portage.match_from_list(atom, pprovided):
+						# A provided package has been specified on the command line.
+						self._pprovided_args.append((arg, atom))
+						continue
+					self._populate_filtered_repo(myroot, atom)
+					pkg, existing_node = self._select_package(myroot, atom)
+					if not pkg:
+						refs = self._get_parent_sets(myroot, atom)
+						if len(refs) == 1 and "args" in refs:
+							self._show_unsatisfied_dep(myroot, atom)
+							return 0, myfavorites
+						self._missing_args.append((arg, atom))
+						continue
+					if not self.create(pkg, addme=addme):
+						sys.stderr.write(("\n\n!!! Problem resolving " + \
+							"dependencies for %s\n") % atom)
 						return 0, myfavorites
 				except portage.exception.MissingSignature, e:
 					portage.writemsg("\n\n!!! A missing gpg signature is preventing portage from calculating the\n")
@@ -2128,20 +2158,6 @@ class depgraph(object):
 
 		# ordered by type preference ("ebuild" type is the last resort)
 		return  matched_packages[-1], existing_node
-
-	def _select_arg(self, root, atom, arg, addme):
-		pprovided = self.pkgsettings[root].pprovideddict.get(
-			portage.dep_getkey(atom))
-		if pprovided and portage.match_from_list(atom, pprovided):
-			# A provided package has been specified on the command line.
-			self._pprovided_args.append((arg, atom))
-			return 1
-		self._populate_filtered_repo(root, atom)
-		pkg, existing_node = self._select_package(root, atom)
-		if not pkg:
-			self._show_unsatisfied_dep(root, atom, arg=arg)
-			return 0
-		return self.create(pkg, addme=addme)
 
 	def validate_blockers(self):
 		"""Remove any blockers from the digraph that do not match any of the
@@ -3275,15 +3291,36 @@ class depgraph(object):
 				print bold('*'+revision)
 				sys.stdout.write(text)
 
+		# TODO: Add generic support for "set problem" handlers so that
+		# the below warnings aren't special cases for world only.
+		if self._missing_args:
+			world_problems = False
+			if "world" in self._sets:
+				for arg, atom in self._missing_args:
+					if "world" in self._get_parent_sets(
+						self.target_root, atom):
+						world_problems = True
+						break
+
+			if world_problems:
+				sys.stderr.write("\n!!! Problems have been " + \
+					"detected with your world file\n")
+				sys.stderr.write("!!! Please run " + \
+					green("emaint --check world")+"\n\n")
+
+			sys.stderr.write("\n" + colorize("BAD", "!!!") + \
+				" Ebuilds for the following packages are either all\n")
+			sys.stderr.write(colorize("BAD", "!!!") + \
+				" masked or don't exist:\n")
+			sys.stderr.write(" ".join(arg[1] for arg in \
+				self._missing_args) + "\n")
+
 		if self._pprovided_args:
 			arg_refs = {}
 			for arg_atom in self._pprovided_args:
 				arg, atom = arg_atom
-				arg_refs[arg_atom] = []
-				cp = portage.dep_getkey(atom)
-				for set_name, atom_set in self._sets.iteritems():
-					if atom in atom_set:
-						arg_refs[arg_atom].append(set_name)
+				refs = arg_refs.setdefault(arg_atom, [])
+				refs.extend(self._get_parent_sets(self.target_root, atom))
 			msg = []
 			msg.append(bad("\nWARNING: "))
 			if len(self._pprovided_args) > 1:
@@ -5852,7 +5889,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 		print "Number removed:       "+str(len(cleanlist))
 
 def action_build(settings, trees, mtimedb,
-	myopts, myaction, myfiles, spinner):
+	myopts, myaction, myfiles, mysets, spinner):
 	ldpath_mtimes = mtimedb["ldpath"]
 	favorites=[]
 	merge_count = 0
@@ -5945,7 +5982,7 @@ def action_build(settings, trees, mtimedb,
 			sys.stdout.flush()
 		mydepgraph = depgraph(settings, trees, myopts, myparams, spinner)
 		try:
-			retval, favorites = mydepgraph.select_files(myfiles)
+			retval, favorites = mydepgraph.select_files(myfiles, mysets)
 		except portage.exception.PackageNotFound, e:
 			portage.writemsg("\n!!! %s\n" % str(e), noiselevel=-1)
 			return 1
@@ -6427,6 +6464,7 @@ def emerge_main():
 			print colorize("BAD", "\n*** emerging by path is broken and may not always work!!!\n")
 			break
 
+	mysets = {}
 	# only expand sets for actions taking package arguments
 	if myaction not in ["search", "metadata", "sync"]:
 		oldargs = myfiles[:]
@@ -6435,11 +6473,12 @@ def emerge_main():
 				# TODO: check if the current setname also resolves to a package name
 				if myaction in ["unmerge", "prune", "clean", "depclean"] and not packagesets[s].supportsOperation("unmerge"):
 					print "emerge: the given set %s does not support unmerge operations" % s
-					sys.exit(1)
+					return 1
 				if not settings.sets[s].getAtoms():
 					print "emerge: '%s' is an empty set" % s
 				else:
 					myfiles.extend(settings.sets[s].getAtoms())
+					mysets[s] = settings.sets[s]
 				for e in settings.sets[s].errors:
 					print e
 				myfiles.remove(s)
@@ -6447,12 +6486,12 @@ def emerge_main():
 		# with the help message for empty argument lists
 		if oldargs and not myfiles:
 			print "emerge: no targets left after set expansion"
-			sys.exit(0)
+			return 0
 		del oldargs
 
 	if ("--tree" in myopts) and ("--columns" in myopts):
 		print "emerge: can't specify both of \"--tree\" and \"--columns\"."
-		sys.exit(1)
+		return 1
 
 	if ("--quiet" in myopts):
 		spinner.update = spinner.update_quiet
@@ -6502,7 +6541,7 @@ def emerge_main():
 	if ("--ask" in myopts) and (not sys.stdin.isatty()):
 		portage.writemsg("!!! \"--ask\" should only be used in a terminal. Exiting.\n",
 			noiselevel=-1)
-		sys.exit(1)
+		return 1
 
 	if settings.get("PORTAGE_DEBUG", "") == "1":
 		spinner.update = spinner.update_quiet
@@ -6524,10 +6563,10 @@ def emerge_main():
 		print getportageversion(settings["PORTDIR"], settings["ROOT"],
 			settings.profile_path, settings["CHOST"],
 			trees[settings["ROOT"]]["vartree"].dbapi)
-		sys.exit(0)
+		return 0
 	elif "--help" in myopts:
 		_emerge.help.help(myaction, myopts, portage.output.havecolor)
-		sys.exit(0)
+		return 0
 
 	if "--debug" in myopts:
 		print "myaction", myaction
@@ -6535,7 +6574,7 @@ def emerge_main():
 
 	if not myaction and not myfiles and "--resume" not in myopts:
 		_emerge.help.help(myaction, myopts, portage.output.havecolor)
-		sys.exit(1)
+		return 1
 
 	# check if root user is the current user for the actions where emerge needs this
 	if portage.secpass < 2:
@@ -6660,7 +6699,7 @@ def emerge_main():
 		if "--pretend" not in myopts:
 			display_news_notification(trees)
 		retval = action_build(settings, trees, mtimedb,
-			myopts, myaction, myfiles, spinner)
+			myopts, myaction, myfiles, mysets, spinner)
 		# if --pretend was not enabled then display_news_notification 
 		# was already called by post_emerge
 		if "--pretend" in myopts:
