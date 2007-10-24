@@ -1756,6 +1756,8 @@ elif not options.pretend:
 			mychanged.remove(manifest)
 		mynew = [ elem.rstrip()[7:] for elem in svnstatus if elem.startswith("A") ]
 		myremoved = [ elem.rstrip()[7:] for elem in svnstatus if elem.startswith("D") ]
+		# no idea how to detect binaries in SVN
+		bin_blobs = []
 
 	if isCvs or isSvn:
 		if not (mychanged or mynew or myremoved):
