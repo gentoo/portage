@@ -1517,6 +1517,17 @@ class depgraph(object):
 			return 0
 		return 1
 
+	def _get_parent_sets(self, root, atom):
+		refs = []
+		for set_name, atom_set in self._sets.iteritems():
+			if set_name in refs:
+				continue
+			if atom in atom_set:
+				refs.append(set_name)
+		if len(refs) > 1 and "args" in refs:
+			refs.remove("args")
+		return refs
+
 	def select_files(self, myfiles, mysets):
 		"given a list of .tbz2s, .ebuilds and deps, create the appropriate depgraph and return a favorite list"
 		self._sets.update(mysets)
@@ -1657,6 +1668,10 @@ class depgraph(object):
 					self._populate_filtered_repo(myroot, atom)
 					pkg, existing_node = self._select_package(myroot, atom)
 					if not pkg:
+						refs = self._get_parent_sets(myroot, atom)
+						if len(refs) == 1 and "args" in refs:
+							self._show_unsatisfied_dep(myroot, atom)
+							return 0, myfavorites
 						self._missing_args.append((arg, atom))
 						continue
 					if not self.create(pkg, addme=addme):
@@ -3260,7 +3275,23 @@ class depgraph(object):
 				print bold('*'+revision)
 				sys.stdout.write(text)
 
+		# TODO: Add generic support for "set problem" handlers so that
+		# the below warnings aren't special cases for world only.
 		if self._missing_args:
+			world_problems = False
+			if "world" in self._sets:
+				for arg, atom in self._missing_args:
+					if "world" in self._get_parent_sets(
+						self.target_root, atom):
+						world_problems = True
+						break
+
+			if world_problems:
+				sys.stderr.write("\n!!! Problems have been " + \
+					"detected with your world file\n")
+				sys.stderr.write("!!! Please run " + \
+					green("emaint --check world")+"\n\n")
+
 			sys.stderr.write("\n" + colorize("BAD", "!!!") + \
 				" Ebuilds for the following packages are either all\n")
 			sys.stderr.write(colorize("BAD", "!!!") + \
@@ -3273,14 +3304,7 @@ class depgraph(object):
 			for arg_atom in self._pprovided_args:
 				arg, atom = arg_atom
 				refs = arg_refs.setdefault(arg_atom, [])
-				cp = portage.dep_getkey(atom)
-				for set_name, atom_set in self._sets.iteritems():
-					if set_name in refs:
-						continue
-					if atom in atom_set:
-						refs.append(set_name)
-				if len(refs) > 1 and "args" in refs:
-					refs.remove("args")
+				refs.extend(self._get_parent_sets(self.target_root, atom))
 			msg = []
 			msg.append(bad("\nWARNING: "))
 			if len(self._pprovided_args) > 1:
