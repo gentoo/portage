@@ -330,7 +330,6 @@ qawarnings=[
 missingvars=["KEYWORDS","LICENSE","DESCRIPTION","HOMEPAGE","SLOT"]
 allvars=portage.auxdbkeys
 commitmessage=None
-commitmessagefile=None
 for x in missingvars:
 	x += ".missing"
 	if x not in qacats:
@@ -1794,15 +1793,16 @@ else:
 	logging.info("myupdates:", str(myupdates))
 	logging.info("myheaders:", str(myheaders))
 
-	if commitmessagefile:
+	commitmessage = options.commitmsg
+	if options.commitmsgfile:
 		try:
-			f = open(commitmessagefile)
+			f = open(options.commitmsgfile)
 			commitmessage = f.read()
 			f.close()
 			del f
 		except (IOError, OSError), e:
 			if e.errno == errno.ENOENT:
-				portage.writemsg("!!! File Not Found: --commitmsgfile='%s'\n" % commitmessagefile)
+				portage.writemsg("!!! File Not Found: --commitmsgfile='%s'\n" % options.commitmsgfile)
 			else:
 				raise
 		# We've read the content so the file is no longer needed.
