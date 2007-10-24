@@ -1517,8 +1517,9 @@ class depgraph(object):
 			return 0
 		return 1
 
-	def select_files(self,myfiles):
+	def select_files(self, myfiles, mysets):
 		"given a list of .tbz2s, .ebuilds and deps, create the appropriate depgraph and return a favorite list"
+		self._sets.update(mysets)
 		myfavorites=[]
 		myroot = self.target_root
 		dbs = self._filtered_trees[myroot]["dbs"]
@@ -3271,11 +3272,15 @@ class depgraph(object):
 			arg_refs = {}
 			for arg_atom in self._pprovided_args:
 				arg, atom = arg_atom
-				arg_refs[arg_atom] = []
+				refs = arg_refs.setdefault(arg_atom, [])
 				cp = portage.dep_getkey(atom)
 				for set_name, atom_set in self._sets.iteritems():
+					if set_name in refs:
+						continue
 					if atom in atom_set:
-						arg_refs[arg_atom].append(set_name)
+						refs.append(set_name)
+				if len(refs) > 1 and "args" in refs:
+					refs.remove("args")
 			msg = []
 			msg.append(bad("\nWARNING: "))
 			if len(self._pprovided_args) > 1:
@@ -5791,7 +5796,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 		print "Number removed:       "+str(len(cleanlist))
 
 def action_build(settings, trees, mtimedb,
-	myopts, myaction, myfiles, spinner):
+	myopts, myaction, myfiles, mysets, spinner):
 	ldpath_mtimes = mtimedb["ldpath"]
 	favorites=[]
 	merge_count = 0
@@ -5884,7 +5889,7 @@ def action_build(settings, trees, mtimedb,
 			sys.stdout.flush()
 		mydepgraph = depgraph(settings, trees, myopts, myparams, spinner)
 		try:
-			retval, favorites = mydepgraph.select_files(myfiles)
+			retval, favorites = mydepgraph.select_files(myfiles, mysets)
 		except portage.exception.PackageNotFound, e:
 			portage.writemsg("\n!!! %s\n" % str(e), noiselevel=-1)
 			return 1
@@ -6366,6 +6371,7 @@ def emerge_main():
 			print colorize("BAD", "\n*** emerging by path is broken and may not always work!!!\n")
 			break
 
+	mysets = {}
 	# only expand sets for actions taking package arguments
 	if myaction not in ["search", "metadata", "sync"]:
 		oldargs = myfiles[:]
@@ -6379,6 +6385,7 @@ def emerge_main():
 					print "emerge: '%s' is an empty set" % s
 				else:
 					myfiles.extend(settings.sets[s].getAtoms())
+					mysets[s] = settings.sets[s]
 				for e in settings.sets[s].errors:
 					print e
 				myfiles.remove(s)
@@ -6599,7 +6606,7 @@ def emerge_main():
 		if "--pretend" not in myopts:
 			display_news_notification(trees)
 		retval = action_build(settings, trees, mtimedb,
-			myopts, myaction, myfiles, spinner)
+			myopts, myaction, myfiles, mysets, spinner)
 		# if --pretend was not enabled then display_news_notification 
 		# was already called by post_emerge
 		if "--pretend" in myopts:
