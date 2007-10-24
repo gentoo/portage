@@ -5654,25 +5654,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 				if not arg_atom:
 					filtered_pkgs.append(pkg)
 			pkgs = filtered_pkgs
-		prune_this = False
-		if action == "prune":
-			for pkg in pkgs:
-				metadata = dict(izip(metadata_keys,
-					vardb.aux_get(pkg, metadata_keys)))
-				try:
-					arg_atom = args_set.findAtomForPackage(pkg, metadata)
-				except portage.exception.InvalidDependString, e:
-					file_path = os.path.join(myroot, VDB_PATH, pkg, "PROVIDE")
-					portage.writemsg("\n\nInvalid PROVIDE: %s\n" % str(s),
-						noiselevel=-1)
-					portage.writemsg("See '%s'\n" % file_path,
-						noiselevel=-1)
-					del e
-					continue
-				if arg_atom:
-					prune_this = True
-					break
-		if len(pkgs) > 1 and (parent != "world" or prune_this):
+		if len(pkgs) > 1:
 			# Prune all but the best matching slot, since that's all that a
 			# deep world update would pull in.  Don't prune if this atom comes
 			# directly from world though, since world atoms are greedy when
