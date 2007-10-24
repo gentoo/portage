@@ -164,7 +164,7 @@ actions=[
 "clean", "config", "depclean",
 "info", "metadata",
 "prune", "regen",  "search",
-"sync",  "system", "unmerge",  "world",
+"sync",  "unmerge",
 ]
 options=[
 "--ask",          "--alphabetical",
@@ -2677,98 +2677,6 @@ class depgraph(object):
 		self._altlist_cache[reversed] = retlist[:]
 		return retlist
 
-	def xcreate(self,mode="system"):
-		vardb = self.trees[self.target_root]["vartree"].dbapi
-		filtered_db = self._filtered_trees[self.target_root]["porttree"].dbapi
-		world_problems = False
-
-		root_config = self.roots[self.target_root]
-		world_set = root_config.settings.sets["world"]
-		system_set = root_config.settings.sets["system"]
-		mylist = list(system_set)
-		self._sets["system"] = system_set
-		if mode == "world":
-			self._sets["world"] = world_set
-			for x in world_set:
-				if not portage.isvalidatom(x):
-					world_problems = True
-					continue
-				elif not vardb.match(x):
-					world_problems = True
-					self._populate_filtered_repo(self.target_root, x,
-						exclude_installed=True)
-					if not filtered_db.match(x):
-						continue
-				mylist.append(x)
-
-		newlist = []
-		missing_atoms = []
-		empty = "empty" in self.myparams
-		for atom in mylist:
-			self._populate_filtered_repo(self.target_root, atom,
-				exclude_installed=True)
-			if not filtered_db.match(atom):
-				if empty or not vardb.match(atom):
-					missing_atoms.append(atom)
-				continue
-			mykey = portage.dep_getkey(atom)
-			if True:
-				newlist.append(atom)
-				if mode == "system" or atom not in world_set:
-					# only world is greedy for slots, not system
-					continue
-				# Make sure all installed slots are updated when possible.
-				# Do this with --emptytree also, to ensure that all slots are
-				# remerged.
-				myslots = set()
-				for cpv in vardb.match(mykey):
-					myslots.add(vardb.aux_get(cpv, ["SLOT"])[0])
-				if myslots:
-					self._populate_filtered_repo(self.target_root, atom,
-						exclude_installed=True)
-					mymatches = filtered_db.match(atom)
-					best_pkg = portage.best(mymatches)
-					if best_pkg:
-						best_slot = filtered_db.aux_get(best_pkg, ["SLOT"])[0]
-						myslots.add(best_slot)
-				if len(myslots) > 1:
-					for myslot in myslots:
-						myslot_atom = "%s:%s" % (mykey, myslot)
-						self._populate_filtered_repo(
-							self.target_root, myslot_atom,
-							exclude_installed=True)
-						if filtered_db.match(myslot_atom):
-							newlist.append(myslot_atom)
-		mylist = newlist
-
-		for myatom in mylist:
-			self._set_atoms.add(myatom)
-
-		# Since populate_filtered_repo() was called with the exclude_installed
-		# flag, these atoms will need to be processed again in case installed
-		# packages are required to satisfy dependencies.
-		self._filtered_trees[self.target_root]["atoms"].clear()
-		addme = "--onlydeps" not in self.myopts
-		for mydep in mylist:
-			if not self._select_arg(self.target_root, mydep, mydep, addme):
-				print >> sys.stderr, "\n\n!!! Problem resolving dependencies for", mydep
-				return 0
-
-		if not self.validate_blockers():
-			return False
-
-		if world_problems:
-			print >> sys.stderr, "\n!!! Problems have been detected with your world file"
-			print >> sys.stderr, "!!! Please run "+green("emaint --check world")+"\n"
-
-		if missing_atoms:
-			print >> sys.stderr, "\n" + colorize("BAD", "!!!") + \
-				" Ebuilds for the following packages are either all"
-			print >> sys.stderr, colorize("BAD", "!!!") + " masked or don't exist:"
-			print >> sys.stderr, " ".join(missing_atoms) + "\n"
-
-		return 1
-
 	def display(self, mylist, favorites=[], verbosity=None):
 		if verbosity is None:
 			verbosity = ("--quiet" in self.myopts and 1 or \
@@ -4176,13 +4084,10 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 	
 		mysettings = portage.config(clone=settings)
 	
-		if not unmerge_files or "world" in unmerge_files or \
-			"system" in unmerge_files:
+		if not unmerge_files:
 			if "unmerge"==unmerge_action:
 				print
-				print bold("emerge unmerge") + " can only be used with " + \
-					"specific package names, not with "+bold("world")+" or"
-				print bold("system")+" targets."
+				print bold("emerge unmerge") + " can only be used with specific package names"
 				print
 				return 0
 			else:
@@ -4192,10 +4097,8 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 		# process all arguments and add all
 		# valid db entries to candidate_catpkgs
 		if global_unmerge:
-			if not unmerge_files or "world" in unmerge_files:
+			if not unmerge_files:
 				candidate_catpkgs.extend(vartree.dbapi.cp_all())
-			elif "system" in unmerge_files:
-				candidate_catpkgs.extend(settings.sets["system"].getAtoms())
 		else:
 			#we've got command-line arguments
 			if not unmerge_files:
@@ -5350,7 +5253,7 @@ def action_regen(settings, portdb):
 	print "done!"
 
 def action_config(settings, trees, myopts, myfiles):
-	if len(myfiles) != 1 or "system" in myfiles or "world" in myfiles:
+	if len(myfiles) != 1:
 		print red("!!! config can only take a single package atom at this time\n")
 		sys.exit(1)
 	if not is_valid_package_atom(myfiles[0]):
@@ -6020,33 +5923,22 @@ def action_build(settings, trees, mtimedb,
 			return os.EX_OK
 
 		myparams = create_depgraph_params(myopts, myaction)
-		if myaction in ["system","world"]:
-			if "--quiet" not in myopts and "--nodeps" not in myopts:
-				print "Calculating",myaction,"dependencies  ",
-				sys.stdout.flush()
-			mydepgraph = depgraph(settings, trees, myopts, myparams, spinner)
-			if not mydepgraph.xcreate(myaction):
-				print "!!! Depgraph creation failed."
-				return 1
-			if "--quiet" not in myopts and "--nodeps" not in myopts:
-				print "\b\b... done!"
-		else:
-			if "--quiet" not in myopts and "--nodeps" not in myopts:
-				print "Calculating dependencies  ",
-				sys.stdout.flush()
-			mydepgraph = depgraph(settings, trees, myopts, myparams, spinner)
-			try:
-				retval, favorites = mydepgraph.select_files(myfiles)
-			except portage.exception.PackageNotFound, e:
-				portage.writemsg("\n!!! %s\n" % str(e), noiselevel=-1)
-				return 1
-			if not retval:
-				return 1
-			if "--quiet" not in myopts and "--nodeps" not in myopts:
-				print "\b\b... done!"
+		if "--quiet" not in myopts and "--nodeps" not in myopts:
+			print "Calculating dependencies  ",
+			sys.stdout.flush()
+		mydepgraph = depgraph(settings, trees, myopts, myparams, spinner)
+		try:
+			retval, favorites = mydepgraph.select_files(myfiles)
+		except portage.exception.PackageNotFound, e:
+			portage.writemsg("\n!!! %s\n" % str(e), noiselevel=-1)
+			return 1
+		if not retval:
+			return 1
+		if "--quiet" not in myopts and "--nodeps" not in myopts:
+			print "\b\b... done!"
 
-			if ("--usepkgonly" in myopts) and mydepgraph.missingbins:
-				sys.stderr.write(red("The following binaries are not available for merging...\n"))
+		if ("--usepkgonly" in myopts) and mydepgraph.missingbins:
+			sys.stderr.write(red("The following binaries are not available for merging...\n"))
 
 		if mydepgraph.missingbins:
 			for x in mydepgraph.missingbins:
@@ -6289,7 +6181,7 @@ def parse_opts(tmpcmdline, silent=False):
 
 	for x in myargs:
 		if x in actions and myaction != "search":
-			if not silent and x not in ["system", "world"]:
+			if not silent:
 				print red("*** Deprecated use of action '%s', use '--%s' instead" % (x,x))
 			# special case "search" so people can search for action terms, e.g. emerge -s sync
 			if myaction:
@@ -6511,10 +6403,6 @@ def emerge_main():
                 ||     ||
 
 """
-
-	if (myaction in ["world", "system"]) and myfiles:
-		print "emerge: please specify a package class (\"world\" or \"system\") or individual packages, but not both."
-		sys.exit(1)
 
 	for x in myfiles:
 		ext = os.path.splitext(x)[1]
