@@ -7,45 +7,39 @@
 # Then, check to make sure deps are satisfiable (to avoid "can't find match for" problems)
 # that last one is tricky because multiple profiles need to be checked.
 
+import codecs
 import errno
-from itertools import izip
+import logging
+import optparse
 import os
+import re
 import shutil
-import sys
 import signal
 import stat
-import re
+import sys
 import tempfile
+import time
+
+from commands import getstatusoutput
+from fileinput import input
+from grp import getgrnam
+from itertools import izip
+from stat import S_ISDIR, ST_CTIME, ST_GID, ST_MTIME
 
 try:
 	import cPickle as pickle
 except ImportError:
 	import pickle
 
-try:
-	import cStringIO as StringIO
-except ImportError:
-	import StringIO
-
 if not hasattr(__builtins__, "set"):
 	from sets import Set as set
-
-exename=os.path.basename(sys.argv[0])	
-version="1.2"	
-
-allowed_filename_chars="a-zA-Z0-9._-+:"
-allowed_filename_chars_set = {}
-map(allowed_filename_chars_set.setdefault, map(chr, range(ord('a'), ord('z')+1)))
-map(allowed_filename_chars_set.setdefault, map(chr, range(ord('A'), ord('Z')+1)))
-map(allowed_filename_chars_set.setdefault, map(chr, range(ord('0'), ord('9')+1)))
-map(allowed_filename_chars_set.setdefault, map(chr, map(ord, [".", "-", "_", "+", ":"])))
 
 os.environ["PORTAGE_LEGACY_GLOBALS"] = "false"
 try:
 	import portage
 except ImportError:
 	from os import path as osp
-	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), 'pym'))
+	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
 	import portage
 del os.environ["PORTAGE_LEGACY_GLOBALS"]
 
@@ -58,29 +52,33 @@ except ImportError:
 	from repoman.checks import EbuildWhitespace, EbuildHeader, EbuildQuote, \
 		EbuildAssignment, EbuildNestedDie, EbuildUselessDodoc
 
+try:
+	import cStringIO as StringIO
+except ImportError:
+	import StringIO
+
 import portage.checksum
 import portage.const
 import portage.dep
-import portage.dep
 portage.dep._dep_check_strict = True
 import portage.exception
-from portage import cvstree
-import time
-import codecs
-
+from portage import cvstree, normalize_path
 from portage.manifest import Manifest
 from portage.exception import ParseError
 from portage.process import find_binary, spawn
-
+from portage.util import initialize_logger
 from portage.output import bold, create_color_func, darkgreen, \
 	green, nocolor, red, turquoise, yellow
 
-bad = create_color_func("BAD")
+initialize_logger()
 
-from commands import getstatusoutput
-from fileinput import input
-from grp import getgrnam
-from stat import S_ISDIR, ST_CTIME, ST_GID, ST_MTIME
+allowed_filename_chars="a-zA-Z0-9._-+:"
+allowed_filename_chars_set = {}
+map(allowed_filename_chars_set.setdefault, map(chr, range(ord('a'), ord('z')+1)))
+map(allowed_filename_chars_set.setdefault, map(chr, range(ord('A'), ord('Z')+1)))
+map(allowed_filename_chars_set.setdefault, map(chr, range(ord('0'), ord('9')+1)))
+map(allowed_filename_chars_set.setdefault, map(chr, map(ord, [".", "-", "_", "+", ":"])))
+bad = create_color_func("BAD")
 
 # A sane umask is needed for files that portage creates.
 os.umask(022)
@@ -92,63 +90,141 @@ if repoman_settings.get("NOCOLOR", "").lower() in ("yes", "true") or \
 	not sys.stdout.isatty():
 	nocolor()
 
-def warn(txt):
-	print exename+": "+txt
-def err(txt):
-	warn(txt)
+def exithandler(signum=None, frame=None):
+	logging.fatal("Interrupted; exiting...")
 	sys.exit(1)
+	os.kill(0, signal.SIGKILL)
 
-def err_help(txt):
-	help(exitstatus=-1,helpfulness=0)
-	warn(txt)
-	sys.exit(1)
-
-def exithandler(signum=None,frame=None):
-	sys.stderr.write("\n"+exename+": Interrupted; exiting...\n")
-	sys.exit(1)
-	os.kill(0,signal.SIGKILL)
 signal.signal(signal.SIGINT,exithandler)
 
-shortmodes={"ci":"commit"}
-modeshelp={
-"scan"   : "Scan directory tree for QA issues (default)",
-"manifest" : "Generate a Manifest (fetches files if necessary)",
-"fix"    : "Fix simple QA issues (stray digests, missing digests)",
-"full"   : "Scan directory tree for QA issues (full listing)",
-"help"   : "Show this screen",
-"commit" : "Scan directory tree for QA issues; if OK, commit via cvs",
-"last"   : "Remember report from last run",
-"lfull"  : "Remember report from last run (full listing)"
-}
-modes=modeshelp.keys()
-modes.sort()
-repoman_options={
-"--commitmsg"      : "Adds a commit message via the command line",
-"--commitmsgfile"  : "Adds a commit message from the specified file",
-"--help"           : "Show this screen",
-"--force"          : "Force commit to proceed, regardless of QA issues",
-"--ignore-arches"  : "Ignore arch-specific failures (where arch != host)",
-"--ignore-masked"  : "Ignore masked packages (not allowed with commit mode)",
-"--pretend"        : "Don't commit or fix anything; just show what would be done",
-"--quiet"          : "Be less verbose about extraneous info",
-"--verbose"        : "Displays every package name while checking",
-"--version"        : "Show version info",
-"--xmlparse"       : "Forces the metadata.xml parse check to be carried out"
-}
-repoman_shortoptions={
-"-h" : "--help",
-"-i" : "--ignore-masked",
-"-I" : "--ignore-arches",
-"-m" : "--commitmsg",
-"-M" : "--commitmsgfile",
-"-p" : "--pretend",
-"-q" : "--quiet",
-"-v" : "--verbose",
-"-V" : "--version",
-"-x" : "--xmlparse"
-}
-repoman_shortoptions_rev=dict([(v,k) for (k,v) in repoman_shortoptions.items()])
-options=repoman_options.keys()
+class RepomanHelpFormatter(optparse.IndentedHelpFormatter):
+	"""Repoman needs it's own HelpFormatter for now, because the default ones
+	murder the help text."""
+	
+	def __init__(self, indent_increment=1, max_help_position=24, width=150, short_first=1):
+		optparse.HelpFormatter.__init__(self, indent_increment, max_help_position, width, short_first)
+
+	def format_description(self, description):
+		return description
+
+class RepomanOptionParser(optparse.OptionParser):
+	"""Add the on_tail function, ruby has it, optionParser should too
+	"""
+	
+	def __init__(self, *args, **kwargs):
+		optparse.OptionParser.__init__(self, *args, **kwargs)
+		self.tail = ""
+
+	def on_tail(self, description):
+		self.tail += description
+
+	def format_help(self, formatter=None):
+		result = optparse.OptionParser.format_help(self, formatter)
+		result += self.tail
+		return result
+
+
+def ParseArgs(args, qahelp):
+	"""This function uses a customized optionParser to parse command line arguments for repoman
+	Args:
+	  args - a sequence of command line arguments
+		qahelp - a dict of qa warning to help message
+	Returns:
+	  (opts, args), just like a call to parser.parse_args()
+	"""
+
+	modes = {
+		'commit' : 'Run a scan then commit changes',
+		'ci' : 'Run a scan then commit changes',
+		'fix' : 'Fix simple QA issues (stray digests, missing digests)',
+		'full' : 'Scan directory tree and print all issues (not a summary)',
+		'help' : 'Show this screen',
+		'last' : 'Remember report from last ru',
+		'lfull' : 'Remember report from last run (full listing)',
+		'manifest' : 'Generate a Manifest (fetches files if necessary)',
+		'scan' : 'Scan directory tree for QA issues' 
+	}
+
+	mode_keys = modes.keys()
+	mode_keys.sort()
+
+	parser = RepomanOptionParser(formatter=RepomanHelpFormatter(), usage="%prog [options] [mode]")
+	parser.description = green(" ".join((os.path.basename(args[0]), "1.2")))
+	parser.description += "\nCopyright 1999-2007 Gentoo Foundation"
+	parser.description += "\nDistributed under the terms of the GNU General Public License v2"
+	parser.description += "\nmodes: " + " | ".join(map(green,mode_keys))
+
+	parser.add_option('-m', '--commitmsg', dest='commitmsg',
+		help='specify a commit message on the command line')
+
+	parser.add_option('-M', '--commitmsgfile', dest='commitmsgfile',
+		help='specify a path to a file that contains a commit message')
+
+	parser.add_option('-p', '--pretend', dest='pretend', default=False,
+		action='store_true', help='don\'t commit or fix anything; just show what would be done')
+	
+	parser.add_option('-q', '--quiet', dest="quiet", action="count", default=0,
+		help='do not print unnecessary messages')
+
+	parser.add_option('-f', '--force', dest='force', default=False, action='store_true',
+		help='Commit with QA violations')
+
+	parser.add_option('-v', '--verbose', dest="verbosity", action='count',
+		help='be very verbose in output', default=0)
+
+	parser.add_option('-x', '--xmlparse', dest='xml_parse', action='store_true',
+		default=False, help='forces the metadata.xml parse check to be carried out')
+
+	parser.add_option('-i', '--ignore-arches', dest='ignore_arches', action='store_true',
+		default=False, help='ignore arch-specific failures (where arch != host)')
+
+	parser.add_option('-I', '--ignored-masked', dest='ignore_masked', action='store_true',
+		default=False, help='ignore masked packages (not allowed with commit mode')
+
+	parser.add_option('--mode', type='choice', dest='mode', choices=modes.keys(), 
+		help='specify which mode repoman will run in (default=scan)')
+
+	parser.on_tail("\n " + green("Modes".ljust(20) + " Description\n"))
+
+	for k in mode_keys:
+		parser.on_tail(" %s %s\n" % (k.ljust(20), modes[k]))
+
+	parser.on_tail("\n " + green("QA keyword".ljust(20) + " Description\n"))
+
+	sorted_qa = qahelp.keys()
+	sorted_qa.sort()
+	for k in sorted_qa:
+		parser.on_tail(" %s %s\n" % (k.ljust(20), qahelp[k]))
+
+	if not args:
+		args = sys.argv
+	opts, args = parser.parse_args(args)
+
+	if opts.mode == 'help':
+		parser.print_help(short=False)
+
+	for arg in args:
+		if arg in modes:
+			if not opts.mode:
+				opts.mode = arg
+				break
+
+	if not opts.mode:
+		opts.mode = 'scan'	#default to scan
+
+	if opts.mode == 'commit' and opts.ignore_masked:
+		parser.error('Commit mode and --ignore_masked are not compatable')
+
+	# Use the verbosity and quiet options to fiddle with the loglevel appropriately
+	for val in range(opts.verbosity):
+		logger = logging.getLogger()
+		logger.setLevel(logger.getEffectiveLevel() - 10)
+
+	for val in range(opts.quiet):
+		logger = logging.getLogger()
+		logger.setLevel(logger.getEffectiveLevel() + 10)
+
+	return (opts, args)
 
 qahelp={
 	"CVS/Entries.IO_error":"Attempting to commit, and an IO error was encountered access the Entries file",
@@ -258,7 +334,7 @@ commitmessagefile=None
 for x in missingvars:
 	x += ".missing"
 	if x not in qacats:
-		print "* missingvars values need to be added to qahelp ("+x+")"
+		logging.warn('* missingvars values need to be added to qahelp ("%s")' % x)
 		qacats.append(x)
 		qawarnings.append(x)
 
@@ -268,69 +344,20 @@ valid_restrict = frozenset(["binchecks", "bindist", "fetch", "mirror",
 # file.executable
 no_exec = frozenset(["Manifest","ChangeLog","metadata.xml"])
 
-verbose=0
-quiet=0
-
-def show_version():
-	print exename+" "+version
-	sys.exit(0)
-	
-def help(exitstatus=1,helpfulness=1):
-	if quiet:
-		helpfulness=0
-	if helpfulness:
-		print
-		print green(exename+" "+version)
-		print " \"Quality is job zero.\""
-		print " Copyright 1999-2006 Gentoo Foundation"
-		print " Distributed under the terms of the GNU General Public License v2"
-		print
-	print bold(" Usage:"),turquoise(exename),"[",green("options"),"] [",green("mode"),"]"
-	if helpfulness:
-		print bold(" Modes:"),turquoise("scan (default)"),
-		for x in modes:
-			if x == "scan":
-				continue
-			print "|",turquoise(x),
-		print
-	print
-	print " "+green("Options".ljust(20)+" Description")
-	for x in options:
-		if repoman_shortoptions_rev.has_key(x):
-			shopt=repoman_shortoptions_rev[x]+", "+x
-		else:
-			shopt="    "+x
-		print " "+shopt.ljust(20),repoman_options[x]
-	print
-	print " "+green("Modes".ljust(20)+" Description")
-	for x in modes:
-		print " "+x.ljust(20),modeshelp[x]
-	if helpfulness:
-		print
-		print " "+green("QA keyword".ljust(20)+" Description")
-		for x in qacats:
-			print " "+x.ljust(20),qahelp[x]
-		print
-	if (exitstatus != -1):
-		sys.exit(exitstatus)
-	else:
-		print
-
-def last():
-	try:
-		#Retrieve and unpickle stats and fails from saved files
-		mystats=os.path.normpath(portage.const.CACHE_DIR+'/repo.stats')
-		myfails=os.path.normpath(portage.const.CACHE_DIR+'/repo.fails')
-		savedf=open(mystat,'r')
-		stats = pickle.load(savedf)
-		savedf.close()
-		savedf=open(myfails,'r')
-		fails = pickle.load(savedf)
-		savedf.close()
-	except SystemExit, e:
-		raise  # Need to propogate this
-	except:
-		err("Error retrieving last repoman run data; exiting.")
+def last(full=False):
+	"""Print the results of the last repoman run
+	Args:
+		full - Print the complete results, if false, print a summary
+	Returns:
+		Doesn't return (invokes sys.exit()
+	"""
+	#Retrieve and unpickle stats and fails from saved files
+	savedf=open('/var/cache/edb/repo.stats','r')
+	stats = pickle.load(savedf)
+	savedf.close()
+	savedf=open('/var/cache/edb/repo.fails','r')
+	fails = pickle.load(savedf)
+	savedf.close()
 
 	#dofail will be set to 1 if we have failed in at least one non-warning category
 	dofail=0
@@ -357,7 +384,7 @@ def last():
 			print yellow(`stats[x]`)
 		else:
 			print red(`stats[x]`)
-		if mymode!="lfull":
+		if not full:
 			if stats[x]<12:
 				for y in fails[x]:
 					print "   "+y
@@ -375,56 +402,19 @@ def last():
 	elif not dofail:
 		print green("RepoMan sez:"),"\"If everyone were like you, I'd be out of business!\""
 	print
-	sys.exit(1)
+	sys.exit(0)
 
-mymode=None
-myoptions = {}
-if len(sys.argv)>1:
-	x=1
-	while x < len(sys.argv):
-		if sys.argv[x] in shortmodes:
-			sys.argv[x]=shortmodes[sys.argv[x]]
-		elif sys.argv[x] in repoman_shortoptions:
-			sys.argv[x] = repoman_shortoptions[sys.argv[x]]
-		if sys.argv[x] in modes:
-			if mymode is None:
-				mymode=sys.argv[x]
-			else:
-				err("Please specify either \""+mymode+"\" or \""+sys.argv[x]+"\", but not both.")
-		elif sys.argv[x] in options:
-			optionx=sys.argv[x]
-			if (optionx=="--commitmsg") and (len(sys.argv)>=(x+1)):
-				commitmessage=sys.argv[x+1]
-				x=x+1
-			elif (optionx=="--commitmsgfile") and (len(sys.argv)>=(x+1)):
-				commitmessagefile=sys.argv[x+1]
-				x=x+1
-			elif (optionx=="--verbose"):
-				verbose+=1
-			elif (optionx=="--quiet"):
-				quiet+=1
-			else:
-				myoptions[optionx] = True
-		else:
-			err_help("\""+sys.argv[x]+"\" is not a valid mode or option.")
-		x=x+1
-if mymode is None:
-	mymode="scan"
-if mymode=="help" or ("--help" in myoptions):
-	help(exitstatus=0)
-if ("--version" in myoptions):
-	show_version()
-if mymode=="last" or (mymode=="lfull"):
-	last()
-if mymode == "commit":
-	myoptions.pop("--ignore-masked", None)
+options, arguments = ParseArgs(sys.argv, qahelp)
+
+if options.mode in ('last', 'lfull'):
+	last('lfull' in options.mode)
 
 # Set this to False when an extraordinary issue (generally
 # something other than a QA issue) makes it impossible to
 # commit (like if Manifest generation fails).
 can_force = True
 
-from portage import normalize_path
+
 isCvs=False
 if os.path.isdir("CVS"):
 	isCvs = True
@@ -433,13 +423,9 @@ isSvn=False
 if os.path.isdir(".svn"):
 	isSvn=True
 
-if mymode == "commit" and \
-	not isCvs and not isSvn and \
-	"--pretend" not in myoptions:
-	print
-	print darkgreen("Not in a CVS or SVN repository; enabling pretend mode.")
-	myoptions["--pretend"] = True
-
+if options.mode == 'commit' and not options.pretend and not isCvs and not isSvn:
+	logging.info("Not in a CVS/SVN repository; enabling pretend mode.")
+	options.pretend = True
 
 def have_profile_dir(path, maxdepth=3):
 	while path != "/" and maxdepth:
@@ -515,10 +501,9 @@ if portdir_overlay != portdir:
 else:
 	os.environ["PORTDIR_OVERLAY"] = ""
 
-if quiet < 2:
-	print "\nSetting paths:"
-	print "PORTDIR = \""+os.environ["PORTDIR"]+"\""
-	print "PORTDIR_OVERLAY = \""+os.environ["PORTDIR_OVERLAY"]+"\""
+logging.info('Setting paths:')
+logging.info('PORTDIR = "' + os.environ['PORTDIR'] + '"')
+logging.info('PORTDIR_OVERLAY = "' + os.environ['PORTDIR_OVERLAY']+'"')
 
 # Now that PORTDIR_OVERLAY is properly overridden, create the portdb.
 repoman_settings = portage.config(local_config=False,
@@ -539,7 +524,7 @@ repolevel=len(reposplit)
 # check if it's in $PORTDIR/$CATEGORY/$PN , otherwise bail if commiting.
 # Reason for this is if they're trying to commit in just $FILESDIR/*, the Manifest needs updating.
 # this check ensure that repoman knows where it is, and the manifest recommit is at least possible.
-if mymode == "commit" and repolevel not in [1,2,3]:
+if options.mode == 'commit' and repolevel not in [1,2,3]:
 	print red("***")+" Commit attempts *must* be from within a cvs or svn co, category, or package directory."
 	print red("***")+" Attempting to commit from a packages files directory will be blocked for instance."
 	print red("***")+" This is intended behaviour, to ensure the manifest is recommited for a package."
@@ -581,8 +566,8 @@ try:
 	parse_use_local_desc(f, luselist)
 	f.close()
 except (IOError, OSError, ParseError), e:
-	print >> sys.stderr, str(e)
-	err("Couldn't read from use.local.desc")
+	logging.exception("Couldn't read from use.local.desc", e)
+	sys.exit(1)
 
 if portdir_overlay != portdir:
 	filename = os.path.join(portdir_overlay, "profiles", "use.local.desc")
@@ -592,8 +577,8 @@ if portdir_overlay != portdir:
 			parse_use_local_desc(f, luselist)
 			f.close()
 		except (IOError, OSError, ParseError), e:
-			print >> sys.stderr, str(e)
-			err("Couldn't read from '%s'" % filename)
+			logging.exception("Couldn't read from '%s'" % filename, e)
+			sys.exit(1)
 	del filename
 
 # setup a uselist from portage
@@ -606,22 +591,23 @@ try:
 		vardescs = portage.grabfile(portdir+"/profiles/desc/"+var.lower()+".desc")
 		for l in range(0, len(vardescs)):
 			uselist.append(var.lower() + "_" + vardescs[l].split()[0])
-except SystemExit, e:
-	raise  # Need to propogate this
-except:
-	err("Couldn't read USE flags from use.desc")
+except (IOError, OSError, ParseError), e:
+	logging.exception("Couldn't read USE flags from use.desc", e)
+	sys.exit(1)
 
 # retrieve a list of current licenses in portage
 liclist = set(portage.listdir(os.path.join(portdir, "licenses")))
 if not liclist:
-	err("Couldn't find licenses?")
+	logging.fatal("Couldn't find licenses?")
+	sys.exit(1)
 if portdir_overlay != portdir:
 	liclist.update(portage.listdir(os.path.join(portdir_overlay, "licenses")))
 
 # retrieve list of offical keywords
 kwlist = set(portage.grabfile(os.path.join(portdir, "profiles", "arch.list")))
 if not kwlist:
-	err("Couldn't read KEYWORDS from arch.list")
+	logging.fatal("Couldn't read KEYWORDS from arch.list")
+	sys.exit(1)
 
 manifest1_compat = not os.path.exists(
 	os.path.join(portdir, "manifest1_obsolete"))
@@ -699,11 +685,11 @@ for x in qacats:
 	fails[x]=[]
 xmllint_capable = False
 metadata_dtd = os.path.join(repoman_settings["DISTDIR"], 'metadata.dtd')
-if mymode == "manifest":
+if options.mode == "manifest":
 	pass
 elif not find_binary('xmllint'):
 	print red("!!! xmllint not found. Can't check metadata.xml.\n")
-	if "--xmlparse" in myoptions or repolevel==3:
+	if options.xml_parse or repolevel==3:
 		print red("!!!")+" sorry, xmllint is needed.  failing\n"
 		sys.exit(1)
 else:
@@ -774,7 +760,7 @@ def x11_deprecation_check(depstr):
 				return True
 	return False
 
-if mymode == "commit":
+if options.mode == 'commit':
 	retval = ("","")
 	if isCvs:
 		print
@@ -811,7 +797,7 @@ if mymode == "commit":
 
 	if myupdates:
 		print green("Fetching trivial updates...")
-		if "--pretend" in myoptions:
+		if options.pretend:
 			print "(cvs/svn up "+" ".join(myupdates)+")"
 			retval = os.EX_OK
 		else:
@@ -823,11 +809,11 @@ if mymode == "commit":
 			print "!!! cvs/svn exited with an error. Terminating."
 			sys.exit(retval)
 
-if mymode == "manifest":
+if options.mode == "manifest":
 	pass
-elif "--pretend" in myoptions:
+elif options.pretend:
 	print green("\nRepoMan does a once-over of the neighborhood...")
-elif quiet < 1:
+else:
 	print green("\nRepoMan scours the neighborhood...")
 
 new_ebuilds = set()
@@ -842,20 +828,19 @@ arch_caches={}
 arch_xmatch_caches = {}
 for x in scanlist:
 	#ebuilds and digests added to cvs respectively.
-	if verbose:
-		print "checking package " + x
+	logging.info("checking package %s" % x)
 	eadded=[]
 	dadded=[]
 	catdir,pkgdir=x.split("/")
 	checkdir=repodir+"/"+x
 
-	if mymode == "manifest" or \
-		mymode in ("commit", "fix") and "--pretend" not in myoptions:
+	if options.mode == "manifest" or \
+	  options.mode in ('commit', 'fix') and not options.pretend:
 		repoman_settings["O"] = checkdir
 		if not portage.digestgen([], repoman_settings, myportdb=portdb):
 			print "Unable to generate manifest."
 			dofail = 1
-		if mymode == "manifest":
+		if options.mode == "manifest":
 			continue
 		elif dofail:
 			sys.exit(1)
@@ -959,10 +944,10 @@ for x in scanlist:
 						if l[-7:] == ".ebuild":
 							eadded.append(l[:-7])
 		except IOError:
-			if mymode=="commit" and isCvs:
+			if options.mode == 'commit' and isCvs:
 				stats["CVS/Entries.IO_error"] += 1
 				fails["CVS/Entries.IO_error"].append(checkdir+"/CVS/Entries")
-			if mymode=="commit" and isSvn:
+			if options.mode == 'commit' and isSvn:
 				stats["svn.IO_error"] += 1
 				fails["svn.IO_error"].append(checkdir+"svn info")
 			continue
@@ -1000,10 +985,10 @@ for x in scanlist:
 						if l[:7] == "digest-":
 							dadded.append(l[7:])
 		except IOError:
-			if mymode=="commit" and isCvs:
+			if options.mode == 'commit' and isCvs:
 				stats["CVS/Entries.IO_error"] += 1
 				fails["CVS/Entries.IO_error"].append(checkdir+"/files/CVS/Entries")
-			if mymode=="commit" and isSvn:
+			if options.mode == 'commit' and isSvn:
 				stats["svn.IO_error"] += 1
 				fails["svn.IO_error"].append(checkdir+"/files svn info")
 			continue
@@ -1055,12 +1040,12 @@ for x in scanlist:
 				mykey = catdir + "/" + y[7:]
 				if y[7:] not in ebuildlist:
 					#stray digest
-					if mymode=="fix":
+					if options.mode == "fix":
 						if isCvs:
 							vcsrm="cvs rm -f"
 						if isSvn:
 							vcsrm="svn rm --force"
-						if "--pretend" in myoptions:
+						if options.pretend:
 								print "(cd "+repodir+"/"+x+"/files; "+vcsrm+" "+y+")"
 						else:
 							os.system("(cd "+repodir+"/"+x+"/files; "+vcsrm+" "+y+")")
@@ -1087,7 +1072,7 @@ for x in scanlist:
 						myff = repoman_settings["DISTDIR"] + "/" + myf
 						if not mydigests.has_key(myf):
 							uri_settings = portage.config(clone=repoman_settings)
-							if mymode == "fix":
+							if options.mode == "fix":
 								if not portage.fetch(uri_dict[myf], uri_settings):
 									stats["digest.unmatch"] += 1
 									fails["digest.unmatch"].append(y+"::"+myf)
@@ -1179,8 +1164,8 @@ for x in scanlist:
 				fails["ebuild.disjointed"].append(x+"/"+y+".ebuild")
 		if manifest1_compat and \
 			not os.path.exists(os.path.join(checkdir, "files", "digest-"+y)):
-			if mymode=="fix":
-				if "--pretend" in myoptions:
+			if options.mode == "fix":
+				if options.pretend:
 					print "You will need to run:"
 					print "  "+portage.const.PORTAGE_BASE+"/bin/ebuild "+repodir+"/"+x+"/"+y+".ebuild digest"
 				else:
@@ -1285,7 +1270,7 @@ for x in scanlist:
 						bad_stable_keywords)
 			del bad_stable_keywords
 
-		if "--ignore-arches" in myoptions:
+		if options.ignore_arches:
 			arches = [[repoman_settings["ARCH"], repoman_settings["ARCH"],
 				repoman_settings["ACCEPT_KEYWORDS"].split()]]
 		else:
@@ -1472,7 +1457,7 @@ for x in scanlist:
 			fails[check.repoman_check_name].append(x + '/' + y + '.ebuild: %s' % e)
 		del check, errors, path, contents, myear
 
-		if "--force" in myoptions:
+		if options.force:
 			# The dep_check() calls are the most expensive QA test. If --force
 			# is enabled, there's no point in wasting time on these since the
 			# user is intent on forcing the commit anyway.
@@ -1532,7 +1517,7 @@ for x in scanlist:
 					ismasked = os.path.join(catdir, y) not in \
 						portdb.xmatch("list-visible", x)
 					if ismasked:
-						if "--ignore-masked" in myoptions:
+						if options.ignore_masked:
 							continue
 						#we are testing deps for a masked package; give it some lee-way
 						suffix="masked"
@@ -1587,7 +1572,7 @@ for x in scanlist:
 		stats["ebuild.allmasked"]+=1
 		fails["ebuild.allmasked"].append(x)
 
-if mymode == "manifest":
+if options.mode == "manifest":
 	sys.exit(dofail)
 
 #Pickle and save results for instant reuse in last and lfull
@@ -1599,8 +1584,9 @@ if os.access(portage.const.CACHE_PATH, os.W_OK):
 		savef.close()
 		portage.apply_secpass_permissions(fpath, gid=portage.portage_gid,
 			mode=0664)
-if quiet < 2:
-	print
+
+# TODO(antarus) This function and last () look familiar ;)
+
 #dofail will be set to 1 if we have failed in at least one non-warning category
 dofail=0
 #dowarn will be set to 1 if we tripped any warnings
@@ -1624,7 +1610,7 @@ for x in qacats:
 		print yellow(`stats[x]`)
 	else:
 		print red(`stats[x]`)
-	if mymode!="full":
+	if options.mode !="full":
 		if stats[x]<12:
 			for y in fails[x]:
 				print "   "+y
@@ -1650,37 +1636,30 @@ def grouplist(mylist,seperator="/"):
 			mygroups[xs[0]]+=[seperator.join(xs[1:])]
 	return mygroups
 
-if mymode!="commit":
+if options.mode != 'commit':
 	if dofull:
 		print bold("Note: type \"repoman full\" for a complete listing.")
-		if quiet < 1:
-			print
 	if dowarn and not dofail:
-		if quiet < 2:
-			print green("RepoMan sez:"),"\"You're only giving me a partial QA payment?\n              I'll take it this time, but I'm not happy.\""
-		else:
-			print green("RepoMan sez:"),"\"OK for now, but I'll be back ...\""
+		print green("RepoMan sez:"),"\"You're only giving me a partial QA payment?\n              I'll take it this time, but I'm not happy.\""
 	elif not dofail:
 		print green("RepoMan sez:"),"\"If everyone were like you, I'd be out of business!\""
 	elif dofail:
 		print turquoise("Please fix these important QA issues first.")
 		print green("RepoMan sez:"),"\"Make your QA payment on time and you'll never see the likes of me.\"\n"
 		sys.exit(1)
-	if quiet < 1:
-		print
 elif "--pretend" not in myoptions:
-	if dofail and can_force and "--force" in myoptions and "--pretend" not in myoptions:
+	if dofail and can_force and options.force and not options.pretend:
 		print green("RepoMan sez:") + \
 			" \"You want to commit even with these QA issues?\n" + \
 			"              I'll take it this time, but I'm not happy.\"\n"
 	elif dofail:
-		if "--force" in myoptions and not can_force:
+		if options.force and not can_force:
 			print bad("The --force option has been disabled due to extraordinary issues.")
 		print turquoise("Please fix these important QA issues first.")
 		print green("RepoMan sez:"),"\"Make your QA payment on time and you'll never see the likes of me.\"\n"
 		sys.exit(1)
 
-	if "--pretend" in myoptions:
+	if options.pretend:
 		print green("RepoMan sez:"), "\"So, you want to play it safe. Good call.\"\n"
 
 	if fails["digest.missing"]:
@@ -1689,7 +1668,7 @@ elif "--pretend" not in myoptions:
 		xs=x.split("/")
 		del xs[-2]
 		myeb="/".join(xs[:-1])+"/"+xs[-1][7:]
-		if "--pretend" in myoptions:
+		if options.pretend:
 			print "(ebuild "+portdir+"/"+myeb+".ebuild digest)"
 		else:
 			retval=os.system("ebuild "+portdir+"/"+myeb+".ebuild digest")
@@ -1736,7 +1715,7 @@ elif "--pretend" not in myoptions:
 		
 	if myautoadd:
 		print ">>> Auto-Adding missing digests..."
-		if "--pretend" in myoptions:
+		if options.pretend:
 			if isCvs:
 				print "(cvs add "+" ".join(myautoadd)+")"
 			if isSvn:
@@ -1760,14 +1739,15 @@ elif "--pretend" not in myoptions:
 		print
 		sys.exit(1)
 
-	if True:
+	if isCvs:
 		mycvstree=portage.cvstree.getentries("./",recursive=1)
 		mychanged=portage.cvstree.findchanged(mycvstree,recursive=1,basedir="./")
 		mynew=portage.cvstree.findnew(mycvstree,recursive=1,basedir="./")
 		myremoved=portage.cvstree.findremoved(mycvstree,recursive=1,basedir="./")
 		bin_blob_pattern = re.compile("^-kb$")
-		bin_blobs = set(portage.cvstree.findoption(mycvstree,
-			bin_blob_pattern, recursive=1, basedir="./"))
+		bin_blobs = set(portage.cvstree.findoption(mycvstree, bin_blob_pattern,
+			recursive=1, basedir="./"))
+
 
 	if isSvn:
 		svnstatus = os.popen("svn status").readlines()
@@ -1809,10 +1789,8 @@ elif "--pretend" not in myoptions:
 
 	print "*",green(str(len(myupdates))),"files being committed...",green(str(len(myheaders))),"have headers that will change."
 	print "*","Files with headers will cause the manifests to be made and recommited."
-	if quiet == 0:
-		print "myupdates:",myupdates
-		print "myheaders:",myheaders
-		print
+	logging.info("myupdates:", str(myupdates))
+	logging.info("myheaders:", str(myheaders))
 
 	if commitmessagefile:
 		try:
@@ -1846,9 +1824,9 @@ elif "--pretend" not in myoptions:
 	elif isSvn:
 		commitmessage+="SVN"
 	commitmessage+="/"+unameout
-	if "--force" in myoptions:
+	if options.force:
 		commitmessage += ", RepoMan options: --force"
-	commitmessage += ")"
+		commitmessage += ")"
 	if not manifest1_compat:
 		myfiles = myupdates + myremoved + mymanifests
 		filesdirs = set()
@@ -1874,7 +1852,7 @@ elif "--pretend" not in myoptions:
 					digest_files.append(os.path.join(x, y))
 		if digest_files:
 			digest_files.sort()
-			if "--pretend" in myoptions:
+			if options.pretend:
 				if isCvs:
 					print "(rm %s)" % " ".join(digest_files)
 					print "(cvs remove %s)" % " ".join(digest_files)
@@ -1911,7 +1889,7 @@ elif "--pretend" not in myoptions:
 		print
 
 		retval = None
-		if "--pretend" in myoptions:
+		if options.pretend:
 			if isCvs:
 				print "(cvs -q commit -F %s %s)" % \
 					(commitmessagefile, " ".join(myfiles))
@@ -1942,8 +1920,7 @@ elif "--pretend" not in myoptions:
 		if "PORTAGE_GPG_DIR" not in repoman_settings:
 			if os.environ.has_key("HOME"):
 				repoman_settings["PORTAGE_GPG_DIR"] = os.path.join(os.environ["HOME"], ".gnupg")
-				if quiet < 1:
-					print "Automatically setting PORTAGE_GPG_DIR to",repoman_settings["PORTAGE_GPG_DIR"]
+				logging.info("Automatically setting PORTAGE_GPG_DIR to %s" % repoman_settings["PORTAGE_GPG_DIR"])
 			else:
 				raise portage.exception.MissingParameter("PORTAGE_GPG_DIR is unset!")
 		gpg_dir = repoman_settings["PORTAGE_GPG_DIR"]
@@ -1958,7 +1935,7 @@ elif "--pretend" not in myoptions:
 		gpgcmd+= "--default-key "+repoman_settings["PORTAGE_GPG_KEY"]
 		if repoman_settings.has_key("PORTAGE_GPG_DIR"):
 			gpgcmd += " --homedir "+repoman_settings["PORTAGE_GPG_DIR"]
-		if "--pretend" in myoptions:
+		if options.pretend:
 			print "("+gpgcmd+" "+filename+")"
 		else:
 			rValue = os.system(gpgcmd+" "+filename)
@@ -2032,7 +2009,7 @@ elif "--pretend" not in myoptions:
 
 		# Force an unsigned commit when more than one Manifest needs to be signed.
 		if repolevel < 3 and "sign" in repoman_settings.features:
-			if "--pretend" in myoptions:
+			if options.pretend:
 				print "(cvs -q commit -F commitmessagefile)"
 			else:
 				fd, commitmessagefile = tempfile.mkstemp(".repoman.msg")
@@ -2095,7 +2072,7 @@ elif "--pretend" not in myoptions:
 			signed = False
 
 	if manifest_commit_required or signed:
-		if "--pretend" in myoptions:
+		if options.pretend:
 			if isCvs:
 				print "(cvs -q commit -F commitmessagefile)"
 			if isSvn:
