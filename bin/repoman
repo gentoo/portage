@@ -1647,7 +1647,7 @@ if options.mode != 'commit':
 		print turquoise("Please fix these important QA issues first.")
 		print green("RepoMan sez:"),"\"Make your QA payment on time and you'll never see the likes of me.\"\n"
 		sys.exit(1)
-elif not options.pretend:
+else:
 	if dofail and can_force and options.force and not options.pretend:
 		print green("RepoMan sez:") + \
 			" \"You want to commit even with these QA issues?\n" + \
