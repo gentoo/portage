@@ -881,8 +881,18 @@ def iter_atoms(deps):
 				yield x
 
 class Package(object):
-	__slots__ = ("__weakref__", "built", "cpv",
-		"installed", "metadata", "root", "type_name")
+	__slots__ = ("__weakref__", "built", "cpv", "digraph_node",
+		"installed", "metadata", "root", "onlydeps", "type_name")
+	def __init__(self, **kwargs):
+		for myattr in self.__slots__:
+			if myattr == "__weakref__":
+				continue
+			myvalue = kwargs.get(myattr, None)
+			setattr(self, myattr, myvalue)
+
+class Dependency(object):
+	__slots__ = ("__weakref__", "arg", "atom", "blocker", "depth",
+		"parent", "priority", "root")
 	def __init__(self, **kwargs):
 		for myattr in self.__slots__:
 			if myattr == "__weakref__":
@@ -1150,6 +1160,7 @@ class depgraph(object):
 		self._altlist_cache = {}
 		self._pprovided_args = []
 		self._missing_args = []
+		self._dep_stack = []
 
 	def _show_slot_collision_notice(self, packages):
 		"""Show an informational message advising the user to mask one of the
@@ -1222,8 +1233,70 @@ class depgraph(object):
 				return flags
 		return None
 
-	def create(self, pkg, myparent=None, addme=1,
+	def _create_graph(self):
+		debug = "--debug" in self.myopts
+		buildpkgonly = "--buildpkgonly" in self.myopts
+		nodeps = "--nodeps" in self.myopts
+		empty = "empty" in self.myparams
+		deep = "deep" in self.myparams
+		dep_stack = self._dep_stack
+		while dep_stack:
+			dep = dep_stack.pop()
+			update = "--update" in self.myopts and dep.depth <= 1
+			if dep.blocker:
+				if not buildpkgonly and \
+					not nodeps and \
+					dep.parent.digraph_node not in self._slot_collision_nodes:
+					if dep.parent.onlydeps:
+						# It's safe to ignore blockers if the
+						# parent is an --onlydeps node.
+						continue
+					# The blocker applies to the root where
+					# the parent is or will be installed.
+					self.blocker_parents.setdefault(
+						("blocks", dep.parent.root, dep.atom), set()).add(
+							dep.parent.digraph_node)
+				continue
+			dep_pkg, existing_node = self._select_package(dep.root, dep.atom)
+			if not dep_pkg:
+				self._show_unsatisfied_dep(dep.root, dep.atom,
+					myparent=dep.parent.digraph_node)
+				return 0
+			# In some cases, dep_check will return deps that shouldn't
+			# be proccessed any further, so they are identified and
+			# discarded here. Try to discard as few as possible since
+			# discarded dependencies reduce the amount of information
+			# available for optimization of merge order.
+			if dep.priority.satisfied and \
+				not (existing_node or empty or deep or update):
+				myarg = None
+				if dep.root == self.target_root:
+					try:
+						myarg = self._set_atoms.findAtomForPackage(
+							dep_pkg.cpv, dep_pkg.metadata)
+					except portage.exception.InvalidDependString:
+						if not dep_pkg.installed:
+							# This shouldn't happen since the package
+							# should have been masked.
+							raise
+				if not myarg:
+					continue
+
+			if not self._add_pkg(dep_pkg, myparent=dep.parent,
+				priority=dep.priority, depth=dep.depth):
+				return 0
+		return 1
+
+	def create(self, *args, **kwargs):
+		if not self._add_pkg(*args, **kwargs):
+			return 1
+		return self._create_graph()
+
+	def _add_pkg(self, pkg, myparent=None, addme=1,
 		priority=None, arg=None, depth=0):
+		pkg.onlydeps = not addme
+		if myparent is not None:
+			myparent = myparent.digraph_node
 		"""
 		Fills the digraph with nodes comprised of packages to merge.
 		mybigkey is the package spec of the package to merge.
@@ -1235,7 +1308,6 @@ class depgraph(object):
 		#IUSE-aware emerge -> USE DEP aware depgraph
 		#"no downgrade" emerge
 		"""
-
 		# unused parameters
 		rev_dep = False
 
@@ -1272,6 +1344,7 @@ class depgraph(object):
 		else:
 			mybigkey.append("nomerge")
 		jbigkey = tuple(mybigkey)
+		pkg.digraph_node = jbigkey
 
 		if addme:
 			slot_atom = "%s:%s" % (portage.dep_getkey(mykey), metadata["SLOT"])
@@ -1420,12 +1493,7 @@ class depgraph(object):
 		if arg:
 			depth = 0
 		depth += 1
-		update = "--update" in self.myopts and depth <= 1
 		debug = "--debug" in self.myopts
-		buildpkgonly = "--buildpkgonly" in self.myopts
-		nodeps = "--nodeps" in self.myopts
-		empty = "empty" in self.myparams
-		deep = "deep" in self.myparams
 		strict = mytype != "installed"
 		try:
 			for dep_root, dep_string, dep_priority in deps:
@@ -1447,51 +1515,17 @@ class depgraph(object):
 					return 0
 				if debug:
 					print "Candidates:", selected_atoms
-				for x in selected_atoms:
-					selected_pkg = None
-					if x.startswith("!"):
-						if not buildpkgonly and \
-							not nodeps and \
-							jbigkey not in self._slot_collision_nodes:
-							if mytype != "installed" and not addme:
-								# It's safe to ignore blockers if the
-								# parent is an --onlydeps node.
-								continue
-							# The blocker applies to the root where
-							# th parent is or will be installed.
-							self.blocker_parents.setdefault(
-								("blocks", myroot, x[1:]), set()).add(jbigkey)
-						continue
-					dep_pkg, existing_node = self._select_package(dep_root, x)
-					if not dep_pkg:
-						self._show_unsatisfied_dep(dep_root, x,
-							myparent=jbigkey)
-						return 0
-					# In some cases, dep_check will return deps that shouldn't
-					# be proccessed any further, so they are identified and
-					# discarded here. Try to discard as few as possible since
-					# discarded dependencies reduce the amount of information
-					# available for optimization of merge order.
-					if vardb.match(x) and \
-						not (existing_node or empty or deep or update):
-						myarg = None
-						if dep_root == self.target_root:
-							try:
-								myarg = self._set_atoms.findAtomForPackage(
-									dep_pkg.cpv, dep_pkg.metadata)
-							except portage.exception.InvalidDependString:
-								if not dep_pkg.installed:
-									# This shouldn't happen since the package
-									# should have been masked.
-									raise
-						if not myarg:
-							continue
+				for atom in selected_atoms:
+					blocker = atom.startswith("!")
+					if blocker:
+						atom = atom[1:]
 					mypriority = dep_priority.copy()
-					if vardb.match(x):
+					if not blocker and vardb.match(atom):
 						mypriority.satisfied = True
-					if not self.create(dep_pkg, myparent=jbigkey,
-						priority=mypriority, depth=depth):
-						return 0
+					self._dep_stack.append(
+						Dependency(arg=arg, atom=atom,
+							blocker=blocker, depth=depth, parent=pkg,
+							priority=mypriority, root=dep_root))
 				if debug:
 					print "Exiting...", jbigkey
 		except ValueError, e:
