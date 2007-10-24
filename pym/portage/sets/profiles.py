@@ -4,7 +4,7 @@
 
 import os
 from portage.util import grabfile_package, stack_lists
-from portage.sets import PackageSet
+from portage.sets.base import PackageSet
 
 __all__ = ["PackagesSystemSet"]
 

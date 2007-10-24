@@ -53,8 +53,9 @@ from portage.const import EPREFIX, BPREFIX
 from portage.data import secpass
 from portage.util import normalize_path as normpath
 from portage.util import writemsg
-from portage.sets import InternalPackageSet, SetConfig, make_default_config
+from portage.sets import SetConfig, make_default_config
 from portage.sets.profiles import PackagesSystemSet as SystemSet
+from portage.sets.base import InternalPackageSet
 from portage.sets.files import WorldSet
 
 from itertools import chain, izip
@@ -350,8 +351,7 @@ def create_depgraph_params(myopts, myaction):
 	if "--update" in myopts or \
 		"--newuse" in myopts or \
 		"--reinstall" in myopts or \
-		"--noreplace" in myopts or \
-		myaction in ("system", "world"):
+		"--noreplace" in myopts:
 		myparams.add("selective")
 	if "--emptytree" in myopts:
 		myparams.add("empty")
