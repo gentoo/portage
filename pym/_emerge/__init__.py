@@ -1149,6 +1149,7 @@ class depgraph(object):
 		self._slot_collision_nodes = set()
 		self._altlist_cache = {}
 		self._pprovided_args = []
+		self._missing_args = []
 
 	def _show_slot_collision_notice(self, packages):
 		"""Show an informational message advising the user to mask one of the
@@ -1644,9 +1645,22 @@ class depgraph(object):
 			self._set_atoms.add(myatom)
 			if not oneshot:
 				myfavorites.append(myatom)
-		for myarg, myatom in arg_atoms:
+		pprovideddict = pkgsettings.pprovideddict
+		for arg, atom in arg_atoms:
 				try:
-					if not self._select_arg(myroot, myatom, myarg, addme):
+					pprovided = pprovideddict.get(portage.dep_getkey(atom))
+					if pprovided and portage.match_from_list(atom, pprovided):
+						# A provided package has been specified on the command line.
+						self._pprovided_args.append((arg, atom))
+						continue
+					self._populate_filtered_repo(myroot, atom)
+					pkg, existing_node = self._select_package(myroot, atom)
+					if not pkg:
+						self._missing_args.append((arg, atom))
+						continue
+					if not self.create(pkg, addme=addme):
+						sys.stderr.write(("\n\n!!! Problem resolving " + \
+							"dependencies for %s\n") % atom)
 						return 0, myfavorites
 				except portage.exception.MissingSignature, e:
 					portage.writemsg("\n\n!!! A missing gpg signature is preventing portage from calculating the\n")
@@ -2116,20 +2130,6 @@ class depgraph(object):
 
 		# ordered by type preference ("ebuild" type is the last resort)
 		return  matched_packages[-1], existing_node
-
-	def _select_arg(self, root, atom, arg, addme):
-		pprovided = self.pkgsettings[root].pprovideddict.get(
-			portage.dep_getkey(atom))
-		if pprovided and portage.match_from_list(atom, pprovided):
-			# A provided package has been specified on the command line.
-			self._pprovided_args.append((arg, atom))
-			return 1
-		self._populate_filtered_repo(root, atom)
-		pkg, existing_node = self._select_package(root, atom)
-		if not pkg:
-			self._show_unsatisfied_dep(root, atom, arg=arg)
-			return 0
-		return self.create(pkg, addme=addme)
 
 	def validate_blockers(self):
 		"""Remove any blockers from the digraph that do not match any of the
@@ -3258,6 +3258,14 @@ class depgraph(object):
 			for revision,text in changelogs:
 				print bold('*'+revision)
 				sys.stdout.write(text)
+
+		if self._missing_args:
+			sys.stderr.write("\n" + colorize("BAD", "!!!") + \
+				" Ebuilds for the following packages are either all\n")
+			sys.stderr.write(colorize("BAD", "!!!") + \
+				" masked or don't exist:\n")
+			sys.stderr.write(" ".join(arg[1] for arg in \
+				self._missing_args) + "\n")
 
 		if self._pprovided_args:
 			arg_refs = {}
