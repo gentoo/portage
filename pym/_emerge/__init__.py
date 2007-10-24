@@ -6366,7 +6366,7 @@ def emerge_main():
 				# TODO: check if the current setname also resolves to a package name
 				if myaction in ["unmerge", "prune", "clean", "depclean"] and not packagesets[s].supportsOperation("unmerge"):
 					print "emerge: the given set %s does not support unmerge operations" % s
-					sys.exit(1)
+					return 1
 				if not settings.sets[s].getAtoms():
 					print "emerge: '%s' is an empty set" % s
 				else:
@@ -6378,12 +6378,12 @@ def emerge_main():
 		# with the help message for empty argument lists
 		if oldargs and not myfiles:
 			print "emerge: no targets left after set expansion"
-			sys.exit(0)
+			return 0
 		del oldargs
 
 	if ("--tree" in myopts) and ("--columns" in myopts):
 		print "emerge: can't specify both of \"--tree\" and \"--columns\"."
-		sys.exit(1)
+		return 1
 
 	if ("--quiet" in myopts):
 		spinner.update = spinner.update_quiet
@@ -6433,7 +6433,7 @@ def emerge_main():
 	if ("--ask" in myopts) and (not sys.stdin.isatty()):
 		portage.writemsg("!!! \"--ask\" should only be used in a terminal. Exiting.\n",
 			noiselevel=-1)
-		sys.exit(1)
+		return 1
 
 	if settings.get("PORTAGE_DEBUG", "") == "1":
 		spinner.update = spinner.update_quiet
@@ -6455,10 +6455,10 @@ def emerge_main():
 		print getportageversion(settings["PORTDIR"], settings["ROOT"],
 			settings.profile_path, settings["CHOST"],
 			trees[settings["ROOT"]]["vartree"].dbapi)
-		sys.exit(0)
+		return 0
 	elif "--help" in myopts:
 		_emerge.help.help(myaction, myopts, portage.output.havecolor)
-		sys.exit(0)
+		return 0
 
 	if "--debug" in myopts:
 		print "myaction", myaction
@@ -6466,7 +6466,7 @@ def emerge_main():
 
 	if not myaction and not myfiles and "--resume" not in myopts:
 		_emerge.help.help(myaction, myopts, portage.output.havecolor)
-		sys.exit(1)
+		return 1
 
 	# check if root user is the current user for the actions where emerge needs this
 	if portage.secpass < 2:
