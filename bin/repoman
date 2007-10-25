@@ -1,7 +1,7 @@
 #!@PYTHON@ -O
 # Copyright 1999-2006 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: repoman 4651 2006-10-10 21:10:33Z zmedico $
+# $Id$
 
 # Next to do: dep syntax checking in mask files
 # Then, check to make sure deps are satisfiable (to avoid "can't find match for" problems)
