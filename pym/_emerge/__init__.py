@@ -6168,7 +6168,7 @@ def action_build(settings, trees, mtimedb,
 			if "yes" == settings.get("AUTOCLEAN"):
 				portage.writemsg_stdout(">>> Auto-cleaning packages...\n")
 				vartree = trees[settings["ROOT"]]["vartree"]
-				unmerge(settings, myopts, vartree, "clean", ["world"],
+				unmerge(settings, myopts, vartree, "clean", [],
 					ldpath_mtimes, autoclean=1)
 			else:
 				portage.writemsg_stdout(colorize("WARN", "WARNING:")
