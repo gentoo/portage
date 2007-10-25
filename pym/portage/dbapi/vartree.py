@@ -970,7 +970,9 @@ class dblink(object):
 					noiselevel=-1)
 				continue
 			mydat = line.split()
-			correct_split_count = contents_split_counts.get(mydat[0])
+			correct_split_count = None
+			if mydat:
+				correct_split_count = contents_split_counts.get(mydat[0])
 			if correct_split_count and len(mydat) != correct_split_count:
 				if mydat[0] == "obj" and \
 					len(mydat) > contents_split_counts["obj"]:
