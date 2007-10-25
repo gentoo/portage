@@ -1722,7 +1722,7 @@ else:
 	commitmessage += "\n(Portage version: "+str(portage_version)
 	if options.force:
 		commitmessage += ", RepoMan options: --force"
-		commitmessage += ")"
+	commitmessage += ")"
 	if not manifest1_compat:
 		myfiles = myupdates + myremoved + mymanifests
 		filesdirs = set()
