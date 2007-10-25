@@ -824,6 +824,13 @@ class dblink(object):
 
 	import re
 	_normalize_needed = re.compile(r'.*//.*|^[^/]|.+/$|(^|.*/)\.\.?(/.*|$)')
+	_contents_split_counts = {
+		"dev": 2,
+		"dir": 2,
+		"fif": 2,
+		"obj": 4,
+		"sym": 5
+	}
 
 	def __init__(self, cat, pkg, myroot, mysettings, treetype=None,
 		vartree=None):
@@ -949,6 +956,7 @@ class dblink(object):
 		myc.close()
 		null_byte = "\0"
 		normalize_needed = self._normalize_needed
+		contents_split_counts = self._contents_split_counts
 		myroot = self.myroot
 		if myroot == os.path.sep:
 			myroot = None
@@ -962,6 +970,22 @@ class dblink(object):
 					noiselevel=-1)
 				continue
 			mydat = line.split()
+			correct_split_count = None
+			if mydat:
+				correct_split_count = contents_split_counts.get(mydat[0])
+			if correct_split_count and len(mydat) != correct_split_count:
+				if mydat[0] == "obj" and \
+					len(mydat) > contents_split_counts["obj"]:
+					# File name contains spaces. Use field widths to infer the
+					# start and end points so that even multiple consecutive
+					# spaces are parsed correctly.
+					newsplit = ["obj"]
+					filename_start = len(mydat[0]) + 1
+					filename_end = len(line.rstrip()) - \
+						len(mydat[-1]) - len(mydat[-2]) - 2
+					newsplit.append(line[filename_start:filename_end])
+					newsplit.extend(mydat[-2:])
+					mydat = newsplit
 			# we do this so we can remove from non-root filesystems
 			# (use the ROOT var to allow maintenance on other partitions)
 			try:
@@ -973,7 +997,7 @@ class dblink(object):
 					mydat[1] = os.path.join(myroot, mydat[1].lstrip(os.path.sep))
 				if mydat[0] == "obj":
 					#format: type, mtime, md5sum
-					pkgfiles[" ".join(mydat[1:-2])] = [mydat[0], mydat[-1], mydat[-2]]
+					pkgfiles[mydat[1]] = [mydat[0], mydat[-1], mydat[-2]]
 				elif mydat[0] == "dir":
 					#format: type
 					pkgfiles[" ".join(mydat[1:])] = [mydat[0] ]
