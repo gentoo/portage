@@ -1289,7 +1289,7 @@ class depgraph(object):
 
 	def create(self, *args, **kwargs):
 		if not self._add_pkg(*args, **kwargs):
-			return 1
+			return 0
 		return self._create_graph()
 
 	def _add_pkg(self, pkg, myparent=None, addme=1,
