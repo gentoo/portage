@@ -236,6 +236,11 @@ def nc_len(mystr):
 
 def xtermTitle(mystr, raw=False):
 	if dotitles and "TERM" in os.environ and sys.stderr.isatty():
+		# If the title string is too big then the terminal can
+		# misbehave. Therefore, truncate it if it's too big.
+		max_len = 253
+		if len(mystr) > max_len:
+			mystr = mystr[:max_len]
 		myt=os.environ["TERM"]
 		legal_terms = ["xterm","Eterm","aterm","rxvt","screen","kterm","rxvt-unicode","gnome"]
 		for term in legal_terms:
