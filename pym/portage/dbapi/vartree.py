@@ -995,7 +995,7 @@ class dblink(object):
 					mydat[1] = os.path.join(myroot, mydat[1].lstrip(os.path.sep))
 				if mydat[0] == "obj":
 					#format: type, mtime, md5sum
-					pkgfiles[" ".join(mydat[1:-2])] = [mydat[0], mydat[-1], mydat[-2]]
+					pkgfiles[mydat[1]] = [mydat[0], mydat[-1], mydat[-2]]
 				elif mydat[0] == "dir":
 					#format: type
 					pkgfiles[" ".join(mydat[1:])] = [mydat[0] ]
