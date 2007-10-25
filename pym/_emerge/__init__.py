@@ -881,7 +881,7 @@ def iter_atoms(deps):
 				yield x
 
 class Package(object):
-	__slots__ = ("__weakref__", "built", "cpv", "digraph_node",
+	__slots__ = ("__weakref__", "built", "cpv", "_digraph_node",
 		"installed", "metadata", "root", "onlydeps", "type_name")
 	def __init__(self, **kwargs):
 		for myattr in self.__slots__:
@@ -889,6 +889,15 @@ class Package(object):
 				continue
 			myvalue = kwargs.get(myattr, None)
 			setattr(self, myattr, myvalue)
+
+	@property
+	def digraph_node(self):
+		if self._digraph_node is None:
+			status = "merge"
+			if self.onlydeps or self.installed:
+				status = "nomerge"
+			self._digraph_node = (self.type_name, self.root, self.cpv, status)
+		return self._digraph_node
 
 class Dependency(object):
 	__slots__ = ("__weakref__", "arg", "atom", "blocker", "depth",
@@ -1292,9 +1301,8 @@ class depgraph(object):
 			return 0
 		return self._create_graph()
 
-	def _add_pkg(self, pkg, myparent=None, addme=1,
+	def _add_pkg(self, pkg, myparent=None,
 		priority=None, arg=None, depth=0):
-		pkg.onlydeps = not addme
 		if myparent is not None:
 			myparent = myparent.digraph_node
 		"""
@@ -1338,15 +1346,9 @@ class depgraph(object):
 			self.spinner.update()
 
 		merging = mytype != "installed"
+		jbigkey = pkg.digraph_node
 
-		if addme and mytype != "installed":
-			mybigkey.append("merge")
-		else:
-			mybigkey.append("nomerge")
-		jbigkey = tuple(mybigkey)
-		pkg.digraph_node = jbigkey
-
-		if addme:
+		if not pkg.onlydeps:
 			slot_atom = "%s:%s" % (portage.dep_getkey(mykey), metadata["SLOT"])
 			if myparent and \
 				merging and \
@@ -1606,7 +1608,7 @@ class depgraph(object):
 		bindb = self.trees[myroot]["bintree"].dbapi
 		pkgsettings = self.pkgsettings[myroot]
 		arg_atoms = []
-		addme = "--onlydeps" not in self.myopts
+		onlydeps = "--onlydeps" in self.myopts
 		for x in myfiles:
 			ext = os.path.splitext(x)[1]
 			if ext==".tbz2":
@@ -1630,8 +1632,9 @@ class depgraph(object):
 				metadata = dict(izip(self._mydbapi_keys,
 					bindb.aux_get(mykey, self._mydbapi_keys)))
 				pkg = Package(type_name="binary", root=myroot,
-					cpv=mykey, built=True, metadata=metadata)
-				if not self.create(pkg, addme=addme, arg=x):
+					cpv=mykey, built=True, metadata=metadata,
+					onlydeps=onlydeps)
+				if not self.create(pkg, arg=x):
 					return 0, myfavorites
 				arg_atoms.append((x, "="+mykey))
 			elif ext==".ebuild":
@@ -1669,8 +1672,8 @@ class depgraph(object):
 				pkgsettings.setcpv(mykey, mydb=metadata)
 				metadata["USE"] = pkgsettings["USE"]
 				pkg = Package(type_name="ebuild", root=myroot,
-					cpv=mykey, metadata=metadata)
-				if not self.create(pkg, addme=addme, arg=x):
+					cpv=mykey, metadata=metadata, onlydeps=onlydeps)
+				if not self.create(pkg, arg=x):
 					return 0, myfavorites
 				arg_atoms.append((x, "="+mykey))
 			else:
@@ -1743,7 +1746,8 @@ class depgraph(object):
 						self._pprovided_args.append((arg, atom))
 						continue
 					self._populate_filtered_repo(myroot, atom)
-					pkg, existing_node = self._select_package(myroot, atom)
+					pkg, existing_node = self._select_package(
+						myroot, atom, onlydeps=onlydeps)
 					if not pkg:
 						refs = self._get_parent_sets(myroot, atom)
 						if len(refs) == 1 and "args" in refs:
@@ -1751,7 +1755,7 @@ class depgraph(object):
 							return 0, myfavorites
 						self._missing_args.append((arg, atom))
 						continue
-					if not self.create(pkg, addme=addme):
+					if not self.create(pkg):
 						sys.stderr.write(("\n\n!!! Problem resolving " + \
 							"dependencies for %s\n") % atom)
 						return 0, myfavorites
@@ -2027,7 +2031,7 @@ class depgraph(object):
 			print xfrom
 		print
 
-	def _select_package(self, root, atom):
+	def _select_package(self, root, atom, onlydeps=False):
 		pkgsettings = self.pkgsettings[root]
 		dbs = self._filtered_trees[root]["dbs"]
 		vardb = self.roots[root].trees["vartree"].dbapi
@@ -2119,10 +2123,13 @@ class depgraph(object):
 						if portage.dep.match_from_list(atom, [cpv_slot]):
 							e_installed = e_type == "installed"
 							e_built = e_type != "ebuild"
+							e_onlydeps = not e_installed and \
+								e_status == "nomerge"
 							matched_packages.append(
 								Package(type_name=e_type, root=root,
 									cpv=e_cpv, metadata=metadata,
-									built=e_built, installed=e_installed))
+									built=e_built, installed=e_installed,
+									onlydeps=e_onlydeps))
 						else:
 							existing_node = None
 						break
@@ -2201,7 +2208,8 @@ class depgraph(object):
 					matched_packages.append(
 						Package(type_name=pkg_type, root=root,
 							cpv=cpv, metadata=metadata,
-							built=built, installed=installed))
+							built=built, installed=installed,
+							onlydeps=onlydeps))
 					if reinstall_for_flags:
 						pkg_node = (pkg_type, root, cpv, "merge")
 						self._reinstall_nodes[pkg_node] = \
