@@ -586,6 +586,8 @@ def create_world_atom(pkg_key, metadata, args_set, root_config):
 	be greedy with respect to slots.  Unslotted system packages will not be
 	stored in world."""
 	arg_atom = args_set.findAtomForPackage(pkg_key, metadata)
+	if not arg_atom:
+		return None
 	cp = portage.dep_getkey(arg_atom)
 	new_world_atom = cp
 	sets = root_config.settings.sets
@@ -1731,12 +1733,15 @@ class depgraph(object):
 		that happen to match arguments are not incorrectly marked as nomerge."""
 		args_set = self._sets["args"]
 		for myarg, myatom in arg_atoms:
-			if myatom in args_set:
+			if myatom in self._set_atoms:
 				continue
-			args_set.add(myatom)
 			self._set_atoms.add(myatom)
-			if not oneshot:
-				myfavorites.append(myatom)
+			if not self._get_parent_sets(myroot, myatom):
+				args_set.add(myatom)
+				if not oneshot:
+					# Filter out atoms that came from
+					# sets like system and world.
+					myfavorites.append(myatom)
 		pprovideddict = pkgsettings.pprovideddict
 		for arg, atom in arg_atoms:
 				try:
