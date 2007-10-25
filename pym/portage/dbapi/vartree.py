@@ -825,9 +825,9 @@ class dblink(object):
 	import re
 	_normalize_needed = re.compile(r'.*//.*|^[^/]|.+/$|(^|.*/)\.\.?(/.*|$)')
 	_contents_split_counts = {
-		"dev": 1,
-		"dir": 1,
-		"fif": 1,
+		"dev": 2,
+		"dir": 2,
+		"fif": 2,
 		"obj": 4,
 		"sym": 5
 	}
