@@ -92,6 +92,14 @@ class SetConfig(SafeConfigParser):
 			self.aliases = shortnames
 		return self.aliases
 
+	def getSetAtoms(self, setname):
+		myset = self.getSetsWithAliases()[setname]
+		myatoms = myset.getAtoms()
+		for n in myset.getNonAtoms():
+			if n in self.aliases:
+				myatoms.update(self.getSetAtoms(n))
+		return myatoms
+
 def make_default_config(settings, trees):
 	sc = SetConfig([], settings, trees)
 	sc.add_section("security")
