@@ -2031,6 +2031,26 @@ class depgraph(object):
 			print xfrom
 		print
 
+	def _get_existing_pkg(self, root, slot_atom):
+		"""
+		@rtype: Package
+		@returns: An existing Package instance added to the graph for the
+			given SLOT, or None if no matching package has been added yet.
+		"""
+		existing_node = self._slot_node_map[root].get(slot_atom)
+		if not existing_node:
+			return None
+		e_type, root, e_cpv, e_status = existing_node
+		metadata = dict(izip(self._mydbapi_keys,
+			self.mydbapi[root].aux_get(e_cpv, self._mydbapi_keys)))
+		e_installed = e_type == "installed"
+		e_built = e_type != "ebuild"
+		e_onlydeps = not e_installed and \
+			e_status == "nomerge"
+		return Package(cpv=e_cpv, built=e_built,
+			installed=e_installed, type_name=e_type,
+			metadata=metadata, onlydeps=e_onlydeps, root=root)
+
 	def _select_package(self, root, atom, onlydeps=False):
 		pkgsettings = self.pkgsettings[root]
 		dbs = self._filtered_trees[root]["dbs"]
@@ -2111,27 +2131,14 @@ class depgraph(object):
 					if find_existing_node:
 						slot_atom = "%s:%s" % (
 							portage.cpv_getkey(cpv), metadata["SLOT"])
-						existing_node = self._slot_node_map[root].get(
-							slot_atom)
-						if not existing_node:
+						e_pkg = self._get_existing_pkg(root, slot_atom)
+						if not e_pkg:
 							break
-						e_type, root, e_cpv, e_status = existing_node
-						metadata = dict(izip(self._mydbapi_keys,
-							self.mydbapi[root].aux_get(
-							e_cpv, self._mydbapi_keys)))
-						cpv_slot = "%s:%s" % (e_cpv, metadata["SLOT"])
+						cpv_slot = "%s:%s" % \
+							(e_pkg.cpv, e_pkg.metadata["SLOT"])
 						if portage.dep.match_from_list(atom, [cpv_slot]):
-							e_installed = e_type == "installed"
-							e_built = e_type != "ebuild"
-							e_onlydeps = not e_installed and \
-								e_status == "nomerge"
-							matched_packages.append(
-								Package(type_name=e_type, root=root,
-									cpv=e_cpv, metadata=metadata,
-									built=e_built, installed=e_installed,
-									onlydeps=e_onlydeps))
-						else:
-							existing_node = None
+							matched_packages.append(e_pkg)
+							existing_node = e_pkg.digraph_node
 						break
 					# Compare built package to current config and
 					# reject the built package if necessary.
