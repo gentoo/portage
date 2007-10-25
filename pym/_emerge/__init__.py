@@ -6494,8 +6494,8 @@ def emerge_main():
 
 	mysets = {}
 	# only expand sets for actions taking package arguments
+	oldargs = myfiles[:]
 	if myaction not in ["search", "metadata", "sync"]:
-		oldargs = myfiles[:]
 		for s in settings.sets:
 			if s in myfiles:
 				# TODO: check if the current setname also resolves to a package name
@@ -6515,7 +6515,6 @@ def emerge_main():
 		if oldargs and not myfiles:
 			print "emerge: no targets left after set expansion"
 			return 0
-		del oldargs
 
 	if ("--tree" in myopts) and ("--columns" in myopts):
 		print "emerge: can't specify both of \"--tree\" and \"--columns\"."
@@ -6661,8 +6660,9 @@ def emerge_main():
 		if myaction:
 			myelogstr+=" "+myaction
 		if myfiles:
-			myelogstr+=" "+" ".join(myfiles)
+			myelogstr += " " + " ".join(oldargs)
 		emergelog(xterm_titles, " *** emerge " + myelogstr)
+	del oldargs
 
 	def emergeexitsig(signum, frame):
 		signal.signal(signal.SIGINT, signal.SIG_IGN)
