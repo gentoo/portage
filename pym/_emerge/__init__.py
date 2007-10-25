@@ -587,6 +587,8 @@ def create_world_atom(pkg_key, metadata, args_set, root_config):
 	be greedy with respect to slots.  Unslotted system packages will not be
 	stored in world."""
 	arg_atom = args_set.findAtomForPackage(pkg_key, metadata)
+	if not arg_atom:
+		return None
 	cp = portage.dep_getkey(arg_atom)
 	new_world_atom = cp
 	sets = root_config.settings.sets
@@ -888,8 +890,27 @@ def iter_atoms(deps):
 				yield x
 
 class Package(object):
-	__slots__ = ("__weakref__", "built", "cpv",
-		"installed", "metadata", "root", "type_name")
+	__slots__ = ("__weakref__", "built", "cpv", "_digraph_node",
+		"installed", "metadata", "root", "onlydeps", "type_name")
+	def __init__(self, **kwargs):
+		for myattr in self.__slots__:
+			if myattr == "__weakref__":
+				continue
+			myvalue = kwargs.get(myattr, None)
+			setattr(self, myattr, myvalue)
+
+	@property
+	def digraph_node(self):
+		if self._digraph_node is None:
+			status = "merge"
+			if self.onlydeps or self.installed:
+				status = "nomerge"
+			self._digraph_node = (self.type_name, self.root, self.cpv, status)
+		return self._digraph_node
+
+class Dependency(object):
+	__slots__ = ("__weakref__", "arg", "atom", "blocker", "depth",
+		"parent", "priority", "root")
 	def __init__(self, **kwargs):
 		for myattr in self.__slots__:
 			if myattr == "__weakref__":
@@ -1157,6 +1178,7 @@ class depgraph(object):
 		self._altlist_cache = {}
 		self._pprovided_args = []
 		self._missing_args = []
+		self._dep_stack = []
 
 	def _show_slot_collision_notice(self, packages):
 		"""Show an informational message advising the user to mask one of the
@@ -1229,8 +1251,69 @@ class depgraph(object):
 				return flags
 		return None
 
-	def create(self, pkg, myparent=None, addme=1,
+	def _create_graph(self):
+		debug = "--debug" in self.myopts
+		buildpkgonly = "--buildpkgonly" in self.myopts
+		nodeps = "--nodeps" in self.myopts
+		empty = "empty" in self.myparams
+		deep = "deep" in self.myparams
+		dep_stack = self._dep_stack
+		while dep_stack:
+			dep = dep_stack.pop()
+			update = "--update" in self.myopts and dep.depth <= 1
+			if dep.blocker:
+				if not buildpkgonly and \
+					not nodeps and \
+					dep.parent.digraph_node not in self._slot_collision_nodes:
+					if dep.parent.onlydeps:
+						# It's safe to ignore blockers if the
+						# parent is an --onlydeps node.
+						continue
+					# The blocker applies to the root where
+					# the parent is or will be installed.
+					self.blocker_parents.setdefault(
+						("blocks", dep.parent.root, dep.atom), set()).add(
+							dep.parent.digraph_node)
+				continue
+			dep_pkg, existing_node = self._select_package(dep.root, dep.atom)
+			if not dep_pkg:
+				self._show_unsatisfied_dep(dep.root, dep.atom,
+					myparent=dep.parent.digraph_node)
+				return 0
+			# In some cases, dep_check will return deps that shouldn't
+			# be proccessed any further, so they are identified and
+			# discarded here. Try to discard as few as possible since
+			# discarded dependencies reduce the amount of information
+			# available for optimization of merge order.
+			if dep.priority.satisfied and \
+				not (existing_node or empty or deep or update):
+				myarg = None
+				if dep.root == self.target_root:
+					try:
+						myarg = self._set_atoms.findAtomForPackage(
+							dep_pkg.cpv, dep_pkg.metadata)
+					except portage.exception.InvalidDependString:
+						if not dep_pkg.installed:
+							# This shouldn't happen since the package
+							# should have been masked.
+							raise
+				if not myarg:
+					continue
+
+			if not self._add_pkg(dep_pkg, myparent=dep.parent,
+				priority=dep.priority, depth=dep.depth):
+				return 0
+		return 1
+
+	def create(self, *args, **kwargs):
+		if not self._add_pkg(*args, **kwargs):
+			return 0
+		return self._create_graph()
+
+	def _add_pkg(self, pkg, myparent=None,
 		priority=None, arg=None, depth=0):
+		if myparent is not None:
+			myparent = myparent.digraph_node
 		"""
 		Fills the digraph with nodes comprised of packages to merge.
 		mybigkey is the package spec of the package to merge.
@@ -1242,7 +1325,6 @@ class depgraph(object):
 		#IUSE-aware emerge -> USE DEP aware depgraph
 		#"no downgrade" emerge
 		"""
-
 		# unused parameters
 		rev_dep = False
 
@@ -1273,14 +1355,9 @@ class depgraph(object):
 			self.spinner.update()
 
 		merging = mytype != "installed"
+		jbigkey = pkg.digraph_node
 
-		if addme and mytype != "installed":
-			mybigkey.append("merge")
-		else:
-			mybigkey.append("nomerge")
-		jbigkey = tuple(mybigkey)
-
-		if addme:
+		if not pkg.onlydeps:
 			slot_atom = "%s:%s" % (portage.dep_getkey(mykey), metadata["SLOT"])
 			if myparent and \
 				merging and \
@@ -1427,12 +1504,7 @@ class depgraph(object):
 		if arg:
 			depth = 0
 		depth += 1
-		update = "--update" in self.myopts and depth <= 1
 		debug = "--debug" in self.myopts
-		buildpkgonly = "--buildpkgonly" in self.myopts
-		nodeps = "--nodeps" in self.myopts
-		empty = "empty" in self.myparams
-		deep = "deep" in self.myparams
 		strict = mytype != "installed"
 		try:
 			for dep_root, dep_string, dep_priority in deps:
@@ -1454,51 +1526,17 @@ class depgraph(object):
 					return 0
 				if debug:
 					print "Candidates:", selected_atoms
-				for x in selected_atoms:
-					selected_pkg = None
-					if x.startswith("!"):
-						if not buildpkgonly and \
-							not nodeps and \
-							jbigkey not in self._slot_collision_nodes:
-							if mytype != "installed" and not addme:
-								# It's safe to ignore blockers if the
-								# parent is an --onlydeps node.
-								continue
-							# The blocker applies to the root where
-							# th parent is or will be installed.
-							self.blocker_parents.setdefault(
-								("blocks", myroot, x[1:]), set()).add(jbigkey)
-						continue
-					dep_pkg, existing_node = self._select_package(dep_root, x)
-					if not dep_pkg:
-						self._show_unsatisfied_dep(dep_root, x,
-							myparent=jbigkey)
-						return 0
-					# In some cases, dep_check will return deps that shouldn't
-					# be proccessed any further, so they are identified and
-					# discarded here. Try to discard as few as possible since
-					# discarded dependencies reduce the amount of information
-					# available for optimization of merge order.
-					if vardb.match(x) and \
-						not (existing_node or empty or deep or update):
-						myarg = None
-						if dep_root == self.target_root:
-							try:
-								myarg = self._set_atoms.findAtomForPackage(
-									dep_pkg.cpv, dep_pkg.metadata)
-							except portage.exception.InvalidDependString:
-								if not dep_pkg.installed:
-									# This shouldn't happen since the package
-									# should have been masked.
-									raise
-						if not myarg:
-							continue
+				for atom in selected_atoms:
+					blocker = atom.startswith("!")
+					if blocker:
+						atom = atom[1:]
 					mypriority = dep_priority.copy()
-					if vardb.match(x):
+					if not blocker and vardb.match(atom):
 						mypriority.satisfied = True
-					if not self.create(dep_pkg, myparent=jbigkey,
-						priority=mypriority, depth=depth):
-						return 0
+					self._dep_stack.append(
+						Dependency(arg=arg, atom=atom,
+							blocker=blocker, depth=depth, parent=pkg,
+							priority=mypriority, root=dep_root))
 				if debug:
 					print "Exiting...", jbigkey
 		except ValueError, e:
@@ -1524,6 +1562,38 @@ class depgraph(object):
 			return 0
 		return 1
 
+	def _greedy_slot_atoms(self, root, atom):
+		"""Generate SLOT atoms for the highest available match and
+		any matching installed SLOTs that are also available."""
+		vardb = self.roots[root].trees["vartree"].dbapi
+		filtered_db = self._filtered_trees[root]["porttree"].dbapi
+		mykey = portage.dep_getkey(atom)
+		myslots = set()
+		for cpv in vardb.match(mykey):
+			myslots.add(vardb.aux_get(cpv, ["SLOT"])[0])
+		if myslots:
+			self._populate_filtered_repo(root, atom,
+				exclude_installed=True)
+			mymatches = filtered_db.match(atom)
+			best_pkg = portage.best(mymatches)
+			if best_pkg:
+				best_slot = filtered_db.aux_get(best_pkg, ["SLOT"])[0]
+				myslots.add(best_slot)
+		if len(myslots) > 1:
+			for myslot in myslots:
+				myslot_atom = "%s:%s" % (mykey, myslot)
+				self._populate_filtered_repo(
+					root, myslot_atom,
+					exclude_installed=True)
+				if filtered_db.match(myslot_atom):
+					yield myslot_atom
+
+		# Since populate_filtered_repo() was called with the
+		# exclude_installed flag, these atoms will need to be processed
+		# again in case installed packages are required to satisfy
+		# dependencies.
+		self._filtered_trees[root]["atoms"].clear()
+
 	def _get_parent_sets(self, root, atom):
 		refs = []
 		for set_name, atom_set in self._sets.iteritems():
@@ -1547,7 +1617,7 @@ class depgraph(object):
 		bindb = self.trees[myroot]["bintree"].dbapi
 		pkgsettings = self.pkgsettings[myroot]
 		arg_atoms = []
-		addme = "--onlydeps" not in self.myopts
+		onlydeps = "--onlydeps" in self.myopts
 		for x in myfiles:
 			ext = os.path.splitext(x)[1]
 			if ext==".tbz2":
@@ -1571,8 +1641,9 @@ class depgraph(object):
 				metadata = dict(izip(self._mydbapi_keys,
 					bindb.aux_get(mykey, self._mydbapi_keys)))
 				pkg = Package(type_name="binary", root=myroot,
-					cpv=mykey, built=True, metadata=metadata)
-				if not self.create(pkg, addme=addme, arg=x):
+					cpv=mykey, built=True, metadata=metadata,
+					onlydeps=onlydeps)
+				if not self.create(pkg, arg=x):
 					return 0, myfavorites
 				arg_atoms.append((x, "="+mykey))
 			elif ext==".ebuild":
@@ -1610,8 +1681,8 @@ class depgraph(object):
 				pkgsettings.setcpv(mykey, mydb=metadata)
 				metadata["USE"] = pkgsettings["USE"]
 				pkg = Package(type_name="ebuild", root=myroot,
-					cpv=mykey, metadata=metadata)
-				if not self.create(pkg, addme=addme, arg=x):
+					cpv=mykey, metadata=metadata, onlydeps=onlydeps)
+				if not self.create(pkg, arg=x):
 					return 0, myfavorites
 				arg_atoms.append((x, "="+mykey))
 			else:
@@ -1652,18 +1723,32 @@ class depgraph(object):
 					print
 					return False, myfavorites
 
+		if "--update" in self.myopts and not mysets:
+			# Enable greedy SLOT atoms for atoms given as arguments.
+			# This is currently disabled for sets since greedy SLOT
+			# atoms could be a property of the set itself.
+			greedy_atoms = []
+			for myarg, atom in arg_atoms:
+				greedy_atoms.append((myarg, atom))
+				for greedy_atom in self._greedy_slot_atoms(myroot, atom):
+					greedy_atoms.append((myarg, greedy_atom))
+			arg_atoms = greedy_atoms
+
 		oneshot = "--oneshot" in self.myopts or \
 			"--onlydeps" in self.myopts
 		""" These are used inside self.create() in order to ensure packages
 		that happen to match arguments are not incorrectly marked as nomerge."""
 		args_set = self._sets["args"]
 		for myarg, myatom in arg_atoms:
-			if myatom in args_set:
+			if myatom in self._set_atoms:
 				continue
-			args_set.add(myatom)
 			self._set_atoms.add(myatom)
-			if not oneshot:
-				myfavorites.append(myatom)
+			if not self._get_parent_sets(myroot, myatom):
+				args_set.add(myatom)
+				if not oneshot:
+					# Filter out atoms that came from
+					# sets like system and world.
+					myfavorites.append(myatom)
 		pprovideddict = pkgsettings.pprovideddict
 		for arg, atom in arg_atoms:
 				try:
@@ -1673,7 +1758,8 @@ class depgraph(object):
 						self._pprovided_args.append((arg, atom))
 						continue
 					self._populate_filtered_repo(myroot, atom)
-					pkg, existing_node = self._select_package(myroot, atom)
+					pkg, existing_node = self._select_package(
+						myroot, atom, onlydeps=onlydeps)
 					if not pkg:
 						refs = self._get_parent_sets(myroot, atom)
 						if len(refs) == 1 and "args" in refs:
@@ -1681,7 +1767,7 @@ class depgraph(object):
 							return 0, myfavorites
 						self._missing_args.append((arg, atom))
 						continue
-					if not self.create(pkg, addme=addme):
+					if not self.create(pkg):
 						sys.stderr.write(("\n\n!!! Problem resolving " + \
 							"dependencies for %s\n") % atom)
 						return 0, myfavorites
@@ -1962,7 +2048,27 @@ class depgraph(object):
 			print xfrom
 		print
 
-	def _select_package(self, root, atom):
+	def _get_existing_pkg(self, root, slot_atom):
+		"""
+		@rtype: Package
+		@returns: An existing Package instance added to the graph for the
+			given SLOT, or None if no matching package has been added yet.
+		"""
+		existing_node = self._slot_node_map[root].get(slot_atom)
+		if not existing_node:
+			return None
+		e_type, root, e_cpv, e_status = existing_node
+		metadata = dict(izip(self._mydbapi_keys,
+			self.mydbapi[root].aux_get(e_cpv, self._mydbapi_keys)))
+		e_installed = e_type == "installed"
+		e_built = e_type != "ebuild"
+		e_onlydeps = not e_installed and \
+			e_status == "nomerge"
+		return Package(cpv=e_cpv, built=e_built,
+			installed=e_installed, type_name=e_type,
+			metadata=metadata, onlydeps=e_onlydeps, root=root)
+
+	def _select_package(self, root, atom, onlydeps=False):
 		pkgsettings = self.pkgsettings[root]
 		dbs = self._filtered_trees[root]["dbs"]
 		vardb = self.roots[root].trees["vartree"].dbapi
@@ -2042,24 +2148,14 @@ class depgraph(object):
 					if find_existing_node:
 						slot_atom = "%s:%s" % (
 							portage.cpv_getkey(cpv), metadata["SLOT"])
-						existing_node = self._slot_node_map[root].get(
-							slot_atom)
-						if not existing_node:
+						e_pkg = self._get_existing_pkg(root, slot_atom)
+						if not e_pkg:
 							break
-						e_type, root, e_cpv, e_status = existing_node
-						metadata = dict(izip(self._mydbapi_keys,
-							self.mydbapi[root].aux_get(
-							e_cpv, self._mydbapi_keys)))
-						cpv_slot = "%s:%s" % (e_cpv, metadata["SLOT"])
+						cpv_slot = "%s:%s" % \
+							(e_pkg.cpv, e_pkg.metadata["SLOT"])
 						if portage.dep.match_from_list(atom, [cpv_slot]):
-							e_installed = e_type == "installed"
-							e_built = e_type != "ebuild"
-							matched_packages.append(
-								Package(type_name=e_type, root=root,
-									cpv=e_cpv, metadata=metadata,
-									built=e_built, installed=e_installed))
-						else:
-							existing_node = None
+							matched_packages.append(e_pkg)
+							existing_node = e_pkg.digraph_node
 						break
 					# Compare built package to current config and
 					# reject the built package if necessary.
@@ -2136,7 +2232,8 @@ class depgraph(object):
 					matched_packages.append(
 						Package(type_name=pkg_type, root=root,
 							cpv=cpv, metadata=metadata,
-							built=built, installed=installed))
+							built=built, installed=installed,
+							onlydeps=onlydeps))
 					if reinstall_for_flags:
 						pkg_node = (pkg_type, root, cpv, "merge")
 						self._reinstall_nodes[pkg_node] = \
@@ -6145,7 +6242,7 @@ def action_build(settings, trees, mtimedb,
 			if "yes" == settings.get("AUTOCLEAN"):
 				portage.writemsg_stdout(">>> Auto-cleaning packages...\n")
 				vartree = trees[settings["ROOT"]]["vartree"]
-				unmerge(settings, myopts, vartree, "clean", ["world"],
+				unmerge(settings, myopts, vartree, "clean", [],
 					ldpath_mtimes, autoclean=1)
 			else:
 				portage.writemsg_stdout(colorize("WARN", "WARNING:")
@@ -6466,8 +6563,8 @@ def emerge_main():
 
 	mysets = {}
 	# only expand sets for actions taking package arguments
+	oldargs = myfiles[:]
 	if myaction not in ["search", "metadata", "sync"]:
-		oldargs = myfiles[:]
 		for s in settings.sets:
 			if s in myfiles:
 				# TODO: check if the current setname also resolves to a package name
@@ -6487,7 +6584,6 @@ def emerge_main():
 		if oldargs and not myfiles:
 			print "emerge: no targets left after set expansion"
 			return 0
-		del oldargs
 
 	if ("--tree" in myopts) and ("--columns" in myopts):
 		print "emerge: can't specify both of \"--tree\" and \"--columns\"."
@@ -6633,8 +6729,9 @@ def emerge_main():
 		if myaction:
 			myelogstr+=" "+myaction
 		if myfiles:
-			myelogstr+=" "+" ".join(myfiles)
+			myelogstr += " " + " ".join(oldargs)
 		emergelog(xterm_titles, " *** emerge " + myelogstr)
+	del oldargs
 
 	def emergeexitsig(signum, frame):
 		signal.signal(signal.SIGINT, signal.SIG_IGN)
