@@ -494,10 +494,15 @@ class portdbapi(dbapi):
 
 	def cp_list(self, mycp, use_cache=1, mytree=None):
 		if self.frozen and mytree is None:
-			mylist = self.xcache["match-all"].get(mycp)
-			# cp_list() doesn't expand old-style virtuals
-			if mylist and mylist[0].startswith(mycp):
-				return mylist[:]
+			cachelist = self.xcache["cp-list"].get(mycp)
+			if cachelist is not None:
+				# Try to propagate this to the match-all cache here for
+				# repoman since he uses separate match-all caches for each
+				# profile (due to old-style virtuals). Do not propagate
+				# old-style virtuals since cp_list() doesn't expand them.
+				if not (not cachelist and mycp.startswith("virtual/")):
+					self.xcache["match-all"][mycp] = cachelist
+				return cachelist[:]
 		mysplit = mycp.split("/")
 		invalid_category = mysplit[0] not in self._categories
 		d={}
@@ -535,12 +540,16 @@ class portdbapi(dbapi):
 					cpv = cat + "/" + pn + "-" + ver + "-" + rev
 				mylist[i] = cpv
 		if self.frozen and mytree is None:
-			if not (not mylist and mycp.startswith("virtual/")):
-				self.xcache["match-all"][mycp] = mylist[:]
+			cachelist = mylist[:]
+			self.xcache["cp-list"][mycp] = cachelist
+			# Do not propagate old-style virtuals since
+			# cp_list() doesn't expand them.
+			if not (not cachelist and mycp.startswith("virtual/")):
+				self.xcache["match-all"][mycp] = cachelist
 		return mylist
 
 	def freeze(self):
-		for x in "bestmatch-visible", "list-visible", "match-all", \
+		for x in "bestmatch-visible", "cp-list", "list-visible", "match-all", \
 			"match-visible", "minimum-all", "minimum-visible":
 			self.xcache[x]={}
 		self.frozen=1
