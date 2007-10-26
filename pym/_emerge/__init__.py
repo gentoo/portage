@@ -6503,16 +6503,17 @@ def emerge_main():
 			else:
 				newargs.append(a)
 		myfiles = newargs
+		del newargs
 		for s in settings.sets:
 			if SETPREFIX+s in myfiles:
 				# TODO: check if the current setname also resolves to a package name
 				if myaction in ["unmerge", "prune", "clean", "depclean"] and not packagesets[s].supportsOperation("unmerge"):
 					print "emerge: the given set %s does not support unmerge operations" % s
 					return 1
-				if not settings.sets[s].getAtoms():
+				if not settings.setconfig.getSetAtoms(s):
 					print "emerge: '%s' is an empty set" % s
 				else:
-					myfiles.extend(settings.sets[s].getAtoms())
+					myfiles.extend(settings.setconfig.getSetAtoms(s))
 					mysets[s] = settings.sets[s]
 				for e in settings.sets[s].errors:
 					print e

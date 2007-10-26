@@ -63,7 +63,7 @@ class SetConfig(SafeConfigParser):
 				try:
 					setname = self.get(sname, "name")
 				except NoOptionError:
-					setname = "sets/"+sname
+					setname = sname
 				if hasattr(setclass, "singleBuilder"):
 					try:
 						self.psets[setname] = setclass.singleBuilder(optdict, self.settings, self.trees)
