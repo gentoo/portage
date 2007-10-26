@@ -210,7 +210,7 @@ install_qa_check() {
 	if [[ -d ${ED}/${EPREFIX} ]] ; then
 		find "${ED}/${EPREFIX}/" | \
 		while read i ; do
-			eqawarn "QA Notice: ${i#${ED}} double prefix"
+			eqawarn "QA Notice: ${i#${D}} double prefix"
 		done
 		die "Aborting due to QA concerns: double prefix files installed"
 	fi
