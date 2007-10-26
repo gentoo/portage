@@ -4970,7 +4970,13 @@ def dep_wordreduce(mydeplist,mysettings,mydbapi,mode,use_cache=1):
 				deplist[mypos] = False
 			else:
 				if mode:
-					mydep=mydbapi.xmatch(mode,deplist[mypos])
+					x = mydbapi.xmatch(mode, deplist[mypos])
+					if mode.startswith("minimum-"):
+						mydep = []
+						if x:
+							mydep.append(x)
+					else:
+						mydep = x
 				else:
 					mydep=mydbapi.match(deplist[mypos],use_cache=use_cache)
 				if mydep!=None:
