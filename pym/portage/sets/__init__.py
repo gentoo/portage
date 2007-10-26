@@ -10,6 +10,8 @@ DEFAULT_SETS = ["world", "system", "everything", "security"] \
 	+["package_"+x for x in ["mask", "unmask", "use", "keywords"]]
 del x
 
+SETPREFIX = "@"
+
 class SetConfigError(Exception):
 	pass
 
@@ -96,7 +98,7 @@ class SetConfig(SafeConfigParser):
 		myset = self.getSetsWithAliases()[setname]
 		myatoms = myset.getAtoms()
 		for n in myset.getNonAtoms():
-			if n in self.aliases:
+			if n[0] == SETPREFIX and n[1:] in self.aliases:
 				myatoms.update(self.getSetAtoms(n))
 		return myatoms
 

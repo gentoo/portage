@@ -52,7 +52,7 @@ import portage.exception
 from portage.data import secpass
 from portage.util import normalize_path as normpath
 from portage.util import writemsg
-from portage.sets import SetConfig, make_default_config
+from portage.sets import SetConfig, make_default_config, SETPREFIX
 from portage.sets.profiles import PackagesSystemSet as SystemSet
 from portage.sets.base import InternalPackageSet
 from portage.sets.files import WorldSet
@@ -6496,8 +6496,15 @@ def emerge_main():
 	# only expand sets for actions taking package arguments
 	oldargs = myfiles[:]
 	if myaction not in ["search", "metadata", "sync"]:
+		newargs = []
+		for a in myfiles:
+			if a in ("system", "world"):
+				newargs.append(SETPREFIX+a)
+			else:
+				newargs.append(a)
+		myfiles = newargs
 		for s in settings.sets:
-			if s in myfiles:
+			if SETPREFIX+s in myfiles:
 				# TODO: check if the current setname also resolves to a package name
 				if myaction in ["unmerge", "prune", "clean", "depclean"] and not packagesets[s].supportsOperation("unmerge"):
 					print "emerge: the given set %s does not support unmerge operations" % s
@@ -6509,7 +6516,7 @@ def emerge_main():
 					mysets[s] = settings.sets[s]
 				for e in settings.sets[s].errors:
 					print e
-				myfiles.remove(s)
+				myfiles.remove(SETPREFIX+s)
 		# Need to handle empty sets specially, otherwise emerge will react 
 		# with the help message for empty argument lists
 		if oldargs and not myfiles:
