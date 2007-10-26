@@ -2993,9 +2993,12 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 								eout = portage.output.EOutput()
 								eout.quiet = \
 									mysettings.get("PORTAGE_QUIET", None) == "1"
-								for digest_name in mydigests[myfile]:
+								digests = mydigests.get(myfile)
+								if digests:
+									digests = digests.keys()
+									digests.sort()
 									eout.ebegin(
-										"%s %s ;-)" % (myfile, digest_name))
+										"%s %s ;-)" % (myfile, " ".join(digests)))
 									eout.eend(0)
 								continue # fetch any remaining files
 
