@@ -625,6 +625,7 @@ class portdbapi(dbapi):
 				if settings.getProfileMaskAtom(cpv, metadata):
 					continue
 				myval = cpv
+				break
 		elif level == "bestmatch-list":
 			#dep match -- find best match but restrict search to sublist
 			#no point in calling xmatch again since we're not caching list deps
