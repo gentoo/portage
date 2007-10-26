@@ -101,7 +101,7 @@ class SetConfig(SafeConfigParser):
 		for n in myset.getNonAtoms():
 			if n[0] == SETPREFIX and n[1:] in self.aliases:
 				if n[1:] not in ignorelist:
-					myatoms.update(self.getSetAtoms(n), ignorelist=ignorelist)
+					myatoms.update(self.getSetAtoms(n[1:]))
 		return myatoms
 
 def make_default_config(settings, trees):
