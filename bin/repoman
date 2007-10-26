@@ -810,6 +810,8 @@ if isCvs:
 dofail = 0
 arch_caches={}
 arch_xmatch_caches = {}
+shared_xmatch_caches = {"cp-list":{}}
+
 for x in scanlist:
 	#ebuilds and digests added to cvs respectively.
 	logging.info("checking package %s" % x)
@@ -1430,6 +1432,7 @@ for x in scanlist:
 					portdb.melt()
 					portdb.freeze()
 					xcache = portdb.xcache
+					xcache.update(shared_xmatch_caches)
 					arch_xmatch_caches[xmatch_cache_key] = xcache
 
 				trees["/"]["porttree"].settings = dep_settings
