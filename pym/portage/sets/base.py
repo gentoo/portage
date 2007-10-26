@@ -26,7 +26,7 @@ class PackageSet(object):
 		self._nonatoms = set()
 
 	def __contains__(self, atom):
-		return atom in self.getAtoms()
+		return atom in self.getAtoms() or atom in self._nonatoms
 	
 	def __iter__(self):
 		for x in self.getAtoms():
@@ -122,9 +122,20 @@ class EditablePackageSet(PackageSet):
 
 	def update(self, atoms):
 		self.getAtoms()
-		self._atoms.update(atoms)
-		self._updateAtomMap(atoms=atoms)
-		self.write()
+		modified = False
+		normal_atoms = []
+		for a in atoms:
+			if isvalidatom(a):
+				normal_atoms.append(a)
+			else:
+				modified = True
+				self._nonatoms.add(a)
+		if normal_atoms:
+			modified = True
+			self._atoms.update(normal_atoms)
+			self._updateAtomMap(atoms=normal_atoms)
+		if modified:
+			self.write()
 	
 	def add(self, atom):
 		self.update([atom])

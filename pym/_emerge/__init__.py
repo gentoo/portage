@@ -3520,14 +3520,27 @@ class depgraph(object):
 					if myfavkey in added_favorites:
 						continue
 					added_favorites.add(myfavkey)
-					world_set.add(myfavkey)
-					print ">>> Recording",myfavkey,"in \"world\" favorites file..."
 			except portage.exception.InvalidDependString, e:
 				writemsg("\n\n!!! '%s' has invalid PROVIDE: %s\n" % \
 					(pkg_key, str(e)), noiselevel=-1)
 				writemsg("!!! see '%s'\n\n" % os.path.join(
 					root, portage.VDB_PATH, pkg_key, "PROVIDE"), noiselevel=-1)
 				del e
+		all_added = []
+		for k in self._sets:
+			if k in ("args", "world"):
+				continue
+			s = SETPREFIX + k
+			if s in world_set:
+				continue
+			all_added.append(SETPREFIX + k)
+		all_added.extend(added_favorites)
+		all_added.sort()
+		for a in all_added:
+			print ">>> Recording %s in \"world\" favorites file..." % \
+				colorize("INFORM", a)
+		if all_added:
+			world_set.update(all_added)
 		world_set.unlock()
 
 	def loadResumeCommand(self, resume_data):
@@ -6171,8 +6184,7 @@ def action_build(settings, trees, mtimedb,
 						pkglist.append(pkg)
 			else:
 				pkglist = mydepgraph.altlist()
-			if favorites:
-				mydepgraph.saveNomergeFavorites()
+			mydepgraph.saveNomergeFavorites()
 			del mydepgraph
 			mergetask = MergeTask(settings, trees, myopts)
 			retval = mergetask.merge(pkglist, favorites, mtimedb)
