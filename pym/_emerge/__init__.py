@@ -6504,8 +6504,14 @@ def emerge_main():
 				newargs.append(a)
 		myfiles = newargs
 		del newargs
-		for s in settings.sets:
-			if SETPREFIX+s in myfiles:
+		newargs = []
+		for a in myfiles:
+			if a.startswith(SETPREFIX):
+				s = a[len(SETPREFIX):]
+				if s not in settings.sets:
+					print "emerge: there are no sets to satisfy %s." % \
+						colorize("INFORM", s)
+					return 1
 				# TODO: check if the current setname also resolves to a package name
 				if myaction in ["unmerge", "prune", "clean", "depclean"] and not packagesets[s].supportsOperation("unmerge"):
 					print "emerge: the given set %s does not support unmerge operations" % s
@@ -6513,11 +6519,14 @@ def emerge_main():
 				if not settings.setconfig.getSetAtoms(s):
 					print "emerge: '%s' is an empty set" % s
 				else:
-					myfiles.extend(settings.setconfig.getSetAtoms(s))
+					newargs.extend(settings.setconfig.getSetAtoms(s))
 					mysets[s] = settings.sets[s]
 				for e in settings.sets[s].errors:
 					print e
-				myfiles.remove(SETPREFIX+s)
+			else:
+				newargs.append(a)
+		myfiles = newargs
+		del newargs
 		# Need to handle empty sets specially, otherwise emerge will react 
 		# with the help message for empty argument lists
 		if oldargs and not myfiles:
