@@ -10,6 +10,8 @@ DEFAULT_SETS = ["world", "system", "everything", "security"] \
 	+["package_"+x for x in ["mask", "unmask", "use", "keywords"]]
 del x
 
+SETPREFIX = "@"
+
 class SetConfigError(Exception):
 	pass
 
@@ -61,7 +63,7 @@ class SetConfig(SafeConfigParser):
 				try:
 					setname = self.get(sname, "name")
 				except NoOptionError:
-					setname = "sets/"+sname
+					setname = sname
 				if hasattr(setclass, "singleBuilder"):
 					try:
 						self.psets[setname] = setclass.singleBuilder(optdict, self.settings, self.trees)
@@ -91,6 +93,16 @@ class SetConfig(SafeConfigParser):
 			shortnames.update(self.psets)
 			self.aliases = shortnames
 		return self.aliases
+
+	def getSetAtoms(self, setname, ignorelist=[]):
+		myset = self.getSetsWithAliases()[setname]
+		myatoms = myset.getAtoms()
+		ignorelist.append(setname)
+		for n in myset.getNonAtoms():
+			if n[0] == SETPREFIX and n[1:] in self.aliases:
+				if n[1:] not in ignorelist:
+					myatoms.update(self.getSetAtoms(n[1:]))
+		return myatoms
 
 def make_default_config(settings, trees):
 	sc = SetConfig([], settings, trees)

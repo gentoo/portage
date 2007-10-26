@@ -53,7 +53,7 @@ from portage.const import EPREFIX, BPREFIX
 from portage.data import secpass
 from portage.util import normalize_path as normpath
 from portage.util import writemsg
-from portage.sets import SetConfig, make_default_config
+from portage.sets import SetConfig, make_default_config, SETPREFIX
 from portage.sets.profiles import PackagesSystemSet as SystemSet
 from portage.sets.base import InternalPackageSet
 from portage.sets.files import WorldSet
@@ -1692,6 +1692,16 @@ class depgraph(object):
 					portage.writemsg("!!! Please check ebuild(5) for full details.\n")
 					portage.writemsg("!!! (Did you specify a version but forget to prefix with '='?)\n")
 					return (0,[])
+				# Don't expand categories or old-style virtuals here unless
+				# necessary. Expansion of old-style virtuals here causes at
+				# least the following problems:
+				#   1) It's more difficult to determine which set(s) an atom
+				#      came from, if any.
+				#   2) It takes away freedom from the resolver to choose other
+				#      possible expansions when necessary.
+				if "/" in x:
+					arg_atoms.append((x, x))
+					continue
 				try:
 					try:
 						for db, pkg_type, built, installed, db_keys in dbs:
@@ -3526,14 +3536,27 @@ class depgraph(object):
 					if myfavkey in added_favorites:
 						continue
 					added_favorites.add(myfavkey)
-					world_set.add(myfavkey)
-					print ">>> Recording",myfavkey,"in \"world\" favorites file..."
 			except portage.exception.InvalidDependString, e:
 				writemsg("\n\n!!! '%s' has invalid PROVIDE: %s\n" % \
 					(pkg_key, str(e)), noiselevel=-1)
 				writemsg("!!! see '%s'\n\n" % os.path.join(
 					root, portage.VDB_PATH, pkg_key, "PROVIDE"), noiselevel=-1)
 				del e
+		all_added = []
+		for k in self._sets:
+			if k in ("args", "world"):
+				continue
+			s = SETPREFIX + k
+			if s in world_set:
+				continue
+			all_added.append(SETPREFIX + k)
+		all_added.extend(added_favorites)
+		all_added.sort()
+		for a in all_added:
+			print ">>> Recording %s in \"world\" favorites file..." % \
+				colorize("INFORM", a)
+		if all_added:
+			world_set.update(all_added)
 		world_set.unlock()
 
 	def loadResumeCommand(self, resume_data):
@@ -6230,8 +6253,7 @@ def action_build(settings, trees, mtimedb,
 						pkglist.append(pkg)
 			else:
 				pkglist = mydepgraph.altlist()
-			if favorites:
-				mydepgraph.saveNomergeFavorites()
+			mydepgraph.saveNomergeFavorites()
 			del mydepgraph
 			mergetask = MergeTask(settings, trees, myopts)
 			retval = mergetask.merge(pkglist, favorites, mtimedb)
@@ -6565,20 +6587,37 @@ def emerge_main():
 	# only expand sets for actions taking package arguments
 	oldargs = myfiles[:]
 	if myaction not in ["search", "metadata", "sync"]:
-		for s in settings.sets:
-			if s in myfiles:
+		newargs = []
+		for a in myfiles:
+			if a in ("system", "world"):
+				newargs.append(SETPREFIX+a)
+			else:
+				newargs.append(a)
+		myfiles = newargs
+		del newargs
+		newargs = []
+		for a in myfiles:
+			if a.startswith(SETPREFIX):
+				s = a[len(SETPREFIX):]
+				if s not in settings.sets:
+					print "emerge: there are no sets to satisfy %s." % \
+						colorize("INFORM", s)
+					return 1
 				# TODO: check if the current setname also resolves to a package name
 				if myaction in ["unmerge", "prune", "clean", "depclean"] and not packagesets[s].supportsOperation("unmerge"):
 					print "emerge: the given set %s does not support unmerge operations" % s
 					return 1
-				if not settings.sets[s].getAtoms():
+				if not settings.setconfig.getSetAtoms(s):
 					print "emerge: '%s' is an empty set" % s
 				else:
-					myfiles.extend(settings.sets[s].getAtoms())
+					newargs.extend(settings.setconfig.getSetAtoms(s))
 					mysets[s] = settings.sets[s]
 				for e in settings.sets[s].errors:
 					print e
-				myfiles.remove(s)
+			else:
+				newargs.append(a)
+		myfiles = newargs
+		del newargs
 		# Need to handle empty sets specially, otherwise emerge will react 
 		# with the help message for empty argument lists
 		if oldargs and not myfiles:

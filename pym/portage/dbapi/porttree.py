@@ -14,7 +14,7 @@ from portage.exception import OperationNotPermitted, PortageException, \
 from portage.manifest import Manifest
 from portage.output import red
 from portage.util import ensure_dirs, writemsg, apply_recursive_permissions
-from portage.versions import pkgsplit, catpkgsplit, best
+from portage.versions import pkgcmp, pkgsplit, catpkgsplit, best
 
 import portage.gpg, portage.checksum
 
@@ -521,13 +521,27 @@ class portdbapi(dbapi):
 			mylist = []
 		else:
 			mylist = d.keys()
+		# Always sort in ascending order here since it's handy
+		# and the result can be easily cached and reused.
+		if len(mylist) > 1:
+			for i in xrange(len(mylist)):
+				mylist[i] = catpkgsplit(mylist[i])[1:]
+			mylist.sort(pkgcmp)
+			cat = mysplit[0]
+			for i, (pn, ver, rev) in enumerate(mylist):
+				if rev == "r0":
+					cpv = cat + "/" + pn + "-" + ver
+				else:
+					cpv = cat + "/" + pn + "-" + ver + "-" + rev
+				mylist[i] = cpv
 		if self.frozen and mytree is None:
 			if not (not mylist and mycp.startswith("virtual/")):
 				self.xcache["match-all"][mycp] = mylist[:]
 		return mylist
 
 	def freeze(self):
-		for x in ["list-visible", "bestmatch-visible", "match-visible", "match-all"]:
+		for x in "bestmatch-visible", "list-visible", "match-all", \
+			"match-visible", "minimum-all", "minimum-visible":
 			self.xcache[x]={}
 		self.frozen=1
 
@@ -550,6 +564,7 @@ class portdbapi(dbapi):
 			mydep = dep_expand(origdep, mydb=self, settings=self.mysettings)
 			mykey = dep_getkey(mydep)
 
+		myslot = dep_getslot(mydep)
 		if level == "list-visible":
 			#a list of all visible packages, not called directly (just by xmatch())
 			#myval = self.visible(self.cp_list(mykey))
@@ -560,6 +575,57 @@ class portdbapi(dbapi):
 			#get all visible matches (from xmatch()), then choose the best one
 
 			myval = best(self.xmatch("match-visible", None, mydep=mydep, mykey=mykey))
+		elif level == "minimum-all":
+			# Find the minimum matching version. This is optimized to
+			# minimize the number of metadata accesses (improves performance
+			# especially in cases where metadata needs to be generated).
+			if mydep == mykey:
+				mylist = self.cp_list(mykey)
+			else:
+				mylist = match_from_list(mydep, self.cp_list(mykey))
+			myval = ""
+			if mylist:
+				if myslot is None:
+					myval = mylist[0]
+				else:
+					for cpv in mylist:
+						try:
+							if self.aux_get(cpv, ["SLOT"])[0] == myslot:
+								myval = cpv
+								break
+						except KeyError:
+							pass # ebuild masked by corruption
+		elif level == "minimum-visible":
+			# Find the minimum matching visible version. This is optimized to
+			# minimize the number of metadata accesses (improves performance
+			# especially in cases where metadata needs to be generated).
+			# This does not implement LICENSE filtering since it's only
+			# intended for use by repoman.
+			if mydep == mykey:
+				mylist = self.cp_list(mykey)
+			else:
+				mylist = match_from_list(mydep, self.cp_list(mykey))
+			myval = ""
+			settings = self.mysettings
+			for cpv in mylist:
+				try:
+					metadata = dict(izip(self._aux_cache_keys,
+						self.aux_get(cpv, self._aux_cache_keys)))
+				except KeyError:
+					# ebuild masked by corruption
+					continue
+				if not eapi_is_supported(metadata["EAPI"]):
+					continue
+				if myslot and myslot != metadata["SLOT"]:
+					continue
+				if settings.getMissingKeywords(cpv, metadata):
+					continue
+				if settings.getMaskAtom(cpv, metadata):
+					continue
+				if settings.getProfileMaskAtom(cpv, metadata):
+					continue
+				myval = cpv
+				break
 		elif level == "bestmatch-list":
 			#dep match -- find best match but restrict search to sublist
 			#no point in calling xmatch again since we're not caching list deps
@@ -584,8 +650,7 @@ class portdbapi(dbapi):
 		else:
 			print "ERROR: xmatch doesn't handle", level, "query!"
 			raise KeyError
-		myslot = dep_getslot(mydep)
-		if myslot is not None:
+		if myslot is not None and isinstance(myval, list):
 			slotmatches = []
 			for cpv in myval:
 				try:

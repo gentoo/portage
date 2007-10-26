@@ -3,13 +3,14 @@
 # $Id$
 
 import os
+from itertools import chain
 
 from portage.util import grabfile, write_atomic, ensure_dirs
 from portage.const import PRIVATE_PATH, USER_CONFIG_PATH
 from portage.locks import lockfile, unlockfile
 from portage import portage_gid
 from portage.sets.base import PackageSet, EditablePackageSet
-from portage.sets import SetConfigError
+from portage.sets import SetConfigError, SETPREFIX
 from portage.env.loaders import ItemFileLoader, KeyListFileLoader
 from portage.env.validators import ValidAtomValidator
 from portage import dep_getkey, cpv_getkey
@@ -24,7 +25,7 @@ class StaticFileSet(EditablePackageSet):
 		self._filename = filename
 		self._mtime = None
 		self.description = "Package set loaded from file %s" % self._filename
-		self.loader = ItemFileLoader(self._filename, ValidAtomValidator)
+		self.loader = ItemFileLoader(self._filename, self._validate)
 
 		metadata = grabfile(self._filename + ".metadata")
 		key = None
@@ -44,9 +45,13 @@ class StaticFileSet(EditablePackageSet):
 		else:
 			if key != None:
 				setattr(self, key, " ".join(value))
-	
+
+	def _validate(self, atom):
+		return ValidAtomValidator(atom)
+
 	def write(self):
-		write_atomic(self._filename, "\n".join(sorted(self._atoms))+"\n")
+		write_atomic(self._filename, "\n".join(sorted(
+			chain(self._atoms, self._nonatoms)))+"\n")
 	
 	def load(self):
 		try:
@@ -125,6 +130,11 @@ class WorldSet(StaticFileSet):
 	def __init__(self, root):
 		super(WorldSet, self).__init__(os.path.join(os.sep, root, PRIVATE_PATH.lstrip(os.sep), "world"))
 		self._lock = None
+
+	def _validate(self, atom):
+		if atom.startswith(SETPREFIX):
+			return True
+		return ValidAtomValidator(atom)
 
 	def _ensure_dirs(self):
 		ensure_dirs(os.path.dirname(self._filename), gid=portage_gid, mode=02750, mask=02)

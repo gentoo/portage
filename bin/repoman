@@ -1520,10 +1520,10 @@ for x in scanlist:
 							continue
 						#we are testing deps for a masked package; give it some lee-way
 						suffix="masked"
-						matchmode="match-all"
+						matchmode = "minimum-all"
 					else:
 						suffix=""
-						matchmode="match-visible"
+						matchmode = "minimum-visible"
 	
 					if prof[1] == "dev":
 						suffix=suffix+"indev"
