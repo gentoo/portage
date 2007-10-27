@@ -575,7 +575,7 @@ class RootConfig(object):
 	particular $ROOT."""
 	def __init__(self, trees):
 		self.trees = trees
-		self.settings = EmergeConfig(trees["vartree"].settings, trees=trees)
+		self.settings = trees["vartree"].settings
 		self.root = self.settings["ROOT"]
 
 def create_world_atom(pkg_key, metadata, args_set, root_config):
