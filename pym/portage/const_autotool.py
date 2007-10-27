@@ -9,7 +9,7 @@ __all__ = ["EPREFIX", "SYSCONFDIR", "DATADIR", "PORTAGE_BASE",
 
 from os import path
 
-EPREFIX=path.normpath("@DOMAIN_PREFIX@")
+EPREFIX=@PYTHON_EPREFIX@
 SYSCONFDIR=path.normpath("@sysconfdir@")
 DATADIR=path.normpath("@datadir@")
 PORTAGE_BASE=path.normpath("@PORTAGE_BASE@")

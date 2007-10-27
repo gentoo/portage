@@ -199,6 +199,13 @@ AC_HELP_STRING([--with-offset-prefix],
 			   [DOMAIN_PREFIX=$withval],
 			   [DOMAIN_PREFIX=''])
 
+if test "x$DOMAIN_PREFIX" = "x"
+then
+	PYTHON_EPREFIX='""'
+else
+	PYTHON_EPREFIX='path.normpath("'"$DOMAIN_PREFIX"'")'
+fi
+
 AC_ARG_WITH(eapi,
 AC_HELP_STRING([--with-eapi], [specify what eapi to use (default 1)]),
 [SUPPORTED_EAPI=$withval],
@@ -225,6 +232,7 @@ AC_SUBST(rootuser)
 AC_SUBST(rootuid)
 AC_SUBST(rootgid)
 AC_SUBST(DOMAIN_PREFIX)
+AC_SUBST(PYTHON_EPREFIX)
 AC_SUBST(SUPPORTED_EAPI)
 AC_SUBST(DEFAULT_PATH)
 AC_SUBST(PORTAGE_BASE,['${exec_prefix}/lib/portage'])
