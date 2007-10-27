@@ -576,7 +576,7 @@ class RootConfig(object):
 	particular $ROOT."""
 	def __init__(self, trees):
 		self.trees = trees
-		self.settings = EmergeConfig(trees["vartree"].settings, trees=trees)
+		self.settings = trees["vartree"].settings
 		self.root = self.settings["ROOT"]
 
 def create_world_atom(pkg_key, metadata, args_set, root_config):
@@ -1517,8 +1517,6 @@ class depgraph(object):
 					print "Priority:", dep_priority
 				vardb = self.roots[dep_root].trees["vartree"].dbapi
 				try:
-					self._populate_filtered_repo(dep_root, dep_string,
-						myuse=myuse, strict=strict)
 					selected_atoms = self._select_atoms(dep_root,
 						dep_string, myuse=myuse, strict=strict)
 				except portage.exception.InvalidDependString, e:
@@ -1942,16 +1940,22 @@ class depgraph(object):
 				if atom_populated:
 					break
 
-	def _select_atoms(self, root, depstring, myuse=None, strict=True):
-		"""This will raise InvalidDependString if necessary."""
+	def _select_atoms(self, root, depstring, myuse=None, strict=True,
+		trees=None):
+		"""This will raise InvalidDependString if necessary. If trees is
+		None then self._filtered_trees is used."""
 		pkgsettings = self.pkgsettings[root]
+		if trees is None:
+			trees = self._filtered_trees
+			self._populate_filtered_repo(root, depstring,
+				myuse=myuse, strict=strict)
 		if True:
 			try:
 				if not strict:
 					portage.dep._dep_check_strict = False
 				mycheck = portage.dep_check(depstring, None,
 					pkgsettings, myuse=myuse,
-					myroot=root, trees=self._filtered_trees)
+					myroot=root, trees=trees)
 			finally:
 				portage.dep._dep_check_strict = True
 			if not mycheck[0]:
@@ -3723,10 +3727,10 @@ class MergeTask(object):
 		if settings.get("PORTAGE_DEBUG", "") == "1":
 			self.edebug = 1
 		self.pkgsettings = {}
-		self.pkgsettings[self.target_root] = EmergeConfig(settings, setconfig=settings.setconfig)
-		if self.target_root != "/":
-			self.pkgsettings["/"] = \
-				EmergeConfig(trees["/"]["vartree"].settings, setconfig=settings.setconfig)
+		for root in trees:
+			self.pkgsettings[root] = EmergeConfig(
+				trees[root]["vartree"].settings,
+				setconfig=trees[root]["vartree"].settings.setconfig)
 		self.curval = 0
 
 	def merge(self, mylist, favorites, mtimedb):
@@ -6393,14 +6397,18 @@ def load_emerge_config(trees=None):
 		kwargs[k] = os.environ.get(envvar, None)
 	trees = portage.create_trees(trees=trees, **kwargs)
 
+	for root in trees:
+		settings = trees[root]["vartree"].settings
+		settings = EmergeConfig(settings, trees=trees[root])
+		settings.lock()
+		trees[root]["vartree"].settings = settings
+
 	settings = trees["/"]["vartree"].settings
 
 	for myroot in trees:
 		if myroot != "/":
 			settings = trees[myroot]["vartree"].settings
 			break
-	
-	settings = EmergeConfig(settings, trees=trees[settings["ROOT"]])
 
 	mtimedbfile = os.path.join("/", portage.CACHE_PATH.lstrip(os.path.sep), "mtimedb")
 	mtimedb = portage.MtimeDB(mtimedbfile)
