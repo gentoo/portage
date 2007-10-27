@@ -178,7 +178,7 @@ esac],
 AC_MSG_CHECKING([for user id of ${rootuser}])
 dnl grab uid of rootuser
 rootuid=`${XCU_ID} -u ${rootuser}`
-if [[ `echo ${rootuid} | ${EGREP} '^[[:digit:]]+$'` ]]
+if test "x`echo ${rootuid} | ${EGREP} '^[[:digit:]]+$'`" != "x"
 then
 	AC_MSG_RESULT([${rootuid}])
 else
@@ -186,7 +186,7 @@ else
 fi
 AC_MSG_CHECKING([for group id of ${rootuser}])
 rootgid=`${XCU_ID} -g ${rootuser}`
-if [[ `echo ${rootgid} | ${EGREP} '^[[:digit:]]+$'` ]]
+if test "x`echo ${rootgid} | ${EGREP} '^[[:digit:]]+$'`" != "x"
 then
 	AC_MSG_RESULT([${rootgid}])
 else
