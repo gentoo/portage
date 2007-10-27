@@ -207,7 +207,7 @@ install_qa_check() {
 		die "Aborting due to QA concerns: files installed in ${ED}/${D}"
 	fi
 
-	if [[ -d ${ED}/${EPREFIX} ]] ; then
+	if [[ -n ${EPREFIX} && -d ${ED}/${EPREFIX} ]] ; then
 		find "${ED}/${EPREFIX}/" | \
 		while read i ; do
 			eqawarn "QA Notice: ${i#${D}} double prefix"
@@ -215,7 +215,7 @@ install_qa_check() {
 		die "Aborting due to QA concerns: double prefix files installed"
 	fi
 
-	if [[ -d ${D} ]] ; then
+	if [[ -n ${EPREFIX} && -d ${D} ]] ; then
 		INSTALLTOD=$(find ${D%/} | egrep -v "^${ED}" | sed -e "s|^${D%/}||" | awk '{if (length($0) <= length("'"${EPREFIX}"'")) { if (substr("'"${EPREFIX}"'", 1, length($0)) != $0) {print $0;} } else if (substr($0, 1, length("'"${EPREFIX}"'")) != "'"${EPREFIX}"'") {print $0;} }') 
 		if [[ -n ${INSTALLTOD} ]] ; then
 			eqawarn "QA Notice: the following files are outside of the prefix:"
