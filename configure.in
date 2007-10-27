@@ -194,30 +194,16 @@ else
 fi
 
 AC_ARG_WITH(offset-prefix, 
-AC_HELP_STRING([--with-offset-prefix], [specify the installation prefix for all packages , defaults to /]),
-[DOMAIN_PREFIX=$withval],
-[DOMAIN_PREFIX='/'])
+AC_HELP_STRING([--with-offset-prefix],
+			   [specify the installation prefix for all packages, defaults to an empty string]),
+			   [DOMAIN_PREFIX=$withval],
+			   [DOMAIN_PREFIX=''])
 
 DEFAULT_PATH="${DOMAIN_PREFIX}/usr/bin:${DOMAIN_PREFIX}/usr/sbin:${DOMAIN_PREFIX}/bin:${DOMAIN_PREFIX}/sbin:${prefix}/bin"
 AC_ARG_WITH(default-path, 
 AC_HELP_STRING([--with-default-path], [specify additional PATHs available to the portage build environment ]),
 [DEFAULT_PATH="${DEFAULT_PATH}":$withval],
 [DEFAULT_PATH="${DEFAULT_PATH}"])
-
-
-AC_MSG_CHECKING([for ARCH to be used])
-dnl detect ARCH from target_cpu
-case "${target_cpu}" in
-i?86) ARCH=x86 ;;
-sparc*) ARCH=sparc ;;
-hppa*) ARCH=hppa ;;
-powerpc*) ARCH=ppc ;;
-dnl don't know more target_cpus yet...
-*) AC_MSG_RESULT([unknown])
-   AC_MSG_CHECKING([for default ARCH to be used])
-   ARCH=${target_cpu} ;;
-esac
-AC_MSG_RESULT([${ARCH}])
 
 AC_CONFIG_FILES([ Makefile ])
 AC_CONFIG_FILES([ subst-install ])
@@ -235,7 +221,6 @@ AC_SUBST(rootuid)
 AC_SUBST(rootgid)
 AC_SUBST(DOMAIN_PREFIX)
 AC_SUBST(DEFAULT_PATH)
-AC_SUBST(ARCH)
 AC_SUBST(PORTAGE_BASE,['${exec_prefix}/lib/portage'])
 AM_CONDITIONAL(INSTALL_PYTHON_SOURCES, test x$enable_py_sources = xtrue)
 AM_CONDITIONAL(BUILD_TBZ2TOOL, test x$enable_tbz2tool = xtrue)
