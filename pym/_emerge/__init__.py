@@ -890,14 +890,22 @@ def iter_atoms(deps):
 				yield x
 
 class Package(object):
-	__slots__ = ("__weakref__", "built", "cpv", "_digraph_node",
-		"installed", "metadata", "root", "onlydeps", "type_name")
+	__slots__ = ("__weakref__", "built", "cpv",
+		"installed", "metadata", "root", "onlydeps", "type_name",
+		"_digraph_node", "_slot_atom")
 	def __init__(self, **kwargs):
 		for myattr in self.__slots__:
 			if myattr == "__weakref__":
 				continue
 			myvalue = kwargs.get(myattr, None)
 			setattr(self, myattr, myvalue)
+
+	@property
+	def slot_atom(self):
+		if self._slot_atom is None:
+			self._slot_atom = "%s:%s" % \
+				(portage.cpv_getkey(self.cpv), self.metadata["SLOT"])
+		return self._slot_atom
 
 	@property
 	def digraph_node(self):
@@ -1086,8 +1094,8 @@ class depgraph(object):
 		self.pkgsettings = {}
 		# Maps cpv to digraph node for all nodes added to the graph.
 		self.pkg_node_map = {}
-		# Maps slot atom to digraph node for all nodes added to the graph.
-		self._slot_node_map = {}
+		# Maps slot atom to package for each Package added to the graph.
+		self._slot_pkg_map = {}
 		# Maps nodes to the reasons they were selected for reinstallation.
 		self._reinstall_nodes = {}
 		self.mydbapi = {}
@@ -1107,7 +1115,7 @@ class depgraph(object):
 			self.pkgsettings[myroot] = portage.config(
 				clone=self.trees[myroot]["vartree"].settings)
 			self.pkg_node_map[myroot] = {}
-			self._slot_node_map[myroot] = {}
+			self._slot_pkg_map[myroot] = {}
 			vardb = self.trees[myroot]["vartree"].dbapi
 			self.roots[myroot] = RootConfig(self.trees[myroot])
 			# This fakedbapi instance will model the state that the vdb will
@@ -1373,8 +1381,9 @@ class depgraph(object):
 				# are being merged in that case.
 				priority.rebuild = True
 
-			existing_node = self._slot_node_map[myroot].get(
-				slot_atom, None)
+			existing_node = self._slot_pkg_map[myroot].get(slot_atom)
+			if existing_node:
+				existing_node = existing_node.digraph_node
 			slot_collision = False
 			if existing_node:
 				e_type, myroot, e_cpv, e_status = existing_node
@@ -1420,8 +1429,8 @@ class depgraph(object):
 				# function despite collisions.
 			else:
 				self.mydbapi[myroot].cpv_inject(mykey, metadata=metadata)
-				self._slot_node_map[myroot][slot_atom] = jbigkey
-				self.pkg_node_map[myroot][mykey] = jbigkey
+				self._slot_pkg_map[pkg.root][pkg.slot_atom] = pkg
+				self.pkg_node_map[pkg.root][pkg.cpv] = pkg.digraph_node
 
 			if rev_dep and myparent:
 				self.digraph.addnode(myparent, jbigkey,
@@ -2062,26 +2071,6 @@ class depgraph(object):
 			print xfrom
 		print
 
-	def _get_existing_pkg(self, root, slot_atom):
-		"""
-		@rtype: Package
-		@returns: An existing Package instance added to the graph for the
-			given SLOT, or None if no matching package has been added yet.
-		"""
-		existing_node = self._slot_node_map[root].get(slot_atom)
-		if not existing_node:
-			return None
-		e_type, root, e_cpv, e_status = existing_node
-		metadata = dict(izip(self._mydbapi_keys,
-			self.mydbapi[root].aux_get(e_cpv, self._mydbapi_keys)))
-		e_installed = e_type == "installed"
-		e_built = e_type != "ebuild"
-		e_onlydeps = not e_installed and \
-			e_status == "nomerge"
-		return Package(cpv=e_cpv, built=e_built,
-			installed=e_installed, type_name=e_type,
-			metadata=metadata, onlydeps=e_onlydeps, root=root)
-
 	def _select_package(self, root, atom, onlydeps=False):
 		pkgsettings = self.pkgsettings[root]
 		dbs = self._filtered_trees[root]["dbs"]
@@ -2162,7 +2151,7 @@ class depgraph(object):
 					if find_existing_node:
 						slot_atom = "%s:%s" % (
 							portage.cpv_getkey(cpv), metadata["SLOT"])
-						e_pkg = self._get_existing_pkg(root, slot_atom)
+						e_pkg = self._slot_pkg_map[root].get(slot_atom)
 						if not e_pkg:
 							break
 						cpv_slot = "%s:%s" % \
@@ -2285,11 +2274,9 @@ class depgraph(object):
 			myslots = {}
 			modified_slots[myroot] = myslots
 			final_db = self.mydbapi[myroot]
-			slot_node_map = self._slot_node_map[myroot]
-			for slot_atom, mynode in slot_node_map.iteritems():
-				mytype, myroot, mycpv, mystatus = mynode
-				if mystatus == "merge":
-					myslots[slot_atom] = mycpv
+			for pkg in self._slot_pkg_map[myroot].itervalues():
+				if not (pkg.installed or pkg.onlydeps):
+					myslots[pkg.slot_atom] = pkg.cpv
 
 		#if "deep" in self.myparams:
 		if True:
