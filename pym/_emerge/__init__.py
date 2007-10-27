@@ -1510,8 +1510,6 @@ class depgraph(object):
 					print "Priority:", dep_priority
 				vardb = self.roots[dep_root].trees["vartree"].dbapi
 				try:
-					self._populate_filtered_repo(dep_root, dep_string,
-						myuse=myuse, strict=strict)
 					selected_atoms = self._select_atoms(dep_root,
 						dep_string, myuse=myuse, strict=strict)
 				except portage.exception.InvalidDependString, e:
@@ -1935,16 +1933,22 @@ class depgraph(object):
 				if atom_populated:
 					break
 
-	def _select_atoms(self, root, depstring, myuse=None, strict=True):
-		"""This will raise InvalidDependString if necessary."""
+	def _select_atoms(self, root, depstring, myuse=None, strict=True,
+		trees=None):
+		"""This will raise InvalidDependString if necessary. If trees is
+		None then self._filtered_trees is used."""
 		pkgsettings = self.pkgsettings[root]
+		if trees is None:
+			trees = self._filtered_trees
+			self._populate_filtered_repo(root, depstring,
+				myuse=myuse, strict=strict)
 		if True:
 			try:
 				if not strict:
 					portage.dep._dep_check_strict = False
 				mycheck = portage.dep_check(depstring, None,
 					pkgsettings, myuse=myuse,
-					myroot=root, trees=self._filtered_trees)
+					myroot=root, trees=trees)
 			finally:
 				portage.dep._dep_check_strict = True
 			if not mycheck[0]:
