@@ -3702,10 +3702,10 @@ class MergeTask(object):
 		if settings.get("PORTAGE_DEBUG", "") == "1":
 			self.edebug = 1
 		self.pkgsettings = {}
-		self.pkgsettings[self.target_root] = EmergeConfig(settings, setconfig=settings.setconfig)
-		if self.target_root != "/":
-			self.pkgsettings["/"] = \
-				EmergeConfig(trees["/"]["vartree"].settings, setconfig=settings.setconfig)
+		for root in trees:
+			self.pkgsettings[root] = EmergeConfig(
+				trees[root]["vartree"].settings,
+				setconfig=trees[root]["vartree"].settings.setconfig)
 		self.curval = 0
 
 	def merge(self, mylist, favorites, mtimedb):
@@ -6324,14 +6324,18 @@ def load_emerge_config(trees=None):
 		kwargs[k] = os.environ.get(envvar, None)
 	trees = portage.create_trees(trees=trees, **kwargs)
 
+	for root in trees:
+		settings = trees[root]["vartree"].settings
+		settings = EmergeConfig(settings, trees=trees[root])
+		settings.lock()
+		trees[root]["vartree"].settings = settings
+
 	settings = trees["/"]["vartree"].settings
 
 	for myroot in trees:
 		if myroot != "/":
 			settings = trees[myroot]["vartree"].settings
 			break
-	
-	settings = EmergeConfig(settings, trees=trees[settings["ROOT"]])
 
 	mtimedbfile = os.path.join("/", portage.CACHE_PATH.lstrip(os.path.sep), "mtimedb")
 	mtimedb = portage.MtimeDB(mtimedbfile)
