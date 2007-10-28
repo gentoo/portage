@@ -93,9 +93,25 @@ class stdout_spinner(object):
 		self.update = self.update_twirl
 		self.scroll_sequence = self.scroll_msgs[
 			int(time.time() * 100) % len(self.scroll_msgs)]
+		self.last_update = 0
+		self.min_display_latency = 0.05
+
+	def _return_early(self):
+		"""
+		Flushing ouput to the tty too frequently wastes cpu time. Therefore,
+		each update* method should return without doing any output when this
+		method returns True.
+		"""
+		cur_time = time.time()
+		if cur_time - self.last_update < self.min_display_latency:
+			return True
+		self.last_update = cur_time
+		return False
 
 	def update_basic(self):
 		self.spinpos = (self.spinpos + 1) % 500
+		if self._return_early():
+			return
 		if (self.spinpos % 100) == 0:
 			if self.spinpos == 0:
 				sys.stdout.write(". ")
@@ -104,6 +120,8 @@ class stdout_spinner(object):
 		sys.stdout.flush()
 
 	def update_scroll(self):
+		if self._return_early():
+			return
 		if(self.spinpos >= len(self.scroll_sequence)):
 			sys.stdout.write(darkgreen(" \b\b\b" + self.scroll_sequence[
 				len(self.scroll_sequence) - 1 - (self.spinpos % len(self.scroll_sequence))]))
@@ -114,6 +132,8 @@ class stdout_spinner(object):
 
 	def update_twirl(self):
 		self.spinpos = (self.spinpos + 1) % len(self.twirl_sequence)
+		if self._return_early():
+			return
 		sys.stdout.write("\b\b " + self.twirl_sequence[self.spinpos])
 		sys.stdout.flush()
 
@@ -1335,9 +1355,6 @@ class depgraph(object):
 					return 0
 				del e
 
-		if "--nodeps" not in self.myopts:
-			self.spinner.update()
-
 		merging = mytype != "installed"
 		jbigkey = pkg.digraph_node
 
@@ -1450,6 +1467,8 @@ class depgraph(object):
 			return 1
 		elif "recurse" not in self.myparams:
 			return 1
+
+		self.spinner.update()
 
 		""" Check DEPEND/RDEPEND/PDEPEND/SLOT
 		Pull from bintree if it's binary package, porttree if it's ebuild.
