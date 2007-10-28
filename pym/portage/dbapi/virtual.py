@@ -50,8 +50,8 @@ class fakedbapi(dbapi):
 			cpv_list = []
 		self._cpv_sort_ascending(cpv_list)
 		if not (not cpv_list and mycp.startswith("virtual/")):
-			self._match_cache[mycp] = cpv_list[:]
-		return cpv_list
+			self._match_cache[mycp] = cpv_list
+		return cpv_list[:]
 
 	def cp_all(self):
 		return list(self.cpdict)
