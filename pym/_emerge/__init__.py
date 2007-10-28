@@ -52,10 +52,8 @@ import portage.exception
 from portage.data import secpass
 from portage.util import normalize_path as normpath
 from portage.util import writemsg
-from portage.sets import SetConfig, make_default_config, SETPREFIX
-from portage.sets.profiles import PackagesSystemSet as SystemSet
+from portage.sets import make_default_config, SETPREFIX
 from portage.sets.base import InternalPackageSet
-from portage.sets.files import WorldSet
 
 from itertools import chain, izip
 from UserDict import DictMixin
@@ -5665,10 +5663,8 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	vardb = dep_check_trees[myroot]["vartree"].dbapi
 	# Constrain dependency selection to the installed packages.
 	dep_check_trees[myroot]["porttree"] = dep_check_trees[myroot]["vartree"]
-	system_set = SystemSet(settings.profiles)
-	syslist = list(system_set)
-	world_set = WorldSet(myroot)
-	worldlist = list(world_set)
+	syslist = settings.setconfig.getSetAtoms("system")
+	worldlist = settings.setconfig.getSetAtoms("world")
 	args_set = InternalPackageSet()
 	fakedb = portage.fakedbapi(settings=settings)
 	myvarlist = vardb.cpv_all()
@@ -6535,7 +6531,8 @@ def emerge_main():
 						colorize("INFORM", s)
 					return 1
 				# TODO: check if the current setname also resolves to a package name
-				if myaction in ["unmerge", "prune", "clean", "depclean"] and not packagesets[s].supportsOperation("unmerge"):
+				if myaction in ["unmerge", "prune", "clean", "depclean"] and \
+					not settings.sets[s].supportsOperation("unmerge"):
 					print "emerge: the given set %s does not support unmerge operations" % s
 					return 1
 				if not settings.setconfig.getSetAtoms(s):
