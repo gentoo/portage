@@ -343,7 +343,7 @@ class vardbapi(dbapi):
 		if use_cache and self.cpcache.has_key(mycp):
 			cpc = self.cpcache[mycp]
 			if cpc[0] == mystat:
-				return cpc[1]
+				return cpc[1][:]
 		cat_dir = self.getpath(mysplit[0])
 		try:
 			dir_list = os.listdir(cat_dir)
@@ -369,7 +369,8 @@ class vardbapi(dbapi):
 				if ps[0] == mysplit[1]:
 					returnme.append(mysplit[0]+"/"+x)
 		if use_cache:
-			self.cpcache[mycp] = [mystat,returnme]
+			self._cpv_sort_ascending(returnme)
+			self.cpcache[mycp] = [mystat, returnme[:]]
 		elif self.cpcache.has_key(mycp):
 			del self.cpcache[mycp]
 		return returnme

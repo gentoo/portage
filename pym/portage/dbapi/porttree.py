@@ -528,17 +528,7 @@ class portdbapi(dbapi):
 			mylist = d.keys()
 		# Always sort in ascending order here since it's handy
 		# and the result can be easily cached and reused.
-		if len(mylist) > 1:
-			for i in xrange(len(mylist)):
-				mylist[i] = catpkgsplit(mylist[i])[1:]
-			mylist.sort(pkgcmp)
-			cat = mysplit[0]
-			for i, (pn, ver, rev) in enumerate(mylist):
-				if rev == "r0":
-					cpv = cat + "/" + pn + "-" + ver
-				else:
-					cpv = cat + "/" + pn + "-" + ver + "-" + rev
-				mylist[i] = cpv
+		self._cpv_sort_ascending(mylist)
 		if self.frozen and mytree is None:
 			cachelist = mylist[:]
 			self.xcache["cp-list"][mycp] = cachelist

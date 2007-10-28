@@ -41,10 +41,17 @@ class fakedbapi(dbapi):
 		return self.cpvdict.has_key(mycpv)
 
 	def cp_list(self, mycp, use_cache=1):
-		if not self.cpdict.has_key(mycp):
-			return []
-		else:
-			return self.cpdict[mycp]
+		cachelist = self._match_cache.get(mycp)
+		# cp_list() doesn't expand old-style virtuals
+		if cachelist and cachelist[0].startswith(mycp):
+			return cachelist[:]
+		cpv_list = self.cpdict.get(mycp)
+		if cpv_list is None:
+			cpv_list = []
+		self._cpv_sort_ascending(cpv_list)
+		if not (not cpv_list and mycp.startswith("virtual/")):
+			self._match_cache[mycp] = cpv_list[:]
+		return cpv_list
 
 	def cp_all(self):
 		return list(self.cpdict)

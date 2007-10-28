@@ -827,23 +827,6 @@ def perform_global_updates(mycpv, mydb, mycommands):
 	if updates:
 		mydb.aux_update(mycpv, updates)
 
-def cpv_sort_descending(cpv_list):
-	"""Sort in place, returns None."""
-	if len(cpv_list) <= 1:
-		return
-	first_split = portage.catpkgsplit(cpv_list[0])
-	cat = first_split[0]
-	cpv_list[0] = first_split[1:]
-	for i in xrange(1, len(cpv_list)):
-		cpv_list[i] = portage.catpkgsplit(cpv_list[i])[1:]
-	cpv_list.sort(portage.pkgcmp, reverse=True)
-	for i, (pn, ver, rev) in enumerate(cpv_list):
-		if rev == "r0":
-			cpv = cat + "/" + pn + "-" + ver
-		else:
-			cpv = cat + "/" + pn + "-" + ver + "-" + rev
-		cpv_list[i] = cpv
-
 def visible(pkgsettings, cpv, metadata, built=False, installed=False):
 	"""
 	Check if a package is visible. This can raise an InvalidDependString
@@ -1873,7 +1856,8 @@ class depgraph(object):
 						# we have to try all of them to prevent the old-style
 						# virtuals from overriding available new-styles.
 					continue
-				cpv_sort_descending(cpv_list)
+				# descending order
+				cpv_list.reverse()
 				for cpv in cpv_list:
 					if filtered_db.cpv_exists(cpv):
 						continue
@@ -1984,7 +1968,8 @@ class depgraph(object):
 				cpv_list = db.xmatch("match-all", atom)
 			else:
 				cpv_list = db.match(atom)
-			cpv_sort_descending(cpv_list)
+			# descending order
+			cpv_list.reverse()
 			for cpv in cpv_list:
 				try:
 					metadata = dict(izip(db_keys,
@@ -2098,7 +2083,8 @@ class depgraph(object):
 					cpv_list = db.xmatch("match-all", atom)
 				else:
 					cpv_list = db.match(atom)
-				cpv_sort_descending(cpv_list)
+				# descending order
+				cpv_list.reverse()
 				for cpv in cpv_list:
 					reinstall_for_flags = None
 					try:

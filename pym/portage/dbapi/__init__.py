@@ -9,7 +9,7 @@ from portage.locks import unlockfile
 from portage.output import red
 from portage.util import writemsg
 from portage import dep_expand
-from portage.versions import catsplit
+from portage.versions import catpkgsplit, catsplit, pkgcmp
 
 
 class dbapi(object):
@@ -21,6 +21,25 @@ class dbapi(object):
 
 	def cp_list(self, cp, use_cache=1):
 		return
+
+	def _cpv_sort_ascending(self, cpv_list):
+		"""
+		Use this to sort self.cp_list() results in ascending
+		order. It sorts in place and returns None.
+		"""
+		if len(cpv_list) > 1:
+			first_split = catpkgsplit(cpv_list[0])
+			cat = first_split[0]
+			cpv_list[0] = first_split[1:]
+			for i in xrange(1, len(cpv_list)):
+				cpv_list[i] = catpkgsplit(cpv_list[i])[1:]
+			cpv_list.sort(pkgcmp)
+			for i, (pn, ver, rev) in enumerate(cpv_list):
+				if rev == "r0":
+					cpv = cat + "/" + pn + "-" + ver
+				else:
+					cpv = cat + "/" + pn + "-" + ver + "-" + rev
+				cpv_list[i] = cpv
 
 	def cpv_all(self):
 		"""Return all CPVs in the db
