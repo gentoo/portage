@@ -970,8 +970,7 @@ class dblink(object):
 					"file, line %d: '%s'\n" % (pos, contents_file),
 					noiselevel=-1)
 				continue
-			if line.endswith("\n"):
-				line = line[:-1]
+			line = line.rstrip("\n")
 			# Split on " " so that even file paths that
 			# end with spaces can be handled.
 			mydat = line.split(" ")
