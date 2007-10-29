@@ -511,7 +511,11 @@ class portdbapi(dbapi):
 		else:
 			mytrees = self.porttrees
 		for oroot in mytrees:
-			for x in listdir(oroot+"/"+mycp, EmptyOnError=1, ignorecvs=1):
+			try:
+				file_list = os.listdir(os.path.join(oroot, mycp))
+			except OSError:
+				continue
+			for x in file_list:
 				if x.endswith(".ebuild"):
 					pf = x[:-7]
 					ps = pkgsplit(pf)
