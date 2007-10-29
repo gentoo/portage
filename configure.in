@@ -133,6 +133,20 @@ AC_TRY_LINK([
 		 ]
 )
 
+AC_MSG_CHECKING([if lchown exists])
+AC_TRY_LINK([
+			 #include <sys/types.h>
+			 #include <unistd.h>
+		 ], [
+			 lchown("", -1, -1);
+		 ], [
+			 AC_DEFINE(HAVE_LCHOWN, 1, [defined when LCHOWN exists])
+			 AC_MSG_RESULT([yes])
+		 ], [
+			 AC_MSG_RESULT([no])
+		 ]
+)
+
 AC_ARG_ENABLE(tbz2tool,
 AC_HELP_STRING([--enable-tbz2tool],[build tbz2tool, tool for creating binpkgs (default yes)]),
 [case "${enableval}" in

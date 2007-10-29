@@ -251,7 +251,7 @@ int dirwalk(char *src, char *srcp, char *trg, char *trgp) {
 						trg, strerror(errno));
 				return(-1);
 			}
-			if (lchown(trg, s.st_uid, s.st_gid) != 0) {
+			if (chown(trg, s.st_uid, s.st_gid) != 0) {
 				fprintf(stderr, "failed to set ownership of %s: %s\n",
 						trg, strerror(errno));
 				return(-1);
@@ -307,11 +307,13 @@ int dirwalk(char *src, char *srcp, char *trg, char *trgp) {
 						src, strerror(errno));
 				return(-1);
 			}
+#ifdef HAVE_LCHOWN
 			if (lchown(trg, s.st_uid, s.st_gid) != 0) {
 				fprintf(stderr, "failed to set ownership of %s: %s\n",
 						trg, strerror(errno));
 				return(-1);
 			}
+#endif
 		}
 
 		/* restore modified path */
@@ -331,7 +333,7 @@ int dirwalk(char *src, char *srcp, char *trg, char *trgp) {
 				trg, strerror(errno));
 		return(-1);
 	}
-	if (lchown(trg, s.st_uid, s.st_gid) != 0) {
+	if (chown(trg, s.st_uid, s.st_gid) != 0) {
 		fprintf(stderr, "failed to set ownership of %s: %s\n",
 				trg, strerror(errno));
 		return(-1);
