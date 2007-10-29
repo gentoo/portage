@@ -53,10 +53,8 @@ from portage.const import EPREFIX, BPREFIX
 from portage.data import secpass
 from portage.util import normalize_path as normpath
 from portage.util import writemsg
-from portage.sets import SetConfig, make_default_config, SETPREFIX
-from portage.sets.profiles import PackagesSystemSet as SystemSet
+from portage.sets import make_default_config, SETPREFIX
 from portage.sets.base import InternalPackageSet
-from portage.sets.files import WorldSet
 
 from itertools import chain, izip
 from UserDict import DictMixin
@@ -94,9 +92,25 @@ class stdout_spinner(object):
 		self.update = self.update_twirl
 		self.scroll_sequence = self.scroll_msgs[
 			int(time.time() * 100) % len(self.scroll_msgs)]
+		self.last_update = 0
+		self.min_display_latency = 0.05
+
+	def _return_early(self):
+		"""
+		Flushing ouput to the tty too frequently wastes cpu time. Therefore,
+		each update* method should return without doing any output when this
+		method returns True.
+		"""
+		cur_time = time.time()
+		if cur_time - self.last_update < self.min_display_latency:
+			return True
+		self.last_update = cur_time
+		return False
 
 	def update_basic(self):
 		self.spinpos = (self.spinpos + 1) % 500
+		if self._return_early():
+			return
 		if (self.spinpos % 100) == 0:
 			if self.spinpos == 0:
 				sys.stdout.write(". ")
@@ -105,6 +119,8 @@ class stdout_spinner(object):
 		sys.stdout.flush()
 
 	def update_scroll(self):
+		if self._return_early():
+			return
 		if(self.spinpos >= len(self.scroll_sequence)):
 			sys.stdout.write(darkgreen(" \b\b\b" + self.scroll_sequence[
 				len(self.scroll_sequence) - 1 - (self.spinpos % len(self.scroll_sequence))]))
@@ -115,6 +131,8 @@ class stdout_spinner(object):
 
 	def update_twirl(self):
 		self.spinpos = (self.spinpos + 1) % len(self.twirl_sequence)
+		if self._return_early():
+			return
 		sys.stdout.write("\b\b " + self.twirl_sequence[self.spinpos])
 		sys.stdout.flush()
 
@@ -828,23 +846,6 @@ def perform_global_updates(mycpv, mydb, mycommands):
 	if updates:
 		mydb.aux_update(mycpv, updates)
 
-def cpv_sort_descending(cpv_list):
-	"""Sort in place, returns None."""
-	if len(cpv_list) <= 1:
-		return
-	first_split = portage.catpkgsplit(cpv_list[0])
-	cat = first_split[0]
-	cpv_list[0] = first_split[1:]
-	for i in xrange(1, len(cpv_list)):
-		cpv_list[i] = portage.catpkgsplit(cpv_list[i])[1:]
-	cpv_list.sort(portage.pkgcmp, reverse=True)
-	for i, (pn, ver, rev) in enumerate(cpv_list):
-		if rev == "r0":
-			cpv = cat + "/" + pn + "-" + ver
-		else:
-			cpv = cat + "/" + pn + "-" + ver + "-" + rev
-		cpv_list[i] = cpv
-
 def visible(pkgsettings, cpv, metadata, built=False, installed=False):
 	"""
 	Check if a package is visible. This can raise an InvalidDependString
@@ -1359,9 +1360,6 @@ class depgraph(object):
 					return 0
 				del e
 
-		if "--nodeps" not in self.myopts:
-			self.spinner.update()
-
 		merging = mytype != "installed"
 		jbigkey = pkg.digraph_node
 
@@ -1474,6 +1472,8 @@ class depgraph(object):
 			return 1
 		elif "recurse" not in self.myparams:
 			return 1
+
+		self.spinner.update()
 
 		""" Check DEPEND/RDEPEND/PDEPEND/SLOT
 		Pull from bintree if it's binary package, porttree if it's ebuild.
@@ -1880,7 +1880,8 @@ class depgraph(object):
 						# we have to try all of them to prevent the old-style
 						# virtuals from overriding available new-styles.
 					continue
-				cpv_sort_descending(cpv_list)
+				# descending order
+				cpv_list.reverse()
 				for cpv in cpv_list:
 					if filtered_db.cpv_exists(cpv):
 						continue
@@ -1991,7 +1992,8 @@ class depgraph(object):
 				cpv_list = db.xmatch("match-all", atom)
 			else:
 				cpv_list = db.match(atom)
-			cpv_sort_descending(cpv_list)
+			# descending order
+			cpv_list.reverse()
 			for cpv in cpv_list:
 				try:
 					metadata = dict(izip(db_keys,
@@ -2110,7 +2112,8 @@ class depgraph(object):
 					cpv_list = db.xmatch("match-all", atom)
 				else:
 					cpv_list = db.match(atom)
-				cpv_sort_descending(cpv_list)
+				# descending order
+				cpv_list.reverse()
 				for cpv in cpv_list:
 					reinstall_for_flags = None
 					try:
@@ -5729,10 +5732,8 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	vardb = dep_check_trees[myroot]["vartree"].dbapi
 	# Constrain dependency selection to the installed packages.
 	dep_check_trees[myroot]["porttree"] = dep_check_trees[myroot]["vartree"]
-	system_set = SystemSet(settings.profiles)
-	syslist = list(system_set)
-	world_set = WorldSet(myroot)
-	worldlist = list(world_set)
+	syslist = settings.setconfig.getSetAtoms("system")
+	worldlist = settings.setconfig.getSetAtoms("world")
 	args_set = InternalPackageSet()
 	fakedb = portage.fakedbapi(settings=settings)
 	myvarlist = vardb.cpv_all()
@@ -6599,7 +6600,8 @@ def emerge_main():
 						colorize("INFORM", s)
 					return 1
 				# TODO: check if the current setname also resolves to a package name
-				if myaction in ["unmerge", "prune", "clean", "depclean"] and not packagesets[s].supportsOperation("unmerge"):
+				if myaction in ["unmerge", "prune", "clean", "depclean"] and \
+					not settings.sets[s].supportsOperation("unmerge"):
 					print "emerge: the given set %s does not support unmerge operations" % s
 					return 1
 				if not settings.setconfig.getSetAtoms(s):

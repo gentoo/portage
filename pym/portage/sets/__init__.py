@@ -94,14 +94,17 @@ class SetConfig(SafeConfigParser):
 			self.aliases = shortnames
 		return self.aliases
 
-	def getSetAtoms(self, setname, ignorelist=[]):
+	def getSetAtoms(self, setname, ignorelist=None):
 		myset = self.getSetsWithAliases()[setname]
 		myatoms = myset.getAtoms()
-		ignorelist.append(setname)
+		if ignorelist is None:
+			ignorelist = set()
+		ignorelist.add(setname)
 		for n in myset.getNonAtoms():
 			if n[0] == SETPREFIX and n[1:] in self.aliases:
 				if n[1:] not in ignorelist:
-					myatoms.update(self.getSetAtoms(n[1:]))
+					myatoms.update(self.getSetAtoms(n[1:],
+						ignorelist=ignorelist))
 		return myatoms
 
 def make_default_config(settings, trees):

@@ -26,7 +26,8 @@ class PackageSet(object):
 		self._nonatoms = set()
 
 	def __contains__(self, atom):
-		return atom in self.getAtoms() or atom in self._nonatoms
+		self._load()
+		return atom in self._atoms or atom in self._nonatoms
 	
 	def __iter__(self):
 		for x in self.getAtoms():
@@ -36,18 +37,21 @@ class PackageSet(object):
 		if not op in OPERATIONS:
 			raise ValueError(op)
 		return op in self._operations
-	
-	def getAtoms(self):
+
+	def _load(self):
 		if not (self._loaded or self._loading):
 			self._loading = True
 			self.load()
 			self._loaded = True
 			self._loading = False
-		return self._atoms
+
+	def getAtoms(self):
+		self._load()
+		return self._atoms.copy()
 
 	def getNonAtoms(self):
-		self.getAtoms()
-		return self._nonatoms
+		self._load()
+		return self._nonatoms.copy()
 
 	def _setAtoms(self, atoms):
 		atoms = map(str.strip, atoms)
