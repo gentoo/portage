@@ -2349,7 +2349,8 @@ class depgraph(object):
 			required_set_atoms = set()
 			for s in required_set_names:
 				if s == "args":
-					required_set_atoms.update(self._sets["args"])
+					if root == self.target_root:
+						required_set_atoms.update(self._sets["args"])
 				else:
 					required_set_atoms.update(setconfig.getSetAtoms(s))
 			vardb = self.roots[root].trees["vartree"].dbapi
