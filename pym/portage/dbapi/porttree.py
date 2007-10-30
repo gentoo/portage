@@ -573,11 +573,6 @@ class portdbapi(dbapi):
 			#myval = self.visible(self.cp_list(mykey))
 
 			myval = self.gvisible(self.visible(self.cp_list(mykey)))
-		elif level == "bestmatch-visible":
-			#dep match -- best match of all visible packages
-			#get all visible matches (from xmatch()), then choose the best one
-
-			myval = best(self.xmatch("match-visible", None, mydep=mydep, mykey=mykey))
 		elif level == "minimum-all":
 			# Find the minimum matching version. This is optimized to
 			# minimize the number of metadata accesses (improves performance
@@ -598,7 +593,7 @@ class portdbapi(dbapi):
 								break
 						except KeyError:
 							pass # ebuild masked by corruption
-		elif level == "minimum-visible":
+		elif level in ("minimum-visible", "bestmatch-visible"):
 			# Find the minimum matching visible version. This is optimized to
 			# minimize the number of metadata accesses (improves performance
 			# especially in cases where metadata needs to be generated).
@@ -610,7 +605,11 @@ class portdbapi(dbapi):
 				mylist = match_from_list(mydep, self.cp_list(mykey))
 			myval = ""
 			settings = self.mysettings
-			for cpv in mylist:
+			if level == "minimum-visible":
+				iterfunc = iter
+			else:
+				iterfunc = reversed
+			for cpv in iterfunc(mylist):
 				try:
 					metadata = dict(izip(self._aux_cache_keys,
 						self.aux_get(cpv, self._aux_cache_keys)))
