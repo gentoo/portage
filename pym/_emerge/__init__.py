@@ -188,6 +188,7 @@ options=[
 "--ask",          "--alphabetical",
 "--buildpkg",     "--buildpkgonly",
 "--changelog",    "--columns",
+"--consistent",
 "--debug",        "--deep",
 "--digest",
 "--emptytree",
@@ -364,6 +365,9 @@ def create_depgraph_params(myopts, myaction):
 	# recurse:   go into the dependencies
 	# deep:      go into the dependencies of already merged packages
 	# empty:     pretend nothing is merged
+	# consistent: ensure that installation of new packages does not break
+	#            any deep dependencies of required sets (args, system, or
+	#            world).
 	myparams = set(["recurse"])
 	if "--update" in myopts or \
 		"--newuse" in myopts or \
@@ -377,6 +381,8 @@ def create_depgraph_params(myopts, myaction):
 		myparams.discard("recurse")
 	if "--deep" in myopts:
 		myparams.add("deep")
+	if "--consistent" in myopts:
+		myparams.add("consistent")
 	return myparams
 
 
@@ -1098,6 +1104,9 @@ class depgraph(object):
 		# Contains a filtered view of preferred packages that are selected
 		# from available repositories.
 		self._filtered_trees = {}
+		# Contains installed packages and new packages that have been added
+		# to the graph.
+		self._graph_trees = {}
 		for myroot in trees:
 			self.trees[myroot] = {}
 			for tree in ("porttree", "bintree"):
@@ -1125,6 +1134,12 @@ class depgraph(object):
 					fakedb.cpv_inject(pkg,
 						metadata=dict(izip(self._mydbapi_keys,
 						vardb.aux_get(pkg, self._mydbapi_keys))))
+			def graph_tree():
+				pass
+			graph_tree.dbapi = fakedb
+			self._graph_trees[myroot] = {}
+			self._graph_trees[myroot]["porttree"] = graph_tree
+			self._graph_trees[myroot]["vartree"] = self.trees[myroot]["vartree"]
 			del vardb, fakedb
 			self._filtered_trees[myroot] = {}
 			self._filtered_trees[myroot]["vartree"] = self.trees[myroot]["vartree"]
@@ -1181,6 +1196,11 @@ class depgraph(object):
 		self._pprovided_args = []
 		self._missing_args = []
 		self._dep_stack = []
+		self._unsatisfied_deps = []
+		self._required_set_names = set(["args", "system", "world"])
+		self._select_atoms = self._select_atoms_highest_available
+		self._select_package = self._select_pkg_highest_available
+		self._required_set_missing_atoms = set()
 
 	def _show_slot_collision_notice(self, packages):
 		"""Show an informational message advising the user to mask one of the
@@ -1253,7 +1273,7 @@ class depgraph(object):
 				return flags
 		return None
 
-	def _create_graph(self):
+	def _create_graph(self, allow_unsatisfied=False):
 		debug = "--debug" in self.myopts
 		buildpkgonly = "--buildpkgonly" in self.myopts
 		nodeps = "--nodeps" in self.myopts
@@ -1279,6 +1299,9 @@ class depgraph(object):
 				continue
 			dep_pkg, existing_node = self._select_package(dep.root, dep.atom)
 			if not dep_pkg:
+				if allow_unsatisfied:
+					self._unsatisfied_deps.append(dep)
+					continue
 				self._show_unsatisfied_dep(dep.root, dep.atom,
 					myparent=dep.parent.digraph_node)
 				return 0
@@ -1811,6 +1834,9 @@ class depgraph(object):
 					missing += 1
 					print "Missing binary for:",xs[2]
 
+		if not self._complete_graph():
+			return False, myfavorites
+
 		if not self.validate_blockers():
 			return False, myfavorites
 		
@@ -1943,8 +1969,17 @@ class depgraph(object):
 				if atom_populated:
 					break
 
-	def _select_atoms(self, root, depstring, myuse=None, strict=True,
-		trees=None):
+	def _select_atoms_from_graph(self, *pargs, **kwargs):
+		"""
+		Prefer atoms matching packages that have already been
+		added to the graph or those that are installed and have
+		not been scheduled for replacement.
+		"""
+		kwargs["trees"] = self._graph_trees
+		return self._select_atoms_highest_available(*pargs, **kwargs)
+
+	def _select_atoms_highest_available(self, root, depstring,
+		myuse=None, strict=True, trees=None):
 		"""This will raise InvalidDependString if necessary. If trees is
 		None then self._filtered_trees is used."""
 		pkgsettings = self.pkgsettings[root]
@@ -2061,7 +2096,7 @@ class depgraph(object):
 			print xfrom
 		print
 
-	def _select_package(self, root, atom, onlydeps=False):
+	def _select_pkg_highest_available(self, root, atom, onlydeps=False):
 		pkgsettings = self.pkgsettings[root]
 		dbs = self._filtered_trees[root]["dbs"]
 		vardb = self.roots[root].trees["vartree"].dbapi
@@ -2249,6 +2284,106 @@ class depgraph(object):
 
 		# ordered by type preference ("ebuild" type is the last resort)
 		return  matched_packages[-1], existing_node
+
+	def _select_pkg_from_graph(self, root, atom, onlydeps=False):
+		"""
+		Select packages that have already been added to the graph or
+		those that are installed and have not been scheduled for
+		replacement.
+		"""
+		graph_db = self._graph_trees[root]["porttree"].dbapi
+		matches = graph_db.match(atom)
+		if not matches:
+			return None, None
+		cpv = matches[-1] # highest match
+		slot_atom = "%s:%s" % (portage.cpv_getkey(cpv),
+			graph_db.aux_get(cpv, ["SLOT"])[0])
+		e_pkg = self._slot_pkg_map[root].get(slot_atom)
+		if e_pkg:
+			return e_pkg, e_pkg.digraph_node
+		metadata = dict(izip(self._mydbapi_keys,
+			graph_db.aux_get(cpv, self._mydbapi_keys)))
+		pkg = Package(cpv=cpv, built=True,
+			installed=True, type_name="installed",
+			metadata=metadata, root=root)
+		return pkg, None
+
+	def _complete_graph(self):
+		"""
+		Add any deep dependencies of required sets (args, system, world) that
+		have not been pulled into the graph yet. This ensures that the graph
+		is consistent such that initially satisfied deep dependencies are not
+		broken in the new graph. Initially unsatisfied dependencies are
+		irrelevant since we only want to avoid breaking dependencies that are
+		intially satisfied.
+
+		Since this method can consume enough time to disturb users, it is
+		currently only enabled by the --consistent option.
+		"""
+		if "consistent" not in self.myparams:
+			# Skip this to avoid consuming enough time to disturb users.
+			return 1
+
+		if "--buildpkgonly" in self.myopts or \
+			"recurse" not in self.myparams:
+			return 1
+
+		# Put the depgraph into a mode that causes it to only
+		# select packages that have already been added to the
+		# graph or those that are installed and have not been
+		# scheduled for replacement. Also, toggle the "deep"
+		# parameter so that all dependencies are traversed and
+		# accounted for.
+		self._select_atoms = self._select_atoms_from_graph
+		self._select_package = self._select_pkg_from_graph
+		self.myparams.add("deep")
+
+		for root in self.roots:
+			required_set_names = self._required_set_names.copy()
+			if root == self.target_root and \
+				("deep" in self.myparams or "empty" in self.myparams):
+				required_set_names.difference_update(self._sets)
+			if not required_set_names:
+				continue
+			setconfig = self.roots[root].settings.setconfig
+			required_set_atoms = set()
+			for s in required_set_names:
+				if s == "args":
+					required_set_atoms.update(self._sets["args"])
+				else:
+					required_set_atoms.update(setconfig.getSetAtoms(s))
+			vardb = self.roots[root].trees["vartree"].dbapi
+			for atom in required_set_atoms:
+				self._dep_stack.append(
+					Dependency(atom=atom, depth=0,
+					priority=DepPriority(), root=root))
+			if not self._create_graph(allow_unsatisfied=True):
+				return 0
+			# Check the unsatisfied deps to see if any initially satisfied deps
+			# will become unsatisfied due to an upgrade. Initially unsatisfied
+			# deps are irrelevant since we only want to avoid breaking deps
+			# that are initially satisfied.
+			while self._unsatisfied_deps:
+				dep = self._unsatisfied_deps.pop()
+				matches = vardb.match(dep.atom)
+				if not matches:
+					# Initially unsatisfied.
+					continue
+				# An scheduled installation broke a deep dependency.
+				# Add the installed package to the graph so that it
+				# will be appropriately reported as a slot collision
+				# (possibly solvable via backtracking).
+				cpv = matches[-1] # highest match
+				metadata = dict(izip(self._mydbapi_keys,
+					vardb.aux_get(cpv, self._mydbapi_keys)))
+				pkg = Package(type_name="installed", root=root,
+					cpv=cpv, metadata=metadata, built=True,
+					installed=True)
+				if not self._add_pkg(pkg, myparent=dep.parent):
+					return 0
+				if not self._create_graph(allow_unsatisfied=True):
+					return 0
+		return 1
 
 	def validate_blockers(self):
 		"""Remove any blockers from the digraph that do not match any of the
@@ -2508,6 +2643,18 @@ class depgraph(object):
 			self._altlist_cache[reversed] = retlist[:]
 			return retlist
 		mygraph=self.digraph.copy()
+		# Prune "nomerge" root nodes if nothing depends on them, since
+		# otherwise they slow down merge order calculation. Don't remove
+		# non-root nodes since they help optimize merge order in some cases
+		# such as revdep-rebuild.
+		while True:
+			removed_something = False
+			for node in mygraph.root_nodes():
+				if node[-1] == "nomerge":
+					mygraph.remove(node)
+					removed_something = True
+			if not removed_something:
+				break
 		self._merge_order_bias(mygraph)
 		myblockers = self.blocker_digraph.copy()
 		retlist=[]
