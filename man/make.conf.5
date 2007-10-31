@@ -211,8 +211,8 @@ enabled for more than a short period of time.
 Automatically perform a metadata transfer when `emerge \-\-sync` is run.
 .TP
 .B mirror
-This will cause \fBFETCHCOMMAND\fR to always be run even if 
-the file already exists in \fBDISTDIR\fR.
+Fetch everything in \fBSRC_URI\fR regardless of \fBUSE\fR settings,
+except do not fetch anything when \fImirror\fR is in \fBRESTRICT\fR.
 .TP
 .B noauto
 When utilizing \fBebuild\fR(1), only run the function requested.
