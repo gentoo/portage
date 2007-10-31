@@ -1194,6 +1194,7 @@ class depgraph(object):
 		self._missing_args = []
 		self._dep_stack = []
 		self._unsatisfied_deps = []
+		self._ignored_deps = []
 		self._required_set_names = set(["args", "system", "world"])
 		self._select_atoms = self._select_atoms_highest_available
 		self._select_package = self._select_pkg_highest_available
@@ -1275,6 +1276,7 @@ class depgraph(object):
 		nodeps = "--nodeps" in self.myopts
 		empty = "empty" in self.myparams
 		deep = "deep" in self.myparams
+		consistent = "consistent" in self.myparams
 		dep_stack = self._dep_stack
 		while dep_stack:
 			dep = dep_stack.pop()
@@ -1319,6 +1321,8 @@ class depgraph(object):
 							# should have been masked.
 							raise
 				if not myarg:
+					if consistent:
+						self._ignored_deps.append(dep)
 					continue
 
 			if not self._add_pkg(dep_pkg, myparent=dep.parent,
@@ -1479,11 +1483,14 @@ class depgraph(object):
 		    emerge --deep <pkgspec>; we need to recursively check dependencies of pkgspec
 		    If we are in --nodeps (no recursion) mode, we obviously only check 1 level of dependencies.
 		"""
-		if "deep" not in self.myparams and not merging and \
-			not ("--update" in self.myopts and arg and merging):
+		dep_stack = self._dep_stack
+		if "recurse" not in self.myparams:
 			return 1
-		elif "recurse" not in self.myparams:
-			return 1
+		elif pkg.installed and \
+			"deep" not in self.myparams:
+			if "consistent" not in self.myparams:
+				return 1
+			dep_stack = self._ignored_deps
 
 		self.spinner.update()
 
@@ -1552,7 +1559,7 @@ class depgraph(object):
 					mypriority = dep_priority.copy()
 					if not blocker and vardb.match(atom):
 						mypriority.satisfied = True
-					self._dep_stack.append(
+					dep_stack.append(
 						Dependency(arg=arg, atom=atom,
 							blocker=blocker, depth=depth, parent=pkg,
 							priority=mypriority, root=dep_root))
@@ -2339,7 +2346,7 @@ class depgraph(object):
 			if root == self.target_root and \
 				("deep" in self.myparams or "empty" in self.myparams):
 				required_set_names.difference_update(self._sets)
-			if not required_set_names:
+			if not required_set_names and not self._ignored_deps:
 				continue
 			setconfig = self.roots[root].settings.setconfig
 			required_set_atoms = set()
@@ -2354,6 +2361,9 @@ class depgraph(object):
 				self._dep_stack.append(
 					Dependency(atom=atom, depth=0,
 					priority=DepPriority(), root=root))
+			if self._ignored_deps:
+				self._dep_stack.extend(self._ignored_deps)
+				self._ignored_deps = []
 			if not self._create_graph(allow_unsatisfied=True):
 				return 0
 			# Check the unsatisfied deps to see if any initially satisfied deps
