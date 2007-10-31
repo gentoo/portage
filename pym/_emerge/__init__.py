@@ -890,7 +890,7 @@ def iter_atoms(deps):
 				yield x
 
 class Package(object):
-	__slots__ = ("__weakref__", "built", "cpv",
+	__slots__ = ("__weakref__", "built", "cpv", "depth",
 		"installed", "metadata", "root", "onlydeps", "type_name",
 		"_digraph_node", "_slot_atom")
 	def __init__(self, **kwargs):
@@ -917,7 +917,7 @@ class Package(object):
 		return self._digraph_node
 
 class Dependency(object):
-	__slots__ = ("__weakref__", "arg", "atom", "blocker", "depth",
+	__slots__ = ("__weakref__", "atom", "blocker", "depth",
 		"parent", "priority", "root")
 	def __init__(self, **kwargs):
 		for myattr in self.__slots__:
@@ -1280,6 +1280,10 @@ class depgraph(object):
 		dep_stack = self._dep_stack
 		while dep_stack:
 			dep = dep_stack.pop()
+			if isinstance(dep, Package):
+				if not self._add_pkg_deps(dep):
+					return 0
+				continue
 			update = "--update" in self.myopts and dep.depth <= 1
 			if dep.blocker:
 				if not buildpkgonly and \
@@ -1361,10 +1365,7 @@ class depgraph(object):
 
 		# select the correct /var database that we'll be checking against
 		vardbapi = self.trees[myroot]["vartree"].dbapi
-		portdb = self.trees[myroot]["porttree"].dbapi
-		bindb = self.trees[myroot]["bintree"].dbapi
 		pkgsettings = self.pkgsettings[myroot]
-		myuse = metadata["USE"].split()
 
 		if not arg and myroot == self.target_root:
 			try:
@@ -1494,9 +1495,21 @@ class depgraph(object):
 
 		self.spinner.update()
 
-		""" Check DEPEND/RDEPEND/PDEPEND/SLOT
-		Pull from bintree if it's binary package, porttree if it's ebuild.
-		Binpkg's can be either remote or local. """
+		if arg:
+			depth = 0
+		pkg.depth = depth
+		dep_stack.append(pkg)
+		return 1
+
+	def _add_pkg_deps(self, pkg):
+
+		mytype = pkg.type_name
+		myroot = pkg.root
+		mykey = pkg.cpv
+		metadata = pkg.metadata
+		myuse = metadata["USE"].split()
+		jbigkey = pkg.digraph_node
+		depth = pkg.depth + 1
 
 		edepend={}
 		depkeys = ["DEPEND","RDEPEND","PDEPEND"]
@@ -1529,9 +1542,6 @@ class depgraph(object):
 			(myroot, edepend["PDEPEND"], DepPriority(runtime_post=True))
 		)
 
-		if arg:
-			depth = 0
-		depth += 1
 		debug = "--debug" in self.myopts
 		strict = mytype != "installed"
 		try:
@@ -1559,8 +1569,8 @@ class depgraph(object):
 					mypriority = dep_priority.copy()
 					if not blocker and vardb.match(atom):
 						mypriority.satisfied = True
-					dep_stack.append(
-						Dependency(arg=arg, atom=atom,
+					self._dep_stack.append(
+						Dependency(atom=atom,
 							blocker=blocker, depth=depth, parent=pkg,
 							priority=mypriority, root=dep_root))
 				if debug:
@@ -1580,6 +1590,7 @@ class depgraph(object):
 					"!!! This binary package cannot be installed: '%s'\n" % \
 					mykey, noiselevel=-1)
 			elif mytype == "ebuild":
+				portdb = self.roots[myroot].trees["porttree"].dbapi
 				myebuild, mylocation = portdb.findname2(mykey)
 				portage.writemsg("!!! This ebuild cannot be installed: " + \
 					"'%s'\n" % myebuild, noiselevel=-1)
@@ -5914,7 +5925,8 @@ def action_depclean(settings, trees, ldpath_mtimes,
 				try:
 					arg_atom = args_set.findAtomForPackage(pkg, metadata)
 				except portage.exception.InvalidDependString, e:
-					file_path = os.path.join(myroot, VDB_PATH, pkg, "PROVIDE")
+					file_path = os.path.join(
+						myroot, portage.VDB_PATH, pkg, "PROVIDE")
 					portage.writemsg("\n\nInvalid PROVIDE: %s\n" % str(s),
 						noiselevel=-1)
 					portage.writemsg("See '%s'\n" % file_path,
