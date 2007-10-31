@@ -1169,13 +1169,10 @@ class depgraph(object):
 					"--getbinpkgonly" in self.myopts)
 		del trees
 
-		self.missingbins=[]
 		self.digraph=portage.digraph()
 		# Tracks simple parent/child relationships (PDEPEND relationships are
 		# not reversed).
 		self._parent_child_digraph = digraph()
-		self.orderedkeys=[]
-		self.outdatedpackages=[]
 		# contains all sets added to the graph
 		self._sets = {}
 		# contains atoms given as arguments
@@ -1200,7 +1197,6 @@ class depgraph(object):
 		self._required_set_names = set(["args", "system", "world"])
 		self._select_atoms = self._select_atoms_highest_available
 		self._select_package = self._select_pkg_highest_available
-		self._required_set_missing_atoms = set()
 
 	def _show_slot_collision_notice(self, packages):
 		"""Show an informational message advising the user to mask one of the
@@ -6181,15 +6177,6 @@ def action_build(settings, trees, mtimedb,
 			return 1
 		if "--quiet" not in myopts and "--nodeps" not in myopts:
 			print "\b\b... done!"
-
-		if ("--usepkgonly" in myopts) and mydepgraph.missingbins:
-			sys.stderr.write(red("The following binaries are not available for merging...\n"))
-
-		if mydepgraph.missingbins:
-			for x in mydepgraph.missingbins:
-				sys.stderr.write("   "+str(x)+"\n")
-			sys.stderr.write("\nThese are required by '--usepkgonly' -- Terminating.\n\n")
-			return 1
 
 	if "--pretend" not in myopts and \
 		("--ask" in myopts or "--tree" in myopts or \
