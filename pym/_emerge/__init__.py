@@ -1644,7 +1644,14 @@ class depgraph(object):
 
 	def select_files(self, myfiles, mysets):
 		"given a list of .tbz2s, .ebuilds and deps, create the appropriate depgraph and return a favorite list"
-		self._sets.update(mysets)
+		# Recursively expand sets so that containment tests in
+		# self._get_parent_sets() properly match atoms in nested
+		# sets (like if world contains system). Otherwise, atoms
+		# from nested sets would get recorded in the world file.
+		setconfig = self.settings.setconfig
+		for set_name in mysets:
+			self._sets[set_name] = InternalPackageSet(
+				initial_atoms=setconfig.getSetAtoms(set_name))
 		myfavorites=[]
 		myroot = self.target_root
 		dbs = self._filtered_trees[myroot]["dbs"]
