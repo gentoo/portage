@@ -573,11 +573,6 @@ class portdbapi(dbapi):
 			#myval = self.visible(self.cp_list(mykey))
 
 			myval = self.gvisible(self.visible(self.cp_list(mykey)))
-		elif level == "bestmatch-visible":
-			#dep match -- best match of all visible packages
-			#get all visible matches (from xmatch()), then choose the best one
-
-			myval = best(self.xmatch("match-visible", None, mydep=mydep, mykey=mykey))
 		elif level == "minimum-all":
 			# Find the minimum matching version. This is optimized to
 			# minimize the number of metadata accesses (improves performance
@@ -598,19 +593,22 @@ class portdbapi(dbapi):
 								break
 						except KeyError:
 							pass # ebuild masked by corruption
-		elif level == "minimum-visible":
+		elif level in ("minimum-visible", "bestmatch-visible"):
 			# Find the minimum matching visible version. This is optimized to
 			# minimize the number of metadata accesses (improves performance
 			# especially in cases where metadata needs to be generated).
-			# This does not implement LICENSE filtering since it's only
-			# intended for use by repoman.
 			if mydep == mykey:
 				mylist = self.cp_list(mykey)
 			else:
 				mylist = match_from_list(mydep, self.cp_list(mykey))
 			myval = ""
 			settings = self.mysettings
-			for cpv in mylist:
+			local_config = settings.local_config
+			if level == "minimum-visible":
+				iterfunc = iter
+			else:
+				iterfunc = reversed
+			for cpv in iterfunc(mylist):
 				try:
 					metadata = dict(izip(self._aux_cache_keys,
 						self.aux_get(cpv, self._aux_cache_keys)))
@@ -627,6 +625,16 @@ class portdbapi(dbapi):
 					continue
 				if settings.getProfileMaskAtom(cpv, metadata):
 					continue
+				if local_config:
+					metadata["USE"] = ""
+					if "?" in metadata["LICENSE"]:
+						self.doebuild_settings.setcpv(cpv, mydb=metadata)
+						metadata["USE"] = self.doebuild_settings.get("USE", "")
+					try:
+						if settings.getMissingLicenses(cpv, metadata):
+							continue
+					except InvalidDependString:
+						continue
 				myval = cpv
 				break
 		elif level == "bestmatch-list":
@@ -703,6 +711,7 @@ class portdbapi(dbapi):
 		newlist=[]
 		aux_keys = ["IUSE", "KEYWORDS", "LICENSE", "EAPI", "SLOT"]
 		metadata = {}
+		local_config = self.mysettings.local_config
 		for mycpv in mylist:
 			metadata.clear()
 			try:
@@ -719,15 +728,16 @@ class portdbapi(dbapi):
 				continue
 			if self.mysettings.getMissingKeywords(mycpv, metadata):
 				continue
-			metadata["USE"] = ""
-			if "?" in metadata["LICENSE"]:
-				self.doebuild_settings.setcpv(mycpv, mydb=metadata)
-				metadata["USE"] = self.doebuild_settings.get("USE", "")
-			try:
-				if self.mysettings.getMissingLicenses(mycpv, metadata):
+			if local_config:
+				metadata["USE"] = ""
+				if "?" in metadata["LICENSE"]:
+					self.doebuild_settings.setcpv(mycpv, mydb=metadata)
+					metadata["USE"] = self.doebuild_settings.get("USE", "")
+				try:
+					if self.mysettings.getMissingLicenses(mycpv, metadata):
+						continue
+				except InvalidDependString:
 					continue
-			except InvalidDependString:
-				continue
 			newlist.append(mycpv)
 		return newlist
 

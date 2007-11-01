@@ -9,7 +9,7 @@ import os
 
 from repoman.errors import COPYRIGHT_ERROR, LICENSE_ERROR, CVS_HEADER_ERROR, \
 	LEADING_SPACES_ERROR, READONLY_ASSIGNMENT_ERROR, TRAILING_WHITESPACE_ERROR, \
-	MISSING_QUOTES_ERROR, NESTED_DIE_ERROR
+	MISSING_QUOTES_ERROR, NESTED_DIE_ERROR, REDUNDANT_CD_S_ERROR
 
 
 class ContentCheckException(Exception):
@@ -120,10 +120,10 @@ class EbuildQuote(ContentCheck):
 	repoman_check_name = 'ebuild.minorsyn'
 	ignore_line = re.compile(r'(^$)|(^\s*#.*)|(^\s*\w+=.*)|(^\s*(local|export)\s+)')
 	var_names = r'(D|S|T|ROOT|FILESDIR|WORKDIR)'
-	var_reference = re.compile(r'\$({'+var_names+'}|' + \
-		r'\$' + var_names + '\W)')
-	missing_quotes = re.compile(r'(\s|^)[^"\s]*\${?' + var_names + \
-		r'}?[^"\s]*(\s|$)')
+	var_reference = re.compile(r'\$(\{'+var_names+'\}|' + \
+		var_names + '\W)')
+	missing_quotes = re.compile(r'(\s|^)[^"\s]*\$\{?' + var_names + \
+		r'\}?[^"\s]*(\s|$)')
 	cond_begin =  re.compile(r'(^|\s+)\[\[($|\\$|\s+)')
 	cond_end =  re.compile(r'(^|\s+)\]\]($|\\$|\s+)')
 	
@@ -242,4 +242,25 @@ class EbuildUselessDodoc(ContentCheck):
 			if match:
 				errors.append((num + 1, "Useless dodoc '%s'" % \
 					(match.group(2), ) + " on line: %d"))
+		return errors
+
+class EbuildUselessCdS(ContentCheck):
+	"""Check for redundant cd ${S} statements"""
+	repoman_check_name = 'ebuild.minorsyn'
+	method_re = re.compile(r'^\s*src_(compile|install|test)\s*\(\)')
+	cds_re = re.compile(r'^\s*cd\s+("\$(\{S\}|S)"|\$(\{S\}|S))\s')
+
+	def __init__(self, contents):
+		ContentCheck.__init__(self, contents)
+
+	def Run(self):
+		errors = []
+		check_next_line = False
+		for num, line in enumerate(self.contents):
+			if check_next_line:
+				check_next_line = False
+				if self.cds_re.match(line):
+					errors.append((num + 1, REDUNDANT_CD_S_ERROR))
+			elif self.method_re.match(line):
+				check_next_line = True
 		return errors

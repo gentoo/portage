@@ -149,7 +149,8 @@ class WorldSet(StaticFileSet):
 
 	def cleanPackage(self, vardb, cpv):
 		self.lock()
-		worldlist = list(self.getAtoms()) # loads latest from disk
+		self._load() # loads latest from disk
+		worldlist = list(self._atoms)
 		mykey = cpv_getkey(cpv)
 		newworldlist = []
 		for x in worldlist:
