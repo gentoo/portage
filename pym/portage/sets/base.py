@@ -30,9 +30,12 @@ class PackageSet(object):
 		return atom in self._atoms or atom in self._nonatoms
 	
 	def __iter__(self):
-		for x in self.getAtoms():
+		self._load()
+		for x in self._atoms:
 			yield x
-	
+		for x in self._nonatoms:
+			yield x
+
 	def supportsOperation(self, op):
 		if not op in OPERATIONS:
 			raise ValueError(op)
@@ -72,7 +75,8 @@ class PackageSet(object):
 		raise NotImplementedError()
 
 	def containsCPV(self, cpv):
-		for a in self.getAtoms():
+		self._load()
+		for a in self._atoms:
 			if match_from_list(a, [cpv]):
 				return True
 		return False
@@ -101,7 +105,7 @@ class PackageSet(object):
 		if an error occurs while parsing PROVIDE."""
 		cpv_slot = "%s:%s" % (cpv, metadata["SLOT"])
 		cp = dep_getkey(cpv)
-		self.getAtoms() # make sure the atoms are loaded
+		self._load() # make sure the atoms are loaded
 		atoms = self._atommap.get(cp)
 		if atoms:
 			best_match = best_match_to_list(cpv_slot, atoms)
@@ -125,7 +129,7 @@ class PackageSet(object):
 class EditablePackageSet(PackageSet):
 
 	def update(self, atoms):
-		self.getAtoms()
+		self._load()
 		modified = False
 		normal_atoms = []
 		for a in atoms:
@@ -149,13 +153,14 @@ class EditablePackageSet(PackageSet):
 		self.write()
 
 	def remove(self, atom):
-		self.getAtoms()
+		self._load()
 		self._atoms.discard(atom)
 		self._updateAtomMap()
 		self.write()
 
 	def removePackageAtoms(self, cp):
-		for a in list(self.getAtoms()):
+		self._load()
+		for a in list(self._atoms):
 			if dep_getkey(a) == cp:
 				self.remove(a)
 		self.write()
