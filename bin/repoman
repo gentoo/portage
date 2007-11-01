@@ -45,12 +45,12 @@ del os.environ["PORTAGE_LEGACY_GLOBALS"]
 
 try:
 	from repoman.checks import EbuildWhitespace, EbuildHeader, EbuildQuote, \
-		EbuildAssignment, EbuildNestedDie, EbuildUselessDodoc
+		EbuildAssignment, EbuildNestedDie, EbuildUselessDodoc, EbuildUselessCdS
 except ImportError:
 	from os import path as osp
 	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), 'pym'))
 	from repoman.checks import EbuildWhitespace, EbuildHeader, EbuildQuote, \
-		EbuildAssignment, EbuildNestedDie, EbuildUselessDodoc
+		EbuildAssignment, EbuildNestedDie, EbuildUselessDodoc, EbuildUselessCdS
 
 try:
 	import cStringIO as StringIO
@@ -1371,7 +1371,7 @@ for x in scanlist:
 		myear = time.gmtime(os.stat(path)[ST_MTIME])[0]
 		contents = StringIO.StringIO(open(path, 'rb').read())
 		for check in (EbuildWhitespace, EbuildQuote,
-			EbuildAssignment, EbuildUselessDodoc):
+			EbuildAssignment, EbuildUselessDodoc, EbuildUselessCdS):
 			c = check(contents)
 			errors = c.Run()
 			for e in errors:
