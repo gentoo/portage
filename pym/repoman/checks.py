@@ -248,7 +248,7 @@ class EbuildUselessCdS(ContentCheck):
 	"""Check for redundant cd ${S} statements"""
 	repoman_check_name = 'ebuild.minorsyn'
 	method_re = re.compile(r'^\s*src_(compile|install|test)\s*\(\)')
-	cds_re = re.compile(r'^\s*cd\s+"\$(\{S\}|S)"\s')
+	cds_re = re.compile(r'^\s*cd\s+("\$(\{S\}|S)"|\$(\{S\}|S))\s')
 
 	def __init__(self, contents):
 		ContentCheck.__init__(self, contents)
