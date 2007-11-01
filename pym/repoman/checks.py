@@ -121,7 +121,7 @@ class EbuildQuote(ContentCheck):
 	ignore_line = re.compile(r'(^$)|(^\s*#.*)|(^\s*\w+=.*)|(^\s*(local|export)\s+)')
 	var_names = r'(D|S|T|ROOT|FILESDIR|WORKDIR)'
 	var_reference = re.compile(r'\$({'+var_names+'}|' + \
-		r'\$' + var_names + '\W)')
+		var_names + '\W)')
 	missing_quotes = re.compile(r'(\s|^)[^"\s]*\${?' + var_names + \
 		r'}?[^"\s]*(\s|$)')
 	cond_begin =  re.compile(r'(^|\s+)\[\[($|\\$|\s+)')
