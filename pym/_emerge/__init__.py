@@ -2026,6 +2026,8 @@ class depgraph(object):
 		xinfo = '"%s"' % atom
 		if arg:
 			xinfo='"%s"' % arg
+		# Discard null/ from failed cpv_expand category expansion.
+		xinfo = xinfo.replace("null/", "")
 		if myparent:
 			xfrom = '(dependency required by '+ \
 				green('"%s"' % myparent[2]) + \
