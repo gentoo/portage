@@ -4927,7 +4927,13 @@ def dep_wordreduce(mydeplist,mysettings,mydbapi,mode,use_cache=1):
 				deplist[mypos] = False
 			else:
 				if mode:
-					mydep=mydbapi.xmatch(mode,deplist[mypos])
+					x = mydbapi.xmatch(mode, deplist[mypos])
+					if mode.startswith("minimum-"):
+						mydep = []
+						if x:
+							mydep.append(x)
+					else:
+						mydep = x
 				else:
 					mydep=mydbapi.match(deplist[mypos],use_cache=use_cache)
 				if mydep!=None:
@@ -6722,7 +6728,7 @@ class portdbapi(dbapi):
 
 	def freeze(self):
 		for x in "bestmatch-visible", "cp-list", "list-visible", "match-all", \
-			"match-visible":
+			"match-visible", "minimum-all", "minimum-visible":
 			self.xcache[x]={}
 		self.frozen=1
 
@@ -6745,14 +6751,65 @@ class portdbapi(dbapi):
 			mydep = dep_expand(origdep, mydb=self, settings=self.mysettings)
 			mykey=dep_getkey(mydep)
 
+		myslot = portage_dep.dep_getslot(mydep)
 		if level=="list-visible":
 			#a list of all visible packages, not called directly (just by xmatch())
 			#myval=self.visible(self.cp_list(mykey))
 			myval=self.gvisible(self.visible(self.cp_list(mykey)))
-		elif level=="bestmatch-visible":
-			#dep match -- best match of all visible packages
-			myval=best(self.xmatch("match-visible",None,mydep=mydep,mykey=mykey))
-			#get all visible matches (from xmatch()), then choose the best one
+		elif level == "minimum-all":
+			# Find the minimum matching version. This is optimized to
+			# minimize the number of metadata accesses (improves performance
+			# especially in cases where metadata needs to be generated).
+			if mydep == mykey:
+				mylist = self.cp_list(mykey)
+			else:
+				mylist = match_from_list(mydep, self.cp_list(mykey))
+			myval = ""
+			if mylist:
+				if myslot is None:
+					myval = mylist[0]
+				else:
+					for cpv in mylist:
+						try:
+							if self.aux_get(cpv, ["SLOT"])[0] == myslot:
+								myval = cpv
+								break
+						except KeyError:
+							pass # ebuild masked by corruption
+		elif level in ("minimum-visible", "bestmatch-visible"):
+			# Find the minimum matching visible version. This is optimized to
+			# minimize the number of metadata accesses (improves performance
+			# especially in cases where metadata needs to be generated).
+			if mydep == mykey:
+				mylist = self.cp_list(mykey)
+			else:
+				mylist = match_from_list(mydep, self.cp_list(mykey))
+			myval = ""
+			settings = self.mysettings
+			local_config = settings.local_config
+			if level == "minimum-visible":
+				iterfunc = iter
+			else:
+				iterfunc = reversed
+			for cpv in iterfunc(mylist):
+				try:
+					metadata = dict(izip(self._aux_cache_keys,
+						self.aux_get(cpv, self._aux_cache_keys)))
+				except KeyError:
+					# ebuild masked by corruption
+					continue
+				if not eapi_is_supported(metadata["EAPI"]):
+					continue
+				if myslot and myslot != metadata["SLOT"]:
+					continue
+				if settings._getMissingKeywords(cpv, metadata):
+					continue
+				if settings._getMaskAtom(cpv, metadata):
+					continue
+				if settings._getProfileMaskAtom(cpv, metadata):
+					continue
+				myval = cpv
+				break
 		elif level=="bestmatch-list":
 			#dep match -- find best match but restrict search to sublist
 			myval=best(match_from_list(mydep,mylist))
@@ -6775,7 +6832,7 @@ class portdbapi(dbapi):
 			print "ERROR: xmatch doesn't handle",level,"query!"
 			raise KeyError
 		myslot = portage_dep.dep_getslot(mydep)
-		if myslot is not None:
+		if myslot is not None and isinstance(myval, list):
 			slotmatches = []
 			for cpv in myval:
 				try:
