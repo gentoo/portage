@@ -7185,6 +7185,13 @@ class dblink:
 
 	import re
 	_normalize_needed = re.compile(r'.*//.*|^[^/]|.+/$|(^|.*/)\.\.?(/.*|$)')
+	_contents_split_counts = {
+		"dev": 2,
+		"dir": 2,
+		"fif": 2,
+		"obj": 4,
+		"sym": 5
+	}
 
 	def __init__(self, cat, pkg, myroot, mysettings, treetype=None,
 		vartree=None):
@@ -7320,6 +7327,7 @@ class dblink:
 		myc.close()
 		null_byte = "\0"
 		normalize_needed = self._normalize_needed
+		contents_split_counts = self._contents_split_counts
 		myroot = self.myroot
 		if myroot == os.path.sep:
 			myroot = None
@@ -7332,7 +7340,37 @@ class dblink:
 					"file, line %d: '%s'\n" % (pos, contents_file),
 					noiselevel=-1)
 				continue
-			mydat = line.split()
+			line = line.rstrip("\n")
+			# Split on " " so that even file paths that
+			# end with spaces can be handled.
+			mydat = line.split(" ")
+			entry_type = mydat[0] # empty string if line is empty
+			correct_split_count = contents_split_counts.get(entry_type)
+			if correct_split_count and len(mydat) > correct_split_count:
+				# Apparently file paths contain spaces, so reassemble
+				# the split have the correct_split_count.
+				newsplit = [entry_type]
+				spaces_total = len(mydat) - correct_split_count
+				if entry_type == "sym":
+					try:
+						splitter = mydat.index("->", 2, len(mydat) - 2)
+					except ValueError:
+						writemsg("!!! Unrecognized CONTENTS entry on " + \
+							"line %d: '%s'\n" % (pos, line), noiselevel=-1)
+						continue
+					spaces_in_path = splitter - 2
+					spaces_in_target = spaces_total - spaces_in_path
+					newsplit.append(" ".join(mydat[1:splitter]))
+					newsplit.append("->")
+					target_end = splitter + spaces_in_target + 2
+					newsplit.append(" ".join(mydat[splitter + 1:target_end]))
+					newsplit.extend(mydat[target_end:])
+				else:
+					path_end = spaces_total + 2
+					newsplit.append(" ".join(mydat[1:path_end]))
+					newsplit.extend(mydat[path_end:])
+				mydat = newsplit
+
 			# we do this so we can remove from non-root filesystems
 			# (use the ROOT var to allow maintenance on other partitions)
 			try:
@@ -7342,34 +7380,21 @@ class dblink:
 						mydat[1] = os.path.sep + mydat[1]
 				if myroot:
 					mydat[1] = os.path.join(myroot, mydat[1].lstrip(os.path.sep))
-				if mydat[0]=="obj":
+				if mydat[0] == "obj":
 					#format: type, mtime, md5sum
-					pkgfiles[" ".join(mydat[1:-2])]=[mydat[0], mydat[-1], mydat[-2]]
-				elif mydat[0]=="dir":
+					pkgfiles[mydat[1]] = [mydat[0], mydat[3], mydat[2]]
+				elif mydat[0] == "dir":
 					#format: type
-					pkgfiles[" ".join(mydat[1:])]=[mydat[0] ]
-				elif mydat[0]=="sym":
+					pkgfiles[mydat[1]] = [mydat[0]]
+				elif mydat[0] == "sym":
 					#format: type, mtime, dest
-					x=len(mydat)-1
-					if (x >= 13) and (mydat[-1][-1]==')'): # Old/Broken symlink entry
-						mydat = mydat[:-10]+[mydat[-10:][stat.ST_MTIME][:-1]]
-						writemsg("FIXED SYMLINK LINE: %s\n" % mydat, 1)
-						x=len(mydat)-1
-					splitter=-1
-					while(x>=0):
-						if mydat[x]=="->":
-							splitter=x
-							break
-						x=x-1
-					if splitter==-1:
-						return None
-					pkgfiles[" ".join(mydat[1:splitter])]=[mydat[0], mydat[-1], " ".join(mydat[(splitter+1):-1])]
-				elif mydat[0]=="dev":
+					pkgfiles[mydat[1]] = [mydat[0], mydat[4], mydat[3]]
+				elif mydat[0] == "dev":
 					#format: type
-					pkgfiles[" ".join(mydat[1:])]=[mydat[0] ]
+					pkgfiles[mydat[1]] = [mydat[0]]
 				elif mydat[0]=="fif":
 					#format: type
-					pkgfiles[" ".join(mydat[1:])]=[mydat[0]]
+					pkgfiles[mydat[1]] = [mydat[0]]
 				else:
 					writemsg("!!! Unrecognized CONTENTS entry on " + \
 						"line %d: '%s'\n" % (pos, line), noiselevel=-1)
