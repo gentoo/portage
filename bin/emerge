@@ -2601,58 +2601,6 @@ class depgraph:
 						continue
 				mylist.append(x)
 
-		newlist = []
-		for atom in mylist:
-			mykey = portage.dep_getkey(atom)
-			if True:
-				newlist.append(atom)
-				if mode == "system" or atom not in world_set:
-					# only world is greedy for slots, not system
-					continue
-				# Make sure all installed slots are updated when possible.
-				# Do this with --emptytree also, to ensure that all slots are
-				# remerged.
-				myslots = set()
-				for cpv in vardb.match(mykey):
-					myslots.add(vardb.aux_get(cpv, ["SLOT"])[0])
-				if myslots:
-					best_pkgs = []
-					if "--usepkg" in self.myopts:
-						mymatches = bindb.match(atom)
-						if "--usepkgonly" not in self.myopts:
-							mymatches = visible(mymatches)
-						best_pkg = portage.best(mymatches)
-						if best_pkg:
-							best_slot = bindb.aux_get(best_pkg, ["SLOT"])[0]
-							best_pkgs.append(("binary", best_pkg, best_slot))
-					if "--usepkgonly" not in self.myopts:
-						best_pkg = portage.best(portdb.match(atom))
-						if best_pkg:
-							best_slot = portdb.aux_get(best_pkg, ["SLOT"])[0]
-							best_pkgs.append(("ebuild", best_pkg, best_slot))
-					if best_pkgs:
-						best_pkg = portage.best([x[1] for x in best_pkgs])
-						best_pkgs = [x for x in best_pkgs if x[1] == best_pkg]
-						best_slot = best_pkgs[0][2]
-						myslots.add(best_slot)
-				if len(myslots) > 1:
-					for myslot in myslots:
-						myslot_atom = "%s:%s" % (mykey, myslot)
-						available = False
-						if "--usepkgonly" not in self.myopts and \
-							self.trees[self.target_root][
-							"porttree"].dbapi.match(myslot_atom):
-							available = True
-						elif "--usepkg" in self.myopts:
-							mymatches = bindb.match(myslot_atom)
-							if "--usepkgonly" not in self.myopts:
-								mymatches = visible(mymatches)
-							if mymatches:
-								available = True
-						if available:
-							newlist.append(myslot_atom)
-		mylist = newlist
-
 		for myatom in mylist:
 			self._set_atoms.add(myatom)
 
@@ -5571,25 +5519,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 				if not arg_atom:
 					filtered_pkgs.append(pkg)
 			pkgs = filtered_pkgs
-		prune_this = False
-		if action == "prune":
-			for pkg in pkgs:
-				metadata = dict(izip(metadata_keys,
-					vardb.aux_get(pkg, metadata_keys)))
-				try:
-					arg_atom = args_set.findAtomForPackage(pkg, metadata)
-				except portage_exception.InvalidDependString, e:
-					file_path = os.path.join(myroot, VDB_PATH, pkg, "PROVIDE")
-					portage.writemsg("\n\nInvalid PROVIDE: %s\n" % str(s),
-						noiselevel=-1)
-					portage.writemsg("See '%s'\n" % file_path,
-						noiselevel=-1)
-					del e
-					continue
-				if arg_atom:
-					prune_this = True
-					break
-		if len(pkgs) > 1 and (parent != "world" or prune_this):
+		if len(pkgs) > 1:
 			# Prune all but the best matching slot, since that's all that a
 			# deep world update would pull in.  Don't prune if this atom comes
 			# directly from world though, since world atoms are greedy when
