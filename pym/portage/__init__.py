@@ -1874,14 +1874,10 @@ class config(object):
 			for x in mask_atoms:
 				if not match_from_list(x, pkg_list):
 					continue
-				masked = True
 				if unmask_atoms:
 					for y in unmask_atoms:
 						if match_from_list(y, pkg_list):
-							masked = False
-							break
-				if not masked:
-					continue
+							return None
 				return x
 		return None
 
