@@ -640,6 +640,7 @@ elif repolevel==3:
 	if catdir not in repoman_settings.categories:
 		caterror(catdir)
 	scanlist.append(catdir+"/"+reposplit[-1])
+scanlist.sort()
 
 profiles={}
 descfile=portdir+"/profiles/profiles.desc"
@@ -858,6 +859,7 @@ for x in scanlist:
 				fails["EAPI.unsupported"].append(os.path.join(x, y))
 				continue
 			ebuild_metadata[pf] = myaux
+	ebuildlist.sort()
 
 	if len(ebuild_metadata) != len(ebuildlist):
 		# If we can't access all the metadata then it's totally unsafe to
