@@ -51,7 +51,7 @@ REPO_NAME_LOC          = "profiles" + "/" + REPO_NAME_FILE
 INCREMENTALS = ["USE", "USE_EXPAND", "USE_EXPAND_HIDDEN", "FEATURES",
 	"ACCEPT_KEYWORDS", "ACCEPT_LICENSE",
 	"CONFIG_PROTECT_MASK", "CONFIG_PROTECT",
-	"PRELINK_PATH", "PRELINK_PATH_MASK"]
+	"PRELINK_PATH", "PRELINK_PATH_MASK", "PROFILE_ONLY_VARIABLES"]
 EBUILD_PHASES           = ["setup", "unpack", "compile", "test", "install",
                           "preinst", "postinst", "prerm", "postrm", "other"]
 

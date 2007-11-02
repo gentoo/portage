@@ -163,8 +163,12 @@ Architecture type (x86/ppc/hppa/etc...).
 .B USERLAND = \fI"GNU"\fR
 Support BSD/cygwin/etc...
 .TP
-.B PORTAGE_LIBC = \fI"glibc"\fR
+.B ELIBC = \fI"glibc"\fR
 Support uClibc/BSD libc/etc...
+.TP
+.B PROFILE_ONLY_VARIABLES = \fI"ARCH"\fR
+Prevent critical variables from being changed by the user in make.conf 
+or the env.
 .TP
 .BR PROFILE_ARCH
 Distinguish machines classes that have the same \fBARCH\fR.  All sparc 
