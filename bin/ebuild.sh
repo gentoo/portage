@@ -333,7 +333,8 @@ diefunc() {
 			eerror "  ${x}"
 		done
 	fi
-	if [[ "${EBUILD#${PORTDIR}/}" == "${EBUILD}" ]] ; then
+	if [ "${EMERGE_FROM}" != "binary" ] && \
+		[ "${EBUILD#${PORTDIR}/}" == "${EBUILD}" ] ; then
 		local overlay=${EBUILD%/*}
 		overlay=${overlay%/*}
 		overlay=${overlay%/*}
