@@ -1861,6 +1861,140 @@ class config:
 		if has_changed:
 			self.reset(keeping_pkg=1,use_cache=use_cache)
 
+	def _getMaskAtom(self, cpv, metadata):
+		"""
+		Take a package and return a matching package.mask atom, or None if no
+		such atom exists or it has been cancelled by package.unmask. PROVIDE
+		is not checked, so atoms will not be found for old-style virtuals.
+
+		@param cpv: The package name
+		@type cpv: String
+		@param metadata: A dictionary of raw package metadata
+		@type metadata: dict
+		@rtype: String
+		@return: An matching atom string or None if one is not found.
+		"""
+
+		cp = cpv_getkey(cpv)
+		mask_atoms = self.pmaskdict.get(cp)
+		if mask_atoms:
+			pkg_list = ["%s:%s" % (cpv, metadata["SLOT"])]
+			unmask_atoms = self.punmaskdict.get(cp)
+			for x in mask_atoms:
+				if not match_from_list(x, pkg_list):
+					continue
+				masked = True
+				if unmask_atoms:
+					for y in unmask_atoms:
+						if match_from_list(y, pkg_list):
+							masked = False
+							break
+				if not masked:
+					continue
+				return x
+		return None
+
+	def _getProfileMaskAtom(self, cpv, metadata):
+		"""
+		Take a package and return a matching profile atom, or None if no
+		such atom exists. Note that a profile atom may or may not have a "*"
+		prefix. PROVIDE is not checked, so atoms will not be found for
+		old-style virtuals.
+
+		@param cpv: The package name
+		@type cpv: String
+		@param metadata: A dictionary of raw package metadata
+		@type metadata: dict
+		@rtype: String
+		@return: An matching profile atom string or None if one is not found.
+		"""
+
+		cp = cpv_getkey(cpv)
+		profile_atoms = self.prevmaskdict.get(cp)
+		if profile_atoms:
+			pkg_list = ["%s:%s" % (cpv, metadata["SLOT"])]
+			for x in profile_atoms:
+				if match_from_list(x.lstrip("*"), pkg_list):
+					continue
+				return x
+		return None
+
+	def _getMissingKeywords(self, cpv, metadata):
+		"""
+		Take a package and return a list of any KEYWORDS that the user may
+		may need to accept for the given package. If the KEYWORDS are empty
+		and the the ** keyword has not been accepted, the returned list will
+		contain ** alone (in order to distiguish from the case of "none
+		missing").
+
+		@param cpv: The package name (for package.keywords support)
+		@type cpv: String
+		@param metadata: A dictionary of raw package metadata
+		@type metadata: dict
+		@rtype: List
+		@return: A list of KEYWORDS that have not been accepted.
+		"""
+
+		# Hack: Need to check the env directly here as otherwise stacking 
+		# doesn't work properly as negative values are lost in the config
+		# object (bug #139600)
+		egroups = self.configdict["backupenv"].get(
+			"ACCEPT_KEYWORDS", "").split()
+		mygroups = metadata["KEYWORDS"].split()
+		# Repoman may modify this attribute as necessary.
+		pgroups = self["ACCEPT_KEYWORDS"].split()
+		match=0
+		cp = dep_getkey(cpv)
+		pkgdict = self.pkeywordsdict.get(cp)
+		if pkgdict:
+			cpv_slot = "%s:%s" % (cpv, metadata["SLOT"])
+			matches = match_to_list(cpv_slot, pkgdict.keys())
+			for atom in matches:
+				pgroups.extend(pkgdict[atom])
+			pgroups.extend(egroups)
+			if matches:
+				# normalize pgroups with incrementals logic so it 
+				# matches ACCEPT_KEYWORDS behavior
+				inc_pgroups = set()
+				for x in pgroups:
+					if x == "-*":
+						inc_pgroups.clear()
+					elif x.startswith("-"):
+						inc_pgroups.discard(x[1:])
+					elif x not in inc_pgroups:
+						inc_pgroups.add(x)
+				pgroups = inc_pgroups
+				del inc_pgroups
+		hasstable = False
+		hastesting = False
+		for gp in mygroups:
+			if gp == "*" or (gp == "-*" and len(mygroups) == 1):
+				writemsg(("--- WARNING: Package '%s' uses" + \
+					" '%s' keyword.\n") % (cpv, gp), noiselevel=-1)
+				if gp == "*":
+					match = 1
+					break
+			elif gp in pgroups:
+				match=1
+				break
+			elif gp.startswith("~"):
+				hastesting = True
+			elif not gp.startswith("-"):
+				hasstable = True
+		if not match and \
+			((hastesting and "~*" in pgroups) or \
+			(hasstable and "*" in pgroups) or "**" in pgroups):
+			match=1
+		if match:
+			missing = []
+		else:
+			if not mygroups:
+				# If KEYWORDS is empty then we still have to return something
+				# in order to distiguish from the case of "none missing".
+				mygroups.append("**")
+			missing = mygroups
+		return missing
+
 	def setinst(self,mycpv,mydbapi):
 		"""This updates the preferences for old-style virtuals,
 		affecting the behavior of dep_expand() and dep_check()
@@ -6622,57 +6756,22 @@ class portdbapi(dbapi):
 		if not mylist:
 			return []
 
-		mysplit = catpkgsplit(mylist[0])
-		if not mysplit:
-			#invalid cat/pkg-v
-			writemsg("visible(): invalid cat/pkg-v: %s\n" % (mylist[0], ),
-				noiselevel=-1)
-			return []
-		mycp = "%s/%s" % (mysplit[0], mysplit[1])
-
-		cpv_slots = []
+		db_keys = ["SLOT"]
+		visible = []
+		getMaskAtom = self.mysettings._getMaskAtom
+		getProfileMaskAtom = self.mysettings._getProfileMaskAtom
 		for cpv in mylist:
 			try:
-				myslot = self.aux_get(cpv, ["SLOT"])[0]
+				metadata = dict(izip(db_keys, self.aux_get(cpv, db_keys)))
 			except KeyError:
 				# masked by corruption
 				continue
-			cpv_slots.append("%s:%s" % (cpv, myslot))
-
-		if cpv_slots:
-			mask_atoms = self.mysettings.pmaskdict.get(mycp)
-			if mask_atoms:
-				unmask_atoms = self.mysettings.punmaskdict.get(mycp)
-				for x in mask_atoms:
-					masked_pkgs = match_from_list(x, cpv_slots)
-					if not masked_pkgs:
-						continue
-					if unmask_atoms:
-						for y in unmask_atoms:
-							unmasked_pkgs = match_from_list(y, masked_pkgs)
-							if unmasked_pkgs:
-								masked_pkgs = [pkg for pkg in masked_pkgs \
-									if pkg not in unmasked_pkgs]
-								if not masked_pkgs:
-									break
-					if masked_pkgs:
-						cpv_slots = [pkg for pkg in cpv_slots \
-							if pkg not in masked_pkgs]
-						if not cpv_slots:
-							break
-
-		if cpv_slots:
-			profile_atoms = self.mysettings.prevmaskdict.get(mycp)
-			if profile_atoms:
-				for x in profile_atoms:
-					cpv_slots = match_from_list(x.lstrip("*"), cpv_slots)
-					if not cpv_slots:
-						break
-
-		if not cpv_slots:
-			return cpv_slots
-
-		return [portage_dep.remove_slot(pkg) for pkg in cpv_slots]
+			if getMaskAtom(cpv, metadata):
+				continue
+			if getProfileMaskAtom(cpv, metadata):
+				continue
+			visible.append(cpv)
+		return visible
 
 	def gvisible(self,mylist):
 		"strip out group-masked (not in current group) entries"
@@ -6680,20 +6779,14 @@ class portdbapi(dbapi):
 		if mylist is None:
 			return []
 		newlist=[]
-
-		accept_keywords = self.mysettings["ACCEPT_KEYWORDS"].split()
-		pkgdict = self.mysettings.pkeywordsdict
-		aux_keys = ["KEYWORDS", "EAPI", "SLOT"]
-
-		# Hack: Need to check the env directly here as otherwise stacking 
-		# doesn't work properly as negative values are lost in the config
-		# object (bug #139600)
-		egroups = self.mysettings.configdict["backupenv"].get(
-			"ACCEPT_KEYWORDS", "").split()
-
+		aux_keys = ["IUSE", "KEYWORDS", "LICENSE", "EAPI", "SLOT"]
+		metadata = {}
+		local_config = self.mysettings.local_config
+		getMissingKeywords = self.mysettings._getMissingKeywords
 		for mycpv in mylist:
+			metadata.clear()
 			try:
-				keys, eapi, slot = self.aux_get(mycpv, aux_keys)
+				metadata.update(izip(aux_keys, self.aux_get(mycpv, aux_keys)))
 			except KeyError:
 				continue
 			except portage_exception.PortageException, e:
@@ -6702,50 +6795,11 @@ class portdbapi(dbapi):
 				writemsg("!!! %s\n" % str(e), noiselevel=-1)
 				del e
 				continue
-			mygroups=keys.split()
-			# Repoman may modify this attribute as necessary.
-			pgroups = accept_keywords[:]
-			match=0
-			cp = dep_getkey(mycpv)
-			if pkgdict.has_key(cp):
-				cpv_slot = "%s:%s" % (mycpv, slot)
-				matches = match_to_list(cpv_slot, pkgdict[cp].keys())
-				for atom in matches:
-					pgroups.extend(pkgdict[cp][atom])
-				pgroups.extend(egroups)
-				if matches:
-					inc_pgroups = []
-					for x in pgroups:
-						# The -* special case should be removed once the tree 
-						# is clean of KEYWORDS=-* crap
-						if x != "-*" and x.startswith("-"):
-							try:
-								inc_pgroups.remove(x[1:])
-							except ValueError:
-								pass
-						if x not in inc_pgroups:
-							inc_pgroups.append(x)
-					pgroups = inc_pgroups
-					del inc_pgroups
-			hasstable = False
-			hastesting = False
-			for gp in mygroups:
-				if gp=="*":
-					writemsg("--- WARNING: Package '%s' uses '*' keyword.\n" % mycpv,
-						noiselevel=-1)
-					match=1
-					break
-				elif gp in pgroups:
-					match=1
-					break
-				elif gp[0] == "~":
-					hastesting = True
-				elif gp[0] != "-":
-					hasstable = True
-			if not match and ((hastesting and "~*" in pgroups) or (hasstable and "*" in pgroups) or "**" in pgroups):
-				match=1
-			if match and eapi_is_supported(eapi):
-				newlist.append(mycpv)
+			if not eapi_is_supported(metadata["EAPI"]):
+				continue
+			if getMissingKeywords(mycpv, metadata):
+				continue
+			newlist.append(mycpv)
 		return newlist
 
 class binarytree(object):
