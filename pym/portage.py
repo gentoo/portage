@@ -5294,6 +5294,25 @@ class dbapi:
 	def cp_list(self,cp,use_cache=1):
 		return
 
+	def _cpv_sort_ascending(self, cpv_list):
+		"""
+		Use this to sort self.cp_list() results in ascending
+		order. It sorts in place and returns None.
+		"""
+		if len(cpv_list) > 1:
+			first_split = catpkgsplit(cpv_list[0])
+			cat = first_split[0]
+			cpv_list[0] = first_split[1:]
+			for i in xrange(1, len(cpv_list)):
+				cpv_list[i] = catpkgsplit(cpv_list[i])[1:]
+			cpv_list.sort(pkgcmp)
+			for i, (pn, ver, rev) in enumerate(cpv_list):
+				if rev == "r0":
+					cpv = cat + "/" + pn + "-" + ver
+				else:
+					cpv = cat + "/" + pn + "-" + ver + "-" + rev
+				cpv_list[i] = cpv
+
 	def cpv_all(self):
 		cpv_list = []
 		for cp in self.cp_all():
@@ -5400,11 +5419,18 @@ class fakedbapi(dbapi):
 	def cpv_exists(self,mycpv):
 		return self.cpvdict.has_key(mycpv)
 
-	def cp_list(self,mycp,use_cache=1):
-		if not self.cpdict.has_key(mycp):
-			return []
-		else:
-			return self.cpdict[mycp]
+	def cp_list(self, mycp, use_cache=1):
+		cachelist = self._match_cache.get(mycp)
+		# cp_list() doesn't expand old-style virtuals
+		if cachelist and cachelist[0].startswith(mycp):
+			return cachelist[:]
+		cpv_list = self.cpdict.get(mycp)
+		if cpv_list is None:
+			cpv_list = []
+		self._cpv_sort_ascending(cpv_list)
+		if not (not cpv_list and mycp.startswith("virtual/")):
+			self._match_cache[mycp] = cpv_list
+		return cpv_list[:]
 
 	def cp_all(self):
 		return list(self.cpdict)
@@ -5703,7 +5729,7 @@ class vardbapi(dbapi):
 		if use_cache and self.cpcache.has_key(mycp):
 			cpc=self.cpcache[mycp]
 			if cpc[0]==mystat:
-				return cpc[1]
+				return cpc[1][:]
 		cat_dir = os.path.join(self.root, VDB_PATH, mysplit[0])
 		try:
 			dir_list = os.listdir(cat_dir)
@@ -5727,8 +5753,9 @@ class vardbapi(dbapi):
 			if len(mysplit) > 1:
 				if ps[0]==mysplit[1]:
 					returnme.append(mysplit[0]+"/"+x)
+		self._cpv_sort_ascending(returnme)
 		if use_cache:
-			self.cpcache[mycp]=[mystat,returnme]
+			self.cpcache[mycp] = [mystat, returnme[:]]
 		elif self.cpcache.has_key(mycp):
 			del self.cpcache[mycp]
 		return returnme
@@ -6645,10 +6672,15 @@ class portdbapi(dbapi):
 
 	def cp_list(self, mycp, use_cache=1, mytree=None):
 		if self.frozen and mytree is None:
-			mylist = self.xcache["match-all"].get(mycp)
-			# cp_list() doesn't expand old-style virtuals
-			if mylist and mylist[0].startswith(mycp):
-				return mylist[:]
+			cachelist = self.xcache["cp-list"].get(mycp)
+			if cachelist is not None:
+				# Try to propagate this to the match-all cache here for
+				# repoman since he uses separate match-all caches for each
+				# profile (due to old-style virtuals). Do not propagate
+				# old-style virtuals since cp_list() doesn't expand them.
+				if not (not cachelist and mycp.startswith("virtual/")):
+					self.xcache["match-all"][mycp] = cachelist
+				return cachelist[:]
 		mysplit = mycp.split("/")
 		invalid_category = mysplit[0] not in self._categories
 		d={}
@@ -6657,7 +6689,11 @@ class portdbapi(dbapi):
 		else:
 			mytrees = self.porttrees
 		for oroot in mytrees:
-			for x in listdir(oroot+"/"+mycp,EmptyOnError=1,ignorecvs=1):
+			try:
+				file_list = os.listdir(os.path.join(oroot, mycp))
+			except OSError:
+				continue
+			for x in file_list:
 				if x.endswith(".ebuild"):
 					pf = x[:-7]
 					ps = pkgsplit(pf)
@@ -6672,13 +6708,21 @@ class portdbapi(dbapi):
 			mylist = []
 		else:
 			mylist = d.keys()
+		# Always sort in ascending order here since it's handy
+		# and the result can be easily cached and reused.
+		self._cpv_sort_ascending(mylist)
 		if self.frozen and mytree is None:
-			if not (not mylist and mycp.startswith("virtual/")):
-				self.xcache["match-all"][mycp] = mylist[:]
+			cachelist = mylist[:]
+			self.xcache["cp-list"][mycp] = cachelist
+			# Do not propagate old-style virtuals since
+			# cp_list() doesn't expand them.
+			if not (not cachelist and mycp.startswith("virtual/")):
+				self.xcache["match-all"][mycp] = cachelist
 		return mylist
 
 	def freeze(self):
-		for x in ["list-visible","bestmatch-visible","match-visible","match-all"]:
+		for x in "bestmatch-visible", "cp-list", "list-visible", "match-all", \
+			"match-visible":
 			self.xcache[x]={}
 		self.frozen=1
 
