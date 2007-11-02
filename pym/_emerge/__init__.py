@@ -2810,6 +2810,14 @@ class depgraph(object):
 						if selected_nodes:
 							break
 
+					# If any nodes have been selected here, it's always
+					# possible that anything up to a MEDIUM_SOFT priority
+					# relationship has been ignored. This state is recorded
+					# in ignore_priority so that relevant nodes will be
+					# added to asap_nodes when appropriate.
+					if selected_nodes:
+						ignore_priority = DepPriority.MEDIUM_SOFT
+
 					if prefer_asap and asap_nodes and not selected_nodes:
 						# We failed to find any asap nodes to merge, so ignore
 						# them for the next iteration.
