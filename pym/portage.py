@@ -6879,7 +6879,7 @@ class portdbapi(dbapi):
 		if mylist is None:
 			return []
 		newlist=[]
-		aux_keys = ["IUSE", "KEYWORDS", "LICENSE", "EAPI", "SLOT"]
+		aux_keys = self._aux_cache_keys
 		metadata = {}
 		local_config = self.mysettings.local_config
 		getMissingKeywords = self.mysettings._getMissingKeywords
