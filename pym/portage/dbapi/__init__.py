@@ -28,8 +28,6 @@ class dbapi(object):
 		order. It sorts in place and returns None.
 		"""
 		if len(cpv_list) > 1:
-			first_split = catpkgsplit(cpv_list[0])
-			cat = first_split[0]
 			# If the cpv includes explicit -r0, it has to be preserved
 			# for consistency in findname and aux_get calls, so use a
 			# dict to map strings back to their original values.
