@@ -6,6 +6,7 @@
 import os, time
 from portage.data import portage_uid, portage_gid
 from portage.util import ensure_dirs
+from portage.const import EPREFIX
 
 def process(mysettings, key, logentries, fulltext):
 	path = key.replace("/", ":")
@@ -13,7 +14,7 @@ def process(mysettings, key, logentries, fulltext):
 	if mysettings["PORT_LOGDIR"] != "":
 		elogdir = os.path.join(mysettings["PORT_LOGDIR"], "elog")
 	else:
-		elogdir = os.path.join(os.sep, "var", "log", "portage", "elog")
+		elogdir = os.path.join(EPREFIX, "var", "log", "portage", "elog")
 	ensure_dirs(elogdir, uid=portage_uid, gid=portage_gid, mode=02770)
 
 	elogfilename = elogdir+"/"+path+":"+time.strftime("%Y%m%d-%H%M%S", time.gmtime(time.time()))+".log"
