@@ -1953,18 +1953,17 @@ class config:
 				# matches ACCEPT_KEYWORDS behavior
 				inc_pgroups = set()
 				for x in pgroups:
-					if x == "-*":
-						inc_pgroups.clear()
-					elif x.startswith("-"):
+					# The -* special case should be removed once the tree
+					# is clean of KEYWORDS=-* crap
+					if x != "-*" and x.startswith("-"):
 						inc_pgroups.discard(x[1:])
-					elif x not in inc_pgroups:
-						inc_pgroups.add(x)
+					inc_pgroups.add(x)
 				pgroups = inc_pgroups
 				del inc_pgroups
 		hasstable = False
 		hastesting = False
 		for gp in mygroups:
-			if gp == "*" or (gp == "-*" and len(mygroups) == 1):
+			if gp == "*":
 				writemsg(("--- WARNING: Package '%s' uses" + \
 					" '%s' keyword.\n") % (cpv, gp), noiselevel=-1)
 				if gp == "*":
@@ -5181,17 +5180,11 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 		for match in matches:
 			pgroups.extend(pkgdict[cp][match])
 		if matches:
-			inc_pgroups = []
+			inc_pgroups = set()
 			for x in pgroups:
-				if x == "-*":
-					inc_pgroups = []
-				elif x[0] == "-":
-					try:
-						inc_pgroups.remove(x[1:])
-					except ValueError:
-						pass
-				elif x not in inc_pgroups:
-					inc_pgroups.append(x)
+				if x != "-*" and x.startswith("-"):
+					inc_pgroups.discard(x[1:])
+				inc_pgroups.add(x)
 			pgroups = inc_pgroups
 			del inc_pgroups
 
