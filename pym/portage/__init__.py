@@ -2770,6 +2770,11 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 			print ">>> \"mirror\" mode desired and \"mirror\" restriction found; skipping fetch."
 			return 1
 
+	# Generally, downloading the same file repeatedly from
+	# every single available mirror is a waste of bandwidth
+	# and time, so there needs to be a cap.
+	checksum_failure_max_tries = 5
+	checksum_failure_counts = {}
 	thirdpartymirrors = mysettings.thirdpartymirrors()
 
 	check_config_instance(mysettings)
@@ -3202,6 +3207,13 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 										"File renamed to '%s'\n\n" % \
 										temp_filename, noiselevel=-1)
 									fetched=0
+									count = checksum_failure_counts.get(myfile)
+									if count is None:
+										count = 0
+									count += 1
+									if count >= checksum_failure_max_tries:
+										break
+									checksum_failure_counts[myfile] = count
 								else:
 									eout = portage.output.EOutput()
 									eout.quiet = mysettings.get("PORTAGE_QUIET", None) == "1"
