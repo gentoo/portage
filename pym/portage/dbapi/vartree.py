@@ -2000,10 +2000,7 @@ class dblink(object):
 			del cfgfiledict["IGNORE"]
 
 		my_private_path = os.path.join(destroot, PRIVATE_PATH)
-		if not os.path.exists(my_private_path):
-			os.makedirs(my_private_path)
-			os.chown(my_private_path, os.getuid(), portage_gid)
-			os.chmod(my_private_path, 02770)
+		ensure_dirs(my_private_path, gid=portage_gid, mode=02750, mask=02)
 
 		writedict(cfgfiledict, conf_mem_file)
 		del conf_mem_file
