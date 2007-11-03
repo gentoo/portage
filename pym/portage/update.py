@@ -178,6 +178,7 @@ def update_config_files(config_root, protect, protect_mask, update_iter):
 			continue
 	worldlist = grabfile(os.path.join(config_root, WORLD_FILE))
 
+	# TODO: handle slotmove commands for SLOT stoms
 	for update_cmd in update_iter:
 		if update_cmd[0] == "move":
 			old_value, new_value = update_cmd[1], update_cmd[2]
