@@ -28,18 +28,17 @@ class dbapi(object):
 		order. It sorts in place and returns None.
 		"""
 		if len(cpv_list) > 1:
-			first_split = catpkgsplit(cpv_list[0])
-			cat = first_split[0]
-			cpv_list[0] = first_split[1:]
-			for i in xrange(1, len(cpv_list)):
-				cpv_list[i] = catpkgsplit(cpv_list[i])[1:]
+			# If the cpv includes explicit -r0, it has to be preserved
+			# for consistency in findname and aux_get calls, so use a
+			# dict to map strings back to their original values.
+			str_map = {}
+			for i, cpv in enumerate(cpv_list):
+				mysplit = tuple(catpkgsplit(cpv)[1:])
+				str_map[mysplit] = cpv
+				cpv_list[i] = mysplit
 			cpv_list.sort(pkgcmp)
-			for i, (pn, ver, rev) in enumerate(cpv_list):
-				if rev == "r0":
-					cpv = cat + "/" + pn + "-" + ver
-				else:
-					cpv = cat + "/" + pn + "-" + ver + "-" + rev
-				cpv_list[i] = cpv
+			for i, mysplit in enumerate(cpv_list):
+				cpv_list[i] = str_map[mysplit]
 
 	def cpv_all(self):
 		"""Return all CPVs in the db
