@@ -176,39 +176,39 @@ def update_config_files(config_root, protect, protect_mask, update_iter):
 			if file_contents.has_key(x):
 				del file_contents[x]
 			continue
+
 	worldlist = grabfile(os.path.join(config_root, WORLD_FILE))
-
+	modified = False
 	for update_cmd in update_iter:
-		if update_cmd[0] == "move":
-			old_value, new_value = update_cmd[1], update_cmd[2]
-			#update world entries:
-			for x in range(0,len(worldlist)):
-				#update world entries, if any.
-				worldlist[x] = \
-					dep_transform(worldlist[x], old_value, new_value)
+		for pos, atom in enumerate(worldlist):
+			new_atom = update_dbentry(update_cmd, atom)
+			if atom != new_atom:
+				worldlist[pos] = new_atom
+				modified = True
+	if modified:
+		worldlist.sort()
+		write_atomic(os.path.join(config_root, WORLD_FILE),
+			"\n".join(worldlist)+"\n")
 
-			#update /etc/portage/packages.*
-			for x in file_contents:
-				for mypos in range(0,len(file_contents[x])):
-					line = file_contents[x][mypos]
-					if line[0] == "#" or not line.strip():
-						continue
-					myatom = line.split()[0]
-					if myatom.startswith("-"):
-						# package.mask supports incrementals
-						myatom = myatom[1:]
-					if not isvalidatom(myatom):
-						continue
-					key = dep_getkey(myatom)
-					if key == old_value:
-						file_contents[x][mypos] = \
-							line.replace(old_value, new_value)
-						update_files[x] = 1
-						sys.stdout.write("p")
-						sys.stdout.flush()
-
-	worldlist.sort()
-	write_atomic(os.path.join(config_root, WORLD_FILE), "\n".join(worldlist)+"\n")
+	# update /etc/portage/packages.*
+	ignore_line_re = re.compile(r'^#|^\s*$')
+	for update_cmd in update_iter:
+		for x, contents in file_contents.iteritems():
+			for pos, line in enumerate(contents):
+				if ignore_line_re.match(line):
+					continue
+				atom = line.split()[0]
+				if atom.startswith("-"):
+					# package.mask supports incrementals
+					atom = atom[1:]
+				if not isvalidatom(atom):
+					continue
+				new_atom = update_dbentry(update_cmd, atom)
+				if atom != new_atom:
+					contents[pos] = line.replace(atom, new_atom)
+					update_files[x] = 1
+					sys.stdout.write("p")
+					sys.stdout.flush()
 
 	protect_obj = ConfigProtect(
 		config_root, protect, protect_mask)
