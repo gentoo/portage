@@ -2671,6 +2671,45 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 		return retval >> 8
 	return retval
 
+def _checksum_failure_temp_file(distdir, basename):
+	"""
+	First try to find a duplicate temp file with the same checksum and return
+	that filename if available. Otherwise, use mkstemp to create a new unique
+	filename._checksum_failure_.$RANDOM, rename the given file, and return the
+	new filename. In any case, filename will be renamed or removed before this
+	function returns a temp filename.
+	"""
+
+	filename = os.path.join(distdir, basename)
+	size = os.stat(filename).st_size
+	checksum = None
+	tempfile_re = re.compile(re.escape(basename) + r'\._checksum_failure_\..*')
+	for temp_filename in os.listdir(distdir):
+		if not tempfile_re.match(temp_filename):
+			continue
+		temp_filename = os.path.join(distdir, temp_filename)
+		try:
+			if size != os.stat(temp_filename).st_size:
+				continue
+		except OSError:
+			continue
+		try:
+			temp_checksum = portage_checksum.perform_md5(temp_filename)
+		except portage_exception.FileNotFound:
+			# Apparently the temp file disappeared. Let it go.
+			continue
+		if checksum is None:
+			checksum = portage_checksum.perform_md5(filename)
+		if checksum == temp_checksum:
+			os.unlink(filename)
+			return temp_filename
+
+	from tempfile import mkstemp
+	fd, temp_filename = mkstemp("", basename + "._checksum_failure_.", distdir)
+	os.close(fd)
+	os.rename(filename, temp_filename)
+	return temp_filename
+
 def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",use_locks=1, try_mirrors=1):
 	"fetch files.  Will use digest file if available."
 
@@ -2685,6 +2724,11 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 			print ">>> \"mirror\" mode desired and \"mirror\" restriction found; skipping fetch."
 			return 1
 
+	# Generally, downloading the same file repeatedly from
+	# every single available mirror is a waste of bandwidth
+	# and time, so there needs to be a cap.
+	checksum_failure_max_tries = 5
+	checksum_failure_counts = {}
 	thirdpartymirrors = mysettings.thirdpartymirrors()
 
 	check_config_instance(mysettings)
@@ -2842,6 +2886,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					noiselevel=-1)
 				return 0
 			del distlocks_subdir
+
 	for myfile in filedict:
 		"""
 		fetched  status
@@ -2930,12 +2975,9 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 								if reason[0] == "Insufficient data for checksum verification":
 									return 0
 								if can_fetch and not restrict_fetch:
-									from tempfile import mkstemp
-									fd, temp_filename = mkstemp("",
-										myfile + "._checksum_failure_.",
-										mysettings["DISTDIR"])
-									os.close(fd)
-									os.rename(myfile_path, temp_filename)
+									temp_filename = \
+										_checksum_failure_temp_file(
+										mysettings["DISTDIR"], myfile)
 									writemsg_stdout("Refetching... " + \
 										"File renamed to '%s'\n\n" % \
 										temp_filename, noiselevel=-1)
@@ -3112,16 +3154,20 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 										(reason[1], reason[2]), noiselevel=-1)
 									if reason[0] == "Insufficient data for checksum verification":
 										return 0
-									from tempfile import mkstemp
-									fd, temp_filename = mkstemp("",
-										myfile + "._checksum_failure_.",
-										mysettings["DISTDIR"])
-									os.close(fd)
-									os.rename(myfile_path, temp_filename)
+									temp_filename = \
+										_checksum_failure_temp_file(
+										mysettings["DISTDIR"], myfile)
 									writemsg_stdout("Refetching... " + \
 										"File renamed to '%s'\n\n" % \
 										temp_filename, noiselevel=-1)
 									fetched=0
+									count = checksum_failure_counts.get(myfile)
+									if count is None:
+										count = 0
+									count += 1
+									if count >= checksum_failure_max_tries:
+										break
+									checksum_failure_counts[myfile] = count
 								else:
 									eout = output.EOutput()
 									eout.quiet = mysettings.get("PORTAGE_QUIET", None) == "1"
