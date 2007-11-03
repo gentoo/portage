@@ -444,11 +444,13 @@ Please select from the menu above (-1 to exit, losing this merge): "
 die() {
 	trap "" TERM
 	trap "" KILL
-	echo "Exiting: ${1}"
 
 	if [ ${2} -eq 0 ]; then
+		echo "Exiting: ${1}"
 		scan > /dev/null
 		[ ${count} -gt 0 ] && echo "NOTE: ${count} updates remaining"
+	else
+		echo "ERROR: ${1}"
 	fi
 
 	rm -rf "${TMP}"
@@ -531,20 +533,17 @@ if [ "${using_editor}" == 0 ]; then
 	echo > "${TMP}"/.diff-test-2
 	
 	if ! diff_command "${TMP}"/.diff-test-1 "${TMP}"/.diff-test-2 ; then
-		echo "ERROR: '${diff_command}' does not seem to work, aborting"
-		exit 1
+		die "'${diff_command}' does not seem to work, aborting" 1
 	fi
 else
 	if ! type ${diff_command%% *} >/dev/null; then
-		echo "ERROR: '${diff_command}' does not seem to work, aborting"
-		exit 1
+		die "'${diff_command}' does not seem to work, aborting" 1
 	fi
 fi
 
 if [[ ${mode} == "1" ]] ; then
 	if ! type dialog >/dev/null || ! dialog --help >/dev/null ; then
-		echo "ERROR: mode=1 and 'dialog' not found or not executable, aborting"
-		exit 1
+		die "mode=1 and 'dialog' not found or not executable, aborting" 1
 	fi
 fi
 
