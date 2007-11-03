@@ -2080,7 +2080,7 @@ class depgraph(object):
 					mreasons.append("CHOST: %s" % \
 						metadata["CHOST"])
 				if built:
-					if not metadata["EPREFIX"]:
+					if not "EPREFIX" in metadata or not metadata["EPREFIX"]:
 						mreasons.append("missing EPREFIX")
 					elif len(metadata["EPREFIX"].strip()) < len(pkgsettings["EPREFIX"]):
 						mreasons.append("EPREFIX: '%s' too small" % metadata["EPREFIX"])
