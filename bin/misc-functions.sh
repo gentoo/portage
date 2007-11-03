@@ -229,7 +229,7 @@ install_qa_check() {
 		# .sos.  In addition the version component is before the
 		# extension, not after it.  Check for this, and *only* warn
 		# about it.  Some packages do ship .so files on Darwin and make
-		# it work (ugly! e.g. python does this by default).
+		# it work (ugly!).
 		f=""
 		find ${ED%/} -name "*.so" -or -name "*.so.*" | \
 		while read i ; do
@@ -336,7 +336,6 @@ install_qa_check() {
 
 	# Check that we don't get kernel traps at runtime because of broken
 	# install_names on Darwin
-	abort="no"
 	[[ ${CHOST} == *-darwin* ]] && find "${ED}" -type f | while read f ; do
 		otool -LX "${f}" \
 			| grep -v "Archive : " \
@@ -353,12 +352,13 @@ install_qa_check() {
 						"${r}" "${s}" "${f}"
 				else
 					eqawarn "QA Notice: invalid reference to ${r} in ${f}"
-					abort="yes"
+					# remember we are in an implicit subshell, that's
+					# why we die here
+					die "invalid install_name found, ${f} will crash at runtime -- there may be possibly more affected files"
 				fi
 			fi
 		done
 	done
-	[[ ${abort} == "yes" ]] && die "invalid install_names found, objects will crash at runtime"
 
 	# Evaluate misc gcc warnings
 	if [[ -n ${PORTAGE_LOG_FILE} && -r ${PORTAGE_LOG_FILE} ]] ; then
