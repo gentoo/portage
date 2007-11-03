@@ -541,6 +541,13 @@ else
 	fi
 fi
 
+if [[ ${mode} == "1" ]] ; then
+	if ! type dialog >/dev/null || ! dialog --help >/dev/null ; then
+		echo "ERROR: mode=1 and 'dialog' not found or not executable, aborting"
+		exit 1
+	fi
+fi
+
 #echo "rm_opts: $rm_opts, mv_opts: $mv_opts, cp_opts: $cp_opts"
 #echo "pager: $pager, diff_command: $diff_command, merge_command: $merge_command"
 
