@@ -5064,8 +5064,19 @@ def getmaskingreason(mycpv, settings=None, portdb=None, return_location=False):
 	mysplit = catpkgsplit(mycpv)
 	if not mysplit:
 		raise ValueError("invalid CPV: %s" % mycpv)
-	if not portdb.cpv_exists(mycpv):
-		raise KeyError("CPV %s does not exist" % mycpv)
+	metadata = None
+	if metadata is None:
+		db_keys = list(portdb._aux_cache_keys)
+		try:
+			metadata = dict(izip(db_keys, portdb.aux_get(mycpv, db_keys)))
+		except KeyError:
+			if not portdb.cpv_exists(mycpv):
+				raise
+	if metadata is None:
+		# Can't access SLOT due to corruption.
+		cpv_slot_list = [mycpv]
+	else:
+		cpv_slot_list = ["%s:%s" % (mycpv, metadata["SLOT"])]
 	mycp=mysplit[0]+"/"+mysplit[1]
 
 	# XXX- This is a temporary duplicate of code from the config constructor.
@@ -5082,7 +5093,7 @@ def getmaskingreason(mycpv, settings=None, portdb=None, return_location=False):
 
 	if settings.pmaskdict.has_key(mycp):
 		for x in settings.pmaskdict[mycp]:
-			if mycpv in portdb.xmatch("match-all", x):
+			if match_from_list(x, cpv_slot_list):
 				comment = ""
 				l = "\n"
 				comment_valid = -1
@@ -5114,52 +5125,38 @@ def getmaskingreason(mycpv, settings=None, portdb=None, return_location=False):
 
 def getmaskingstatus(mycpv, settings=None, portdb=None):
 	if settings is None:
-		settings = globals()["settings"]
+		settings = config(clone=globals()["settings"])
 	if portdb is None:
 		portdb = globals()["portdb"]
 	mysplit = catpkgsplit(mycpv)
 	if not mysplit:
 		raise ValueError("invalid CPV: %s" % mycpv)
-	if not portdb.cpv_exists(mycpv):
-		raise KeyError("CPV %s does not exist" % mycpv)
+	metadata = None
+	if metadata is None:
+		db_keys = list(portdb._aux_cache_keys)
+		try:
+			metadata = dict(izip(db_keys, portdb.aux_get(mycpv, db_keys)))
+		except KeyError:
+			if not portdb.cpv_exists(mycpv):
+				raise
+			return ["corruption"]
+	cpv_slot_list = ["%s:%s" % (mycpv, metadata["SLOT"])]
 	mycp=mysplit[0]+"/"+mysplit[1]
 
 	rValue = []
 
 	# profile checking
-	revmaskdict=settings.prevmaskdict
-	if revmaskdict.has_key(mycp):
-		for x in revmaskdict[mycp]:
-			if x[0]=="*":
-				myatom = x[1:]
-			else:
-				myatom = x
-			if not match_to_list(mycpv, [myatom]):
-				rValue.append("profile")
-				break
+	if settings._getProfileMaskAtom(mycpv, metadata):
+		rValue.append("profile")
 
 	# package.mask checking
-	maskdict=settings.pmaskdict
-	unmaskdict=settings.punmaskdict
-	if maskdict.has_key(mycp):
-		for x in maskdict[mycp]:
-			if mycpv in portdb.xmatch("match-all", x):
-				unmask=0
-				if unmaskdict.has_key(mycp):
-					for z in unmaskdict[mycp]:
-						if mycpv in portdb.xmatch("match-all",z):
-							unmask=1
-							break
-				if unmask==0:
-					rValue.append("package.mask")
+	if settings._getMaskAtom(mycpv, metadata):
+		rValue.append("package.mask")
 
 	# keywords checking
-	try:
-		mygroups, eapi = portdb.aux_get(mycpv, ["KEYWORDS", "EAPI"])
-	except KeyError:
-		# The "depend" phase apparently failed for some reason.  An associated
-		# error message will have already been printed to stderr.
-		return ["corruption"]
+	eapi = metadata["EAPI"]
+	mygroups = metadata["KEYWORDS"]
+	slot = metadata["SLOT"]
 	if eapi.startswith("-"):
 		eapi = eapi[1:]
 	if not eapi_is_supported(eapi):
@@ -5175,18 +5172,23 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 
 	cp = dep_getkey(mycpv)
 	if pkgdict.has_key(cp):
-		matches = match_to_list(mycpv, pkgdict[cp].keys())
+		matches = []
+		for match in pkgdict[cp]:
+			if match_from_list(match, cpv_slot_list):
+				matches.append(match)
 		for match in matches:
 			pgroups.extend(pkgdict[cp][match])
 		if matches:
 			inc_pgroups = []
 			for x in pgroups:
-				if x != "-*" and x.startswith("-"):
+				if x == "-*":
+					inc_pgroups = []
+				elif x[0] == "-":
 					try:
 						inc_pgroups.remove(x[1:])
 					except ValueError:
 						pass
-				if x not in inc_pgroups:
+				elif x not in inc_pgroups:
 					inc_pgroups.append(x)
 			pgroups = inc_pgroups
 			del inc_pgroups
@@ -5203,10 +5205,10 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 			if gp=="*":
 				kmask=None
 				break
-			elif gp=="-"+myarch:
+			elif gp=="-"+myarch and myarch in pgroups:
 				kmask="-"+myarch
 				break
-			elif gp=="~"+myarch:
+			elif gp=="~"+myarch and myarch in pgroups:
 				kmask="~"+myarch
 				break
 
