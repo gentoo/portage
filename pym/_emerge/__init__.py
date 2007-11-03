@@ -2033,6 +2033,8 @@ class depgraph(object):
 		xinfo = '"%s"' % atom
 		if arg:
 			xinfo='"%s"' % arg
+		# Discard null/ from failed cpv_expand category expansion.
+		xinfo = xinfo.replace("null/", "")
 		if myparent:
 			xfrom = '(dependency required by '+ \
 				green('"%s"' % myparent[2]) + \
@@ -2710,7 +2712,7 @@ class depgraph(object):
 					break
 		ignore_priority_soft_range = [None]
 		ignore_priority_soft_range.extend(
-			xrange(DepPriority.MIN, DepPriority.SOFT + 1))
+			xrange(DepPriority.MIN, DepPriority.MEDIUM_SOFT + 1))
 		tree_mode = "--tree" in self.myopts
 		# Tracks whether or not the current iteration should prefer asap_nodes
 		# if available.  This is set to False when the previous iteration
@@ -2739,6 +2741,7 @@ class depgraph(object):
 
 		while not mygraph.empty():
 			selected_nodes = None
+			ignore_priority = None
 			if prefer_asap and asap_nodes:
 				"""ASAP nodes are merged before their soft deps."""
 				asap_nodes = [node for node in asap_nodes \
@@ -2775,6 +2778,7 @@ class depgraph(object):
 							(accept_root_node or ignore_priority is None):
 							# settle for a root node
 							selected_nodes = [nodes[0]]
+
 			if not selected_nodes:
 				nodes = get_nodes(ignore_priority=DepPriority.MEDIUM)
 				if nodes:
@@ -2818,6 +2822,14 @@ class depgraph(object):
 						if selected_nodes:
 							break
 
+					# If any nodes have been selected here, it's always
+					# possible that anything up to a MEDIUM_SOFT priority
+					# relationship has been ignored. This state is recorded
+					# in ignore_priority so that relevant nodes will be
+					# added to asap_nodes when appropriate.
+					if selected_nodes:
+						ignore_priority = DepPriority.MEDIUM_SOFT
+
 					if prefer_asap and asap_nodes and not selected_nodes:
 						# We failed to find any asap nodes to merge, so ignore
 						# them for the next iteration.
@@ -2830,25 +2842,23 @@ class depgraph(object):
 						accept_root_node = True
 						continue
 
-					if selected_nodes and ignore_priority > DepPriority.SOFT:
-						# Try to merge ignored medium deps as soon as possible.
-						for node in selected_nodes:
-							children = set(mygraph.child_nodes(node))
-							soft = children.difference(
-								mygraph.child_nodes(node,
-								ignore_priority=DepPriority.SOFT))
-							medium_soft = children.difference(
-								mygraph.child_nodes(node,
-								ignore_priority=DepPriority.MEDIUM_SOFT))
-							medium_soft.difference_update(soft)
-							for child in medium_soft:
-								if child in selected_nodes:
-									continue
-								if child in asap_nodes:
-									continue
-								# TODO: Try harder to make these nodes get
-								# merged absolutely as soon as possible.
-								asap_nodes.append(child)
+			if selected_nodes and ignore_priority > DepPriority.SOFT:
+				# Try to merge ignored medium deps as soon as possible.
+				for node in selected_nodes:
+					children = set(mygraph.child_nodes(node))
+					soft = children.difference(
+						mygraph.child_nodes(node,
+						ignore_priority=DepPriority.SOFT))
+					medium_soft = children.difference(
+						mygraph.child_nodes(node,
+						ignore_priority=DepPriority.MEDIUM_SOFT))
+					medium_soft.difference_update(soft)
+					for child in medium_soft:
+						if child in selected_nodes:
+							continue
+						if child in asap_nodes:
+							continue
+						asap_nodes.append(child)
 
 			if not selected_nodes:
 				if not myblockers.is_empty():

@@ -368,8 +368,8 @@ class vardbapi(dbapi):
 			if len(mysplit) > 1:
 				if ps[0] == mysplit[1]:
 					returnme.append(mysplit[0]+"/"+x)
+		self._cpv_sort_ascending(returnme)
 		if use_cache:
-			self._cpv_sort_ascending(returnme)
 			self.cpcache[mycp] = [mystat, returnme[:]]
 		elif self.cpcache.has_key(mycp):
 			del self.cpcache[mycp]
