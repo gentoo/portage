@@ -441,11 +441,22 @@ class Manifest(object):
 		self.__init__(self.pkgdir, self.distdir,
 			fetchlist_dict=self.fetchlist_dict, from_scratch=True,
 			manifest1_compat=self.compat)
+		cpvlist = []
+		pn = os.path.basename(self.pkgdir.rstrip(os.path.sep))
+		cat = self._pkgdir_category()
 		for pkgdir, pkgdir_dirs, pkgdir_files in os.walk(self.pkgdir):
 			break
 		for f in pkgdir_files:
 			if f.endswith(".ebuild"):
 				mytype = "EBUILD"
+				pf = f[:-7]
+				ps = portage.versions.pkgsplit(pf)
+				cpv = "%s/%s" % (cat, pf)
+				if not ps:
+					raise PortagePackageException(cpv)
+				if ps[0] != pn:
+					raise PortagePackageException(cpv)
+				cpvlist.append(cpv)
 			elif manifest2MiscfileFilter(f):
 				mytype = "MISC"
 			else:
@@ -462,7 +473,6 @@ class Manifest(object):
 				continue
 			self.fhashdict["AUX"][f] = perform_multiple_checksums(
 				os.path.join(self.pkgdir, "files", f.lstrip(os.sep)), self.hashes)
-		cpvlist = [os.path.join(self._pkgdir_category(), x[:-7]) for x in os.listdir(self.pkgdir) if x.endswith(".ebuild")]
 		distlist = set()
 		for cpv in cpvlist:
 			distlist.update(self._getCpvDistfiles(cpv))
