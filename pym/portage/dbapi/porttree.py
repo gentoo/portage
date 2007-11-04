@@ -604,14 +604,15 @@ class portdbapi(dbapi):
 			myval = ""
 			settings = self.mysettings
 			local_config = settings.local_config
+			aux_keys = list(self._aux_cache_keys)
 			if level == "minimum-visible":
 				iterfunc = iter
 			else:
 				iterfunc = reversed
 			for cpv in iterfunc(mylist):
 				try:
-					metadata = dict(izip(self._aux_cache_keys,
-						self.aux_get(cpv, self._aux_cache_keys)))
+					metadata = dict(izip(aux_keys,
+						self.aux_get(cpv, aux_keys)))
 				except KeyError:
 					# ebuild masked by corruption
 					continue
@@ -709,7 +710,7 @@ class portdbapi(dbapi):
 		if mylist is None:
 			return []
 		newlist=[]
-		aux_keys = self._aux_cache_keys
+		aux_keys = list(self._aux_cache_keys)
 		metadata = {}
 		local_config = self.mysettings.local_config
 		for mycpv in mylist:
