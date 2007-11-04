@@ -1933,25 +1933,26 @@ class config(object):
 		match=0
 		cp = dep_getkey(cpv)
 		pkgdict = self.pkeywordsdict.get(cp)
+		matches = False
 		if pkgdict:
-			cpv_slot = "%s:%s" % (cpv, metadata["SLOT"])
-			matches = match_to_list(cpv_slot, pkgdict.keys())
-			for atom in matches:
-				pgroups.extend(pkgdict[atom])
+			cpv_slot_list = ["%s:%s" % (cpv, metadata["SLOT"])]
+			for atom, pkgkeywords in pkgdict.iteritems():
+				if match_from_list(atom, cpv_slot_list):
+					matches = True
+					pgroups.extend(pkgkeywords)
+		if matches or egroups:
 			pgroups.extend(egroups)
-			if matches:
-				# normalize pgroups with incrementals logic so it 
-				# matches ACCEPT_KEYWORDS behavior
-				inc_pgroups = set()
-				for x in pgroups:
+			inc_pgroups = set()
+			for x in pgroups:
+				if x.startswith("-"):
 					if x == "-*":
 						inc_pgroups.clear()
-					elif x.startswith("-"):
+					else:
 						inc_pgroups.discard(x[1:])
-					elif x not in inc_pgroups:
-						inc_pgroups.add(x)
-				pgroups = inc_pgroups
-				del inc_pgroups
+				else:
+					inc_pgroups.add(x)
+			pgroups = inc_pgroups
+			del inc_pgroups
 		hasstable = False
 		hastesting = False
 		for gp in mygroups:
@@ -5261,7 +5262,6 @@ def getmaskingstatus(mycpv, metadata=None, settings=None, portdb=None):
 			metadata["USE"] = settings.get("USE", "")
 		else:
 			metadata["USE"] = ""
-	cpv_slot_list = ["%s:%s" % (mycpv, metadata["SLOT"])]
 	mycp=mysplit[0]+"/"+mysplit[1]
 
 	rValue = []
@@ -5283,6 +5283,8 @@ def getmaskingstatus(mycpv, metadata=None, settings=None, portdb=None):
 		eapi = eapi[1:]
 	if not eapi_is_supported(eapi):
 		return ["required EAPI %s, supported EAPI %s" % (eapi, portage.const.EAPI)]
+	egroups = settings.configdict["backupenv"].get(
+		"ACCEPT_KEYWORDS", "").split()
 	mygroups = mygroups.split()
 	pgroups = settings["ACCEPT_KEYWORDS"].split()
 	myarch = settings["ARCH"]
@@ -5290,30 +5292,29 @@ def getmaskingstatus(mycpv, metadata=None, settings=None, portdb=None):
 		"""For operating systems other than Linux, ARCH is not necessarily a
 		valid keyword."""
 		myarch = pgroups[0].lstrip("~")
-	pkgdict = settings.pkeywordsdict
 
 	cp = dep_getkey(mycpv)
-	if pkgdict.has_key(cp):
-		matches = []
-		for match in pkgdict[cp]:
-			if match_from_list(match, cpv_slot_list):
-				matches.append(match)
-		for match in matches:
-			pgroups.extend(pkgdict[cp][match])
-		if matches:
-			inc_pgroups = []
-			for x in pgroups:
+	pkgdict = settings.pkeywordsdict.get(cp)
+	matches = False
+	if pkgdict:
+		cpv_slot_list = ["%s:%s" % (mycpv, metadata["SLOT"])]
+		for atom, pkgkeywords in pkgdict.iteritems():
+			if match_from_list(atom, cpv_slot_list):
+				matches = True
+				pgroups.extend(pkgkeywords)
+	if matches or egroups:
+		pgroups.extend(egroups)
+		inc_pgroups = set()
+		for x in pgroups:
+			if x.startswith("-"):
 				if x == "-*":
-					inc_pgroups = []
-				elif x[0] == "-":
-					try:
-						inc_pgroups.remove(x[1:])
-					except ValueError:
-						pass
-				elif x not in inc_pgroups:
-					inc_pgroups.append(x)
-			pgroups = inc_pgroups
-			del inc_pgroups
+					inc_pgroups.clear()
+				else:
+					inc_pgroups.discard(x[1:])
+			else:
+				inc_pgroups.add(x)
+		pgroups = inc_pgroups
+		del inc_pgroups
 
 	kmask = "missing"
 
