@@ -2728,7 +2728,6 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 	# every single available mirror is a waste of bandwidth
 	# and time, so there needs to be a cap.
 	checksum_failure_max_tries = 5
-	checksum_failure_counts = {}
 	# Behave like the package has RESTRICT="primaryuri" after a
 	# couple of checksum failures, to increase the probablility
 	# of success before checksum_failure_max_tries is reached.
@@ -3007,6 +3006,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 			# Create a reversed list since that is optimal for list.pop().
 			uri_list = filedict[myfile][:]
 			uri_list.reverse()
+			checksum_failure_count = 0
 			tried_locations = set()
 			while uri_list:
 				loc = uri_list.pop()
@@ -3181,11 +3181,9 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 										"File renamed to '%s'\n\n" % \
 										temp_filename, noiselevel=-1)
 									fetched=0
-									count = checksum_failure_counts.get(myfile)
-									if count is None:
-										count = 0
-									count += 1
-									if count == checksum_failure_primaryuri:
+									checksum_failure_count += 1
+									if checksum_failure_count == \
+										checksum_failure_primaryuri:
 										# Switch to "primaryuri" mode in order
 										# to increase the probablility of
 										# of success.
@@ -3194,9 +3192,9 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 										if primaryuris:
 											uri_list.extend(
 												reversed(primaryuris))
-									if count >= checksum_failure_max_tries:
+									if checksum_failure_count >= \
+										checksum_failure_max_tries:
 										break
-									checksum_failure_counts[myfile] = count
 								else:
 									eout = output.EOutput()
 									eout.quiet = mysettings.get("PORTAGE_QUIET", None) == "1"
