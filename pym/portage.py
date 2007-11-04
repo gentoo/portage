@@ -1942,24 +1942,22 @@ class config:
 		match=0
 		cp = dep_getkey(cpv)
 		pkgdict = self.pkeywordsdict.get(cp)
+		matches = False
 		if pkgdict:
-			cpv_slot = "%s:%s" % (cpv, metadata["SLOT"])
-			matches = match_to_list(cpv_slot, pkgdict.keys())
-			for atom in matches:
-				pgroups.extend(pkgdict[atom])
+			cpv_slot_list = ["%s:%s" % (cpv, metadata["SLOT"])]
+			for atom, pkgkeywords in pkgdict.iteritems():
+				if match_from_list(atom, cpv_slot_list):
+					matches = True
+					pgroups.extend(pkgkeywords)
+		if matches or egroups:
 			pgroups.extend(egroups)
-			if matches:
-				# normalize pgroups with incrementals logic so it 
-				# matches ACCEPT_KEYWORDS behavior
-				inc_pgroups = set()
-				for x in pgroups:
-					# The -* special case should be removed once the tree
-					# is clean of KEYWORDS=-* crap
-					if x != "-*" and x.startswith("-"):
-						inc_pgroups.discard(x[1:])
-					inc_pgroups.add(x)
-				pgroups = inc_pgroups
-				del inc_pgroups
+			inc_pgroups = set()
+			for x in pgroups:
+				if x.startswith("-") and x != "-*":
+					inc_pgroups.discard(x[1:])
+				inc_pgroups.add(x)
+			pgroups = inc_pgroups
+			del inc_pgroups
 		hasstable = False
 		hastesting = False
 		for gp in mygroups:
@@ -5214,7 +5212,6 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 			if not portdb.cpv_exists(mycpv):
 				raise
 			return ["corruption"]
-	cpv_slot_list = ["%s:%s" % (mycpv, metadata["SLOT"])]
 	mycp=mysplit[0]+"/"+mysplit[1]
 
 	rValue = []
@@ -5235,6 +5232,8 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 		eapi = eapi[1:]
 	if not eapi_is_supported(eapi):
 		return ["required EAPI %s, supported EAPI %s" % (eapi, portage_const.EAPI)]
+	egroups = settings.configdict["backupenv"].get(
+		"ACCEPT_KEYWORDS", "").split()
 	mygroups = mygroups.split()
 	pgroups = settings["ACCEPT_KEYWORDS"].split()
 	myarch = settings["ARCH"]
@@ -5245,21 +5244,24 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 	pkgdict = settings.pkeywordsdict
 
 	cp = dep_getkey(mycpv)
-	if pkgdict.has_key(cp):
-		matches = []
-		for match in pkgdict[cp]:
-			if match_from_list(match, cpv_slot_list):
-				matches.append(match)
-		for match in matches:
-			pgroups.extend(pkgdict[cp][match])
-		if matches:
-			inc_pgroups = set()
+	pkgdict = settings.pkeywordsdict.get(cp)
+	matches = False
+	if pkgdict:
+		cpv_slot_list = ["%s:%s" % (mycpv, metadata["SLOT"])]
+		for atom, pkgkeywords in pkgdict.iteritems():
+			if match_from_list(atom, cpv_slot_list):
+				matches = True
+				pgroups.extend(pkgkeywords)
+	if matches or egroups:
+		pgroups.extend(egroups)
+		inc_pgroups = set()
+		for x in pgroups:
 			for x in pgroups:
-				if x != "-*" and x.startswith("-"):
+				if x.startswith("-") and x != "-*":
 					inc_pgroups.discard(x[1:])
 				inc_pgroups.add(x)
-			pgroups = inc_pgroups
-			del inc_pgroups
+		pgroups = inc_pgroups
+		del inc_pgroups
 
 	kmask = "missing"
 
