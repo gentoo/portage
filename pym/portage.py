@@ -5256,10 +5256,9 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 		pgroups.extend(egroups)
 		inc_pgroups = set()
 		for x in pgroups:
-			for x in pgroups:
-				if x.startswith("-") and x != "-*":
-					inc_pgroups.discard(x[1:])
-				inc_pgroups.add(x)
+			if x.startswith("-") and x != "-*":
+				inc_pgroups.discard(x[1:])
+			inc_pgroups.add(x)
 		pgroups = inc_pgroups
 		del inc_pgroups
 
