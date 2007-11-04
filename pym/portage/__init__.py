@@ -2775,6 +2775,10 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 	# and time, so there needs to be a cap.
 	checksum_failure_max_tries = 5
 	checksum_failure_counts = {}
+	# Behave like the package has RESTRICT="primaryuri" after a
+	# couple of checksum failures, to increase the probablility
+	# of success before checksum_failure_max_tries is reached.
+	checksum_failure_primaryuri = 2
 	thirdpartymirrors = mysettings.thirdpartymirrors()
 
 	check_config_instance(mysettings)
@@ -2838,6 +2842,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 
 	filedict={}
 	primaryuri_indexes={}
+	primaryuri_dict = {}
 	for myuri in myuris:
 		myfile=os.path.basename(myuri)
 		if not filedict.has_key(myfile):
@@ -2881,6 +2886,11 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 				filedict[myfile].insert(primaryuri_indexes[myfile], myuri)
 			else:
 				filedict[myfile].append(myuri)
+			primaryuris = primaryuri_dict.get(myfile)
+			if primaryuris is None:
+				primaryuris = []
+				primaryuri_dict[myfile] = primaryuris
+			primaryuris.append(myuri)
 
 	can_fetch=True
 
@@ -3040,7 +3050,17 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 									eout.eend(0)
 								continue # fetch any remaining files
 
-			for loc in filedict[myfile]:
+			# Create a reversed list since that is optimal for list.pop().
+			uri_list = filedict[myfile][:]
+			uri_list.reverse()
+			tried_locations = set()
+			while uri_list:
+				loc = uri_list.pop()
+				# Eliminate duplicates here in case we've switched to
+				# "primaryuri" mode on the fly due to a checksum failure.
+				if loc in tried_locations:
+					continue
+				tried_locations.add(loc)
 				if listonly:
 					writemsg_stdout(loc+" ", noiselevel=-1)
 					continue
@@ -3211,6 +3231,15 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 									if count is None:
 										count = 0
 									count += 1
+									if count == checksum_failure_primaryuri:
+										# Switch to "primaryuri" mode in order
+										# to increase the probablility of
+										# of success.
+										primaryuris = \
+											primaryuri_dict.get(myfile)
+										if primaryuris:
+											uri_list.extend(
+												reversed(primaryuris))
 									if count >= checksum_failure_max_tries:
 										break
 									checksum_failure_counts[myfile] = count
