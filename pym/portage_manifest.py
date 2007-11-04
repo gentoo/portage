@@ -455,9 +455,12 @@ class Manifest(object):
 				ps = portage_versions.pkgsplit(pf)
 				cpv = "%s/%s" % (cat, pf)
 				if not ps:
-					raise portage_exception.PortagePackageException(cpv)
+					raise portage_exception.PortagePackageException(
+						"Invalid package name: '%s'" % cpv)
 				if ps[0] != pn:
-					raise portage_exception.PortagePackageException(cpv)
+					raise portage_exception.PortagePackageException(
+						"Package name does not " + \
+						"match directory name: '%s'" % cpv)
 				cpvlist.append(cpv)
 			elif manifest2MiscfileFilter(f):
 				mytype = "MISC"
