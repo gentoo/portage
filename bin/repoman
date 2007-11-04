@@ -1178,9 +1178,12 @@ for x in scanlist:
 						" ".join(stable_keywords))
 
 		# KEYWORDS="-*" is a stupid replacement for package.mask and screws general KEYWORDS semantics
-		if "-*" in myaux["KEYWORDS"].split():
+		if "-*" in keywords:
+			stats["usage.obsolete"] += 1
+			fails["usage.obsolete"].append(
+				x+'/'+y+'.ebuild: KEYWORDS contain -*')
 			haskeyword = False
-			for kw in myaux["KEYWORDS"].split():
+			for kw in keywords:
 				if kw[0] == "~":
 					kw = kw[1:]
 				if kw in kwlist:
