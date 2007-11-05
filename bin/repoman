@@ -1393,7 +1393,8 @@ for x in scanlist:
 		errors = check.Run()
 		for e in errors:
 			stats[check.repoman_check_name] += 1
-			fails[check.repoman_check_name].append(x + '/' + y + '.ebuild: %s' % e)
+			fails[check.repoman_check_name].append(
+				x + '/' + y + '.ebuild: %s' % e[1] % e[0])
 		del check, errors, path, contents, myear
 
 		if options.force:
