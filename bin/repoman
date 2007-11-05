@@ -52,11 +52,6 @@ except ImportError:
 	from repoman.checks import EbuildWhitespace, EbuildHeader, EbuildQuote, \
 		EbuildAssignment, EbuildNestedDie, EbuildUselessDodoc, EbuildUselessCdS
 
-try:
-	import cStringIO as StringIO
-except ImportError:
-	import StringIO
-
 import portage.checksum
 import portage.const
 import portage.dep
@@ -1374,7 +1369,12 @@ for x in scanlist:
 		# Syntax Checks
 		path = checkdir + '/' + y + '.ebuild'
 		myear = time.gmtime(os.stat(path)[ST_MTIME])[0]
-		contents = StringIO.StringIO(open(path, 'rb').read())
+		f = open(path, 'rb')
+		try:
+			contents = f.readlines()
+		finally:
+			f.close()
+			del f
 		for check in (EbuildWhitespace, EbuildQuote,
 			EbuildAssignment, EbuildUselessDodoc, EbuildUselessCdS):
 			c = check(contents)
@@ -1382,14 +1382,12 @@ for x in scanlist:
 			for e in errors:
 				stats[c.repoman_check_name] += 1
 				fails[c.repoman_check_name].append(x + '/' + y + '.ebuild: %s' % e[1] % e[0])
-			contents.seek(0) # move fp to the beginning of the StringIO Object
 		del check
 		check = EbuildHeader(contents, str(myear))
 		errors = check.Run()
 		for e in errors:
 			stats[check.repoman_check_name] += 1
 			fails[check.repoman_check_name].append(x + '/' + y + '.ebuild: %s' % e[1] % e[0])
-		contents.seek(0)
 		del check
 		check = EbuildNestedDie(contents)
 		errors = check.Run()
