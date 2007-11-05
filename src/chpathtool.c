@@ -283,7 +283,7 @@ int dirwalk(char *src, char *srcp, char *trg, char *trgp) {
 #else
 			ub.actime = s.ATIME_SEC;
 			ub.modtime = s.MTIME_SEC;
-			if(utime(trg, &ub) != 0) {
+			if (utime(trg, &ub) != 0) {
 				fprintf(stderr, "failed to set utime of %s: %s\n",
 						trg, strerror(errno));
 				return(-1);
