@@ -633,15 +633,17 @@ def create_world_atom(pkg_key, metadata, args_set, root_config):
 		slot_atom = "%s:%s" % (cp, metadata["SLOT"])
 		# First verify the slot is in the portage tree to avoid
 		# adding a bogus slot like that produced by multislot.
-		if portdb.match(slot_atom):
-			# Now verify that the argument is precise enough to identify a
-			# specific slot.
-			matches = portdb.match(arg_atom)
-			matched_slots = set()
-			for cpv in matches:
-				matched_slots.add(portdb.aux_get(cpv, ["SLOT"])[0])
-			if len(matched_slots) == 1:
-				new_world_atom = slot_atom
+		mydb = portdb
+		if not portdb.match(slot_atom):
+			mydb = vardb
+		# Now verify that the argument is precise
+		# enough to identify a specific slot.
+		matches = mydb.match(arg_atom)
+		matched_slots = set()
+		for cpv in matches:
+			matched_slots.add(mydb.aux_get(cpv, ["SLOT"])[0])
+		if len(matched_slots) == 1:
+			new_world_atom = slot_atom
 	if new_world_atom == sets["world"].findAtomForPackage(pkg_key, metadata):
 		# Both atoms would be identical, so there's nothing to add.
 		return None
