@@ -818,6 +818,24 @@ class EbuildQuote(object):
 				break
 		return errors
 
+class EbuildNestedDie(object):
+	"""Check ebuild for nested die statements (die statements in subshells"""
+
+	repoman_check_name = 'ebuild.nesteddie'
+	nesteddie_re = re.compile(r'^[^#]*\([^)]*\bdie\b')
+
+	def __init__(self, contents):
+		self.contents = contents
+
+	def Run(self):
+		errors = []
+		for num, line in enumerate(self.contents):
+			match = self.nesteddie_re.match(line)
+			if match:
+				errors.append((num + 1,
+					'Ebuild calls die in a subshell on line: %d'))
+		return errors
+
 class EbuildUselessDodoc(object):
 	"""Check ebuild for useless files in dodoc arguments."""
 	repoman_check_name = 'ebuild.minorsyn'
@@ -1403,10 +1421,6 @@ for x in scanlist:
 				stats["usage.obsolete"] += 1
 				fails["usage.obsolete"].append("%s/%s.ebuild: not migrated to modular X" % (x, y))
 
-		# this check needs work, it won't catch (\ndie)
-		if not os.system("egrep '^[^#]*\([^)]*\<die\>' "+checkdir+"/"+y+".ebuild >/dev/null 2>&1"):
-			stats["ebuild.nesteddie"]=stats["ebuild.nesteddie"]+1
-			fails["ebuild.nesteddie"].append(x+"/"+y+".ebuild")
 		# uselist checks - global
 		myuse = []
 		default_use = []
@@ -1492,6 +1506,13 @@ for x in scanlist:
 			for e in errors:
 				stats[c.repoman_check_name] += 1
 				fails[c.repoman_check_name].append(x + '/' + y + '.ebuild: %s' % e[1] % e[0])
+		del check
+		check = EbuildNestedDie(contents)
+		errors = check.Run()
+		for e in errors:
+			stats[check.repoman_check_name] += 1
+			fails[check.repoman_check_name].append(
+				x + '/' + y + '.ebuild: %s' % e[1] % e[0])
 		del check
 
 		gentoo_copyright = re.compile(r'^# Copyright ((1999|200\d)-)?' + str(myear) + r' Gentoo Foundation')
