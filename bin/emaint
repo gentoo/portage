@@ -32,13 +32,23 @@ class WorldHandler(object):
 		self.found = os.access(self.world_file, os.R_OK)
 		vardb = portage.db[myroot]["vartree"].dbapi
 
+		from portage.sets import make_default_config, SETPREFIX
+		setconfig = make_default_config(portage.settings, portage.db[myroot])
+		sets = setconfig.getSetsWithAliases()
 		world_atoms = open(self.world_file).read().split()
 		maxval = len(world_atoms)
 		if onProgress:
 			onProgress(maxval, 0)
 		for i, atom in enumerate(world_atoms):
 			if not portage.isvalidatom(atom):
-				self.invalid.append(atom)
+				if atom.startswith(SETPREFIX):
+					s = atom[len(SETPREFIX):]
+					if s in sets:
+						self.okay.append(atom)
+					else:
+						self.not_installed.append(atom)
+				else:
+					self.invalid.append(atom)
 				if onProgress:
 					onProgress(maxval, i+1)
 				continue
