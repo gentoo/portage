@@ -24,6 +24,10 @@ class WorldHandler(object):
 		self.not_installed = []
 		self.invalid_category = []
 		self.okay = []
+		from portage.sets import make_default_config
+		setconfig = make_default_config(portage.settings,
+			portage.db[portage.settings["ROOT"]])
+		self._sets = setconfig.getSetsWithAliases()
 
 	def _check_world(self, onProgress):
 		categories = set(portage.settings.categories)
@@ -32,13 +36,22 @@ class WorldHandler(object):
 		self.found = os.access(self.world_file, os.R_OK)
 		vardb = portage.db[myroot]["vartree"].dbapi
 
-		world_atoms = open(self.world_file).read().split()
+		from portage.sets import SETPREFIX
+		sets = self._sets
+		world_atoms = list(sets["world"])
 		maxval = len(world_atoms)
 		if onProgress:
 			onProgress(maxval, 0)
 		for i, atom in enumerate(world_atoms):
 			if not portage.isvalidatom(atom):
-				self.invalid.append(atom)
+				if atom.startswith(SETPREFIX):
+					s = atom[len(SETPREFIX):]
+					if s in sets:
+						self.okay.append(atom)
+					else:
+						self.not_installed.append(atom)
+				else:
+					self.invalid.append(atom)
 				if onProgress:
 					onProgress(maxval, i+1)
 				continue
@@ -67,14 +80,23 @@ class WorldHandler(object):
 		return errors
 
 	def fix(self, onProgress=None):
-		self._check_world(onProgress)
-		errors = []
+		world_set = self._sets["world"]
+		world_set.lock()
 		try:
-			portage.write_atomic(self.world_file,
-				"\n".join(sorted(self.okay)) + "\n")
-		except portage.exception.PortageException:
-			errors.append(self.world_file + " could not be opened for writing")
-		return errors
+			world_set.load() # maybe it's changed on disk
+			before = set(world_set)
+			self._check_world(onProgress)
+			after = set(self.okay)
+			errors = []
+			if before != after:
+				try:
+					world_set.replace(self.okay)
+				except portage.exception.PortageException:
+					errors.append("%s could not be opened for writing" % \
+						self.world_file)
+			return errors
+		finally:
+			world_set.unlock()
 
 class BinhostHandler(object):
 

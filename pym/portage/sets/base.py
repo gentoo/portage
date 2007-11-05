@@ -58,7 +58,7 @@ class PackageSet(object):
 
 	def _setAtoms(self, atoms):
 		atoms = map(str.strip, atoms)
-		nonatoms = set()
+		self._nonatoms.clear()
 		for a in atoms[:]:
 			if a == "":
 				atoms.remove(a)

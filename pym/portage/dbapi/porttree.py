@@ -523,6 +523,10 @@ class portdbapi(dbapi):
 						writemsg("\nInvalid ebuild name: %s\n" % \
 							os.path.join(oroot, mycp, x), noiselevel=-1)
 						continue
+					if ps[0] != mysplit[1]:
+						writemsg("\nInvalid ebuild name: %s\n" % \
+							os.path.join(oroot, mycp, x), noiselevel=-1)
+						continue
 					d[mysplit[0]+"/"+pf] = None
 		if invalid_category and d:
 			writemsg(("\n!!! '%s' has a category that is not listed in " + \

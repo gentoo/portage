@@ -807,6 +807,7 @@ class binarytree(object):
 		metadata["DESC"] = metadata["DESCRIPTION"]
 		del metadata["DESCRIPTION"]
 		use = metadata["USE"].split()
+		raw_use = use
 		iuse = set(metadata["IUSE"].split())
 		use = [f for f in use if f in iuse]
 		use.sort()
@@ -816,7 +817,7 @@ class binarytree(object):
 		for k in "LICENSE", "RDEPEND", "DEPEND", "PDEPEND", "PROVIDE":
 			try:
 				deps = paren_reduce(metadata[k])
-				deps = use_reduce(deps, uselist=use)
+				deps = use_reduce(deps, uselist=raw_use)
 				deps = paren_normalize(deps)
 				deps = paren_enclose(deps)
 			except portage.exception.InvalidDependString, e:
