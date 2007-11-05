@@ -24,6 +24,9 @@
 #ifdef HAVE_ALLOCA_H
 #include <alloca.h>
 #endif
+#ifdef HAVE_UTIME_H
+#include <utime.h>
+#endif
 #include <sys/time.h>
 #include <fcntl.h>
 
@@ -167,6 +170,9 @@ int dirwalk(char *src, char *srcp, char *trg, char *trgp) {
 	struct dirent *de;
 	struct stat s;
 	struct timeval times[2];
+#ifndef HAVE_UTIMES
+	struct utimbuf ub;
+#endif
 	char *st;
 	char *tt;
 
@@ -268,11 +274,21 @@ int dirwalk(char *src, char *srcp, char *trg, char *trgp) {
 #else
 			times[1].tv_usec = 0;
 #endif
+#ifdef HAVE_UTIMES
 			if (utimes(trg, times) != 0) {
 				fprintf(stderr, "failed to set utimes of %s: %s\n",
 						trg, strerror(errno));
 				return(-1);
 			}
+#else
+			ub.actime = s.ATIME_SEC;
+			ub.modtime = s.MTIME_SEC;
+			if(utime(trg, &ub) != 0) {
+				fprintf(stderr, "failed to set utime of %s: %s\n",
+						trg, strerror(errno));
+				return(-1);
+			}
+#endif
 		} else if (
 				S_ISLNK(s.st_mode)
 				)
@@ -350,11 +366,21 @@ int dirwalk(char *src, char *srcp, char *trg, char *trgp) {
 #else
 	times[1].tv_usec = 0;
 #endif
+#ifdef HAVE_UTIMES
 	if (utimes(trg, times) != 0) {
 		fprintf(stderr, "failed to set utimes of %s: %s\n",
 				trg, strerror(errno));
 		return(-1);
 	}
+#else
+	ub.actime = s.ATIME_SEC;
+	ub.modtime = s.MTIME_SEC;
+	if (utime(trg, &ub) != 0) {
+		fprintf(stderr, "failed to set utime of %s: %s\n",
+				trg, strerror(errno));
+		return(-1);
+	}
+#endif
 
 	return(0);
 }

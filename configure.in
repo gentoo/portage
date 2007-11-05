@@ -51,11 +51,13 @@ AC_HEADER_STDC
 AC_CHECK_HEADERS([string.h strings.h errno.h unistd.h stdio.h stdlib.h])
 AC_CHECK_HEADERS([sys/stat.h sys/types.h dirent.h sys/time.h alloca.h])
 AC_CHECK_HEADERS([fcntl.h])
+AC_CHECK_HEADERS([utime.h])
 
 AC_SEARCH_LIBS([readdir], [c])
 AC_SEARCH_LIBS([strcpy], [c])
 AC_SEARCH_LIBS([strstr], [c])
 AC_SEARCH_LIBS([memcpy], [c])
+AC_CHECK_FUNCS([utimes])
 
 AC_MSG_CHECKING([for the *time fields in struct stat])
 AC_TRY_LINK([
