@@ -4983,17 +4983,11 @@ def checkUpdatedNewsItems(portdb, vardb, NEWS_PATH, UNREAD_PATH, repo_id):
 	return manager.getUnreadItems( repo_id, update=True )
 
 def is_valid_package_atom(x):
-	try:
-		testkey = portage.dep_getkey(x)
-	except portage.exception.InvalidData:
-		return False
-	if testkey.startswith("null/"):
-		testatom = x.replace(testkey[5:], "cat/"+testkey[5:])
-	elif "/" not in x:
-		testatom = "cat/"+x
-	else:
-		testatom = x
-	return portage.isvalidatom(testatom)
+	if "/" not in x:
+		alphanum = re.search(r'\w', x)
+		if alphanum:
+			x = x[:alphanum.start()] + "cat/" + x[alphanum.start():]
+	return portage.isvalidatom(x)
 
 def show_blocker_docs_link():
 	print
