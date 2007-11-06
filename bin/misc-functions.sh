@@ -534,7 +534,7 @@ dyn_package() {
 
 dyn_spec() {
 	tar czf "/usr/src/rpm/SOURCES/${PF}.tar.gz" \
-		"${O}/${PF}.ebuild" "${O}/files" || \
+		"${EBUILD}" "${FILESDIR}" || \
 		die "Failed to create base rpm tarball."
 
 	cat <<__END1__ > ${PF}.spec
