@@ -165,7 +165,12 @@ useq() {
 	fi
 
 	# Make sure we have this USE flag in IUSE
-	if ! hasq "${u}" ${IUSE} ${E_IUSE} && ! hasq "${u}" ${PORTAGE_ARCHLIST} selinux; then
+	if ! hasq "${u}" ${IUSE} ${E_IUSE} && \
+		! hasq "${u}" ${PORTAGE_ARCHLIST} selinux && \
+		[[ ${u} != arch_* ]] && \
+		[[ ${u} != elibc_* ]] && \
+		[[ ${u} != kernel_* ]] && \
+		[[ ${u} != userland_* ]] ; then
 		eqawarn "QA Notice: USE Flag '${u}' not in IUSE for ${CATEGORY}/${PF}"
 	fi
 
@@ -1442,7 +1447,7 @@ export S=${WORKDIR}/${P}
 
 unset E_IUSE E_DEPEND E_RDEPEND E_PDEPEND
 
-for x in T P PN PV PVR PR CATEGORY A EBUILD EMERGE_FROM O PPID FILESDIR PORTAGE_TMPDIR; do
+for x in T P PN PV PVR PR CATEGORY A EBUILD EMERGE_FROM FILESDIR PORTAGE_TMPDIR; do
 	[[ ${!x-UNSET_VAR} != UNSET_VAR ]] && declare -r ${x}
 done
 # Need to be able to change D in dyn_preinst due to the IMAGE stuff

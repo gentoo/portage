@@ -1239,9 +1239,6 @@ for x in scanlist:
 
 		# KEYWORDS="-*" is a stupid replacement for package.mask and screws general KEYWORDS semantics
 		if "-*" in keywords:
-			stats["usage.obsolete"] += 1
-			fails["usage.obsolete"].append(
-				x+'/'+y+'.ebuild: KEYWORDS contain -*')
 			haskeyword = False
 			for kw in keywords:
 				if kw[0] == "~":

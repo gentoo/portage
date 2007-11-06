@@ -632,17 +632,40 @@ def create_world_atom(pkg_key, metadata, args_set, root_config):
 		# If the user gave a specific atom, store it as a
 		# slot atom in the world file.
 		slot_atom = "%s:%s" % (cp, metadata["SLOT"])
-		# First verify the slot is in the portage tree to avoid
-		# adding a bogus slot like that produced by multislot.
-		if portdb.match(slot_atom):
-			# Now verify that the argument is precise enough to identify a
-			# specific slot.
-			matches = portdb.match(arg_atom)
+
+		# For USE=multislot, there are a couple of cases to
+		# handle here:
+		#
+		# 1) SLOT="0", but the real SLOT spontaneously changed to some
+		#    unknown value, so just record an unslotted atom.
+		#
+		# 2) SLOT comes from an installed package and there is no
+		#    matching SLOT in the portage tree.
+		#
+		# Make sure that the slot atom is available in either the
+		# portdb or the vardb, since otherwise the user certainly
+		# doesn't want the SLOT atom recorded in the world file
+		# (case 1 above).  If it's only available in the vardb,
+		# the user may be trying to prevent a USE=multislot
+		# package from being removed by --depclean (case 2 above).
+
+		mydb = portdb
+		if not portdb.match(slot_atom):
+			# SLOT seems to come from an installed multislot package
+			mydb = vardb
+		# If there is no installed package matching the SLOT atom,
+		# it probably changed SLOT spontaneously due to USE=multislot,
+		# so just record an unslotted atom.
+		if vardb.match(slot_atom):
+			# Now verify that the argument is precise
+			# enough to identify a specific slot.
+			matches = mydb.match(arg_atom)
 			matched_slots = set()
 			for cpv in matches:
-				matched_slots.add(portdb.aux_get(cpv, ["SLOT"])[0])
+				matched_slots.add(mydb.aux_get(cpv, ["SLOT"])[0])
 			if len(matched_slots) == 1:
 				new_world_atom = slot_atom
+
 	if new_world_atom == sets["world"].findAtomForPackage(pkg_key, metadata):
 		# Both atoms would be identical, so there's nothing to add.
 		return None
@@ -4983,17 +5006,11 @@ def checkUpdatedNewsItems(portdb, vardb, NEWS_PATH, UNREAD_PATH, repo_id):
 	return manager.getUnreadItems( repo_id, update=True )
 
 def is_valid_package_atom(x):
-	try:
-		testkey = portage.dep_getkey(x)
-	except portage.exception.InvalidData:
-		return False
-	if testkey.startswith("null/"):
-		testatom = x.replace(testkey[5:], "cat/"+testkey[5:])
-	elif "/" not in x:
-		testatom = "cat/"+x
-	else:
-		testatom = x
-	return portage.isvalidatom(testatom)
+	if "/" not in x:
+		alphanum = re.search(r'\w', x)
+		if alphanum:
+			x = x[:alphanum.start()] + "cat/" + x[alphanum.start():]
+	return portage.isvalidatom(x)
 
 def show_blocker_docs_link():
 	print
