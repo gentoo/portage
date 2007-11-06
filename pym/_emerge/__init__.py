@@ -631,19 +631,37 @@ def create_world_atom(pkg_key, metadata, args_set, root_config):
 		# If the user gave a specific atom, store it as a
 		# slot atom in the world file.
 		slot_atom = "%s:%s" % (cp, metadata["SLOT"])
-		# First verify the slot is in the portage tree to avoid
-		# adding a bogus slot like that produced by multislot.
+
+		# For USE=multislot, there are a couple of cases to
+		# handle here:
+		#
+		# 1) SLOT="0", but the real SLOT spontaneously changed to some
+		#    unknown value, so just record an unslotted atom.
+		#
+		# 2) SLOT comes from an installed package and there is no
+		#    matching SLOT in the portage tree.
+		#
+		# Make sure that the slot atom is available in either the
+		# portdb or the vardb, since otherwise the user certainly
+		# doesn't want the SLOT atom recorded in the world file
+		# (case 1 above).  If it's only available in the vardb,
+		# the user may be trying to prevent a USE=multislot
+		# package from being removed by --depclean (case 2 above).
+
 		mydb = portdb
 		if not portdb.match(slot_atom):
+			# SLOT seems to come from an installed multislot package
 			mydb = vardb
-		# Now verify that the argument is precise
-		# enough to identify a specific slot.
-		matches = mydb.match(arg_atom)
-		matched_slots = set()
-		for cpv in matches:
-			matched_slots.add(mydb.aux_get(cpv, ["SLOT"])[0])
-		if len(matched_slots) == 1:
-			new_world_atom = slot_atom
+		if mydb.match(slot_atom):
+			# Now verify that the argument is precise
+			# enough to identify a specific slot.
+			matches = mydb.match(arg_atom)
+			matched_slots = set()
+			for cpv in matches:
+				matched_slots.add(mydb.aux_get(cpv, ["SLOT"])[0])
+			if len(matched_slots) == 1:
+				new_world_atom = slot_atom
+
 	if new_world_atom == sets["world"].findAtomForPackage(pkg_key, metadata):
 		# Both atoms would be identical, so there's nothing to add.
 		return None
