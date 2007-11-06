@@ -652,7 +652,10 @@ def create_world_atom(pkg_key, metadata, args_set, root_config):
 		if not portdb.match(slot_atom):
 			# SLOT seems to come from an installed multislot package
 			mydb = vardb
-		if mydb.match(slot_atom):
+		# If there is no installed package matching the SLOT atom,
+		# it probably changed SLOT spontaneously due to USE=multislot,
+		# so just record an unslotted atom.
+		if vardb.match(slot_atom):
 			# Now verify that the argument is precise
 			# enough to identify a specific slot.
 			matches = mydb.match(arg_atom)
