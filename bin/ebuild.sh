@@ -165,7 +165,12 @@ useq() {
 	fi
 
 	# Make sure we have this USE flag in IUSE
-	if ! hasq "${u}" ${IUSE} ${E_IUSE} && ! hasq "${u}" ${PORTAGE_ARCHLIST} selinux; then
+	if ! hasq "${u}" ${IUSE} ${E_IUSE} && \
+		! hasq "${u}" ${PORTAGE_ARCHLIST} selinux && \
+		[[ ${u} != arch_* ]] && \
+		[[ ${u} != elibc_* ]] && \
+		[[ ${u} != kernel_* ]] && \
+		[[ ${u} != userland_* ]] ; then
 		eqawarn "QA Notice: USE Flag '${u}' not in IUSE for ${CATEGORY}/${PF}"
 	fi
 
