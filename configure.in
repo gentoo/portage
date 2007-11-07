@@ -217,15 +217,12 @@ AC_HELP_STRING([--with-offset-prefix],
 
 if test "x$DOMAIN_PREFIX" = "x"
 then
-	PYTHON_EPREFIX='""'
+	PORTAGE_EPREFIX='""'
+	EAPIPREFIX=''
 else
-	PYTHON_EPREFIX='path.normpath("'"$DOMAIN_PREFIX"'")'
+	PORTAGE_EPREFIX='path.normpath("'"$DOMAIN_PREFIX"'")'
+	EAPIPREFIX='"prefix"'
 fi
-
-AC_ARG_WITH(eapi,
-AC_HELP_STRING([--with-eapi], [specify what eapi to use (default 1)]),
-[SUPPORTED_EAPI=$withval],
-[SUPPORTED_EAPI=1])
 
 DEFAULT_PATH="${DOMAIN_PREFIX}/usr/bin:${DOMAIN_PREFIX}/usr/sbin:${DOMAIN_PREFIX}/bin:${DOMAIN_PREFIX}/sbin:${prefix}/bin"
 AC_ARG_WITH(default-path, 
@@ -248,8 +245,8 @@ AC_SUBST(rootuser)
 AC_SUBST(rootuid)
 AC_SUBST(rootgid)
 AC_SUBST(DOMAIN_PREFIX)
-AC_SUBST(PYTHON_EPREFIX)
-AC_SUBST(SUPPORTED_EAPI)
+AC_SUBST(PORTAGE_EPREFIX)
+AC_SUBST(EAPIPREFIX)
 AC_SUBST(DEFAULT_PATH)
 AC_SUBST(PORTAGE_BASE,['${exec_prefix}/lib/portage'])
 AM_CONDITIONAL(INSTALL_PYTHON_SOURCES, test x$enable_py_sources = xtrue)

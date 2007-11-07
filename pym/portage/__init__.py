@@ -3574,15 +3574,33 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 
 
 def eapi_is_supported(eapi):
-	# PREFIX HACK: in prefix we still use EAPI="prefix".  To avoid
-	# getting eapi = -1 here and an error by Python because
-	# portage.const.EAPI is a string, we revert to a string compare for
-	# now.  Once we use a number, we should remove this crude hack.
-	if portage.const.EAPI == "prefix":
-		return str(eapi).strip() == str(portage.const.EAPI).strip()
+	# PREFIX HACK/EXTENSION: in prefix we have "incompatible" ebuilds in
+	# an consistent manner; regardless what the EAPI of the main tree
+	# ebuild is, we always need the prefix extension which by itself can
+	# have a version too.  In EAPI we allow to have multiple components
+	# separated by spaces to cater for this.  In general we could extend
+	# it here to contain '<desc>:<ver>' tokens, where <desc> is a
+	# string, and <ver> a number.  If '<desc>:' is omitted, it would be
+	# assumed to be the EAPI version as used in the main tree, if
+	# ':<ver>' is omitted, version 0 would be assumed.  This way an
+	# unset EAPI would make main tree EAPI 0, and 'EAPI="prefix"' would
+	# mean main tree EAPI 0, prefix tree EAPI 0.
+	# However, back to reality, we just look for all <desc> we require,
+	# which because fixed to be at max 1 allows to do some optimisations
+	# and don't do version tricks other than the main tree does.
+
+	# what we implement here, better be fast, so match what we want
+	# against what we have
+	o = 0
+	eapi = str(eapi)
+	if portage.const.EAPIPREFIX:
+		o = eapi.find(portage.const.EAPIPREFIX)
+		if o == -1:
+			return False
+		o += len(portage.const.EAPIPREFIX)
 
 	try:
-		eapi = int(str(eapi).strip())
+		eapi = int(eapi[o:].strip())
 	except ValueError:
 		eapi = -1
 	if eapi < 0:
@@ -5305,7 +5323,8 @@ def getmaskingstatus(mycpv, metadata=None, settings=None, portdb=None):
 	if eapi.startswith("-"):
 		eapi = eapi[1:]
 	if not eapi_is_supported(eapi):
-		return ["required EAPI %s, supported EAPI %s" % (eapi, portage.const.EAPI)]
+		return ["ebuild requires EAPI %s, portage supports EAPI %s %s" %
+				(eapi, portage.const.EAPIPREFIX, portage.const.EAPI)]
 	egroups = settings.configdict["backupenv"].get(
 		"ACCEPT_KEYWORDS", "").split()
 	mygroups = mygroups.split()

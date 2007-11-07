@@ -31,6 +31,7 @@ MODULES_FILE_PATH       = USER_CONFIG_PATH+"/modules"
 CUSTOM_PROFILE_PATH     = USER_CONFIG_PATH+"/profile"
 GLOBAL_CONFIG_PATH      = DATADIR+"/portage/config"
 
+#PORTAGE_BASE_PATH       = "/usr/lib/portage"
 PORTAGE_BASE_PATH       = PORTAGE_BASE
 PORTAGE_BIN_PATH        = PORTAGE_BASE_PATH+"/bin"
 PORTAGE_PYM_PATH        = PORTAGE_BASE_PATH+"/pym"
@@ -67,7 +68,7 @@ INCREMENTALS = ["USE", "USE_EXPAND", "USE_EXPAND_HIDDEN", "FEATURES",
 EBUILD_PHASES           = ["setup", "unpack", "compile", "test", "install",
                           "preinst", "postinst", "prerm", "postrm", "other"]
 
-EAPI = @SUPPORTED_EAPI@
+EAPI = 1
 
 HASHING_BLOCKSIZE        = 32768
 MANIFEST1_HASH_FUNCTIONS = ["MD5","SHA256","RMD160"]
