@@ -1819,12 +1819,14 @@ class depgraph(object):
 					print
 					return False, myfavorites
 
-		if "--update" in self.myopts and not mysets:
+		if "--update" in self.myopts:
 			# Enable greedy SLOT atoms for atoms given as arguments.
 			# This is currently disabled for sets since greedy SLOT
 			# atoms could be a property of the set itself.
 			greedy_atoms = []
 			for myarg, atom in arg_atoms:
+				if myarg.startswith(SETPREFIX):
+					continue
 				greedy_atoms.append((myarg, atom))
 				for greedy_atom in self._greedy_slot_atoms(myroot, atom):
 					greedy_atoms.append((myarg, greedy_atom))
