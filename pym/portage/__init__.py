@@ -3573,6 +3573,9 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 	return phase_retval
 
 
+_eapi_prefix_re = re.compile("(^|\s*)%s($|\s*)" % portage.const.EAPIPREFIX)
+_eapi_num_re    = re.compile("(^|\s*)[0-9]+($|\s*)")
+
 def eapi_is_supported(eapi):
 	# PREFIX HACK/EXTENSION: in prefix we have "incompatible" ebuilds in
 	# an consistent manner; regardless what the EAPI of the main tree
@@ -3586,23 +3589,21 @@ def eapi_is_supported(eapi):
 	# unset EAPI would make main tree EAPI 0, and 'EAPI="prefix"' would
 	# mean main tree EAPI 0, prefix tree EAPI 0.
 	# However, back to reality, we just look for all <desc> we require,
-	# which because fixed to be at max 1 allows to do some optimisations
 	# and don't do version tricks other than the main tree does.
 
-	# what we implement here, better be fast, so match what we want
-	# against what we have
-	o = 0
 	eapi = str(eapi)
 	if portage.const.EAPIPREFIX:
-		o = eapi.find(portage.const.EAPIPREFIX)
-		if o == -1:
+		if not _eapi_prefix_re.search(eapi):
 			return False
-		o += len(portage.const.EAPIPREFIX)
 
-	try:
-		eapi = int(eapi[o:].strip())
-	except ValueError:
-		eapi = -1
+	m = _eapi_num_re.search(eapi)
+	if not m:
+		eapi = 0
+	else:
+		try:
+			eapi = int(m.string[m.start():m.end()].strip())
+		except ValueError:
+			eapi = -1
 	if eapi < 0:
 		return False
 	return eapi <= portage.const.EAPI

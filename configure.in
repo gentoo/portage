@@ -218,7 +218,7 @@ AC_HELP_STRING([--with-offset-prefix],
 if test "x$DOMAIN_PREFIX" = "x"
 then
 	PORTAGE_EPREFIX='""'
-	EAPIPREFIX=''
+	EAPIPREFIX='None'
 else
 	PORTAGE_EPREFIX='path.normpath("'"$DOMAIN_PREFIX"'")'
 	EAPIPREFIX='"prefix"'
