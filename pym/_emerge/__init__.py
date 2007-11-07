@@ -1825,9 +1825,9 @@ class depgraph(object):
 			# atoms could be a property of the set itself.
 			greedy_atoms = []
 			for myarg, atom in arg_atoms:
+				greedy_atoms.append((myarg, atom))
 				if myarg.startswith(SETPREFIX):
 					continue
-				greedy_atoms.append((myarg, atom))
 				for greedy_atom in self._greedy_slot_atoms(myroot, atom):
 					greedy_atoms.append((myarg, greedy_atom))
 			arg_atoms = greedy_atoms
