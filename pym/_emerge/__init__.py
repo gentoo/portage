@@ -1672,16 +1672,14 @@ class depgraph(object):
 			refs.remove("args")
 		return refs
 
-	def select_files(self, myfiles, mysets):
-		"given a list of .tbz2s, .ebuilds and deps, create the appropriate depgraph and return a favorite list"
-		# Recursively expand sets so that containment tests in
-		# self._get_parent_sets() properly match atoms in nested
-		# sets (like if world contains system). Otherwise, atoms
-		# from nested sets would get recorded in the world file.
-		setconfig = self.settings.setconfig
-		for set_name in mysets:
-			self._sets[set_name] = InternalPackageSet(
-				initial_atoms=setconfig.getSetAtoms(set_name))
+	def select_files(self, myfiles):
+		"""Given a list of .tbz2s, .ebuilds sets, and deps, create the
+		appropriate depgraph and return a favorite list."""
+		root_config = self.roots[self.target_root]
+		sets = root_config.settings.sets
+		getSetAtoms = root_config.settings.setconfig.getSetAtoms
+		oneshot = "--oneshot" in self.myopts or \
+			"--onlydeps" in self.myopts
 		myfavorites=[]
 		myroot = self.target_root
 		dbs = self._filtered_trees[myroot]["dbs"]
@@ -1760,6 +1758,27 @@ class depgraph(object):
 					return 0, myfavorites
 				arg_atoms.append((x, "="+mykey))
 			else:
+				if x in ("system", "world"):
+					x = SETPREFIX + x
+				if x.startswith(SETPREFIX):
+					s = x[len(SETPREFIX):]
+					if s not in sets:
+						raise portage.exception.PackageNotFound(
+							"emerge: there are no sets to satisfy '%s'." % s)
+					if s in self._sets:
+						continue
+					# Recursively expand sets so that containment tests in
+					# self._get_parent_sets() properly match atoms in nested
+					# sets (like if world contains system).
+					expanded_set = InternalPackageSet(
+						initial_atoms=getSetAtoms(s))
+					self._sets[s] = expanded_set
+					for atom in expanded_set:
+						self._set_atoms.add(atom)
+						arg_atoms.append((x, atom))
+					if not oneshot:
+						myfavorites.append(x)
+					continue
 				if not is_valid_package_atom(x):
 					portage.writemsg("\n\n!!! '%s' is not a valid package atom.\n" % x,
 						noiselevel=-1)
@@ -1807,32 +1826,32 @@ class depgraph(object):
 					print
 					return False, myfavorites
 
-		if "--update" in self.myopts and not mysets:
+		if "--update" in self.myopts:
 			# Enable greedy SLOT atoms for atoms given as arguments.
 			# This is currently disabled for sets since greedy SLOT
 			# atoms could be a property of the set itself.
 			greedy_atoms = []
 			for myarg, atom in arg_atoms:
 				greedy_atoms.append((myarg, atom))
+				if myarg.startswith(SETPREFIX):
+					continue
 				for greedy_atom in self._greedy_slot_atoms(myroot, atom):
 					greedy_atoms.append((myarg, greedy_atom))
 			arg_atoms = greedy_atoms
 
-		oneshot = "--oneshot" in self.myopts or \
-			"--onlydeps" in self.myopts
-		""" These are used inside self.create() in order to ensure packages
-		that happen to match arguments are not incorrectly marked as nomerge."""
+		# Create the "args" package set from atoms and
+		# packages given as arguments. Normal package
+		# sets have already be processed above.
 		args_set = self._sets["args"]
 		for myarg, myatom in arg_atoms:
-			if myatom in self._set_atoms:
+			if myarg.startswith(SETPREFIX):
 				continue
+			if myatom in args_set:
+				continue
+			args_set.add(myatom)
 			self._set_atoms.add(myatom)
-			if not self._get_parent_sets(myroot, myatom):
-				args_set.add(myatom)
-				if not oneshot:
-					# Filter out atoms that came from
-					# sets like system and world.
-					myfavorites.append(myatom)
+			if not oneshot:
+				myfavorites.append(myatom)
 		pprovideddict = pkgsettings.pprovideddict
 		for arg, atom in arg_atoms:
 				try:
@@ -6201,7 +6220,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 		print "Number removed:       "+str(len(cleanlist))
 
 def action_build(settings, trees, mtimedb,
-	myopts, myaction, myfiles, mysets, spinner):
+	myopts, myaction, myfiles, spinner):
 	ldpath_mtimes = mtimedb["ldpath"]
 	favorites=[]
 	merge_count = 0
@@ -6294,7 +6313,7 @@ def action_build(settings, trees, mtimedb,
 			sys.stdout.flush()
 		mydepgraph = depgraph(settings, trees, myopts, myparams, spinner)
 		try:
-			retval, favorites = mydepgraph.select_files(myfiles, mysets)
+			retval, favorites = mydepgraph.select_files(myfiles)
 		except portage.exception.PackageNotFound, e:
 			portage.writemsg("\n!!! %s\n" % str(e), noiselevel=-1)
 			return 1
@@ -6773,7 +6792,7 @@ def emerge_main():
 	mysets = {}
 	# only expand sets for actions taking package arguments
 	oldargs = myfiles[:]
-	if myaction not in ["search", "metadata", "sync"]:
+	if myaction in ("clean", "config", "depclean", "info", "prune", "unmerge"):
 		newargs = []
 		for a in myfiles:
 			if a in ("system", "world"):
@@ -7023,7 +7042,7 @@ def emerge_main():
 		if "--pretend" not in myopts:
 			display_news_notification(trees)
 		retval = action_build(settings, trees, mtimedb,
-			myopts, myaction, myfiles, mysets, spinner)
+			myopts, myaction, myfiles, spinner)
 		# if --pretend was not enabled then display_news_notification 
 		# was already called by post_emerge
 		if "--pretend" in myopts:
