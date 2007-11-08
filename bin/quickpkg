@@ -19,6 +19,10 @@ def quickpkg_main(options, args, eout):
 	vartree = trees["vartree"]
 	vardb = vartree.dbapi
 	bintree = trees["bintree"]
+	try:
+		ensure_dirs(bintree.pkgdir)
+	except portage.exception.PortageException:
+		pass
 	if not os.access(bintree.pkgdir, os.W_OK):
 		eout.eerror("No write access to '%s'" % bintree.pkgdir)
 		return errno.EACCES
