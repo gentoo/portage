@@ -480,7 +480,13 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 	if not metadata[baseurl].has_key("data"):
 		metadata[baseurl]["data"]={}
 
-	filelist = dir_get_list(baseurl, conn)
+	try:
+		filelist = dir_get_list(baseurl, conn)
+	except Exception, e:
+		sys.stderr.write("!!! "+str(e)+"\n")
+		sys.stderr.flush()
+		return metadata[baseurl]["data"]
+
 	tbz2list = match_in_array(filelist, suffix=".tbz2")
 	metalist = match_in_array(filelist, prefix="metadata.idx")
 	del filelist
