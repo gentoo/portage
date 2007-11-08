@@ -236,9 +236,6 @@ def make_http_request(conn, address, params={}, headers={}, dest=None):
 					break
 	
 	if (rc != 200) and (rc != 206):
-		sys.stderr.write(str(response.msg)+"\n")
-		sys.stderr.write(response.read()+"\n")
-		sys.stderr.write("address: "+address+"\n")
 		return None,rc,"Server did not respond successfully ("+str(response.status)+": "+str(response.reason)+")"
 
 	if dest:
