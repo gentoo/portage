@@ -5324,8 +5324,7 @@ def getmaskingstatus(mycpv, metadata=None, settings=None, portdb=None):
 	if eapi.startswith("-"):
 		eapi = eapi[1:]
 	if not eapi_is_supported(eapi):
-		return ["ebuild requires EAPI %s, portage supports EAPI %s %s" %
-				(eapi, portage.const.EAPIPREFIX, portage.const.EAPI)]
+		return ["EAPI %s" % eapi]
 	egroups = settings.configdict["backupenv"].get(
 		"ACCEPT_KEYWORDS", "").split()
 	mygroups = mygroups.split()

@@ -2083,6 +2083,8 @@ class depgraph(object):
 				red(' [%s]' % myparent[0]) + ')'
 		masked_packages = []
 		missing_licenses = []
+		from textwrap import wrap
+		have_eapi_mask = False
 		pkgsettings = self.pkgsettings[root]
 		portdb = self.roots[root].trees["porttree"].dbapi
 		dbs = self._filtered_trees[root]["dbs"]
@@ -2128,6 +2130,8 @@ class depgraph(object):
 						mreasons.append("EPREFIX: '%s' too small" % metadata["EPREFIX"])
 				missing_licenses = []
 				if metadata:
+					if not portage.eapi_is_supported(metadata["EAPI"]):
+						have_eapi_mask = True
 					try:
 						missing_licenses = \
 							pkgsettings.getMissingLicenses(
@@ -2164,6 +2168,18 @@ class depgraph(object):
 					print msg
 					print
 					shown_licenses.add(l)
+			if have_eapi_mask:
+				if portage.const.EAPIPREFIX:
+					p = portage.const.EAPIPREFIX + " "
+				else:
+					p = ''
+				print
+				msg = ("The current version of portage supports " + \
+					"EAPI '%s%s'. You must upgrade to a newer version" + \
+					" of portage before EAPI masked packages can" + \
+					" be installed.") % (p, portage.const.EAPI)
+				for line in wrap(msg, 75):
+					print line
 			print
 			print "For more information, see MASKED PACKAGES section in the emerge man page or "
 			print "refer to the Gentoo Handbook."
