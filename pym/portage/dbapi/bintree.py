@@ -627,6 +627,7 @@ class binarytree(object):
 					chunk_size = 8
 			except (ValueError, KeyError):
 				chunk_size = 3000
+			writemsg_stdout("\n\n")
 			writemsg_stdout(green("Fetching binary packages info...\n"))
 			self.remotepkgs = portage.getbinpkg.dir_get_metadata(
 				self.settings["PORTAGE_BINHOST"], chunk_size=chunk_size)
