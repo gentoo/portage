@@ -1898,7 +1898,7 @@ class depgraph(object):
 						if len(refs) == 1 and "args" in refs:
 							self._show_unsatisfied_dep(myroot, atom)
 							return 0, myfavorites
-						self._missing_args.append((arg, atom))
+						self._missing_args.append((arg.arg, arg.atom))
 						continue
 					if not self.create(pkg):
 						sys.stderr.write(("\n\n!!! Problem resolving " + \
