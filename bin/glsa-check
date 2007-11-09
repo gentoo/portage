@@ -126,15 +126,11 @@ from portage.glsa import *
 
 vardb = portage.db[portage.settings["ROOT"]]["vartree"].dbapi
 portdb = portage.db["/"]["porttree"].dbapi
-checkfile = os.path.join(portage.settings["ROOT"], CACHE_PATH.lstrip(os.sep), "glsa")
 
 # build glsa lists
 completelist = get_glsa_list(portage.settings)
 
-if os.access(checkfile, os.R_OK):
-	checklist = [line.strip() for line in open(checkfile, "r").readlines()]
-else:
-	checklist = []
+checklist = get_applied_glsas(portage.settings)
 todolist = [e for e in completelist if e not in checklist]
 
 glsalist = []

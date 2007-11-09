@@ -19,6 +19,18 @@ opMapping = {"le": "<=", "lt": "<", "eq": "=", "gt": ">", "ge": ">=",
 NEWLINE_ESCAPE = "!;\\n"	# some random string to mark newlines that should be preserved
 SPACE_ESCAPE = "!;_"		# some random string to mark spaces that should be preserved
 
+def get_applied_glsas(settings):
+	"""
+	Return a list of applied or injected GLSA IDs
+	
+	@type	settings: portage.config
+	@param	settings: portage config instance
+	@rtype:		list
+	@return:	list of glsa IDs
+	"""
+	return grabfile(os.path.join(os.sep, settings["ROOT"], CACHE_PATH.lstrip(os.sep), "glsa"))
+
+
 # TODO: use the textwrap module instead
 def wrap(text, width, caption=""):
 	"""
@@ -553,8 +565,7 @@ class Glsa:
 		@rtype:		Boolean
 		@returns:	True if the GLSA was applied, False if not
 		"""
-		aList = grabfile(os.path.join(os.sep, self.config["ROOT"], CACHE_PATH.lstrip(os.sep), "glsa"))
-		return (self.nr in aList)
+		return (self.nr in get_applied_glsas())
 
 	def inject(self):
 		"""
