@@ -40,7 +40,7 @@ class SecuritySet(PackageSet):
 			myglsa = glsa.Glsa(glsaid, self._settings, self._vardbapi, self._portdbapi)
 			#print glsaid, myglsa.isVulnerable(), myglsa.isApplied(), myglsa.getMergeList()
 			if self.useGlsa(myglsa):
-				atomlist += myglsa.getMergeList(least_change=self._least_change)
+				atomlist += ["="+x for x in myglsa.getMergeList(least_change=self._least_change)]
 		self._setAtoms(atomlist)
 	
 	def useGlsa(self, myglsa):

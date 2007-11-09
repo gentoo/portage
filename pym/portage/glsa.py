@@ -590,4 +590,4 @@ class Glsa:
 					self.portdbapi, self.vardbapi, minimize=least_change)
 				if update:
 					rValue.append(update)
-		return ["="+x for x in rValue]
+		return rValue
