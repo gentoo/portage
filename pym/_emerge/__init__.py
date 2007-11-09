@@ -939,6 +939,28 @@ class Package(object):
 			self._digraph_node = (self.type_name, self.root, self.cpv, status)
 		return self._digraph_node
 
+class DependencyArg(object):
+	def __init__(self, arg=None, root_config=None):
+		self.arg = arg
+		self.root_config = root_config
+
+class AtomArg(DependencyArg):
+	def __init__(self, atom=None, **kwargs):
+		DependencyArg.__init__(self, **kwargs)
+		self.atom = atom
+
+class PackageArg(DependencyArg):
+	def __init__(self, package=None, **kwargs):
+		DependencyArg.__init__(self, **kwargs)
+		self.package = package
+		self.atom = "=" + package.cpv
+
+class SetArg(DependencyArg):
+	def __init__(self, set=None, **kwargs):
+		DependencyArg.__init__(self, **kwargs)
+		self.set = set
+		self.name = self.arg[len(SETPREFIX):]
+
 class Dependency(object):
 	__slots__ = ("__weakref__", "atom", "blocker", "depth",
 		"parent", "priority", "root")
@@ -1681,7 +1703,7 @@ class depgraph(object):
 		portdb = self.trees[myroot]["porttree"].dbapi
 		bindb = self.trees[myroot]["bintree"].dbapi
 		pkgsettings = self.pkgsettings[myroot]
-		arg_atoms = []
+		args = []
 		onlydeps = "--onlydeps" in self.myopts
 		for x in myfiles:
 			ext = os.path.splitext(x)[1]
@@ -1708,9 +1730,8 @@ class depgraph(object):
 				pkg = Package(type_name="binary", root=myroot,
 					cpv=mykey, built=True, metadata=metadata,
 					onlydeps=onlydeps)
-				if not self.create(pkg, arg=x):
-					return 0, myfavorites
-				arg_atoms.append((x, "="+mykey))
+				args.append(PackageArg(arg=x, package=pkg,
+					root_config=root_config))
 			elif ext==".ebuild":
 				ebuild_path = portage.util.normalize_path(os.path.abspath(x))
 				pkgdir = os.path.dirname(ebuild_path)
@@ -1747,9 +1768,8 @@ class depgraph(object):
 				metadata["USE"] = pkgsettings["USE"]
 				pkg = Package(type_name="ebuild", root=myroot,
 					cpv=mykey, metadata=metadata, onlydeps=onlydeps)
-				if not self.create(pkg, arg=x):
-					return 0, myfavorites
-				arg_atoms.append((x, "="+mykey))
+				args.append(PackageArg(arg=x, package=pkg,
+					root_config=root_config))
 			else:
 				if x in ("system", "world"):
 					x = SETPREFIX + x
@@ -1766,9 +1786,8 @@ class depgraph(object):
 					expanded_set = InternalPackageSet(
 						initial_atoms=getSetAtoms(s))
 					self._sets[s] = expanded_set
-					for atom in expanded_set:
-						self._set_atoms.add(atom)
-						arg_atoms.append((x, atom))
+					args.append(SetArg(arg=x, set=expanded_set,
+						root_config=root_config))
 					if not oneshot:
 						myfavorites.append(x)
 					continue
@@ -1786,7 +1805,8 @@ class depgraph(object):
 				#   2) It takes away freedom from the resolver to choose other
 				#      possible expansions when necessary.
 				if "/" in x:
-					arg_atoms.append((x, x))
+					args.append(AtomArg(arg=x, atom=x,
+						root_config=root_config))
 					continue
 				try:
 					try:
@@ -1807,7 +1827,8 @@ class depgraph(object):
 							cp not in e[0]:
 							raise
 						del e
-					arg_atoms.append((x, mykey))
+					args.append(AtomArg(arg=x, atom=mykey,
+						root_config=root_config))
 				except ValueError, e:
 					if not e.args or not isinstance(e.args[0], list) or \
 						len(e.args[0]) < 2:
@@ -1824,34 +1845,50 @@ class depgraph(object):
 			# This is currently disabled for sets since greedy SLOT
 			# atoms could be a property of the set itself.
 			greedy_atoms = []
-			for myarg, atom in arg_atoms:
-				greedy_atoms.append((myarg, atom))
-				if myarg.startswith(SETPREFIX):
+			for arg in args:
+				greedy_atoms.append(arg)
+				if not isinstance(arg, (AtomArg, PackageArg)):
 					continue
-				for greedy_atom in self._greedy_slot_atoms(myroot, atom):
-					greedy_atoms.append((myarg, greedy_atom))
-			arg_atoms = greedy_atoms
+				for greedy_atom in self._greedy_slot_atoms(myroot, arg.atom):
+					greedy_atoms.append(
+						AtomArg(arg=arg.arg, atom=greedy_atom,
+							root_config=root_config))
+			args = greedy_atoms
+			del greedy_atoms
 
 		# Create the "args" package set from atoms and
-		# packages given as arguments. Normal package
-		# sets have already be processed above.
+		# packages given as arguments.
 		args_set = self._sets["args"]
-		for myarg, myatom in arg_atoms:
-			if myarg.startswith(SETPREFIX):
+		expanded_args = []
+		for arg in args:
+			if isinstance(arg, SetArg):
+				for atom in arg.set:
+					self._set_atoms.add(atom)
+					expanded_args.append(AtomArg(arg=arg.arg, atom=atom,
+						root_config=root_config))
 				continue
+			expanded_args.append(arg)
+			myatom = arg.atom
 			if myatom in args_set:
 				continue
 			args_set.add(myatom)
 			self._set_atoms.add(myatom)
 			if not oneshot:
 				myfavorites.append(myatom)
+		args = expanded_args
+		del expanded_args
 		pprovideddict = pkgsettings.pprovideddict
-		for arg, atom in arg_atoms:
+		for arg in args:
+				atom = arg.atom
 				try:
 					pprovided = pprovideddict.get(portage.dep_getkey(atom))
 					if pprovided and portage.match_from_list(atom, pprovided):
 						# A provided package has been specified on the command line.
-						self._pprovided_args.append((arg, atom))
+						self._pprovided_args.append((arg.arg, arg.atom))
+						continue
+					if isinstance(arg, PackageArg):
+						if not self.create(arg.package, arg=arg.arg):
+							return 0, myfavorites
 						continue
 					self._populate_filtered_repo(myroot, atom)
 					pkg, existing_node = self._select_package(
