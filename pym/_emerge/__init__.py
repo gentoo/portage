@@ -1859,26 +1859,28 @@ class depgraph(object):
 		# Create the "args" package set from atoms and
 		# packages given as arguments.
 		args_set = self._sets["args"]
-		expanded_args = []
 		for arg in args:
-			if isinstance(arg, SetArg):
-				for atom in arg.set:
-					self._set_atoms.add(atom)
-					expanded_args.append(AtomArg(arg=arg.arg, atom=atom,
-						root_config=root_config))
+			if not isinstance(arg, (AtomArg, PackageArg)):
 				continue
-			expanded_args.append(arg)
 			myatom = arg.atom
 			if myatom in args_set:
 				continue
 			args_set.add(myatom)
-			self._set_atoms.add(myatom)
 			if not oneshot:
 				myfavorites.append(myatom)
-		args = expanded_args
-		del expanded_args
+		for pkg_set in self._sets.itervalues():
+			self._set_atoms.update(pkg_set)
 		pprovideddict = pkgsettings.pprovideddict
-		for arg in args:
+		# Order needs to be preserved since a feature of --nodeps
+		# is to allow the user to force a specific merge order.
+		args.reverse()
+		while args:
+				arg = args.pop()
+				if isinstance(arg, SetArg):
+					for atom in arg.set:
+						args.append(AtomArg(arg=arg.arg, atom=atom,
+						root_config=root_config))
+					continue
 				atom = arg.atom
 				try:
 					pprovided = pprovideddict.get(portage.dep_getkey(atom))
