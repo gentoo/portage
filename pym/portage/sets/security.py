@@ -6,6 +6,7 @@ import os
 import portage.glsa as glsa
 from portage.util import grabfile, write_atomic
 from portage.sets.base import PackageSet
+from portage.versions import catpkgsplit, pkgcmp
 
 __all__ = ["SecuritySet", "NewGlsaSet", "NewAffectedSet", "AffectedSet"]
 
@@ -39,7 +40,22 @@ class SecuritySet(PackageSet):
 			#print glsaid, myglsa.isVulnerable(), myglsa.isApplied(), myglsa.getMergeList()
 			if self.useGlsa(myglsa):
 				atomlist += ["="+x for x in myglsa.getMergeList(least_change=self._least_change)]
-		self._setAtoms(atomlist)
+		self._setAtoms(self._reduce(atomlist))
+	
+	def _reduce(self, atomlist):
+		mydict = {}
+		for atom in atomlist[:]:
+			cpv = self._portdbapi.match(atom)[0]
+			slot = self._portdbapi.aux_get(cpv, ["SLOT"])[0]
+			cps = "/".join(catpkgsplit(cpv)[0:2]) + ":" + slot
+			if not cps in mydict:
+				mydict[cps] = (atom, cpv)
+			else:
+				other_cpv = mydict[cps][1]
+				if pkgcmp(catpkgsplit(cpv)[1:], catpkgsplit(other_cpv)[1:]) > 0:
+					atomlist.remove(mydict[cps][0])
+					mydict[cps] = (atom, cpv)
+		return atomlist
 	
 	def useGlsa(self, myglsa):
 		return True
