@@ -78,8 +78,8 @@ class EbuildQuote(LineCheck):
 	var_names = r'(D|S|T|ROOT|FILESDIR|WORKDIR)'
 	var_reference = re.compile(r'\$(\{'+var_names+'\}|' + \
 		var_names + '\W)')
-	missing_quotes = re.compile(r'(\s|^)[^"\s]*\$\{?' + var_names + \
-		r'\}?[^"\s]*(\s|$)')
+	missing_quotes = re.compile(r'(\s|^)[^"\'\s]*\$\{?' + var_names + \
+		r'\}?[^"\'\s]*(\s|$)')
 	cond_begin =  re.compile(r'(^|\s+)\[\[($|\\$|\s+)')
 	cond_end =  re.compile(r'(^|\s+)\]\]($|\\$|\s+)')
 	
