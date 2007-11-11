@@ -1708,9 +1708,13 @@ class depgraph(object):
 		for atom in self._set_atoms.iterAtomsForPackage(pkg):
 			refs = atom_arg_map[(atom, pkg.root)]
 			for arg in refs:
-				any_arg = arg
 				if isinstance(arg, PackageArg):
+					# TODO: Implement a better comparison to ensure that
+					#       these two packages really are identical.
+					if arg.package.type_name != pkg.type_name:
+						continue
 					return arg
+				any_arg = arg
 		return any_arg
 
 	def select_files(self, myfiles):
