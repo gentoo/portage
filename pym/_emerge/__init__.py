@@ -976,6 +976,11 @@ class Dependency(object):
 			myvalue = kwargs.get(myattr, None)
 			setattr(self, myattr, myvalue)
 
+		if self.priority is None:
+			self.priority = DepPriority()
+		if self.depth is None:
+			self.depth = 0
+
 class BlockerCache(DictMixin):
 	"""This caches blockers of installed packages so that dep_check does not
 	have to be done for every single installed package on every invocation of
@@ -1384,11 +1389,6 @@ class depgraph(object):
 				return 0
 		return 1
 
-	def create(self, *args, **kwargs):
-		if not self._add_pkg(*args, **kwargs):
-			return 0
-		return self._create_graph()
-
 	def _add_pkg(self, pkg, myparent=None,
 		priority=None, arg=None, depth=0):
 		if myparent is not None:
@@ -1681,17 +1681,6 @@ class depgraph(object):
 		# dependencies.
 		self._filtered_trees[root]["atoms"].clear()
 
-	def _get_parent_sets(self, root, atom):
-		refs = []
-		for set_name, atom_set in self._sets.iteritems():
-			if set_name in refs:
-				continue
-			if atom in atom_set:
-				refs.append(set_name)
-		if len(refs) > 1 and "args" in refs:
-			refs.remove("args")
-		return refs
-
 	def _get_arg_for_pkg(self, pkg):
 		"""
 		Return a matching DependencyArg instance for the given Package if
@@ -1914,36 +1903,39 @@ class depgraph(object):
 		# is to allow the user to force a specific merge order.
 		args.reverse()
 		while args:
-				arg = args.pop()
-				if isinstance(arg, SetArg):
-					for atom in arg.set:
-						args.append(AtomArg(arg=arg.arg, atom=atom,
-						root_config=root_config))
-					continue
-				atom = arg.atom
+			arg = args.pop()
+			for atom in arg.set:
 				try:
 					pprovided = pprovideddict.get(portage.dep_getkey(atom))
 					if pprovided and portage.match_from_list(atom, pprovided):
 						# A provided package has been specified on the command line.
-						self._pprovided_args.append((arg.arg, arg.atom))
+						self._pprovided_args.append((arg, atom))
 						continue
 					if isinstance(arg, PackageArg):
-						if not self.create(arg.package, arg=arg.arg):
+						if not self._add_pkg(arg.package, arg=arg) or \
+							not self._create_graph():
+							sys.stderr.write(("\n\n!!! Problem resolving " + \
+								"dependencies for %s\n") % arg.arg)
 							return 0, myfavorites
 						continue
-					self._populate_filtered_repo(myroot, atom)
 					pkg, existing_node = self._select_package(
 						myroot, atom, onlydeps=onlydeps)
 					if not pkg:
-						refs = self._get_parent_sets(myroot, atom)
-						if len(refs) == 1 and "args" in refs:
+						if not (isinstance(arg, SetArg) and \
+							arg.name in ("system", "world")):
 							self._show_unsatisfied_dep(myroot, atom)
 							return 0, myfavorites
-						self._missing_args.append((arg.arg, arg.atom))
+						self._missing_args.append((arg, atom))
 						continue
-					if not self.create(pkg):
-						sys.stderr.write(("\n\n!!! Problem resolving " + \
-							"dependencies for %s\n") % atom)
+					self._dep_stack.append(Dependency(atom=atom, root=myroot))
+					if not self._create_graph():
+						if isinstance(arg, SetArg):
+							sys.stderr.write(("\n\n!!! Problem resolving " + \
+								"dependencies for %s from %s\n") % \
+								(atom, arg.arg))
+						else:
+							sys.stderr.write(("\n\n!!! Problem resolving " + \
+								"dependencies for %s\n") % atom)
 						return 0, myfavorites
 				except portage.exception.MissingSignature, e:
 					portage.writemsg("\n\n!!! A missing gpg signature is preventing portage from calculating the\n")
@@ -3699,8 +3691,7 @@ class depgraph(object):
 			world_problems = False
 			if "world" in self._sets:
 				for arg, atom in self._missing_args:
-					if "world" in self._get_parent_sets(
-						self.target_root, atom):
+					if arg.name == "world":
 						world_problems = True
 						break
 
@@ -3714,15 +3705,21 @@ class depgraph(object):
 				" Ebuilds for the following packages are either all\n")
 			sys.stderr.write(colorize("BAD", "!!!") + \
 				" masked or don't exist:\n")
-			sys.stderr.write(" ".join(arg[1] for arg in \
+			sys.stderr.write(" ".join(atom for arg, atom in \
 				self._missing_args) + "\n")
 
 		if self._pprovided_args:
 			arg_refs = {}
-			for arg_atom in self._pprovided_args:
-				arg, atom = arg_atom
+			for arg, atom in self._pprovided_args:
+				if isinstance(arg, SetArg):
+					parent = arg.name
+					arg_atom = (atom, atom)
+				else:
+					parent = "args"
+					arg_atom = (arg.arg, atom)
 				refs = arg_refs.setdefault(arg_atom, [])
-				refs.extend(self._get_parent_sets(self.target_root, atom))
+				if parent not in refs:
+					refs.append(parent)
 			msg = []
 			msg.append(bad("\nWARNING: "))
 			if len(self._pprovided_args) > 1:
