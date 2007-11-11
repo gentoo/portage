@@ -951,12 +951,14 @@ class AtomArg(DependencyArg):
 	def __init__(self, atom=None, **kwargs):
 		DependencyArg.__init__(self, **kwargs)
 		self.atom = atom
+		self.set = (self.atom, )
 
 class PackageArg(DependencyArg):
 	def __init__(self, package=None, **kwargs):
 		DependencyArg.__init__(self, **kwargs)
 		self.package = package
 		self.atom = "=" + package.cpv
+		self.set = (self.atom, )
 
 class SetArg(DependencyArg):
 	def __init__(self, set=None, **kwargs):
@@ -1228,6 +1230,7 @@ class depgraph(object):
 		# contains all atoms from all sets added to the graph, including
 		# atoms given as arguments
 		self._set_atoms = InternalPackageSet()
+		self._atom_arg_map = {}
 		# contains all nodes pulled in by self._set_atoms
 		self._set_nodes = set()
 		self.blocker_digraph = digraph()
@@ -1700,9 +1703,15 @@ class depgraph(object):
 		# TODO: add multiple $ROOT support
 		if pkg.root != self.target_root:
 			return None
-		arg_atom = self._set_atoms.findAtomForPackage(pkg.cpv, pkg.metadata)
-		# TODO: map atom back to DependencyArg instance and return that instead
-		return arg_atom
+		atom_arg_map = self._atom_arg_map
+		any_arg = None
+		for atom in self._set_atoms.iterAtomsForPackage(pkg):
+			refs = atom_arg_map[(atom, pkg.root)]
+			for arg in refs:
+				any_arg = arg
+				if isinstance(arg, PackageArg):
+					return arg
+		return any_arg
 
 	def select_files(self, myfiles):
 		"""Given a list of .tbz2s, .ebuilds sets, and deps, create the
@@ -1886,6 +1895,16 @@ class depgraph(object):
 			if not oneshot:
 				myfavorites.append(myatom)
 		self._set_atoms.update(chain(*self._sets.itervalues()))
+		atom_arg_map = self._atom_arg_map
+		for arg in args:
+			for atom in arg.set:
+				atom_key = (atom, myroot)
+				refs = atom_arg_map.get(atom_key)
+				if refs is None:
+					refs = []
+					atom_arg_map[atom_key] = refs
+					if arg not in refs:
+						refs.append(arg)
 		pprovideddict = pkgsettings.pprovideddict
 		# Order needs to be preserved since a feature of --nodeps
 		# is to allow the user to force a specific merge order.

@@ -2,7 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-from portage import flatten
+from portage import cpv_getkey, flatten
 from portage.dep import isvalidatom, match_from_list, \
      best_match_to_list, dep_getkey, use_reduce, paren_reduce
 from portage.exception import InvalidAtom
@@ -125,6 +125,33 @@ class PackageSet(object):
 				if best_match:
 					return atoms[transformed_atoms.index(best_match)]
 		return None
+
+	def iterAtomsForPackage(self, pkg):
+		"""
+		Find all matching atoms for a given package. This matches virtual
+		arguments against the PROVIDE metadata.  This will raise an
+		InvalidDependString exception if PROVIDE is invalid.
+		"""
+		cpv_slot_list = ["%s:%s" % (pkg.cpv, pkg.metadata["SLOT"])]
+		cp = cpv_getkey(pkg.cpv)
+		self._load() # make sure the atoms are loaded
+		atoms = self._atommap.get(cp)
+		if atoms:
+			for atom in atoms:
+				if match_from_list(atom, cpv_slot_list):
+					yield atom
+		if not pkg.metadata["PROVIDE"]:
+			return
+		provides = flatten(use_reduce(paren_reduce(pkg.metadata["PROVIDE"]),
+			uselist=pkg.metadata["USE"].split()))
+		for provide in provides:
+			provided_cp = dep_getkey(provide)
+			atoms = self._atommap.get(provided_cp)
+			if atoms:
+				for atom in atoms:
+					if match_from_list(atom.replace(provided_cp, cp),
+						cpv_slot_list):
+						yield atom
 
 class EditablePackageSet(PackageSet):
 
