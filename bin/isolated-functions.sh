@@ -41,7 +41,12 @@ dump_trace() {
 diefunc() {
 	local funcname="$1" lineno="$2" exitcode="$3"
 	shift 3
-
+	if [ -n "${QA_INTERCEPTORS}" ] ; then
+		# die was called from inside inherit. We need to clean up
+		# QA_INTERCEPTORS since sed is called below.
+		unset -f ${QA_INTERCEPTORS}
+		unset QA_INTERCEPTORS
+	fi
 	local n filespacing=0 linespacing=0
 	# setup spacing to make output easier to read
 	for ((n = ${#FUNCNAME[@]} - 1; n >= 0; --n)); do
