@@ -944,6 +944,9 @@ class DependencyArg(object):
 		self.arg = arg
 		self.root_config = root_config
 
+	def __str__(self):
+		return self.arg
+
 class AtomArg(DependencyArg):
 	def __init__(self, atom=None, **kwargs):
 		DependencyArg.__init__(self, **kwargs)
@@ -1362,8 +1365,7 @@ class depgraph(object):
 				myarg = None
 				if dep.root == self.target_root:
 					try:
-						myarg = self._set_atoms.findAtomForPackage(
-							dep_pkg.cpv, dep_pkg.metadata)
+						myarg = self._get_arg_for_pkg(dep_pkg)
 					except portage.exception.InvalidDependString:
 						if not dep_pkg.installed:
 							# This shouldn't happen since the package
@@ -1414,7 +1416,7 @@ class depgraph(object):
 
 		if not arg and myroot == self.target_root:
 			try:
-				arg = self._set_atoms.findAtomForPackage(mykey, metadata)
+				arg = self._get_arg_for_pkg(pkg)
 			except portage.exception.InvalidDependString, e:
 				if mytype != "installed":
 					show_invalid_depstring_notice(tuple(mybigkey+["merge"]),
@@ -1687,6 +1689,21 @@ class depgraph(object):
 			refs.remove("args")
 		return refs
 
+	def _get_arg_for_pkg(self, pkg):
+		"""
+		Return a matching DependencyArg instance for the given Package if
+		any exist, otherwise None. An attempt will be made to return the most
+		specific match (PackageArg type is the most specific).
+
+		This will raise an InvalidDependString exception if PROVIDE is invalid.
+		"""
+		# TODO: add multiple $ROOT support
+		if pkg.root != self.target_root:
+			return None
+		arg_atom = self._set_atoms.findAtomForPackage(pkg.cpv, pkg.metadata)
+		# TODO: map atom back to DependencyArg instance and return that instead
+		return arg_atom
+
 	def select_files(self, myfiles):
 		"""Given a list of .tbz2s, .ebuilds sets, and deps, create the
 		appropriate depgraph and return a favorite list."""
@@ -1868,8 +1885,7 @@ class depgraph(object):
 			args_set.add(myatom)
 			if not oneshot:
 				myfavorites.append(myatom)
-		for pkg_set in self._sets.itervalues():
-			self._set_atoms.update(pkg_set)
+		self._set_atoms.update(chain(*self._sets.itervalues()))
 		pprovideddict = pkgsettings.pprovideddict
 		# Order needs to be preserved since a feature of --nodeps
 		# is to allow the user to force a specific merge order.
@@ -2269,8 +2285,11 @@ class depgraph(object):
 					myarg = None
 					if root == self.target_root:
 						try:
-							myarg = self._set_atoms.findAtomForPackage(
-								cpv, metadata)
+							myarg = self._get_arg_for_pkg(
+								Package(type_name=pkg_type, root=root,
+									cpv=cpv, metadata=metadata,
+									built=built, installed=installed,
+									onlydeps=onlydeps))
 						except portage.exception.InvalidDependString:
 							if not installed:
 								# masked by corruption
