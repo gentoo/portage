@@ -915,7 +915,9 @@ def iter_atoms(deps):
 class Package(object):
 	__slots__ = ("__weakref__", "built", "cpv", "depth",
 		"installed", "metadata", "root", "onlydeps", "type_name",
-		"_digraph_node", "_slot_atom")
+		"slot_atom",
+		"digraph_node", "__eq__", "__hash__", "__str__",
+		"__len__", "__getitem__", "__iter__", "__contains__")
 	def __init__(self, **kwargs):
 		for myattr in self.__slots__:
 			if myattr == "__weakref__":
@@ -923,21 +925,21 @@ class Package(object):
 			myvalue = kwargs.get(myattr, None)
 			setattr(self, myattr, myvalue)
 
-	@property
-	def slot_atom(self):
-		if self._slot_atom is None:
-			self._slot_atom = "%s:%s" % \
-				(portage.cpv_getkey(self.cpv), self.metadata["SLOT"])
-		return self._slot_atom
+		self.slot_atom = "%s:%s" % \
+			(portage.cpv_getkey(self.cpv), self.metadata["SLOT"])
 
-	@property
-	def digraph_node(self):
-		if self._digraph_node is None:
-			status = "merge"
-			if self.onlydeps or self.installed:
-				status = "nomerge"
-			self._digraph_node = (self.type_name, self.root, self.cpv, status)
-		return self._digraph_node
+		status = "merge"
+		if self.onlydeps or self.installed:
+			status = "nomerge"
+		node = (self.type_name, self.root, self.cpv, status)
+		self.digraph_node = node
+		self.__eq__       = node.__eq__
+		self.__hash__     = node.__hash__
+		self.__str__      = node.__str__
+		self.__len__      = node.__len__
+		self.__getitem__  = node.__getitem__
+		self.__iter__     = node.__iter__
+		self.__contains__ = node.__contains__
 
 class DependencyArg(object):
 	def __init__(self, arg=None, root_config=None):
@@ -1391,8 +1393,6 @@ class depgraph(object):
 
 	def _add_pkg(self, pkg, myparent=None,
 		priority=None, arg=None, depth=0):
-		if myparent is not None:
-			myparent = myparent.digraph_node
 		"""
 		Fills the digraph with nodes comprised of packages to merge.
 		mybigkey is the package spec of the package to merge.
