@@ -1393,13 +1393,14 @@ class depgraph(object):
 						self._ignored_deps.append(dep)
 					continue
 
-			if not self._add_pkg(dep_pkg, myparent=dep.parent,
+			if not self._add_pkg(dep_pkg, dep.parent,
 				priority=dep.priority, depth=dep.depth):
 				return 0
 		return 1
 
-	def _add_pkg(self, pkg, myparent=None,
-		priority=None, arg=None, depth=0):
+	def _add_pkg(self, pkg, myparent, priority=None, depth=0):
+		if priority is None:
+			priority = DepPriority()
 		"""
 		Fills the digraph with nodes comprised of packages to merge.
 		mybigkey is the package spec of the package to merge.
@@ -1416,7 +1417,10 @@ class depgraph(object):
 		vardbapi = self.trees[pkg.root]["vartree"].dbapi
 		pkgsettings = self.pkgsettings[pkg.root]
 
-		if not arg:
+		arg = None
+		if True:
+			# TODO: Find all matching args here and add all the
+			# corresponding relationships to the graph.
 			try:
 				arg = self._get_arg_for_pkg(pkg)
 			except portage.exception.InvalidDependString, e:
@@ -1446,6 +1450,7 @@ class depgraph(object):
 				if pkg.cpv == existing_node.cpv:
 					# The existing node can be reused.
 					self._parent_child_digraph.add(existing_node, myparent)
+					self._parent_child_digraph.add(existing_node, arg)
 					# If a direct circular dependency is not an unsatisfied
 					# buildtime dependency then drop it here since otherwise
 					# it can skew the merge order calculation in an unwanted
@@ -1515,6 +1520,7 @@ class depgraph(object):
 		# parent/child relationship is always known in case
 		# self._show_slot_collision_notice() needs to be called later.
 		self._parent_child_digraph.add(pkg, myparent)
+		self._parent_child_digraph.add(pkg, arg)
 
 		""" This section determines whether we go deeper into dependencies or not.
 		    We want to go deeper on a few occasions:
@@ -1900,7 +1906,7 @@ class depgraph(object):
 						self._pprovided_args.append((arg, atom))
 						continue
 					if isinstance(arg, PackageArg):
-						if not self._add_pkg(arg.package, arg=arg) or \
+						if not self._add_pkg(arg.package, arg) or \
 							not self._create_graph():
 							sys.stderr.write(("\n\n!!! Problem resolving " + \
 								"dependencies for %s\n") % arg.arg)
@@ -1915,7 +1921,8 @@ class depgraph(object):
 							return 0, myfavorites
 						self._missing_args.append((arg, atom))
 						continue
-					self._dep_stack.append(Dependency(atom=atom, root=myroot))
+					self._dep_stack.append(
+						Dependency(atom=atom, root=myroot, parent=arg))
 					if not self._create_graph():
 						if isinstance(arg, SetArg):
 							sys.stderr.write(("\n\n!!! Problem resolving " + \
@@ -2521,7 +2528,8 @@ class depgraph(object):
 				pkg = Package(type_name="installed", root=root,
 					cpv=cpv, metadata=metadata, built=True,
 					installed=True)
-				if not self._add_pkg(pkg, myparent=dep.parent):
+				if not self._add_pkg(pkg, dep.parent,
+					priority=dep.priority, depth=dep.depth):
 					return 0
 				if not self._create_graph(allow_unsatisfied=True):
 					return 0
@@ -2792,7 +2800,8 @@ class depgraph(object):
 		while True:
 			removed_something = False
 			for node in mygraph.root_nodes():
-				if node[-1] == "nomerge":
+				if not isinstance(node, Package) or \
+					node.installed or node.onlydeps:
 					mygraph.remove(node)
 					removed_something = True
 			if not removed_something:
@@ -3177,6 +3186,8 @@ class depgraph(object):
 							selected_parent = None
 							# First, try to avoid a direct cycle.
 							for node in parent_nodes:
+								if not isinstance(node, Package):
+									continue
 								if node not in traversed_nodes and \
 									node not in child_nodes:
 									edge = (current_node, node)
@@ -3187,6 +3198,8 @@ class depgraph(object):
 							if not selected_parent:
 								# A direct cycle is unavoidable.
 								for node in parent_nodes:
+									if not isinstance(node, Package):
+										continue
 									if node not in traversed_nodes:
 										edge = (current_node, node)
 										if edge in shown_edges:
