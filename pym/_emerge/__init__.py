@@ -915,7 +915,7 @@ def iter_atoms(deps):
 class Package(object):
 	__slots__ = ("__weakref__", "built", "cpv", "depth",
 		"installed", "metadata", "root", "onlydeps", "type_name",
-		"slot_atom", "_digraph_node")
+		"cpv_slot", "slot_atom", "_digraph_node")
 	def __init__(self, **kwargs):
 		for myattr in self.__slots__:
 			if myattr == "__weakref__":
@@ -925,6 +925,8 @@ class Package(object):
 
 		self.slot_atom = "%s:%s" % \
 			(portage.cpv_getkey(self.cpv), self.metadata["SLOT"])
+
+		self.cpv_slot = "%s:%s" % (self.cpv, self.metadata["SLOT"])
 
 		status = "merge"
 		if self.onlydeps or self.installed:
@@ -1156,8 +1158,6 @@ class depgraph(object):
 			self.edebug = 1
 		self.spinner = spinner
 		self.pkgsettings = {}
-		# Maps cpv to digraph node for all nodes added to the graph.
-		self.pkg_node_map = {}
 		# Maps slot atom to package for each Package added to the graph.
 		self._slot_pkg_map = {}
 		# Maps nodes to the reasons they were selected for reinstallation.
@@ -1181,7 +1181,6 @@ class depgraph(object):
 					self._mydbapi_keys)
 			self.pkgsettings[myroot] = portage.config(
 				clone=self.trees[myroot]["vartree"].settings)
-			self.pkg_node_map[myroot] = {}
 			self._slot_pkg_map[myroot] = {}
 			vardb = self.trees[myroot]["vartree"].dbapi
 			self.roots[myroot] = RootConfig(self.trees[myroot])
@@ -1482,17 +1481,16 @@ class depgraph(object):
 				# only being partially added to the graph.  It must not be
 				# allowed to interfere with the other nodes that have been
 				# added.  Do not overwrite data for existing nodes in
-				# self.pkg_node_map and self.mydbapi since that data will
-				# be used for blocker validation.
-				self.pkg_node_map[pkg.root].setdefault(pkg.cpv, pkg)
+				# self.mydbapi since that data will be used for blocker
+				# validation.
 				# Even though the graph is now invalid, continue to process
 				# dependencies so that things like --fetchonly can still
 				# function despite collisions.
+				pass
 			else:
 				self.mydbapi[pkg.root].cpv_inject(
 					pkg.cpv, metadata=pkg.metadata)
 				self._slot_pkg_map[pkg.root][pkg.slot_atom] = pkg
-				self.pkg_node_map[pkg.root][pkg.cpv] = pkg
 
 			self.digraph.addnode(pkg, myparent, priority=priority)
 
@@ -2575,7 +2573,6 @@ class depgraph(object):
 
 			dep_keys = ["DEPEND","RDEPEND","PDEPEND"]
 			for myroot in self.trees:
-				pkg_node_map = self.pkg_node_map[myroot]
 				vardb = self.trees[myroot]["vartree"].dbapi
 				portdb = self.trees[myroot]["porttree"].dbapi
 				pkgsettings = self.pkgsettings[myroot]
@@ -2584,9 +2581,12 @@ class depgraph(object):
 				blocker_cache = BlockerCache(myroot, vardb)
 				for pkg in cpv_all_installed:
 					blocker_atoms = None
-					matching_node = pkg_node_map.get(pkg, None)
-					if matching_node and \
-						matching_node[3] == "nomerge":
+					metadata = dict(izip(self._mydbapi_keys,
+						vardb.aux_get(pkg, self._mydbapi_keys)))
+					node = Package(cpv=pkg, built=True,
+						installed=True, metadata=metadata,
+						type_name="installed", root=myroot)
+					if self.digraph.contains(node):
 						continue
 					# If this node has any blockers, create a "nomerge"
 					# node for it so that they can be enforced.
@@ -2615,8 +2615,7 @@ class depgraph(object):
 								# matches (this can happen if an atom lacks a
 								# category).
 								show_invalid_depstring_notice(
-									("installed", myroot, pkg, "nomerge"),
-									depstr, str(e))
+									node, depstr, str(e))
 								del e
 								raise
 						finally:
@@ -2630,9 +2629,7 @@ class depgraph(object):
 								# annoy the user too much (otherwise they'd be
 								# forced to manually unmerge it first).
 								continue
-							show_invalid_depstring_notice(
-								("installed", myroot, pkg, "nomerge"),
-								depstr, atoms)
+							show_invalid_depstring_notice(node, depstr, atoms)
 							return False
 						blocker_atoms = [myatom for myatom in atoms \
 							if myatom.startswith("!")]
@@ -2640,10 +2637,6 @@ class depgraph(object):
 						blocker_cache[pkg] = \
 							blocker_cache.BlockerData(counter, blocker_atoms)
 					if blocker_atoms:
-						# Don't store this parent in pkg_node_map, because it's
-						# not needed there and it might overwrite a "merge"
-						# node with the same cpv.
-						myparent = ("installed", myroot, pkg, "nomerge")
 						for myatom in blocker_atoms:
 							blocker = ("blocks", myroot, myatom[1:])
 							myparents = \
@@ -2651,7 +2644,7 @@ class depgraph(object):
 							if not myparents:
 								myparents = set()
 								self.blocker_parents[blocker] = myparents
-							myparents.add(myparent)
+							myparents.add(node)
 				blocker_cache.flush()
 				del blocker_cache
 
@@ -2697,15 +2690,13 @@ class depgraph(object):
 						continue
 					if pstatus == "merge" and \
 						slot_atom in modified_slots[myroot]:
-						replacement = final_db.match(slot_atom)
-						if replacement:
-							if not portage.match_from_list(mydep, replacement):
-								# Apparently a replacement may be able to
-								# invalidate this block.
-								replacement_node = \
-									self.pkg_node_map[proot][replacement[0]]
-								depends_on_order.add((replacement_node, parent))
-								continue
+						replacement = self._slot_pkg_map[myroot][slot_atom]
+						if not portage.match_from_list(
+							mydep, [replacement.cpv_slot]):
+							# Apparently a replacement may be able to
+							# invalidate this block.
+							depends_on_order.add((replacement, parent))
+							continue
 					# None of the above blocker resolutions techniques apply,
 					# so apparently this one is unresolvable.
 					unresolved_blocks = True
@@ -2721,18 +2712,16 @@ class depgraph(object):
 						continue
 					if not parent_static and pstatus == "nomerge" and \
 						slot_atom in modified_slots[myroot]:
-						replacement = final_db.match(pslot_atom)
-						if replacement:
-							replacement_node = \
-								self.pkg_node_map[proot][replacement[0]]
-							if replacement_node not in \
-								self.blocker_parents[blocker]:
-								# Apparently a replacement may be able to
-								# invalidate this block.
-								blocked_node = self.pkg_node_map[proot][cpv]
-								depends_on_order.add(
-									(replacement_node, blocked_node))
-								continue
+						replacement = self._slot_pkg_map[myroot][pslot_atom]
+						if replacement not in \
+							self.blocker_parents[blocker]:
+							# Apparently a replacement may be able to
+							# invalidate this block.
+							blocked_node = \
+								self._slot_pkg_map[myroot][slot_atom]
+							depends_on_order.add(
+								(replacement, blocked_node))
+							continue
 					# None of the above blocker resolutions techniques apply,
 					# so apparently this one is unresolvable.
 					unresolved_blocks = True
@@ -2817,8 +2806,10 @@ class depgraph(object):
 			get_nodes = mygraph.root_nodes
 		else:
 			get_nodes = mygraph.leaf_nodes
-			for cpv, node in self.pkg_node_map["/"].iteritems():
-				if "portage" == portage.catsplit(portage.dep_getkey(cpv))[-1]:
+			for node in mygraph.order:
+				if node.root == "/" and \
+					"portage" == portage.catsplit(
+					portage.cpv_getkey(node.cpv))[-1]:
 					portage_node = node
 					asap_nodes.append(node)
 					break
