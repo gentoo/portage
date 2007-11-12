@@ -915,9 +915,7 @@ def iter_atoms(deps):
 class Package(object):
 	__slots__ = ("__weakref__", "built", "cpv", "depth",
 		"installed", "metadata", "root", "onlydeps", "type_name",
-		"slot_atom",
-		"digraph_node", "__eq__", "__hash__", "__str__",
-		"__len__", "__getitem__", "__iter__", "__contains__")
+		"slot_atom", "_digraph_node")
 	def __init__(self, **kwargs):
 		for myattr in self.__slots__:
 			if myattr == "__weakref__":
@@ -931,15 +929,24 @@ class Package(object):
 		status = "merge"
 		if self.onlydeps or self.installed:
 			status = "nomerge"
-		node = (self.type_name, self.root, self.cpv, status)
-		self.digraph_node = node
-		self.__eq__       = node.__eq__
-		self.__hash__     = node.__hash__
-		self.__str__      = node.__str__
-		self.__len__      = node.__len__
-		self.__getitem__  = node.__getitem__
-		self.__iter__     = node.__iter__
-		self.__contains__ = node.__contains__
+		self._digraph_node = (self.type_name, self.root, self.cpv, status)
+
+	def __eq__(self, other):
+		return self._digraph_node == other
+	def __ne__(self, other):
+		return self._digraph_node != other
+	def __hash__(self):
+		return hash(self._digraph_node)
+	def __len__(self):
+		return len(self._digraph_node)
+	def __getitem__(self, key):
+		return self._digraph_node[key]
+	def __iter__(self):
+		return iter(self._digraph_node)
+	def __contains__(self, key):
+		return key in self._digraph_node
+	def __str__(self):
+		return str(self._digraph_node)
 
 class DependencyArg(object):
 	def __init__(self, arg=None, root_config=None):
@@ -1346,7 +1353,7 @@ class depgraph(object):
 			if dep.blocker:
 				if not buildpkgonly and \
 					not nodeps and \
-					dep.parent.digraph_node not in self._slot_collision_nodes:
+					dep.parent not in self._slot_collision_nodes:
 					if dep.parent.onlydeps:
 						# It's safe to ignore blockers if the
 						# parent is an --onlydeps node.
@@ -1355,7 +1362,7 @@ class depgraph(object):
 					# the parent is or will be installed.
 					self.blocker_parents.setdefault(
 						("blocks", dep.parent.root, dep.atom), set()).add(
-							dep.parent.digraph_node)
+							dep.parent)
 				continue
 			dep_pkg, existing_node = self._select_package(dep.root, dep.atom)
 			if not dep_pkg:
@@ -1363,7 +1370,7 @@ class depgraph(object):
 					self._unsatisfied_deps.append(dep)
 					continue
 				self._show_unsatisfied_dep(dep.root, dep.atom,
-					myparent=dep.parent.digraph_node)
+					myparent=dep.parent)
 				return 0
 			# In some cases, dep_check will return deps that shouldn't
 			# be proccessed any further, so they are identified and
@@ -1404,38 +1411,25 @@ class depgraph(object):
 		#IUSE-aware emerge -> USE DEP aware depgraph
 		#"no downgrade" emerge
 		"""
-		# unused parameters
-		rev_dep = False
-
-		mytype = pkg.type_name
-		myroot = pkg.root
-		mykey = pkg.cpv
-		metadata = pkg.metadata
-		mybigkey = [mytype, myroot, mykey]
 
 		# select the correct /var database that we'll be checking against
-		vardbapi = self.trees[myroot]["vartree"].dbapi
-		pkgsettings = self.pkgsettings[myroot]
+		vardbapi = self.trees[pkg.root]["vartree"].dbapi
+		pkgsettings = self.pkgsettings[pkg.root]
 
-		if not arg and myroot == self.target_root:
+		if not arg:
 			try:
 				arg = self._get_arg_for_pkg(pkg)
 			except portage.exception.InvalidDependString, e:
-				if mytype != "installed":
-					show_invalid_depstring_notice(tuple(mybigkey+["merge"]),
-						metadata["PROVIDE"], str(e))
+				if not pkg.installed:
+					show_invalid_depstring_notice(
+						pkg, pkg.metadata["PROVIDE"], str(e))
 					return 0
 				del e
 
-		merging = mytype != "installed"
-		jbigkey = pkg.digraph_node
-
 		if not pkg.onlydeps:
-			slot_atom = "%s:%s" % (portage.dep_getkey(mykey), metadata["SLOT"])
-			if myparent and \
-				merging and \
+			if not pkg.installed and \
 				"empty" not in self.myparams and \
-				vardbapi.match(slot_atom):
+				vardbapi.match(pkg.slot_atom):
 				# Increase the priority of dependencies on packages that
 				# are being rebuilt. This optimizes merge order so that
 				# dependencies are rebuilt/updated as soon as possible,
@@ -1446,13 +1440,10 @@ class depgraph(object):
 				# are being merged in that case.
 				priority.rebuild = True
 
-			existing_node = self._slot_pkg_map[myroot].get(slot_atom)
-			if existing_node:
-				existing_node = existing_node.digraph_node
+			existing_node = self._slot_pkg_map[pkg.root].get(pkg.slot_atom)
 			slot_collision = False
 			if existing_node:
-				e_type, myroot, e_cpv, e_status = existing_node
-				if mykey == e_cpv:
+				if pkg.cpv == existing_node.cpv:
 					# The existing node can be reused.
 					self._parent_child_digraph.add(existing_node, myparent)
 					# If a direct circular dependency is not an unsatisfied
@@ -1465,7 +1456,7 @@ class depgraph(object):
 							priority=priority)
 					return 1
 				else:
-					if jbigkey in self._slot_collision_nodes:
+					if pkg in self._slot_collision_nodes:
 						return 1
 					# A slot collision has occurred.  Sometimes this coincides
 					# with unresolvable blockers, so the slot collision will be
@@ -1476,8 +1467,8 @@ class depgraph(object):
 					if myparent:
 						myparents.append(myparent)
 					self._slot_collision_info.append(
-						((jbigkey, myparents), (existing_node, e_parents)))
-					self._slot_collision_nodes.add(jbigkey)
+						((pkg, myparents), (existing_node, e_parents)))
+					self._slot_collision_nodes.add(pkg)
 					slot_collision = True
 
 			if slot_collision:
@@ -1488,45 +1479,42 @@ class depgraph(object):
 				# added.  Do not overwrite data for existing nodes in
 				# self.pkg_node_map and self.mydbapi since that data will
 				# be used for blocker validation.
-				self.pkg_node_map[myroot].setdefault(mykey, jbigkey)
+				self.pkg_node_map[pkg.root].setdefault(pkg.cpv, pkg)
 				# Even though the graph is now invalid, continue to process
 				# dependencies so that things like --fetchonly can still
 				# function despite collisions.
 			else:
-				self.mydbapi[myroot].cpv_inject(mykey, metadata=metadata)
+				self.mydbapi[pkg.root].cpv_inject(
+					pkg.cpv, metadata=pkg.metadata)
 				self._slot_pkg_map[pkg.root][pkg.slot_atom] = pkg
-				self.pkg_node_map[pkg.root][pkg.cpv] = pkg.digraph_node
+				self.pkg_node_map[pkg.root][pkg.cpv] = pkg
 
-			if rev_dep and myparent:
-				self.digraph.addnode(myparent, jbigkey,
-					priority=priority)
-			else:
-				self.digraph.addnode(jbigkey, myparent,
-					priority=priority)
+			self.digraph.addnode(pkg, myparent, priority=priority)
 
-			if mytype != "installed":
+			if not pkg.installed:
 				# Allow this package to satisfy old-style virtuals in case it
 				# doesn't already. Any pre-existing providers will be preferred
 				# over this one.
 				try:
-					pkgsettings.setinst(mykey, metadata)
+					pkgsettings.setinst(pkg.cpv, pkg.metadata)
 					# For consistency, also update the global virtuals.
-					settings = self.roots[myroot].settings
+					settings = self.roots[pkg.root].settings
 					settings.unlock()
-					settings.setinst(mykey, metadata)
+					settings.setinst(pkg.cpv, pkg.metadata)
 					settings.lock()
 				except portage.exception.InvalidDependString, e:
-					show_invalid_depstring_notice(jbigkey, metadata["PROVIDE"], str(e))
+					show_invalid_depstring_notice(
+						pkg, pkg.metadata["PROVIDE"], str(e))
 					del e
 					return 0
 
 		if arg:
-			self._set_nodes.add(jbigkey)
+			self._set_nodes.add(pkg)
 
 		# Do this even when addme is False (--onlydeps) so that the
 		# parent/child relationship is always known in case
 		# self._show_slot_collision_notice() needs to be called later.
-		self._parent_child_digraph.add(jbigkey, myparent)
+		self._parent_child_digraph.add(pkg, myparent)
 
 		""" This section determines whether we go deeper into dependencies or not.
 		    We want to go deeper on a few occasions:
@@ -1558,7 +1546,7 @@ class depgraph(object):
 		mykey = pkg.cpv
 		metadata = pkg.metadata
 		myuse = metadata["USE"].split()
-		jbigkey = pkg.digraph_node
+		jbigkey = pkg
 		depth = pkg.depth + 1
 
 		edepend={}
@@ -2334,7 +2322,7 @@ class depgraph(object):
 							(e_pkg.cpv, e_pkg.metadata["SLOT"])
 						if portage.dep.match_from_list(atom, [cpv_slot]):
 							matched_packages.append(e_pkg)
-							existing_node = e_pkg.digraph_node
+							existing_node = e_pkg
 						break
 					# Compare built package to current config and
 					# reject the built package if necessary.
@@ -2450,7 +2438,7 @@ class depgraph(object):
 			graph_db.aux_get(cpv, ["SLOT"])[0])
 		e_pkg = self._slot_pkg_map[root].get(slot_atom)
 		if e_pkg:
-			return e_pkg, e_pkg.digraph_node
+			return e_pkg, e_pkg
 		metadata = dict(izip(self._mydbapi_keys,
 			graph_db.aux_get(cpv, self._mydbapi_keys)))
 		pkg = Package(cpv=cpv, built=True,
