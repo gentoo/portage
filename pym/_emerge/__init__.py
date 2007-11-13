@@ -1416,12 +1416,10 @@ class depgraph(object):
 		vardbapi = self.trees[pkg.root]["vartree"].dbapi
 		pkgsettings = self.pkgsettings[pkg.root]
 
-		arg = None
+		args = None
 		if True:
-			# TODO: Find all matching args here and add all the
-			# corresponding relationships to the graph.
 			try:
-				arg = self._get_arg_for_pkg(pkg)
+				args = list(self._iter_args_for_pkg(pkg))
 			except portage.exception.InvalidDependString, e:
 				if not pkg.installed:
 					show_invalid_depstring_notice(
@@ -1449,7 +1447,9 @@ class depgraph(object):
 				if pkg.cpv == existing_node.cpv:
 					# The existing node can be reused.
 					self._parent_child_digraph.add(existing_node, myparent)
-					self._parent_child_digraph.add(existing_node, arg)
+					if args:
+						for arg in args:
+							self._parent_child_digraph.add(existing_node, arg)
 					# If a direct circular dependency is not an unsatisfied
 					# buildtime dependency then drop it here since otherwise
 					# it can skew the merge order calculation in an unwanted
@@ -1511,14 +1511,16 @@ class depgraph(object):
 					del e
 					return 0
 
-		if arg:
+		if args:
 			self._set_nodes.add(pkg)
 
 		# Do this even when addme is False (--onlydeps) so that the
 		# parent/child relationship is always known in case
 		# self._show_slot_collision_notice() needs to be called later.
 		self._parent_child_digraph.add(pkg, myparent)
-		self._parent_child_digraph.add(pkg, arg)
+		if args:
+			for arg in args:
+				self._parent_child_digraph.add(pkg, arg)
 
 		""" This section determines whether we go deeper into dependencies or not.
 		    We want to go deeper on a few occasions:
@@ -1537,7 +1539,7 @@ class depgraph(object):
 
 		self.spinner.update()
 
-		if arg:
+		if args:
 			depth = 0
 		pkg.depth = depth
 		dep_stack.append(pkg)
@@ -1673,6 +1675,18 @@ class depgraph(object):
 		# dependencies.
 		self._filtered_trees[root]["atoms"].clear()
 
+	def _iter_args_for_pkg(self, pkg):
+		# TODO: add multiple $ROOT support
+		if pkg.root != self.target_root:
+			return
+		atom_arg_map = self._atom_arg_map
+		for atom in self._set_atoms.iterAtomsForPackage(pkg):
+			for arg in atom_arg_map[(atom, pkg.root)]:
+				if isinstance(arg, PackageArg) and \
+					arg.package != pkg:
+					continue
+				yield arg
+
 	def _get_arg_for_pkg(self, pkg):
 		"""
 		Return a matching DependencyArg instance for the given Package if
@@ -1681,21 +1695,11 @@ class depgraph(object):
 
 		This will raise an InvalidDependString exception if PROVIDE is invalid.
 		"""
-		# TODO: add multiple $ROOT support
-		if pkg.root != self.target_root:
-			return None
-		atom_arg_map = self._atom_arg_map
 		any_arg = None
-		for atom in self._set_atoms.iterAtomsForPackage(pkg):
-			refs = atom_arg_map[(atom, pkg.root)]
-			for arg in refs:
-				if isinstance(arg, PackageArg):
-					# TODO: Implement a better comparison to ensure that
-					#       these two packages really are identical.
-					if arg.package.type_name != pkg.type_name:
-						continue
-					return arg
-				any_arg = arg
+		for arg in self._iter_args_for_pkg(pkg):
+			if isinstance(arg, PackageArg):
+				return arg
+			any_arg = arg
 		return any_arg
 
 	def select_files(self, myfiles):
