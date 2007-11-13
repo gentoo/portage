@@ -1249,7 +1249,7 @@ class depgraph(object):
 		self.blocker_digraph = digraph()
 		self.blocker_parents = {}
 		self._unresolved_blocker_parents = {}
-		self._slot_collision_info = []
+		self._slot_collision_info = set()
 		# Slot collision nodes are not allowed to block other packages since
 		# blocker validation is only able to account for one package per slot.
 		self._slot_collision_nodes = set()
@@ -1263,7 +1263,7 @@ class depgraph(object):
 		self._select_atoms = self._select_atoms_highest_available
 		self._select_package = self._select_pkg_highest_available
 
-	def _show_slot_collision_notice(self, packages):
+	def _show_slot_collision_notice(self):
 		"""Show an informational message advising the user to mask one of the
 		the packages. In some cases it may be possible to resolve this
 		automatically, but support for backtracking (removal nodes that have
@@ -1274,17 +1274,29 @@ class depgraph(object):
 		msg.append("\n!!! Multiple versions within a single " + \
 			"package slot have been \n")
 		msg.append("!!! pulled into the dependency graph:\n\n")
-		for node, parents in packages:
-			msg.append(str(node))
-			if parents:
-				msg.append(" pulled in by\n")
-				for parent in parents:
-					msg.append("  ")
-					msg.append(str(parent))
-					msg.append("\n")
-			else:
-				msg.append(" (no parents)\n")
-			msg.append("\n")
+		indent = "  "
+		for slot_atom, root in self._slot_collision_info:
+			msg.append(slot_atom)
+			msg.append("\n\n")
+			slot_nodes = []
+			for node in self._slot_collision_nodes:
+				if node.slot_atom == slot_atom:
+					slot_nodes.append(node)
+			slot_nodes.append(self._slot_pkg_map[root][slot_atom])
+			for node in slot_nodes:
+				msg.append(indent)
+				msg.append(str(node))
+				parents = self._parent_child_digraph.parent_nodes(node)
+				if parents:
+					msg.append(" pulled in by\n")
+					for parent in parents:
+						msg.append(2*indent)
+						msg.append(str(parent))
+						msg.append("\n")
+				else:
+					msg.append(" (no parents)\n")
+				msg.append("\n")
+		msg.append("\n")
 		sys.stderr.write("".join(msg))
 		sys.stderr.flush()
 
@@ -1465,13 +1477,7 @@ class depgraph(object):
 					# A slot collision has occurred.  Sometimes this coincides
 					# with unresolvable blockers, so the slot collision will be
 					# shown later if there are no unresolvable blockers.
-					e_parents = self._parent_child_digraph.parent_nodes(
-						existing_node)
-					myparents = []
-					if myparent:
-						myparents.append(myparent)
-					self._slot_collision_info.append(
-						((pkg, myparents), (existing_node, e_parents)))
+					self._slot_collision_info.add((pkg.slot_atom, pkg.root))
 					self._slot_collision_nodes.add(pkg)
 					slot_collision = True
 
@@ -2765,7 +2771,7 @@ class depgraph(object):
 			for x in self.altlist():
 				if x[0] == "blocks":
 					return True
-			self._show_slot_collision_notice(self._slot_collision_info[0])
+			self._show_slot_collision_notice()
 			if not self._accept_collisions():
 				return False
 		return True
