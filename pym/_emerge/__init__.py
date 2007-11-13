@@ -1259,7 +1259,7 @@ class depgraph(object):
 		self._dep_stack = []
 		self._unsatisfied_deps = []
 		self._ignored_deps = []
-		self._required_set_names = set(["args", "system", "world"])
+		self._required_set_names = set(["system", "world"])
 		self._select_atoms = self._select_atoms_highest_available
 		self._select_package = self._select_pkg_highest_available
 
@@ -2492,19 +2492,30 @@ class depgraph(object):
 				required_set_names.difference_update(self._sets)
 			if not required_set_names and not self._ignored_deps:
 				continue
-			setconfig = self.roots[root].settings.setconfig
-			required_set_atoms = set()
+			root_config = self.roots[root]
+			setconfig = root_config.settings.setconfig
+			args = []
+			# Reuse existing SetArg instances when available.
+			for arg in self._parent_child_digraph.root_nodes():
+				if not isinstance(arg, SetArg):
+					continue
+				if arg.root_config != root_config:
+					continue
+				if arg.name in required_set_names:
+					args.append(arg)
+					required_set_names.remove(arg.name)
+			# Create new SetArg instances only when necessary.
 			for s in required_set_names:
-				if s == "args":
-					if root == self.target_root:
-						required_set_atoms.update(self._sets["args"])
-				else:
-					required_set_atoms.update(setconfig.getSetAtoms(s))
-			vardb = self.roots[root].trees["vartree"].dbapi
-			for atom in required_set_atoms:
-				self._dep_stack.append(
-					Dependency(atom=atom, depth=0,
-					priority=DepPriority(), root=root))
+				expanded_set = InternalPackageSet(
+					initial_atoms=setconfig.getSetAtoms(s))
+				atom = SETPREFIX + s
+				args.append(SetArg(arg=atom, set=expanded_set,
+					root_config=root_config))
+			vardb = root_config.trees["vartree"].dbapi
+			for arg in args:
+				for atom in arg.set:
+					self._dep_stack.append(
+						Dependency(atom=atom, root=root, parent=arg))
 			if self._ignored_deps:
 				self._dep_stack.extend(self._ignored_deps)
 				self._ignored_deps = []
