@@ -402,8 +402,8 @@ postinst_bsdflags() {
 }
 
 preinst_mask() {
-	if [ -z "$IMAGE" ]; then
-		 eerror "${FUNCNAME}: IMAGE is unset"
+	if [ -z "${D}" ]; then
+		 eerror "${FUNCNAME}: D is unset"
 		 return 1
 	fi
 	# remove man pages, info pages, docs if requested
@@ -413,27 +413,27 @@ preinst_mask() {
 		fi
 	done
 
-	install_mask "${IMAGE}" ${INSTALL_MASK}
+	install_mask "${D}" ${INSTALL_MASK}
 
 	# remove share dir if unnessesary
 	if hasq nodoc $FEATURES -o hasq noman $FEATURES -o hasq noinfo $FEATURES; then
-		rmdir "${IMAGE}/usr/share" &> /dev/null
+		rmdir "${D}usr/share" &> /dev/null
 	fi
 }
 
 preinst_sfperms() {
-	if [ -z "$IMAGE" ]; then
-		 eerror "${FUNCNAME}: IMAGE is unset"
+	if [ -z "${D}" ]; then
+		 eerror "${FUNCNAME}: D is unset"
 		 return 1
 	fi
 	# Smart FileSystem Permissions
 	if hasq sfperms $FEATURES; then
-		for i in $(find ${IMAGE}/ -type f -perm -4000); do
+		for i in $(find "${D}" -type f -perm -4000); do
 			ebegin ">>> SetUID: [chmod go-r] $i "
 			chmod go-r "$i"
 			eend $?
 		done
-		for i in $(find ${IMAGE}/ -type f -perm -2000); do
+		for i in $(find "${D}" -type f -perm -2000); do
 			ebegin ">>> SetGID: [chmod o-r] $i "
 			chmod o-r "$i"
 			eend $?
@@ -442,33 +442,33 @@ preinst_sfperms() {
 }
 
 preinst_suid_scan() {
-	if [ -z "$IMAGE" ]; then
-		 eerror "${FUNCNAME}: IMAGE is unset"
+	if [ -z "${D}" ]; then
+		 eerror "${FUNCNAME}: D is unset"
 		 return 1
 	fi
 	# total suid control.
 	if hasq suidctl $FEATURES; then
-		sfconf=/etc/portage/suidctl.conf
-		vecho ">>> Performing suid scan in ${IMAGE}"
-		for i in $(find ${IMAGE}/ -type f \( -perm -4000 -o -perm -2000 \) ); do
+		sfconf=${PORTAGE_CONFIGROOT}etc/portage/suidctl.conf
+		vecho ">>> Performing suid scan in ${D}"
+		for i in $(find "${D}" -type f \( -perm -4000 -o -perm -2000 \) ); do
 			if [ -s "${sfconf}" ]; then
-				suid="$(grep ^${i/${IMAGE}/}$ ${sfconf})"
-				if [ "${suid}" = "${i/${IMAGE}/}" ]; then
-					vecho "- ${i/${IMAGE}/} is an approved suid file"
+				suid="$(grep "^${i/${D}}$" "${sfconf}")"
+				if [ "${suid}" = "${i/${D}}" ]; then
+					vecho "- ${i/${D}} is an approved suid file"
 				else
-					vecho ">>> Removing sbit on non registered ${i/${IMAGE}/}"
+					vecho ">>> Removing sbit on non registered ${i/${D}}"
 					for x in 5 4 3 2 1 0; do echo -ne "\a"; sleep 0.25 ; done
 					vecho -ne "\a"
 					ls_ret=$(ls -ldh "${i}")
 					chmod ugo-s "${i}"
-					grep ^#${i/${IMAGE}/}$ ${sfconf} > /dev/null || {
+					grep "^#${i/${D}}$" "${sfconf}" > /dev/null || {
 						# sandbox prevents us from writing directly
 						# to files outside of the sandbox, but this
 						# can easly be bypassed using the addwrite() function
 						addwrite "${sfconf}"
 						vecho ">>> Appending commented out entry to ${sfconf} for ${PF}"
-						echo "## ${ls_ret%${IMAGE}*}${ls_ret#*${IMAGE}}" >> ${sfconf}
-						echo "#${i/${IMAGE}/}" >> ${sfconf}
+						echo "## ${ls_ret%${D}*}${ls_ret#*${D}}" >> "${sfconf}"
+						echo "#${i/${D}}" >> "${sfconf}"
 						# no delwrite() eh?
 						# delwrite ${sconf}
 					}
@@ -481,8 +481,8 @@ preinst_suid_scan() {
 }
 
 preinst_selinux_labels() {
-	if [ -z "$IMAGE" ]; then
-		 eerror "${FUNCNAME}: IMAGE is unset"
+	if [ -z "${D}" ]; then
+		 eerror "${FUNCNAME}: D is unset"
 		 return 1
 	fi
 	if hasq selinux ${FEATURES}; then
@@ -497,7 +497,7 @@ preinst_selinux_labels() {
 	
 				addwrite /selinux/context;
 	
-				/usr/sbin/setfiles "${file_contexts_path}" -r "${IMAGE}" "${IMAGE}";
+				/usr/sbin/setfiles "${file_contexts_path}" -r "${D}" "${D}"
 			) || die "Failed to set SELinux security labels."
 		else
 			# nonfatal, since merging can happen outside a SE kernel
