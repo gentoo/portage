@@ -353,7 +353,11 @@ install_qa_check() {
 				else
 					eqawarn "QA Notice: invalid reference to ${r} in ${f}"
 					# remember we are in an implicit subshell, that's
-					# why we die here
+					# why we die here ... ideally we should be able to
+					# die correctly/nicely here
+					# secret switch "allow_broken_install_names" to get
+					# around this and install broken crap (not a good idea)
+					hasq allow_broken_install_names ${FEATURES} && \
 					die "invalid install_name found, ${f} will crash at runtime -- there may be possibly more affected files"
 				fi
 			fi
