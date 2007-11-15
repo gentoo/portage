@@ -18,6 +18,7 @@ INSTALL_scriptsubst = $(SHELL) ${top_builddir}/subst-install --installcmd='${INS
 user_binprogs = \
 	ebuild \
 	emerge \
+	emaint \
 	portageq \
 	quickpkg \
 	repoman \
