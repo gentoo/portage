@@ -11,5 +11,8 @@ fi
 target="${1}"
 linkname="${2}"
 [[ ${target:0:1} == "/" ]] && target="${EPREFIX}${target}"
+destdir=${linkname%/*}
+[[ ! -d ${ED}${destdir} ]] && dodir "${destdir}"
+
 exec ln -snf "${target}" "${ED}/${linkname}"
 
