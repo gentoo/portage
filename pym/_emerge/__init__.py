@@ -922,9 +922,7 @@ def iter_atoms(deps):
 class Package(object):
 	__slots__ = ("__weakref__", "built", "cpv", "depth",
 		"installed", "metadata", "root", "onlydeps", "type_name",
-		"slot_atom",
-		"digraph_node", "__eq__", "__hash__", "__str__",
-		"__len__", "__getitem__", "__iter__", "__contains__")
+		"cpv_slot", "slot_atom", "_digraph_node")
 	def __init__(self, **kwargs):
 		for myattr in self.__slots__:
 			if myattr == "__weakref__":
@@ -935,18 +933,29 @@ class Package(object):
 		self.slot_atom = "%s:%s" % \
 			(portage.cpv_getkey(self.cpv), self.metadata["SLOT"])
 
+		self.cpv_slot = "%s:%s" % (self.cpv, self.metadata["SLOT"])
+
 		status = "merge"
 		if self.onlydeps or self.installed:
 			status = "nomerge"
-		node = (self.type_name, self.root, self.cpv, status)
-		self.digraph_node = node
-		self.__eq__       = node.__eq__
-		self.__hash__     = node.__hash__
-		self.__str__      = node.__str__
-		self.__len__      = node.__len__
-		self.__getitem__  = node.__getitem__
-		self.__iter__     = node.__iter__
-		self.__contains__ = node.__contains__
+		self._digraph_node = (self.type_name, self.root, self.cpv, status)
+
+	def __eq__(self, other):
+		return self._digraph_node == other
+	def __ne__(self, other):
+		return self._digraph_node != other
+	def __hash__(self):
+		return hash(self._digraph_node)
+	def __len__(self):
+		return len(self._digraph_node)
+	def __getitem__(self, key):
+		return self._digraph_node[key]
+	def __iter__(self):
+		return iter(self._digraph_node)
+	def __contains__(self, key):
+		return key in self._digraph_node
+	def __str__(self):
+		return str(self._digraph_node)
 
 class DependencyArg(object):
 	def __init__(self, arg=None, root_config=None):
@@ -1156,8 +1165,6 @@ class depgraph(object):
 			self.edebug = 1
 		self.spinner = spinner
 		self.pkgsettings = {}
-		# Maps cpv to digraph node for all nodes added to the graph.
-		self.pkg_node_map = {}
 		# Maps slot atom to package for each Package added to the graph.
 		self._slot_pkg_map = {}
 		# Maps nodes to the reasons they were selected for reinstallation.
@@ -1181,7 +1188,6 @@ class depgraph(object):
 					self._mydbapi_keys)
 			self.pkgsettings[myroot] = portage.config(
 				clone=self.trees[myroot]["vartree"].settings)
-			self.pkg_node_map[myroot] = {}
 			self._slot_pkg_map[myroot] = {}
 			vardb = self.trees[myroot]["vartree"].dbapi
 			self.roots[myroot] = RootConfig(self.trees[myroot])
@@ -1250,7 +1256,7 @@ class depgraph(object):
 		self.blocker_digraph = digraph()
 		self.blocker_parents = {}
 		self._unresolved_blocker_parents = {}
-		self._slot_collision_info = []
+		self._slot_collision_info = set()
 		# Slot collision nodes are not allowed to block other packages since
 		# blocker validation is only able to account for one package per slot.
 		self._slot_collision_nodes = set()
@@ -1260,11 +1266,11 @@ class depgraph(object):
 		self._dep_stack = []
 		self._unsatisfied_deps = []
 		self._ignored_deps = []
-		self._required_set_names = set(["args", "system", "world"])
+		self._required_set_names = set(["system", "world"])
 		self._select_atoms = self._select_atoms_highest_available
 		self._select_package = self._select_pkg_highest_available
 
-	def _show_slot_collision_notice(self, packages):
+	def _show_slot_collision_notice(self):
 		"""Show an informational message advising the user to mask one of the
 		the packages. In some cases it may be possible to resolve this
 		automatically, but support for backtracking (removal nodes that have
@@ -1275,17 +1281,51 @@ class depgraph(object):
 		msg.append("\n!!! Multiple versions within a single " + \
 			"package slot have been \n")
 		msg.append("!!! pulled into the dependency graph:\n\n")
-		for node, parents in packages:
-			msg.append(str(node))
-			if parents:
-				msg.append(" pulled in by\n")
-				for parent in parents:
-					msg.append("  ")
-					msg.append(str(parent))
-					msg.append("\n")
-			else:
-				msg.append(" (no parents)\n")
-			msg.append("\n")
+		indent = "  "
+		# Max number of parents shown, to avoid flooding the display.
+		max_parents = 3
+		for slot_atom, root in self._slot_collision_info:
+			msg.append(slot_atom)
+			msg.append("\n\n")
+			slot_nodes = []
+			for node in self._slot_collision_nodes:
+				if node.slot_atom == slot_atom:
+					slot_nodes.append(node)
+			slot_nodes.append(self._slot_pkg_map[root][slot_atom])
+			for node in slot_nodes:
+				msg.append(indent)
+				msg.append(str(node))
+				parents = self._parent_child_digraph.parent_nodes(node)
+				if parents:
+					omitted_parents = 0
+					if len(parents) > max_parents:
+						omitted_parents = len(parents) - max_parents
+						pruned_list = []
+						# When generating the pruned list, prefer instances
+						# of DependencyArg over instances of Package.
+						for parent in parents:
+							if isinstance(parent, DependencyArg):
+								pruned_list.append(parent)
+								if len(pruned_list) == max_parents:
+									break
+						for parent in parents:
+							if not isinstance(parent, DependencyArg):
+								pruned_list.append(parent)
+								if len(pruned_list) == max_parents:
+									break
+						parents = pruned_list
+					msg.append(" pulled in by\n")
+					for parent in parents:
+						msg.append(2*indent)
+						msg.append(str(parent))
+						msg.append("\n")
+					if omitted_parents:
+						msg.append(2*indent)
+						msg.append("(and %d more)\n" % omitted_parents)
+				else:
+					msg.append(" (no parents)\n")
+				msg.append("\n")
+		msg.append("\n")
 		sys.stderr.write("".join(msg))
 		sys.stderr.flush()
 
@@ -1353,7 +1393,7 @@ class depgraph(object):
 			if dep.blocker:
 				if not buildpkgonly and \
 					not nodeps and \
-					dep.parent.digraph_node not in self._slot_collision_nodes:
+					dep.parent not in self._slot_collision_nodes:
 					if dep.parent.onlydeps:
 						# It's safe to ignore blockers if the
 						# parent is an --onlydeps node.
@@ -1362,7 +1402,7 @@ class depgraph(object):
 					# the parent is or will be installed.
 					self.blocker_parents.setdefault(
 						("blocks", dep.parent.root, dep.atom), set()).add(
-							dep.parent.digraph_node)
+							dep.parent)
 				continue
 			dep_pkg, existing_node = self._select_package(dep.root, dep.atom)
 			if not dep_pkg:
@@ -1370,7 +1410,7 @@ class depgraph(object):
 					self._unsatisfied_deps.append(dep)
 					continue
 				self._show_unsatisfied_dep(dep.root, dep.atom,
-					myparent=dep.parent.digraph_node)
+					myparent=dep.parent)
 				return 0
 			# In some cases, dep_check will return deps that shouldn't
 			# be proccessed any further, so they are identified and
@@ -1393,13 +1433,14 @@ class depgraph(object):
 						self._ignored_deps.append(dep)
 					continue
 
-			if not self._add_pkg(dep_pkg, myparent=dep.parent,
+			if not self._add_pkg(dep_pkg, dep.parent,
 				priority=dep.priority, depth=dep.depth):
 				return 0
 		return 1
 
-	def _add_pkg(self, pkg, myparent=None,
-		priority=None, arg=None, depth=0):
+	def _add_pkg(self, pkg, myparent, priority=None, depth=0):
+		if priority is None:
+			priority = DepPriority()
 		"""
 		Fills the digraph with nodes comprised of packages to merge.
 		mybigkey is the package spec of the package to merge.
@@ -1411,38 +1452,26 @@ class depgraph(object):
 		#IUSE-aware emerge -> USE DEP aware depgraph
 		#"no downgrade" emerge
 		"""
-		# unused parameters
-		rev_dep = False
-
-		mytype = pkg.type_name
-		myroot = pkg.root
-		mykey = pkg.cpv
-		metadata = pkg.metadata
-		mybigkey = [mytype, myroot, mykey]
 
 		# select the correct /var database that we'll be checking against
-		vardbapi = self.trees[myroot]["vartree"].dbapi
-		pkgsettings = self.pkgsettings[myroot]
+		vardbapi = self.trees[pkg.root]["vartree"].dbapi
+		pkgsettings = self.pkgsettings[pkg.root]
 
-		if not arg and myroot == self.target_root:
+		args = None
+		if True:
 			try:
-				arg = self._get_arg_for_pkg(pkg)
+				args = list(self._iter_args_for_pkg(pkg))
 			except portage.exception.InvalidDependString, e:
-				if mytype != "installed":
-					show_invalid_depstring_notice(tuple(mybigkey+["merge"]),
-						metadata["PROVIDE"], str(e))
+				if not pkg.installed:
+					show_invalid_depstring_notice(
+						pkg, pkg.metadata["PROVIDE"], str(e))
 					return 0
 				del e
 
-		merging = mytype != "installed"
-		jbigkey = pkg.digraph_node
-
 		if not pkg.onlydeps:
-			slot_atom = "%s:%s" % (portage.dep_getkey(mykey), metadata["SLOT"])
-			if myparent and \
-				merging and \
+			if not pkg.installed and \
 				"empty" not in self.myparams and \
-				vardbapi.match(slot_atom):
+				vardbapi.match(pkg.slot_atom):
 				# Increase the priority of dependencies on packages that
 				# are being rebuilt. This optimizes merge order so that
 				# dependencies are rebuilt/updated as soon as possible,
@@ -1453,15 +1482,15 @@ class depgraph(object):
 				# are being merged in that case.
 				priority.rebuild = True
 
-			existing_node = self._slot_pkg_map[myroot].get(slot_atom)
-			if existing_node:
-				existing_node = existing_node.digraph_node
+			existing_node = self._slot_pkg_map[pkg.root].get(pkg.slot_atom)
 			slot_collision = False
 			if existing_node:
-				e_type, myroot, e_cpv, e_status = existing_node
-				if mykey == e_cpv:
+				if pkg.cpv == existing_node.cpv:
 					# The existing node can be reused.
 					self._parent_child_digraph.add(existing_node, myparent)
+					if args:
+						for arg in args:
+							self._parent_child_digraph.add(existing_node, arg)
 					# If a direct circular dependency is not an unsatisfied
 					# buildtime dependency then drop it here since otherwise
 					# it can skew the merge order calculation in an unwanted
@@ -1472,19 +1501,13 @@ class depgraph(object):
 							priority=priority)
 					return 1
 				else:
-					if jbigkey in self._slot_collision_nodes:
+					if pkg in self._slot_collision_nodes:
 						return 1
 					# A slot collision has occurred.  Sometimes this coincides
 					# with unresolvable blockers, so the slot collision will be
 					# shown later if there are no unresolvable blockers.
-					e_parents = self._parent_child_digraph.parent_nodes(
-						existing_node)
-					myparents = []
-					if myparent:
-						myparents.append(myparent)
-					self._slot_collision_info.append(
-						((jbigkey, myparents), (existing_node, e_parents)))
-					self._slot_collision_nodes.add(jbigkey)
+					self._slot_collision_info.add((pkg.slot_atom, pkg.root))
+					self._slot_collision_nodes.add(pkg)
 					slot_collision = True
 
 			if slot_collision:
@@ -1493,47 +1516,46 @@ class depgraph(object):
 				# only being partially added to the graph.  It must not be
 				# allowed to interfere with the other nodes that have been
 				# added.  Do not overwrite data for existing nodes in
-				# self.pkg_node_map and self.mydbapi since that data will
-				# be used for blocker validation.
-				self.pkg_node_map[myroot].setdefault(mykey, jbigkey)
+				# self.mydbapi since that data will be used for blocker
+				# validation.
 				# Even though the graph is now invalid, continue to process
 				# dependencies so that things like --fetchonly can still
 				# function despite collisions.
+				pass
 			else:
-				self.mydbapi[myroot].cpv_inject(mykey, metadata=metadata)
+				self.mydbapi[pkg.root].cpv_inject(
+					pkg.cpv, metadata=pkg.metadata)
 				self._slot_pkg_map[pkg.root][pkg.slot_atom] = pkg
-				self.pkg_node_map[pkg.root][pkg.cpv] = pkg.digraph_node
 
-			if rev_dep and myparent:
-				self.digraph.addnode(myparent, jbigkey,
-					priority=priority)
-			else:
-				self.digraph.addnode(jbigkey, myparent,
-					priority=priority)
+			self.digraph.addnode(pkg, myparent, priority=priority)
 
-			if mytype != "installed":
+			if not pkg.installed:
 				# Allow this package to satisfy old-style virtuals in case it
 				# doesn't already. Any pre-existing providers will be preferred
 				# over this one.
 				try:
-					pkgsettings.setinst(mykey, metadata)
+					pkgsettings.setinst(pkg.cpv, pkg.metadata)
 					# For consistency, also update the global virtuals.
-					settings = self.roots[myroot].settings
+					settings = self.roots[pkg.root].settings
 					settings.unlock()
-					settings.setinst(mykey, metadata)
+					settings.setinst(pkg.cpv, pkg.metadata)
 					settings.lock()
 				except portage.exception.InvalidDependString, e:
-					show_invalid_depstring_notice(jbigkey, metadata["PROVIDE"], str(e))
+					show_invalid_depstring_notice(
+						pkg, pkg.metadata["PROVIDE"], str(e))
 					del e
 					return 0
 
-		if arg:
-			self._set_nodes.add(jbigkey)
+		if args:
+			self._set_nodes.add(pkg)
 
 		# Do this even when addme is False (--onlydeps) so that the
 		# parent/child relationship is always known in case
 		# self._show_slot_collision_notice() needs to be called later.
-		self._parent_child_digraph.add(jbigkey, myparent)
+		self._parent_child_digraph.add(pkg, myparent)
+		if args:
+			for arg in args:
+				self._parent_child_digraph.add(pkg, arg)
 
 		""" This section determines whether we go deeper into dependencies or not.
 		    We want to go deeper on a few occasions:
@@ -1552,7 +1574,7 @@ class depgraph(object):
 
 		self.spinner.update()
 
-		if arg:
+		if args:
 			depth = 0
 		pkg.depth = depth
 		dep_stack.append(pkg)
@@ -1565,7 +1587,7 @@ class depgraph(object):
 		mykey = pkg.cpv
 		metadata = pkg.metadata
 		myuse = metadata["USE"].split()
-		jbigkey = pkg.digraph_node
+		jbigkey = pkg
 		depth = pkg.depth + 1
 
 		edepend={}
@@ -1688,6 +1710,18 @@ class depgraph(object):
 		# dependencies.
 		self._filtered_trees[root]["atoms"].clear()
 
+	def _iter_args_for_pkg(self, pkg):
+		# TODO: add multiple $ROOT support
+		if pkg.root != self.target_root:
+			return
+		atom_arg_map = self._atom_arg_map
+		for atom in self._set_atoms.iterAtomsForPackage(pkg):
+			for arg in atom_arg_map[(atom, pkg.root)]:
+				if isinstance(arg, PackageArg) and \
+					arg.package != pkg:
+					continue
+				yield arg
+
 	def _get_arg_for_pkg(self, pkg):
 		"""
 		Return a matching DependencyArg instance for the given Package if
@@ -1696,21 +1730,11 @@ class depgraph(object):
 
 		This will raise an InvalidDependString exception if PROVIDE is invalid.
 		"""
-		# TODO: add multiple $ROOT support
-		if pkg.root != self.target_root:
-			return None
-		atom_arg_map = self._atom_arg_map
 		any_arg = None
-		for atom in self._set_atoms.iterAtomsForPackage(pkg):
-			refs = atom_arg_map[(atom, pkg.root)]
-			for arg in refs:
-				if isinstance(arg, PackageArg):
-					# TODO: Implement a better comparison to ensure that
-					#       these two packages really are identical.
-					if arg.package.type_name != pkg.type_name:
-						continue
-					return arg
-				any_arg = arg
+		for arg in self._iter_args_for_pkg(pkg):
+			if isinstance(arg, PackageArg):
+				return arg
+			any_arg = arg
 		return any_arg
 
 	def select_files(self, myfiles):
@@ -1919,7 +1943,7 @@ class depgraph(object):
 						self._pprovided_args.append((arg, atom))
 						continue
 					if isinstance(arg, PackageArg):
-						if not self._add_pkg(arg.package, arg=arg) or \
+						if not self._add_pkg(arg.package, arg) or \
 							not self._create_graph():
 							sys.stderr.write(("\n\n!!! Problem resolving " + \
 								"dependencies for %s\n") % arg.arg)
@@ -1934,7 +1958,8 @@ class depgraph(object):
 							return 0, myfavorites
 						self._missing_args.append((arg, atom))
 						continue
-					self._dep_stack.append(Dependency(atom=atom, root=myroot))
+					self._dep_stack.append(
+						Dependency(atom=atom, root=myroot, parent=arg))
 					if not self._create_graph():
 						if isinstance(arg, SetArg):
 							sys.stderr.write(("\n\n!!! Problem resolving " + \
@@ -2350,7 +2375,7 @@ class depgraph(object):
 							(e_pkg.cpv, e_pkg.metadata["SLOT"])
 						if portage.dep.match_from_list(atom, [cpv_slot]):
 							matched_packages.append(e_pkg)
-							existing_node = e_pkg.digraph_node
+							existing_node = e_pkg
 						break
 					# Compare built package to current config and
 					# reject the built package if necessary.
@@ -2466,7 +2491,7 @@ class depgraph(object):
 			graph_db.aux_get(cpv, ["SLOT"])[0])
 		e_pkg = self._slot_pkg_map[root].get(slot_atom)
 		if e_pkg:
-			return e_pkg, e_pkg.digraph_node
+			return e_pkg, e_pkg
 		metadata = dict(izip(self._mydbapi_keys,
 			graph_db.aux_get(cpv, self._mydbapi_keys)))
 		pkg = Package(cpv=cpv, built=True,
@@ -2511,19 +2536,30 @@ class depgraph(object):
 				required_set_names.difference_update(self._sets)
 			if not required_set_names and not self._ignored_deps:
 				continue
-			setconfig = self.roots[root].settings.setconfig
-			required_set_atoms = set()
+			root_config = self.roots[root]
+			setconfig = root_config.settings.setconfig
+			args = []
+			# Reuse existing SetArg instances when available.
+			for arg in self._parent_child_digraph.root_nodes():
+				if not isinstance(arg, SetArg):
+					continue
+				if arg.root_config != root_config:
+					continue
+				if arg.name in required_set_names:
+					args.append(arg)
+					required_set_names.remove(arg.name)
+			# Create new SetArg instances only when necessary.
 			for s in required_set_names:
-				if s == "args":
-					if root == self.target_root:
-						required_set_atoms.update(self._sets["args"])
-				else:
-					required_set_atoms.update(setconfig.getSetAtoms(s))
-			vardb = self.roots[root].trees["vartree"].dbapi
-			for atom in required_set_atoms:
-				self._dep_stack.append(
-					Dependency(atom=atom, depth=0,
-					priority=DepPriority(), root=root))
+				expanded_set = InternalPackageSet(
+					initial_atoms=setconfig.getSetAtoms(s))
+				atom = SETPREFIX + s
+				args.append(SetArg(arg=atom, set=expanded_set,
+					root_config=root_config))
+			vardb = root_config.trees["vartree"].dbapi
+			for arg in args:
+				for atom in arg.set:
+					self._dep_stack.append(
+						Dependency(atom=atom, root=root, parent=arg))
 			if self._ignored_deps:
 				self._dep_stack.extend(self._ignored_deps)
 				self._ignored_deps = []
@@ -2549,7 +2585,8 @@ class depgraph(object):
 				pkg = Package(type_name="installed", root=root,
 					cpv=cpv, metadata=metadata, built=True,
 					installed=True)
-				if not self._add_pkg(pkg, myparent=dep.parent):
+				if not self._add_pkg(pkg, dep.parent,
+					priority=dep.priority, depth=dep.depth):
 					return 0
 				if not self._create_graph(allow_unsatisfied=True):
 					return 0
@@ -2595,7 +2632,6 @@ class depgraph(object):
 
 			dep_keys = ["DEPEND","RDEPEND","PDEPEND"]
 			for myroot in self.trees:
-				pkg_node_map = self.pkg_node_map[myroot]
 				vardb = self.trees[myroot]["vartree"].dbapi
 				portdb = self.trees[myroot]["porttree"].dbapi
 				pkgsettings = self.pkgsettings[myroot]
@@ -2604,9 +2640,12 @@ class depgraph(object):
 				blocker_cache = BlockerCache(myroot, vardb)
 				for pkg in cpv_all_installed:
 					blocker_atoms = None
-					matching_node = pkg_node_map.get(pkg, None)
-					if matching_node and \
-						matching_node[3] == "nomerge":
+					metadata = dict(izip(self._mydbapi_keys,
+						vardb.aux_get(pkg, self._mydbapi_keys)))
+					node = Package(cpv=pkg, built=True,
+						installed=True, metadata=metadata,
+						type_name="installed", root=myroot)
+					if self.digraph.contains(node):
 						continue
 					# If this node has any blockers, create a "nomerge"
 					# node for it so that they can be enforced.
@@ -2635,8 +2674,7 @@ class depgraph(object):
 								# matches (this can happen if an atom lacks a
 								# category).
 								show_invalid_depstring_notice(
-									("installed", myroot, pkg, "nomerge"),
-									depstr, str(e))
+									node, depstr, str(e))
 								del e
 								raise
 						finally:
@@ -2650,9 +2688,7 @@ class depgraph(object):
 								# annoy the user too much (otherwise they'd be
 								# forced to manually unmerge it first).
 								continue
-							show_invalid_depstring_notice(
-								("installed", myroot, pkg, "nomerge"),
-								depstr, atoms)
+							show_invalid_depstring_notice(node, depstr, atoms)
 							return False
 						blocker_atoms = [myatom for myatom in atoms \
 							if myatom.startswith("!")]
@@ -2660,10 +2696,6 @@ class depgraph(object):
 						blocker_cache[pkg] = \
 							blocker_cache.BlockerData(counter, blocker_atoms)
 					if blocker_atoms:
-						# Don't store this parent in pkg_node_map, because it's
-						# not needed there and it might overwrite a "merge"
-						# node with the same cpv.
-						myparent = ("installed", myroot, pkg, "nomerge")
 						for myatom in blocker_atoms:
 							blocker = ("blocks", myroot, myatom[1:])
 							myparents = \
@@ -2671,7 +2703,7 @@ class depgraph(object):
 							if not myparents:
 								myparents = set()
 								self.blocker_parents[blocker] = myparents
-							myparents.add(myparent)
+							myparents.add(node)
 				blocker_cache.flush()
 				del blocker_cache
 
@@ -2717,15 +2749,13 @@ class depgraph(object):
 						continue
 					if pstatus == "merge" and \
 						slot_atom in modified_slots[myroot]:
-						replacement = final_db.match(slot_atom)
-						if replacement:
-							if not portage.match_from_list(mydep, replacement):
-								# Apparently a replacement may be able to
-								# invalidate this block.
-								replacement_node = \
-									self.pkg_node_map[proot][replacement[0]]
-								depends_on_order.add((replacement_node, parent))
-								continue
+						replacement = self._slot_pkg_map[myroot][slot_atom]
+						if not portage.match_from_list(
+							mydep, [replacement.cpv_slot]):
+							# Apparently a replacement may be able to
+							# invalidate this block.
+							depends_on_order.add((replacement, parent))
+							continue
 					# None of the above blocker resolutions techniques apply,
 					# so apparently this one is unresolvable.
 					unresolved_blocks = True
@@ -2741,18 +2771,16 @@ class depgraph(object):
 						continue
 					if not parent_static and pstatus == "nomerge" and \
 						slot_atom in modified_slots[myroot]:
-						replacement = final_db.match(pslot_atom)
-						if replacement:
-							replacement_node = \
-								self.pkg_node_map[proot][replacement[0]]
-							if replacement_node not in \
-								self.blocker_parents[blocker]:
-								# Apparently a replacement may be able to
-								# invalidate this block.
-								blocked_node = self.pkg_node_map[proot][cpv]
-								depends_on_order.add(
-									(replacement_node, blocked_node))
-								continue
+						replacement = self._slot_pkg_map[myroot][pslot_atom]
+						if replacement not in \
+							self.blocker_parents[blocker]:
+							# Apparently a replacement may be able to
+							# invalidate this block.
+							blocked_node = \
+								self._slot_pkg_map[myroot][slot_atom]
+							depends_on_order.add(
+								(replacement, blocked_node))
+							continue
 					# None of the above blocker resolutions techniques apply,
 					# so apparently this one is unresolvable.
 					unresolved_blocks = True
@@ -2781,7 +2809,7 @@ class depgraph(object):
 			for x in self.altlist():
 				if x[0] == "blocks":
 					return True
-			self._show_slot_collision_notice(self._slot_collision_info[0])
+			self._show_slot_collision_notice()
 			if not self._accept_collisions():
 				return False
 		return True
@@ -2820,7 +2848,8 @@ class depgraph(object):
 		while True:
 			removed_something = False
 			for node in mygraph.root_nodes():
-				if node[-1] == "nomerge":
+				if not isinstance(node, Package) or \
+					node.installed or node.onlydeps:
 					mygraph.remove(node)
 					removed_something = True
 			if not removed_something:
@@ -2836,8 +2865,10 @@ class depgraph(object):
 			get_nodes = mygraph.root_nodes
 		else:
 			get_nodes = mygraph.leaf_nodes
-			for cpv, node in self.pkg_node_map["/"].iteritems():
-				if "portage" == portage.catsplit(portage.dep_getkey(cpv))[-1]:
+			for node in mygraph.order:
+				if node.root == "/" and \
+					"portage" == portage.catsplit(
+					portage.cpv_getkey(node.cpv))[-1]:
 					portage_node = node
 					asap_nodes.append(node)
 					break
@@ -3205,6 +3236,8 @@ class depgraph(object):
 							selected_parent = None
 							# First, try to avoid a direct cycle.
 							for node in parent_nodes:
+								if not isinstance(node, Package):
+									continue
 								if node not in traversed_nodes and \
 									node not in child_nodes:
 									edge = (current_node, node)
@@ -3215,6 +3248,8 @@ class depgraph(object):
 							if not selected_parent:
 								# A direct cycle is unavoidable.
 								for node in parent_nodes:
+									if not isinstance(node, Package):
+										continue
 									if node not in traversed_nodes:
 										edge = (current_node, node)
 										if edge in shown_edges:

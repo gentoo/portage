@@ -1048,14 +1048,13 @@ dyn_install() {
 }
 
 dyn_preinst() {
-	if [ -z "$IMAGE" ]; then
-		eerror "${FUNCNAME}: IMAGE is unset"
+	if [ -z "${D}" ]; then
+		eerror "${FUNCNAME}: D is unset"
 		return 1
 	fi
 
 	[ "$(type -t pre_pkg_preinst)" == "function" ] && qa_call pre_pkg_preinst
 
-	declare -r D=${IMAGE}
 	pkg_preinst
 
 	[ "$(type -t post_pkg_preinst)" == "function" ] && qa_call post_pkg_preinst
@@ -1448,11 +1447,9 @@ export S=${WORKDIR}/${P}
 
 unset E_IUSE E_DEPEND E_RDEPEND E_PDEPEND
 
-for x in T P PN PV PVR PR CATEGORY A EBUILD EMERGE_FROM FILESDIR PORTAGE_TMPDIR; do
+for x in D T P PN PV PVR PR CATEGORY A EBUILD EMERGE_FROM FILESDIR PORTAGE_TMPDIR; do
 	[[ ${!x-UNSET_VAR} != UNSET_VAR ]] && declare -r ${x}
 done
-# Need to be able to change D in dyn_preinst due to the IMAGE stuff
-[[ ${EBUILD_SH_ARGS} != "preinst" ]] && declare -r D
 unset x
 
 # Turn of extended glob matching so that g++ doesn't get incorrectly matched.
@@ -1490,7 +1487,7 @@ unset EBUILD_DEATH_HOOKS
 # unset before this process of interaction begins.
 unset DEPEND RDEPEND PDEPEND IUSE
 
-source ${EBUILD} || die "error sourcing ebuild"
+source "${EBUILD}" || die "error sourcing ebuild"
 if ! hasq depend $EBUILD_PHASE; then
 	RESTRICT="${PORTAGE_RESTRICT}"
 	unset PORTAGE_RESTRICT

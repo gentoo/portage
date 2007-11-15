@@ -175,7 +175,7 @@ def ParseArgs(args, qahelp):
 		default=False, help='ignore masked packages (not allowed with commit mode')
 
 	parser.add_option('--mode', type='choice', dest='mode', choices=modes.keys(), 
-		help='specify which mode repoman will run in (default=scan)')
+		help='specify which mode repoman will run in (default=full)')
 
 	parser.on_tail("\n " + green("Modes".ljust(20) + " Description\n"))
 
@@ -203,7 +203,7 @@ def ParseArgs(args, qahelp):
 				break
 
 	if not opts.mode:
-		opts.mode = 'scan'	#default to scan
+		opts.mode = 'full'	#default to full
 
 	if opts.mode == 'commit' and opts.ignore_masked:
 		parser.error('Commit mode and --ignore_masked are not compatable')
