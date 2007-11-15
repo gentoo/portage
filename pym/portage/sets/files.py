@@ -169,6 +169,7 @@ class WorldSet(StaticFileSet):
 				#this doesn't match the package we're unmerging; keep it.
 				newworldlist.append(x)
 
+		newworldlist.extend(self._nonatoms)
 		self.replace(newworldlist)
 		self.unlock()
 

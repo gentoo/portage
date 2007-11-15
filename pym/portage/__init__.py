@@ -456,7 +456,9 @@ class digraph(object):
 
 	def clone(self):
 		clone = digraph()
-		clone.nodes = copy.deepcopy(self.nodes)
+		clone.nodes = {}
+		for k, v in self.nodes.iteritems():
+			clone.nodes[k] = (v[0].copy(), v[1].copy())
 		clone.order = self.order[:]
 		return clone
 

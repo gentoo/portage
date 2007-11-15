@@ -24,7 +24,7 @@ from commands import getstatusoutput
 from fileinput import input
 from grp import getgrnam
 from itertools import izip
-from stat import S_ISDIR, ST_CTIME, ST_GID, ST_MTIME
+from stat import S_ISDIR, ST_CTIME
 
 try:
 	import cPickle as pickle
@@ -44,13 +44,11 @@ except ImportError:
 del os.environ["PORTAGE_LEGACY_GLOBALS"]
 
 try:
-	from repoman.checks import EbuildWhitespace, EbuildHeader, EbuildQuote, \
-		EbuildAssignment, EbuildNestedDie, EbuildUselessDodoc, EbuildUselessCdS
+	from repoman.checks import run_checks
 except ImportError:
 	from os import path as osp
 	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), 'pym'))
-	from repoman.checks import EbuildWhitespace, EbuildHeader, EbuildQuote, \
-		EbuildAssignment, EbuildNestedDie, EbuildUselessDodoc, EbuildUselessCdS
+	from repoman.checks import run_checks
 
 import portage.checksum
 import portage.const
@@ -1429,35 +1427,16 @@ for x in scanlist:
 				for mybad in mybadrestrict:
 					fails["RESTRICT.invalid"].append(x+"/"+y+".ebuild: %s" % mybad)
 		# Syntax Checks
-		path = checkdir + '/' + y + '.ebuild'
-		myear = time.gmtime(os.stat(path)[ST_MTIME])[0]
-		f = open(path, 'rb')
+		relative_path = os.path.join(x, y + ".ebuild")
+		full_path = os.path.join(repodir, relative_path)
+		f = open(full_path, 'rb')
 		try:
-			contents = f.readlines()
+			for check_name, e in run_checks(f, os.stat(full_path).st_mtime):
+				stats[check_name] += 1
+				fails[check_name].append(relative_path + ': %s' % e)
 		finally:
 			f.close()
 			del f
-		for check in (EbuildWhitespace, EbuildQuote,
-			EbuildAssignment, EbuildUselessDodoc, EbuildUselessCdS):
-			c = check(contents)
-			errors = c.Run()
-			for e in errors:
-				stats[c.repoman_check_name] += 1
-				fails[c.repoman_check_name].append(x + '/' + y + '.ebuild: %s' % e[1] % e[0])
-		del check
-		check = EbuildHeader(contents, str(myear))
-		errors = check.Run()
-		for e in errors:
-			stats[check.repoman_check_name] += 1
-			fails[check.repoman_check_name].append(x + '/' + y + '.ebuild: %s' % e[1] % e[0])
-		del check
-		check = EbuildNestedDie(contents)
-		errors = check.Run()
-		for e in errors:
-			stats[check.repoman_check_name] += 1
-			fails[check.repoman_check_name].append(
-				x + '/' + y + '.ebuild: %s' % e[1] % e[0])
-		del check, errors, path, contents, myear
 
 		if options.force:
 			# The dep_check() calls are the most expensive QA test. If --force
