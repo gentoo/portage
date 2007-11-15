@@ -5,8 +5,8 @@
 import os
 import portage.glsa as glsa
 from portage.util import grabfile, write_atomic
-from portage.const import CACHE_PATH
 from portage.sets.base import PackageSet
+from portage.versions import catpkgsplit, pkgcmp
 
 __all__ = ["SecuritySet", "NewGlsaSet", "NewAffectedSet", "AffectedSet"]
 
@@ -21,13 +21,12 @@ class SecuritySet(PackageSet):
 		self._settings = settings
 		self._vardbapi = vardbapi
 		self._portdbapi = portdbapi
-		self._checkfile = os.path.join(os.sep, self._settings["ROOT"], CACHE_PATH.lstrip(os.sep), "glsa")
 		self._least_change = least_change
 
 	def getGlsaList(self, skip_applied):
 		glsaindexlist = glsa.get_glsa_list(self._settings)
 		if skip_applied:
-			applied_list = grabfile(self._checkfile)
+			applied_list = glsa.get_applied_glsas(self._settings)
 			glsaindexlist = set(glsaindexlist).difference(applied_list)
 			glsaindexlist = list(glsaindexlist)
 		glsaindexlist.sort()
@@ -40,20 +39,34 @@ class SecuritySet(PackageSet):
 			myglsa = glsa.Glsa(glsaid, self._settings, self._vardbapi, self._portdbapi)
 			#print glsaid, myglsa.isVulnerable(), myglsa.isApplied(), myglsa.getMergeList()
 			if self.useGlsa(myglsa):
-				atomlist += myglsa.getMergeList(least_change=self._least_change)
-		self._setAtoms(atomlist)
+				atomlist += ["="+x for x in myglsa.getMergeList(least_change=self._least_change)]
+		self._setAtoms(self._reduce(atomlist))
+	
+	def _reduce(self, atomlist):
+		mydict = {}
+		for atom in atomlist[:]:
+			cpv = self._portdbapi.match(atom)[0]
+			slot = self._portdbapi.aux_get(cpv, ["SLOT"])[0]
+			cps = "/".join(catpkgsplit(cpv)[0:2]) + ":" + slot
+			if not cps in mydict:
+				mydict[cps] = (atom, cpv)
+			else:
+				other_cpv = mydict[cps][1]
+				if pkgcmp(catpkgsplit(cpv)[1:], catpkgsplit(other_cpv)[1:]) > 0:
+					atomlist.remove(mydict[cps][0])
+					mydict[cps] = (atom, cpv)
+		return atomlist
 	
 	def useGlsa(self, myglsa):
 		return True
 
 	def updateAppliedList(self):
 		glsaindexlist = self.getGlsaList(True)
-		applied_list = grabfile(self._checkfile)
+		applied_list = glsa.get_applied_glsas(self._settings)
 		for glsaid in glsaindexlist:
 			myglsa = glsa.Glsa(glsaid, self._settings, self._vardbapi, self._portdbapi)
-			if not myglsa.isVulnerable():
-				applied_list.append(glsaid)
-		write_atomic(self._checkfile, "\n".join(applied_list))
+			if not myglsa.isVulnerable() and not myglsa.nr in applied_list:
+				myglsa.inject()
 	
 	def singleBuilder(cls, options, settings, trees):
 		if "use_emerge_resoler" in options \

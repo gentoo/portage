@@ -1130,8 +1130,10 @@ class config(object):
 				self.puseforce_list.append(cpdict)
 			del rawpuseforce
 
+			# make.globals should not be relative to config_root
+			# because it only contains constants.
 			try:
-				self.mygcfg   = getconfig(os.path.join(config_root, BPREFIX.lstrip(os.path.sep), "etc", "make.globals"))
+				self.mygcfg   = getconfig(os.path.join(BPREFIX, "etc", "make.globals"))
 
 				if self.mygcfg is None:
 					self.mygcfg = {}
@@ -2627,6 +2629,13 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 				writemsg("openpty failed: '%s'\n" % str(e), noiselevel=1)
 				del e
 				master_fd, slave_fd = os.pipe()
+		if got_pty:
+			# Disable post-processing of output since otherwise weird
+			# things like \n -> \r\n transformations may occur.
+			import termios
+			mode = termios.tcgetattr(slave_fd)
+			mode[1] &= ~termios.OPOST
+			termios.tcsetattr(slave_fd, termios.TCSANOW, mode)
 
 		# We must set non-blocking mode before we close the slave_fd
 		# since otherwise the fcntl call can fail on FreeBSD (the child

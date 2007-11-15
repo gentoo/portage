@@ -2,9 +2,8 @@
 
 import sys, os, time, signal
 from optparse import OptionParser, OptionValueError
-if not hasattr(__builtins__, "set"):
-	from sets import Set as set
 import re
+
 try:
 	import portage
 except ImportError:
