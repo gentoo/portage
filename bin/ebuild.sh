@@ -1473,7 +1473,7 @@ unset EBUILD_DEATH_HOOKS
 # unset before this process of interaction begins.
 unset DEPEND RDEPEND PDEPEND IUSE
 
-source ${EBUILD} || die "error sourcing ebuild"
+source "${EBUILD}" || die "error sourcing ebuild"
 if ! hasq depend $EBUILD_PHASE; then
 	RESTRICT="${PORTAGE_RESTRICT}"
 	unset PORTAGE_RESTRICT
