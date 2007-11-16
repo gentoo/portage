@@ -962,13 +962,11 @@ class dblink(object):
 		if myroot == os.path.sep:
 			myroot = None
 		pos = 0
-		for line in mylines:
-			pos += 1
+		errors = []
+		for pos, line in enumerate(mylines):
 			if null_byte in line:
 				# Null bytes are a common indication of corruption.
-				writemsg("!!! Null byte found in contents " + \
-					"file, line %d: '%s'\n" % (pos, contents_file),
-					noiselevel=-1)
+				errors.append((pos + 1, "Null byte found in CONTENTS entry"))
 				continue
 			line = line.rstrip("\n")
 			# Split on " " so that even file paths that
@@ -985,8 +983,7 @@ class dblink(object):
 					try:
 						splitter = mydat.index("->", 2, len(mydat) - 2)
 					except ValueError:
-						writemsg("!!! Unrecognized CONTENTS entry on " + \
-							"line %d: '%s'\n" % (pos, line), noiselevel=-1)
+						errors.append((pos + 1, "Unrecognized CONTENTS entry"))
 						continue
 					spaces_in_path = splitter - 2
 					spaces_in_target = spaces_total - spaces_in_path
@@ -1026,11 +1023,13 @@ class dblink(object):
 					#format: type
 					pkgfiles[mydat[1]] = [mydat[0]]
 				else:
-					writemsg("!!! Unrecognized CONTENTS entry on " + \
-						"line %d: '%s'\n" % (pos, line), noiselevel=-1)
+					errors.append((pos + 1, "Unrecognized CONTENTS entry"))
 			except (KeyError, IndexError):
-				writemsg("!!! Unrecognized CONTENTS entry on " + \
-					"line %d: '%s'\n" % (pos, line), noiselevel=-1)
+				errors.append((pos + 1, "Unrecognized CONTENTS entry"))
+		if errors:
+			writemsg("!!! Parse error in '%s'\n" % contents_file, noiselevel=-1)
+			for pos, e in errors:
+				writemsg("!!!   line %d: %s\n" % (pos, e), noiselevel=-1)
 		self.contentscache = pkgfiles
 		return pkgfiles
 
