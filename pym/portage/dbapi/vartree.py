@@ -146,8 +146,9 @@ class LibraryPackageMap(object):
 	def update(self):
 		""" Update the global library->consumer map for the given vdb instance. """
 		obj_dict = {}
+		aux_get = self._dbapi.aux_get
 		for cpv in self._dbapi.cpv_all():
-			needed_list = grabfile(self._dbapi.getpath(cpv, "NEEDED"))
+			needed_list = aux_get(cpv, ["NEEDED"])[0].splitlines()
 			for l in needed_list:
 				mysplit = l.split()
 				if len(mysplit) < 2:
@@ -517,6 +518,12 @@ class vardbapi(dbapi):
 			cache_valid = cache_mtime == mydir_mtime
 		if cache_valid:
 			cache_incomplete = self._aux_cache_keys.difference(metadata)
+			needed = metadata.get("NEEDED")
+			if needed is None or "\n" not in needed:
+				# Cached value has whitespace filtered, so it has to be pulled
+				# again. This is temporary migration code which can be removed
+				# later, since it only affects users who are running trunk.
+				cache_incomplete.add("NEEDED")
 			if cache_incomplete:
 				# Allow self._aux_cache_keys to change without a cache version
 				# bump and efficiently recycle partial cache whenever possible.
@@ -558,7 +565,8 @@ class vardbapi(dbapi):
 					myd = myf.read()
 				finally:
 					myf.close()
-				myd = " ".join(myd.split())
+				if x != "NEEDED":
+					myd = " ".join(myd.split())
 			except IOError:
 				myd = ""
 			if x == "EAPI" and not myd:
