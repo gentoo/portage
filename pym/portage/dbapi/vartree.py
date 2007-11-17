@@ -599,58 +599,38 @@ class vardbapi(dbapi):
 	def counter_tick_core(self, myroot, incrementing=1, mycpv=None):
 		"This method will grab the next COUNTER value and record it back to the global file.  Returns new counter value."
 		cpath = os.path.join(myroot, CACHE_PATH.lstrip(os.sep), "counter")
-		changed = 0
-		min_counter = 0
-		if mycpv:
-			mysplit = pkgsplit(mycpv)
-			for x in self.match(mysplit[0], use_cache=0):
-				if x == mycpv:
-					continue
-				try:
-					old_counter = long(self.aux_get(x, ["COUNTER"])[0])
-					writemsg("COUNTER '%d' '%s'\n" % (old_counter, x), 1)
-				except (ValueError, KeyError): # valueError from long(), KeyError from aux_get
-					old_counter = 0
-					writemsg("!!! BAD COUNTER in '%s'\n" % (x), noiselevel=-1)
-				if old_counter > min_counter:
-					min_counter = old_counter
-
-		# We write our new counter value to a new file that gets moved into
-		# place to avoid filesystem corruption.
-		find_counter = ("find '%s' -type f -name COUNTER | " + \
-			"while read f; do echo $(<\"${f}\"); done | " + \
-			"sort -n | tail -n1") % os.path.join(self.root, VDB_PATH)
-		if os.path.exists(cpath):
+		changed = False
+		counter = -1
+		try:
 			cfile = open(cpath, "r")
-			try:
-				counter = long(cfile.readline())
-			except (ValueError,OverflowError):
-				try:
-					counter = long(commands.getoutput(find_counter).strip())
-					writemsg("!!! COUNTER was corrupted; resetting to value of %d\n" % counter,
-						noiselevel=-1)
-					changed=1
-				except (ValueError, OverflowError):
-					writemsg("!!! COUNTER data is corrupt in pkg db. The values need to be\n",
-						noiselevel=-1)
-					writemsg("!!! corrected/normalized so that portage can operate properly.\n",
-						noiselevel=-1)
-					writemsg("!!! A simple solution is not yet available so try #gentoo on IRC.\n")
-					sys.exit(2)
-			cfile.close()
+		except EnvironmentError:
+			writemsg("!!! COUNTER file is missing: '%s'\n" % cpath,
+				noiselevel=-1)
 		else:
 			try:
-				counter = long(commands.getoutput(find_counter).strip())
-				writemsg("!!! Global counter missing. Regenerated from counter files to: %s\n" % counter,
+				try:
+					counter = long(cfile.readline().strip())
+				finally:
+					cfile.close()
+			except (OverflowError, ValueError):
+				writemsg("!!! COUNTER file is corrupt: '%s'\n" % cpath,
 					noiselevel=-1)
-			except ValueError: # Value Error for long(), probably others for commands.getoutput
-				writemsg("!!! Initializing global counter.\n", noiselevel=-1)
-				counter = long(0)
-			changed = 1
 
-		if counter < min_counter:
-			counter = min_counter + 1000
-			changed = 1
+		if counter < 0:
+			changed = True
+			max_counter = 0
+			cp_list = self.cp_list
+			for cp in self.cp_all():
+				for cpv in cp_list(cp):
+					try:
+						counter = int(self.aux_get(cpv, ["COUNTER"])[0])
+					except (KeyError, OverflowError, ValueError):
+						continue
+					if counter > max_counter:
+						max_counter = counter
+			counter = max_counter
+			writemsg("!!! Initializing COUNTER to " + \
+				"value of %d\n" % counter, noiselevel=-1)
 
 		if incrementing or changed:
 
