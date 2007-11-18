@@ -519,7 +519,7 @@ class vardbapi(dbapi):
 		if cache_valid:
 			cache_incomplete = self._aux_cache_keys.difference(metadata)
 			needed = metadata.get("NEEDED")
-			if needed is None or "\n" not in needed:
+			if needed is None or needed and "\n" not in needed:
 				# Cached value has whitespace filtered, so it has to be pulled
 				# again. This is temporary migration code which can be removed
 				# later, since it only affects users who are running trunk.
