@@ -1993,6 +1993,8 @@ class depgraph(object):
 		missing=0
 		if "--usepkgonly" in self.myopts:
 			for xs in self.digraph.all_nodes():
+				if not isinstance(xs, Package):
+					continue
 				if len(xs) >= 4 and xs[0] != "binary" and xs[3] == "merge":
 					if missing == 0:
 						print
