@@ -5664,8 +5664,10 @@ class vardbapi(dbapi):
 		if vartree is None:
 			vartree = globals()["db"][root]["vartree"]
 		self.vartree = vartree
-		self._aux_cache_keys = set(["SLOT", "COUNTER", "PROVIDE", "USE",
-			"IUSE", "DEPEND", "RDEPEND", "PDEPEND", "repository"])
+		self._aux_cache_keys = set(
+			["CHOST", "COUNTER", "DEPEND", "EAPI", "IUSE", "KEYWORDS",
+			"LICENSE", "PDEPEND", "PROVIDE", "RDEPEND", "NEEDED",
+			"repository", "RESTRICT" , "SLOT", "USE"])
 		self._aux_cache = None
 		self._aux_cache_version = "1"
 		self._aux_cache_filename = os.path.join(self.root,
@@ -6019,7 +6021,8 @@ class vardbapi(dbapi):
 					myd = myf.read()
 				finally:
 					myf.close()
-				myd = " ".join(myd.split())
+				if x != "NEEDED":
+					myd = " ".join(myd.split())
 			except IOError:
 				myd = ""
 			if x == "EAPI" and not myd:
