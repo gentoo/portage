@@ -943,8 +943,31 @@ dyn_compile() {
 	echo "${USE}"		> USE
 	echo "${EAPI:-0}"	> EAPI
 	set +f
-	set                     >  environment
-	export | sed 's:^declare -rx:declare -x:' >> environment
+	(
+		# There's no need to bloat environment.bz2 with internally defined
+		# functions and variables, so filter them out if possible.
+
+		unset -f dump_trace diefunc quiet_mode vecho elog_base eqawarn elog \
+			esyslog einfo einfon ewarn eerror ebegin _eend eend KV_major \
+			KV_minor KV_micro KV_to_int get_KV unset_colors set_colors has \
+			hasv hasq qa_source qa_call addread addwrite adddeny addpredict \
+			lchown lchgrp esyslog use usev useq has_version portageq \
+			best_version use_with use_enable register_die_hook check_KV \
+			keepdir unpack strip_duplicate_slashes econf einstall gen_wrapper \
+			dyn_setup dyn_unpack dyn_clean into insinto exeinto docinto \
+			insopts diropts exeopts libopts abort_handler abort_compile \
+			abort_test abort_install dyn_compile dyn_test dyn_install \
+			dyn_preinst dyn_help debug-print debug-print-function \
+			debug-print-section inherit EXPORT_FUNCTIONS newdepend newrdepend \
+			newpdepend do_newdepend remove_path_entry killparent
+
+		{
+			set | egrep -v -e '^SANDBOX_' -e '^LD_PRELOAD=' -e '^FAKEROOTKEY='
+			export | egrep -v -e '^declare -x SANDBOX_' \
+				-e '^declare -x LD_PRELOAD=' -e '^declare -x FAKEROOTKEY=' | \
+				sed 's:^declare -rx:declare -x:'
+		} > environment
+	)
 	bzip2 -f9 environment
 
 	cp "${EBUILD}" "${PF}.ebuild"
