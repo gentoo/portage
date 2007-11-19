@@ -1392,6 +1392,7 @@ preprocess_ebuild_env() {
 	save_ebuild_env > "${T}"/environment.baseline
 	(
 		source "${T}"/environment
+		unset FEATURES
 		source "${T}"/environment.baseline
 		save_ebuild_env > "${T}"/environment
 	)
