@@ -18,12 +18,6 @@ fi
 
 declare -rx EBUILD_PHASE
 
-if [ "$*" != "depend" ] && [ "$*" != "clean" ] && [ "$*" != "nofetch" ]; then
-	if [ -f "${T}/environment" ]; then
-		source "${T}/environment" >& /dev/null
-	fi
-fi
-
 # These two functions wrap sourcing and calling respectively.  At present they
 # perform a qa check to make sure eclasses and ebuilds and profiles don't mess
 # with shell opts (shopts).  Ebuilds/eclasses changing shopts should reset them 
@@ -54,6 +48,7 @@ EBUILD_MASTER_PID=$$
 trap 'exit 1' SIGTERM
 
 EBUILD_SH_ARGS="$*"
+declare -r EBUILD_SH_ARGS
 
 shift $#
 
@@ -1355,11 +1350,16 @@ remove_path_entry() {
 	PATH="${stripped_path}"
 }
 
-save_ebuild_env() {
-	# In bash-3.2_p20+ an attempt to assign BASH_*, FUNCNAME, GROUPS or any
-	# readonly variable cause the shell to exit while executing the "source"
-	# builtin command. To avoid this problem, this function filters those
-	# variables out and discards them. See bug #190128.
+# @FUNCTION: filter_readonly_variables
+# @DESCRIPTION:
+# Read an environment from stdin and echo to stdout while filtering readonly
+# variables.
+#
+# In bash-3.2_p20+ an attempt to assign BASH_*, FUNCNAME, GROUPS or any
+# readonly variable cause the shell to exit while executing the "source"
+# builtin command. To avoid this problem, this function filters those
+# variables out and discards them. See bug #190128.
+filter_readonly_variables() {
 	local readonly_vars=$(readonly | while read line; \
 		do [[ ${line} == "declare -"*" "*"="* ]] || continue ; \
 		x=${line%%=*} ; echo ${x##* } ; done)
@@ -1371,7 +1371,37 @@ save_ebuild_env() {
 		var_grep="${var_grep}|(^|^declare[[:space:]]+-[^[:space:]]+[[:space:]]+)${x}=.*"
 	done
 	var_grep=${var_grep:1} # strip the first |
-	unset x readonly_vars
+	egrep -v -e "${var_grep}"
+}
+
+# @FUNCTION: preprocess_ebuild_env
+# @DESCRIPTION:
+# Filter any readonly variables from ${T}/environment, source it, and then
+# save it via save_ebuild_env(). This process should be sufficient to prevent
+# any stale variables or functions from an arbitrary environment from
+# interfering with the current environment. This is useful when an existing
+# environment needs to be loaded from a binary or installed package.
+#
+# For simplicity, the current implementation will cause the current environment
+# to override *everything* in the environment that is being processed. In the
+# future, it should be more selective and only override the parts that are
+# strictly necessary.
+preprocess_ebuild_env() {
+	filter_readonly_variables < "${T}"/environment > "${T}"/environment.filtered
+	mv "${T}"/environment.filtered "${T}"/environment
+	save_ebuild_env > "${T}"/environment.baseline
+	(
+		source "${T}"/environment
+		source "${T}"/environment.baseline
+		save_ebuild_env > "${T}"/environment
+	)
+	rm "${T}"/environment.baseline
+}
+
+# @FUNCTION: save_ebuild_env
+# @DESCRIPTION:
+# echo the current environment to stdout, filtering out redundant info.
+save_ebuild_env() {
 	(
 		# There's no need to bloat environment.bz2 with internally defined
 		# functions and variables, so filter them out if possible.
@@ -1389,11 +1419,11 @@ save_ebuild_env() {
 			dyn_preinst dyn_help debug-print debug-print-function \
 			debug-print-section inherit EXPORT_FUNCTIONS newdepend newrdepend \
 			newpdepend do_newdepend remove_path_entry killparent \
-			save_ebuild_env
+			save_ebuild_env filter_readonly_variables preprocess_ebuild_env
 
 		set
 		export
-	) | egrep -v -e "${var_grep}"
+	) | filter_readonly_variables
 }
 
 # === === === === === === === === === === === === === === === === === ===
@@ -1506,6 +1536,21 @@ if hasq "depend" "${EBUILD_SH_ARGS}"; then
 		eval "$FUNC_SRC" || echo "error creating QA interceptor ${BIN}" >&2
 	done
 	unset BIN_PATH BIN BODY FUNC_SRC
+fi
+
+if ! hasq ${EBUILD_SH_ARGS} depend clean nofetch; then
+	if [ -f "${T}/environment" ]; then
+		source "${T}/environment"
+	else
+		if hasq ${EBUILD_SH_ARGS} setup prerm ; then
+			bzip2 -dc "${EBUILD%/*}"/environment.bz2 > \
+				"${T}"/environment 2> /dev/null
+			if [ -f "${T}/environment" ]; then
+				preprocess_ebuild_env
+				source "${T}/environment"
+			fi
+		fi
+	fi
 fi
 
 # reset the EBUILD_DEATH_HOOKS so they don't multiple due to stable's re-sourcing of env.
