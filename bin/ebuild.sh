@@ -957,8 +957,8 @@ dyn_compile() {
 	echo "${USE}"		> USE
 	echo "${EAPI:-0}"	> EAPI
 	set +f
-	set                     >  environment
-	export | sed 's:^declare -rx:declare -x:' >> environment
+
+	save_ebuild_env > environment
 	bzip2 -f9 environment
 
 	cp "${EBUILD}" "${PF}.ebuild"
@@ -1369,6 +1369,47 @@ remove_path_entry() {
 	PATH="${stripped_path}"
 }
 
+save_ebuild_env() {
+	# In bash-3.2_p20+ an attempt to assign BASH_*, FUNCNAME, GROUPS or any
+	# readonly variable cause the shell to exit while executing the "source"
+	# builtin command. To avoid this problem, this function filters those
+	# variables out and discards them. See bug #190128.
+	local readonly_vars=$(readonly | while read line; \
+		do [[ ${line} == "declare -"*" "*"="* ]] || continue ; \
+		x=${line%%=*} ; echo ${x##* } ; done)
+	local x var_grep=""
+	for x in BASH SANDBOX ; do
+		var_grep="${var_grep}|(^|^declare[[:space:]]+-[^[:space:]]+[[:space:]]+)${x}_[_[:alnum:]]*=.*"
+	done
+	for x in ${readonly_vars} var_grep LD_PRELOAD FAKEROOTKEY FUNCNAME GROUPS ; do
+		var_grep="${var_grep}|(^|^declare[[:space:]]+-[^[:space:]]+[[:space:]]+)${x}=.*"
+	done
+	var_grep=${var_grep:1} # strip the first |
+	unset x readonly_vars
+	(
+		# There's no need to bloat environment.bz2 with internally defined
+		# functions and variables, so filter them out if possible.
+
+		unset -f dump_trace diefunc quiet_mode vecho elog_base eqawarn elog \
+			esyslog einfo einfon ewarn eerror ebegin _eend eend KV_major \
+			KV_minor KV_micro KV_to_int get_KV unset_colors set_colors has \
+			hasv hasq qa_source qa_call addread addwrite adddeny addpredict \
+			lchown lchgrp esyslog use usev useq has_version portageq \
+			best_version use_with use_enable register_die_hook check_KV \
+			keepdir unpack strip_duplicate_slashes econf einstall gen_wrapper \
+			dyn_setup dyn_unpack dyn_clean into insinto exeinto docinto \
+			insopts diropts exeopts libopts abort_handler abort_compile \
+			abort_test abort_install dyn_compile dyn_test dyn_install \
+			dyn_preinst dyn_help debug-print debug-print-function \
+			debug-print-section inherit EXPORT_FUNCTIONS newdepend newrdepend \
+			newpdepend do_newdepend remove_path_entry killparent \
+			save_ebuild_env
+
+		set
+		export
+	) | egrep -v -e "${var_grep}"
+}
+
 # === === === === === === === === === === === === === === === === === ===
 # === === === === === functions end, main part begins === === === === ===
 # === === === === === functions end, main part begins === === === === ===
@@ -1675,16 +1716,13 @@ done
 
 # Save the env only for relevant phases.
 if [ -n "${myarg}" ] && \
-	[ "${myarg}" != "clean" ] && \
-	[ "${myarg}" != "help" ] ; then
+	! hasq ${myarg} clean help info ; then
 	# Do not save myarg in the env, or else the above [ -n "$myarg" ] test will
 	# give a false positive when ebuild.sh is sourced.
 	unset myarg
 	# Save current environment and touch a success file. (echo for success)
 	umask 002
-	set | egrep -v -e "^SANDBOX_" -e "^LD_PRELOAD=" -e "^FAKEROOTKEY=" > "${T}/environment" 2>/dev/null
-	export | egrep -v -e "^declare -x SANDBOX_" -e "^declare -x LD_PRELOAD=" -e "^declare -x FAKEROOTKEY=" | \
-		sed 's:^declare -rx:declare -x:' >> "${T}/environment" 2>/dev/null
+	save_ebuild_env > "${T}/environment" 2>/dev/null
 	chown ${PORTAGE_USER:-portage}:${PORTAGE_GROUP:-portage} "${T}/environment" &>/dev/null
 	chmod g+w "${T}/environment" &>/dev/null
 fi

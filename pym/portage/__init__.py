@@ -974,9 +974,6 @@ class config(object):
 			self._use_wildcards = copy.deepcopy(clone._use_wildcards)
 		else:
 
-			# backupenv is for calculated incremental variables.
-			self.backupenv = os.environ.copy()
-
 			def check_var_directory(varname, var):
 				if not os.path.isdir(var):
 					writemsg(("!!! Error: %s='%s' is not a directory. " + \
@@ -1229,15 +1226,16 @@ class config(object):
 			self.configlist.append({})
 			self.configdict["auto"]=self.configlist[-1]
 
+			# backupenv is used for calculating incremental variables.
+			self.backupenv = os.environ.copy()
 			self.configlist.append(self.backupenv) # XXX Why though?
 			self.configdict["backupenv"]=self.configlist[-1]
 
-			myenv = os.environ.copy()		
 			# Don't allow the user to override certain variables in the env
 			for k in profile_only_variables:
-				myenv.pop(k, None)
+				self.backupenv.pop(k, None)
 
-			self.configlist.append(myenv)
+			self.configlist.append(self.backupenv.copy())
 			self.configdict["env"]=self.configlist[-1]
 
 			# make lookuplist for loading package.*
@@ -4189,7 +4187,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 		# Build directory creation isn't required for any of these.
 		have_build_dirs = False
-		if mydo not in ("digest", "fetch", "help", "manifest"):
+		if mydo not in ("digest", "fetch", "help", "info", "manifest"):
 			mystatus = prepare_build_dirs(myroot, mysettings, cleanup)
 			if mystatus:
 				return mystatus
