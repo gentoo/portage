@@ -385,22 +385,6 @@ def create_depgraph_params(myopts, myaction):
 		myparams.add("consistent")
 	return myparams
 
-
-class EmergeConfig(portage.config):
-	def __init__(self, settings, trees=None, setconfig=None):
-		""" You have to specify one of trees or setconfig """
-		portage.config.__init__(self, clone=settings)
-		if not setconfig:
-			setconfigpaths = [os.path.join(GLOBAL_CONFIG_PATH, "sets.conf")]
-			setconfigpaths.append(os.path.join(settings["PORTDIR"], "sets.conf"))
-			setconfigpaths += [os.path.join(x, "sets.conf") for x in settings["PORDIR_OVERLAY"].split()]
-			setconfigpaths.append(os.path.join(settings["PORTAGE_CONFIGROOT"],
-				USER_CONFIG_PATH.lstrip(os.path.sep), "sets.conf"))
-			#setconfig = SetConfig(setconfigpaths, settings, trees)
-			setconfig = make_default_config(settings, trees)
-		self.setconfig = setconfig
-		self.sets = self.setconfig.getSetsWithAliases()
-
 # search functionality
 class search(object):
 
@@ -413,18 +397,18 @@ class search(object):
 	#
 	# public interface
 	#
-	def __init__(self, settings, portdb, vartree, spinner, searchdesc,
+	def __init__(self, root_config, spinner, searchdesc,
 		verbose):
 		"""Searches the available and installed packages for the supplied search key.
 		The list of available and installed packages is created at object instantiation.
 		This makes successive searches faster."""
-		self.settings = settings
-		self.portdb = portdb
-		self.vartree = vartree
+		self.settings = root_config.settings
+		self.portdb = root_config.trees["porttree"].dbapi
+		self.vartree = root_config.trees["vartree"]
 		self.spinner = spinner
 		self.verbose = verbose
 		self.searchdesc = searchdesc
-		self.setconfig = settings.setconfig
+		self.setconfig = root_config.setconfig
 
 	def execute(self,searchkey):
 		"""Performs the search for the supplied search key"""
@@ -597,10 +581,12 @@ class search(object):
 class RootConfig(object):
 	"""This is used internally by depgraph to track information about a
 	particular $ROOT."""
-	def __init__(self, trees):
+	def __init__(self, trees, setconfig):
 		self.trees = trees
 		self.settings = trees["vartree"].settings
 		self.root = self.settings["ROOT"]
+		self.setconfig = setconfig
+		self.sets = self.setconfig.getSetsWithAliases()
 
 def create_world_atom(pkg_key, metadata, args_set, root_config):
 	"""Create a new atom for the world file if one does not exist.  If the
@@ -614,7 +600,7 @@ def create_world_atom(pkg_key, metadata, args_set, root_config):
 		return None
 	cp = portage.dep_getkey(arg_atom)
 	new_world_atom = cp
-	sets = root_config.settings.sets
+	sets = root_config.sets
 	portdb = root_config.trees["porttree"].dbapi
 	vardb = root_config.trees["vartree"].dbapi
 	available_slots = set(portdb.aux_get(cpv, ["SLOT"])[0] \
@@ -1183,7 +1169,10 @@ class depgraph(object):
 				clone=self.trees[myroot]["vartree"].settings)
 			self._slot_pkg_map[myroot] = {}
 			vardb = self.trees[myroot]["vartree"].dbapi
-			self.roots[myroot] = RootConfig(self.trees[myroot])
+			# Create a RootConfig instance that references
+			# the FakeVartree instead of the real one.
+			self.roots[myroot] = RootConfig(self.trees[myroot],
+				trees[myroot]["root_config"].setconfig)
 			# This fakedbapi instance will model the state that the vdb will
 			# have after new packages have been installed.
 			fakedb = portage.fakedbapi(settings=self.pkgsettings[myroot])
@@ -1734,8 +1723,8 @@ class depgraph(object):
 		"""Given a list of .tbz2s, .ebuilds sets, and deps, create the
 		appropriate depgraph and return a favorite list."""
 		root_config = self.roots[self.target_root]
-		sets = root_config.settings.sets
-		getSetAtoms = root_config.settings.setconfig.getSetAtoms
+		sets = root_config.sets
+		getSetAtoms = root_config.setconfig.getSetAtoms
 		oneshot = "--oneshot" in self.myopts or \
 			"--onlydeps" in self.myopts
 		myfavorites=[]
@@ -2523,7 +2512,7 @@ class depgraph(object):
 			if not required_set_names and not self._ignored_deps:
 				continue
 			root_config = self.roots[root]
-			setconfig = root_config.settings.setconfig
+			setconfig = root_config.setconfig
 			args = []
 			# Reuse existing SetArg instances when available.
 			for arg in self._parent_child_digraph.root_nodes():
@@ -3606,8 +3595,8 @@ class depgraph(object):
 
 				pkg_cp = xs[0]
 				root_config = self.roots[myroot]
-				system_set = root_config.settings.sets["system"]
-				world_set  = root_config.settings.sets["world"]
+				system_set = root_config.sets["system"]
+				world_set  = root_config.sets["world"]
 
 				pkg_system = False
 				pkg_world = False
@@ -3846,7 +3835,7 @@ class depgraph(object):
 			if x in self.myopts:
 				return
 		root_config = self.roots[self.target_root]
-		world_set = root_config.settings.sets["world"]
+		world_set = root_config.sets["world"]
 		world_set.lock()
 		world_set.load() # maybe it's changed on disk
 		args_set = self._sets["args"]
@@ -4048,9 +4037,8 @@ class MergeTask(object):
 			self.edebug = 1
 		self.pkgsettings = {}
 		for root in trees:
-			self.pkgsettings[root] = EmergeConfig(
-				trees[root]["vartree"].settings,
-				setconfig=trees[root]["vartree"].settings.setconfig)
+			self.pkgsettings[root] = portage.config(
+				clone=trees[root]["vartree"].settings)
 		self.curval = 0
 
 	def merge(self, mylist, favorites, mtimedb):
@@ -4116,10 +4104,10 @@ class MergeTask(object):
 				del x, mytype, myroot, mycpv, mystatus, quiet_config
 			del shown_verifying_msg, quiet_settings
 
-		root_config = RootConfig(self.trees[self.target_root])
-		system_set = root_config.settings.sets["system"]
+		root_config = self.trees[self.target_root]["root_config"]
+		system_set = root_config.sets["system"]
 		args_set = InternalPackageSet(favorites)
-		world_set = root_config.settings.sets["world"]
+		world_set = root_config.sets["world"]
 		if "--resume" not in self.myopts:
 			mymergelist = mylist
 			mtimedb["resume"]["mergelist"]=mymergelist[:]
@@ -4428,7 +4416,8 @@ class MergeTask(object):
 					if pkgsettings.get("AUTOCLEAN", "yes") == "yes":
 						xsplit=portage.pkgsplit(x[2])
 						emergelog(xterm_titles, " >>> AUTOCLEAN: " + xsplit[0])
-						retval = unmerge(pkgsettings, self.myopts, vartree,
+						retval = unmerge(self.trees[myroot]["root_config"],
+							self.myopts,
 							"clean", [xsplit[0]], ldpath_mtimes, autoclean=1)
 						if not retval:
 							emergelog(xterm_titles,
@@ -4520,8 +4509,11 @@ class MergeTask(object):
 				sys.exit(0)
 		return os.EX_OK
 
-def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
-	ldpath_mtimes, autoclean=0):
+def unmerge(root_config, myopts, unmerge_action,
+	unmerge_files, ldpath_mtimes, autoclean=0):
+	settings = root_config.settings
+	sets = root_config.sets
+	vartree = root_config.trees["vartree"]
 	candidate_catpkgs=[]
 	global_unmerge=0
 	xterm_titles = "notitles" not in settings.features
@@ -4536,7 +4528,7 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 	try:
 		if os.access(vdb_path, os.W_OK):
 			vdb_lock = portage.locks.lockdir(vdb_path)
-		realsyslist = settings.sets["system"].getAtoms()
+		realsyslist = sets["system"].getAtoms()
 		syslist = []
 		for x in realsyslist:
 			mycp = portage.dep_getkey(x)
@@ -4818,7 +4810,7 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 				show_unmerge_failure_message(y, ebuild, retval)
 				sys.exit(retval)
 			else:
-				settings.sets["world"].cleanPackage(vartree.dbapi, y)
+				sets["world"].cleanPackage(vartree.dbapi, y)
 				emergelog(xterm_titles, " >>> unmerge success: "+y)
 	return 1
 
@@ -5954,12 +5946,12 @@ def action_info(settings, trees, myopts, myfiles):
 				mydbapi=trees[settings["ROOT"]]["vartree"].dbapi,
 				tree="vartree")
 
-def action_search(settings, portdb, vartree, myopts, myfiles, spinner):
+def action_search(root_config, myopts, myfiles, spinner):
 	if not myfiles:
 		print "emerge: no search terms provided."
 	else:
-		searchinstance = search(settings, portdb,
-			vartree, spinner, "--searchdesc" in myopts,
+		searchinstance = search(root_config,
+			spinner, "--searchdesc" in myopts,
 			"--quiet" not in myopts)
 		for mysearch in myfiles:
 			try:
@@ -6008,8 +6000,10 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	vardb = dep_check_trees[myroot]["vartree"].dbapi
 	# Constrain dependency selection to the installed packages.
 	dep_check_trees[myroot]["porttree"] = dep_check_trees[myroot]["vartree"]
-	syslist = settings.setconfig.getSetAtoms("system")
-	worldlist = settings.setconfig.getSetAtoms("world")
+	root_config = trees[myroot]["root_config"]
+	setconfig = root_config.setconfig
+	syslist = setconfig.getSetAtoms("system")
+	worldlist = setconfig.getSetAtoms("world")
 	args_set = InternalPackageSet()
 	fakedb = portage.fakedbapi(settings=settings)
 	myvarlist = vardb.cpv_all()
@@ -6258,7 +6252,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 					good("--nodeps"))
 
 	if len(cleanlist):
-		unmerge(settings, myopts, trees[settings["ROOT"]]["vartree"],
+		unmerge(root_config, myopts,
 			"unmerge", cleanlist, ldpath_mtimes)
 
 	if action == "prune":
@@ -6523,8 +6517,8 @@ def action_build(settings, trees, mtimedb,
 			mtimedb.pop("resume", None)
 			if "yes" == settings.get("AUTOCLEAN"):
 				portage.writemsg_stdout(">>> Auto-cleaning packages...\n")
-				vartree = trees[settings["ROOT"]]["vartree"]
-				unmerge(settings, myopts, vartree, "clean", [],
+				unmerge(trees[settings["ROOT"]]["root_config"],
+					myopts, "clean", [],
 					ldpath_mtimes, autoclean=1)
 			else:
 				portage.writemsg_stdout(colorize("WARN", "WARNING:")
@@ -6653,11 +6647,10 @@ def load_emerge_config(trees=None):
 		kwargs[k] = os.environ.get(envvar, None)
 	trees = portage.create_trees(trees=trees, **kwargs)
 
-	for root in trees:
-		settings = trees[root]["vartree"].settings
-		settings = EmergeConfig(settings, trees=trees[root])
-		settings.lock()
-		trees[root]["vartree"].settings = settings
+	for root, root_trees in trees.iteritems():
+		settings = root_trees["vartree"].settings
+		setconfig = make_default_config(settings, root_trees)
+		root_trees["root_config"] = RootConfig(root_trees, setconfig)
 
 	settings = trees["/"]["vartree"].settings
 
@@ -6847,10 +6840,12 @@ def emerge_main():
 			print colorize("BAD", "\n*** emerging by path is broken and may not always work!!!\n")
 			break
 
-	mysets = {}
 	# only expand sets for actions taking package arguments
 	oldargs = myfiles[:]
 	if myaction in ("clean", "config", "depclean", "info", "prune", "unmerge"):
+		root_config = trees[settings["ROOT"]]["root_config"]
+		setconfig = root_config.setconfig
+		sets = root_config.sets
 		newargs = []
 		for a in myfiles:
 			if a in ("system", "world"):
@@ -6863,21 +6858,20 @@ def emerge_main():
 		for a in myfiles:
 			if a.startswith(SETPREFIX):
 				s = a[len(SETPREFIX):]
-				if s not in settings.sets:
+				if s not in sets:
 					print "emerge: there are no sets to satisfy %s." % \
 						colorize("INFORM", s)
 					return 1
 				# TODO: check if the current setname also resolves to a package name
 				if myaction in ["unmerge", "prune", "clean", "depclean"] and \
-					not settings.sets[s].supportsOperation("unmerge"):
+					not sets[s].supportsOperation("unmerge"):
 					print "emerge: the given set %s does not support unmerge operations" % s
 					return 1
-				if not settings.setconfig.getSetAtoms(s):
+				if not setconfig.getSetAtoms(s):
 					print "emerge: '%s' is an empty set" % s
 				else:
-					newargs.extend(settings.setconfig.getSetAtoms(s))
-					mysets[s] = settings.sets[s]
-				for e in settings.sets[s].errors:
+					newargs.extend(setconfig.getSetAtoms(s))
+				for e in sets[s].errors:
 					print e
 			else:
 				newargs.append(a)
@@ -7077,13 +7071,13 @@ def emerge_main():
 	# SEARCH action
 	elif "search"==myaction:
 		validate_ebuild_environment(trees)
-		action_search(settings, portdb, trees["/"]["vartree"],
+		action_search(trees[settings["ROOT"]]["root_config"],
 			myopts, myfiles, spinner)
 	elif myaction in ("clean", "unmerge") or \
 		(myaction == "prune" and "--nodeps" in myopts):
 		validate_ebuild_environment(trees)
-		vartree = trees[settings["ROOT"]]["vartree"]
-		if 1 == unmerge(settings, myopts, vartree, myaction, myfiles,
+		root_config = trees[settings["ROOT"]]["root_config"]
+		if 1 == unmerge(root_config, myopts, myaction, myfiles,
 			mtimedb["ldpath"]):
 			if "--pretend" not in myopts:
 				post_emerge(trees, mtimedb, os.EX_OK)
