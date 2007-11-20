@@ -1214,6 +1214,8 @@ class depgraph:
 			"package slot have been \n")
 		msg.append("!!! pulled into the dependency graph:\n\n")
 		indent = "  "
+		# Max number of parents shown, to avoid flooding the display.
+		max_parents = 3
 		for slot_atom, root in self._slot_collision_info:
 			msg.append(slot_atom)
 			msg.append("\n\n")
@@ -1233,11 +1235,23 @@ class depgraph:
 				msg.append(str(node))
 				parents = self._parent_child_digraph.parent_nodes(node)
 				if parents:
+					omitted_parents = 0
+					if len(parents) > max_parents:
+						omitted_parents = len(parents) - max_parents
+						pruned_list = []
+						for parent in parents:
+							pruned_list.append(parent)
+							if len(pruned_list) == max_parents:
+								break
+						parents = pruned_list
 					msg.append(" pulled in by\n")
 					for parent in parents:
 						msg.append(2*indent)
 						msg.append(str(parent))
 						msg.append("\n")
+					if omitted_parents:
+						msg.append(2*indent)
+						msg.append("(and %d more)\n" % omitted_parents)
 				else:
 					msg.append(" (no parents)\n")
 				msg.append("\n")
