@@ -95,7 +95,7 @@ signal.signal(signal.SIGINT,exithandler)
 
 shortmodes={"ci":"commit"}
 modeshelp={
-"scan"   : "Scan directory tree for QA issues (default)",
+"scan"   : "Scan directory tree for QA issues (short listing)",
 "manifest" : "Generate a Manifest (fetches files if necessary)",
 "fix"    : "Fix simple QA issues (stray digests, missing digests)",
 "full"   : "Scan directory tree for QA issues (full listing)",
@@ -271,9 +271,9 @@ def help(exitstatus=1,helpfulness=1):
 		print
 	print bold(" Usage:"),turquoise(exename),"[",green("options"),"] [",green("mode"),"]"
 	if helpfulness:
-		print bold(" Modes:"),turquoise("scan (default)"),
+		print bold(" Modes:"),turquoise("full (default)"),
 		for x in modes:
-			if x == "scan":
+			if x == "full":
 				continue
 			print "|",turquoise(x),
 		print
@@ -391,7 +391,7 @@ if len(sys.argv)>1:
 			err_help("\""+sys.argv[x]+"\" is not a valid mode or option.")
 		x=x+1
 if mymode is None:
-	mymode="scan"
+	mymode = "full"
 if mymode=="help" or ("--help" in myoptions):
 	help(exitstatus=0)
 if ("--version" in myoptions):
