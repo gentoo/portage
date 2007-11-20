@@ -755,7 +755,20 @@ def x11_deprecation_check(depstr):
 				return True
 	return False
 
-class EbuildQuote(object):
+MISSING_QUOTES_ERROR = 'Unquoted Variable on line: %d'
+NESTED_DIE_ERROR = 'Ebuild calls die in a subshell on line: %d'
+REDUNDANT_CD_S_ERROR = 'Ebuild has redundant cd ${S} statement on line: %d'
+
+class LineCheck(object):
+	"""Run a check on a line of an ebuild."""
+	"""A regular expression to determine whether to ignore the line"""
+	ignore_line = False
+
+	def check(self, num, line):
+		"""Run the check on line and return error if there is one"""
+		pass
+
+class EbuildQuote(LineCheck):
 	"""Ensure ebuilds have valid quoting around things like D,FILESDIR, etc..."""
 
 	repoman_check_name = 'ebuild.minorsyn'
@@ -763,119 +776,98 @@ class EbuildQuote(object):
 	var_names = r'(D|S|T|ROOT|FILESDIR|WORKDIR)'
 	var_reference = re.compile(r'\$(\{'+var_names+'\}|' + \
 		var_names + '\W)')
-	missing_quotes = re.compile(r'(\s|^)[^"\s]*\$\{?' + var_names + \
-		r'\}?[^"\s]*(\s|$)')
+	missing_quotes = re.compile(r'(\s|^)[^"\'\s]*\$\{?' + var_names + \
+		r'\}?[^"\'\s]*(\s|$)')
 	cond_begin =  re.compile(r'(^|\s+)\[\[($|\\$|\s+)')
 	cond_end =  re.compile(r'(^|\s+)\]\]($|\\$|\s+)')
 	
-	def __init__(self, contents):
-		self.contents = contents
-
-	def Run(self):
-		"""Locate simple errors in ebuilds:
-		Missing quotes around variables that may contain spaces
-		"""
-
-		errors = []
-		for num, line in enumerate(self.contents):
-			if self.ignore_line.match(line) is not None:
-				continue
-			if self.var_reference.search(line) is None:
-				continue
-			# There can be multiple matches / violations on a single line. We
-			# have to make sure none of the matches are violators. Once we've
-			# found one violator, any remaining matches on the same line can
-			# be ignored.
-			pos = 0
-			while pos <= len(line) - 1:
-				missing_quotes = self.missing_quotes.search(line, pos)
-				if not missing_quotes:
-					break
-				# If the last character of the previous match is a whitespace
-				# character, that character may be needed for the next
-				# missing_quotes match, so search overlaps by 1 character.
-				group = missing_quotes.group()
-				pos = missing_quotes.end() - 1
-
-				# Filter out some false positives that can
-				# get through the missing_quotes regex.
-				if self.var_reference.search(group) is None:
-					continue
-
-				# This is an attempt to avoid false positives without getting
-				# too complex, while possibly allowing some (hopefully
-				# unlikely) violations to slip through. We just assume
-				# everything is correct if the there is a ' [[ ' or a ' ]] '
-				# anywhere in the whole line (possibly continued over one
-				# line).
-				if self.cond_begin.search(line) is not None:
-					continue
-				if self.cond_end.search(line) is not None:
-					continue
-
-				errors.append((num + 1, 'Unquoted Variable on line: %d'))
-				# Any remaining matches on the same line can be ignored.
+	def check(self, num, line):
+		if self.var_reference.search(line) is None:
+			return
+		# There can be multiple matches / violations on a single line. We
+		# have to make sure none of the matches are violators. Once we've
+		# found one violator, any remaining matches on the same line can
+		# be ignored.
+		pos = 0
+		while pos <= len(line) - 1:
+			missing_quotes = self.missing_quotes.search(line, pos)
+			if not missing_quotes:
 				break
-		return errors
+			# If the last character of the previous match is a whitespace
+			# character, that character may be needed for the next
+			# missing_quotes match, so search overlaps by 1 character.
+			group = missing_quotes.group()
+			pos = missing_quotes.end() - 1
 
-class EbuildNestedDie(object):
+			# Filter out some false positives that can
+			# get through the missing_quotes regex.
+			if self.var_reference.search(group) is None:
+				continue
+
+			# This is an attempt to avoid false positives without getting
+			# too complex, while possibly allowing some (hopefully
+			# unlikely) violations to slip through. We just assume
+			# everything is correct if the there is a ' [[ ' or a ' ]] '
+			# anywhere in the whole line (possibly continued over one
+			# line).
+			if self.cond_begin.search(line) is not None:
+				continue
+			if self.cond_end.search(line) is not None:
+				continue
+
+			# Any remaining matches on the same line can be ignored.
+			return MISSING_QUOTES_ERROR
+
+class EbuildNestedDie(LineCheck):
 	"""Check ebuild for nested die statements (die statements in subshells"""
-
+	
 	repoman_check_name = 'ebuild.nesteddie'
 	nesteddie_re = re.compile(r'^[^#]*\([^)]*\bdie\b')
+	
+	def check(self, num, line):
+		if self.nesteddie_re.match(line):
+			return NESTED_DIE_ERROR
 
-	def __init__(self, contents):
-		self.contents = contents
-
-	def Run(self):
-		errors = []
-		for num, line in enumerate(self.contents):
-			match = self.nesteddie_re.match(line)
-			if match:
-				errors.append((num + 1,
-					'Ebuild calls die in a subshell on line: %d'))
-		return errors
-
-class EbuildUselessDodoc(object):
+class EbuildUselessDodoc(LineCheck):
 	"""Check ebuild for useless files in dodoc arguments."""
 	repoman_check_name = 'ebuild.minorsyn'
 	uselessdodoc_re = re.compile(
 		r'^\s*dodoc(\s+|\s+.*\s+)(ABOUT-NLS|COPYING|LICENSE)($|\s)')
 
-	def __init__(self, contents):
-		self.contents = contents
+	def check(self, num, line):
+		match = self.uselessdodoc_re.match(line)
+		if match:
+			return "Useless dodoc '%s'" % (match.group(2), ) + " on line: %d"
 
-	def Run(self):
-		errors = []
-		uselessdodoc_re = self.uselessdodoc_re
-		for num, line in enumerate(self.contents):
-			match = uselessdodoc_re.match(line)
-			if match:
-				errors.append((num + 1, "Useless dodoc '%s'" % \
-					(match.group(2), ) + " on line: %d"))
-		return errors
-
-class EbuildUselessCdS(object):
+class EbuildUselessCdS(LineCheck):
 	"""Check for redundant cd ${S} statements"""
 	repoman_check_name = 'ebuild.minorsyn'
 	method_re = re.compile(r'^\s*src_(compile|install|test)\s*\(\)')
 	cds_re = re.compile(r'^\s*cd\s+("\$(\{S\}|S)"|\$(\{S\}|S))\s')
 
-	def __init__(self, contents):
-		self.contents = contents
+	def __init__(self):
+		self.check_next_line = False
 
-	def Run(self):
-		errors = []
-		check_next_line = False
-		for num, line in enumerate(self.contents):
-			if check_next_line:
-				check_next_line = False
-				if self.cds_re.match(line):
-					errors.append((num + 1,
-						'Ebuild has redundant cd ${S} statement on line: %d'))
-			elif self.method_re.match(line):
-				check_next_line = True
-		return errors
+	def check(self, num, line):
+		if self.check_next_line:
+			self.check_next_line = False
+			if self.cds_re.match(line):
+				return REDUNDANT_CD_S_ERROR
+		elif self.method_re.match(line):
+			self.check_next_line = True
+
+def run_checks(contents):
+	checks = []
+	for c in (EbuildQuote, EbuildUselessDodoc, EbuildUselessCdS,
+		EbuildNestedDie):
+		checks.append(c())
+	for num, line in enumerate(contents):
+		for lc in checks:
+			ignore = lc.ignore_line
+			if not ignore or not ignore.match(line):
+				e = lc.check(num, line)
+				if e:
+					yield lc.repoman_check_name, e % (num + 1)
 
 if mymode == "commit":
 	retval = ("","")
@@ -1489,29 +1481,19 @@ for x in scanlist:
 				for mybad in mybadrestrict:
 					fails["RESTRICT.invalid"].append(x+"/"+y+".ebuild: %s" % mybad)
 		# Syntax Checks
-		path = checkdir + '/' + y + '.ebuild'
-		myear = time.gmtime(os.stat(path)[ST_MTIME])[0]
-		f = open(path, 'rb')
+		relative_path = os.path.join(x, y + ".ebuild")
+		full_path = os.path.join(repodir, relative_path)
+		f = open(full_path, 'rb')
 		try:
 			contents = f.readlines()
+			for check_name, e in run_checks(contents):
+				stats[check_name] += 1
+				fails[check_name].append(relative_path + ': %s' % e)
 		finally:
 			f.close()
 			del f
-		for check in (EbuildQuote, EbuildUselessDodoc, EbuildUselessCdS):
-			c = check(contents)
-			errors = c.Run()
-			for e in errors:
-				stats[c.repoman_check_name] += 1
-				fails[c.repoman_check_name].append(x + '/' + y + '.ebuild: %s' % e[1] % e[0])
-		del check
-		check = EbuildNestedDie(contents)
-		errors = check.Run()
-		for e in errors:
-			stats[check.repoman_check_name] += 1
-			fails[check.repoman_check_name].append(
-				x + '/' + y + '.ebuild: %s' % e[1] % e[0])
-		del check
 
+		myear = time.gmtime(os.stat(full_path)[ST_MTIME])[0]
 		gentoo_copyright = re.compile(r'^# Copyright ((1999|200\d)-)?' + str(myear) + r' Gentoo Foundation')
 		gentoo_license = re.compile(r'^# Distributed under the terms of the GNU General Public License v2$')
 		cvs_header = re.compile(r'^#\s*\$Header.*\$$')
