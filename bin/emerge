@@ -1981,6 +1981,8 @@ class depgraph:
 							green('"%s"' % myparent[2]) + \
 							red(' [%s]' % myparent[0]) + ')'
 					alleb = portdb.xmatch("match-all", x)
+					from textwrap import wrap
+					have_eapi_mask = False
 					if alleb:
 						if "--usepkgonly" not in self.myopts:
 							print "\n!!! "+red("All ebuilds that could satisfy ")+green(xinfo)+red(" have been masked.")
@@ -1996,6 +1998,24 @@ class depgraph:
 									print filename+":"
 									print comment
 									oldcomment = comment
+								try:
+									aux_keys = list(portdb._aux_cache_keys)
+									metadata = dict(izip(aux_keys,
+										portdb.aux_get(p, aux_keys)))
+								except KeyError:
+									pass
+								else:
+									if not portage.eapi_is_supported(
+										metadata["EAPI"]):
+										have_eapi_mask = True
+							if have_eapi_mask:
+								print
+								msg = ("The current version of portage supports " + \
+									"EAPI '%s'. You must upgrade to a newer version" + \
+									" of portage before EAPI masked packages can" + \
+									" be installed.") % portage_const.EAPI
+								for line in wrap(msg, 75):
+									print line
 							print
 							print "For more information, see MASKED PACKAGES section in the emerge man page or "
 							print "refer to the Gentoo Handbook."
@@ -2014,10 +2034,9 @@ class depgraph:
 											metadata["CHOST"])
 									if not portage.eapi_is_supported(
 										metadata["EAPI"]):
-										mreasons.append(("required EAPI %s" + \
-											", supported EAPI %s") % \
-											(metadata["EAPI"],
-											portage_const.EAPI))
+										have_eapi_mask = True
+										mreasons.append(
+											"EAPI %s" % metadata["EAPI"])
 									print "- "+p+" (masked by: "+", ".join(mreasons)+")"
 							print "!!! "+red("There are no packages available to satisfy: ")+green(xinfo)
 							print "!!! Either add a suitable binary package or compile from an ebuild."
