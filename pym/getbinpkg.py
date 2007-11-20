@@ -455,6 +455,8 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 	else:
 		keepconnection = 1
 
+	cache_path = "/var/cache/edb"
+
 	if makepickle is None:
 		makepickle = "/var/cache/edb/metadata.idx.most_recent"
 
@@ -481,6 +483,11 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 		metadata[baseurl]["unmodified"]=0
 	if not metadata[baseurl].has_key("data"):
 		metadata[baseurl]["data"]={}
+
+	if not os.access(cache_path, os.W_OK):
+		sys.stderr.write("!!! Unable to write binary metadata to disk!\n")
+		sys.stderr.write("!!! Permission denied: '%s'\n" % cache_path)
+		return metadata[baseurl]["data"]
 
 	filelist = dir_get_list(baseurl, conn)
 	tbz2list = match_in_array(filelist, suffix=".tbz2")
