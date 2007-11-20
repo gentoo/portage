@@ -1350,6 +1350,10 @@ remove_path_entry() {
 	PATH="${stripped_path}"
 }
 
+declare -r READONLY_EBUILD_METADATA="DEPEND DESCRIPTION
+	EAPI HOMEPAGE INHERITED IUSE KEYWORDS LICENSE
+	PDEPEND PROVIDE RDEPEND RESTRICT SLOT SRC_URI"
+
 # @FUNCTION: filter_readonly_variables
 # @DESCRIPTION:
 # Read an environment from stdin and echo to stdout while filtering readonly
@@ -1368,10 +1372,15 @@ filter_readonly_variables() {
 		var_grep="${var_grep}|(^|^declare[[:space:]]+-[^[:space:]]+[[:space:]]+)${x}_[_[:alnum:]]*=.*"
 	done
 	for x in ${readonly_vars} DIRSTACK FUNCNAME GROUPS PIPESTATUS ; do
+		hasq ${x} ${READONLY_EBUILD_METADATA} && continue
 		var_grep="${var_grep}|(^|^declare[[:space:]]+-[^[:space:]]+[[:space:]]+)${x}=.*"
 	done
 	var_grep=${var_grep:1} # strip the first |
-	egrep -v -e "${var_grep}"
+	# The sed is to remove the readonly attribute from variables such as those
+	# listed in READONLY_EBUILD_METADATA, since having any readonly attributes
+	# persisting in the saved environment can be inconvenient when it
+	# eventually needs to be reloaded.
+	egrep -v -e "${var_grep}" | sed 's:^declare -rx:declare -x:'
 }
 
 # @FUNCTION: preprocess_ebuild_env
@@ -1568,42 +1577,75 @@ if hasq "depend" "${EBUILD_SH_ARGS}"; then
 	unset BIN_PATH BIN BODY FUNC_SRC
 fi
 
-if ! hasq ${EBUILD_SH_ARGS} depend clean nofetch; then
-	if [ -f "${T}/environment" ]; then
-		source "${T}/environment"
+if hasq ${EBUILD_PHASE} setup prerm && [ ! -f "${T}/environment" ]; then
+	bzip2 -dc "${EBUILD%/*}"/environment.bz2 > \
+		"${T}/environment" 2> /dev/null
+	if [ -s "${T}/environment" ] ; then
+		preprocess_ebuild_env
 	else
-		if hasq ${EBUILD_SH_ARGS} setup prerm ; then
-			bzip2 -dc "${EBUILD%/*}"/environment.bz2 > \
-				"${T}"/environment 2> /dev/null
-			if [ -f "${T}/environment" ]; then
-				preprocess_ebuild_env
-				source "${T}/environment"
-			fi
-		fi
+		rm -f "${T}/environment"
 	fi
 fi
 
-# reset the EBUILD_DEATH_HOOKS so they don't multiple due to stable's re-sourcing of env.
-# this can be left out of ebd variants, since they're unaffected.
-unset EBUILD_DEATH_HOOKS
+if hasq ${EBUILD_PHASE} clean ; then
+	true
+elif ! hasq ${EBUILD_PHASE} depend && [ -f "${T}"/environment ] ; then
+	source "${T}"/environment
+else
+	# *DEPEND and IUSE will be set during the sourcing of the ebuild.
+	# In order to ensure correct interaction between ebuilds and
+	# eclasses, they need to be unset before this process of
+	# interaction begins.
+	unset DEPEND RDEPEND PDEPEND IUSE
+	source "${EBUILD}" || die "error sourcing ebuild"
 
-# *DEPEND and IUSE will be set during the sourcing of the ebuild.  In order to
-# ensure correct interaction between ebuilds and eclasses, they need to be
-# unset before this process of interaction begins.
-unset DEPEND RDEPEND PDEPEND IUSE
+	if [ "${EBUILD_PHASE}" != "depend" ] ; then
+		RESTRICT=${PORTAGE_RESTRICT}
+		unset PORTAGE_RESTRICT
+	fi
 
-source "${EBUILD}" || die "error sourcing ebuild"
-if ! hasq depend $EBUILD_PHASE; then
-	RESTRICT="${PORTAGE_RESTRICT}"
-	unset PORTAGE_RESTRICT
+	# This next line is not the same as export RDEPEND=${RDEPEND:-${DEPEND}}
+	# That will test for unset *or* NULL (""). We want just to set for unset...
+	# turn off glob expansion from here on in to prevent *'s and ? in the
+	# DEPEND syntax from getting expanded :)
+	set -f
+	if [ "${RDEPEND-unset}" == "unset" ] ; then
+		export RDEPEND=${DEPEND}
+		debug-print "RDEPEND: not set... Setting to: ${DEPEND}"
+	fi
+
+	# add in dependency info from eclasses
+	IUSE="${IUSE} ${E_IUSE}"
+	DEPEND="${DEPEND} ${E_DEPEND}"
+	RDEPEND="${RDEPEND} ${E_RDEPEND}"
+	PDEPEND="${PDEPEND} ${E_PDEPEND}"
+
+	unset E_IUSE E_DEPEND E_RDEPEND E_PDEPEND
+
+	if [ "${EBUILD_PHASE}" != "depend" ] ; then
+		# Make IUSE defaults backward compatible with all the old shell code.
+		iuse_temp=""
+		for x in ${IUSE} ; do
+			if [[ ${x} == +* ]] || [[ ${x} == -* ]] ; then
+				iuse_temp="${iuse_temp} ${x:1}"
+			else
+				iuse_temp="${iuse_temp} ${x}"
+			fi
+		done
+		export IUSE=${iuse_temp}
+		unset x iuse_temp
+	fi
+	set +f
 fi
 
-# Expand KEYWORDS
-# We need to turn off pathname expansion for -* in KEYWORDS and
-# we need to escape ~ to avoid tilde expansion
-set -f
-KEYWORDS=$(eval echo ${KEYWORDS//~/\\~})
-set +f
+# unset USE_EXPAND variables that contain only the special "*" token
+for x in ${USE_EXPAND} ; do
+	[ "${!x}" == "*" ] && unset ${x}
+done
+unset x
+
+# Lock the dbkey variables after the global phase
+declare -r ${READONLY_EBUILD_METADATA}
 
 if hasq nostrip ${FEATURES} ${RESTRICT} || hasq strip ${RESTRICT}
 then
@@ -1624,50 +1666,6 @@ fi
 #scripts, so set it to $T.
 export TMP="${T}"
 export TMPDIR="${T}"
-
-# Note: this next line is not the same as export RDEPEND=${RDEPEND:-${DEPEND}}
-# That will test for unset *or* NULL ("").  We want just to set for unset...
-
-#turn off glob expansion from here on in to prevent *'s and ? in the DEPEND
-#syntax from getting expanded :)
-#check eclass rdepends also.
-set -f
-if [ "${RDEPEND-unset}" == "unset" ] ; then
-	export RDEPEND=${DEPEND}
-	debug-print "RDEPEND: not set... Setting to: ${DEPEND}"
-fi
-
-#add in dependency info from eclasses
-IUSE="$IUSE $E_IUSE"
-DEPEND="$DEPEND $E_DEPEND"
-RDEPEND="$RDEPEND $E_RDEPEND"
-PDEPEND="$PDEPEND $E_PDEPEND"
-
-unset E_IUSE E_DEPEND E_RDEPEND E_PDEPEND
-
-if [ "${EBUILD_PHASE}" != "depend" ]; then
-	# Make IUSE defaults backward compatible with all the old shell code.
-	iuse_temp=""
-	for x in ${IUSE} ; do
-		if [[ ${x} == +* ]] || [[ ${x} == -* ]] ; then
-			iuse_temp="${iuse_temp} ${x:1}"
-		else
-			iuse_temp="${iuse_temp} ${x}"
-		fi
-	done
-	export IUSE=${iuse_temp}
-	unset iuse_temp
-	# unset USE_EXPAND variables that contain only the special "*" token
-	for x in ${USE_EXPAND} ; do
-		[ "${!x}" == "*" ] && unset ${x}
-	done
-	unset x
-	# Lock the dbkey variables after the global phase
-	declare -r DEPEND RDEPEND SLOT SRC_URI RESTRICT HOMEPAGE LICENSE DESCRIPTION
-	declare -r KEYWORDS INHERITED IUSE PDEPEND PROVIDE
-fi
-
-set +f
 
 for myarg in ${EBUILD_SH_ARGS} ; do
 	case $myarg in
