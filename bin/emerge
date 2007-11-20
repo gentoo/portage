@@ -2270,7 +2270,9 @@ class depgraph:
 						slot_atom in modified_slots[myroot]:
 						replacement = final_db.match(slot_atom)
 						if replacement:
-							if not portage.match_from_list(mydep, replacement):
+							slot = portage_dep.dep_getslot(slot_atom)
+							if not portage.match_from_list(
+								mydep, ["%s:%s" % (replacement[0], slot)]):
 								# Apparently a replacement may be able to
 								# invalidate this block.
 								replacement_node = \
