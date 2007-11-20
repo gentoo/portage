@@ -128,7 +128,6 @@ def ParseArgs(args, qahelp):
 
 	modes = {
 		'commit' : 'Run a scan then commit changes',
-		'ci' : 'Run a scan then commit changes',
 		'fix' : 'Fix simple QA issues (stray digests, missing digests)',
 		'full' : 'Scan directory tree and print all issues (not a summary)',
 		'help' : 'Show this screen',
