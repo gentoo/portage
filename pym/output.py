@@ -377,7 +377,7 @@ class EOutput:
 		if columns <= 0:
 			columns = 80
 		# Adjust columns so that eend works properly on a standard BSD console.
-		if os.environ.get("TERM") == "cons25":
+		if os.environ.get("TERM") in ("cons25", "dumb"):
 			columns = columns - 1
 		self.term_columns = columns
 
