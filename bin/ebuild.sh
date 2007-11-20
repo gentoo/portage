@@ -5,7 +5,6 @@
 
 PORTAGE_BIN_PATH="${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"
 PORTAGE_PYM_PATH="${PORTAGE_PYM_PATH:-/usr/lib/portage/pym}"
-declare -rx PORTAGE_BIN_PATH PORTAGE_PYM_PATH
 
 SANDBOX_PREDICT="${SANDBOX_PREDICT}:/proc/self/maps:/dev/console:/dev/random"
 export SANDBOX_PREDICT="${SANDBOX_PREDICT}:${PORTAGE_PYM_PATH}:${PORTAGE_DEPCACHEDIR}"
@@ -15,8 +14,6 @@ export SANDBOX_READ="${SANDBOX_READ}:/dev/shm:/dev/stdin:${PORTAGE_TMPDIR}"
 if [ ! -z "${PORTAGE_GPG_DIR}" ]; then
 	SANDBOX_PREDICT="${SANDBOX_PREDICT}:${PORTAGE_GPG_DIR}"
 fi
-
-declare -rx EBUILD_PHASE
 
 # These two functions wrap sourcing and calling respectively.  At present they
 # perform a qa check to make sure eclasses and ebuilds and profiles don't mess
@@ -48,7 +45,6 @@ EBUILD_MASTER_PID=$$
 trap 'exit 1' SIGTERM
 
 EBUILD_SH_ARGS="$*"
-declare -r EBUILD_SH_ARGS
 
 shift $#
 
@@ -1350,9 +1346,12 @@ remove_path_entry() {
 	PATH="${stripped_path}"
 }
 
-declare -r READONLY_EBUILD_METADATA="DEPEND DESCRIPTION
+READONLY_EBUILD_METADATA="DEPEND DESCRIPTION
 	EAPI HOMEPAGE INHERITED IUSE KEYWORDS LICENSE
 	PDEPEND PROVIDE RDEPEND RESTRICT SLOT SRC_URI"
+
+READONLY_PORTAGE_VARS="D EBUILD EBUILD_PHASE EBUILD_SH_ARGS FILESDIR \
+	PORTAGE_BIN_PATH PORTAGE_PYM_PATH PORTAGE_TMPDIR T WORKDIR"
 
 # @FUNCTION: filter_readonly_variables
 # @DESCRIPTION:
@@ -1364,15 +1363,13 @@ declare -r READONLY_EBUILD_METADATA="DEPEND DESCRIPTION
 # builtin command. To avoid this problem, this function filters those
 # variables out and discards them. See bug #190128.
 filter_readonly_variables() {
-	local readonly_vars=$(readonly | while read line; \
-		do [[ ${line} == "declare -"*" "*"="* ]] || continue ; \
-		x=${line%%=*} ; echo ${x##* } ; done)
 	local x var_grep=""
 	for x in BASH SANDBOX ; do
 		var_grep="${var_grep}|(^|^declare[[:space:]]+-[^[:space:]]+[[:space:]]+)${x}_[_[:alnum:]]*=.*"
 	done
-	for x in ${readonly_vars} DIRSTACK FUNCNAME GROUPS PIPESTATUS ; do
-		hasq ${x} ${READONLY_EBUILD_METADATA} && continue
+	local readonly_bash_vars="DIRSTACK EUID FUNCNAME GROUPS
+		PIPESTATUS PPID SHELLOPTS UID"
+	for x in ${readonly_bash_vars} ${READONLY_PORTAGE_VARS} ; do
 		var_grep="${var_grep}|(^|^declare[[:space:]]+-[^[:space:]]+[[:space:]]+)${x}=.*"
 	done
 	var_grep=${var_grep:1} # strip the first |
@@ -1449,12 +1446,14 @@ save_ebuild_env() {
 			PORTAGE_ELOG_MAILSUBJECT PORTAGE_ELOG_MAILURI PORTAGE_ELOG_SYSTEM \
 			PORTAGE_GID PORTAGE_GPG_DIR PORTAGE_GPG_KEY PORTAGE_INST_GID \
 			PORTAGE_INST_UID PORTAGE_LOG_FILE PORTAGE_MASTER_PID \
-			PORTAGE_REPO_NAME PORTAGE_RSYNC_EXTRA_OPTS PORTAGE_RSYNC_OPTS \
+			PORTAGE_REPO_NAME PORTAGE_RESTRICT \
+			PORTAGE_RSYNC_EXTRA_OPTS PORTAGE_RSYNC_OPTS \
 			PORTAGE_RSYNC_RETRIES PORTAGE_TMPFS PORTAGE_WORKDIR_MODE PORTDIR \
 			PORTDIR_OVERLAY PORT_LOGDIR PROFILE_PATHS PWORKDIR \
 			QUICKPKG_DEFAULT_OPTS QA_INTERCEPTORS \
 			RC_DEFAULT_INDENT RC_DOT_PATTERN RC_ENDCOL \
-			RC_INDENTATION RESUMECOMMAND RESUMECOMMAND_HTTP \
+			RC_INDENTATION READONLY_EBUILD_METADATA READONLY_PORTAGE_VARS \
+			RESUMECOMMAND RESUMECOMMAND_HTTP \
 			RESUMECOMMAND_HTTP RESUMECOMMAND_SFTP ROOT ROOTPATH RPMDIR \
 			S STARTDIR SYNC TMP TMPDIR USE_EXPAND \
 			USE_EXPAND_HIDDEN USE_ORDER WARN XARGS
@@ -1542,15 +1541,6 @@ export S=${WORKDIR}/${P}
 
 unset E_IUSE E_DEPEND E_RDEPEND E_PDEPEND
 
-for x in A AA CATEGORY D EBUILD EMERGE_FROM FILESDIR P PF PN PR \
-	PORTAGE_TMPDIR PV PVR T WORKDIR; do
-	[[ ${!x-UNSET_VAR} != UNSET_VAR ]] && declare -r ${x}
-done
-unset x
-# Set IMAGE for minimal backward compatibility with
-# overlays or user's bashrc, but don't export it.
-IMAGE=${D}
-
 # Turn of extended glob matching so that g++ doesn't get incorrectly matched.
 shopt -u extglob
 
@@ -1587,6 +1577,10 @@ if hasq ${EBUILD_PHASE} setup prerm && [ ! -f "${T}/environment" ]; then
 	fi
 fi
 
+# Set IMAGE for minimal backward compatibility with
+# overlays or user's bashrc, but don't export it.
+[ "${EBUILD_PHASE}" == "preinst" ] && IMAGE=${D}
+
 if hasq ${EBUILD_PHASE} clean ; then
 	true
 elif ! hasq ${EBUILD_PHASE} depend && [ -f "${T}"/environment ] ; then
@@ -1601,7 +1595,6 @@ else
 
 	if [ "${EBUILD_PHASE}" != "depend" ] ; then
 		RESTRICT=${PORTAGE_RESTRICT}
-		unset PORTAGE_RESTRICT
 	fi
 
 	# This next line is not the same as export RDEPEND=${RDEPEND:-${DEPEND}}
@@ -1644,9 +1637,6 @@ for x in ${USE_EXPAND} ; do
 done
 unset x
 
-# Lock the dbkey variables after the global phase
-[ "${EBUILD_PHASE}" != "depend" ] && declare -r ${READONLY_EBUILD_METADATA}
-
 if hasq nostrip ${FEATURES} ${RESTRICT} || hasq strip ${RESTRICT}
 then
 	export DEBUGBUILD=1
@@ -1666,6 +1656,16 @@ fi
 #scripts, so set it to $T.
 export TMP="${T}"
 export TMPDIR="${T}"
+
+# Note: readonly variables interfere with preprocess_ebuild_env(), so
+# declare them only after it has already run.
+if [ "${EBUILD_PHASE}" != "depend" ] ; then
+	declare -r ${READONLY_EBUILD_METADATA} ${READONLY_PORTAGE_VARS}
+	for x in A AA CATEGORY EMERGE_FROM P PF PN PR PV PVR ; do
+		[[ ${!x-UNSET_VAR} != UNSET_VAR ]] && declare -r ${x}
+	done
+	unset x
+fi
 
 for myarg in ${EBUILD_SH_ARGS} ; do
 	case $myarg in
