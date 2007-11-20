@@ -1233,8 +1233,10 @@ class config:
 				self.puseforce_list.append(cpdict)
 			del rawpuseforce
 
+			# make.globals should not be relative to config_root
+			# because it only contains constants.
 			try:
-				self.mygcfg   = getconfig(os.path.join(config_root, "etc", "make.globals"))
+				self.mygcfg   = getconfig(os.path.join("/etc", "make.globals"))
 
 				if self.mygcfg is None:
 					self.mygcfg = {}
