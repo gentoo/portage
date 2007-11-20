@@ -1645,7 +1645,7 @@ done
 unset x
 
 # Lock the dbkey variables after the global phase
-declare -r ${READONLY_EBUILD_METADATA}
+[ ${EBUILD_PHASE} != "depend" ] && declare -r ${READONLY_EBUILD_METADATA}
 
 if hasq nostrip ${FEATURES} ${RESTRICT} || hasq strip ${RESTRICT}
 then
