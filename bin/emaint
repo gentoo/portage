@@ -125,6 +125,10 @@ class VdbKeyHandler(object):
 
 def emaint_main(myargv):
 
+	# Similar to emerge, emaint needs a default umask so that created
+	# files (such as the world file) have sane permissions.
+	os.umask(022)
+
 	# TODO: Create a system that allows external modules to be added without
 	#       the need for hard coding.
 	modules = {"world" : WorldHandler}
