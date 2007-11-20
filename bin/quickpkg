@@ -70,6 +70,7 @@ def quickpkg_main(options, args, eout):
 	from portage_dep import use_reduce, paren_reduce
 	from portage_util import ConfigProtect, ensure_dirs
 	from portage_exception import InvalidData, InvalidDependString
+	import portage_exception
 	from portage_checksum import perform_md5
 	import tarfile
 	import portage
@@ -78,6 +79,10 @@ def quickpkg_main(options, args, eout):
 	vartree = trees["vartree"]
 	vardb = vartree.dbapi
 	bintree = trees["bintree"]
+	try:
+		ensure_dirs(bintree.pkgdir)
+	except portage_exception.PortageException:
+		pass
 	if not os.access(bintree.pkgdir, os.W_OK):
 		eout.eerror("No write access to '%s'" % bintree.pkgdir)
 		return errno.EACCES
