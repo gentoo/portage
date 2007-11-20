@@ -1381,22 +1381,15 @@ filter_readonly_variables() {
 # any stale variables or functions from an arbitrary environment from
 # interfering with the current environment. This is useful when an existing
 # environment needs to be loaded from a binary or installed package.
-#
-# For simplicity, the current implementation will cause the current environment
-# to override *everything* in the environment that is being processed. In the
-# future, it should be more selective and only override the parts that are
-# strictly necessary.
 preprocess_ebuild_env() {
 	filter_readonly_variables < "${T}"/environment > "${T}"/environment.filtered
 	mv "${T}"/environment.filtered "${T}"/environment
-	save_ebuild_env > "${T}"/environment.baseline
 	(
 		source "${T}"/environment
-		unset FEATURES
-		source "${T}"/environment.baseline
+		# Rely on save_ebuild_env() to filter out any remaining variables
+		# and functions that could interfere with the current environment.
 		save_ebuild_env > "${T}"/environment
 	)
-	rm "${T}"/environment.baseline
 }
 
 # @FUNCTION: save_ebuild_env
