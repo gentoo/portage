@@ -30,10 +30,11 @@ class SpawnTestCase(TestCase):
 			f = open(logfile, 'r')
 			log_content = f.read()
 			f.close()
-			# When logging passes through a pty, it's lines will be separated
-			# by '\r\n', so use splitlines before comparing results.
-			self.assertEqual(test_string.splitlines(),
-				log_content.splitlines())
+			# When logging passes through a pty, this comparison will fail
+			# unless the oflag terminal attributes have the termios.OPOST
+			# bit disabled. Otherwise, tranformations such as \n -> \r\n
+			# may occur.
+			self.assertEqual(test_string, log_content)
 		finally:
 			if logfile:
 				try:
