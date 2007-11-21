@@ -9249,6 +9249,13 @@ def create_trees(config_root=None, target_root=None, trees=None):
 	if settings["ROOT"] != "/":
 		settings = config(config_root=None, target_root=None,
 			config_incrementals=portage_const.INCREMENTALS)
+		# When ROOT != "/" we only want overrides from the calling
+		# environment to apply to the config that's associated
+		# with ROOT != "/", so we wipe out the "backupenv" for the
+		# config that is associated with ROOT == "/" and regenerate
+		# it's incrementals.
+		settings.configdict["backupenv"].clear()
+		settings.regenerate()
 		settings.lock()
 		settings.validate()
 		myroots.append((settings["ROOT"], settings))
