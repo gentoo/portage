@@ -1595,7 +1595,7 @@ if hasq ${EBUILD_PHASE} setup prerm && [ ! -f "${T}/environment" ]; then
 	fi
 fi
 
-if hasq ${EBUILD_PHASE} clean ; then
+if hasq ${EBUILD_SH_ARGS} clean ; then
 	true
 elif ! hasq ${EBUILD_PHASE} depend && [ -f "${T}"/environment ] ; then
 	source "${T}"/environment
@@ -1681,30 +1681,32 @@ if [ "${EBUILD_PHASE}" != "depend" ] ; then
 	unset x
 fi
 
-for myarg in ${EBUILD_SH_ARGS} ; do
-	case $myarg in
+if [ -n "${EBUILD_SH_ARGS}" ] ; then
+	case ${EBUILD_SH_ARGS} in
 	nofetch)
 		qa_call pkg_nofetch
 		exit 1
 		;;
 	prerm|postrm|postinst|config|info)
-		if [ "${myarg}" == "info" ] && \
-			[ "$(type -t pkg_${myarg})" != "function" ]; then
-			ewarn  "pkg_${myarg}() is not defined: '${EBUILD##*/}'"
+		if [ "${EBUILD_SH_ARGS}" == "info" ] && \
+			[ "$(type -t pkg_${EBUILD_SH_ARGS})" != "function" ]; then
+			ewarn  "pkg_${EBUILD_SH_ARGS}() is not defined: '${EBUILD##*/}'"
 			continue
 		fi
 		export SANDBOX_ON="0"
-		if [ "$PORTAGE_DEBUG" != "1" ]; then
-			[ "$(type -t pre_pkg_${myarg})" == "function" ] && qa_call pre_pkg_${myarg}
-			qa_call pkg_${myarg}
-			[ "$(type -t post_pkg_${myarg})" == "function" ] && qa_call post_pkg_${myarg}
-			#Allow non-zero return codes since they can be caused by &&
+		if [ "${PORTAGE_DEBUG}" != "1" ] || [ "${-/x/}" != "$-" ]; then
+			[ "$(type -t pre_pkg_${EBUILD_SH_ARGS})" == "function" ] && \
+				qa_call pre_pkg_${EBUILD_SH_ARGS}
+			qa_call pkg_${EBUILD_SH_ARGS}
+			[ "$(type -t post_pkg_${EBUILD_SH_ARGS})" == "function" ] && \
+				qa_call post_pkg_${EBUILD_SH_ARGS}
 		else
 			set -x
-			[ "$(type -t pre_pkg_${myarg})" == "function" ] && qa_call pre_pkg_${myarg}
-			qa_call pkg_${myarg}
-			[ "$(type -t post_pkg_${myarg})" == "function" ] && qa_call post_pkg_${myarg}
-			#Allow non-zero return codes since they can be caused by &&
+			[ "$(type -t pre_pkg_${EBUILD_SH_ARGS})" == "function" ] && \
+				qa_call pre_pkg_${EBUILD_SH_ARGS}
+			qa_call pkg_${EBUILD_SH_ARGS}
+			[ "$(type -t post_pkg_${EBUILD_SH_ARGS})" == "function" ] && \
+				qa_call post_pkg_${EBUILD_SH_ARGS}
 			set +x
 		fi
 		;;
@@ -1714,13 +1716,11 @@ for myarg in ${EBUILD_SH_ARGS} ; do
 		else
 			export SANDBOX_ON="0"
 		fi
-		if [ "$PORTAGE_DEBUG" != "1" ]; then
-			dyn_${myarg}
-			#Allow non-zero return codes since they can be caused by &&
+		if [ "${PORTAGE_DEBUG}" != "1" ] || [ "${-/x/}" != "$-" ]; then
+			dyn_${EBUILD_SH_ARGS}
 		else
 			set -x
-			dyn_${myarg}
-			#Allow non-zero return codes since they can be caused by &&
+			dyn_${EBUILD_SH_ARGS}
 			set +x
 		fi
 		export SANDBOX_ON="0"
@@ -1730,11 +1730,11 @@ for myarg in ${EBUILD_SH_ARGS} ; do
 		#for example, awking and piping a file in /tmp requires a temp file to be created
 		#in /etc.  If pkg_setup is in the sandbox, both our lilo and apache ebuilds break.
 		export SANDBOX_ON="0"
-		if [ "$PORTAGE_DEBUG" != "1" ]; then
-			dyn_${myarg}
+		if [ "${PORTAGE_DEBUG}" != "1" ] || [ "${-/x/}" != "$-" ]; then
+			dyn_${EBUILD_SH_ARGS}
 		else
 			set -x
-			dyn_${myarg}
+			dyn_${EBUILD_SH_ARGS}
 			set +x
 		fi
 		;;
@@ -1775,24 +1775,17 @@ for myarg in ${EBUILD_SH_ARGS} ; do
 		;;
 	*)
 		export SANDBOX_ON="1"
-		echo "Please specify a valid command."
+		echo "Unrecognized EBUILD_SH_ARGS: '${EBUILD_SH_ARGS}'"
 		echo
 		dyn_help
 		exit 1
 		;;
 	esac
-
-	#if [ $? -ne 0 ]; then
-	#	exit 1
-	#fi
-done
+fi
 
 # Save the env only for relevant phases.
-if [ -n "${myarg}" ] && \
-	! hasq ${myarg} clean help info ; then
-	# Do not save myarg in the env, or else the above [ -n "$myarg" ] test will
-	# give a false positive when ebuild.sh is sourced.
-	unset myarg
+if [ -n "${EBUILD_SH_ARGS}" ] && \
+	! hasq ${EBUILD_SH_ARGS} clean help info; then
 	# Save current environment and touch a success file. (echo for success)
 	umask 002
 	save_ebuild_env > "${T}/environment" 2>/dev/null
