@@ -109,11 +109,16 @@ class Manifest(object):
 			a Manifest (not needed for parsing and checking sums)."""
 		self.pkgdir = pkgdir.rstrip(os.sep) + os.sep
 		self.fhashdict = {}
-		self.hashes = portage_const.MANIFEST2_HASH_FUNCTIONS[:]
-		self.hashes.append("size")
+		self.hashes = set()
+		self.hashes.update(portage_const.MANIFEST2_HASH_FUNCTIONS)
 		if manifest1_compat:
-			self.hashes.extend(portage_const.MANIFEST1_HASH_FUNCTIONS)
-		self.hashes = sets.Set(self.hashes)
+			self.hashes.update(portage_const.MANIFEST1_HASH_FUNCTIONS)
+		self.hashes.difference_update(hashname for hashname in \
+			list(self.hashes) if hashname not in hashfunc_map)
+		self.hashes.add("size")
+		if manifest1_compat:
+			self.hashes.add(portage_const.MANIFEST1_REQUIRED_HASH)
+		self.hashes.add(portage_const.MANIFEST2_REQUIRED_HASH)
 		for t in portage_const.MANIFEST2_IDENTIFIERS:
 			self.fhashdict[t] = {}
 		self.compat = manifest1_compat
@@ -329,11 +334,16 @@ class Manifest(object):
 		if self.compat:
 			cvp_list = self.fetchlist_dict.keys()
 			cvp_list.sort()
+			manifest1_hashes = set(hashname for hashname in \
+				portage_const.MANIFEST1_HASH_FUNCTIONS \
+				if hashname in hashfunc_map)
+			manifest1_hashes.add(portage_const.MANIFEST1_REQUIRED_HASH)
+			manifest1_hashes.add("size")
 			for cpv in cvp_list:
 				digest_path = os.path.join("files", "digest-%s" % self._catsplit(cpv)[1])
 				dname = os.path.join(self.pkgdir, digest_path)
 				try:
-					myhashes = perform_multiple_checksums(dname, portage_const.MANIFEST1_HASH_FUNCTIONS+["size"])
+					myhashes = perform_multiple_checksums(dname, manifest1_hashes)
 					myhashkeys = myhashes.keys()
 					myhashkeys.sort()
 					for h in myhashkeys:
