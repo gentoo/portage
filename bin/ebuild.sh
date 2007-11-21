@@ -926,33 +926,6 @@ dyn_compile() {
 	#|| abort_compile "fail"
 	cd "${PORTAGE_BUILDDIR}"
 	touch .compiled
-	cd build-info
-
-	set -f
-	local f
-	for f in ASFLAGS CATEGORY CBUILD CC CFLAGS CHOST CTARGET CXX \
-		CXXFLAGS DEPEND EXTRA_ECONF EXTRA_EINSTALL EXTRA_MAKE \
-		FEATURES INHERITED IUSE LDFLAGS LIBCFLAGS LIBCXXFLAGS \
-		LICENSE PDEPEND PF PKGUSE PROVIDE RDEPEND RESTRICT SLOT \
-		KEYWORDS HOMEPAGE SRC_URI DESCRIPTION; do
-		[ -n "${!f}" ] && echo $(echo "${!f}" | tr '\n,\r,\t' ' , , ' | sed s/'  \+'/' '/g) > ${f}
-	done
-	echo "${USE}"		> USE
-	echo "${EAPI:-0}"	> EAPI
-	set +f
-
-	# local variables can leak into the saved environment.
-	unset f srcdir
-	save_ebuild_env > environment
-	bzip2 -f9 environment
-
-	cp "${EBUILD}" "${PF}.ebuild"
-	[ -n "${PORTAGE_REPO_NAME}" ]  && echo "${PORTAGE_REPO_NAME}" > repository
-	if hasq nostrip ${FEATURES} ${RESTRICT} || hasq strip ${RESTRICT}
-	then
-		touch DEBUGBUILD
-	fi
-
 	[ "$(type -t post_src_compile)" == "function" ] && qa_call post_src_compile
 
 	trap SIGINT SIGQUIT
@@ -1029,6 +1002,33 @@ dyn_install() {
 	vecho
 	cd ${PORTAGE_BUILDDIR}
 	[ "$(type -t post_src_install)" == "function" ] && qa_call post_src_install
+
+	cd "${PORTAGE_BUILDDIR}"/build-info
+	set -f
+	local f
+	for f in ASFLAGS CATEGORY CBUILD CC CFLAGS CHOST CTARGET CXX \
+		CXXFLAGS DEPEND EXTRA_ECONF EXTRA_EINSTALL EXTRA_MAKE \
+		FEATURES INHERITED IUSE LDFLAGS LIBCFLAGS LIBCXXFLAGS \
+		LICENSE PDEPEND PF PKGUSE PROVIDE RDEPEND RESTRICT SLOT \
+		KEYWORDS HOMEPAGE SRC_URI DESCRIPTION; do
+		[ -n "${!f}" ] && echo $(echo "${!f}" | \
+			tr '\n,\r,\t' ' , , ' | sed s/'  \+'/' '/g) > ${f}
+	done
+	echo "${USE}"       > USE
+	echo "${EAPI:-0}"   > EAPI
+	set +f
+
+	# local variables can leak into the saved environment.
+	unset f
+	save_ebuild_env > environment
+	bzip2 -f9 environment
+
+	cp "${EBUILD}" "${PF}.ebuild"
+	[ -n "${PORTAGE_REPO_NAME}" ]  && echo "${PORTAGE_REPO_NAME}" > repository
+	if hasq nostrip ${FEATURES} ${RESTRICT} || hasq strip ${RESTRICT}
+	then
+		touch DEBUGBUILD
+	fi
 	trap SIGINT SIGQUIT
 }
 
