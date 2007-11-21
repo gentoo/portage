@@ -1071,6 +1071,7 @@ class dblink(object):
 		# Now, don't assume that the name of the ebuild is the same as the
 		# name of the dir; the package may have been moved.
 		myebuildpath = None
+		ebuild_phase = "prerm"
 		mystuff = listdir(self.dbdir, EmptyOnError=1)
 		for x in mystuff:
 			if x.endswith(".ebuild"):
@@ -1127,6 +1128,7 @@ class dblink(object):
 			self.vartree.dbapi.plib_registry.unregister(self.mycpv, self.settings["SLOT"], self.settings["COUNTER"])
 
 			if myebuildpath:
+				ebuild_phase = "postrm"
 				retval = doebuild(myebuildpath, "postrm", self.myroot,
 					 self.settings, use_cache=0, tree="vartree",
 					 mydbapi=self.vartree.dbapi, vartree=self.vartree)
@@ -1143,6 +1145,19 @@ class dblink(object):
 			if builddir_lock:
 				try:
 					if myebuildpath:
+						if retval != os.EX_OK:
+							msg = ("The '%s' " % ebuild_phase) + \
+							("phase of the '%s' package " % self.mycpv) + \
+							("has failed with exit value %s. " % retval) + \
+							"The problem occurred while executing " + \
+							("the ebuild located at '%s'. " % myebuildpath) + \
+							"If necessary, manually remove the ebuild " + \
+							"in order to skip the execution of removal phases."
+							from portage.elog.messages import eerror
+							from textwrap import wrap
+							for l in wrap(msg, 72):
+								eerror(l, phase=ebuild_phase, key=self.mycpv)
+
 						# process logs created during pre/postrm
 						elog_process(self.mycpv, self.settings, phasefilter=filter_unmergephases)
 						if retval == os.EX_OK:

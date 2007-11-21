@@ -4832,32 +4832,11 @@ def unmerge(root_config, myopts, unmerge_action,
 				vartree=vartree, ldpath_mtimes=ldpath_mtimes)
 			if retval != os.EX_OK:
 				emergelog(xterm_titles, " !!! unmerge FAILURE: "+y)
-				ebuild = vartree.dbapi.findname(y)
-				show_unmerge_failure_message(y, ebuild, retval)
 				sys.exit(retval)
 			else:
 				sets["world"].cleanPackage(vartree.dbapi, y)
 				emergelog(xterm_titles, " >>> unmerge success: "+y)
 	return 1
-
-def show_unmerge_failure_message(pkg, ebuild, retval):
-
-	from formatter import AbstractFormatter, DumbWriter
-	f = AbstractFormatter(DumbWriter(sys.stderr, maxcol=72))
-
-	msg = []
-	msg.append("A removal phase of the '%s' package " % pkg)
-	msg.append("has failed with exit value %s.  " % retval)
-	msg.append("The problem occurred while executing ")
-	msg.append("the ebuild located at '%s'.  " % ebuild)
-	msg.append("If necessary, manually remove the ebuild " )
-	msg.append("in order to skip the execution of removal phases.")
-
-	f.end_paragraph(1)
-	for x in msg:
-		f.add_flowing_data(x)
-	f.end_paragraph(1)
-	f.writer.flush()
 
 def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 

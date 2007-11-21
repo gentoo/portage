@@ -96,6 +96,7 @@ diefunc() {
 		done
 	fi
 	if [ "${EMERGE_FROM}" != "binary" ] && \
+		! hasq ${EBUILD_PHASE} prerm postrm && \
 		[ "${EBUILD#${PORTDIR}/}" == "${EBUILD}" ] ; then
 		local overlay=${EBUILD%/*}
 		overlay=${overlay%/*}

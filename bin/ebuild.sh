@@ -63,6 +63,10 @@ source "${PORTAGE_BIN_PATH}/isolated-functions.sh"  &>/dev/null
 OCC="$CC"
 OCXX="$CXX"
 
+# Set IMAGE for minimal backward compatibility with
+# overlays or user's bashrc, but don't export it.
+[ "${EBUILD_PHASE}" == "preinst" ] && IMAGE=${D}
+
 [[ $PORTAGE_QUIET != "" ]] && export PORTAGE_QUIET
 
 # the sandbox is disabled by default except when overridden in the relevant stages
@@ -303,15 +307,19 @@ keepdir() {
 	local x
 	if [ "$1" == "-R" ] || [ "$1" == "-r" ]; then
 		shift
-		find "$@" -type d -printf "${ED}%p/.keep_${CATEGORY}_${PN}-${SLOT}\n" | tr "\n" "\0" | $XARGS -0 -n100 touch || die "Failed to recursively create .keep files"
+		find "$@" -type d -printf "${ED}%p/.keep_${CATEGORY}_${PN}-${SLOT}\n" \
+			| tr "\n" "\0" | ${XARGS} -0 -n100 touch || \
+			die "Failed to recursively create .keep files"
 	else
 		for x in "$@"; do
-			touch "${ED}${x}/.keep_${CATEGORY}_${PN}-${SLOT}" || die "Failed to create .keep in ${ED}${x}"
+			touch "${ED}${x}/.keep_${CATEGORY}_${PN}-${SLOT}" || \
+				die "Failed to create .keep in ${ED}${x}"
 		done
 	fi
 }
 
 unpack() {
+	local srcdir
 	local x
 	local y
 	local myfail
@@ -377,6 +385,9 @@ unpack() {
 			LHa|LHA|lha|lzh)
 				lha xfq "${srcdir}${x}" || die "$myfail"
 				;;
+			a)
+				ar x "${srcdir}${x}" || die "$myfail"
+				;;
 			deb)
 				# Unpacking .deb archives can not always be done with
 				# `ar`.  For instance on AIX this doesn't work out.  If
@@ -389,9 +400,6 @@ unpack() {
 				else
 					ar x "${srcdir}/${x}" || die "$myfail"
 				fi
-				;;
-			a)
-				ar x "${srcdir}${x}" || die "$myfail"
 				;;
 			lzma)
 				if [ "${y}" == "tar" ]; then
@@ -919,10 +927,10 @@ dyn_compile() {
 	fi
 	if [ -d "${S}" ]; then
 		srcdir=${S}
-		cd "${S}"
 	else
-		cd "${WORKDIR}"
+		srcdir=${WORKDIR}
 	fi
+	cd "${srcdir}"
 	#our custom version of libtool uses $S and $ED to fix
 	#invalid paths in .la files
 	export S ED
@@ -935,30 +943,6 @@ dyn_compile() {
 	#|| abort_compile "fail"
 	cd "${PORTAGE_BUILDDIR}"
 	touch .compiled
-	cd build-info
-
-	set -f
-	for f in ASFLAGS CATEGORY CBUILD CC CFLAGS CHOST CTARGET CXX \
-		CXXFLAGS DEPEND EXTRA_ECONF EXTRA_EINSTALL EXTRA_MAKE \
-		FEATURES INHERITED IUSE LDFLAGS LIBCFLAGS LIBCXXFLAGS \
-		LICENSE PDEPEND PF PKGUSE PROVIDE RDEPEND RESTRICT SLOT \
-		KEYWORDS HOMEPAGE SRC_URI DESCRIPTION EPREFIX ; do
-		[ -n "${!f}" ] && echo $(echo "${!f}" | tr '\n,\r,\t' ' , , ' | sed s/'  \+'/' '/g) > ${f}
-	done
-	echo "${USE}"		> USE
-	echo "${EAPI:-0}"	> EAPI
-	set +f
-
-	save_ebuild_env > environment
-	bzip2 -f9 environment
-
-	cp "${EBUILD}" "${PF}.ebuild"
-	[ -n "${PORTAGE_REPO_NAME}" ]  && echo "${PORTAGE_REPO_NAME}" > repository
-	if hasq nostrip ${FEATURES} ${RESTRICT} || hasq strip ${RESTRICT}
-	then
-		touch DEBUGBUILD
-	fi
-
 	[ "$(type -t post_src_compile)" == "function" ] && qa_call post_src_compile
 
 	trap SIGINT SIGQUIT
@@ -1035,6 +1019,42 @@ dyn_install() {
 	vecho
 	cd ${PORTAGE_BUILDDIR}
 	[ "$(type -t post_src_install)" == "function" ] && qa_call post_src_install
+
+	cd "${PORTAGE_BUILDDIR}"/build-info
+	set -f
+	local f
+	for f in ASFLAGS CATEGORY CBUILD CC CFLAGS CHOST CTARGET CXX \
+		CXXFLAGS DEPEND EXTRA_ECONF EXTRA_EINSTALL EXTRA_MAKE \
+		FEATURES INHERITED IUSE LDFLAGS LIBCFLAGS LIBCXXFLAGS \
+		LICENSE PDEPEND PF PKGUSE PROVIDE RDEPEND RESTRICT SLOT \
+		KEYWORDS HOMEPAGE SRC_URI DESCRIPTION; do
+		[ -n "${!f}" ] && echo $(echo "${!f}" | \
+			tr '\n,\r,\t' ' , , ' | sed s/'  \+'/' '/g) > ${f}
+	done
+	echo "${USE}"       > USE
+	echo "${EAPI:-0}"   > EAPI
+	set +f
+
+	# local variables can leak into the saved environment.
+	unset f
+
+	(
+		# To avoid environment.bz2 bloat, cleanse variables that are
+		# are no longer needed after src_install(). Don't cleanse from
+		# the global environment though, in case the user wants to repeat
+		# this phase (like with FEATURES=noauto and the ebuild command).
+		unset S
+	
+		save_ebuild_env > environment
+	)
+	bzip2 -f9 environment
+
+	cp "${EBUILD}" "${PF}.ebuild"
+	[ -n "${PORTAGE_REPO_NAME}" ]  && echo "${PORTAGE_REPO_NAME}" > repository
+	if hasq nostrip ${FEATURES} ${RESTRICT} || hasq strip ${RESTRICT}
+	then
+		touch DEBUGBUILD
+	fi
 	trap SIGINT SIGQUIT
 }
 
@@ -1454,8 +1474,9 @@ save_ebuild_env() {
 			KV LAST_E_CMD LAST_E_LEN LD_PRELOAD MOPREFIX \
 			NORMAL O PATH PKGDIR PKGUSE PKG_LOGDIR PKG_TMPDIR \
 			PORTAGE_ACTUAL_DISTDIR PORTAGE_ARCHLIST PORTAGE_BASHRC \
-			PORTAGE_BINHOST_CHUNKSIZE PORTAGE_BUILDDIR PORTAGE_CALLER \
-			PORTAGE_COLORMAP PORTAGE_CONFIGROOT \
+			PORTAGE_BINHOST_CHUNKSIZE PORTAGE_BINPKG_TMPFILE \
+			PORTAGE_BUILDDIR PORTAGE_CALLER \
+			PORTAGE_COLORMAP PORTAGE_CONFIGROOT PORTAGE_DEBUG \
 			PORTAGE_DEPCACHEDIR PORTAGE_ELOG_CLASSES PORTAGE_ELOG_MAILFROM \
 			PORTAGE_ELOG_MAILSUBJECT PORTAGE_ELOG_MAILURI PORTAGE_ELOG_SYSTEM \
 			PORTAGE_GID PORTAGE_GPG_DIR PORTAGE_GPG_KEY PORTAGE_INST_GID \
@@ -1469,7 +1490,7 @@ save_ebuild_env() {
 			RC_INDENTATION READONLY_EBUILD_METADATA READONLY_PORTAGE_VARS \
 			RESUMECOMMAND RESUMECOMMAND_HTTP \
 			RESUMECOMMAND_HTTP RESUMECOMMAND_SFTP ROOT ROOTPATH RPMDIR \
-			S STARTDIR SYNC TMP TMPDIR USE_EXPAND \
+			STARTDIR SYNC TMP TMPDIR USE_EXPAND \
 			USE_EXPAND_HIDDEN USE_ORDER WARN XARGS
 
 		set
@@ -1591,11 +1612,7 @@ if hasq ${EBUILD_PHASE} setup prerm && [ ! -f "${T}/environment" ]; then
 	fi
 fi
 
-# Set IMAGE for minimal backward compatibility with
-# overlays or user's bashrc, but don't export it.
-[ "${EBUILD_PHASE}" == "preinst" ] && IMAGE=${D}
-
-if hasq ${EBUILD_PHASE} clean ; then
+if hasq ${EBUILD_SH_ARGS} clean ; then
 	true
 elif ! hasq ${EBUILD_PHASE} depend && [ -f "${T}"/environment ] ; then
 	source "${T}"/environment
@@ -1681,30 +1698,32 @@ if [ "${EBUILD_PHASE}" != "depend" ] ; then
 	unset x
 fi
 
-for myarg in ${EBUILD_SH_ARGS} ; do
-	case $myarg in
+if [ -n "${EBUILD_SH_ARGS}" ] ; then
+	case ${EBUILD_SH_ARGS} in
 	nofetch)
 		qa_call pkg_nofetch
 		exit 1
 		;;
 	prerm|postrm|postinst|config|info)
-		if [ "${myarg}" == "info" ] && \
-			[ "$(type -t pkg_${myarg})" != "function" ]; then
-			ewarn  "pkg_${myarg}() is not defined: '${EBUILD##*/}'"
+		if [ "${EBUILD_SH_ARGS}" == "info" ] && \
+			[ "$(type -t pkg_${EBUILD_SH_ARGS})" != "function" ]; then
+			ewarn  "pkg_${EBUILD_SH_ARGS}() is not defined: '${EBUILD##*/}'"
 			continue
 		fi
 		export SANDBOX_ON="0"
-		if [ "$PORTAGE_DEBUG" != "1" ]; then
-			[ "$(type -t pre_pkg_${myarg})" == "function" ] && qa_call pre_pkg_${myarg}
-			qa_call pkg_${myarg}
-			[ "$(type -t post_pkg_${myarg})" == "function" ] && qa_call post_pkg_${myarg}
-			#Allow non-zero return codes since they can be caused by &&
+		if [ "${PORTAGE_DEBUG}" != "1" ] || [ "${-/x/}" != "$-" ]; then
+			[ "$(type -t pre_pkg_${EBUILD_SH_ARGS})" == "function" ] && \
+				qa_call pre_pkg_${EBUILD_SH_ARGS}
+			qa_call pkg_${EBUILD_SH_ARGS}
+			[ "$(type -t post_pkg_${EBUILD_SH_ARGS})" == "function" ] && \
+				qa_call post_pkg_${EBUILD_SH_ARGS}
 		else
 			set -x
-			[ "$(type -t pre_pkg_${myarg})" == "function" ] && qa_call pre_pkg_${myarg}
-			qa_call pkg_${myarg}
-			[ "$(type -t post_pkg_${myarg})" == "function" ] && qa_call post_pkg_${myarg}
-			#Allow non-zero return codes since they can be caused by &&
+			[ "$(type -t pre_pkg_${EBUILD_SH_ARGS})" == "function" ] && \
+				qa_call pre_pkg_${EBUILD_SH_ARGS}
+			qa_call pkg_${EBUILD_SH_ARGS}
+			[ "$(type -t post_pkg_${EBUILD_SH_ARGS})" == "function" ] && \
+				qa_call post_pkg_${EBUILD_SH_ARGS}
 			set +x
 		fi
 		;;
@@ -1714,13 +1733,11 @@ for myarg in ${EBUILD_SH_ARGS} ; do
 		else
 			export SANDBOX_ON="0"
 		fi
-		if [ "$PORTAGE_DEBUG" != "1" ]; then
-			dyn_${myarg}
-			#Allow non-zero return codes since they can be caused by &&
+		if [ "${PORTAGE_DEBUG}" != "1" ] || [ "${-/x/}" != "$-" ]; then
+			dyn_${EBUILD_SH_ARGS}
 		else
 			set -x
-			dyn_${myarg}
-			#Allow non-zero return codes since they can be caused by &&
+			dyn_${EBUILD_SH_ARGS}
 			set +x
 		fi
 		export SANDBOX_ON="0"
@@ -1730,11 +1747,11 @@ for myarg in ${EBUILD_SH_ARGS} ; do
 		#for example, awking and piping a file in /tmp requires a temp file to be created
 		#in /etc.  If pkg_setup is in the sandbox, both our lilo and apache ebuilds break.
 		export SANDBOX_ON="0"
-		if [ "$PORTAGE_DEBUG" != "1" ]; then
-			dyn_${myarg}
+		if [ "${PORTAGE_DEBUG}" != "1" ] || [ "${-/x/}" != "$-" ]; then
+			dyn_${EBUILD_SH_ARGS}
 		else
 			set -x
-			dyn_${myarg}
+			dyn_${EBUILD_SH_ARGS}
 			set +x
 		fi
 		;;
@@ -1775,24 +1792,17 @@ for myarg in ${EBUILD_SH_ARGS} ; do
 		;;
 	*)
 		export SANDBOX_ON="1"
-		echo "Please specify a valid command."
+		echo "Unrecognized EBUILD_SH_ARGS: '${EBUILD_SH_ARGS}'"
 		echo
 		dyn_help
 		exit 1
 		;;
 	esac
-
-	#if [ $? -ne 0 ]; then
-	#	exit 1
-	#fi
-done
+fi
 
 # Save the env only for relevant phases.
-if [ -n "${myarg}" ] && \
-	! hasq ${myarg} clean help info ; then
-	# Do not save myarg in the env, or else the above [ -n "$myarg" ] test will
-	# give a false positive when ebuild.sh is sourced.
-	unset myarg
+if [ -n "${EBUILD_SH_ARGS}" ] && \
+	! hasq ${EBUILD_SH_ARGS} clean help info; then
 	# Save current environment and touch a success file. (echo for success)
 	umask 002
 	save_ebuild_env > "${T}/environment" 2>/dev/null
