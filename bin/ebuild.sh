@@ -1021,11 +1021,15 @@ dyn_install() {
 	# local variables can leak into the saved environment.
 	unset f
 
-	# To avoid environment bloat, cleanse variables that are
-	# are no longer needed after src_install().
-	unset S
-
-	save_ebuild_env > environment
+	(
+		# To avoid environment.bz2 bloat, cleanse variables that are
+		# are no longer needed after src_install(). Don't cleanse from
+		# the global environment though, in case the user wants to repeat
+		# this phase (like with FEATURES=noauto and the ebuild command).
+		unset S
+	
+		save_ebuild_env > environment
+	)
 	bzip2 -f9 environment
 
 	cp "${EBUILD}" "${PF}.ebuild"
