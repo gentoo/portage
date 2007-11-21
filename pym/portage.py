@@ -7672,6 +7672,7 @@ class dblink:
 		# Now, don't assume that the name of the ebuild is the same as the
 		# name of the dir; the package may have been moved.
 		myebuildpath = None
+		ebuild_phase = "prerm"
 		mystuff = listdir(self.dbdir, EmptyOnError=1)
 		for x in mystuff:
 			if x.endswith(".ebuild"):
@@ -7725,6 +7726,7 @@ class dblink:
 			self._unmerge_pkgfiles(pkgfiles, others_in_slot)
 
 			if myebuildpath:
+				ebuild_phase = "postrm"
 				retval = doebuild(myebuildpath, "postrm", self.myroot,
 					 self.settings, use_cache=0, tree="vartree",
 					 mydbapi=self.vartree.dbapi, vartree=self.vartree)
@@ -7738,6 +7740,22 @@ class dblink:
 			if builddir_lock:
 				try:
 					if myebuildpath:
+						if retval != os.EX_OK:
+							msg = ("The '%s' " % ebuild_phase) + \
+							("phase of the '%s' package " % self.mycpv) + \
+							("has failed with exit value %s. " % retval) + \
+							"The problem occurred while executing " + \
+							("the ebuild located at '%s'. " % myebuildpath) + \
+							"If necessary, manually remove the ebuild " + \
+							"in order to skip the execution of removal phases."
+							from textwrap import wrap
+							cmd = "source '%s/isolated-functions.sh' ; " % \
+								PORTAGE_BIN_PATH
+							for l in wrap(msg, 72):
+								cmd += "eerror \"%s\" ; " % l
+							portage_exec.spawn(["bash", "-c", cmd],
+								env=self.settings.environ())
+
 						# process logs created during pre/postrm
 						elog_process(self.mycpv, self.settings)
 						if retval == os.EX_OK:
