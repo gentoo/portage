@@ -318,6 +318,7 @@ keepdir() {
 }
 
 unpack() {
+	local srcdir
 	local x
 	local y
 	local myfail
@@ -909,10 +910,10 @@ dyn_compile() {
 	fi
 	if [ -d "${S}" ]; then
 		srcdir=${S}
-		cd "${S}"
 	else
-		cd "${WORKDIR}"
+		srcdir=${WORKDIR}
 	fi
+	cd "${srcdir}"
 	#our custom version of libtool uses $S and $D to fix
 	#invalid paths in .la files
 	export S D
@@ -928,6 +929,7 @@ dyn_compile() {
 	cd build-info
 
 	set -f
+	local f
 	for f in ASFLAGS CATEGORY CBUILD CC CFLAGS CHOST CTARGET CXX \
 		CXXFLAGS DEPEND EXTRA_ECONF EXTRA_EINSTALL EXTRA_MAKE \
 		FEATURES INHERITED IUSE LDFLAGS LIBCFLAGS LIBCXXFLAGS \
@@ -939,6 +941,8 @@ dyn_compile() {
 	echo "${EAPI:-0}"	> EAPI
 	set +f
 
+	# local variables can leak into the saved environment.
+	unset f srcdir
 	save_ebuild_env > environment
 	bzip2 -f9 environment
 
