@@ -1071,11 +1071,6 @@ class config:
 			self._use_wildcards = copy.deepcopy(clone._use_wildcards)
 		else:
 
-			if not local_config:
-				# Clean up pollution from portage_data so that it doesn't
-				# interfere with repoman.
-				self.backupenv.pop("USERLAND", None)
-
 			def check_var_directory(varname, var):
 				if not os.path.isdir(var):
 					writemsg(("!!! Error: %s='%s' is not a directory. " + \
@@ -1332,6 +1327,11 @@ class config:
 			self.backupenv = os.environ.copy()
 			self.configlist.append(self.backupenv) # XXX Why though?
 			self.configdict["backupenv"]=self.configlist[-1]
+
+			if not local_config:
+				# Clean up pollution from portage_data so that it doesn't
+				# interfere with repoman.
+				self.backupenv.pop("USERLAND", None)
 
 			# Don't allow the user to override certain variables in the env
 			for k in profile_only_variables:
