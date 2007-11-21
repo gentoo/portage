@@ -5,7 +5,6 @@
 
 PORTAGE_BIN_PATH="${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}"
 PORTAGE_PYM_PATH="${PORTAGE_PYM_PATH:-@PORTAGE_BASE@/pym}"
-declare -rx PORTAGE_BIN_PATH PORTAGE_PYM_PATH
 
 SANDBOX_PREDICT="${SANDBOX_PREDICT}:/proc/self/maps:/dev/console:/dev/random"
 export SANDBOX_PREDICT="${SANDBOX_PREDICT}:${PORTAGE_PYM_PATH}:${PORTAGE_DEPCACHEDIR}"
@@ -14,14 +13,6 @@ export SANDBOX_READ="${SANDBOX_READ}:/dev/shm:/dev/stdin:${PORTAGE_TMPDIR}"
 
 if [ ! -z "${PORTAGE_GPG_DIR}" ]; then
 	SANDBOX_PREDICT="${SANDBOX_PREDICT}:${PORTAGE_GPG_DIR}"
-fi
-
-declare -rx EBUILD_PHASE
-
-if [ "$*" != "depend" ] && [ "$*" != "clean" ] && [ "$*" != "nofetch" ]; then
-	if [ -f "${T}/environment" ]; then
-		source "${T}/environment" >& /dev/null
-	fi
 fi
 
 # These two functions wrap sourcing and calling respectively.  At present they
@@ -1369,24 +1360,71 @@ remove_path_entry() {
 	PATH="${stripped_path}"
 }
 
-save_ebuild_env() {
-	# In bash-3.2_p20+ an attempt to assign BASH_*, FUNCNAME, GROUPS or any
-	# readonly variable cause the shell to exit while executing the "source"
-	# builtin command. To avoid this problem, this function filters those
-	# variables out and discards them. See bug #190128.
-	local readonly_vars=$(readonly | while read line; \
-		do [[ ${line} == "declare -"*" "*"="* ]] || continue ; \
-		x=${line%%=*} ; echo ${x##* } ; done)
+READONLY_EBUILD_METADATA="DEPEND DESCRIPTION
+	EAPI HOMEPAGE INHERITED IUSE KEYWORDS LICENSE
+	PDEPEND PROVIDE RDEPEND RESTRICT SLOT SRC_URI"
+
+READONLY_PORTAGE_VARS="D EBUILD EBUILD_PHASE EBUILD_SH_ARGS FILESDIR \
+	PORTAGE_BIN_PATH PORTAGE_PYM_PATH PORTAGE_TMPDIR T WORKDIR"
+
+# @FUNCTION: filter_readonly_variables
+# @DESCRIPTION:
+# Read an environment from stdin and echo to stdout while filtering readonly
+# variables.
+#
+# In bash-3.2_p20+ an attempt to assign BASH_*, FUNCNAME, GROUPS or any
+# readonly variable cause the shell to exit while executing the "source"
+# builtin command. To avoid this problem, this function filters those
+# variables out and discards them. See bug #190128.
+filter_readonly_variables() {
 	local x var_grep=""
 	for x in BASH SANDBOX ; do
 		var_grep="${var_grep}|(^|^declare[[:space:]]+-[^[:space:]]+[[:space:]]+)${x}_[_[:alnum:]]*=.*"
 	done
-	for x in ${readonly_vars} var_grep LD_PRELOAD FAKEROOTKEY FUNCNAME GROUPS ; do
+	local readonly_bash_vars="DIRSTACK EUID FUNCNAME GROUPS
+		PIPESTATUS PPID SHELLOPTS UID"
+	for x in ${readonly_bash_vars} ${READONLY_PORTAGE_VARS} ; do
 		var_grep="${var_grep}|(^|^declare[[:space:]]+-[^[:space:]]+[[:space:]]+)${x}=.*"
 	done
 	var_grep=${var_grep:1} # strip the first |
-	unset x readonly_vars
+	# The sed is to remove the readonly attribute from variables such as those
+	# listed in READONLY_EBUILD_METADATA, since having any readonly attributes
+	# persisting in the saved environment can be inconvenient when it
+	# eventually needs to be reloaded.
+	egrep -v -e "${var_grep}" | sed 's:^declare -rx:declare -x:'
+}
+
+# @FUNCTION: preprocess_ebuild_env
+# @DESCRIPTION:
+# Filter any readonly variables from ${T}/environment, source it, and then
+# save it via save_ebuild_env(). This process should be sufficient to prevent
+# any stale variables or functions from an arbitrary environment from
+# interfering with the current environment. This is useful when an existing
+# environment needs to be loaded from a binary or installed package.
+preprocess_ebuild_env() {
+	filter_readonly_variables < "${T}"/environment > "${T}"/environment.filtered
+	mv "${T}"/environment.filtered "${T}"/environment
 	(
+		source "${T}"/environment
+		# Rely on save_ebuild_env() to filter out any remaining variables
+		# and functions that could interfere with the current environment.
+		save_ebuild_env > "${T}"/environment
+	)
+}
+
+# @FUNCTION: save_ebuild_env
+# @DESCRIPTION:
+# echo the current environment to stdout, filtering out redundant info.
+save_ebuild_env() {
+	(
+
+		# misc variables set by bash
+		unset BASH IFS OLDPWD OPTERR OPTIND PS4 PWD SHELL
+
+		# misc variables inherited from the calling environment
+		unset COLORTERM DISPLAY EDITOR LESS LESSOPEN LOGNAME LS_COLORS PAGER \
+			TERM TERMCAP USER
+
 		# There's no need to bloat environment.bz2 with internally defined
 		# functions and variables, so filter them out if possible.
 
@@ -1403,11 +1441,40 @@ save_ebuild_env() {
 			dyn_preinst dyn_help debug-print debug-print-function \
 			debug-print-section inherit EXPORT_FUNCTIONS newdepend newrdepend \
 			newpdepend do_newdepend remove_path_entry killparent \
-			save_ebuild_env
+			save_ebuild_env filter_readonly_variables preprocess_ebuild_env
+
+		# portage config variables and variables set directly by portage
+		unset ACCEPT_KEYWORDS AUTOCLEAN BAD BRACKET BUILD_PREFIX CLEAN_DELAY \
+			COLLISION_IGNORE COLS CONFIG_PROTECT CONFIG_PROTECT_MASK \
+			DISTCC_DIR DISTDIR DOC_SYMLINKS_DIR EBUILD_MASTER_PID \
+			ECLASSDIR ECLASS_DEPTH EMERGE_DEFAULT_OPTS \
+			EMERGE_WARNING_DELAY ENDCOL FAKEROOTKEY FEATURES \
+			FETCHCOMMAND FETCHCOMMAND_FTP FETCHCOMMAND_HTTP FETCHCOMMAND_SFTP \
+			GENTOO_MIRRORS GOOD HILITE HOME IMAGE \
+			KV LAST_E_CMD LAST_E_LEN LD_PRELOAD MOPREFIX \
+			NORMAL O PATH PKGDIR PKGUSE PKG_LOGDIR PKG_TMPDIR \
+			PORTAGE_ACTUAL_DISTDIR PORTAGE_ARCHLIST PORTAGE_BASHRC \
+			PORTAGE_BINHOST_CHUNKSIZE PORTAGE_BUILDDIR PORTAGE_CALLER \
+			PORTAGE_COLORMAP PORTAGE_CONFIGROOT \
+			PORTAGE_DEPCACHEDIR PORTAGE_ELOG_CLASSES PORTAGE_ELOG_MAILFROM \
+			PORTAGE_ELOG_MAILSUBJECT PORTAGE_ELOG_MAILURI PORTAGE_ELOG_SYSTEM \
+			PORTAGE_GID PORTAGE_GPG_DIR PORTAGE_GPG_KEY PORTAGE_INST_GID \
+			PORTAGE_INST_UID PORTAGE_LOG_FILE PORTAGE_MASTER_PID \
+			PORTAGE_REPO_NAME PORTAGE_RESTRICT \
+			PORTAGE_RSYNC_EXTRA_OPTS PORTAGE_RSYNC_OPTS \
+			PORTAGE_RSYNC_RETRIES PORTAGE_TMPFS PORTAGE_WORKDIR_MODE PORTDIR \
+			PORTDIR_OVERLAY PORT_LOGDIR PROFILE_PATHS PWORKDIR \
+			QUICKPKG_DEFAULT_OPTS QA_INTERCEPTORS \
+			RC_DEFAULT_INDENT RC_DOT_PATTERN RC_ENDCOL \
+			RC_INDENTATION READONLY_EBUILD_METADATA READONLY_PORTAGE_VARS \
+			RESUMECOMMAND RESUMECOMMAND_HTTP \
+			RESUMECOMMAND_HTTP RESUMECOMMAND_SFTP ROOT ROOTPATH RPMDIR \
+			S STARTDIR SYNC TMP TMPDIR USE_EXPAND \
+			USE_EXPAND_HIDDEN USE_ORDER WARN XARGS
 
 		set
 		export
-	) | egrep -v -e "${var_grep}"
+	) | filter_readonly_variables
 }
 
 # === === === === === === === === === === === === === === === === === ===
@@ -1488,14 +1555,6 @@ export S=${WORKDIR}/${P}
 
 unset E_IUSE E_DEPEND E_RDEPEND E_PDEPEND
 
-for x in D T P PN PV PVR PR CATEGORY A EBUILD EMERGE_FROM FILESDIR PORTAGE_TMPDIR; do
-	[[ ${!x-UNSET_VAR} != UNSET_VAR ]] && declare -r ${x}
-done
-unset x
-# Set IMAGE for minimal backward compatibility with
-# overlays or user's bashrc, but don't export it.
-IMAGE=${D}
-
 # Turn of extended glob matching so that g++ doesn't get incorrectly matched.
 shopt -u extglob
 
@@ -1522,27 +1581,75 @@ if hasq "depend" "${EBUILD_SH_ARGS}"; then
 	unset BIN_PATH BIN BODY FUNC_SRC
 fi
 
-# reset the EBUILD_DEATH_HOOKS so they don't multiple due to stable's re-sourcing of env.
-# this can be left out of ebd variants, since they're unaffected.
-unset EBUILD_DEATH_HOOKS
-
-# *DEPEND and IUSE will be set during the sourcing of the ebuild.  In order to
-# ensure correct interaction between ebuilds and eclasses, they need to be
-# unset before this process of interaction begins.
-unset DEPEND RDEPEND PDEPEND IUSE
-
-source "${EBUILD}" || die "error sourcing ebuild"
-if ! hasq depend $EBUILD_PHASE; then
-	RESTRICT="${PORTAGE_RESTRICT}"
-	unset PORTAGE_RESTRICT
+if hasq ${EBUILD_PHASE} setup prerm && [ ! -f "${T}/environment" ]; then
+	bzip2 -dc "${EBUILD%/*}"/environment.bz2 > \
+		"${T}/environment" 2> /dev/null
+	if [ -s "${T}/environment" ] ; then
+		preprocess_ebuild_env
+	else
+		rm -f "${T}/environment"
+	fi
 fi
 
-# Expand KEYWORDS
-# We need to turn off pathname expansion for -* in KEYWORDS and
-# we need to escape ~ to avoid tilde expansion
-set -f
-KEYWORDS=$(eval echo ${KEYWORDS//~/\\~})
-set +f
+# Set IMAGE for minimal backward compatibility with
+# overlays or user's bashrc, but don't export it.
+[ "${EBUILD_PHASE}" == "preinst" ] && IMAGE=${D}
+
+if hasq ${EBUILD_PHASE} clean ; then
+	true
+elif ! hasq ${EBUILD_PHASE} depend && [ -f "${T}"/environment ] ; then
+	source "${T}"/environment
+else
+	# *DEPEND and IUSE will be set during the sourcing of the ebuild.
+	# In order to ensure correct interaction between ebuilds and
+	# eclasses, they need to be unset before this process of
+	# interaction begins.
+	unset DEPEND RDEPEND PDEPEND IUSE
+	source "${EBUILD}" || die "error sourcing ebuild"
+
+	if [ "${EBUILD_PHASE}" != "depend" ] ; then
+		RESTRICT=${PORTAGE_RESTRICT}
+	fi
+
+	# This next line is not the same as export RDEPEND=${RDEPEND:-${DEPEND}}
+	# That will test for unset *or* NULL (""). We want just to set for unset...
+	# turn off glob expansion from here on in to prevent *'s and ? in the
+	# DEPEND syntax from getting expanded :)
+	set -f
+	if [ "${RDEPEND-unset}" == "unset" ] ; then
+		export RDEPEND=${DEPEND}
+		debug-print "RDEPEND: not set... Setting to: ${DEPEND}"
+	fi
+
+	# add in dependency info from eclasses
+	IUSE="${IUSE} ${E_IUSE}"
+	DEPEND="${DEPEND} ${E_DEPEND}"
+	RDEPEND="${RDEPEND} ${E_RDEPEND}"
+	PDEPEND="${PDEPEND} ${E_PDEPEND}"
+
+	unset E_IUSE E_DEPEND E_RDEPEND E_PDEPEND
+
+	if [ "${EBUILD_PHASE}" != "depend" ] ; then
+		# Make IUSE defaults backward compatible with all the old shell code.
+		iuse_temp=""
+		for x in ${IUSE} ; do
+			if [[ ${x} == +* ]] || [[ ${x} == -* ]] ; then
+				iuse_temp="${iuse_temp} ${x:1}"
+			else
+				iuse_temp="${iuse_temp} ${x}"
+			fi
+		done
+		export IUSE=${iuse_temp}
+		unset x iuse_temp
+	fi
+	set +f
+fi
+
+# unset USE_EXPAND variables that contain only the special "*" token
+for x in ${USE_EXPAND} ; do
+	[ "${!x}" == "*" ] && unset ${x}
+done
+unset x
 
 if hasq nostrip ${FEATURES} ${RESTRICT} || hasq strip ${RESTRICT}
 then
@@ -1564,49 +1671,15 @@ fi
 export TMP="${T}"
 export TMPDIR="${T}"
 
-# Note: this next line is not the same as export RDEPEND=${RDEPEND:-${DEPEND}}
-# That will test for unset *or* NULL ("").  We want just to set for unset...
-
-#turn off glob expansion from here on in to prevent *'s and ? in the DEPEND
-#syntax from getting expanded :)
-#check eclass rdepends also.
-set -f
-if [ "${RDEPEND-unset}" == "unset" ] ; then
-	export RDEPEND=${DEPEND}
-	debug-print "RDEPEND: not set... Setting to: ${DEPEND}"
-fi
-
-#add in dependency info from eclasses
-IUSE="$IUSE $E_IUSE"
-DEPEND="$DEPEND $E_DEPEND"
-RDEPEND="$RDEPEND $E_RDEPEND"
-PDEPEND="$PDEPEND $E_PDEPEND"
-
-unset E_IUSE E_DEPEND E_RDEPEND E_PDEPEND
-
-if [ "${EBUILD_PHASE}" != "depend" ]; then
-	# Make IUSE defaults backward compatible with all the old shell code.
-	iuse_temp=""
-	for x in ${IUSE} ; do
-		if [[ ${x} == +* ]] || [[ ${x} == -* ]] ; then
-			iuse_temp="${iuse_temp} ${x:1}"
-		else
-			iuse_temp="${iuse_temp} ${x}"
-		fi
-	done
-	export IUSE=${iuse_temp}
-	unset iuse_temp
-	# unset USE_EXPAND variables that contain only the special "*" token
-	for x in ${USE_EXPAND} ; do
-		[ "${!x}" == "*" ] && unset ${x}
+# Note: readonly variables interfere with preprocess_ebuild_env(), so
+# declare them only after it has already run.
+if [ "${EBUILD_PHASE}" != "depend" ] ; then
+	declare -r ${READONLY_EBUILD_METADATA} ${READONLY_PORTAGE_VARS}
+	for x in A AA CATEGORY EMERGE_FROM P PF PN PR PV PVR ; do
+		[[ ${!x-UNSET_VAR} != UNSET_VAR ]] && declare -r ${x}
 	done
 	unset x
-	# Lock the dbkey variables after the global phase
-	declare -r DEPEND RDEPEND SLOT SRC_URI RESTRICT HOMEPAGE LICENSE DESCRIPTION
-	declare -r KEYWORDS INHERITED IUSE PDEPEND PROVIDE
 fi
-
-set +f
 
 for myarg in ${EBUILD_SH_ARGS} ; do
 	case $myarg in
