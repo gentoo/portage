@@ -3344,6 +3344,8 @@ class depgraph(object):
 						os.path.dirname(ebuild_path)))
 					pkgsettings.setcpv(pkg_key, mydb=mydbapi)
 					metadata["USE"] = pkgsettings["USE"]
+				elif pkg_type == "binary":
+					repo_path_real = repo_name
 				else:
 					repo_path_real = portdb.getRepositoryPath(repo_name)
 				pkg_use = metadata["USE"].split()
