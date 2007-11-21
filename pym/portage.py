@@ -4131,7 +4131,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 					filemode=060, filemask=0)
 			return retval
 		elif mydo == "preinst":
-			mysettings["IMAGE"] = mysettings["D"]
 			phase_retval = spawn(" ".join((EBUILD_SH_BINARY, mydo)),
 				mysettings, debug=debug, free=1, logfile=logfile)
 			if phase_retval == os.EX_OK:
@@ -4146,7 +4145,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				if phase_retval != os.EX_OK:
 					writemsg("!!! post preinst failed; exiting.\n",
 						noiselevel=-1)
-			del mysettings["IMAGE"]
 			return phase_retval
 		elif mydo == "postinst":
 			mysettings.load_infodir(mysettings["O"])

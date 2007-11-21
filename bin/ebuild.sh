@@ -1553,6 +1553,9 @@ for x in D T P PN PV PVR PR CATEGORY A EBUILD EMERGE_FROM FILESDIR PORTAGE_TMPDI
 	[[ ${!x-UNSET_VAR} != UNSET_VAR ]] && declare -r ${x}
 done
 unset x
+# Set IMAGE for minimal backward compatibility with
+# overlays or user's bashrc, but don't export it.
+IMAGE=${D}
 
 # Turn of extended glob matching so that g++ doesn't get incorrectly matched.
 shopt -u extglob
