@@ -3345,7 +3345,7 @@ class depgraph(object):
 					pkgsettings.setcpv(pkg_key, mydb=mydbapi)
 					metadata["USE"] = pkgsettings["USE"]
 				else:
-					repo_path_real = repo_name
+					repo_path_real = portdb.getRepositoryPath(repo_name)
 				pkg_use = metadata["USE"].split()
 				try:
 					restrict = flatten(use_reduce(paren_reduce(
