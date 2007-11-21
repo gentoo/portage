@@ -63,6 +63,10 @@ source "${PORTAGE_BIN_PATH}/isolated-functions.sh"  &>/dev/null
 OCC="$CC"
 OCXX="$CXX"
 
+# Set IMAGE for minimal backward compatibility with
+# overlays or user's bashrc, but don't export it.
+[ "${EBUILD_PHASE}" == "preinst" ] && IMAGE=${D}
+
 [[ $PORTAGE_QUIET != "" ]] && export PORTAGE_QUIET
 
 # the sandbox is disabled by default except when overridden in the relevant stages
@@ -1576,10 +1580,6 @@ if hasq ${EBUILD_PHASE} setup prerm && [ ! -f "${T}/environment" ]; then
 		rm -f "${T}/environment"
 	fi
 fi
-
-# Set IMAGE for minimal backward compatibility with
-# overlays or user's bashrc, but don't export it.
-[ "${EBUILD_PHASE}" == "preinst" ] && IMAGE=${D}
 
 if hasq ${EBUILD_PHASE} clean ; then
 	true
