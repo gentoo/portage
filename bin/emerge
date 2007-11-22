@@ -2394,6 +2394,21 @@ class depgraph:
 			return retlist
 		mygraph=self.digraph.copy()
 		self._merge_order_bias(mygraph)
+		def cmp_circular_bias(n1, n2):
+			"""
+			RDEPEND is stronger than PDEPEND and this function
+			measures such a strength bias within a circular
+			dependency relationship.
+			"""
+			n1_n2_medium = n2 in mygraph.child_nodes(n1,
+				ignore_priority=DepPriority.MEDIUM_SOFT)
+			n2_n1_medium = n1 in mygraph.child_nodes(n2,
+				ignore_priority=DepPriority.MEDIUM_SOFT)
+			if n1_n2_medium == n2_n1_medium:
+				return 0
+			elif n1_n2_medium:
+				return 1
+			return -1
 		myblockers = self.blocker_digraph.copy()
 		retlist=[]
 		circular_blocks = False
@@ -2558,6 +2573,11 @@ class depgraph:
 						if child in asap_nodes:
 							continue
 						asap_nodes.append(child)
+
+			if selected_nodes and len(selected_nodes) > 1:
+				if not isinstance(selected_nodes, list):
+					selected_nodes = list(selected_nodes)
+				selected_nodes.sort(cmp_circular_bias)
 
 			if not selected_nodes:
 				if not myblockers.is_empty():
