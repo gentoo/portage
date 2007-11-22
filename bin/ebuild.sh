@@ -1599,6 +1599,13 @@ fi
 if hasq ${EBUILD_SH_ARGS} clean ; then
 	true
 elif ! hasq ${EBUILD_PHASE} depend && [ -f "${T}"/environment ] ; then
+	if [ "${PN}" == "portage" ] ; then
+		# When portage reinstalls itself, during inst/rm phases, the
+		# environment may have been saved by a different version of ebuild.sh,
+		# so it can't trusted that it's been properly filtered. Therefore,
+		# always preprocess the environment when ${PN} == portage.
+		preprocess_ebuild_env
+	fi
 	source "${T}"/environment
 else
 	# *DEPEND and IUSE will be set during the sourcing of the ebuild.
