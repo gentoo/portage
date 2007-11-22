@@ -1422,7 +1422,8 @@ save_ebuild_env() {
 	(
 
 		# misc variables set by bash
-		unset BASH IFS OLDPWD OPTERR OPTIND PS4 PWD SHELL
+		unset BASH HOSTTYPE IFS MACHTYPE OLDPWD \
+			OPTERR OPTIND OSTYPE PS4 PWD SHELL
 
 		# misc variables inherited from the calling environment
 		unset COLORTERM DISPLAY EDITOR LESS LESSOPEN LOGNAME LS_COLORS PAGER \
