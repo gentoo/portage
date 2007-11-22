@@ -1599,7 +1599,7 @@ fi
 if hasq ${EBUILD_SH_ARGS} clean ; then
 	true
 elif ! hasq ${EBUILD_PHASE} depend && [ -f "${T}"/environment ] ; then
-	if [ "${PN}" == "portage" ] ; then
+	if [ "${PN}" == "portage" ] && [ -n "${EBUILD_SH_ARGS}" ] ; then
 		# When portage reinstalls itself, during inst/rm phases, the
 		# environment may have been saved by a different version of ebuild.sh,
 		# so it can't trusted that it's been properly filtered. Therefore,
