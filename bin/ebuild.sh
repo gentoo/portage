@@ -1796,7 +1796,7 @@ if [ -n "${EBUILD_SH_ARGS}" ] && \
 	! hasq ${EBUILD_SH_ARGS} clean help info; then
 	# Save current environment and touch a success file. (echo for success)
 	umask 002
-	save_ebuild_env > "${T}/environment" 2>/dev/null
+	save_ebuild_env > "${T}/environment"
 	chown portage:portage "${T}/environment" &>/dev/null
 	chmod g+w "${T}/environment" &>/dev/null
 fi
