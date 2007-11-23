@@ -1330,6 +1330,37 @@ remove_path_entry() {
 	PATH="${stripped_path}"
 }
 
+source_all_bashrcs() {
+	local OCC="${CC}" OCXX="${CXX}"
+	# source the existing profile.bashrc's.
+	save_IFS
+	IFS=$'\n'
+	local x
+	for x in ${PROFILE_PATHS}; do
+		# Must unset it so that it doesn't mess up assumptions in the RCs.
+		unset IFS
+		[ -f "${x}/profile.bashrc" ] && qa_source "${x}/profile.bashrc"
+	done
+	restore_IFS
+	
+	# We assume if people are changing shopts in their bashrc they do so at their
+	# own peril.  This is the ONLY non-portage bit of code that can change shopts
+	# without a QA violation.
+	if [ -f "${PORTAGE_BASHRC}" ]; then
+		# If $- contains x, then tracing has already enabled elsewhere for some
+		# reason.  We preserve it's state so as not to interfere.
+		if [ "$PORTAGE_DEBUG" != "1" ] || [ "${-/x/}" != "$-" ]; then
+			source "${PORTAGE_BASHRC}"
+		else
+			set -x
+			source "${PORTAGE_BASHRC}"
+			set +x
+		fi
+	fi
+	[ ! -z "${OCC}" ] && export CC="${OCC}"
+	[ ! -z "${OCXX}" ] && export CXX="${OCXX}"
+}
+
 READONLY_EBUILD_METADATA="DEPEND DESCRIPTION
 	EAPI HOMEPAGE INHERITED IUSE KEYWORDS LICENSE
 	PDEPEND PROVIDE RDEPEND RESTRICT SLOT SRC_URI"
@@ -1576,7 +1607,13 @@ elif ! hasq ${EBUILD_PHASE} depend && [ -f "${T}"/environment ] ; then
 		preprocess_ebuild_env
 	fi
 	source "${T}"/environment
+	source_all_bashrcs
 else
+
+	# The bashrcs get an opportunity here to set aliases that will be expanded
+	# during sourcing of ebuilds and eclasses.
+	source_all_bashrcs
+
 	# *DEPEND and IUSE will be set during the sourcing of the ebuild.
 	# In order to ensure correct interaction between ebuilds and
 	# eclasses, they need to be unset before this process of
@@ -1657,38 +1694,6 @@ if [ "${EBUILD_PHASE}" != "depend" ] ; then
 	done
 	unset x
 fi
-
-OCC="${CC}"
-OCXX="${CXX}"
-
-# source the existing profile.bashrc's.
-save_IFS
-IFS=$'\n'
-for x in ${PROFILE_PATHS}; do
-	# Must unset it so that it doesn't mess up assumptions in the RCs.
-	unset IFS
-	[ -f "${x}/profile.bashrc" ] && qa_source "${x}/profile.bashrc"
-done
-unset x
-restore_IFS
-
-# We assume if people are changing shopts in their bashrc they do so at their
-# own peril.  This is the ONLY non-portage bit of code that can change shopts
-# without a QA violation.
-if [ -f "${PORTAGE_BASHRC}" ]; then
-	# If $- contains x, then tracing has already enabled elsewhere for some
-	# reason.  We preserve it's state so as not to interfere.
-	if [ "$PORTAGE_DEBUG" != "1" ] || [ "${-/x/}" != "$-" ]; then
-		source "${PORTAGE_BASHRC}"
-	else
-		set -x
-		source "${PORTAGE_BASHRC}"
-		set +x
-	fi
-fi
-
-[ ! -z "$OCC" ] && export CC="$OCC"
-[ ! -z "$OCXX" ] && export CXX="$OCXX"
 
 if [ -n "${EBUILD_SH_ARGS}" ] ; then
 	case ${EBUILD_SH_ARGS} in
