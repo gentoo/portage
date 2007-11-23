@@ -60,9 +60,6 @@ export PATH="/usr/local/sbin:/sbin:/usr/sbin:${PORTAGE_BIN_PATH}:/usr/local/bin:
 
 source "${PORTAGE_BIN_PATH}/isolated-functions.sh"  &>/dev/null
 
-OCC="$CC"
-OCXX="$CXX"
-
 # Set IMAGE for minimal backward compatibility with
 # overlays or user's bashrc, but don't export it.
 [ "${EBUILD_PHASE}" == "preinst" ] && IMAGE=${D}
@@ -100,36 +97,6 @@ lchown() {
 lchgrp() {
 	chgrp -h "$@"
 }
-
-# source the existing profile.bashrc's.
-save_IFS
-IFS=$'\n'
-for dir in ${PROFILE_PATHS}; do
-	# Must unset it so that it doesn't mess up assumptions in the RCs.
-	unset IFS
-	if [ -f "${dir}/profile.bashrc" ]; then
-		qa_source "${dir}/profile.bashrc"
-	fi
-done
-restore_IFS
-
-# We assume if people are changing shopts in their bashrc they do so at their
-# own peril.  This is the ONLY non-portage bit of code that can change shopts
-# without a QA violation.
-if [ -f "${PORTAGE_BASHRC}" ]; then
-	# If $- contains x, then tracing has already enabled elsewhere for some
-	# reason.  We preserve it's state so as not to interfere.
-	if [ "$PORTAGE_DEBUG" != "1" ] || [ "${-/x/}" != "$-" ]; then
-		source "${PORTAGE_BASHRC}"
-	else
-		set -x
-		source "${PORTAGE_BASHRC}"
-		set +x
-	fi
-fi
-
-[ ! -z "$OCC" ] && export CC="$OCC"
-[ ! -z "$OCXX" ] && export CXX="$OCXX"
 
 esyslog() {
 	# Custom version of esyslog() to take care of the "Red Star" bug.
@@ -1690,6 +1657,37 @@ if [ "${EBUILD_PHASE}" != "depend" ] ; then
 	done
 	unset x
 fi
+
+OCC="${CC}"
+OCXX="${CXX}"
+
+# source the existing profile.bashrc's.
+save_IFS
+IFS=$'\n'
+for x in ${PROFILE_PATHS}; do
+	# Must unset it so that it doesn't mess up assumptions in the RCs.
+	unset IFS
+	[ -f "${x}/profile.bashrc" ] && qa_source "${x}/profile.bashrc"
+done
+restore_IFS
+
+# We assume if people are changing shopts in their bashrc they do so at their
+# own peril.  This is the ONLY non-portage bit of code that can change shopts
+# without a QA violation.
+if [ -f "${PORTAGE_BASHRC}" ]; then
+	# If $- contains x, then tracing has already enabled elsewhere for some
+	# reason.  We preserve it's state so as not to interfere.
+	if [ "$PORTAGE_DEBUG" != "1" ] || [ "${-/x/}" != "$-" ]; then
+		source "${PORTAGE_BASHRC}"
+	else
+		set -x
+		source "${PORTAGE_BASHRC}"
+		set +x
+	fi
+fi
+
+[ ! -z "$OCC" ] && export CC="$OCC"
+[ ! -z "$OCXX" ] && export CXX="$OCXX"
 
 if [ -n "${EBUILD_SH_ARGS}" ] ; then
 	case ${EBUILD_SH_ARGS} in
