@@ -528,7 +528,7 @@ dyn_package() {
 		die "Failed to append metadata to the tbz2 file"
 	fi
 	local md5sum_output=$(md5sum "${PORTAGE_BINPKG_TMPFILE}")
-	echo ${md5sum_output% *} > "${PORTAGE_BUILDDIR}"/build-info/BINPKGMD5
+	echo ${md5sum_output%% *} > "${PORTAGE_BUILDDIR}"/build-info/BINPKGMD5
 	vecho ">>> Done."
 	cd "${PORTAGE_BUILDDIR}"
 	touch .packaged || die "Failed to 'touch .packaged' in ${PORTAGE_BUILDDIR}"
