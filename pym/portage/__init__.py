@@ -5845,7 +5845,21 @@ def create_trees(config_root=None, target_root=None, trees=None):
 		# with ROOT != "/", so we wipe out the "backupenv" for the
 		# config that is associated with ROOT == "/" and regenerate
 		# it's incrementals.
-		settings.configdict["backupenv"].clear()
+
+		# Preserve backupenv values that are initialized in the config
+		# constructor. Also, preserve XARGS since it is set by the
+		# portage.data module.
+		backupenv_whitelist = set(["FEATURES", "PORTAGE_BIN_PATH",
+			"PORTAGE_CONFIGROOT", "PORTAGE_DEPCACHEDIR",
+			"PORTAGE_GID", "PORTAGE_INST_GID", "PORTAGE_INST_UID",
+			"PORTAGE_PYM_PATH", "PORTDIR_OVERLAY", "ROOT", "USE_ORDER",
+			"XARGS"])
+		backupenv = settings.configdict["backupenv"]
+		for k, v in os.environ.iteritems():
+			if k in backupenv_whitelist:
+				continue
+			if v == backupenv.get(k):
+				del backupenv[k]
 		settings.regenerate()
 		settings.lock()
 		settings.validate()

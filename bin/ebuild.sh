@@ -60,9 +60,6 @@ export PATH="${DEFAULT_PATH}:${PORTAGE_BIN_PATH}:${ROOTPATH}"
 
 source "${PORTAGE_BIN_PATH}/isolated-functions.sh"  &>/dev/null
 
-OCC="$CC"
-OCXX="$CXX"
-
 # Set IMAGE for minimal backward compatibility with
 # overlays or user's bashrc, but don't export it.
 [ "${EBUILD_PHASE}" == "preinst" ] && IMAGE=${D}
@@ -100,36 +97,6 @@ lchown() {
 lchgrp() {
 	chgrp -h "$@"
 }
-
-# source the existing profile.bashrc's.
-save_IFS
-IFS=$'\n'
-for dir in ${PROFILE_PATHS}; do
-	# Must unset it so that it doesn't mess up assumptions in the RCs.
-	unset IFS
-	if [ -f "${dir}/profile.bashrc" ]; then
-		qa_source "${dir}/profile.bashrc"
-	fi
-done
-restore_IFS
-
-# We assume if people are changing shopts in their bashrc they do so at their
-# own peril.  This is the ONLY non-portage bit of code that can change shopts
-# without a QA violation.
-if [ -f "${PORTAGE_BASHRC}" ]; then
-	# If $- contains x, then tracing has already enabled elsewhere for some
-	# reason.  We preserve it's state so as not to interfere.
-	if [ "$PORTAGE_DEBUG" != "1" ] || [ "${-/x/}" != "$-" ]; then
-		source "${PORTAGE_BASHRC}"
-	else
-		set -x
-		source "${PORTAGE_BASHRC}"
-		set +x
-	fi
-fi
-
-[ ! -z "$OCC" ] && export CC="$OCC"
-[ ! -z "$OCXX" ] && export CXX="$OCXX"
 
 esyslog() {
 	# Custom version of esyslog() to take care of the "Red Star" bug.
@@ -1380,6 +1347,37 @@ remove_path_entry() {
 	PATH="${stripped_path}"
 }
 
+source_all_bashrcs() {
+	local OCC="${CC}" OCXX="${CXX}"
+	# source the existing profile.bashrc's.
+	save_IFS
+	IFS=$'\n'
+	local x
+	for x in ${PROFILE_PATHS}; do
+		# Must unset it so that it doesn't mess up assumptions in the RCs.
+		unset IFS
+		[ -f "${x}/profile.bashrc" ] && qa_source "${x}/profile.bashrc"
+	done
+	restore_IFS
+	
+	# We assume if people are changing shopts in their bashrc they do so at their
+	# own peril.  This is the ONLY non-portage bit of code that can change shopts
+	# without a QA violation.
+	if [ -f "${PORTAGE_BASHRC}" ]; then
+		# If $- contains x, then tracing has already enabled elsewhere for some
+		# reason.  We preserve it's state so as not to interfere.
+		if [ "$PORTAGE_DEBUG" != "1" ] || [ "${-/x/}" != "$-" ]; then
+			source "${PORTAGE_BASHRC}"
+		else
+			set -x
+			source "${PORTAGE_BASHRC}"
+			set +x
+		fi
+	fi
+	[ ! -z "${OCC}" ] && export CC="${OCC}"
+	[ ! -z "${OCXX}" ] && export CXX="${OCXX}"
+}
+
 READONLY_EBUILD_METADATA="DEPEND DESCRIPTION
 	EAPI HOMEPAGE INHERITED IUSE KEYWORDS LICENSE
 	PDEPEND PROVIDE RDEPEND RESTRICT SLOT SRC_URI"
@@ -1411,7 +1409,9 @@ filter_readonly_variables() {
 	# listed in READONLY_EBUILD_METADATA, since having any readonly attributes
 	# persisting in the saved environment can be inconvenient when it
 	# eventually needs to be reloaded.
-	egrep -v -e "${var_grep}" | sed 's:^declare -rx:declare -x:'
+	egrep -v -e "${var_grep}" | sed \
+		-e 's:^declare[[:space:]]\+-r[[:space:]]\+::' \
+		-e 's:^declare[[:space:]]\+-\([[:alnum:]]*\)r\([[:alnum:]]*\)[[:space:]]\+:declare -\1\2 :'
 }
 
 # @FUNCTION: preprocess_ebuild_env
@@ -1439,7 +1439,8 @@ save_ebuild_env() {
 	(
 
 		# misc variables set by bash
-		unset BASH IFS OLDPWD OPTERR OPTIND PS4 PWD SHELL
+		unset BASH HOSTTYPE IFS MACHTYPE OLDPWD \
+			OPTERR OPTIND OSTYPE PS4 PWD SHELL
 
 		# misc variables inherited from the calling environment
 		unset COLORTERM DISPLAY EDITOR LESS LESSOPEN LOGNAME LS_COLORS PAGER \
@@ -1461,7 +1462,8 @@ save_ebuild_env() {
 			dyn_preinst dyn_help debug-print debug-print-function \
 			debug-print-section inherit EXPORT_FUNCTIONS newdepend newrdepend \
 			newpdepend do_newdepend remove_path_entry killparent \
-			save_ebuild_env filter_readonly_variables preprocess_ebuild_env
+			save_ebuild_env filter_readonly_variables preprocess_ebuild_env \
+			source_all_bashrcs
 
 		# portage config variables and variables set directly by portage
 		unset ACCEPT_KEYWORDS AUTOCLEAN BAD BRACKET BUILD_PREFIX CLEAN_DELAY \
@@ -1626,8 +1628,21 @@ fi
 if hasq ${EBUILD_SH_ARGS} clean ; then
 	true
 elif ! hasq ${EBUILD_PHASE} depend && [ -f "${T}"/environment ] ; then
+	if [ "${PN}" == "portage" ] && [ -n "${EBUILD_SH_ARGS}" ] ; then
+		# When portage reinstalls itself, during inst/rm phases, the
+		# environment may have been saved by a different version of ebuild.sh,
+		# so it can't trusted that it's been properly filtered. Therefore,
+		# always preprocess the environment when ${PN} == portage.
+		preprocess_ebuild_env
+	fi
 	source "${T}"/environment
+	source_all_bashrcs
 else
+
+	# The bashrcs get an opportunity here to set aliases that will be expanded
+	# during sourcing of ebuilds and eclasses.
+	source_all_bashrcs
+
 	# *DEPEND and IUSE will be set during the sourcing of the ebuild.
 	# In order to ensure correct interaction between ebuilds and
 	# eclasses, they need to be unset before this process of
@@ -1816,7 +1831,7 @@ if [ -n "${EBUILD_SH_ARGS}" ] && \
 	! hasq ${EBUILD_SH_ARGS} clean help info; then
 	# Save current environment and touch a success file. (echo for success)
 	umask 002
-	save_ebuild_env > "${T}/environment" 2>/dev/null
+	save_ebuild_env > "${T}/environment"
 	chown ${PORTAGE_USER:-portage}:${PORTAGE_GROUP:-portage} "${T}/environment" &>/dev/null
 	chmod g+w "${T}/environment" &>/dev/null
 fi

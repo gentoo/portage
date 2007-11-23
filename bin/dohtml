@@ -100,6 +100,7 @@ def print_help():
 	print " -f   Set list of allowed extensionless file names."
 	print " -x   Set directories to be excluded from recursion."
 	print "      Default:", ",".join(opts.disallowed_dirs)
+	print " -p   Set a document prefix for installed files (empty by default)."
 	print " -r   Install files and directories recursively."
 	print " -V   Be verbose."
 	print
