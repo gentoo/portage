@@ -1669,6 +1669,7 @@ for x in ${PROFILE_PATHS}; do
 	unset IFS
 	[ -f "${x}/profile.bashrc" ] && qa_source "${x}/profile.bashrc"
 done
+unset x
 restore_IFS
 
 # We assume if people are changing shopts in their bashrc they do so at their
