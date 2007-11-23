@@ -1445,7 +1445,8 @@ save_ebuild_env() {
 			dyn_preinst dyn_help debug-print debug-print-function \
 			debug-print-section inherit EXPORT_FUNCTIONS newdepend newrdepend \
 			newpdepend do_newdepend remove_path_entry killparent \
-			save_ebuild_env filter_readonly_variables preprocess_ebuild_env
+			save_ebuild_env filter_readonly_variables preprocess_ebuild_env \
+			source_all_bashrcs
 
 		# portage config variables and variables set directly by portage
 		unset ACCEPT_KEYWORDS AUTOCLEAN BAD BRACKET BUILD_PREFIX CLEAN_DELAY \
