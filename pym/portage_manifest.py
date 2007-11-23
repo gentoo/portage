@@ -318,6 +318,7 @@ class Manifest(object):
 				myentry = Manifest2Entry(
 					type=t, name=f, hashes=self.fhashdict[t][f].copy())
 				myhashkeys = myentry.hashes.keys()
+				myhashkeys.sort()
 				for h in myhashkeys:
 					if h not in ["size"] + portage_const.MANIFEST2_HASH_FUNCTIONS:
 						del myentry.hashes[h]
