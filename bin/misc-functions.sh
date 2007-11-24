@@ -521,8 +521,16 @@ dyn_package() {
 	fi
 	mv -f "${pkg_tmp}" "${pkg_dest}" || die "Failed to move tbz2 to ${pkg_dest}"
 	ln -sf "../All/${PF}.tbz2" "${PKGDIR}/${CATEGORY}/${PF}.tbz2" || die "Failed to create symlink in ${PKGDIR}/${CATEGORY}"
-	local md5sum_output=$(md5sum "${pkg_dest}")
-	echo ${md5sum_output%% *} > "${PORTAGE_BUILDDIR}"/build-info/BINPKGMD5
+	local md5_hash=""
+	if type md5sum &>/dev/null ; then
+		md5_hash=$(md5sum "${pkg_dest}")
+		md5_hash=${md5_hash%% *}
+	elif type md5 &>/dev/null ; then
+		md5_hash=$(md5 "${pkg_dest}")
+		md5_hash=${md5_hash##* }
+	fi
+	[ -n "${md5_hash}" ] && \
+		echo ${md5_hash} > "${PORTAGE_BUILDDIR}"/build-info/BINPKGMD5
 	vecho ">>> Done."
 	cd "${PORTAGE_BUILDDIR}"
 	touch .packaged || die "Failed to 'touch .packaged' in ${PORTAGE_BUILDDIR}"
