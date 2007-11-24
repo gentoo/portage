@@ -993,7 +993,7 @@ dyn_install() {
 		# are no longer needed after src_install(). Don't cleanse from
 		# the global environment though, in case the user wants to repeat
 		# this phase (like with FEATURES=noauto and the ebuild command).
-		unset S
+		unset S _E_DOCDESTTREE_ _E_EXEDESTTREE_
 		save_ebuild_env | filter_readonly_variables --filter-sandbox > environment
 	)
 	bzip2 -f9 environment
