@@ -465,11 +465,25 @@ class binarytree(object):
 					mypkg = myfile[:-5]
 					if not mycat or not mypf or not slot:
 						#old-style or corrupt package
-						writemsg("!!! Invalid binary package: '%s'\n" % full_path,
+						writemsg("\n!!! Invalid binary package: '%s'\n" % full_path,
 							noiselevel=-1)
-						writemsg("!!! This binary package is not " + \
-							"recoverable and should be deleted.\n",
-							noiselevel=-1)
+						missing_keys = []
+						if not mycat:
+							missing_keys.append("CATEGORY")
+						if not mypf:
+							missing_keys.append("PF")
+						if not slot:
+							missing_keys.append("SLOT")
+						msg = []
+						if missing_keys:
+							missing_keys.sort()
+							msg.append("Missing metadata key(s): %s." % \
+								", ".join(missing_keys))
+						msg.append(" This binary package is not " + \
+							"recoverable and should be deleted.")
+						from textwrap import wrap
+						for line in wrap("".join(msg), 72):
+							writemsg("!!! %s\n" % line, noiselevel=-1)
 						self.invalids.append(mypkg)
 						continue
 					mycat = mycat.strip()
