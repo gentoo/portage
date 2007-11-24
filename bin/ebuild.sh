@@ -1384,10 +1384,16 @@ filter_readonly_variables() {
 	local x filtered_vars var_grep
 	local readonly_bash_vars="DIRSTACK EUID FUNCNAME GROUPS
 		PIPESTATUS PPID SHELLOPTS UID"
+	local filtered_sandbox_vars="SANDBOX_ACTIVE SANDBOX_BASHRC
+		SANDBOX_DEBUG_LOG SANDBOX_DISABLED SANDBOX_LIB
+		SANDBOX_LOG"
 	filtered_vars="${readonly_bash_vars} ${READONLY_PORTAGE_VARS}
 		BASH_[_[:alnum:]]*"
-	hasq --filter-sandbox $* && \
+	if hasq --filter-sandbox $* ; then
 		filtered_vars="${filtered_vars} SANDBOX_[_[:alnum:]]*"
+	else
+		filtered_vars="${filtered_vars} ${filtered_sandbox_vars}"
+	fi
 	set -f
 	for x in ${filtered_vars} ; do
 		var_grep="${var_grep}|${x}"
