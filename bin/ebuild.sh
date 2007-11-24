@@ -1381,7 +1381,7 @@ READONLY_PORTAGE_VARS="D EBUILD EBUILD_PHASE EBUILD_SH_ARGS FILESDIR \
 # builtin command. To avoid this problem, this function filters those
 # variables out and discards them. See bug #190128.
 filter_readonly_variables() {
-	local x filtered_vars
+	local x filtered_vars var_grep
 	local readonly_bash_vars="DIRSTACK EUID FUNCNAME GROUPS
 		PIPESTATUS PPID SHELLOPTS UID"
 	filtered_vars="${readonly_bash_vars} ${READONLY_PORTAGE_VARS}
