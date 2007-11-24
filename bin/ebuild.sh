@@ -1010,9 +1010,8 @@ dyn_install() {
 		# are no longer needed after src_install(). Don't cleanse from
 		# the global environment though, in case the user wants to repeat
 		# this phase (like with FEATURES=noauto and the ebuild command).
-		unset S
-	
-		save_ebuild_env > environment
+		unset S _E_DOCDESTTREE_ _E_EXEDESTTREE_
+		save_ebuild_env | filter_readonly_variables --filter-sandbox > environment
 	)
 	bzip2 -f9 environment
 
@@ -1386,25 +1385,39 @@ READONLY_PORTAGE_VARS="D EBUILD EBUILD_PHASE EBUILD_SH_ARGS FILESDIR \
 	PORTAGE_BIN_PATH PORTAGE_PYM_PATH PORTAGE_TMPDIR T WORKDIR"
 
 # @FUNCTION: filter_readonly_variables
-# @DESCRIPTION:
+# @DESCRIPTION: [--filter-sandbox]
 # Read an environment from stdin and echo to stdout while filtering readonly
 # variables.
+#
+# --filter-sandbox causes all SANDBOX_* variables to be filtered, which
+# is only desired in certain cases, such as during preprocessing or when
+# saving environment.bz2 for a binary or installed package.
 #
 # In bash-3.2_p20+ an attempt to assign BASH_*, FUNCNAME, GROUPS or any
 # readonly variable cause the shell to exit while executing the "source"
 # builtin command. To avoid this problem, this function filters those
 # variables out and discards them. See bug #190128.
 filter_readonly_variables() {
-	local x var_grep=""
-	for x in BASH SANDBOX ; do
-		var_grep="${var_grep}|(^|^declare[[:space:]]+-[^[:space:]]+[[:space:]]+)${x}_[_[:alnum:]]*=.*"
-	done
+	local x filtered_vars var_grep
 	local readonly_bash_vars="DIRSTACK EUID FUNCNAME GROUPS
 		PIPESTATUS PPID SHELLOPTS UID"
-	for x in ${readonly_bash_vars} ${READONLY_PORTAGE_VARS} ; do
-		var_grep="${var_grep}|(^|^declare[[:space:]]+-[^[:space:]]+[[:space:]]+)${x}=.*"
+	local filtered_sandbox_vars="SANDBOX_ACTIVE SANDBOX_BASHRC
+		SANDBOX_DEBUG_LOG SANDBOX_DISABLED SANDBOX_LIB
+		SANDBOX_LOG"
+	filtered_vars="${readonly_bash_vars} ${READONLY_PORTAGE_VARS}
+		BASH_[_[:alnum:]]*"
+	if hasq --filter-sandbox $* ; then
+		filtered_vars="${filtered_vars} SANDBOX_[_[:alnum:]]*"
+	else
+		filtered_vars="${filtered_vars} ${filtered_sandbox_vars}"
+	fi
+	set -f
+	for x in ${filtered_vars} ; do
+		var_grep="${var_grep}|${x}"
 	done
+	set +f
 	var_grep=${var_grep:1} # strip the first |
+	var_grep="(^|^declare[[:space:]]+-[^[:space:]]+[[:space:]]+)(${var_grep})=.*"
 	# The sed is to remove the readonly attribute from variables such as those
 	# listed in READONLY_EBUILD_METADATA, since having any readonly attributes
 	# persisting in the saved environment can be inconvenient when it
@@ -1422,13 +1435,14 @@ filter_readonly_variables() {
 # interfering with the current environment. This is useful when an existing
 # environment needs to be loaded from a binary or installed package.
 preprocess_ebuild_env() {
-	filter_readonly_variables < "${T}"/environment > "${T}"/environment.filtered
+	filter_readonly_variables --filter-sandbox < "${T}"/environment \
+		> "${T}"/environment.filtered
 	mv "${T}"/environment.filtered "${T}"/environment
 	(
 		source "${T}"/environment
 		# Rely on save_ebuild_env() to filter out any remaining variables
 		# and functions that could interfere with the current environment.
-		save_ebuild_env > "${T}"/environment
+		save_ebuild_env | filter_readonly_variables > "${T}"/environment
 	)
 }
 
@@ -1508,7 +1522,7 @@ save_ebuild_env() {
 
 		set
 		export
-	) | filter_readonly_variables
+	)
 }
 
 # === === === === === === === === === === === === === === === === === ===
@@ -1635,7 +1649,20 @@ elif ! hasq ${EBUILD_PHASE} depend && [ -f "${T}"/environment ] ; then
 		# always preprocess the environment when ${PN} == portage.
 		preprocess_ebuild_env
 	fi
+	# Colon separated SANDBOX_* variables need to be cumulative.
+	for x in SANDBOX_DENY SANDBOX_READ SANDBOX_PREDICT SANDBOX_WRITE ; do
+		eval PORTAGE_${x}=\${!x}
+	done
 	source "${T}"/environment
+	for x in SANDBOX_DENY SANDBOX_PREDICT SANDBOX_READ SANDBOX_WRITE ; do
+		eval y=\${PORTAGE_${x}}
+		if [ "${y}" != "${!x}" ] ; then
+			eval export ${x}=\"$(echo -n "${y}:${!x}" | tr ":" "\0" | \
+				sort -z -u | tr "\0" ":")\"
+		fi
+		unset PORTAGE_${x}
+	done
+	unset x y
 	source_all_bashrcs
 else
 
@@ -1831,7 +1858,7 @@ if [ -n "${EBUILD_SH_ARGS}" ] && \
 	! hasq ${EBUILD_SH_ARGS} clean help info; then
 	# Save current environment and touch a success file. (echo for success)
 	umask 002
-	save_ebuild_env > "${T}/environment"
+	save_ebuild_env | filter_readonly_variables > "${T}/environment"
 	chown ${PORTAGE_USER:-portage}:${PORTAGE_GROUP:-portage} "${T}/environment" &>/dev/null
 	chmod g+w "${T}/environment" &>/dev/null
 fi
