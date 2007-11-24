@@ -1381,18 +1381,20 @@ READONLY_PORTAGE_VARS="D EBUILD EBUILD_PHASE EBUILD_SH_ARGS FILESDIR \
 # builtin command. To avoid this problem, this function filters those
 # variables out and discards them. See bug #190128.
 filter_readonly_variables() {
-	local var_prefixes="BASH"
-	hasq --filter-sandbox $* && var_prefixes="${var_prefixes} SANDBOX"
-	local x var_grep=""
-	for x in ${var_prefixes} ; do
-		var_grep="${var_grep}|(^|^declare[[:space:]]+-[^[:space:]]+[[:space:]]+)${x}_[_[:alnum:]]*=.*"
-	done
+	local x filtered_vars
 	local readonly_bash_vars="DIRSTACK EUID FUNCNAME GROUPS
 		PIPESTATUS PPID SHELLOPTS UID"
-	for x in ${readonly_bash_vars} ${READONLY_PORTAGE_VARS} ; do
-		var_grep="${var_grep}|(^|^declare[[:space:]]+-[^[:space:]]+[[:space:]]+)${x}=.*"
+	filtered_vars="${readonly_bash_vars} ${READONLY_PORTAGE_VARS}
+		BASH_[_[:alnum:]]*"
+	hasq --filter-sandbox $* && \
+		filtered_vars="${filtered_vars} SANDBOX_[_[:alnum:]]*"
+	set -f
+	for x in ${filtered_vars} ; do
+		var_grep="${var_grep}|${x}"
 	done
+	set +f
 	var_grep=${var_grep:1} # strip the first |
+	var_grep="(^|^declare[[:space:]]+-[^[:space:]]+[[:space:]]+)(${var_grep})=.*"
 	# The sed is to remove the readonly attribute from variables such as those
 	# listed in READONLY_EBUILD_METADATA, since having any readonly attributes
 	# persisting in the saved environment can be inconvenient when it
