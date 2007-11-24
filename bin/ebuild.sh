@@ -1623,14 +1623,14 @@ elif ! hasq ${EBUILD_PHASE} depend && [ -f "${T}"/environment ] ; then
 	fi
 	# Colon separated SANDBOX_* variables need to be cumulative.
 	for x in SANDBOX_DENY SANDBOX_READ SANDBOX_PREDICT SANDBOX_WRITE ; do
-		eval PORTAGE_${x}="${!x}"
+		eval PORTAGE_${x}=\${!x}
 	done
 	source "${T}"/environment
 	for x in SANDBOX_DENY SANDBOX_PREDICT SANDBOX_READ SANDBOX_WRITE ; do
 		eval y=\${PORTAGE_${x}}
 		if [ "${y}" != "${!x}" ] ; then
-			eval export ${x}=$(echo -n "${y}:${!x}" | tr ":" "\0" | \
-				sort -z -u | tr "\0" ":")
+			eval export ${x}=\"$(echo -n "${y}:${!x}" | tr ":" "\0" | \
+				sort -z -u | tr "\0" ":")\"
 		fi
 		unset PORTAGE_${x}
 	done
