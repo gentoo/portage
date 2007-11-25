@@ -1397,12 +1397,14 @@ preprocess_ebuild_env() {
 	filter_readonly_variables --filter-sandbox < "${T}"/environment \
 		> "${T}"/environment.filtered
 	mv "${T}"/environment.filtered "${T}"/environment
+	# TODO: Remove the assumption that the environment being loaded
+	# does not override the save_ebuild_env() function.
 	(
 		source "${T}"/environment
 		# Rely on save_ebuild_env() to filter out any remaining variables
 		# and functions that could interfere with the current environment.
-		save_ebuild_env | filter_readonly_variables > "${T}"/environment
-	)
+		save_ebuild_env
+	) | filter_readonly_variables > "${T}"/environment
 }
 
 # @FUNCTION: save_ebuild_env
