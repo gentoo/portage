@@ -3633,6 +3633,10 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 		raise portage.exception.IncorrectParameter(
 			"Invalid ebuild path: '%s'" % myebuild)
 
+	# Make a backup of PORTAGE_TMPDIR prior to calling config.reset()
+	# so that the caller can override it.
+	tmpdir = mysettings["PORTAGE_TMPDIR"]
+
 	if mydo != "depend":
 		"""For performance reasons, setcpv only triggers reset when it
 		detects a package-specific change in config.  For the ebuild
@@ -3641,6 +3645,10 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 		mysettings.reload()
 		mysettings.reset(use_cache=use_cache)
 		mysettings.setcpv(mycpv, use_cache=use_cache, mydb=mydbapi)
+
+	# config.reset() might have reverted a change made by the caller,
+	# so restore it to it's original value.
+	mysettings["PORTAGE_TMPDIR"] = tmpdir
 
 	mysettings["EBUILD_PHASE"] = mydo
 
@@ -4090,11 +4098,23 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 	logfile=None
 	builddir_lock = None
+	tmpdir = None
+	tmpdir_orig = None
 	try:
 		if mydo in ("digest", "manifest", "help"):
 			# Temporarily exempt the depend phase from manifest checks, in case
 			# aux_get calls trigger cache generation.
 			_doebuild_manifest_exempt_depend += 1
+
+		# If we don't need much space and we don't need a constant location,
+		# we can temporarily override PORTAGE_TMPDIR with a random temp dir
+		# so that there's no need for locking and it can be used even if the
+		# user isn't in the portage group.
+		if mydo in ("info",):
+			from tempfile import mkdtemp
+			tmpdir = mkdtemp()
+			tmpdir_orig = mysettings["PORTAGE_TMPDIR"]
+			mysettings["PORTAGE_TMPDIR"] = tmpdir
 
 		doebuild_environment(myebuild, mydo, myroot, mysettings, debug,
 			use_cache, mydbapi)
@@ -4187,13 +4207,15 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 		# Build directory creation isn't required for any of these.
 		have_build_dirs = False
-		if mydo not in ("digest", "fetch", "help", "info", "manifest"):
+		if mydo not in ("digest", "fetch", "help", "manifest"):
 			mystatus = prepare_build_dirs(myroot, mysettings, cleanup)
 			if mystatus:
 				return mystatus
 			have_build_dirs = True
 			# PORTAGE_LOG_FILE is set above by the prepare_build_dirs() call.
-			logfile = mysettings.get("PORTAGE_LOG_FILE", None)
+			logfile = mysettings.get("PORTAGE_LOG_FILE")
+			if logfile and not os.access(os.path.dirname(logfile), os.W_OK):
+				logfile = None
 		if mydo == "unmerge":
 			return unmerge(mysettings["CATEGORY"],
 				mysettings["PF"], myroot, mysettings, vartree=vartree)
@@ -4453,6 +4475,9 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		return retval
 
 	finally:
+		if tmpdir:
+			mysettings["PORTAGE_TMPDIR"] = tmpdir_orig
+			shutil.rmtree(tmpdir)
 		if builddir_lock:
 			portage.locks.unlockdir(builddir_lock)
 

@@ -1208,8 +1208,10 @@ for x in scanlist:
 				stats["virtual.exists"]+=1
 				fails["virtual.exists"].append(x+"/"+y+".ebuild: "+prov_cp)
 
-		for pos in range(0,len(missingvars)):
-			if not myaux[missingvars[pos]]:
+		for pos, missing_var in enumerate(missingvars):
+			if not myaux.get(missing_var):
+				if missing_var == "LICENSE" and catdir == "virtual":
+					continue
 				myqakey=missingvars[pos]+".missing"
 				stats[myqakey]=stats[myqakey]+1
 				fails[myqakey].append(x+"/"+y+".ebuild")

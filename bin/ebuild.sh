@@ -549,10 +549,6 @@ einstall() {
 	fi
 }
 
-pkg_setup() {
-	return
-}
-
 pkg_nofetch() {
 	[ -z "${SRC_URI}" ] && return
 
@@ -603,26 +599,6 @@ src_install() {
 	return
 }
 
-pkg_preinst() {
-	return
-}
-
-pkg_postinst() {
-	return
-}
-
-pkg_prerm() {
-	return
-}
-
-pkg_postrm() {
-	return
-}
-
-pkg_config() {
-	eerror "This ebuild does not have a config function."
-}
-
 # Used to generate the /lib/cpp and /usr/bin/cc wrappers
 gen_wrapper() {
 	cat > "$1" <<-EOF
@@ -632,10 +608,19 @@ gen_wrapper() {
 	chmod 0755 "$1"
 }
 
+ebuild_phase() {
+	[ "$(type -t ${1})" == "function" ] && qa_call ${1}
+}
+
+ebuild_phase_with_hooks() {
+	local x phase_name=${1}
+	for x in {pre_,,post_}${phase_name} ; do
+		ebuild_phase ${x}
+	done
+}
+
 dyn_setup() {
-	[ "$(type -t pre_pkg_setup)" == "function" ] && qa_call pre_pkg_setup
-	qa_call pkg_setup
-	[ "$(type -t post_pkg_setup)" == "function" ] && qa_call post_pkg_setup
+	ebuild_phase_with_hooks pkg_setup
 }
 
 dyn_unpack() {
@@ -683,7 +668,7 @@ dyn_unpack() {
 	fi
 	cd "${WORKDIR}" || die "Directory change failed: \`cd '${WORKDIR}'\`"
 	vecho ">>> Unpacking source..."
-	qa_call src_unpack
+	ebuild_phase src_unpack
 	touch "${PORTAGE_BUILDDIR}/.unpacked" || die "IO Failure -- Failed 'touch .unpacked' in ${PORTAGE_BUILDDIR}"
 	vecho ">>> Source unpacked."
 	cd "${PORTAGE_BUILDDIR}"
@@ -905,7 +890,7 @@ dyn_compile() {
 	#our libtool to create problematic .la files
 	export PWORKDIR="$WORKDIR"
 	vecho ">>> Compiling source in ${srcdir} ..."
-	qa_call src_compile
+	ebuild_phase src_compile
 	vecho ">>> Source compiled."
 	#|| abort_compile "fail"
 	cd "${PORTAGE_BUILDDIR}"
@@ -944,7 +929,7 @@ dyn_test() {
 		vecho ">>> Test phase [explicitly disabled]: ${CATEGORY}/${PF}"
 	else
 		addpredict /
-		qa_call src_test
+		ebuild_phase src_test
 		SANDBOX_PREDICT="${SANDBOX_PREDICT%:/}"
 	fi
 
@@ -980,7 +965,7 @@ dyn_install() {
 	#some packages uses an alternative to $S to build in, cause
 	#our libtool to create problematic .la files
 	export PWORKDIR="$WORKDIR"
-	qa_call src_install
+	ebuild_phase src_install
 	touch "${PORTAGE_BUILDDIR}/.installed"
 	vecho ">>> Completed installing ${PF} into ${ED}"
 	vecho
@@ -1029,12 +1014,7 @@ dyn_preinst() {
 		eerror "${FUNCNAME}: D is unset"
 		return 1
 	fi
-
-	[ "$(type -t pre_pkg_preinst)" == "function" ] && qa_call pre_pkg_preinst
-
-	pkg_preinst
-
-	[ "$(type -t post_pkg_preinst)" == "function" ] && qa_call post_pkg_preinst
+	ebuild_phase_with_hooks pkg_preinst
 }
 
 dyn_help() {
@@ -1477,7 +1457,7 @@ save_ebuild_env() {
 			debug-print-section inherit EXPORT_FUNCTIONS newdepend newrdepend \
 			newpdepend do_newdepend remove_path_entry killparent \
 			save_ebuild_env filter_readonly_variables preprocess_ebuild_env \
-			source_all_bashrcs
+			source_all_bashrcs ebuild_phase ebuild_phase_with_hooks
 
 		# portage config variables and variables set directly by portage
 		unset ACCEPT_KEYWORDS AUTOCLEAN BAD BRACKET BUILD_PREFIX CLEAN_DELAY \
@@ -1629,7 +1609,8 @@ if hasq "depend" "${EBUILD_SH_ARGS}"; then
 	unset BIN_PATH BIN BODY FUNC_SRC
 fi
 
-if hasq ${EBUILD_PHASE} setup prerm && [ ! -f "${T}/environment" ]; then
+if hasq ${EBUILD_PHASE} config info prerm setup \
+	&& [ ! -f "${T}/environment" ] ; then
 	bzip2 -dc "${EBUILD%/*}"/environment.bz2 > \
 		"${T}/environment" 2> /dev/null
 	if [ -s "${T}/environment" ] ; then
@@ -1754,29 +1735,20 @@ fi
 if [ -n "${EBUILD_SH_ARGS}" ] ; then
 	case ${EBUILD_SH_ARGS} in
 	nofetch)
-		qa_call pkg_nofetch
+		ebuild_phase_with_hooks pkg_nofetch
 		exit 1
 		;;
 	prerm|postrm|postinst|config|info)
-		if [ "${EBUILD_SH_ARGS}" == "info" ] && \
+		if hasq ${EBUILD_SH_ARGS} config info && \
 			[ "$(type -t pkg_${EBUILD_SH_ARGS})" != "function" ]; then
 			ewarn  "pkg_${EBUILD_SH_ARGS}() is not defined: '${EBUILD##*/}'"
-			continue
 		fi
 		export SANDBOX_ON="0"
 		if [ "${PORTAGE_DEBUG}" != "1" ] || [ "${-/x/}" != "$-" ]; then
-			[ "$(type -t pre_pkg_${EBUILD_SH_ARGS})" == "function" ] && \
-				qa_call pre_pkg_${EBUILD_SH_ARGS}
-			qa_call pkg_${EBUILD_SH_ARGS}
-			[ "$(type -t post_pkg_${EBUILD_SH_ARGS})" == "function" ] && \
-				qa_call post_pkg_${EBUILD_SH_ARGS}
+			ebuild_phase_with_hooks pkg_${EBUILD_SH_ARGS}
 		else
 			set -x
-			[ "$(type -t pre_pkg_${EBUILD_SH_ARGS})" == "function" ] && \
-				qa_call pre_pkg_${EBUILD_SH_ARGS}
-			qa_call pkg_${EBUILD_SH_ARGS}
-			[ "$(type -t post_pkg_${EBUILD_SH_ARGS})" == "function" ] && \
-				qa_call post_pkg_${EBUILD_SH_ARGS}
+			ebuild_phase_with_hooks pkg_${EBUILD_SH_ARGS}
 			set +x
 		fi
 		;;

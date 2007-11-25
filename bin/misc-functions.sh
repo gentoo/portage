@@ -613,8 +613,16 @@ dyn_package() {
 		rm -f "${PORTAGE_BINPKG_TMPFILE}"
 		die "Failed to append metadata to the tbz2 file"
 	fi
-	local md5sum_output=$(md5sum "${PORTAGE_BINPKG_TMPFILE}")
-	echo ${md5sum_output%% *} > "${PORTAGE_BUILDDIR}"/build-info/BINPKGMD5
+	local md5_hash=""
+	if type md5sum &>/dev/null ; then
+		md5_hash=$(md5sum "${PORTAGE_BINPKG_TMPFILE}")
+		md5_hash=${md5_hash%% *}
+	elif type md5 &>/dev/null ; then
+		md5_hash=$(md5 "${PORTAGE_BINPKG_TMPFILE}")
+		md5_hash=${md5_hash##* }
+	fi
+	[ -n "${md5_hash}" ] && \
+		echo ${md5_hash} > "${PORTAGE_BUILDDIR}"/build-info/BINPKGMD5
 	vecho ">>> Done."
 	cd "${PORTAGE_BUILDDIR}"
 	touch .packaged || die "Failed to 'touch .packaged' in ${PORTAGE_BUILDDIR}"
