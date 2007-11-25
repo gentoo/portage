@@ -1397,82 +1397,23 @@ preprocess_ebuild_env() {
 	filter_readonly_variables --filter-sandbox < "${T}"/environment \
 		> "${T}"/environment.filtered
 	mv "${T}"/environment.filtered "${T}"/environment
-	# TODO: Remove the assumption that the environment being loaded
-	# does not override the save_ebuild_env() function.
+	# WARNING: Code inside this subshell should avoid making assumptions
+	# about variables or functions after source "${T}"/environment has been
+	# called. Any variables that need to be relied upon should already be
+	# filtered out above.
 	(
 		source "${T}"/environment
+
+		# It's remotely possible that save_ebuild_env() has been overridden
+		# by the above source command. To protect ourselves, we override it
+		# here with our own version. ${PORTAGE_BIN_PATH} is safe to use here
+		# because it's already filtered above.
+		source "${PORTAGE_BIN_PATH}/isolated-functions.sh"
+
 		# Rely on save_ebuild_env() to filter out any remaining variables
 		# and functions that could interfere with the current environment.
 		save_ebuild_env
 	) | filter_readonly_variables > "${T}"/environment
-}
-
-# @FUNCTION: save_ebuild_env
-# @DESCRIPTION:
-# echo the current environment to stdout, filtering out redundant info.
-save_ebuild_env() {
-	(
-
-		# misc variables set by bash
-		unset BASH HOSTTYPE IFS MACHTYPE OLDPWD \
-			OPTERR OPTIND OSTYPE PS4 PWD SHELL
-
-		# misc variables inherited from the calling environment
-		unset COLORTERM DISPLAY EDITOR LESS LESSOPEN LOGNAME LS_COLORS PAGER \
-			TERM TERMCAP USER
-
-		# There's no need to bloat environment.bz2 with internally defined
-		# functions and variables, so filter them out if possible.
-
-		unset -f dump_trace diefunc quiet_mode vecho elog_base eqawarn elog \
-			esyslog einfo einfon ewarn eerror ebegin _eend eend KV_major \
-			KV_minor KV_micro KV_to_int get_KV unset_colors set_colors has \
-			hasv hasq qa_source qa_call addread addwrite adddeny addpredict \
-			lchown lchgrp esyslog use usev useq has_version portageq \
-			best_version use_with use_enable register_die_hook check_KV \
-			keepdir unpack strip_duplicate_slashes econf einstall gen_wrapper \
-			dyn_setup dyn_unpack dyn_clean into insinto exeinto docinto \
-			insopts diropts exeopts libopts abort_handler abort_compile \
-			abort_test abort_install dyn_compile dyn_test dyn_install \
-			dyn_preinst dyn_help debug-print debug-print-function \
-			debug-print-section inherit EXPORT_FUNCTIONS newdepend newrdepend \
-			newpdepend do_newdepend remove_path_entry killparent \
-			save_ebuild_env filter_readonly_variables preprocess_ebuild_env \
-			source_all_bashrcs ebuild_phase ebuild_phase_with_hooks
-
-		# portage config variables and variables set directly by portage
-		unset ACCEPT_KEYWORDS AUTOCLEAN BAD BRACKET BUILD_PREFIX CLEAN_DELAY \
-			COLLISION_IGNORE COLS CONFIG_PROTECT CONFIG_PROTECT_MASK \
-			DISTCC_DIR DISTDIR DOC_SYMLINKS_DIR EBUILD_MASTER_PID \
-			ECLASSDIR ECLASS_DEPTH EMERGE_DEFAULT_OPTS \
-			EMERGE_WARNING_DELAY ENDCOL FAKEROOTKEY FEATURES \
-			FETCHCOMMAND FETCHCOMMAND_FTP FETCHCOMMAND_HTTP FETCHCOMMAND_SFTP \
-			GENTOO_MIRRORS GOOD HILITE HOME IMAGE \
-			KV LAST_E_CMD LAST_E_LEN LD_PRELOAD MOPREFIX \
-			NORMAL O PATH PKGDIR PKGUSE PKG_LOGDIR PKG_TMPDIR \
-			PORTAGE_ACTUAL_DISTDIR PORTAGE_ARCHLIST PORTAGE_BASHRC \
-			PORTAGE_BINHOST_CHUNKSIZE PORTAGE_BINPKG_TMPFILE \
-			PORTAGE_BUILDDIR PORTAGE_CALLER \
-			PORTAGE_COLORMAP PORTAGE_CONFIGROOT PORTAGE_DEBUG \
-			PORTAGE_DEPCACHEDIR PORTAGE_ELOG_CLASSES PORTAGE_ELOG_MAILFROM \
-			PORTAGE_ELOG_MAILSUBJECT PORTAGE_ELOG_MAILURI PORTAGE_ELOG_SYSTEM \
-			PORTAGE_GID PORTAGE_GPG_DIR PORTAGE_GPG_KEY PORTAGE_INST_GID \
-			PORTAGE_INST_UID PORTAGE_LOG_FILE PORTAGE_MASTER_PID \
-			PORTAGE_REPO_NAME PORTAGE_RESTRICT \
-			PORTAGE_RSYNC_EXTRA_OPTS PORTAGE_RSYNC_OPTS \
-			PORTAGE_RSYNC_RETRIES PORTAGE_TMPFS PORTAGE_WORKDIR_MODE PORTDIR \
-			PORTDIR_OVERLAY PORT_LOGDIR PROFILE_PATHS PWORKDIR \
-			QUICKPKG_DEFAULT_OPTS QA_INTERCEPTORS \
-			RC_DEFAULT_INDENT RC_DOT_PATTERN RC_ENDCOL \
-			RC_INDENTATION READONLY_EBUILD_METADATA READONLY_PORTAGE_VARS \
-			RESUMECOMMAND RESUMECOMMAND_HTTP \
-			RESUMECOMMAND_HTTP RESUMECOMMAND_SFTP ROOT ROOTPATH RPMDIR \
-			STARTDIR SYNC TMP TMPDIR USE_EXPAND \
-			USE_EXPAND_HIDDEN USE_ORDER WARN XARGS
-
-		set
-		export
-	)
 }
 
 # === === === === === === === === === === === === === === === === === ===
