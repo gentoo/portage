@@ -5253,9 +5253,15 @@ def action_config(settings, trees, myopts, myfiles):
 	print
 	ebuildpath = trees[settings["ROOT"]]["vartree"].dbapi.findname(pkg)
 	mysettings = portage.config(clone=settings)
-	portage.doebuild(ebuildpath, "config", settings["ROOT"], mysettings,
+	vardb = trees[mysettings["ROOT"]]["vartree"].dbapi
+	debug = mysettings.get("PORTAGE_DEBUG") == "1"
+	retval = portage.doebuild(ebuildpath, "config", mysettings["ROOT"],
+		mysettings,
 		debug=(settings.get("PORTAGE_DEBUG", "") == 1), cleanup=True,
 		mydbapi=trees[settings["ROOT"]]["vartree"].dbapi, tree="vartree")
+	if retval == os.EX_OK:
+		portage.doebuild(ebuildpath, "clean", mysettings["ROOT"],
+			mysettings, debug=debug, mydbapi=vardb, tree="vartree")
 	print
 
 def action_info(settings, trees, myopts, myfiles):
