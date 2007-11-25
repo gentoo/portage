@@ -1601,7 +1601,8 @@ if hasq "depend" "${EBUILD_SH_ARGS}"; then
 	unset BIN_PATH BIN BODY FUNC_SRC
 fi
 
-if hasq ${EBUILD_PHASE} setup prerm && [ ! -f "${T}/environment" ]; then
+if hasq ${EBUILD_PHASE} info prerm setup \
+	&& [ ! -f "${T}/environment" ] ; then
 	bzip2 -dc "${EBUILD%/*}"/environment.bz2 > \
 		"${T}/environment" 2> /dev/null
 	if [ -s "${T}/environment" ] ; then
