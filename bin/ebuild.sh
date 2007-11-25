@@ -535,10 +535,6 @@ einstall() {
 	fi
 }
 
-pkg_setup() {
-	return
-}
-
 pkg_nofetch() {
 	[ -z "${SRC_URI}" ] && return
 
@@ -580,30 +576,6 @@ src_test() {
 	else
 		vecho ">>> Test phase [none]: ${CATEGORY}/${PF}"
 	fi
-}
-
-src_install() {
-	return
-}
-
-pkg_preinst() {
-	return
-}
-
-pkg_postinst() {
-	return
-}
-
-pkg_prerm() {
-	return
-}
-
-pkg_postrm() {
-	return
-}
-
-pkg_config() {
-	eerror "This ebuild does not have a config function."
 }
 
 # Used to generate the /lib/cpp and /usr/bin/cc wrappers
@@ -1735,7 +1707,7 @@ if [ -n "${EBUILD_SH_ARGS}" ] ; then
 		exit 1
 		;;
 	prerm|postrm|postinst|config|info)
-		if [ "${EBUILD_SH_ARGS}" == "info" ] && \
+		if hasq ${EBUILD_SH_ARGS} config info && \
 			[ "$(type -t pkg_${EBUILD_SH_ARGS})" != "function" ]; then
 			ewarn  "pkg_${EBUILD_SH_ARGS}() is not defined: '${EBUILD##*/}'"
 			exit 0
