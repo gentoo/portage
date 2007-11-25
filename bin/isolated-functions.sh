@@ -20,8 +20,18 @@ dump_trace() {
 	declare -i strip=${1:-1}
 	local filespacing=$2 linespacing=$3
 
+	# The qa_call() function and anything before it are portage internals
+	# that the user will not be interested in. Therefore, the stack trace
+	# should only show calls that come after qa_call().
+	(( n = ${#FUNCNAME[@]} - 1 ))
+	while (( n > 0 )) ; do
+		[ "${FUNCNAME[${n}]}" == "qa_call" ] && break
+		(( n-- ))
+	done
+	(( n == 0 )) && (( n = ${#FUNCNAME[@]} - 1 ))
+
 	eerror "Call stack:"
-	for (( n = ${#FUNCNAME[@]} - 1, p = ${#BASH_ARGV[@]} ; n > ${strip} ; n-- )) ; do
+	for (( p = ${#BASH_ARGV[@]} ; n > ${strip} ; n-- )) ; do
 		funcname=${FUNCNAME[${n} - 1]}
 		sourcefile=$(basename ${BASH_SOURCE[${n}]})
 		lineno=${BASH_LINENO[${n} - 1]}
