@@ -1710,7 +1710,6 @@ if [ -n "${EBUILD_SH_ARGS}" ] ; then
 		if hasq ${EBUILD_SH_ARGS} config info && \
 			[ "$(type -t pkg_${EBUILD_SH_ARGS})" != "function" ]; then
 			ewarn  "pkg_${EBUILD_SH_ARGS}() is not defined: '${EBUILD##*/}'"
-			exit 0
 		fi
 		export SANDBOX_ON="0"
 		if [ "${PORTAGE_DEBUG}" != "1" ] || [ "${-/x/}" != "$-" ]; then
