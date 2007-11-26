@@ -4267,7 +4267,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 		# Build directory creation isn't required for any of these.
 		have_build_dirs = False
-		if mydo not in ("clean", "digest", "fetch", "help", "manifest"):
+		if mydo not in ("clean", "cleanrm", "digest",
+			"fetch", "help", "manifest"):
 			mystatus = prepare_build_dirs(myroot, mysettings, cleanup)
 			if mystatus:
 				return mystatus
