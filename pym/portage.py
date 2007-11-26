@@ -4220,9 +4220,13 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				"correct your PORTAGE_TMPDIR setting.\n", noiselevel=-1)
 			return 1
 
+		if mydo == "unmerge":
+			return unmerge(mysettings["CATEGORY"],
+				mysettings["PF"], myroot, mysettings, vartree=vartree)
+
 		# Build directory creation isn't required for any of these.
 		have_build_dirs = False
-		if mydo not in ("digest", "fetch", "help", "manifest"):
+		if mydo not in ("clean", "digest", "fetch", "help", "manifest"):
 			mystatus = prepare_build_dirs(myroot, mysettings, cleanup)
 			if mystatus:
 				return mystatus
@@ -4231,15 +4235,11 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			logfile = mysettings.get("PORTAGE_LOG_FILE")
 			if logfile and not os.access(os.path.dirname(logfile), os.W_OK):
 				logfile = None
-				
 		if have_build_dirs:
 			_doebuild_exit_status_unlink(
 				mysettings.get("EBUILD_EXIT_STATUS_FILE"))
 		else:
 			mysettings.pop("EBUILD_EXIT_STATUS_FILE", None)
-		if mydo == "unmerge":
-			return unmerge(mysettings["CATEGORY"],
-				mysettings["PF"], myroot, mysettings, vartree=vartree)
 
 		# if any of these are being called, handle them -- running them out of
 		# the sandbox -- and stop now.

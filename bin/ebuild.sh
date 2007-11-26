@@ -659,8 +659,9 @@ dyn_clean() {
 	if [ -z "${PORTAGE_BUILDDIR}" ]; then
 		echo "Aborting clean phase because PORTAGE_BUILDDIR is unset!"
 		return 1
+	elif [ ! -d "${PORTAGE_BUILDDIR}" ] ; then
+		return 0
 	fi
-
 	if type -P chflags > /dev/null ; then
 		chflags -R noschg,nouchg,nosappnd,nouappnd "${PORTAGE_BUILDDIR}"
 		chflags -R nosunlnk,nouunlnk "${PORTAGE_BUILDDIR}" 2>/dev/null
@@ -675,6 +676,7 @@ dyn_clean() {
 	fi
 
 	if ! hasq keepwork $FEATURES; then
+		rm -rf "${PORTAGE_BUILDDIR}/.exit_status"
 		rm -rf "${PORTAGE_BUILDDIR}/.logid"
 		rm -rf "${PORTAGE_BUILDDIR}/.unpacked"
 		rm -rf "${PORTAGE_BUILDDIR}/.compiled"
