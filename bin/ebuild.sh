@@ -1590,7 +1590,7 @@ else
 	RDEPEND="${RDEPEND} ${E_RDEPEND}"
 	PDEPEND="${PDEPEND} ${E_PDEPEND}"
 
-	unset E_IUSE E_DEPEND E_RDEPEND E_PDEPEND
+	unset ECLASS E_IUSE E_DEPEND E_RDEPEND E_PDEPEND
 
 	if [ "${EBUILD_PHASE}" != "depend" ] ; then
 		# Make IUSE defaults backward compatible with all the old shell code.
