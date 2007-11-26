@@ -3510,8 +3510,23 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 				return retval
 	kwargs = actionmap[mydo]["args"]
 	mysettings["EBUILD_PHASE"] = mydo
+	_doebuild_exit_status_unlink(
+		mysettings.get("EBUILD_EXIT_STATUS_FILE"))
 	phase_retval = spawn(actionmap[mydo]["cmd"] % mydo, mysettings, debug=debug, logfile=logfile, **kwargs)
 	mysettings["EBUILD_PHASE"] = ""
+	msg = _doebuild_exit_status_check(
+		mydo, mysettings.get("EBUILD_EXIT_STATUS_FILE"))
+	if msg:
+		phase_retval = 1
+		from textwrap import wrap
+		cmd = "source '%s/isolated-functions.sh' ; " % \
+			PORTAGE_BIN_PATH
+		for l in wrap(msg, 72):
+			cmd += "eerror \"%s\" ; " % l
+		mysettings["EBUILD_PHASE"] = mydo
+		portage_exec.spawn(["bash", "-c", cmd],
+			env=mysettings.environ())
+		mysettings["EBUILD_PHASE"] = ""
 
 	if "userpriv" in mysettings.features and \
 		not kwargs["droppriv"] and secpass >= 2:
@@ -3693,6 +3708,8 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 
 	mysettings["PORTAGE_BASHRC"] = os.path.join(
 		mysettings["PORTAGE_CONFIGROOT"], EBUILD_SH_ENV_FILE.lstrip(os.path.sep))
+	mysettings["EBUILD_EXIT_STATUS_FILE"] = os.path.join(
+		mysettings["PORTAGE_BUILDDIR"], ".exit_status")
 
 	#set up KV variable -- DEP SPEEDUP :: Don't waste time. Keep var persistent.
 	if (mydo!="depend") or not mysettings.has_key("KV"):
@@ -3896,6 +3913,37 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 			mysettings["PORTAGE_LOG_FILE"] = os.path.join(
 				mysettings["T"], "build.log")
 
+def _doebuild_exit_status_check(mydo, exit_status_file):
+	"""
+	Returns an error string if the shell appeared
+	to exit unsuccessfully, None otherwise.
+	"""
+	if not exit_status_file or \
+		os.path.exists(exit_status_file):
+		return None
+	msg = ("The ebuild phase '%s' has exited " % mydo) + \
+	"unexpectedly. This is type of behavior " + \
+	"is known to be triggered " + \
+	"by things such as failed variable " + \
+	"assignments (bug #190128) or bad substitution " + \
+	"errors (bug #200313)."
+	return msg
+
+def _doebuild_exit_status_unlink(exit_status_file):
+	"""
+	Double check to make sure it really doesn't exist
+	and raise an OSError if it still does (it shouldn't).
+	OSError if necessary.
+	"""
+	if not exit_status_file:
+		return
+	try:
+		os.unlink(exit_status_file)
+	except OSError:
+		pass
+	if os.path.exists(exit_status_file):
+		os.unlink(exit_status_file)
+
 _doebuild_manifest_exempt_depend = 0
 _doebuild_manifest_checked = None
 
@@ -4038,6 +4086,24 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 					return 1
 			_doebuild_manifest_checked = manifest_path
 
+	def exit_status_check(retval):
+		if retval != os.EX_OK:
+			return retval
+		msg = _doebuild_exit_status_check(
+			mydo, mysettings.get("EBUILD_EXIT_STATUS_FILE"))
+		if msg:
+			retval = 1
+			from textwrap import wrap
+			cmd = "source '%s/isolated-functions.sh' ; " % \
+				PORTAGE_BIN_PATH
+			for l in wrap(msg, 72):
+				cmd += "eerror \"%s\" ; " % l
+			mysettings["EBUILD_PHASE"] = mydo
+			portage_exec.spawn(["bash", "-c", cmd],
+				env=mysettings.environ())
+			mysettings["EBUILD_PHASE"] = ""
+		return retval
+
 	logfile=None
 	builddir_lock = None
 	tmpdir = None
@@ -4158,6 +4224,12 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			logfile = mysettings.get("PORTAGE_LOG_FILE")
 			if logfile and not os.access(os.path.dirname(logfile), os.W_OK):
 				logfile = None
+				
+		if have_build_dirs:
+			_doebuild_exit_status_unlink(
+				mysettings.get("EBUILD_EXIT_STATUS_FILE"))
+		else:
+			mysettings.pop("EBUILD_EXIT_STATUS_FILE", None)
 		if mydo == "unmerge":
 			return unmerge(mysettings["CATEGORY"],
 				mysettings["PF"], myroot, mysettings, vartree=vartree)
@@ -4179,6 +4251,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				mysettings.load_infodir(infodir)
 			retval = spawn(EBUILD_SH_BINARY + " " + mydo, mysettings,
 				debug=debug, free=1, logfile=logfile)
+			retval = exit_status_check(retval)
 			if secpass >= 2:
 				""" Privileged phases may have left files that need to be made
 				writable to a less privileged user."""
@@ -4189,6 +4262,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		elif mydo == "preinst":
 			phase_retval = spawn(" ".join((EBUILD_SH_BINARY, mydo)),
 				mysettings, debug=debug, free=1, logfile=logfile)
+			phase_retval = exit_status_check(phase_retval)
 			if phase_retval == os.EX_OK:
 				# Post phase logic and tasks that have been factored out of
 				# ebuild.sh.
@@ -4206,6 +4280,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			mysettings.load_infodir(mysettings["O"])
 			phase_retval = spawn(" ".join((EBUILD_SH_BINARY, mydo)),
 				mysettings, debug=debug, free=1, logfile=logfile)
+			phase_retval = exit_status_check(phase_retval)
 			if phase_retval == os.EX_OK:
 				# Post phase logic and tasks that have been factored out of
 				# ebuild.sh.
@@ -4219,8 +4294,10 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			return phase_retval
 		elif mydo in ("prerm", "postrm", "config", "info"):
 			mysettings.load_infodir(mysettings["O"])
-			return spawn(EBUILD_SH_BINARY + " " + mydo,
+			retval =  spawn(EBUILD_SH_BINARY + " " + mydo,
 				mysettings, debug=debug, free=1, logfile=logfile)
+			retval = exit_status_check(retval)
+			return retval
 
 		mycpv = "/".join((mysettings["CATEGORY"], mysettings["PF"]))
 
@@ -4402,7 +4479,9 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		elif mydo=="merge":
 			retval = spawnebuild("install", actionmap, mysettings, debug,
 				alwaysdep=1, logfile=logfile)
-			if retval != os.EX_OK:
+			if retval == os.EX_OK:
+				retval = exit_status_check(retval)
+			else:
 				# The merge phase handles this already.  Callers don't know how
 				# far this function got, so we have to call elog_process() here
 				# so that it's only called once.
