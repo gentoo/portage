@@ -2470,6 +2470,12 @@ class config(object):
 				return d[k]
 		return x
 
+	def pop(self, k, x=None):
+		v = x
+		for d in reversed(self.lookuplist):
+			v = d.pop(k, v)
+		return v
+
 	def has_key(self,mykey):
 		return mykey in self
 
