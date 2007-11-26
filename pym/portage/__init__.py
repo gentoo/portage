@@ -2471,6 +2471,7 @@ class config(object):
 		return x
 
 	def pop(self, k, x=None):
+		self.modifying()
 		v = x
 		for d in reversed(self.lookuplist):
 			v = d.pop(k, v)
