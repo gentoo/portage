@@ -593,4 +593,6 @@ if [ -n "${MISC_FUNCTIONS_ARGS}" ]; then
 	done
 fi
 
+touch "${EBUILD_EXIT_STATUS_FILE}" &>/dev/null
+
 :

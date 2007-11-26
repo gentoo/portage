@@ -124,6 +124,8 @@ diefunc() {
 		done
 	fi
 
+	touch "${EBUILD_EXIT_STATUS_FILE}" &>/dev/null
+
 	# subshell die support
 	kill -s SIGTERM ${EBUILD_MASTER_PID}
 	exit 1
@@ -416,7 +418,8 @@ save_ebuild_env() {
 
 		# portage config variables and variables set directly by portage
 		unset BAD BRACKET BUILD_PREFIX COLS \
-			DISTCC_DIR DISTDIR DOC_SYMLINKS_DIR EBUILD_MASTER_PID \
+			DISTCC_DIR DISTDIR DOC_SYMLINKS_DIR \
+			EBUILD_EXIT_STATUS_FILE EBUILD_MASTER_PID \
 			ECLASSDIR ECLASS_DEPTH ENDCOL FAKEROOTKEY FEATURES \
 			GOOD HILITE HOME IMAGE \
 			KV LAST_E_CMD LAST_E_LEN LD_PRELOAD MOPREFIX \
