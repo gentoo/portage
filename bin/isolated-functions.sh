@@ -98,6 +98,8 @@ diefunc() {
 	eerror "If you need support, post the topmost build error, and the call stack if relevant."
 	[[ -n ${PORTAGE_LOG_FILE} ]] \
 		&& eerror "A complete build log is located at '${PORTAGE_LOG_FILE}'."
+	[ -f "${T}/environment" ] && \
+		eerror "The ebuild environment file is located at '${T}/environment'."
 	if [[ -n ${EBUILD_OVERLAY_ECLASSES} ]] ; then
 		eerror "This ebuild used the following eclasses from overlays:"
 		local x
