@@ -3975,7 +3975,7 @@ def _doebuild_exit_status_check(mydo, exit_status_file):
 		os.path.exists(exit_status_file):
 		return None
 	msg = ("The ebuild phase '%s' has exited " % mydo) + \
-	"unexpectedly. This is type of behavior " + \
+	"unexpectedly. This type of behavior " + \
 	"is known to be triggered " + \
 	"by things such as failed variable " + \
 	"assignments (bug #190128) or bad substitution " + \
