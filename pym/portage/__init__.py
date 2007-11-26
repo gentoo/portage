@@ -4321,6 +4321,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				mysettings["EBUILD_PHASE"] = ""
 				phase_retval = spawn(" ".join(myargs),
 					mysettings, debug=debug, free=1, logfile=logfile)
+				phase_retval = exit_status_check(phase_retval)
 				if phase_retval != os.EX_OK:
 					writemsg("!!! post preinst failed; exiting.\n",
 						noiselevel=-1)
@@ -4337,6 +4338,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				mysettings["EBUILD_PHASE"] = ""
 				phase_retval = spawn(" ".join(myargs),
 					mysettings, debug=debug, free=1, logfile=logfile)
+				phase_retval = exit_status_check(phase_retval)
 				if phase_retval != os.EX_OK:
 					writemsg("!!! post postinst failed; exiting.\n",
 						noiselevel=-1)
