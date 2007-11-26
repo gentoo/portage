@@ -964,7 +964,19 @@ class config:
 
 	# Filter selected variables in the config.environ() method so that
 	# they don't needlessly propagate down into the ebuild environment.
-	_environ_filter = frozenset(["ACCEPT_KEYWORDS", "AUTOCLEAN",
+	_environ_filter = []
+
+	# misc variables inherited from the calling environment
+	_environ_filter += [
+		"CVS_RSH", "ECHANGELOG_USER",
+		"GPG_AGENT_INFO", "INFOPATH", "MANPATH",
+		"SSH_AGENT_PID", "SSH_AUTH_SOCK",
+		"STY", "WINDOW", "XAUTHORITY",
+	]
+
+	# portage config variables and variables set directly by portage
+	_environ_filter += [
+		"ACCEPT_KEYWORDS", "AUTOCLEAN",
 		"CLEAN_DELAY", "COLLISION_IGNORE", "CONFIG_PROTECT",
 		"CONFIG_PROTECT_MASK", "EMERGE_DEFAULT_OPTS",
 		"EMERGE_WARNING_DELAY", "FETCHCOMMAND", "FETCHCOMMAND_FTP",
@@ -977,7 +989,10 @@ class config:
 		"PORTAGE_GPG_KEY", "PORTAGE_RSYNC_EXTRA_OPTS", "PORTAGE_RSYNC_OPTS",
 		"PORTAGE_RSYNC_RETRIES", "PORT_LOGDIR", "QUICKPKG_DEFAULT_OPTS",
 		"RESUMECOMMAND", "RESUMECOMMAND_HTTP", "RESUMECOMMAND_HTTP",
-		"RESUMECOMMAND_SFTP", "SYNC", "USE_EXPAND_HIDDEN", "USE_ORDER"])
+		"RESUMECOMMAND_SFTP", "SYNC", "USE_EXPAND_HIDDEN", "USE_ORDER",
+	]
+
+	_environ_filter = frozenset(_environ_filter)
 
 	def __init__(self, clone=None, mycpv=None, config_profile_path=None,
 		config_incrementals=None, config_root=None, target_root=None,
