@@ -857,7 +857,11 @@ class config(object):
 	Generally if you need data like USE flags, FEATURES, environment variables,
 	virtuals ...etc you look in here.
 	"""
-	
+
+	# Filter selected variables in the config.environ() method so that
+	# they don't needlessly propagate down into the ebuild environment.
+	_environ_filter = frozenset(["PORTAGE_ECLASS_WARNING_ENABLE"])
+
 	def __init__(self, clone=None, mycpv=None, config_profile_path=None,
 		config_incrementals=None, config_root=None, target_root=None,
 		local_config=True):
@@ -2479,7 +2483,10 @@ class config(object):
 	def environ(self):
 		"return our locally-maintained environment"
 		mydict={}
+		environ_filter = self._environ_filter
 		for x in self:
+			if x in environ_filter:
+				continue
 			myvalue = self[x]
 			if not isinstance(myvalue, basestring):
 				writemsg("!!! Non-string value in config: %s=%s\n" % \
