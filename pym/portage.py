@@ -964,7 +964,19 @@ class config:
 
 	# Filter selected variables in the config.environ() method so that
 	# they don't needlessly propagate down into the ebuild environment.
-	_environ_filter = frozenset(["PORTAGE_ECLASS_WARNING_ENABLE"])
+	_environ_filter = frozenset(["ACCEPT_KEYWORDS", "AUTOCLEAN",
+		"CLEAN_DELAY", "COLLISION_IGNORE", "CONFIG_PROTECT",
+		"CONFIG_PROTECT_MASK", "EMERGE_DEFAULT_OPTS",
+		"EMERGE_WARNING_DELAY", "FETCHCOMMAND", "FETCHCOMMAND_FTP",
+		"FETCHCOMMAND_HTTP", "FETCHCOMMAND_SFTP", "GENTOO_MIRRORS", "O",
+		"PORTAGE_BINHOST_CHUNKSIZE", "PORTAGE_CALLER",
+		"PORTAGE_ECLASS_WARNING_ENABLE", "PORTAGE_ELOG_CLASSES",
+		"PORTAGE_ELOG_MAILFROM", "PORTAGE_ELOG_MAILSUBJECT",
+		"PORTAGE_ELOG_MAILURI", "PORTAGE_ELOG_SYSTEM", "PORTAGE_GPG_DIR",
+		"PORTAGE_GPG_KEY", "PORTAGE_RSYNC_EXTRA_OPTS", "PORTAGE_RSYNC_OPTS",
+		"PORTAGE_RSYNC_RETRIES", "PORT_LOGDIR", "QUICKPKG_DEFAULT_OPTS",
+		"RESUMECOMMAND", "RESUMECOMMAND_HTTP", "RESUMECOMMAND_HTTP",
+		"RESUMECOMMAND_SFTP", "SYNC", "USE_EXPAND_HIDDEN", "USE_ORDER"])
 
 	def __init__(self, clone=None, mycpv=None, config_profile_path=None,
 		config_incrementals=None, config_root=None, target_root=None,
