@@ -1726,7 +1726,8 @@ if [ -n "${EBUILD_SH_ARGS}" ] ; then
 			9>&-
 		fi
 		set +f
-		touch "${EBUILD_EXIT_STATUS_FILE}" &>/dev/null
+		[ -n "${EBUILD_EXIT_STATUS_FILE}" ] && \
+			touch "${EBUILD_EXIT_STATUS_FILE}" &>/dev/null
 		exit 0
 		;;
 	*)
@@ -1737,7 +1738,8 @@ if [ -n "${EBUILD_SH_ARGS}" ] ; then
 		exit 1
 		;;
 	esac
-	touch "${EBUILD_EXIT_STATUS_FILE}" &>/dev/null
+	[ -n "${EBUILD_EXIT_STATUS_FILE}" ] && \
+		touch "${EBUILD_EXIT_STATUS_FILE}" &>/dev/null
 fi
 
 # Save the env only for relevant phases.
