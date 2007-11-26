@@ -6943,6 +6943,13 @@ def emerge_main():
 	if ("getbinpkg" in settings.features):
 		myopts["--getbinpkg"] = True
 
+	if "--buildpkgonly" in myopts:
+		# --buildpkgonly will not merge anything, so
+		# it cancels all binary package options.
+		for opt in ("--getbinpkg", "--getbinpkgonly",
+			"--usepkg", "--usepkgonly"):
+			myopts.pop(opt, None)
+
 	if "--skipfirst" in myopts and "--resume" not in myopts:
 		myopts["--resume"] = True
 
