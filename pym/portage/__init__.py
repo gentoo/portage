@@ -2470,11 +2470,18 @@ class config(object):
 				return d[k]
 		return x
 
-	def pop(self, k, x=None):
-		self.modifying()
-		v = x
+	def pop(self, key, *args):
+		if len(args) > 1:
+			raise TypeError(
+				"pop expected at most 2 arguments, got " + \
+				repr(1 + len(args)))
+		v = self
 		for d in reversed(self.lookuplist):
-			v = d.pop(k, v)
+			v = d.pop(key, v)
+		if v is self:
+			if args:
+				return args[0]
+			raise KeyError(key)
 		return v
 
 	def has_key(self,mykey):
