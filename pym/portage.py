@@ -3528,8 +3528,7 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 		mysettings.get("EBUILD_EXIT_STATUS_FILE"))
 	phase_retval = spawn(actionmap[mydo]["cmd"] % mydo, mysettings, debug=debug, logfile=logfile, **kwargs)
 	mysettings["EBUILD_PHASE"] = ""
-	msg = _doebuild_exit_status_check(
-		mydo, mysettings.get("EBUILD_EXIT_STATUS_FILE"))
+	msg = _doebuild_exit_status_check(mydo, mysettings)
 	if msg:
 		phase_retval = 1
 		from textwrap import wrap
@@ -3927,11 +3926,19 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 			mysettings["PORTAGE_LOG_FILE"] = os.path.join(
 				mysettings["T"], "build.log")
 
-def _doebuild_exit_status_check(mydo, exit_status_file):
+def _doebuild_exit_status_check(mydo, settings):
 	"""
 	Returns an error string if the shell appeared
 	to exit unsuccessfully, None otherwise.
 	"""
+	if settings["ROOT"] == "/":
+		cat, pn, ver, rev = catpkgsplit(settings.mycpv)
+		if pn == "portage":
+			# portage upgrade or downgrade invalidates this check
+			# since ebuild.sh portage version may differ from the
+			# current instance that is running in python.
+			return None
+	exit_status_file = settings.get("EBUILD_EXIT_STATUS_FILE")
 	if not exit_status_file or \
 		os.path.exists(exit_status_file):
 		return None
@@ -4103,8 +4110,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	def exit_status_check(retval):
 		if retval != os.EX_OK:
 			return retval
-		msg = _doebuild_exit_status_check(
-			mydo, mysettings.get("EBUILD_EXIT_STATUS_FILE"))
+		msg = _doebuild_exit_status_check(mydo, mysettings)
 		if msg:
 			retval = 1
 			from textwrap import wrap
