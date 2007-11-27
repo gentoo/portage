@@ -307,7 +307,9 @@ def dir_get_list(baseurl,conn=None):
 			del page
 			listing = parser.get_anchors()
 		else:
-			raise Exception, "Unable to get listing: %s %s" % (rc,msg)
+			import portage_exception
+			raise portage_exception.PortageException(
+				"Unable to get listing: %s %s" % (rc,msg))
 	elif protocol in ["ftp"]:
 		if address[-1] == '/':
 			olddir = conn.pwd()
@@ -489,7 +491,14 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 		sys.stderr.write("!!! Permission denied: '%s'\n" % cache_path)
 		return metadata[baseurl]["data"]
 
-	filelist = dir_get_list(baseurl, conn)
+	import portage_exception
+	try:
+		filelist = dir_get_list(baseurl, conn)
+	except portage_exception.PortageException, e:
+		sys.stderr.write("!!! Error connecting to '%s'.\n" % baseurl)
+		sys.stderr.write("!!! %s\n" % str(e))
+		del e
+		return metadata[baseurl]["data"]
 	tbz2list = match_in_array(filelist, suffix=".tbz2")
 	metalist = match_in_array(filelist, prefix="metadata.idx")
 	del filelist
