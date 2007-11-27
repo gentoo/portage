@@ -4500,8 +4500,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		elif mydo=="merge":
 			retval = spawnebuild("install", actionmap, mysettings, debug,
 				alwaysdep=1, logfile=logfile)
-			if retval == os.EX_OK:
-				retval = exit_status_check(retval)
+			retval = exit_status_check(retval)
 			if retval != os.EX_OK:
 				# The merge phase handles this already.  Callers don't know how
 				# far this function got, so we have to call elog_process() here
