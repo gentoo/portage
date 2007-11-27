@@ -1342,9 +1342,16 @@ READONLY_EBUILD_METADATA="DEPEND DESCRIPTION
 	EAPI HOMEPAGE INHERITED IUSE KEYWORDS LICENSE
 	PDEPEND PROVIDE RDEPEND RESTRICT SLOT SRC_URI"
 
-READONLY_PORTAGE_VARS="D EBUILD EBUILD_PHASE \
-	EBUILD_SH_ARGS EMERGE_FROM FILESDIR PORTAGE_BIN_PATH \
-	PORTAGE_PYM_PATH PORTAGE_TMPDIR T WORKDIR"
+READONLY_PORTAGE_VARS="A CATEGORY D EBUILD EBUILD_PHASE \
+	EBUILD_SH_ARGS EMERGE_FROM FILESDIR P PF PN \
+	PORTAGE_BIN_PATH PORTAGE_PYM_PATH PORTAGE_MUTABLE_FILTERED_VARS \
+	PORTAGE_TMPDIR PR PV PVR T WORKDIR"
+
+# Variables that portage sets but doesn't mark readonly.
+# In order to prevent changed values from causing unexpected
+# interference, they are filtered out of the environment when
+# it is saved or loaded (any mutations do not persist).
+PORTAGE_MUTABLE_FILTERED_VARS="AA"
 
 # @FUNCTION: filter_readonly_variables
 # @DESCRIPTION: [--filter-sandbox]
@@ -1367,7 +1374,7 @@ filter_readonly_variables() {
 		SANDBOX_DEBUG_LOG SANDBOX_DISABLED SANDBOX_LIB
 		SANDBOX_LOG"
 	filtered_vars="${readonly_bash_vars} ${READONLY_PORTAGE_VARS}
-		BASH_[_[:alnum:]]*"
+		${PORTAGE_MUTABLE_FILTERED_VARS} BASH_[_[:alnum:]]*"
 	if hasq --filter-sandbox $* ; then
 		filtered_vars="${filtered_vars} SANDBOX_[_[:alnum:]]*"
 	else
@@ -1659,10 +1666,6 @@ export TMPDIR="${T}"
 # declare them only after it has already run.
 if [ "${EBUILD_PHASE}" != "depend" ] ; then
 	declare -r ${READONLY_EBUILD_METADATA} ${READONLY_PORTAGE_VARS}
-	for x in A AA CATEGORY EMERGE_FROM P PF PN PR PV PVR ; do
-		[[ ${!x-UNSET_VAR} != UNSET_VAR ]] && declare -r ${x}
-	done
-	unset x
 fi
 
 if [ -n "${EBUILD_SH_ARGS}" ] ; then
