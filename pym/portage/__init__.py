@@ -4325,6 +4325,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				myargs = [MISC_SH_BINARY, "preinst_bsdflags", "preinst_mask",
 					"preinst_sfperms", "preinst_selinux_labels",
 					"preinst_suid_scan"]
+				_doebuild_exit_status_unlink(
+					mysettings.get("EBUILD_EXIT_STATUS_FILE"))
 				mysettings["EBUILD_PHASE"] = ""
 				phase_retval = spawn(" ".join(myargs),
 					mysettings, debug=debug, free=1, logfile=logfile)
@@ -4342,6 +4344,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				# Post phase logic and tasks that have been factored out of
 				# ebuild.sh.
 				myargs = [MISC_SH_BINARY, "postinst_bsdflags"]
+				_doebuild_exit_status_unlink(
+					mysettings.get("EBUILD_EXIT_STATUS_FILE"))
 				mysettings["EBUILD_PHASE"] = ""
 				phase_retval = spawn(" ".join(myargs),
 					mysettings, debug=debug, free=1, logfile=logfile)
