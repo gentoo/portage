@@ -597,6 +597,18 @@ def elog_process(cpv, mysettings):
 		except OSError:
 			pass
 
+def _eerror(settings, lines):
+	if not lines:
+		return
+	cmd = "source '%s/isolated-functions.sh' ; " % PORTAGE_BIN_PATH
+	for line in lines:
+		for letter in "\\\"$`":
+			if letter in line:
+				line = line.replace(letter, "\\" + letter)
+		cmd += "eerror \"%s\" ; " % line
+	portage_exec.spawn(["bash", "-c", cmd],
+		env=settings.environ())
+
 #parse /etc/env.d and generate /etc/profile.env
 
 def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
@@ -3533,13 +3545,8 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 	if msg:
 		phase_retval = 1
 		from textwrap import wrap
-		cmd = "source '%s/isolated-functions.sh' ; " % \
-			PORTAGE_BIN_PATH
-		for l in wrap(msg, 72):
-			cmd += "eerror \"%s\" ; " % l
 		mysettings["EBUILD_PHASE"] = mydo
-		portage_exec.spawn(["bash", "-c", cmd],
-			env=mysettings.environ())
+		_eerror(mysettings, wrap(msg, 72))
 		mysettings["EBUILD_PHASE"] = ""
 
 	if "userpriv" in mysettings.features and \
@@ -4114,13 +4121,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		if msg:
 			retval = 1
 			from textwrap import wrap
-			cmd = "source '%s/isolated-functions.sh' ; " % \
-				PORTAGE_BIN_PATH
-			for l in wrap(msg, 72):
-				cmd += "eerror \"%s\" ; " % l
 			mysettings["EBUILD_PHASE"] = mydo
-			portage_exec.spawn(["bash", "-c", cmd],
-				env=mysettings.environ())
+			_eerror(mysettings, wrap(msg, 72))
 			mysettings["EBUILD_PHASE"] = ""
 		return retval
 
@@ -8354,14 +8356,7 @@ class dblink:
 			slot = ""
 
 		def eerror(lines):
-			cmd = "source '%s/isolated-functions.sh' ; " % PORTAGE_BIN_PATH
-			for line in lines:
-				for letter in "\\\"$`":
-					if letter in line:
-						line = line.replace(letter, "\\" + letter)
-				cmd += "eerror \"%s\" ; " % line
-			portage_exec.spawn(["bash", "-c", cmd],
-				env=self.settings.environ())
+			_eerror(self.settings, lines)
 
 		if slot != self.settings["SLOT"]:
 			writemsg("!!! WARNING: Expected SLOT='%s', got '%s'\n" % \
