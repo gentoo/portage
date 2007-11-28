@@ -2004,8 +2004,18 @@ class dblink(object):
 		outfile.flush()
 		outfile.close()
 
+		# If portage is reinstalling itself, remove the old
+		# version now since we want to use the temporary
+		# PORTAGE_BIN_PATH that will be removed when we return.
+		reinstall_self = False
+		if self.myroot == "/" and \
+			"sys-apps" == self.cat and \
+			"portage" == pkgsplit(self.pkg)[0]:
+			reinstall_self = True
+
 		for dblnk in others_in_slot:
-			if dblnk.mycpv != self.mycpv:
+			if dblnk.mycpv != self.mycpv and \
+				not reinstall_self:
 				continue
 			writemsg_stdout(">>> Safely unmerging already-installed instance...\n")
 			# These caches are populated during collision-protect and the data
@@ -2336,6 +2346,41 @@ class dblink(object):
 				writemsg_stdout(zing + " " + mydest + "\n")
 
 	def merge(self, mergeroot, inforoot, myroot, myebuild=None, cleanup=0,
+		mydbapi=None, prev_mtimes=None):
+
+		# If portage is reinstalling itself, create a temporary
+		# copy of PORTAGE_BIN_PATH in order to avoid relying on
+		# on the new versions which may be incompatible.
+		bin_path_tmp = None
+		bin_path_orig = None
+		if self.myroot == "/" and \
+			"sys-apps" == self.cat and \
+			"portage" == pkgsplit(self.pkg)[0]:
+			bin_path_orig = self.settings["PORTAGE_BIN_PATH"]
+			from tempfile import mkdtemp
+			import shutil
+			bin_path_tmp = mkdtemp()
+			for x in os.listdir(bin_path_orig):
+				path = os.path.join(bin_path_orig, x)
+				if not os.path.isfile(path):
+					continue
+				shutil.copy(path, os.path.join(bin_path_tmp, x))
+			os.chmod(bin_path_tmp, 0755)
+		try:
+			if bin_path_tmp:
+				self.settings["PORTAGE_BIN_PATH"] = bin_path_tmp
+				self.settings.backup_changes("PORTAGE_BIN_PATH")
+			return self._merge(mergeroot, inforoot,
+				myroot, myebuild=myebuild, cleanup=cleanup,
+				mydbapi=mydbapi, prev_mtimes=prev_mtimes)
+		finally:
+			if bin_path_tmp:
+				bin_path_orig = self.settings["PORTAGE_BIN_PATH"]
+				self.settings.backup_changes("PORTAGE_BIN_PATH")
+				from shutil import rmtree
+				rmtree(bin_path_tmp)
+
+	def _merge(self, mergeroot, inforoot, myroot, myebuild=None, cleanup=0,
 		mydbapi=None, prev_mtimes=None):
 		retval = -1
 		self.lockdb()
