@@ -1716,6 +1716,11 @@ class dblink(object):
 		if slot is None:
 			slot = ""
 
+		from portage.elog.messages import eerror as _eerror
+		def eerror(lines):
+			for l in lines:
+				_eerror(l, phase="preinst", key=self.settings.mycpv)
+
 		if slot != self.settings["SLOT"]:
 			writemsg("!!! WARNING: Expected SLOT='%s', got '%s'\n" % \
 				(self.settings["SLOT"], slot))
@@ -1781,6 +1786,42 @@ class dblink(object):
 					# to an infinite recursion loop.
 					mylinklist.append(file_path[len(srcroot):])
 
+		# If there are no files to merge, and an installed package in the same
+		# slot has files, it probably means that something went wrong.
+		if self.settings.get("PORTAGE_PACKAGE_EMPTY_ABORT") != "0" and \
+			not myfilelist and not mylinklist and others_in_slot:
+			installed_files = None
+			for other_dblink in others_in_slot:
+				installed_files = other_dblink.getcontents()
+				if not installed_files:
+					continue
+				from textwrap import wrap
+				wrap_width = 72
+				msg = []
+				d = (
+					self.mycpv,
+					other_dblink.mycpv
+				)
+				msg.extend(wrap(("The '%s' package will not install " + \
+					"any files, but the currently installed '%s'" + \
+					" package has the following files: ") % d, wrap_width))
+				msg.append("")
+				msg.extend(sorted(installed_files))
+				msg.append("")
+				msg.append("package %s NOT merged" % self.mycpv)
+				msg.append("")
+				msg.extend(wrap(
+					("Manually run `emerge --unmerge =%s` " % \
+					other_dblink.mycpv) + "if you really want to " + \
+					"remove the above files. Set " + \
+					"PORTAGE_PACKAGE_EMPTY_ABORT=\"0\" in " + \
+					"/etc/make.conf if you do not want to " + \
+					"abort in cases like this.",
+					wrap_width))
+				eerror(msg)
+			if installed_files:
+				return 1
+
 		# Preserve old libs if they are still in use
 		if slot_matches and "preserve-libs" in self.settings.features:
 			self._preserve_libs(srcroot, destroot, myfilelist+mylinklist, counter)
@@ -1796,11 +1837,6 @@ class dblink(object):
 		doebuild_environment(myebuild, "preinst", destroot,
 			self.settings, 0, 0, mydbapi)
 		prepare_build_dirs(destroot, self.settings, cleanup)
-
-		from portage.elog.messages import eerror as _eerror
-		def eerror(lines):
-			for l in lines:
-				_eerror(l, phase="preinst", key=self.settings.mycpv)
 
 		if collisions:
 			collision_protect = "collision-protect" in self.settings.features
