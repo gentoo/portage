@@ -5051,6 +5051,10 @@ def chk_updated_cfg_files(target_root, config_protect):
 		procount=0
 		for x in config_protect:
 			x = os.path.join(target_root, x.lstrip(os.path.sep))
+			if not os.access(x, os.W_OK):
+				# Avoid Permission denied errors generated
+				# later by `find`.
+				continue
 			try:
 				mymode = os.lstat(x).st_mode
 			except OSError:
