@@ -8353,6 +8353,16 @@ class dblink:
 		if slot is None:
 			slot = ""
 
+		def eerror(lines):
+			cmd = "source '%s/isolated-functions.sh' ; " % PORTAGE_BIN_PATH
+			for line in lines:
+				for letter in "\\\"$`":
+					if letter in line:
+						line = line.replace(letter, "\\" + letter)
+				cmd += "eerror \"%s\" ; " % line
+			portage_exec.spawn(["bash", "-c", cmd],
+				env=self.settings.environ())
+
 		if slot != self.settings["SLOT"]:
 			writemsg("!!! WARNING: Expected SLOT='%s', got '%s'\n" % \
 				(self.settings["SLOT"], slot))
@@ -8411,6 +8421,42 @@ class dblink:
 
 		myfilelist.extend(mylinklist)
 		del mylinklist
+
+		# If there are no files to merge, and an installed package in the same
+		# slot has files, it probably means that something went wrong.
+		if self.settings.get("PORTAGE_PACKAGE_EMPTY_ABORT") != "0" and \
+			not myfilelist and others_in_slot:
+			installed_files = None
+			for other_dblink in others_in_slot:
+				installed_files = other_dblink.getcontents()
+				if not installed_files:
+					continue
+				from textwrap import wrap
+				wrap_width = 72
+				msg = []
+				d = (
+					self.mycpv,
+					other_dblink.mycpv
+				)
+				msg.extend(wrap(("The '%s' package will not install " + \
+					"any files, but the currently installed '%s'" + \
+					" package has the following files: ") % d, wrap_width))
+				msg.append("")
+				msg.extend(sorted(installed_files))
+				msg.append("")
+				msg.append("package %s NOT merged" % self.mycpv)
+				msg.append("")
+				msg.extend(wrap(
+					("Manually run `emerge --unmerge =%s` " % \
+					other_dblink.mycpv) + "if you really want to " + \
+					"remove the above files. Set " + \
+					"PORTAGE_PACKAGE_EMPTY_ABORT=\"0\" in " + \
+					"/etc/make.conf if you do not want to " + \
+					"abort in cases like this.",
+					wrap_width))
+				eerror(msg)
+			if installed_files:
+				return 1
 
 		# check for package collisions
 		if True:
@@ -8489,13 +8535,6 @@ class dblink:
 		doebuild_environment(myebuild, "preinst", destroot,
 			self.settings, 0, 0, mydbapi)
 		prepare_build_dirs(destroot, self.settings, cleanup)
-
-		def eerror(lines):
-			cmd = "source '%s/isolated-functions.sh' ; " % PORTAGE_BIN_PATH
-			for line in lines:
-				cmd += "eerror '%s' ; " % line
-			portage_exec.spawn(["bash", "-c", cmd],
-				env=self.settings.environ())
 
 		if collisions:
 			collision_protect = "collision-protect" in self.settings.features
