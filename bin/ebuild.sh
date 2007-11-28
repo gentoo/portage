@@ -1545,8 +1545,9 @@ if hasq "depend" "${EBUILD_SH_ARGS}"; then
 fi
 
 # Automatically try to load environment.bz2 whenever
-# "${T}/environment" does not exist.
-if ! hasq ${EBUILD_SH_ARGS} clean depend && \
+# "${T}/environment" does not exist, except for phases
+# such as nofetch that do not require ${T} to exist.
+if ! hasq ${EBUILD_SH_ARGS} clean depend nofetch && \
 	[ ! -f "${T}/environment" ] ; then
 	bzip2 -dc "${EBUILD%/*}"/environment.bz2 > \
 		"${T}/environment" 2> /dev/null
@@ -1766,7 +1767,7 @@ fi
 
 # Save the env only for relevant phases.
 if [ -n "${EBUILD_SH_ARGS}" ] && \
-	! hasq ${EBUILD_SH_ARGS} clean help info; then
+	! hasq ${EBUILD_SH_ARGS} clean help info nofetch ; then
 	# Save current environment and touch a success file. (echo for success)
 	umask 002
 	save_ebuild_env | filter_readonly_variables > "${T}/environment"
