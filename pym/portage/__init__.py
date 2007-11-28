@@ -3978,12 +3978,6 @@ def _doebuild_exit_status_check(mydo, settings):
 	Returns an error string if the shell appeared
 	to exit unsuccessfully, None otherwise.
 	"""
-	if settings.get("ROOT") == "/" and \
-		settings.get("PN") == "portage":
-			# portage upgrade or downgrade invalidates this check
-			# since ebuild.sh portage version may differ from the
-			# current instance that is running in python.
-			return None
 	exit_status_file = settings.get("EBUILD_EXIT_STATUS_FILE")
 	if not exit_status_file or \
 		os.path.exists(exit_status_file):
