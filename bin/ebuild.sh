@@ -1417,18 +1417,18 @@ preprocess_ebuild_env() {
 	# called. Any variables that need to be relied upon should already be
 	# filtered out above.
 	(
-		source "${T}/environment" && \
-			touch "${T}/environment.success"
+		source "${T}/environment" || exit $?
 
 		# It's remotely possible that save_ebuild_env() has been overridden
 		# by the above source command. To protect ourselves, we override it
 		# here with our own version. ${PORTAGE_BIN_PATH} is safe to use here
 		# because it's already filtered above.
-		source "${PORTAGE_BIN_PATH}/isolated-functions.sh"
+		source "${PORTAGE_BIN_PATH}/isolated-functions.sh" || exit $?
 
 		# Rely on save_ebuild_env() to filter out any remaining variables
 		# and functions that could interfere with the current environment.
-		save_ebuild_env
+		save_ebuild_env || exit $?
+		touch "${T}/environment.success" || exit $?
 	) | filter_readonly_variables > "${T}/environment.filtered"
 	if [ -e "${T}/environment.success" ] ; then
 		rm "${T}/environment.success"
