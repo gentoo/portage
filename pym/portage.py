@@ -8424,7 +8424,7 @@ class dblink:
 
 		# If there are no files to merge, and an installed package in the same
 		# slot has files, it probably means that something went wrong.
-		if self.settings.get("PORTAGE_PACKAGE_EMPTY_ABORT") != "0" and \
+		if self.settings.get("PORTAGE_PACKAGE_EMPTY_ABORT") == "1" and \
 			not myfilelist and others_in_slot:
 			installed_files = None
 			for other_dblink in others_in_slot:
