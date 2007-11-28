@@ -4495,8 +4495,13 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 		fakeroot = "fakeroot" in mysettings.features
 
-		ebuild_sh = EBUILD_SH_BINARY + " %s"
-		misc_sh = MISC_SH_BINARY + " dyn_%s"
+		# Note: PORTAGE_BIN_PATH may differ from the global
+		# constant when portage is reinstalling itself.
+		portage_bin_path = mysettings["PORTAGE_BIN_PATH"]
+		ebuild_sh = os.path.join(portage_bin_path,
+			os.path.basename(EBUILD_SH_BINARY)) + " %s"
+		misc_sh = os.path.join(portage_bin_path,
+			os.path.basename(MISC_SH_BINARY)) + " dyn_%s"
 
 		# args are for the to spawn function
 		actionmap = {
