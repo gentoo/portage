@@ -3741,8 +3741,11 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 		mysplit=mysettings["PATH"].split(":")
 	else:
 		mysplit=[]
-	if PORTAGE_BIN_PATH not in mysplit:
-		mysettings["PATH"]=PORTAGE_BIN_PATH+":"+mysettings["PATH"]
+	# Note: PORTAGE_BIN_PATH may differ from the global constant
+	# when portage is reinstalling itself.
+	portage_bin_path = mysettings["PORTAGE_BIN_PATH"]
+	if portage_bin_path not in mysplit:
+		mysettings["PATH"] = portage_bin_path + ":" + mysettings["PATH"]
 
 	# Sandbox needs cannonical paths.
 	mysettings["PORTAGE_TMPDIR"] = os.path.realpath(
@@ -4412,11 +4415,9 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				# mod_echo module might push the original message off of the
 				# top of the terminal and prevent the user from being able to
 				# see it.
-				mysettings["EBUILD_PHASE"] = "unpack"
-				cmd = "source '%s/isolated-functions.sh' ; " % PORTAGE_BIN_PATH
-				cmd += "eerror \"Fetch failed for '%s'\"" % mycpv
-				portage.process.spawn(["bash", "-c", cmd],
-					env=mysettings.environ())
+				from portage.elog.messages import eerror
+				eerror("Fetch failed for '%s'" % mycpv,
+					phase="unpack", key=mycpv)
 				from portage.elog import elog_process
 				elog_process(mysettings.mycpv, mysettings)
 			return 1
