@@ -495,6 +495,25 @@ class digraph:
 _elog_mod_imports = {}
 _elog_atexit_handlers = []
 def elog_process(cpv, mysettings):
+
+	global _elog_mod_imports
+	logsystems = mysettings.get("PORTAGE_ELOG_SYSTEM","").split()
+	for s in logsystems:
+		# allow per module overrides of PORTAGE_ELOG_CLASSES
+		if ":" in s:
+			s, levels = s.split(":", 1)
+			levels = levels.split(",")
+		# - is nicer than _ for module names, so allow people to use it.
+		s = s.replace("-", "_")
+		try:
+			logmodule = __import__("elog_modules.mod_"+s)
+			m = _elog_mod_imports.get(logmodule)
+			if m is None:
+				m = getattr(logmodule, "mod_"+s)
+				_elog_mod_imports[logmodule] = m
+		except ImportError:
+			pass
+
 	mylogfiles = listdir(mysettings["T"]+"/logging/")
 	# shortcut for packages without any messages
 	if len(mylogfiles) == 0:
