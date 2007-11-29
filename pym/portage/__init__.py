@@ -3624,8 +3624,9 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 			portage_bin_path = mysettings["PORTAGE_BIN_PATH"]
 			misc_sh_binary = os.path.join(portage_bin_path,
 				os.path.basename(MISC_SH_BINARY))
-			mycommand = " ".join([portage_bin_path,
+			mycommand = " ".join([misc_sh_binary,
 				"install_qa_check", "install_symlink_html_docs"])
+			print mycommand
 			qa_retval = spawn(mycommand, mysettings, debug=debug, logfile=logfile, **kwargs)
 			if qa_retval:
 				writemsg("!!! install_qa_check failed; exiting.\n",
