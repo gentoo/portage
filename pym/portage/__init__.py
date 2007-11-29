@@ -3619,7 +3619,13 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 					apply_secpass_permissions(fpath, uid=myuid, gid=mygid,
 						mode=mystat.st_mode, stat_cached=mystat,
 						follow_links=False)
-			mycommand = " ".join([MISC_SH_BINARY, "install_qa_check", "install_symlink_html_docs"])
+			# Note: PORTAGE_BIN_PATH may differ from the global
+			# constant when portage is reinstalling itself.
+			portage_bin_path = mysettings["PORTAGE_BIN_PATH"]
+			misc_sh_binary = os.path.join(portage_bin_path,
+				os.path.basename(MISC_SH_BINARY))
+			mycommand = " ".join([portage_bin_path,
+				"install_qa_check", "install_symlink_html_docs"])
 			qa_retval = spawn(mycommand, mysettings, debug=debug, logfile=logfile, **kwargs)
 			if qa_retval:
 				writemsg("!!! install_qa_check failed; exiting.\n",
@@ -4162,6 +4168,12 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				eerror(l, phase=mydo, key=mysettings.mycpv)
 		return retval
 
+	# Note: PORTAGE_BIN_PATH may differ from the global
+	# constant when portage is reinstalling itself.
+	portage_bin_path = mysettings["PORTAGE_BIN_PATH"]
+	misc_sh_binary = os.path.join(portage_bin_path,
+		os.path.basename(MISC_SH_BINARY))
+
 	logfile=None
 	builddir_lock = None
 	tmpdir = None
@@ -4325,7 +4337,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			if phase_retval == os.EX_OK:
 				# Post phase logic and tasks that have been factored out of
 				# ebuild.sh.
-				myargs = [MISC_SH_BINARY, "preinst_bsdflags", "preinst_mask",
+				myargs = [misc_sh_binary, "preinst_bsdflags", "preinst_mask",
 					"preinst_sfperms", "preinst_selinux_labels",
 					"preinst_suid_scan"]
 				_doebuild_exit_status_unlink(
@@ -4346,7 +4358,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			if phase_retval == os.EX_OK:
 				# Post phase logic and tasks that have been factored out of
 				# ebuild.sh.
-				myargs = [MISC_SH_BINARY, "postinst_bsdflags"]
+				myargs = [misc_sh_binary, "postinst_bsdflags"]
 				_doebuild_exit_status_unlink(
 					mysettings.get("EBUILD_EXIT_STATUS_FILE"))
 				mysettings["EBUILD_PHASE"] = ""
@@ -4495,13 +4507,9 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 		fakeroot = "fakeroot" in mysettings.features
 
-		# Note: PORTAGE_BIN_PATH may differ from the global
-		# constant when portage is reinstalling itself.
-		portage_bin_path = mysettings["PORTAGE_BIN_PATH"]
 		ebuild_sh = os.path.join(portage_bin_path,
 			os.path.basename(EBUILD_SH_BINARY)) + " %s"
-		misc_sh = os.path.join(portage_bin_path,
-			os.path.basename(MISC_SH_BINARY)) + " dyn_%s"
+		misc_sh = misc_sh_binary + " dyn_%s"
 
 		# args are for the to spawn function
 		actionmap = {
