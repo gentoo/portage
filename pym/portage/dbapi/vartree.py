@@ -2350,38 +2350,39 @@ class dblink(object):
 
 	def merge(self, mergeroot, inforoot, myroot, myebuild=None, cleanup=0,
 		mydbapi=None, prev_mtimes=None):
-
-		# If portage is reinstalling itself, create a temporary
-		# copy of PORTAGE_BIN_PATH in order to avoid relying on
-		# on the new versions which may be incompatible.
-		bin_path_tmp = None
-		bin_path_orig = None
+		"""
+		If portage is reinstalling itself, create temporary
+		copies of PORTAGE_BIN_PATH and PORTAGE_PYM_PATH in order
+		to avoid relying on the new versions which may be
+		incompatible. Insert the temporary PORTAGE_PYM_PATH
+		as the first element of sys.path and register an atexit
+		hook to clean up the temporary directories.
+		"""
 		if self.myroot == "/" and \
 			"sys-apps" == self.cat and \
 			"portage" == pkgsplit(self.pkg)[0]:
-			bin_path_orig = self.settings["PORTAGE_BIN_PATH"]
+			settings = self.settings
+			base_path_orig = os.path.dirname(settings["PORTAGE_BIN_PATH"])
 			from tempfile import mkdtemp
 			import shutil
-			bin_path_tmp = mkdtemp()
-			for x in os.listdir(bin_path_orig):
-				path = os.path.join(bin_path_orig, x)
-				if not os.path.isfile(path):
-					continue
-				shutil.copy(path, os.path.join(bin_path_tmp, x))
-			os.chmod(bin_path_tmp, 0755)
-		try:
-			if bin_path_tmp:
-				self.settings["PORTAGE_BIN_PATH"] = bin_path_tmp
-				self.settings.backup_changes("PORTAGE_BIN_PATH")
-			return self._merge(mergeroot, inforoot,
+			base_path_tmp = mkdtemp()
+			from portage.process import atexit_register
+			atexit_register(shutil.rmtree, base_path_tmp)
+			dir_perms = 0755
+			for subdir in "bin", "pym":
+				var_name = "PORTAGE_%s_PATH" % subdir.upper()
+				var_orig = settings[var_name]
+				var_new = os.path.join(base_path_tmp, subdir)
+				settings[var_name] = var_new
+				settings.backup_changes(var_name)
+				shutil.copytree(var_orig, var_new, symlinks=True)
+				os.chmod(var_new, dir_perms)
+			os.chmod(base_path_tmp, dir_perms)
+			sys.path.insert(0, settings["PORTAGE_PYM_PATH"])
+
+		return self._merge(mergeroot, inforoot,
 				myroot, myebuild=myebuild, cleanup=cleanup,
 				mydbapi=mydbapi, prev_mtimes=prev_mtimes)
-		finally:
-			if bin_path_tmp:
-				bin_path_orig = self.settings["PORTAGE_BIN_PATH"]
-				self.settings.backup_changes("PORTAGE_BIN_PATH")
-				from shutil import rmtree
-				rmtree(bin_path_tmp)
 
 	def _merge(self, mergeroot, inforoot, myroot, myebuild=None, cleanup=0,
 		mydbapi=None, prev_mtimes=None):
