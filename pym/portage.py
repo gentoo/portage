@@ -492,7 +492,7 @@ class digraph:
 				print "  ",child,
 				print "(%s)" % self.nodes[node][0][child]
 
-
+_elog_mod_imports = {}
 _elog_atexit_handlers = []
 def elog_process(cpv, mysettings):
 	mylogfiles = listdir(mysettings["T"]+"/logging/")
@@ -567,7 +567,10 @@ def elog_process(cpv, mysettings):
 			# FIXME: ugly ad.hoc import code
 			# TODO:  implement a common portage module loader
 			logmodule = __import__("elog_modules.mod_"+s)
-			m = getattr(logmodule, "mod_"+s)
+			m = _elog_mod_imports.get(logmodule)
+			if m is None:
+				m = getattr(logmodule, "mod_"+s)
+				_elog_mod_imports[logmodule] = m
 			def timeout_handler(signum, frame):
 				raise portage_exception.PortageException(
 					"Timeout in elog_process for system '%s'" % s)
@@ -9056,7 +9059,9 @@ class dblink:
 		copies of PORTAGE_BIN_PATH and PORTAGE_PYM_PATH in order
 		to avoid relying on the new versions which may be
 		incompatible. Register an atexit hook to clean up the
-		temporary directories.
+		temporary directories. Pre-load elog modules here since
+		we won't be able to later if they get unmerged (happens
+		when namespace changes).
 		"""
 		if self.myroot == "/" and \
 			"sys-apps" == self.cat and \
@@ -9078,6 +9083,8 @@ class dblink:
 				shutil.copytree(var_orig, var_new, symlinks=True)
 				os.chmod(var_new, dir_perms)
 			os.chmod(base_path_tmp, dir_perms)
+			# This serves so pre-load the modules.
+			elog_process(self.mycpv, self.settings)
 
 		return self._merge(mergeroot, inforoot,
 				myroot, myebuild=myebuild, cleanup=cleanup,
