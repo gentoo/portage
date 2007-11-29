@@ -8736,7 +8736,8 @@ class dblink:
 			# TODO: Check status and abort if necessary.
 			dblnk.delete()
 			writemsg_stdout(">>> Original instance of package unmerged safely.\n")
-			break
+			if not reinstall_self:
+				break
 
 		# We hold both directory locks.
 		self.dbdir = self.dbpkgdir
