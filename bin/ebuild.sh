@@ -149,6 +149,7 @@ has_version() {
 	fi
 	# return shell-true/shell-false if exists.
 	# Takes single depend-type atoms.
+	PYTHONPATH="${PORTAGE_PYM_PATH}:${PYTHONPATH}" \
 	"${PORTAGE_BIN_PATH}"/portageq has_version "${ROOT}" "$1"
 	local retval=$?
 	case "${retval}" in
@@ -168,6 +169,7 @@ portageq() {
 	if [ "${EBUILD_PHASE}" == "depend" ]; then
 		die "portageq calls are not allowed in the global scope"
 	fi
+	PYTHONPATH="${PORTAGE_PYM_PATH}:${PYTHONPATH}" \
 	"${PORTAGE_BIN_PATH}/portageq" "$@"
 }
 
@@ -183,6 +185,7 @@ best_version() {
 	fi
 	# returns the best/most-current match.
 	# Takes single depend-type atoms.
+	PYTHONPATH="${PORTAGE_PYM_PATH}:${PYTHONPATH}" \
 	"${PORTAGE_BIN_PATH}/portageq" 'best_version' "${ROOT}" "$1"
 }
 
