@@ -4302,6 +4302,42 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			if logfile and not os.access(os.path.dirname(logfile), os.W_OK):
 				logfile = None
 		if have_build_dirs:
+			env_file = os.path.join(mysettings["T"], "environment")
+			env_stat = None
+			saved_env = None
+			try:
+				env_stat = os.stat(env_file)
+			except OSError, e:
+				if e.errno != errno.ENOENT:
+					raise
+				del e
+			if not env_stat:
+				saved_env = os.path.join(
+					os.path.dirname(myebuild), "environment.bz2")
+				if not os.path.isfile(saved_env):
+					saved_env = None
+			if saved_env:
+				retval = os.system(
+					"bzip2 -dc '%s' > '%s'" % (saved_env, env_file))
+				try:
+					env_stat = os.stat(env_file)
+				except OSError, e:
+					if e.errno != errno.ENOENT:
+						raise
+					del e
+				if os.WIFEXITED(retval) and \
+					os.WEXITSTATUS(retval) == os.EX_OK and \
+					env_stat and env_stat.st_size > 0:
+					pass
+				else:
+					writemsg("!!! Error extracting saved environment: '%s'" % \
+						saved_env, noiselevel=-1)
+					try:
+						os.unlink(env_file)
+					except OSError, e:
+						if e.errno != errno.ENOENT:
+							raise
+						del e
 			_doebuild_exit_status_unlink(
 				mysettings.get("EBUILD_EXIT_STATUS_FILE"))
 		else:
