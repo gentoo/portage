@@ -2354,9 +2354,8 @@ class dblink(object):
 		If portage is reinstalling itself, create temporary
 		copies of PORTAGE_BIN_PATH and PORTAGE_PYM_PATH in order
 		to avoid relying on the new versions which may be
-		incompatible. Insert the temporary PORTAGE_PYM_PATH
-		as the first element of sys.path and register an atexit
-		hook to clean up the temporary directories.
+		incompatible. Register an atexit hook to clean up the
+		temporary directories.
 		"""
 		if self.myroot == "/" and \
 			"sys-apps" == self.cat and \
@@ -2378,7 +2377,6 @@ class dblink(object):
 				shutil.copytree(var_orig, var_new, symlinks=True)
 				os.chmod(var_new, dir_perms)
 			os.chmod(base_path_tmp, dir_perms)
-			sys.path.insert(0, settings["PORTAGE_PYM_PATH"])
 
 		return self._merge(mergeroot, inforoot,
 				myroot, myebuild=myebuild, cleanup=cleanup,
