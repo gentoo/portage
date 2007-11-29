@@ -2029,6 +2029,8 @@ class dblink(object):
 			others_in_slot.remove(dblnk) # dblnk will unmerge itself now
 			dblnk.unmerge(trimworld=0, ldpath_mtimes=prev_mtimes,
 				others_in_slot=others_in_slot)
+			# TODO: Check status and abort if necessary.
+			dblnk.delete()
 			writemsg_stdout(">>> Original instance of package unmerged safely.\n")
 			break
 
