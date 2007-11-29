@@ -3626,7 +3626,6 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 				os.path.basename(MISC_SH_BINARY))
 			mycommand = " ".join([misc_sh_binary,
 				"install_qa_check", "install_symlink_html_docs"])
-			print mycommand
 			qa_retval = spawn(mycommand, mysettings, debug=debug, logfile=logfile, **kwargs)
 			if qa_retval:
 				writemsg("!!! install_qa_check failed; exiting.\n",
