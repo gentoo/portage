@@ -42,6 +42,7 @@ def _combine_logentries(logentries):
 			rValue.append("\n")
 	return "".join(rValue)
 
+_elog_mod_imports = {}
 _elog_atexit_handlers = []
 _preserve_logentries = {}
 def elog_process(cpv, mysettings, phasefilter=None):
@@ -94,9 +95,12 @@ def elog_process(cpv, mysettings, phasefilter=None):
 				# FIXME: ugly ad.hoc import code
 				# TODO:  implement a common portage module loader
 				name = "portage.elog.mod_" + s
-				m = __import__(name)
-				for comp in name.split(".")[1:]:
-					m = getattr(m, comp)
+				m = _elog_mod_imports.get(name)
+				if m is None:
+					m = __import__(name)
+					for comp in name.split(".")[1:]:
+						m = getattr(m, comp)
+					_elog_mod_imports[name] = m
 				def timeout_handler(signum, frame):
 					raise PortageException("Timeout in elog_process for system '%s'" % s)
 				import signal

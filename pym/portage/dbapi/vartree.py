@@ -2355,7 +2355,9 @@ class dblink(object):
 		copies of PORTAGE_BIN_PATH and PORTAGE_PYM_PATH in order
 		to avoid relying on the new versions which may be
 		incompatible. Register an atexit hook to clean up the
-		temporary directories.
+		temporary directories. Pre-load elog modules here since
+		we won't be able to later if they get unmerged (happens
+		when namespace changes).
 		"""
 		if self.myroot == "/" and \
 			"sys-apps" == self.cat and \
@@ -2377,6 +2379,9 @@ class dblink(object):
 				shutil.copytree(var_orig, var_new, symlinks=True)
 				os.chmod(var_new, dir_perms)
 			os.chmod(base_path_tmp, dir_perms)
+			# This serves so pre-load the modules.
+			elog_process(self.mycpv, self.settings,
+				phasefilter=filter_mergephases)
 
 		return self._merge(mergeroot, inforoot,
 				myroot, myebuild=myebuild, cleanup=cleanup,
