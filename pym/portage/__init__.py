@@ -858,16 +858,27 @@ class config(object):
 	virtuals ...etc you look in here.
 	"""
 
+	_environ_whitelist = []
+
 	# Preserve backupenv values that are initialized in the config
 	# constructor. Also, preserve XARGS since it is set by the
 	# portage.data module.
-	_environ_whitelist = frozenset([
+	_environ_whitelist += [
 		"FEATURES", "PORTAGE_BIN_PATH",
 		"PORTAGE_CONFIGROOT", "PORTAGE_DEPCACHEDIR",
 		"PORTAGE_GID", "PORTAGE_INST_GID", "PORTAGE_INST_UID",
 		"PORTAGE_PYM_PATH", "PORTDIR_OVERLAY", "ROOT", "USE_ORDER",
 		"XARGS",
-	])
+	]
+
+	# misc variables inherited from the calling environment
+	_environ_whitelist += [
+		"COLORTERM", "DISPLAY", "EDITOR", "LESS",
+		"LESSOPEN", "LOGNAME", "LS_COLORS", "PAGER",
+		"TERM", "TERMCAP", "USER",
+	]
+
+	_environ_whitelist = frozenset(_environ_whitelist)
 
 	# Filter selected variables in the config.environ() method so that
 	# they don't needlessly propagate down into the ebuild environment.
