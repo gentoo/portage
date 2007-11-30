@@ -2545,6 +2545,13 @@ class config:
 			writemsg("*** HOME not set. Setting to "+mydict["BUILD_PREFIX"]+"\n")
 			mydict["HOME"]=mydict["BUILD_PREFIX"][:]
 
+		if filter_calling_env:
+			if "package" == self.get("EBUILD_PHASE"):
+				for k in ("PKGDIR", ):
+					v = self.get(k)
+					if v is not None:
+						mydict[k] = v
+
 		return mydict
 
 	def thirdpartymirrors(self):
