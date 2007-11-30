@@ -506,11 +506,12 @@ def elog_process(cpv, mysettings):
 		# - is nicer than _ for module names, so allow people to use it.
 		s = s.replace("-", "_")
 		try:
-			logmodule = __import__("elog_modules.mod_"+s)
-			m = _elog_mod_imports.get(logmodule)
+			name = "elog_modules.mod_"+s
+			m = _elog_mod_imports.get(name)
 			if m is None:
+				logmodule = __import__(name)
 				m = getattr(logmodule, "mod_"+s)
-				_elog_mod_imports[logmodule] = m
+				_elog_mod_imports[name] = m
 		except ImportError:
 			pass
 
@@ -585,11 +586,12 @@ def elog_process(cpv, mysettings):
 		try:
 			# FIXME: ugly ad.hoc import code
 			# TODO:  implement a common portage module loader
-			logmodule = __import__("elog_modules.mod_"+s)
-			m = _elog_mod_imports.get(logmodule)
+			name = "elog_modules.mod_"+s
+			m = _elog_mod_imports.get(name)
 			if m is None:
+				logmodule = __import__(name)
 				m = getattr(logmodule, "mod_"+s)
-				_elog_mod_imports[logmodule] = m
+				_elog_mod_imports[name] = m
 			def timeout_handler(signum, frame):
 				raise portage_exception.PortageException(
 					"Timeout in elog_process for system '%s'" % s)
