@@ -15,6 +15,13 @@ portage-2.2
 * Add support for news items (GLEP 42)
 * Add support for generic package sets (also see RELEASE-NOTES)
 
+portage-2.1.4
+-------------
+
+* After the initial setup phase, the original ebuild and eclasses are no
+  longer needed because the same ebuild environment is reused for the
+  entire lifecycle of the package, including uninstallation.
+
 portage-2.1.3
 -------------
 
