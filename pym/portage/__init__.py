@@ -858,6 +858,17 @@ class config(object):
 	virtuals ...etc you look in here.
 	"""
 
+	# Preserve backupenv values that are initialized in the config
+	# constructor. Also, preserve XARGS since it is set by the
+	# portage.data module.
+	_environ_whitelist = frozenset([
+		"FEATURES", "PORTAGE_BIN_PATH",
+		"PORTAGE_CONFIGROOT", "PORTAGE_DEPCACHEDIR",
+		"PORTAGE_GID", "PORTAGE_INST_GID", "PORTAGE_INST_UID",
+		"PORTAGE_PYM_PATH", "PORTDIR_OVERLAY", "ROOT", "USE_ORDER",
+		"XARGS",
+	])
+
 	# Filter selected variables in the config.environ() method so that
 	# they don't needlessly propagate down into the ebuild environment.
 	_environ_filter = []
@@ -917,6 +928,7 @@ class config(object):
 
 		self.already_in_regenerate = 0
 
+		self._filter_calling_env = False
 		self.locked   = 0
 		self.mycpv    = None
 		self.puse     = []
@@ -942,6 +954,7 @@ class config(object):
 		self._use_wildcards = False
 
 		if clone:
+			self._filter_calling_env = copy.deepcopy(clone._filter_calling_env)
 			self.incrementals = copy.deepcopy(clone.incrementals)
 			self.profile_path = copy.deepcopy(clone.profile_path)
 			self.user_profile_dir = copy.deepcopy(clone.user_profile_dir)
@@ -2527,6 +2540,9 @@ class config(object):
 		"return our locally-maintained environment"
 		mydict={}
 		environ_filter = self._environ_filter
+		filter_calling_env = self._filter_calling_env
+		environ_whitelist = self._environ_whitelist
+		env_d = self.configdict["env.d"]
 		for x in self:
 			if x in environ_filter:
 				continue
@@ -2535,6 +2551,11 @@ class config(object):
 				writemsg("!!! Non-string value in config: %s=%s\n" % \
 					(x, myvalue), noiselevel=-1)
 				continue
+			if filter_calling_env and \
+				x not in environ_whitelist:
+				if myvalue == env_d.get(x) or \
+					myvalue == os.environ.get(x):
+					continue
 			mydict[x] = myvalue
 		if not mydict.has_key("HOME") and mydict.has_key("BUILD_PREFIX"):
 			writemsg("*** HOME not set. Setting to "+mydict["BUILD_PREFIX"]+"\n")
@@ -3577,8 +3598,15 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 	mysettings["EBUILD_PHASE"] = mydo
 	_doebuild_exit_status_unlink(
 		mysettings.get("EBUILD_EXIT_STATUS_FILE"))
-	phase_retval = spawn(actionmap[mydo]["cmd"] % mydo, mysettings, debug=debug, logfile=logfile, **kwargs)
-	mysettings["EBUILD_PHASE"] = ""
+	filter_calling_env_state = mysettings._filter_calling_env
+	if os.path.exists(os.path.join(mysettings["T"], "environment")):
+		mysettings._filter_calling_env = True
+	try:
+		phase_retval = spawn(actionmap[mydo]["cmd"] % mydo,
+			mysettings, debug=debug, logfile=logfile, **kwargs)
+	finally:
+		mysettings["EBUILD_PHASE"] = ""
+		mysettings._filter_calling_env = filter_calling_env_state
 	msg = _doebuild_exit_status_check(mydo, mysettings)
 	if msg:
 		phase_retval = 1
@@ -4180,6 +4208,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	builddir_lock = None
 	tmpdir = None
 	tmpdir_orig = None
+	filter_calling_env_state = mysettings._filter_calling_env
 	try:
 		if mydo in ("digest", "manifest", "help"):
 			# Temporarily exempt the depend phase from manifest checks, in case
@@ -4338,6 +4367,10 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 						if e.errno != errno.ENOENT:
 							raise
 						del e
+					env_stat = None
+			if env_stat:
+				mysettings._filter_calling_env = True
+			del env_file, env_stat, saved_env
 			_doebuild_exit_status_unlink(
 				mysettings.get("EBUILD_EXIT_STATUS_FILE"))
 		else:
@@ -4608,6 +4641,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		return retval
 
 	finally:
+		mysettings._filter_calling_env = filter_calling_env_state
 		if tmpdir:
 			mysettings["PORTAGE_TMPDIR"] = tmpdir_orig
 			shutil.rmtree(tmpdir)
@@ -5970,15 +6004,11 @@ def create_trees(config_root=None, target_root=None, trees=None):
 		# with ROOT != "/", so we wipe out the "backupenv" for the
 		# config that is associated with ROOT == "/" and regenerate
 		# it's incrementals.
-
 		# Preserve backupenv values that are initialized in the config
 		# constructor. Also, preserve XARGS since it is set by the
 		# portage.data module.
-		backupenv_whitelist = set(["FEATURES", "PORTAGE_BIN_PATH",
-			"PORTAGE_CONFIGROOT", "PORTAGE_DEPCACHEDIR",
-			"PORTAGE_GID", "PORTAGE_INST_GID", "PORTAGE_INST_UID",
-			"PORTAGE_PYM_PATH", "PORTDIR_OVERLAY", "ROOT", "USE_ORDER",
-			"XARGS"])
+
+		backupenv_whitelist = settings._environ_whitelist
 		backupenv = settings.configdict["backupenv"]
 		for k, v in os.environ.iteritems():
 			if k in backupenv_whitelist:
