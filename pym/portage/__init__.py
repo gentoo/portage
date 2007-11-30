@@ -867,7 +867,7 @@ class config(object):
 		"FEATURES", "PORTAGE_BIN_PATH",
 		"PORTAGE_CONFIGROOT", "PORTAGE_DEPCACHEDIR",
 		"PORTAGE_GID", "PORTAGE_INST_GID", "PORTAGE_INST_UID",
-		"PORTAGE_PYM_PATH", "PORTDIR_OVERLAY", "ROOT", "USE_ORDER",
+		"PORTAGE_PYM_PATH", "PORTDIR_OVERLAY", "ROOT", "ROOTPATH", "USE_ORDER",
 		"XARGS",
 	]
 
@@ -2578,6 +2578,11 @@ class config(object):
 					v = self.get(k)
 					if v is not None:
 						mydict[k] = v
+
+		# sandbox unsets ROOTPATH, so we have to back it up and restore it.
+		rootpath = mydict.get("ROOTPATH")
+		if rootpath:
+			mydict["PORTAGE_ROOTPATH"] = rootpath
 
 		return mydict
 

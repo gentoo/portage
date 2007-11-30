@@ -15,6 +15,12 @@ export SANDBOX_READ="${SANDBOX_READ}:/dev/shm:/dev/stdin:${PORTAGE_TMPDIR}"
 # environment by modifying our PATH.
 unset BASH_ENV
 
+# sandbox unsets ROOTPATH, so we have to back it up and restore it.
+if [ -n ${PORTAGE_ROOTPATH} ] ; then
+	export ROOTPATH=${PORTAGE_ROOTPATH}
+	unset PORTAGE_ROOTPATH
+fi
+
 if [ ! -z "${PORTAGE_GPG_DIR}" ]; then
 	SANDBOX_PREDICT="${SANDBOX_PREDICT}:${PORTAGE_GPG_DIR}"
 fi
