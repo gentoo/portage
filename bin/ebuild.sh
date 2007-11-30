@@ -1547,32 +1547,14 @@ if hasq "depend" "${EBUILD_SH_ARGS}"; then
 	unset BIN_PATH BIN BODY FUNC_SRC
 fi
 
-# Automatically try to load environment.bz2 whenever
-# "${T}/environment" does not exist, except for phases
-# such as nofetch that do not require ${T} to exist.
-if ! hasq ${EBUILD_SH_ARGS} clean depend nofetch && \
-	[ ! -f "${T}/environment" ] ; then
-	bzip2 -dc "${EBUILD%/*}"/environment.bz2 > \
-		"${T}/environment" 2> /dev/null
-	if [ $? -eq 0 ] && [ -s "${T}/environment" ] ; then
-		preprocess_ebuild_env || \
-			die "error processing '${EBUILD%/*}/environment.bz2'"
-	else
-		rm -f "${T}/environment"
-	fi
-fi
-
 if hasq ${EBUILD_SH_ARGS} clean ; then
 	true
 elif ! hasq ${EBUILD_PHASE} depend && [ -f "${T}"/environment ] ; then
-	if [ "${PN}" == "portage" ] && [ -n "${EBUILD_SH_ARGS}" ] ; then
-		# When portage reinstalls itself, during inst/rm phases, the
-		# environment may have been saved by a different version of ebuild.sh,
-		# so it can't trusted that it's been properly filtered. Therefore,
-		# always preprocess the environment when ${PN} == portage.
-		preprocess_ebuild_env || \
-			die "error processing environment"
-	fi
+	# The environment may have been extracted from environment.bz2 or
+	# may have come from another version of ebuild.sh or something.
+	# In any case, preprocess it to prevent any potential interference.
+	preprocess_ebuild_env || \
+		die "error processing environment"
 	# Colon separated SANDBOX_* variables need to be cumulative.
 	for x in SANDBOX_DENY SANDBOX_READ SANDBOX_PREDICT SANDBOX_WRITE ; do
 		eval PORTAGE_${x}=\${!x}
