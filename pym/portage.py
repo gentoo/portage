@@ -1004,10 +1004,12 @@ class config:
 	# constructor. Also, preserve XARGS since it is set by the
 	# portage.data module.
 	_environ_whitelist += [
-		"FEATURES", "PORTAGE_BIN_PATH",
+		"DISTDIR", "FEATURES", "PORTAGE_BIN_PATH",
 		"PORTAGE_CONFIGROOT", "PORTAGE_DEPCACHEDIR",
 		"PORTAGE_GID", "PORTAGE_INST_GID", "PORTAGE_INST_UID",
-		"PORTAGE_PYM_PATH", "PORTDIR_OVERLAY", "ROOT", "ROOTPATH", "USE_ORDER",
+		"PORTAGE_PYM_PATH", "PORTAGE_WORKDIR_MODE",
+		"PORTDIR", "PORTDIR_OVERLAY",
+		"ROOT", "ROOTPATH", "USE_ORDER",
 		"XARGS",
 	]
 
@@ -2559,8 +2561,14 @@ class config:
 			mydict["HOME"]=mydict["BUILD_PREFIX"][:]
 
 		if filter_calling_env:
-			if "package" == self.get("EBUILD_PHASE"):
-				for k in ("PKGDIR", ):
+			phase = self.get("EBUILD_PHASE")
+			if phase:
+				whitelist = []
+				if "package" == phase:
+					whitelist.append("PKGDIR")
+				if "rpm" == phase:
+					whitelist.append("RPMDIR")
+				for k in whitelist:
 					v = self.get(k)
 					if v is not None:
 						mydict[k] = v
