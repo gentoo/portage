@@ -405,6 +405,10 @@ save_ebuild_env() {
 		unset COLORTERM DISPLAY EDITOR LESS LESSOPEN LOGNAME LS_COLORS PAGER \
 			TERM TERMCAP USER
 
+		# other variables inherited from the calling environment
+		unset CVS_RSH ECHANGELOG_USER GPG_AGENT_INFO \
+		SSH_AGENT_PID SSH_AUTH_SOCK STY WINDOW XAUTHORITY
+
 		# There's no need to bloat environment.bz2 with internally defined
 		# functions and variables, so filter them out if possible.
 
