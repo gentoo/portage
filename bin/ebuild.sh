@@ -16,7 +16,7 @@ export SANDBOX_READ="${SANDBOX_READ}:/dev/shm:/dev/stdin:${PORTAGE_TMPDIR}"
 unset BASH_ENV
 
 # sandbox unsets ROOTPATH, so we have to back it up and restore it.
-if [ -n ${PORTAGE_ROOTPATH} ] ; then
+if [ -n "${PORTAGE_ROOTPATH}" ] ; then
 	export ROOTPATH=${PORTAGE_ROOTPATH}
 	unset PORTAGE_ROOTPATH
 fi
