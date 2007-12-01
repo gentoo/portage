@@ -2579,7 +2579,8 @@ class config(object):
 					if v is not None:
 						mydict[k] = v
 
-		# sandbox unsets ROOTPATH, so we have to back it up and restore it.
+		# sandbox's bashrc sources /etc/profile which unsets ROOTPATH,
+		# so we have to back it up and restore it.
 		rootpath = mydict.get("ROOTPATH")
 		if rootpath:
 			mydict["PORTAGE_ROOTPATH"] = rootpath
