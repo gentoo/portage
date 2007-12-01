@@ -493,10 +493,20 @@ class digraph:
 				print "(%s)" % self.nodes[node][0][child]
 
 _elog_mod_imports = {}
+def _load_mod(name):
+	global _elog_mod_imports
+	m = _elog_mod_imports.get(name)
+	if m is None:
+		m = __import__(name)
+		for comp in name.split(".")[1:]:
+			m = getattr(m, comp)
+		_elog_mod_imports[name] = m
+	return m
+
 _elog_atexit_handlers = []
 def elog_process(cpv, mysettings):
 
-	global _elog_mod_imports
+	
 	logsystems = mysettings.get("PORTAGE_ELOG_SYSTEM","").split()
 	for s in logsystems:
 		# allow per module overrides of PORTAGE_ELOG_CLASSES
@@ -506,12 +516,7 @@ def elog_process(cpv, mysettings):
 		# - is nicer than _ for module names, so allow people to use it.
 		s = s.replace("-", "_")
 		try:
-			name = "elog_modules.mod_"+s
-			m = _elog_mod_imports.get(name)
-			if m is None:
-				logmodule = __import__(name)
-				m = getattr(logmodule, "mod_"+s)
-				_elog_mod_imports[name] = m
+			_load_mod("elog_modules.mod_" + s)
 		except ImportError:
 			pass
 
@@ -584,14 +589,7 @@ def elog_process(cpv, mysettings):
 		# - is nicer than _ for module names, so allow people to use it.
 		s = s.replace("-", "_")
 		try:
-			# FIXME: ugly ad.hoc import code
-			# TODO:  implement a common portage module loader
-			name = "elog_modules.mod_"+s
-			m = _elog_mod_imports.get(name)
-			if m is None:
-				logmodule = __import__(name)
-				m = getattr(logmodule, "mod_"+s)
-				_elog_mod_imports[name] = m
+			m = _load_mod("elog_modules.mod_" + s)
 			def timeout_handler(signum, frame):
 				raise portage_exception.PortageException(
 					"Timeout in elog_process for system '%s'" % s)
