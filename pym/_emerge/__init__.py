@@ -4085,8 +4085,9 @@ class MergeTask(object):
 				if os.waitpid(pid, os.WNOHANG) == (0, 0):
 					continue
 			except OSError:
-				# This pid has been cleaned up elsewhere.
-				continue
+				# This pid has been cleaned up elsewhere,
+				# so remove it from our list.
+				pass
 			spawned_pids.remove(pid)
 
 	def _merge(self, mylist, favorites, mtimedb):
