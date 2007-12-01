@@ -4175,7 +4175,6 @@ class MergeTask(object):
 				print red("!!!")+" you have it disabled, thus parallel-fetching is being disabled"
 				print red("!!!")
 			elif len(mymergelist) > 1:
-				print ">>> starting parallel fetching"
 				fetch_log = "/var/log/emerge-fetch.log"
 				logfile = open(fetch_log, "w")
 				fd_pipes = {1:logfile.fileno(), 2:logfile.fileno()}
@@ -4204,6 +4203,8 @@ class MergeTask(object):
 				logfile.close() # belongs to the spawned process
 				del fetch_log, logfile, fd_pipes, fetch_env, fetch_args, \
 					resume_opts
+				print ">>> starting parallel fetching pid %d" % \
+					self._spawned_pids[-1]
 
 		metadata_keys = [k for k in portage.auxdbkeys \
 			if not k.startswith("UNUSED_")] + ["USE"]
