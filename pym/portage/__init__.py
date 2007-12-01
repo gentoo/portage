@@ -6043,11 +6043,13 @@ def create_trees(config_root=None, target_root=None, trees=None):
 
 		backupenv_whitelist = settings._environ_whitelist
 		backupenv = settings.configdict["backupenv"]
+		env_d = settings.configdict["env.d"]
 		for k, v in os.environ.iteritems():
 			if k in backupenv_whitelist:
 				continue
-			if v == backupenv.get(k):
-				del backupenv[k]
+			if k in env_d or \
+				v == backupenv.get(k):
+				backupenv.pop(k, None)
 		settings.regenerate()
 		settings.lock()
 		settings.validate()
