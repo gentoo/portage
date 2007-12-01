@@ -3832,13 +3832,14 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 		mysettings["PORTAGE_BUILDDIR"], ".exit_status")
 
 	#set up KV variable -- DEP SPEEDUP :: Don't waste time. Keep var persistent.
-	if (mydo!="depend") or not mysettings.has_key("KV"):
+	if mydo != "depend" and "KV" not in mysettings:
 		mykv,err1=ExtractKernelVersion(os.path.join(myroot, "usr/src/linux"))
 		if mykv:
 			# Regular source tree
 			mysettings["KV"]=mykv
 		else:
 			mysettings["KV"]=""
+		mysettings.backup_changes("KV")
 
 	# Allow color.map to control colors associated with einfo, ewarn, etc...
 	mycolors = []
