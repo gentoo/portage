@@ -880,6 +880,14 @@ class config(object):
 		"TERM", "TERMCAP", "USER",
 	]
 
+	# other variables inherited from the calling environment
+	_environ_whitelist += [
+		"CVS_RSH", "ECHANGELOG_USER",
+		"GPG_AGENT_INFO",
+		"SSH_AGENT_PID", "SSH_AUTH_SOCK",
+		"STY", "WINDOW", "XAUTHORITY",
+	]
+
 	_environ_whitelist = frozenset(_environ_whitelist)
 
 	# Filter selected variables in the config.environ() method so that
@@ -888,10 +896,7 @@ class config(object):
 
 	# misc variables inherited from the calling environment
 	_environ_filter += [
-		"CVS_RSH", "ECHANGELOG_USER",
-		"GPG_AGENT_INFO", "INFOPATH", "MANPATH",
-		"SSH_AGENT_PID", "SSH_AUTH_SOCK",
-		"STY", "WINDOW", "XAUTHORITY",
+		"INFOPATH", "MANPATH",
 	]
 
 	# portage config variables and variables set directly by portage
