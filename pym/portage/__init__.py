@@ -4392,7 +4392,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 					env_stat and env_stat.st_size > 0:
 					pass
 				else:
-					writemsg("!!! Error extracting saved environment: '%s'" % \
+					writemsg(("!!! Error extracting saved " + \
+						"environment: '%s'\n") % \
 						saved_env, noiselevel=-1)
 					try:
 						os.unlink(env_file)
