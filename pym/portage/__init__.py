@@ -891,7 +891,8 @@ class config(object):
 		"PORTAGE_ECLASS_WARNING_ENABLE", "PORTAGE_ELOG_CLASSES",
 		"PORTAGE_ELOG_MAILFROM", "PORTAGE_ELOG_MAILSUBJECT",
 		"PORTAGE_ELOG_MAILURI", "PORTAGE_ELOG_SYSTEM", "PORTAGE_GPG_DIR",
-		"PORTAGE_GPG_KEY", "PORTAGE_RSYNC_EXTRA_OPTS", "PORTAGE_RSYNC_OPTS",
+		"PORTAGE_GPG_KEY", "PORTAGE_PACKAGE_EMPTY_ABORT",
+		"PORTAGE_RSYNC_EXTRA_OPTS", "PORTAGE_RSYNC_OPTS",
 		"PORTAGE_RSYNC_RETRIES", "PORT_LOGDIR", "QUICKPKG_DEFAULT_OPTS",
 		"RESUMECOMMAND", "RESUMECOMMAND_HTTP", "RESUMECOMMAND_HTTP",
 		"RESUMECOMMAND_SFTP", "SYNC", "USE_EXPAND_HIDDEN", "USE_ORDER",
@@ -2487,11 +2488,18 @@ class config(object):
 				return d[k]
 		return x
 
-	def pop(self, k, x=None):
-		self.modifying()
-		v = x
+	def pop(self, key, *args):
+		if len(args) > 1:
+			raise TypeError(
+				"pop expected at most 2 arguments, got " + \
+				repr(1 + len(args)))
+		v = self
 		for d in reversed(self.lookuplist):
-			v = d.pop(k, v)
+			v = d.pop(key, v)
+		if v is self:
+			if args:
+				return args[0]
+			raise KeyError(key)
 		return v
 
 	def has_key(self,mykey):
@@ -3588,8 +3596,7 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 		mysettings.get("EBUILD_EXIT_STATUS_FILE"))
 	phase_retval = spawn(actionmap[mydo]["cmd"] % mydo, mysettings, debug=debug, logfile=logfile, **kwargs)
 	mysettings["EBUILD_PHASE"] = ""
-	msg = _doebuild_exit_status_check(
-		mydo, mysettings.get("EBUILD_EXIT_STATUS_FILE"))
+	msg = _doebuild_exit_status_check(mydo, mysettings)
 	if msg:
 		phase_retval = 1
 		from textwrap import wrap
@@ -4012,11 +4019,18 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 			mysettings["PORTAGE_LOG_FILE"] = os.path.join(
 				mysettings["T"], "build.log")
 
-def _doebuild_exit_status_check(mydo, exit_status_file):
+def _doebuild_exit_status_check(mydo, settings):
 	"""
 	Returns an error string if the shell appeared
 	to exit unsuccessfully, None otherwise.
 	"""
+	if settings.get("ROOT") == "/" and \
+		settings.get("PN") == "portage":
+			# portage upgrade or downgrade invalidates this check
+			# since ebuild.sh portage version may differ from the
+			# current instance that is running in python.
+			return None
+	exit_status_file = settings.get("EBUILD_EXIT_STATUS_FILE")
 	if not exit_status_file or \
 		os.path.exists(exit_status_file):
 		return None
@@ -4188,8 +4202,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	def exit_status_check(retval):
 		if retval != os.EX_OK:
 			return retval
-		msg = _doebuild_exit_status_check(
-			mydo, mysettings.get("EBUILD_EXIT_STATUS_FILE"))
+		msg = _doebuild_exit_status_check(mydo, mysettings)
 		if msg:
 			retval = 1
 			from textwrap import wrap
@@ -4364,9 +4377,12 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				myargs = [MISC_SH_BINARY, "preinst_bsdflags", "preinst_mask",
 					"preinst_sfperms", "preinst_selinux_labels",
 					"preinst_suid_scan"]
+				_doebuild_exit_status_unlink(
+					mysettings.get("EBUILD_EXIT_STATUS_FILE"))
 				mysettings["EBUILD_PHASE"] = ""
 				phase_retval = spawn(" ".join(myargs),
 					mysettings, debug=debug, free=1, logfile=logfile)
+				phase_retval = exit_status_check(phase_retval)
 				if phase_retval != os.EX_OK:
 					writemsg("!!! post preinst failed; exiting.\n",
 						noiselevel=-1)
@@ -4380,9 +4396,12 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				# Post phase logic and tasks that have been factored out of
 				# ebuild.sh.
 				myargs = [MISC_SH_BINARY, "postinst_bsdflags"]
+				_doebuild_exit_status_unlink(
+					mysettings.get("EBUILD_EXIT_STATUS_FILE"))
 				mysettings["EBUILD_PHASE"] = ""
 				phase_retval = spawn(" ".join(myargs),
 					mysettings, debug=debug, free=1, logfile=logfile)
+				phase_retval = exit_status_check(phase_retval)
 				if phase_retval != os.EX_OK:
 					writemsg("!!! post postinst failed; exiting.\n",
 						noiselevel=-1)
@@ -4570,9 +4589,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		elif mydo=="merge":
 			retval = spawnebuild("install", actionmap, mysettings, debug,
 				alwaysdep=1, logfile=logfile)
-			if retval == os.EX_OK:
-				retval = exit_status_check(retval)
-			else:
+			retval = exit_status_check(retval)
+			if retval != os.EX_OK:
 				# The merge phase handles this already.  Callers don't know how
 				# far this function got, so we have to call elog_process() here
 				# so that it's only called once.

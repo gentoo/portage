@@ -1363,9 +1363,16 @@ READONLY_EBUILD_METADATA="DEPEND DESCRIPTION
 	EAPI HOMEPAGE INHERITED IUSE KEYWORDS LICENSE
 	PDEPEND PROVIDE RDEPEND RESTRICT SLOT SRC_URI"
 
-READONLY_PORTAGE_VARS="D EBUILD EBUILD_PHASE ED \
-	EBUILD_SH_ARGS EMERGE_FROM FILESDIR PORTAGE_BIN_PATH \
-	PORTAGE_PYM_PATH PORTAGE_TMPDIR T WORKDIR"
+READONLY_PORTAGE_VARS="A CATEGORY D EBUILD EBUILD_PHASE \
+	EBUILD_SH_ARGS EMERGE_FROM FILESDIR P PF PN \
+	PORTAGE_BIN_PATH PORTAGE_PYM_PATH PORTAGE_MUTABLE_FILTERED_VARS \
+	PORTAGE_TMPDIR PR PV PVR T WORKDIR ED"
+
+# Variables that portage sets but doesn't mark readonly.
+# In order to prevent changed values from causing unexpected
+# interference, they are filtered out of the environment when
+# it is saved or loaded (any mutations do not persist).
+PORTAGE_MUTABLE_FILTERED_VARS="AA"
 
 # @FUNCTION: filter_readonly_variables
 # @DESCRIPTION: [--filter-sandbox]
@@ -1388,7 +1395,7 @@ filter_readonly_variables() {
 		SANDBOX_DEBUG_LOG SANDBOX_DISABLED SANDBOX_LIB
 		SANDBOX_LOG"
 	filtered_vars="${readonly_bash_vars} ${READONLY_PORTAGE_VARS}
-		BASH_[_[:alnum:]]*"
+		${PORTAGE_MUTABLE_FILTERED_VARS} BASH_[_[:alnum:]]*"
 	if hasq --filter-sandbox $* ; then
 		filtered_vars="${filtered_vars} SANDBOX_[_[:alnum:]]*"
 	else
@@ -1420,24 +1427,38 @@ filter_readonly_variables() {
 preprocess_ebuild_env() {
 	filter_readonly_variables --filter-sandbox < "${T}"/environment \
 		> "${T}"/environment.filtered
-	mv "${T}"/environment.filtered "${T}"/environment
+	if [ $? -ne 0 ] ; then
+		rm -f "${T}/environment.filtered"
+		return 1
+	fi
+	mv "${T}"/environment.filtered "${T}"/environment || return $?
+	rm -f "${T}/environment.success" || return $?
 	# WARNING: Code inside this subshell should avoid making assumptions
 	# about variables or functions after source "${T}"/environment has been
 	# called. Any variables that need to be relied upon should already be
 	# filtered out above.
 	(
-		source "${T}"/environment
+		source "${T}/environment" || exit $?
 
 		# It's remotely possible that save_ebuild_env() has been overridden
 		# by the above source command. To protect ourselves, we override it
 		# here with our own version. ${PORTAGE_BIN_PATH} is safe to use here
 		# because it's already filtered above.
-		source "${PORTAGE_BIN_PATH}/isolated-functions.sh"
+		source "${PORTAGE_BIN_PATH}/isolated-functions.sh" || exit $?
 
 		# Rely on save_ebuild_env() to filter out any remaining variables
 		# and functions that could interfere with the current environment.
-		save_ebuild_env
-	) | filter_readonly_variables > "${T}"/environment
+		save_ebuild_env || exit $?
+		touch "${T}/environment.success" || exit $?
+	) | filter_readonly_variables > "${T}/environment.filtered"
+	if [ -e "${T}/environment.success" ] ; then
+		rm "${T}/environment.success"
+		mv "${T}/environment.filtered" "${T}/environment"
+		return $?
+	else
+		rm -f "${T}/environment.filtered"
+	fi
+	return 1
 }
 
 # === === === === === === === === === === === === === === === === === ===
@@ -1545,13 +1566,15 @@ if hasq "depend" "${EBUILD_SH_ARGS}"; then
 fi
 
 # Automatically try to load environment.bz2 whenever
-# "${T}/environment" does not exist.
-if ! hasq ${EBUILD_SH_ARGS} clean depend && \
+# "${T}/environment" does not exist, except for phases
+# such as nofetch that do not require ${T} to exist.
+if ! hasq ${EBUILD_SH_ARGS} clean depend nofetch && \
 	[ ! -f "${T}/environment" ] ; then
 	bzip2 -dc "${EBUILD%/*}"/environment.bz2 > \
 		"${T}/environment" 2> /dev/null
-	if [ -s "${T}/environment" ] ; then
-		preprocess_ebuild_env
+	if [ $? -eq 0 ] && [ -s "${T}/environment" ] ; then
+		preprocess_ebuild_env || \
+			die "error processing '${EBUILD%/*}/environment.bz2'"
 	else
 		rm -f "${T}/environment"
 	fi
@@ -1565,13 +1588,15 @@ elif ! hasq ${EBUILD_PHASE} depend && [ -f "${T}"/environment ] ; then
 		# environment may have been saved by a different version of ebuild.sh,
 		# so it can't trusted that it's been properly filtered. Therefore,
 		# always preprocess the environment when ${PN} == portage.
-		preprocess_ebuild_env
+		preprocess_ebuild_env || \
+			die "error processing environment"
 	fi
 	# Colon separated SANDBOX_* variables need to be cumulative.
 	for x in SANDBOX_DENY SANDBOX_READ SANDBOX_PREDICT SANDBOX_WRITE ; do
 		eval PORTAGE_${x}=\${!x}
 	done
-	source "${T}"/environment
+	source "${T}"/environment || \
+		die "error sourcing environment"
 	for x in SANDBOX_DENY SANDBOX_PREDICT SANDBOX_READ SANDBOX_WRITE ; do
 		eval y=\${PORTAGE_${x}}
 		if [ "${y}" != "${!x}" ] ; then
@@ -1663,10 +1688,6 @@ export TMPDIR="${T}"
 # declare them only after it has already run.
 if [ "${EBUILD_PHASE}" != "depend" ] ; then
 	declare -r ${READONLY_EBUILD_METADATA} ${READONLY_PORTAGE_VARS}
-	for x in A AA CATEGORY EMERGE_FROM P PF PN PR PV PVR ; do
-		[[ ${!x-UNSET_VAR} != UNSET_VAR ]] && declare -r ${x}
-	done
-	unset x
 fi
 
 if [ -n "${EBUILD_SH_ARGS}" ] ; then
@@ -1767,7 +1788,7 @@ fi
 
 # Save the env only for relevant phases.
 if [ -n "${EBUILD_SH_ARGS}" ] && \
-	! hasq ${EBUILD_SH_ARGS} clean help info; then
+	! hasq ${EBUILD_SH_ARGS} clean help info nofetch ; then
 	# Save current environment and touch a success file. (echo for success)
 	umask 002
 	save_ebuild_env | filter_readonly_variables > "${T}/environment"
