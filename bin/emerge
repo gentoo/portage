@@ -3656,8 +3656,7 @@ class MergeTask(object):
 			return self._merge(mylist, favorites, mtimedb)
 		finally:
 			if self._spawned_pids:
-				from portage import process
-				process.spawned_pids.extend(self._spawned_pids)
+				portage.portage_exec.spawned_pids.extend(self._spawned_pids)
 				self._spawned_pids = []
 
 	def _poll_child_processes(self):
