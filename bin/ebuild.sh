@@ -139,6 +139,8 @@ useq() {
 
 	# Make sure we have this USE flag in IUSE
 	if ! hasq "${u}" ${IUSE} ${E_IUSE} && \
+		! hasq "+${u}" ${IUSE} ${E_IUSE} && \
+		! hasq "-${u}" ${IUSE} ${E_IUSE} && \
 		! hasq "${u}" ${PORTAGE_ARCHLIST} selinux && \
 		[[ ${u} != arch_* ]] && \
 		[[ ${u} != elibc_* ]] && \
