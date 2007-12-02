@@ -4482,11 +4482,7 @@ class MergeTask(object):
 					# Figure out if we need a restart.
 					mysplit=portage.pkgsplit(x[2])
 					if mysplit[0] == "sys-apps/portage" and x[1] == "/":
-						myver=mysplit[1]+"-"+mysplit[2]
-						if myver[-3:]=='-r0':
-							myver=myver[:-3]
-						if (myver != portage.VERSION) and \
-						   "livecvsportage" not in self.settings.features:
+						if "livecvsportage" not in self.settings.features:
 							if len(mymergelist) > mergecount:
 								emergelog(xterm_titles,
 									" ::: completed emerge ("+ \

@@ -2365,7 +2365,8 @@ class dblink(object):
 		"""
 		if self.myroot == "/" and \
 			"sys-apps" == self.cat and \
-			"portage" == pkgsplit(self.pkg)[0]:
+			"portage" == pkgsplit(self.pkg)[0] and \
+			"livecvsportage" not in self.settings.features:
 			settings = self.settings
 			base_path_orig = os.path.dirname(settings["PORTAGE_BIN_PATH"])
 			from tempfile import mkdtemp
