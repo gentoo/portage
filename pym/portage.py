@@ -624,10 +624,7 @@ def _eerror(settings, lines):
 		return
 	cmd = "source '%s/isolated-functions.sh' ; " % PORTAGE_BIN_PATH
 	for line in lines:
-		for letter in "\\\"$`":
-			if letter in line:
-				line = line.replace(letter, "\\" + letter)
-		cmd += "eerror \"%s\" ; " % line
+		cmd += "eerror %s ; " % _shell_quote(line)
 	portage_exec.spawn(["bash", "-c", cmd],
 		env=settings.environ())
 
@@ -2617,6 +2614,17 @@ class config:
 					pass
 		return self._selinux_enabled
 
+def _shell_quote(s):
+	"""
+	Quote a string in double-quotes and use backslashes to
+	escape any backslashes, double-quotes, dollar signs, or
+	backquotes in the string.
+	"""
+	for letter in "\\\"$`":
+		if letter in s:
+			s = s.replace(letter, "\\" + letter)
+	return "\"%s\"" % s
+
 # In some cases, openpty can be slow when it fails. Therefore,
 # stop trying to use it after the first failure.
 _disable_openpty = False
@@ -3673,7 +3681,7 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 			portage_bin_path = mysettings["PORTAGE_BIN_PATH"]
 			misc_sh_binary = os.path.join(portage_bin_path,
 				os.path.basename(MISC_SH_BINARY))
-			mycommand = " ".join([misc_sh_binary,
+			mycommand = " ".join([_shell_quote(misc_sh_binary),
 				"install_qa_check", "install_symlink_html_docs"])
 			qa_retval = spawn(mycommand, mysettings, debug=debug, logfile=logfile, **kwargs)
 			if qa_retval:
@@ -4257,7 +4265,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				mysettings["dbkey"] = ""
 				pr, pw = os.pipe()
 				fd_pipes = {0:0, 1:1, 2:2, 9:pw}
-				mypids = spawn(ebuild_sh_binary + " depend", mysettings,
+				mypids = spawn(_shell_quote(ebuild_sh_binary) + " depend",
+					mysettings,
 					fd_pipes=fd_pipes, returnpid=True, droppriv=droppriv)
 				os.close(pw) # belongs exclusively to the child process now
 				maxbytes = 1024
@@ -4286,7 +4295,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				mysettings["dbkey"] = \
 					os.path.join(mysettings.depcachedir, "aux_db_key_temp")
 
-			return spawn(ebuild_sh_binary + " depend", mysettings,
+			return spawn(_shell_quote(ebuild_sh_binary) + " depend",
+				mysettings,
 				droppriv=droppriv)
 
 		# Validate dependency metadata here to ensure that ebuilds with invalid
@@ -4368,7 +4378,9 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 					saved_env = None
 			if saved_env:
 				retval = os.system(
-					"bzip2 -dc '%s' > '%s'" % (saved_env, env_file))
+					"bzip2 -dc %s > %s" % \
+					(_shell_quote(saved_env),
+					_shell_quote(env_file)))
 				try:
 					env_stat = os.stat(env_file)
 				except OSError, e:
@@ -4401,11 +4413,11 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		# if any of these are being called, handle them -- running them out of
 		# the sandbox -- and stop now.
 		if mydo in ["clean","cleanrm"]:
-			return spawn(ebuild_sh_binary + " clean", mysettings,
+			return spawn(_shell_quote(ebuild_sh_binary) + " clean", mysettings,
 				debug=debug, free=1, logfile=None)
 		elif mydo == "help":
-			return spawn(ebuild_sh_binary + " " + mydo, mysettings,
-				debug=debug, free=1, logfile=logfile)
+			return spawn(_shell_quote(ebuild_sh_binary) + " " + mydo,
+				mysettings, debug=debug, free=1, logfile=logfile)
 		elif mydo == "setup":
 			infodir = os.path.join(
 				mysettings["PORTAGE_BUILDDIR"], "build-info")
@@ -4413,7 +4425,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				"""Load USE flags for setup phase of a binary package.
 				Ideally, the environment.bz2 would be used instead."""
 				mysettings.load_infodir(infodir)
-			retval = spawn(ebuild_sh_binary + " " + mydo, mysettings,
+			retval = spawn(
+				_shell_quote(ebuild_sh_binary) + " " + mydo, mysettings,
 				debug=debug, free=1, logfile=logfile)
 			retval = exit_status_check(retval)
 			if secpass >= 2:
@@ -4424,13 +4437,15 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 					filemode=060, filemask=0)
 			return retval
 		elif mydo == "preinst":
-			phase_retval = spawn(" ".join((ebuild_sh_binary, mydo)),
+			phase_retval = spawn(
+				_shell_quote(ebuild_sh_binary) + " " + mydo,
 				mysettings, debug=debug, free=1, logfile=logfile)
 			phase_retval = exit_status_check(phase_retval)
 			if phase_retval == os.EX_OK:
 				# Post phase logic and tasks that have been factored out of
 				# ebuild.sh.
-				myargs = [misc_sh_binary, "preinst_bsdflags", "preinst_mask",
+				myargs = [_shell_quote(misc_sh_binary),
+					"preinst_bsdflags", "preinst_mask",
 					"preinst_sfperms", "preinst_selinux_labels",
 					"preinst_suid_scan"]
 				_doebuild_exit_status_unlink(
@@ -4445,13 +4460,14 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			return phase_retval
 		elif mydo == "postinst":
 			mysettings.load_infodir(mysettings["O"])
-			phase_retval = spawn(" ".join((ebuild_sh_binary, mydo)),
+			phase_retval = spawn(
+				_shell_quote(ebuild_sh_binary) + " " + mydo,
 				mysettings, debug=debug, free=1, logfile=logfile)
 			phase_retval = exit_status_check(phase_retval)
 			if phase_retval == os.EX_OK:
 				# Post phase logic and tasks that have been factored out of
 				# ebuild.sh.
-				myargs = [misc_sh_binary, "postinst_bsdflags"]
+				myargs = [_shell_quote(misc_sh_binary), "postinst_bsdflags"]
 				_doebuild_exit_status_unlink(
 					mysettings.get("EBUILD_EXIT_STATUS_FILE"))
 				mysettings["EBUILD_PHASE"] = ""
@@ -4464,7 +4480,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			return phase_retval
 		elif mydo in ("prerm", "postrm", "config", "info"):
 			mysettings.load_infodir(mysettings["O"])
-			retval =  spawn(ebuild_sh_binary + " " + mydo,
+			retval =  spawn(
+				_shell_quote(ebuild_sh_binary) + " " + mydo,
 				mysettings, debug=debug, free=1, logfile=logfile)
 			retval = exit_status_check(retval)
 			return retval
@@ -4597,8 +4614,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 		fakeroot = "fakeroot" in mysettings.features
 
-		ebuild_sh = ebuild_sh_binary + " %s"
-		misc_sh = misc_sh_binary + " dyn_%s"
+		ebuild_sh = _shell_quote(ebuild_sh_binary) + " %s"
+		misc_sh = _shell_quote(misc_sh_binary) + " dyn_%s"
 
 		# args are for the to spawn function
 		actionmap = {
