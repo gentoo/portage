@@ -863,16 +863,29 @@ class config(object):
 	virtuals ...etc you look in here.
 	"""
 
+	_environ_whitelist = []
+
 	# Preserve backupenv values that are initialized in the config
 	# constructor. Also, preserve XARGS since it is set by the
 	# portage.data module.
-	_environ_whitelist = frozenset([
-		"FEATURES", "PORTAGE_BIN_PATH",
+	_environ_whitelist += [
+		"DISTDIR", "FEATURES", "PORTAGE_BIN_PATH",
 		"PORTAGE_CONFIGROOT", "PORTAGE_DEPCACHEDIR",
 		"PORTAGE_GID", "PORTAGE_INST_GID", "PORTAGE_INST_UID",
-		"PORTAGE_PYM_PATH", "PORTDIR_OVERLAY", "ROOT", "USE_ORDER",
+		"PORTAGE_PYM_PATH", "PORTAGE_WORKDIR_MODE",
+		"PORTDIR", "PORTDIR_OVERLAY", "PREROOTPATH",
+		"ROOT", "ROOTPATH", "USE_ORDER",
 		"XARGS",
-	])
+	]
+
+	# misc variables inherited from the calling environment
+	_environ_whitelist += [
+		"COLORTERM", "DISPLAY", "EDITOR", "LESS",
+		"LESSOPEN", "LOGNAME", "LS_COLORS", "PAGER",
+		"TERM", "TERMCAP", "USER",
+	]
+
+	_environ_whitelist = frozenset(_environ_whitelist)
 
 	# Filter selected variables in the config.environ() method so that
 	# they don't needlessly propagate down into the ebuild environment.
@@ -2578,6 +2591,25 @@ class config(object):
 			writemsg("*** HOME not set. Setting to "+mydict["BUILD_PREFIX"]+"\n")
 			mydict["HOME"]=mydict["BUILD_PREFIX"][:]
 
+		if filter_calling_env:
+			phase = self.get("EBUILD_PHASE")
+			if phase:
+				whitelist = []
+				if "package" == phase:
+					whitelist.append("PKGDIR")
+				if "rpm" == phase:
+					whitelist.append("RPMDIR")
+				for k in whitelist:
+					v = self.get(k)
+					if v is not None:
+						mydict[k] = v
+
+		# sandbox's bashrc sources /etc/profile which unsets ROOTPATH,
+		# so we have to back it up and restore it.
+		rootpath = mydict.get("ROOTPATH")
+		if rootpath:
+			mydict["PORTAGE_ROOTPATH"] = rootpath
+
 		return mydict
 
 	def thirdpartymirrors(self):
@@ -3855,13 +3887,14 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 		mysettings["PORTAGE_BUILDDIR"], ".exit_status")
 
 	#set up KV variable -- DEP SPEEDUP :: Don't waste time. Keep var persistent.
-	if (mydo!="depend") or not mysettings.has_key("KV"):
+	if mydo != "depend" and "KV" not in mysettings:
 		mykv,err1=ExtractKernelVersion(os.path.join(myroot, EPREFIX_LSTRIP, "usr/src/linux"))
 		if mykv:
 			# Regular source tree
 			mysettings["KV"]=mykv
 		else:
 			mysettings["KV"]=""
+		mysettings.backup_changes("KV")
 
 	# Allow color.map to control colors associated with einfo, ewarn, etc...
 	mycolors = []

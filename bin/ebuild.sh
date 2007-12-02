@@ -10,6 +10,17 @@ SANDBOX_PREDICT="${SANDBOX_PREDICT}:/proc/self/maps:/dev/console:/dev/random"
 export SANDBOX_PREDICT="${SANDBOX_PREDICT}:${PORTAGE_PYM_PATH}:${PORTAGE_DEPCACHEDIR}"
 export SANDBOX_WRITE="${SANDBOX_WRITE}:/dev/shm:/dev/stdout:/dev/stderr:${PORTAGE_TMPDIR}"
 export SANDBOX_READ="${SANDBOX_READ}:/dev/shm:/dev/stdin:${PORTAGE_TMPDIR}"
+# Don't use sandbox's BASH_ENV for new shells because it does
+# 'source /etc/profile' which can interfere with the build
+# environment by modifying our PATH.
+unset BASH_ENV
+
+# sandbox's bashrc sources /etc/profile which unsets ROOTPATH,
+# so we have to back it up and restore it.
+if [ -n "${PORTAGE_ROOTPATH}" ] ; then
+	export ROOTPATH=${PORTAGE_ROOTPATH}
+	unset PORTAGE_ROOTPATH
+fi
 
 if [ ! -z "${PORTAGE_GPG_DIR}" ]; then
 	SANDBOX_PREDICT="${SANDBOX_PREDICT}:${PORTAGE_GPG_DIR}"
@@ -1001,7 +1012,8 @@ dyn_install() {
 		# the global environment though, in case the user wants to repeat
 		# this phase (like with FEATURES=noauto and the ebuild command).
 		unset S _E_DOCDESTTREE_ _E_EXEDESTTREE_
-		save_ebuild_env | filter_readonly_variables --filter-sandbox > environment
+		save_ebuild_env | filter_readonly_variables \
+			--filter-sandbox --allow-extra-vars > environment
 	)
 	bzip2 -f9 environment
 
@@ -1366,25 +1378,30 @@ READONLY_EBUILD_METADATA="DEPEND DESCRIPTION
 	EAPI HOMEPAGE INHERITED IUSE KEYWORDS LICENSE
 	PDEPEND PROVIDE RDEPEND RESTRICT SLOT SRC_URI"
 
-READONLY_PORTAGE_VARS="A CATEGORY D EBUILD EBUILD_ENV_FILE EBUILD_PHASE \
-	EBUILD_SH_ARGS EMERGE_FROM FILESDIR P PF PN \
+READONLY_PORTAGE_VARS="D EBUILD EBUILD_PHASE \
+	EBUILD_SH_ARGS EMERGE_FROM FILESDIR \
 	PORTAGE_BIN_PATH PORTAGE_PYM_PATH PORTAGE_MUTABLE_FILTERED_VARS \
-	PORTAGE_TMPDIR PR PV PVR T WORKDIR ED"
+	PORTAGE_SAVED_READONLY_VARS PORTAGE_TMPDIR T WORKDIR ED"
+
+PORTAGE_SAVED_READONLY_VARS="A CATEGORY P PF PN PR PV PVR"
 
 # Variables that portage sets but doesn't mark readonly.
 # In order to prevent changed values from causing unexpected
 # interference, they are filtered out of the environment when
 # it is saved or loaded (any mutations do not persist).
-PORTAGE_MUTABLE_FILTERED_VARS="AA"
+PORTAGE_MUTABLE_FILTERED_VARS="AA HOSTNAME"
 
 # @FUNCTION: filter_readonly_variables
-# @DESCRIPTION: [--filter-sandbox]
+# @DESCRIPTION: [--filter-sandbox] [--allow-extra-vars]
 # Read an environment from stdin and echo to stdout while filtering readonly
 # variables.
 #
 # --filter-sandbox causes all SANDBOX_* variables to be filtered, which
 # is only desired in certain cases, such as during preprocessing or when
 # saving environment.bz2 for a binary or installed package.
+#
+# ---allow-extra-vars causes some extra vars to be allowd through, such
+# as ${PORTAGE_SAVED_READONLY_VARS} and ${PORTAGE_MUTABLE_FILTERED_VARS}.
 #
 # In bash-3.2_p20+ an attempt to assign BASH_*, FUNCNAME, GROUPS or any
 # readonly variable cause the shell to exit while executing the "source"
@@ -1398,11 +1415,18 @@ filter_readonly_variables() {
 		SANDBOX_DEBUG_LOG SANDBOX_DISABLED SANDBOX_LIB
 		SANDBOX_LOG"
 	filtered_vars="${readonly_bash_vars} ${READONLY_PORTAGE_VARS}
-		${PORTAGE_MUTABLE_FILTERED_VARS} BASH_[_[:alnum:]]*"
+		BASH_[_[:alnum:]]*"
 	if hasq --filter-sandbox $* ; then
 		filtered_vars="${filtered_vars} SANDBOX_[_[:alnum:]]*"
 	else
 		filtered_vars="${filtered_vars} ${filtered_sandbox_vars}"
+	fi
+	if ! hasq --allow-extra-vars $* ; then
+		filtered_vars="
+			${filtered_vars}
+			${PORTAGE_SAVED_READONLY_VARS}
+			${PORTAGE_MUTABLE_FILTERED_VARS}
+		"
 	fi
 	set -f
 	for x in ${filtered_vars} ; do
