@@ -83,6 +83,13 @@ if repoman_settings.get("NOCOLOR", "").lower() in ("yes", "true") or \
 	not sys.stdout.isatty():
 	nocolor()
 
+def warn(txt):
+	print "repoman: " + txt
+
+def err(txt):
+	warn(txt)
+	sys.exit(1)
+
 def exithandler(signum=None, frame=None):
 	logging.fatal("Interrupted; exiting...")
 	sys.exit(1)
@@ -528,7 +535,10 @@ for x in range(0,repolevel-1):
 	repodir = os.path.dirname(repodir)
 
 def caterror(mycat):
-	err(mycat+" is not an official category.  Skipping QA checks in this directory.\nPlease ensure that you add "+catdir+" to "+repodir+"/profiles/categories\nif it is a new category.")
+	warn(mycat + " is not an official category. " + \
+		"Skipping QA checks in this directory.\n" + \
+		"Please ensure that you add " + catdir + \
+		" to " + repodir + "/profiles/categories\nif it is a new category.")
 
 def parse_use_local_desc(mylines, usedict=None):
 	"""returns a dict of the form {cpv:set(flags)}"""

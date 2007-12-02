@@ -4087,8 +4087,37 @@ class MergeTask(object):
 			self.pkgsettings[root] = portage.config(
 				clone=trees[root]["vartree"].settings)
 		self.curval = 0
+		self._spawned_pids = []
 
 	def merge(self, mylist, favorites, mtimedb):
+		try:
+			return self._merge(mylist, favorites, mtimedb)
+		finally:
+			if self._spawned_pids:
+				from portage import process
+				process.spawned_pids.extend(self._spawned_pids)
+				self._spawned_pids = []
+
+	def _poll_child_processes(self):
+		"""
+		After each merge, collect status from child processes
+		in order to clean up zombies (such as the parallel-fetch
+		process).
+		"""
+		spawned_pids = self._spawned_pids
+		if not spawned_pids:
+			return
+		for pid in list(spawned_pids):
+			try:
+				if os.waitpid(pid, os.WNOHANG) == (0, 0):
+					continue
+			except OSError:
+				# This pid has been cleaned up elsewhere,
+				# so remove it from our list.
+				pass
+			spawned_pids.remove(pid)
+
+	def _merge(self, mylist, favorites, mtimedb):
 		from portage.elog import elog_process
 		from portage.elog.filtering import filter_mergephases
 		failed_fetches = []
@@ -4173,7 +4202,6 @@ class MergeTask(object):
 				print red("!!!")+" you have it disabled, thus parallel-fetching is being disabled"
 				print red("!!!")
 			elif len(mymergelist) > 1:
-				print ">>> starting parallel fetching"
 				fetch_log = EPREFIX+"/var/log/emerge-fetch.log"
 				logfile = open(fetch_log, "w")
 				fd_pipes = {1:logfile.fileno(), 2:logfile.fileno()}
@@ -4195,11 +4223,15 @@ class MergeTask(object):
 							fetch_args.append(myopt)
 						else:
 							fetch_args.append(myopt +"="+ myarg)
-				portage.process.spawn(fetch_args, env=fetch_env,
-					fd_pipes=fd_pipes, returnpid=True)
+				self._spawned_pids.extend(
+					portage.process.spawn(
+					fetch_args, env=fetch_env,
+					fd_pipes=fd_pipes, returnpid=True))
 				logfile.close() # belongs to the spawned process
 				del fetch_log, logfile, fd_pipes, fetch_env, fetch_args, \
 					resume_opts
+				print ">>> starting parallel fetching pid %d" % \
+					self._spawned_pids[-1]
 
 		metadata_keys = [k for k in portage.auxdbkeys \
 			if not k.startswith("UNUSED_")] + ["USE"]
@@ -4477,11 +4509,7 @@ class MergeTask(object):
 					# Figure out if we need a restart.
 					mysplit=portage.pkgsplit(x[2])
 					if mysplit[0] == "sys-apps/portage" and x[1] == "/":
-						myver=mysplit[1]+"-"+mysplit[2]
-						if myver[-3:]=='-r0':
-							myver=myver[:-3]
-						if (myver != portage.VERSION) and \
-						   "livecvsportage" not in self.settings.features and \
+						if "livecvsportage" not in self.settings.features and \:
 						   EPREFIX == BPREFIX:
 							if len(mymergelist) > mergecount:
 								emergelog(xterm_titles,
@@ -4532,6 +4560,7 @@ class MergeTask(object):
 			# due to power failure, SIGKILL, etc...
 			mtimedb.commit()
 			self.curval += 1
+			self._poll_child_processes()
 
 		if "--pretend" not in self.myopts:
 			emergelog(xterm_titles, " *** Finished. Cleaning up...")

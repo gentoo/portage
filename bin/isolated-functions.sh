@@ -98,8 +98,15 @@ diefunc() {
 	eerror "If you need support, post the topmost build error, and the call stack if relevant."
 	[[ -n ${PORTAGE_LOG_FILE} ]] \
 		&& eerror "A complete build log is located at '${PORTAGE_LOG_FILE}'."
-	[ -f "${T}/environment" ] && \
+	if [ -f "${T}/environment" ] ; then
 		eerror "The ebuild environment file is located at '${T}/environment'."
+	elif [ -d "${T}" ] ; then
+		{
+			set
+			export
+		} > "${T}/die.env"
+		eerror "The ebuild environment file is located at '${T}/die.env'."
+	fi
 	if [[ -n ${EBUILD_OVERLAY_ECLASSES} ]] ; then
 		eerror "This ebuild used the following eclasses from overlays:"
 		local x
@@ -399,6 +406,10 @@ save_ebuild_env() {
 		# misc variables inherited from the calling environment
 		unset COLORTERM DISPLAY EDITOR LESS LESSOPEN LOGNAME LS_COLORS PAGER \
 			TERM TERMCAP USER
+
+		# other variables inherited from the calling environment
+		unset CVS_RSH ECHANGELOG_USER GPG_AGENT_INFO \
+		SSH_AGENT_PID SSH_AUTH_SOCK STY WINDOW XAUTHORITY
 
 		# There's no need to bloat environment.bz2 with internally defined
 		# functions and variables, so filter them out if possible.

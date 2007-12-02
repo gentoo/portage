@@ -2004,6 +2004,16 @@ class dblink(object):
 		outfile.flush()
 		outfile.close()
 
+		# These caches are populated during collision-protect and the data
+		# they contain is now invalid. It's very important to invalidate
+		# the contents_inodes cache so that FEATURES=unmerge-orphans
+		# doesn't unmerge anything that belongs to this package that has
+		# just been merged.
+		others_in_slot.append(self)  # self has just been merged
+		for dblnk in others_in_slot:
+			dblnk.contentscache = None
+			dblnk._contents_inodes = None
+
 		# If portage is reinstalling itself, remove the old
 		# version now since we want to use the temporary
 		# PORTAGE_BIN_PATH that will be removed when we return.
@@ -2013,19 +2023,13 @@ class dblink(object):
 			"portage" == pkgsplit(self.pkg)[0]:
 			reinstall_self = True
 
-		for dblnk in others_in_slot:
+		for dblnk in list(others_in_slot):
+			if dblnk is self:
+				continue
 			if dblnk.mycpv != self.mycpv and \
 				not reinstall_self:
 				continue
 			writemsg_stdout(">>> Safely unmerging already-installed instance...\n")
-			# These caches are populated during collision-protect and the data
-			# they contain is now invalid. It's very important to invalidate
-			# the contents_inodes cache so that FEATURES=unmerge-orphans
-			# doesn't unmerge anything that belongs to this package that has
-			# just been merged.
-			self.contentscache = None
-			self._contents_inodes = None
-			others_in_slot.append(self)  # self has just been merged
 			others_in_slot.remove(dblnk) # dblnk will unmerge itself now
 			dblnk.unmerge(trimworld=0, ldpath_mtimes=prev_mtimes,
 				others_in_slot=others_in_slot)
@@ -2361,7 +2365,8 @@ class dblink(object):
 		"""
 		if self.myroot == "/" and \
 			"sys-apps" == self.cat and \
-			"portage" == pkgsplit(self.pkg)[0]:
+			"portage" == pkgsplit(self.pkg)[0] and \
+			"livecvsportage" not in self.settings.features:
 			settings = self.settings
 			base_path_orig = os.path.dirname(settings["PORTAGE_BIN_PATH"])
 			from tempfile import mkdtemp
