@@ -680,8 +680,9 @@ dyn_clean() {
 	if [ -z "${PORTAGE_BUILDDIR}" ]; then
 		echo "Aborting clean phase because PORTAGE_BUILDDIR is unset!"
 		return 1
+	elif [ ! -d "${PORTAGE_BUILDDIR}" ] ; then
+		return 0
 	fi
-
 	if type -P chflags > /dev/null ; then
 		chflags -R noschg,nouchg,nosappnd,nouappnd "${PORTAGE_BUILDDIR}"
 		chflags -R nosunlnk,nouunlnk "${PORTAGE_BUILDDIR}" 2>/dev/null
@@ -696,6 +697,7 @@ dyn_clean() {
 	fi
 
 	if ! hasq keepwork $FEATURES; then
+		rm -rf "${PORTAGE_BUILDDIR}/.exit_status"
 		rm -rf "${PORTAGE_BUILDDIR}/.logid"
 		rm -rf "${PORTAGE_BUILDDIR}/.unpacked"
 		rm -rf "${PORTAGE_BUILDDIR}/.compiled"
@@ -1361,8 +1363,9 @@ READONLY_EBUILD_METADATA="DEPEND DESCRIPTION
 	EAPI HOMEPAGE INHERITED IUSE KEYWORDS LICENSE
 	PDEPEND PROVIDE RDEPEND RESTRICT SLOT SRC_URI"
 
-READONLY_PORTAGE_VARS="D EBUILD EBUILD_PHASE EBUILD_SH_ARGS FILESDIR \
-	PORTAGE_BIN_PATH PORTAGE_PYM_PATH PORTAGE_TMPDIR T WORKDIR"
+READONLY_PORTAGE_VARS="D EBUILD EBUILD_PHASE ED \
+	EBUILD_SH_ARGS EMERGE_FROM FILESDIR PORTAGE_BIN_PATH \
+	PORTAGE_PYM_PATH PORTAGE_TMPDIR T WORKDIR"
 
 # @FUNCTION: filter_readonly_variables
 # @DESCRIPTION: [--filter-sandbox]
@@ -1418,91 +1421,23 @@ preprocess_ebuild_env() {
 	filter_readonly_variables --filter-sandbox < "${T}"/environment \
 		> "${T}"/environment.filtered
 	mv "${T}"/environment.filtered "${T}"/environment
+	# WARNING: Code inside this subshell should avoid making assumptions
+	# about variables or functions after source "${T}"/environment has been
+	# called. Any variables that need to be relied upon should already be
+	# filtered out above.
 	(
 		source "${T}"/environment
+
+		# It's remotely possible that save_ebuild_env() has been overridden
+		# by the above source command. To protect ourselves, we override it
+		# here with our own version. ${PORTAGE_BIN_PATH} is safe to use here
+		# because it's already filtered above.
+		source "${PORTAGE_BIN_PATH}/isolated-functions.sh"
+
 		# Rely on save_ebuild_env() to filter out any remaining variables
 		# and functions that could interfere with the current environment.
-		save_ebuild_env | filter_readonly_variables > "${T}"/environment
-	)
-}
-
-# @FUNCTION: save_ebuild_env
-# @DESCRIPTION:
-# echo the current environment to stdout, filtering out redundant info.
-save_ebuild_env() {
-	(
-
-		# misc variables set by bash
-		unset BASH HOSTTYPE IFS MACHTYPE OLDPWD \
-			OPTERR OPTIND OSTYPE PS4 PWD SHELL
-
-		# misc variables inherited from the calling environment
-		unset COLORTERM DISPLAY EDITOR LESS LESSOPEN LOGNAME LS_COLORS PAGER \
-			TERM TERMCAP USER
-
-		# There's no need to bloat environment.bz2 with internally defined
-		# functions and variables, so filter them out if possible.
-
-		unset -f dump_trace diefunc quiet_mode vecho elog_base eqawarn elog \
-			esyslog einfo einfon ewarn eerror ebegin _eend eend KV_major \
-			KV_minor KV_micro KV_to_int get_KV unset_colors set_colors has \
-			hasv hasq qa_source qa_call addread addwrite adddeny addpredict \
-			lchown lchgrp esyslog use usev useq has_version portageq \
-			best_version use_with use_enable register_die_hook check_KV \
-			keepdir unpack strip_duplicate_slashes econf einstall gen_wrapper \
-			dyn_setup dyn_unpack dyn_clean into insinto exeinto docinto \
-			insopts diropts exeopts libopts abort_handler abort_compile \
-			abort_test abort_install dyn_compile dyn_test dyn_install \
-			dyn_preinst dyn_help debug-print debug-print-function \
-			debug-print-section inherit EXPORT_FUNCTIONS newdepend newrdepend \
-			newpdepend do_newdepend remove_path_entry killparent \
-			save_ebuild_env filter_readonly_variables preprocess_ebuild_env \
-			source_all_bashrcs ebuild_phase ebuild_phase_with_hooks
-
-		# portage config variables and variables set directly by portage
-		unset ACCEPT_KEYWORDS AUTOCLEAN BAD BRACKET BUILD_PREFIX CLEAN_DELAY \
-			COLLISION_IGNORE COLS CONFIG_PROTECT CONFIG_PROTECT_MASK \
-			DISTCC_DIR DISTDIR DOC_SYMLINKS_DIR EBUILD_MASTER_PID \
-			ECLASSDIR ECLASS_DEPTH EMERGE_DEFAULT_OPTS \
-			EMERGE_WARNING_DELAY ENDCOL FAKEROOTKEY FEATURES \
-			FETCHCOMMAND FETCHCOMMAND_FTP FETCHCOMMAND_HTTP FETCHCOMMAND_SFTP \
-			GENTOO_MIRRORS GOOD HILITE HOME IMAGE \
-			KV LAST_E_CMD LAST_E_LEN LD_PRELOAD MOPREFIX \
-			NORMAL O PATH PKGDIR PKGUSE PKG_LOGDIR PKG_TMPDIR \
-			PORTAGE_ACTUAL_DISTDIR PORTAGE_ARCHLIST PORTAGE_BASHRC \
-			PORTAGE_BINHOST_CHUNKSIZE PORTAGE_BINPKG_TMPFILE \
-			PORTAGE_BUILDDIR PORTAGE_CALLER \
-			PORTAGE_COLORMAP PORTAGE_CONFIGROOT PORTAGE_DEBUG \
-			PORTAGE_DEPCACHEDIR PORTAGE_ELOG_CLASSES PORTAGE_ELOG_MAILFROM \
-			PORTAGE_ELOG_MAILSUBJECT PORTAGE_ELOG_MAILURI PORTAGE_ELOG_SYSTEM \
-			PORTAGE_GID PORTAGE_GPG_DIR PORTAGE_GPG_KEY PORTAGE_INST_GID \
-			PORTAGE_INST_UID PORTAGE_LOG_FILE PORTAGE_MASTER_PID \
-			PORTAGE_REPO_NAME PORTAGE_RESTRICT \
-			PORTAGE_RSYNC_EXTRA_OPTS PORTAGE_RSYNC_OPTS \
-			PORTAGE_RSYNC_RETRIES PORTAGE_TMPFS PORTAGE_WORKDIR_MODE PORTDIR \
-			PORTDIR_OVERLAY PORT_LOGDIR PROFILE_PATHS PWORKDIR \
-			QUICKPKG_DEFAULT_OPTS QA_INTERCEPTORS \
-			RC_DEFAULT_INDENT RC_DOT_PATTERN RC_ENDCOL \
-			RC_INDENTATION READONLY_EBUILD_METADATA READONLY_PORTAGE_VARS \
-			RESUMECOMMAND RESUMECOMMAND_HTTP \
-			RESUMECOMMAND_HTTP RESUMECOMMAND_SFTP ROOT ROOTPATH RPMDIR \
-			STARTDIR SYNC TMP TMPDIR USE_EXPAND \
-			USE_EXPAND_HIDDEN USE_ORDER WARN XARGS
-
-		# Prefix additions
-		unset DEFAULT_PATH DISTDIR EROOT ED HOME INFOPATH MANPATH
-
-		# Paranoia
-		unset \
-			CVS_RSH ECHANGELOG_USER GENTOO_MIRRORS GROUP HOST HOSTNAME \
-			LOGNAME MAIL PORTAGE_GROUP PORTAGE_USER REMOTEHOST \
-			SECURITYSESSIONID SSH_AGENT_PID SSH_AUTH_SOCK STY TERMINFO \
-			TERM_PROGRAM TERM_PROGRAM_VERSION USER VENDOR \
-			__CF_USER_TEXT_ENCODING dir srcdir \
-
-		set
-		export
-	)
+		save_ebuild_env
+	) | filter_readonly_variables > "${T}"/environment
 }
 
 # === === === === === === === === === === === === === === === === === ===
@@ -1609,8 +1544,10 @@ if hasq "depend" "${EBUILD_SH_ARGS}"; then
 	unset BIN_PATH BIN BODY FUNC_SRC
 fi
 
-if hasq ${EBUILD_PHASE} config info prerm setup \
-	&& [ ! -f "${T}/environment" ] ; then
+# Automatically try to load environment.bz2 whenever
+# "${T}/environment" does not exist.
+if ! hasq ${EBUILD_SH_ARGS} clean depend && \
+	[ ! -f "${T}/environment" ] ; then
 	bzip2 -dc "${EBUILD%/*}"/environment.bz2 > \
 		"${T}/environment" 2> /dev/null
 	if [ -s "${T}/environment" ] ; then
@@ -1678,7 +1615,7 @@ else
 	RDEPEND="${RDEPEND} ${E_RDEPEND}"
 	PDEPEND="${PDEPEND} ${E_PDEPEND}"
 
-	unset E_IUSE E_DEPEND E_RDEPEND E_PDEPEND
+	unset ECLASS E_IUSE E_DEPEND E_RDEPEND E_PDEPEND
 
 	if [ "${EBUILD_PHASE}" != "depend" ] ; then
 		# Make IUSE defaults backward compatible with all the old shell code.
@@ -1812,7 +1749,8 @@ if [ -n "${EBUILD_SH_ARGS}" ] ; then
 			9>&-
 		fi
 		set +f
-		#make sure it is writable by our group:
+		[ -n "${EBUILD_EXIT_STATUS_FILE}" ] && \
+			touch "${EBUILD_EXIT_STATUS_FILE}" &>/dev/null
 		exit 0
 		;;
 	*)
@@ -1823,6 +1761,8 @@ if [ -n "${EBUILD_SH_ARGS}" ] ; then
 		exit 1
 		;;
 	esac
+	[ -n "${EBUILD_EXIT_STATUS_FILE}" ] && \
+		touch "${EBUILD_EXIT_STATUS_FILE}" &>/dev/null
 fi
 
 # Save the env only for relevant phases.

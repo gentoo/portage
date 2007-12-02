@@ -679,4 +679,7 @@ if [ -n "${MISC_FUNCTIONS_ARGS}" ]; then
 	done
 fi
 
+[ -n "${EBUILD_EXIT_STATUS_FILE}" ] && \
+	touch "${EBUILD_EXIT_STATUS_FILE}" &>/dev/null
+
 :

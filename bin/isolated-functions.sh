@@ -98,6 +98,8 @@ diefunc() {
 	eerror "If you need support, post the topmost build error, and the call stack if relevant."
 	[[ -n ${PORTAGE_LOG_FILE} ]] \
 		&& eerror "A complete build log is located at '${PORTAGE_LOG_FILE}'."
+	[ -f "${T}/environment" ] && \
+		eerror "The ebuild environment file is located at '${T}/environment'."
 	if [[ -n ${EBUILD_OVERLAY_ECLASSES} ]] ; then
 		eerror "This ebuild used the following eclasses from overlays:"
 		local x
@@ -121,6 +123,9 @@ diefunc() {
 			${x} "$@" >&2 1>&2
 		done
 	fi
+
+	[ -n "${EBUILD_EXIT_STATUS_FILE}" ] && \
+		touch "${EBUILD_EXIT_STATUS_FILE}" &>/dev/null
 
 	# subshell die support
 	kill -s SIGTERM ${EBUILD_MASTER_PID}
@@ -379,6 +384,68 @@ hasv() {
 
 hasq() {
 	[[ " ${*:2} " == *" $1 "* ]]
+}
+
+# @FUNCTION: save_ebuild_env
+# @DESCRIPTION:
+# echo the current environment to stdout, filtering out redundant info.
+save_ebuild_env() {
+	(
+
+		# misc variables set by bash
+		unset BASH HOSTNAME HOSTTYPE IFS MACHTYPE OLDPWD \
+			OPTERR OPTIND OSTYPE PS4 PWD SHELL SHLVL
+
+		# misc variables inherited from the calling environment
+		unset COLORTERM DISPLAY EDITOR LESS LESSOPEN LOGNAME LS_COLORS PAGER \
+			TERM TERMCAP USER
+		unset GROUP
+
+		# There's no need to bloat environment.bz2 with internally defined
+		# functions and variables, so filter them out if possible.
+
+		unset -f dump_trace diefunc quiet_mode vecho elog_base eqawarn elog \
+			esyslog einfo einfon ewarn eerror ebegin _eend eend KV_major \
+			KV_minor KV_micro KV_to_int get_KV unset_colors set_colors has \
+			hasv hasq qa_source qa_call addread addwrite adddeny addpredict \
+			lchown lchgrp esyslog use usev useq has_version portageq \
+			best_version use_with use_enable register_die_hook check_KV \
+			keepdir unpack strip_duplicate_slashes econf einstall gen_wrapper \
+			dyn_setup dyn_unpack dyn_clean into insinto exeinto docinto \
+			insopts diropts exeopts libopts abort_handler abort_compile \
+			abort_test abort_install dyn_compile dyn_test dyn_install \
+			dyn_preinst dyn_help debug-print debug-print-function \
+			debug-print-section inherit EXPORT_FUNCTIONS newdepend newrdepend \
+			newpdepend do_newdepend remove_path_entry killparent \
+			save_ebuild_env filter_readonly_variables preprocess_ebuild_env \
+			source_all_bashrcs ebuild_phase ebuild_phase_with_hooks
+
+		# portage config variables and variables set directly by portage
+		unset BAD BRACKET BUILD_PREFIX COLS \
+			DISTCC_DIR DISTDIR DOC_SYMLINKS_DIR \
+			EBUILD_EXIT_STATUS_FILE EBUILD_MASTER_PID \
+			ECLASSDIR ECLASS_DEPTH ENDCOL FAKEROOTKEY FEATURES \
+			GOOD HILITE HOME IMAGE \
+			KV LAST_E_CMD LAST_E_LEN LD_PRELOAD MOPREFIX \
+			NORMAL PATH PKGDIR PKGUSE PKG_LOGDIR PKG_TMPDIR \
+			PORTAGE_ACTUAL_DISTDIR PORTAGE_ARCHLIST PORTAGE_BASHRC \
+			PORTAGE_BINPKG_TMPFILE PORTAGE_BUILDDIR \
+			PORTAGE_COLORMAP PORTAGE_CONFIGROOT PORTAGE_DEBUG \
+			PORTAGE_DEPCACHEDIR PORTAGE_GID PORTAGE_INST_GID \
+			PORTAGE_INST_UID PORTAGE_LOG_FILE PORTAGE_MASTER_PID \
+			PORTAGE_REPO_NAME PORTAGE_RESTRICT PORTAGE_WORKDIR_MODE PORTDIR \
+			PORTDIR_OVERLAY PROFILE_PATHS PWORKDIR QA_INTERCEPTORS \
+			RC_DEFAULT_INDENT RC_DOT_PATTERN RC_ENDCOL \
+			RC_INDENTATION READONLY_EBUILD_METADATA READONLY_PORTAGE_VARS \
+			ROOT ROOTPATH RPMDIR STARTDIR TMP TMPDIR USE_EXPAND \
+			WARN XARGS _RC_GET_KV_CACHE
+
+		# Prefix additions
+		unset DEFAULT_PATH EROOT PORTAGE_GROUP PORTAGE_USER
+
+		set
+		export
+	)
 }
 
 true

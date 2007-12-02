@@ -6893,10 +6893,39 @@ def emerge_main():
 	if "--quiet" not in myopts:
 		portage.deprecated_profile_check()
 
-	#Freeze the portdbapi for enhanced performance:
-	for myroot in trees:
-		trees[myroot]["porttree"].dbapi.freeze()
-		del myroot
+	eclasses_overridden = {}
+	for mytrees in trees.itervalues():
+		mydb = mytrees["porttree"].dbapi
+		# Freeze the portdbapi for performance (memoize all xmatch results).
+		mydb.freeze()
+		eclasses_overridden.update(mydb.eclassdb._master_eclasses_overridden)
+	del mytrees, mydb
+
+	if eclasses_overridden and \
+		settings.get("PORTAGE_ECLASS_WARNING_ENABLE") != "0":
+		prefix = bad(" * ")
+		if len(eclasses_overridden) == 1:
+			writemsg(prefix + "Overlay eclass overrides " + \
+				"eclass from PORTDIR:\n", noiselevel=-1)
+		else:
+			writemsg(prefix + "Overlay eclasses override " + \
+				"eclasses from PORTDIR:\n", noiselevel=-1)
+		writemsg(prefix + "\n", noiselevel=-1)
+		for eclass_name in sorted(eclasses_overridden):
+			writemsg(prefix + "  '%s/%s.eclass'\n" % \
+				(eclasses_overridden[eclass_name], eclass_name),
+				noiselevel=-1)
+		writemsg(prefix + "\n", noiselevel=-1)
+		msg = "It is best to avoid overridding eclasses from PORTDIR " + \
+		"because it will trigger invalidation of cached ebuild metadata " + \
+		"that is distributed with the portage tree. If you must " + \
+		"override eclasses from PORTDIR then you are advised to run " + \
+		"`emerge --regen` after each time that you run `emerge --sync`. " + \
+		"Set PORTAGE_ECLASS_WARNING_ENABLE=\"0\" in /etc/make.conf if " + \
+		"you would like to disable this warning."
+		from textwrap import wrap
+		for line in wrap(msg, 72):
+			writemsg("%s%s\n" % (prefix, line), noiselevel=-1)
 
 	if "moo" in myfiles:
 		print """
@@ -6988,6 +7017,13 @@ def emerge_main():
 	# Always try and fetch binary packages if FEATURES=getbinpkg
 	if ("getbinpkg" in settings.features):
 		myopts["--getbinpkg"] = True
+
+	if "--buildpkgonly" in myopts:
+		# --buildpkgonly will not merge anything, so
+		# it cancels all binary package options.
+		for opt in ("--getbinpkg", "--getbinpkgonly",
+			"--usepkg", "--usepkgonly"):
+			myopts.pop(opt, None)
 
 	if "--skipfirst" in myopts and "--resume" not in myopts:
 		myopts["--resume"] = True
