@@ -399,7 +399,6 @@ save_ebuild_env() {
 		# misc variables inherited from the calling environment
 		unset COLORTERM DISPLAY EDITOR LESS LESSOPEN LOGNAME LS_COLORS PAGER \
 			TERM TERMCAP USER
-		unset GROUP
 
 		# There's no need to bloat environment.bz2 with internally defined
 		# functions and variables, so filter them out if possible.
