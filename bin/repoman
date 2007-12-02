@@ -83,6 +83,13 @@ if repoman_settings.get("NOCOLOR", "").lower() in ("yes", "true") or \
 	not sys.stdout.isatty():
 	nocolor()
 
+def warn(txt):
+	print "repoman: " + txt
+
+def err(txt):
+	warn(txt)
+	sys.exit(1)
+
 def exithandler(signum=None, frame=None):
 	logging.fatal("Interrupted; exiting...")
 	sys.exit(1)
