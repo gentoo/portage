@@ -42,9 +42,31 @@ def _combine_logentries(logentries):
 			rValue.append("\n")
 	return "".join(rValue)
 
+_elog_mod_imports = {}
 _elog_atexit_handlers = []
 _preserve_logentries = {}
 def elog_process(cpv, mysettings, phasefilter=None):
+
+	global _elog_mod_imports
+	logsystems = mysettings.get("PORTAGE_ELOG_SYSTEM","").split()
+	for s in logsystems:
+		# allow per module overrides of PORTAGE_ELOG_CLASSES
+		if ":" in s:
+			s, levels = s.split(":", 1)
+			levels = levels.split(",")
+		# - is nicer than _ for module names, so allow people to use it.
+		s = s.replace("-", "_")
+		try:
+			name = "portage.elog.mod_" + s
+			m = _elog_mod_imports.get(name)
+			if m is None:
+				m = __import__(name)
+				for comp in name.split(".")[1:]:
+					m = getattr(m, comp)
+				_elog_mod_imports[name] = m
+		except ImportError:
+			pass
+
 	ebuild_logentries = collect_ebuild_messages(os.path.join(mysettings["T"], "logging"))
 	all_logentries = collect_messages()
 	if all_logentries.has_key(cpv):
@@ -94,9 +116,12 @@ def elog_process(cpv, mysettings, phasefilter=None):
 				# FIXME: ugly ad.hoc import code
 				# TODO:  implement a common portage module loader
 				name = "portage.elog.mod_" + s
-				m = __import__(name)
-				for comp in name.split(".")[1:]:
-					m = getattr(m, comp)
+				m = _elog_mod_imports.get(name)
+				if m is None:
+					m = __import__(name)
+					for comp in name.split(".")[1:]:
+						m = getattr(m, comp)
+					_elog_mod_imports[name] = m
 				def timeout_handler(signum, frame):
 					raise PortageException("Timeout in elog_process for system '%s'" % s)
 				import signal

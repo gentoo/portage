@@ -150,6 +150,7 @@ has_version() {
 	fi
 	# return shell-true/shell-false if exists.
 	# Takes single depend-type atoms.
+	PYTHONPATH="${PORTAGE_PYM_PATH}:${PYTHONPATH}" \
 	"${PORTAGE_BIN_PATH}"/portageq has_version "${ROOT}" "$1"
 	local retval=$?
 	case "${retval}" in
@@ -169,6 +170,7 @@ portageq() {
 	if [ "${EBUILD_PHASE}" == "depend" ]; then
 		die "portageq calls are not allowed in the global scope"
 	fi
+	PYTHONPATH="${PORTAGE_PYM_PATH}:${PYTHONPATH}" \
 	"${PORTAGE_BIN_PATH}/portageq" "$@"
 }
 
@@ -184,6 +186,7 @@ best_version() {
 	fi
 	# returns the best/most-current match.
 	# Takes single depend-type atoms.
+	PYTHONPATH="${PORTAGE_PYM_PATH}:${PYTHONPATH}" \
 	"${PORTAGE_BIN_PATH}/portageq" 'best_version' "${ROOT}" "$1"
 }
 
@@ -1363,7 +1366,7 @@ READONLY_EBUILD_METADATA="DEPEND DESCRIPTION
 	EAPI HOMEPAGE INHERITED IUSE KEYWORDS LICENSE
 	PDEPEND PROVIDE RDEPEND RESTRICT SLOT SRC_URI"
 
-READONLY_PORTAGE_VARS="A CATEGORY D EBUILD EBUILD_PHASE \
+READONLY_PORTAGE_VARS="A CATEGORY D EBUILD EBUILD_ENV_FILE EBUILD_PHASE \
 	EBUILD_SH_ARGS EMERGE_FROM FILESDIR P PF PN \
 	PORTAGE_BIN_PATH PORTAGE_PYM_PATH PORTAGE_MUTABLE_FILTERED_VARS \
 	PORTAGE_TMPDIR PR PV PVR T WORKDIR ED"
@@ -1565,32 +1568,14 @@ if hasq "depend" "${EBUILD_SH_ARGS}"; then
 	unset BIN_PATH BIN BODY FUNC_SRC
 fi
 
-# Automatically try to load environment.bz2 whenever
-# "${T}/environment" does not exist, except for phases
-# such as nofetch that do not require ${T} to exist.
-if ! hasq ${EBUILD_SH_ARGS} clean depend nofetch && \
-	[ ! -f "${T}/environment" ] ; then
-	bzip2 -dc "${EBUILD%/*}"/environment.bz2 > \
-		"${T}/environment" 2> /dev/null
-	if [ $? -eq 0 ] && [ -s "${T}/environment" ] ; then
-		preprocess_ebuild_env || \
-			die "error processing '${EBUILD%/*}/environment.bz2'"
-	else
-		rm -f "${T}/environment"
-	fi
-fi
-
 if hasq ${EBUILD_SH_ARGS} clean ; then
 	true
 elif ! hasq ${EBUILD_PHASE} depend && [ -f "${T}"/environment ] ; then
-	if [ "${PN}" == "portage" ] && [ -n "${EBUILD_SH_ARGS}" ] ; then
-		# When portage reinstalls itself, during inst/rm phases, the
-		# environment may have been saved by a different version of ebuild.sh,
-		# so it can't trusted that it's been properly filtered. Therefore,
-		# always preprocess the environment when ${PN} == portage.
-		preprocess_ebuild_env || \
-			die "error processing environment"
-	fi
+	# The environment may have been extracted from environment.bz2 or
+	# may have come from another version of ebuild.sh or something.
+	# In any case, preprocess it to prevent any potential interference.
+	preprocess_ebuild_env || \
+		die "error processing environment"
 	# Colon separated SANDBOX_* variables need to be cumulative.
 	for x in SANDBOX_DENY SANDBOX_READ SANDBOX_PREDICT SANDBOX_WRITE ; do
 		eval PORTAGE_${x}=\${!x}

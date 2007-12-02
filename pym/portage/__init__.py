@@ -863,6 +863,17 @@ class config(object):
 	virtuals ...etc you look in here.
 	"""
 
+	# Preserve backupenv values that are initialized in the config
+	# constructor. Also, preserve XARGS since it is set by the
+	# portage.data module.
+	_environ_whitelist = frozenset([
+		"FEATURES", "PORTAGE_BIN_PATH",
+		"PORTAGE_CONFIGROOT", "PORTAGE_DEPCACHEDIR",
+		"PORTAGE_GID", "PORTAGE_INST_GID", "PORTAGE_INST_UID",
+		"PORTAGE_PYM_PATH", "PORTDIR_OVERLAY", "ROOT", "USE_ORDER",
+		"XARGS",
+	])
+
 	# Filter selected variables in the config.environ() method so that
 	# they don't needlessly propagate down into the ebuild environment.
 	_environ_filter = []
@@ -926,6 +937,7 @@ class config(object):
 
 		self.already_in_regenerate = 0
 
+		self._filter_calling_env = False
 		self.locked   = 0
 		self.mycpv    = None
 		self.puse     = []
@@ -951,6 +963,7 @@ class config(object):
 		self._use_wildcards = False
 
 		if clone:
+			self._filter_calling_env = copy.deepcopy(clone._filter_calling_env)
 			self.incrementals = copy.deepcopy(clone.incrementals)
 			self.profile_path = copy.deepcopy(clone.profile_path)
 			self.user_profile_dir = copy.deepcopy(clone.user_profile_dir)
@@ -2544,6 +2557,9 @@ class config(object):
 		"return our locally-maintained environment"
 		mydict={}
 		environ_filter = self._environ_filter
+		filter_calling_env = self._filter_calling_env
+		environ_whitelist = self._environ_whitelist
+		env_d = self.configdict["env.d"]
 		for x in self:
 			if x in environ_filter:
 				continue
@@ -2552,6 +2568,11 @@ class config(object):
 				writemsg("!!! Non-string value in config: %s=%s\n" % \
 					(x, myvalue), noiselevel=-1)
 				continue
+			if filter_calling_env and \
+				x not in environ_whitelist:
+				if myvalue == env_d.get(x) or \
+					myvalue == os.environ.get(x):
+					continue
 			mydict[x] = myvalue
 		if not mydict.has_key("HOME") and mydict.has_key("BUILD_PREFIX"):
 			writemsg("*** HOME not set. Setting to "+mydict["BUILD_PREFIX"]+"\n")
@@ -3594,8 +3615,15 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 	mysettings["EBUILD_PHASE"] = mydo
 	_doebuild_exit_status_unlink(
 		mysettings.get("EBUILD_EXIT_STATUS_FILE"))
-	phase_retval = spawn(actionmap[mydo]["cmd"] % mydo, mysettings, debug=debug, logfile=logfile, **kwargs)
-	mysettings["EBUILD_PHASE"] = ""
+	filter_calling_env_state = mysettings._filter_calling_env
+	if os.path.exists(os.path.join(mysettings["T"], "environment")):
+		mysettings._filter_calling_env = True
+	try:
+		phase_retval = spawn(actionmap[mydo]["cmd"] % mydo,
+			mysettings, debug=debug, logfile=logfile, **kwargs)
+	finally:
+		mysettings["EBUILD_PHASE"] = ""
+		mysettings._filter_calling_env = filter_calling_env_state
 	msg = _doebuild_exit_status_check(mydo, mysettings)
 	if msg:
 		phase_retval = 1
@@ -3636,7 +3664,13 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 					apply_secpass_permissions(fpath, uid=myuid, gid=mygid,
 						mode=mystat.st_mode, stat_cached=mystat,
 						follow_links=False)
-			mycommand = " ".join([MISC_SH_BINARY, "install_qa_check", "install_symlink_html_docs"])
+			# Note: PORTAGE_BIN_PATH may differ from the global
+			# constant when portage is reinstalling itself.
+			portage_bin_path = mysettings["PORTAGE_BIN_PATH"]
+			misc_sh_binary = os.path.join(portage_bin_path,
+				os.path.basename(MISC_SH_BINARY))
+			mycommand = " ".join([misc_sh_binary,
+				"install_qa_check", "install_symlink_html_docs"])
 			qa_retval = spawn(mycommand, mysettings, debug=debug, logfile=logfile, **kwargs)
 			if qa_retval:
 				writemsg("!!! install_qa_check failed; exiting.\n",
@@ -3786,8 +3820,11 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 		mysplit=mysettings["PATH"].split(":")
 	else:
 		mysplit=[]
-	if PORTAGE_BIN_PATH not in mysplit:
-		mysettings["PATH"]=PORTAGE_BIN_PATH+":"+mysettings["PATH"]
+	# Note: PORTAGE_BIN_PATH may differ from the global constant
+	# when portage is reinstalling itself.
+	portage_bin_path = mysettings["PORTAGE_BIN_PATH"]
+	if portage_bin_path not in mysplit:
+		mysettings["PATH"] = portage_bin_path + ":" + mysettings["PATH"]
 
 	# Sandbox needs cannonical paths.
 	mysettings["PORTAGE_TMPDIR"] = os.path.realpath(
@@ -4024,12 +4061,6 @@ def _doebuild_exit_status_check(mydo, settings):
 	Returns an error string if the shell appeared
 	to exit unsuccessfully, None otherwise.
 	"""
-	if settings.get("ROOT") == "/" and \
-		settings.get("PN") == "portage":
-			# portage upgrade or downgrade invalidates this check
-			# since ebuild.sh portage version may differ from the
-			# current instance that is running in python.
-			return None
 	exit_status_file = settings.get("EBUILD_EXIT_STATUS_FILE")
 	if not exit_status_file or \
 		os.path.exists(exit_status_file):
@@ -4211,10 +4242,19 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				eerror(l, phase=mydo, key=mysettings.mycpv)
 		return retval
 
+	# Note: PORTAGE_BIN_PATH may differ from the global
+	# constant when portage is reinstalling itself.
+	portage_bin_path = mysettings["PORTAGE_BIN_PATH"]
+	ebuild_sh_binary = os.path.join(portage_bin_path,
+		os.path.basename(EBUILD_SH_BINARY))
+	misc_sh_binary = os.path.join(portage_bin_path,
+		os.path.basename(MISC_SH_BINARY))
+
 	logfile=None
 	builddir_lock = None
 	tmpdir = None
 	tmpdir_orig = None
+	filter_calling_env_state = mysettings._filter_calling_env
 	try:
 		if mydo in ("digest", "manifest", "help"):
 			# Temporarily exempt the depend phase from manifest checks, in case
@@ -4242,7 +4282,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				mysettings["dbkey"] = ""
 				pr, pw = os.pipe()
 				fd_pipes = {0:0, 1:1, 2:2, 9:pw}
-				mypids = spawn(EBUILD_SH_BINARY + " depend", mysettings,
+				mypids = spawn(ebuild_sh_binary + " depend", mysettings,
 					fd_pipes=fd_pipes, returnpid=True, droppriv=droppriv)
 				os.close(pw) # belongs exclusively to the child process now
 				maxbytes = 1024
@@ -4271,7 +4311,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				mysettings["dbkey"] = \
 					os.path.join(mysettings.depcachedir, "aux_db_key_temp")
 
-			return spawn(EBUILD_SH_BINARY + " depend", mysettings,
+			return spawn(ebuild_sh_binary + " depend", mysettings,
 				droppriv=droppriv)
 
 		# Validate dependency metadata here to ensure that ebuilds with invalid
@@ -4337,6 +4377,46 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			if logfile and not os.access(os.path.dirname(logfile), os.W_OK):
 				logfile = None
 		if have_build_dirs:
+			env_file = os.path.join(mysettings["T"], "environment")
+			env_stat = None
+			saved_env = None
+			try:
+				env_stat = os.stat(env_file)
+			except OSError, e:
+				if e.errno != errno.ENOENT:
+					raise
+				del e
+			if not env_stat:
+				saved_env = os.path.join(
+					os.path.dirname(myebuild), "environment.bz2")
+				if not os.path.isfile(saved_env):
+					saved_env = None
+			if saved_env:
+				retval = os.system(
+					"bzip2 -dc '%s' > '%s'" % (saved_env, env_file))
+				try:
+					env_stat = os.stat(env_file)
+				except OSError, e:
+					if e.errno != errno.ENOENT:
+						raise
+					del e
+				if os.WIFEXITED(retval) and \
+					os.WEXITSTATUS(retval) == os.EX_OK and \
+					env_stat and env_stat.st_size > 0:
+					pass
+				else:
+					writemsg("!!! Error extracting saved environment: '%s'" % \
+						saved_env, noiselevel=-1)
+					try:
+						os.unlink(env_file)
+					except OSError, e:
+						if e.errno != errno.ENOENT:
+							raise
+						del e
+					env_stat = None
+			if env_stat:
+				mysettings._filter_calling_env = True
+			del env_file, env_stat, saved_env
 			_doebuild_exit_status_unlink(
 				mysettings.get("EBUILD_EXIT_STATUS_FILE"))
 		else:
@@ -4345,10 +4425,10 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		# if any of these are being called, handle them -- running them out of
 		# the sandbox -- and stop now.
 		if mydo in ["clean","cleanrm"]:
-			return spawn(EBUILD_SH_BINARY + " clean", mysettings,
+			return spawn(ebuild_sh_binary + " clean", mysettings,
 				debug=debug, free=1, logfile=None)
 		elif mydo == "help":
-			return spawn(EBUILD_SH_BINARY + " " + mydo, mysettings,
+			return spawn(ebuild_sh_binary + " " + mydo, mysettings,
 				debug=debug, free=1, logfile=logfile)
 		elif mydo == "setup":
 			infodir = os.path.join(
@@ -4357,7 +4437,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				"""Load USE flags for setup phase of a binary package.
 				Ideally, the environment.bz2 would be used instead."""
 				mysettings.load_infodir(infodir)
-			retval = spawn(EBUILD_SH_BINARY + " " + mydo, mysettings,
+			retval = spawn(ebuild_sh_binary + " " + mydo, mysettings,
 				debug=debug, free=1, logfile=logfile)
 			retval = exit_status_check(retval)
 			if secpass >= 2:
@@ -4368,13 +4448,13 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 					filemode=060, filemask=0)
 			return retval
 		elif mydo == "preinst":
-			phase_retval = spawn(" ".join((EBUILD_SH_BINARY, mydo)),
+			phase_retval = spawn(" ".join((ebuild_sh_binary, mydo)),
 				mysettings, debug=debug, free=1, logfile=logfile)
 			phase_retval = exit_status_check(phase_retval)
 			if phase_retval == os.EX_OK:
 				# Post phase logic and tasks that have been factored out of
 				# ebuild.sh.
-				myargs = [MISC_SH_BINARY, "preinst_bsdflags", "preinst_mask",
+				myargs = [misc_sh_binary, "preinst_bsdflags", "preinst_mask",
 					"preinst_sfperms", "preinst_selinux_labels",
 					"preinst_suid_scan"]
 				_doebuild_exit_status_unlink(
@@ -4389,13 +4469,13 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			return phase_retval
 		elif mydo == "postinst":
 			mysettings.load_infodir(mysettings["O"])
-			phase_retval = spawn(" ".join((EBUILD_SH_BINARY, mydo)),
+			phase_retval = spawn(" ".join((ebuild_sh_binary, mydo)),
 				mysettings, debug=debug, free=1, logfile=logfile)
 			phase_retval = exit_status_check(phase_retval)
 			if phase_retval == os.EX_OK:
 				# Post phase logic and tasks that have been factored out of
 				# ebuild.sh.
-				myargs = [MISC_SH_BINARY, "postinst_bsdflags"]
+				myargs = [misc_sh_binary, "postinst_bsdflags"]
 				_doebuild_exit_status_unlink(
 					mysettings.get("EBUILD_EXIT_STATUS_FILE"))
 				mysettings["EBUILD_PHASE"] = ""
@@ -4408,7 +4488,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			return phase_retval
 		elif mydo in ("prerm", "postrm", "config", "info"):
 			mysettings.load_infodir(mysettings["O"])
-			retval =  spawn(EBUILD_SH_BINARY + " " + mydo,
+			retval =  spawn(ebuild_sh_binary + " " + mydo,
 				mysettings, debug=debug, free=1, logfile=logfile)
 			retval = exit_status_check(retval)
 			return retval
@@ -4464,11 +4544,9 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				# mod_echo module might push the original message off of the
 				# top of the terminal and prevent the user from being able to
 				# see it.
-				mysettings["EBUILD_PHASE"] = "unpack"
-				cmd = "source '%s/isolated-functions.sh' ; " % PORTAGE_BIN_PATH
-				cmd += "eerror \"Fetch failed for '%s'\"" % mycpv
-				portage.process.spawn(["bash", "-c", cmd],
-					env=mysettings.environ())
+				from portage.elog.messages import eerror
+				eerror("Fetch failed for '%s'" % mycpv,
+					phase="unpack", key=mycpv)
 				from portage.elog import elog_process
 				elog_process(mysettings.mycpv, mysettings)
 			return 1
@@ -4546,8 +4624,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 		fakeroot = "fakeroot" in mysettings.features
 
-		ebuild_sh = EBUILD_SH_BINARY + " %s"
-		misc_sh = MISC_SH_BINARY + " dyn_%s"
+		ebuild_sh = ebuild_sh_binary + " %s"
+		misc_sh = misc_sh_binary + " dyn_%s"
 
 		# args are for the to spawn function
 		actionmap = {
@@ -4609,6 +4687,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		return retval
 
 	finally:
+		mysettings._filter_calling_env = filter_calling_env_state
 		if tmpdir:
 			mysettings["PORTAGE_TMPDIR"] = tmpdir_orig
 			shutil.rmtree(tmpdir)
@@ -6004,15 +6083,11 @@ def create_trees(config_root=None, target_root=None, trees=None):
 		# with ROOT != "/", so we wipe out the "backupenv" for the
 		# config that is associated with ROOT == "/" and regenerate
 		# it's incrementals.
-
 		# Preserve backupenv values that are initialized in the config
 		# constructor. Also, preserve XARGS since it is set by the
 		# portage.data module.
-		backupenv_whitelist = set(["FEATURES", "PORTAGE_BIN_PATH",
-			"PORTAGE_CONFIGROOT", "PORTAGE_DEPCACHEDIR",
-			"PORTAGE_GID", "PORTAGE_INST_GID", "PORTAGE_INST_UID",
-			"PORTAGE_PYM_PATH", "PORTDIR_OVERLAY", "ROOT", "USE_ORDER",
-			"XARGS"])
+
+		backupenv_whitelist = settings._environ_whitelist
 		backupenv = settings.configdict["backupenv"]
 		for k, v in os.environ.iteritems():
 			if k in backupenv_whitelist:

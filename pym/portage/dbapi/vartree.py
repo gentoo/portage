@@ -2004,8 +2004,18 @@ class dblink(object):
 		outfile.flush()
 		outfile.close()
 
+		# If portage is reinstalling itself, remove the old
+		# version now since we want to use the temporary
+		# PORTAGE_BIN_PATH that will be removed when we return.
+		reinstall_self = False
+		if self.myroot == "/" and \
+			"sys-apps" == self.cat and \
+			"portage" == pkgsplit(self.pkg)[0]:
+			reinstall_self = True
+
 		for dblnk in others_in_slot:
-			if dblnk.mycpv != self.mycpv:
+			if dblnk.mycpv != self.mycpv and \
+				not reinstall_self:
 				continue
 			writemsg_stdout(">>> Safely unmerging already-installed instance...\n")
 			# These caches are populated during collision-protect and the data
@@ -2019,8 +2029,11 @@ class dblink(object):
 			others_in_slot.remove(dblnk) # dblnk will unmerge itself now
 			dblnk.unmerge(trimworld=0, ldpath_mtimes=prev_mtimes,
 				others_in_slot=others_in_slot)
+			# TODO: Check status and abort if necessary.
+			dblnk.delete()
 			writemsg_stdout(">>> Original instance of package unmerged safely.\n")
-			break
+			if not reinstall_self:
+				break
 
 		# We hold both directory locks.
 		self.dbdir = self.dbpkgdir
@@ -2336,6 +2349,45 @@ class dblink(object):
 				writemsg_stdout(zing + " " + mydest + "\n")
 
 	def merge(self, mergeroot, inforoot, myroot, myebuild=None, cleanup=0,
+		mydbapi=None, prev_mtimes=None):
+		"""
+		If portage is reinstalling itself, create temporary
+		copies of PORTAGE_BIN_PATH and PORTAGE_PYM_PATH in order
+		to avoid relying on the new versions which may be
+		incompatible. Register an atexit hook to clean up the
+		temporary directories. Pre-load elog modules here since
+		we won't be able to later if they get unmerged (happens
+		when namespace changes).
+		"""
+		if self.myroot == "/" and \
+			"sys-apps" == self.cat and \
+			"portage" == pkgsplit(self.pkg)[0]:
+			settings = self.settings
+			base_path_orig = os.path.dirname(settings["PORTAGE_BIN_PATH"])
+			from tempfile import mkdtemp
+			import shutil
+			base_path_tmp = mkdtemp()
+			from portage.process import atexit_register
+			atexit_register(shutil.rmtree, base_path_tmp)
+			dir_perms = 0755
+			for subdir in "bin", "pym":
+				var_name = "PORTAGE_%s_PATH" % subdir.upper()
+				var_orig = settings[var_name]
+				var_new = os.path.join(base_path_tmp, subdir)
+				settings[var_name] = var_new
+				settings.backup_changes(var_name)
+				shutil.copytree(var_orig, var_new, symlinks=True)
+				os.chmod(var_new, dir_perms)
+			os.chmod(base_path_tmp, dir_perms)
+			# This serves so pre-load the modules.
+			elog_process(self.mycpv, self.settings,
+				phasefilter=filter_mergephases)
+
+		return self._merge(mergeroot, inforoot,
+				myroot, myebuild=myebuild, cleanup=cleanup,
+				mydbapi=mydbapi, prev_mtimes=prev_mtimes)
+
+	def _merge(self, mergeroot, inforoot, myroot, myebuild=None, cleanup=0,
 		mydbapi=None, prev_mtimes=None):
 		retval = -1
 		self.lockdb()
