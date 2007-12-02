@@ -406,7 +406,7 @@ save_ebuild_env() {
 			TERM TERMCAP USER
 
 		# other variables inherited from the calling environment
-		unset CVS_RSH ECHANGELOG_USER GPG_AGENT_INFO \
+		unset ECHANGELOG_USER GPG_AGENT_INFO \
 		SSH_AGENT_PID SSH_AUTH_SOCK STY WINDOW XAUTHORITY
 
 		# There's no need to bloat environment.bz2 with internally defined
