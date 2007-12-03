@@ -1475,9 +1475,8 @@ preprocess_ebuild_env() {
 # === === === === === functions end, main part begins === === === === ===
 # === === === === === === === === === === === === === === === === === ===
 
-if [[ ${EBUILD_SH_ARGS} != "depend" ]] && [[ ${EBUILD_SH_ARGS}  != "clean" ]] && [[ ${EBUILD_SH_ARGS} != "setup" ]]; then
-	cd ${PORTAGE_TMPDIR} &> /dev/null
-	cd ${BUILD_PREFIX} &> /dev/null
+if [ -n "${EBUILD_SH_ARGS}" ] && \
+	! hasq ${EBUILD_SH_ARGS} clean depend help info nofetch ; then
 
 	if [ "$(id -nu)" == "portage" ] ; then
 		export USER=portage
@@ -1778,7 +1777,7 @@ fi
 
 # Save the env only for relevant phases.
 if [ -n "${EBUILD_SH_ARGS}" ] && \
-	! hasq ${EBUILD_SH_ARGS} clean help info nofetch ; then
+	! hasq ${EBUILD_SH_ARGS} clean depend help info nofetch ; then
 	# Save current environment and touch a success file. (echo for success)
 	umask 002
 	save_ebuild_env | filter_readonly_variables > "${T}/environment"
