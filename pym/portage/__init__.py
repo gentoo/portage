@@ -1827,7 +1827,7 @@ class config(object):
 			writemsg("!!! CATEGORY file is missing: %s\n" % \
 				os.path.join(infodir, "CATEGORY"), noiselevel=-1)
 			self.configdict["pkg"].update(backup_pkg_metadata)
-		retval = 0
+			retval = 0
 		return retval
 
 	def setcpv(self, mycpv, use_cache=1, mydb=None):
