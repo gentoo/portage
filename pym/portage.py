@@ -4462,7 +4462,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 						noiselevel=-1)
 			return phase_retval
 		elif mydo == "postinst":
-			mysettings.load_infodir(mysettings["O"])
 			phase_retval = spawn(
 				_shell_quote(ebuild_sh_binary) + " " + mydo,
 				mysettings, debug=debug, free=1, logfile=logfile)
