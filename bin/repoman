@@ -313,7 +313,6 @@ qawarnings=[
 "IUSE.invalid",
 "KEYWORDS.stupid",
 "KEYWORDS.missing",
-"LICENSE.missing",
 "RESTRICT.invalid",
 "ebuild.minorsyn",
 "ebuild.badheader",
