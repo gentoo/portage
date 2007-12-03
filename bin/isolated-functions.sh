@@ -409,6 +409,9 @@ save_ebuild_env() {
 		unset ECHANGELOG_USER GPG_AGENT_INFO \
 		SSH_AGENT_PID SSH_AUTH_SOCK STY WINDOW XAUTHORITY
 
+		# CCACHE and DISTCC config
+		unset ${!CCACHE_*} ${!DISTCC_*}
+
 		# There's no need to bloat environment.bz2 with internally defined
 		# functions and variables, so filter them out if possible.
 
