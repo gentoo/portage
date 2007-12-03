@@ -895,6 +895,8 @@ class config(object):
 
 	_environ_whitelist = frozenset(_environ_whitelist)
 
+	_environ_whitelist_re = re.compile(r'^(CCACHE_|DISTCC_).*')
+
 	# Filter selected variables in the config.environ() method so that
 	# they don't needlessly propagate down into the ebuild environment.
 	_environ_filter = []
@@ -2587,7 +2589,8 @@ class config(object):
 					(x, myvalue), noiselevel=-1)
 				continue
 			if filter_calling_env and \
-				x not in environ_whitelist:
+				x not in environ_whitelist and \
+				not self._environ_whitelist_re.match(x):
 				if myvalue == env_d.get(x) or \
 					myvalue == os.environ.get(x):
 					continue
