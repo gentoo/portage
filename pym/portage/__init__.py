@@ -1770,6 +1770,7 @@ class config(object):
 
 	def load_infodir(self,infodir):
 		self.modifying()
+		backup_pkg_metadata = dict(self.configdict["pkg"].iteritems())
 		if "pkg" in self.configdict:
 			self.configdict["pkg"].clear()
 		else:
@@ -1777,6 +1778,8 @@ class config(object):
 				noiselevel=-1)
 			sys.exit(17)
 
+		retval = 0
+		category_corrupt = False
 		if os.path.exists(infodir):
 			if os.path.exists(infodir+"/environment"):
 				self.configdict["pkg"]["PORT_ENV_FILE"] = infodir+"/environment"
@@ -1809,17 +1812,25 @@ class config(object):
 						# strange errors later on, so we'll validate it and
 						# print a warning if necessary.
 						if filename == "CATEGORY":
-							matchobj = re.match("[-a-zA-Z0-9_.+]+", mydata)
-							if not matchobj or matchobj.start() != 0 or \
-								matchobj.end() != len(mydata):
+							matchobj = re.match(r'^[-\w_.+]+', mydata)
+							if not matchobj:
 								writemsg("!!! CATEGORY file is corrupt: %s\n" % \
 									os.path.join(infodir, filename), noiselevel=-1)
+								self.configdict["pkg"].pop(filename, None)
+								self.configdict["env"].pop(filename, None)
+								category_corrupt = True
 					except (OSError, IOError):
 						writemsg("!!! Unable to read file: %s\n" % infodir+"/"+filename,
 							noiselevel=-1)
 						pass
-			return 1
-		return 0
+			retval = 1
+		if "CATEGORY" not in self.configdict["pkg"]:
+			if not category_corrupt:
+				writemsg("!!! CATEGORY file is missing: %s\n" % \
+					os.path.join(infodir, "CATEGORY"), noiselevel=-1)
+			self.configdict["pkg"].update(backup_pkg_metadata)
+			retval = 0
+		return retval
 
 	def setcpv(self, mycpv, use_cache=1, mydb=None):
 		"""
