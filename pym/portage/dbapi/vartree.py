@@ -1084,7 +1084,6 @@ class dblink(object):
 				break
 
 		self.settings.setcpv(self.mycpv, mydb=self.vartree.dbapi)
-		self.settings.load_infodir(self.dbdir)
 		if myebuildpath:
 			try:
 				doebuild_environment(myebuildpath, "prerm", self.myroot,

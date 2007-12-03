@@ -5770,7 +5770,6 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 		writemsg_stdout(">>> Extracting info\n")
 		xptbz2.unpackinfo(infloc)
 		mysettings.setcpv(mycat + "/" + mypkg, mydb=mydbapi)
-		mysettings.load_infodir(infloc)
 		# Store the md5sum in the vdb.
 		fp = open(os.path.join(infloc, "BINPKGMD5"), "w")
 		fp.write(str(portage.checksum.perform_md5(mytbz2))+"\n")
