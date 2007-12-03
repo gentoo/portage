@@ -1083,6 +1083,7 @@ class dblink(object):
 					write_atomic(os.path.join(self.dbdir, "PF"), self.pkg+"\n")
 				break
 
+		self.settings.setcpv(self.mycpv, mydb=self.vartree.dbapi)
 		self.settings.load_infodir(self.dbdir)
 		if myebuildpath:
 			try:
