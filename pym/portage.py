@@ -1814,16 +1814,18 @@ class config:
 	def load_infodir(self,infodir):
 		self.modifying()
 		backup_pkg_metadata = dict(self.configdict["pkg"].iteritems())
-		if "pkg" in self.configdict:
+		if "pkg" in self.configdict and \
+			"CATEGORY" in self.configdict["pkg"]:
 			self.configdict["pkg"].clear()
+			self.configdict["pkg"]["CATEGORY"] = \
+				backup_pkg_metadata["CATEGORY"]
 		else:
-			writemsg("No pkg setup for settings instance?\n",
-				noiselevel=-1)
-			sys.exit(17)
+			raise portage_exception.PortageException(
+				"No pkg setup for settings instance?")
 
 		retval = 0
-		category_corrupt = False
-		if os.path.exists(infodir):
+		found_category_file = False
+		if os.path.isdir(infodir):
 			if os.path.exists(infodir+"/environment"):
 				self.configdict["pkg"]["PORT_ENV_FILE"] = infodir+"/environment"
 
@@ -1833,6 +1835,9 @@ class config:
 				if filename == "FEATURES":
 					# FEATURES from the build host shouldn't be interpreted as
 					# FEATURES on the client system.
+					continue
+				if filename == "CATEGORY":
+					found_category_file = True
 					continue
 				if myre.match(filename):
 					try:
@@ -1850,27 +1855,20 @@ class config:
 							else:
 								self.configdict["pkg"][filename] = mydata
 								self.configdict["env"][filename] = mydata
-						# CATEGORY is important because it's used in doebuild
-						# to infer the cpv.  If it's corrupted, it leads to
-						# strange errors later on, so we'll validate it and
-						# print a warning if necessary.
-						if filename == "CATEGORY":
-							matchobj = re.match(r'^[-\w_.+]+', mydata)
-							if not matchobj:
-								writemsg("!!! CATEGORY file is corrupt: %s\n" % \
-									os.path.join(infodir, filename), noiselevel=-1)
-								self.configdict["pkg"].pop(filename, None)
-								self.configdict["env"].pop(filename, None)
-								category_corrupt = True
 					except (OSError, IOError):
 						writemsg("!!! Unable to read file: %s\n" % infodir+"/"+filename,
 							noiselevel=-1)
 						pass
 			retval = 1
-		if "CATEGORY" not in self.configdict["pkg"]:
-			if not category_corrupt:
-				writemsg("!!! CATEGORY file is missing: %s\n" % \
-					os.path.join(infodir, "CATEGORY"), noiselevel=-1)
+
+		# Missing or corrupt CATEGORY will cause problems for
+		# doebuild(), which uses it to infer the cpv. We already
+		# know the category, so there's no need to trust this
+		# file. Show a warning if the file is missing though,
+		# because it's required (especially for binary packages).
+		if not found_category_file:
+			writemsg("!!! CATEGORY file is missing: %s\n" % \
+				os.path.join(infodir, "CATEGORY"), noiselevel=-1)
 			self.configdict["pkg"].update(backup_pkg_metadata)
 			retval = 0
 		return retval
@@ -8031,6 +8029,7 @@ class dblink:
 					write_atomic(os.path.join(self.dbdir, "PF"), self.pkg+"\n")
 				break
 
+		self.settings.setcpv(self.mycpv, mydb=self.vartree.dbapi)
 		self.settings.load_infodir(self.dbdir)
 		if myebuildpath:
 			try:
@@ -9406,6 +9405,7 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 				gid=portage_gid, mode=0755)
 		writemsg_stdout(">>> Extracting info\n")
 		xptbz2.unpackinfo(infloc)
+		mysettings.setcpv(mycat + "/" + mypkg, mydb=mydbapi)
 		mysettings.load_infodir(infloc)
 		# Store the md5sum in the vdb.
 		fp = open(os.path.join(infloc, "BINPKGMD5"), "w")
