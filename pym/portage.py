@@ -8030,7 +8030,6 @@ class dblink:
 				break
 
 		self.settings.setcpv(self.mycpv, mydb=self.vartree.dbapi)
-		self.settings.load_infodir(self.dbdir)
 		if myebuildpath:
 			try:
 				doebuild_environment(myebuildpath, "prerm", self.myroot,
@@ -9406,7 +9405,6 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 		writemsg_stdout(">>> Extracting info\n")
 		xptbz2.unpackinfo(infloc)
 		mysettings.setcpv(mycat + "/" + mypkg, mydb=mydbapi)
-		mysettings.load_infodir(infloc)
 		# Store the md5sum in the vdb.
 		fp = open(os.path.join(infloc, "BINPKGMD5"), "w")
 		fp.write(str(portage_checksum.perform_md5(mytbz2))+"\n")
