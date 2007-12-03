@@ -5068,7 +5068,7 @@ def post_emerge(trees, mtimedb, retval):
 			print colorize("WARN", ">>>") + " package: %s" % cpv
 			for f in plibdata[cpv]:
 				print colorize("WARN", " * ") + " - %s" % f
-		print "Use " + colorize("GOOD", "revdep-rebuild") + " to rebuild packages using these libraries"
+		print "Use " + colorize("GOOD", "emerge @preserved-rebuild") + " to rebuild packages using these libraries"
 		print "and then remerge the packages listed above."
 
 	sys.exit(retval)

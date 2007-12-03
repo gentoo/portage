@@ -1125,7 +1125,8 @@ class dblink(object):
 			self._unmerge_pkgfiles(pkgfiles, others_in_slot)
 			
 			# Remove the registration of preserved libs for this pkg instance
-			self.vartree.dbapi.plib_registry.unregister(self.mycpv, self.settings["SLOT"], self.settings["COUNTER"])
+			plib_registry = self.vartree.dbapi.plib_registry
+			plib_registry.unregister(self.mycpv, self.settings["SLOT"], self.settings["COUNTER"])
 
 			if myebuildpath:
 				ebuild_phase = "postrm"
@@ -1140,7 +1141,42 @@ class dblink(object):
 
 			# regenerate reverse NEEDED map
 			self.vartree.dbapi.libmap.update()
-
+			
+			# remove preserved libraries that don't have any consumers left
+			# FIXME: this code is quite ugly and can likely be optimized in several ways
+			plib_dict = plib_registry.getPreservedLibs()
+			for cpv in plib_dict:
+				keeplist = []
+				plib_dict[cpv].sort()
+				for f in plib_dict[cpv]:
+					if not os.path.exists(f) or os.path.realpath(f) in keeplist:
+						continue
+					unlink_list = []
+					while os.path.islink(f):
+						if os.path.basename(f) in self.vartree.dbapi.libmap.get():
+							unlink_list = []
+							keeplist.append(os.path.realpath(f))
+							break
+						else:
+							unlink_list.append(f)
+							f = os.readlink(f)
+					if not os.path.islink(f) and not os.path.basename(f) in self.vartree.dbapi.libmap.get():
+						unlink_list.append(f)
+					for obj in unlink_list:
+						try:
+							if os.path.islink(f):
+								obj_type = "sym"
+							else:
+								obj_type = "obj"
+							writemsg_stdout("<<< !needed   %s %s\n" % (obj_type, obj))
+							os.unlink(obj)
+						except OSError, e:
+							if e.errno == errno.ENOENT:
+								pass
+							else:
+								raise e
+			plib_registry.pruneNonExisting()
+						
 		finally:
 			if builddir_lock:
 				try:

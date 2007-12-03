@@ -130,7 +130,7 @@ def make_default_config(settings, trees):
 	sc.set("user-sets", "multiset", "true")
 
 	sc.add_section("rebuild-needed")
-	sc.set("rebuild-needed", "class", "portage.sets.dbapi.MissingLibraryConsumerSet")
+	sc.set("rebuild-needed", "class", "portage.sets.dbapi.PreservedLibraryConsumerSet")
 	
 	return sc
 
