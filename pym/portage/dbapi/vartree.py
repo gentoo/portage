@@ -2407,7 +2407,10 @@ class dblink(object):
 			base_path_orig = os.path.dirname(settings["PORTAGE_BIN_PATH"])
 			from tempfile import mkdtemp
 			import shutil
-			base_path_tmp = mkdtemp()
+			# Make the temp directory inside PORTAGE_TMPDIR since, unlike
+			# /tmp, it can't be mounted with the "noexec" option.
+			base_path_tmp = mkdtemp("", "._portage_reinstall_.",
+				settings["PORTAGE_TMPDIR"])
 			from portage.process import atexit_register
 			atexit_register(shutil.rmtree, base_path_tmp)
 			dir_perms = 0755
