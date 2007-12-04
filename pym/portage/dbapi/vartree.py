@@ -1159,7 +1159,11 @@ class dblink(object):
 							break
 						else:
 							unlink_list.append(f)
-							f = os.readlink(f)
+							# only follow symlinks if the target is also a preserved lib object
+							if os.readlink(f) in plib_dict[cpv]:
+								f = os.readlink(f)
+							else:
+								break
 					if not os.path.islink(f) and not os.path.basename(f) in self.vartree.dbapi.libmap.get():
 						unlink_list.append(f)
 					for obj in unlink_list:
@@ -1168,8 +1172,8 @@ class dblink(object):
 								obj_type = "sym"
 							else:
 								obj_type = "obj"
-							writemsg_stdout("<<< !needed   %s %s\n" % (obj_type, obj))
 							os.unlink(obj)
+							writemsg_stdout("<<< !needed   %s %s\n" % (obj_type, obj))
 						except OSError, e:
 							if e.errno == errno.ENOENT:
 								pass
