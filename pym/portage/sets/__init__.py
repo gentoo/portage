@@ -83,7 +83,7 @@ class SetConfig(SafeConfigParser):
 			ignorelist = set()
 		ignorelist.add(setname)
 		for n in myset.getNonAtoms():
-			if n[0] == SETPREFIX and n[1:] in self.psets
+			if n[0] == SETPREFIX and n[1:] in self.psets:
 				if n[1:] not in ignorelist:
 					myatoms.update(self.getSetAtoms(n[1:],
 						ignorelist=ignorelist))

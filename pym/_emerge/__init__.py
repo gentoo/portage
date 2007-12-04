@@ -6909,14 +6909,14 @@ def emerge_main():
 
 	# only expand sets for actions taking package arguments
 	oldargs = myfiles[:]
-	if myaction in ("clean", "config", "depclean", "info", "prune", "unmerge"):
+	if myaction in ("clean", "config", "depclean", "info", "prune", "unmerge", None):
 		root_config = trees[settings["ROOT"]]["root_config"]
 		setconfig = root_config.setconfig
 		sets = root_config.sets
 		# emerge relies on the existance of sets with names "world" and "system"
 		for s in ("world", "system"):
 			if s not in sets:
-				print "emerge: incomplete set configuration, no set defined for \"%s\"" % s
+				print "emerge: incomplete set configuration, no \"%s\" set defined" % s
 				print "        sets defined: %s" % ", ".join(sets)
 				return 1
 		newargs = []
@@ -6935,15 +6935,16 @@ def emerge_main():
 					print "emerge: there are no sets to satisfy %s." % \
 						colorize("INFORM", s)
 					return 1
-				# TODO: check if the current setname also resolves to a package name
 				if myaction in ["unmerge", "prune", "clean", "depclean"] and \
-					not sets[s].supportsOperation("unmerge"):
+						not sets[s].supportsOperation("unmerge"):
 					print "emerge: the given set %s does not support unmerge operations" % s
 					return 1
 				if not setconfig.getSetAtoms(s):
 					print "emerge: '%s' is an empty set" % s
-				else:
+				elif action != None:
 					newargs.extend(setconfig.getSetAtoms(s))
+				else:
+					newargs.append(SETPREFIX+s)
 				for e in sets[s].errors:
 					print e
 			else:
