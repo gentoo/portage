@@ -30,8 +30,8 @@ install:
 	$(INSTALL_cnfsubst) $(srcdir)/make.conf $(DESTDIR)$(sysconfdir)/make.conf.example
 	$(INSTALL_cnfsubst) $(srcdir)/dispatch-conf.conf $(DESTDIR)$(sysconfdir)/dispatch-conf.conf
 	$(INSTALL_cnfsubst) $(srcdir)/etc-update.conf $(DESTDIR)$(sysconfdir)/etc-update.conf
-	$(INSTALL) -d -m 755 -o $(portageuser) -g $(portagegroup) $(DESTDIR)$(datadir)/portage
-	$(INSTALL_cnfsubst) $(srcdir)/sets.conf $(DESTDIR)$(datadir)/portage/sets.conf
+	$(INSTALL) -d -m 755 -o $(portageuser) -g $(portagegroup) $(DESTDIR)$(datadir)/portage/config
+	$(INSTALL_cnfsubst) $(srcdir)/sets.conf $(DESTDIR)$(datadir)/portage/config/sets.conf
 	
 uninstall:
 	@ echo rm -f $(DESTDIR)$(sysconfdir)/make.conf.example \
