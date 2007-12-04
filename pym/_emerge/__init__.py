@@ -6941,7 +6941,7 @@ def emerge_main():
 					return 1
 				if not setconfig.getSetAtoms(s):
 					print "emerge: '%s' is an empty set" % s
-				elif action != None:
+				elif myaction != None:
 					newargs.extend(setconfig.getSetAtoms(s))
 				else:
 					newargs.append(SETPREFIX+s)
