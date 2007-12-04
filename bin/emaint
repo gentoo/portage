@@ -23,8 +23,8 @@ class WorldHandler(object):
 		self.not_installed = []
 		self.invalid_category = []
 		self.okay = []
-		from portage.sets import make_default_config
-		setconfig = make_default_config(portage.settings,
+		from portage.sets import load_default_config
+		setconfig = load_default_config(portage.settings,
 			portage.db[portage.settings["ROOT"]])
 		self._sets = setconfig.getSetsWithAliases()
 

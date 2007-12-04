@@ -52,7 +52,7 @@ import portage.exception
 from portage.data import secpass
 from portage.util import normalize_path as normpath
 from portage.util import writemsg
-from portage.sets import make_default_config, SETPREFIX
+from portage.sets import load_default_config, SETPREFIX
 from portage.sets.base import InternalPackageSet
 
 from itertools import chain, izip
@@ -586,7 +586,7 @@ class RootConfig(object):
 		self.settings = trees["vartree"].settings
 		self.root = self.settings["ROOT"]
 		self.setconfig = setconfig
-		self.sets = self.setconfig.getSetsWithAliases()
+		self.sets = self.setconfig.getSets()
 
 def create_world_atom(pkg_key, metadata, args_set, root_config):
 	"""Create a new atom for the world file if one does not exist.  If the
@@ -6687,7 +6687,7 @@ def load_emerge_config(trees=None):
 
 	for root, root_trees in trees.iteritems():
 		settings = root_trees["vartree"].settings
-		setconfig = make_default_config(settings, root_trees)
+		setconfig = load_default_config(settings, root_trees)
 		root_trees["root_config"] = RootConfig(root_trees, setconfig)
 
 	settings = trees["/"]["vartree"].settings
@@ -6913,6 +6913,12 @@ def emerge_main():
 		root_config = trees[settings["ROOT"]]["root_config"]
 		setconfig = root_config.setconfig
 		sets = root_config.sets
+		# emerge relies on the existance of sets with names "world" and "system"
+		for s in ("world", "system"):
+			if s not in sets:
+				print "emerge: incomplete set configuration, no set defined for \"%s\"" % s
+				print "        sets defined: %s" % ", ".join(sets)
+				return 1
 		newargs = []
 		for a in myfiles:
 			if a in ("system", "world"):
