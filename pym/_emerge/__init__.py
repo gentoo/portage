@@ -53,7 +53,7 @@ from portage.const import EPREFIX, BPREFIX
 from portage.data import secpass
 from portage.util import normalize_path as normpath
 from portage.util import writemsg
-from portage.sets import make_default_config, SETPREFIX
+from portage.sets import load_default_config, SETPREFIX
 from portage.sets.base import InternalPackageSet
 
 from itertools import chain, izip
@@ -587,7 +587,7 @@ class RootConfig(object):
 		self.settings = trees["vartree"].settings
 		self.root = self.settings["ROOT"]
 		self.setconfig = setconfig
-		self.sets = self.setconfig.getSetsWithAliases()
+		self.sets = self.setconfig.getSets()
 
 def create_world_atom(pkg_key, metadata, args_set, root_config):
 	"""Create a new atom for the world file if one does not exist.  If the
@@ -5097,7 +5097,7 @@ def post_emerge(trees, mtimedb, retval):
 			print colorize("WARN", ">>>") + " package: %s" % cpv
 			for f in plibdata[cpv]:
 				print colorize("WARN", " * ") + " - %s" % f
-		print "Use " + colorize("GOOD", "revdep-rebuild") + " to rebuild packages using these libraries"
+		print "Use " + colorize("GOOD", "emerge @preserved-rebuild") + " to rebuild packages using these libraries"
 		print "and then remerge the packages listed above."
 
 	sys.exit(retval)
@@ -6762,7 +6762,7 @@ def load_emerge_config(trees=None):
 
 	for root, root_trees in trees.iteritems():
 		settings = root_trees["vartree"].settings
-		setconfig = make_default_config(settings, root_trees)
+		setconfig = load_default_config(settings, root_trees)
 		root_trees["root_config"] = RootConfig(root_trees, setconfig)
 
 	settings = trees["/"]["vartree"].settings
@@ -6984,10 +6984,16 @@ def emerge_main():
 
 	# only expand sets for actions taking package arguments
 	oldargs = myfiles[:]
-	if myaction in ("clean", "config", "depclean", "info", "prune", "unmerge"):
+	if myaction in ("clean", "config", "depclean", "info", "prune", "unmerge", None):
 		root_config = trees[settings["ROOT"]]["root_config"]
 		setconfig = root_config.setconfig
 		sets = root_config.sets
+		# emerge relies on the existance of sets with names "world" and "system"
+		for s in ("world", "system"):
+			if s not in sets:
+				print "emerge: incomplete set configuration, no \"%s\" set defined" % s
+				print "        sets defined: %s" % ", ".join(sets)
+				return 1
 		newargs = []
 		for a in myfiles:
 			if a in ("system", "world"):
@@ -7004,15 +7010,16 @@ def emerge_main():
 					print "emerge: there are no sets to satisfy %s." % \
 						colorize("INFORM", s)
 					return 1
-				# TODO: check if the current setname also resolves to a package name
 				if myaction in ["unmerge", "prune", "clean", "depclean"] and \
-					not sets[s].supportsOperation("unmerge"):
+						not sets[s].supportsOperation("unmerge"):
 					print "emerge: the given set %s does not support unmerge operations" % s
 					return 1
 				if not setconfig.getSetAtoms(s):
 					print "emerge: '%s' is an empty set" % s
-				else:
+				elif myaction != None:
 					newargs.extend(setconfig.getSetAtoms(s))
+				else:
+					newargs.append(SETPREFIX+s)
 				for e in sets[s].errors:
 					print e
 			else:

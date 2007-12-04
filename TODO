@@ -1,7 +1,8 @@
 TODO for portage-2.2 release:
 =============================
-- package set integration in emerge (genone)
+x package set integration in emerge (genone)
 x user interface for preserve-libs FEATURE (genone, fuzzyray?)
-- resolve the eselect-news situation (genone)
+x resolve the eselect-news situation (genone)
+- package set documentation (genone)
 
 (-  denotes open/incomplete tasks, x denotes completed tasks)
