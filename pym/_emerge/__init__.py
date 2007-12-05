@@ -6919,6 +6919,7 @@ def emerge_main():
 			from portage.sets.files import WorldSet
 			sets["world"] = WorldSet(root_config.root)
 		setconfig.psets.update(sets)
+		root_config.sets = sets
 		for s in required_sets:
 			if s not in sets:
 				msg = ["emerge: incomplete set configuration, " + \
