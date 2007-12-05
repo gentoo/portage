@@ -6914,10 +6914,21 @@ def emerge_main():
 		setconfig = root_config.setconfig
 		sets = root_config.sets
 		# emerge relies on the existance of sets with names "world" and "system"
-		for s in ("world", "system"):
+		required_sets = ("world", "system")
+		if "system" not in sets:
+			# bootstrap.sh expects that this set always exists
+			from portage.sets.profiles import PackagesSystemSet
+			sets["system"] = PackagesSystemSet(root_config.settings.profiles)
+		if "world" not in sets:
+			from portage.sets.files import WorldSet
+			sets["world"] = WorldSet(root_config.root)
+		for s in required_sets:
 			if s not in sets:
-				print "emerge: incomplete set configuration, no \"%s\" set defined" % s
-				print "        sets defined: %s" % ", ".join(sets)
+				msg = ["emerge: incomplete set configuration, " + \
+					"no \"%s\" set defined" % s]
+				msg.append("        sets defined: %s" % ", ".join(sets))
+				for line in msg:
+					sys.stderr.write(line + "\n")
 				return 1
 		unmerge_actions = ("unmerge", "prune", "clean", "depclean")
 		# In order to know exactly which atoms/sets should be added to the
