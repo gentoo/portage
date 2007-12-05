@@ -74,7 +74,7 @@ class SetConfig(SafeConfigParser):
 	
 	def getSets(self):
 		self._parse()
-		return self.psets
+		return self.psets.copy()
 
 	def getSetAtoms(self, setname, ignorelist=None):
 		myset = self.getSets()[setname]

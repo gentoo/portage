@@ -6908,7 +6908,7 @@ def emerge_main():
 	if myaction in ("clean", "config", "depclean", "info", "prune", "unmerge", None):
 		root_config = trees[settings["ROOT"]]["root_config"]
 		setconfig = root_config.setconfig
-		sets = root_config.sets
+		sets = setconfig.getSets()
 		# emerge relies on the existance of sets with names "world" and "system"
 		required_sets = ("world", "system")
 		if "system" not in sets:
@@ -6918,6 +6918,7 @@ def emerge_main():
 		if "world" not in sets:
 			from portage.sets.files import WorldSet
 			sets["world"] = WorldSet(root_config.root)
+		setconfig.psets.update(sets)
 		for s in required_sets:
 			if s not in sets:
 				msg = ["emerge: incomplete set configuration, " + \
