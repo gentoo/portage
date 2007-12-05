@@ -4,5 +4,7 @@ x package set integration in emerge (genone)
 x user interface for preserve-libs FEATURE (genone, fuzzyray?)
 x resolve the eselect-news situation (genone)
 - package set documentation (genone)
+- repository configuration file and `emerge --sync [repo_set]... [repo]...`
+  support for overlays and binhosts (zmedico)
 
 (-  denotes open/incomplete tasks, x denotes completed tasks)
