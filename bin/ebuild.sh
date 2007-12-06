@@ -1442,7 +1442,8 @@ preprocess_ebuild_env() {
 		filter_opts="--filter-sandbox ${filter_opts}"
 	fi
 	filter_readonly_variables ${filter_opts} < "${T}"/environment \
-		> "${T}"/environment.filtered
+		> "${T}"/environment.filtered || return $?
+	unset filter_opts
 	mv "${T}"/environment.filtered "${T}"/environment || return $?
 	rm -f "${T}/environment.success" || return $?
 	# WARNING: Code inside this subshell should avoid making assumptions
