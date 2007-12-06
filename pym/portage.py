@@ -4402,7 +4402,10 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				if os.WIFEXITED(retval) and \
 					os.WEXITSTATUS(retval) == os.EX_OK and \
 					env_stat and env_stat.st_size > 0:
-					pass
+					# This is a signal to ebuild.sh, so that it knows to filter
+					# out things like SANDBOX_{DENY,PREDICT,READ,WRITE} that
+					# would be preserved between normal phases.
+					open(env_file + ".raw", "w")
 				else:
 					writemsg(("!!! Error extracting saved " + \
 						"environment: '%s'\n") % \
