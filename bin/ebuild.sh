@@ -1759,9 +1759,6 @@ if [ -n "${EBUILD_SH_ARGS}" ] ; then
 			9>&-
 		fi
 		set +f
-		[ -n "${EBUILD_EXIT_STATUS_FILE}" ] && \
-			touch "${EBUILD_EXIT_STATUS_FILE}" &>/dev/null
-		exit 0
 		;;
 	*)
 		export SANDBOX_ON="1"
