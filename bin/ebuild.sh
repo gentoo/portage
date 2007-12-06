@@ -1433,12 +1433,16 @@ filter_readonly_variables() {
 # interfering with the current environment. This is useful when an existing
 # environment needs to be loaded from a binary or installed package.
 preprocess_ebuild_env() {
-	filter_readonly_variables --filter-sandbox < "${T}"/environment \
-		> "${T}"/environment.filtered
-	if [ $? -ne 0 ] ; then
-		rm -f "${T}/environment.filtered"
-		return 1
+	local filter_opts=""
+	if [ -f "${T}/environment.raw" ] ; then
+		# This is a signal from the python side, indicating that the
+		# environment may contain stale SANDBOX_{DENY,PREDICT,READ,WRITE}
+		# variables that should be filtered out. Between phases, these
+		# variables are normally preserved.
+		filter_opts="--filter-sandbox ${filter_opts}"
 	fi
+	filter_readonly_variables ${filter_opts} < "${T}"/environment \
+		> "${T}"/environment.filtered
 	mv "${T}"/environment.filtered "${T}"/environment || return $?
 	rm -f "${T}/environment.success" || return $?
 	# WARNING: Code inside this subshell should avoid making assumptions
@@ -1460,13 +1464,13 @@ preprocess_ebuild_env() {
 		touch "${T}/environment.success" || exit $?
 	) | filter_readonly_variables > "${T}/environment.filtered"
 	if [ -e "${T}/environment.success" ] ; then
-		rm "${T}/environment.success"
 		mv "${T}/environment.filtered" "${T}/environment"
-		return $?
+		retval=$?
 	else
-		rm -f "${T}/environment.filtered"
+		retval=1
 	fi
-	return 1
+	rm -f "${T}"/environment.{filtered,raw,success}
+	return ${retval}
 }
 
 # === === === === === === === === === === === === === === === === === ===
