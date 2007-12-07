@@ -864,13 +864,27 @@ class config(object):
 	# constructor. Also, preserve XARGS since it is set by the
 	# portage.data module.
 	_environ_whitelist += [
-		"DISTDIR", "FEATURES", "PORTAGE_BIN_PATH",
-		"PORTAGE_CONFIGROOT", "PORTAGE_DEPCACHEDIR",
+		"BUILD_PREFIX", "D",
+		"DISTDIR", "DOC_SYMLINKS_DIR", "EBUILD_EXIT_STATUS_FILE",
+		"EBUILD", "EBUILD_PHASE", "ECLASSDIR", "ECLASS_DEPTH", "EMERGE_FROM",
+		"FEATURES", "FILESDIR", "HOME", "PATH",
+		"PKGUSE", "PKG_LOGDIR", "PKG_TMPDIR",
+		"PORTAGE_ACTUAL_DISTDIR", "PORTAGE_ARCHLIST",
+		"PORTAGE_BASHRC", "PORTAGE_BINPKG_TMPFILE", "PORTAGE_BIN_PATH",
+		"PORTAGE_BUILDDIR", "PORTAGE_COLORMAP",
+		"PORTAGE_CONFIGROOT", "PORTAGE_DEBUG", "PORTAGE_DEPCACHEDIR",
 		"PORTAGE_GID", "PORTAGE_INST_GID", "PORTAGE_INST_UID",
-		"PORTAGE_PYM_PATH", "PORTAGE_WORKDIR_MODE",
-		"PORTDIR", "PORTDIR_OVERLAY", "PREROOTPATH",
-		"ROOT", "ROOTPATH", "USE_ORDER",
+		"PORTAGE_LOG_FILE", "PORTAGE_MASTER_PID",
+		"PORTAGE_PYM_PATH", "PORTAGE_REPO_NAME", "PORTAGE_RESTRICT",
+		"PORTAGE_TMPDIR", "PORTAGE_WORKDIR_MODE",
+		"PORTDIR", "PORTDIR_OVERLAY", "PREROOTPATH", "PROFILE_PATHS",
+		"ROOT", "ROOTPATH", "STARTDIR", "T", "TMP", "TMPDIR",
+		"USE_EXPAND", "USE_ORDER", "WORKDIR",
 		"XARGS",
+	]
+
+	_environ_whitelist += [
+		"A", "AA", "CATEGORY", "P", "PF", "PN", "PR", "PV", "PVR"
 	]
 
 	# misc variables inherited from the calling environment
@@ -2583,14 +2597,11 @@ class config(object):
 			if filter_calling_env and \
 				x not in environ_whitelist and \
 				not self._environ_whitelist_re.match(x):
-				# TODO: Complete the whitelist so that comparisons with
-				# environment variables are not necessary. We want to
-				# prevent all but whitelisted variables from being able
-				# to leak into the environment, so a variable can be unset
-				# and it will remain unset for all phases (bug #189417).
-				if myvalue == env_d.get(x) or \
-					myvalue == os.environ.get(x):
-					continue
+				# Do not allow anything to leak into the ebuild
+				# environment unless it is explicitly whitelisted.
+				# This ensures that variables unset by the ebuild
+				# remain unset.
+				continue
 			mydict[x] = myvalue
 		if not mydict.has_key("HOME") and mydict.has_key("BUILD_PREFIX"):
 			writemsg("*** HOME not set. Setting to "+mydict["BUILD_PREFIX"]+"\n")
@@ -3719,7 +3730,14 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 				os.path.basename(MISC_SH_BINARY))
 			mycommand = " ".join([_shell_quote(misc_sh_binary),
 				"install_qa_check", "install_symlink_html_docs"])
-			qa_retval = spawn(mycommand, mysettings, debug=debug, logfile=logfile, **kwargs)
+			filter_calling_env_state = mysettings._filter_calling_env
+			if os.path.exists(os.path.join(mysettings["T"], "environment")):
+				mysettings._filter_calling_env = True
+			try:
+				qa_retval = spawn(mycommand, mysettings, debug=debug,
+					logfile=logfile, **kwargs)
+			finally:
+				mysettings._filter_calling_env = filter_calling_env_state
 			if qa_retval:
 				writemsg("!!! install_qa_check failed; exiting.\n",
 					noiselevel=-1)
