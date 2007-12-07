@@ -6924,45 +6924,45 @@ def emerge_main():
 		# world file, the depgraph performs set expansion later. It will get
 		# confused about where the atoms came from if it's not allowed to
 		# expand them itself.
-		if myaction not in (None,):
-			newargs = []
-			for a in myfiles:
-				if a in ("system", "world"):
-					newargs.append(SETPREFIX+a)
+		do_not_expand = (None, )
+		newargs = []
+		for a in myfiles:
+			if a in ("system", "world"):
+				newargs.append(SETPREFIX+a)
+			else:
+				newargs.append(a)
+		myfiles = newargs
+		del newargs
+		newargs = []
+		for a in myfiles:
+			if a.startswith(SETPREFIX):
+				s = a[len(SETPREFIX):]
+				if s not in sets:
+					print "emerge: there are no sets to satisfy %s." % \
+						colorize("INFORM", s)
+					return 1
+				if myaction in unmerge_actions and \
+						not sets[s].supportsOperation("unmerge"):
+					sys.stderr.write("emerge: the given set %s does " + \
+						"not support unmerge operations\n" % s)
+					return 1
+				if not setconfig.getSetAtoms(s):
+					print "emerge: '%s' is an empty set" % s
+				elif myaction not in do_not_expand:
+					newargs.extend(setconfig.getSetAtoms(s))
 				else:
-					newargs.append(a)
-			myfiles = newargs
-			del newargs
-			newargs = []
-			for a in myfiles:
-				if a.startswith(SETPREFIX):
-					s = a[len(SETPREFIX):]
-					if s not in sets:
-						print "emerge: there are no sets to satisfy %s." % \
-							colorize("INFORM", s)
-						return 1
-					if myaction in unmerge_actions and \
-							not sets[s].supportsOperation("unmerge"):
-						sys.stderr.write("emerge: the given set %s does " + \
-							"not support unmerge operations\n" % s)
-						return 1
-					if not setconfig.getSetAtoms(s):
-						print "emerge: '%s' is an empty set" % s
-					elif myaction != None:
-						newargs.extend(setconfig.getSetAtoms(s))
-					else:
-						newargs.append(SETPREFIX+s)
-					for e in sets[s].errors:
-						print e
-				else:
-					newargs.append(a)
-			myfiles = newargs
-			del newargs
-			# Need to handle empty sets specially, otherwise emerge will react 
-			# with the help message for empty argument lists
-			if oldargs and not myfiles:
-				print "emerge: no targets left after set expansion"
-				return 0
+					newargs.append(SETPREFIX+s)
+				for e in sets[s].errors:
+					print e
+			else:
+				newargs.append(a)
+		myfiles = newargs
+		del newargs
+		# Need to handle empty sets specially, otherwise emerge will react 
+		# with the help message for empty argument lists
+		if oldargs and not myfiles:
+			print "emerge: no targets left after set expansion"
+			return 0
 
 	if ("--tree" in myopts) and ("--columns" in myopts):
 		print "emerge: can't specify both of \"--tree\" and \"--columns\"."
