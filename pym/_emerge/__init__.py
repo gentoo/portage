@@ -6911,15 +6911,6 @@ def emerge_main():
 		sets = setconfig.getSets()
 		# emerge relies on the existance of sets with names "world" and "system"
 		required_sets = ("world", "system")
-		if "system" not in sets:
-			# bootstrap.sh expects that this set always exists
-			from portage.sets.profiles import PackagesSystemSet
-			sets["system"] = PackagesSystemSet(root_config.settings.profiles)
-		if "world" not in sets:
-			from portage.sets.files import WorldSet
-			sets["world"] = WorldSet(root_config.root)
-		setconfig.psets.update(sets)
-		root_config.sets = sets
 		for s in required_sets:
 			if s not in sets:
 				msg = ["emerge: incomplete set configuration, " + \
