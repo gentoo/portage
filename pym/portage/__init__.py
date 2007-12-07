@@ -864,7 +864,7 @@ class config(object):
 	# constructor. Also, preserve XARGS since it is set by the
 	# portage.data module.
 	_environ_whitelist += [
-		"BUILD_PREFIX", "D",
+		"BASH_ENV", "BUILD_PREFIX", "D",
 		"DISTDIR", "DOC_SYMLINKS_DIR", "EBUILD_EXIT_STATUS_FILE",
 		"EBUILD", "EBUILD_PHASE", "ECLASSDIR", "ECLASS_DEPTH", "EMERGE_FROM",
 		"FEATURES", "FILESDIR", "HOME", "PATH",
