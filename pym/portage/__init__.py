@@ -2583,6 +2583,11 @@ class config(object):
 			if filter_calling_env and \
 				x not in environ_whitelist and \
 				not self._environ_whitelist_re.match(x):
+				# TODO: Complete the whitelist so that comparisons with
+				# environment variables are not necessary. We want to
+				# prevent all but whitelisted variables from being able
+				# to leak into the environment, so a variable can be unset
+				# and it will remain unset for all phases (bug #189417).
 				if myvalue == env_d.get(x) or \
 					myvalue == os.environ.get(x):
 					continue
