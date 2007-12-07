@@ -860,9 +860,14 @@ class config(object):
 
 	_environ_whitelist = []
 
-	# Preserve backupenv values that are initialized in the config
-	# constructor. Also, preserve XARGS since it is set by the
-	# portage.data module.
+	# Whitelisted variables are always allowed to enter the ebuild
+	# environment. Generally, this only includes special portage
+	# variables. Ebuilds can unset variables that are not whitelisted
+	# and rely on them remaining unset for future phases, without them
+	# leaking back in from various locations (bug #189417). It's very
+	# important to set our special BASH_ENV variable in the ebuild
+	# environment in order to prevent sandbox from sourcing /etc/profile
+	# in it's bashrc (causing major leakage).
 	_environ_whitelist += [
 		"BASH_ENV", "BUILD_PREFIX", "D",
 		"DISTDIR", "DOC_SYMLINKS_DIR", "EBUILD_EXIT_STATUS_FILE",
