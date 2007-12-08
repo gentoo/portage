@@ -3735,6 +3735,8 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 				os.path.basename(MISC_SH_BINARY))
 			mycommand = " ".join([_shell_quote(misc_sh_binary),
 				"install_qa_check", "install_symlink_html_docs"])
+			_doebuild_exit_status_unlink(
+				mysettings.get("EBUILD_EXIT_STATUS_FILE"))
 			filter_calling_env_state = mysettings._filter_calling_env
 			if os.path.exists(os.path.join(mysettings["T"], "environment")):
 				mysettings._filter_calling_env = True
@@ -3743,7 +3745,14 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 					logfile=logfile, **kwargs)
 			finally:
 				mysettings._filter_calling_env = filter_calling_env_state
-			if qa_retval:
+			msg = _doebuild_exit_status_check(mydo, mysettings)
+			if msg:
+				qa_retval = 1
+				from textwrap import wrap
+				from portage.elog.messages import eerror
+				for l in wrap(msg, 72):
+					eerror(l, phase=mydo, key=mysettings.mycpv)
+			if qa_retval != os.EX_OK:
 				writemsg("!!! install_qa_check failed; exiting.\n",
 					noiselevel=-1)
 			return qa_retval
