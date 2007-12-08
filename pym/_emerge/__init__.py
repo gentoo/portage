@@ -3593,11 +3593,7 @@ class depgraph(object):
 						if repo_name_prev:
 							repo_path_prev = portdb.getRepositoryPath(
 								repo_name_prev)
-						# To avoid spam during the transition period, don't
-						# show ? if the installed package is missing a
-						# repository label.
-						if not repo_path_prev or \
-							repo_path_prev == repo_path_real:
+						if repo_path_prev == repo_path_real:
 							repoadd = repo_display.repoStr(repo_path_real)
 						else:
 							repoadd = "%s=>%s" % (
@@ -6987,13 +6983,23 @@ def emerge_main():
 	if myaction in ("clean", "config", "depclean", "info", "prune", "unmerge", None):
 		root_config = trees[settings["ROOT"]]["root_config"]
 		setconfig = root_config.setconfig
-		sets = root_config.sets
+		sets = setconfig.getSets()
 		# emerge relies on the existance of sets with names "world" and "system"
-		for s in ("world", "system"):
+		required_sets = ("world", "system")
+		for s in required_sets:
 			if s not in sets:
-				print "emerge: incomplete set configuration, no \"%s\" set defined" % s
-				print "        sets defined: %s" % ", ".join(sets)
+				msg = ["emerge: incomplete set configuration, " + \
+					"no \"%s\" set defined" % s]
+				msg.append("        sets defined: %s" % ", ".join(sets))
+				for line in msg:
+					sys.stderr.write(line + "\n")
 				return 1
+		unmerge_actions = ("unmerge", "prune", "clean", "depclean")
+		# In order to know exactly which atoms/sets should be added to the
+		# world file, the depgraph performs set expansion later. It will get
+		# confused about where the atoms came from if it's not allowed to
+		# expand them itself.
+		do_not_expand = (None, )
 		newargs = []
 		for a in myfiles:
 			if a in ("system", "world"):
@@ -7010,13 +7016,14 @@ def emerge_main():
 					print "emerge: there are no sets to satisfy %s." % \
 						colorize("INFORM", s)
 					return 1
-				if myaction in ["unmerge", "prune", "clean", "depclean"] and \
+				if myaction in unmerge_actions and \
 						not sets[s].supportsOperation("unmerge"):
-					print "emerge: the given set %s does not support unmerge operations" % s
+					sys.stderr.write("emerge: the given set %s does " + \
+						"not support unmerge operations\n" % s)
 					return 1
 				if not setconfig.getSetAtoms(s):
 					print "emerge: '%s' is an empty set" % s
-				elif myaction != None:
+				elif myaction not in do_not_expand:
 					newargs.extend(setconfig.getSetAtoms(s))
 				else:
 					newargs.append(SETPREFIX+s)

@@ -61,10 +61,9 @@ get_date_part() {
 	fi
 }
 
-get_utc_from_string() {
+get_utc_second_from_string() {
 	local s="$1"
-
-	seconds=$(date -d "${s:0:4}-${s:4:2}-${s:6:2}" -u +"%s")
+	date -d "${s:0:4}-${s:4:2}-${s:6:2}" -u +"%s"
 }
 
 get_portage_timestamp() {
@@ -241,14 +240,14 @@ do_snapshot() {
 					have_files=0
 				fi
 			else
-				utc_date=$(get_utc_from_string "${date}")
+				local utc_seconds=$(get_utc_second_from_string "${date}")
 
 				#
 				# Check that this snapshot
 				# is what it claims to be...
 				#
-				if [ ${snapshot_timestamp} -lt ${seconds} ] || \
-					[ ${snapshot_timestamp} -gt $((${seconds}+ 2*86400)) ]; then
+				if [ ${snapshot_timestamp} -lt ${utc_seconds} ] || \
+					[ ${snapshot_timestamp} -gt $((${utc_seconds}+ 2*86400)) ]; then
 
 					echo "Warning: Snapshot timestamp is not in acceptable period."
 					have_files=0
