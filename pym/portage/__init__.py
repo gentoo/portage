@@ -891,7 +891,8 @@ class config(object):
 		"ROOT", "ROOTPATH", "STARTDIR", "T", "TMP", "TMPDIR",
 		"USE_EXPAND", "USE_ORDER", "WORKDIR",
 		"XARGS",
-		"BPREFIX", "DEFAULT_PATH", "ED", "EROOT", "EPREFIX",
+		"BPREFIX", "DEFAULT_PATH", "ED", "EPREFIX", "EROOT",
+		"PORTAGE_GROUP", "PORTAGE_USER",
 	]
 
 	_environ_whitelist += [
