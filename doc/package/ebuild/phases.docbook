@@ -1,0 +1,43 @@
+<sect1 id='package-ebuild-phases'>
+	<title>Ebuild Phases</title>
+	<para>
+	Ebuild execution is divided into a series of phases. In order
+	to implement a phase, an ebuild defines a function to serve as
+	an entry point for execution of that phase.
+	This design is similar to the template method pattern that
+	is commonly used in object oriented programming languages. An ebuild
+	can inherit or override a template method from an eclass.
+	</para>
+	<para>
+	The function names for the ebuild phases, listed in order of execution:
+	<itemizedlist>
+	<listitem>
+		pkg_setup
+	</listitem>
+	<listitem>
+		src_unpack
+	</listitem>
+	<listitem>
+		src_compile
+	</listitem>
+	<listitem>
+		src_test
+	</listitem>
+	<listitem>
+		src_install
+	</listitem>
+	<listitem>
+		pkg_preinst
+	</listitem>
+	<listitem>
+		pkg_postinst
+	</listitem>
+	<listitem>
+		pkg_prerm
+	</listitem>
+	<listitem>
+		pkg_postrm
+	</listitem>
+	</itemizedlist>
+	</para>
+</sect1>

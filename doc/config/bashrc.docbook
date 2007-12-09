@@ -1,0 +1,22 @@
+<chapter id='config-bashrc'>
+	<title>Bashrc Configuration</title>
+	<sect1 id='config-bashrc-locations'>
+		<title>bashrc locations</title>
+		<para>
+		If a bashrc file is located at <filename>/etc/portage/bashrc</filename>
+		then it will be sourced before an ebuild is executed.
+		</para>
+	</sect1>
+	<sect1 id='config-bashrc-ebuild-phase-hooks'>
+		<title>Ebuild Phase Hooks</title>
+		<para>
+		A phase hook function name begins with a pre_ or post_
+		prefix to indicate that it will be called before or after
+		one of the <link linkend='package-ebuild-phases'>ebuild phases</link>.
+		The prefix is followed by the name of the ebuild function that the hook
+		will be associated with. For example, a hook named pre_src_compile
+		will be called before src_compile, and a hook named post_src_compile
+		will be called after src_compile.
+		</para>
+	</sect1>
+</chapter>
