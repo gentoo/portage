@@ -1,3 +1,5 @@
+<part id='qa'>
+<title>Quality Assurance</title>
 <chapter id='qa-notices'>
  <title>QA Notices</title>
  <para>
@@ -359,3 +361,4 @@
   </para>
  </sect1>
 </chapter>
+</part>
