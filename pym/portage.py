@@ -1010,7 +1010,9 @@ class config:
 		"FEATURES", "FILESDIR", "HOME", "PATH",
 		"PKGUSE", "PKG_LOGDIR", "PKG_TMPDIR",
 		"PORTAGE_ACTUAL_DISTDIR", "PORTAGE_ARCHLIST",
-		"PORTAGE_BASHRC", "PORTAGE_BINPKG_TMPFILE", "PORTAGE_BIN_PATH",
+		"PORTAGE_BASHRC",
+		"PORTAGE_BINPKG_FILE", "PORTAGE_BINPKG_TMPFILE",
+		"PORTAGE_BIN_PATH",
 		"PORTAGE_BUILDDIR", "PORTAGE_COLORMAP",
 		"PORTAGE_CONFIGROOT", "PORTAGE_DEBUG", "PORTAGE_DEPCACHEDIR",
 		"PORTAGE_GID", "PORTAGE_INST_GID", "PORTAGE_INST_UID",
@@ -9450,6 +9452,10 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 		fp.write(str(portage_checksum.perform_md5(mytbz2))+"\n")
 		fp.close()
 
+		# This gives bashrc users an opportunity to do various things
+		# such as remove binary packages after they're installed.
+		mysettings["PORTAGE_BINPKG_FILE"] = mytbz2
+		mysettings.backup_changes("PORTAGE_BINPKG_FILE")
 		debug = mysettings.get("PORTAGE_DEBUG", "") == "1"
 
 		# Eventually we'd like to pass in the saved ebuild env here.
@@ -9476,6 +9482,7 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 		did_merge_phase = True
 		return retval
 	finally:
+		mysettings.pop("PORTAGE_BINPKG_FILE", None)
 		if tbz2_lock:
 			portage_locks.unlockfile(tbz2_lock)
 		if builddir_lock:
