@@ -294,6 +294,8 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 	try:
 		f=open(mycfg,'r')
 	except IOError, e:
+		if e.errno == PermissionDenied.errno:
+			raise PermissionDenied(mycfg)
 		if e.errno != errno.ENOENT:
 			raise
 		return None
@@ -324,9 +326,9 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 				#invalid token
 				#lex.error_leader(self.filename,lex.lineno)
 				if not tolerant:
-					writemsg("!!! Invalid token (not \"=\") "+str(equ)+"\n",
-						noiselevel=-1)
-					raise Exception("ParseError: Invalid token (not '='): "+str(mycfg)+": line "+str(lex.lineno))
+					raise Exception("ParseError: Invalid token " + \
+						"'%s' (not '='): %s: line %s" % \
+						(equ, mycfg, lex.lineno))
 				else:
 					return mykeys
 			val=lex.get_token()
