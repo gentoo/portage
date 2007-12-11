@@ -1,0 +1,4 @@
+<chapter id='package-ebuild'>
+<title>Ebuild</title>
+&package_ebuild_phases;
+</chapter>

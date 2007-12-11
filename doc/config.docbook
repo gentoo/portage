@@ -1,0 +1,4 @@
+<part id='config'>
+<title>Configuration</title>
+&config_bashrc;
+</part>
