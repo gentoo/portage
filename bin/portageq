@@ -411,6 +411,9 @@ def main():
 	except portage_exception.PermissionDenied, e:
 		sys.stderr.write("Permission denied: '%s'\n" % str(e))
 		sys.exit(e.errno)
+	except portage_exception.ParseError, e:
+		sys.stderr.write("%s\n" % str(e))
+		sys.exit(1)
 	except ValueError, e:
 		if not e.args or \
 			not hasattr(e.args[0], "__len__") or \

@@ -6635,10 +6635,13 @@ def emerge_main():
 		return retval
 
 if __name__ == "__main__":
-	from portage_exception import PermissionDenied
+	from portage_exception import ParseError, PermissionDenied
 	try:
 		retval = emerge_main()
 	except PermissionDenied, e:
 		sys.stderr.write("Permission denied: '%s'\n" % str(e))
 		sys.exit(e.errno)
+	except ParseError, e:
+		sys.stderr.write("%s\n" % str(e))
+		sys.exit(1)
 	sys.exit(retval)

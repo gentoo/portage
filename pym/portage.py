@@ -1346,74 +1346,36 @@ class config:
 
 			# make.globals should not be relative to config_root
 			# because it only contains constants.
-			try:
-				self.mygcfg   = getconfig(os.path.join("/etc", "make.globals"))
+			self.mygcfg   = getconfig(os.path.join("/etc", "make.globals"))
 
-				if self.mygcfg is None:
-					self.mygcfg = {}
-			except SystemExit, e:
-				raise
-			except Exception, e:
-				if debug:
-					raise
-				writemsg("!!! %s\n" % (e), noiselevel=-1)
-				if not isinstance(e, EnvironmentError):
-					writemsg("!!! Incorrect multiline literals can cause " + \
-						"this. Do not use them.\n", noiselevel=-1)
-				sys.exit(1)
+			if self.mygcfg is None:
+				self.mygcfg = {}
+
 			self.configlist.append(self.mygcfg)
 			self.configdict["globals"]=self.configlist[-1]
 
 			self.make_defaults_use = []
 			self.mygcfg = {}
 			if self.profiles:
-				try:
-					mygcfg_dlists = [getconfig(os.path.join(x, "make.defaults")) for x in self.profiles]
-					for cfg in mygcfg_dlists:
-						if cfg:
-							self.make_defaults_use.append(cfg.get("USE", ""))
-						else:
-							self.make_defaults_use.append("")
-					self.mygcfg   = stack_dicts(mygcfg_dlists, incrementals=portage_const.INCREMENTALS, ignore_none=1)
-					#self.mygcfg = grab_stacked("make.defaults", self.profiles, getconfig)
-					if self.mygcfg is None:
-						self.mygcfg = {}
-				except SystemExit, e:
-					raise
-				except Exception, e:
-					if debug:
-						raise
-					writemsg("!!! %s\n" % (e), noiselevel=-1)
-					if not isinstance(e, EnvironmentError):
-						writemsg("!!! 'rm -Rf /usr/portage/profiles; " + \
-							"emerge sync' may fix this. If it does\n",
-							noiselevel=-1)
-						writemsg("!!! not then please report this to " + \
-							"bugs.gentoo.org and, if possible, a dev\n",
-								noiselevel=-1)
-						writemsg("!!! on #gentoo (irc.freenode.org)\n",
-							noiselevel=-1)
-					sys.exit(1)
+				mygcfg_dlists = [getconfig(os.path.join(x, "make.defaults")) \
+					for x in self.profiles]
+				for cfg in mygcfg_dlists:
+					if cfg:
+						self.make_defaults_use.append(cfg.get("USE", ""))
+					else:
+						self.make_defaults_use.append("")
+				self.mygcfg = stack_dicts(mygcfg_dlists,
+					incrementals=portage_const.INCREMENTALS, ignore_none=1)
+				if self.mygcfg is None:
+					self.mygcfg = {}
 			self.configlist.append(self.mygcfg)
 			self.configdict["defaults"]=self.configlist[-1]
 
-			try:
-				self.mygcfg = getconfig(
-					os.path.join(config_root, MAKE_CONF_FILE.lstrip(os.path.sep)),
-					allow_sourcing=True)
-				if self.mygcfg is None:
-					self.mygcfg = {}
-			except SystemExit, e:
-				raise
-			except Exception, e:
-				if debug:
-					raise
-				writemsg("!!! %s\n" % (e), noiselevel=-1)
-				if not isinstance(e, EnvironmentError):
-					writemsg("!!! Incorrect multiline literals can cause " + \
-						"this. Do not use them.\n", noiselevel=-1)
-				sys.exit(1)
-
+			self.mygcfg = getconfig(
+				os.path.join(config_root, MAKE_CONF_FILE.lstrip(os.path.sep)),
+				allow_sourcing=True)
+			if self.mygcfg is None:
+				self.mygcfg = {}
 
 			# Don't allow the user to override certain variables in make.conf
 			profile_only_variables = self.configdict["defaults"].get(
