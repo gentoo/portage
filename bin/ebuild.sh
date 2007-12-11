@@ -1355,12 +1355,17 @@ source_all_bashrcs() {
 	[ ! -z "${OCXX}" ] && export CXX="${OCXX}"
 }
 
+# Hardcoded bash lists are needed for backward compatibility with
+# <portage-2.1.4 since they assume that a newly installed version
+# of ebuild.sh will work for pkg_postinst, pkg_prerm, and pkg_postrm
+# when portage is upgrading itself.
+
 READONLY_EBUILD_METADATA="DEPEND DESCRIPTION
 	EAPI HOMEPAGE INHERITED IUSE KEYWORDS LICENSE
 	PDEPEND PROVIDE RDEPEND RESTRICT SLOT SRC_URI"
 
 READONLY_PORTAGE_VARS="D EBUILD EBUILD_PHASE \
-	EBUILD_SH_ARGS EMERGE_FROM FILESDIR \
+	EBUILD_SH_ARGS EMERGE_FROM FILESDIR PORTAGE_BINPKG_FILE \
 	PORTAGE_BIN_PATH PORTAGE_PYM_PATH PORTAGE_MUTABLE_FILTERED_VARS \
 	PORTAGE_SAVED_READONLY_VARS PORTAGE_TMPDIR T WORKDIR"
 
