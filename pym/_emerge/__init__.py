@@ -7188,7 +7188,3 @@ def emerge_main():
 		if "--pretend" in myopts:
 			display_news_notification(trees)
 		return retval
-
-if __name__ == "__main__":
-	retval = emerge_main()
-	sys.exit(retval)
