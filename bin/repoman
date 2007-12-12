@@ -809,6 +809,20 @@ if isCvs:
 	mynew = cvstree.findnew(mycvstree, recursive=1, basedir="./")
 	new_ebuilds.update(x for x in mynew if x.endswith(".ebuild"))
 	del mycvstree, mynew
+	if "commit" == options.mode and \
+		"RMD160" not in portage.checksum.hashorigin_map:
+		from portage.util import grablines
+		repo_lines = grablines("./CVS/Repository")
+		if repo_lines and repo_lines[0].startswith("gentoo-x86/"):
+			msg = "Please install " \
+			"pycrypto or enable python's ssl USE flag in order " \
+			"to enable RMD160 hash support. See bug #198398 for " \
+			"more information."
+			prefix = red(" * ")
+			from textwrap import wrap
+			for line in wrap(msg, 70):
+				print prefix + line
+			sys.exit(1)
 
 dofail = 0
 arch_caches={}
