@@ -813,7 +813,8 @@ if isCvs:
 		"RMD160" not in portage.checksum.hashorigin_map:
 		from portage.util import grablines
 		repo_lines = grablines("./CVS/Repository")
-		if repo_lines and repo_lines[0].startswith("gentoo-x86/"):
+		if repo_lines and \
+			"gentoo-x86" == repo_lines[0].strip().split(os.path.sep)[0]:
 			msg = "Please install " \
 			"pycrypto or enable python's ssl USE flag in order " \
 			"to enable RMD160 hash support. See bug #198398 for " \
