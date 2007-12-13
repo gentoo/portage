@@ -6538,7 +6538,7 @@ def action_build(settings, trees, mtimedb,
 					"with another package; the two packages cannot " + \
 					"be installed on the same system together. " + \
 					"Please use 'emerge --pretend' to determine blockers."
-					prefix = red(" * ")
+					prefix = bad(" * ")
 					from textwrap import wrap
 					for line in wrap(msg, 70):
 						print prefix + line

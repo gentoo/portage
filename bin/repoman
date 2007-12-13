@@ -429,7 +429,7 @@ if isCvs and \
 		"pycrypto or enable python's ssl USE flag in order " \
 		"to enable RMD160 hash support. See bug #198398 for " \
 		"more information."
-		prefix = red(" * ")
+		prefix = bad(" * ")
 		from textwrap import wrap
 		for line in wrap(msg, 70):
 			print prefix + line
