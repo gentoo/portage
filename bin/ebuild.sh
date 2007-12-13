@@ -1425,7 +1425,7 @@ filter_readonly_variables() {
 	# listed in READONLY_EBUILD_METADATA, since having any readonly attributes
 	# persisting in the saved environment can be inconvenient when it
 	# eventually needs to be reloaded.
-	egrep -v -e "${var_grep}" | sed \
+	"${PORTAGE_BIN_PATH}"/filter-bash-environment.py "${var_grep}" | sed \
 		-e 's:^declare[[:space:]]\+-r[[:space:]]\+:declare :' \
 		-e 's:^declare[[:space:]]\+-\([[:alnum:]]*\)r\([[:alnum:]]*\)[[:space:]]\+:declare -\1\2 :'
 }
