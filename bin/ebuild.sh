@@ -1460,7 +1460,7 @@ preprocess_ebuild_env() {
 		export SANDBOX_ON=1
 		source "${T}/environment" || exit $?
 		# We have to temporarily disable sandbox since the
-		# SANDBOX_{DENY,READ,PREDICT,_WRITE} values we've just loaded
+		# SANDBOX_{DENY,READ,PREDICT,WRITE} values we've just loaded
 		# may be unusable (triggering in spurious sandbox violations)
 		# until we've merged them with our current values.
 		export SANDBOX_ON=0
@@ -1607,7 +1607,7 @@ elif ! hasq ${EBUILD_PHASE} depend && [ -f "${T}"/environment ] ; then
 	source "${T}"/environment || \
 		die "error sourcing environment"
 	# We have to temporarily disable sandbox since the
-	# SANDBOX_{DENY,READ,PREDICT,_WRITE} values we've just loaded
+	# SANDBOX_{DENY,READ,PREDICT,WRITE} values we've just loaded
 	# may be unusable (triggering in spurious sandbox violations)
 	# until we've merged them with our current values.
 	export SANDBOX_ON=0
