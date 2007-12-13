@@ -313,15 +313,16 @@ unpack() {
 		y=${x%.*}
 		y=${y##*.}
 
-		myfail="${x} does not exist"
-		if [ "${x:0:2}" = "./" ] ; then
+		if [[ ${x} == "./"* ]] ; then
 			srcdir=""
+		elif [[ ${x} == ${DISTDIR%/}/* ]] ; then
+			die "Arguments to unpack() cannot begin with \${DISTDIR}."
+		elif [[ ${x} == "/"* ]] ; then
+			die "Arguments to unpack() cannot be absolute"
 		else
 			srcdir="${DISTDIR}/"
 		fi
-		[[ ${x} == ${DISTDIR}* ]] && \
-			die "Arguments to unpack() should not begin with \${DISTDIR}."
-		[ ! -s "${srcdir}${x}" ] && die "$myfail"
+		[[ ! -s ${srcdir}${x} ]] && die "${x} does not exist"
 
 		myfail="failure unpacking ${x}"
 		case "${x##*.}" in
