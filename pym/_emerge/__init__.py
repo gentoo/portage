@@ -2795,7 +2795,8 @@ class depgraph(object):
 
 	def _accept_collisions(self):
 		acceptable = False
-		for x in ("--nodeps", "--pretend", "--fetchonly", "--fetch-all-uri"):
+		for x in ("--buildpkgonly", "--fetchonly",
+			"--fetch-all-uri", "--nodeps", "--pretend"):
 			if x in self.myopts:
 				acceptable = True
 				break
@@ -3850,7 +3851,7 @@ class depgraph(object):
 	def saveNomergeFavorites(self):
 		"""Find atoms in favorites that are not in the mergelist and add them
 		to the world file if necessary."""
-		for x in ("--fetchonly", "--fetch-all-uri",
+		for x in ("--buildpkgonly", "--fetchonly", "--fetch-all-uri",
 			"--oneshot", "--onlydeps", "--pretend"):
 			if x in self.myopts:
 				return
