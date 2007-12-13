@@ -1387,6 +1387,14 @@ PORTAGE_MUTABLE_FILTERED_VARS="AA HOSTNAME"
 # is only desired in certain cases, such as during preprocessing or when
 # saving environment.bz2 for a binary or installed package.
 #
+# --filter-features causes the special FEATURES variable to be filtered.
+# Generally, we want it to persist between phases since the user might
+# want to modify it via bashrc to enable things like splitdebug and
+# installsources for specific packages. They should be able to modify it
+# in pre_pkg_setup() and have it persist all the way through the install
+# phase. However, if FEATURES exist inside environment.bz2 then they
+# should be overridden by current settings.
+#
 # ---allow-extra-vars causes some extra vars to be allowd through, such
 # as ${PORTAGE_SAVED_READONLY_VARS} and ${PORTAGE_MUTABLE_FILTERED_VARS}.
 #
@@ -1407,6 +1415,9 @@ filter_readonly_variables() {
 		filtered_vars="${filtered_vars} SANDBOX_[_[:alnum:]]*"
 	else
 		filtered_vars="${filtered_vars} ${filtered_sandbox_vars}"
+	fi
+	if hasq --filter-features $* ; then
+		filtered_vars="${filtered_vars} FEATURES"
 	fi
 	if ! hasq --allow-extra-vars $* ; then
 		filtered_vars="
@@ -1443,9 +1454,9 @@ preprocess_ebuild_env() {
 	if [ -f "${T}/environment.raw" ] ; then
 		# This is a signal from the python side, indicating that the
 		# environment may contain stale SANDBOX_{DENY,PREDICT,READ,WRITE}
-		# variables that should be filtered out. Between phases, these
-		# variables are normally preserved.
-		filter_opts="--filter-sandbox ${filter_opts}"
+		# and FEATURES variables that should be filtered out. Between
+		# phases, these variables are normally preserved.
+		filter_opts="--filter-sandbox --filter-features ${filter_opts}"
 	fi
 	filter_readonly_variables ${filter_opts} < "${T}"/environment \
 		> "${T}"/environment.filtered || return $?
