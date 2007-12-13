@@ -1400,7 +1400,7 @@ filter_readonly_variables() {
 		PIPESTATUS PPID SHELLOPTS UID"
 	local filtered_sandbox_vars="SANDBOX_ACTIVE SANDBOX_BASHRC
 		SANDBOX_DEBUG_LOG SANDBOX_DISABLED SANDBOX_LIB
-		SANDBOX_LOG"
+		SANDBOX_LOG SANDBOX_ON"
 	filtered_vars="${readonly_bash_vars} ${READONLY_PORTAGE_VARS}
 		BASH_[_[:alnum:]]*"
 	if hasq --filter-sandbox $* ; then
@@ -1457,7 +1457,13 @@ preprocess_ebuild_env() {
 	# called. Any variables that need to be relied upon should already be
 	# filtered out above.
 	(
+		export SANDBOX_ON=1
 		source "${T}/environment" || exit $?
+		# We have to temporarily disable sandbox since the
+		# SANDBOX_{DENY,READ,PREDICT,WRITE} values we've just loaded
+		# may be unusable (triggering in spurious sandbox violations)
+		# until we've merged them with our current values.
+		export SANDBOX_ON=0
 
 		# It's remotely possible that save_ebuild_env() has been overridden
 		# by the above source command. To protect ourselves, we override it
@@ -1596,8 +1602,15 @@ elif ! hasq ${EBUILD_PHASE} depend && [ -f "${T}"/environment ] ; then
 	for x in SANDBOX_DENY SANDBOX_READ SANDBOX_PREDICT SANDBOX_WRITE ; do
 		eval PORTAGE_${x}=\${!x}
 	done
+	PORTAGE_SANDBOX_ON=${SANDBOX_ON}
+	export SANDBOX_ON=1
 	source "${T}"/environment || \
 		die "error sourcing environment"
+	# We have to temporarily disable sandbox since the
+	# SANDBOX_{DENY,READ,PREDICT,WRITE} values we've just loaded
+	# may be unusable (triggering in spurious sandbox violations)
+	# until we've merged them with our current values.
+	export SANDBOX_ON=0
 	for x in SANDBOX_DENY SANDBOX_PREDICT SANDBOX_READ SANDBOX_WRITE ; do
 		eval y=\${PORTAGE_${x}}
 		if [ "${y}" != "${!x}" ] ; then
@@ -1607,6 +1620,8 @@ elif ! hasq ${EBUILD_PHASE} depend && [ -f "${T}"/environment ] ; then
 		unset PORTAGE_${x}
 	done
 	unset x y
+	export SANDBOX_ON=${PORTAGE_SANDBOX_ON}
+	unset PORTAGE_SANDBOX_ON
 	source_all_bashrcs
 else
 
