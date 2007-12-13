@@ -4319,7 +4319,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		mycpv = mysettings["CATEGORY"] + "/" + mysettings["PF"]
 		dep_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
 		misc_keys = ["LICENSE", "PROVIDE", "RESTRICT", "SRC_URI"]
-		all_keys = dep_keys + misc_keys
+		other_keys = ["SLOT"]
+		all_keys = dep_keys + misc_keys + other_keys
 		metadata = dict(izip(all_keys, mydbapi.aux_get(mycpv, all_keys)))
 		class FakeTree(object):
 			def __init__(self, mydb):
@@ -4347,6 +4348,10 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				if mydo not in invalid_dep_exempt_phases:
 					return 1
 			del k
+		if not metadata["SLOT"]:
+			writemsg("SLOT is undefined\n", noiselevel=-1)
+			if mydo not in invalid_dep_exempt_phases:
+				return 1
 		del mycpv, dep_keys, metadata, misc_keys, FakeTree, dep_check_trees
 
 		if "PORTAGE_TMPDIR" not in mysettings or \
