@@ -7267,6 +7267,8 @@ class portdbapi(dbapi):
 			except KeyError:
 				# masked by corruption
 				continue
+			if not metadata["SLOT"]:
+				continue
 			if getMaskAtom(cpv, metadata):
 				continue
 			if getProfileMaskAtom(cpv, metadata):

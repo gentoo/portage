@@ -1902,10 +1902,12 @@ class depgraph:
 					usepkgonly = "--usepkgonly" in self.myopts
 					chost = pkgsettings["CHOST"]
 					myeb_pkg_matches = []
-					bindb_keys = ["CHOST","EAPI"]
+					bindb_keys = list(bindb._aux_cache_keys)
 					for pkg in bindb.match(x):
 						metadata = dict(izip(bindb_keys,
 							bindb.aux_get(pkg, bindb_keys)))
+						if not metadata["SLOT"]:
+							continue
 						if chost != metadata["CHOST"]:
 							continue
 						if not portage.eapi_is_supported(metadata["EAPI"]):
@@ -2014,9 +2016,18 @@ class depgraph:
 							print "\n!!! "+red("All ebuilds that could satisfy ")+green(xinfo)+red(" have been masked.")
 							print "!!! One of the following masked packages is required to complete your request:"
 							oldcomment = ""
+							db_keys = list(portdb._aux_cache_keys)
 							for p in alleb:
+								metadata = None
 								mreasons = portage.getmaskingstatus(p,
 									settings=pkgsettings, portdb=portdb)
+								try:
+									metadata = dict(izip(db_keys,
+										portdb.aux_get(p, db_keys)))
+								except KeyError:
+									pass
+								if metadata and not metadata["SLOT"]:
+									mreasons.append("invalid: SLOT is undefined")
 								print "- "+p+" (masked by: "+", ".join(mreasons)+")"
 								comment, filename = portage.getmaskingreason(p,
 									settings=pkgsettings, portdb=portdb, return_location=True)
@@ -2024,13 +2035,7 @@ class depgraph:
 									print filename+":"
 									print comment
 									oldcomment = comment
-								try:
-									aux_keys = list(portdb._aux_cache_keys)
-									metadata = dict(izip(aux_keys,
-										portdb.aux_get(p, aux_keys)))
-								except KeyError:
-									pass
-								else:
+								if metadata:
 									if not portage.eapi_is_supported(
 										metadata["EAPI"]):
 										have_eapi_mask = True
@@ -2050,7 +2055,7 @@ class depgraph:
 							alleb = bindb.match(x)
 							if alleb:
 								chost = pkgsettings["CHOST"]
-								bindb_keys = ["CHOST","EAPI"]
+								bindb_keys = list(bindb._aux_cache_keys)
 								for p in alleb:
 									mreasons = []
 									metadata = dict(izip(bindb_keys,
@@ -2058,6 +2063,8 @@ class depgraph:
 									if chost != metadata["CHOST"]:
 										mreasons.append("CHOST: %s" % \
 											metadata["CHOST"])
+									if not metadata["SLOT"]:
+										mreasons.append("invalid: SLOT is undefined")
 									if not portage.eapi_is_supported(
 										metadata["EAPI"]):
 										have_eapi_mask = True
