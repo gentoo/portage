@@ -868,6 +868,8 @@ def visible(pkgsettings, cpv, metadata, built=False, installed=False):
 	@rtype: Boolean
 	@returns: True if the package is visible, False otherwise.
 	"""
+	if not metadata["SLOT"]:
+		return False
 	if built and not installed and \
 		metadata["CHOST"] != pkgsettings["CHOST"]:
 		return False
@@ -2204,6 +2206,8 @@ class depgraph(object):
 						metadata["CHOST"])
 				missing_licenses = []
 				if metadata:
+					if not metadata["SLOT"]:
+						mreasons.append("invalid: SLOT is undefined")
 					if not portage.eapi_is_supported(metadata["EAPI"]):
 						have_eapi_mask = True
 					try:
