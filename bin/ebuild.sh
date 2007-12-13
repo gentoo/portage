@@ -1426,7 +1426,7 @@ filter_readonly_variables() {
 	# persisting in the saved environment can be inconvenient when it
 	# eventually needs to be reloaded.
 	egrep -v -e "${var_grep}" | sed \
-		-e 's:^declare[[:space:]]\+-r[[:space:]]\+::' \
+		-e 's:^declare[[:space:]]\+-r[[:space:]]\+:declare :' \
 		-e 's:^declare[[:space:]]\+-\([[:alnum:]]*\)r\([[:alnum:]]*\)[[:space:]]\+:declare -\1\2 :'
 }
 
