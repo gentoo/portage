@@ -412,6 +412,24 @@ myreporoot=None
 if os.path.isdir("CVS"):
 	isCvs = True
 
+if isCvs and \
+	"commit" == options.mode and \
+	"RMD160" not in portage.checksum.hashorigin_map:
+	from portage_util import grablines
+	repo_lines = grablines("./CVS/Repository")
+	if repo_lines and \
+		"gentoo-x86" == repo_lines[0].strip().split(os.path.sep)[0]:
+		msg = "Please install " \
+		"pycrypto or enable python's ssl USE flag in order " \
+		"to enable RMD160 hash support. See bug #198398 for " \
+		"more information."
+		prefix = red(" * ")
+		from textwrap import wrap
+		for line in wrap(msg, 70):
+			print prefix + line
+		sys.exit(1)
+	del repo_lines
+
 if mymode == "commit" and \
 	not isCvs and \
 	"--pretend" not in myoptions:
