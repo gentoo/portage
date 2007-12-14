@@ -342,6 +342,77 @@ valid_restrict = frozenset(["binchecks", "bindist", "fetch", "mirror",
 # file.executable
 no_exec = frozenset(["Manifest","ChangeLog","metadata.xml"])
 
+def editor_is_executable(editor):
+	"""
+	Given an EDITOR string, validate that it refers to
+	an executable. This uses shlex.split() to split the
+	first component and do a PATH lookup if necessary.
+
+	@param editor: An EDITOR value from the environment.
+	@type: string
+	@rtype: bool
+	@returns: True if an executable is found, False otherwise.
+	"""
+	import shlex
+	editor_split = shlex.split(editor)
+	if not editor_split:
+		return False
+	filename = editor_split[0]
+	if not os.path.isabs(filename):
+		from portage.process import find_binary
+		return find_binary(filename) is not None
+	return os.access(filename, os.X_OK) and os.path.isfile(filename)
+
+def get_commit_message_with_editor(editor):
+	"""
+	Execute editor with a temporary file as it's argument
+	and return the file content afterwards.
+
+	@param editor: An EDITOR value from the environment
+	@type: string
+	@rtype: string or None
+	@returns: A string on success or None if an error occurs.
+	"""
+	from tempfile import mkstemp
+	fd, filename = mkstemp()
+	try:
+		os.write(fd, "\n# Please enter the commit message " + \
+			"for your changes.\n# (Comment lines starting " + \
+			"with '#' will not be included)\n")
+		os.close(fd)
+		retval = os.system(editor + " '%s'" % filename)
+		if not (os.WIFEXITED(retval) and os.WEXITSTATUS(retval) == os.EX_OK):
+			return None
+		try:
+			mylines = open(filename).readlines()
+		except OSError, e:
+			if e.errno != errno.ENOENT:
+				raise
+			del e
+			return None
+		return "".join(line for line in mylines if not line.startswith("#"))
+	finally:
+		try:
+			os.unlink(filename)
+		except OSError:
+			pass
+
+def get_commit_message_with_stdin():
+	"""
+	Read a commit message from the user and return it.
+
+	@rtype: string or None
+	@returns: A string on success or None if an error occurs.
+	"""
+	print "Please enter a commit message. Use Ctrl-d to finish or Ctrl-c to abort."
+	commitmessage = []
+	while True:
+		commitmessage.append(sys.stdin.readline())
+		if not commitmessage[-1]:
+			break
+	commitmessage = "".join(commitmessage)
+	return commitmessage
+
 def last(full=False):
 	"""Print the results of the last repoman run
 	Args:
@@ -1719,17 +1790,19 @@ else:
 				raise
 		# We've read the content so the file is no longer needed.
 		commitmessagefile = None
-	if not commitmessage:
-		print "Please enter a commit message. Use Ctrl-d to finish or Ctrl-c to abort."
-		commitmessage = []
+	if not commitmessage or not commitmessage.strip():
 		try:
-			while True:
-				commitmessage.append(sys.stdin.readline())
-				if not commitmessage[-1]:
-					break
+			editor = os.environ.get("EDITOR")
+			if editor and editor_is_executable(editor):
+				commitmessage = get_commit_message_with_editor(editor)
+			else:
+				commitmessage = get_commit_message_with_stdin()
 		except KeyboardInterrupt:
 			exithandler()
-		commitmessage = "".join(commitmessage)
+		if not commitmessage or not commitmessage.strip():
+			print "* no commit message?  aborting commit."
+			sys.exit(1)
+	commitmessage = commitmessage.rstrip()
 	portage_version = getattr(portage, "VERSION", None)
 	if portage_version is None:
 		sys.stderr.write("Failed to insert portage version in message!\n")
