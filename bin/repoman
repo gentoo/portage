@@ -1794,6 +1794,11 @@ else:
 		try:
 			editor = os.environ.get("EDITOR")
 			if editor and editor_is_executable(editor):
+				# Prompt the user before letting the editor
+				# take over the screen so there is an
+				# opportunity to review any QA warnings.
+				print "Press \"Enter\" to launch the editor for a commit message, or Ctrl-c to abort."
+				sys.stdin.readline()
 				commitmessage = get_commit_message_with_editor(editor)
 			else:
 				commitmessage = get_commit_message_with_stdin()
