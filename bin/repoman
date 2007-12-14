@@ -1720,12 +1720,16 @@ else:
 		# We've read the content so the file is no longer needed.
 		commitmessagefile = None
 	if not commitmessage:
-		print "Please enter a CVS commit message at the prompt:"
-		while not commitmessage:
-			try:
-				commitmessage=raw_input(green("> "))
-			except KeyboardInterrupt: 
-				exithandler()
+		print "Please enter a commit message. Use Ctrl-d to finish or Ctrl-c to abort."
+		commitmessage = []
+		try:
+			while True:
+				commitmessage.append(sys.stdin.readline())
+				if not commitmessage[-1]:
+					break
+		except KeyboardInterrupt:
+			exithandler()
+		commitmessage = "".join(commitmessage)
 	portage_version = getattr(portage, "VERSION", None)
 	if portage_version is None:
 		sys.stderr.write("Failed to insert portage version in message!\n")
