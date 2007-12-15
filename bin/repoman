@@ -9,6 +9,7 @@
 
 import codecs
 import errno
+import formatter
 import logging
 import optparse
 import os
@@ -30,6 +31,11 @@ try:
 	import cPickle as pickle
 except ImportError:
 	import pickle
+
+try:
+	import cStringIO as StringIO
+except ImportError:
+	import StringIO
 
 if not hasattr(__builtins__, "set"):
 	from sets import Set as set
@@ -363,13 +369,15 @@ def editor_is_executable(editor):
 		return find_binary(filename) is not None
 	return os.access(filename, os.X_OK) and os.path.isfile(filename)
 
-def get_commit_message_with_editor(editor):
+def get_commit_message_with_editor(editor, message=None):
 	"""
 	Execute editor with a temporary file as it's argument
 	and return the file content afterwards.
 
 	@param editor: An EDITOR value from the environment
 	@type: string
+	@param message: An iterable of lines to show in the editor.
+	@type: iterable
 	@rtype: string or None
 	@returns: A string on success or None if an error occurs.
 	"""
@@ -379,6 +387,10 @@ def get_commit_message_with_editor(editor):
 		os.write(fd, "\n# Please enter the commit message " + \
 			"for your changes.\n# (Comment lines starting " + \
 			"with '#' will not be included)\n")
+		if message:
+			os.write(fd, "#\n")
+			for line in message:
+				os.write(fd, "#" + line)
 		os.close(fd)
 		retval = os.system(editor + " '%s'" % filename)
 		if not (os.WIFEXITED(retval) and os.WEXITSTATUS(retval) == os.EX_OK):
@@ -412,6 +424,58 @@ def get_commit_message_with_stdin():
 			break
 	commitmessage = "".join(commitmessage)
 	return commitmessage
+
+class ConsoleStyleFile(object):
+	"""
+	A file-like object that behaves something like the
+	portage.output.colorize() function. Style identifiers
+	passed in via the new_styles() method will be used to
+	apply console codes to output.
+	"""
+	from portage.output import codes as _codes
+	def __init__(self, f):
+		self._file = f
+		self._styles = None
+		self.write_listener = None
+
+	def new_styles(self, styles):
+		self._styles = styles
+
+	def write(self, s):
+		if self._styles:
+			for style in self._styles:
+				self._file.write(self._codes[style])
+			self._file.write(s)
+			self._file.write(self._codes["reset"])
+		else:
+			self._file.write(s)
+		if self.write_listener:
+			self.write_listener.write(s)
+
+	def writelines(self, lines):
+		for s in lines:
+			self.write(s)
+
+	def flush(self):
+		self._file.flush()
+
+	def close(self):
+		self._file.close()
+
+class StyleWriter(formatter.DumbWriter):
+	"""
+	This is just a DumbWriter with a hook in the new_styles() method
+	that passes a styles tuple as a single argument to a callable
+	style_listener attribute.
+	"""
+	def __init__(self, **kwargs):
+		formatter.DumbWriter.__init__(self, **kwargs)
+		self.style_listener = None
+
+	def new_styles(self, styles):
+		formatter.DumbWriter.new_styles(self, styles)
+		if self.style_listener:
+			self.style_listener(styles)
 
 def last(full=False):
 	"""Print the results of the last repoman run
@@ -1610,6 +1674,19 @@ dofail=0
 dowarn=0
 #dofull will be set if we should print a "repoman full" informational message
 dofull=0
+
+# Save QA output so that it can be conveniently displayed
+# in $EDITOR while the user creates a commit message.
+# Otherwise, the user would not be able to see this output
+# once the editor has taken over the screen.
+qa_output = StringIO.StringIO()
+style_file = ConsoleStyleFile(sys.stdout)
+style_file.write_listener = qa_output
+console_writer = StyleWriter(file=style_file, maxcol=9999)
+console_writer.style_listener = style_file.new_styles
+
+f = formatter.AbstractFormatter(console_writer)
+
 for x in qacats:
 	if not isCvs and x.find("notadded") != -1:
 		stats[x] = 0
@@ -1619,23 +1696,36 @@ for x in qacats:
 			dofail=1
 	else:
 		continue
-	print "  "+x.ljust(30),
+	f.add_literal_data("  "+x.ljust(30))
 	if stats[x]==0:
-		print green(`stats[x]`)
+		f.push_style("green")
+		f.add_literal_data(str(stats[x]))
+		f.pop_style()
+		f.add_line_break()
 		continue
 	elif x in qawarnings:
-		print yellow(`stats[x]`)
+		f.push_style("yellow")
 	else:
-		print red(`stats[x]`)
+		f.push_style("red")
+	f.add_literal_data(str(stats[x]))
+	f.pop_style()
+	f.add_line_break()
 	if options.mode !="full":
 		if stats[x]<12:
 			for y in fails[x]:
-				print "   "+y
+				f.add_literal_data("   "+y)
+				f.add_line_break()
 		else:
 			dofull=1
 	else:
 		for y in fails[x]:
-			print "   "+y
+			f.add_literal_data("   "+y)
+			f.add_line_break()
+
+style_file.flush()
+del console_writer, f, style_file
+qa_output = qa_output.getvalue()
+qa_output = qa_output.splitlines(True)
 
 def grouplist(mylist,seperator="/"):
 	"""(list,seperator="/") -- Takes a list of elements; groups them into
@@ -1794,12 +1884,8 @@ else:
 		try:
 			editor = os.environ.get("EDITOR")
 			if editor and editor_is_executable(editor):
-				# Prompt the user before letting the editor
-				# take over the screen so there is an
-				# opportunity to review any QA warnings.
-				print "Press \"Enter\" to launch the editor for a commit message, or Ctrl-c to abort."
-				sys.stdin.readline()
-				commitmessage = get_commit_message_with_editor(editor)
+				commitmessage = get_commit_message_with_editor(
+					editor, message=qa_output)
 			else:
 				commitmessage = get_commit_message_with_stdin()
 		except KeyboardInterrupt:
