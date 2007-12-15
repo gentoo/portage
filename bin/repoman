@@ -1681,7 +1681,9 @@ dofull=0
 # once the editor has taken over the screen.
 qa_output = StringIO.StringIO()
 style_file = ConsoleStyleFile(sys.stdout)
-style_file.write_listener = qa_output
+if options.mode == 'commit' and \
+	(not commitmessage or not commitmessage.strip()):
+	style_file.write_listener = qa_output
 console_writer = StyleWriter(file=style_file, maxcol=9999)
 console_writer.style_listener = style_file.new_styles
 
