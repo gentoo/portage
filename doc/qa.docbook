@@ -36,15 +36,15 @@
     </listitem>
     <listitem>
      <para>Perl - some versions of perl would use incorrect -rpath flags</para>
-     <para>Solution: upgrade system perl build modules</para>
+     <para>Solution: Upgrade system perl build modules</para>
     </listitem>
     <listitem>
      <para>Crappy build system - the custom build system uses -rpath incorrectly</para>
-     <para>Solution: review the LDFLAGS in the build system and make them not suck</para>
+     <para>Solution: Review the LDFLAGS in the build system and make them not suck</para>
     </listitem>
     <listitem>
      <para>Crappy ebuild - the ebuild installs ELFs instead of using the package's build system</para>
-     <para>Solution: fix the crappy ebuild to use the package's build system</para>
+     <para>Solution: Fix the crappy ebuild to use the package's build system</para>
     </listitem>
    </itemizedlist>
   </para>
