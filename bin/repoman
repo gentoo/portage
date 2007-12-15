@@ -1698,15 +1698,15 @@ for x in qacats:
 		continue
 	f.add_literal_data("  "+x.ljust(30))
 	if stats[x]==0:
-		f.push_style("green")
+		f.push_style("GOOD")
 		f.add_literal_data(str(stats[x]))
 		f.pop_style()
 		f.add_line_break()
 		continue
 	elif x in qawarnings:
-		f.push_style("yellow")
+		f.push_style("WARN")
 	else:
-		f.push_style("red")
+		f.push_style("BAD")
 	f.add_literal_data(str(stats[x]))
 	f.pop_style()
 	f.add_line_break()
