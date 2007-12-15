@@ -477,6 +477,30 @@ class StyleWriter(formatter.DumbWriter):
 		if self.style_listener:
 			self.style_listener(styles)
 
+def format_qa_output(f, stats, fails, dofull, dofail):
+	full = options.mode in ("full", "lfull")
+	for x in qacats:
+		if not stats[x]:
+			continue
+		f.add_literal_data("  " + x.ljust(30))
+		if x in qawarnings:
+			f.push_style("WARN")
+		else:
+			f.push_style("BAD")
+		f.add_literal_data(str(stats[x]))
+		f.pop_style()
+		f.add_line_break()
+		if not dofull:
+			if not full and dofail and x in qawarnings:
+				# warnings are considered noise when there are failures
+				continue
+			fails_list = fails[x]
+			if not full and len(fails_list) > 12:
+				fails_list = fails_list[:12]
+			for y in fails_list:
+				f.add_literal_data("   "+y)
+				f.add_line_break()
+
 def last(full=False):
 	"""Print the results of the last repoman run
 	Args:
@@ -499,33 +523,26 @@ def last(full=False):
 	#dofull will be set if we should print a "repoman full" informational message
 	dofull=0
 
+	dofull = options.mode not in ("full", "lfull")
+	
+	for x in qacats:
+		if not stats[x]:
+			continue
+		if "notadded" in x and not isCvs:
+			stats[x] = 0
+			continue
+		dowarn = 1
+		if x not in qawarnings:
+			dofail = 1
+
 	print
 	print green("RepoMan remembers...")
 	print
-	for x in qacats:
-		if stats[x]:
-			dowarn=1
-			if x not in qawarnings:
-				dofail=1
-		else:
-			continue
-		print "  "+ x.ljust(20),
-		if stats[x]==0:
-			print green(`stats[x]`)
-			continue
-		elif x in qawarnings:
-			print yellow(`stats[x]`)
-		else:
-			print red(`stats[x]`)
-		if not full:
-			if stats[x]<12:
-				for y in fails[x]:
-					print "   "+y
-			else:
-				dofull=1
-		else:
-			for y in fails[x]:
-				print "   "+y
+	style_file = ConsoleStyleFile(sys.stdout)
+	console_writer = StyleWriter(file=style_file, maxcol=9999)
+	console_writer.style_listener = style_file.new_styles
+	f = formatter.AbstractFormatter(console_writer)
+	format_qa_output(f, stats, fails, dofull, dofail)
 	print
 	if dofull:
 		print bold("Note: type \"repoman lfull\" for a complete listing of repomans last run.")
@@ -1673,7 +1690,21 @@ dofail=0
 #dowarn will be set to 1 if we tripped any warnings
 dowarn=0
 #dofull will be set if we should print a "repoman full" informational message
-dofull=0
+dofull = options.mode not in ("full", "lfull")
+
+for x in qacats:
+	if not stats[x]:
+		continue
+	if "notadded" in x and not isCvs:
+		stats[x] = 0
+		continue
+	dowarn = 1
+	if x not in qawarnings:
+		dofail = 1
+
+if dofail or \
+	(dowarn and not (options.quiet or options.mode == "scan")):
+	dofull = 0
 
 # Save QA output so that it can be conveniently displayed
 # in $EDITOR while the user creates a commit message.
@@ -1689,40 +1720,7 @@ console_writer.style_listener = style_file.new_styles
 
 f = formatter.AbstractFormatter(console_writer)
 
-for x in qacats:
-	if not isCvs and x.find("notadded") != -1:
-		stats[x] = 0
-	if stats[x]:
-		dowarn=1
-		if x not in qawarnings:
-			dofail=1
-	else:
-		continue
-	f.add_literal_data("  "+x.ljust(30))
-	if stats[x]==0:
-		f.push_style("GOOD")
-		f.add_literal_data(str(stats[x]))
-		f.pop_style()
-		f.add_line_break()
-		continue
-	elif x in qawarnings:
-		f.push_style("WARN")
-	else:
-		f.push_style("BAD")
-	f.add_literal_data(str(stats[x]))
-	f.pop_style()
-	f.add_line_break()
-	if options.mode !="full":
-		if stats[x]<12:
-			for y in fails[x]:
-				f.add_literal_data("   "+y)
-				f.add_line_break()
-		else:
-			dofull=1
-	else:
-		for y in fails[x]:
-			f.add_literal_data("   "+y)
-			f.add_line_break()
+format_qa_output(f, stats, fails, dofull, dofail)
 
 style_file.flush()
 del console_writer, f, style_file
