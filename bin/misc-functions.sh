@@ -412,7 +412,7 @@ install_qa_check() {
 	if [[ -n ${f} ]] ; then
 		vecho -ne '\a\n'
 		eqawarn "QA Notice: Precompiled python object files do not belong in /usr/share"
-		eqawarn "${f//${D}/}"
+		eqawarn "${f}"
 		vecho -ne '\a\n'
 	fi
 
