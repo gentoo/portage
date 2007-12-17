@@ -880,7 +880,9 @@ class config(object):
 		"FEATURES", "FILESDIR", "HOME", "PATH",
 		"PKGUSE", "PKG_LOGDIR", "PKG_TMPDIR",
 		"PORTAGE_ACTUAL_DISTDIR", "PORTAGE_ARCHLIST",
-		"PORTAGE_BASHRC", "PORTAGE_BINPKG_TMPFILE", "PORTAGE_BIN_PATH",
+		"PORTAGE_BASHRC",
+		"PORTAGE_BINPKG_FILE", "PORTAGE_BINPKG_TMPFILE",
+		"PORTAGE_BIN_PATH",
 		"PORTAGE_BUILDDIR", "PORTAGE_COLORMAP",
 		"PORTAGE_CONFIGROOT", "PORTAGE_DEBUG", "PORTAGE_DEPCACHEDIR",
 		"PORTAGE_GID", "PORTAGE_INST_GID", "PORTAGE_INST_UID",
@@ -1222,74 +1224,36 @@ class config(object):
 
 			# make.globals should not be relative to config_root
 			# because it only contains constants.
-			try:
-				self.mygcfg   = getconfig(os.path.join(BPREFIX, "etc", "make.globals"))
+			self.mygcfg   = getconfig(os.path.join(BPREFIX, "etc", "make.globals"))
 
-				if self.mygcfg is None:
-					self.mygcfg = {}
-			except SystemExit, e:
-				raise
-			except Exception, e:
-				if debug:
-					raise
-				writemsg("!!! %s\n" % (e), noiselevel=-1)
-				if not isinstance(e, EnvironmentError):
-					writemsg("!!! Incorrect multiline literals can cause " + \
-						"this. Do not use them.\n", noiselevel=-1)
-				sys.exit(1)
+			if self.mygcfg is None:
+				self.mygcfg = {}
+
 			self.configlist.append(self.mygcfg)
 			self.configdict["globals"]=self.configlist[-1]
 
 			self.make_defaults_use = []
 			self.mygcfg = {}
 			if self.profiles:
-				try:
-					mygcfg_dlists = [getconfig(os.path.join(x, "make.defaults")) for x in self.profiles]
-					for cfg in mygcfg_dlists:
-						if cfg:
-							self.make_defaults_use.append(cfg.get("USE", ""))
-						else:
-							self.make_defaults_use.append("")
-					self.mygcfg   = stack_dicts(mygcfg_dlists, incrementals=portage.const.INCREMENTALS, ignore_none=1)
-					#self.mygcfg = grab_stacked("make.defaults", self.profiles, getconfig)
-					if self.mygcfg is None:
-						self.mygcfg = {}
-				except SystemExit, e:
-					raise
-				except Exception, e:
-					if debug:
-						raise
-					writemsg("!!! %s\n" % (e), noiselevel=-1)
-					if not isinstance(e, EnvironmentError):
-						writemsg("!!! 'rm -Rf %s/usr/portage/profiles; " + \
-							"emerge sync' may fix this. If it does\n" % EPREFIX,
-							noiselevel=-1)
-						writemsg("!!! not then please report this to " + \
-							"bugs.gentoo.org and, if possible, a dev\n",
-								noiselevel=-1)
-						writemsg("!!! on #gentoo (irc.freenode.org)\n",
-							noiselevel=-1)
-					sys.exit(1)
+				mygcfg_dlists = [getconfig(os.path.join(x, "make.defaults")) \
+					for x in self.profiles]
+				for cfg in mygcfg_dlists:
+					if cfg:
+						self.make_defaults_use.append(cfg.get("USE", ""))
+					else:
+						self.make_defaults_use.append("")
+				self.mygcfg = stack_dicts(mygcfg_dlists,
+					incrementals=portage.const.INCREMENTALS, ignore_none=1)
+				if self.mygcfg is None:
+					self.mygcfg = {}
 			self.configlist.append(self.mygcfg)
 			self.configdict["defaults"]=self.configlist[-1]
 
-			try:
-				self.mygcfg = getconfig(
-					os.path.join(config_root, MAKE_CONF_FILE.lstrip(os.path.sep)),
-					allow_sourcing=True)
-				if self.mygcfg is None:
-					self.mygcfg = {}
-			except SystemExit, e:
-				raise
-			except Exception, e:
-				if debug:
-					raise
-				writemsg("!!! %s\n" % (e), noiselevel=-1)
-				if not isinstance(e, EnvironmentError):
-					writemsg("!!! Incorrect multiline literals can cause " + \
-						"this. Do not use them.\n", noiselevel=-1)
-				sys.exit(1)
-
+			self.mygcfg = getconfig(
+				os.path.join(config_root, MAKE_CONF_FILE.lstrip(os.path.sep)),
+				allow_sourcing=True)
+			if self.mygcfg is None:
+				self.mygcfg = {}
 
 			# Don't allow the user to override certain variables in make.conf
 			profile_only_variables = self.configdict["defaults"].get(
@@ -3754,6 +3718,8 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 				os.path.basename(MISC_SH_BINARY))
 			mycommand = " ".join([_shell_quote(misc_sh_binary),
 				"install_qa_check", "install_symlink_html_docs"])
+			_doebuild_exit_status_unlink(
+				mysettings.get("EBUILD_EXIT_STATUS_FILE"))
 			filter_calling_env_state = mysettings._filter_calling_env
 			if os.path.exists(os.path.join(mysettings["T"], "environment")):
 				mysettings._filter_calling_env = True
@@ -3762,7 +3728,14 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 					logfile=logfile, **kwargs)
 			finally:
 				mysettings._filter_calling_env = filter_calling_env_state
-			if qa_retval:
+			msg = _doebuild_exit_status_check(mydo, mysettings)
+			if msg:
+				qa_retval = 1
+				from textwrap import wrap
+				from portage.elog.messages import eerror
+				for l in wrap(msg, 72):
+					eerror(l, phase=mydo, key=mysettings.mycpv)
+			if qa_retval != os.EX_OK:
 				writemsg("!!! install_qa_check failed; exiting.\n",
 					noiselevel=-1)
 			return qa_retval
@@ -4414,7 +4387,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		mycpv = mysettings["CATEGORY"] + "/" + mysettings["PF"]
 		dep_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
 		misc_keys = ["LICENSE", "PROVIDE", "RESTRICT", "SRC_URI"]
-		all_keys = dep_keys + misc_keys
+		other_keys = ["SLOT"]
+		all_keys = dep_keys + misc_keys + other_keys
 		metadata = dict(izip(all_keys, mydbapi.aux_get(mycpv, all_keys)))
 		class FakeTree(object):
 			def __init__(self, mydb):
@@ -4442,6 +4416,10 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				if mydo not in invalid_dep_exempt_phases:
 					return 1
 			del k
+		if not metadata["SLOT"]:
+			writemsg("SLOT is undefined\n", noiselevel=-1)
+			if mydo not in invalid_dep_exempt_phases:
+				return 1
 		del mycpv, dep_keys, metadata, misc_keys, FakeTree, dep_check_trees
 
 		if "PORTAGE_TMPDIR" not in mysettings or \
@@ -5865,6 +5843,10 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 		fp.write(str(portage.checksum.perform_md5(mytbz2))+"\n")
 		fp.close()
 
+		# This gives bashrc users an opportunity to do various things
+		# such as remove binary packages after they're installed.
+		mysettings["PORTAGE_BINPKG_FILE"] = mytbz2
+		mysettings.backup_changes("PORTAGE_BINPKG_FILE")
 		debug = mysettings.get("PORTAGE_DEBUG", "") == "1"
 
 		# We want to install in "our" prefix, not the binary one
@@ -5913,6 +5895,7 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 		did_merge_phase = True
 		return retval
 	finally:
+		mysettings.pop("PORTAGE_BINPKG_FILE", None)
 		if tbz2_lock:
 			portage.locks.unlockfile(tbz2_lock)
 		if builddir_lock:

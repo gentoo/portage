@@ -869,6 +869,8 @@ def visible(pkgsettings, cpv, metadata, built=False, installed=False):
 	@rtype: Boolean
 	@returns: True if the package is visible, False otherwise.
 	"""
+	if not metadata["SLOT"]:
+		return False
 	if built and not installed and \
 		metadata["CHOST"] != pkgsettings["CHOST"]:
 		return False
@@ -2216,6 +2218,8 @@ class depgraph(object):
 						mreasons.append("EPREFIX: '%s' too small" % metadata["EPREFIX"])
 				missing_licenses = []
 				if metadata:
+					if not metadata["SLOT"]:
+						mreasons.append("invalid: SLOT is undefined")
 					if not portage.eapi_is_supported(metadata["EAPI"]):
 						have_eapi_mask = True
 					try:
@@ -4123,19 +4127,6 @@ class MergeTask(object):
 		mymergelist=[]
 		ldpath_mtimes = mtimedb["ldpath"]
 		xterm_titles = "notitles" not in self.settings.features
-
-		#check for blocking dependencies
-		if "--fetchonly" not in self.myopts and \
-			"--fetch-all-uri" not in self.myopts and \
-			"--buildpkgonly" not in self.myopts:
-			for x in mylist:
-				if x[0]=="blocks":
-					print "\n!!! Error: the "+x[2]+" package conflicts with another package;"
-					print   "!!!        the two packages cannot be installed on the same system together."
-					print   "!!!        Please use 'emerge --pretend' to determine blockers."
-					if "--quiet" not in self.myopts:
-						show_blocker_docs_link()
-					return 1
 
 		if "--resume" in self.myopts:
 			# We're resuming.
@@ -6609,13 +6600,27 @@ def action_build(settings, trees, mtimedb,
 							("--pretend" in myopts),
 							mydbapi=trees[pkgline[1]]["porttree"].dbapi,
 							tree="porttree")
-			if "--fetchonly" in myopts or "--fetch-all-uri" in myopts:
-				pkglist = []
-				for pkg in mydepgraph.altlist():
-					if pkg[0] != "blocks":
-						pkglist.append(pkg)
+
+			pkglist = mydepgraph.altlist()
+
+			if fetchonly or "--buildpkgonly"  in myopts:
+				pkglist = [pkg for pkg in pkglist if pkg[0] != "blocks"]
 			else:
-				pkglist = mydepgraph.altlist()
+				for x in pkglist:
+					if x[0] != "blocks":
+						continue
+					msg = "Error: the " + x[2] + " package conflicts " + \
+					"with another package; the two packages cannot " + \
+					"be installed on the same system together. " + \
+					"Please use 'emerge --pretend' to determine blockers."
+					prefix = red(" * ")
+					from textwrap import wrap
+					for line in wrap(msg, 70):
+						print prefix + line
+					if "--quiet" not in myopts:
+						show_blocker_docs_link()
+					return 1
+
 			mydepgraph.saveNomergeFavorites()
 			del mydepgraph
 			mergetask = MergeTask(settings, trees, myopts)
@@ -7263,7 +7268,3 @@ def emerge_main():
 		if "--pretend" in myopts:
 			display_news_notification(trees)
 		return retval
-
-if __name__ == "__main__":
-	retval = emerge_main()
-	sys.exit(retval)
