@@ -26,7 +26,7 @@ class WorldHandler(object):
 		from portage.sets import load_default_config
 		setconfig = load_default_config(portage.settings,
 			portage.db[portage.settings["ROOT"]])
-		self._sets = setconfig.getSetsWithAliases()
+		self._sets = setconfig.getSets()
 
 	def _check_world(self, onProgress):
 		categories = set(portage.settings.categories)
