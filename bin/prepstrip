@@ -1,7 +1,7 @@
 #!@BASH@
 # Copyright 1999-2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id:$
+# $Id$
 
 source "${PORTAGE_BIN_PATH:-${EPREFIX}/usr/lib/portage/bin}"/isolated-functions.sh
 
@@ -66,12 +66,15 @@ save_elf_debug() {
 # The existance of the section .symtab tells us that a binary is stripped.
 # We want to log already stripped binaries, as this may be a QA violation.
 # They prevent us from getting the splitdebug data.
-f=$(scanelf -yqRBF '#k%F' -k '!.symtab' "$@")
-if [[ -n ${f} ]] ; then
-	vecho -e "\a\n"
-	eqawarn "QA Notice: Pre-stripped files found:"
-	eqawarn "${f}"
-	echo "${f}" > "${T}"/scanelf-already-stripped.log
+if ! hasq binchecks ${RESTRICT} && \
+	! hasq strip ${RESTRICT} ; then
+	f=$(scanelf -yqRBF '#k%F' -k '!.symtab' "$@")
+	if [[ -n ${f} ]] ; then
+		vecho -e "\a\n"
+		eqawarn "QA Notice: Pre-stripped files found:"
+		eqawarn "${f}"
+		echo "${f}" > "${T}"/scanelf-already-stripped.log
+	fi
 fi
 
 # Now we look for unstripped binaries.

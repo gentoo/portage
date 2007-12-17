@@ -17,7 +17,7 @@
 		<!-- TODO: Add reference to currently non-existing documentation about
 		set usage and default sets -->
 		After that it will read repository specific configurations from 
-		<envar>PORTDIR</envar> and <envar>PORTDIR_OVERLAY</envar>that might
+		<envar>PORTDIR</envar> and <envar>PORTDIR_OVERLAY</envar> that might
 		include definitions of sets included in the repository.
 		Finally a system-specific set configuration may reside in 
 		<filename>/etc/portage</filename> to either define additional sets or
@@ -30,7 +30,7 @@
 		<para>
 		Unlike other Portage configuration files <filename>sets.conf</filename> 
 		uses Pythons <classname>ConfigParser</classname> module, which implements
-		the syntax usually found in .ini files. At it's core it allows various
+		the syntax usually found in .ini files. At its core it allows various
 		named sections that each can contain any number of key-value pairs, see
 		the <ulink url="http://doc.python.org/lib/module-ConfigParser.html" type="text/html">Python documentation</ulink>
 		for the full details.
@@ -47,7 +47,7 @@
 			it only requires a single option <varname>class</varname> to be 
 			complete <footnote><para>Technically the <varname>class</varname> option
 			isn't stricly required, but it should always be used as the default 
-			handler might be changed in future versions</para></footnote>.
+			handler might be changed in future versions.</para></footnote>.
 			That option defines which handler class should be used to 
 			create the set. Another universal option available for single sets is
 			<varname>name</varname>, however it's usually not needed as the name
@@ -316,7 +316,7 @@
 		<title>portage.sets.security.NewAffectedSet</title>
 		<para>
 		Like <xref linkend='config-set-classes-SecuritySet'>SecuritySet</xref>,
-		but ignores all GLSAs that were already applied or inejcted previously,
+		but ignores all GLSAs that were already applied or injected previously,
 		and all GLSAs that don't affect the current system. Practically there
 		should be no difference to <classname>NewGlsaSet</classname> though.
 		</para>
@@ -402,7 +402,7 @@
 			<listitem><varname>only_visible</varname>: Optional, defaults to <parameter>true</parameter>.
 				When set to <parameter>true</parameter> the set will only include visible packages, 
 				when set to <parameter>false</parameter> it will also include masked packages.
-				It's currently only effective in in combination with the <parameter>porttree</parameter>
+				It's currently only effective in combination with the <parameter>porttree</parameter>
 				repository.
 			</listitem>
 			</itemizedlist>

@@ -6,6 +6,7 @@ __docformat__ = "epytext"
 
 import commands
 import errno
+import formatter
 import os
 import re
 import shlex
@@ -313,6 +314,57 @@ def create_color_func(color_key):
 
 for c in compat_functions_colors:
 	globals()[c] = create_color_func(c)
+
+class ConsoleStyleFile(object):
+	"""
+	A file-like object that behaves something like
+	the colorize() function. Style identifiers
+	passed in via the new_styles() method will be used to
+	apply console codes to output.
+	"""
+	def __init__(self, f):
+		self._file = f
+		self._styles = None
+		self.write_listener = None
+
+	def new_styles(self, styles):
+		self._styles = styles
+
+	def write(self, s):
+		if self._styles:
+			for style in self._styles:
+				self._file.write(codes[style])
+			self._file.write(s)
+			self._file.write(codes["reset"])
+		else:
+			self._file.write(s)
+		if self.write_listener:
+			self.write_listener.write(s)
+
+	def writelines(self, lines):
+		for s in lines:
+			self.write(s)
+
+	def flush(self):
+		self._file.flush()
+
+	def close(self):
+		self._file.close()
+
+class StyleWriter(formatter.DumbWriter):
+	"""
+	This is just a DumbWriter with a hook in the new_styles() method
+	that passes a styles tuple as a single argument to a callable
+	style_listener attribute.
+	"""
+	def __init__(self, **kwargs):
+		formatter.DumbWriter.__init__(self, **kwargs)
+		self.style_listener = None
+
+	def new_styles(self, styles):
+		formatter.DumbWriter.new_styles(self, styles)
+		if self.style_listener:
+			self.style_listener(styles)
 
 def get_term_size():
 	"""

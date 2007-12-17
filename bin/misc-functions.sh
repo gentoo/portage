@@ -407,7 +407,8 @@ install_qa_check() {
 
 	# Compiled python objects do not belong in /usr/share (FHS violation)
 	# and can be a pain when upgrading python
-	f=$([ -d "${ED}"/usr/share ] && find "${ED}"/usr/share -name '*.py[co]')
+	f=$([ -d "${ED}"/usr/share ] && \
+		find "${ED}"usr/share -name '*.py[co]' | sed "s:${D}:/:")
 	if [[ -n ${f} ]] ; then
 		vecho -ne '\a\n'
 		eqawarn "QA Notice: Precompiled python object files do not belong in /usr/share"

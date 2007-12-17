@@ -9,6 +9,7 @@
 
 import codecs
 import errno
+import formatter
 import logging
 import optparse
 import os
@@ -30,6 +31,11 @@ try:
 	import cPickle as pickle
 except ImportError:
 	import pickle
+
+try:
+	import cStringIO as StringIO
+except ImportError:
+	import StringIO
 
 if not hasattr(__builtins__, "set"):
 	from sets import Set as set
@@ -62,6 +68,7 @@ from portage.process import find_binary, spawn
 from portage.util import initialize_logger
 from portage.output import bold, create_color_func, darkgreen, \
 	green, nocolor, red, turquoise, yellow
+from portage.output import ConsoleStyleFile, StyleWriter
 
 initialize_logger()
 
@@ -342,6 +349,107 @@ valid_restrict = frozenset(["binchecks", "bindist", "fetch", "mirror",
 # file.executable
 no_exec = frozenset(["Manifest","ChangeLog","metadata.xml"])
 
+def editor_is_executable(editor):
+	"""
+	Given an EDITOR string, validate that it refers to
+	an executable. This uses shlex.split() to split the
+	first component and do a PATH lookup if necessary.
+
+	@param editor: An EDITOR value from the environment.
+	@type: string
+	@rtype: bool
+	@returns: True if an executable is found, False otherwise.
+	"""
+	import shlex
+	editor_split = shlex.split(editor)
+	if not editor_split:
+		return False
+	filename = editor_split[0]
+	if not os.path.isabs(filename):
+		from portage.process import find_binary
+		return find_binary(filename) is not None
+	return os.access(filename, os.X_OK) and os.path.isfile(filename)
+
+def get_commit_message_with_editor(editor, message=None):
+	"""
+	Execute editor with a temporary file as it's argument
+	and return the file content afterwards.
+
+	@param editor: An EDITOR value from the environment
+	@type: string
+	@param message: An iterable of lines to show in the editor.
+	@type: iterable
+	@rtype: string or None
+	@returns: A string on success or None if an error occurs.
+	"""
+	from tempfile import mkstemp
+	fd, filename = mkstemp()
+	try:
+		os.write(fd, "\n# Please enter the commit message " + \
+			"for your changes.\n# (Comment lines starting " + \
+			"with '#' will not be included)\n")
+		if message:
+			os.write(fd, "#\n")
+			for line in message:
+				os.write(fd, "#" + line)
+		os.close(fd)
+		retval = os.system(editor + " '%s'" % filename)
+		if not (os.WIFEXITED(retval) and os.WEXITSTATUS(retval) == os.EX_OK):
+			return None
+		try:
+			mylines = open(filename).readlines()
+		except OSError, e:
+			if e.errno != errno.ENOENT:
+				raise
+			del e
+			return None
+		return "".join(line for line in mylines if not line.startswith("#"))
+	finally:
+		try:
+			os.unlink(filename)
+		except OSError:
+			pass
+
+def get_commit_message_with_stdin():
+	"""
+	Read a commit message from the user and return it.
+
+	@rtype: string or None
+	@returns: A string on success or None if an error occurs.
+	"""
+	print "Please enter a commit message. Use Ctrl-d to finish or Ctrl-c to abort."
+	commitmessage = []
+	while True:
+		commitmessage.append(sys.stdin.readline())
+		if not commitmessage[-1]:
+			break
+	commitmessage = "".join(commitmessage)
+	return commitmessage
+
+def format_qa_output(f, stats, fails, dofull, dofail):
+	full = options.mode in ("full", "lfull")
+	for x in qacats:
+		if not stats[x]:
+			continue
+		f.add_literal_data("  " + x.ljust(30))
+		if x in qawarnings:
+			f.push_style("WARN")
+		else:
+			f.push_style("BAD")
+		f.add_literal_data(str(stats[x]))
+		f.pop_style()
+		f.add_line_break()
+		if not dofull:
+			if not full and dofail and x in qawarnings:
+				# warnings are considered noise when there are failures
+				continue
+			fails_list = fails[x]
+			if not full and len(fails_list) > 12:
+				fails_list = fails_list[:12]
+			for y in fails_list:
+				f.add_literal_data("   "+y)
+				f.add_line_break()
+
 def last(full=False):
 	"""Print the results of the last repoman run
 	Args:
@@ -364,33 +472,26 @@ def last(full=False):
 	#dofull will be set if we should print a "repoman full" informational message
 	dofull=0
 
+	dofull = options.mode not in ("full", "lfull")
+	
+	for x in qacats:
+		if not stats[x]:
+			continue
+		if "notadded" in x and not isCvs:
+			stats[x] = 0
+			continue
+		dowarn = 1
+		if x not in qawarnings:
+			dofail = 1
+
 	print
 	print green("RepoMan remembers...")
 	print
-	for x in qacats:
-		if stats[x]:
-			dowarn=1
-			if x not in qawarnings:
-				dofail=1
-		else:
-			continue
-		print "  "+ x.ljust(20),
-		if stats[x]==0:
-			print green(`stats[x]`)
-			continue
-		elif x in qawarnings:
-			print yellow(`stats[x]`)
-		else:
-			print red(`stats[x]`)
-		if not full:
-			if stats[x]<12:
-				for y in fails[x]:
-					print "   "+y
-			else:
-				dofull=1
-		else:
-			for y in fails[x]:
-				print "   "+y
+	style_file = ConsoleStyleFile(sys.stdout)
+	console_writer = StyleWriter(file=style_file, maxcol=9999)
+	console_writer.style_listener = style_file.new_styles
+	f = formatter.AbstractFormatter(console_writer)
+	format_qa_output(f, stats, fails, dofull, dofail)
 	print
 	if dofull:
 		print bold("Note: type \"repoman lfull\" for a complete listing of repomans last run.")
@@ -432,7 +533,7 @@ if isCvs or isSvn and \
 		"pycrypto or enable python's ssl USE flag in order " \
 		"to enable RMD160 hash support. See bug #198398 for " \
 		"more information."
-		prefix = red(" * ")
+		prefix = bad(" * ")
 		from textwrap import wrap
 		for line in wrap(msg, 70):
 			print prefix + line
@@ -1603,33 +1704,42 @@ dofail=0
 #dowarn will be set to 1 if we tripped any warnings
 dowarn=0
 #dofull will be set if we should print a "repoman full" informational message
-dofull=0
+dofull = options.mode not in ("full", "lfull")
+
 for x in qacats:
-	if not isCvs and not isSvn and (x.find("notadded") != -1):
+	if not stats[x]:
+		continue
+	if "notadded" in x and not isCvs and not isSvn:
 		stats[x] = 0
-	if stats[x]:
-		dowarn=1
-		if x not in qawarnings:
-			dofail=1
-	else:
 		continue
-	print "  "+x.ljust(30),
-	if stats[x]==0:
-		print green(`stats[x]`)
-		continue
-	elif x in qawarnings:
-		print yellow(`stats[x]`)
-	else:
-		print red(`stats[x]`)
-	if options.mode !="full":
-		if stats[x]<12:
-			for y in fails[x]:
-				print "   "+y
-		else:
-			dofull=1
-	else:
-		for y in fails[x]:
-			print "   "+y
+	dowarn = 1
+	if x not in qawarnings:
+		dofail = 1
+
+if dofail or \
+	(dowarn and not (options.quiet or options.mode == "scan")):
+	dofull = 0
+
+# Save QA output so that it can be conveniently displayed
+# in $EDITOR while the user creates a commit message.
+# Otherwise, the user would not be able to see this output
+# once the editor has taken over the screen.
+qa_output = StringIO.StringIO()
+style_file = ConsoleStyleFile(sys.stdout)
+if options.mode == 'commit' and \
+	(not commitmessage or not commitmessage.strip()):
+	style_file.write_listener = qa_output
+console_writer = StyleWriter(file=style_file, maxcol=9999)
+console_writer.style_listener = style_file.new_styles
+
+f = formatter.AbstractFormatter(console_writer)
+
+format_qa_output(f, stats, fails, dofull, dofail)
+
+style_file.flush()
+del console_writer, f, style_file
+qa_output = qa_output.getvalue()
+qa_output = qa_output.splitlines(True)
 
 def grouplist(mylist,seperator="/"):
 	"""(list,seperator="/") -- Takes a list of elements; groups them into
@@ -1819,13 +1929,20 @@ else:
 				raise
 		# We've read the content so the file is no longer needed.
 		commitmessagefile = None
-	if not commitmessage:
-		print "Please enter a CVS commit message at the prompt:"
-		while not commitmessage:
-			try:
-				commitmessage=raw_input(green("> "))
-			except KeyboardInterrupt: 
-				exithandler()
+	if not commitmessage or not commitmessage.strip():
+		try:
+			editor = os.environ.get("EDITOR")
+			if editor and editor_is_executable(editor):
+				commitmessage = get_commit_message_with_editor(
+					editor, message=qa_output)
+			else:
+				commitmessage = get_commit_message_with_stdin()
+		except KeyboardInterrupt:
+			exithandler()
+		if not commitmessage or not commitmessage.strip():
+			print "* no commit message?  aborting commit."
+			sys.exit(1)
+	commitmessage = commitmessage.rstrip()
 	portage_version = getattr(portage, "VERSION", None)
 	if portage_version is None:
 		sys.stderr.write("Failed to insert portage version in message!\n")
