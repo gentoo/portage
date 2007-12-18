@@ -4,7 +4,7 @@
 # $Id$
 
 scriptpath=${BASH_SOURCE[0]}
-scriptname=${scriptpath%%*/}
+scriptname=${scriptpath##*/}
 
 if [[ sed == ${scriptname} ]] && [[ -n ${ESED} ]]; then
 	exec ${ESED} "$@"
