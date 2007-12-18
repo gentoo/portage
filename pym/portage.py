@@ -2374,6 +2374,7 @@ class config:
 		#  * Flags derived from USE_EXPAND_HIDDEN variables
 		#  * Masked flags, such as those from {,package}use.mask
 		#  * Forced flags, such as those from {,package}use.force
+		#  * build and bootstrap flags used by bootstrap.sh
 
 		if self.mycpv:
 			iuse_implicit = set(iuse)
@@ -2395,6 +2396,10 @@ class config:
 			# Flags that have been masked or forced.
 			iuse_implicit.update(self.usemask)
 			iuse_implicit.update(self.useforce)
+
+			# build and bootstrap flags used by bootstrap.sh
+			iuse_implicit.add("build")
+			iuse_implicit.add("bootstrap")
 
 			iuse_grep = iuse_implicit.copy()
 			if use_expand_hidden_raw:
