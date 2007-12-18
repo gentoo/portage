@@ -138,15 +138,10 @@ useq() {
 	fi
 
 	# Make sure we have this USE flag in IUSE
-	if ! hasq "${u}" ${IUSE} ${E_IUSE} && \
-		! hasq "+${u}" ${IUSE} ${E_IUSE} && \
-		! hasq "-${u}" ${IUSE} ${E_IUSE} && \
-		! hasq "${u}" ${PORTAGE_ARCHLIST} selinux && \
-		[[ ${u} != arch_* ]] && \
-		[[ ${u} != elibc_* ]] && \
-		[[ ${u} != kernel_* ]] && \
-		[[ ${u} != userland_* ]] ; then
-		eqawarn "QA Notice: USE Flag '${u}' not in IUSE for ${CATEGORY}/${PF}"
+	if [[ ${EBUILD_PHASE} != depend ]] && [[ -n ${PORTAGE_IUSE} ]] ; then
+		echo "${u}" | egrep -q "${PORTAGE_IUSE}" || \
+			eqawarn "QA Notice: USE Flag '${u}' not" \
+				"in IUSE for ${CATEGORY}/${PF}"
 	fi
 
 	if hasq ${u} ${USE} ; then
@@ -1367,7 +1362,8 @@ READONLY_EBUILD_METADATA="DEPEND DESCRIPTION
 
 READONLY_PORTAGE_VARS="D EBUILD EBUILD_PHASE \
 	EBUILD_SH_ARGS EMERGE_FROM FILESDIR PORTAGE_BINPKG_FILE \
-	PORTAGE_BIN_PATH PORTAGE_PYM_PATH PORTAGE_MUTABLE_FILTERED_VARS \
+	PORTAGE_BIN_PATH PORTAGE_IUSE \
+	PORTAGE_PYM_PATH PORTAGE_MUTABLE_FILTERED_VARS \
 	PORTAGE_SAVED_READONLY_VARS PORTAGE_TMPDIR T WORKDIR"
 
 PORTAGE_SAVED_READONLY_VARS="A CATEGORY P PF PN PR PV PVR"
