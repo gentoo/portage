@@ -2381,11 +2381,41 @@ class config(object):
 						# USE_EXPAND context.
 						pass
 
-		# Pre-Pend ARCH variable to USE settings so '-*' in env doesn't kill arch.
-		if self.configdict["defaults"].has_key("ARCH"):
-			if self.configdict["defaults"]["ARCH"]:
-				if self.configdict["defaults"]["ARCH"] not in usesplit:
-					usesplit.insert(0,self.configdict["defaults"]["ARCH"])
+		arch = self.configdict["defaults"].get("ARCH")
+		if arch and arch not in usesplit:
+			usesplit.append(arch)
+
+		# Filter out USE flags that aren't part of IUSE. Some
+		# flags are considered to be implicit members of IUSE:
+		#
+		#  * Flags derived from ARCH
+		#  * Flags derived from USE_EXPAND_HIDDEN variables
+		#  * Forced flags, such as those from {,package}use.force
+
+		if self.mycpv:
+			iuse_implicit = set(iuse)
+
+			# Flags derived from ARCH.
+			if arch:
+				iuse_implicit.add(arch)
+
+			# Flags derived from USE_EXPAND_HIDDEN variables
+			# such as ELIBC, KERNEL, and USERLAND.
+			use_expand_hidden = self.get("USE_EXPAND_HIDDEN", "").split()
+			if use_expand_hidden:
+				use_expand_hidden = re.compile("^(%s)_.*" % \
+					("|".join(x.lower() for x in use_expand_hidden)))
+				for x in usesplit:
+					if use_expand_hidden.match(x):
+						iuse_implicit.add(x)
+
+			# Flags that have been forced.
+			iuse_implicit.update(x for x in self.useforce \
+				if x not in self.usemask)
+
+			usesplit = [x for x in usesplit if \
+				x in iuse_implicit and \
+				x not in self.usemask]
 
 		usesplit.sort()
 		self.configlist[-1]["USE"]= " ".join(usesplit)
