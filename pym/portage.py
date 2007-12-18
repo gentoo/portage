@@ -1106,6 +1106,7 @@ class config:
 		self.already_in_regenerate = 0
 
 		self._filter_calling_env = False
+		self._environ_use = ""
 		self.locked   = 0
 		self.mycpv    = None
 		self.puse     = []
@@ -1133,6 +1134,7 @@ class config:
 
 		if clone:
 			self._filter_calling_env = copy.deepcopy(clone._filter_calling_env)
+			self._environ_use = copy.deepcopy(clone._environ_use)
 			self.incrementals = copy.deepcopy(clone.incrementals)
 			self.profile_path = copy.deepcopy(clone.profile_path)
 			self.user_profile_dir = copy.deepcopy(clone.user_profile_dir)
@@ -2413,9 +2415,15 @@ class config:
 				iuse_grep = ""
 			self["PORTAGE_IUSE"] = iuse_grep
 
-			usesplit = [x for x in usesplit if \
-				x in iuse_implicit and \
-				x not in self.usemask]
+		usesplit = [x for x in usesplit if \
+			x not in self.usemask]
+
+		# Filtered for the ebuild environment. Store this in a separate
+		# attribute since we still want to be able to see global USE
+		# settings for things like emerge --info.
+		self._environ_use = " ".join(sorted(
+			x for x in usesplit if \
+			x in iuse_implicit))
 
 		usesplit.sort()
 		self.configlist[-1]["USE"]= " ".join(usesplit)
@@ -2618,6 +2626,9 @@ class config:
 					v = self.get(k)
 					if v is not None:
 						mydict[k] = v
+
+		# Filtered be IUSE / implicit IUSE.
+		mydict["USE"] = self._environ_use
 
 		# sandbox's bashrc sources /etc/profile which unsets ROOTPATH,
 		# so we have to back it up and restore it.
