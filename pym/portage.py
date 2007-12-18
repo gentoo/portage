@@ -2372,6 +2372,7 @@ class config:
 		#
 		#  * Flags derived from ARCH
 		#  * Flags derived from USE_EXPAND_HIDDEN variables
+		#  * Masked flags, such as those from {,package}use.mask
 		#  * Forced flags, such as those from {,package}use.force
 
 		if self.mycpv:
@@ -2391,9 +2392,9 @@ class config:
 					if use_expand_hidden.match(x):
 						iuse_implicit.add(x)
 
-			# Flags that have been forced.
-			iuse_implicit.update(x for x in self.useforce \
-				if x not in self.usemask)
+			# Flags that have been masked or forced.
+			iuse_implicit.update(self.usemask)
+			iuse_implicit.update(self.useforce)
 
 			iuse_grep = iuse_implicit.copy()
 			if use_expand_hidden_raw:
