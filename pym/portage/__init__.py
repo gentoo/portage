@@ -881,6 +881,7 @@ class config(object):
 		"PORTAGE_BUILDDIR", "PORTAGE_COLORMAP",
 		"PORTAGE_CONFIGROOT", "PORTAGE_DEBUG", "PORTAGE_DEPCACHEDIR",
 		"PORTAGE_GID", "PORTAGE_INST_GID", "PORTAGE_INST_UID",
+		"PORTAGE_IUSE",
 		"PORTAGE_LOG_FILE", "PORTAGE_MASTER_PID",
 		"PORTAGE_PYM_PATH", "PORTAGE_REPO_NAME", "PORTAGE_RESTRICT",
 		"PORTAGE_TMPDIR", "PORTAGE_WORKDIR_MODE",
@@ -2396,12 +2397,12 @@ class config(object):
 			iuse_implicit = set(iuse)
 
 			# Flags derived from ARCH.
-			if arch:
-				iuse_implicit.add(arch)
+			iuse_implicit.update(self.get("PORTAGE_ARCHLIST", "").split())
 
 			# Flags derived from USE_EXPAND_HIDDEN variables
 			# such as ELIBC, KERNEL, and USERLAND.
 			use_expand_hidden = self.get("USE_EXPAND_HIDDEN", "").split()
+			use_expand_hidden_raw = use_expand_hidden
 			if use_expand_hidden:
 				use_expand_hidden = re.compile("^(%s)_.*" % \
 					("|".join(x.lower() for x in use_expand_hidden)))
@@ -2412,6 +2413,16 @@ class config(object):
 			# Flags that have been forced.
 			iuse_implicit.update(x for x in self.useforce \
 				if x not in self.usemask)
+
+			iuse_grep = iuse_implicit.copy()
+			if use_expand_hidden_raw:
+				for x in use_expand_hidden_raw:
+					iuse_grep.add(x.lower() + "_.*")
+			if iuse_grep:
+				iuse_grep = "^(%s)$" % "|".join(sorted(iuse_grep))
+			else:
+				iuse_grep = ""
+			self.configdict["pkg"]["PORTAGE_IUSE"] = iuse_grep
 
 			usesplit = [x for x in usesplit if \
 				x in iuse_implicit and \
