@@ -2395,7 +2395,9 @@ class config(object):
 		#  * Forced flags, such as those from {,package}use.force
 		#  * build and bootstrap flags used by bootstrap.sh
 
-		if self.mycpv:
+		if True:
+			# Do this even when there's no package since setcpv() can
+			# optimize away regenerate() calls.
 			iuse_implicit = set(iuse)
 
 			# Flags derived from ARCH.
@@ -2428,7 +2430,7 @@ class config(object):
 				iuse_grep = "^(%s)$" % "|".join(sorted(iuse_grep))
 			else:
 				iuse_grep = ""
-			self.configdict["pkg"]["PORTAGE_IUSE"] = iuse_grep
+			self["PORTAGE_IUSE"] = iuse_grep
 
 			usesplit = [x for x in usesplit if \
 				x in iuse_implicit and \
