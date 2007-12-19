@@ -937,7 +937,8 @@ class config(object):
 		"PORTAGE_ELOG_MAILURI", "PORTAGE_ELOG_SYSTEM", "PORTAGE_GPG_DIR",
 		"PORTAGE_GPG_KEY", "PORTAGE_PACKAGE_EMPTY_ABORT",
 		"PORTAGE_RSYNC_EXTRA_OPTS", "PORTAGE_RSYNC_OPTS",
-		"PORTAGE_RSYNC_RETRIES", "PORT_LOGDIR", "QUICKPKG_DEFAULT_OPTS",
+		"PORTAGE_RSYNC_RETRIES", "PORTAGE_USE", "PORT_LOGDIR",
+		"QUICKPKG_DEFAULT_OPTS",
 		"RESUMECOMMAND", "RESUMECOMMAND_HTTP", "RESUMECOMMAND_HTTP",
 		"RESUMECOMMAND_SFTP", "SYNC", "USE_EXPAND_HIDDEN", "USE_ORDER",
 	]
@@ -971,7 +972,6 @@ class config(object):
 		self.already_in_regenerate = 0
 
 		self._filter_calling_env = False
-		self._environ_use = ""
 		self.locked   = 0
 		self.mycpv    = None
 		self.puse     = []
@@ -998,7 +998,6 @@ class config(object):
 
 		if clone:
 			self._filter_calling_env = copy.deepcopy(clone._filter_calling_env)
-			self._environ_use = copy.deepcopy(clone._environ_use)
 			self.incrementals = copy.deepcopy(clone.incrementals)
 			self.profile_path = copy.deepcopy(clone.profile_path)
 			self.user_profile_dir = copy.deepcopy(clone.user_profile_dir)
@@ -2440,9 +2439,10 @@ class config(object):
 		# Filtered for the ebuild environment. Store this in a separate
 		# attribute since we still want to be able to see global USE
 		# settings for things like emerge --info.
-		self._environ_use = " ".join(sorted(
+		self["PORTAGE_USE"] = " ".join(sorted(
 			x for x in usesplit if \
 			x in iuse_implicit))
+		self.backup_changes("PORTAGE_USE")
 
 		usesplit.sort()
 		self.configlist[-1]["USE"]= " ".join(usesplit)
@@ -2646,8 +2646,8 @@ class config(object):
 					if v is not None:
 						mydict[k] = v
 
-		# Filtered be IUSE / implicit IUSE.
-		mydict["USE"] = self._environ_use
+		# Filtered by IUSE and implicit IUSE.
+		mydict["USE"] = self["PORTAGE_USE"]
 
 		# sandbox's bashrc sources /etc/profile which unsets ROOTPATH,
 		# so we have to back it up and restore it.
