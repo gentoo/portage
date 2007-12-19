@@ -1906,7 +1906,7 @@ class config(object):
 		self.configdict["pkg"]["USE"]    = self.puse[:] # this gets appended to USE
 		if iuse != self.configdict["pkg"].get("IUSE",""):
 			self.configdict["pkg"]["IUSE"] = iuse
-			if self._use_wildcards:
+			if self._use_wildcards or self.get("EBUILD_PHASE"):
 				# Without this conditional, regenerate() would be called
 				# *every* time.
 				has_changed = True
@@ -3812,6 +3812,11 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 	# so that the caller can override it.
 	tmpdir = mysettings["PORTAGE_TMPDIR"]
 
+	# This variable is a signal to setcpv where it triggers
+	# filtering of USE for the ebuild environment.
+	mysettings["EBUILD_PHASE"] = mydo
+	mysettings.backup_changes("EBUILD_PHASE")
+
 	if mydo != "depend":
 		"""For performance reasons, setcpv only triggers reset when it
 		detects a package-specific change in config.  For the ebuild
@@ -3825,6 +3830,7 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 	# so restore it to it's original value.
 	mysettings["PORTAGE_TMPDIR"] = tmpdir
 
+	mysettings.pop("EBUILD_PHASE", None) # remove from backupenv
 	mysettings["EBUILD_PHASE"] = mydo
 
 	mysettings["PORTAGE_MASTER_PID"] = str(os.getpid())
