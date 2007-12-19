@@ -1435,7 +1435,8 @@ for x in scanlist:
 
 		for pos, missing_var in enumerate(missingvars):
 			if not myaux.get(missing_var):
-				if missing_var == "LICENSE" and catdir == "virtual":
+				if catdir == "virtual" and \
+					missing_var in ("HOMEPAGE", "LICENSE"):
 					continue
 				myqakey=missingvars[pos]+".missing"
 				stats[myqakey]=stats[myqakey]+1
