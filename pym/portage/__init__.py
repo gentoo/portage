@@ -2402,6 +2402,8 @@ class config(object):
 			iuse_implicit = set(iuse)
 
 			# Flags derived from ARCH.
+			if arch:
+				iuse_implicit.add(arch)
 			iuse_implicit.update(self.get("PORTAGE_ARCHLIST", "").split())
 
 			# Flags derived from USE_EXPAND_HIDDEN variables
