@@ -358,8 +358,6 @@ class binarytree(object):
 		if (not os.path.isdir(self.pkgdir) and not getbinpkgs):
 			return 0
 
-		categories = set(self.settings.categories)
-
 		if not getbinpkgsonly:
 			pkg_paths = {}
 			self._pkg_paths = pkg_paths
@@ -496,7 +494,7 @@ class binarytree(object):
 					if mycpv in pkg_paths:
 						# All is first, so it's preferred.
 						continue
-					if mycat not in categories:
+					if not mycat:
 						writemsg(("!!! Binary package has an " + \
 							"unrecognized category: '%s'\n") % full_path,
 							noiselevel=-1)
@@ -656,7 +654,7 @@ class binarytree(object):
 					continue
 				mycat = self.remotepkgs[mypkg]["CATEGORY"].strip()
 				fullpkg = mycat+"/"+mypkg[:-5]
-				if mycat not in categories:
+				if not mycat:
 					writemsg(("!!! Remote binary package has an " + \
 						"unrecognized category: '%s'\n") % fullpkg,
 						noiselevel=-1)
