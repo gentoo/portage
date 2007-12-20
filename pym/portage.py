@@ -6270,14 +6270,9 @@ class vardbapi(dbapi):
 			del self.cpcache[mycp]
 		return returnme
 
-	def cpv_all(self,use_cache=1):
-		returnme=[]
-		basepath = self.root+VDB_PATH+"/"
-		categories = self.categories
-		if not categories:
-			categories = [cat for cat in listdir(basepath, dirsonly=True) \
-				if self._category_re.match(cat)]
-			self.categories = categories
+	def cpv_all(self, use_cache=1):
+		returnme = []
+		basepath = os.path.join(self.root, VDB_PATH) + os.path.sep
 		for x in listdir(basepath, EmptyOnError=1, ignorecvs=1, dirsonly=1):
 			if not self._category_re.match(x):
 				continue
