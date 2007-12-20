@@ -6610,12 +6610,15 @@ def action_build(settings, trees, mtimedb,
 				for x in pkglist:
 					if x[0] != "blocks":
 						continue
-					msg = "Error: the " + x[2] + " package conflicts " + \
-					"with another package; the two packages cannot " + \
-					"be installed on the same system together. " + \
-					"Please use 'emerge --pretend' to determine blockers."
+					retval = mydepgraph.display(mydepgraph.altlist(
+						reversed=("--tree" in myopts)),
+						favorites=favorites)
+					msg = "Error: The above package list contains " + \
+						"packages which cannot be installed " + \
+						"at the same time on the same system."
 					prefix = bad(" * ")
 					from textwrap import wrap
+					print
 					for line in wrap(msg, 70):
 						print prefix + line
 					if "--quiet" not in myopts:

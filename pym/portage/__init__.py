@@ -886,6 +886,7 @@ class config(object):
 		"PORTAGE_BUILDDIR", "PORTAGE_COLORMAP",
 		"PORTAGE_CONFIGROOT", "PORTAGE_DEBUG", "PORTAGE_DEPCACHEDIR",
 		"PORTAGE_GID", "PORTAGE_INST_GID", "PORTAGE_INST_UID",
+		"PORTAGE_IUSE",
 		"PORTAGE_LOG_FILE", "PORTAGE_MASTER_PID",
 		"PORTAGE_PYM_PATH", "PORTAGE_REPO_NAME", "PORTAGE_RESTRICT",
 		"PORTAGE_TMPDIR", "PORTAGE_WORKDIR_MODE",
@@ -947,7 +948,8 @@ class config(object):
 		"PORTAGE_ELOG_MAILURI", "PORTAGE_ELOG_SYSTEM", "PORTAGE_GPG_DIR",
 		"PORTAGE_GPG_KEY", "PORTAGE_PACKAGE_EMPTY_ABORT",
 		"PORTAGE_RSYNC_EXTRA_OPTS", "PORTAGE_RSYNC_OPTS",
-		"PORTAGE_RSYNC_RETRIES", "PORT_LOGDIR", "QUICKPKG_DEFAULT_OPTS",
+		"PORTAGE_RSYNC_RETRIES", "PORTAGE_USE", "PORT_LOGDIR",
+		"QUICKPKG_DEFAULT_OPTS",
 		"RESUMECOMMAND", "RESUMECOMMAND_HTTP", "RESUMECOMMAND_HTTP",
 		"RESUMECOMMAND_SFTP", "SYNC", "USE_EXPAND_HIDDEN", "USE_ORDER",
 	]
@@ -1922,7 +1924,7 @@ class config(object):
 		self.configdict["pkg"]["USE"]    = self.puse[:] # this gets appended to USE
 		if iuse != self.configdict["pkg"].get("IUSE",""):
 			self.configdict["pkg"]["IUSE"] = iuse
-			if self._use_wildcards:
+			if self._use_wildcards or self.get("EBUILD_PHASE"):
 				# Without this conditional, regenerate() would be called
 				# *every* time.
 				has_changed = True
@@ -2400,11 +2402,71 @@ class config(object):
 						# USE_EXPAND context.
 						pass
 
-		# Pre-Pend ARCH variable to USE settings so '-*' in env doesn't kill arch.
-		if self.configdict["defaults"].has_key("ARCH"):
-			if self.configdict["defaults"]["ARCH"]:
-				if self.configdict["defaults"]["ARCH"] not in usesplit:
-					usesplit.insert(0,self.configdict["defaults"]["ARCH"])
+		arch = self.configdict["defaults"].get("ARCH")
+		if arch and arch not in usesplit:
+			usesplit.append(arch)
+
+		# Filter out USE flags that aren't part of IUSE. Some
+		# flags are considered to be implicit members of IUSE:
+		#
+		#  * Flags derived from ARCH
+		#  * Flags derived from USE_EXPAND_HIDDEN variables
+		#  * Masked flags, such as those from {,package}use.mask
+		#  * Forced flags, such as those from {,package}use.force
+		#  * build and bootstrap flags used by bootstrap.sh
+
+		if True:
+			# Do this even when there's no package since setcpv() can
+			# optimize away regenerate() calls.
+			iuse_implicit = set(iuse)
+
+			# Flags derived from ARCH.
+			if arch:
+				iuse_implicit.add(arch)
+			iuse_implicit.update(self.get("PORTAGE_ARCHLIST", "").split())
+
+			# Flags derived from USE_EXPAND_HIDDEN variables
+			# such as ELIBC, KERNEL, and USERLAND.
+			use_expand_hidden = self.get("USE_EXPAND_HIDDEN", "").split()
+			use_expand_hidden_raw = use_expand_hidden
+			if use_expand_hidden:
+				use_expand_hidden = re.compile("^(%s)_.*" % \
+					("|".join(x.lower() for x in use_expand_hidden)))
+				for x in usesplit:
+					if use_expand_hidden.match(x):
+						iuse_implicit.add(x)
+
+			# Flags that have been masked or forced.
+			iuse_implicit.update(self.usemask)
+			iuse_implicit.update(self.useforce)
+
+			# build and bootstrap flags used by bootstrap.sh
+			iuse_implicit.add("build")
+			iuse_implicit.add("bootstrap")
+
+			# prefix flag is used in Prefix
+			iuse_implicit.add("prefix")
+
+			iuse_grep = iuse_implicit.copy()
+			if use_expand_hidden_raw:
+				for x in use_expand_hidden_raw:
+					iuse_grep.add(x.lower() + "_.*")
+			if iuse_grep:
+				iuse_grep = "^(%s)$" % "|".join(sorted(iuse_grep))
+			else:
+				iuse_grep = ""
+			self["PORTAGE_IUSE"] = iuse_grep
+
+		usesplit = [x for x in usesplit if \
+			x not in self.usemask]
+
+		# Filtered for the ebuild environment. Store this in a separate
+		# attribute since we still want to be able to see global USE
+		# settings for things like emerge --info.
+		self["PORTAGE_USE"] = " ".join(sorted(
+			x for x in usesplit if \
+			x in iuse_implicit))
+		self.backup_changes("PORTAGE_USE")
 
 		usesplit.sort()
 		self.configlist[-1]["USE"]= " ".join(usesplit)
@@ -2607,6 +2669,9 @@ class config(object):
 					v = self.get(k)
 					if v is not None:
 						mydict[k] = v
+
+		# Filtered by IUSE and implicit IUSE.
+		mydict["USE"] = self["PORTAGE_USE"]
 
 		# sandbox's bashrc sources /etc/profile which unsets ROOTPATH,
 		# so we have to back it up and restore it.
@@ -3797,6 +3862,11 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 	# so that the caller can override it.
 	tmpdir = mysettings["PORTAGE_TMPDIR"]
 
+	# This variable is a signal to setcpv where it triggers
+	# filtering of USE for the ebuild environment.
+	mysettings["EBUILD_PHASE"] = mydo
+	mysettings.backup_changes("EBUILD_PHASE")
+
 	if mydo != "depend":
 		"""For performance reasons, setcpv only triggers reset when it
 		detects a package-specific change in config.  For the ebuild
@@ -3810,6 +3880,7 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 	# so restore it to it's original value.
 	mysettings["PORTAGE_TMPDIR"] = tmpdir
 
+	mysettings.pop("EBUILD_PHASE", None) # remove from backupenv
 	mysettings["EBUILD_PHASE"] = mydo
 
 	mysettings["PORTAGE_MASTER_PID"] = str(os.getpid())
