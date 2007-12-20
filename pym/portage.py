@@ -6091,15 +6091,9 @@ class vardbapi(dbapi):
 		if settings is None:
 			settings = globals()["settings"]
 		self.settings = settings
-		if categories is None:
-			categories = settings.categories
-		self.categories = categories[:]
-		# If it seems like the profiles directory is missing, don't
-		# trust the categories list and try to work without it so
-		# that we can install binary packages without a profile or
-		# a portage tree.
-		if not self.settings.profile_path:
-			self.categories = None
+		# The categories list is now automatically generated
+		# from a regular expression.
+		self.categories = None
 		if vartree is None:
 			vartree = globals()["db"][root]["vartree"]
 		self.vartree = vartree
@@ -6284,7 +6278,9 @@ class vardbapi(dbapi):
 			categories = [cat for cat in listdir(basepath, dirsonly=True) \
 				if self._category_re.match(cat)]
 			self.categories = categories
-		for x in categories:
+		for x in listdir(basepath, EmptyOnError=1, ignorecvs=1, dirsonly=1):
+			if not self._category_re.match(x):
+				continue
 			for y in listdir(basepath+x,EmptyOnError=1):
 				if y.startswith("."):
 					continue
@@ -6712,7 +6708,8 @@ def close_portdbapi_caches():
 class portdbapi(dbapi):
 	"""this tree will scan a portage directory located at root (passed to init)"""
 	portdbapi_instances = []
-
+	_non_category_dirs = re.compile(r'(%s)^$' % \
+		"|".join(["eclass", "profiles", "scripts"]))
 	def __init__(self,porttree_root,mysettings=None):
 		portdbapi.portdbapi_instances.append(self)
 
@@ -7164,7 +7161,11 @@ class portdbapi(dbapi):
 	def cp_all(self):
 		"returns a list of all keys in our tree"
 		d={}
-		for x in self.mysettings.categories:
+		for oroot in self.porttrees:
+			for x in listdir(oroot, EmptyOnError=1, ignorecvs=1, dirsonly=1):
+				if not self._category_re.match(x) or \
+					self._non_category_dirs.match(x):
+					continue
 			for oroot in self.porttrees:
 				for y in listdir(oroot+"/"+x,EmptyOnError=1,ignorecvs=1,dirsonly=1):
 					d[x+"/"+y] = None
@@ -7192,10 +7193,7 @@ class portdbapi(dbapi):
 					self.xcache["match-all"][mycp] = cachelist
 				return cachelist[:]
 		mysplit = mycp.split("/")
-		if self.mysettings.profile_path:
-			invalid_category = mysplit[0] not in self._categories
-		else:
-			invalid_category = not self._category_re.match(mysplit[0])
+		invalid_category = not self._category_re.match(mysplit[0])
 		d={}
 		if mytree:
 			mytrees = [mytree]
