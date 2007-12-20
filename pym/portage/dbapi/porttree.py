@@ -485,8 +485,10 @@ class portdbapi(dbapi):
 	def cp_all(self):
 		"returns a list of all keys in our tree"
 		d = {}
-		for x in self.mysettings.categories:
-			for oroot in self.porttrees:
+		for oroot in self.porttrees:
+			for x in listdir(oroot, EmptyOnError=1, ignorecvs=1, dirsonly=1):
+				if not self._category_re.match(x):
+					continue
 				for y in listdir(oroot+"/"+x, EmptyOnError=1, ignorecvs=1, dirsonly=1):
 					d[x+"/"+y] = None
 		l = d.keys()
@@ -513,10 +515,7 @@ class portdbapi(dbapi):
 					self.xcache["match-all"][mycp] = cachelist
 				return cachelist[:]
 		mysplit = mycp.split("/")
-		if self.mysettings.profile_path:
-			invalid_category = mysplit[0] not in self._categories
-		else:
-			invalid_category = not self._category_re.match(mysplit[0])
+		invalid_category = not self._category_re.match(mysplit[0])
 		d={}
 		if mytree:
 			mytrees = [mytree]

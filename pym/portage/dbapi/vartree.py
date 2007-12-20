@@ -181,15 +181,9 @@ class vardbapi(dbapi):
 		if settings is None:
 			from portage import settings
 		self.settings = settings
-		if categories is None:
-			categories = settings.categories
-		self.categories = categories[:]
-		# If it seems like the profiles directory is missing, don't
-		# trust the categories list and try to work without it so
-		# that we can install binary packages without a profile or
-		# a portage tree.
-		if not self.settings.profile_path:
-			self.categories = None
+		# The categories list is now automatically generated
+		# from a regular expression.
+		self.categories = None
 		if vartree is None:
 			from portage import db
 			vartree = db[root]["vartree"]
@@ -385,12 +379,9 @@ class vardbapi(dbapi):
 	def cpv_all(self, use_cache=1):
 		returnme = []
 		basepath = os.path.join(self.root, VDB_PATH) + os.path.sep
-		categories = self.categories
-		if not categories:
-			categories = [cat for cat in listdir(basepath, dirsonly=True) \
-				if self._category_re.match(cat)]
-			self.categories = categories
-		for x in categories:
+		for x in listdir(basepath, EmptyOnError=1, ignorecvs=1, dirsonly=1):
+			if not self._category_re.match(x):
+				continue
 			for y in listdir(basepath + x, EmptyOnError=1):
 				if y.startswith("."):
 					continue
