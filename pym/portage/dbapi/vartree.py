@@ -165,7 +165,6 @@ class LibraryPackageMap(object):
 		mapfile.close()
 
 class vardbapi(dbapi):
-	_category_re = re.compile(r'^[+\w][-\.+\w]*$')
 	def __init__(self, root, categories=None, settings=None, vartree=None):
 		self.root = root[:]
 

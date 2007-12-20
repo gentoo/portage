@@ -513,7 +513,10 @@ class portdbapi(dbapi):
 					self.xcache["match-all"][mycp] = cachelist
 				return cachelist[:]
 		mysplit = mycp.split("/")
-		invalid_category = mysplit[0] not in self._categories
+		if self.mysettings.profile_path:
+			invalid_category = mysplit[0] not in self._categories
+		else:
+			invalid_category = not self._category_re.match(mysplit[0])
 		d={}
 		if mytree:
 			mytrees = [mytree]
