@@ -1045,6 +1045,29 @@ def perform_global_updates(mycpv, mydb, mycommands):
 	if updates:
 		mydb.aux_update(mycpv, updates)
 
+def visible(pkgsettings, cpv, metadata, built=False, installed=False):
+	"""
+	Check if a package is visible. This can raise an InvalidDependString
+	exception if LICENSE is invalid.
+	TODO: optionally generate a list of masking reasons
+	@rtype: Boolean
+	@returns: True if the package is visible, False otherwise.
+	"""
+	if not metadata["SLOT"]:
+		return False
+	if built and not installed and \
+		metadata["CHOST"] != pkgsettings["CHOST"]:
+		return False
+	if not portage.eapi_is_supported(metadata["EAPI"]):
+		return False
+	if pkgsettings._getMissingKeywords(cpv, metadata):
+		return False
+	if pkgsettings._getMaskAtom(cpv, metadata):
+		return False
+	if pkgsettings._getProfileMaskAtom(cpv, metadata):
+		return False
+	return True
+
 class BlockerCache(DictMixin):
 	"""This caches blockers of installed packages so that dep_check does not
 	have to be done for every single installed package on every invocation of
@@ -1975,17 +1998,7 @@ class depgraph:
 					for pkg in bindb.match(x):
 						metadata = dict(izip(bindb_keys,
 							bindb.aux_get(pkg, bindb_keys)))
-						if not metadata["SLOT"]:
-							continue
-						if chost != metadata["CHOST"]:
-							continue
-						if not portage.eapi_is_supported(metadata["EAPI"]):
-							continue
-						# Remove any binary package entries that are
-						# masked in the portage tree (#55871).
-						if not usepkgonly and \
-							not (pkg in myeb_matches or \
-							not portdb.cpv_exists(pkg)):
+						if not visible(pkgsettings, pkg, metadata, built=True):
 							continue
 						myeb_pkg_matches.append(pkg)
 					if myeb_pkg_matches:

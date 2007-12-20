@@ -6002,7 +6002,9 @@ class bindbapi(fakedbapi):
 		self.settings = settings
 		self._match_cache = {}
 		# Selectively cache metadata in order to optimize dep matching.
-		self._aux_cache_keys = set(["CHOST","EAPI","SLOT"])
+		self._aux_cache_keys = set(
+					["CHOST", "EAPI", "IUSE", "KEYWORDS",
+					"LICENSE", "PROVIDE", "SLOT", "USE"])
 		self._aux_cache = {}
 
 	def match(self, *pargs, **kwargs):
