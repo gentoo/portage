@@ -1712,7 +1712,8 @@ class config:
 		groups = self["ACCEPT_KEYWORDS"].split()
 		archlist = self.archlist()
 		if not archlist:
-			writemsg("--- 'profiles/arch.list' is empty or not available. Empty portage tree?\n")
+			writemsg("--- 'profiles/arch.list' is empty or " + \
+				"not available. Empty portage tree?\n", noiselevel=1)
 		else:
 			for group in groups:
 				if group not in archlist and \
@@ -4492,6 +4493,21 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 					env_stat = None
 			if env_stat:
 				mysettings._filter_calling_env = True
+			else:
+				for var in "ARCH", "USERLAND":
+					if mysettings.get(var):
+						continue
+					msg = ("%s is not set... " % var) + \
+						("Are you missing the '%setc/make.profile' symlink? " % \
+						mysettings["PORTAGE_CONFIGROOT"]) + \
+						"Is the symlink correct? " + \
+						"Is your portage tree complete?"
+					from textwrap import wrap
+					mysettings["EBUILD_PHASE"] = "setup"
+					_eerror(mysettings, wrap(msg, 70))
+					mysettings.pop("EBUILD_PHASE", None)
+					elog_process(mysettings.mycpv, mysettings)
+					return 1
 			del env_file, env_stat, saved_env
 			_doebuild_exit_status_unlink(
 				mysettings.get("EBUILD_EXIT_STATUS_FILE"))
@@ -6732,6 +6748,13 @@ class portdbapi(dbapi):
 		self.eclassdb = eclass_cache.cache(self.porttree_root,
 			overlays=self.mysettings["PORTDIR_OVERLAY"].split())
 
+		# This is used as sanity check for aux_get(). If there is no
+		# root eclass dir, we assume that PORTDIR is invalid or
+		# missing. This check allows aux_get() to detect a missing
+		# portage tree and return early by raising a KeyError.
+		self._have_root_eclass_dir = os.path.isdir(
+			os.path.join(self.porttree_root, "eclasses"))
+
 		self.metadbmodule = self.mysettings.load_best_module("portdbapi.metadbmodule")
 
 		#if the portdbapi is "frozen", then we assume that we can cache everything (that no updates to it are happening)
@@ -6954,6 +6977,8 @@ class portdbapi(dbapi):
 
 		if doregen:
 			if myebuild in self._broken_ebuilds:
+				raise KeyError(mycpv)
+			if not self._have_root_eclass_dir:
 				raise KeyError(mycpv)
 			writemsg("doregen: %s %s\n" % (doregen,mycpv), 2)
 			writemsg("Generating cache entry(0) for: "+str(myebuild)+"\n",1)
@@ -7592,8 +7617,6 @@ class binarytree(object):
 		if (not os.path.isdir(self.pkgdir) and not getbinpkgs):
 			return 0
 
-		categories = set(self.settings.categories)
-
 		if not getbinpkgsonly:
 			pkg_paths = {}
 			dirs = listdir(self.pkgdir, dirsonly=True, EmptyOnError=True)
@@ -7650,7 +7673,7 @@ class binarytree(object):
 					if mycpv in pkg_paths:
 						# All is first, so it's preferred.
 						continue
-					if mycat not in categories:
+					if not mycat:
 						writemsg(("!!! Binary package has an " + \
 							"unrecognized category: '%s'\n") % full_path,
 							noiselevel=-1)
@@ -7690,7 +7713,7 @@ class binarytree(object):
 					continue
 				mycat=self.remotepkgs[mypkg]["CATEGORY"].strip()
 				fullpkg=mycat+"/"+mypkg[:-5]
-				if mycat not in categories:
+				if not mycat:
 					writemsg(("!!! Remote binary package has an " + \
 						"unrecognized category: '%s'\n") % fullpkg,
 						noiselevel=-1)
@@ -9632,7 +9655,8 @@ def _global_updates(trees, prev_mtimes):
 		else:
 			update_data = grab_updates(updpath, prev_mtimes)
 	except portage_exception.DirectoryNotFound:
-		writemsg("--- 'profiles/updates' is empty or not available. Empty portage tree?\n")
+		writemsg("--- 'profiles/updates' is empty or " + \
+			"not available. Empty portage tree?\n", noiselevel=1)
 		return
 	myupd = None
 	if len(update_data) > 0:

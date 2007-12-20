@@ -6184,16 +6184,7 @@ def parse_opts(tmpcmdline, silent=False):
 	return myaction, myopts, myfiles
 
 def validate_ebuild_environment(trees):
-	for myroot in trees:
-		mysettings = trees[myroot]["vartree"].settings
-		if not mysettings.get("ARCH", None):
-			print >> sys.stderr, bad("\a!!! ARCH is not set... " + \
-				"Are you missing the '%setc/make.profile' symlink?" % \
-				mysettings["PORTAGE_CONFIGROOT"])
-			print >> sys.stderr, bad("\a!!! Is the symlink correct? " + \
-				"Is your portage tree complete?\n")
-			sys.exit(9)
-		del myroot, mysettings
+	pass
 
 def load_emerge_config(trees=None):
 	kwargs = {}
