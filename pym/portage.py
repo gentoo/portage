@@ -5558,7 +5558,7 @@ def cpv_expand(mycpv, mydb=None, use_cache=1, settings=None):
 	else:
 		return mykey
 
-def getmaskingreason(mycpv, settings=None, portdb=None, return_location=False):
+def getmaskingreason(mycpv, metadata=None, settings=None, portdb=None, return_location=False):
 	from portage_util import grablines
 	if settings is None:
 		settings = globals()["settings"]
@@ -5567,7 +5567,6 @@ def getmaskingreason(mycpv, settings=None, portdb=None, return_location=False):
 	mysplit = catpkgsplit(mycpv)
 	if not mysplit:
 		raise ValueError("invalid CPV: %s" % mycpv)
-	metadata = None
 	if metadata is None:
 		db_keys = list(portdb._aux_cache_keys)
 		try:
@@ -5626,7 +5625,7 @@ def getmaskingreason(mycpv, settings=None, portdb=None, return_location=False):
 	else:
 		return None
 
-def getmaskingstatus(mycpv, settings=None, portdb=None):
+def getmaskingstatus(mycpv, metadata=None, settings=None, portdb=None):
 	if settings is None:
 		settings = config(clone=globals()["settings"])
 	if portdb is None:
@@ -5634,7 +5633,6 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 	mysplit = catpkgsplit(mycpv)
 	if not mysplit:
 		raise ValueError("invalid CPV: %s" % mycpv)
-	metadata = None
 	if metadata is None:
 		db_keys = list(portdb._aux_cache_keys)
 		try:

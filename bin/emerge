@@ -1882,6 +1882,106 @@ class depgraph:
 		# We're true here unless we are missing binaries.
 		return (not missing,myfavorites)
 
+	def _show_unsatisfied_dep(self, root, atom, myparent=None, arg=None):
+		xinfo = '"%s"' % atom
+		if arg:
+			xinfo='"%s"' % arg
+		# Discard null/ from failed cpv_expand category expansion.
+		xinfo = xinfo.replace("null/", "")
+		if myparent:
+			xfrom = '(dependency required by '+ \
+				green('"%s"' % myparent[2]) + \
+				red(' [%s]' % myparent[0]) + ')'
+		masked_packages = []
+		missing_licenses = []
+		from textwrap import wrap
+		have_eapi_mask = False
+		pkgsettings = self.pkgsettings[root]
+		portdb = self.roots[root].trees["porttree"].dbapi
+		dbs = []
+		portdb = self.trees[root]["porttree"].dbapi
+		bindb  = self.trees[root]["bintree"].dbapi
+		vardb  = self.trees[root]["vartree"].dbapi
+		#               (db, pkg_type, built, installed, db_keys)
+		if "--usepkgonly" not in self.myopts:
+			db_keys = list(portdb._aux_cache_keys)
+			dbs.append((portdb, "ebuild", False, False, db_keys))
+		if "--usepkg" in self.myopts:
+			db_keys = list(bindb._aux_cache_keys)
+			dbs.append((bindb,  "binary", True, False, db_keys))
+		db_keys = self._mydbapi_keys
+		dbs.append((vardb, "installed", True, True, db_keys))
+		for db, pkg_type, built, installed, db_keys in dbs:
+			match = db.match
+			if hasattr(db, "xmatch"):
+				cpv_list = db.xmatch("match-all", atom)
+			else:
+				cpv_list = db.match(atom)
+			# descending order
+			cpv_list.reverse()
+			for cpv in cpv_list:
+				try:
+					metadata = dict(izip(db_keys,
+						db.aux_get(cpv, db_keys)))
+				except KeyError:
+					mreasons = ["corruption"]
+					metadata = None
+				mreasons = portage.getmaskingstatus(
+					cpv, metadata=metadata,
+					settings=pkgsettings, portdb=portdb)
+				comment, filename = None, None
+				if "package.mask" in mreasons:
+					comment, filename = \
+						portage.getmaskingreason(
+						cpv, metadata=metadata,
+						settings=pkgsettings, portdb=portdb,
+						return_location=True)
+				if built and \
+					metadata["CHOST"] != pkgsettings["CHOST"]:
+					mreasons.append("CHOST: %s" % \
+						metadata["CHOST"])
+				missing_licenses = []
+				if metadata:
+					if not metadata["SLOT"]:
+						mreasons.append("invalid: SLOT is undefined")
+					if not portage.eapi_is_supported(metadata["EAPI"]):
+						have_eapi_mask = True
+				masked_packages.append((cpv, mreasons,
+					comment, filename, missing_licenses))
+		if masked_packages:
+			print "\n!!! "+red("All ebuilds that could satisfy ")+green(xinfo)+red(" have been masked.")
+			print "!!! One of the following masked packages is required to complete your request:"
+			shown_licenses = set()
+			shown_comments = set()
+			# Maybe there is both an ebuild and a binary. Only
+			# show one of them to avoid redundant appearance.
+			shown_cpvs = set()
+			for cpv, mreasons, comment, filename, missing_licenses in masked_packages:
+				if cpv in shown_cpvs:
+					continue
+				shown_cpvs.add(cpv)
+				print "- "+cpv+" (masked by: "+", ".join(mreasons)+")"
+				if comment and comment not in shown_comments:
+					print filename+":"
+					print comment
+					shown_comments.add(comment)
+			if have_eapi_mask:
+				print
+				msg = ("The current version of portage supports " + \
+					"EAPI '%s'. You must upgrade to a newer version" + \
+					" of portage before EAPI masked packages can" + \
+					" be installed.") % portage.const.EAPI
+				for line in wrap(msg, 75):
+					print line
+			print
+			print "For more information, see MASKED PACKAGES section in the emerge man page or "
+			print "refer to the Gentoo Handbook."
+		else:
+			print "\nemerge: there are no ebuilds to satisfy "+green(xinfo)+"."
+		if myparent:
+			print xfrom
+		print
+
 	def select_dep(self, myroot, depstring, myparent=None, arg=None,
 		myuse=None, raise_on_missing=False, priority=DepPriority(),
 		rev_deps=False, parent_arg=None):
@@ -2082,84 +2182,8 @@ class depgraph:
 				if not matched_packages:
 					if raise_on_missing:
 						raise portage_exception.PackageNotFound(x)
-					if not arg:
-						xinfo='"'+x+'"'
-					else:
-						xinfo='"'+arg+'"'
-					if myparent:
-						xfrom = '(dependency required by '+ \
-							green('"%s"' % myparent[2]) + \
-							red(' [%s]' % myparent[0]) + ')'
-					alleb = portdb.xmatch("match-all", x)
-					from textwrap import wrap
-					have_eapi_mask = False
-					if alleb:
-						if "--usepkgonly" not in self.myopts:
-							print "\n!!! "+red("All ebuilds that could satisfy ")+green(xinfo)+red(" have been masked.")
-							print "!!! One of the following masked packages is required to complete your request:"
-							oldcomment = ""
-							db_keys = list(portdb._aux_cache_keys)
-							for p in alleb:
-								metadata = None
-								mreasons = portage.getmaskingstatus(p,
-									settings=pkgsettings, portdb=portdb)
-								try:
-									metadata = dict(izip(db_keys,
-										portdb.aux_get(p, db_keys)))
-								except KeyError:
-									pass
-								if metadata and not metadata["SLOT"]:
-									mreasons.append("invalid: SLOT is undefined")
-								print "- "+p+" (masked by: "+", ".join(mreasons)+")"
-								comment, filename = portage.getmaskingreason(p,
-									settings=pkgsettings, portdb=portdb, return_location=True)
-								if comment and comment != oldcomment:
-									print filename+":"
-									print comment
-									oldcomment = comment
-								if metadata:
-									if not portage.eapi_is_supported(
-										metadata["EAPI"]):
-										have_eapi_mask = True
-							if have_eapi_mask:
-								print
-								msg = ("The current version of portage supports " + \
-									"EAPI '%s'. You must upgrade to a newer version" + \
-									" of portage before EAPI masked packages can" + \
-									" be installed.") % portage_const.EAPI
-								for line in wrap(msg, 75):
-									print line
-							print
-							print "For more information, see MASKED PACKAGES section in the emerge man page or "
-							print "refer to the Gentoo Handbook."
-						else:
-							print
-							alleb = bindb.match(x)
-							if alleb:
-								chost = pkgsettings["CHOST"]
-								bindb_keys = list(bindb._aux_cache_keys)
-								for p in alleb:
-									mreasons = []
-									metadata = dict(izip(bindb_keys,
-										bindb.aux_get(pkg, bindb_keys)))
-									if chost != metadata["CHOST"]:
-										mreasons.append("CHOST: %s" % \
-											metadata["CHOST"])
-									if not metadata["SLOT"]:
-										mreasons.append("invalid: SLOT is undefined")
-									if not portage.eapi_is_supported(
-										metadata["EAPI"]):
-										have_eapi_mask = True
-										mreasons.append(
-											"EAPI %s" % metadata["EAPI"])
-									print "- "+p+" (masked by: "+", ".join(mreasons)+")"
-							print "!!! "+red("There are no packages available to satisfy: ")+green(xinfo)
-							print "!!! Either add a suitable binary package or compile from an ebuild."
-					else:
-						print "\nemerge: there are no ebuilds to satisfy "+green(xinfo)+"."
-					if myparent:
-						print xfrom
-					print
+					self._show_unsatisfied_dep(myroot, x,
+						myparent=myparent)
 					return 0
 
 				if "--debug" in self.myopts:
