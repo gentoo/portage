@@ -392,17 +392,82 @@ class search:
 	#
 	# public interface
 	#
-	def __init__(self, settings, portdb, vartree, spinner, searchdesc,
+	def __init__(self, settings, trees, spinner, searchdesc,
 		verbose):
 		"""Searches the available and installed packages for the supplied search key.
 		The list of available and installed packages is created at object instantiation.
 		This makes successive searches faster."""
 		self.settings = settings
-		self.portdb = portdb
-		self.vartree = vartree
+		self.vartree = trees["vartree"]
 		self.spinner = spinner
 		self.verbose = verbose
 		self.searchdesc = searchdesc
+		_portdb = trees["porttree"].dbapi
+		if _portdb._have_root_eclass_dir:
+			self.portdb = _portdb
+		else:
+			def fake_portdb():
+				pass
+			self.portdb = fake_portdb
+			self._dbs = [trees["bintree"].dbapi]
+			for attrib in ("aux_get", "cp_all",
+				"xmatch", "findname", "getfetchlist"):
+				setattr(fake_portdb, attrib, getattr(self, "_"+attrib))
+
+	def _cp_all(self):
+		cp_all = set()
+		for db in self._dbs:
+			cp_all.update(db.cp_all())
+		return list(sorted(cp_all))
+
+	def _aux_get(self, *args, **kwargs):
+		for db in self._dbs:
+			try:
+				return db.aux_get(*args, **kwargs)
+			except KeyError:
+				pass
+		raise
+
+	def _findname(self, *args, **kwargs):
+		for db in self._dbs:
+			func = getattr(db, "findname", None)
+			if func:
+				value = func(*args, **kwargs)
+				if value:
+					return value
+		return None
+
+	def _getfetchlist(self, *args, **kwargs):
+		for db in self._dbs:
+			func = getattr(db, "getfetchlist", None)
+			if func:
+				value = func(*args, **kwargs)
+				if value:
+					return value
+		return None
+
+	def _xmatch(self, level, atom):
+		if level.startswith("bestmatch-"):
+			matches = []
+			for db in self._dbs:
+				bestmatch = None
+				if hasattr(db, "xmatch"):
+					bestmatch = db.xmatch(level, atom)
+				else:
+					bestmatch = portage.best(db.match(atom))
+				if bestmatch:
+					matches.append(bestmatch)
+			return portage.best(matches)
+		else:
+			matches = set()
+			for db in self._dbs:
+				if hasattr(db, "xmatch"):
+					matches.update(db.xmatch(level, atom))
+				else:
+					matches.update(db.match(atom))
+			matches = list(matches)
+			db._cpv_sort_ascending(matches)
+			return matches
 
 	def execute(self,searchkey):
 		"""Performs the search for the supplied search key"""
@@ -502,27 +567,31 @@ class search:
 					mypkg = match.split("/")[1]
 					mycpv = match + "-" + myversion
 					myebuild = self.portdb.findname(mycpv)
-					pkgdir = os.path.dirname(myebuild)
-					import portage_manifest
-					mf = portage_manifest.Manifest(
-						pkgdir, self.settings["DISTDIR"])
-					fetchlist = self.portdb.getfetchlist(mycpv,
-						mysettings=self.settings, all=True)[1]
-					try:
-						mysum[0] = mf.getDistfilesSize(fetchlist)
-						mystr = str(mysum[0]/1024)
-						mycount=len(mystr)
-						while (mycount > 3):
-							mycount-=3
-							mystr=mystr[:mycount]+","+mystr[mycount:]
-						mysum[0]=mystr+" kB"
-					except KeyError, e:
-						mysum[0] = "Unknown (missing digest for %s)" % str(e)
+					if myebuild:
+						pkgdir = os.path.dirname(myebuild)
+						import portage_manifest as manifest
+						mf = manifest.Manifest(
+							pkgdir, self.settings["DISTDIR"])
+						fetchlist = self.portdb.getfetchlist(mycpv,
+							mysettings=self.settings, all=True)[1]
+						try:
+							mysum[0] = mf.getDistfilesSize(fetchlist)
+							mystr = str(mysum[0] / 1024)
+							mycount = len(mystr)
+							while (mycount > 3):
+								mycount -= 3
+								mystr = mystr[:mycount] + "," + mystr[mycount:]
+							mysum[0] = mystr + " kB"
+						except KeyError, e:
+							mysum[0] = "Unknown (missing digest for %s)" % \
+								str(e)
 
 					if self.verbose:
 						print "     ", darkgreen("Latest version available:"),myversion
 						print "     ", self.getInstallationStatus(mycat+'/'+mypkg)
-						print "     ", darkgreen("Size of files:"),mysum[0]
+						if myebuild:
+							print "      %s %s" % \
+								(darkgreen("Size of files:"), mysum[0])
 						print "     ", darkgreen("Homepage:")+"     ",homepage
 						print "     ", darkgreen("Description:")+"  ",desc
 						print "     ", darkgreen("License:")+"      ",license
@@ -5475,12 +5544,12 @@ def action_info(settings, trees, myopts, myfiles):
 				mydbapi=trees[settings["ROOT"]]["vartree"].dbapi,
 				tree="vartree")
 
-def action_search(settings, portdb, vartree, myopts, myfiles, spinner):
+def action_search(settings, trees, myopts, myfiles, spinner):
 	if not myfiles:
 		print "emerge: no search terms provided."
 	else:
-		searchinstance = search(settings, portdb,
-			vartree, spinner, "--searchdesc" in myopts,
+		searchinstance = search(settings, trees,
+			spinner, "--searchdesc" in myopts,
 			"--quiet" not in myopts)
 		for mysearch in myfiles:
 			try:
@@ -6613,7 +6682,7 @@ def emerge_main():
 	# SEARCH action
 	elif "search"==myaction:
 		validate_ebuild_environment(trees)
-		action_search(settings, portdb, trees["/"]["vartree"],
+		action_search(settings, trees[settings["ROOT"]],
 			myopts, myfiles, spinner)
 	elif myaction in ("clean", "unmerge") or \
 		(myaction == "prune" and "--nodeps" in myopts):
