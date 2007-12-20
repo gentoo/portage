@@ -27,7 +27,7 @@ from portage.elog import elog_process
 from portage.elog.messages import ewarn
 from portage.elog.filtering import filter_mergephases, filter_unmergephases
 
-import os, sys, stat, errno, commands, copy, time
+import os, re, sys, stat, errno, commands, copy, time
 from itertools import izip
 
 try:
@@ -165,6 +165,7 @@ class LibraryPackageMap(object):
 		mapfile.close()
 
 class vardbapi(dbapi):
+	_category_re = re.compile(r'^[+\w][-\.+\w]*$')
 	def __init__(self, root, categories=None, settings=None, vartree=None):
 		self.root = root[:]
 
@@ -184,6 +185,12 @@ class vardbapi(dbapi):
 		if categories is None:
 			categories = settings.categories
 		self.categories = categories[:]
+		# If it seems like the profiles directory is missing, don't
+		# trust the categories list and try to work without it so
+		# that we can install binary packages without a profile or
+		# a portage tree.
+		if not self.settings.profile_path:
+			self.categories = None
 		if vartree is None:
 			from portage import db
 			vartree = db[root]["vartree"]
@@ -379,7 +386,12 @@ class vardbapi(dbapi):
 	def cpv_all(self, use_cache=1):
 		returnme = []
 		basepath = os.path.join(self.root, VDB_PATH) + os.path.sep
-		for x in self.categories:
+		categories = self.categories
+		if not categories:
+			categories = [cat for cat in listdir(basepath, dirsonly=True) \
+				if self._category_re.match(cat)]
+			self.categories = categories
+		for x in categories:
 			for y in listdir(basepath + x, EmptyOnError=1):
 				if y.startswith("."):
 					continue
