@@ -21,13 +21,14 @@ import portage.gpg, portage.checksum
 from portage import eclass_cache, auxdbkeys, auxdbkeylen, doebuild, flatten, \
 	listdir, dep_expand, eapi_is_supported, key_expand, dep_check
 
-import os, stat, sys
+import os, re, stat, sys
 from itertools import izip
 
 class portdbapi(dbapi):
 	"""this tree will scan a portage directory located at root (passed to init)"""
 	portdbapi_instances = []
-
+	_non_category_dirs = re.compile(r'(%s)^$' % \
+		"|".join(["eclass", "profiles", "scripts"]))
 	def __init__(self, porttree_root, mysettings=None):
 		portdbapi.portdbapi_instances.append(self)
 
@@ -487,7 +488,8 @@ class portdbapi(dbapi):
 		d = {}
 		for oroot in self.porttrees:
 			for x in listdir(oroot, EmptyOnError=1, ignorecvs=1, dirsonly=1):
-				if not self._category_re.match(x):
+				if not self._category_re.match(x) or \
+					self._non_category_dirs.match(x):
 					continue
 				for y in listdir(oroot+"/"+x, EmptyOnError=1, ignorecvs=1, dirsonly=1):
 					d[x+"/"+y] = None
