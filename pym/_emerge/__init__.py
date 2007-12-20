@@ -403,12 +403,77 @@ class search(object):
 		The list of available and installed packages is created at object instantiation.
 		This makes successive searches faster."""
 		self.settings = root_config.settings
-		self.portdb = root_config.trees["porttree"].dbapi
 		self.vartree = root_config.trees["vartree"]
 		self.spinner = spinner
 		self.verbose = verbose
 		self.searchdesc = searchdesc
 		self.setconfig = root_config.setconfig
+		_portdb = root_config.trees["porttree"].dbapi
+		if _portdb._have_root_eclass_dir:
+			self.portdb = _portdb
+		else:
+			def fake_portdb():
+				pass
+			self.portdb = fake_portdb
+			self._dbs = [root_config.trees["bintree"].dbapi]
+			for attrib in ("aux_get", "cp_all",
+				"xmatch", "findname", "getfetchlist"):
+				setattr(fake_portdb, attrib, getattr(self, "_"+attrib))
+
+	def _cp_all(self):
+		cp_all = set()
+		for db in self._dbs:
+			cp_all.update(db.cp_all())
+		return list(sorted(cp_all))
+
+	def _aux_get(self, *args, **kwargs):
+		for db in self._dbs:
+			try:
+				return db.aux_get(*args, **kwargs)
+			except KeyError:
+				pass
+		raise
+
+	def _findname(self, *args, **kwargs):
+		for db in self._dbs:
+			func = getattr(db, "findname", None)
+			if func:
+				value = func(*args, **kwargs)
+				if value:
+					return value
+		return None
+
+	def _getfetchlist(self, *args, **kwargs):
+		for db in self._dbs:
+			func = getattr(db, "getfetchlist", None)
+			if func:
+				value = func(*args, **kwargs)
+				if value:
+					return value
+		return None
+
+	def _xmatch(self, level, atom):
+		if level.startswith("bestmatch-"):
+			matches = []
+			for db in self._dbs:
+				bestmatch = None
+				if hasattr(db, "xmatch"):
+					bestmatch = db.xmatch(level, atom)
+				else:
+					bestmatch = portage.best(db.match(atom))
+				if bestmatch:
+					matches.append(bestmatch)
+			return portage.best(matches)
+		else:
+			matches = set()
+			for db in self._dbs:
+				if hasattr(db, "xmatch"):
+					matches.update(db.xmatch(level, atom))
+				else:
+					matches.update(db.match(atom))
+			matches = list(matches)
+			db._cpv_sort_ascending(matches)
+			return matches
 
 	def execute(self,searchkey):
 		"""Performs the search for the supplied search key"""
@@ -477,7 +542,8 @@ class search(object):
 			if self.searchre.search(match_string):
 				self.matches["set"].append([setname, False])
 			elif self.searchdesc:
-				if self.searchre.search(sdict[setname].getMetadata("DESCRIPTION")):
+				if self.searchre.search(
+					self.sdict[setname].getMetadata("DESCRIPTION")):
 					self.matches["set"].append([setname, False])
 			
 		self.mlen=0
@@ -527,27 +593,31 @@ class search(object):
 					mypkg = match.split("/")[1]
 					mycpv = match + "-" + myversion
 					myebuild = self.portdb.findname(mycpv)
-					pkgdir = os.path.dirname(myebuild)
-					from portage import manifest
-					mf = manifest.Manifest(
-						pkgdir, self.settings["DISTDIR"])
-					fetchlist = self.portdb.getfetchlist(mycpv,
-						mysettings=self.settings, all=True)[1]
-					try:
-						mysum[0] = mf.getDistfilesSize(fetchlist)
-						mystr = str(mysum[0]/1024)
-						mycount=len(mystr)
-						while (mycount > 3):
-							mycount-=3
-							mystr=mystr[:mycount]+","+mystr[mycount:]
-						mysum[0]=mystr+" kB"
-					except KeyError, e:
-						mysum[0] = "Unknown (missing digest for %s)" % str(e)
+					if myebuild:
+						pkgdir = os.path.dirname(myebuild)
+						from portage import manifest
+						mf = manifest.Manifest(
+							pkgdir, self.settings["DISTDIR"])
+						fetchlist = self.portdb.getfetchlist(mycpv,
+							mysettings=self.settings, all=True)[1]
+						try:
+							mysum[0] = mf.getDistfilesSize(fetchlist)
+							mystr = str(mysum[0] / 1024)
+							mycount = len(mystr)
+							while (mycount > 3):
+								mycount -= 3
+								mystr = mystr[:mycount] + "," + mystr[mycount:]
+							mysum[0] = mystr + " kB"
+						except KeyError, e:
+							mysum[0] = "Unknown (missing digest for %s)" % \
+								str(e)
 
 					if self.verbose:
 						print "     ", darkgreen("Latest version available:"),myversion
 						print "     ", self.getInstallationStatus(mycat+'/'+mypkg)
-						print "     ", darkgreen("Size of files:"),mysum[0]
+						if myebuild:
+							print "      %s %s" % \
+								(darkgreen("Size of files:"), mysum[0])
 						print "     ", darkgreen("Homepage:")+"     ",homepage
 						print "     ", darkgreen("Description:")+"  ",desc
 						print "     ", darkgreen("License:")+"      ",license
