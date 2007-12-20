@@ -1662,7 +1662,8 @@ class config(object):
 		groups = self["ACCEPT_KEYWORDS"].split()
 		archlist = self.archlist()
 		if not archlist:
-			writemsg("--- 'profiles/arch.list' is empty or not available. Empty portage tree?\n")
+			writemsg("--- 'profiles/arch.list' is empty or " + \
+				"not available. Empty portage tree?\n", noiselevel=1)
 		else:
 			for group in groups:
 				if group not in archlist and \
@@ -6012,7 +6013,8 @@ def _global_updates(trees, prev_mtimes):
 		else:
 			update_data = grab_updates(updpath, prev_mtimes)
 	except portage.exception.DirectoryNotFound:
-		writemsg("--- 'profiles/updates' is empty or not available. Empty portage tree?\n")
+		writemsg("--- 'profiles/updates' is empty or " + \
+			"not available. Empty portage tree?\n", noiselevel=1)
 		return
 	myupd = None
 	if len(update_data) > 0:
