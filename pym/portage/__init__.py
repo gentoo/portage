@@ -2396,44 +2396,43 @@ class config(object):
 		#  * Forced flags, such as those from {,package}use.force
 		#  * build and bootstrap flags used by bootstrap.sh
 
-		if True:
-			# Do this even when there's no package since setcpv() can
-			# optimize away regenerate() calls.
-			iuse_implicit = set(iuse)
+		# Do this even when there's no package since setcpv() can
+		# optimize away regenerate() calls.
+		iuse_implicit = set(iuse)
 
-			# Flags derived from ARCH.
-			if arch:
-				iuse_implicit.add(arch)
-			iuse_implicit.update(self.get("PORTAGE_ARCHLIST", "").split())
+		# Flags derived from ARCH.
+		if arch:
+			iuse_implicit.add(arch)
+		iuse_implicit.update(self.get("PORTAGE_ARCHLIST", "").split())
 
-			# Flags derived from USE_EXPAND_HIDDEN variables
-			# such as ELIBC, KERNEL, and USERLAND.
-			use_expand_hidden = self.get("USE_EXPAND_HIDDEN", "").split()
-			use_expand_hidden_raw = use_expand_hidden
-			if use_expand_hidden:
-				use_expand_hidden = re.compile("^(%s)_.*" % \
-					("|".join(x.lower() for x in use_expand_hidden)))
-				for x in usesplit:
-					if use_expand_hidden.match(x):
-						iuse_implicit.add(x)
+		# Flags derived from USE_EXPAND_HIDDEN variables
+		# such as ELIBC, KERNEL, and USERLAND.
+		use_expand_hidden = self.get("USE_EXPAND_HIDDEN", "").split()
+		use_expand_hidden_raw = use_expand_hidden
+		if use_expand_hidden:
+			use_expand_hidden = re.compile("^(%s)_.*" % \
+				("|".join(x.lower() for x in use_expand_hidden)))
+			for x in usesplit:
+				if use_expand_hidden.match(x):
+					iuse_implicit.add(x)
 
-			# Flags that have been masked or forced.
-			iuse_implicit.update(self.usemask)
-			iuse_implicit.update(self.useforce)
+		# Flags that have been masked or forced.
+		iuse_implicit.update(self.usemask)
+		iuse_implicit.update(self.useforce)
 
-			# build and bootstrap flags used by bootstrap.sh
-			iuse_implicit.add("build")
-			iuse_implicit.add("bootstrap")
+		# build and bootstrap flags used by bootstrap.sh
+		iuse_implicit.add("build")
+		iuse_implicit.add("bootstrap")
 
-			iuse_grep = iuse_implicit.copy()
-			if use_expand_hidden_raw:
-				for x in use_expand_hidden_raw:
-					iuse_grep.add(x.lower() + "_.*")
-			if iuse_grep:
-				iuse_grep = "^(%s)$" % "|".join(sorted(iuse_grep))
-			else:
-				iuse_grep = ""
-			self["PORTAGE_IUSE"] = iuse_grep
+		iuse_grep = iuse_implicit.copy()
+		if use_expand_hidden_raw:
+			for x in use_expand_hidden_raw:
+				iuse_grep.add(x.lower() + "_.*")
+		if iuse_grep:
+			iuse_grep = "^(%s)$" % "|".join(sorted(iuse_grep))
+		else:
+			iuse_grep = ""
+		self["PORTAGE_IUSE"] = iuse_grep
 
 		usesplit = [x for x in usesplit if \
 			x not in self.usemask]
