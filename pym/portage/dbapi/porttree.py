@@ -68,6 +68,13 @@ class portdbapi(dbapi):
 		self.eclassdb = eclass_cache.cache(self.porttree_root,
 			overlays=self.mysettings["PORTDIR_OVERLAY"].split())
 
+		# This is used as sanity check for aux_get(). If there is no
+		# root eclass dir, we assume that PORTDIR is invalid or
+		# missing. This check allows aux_get() to detect a missing
+		# portage tree and return early by raising a KeyError.
+		self._have_root_eclass_dir = os.path.isdir(
+			os.path.join(self.porttree_root, "eclasses"))
+
 		self.metadbmodule = self.mysettings.load_best_module("portdbapi.metadbmodule")
 
 		#if the portdbapi is "frozen", then we assume that we can cache everything (that no updates to it are happening)
@@ -302,6 +309,8 @@ class portdbapi(dbapi):
 
 		if doregen:
 			if myebuild in self._broken_ebuilds:
+				raise KeyError(mycpv)
+			if not self._have_root_eclass_dir:
 				raise KeyError(mycpv)
 			writemsg("doregen: %s %s\n" % (doregen, mycpv), 2)
 			writemsg("Generating cache entry(0) for: "+str(myebuild)+"\n", 1)

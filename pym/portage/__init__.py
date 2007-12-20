@@ -4512,6 +4512,22 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 					env_stat = None
 			if env_stat:
 				mysettings._filter_calling_env = True
+			else:
+				for var in "ARCH", "USERLAND":
+					if mysettings.get(var):
+						continue
+					msg = ("%s is not set... " % var) + \
+						("Are you missing the '%setc/make.profile' symlink? " % \
+						mysettings["PORTAGE_CONFIGROOT"]) + \
+						"Is the symlink correct? " + \
+						"Is your portage tree complete?"
+					from portage.elog.messages import eerror
+					from textwrap import wrap
+					for line in wrap(msg, 70):
+						eerror(line, phase=mydo, key=mysettings.mycpv)
+					from portage.elog import elog_process
+					elog_process(mysettings.mycpv, mysettings)
+					return 1
 			del env_file, env_stat, saved_env
 			_doebuild_exit_status_unlink(
 				mysettings.get("EBUILD_EXIT_STATUS_FILE"))
