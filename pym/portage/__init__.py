@@ -1681,7 +1681,8 @@ class config(object):
 		groups = self["ACCEPT_KEYWORDS"].split()
 		archlist = self.archlist()
 		if not archlist:
-			writemsg("--- 'profiles/arch.list' is empty or not available. Empty portage tree?\n")
+			writemsg("--- 'profiles/arch.list' is empty or " + \
+				"not available. Empty portage tree?\n", noiselevel=1)
 		else:
 			for group in groups:
 				if group not in archlist and \
@@ -2415,47 +2416,46 @@ class config(object):
 		#  * Forced flags, such as those from {,package}use.force
 		#  * build and bootstrap flags used by bootstrap.sh
 
-		if True:
-			# Do this even when there's no package since setcpv() can
-			# optimize away regenerate() calls.
-			iuse_implicit = set(iuse)
+		# Do this even when there's no package since setcpv() can
+		# optimize away regenerate() calls.
+		iuse_implicit = set(iuse)
 
-			# Flags derived from ARCH.
-			if arch:
-				iuse_implicit.add(arch)
-			iuse_implicit.update(self.get("PORTAGE_ARCHLIST", "").split())
+		# Flags derived from ARCH.
+		if arch:
+			iuse_implicit.add(arch)
+		iuse_implicit.update(self.get("PORTAGE_ARCHLIST", "").split())
 
-			# Flags derived from USE_EXPAND_HIDDEN variables
-			# such as ELIBC, KERNEL, and USERLAND.
-			use_expand_hidden = self.get("USE_EXPAND_HIDDEN", "").split()
-			use_expand_hidden_raw = use_expand_hidden
-			if use_expand_hidden:
-				use_expand_hidden = re.compile("^(%s)_.*" % \
-					("|".join(x.lower() for x in use_expand_hidden)))
-				for x in usesplit:
-					if use_expand_hidden.match(x):
-						iuse_implicit.add(x)
+		# Flags derived from USE_EXPAND_HIDDEN variables
+		# such as ELIBC, KERNEL, and USERLAND.
+		use_expand_hidden = self.get("USE_EXPAND_HIDDEN", "").split()
+		use_expand_hidden_raw = use_expand_hidden
+		if use_expand_hidden:
+			use_expand_hidden = re.compile("^(%s)_.*" % \
+				("|".join(x.lower() for x in use_expand_hidden)))
+			for x in usesplit:
+				if use_expand_hidden.match(x):
+					iuse_implicit.add(x)
 
-			# Flags that have been masked or forced.
-			iuse_implicit.update(self.usemask)
-			iuse_implicit.update(self.useforce)
+		# Flags that have been masked or forced.
+		iuse_implicit.update(self.usemask)
+		iuse_implicit.update(self.useforce)
 
-			# build and bootstrap flags used by bootstrap.sh
-			iuse_implicit.add("build")
-			iuse_implicit.add("bootstrap")
+		# build and bootstrap flags used by bootstrap.sh
+		iuse_implicit.add("build")
+		iuse_implicit.add("bootstrap")
 
-			# prefix flag is used in Prefix
-			iuse_implicit.add("prefix")
+		# prefix flag is used in Prefix
+		iuse_implicit.add("prefix")
 
-			iuse_grep = iuse_implicit.copy()
-			if use_expand_hidden_raw:
-				for x in use_expand_hidden_raw:
-					iuse_grep.add(x.lower() + "_.*")
-			if iuse_grep:
-				iuse_grep = "^(%s)$" % "|".join(sorted(iuse_grep))
-			else:
-				iuse_grep = ""
-			self["PORTAGE_IUSE"] = iuse_grep
+		iuse_grep = iuse_implicit.copy()
+		if use_expand_hidden_raw:
+			for x in use_expand_hidden_raw:
+				iuse_grep.add(x.lower() + "_.*")
+		if iuse_grep:
+			iuse_grep = "^(%s)$" % "|".join(sorted(iuse_grep))
+		else:
+			iuse_grep = ""
+		self["PORTAGE_IUSE"] = iuse_grep
 
 		usesplit = [x for x in usesplit if \
 			x not in self.usemask]
@@ -4564,6 +4564,22 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 					env_stat = None
 			if env_stat:
 				mysettings._filter_calling_env = True
+			else:
+				for var in "ARCH", "USERLAND":
+					if mysettings.get(var):
+						continue
+					msg = ("%s is not set... " % var) + \
+						("Are you missing the '%setc/make.profile' symlink? " % \
+						mysettings["PORTAGE_CONFIGROOT"]) + \
+						"Is the symlink correct? " + \
+						"Is your portage tree complete?"
+					from portage.elog.messages import eerror
+					from textwrap import wrap
+					for line in wrap(msg, 70):
+						eerror(line, phase="setup", key=mysettings.mycpv)
+					from portage.elog import elog_process
+					elog_process(mysettings.mycpv, mysettings)
+					return 1
 			del env_file, env_stat, saved_env
 			_doebuild_exit_status_unlink(
 				mysettings.get("EBUILD_EXIT_STATUS_FILE"))
@@ -5265,7 +5281,8 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 			if avail_pkg:
 				avail_slot = "%s:%s" % (dep_getkey(atom),
 					mydbapi.aux_get(avail_pkg, ["SLOT"])[0])
-			elif not avail_pkg and use_binaries:
+			elif not avail_pkg and \
+				(use_binaries or not mydbapi.cp_list(dep_getkey(atom))):
 				# With --usepkgonly, count installed packages as "available".
 				# Note that --usepkgonly currently has no package.mask support.
 				# See bug #149816.
@@ -5854,6 +5871,7 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 	mycat = None
 	mypkg = None
 	did_merge_phase = False
+	success = False
 	try:
 		""" Don't lock the tbz2 file because the filesytem could be readonly or
 		shared by a cluster."""
@@ -5964,6 +5982,7 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 		retval = mylink.merge(pkgloc, infloc, myroot, myebuild, cleanup=0,
 			mydbapi=mydbapi, prev_mtimes=prev_mtimes)
 		did_merge_phase = True
+		success = retval == os.EX_OK
 		return retval
 	finally:
 		mysettings.pop("PORTAGE_BINPKG_FILE", None)
@@ -5977,7 +5996,8 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 				from portage.elog import elog_process
 				elog_process(mycat + "/" + mypkg, mysettings)
 			try:
-				shutil.rmtree(builddir)
+				if success:
+					shutil.rmtree(builddir)
 			except (IOError, OSError), e:
 				if e.errno != errno.ENOENT:
 					raise
@@ -6078,7 +6098,8 @@ def _global_updates(trees, prev_mtimes):
 		else:
 			update_data = grab_updates(updpath, prev_mtimes)
 	except portage.exception.DirectoryNotFound:
-		writemsg("--- 'profiles/updates' is empty or not available. Empty portage tree?\n")
+		writemsg("--- 'profiles/updates' is empty or " + \
+			"not available. Empty portage tree?\n", noiselevel=1)
 		return
 	myupd = None
 	if len(update_data) > 0:

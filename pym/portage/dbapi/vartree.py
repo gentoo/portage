@@ -27,7 +27,7 @@ from portage.elog import elog_process
 from portage.elog.messages import ewarn
 from portage.elog.filtering import filter_mergephases, filter_unmergephases
 
-import os, sys, stat, errno, commands, copy, time
+import os, re, sys, stat, errno, commands, copy, time
 from itertools import izip
 
 try:
@@ -181,9 +181,9 @@ class vardbapi(dbapi):
 		if settings is None:
 			from portage import settings
 		self.settings = settings
-		if categories is None:
-			categories = settings.categories
-		self.categories = categories[:]
+		# The categories list is now automatically generated
+		# from a regular expression.
+		self.categories = None
 		if vartree is None:
 			from portage import db
 			vartree = db[root]["vartree"]
@@ -379,7 +379,9 @@ class vardbapi(dbapi):
 	def cpv_all(self, use_cache=1):
 		returnme = []
 		basepath = os.path.join(self.root, VDB_PATH) + os.path.sep
-		for x in self.categories:
+		for x in listdir(basepath, EmptyOnError=1, ignorecvs=1, dirsonly=1):
+			if not self._category_re.match(x):
+				continue
 			for y in listdir(basepath + x, EmptyOnError=1):
 				if y.startswith("."):
 					continue

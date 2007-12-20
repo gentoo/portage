@@ -21,13 +21,14 @@ import portage.gpg, portage.checksum
 from portage import eclass_cache, auxdbkeys, auxdbkeylen, doebuild, flatten, \
 	listdir, dep_expand, eapi_is_supported, key_expand, dep_check
 
-import os, stat, sys
+import os, re, stat, sys
 from itertools import izip
 
 class portdbapi(dbapi):
 	"""this tree will scan a portage directory located at root (passed to init)"""
 	portdbapi_instances = []
-
+	_non_category_dirs = re.compile(r'^(%s)$' % \
+		"|".join(["eclass", "profiles", "scripts"]))
 	def __init__(self, porttree_root, mysettings=None):
 		portdbapi.portdbapi_instances.append(self)
 
@@ -67,6 +68,13 @@ class portdbapi(dbapi):
 
 		self.eclassdb = eclass_cache.cache(self.porttree_root,
 			overlays=self.mysettings["PORTDIR_OVERLAY"].split())
+
+		# This is used as sanity check for aux_get(). If there is no
+		# root eclass dir, we assume that PORTDIR is invalid or
+		# missing. This check allows aux_get() to detect a missing
+		# portage tree and return early by raising a KeyError.
+		self._have_root_eclass_dir = os.path.isdir(
+			os.path.join(self.porttree_root, "eclass"))
 
 		self.metadbmodule = self.mysettings.load_best_module("portdbapi.metadbmodule")
 
@@ -303,6 +311,8 @@ class portdbapi(dbapi):
 		if doregen:
 			if myebuild in self._broken_ebuilds:
 				raise KeyError(mycpv)
+			if not self._have_root_eclass_dir:
+				raise KeyError(mycpv)
 			writemsg("doregen: %s %s\n" % (doregen, mycpv), 2)
 			writemsg("Generating cache entry(0) for: "+str(myebuild)+"\n", 1)
 
@@ -476,8 +486,11 @@ class portdbapi(dbapi):
 	def cp_all(self):
 		"returns a list of all keys in our tree"
 		d = {}
-		for x in self.mysettings.categories:
-			for oroot in self.porttrees:
+		for oroot in self.porttrees:
+			for x in listdir(oroot, EmptyOnError=1, ignorecvs=1, dirsonly=1):
+				if not self._category_re.match(x) or \
+					self._non_category_dirs.match(x):
+					continue
 				for y in listdir(oroot+"/"+x, EmptyOnError=1, ignorecvs=1, dirsonly=1):
 					d[x+"/"+y] = None
 		l = d.keys()
@@ -504,7 +517,7 @@ class portdbapi(dbapi):
 					self.xcache["match-all"][mycp] = cachelist
 				return cachelist[:]
 		mysplit = mycp.split("/")
-		invalid_category = mysplit[0] not in self._categories
+		invalid_category = not self._category_re.match(mysplit[0])
 		d={}
 		if mytree:
 			mytrees = [mytree]

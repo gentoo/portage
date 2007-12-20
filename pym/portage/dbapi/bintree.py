@@ -363,8 +363,6 @@ class binarytree(object):
 		if (not os.path.isdir(self.pkgdir) and not getbinpkgs):
 			return 0
 
-		categories = set(self.settings.categories)
-
 		if not getbinpkgsonly:
 			pkg_paths = {}
 			self._pkg_paths = pkg_paths
@@ -501,7 +499,7 @@ class binarytree(object):
 					if mycpv in pkg_paths:
 						# All is first, so it's preferred.
 						continue
-					if mycat not in categories:
+					if not mycat:
 						writemsg(("!!! Binary package has an " + \
 							"unrecognized category: '%s'\n") % full_path,
 							noiselevel=-1)
@@ -664,7 +662,7 @@ class binarytree(object):
 					continue
 				mycat = self.remotepkgs[mypkg]["CATEGORY"].strip()
 				fullpkg = mycat+"/"+mypkg[:-5]
-				if mycat not in categories:
+				if not mycat:
 					writemsg(("!!! Remote binary package has an " + \
 						"unrecognized category: '%s'\n") % fullpkg,
 						noiselevel=-1)
@@ -795,10 +793,12 @@ class binarytree(object):
 	def _update_pkgindex_header(self, header):
 		portdir = normalize_path(os.path.realpath(self.settings["PORTDIR"]))
 		profiles_base = os.path.join(portdir, "profiles") + os.path.sep
-		profile_path = normalize_path(os.path.realpath(self.settings.profile_path))
-		if profile_path.startswith(profiles_base):
-			profile_path = profile_path[len(profiles_base):]
-		header["PROFILE"] = profile_path
+		if self.settings.profile_path:
+			profile_path = normalize_path(
+				os.path.realpath(self.settings.profile_path))
+			if profile_path.startswith(profiles_base):
+				profile_path = profile_path[len(profiles_base):]
+			header["PROFILE"] = profile_path
 		header["VERSION"] = str(self._pkgindex_version)
 		base_uri = self.settings.get("PORTAGE_BINHOST_HEADER_URI")
 		if base_uri:
