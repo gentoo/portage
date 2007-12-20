@@ -6077,6 +6077,7 @@ class bindbapi(fakedbapi):
 		return fakedbapi.cpv_all(self)
 
 class vardbapi(dbapi):
+	_category_re = re.compile(r'^[+\w][-\.+\w]*$')
 	def __init__(self, root, categories=None, settings=None, vartree=None):
 		self.root       = root[:]
 		#cache for category directory mtimes
@@ -6092,6 +6093,12 @@ class vardbapi(dbapi):
 		if categories is None:
 			categories = settings.categories
 		self.categories = categories[:]
+		# If it seems like the profiles directory is missing, don't
+		# trust the categories list and try to work without it so
+		# that we can install binary packages without a profile or
+		# a portage tree.
+		if not self.settings.profile_path:
+			self.categories = None
 		if vartree is None:
 			vartree = globals()["db"][root]["vartree"]
 		self.vartree = vartree
@@ -6271,8 +6278,12 @@ class vardbapi(dbapi):
 	def cpv_all(self,use_cache=1):
 		returnme=[]
 		basepath = self.root+VDB_PATH+"/"
-
-		for x in self.categories:
+		categories = self.categories
+		if not categories:
+			categories = [cat for cat in listdir(basepath, dirsonly=True) \
+				if self._category_re.match(cat)]
+			self.categories = categories
+		for x in categories:
 			for y in listdir(basepath+x,EmptyOnError=1):
 				if y.startswith("."):
 					continue
