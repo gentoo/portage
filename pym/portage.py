@@ -9439,6 +9439,7 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 	mycat = None
 	mypkg = None
 	did_merge_phase = False
+	success = False
 	try:
 		""" Don't lock the tbz2 file because the filesytem could be readonly or
 		shared by a cluster."""
@@ -9516,6 +9517,7 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 		retval = mylink.merge(pkgloc, infloc, myroot, myebuild, cleanup=0,
 			mydbapi=mydbapi, prev_mtimes=prev_mtimes)
 		did_merge_phase = True
+		success = retval == os.EX_OK
 		return retval
 	finally:
 		mysettings.pop("PORTAGE_BINPKG_FILE", None)
@@ -9528,7 +9530,8 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 				# so that it's only called once.
 				elog_process(mycat + "/" + mypkg, mysettings)
 			try:
-				shutil.rmtree(builddir)
+				if success:
+					shutil.rmtree(builddir)
 			except (IOError, OSError), e:
 				if e.errno != errno.ENOENT:
 					raise
