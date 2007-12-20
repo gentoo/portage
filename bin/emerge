@@ -1217,6 +1217,11 @@ class depgraph:
 		"binary":"bintree",
 		"installed":"vartree"}
 
+	_mydbapi_keys = [
+		"CHOST", "DEPEND", "EAPI", "IUSE", "KEYWORDS",
+		"LICENSE", "PDEPEND", "PROVIDE", "RDEPEND",
+		"repository", "RESTRICT", "SLOT", "USE"]
+
 	def __init__(self, settings, trees, myopts, myparams, spinner):
 		self.settings = settings
 		self.target_root = settings["ROOT"]
@@ -1234,8 +1239,6 @@ class depgraph:
 		# Maps nodes to the reasons they were selected for reinstallation.
 		self._reinstall_nodes = {}
 		self.mydbapi = {}
-		self._mydbapi_keys = ["SLOT", "DEPEND", "RDEPEND", "PDEPEND",
-			"USE", "IUSE", "PROVIDE", "RESTRICT", "repository"]
 		self.trees = {}
 		self.roots = {}
 		for myroot in trees:
@@ -1970,7 +1973,7 @@ class depgraph:
 				msg = ("The current version of portage supports " + \
 					"EAPI '%s'. You must upgrade to a newer version" + \
 					" of portage before EAPI masked packages can" + \
-					" be installed.") % portage.const.EAPI
+					" be installed.") % portage_const.EAPI
 				for line in wrap(msg, 75):
 					print line
 			print
