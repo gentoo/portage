@@ -6753,7 +6753,7 @@ class portdbapi(dbapi):
 		# missing. This check allows aux_get() to detect a missing
 		# portage tree and return early by raising a KeyError.
 		self._have_root_eclass_dir = os.path.isdir(
-			os.path.join(self.porttree_root, "eclasses"))
+			os.path.join(self.porttree_root, "eclass"))
 
 		self.metadbmodule = self.mysettings.load_best_module("portdbapi.metadbmodule")
 
