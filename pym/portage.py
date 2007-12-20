@@ -7161,9 +7161,8 @@ class portdbapi(dbapi):
 				if not self._category_re.match(x) or \
 					self._non_category_dirs.match(x):
 					continue
-				for oroot in self.porttrees:
-					for y in listdir(oroot+"/"+x,EmptyOnError=1,ignorecvs=1,dirsonly=1):
-						d[x+"/"+y] = None
+				for y in listdir(oroot+"/"+x, EmptyOnError=1, ignorecvs=1, dirsonly=1):
+					d[x+"/"+y] = None
 		l = d.keys()
 		l.sort()
 		return l
