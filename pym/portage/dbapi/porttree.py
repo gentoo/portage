@@ -27,7 +27,7 @@ from itertools import izip
 class portdbapi(dbapi):
 	"""this tree will scan a portage directory located at root (passed to init)"""
 	portdbapi_instances = []
-	_non_category_dirs = re.compile(r'(%s)^$' % \
+	_non_category_dirs = re.compile(r'^(%s)$' % \
 		"|".join(["eclass", "profiles", "scripts"]))
 	def __init__(self, porttree_root, mysettings=None):
 		portdbapi.portdbapi_instances.append(self)
