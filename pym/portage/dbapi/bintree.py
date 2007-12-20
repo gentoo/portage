@@ -785,10 +785,12 @@ class binarytree(object):
 	def _update_pkgindex_header(self, header):
 		portdir = normalize_path(os.path.realpath(self.settings["PORTDIR"]))
 		profiles_base = os.path.join(portdir, "profiles") + os.path.sep
-		profile_path = normalize_path(os.path.realpath(self.settings.profile_path))
-		if profile_path.startswith(profiles_base):
-			profile_path = profile_path[len(profiles_base):]
-		header["PROFILE"] = profile_path
+		if self.settings.profile_path:
+			profile_path = normalize_path(
+				os.path.realpath(self.settings.profile_path))
+			if profile_path.startswith(profiles_base):
+				profile_path = profile_path[len(profiles_base):]
+			header["PROFILE"] = profile_path
 		header["VERSION"] = str(self._pkgindex_version)
 		base_uri = self.settings.get("PORTAGE_BINHOST_HEADER_URI")
 		if base_uri:
