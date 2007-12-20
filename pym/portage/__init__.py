@@ -4525,7 +4525,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 					from portage.elog.messages import eerror
 					from textwrap import wrap
 					for line in wrap(msg, 70):
-						eerror(line, phase=mydo, key=mysettings.mycpv)
+						eerror(line, phase="setup", key=mysettings.mycpv)
 					from portage.elog import elog_process
 					elog_process(mysettings.mycpv, mysettings)
 					return 1
