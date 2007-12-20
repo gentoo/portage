@@ -5210,7 +5210,8 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 			if avail_pkg:
 				avail_slot = "%s:%s" % (dep_getkey(atom),
 					mydbapi.aux_get(avail_pkg, ["SLOT"])[0])
-			elif not avail_pkg and use_binaries:
+			elif not avail_pkg and \
+				(use_binaries or not mydbapi.cp_list(dep_getkey(atom))):
 				# With --usepkgonly, count installed packages as "available".
 				# Note that --usepkgonly currently has no package.mask support.
 				# See bug #149816.
