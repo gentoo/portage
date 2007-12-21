@@ -5791,7 +5791,8 @@ class portagetree:
 
 
 class dbapi:
-	_category_re = re.compile(r'^[+\w][-\.+\w]*$')
+	_category_re = re.compile(r'^\w[-.+\w]*$')
+	_pkg_dir_name_re = re.compile(r'^\w[-+\w]*$')
 	def __init__(self):
 		pass
 
@@ -7163,6 +7164,9 @@ class portdbapi(dbapi):
 					self._non_category_dirs.match(x):
 					continue
 				for y in listdir(oroot+"/"+x, EmptyOnError=1, ignorecvs=1, dirsonly=1):
+					if not self._pkg_dir_name_re.match(y) or \
+						y == "CVS":
+						continue
 					d[x+"/"+y] = None
 		l = d.keys()
 		l.sort()
