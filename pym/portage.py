@@ -1724,9 +1724,9 @@ class config:
 
 		abs_profile_path = os.path.join(self["PORTAGE_CONFIGROOT"],
 			PROFILE_PATH.lstrip(os.path.sep))
-		if not os.path.islink(abs_profile_path) and \
+		if not self.profile_path or (not os.path.islink(abs_profile_path) and \
 			not os.path.exists(os.path.join(abs_profile_path, "parent")) and \
-			os.path.exists(os.path.join(self["PORTDIR"], "profiles")):
+			os.path.exists(os.path.join(self["PORTDIR"], "profiles"))):
 			writemsg("\a\n\n!!! %s is not a symlink and will probably prevent most merges.\n" % abs_profile_path,
 				noiselevel=-1)
 			writemsg("!!! It should point into a profile within %s/profiles/\n" % self["PORTDIR"])
@@ -9823,7 +9823,6 @@ def create_trees(config_root=None, target_root=None, trees=None):
 	settings = config(config_root=config_root, target_root=target_root,
 		config_incrementals=portage_const.INCREMENTALS)
 	settings.lock()
-	settings.validate()
 
 	myroots = [(settings["ROOT"], settings)]
 	if settings["ROOT"] != "/":
@@ -9849,7 +9848,6 @@ def create_trees(config_root=None, target_root=None, trees=None):
 				backupenv.pop(k, None)
 		settings.regenerate()
 		settings.lock()
-		settings.validate()
 		myroots.append((settings["ROOT"], settings))
 
 	for myroot, mysettings in myroots:
