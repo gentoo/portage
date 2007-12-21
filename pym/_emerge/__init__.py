@@ -469,29 +469,71 @@ class search(object):
 					return value
 		return [], []
 
+	def _visible(self, db, cpv, metadata):
+		installed = db is self.vartree.dbapi
+		built = installed or db is not self._portdb
+		return visible(self.settings, cpv, metadata,
+			built=built, installed=installed)
+
 	def _xmatch(self, level, atom):
-		# TODO: use visible() to implement masking for binary packages
-		if level.startswith("bestmatch-"):
-			matches = []
-			for db in self._dbs:
-				bestmatch = None
-				if hasattr(db, "xmatch"):
-					bestmatch = db.xmatch(level, atom)
-				else:
-					bestmatch = portage.best(db.match(atom))
-				if bestmatch:
-					matches.append(bestmatch)
-			return portage.best(matches)
-		else:
+		"""
+		This method does not expand old-style virtuals because it
+		is restricted to returning matches for a single ${CATEGORY}/${PN}
+		and old-style virual matches unreliable for that when querying
+		multiple package databases. If necessary, old-style virtuals
+		can be performed on atoms prior to calling this method.
+		"""
+		cp = portage.dep_getkey(atom)
+		if level == "match-all":
 			matches = set()
 			for db in self._dbs:
 				if hasattr(db, "xmatch"):
 					matches.update(db.xmatch(level, atom))
 				else:
 					matches.update(db.match(atom))
-			matches = list(matches)
-			db._cpv_sort_ascending(matches)
-			return matches
+			result = list(x for x in matches if portage.cpv_getkey(x) == cp)
+			db._cpv_sort_ascending(result)
+		elif level == "match-visible":
+			matches = set()
+			for db in self._dbs:
+				if hasattr(db, "xmatch"):
+					matches.update(db.xmatch(level, atom))
+				else:
+					db_keys = list(db._aux_cache_keys)
+					for cpv in db.match(atom):
+						metadata = dict(izip(db_keys,
+							db.aux_get(cpv, db_keys)))
+						if not self._visible(db, cpv, metadata):
+							continue
+						matches.add(cpv)
+			result = list(x for x in matches if portage.cpv_getkey(x) == cp)
+			db._cpv_sort_ascending(result)
+		elif level == "bestmatch-visible":
+			result = None
+			for db in self._dbs:
+				if hasattr(db, "xmatch"):
+					cpv = db.xmatch("bestmatch-visible", atom)
+					if not cpv or portage.cpv_getkey(cpv) != cp:
+						continue
+					if not result or cpv == portage.best([cpv, result]):
+						result = cpv
+				else:
+					db_keys = list(db._aux_cache_keys)
+					# break out of this loop with highest visible
+					# match, checked in descending order
+					for cpv in reversed(db.match(atom)):
+						if portage.cpv_getkey(cpv) != cp:
+							continue
+						metadata = dict(izip(db_keys,
+							db.aux_get(cpv, db_keys)))
+						if not self._visible(db, cpv, metadata):
+							continue
+						if not result or cpv == portage.best([cpv, result]):
+							result = cpv
+						break
+		else:
+			raise NotImplementedError(level)
+		return result
 
 	def execute(self,searchkey):
 		"""Performs the search for the supplied search key"""
