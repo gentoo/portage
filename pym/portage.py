@@ -6703,8 +6703,9 @@ def close_portdbapi_caches():
 class portdbapi(dbapi):
 	"""this tree will scan a portage directory located at root (passed to init)"""
 	portdbapi_instances = []
-	_non_category_dirs = re.compile(r'^(%s)$' % \
-		"|".join(["eclass", "profiles", "scripts"]))
+	_non_category_dirs = ["eclass", "licenses",
+		"metadata", "profiles", "scripts"]
+	_non_category_dirs = re.compile(r'^(%s)$' % "|".join(_non_category_dirs))
 	def __init__(self,porttree_root,mysettings=None):
 		portdbapi.portdbapi_instances.append(self)
 
