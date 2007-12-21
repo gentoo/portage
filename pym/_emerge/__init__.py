@@ -2040,7 +2040,7 @@ class depgraph(object):
 				except SystemExit, e:
 					raise # Needed else can't exit
 				except Exception, e:
-					print >> sys.stderr, "\n\n!!! Problem in '%s' dependencies." % mykey
+					print >> sys.stderr, "\n\n!!! Problem in '%s' dependencies." % atom
 					print >> sys.stderr, "!!!", str(e), getattr(e, "__module__", None)
 					raise
 
