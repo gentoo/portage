@@ -5217,7 +5217,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 			elif not avail_pkg:
 				has_mask = False
 				if hasattr(mydbapi, "xmatch"):
-					has_mask = bool(mydbapi.xmatch("bestmatch-all", atom))
+					has_mask = bool(mydbapi.xmatch("match-all", atom))
 				if (use_binaries or not has_mask):
 					avail_pkg = best(vardb.match(atom))
 					if avail_pkg:
