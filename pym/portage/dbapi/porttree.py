@@ -493,6 +493,9 @@ class portdbapi(dbapi):
 					self._non_category_dirs.match(x):
 					continue
 				for y in listdir(oroot+"/"+x, EmptyOnError=1, ignorecvs=1, dirsonly=1):
+					if not self._pkg_dir_name_re.match(y) or \
+						y == "CVS":
+						continue
 					d[x+"/"+y] = None
 		l = d.keys()
 		l.sort()
