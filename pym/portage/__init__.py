@@ -2396,6 +2396,7 @@ class config(object):
 		#  * Masked flags, such as those from {,package}use.mask
 		#  * Forced flags, such as those from {,package}use.force
 		#  * build and bootstrap flags used by bootstrap.sh
+		#  * The "test" flag that's enabled by FEATURES=test
 
 		# Do this even when there's no package since setcpv() can
 		# optimize away regenerate() calls.
@@ -2424,6 +2425,7 @@ class config(object):
 		# build and bootstrap flags used by bootstrap.sh
 		iuse_implicit.add("build")
 		iuse_implicit.add("bootstrap")
+		iuse_implicit.add("test")
 
 		iuse_grep = iuse_implicit.copy()
 		if use_expand_hidden_raw:
