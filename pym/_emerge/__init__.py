@@ -6741,7 +6741,9 @@ def parse_opts(tmpcmdline, silent=False):
 	return myaction, myopts, myfiles
 
 def validate_ebuild_environment(trees):
-	pass
+	for myroot in trees:
+		settings = trees[myroot]["vartree"].settings
+		settings.validate()
 
 def load_emerge_config(trees=None):
 	kwargs = {}
