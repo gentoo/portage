@@ -408,17 +408,27 @@ class search(object):
 		self.verbose = verbose
 		self.searchdesc = searchdesc
 		self.setconfig = root_config.setconfig
-		_portdb = root_config.trees["porttree"].dbapi
-		if _portdb._have_root_eclass_dir:
-			self.portdb = _portdb
-		else:
-			def fake_portdb():
-				pass
-			self.portdb = fake_portdb
-			self._dbs = [root_config.trees["bintree"].dbapi]
-			for attrib in ("aux_get", "cp_all",
-				"xmatch", "findname", "getfetchlist"):
-				setattr(fake_portdb, attrib, getattr(self, "_"+attrib))
+
+		def fake_portdb():
+			pass
+		self.portdb = fake_portdb
+		for attrib in ("aux_get", "cp_all",
+			"xmatch", "findname", "getfetchlist"):
+			setattr(fake_portdb, attrib, getattr(self, "_"+attrib))
+
+		self._dbs = []
+
+		portdb = root_config.trees["porttree"].dbapi
+		bindb = root_config.trees["bintree"].dbapi
+		vardb = root_config.trees["vartree"].dbapi
+
+		if portdb._have_root_eclass_dir:
+			self._dbs.append(portdb)
+
+		if bindb.cp_all():
+			self._dbs.append(bindb)
+
+		self._dbs.append(vardb)
 
 	def _cp_all(self):
 		cp_all = set()
@@ -450,9 +460,10 @@ class search(object):
 				value = func(*args, **kwargs)
 				if value:
 					return value
-		return None
+		return [], []
 
 	def _xmatch(self, level, atom):
+		# TODO: use visible() to implement masking for binary packages
 		if level.startswith("bestmatch-"):
 			matches = []
 			for db in self._dbs:
@@ -556,6 +567,7 @@ class search(object):
 		print "\b\b  \n[ Results for search key : "+white(self.searchkey)+" ]"
 		print "[ Applications found : "+white(str(self.mlen))+" ]"
 		print " "
+		vardb = self.vartree.dbapi
 		for mtype in self.matches:
 			for match,masked in self.matches[mtype]:
 				full_package = None
@@ -612,8 +624,16 @@ class search(object):
 							mysum[0] = "Unknown (missing digest for %s)" % \
 								str(e)
 
+					available = False
+					for db in self._dbs:
+						if db is not vardb and \
+							db.cpv_exists(mycpv):
+							available = True
+							break
+
 					if self.verbose:
-						print "     ", darkgreen("Latest version available:"),myversion
+						if available:
+							print "     ", darkgreen("Latest version available:"),myversion
 						print "     ", self.getInstallationStatus(mycat+'/'+mypkg)
 						if myebuild:
 							print "      %s %s" % \
