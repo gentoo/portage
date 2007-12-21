@@ -2737,7 +2737,11 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 
 	fd_pipes = keywords.get("fd_pipes")
 	if fd_pipes is None:
-		fd_pipes = {0:0, 1:1, 2:2}
+		fd_pipes = {
+			0:sys.stdin.fileno(),
+			1:sys.stdout.fileno(),
+			2:sys.stderr.fileno(),
+		}
 	# In some cases the above print statements don't flush stdout, so
 	# it needs to be flushed before allowing a child process to use it
 	# so that output always shows in the correct order.
