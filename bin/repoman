@@ -477,9 +477,6 @@ def last(full=False):
 	for x in qacats:
 		if not stats[x]:
 			continue
-		if "notadded" in x and not isCvs:
-			stats[x] = 0
-			continue
 		dowarn = 1
 		if x not in qawarnings:
 			dofail = 1
@@ -1214,7 +1211,7 @@ for x in scanlist:
 		if os.stat(checkdir+"/"+y+".ebuild")[0] & 0x0248:
 			stats["file.executable"] += 1
 			fails["file.executable"].append(x+"/"+y+".ebuild")
-		if y not in eadded:
+		if isCvs and y not in eadded:
 			#ebuild not added to cvs
 			stats["ebuild.notadded"]=stats["ebuild.notadded"]+1
 			fails["ebuild.notadded"].append(x+"/"+y+".ebuild")
@@ -1644,9 +1641,6 @@ dofull = options.mode not in ("full", "lfull")
 
 for x in qacats:
 	if not stats[x]:
-		continue
-	if "notadded" in x and not isCvs:
-		stats[x] = 0
 		continue
 	dowarn = 1
 	if x not in qawarnings:
