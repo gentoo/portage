@@ -398,7 +398,7 @@ class search(object):
 	# public interface
 	#
 	def __init__(self, root_config, spinner, searchdesc,
-		verbose):
+		verbose, usepkg, usepkgonly):
 		"""Searches the available and installed packages for the supplied search key.
 		The list of available and installed packages is created at object instantiation.
 		This makes successive searches faster."""
@@ -422,10 +422,10 @@ class search(object):
 		bindb = root_config.trees["bintree"].dbapi
 		vardb = root_config.trees["vartree"].dbapi
 
-		if portdb._have_root_eclass_dir:
+		if not usepkgonly and portdb._have_root_eclass_dir:
 			self._dbs.append(portdb)
 
-		if bindb.cp_all():
+		if (usepkg or usepkgonly) and bindb.cp_all():
 			self._dbs.append(bindb)
 
 		self._dbs.append(vardb)
@@ -6117,7 +6117,8 @@ def action_search(root_config, myopts, myfiles, spinner):
 	else:
 		searchinstance = search(root_config,
 			spinner, "--searchdesc" in myopts,
-			"--quiet" not in myopts)
+			"--quiet" not in myopts, "--usepkg" in myopts,
+			"--usepkgonly" in myopts)
 		for mysearch in myfiles:
 			try:
 				searchinstance.execute(mysearch)
