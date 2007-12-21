@@ -189,7 +189,8 @@ class vardbapi(dbapi):
 			vartree = db[root]["vartree"]
 		self.vartree = vartree
 		self._aux_cache_keys = set(
-			["CHOST", "COUNTER", "DEPEND", "EAPI", "IUSE", "KEYWORDS",
+			["CHOST", "COUNTER", "DEPEND", "DESCRIPTION",
+			"EAPI", "HOMEPAGE", "IUSE", "KEYWORDS",
 			"LICENSE", "PDEPEND", "PROVIDE", "RDEPEND", "NEEDED",
 			"repository", "RESTRICT" , "SLOT", "USE"])
 		self._aux_cache = None
