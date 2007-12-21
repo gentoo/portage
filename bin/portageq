@@ -250,7 +250,7 @@ def match(argv):
 	if atom:
 		results = portage.db[root]["vartree"].dbapi.match(atom)
 	else:
-		results = portage.db[root]["vartree"].dbapi.cpv_all(atom)
+		results = portage.db[root]["vartree"].dbapi.cpv_all()
 		results.sort()
 	for cpv in results:
 		print cpv
