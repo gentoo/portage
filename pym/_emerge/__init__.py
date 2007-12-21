@@ -429,6 +429,7 @@ class search(object):
 			self._dbs.append(bindb)
 
 		self._dbs.append(vardb)
+		self._portdb = portdb
 
 	def _cp_all(self):
 		cp_all = set()
@@ -446,6 +447,12 @@ class search(object):
 
 	def _findname(self, *args, **kwargs):
 		for db in self._dbs:
+			if db is not self._portdb:
+				# We don't want findname to return anything
+				# unless it's an ebuild in a portage tree.
+				# Otherwise, it's already built and we don't
+				# care about it.
+				continue
 			func = getattr(db, "findname", None)
 			if func:
 				value = func(*args, **kwargs)
