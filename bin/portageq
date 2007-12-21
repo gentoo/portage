@@ -435,6 +435,8 @@ def main():
 			sys.exit(os.EX_USAGE)
 		os.environ["ROOT"] = sys.argv[2]
 
+	global portage
+
 	# First import the main portage module without legacy globals since it
 	# is almost certain to succeed in that case. This provides access to
 	# the portage.exception namespace which is needed for later exception
@@ -444,7 +446,6 @@ def main():
 	import portage
 	del os.environ["PORTAGE_LEGACY_GLOBALS"]
 	try:
-		global portage
 		try:
 			reload(portage)
 		except ImportError:
