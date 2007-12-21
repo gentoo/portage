@@ -239,17 +239,22 @@ all_best_visible.uses_root = True
 
 
 def match(argv):
-	"""<root> <category/package>
-	Returns \n seperated list of category/package-version
+	"""<root> <atom>
+	Returns a \\n separated list of category/package-version.
+	When given an empty string, all installed packages will
+	be listed.
 	"""
-	if (len(argv) < 2):
-		print "ERROR: insufficient parameters!"
+	if len(argv) != 2:
+		print "ERROR: expected 2 parameters, got %d!" % len(argv)
 		sys.exit(2)
-	try:
-		print "\n".join(portage.db[argv[0]]["vartree"].dbapi.match(argv[1]))
-	except KeyError, e:
-		portage.writemsg("%s\n" % str(e), noiselevel=-1)
-		sys.exit(1)
+	root, atom = argv
+	if atom:
+		results = portage.db[root]["vartree"].dbapi.match(atom)
+	else:
+		results = portage.db[root]["vartree"].dbapi.cpv_all()
+		results.sort()
+	for cpv in results:
+		print cpv
 match.uses_root = True
 
 
