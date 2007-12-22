@@ -5887,7 +5887,7 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 		mycat = mycat.strip()
 
 		buildprefix = xptbz2.getfile("EPREFIX")
-		if not mycat:
+		if not buildprefix:
 			writemsg("!!! EPREFIX info missing from info chunk, aborting...\n",
 				noiselevel=-1)
 			return 1
