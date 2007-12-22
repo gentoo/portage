@@ -185,7 +185,11 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 	# If we haven't been told what file descriptors to use
 	# default to propogating our stdin, stdout and stderr.
 	if fd_pipes is None:
-		fd_pipes = {0:0, 1:1, 2:2}
+		fd_pipes = {
+			0:sys.stdin.fileno(),
+			1:sys.stdout.fileno(),
+			2:sys.stderr.fileno(),
+		}
 
 	# mypids will hold the pids of all processes created.
 	mypids = []

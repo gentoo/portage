@@ -1693,9 +1693,9 @@ class config(object):
 
 		abs_profile_path = os.path.join(self["PORTAGE_CONFIGROOT"],
 			PROFILE_PATH.lstrip(os.path.sep))
-		if not os.path.islink(abs_profile_path) and \
+		if not self.profile_path or (not os.path.islink(abs_profile_path) and \
 			not os.path.exists(os.path.join(abs_profile_path, "parent")) and \
-			os.path.exists(os.path.join(self["PORTDIR"], "profiles")):
+			os.path.exists(os.path.join(self["PORTDIR"], "profiles"))):
 			writemsg("\a\n\n!!! %s is not a symlink and will probably prevent most merges.\n" % abs_profile_path,
 				noiselevel=-1)
 			writemsg("!!! It should point into a profile within %s/profiles/\n" % self["PORTDIR"])
@@ -2415,6 +2415,7 @@ class config(object):
 		#  * Masked flags, such as those from {,package}use.mask
 		#  * Forced flags, such as those from {,package}use.force
 		#  * build and bootstrap flags used by bootstrap.sh
+		#  * The "test" flag that's enabled by FEATURES=test
 
 		# Do this even when there's no package since setcpv() can
 		# optimize away regenerate() calls.
@@ -2443,6 +2444,7 @@ class config(object):
 		# build and bootstrap flags used by bootstrap.sh
 		iuse_implicit.add("build")
 		iuse_implicit.add("bootstrap")
+		iuse_implicit.add("test")
 
 		# prefix flag is used in Prefix
 		iuse_implicit.add("prefix")
@@ -2778,7 +2780,11 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 
 	fd_pipes = keywords.get("fd_pipes")
 	if fd_pipes is None:
-		fd_pipes = {0:0, 1:1, 2:2}
+		fd_pipes = {
+			0:sys.stdin.fileno(),
+			1:sys.stdout.fileno(),
+			2:sys.stderr.fileno(),
+		}
 	# In some cases the above print statements don't flush stdout, so
 	# it needs to be flushed before allowing a child process to use it
 	# so that output always shows in the correct order.
@@ -5281,15 +5287,15 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 			if avail_pkg:
 				avail_slot = "%s:%s" % (dep_getkey(atom),
 					mydbapi.aux_get(avail_pkg, ["SLOT"])[0])
-			elif not avail_pkg and \
-				(use_binaries or not mydbapi.cp_list(dep_getkey(atom))):
-				# With --usepkgonly, count installed packages as "available".
-				# Note that --usepkgonly currently has no package.mask support.
-				# See bug #149816.
-				avail_pkg = best(vardb.match(atom))
-				if avail_pkg:
-					avail_slot = "%s:%s" % (dep_getkey(atom),
-						vardb.aux_get(avail_pkg, ["SLOT"])[0])
+			elif not avail_pkg:
+				has_mask = False
+				if hasattr(mydbapi, "xmatch"):
+					has_mask = bool(mydbapi.xmatch("match-all", atom))
+				if (use_binaries or not has_mask):
+					avail_pkg = best(vardb.match(atom))
+					if avail_pkg:
+						avail_slot = "%s:%s" % (dep_getkey(atom),
+							vardb.aux_get(avail_pkg, ["SLOT"])[0])
 			if not avail_pkg:
 				all_available = False
 				break
@@ -6250,7 +6256,6 @@ def create_trees(config_root=None, target_root=None, trees=None):
 	settings = config(config_root=config_root, target_root=target_root,
 		config_incrementals=portage.const.INCREMENTALS)
 	settings.lock()
-	settings.validate()
 
 	myroots = [(settings["ROOT"], settings)]
 	if settings["ROOT"] != "/":
@@ -6276,7 +6281,6 @@ def create_trees(config_root=None, target_root=None, trees=None):
 				backupenv.pop(k, None)
 		settings.regenerate()
 		settings.lock()
-		settings.validate()
 		myroots.append((settings["ROOT"], settings))
 
 	for myroot, mysettings in myroots:

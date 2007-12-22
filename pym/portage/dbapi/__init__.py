@@ -13,7 +13,8 @@ from portage.versions import catpkgsplit, catsplit, pkgcmp
 
 
 class dbapi(object):
-	_category_re = re.compile(r'^[+\w][-\.+\w]*$')
+	_category_re = re.compile(r'^\w[-.+\w]*$')
+	_pkg_dir_name_re = re.compile(r'^\w[-+\w]*$')
 	def __init__(self):
 		pass
 

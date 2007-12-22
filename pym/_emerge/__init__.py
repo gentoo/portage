@@ -409,17 +409,28 @@ class search(object):
 		self.verbose = verbose
 		self.searchdesc = searchdesc
 		self.setconfig = root_config.setconfig
-		_portdb = root_config.trees["porttree"].dbapi
-		if _portdb._have_root_eclass_dir:
-			self.portdb = _portdb
-		else:
-			def fake_portdb():
-				pass
-			self.portdb = fake_portdb
-			self._dbs = [root_config.trees["bintree"].dbapi]
-			for attrib in ("aux_get", "cp_all",
-				"xmatch", "findname", "getfetchlist"):
-				setattr(fake_portdb, attrib, getattr(self, "_"+attrib))
+
+		def fake_portdb():
+			pass
+		self.portdb = fake_portdb
+		for attrib in ("aux_get", "cp_all",
+			"xmatch", "findname", "getfetchlist"):
+			setattr(fake_portdb, attrib, getattr(self, "_"+attrib))
+
+		self._dbs = []
+
+		portdb = root_config.trees["porttree"].dbapi
+		bindb = root_config.trees["bintree"].dbapi
+		vardb = root_config.trees["vartree"].dbapi
+
+		if portdb._have_root_eclass_dir:
+			self._dbs.append(portdb)
+
+		if bindb.cp_all():
+			self._dbs.append(bindb)
+
+		self._dbs.append(vardb)
+		self._portdb = portdb
 
 	def _cp_all(self):
 		cp_all = set()
@@ -437,6 +448,12 @@ class search(object):
 
 	def _findname(self, *args, **kwargs):
 		for db in self._dbs:
+			if db is not self._portdb:
+				# We don't want findname to return anything
+				# unless it's an ebuild in a portage tree.
+				# Otherwise, it's already built and we don't
+				# care about it.
+				continue
 			func = getattr(db, "findname", None)
 			if func:
 				value = func(*args, **kwargs)
@@ -451,30 +468,73 @@ class search(object):
 				value = func(*args, **kwargs)
 				if value:
 					return value
-		return None
+		return [], []
+
+	def _visible(self, db, cpv, metadata):
+		installed = db is self.vartree.dbapi
+		built = installed or db is not self._portdb
+		return visible(self.settings, cpv, metadata,
+			built=built, installed=installed)
 
 	def _xmatch(self, level, atom):
-		if level.startswith("bestmatch-"):
-			matches = []
-			for db in self._dbs:
-				bestmatch = None
-				if hasattr(db, "xmatch"):
-					bestmatch = db.xmatch(level, atom)
-				else:
-					bestmatch = portage.best(db.match(atom))
-				if bestmatch:
-					matches.append(bestmatch)
-			return portage.best(matches)
-		else:
+		"""
+		This method does not expand old-style virtuals because it
+		is restricted to returning matches for a single ${CATEGORY}/${PN}
+		and old-style virual matches unreliable for that when querying
+		multiple package databases. If necessary, old-style virtuals
+		can be performed on atoms prior to calling this method.
+		"""
+		cp = portage.dep_getkey(atom)
+		if level == "match-all":
 			matches = set()
 			for db in self._dbs:
 				if hasattr(db, "xmatch"):
 					matches.update(db.xmatch(level, atom))
 				else:
 					matches.update(db.match(atom))
-			matches = list(matches)
-			db._cpv_sort_ascending(matches)
-			return matches
+			result = list(x for x in matches if portage.cpv_getkey(x) == cp)
+			db._cpv_sort_ascending(result)
+		elif level == "match-visible":
+			matches = set()
+			for db in self._dbs:
+				if hasattr(db, "xmatch"):
+					matches.update(db.xmatch(level, atom))
+				else:
+					db_keys = list(db._aux_cache_keys)
+					for cpv in db.match(atom):
+						metadata = dict(izip(db_keys,
+							db.aux_get(cpv, db_keys)))
+						if not self._visible(db, cpv, metadata):
+							continue
+						matches.add(cpv)
+			result = list(x for x in matches if portage.cpv_getkey(x) == cp)
+			db._cpv_sort_ascending(result)
+		elif level == "bestmatch-visible":
+			result = None
+			for db in self._dbs:
+				if hasattr(db, "xmatch"):
+					cpv = db.xmatch("bestmatch-visible", atom)
+					if not cpv or portage.cpv_getkey(cpv) != cp:
+						continue
+					if not result or cpv == portage.best([cpv, result]):
+						result = cpv
+				else:
+					db_keys = list(db._aux_cache_keys)
+					# break out of this loop with highest visible
+					# match, checked in descending order
+					for cpv in reversed(db.match(atom)):
+						if portage.cpv_getkey(cpv) != cp:
+							continue
+						metadata = dict(izip(db_keys,
+							db.aux_get(cpv, db_keys)))
+						if not self._visible(db, cpv, metadata):
+							continue
+						if not result or cpv == portage.best([cpv, result]):
+							result = cpv
+						break
+		else:
+			raise NotImplementedError(level)
+		return result
 
 	def execute(self,searchkey):
 		"""Performs the search for the supplied search key"""
@@ -557,6 +617,7 @@ class search(object):
 		print "\b\b  \n[ Results for search key : "+white(self.searchkey)+" ]"
 		print "[ Applications found : "+white(str(self.mlen))+" ]"
 		print " "
+		vardb = self.vartree.dbapi
 		for mtype in self.matches:
 			for match,masked in self.matches[mtype]:
 				full_package = None
@@ -613,8 +674,16 @@ class search(object):
 							mysum[0] = "Unknown (missing digest for %s)" % \
 								str(e)
 
+					available = False
+					for db in self._dbs:
+						if db is not vardb and \
+							db.cpv_exists(mycpv):
+							available = True
+							break
+
 					if self.verbose:
-						print "     ", darkgreen("Latest version available:"),myversion
+						if available:
+							print "     ", darkgreen("Latest version available:"),myversion
 						print "     ", self.getInstallationStatus(mycat+'/'+mypkg)
 						if myebuild:
 							print "      %s %s" % \
@@ -2047,7 +2116,7 @@ class depgraph(object):
 				except SystemExit, e:
 					raise # Needed else can't exit
 				except Exception, e:
-					print >> sys.stderr, "\n\n!!! Problem in '%s' dependencies." % mykey
+					print >> sys.stderr, "\n\n!!! Problem in '%s' dependencies." % atom
 					print >> sys.stderr, "!!!", str(e), getattr(e, "__module__", None)
 					raise
 
@@ -6816,7 +6885,9 @@ def parse_opts(tmpcmdline, silent=False):
 	return myaction, myopts, myfiles
 
 def validate_ebuild_environment(trees):
-	pass
+	for myroot in trees:
+		settings = trees[myroot]["vartree"].settings
+		settings.validate()
 
 def load_emerge_config(trees=None):
 	kwargs = {}

@@ -499,7 +499,7 @@ class binarytree(object):
 					if mycpv in pkg_paths:
 						# All is first, so it's preferred.
 						continue
-					if not mycat:
+					if not self.dbapi._category_re.match(mycat):
 						writemsg(("!!! Binary package has an " + \
 							"unrecognized category: '%s'\n") % full_path,
 							noiselevel=-1)
@@ -662,7 +662,7 @@ class binarytree(object):
 					continue
 				mycat = self.remotepkgs[mypkg]["CATEGORY"].strip()
 				fullpkg = mycat+"/"+mypkg[:-5]
-				if not mycat:
+				if not self.dbapi._category_re.match(mycat):
 					writemsg(("!!! Remote binary package has an " + \
 						"unrecognized category: '%s'\n") % fullpkg,
 						noiselevel=-1)
