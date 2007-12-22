@@ -5,12 +5,13 @@
 
 import os,sys,re
 
-try:
-	import portage
-except ImportError:
-	from os import path as osp
+# for an explanation on this logic, see pym/_emerge/__init__.py
+from os import path as osp
+if os.environ.contains("PORTAGE_PYTHONPATH"):
+	sys.path.insert(0, os.environ["PORTAGE_PYTHONPATH"])
+else:
 	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
-	import portage
+import portage
 
 from stat import *
 from portage.output import *

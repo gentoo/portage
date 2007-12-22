@@ -23,12 +23,25 @@ except KeyboardInterrupt:
 import os, stat
 
 os.environ["PORTAGE_LEGACY_GLOBALS"] = "false"
-try:
-	import portage
-except ImportError:
-	from os import path as osp
+
+# Portage module path logic (Prefix way)
+# In principle we don't want to be dependant on the environment
+# (PYTHONPATH) and/or python hardcoded default search path.
+# (PYTHONPATH).  Since Gentoo patches Python to include Portage's python
+# modules in the default search path, any Gentoo python interpreter is
+# an enemy for Portage once it is not installed in the path hardcoded
+# during Python compilation.  This is the case when bootstrapping
+# Prefix Portage on a Gentoo Linux system, or when bootstrapping Prefix
+# Portage using another Prefix instance on the same system.  For this
+# reason we ignore the entire search path, and allow a backdoor for
+# developers via the PORTAGE_PYTHONPATH variable.
+from os import path as osp
+if os.environ.contains("PORTAGE_PYTHONPATH"):
+	sys.path.insert(0, os.environ["PORTAGE_PYTHONPATH"])
+else:
 	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
-	import portage
+import portage
+
 del os.environ["PORTAGE_LEGACY_GLOBALS"]
 from portage import digraph, portdbapi
 from portage.const import NEWS_LIB_PATH, CACHE_PATH, PRIVATE_PATH, USER_CONFIG_PATH, GLOBAL_CONFIG_PATH
