@@ -123,6 +123,31 @@ def metadata(argv):
 
 metadata.uses_root = True
 
+def contents(argv):
+	"""<root> <category/package>
+	List the files that are installed for a given package, with
+	one file listed on each line. All file names will begin with
+	<root>.
+	"""
+	if len(argv) != 2:
+		print "ERROR: expected 2 parameters, got %d!" % len(argv)
+		return 2
+
+	root, cpv = argv
+	vartree = portage.db[root]["vartree"]
+	if not vartree.dbapi.cpv_exists(cpv):
+		sys.stderr.write("Package not found: '%s'\n" % cpv)
+		return 1
+	cat, pkg = portage.catsplit(cpv)
+	db = portage.dblink(cat, pkg, root, vartree.settings,
+		treetype="vartree", vartree=vartree)
+	file_list = db.getcontents().keys()
+	file_list.sort()
+	for f in file_list:
+		sys.stdout.write("%s\n" % f)
+	sys.stdout.flush()
+contents.uses_root = True
+
 def owners(argv):
 	"""<root> [<filename>]+
 	Given a list of files, print the packages that own the files and which
@@ -238,17 +263,22 @@ all_best_visible.uses_root = True
 
 
 def match(argv):
-	"""<root> <category/package>
-	Returns \n seperated list of category/package-version
+	"""<root> <atom>
+	Returns a \\n separated list of category/package-version.
+	When given an empty string, all installed packages will
+	be listed.
 	"""
-	if (len(argv) < 2):
-		print "ERROR: insufficient parameters!"
+	if len(argv) != 2:
+		print "ERROR: expected 2 parameters, got %d!" % len(argv)
 		sys.exit(2)
-	try:
-		print "\n".join(portage.db[argv[0]]["vartree"].dbapi.match(argv[1]))
-	except KeyError, e:
-		portage.writemsg("%s\n" % str(e), noiselevel=-1)
-		sys.exit(1)
+	root, atom = argv
+	if atom:
+		results = portage.db[root]["vartree"].dbapi.match(atom)
+	else:
+		results = portage.db[root]["vartree"].dbapi.cpv_all()
+		results.sort()
+	for cpv in results:
+		print cpv
 match.uses_root = True
 
 
