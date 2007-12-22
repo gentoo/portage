@@ -1276,7 +1276,7 @@ for x in scanlist:
 		if os.stat(checkdir+"/"+y+".ebuild")[0] & 0x0248:
 			stats["file.executable"] += 1
 			fails["file.executable"].append(x+"/"+y+".ebuild")
-		if isCvs and y not in eadded:
+		if (isCvs or isSvn) and y not in eadded:
 			#ebuild not added to cvs
 			stats["ebuild.notadded"]=stats["ebuild.notadded"]+1
 			fails["ebuild.notadded"].append(x+"/"+y+".ebuild")
