@@ -1001,6 +1001,7 @@ dyn_install() {
 		[ -n "${!f}" ] && echo $(echo "${!f}" | \
 			tr '\n,\r,\t' ' , , ' | sed s/'  \+'/' '/g) > ${f}
 	done
+	echo "${EPREFIX}"   > EPREFIX
 	echo "${USE}"       > USE
 	echo "${EAPI:-0}"   > EAPI
 	set +f
