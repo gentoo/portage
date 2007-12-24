@@ -35,11 +35,12 @@ os.environ["PORTAGE_LEGACY_GLOBALS"] = "false"
 # Portage using another Prefix instance on the same system.  For this
 # reason we ignore the entire search path, and allow a backdoor for
 # developers via the PORTAGE_PYTHONPATH variable.
-from os import path as osp
-if os.environ.contains("PORTAGE_PYTHONPATH"):
+import os
+import sys
+if os.environ.__contains__("PORTAGE_PYTHONPATH"):
 	sys.path.insert(0, os.environ["PORTAGE_PYTHONPATH"])
 else:
-	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
+	sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "pym"))
 import portage
 
 del os.environ["PORTAGE_LEGACY_GLOBALS"]
