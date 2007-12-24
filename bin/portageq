@@ -475,8 +475,6 @@ def main():
 	os.environ["PORTAGE_LEGACY_GLOBALS"] = "false"
 
 	# for an explanation on this logic, see pym/_emerge/__init__.py
-	import os
-	import sys
 	if os.environ.__contains__("PORTAGE_PYTHONPATH"):
 		sys.path.insert(0, os.environ["PORTAGE_PYTHONPATH"])
 	else:
