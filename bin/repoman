@@ -364,7 +364,6 @@ def editor_is_executable(editor):
 		return False
 	filename = editor_split[0]
 	if not os.path.isabs(filename):
-		from portage.process import find_binary
 		return find_binary(filename) is not None
 	return os.access(filename, os.X_OK) and os.path.isfile(filename)
 
