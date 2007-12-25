@@ -1602,9 +1602,8 @@ if hasq "depend" "${EBUILD_SH_ARGS}"; then
 	unset BIN_PATH BIN BODY FUNC_SRC
 fi
 
-if hasq ${EBUILD_SH_ARGS} clean ; then
-	true
-elif ! hasq ${EBUILD_PHASE} depend && [ -f "${T}"/environment ] ; then
+if ! hasq ${EBUILD_PHASE} clean depend && \
+	[ -f "${T}"/environment ] ; then
 	# The environment may have been extracted from environment.bz2 or
 	# may have come from another version of ebuild.sh or something.
 	# In any case, preprocess it to prevent any potential interference.
@@ -1635,8 +1634,10 @@ elif ! hasq ${EBUILD_PHASE} depend && [ -f "${T}"/environment ] ; then
 	export SANDBOX_ON=${PORTAGE_SANDBOX_ON}
 	unset PORTAGE_SANDBOX_ON
 	source_all_bashrcs
-else
+fi
 
+if ! hasq ${EBUILD_PHASE} clean && \
+	( [ ! -f "${T}"/environment ] || hasq noauto ${FEATURES} ) ; then
 	# The bashrcs get an opportunity here to set aliases that will be expanded
 	# during sourcing of ebuilds and eclasses.
 	source_all_bashrcs
