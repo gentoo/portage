@@ -192,6 +192,7 @@ sync_local() {
 		emerge --metadata
 	fi
 	[ -x /etc/portage/bin/post_sync ] && /etc/portage/bin/post_sync
+	return 0
 }
 
 do_snapshot() {
