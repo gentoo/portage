@@ -239,7 +239,7 @@ int dirwalk(char *src, char *srcp, char *trg, char *trgp) {
 				)
 		{
 			/* FIXME: handle hard links! (keep track of files with >1
-			 * refs, match those with a list of known files */
+			 * refs, match those with a list of known files with count >1 */
 
 			/* copy */
 			if (chpath(src, trg) != 0) {
@@ -309,7 +309,9 @@ int dirwalk(char *src, char *srcp, char *trg, char *trgp) {
 				pr += valuelen;
 				pb += magiclen;
 			}
-			memcpy(pr, pb, (&buf[0] + len) - pb);
+			len = (&buf[0] + len) - pb;
+			memcpy(pr, pb, len);
+			pr[len] = '\0';
 
 			if (symlink(rep, trg) != 0) {
 				fprintf(stderr, "failed to create symlink %s -> %s: %s\n",
