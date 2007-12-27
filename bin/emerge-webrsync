@@ -192,6 +192,7 @@ sync_local() {
 		emerge --metadata
 	fi
 	[ -x "${EPREFIX}"/etc/portage/bin/post_sync ] && "${EPREFIX}"/etc/portage/bin/post_sync
+	return 0
 }
 
 do_snapshot() {

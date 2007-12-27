@@ -5131,7 +5131,8 @@ def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 				print " "+yellow("*")+" Processed",icount,"info files;",badcount,"errors."
 				print errmsg
 			else:
-				print " "+green("*")+" Processed",icount,"info files."
+				if icount > 0:
+					print " "+green("*")+" Processed",icount,"info files."
 
 
 def display_news_notification(trees):
@@ -5909,7 +5910,7 @@ def action_regen(settings, portdb):
 	xterm_titles = "notitles" not in settings.features
 	emergelog(xterm_titles, " === regen")
 	#regenerate cache entries
-	print "Regenerating cache entries... "
+	portage.writemsg_stdout("Regenerating cache entries...\n")
 	try:
 		os.close(sys.stdin.fileno())
 	except SystemExit, e:
@@ -5924,14 +5925,14 @@ def action_regen(settings, portdb):
 		try:
 			dead_nodes[mytree] = set(portdb.auxdb[mytree].iterkeys())
 		except CacheError, e:
-			print "\n  error listing cache entries for " + \
+			print "Error listing cache entries for " + \
 				"'%s': %s, continuing..." % (mytree, e)
 			del e
 			dead_nodes = None
 			break
 	for x in mynodes:
 		mymatches = portdb.cp_list(x)
-		portage.writemsg_stdout("processing %s\n" % x)
+		portage.writemsg_stdout("Processing %s\n" % x)
 		for y in mymatches:
 			try:
 				foo = portdb.aux_get(y,["DEPEND"])
@@ -5939,7 +5940,7 @@ def action_regen(settings, portdb):
 				# sys.exit is an exception... And consequently, we can't catch it.
 				raise
 			except Exception, e:
-				print "\n  error processing %(cpv)s, continuing... (%(e)s)" % {"cpv":y,"e":str(e)}
+				print "Error processing %(cpv)s, continuing... (%(e)s)" % {"cpv":y,"e":str(e)}
 			if dead_nodes:
 				for mytree in portdb.porttrees:
 					if portdb.findname2(y, mytree=mytree)[0]:
@@ -5952,7 +5953,7 @@ def action_regen(settings, portdb):
 					del auxdb[y]
 				except (KeyError, CacheError):
 					pass
-	print "done!"
+	portage.writemsg_stdout("done!\n")
 
 def action_config(settings, trees, myopts, myfiles):
 	if len(myfiles) != 1:
