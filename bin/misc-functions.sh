@@ -511,17 +511,30 @@ preinst_sfperms() {
 	fi
 	# Smart FileSystem Permissions
 	if hasq sfperms $FEATURES; then
+		local i
 #note not space-safe
 		for i in $(find "${ED}" -type f -perm -4000); do
-			ebegin ">>> SetUID: [chmod go-r] $i "
-			chmod go-r "$i"
-			eend $?
+			if [ -n "$(find "$i" -perm -2000)" ] ; then
+				ebegin ">>> SetUID and SetGID: [chmod o-r] /${i#${D}}"
+				chmod o-r "$i"
+				eend $?
+			else
+				ebegin ">>> SetUID: [chmod go-r] /${i#${D}}"
+				chmod go-r "$i"
+				eend $?
+			fi
 		done
 #note not space-safe
 		for i in $(find "${ED}" -type f -perm -2000); do
-			ebegin ">>> SetGID: [chmod o-r] $i "
-			chmod o-r "$i"
-			eend $?
+			if [ -n "$(find "$i" -perm -4000)" ] ; then
+				# This case is already handled
+				# by the SetUID check above.
+				true
+			else
+				ebegin ">>> SetGID: [chmod o-r] /${i#${D}}"
+				chmod o-r "$i"
+				eend $?
+			fi
 		done
 	fi
 }
