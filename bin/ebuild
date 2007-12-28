@@ -130,13 +130,17 @@ def discard_digests(myebuild, mysettings, mydbapi):
 		portage._doebuild_manifest_exempt_depend -= 1
 
 tmpsettings = portage.config(clone=portage.settings)
-if "test" in pargs and "test" not in tmpsettings.features:
-	print "Forcing test."
+if "test" in pargs:
+	# This variable is a signal to config.regenerate() to
+	# indicate that the test phase should be enabled regardless
+	# of problems such as masked "test" USE flag.
 	tmpsettings["EBUILD_FORCE_TEST"] = "1"
 	tmpsettings.backup_changes("EBUILD_FORCE_TEST")
-	tmpsettings.features.append("test")
-	tmpsettings["FEATURES"] = " ".join(tmpsettings.features)
-	tmpsettings.backup_changes("FEATURES")
+	if "test" not in tmpsettings.features:
+		tmpsettings.features.append("test")
+		tmpsettings.features.sort()
+		tmpsettings["FEATURES"] = " ".join(tmpsettings.features)
+		tmpsettings.backup_changes("FEATURES")
 
 build_dir_phases = set(["setup", "unpack", "compile",
 	"test", "install", "package", "rpm"])
