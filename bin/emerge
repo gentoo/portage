@@ -5379,8 +5379,8 @@ def action_regen(settings, portdb):
 		try:
 			dead_nodes[mytree] = set(portdb.auxdb[mytree].iterkeys())
 		except CacheError, e:
-			print "Error listing cache entries for " + \
-				"'%s': %s, continuing..." % (mytree, e)
+			portage.writemsg("Error listing cache entries for " + \
+				"'%s': %s, continuing...\n" % (mytree, e), noiselevel=-1)
 			del e
 			dead_nodes = None
 			break
@@ -5390,11 +5390,10 @@ def action_regen(settings, portdb):
 		for y in mymatches:
 			try:
 				foo = portdb.aux_get(y,["DEPEND"])
-			except SystemExit, e:
-				# sys.exit is an exception... And consequently, we can't catch it.
-				raise
-			except Exception, e:
-				print "Error processing %(cpv)s, continuing... (%(e)s)" % {"cpv":y,"e":str(e)}
+			except (KeyError, portage_exception.PortageException), e:
+				portage.writemsg(
+					"Error processing %(cpv)s, continuing... (%(e)s)\n" % \
+					{"cpv":y,"e":str(e)}, noiselevel=-1)
 			if dead_nodes:
 				for mytree in portdb.porttrees:
 					if portdb.findname2(y, mytree=mytree)[0]:
