@@ -1261,9 +1261,11 @@ for x in scanlist:
 			for y in filesdirlist:
 				if not y.startswith("digest-"):
 					continue
-				if os.stat(checkdir+"/files/"+y)[0] & 0x0248:
+				relative_path = os.path.join(x, "files", y)
+				full_path = os.path.join(repodir, relative_path)
+				if stat.S_IMODE(os.stat(full_path).st_mode) & 0111:
 					stats["file.executable"] += 1
-					fails["file.executable"].append(x+"/files/"+y)
+					fails["file.executable"].append(relative_path)
 				
 				mykey = catdir + "/" + y[7:]
 				if y[7:] not in ebuildlist:
@@ -1395,9 +1397,11 @@ for x in scanlist:
 	allmasked = True
 
 	for y in ebuildlist:
-		if os.stat(checkdir+"/"+y+".ebuild")[0] & 0x0248:
+		relative_path = os.path.join(x, y + ".ebuild")
+		full_path = os.path.join(repodir, relative_path)
+		if stat.S_IMODE(os.stat(full_path).st_mode) & 0111:
 			stats["file.executable"] += 1
-			fails["file.executable"].append(x+"/"+y+".ebuild")
+			fails["file.executable"].append(relative_path)
 		if isCvs and y not in eadded:
 			#ebuild not added to cvs
 			stats["ebuild.notadded"]=stats["ebuild.notadded"]+1
@@ -1677,8 +1681,6 @@ for x in scanlist:
 				for mybad in mybadrestrict:
 					fails["RESTRICT.invalid"].append(x+"/"+y+".ebuild: %s" % mybad)
 		# Syntax Checks
-		relative_path = os.path.join(x, y + ".ebuild")
-		full_path = os.path.join(repodir, relative_path)
 		f = open(full_path, 'rb')
 		try:
 			contents = f.readlines()
