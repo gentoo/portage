@@ -5491,7 +5491,7 @@ def key_expand(mykey, mydb=None, use_cache=1, settings=None):
 	virts_p = settings.get_virts_p("/")
 	if len(mysplit)==1:
 		if mydb and type(mydb)==types.InstanceType:
-			for x in settings.categories:
+			for x in mydb.categories:
 				if mydb.cp_list(x+"/"+mykey,use_cache=use_cache):
 					return x+"/"+mykey
 			if virts_p.has_key(mykey):
@@ -5548,7 +5548,7 @@ def cpv_expand(mycpv, mydb=None, use_cache=1, settings=None):
 		mykey=None
 		matches=[]
 		if mydb:
-			for x in settings.categories:
+			for x in mydb.categories:
 				if mydb.cp_list(x+"/"+myp,use_cache=use_cache):
 					matches.append(x+"/"+myp)
 		if len(matches) > 1:
@@ -5819,6 +5819,23 @@ class dbapi:
 	def __init__(self):
 		pass
 
+	@property
+	def categories(self):
+		"""
+		Use self.cp_all() to generate a category list. Mutable instances
+		can delete the self._categories attribute in cases when the cached
+		categories become invalid and need to be regenerated.
+		"""
+		if hasattr(self, "_categories"):
+			return self._categories
+		categories = set()
+		cat_pattern = re.compile(r'(.*)/.*')
+		for cp in self.cp_all():
+			categories.add(cat_pattern.match(cp).group(1))
+		self._categories = list(categories)
+		self._categories.sort()
+		return self._categories
+
 	def close_caches(self):
 		pass
 
@@ -5935,6 +5952,8 @@ class fakedbapi(dbapi):
 		self._match_cache = {}
 
 	def _clear_cache(self):
+		if hasattr(self, "_categories"):
+			del self._categories
 		if self._match_cache:
 			self._match_cache = {}
 
@@ -6103,6 +6122,11 @@ class bindbapi(fakedbapi):
 		return fakedbapi.cpv_all(self)
 
 class vardbapi(dbapi):
+	"""
+	The categories parameter is unused since the dbapi class
+	now has a categories property that is generated from the
+	available packages.
+	"""
 	def __init__(self, root, categories=None, settings=None, vartree=None):
 		self.root       = root[:]
 		#cache for category directory mtimes
@@ -6115,9 +6139,6 @@ class vardbapi(dbapi):
 		if settings is None:
 			settings = globals()["settings"]
 		self.settings = settings
-		# The categories list is now automatically generated
-		# from a regular expression.
-		self.categories = None
 		if vartree is None:
 			vartree = globals()["db"][root]["vartree"]
 		self.vartree = vartree
@@ -8151,7 +8172,8 @@ class dblink:
 		The caller must ensure that lockdb() and unlockdb() are called
 		before and after this method.
 		"""
-
+		if hasattr(self.vartree.dbapi, "_categories"):
+			del self.vartree.dbapi._categories
 		# When others_in_slot is supplied, the security check has already been
 		# done for this slot, so it shouldn't be repeated until the next
 		# replacement or unmerge operation.
@@ -9379,6 +9401,8 @@ class dblink:
 		we won't be able to later if they get unmerged (happens
 		when namespace changes).
 		"""
+		if hasattr(self.vartree.dbapi, "_categories"):
+			del self.vartree.dbapi._categories
 		if self.myroot == "/" and \
 			"sys-apps" == self.cat and \
 			"portage" == pkgsplit(self.pkg)[0] and \
