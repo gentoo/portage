@@ -1303,7 +1303,7 @@ for x in scanlist:
 								fails["digest.partial"].append(y+"::"+myf)
 						elif "assume-digests" not in repoman_settings.features:
 							if os.path.exists(myff):
-								if not portage_checksum.verify_all(myff, mydigests[myf]):
+								if not portage_checksum.verify_all(myff, mydigests[myf])[0]:
 									stats["digest.fail"] += 1
 									fails["digest.fail"].append(y+"::"+myf)
 							elif repolevel == 3:
