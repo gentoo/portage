@@ -7717,11 +7717,11 @@ class binarytree(object):
 			except (ValueError, KeyError):
 				chunk_size = 3000
 
-			writemsg_stdout("\n\n")
-			writemsg_stdout(green("Fetching binary packages info...\n"))
+			writemsg_stdout("\n")
+			writemsg_stdout(green("Fetching bininfo from ")+base_url+"\n")
 			self.remotepkgs = getbinpkg.dir_get_metadata(
 				self.settings["PORTAGE_BINHOST"], chunk_size=chunk_size)
-			writemsg_stdout(green("  -- DONE!\n\n"))
+			#writemsg_stdout(green("  -- DONE!\n\n"))
 
 			for mypkg in self.remotepkgs.keys():
 				if not self.remotepkgs[mypkg].has_key("CATEGORY"):
