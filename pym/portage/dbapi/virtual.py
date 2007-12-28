@@ -26,6 +26,8 @@ class fakedbapi(dbapi):
 		self._match_cache = {}
 
 	def _clear_cache(self):
+		if hasattr(self, "_categories"):
+			del self._categories
 		if self._match_cache:
 			self._match_cache = {}
 

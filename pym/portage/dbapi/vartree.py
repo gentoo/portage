@@ -166,6 +166,11 @@ class LibraryPackageMap(object):
 
 class vardbapi(dbapi):
 	def __init__(self, root, categories=None, settings=None, vartree=None):
+		"""
+		The categories parameter is unused since the dbapi class
+		now has a categories property that is generated from the
+		available packages.
+		"""
 		self.root = root[:]
 
 		#cache for category directory mtimes
@@ -181,9 +186,6 @@ class vardbapi(dbapi):
 		if settings is None:
 			from portage import settings
 		self.settings = settings
-		# The categories list is now automatically generated
-		# from a regular expression.
-		self.categories = None
 		if vartree is None:
 			from portage import db
 			vartree = db[root]["vartree"]
@@ -1071,7 +1073,8 @@ class dblink(object):
 		The caller must ensure that lockdb() and unlockdb() are called
 		before and after this method.
 		"""
-
+		if hasattr(self.vartree.dbapi, "_categories"):
+			del self.vartree.dbapi._categories
 		# When others_in_slot is supplied, the security check has already been
 		# done for this slot, so it shouldn't be repeated until the next
 		# replacement or unmerge operation.
@@ -2425,6 +2428,8 @@ class dblink(object):
 		we won't be able to later if they get unmerged (happens
 		when namespace changes).
 		"""
+		if hasattr(self.vartree.dbapi, "_categories"):
+			del self.vartree.dbapi._categories
 		if self.myroot == "/" and \
 			"sys-apps" == self.cat and \
 			"portage" == pkgsplit(self.pkg)[0] and \

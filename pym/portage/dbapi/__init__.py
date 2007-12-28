@@ -18,6 +18,23 @@ class dbapi(object):
 	def __init__(self):
 		pass
 
+	@property
+	def categories(self):
+		"""
+		Use self.cp_all() to generate a category list. Mutable instances
+		can delete the self._categories attribute in cases when the cached
+		categories become invalid and need to be regenerated.
+		"""
+		if hasattr(self, "_categories"):
+			return self._categories
+		categories = set()
+		cat_pattern = re.compile(r'(.*)/.*')
+		for cp in self.cp_all():
+			categories.add(cat_pattern.match(cp).group(1))
+		self._categories = list(categories)
+		self._categories.sort()
+		return self._categories
+
 	def close_caches(self):
 		pass
 

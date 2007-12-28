@@ -5567,8 +5567,8 @@ def cpv_expand(mycpv, mydb=None, use_cache=1, settings=None):
 			myp=mycpv
 		mykey=None
 		matches=[]
-		if mydb:
-			for x in settings.categories:
+		if mydb and hasattr(mydb, "categories"):
+			for x in mydb.categories:
 				if mydb.cp_list(x+"/"+myp,use_cache=use_cache):
 					matches.append(x+"/"+myp)
 		if len(matches) > 1:
