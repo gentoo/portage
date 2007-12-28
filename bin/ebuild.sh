@@ -1637,7 +1637,11 @@ if ! hasq ${EBUILD_PHASE} clean depend && \
 fi
 
 if ! hasq ${EBUILD_PHASE} clean && \
-	( [ ! -f "${T}"/environment ] || hasq noauto ${FEATURES} ) ; then
+	(
+		hasq ${EBUILD_PHASE} depend || \
+		[ ! -f "${T}"/environment ] || \
+		hasq noauto ${FEATURES}
+	) ; then
 	# The bashrcs get an opportunity here to set aliases that will be expanded
 	# during sourcing of ebuilds and eclasses.
 	source_all_bashrcs
