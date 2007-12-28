@@ -6485,8 +6485,29 @@ class vardbapi(dbapi):
 	def counter_tick(self,myroot,mycpv=None):
 		return self.counter_tick_core(myroot,incrementing=1,mycpv=mycpv)
 
-	def get_counter_tick_core(self,myroot,mycpv=None):
-		return self.counter_tick_core(myroot,incrementing=0,mycpv=mycpv)+1
+	def get_counter_tick_core(self, myroot, mycpv=None):
+		"""
+		Use this method to retrieve the counter instead
+		of having to trust the value of a global counter
+		file that can lead to invalid COUNTER
+		generation. When cache is valid, the package COUNTER
+		files are not read and we rely on the timestamp of
+		the package directory to validate cache. The stat
+		calls should only take a short time, so performance
+		is sufficient without having to rely on a potentially
+		corrupt global counter file.
+		"""
+		cp_list = self.cp_list
+		max_counter = 0
+		for cp in self.cp_all():
+			for cpv in cp_list(cp):
+				try:
+					counter = int(self.aux_get(cpv, ["COUNTER"])[0])
+				except (KeyError, OverflowError, ValueError):
+					continue
+				if counter > max_counter:
+					max_counter = counter
+		return max_counter + 1
 
 	def counter_tick_core(self, myroot, incrementing=1, mycpv=None):
 		"This method will grab the next COUNTER value and record it back to the global file.  Returns new counter value."
@@ -6508,21 +6529,24 @@ class vardbapi(dbapi):
 				writemsg("!!! COUNTER file is corrupt: '%s'\n" % cpath,
 					noiselevel=-1)
 
+		real_counter = self.get_counter_tick_core(myroot, mycpv=mycpv) - 1
+
 		if counter < 0:
 			changed = True
-			max_counter = 0
-			cp_list = self.cp_list
-			for cp in self.cp_all():
-				for cpv in cp_list(cp):
-					try:
-						counter = int(self.aux_get(cpv, ["COUNTER"])[0])
-					except (KeyError, OverflowError, ValueError):
-						continue
-					if counter > max_counter:
-						max_counter = counter
-			counter = max_counter
 			writemsg("!!! Initializing COUNTER to " + \
 				"value of %d\n" % counter, noiselevel=-1)
+
+		if counter != real_counter:
+			changed = True
+			writemsg("!!! Initializing COUNTER to " + \
+				"value of %d\n" % counter, noiselevel=-1)
+
+		# Never trust the counter file, since having a
+		# corrupt value that is too low there can trigger
+		# incorrect AUTOCLEAN behavior due to newly installed
+		# packages having lower counters than the previous
+		# version in the same slot.
+		counter = real_counter
 
 		if incrementing or changed:
 
