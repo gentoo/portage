@@ -647,11 +647,6 @@ class vardbapi(dbapi):
 			writemsg("!!! Initializing COUNTER to " + \
 				"value of %d\n" % counter, noiselevel=-1)
 
-		if counter != real_counter:
-			changed = True
-			writemsg("!!! Initializing COUNTER to " + \
-				"value of %d\n" % real_counter, noiselevel=-1)
-
 		# Never trust the counter file, since having a
 		# corrupt value that is too low there can trigger
 		# incorrect AUTOCLEAN behavior due to newly installed
