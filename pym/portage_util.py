@@ -300,7 +300,10 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 			raise
 		return None
 	try:
-		lex = shlex.shlex(f, posix=True)
+		# The default shlex.sourcehook() implementation
+		# only joins relative paths when the infile
+		# attribute is properly set.
+		lex = shlex.shlex(f, infile=mycfg, posix=True)
 		lex.wordchars=string.digits+string.letters+"~!@#$%*_\:;?,./-+{}"     
 		lex.quotes="\"'"
 		if allow_sourcing:
