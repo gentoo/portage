@@ -7,6 +7,7 @@
 # Then, check to make sure deps are satisfiable (to avoid "can't find match for" problems)
 # that last one is tricky because multiple profiles need to be checked.
 
+import commands
 import errno
 import formatter
 from itertools import izip
@@ -142,6 +143,7 @@ options=repoman_options.keys()
 
 qahelp={
 	"CVS/Entries.IO_error":"Attempting to commit, and an IO error was encountered access the Entries file",
+	"desktop.invalid":"desktop-file-validate reports errors in a *.desktop file",
 	"digest.partial":"Digest files do not contain all corresponding URI elements",
 	"digest.assumed":"Existing digest must be assumed correct (Package level only)",
 	"digestentry.unused":"Digest/Manifest entry has no matching SRC_URI entry",
@@ -219,6 +221,7 @@ qawarnings=[
 "ebuild.nostable",
 "ebuild.allmasked",
 "ebuild.nesteddie",
+"desktop.invalid",
 "digest.assumed",
 "digest.missing",
 "digestentry.unused",
@@ -842,6 +845,10 @@ else:
 stats={}
 fails={}
 
+# provided by the desktop-file-utils package
+desktop_file_validate = find_binary("desktop-file-validate")
+desktop_pattern = re.compile(r'.*\.desktop$')
+
 for x in qacats:
 	stats[x]=0
 	fails[x]=[]
@@ -1314,8 +1321,10 @@ for x in scanlist:
 		# use filesdirlist as a stack, appending directories as needed so people can't hide > 20k files in a subdirectory.
 		while filesdirlist:
 			y = filesdirlist.pop(0)
+			relative_path = os.path.join(x, "files", y)
+			full_path = os.path.join(repodir, relative_path)
 			try:
-				mystat = os.stat(checkdir+"/files/"+y)
+				mystat = os.stat(full_path)
 			except OSError, oe:
 				if oe.errno == 2:
 					# don't worry about it.  it likely was removed via fix above.
@@ -1339,6 +1348,23 @@ for x in scanlist:
 					stats["file.name"] += 1
 					fails["file.name"].append("%s/files/%s: char '%s'" % (checkdir, y, c))
 					break
+
+			if desktop_file_validate and desktop_pattern.match(y):
+				status, cmd_output = commands.getstatusoutput(
+					"'%s' '%s'" % (desktop_file_validate, full_path))
+				if os.WIFEXITED(status) and os.WEXITSTATUS(status) != os.EX_OK:
+					# Note: in the future we may want to grab the
+					# warnings in addition to the errors. We're
+					# just doing errors now since we don't want
+					# to generate too much noise at first.
+					error_re = re.compile(r'.*\s*error:\s*(.*)')
+					for line in cmd_output.splitlines():
+						error_match = error_re.match(line)
+						if error_match is None:
+							continue
+						stats["desktop.invalid"] += 1
+						fails["desktop.invalid"].append(
+							relative_path + ': %s' % error_match.group(1))
 
 	del mydigests
 
