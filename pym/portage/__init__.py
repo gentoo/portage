@@ -2324,10 +2324,13 @@ class config(object):
 			self.features = list(sorted(set(
 				self.configlist[-1].get("FEATURES","").split())))
 		self["FEATURES"] = " ".join(self.features)
-		if "test" in self.features and "test" in iuse:
-			ebuild_force_test = self.get("EBUILD_FORCE_TEST") == "1"
-			if ebuild_force_test and self.get("EBUILD_PHASE") == "test":
+		ebuild_force_test = self.get("EBUILD_FORCE_TEST") == "1"
+		if ebuild_force_test and \
+			self.get("EBUILD_PHASE") == "test" and \
+			not hasattr(self, "_ebuild_force_test_msg_shown"):
+				self._ebuild_force_test_msg_shown = True
 				writemsg("Forcing test.\n", noiselevel=-1)
+		if "test" in self.features and "test" in iuse:
 			if "test" in self.usemask and not ebuild_force_test:
 				# "test" is in IUSE and USE=test is masked, so execution
 				# of src_test() probably is not reliable. Therefore,
