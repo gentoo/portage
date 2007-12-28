@@ -5511,7 +5511,7 @@ def key_expand(mykey, mydb=None, use_cache=1, settings=None):
 	virts_p = settings.get_virts_p("/")
 	if len(mysplit)==1:
 		if hasattr(mydb, "cp_list"):
-			for x in settings.categories:
+			for x in mydb.categories:
 				if mydb.cp_list(x+"/"+mykey,use_cache=use_cache):
 					return x+"/"+mykey
 			if virts_p.has_key(mykey):
