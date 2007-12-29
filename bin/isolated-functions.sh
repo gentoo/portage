@@ -380,9 +380,6 @@ if [[ -z ${USERLAND} ]] ; then
 	*BSD|DragonFly)
 		export USERLAND="BSD"
 		;;
-	Darwin)
-		export USERLAND="Darwin"
-		;;
 	*)
 		export USERLAND="GNU"
 		;;
@@ -391,7 +388,7 @@ fi
 
 if [[ -z ${XARGS} ]] ; then
 	case ${USERLAND} in
-	BSD|Darwin)
+	BSD)
 		export XARGS="xargs"
 		;;
 	*)

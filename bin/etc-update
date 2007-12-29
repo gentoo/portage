@@ -401,8 +401,7 @@ Please select from the menu above (-1 to exit, losing this merge): "
 			my_input=$(read_int)
 			case ${my_input} in
 				1) echo "Replacing ${ofile} with ${mfile}"
-				   if  [[ ${USERLAND} == BSD ]] || \
-				       [[ ${USERLAND} == Darwin ]] ; then
+				   if  [[ ${USERLAND} == BSD ]] ; then
 				       chown "$(stat -f %Su:%Sg "${ofile}")" "${mfile}"
 				       chmod $(stat -f %Mp%Lp "${ofile}") "${mfile}"
 				   else
