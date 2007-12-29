@@ -29,9 +29,6 @@ elif ostype == "Darwin":
 elif ostype.endswith("BSD") or ostype =="DragonFly":
 	userland="BSD"
 	os.environ["XARGS"]="xargs"
-else:
-	writemsg(red("Operating system")+" \""+ostype+"\" "+red("currently unsupported. Exiting.")+"\n")
-	sys.exit(1)
 
 if not lchown:
 	if "lchown" in dir(os):
@@ -46,8 +43,6 @@ if not lchown:
 				writemsg(red("!!!") + " It seems that os.lchown does not" + \
 					" exist.  Please rebuild python.\n", noiselevel=-1)
 			lchown()
-
-os.environ["USERLAND"]=userland
 
 def portage_group_warning():
 	warn_prefix = bad("*** WARNING ***  ")

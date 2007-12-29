@@ -1411,21 +1411,12 @@ class config:
 			self.configlist.append(self.backupenv) # XXX Why though?
 			self.configdict["backupenv"]=self.configlist[-1]
 
-			if not local_config:
-				# Clean up pollution from portage_data so that it doesn't
-				# interfere with repoman.
-				self.backupenv.pop("USERLAND", None)
-
 			# Don't allow the user to override certain variables in the env
 			for k in profile_only_variables:
 				self.backupenv.pop(k, None)
 
 			self.configlist.append(self.backupenv.copy())
 			self.configdict["env"]=self.configlist[-1]
-			if not local_config:
-				# Clean up pollution from portage_data so that it doesn't
-				# interfere with repoman.
-				self.configdict["env"].pop("USERLAND", None)
 
 			# make lookuplist for loading package.*
 			self.lookuplist=self.configlist[:]
@@ -4517,8 +4508,12 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			if env_stat:
 				mysettings._filter_calling_env = True
 			else:
-				for var in "ARCH", "USERLAND":
-					if mysettings.get(var):
+				for var in "ARCH", "USERLAND", "XARGS":
+					value = mysettings.get(var)
+					if value and value.strip():
+						continue
+					if var == "USERLAND" and userland:
+						mysettings["USERLAND"] = userland
 						continue
 					msg = ("%s is not set... " % var) + \
 						("Are you missing the '%setc/make.profile' symlink? " % \
