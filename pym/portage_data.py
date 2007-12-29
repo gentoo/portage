@@ -14,8 +14,11 @@ bad = create_color_func("BAD")
 
 ostype=os.uname()[0]
 
-lchown = None
-if ostype=="Linux" or ostype.lower().endswith("gnu"):
+userland = None
+lchown = getattr(os, "lchown", None)
+if ostype == "Linux" or \
+	ostype.lower().startswith("gnu") or \
+	ostype.lower().endswith("gnu"):
 	userland="GNU"
 	os.environ["XARGS"]="xargs -r"
 elif ostype == "Darwin":
