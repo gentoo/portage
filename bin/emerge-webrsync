@@ -30,10 +30,6 @@ fi
 
 source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
 
-# ${USERLAND} is unreliable since the portage tree might be empty, so test
-# success of the -r option to distinguish between gnu and bsd date.
-date -r 0 >&/dev/null && DATE_ARGS="BSD" || DATE_ARGS="GNU"
-
 do_verbose=0
 
 if hasq webrsync-gpg ${FEATURES} ; then
@@ -54,7 +50,7 @@ get_date_part() {
 	local utc_time_in_secs="$1"
 	local part="$2"
 
-	if [ "${DATE_ARGS}" = "BSD" ]; then
+	if [ "${USERLAND}" = "BSD" ]; then
 		date -r ${utc_time_in_secs} -u +"${part}"
 	else
 		date -d @${utc_time_in_secs} -u +"${part}"
