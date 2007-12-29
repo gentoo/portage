@@ -97,9 +97,10 @@ ret=0
 rm -rf "${T}"/ecompress-skip
 
 for dir in "$@" ; do
+	dir=${dir#/}
 	dir="${D}${dir}"
 	if [[ ! -d ${dir} ]] ; then
-		vecho "${0##*/}: ${dir#${D}} does not exist!"
+		vecho "${0##*/}: /${dir#${D}} does not exist!"
 		continue
 	fi
 	cd "${dir}"
