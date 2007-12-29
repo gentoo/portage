@@ -46,9 +46,10 @@ funk_up_dir() {
 ret=0
 
 for dir in "$@" ; do
+	dir=${dir#/}
 	dir="${D}${dir}"
 	if [[ ! -d ${dir} ]] ; then
-		vecho "${0##*/}: ${dir#${D}} does not exist!"
+		vecho "${0##*/}: /${dir#${D}} does not exist!"
 		continue
 	fi
 	cd "${dir}"
@@ -66,7 +67,7 @@ for dir in "$@" ; do
 
 	# now lets do our work
 	[[ -z ${suffix} ]] && continue
-	vecho "${0##*/}: $(ecompress --bin) ${actual_dir#${D}}"
+	vecho "${0##*/}: $(ecompress --bin) /${actual_dir#${D}}"
 	funk_up_dir "compress" "${suffix}" "ecompress"
 done
 
