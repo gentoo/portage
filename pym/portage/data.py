@@ -18,15 +18,12 @@ if ostype == "Linux" or \
 	ostype.lower().startswith("gnu") or \
 	ostype.lower().endswith("gnu"):
 	userland="GNU"
-	os.environ["XARGS"]="xargs -r"
 elif ostype == "Darwin":
 	userland="Darwin"
-	os.environ["XARGS"]="xargs"
 	def lchown(*pos_args, **key_args):
 		pass
 elif ostype.endswith("BSD") or ostype =="DragonFly":
 	userland="BSD"
-	os.environ["XARGS"]="xargs"
 
 if not lchown:
 	if "lchown" in dir(os):
