@@ -4538,7 +4538,11 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				mysettings._filter_calling_env = True
 			else:
 				for var in "ARCH", "USERLAND":
-					if mysettings.get(var):
+					value = mysettings.get(var)
+					if value:
+						continue
+					if var == "USERLAND" and userland:
+						mysettings["USERLAND"] = userland
 						continue
 					msg = ("%s is not set... " % var) + \
 						("Are you missing the '%setc/make.profile' symlink? " % \
