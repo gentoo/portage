@@ -375,6 +375,17 @@ case "${NOCOLOR:-false}" in
 		;;
 esac
 
+if [[ -z ${XARGS} ]] ; then
+	case ${USERLAND} in
+	BSD|Darwin)
+		export XARGS="xargs"
+		;;
+	*)
+		export XARGS="xargs -r"
+		;;
+	esac
+fi
+
 has() {
 	hasq "$@"
 }
