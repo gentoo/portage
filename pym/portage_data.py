@@ -13,24 +13,18 @@ from output import create_color_func
 bad = create_color_func("BAD")
 
 ostype=os.uname()[0]
-
 userland = None
+if ostype == "DragonFly" or ostype.endswith("BSD"):
+	userland = "BSD"
+else:
+	userland = "GNU"
+
 lchown = getattr(os, "lchown", None)
-if ostype == "Linux" or \
-	ostype.lower().startswith("gnu") or \
-	ostype.lower().endswith("gnu"):
-	userland="GNU"
-elif ostype == "Darwin":
-	userland="Darwin"
-	def lchown(*pos_args, **key_args):
-		pass
-elif ostype.endswith("BSD") or ostype =="DragonFly":
-	userland="BSD"
 
 if not lchown:
-	if "lchown" in dir(os):
-		# Included in python-2.3
-		lchown = os.lchown
+	if ostype == "Darwin":
+		def lchown(*pos_args, **key_args):
+			pass
 	else:
 		try:
 			import missingos
