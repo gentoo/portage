@@ -4537,9 +4537,9 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			if env_stat:
 				mysettings._filter_calling_env = True
 			else:
-				for var in "ARCH", "USERLAND":
+				for var in "ARCH", "USERLAND", "XARGS":
 					value = mysettings.get(var)
-					if value:
+					if value and value.strip():
 						continue
 					if var == "USERLAND" and userland:
 						mysettings["USERLAND"] = userland
