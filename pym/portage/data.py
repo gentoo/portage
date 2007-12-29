@@ -14,7 +14,9 @@ ostype=os.uname()[0]
 userland = None
 lchown = getattr(os, "lchown", None)
 os.environ.setdefault("XARGS", "xargs")
-if ostype=="Linux" or ostype.lower().endswith("gnu"):
+if ostype == "Linux" or \
+	ostype.lower().startswith("gnu") or \
+	ostype.lower().endswith("gnu"):
 	userland="GNU"
 	os.environ["XARGS"]="xargs -r"
 elif ostype == "Darwin":
