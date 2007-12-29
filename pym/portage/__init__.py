@@ -874,6 +874,7 @@ class config(object):
 		"EBUILD_EXIT_STATUS_FILE", "EBUILD_FORCE_TEST",
 		"EBUILD_PHASE", "ECLASSDIR", "ECLASS_DEPTH", "EMERGE_FROM",
 		"FEATURES", "FILESDIR", "HOME", "PATH",
+		"PKGDIR",
 		"PKGUSE", "PKG_LOGDIR", "PKG_TMPDIR",
 		"PORTAGE_ACTUAL_DISTDIR", "PORTAGE_ARCHLIST",
 		"PORTAGE_BASHRC",
@@ -2658,8 +2659,6 @@ class config(object):
 			phase = self.get("EBUILD_PHASE")
 			if phase:
 				whitelist = []
-				if "package" == phase:
-					whitelist.append("PKGDIR")
 				if "rpm" == phase:
 					whitelist.append("RPMDIR")
 				for k in whitelist:
