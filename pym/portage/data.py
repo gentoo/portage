@@ -20,16 +20,10 @@ if ostype == "Linux" or \
 	userland="GNU"
 elif ostype == "Darwin":
 	userland="Darwin"
-	def lchown(*pos_args, **key_args):
-		pass
 elif ostype.endswith("BSD") or ostype =="DragonFly":
 	userland="BSD"
 
 if not lchown:
-	if "lchown" in dir(os):
-		# Included in python-2.3
-		lchown = os.lchown
-	else:
 		try:
 			import missingos
 			lchown = missingos.lchown
