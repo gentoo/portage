@@ -19,6 +19,10 @@ else:
 lchown = getattr(os, "lchown", None)
 
 if not lchown:
+	if ostype == "Darwin":
+		def lchown(*pos_args, **key_args):
+			pass
+	else:
 		try:
 			import missingos
 			lchown = missingos.lchown
