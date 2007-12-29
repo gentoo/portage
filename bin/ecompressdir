@@ -125,7 +125,7 @@ for dir in "$@" ; do
 
 	# now lets do our work
 	[[ -z ${suffix} ]] && continue
-	vecho "${0##*/}: $(ecompress --bin) ${actual_dir#${D}}"
+	vecho "${0##*/}: $(ecompress --bin) /${actual_dir#${D}}"
 	funk_up_dir "compress" "${suffix}" "ecompress"
 
 	# finally, restore the skipped stuff
