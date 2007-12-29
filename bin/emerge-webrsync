@@ -95,10 +95,11 @@ while (( $attempts <  40 )) ; do
 	# generated yet.  Therefore, always start by looking for the previous day's
 	# snapshot (for attempts=1, subtract 1 day from the current UTC time).
 	daysbefore=$(expr $(date -u +"%s") - 86400 \* ${attempts})
-	DATE_ARGS="-d @${daysbefore}"
-	# ${USERLAND} is unreliable since the portage tree might be empty, so test
-	# success of the -r option to distinguish between gnu and bsd date.
-	date -r ${daysbefore} >&/dev/null && DATE_ARGS="-r ${daysbefore}"
+	if [ "${USERLAND}" = "BSD" ]; then
+		DATE_ARGS="-r ${daysbefore}"
+	else
+		DATE_ARGS="-d @${daysbefore}"
+	fi
 	day=$(date ${DATE_ARGS} -u +"%d")
 	month=$(date ${DATE_ARGS} -u +"%m")
 	year=$(date ${DATE_ARGS} -u +"%Y")
