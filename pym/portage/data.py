@@ -10,18 +10,13 @@ from portage.output import create_color_func
 bad = create_color_func("BAD")
 
 ostype=os.uname()[0]
-
 userland = None
+if ostype == "DragonFly" or ostype.endswith("BSD"):
+	userland = "BSD"
+else:
+	userland = "GNU"
+
 lchown = getattr(os, "lchown", None)
-os.environ.setdefault("XARGS", "xargs")
-if ostype == "Linux" or \
-	ostype.lower().startswith("gnu") or \
-	ostype.lower().endswith("gnu"):
-	userland="GNU"
-elif ostype == "Darwin":
-	userland="Darwin"
-elif ostype.endswith("BSD") or ostype =="DragonFly":
-	userland="BSD"
 
 if not lchown:
 		try:
