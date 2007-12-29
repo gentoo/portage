@@ -663,12 +663,6 @@ class search(object):
 							mysettings=self.settings, all=True)[1]
 						try:
 							mysum[0] = mf.getDistfilesSize(fetchlist)
-							mystr = str(mysum[0] / 1024)
-							mycount = len(mystr)
-							while (mycount > 3):
-								mycount -= 3
-								mystr = mystr[:mycount] + "," + mystr[mycount:]
-							mysum[0] = mystr + " kB"
 						except KeyError, e:
 							mysum[0] = "Unknown (missing digest for %s)" % \
 								str(e)
@@ -678,7 +672,21 @@ class search(object):
 						if db is not vardb and \
 							db.cpv_exists(mycpv):
 							available = True
+							if not myebuild and hasattr(db, "bintree"):
+								myebuild = db.bintree.getname(mycpv)
+								try:
+									mysum[0] = os.stat(myebuild).st_size
+								except OSError:
+									myebuild = None
 							break
+
+					if myebuild:
+						mystr = str(mysum[0] / 1024)
+						mycount = len(mystr)
+						while (mycount > 3):
+							mycount -= 3
+							mystr = mystr[:mycount] + "," + mystr[mycount:]
+						mysum[0] = mystr + " kB"
 
 					if self.verbose:
 						if available:
