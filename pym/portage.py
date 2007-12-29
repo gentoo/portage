@@ -6144,6 +6144,8 @@ class vardbapi(dbapi):
 		self._aux_cache_version = "1"
 		self._aux_cache_filename = os.path.join(self.root,
 			CACHE_PATH.lstrip(os.path.sep), "vdb_metadata.pickle")
+		self._counter_path = os.path.join(root,
+			CACHE_PATH.lstrip(os.path.sep), "counter")
 
 	def cpv_exists(self,mykey):
 		"Tells us whether an actual ebuild exists on disk (no masking)"
@@ -6527,6 +6529,13 @@ class vardbapi(dbapi):
 		calls should only take a short time, so performance
 		is sufficient without having to rely on a potentially
 		corrupt global counter file.
+
+		The global counter file located at
+		$CACHE_PATH/counter serves to record the
+		counter of the last installed package and
+		it also corresponds to the total number of
+		installation actions that have occurred in
+		the history of this package database.
 		"""
 		cp_list = self.cp_list
 		max_counter = 0
@@ -6538,48 +6547,52 @@ class vardbapi(dbapi):
 					continue
 				if counter > max_counter:
 					max_counter = counter
-		return max_counter + 1
 
-	def counter_tick_core(self, myroot, incrementing=1, mycpv=None):
-		"This method will grab the next COUNTER value and record it back to the global file.  Returns new counter value."
-		cpath = os.path.join(myroot, CACHE_PATH.lstrip(os.sep), "counter")
-		changed = False
 		counter = -1
 		try:
-			cfile = open(cpath, "r")
-		except EnvironmentError:
-			writemsg("!!! COUNTER file is missing: '%s'\n" % cpath,
-				noiselevel=-1)
+			cfile = open(self._counter_path, "r")
+		except EnvironmentError, e:
+			writemsg("!!! Unable to read COUNTER file: '%s'\n" % \
+				self._counter_path, noiselevel=-1)
+			writemsg("!!! %s\n" % str(e), noiselevel=-1)
+			del e
 		else:
 			try:
 				try:
 					counter = long(cfile.readline().strip())
 				finally:
 					cfile.close()
-			except (OverflowError, ValueError):
-				writemsg("!!! COUNTER file is corrupt: '%s'\n" % cpath,
-					noiselevel=-1)
+			except (OverflowError, ValueError), e:
+				writemsg("!!! COUNTER file is corrupt: '%s'\n" % \
+					self._counter_path, noiselevel=-1)
+				writemsg("!!! %s\n" % str(e), noiselevel=-1)
+				del e
 
-		real_counter = self.get_counter_tick_core(myroot, mycpv=mycpv) - 1
+		# We must ensure that we return a counter
+		# value that is at least as large as the
+		# highest one from the installed packages,
+		# since having a corrupt value that is too low
+		# can trigger incorrect AUTOCLEAN behavior due
+		# to newly installed packages having lower
+		# COUNTERs than the previous version in the
+		# same slot.
+		if counter > max_counter:
+			max_counter = counter
 
 		if counter < 0:
-			changed = True
 			writemsg("!!! Initializing COUNTER to " + \
-				"value of %d\n" % counter, noiselevel=-1)
+				"value of %d\n" % max_counter, noiselevel=-1)
 
-		# Never trust the counter file, since having a
-		# corrupt value that is too low there can trigger
-		# incorrect AUTOCLEAN behavior due to newly installed
-		# packages having lower counters than the previous
-		# version in the same slot.
-		counter = real_counter
+		return max_counter + 1
 
-		if incrementing or changed:
-
+	def counter_tick_core(self, myroot, incrementing=1, mycpv=None):
+		"This method will grab the next COUNTER value and record it back to the global file.  Returns new counter value."
+		counter = self.get_counter_tick_core(myroot, mycpv=mycpv) - 1
+		if incrementing:
 			#increment counter
 			counter += 1
 			# update new global counter file
-			write_atomic(cpath, str(counter))
+			write_atomic(self._counter_path, str(counter))
 		return counter
 
 class vartree(object):
