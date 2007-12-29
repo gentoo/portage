@@ -380,6 +380,9 @@ if [[ -z ${USERLAND} ]] ; then
 	*BSD|DragonFly)
 		export USERLAND="BSD"
 		;;
+	Darwin)
+		export USERLAND="Darwin"
+		;;
 	*)
 		export USERLAND="GNU"
 		;;

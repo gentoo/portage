@@ -13,13 +13,15 @@ ostype=os.uname()[0]
 userland = None
 if ostype == "DragonFly" or ostype.endswith("BSD"):
 	userland = "BSD"
+elif ostype == "Darwin":
+	userland = "Darwin"
 else:
 	userland = "GNU"
 
 lchown = getattr(os, "lchown", None)
 
 if not lchown:
-	if ostype == "Darwin":
+	if userland == "Darwin":
 		def lchown(*pos_args, **key_args):
 			pass
 	else:
