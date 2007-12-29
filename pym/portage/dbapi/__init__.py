@@ -15,6 +15,7 @@ from portage.versions import catpkgsplit, catsplit, pkgcmp
 class dbapi(object):
 	_category_re = re.compile(r'^\w[-.+\w]*$')
 	_pkg_dir_name_re = re.compile(r'^\w[-+\w]*$')
+	_categories = None
 	def __init__(self):
 		pass
 
@@ -25,7 +26,7 @@ class dbapi(object):
 		can delete the self._categories attribute in cases when the cached
 		categories become invalid and need to be regenerated.
 		"""
-		if hasattr(self, "_categories"):
+		if self._categories is not None:
 			return self._categories
 		categories = set()
 		cat_pattern = re.compile(r'(.*)/.*')

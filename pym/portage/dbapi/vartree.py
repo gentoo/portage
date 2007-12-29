@@ -1073,8 +1073,8 @@ class dblink(object):
 		The caller must ensure that lockdb() and unlockdb() are called
 		before and after this method.
 		"""
-		if hasattr(self.vartree.dbapi, "_categories"):
-			del self.vartree.dbapi._categories
+		if self.vartree.dbapi._categories is not None:
+			self.vartree.dbapi._categories = None
 		# When others_in_slot is supplied, the security check has already been
 		# done for this slot, so it shouldn't be repeated until the next
 		# replacement or unmerge operation.
@@ -2428,8 +2428,8 @@ class dblink(object):
 		we won't be able to later if they get unmerged (happens
 		when namespace changes).
 		"""
-		if hasattr(self.vartree.dbapi, "_categories"):
-			del self.vartree.dbapi._categories
+		if self.vartree.dbapi._categories is not None:
+			self.vartree.dbapi._categories = None
 		if self.myroot == "/" and \
 			"sys-apps" == self.cat and \
 			"portage" == pkgsplit(self.pkg)[0] and \
