@@ -50,7 +50,8 @@ get_date_part() {
 	local utc_time_in_secs="$1"
 	local part="$2"
 
-	if [ "${USERLAND}" = "BSD" ]; then
+	if	[[ ${USERLAND} == BSD ]] || \
+		[[ ${USERLAND} == Darwin ]] ; then
 		date -r ${utc_time_in_secs} -u +"${part}"
 	else
 		date -d @${utc_time_in_secs} -u +"${part}"

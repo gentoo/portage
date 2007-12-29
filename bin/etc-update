@@ -401,12 +401,13 @@ Please select from the menu above (-1 to exit, losing this merge): "
 			my_input=$(read_int)
 			case ${my_input} in
 				1) echo "Replacing ${ofile} with ${mfile}"
-				   if [[ ${USERLAND:-GNU} == GNU ]]; then
-				       chown --reference="${ofile}" "${mfile}"
-				       chmod --reference="${ofile}" "${mfile}"
-				   else
+				   if  [[ ${USERLAND} == BSD ]] || \
+				       [[ ${USERLAND} == Darwin ]] ; then
 				       chown "$(stat -f %Su:%Sg "${ofile}")" "${mfile}"
 				       chmod $(stat -f %Mp%Lp "${ofile}") "${mfile}"
+				   else
+				       chown --reference="${ofile}" "${mfile}"
+				       chmod --reference="${ofile}" "${mfile}"
 				   fi
 				   mv ${mv_opts} "${mfile}" "${ofile}"
 				   rm ${rm_opts} "${file}"
