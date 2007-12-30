@@ -12,7 +12,11 @@ bad = create_color_func("BAD")
 
 ostype=os.uname()[0]
 userland = None
-if ostype == "DragonFly" or ostype.endswith("BSD"):
+# Prefix always has USERLAND=GNU, even on
+# FreeBSD, OpenBSD and Darwin (thank the lord!).
+# Hopefully this entire USERLAND hack can go once
+if portage.const.EPREFIX == "" and
+	(ostype == "DragonFly" or ostype.endswith("BSD")):
 	userland = "BSD"
 else:
 	userland = "GNU"

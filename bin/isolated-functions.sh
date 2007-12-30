@@ -377,16 +377,22 @@ case "${NOCOLOR:-false}" in
 		;;
 esac
 
-if [[ -z ${USERLAND} ]] ; then
-	case $(uname -s) in
-	*BSD|DragonFly)
-		export USERLAND="BSD"
-		;;
-	*)
-		export USERLAND="GNU"
-		;;
-	esac
-fi
+# In Prefix every platform has USERLAND=GNU, even FreeBSD.  Since I
+# don't know how to reliably "figure out" we are in a Prefix instance of
+# portage here, I for now disable this check, and hardcode it to GNU.
+# Somehow it appears stange to me that this code is in this file,
+# non-ebuilds/eclasses should never rely on USERLAND and XARGS, don't they?
+#if [[ -z ${USERLAND} ]] ; then
+#	case $(uname -s) in
+#	*BSD|DragonFly)
+#		export USERLAND="BSD"
+#		;;
+#	*)
+#		export USERLAND="GNU"
+#		;;
+#	esac
+#fi
+[[ -z ${USERLAND} ]] && USERLAND="GNU"
 
 if [[ -z ${XARGS} ]] ; then
 	case ${USERLAND} in
