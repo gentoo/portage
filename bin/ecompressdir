@@ -97,9 +97,10 @@ ret=0
 rm -rf "${T}"/ecompress-skip
 
 for dir in "$@" ; do
+	dir=${dir#/}
 	dir="${ED}${dir}"
 	if [[ ! -d ${dir} ]] ; then
-		vecho "${0##*/}: ${dir#${ED}} does not exist!"
+		vecho "${0##*/}: /${dir#${ED}} does not exist!"
 		continue
 	fi
 	cd "${dir}"
@@ -125,7 +126,7 @@ for dir in "$@" ; do
 
 	# now lets do our work
 	[[ -z ${suffix} ]] && continue
-	vecho "${0##*/}: $(ecompress --bin) ${actual_dir#${D}}"
+	vecho "${0##*/}: $(ecompress --bin) /${actual_dir#${D}}"
 	funk_up_dir "compress" "${suffix}" "ecompress"
 
 	# finally, restore the skipped stuff

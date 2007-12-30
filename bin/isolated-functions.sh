@@ -377,6 +377,28 @@ case "${NOCOLOR:-false}" in
 		;;
 esac
 
+if [[ -z ${USERLAND} ]] ; then
+	case $(uname -s) in
+	*BSD|DragonFly)
+		export USERLAND="BSD"
+		;;
+	*)
+		export USERLAND="GNU"
+		;;
+	esac
+fi
+
+if [[ -z ${XARGS} ]] ; then
+	case ${USERLAND} in
+	BSD)
+		export XARGS="xargs"
+		;;
+	*)
+		export XARGS="xargs -r"
+		;;
+	esac
+fi
+
 has() {
 	hasq "$@"
 }

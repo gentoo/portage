@@ -879,6 +879,7 @@ class config(object):
 		"EBUILD_EXIT_STATUS_FILE", "EBUILD_FORCE_TEST",
 		"EBUILD_PHASE", "ECLASSDIR", "ECLASS_DEPTH", "EMERGE_FROM",
 		"FEATURES", "FILESDIR", "HOME", "PATH",
+		"PKGDIR",
 		"PKGUSE", "PKG_LOGDIR", "PKG_TMPDIR",
 		"PORTAGE_ACTUAL_DISTDIR", "PORTAGE_ARCHLIST",
 		"PORTAGE_BASHRC",
@@ -2680,8 +2681,6 @@ class config(object):
 			phase = self.get("EBUILD_PHASE")
 			if phase:
 				whitelist = []
-				if "package" == phase:
-					whitelist.append("PKGDIR")
 				if "rpm" == phase:
 					whitelist.append("RPMDIR")
 				for k in whitelist:
@@ -4588,12 +4587,9 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			if env_stat:
 				mysettings._filter_calling_env = True
 			else:
-				for var in "ARCH", "USERLAND", "XARGS":
+				for var in ("ARCH", ):
 					value = mysettings.get(var)
 					if value and value.strip():
-						continue
-					if var == "USERLAND" and userland:
-						mysettings["USERLAND"] = userland
 						continue
 					msg = ("%s is not set... " % var) + \
 						("Are you missing the '%setc/make.profile' symlink? " % \

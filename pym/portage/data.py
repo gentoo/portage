@@ -11,21 +11,18 @@ from portage.output import create_color_func
 bad = create_color_func("BAD")
 
 ostype=os.uname()[0]
-
 userland = None
-lchown = getattr(os, "lchown", None)
-os.environ.setdefault("XARGS", "xargs -r")
-os.environ["XARGS"]="xargs -r"
+if ostype == "DragonFly" or ostype.endswith("BSD"):
+	userland = "BSD"
+else:
+	userland = "GNU"
 
-# "fix" for lchown on Darwin
-if ostype == "Darwin":
-	def lchown(*pos_args, **key_args):
-		pass
+lchown = getattr(os, "lchown", None)
 
 if not lchown:
-	if "lchown" in dir(os):
-		# Included in python-2.3
-		lchown = os.lchown
+	if ostype == "Darwin":
+		def lchown(*pos_args, **key_args):
+			pass
 	else:
 		try:
 			import missingos
