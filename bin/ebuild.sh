@@ -9,7 +9,7 @@ PORTAGE_PYM_PATH="${PORTAGE_PYM_PATH:-@PORTAGE_BASE@/pym}"
 SANDBOX_PREDICT="${SANDBOX_PREDICT}:/proc/self/maps:/dev/console:/dev/random"
 export SANDBOX_PREDICT="${SANDBOX_PREDICT}:${PORTAGE_PYM_PATH}:${PORTAGE_DEPCACHEDIR}"
 export SANDBOX_WRITE="${SANDBOX_WRITE}:/dev/shm:/dev/stdout:/dev/stderr:${PORTAGE_TMPDIR}"
-export SANDBOX_READ="${SANDBOX_READ}:/dev/shm:/dev/stdin:${PORTAGE_TMPDIR}"
+export SANDBOX_READ="${SANDBOX_READ}:/:/dev/shm:/dev/stdin:${PORTAGE_TMPDIR}"
 # Don't use sandbox's BASH_ENV for new shells because it does
 # 'source /etc/profile' which can interfere with the build
 # environment by modifying our PATH.
@@ -939,9 +939,6 @@ dyn_test() {
 	fi
 	if ! hasq test $FEATURES && [ "${EBUILD_FORCE_TEST}" != "1" ]; then
 		vecho ">>> Test phase [not enabled]: ${CATEGORY}/${PF}"
-	elif ! hasq test ${USE} && [ "${EBUILD_FORCE_TEST}" != "1" ]; then
-		ewarn "Skipping make test/check since USE=test is masked."
-		vecho ">>> Test phase [explicitly disabled]: ${CATEGORY}/${PF}"
 	elif hasq test $RESTRICT; then
 		ewarn "Skipping make test/check due to ebuild restriction."
 		vecho ">>> Test phase [explicitly disabled]: ${CATEGORY}/${PF}"

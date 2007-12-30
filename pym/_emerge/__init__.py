@@ -678,12 +678,6 @@ class search(object):
 							mysettings=self.settings, all=True)[1]
 						try:
 							mysum[0] = mf.getDistfilesSize(fetchlist)
-							mystr = str(mysum[0] / 1024)
-							mycount = len(mystr)
-							while (mycount > 3):
-								mycount -= 3
-								mystr = mystr[:mycount] + "," + mystr[mycount:]
-							mysum[0] = mystr + " kB"
 						except KeyError, e:
 							mysum[0] = "Unknown (missing digest for %s)" % \
 								str(e)
@@ -693,7 +687,21 @@ class search(object):
 						if db is not vardb and \
 							db.cpv_exists(mycpv):
 							available = True
+							if not myebuild and hasattr(db, "bintree"):
+								myebuild = db.bintree.getname(mycpv)
+								try:
+									mysum[0] = os.stat(myebuild).st_size
+								except OSError:
+									myebuild = None
 							break
+
+					if myebuild:
+						mystr = str(mysum[0] / 1024)
+						mycount = len(mystr)
+						while (mycount > 3):
+							mycount -= 3
+							mystr = mystr[:mycount] + "," + mystr[mycount:]
+						mysum[0] = mystr + " kB"
 
 					if self.verbose:
 						if available:
@@ -5925,8 +5933,8 @@ def action_regen(settings, portdb):
 		try:
 			dead_nodes[mytree] = set(portdb.auxdb[mytree].iterkeys())
 		except CacheError, e:
-			print "Error listing cache entries for " + \
-				"'%s': %s, continuing..." % (mytree, e)
+			portage.writemsg("Error listing cache entries for " + \
+				"'%s': %s, continuing...\n" % (mytree, e), noiselevel=-1)
 			del e
 			dead_nodes = None
 			break
@@ -5936,11 +5944,10 @@ def action_regen(settings, portdb):
 		for y in mymatches:
 			try:
 				foo = portdb.aux_get(y,["DEPEND"])
-			except SystemExit, e:
-				# sys.exit is an exception... And consequently, we can't catch it.
-				raise
-			except Exception, e:
-				print "Error processing %(cpv)s, continuing... (%(e)s)" % {"cpv":y,"e":str(e)}
+			except (KeyError, portage.exception.PortageException), e:
+				portage.writemsg(
+					"Error processing %(cpv)s, continuing... (%(e)s)\n" % \
+					{"cpv":y,"e":str(e)}, noiselevel=-1)
 			if dead_nodes:
 				for mytree in portdb.porttrees:
 					if portdb.findname2(y, mytree=mytree)[0]:

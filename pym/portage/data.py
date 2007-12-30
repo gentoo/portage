@@ -14,7 +14,7 @@ ostype=os.uname()[0]
 
 userland = None
 lchown = getattr(os, "lchown", None)
-os.environ.setdefault("XARGS", "xargs")
+os.environ.setdefault("XARGS", "xargs -r")
 os.environ["XARGS"]="xargs -r"
 
 # "fix" for lchown on Darwin

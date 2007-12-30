@@ -15,8 +15,26 @@ from portage.versions import catpkgsplit, catsplit, pkgcmp
 class dbapi(object):
 	_category_re = re.compile(r'^\w[-.+\w]*$')
 	_pkg_dir_name_re = re.compile(r'^\w[-+\w]*$')
+	_categories = None
 	def __init__(self):
 		pass
+
+	@property
+	def categories(self):
+		"""
+		Use self.cp_all() to generate a category list. Mutable instances
+		can delete the self._categories attribute in cases when the cached
+		categories become invalid and need to be regenerated.
+		"""
+		if self._categories is not None:
+			return self._categories
+		categories = set()
+		cat_pattern = re.compile(r'(.*)/.*')
+		for cp in self.cp_all():
+			categories.add(cat_pattern.match(cp).group(1))
+		self._categories = list(categories)
+		self._categories.sort()
+		return self._categories
 
 	def close_caches(self):
 		pass

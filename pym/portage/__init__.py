@@ -875,8 +875,9 @@ class config(object):
 	# in it's bashrc (causing major leakage).
 	_environ_whitelist += [
 		"BASH_ENV", "BUILD_PREFIX", "D",
-		"DISTDIR", "DOC_SYMLINKS_DIR", "EBUILD_EXIT_STATUS_FILE",
-		"EBUILD", "EBUILD_PHASE", "ECLASSDIR", "ECLASS_DEPTH", "EMERGE_FROM",
+		"DISTDIR", "DOC_SYMLINKS_DIR", "EBUILD",
+		"EBUILD_EXIT_STATUS_FILE", "EBUILD_FORCE_TEST",
+		"EBUILD_PHASE", "ECLASSDIR", "ECLASS_DEPTH", "EMERGE_FROM",
 		"FEATURES", "FILESDIR", "HOME", "PATH",
 		"PKGUSE", "PKG_LOGDIR", "PKG_TMPDIR",
 		"PORTAGE_ACTUAL_DISTDIR", "PORTAGE_ARCHLIST",
@@ -1550,8 +1551,8 @@ class config(object):
 					self[var] = "0"
 				self.backup_changes(var)
 
+			# initialize self.features
 			self.regenerate()
-			self.features = portage.util.unique_array(self["FEATURES"].split())
 
 			if local_config:
 				self._accept_license = \
@@ -2335,19 +2336,37 @@ class config(object):
 
 		myflags.update(self.useforce)
 
+		iuse = self.configdict["pkg"].get("IUSE","").split()
+		iuse = [ x.lstrip("+-") for x in iuse ]
 		# FEATURES=test should imply USE=test
-		if "test" in self.configlist[-1].get("FEATURES","").split():
-			myflags.add("test")
-			if self.get("EBUILD_FORCE_TEST") == "1":
-				self.usemask.discard("test")
+		if not hasattr(self, "features"):
+			self.features = list(sorted(set(
+				self.configlist[-1].get("FEATURES","").split())))
+		self["FEATURES"] = " ".join(self.features)
+		ebuild_force_test = self.get("EBUILD_FORCE_TEST") == "1"
+		if ebuild_force_test and \
+			self.get("EBUILD_PHASE") == "test" and \
+			not hasattr(self, "_ebuild_force_test_msg_shown"):
+				self._ebuild_force_test_msg_shown = True
+				writemsg("Forcing test.\n", noiselevel=-1)
+		if "test" in self.features and "test" in iuse:
+			if "test" in self.usemask and not ebuild_force_test:
+				# "test" is in IUSE and USE=test is masked, so execution
+				# of src_test() probably is not reliable. Therefore,
+				# temporarily disable FEATURES=test just for this package.
+				self["FEATURES"] = " ".join(x for x in self.features \
+					if x != "test")
+				myflags.discard("test")
+			else:
+				myflags.add("test")
+				if ebuild_force_test:
+					self.usemask.discard("test")
 
 		usesplit = [ x for x in myflags if \
 			x not in self.usemask]
 
 		# Use the calculated USE flags to regenerate the USE_EXPAND flags so
 		# that they are consistent.
-		iuse = self.configdict["pkg"].get("IUSE","").split()
-		iuse = [ x.lstrip("+-") for x in iuse ]
 		for var in use_expand:
 			prefix = var.lower() + "_"
 			prefix_len = len(prefix)
@@ -2415,7 +2434,6 @@ class config(object):
 		#  * Masked flags, such as those from {,package}use.mask
 		#  * Forced flags, such as those from {,package}use.force
 		#  * build and bootstrap flags used by bootstrap.sh
-		#  * The "test" flag that's enabled by FEATURES=test
 
 		# Do this even when there's no package since setcpv() can
 		# optimize away regenerate() calls.
@@ -2444,7 +2462,6 @@ class config(object):
 		# build and bootstrap flags used by bootstrap.sh
 		iuse_implicit.add("build")
 		iuse_implicit.add("bootstrap")
-		iuse_implicit.add("test")
 
 		# prefix flag is used in Prefix
 		iuse_implicit.add("prefix")
@@ -4571,8 +4588,12 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			if env_stat:
 				mysettings._filter_calling_env = True
 			else:
-				for var in "ARCH", "USERLAND":
-					if mysettings.get(var):
+				for var in "ARCH", "USERLAND", "XARGS":
+					value = mysettings.get(var)
+					if value and value.strip():
+						continue
+					if var == "USERLAND" and userland:
+						mysettings["USERLAND"] = userland
 						continue
 					msg = ("%s is not set... " % var) + \
 						("Are you missing the '%setc/make.profile' symlink? " % \
@@ -5545,7 +5566,7 @@ def key_expand(mykey, mydb=None, use_cache=1, settings=None):
 	virts_p = settings.get_virts_p("/")
 	if len(mysplit)==1:
 		if hasattr(mydb, "cp_list"):
-			for x in settings.categories:
+			for x in mydb.categories:
 				if mydb.cp_list(x+"/"+mykey,use_cache=use_cache):
 					return x+"/"+mykey
 			if virts_p.has_key(mykey):
@@ -5601,8 +5622,8 @@ def cpv_expand(mycpv, mydb=None, use_cache=1, settings=None):
 			myp=mycpv
 		mykey=None
 		matches=[]
-		if mydb:
-			for x in settings.categories:
+		if mydb and hasattr(mydb, "categories"):
+			for x in mydb.categories:
 				if mydb.cp_list(x+"/"+myp,use_cache=use_cache):
 					matches.append(x+"/"+myp)
 		if len(matches) > 1:
