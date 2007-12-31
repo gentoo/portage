@@ -1941,7 +1941,7 @@ class config:
 			test_use_changed = False
 			if "test" in self.features:
 				test_use_changed = \
-					("test" in iuse.split()) != \
+					bool(re.search(r'(^|\s)[-+]?test(\s|$)', iuse)) != \
 					("test" in self.get("PORTAGE_USE","").split())
 			if self.get("EBUILD_PHASE") or \
 				self._use_wildcards or \
