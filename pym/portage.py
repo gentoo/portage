@@ -7778,6 +7778,8 @@ class binarytree(object):
 
 		if getbinpkgs and \
 			self.settings["PORTAGE_BINHOST"] and not self.remotepkgs:
+
+			base_url = self.settings["PORTAGE_BINHOST"]
 			try:
 				chunk_size = long(self.settings["PORTAGE_BINHOST_CHUNKSIZE"])
 				if chunk_size < 8:
