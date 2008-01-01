@@ -342,7 +342,7 @@ install_qa_check() {
 			| sed -e 's/^\t//' -e 's/ (compa.*$//' \
 			| while read r ;
 		do
-			if [[ ! -e ${r} && ! -e ${D}${r} ]] ; then
+			if [[ ! -e ${r} && ! -e ${D}${r} && ${r} != *"@executable_path"* ]] ; then
 				# try to "repair" this if possible, happens because of
 				# gen_usr_ldscript tactics
 				s=${r%usr/*}${r##*/usr/}
