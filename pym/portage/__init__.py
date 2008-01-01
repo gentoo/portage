@@ -1927,7 +1927,14 @@ class config(object):
 		self.configdict["pkg"]["USE"]    = self.puse[:] # this gets appended to USE
 		if iuse != self.configdict["pkg"].get("IUSE",""):
 			self.configdict["pkg"]["IUSE"] = iuse
-			if self._use_wildcards or self.get("EBUILD_PHASE"):
+			test_use_changed = False
+			if "test" in self.features:
+				test_use_changed = \
+					bool(re.search(r'(^|\s)[-+]?test(\s|$)', iuse)) != \
+					("test" in self.get("PORTAGE_USE","").split())
+			if self.get("EBUILD_PHASE") or \
+				self._use_wildcards or \
+				test_use_changed:
 				# Without this conditional, regenerate() would be called
 				# *every* time.
 				has_changed = True
