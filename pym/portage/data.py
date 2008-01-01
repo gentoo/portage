@@ -5,7 +5,7 @@
 
 import os, sys, pwd, grp
 from portage.util import writemsg
-from portage.const import rootuid, portageuser, portagegroup
+from portage.const import rootuid, portageuser, portagegroup, EPREFIX
 from portage.output import green,red
 from portage.output import create_color_func
 bad = create_color_func("BAD")
@@ -15,8 +15,7 @@ userland = None
 # Prefix always has USERLAND=GNU, even on
 # FreeBSD, OpenBSD and Darwin (thank the lord!).
 # Hopefully this entire USERLAND hack can go once
-if portage.const.EPREFIX == "" and
-	(ostype == "DragonFly" or ostype.endswith("BSD")):
+if EPREFIX == "" and (ostype == "DragonFly" or ostype.endswith("BSD")):
 	userland = "BSD"
 else:
 	userland = "GNU"
