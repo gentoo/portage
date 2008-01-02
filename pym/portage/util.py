@@ -280,7 +280,9 @@ def grablines(myfilename,recursive=0):
 			myfile = open(myfilename, "r")
 			mylines = myfile.readlines()
 			myfile.close()
-		except IOError:
+		except IOError, e:
+			if e.errno == PermissionDenied.errno:
+				raise PermissionDenied(myfilename)
 			pass
 	return mylines
 
