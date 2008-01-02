@@ -336,6 +336,7 @@ install_qa_check() {
 
 	# Check that we don't get kernel traps at runtime because of broken
 	# install_names on Darwin
+	rm -f "${T}"/.install_name_check_failed
 	[[ ${CHOST} == *-darwin* ]] && find "${ED}" -type f | while read f ; do
 		otool -LX "${f}" \
 			| grep -v "Archive : " \
@@ -353,16 +354,19 @@ install_qa_check() {
 				else
 					eqawarn "QA Notice: invalid reference to ${r} in ${f}"
 					# remember we are in an implicit subshell, that's
-					# why we die here ... ideally we should be able to
-					# die correctly/nicely here
-					# secret switch "allow_broken_install_names" to get
-					# around this and install broken crap (not a good idea)
-					hasq allow_broken_install_names ${FEATURES} || \
-					die "invalid install_name found, ${f} will crash at runtime -- there may be possibly more affected files"
+					# why we touch a file here ... ideally we should be
+					# able to die correctly/nicely here
+					touch "${T}"/.install_name_check_failed
 				fi
 			fi
 		done
 	done
+	if [[ -f ${T}/.install_name_check_failed ]] ; then
+		# secret switch "allow_broken_install_names" to get
+		# around this and install broken crap (not a good idea)
+		hasq allow_broken_install_names ${FEATURES} || \
+			die "invalid install_name found, your application will crash at runtime"
+	fi
 
 	# Evaluate misc gcc warnings
 	if [[ -n ${PORTAGE_LOG_FILE} && -r ${PORTAGE_LOG_FILE} ]] ; then
