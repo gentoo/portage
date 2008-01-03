@@ -1430,7 +1430,7 @@ filter_readonly_variables() {
 	done
 	set +f
 	var_grep=${var_grep:1} # strip the first |
-	var_grep="(^|^declare[[:space:]]+-[^[:space:]]+[[:space:]]+)(${var_grep})=.*"
+	var_grep="(^|^declare[[:space:]]+-[^[:space:]]+[[:space:]]+|^export[[:space:]]+)(${var_grep})=.*"
 	# The sed is to remove the readonly attribute from variables such as those
 	# listed in READONLY_EBUILD_METADATA, since having any readonly attributes
 	# persisting in the saved environment can be inconvenient when it
