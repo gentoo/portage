@@ -293,11 +293,6 @@ int dirwalk(char *src, char *srcp, char *trg, char *trgp) {
 				return(-1);
 			}
 			/* fix permissions */
-			if (stat(src, &s) != 0) {
-				fprintf(stderr, "cannot stat %s: %s\n",
-						src, strerror(errno));
-				return(-1);
-			}
 			if (chmod(trg, s.st_mode) != 0) {
 				fprintf(stderr, "failed to set permissions of %s: %s\n",
 						trg, strerror(errno));
@@ -365,12 +360,6 @@ int dirwalk(char *src, char *srcp, char *trg, char *trgp) {
 				return(-1);
 			}
 
-			/* fix permissions */
-			if (stat(src, &s) != 0) {
-				fprintf(stderr, "cannot stat %s: %s\n",
-						src, strerror(errno));
-				return(-1);
-			}
 #ifdef HAVE_LCHOWN
 			if (lchown(trg, s.st_uid, s.st_gid) != 0) {
 				fprintf(stderr, "failed to set ownership of %s: %s\n",
@@ -388,7 +377,7 @@ int dirwalk(char *src, char *srcp, char *trg, char *trgp) {
 	closedir(d);
 
 	/* fix permissions/ownership etc. */
-	if (stat(src, &s) != 0) {
+	if (lstat(src, &s) != 0) {
 		fprintf(stderr, "cannot stat %s: %s\n", src, strerror(errno));
 		return(-1);
 	}
@@ -467,7 +456,7 @@ int main(int argc, char **argv) {
 		return(-1);
 	}
 
-	if (stat(argv[o + 1], &file) != 0) {
+	if (lstat(argv[o + 1], &file) != 0) {
 		fprintf(stderr, "unable to stat %s: %s\n",
 				argv[o + 1], strerror(errno));
 		return(-1);
