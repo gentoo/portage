@@ -38,11 +38,19 @@
  * value, hoping it is enough */
 #define MAX_PATH 1024
 
+typedef struct _file_hlink {
+	dev_t    st_dev;            /* device inode resides on */
+	ino_t    st_ino;            /* inode's number */
+	char     path[MAX_PATH];    /* the file's path + name */
+	struct _file_hlink* next;   /* pointer to the next in the list */
+} file_hlink;
+
 static char *magic;
 static char *value;
 static size_t magiclen;
 static size_t valuelen;
 static char quiet;
+static file_hlink *hlinks = NULL;
 
 /**
  * Writes padding zero-bytes after the first encountered zero-byte.
@@ -238,8 +246,46 @@ int dirwalk(char *src, char *srcp, char *trg, char *trgp) {
 				S_ISREG(s.st_mode)
 				)
 		{
-			/* FIXME: handle hard links! (keep track of files with >1
-			 * refs, match those with a list of known files with count >1 */
+			/* handle hard links, match each of them to a list of known
+			 * files (with st_nlink > 1), such that we only process each
+			 * file once, and are able to restore the hard link. */
+			if (s.st_nlink > 1) {
+				if (hlinks == NULL) {
+					hlinks = malloc(sizeof(file_hlink));
+					hlinks->st_dev = s.st_dev;
+					hlinks->st_ino = s.st_ino;
+					strcpy(hlinks->path, src);
+					hlinks->next = NULL;
+				} else {
+					/* look for this file */
+					file_hlink *hl = NULL;
+					do {
+						hl = (hl == NULL ? hlinks : hl->next);
+						if (hl->st_dev == s.st_dev && hl->st_ino == s.st_ino) {
+							/* this is the same file, make a hard link */
+							if (link(hl->path, trg) != 0) {
+								fprintf(stderr, "failed to create hard link "
+										"%s: %s\n", trg, strerror(errno));
+								return(-1);
+							}
+							hl = NULL;
+							break;
+						}
+					} while (hl->next != NULL);
+					/* we didn't know this one yet, add it */
+					if (hl != NULL) {
+						hl = hl->next = malloc(sizeof(file_hlink));
+						hl->st_dev = s.st_dev;
+						hl->st_ino = s.st_ino;
+						strcpy(hl->path, src);
+						hl->next = NULL;
+					} else {
+						/* don't "copy" the file, we already made a hard
+						 * link to it */
+						continue;
+					}
+				}
+			}
 
 			/* copy */
 			if (chpath(src, trg) != 0) {
