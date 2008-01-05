@@ -1415,7 +1415,7 @@ filter_readonly_variables() {
 		filtered_vars="${filtered_vars} ${filtered_sandbox_vars}"
 	fi
 	if hasq --filter-features $* ; then
-		filtered_vars="${filtered_vars} FEATURES"
+		filtered_vars="${filtered_vars} FEATURES PATH"
 	fi
 	if ! hasq --allow-extra-vars $* ; then
 		filtered_vars="
