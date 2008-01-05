@@ -216,7 +216,7 @@ einfon() {
 ewarn() {
 	elog_base WARN "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
-	echo -e " ${WARN}*${NORMAL} ${RC_INDENTATION}$*"
+	echo -e " ${WARN}*${NORMAL} ${RC_INDENTATION}$*" >&2
 	LAST_E_CMD="ewarn"
 	return 0
 }
@@ -224,7 +224,7 @@ ewarn() {
 eerror() {
 	elog_base ERROR "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
-	echo -e " ${BAD}*${NORMAL} ${RC_INDENTATION}$*"
+	echo -e " ${BAD}*${NORMAL} ${RC_INDENTATION}$*" >&2
 	LAST_E_CMD="eerror"
 	return 0
 }
