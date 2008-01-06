@@ -63,6 +63,7 @@ from portage_manifest import Manifest
 from portage_exception import ParseError
 from portage_exec import find_binary, spawn
 
+import output
 from output import bold, create_color_func, darkgreen, \
 	green, nocolor, red, turquoise, yellow
 
@@ -403,7 +404,7 @@ class ConsoleStyleFile(object):
 		self._styles = styles
 
 	def write(self, s):
-		if self._styles:
+		if output.havecolor and self._styles:
 			for style in self._styles:
 				self._file.write(self._codes[style])
 			self._file.write(s)
