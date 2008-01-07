@@ -331,7 +331,8 @@ class ConsoleStyleFile(object):
 		self._styles = styles
 
 	def write(self, s):
-		if self._styles:
+		global havecolor
+		if havecolor and self._styles:
 			for style in self._styles:
 				self._file.write(codes[style])
 			self._file.write(s)
