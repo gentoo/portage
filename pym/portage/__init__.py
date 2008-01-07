@@ -5970,6 +5970,10 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 
 		# We want to install in "our" prefix, not the binary one
 		mysettings["EPREFIX"] = EPREFIX
+		# Store "our" prefix in the vdb.
+		fp = open(os.path.join(infloc, "EPREFIX"), "w")
+		fp.write(EPREFIX+"\n")
+		fp.close()
 
 		# Eventually we'd like to pass in the saved ebuild env here.
 		retval = doebuild(myebuild, "setup", myroot, mysettings, debug=debug,
