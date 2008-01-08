@@ -4394,7 +4394,11 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			if isinstance(dbkey, dict):
 				mysettings["dbkey"] = ""
 				pr, pw = os.pipe()
-				fd_pipes = {0:0, 1:1, 2:2, 9:pw}
+				fd_pipes = {
+					0:sys.stdin.fileno(),
+					1:sys.stdout.fileno(),
+					2:sys.stderr.fileno(),
+					9:pw}
 				mypids = spawn(_shell_quote(ebuild_sh_binary) + " depend",
 					mysettings,
 					fd_pipes=fd_pipes, returnpid=True, droppriv=droppriv)
