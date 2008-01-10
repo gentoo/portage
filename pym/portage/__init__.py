@@ -4067,6 +4067,11 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 	dirmode  = 02070
 	filemode =   060
 	modemask =    02
+	restrict = mysettings.get("PORTAGE_RESTRICT","").split()
+	from portage.data import secpass
+	droppriv = secpass >= 2 and \
+		"userpriv" in mysettings.features and \
+		"userpriv" not in restrict
 	for myfeature, kwargs in features_dirs.iteritems():
 		if myfeature in mysettings.features:
 			basedir = mysettings[kwargs["basedir_var"]]
@@ -4083,7 +4088,13 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 					# Generally, we only want to apply permissions for
 					# initial creation.  Otherwise, we don't know exactly what
 					# permissions the user wants, so should leave them as-is.
-					if modified or kwargs["always_recurse"]:
+					droppriv_fix = False
+					if droppriv:
+						st = os.stat(mydir)
+						if st.st_gid != portage_gid or \
+							not stat.S_IMODE(st.st_mode) & dirmode:
+							droppriv_fix = True
+					if modified or kwargs["always_recurse"] or droppriv_fix:
 						if modified:
 							writemsg("Adjusting permissions recursively: '%s'\n" % mydir,
 								noiselevel=-1)
