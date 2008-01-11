@@ -314,7 +314,7 @@ install_qa_check() {
 			vecho -ne '\a\n'
 			abort="yes"
 		fi
-		if [[ ${abort} == "yes" ]] || ; then
+		if [[ ${abort} == "yes" ]] ; then
 			echo "Please do not file a Gentoo bug and instead" \
 			"report the above QA issues directly to the upstream" \
 			"developers of this software." | fmt -w 70 | \
