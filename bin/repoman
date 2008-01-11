@@ -207,6 +207,7 @@ qahelp={
 	"ebuild.majorsyn":"This ebuild has a major syntax error that may cause the ebuild to fail partially or fully",
 	"ebuild.minorsyn":"This ebuild has a minor syntax error that contravenes gentoo coding style",
 	"ebuild.badheader":"This ebuild has a malformed header",
+	"ebuild.autotools":"Ebuild calls autotools directly instead of using autotools.eclass",
 	"metadata.missing":"Missing metadata.xml files",
 	"metadata.bad":"Bad metadata.xml files",
 	"virtual.versioned":"PROVIDE contains virtuals with versions",
@@ -224,6 +225,7 @@ qawarnings=[
 "ebuild.notadded",
 "ebuild.nostable",
 "ebuild.allmasked",
+"ebuild.autotools",
 "ebuild.nesteddie",
 "desktop.invalid",
 "digest.assumed",
@@ -1014,13 +1016,25 @@ class EbuildUselessCdS(LineCheck):
 		elif self.method_re.match(line):
 			self.check_next_line = True
 
+class Autotools(LineCheck):
+	"""Check for direct calls to autotools"""
+	repoman_check_name = 'ebuild.autotools'
+	re = re.compile(r'^[^#]*([^e]|^)(autoconf|automake|aclocal|libtoolize)')
+
+	def check(self, num, line):
+		"""Run the check on line and return error if there is one"""
+		m = self.re.match(line)
+		if m is not None:
+			return ("Direct calls to '%s'" % m.group(2)) + \
+				" instead of using autotools.eclass on line: %d"
+
+_constant_checks = tuple((c() for c in (Autotools,
+	EbuildQuote, EbuildUselessDodoc, EbuildUselessCdS,
+	EbuildNestedDie)))
+
 def run_checks(contents):
-	checks = []
-	for c in (EbuildQuote, EbuildUselessDodoc, EbuildUselessCdS,
-		EbuildNestedDie):
-		checks.append(c())
 	for num, line in enumerate(contents):
-		for lc in checks:
+		for lc in _constant_checks:
 			ignore = lc.ignore_line
 			if not ignore or not ignore.match(line):
 				e = lc.check(num, line)
