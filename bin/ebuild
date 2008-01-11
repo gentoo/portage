@@ -60,6 +60,11 @@ ebuild = portage.normalize_path(ebuild)
 ebuild_portdir = os.path.realpath(os.path.dirname(os.path.dirname(ebuild)))
 ebuild = os.path.join(ebuild_portdir, *ebuild.split(os.path.sep)[-2:])
 
+# Make sure that portdb.findname() returns the correct ebuild.
+del portage.portdb.porttrees[1:]
+if ebuild_portdir != portage.portdb.porttree_root:
+	portage.portdb.porttrees.append(ebuild_portdir)
+
 if not os.path.exists(ebuild):
 	print "'%s' does not exist." % ebuild
 	sys.exit(1)
