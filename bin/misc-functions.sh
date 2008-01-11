@@ -321,6 +321,13 @@ install_qa_check() {
 				*) abort="yes";;
 			esac
 		fi
+		if [[ ${abort} == "yes" ]] || ; then
+			echo "Please do not file a Gentoo bug and instead" \
+			"report the above QA issues directly to the upstream" \
+			"developers of this software." | fmt -w 70 | \
+			while read line ; do eqawarn "${line}" ; done
+			eqawarn "Homepage: ${HOMEPAGE}"
+		fi
 		[[ ${abort} == "yes" ]] && hasq stricter ${FEATURES} && die "poor code kills airplanes"
 	fi
 
