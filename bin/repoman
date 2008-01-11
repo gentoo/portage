@@ -35,7 +35,7 @@ exename=os.path.basename(sys.argv[0])
 version="1.2"	
 
 # 14 is the length of DESCRIPTION=""
-max_desc_len = 80 - 14
+max_desc_len = 100
 allowed_filename_chars="a-zA-Z0-9._-+:"
 allowed_filename_chars_set = {}
 map(allowed_filename_chars_set.setdefault, map(chr, range(ord('a'), ord('z')+1)))
@@ -170,7 +170,7 @@ qahelp={
 	"KEYWORDS.stupid":"Ebuilds that use KEYWORDS=-* instead of package.mask", 
 	"LICENSE.missing":"Ebuilds that have a missing or empty LICENSE variable",
 	"DESCRIPTION.missing":"Ebuilds that have a missing or empty DESCRIPTION variable",
-	"DESCRIPTION.toolong":"DESCRIPTION line is over 80 characters",
+	"DESCRIPTION.toolong":"DESCRIPTION is over 100 characters",
 	"EAPI.unsupported":"Ebuilds that have an unsupported EAPI version (you must upgrade portage)",
 	"SLOT.missing":"Ebuilds that have a missing or empty SLOT variable",
 	"HOMEPAGE.missing":"Ebuilds that have a missing or empty HOMEPAGE variable",
