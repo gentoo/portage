@@ -262,7 +262,8 @@ for x in missingvars:
 		qacats.append(x)
 		qawarnings.append(x)
 
-valid_restrict = frozenset(["binchecks", "bindist", "fetch", "mirror",
+valid_restrict = frozenset(["binchecks", "bindist",
+	"fetch", "installsources", "mirror",
 	"primaryuri", "strip", "test", "userpriv"])
 
 # file.executable
