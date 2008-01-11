@@ -32,6 +32,7 @@ fi
 
 save_elf_sources() {
 	hasq installsources ${FEATURES} || return 0
+	hasq installsources ${RESTRICT} && return 0
 	type -P debugedit >/dev/null || return 0
 
 	local x=$1
