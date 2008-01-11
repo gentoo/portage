@@ -8636,7 +8636,7 @@ class dblink:
 			try:
 				s = os.lstat(path)
 			except OSError, e:
-				if e.errno != errno.ENOENT:
+				if e.errno not in (errno.ENOENT, errno.ENOTDIR):
 					raise
 				del e
 				continue
