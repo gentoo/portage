@@ -34,6 +34,8 @@ if not hasattr(__builtins__, "set"):
 exename=os.path.basename(sys.argv[0])	
 version="1.2"	
 
+# 14 is the length of DESCRIPTION=""
+max_desc_len = 80 - 14
 allowed_filename_chars="a-zA-Z0-9._-+:"
 allowed_filename_chars_set = {}
 map(allowed_filename_chars_set.setdefault, map(chr, range(ord('a'), ord('z')+1)))
@@ -168,6 +170,7 @@ qahelp={
 	"KEYWORDS.stupid":"Ebuilds that use KEYWORDS=-* instead of package.mask", 
 	"LICENSE.missing":"Ebuilds that have a missing or empty LICENSE variable",
 	"DESCRIPTION.missing":"Ebuilds that have a missing or empty DESCRIPTION variable",
+	"DESCRIPTION.toolong":"DESCRIPTION line is over 80 characters",
 	"EAPI.unsupported":"Ebuilds that have an unsupported EAPI version (you must upgrade portage)",
 	"SLOT.missing":"Ebuilds that have a missing or empty SLOT variable",
 	"HOMEPAGE.missing":"Ebuilds that have a missing or empty HOMEPAGE variable",
@@ -229,6 +232,7 @@ qawarnings=[
 "DEPEND.badmasked","RDEPEND.badmasked","PDEPEND.badmasked",
 "DEPEND.badindev","RDEPEND.badindev","PDEPEND.badindev",
 "DEPEND.badmaskedindev","RDEPEND.badmaskedindev","PDEPEND.badmaskedindev",
+"DESCRIPTION.toolong",
 "IUSE.invalid",
 "KEYWORDS.stupid",
 "KEYWORDS.missing",
@@ -1448,6 +1452,13 @@ for x in scanlist:
 				myqakey=missingvars[pos]+".missing"
 				stats[myqakey]=stats[myqakey]+1
 				fails[myqakey].append(x+"/"+y+".ebuild")
+
+		# 14 is the length of DESCRIPTION=""
+		if len(myaux['DESCRIPTION']) > max_desc_len:
+			stats['DESCRIPTION.toolong'] += 1
+			fails['DESCRIPTION.toolong'].append(
+				"%s: DESCRIPTION is %d characters (max %d)" % \
+				(relative_path, len(myaux['DESCRIPTION']), max_desc_len))
 
 		keywords = myaux["KEYWORDS"].split()
 		stable_keywords = []
