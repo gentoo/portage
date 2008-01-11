@@ -178,11 +178,25 @@ class EbuildUselessCdS(LineCheck):
 		elif self.method_re.match(line):
 			self.check_next_line = True
 
+class Autotools(LineCheck):
+	"""Check for direct calls to autotools"""
+	repoman_check_name = 'ebuild.autotools'
+	re = re.compile(r'^[^#]*([^e]|^)(autoconf|automake|aclocal|libtoolize)')
+
+	def check(self, num, line):
+		"""Run the check on line and return error if there is one"""
+		m = self.re.match(line)
+		if m is not None:
+			return ("Direct calls to '%s'" % m.group(2)) + \
+				" instead of using autotools.eclass on line: %d"
+
+_constant_checks = tuple((c() for c in (Autotools,
+	EbuildWhitespace, EbuildQuote,
+	EbuildAssignment, EbuildUselessDodoc,
+	EbuildUselessCdS, EbuildNestedDie)))
+
 def run_checks(contents, st_mtime):
-	checks = []
-	for c in (EbuildWhitespace, EbuildQuote, EbuildAssignment,
-			EbuildUselessDodoc, EbuildUselessCdS, EbuildNestedDie):
-		checks.append(c())
+	checks = list(_constant_checks)
 	checks.append(EbuildHeader(st_mtime))
 	for num, line in enumerate(contents):
 		for lc in checks:
