@@ -409,9 +409,11 @@ econf() {
 	fi
 	if [ -x "${ECONF_SOURCE}/configure" ]; then
 		if [ -e /usr/share/gnuconfig/ ]; then
-			for x in $(find "${WORKDIR}" -type f '(' -name config.guess -o -name config.sub ')') ; do
+			find "${WORKDIR}" -type f '(' \
+			-name config.guess -o -name config.sub ')' -print0 | \
+			while read -d $'\0' x ; do
 				vecho " * econf: updating ${x/${WORKDIR}\/} with /usr/share/gnuconfig/${x##*/}"
-				cp -f /usr/share/gnuconfig/${x##*/} ${x}
+				cp -f /usr/share/gnuconfig/"${x##*/}" "${x}"
 			done
 		fi
 
