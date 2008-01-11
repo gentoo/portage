@@ -480,7 +480,7 @@ def isvalidatom(atom, allow_blockers=False):
 		return 0
 	operator = get_operator(atom)
 	if operator:
-		if operator[0] in "<>" and atom[-1] == "*":
+		if operator[0] in "<>" and remove_slot(atom).endswith("*"):
 			return 0
 		if mycpv_cps and mycpv_cps[0] != "null":
 			# >=cat/pkg-1.0
