@@ -1486,10 +1486,11 @@ preprocess_ebuild_env() {
 		# and functions that could interfere with the current environment.
 		save_ebuild_env || exit $?
 		touch "${T}/environment.success" || exit $?
-	) | filter_readonly_variables > "${T}/environment.filtered"
+	) > "${T}/environment.filtered"
 	local retval
 	if [ -e "${T}/environment.success" ] ; then
-		mv "${T}/environment.filtered" "${T}/environment"
+		filter_readonly_variables < \
+			"${T}/environment.filtered" > "${T}/environment" || return $?
 		retval=$?
 	else
 		retval=1
