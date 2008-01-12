@@ -1490,7 +1490,7 @@ preprocess_ebuild_env() {
 	local retval
 	if [ -e "${T}/environment.success" ] ; then
 		filter_readonly_variables < \
-			"${T}/environment.filtered" > "${T}/environment" || return $?
+			"${T}/environment.filtered" > "${T}/environment"
 		retval=$?
 	else
 		retval=1
