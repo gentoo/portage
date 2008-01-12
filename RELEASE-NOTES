@@ -1,6 +1,17 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.1.4
+==================================
+
+* Visibility filtering is now supported for binary packages, so masking behavior
+  is essentially equivalent to that of ebuilds.
+* There is no need to have a complete portage tree available when installing binary
+  packages or uninstalling packages, but a warning message will still be displayed if
+  it appears that a valid profile is not available.
+* The emerge --search action supports searching of both installed and binary packages
+  The --usepkg and --usepkgonly options control which repositories are searched.
+
 portage-2.1.3
 ==================================
 
