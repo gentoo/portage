@@ -163,21 +163,23 @@ def vercmp(ver1, ver2, silent=1):
 	# bumps in ebuilds synced from the main tree for prefix changes,
 	# while still staying in the main tree versioning scheme.
 	if match1.group(10):
-		if match1.group(10)[0] == '0':
+		if match1.group(10)[0] == '0' and '.' in match1.group(10):
 			t = match1.group(10)[1:].split(".")
-			r1 = int(t[1])
-			r3 = int(t[2])
+			r1 = int(t[0])
+			r3 = int(t[1])
 		else:
 			r1 = int(match1.group(10))
+			r3 = 0
 	else:
 		r1 = 0
 	if match2.group(10):
-		if match2.group(10)[0] == '0':
+		if match2.group(10)[0] == '0' and '.' in match2.group(10):
 			t = match2.group(10)[1:].split(".")
-			r2 = int(t[1])
-			r4 = int(t[2])
+			r2 = int(t[0])
+			r4 = int(t[1])
 		else:
 			r2 = int(match2.group(10))
+			r4 = 0
 	else:
 		r2 = 0
 	if r1 == r2 and (r3 != 0 or r4 != 0):
