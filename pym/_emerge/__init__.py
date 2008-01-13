@@ -5385,7 +5385,6 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 				"--force",        # Force deletion on non-empty dirs
 				"--whole-file",   # Don't do block transfers, only entire files
 				"--delete",       # Delete files that aren't in the master tree
-				"--delete-after", # Delete only after everything else is done
 				"--stats",        # Show final statistics about what was transfered
 				"--timeout="+str(mytimeout), # IO timeout if not done in X seconds
 				"--exclude=/distfiles",   # Exclude distfiles from consideration

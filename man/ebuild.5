@@ -364,6 +364,10 @@ Distribution of binary packages is restricted.
 .I fetch
 like \fImirror\fR but the files will not be fetched via \fBSRC_URI\fR either.
 .TP
+.I installsources
+Disables installsources for specific packages. This is for packages with
+binaries that are not compatible with debugedit.
+.TP
 .I mirror
 files in \fBSRC_URI\fR will not be downloaded from the \fBGENTOO_MIRRORS\fR.
 .TP

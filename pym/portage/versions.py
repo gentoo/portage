@@ -210,16 +210,10 @@ def pkgcmp(pkg1, pkg2):
 	"""
 	if pkg1[0] != pkg2[0]:
 		return None
-	mycmp=vercmp(pkg1[1],pkg2[1])
+	mycmp = vercmp("-".join(pkg1[1:]), "-".join(pkg2[1:]))
 	if mycmp>0:
 		return 1
 	if mycmp<0:
-		return -1
-	r1=float(pkg1[2][1:])
-	r2=float(pkg2[2][1:])
-	if r1>r2:
-		return 1
-	if r2>r1:
 		return -1
 	return 0
 

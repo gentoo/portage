@@ -72,6 +72,8 @@ from portage.output import ConsoleStyleFile, StyleWriter
 
 initialize_logger()
 
+# 14 is the length of DESCRIPTION=""
+max_desc_len = 80 - 14
 allowed_filename_chars="a-zA-Z0-9._-+:"
 allowed_filename_chars_set = {}
 map(allowed_filename_chars_set.setdefault, map(chr, range(ord('a'), ord('z')+1)))
@@ -258,6 +260,7 @@ qahelp={
 	"KEYWORDS.stupid":"Ebuilds that use KEYWORDS=-* instead of package.mask", 
 	"LICENSE.missing":"Ebuilds that have a missing or empty LICENSE variable",
 	"DESCRIPTION.missing":"Ebuilds that have a missing or empty DESCRIPTION variable",
+	"DESCRIPTION.toolong":"DESCRIPTION line is over 80 characters",
 	"EAPI.unsupported":"Ebuilds that have an unsupported EAPI version (you must upgrade portage)",
 	"SLOT.missing":"Ebuilds that have a missing or empty SLOT variable",
 	"HOMEPAGE.missing":"Ebuilds that have a missing or empty HOMEPAGE variable",
@@ -294,6 +297,7 @@ qahelp={
 	"ebuild.majorsyn":"This ebuild has a major syntax error that may cause the ebuild to fail partially or fully",
 	"ebuild.minorsyn":"This ebuild has a minor syntax error that contravenes gentoo coding style",
 	"ebuild.badheader":"This ebuild has a malformed header",
+	"ebuild.autotools":"Ebuild calls autotools directly instead of using autotools.eclass",
 	"metadata.missing":"Missing metadata.xml files",
 	"metadata.bad":"Bad metadata.xml files",
 	"virtual.versioned":"PROVIDE contains virtuals with versions",
@@ -311,6 +315,7 @@ qawarnings=[
 "ebuild.notadded",
 "ebuild.nostable",
 "ebuild.allmasked",
+"ebuild.autotools",
 "ebuild.nesteddie",
 "desktop.invalid",
 "digest.assumed",
@@ -319,6 +324,7 @@ qawarnings=[
 "DEPEND.badmasked","RDEPEND.badmasked","PDEPEND.badmasked",
 "DEPEND.badindev","RDEPEND.badindev","PDEPEND.badindev",
 "DEPEND.badmaskedindev","RDEPEND.badmaskedindev","PDEPEND.badmaskedindev",
+"DESCRIPTION.toolong",
 "IUSE.invalid",
 "KEYWORDS.stupid",
 "KEYWORDS.missing",
@@ -1349,6 +1355,13 @@ for x in scanlist:
 				myqakey=missingvars[pos]+".missing"
 				stats[myqakey]=stats[myqakey]+1
 				fails[myqakey].append(x+"/"+y+".ebuild")
+
+		# 14 is the length of DESCRIPTION=""
+		if len(myaux['DESCRIPTION']) > max_desc_len:
+			stats['DESCRIPTION.toolong'] += 1
+			fails['DESCRIPTION.toolong'].append(
+				"%s: DESCRIPTION is %d characters (max %d)" % \
+				(relative_path, len(myaux['DESCRIPTION']), max_desc_len))
 
 		keywords = myaux["KEYWORDS"].split()
 		stable_keywords = []
