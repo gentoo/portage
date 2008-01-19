@@ -5752,8 +5752,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			if retval != os.EX_OK:
 				sys.exit(retval)
 		dosyncuri = syncuri
-	elif syncuri[:11]=="svn+http://":
-		# this should be way more generic!
+	elif syncuri[:11]=="svn+http://" or syncuri[:6]=="svn://" or syncuri[:12]=="svn+https://":
 		if not os.path.exists(EPREFIX+"/usr/bin/svn"):
 			print "!!! svn does not exist, so SVN support is disabled."
 			print "!!! Type \"emerge dev-util/subversion\" to enable SVN support."
@@ -5761,6 +5760,8 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		svndir=os.path.dirname(myportdir)
 		if not os.path.exists(myportdir+"/.svn"):
 			#initial checkout
+			if syncuri[:4] == "svn+":
+				syncuri = syncuri[4:]
 			print ">>> Starting initial svn checkout with "+syncuri+"..."
 			if os.path.exists(svndir+"/prefix-overlay"):
 				print "!!! existing",svndir+"/prefix-overlay directory; exiting."
@@ -5773,7 +5774,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 						"!!! existing '%s' directory; exiting.\n" % myportdir)
 					sys.exit(1)
 				del e
-			if portage.spawn("cd "+svndir+"; svn checkout "+syncuri[4:],settings,free=1):
+			if portage.spawn("cd "+svndir+"; svn checkout "+syncuri,settings,free=1):
 				print "!!! svn checkout error; exiting."
 				sys.exit(1)
 			os.rename(os.path.join(svndir, "prefix-overlay"), myportdir)
