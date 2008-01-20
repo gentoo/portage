@@ -43,7 +43,7 @@ dump_trace() {
 			done
 			(( p -= ${BASH_ARGC[${n} - 1]} ))
 		fi
-		eerror "  $(printf "%${filespacing}s" "${sourcefile}"), line $(printf "%${linespacing}s" "${lineno}"):  Called ${funcname}${args:+ ${args}}"
+		eerror "  $(printf "%${filespacing}s" "${sourcefile}"):$(printf "%${linespacing}s" "${lineno}"): <call ${funcname}${args:+ ${args}}>"
 	done
 }
 
@@ -70,35 +70,34 @@ die() {
 		(( n-- ))
 	done
 
+	eerror "ERROR: $CATEGORY/$PF failed:"
+	eerror "  ${*:-(no error message)}"
 	eerror
-	eerror "ERROR: $CATEGORY/$PF failed."
+
 	dump_trace 2 ${filespacing} ${linespacing}
-	eerror "  $(printf "%${filespacing}s" "${BASH_SOURCE[1]##*/}"), line $(printf "%${linespacing}s" "${BASH_LINENO[0]}"):  Called die"
-	eerror "The specific snippet of code:"
 	# This scans the file that called die and prints out the logic that
 	# ended in the call to die.  This really only handles lines that end
 	# with '|| die' and any preceding lines with line continuations (\).
 	# This tends to be the most common usage though, so let's do it.
 	# Due to the usage of appending to the hold space (even when empty),
 	# we always end up with the first line being a blank (thus the 2nd sed).
-	sed -n \
+	code=$(sed -n \
 		-e "# When we get to the line that failed, append it to the
-		    # hold space, move the hold space to the pattern space,
-		    # then print out the pattern space and quit immediately
-		    ${BASH_LINENO[0]}{H;g;p;q}" \
+			# hold space, move the hold space to the pattern space,
+			# then print out the pattern space and quit immediately
+			${BASH_LINENO[0]}{H;g;p;q}" \
 		-e '# If this line ends with a line continuation, append it
-		    # to the hold space
-		    /\\$/H' \
+			# to the hold space
+			/\\$/H' \
 		-e '# If this line does not end with a line continuation,
-		    # erase the line and set the hold buffer to it (thus
-		    # erasing the hold buffer in the process)
-		    /[^\]$/{s:^.*$::;h}' \
-		${BASH_SOURCE[1]} \
-		| sed -e '1d' -e 's:^:RETAIN-LEADING-SPACE:' \
-		| while read -r n ; do eerror "  ${n#RETAIN-LEADING-SPACE}" ; done
-	eerror " The die message:"
-	eerror "  ${*:-(no error message)}"
+			# erase the line and set the hold buffer to it (thus
+			# erasing the hold buffer in the process)
+			/[^\]$/{s:^.*$::;h}' \
+		${BASH_SOURCE[1]} | \
+		sed -e '1d')
+	eerror "  $(printf "%${filespacing}s" "${BASH_SOURCE[1]##*/}"):$(printf "%${linespacing}s" "${BASH_LINENO[0]}"): ${code}"
 	eerror
+
 	eerror "If you need support, post the topmost build error, and the call stack if relevant."
 	[[ -n ${PORTAGE_LOG_FILE} ]] \
 		&& eerror "A complete build log is located at '${PORTAGE_LOG_FILE}'."
