@@ -59,11 +59,18 @@ diefunc() {
 	fi
 	local n filespacing=0 linespacing=0
 	# setup spacing to make output easier to read
-	for ((n = ${#FUNCNAME[@]} - 1; n >= 0; --n)); do
+	(( n = ${#FUNCNAME[@]} - 1 ))
+	while (( n > 0 )) ; do
+		[ "${FUNCNAME[${n}]}" == "qa_call" ] && break
+		(( n-- ))
+	done
+	(( n == 0 )) && (( n = ${#FUNCNAME[@]} - 1 ))
+	while (( n >= 0 )); do
 		sourcefile=${BASH_SOURCE[${n}]} sourcefile=${sourcefile##*/}
 		lineno=${BASH_LINENO[${n}]}
 		((filespacing < ${#sourcefile})) && filespacing=${#sourcefile}
 		((linespacing < ${#lineno}))     && linespacing=${#lineno}
+		(( n-- ))
 	done
 
 	eerror
