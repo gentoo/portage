@@ -5,8 +5,7 @@
 # We need this next line for "die" and "assert". It expands
 # It _must_ preceed all the calls to die and assert.
 shopt -s expand_aliases
-alias die='diefunc "$FUNCNAME" "$LINENO" "$?"'
-alias assert='_pipestatus="${PIPESTATUS[*]}"; [[ "${_pipestatus// /}" -eq 0 ]] || diefunc "$FUNCNAME" "$LINENO" "$_pipestatus"'
+alias assert='_pipestatus="${PIPESTATUS[*]}"; [[ "${_pipestatus// /}" -eq 0 ]] || die'
 alias save_IFS='[ "${IFS:-unset}" != "unset" ] && old_IFS="${IFS}"'
 alias restore_IFS='if [ "${old_IFS:-unset}" != "unset" ]; then IFS="${old_IFS}"; unset old_IFS; else unset IFS; fi'
 
@@ -48,9 +47,7 @@ dump_trace() {
 	done
 }
 
-diefunc() {
-	local funcname="$1" lineno="$2" exitcode="$3"
-	shift 3
+die() {
 	if [ -n "${QA_INTERCEPTORS}" ] ; then
 		# die was called from inside inherit. We need to clean up
 		# QA_INTERCEPTORS since sed is called below.
