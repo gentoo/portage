@@ -142,6 +142,12 @@ die() {
 	exit 1
 }
 
+# We need to implement diefunc() since environment.bz2 files contain
+# calls to it (due to alias expansion).
+diefunc() {
+	die "${@}"
+}
+
 quiet_mode() {
 	[[ ${PORTAGE_QUIET} -eq 1 ]]
 }
@@ -448,7 +454,7 @@ save_ebuild_env() {
 		# There's no need to bloat environment.bz2 with internally defined
 		# functions and variables, so filter them out if possible.
 
-		unset -f dump_trace diefunc quiet_mode vecho elog_base eqawarn elog \
+		unset -f dump_trace die diefunc quiet_mode vecho elog_base eqawarn elog \
 			esyslog einfo einfon ewarn eerror ebegin _eend eend KV_major \
 			KV_minor KV_micro KV_to_int get_KV unset_colors set_colors has \
 			hasv hasq qa_source qa_call addread addwrite adddeny addpredict \
