@@ -8,7 +8,6 @@
 # that last one is tricky because multiple profiles need to be checked.
 
 import codecs
-import commands
 import errno
 import formatter
 import logging
@@ -52,10 +51,12 @@ del os.environ["PORTAGE_LEGACY_GLOBALS"]
 
 try:
 	from repoman.checks import run_checks
+	from repoman import utilities
 except ImportError:
 	from os import path as osp
 	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), 'pym'))
 	from repoman.checks import run_checks
+	from repoman import utilities
 
 import portage.checksum
 import portage.const
@@ -63,8 +64,8 @@ import portage.dep
 portage.dep._dep_check_strict = True
 import portage.exception
 from portage import cvstree, normalize_path
-from portage.manifest import Manifest
 from portage.exception import ParseError
+from portage.manifest import Manifest
 from portage.process import find_binary, spawn
 from portage.util import initialize_logger
 from portage.output import bold, create_color_func, darkgreen, \
@@ -318,7 +319,6 @@ qawarnings=[
 "ebuild.allmasked",
 "ebuild.autotools",
 "ebuild.nesteddie",
-"desktop.invalid",
 "digest.assumed",
 "digest.missing",
 "digestentry.unused",
@@ -353,7 +353,7 @@ for x in missingvars:
 		qawarnings.append(x)
 
 valid_restrict = frozenset(["binchecks", "bindist",
-	"fetch", "installsources", "mirror",
+	"fetch", "installsources", "mirror", 
 	"primaryuri", "strip", "test", "userpriv"])
 
 # file.executable
@@ -547,73 +547,10 @@ if options.mode == 'commit' and not options.pretend and not isCvs:
 	logging.info("Not in a CVS repository; enabling pretend mode.")
 	options.pretend = True
 
-def have_profile_dir(path, maxdepth=3):
-	while path != "/" and maxdepth:
-		if os.path.exists(path + "/profiles/package.mask"):
-			return normalize_path(path)
-		path = normalize_path(path + "/..")
-		maxdepth -= 1
-
-portdir=None
-portdir_overlay=None
-mydir=os.getcwd()
-if "PWD" in os.environ and os.environ["PWD"] != mydir and \
-	os.path.realpath(os.environ["PWD"]) == mydir:
-	# getcwd() returns the canonical path but that makes it hard for repoman to
-	# orient itself if the user has symlinks in their portage tree structure.
-	# We use os.environ["PWD"], if available, to get the non-canonical path of
-	# the current working directory (from the shell).
-	mydir = os.environ["PWD"]
-mydir = normalize_path(mydir)
-path_ids = set()
-p = mydir
-s = None
-while True:
-	s = os.stat(p)
-	path_ids.add((s.st_dev, s.st_ino))
-	if p == "/":
-		break
-	p = os.path.dirname(p)
-if mydir[-1] != "/":
-	mydir += "/"
-
-for overlay in repoman_settings["PORTDIR_OVERLAY"].split():
-	overlay = os.path.realpath(overlay)
-	try:
-		s = os.stat(overlay)
-	except OSError:
-		continue
-	overlay_id = (s.st_dev, s.st_ino)
-	if overlay[-1] != "/":
-		overlay += "/"
-	if overlay_id in path_ids:
-		portdir_overlay = overlay
-		subdir = mydir[len(overlay):]
-		if subdir and subdir[-1] != "/":
-			subdir += "/"
-		if have_profile_dir(mydir, subdir.count("/")):
-			portdir = portdir_overlay
-		break
-
-del p, s, path_ids
-
-if not portdir_overlay:
-	if (repoman_settings["PORTDIR"] + os.path.sep).startswith(mydir):
-		portdir_overlay = repoman_settings["PORTDIR"]
-	else:
-		portdir_overlay = have_profile_dir(mydir)
-	portdir = portdir_overlay
-
-if not portdir_overlay:
-	sys.stderr.write("Repoman is unable to determine PORTDIR or PORTDIR_OVERLAY from" + \
-		" the current\nworking directory.\n")
+try:
+	portdir, portdir_overlay, mydir = utilities.FindPortdir(repoman_settings)
+except ValueError:
 	sys.exit(1)
-
-if not portdir:
-	portdir = repoman_settings["PORTDIR"]
-
-portdir = normalize_path(portdir)
-portdir_overlay = normalize_path(portdir_overlay)
 
 os.environ["PORTDIR"] = portdir
 if portdir_overlay != portdir:
@@ -635,16 +572,15 @@ portdb.mysettings = repoman_settings
 # dep_zapdeps looks at the vardbapi, but it shouldn't for repoman.
 del trees["/"]["vartree"]
 
-if not myreporoot:
-	myreporoot = os.path.basename(portdir_overlay)
-	myreporoot += mydir[len(portdir_overlay):-1]
+myreporoot = os.path.basename(portdir_overlay)
+myreporoot += mydir[len(portdir_overlay):]
 
-reposplit=myreporoot.split("/")
-repolevel=len(reposplit)
+reposplit = myreporoot.split(os.path.sep)
+repolevel = len(reposplit)
 
 # check if it's in $PORTDIR/$CATEGORY/$PN , otherwise bail if commiting.
 # Reason for this is if they're trying to commit in just $FILESDIR/*, the Manifest needs updating.
-# this check ensure that repoman knows where it is, and the manifest recommit is at least possible.
+# this check ensures that repoman knows where it is, and the manifest recommit is at least possible.
 if options.mode == 'commit' and repolevel not in [1,2,3]:
 	print red("***")+" Commit attempts *must* be from within a cvs co, category, or package directory."
 	print red("***")+" Attempting to commit from a packages files directory will be blocked for instance."
@@ -654,40 +590,14 @@ if options.mode == 'commit' and repolevel not in [1,2,3]:
 
 startdir = normalize_path(mydir)
 repodir = startdir
-for x in range(0,repolevel-1):
+for x in range(0, repolevel - 1):
 	repodir = os.path.dirname(repodir)
-
-def caterror(mycat):
-	warn(mycat + " is not an official category. " + \
-		"Skipping QA checks in this directory.\n" + \
-		"Please ensure that you add " + catdir + \
-		" to " + repodir + "/profiles/categories\nif it is a new category.")
-
-def parse_use_local_desc(mylines, usedict=None):
-	"""returns a dict of the form {cpv:set(flags)}"""
-	if usedict is None:
-		usedict = {}
-	lineno = 0
-	for l in mylines:
-		lineno += 1
-		if not l or l.startswith("#"):
-			continue
-		mysplit = l.split(None, 1)
-		if not mysplit:
-			continue
-		mysplit = mysplit[0].split(":")
-		if len(mysplit) != 2:
-			raise ParseError("line %d: Malformed input: '%s'" % \
-				(lineno, l.rstrip("\n")))
-		usedict.setdefault(mysplit[0], set())
-		usedict[mysplit[0]].add(mysplit[1])
-	return usedict
 
 # retreive local USE list
 luselist={}
 try:
 	f = open(os.path.join(portdir, "profiles", "use.local.desc"))
-	parse_use_local_desc(f, luselist)
+	utilities.parse_use_local_desc(f, luselist)
 	f.close()
 except (IOError, OSError, ParseError), e:
 	logging.exception("Couldn't read from use.local.desc", e)
@@ -741,33 +651,9 @@ if portdir_overlay != portdir:
 	manifest1_compat = not os.path.exists(
 		os.path.join(portdir_overlay, "manifest1_obsolete"))
 
-scanlist=[]
-if repolevel==2:
-	#we are inside a category directory
-	catdir=reposplit[-1]
-	if catdir not in repoman_settings.categories:
-		caterror(catdir)
-	mydirlist=os.listdir(startdir)
-	for x in mydirlist:
-		if x == "CVS" or x.startswith("."):
-			continue
-		if os.path.isdir(startdir+"/"+x):
-			scanlist.append(catdir+"/"+x)
-elif repolevel==1:
-	for x in repoman_settings.categories:
-		if not os.path.isdir(startdir+"/"+x):
-			continue
-		for y in os.listdir(startdir+"/"+x):
-			if y == "CVS" or y.startswith("."):
-				continue
-			if os.path.isdir(startdir+"/"+x+"/"+y):
-				scanlist.append(x+"/"+y)
-elif repolevel==3:
-	catdir = reposplit[-2]
-	if catdir not in repoman_settings.categories:
-		caterror(catdir)
-	scanlist.append(catdir+"/"+reposplit[-1])
+scanlist = utilities.FindPackagesToScan(repoman_settings, startdir, reposplit)
 scanlist.sort()
+logging.debug("Found the following packages to scan:\n%s" % '\n'.join(scanlist))
 
 profiles={}
 descfile=portdir+"/profiles/profiles.desc"
@@ -1089,7 +975,7 @@ for x in scanlist:
 				full_path = os.path.join(repodir, relative_path)
 				if stat.S_IMODE(os.stat(full_path).st_mode) & 0111:
 					stats["file.executable"] += 1
-					fails["file.executable"].append(relative_path)
+					fails["file.executable"].append(x+"/files/"+y)
 				
 				mykey = catdir + "/" + y[7:]
 				if y[7:] not in ebuildlist:
@@ -1225,7 +1111,7 @@ for x in scanlist:
 		full_path = os.path.join(repodir, relative_path)
 		if stat.S_IMODE(os.stat(full_path).st_mode) & 0111:
 			stats["file.executable"] += 1
-			fails["file.executable"].append(relative_path)
+			fails["file.executable"].append(x+"/"+y+".ebuild")
 		if isCvs and y not in eadded:
 			#ebuild not added to cvs
 			stats["ebuild.notadded"]=stats["ebuild.notadded"]+1
@@ -1507,6 +1393,8 @@ for x in scanlist:
 				for mybad in mybadrestrict:
 					fails["RESTRICT.invalid"].append(x+"/"+y+".ebuild: %s" % mybad)
 		# Syntax Checks
+		relative_path = os.path.join(x, y + ".ebuild")
+		full_path = os.path.join(repodir, relative_path)
 		f = open(full_path, 'rb')
 		try:
 			for check_name, e in run_checks(f, os.stat(full_path).st_mtime):
