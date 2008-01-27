@@ -319,6 +319,7 @@ qawarnings=[
 "ebuild.allmasked",
 "ebuild.autotools",
 "ebuild.nesteddie",
+"desktop.invalid",
 "digest.assumed",
 "digest.missing",
 "digestentry.unused",
