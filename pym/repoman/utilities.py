@@ -3,14 +3,70 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+"""This module contains utility functions to help repoman find ebuilds to
+scan"""
+
+import commands
+import itertools
 import logging
 import os
+import sys
 
-from portage import util
+from portage import output
 from portage import exception
-
+from portage import util
 normalize_path = util.normalize_path
 util.initialize_logger()
+
+
+def detect_vcs_conflicts(vcs, options):
+	"""Determine if the checkout has problems like cvs conflicts.
+	
+	If you want more vcs support here just keep adding if blocks...
+	This could be better.
+	
+	TODO(antarus): Also this should probably not call sys.exit() as
+	repoman is run on >1 packages and one failure should not cause
+	subsequent packages to fail.
+	
+	Args:
+		vcs - A string identifying the version control system in use
+	Returns:
+		None (calls sys.exit on fatal problems)
+	"""
+	retval = ("","")
+	if vcs == 'cvs':
+		logging.info("Performing a " + output.green("cvs -n up") + \
+			" with a little magic grep to check for updates.")
+		retval = commands.getstatusoutput("cvs -n up 2>&1 | " + \
+			"egrep '^[^\?] .*' | " + \
+			"egrep -v '^. .*/digest-[^/]+|^cvs server: .* -- ignored$'")
+
+		mylines = retval[1].splitlines()
+		myupdates = []
+		for line in mylines:
+			if not line:
+				continue
+			if line[0] not in "UPMAR": # Updates,Patches,Modified,Added,Removed
+				logging.error(red("!!! Please fix the following issues reported " + \
+					"from cvs: ")+green("(U,P,M,A,R are ok)"))
+				logging.error(red("!!! Note: This is a pretend/no-modify pass..."))
+				logging.error(retval[1])
+				sys.exit(1)
+			elif line[0] in "UP":
+				myupdates.append(line[2:])
+
+		if myupdates:
+			logging.info(green("Fetching trivial updates..."))
+			if options.pretend:
+				logging.info("(cvs up "+" ".join(myupdates)+")")
+				retval = os.EX_OK
+			else:
+				retval = os.system("cvs up " + " ".join(myupdates))
+			if retval != os.EX_OK:
+				logging.fatal("!!! cvs exited with an error. Terminating.")
+				sys.exit(retval)
+
 
 def have_profile_dir(path, maxdepth=3):
 	""" Try to figure out if 'path' has a /profiles dir in it by checking for a package.mask file
@@ -20,6 +76,7 @@ def have_profile_dir(path, maxdepth=3):
 			return normalize_path(path)
 		path = normalize_path(path + "/..")
 		maxdepth -= 1
+
 
 def parse_use_local_desc(mylines, usedict=None):
 	"""
@@ -42,6 +99,7 @@ def parse_use_local_desc(mylines, usedict=None):
 		usedict[pkg].add(flag)
 	return usedict
 
+
 def FindPackagesToScan(settings, startdir, reposplit):
 	""" Try to find packages that need to be scanned
 	
@@ -52,6 +110,7 @@ def FindPackagesToScan(settings, startdir, reposplit):
 	Returns:
 		A list of directories to scan
 	"""
+	
 	
 	def AddPackagesInDir(path):
 		""" Given a list of dirs, add any packages in it """
@@ -94,6 +153,123 @@ def FindPackagesToScan(settings, startdir, reposplit):
 		else:
 			scanlist.append(os.path.join(catdir, pkgdir))
 	return scanlist
+
+
+def format_qa_output(formatter, stats, fails, dofull, dofail, options, qawarnings):
+	"""Helper function that formats output properly
+	
+	Args:
+		formatter - a subclass of Formatter
+		stats - a dict of qa status items
+		fails - a dict of qa status failures
+		dofull - boolean to print full results or a summary
+		dofail - boolean to decide if failure was hard or soft
+	
+	Returns:
+		None (modifies formatter)
+	"""
+	full = options.mode in ("full", "lfull")
+	# we only want key value pairs where value > 0 
+	for category, number in \
+		itertools.ifilter(lambda myitem: myitem[1] > 0, stats.iteritems()):
+		formatter.add_literal_data("  " + category.ljust(30))
+		if category in qawarnings:
+			formatter.push_style("WARN")
+		else:
+			formatter.push_style("BAD")
+		formatter.add_literal_data(str(number))
+		formatter.pop_style()
+		formatter.add_line_break()
+		if not dofull:
+			if not full and dofail and category in qawarnings:
+				# warnings are considered noise when there are failures
+				continue
+			fails_list = fails[category]
+			if not full and len(fails_list) > 12:
+				fails_list = fails_list[:12]
+			for failure in fails_list:
+				formatter.add_literal_data("   " + failure)
+				formatter.add_line_break()
+
+
+def editor_is_executable(editor):
+	"""
+	Given an EDITOR string, validate that it refers to
+	an executable. This uses shlex.split() to split the
+	first component and do a PATH lookup if necessary.
+
+	@param editor: An EDITOR value from the environment.
+	@type: string
+	@rtype: bool
+	@returns: True if an executable is found, False otherwise.
+	"""
+	import shlex
+	editor_split = shlex.split(editor)
+	if not editor_split:
+		return False
+	filename = editor_split[0]
+	if not os.path.isabs(filename):
+		return find_binary(filename) is not None
+	return os.access(filename, os.X_OK) and os.path.isfile(filename)
+
+
+def get_commit_message_with_editor(editor, message=None):
+	"""
+	Execute editor with a temporary file as it's argument
+	and return the file content afterwards.
+
+	@param editor: An EDITOR value from the environment
+	@type: string
+	@param message: An iterable of lines to show in the editor.
+	@type: iterable
+	@rtype: string or None
+	@returns: A string on success or None if an error occurs.
+	"""
+	from tempfile import mkstemp
+	fd, filename = mkstemp()
+	try:
+		os.write(fd, "\n# Please enter the commit message " + \
+			"for your changes.\n# (Comment lines starting " + \
+			"with '#' will not be included)\n")
+		if message:
+			os.write(fd, "#\n")
+			for line in message:
+				os.write(fd, "#" + line)
+		os.close(fd)
+		retval = os.system(editor + " '%s'" % filename)
+		if not (os.WIFEXITED(retval) and os.WEXITSTATUS(retval) == os.EX_OK):
+			return None
+		try:
+			mylines = open(filename).readlines()
+		except OSError, e:
+			if e.errno != errno.ENOENT:
+				raise
+			del e
+			return None
+		return "".join(line for line in mylines if not line.startswith("#"))
+	finally:
+		try:
+			os.unlink(filename)
+		except OSError:
+			pass
+
+
+def get_commit_message_with_stdin():
+	"""
+	Read a commit message from the user and return it.
+
+	@rtype: string or None
+	@returns: A string on success or None if an error occurs.
+	"""
+	print "Please enter a commit message. Use Ctrl-d to finish or Ctrl-c to abort."
+	commitmessage = []
+	while True:
+		commitmessage.append(sys.stdin.readline())
+		if not commitmessage[-1]:
+			break
+	commitmessage = "".join(commitmessage)
+	return commitmessage
+
 
 def FindPortdir(settings):
 	""" Try to figure out what repo we are in and whether we are in a regular
