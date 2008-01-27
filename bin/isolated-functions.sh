@@ -99,17 +99,6 @@ die() {
 	eerror
 
 	eerror "If you need support, post the topmost build error, and the call stack if relevant."
-	[[ -n ${PORTAGE_LOG_FILE} ]] \
-		&& eerror "A complete build log is located at '${PORTAGE_LOG_FILE}'."
-	if [ -f "${T}/environment" ] ; then
-		eerror "The ebuild environment file is located at '${T}/environment'."
-	elif [ -d "${T}" ] ; then
-		{
-			set
-			export
-		} > "${T}/die.env"
-		eerror "The ebuild environment file is located at '${T}/die.env'."
-	fi
 	if [[ -n ${EBUILD_OVERLAY_ECLASSES} ]] ; then
 		eerror "This ebuild used the following eclasses from overlays:"
 		local x
@@ -125,7 +114,6 @@ die() {
 		overlay=${overlay%/*}
 		eerror "This ebuild is from an overlay: '${overlay}/'"
 	fi
-	eerror
 
 	if [[ "${EBUILD_PHASE/depend}" == "${EBUILD_PHASE}" ]] ; then
 		local x
@@ -133,6 +121,19 @@ die() {
 			${x} "$@" >&2 1>&2
 		done
 	fi
+
+	[[ -n ${PORTAGE_LOG_FILE} ]] \
+		&& eerror "build log: '${PORTAGE_LOG_FILE}'"
+	if [ -f "${T}/environment" ] ; then
+		eerror "ebuild environment: '${T}/environment'"
+	elif [ -d "${T}" ] ; then
+		{
+			set
+			export
+		} > "${T}/die.env"
+		eerror "ebuild environment: '${T}/die.env'"
+	fi
+	eerror "S: '${S}'"
 
 	[ -n "${EBUILD_EXIT_STATUS_FILE}" ] && \
 		touch "${EBUILD_EXIT_STATUS_FILE}" &>/dev/null
