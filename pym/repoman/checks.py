@@ -3,13 +3,13 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-import time
-import re
-import os
+"""This module contains functions used in Repoman to ascertain the quality
+and correctness of an ebuild."""
 
-from repoman.errors import COPYRIGHT_ERROR, LICENSE_ERROR, CVS_HEADER_ERROR, \
-	LEADING_SPACES_ERROR, READONLY_ASSIGNMENT_ERROR, TRAILING_WHITESPACE_ERROR, \
-	MISSING_QUOTES_ERROR, NESTED_DIE_ERROR, REDUNDANT_CD_S_ERROR
+import os
+import re
+import time
+import repoman.errors as errors
 
 class LineCheck(object):
 	"""Run a check on a line of an ebuild."""
@@ -19,6 +19,7 @@ class LineCheck(object):
 	def check(self, num, line):
 		"""Run the check on line and return error if there is one"""
 		pass
+
 
 class EbuildHeader(LineCheck):
 	"""Ensure ebuilds have proper headers
@@ -47,12 +48,12 @@ class EbuildHeader(LineCheck):
 			return
 		elif num == 0:
 			if not self.gentoo_copyright_re.match(line):
-				return COPYRIGHT_ERROR
+				return errors.COPYRIGHT_ERROR
 		elif num == 1 and line.strip() != self.gentoo_license:
-			return LICENSE_ERROR
+			return errors.LICENSE_ERROR
 		elif num == 2:
 			if not self.cvs_header.match(line):
-				return CVS_HEADER_ERROR
+				return errors.CVS_HEADER_ERROR
 
 
 class EbuildWhitespace(LineCheck):
@@ -66,9 +67,10 @@ class EbuildWhitespace(LineCheck):
 
 	def check(self, num, line):
 		if not self.leading_spaces.match(line):
-			return LEADING_SPACES_ERROR
+			return errors.LEADING_SPACES_ERROR
 		if not self.trailing_whitespace.match(line):
-			return TRAILING_WHITESPACE_ERROR
+			return errors.TRAILING_WHITESPACE_ERROR
+
 
 class EbuildQuote(LineCheck):
 	"""Ensure ebuilds have valid quoting around things like D,FILESDIR, etc..."""
@@ -118,7 +120,8 @@ class EbuildQuote(LineCheck):
 				continue
 
 			# Any remaining matches on the same line can be ignored.
-			return MISSING_QUOTES_ERROR
+			return errors.MISSING_QUOTES_ERROR
+
 
 class EbuildAssignment(LineCheck):
 	"""Ensure ebuilds don't assign to readonly variables."""
@@ -136,9 +139,10 @@ class EbuildAssignment(LineCheck):
 		match = self.readonly_assignment.match(line)
 		e = None
 		if match and (not self.previous_line or not self.line_continuation.match(self.previous_line)):
-			e = READONLY_ASSIGNMENT_ERROR
+			e = errors.READONLY_ASSIGNMENT_ERROR
 		self.previous_line = line
 		return e
+
 
 class EbuildNestedDie(LineCheck):
 	"""Check ebuild for nested die statements (die statements in subshells"""
@@ -148,7 +152,8 @@ class EbuildNestedDie(LineCheck):
 	
 	def check(self, num, line):
 		if self.nesteddie_re.match(line):
-			return NESTED_DIE_ERROR
+			return errors.NESTED_DIE_ERROR
+
 
 class EbuildUselessDodoc(LineCheck):
 	"""Check ebuild for useless files in dodoc arguments."""
@@ -160,6 +165,7 @@ class EbuildUselessDodoc(LineCheck):
 		match = self.uselessdodoc_re.match(line)
 		if match:
 			return "Useless dodoc '%s'" % (match.group(2), ) + " on line: %d"
+
 
 class EbuildUselessCdS(LineCheck):
 	"""Check for redundant cd ${S} statements"""
@@ -174,9 +180,10 @@ class EbuildUselessCdS(LineCheck):
 		if self.check_next_line:
 			self.check_next_line = False
 			if self.cds_re.match(line):
-				return REDUNDANT_CD_S_ERROR
+				return errors.REDUNDANT_CD_S_ERROR
 		elif self.method_re.match(line):
 			self.check_next_line = True
+
 
 class Autotools(LineCheck):
 	"""Check for direct calls to autotools"""
@@ -185,10 +192,11 @@ class Autotools(LineCheck):
 
 	def check(self, num, line):
 		"""Run the check on line and return error if there is one"""
-		m = self.re.match(line)
-		if m is not None:
-			return ("Direct calls to '%s'" % m.group(2)) + \
+		autotools_match = self.re.match(line)
+		if autotools_match is not None:
+			return ("Direct calls to '%s'" % autotools_match.group(2)) + \
 				" instead of using autotools.eclass on line: %d"
+
 
 class EbuildQuotedA(LineCheck):
 	"""Ensure ebuilds have no quoting around ${A}"""
