@@ -14,7 +14,6 @@ import logging
 import optparse
 import os
 import re
-import shutil
 import signal
 import stat
 import sys
@@ -22,8 +21,6 @@ import tempfile
 import time
 
 from commands import getstatusoutput
-from fileinput import input
-from grp import getgrnam
 from itertools import izip
 from stat import S_ISDIR, ST_CTIME
 
@@ -62,15 +59,15 @@ import portage.dep
 portage.dep._dep_check_strict = True
 import portage.exception
 from portage import cvstree, normalize_path
+from portage import util
 from portage.exception import ParseError
 from portage.manifest import Manifest
 from portage.process import find_binary, spawn
-from portage.util import initialize_logger
 from portage.output import bold, create_color_func, darkgreen, \
 	green, nocolor, red, turquoise, yellow
 from portage.output import ConsoleStyleFile, StyleWriter
 
-initialize_logger()
+util.initialize_logger()
 
 # 14 is the length of DESCRIPTION=""
 max_desc_len = 100
@@ -147,7 +144,7 @@ def ParseArgs(args, qahelp):
 		'fix' : 'Fix simple QA issues (stray digests, missing digests)',
 		'full' : 'Scan directory tree and print all issues (not a summary)',
 		'help' : 'Show this screen',
-		'last' : 'Remember report from last ru',
+		'last' : 'Remember report from last run',
 		'lfull' : 'Remember report from last run (full listing)',
 		'manifest' : 'Generate a Manifest (fetches files if necessary)',
 		'scan' : 'Scan directory tree for QA issues' 
@@ -352,111 +349,12 @@ for x in missingvars:
 		qawarnings.append(x)
 
 valid_restrict = frozenset(["binchecks", "bindist",
-	"fetch", "installsources", "mirror", 
+	"fetch", "installsources", "mirror",
 	"primaryuri", "strip", "test", "userpriv"])
 
 # file.executable
 no_exec = frozenset(["Manifest","ChangeLog","metadata.xml"])
 
-def editor_is_executable(editor):
-	"""
-	Given an EDITOR string, validate that it refers to
-	an executable. This uses shlex.split() to split the
-	first component and do a PATH lookup if necessary.
-
-	@param editor: An EDITOR value from the environment.
-	@type: string
-	@rtype: bool
-	@returns: True if an executable is found, False otherwise.
-	"""
-	import shlex
-	editor_split = shlex.split(editor)
-	if not editor_split:
-		return False
-	filename = editor_split[0]
-	if not os.path.isabs(filename):
-		return find_binary(filename) is not None
-	return os.access(filename, os.X_OK) and os.path.isfile(filename)
-
-def get_commit_message_with_editor(editor, message=None):
-	"""
-	Execute editor with a temporary file as it's argument
-	and return the file content afterwards.
-
-	@param editor: An EDITOR value from the environment
-	@type: string
-	@param message: An iterable of lines to show in the editor.
-	@type: iterable
-	@rtype: string or None
-	@returns: A string on success or None if an error occurs.
-	"""
-	from tempfile import mkstemp
-	fd, filename = mkstemp()
-	try:
-		os.write(fd, "\n# Please enter the commit message " + \
-			"for your changes.\n# (Comment lines starting " + \
-			"with '#' will not be included)\n")
-		if message:
-			os.write(fd, "#\n")
-			for line in message:
-				os.write(fd, "#" + line)
-		os.close(fd)
-		retval = os.system(editor + " '%s'" % filename)
-		if not (os.WIFEXITED(retval) and os.WEXITSTATUS(retval) == os.EX_OK):
-			return None
-		try:
-			mylines = open(filename).readlines()
-		except OSError, e:
-			if e.errno != errno.ENOENT:
-				raise
-			del e
-			return None
-		return "".join(line for line in mylines if not line.startswith("#"))
-	finally:
-		try:
-			os.unlink(filename)
-		except OSError:
-			pass
-
-def get_commit_message_with_stdin():
-	"""
-	Read a commit message from the user and return it.
-
-	@rtype: string or None
-	@returns: A string on success or None if an error occurs.
-	"""
-	print "Please enter a commit message. Use Ctrl-d to finish or Ctrl-c to abort."
-	commitmessage = []
-	while True:
-		commitmessage.append(sys.stdin.readline())
-		if not commitmessage[-1]:
-			break
-	commitmessage = "".join(commitmessage)
-	return commitmessage
-
-def format_qa_output(f, stats, fails, dofull, dofail):
-	full = options.mode in ("full", "lfull")
-	for x in qacats:
-		if not stats[x]:
-			continue
-		f.add_literal_data("  " + x.ljust(30))
-		if x in qawarnings:
-			f.push_style("WARN")
-		else:
-			f.push_style("BAD")
-		f.add_literal_data(str(stats[x]))
-		f.pop_style()
-		f.add_line_break()
-		if not dofull:
-			if not full and dofail and x in qawarnings:
-				# warnings are considered noise when there are failures
-				continue
-			fails_list = fails[x]
-			if not full and len(fails_list) > 12:
-				fails_list = fails_list[:12]
-			for y in fails_list:
-				f.add_literal_data("   "+y)
-				f.add_line_break()
 
 def last(full=False):
 	"""Print the results of the last repoman run
@@ -496,7 +394,7 @@ def last(full=False):
 	console_writer = StyleWriter(file=style_file, maxcol=9999)
 	console_writer.style_listener = style_file.new_styles
 	f = formatter.AbstractFormatter(console_writer)
-	format_qa_output(f, stats, fails, dofull, dofail)
+	utilities.format_qa_output(f, stats, fails, dofull, dofail, options, qawarnings)
 	print
 	if dofull:
 		print bold("Note: type \"repoman lfull\" for a complete listing of repomans last run.")
@@ -519,21 +417,22 @@ if options.mode in ('last', 'lfull'):
 can_force = True
 
 
-isCvs=False
+isVcs = False
+vcs = ''
 if os.path.isdir("CVS"):
-	isCvs = True
-
-isSvn=False
+	isVcs = True
+	vcs = "cvs"
 if os.path.isdir(".svn"):
-	isSvn=True
+	isVcs = True
+	vcs = "svn"
 
-if isCvs or isSvn and \
+if isVcs and vcs == "cvs" and \
 	"commit" == options.mode and \
 	"RMD160" not in portage.checksum.hashorigin_map:
 	from portage.util import grablines
 	repo_lines = grablines("./CVS/Repository")
-	if isSvn or (repo_lines and \
-		"gentoo-x86" == repo_lines[0].strip().split(os.path.sep)[0]):
+	if repo_lines and \
+		"gentoo-x86" == repo_lines[0].strip().split(os.path.sep)[0]:
 		msg = "Please install " \
 		"pycrypto or enable python's ssl USE flag in order " \
 		"to enable RMD160 hash support. See bug #198398 for " \
@@ -545,8 +444,8 @@ if isCvs or isSvn and \
 		sys.exit(1)
 	del repo_lines
 
-if options.mode == 'commit' and not options.pretend and not isCvs and not isSvn:
-	logging.info("Not in a CVS/SVN repository; enabling pretend mode.")
+if options.mode == 'commit' and not options.pretend and not isVcs:
+	logging.info("Not in a version controlled repository; enabling pretend mode.")
 	options.pretend = True
 
 try:
@@ -584,7 +483,7 @@ repolevel = len(reposplit)
 # Reason for this is if they're trying to commit in just $FILESDIR/*, the Manifest needs updating.
 # this check ensures that repoman knows where it is, and the manifest recommit is at least possible.
 if options.mode == 'commit' and repolevel not in [1,2,3]:
-	print red("***")+" Commit attempts *must* be from within a cvs or svn co, category, or package directory."
+	print red("***")+" Commit attempts *must* be from within a vcs co, category, or package directory."
 	print red("***")+" Attempting to commit from a packages files directory will be blocked for instance."
 	print red("***")+" This is intended behaviour, to ensure the manifest is recommited for a package."
 	print red("***")
@@ -756,54 +655,8 @@ else:
 	#this can be problematic if xmllint changes their output
 	xmllint_capable=True
 
-if options.mode == 'commit':
-	retval = ("","")
-	if isCvs:
-		print
-		print "Performing a " + green("cvs -n up") + \
-			" with a little magic grep to check for updates."
-		retval = getstatusoutput("cvs -n up 2>&1 | " + \
-			"egrep '^[^\?] .*' | " + \
-			"egrep -v '^. .*/digest-[^/]+|^cvs server: .* -- ignored$'")
-
-	if isSvn:
-		print
-		print "Performing a "+green("svn status -u") + \
-			" with a little magic grep to check for updates."
-		retval=getstatusoutput("svn status -u 2>&1 | " + \
-			"egrep -v '^.  +.*/digest-[^/]+' | " + \
-			"head -n-1")
-
-	mylines = retval[1].splitlines()
-	myupdates = []
-	for x in mylines:
-		if not x:
-			continue
-		if x[0] not in "UPMARD": # Updates,Patches,Modified,Added,Removed/Replaced(svn),Deleted(svn)
-			print red("!!! Please fix the following issues reported " + \
-				"from vcs: ")+green("(U,P,M,A,R,D are ok)")
-			print red("!!! Note: This is a pretend/no-modify pass...")
-			print retval[1]
-			print
-			sys.exit(1)
-		elif isCvs and x[0] in ["U","P"]:
-			myupdates.append(x[2:])
-		elif isSvn and x[8] == '*':
-			myupdates.append(x[9:].lstrip(" 1234567890"))
-
-	if myupdates:
-		print green("Fetching trivial updates...")
-		if options.pretend:
-			print "(cvs/svn up "+" ".join(myupdates)+")"
-			retval = os.EX_OK
-		else:
-			if isCvs:
-				retval=os.system("cvs up "+" ".join(myupdates))
-			elif isSvn:
-				retval=os.system("svn update "+" ".join(myupdates))
-		if retval != os.EX_OK:
-			print "!!! cvs/svn exited with an error. Terminating."
-			sys.exit(retval)
+if options.mode == 'commit' and isVcs:
+	utilties.detect_vcs_conflicts(options, vcs=vcs)
 
 if options.mode == "manifest":
 	pass
@@ -910,16 +763,16 @@ for x in scanlist:
 			stats["filedir.missing"] += 1
 			fails["filedir.missing"].append(checkdir)
 
-	if isCvs or isSvn:
+	if isVcs:
 		try:
-			if isCvs:
+			if vcs == "cvs":
 				myf=open(checkdir+"/CVS/Entries","r")
-			if isSvn:
+			if vcs == "svn":
 				myf=os.popen("svn update > /dev/null; svn list")
 			myl=myf.readlines()	
 			myf.close()
 			for l in myl:
-				if isCvs:
+				if vcs == "cvs":
 					if l[0]!="/":
 						continue
 					splitl=l[1:].split("/")
@@ -927,13 +780,13 @@ for x in scanlist:
 						continue
 					if splitl[0][-7:]==".ebuild":
 						eadded.append(splitl[0][:-7])
-				if isSvn:
+				if vcs == "svn":
 					l = l.rstrip();
 					if l[-1:] == "/":
 						continue
 					if l[-7:] == ".ebuild":
 						eadded.append(l[:-7])
-			if isSvn:
+			if vcs == "svn":
 				myf=os.popen("svn status")
 				myl=myf.readlines()
 				myf.close()
@@ -943,24 +796,24 @@ for x in scanlist:
 						if l[-7:] == ".ebuild":
 							eadded.append(l[:-7])
 		except IOError:
-			if options.mode == 'commit' and isCvs:
+			if options.mode == 'commit' and vcs == "cvs":
 				stats["CVS/Entries.IO_error"] += 1
 				fails["CVS/Entries.IO_error"].append(checkdir+"/CVS/Entries")
-			if options.mode == 'commit' and isSvn:
+			if options.mode == 'commit' and vcs == "svn":
 				stats["svn.IO_error"] += 1
 				fails["svn.IO_error"].append(checkdir+"svn info")
 			continue
 
-	if isCvs and has_filesdir:
+	if isVcs and has_filesdir:
 		try:
-			if isCvs:
+			if vcs == "cvs":
 				myf=open(checkdir+"/files/CVS/Entries","r")
-			if isSvn:
+			if vcs == "svn":
 				myf=os.popen("svn list "+os.path.normpath(checkdir+"/files"))
 			myl=myf.readlines()
 			myf.close()
 			for l in myl:
-				if isCvs:
+				if vcs == "cvs":
 					if l[0]!="/":
 						continue
 					splitl=l[1:].split("/")
@@ -968,13 +821,13 @@ for x in scanlist:
 						continue
 					if splitl[0][:7]=="digest-":
 						dadded.append(splitl[0][7:])
-				if isSvn:
+				if vcs == "svn":
 					l = l.rstrip();
 					if l[-1:] == "/":
 						continue
 					if l[:7] == "digest-":
 						dadded.append(l[7:])
-			if isSvn:
+			if vcs == "svn":
 				myf=os.popen("svn status "+os.path.normpath(checkdir+"/files"))
 				myl=myf.readlines()
 				myf.close()
@@ -984,10 +837,10 @@ for x in scanlist:
 						if l[:7] == "digest-":
 							dadded.append(l[7:])
 		except IOError:
-			if options.mode == 'commit' and isCvs:
+			if options.mode == 'commit' and vcs == "cvs":
 				stats["CVS/Entries.IO_error"] += 1
 				fails["CVS/Entries.IO_error"].append(checkdir+"/files/CVS/Entries")
-			if options.mode == 'commit' and isSvn:
+			if options.mode == 'commit' and vcs == "svn":
 				stats["svn.IO_error"] += 1
 				fails["svn.IO_error"].append(checkdir+"/files svn info")
 			continue
@@ -1042,12 +895,12 @@ for x in scanlist:
 				if y[7:] not in ebuildlist:
 					#stray digest
 					if options.mode == "fix":
-						if isCvs:
+						if vcs == "cvs":
 							vcsrm="cvs rm -f"
-						if isSvn:
+						if vcs == "svn":
 							vcsrm="svn rm --force"
 						if options.pretend:
-								print "(cd "+repodir+"/"+x+"/files; "+vcsrm+" "+y+")"
+							print "(cd "+repodir+"/"+x+"/files; "+vcsrm+" "+y+")"
 						else:
 							os.system("(cd "+repodir+"/"+x+"/files; "+vcsrm+" "+y+")")
 					else:
@@ -1109,6 +962,7 @@ for x in scanlist:
 				else:
 					raise oe
 			if S_ISDIR(mystat.st_mode):
+# !!! VCS "portability" alert!  Need some function isVcsDir() or alike !!!
 				if y == "CVS" or y == ".svn":
 					continue
 				for z in os.listdir(checkdir+"/files/"+y):
@@ -1177,8 +1031,8 @@ for x in scanlist:
 		if stat.S_IMODE(os.stat(full_path).st_mode) & 0111:
 			stats["file.executable"] += 1
 			fails["file.executable"].append(x+"/"+y+".ebuild")
-		if (isCvs or isSvn) and y not in eadded:
-			#ebuild not added to cvs
+		if isVcs and y not in eadded:
+			#ebuild not added to vcs
 			stats["ebuild.notadded"]=stats["ebuild.notadded"]+1
 			fails["ebuild.notadded"].append(x+"/"+y+".ebuild")
 			if y in dadded:
@@ -1632,7 +1486,7 @@ console_writer.style_listener = style_file.new_styles
 
 f = formatter.AbstractFormatter(console_writer)
 
-format_qa_output(f, stats, fails, dofull, dofail)
+utilities.format_qa_output(f, stats, fails, dofull, dofail, options, qawarnings)
 
 style_file.flush()
 del console_writer, f, style_file
@@ -1695,7 +1549,7 @@ else:
 				print "!!! Exiting on ebuild digest (shell) error code:",retval
 				sys.exit(retval)
 
-	if isCvs:
+	if isVcs and vcs == "cvs":
 		try:
 			myvcstree=portage.cvstree.getentries("./",recursive=1)
 			myunadded=portage.cvstree.findunadded(myvcstree,recursive=1,basedir="./")
@@ -1704,7 +1558,7 @@ else:
 		except:
 			err("Error retrieving CVS tree; exiting.")
 
-	if isSvn:
+	if isVcs and vcs == "svn":
 		try:
 			svnstatus=os.popen("svn status").readlines()
 			myunadded = [ "./"+elem.rstrip().split()[1] for elem in svnstatus if elem.startswith("?") ]	
@@ -1735,15 +1589,15 @@ else:
 	if myautoadd:
 		print ">>> Auto-Adding missing digests..."
 		if options.pretend:
-			if isCvs:
+			if vcs == "cvs":
 				print "(cvs add "+" ".join(myautoadd)+")"
-			if isSvn:
+			if vcs == "svn":
 				print "(svn add "+" ".join(myautoadd)+")"
 			retval=0
 		else:
-			if isCvs:
+			if vcs == "cvs":
 				retval=os.system("cvs add "+" ".join(myautoadd))
-			if isSvn:
+			if vcs == "svn":
 				retval=os.system("svn add "+" ".join(myautoadd))
 		if retval:
 			print "!!! Exiting on vcs (shell) error code:",retval
@@ -1758,7 +1612,7 @@ else:
 		print
 		sys.exit(1)
 
-	if isCvs:
+	if vcs == "cvs":
 		mycvstree=portage.cvstree.getentries("./",recursive=1)
 		mychanged=portage.cvstree.findchanged(mycvstree,recursive=1,basedir="./")
 		mynew=portage.cvstree.findnew(mycvstree,recursive=1,basedir="./")
@@ -1768,7 +1622,7 @@ else:
 			recursive=1, basedir="./"))
 
 
-	if isSvn:
+	if vcs == "svn":
 		svnstatus = os.popen("svn status").readlines()
 		mychanged = [ elem.rstrip()[7:] for elem in svnstatus if elem.startswith("M") ]
 		for manifest in [ file for file in mychanged if '/Manifest' in file ]:
@@ -1778,7 +1632,7 @@ else:
 		# no idea how to detect binaries in SVN
 		bin_blobs = []
 
-	if isCvs or isSvn:
+	if isVcs:
 		if not (mychanged or mynew or myremoved):
 			print green("RepoMan sez:"), "\"Doing nothing is not always good for QA.\""
 			print
@@ -1791,7 +1645,7 @@ else:
 	# However, in SVN mode, the manifest won't change, hence, if we
 	# don't sign, we can commit it right away, avoiding an extra commit,
 	# of course this assumes SVN doesn't do Header: expansion.
-	if not isSvn or "sign" in repoman_settings.features:
+	if vcs != "svn" or "sign" in repoman_settings.features:
 		mymanifests = [f for f in mychanged if "Manifest" == os.path.basename(f)]
 		mychanged = [f for f in mychanged if "Manifest" != os.path.basename(f)]
 	else:
@@ -1830,11 +1684,11 @@ else:
 	if not commitmessage or not commitmessage.strip():
 		try:
 			editor = os.environ.get("EDITOR")
-			if editor and editor_is_executable(editor):
-				commitmessage = get_commit_message_with_editor(
+			if editor and utilities.editor_is_executable(editor):
+				commitmessage = utilties.get_commit_message_with_editor(
 					editor, message=qa_output)
 			else:
-				commitmessage = get_commit_message_with_stdin()
+				commitmessage = utilties.get_commit_message_with_stdin()
 		except KeyboardInterrupt:
 			exithandler()
 		if not commitmessage or not commitmessage.strip():
@@ -1847,12 +1701,7 @@ else:
 		sys.stderr.flush()
 		portage_version = "Unknown"
 	unameout=getstatusoutput("uname -srp")[1]
-	commitmessage+="\n(Portage version: "+str(portage_version)+"/"
-	if isCvs:
-		commitmessage+="CVS"
-	elif isSvn:
-		commitmessage+="SVN"
-	commitmessage+="/"+unameout
+	commitmessage+="\n(Portage version: "+str(portage_version)+"/"+vcs+"/"+unameout
 	if options.force:
 		commitmessage += ", RepoMan options: --force"
 	commitmessage += ")"
@@ -1882,18 +1731,18 @@ else:
 		if digest_files:
 			digest_files.sort()
 			if options.pretend:
-				if isCvs:
+				if vcs == "cvs":
 					print "(rm %s)" % " ".join(digest_files)
 					print "(cvs remove %s)" % " ".join(digest_files)
-				elif isSvn:
+				elif vcs == "svn":
 					print "(svn remove %s)" % " ".join(digest_files)
 			else:
-				if isCvs:
+				if vcs == "cvs":
 					for x in digest_files:
 						os.unlink(os.path.join(startdir, x))
 					retval = spawn(["cvs", "remove"] + digest_files,
 							env=os.environ)
-				elif isSvn:
+				elif vcs == "svn":
 					retval = spawn(["svn", "remove"] + digest_files,
 							env=os.environ)
 				if retval != os.EX_OK:
@@ -1919,18 +1768,18 @@ else:
 
 		retval = None
 		if options.pretend:
-			if isCvs:
+			if vcs == "cvs":
 				print "(cvs -q commit -F %s %s)" % \
 					(commitmessagefile, " ".join(myfiles))
-			if isSvn:
+			if vcs == "svn":
 				print "(svn commit -F %s %s)" % \
 					(commitmessagefile, " ".join(myfiles))
 		else:
-			if isCvs:
+			if vcs == "cvs":
 				retval = spawn(["cvs", "-q", "commit",
 					"-F", commitmessagefile] + myfiles,
 					env=os.environ)
-			if isSvn:
+			if vcs == "svn":
 				retval = spawn(["svn", "commit",
 					"-F", commitmessagefile] + myfiles,
 					env=os.environ)
@@ -2039,14 +1888,20 @@ else:
 		# Force an unsigned commit when more than one Manifest needs to be signed.
 		if repolevel < 3 and "sign" in repoman_settings.features:
 			if options.pretend:
-				print "(cvs -q commit -F commitmessagefile)"
+				if vcs == "cvs":
+					print "(cvs -q commit -F commitmessagefile)"
+				if vcs == "svn":
+					print "(svn -q commit -F commitmessagefile)"
 			else:
 				fd, commitmessagefile = tempfile.mkstemp(".repoman.msg")
 				mymsg = os.fdopen(fd, "w")
 				mymsg.write(commitmessage)
 				mymsg.write("\n (Unsigned Manifest commit)")
 				mymsg.close()
-				retval=os.system("cvs -q commit -F "+commitmessagefile)
+				if vcs == "cvs":
+					retval=os.system("cvs -q commit -F "+commitmessagefile)
+				if vcs == "svn":
+					retval=os.system("svn -q commit -F "+commitmessagefile)
 				try:
 					os.unlink(commitmessagefile)
 				except OSError:
@@ -2102,9 +1957,9 @@ else:
 
 	if manifest_commit_required or signed:
 		if options.pretend:
-			if isCvs:
+			if vcs == "cvs":
 				print "(cvs -q commit -F commitmessagefile)"
-			if isSvn:
+			if vcs == "svn":
 				print "(svn -q commit -F commitmessagefile)"
 		else:
 			fd, commitmessagefile = tempfile.mkstemp(".repoman.msg")
@@ -2115,9 +1970,9 @@ else:
 			else:
 				mymsg.write("\n (Unsigned Manifest commit)")
 			mymsg.close()
-			if isCvs:
+			if vcs == "cvs":
 				retval=os.system("cvs -q commit -F "+commitmessagefile)
-			if isSvn:
+			if vcs == "svn":
 				retval=os.system("svn -q commit -F "+commitmessagefile)
 			try:
 				os.unlink(commitmessagefile)
@@ -2128,7 +1983,7 @@ else:
 				sys.exit(retval)
 
 	print
-	if isCvs or isSvn:
+	if isVcs:
 		print "Commit complete."
 	else:
 		print "repoman was too scared by not seeing any familiar version control file that he forgot to commit anything"
