@@ -1579,9 +1579,17 @@ unset E_IUSE E_DEPEND E_RDEPEND E_PDEPEND
 # Turn of extended glob matching so that g++ doesn't get incorrectly matched.
 shopt -u extglob
 
-QA_INTERCEPTORS="javac java-config python python-config perl grep egrep fgrep sed gcc g++ cc bash awk nawk gawk pkg-config"
+if [[ ${EBUILD_PHASE} == depend ]] ; then
+	QA_INTERCEPTORS="awk bash cc egrep fgrep g++
+		gawk gcc grep javac java-config nawk perl
+		pkg-config python python-config sed"
+elif [[ ${EBUILD_PHASE} == clean* ]] ; then
+	unset QA_INTERCEPTORS
+else
+	QA_INTERCEPTORS="autoconf automake aclocal libtoolize"
+fi
 # level the QA interceptors if we're in depend
-if hasq "depend" "${EBUILD_SH_ARGS}"; then
+if [[ -n ${QA_INTERCEPTORS} ]] ; then
 	for BIN in ${QA_INTERCEPTORS}; do
 		BIN_PATH=$(type -Pf ${BIN})
 		if [ "$?" != "0" ]; then
@@ -1589,14 +1597,27 @@ if hasq "depend" "${EBUILD_SH_ARGS}"; then
 		else
 			BODY="${BIN_PATH} \"\$@\"; return \$?"
 		fi
-		FUNC_SRC="${BIN}() {
-		if [ \$ECLASS_DEPTH -gt 0 ]; then
-			eqawarn \"QA Notice: '${BIN}' called in global scope: eclass \${ECLASS}\"
+		if [[ ${EBUILD_PHASE} == depend ]] ; then
+			FUNC_SRC="${BIN}() {
+				if [ \$ECLASS_DEPTH -gt 0 ]; then
+					eqawarn \"QA Notice: '${BIN}' called in global scope: eclass \${ECLASS}\"
+				else
+					eqawarn \"QA Notice: '${BIN}' called in global scope: \${CATEGORY}/\${PF}\"
+				fi
+			${BODY}
+			}"
+		elif hasq ${BIN} autoconf automake aclocal libtoolize ; then
+			FUNC_SRC="${BIN}() {
+				eqawarn \"QA Notice: '${BIN}' called by \${FUNCNAME[1]}: \${CATEGORY}/\${PF}\"
+				eqawarn \"Use autotools.eclass instead of calling '${BIN}' directly.\"
+			${BODY}
+			}"
 		else
-			eqawarn \"QA Notice: '${BIN}' called in global scope: \${CATEGORY}/\${PF}\"
+			FUNC_SRC="${BIN}() {
+				eqawarn \"QA Notice: '${BIN}' called by \${FUNCNAME[1]}: \${CATEGORY}/\${PF}\"
+			${BODY}
+			}"
 		fi
-		${BODY}
-		}";
 		eval "$FUNC_SRC" || echo "error creating QA interceptor ${BIN}" >&2
 	done
 	unset BIN_PATH BIN BODY FUNC_SRC
@@ -1719,12 +1740,6 @@ fi
 
 #a reasonable default for $S
 [[ -z ${S} ]] && export S=${WORKDIR}/${P}
-
-#wipe the interceptors.  we don't want saved.
-if hasq "depend" "${EBUILD_SH_ARGS}"; then
-	unset -f $QA_INTERCEPTORS
-	unset QA_INTERCEPTORS
-fi
 
 #some users have $TMP/$TMPDIR to a custom dir in their home ...
 #this will cause sandbox errors with some ./configure
