@@ -1599,7 +1599,7 @@ class dblink(object):
 		import shutil
 		for x in preserve_paths:
 			print "injecting %s into %s" % (x, srcroot)
-			mydir = os.path.join(srcroot, os.path.dirname(x))
+			mydir = os.path.join(srcroot, os.path.dirname(x).lstrip(os.sep))
 			if not os.path.exists(mydir):
 				os.makedirs(mydir)
 
@@ -1613,7 +1613,8 @@ class dblink(object):
 					linktarget = os.path.join(os.path.dirname(x), linktarget)
 				preserve_paths.append(linktarget)
 			else:
-				shutil.copy2(os.path.join(destroot, x), os.path.join(srcroot, x.lstrip(os.sep)))
+				shutil.copy2(os.path.join(destroot, x.lstrip(os.sep)),
+					os.path.join(srcroot, x.lstrip(os.sep)))
 
 		# keep track of the libs we preserved
 		self.vartree.dbapi.plib_registry.register(self.mycpv, self.settings["SLOT"], counter, preserve_paths)
