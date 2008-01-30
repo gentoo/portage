@@ -656,7 +656,7 @@ else:
 	xmllint_capable=True
 
 if options.mode == 'commit' and isVcs:
-	utilties.detect_vcs_conflicts(options, vcs=vcs)
+	utilities.detect_vcs_conflicts(options, vcs=vcs)
 
 if options.mode == "manifest":
 	pass
