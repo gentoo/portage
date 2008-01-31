@@ -3499,8 +3499,7 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
 				del e
 				return 0
 		mytree = os.path.dirname(os.path.dirname(mysettings["O"]))
-		manifest1_compat = not os.path.exists(
-			os.path.join(mytree, "manifest1_obsolete"))
+		manifest1_compat = False
 		mf = Manifest(mysettings["O"], mysettings["DISTDIR"],
 			fetchlist_dict=fetchlist_dict, manifest1_compat=manifest1_compat)
 		# Don't require all hashes since that can trigger excessive

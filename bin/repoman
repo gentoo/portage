@@ -779,13 +779,10 @@ kwlist = set(portage.grabfile(os.path.join(portdir, "profiles", "arch.list")))
 if not kwlist:
 	err("Couldn't read KEYWORDS from arch.list")
 
-manifest1_compat = not os.path.exists(
-	os.path.join(portdir, "manifest1_obsolete"))
+manifest1_compat = False
 if portdir_overlay != portdir:
 	kwlist.update(portage.grabfile(
 		os.path.join(portdir_overlay, "profiles", "arch.list")))
-	manifest1_compat = not os.path.exists(
-		os.path.join(portdir_overlay, "manifest1_obsolete"))
 
 scanlist=[]
 if repolevel==2:
