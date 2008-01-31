@@ -1029,9 +1029,20 @@ class Autotools(LineCheck):
 			return ("Direct calls to '%s'" % m.group(2)) + \
 				" instead of using autotools.eclass on line: %d"
 
+class EbuildQuotedA(LineCheck):
+	"""Ensure ebuilds have no quoting around ${A}"""
+
+	repoman_check_name = 'ebuild.minorsyn'
+	a_quoted = re.compile(r'.*\"\$(\{A\}|A)\"')
+
+	def check(self, num, line):
+		match = self.a_quoted.match(line)
+		if match:
+			return "Quoted \"${A}\" on line: %d"
+
 _constant_checks = tuple((c() for c in (Autotools,
 	EbuildQuote, EbuildUselessDodoc, EbuildUselessCdS,
-	EbuildNestedDie)))
+	EbuildNestedDie, EbuildQuotedA)))
 
 def run_checks(contents):
 	for num, line in enumerate(contents):
