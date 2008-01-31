@@ -540,13 +540,10 @@ if not kwlist:
 	logging.fatal("Couldn't read KEYWORDS from arch.list")
 	sys.exit(1)
 
-manifest1_compat = not os.path.exists(
-	os.path.join(portdir, "manifest1_obsolete"))
+manifest1_compat = False
 if portdir_overlay != portdir:
 	kwlist.update(portage.grabfile(
 		os.path.join(portdir_overlay, "profiles", "arch.list")))
-	manifest1_compat = not os.path.exists(
-		os.path.join(portdir_overlay, "manifest1_obsolete"))
 
 scanlist = utilities.FindPackagesToScan(repoman_settings, startdir, reposplit)
 scanlist.sort()
