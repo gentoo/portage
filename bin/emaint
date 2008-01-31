@@ -153,7 +153,7 @@ def emaint_main(myargv):
 	usage+= "tools and provide a single interface to system health checks."
 
 
-	parser = OptionParser(usage=usage)
+	parser = OptionParser(usage=usage, version=portage.VERSION)
 	parser.add_option("-c", "--check", help="check for problems",
 		action="callback", callback=exclusive, callback_kwargs={"var":"action"})
 	parser.add_option("-f", "--fix", help="attempt to fix problems",
