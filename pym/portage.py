@@ -7803,7 +7803,10 @@ class binarytree(object):
 				chunk_size = 3000
 
 			writemsg_stdout("\n")
-			writemsg_stdout(green("Fetching bininfo from ")+base_url+"\n")
+			writemsg_stdout(
+				green("Fetching bininfo from ") + \
+				re.sub(r'//(.+):.+@(.+)/', r'//\1:*password*@\2/', base_url) + "\n")
+
 			self.remotepkgs = getbinpkg.dir_get_metadata(
 				self.settings["PORTAGE_BINHOST"], chunk_size=chunk_size)
 			#writemsg_stdout(green("  -- DONE!\n\n"))
