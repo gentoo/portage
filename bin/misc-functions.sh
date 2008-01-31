@@ -384,7 +384,7 @@ install_mask() {
 		rm -Rf ${root}/${no_inst} >&/dev/null
 
 		# we also need to handle globs (*.a, *.h, etc)
-		find "${root}" -path ${no_inst} -exec rm -fR {} \; >/dev/null
+		find "${root}" -path "${no_inst}" -exec rm -fR {} \; >/dev/null
 	done
 	# set everything back the way we found it
 	set +o noglob
@@ -421,7 +421,7 @@ preinst_mask() {
 		fi
 	done
 
-	install_mask "${D}" ${INSTALL_MASK}
+	install_mask "${D}" "${INSTALL_MASK}"
 
 	# remove share dir if unnessesary
 	if hasq nodoc $FEATURES -o hasq noman $FEATURES -o hasq noinfo $FEATURES; then
@@ -532,7 +532,7 @@ preinst_selinux_labels() {
 
 dyn_package() {
 	cd "${PORTAGE_BUILDDIR}/image"
-	install_mask "${PORTAGE_BUILDDIR}/image" ${PKG_INSTALL_MASK}
+	install_mask "${PORTAGE_BUILDDIR}/image" "${PKG_INSTALL_MASK}"
 	local tar_options=""
 	[ "${PORTAGE_QUIET}" == "1" ] ||  tar_options="${tar_options} -v"
 	# Sandbox is disabled in case the user wants to use a symlink
