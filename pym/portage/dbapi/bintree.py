@@ -15,6 +15,7 @@ from portage import dep_expand, listdir, _movefile
 import portage.xpak, portage.getbinpkg
 
 import os, errno, stat
+import re
 from itertools import izip
 
 class bindbapi(fakedbapi):
@@ -531,7 +532,7 @@ class binarytree(object):
 					except portage.exception.InvalidDependString:
 						writemsg("!!! Invalid binary package: '%s'\n" % \
 							self.getname(mycpv), noiselevel=-1)
-						self.dbapi.cpv_remove(cpv)
+						self.dbapi.cpv_remove(mycpv)
 						del pkg_paths[mycpv]
 
 					# record location if it's non-default
@@ -640,7 +641,9 @@ class binarytree(object):
 			except (ValueError, KeyError):
 				chunk_size = 3000
 			writemsg_stdout("\n")
-			writemsg_stdout(green("Fetching bininfo from ")+base_url+"\n")
+			writemsg_stdout(
+				green("Fetching bininfo from ") + \
+				re.sub(r'//(.+):.+@(.+)/', r'//\1:*password*@\2/', base_url) + "\n")
 			self.remotepkgs = portage.getbinpkg.dir_get_metadata(
 				self.settings["PORTAGE_BINHOST"], chunk_size=chunk_size)
 			#writemsg(green("  -- DONE!\n\n"))
