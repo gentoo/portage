@@ -1703,6 +1703,9 @@ if ! hasq ${EBUILD_PHASE} clean && \
 	set +f
 fi
 
+# enable bashrc support for the clean phase
+[[ ${EBUILD_PHASE} == clean ]] && source_all_bashrcs
+
 # unset USE_EXPAND variables that contain only the special "*" token
 for x in ${USE_EXPAND} ; do
 	[ "${!x}" == "*" ] && unset ${x}
