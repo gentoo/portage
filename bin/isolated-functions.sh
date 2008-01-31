@@ -5,8 +5,7 @@
 # We need this next line for "die" and "assert". It expands
 # It _must_ preceed all the calls to die and assert.
 shopt -s expand_aliases
-alias die='diefunc "$FUNCNAME" "$LINENO" "$?"'
-alias assert='_pipestatus="${PIPESTATUS[*]}"; [[ "${_pipestatus// /}" -eq 0 ]] || diefunc "$FUNCNAME" "$LINENO" "$_pipestatus"'
+alias assert='_pipestatus="${PIPESTATUS[*]}"; [[ "${_pipestatus// /}" -eq 0 ]] || die'
 alias save_IFS='[ "${IFS:-unset}" != "unset" ] && old_IFS="${IFS}"'
 alias restore_IFS='if [ "${old_IFS:-unset}" != "unset" ]; then IFS="${old_IFS}"; unset old_IFS; else unset IFS; fi'
 
@@ -48,9 +47,7 @@ dump_trace() {
 	done
 }
 
-diefunc() {
-	local funcname="$1" lineno="$2" exitcode="$3"
-	shift 3
+die() {
 	if [ -n "${QA_INTERCEPTORS}" ] ; then
 		# die was called from inside inherit. We need to clean up
 		# QA_INTERCEPTORS since sed is called below.
@@ -137,6 +134,12 @@ diefunc() {
 	# subshell die support
 	kill -s SIGTERM ${EBUILD_MASTER_PID}
 	exit 1
+}
+
+# We need to implement diefunc() since environment.bz2 files contain
+# calls to it (due to alias expansion).
+diefunc() {
+	die "${@}"
 }
 
 quiet_mode() {
@@ -437,7 +440,7 @@ save_ebuild_env() {
 		# There's no need to bloat environment.bz2 with internally defined
 		# functions and variables, so filter them out if possible.
 
-		unset -f dump_trace diefunc quiet_mode vecho elog_base eqawarn elog \
+		unset -f dump_trace die diefunc quiet_mode vecho elog_base eqawarn elog \
 			esyslog einfo einfon ewarn eerror ebegin _eend eend KV_major \
 			KV_minor KV_micro KV_to_int get_KV unset_colors set_colors has \
 			hasv hasq qa_source qa_call addread addwrite adddeny addpredict \
