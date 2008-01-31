@@ -5713,7 +5713,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	dep_check_trees[myroot] = {}
 	dep_check_trees[myroot]["vartree"] = \
 		FakeVartree(trees[myroot]["vartree"],
-		trees[myroot]["porttree"].dbapi.
+		trees[myroot]["porttree"].dbapi,
 		depgraph._mydbapi_keys)
 	vardb = dep_check_trees[myroot]["vartree"].dbapi
 	# Constrain dependency selection to the installed packages.
