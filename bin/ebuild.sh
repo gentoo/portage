@@ -1608,8 +1608,13 @@ if [[ -n ${QA_INTERCEPTORS} ]] ; then
 			}"
 		elif hasq ${BIN} autoconf automake aclocal libtoolize ; then
 			FUNC_SRC="${BIN}() {
-				eqawarn \"QA Notice: '${BIN}' called by \${FUNCNAME[1]}: \${CATEGORY}/\${PF}\"
-				eqawarn \"Use autotools.eclass instead of calling '${BIN}' directly.\"
+				if ! hasq \${FUNCNAME[1]} eautoreconf eaclocal _elibtoolize \\
+					eautoheader eautoconf eautomake autotools_run_tool \\
+					autotools_check_macro autotools_get_subdirs \\
+					autotools_get_auxdir ; then
+					eqawarn \"QA Notice: '${BIN}' called by \${FUNCNAME[1]}: \${CATEGORY}/\${PF}\"
+					eqawarn \"Use autotools.eclass instead of calling '${BIN}' directly.\"
+				fi
 			${BODY}
 			}"
 		else
