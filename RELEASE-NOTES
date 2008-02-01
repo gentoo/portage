@@ -28,6 +28,16 @@ portage-2.2
 	atoms in a set will be unmerged even if they are depended upon by other 
 	packages
 
+portage-2.1.4.1
+==================================
+
+* If you have an overlay then you should remove **/files/digest-*
+  files (Manifest1) because they are no longer supported.
+* If earlier versions of portage will be used to generate manifests
+  for your overlay then you should add a file named manifest1_obsolete
+  to the root of the repository in order to disable generation of the
+  Manifest1 digest files.
+
 portage-2.1.4
 ==================================
 
