@@ -364,12 +364,10 @@ install_qa_check() {
 					touch "${T}"/.install_name_check_failed
 				fi
 			fi
-			# scanelf only knows the libname, so we'll do the same even
-			# though we have the full path :(
-			needed="${needed}${needed:+,}${r##*/}"
+			needed=${needed}${needed:+,}${r}
 		done
 		[[ -n ${needed} ]] && \
-			echo "/${f#${ED}} ${needed}" > "${PORTAGE_BUILDDIR}"/build-info/NEEDED
+			echo "/${f#${D}} ${needed}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED
 	done
 	if [[ -f ${T}/.install_name_check_failed ]] ; then
 		# secret switch "allow_broken_install_names" to get
