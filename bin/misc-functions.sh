@@ -341,7 +341,7 @@ install_qa_check() {
 	# together with the scan for broken installs.
 	rm -f "${T}"/.install_name_check_failed
 	[[ ${CHOST} == *-darwin* ]] && find "${ED}" -type f | while read f ; do
-		needed=""
+		rm -f "${T}"/.NEEDED.tmp
 		otool -LX "${f}" \
 			| grep -v "Archive : " \
 			| sed -e 's/^\t//' -e 's/ (compa.*$//' \
@@ -364,10 +364,12 @@ install_qa_check() {
 					touch "${T}"/.install_name_check_failed
 				fi
 			fi
-			needed=${needed}${needed:+,}${r}
+			echo -n ",${r}" >> "${T}"/.NEEDED.tmp
 		done
-		[[ -n ${needed} ]] && \
-			echo "/${f#${D}} ${needed}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED
+		if [[ -f "${T}"/.NEEDED.tmp ]] ; then
+			needed=$(< "${T}"/.NEEDED.tmp)
+			echo "/${f#${D}} ${needed#,}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED
+		fi
 	done
 	if [[ -f ${T}/.install_name_check_failed ]] ; then
 		# secret switch "allow_broken_install_names" to get
