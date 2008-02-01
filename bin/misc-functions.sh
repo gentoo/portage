@@ -335,9 +335,13 @@ install_qa_check() {
 	[[ ${abort} == "yes" ]] && die "soiled libtool library files found"
 
 	# Check that we don't get kernel traps at runtime because of broken
-	# install_names on Darwin
+	# install_names on Darwin, at the same time generate the NEEDED
+	# entries.  As long as we don't have a "scanelf" tool for this, we
+	# use otool to do the magic.  Since this is expensive, we do it
+	# together with the scan for broken installs.
 	rm -f "${T}"/.install_name_check_failed
 	[[ ${CHOST} == *-darwin* ]] && find "${ED}" -type f | while read f ; do
+		needed=""
 		otool -LX "${f}" \
 			| grep -v "Archive : " \
 			| sed -e 's/^\t//' -e 's/ (compa.*$//' \
@@ -351,6 +355,7 @@ install_qa_check() {
 					ewarn "correcting install_name from ${r} to ${s} in ${f#${D}}"
 					install_name_tool -change \
 						"${r}" "${s}" "${f}"
+					r=${s} # for the NEEDED entries
 				else
 					eqawarn "QA Notice: invalid reference to ${r} in ${f}"
 					# remember we are in an implicit subshell, that's
@@ -359,7 +364,12 @@ install_qa_check() {
 					touch "${T}"/.install_name_check_failed
 				fi
 			fi
+			# scanelf only knows the libname, so we'll do the same even
+			# though we have the full path :(
+			needed="${needed}${needed:+,}${r##*/}"
 		done
+		[[ -n ${needed} ]] && \
+			echo "/${f#${ED}} ${needed}" > "${PORTAGE_BUILDDIR}"/build-info/NEEDED
 	done
 	if [[ -f ${T}/.install_name_check_failed ]] ; then
 		# secret switch "allow_broken_install_names" to get
