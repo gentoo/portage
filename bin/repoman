@@ -2102,45 +2102,6 @@ else:
 	if "--force" in myoptions:
 		commitmessage += ", RepoMan options: --force"
 	commitmessage += ")"
-	if not manifest1_compat:
-		myfiles = myupdates + myremoved + mymanifests
-		filesdirs = set()
-		if repolevel == 3:
-			filesdirs.add(os.path.join(".", "files"))
-		elif repolevel in (1, 2):
-			for x in myfiles:
-				xs = x.split(os.path.sep)
-				if len(xs) < 4-repolevel:
-					continue
-				xs = xs[0:4-repolevel]
-				xs.append("files")
-				filesdirs.add(os.path.join(*xs))
-		else:
-			raise AssertionError("repolevel=%s" % str(repolevel))
-		digest_files = []
-		for x in filesdirs:
-			dir_path = os.path.join(startdir, x)
-			if not os.path.isdir(dir_path):
-				continue
-			for y in os.listdir(dir_path):
-				if y.startswith("digest-"):
-					digest_files.append(os.path.join(x, y))
-		if digest_files:
-			digest_files.sort()
-			if "--pretend" in myoptions:
-				print "(rm %s)" % " ".join(digest_files)
-				print "(/usr/bin/cvs remove %s)" % " ".join(digest_files)
-			else:
-				for x in digest_files:
-					os.unlink(os.path.join(startdir, x))
-				retval = spawn(["/usr/bin/cvs", "remove"] + digest_files,
-					env=os.environ)
-				if retval != os.EX_OK:
-					print "!!! Exiting on cvs (shell) error code:",retval
-					sys.exit(retval)
-			myremoved.extend(digest_files)
-			myremoved = list(set(myremoved))
-			myremoved.sort()
 
 	if myupdates or myremoved:
 		myfiles = myupdates + myremoved
