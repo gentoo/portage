@@ -160,7 +160,7 @@ install_qa_check() {
 		fi
 
 		# Save NEEDED information
-		scanelf -qyRF '%p %n' "${ED}" | sed -e 's:^:/:' > "${PORTAGE_BUILDDIR}"/build-info/NEEDED
+		scanelf -qyRF '%p %n' "${D}" | sed -e 's:^:/:' > "${PORTAGE_BUILDDIR}"/build-info/NEEDED
 
 		if [[ ${insecure_rpath} -eq 1 ]] ; then
 			die "Aborting due to serious QA concerns with RUNPATH/RPATH"
