@@ -122,7 +122,7 @@ def discard_digests(myebuild, mysettings, mydbapi):
 		cpv = cat + "/" + os.path.basename(myebuild)[:-7]
 		from portage.manifest import Manifest
 		mf = Manifest(pkgdir, mysettings["DISTDIR"],
-			fetchlist_dict=fetchlist_dict)
+			fetchlist_dict=fetchlist_dict, manifest1_compat=False)
 		mf.create(requiredDistfiles=None,
 			assumeDistHashesSometimes=True, assumeDistHashesAlways=True)
 		distfiles = fetchlist_dict[cpv]

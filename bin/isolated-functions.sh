@@ -469,7 +469,8 @@ save_ebuild_env() {
 			debug-print-section inherit EXPORT_FUNCTIONS newdepend newrdepend \
 			newpdepend do_newdepend remove_path_entry killparent \
 			save_ebuild_env filter_readonly_variables preprocess_ebuild_env \
-			source_all_bashrcs ebuild_phase ebuild_phase_with_hooks
+			source_all_bashrcs ebuild_phase ebuild_phase_with_hooks \
+			${QA_INTERCEPTORS}
 
 		# portage config variables and variables set directly by portage
 		unset BAD BRACKET BUILD_PREFIX COLS \

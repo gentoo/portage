@@ -185,19 +185,6 @@ class EbuildUselessCdS(LineCheck):
 			self.check_next_line = True
 
 
-class Autotools(LineCheck):
-	"""Check for direct calls to autotools"""
-	repoman_check_name = 'ebuild.autotools'
-	re = re.compile(r'^[^#]*([^e]|^)(autoconf|automake|aclocal|libtoolize)')
-
-	def check(self, num, line):
-		"""Run the check on line and return error if there is one"""
-		autotools_match = self.re.match(line)
-		if autotools_match is not None:
-			return ("Direct calls to '%s'" % autotools_match.group(2)) + \
-				" instead of using autotools.eclass on line: %d"
-
-
 class EbuildQuotedA(LineCheck):
 	"""Ensure ebuilds have no quoting around ${A}"""
 
@@ -209,7 +196,7 @@ class EbuildQuotedA(LineCheck):
 		if match:
 			return "Quoted \"${A}\" on line: %d"
 
-_constant_checks = tuple((c() for c in (Autotools,
+_constant_checks = tuple((c() for c in (
 	EbuildWhitespace, EbuildQuote,
 	EbuildAssignment, EbuildUselessDodoc,
 	EbuildUselessCdS, EbuildNestedDie, EbuildQuotedA)))

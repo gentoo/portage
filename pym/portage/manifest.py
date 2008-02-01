@@ -99,7 +99,7 @@ class Manifest2Entry(ManifestEntry):
 class Manifest(object):
 	parsers = (parseManifest2, parseManifest1)
 	def __init__(self, pkgdir, distdir, fetchlist_dict=None,
-		manifest1_compat=True, from_scratch=False):
+		manifest1_compat=False, from_scratch=False):
 		""" create new Manifest instance for package in pkgdir
 		    and add compability entries for old portage versions if manifest1_compat == True.
 		    Do not parse Manifest file if from_scratch == True (only for internal use)
