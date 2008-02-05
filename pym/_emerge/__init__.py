@@ -7054,6 +7054,10 @@ def emerge_main():
 	if myaction in ("clean", "config", "depclean", "info", "prune", "unmerge", None):
 		root_config = trees[settings["ROOT"]]["root_config"]
 		setconfig = root_config.setconfig
+		# display errors that occured while loading the SetConfig instance
+		for e in setconfig.errors:
+			print colorize("BAD", "Error during set creation: %s" % e)
+		
 		sets = setconfig.getSets()
 		# emerge relies on the existance of sets with names "world" and "system"
 		required_sets = ("world", "system")
