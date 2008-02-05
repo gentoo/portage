@@ -158,8 +158,27 @@ install_qa_check() {
 			sleep 1
 		fi
 
-		# Save NEEDED information
-		scanelf -qyRF '%p %n' "${D}" | sed -e 's:^:/:' > "${PORTAGE_BUILDDIR}"/build-info/NEEDED
+		# Save NEEDED information after removing self-contained providers
+		scanelf -qyRF '%p:%r %n' "${D}" | sed -e 's:^:/:' | { while read l; do
+			obj=${l%%:*}
+			rpath=${l##*:}; rpath=${rpath%% *}
+			needed=${l##* }
+			if [ -z "${rpath}" -o -n "${rpath//*ORIGIN*}" ]; then
+				# object doesn't contain $ORIGIN in its runpath attribute
+				echo "${obj} ${needed}"	>> "${PORTAGE_BUILDDIR}"/build-info/NEEDED
+			else
+				dir=$(dirname ${obj})
+				# replace $ORIGIN with the dirname of the current object for the lookup
+				opath=$(echo :${rpath}: | sed -e "s#.*:\(.*\)\$ORIGIN\(.*\):.*#\1${dir}\2#")
+				sneeded=$(echo ${needed} | tr , ' ')
+				rneeded=""
+				for lib in ${sneeded}; do
+					[ -e "${D}/${dir}/${lib}" ] || rneeded="${rneeded},${lib}"
+				done
+				rneeded=${rneeded:1}
+				[ -n "${rneeded}" ] && echo "${obj} ${rneeded}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED
+			fi
+		done }
 
 		if [[ ${insecure_rpath} -eq 1 ]] ; then
 			die "Aborting due to serious QA concerns with RUNPATH/RPATH"
