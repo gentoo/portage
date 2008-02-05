@@ -12,7 +12,7 @@ _items = {}
 def process(mysettings, key, logentries, fulltext):
 	global _items
 	header = ">>> Messages generated for package %s by process %d on %s:\n\n" % \
-		(key, os.getpid(), time.strftime("%Y%m%d-%H%M%S", time.gmtime(time.time())))
+		(key, os.getpid(), time.strftime("%Y%m%d-%H%M%S %Z", time.localtime(time.time())))
 	config_root = mysettings["PORTAGE_CONFIGROOT"]
 	mysettings, items = _items.setdefault(config_root, (mysettings, {}))
 	items[key] = header + fulltext
