@@ -1058,3 +1058,17 @@ def new_protect_filename(mydest, newmd5=None):
 			os.path.join(real_dirname, last_pfile)) == newmd5:
 			return old_pfile
 	return new_pfile
+
+def getlibpaths():
+	""" Return a list of paths that are used for library lookups """
+
+	# the following is based on the information from ld.so(8)
+	rval = os.environ.get("LD_LIBRARY_PATH", "").split(":")
+	rval.extend(grabfile("/etc/ld.so.conf"))
+	rval.append("/usr/lib")
+	rval.append("/lib")
+
+	rval = [normalize_path(x) for x in rval if x != ""]
+	
+	return rval
+	
