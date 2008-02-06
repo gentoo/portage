@@ -33,22 +33,26 @@ fi
 
 qa_source() {
 	local shopts=$(shopt) OLDIFS="$IFS"
-	source "$@" || return 1
+	local retval
+	source "$@"
+	retval=$?
 	[[ $shopts != $(shopt) ]] &&
 		eqawarn "QA Notice: Global shell options changed and were not restored while sourcing '$*'"
 	[[ "$IFS" != "$OLDIFS" ]] &&
 		eqawarn "QA Notice: Global IFS changed and was not restored while sourcing '$*'"
-	return 0
+	return $retval
 }
 
 qa_call() {
 	local shopts=$(shopt) OLDIFS="$IFS"
-	"$@" || return 1
+	local retval
+	"$@"
+	retval=$?
 	[[ $shopts != $(shopt) ]] &&
 		eqawarn "QA Notice: Global shell options changed and were not restored while calling '$*'"
 	[[ "$IFS" != "$OLDIFS" ]] &&
 		eqawarn "QA Notice: Global IFS changed and was not restored while calling '$*'"
-	return 0
+	return $retval
 }
 
 # subshell die support
@@ -144,7 +148,7 @@ useq() {
 		[[ ${EMERGE_FROM} != binary ]] ; then
 		# TODO: Implement PORTAGE_IUSE for binary packages. Currently,
 		# it is only valid for build time phases.
-		echo "${u}" | egrep -q "${PORTAGE_IUSE}" || \
+		[[ $u =~ $PORTAGE_IUSE ]] || \
 			eqawarn "QA Notice: USE Flag '${u}' not" \
 				"in IUSE for ${CATEGORY}/${PF}"
 	fi

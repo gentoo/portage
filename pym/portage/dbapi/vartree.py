@@ -1594,11 +1594,16 @@ class dblink(object):
 		# get the real paths for the libs
 		preserve_paths = [x for x in old_contents if os.path.basename(x) in preserve_libs]
 		del old_contents, old_libs, mylibs, preserve_libs
-			
+
 		# inject files that should be preserved into our image dir
 		import shutil
+		missing_paths = []
 		for x in preserve_paths:
 			print "injecting %s into %s" % (x, srcroot)
+			if not os.path.exists(os.path.join(destroot, x.lstrip(os.sep))):
+				print "%s does not exist so can't be preserved"
+				missing_paths.append(x)
+				continue
 			mydir = os.path.join(srcroot, os.path.dirname(x).lstrip(os.sep))
 			if not os.path.exists(mydir):
 				os.makedirs(mydir)
@@ -1615,6 +1620,10 @@ class dblink(object):
 			else:
 				shutil.copy2(os.path.join(destroot, x.lstrip(os.sep)),
 					os.path.join(srcroot, x.lstrip(os.sep)))
+
+		preserve_paths = [x for x in preserve_paths if x not in missing_paths]
+
+		del missing_paths
 
 		# keep track of the libs we preserved
 		self.vartree.dbapi.plib_registry.register(self.mycpv, self.settings["SLOT"], counter, preserve_paths)
