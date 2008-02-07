@@ -2152,8 +2152,12 @@ class dblink(object):
 		self.vartree.dbapi.libmap.update()
 
 		#do postinst script
+		self.settings["PORTAGE_UPDATE_ENV"] = \
+			os.path.join(self.dbpkgdir, "environment.bz2")
+		self.settings.backup_changes("PORTAGE_UPDATE_ENV")
 		a = doebuild(myebuild, "postinst", destroot, self.settings, use_cache=0,
 			tree=self.treetype, mydbapi=mydbapi, vartree=self.vartree)
+		self.settings.pop("PORTAGE_UPDATE_ENV", None)
 
 		# XXX: Decide how to handle failures here.
 		if a != os.EX_OK:
