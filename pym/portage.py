@@ -1021,7 +1021,7 @@ class config:
 		"PORTAGE_IUSE",
 		"PORTAGE_LOG_FILE", "PORTAGE_MASTER_PID",
 		"PORTAGE_PYM_PATH", "PORTAGE_REPO_NAME", "PORTAGE_RESTRICT",
-		"PORTAGE_TMPDIR", "PORTAGE_WORKDIR_MODE",
+		"PORTAGE_TMPDIR", "PORTAGE_UPDATE_ENV", "PORTAGE_WORKDIR_MODE",
 		"PORTDIR", "PORTDIR_OVERLAY", "PREROOTPATH", "PROFILE_PATHS",
 		"ROOT", "ROOTPATH", "STARTDIR", "T", "TMP", "TMPDIR",
 		"USE_EXPAND", "USE_ORDER", "WORKDIR",
@@ -9133,8 +9133,12 @@ class dblink:
 		del conf_mem_file
 
 		#do postinst script
+		self.settings["PORTAGE_UPDATE_ENV"] = \
+			os.path.join(self.dbpkgdir, "environment.bz2")
+		self.settings.backup_changes("PORTAGE_UPDATE_ENV")
 		a = doebuild(myebuild, "postinst", destroot, self.settings, use_cache=0,
 			tree=self.treetype, mydbapi=mydbapi, vartree=self.vartree)
+		self.settings.pop("PORTAGE_UPDATE_ENV", None)
 
 		# XXX: Decide how to handle failures here.
 		if a != os.EX_OK:
