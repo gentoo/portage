@@ -2367,6 +2367,8 @@ class depgraph(object):
 						# This will have already been reported
 						# above via mreasons.
 						pass
+				if not mreasons:
+					continue
 				masked_packages.append((cpv, mreasons,
 					comment, filename, missing_licenses))
 		if masked_packages:
