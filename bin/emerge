@@ -1791,12 +1791,9 @@ class depgraph:
 		vardb = self.trees[myroot]["vartree"].dbapi
 		portdb = self.trees[myroot]["porttree"].dbapi
 		bindb = self.trees[myroot]["bintree"].dbapi
+		bindb_keys = list(bindb._aux_cache_keys)
 		pkgsettings = self.pkgsettings[myroot]
 		arg_atoms = []
-		def visible(mylist):
-			matches = portdb.gvisible(portdb.visible(mylist))
-			return [x for x in mylist \
-				if x in matches or not portdb.cpv_exists(x)]
 		for x in myfiles:
 			ext = os.path.splitext(x)[1]
 			if ext==".tbz2":
@@ -1911,10 +1908,13 @@ class depgraph:
 				if myslots:
 					best_pkgs = []
 					if "--usepkg" in self.myopts:
-						mymatches = bindb.match(myatom)
-						if "--usepkgonly" not in self.myopts:
-							mymatches = visible(mymatches)
-						best_pkg = portage.best(mymatches)
+						best_pkg = None
+						for cpv in reversed(bindb.match(myatom)):
+							metadata = dict(izip(bindb_keys,
+								bindb.aux_get(cpv, bindb_keys)))
+							if visible(pkgsettings, cpv, metadata, built=True):
+								best_pkg = cpv
+								break
 						if best_pkg:
 							best_slot = bindb.aux_get(best_pkg, ["SLOT"])[0]
 							best_pkgs.append(("binary", best_pkg, best_slot))
@@ -1938,11 +1938,12 @@ class depgraph:
 							"porttree"].dbapi.match(myslot_atom):
 							available = True
 						elif "--usepkg" in self.myopts:
-							mymatches = bindb.match(myslot_atom)
-							if "--usepkgonly" not in self.myopts:
-								mymatches = visible(mymatches)
-							if mymatches:
-								available = True
+							for cpv in bindb.match(myslot_atom):
+								metadata = dict(izip(bindb_keys,
+									bindb.aux_get(cpv, bindb_keys)))
+								if visible(pkgsettings, cpv, metadata, built=True):
+									available = True
+									break
 						if available:
 							greedy_atoms.append((myarg, myslot_atom))
 			arg_atoms = greedy_atoms
@@ -2912,10 +2913,7 @@ class depgraph:
 		vardb = self.trees[self.target_root]["vartree"].dbapi
 		portdb = self.trees[self.target_root]["porttree"].dbapi
 		bindb = self.trees[self.target_root]["bintree"].dbapi
-		def visible(mylist):
-			matches = portdb.gvisible(portdb.visible(mylist))
-			return [x for x in mylist \
-				if x in matches or not portdb.cpv_exists(x)]
+		bindb_keys = list(bindb._aux_cache_keys)
 		world_problems = False
 
 		root_config = self.roots[self.target_root]
@@ -2936,11 +2934,12 @@ class depgraph:
 						portdb.match(x):
 						available = True
 					elif "--usepkg" in self.myopts:
-						mymatches = bindb.match(x)
-						if "--usepkgonly" not in self.myopts:
-							mymatches = visible(mymatches)
-						if mymatches:
-							available = True
+						for cpv in bindb.match(x):
+							metadata = dict(izip(bindb_keys,
+								bindb.aux_get(cpv, bindb_keys)))
+							if visible(pkgsettings, cpv, metadata, built=True):
+								available = True
+								break
 					if not available:
 						continue
 				mylist.append(x)
