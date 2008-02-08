@@ -1687,7 +1687,7 @@ class depgraph:
 					self._missing_args.append(arg)
 
 				if "selective" not in self.myparams:
-					self._show_unsatisfied_dep(myroot, atom)
+					self._show_unsatisfied_dep(myroot, arg)
 					return 0
 
 		# Do this even when addme is False (--onlydeps) so that the
@@ -2910,6 +2910,8 @@ class depgraph:
 		return retlist
 
 	def xcreate(self,mode="system"):
+		myroot = self.target_root
+		pkgsettings = self.pkgsettings[myroot]
 		vardb = self.trees[self.target_root]["vartree"].dbapi
 		portdb = self.trees[self.target_root]["porttree"].dbapi
 		bindb = self.trees[self.target_root]["bintree"].dbapi
@@ -5855,8 +5857,8 @@ def action_depclean(settings, trees, ldpath_mtimes,
 				try:
 					arg_atom = args_set.findAtomForPackage(pkg, metadata)
 				except portage_exception.InvalidDependString, e:
-					file_path = os.path.join(myroot, VDB_PATH, pkg, "PROVIDE")
-					portage.writemsg("\n\nInvalid PROVIDE: %s\n" % str(s),
+					file_path = os.path.join(myroot, portage.VDB_PATH, pkg, "PROVIDE")
+					portage.writemsg("\n\nInvalid PROVIDE: %s\n" % str(e),
 						noiselevel=-1)
 					portage.writemsg("See '%s'\n" % file_path,
 						noiselevel=-1)
