@@ -1837,8 +1837,14 @@ class depgraph:
 					if "--usepkg" in self.myopts:
 						mykey = portage.dep_expand(x, mydb=bindb,
 							settings=pkgsettings)
-					if "--usepkgonly" in self.myopts or \
-						(mykey and not portage.dep_getkey(mykey).startswith("null/")):
+					if ("--usepkgonly" in self.myopts or mykey) and \
+						not portage.dep_getkey(mykey).startswith("null/"):
+						arg_atoms.append((x, mykey))
+						continue
+
+					if "--usepkgonly" in self.myopts:
+						mykey = portage.dep_expand(x, mydb=vardb,
+							settings=pkgsettings)
 						arg_atoms.append((x, mykey))
 						continue
 
