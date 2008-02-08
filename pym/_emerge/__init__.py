@@ -2361,7 +2361,7 @@ class depgraph(object):
 					metadata = None
 				if metadata and not built:
 					if "?" in metadata["LICENSE"]:
-						pkgsettings.setcpv(p, mydb=portdb)
+						pkgsettings.setcpv(cpv, mydb=portdb)
 						metadata["USE"] = pkgsettings.get("USE", "")
 					else:
 						metadata["USE"] = ""
@@ -6304,7 +6304,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 				except portage.exception.InvalidDependString, e:
 					file_path = os.path.join(
 						myroot, portage.VDB_PATH, pkg, "PROVIDE")
-					portage.writemsg("\n\nInvalid PROVIDE: %s\n" % str(s),
+					portage.writemsg("\n\nInvalid PROVIDE: %s\n" % str(e),
 						noiselevel=-1)
 					portage.writemsg("See '%s'\n" % file_path,
 						noiselevel=-1)
