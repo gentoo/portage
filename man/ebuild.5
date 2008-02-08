@@ -727,7 +727,7 @@ multiple directories.
 .PD 1
 .TP
 \fBdosed\fR \fI"s:orig:change:g" <filename>\fR
-Performs sed (including cp/mv \fIfilename\fR) on \fIfilename\fR.
+Performs sed in place on \fIfilename\fR inside ${D}.
 .br
 .BR 'dosed\ "s:/usr/local:/usr:g"\ /usr/bin/some\-script'
 runs sed on ${D}/usr/bin/some\-script
