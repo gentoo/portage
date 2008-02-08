@@ -5172,6 +5172,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 					print ">>> In order to force sync, remove '%s'." % servertimestampfile
 					print ">>>"
 					print
+					exitcode = 1
 				elif (servertimestamp == 0) or (servertimestamp > mytimestamp):
 					# actual sync
 					mycommand = rsynccommand + [dosyncuri+"/", myportdir]
