@@ -1376,6 +1376,7 @@ class depgraph:
 		self._slot_collision_nodes = set()
 		self._altlist_cache = {}
 		self._pprovided_args = []
+		self._missing_args = []
 
 	def _show_slot_collision_notice(self):
 		"""Show an informational message advising the user to mask one of the
@@ -1659,6 +1660,35 @@ class depgraph:
 
 		if arg:
 			self._set_nodes.add(jbigkey)
+			built = mytype != "ebuild"
+			installed = mytype == "installed"
+			if installed:
+				# Warn if all matching ebuilds are masked or
+				# the installed package itself is masked. Do
+				# not warn if there are simply no matching
+				# ebuilds since that would be annoying in some
+				# cases:
+				#
+				#  - binary packages installed from an overlay
+				#    that is not listed in PORTDIR_OVERLAY
+				#
+				#  - multi-slot atoms listed in the world file
+				#    to prevent depclean from removing them
+
+				installed_masked = not visible(
+					pkgsettings, mykey, metadata,
+					built=built, installed=installed)
+
+				all_ebuilds_masked = bool(
+					portdb.xmatch("match-all", arg) and
+					not portdb.xmatch("bestmatch-visible", arg))
+
+				if installed_masked or all_ebuilds_masked:
+					self._missing_args.append(arg)
+
+				if "selective" not in self.myparams:
+					self._show_unsatisfied_dep(myroot, atom)
+					return 0
 
 		# Do this even when addme is False (--onlydeps) so that the
 		# parent/child relationship is always known in case
@@ -2918,7 +2948,7 @@ class depgraph:
 		for myatom in mylist:
 			self._set_atoms.add(myatom)
 
-		missing_atoms = []
+		missing_atoms = self._missing_args
 		for mydep in mylist:
 			try:
 				if not self.select_dep(
