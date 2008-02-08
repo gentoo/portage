@@ -225,7 +225,7 @@ shortmapping={
 "p":"--pretend",   "P":"--prune",
 "q":"--quiet",
 "s":"--search",    "S":"--searchdesc",
-'t':"--tree",
+"t":"--tree",
 "u":"--update",
 "v":"--verbose",   "V":"--version"
 }
