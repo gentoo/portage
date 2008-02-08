@@ -1802,6 +1802,16 @@ if [ -n "${EBUILD_SH_ARGS}" ] ; then
 			ebuild_phase_with_hooks pkg_${EBUILD_SH_ARGS}
 			set +x
 		fi
+		if [[ $EBUILD_PHASE == postinst ]] && [[ -n $PORTAGE_UPDATE_ENV ]]; then
+			# Update environment.bz2 in case installation phases
+			# need to pass some variables to uninstallation phases.
+			(
+				unset S _E_DOCDESTTREE_ _E_EXEDESTTREE_
+				save_ebuild_env | filter_readonly_variables \
+					--filter-sandbox --allow-extra-vars | \
+					bzip2 -c -f9 > "$PORTAGE_UPDATE_ENV"
+			)
+		fi
 		;;
 	unpack|compile|test|clean|install)
 		if [ "${SANDBOX_DISABLED="0"}" == "0" ]; then

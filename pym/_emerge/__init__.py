@@ -241,7 +241,7 @@ shortmapping={
 "p":"--pretend",   "P":"--prune",
 "q":"--quiet",
 "s":"--search",    "S":"--searchdesc",
-'t':"--tree",
+"t":"--tree",
 "u":"--update",
 "v":"--verbose",   "V":"--version"
 }
@@ -2110,6 +2110,34 @@ class depgraph(object):
 							return 0, myfavorites
 						self._missing_args.append((arg, atom))
 						continue
+					if pkg.installed:
+						# Warn if all matching ebuilds are masked or
+						# the installed package itself is masked. Do
+						# not warn if there are simply no matching
+						# ebuilds since that would be annoying in some
+						# cases:
+						#
+						#  - binary packages installed from an overlay
+						#    that is not listed in PORTDIR_OVERLAY
+						#
+						#  - multi-slot atoms listed in the world file
+						#    to prevent depclean from removing them
+
+						installed_masked = not visible(
+							pkgsettings, pkg.cpv, pkg.metadata,
+							built=pkg.built, installed=pkg.installed)
+
+						all_ebuilds_masked = bool(
+							portdb.xmatch("match-all", atom) and
+							not portdb.xmatch("bestmatch-visible", atom))
+
+						if installed_masked or all_ebuilds_masked:
+							self._missing_args.append((arg, atom))
+
+						if "selective" not in self.myparams:
+							self._show_unsatisfied_dep(myroot, atom)
+							return 0, myfavorites
+
 					self._dep_stack.append(
 						Dependency(atom=atom, root=myroot, parent=arg))
 					if not self._create_graph():
@@ -2354,7 +2382,7 @@ class depgraph(object):
 					metadata = None
 				if metadata and not built:
 					if "?" in metadata["LICENSE"]:
-						pkgsettings.setcpv(p, mydb=portdb)
+						pkgsettings.setcpv(cpv, mydb=portdb)
 						metadata["USE"] = pkgsettings.get("USE", "")
 					else:
 						metadata["USE"] = ""
@@ -2391,6 +2419,8 @@ class depgraph(object):
 						# This will have already been reported
 						# above via mreasons.
 						pass
+				if not mreasons:
+					continue
 				masked_packages.append((cpv, mreasons,
 					comment, filename, missing_licenses))
 		if masked_packages:
@@ -5667,6 +5697,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 					print ">>> In order to force sync, remove '%s'." % servertimestampfile
 					print ">>>"
 					print
+					exitcode = 1
 				elif (servertimestamp == 0) or (servertimestamp > mytimestamp):
 					# actual sync
 					mycommand = rsynccommand + [dosyncuri+"/", myportdir]
@@ -6363,7 +6394,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 				except portage.exception.InvalidDependString, e:
 					file_path = os.path.join(
 						myroot, portage.VDB_PATH, pkg, "PROVIDE")
-					portage.writemsg("\n\nInvalid PROVIDE: %s\n" % str(s),
+					portage.writemsg("\n\nInvalid PROVIDE: %s\n" % str(e),
 						noiselevel=-1)
 					portage.writemsg("See '%s'\n" % file_path,
 						noiselevel=-1)
