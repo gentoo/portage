@@ -2082,7 +2082,9 @@ class depgraph(object):
 						continue
 					pkg, existing_node = self._select_package(
 						myroot, atom, onlydeps=onlydeps)
-					if not pkg:
+					if not pkg or \
+						(pkg.installed and portdb.xmatch("match-all", atom) \
+						and not portdb.xmatch("bestmatch-visible", atom)):
 						if not (isinstance(arg, SetArg) and \
 							arg.name in ("system", "world")):
 							self._show_unsatisfied_dep(myroot, atom)
