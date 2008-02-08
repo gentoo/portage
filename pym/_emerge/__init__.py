@@ -2082,15 +2082,41 @@ class depgraph(object):
 						continue
 					pkg, existing_node = self._select_package(
 						myroot, atom, onlydeps=onlydeps)
-					if not pkg or \
-						(pkg.installed and portdb.xmatch("match-all", atom) \
-						and not portdb.xmatch("bestmatch-visible", atom)):
+					if not pkg:
 						if not (isinstance(arg, SetArg) and \
 							arg.name in ("system", "world")):
 							self._show_unsatisfied_dep(myroot, atom)
 							return 0, myfavorites
 						self._missing_args.append((arg, atom))
 						continue
+					if pkg.installed:
+						# Warn if all matching ebuilds are masked or
+						# the installed package itself is masked. Do
+						# not warn if there are simply no matching
+						# ebuilds since that would be annoying in some
+						# cases:
+						#
+						#  - binary packages installed from an overlay
+						#    that is not listed in PORTDIR_OVERLAY
+						#
+						#  - multi-slot atoms listed in the world file
+						#    to prevent depclean from removing them
+
+						installed_masked = not visible(
+							pkgsettings, pkg.cpv, pkg.metadata,
+							built=pkg.built, installed=pkg.installed)
+
+						all_ebuilds_masked = bool(
+							portdb.xmatch("match-all", atom) and
+							not portdb.xmatch("bestmatch-visible", atom))
+
+						if installed_masked or all_ebuilds_masked:
+							self._missing_args.append((arg, atom))
+
+						if "selective" not in self.myparams:
+							self._show_unsatisfied_dep(myroot, atom)
+							return 0, myfavorites
+
 					self._dep_stack.append(
 						Dependency(atom=atom, root=myroot, parent=arg))
 					if not self._create_graph():
