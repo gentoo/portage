@@ -1877,7 +1877,11 @@ class config:
 		pkginternaluse = ""
 		iuse = ""
 		if mydb:
-			slot, iuse = mydb.aux_get(self.mycpv, ["SLOT", "IUSE"])
+			if isinstance(mydb, dict):
+				slot = mydb["SLOT"]
+				iuse = mydb["IUSE"]
+			else:
+				slot, iuse = mydb.aux_get(self.mycpv, ["SLOT", "IUSE"])
 			cpv_slot = "%s:%s" % (self.mycpv, slot)
 			pkginternaluse = []
 			for x in iuse.split():
@@ -6891,7 +6895,8 @@ class portdbapi(dbapi):
 				self.auxdb[x] = self.auxdbmodule(
 					self.depcachedir, x, filtered_auxdbkeys, gid=portage_gid)
 		# Selectively cache metadata in order to optimize dep matching.
-		self._aux_cache_keys = set(["EAPI", "KEYWORDS", "SLOT"])
+		self._aux_cache_keys = set(
+			["EAPI", "IUSE", "KEYWORDS", "LICENSE", "PROVIDE", "SLOT"])
 		self._aux_cache = {}
 		self._broken_ebuilds = set()
 
