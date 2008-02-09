@@ -649,7 +649,7 @@ else:
 	xmllint_capable=True
 
 if options.mode == 'commit' and isCvs:
-	utilties.detect_vcs_conflicts(options, vcs="cvs")
+	utilities.detect_vcs_conflicts(options, vcs="cvs")
 
 if options.mode == "manifest":
 	pass
@@ -1592,10 +1592,10 @@ else:
 		try:
 			editor = os.environ.get("EDITOR")
 			if editor and utilities.editor_is_executable(editor):
-				commitmessage = utilties.get_commit_message_with_editor(
+				commitmessage = utilities.get_commit_message_with_editor(
 					editor, message=qa_output)
 			else:
-				commitmessage = utilties.get_commit_message_with_stdin()
+				commitmessage = utilities.get_commit_message_with_stdin()
 		except KeyboardInterrupt:
 			exithandler()
 		if not commitmessage or not commitmessage.strip():
