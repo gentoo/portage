@@ -29,6 +29,8 @@ portage-2.2
 	future versions.
   - sets can be referenced either in other file-based sets or as argument to emerge, but
     not in ebuilds, config files or other tools at this time.
+* "world" does no longer include "system" unconditionally, but you can add
+  "@system" to the worldfile to restore the old state.
 
 portage-2.1.4.1
 ==================================
