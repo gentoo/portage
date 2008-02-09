@@ -1032,6 +1032,91 @@ def visible(pkgsettings, cpv, metadata, built=False, installed=False):
 		return False
 	return True
 
+def get_masking_status(pkg, pkgsettings, root_config):
+
+	mreasons = portage.getmaskingstatus(
+		pkg.cpv, metadata=pkg.metadata, settings=pkgsettings,
+		portdb=root_config.trees["porttree"].dbapi)
+
+	if pkg.built and \
+		pkg.metadata["CHOST"] != root_config.settings["CHOST"]:
+		mreasons.append("CHOST: %s" % \
+			pkg.metadata["CHOST"])
+
+	if not pkg.metadata["SLOT"]:
+		mreasons.append("invalid: SLOT is undefined")
+
+	return mreasons
+
+def get_mask_info(root_config, cpv, pkgsettings,
+	db, pkg_type, built, installed, db_keys):
+	eapi_masked = False
+	try:
+		metadata = dict(izip(db_keys,
+			db.aux_get(cpv, db_keys)))
+	except KeyError:
+		metadata = None
+	if metadata and not built:
+		pkgsettings.setcpv(cpv, mydb=metadata)
+		metadata["USE"] = pkgsettings.get("USE", "")
+	if metadata is None:
+		mreasons = ["corruption"]
+	else:
+		pkg = Package(type_name=pkg_type, root=root_config.root,
+			cpv=cpv, built=built, metadata=metadata)
+		mreasons = get_masking_status(pkg, pkgsettings, root_config)
+	return metadata, mreasons
+
+def show_masked_packages(masked_packages):
+	shown_licenses = set()
+	shown_comments = set()
+	# Maybe there is both an ebuild and a binary. Only
+	# show one of them to avoid redundant appearance.
+	shown_cpvs = set()
+	have_eapi_mask = False
+	for (root_config, pkgsettings, cpv,
+		metadata, mreasons) in masked_packages:
+		if cpv in shown_cpvs:
+			continue
+		shown_cpvs.add(cpv)
+		comment, filename = None, None
+		if "package.mask" in mreasons:
+			comment, filename = \
+				portage.getmaskingreason(
+				cpv, metadata=metadata,
+				settings=pkgsettings,
+				portdb=root_config.trees["porttree"].dbapi,
+				return_location=True)
+		missing_licenses = []
+		if metadata:
+			if not portage.eapi_is_supported(metadata["EAPI"]):
+				have_eapi_mask = True
+			try:
+				missing_licenses = \
+					pkgsettings.getMissingLicenses(
+						cpv, metadata)
+			except portage.exception.InvalidDependString:
+				# This will have already been reported
+				# above via mreasons.
+				pass
+
+		print "- "+cpv+" (masked by: "+", ".join(mreasons)+")"
+		if comment and comment not in shown_comments:
+			print filename+":"
+			print comment
+			shown_comments.add(comment)
+		portdb = root_config.trees["porttree"].dbapi
+		for l in missing_licenses:
+			l_path = portdb.findLicensePath(l)
+			if l in shown_licenses:
+				continue
+			msg = ("A copy of the '%s' license" + \
+			" is located at '%s'.") % (l, l_path)
+			print msg
+			print
+			shown_licenses.add(l)
+	return have_eapi_mask
+
 def iter_atoms(deps):
 	"""Take a dependency structure as returned by paren_reduce or use_reduce
 	and iterate over all the atoms."""
@@ -1394,6 +1479,7 @@ class depgraph(object):
 		self._altlist_cache = {}
 		self._pprovided_args = []
 		self._missing_args = []
+		self._masked_installed = []
 		self._dep_stack = []
 		self._unsatisfied_deps = []
 		self._ignored_deps = []
@@ -1589,15 +1675,18 @@ class depgraph(object):
 		pkgsettings = self.pkgsettings[pkg.root]
 
 		args = None
+		arg_atoms = None
 		if True:
 			try:
-				args = list(self._iter_args_for_pkg(pkg))
+				arg_atoms = list(self._iter_atoms_for_pkg(pkg))
 			except portage.exception.InvalidDependString, e:
 				if not pkg.installed:
 					show_invalid_depstring_notice(
 						pkg, pkg.metadata["PROVIDE"], str(e))
 					return 0
 				del e
+			else:
+				args = [arg for arg, atom in arg_atoms]
 
 		if not pkg.onlydeps:
 			if not pkg.installed and \
@@ -1676,6 +1765,32 @@ class depgraph(object):
 						pkg, pkg.metadata["PROVIDE"], str(e))
 					del e
 					return 0
+
+		if pkg.installed:
+			# Warn if all matching ebuilds are masked or
+			# the installed package itself is masked. Do
+			# not warn if there are simply no matching
+			# ebuilds since that would be annoying in some
+			# cases:
+			#
+			#  - binary packages installed from an overlay
+			#    that is not listed in PORTDIR_OVERLAY
+			#
+			#  - multi-slot atoms listed in the world file
+			#    to prevent depclean from removing them
+
+			if arg_atoms:
+				portdb = self.trees[pkg.root]["porttree"].dbapi
+				for arg, atom in arg_atoms:
+					all_ebuilds_masked = bool(
+						portdb.xmatch("match-all", atom) and
+						not portdb.xmatch("bestmatch-visible", atom))
+					if all_ebuilds_masked:
+						self._missing_args.append((arg, atom))
+
+			if not visible(pkgsettings, pkg.cpv, pkg.metadata,
+				built=pkg.built, installed=pkg.installed):
+				self._masked_installed.append((pkg, pkgsettings))
 
 		if args:
 			self._set_nodes.add(pkg)
@@ -1852,6 +1967,18 @@ class depgraph(object):
 					arg.package != pkg:
 					continue
 				yield arg
+
+	def _iter_atoms_for_pkg(self, pkg):
+		# TODO: add multiple $ROOT support
+		if pkg.root != self.target_root:
+			return
+		atom_arg_map = self._atom_arg_map
+		for atom in self._set_atoms.iterAtomsForPackage(pkg):
+			for arg in atom_arg_map[(atom, pkg.root)]:
+				if isinstance(arg, PackageArg) and \
+					arg.package != pkg:
+					continue
+				yield arg, atom
 
 	def _get_arg_for_pkg(self, pkg):
 		"""
@@ -2089,33 +2216,9 @@ class depgraph(object):
 							return 0, myfavorites
 						self._missing_args.append((arg, atom))
 						continue
-					if pkg.installed:
-						# Warn if all matching ebuilds are masked or
-						# the installed package itself is masked. Do
-						# not warn if there are simply no matching
-						# ebuilds since that would be annoying in some
-						# cases:
-						#
-						#  - binary packages installed from an overlay
-						#    that is not listed in PORTDIR_OVERLAY
-						#
-						#  - multi-slot atoms listed in the world file
-						#    to prevent depclean from removing them
-
-						installed_masked = not visible(
-							pkgsettings, pkg.cpv, pkg.metadata,
-							built=pkg.built, installed=pkg.installed)
-
-						all_ebuilds_masked = bool(
-							portdb.xmatch("match-all", atom) and
-							not portdb.xmatch("bestmatch-visible", atom))
-
-						if installed_masked or all_ebuilds_masked:
-							self._missing_args.append((arg, atom))
-
-						if "selective" not in self.myparams:
-							self._show_unsatisfied_dep(myroot, atom)
-							return 0, myfavorites
+					if pkg.installed and "selective" not in self.myparams:
+						self._show_unsatisfied_dep(myroot, atom)
+						return 0, myfavorites
 
 					self._dep_stack.append(
 						Dependency(atom=atom, root=myroot, parent=arg))
@@ -2339,9 +2442,9 @@ class depgraph(object):
 				red(' [%s]' % myparent[0]) + ')'
 		masked_packages = []
 		missing_licenses = []
-		from textwrap import wrap
 		have_eapi_mask = False
 		pkgsettings = self.pkgsettings[root]
+		root_config = self.roots[root]
 		portdb = self.roots[root].trees["porttree"].dbapi
 		dbs = self._filtered_trees[root]["dbs"]
 		for db, pkg_type, built, installed, db_keys in dbs:
@@ -2353,82 +2456,22 @@ class depgraph(object):
 			# descending order
 			cpv_list.reverse()
 			for cpv in cpv_list:
-				try:
-					metadata = dict(izip(db_keys,
-						db.aux_get(cpv, db_keys)))
-				except KeyError:
-					mreasons = ["corruption"]
-					metadata = None
-				if metadata and not built:
-					if "?" in metadata["LICENSE"]:
-						pkgsettings.setcpv(cpv, mydb=portdb)
-						metadata["USE"] = pkgsettings.get("USE", "")
-					else:
-						metadata["USE"] = ""
-				mreasons = portage.getmaskingstatus(
-					cpv, metadata=metadata,
-					settings=pkgsettings, portdb=portdb)
-				comment, filename = None, None
-				if "package.mask" in mreasons:
-					comment, filename = \
-						portage.getmaskingreason(
-						cpv, metadata=metadata,
-						settings=pkgsettings, portdb=portdb,
-						return_location=True)
-				if built and \
-					metadata["CHOST"] != pkgsettings["CHOST"]:
-					mreasons.append("CHOST: %s" % \
-						metadata["CHOST"])
-				missing_licenses = []
-				if metadata:
-					if not metadata["SLOT"]:
-						mreasons.append("invalid: SLOT is undefined")
-					if not portage.eapi_is_supported(metadata["EAPI"]):
-						have_eapi_mask = True
-					try:
-						missing_licenses = \
-							pkgsettings.getMissingLicenses(
-								cpv, metadata)
-					except portage.exception.InvalidDependString:
-						# This will have already been reported
-						# above via mreasons.
-						pass
-				if not mreasons:
-					continue
-				masked_packages.append((cpv, mreasons,
-					comment, filename, missing_licenses))
+				metadata, mreasons  = get_mask_info(root_config, cpv,
+					pkgsettings, db, pkg_type, built, installed, db_keys)
+				masked_packages.append(
+					(root_config, pkgsettings, cpv, metadata, mreasons))
+
 		if masked_packages:
 			print "\n!!! "+red("All ebuilds that could satisfy ")+green(xinfo)+red(" have been masked.")
 			print "!!! One of the following masked packages is required to complete your request:"
-			shown_licenses = set()
-			shown_comments = set()
-			# Maybe there is both an ebuild and a binary. Only
-			# show one of them to avoid redundant appearance.
-			shown_cpvs = set()
-			for cpv, mreasons, comment, filename, missing_licenses in masked_packages:
-				if cpv in shown_cpvs:
-					continue
-				shown_cpvs.add(cpv)
-				print "- "+cpv+" (masked by: "+", ".join(mreasons)+")"
-				if comment and comment not in shown_comments:
-					print filename+":"
-					print comment
-					shown_comments.add(comment)
-				for l in missing_licenses:
-					l_path = portdb.findLicensePath(l)
-					if l in shown_licenses:
-						continue
-					msg = ("A copy of the '%s' license" + \
-					" is located at '%s'.") % (l, l_path)
-					print msg
-					print
-					shown_licenses.add(l)
+			have_eapi_mask = show_masked_packages(masked_packages)
 			if have_eapi_mask:
 				print
 				msg = ("The current version of portage supports " + \
 					"EAPI '%s'. You must upgrade to a newer version" + \
 					" of portage before EAPI masked packages can" + \
 					" be installed.") % portage.const.EAPI
+				from textwrap import wrap
 				for line in wrap(msg, 75):
 					print line
 			print
@@ -3911,6 +3954,18 @@ class depgraph(object):
 
 		# TODO: Add generic support for "set problem" handlers so that
 		# the below warnings aren't special cases for world only.
+
+		masked_packages = []
+		for pkg, pkgsettings in self._masked_installed:
+			root_config = self.roots[pkg.root]
+			mreasons = get_masking_status(pkg, pkgsettings, root_config)
+			masked_packages.append((root_config, pkgsettings,
+				pkg.cpv, pkg.metadata, mreasons))
+		if masked_packages:
+			sys.stderr.write("\n" + colorize("BAD", "!!!") + \
+				" The following installed packages are masked:\n")
+			show_masked_packages(masked_packages)
+
 		if self._missing_args:
 			world_problems = False
 			if "world" in self._sets:
@@ -3925,6 +3980,7 @@ class depgraph(object):
 				sys.stderr.write("!!! Please run " + \
 					green("emaint --check world")+"\n\n")
 
+		if self._missing_args:
 			sys.stderr.write("\n" + colorize("BAD", "!!!") + \
 				" Ebuilds for the following packages are either all\n")
 			sys.stderr.write(colorize("BAD", "!!!") + \
