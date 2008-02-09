@@ -12,7 +12,8 @@ die() {
 	exit 1
 }
 
-while [ "${1:1}" == "-" ]; then
+while [ "${1:0:1}" == "-" ]; do
+	echo $1
 	case "$1" in
 		-t|--tag)
 			CREATE_TAG=true
@@ -27,7 +28,7 @@ while [ "${1:1}" == "-" ]; then
 			die "unknown option: $1"
 			;;
 	esac
-fi
+done
 
 [ -z "$1" ] && die "Need version argument"
 [ -n "${1/[0-9]*}" ] && die "Invalid version argument"
