@@ -148,7 +148,7 @@ useq() {
 		[[ ${EMERGE_FROM} != binary ]] ; then
 		# TODO: Implement PORTAGE_IUSE for binary packages. Currently,
 		# it is only valid for build time phases.
-		echo "${u}" | egrep -q "${PORTAGE_IUSE}" || \
+		[[ $u =~ $PORTAGE_IUSE ]] || \
 			eqawarn "QA Notice: USE Flag '${u}' not" \
 				"in IUSE for ${CATEGORY}/${PF}"
 	fi
