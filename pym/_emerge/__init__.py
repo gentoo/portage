@@ -5569,6 +5569,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			("-6" in all_rsync_opts or "--ipv6" in all_rsync_opts):
 			family = socket.AF_INET6
 		ips=[]
+		SERVER_OUT_OF_DATE = -1
 		while (1):
 			if ips:
 				del ips[0]
@@ -5710,7 +5711,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 					print ">>> In order to force sync, remove '%s'." % servertimestampfile
 					print ">>>"
 					print
-					exitcode = 1
+					exitcode = SERVER_OUT_OF_DATE
 				elif (servertimestamp == 0) or (servertimestamp > mytimestamp):
 					# actual sync
 					mycommand = rsynccommand + [dosyncuri+"/", myportdir]
@@ -5740,6 +5741,8 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 
 		if (exitcode==0):
 			emergelog(xterm_titles, "=== Sync completed with %s" % dosyncuri)
+		elif exitcode == SERVER_OUT_OF_DATE:
+			sys.exit(1)
 		elif (exitcode>0):
 			print
 			if exitcode==1:
