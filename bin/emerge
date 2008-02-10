@@ -1787,7 +1787,8 @@ class depgraph:
 						self._missing_args.append(arg)
 
 					if "selective" not in self.myparams:
-						self._show_unsatisfied_dep(myroot, arg)
+						self._show_unsatisfied_dep(
+							myroot, arg, myparent=myparent)
 						return 0
 
 				pkg = Package(type_name=mytype, root=myroot,
