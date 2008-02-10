@@ -1038,7 +1038,7 @@ def get_masking_status(pkg, pkgsettings, root_config):
 		pkg.cpv, metadata=pkg.metadata, settings=pkgsettings,
 		portdb=root_config.trees["porttree"].dbapi)
 
-	if pkg.built and \
+	if pkg.built and not pkg.installed and \
 		pkg.metadata["CHOST"] != root_config.settings["CHOST"]:
 		mreasons.append("CHOST: %s" % \
 			pkg.metadata["CHOST"])
