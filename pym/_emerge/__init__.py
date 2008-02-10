@@ -5570,6 +5570,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			family = socket.AF_INET6
 		ips=[]
 		SERVER_OUT_OF_DATE = -1
+		EXCEEDED_MAX_RETRIES = -2
 		while (1):
 			if ips:
 				del ips[0]
@@ -5737,11 +5738,16 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 				# over retries
 				# exit loop
 				updatecache_flg=False
+				exitcode = EXCEEDED_MAX_RETRIES
 				break
 
 		if (exitcode==0):
 			emergelog(xterm_titles, "=== Sync completed with %s" % dosyncuri)
 		elif exitcode == SERVER_OUT_OF_DATE:
+			sys.exit(1)
+		elif exitcode == EXCEEDED_MAX_RETRIES:
+			sys.stderr.write(
+				">>> Exceeded PORTAGE_RSYNC_RETRIES: %s\n" % maxretries)
 			sys.exit(1)
 		elif (exitcode>0):
 			print
