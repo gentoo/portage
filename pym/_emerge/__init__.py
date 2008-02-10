@@ -1022,7 +1022,7 @@ def visible(pkgsettings, cpv, metadata, built=False, installed=False):
 		return False
 	if not portage.eapi_is_supported(metadata["EAPI"]):
 		return False
-	if pkgsettings.getMissingKeywords(cpv, metadata):
+	if not installed and pkgsettings.getMissingKeywords(cpv, metadata):
 		return False
 	if pkgsettings.getMaskAtom(cpv, metadata):
 		return False
@@ -1035,7 +1035,7 @@ def visible(pkgsettings, cpv, metadata, built=False, installed=False):
 def get_masking_status(pkg, pkgsettings, root_config):
 
 	mreasons = portage.getmaskingstatus(
-		pkg.cpv, metadata=pkg.metadata, settings=pkgsettings,
+		pkg, settings=pkgsettings,
 		portdb=root_config.trees["porttree"].dbapi)
 
 	if pkg.built and not pkg.installed and \
