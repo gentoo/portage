@@ -5665,11 +5665,21 @@ def getmaskingreason(mycpv, metadata=None, settings=None, portdb=None, return_lo
 	else:
 		return None
 
-def getmaskingstatus(mycpv, metadata=None, settings=None, portdb=None):
+def getmaskingstatus(mycpv, settings=None, portdb=None):
 	if settings is None:
 		settings = config(clone=globals()["settings"])
 	if portdb is None:
 		portdb = globals()["portdb"]
+
+	metadata = None
+	installed = False
+	if not isinstance(mycpv, basestring):
+		# emerge passed in a Package instance
+		pkg = mycpv
+		mycpv = pkg.cpv
+		metadata = pkg.metadata
+		installed = pkg.installed
+
 	mysplit = catpkgsplit(mycpv)
 	if not mysplit:
 		raise ValueError("invalid CPV: %s" % mycpv)
@@ -5750,7 +5760,9 @@ def getmaskingstatus(mycpv, metadata=None, settings=None, portdb=None):
 				kmask="~"+myarch
 				break
 
-	if kmask:
+	# Assume that the user doesn't want to be bothered about
+	# KEYWORDS of packages that are already installed.
+	if kmask and not installed:
 		rValue.append(kmask+" keyword")
 	return rValue
 
