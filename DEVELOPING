@@ -1,11 +1,39 @@
 Code Guidelines
 ---------------
-A few code guidelines to try to stick to, please comment of none of these make
+A few code guidelines to try to stick to, please comment if none of these make
 sense, they are pretty basic and mostly apply to old code.  However for people
 who are looking at current code, they make take up bad habits that exist in the
 current codebase.
 
-Strings
+Tabs
+----
+
+The current code uses tabs, not spaces.  Keep whitespace usage consistent
+between files.  New files should use tabs.
+
+Line-Wrapping
+-------------
+
+Lines should typically not be longer than 80 characters; if they are an attempt
+should be made to wrap them.  Move code to the line below and indent once (\t).
+
+errors.append(MalformedMetadata(
+	errors.DESCRIPTION_TOO_LONG_ERROR % \
+	(length, max_desc_len),
+	attr='DESCRIPTION.toolong')
+
+Do not do this:
+
+errors.append(MalformedMetadata(
+              errors.DESCRIPTION_TOO_LONG_ERROR % \
+              (length, max_desc_len),
+              attr='DESCRIPTION.toolong')
+
+The mixing of tabs and spaces means other developers can't read what you did.
+This is why the python peps state spaces over tabs; because with spaces the line
+wrapping is always clear (but you cannot convert spaces as easily as tabwidth).
+
+String
 -------
 Try not to use the functions in the string module, they are deprecated.
 
@@ -21,7 +49,7 @@ string.split(string, delimeter)
 
 should be replaced with:
 
-string.split(delimeter)
+"somestring".split(delimeter)
 
 Nearly all other methods in string work on string objects and have similar calling
 conventions.
@@ -102,3 +130,36 @@ NO:
   import portage.util
   import time
   import sys
+
+Try not to import large numbers of things into the namespace of a module.
+I realize this is done all over the place in current code but it really makes it
+a pain to do code reflection when the namespace is cluttered with identifiers 
+from other modules.
+
+YES:
+
+from portage import output
+
+NO:
+
+from portage.output import bold, create_color_func, darkgreen, \
+  green, nocolor, red, turquoise, yellow
+
+The YES example imports the 'output' module into the current namespace.
+The negative here is having to use output.COLOR all over the place instead of
+just COLOR.  However it means during introspection of the current namespace
+'green','red', 'yellow', etc. will not show up.
+
+The NO example just imports a set of functions from the output module.  It is
+somewhat annoying because the import line needs to be modified when functions
+are needed and often unused functions are left in the import line until someone
+comes along with a linter to clean up (does not happen often).  The color is a
+bit clearer as
+
+  print red('blar')
+
+is shorter than:
+
+  print output.red('blar')
+
+Rationale: python -c 'import portage; dir(portage)' (circa 02/2008)
