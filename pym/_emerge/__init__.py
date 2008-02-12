@@ -650,6 +650,7 @@ class search(object):
 					myversion = self.getVersion(full_package, search.VERSION_RELEASE)
 
 					mysum = [0,0]
+					file_size_str = None
 					mycat = match.split("/")[0]
 					mypkg = match.split("/")[1]
 					mycpv = match + "-" + myversion
@@ -664,7 +665,7 @@ class search(object):
 						try:
 							mysum[0] = mf.getDistfilesSize(fetchlist)
 						except KeyError, e:
-							mysum[0] = "Unknown (missing digest for %s)" % \
+							file_size_str = "Unknown (missing digest for %s)" % \
 								str(e)
 
 					available = False
@@ -680,13 +681,13 @@ class search(object):
 									myebuild = None
 							break
 
-					if myebuild:
+					if myebuild and file_size_str is None:
 						mystr = str(mysum[0] / 1024)
 						mycount = len(mystr)
 						while (mycount > 3):
 							mycount -= 3
 							mystr = mystr[:mycount] + "," + mystr[mycount:]
-						mysum[0] = mystr + " kB"
+						file_size_str = mystr + " kB"
 
 					if self.verbose:
 						if available:
@@ -694,7 +695,7 @@ class search(object):
 						print "     ", self.getInstallationStatus(mycat+'/'+mypkg)
 						if myebuild:
 							print "      %s %s" % \
-								(darkgreen("Size of files:"), mysum[0])
+								(darkgreen("Size of files:"), file_size_str)
 						print "     ", darkgreen("Homepage:")+"     ",homepage
 						print "     ", darkgreen("Description:")+"  ",desc
 						print "     ", darkgreen("License:")+"      ",license
