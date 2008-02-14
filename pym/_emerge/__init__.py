@@ -2514,10 +2514,12 @@ class depgraph(object):
 			for db, pkg_type, built, installed, db_keys in dbs:
 				if existing_node:
 					break
-				if installed and not find_existing_node and \
+				if not selective and installed and not find_existing_node and \
 					(matched_packages or empty):
-					# We only need to select an installed package here
-					# if there is no other choice.
+					# We only need to select an installed package in the
+					# following cases:
+					#   1) there is no other choice
+					#   2) selective is True
 					continue
 				if hasattr(db, "xmatch"):
 					cpv_list = db.xmatch("match-all", atom)
