@@ -2496,6 +2496,7 @@ class depgraph(object):
 		usepkgonly = "--usepkgonly" in self.myopts
 		empty = "empty" in self.myparams
 		selective = "selective" in self.myparams
+		reinstall = False
 		# Behavior of the "selective" parameter depends on
 		# whether or not a package matches an argument atom.
 		# If an installed package provides an old-style
@@ -2514,7 +2515,8 @@ class depgraph(object):
 			for db, pkg_type, built, installed, db_keys in dbs:
 				if existing_node:
 					break
-				if not selective and installed and not find_existing_node and \
+				if installed and not find_existing_node and \
+					(reinstall or not selective) and \
 					(matched_packages or empty):
 					# We only need to select an installed package in the
 					# following cases:
@@ -2627,6 +2629,8 @@ class depgraph(object):
 							self._reinstall_for_flags(
 							forced_flags, old_use, old_iuse,
 							cur_use, cur_iuse)
+						if reinstall_for_flags:
+							reinstall = True
 					if not installed:
 						must_reinstall = empty or \
 							(myarg and not selective)
