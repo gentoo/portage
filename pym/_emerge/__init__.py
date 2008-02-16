@@ -6615,7 +6615,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 					if not matches:
 						continue
 					for cpv in matches:
-						graph.add(node, cpv, priority=priority)
+						graph.add(cpv, node, priority=priority)
 
 		# Order nodes from lowest to highest overall reference count for
 		# optimal root node selection.
