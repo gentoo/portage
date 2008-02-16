@@ -6645,7 +6645,8 @@ def action_depclean(settings, trees, ldpath_mtimes,
 				del nodes[1:]
 			for node in nodes:
 				graph.remove(node)
-				cleanlist.append(node)
+				if node in clean_set:
+					cleanlist.append(node)
 
 		unmerge(root_config, myopts,
 			"unmerge", cleanlist, ldpath_mtimes)
