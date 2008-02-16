@@ -6588,8 +6588,10 @@ def action_depclean(settings, trees, ldpath_mtimes,
 		# Create a new graph to account for dependencies between the
 		# packages being unmerged.
 		graph = digraph()
-		for node in cleanlist:
-			myaux = dict(izip(aux_keys, vardb.aux_get(pkg, aux_keys)))
+		clean_set = set(cleanlist)
+		del cleanlist[:]
+		for node in clean_set:
+			myaux = dict(izip(aux_keys, vardb.aux_get(node, aux_keys)))
 			mydeps = []
 			usedef = vardb.aux_get(pkg, ["USE"])[0].split()
 			for dep_type, depstr in myaux.iteritems():
@@ -6615,7 +6617,8 @@ def action_depclean(settings, trees, ldpath_mtimes,
 					if not matches:
 						continue
 					for cpv in matches:
-						graph.add(cpv, node, priority=priority)
+						if cpv in clean_set:
+							graph.add(cpv, node, priority=priority)
 
 		# Order nodes from lowest to highest overall reference count for
 		# optimal root node selection.
@@ -6626,8 +6629,6 @@ def action_depclean(settings, trees, ldpath_mtimes,
 			return node_refcounts[node1] - node_refcounts[node2]
 		graph.order.sort(cmp_reference_count)
 
-		clean_set = set(cleanlist)
-		del cleanlist[:]
 		ignore_priority_range = [None]
 		ignore_priority_range.extend(
 			xrange(UnmergeDepPriority.MIN, UnmergeDepPriority.MAX + 1))
@@ -6645,8 +6646,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 				del nodes[1:]
 			for node in nodes:
 				graph.remove(node)
-				if node in clean_set:
-					cleanlist.append(node)
+				cleanlist.append(node)
 
 		unmerge(root_config, myopts,
 			"unmerge", cleanlist, ldpath_mtimes)
