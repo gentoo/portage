@@ -825,7 +825,38 @@ def filter_iuse_defaults(iuse):
 		else:
 			yield flag
 
-class DepPriority(object):
+class AbstractDepPriority(object):
+	__slots__ = ("__weakref__", "buildtime", "runtime", "runtime_post")
+	def __init__(self, **kwargs):
+		for myattr in chain(self.__slots__, AbstractDepPriority.__slots__):
+			if myattr == "__weakref__":
+				continue
+			myvalue = kwargs.get(myattr, False)
+			setattr(self, myattr, myvalue)
+
+	def __lt__(self, other):
+		return self.__int__() < other
+
+	def __le__(self, other):
+		return self.__int__() <= other
+
+	def __eq__(self, other):
+		return self.__int__() == other
+
+	def __ne__(self, other):
+		return self.__int__() != other
+
+	def __gt__(self, other):
+		return self.__int__() > other
+
+	def __ge__(self, other):
+		return self.__int__() >= other
+
+	def copy(self):
+		import copy
+		return copy.copy(self)
+
+class DepPriority(AbstractDepPriority):
 	"""
 		This class generates an integer priority level based of various
 		attributes of the dependency relationship.  Attributes can be assigned
@@ -855,17 +886,12 @@ class DepPriority(object):
 		SOFT     The upper boundary for soft dependencies.
 		MIN      The lower boundary for soft dependencies.
 	"""
-	__slots__ = ("__weakref__", "satisfied", "buildtime", "runtime", "runtime_post", "rebuild")
+	__slots__ = ("satisfied", "rebuild")
 	MEDIUM = -1
 	MEDIUM_SOFT = -2
 	SOFT   = -3
 	MIN    = -6
-	def __init__(self, **kwargs):
-		for myattr in self.__slots__:
-			if myattr == "__weakref__":
-				continue
-			myvalue = kwargs.get(myattr, False)
-			setattr(self, myattr, myvalue)
+
 	def __int__(self):
 		if not self.satisfied:
 			if self.buildtime:
@@ -883,21 +909,7 @@ class DepPriority(object):
 		if self.runtime_post:
 			return -6
 		return -6
-	def __lt__(self, other):
-		return self.__int__() < other
-	def __le__(self, other):
-		return self.__int__() <= other
-	def __eq__(self, other):
-		return self.__int__() == other
-	def __ne__(self, other):
-		return self.__int__() != other
-	def __gt__(self, other):
-		return self.__int__() > other
-	def __ge__(self, other):
-		return self.__int__() >= other
-	def copy(self):
-		import copy
-		return copy.copy(self)
+
 	def __str__(self):
 		myvalue = self.__int__()
 		if myvalue > self.MEDIUM:
@@ -906,6 +918,35 @@ class DepPriority(object):
 			return "medium"
 		if myvalue > self.SOFT:
 			return "medium-soft"
+		return "soft"
+
+class UnmergeDepPriority(AbstractDepPriority):
+	"""
+	Combination of properties           Priority  Category
+
+	runtime                                0       HARD
+	runtime_post                          -1       HARD
+	buildtime                             -2       SOFT
+	(none of the above)                   -2       SOFT
+	"""
+
+	MAX    =  0
+	SOFT   = -2
+	MIN    = -2
+
+	def __int__(self):
+		if self.runtime:
+			return 0
+		if self.runtime_post:
+			return -1
+		if self.buildtime:
+			return -2
+		return -2
+
+	def __str__(self):
+		myvalue = self.__int__()
+		if myvalue > self.SOFT:
+			return "hard"
 		return "soft"
 
 class FakeVartree(portage.vartree):
@@ -6331,23 +6372,32 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	if "--quiet" not in myopts:
 		print "\nCalculating dependencies  ",
 
-	soft = 0
-	hard = 1
+	runtime = UnmergeDepPriority(runtime=True)
+	runtime_post = UnmergeDepPriority(runtime_post=True)
+	buildtime = UnmergeDepPriority(buildtime=True)
+
+	priority_map = {
+		"RDEPEND": runtime,
+		"PDEPEND": runtime_post,
+		"DEPEND": buildtime,
+	}
+
 	remaining_atoms = []
 	if action == "depclean":
 		for atom in worldlist:
 			if vardb.match(atom):
-				remaining_atoms.append((atom, 'world', hard))
+				remaining_atoms.append((atom, 'world', runtime))
 		for atom in syslist:
 			if vardb.match(atom):
-				remaining_atoms.append((atom, 'system', hard))
+				remaining_atoms.append((atom, 'system', runtime))
 	elif action == "prune":
 		for atom in syslist:
 			if vardb.match(atom):
-				remaining_atoms.append((atom, 'system', hard))
+				remaining_atoms.append((atom, 'system', runtime))
 		# Pull in everything that's installed since we don't want to prune a
 		# package if something depends on it.
-		remaining_atoms.extend((atom, 'world', hard) for atom in vardb.cp_all())
+		remaining_atoms.extend(
+			(atom, 'world', runtime) for atom in vardb.cp_all())
 		if not myfiles:
 			# Try to prune everything that's slotted.
 			for cp in vardb.cp_all():
@@ -6358,12 +6408,13 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	aux_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
 	metadata_keys = ["PROVIDE", "SLOT", "USE"]
 	graph = digraph()
+	with_bdeps = myopts.get("--with-bdeps", "y") == "y"
 
 	while remaining_atoms:
 		atom, parent, priority = remaining_atoms.pop()
 		pkgs = vardb.match(atom)
 		if not pkgs:
-			if not atom.startswith("!") and priority == hard:
+			if not atom.startswith("!") and priority > UnmergeDepPriority.SOFT:
 				unresolveable.setdefault(atom, []).append(parent)
 			continue
 		if action == "depclean" and parent == "world" and myfiles:
@@ -6400,32 +6451,29 @@ def action_depclean(settings, trees, ldpath_mtimes,
 				pkgs = visible_in_portdb
 			pkgs = [portage.best(pkgs)]
 		for pkg in pkgs:
-			graph.add(pkg, parent)
+			graph.add(pkg, parent, priority=priority)
 			if fakedb.cpv_exists(pkg):
 				continue
 			spinner.update()
 			fakedb.cpv_inject(pkg)
 			myaux = dict(izip(aux_keys, vardb.aux_get(pkg, aux_keys)))
 			mydeps = []
-			if myopts.get("--with-bdeps", "y") == "y":
-				mydeps.append((myaux["DEPEND"], soft))
-			del myaux["DEPEND"]
-			mydeps.append((" ".join(myaux.values()), hard))
+
 			usedef = vardb.aux_get(pkg, ["USE"])[0].split()
-			for depstr, priority in mydeps:
+			for dep_type, depstr in myaux.iteritems():
 
 				if not depstr:
 					continue
 
+				if not with_bdeps and dep_type == "DEPEND":
+					continue
+
+				priority = priority_map[dep_type]
 				if "--debug" in myopts:
 					print
 					print "Parent:   ", pkg
 					print "Depstring:", depstr
-					print "Priority:",
-					if priority == soft:
-						print "soft"
-					else:
-						print "hard"
+					print "Priority:", priority
 
 				try:
 					portage.dep._dep_check_strict = False
@@ -6530,6 +6578,71 @@ def action_depclean(settings, trees, ldpath_mtimes,
 					good("--nodeps"))
 
 	if len(cleanlist):
+		# Use a topological sort to create an unmerge order such that
+		# each package is unmerged before it's dependencies. This is
+		# necessary to avoid breaking things that may need to run
+		# during pkg_prerm or pkg_postrm phases.
+
+		# Create a new graph to account for dependencies between the
+		# packages being unmerged.
+		graph = digraph()
+		for node in cleanlist:
+			myaux = dict(izip(aux_keys, vardb.aux_get(pkg, aux_keys)))
+			mydeps = []
+			usedef = vardb.aux_get(pkg, ["USE"])[0].split()
+			for dep_type, depstr in myaux.iteritems():
+				if not depstr:
+					continue
+				try:
+					portage.dep._dep_check_strict = False
+					success, atoms = portage.dep_check(depstr, None, settings,
+						myuse=usedef, trees=dep_check_trees, myroot=myroot)
+				finally:
+					portage.dep._dep_check_strict = True
+				if not success:
+					show_invalid_depstring_notice(
+						("installed", myroot, node, "nomerge"),
+						depstr, atoms)
+					return
+
+				priority = priority_map[dep_type]
+				for atom in atoms:
+					matches = vardb.match(atom)
+					if not matches:
+						continue
+					for cpv in matches:
+						graph.add(node, cpv, priority=priority)
+
+		# Order nodes from lowest to highest overall reference count for
+		# optimal root node selection.
+		node_refcounts = {}
+		for node in graph.order:
+			node_refcounts[node] = len(graph.parent_nodes(node))
+		def cmp_reference_count(node1, node2):
+			return node_refcounts[node1] - node_refcounts[node2]
+		graph.order.sort(cmp_reference_count)
+
+		clean_set = set(cleanlist)
+		del cleanlist[:]
+		ignore_priority_range = [None]
+		ignore_priority_range.extend(
+			xrange(UnmergeDepPriority.MIN, UnmergeDepPriority.MAX + 1))
+		while not graph.empty():
+			for ignore_priority in ignore_priority_range:
+				nodes = graph.root_nodes(ignore_priority=ignore_priority)
+				if nodes:
+					break
+			if not nodes:
+				raise AssertionError("no root nodes")
+			if ignore_priority is not None:
+				# Some deps have been dropped due to circular dependencies,
+				# so only pop one node in order do minimize the number that
+				# are dropped.
+				del nodes[1:]
+			for node in nodes:
+				graph.remove(node)
+				cleanlist.append(node)
+
 		unmerge(root_config, myopts,
 			"unmerge", cleanlist, ldpath_mtimes)
 
