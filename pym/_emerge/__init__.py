@@ -6414,7 +6414,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 		atom, parent, priority = remaining_atoms.pop()
 		pkgs = vardb.match(atom)
 		if not pkgs:
-			if not atom.startswith("!") and priority > UnmergeDepPriority.SOFT:
+			if priority > UnmergeDepPriority.SOFT:
 				unresolveable.setdefault(atom, []).append(parent)
 			continue
 		if action == "depclean" and parent == "world" and myfiles:
@@ -6491,6 +6491,8 @@ def action_depclean(settings, trees, ldpath_mtimes,
 					print "Candidates:", atoms
 
 				for atom in atoms:
+					if atom.startswith("!"):
+						continue
 					remaining_atoms.append((atom, pkg, priority))
 
 	if "--quiet" not in myopts:
@@ -6607,6 +6609,8 @@ def action_depclean(settings, trees, ldpath_mtimes,
 
 				priority = priority_map[dep_type]
 				for atom in atoms:
+					if atom.startswith("!"):
+						continue
 					matches = vardb.match(atom)
 					if not matches:
 						continue
