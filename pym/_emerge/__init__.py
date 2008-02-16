@@ -836,13 +836,16 @@ class DepPriority(object):
 		"buildtime", "runtime", and "system".  Various combinations of
 		attributes lead to the following priority levels:
 
-		Combination of properties    Priority level
+		Combination of properties           Priority  Category
 
-		not satisfied and buildtime     0
-		not satisfied and runtime      -1
-		satisfied and buildtime        -2
-		satisfied and runtime          -3
-		(none of the above)            -4
+		not satisfied and buildtime            0       HARD
+		not satisfied and runtime             -1       MEDIUM
+		not satisfied and runtime_post        -2       MEDIUM_SOFT
+		satisfied and buildtime and rebuild   -3       SOFT
+		satisfied and buildtime               -4       SOFT
+		satisfied and runtime                 -5       SOFT
+		satisfied and runtime_post            -6       SOFT
+		(none of the above)                   -6       SOFT
 
 		Several integer constants are defined for categorization of priority
 		levels:
