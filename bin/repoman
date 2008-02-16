@@ -322,7 +322,6 @@ qawarnings=[
 "DEPEND.badindev","RDEPEND.badindev","PDEPEND.badindev",
 "DEPEND.badmaskedindev","RDEPEND.badmaskedindev","PDEPEND.badmaskedindev",
 "DESCRIPTION.toolong",
-"IUSE.invalid",
 "KEYWORDS.stupid",
 "KEYWORDS.missing",
 "RESTRICT.invalid",
