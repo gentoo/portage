@@ -5048,15 +5048,24 @@ def unmerge(root_config, myopts, unmerge_action,
 	finally:
 		if vdb_lock:
 			portage.locks.unlockdir(vdb_lock)
+	all_selected = set()
+	for x in pkgmap:
+		all_selected.update(x["selected"])
 	for x in xrange(len(pkgmap)):
 		selected = pkgmap[x]["selected"]
 		if not selected:
 			continue
+		for mytype, mylist in pkgmap[x].iteritems():
+			if mytype == "selected":
+				continue
+			pkgmap[x][mytype] = \
+				[cpv for cpv in mylist if cpv not in all_selected]
 		cp = portage.cpv_getkey(selected[0])
 		for y in localtree.dep_match(cp):
 			if y not in pkgmap[x]["omitted"] and \
 			   y not in pkgmap[x]["selected"] and \
-			   y not in pkgmap[x]["protected"]:
+			   y not in pkgmap[x]["protected"] and \
+			   y not in all_selected:
 				pkgmap[x]["omitted"].append(y)
 		if global_unmerge and not pkgmap[x]["selected"]:
 			#avoid cluttering the preview printout with stuff that isn't getting unmerged
