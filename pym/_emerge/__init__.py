@@ -5126,7 +5126,7 @@ def unmerge(root_config, myopts, unmerge_action,
 	if not autoclean:
 		countdown(int(settings["CLEAN_DELAY"]), ">>> Unmerging")
 
-	for x in pkgmap:
+	for x in xrange(len(pkgmap)):
 		for y in pkgmap[x]["selected"]:
 			print ">>> Unmerging "+y+"..."
 			emergelog(xterm_titles, "=== Unmerging... ("+y+")")
