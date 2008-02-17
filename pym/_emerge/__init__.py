@@ -4951,7 +4951,7 @@ def unmerge(root_config, myopts, unmerge_action,
 			print darkgreen(newline+\
 				">>> These are the packages that would be unmerged:")
 	
-		pkgmap={}
+		pkgmap = []
 		numselected=0
 		for x in candidate_catpkgs:
 			# cycle through all our candidate deps and determine
@@ -4977,11 +4977,8 @@ def unmerge(root_config, myopts, unmerge_action,
 				portage.writemsg("\n--- Couldn't find '%s' to %s.\n" % \
 					(x, unmerge_action), noiselevel=-1)
 				continue
-			mykey = portage.key_expand(
-				portage.dep_getkey(
-					mymatch[0]), mydb=vartree.dbapi, settings=settings)
-			if not pkgmap.has_key(mykey):
-				pkgmap[mykey]={"protected":[], "selected":[], "omitted":[] }
+			pkgmap.append({"protected":[], "selected":[], "omitted":[] })
+			mykey = len(pkgmap) - 1
 			if unmerge_action=="unmerge":
 					for y in mymatch:
 						if y not in pkgmap[mykey]["selected"]:
@@ -5051,8 +5048,12 @@ def unmerge(root_config, myopts, unmerge_action,
 	finally:
 		if vdb_lock:
 			portage.locks.unlockdir(vdb_lock)
-	for x in pkgmap:
-		for y in localtree.dep_match(x):
+	for x in xrange(len(pkgmap)):
+		selected = pkgmap[x]["selected"]
+		if not selected:
+			continue
+		cp = portage.cpv_getkey(selected[0])
+		for y in localtree.dep_match(cp):
 			if y not in pkgmap[x]["omitted"] and \
 			   y not in pkgmap[x]["selected"] and \
 			   y not in pkgmap[x]["protected"]:
@@ -5060,16 +5061,16 @@ def unmerge(root_config, myopts, unmerge_action,
 		if global_unmerge and not pkgmap[x]["selected"]:
 			#avoid cluttering the preview printout with stuff that isn't getting unmerged
 			continue
-		if not (pkgmap[x]["protected"] or pkgmap[x]["omitted"]) and (x in syslist):
-			print colorize("BAD","\a\n\n!!! '%s' is part of your system profile." % x)
+		if not (pkgmap[x]["protected"] or pkgmap[x]["omitted"]) and cp in syslist:
+			print colorize("BAD","\a\n\n!!! '%s' is part of your system profile." % cp)
 			print colorize("WARN","\a!!! Unmerging it may be damaging to your system.\n")
 			if "--pretend" not in myopts and "--ask" not in myopts:
 				countdown(int(settings["EMERGE_WARNING_DELAY"]),
 					colorize("UNMERGE_WARN", "Press Ctrl-C to Stop"))
 		if "--quiet" not in myopts:
-			print "\n "+white(x)
+			print "\n "+bold(cp)
 		else:
-			print white(x)+": ",
+			print bold(cp)+": ",
 		for mytype in ["selected","protected","omitted"]:
 			if "--quiet" not in myopts:
 				portage.writemsg_stdout((mytype + ": ").rjust(14), noiselevel=-1)
