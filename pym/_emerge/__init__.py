@@ -6416,7 +6416,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 
 	unresolveable = {}
 	aux_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
-	metadata_keys = ["PROVIDE", "SLOT", "USE"]
+	metadata_keys = depgraph._mydbapi_keys
 	graph = digraph()
 	with_bdeps = myopts.get("--with-bdeps", "y") == "y"
 
@@ -6449,17 +6449,18 @@ def action_depclean(settings, trees, ldpath_mtimes,
 					filtered_pkgs.append(pkg)
 			pkgs = filtered_pkgs
 		if len(pkgs) > 1:
-			# Prune all but the best matching slot, since that's all that a
-			# deep world update would pull in.  Don't prune if this atom comes
-			# directly from world though, since world atoms are greedy when
-			# they don't specify a slot.
-			visible_in_portdb = [cpv for cpv in pkgs if portdb.match("="+cpv)]
-			if visible_in_portdb:
-				# For consistency with the update algorithm, keep the highest
-				# visible version and prune any versions that are either masked
-				# or no longer exist in the portage tree.
-				pkgs = visible_in_portdb
-			pkgs = [portage.best(pkgs)]
+			# For consistency with the update algorithm, keep the highest
+			# visible version and prune any versions that are old or masked.
+			for cpv in reversed(pkgs):
+				metadata = dict(izip(metadata_keys,
+					vardb.aux_get(cpv, metadata_keys)))
+				if visible(settings, cpv, metadata,
+					built=True, installed=True):
+					pkgs = [cpv]
+					break
+			if len(pkgs) > 1:
+				# They're all masked, so just keep the highest version.
+				pkgs = [pkgs[-1]]
 		for pkg in pkgs:
 			graph.add(pkg, parent, priority=priority)
 			if fakedb.cpv_exists(pkg):
