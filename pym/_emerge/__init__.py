@@ -6592,6 +6592,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 		clean_set = set(cleanlist)
 		del cleanlist[:]
 		for node in clean_set:
+			graph.add(node, None)
 			myaux = dict(izip(aux_keys, vardb.aux_get(node, aux_keys)))
 			mydeps = []
 			usedef = vardb.aux_get(pkg, ["USE"])[0].split()
