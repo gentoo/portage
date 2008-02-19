@@ -2493,6 +2493,8 @@ class depgraph(object):
 		portdb = self.roots[root].trees["porttree"].dbapi
 		dbs = self._filtered_trees[root]["dbs"]
 		for db, pkg_type, built, installed, db_keys in dbs:
+			if installed:
+				continue
 			match = db.match
 			if hasattr(db, "xmatch"):
 				cpv_list = db.xmatch("match-all", atom)
