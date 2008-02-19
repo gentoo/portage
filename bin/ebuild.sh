@@ -263,10 +263,6 @@ register_die_hook() {
 #if no perms are specified, dirs/files will have decent defaults
 #(not secretive, but not stupid)
 umask 022
-export DESTTREE=/usr
-export INSDESTTREE=""
-export _E_EXEDESTTREE_=""
-export _E_DOCDESTTREE_=""
 export INSOPTIONS="-m0644"
 export EXEOPTIONS="-m0755"
 export LIBOPTIONS="-m0644"
@@ -966,6 +962,15 @@ dyn_install() {
 	#some packages uses an alternative to $S to build in, cause
 	#our libtool to create problematic .la files
 	export PWORKDIR="$WORKDIR"
+
+	# Reset exeinto(), docinto(), insinto(), and into() state variables
+	# in case the user is running the install phase multiple times
+	# consecutively via the ebuild command.
+	export DESTTREE=/usr
+	export INSDESTTREE=""
+	export _E_EXEDESTTREE_=""
+	export _E_DOCDESTTREE_=""
+
 	ebuild_phase src_install
 	touch "${PORTAGE_BUILDDIR}/.installed"
 	vecho ">>> Completed installing ${PF} into ${D}"
