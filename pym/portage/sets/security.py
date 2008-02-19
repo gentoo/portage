@@ -7,6 +7,7 @@ import portage.glsa as glsa
 from portage.util import grabfile, write_atomic
 from portage.sets.base import PackageSet
 from portage.versions import catpkgsplit, pkgcmp
+from portage.sets import get_boolean
 
 __all__ = ["SecuritySet", "NewGlsaSet", "NewAffectedSet", "AffectedSet"]
 
@@ -69,11 +70,7 @@ class SecuritySet(PackageSet):
 				myglsa.inject()
 	
 	def singleBuilder(cls, options, settings, trees):
-		if "use_emerge_resoler" in options \
-				and options.get("use_emerge_resolver").lower() in ["1", "yes", "true", "on"]:
-			least_change = False
-		else:
-			least_change = True
+		least_change = not get_boolean(options, "use_emerge_resolver", False)
 		return cls(settings, trees["vartree"].dbapi, trees["porttree"].dbapi, least_change=least_change)
 	singleBuilder = classmethod(singleBuilder)
 	
