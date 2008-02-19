@@ -493,26 +493,6 @@ for x in range(0, repolevel - 1):
 def caterror(mycat):
 	err(mycat+" is not an official category.  Skipping QA checks in this directory.\nPlease ensure that you add "+catdir+" to "+repodir+"/profiles/categories\nif it is a new category.")
 
-def parse_use_local_desc(mylines, usedict=None):
-	"""returns a dict of the form {cpv:set(flags)}"""
-	if usedict is None:
-		usedict = {}
-	lineno = 0
-	for l in mylines:
-		lineno += 1
-		if not l or l.startswith("#"):
-			continue
-		mysplit = l.split(None, 1)
-		if not mysplit:
-			continue
-		mysplit = mysplit[0].split(":")
-		if len(mysplit) != 2:
-			raise ParseError("line %d: Malformed input: '%s'" % \
-				(lineno, l.rstrip("\n")))
-		usedict.setdefault(mysplit[0], set())
-		usedict[mysplit[0]].add(mysplit[1])
-	return usedict
-
 # retreive local USE list
 luselist={}
 try:
@@ -528,7 +508,7 @@ if portdir_overlay != portdir:
 	if os.path.exists(filename):
 		try:
 			f = open(filename)
-			parse_use_local_desc(f, luselist)
+			utilities.parse_use_local_desc(f, luselist)
 			f.close()
 		except (IOError, OSError, ParseError), e:
 			logging.exception("Couldn't read from '%s'" % filename, e)
