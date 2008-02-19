@@ -63,8 +63,10 @@ class PreservedLibsRegistry(object):
 		""" Store the registry data to file. No need to call this if autocommit
 		    was enabled.
 		"""
-		cPickle.dump(self._data, open(self._filename, "w"))
-	
+		f = atomic_ofstream(self._filename)
+		cPickle.dump(self._data, f)
+		f.close()
+
 	def register(self, cpv, slot, counter, paths):
 		""" Register new objects in the registry. If there is a record with the
 			same packagename (internally derived from cpv) and slot it is 
