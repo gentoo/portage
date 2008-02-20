@@ -3323,7 +3323,7 @@ class depgraph(object):
 				# have no parents and thus can not be part of a cycle.
 				while True:
 					root_nodes = mygraph.root_nodes(
-						ignore_priority=DepPriority.SOFT)
+						ignore_priority=DepPriority.MEDIUM_SOFT)
 					if not root_nodes:
 						break
 					for node in root_nodes:
