@@ -162,7 +162,8 @@ class LibraryPackageMap(object):
 					else:
 						obj_dict[lib].append(mysplit[0])
 		mapfile = open(self._filename, "w")
-		for lib in obj_dict:
+		for lib in sorted(obj_dict):
+			obj_dict[lib].sort()
 			mapfile.write(lib+" "+",".join(obj_dict[lib])+"\n")
 		mapfile.close()
 
