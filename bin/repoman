@@ -614,12 +614,12 @@ if "PWD" in os.environ and os.environ["PWD"] != mydir and \
 	# the current working directory (from the shell).
 	mydir = os.environ["PWD"]
 mydir = normalize_path(mydir)
-path_ids = set()
+path_ids = {}
 p = mydir
 s = None
 while True:
 	s = os.stat(p)
-	path_ids.add((s.st_dev, s.st_ino))
+	path_ids[(s.st_dev, s.st_ino)] = p
 	if p == "/":
 		break
 	p = os.path.dirname(p)
@@ -632,10 +632,12 @@ for overlay in repoman_settings["PORTDIR_OVERLAY"].split():
 		s = os.stat(overlay)
 	except OSError:
 		continue
-	overlay_id = (s.st_dev, s.st_ino)
+	overlay = path_ids.get((s.st_dev, s.st_ino))
+	if overlay is None:
+		continue
 	if overlay[-1] != "/":
 		overlay += "/"
-	if overlay_id in path_ids:
+	if True:
 		portdir_overlay = overlay
 		subdir = mydir[len(overlay):]
 		if subdir and subdir[-1] != "/":
