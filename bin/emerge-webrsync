@@ -14,8 +14,20 @@
 # gpg --homedir /etc/portage/gnupg --edit-key $KEY_ID trust
 #
 
+# XXX: all output should prob be converted to e* funcs ...
+
+# Only echo if in verbose mode
+vvecho() { [[ ${do_verbose} -eq 1 ]] && echo "$@" ; }
+# Only echo if not in verbose mode
+nvecho() { [[ ${do_verbose} -eq 0 ]] && echo "$@" ; }
+# warning echos
+wecho() { echo "${argv0}: warning: $*" 1>&2 ; }
+# error echos
+eecho() { echo "${argv0}: error: $*" 1>&2 ; }
+
+argv0=$0
 if ! type portageq > /dev/null ; then
-	echo "$0: could not find 'portageq'; aborting" 1>&2
+	eecho "could not find 'portageq'; aborting"
 	exit 1
 fi
 eval $(portageq envvar -v FEATURES FETCHCOMMAND GENTOO_MIRRORS \
@@ -34,6 +46,7 @@ fi
 source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
 
 do_verbose=0
+do_debug=0
 
 if hasq webrsync-gpg ${FEATURES} ; then
 	WEBSYNC_VERIFY_SIGNATURE=1
@@ -41,7 +54,7 @@ else
 	WEBSYNC_VERIFY_SIGNATURE=0
 fi
 if [ ${WEBSYNC_VERIFY_SIGNATURE} != 0 -a -z "${PORTAGE_GPG_DIR}" ]; then
-	echo "Error: Please set PORTAGE_GPG_DIR in make.conf"
+	eecho "please set PORTAGE_GPG_DIR in make.conf"
 	exit 1
 fi
 
@@ -81,25 +94,17 @@ fetch_file() {
 	local opts
 
 	if [ "${FETCHCOMMAND/wget/}" != "${FETCHCOMMAND}" ]; then
-		opts="--continue"
-
-		[ "${do_verbose}" == 0 ] && opts="$opts -q" 
+		opts="--continue $(nvecho -q)"
 	elif [ "${FETCHCOMMAND/curl/}" != "${FETCHCOMMAND}" ]; then
-		opts="--continue-at -"
-
-		[ "${do_verbose}" == 0 ] && opts="$opts -s -f" 
+		opts="--continue-at - $(nvecho -s -f)"
 	else
 		rm -f "${FILE}"
 	fi
 
-	echo "Fetching file ${FILE}..."
-
-	#already set DISTDIR=
-	if [ "${do_verbose}" == 0 ] ; then
-		eval "${FETCHCOMMAND}" ${opts} > /dev/null && [ -s "${FILE}" ]
-	else
-		eval "${FETCHCOMMAND}" ${opts} && [ -s "${FILE}" ]
-	fi
+	vecho "Fetching file ${FILE}..."
+	# already set DISTDIR=
+	eval "${FETCHCOMMAND}" ${opts}
+	[ -s "${FILE}" ]
 }
 
 check_file_digest() {
@@ -107,15 +112,14 @@ check_file_digest() {
 	local file="$2"
 	local r=1
 
-	echo "Checking digest..."
+	vecho "Checking digest..."
 
 	if type -P md5sum > /dev/null; then
 		md5sum -c $digest && r=0
 	elif type -P md5 > /dev/null; then
 		[ "$(md5 -q $file)" == "$(cut -d \ -f 1 \"$digest\")" ] && r=0
 	else
-		echo "Error: Cannot check digest"
-		echo "No suitable md5/md5sum binaries found"
+		eecho "cannot check digest: no suitable md5/md5sum binaries found"
 	fi
 
 	return "${r}"
@@ -128,13 +132,12 @@ check_file_signature() {
 
 	if [ ${WEBSYNC_VERIFY_SIGNATURE} != 0 ]; then
 
-		echo "Checking signature..."
+		vecho "Checking signature..."
 
 		if type -p gpg > /dev/null; then
 			gpg --homedir "${PORTAGE_GPG_DIR}" --verify "$signature" "$file" && r=0
 		else
-			echo "Error: Cannot check signature"
-			echo "gpg binary not found"
+			eecho "cannot check signature: gpg binary not found"
 		fi
 	else
 		r=0
@@ -152,21 +155,19 @@ get_snapshot_timestamp() {
 sync_local() {
 	local file="$1"
 
-	echo "Syncing local tree..."
+	vecho "Syncing local tree..."
 
 	if type -P tarsync &> /dev/null; then
 		if [ "${do_verbose}" != 0 ] ; then
 			tarsync_verbose=-v
 		fi
 		if ! tarsync $tarsync_verbose -s 1 -o portage -g portage -e /distfiles -e /packages -e /local "${file}" "${PORTDIR}"; then
-			echo "Error: tarsync failed; tarball is corrupt? (${file})"
+			eecho "tarsync failed; tarball is corrupt? (${file})"
 			return 1
 		fi
 	else
-		echo "Note: tarsync was not found, you may consider emerge it..."
-
 		if ! tar jxf "${file}"; then
-			echo "Error: tar failed to extract the image. tarball is corrupt? (${file})"
+			eecho "tar failed to extract the image. tarball is corrupt? (${file})"
 			rm -fr portage
 			return 1
 		fi
@@ -182,12 +183,12 @@ sync_local() {
 			--exclude='/local' ${PORTAGE_RSYNC_EXTRA_OPTS} . "${PORTDIR%%/}"
 		cd ..
 
-		echo "Cleaning up..."
+		vecho "Cleaning up..."
 		rm -fr portage 
 	fi
 
 	if hasq metadata-transfer ${FEATURES} ; then
-		echo "Updating cache..."
+		vecho "Updating cache..."
 		emerge --metadata
 	fi
 	[ -x /etc/portage/bin/post_sync ] && /etc/portage/bin/post_sync
@@ -207,7 +208,7 @@ do_snapshot() {
 	local have_files=0
 	local mirror
 
-	echo "Trying to retrieve ${date} snapshot..."
+	vecho "Trying to retrieve ${date} snapshot..."
 
 	for mirror in ${GENTOO_MIRRORS} ; do 
 
@@ -231,12 +232,12 @@ do_snapshot() {
 		#
 		if [ ${have_files} != 0 ]; then
 
-			echo "Getting snapshot timetasmp..."
+			vecho "Getting snapshot timetasmp..."
 			local snapshot_timestamp=$(get_snapshot_timestamp "${file}")
 
 			if [ ${ignore_timestamp} == 0 ]; then
 				if [ ${snapshot_timestamp} -lt $(get_portage_timestamp) ]; then
-					echo "Warning: Portage is newer than snapshot"
+					wecho "portage is newer than snapshot"
 					have_files=0
 				fi
 			else
@@ -249,7 +250,7 @@ do_snapshot() {
 				if [ ${snapshot_timestamp} -lt ${utc_seconds} ] || \
 					[ ${snapshot_timestamp} -gt $((${utc_seconds}+ 2*86400)) ]; then
 
-					echo "Warning: Snapshot timestamp is not in acceptable period."
+					wecho "snapshot timestamp is not in acceptable period"
 					have_files=0
 				fi
 			fi
@@ -269,7 +270,7 @@ do_snapshot() {
 	if [ ${have_files} != 0 ]; then
 		sync_local "${file}" && r=0
 	else
-		echo "Warning: ${date} snapshot was not found."
+		vecho "${date} snapshot was not found"
 	fi
 	
 	rm -f "${file}" "${digest}" "${signature}"
@@ -280,7 +281,7 @@ do_latest_snapshot() {
 	local attempts=-1
 	local r=1
 
-	echo "Fetching most recent snapshot..."
+	vecho "Fetching most recent snapshot..."
 
 	while (( ${attempts} <  40 )) ; do
 		local day
@@ -298,10 +299,9 @@ do_latest_snapshot() {
 		utc_midnight=$(get_date_part $(expr ${utc_attempt} - ${utc_attempt} % 86400) "%s")
 
 		if [ ${utc_midnight} -lt $(($(get_portage_timestamp)-86400)) ]; then
-			echo "Note: Portage content is newer than available snapshots"
-			echo "use --revert option to overide."
+			wecho "portage content is newer than available snapshots (use --revert option to overide)"
 			r=0
-			break;
+			break
 		fi
 
 		if do_snapshot 0 "${year}${month}${day}"; then
@@ -343,7 +343,7 @@ main() {
 		local v=${arg#*=}
 		case ${arg} in
 			-h|--help)    usage ;;
-			-q|--quiet)   do_quiet=1 ;;
+			-q|--quiet)   PORTAGE_QUIET=1 ;;
 			-v|--verbose) do_verbose=1 ;;
 			-x|--debug)   do_debug=1 ;;
 			--revert=*)   revert_date=${v} ;;
