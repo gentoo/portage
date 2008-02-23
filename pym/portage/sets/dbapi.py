@@ -126,8 +126,10 @@ class LibraryConsumerSet(PackageSet):
 			link = dblink(mysplit[0], mysplit[1], myroot=self.dbapi.root, \
 					mysettings=self.dbapi.settings, treetype='vartree', \
 					vartree=self.dbapi.vartree)
-			if paths.intersection(link.getcontents().keys()):
-				rValue.add("/".join(catpkgsplit(cpv)[:2]))
+			if paths.intersection(link.getcontents()):
+				cat, pn = catpkgsplit(cpv)[:2]
+				slot = self.dbapi.aux_get(cpv, ["SLOT"])[0]
+				rValue.add("%s/%s:%s" % (cat, pn, slot))
 		return rValue
 	
 

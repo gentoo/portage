@@ -1601,7 +1601,7 @@ class dblink(object):
 		for x in preserve_paths:
 			print "injecting %s into %s" % (x, srcroot)
 			if not os.path.exists(os.path.join(destroot, x.lstrip(os.sep))):
-				print "%s does not exist so can't be preserved"
+				print "%s does not exist so can't be preserved" % x
 				missing_paths.append(x)
 				continue
 			mydir = os.path.join(srcroot, os.path.dirname(x).lstrip(os.sep))
