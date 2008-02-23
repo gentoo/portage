@@ -1586,14 +1586,6 @@ if [ -n "${EBUILD_SH_ARGS}" ] && \
 #		source ${X} || die "Failed to source ${X}"
 #	done
 
-else
-
-killparent() {
-	trap INT
-	kill ${PORTAGE_MASTER_PID}
-}
-trap "killparent" INT
-
 fi # "$*"!="depend" && "$*"!="clean" && "$*" != "setup"
 
 export SANDBOX_ON="1"

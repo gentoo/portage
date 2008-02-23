@@ -1680,10 +1680,10 @@ else:
 		try:
 			editor = os.environ.get("EDITOR")
 			if editor and utilities.editor_is_executable(editor):
-				commitmessage = utilties.get_commit_message_with_editor(
+				commitmessage = utilities.get_commit_message_with_editor(
 					editor, message=qa_output)
 			else:
-				commitmessage = utilties.get_commit_message_with_stdin()
+				commitmessage = utilities.get_commit_message_with_stdin()
 		except KeyboardInterrupt:
 			exithandler()
 		if not commitmessage or not commitmessage.strip():

@@ -4,7 +4,7 @@ emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
 .TP
 .BR emerge
-[\fIoptions\fR] [\fIaction\fR] [\fIebuild\fR | \fItbz2file\fR | \fIset\fR | \fIatom\fR] ...
+[\fIoptions\fR] [\fIaction\fR] [\fIebuild\fR | \fItbz2file\fR | \fI@set\fR | \fIatom\fR] ...
 .TP
 .BR emerge
 \fB\-\-sync\fR | \fB\-\-version\fR
@@ -52,13 +52,15 @@ A \fItbz2file\fR must be a valid .tbz2 created with \fBebuild
 .TP
 .BR set
 A \fIset\fR is a convenient shorthand for a large group of
-packages.  Two sets are currently supported: \fBsystem\fR
+packages.  Two sets are currently always available: \fBsystem\fR
 and \fBworld\fR.  \fBsystem\fR refers to a set of packages
-deemed necessary for your system to run properly.  \fBworld\fR
-contains all the packages in \fBsystem\fR, plus any
-other packages listed in \fB/var/lib/portage/world\fR.  [See
-\fBFILES\fR below for more information.]  Note that a \fIset\fR
-is generally used in conjunction with \fB\-\-update\fR.
+deemed necessary for your system to run properly. \fBworld\fR
+contains all the packages listed in \fB/var/lib/portage/world\fR.  [See
+\fBFILES\fR below for more information.] Other sets can exist depending
+on the current configuration. Note that a \fIset\fR
+is generally used in conjunction with \fB\-\-update\fR. When used as 
+arguments to \fBemerge\fR sets have to be prefixed with \fB@\fR to be
+recognized.
 .TP
 .BR atom
 An \fIatom\fR describes bounds on a package that you wish to install.  

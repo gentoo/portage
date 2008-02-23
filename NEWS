@@ -10,7 +10,7 @@ portage-2.2
 * Fix -* handling in package.keywords to work as intended (reset the accepted 
   keywords list), also see RELEASE-NOTES.
 * Experimental support for preserving old library files on package upgrades
-  based on FEATURES=preserve-libs, USE AT YOUR OWN RISK!!!
+  based on FEATURES=preserve-libs
 * Make elog functionality available to python code
 * Add support for news items (GLEP 42)
 * Add support for generic package sets (also see RELEASE-NOTES)

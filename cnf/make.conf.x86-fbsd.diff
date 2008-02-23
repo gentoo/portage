@@ -63,10 +63,10 @@
  
  # Portage Directories
  # ===================
-@@ -279,7 +313,8 @@
- #  'notitles'    disables xterm titlebar updates (which contain status info). 
- #  'parallel-fetch'
- #                do fetching in parallel to compilation
+@@ -272,7 +313,8 @@
+ #  'preserve-libs'
+ #                keep libraries around that would normally removed by an upgrade, 
+ #                but are still needed by other packages
 -#  'sandbox'     enables sandboxing when running emerge and ebuild.
 +#  'sandbox'     enables sandboxing when running emerge and ebuild. Doesn't 
 +#                work on *BSD-based systems.

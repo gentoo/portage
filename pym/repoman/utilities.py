@@ -13,13 +13,14 @@ import os
 import sys
 
 from portage import output
+from portage.output import red, green
 from portage import exception
 from portage import util
 normalize_path = util.normalize_path
 util.initialize_logger()
 
 
-def detect_vcs_conflicts(vcs, options):
+def detect_vcs_conflicts(options, vcs):
 	"""Determine if the checkout has problems like cvs conflicts.
 	
 	If you want more vcs support here just keep adding if blocks...

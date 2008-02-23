@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# $Id: $
+# $Id$
 
 if [ -z "$1" ]; then
 	echo
