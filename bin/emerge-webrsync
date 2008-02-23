@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2006 Gentoo Foundation
+# Copyright 1999-2008 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 # Author: Karl Trygve Kalleberg <karltk@gentoo.org>
@@ -14,7 +14,10 @@
 # gpg --homedir /etc/portage/gnupg --edit-key $KEY_ID trust
 #
 
-type portageq > /dev/null || exit $?
+if ! type portageq > /dev/null ; then
+	echo "$0: could not find 'portageq'; aborting" 1>&2
+	exit 1
+fi
 eval $(portageq envvar -v FEATURES FETCHCOMMAND GENTOO_MIRRORS \
 	PORTAGE_BIN_PATH PORTAGE_GPG_DIR PORTAGE_INST_UID PORTAGE_INST_GID \
 	PORTAGE_NICENESS PORTAGE_RSYNC_EXTRA_OPTS PORTAGE_TMPDIR PORTDIR \
@@ -310,42 +313,50 @@ do_latest_snapshot() {
 	return "${r}"
 }
 
+usage() {
+	cat <<-EOF
+	Usage: $0 [options]
+	
+	Options:
+	  --revert=yyyymmdd   Revert to snapshot
+	  -q, --quiet         Only output errors
+	  -v, --verbose       Enable verbose output
+	  -x, --debug         Enable debug output
+	  -h, --help          This help screen (duh!)
+	EOF
+	if [[ -n $* ]] ; then
+		printf "\nError: %s\n" "$*" 1>&2
+		exit 1
+	else
+		exit 0
+	fi
+}
+
 main() {
 	local arg
-	local do_revert=0
 	local revert_date
 	
 	[ ! -d "${DISTDIR}" ] && mkdir -p "${DISTDIR}"
 	cd "${DISTDIR}"
 
-	for arg in $*; do
+	for arg in "$@" ; do
 		local v=${arg#*=}
 		case ${arg} in
-			--help)
-				echo "usage: $0 [options]"
-				echo "        --verbose (-v)    - verbose"
-				echo "        --revert=yyyymmdd - revert to snapshot"
-				exit 0
-			;;
-			--verbose|-v)
-				do_verbose=1
-			;;
-			--revert=*)
-				do_revert=1
-				revert_date=${v}
-			;;
-			*)
-				echo "Error: Invalid arguments"
-				exit 1
-			;;
+			-h|--help)    usage ;;
+			-q|--quiet)   do_quiet=1 ;;
+			-v|--verbose) do_verbose=1 ;;
+			-x|--debug)   do_debug=1 ;;
+			--revert=*)   revert_date=${v} ;;
+			*)            usage "Invalid option '${arg}'" ;;
 		esac
 	done
+	[[ ${do_debug} -eq 1 ]] && set -x
 
-	if [ ${do_revert} != 0 ]; then
+	if [[ -n ${revert_date} ]] ; then
 		do_snapshot 1 "${revert_date}"
 	else
 		do_latest_snapshot
 	fi
 }
 
-main $*
+main "$@"
