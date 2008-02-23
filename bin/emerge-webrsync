@@ -7,14 +7,16 @@
 # Author: Alon Bar-Lev <alon.barlev@gmail.com>
 # Major rewrite from Karl's scripts.
 
+# TODO:
+#  - all output should prob be converted to e* funcs
+#  - add support for ROOT
+
 #
 # gpg key import
 # KEY_ID=0x7DDAD20D
 # gpg --homedir /etc/portage/gnupg --keyserver subkeys.pgp.net --recv-keys $KEY_ID
 # gpg --homedir /etc/portage/gnupg --edit-key $KEY_ID trust
 #
-
-# XXX: all output should prob be converted to e* funcs ...
 
 # Only echo if in verbose mode
 vvecho() { [[ ${do_verbose} -eq 1 ]] && echo "$@" ; }
@@ -57,6 +59,20 @@ if [ ${WEBSYNC_VERIFY_SIGNATURE} != 0 -a -z "${PORTAGE_GPG_DIR}" ]; then
 	eecho "please set PORTAGE_GPG_DIR in make.conf"
 	exit 1
 fi
+
+do_tar() {
+	local file=$1; shift
+	local decompressor
+	case ${file} in
+		*.lzma) decompressor="lzcat" ;;
+		*.bz2)  decompressor="bzcat" ;;
+		*.gz)   decompressor="zcat"  ;;
+		*)      decompressor="cat"   ;;
+	esac
+	${decompressor} "${file}" | tar "$@"
+	_pipestatus=${PIPESTATUS[*]}
+	[[ ${_pipestatus// /} -eq 0 ]]
+}
 
 get_utc_date_in_seconds() {
 	date -u +"%s"
@@ -101,7 +117,7 @@ fetch_file() {
 		rm -f "${FILE}"
 	fi
 
-	vecho "Fetching file ${FILE}..."
+	vecho "Fetching file ${FILE} ..."
 	# already set DISTDIR=
 	eval "${FETCHCOMMAND}" ${opts}
 	[ -s "${FILE}" ]
@@ -112,7 +128,7 @@ check_file_digest() {
 	local file="$2"
 	local r=1
 
-	vecho "Checking digest..."
+	vecho "Checking digest ..."
 
 	if type -P md5sum > /dev/null; then
 		md5sum -c $digest && r=0
@@ -132,7 +148,7 @@ check_file_signature() {
 
 	if [ ${WEBSYNC_VERIFY_SIGNATURE} != 0 ]; then
 
-		vecho "Checking signature..."
+		vecho "Checking signature ..."
 
 		if type -p gpg > /dev/null; then
 			gpg --homedir "${PORTAGE_GPG_DIR}" --verify "$signature" "$file" && r=0
@@ -149,24 +165,21 @@ check_file_signature() {
 get_snapshot_timestamp() {
 	local file="$1"
 
-	tar --to-stdout -xf "${file}" portage/metadata/timestamp.x | cut -f 1 -d " "
+	do_tar "${file}" --to-stdout -xf - portage/metadata/timestamp.x | cut -f 1 -d " "
 }
 
 sync_local() {
 	local file="$1"
 
-	vecho "Syncing local tree..."
+	vecho "Syncing local tree ..."
 
 	if type -P tarsync &> /dev/null; then
-		if [ "${do_verbose}" != 0 ] ; then
-			tarsync_verbose=-v
-		fi
-		if ! tarsync $tarsync_verbose -s 1 -o portage -g portage -e /distfiles -e /packages -e /local "${file}" "${PORTDIR}"; then
+		if ! tarsync $(vvecho -v) -s 1 -o portage -g portage -e /distfiles -e /packages -e /local "${file}" "${PORTDIR}"; then
 			eecho "tarsync failed; tarball is corrupt? (${file})"
 			return 1
 		fi
 	else
-		if ! tar jxf "${file}"; then
+		if ! do_tar "${file}" xf -; then
 			eecho "tar failed to extract the image. tarball is corrupt? (${file})"
 			rm -fr portage
 			return 1
@@ -183,12 +196,12 @@ sync_local() {
 			--exclude='/local' ${PORTAGE_RSYNC_EXTRA_OPTS} . "${PORTDIR%%/}"
 		cd ..
 
-		vecho "Cleaning up..."
+		vecho "Cleaning up ..."
 		rm -fr portage 
 	fi
 
 	if hasq metadata-transfer ${FEATURES} ; then
-		vecho "Updating cache..."
+		vecho "Updating cache ..."
 		emerge --metadata
 	fi
 	[ -x /etc/portage/bin/post_sync ] && /etc/portage/bin/post_sync
@@ -201,73 +214,80 @@ do_snapshot() {
 
 	local r=1
 
-	local file="portage-${date}.tar.bz2"
-	local digest="${file}.md5sum"
-	local signature="${file}.gpgsig"
+	local base_file="portage-${date}.tar"
 
 	local have_files=0
 	local mirror
 
-	vecho "Trying to retrieve ${date} snapshot..."
-
 	for mirror in ${GENTOO_MIRRORS} ; do 
 
-		[ -s "${file}" -a -s "${digest}" -a -s "${signature}" ] && \
-			check_file_digest "${digest}" "${file}" && \
-			check_file_signature "${signature}" "${file}" && \
-			have_files=1
+		vecho "Trying to retrieve ${date} snapshot from ${mirror} ..."
 
-		[ ${have_files} == 0 ] && \
-			fetch_file "${mirror}/snapshots/${digest}" "${digest}" && \
-			fetch_file "${mirror}/snapshots/${signature}" "${signature}" && \
-			fetch_file "${mirror}/snapshots/${file}" "${file}" && \
-			check_file_digest "${digest}" "${file}" && \
-			check_file_signature "${signature}" "${file}" && \
-			have_files=1
+		for compression in lzma bz2 gz ; do
+			local file="portage-${date}.tar.${compression}"
+			local digest="${file}.md5sum"
+			local signature="${file}.gpgsig"
 
-		#
-		# If timestamp is invalid
-		# we want to try and retieve
-		# from a different mirror
-		#
-		if [ ${have_files} != 0 ]; then
+			if [ -s "${file}" -a -s "${digest}" -a -s "${signature}" ] ; then
+				check_file_digest "${digest}" "${file}" && \
+				check_file_signature "${signature}" "${file}" && \
+				have_files=1
+			fi
 
-			vecho "Getting snapshot timetasmp..."
-			local snapshot_timestamp=$(get_snapshot_timestamp "${file}")
+			if [ ${have_files} -eq 0 ] ; then
+				fetch_file "${mirror}/snapshots/${digest}" "${digest}" && \
+				fetch_file "${mirror}/snapshots/${signature}" "${signature}" && \
+				fetch_file "${mirror}/snapshots/${file}" "${file}" && \
+				check_file_digest "${digest}" "${file}" && \
+				check_file_signature "${signature}" "${file}" && \
+				have_files=1
+			fi
 
-			if [ ${ignore_timestamp} == 0 ]; then
-				if [ ${snapshot_timestamp} -lt $(get_portage_timestamp) ]; then
-					wecho "portage is newer than snapshot"
-					have_files=0
-				fi
-			else
-				local utc_seconds=$(get_utc_second_from_string "${date}")
+			#
+			# If timestamp is invalid
+			# we want to try and retrieve
+			# from a different mirror
+			#
+			if [ ${have_files} -eq 1 ]; then
 
-				#
-				# Check that this snapshot
-				# is what it claims to be...
-				#
-				if [ ${snapshot_timestamp} -lt ${utc_seconds} ] || \
-					[ ${snapshot_timestamp} -gt $((${utc_seconds}+ 2*86400)) ]; then
+				vecho "Getting snapshot timetasmp ..."
+				local snapshot_timestamp=$(get_snapshot_timestamp "${file}")
 
-					wecho "snapshot timestamp is not in acceptable period"
-					have_files=0
+				if [ ${ignore_timestamp} == 0 ]; then
+					if [ ${snapshot_timestamp} -lt $(get_portage_timestamp) ]; then
+						wecho "portage is newer than snapshot"
+						have_files=0
+					fi
+				else
+					local utc_seconds=$(get_utc_second_from_string "${date}")
+
+					#
+					# Check that this snapshot
+					# is what it claims to be ...
+					#
+					if [ ${snapshot_timestamp} -lt ${utc_seconds} ] || \
+						[ ${snapshot_timestamp} -gt $((${utc_seconds}+ 2*86400)) ]; then
+
+						wecho "snapshot timestamp is not in acceptable period"
+						have_files=0
+					fi
 				fi
 			fi
-		fi
 
-		if [ ${have_files} != 0 ]; then
-			break;
-		else
-			#
-			# Remove files and use
-			# a diffeernt mirror
-			#
-			rm -f "${file}" "${digest}" "${signature}"
-		fi
+			if [ ${have_files} -eq 1 ]; then
+				break
+			else
+				#
+				# Remove files and use a different mirror
+				#
+				rm -f "${file}" "${digest}" "${signature}"
+			fi
+		done
+
+		[ ${have_files} -eq 1 ] && break
 	done
 
-	if [ ${have_files} != 0 ]; then
+	if [ ${have_files} -eq 1 ]; then
 		sync_local "${file}" && r=0
 	else
 		vecho "${date} snapshot was not found"
@@ -281,7 +301,7 @@ do_latest_snapshot() {
 	local attempts=-1
 	local r=1
 
-	vecho "Fetching most recent snapshot..."
+	vecho "Fetching most recent snapshot ..."
 
 	while (( ${attempts} <  40 )) ; do
 		local day
