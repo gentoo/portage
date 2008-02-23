@@ -317,12 +317,12 @@ def FindPortdir(settings):
 
 	location = normalize_path(location)
 
-	path_ids = set()
+	path_ids = {}
 	p = location
 	s = None
 	while True:
 		s = os.stat(p)
-		path_ids.add((s.st_dev, s.st_ino))
+		path_ids[(s.st_dev, s.st_ino)] = p
 		if p == "/":
 			break
 		p = os.path.dirname(p)
@@ -335,10 +335,12 @@ def FindPortdir(settings):
 			s = os.stat(overlay)
 		except OSError:
 			continue
-		overlay_id = (s.st_dev, s.st_ino)
+		overlay = path_ids.get((s.st_dev, s.st_ino))
+		if overlay is None:
+			continue
 		if overlay[-1] != "/":
 			overlay += "/"
-		if overlay_id in path_ids:
+		if True:
 			portdir_overlay = overlay
 			subdir = location[len(overlay):]
 			if subdir and subdir[-1] != "/":

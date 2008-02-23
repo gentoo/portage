@@ -10,7 +10,7 @@ from portage.const import PRIVATE_PATH, USER_CONFIG_PATH
 from portage.locks import lockfile, unlockfile
 from portage import portage_gid
 from portage.sets.base import PackageSet, EditablePackageSet
-from portage.sets import SetConfigError, SETPREFIX
+from portage.sets import SetConfigError, SETPREFIX, get_boolean
 from portage.env.loaders import ItemFileLoader, KeyListFileLoader
 from portage.env.validators import ValidAtomValidator
 from portage import dep_getkey, cpv_getkey
@@ -20,12 +20,17 @@ __all__ = ["StaticFileSet", "ConfigFileSet", "WorldSet"]
 class StaticFileSet(EditablePackageSet):
 	_operations = ["merge", "unmerge"]
 	
-	def __init__(self, filename):
+	def __init__(self, filename, greedy=False, dbapi=None):
 		super(StaticFileSet, self).__init__()
 		self._filename = filename
 		self._mtime = None
 		self.description = "Package set loaded from file %s" % self._filename
 		self.loader = ItemFileLoader(self._filename, self._validate)
+		if greedy and not dbapi:
+			self.errors.append("%s configured as greedy set, but no dbapi instance passed in constructor" % self._filename)
+			greedy = False
+		self.greedy = greedy
+		self.dbapi = dbapi
 
 		metadata = grabfile(self._filename + ".metadata")
 		key = None
@@ -69,13 +74,26 @@ class StaticFileSet(EditablePackageSet):
 					raise
 				del e
 				data = {}
-			self._setAtoms(data.keys())
+			if self.greedy:
+				atoms = []
+				for a in data.keys():
+					matches = self.dbapi.match(a)
+					for cpv in matches:
+						atoms.append("%s:%s" % (cpv_getkey(cpv),
+							self.dbapi.aux_get(cpv, ["SLOT"])[0]))
+					# In addition to any installed slots, also try to pull
+					# in the latest new slot that may be available.
+					atoms.append(a)
+			else:
+				atoms = data.keys()
+			self._setAtoms(atoms)
 			self._mtime = mtime
 		
 	def singleBuilder(self, options, settings, trees):
 		if not "filename" in options:
 			raise SetConfigError("no filename specified")
-		return ConfigFileSet(options[filename])
+		greedy = get_boolean(options, "greedy", True)
+		return StaticFileSet(options["filename"], greedy=greedy, dbapi=trees["vartree"].dbapi)
 	singleBuilder = classmethod(singleBuilder)
 	
 	def multiBuilder(self, options, settings, trees):
@@ -84,13 +102,14 @@ class StaticFileSet(EditablePackageSet):
 		name_pattern = options.get("name_pattern", "sets/$name")
 		if not "$name" in name_pattern and not "${name}" in name_pattern:
 			raise SetConfigError("name_pattern doesn't include $name placeholder")
+		greedy = get_boolean(options, "greedy", True)
 		if os.path.isdir(directory):
 			for filename in os.listdir(directory):
 				if filename.endswith(".metadata"):
 					continue
 				myname = name_pattern.replace("$name", filename)
 				myname = myname.replace("${name}", filename)
-				rValue[myname] = StaticFileSet(os.path.join(directory, filename))
+				rValue[myname] = StaticFileSet(os.path.join(directory, filename), greedy=greedy, dbapi=trees["vartree"].dbapi)
 		return rValue
 	multiBuilder = classmethod(multiBuilder)
 	
@@ -108,7 +127,7 @@ class ConfigFileSet(PackageSet):
 	def singleBuilder(self, options, settings, trees):
 		if not "filename" in options:
 			raise SetConfigError("no filename specified")
-		return ConfigFileSet(options[filename])
+		return ConfigFileSet(options["filename"])
 	singleBuilder = classmethod(singleBuilder)
 	
 	def multiBuilder(self, options, settings, trees):

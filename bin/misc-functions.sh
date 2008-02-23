@@ -592,7 +592,7 @@ preinst_suid_scan() {
 #note not space-safe
 		for i in $(find "${ED}" -type f \( -perm -4000 -o -perm -2000 \) ); do
 			if [ -s "${sfconf}" ]; then
-				suid="$(grep "^${i/${D}}$" "${sfconf}")"
+				suid="$(grep "^/${i#${D}}$" "${sfconf}")"
 				if [ "${suid}" = "${i/${D}}" ]; then
 					vecho "- ${i/${D}} is an approved suid file"
 				else

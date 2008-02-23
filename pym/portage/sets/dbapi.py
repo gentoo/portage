@@ -4,7 +4,7 @@
 
 from portage.versions import catsplit, catpkgsplit
 from portage.sets.base import PackageSet
-from portage.sets import SetConfigError
+from portage.sets import SetConfigError, get_boolean
 from portage.dbapi.vartree import dblink
 from portage.util import grabfile
 
@@ -65,10 +65,7 @@ class CategorySet(PackageSet):
 	_builderGetRepository = classmethod(_builderGetRepository)
 
 	def _builderGetVisible(cls, options):
-		visible = options.get("only_visible", "true").lower()
-		if visible not in ["1", "0", "yes", "no", "true", "false", "on", "off"]:
-			raise SetConfigError("invalid value for only_visible: %s" % visible)
-		return bool(visible in ["1", "yes", "true", "on"])
+		return get_boolean(options, "only_visible", True)
 	_builderGetVisible = classmethod(_builderGetVisible)
 		
 	def singleBuilder(cls, options, settings, trees):
@@ -176,9 +173,6 @@ class MissingLibraryConsumerSet(LibraryConsumerSet):
 		self._setAtoms(self.mapPathsToAtoms(consumers))
 	
 	def singleBuilder(cls, options, settings, trees):
-		if options.get("debug", "true").lower() in ["true", "on", "1", "yes"]:
-			debug = True
-		else:
-			debug = False
+		debug = get_boolean(options, "debug", False)
 		return MissingLibraryConsumerSet(trees["vartree"].dbapi, debug=debug)
 	singleBuilder = classmethod(singleBuilder)

@@ -63,8 +63,10 @@ class PreservedLibsRegistry(object):
 		""" Store the registry data to file. No need to call this if autocommit
 		    was enabled.
 		"""
-		cPickle.dump(self._data, open(self._filename, "w"))
-	
+		f = atomic_ofstream(self._filename)
+		cPickle.dump(self._data, f)
+		f.close()
+
 	def register(self, cpv, slot, counter, paths):
 		""" Register new objects in the registry. If there is a record with the
 			same packagename (internally derived from cpv) and slot it is 
@@ -160,7 +162,8 @@ class LibraryPackageMap(object):
 					else:
 						obj_dict[lib].append(mysplit[0])
 		mapfile = open(self._filename, "w")
-		for lib in obj_dict:
+		for lib in sorted(obj_dict):
+			obj_dict[lib].sort()
 			mapfile.write(lib+" "+",".join(obj_dict[lib])+"\n")
 		mapfile.close()
 
@@ -909,6 +912,7 @@ class dblink(object):
 		self._installed_instance = None
 		self.contentscache = None
 		self._contents_inodes = None
+		self._contents_basenames = None
 
 	def lockdb(self):
 		if self._lock_vdb:
@@ -1510,6 +1514,16 @@ class dblink(object):
 		if pkgfiles and destfile in pkgfiles:
 			return True
 		if pkgfiles:
+			basename = os.path.basename(destfile)
+			if self._contents_basenames is None:
+				self._contents_basenames = set(
+					os.path.basename(x) for x in pkgfiles)
+			if basename not in self._contents_basenames:
+				# This is a shortcut that, in most cases, allows us to
+				# eliminate this package as an owner without the need
+				# to examine inode numbers of parent directories.
+				return False
+
 			# Use stat rather than lstat since we want to follow
 			# any symlinks to the real parent directory.
 			parent_path = os.path.dirname(destfile)
@@ -1545,7 +1559,6 @@ class dblink(object):
 			p_path_list = self._contents_inodes.get(
 				(parent_stat.st_dev, parent_stat.st_ino))
 			if p_path_list:
-				basename = os.path.basename(destfile)
 				for p_path in p_path_list:
 					x = os.path.join(p_path, basename)
 					if x in pkgfiles:
@@ -2101,6 +2114,7 @@ class dblink(object):
 		for dblnk in others_in_slot:
 			dblnk.contentscache = None
 			dblnk._contents_inodes = None
+			dblnk._contents_basenames = None
 
 		# If portage is reinstalling itself, remove the old
 		# version now since we want to use the temporary

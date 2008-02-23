@@ -9,6 +9,16 @@ from portage.const import USER_CONFIG_PATH, GLOBAL_CONFIG_PATH
 
 SETPREFIX = "@"
 
+def get_boolean(options, name, default):
+	if not name in options:
+		return default
+	elif options[name].lower() in ("1", "yes", "on", "true"):
+		return True
+	elif options[name].lower() in ("0", "no", "off", "false"):
+		return False
+	else:
+		raise SetConfigError("invalid value '%s' for option '%s'" % (options[name], name))
+
 class SetConfigError(Exception):
 	pass
 

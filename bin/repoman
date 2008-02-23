@@ -7,6 +7,7 @@
 # Then, check to make sure deps are satisfiable (to avoid "can't find match for" problems)
 # that last one is tricky because multiple profiles need to be checked.
 
+import commands
 import codecs
 import errno
 import formatter
@@ -491,6 +492,9 @@ repodir = startdir
 for x in range(0, repolevel - 1):
 	repodir = os.path.dirname(repodir)
 
+def caterror(mycat):
+	err(mycat+" is not an official category.  Skipping QA checks in this directory.\nPlease ensure that you add "+catdir+" to "+repodir+"/profiles/categories\nif it is a new category.")
+
 # retreive local USE list
 luselist={}
 try:
@@ -506,7 +510,7 @@ if portdir_overlay != portdir:
 	if os.path.exists(filename):
 		try:
 			f = open(filename)
-			parse_use_local_desc(f, luselist)
+			utilities.parse_use_local_desc(f, luselist)
 			f.close()
 		except (IOError, OSError, ParseError), e:
 			logging.exception("Couldn't read from '%s'" % filename, e)
@@ -546,8 +550,34 @@ if portdir_overlay != portdir:
 	kwlist.update(portage.grabfile(
 		os.path.join(portdir_overlay, "profiles", "arch.list")))
 
-scanlist = utilities.FindPackagesToScan(repoman_settings, startdir, reposplit)
+scanlist=[]
+if repolevel==2:
+	#we are inside a category directory
+	catdir=reposplit[-1]
+	if catdir not in repoman_settings.categories:
+		caterror(catdir)
+	mydirlist=os.listdir(startdir)
+	for x in mydirlist:
+		if x == "CVS" or x.startswith("."):
+			continue
+		if os.path.isdir(startdir+"/"+x):
+			scanlist.append(catdir+"/"+x)
+elif repolevel==1:
+	for x in repoman_settings.categories:
+		if not os.path.isdir(startdir+"/"+x):
+			continue
+		for y in os.listdir(startdir+"/"+x):
+			if y == "CVS" or y.startswith("."):
+				continue
+			if os.path.isdir(startdir+"/"+x+"/"+y):
+				scanlist.append(x+"/"+y)
+elif repolevel==3:
+	catdir = reposplit[-2]
+	if catdir not in repoman_settings.categories:
+		caterror(catdir)
+	scanlist.append(catdir+"/"+reposplit[-1])
 scanlist.sort()
+
 logging.debug("Found the following packages to scan:\n%s" % '\n'.join(scanlist))
 
 profiles={}

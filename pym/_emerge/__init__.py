@@ -1456,6 +1456,7 @@ class depgraph(object):
 		self._reinstall_nodes = {}
 		self.mydbapi = {}
 		self.trees = {}
+		self._trees_orig = trees
 		self.roots = {}
 		# Contains a filtered view of preferred packages that are selected
 		# from available repositories.
@@ -2150,6 +2151,35 @@ class depgraph(object):
 					cpv=mykey, metadata=metadata, onlydeps=onlydeps)
 				args.append(PackageArg(arg=x, package=pkg,
 					root_config=root_config))
+			elif x.startswith(os.path.sep):
+				if not x.startswith(myroot):
+					portage.writemsg(("\n\n!!! '%s' does not start with" + \
+						" $ROOT.\n") % x, noiselevel=-1)
+					return 0, []
+				relative_path = x[len(myroot):]
+				vartree = self._trees_orig[myroot]["vartree"]
+				owner_cpv = None
+				for cpv in vardb.cpv_all():
+					self.spinner.update()
+					cat, pf = portage.catsplit(cpv)
+					if portage.dblink(cat, pf, myroot,
+						pkgsettings, vartree=vartree).isowner(
+						relative_path, myroot):
+						owner_cpv = cpv
+						break
+				if owner_cpv is None:
+					portage.writemsg(("\n\n!!! '%s' is not claimed " + \
+						"by any package.\n") % x, noiselevel=-1)
+					return 0, []
+				slot = vardb.aux_get(owner_cpv, ["SLOT"])[0]
+				if not slot:
+					# portage now masks packages with missing slot, but it's
+					# possible that one was installed by an older version
+					atom = portage.cpv_getkey(owner_cpv)
+				else:
+					atom = "%s:%s" % (portage.cpv_getkey(owner_cpv), slot)
+				args.append(AtomArg(arg=atom, atom=atom,
+					root_config=root_config))
 			else:
 				if x in ("system", "world"):
 					x = SETPREFIX + x
@@ -2520,6 +2550,8 @@ class depgraph(object):
 		portdb = self.roots[root].trees["porttree"].dbapi
 		dbs = self._filtered_trees[root]["dbs"]
 		for db, pkg_type, built, installed, db_keys in dbs:
+			if installed:
+				continue
 			match = db.match
 			if hasattr(db, "xmatch"):
 				cpv_list = db.xmatch("match-all", atom)
@@ -3352,7 +3384,7 @@ class depgraph(object):
 				# have no parents and thus can not be part of a cycle.
 				while True:
 					root_nodes = mygraph.root_nodes(
-						ignore_priority=DepPriority.SOFT)
+						ignore_priority=DepPriority.MEDIUM_SOFT)
 					if not root_nodes:
 						break
 					for node in root_nodes:
