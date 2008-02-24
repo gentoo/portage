@@ -105,7 +105,8 @@ class NewsManager(object):
 				skiplist.append(item.name)
 			unread_file.close()
 		finally:
-			unlockfile(unread_lock)
+			if unread_lock:
+				unlockfile(unread_lock)
 			write_atomic(skipfile, "\n".join(skiplist)+"\n")
 		try:
 			apply_permissions(filename=skipfile, 
