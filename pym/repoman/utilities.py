@@ -45,7 +45,7 @@ def detect_vcs_conflicts(options, vcs):
 	if vcs == 'svn':
 		logging.info("Performing a " + output.green("svn status -u") + \
 			" with a little magic grep to check for updates.")
-		retval = getstatusoutput("svn status -u 2>&1 | " + \
+		retval = commands.getstatusoutput("svn status -u 2>&1 | " + \
 			"egrep -v '^.  +.*/digest-[^/]+' | " + \
 			"head -n-1")
 
