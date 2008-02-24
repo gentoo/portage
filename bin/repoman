@@ -1724,7 +1724,7 @@ else:
 		sys.stderr.write("Failed to insert portage version in message!\n")
 		sys.stderr.flush()
 		portage_version = "Unknown"
-	unameout=getstatusoutput("uname -srp")[1]
+	unameout = commands.getstatusoutput("uname -srp")[1]
 	commitmessage+="\n(Portage version: "+str(portage_version)+"/"+vcs+"/"+unameout
 	if options.force:
 		commitmessage += ", RepoMan options: --force"
