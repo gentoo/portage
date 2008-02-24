@@ -1080,7 +1080,7 @@ def visible(pkgsettings, cpv, metadata, built=False, installed=False):
 	if built and not installed and \
 		metadata["CHOST"] != pkgsettings["CHOST"]:
 		return False
-	if built:
+	if built and not installed:
 		# we can have an old binary which has no EPREFIX information
 		if "EPREFIX" not in metadata or not metadata["EPREFIX"]:
 			return False
