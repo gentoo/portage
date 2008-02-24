@@ -123,7 +123,7 @@ def FindPackagesToScan(settings, startdir, reposplit):
 			p = os.path.join(path, d)
 
 			if os.path.isdir(p):
-				cat_pkg_dir = os.path.join(p.split(os.path.sep)[-2:])
+				cat_pkg_dir = os.path.join(*p.split(os.path.sep)[-2:])
 				logging.debug('adding %s to scanlist' % cat_pkg_dir)
 				ret.append(cat_pkg_dir)
 		return ret
@@ -152,7 +152,9 @@ def FindPackagesToScan(settings, startdir, reposplit):
 			logging.warn('%s is not a valid category according to profiles/categories, ' \
 			'skipping checks in %s' % (catdir, catdir))
 		else:
-			scanlist.append(os.path.join(catdir, pkgdir))
+			path = os.path.join(catdir, pkgdir)
+			logging.debug('adding %s to scanlist' % path)
+			scanlist.append(path)
 	return scanlist
 
 

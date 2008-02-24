@@ -9,6 +9,7 @@
 
 import commands
 import codecs
+import commands
 import errno
 import formatter
 import logging
@@ -21,7 +22,6 @@ import sys
 import tempfile
 import time
 
-from commands import getstatusoutput
 from itertools import izip
 from stat import S_ISDIR, ST_CTIME
 
@@ -984,7 +984,7 @@ for x in scanlist:
 		if xmllint_capable:
 			# xmlint can produce garbage output even on success, so only dump
 			# the ouput when it fails.
-			st, out = getstatusoutput(
+			st, out = commands.getstatusoutput(
 				"xmllint --nonet --noout --dtdvalid '%s' '%s'" % \
 				 (metadata_dtd, os.path.join(checkdir, "metadata.xml")))
 			if st != os.EX_OK:
@@ -1594,7 +1594,7 @@ else:
 	for myfile in myupdates:
 		if myfile in bin_blobs:
 			continue
-		myout=getstatusoutput("egrep -q "+headerstring+" "+myfile)
+		myout = commands.getstatusoutput("egrep -q "+headerstring+" "+myfile)
 		if myout[0]==0:
 			myheaders.append(myfile)
 
