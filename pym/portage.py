@@ -8004,7 +8004,8 @@ class dblink:
 		self.cat     = cat
 		self.pkg     = pkg
 		self.mycpv   = self.cat+"/"+self.pkg
-		self.mysplit = pkgsplit(self.mycpv)
+		self.mysplit = catpkgsplit(self.mycpv)[1:]
+		self.mysplit[0] = "%s/%s" % (self.cat, self.mysplit[0])
 		self.treetype = treetype
 		if vartree is None:
 			global db
