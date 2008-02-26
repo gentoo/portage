@@ -6664,33 +6664,39 @@ def action_depclean(settings, trees, ldpath_mtimes,
 						if cpv in clean_set:
 							graph.add(cpv, node, priority=priority)
 
-		# Order nodes from lowest to highest overall reference count for
-		# optimal root node selection.
-		node_refcounts = {}
-		for node in graph.order:
-			node_refcounts[node] = len(graph.parent_nodes(node))
-		def cmp_reference_count(node1, node2):
-			return node_refcounts[node1] - node_refcounts[node2]
-		graph.order.sort(cmp_reference_count)
-
-		ignore_priority_range = [None]
-		ignore_priority_range.extend(
-			xrange(UnmergeDepPriority.MIN, UnmergeDepPriority.MAX + 1))
-		while not graph.empty():
-			for ignore_priority in ignore_priority_range:
-				nodes = graph.root_nodes(ignore_priority=ignore_priority)
-				if nodes:
-					break
-			if not nodes:
-				raise AssertionError("no root nodes")
-			if ignore_priority is not None:
-				# Some deps have been dropped due to circular dependencies,
-				# so only pop one node in order do minimize the number that
-				# are dropped.
-				del nodes[1:]
-			for node in nodes:
-				graph.remove(node)
-				cleanlist.append(node)
+		if len(graph.order) == len(graph.root_nodes()):
+			# If there are no dependencies between packages
+			# then just unmerge them alphabetically.
+			cleanlist = graph.order[:]
+			cleanlist.sort()
+		else:
+			# Order nodes from lowest to highest overall reference count for
+			# optimal root node selection.
+			node_refcounts = {}
+			for node in graph.order:
+				node_refcounts[node] = len(graph.parent_nodes(node))
+			def cmp_reference_count(node1, node2):
+				return node_refcounts[node1] - node_refcounts[node2]
+			graph.order.sort(cmp_reference_count)
+	
+			ignore_priority_range = [None]
+			ignore_priority_range.extend(
+				xrange(UnmergeDepPriority.MIN, UnmergeDepPriority.MAX + 1))
+			while not graph.empty():
+				for ignore_priority in ignore_priority_range:
+					nodes = graph.root_nodes(ignore_priority=ignore_priority)
+					if nodes:
+						break
+				if not nodes:
+					raise AssertionError("no root nodes")
+				if ignore_priority is not None:
+					# Some deps have been dropped due to circular dependencies,
+					# so only pop one node in order do minimize the number that
+					# are dropped.
+					del nodes[1:]
+				for node in nodes:
+					graph.remove(node)
+					cleanlist.append(node)
 
 		unmerge(root_config, myopts,
 			"unmerge", cleanlist, ldpath_mtimes)
