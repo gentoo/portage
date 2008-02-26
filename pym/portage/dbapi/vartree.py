@@ -884,7 +884,8 @@ class dblink(object):
 		self.cat = cat
 		self.pkg = pkg
 		self.mycpv = self.cat + "/" + self.pkg
-		self.mysplit = pkgsplit(self.mycpv)
+		self.mysplit = list(catpkgsplit(self.mycpv)[1:])
+		self.mysplit[0] = "%s/%s" % (self.cat, self.mysplit[0])
 		self.treetype = treetype
 		if vartree is None:
 			from portage import db
