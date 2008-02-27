@@ -1103,7 +1103,7 @@ def get_mask_info(root_config, cpv, pkgsettings,
 		metadata = None
 	if metadata and not built:
 		pkgsettings.setcpv(cpv, mydb=metadata)
-		metadata["USE"] = pkgsettings.get("USE", "")
+		metadata["USE"] = pkgsettings["PORTAGE_USE"]
 	if metadata is None:
 		mreasons = ["corruption"]
 	else:
@@ -2119,7 +2119,7 @@ class depgraph(object):
 				metadata = dict(izip(self._mydbapi_keys,
 					portdb.aux_get(mykey, self._mydbapi_keys)))
 				pkgsettings.setcpv(mykey, mydb=metadata)
-				metadata["USE"] = pkgsettings["USE"]
+				metadata["USE"] = pkgsettings["PORTAGE_USE"]
 				pkg = Package(type_name="ebuild", root=myroot,
 					cpv=mykey, metadata=metadata, onlydeps=onlydeps)
 				args.append(PackageArg(arg=x, package=pkg,
@@ -2427,7 +2427,7 @@ class depgraph(object):
 					if not built:
 						if (is_virt or "?" in metadata["LICENSE"]):
 							pkgsettings.setcpv(cpv, mydb=metadata)
-							metadata["USE"] = pkgsettings["USE"]
+							metadata["USE"] = pkgsettings["PORTAGE_USE"]
 						else:
 							metadata["USE"] = ""
 
@@ -2615,7 +2615,7 @@ class depgraph(object):
 					if not built:
 						if "?" in metadata["LICENSE"]:
 							pkgsettings.setcpv(cpv, mydb=metadata)
-							metadata["USE"] = pkgsettings.get("USE","")
+							metadata["USE"] = pkgsettings["PORTAGE_USE"]
 						else:
 							metadata["USE"] = ""
 					myarg = None
@@ -2672,7 +2672,7 @@ class depgraph(object):
 							pkgsettings.setcpv(myeb, mydb=mydb)
 						else:
 							pkgsettings.setcpv(cpv, mydb=mydb)
-						now_use = pkgsettings["USE"].split()
+						now_use = pkgsettings["PORTAGE_USE"].split()
 						forced_flags = set()
 						forced_flags.update(pkgsettings.useforce)
 						forced_flags.update(pkgsettings.usemask)
@@ -2698,7 +2698,7 @@ class depgraph(object):
 						old_use = vardb.aux_get(cpv, ["USE"])[0].split()
 						old_iuse = set(filter_iuse_defaults(
 							vardb.aux_get(cpv, ["IUSE"])[0].split()))
-						cur_use = pkgsettings["USE"].split()
+						cur_use = pkgsettings["PORTAGE_USE"].split()
 						cur_iuse = set(filter_iuse_defaults(
 							metadata["IUSE"].split()))
 						reinstall_for_flags = \
@@ -2729,7 +2729,7 @@ class depgraph(object):
 						db.aux_get(cpv, self._mydbapi_keys)))
 					if not built:
 						pkgsettings.setcpv(cpv, mydb=metadata)
-						metadata["USE"] = pkgsettings.get("USE","")
+						metadata["USE"] = pkgsettings["PORTAGE_USE"]
 						myeb = cpv
 					matched_packages.append(
 						Package(type_name=pkg_type, root=root,
@@ -3652,7 +3652,7 @@ class depgraph(object):
 					repo_path_real = os.path.dirname(os.path.dirname(
 						os.path.dirname(ebuild_path)))
 					pkgsettings.setcpv(pkg_key, mydb=mydbapi)
-					metadata["USE"] = pkgsettings["USE"]
+					metadata["USE"] = pkgsettings["PORTAGE_USE"]
 				else:
 					repo_path_real = portdb.getRepositoryPath(repo_name)
 				pkg_use = metadata["USE"].split()
@@ -4242,7 +4242,7 @@ class depgraph(object):
 			if pkg_type == "ebuild":
 				pkgsettings = self.pkgsettings[myroot]
 				pkgsettings.setcpv(pkg_key, mydb=fakedb[myroot])
-				fakedb[myroot].aux_update(pkg_key, {"USE":pkgsettings["USE"]})
+				fakedb[myroot].aux_update(pkg_key, {"USE":pkgsettings["PORTAGE_USE"]})
 			self.spinner.update()
 
 class RepoDisplay(object):
@@ -4532,7 +4532,7 @@ class MergeTask(object):
 				metadata.update(izip(metadata_keys,
 					mydbapi.aux_get(pkg_key, metadata_keys)))
 				pkgsettings.setcpv(pkg_key, mydb=mydbapi)
-				metadata["USE"] = pkgsettings["USE"]
+				metadata["USE"] = pkgsettings["PORTAGE_USE"]
 			else:
 				if pkg_type == "binary":
 					mydbapi = bindb
@@ -6203,7 +6203,7 @@ def action_info(settings, trees, myopts, myfiles):
 			if x != "USE":
 				print '%s="%s"' % (x, settings[x])
 			else:
-				use = set(settings["USE"].split())
+				use = set(settings["PORTAGE_USE"].split())
 				use_expand = settings["USE_EXPAND"].split()
 				use_expand.sort()
 				for varname in use_expand:
@@ -6282,7 +6282,7 @@ def action_info(settings, trees, myopts, myfiles):
 			if portdb.cpv_exists(pkg):
 				mydb = portdb
 			pkgsettings.setcpv(pkg, mydb=mydb)
-			if valuesmap["IUSE"].intersection(pkgsettings["USE"].split()) != \
+			if valuesmap["IUSE"].intersection(pkgsettings["PORTAGE_USE"].split()) != \
 				valuesmap["USE"]:
 				diff_values["USE"] = valuesmap["USE"]
 			# If a difference was found, print the info for
