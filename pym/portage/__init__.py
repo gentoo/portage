@@ -1292,7 +1292,7 @@ class config(object):
 
 			# Blacklist vars that could interfere with portage internals.
 			for blacklisted in "CATEGORY", "PKGUSE", "PORTAGE_CONFIGROOT", \
-				"ROOT":
+				"PORTAGE_IUSE", "PORTAGE_USE", "ROOT":
 				for cfg in self.lookuplist:
 					cfg.pop(blacklisted, None)
 			del blacklisted, cfg
@@ -1836,6 +1836,7 @@ class config(object):
 		self.modifying()
 		if self.mycpv == mycpv:
 			return
+		ebuild_phase = self.get("EBUILD_PHASE")
 		has_changed = False
 		self.mycpv = mycpv
 		cp = dep_getkey(mycpv)
@@ -1923,6 +1924,63 @@ class config(object):
 		self.configdict["pkg"]["CATEGORY"] = mycpv.split("/")[0]
 		if has_changed:
 			self.reset(keeping_pkg=1,use_cache=use_cache)
+
+		# Filter out USE flags that aren't part of IUSE. This has to
+		# be done for every setcpv() call since practically every
+		# package has different IUSE. Some flags are considered to
+		# be implicit members of IUSE:
+		#
+		#  * Flags derived from ARCH
+		#  * Flags derived from USE_EXPAND_HIDDEN variables
+		#  * Masked flags, such as those from {,package}use.mask
+		#  * Forced flags, such as those from {,package}use.force
+		#  * build and bootstrap flags used by bootstrap.sh
+
+		usesplit = self["USE"].split()
+		iuse_implicit = set(x.lstrip("+-") for x in iuse.split())
+
+		# Flags derived from ARCH.
+		arch = self.configdict["defaults"].get("ARCH")
+		if arch:
+			iuse_implicit.add(arch)
+		iuse_implicit.update(self.get("PORTAGE_ARCHLIST", "").split())
+
+		# Flags derived from USE_EXPAND_HIDDEN variables
+		# such as ELIBC, KERNEL, and USERLAND.
+		use_expand_hidden = self.get("USE_EXPAND_HIDDEN", "").split()
+		use_expand_hidden_raw = use_expand_hidden
+		if use_expand_hidden:
+			use_expand_hidden = re.compile("^(%s)_.*" % \
+				("|".join(x.lower() for x in use_expand_hidden)))
+			for x in usesplit:
+				if use_expand_hidden.match(x):
+					iuse_implicit.add(x)
+
+		# Flags that have been masked or forced.
+		iuse_implicit.update(self.usemask)
+		iuse_implicit.update(self.useforce)
+
+		# build and bootstrap flags used by bootstrap.sh
+		iuse_implicit.add("build")
+		iuse_implicit.add("bootstrap")
+
+		if ebuild_phase:
+			iuse_grep = iuse_implicit.copy()
+			if use_expand_hidden_raw:
+				for x in use_expand_hidden_raw:
+					iuse_grep.add(x.lower() + "_.*")
+			if iuse_grep:
+				iuse_grep = "^(%s)$" % "|".join(sorted(iuse_grep))
+			else:
+				iuse_grep = ""
+			self.configdict["pkg"]["PORTAGE_IUSE"] = iuse_grep
+
+		# Filtered for the ebuild environment. Store this in a separate
+		# attribute since we still want to be able to see global USE
+		# settings for things like emerge --info.
+		self.configdict["pkg"]["PORTAGE_USE"] = " ".join(sorted(
+			x for x in usesplit if \
+			x in iuse_implicit))
 
 	def getMaskAtom(self, cpv, metadata):
 		"""
@@ -2135,7 +2193,7 @@ class config(object):
 			return
 		if isinstance(mydbapi, portdbapi):
 			self.setcpv(mycpv, mydb=mydbapi)
-			myuse = self["USE"]
+			myuse = self["PORTAGE_USE"]
 		elif isinstance(mydbapi, dict):
 			myuse = mydbapi["USE"]
 		else:
@@ -2415,63 +2473,8 @@ class config(object):
 		if arch and arch not in usesplit:
 			usesplit.append(arch)
 
-		# Filter out USE flags that aren't part of IUSE. Some
-		# flags are considered to be implicit members of IUSE:
-		#
-		#  * Flags derived from ARCH
-		#  * Flags derived from USE_EXPAND_HIDDEN variables
-		#  * Masked flags, such as those from {,package}use.mask
-		#  * Forced flags, such as those from {,package}use.force
-		#  * build and bootstrap flags used by bootstrap.sh
-
-		# Do this even when there's no package since setcpv() can
-		# optimize away regenerate() calls.
-		iuse_implicit = set(iuse)
-
-		# Flags derived from ARCH.
-		if arch:
-			iuse_implicit.add(arch)
-		iuse_implicit.update(self.get("PORTAGE_ARCHLIST", "").split())
-
-		# Flags derived from USE_EXPAND_HIDDEN variables
-		# such as ELIBC, KERNEL, and USERLAND.
-		use_expand_hidden = self.get("USE_EXPAND_HIDDEN", "").split()
-		use_expand_hidden_raw = use_expand_hidden
-		if use_expand_hidden:
-			use_expand_hidden = re.compile("^(%s)_.*" % \
-				("|".join(x.lower() for x in use_expand_hidden)))
-			for x in usesplit:
-				if use_expand_hidden.match(x):
-					iuse_implicit.add(x)
-
-		# Flags that have been masked or forced.
-		iuse_implicit.update(self.usemask)
-		iuse_implicit.update(self.useforce)
-
-		# build and bootstrap flags used by bootstrap.sh
-		iuse_implicit.add("build")
-		iuse_implicit.add("bootstrap")
-
-		iuse_grep = iuse_implicit.copy()
-		if use_expand_hidden_raw:
-			for x in use_expand_hidden_raw:
-				iuse_grep.add(x.lower() + "_.*")
-		if iuse_grep:
-			iuse_grep = "^(%s)$" % "|".join(sorted(iuse_grep))
-		else:
-			iuse_grep = ""
-		self["PORTAGE_IUSE"] = iuse_grep
-
 		usesplit = [x for x in usesplit if \
 			x not in self.usemask]
-
-		# Filtered for the ebuild environment. Store this in a separate
-		# attribute since we still want to be able to see global USE
-		# settings for things like emerge --info.
-		self["PORTAGE_USE"] = " ".join(sorted(
-			x for x in usesplit if \
-			x in iuse_implicit))
-		self.backup_changes("PORTAGE_USE")
 
 		usesplit.sort()
 		self.configlist[-1]["USE"]= " ".join(usesplit)
@@ -2700,7 +2703,7 @@ class config(object):
 	def selinux_enabled(self):
 		if getattr(self, "_selinux_enabled", None) is None:
 			self._selinux_enabled = 0
-			if "selinux" in self["USE"].split():
+			if "selinux" in self["PORTAGE_USE"].split():
 				if "selinux" in globals():
 					if selinux.is_selinux_enabled() == 1:
 						self._selinux_enabled = 1
@@ -5393,7 +5396,7 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 	if use=="yes":
 		if myuse is None:
 			#default behavior
-			myusesplit = mysettings["USE"].split()
+			myusesplit = mysettings["PORTAGE_USE"].split()
 		else:
 			myusesplit = myuse
 			# We've been given useflags to use.
@@ -5718,7 +5721,7 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 			return ["corruption"]
 		if "?" in metadata["LICENSE"]:
 			settings.setcpv(p, mydb=metadata)
-			metadata["USE"] = settings.get("USE", "")
+			metadata["USE"] = settings["PORTAGE_USE"]
 		else:
 			metadata["USE"] = ""
 	mycp=mysplit[0]+"/"+mysplit[1]
