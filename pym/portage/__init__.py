@@ -2135,7 +2135,7 @@ class config(object):
 			return
 		if isinstance(mydbapi, portdbapi):
 			self.setcpv(mycpv, mydb=mydbapi)
-			myuse = self["PORTAGE_USE"]
+			myuse = self["USE"]
 		elif isinstance(mydbapi, dict):
 			myuse = mydbapi["USE"]
 		else:
@@ -2700,7 +2700,7 @@ class config(object):
 	def selinux_enabled(self):
 		if getattr(self, "_selinux_enabled", None) is None:
 			self._selinux_enabled = 0
-			if "selinux" in self["PORTAGE_USE"].split():
+			if "selinux" in self["USE"].split():
 				if "selinux" in globals():
 					if selinux.is_selinux_enabled() == 1:
 						self._selinux_enabled = 1
@@ -5393,7 +5393,7 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 	if use=="yes":
 		if myuse is None:
 			#default behavior
-			myusesplit = mysettings["PORTAGE_USE"].split()
+			myusesplit = mysettings["USE"].split()
 		else:
 			myusesplit = myuse
 			# We've been given useflags to use.
@@ -5718,7 +5718,7 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 			return ["corruption"]
 		if "?" in metadata["LICENSE"]:
 			settings.setcpv(p, mydb=metadata)
-			metadata["USE"] = settings["PORTAGE_USE"]
+			metadata["USE"] = settings.get("USE", "")
 		else:
 			metadata["USE"] = ""
 	mycp=mysplit[0]+"/"+mysplit[1]
