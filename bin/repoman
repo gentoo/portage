@@ -1767,6 +1767,9 @@ for x in scanlist:
 				
 			for prof in profiles[arch]:
 
+				if prof[1] not in ("stable", "dev"):
+					continue
+
 				profdir = portdir+"/profiles/"+prof[0]
 	
 				if prof[0] in arch_caches:
