@@ -6203,7 +6203,7 @@ def action_info(settings, trees, myopts, myfiles):
 			if x != "USE":
 				print '%s="%s"' % (x, settings[x])
 			else:
-				use = set(settings["PORTAGE_USE"].split())
+				use = set(settings["USE"].split())
 				use_expand = settings["USE_EXPAND"].split()
 				use_expand.sort()
 				for varname in use_expand:
