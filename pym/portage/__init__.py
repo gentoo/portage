@@ -1913,7 +1913,7 @@ class config(object):
 			if "test" in self.features:
 				test_use_changed = \
 					bool(re.search(r'(^|\s)[-+]?test(\s|$)', iuse)) != \
-					("test" in self.get("PORTAGE_USE","").split())
+					("test" in self["USE"].split())
 			if self.get("EBUILD_PHASE") or \
 				self._use_wildcards or \
 				test_use_changed:
@@ -2677,7 +2677,7 @@ class config(object):
 						mydict[k] = v
 
 		# Filtered by IUSE and implicit IUSE.
-		mydict["USE"] = self["PORTAGE_USE"]
+		mydict["USE"] = self.get("PORTAGE_USE", "")
 
 		# sandbox's bashrc sources /etc/profile which unsets ROOTPATH,
 		# so we have to back it up and restore it.
@@ -2703,7 +2703,7 @@ class config(object):
 	def selinux_enabled(self):
 		if getattr(self, "_selinux_enabled", None) is None:
 			self._selinux_enabled = 0
-			if "selinux" in self["PORTAGE_USE"].split():
+			if "selinux" in self["USE"].split():
 				if "selinux" in globals():
 					if selinux.is_selinux_enabled() == 1:
 						self._selinux_enabled = 1
