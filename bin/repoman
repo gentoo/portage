@@ -236,13 +236,6 @@ def ParseArgs(args, qahelp):
 qahelp={
 	"CVS/Entries.IO_error":"Attempting to commit, and an IO error was encountered access the Entries file",
 	"desktop.invalid":"desktop-file-validate reports errors in a *.desktop file",
-	"digest.partial":"Digest files do not contain all corresponding URI elements",
-	"digest.assumed":"Existing digest must be assumed correct (Package level only)",
-	"digestentry.unused":"Digest/Manifest entry has no matching SRC_URI entry",
-	"digest.fail":"Digest does not match the specified local file",
-	"digest.stray":"Digest files that do not have a corresponding ebuild",
-	"digest.missing":"Digest files that are missing (ebuild exists, digest doesn't)",
-	"digest.unmatch":"Digests which are incomplete (please check if your USE/ARCH includes all files)",
 	"ebuild.invalidname":"Ebuild files with a non-parseable or syntactically incorrect name (or using 2.1 versioning extensions)",
 	"ebuild.namenomatch":"Ebuild files that do not have the same name as their parent directory",
 	"changelog.missing":"Missing ChangeLog files",
@@ -315,9 +308,6 @@ qawarnings=[
 "ebuild.allmasked",
 "ebuild.nesteddie",
 "desktop.invalid",
-"digest.assumed",
-"digest.missing",
-"digestentry.unused",
 "DEPEND.badmasked","RDEPEND.badmasked","PDEPEND.badmasked",
 "DEPEND.badindev","RDEPEND.badindev","PDEPEND.badindev",
 "DEPEND.badmaskedindev","RDEPEND.badmaskedindev","PDEPEND.badmaskedindev",
@@ -542,7 +532,6 @@ if not kwlist:
 	logging.fatal("Couldn't read KEYWORDS from arch.list")
 	sys.exit(1)
 
-manifest1_compat = False
 if portdir_overlay != portdir:
 	kwlist.update(portage.grabfile(
 		os.path.join(portdir_overlay, "profiles", "arch.list")))
@@ -780,9 +769,6 @@ for x in scanlist:
 	has_filesdir = True
 	if not os.path.isdir(os.path.join(checkdir, "files")):
 		has_filesdir = False
-		if manifest1_compat:
-			stats["filedir.missing"] += 1
-			fails["filedir.missing"].append(checkdir)
 
 	if isCvs:
 		try:
@@ -856,67 +842,6 @@ for x in scanlist:
 
 	if os.path.exists(checkdir+"/files"):
 		filesdirlist=os.listdir(checkdir+"/files")
-		if manifest1_compat:
-			for y in filesdirlist:
-				if not y.startswith("digest-"):
-					continue
-				relative_path = os.path.join(x, "files", y)
-				full_path = os.path.join(repodir, relative_path)
-				if stat.S_IMODE(os.stat(full_path).st_mode) & 0111:
-					stats["file.executable"] += 1
-					fails["file.executable"].append(x+"/files/"+y)
-				
-				mykey = catdir + "/" + y[7:]
-				if y[7:] not in ebuildlist:
-					#stray digest
-					if options.mode == "fix":
-						if options.pretend:
-							print "(cd "+repodir+"/"+x+"/files; cvs rm -f "+y+")"
-						else:
-							os.system("(cd "+repodir+"/"+x+"/files; cvs rm -f "+y+")")
-					else:
-						stats["digest.stray"]=stats["digest.stray"]+1
-						fails["digest.stray"].append(x+"/files/"+y)
-				else:
-					# We have an ebuild
-					try:
-						myuris, myfiles = portdb.getfetchlist(mykey, all=True)
-					except portage.exception.InvalidDependString, e:
-						# Already handled above.
-						continue
-
-					uri_dict = {}
-					for myu in myuris:
-						myubn = os.path.basename(myu)
-						if myubn not in uri_dict:
-							uri_dict[myubn]  = [myu]
-						else:
-							uri_dict[myubn] += [myu]
-
-					for myf in uri_dict:
-						myff = repoman_settings["DISTDIR"] + "/" + myf
-						if not mydigests.has_key(myf):
-							uri_settings = portage.config(clone=repoman_settings)
-							if options.mode == "fix":
-								if not portage.fetch(uri_dict[myf], uri_settings):
-									stats["digest.unmatch"] += 1
-									fails["digest.unmatch"].append(y+"::"+myf)
-								else:
-									eb_name = portdb.findname2(mykey)[0]
-									portage.doebuild(eb_name, "digest", "/",
-										uri_settings, tree="porttree",
-										mydbapi=portdb)
-							else:
-								stats["digest.partial"] += 1
-								fails["digest.partial"].append(y+"::"+myf)
-						elif "assume-digests" not in repoman_settings.features:
-							if os.path.exists(myff):
-								if not portage.checksum.verify_all(myff, mydigests[myf])[0]:
-									stats["digest.fail"] += 1
-									fails["digest.fail"].append(y+"::"+myf)
-							elif repolevel == 3:
-								stats["digest.assumed"] += 1
-								fails["digest.assumed"].append(y+"::"+myf)
 
 		# recurse through files directory
 		# use filesdirlist as a stack, appending directories as needed so people can't hide > 20k files in a subdirectory.
@@ -1008,20 +933,6 @@ for x in scanlist:
 			if y in dadded:
 				stats["ebuild.disjointed"]=stats["ebuild.disjointed"]+1
 				fails["ebuild.disjointed"].append(x+"/"+y+".ebuild")
-		if manifest1_compat and \
-			not os.path.exists(os.path.join(checkdir, "files", "digest-"+y)):
-			if options.mode == "fix":
-				if options.pretend:
-					print "You will need to run:"
-					print "  /usr/bin/ebuild "+repodir+"/"+x+"/"+y+".ebuild digest"
-				else:
-					retval=os.system("/usr/bin/ebuild "+repodir+"/"+x+"/"+y+".ebuild digest")
-					if retval:
-						print "!!! Exiting on ebuild digest (shell) error code:",retval
-						sys.exit(retval)
-			else:
-				stats["digest.missing"]=stats["digest.missing"]+1
-				fails["digest.missing"].append(x+"/files/digest-"+y)
 		myesplit=portage.pkgsplit(y)
 		if myesplit is None or myesplit[0] != x.split("/")[-1]:
 			stats["ebuild.invalidname"]=stats["ebuild.invalidname"]+1
@@ -1507,20 +1418,6 @@ else:
 
 	if options.pretend:
 		print green("RepoMan sez:"), "\"So, you want to play it safe. Good call.\"\n"
-
-	if fails["digest.missing"]:
-		print green("Creating missing digests...")
-	for x in fails["digest.missing"]:
-		xs=x.split("/")
-		del xs[-2]
-		myeb="/".join(xs[:-1])+"/"+xs[-1][7:]
-		if options.pretend:
-			print "(ebuild "+portdir+"/"+myeb+".ebuild digest)"
-		else:
-			retval=os.system("ebuild "+portdir+"/"+myeb+".ebuild digest")
-			if retval:
-				print "!!! Exiting on ebuild digest (shell) error code:",retval
-				sys.exit(retval)
 
 	mycvstree=portage.cvstree.getentries("./",recursive=1)
 	if isCvs and not mycvstree:

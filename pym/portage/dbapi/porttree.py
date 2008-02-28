@@ -146,18 +146,6 @@ class portdbapi(dbapi):
 		for x in self.auxdb.values():
 			x.sync()
 
-	def finddigest(self,mycpv):
-		try:
-			mydig = self.findname2(mycpv)[0]
-			if not mydig:
-				return ""
-			mydigs = mydig.split("/")[:-1]
-			mydig = "/".join(mydigs)
-			mysplit = mycpv.split("/")
-		except OSError:
-			return ""
-		return mydig+"/files/digest-"+mysplit[-1]
-
 	def findLicensePath(self, license_name):
 		mytrees = self.porttrees[:]
 		mytrees.reverse()

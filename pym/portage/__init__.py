@@ -3627,7 +3627,7 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
 					for filename in auto_assumed:
 						if filename in fetchlist:
 							writemsg_stdout(
-								"   digest-%s::%s\n" % (pv, filename))
+								"   %s::%s\n" % (pv, filename))
 		return 1
 	finally:
 		_doebuild_manifest_exempt_depend -= 1
