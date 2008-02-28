@@ -5191,9 +5191,9 @@ def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 						regen_infodirs.append(inforoot)
 
 		if not regen_infodirs:
-			portage.writemsg_stdout(" "+green("*")+" GNU info directory index is up-to-date.\n")
+			portage.writemsg_stdout("\n "+green("*")+" GNU info directory index is up-to-date.\n")
 		else:
-			portage.writemsg_stdout(" "+green("*")+" Regenerating GNU info directory index...\n")
+			portage.writemsg_stdout("\n "+green("*")+" Regenerating GNU info directory index...\n")
 
 			dir_extensions = ("", ".gz", ".bz2")
 			icount=0
@@ -5378,6 +5378,7 @@ def post_emerge(trees, mtimedb, retval):
 	display_news_notification(trees)
 	
 	if vardbapi.plib_registry.hasEntries():
+		print
 		print colorize("WARN", "!!!") + " existing preserved libs:"
 		plibdata = vardbapi.plib_registry.getPreservedLibs()
 		for cpv in plibdata:
@@ -5432,7 +5433,7 @@ def chk_updated_cfg_files(target_root, config_protect):
 					del files[-1]
 				if files:
 					procount += 1
-					print colorize("WARN", " * IMPORTANT:"),
+					print "\n"+colorize("WARN", " * IMPORTANT:"),
 					if stat.S_ISDIR(mymode):
 						 print "%d config files in '%s' need updating." % \
 							(len(files), x)
