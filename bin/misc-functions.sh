@@ -491,6 +491,10 @@ preinst_suid_scan() {
 	# total suid control.
 	if hasq suidctl $FEATURES; then
 		sfconf=${PORTAGE_CONFIGROOT}etc/portage/suidctl.conf
+		# sandbox prevents us from writing directly
+		# to files outside of the sandbox, but this
+		# can easly be bypassed using the addwrite() function
+		addwrite "${sfconf}"
 		vecho ">>> Performing suid scan in ${D}"
 		for i in $(find "${D}" -type f \( -perm -4000 -o -perm -2000 \) ); do
 			if [ -s "${sfconf}" ]; then
@@ -504,10 +508,6 @@ preinst_suid_scan() {
 					ls_ret=$(ls -ldh "${i}")
 					chmod ugo-s "${i}"
 					grep "^#${i/${D}}$" "${sfconf}" > /dev/null || {
-						# sandbox prevents us from writing directly
-						# to files outside of the sandbox, but this
-						# can easly be bypassed using the addwrite() function
-						addwrite "${sfconf}"
 						vecho ">>> Appending commented out entry to ${sfconf} for ${PF}"
 						echo "## ${ls_ret%${D}*}${ls_ret#*${D}}" >> "${sfconf}"
 						echo "#${i/${D}}" >> "${sfconf}"
