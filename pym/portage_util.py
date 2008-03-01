@@ -16,6 +16,11 @@ except ImportError:
 if not hasattr(__builtins__, "set"):
 	from sets import Set as set
 
+try:
+	import cStringIO as StringIO
+except ImportError:
+	import StringIO
+
 noiselimit = 0
 
 def writemsg(mystr,noiselevel=0,fd=None):
@@ -291,6 +296,15 @@ def writedict(mydict,myfilename,writekey=True):
 		return 0
 	return 1
 
+class _tolerant_shlex(shlex.shlex):
+	def sourcehook(self, newfile):
+		try:
+			return shlex.shlex.sourcehook(self, newfile)
+		except EnvironmentError, e:
+			writemsg("!!! Parse error in '%s': source command failed: %s\n" % \
+				(self.infile, str(e)), noiselevel=-1)
+			return (newfile, StringIO.StringIO())
+
 def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 	mykeys={}
 	try:
@@ -302,10 +316,14 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 			raise
 		return None
 	try:
+		if tolerant:
+			shlex_class = _tolerant_shlex
+		else:
+			shlex_class = shlex.shlex
 		# The default shlex.sourcehook() implementation
 		# only joins relative paths when the infile
 		# attribute is properly set.
-		lex = shlex.shlex(f, infile=mycfg, posix=True)
+		lex = shlex_class(f, infile=mycfg, posix=True)
 		lex.wordchars=string.digits+string.letters+"~!@#$%*_\:;?,./-+{}"     
 		lex.quotes="\"'"
 		if allow_sourcing:
