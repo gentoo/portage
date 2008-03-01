@@ -50,21 +50,6 @@ def parseManifest2(mysplit):
 		myentry = Manifest2Entry(type=mytype, name=myname, hashes=myhashes)
 	return myentry
 
-def parseManifest1(mysplit):
-	myentry = None
-	if len(mysplit) == 4 and mysplit[0] in ["size"] + portage.const.MANIFEST1_HASH_FUNCTIONS:
-		myname = mysplit[2]
-		mytype = None
-		mytype = guessManifestFileType(myname)
-		if mytype == "AUX":
-			if myname.startswith("files" + os.path.sep):
-				myname = myname[6:]
-		mysize = int(mysplit[3])
-		myhashes = {mysplit[0]: mysplit[1]}
-		myhashes["size"] = mysize
-		myentry = Manifest1Entry(type=mytype, name=myname, hashes=myhashes)
-	return myentry
-
 class ManifestEntry(object):
 	__slots__ = ("type", "name", "hashes")
 	def __init__(self, **kwargs):
@@ -74,17 +59,6 @@ class ManifestEntry(object):
 		if str(self) == str(other):
 			return 0
 		return 1
-
-class Manifest1Entry(ManifestEntry):
-	def __str__(self):
-		for hashkey in self.hashes:
-			if hashkey != "size":
-				break
-		hashvalue = self.hashes[hashkey]
-		myname = self.name
-		if self.type == "AUX" and not myname.startswith("files" + os.sep):
-			myname = os.path.join("files", myname)
-		return " ".join([hashkey, str(hashvalue), myname, str(self.hashes["size"])])
 
 class Manifest2Entry(ManifestEntry):
 	def __str__(self):
@@ -97,7 +71,7 @@ class Manifest2Entry(ManifestEntry):
 		return myline
 
 class Manifest(object):
-	parsers = (parseManifest2, parseManifest1)
+	parsers = (parseManifest2,)
 	def __init__(self, pkgdir, distdir, fetchlist_dict=None,
 		manifest1_compat=False, from_scratch=False):
 		""" create new Manifest instance for package in pkgdir
@@ -110,16 +84,15 @@ class Manifest(object):
 		self.hashes = set()
 		self.hashes.update(portage.const.MANIFEST2_HASH_FUNCTIONS)
 		if manifest1_compat:
-			self.hashes.update(portage.const.MANIFEST1_HASH_FUNCTIONS)
+			raise NotImplementedError("manifest1 support has been removed")
 		self.hashes.difference_update(hashname for hashname in \
 			list(self.hashes) if hashname not in hashfunc_map)
 		self.hashes.add("size")
 		if manifest1_compat:
-			self.hashes.add(portage.const.MANIFEST1_REQUIRED_HASH)
+			raise NotImplementedError("manifest1 support has been removed")
 		self.hashes.add(portage.const.MANIFEST2_REQUIRED_HASH)
 		for t in portage.const.MANIFEST2_IDENTIFIERS:
 			self.fhashdict[t] = {}
-		self.compat = manifest1_compat
 		if not from_scratch:
 			self._read()
 		if fetchlist_dict != None:
@@ -144,26 +117,9 @@ class Manifest(object):
 		""" Similar to getDigests(), but restricted to files of the given type. """
 		return self.fhashdict[ftype]
 
-	def _readDigests(self, myhashdict=None):
-		""" Parse old style digest files for this Manifest instance """
-		if myhashdict is None:
-			myhashdict = {}
-		try:
-			for d in os.listdir(os.path.join(self.pkgdir, "files")):
-				if d.startswith("digest-"):
-					self._readManifest(os.path.join(self.pkgdir, "files", d), mytype="DIST",
-						myhashdict=myhashdict)
-		except (IOError, OSError), e:
-			if e.errno == errno.ENOENT:
-				pass
-			else:
-				raise
-		return myhashdict
-
 	def _readManifest(self, file_path, myhashdict=None, **kwargs):
-		"""Parse a manifest or an old style digest.  If myhashdict is given
-		then data will be added too it.  Otherwise, a new dict will be created
-		and returned."""
+		"""Parse a manifest.  If myhashdict is given then data will be added too it.
+		   Otherwise, a new dict will be created and returned."""
 		try:
 			fd = open(file_path, "r")
 			if myhashdict is None:
@@ -183,8 +139,6 @@ class Manifest(object):
 			self._readManifest(self.getFullname(), myhashdict=self.fhashdict)
 		except FileNotFound:
 			pass
-		if self.compat:
-			self._readDigests(myhashdict=self.fhashdict)
 
 	def _parseManifestLines(self, mylines):
 		"""Parse manifest lines and return a list of manifest entries."""
@@ -212,63 +166,6 @@ class Manifest(object):
 			myhashdict[myentry_type][myentry.name].update(myentry.hashes)
 		return myhashdict
 
-	def _writeDigests(self, force=False):
-		""" Create old style digest files for this Manifest instance """
-		cpvlist = [os.path.join(self._pkgdir_category(), x[:-7]) for x in os.listdir(self.pkgdir) if x.endswith(".ebuild")]
-		rval = []
-		try:
-			os.makedirs(os.path.join(self.pkgdir, "files"))
-		except OSError, oe:
-			if oe.errno == errno.EEXIST:
-				pass
-			else:
-				raise
-		for cpv in cpvlist:
-			dname = os.path.join(self.pkgdir, "files", "digest-%s" % self._catsplit(cpv)[1])
-			distlist = self._getCpvDistfiles(cpv)
-			missing_digests = set()
-			for f in distlist:
-				if f not in self.fhashdict["DIST"] or len(self.fhashdict["DIST"][f]) == 0:
-					missing_digests.add(f)
-			if missing_digests:
-				# This allows us to force remove of stale digests for the
-				# ebuild --force digest option.
-				distlist = [f for f in distlist if f not in missing_digests]
-			update_digest = True
-			if not force:
-				try:
-					f = open(dname, "r")
-					old_data = self._parseDigests(f)
-					f.close()
-					new_data = self._getDigestData(distlist)
-					if not old_data and not new_data:
-						# SRC_URI is empty
-						update_digest = False
-					elif len(old_data) == 1 and "DIST" in old_data:
-						if "DIST" in new_data:
-							for myfile in new_data["DIST"]:
-								for hashname in \
-									new_data["DIST"][myfile].keys():
-									if hashname != "size" and hashname not in \
-										portage.const.MANIFEST1_HASH_FUNCTIONS:
-										del new_data["DIST"][myfile][hashname]
-							if new_data["DIST"] == old_data["DIST"]:
-								update_digest = False
-				except (IOError, OSError), e:
-					if errno.ENOENT == e.errno:
-						pass
-					else:
-						raise
-			if update_digest:
-				mylines = self._createDigestLines1(distlist, self.fhashdict)
-				if mylines:
-					mylines = "\n".join(mylines) + "\n"
-				else:
-					mylines = ""
-				write_atomic(dname, mylines)
-			rval.append(dname)
-		return rval
-
 	def _getDigestData(self, distlist):
 		"""create a hash dict for a specific list of files"""
 		myhashdict = {}
@@ -279,32 +176,6 @@ class Manifest(object):
 					myhashdict[mytype].setdefault(myname, {})
 					myhashdict[mytype][myname].update(self.fhashdict[mytype][myname])
 		return myhashdict
-
-	def _createDigestLines1(self, distlist, myhashdict):
-		""" Create an old style digest file."""
-		mylines = []
-		myfiles = myhashdict["DIST"].keys()
-		myfiles.sort()
-		for f in myfiles:
-			if f in distlist:
-				myhashkeys = myhashdict["DIST"][f].keys()
-				myhashkeys.sort()
-				for h in myhashkeys:
-					if h not in portage.const.MANIFEST1_HASH_FUNCTIONS:
-						continue
-					myline = " ".join([h, str(myhashdict["DIST"][f][h]), f, str(myhashdict["DIST"][f]["size"])])
-					mylines.append(myline)
-		return mylines
-	
-	def _addDigestsToManifest(self, digests, fd):
-		""" Add entries for old style digest files to Manifest file """
-		mylines = []
-		for dname in digests:
-			myhashes = perform_multiple_checksums(dname, portage.const.MANIFEST1_HASH_FUNCTIONS+["size"])
-			for h in myhashes:
-				mylines.append((" ".join([h, str(myhashes[h]), os.path.join("files", os.path.basename(dname)), str(myhashes["size"])])))
-		fd.write("\n".join(mylines))
-		fd.write("\n")
 
 	def _createManifestEntries(self):
 		mytypes = self.fhashdict.keys()
@@ -321,36 +192,6 @@ class Manifest(object):
 					if h not in ["size"] + portage.const.MANIFEST2_HASH_FUNCTIONS:
 						del myentry.hashes[h]
 				yield myentry
-				if self.compat and t != "DIST":
-					mysize = self.fhashdict[t][f]["size"]
-					myhashes = self.fhashdict[t][f]
-					for h in myhashkeys:
-						if h not in portage.const.MANIFEST1_HASH_FUNCTIONS:
-							continue
-						yield Manifest1Entry(
-							type=t, name=f, hashes={"size":mysize, h:myhashes[h]})
-
-		if self.compat:
-			cvp_list = self.fetchlist_dict.keys()
-			cvp_list.sort()
-			manifest1_hashes = set(hashname for hashname in \
-				portage.const.MANIFEST1_HASH_FUNCTIONS \
-				if hashname in hashfunc_map)
-			manifest1_hashes.add(portage.const.MANIFEST1_REQUIRED_HASH)
-			manifest1_hashes.add("size")
-			for cpv in cvp_list:
-				digest_path = os.path.join("files", "digest-%s" % self._catsplit(cpv)[1])
-				dname = os.path.join(self.pkgdir, digest_path)
-				try:
-					myhashes = perform_multiple_checksums(dname, manifest1_hashes)
-					myhashkeys = myhashes.keys()
-					myhashkeys.sort()
-					for h in myhashkeys:
-						if h in portage.const.MANIFEST1_HASH_FUNCTIONS:
-							yield Manifest1Entry(type="AUX", name=digest_path,
-								hashes={"size":myhashes["size"], h:myhashes[h]})
-				except FileNotFound:
-					pass
 
 	def checkIntegrity(self):
 		for t in self.fhashdict:
@@ -362,8 +203,6 @@ class Manifest(object):
 		""" Write Manifest instance to disk, optionally signing it """
 		self.checkIntegrity()
 		try:
-			if self.compat:
-				self._writeDigests()
 			myentries = list(self._createManifestEntries())
 			update_manifest = True
 			if not force:
@@ -451,7 +290,7 @@ class Manifest(object):
 			distfilehashes = {}
 		self.__init__(self.pkgdir, self.distdir,
 			fetchlist_dict=self.fetchlist_dict, from_scratch=True,
-			manifest1_compat=self.compat)
+			manifest1_compat=False)
 		cpvlist = []
 		pn = os.path.basename(self.pkgdir.rstrip(os.path.sep))
 		cat = self._pkgdir_category()

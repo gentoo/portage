@@ -588,6 +588,10 @@ preinst_suid_scan() {
 	if hasq suidctl $FEATURES; then
 #TODO: not sure if PORTAGE_CONFIGROOT includes EPREFIX
 		sfconf=${PORTAGE_CONFIGROOT}etc/portage/suidctl.conf
+		# sandbox prevents us from writing directly
+		# to files outside of the sandbox, but this
+		# can easly be bypassed using the addwrite() function
+		addwrite "${sfconf}"
 		vecho ">>> Performing suid scan in ${D}"
 #note not space-safe
 		for i in $(find "${ED}" -type f \( -perm -4000 -o -perm -2000 \) ); do
@@ -602,10 +606,6 @@ preinst_suid_scan() {
 					ls_ret=$(ls -ldh "${i}")
 					chmod ugo-s "${i}"
 					grep "^#${i/${D}}$" "${sfconf}" > /dev/null || {
-						# sandbox prevents us from writing directly
-						# to files outside of the sandbox, but this
-						# can easly be bypassed using the addwrite() function
-						addwrite "${sfconf}"
 						vecho ">>> Appending commented out entry to ${sfconf} for ${PF}"
 						echo "## ${ls_ret%${D}*}${ls_ret#*${D}}" >> "${sfconf}"
 						echo "#${i/${D}}" >> "${sfconf}"

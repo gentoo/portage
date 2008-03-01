@@ -1130,7 +1130,7 @@ def get_mask_info(root_config, cpv, pkgsettings,
 		metadata = None
 	if metadata and not built:
 		pkgsettings.setcpv(cpv, mydb=metadata)
-		metadata["USE"] = pkgsettings.get("USE", "")
+		metadata["USE"] = pkgsettings["PORTAGE_USE"]
 	if metadata is None:
 		mreasons = ["corruption"]
 	else:
@@ -2146,7 +2146,7 @@ class depgraph(object):
 				metadata = dict(izip(self._mydbapi_keys,
 					portdb.aux_get(mykey, self._mydbapi_keys)))
 				pkgsettings.setcpv(mykey, mydb=metadata)
-				metadata["USE"] = pkgsettings["USE"]
+				metadata["USE"] = pkgsettings["PORTAGE_USE"]
 				pkg = Package(type_name="ebuild", root=myroot,
 					cpv=mykey, metadata=metadata, onlydeps=onlydeps)
 				args.append(PackageArg(arg=x, package=pkg,
@@ -2454,7 +2454,7 @@ class depgraph(object):
 					if not built:
 						if (is_virt or "?" in metadata["LICENSE"]):
 							pkgsettings.setcpv(cpv, mydb=metadata)
-							metadata["USE"] = pkgsettings["USE"]
+							metadata["USE"] = pkgsettings["PORTAGE_USE"]
 						else:
 							metadata["USE"] = ""
 
@@ -2646,7 +2646,7 @@ class depgraph(object):
 					if not built:
 						if "?" in metadata["LICENSE"]:
 							pkgsettings.setcpv(cpv, mydb=metadata)
-							metadata["USE"] = pkgsettings.get("USE","")
+							metadata["USE"] = pkgsettings["PORTAGE_USE"]
 						else:
 							metadata["USE"] = ""
 					myarg = None
@@ -2703,7 +2703,7 @@ class depgraph(object):
 							pkgsettings.setcpv(myeb, mydb=mydb)
 						else:
 							pkgsettings.setcpv(cpv, mydb=mydb)
-						now_use = pkgsettings["USE"].split()
+						now_use = pkgsettings["PORTAGE_USE"].split()
 						forced_flags = set()
 						forced_flags.update(pkgsettings.useforce)
 						forced_flags.update(pkgsettings.usemask)
@@ -2729,7 +2729,7 @@ class depgraph(object):
 						old_use = vardb.aux_get(cpv, ["USE"])[0].split()
 						old_iuse = set(filter_iuse_defaults(
 							vardb.aux_get(cpv, ["IUSE"])[0].split()))
-						cur_use = pkgsettings["USE"].split()
+						cur_use = pkgsettings["PORTAGE_USE"].split()
 						cur_iuse = set(filter_iuse_defaults(
 							metadata["IUSE"].split()))
 						reinstall_for_flags = \
@@ -2760,7 +2760,7 @@ class depgraph(object):
 						db.aux_get(cpv, self._mydbapi_keys)))
 					if not built:
 						pkgsettings.setcpv(cpv, mydb=metadata)
-						metadata["USE"] = pkgsettings.get("USE","")
+						metadata["USE"] = pkgsettings["PORTAGE_USE"]
 						myeb = cpv
 					matched_packages.append(
 						Package(type_name=pkg_type, root=root,
@@ -3686,7 +3686,7 @@ class depgraph(object):
 					repo_path_real = os.path.dirname(os.path.dirname(
 						os.path.dirname(ebuild_path)))
 					pkgsettings.setcpv(pkg_key, mydb=mydbapi)
-					metadata["USE"] = pkgsettings["USE"]
+					metadata["USE"] = pkgsettings["PORTAGE_USE"]
 				elif pkg_type == "binary":
 					repo_path_real = repo_name
 				else:
@@ -4279,7 +4279,8 @@ class depgraph(object):
 			if pkg_type == "ebuild":
 				pkgsettings = self.pkgsettings[myroot]
 				pkgsettings.setcpv(pkg_key, mydb=fakedb[myroot])
-				fakedb[myroot].aux_update(pkg_key, {"USE":pkgsettings["USE"]})
+				fakedb[myroot].aux_update(pkg_key,
+					{"USE":pkgsettings["PORTAGE_USE"]})
 			self.spinner.update()
 
 class RepoDisplay(object):
@@ -4574,7 +4575,7 @@ class MergeTask(object):
 				metadata.update(izip(metadata_keys,
 					mydbapi.aux_get(pkg_key, metadata_keys)))
 				pkgsettings.setcpv(pkg_key, mydb=mydbapi)
-				metadata["USE"] = pkgsettings["USE"]
+				metadata["USE"] = pkgsettings["PORTAGE_USE"]
 			else:
 				if pkg_type == "binary":
 					mydbapi = bindb
@@ -5233,9 +5234,9 @@ def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 						regen_infodirs.append(inforoot)
 
 		if not regen_infodirs:
-			portage.writemsg_stdout(" "+green("*")+" GNU info directory index is up-to-date.\n")
+			portage.writemsg_stdout("\n "+green("*")+" GNU info directory index is up-to-date.\n")
 		else:
-			portage.writemsg_stdout(" "+green("*")+" Regenerating GNU info directory index...\n")
+			portage.writemsg_stdout("\n "+green("*")+" Regenerating GNU info directory index...\n")
 
 			dir_extensions = ("", ".gz", ".bz2")
 			icount=0
@@ -5421,6 +5422,7 @@ def post_emerge(trees, mtimedb, retval):
 	display_news_notification(trees)
 	
 	if vardbapi.plib_registry.hasEntries():
+		print
 		print colorize("WARN", "!!!") + " existing preserved libs:"
 		plibdata = vardbapi.plib_registry.getPreservedLibs()
 		for cpv in plibdata:
@@ -5428,7 +5430,6 @@ def post_emerge(trees, mtimedb, retval):
 			for f in plibdata[cpv]:
 				print colorize("WARN", " * ") + " - %s" % f
 		print "Use " + colorize("GOOD", "emerge @preserved-rebuild") + " to rebuild packages using these libraries"
-		print "and then remerge the packages listed above."
 
 	sys.exit(retval)
 
@@ -5475,7 +5476,7 @@ def chk_updated_cfg_files(target_root, config_protect):
 					del files[-1]
 				if files:
 					procount += 1
-					print colorize("WARN", " * IMPORTANT:"),
+					print "\n"+colorize("WARN", " * IMPORTANT:"),
 					if stat.S_ISDIR(mymode):
 						 print "%d config files in '%s' need updating." % \
 							(len(files), x)
@@ -6373,8 +6374,8 @@ def action_info(settings, trees, myopts, myfiles):
 			if portdb.cpv_exists(pkg):
 				mydb = portdb
 			pkgsettings.setcpv(pkg, mydb=mydb)
-			if valuesmap["IUSE"].intersection(pkgsettings["USE"].split()) != \
-				valuesmap["USE"]:
+			if valuesmap["IUSE"].intersection(
+				pkgsettings["PORTAGE_USE"].split()) != valuesmap["USE"]:
 				diff_values["USE"] = valuesmap["USE"]
 			# If a difference was found, print the info for
 			# this package.
