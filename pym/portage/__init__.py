@@ -969,7 +969,11 @@ class config(object):
 		@type local_config: Boolean
 		"""
 
-		debug = os.environ.get("PORTAGE_DEBUG") == "1"
+		# When initializing the global portage.settings instance, avoid
+		# raising exceptions whenever possible since exceptions thrown
+		# from 'import portage' or 'import portage.exceptions' statements
+		# can practically render the api unusable for api consumers.
+		tolerant = "_initializing_globals" in globals()
 
 		self.already_in_regenerate = 0
 
@@ -1244,7 +1248,7 @@ class config(object):
 
 			self.mygcfg = getconfig(
 				os.path.join(config_root, MAKE_CONF_FILE.lstrip(os.path.sep)),
-				allow_sourcing=True)
+				tolerant=tolerant, allow_sourcing=True)
 			if self.mygcfg is None:
 				self.mygcfg = {}
 
@@ -6284,7 +6288,10 @@ def init_legacy_globals():
 	for k, envvar in (("config_root", "PORTAGE_CONFIGROOT"), ("target_root", "ROOT")):
 		kwargs[k] = os.environ.get(envvar, "/")
 
+	global _initializing_globals
+	_initializing_globals = True
 	db = create_trees(**kwargs)
+	del _initializing_globals
 
 	settings = db["/"]["vartree"].settings
 	portdb = db["/"]["porttree"].dbapi
