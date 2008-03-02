@@ -1907,7 +1907,7 @@ class config(object):
 			if cpdict:
 				keys = cpdict.keys()
 				while keys:
-					best_match = best_match_to_list(cpv_slot, cpdict.keys())
+					best_match = best_match_to_list(cpv_slot, keys)
 					if best_match:
 						keys.remove(best_match)
 						usemask.append(cpdict[best_match])
