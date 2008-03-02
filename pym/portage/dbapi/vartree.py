@@ -2511,6 +2511,9 @@ class dblink(object):
 		try:
 			retval = self.treewalk(mergeroot, myroot, inforoot, myebuild,
 				cleanup=cleanup, mydbapi=mydbapi, prev_mtimes=prev_mtimes)
+			# undo registrations of preserved libraries, bug #210501
+			if retval != os.EX_OK:
+				self.vartree.dbapi.plib_registry.unregister(self.mycpv, self.settings["SLOT"], self.settings["COUNTER"])
 			# Process ebuild logfiles
 			elog_process(self.mycpv, self.settings, phasefilter=filter_mergephases)
 			if retval == os.EX_OK and "noclean" not in self.settings.features:
