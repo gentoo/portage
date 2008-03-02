@@ -56,7 +56,7 @@ def _load_mod(name):
 _elog_atexit_handlers = []
 _preserve_logentries = {}
 def elog_process(cpv, mysettings, phasefilter=None):
-
+	global _elog_atexit_handlers, _preserve_logentries
 	
 	logsystems = mysettings.get("PORTAGE_ELOG_SYSTEM","").split()
 	for s in logsystems:
