@@ -1388,8 +1388,9 @@ PORTAGE_MUTABLE_FILTERED_VARS="AA HOSTNAME"
 # with names that are known to cause interference:
 #
 #   * some specific variables for which bash does not allow assignment
-#   * any variables with names containing a hyphen (not allowed by bash)
 #   * some specific variables that affect portage or sandbox behavior
+#   * variable names that begin with a digit or that contain any
+#     non-alphanumeric characters that are not be supported by bash
 #
 # --filter-sandbox causes all SANDBOX_* variables to be filtered, which
 # is only desired in certain cases, such as during preprocessing or when
@@ -1418,7 +1419,8 @@ filter_readonly_variables() {
 		SANDBOX_DEBUG_LOG SANDBOX_DISABLED SANDBOX_LIB
 		SANDBOX_LOG SANDBOX_ON"
 	filtered_vars="${readonly_bash_vars} ${READONLY_PORTAGE_VARS}
-		BASH_[_[:alnum:]]* PATH [-_[:alnum:]]*-[-_[:alnum:]]*"
+		BASH_[_[:alnum:]]* PATH
+		[[:digit:]][_[:alnum:]]* [_[:alnum:]]*[^_[:alnum:]][_[:alnum:]]*"
 	if hasq --filter-sandbox $* ; then
 		filtered_vars="${filtered_vars} SANDBOX_[_[:alnum:]]*"
 	else
