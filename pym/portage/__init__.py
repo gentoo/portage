@@ -1878,7 +1878,8 @@ class config(object):
 					else:
 						break
 				del keys
-			defaults.insert(pos, self.make_defaults_use[i])
+			if self.make_defaults_use[i]:
+				defaults.insert(pos, self.make_defaults_use[i])
 			pos = len(defaults)
 		defaults = " ".join(defaults)
 		if defaults != self.configdict["defaults"].get("USE",""):
@@ -1898,7 +1899,8 @@ class config(object):
 					else:
 						break
 				del keys
-			useforce.insert(pos, self.useforce_list[i])
+			if self.useforce_list[i]:
+				useforce.insert(pos, self.useforce_list[i])
 			pos = len(useforce)
 		useforce = set(stack_lists(useforce, incremental=True))
 		if useforce != self.useforce:
@@ -1918,7 +1920,8 @@ class config(object):
 					else:
 						break
 				del keys
-			usemask.insert(pos, self.usemask_list[i])
+			if self.usemask_list[i]:
+				usemask.insert(pos, self.usemask_list[i])
 			pos = len(usemask)
 		usemask = set(stack_lists(usemask, incremental=True))
 		if usemask != self.usemask:
