@@ -1904,9 +1904,15 @@ class config(object):
 		self.puse = ""
 		cpdict = self.pusedict.get(cp)
 		if cpdict:
-			self.pusekey = best_match_to_list(cpv_slot, cpdict.keys())
-			if self.pusekey:
-				self.puse = " ".join(cpdict[self.pusekey])
+			keys = cpdict.keys()
+			while keys:
+				self.pusekey = best_match_to_list(cpv_slot, keys)
+				if self.pusekey:
+					keys.remove(self.pusekey)
+					self.puse += " "+" ".join(cpdict[self.pusekey])
+				else:
+					break
+			del keys
 		if oldpuse != self.puse:
 			has_changed = True
 		self.configdict["pkg"]["PKGUSE"] = self.puse[:] # For saving to PUSE file
