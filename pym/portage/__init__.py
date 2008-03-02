@@ -1866,7 +1866,6 @@ class config(object):
 			has_changed = True
 		defaults = []
 		for i in xrange(len(self.profiles)):
-			defaults.append(self.make_defaults_use[i])
 			cpdict = self.pkgprofileuse[i].get(cp, None)
 			if cpdict:
 				keys = cpdict.keys()
@@ -1874,17 +1873,17 @@ class config(object):
 					bestmatch = best_match_to_list(cpv_slot, keys)
 					if bestmatch:
 						keys.remove(bestmatch)
-						defaults.append(cpdict[bestmatch])
+						defaults.insert(0, cpdict[bestmatch])
 					else:
 						break
 				del keys
+		defaults.insert(0, self.make_defaults_use[i])
 		defaults = " ".join(defaults)
 		if defaults != self.configdict["defaults"].get("USE",""):
 			self.configdict["defaults"]["USE"] = defaults
 			has_changed = True
 		useforce = []
 		for i in xrange(len(self.profiles)):
-			useforce.append(self.useforce_list[i])
 			cpdict = self.puseforce_list[i].get(cp, None)
 			if cpdict:
 				keys = cpdict.keys()
@@ -1892,17 +1891,17 @@ class config(object):
 					best_match = best_match_to_list(cpv_slot, keys)
 					if best_match:
 						keys.remove(best_match)
-						useforce.append(cpdict[best_match])
+						useforce.insert(0, cpdict[best_match])
 					else:
 						break
 				del keys
+		useforce.insert(0, self.useforce_list[i])
 		useforce = set(stack_lists(useforce, incremental=True))
 		if useforce != self.useforce:
 			self.useforce = useforce
 			has_changed = True
 		usemask = []
 		for i in xrange(len(self.profiles)):
-			usemask.append(self.usemask_list[i])
 			cpdict = self.pusemask_list[i].get(cp, None)
 			if cpdict:
 				keys = cpdict.keys()
@@ -1910,10 +1909,11 @@ class config(object):
 					best_match = best_match_to_list(cpv_slot, keys)
 					if best_match:
 						keys.remove(best_match)
-						usemask.append(cpdict[best_match])
+						usemask.insert(0, cpdict[best_match])
 					else:
 						break
 				del keys
+		usemask.insert(0, self.usemask_list[i])
 		usemask = set(stack_lists(usemask, incremental=True))
 		if usemask != self.usemask:
 			self.usemask = usemask
@@ -1927,7 +1927,7 @@ class config(object):
 				self.pusekey = best_match_to_list(cpv_slot, keys)
 				if self.pusekey:
 					keys.remove(self.pusekey)
-					self.puse += " "+" ".join(cpdict[self.pusekey])
+					self.puse = (" ".join(cpdict[self.pusekey])) + " " + self.puse
 				else:
 					break
 			del keys
