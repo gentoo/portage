@@ -1865,6 +1865,7 @@ class config(object):
 			self.configdict["pkginternal"]["USE"] = pkginternaluse
 			has_changed = True
 		defaults = []
+		pos = 0
 		for i in xrange(len(self.profiles)):
 			cpdict = self.pkgprofileuse[i].get(cp, None)
 			if cpdict:
@@ -1873,16 +1874,18 @@ class config(object):
 					bestmatch = best_match_to_list(cpv_slot, keys)
 					if bestmatch:
 						keys.remove(bestmatch)
-						defaults.insert(0, cpdict[bestmatch])
+						defaults.insert(pos, cpdict[bestmatch])
 					else:
 						break
 				del keys
-			defaults.insert(0, self.make_defaults_use[i])
+			defaults.insert(pos, self.make_defaults_use[i])
+			pos = len(defaults)
 		defaults = " ".join(defaults)
 		if defaults != self.configdict["defaults"].get("USE",""):
 			self.configdict["defaults"]["USE"] = defaults
 			has_changed = True
 		useforce = []
+		pos = 0
 		for i in xrange(len(self.profiles)):
 			cpdict = self.puseforce_list[i].get(cp, None)
 			if cpdict:
@@ -1891,16 +1894,18 @@ class config(object):
 					best_match = best_match_to_list(cpv_slot, keys)
 					if best_match:
 						keys.remove(best_match)
-						useforce.insert(0, cpdict[best_match])
+						useforce.insert(pos, cpdict[best_match])
 					else:
 						break
 				del keys
-			useforce.insert(0, self.useforce_list[i])
+			useforce.insert(pos, self.useforce_list[i])
+			pos = len(useforce)
 		useforce = set(stack_lists(useforce, incremental=True))
 		if useforce != self.useforce:
 			self.useforce = useforce
 			has_changed = True
 		usemask = []
+		pos = 0
 		for i in xrange(len(self.profiles)):
 			cpdict = self.pusemask_list[i].get(cp, None)
 			if cpdict:
@@ -1909,11 +1914,12 @@ class config(object):
 					best_match = best_match_to_list(cpv_slot, keys)
 					if best_match:
 						keys.remove(best_match)
-						usemask.insert(0, cpdict[best_match])
+						usemask.insert(pos, cpdict[best_match])
 					else:
 						break
 				del keys
-			usemask.insert(0, self.usemask_list[i])
+			usemask.insert(pos, self.usemask_list[i])
+			pos = len(usemask)
 		usemask = set(stack_lists(usemask, incremental=True))
 		if usemask != self.usemask:
 			self.usemask = usemask
