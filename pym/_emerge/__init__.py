@@ -4011,8 +4011,7 @@ class depgraph(object):
 					myversion = "%s-%s" % (mysplit[1], mysplit[2])
 
 				if myversion != portage.VERSION and "--quiet" not in self.myopts:
-					if mylist_index < len(mylist) - 1 and \
-						"livecvsportage" not in self.settings.features:
+					if mylist_index < len(mylist) - 1:
 						p.append(colorize("WARN", "*** Portage will stop merging at this point and reload itself,"))
 						p.append(colorize("WARN", "    then resume the merge."))
 						print
@@ -4787,34 +4786,33 @@ class MergeTask(object):
 					# Figure out if we need a restart.
 					mysplit=portage.pkgsplit(x[2])
 					if mysplit[0] == "sys-apps/portage" and x[1] == "/":
-						if "livecvsportage" not in self.settings.features:
-							if len(mymergelist) > mergecount:
-								emergelog(xterm_titles,
-									" ::: completed emerge ("+ \
-									str(mergecount)+" of "+ \
-									str(len(mymergelist))+") "+ \
-									x[2]+" to "+x[1])
-								emergelog(xterm_titles, " *** RESTARTING " + \
-									"emerge via exec() after change of " + \
-									"portage version.")
-								del mtimedb["resume"]["mergelist"][0]
-								mtimedb.commit()
-								portage.run_exitfuncs()
-								mynewargv=[sys.argv[0],"--resume"]
-								resume_opts = self.myopts.copy()
-								# For automatic resume, we need to prevent
-								# any of bad_resume_opts from leaking in
-								# via EMERGE_DEFAULT_OPTS.
-								resume_opts["--ignore-default-opts"] = True
-								for myopt, myarg in resume_opts.iteritems():
-									if myopt not in bad_resume_opts:
-										if myarg is True:
-											mynewargv.append(myopt)
-										else:
-											mynewargv.append(myopt +"="+ myarg)
-								# priority only needs to be adjusted on the first run
-								os.environ["PORTAGE_NICENESS"] = "0"
-								os.execv(mynewargv[0], mynewargv)
+						if len(mymergelist) > mergecount:
+							emergelog(xterm_titles,
+								" ::: completed emerge ("+ \
+								str(mergecount)+" of "+ \
+								str(len(mymergelist))+") "+ \
+								x[2]+" to "+x[1])
+							emergelog(xterm_titles, " *** RESTARTING " + \
+								"emerge via exec() after change of " + \
+								"portage version.")
+							del mtimedb["resume"]["mergelist"][0]
+							mtimedb.commit()
+							portage.run_exitfuncs()
+							mynewargv=[sys.argv[0],"--resume"]
+							resume_opts = self.myopts.copy()
+							# For automatic resume, we need to prevent
+							# any of bad_resume_opts from leaking in
+							# via EMERGE_DEFAULT_OPTS.
+							resume_opts["--ignore-default-opts"] = True
+							for myopt, myarg in resume_opts.iteritems():
+								if myopt not in bad_resume_opts:
+									if myarg is True:
+										mynewargv.append(myopt)
+									else:
+										mynewargv.append(myopt +"="+ myarg)
+							# priority only needs to be adjusted on the first run
+							os.environ["PORTAGE_NICENESS"] = "0"
+							os.execv(mynewargv[0], mynewargv)
 
 			if "--pretend" not in self.myopts and \
 				"--fetchonly" not in self.myopts and \
