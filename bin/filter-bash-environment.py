@@ -7,6 +7,7 @@ import os, re, sys
 
 egrep_compat_map = {
 	"[:alnum:]" : r'\w',
+	"[:digit:]" : r'\d',
 	"[:space:]" : r'\s',
 }
 
