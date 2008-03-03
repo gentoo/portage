@@ -1420,7 +1420,7 @@ filter_readonly_variables() {
 		SANDBOX_LOG SANDBOX_ON"
 	filtered_vars="${readonly_bash_vars} ${READONLY_PORTAGE_VARS}
 		BASH_[_[:alnum:]]* PATH
-		[[:digit:]][_[:alnum:]]* [_[:alnum:]]*[^_[:alnum:]][_[:alnum:]]*"
+		[[:digit:]][_[:alnum:]]* [^[:space:]]*[^_[:alnum:]][^[:space:]]*"
 	if hasq --filter-sandbox $* ; then
 		filtered_vars="${filtered_vars} SANDBOX_[_[:alnum:]]*"
 	else
