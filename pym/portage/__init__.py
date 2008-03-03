@@ -3208,10 +3208,19 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 		"""
 		myfile_path = os.path.join(mysettings["DISTDIR"], myfile)
 		fetched=0
+		has_space = True
 		file_lock = None
 		if listonly:
 			writemsg_stdout("\n", noiselevel=-1)
 		else:
+			# check if there is enough space in DISTDIR to completely store myfile
+			# overestimate the filesize so we aren't bitten by FS overhead
+			vfs_stat = os.statvfs(mysettings["DISTDIR"])
+			if myfile in mydigests \
+				and (mydigests[myfile]["size"] + vfs_stat.f_bsize) >= (vfs_stat.f_bsize * vfs_stat.f_bavail):
+				writemsg("!!! Insufficient space to store %s in %s\n" % (myfile, mysettings["DISTDIR"]), noiselevel=-1)
+				has_space = False
+
 			if use_locks and can_fetch:
 				waiting_msg = None
 				if "parallel-fetch" in features:
@@ -3228,7 +3237,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						waiting_msg=waiting_msg)
 		try:
 			if not listonly:
-				if fsmirrors and not os.path.exists(myfile_path):
+				if fsmirrors and not os.path.exists(myfile_path) and has_space:
 					for mydir in fsmirrors:
 						mirror_file = os.path.join(mydir, myfile)
 						try:
@@ -3349,7 +3358,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					else:
 						continue
 
-				if fetched != 2:
+				if fetched != 2 and has_space:
 					#we either need to resume or start the download
 					#you can't use "continue" when you're inside a "try" block
 					if fetched==1:
