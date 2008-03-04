@@ -12,7 +12,7 @@ egrep_compat_map = {
 }
 
 here_doc_re = re.compile(r'.*\s<<[-]?(\w+)$')
-func_start_re = re.compile(r'^\s*[-\w]*\s*\(\)\s*$')
+func_start_re = re.compile(r'^[-\w]*\s*\(\)\s*$')
 func_end_re = re.compile(r'^\}$')
 
 def compile_egrep_pattern(s):
