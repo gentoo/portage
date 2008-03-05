@@ -90,9 +90,10 @@ if __name__ == "__main__":
 	description = "Filter out variable assignments for varable " + \
 		"names matching a given PATTERN " + \
 		"while leaving bash function definitions and here-documents " + \
-		"intact. The PATTERN should use python regular expression syntax" + \
-		" but [:digit:], [:space:] and " + \
-		"[:alnum:] character classes will be automatically translated " + \
+		"intact. The PATTERN is a space separated list of variable names" + \
+		" and it supports python regular expression syntax in addition to" + \
+		" [:alnum:], [:digit:], and [:space:] " + \
+		"character classes which will be automatically translated " + \
 		"for compatibility with egrep syntax."
 	usage = "usage: %s PATTERN" % os.path.basename(sys.argv[0])
 	from optparse import OptionParser
