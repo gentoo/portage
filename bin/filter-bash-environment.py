@@ -58,7 +58,8 @@ def filter_bash_environment(pattern, file_in, file_out):
 		file_out.write(line)
 
 if __name__ == "__main__":
-	description = "Filter out any lines that match a given PATTERN " + \
+	description = "Filter out variable assignments for varable " + \
+		"names matching a given PATTERN " + \
 		"while leaving bash function definitions and here-documents " + \
 		"intact. The PATTERN should use python regular expression syntax" + \
 		" but [:digit:], [:space:] and " + \
