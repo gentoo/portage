@@ -1259,13 +1259,8 @@ class config(object):
 				self.mygcfg.pop(k, None)
 			
 			# Allow ROOT setting to come from make.conf if it's not overridden
-			# by the constructor argument (from the calling environment).  As a
-			# special exception for a very common use case, config_root == "/"
-			# implies that ROOT in make.conf should be ignored.  That way, the
-			# user can chroot into $ROOT and the ROOT setting in make.conf will
-			# be automatically ignored (unless config_root is other than "/").
-			if config_root != "/" and \
-				target_root is None and "ROOT" in self.mygcfg:
+			# by the constructor argument (from the calling environment).
+			if target_root is None and "ROOT" in self.mygcfg:
 				target_root = self.mygcfg["ROOT"]
 			
 			self.configlist.append(self.mygcfg)
