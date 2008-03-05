@@ -1426,7 +1426,7 @@ filter_readonly_variables() {
 	filtered_vars="${readonly_bash_vars} ${READONLY_PORTAGE_VARS}
 		BASH_[_[:alnum:]]* PATH
 		[[:digit:]][_[:alnum:]]*
-		[-_[:alnum:]]*-[-_[:alnum:]]*"
+		.*[^_[:alnum:]].*"
 	# TODO: Take the above variable name validation and the below sed-based
 	#       declare -r filter and integrate them both directly into
 	#       filter-bash-environment.py.
