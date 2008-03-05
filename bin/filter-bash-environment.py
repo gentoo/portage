@@ -32,7 +32,7 @@ def have_end_quote(quote, line):
 	"""
 	close_quote_match = close_quote_re.search(line)
 	return close_quote_match is not None and \
-		close_quote_match.group(0) == quote
+		close_quote_match.group(1) == quote
 
 def filter_bash_environment(pattern, file_in, file_out):
 	here_doc_delim = None
