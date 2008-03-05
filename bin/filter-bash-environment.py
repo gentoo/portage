@@ -15,6 +15,8 @@ here_doc_re = re.compile(r'.*\s<<[-]?(\w+)$')
 func_start_re = re.compile(r'^[-\w]+\s*\(\)\s*$')
 func_end_re = re.compile(r'^\}$')
 
+var_assign_re = re.compile(r'(^|^declare\s+-\S+\s+|^export\s+)([^=\s]+)=.*$')
+
 def compile_egrep_pattern(s):
 	for k, v in egrep_compat_map.iteritems():
 		s = s.replace(k, v)
@@ -46,8 +48,14 @@ def filter_bash_environment(pattern, file_in, file_out):
 		if in_func is not None:
 			file_out.write(line)
 			continue
-		if pattern.match(line) is None:
-			file_out.write(line)
+		var_assign_match = var_assign_re.match(line)
+		if var_assign_match is not None:
+			if pattern.match(var_assign_match.group(2)) is None:
+				file_out.write(line)
+			continue
+		# TODO: properly handle multi-line variable assignments
+		# like those which the 'export' builtin can produce.
+		file_out.write(line)
 
 if __name__ == "__main__":
 	description = "Filter out any lines that match a given PATTERN " + \
