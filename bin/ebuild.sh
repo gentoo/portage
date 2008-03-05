@@ -1427,6 +1427,9 @@ filter_readonly_variables() {
 		BASH_[_[:alnum:]]* PATH
 		[[:digit:]][_[:alnum:]]*
 		[-_[:alnum:]]*-[-_[:alnum:]]*"
+	# TODO: Take the above variable name validation and the below sed-based
+	#       declare -r filter and integrate them both directly into
+	#       filter-bash-environment.py.
 	if hasq --filter-sandbox $* ; then
 		filtered_vars="${filtered_vars} SANDBOX_[_[:alnum:]]*"
 	else
