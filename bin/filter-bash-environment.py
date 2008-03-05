@@ -102,6 +102,7 @@ if __name__ == "__main__":
 		parser.error("Missing required PATTERN argument.")
 	file_in = sys.stdin
 	file_out = sys.stdout
+	var_pattern = "^(%s)$" % "|".join(args[0].split())
 	filter_bash_environment(
-		compile_egrep_pattern(args[0]), file_in, file_out)
+		compile_egrep_pattern(var_pattern), file_in, file_out)
 	file_out.flush()
