@@ -5,12 +5,6 @@
 
 import os, re, sys
 
-egrep_compat_map = {
-	"[:alnum:]" : r'\w',
-	"[:digit:]" : r'\d',
-	"[:space:]" : r'\s',
-}
-
 here_doc_re = re.compile(r'.*\s<<[-]?(\w+)$')
 func_start_re = re.compile(r'^[-\w]+\s*\(\)\s*$')
 func_end_re = re.compile(r'^\}$')
@@ -18,11 +12,6 @@ func_end_re = re.compile(r'^\}$')
 var_assign_re = re.compile(r'(^|^declare\s+-\S+\s+|^export\s+)([^=\s]+)=("|\')?.*$')
 close_quote_re = re.compile(r'(\\"|"|\')\s*$')
 readonly_re = re.compile(r'^declare\s+-(\S*)r(\S*)\s+')
-
-def compile_egrep_pattern(s):
-	for k, v in egrep_compat_map.iteritems():
-		s = s.replace(k, v)
-	return re.compile(s)
 
 def have_end_quote(quote, line):
 	"""
@@ -104,10 +93,7 @@ if __name__ == "__main__":
 		"names matching a given PATTERN " + \
 		"while leaving bash function definitions and here-documents " + \
 		"intact. The PATTERN is a space separated list of variable names" + \
-		" and it supports python regular expression syntax in addition to" + \
-		" [:alnum:], [:digit:], and [:space:] " + \
-		"character classes which will be automatically translated " + \
-		"for compatibility with egrep syntax."
+		" and it supports python regular expression syntax."
 	usage = "usage: %s PATTERN" % os.path.basename(sys.argv[0])
 	from optparse import OptionParser
 	parser = OptionParser(description=description, usage=usage)
@@ -124,5 +110,5 @@ if __name__ == "__main__":
 
 	var_pattern = "^(%s)$" % "|".join(var_pattern)
 	filter_bash_environment(
-		compile_egrep_pattern(var_pattern), file_in, file_out)
+		re.compile(var_pattern), file_in, file_out)
 	file_out.flush()

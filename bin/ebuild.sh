@@ -1424,9 +1424,9 @@ filter_readonly_variables() {
 		SANDBOX_DEBUG_LOG SANDBOX_DISABLED SANDBOX_LIB
 		SANDBOX_LOG SANDBOX_ON"
 	filtered_vars="${readonly_bash_vars} ${READONLY_PORTAGE_VARS}
-		BASH_[_[:alnum:]]* PATH"
+		BASH_.* PATH"
 	if hasq --filter-sandbox $* ; then
-		filtered_vars="${filtered_vars} SANDBOX_[_[:alnum:]]*"
+		filtered_vars="${filtered_vars} SANDBOX_.*"
 	else
 		filtered_vars="${filtered_vars} ${filtered_sandbox_vars}"
 	fi
