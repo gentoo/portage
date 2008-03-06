@@ -21,6 +21,10 @@ except KeyboardInterrupt:
 
 import os
 
+# This allows portageq to be exempt from sandbox,
+# for things like updating metadata cache.
+os.environ["SANDBOX_ON"] = "0"
+
 import types
 
 #-----------------------------------------------------------------------------
