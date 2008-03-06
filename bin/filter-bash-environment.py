@@ -17,6 +17,7 @@ func_end_re = re.compile(r'^\}$')
 
 var_assign_re = re.compile(r'(^|^declare\s+-\S+\s+|^export\s+)([^=\s]+)=("|\')?.*$')
 close_quote_re = re.compile(r'(\\"|"|\')\s*$')
+readonly_re = re.compile(r'^declare\s+-(\S*)r(\S*)\s+')
 
 def compile_egrep_pattern(s):
 	for k, v in egrep_compat_map.iteritems():
@@ -57,6 +58,18 @@ def filter_bash_environment(pattern, file_in, file_out):
 					multi_line_quote = quote
 					multi_line_quote_filter = filter_this
 				if not filter_this:
+					readonly_match = readonly_re.match(line)
+					if readonly_match is not None:
+						declare_opts = ""
+						for i in (1, 2):
+							group = readonly_match.group(i)
+							if group is not None:
+								declare_opts += group
+						if declare_opts:
+							line = "declare -%s %s" % \
+								(declare_opts, line[readonly_match.end():])
+						else:
+							line = "declare " + line[readonly_match.end():]
 					file_out.write(line)
 				continue
 		if here_doc_delim is not None:
