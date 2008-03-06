@@ -69,7 +69,7 @@ def filter_bash_environment(pattern, file_in, file_out):
 			here_doc_delim = re.compile("^%s$" % here_doc.group(1))
 			file_out.write(line)
 			continue
-		# Note: here-documents are handled before fuctions since otherwise
+		# Note: here-documents are handled before functions since otherwise
 		# it would be possible for the content of a here-document to be
 		# mistaken as the end of a function.
 		if in_func:
@@ -103,7 +103,13 @@ if __name__ == "__main__":
 		parser.error("Missing required PATTERN argument.")
 	file_in = sys.stdin
 	file_out = sys.stdout
-	var_pattern = "^(%s)$" % "|".join(args[0].split())
+	var_pattern = args[0].split()
+
+	# Filter invalid variable names that are not supported by bash.
+	var_pattern.append(r'\d.*')
+	var_pattern.append(r'.*\W.*')
+
+	var_pattern = "^(%s)$" % "|".join(var_pattern)
 	filter_bash_environment(
 		compile_egrep_pattern(var_pattern), file_in, file_out)
 	file_out.flush()

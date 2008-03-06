@@ -1424,12 +1424,7 @@ filter_readonly_variables() {
 		SANDBOX_DEBUG_LOG SANDBOX_DISABLED SANDBOX_LIB
 		SANDBOX_LOG SANDBOX_ON"
 	filtered_vars="${readonly_bash_vars} ${READONLY_PORTAGE_VARS}
-		BASH_[_[:alnum:]]* PATH
-		[[:digit:]][_[:alnum:]]*
-		.*[^_[:alnum:]].*"
-	# TODO: Take the above variable name validation and the below sed-based
-	#       declare -r filter and integrate them both directly into
-	#       filter-bash-environment.py.
+		BASH_[_[:alnum:]]* PATH"
 	if hasq --filter-sandbox $* ; then
 		filtered_vars="${filtered_vars} SANDBOX_[_[:alnum:]]*"
 	else
@@ -1446,6 +1441,8 @@ filter_readonly_variables() {
 		"
 	fi
 
+	# TODO: Take the the below sed-based declare -r filter and integrate it
+	#       directly into filter-bash-environment.py.
 	# The sed is to remove the readonly attribute from variables such as those
 	# listed in READONLY_EBUILD_METADATA, since having any readonly attributes
 	# persisting in the saved environment can be inconvenient when it
