@@ -129,14 +129,17 @@ class BinhostHandler(object):
 			onProgress(maxval, 0)
 		pkgindex = self._pkgindex
 		missing = []
+		metadata = {}
+		for d in pkgindex.packages:
+			metadata[d["CPV"]] = d
 		for i, cpv in enumerate(cpv_all):
-			d = pkgindex.packages.get(cpv)
+			d = metadata.get(cpv)
 			if not d or "MD5" not in d:
 				missing.append(cpv)
 			if onProgress:
 				onProgress(maxval, i+1)
 		errors = ["'%s' is not in Packages" % cpv for cpv in missing]
-		stale = set(pkgindex.packages).difference(cpv_all)
+		stale = set(metadata).difference(cpv_all)
 		for cpv in stale:
 			errors.append("'%s' is not in the repository" % cpv)
 		return errors
@@ -151,13 +154,16 @@ class BinhostHandler(object):
 			onProgress(maxval, 0)
 		pkgindex = self._pkgindex
 		missing = []
+		metadata = {}
+		for d in pkgindex.packages:
+			metadata[d["CPV"]] = d
 		for i, cpv in enumerate(cpv_all):
-			d = pkgindex.packages.get(cpv)
+			d = metadata.get(cpv)
 			if not d or "MD5" not in d:
 				bintree.inject(cpv)
 			if onProgress:
 				onProgress(maxval, i+1)
-		stale = set(pkgindex.packages).difference(cpv_all)
+		stale = set(metadata).difference(cpv_all)
 		if stale:
 			from portage import locks
 			pkgindex_lock = locks.lockfile(
@@ -177,9 +183,11 @@ class BinhostHandler(object):
 				del bintree
 				portage.db[self._bintree.root]["bintree"] = self._bintree
 				self._bintree._populate()
-				for cpv in set(self._pkgindex.packages).difference(
+				for cpv in set(metadata).difference(
 					self._bintree.dbapi.cpv_all()):
-					del self._pkgindex.packages[cpv]
+					del metadata[cpv]
+				del pkgindex.packages[:]
+				pkgindex.packages.extend(metadata.itervalues())
 				from portage.util import atomic_ofstream
 				f = atomic_ofstream(self._pkgindex_file)
 				try:

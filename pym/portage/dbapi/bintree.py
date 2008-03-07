@@ -382,7 +382,9 @@ class binarytree(object):
 			if not self._pkgindex_version_supported(pkgindex):
 				pkgindex = self._new_pkgindex()
 			header = pkgindex.header
-			metadata = pkgindex.packages
+			metadata = {}
+			for d in pkgindex.packages:
+				metadata[d["CPV"]] = d
 			update_pkgindex = False
 			for mydir in dirs:
 				for myfile in listdir(os.path.join(self.pkgdir, mydir)):
@@ -554,7 +556,8 @@ class binarytree(object):
 				stale = [cpv for cpv in metadata if cpv not in self._pkg_paths]
 				for cpv in stale:
 					del metadata[cpv]
-				#
+				del pkgindex.packages[:]
+				pkgindex.packages.extend(metadata.itervalues())
 				self._update_pkgindex_header(pkgindex.header)
 				from portage.util import atomic_ofstream
 				f = atomic_ofstream(self._pkgindex_file)
@@ -625,7 +628,9 @@ class binarytree(object):
 				finally:
 					f.close()
 			if pkgindex:
-				self._remotepkgs = pkgindex.packages
+				self._remotepkgs = {}
+				for d in pkgindex.packages:
+					self._remotepkgs[d["CPV"]] = d
 				self._remote_has_index = True
 				self._remote_base_uri = pkgindex.header.get("URI", base_url)
 				self.remotepkgs = {}
@@ -768,7 +773,14 @@ class binarytree(object):
 				self.dbapi.cpv_remove(cpv)
 				del self._pkg_paths[cpv]
 				return
-			pkgindex.packages[cpv] = d
+			# If found, remove package(s) with duplicate path.
+			for i in xrange(len(pkgindex.packages) - 1, -1, -1):
+				d2 = pkgindex.packages[i]
+				if d2["CPV"] != cpv:
+					continue
+				if d2.get("PATH") == d.get("PATH"):
+					del pkgindex.packages[i]
+			pkgindex.packages.append(d)
 			self._update_pkgindex_header(pkgindex.header)
 			from portage.util import atomic_ofstream
 			f = atomic_ofstream(os.path.join(self.pkgdir, "Packages"))
