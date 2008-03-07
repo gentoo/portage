@@ -586,6 +586,7 @@ preinst_suid_scan() {
 	fi
 	# total suid control.
 	if hasq suidctl $FEATURES; then
+		local sfconf
 #TODO: not sure if PORTAGE_CONFIGROOT includes EPREFIX
 		sfconf=${PORTAGE_CONFIGROOT}etc/portage/suidctl.conf
 		# sandbox prevents us from writing directly
@@ -596,19 +597,19 @@ preinst_suid_scan() {
 #note not space-safe
 		for i in $(find "${ED}" -type f \( -perm -4000 -o -perm -2000 \) ); do
 			if [ -s "${sfconf}" ]; then
-				suid="$(grep "^/${i#${D}}$" "${sfconf}")"
-				if [ "${suid}" = "${i/${D}}" ]; then
-					vecho "- ${i/${D}} is an approved suid file"
+				install_path=/${i#${D}}
+				if grep -q "^${install_path}\$" "${sfconf}" ; then
+					vecho "- ${install_path} is an approved suid file"
 				else
-					vecho ">>> Removing sbit on non registered ${i/${D}}"
+					vecho ">>> Removing sbit on non registered ${install_path}"
 					for x in 5 4 3 2 1 0; do echo -ne "\a"; sleep 0.25 ; done
 					vecho -ne "\a"
 					ls_ret=$(ls -ldh "${i}")
 					chmod ugo-s "${i}"
-					grep "^#${i/${D}}$" "${sfconf}" > /dev/null || {
+					grep "^#${install_path}$" "${sfconf}" > /dev/null || {
 						vecho ">>> Appending commented out entry to ${sfconf} for ${PF}"
-						echo "## ${ls_ret%${D}*}${ls_ret#*${D}}" >> "${sfconf}"
-						echo "#${i/${D}}" >> "${sfconf}"
+						echo "## ${ls_ret%${D}*}${install_path}" >> "${sfconf}"
+						echo "#${install_path}" >> "${sfconf}"
 						# no delwrite() eh?
 						# delwrite ${sconf}
 					}
@@ -720,7 +721,7 @@ dyn_rpm() {
 	addwrite /usr/src/rpm
 	addwrite "${RPMDIR}"
 	dyn_spec
-	rpmbuild -bb "${PF}.spec" || die "Failed to integrate rpm spec file"
+	rpmbuild -bb --clean --rmsource "${PF}.spec" || die "Failed to integrate rpm spec file"
 	install -D "/usr/src/rpm/RPMS/i386/${PN}-${PV}-${PR}.i386.rpm" \
 		"${RPMDIR}/${CATEGORY}/${PN}-${PV}-${PR}.rpm" || \
 		die "Failed to move rpm"

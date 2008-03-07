@@ -47,6 +47,9 @@ def _elog_base(level, msg, phase="other", key=None, color=None):
 	""" Backend for the other messaging functions, should not be called 
 	    directly.
 	"""
+
+	global _msgbuffer
+
 	if color == None:
 		color = "GOOD"
 	print colorize(color, " * ")+msg
@@ -59,6 +62,8 @@ def _elog_base(level, msg, phase="other", key=None, color=None):
 	#raise NotImplementedError()
 
 def collect_messages():
+	global _msgbuffer
+
 	rValue = _msgbuffer
 	_reset_buffer()
 	return rValue
@@ -67,6 +72,8 @@ def _reset_buffer():
 	""" Reset the internal message buffer when it has been processed, 
 	    should not be called directly.
 	"""
+	global _msgbuffer
+	
 	_msgbuffer = {}
 
 # creating and exporting the actual messaging functions

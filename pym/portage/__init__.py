@@ -1884,37 +1884,64 @@ class config(object):
 			self.configdict["pkginternal"]["USE"] = pkginternaluse
 			has_changed = True
 		defaults = []
+		pos = 0
 		for i in xrange(len(self.profiles)):
-			defaults.append(self.make_defaults_use[i])
 			cpdict = self.pkgprofileuse[i].get(cp, None)
 			if cpdict:
-				best_match = best_match_to_list(cpv_slot, cpdict.keys())
-				if best_match:
-					defaults.append(cpdict[best_match])
+				keys = cpdict.keys()
+				while keys:
+					bestmatch = best_match_to_list(cpv_slot, keys)
+					if bestmatch:
+						keys.remove(bestmatch)
+						defaults.insert(pos, cpdict[bestmatch])
+					else:
+						break
+				del keys
+			if self.make_defaults_use[i]:
+				defaults.insert(pos, self.make_defaults_use[i])
+			pos = len(defaults)
 		defaults = " ".join(defaults)
 		if defaults != self.configdict["defaults"].get("USE",""):
 			self.configdict["defaults"]["USE"] = defaults
 			has_changed = True
 		useforce = []
+		pos = 0
 		for i in xrange(len(self.profiles)):
-			useforce.append(self.useforce_list[i])
 			cpdict = self.puseforce_list[i].get(cp, None)
 			if cpdict:
-				best_match = best_match_to_list(cpv_slot, cpdict.keys())
-				if best_match:
-					useforce.append(cpdict[best_match])
+				keys = cpdict.keys()
+				while keys:
+					best_match = best_match_to_list(cpv_slot, keys)
+					if best_match:
+						keys.remove(best_match)
+						useforce.insert(pos, cpdict[best_match])
+					else:
+						break
+				del keys
+			if self.useforce_list[i]:
+				useforce.insert(pos, self.useforce_list[i])
+			pos = len(useforce)
 		useforce = set(stack_lists(useforce, incremental=True))
 		if useforce != self.useforce:
 			self.useforce = useforce
 			has_changed = True
 		usemask = []
+		pos = 0
 		for i in xrange(len(self.profiles)):
-			usemask.append(self.usemask_list[i])
 			cpdict = self.pusemask_list[i].get(cp, None)
 			if cpdict:
-				best_match = best_match_to_list(cpv_slot, cpdict.keys())
-				if best_match:
-					usemask.append(cpdict[best_match])
+				keys = cpdict.keys()
+				while keys:
+					best_match = best_match_to_list(cpv_slot, keys)
+					if best_match:
+						keys.remove(best_match)
+						usemask.insert(pos, cpdict[best_match])
+					else:
+						break
+				del keys
+			if self.usemask_list[i]:
+				usemask.insert(pos, self.usemask_list[i])
+			pos = len(usemask)
 		usemask = set(stack_lists(usemask, incremental=True))
 		if usemask != self.usemask:
 			self.usemask = usemask
@@ -1923,9 +1950,15 @@ class config(object):
 		self.puse = ""
 		cpdict = self.pusedict.get(cp)
 		if cpdict:
-			self.pusekey = best_match_to_list(cpv_slot, cpdict.keys())
-			if self.pusekey:
-				self.puse = " ".join(cpdict[self.pusekey])
+			keys = cpdict.keys()
+			while keys:
+				self.pusekey = best_match_to_list(cpv_slot, keys)
+				if self.pusekey:
+					keys.remove(self.pusekey)
+					self.puse = (" ".join(cpdict[self.pusekey])) + " " + self.puse
+				else:
+					break
+			del keys
 		if oldpuse != self.puse:
 			has_changed = True
 		self.configdict["pkg"]["PKGUSE"] = self.puse[:] # For saving to PUSE file
@@ -3197,10 +3230,19 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 		"""
 		myfile_path = os.path.join(mysettings["DISTDIR"], myfile)
 		fetched=0
+		has_space = True
 		file_lock = None
 		if listonly:
 			writemsg_stdout("\n", noiselevel=-1)
 		else:
+			# check if there is enough space in DISTDIR to completely store myfile
+			# overestimate the filesize so we aren't bitten by FS overhead
+			vfs_stat = os.statvfs(mysettings["DISTDIR"])
+			if myfile in mydigests \
+				and (mydigests[myfile]["size"] + vfs_stat.f_bsize) >= (vfs_stat.f_bsize * vfs_stat.f_bavail):
+				writemsg("!!! Insufficient space to store %s in %s\n" % (myfile, mysettings["DISTDIR"]), noiselevel=-1)
+				has_space = False
+
 			if use_locks and can_fetch:
 				waiting_msg = None
 				if "parallel-fetch" in features:
@@ -3217,7 +3259,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						waiting_msg=waiting_msg)
 		try:
 			if not listonly:
-				if fsmirrors and not os.path.exists(myfile_path):
+				if fsmirrors and not os.path.exists(myfile_path) and has_space:
 					for mydir in fsmirrors:
 						mirror_file = os.path.join(mydir, myfile)
 						try:
@@ -3338,7 +3380,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					else:
 						continue
 
-				if fetched != 2:
+				if fetched != 2 and has_space:
 					#we either need to resume or start the download
 					#you can't use "continue" when you're inside a "try" block
 					if fetched==1:

@@ -2417,7 +2417,7 @@ class dblink(object):
 									moveme = cfgfiledict["IGNORE"]
 									cfgprot = cfgfiledict["IGNORE"]
 									if not moveme:
-										zing = "-o-"
+										zing = "---"
 										mymtime = long(mystat.st_mtime)
 								else:
 									moveme = 1
@@ -2441,7 +2441,6 @@ class dblink(object):
 					zing = ">>>"
 
 				if mymtime != None:
-					zing = ">>>"
 					outfile.write("obj "+myrealdest+" "+mymd5+" "+str(mymtime)+"\n")
 				writemsg_stdout("%s %s\n" % (zing,mydest))
 			else:
@@ -2474,8 +2473,7 @@ class dblink(object):
 			self.vartree.dbapi._categories = None
 		if self.myroot == "/" and \
 			"sys-apps" == self.cat and \
-			"portage" == pkgsplit(self.pkg)[0] and \
-			"livecvsportage" not in self.settings.features:
+			"portage" == pkgsplit(self.pkg)[0]:
 			settings = self.settings
 			base_path_orig = os.path.dirname(settings["PORTAGE_BIN_PATH"])
 			from tempfile import mkdtemp
@@ -2511,6 +2509,9 @@ class dblink(object):
 		try:
 			retval = self.treewalk(mergeroot, myroot, inforoot, myebuild,
 				cleanup=cleanup, mydbapi=mydbapi, prev_mtimes=prev_mtimes)
+			# undo registrations of preserved libraries, bug #210501
+			if retval != os.EX_OK:
+				self.vartree.dbapi.plib_registry.unregister(self.mycpv, self.settings["SLOT"], self.settings["COUNTER"])
 			# Process ebuild logfiles
 			elog_process(self.mycpv, self.settings, phasefilter=filter_mergephases)
 			if retval == os.EX_OK and "noclean" not in self.settings.features:
