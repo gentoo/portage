@@ -7,7 +7,7 @@ PORTAGE_BIN_PATH="${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}"
 PORTAGE_PYM_PATH="${PORTAGE_PYM_PATH:-@PORTAGE_BASE@/pym}"
 
 SANDBOX_PREDICT="${SANDBOX_PREDICT}:/proc/self/maps:/dev/console:/dev/random"
-export SANDBOX_PREDICT="${SANDBOX_PREDICT}:${PORTAGE_PYM_PATH}:${PORTAGE_DEPCACHEDIR}"
+export SANDBOX_PREDICT
 export SANDBOX_WRITE="${SANDBOX_WRITE}:/dev/shm:/dev/stdout:/dev/stderr:${PORTAGE_TMPDIR}"
 export SANDBOX_READ="${SANDBOX_READ}:/:/dev/shm:/dev/stdin:${PORTAGE_TMPDIR}"
 # Don't use sandbox's BASH_ENV for new shells because it does
@@ -1438,18 +1438,16 @@ PORTAGE_MUTABLE_FILTERED_VARS="AA HOSTNAME"
 # builtin command. To avoid this problem, this function filters those
 # variables out and discards them. See bug #190128.
 filter_readonly_variables() {
-	local x filtered_vars var_grep
+	local x filtered_vars
 	local readonly_bash_vars="DIRSTACK EUID FUNCNAME GROUPS
 		PIPESTATUS PPID SHELLOPTS UID"
 	local filtered_sandbox_vars="SANDBOX_ACTIVE SANDBOX_BASHRC
 		SANDBOX_DEBUG_LOG SANDBOX_DISABLED SANDBOX_LIB
 		SANDBOX_LOG SANDBOX_ON"
 	filtered_vars="${readonly_bash_vars} ${READONLY_PORTAGE_VARS}
-		BASH_[_[:alnum:]]* PATH
-		[[:digit:]][_[:alnum:]]*
-		[^[:space:]]*[^_[:alnum:][:space:]][^[:space:]]*"
+		BASH_.* PATH"
 	if hasq --filter-sandbox $* ; then
-		filtered_vars="${filtered_vars} SANDBOX_[_[:alnum:]]*"
+		filtered_vars="${filtered_vars} SANDBOX_.*"
 	else
 		filtered_vars="${filtered_vars} ${filtered_sandbox_vars}"
 	fi
@@ -1463,20 +1461,8 @@ filter_readonly_variables() {
 			${PORTAGE_MUTABLE_FILTERED_VARS}
 		"
 	fi
-	set -f
-	for x in ${filtered_vars} ; do
-		var_grep="${var_grep}|${x}"
-	done
-	set +f
-	var_grep=${var_grep:1} # strip the first |
-	var_grep="(^|^declare[[:space:]]+-[^[:space:]]+[[:space:]]+|^export[[:space:]]+)(${var_grep})=.*"
-	# The sed is to remove the readonly attribute from variables such as those
-	# listed in READONLY_EBUILD_METADATA, since having any readonly attributes
-	# persisting in the saved environment can be inconvenient when it
-	# eventually needs to be reloaded.
-	"${PORTAGE_BIN_PATH}"/filter-bash-environment.py "${var_grep}" | sed -r \
-		-e 's:^declare[[:space:]]+-r[[:space:]]+:declare :' \
-		-e 's:^declare[[:space:]]+-([[:alnum:]]*)r([[:alnum:]]*)[[:space:]]+:declare -\1\2 :'
+
+	"${PORTAGE_BIN_PATH}"/filter-bash-environment.py "${filtered_vars}"
 }
 
 # @FUNCTION: preprocess_ebuild_env
