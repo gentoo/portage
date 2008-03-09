@@ -12,17 +12,24 @@ die() {
 	exit 1
 }
 
-while [ "${1:0:1}" == "-" ]; do
-	echo $1
+ARGS=$(getopt -o tu: --long tag,upload: -n $(basename $0) -- "$@")
+[ $? != 0 ] && die "initialization error"
+
+eval set -- "${ARGS}"
+
+while true; do
 	case "$1" in
 		-t|--tag)
 			CREATE_TAG=true
 			shift
 			;;
 		-u|--upload)
-			[ -z "$2" ] && die "missing argument to upload option"
 			UPLOAD_LOCATION=${2}
-			shift; shift
+			shift 2
+			;;
+		--)
+			shift
+			break
 			;;
 		*)
 			die "unknown option: $1"
@@ -38,29 +45,40 @@ RELEASE=portage-${VERSION}
 RELEASE_DIR=${RELEASE_BUILDDIR}/${RELEASE}
 RELEASE_TARBALL="${RELEASE_BUILDDIR}/${RELEASE}.tar.bz2"
 
+echo ">>> Cleaning working directories ${RELEASE_DIR} ${SOURCE_DIR}"
 rm -rf "${RELEASE_DIR}" "${SOURCE_DIR}" || die "directory cleanup failed"
 mkdir -p "${RELEASE_DIR}" || die "directory creation failed"
 
-
+echo ">>> Starting Subversion export"
 svn export "${SVN_LOCATION}" "${SOURCE_DIR}" > /dev/null || die "svn export failed"
+
+echo ">>> Creating Changelog"
 svn2cl -o "${SOURCE_DIR}/ChangeLog" "${SVN_LOCATION}" || die "ChangeLog creation failed"
 
+echo ">>> Building release tree"
 cp -a "${SOURCE_DIR}/"{bin,cnf,doc,man,pym,src} "${RELEASE_DIR}/" || die "directory copy failed"
 cp "${SOURCE_DIR}/"{ChangeLog,DEVELOPING,NEWS,RELEASE-NOTES,TEST-NOTES,TODO} "${RELEASE_DIR}/" || die "file copy failed"
 
 cd "${RELEASE_BUILDDIR}"
-       
+
+echo ">>> Creating release tarball ${RELEASE_TARBALL}"
 tar cfj "${RELEASE_TARBALL}" "${RELEASE}" || die "tarball creation failed"
 
+DISTDIR=$(portageq distdir)
+if [ -n "${DISTDIR}" -a -d "${DISTDIR}" -a -w "${DISTDIR}" ]; then
+	echo ">>> Copying release tarball into ${DISTDIR}"
+	cp "${RELEASE_TARBALL}" "${DISTDIR}"/ || echo "!!! tarball copy failed"
+fi
+
 if [ -n "${UPLOAD_LOCATION}" ]; then
-	echo "uploading ${RELEASE_TARBALL} to ${UPLOAD_LOCATION}"
+	echo ">>> Uploading ${RELEASE_TARBALL} to ${UPLOAD_LOCATION}"
 	scp "${RELEASE_TARBALL}" "dev.gentoo.org:${UPLOAD_LOCATION}" || die "upload failed"
 else
 	echo "${RELEASE_TARBALL} created"
 fi
 
 if [ -n "${CREATE_TAG}" ]; then
-	echo "Tagging ${VERSION} in repository"
+	echo ">>> Tagging ${VERSION} in repository"
 	svn cp ${SVN_LOCATION} ${REPOSITORY}/tags/${VERSION} || die "tagging failed"
 fi
 
