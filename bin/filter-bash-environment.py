@@ -9,7 +9,7 @@ here_doc_re = re.compile(r'.*\s<<[-]?(\w+)$')
 func_start_re = re.compile(r'^[-\w]+\s*\(\)\s*$')
 func_end_re = re.compile(r'^\}$')
 
-var_assign_re = re.compile(r'(^|^declare\s+-\S+\s+|^export\s+)([^=\s]+)=("|\')?.*$')
+var_assign_re = re.compile(r'(^|^declare\s+-\S+\s+|^declare\s+|^export\s+)([^=\s]+)=("|\')?.*$')
 close_quote_re = re.compile(r'(\\"|"|\')\s*$')
 readonly_re = re.compile(r'^declare\s+-(\S*)r(\S*)\s+')
 
