@@ -1826,12 +1826,13 @@ class depgraph(object):
 			#    to prevent depclean from removing them
 
 			if arg_atoms:
+				selective = "selective" in self.myparams
 				portdb = self.trees[pkg.root]["porttree"].dbapi
 				for arg, atom in arg_atoms:
 					all_ebuilds_masked = bool(
 						portdb.xmatch("match-all", atom) and
 						not portdb.xmatch("bestmatch-visible", atom))
-					if all_ebuilds_masked:
+					if all_ebuilds_masked and not selective:
 						self._missing_args.append((arg, atom))
 
 			if not visible(pkgsettings, pkg.cpv, pkg.metadata,
