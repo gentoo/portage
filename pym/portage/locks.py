@@ -75,7 +75,7 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0, waiting_msg=None):
 	except IOError, e:
 		if "errno" not in dir(e):
 			raise
-		if e.errno == errno.EAGAIN:
+		if e.errno in (errno.EACCES, errno.EAGAIN):
 			# resource temp unavailable; eg, someone beat us to the lock.
 			if waiting_msg is None:
 				if isinstance(mypath, int):
