@@ -63,11 +63,7 @@ def strip_empty(myarr):
 	@rtype: Array
 	@return: The array with empty elements removed
 	"""
-
-	for x in range(len(myarr)-1, -1, -1):
-		if not myarr[x]:
-			del myarr[x]
-	return myarr
+	return [x for x in myarr if x]
 
 def paren_reduce(mystr,tokenize=1):
 	"""
