@@ -656,25 +656,15 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 	
 	return metadata[baseurl]["data"]
 
-def readpkgindex(pkgfile):
-	d = {}
-	for line in pkgfile:
-		line = line.rstrip("\n")
-		if not line:
-			break
-		line = line.split(":", 1)
-		if not len(line) == 2:
-			continue
-		k, v = line
-		if v:
-			v = v[1:]
-		d[k] = v
-	return d
-
-def writepkgindex(pkgfile, items):
-	for k, v in items:
-		pkgfile.write("%s: %s\n" % (k, v))
-	pkgfile.write("\n")
+def _cmp_cpv(d1, d2):
+	cpv1 = d1["CPV"]
+	cpv2 = d2["CPV"]
+	if cpv1 > cpv2:
+		return 1
+	elif cpv1 == cpv2:
+		return 0
+	else:
+		return -1
 
 class PackageIndex(object):
 
@@ -682,19 +672,39 @@ class PackageIndex(object):
 		self._default_pkg_data = default_pkg_data
 		self._inherited_keys = inherited_keys
 		self.header = {}
-		self.packages = {}
+		self.packages = []
 		self.modified = True
+
+	def _readpkgindex(self, pkgfile):
+		d = {}
+		for line in pkgfile:
+			line = line.rstrip("\n")
+			if not line:
+				break
+			line = line.split(":", 1)
+			if not len(line) == 2:
+				continue
+			k, v = line
+			if v:
+				v = v[1:]
+			d[k] = v
+		return d
+	
+	def _writepkgindex(self, pkgfile, items):
+		for k, v in items:
+			pkgfile.write("%s: %s\n" % (k, v))
+		pkgfile.write("\n")
 
 	def read(self, pkgfile):
 		self.readHeader(pkgfile)
 		self.readBody(pkgfile)
 
 	def readHeader(self, pkgfile):
-		self.header.update(readpkgindex(pkgfile))
+		self.header.update(self._readpkgindex(pkgfile))
 
 	def readBody(self, pkgfile):
 		while True:
-			d = readpkgindex(pkgfile)
+			d = self._readpkgindex(pkgfile)
 			if not d:
 				break
 			mycpv = d.get("CPV")
@@ -708,19 +718,18 @@ class PackageIndex(object):
 					v = self.header.get(k)
 					if v is not None:
 						d.setdefault(k, v)
-			self.packages[mycpv] = d
+			self.packages.append(d)
 
 	def write(self, pkgfile):
-		cpv_all = self.packages.keys()
-		cpv_all.sort()
 		if self.modified:
 			self.header["TIMESTAMP"] = str(long(time.time()))
-			self.header["PACKAGES"] = str(len(cpv_all))
+			self.header["PACKAGES"] = str(len(self.packages))
 		keys = self.header.keys()
 		keys.sort()
-		writepkgindex(pkgfile, [(k, self.header[k]) for k in keys])
-		for cpv in cpv_all:
-			metadata = self.packages[cpv].copy()
+		self._writepkgindex(pkgfile, [(k, self.header[k]) for k in keys])
+		for metadata in sorted(self.packages, _cmp_cpv):
+			metadata = metadata.copy()
+			cpv = metadata["CPV"]
 			if self._inherited_keys:
 				for k in self._inherited_keys:
 					v = self.header.get(k)
@@ -732,5 +741,5 @@ class PackageIndex(object):
 						metadata.pop(k, None)
 			keys = metadata.keys()
 			keys.sort()
-			writepkgindex(pkgfile,
+			self._writepkgindex(pkgfile,
 				[(k, metadata[k]) for k in keys if metadata[k]])

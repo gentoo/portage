@@ -89,6 +89,7 @@ class NewsManager(object):
 		del path
 		
 		path = os.path.join(self.unread_path, 'news-%s.unread' % repoid)
+		unread_lock = None
 		try:
 			unread_lock = lockfile(path)
 			if not os.path.exists(path):

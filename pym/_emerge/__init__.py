@@ -1853,12 +1853,13 @@ class depgraph(object):
 			#    to prevent depclean from removing them
 
 			if arg_atoms:
+				selective = "selective" in self.myparams
 				portdb = self.trees[pkg.root]["porttree"].dbapi
 				for arg, atom in arg_atoms:
 					all_ebuilds_masked = bool(
 						portdb.xmatch("match-all", atom) and
 						not portdb.xmatch("bestmatch-visible", atom))
-					if all_ebuilds_masked:
+					if all_ebuilds_masked and not selective:
 						self._missing_args.append((arg, atom))
 
 			if not visible(pkgsettings, pkg.cpv, pkg.metadata,
@@ -6415,6 +6416,14 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	# Kill packages that aren't explicitly merged or are required as a
 	# dependency of another package. World file is explicit.
 
+	# Global depclean or prune operations are not very safe when there are
+	# missing dependencies since it's unknown how badly incomplete
+	# the dependency graph is, and we might accidentally remove packages
+	# that should have been pulled into the graph. On the other hand, it's
+	# relatively safe to ignore missing deps when only asked to remove
+	# specific packages.
+	allow_missing_deps = len(myfiles) > 0
+
 	msg = []
 	msg.append("Depclean may break link level dependencies.  Thus, it is\n")
 	msg.append("recommended to use a tool such as " + good("`revdep-rebuild`") + " (from\n")
@@ -6629,13 +6638,13 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	if "--quiet" not in myopts:
 		print "\b\b... done!\n"
 
-	if unresolveable:
+	if unresolveable and not allow_missing_deps:
 		print "Dependencies could not be completely resolved due to"
 		print "the following required packages not being installed:"
 		print
 		for atom in unresolveable:
 			print atom, "required by", " ".join(unresolveable[atom])
-	if unresolveable:
+	if unresolveable and not allow_missing_deps:
 		print
 		print "Have you forgotten to run " + good("`emerge --update --newuse --deep world`") + " prior to"
 		print "%s?  It may be necessary to manually uninstall packages that no longer" % action
