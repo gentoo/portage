@@ -2145,6 +2145,8 @@ class depgraph:
 		db_keys = self._mydbapi_keys
 		dbs.append((vardb, "installed", True, True, db_keys))
 		for db, pkg_type, built, installed, db_keys in dbs:
+			if installed:
+				continue
 			match = db.match
 			if hasattr(db, "xmatch"):
 				cpv_list = db.xmatch("match-all", atom)
