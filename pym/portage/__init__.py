@@ -3032,6 +3032,14 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 	checksum_failure_primaryuri = 2
 	thirdpartymirrors = mysettings.thirdpartymirrors()
 
+	# In the background parallel-fetch process, it's safe to skip checksum
+	# verification of pre-existing files in $DISTDIR that have the correct
+	# file size. The parent process will verify their checksums prior to
+	# the unpack phase.
+
+	parallel_fetchonly = fetchonly and \
+		"PORTAGE_PARALLEL_FETCHONLY" in mysettings
+
 	check_config_instance(mysettings)
 
 	custommirrors = grabdict(os.path.join(mysettings["PORTAGE_CONFIGROOT"],
@@ -3218,7 +3226,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 
 			if use_locks and can_fetch:
 				waiting_msg = None
-				if "parallel-fetch" in features:
+				if not parallel_fetchonly and "parallel-fetch" in features:
 					waiting_msg = ("Downloading '%s'... " + \
 						"see /var/log/emerge-fetch.log for details.") % myfile
 				if locks_in_subdir:
@@ -3277,6 +3285,15 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						if mystat.st_size < mydigests[myfile]["size"] and \
 							not restrict_fetch:
 							fetched = 1 # Try to resume this download.
+						elif parallel_fetchonly and \
+							mystat.st_size == mydigests[myfile]["size"]:
+							eout = portage.output.EOutput()
+							eout.quiet = \
+								mysettings.get("PORTAGE_QUIET") == "1"
+							eout.ebegin(
+								"%s size ;-)" % (myfile, ))
+							eout.eend(0)
+							continue
 						else:
 							verified_ok, reason = portage.checksum.verify_all(
 								myfile_path, mydigests[myfile])
@@ -4736,6 +4753,11 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		else:
 			fetchme = newuris[:]
 			checkme = alist[:]
+
+		if mydo == "fetch":
+			# Files are already checked inside fetch(),
+			# so do not check them again.
+			checkme = []
 
 		# Only try and fetch the files if we are going to need them ...
 		# otherwise, if user has FEATURES=noauto and they run `ebuild clean
