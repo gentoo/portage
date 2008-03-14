@@ -51,7 +51,7 @@ EMERGE_WARNING_DELAY="10"
 # This option will be removed and forced to yes.
 AUTOCLEAN="yes"
 
-# Number mirrors to try when a downloaded file has an incorrect checksum.
+# Number of mirrors to try when a downloaded file has an incorrect checksum.
 PORTAGE_FETCH_CHECKSUM_TRY_MIRRORS="5"
 
 # Number of times 'emerge --sync' will run before giving up.
