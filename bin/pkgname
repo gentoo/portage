@@ -5,13 +5,13 @@
 
 import sys, os
 try:
-	import portage
+	from portage.versions import pkgsplit
 except ImportError:
 	from os import path as osp
 	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
-	import portage
+	from portage.versions import pkgsplit
 
-a=portage.pkgsplit(sys.argv[1])
+a=pkgsplit(sys.argv[1])
 if a:
 	print a[0],a[1],a[2][1:]
 	sys.exit(0)
