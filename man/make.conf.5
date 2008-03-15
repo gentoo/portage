@@ -402,6 +402,9 @@ This variable contains flags for the \fBPORTAGE_COMPRESS\fR command.
 .B PORTAGE_ELOG_MAILSUBJECT
 Please see /etc/make.conf.example for elog documentation.
 .TP
+\fBPORTAGE_FETCH_CHECKSUM_TRY_MIRRORS\fR = \fI5\fR
+Number of mirrors to try when a downloaded file has an incorrect checksum.
+.TP
 \fBPORTAGE_NICENESS\fR = \fI[number]\fR
 The value of this variable will be added to the current nice level that
 emerge is running at.  In other words, this will not set the nice level,

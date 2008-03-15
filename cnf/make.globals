@@ -33,7 +33,7 @@ FETCHCOMMAND="wget -t 5 -T 60 --passive-ftp -O \"\${DISTDIR}/\${FILE}\" \"\${URI
 RESUMECOMMAND="wget -c -t 5 -T 60 --passive-ftp -O \"\${DISTDIR}/\${FILE}\" \"\${URI}\""
 
 # Default user options
-FEATURES="distlocks metadata-transfer sandbox sfperms strict unmerge-orphans userfetch"
+FEATURES="distlocks parallel-fetch metadata-transfer sandbox sfperms strict unmerge-orphans userfetch"
 
 # Enable for global testing
 FEATURES="${FEATURES} preserve-libs"
@@ -50,6 +50,9 @@ EMERGE_WARNING_DELAY="10"
 # Automatically clean installed packages after they are updated.
 # This option will be removed and forced to yes.
 AUTOCLEAN="yes"
+
+# Number of mirrors to try when a downloaded file has an incorrect checksum.
+PORTAGE_FETCH_CHECKSUM_TRY_MIRRORS="5"
 
 # Number of times 'emerge --sync' will run before giving up.
 PORTAGE_RSYNC_RETRIES="3"

@@ -947,7 +947,8 @@ class config(object):
 		"PORTAGE_BINHOST_CHUNKSIZE", "PORTAGE_CALLER",
 		"PORTAGE_ECLASS_WARNING_ENABLE", "PORTAGE_ELOG_CLASSES",
 		"PORTAGE_ELOG_MAILFROM", "PORTAGE_ELOG_MAILSUBJECT",
-		"PORTAGE_ELOG_MAILURI", "PORTAGE_ELOG_SYSTEM", "PORTAGE_GPG_DIR",
+		"PORTAGE_ELOG_MAILURI", "PORTAGE_ELOG_SYSTEM",
+		"PORTAGE_FETCH_CHECKSUM_TRY_MIRRORS", "PORTAGE_GPG_DIR",
 		"PORTAGE_GPG_KEY", "PORTAGE_PACKAGE_EMPTY_ABORT",
 		"PORTAGE_RSYNC_EXTRA_OPTS", "PORTAGE_RSYNC_OPTS",
 		"PORTAGE_RSYNC_RETRIES", "PORTAGE_USE", "PORT_LOGDIR",
@@ -3048,11 +3049,41 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 	# every single available mirror is a waste of bandwidth
 	# and time, so there needs to be a cap.
 	checksum_failure_max_tries = 5
+	v = checksum_failure_max_tries
+	try:
+		v = int(mysettings.get("PORTAGE_FETCH_CHECKSUM_TRY_MIRRORS",
+			checksum_failure_max_tries))
+	except (ValueError, OverflowError):
+		writemsg("!!! Variable PORTAGE_FETCH_CHECKSUM_TRY_MIRRORS" + \
+			" contains non-integer value: '%s'\n" % \
+			mysettings["PORTAGE_FETCH_CHECKSUM_TRY_MIRRORS"], noiselevel=-1)
+		writemsg("!!! Using PORTAGE_FETCH_CHECKSUM_TRY_MIRRORS " + \
+			"default value: %s\n" % checksum_failure_max_tries,
+			noiselevel=-1)
+		v = checksum_failure_max_tries
+	if v < 1:
+		writemsg("!!! Variable PORTAGE_FETCH_CHECKSUM_TRY_MIRRORS" + \
+			" contains value less than 1: '%s'\n" % v, noiselevel=-1)
+		writemsg("!!! Using PORTAGE_FETCH_CHECKSUM_TRY_MIRRORS " + \
+			"default value: %s\n" % checksum_failure_max_tries,
+			noiselevel=-1)
+		v = checksum_failure_max_tries
+	checksum_failure_max_tries = v
+	del v
+
 	# Behave like the package has RESTRICT="primaryuri" after a
 	# couple of checksum failures, to increase the probablility
 	# of success before checksum_failure_max_tries is reached.
 	checksum_failure_primaryuri = 2
 	thirdpartymirrors = mysettings.thirdpartymirrors()
+
+	# In the background parallel-fetch process, it's safe to skip checksum
+	# verification of pre-existing files in $DISTDIR that have the correct
+	# file size. The parent process will verify their checksums prior to
+	# the unpack phase.
+
+	parallel_fetchonly = fetchonly and \
+		"PORTAGE_PARALLEL_FETCHONLY" in mysettings
 
 	check_config_instance(mysettings)
 
@@ -3240,7 +3271,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 
 			if use_locks and can_fetch:
 				waiting_msg = None
-				if "parallel-fetch" in features:
+				if not parallel_fetchonly and "parallel-fetch" in features:
 					waiting_msg = ("Downloading '%s'... " + \
 						"see "+EPREFIX+"/var/log/emerge-fetch.log for details.") % myfile
 				if locks_in_subdir:
@@ -3299,6 +3330,15 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						if mystat.st_size < mydigests[myfile]["size"] and \
 							not restrict_fetch:
 							fetched = 1 # Try to resume this download.
+						elif parallel_fetchonly and \
+							mystat.st_size == mydigests[myfile]["size"]:
+							eout = portage.output.EOutput()
+							eout.quiet = \
+								mysettings.get("PORTAGE_QUIET") == "1"
+							eout.ebegin(
+								"%s size ;-)" % (myfile, ))
+							eout.eend(0)
+							continue
 						else:
 							verified_ok, reason = portage.checksum.verify_all(
 								myfile_path, mydigests[myfile])
@@ -3484,10 +3524,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 											pass
 								fetched = 1
 								continue
-							if not fetchonly:
-								fetched=2
-								break
-							else:
+							if True:
 								# File is the correct size--check the checksums for the fetched
 								# file NOW, for those users who don't have a stable/continuous
 								# net connection. This way we have a chance to try to download
@@ -4787,6 +4824,11 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		else:
 			fetchme = newuris[:]
 			checkme = alist[:]
+
+		if mydo == "fetch":
+			# Files are already checked inside fetch(),
+			# so do not check them again.
+			checkme = []
 
 		# Only try and fetch the files if we are going to need them ...
 		# otherwise, if user has FEATURES=noauto and they run `ebuild clean

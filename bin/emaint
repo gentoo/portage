@@ -172,8 +172,8 @@ class BinhostHandler(object):
 				self._pkgindex_file, wantnewlockfile=1)
 			try:
 				from portage import getbinpkg
-				del pkgindex
-				self._pkgindex = getbinpkg.PackageIndex()
+				pkgindex = getbinpkg.PackageIndex()
+				self._pkgindex = pkgindex
 				f = open(self._pkgindex_file, 'r')
 				try:
 					self._pkgindex.read(f)
