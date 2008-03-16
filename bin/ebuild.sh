@@ -263,6 +263,10 @@ register_die_hook() {
 #if no perms are specified, dirs/files will have decent defaults
 #(not secretive, but not stupid)
 umask 022
+export DESTTREE=/usr
+export INSDESTTREE=""
+export _E_EXEDESTTREE_=""
+export _E_DOCDESTTREE_=""
 export INSOPTIONS="-m0644"
 export EXEOPTIONS="-m0755"
 export LIBOPTIONS="-m0644"
