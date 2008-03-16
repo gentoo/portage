@@ -1244,7 +1244,7 @@ class SetArg(DependencyArg):
 
 class Dependency(object):
 	__slots__ = ("__weakref__", "atom", "blocker", "depth",
-		"parent", "priority", "root")
+		"parent", "onlydeps", "priority", "root")
 	def __init__(self, **kwargs):
 		for myattr in self.__slots__:
 			if myattr == "__weakref__":
@@ -1667,7 +1667,8 @@ class depgraph(object):
 						("blocks", dep.parent.root, dep.atom), set()).add(
 							dep.parent)
 				continue
-			dep_pkg, existing_node = self._select_package(dep.root, dep.atom)
+			dep_pkg, existing_node = self._select_package(dep.root, dep.atom,
+				onlydeps=dep.onlydeps)
 			if not dep_pkg:
 				if allow_unsatisfied:
 					self._unsatisfied_deps.append(dep)
@@ -2297,7 +2298,7 @@ class depgraph(object):
 						return 0, myfavorites
 
 					self._dep_stack.append(
-						Dependency(atom=atom, root=myroot, parent=arg))
+						Dependency(atom=atom, onlydeps=onlydeps, root=myroot, parent=arg))
 					if not self._create_graph():
 						if isinstance(arg, SetArg):
 							sys.stderr.write(("\n\n!!! Problem resolving " + \
