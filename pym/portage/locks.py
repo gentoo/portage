@@ -107,7 +107,7 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0, waiting_msg=None):
 
 		
 	if type(lockfilename) == types.StringType and \
-		myfd != HARDLINK_FD and os.fstat(myfd).st_nlink == 0:
+		myfd != HARDLINK_FD and _fstat_nlink(myfd) == 0:
 		# The file was deleted on us... Keep trying to make one...
 		os.close(myfd)
 		writemsg("lockfile recurse\n",1)
@@ -117,6 +117,22 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0, waiting_msg=None):
 
 	writemsg(str((lockfilename,myfd,unlinkfile))+"\n",1)
 	return (lockfilename,myfd,unlinkfile,locking_method)
+
+def _fstat_nlink(fd):
+	"""
+	@param fd: an open file descriptor
+	@type fd: Integer
+	@rtype: Integer
+	@return: the current number of hardlinks to the file
+	"""
+	try:
+		return os.fstat(fd).st_nlink
+	except EnvironmentError, e:
+		if e.errno == errno.ENOENT:
+			# Some filesystems such as CIFS return
+			# ENOENT which means st_nlink == 0.
+			return 0
+		raise
 
 def unlockfile(mytuple):
 	import fcntl
@@ -163,7 +179,7 @@ def unlockfile(mytuple):
 			# We won the lock, so there isn't competition for it.
 			# We can safely delete the file.
 			writemsg("Got the lockfile...\n",1)
-			if os.fstat(myfd).st_nlink == 1:
+			if _fstat_nlink(myfd) == 1:
 				os.unlink(lockfilename)
 				writemsg("Unlinked lockfile...\n",1)
 				locking_method(myfd,fcntl.LOCK_UN)
