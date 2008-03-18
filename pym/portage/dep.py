@@ -454,7 +454,7 @@ def dep_getusedeps( depend ):
 		open_bracket = depend.find( '[', open_bracket+1 )
 	return use_list
 
-_invalid_atom_chars_regexp = re.compile("[()|?]")
+_invalid_atom_chars_regexp = re.compile("[()|?@]")
 
 def isvalidatom(atom, allow_blockers=False):
 	"""
