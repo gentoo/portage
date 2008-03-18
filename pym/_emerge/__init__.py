@@ -5105,7 +5105,7 @@ def unmerge(root_config, myopts, unmerge_action,
 			   y not in pkgmap[x]["selected"] and \
 			   y not in pkgmap[x]["protected"] and \
 			   y not in all_selected:
-				pkgmap[x]["omitted"].append(y)
+				pkgmap[x]["omitted"].add(y)
 		if global_unmerge and not pkgmap[x]["selected"]:
 			#avoid cluttering the preview printout with stuff that isn't getting unmerged
 			continue
