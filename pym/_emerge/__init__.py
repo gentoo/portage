@@ -6790,6 +6790,18 @@ def action_build(settings, trees, mtimedb,
 	if pretend or fetchonly:
 		# make the mtimedb readonly
 		mtimedb.filename = None
+	if "--digest" in myopts:
+		msg = "The --digest option can prevent corruption from being" + \
+			" noticed. The `repoman manifest` command is the preferred" + \
+			" way to generate manifests and it is capable of doing an" + \
+			" entire repository or category at once."
+		prefix = bad(" * ")
+		writemsg(prefix + "\n")
+		from textwrap import wrap
+		for line in wrap(msg, 72):
+			writemsg("%s%s\n" % (prefix, line))
+		writemsg(prefix + "\n")
+
 	if "--quiet" not in myopts and \
 		("--pretend" in myopts or "--ask" in myopts or \
 		"--tree" in myopts or "--verbose" in myopts):
