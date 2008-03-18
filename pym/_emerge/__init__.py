@@ -5090,6 +5090,55 @@ def unmerge(root_config, myopts, unmerge_action,
 	all_selected = set()
 	for x in pkgmap:
 		all_selected.update(pkgmap[x]["selected"])
+	
+	from portage.sets.base import EditablePackageSet
+	
+	# generate a list of package sets that are directly or indirectly listed in "world",
+	# as there is no persistent list of "installed" sets
+	installed_sets = ["world"]
+	stop = False
+	pos = 0
+	while not stop:
+		stop = True
+		pos = len(installed_sets)
+		for s in installed_sets[pos - 1:]:
+			candidates = [x[len(SETPREFIX):] for x in sets[s].getNonAtoms() if x.startswith(SETPREFIX)]
+			if candidates:
+				stop = False
+				installed_sets += candidates
+	del stop, pos
+
+	# we don't want to unmerge packages that are still listed in user-editable package sets
+	# listed in "world" as they would be remerged on the next update of "world" or the 
+	# relevant package sets.
+	for cp in pkgmap:
+		for cpv in pkgmap[cp]["selected"].copy():
+			parents = []
+			for s in installed_sets:
+				# skip sets that the user requested to unmerge, and skip world 
+				# unless we're unmerging a package set (as the package would be 
+				# removed from "world" later on)
+				if s in root_config.setconfig.active or (s == "world" and not root_config.setconfig.active):
+					continue
+				# only check instances of EditablePackageSet as other classes are generally used for
+				# special purposes and can be ignored here (and are usually generated dynamically, so the
+				# user can't do much about them anyway)
+				elif sets[s].containsCPV(cpv) \
+					and isinstance(sets[s], EditablePackageSet):
+					parents.append(s)
+			if parents:
+				#print colorize("WARN", "Package %s is going to be unmerged," % cpv)
+				#print colorize("WARN", "but still listed in the following package sets:")
+				#print "    %s\n" % ", ".join(parents)
+				print colorize("WARN", "Not unmerging package %s as it is" % cpv)
+				print colorize("WARN", "still referenced by the following package sets:")
+				print "    %s\n" % ", ".join(parents)
+				# adjust pkgmap so the display output is correct
+				pkgmap[cp]["selected"].remove(cpv)
+				pkgmap[cp]["protected"].add(cpv)
+	
+	del installed_sets
+	
 	for x in pkgmap:
 		selected = pkgmap[x]["selected"]
 		if not selected:
