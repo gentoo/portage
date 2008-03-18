@@ -96,7 +96,7 @@ class StaticFileSet(EditablePackageSet):
 	def singleBuilder(self, options, settings, trees):
 		if not "filename" in options:
 			raise SetConfigError("no filename specified")
-		greedy = get_boolean(options, "greedy", True)
+		greedy = get_boolean(options, "greedy", False)
 		filename = options["filename"]
 		# look for repository path variables
 		match = self._repopath_match.match(filename)
@@ -111,7 +111,7 @@ class StaticFileSet(EditablePackageSet):
 		name_pattern = options.get("name_pattern", "sets/${name}")
 		if not "$name" in name_pattern and not "${name}" in name_pattern:
 			raise SetConfigError("name_pattern doesn't include ${name} placeholder")
-		greedy = get_boolean(options, "greedy", True)
+		greedy = get_boolean(options, "greedy", False)
 		# look for repository path variables
 		match = self._repopath_match.match(directory)
 		if match:
