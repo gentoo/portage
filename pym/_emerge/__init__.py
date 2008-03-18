@@ -4900,7 +4900,7 @@ def unmerge(root_config, myopts, unmerge_action,
 		mysettings = portage.config(clone=settings)
 	
 		if not unmerge_files:
-			if "unmerge"==unmerge_action:
+			if unmerge_action == "unmerge":
 				print
 				print bold("emerge unmerge") + " can only be used with specific package names"
 				print
@@ -4985,8 +4985,8 @@ def unmerge(root_config, myopts, unmerge_action,
 			print darkgreen(newline+\
 				">>> These are the packages that would be unmerged:")
 	
-		pkgmap = []
-		numselected=0
+		pkgmap = {}
+		numselected = 0
 		for x in candidate_catpkgs:
 			# cycle through all our candidate deps and determine
 			# what will and will not get unmerged
@@ -5011,13 +5011,17 @@ def unmerge(root_config, myopts, unmerge_action,
 				portage.writemsg("\n--- Couldn't find '%s' to %s.\n" % \
 					(x, unmerge_action), noiselevel=-1)
 				continue
-			pkgmap.append({"protected":[], "selected":[], "omitted":[] })
-			mykey = len(pkgmap) - 1
-			if unmerge_action=="unmerge":
-					for y in mymatch:
-						if y not in pkgmap[mykey]["selected"]:
-							pkgmap[mykey]["selected"].append(y)
-							numselected=numselected+len(mymatch)
+			
+			mycp = portage.versions.pkgsplit(mymatch[0])[0]
+			
+			if not mycp in pkgmap:
+				pkgmap[mycp] = {"protected": set(), "selected": set(), "omitted": set()}
+
+			if unmerge_action == "unmerge":
+				for y in mymatch:
+					if y not in pkgmap[mycp]["selected"]:
+						pkgmap[mycp]["selected"].add(y)
+						numselected += len(mymatch)
 			elif unmerge_action == "prune":
 				if len(mymatch) == 1:
 					continue
@@ -5038,36 +5042,37 @@ def unmerge(root_config, myopts, unmerge_action,
 						best_version = mypkg
 						best_slot = myslot
 						best_counter = mycounter
-				pkgmap[mykey]["protected"].append(best_version)
-				pkgmap[mykey]["selected"] = [mypkg for mypkg in mymatch \
-					if mypkg != best_version]
-				numselected = numselected + len(pkgmap[mykey]["selected"])
+				pkgmap[mycp]["protected"].add(best_version)
+				pkgmap[mycp]["selected"] = set([mypkg for mypkg in mymatch \
+					if mypkg != best_version])
+				numselected += len(pkgmap[mycp]["selected"])
 			else:
 				# unmerge_action == "clean"
 				slotmap={}
 				for mypkg in mymatch:
-					if unmerge_action=="clean":
-						myslot=localtree.getslot(mypkg)
+					if unmerge_action == "clean":
+						myslot = localtree.getslot(mypkg)
 					else:
 						# since we're pruning, we don't care about slots
 						# and put all the pkgs in together
-						myslot=0
+						myslot = 0
 					if not slotmap.has_key(myslot):
-						slotmap[myslot]={}
-					slotmap[myslot][localtree.dbapi.cpv_counter(mypkg)]=mypkg
+						slotmap[myslot] = {}
+					slotmap[myslot][localtree.dbapi.cpv_counter(mypkg)] = mypkg
+				
 				for myslot in slotmap:
-					counterkeys=slotmap[myslot].keys()
+					counterkeys = slotmap[myslot].keys()
 					counterkeys.sort()
 					if not counterkeys:
 						continue
 					counterkeys.sort()
-					pkgmap[mykey]["protected"].append(
+					pkgmap[mycp]["protected"].add(
 						slotmap[myslot][counterkeys[-1]])
 					del counterkeys[-1]
 					#be pretty and get them in order of merge:
 					for ckey in counterkeys:
-						pkgmap[mykey]["selected"].append(slotmap[myslot][ckey])
-						numselected=numselected+1
+						pkgmap[mycp]["selected"].add(slotmap[myslot][ckey])
+						numselected += 1
 					# ok, now the last-merged package
 					# is protected, and the rest are selected
 		if global_unmerge and not numselected:
@@ -5084,8 +5089,8 @@ def unmerge(root_config, myopts, unmerge_action,
 			portage.locks.unlockdir(vdb_lock)
 	all_selected = set()
 	for x in pkgmap:
-		all_selected.update(x["selected"])
-	for x in xrange(len(pkgmap)):
+		all_selected.update(pkgmap[x]["selected"])
+	for x in pkgmap:
 		selected = pkgmap[x]["selected"]
 		if not selected:
 			continue
@@ -5093,8 +5098,8 @@ def unmerge(root_config, myopts, unmerge_action,
 			if mytype == "selected":
 				continue
 			pkgmap[x][mytype] = \
-				[cpv for cpv in mylist if cpv not in all_selected]
-		cp = portage.cpv_getkey(selected[0])
+				set([cpv for cpv in mylist if cpv not in all_selected])
+		cp = portage.cpv_getkey(list(selected)[0])
 		for y in localtree.dep_match(cp):
 			if y not in pkgmap[x]["omitted"] and \
 			   y not in pkgmap[x]["selected"] and \
@@ -5118,15 +5123,14 @@ def unmerge(root_config, myopts, unmerge_action,
 			if "--quiet" not in myopts:
 				portage.writemsg_stdout((mytype + ": ").rjust(14), noiselevel=-1)
 			if pkgmap[x][mytype]:
-				sorted_pkgs = [portage.catpkgsplit(mypkg)[1:] \
-					for mypkg in pkgmap[x][mytype]]
+				sorted_pkgs = [portage.catpkgsplit(mypkg)[1:] for mypkg in pkgmap[x][mytype]]
 				sorted_pkgs.sort(portage.pkgcmp)
 				for pn, ver, rev in sorted_pkgs:
 					if rev == "r0":
 						myversion = ver
 					else:
 						myversion = ver + "-" + rev
-					if mytype=="selected":
+					if mytype == "selected":
 						portage.writemsg_stdout(
 							colorize("UNMERGE_WARN", myversion + " "), noiselevel=-1)
 					else:
@@ -5160,11 +5164,11 @@ def unmerge(root_config, myopts, unmerge_action,
 	if not autoclean:
 		countdown(int(settings["CLEAN_DELAY"]), ">>> Unmerging")
 
-	for x in xrange(len(pkgmap)):
+	for x in pkgmap:
 		for y in pkgmap[x]["selected"]:
 			print ">>> Unmerging "+y+"..."
 			emergelog(xterm_titles, "=== Unmerging... ("+y+")")
-			mysplit=y.split("/")
+			mysplit = y.split("/")
 			#unmerge...
 			retval = portage.unmerge(mysplit[0], mysplit[1], settings["ROOT"],
 				mysettings, unmerge_action not in ["clean","prune"],
@@ -7354,6 +7358,7 @@ def emerge_main():
 					sys.stderr.write(line + "\n")
 				return 1
 		unmerge_actions = ("unmerge", "prune", "clean", "depclean")
+		
 		# In order to know exactly which atoms/sets should be added to the
 		# world file, the depgraph performs set expansion later. It will get
 		# confused about where the atoms came from if it's not allowed to
@@ -7375,6 +7380,7 @@ def emerge_main():
 					print "emerge: there are no sets to satisfy %s." % \
 						colorize("INFORM", s)
 					return 1
+				setconfig.active.append(s)
 				if myaction in unmerge_actions and \
 						not sets[s].supportsOperation("unmerge"):
 					sys.stderr.write("emerge: the given set %s does " + \
