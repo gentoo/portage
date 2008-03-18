@@ -1043,7 +1043,7 @@ dyn_help() {
 	echo "  help        : show this help screen"
 	echo "  setup       : execute package specific setup actions"
 	echo "  fetch       : download source archive(s) and patches"
-	echo "  digest      : create a digest and a manifest file for the package"
+	echo "  digest      : create a manifest file for the package"
 	echo "  manifest    : create a manifest file for the package"
 	echo "  unpack      : unpack/patch sources (auto-fetch if needed)"
 	echo "  compile     : compile sources (auto-fetch/unpack if needed)"

@@ -176,7 +176,7 @@ for arg in pargs:
 			stale_env_warning()
 			checked_for_stale_env = True
 
-		if arg == "digest" and force:
+		if arg in ("digest", "manifest") and force:
 			discard_digests(ebuild, tmpsettings, portage.portdb)
 		a = portage.doebuild(ebuild, arg, portage.root, tmpsettings,
 			debug=debug, tree=mytree)
