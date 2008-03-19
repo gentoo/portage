@@ -50,6 +50,9 @@ for x in "$@" ; do
 			continue
 		fi
 
+		while [ "$x" != "${x%/}" ] ; do
+			x=${x%/}
+		done
 		if [ $x = "${x%/*}" ] ; then
 			pushd "$PWD" >/dev/null
 		else
