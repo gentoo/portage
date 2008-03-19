@@ -4984,9 +4984,13 @@ def unmerge(root_config, myopts, unmerge_action,
 			not ("--quiet" in myopts):
 			print darkgreen(newline+\
 				">>> These are the packages that would be unmerged:")
-	
-		pkgmap = {}
-		numselected = 0
+
+		# Preservation of order is required for --depclean and --prune so
+		# that dependencies are respected. Use all_selected to eliminate
+		# duplicate packages since the same package may be selected by
+		# multiple atoms.
+		pkgmap = []
+		all_selected = set()
 		for x in candidate_catpkgs:
 			# cycle through all our candidate deps and determine
 			# what will and will not get unmerged
@@ -5011,17 +5015,15 @@ def unmerge(root_config, myopts, unmerge_action,
 				portage.writemsg("\n--- Couldn't find '%s' to %s.\n" % \
 					(x, unmerge_action), noiselevel=-1)
 				continue
-			
-			mycp = portage.versions.pkgsplit(mymatch[0])[0]
-			
-			if not mycp in pkgmap:
-				pkgmap[mycp] = {"protected": set(), "selected": set(), "omitted": set()}
 
-			if unmerge_action == "unmerge":
-				for y in mymatch:
-					if y not in pkgmap[mycp]["selected"]:
-						pkgmap[mycp]["selected"].add(y)
-						numselected += len(mymatch)
+			pkgmap.append(
+				{"protected": set(), "selected": set(), "omitted": set()})
+			mykey = len(pkgmap) - 1
+			if unmerge_action=="unmerge":
+					for y in mymatch:
+						if y not in all_selected:
+							pkgmap[mykey]["selected"].add(y)
+							all_selected.add(y)
 			elif unmerge_action == "prune":
 				if len(mymatch) == 1:
 					continue
@@ -5042,10 +5044,10 @@ def unmerge(root_config, myopts, unmerge_action,
 						best_version = mypkg
 						best_slot = myslot
 						best_counter = mycounter
-				pkgmap[mycp]["protected"].add(best_version)
-				pkgmap[mycp]["selected"] = set([mypkg for mypkg in mymatch \
-					if mypkg != best_version])
-				numselected += len(pkgmap[mycp]["selected"])
+				pkgmap[mykey]["protected"].add(best_version)
+				pkgmap[mykey]["selected"].update(mypkg for mypkg in mymatch \
+					if mypkg != best_version and mypkg not in all_selected)
+				all_selected.update(pkgmap[mykey]["selected"])
 			else:
 				# unmerge_action == "clean"
 				slotmap={}
@@ -5062,19 +5064,21 @@ def unmerge(root_config, myopts, unmerge_action,
 				
 				for myslot in slotmap:
 					counterkeys = slotmap[myslot].keys()
-					counterkeys.sort()
 					if not counterkeys:
 						continue
 					counterkeys.sort()
-					pkgmap[mycp]["protected"].add(
+					pkgmap[mykey]["protected"].add(
 						slotmap[myslot][counterkeys[-1]])
 					del counterkeys[-1]
 					#be pretty and get them in order of merge:
 					for ckey in counterkeys:
-						pkgmap[mycp]["selected"].add(slotmap[myslot][ckey])
-						numselected += 1
+						mypkg = slotmap[myslot][ckey]
+						if mypkg not in all_selected:
+							pkgmap[mykey]["selected"].add(mypkg)
+							all_selected.add(mypkg)
 					# ok, now the last-merged package
 					# is protected, and the rest are selected
+		numselected = len(all_selected)
 		if global_unmerge and not numselected:
 			portage.writemsg_stdout("\n>>> No outdated packages were found on your system.\n")
 			return 0
@@ -5087,9 +5091,6 @@ def unmerge(root_config, myopts, unmerge_action,
 	finally:
 		if vdb_lock:
 			portage.locks.unlockdir(vdb_lock)
-	all_selected = set()
-	for x in pkgmap:
-		all_selected.update(pkgmap[x]["selected"])
 	
 	from portage.sets.base import EditablePackageSet
 	
@@ -5111,7 +5112,7 @@ def unmerge(root_config, myopts, unmerge_action,
 	# we don't want to unmerge packages that are still listed in user-editable package sets
 	# listed in "world" as they would be remerged on the next update of "world" or the 
 	# relevant package sets.
-	for cp in pkgmap:
+	for cp in xrange(len(pkgmap)):
 		for cpv in pkgmap[cp]["selected"].copy():
 			parents = []
 			for s in installed_sets:
@@ -5139,21 +5140,20 @@ def unmerge(root_config, myopts, unmerge_action,
 	
 	del installed_sets
 	
-	for x in pkgmap:
+	for x in xrange(len(pkgmap)):
 		selected = pkgmap[x]["selected"]
 		if not selected:
 			continue
 		for mytype, mylist in pkgmap[x].iteritems():
 			if mytype == "selected":
 				continue
-			pkgmap[x][mytype] = \
-				set([cpv for cpv in mylist if cpv not in all_selected])
-		cp = portage.cpv_getkey(list(selected)[0])
+			mylist.difference_update(all_selected)
+		cp = portage.cpv_getkey(iter(selected).next())
 		for y in localtree.dep_match(cp):
 			if y not in pkgmap[x]["omitted"] and \
-			   y not in pkgmap[x]["selected"] and \
-			   y not in pkgmap[x]["protected"] and \
-			   y not in all_selected:
+				y not in pkgmap[x]["selected"] and \
+				y not in pkgmap[x]["protected"] and \
+				y not in all_selected:
 				pkgmap[x]["omitted"].add(y)
 		if global_unmerge and not pkgmap[x]["selected"]:
 			#avoid cluttering the preview printout with stuff that isn't getting unmerged
@@ -5213,7 +5213,7 @@ def unmerge(root_config, myopts, unmerge_action,
 	if not autoclean:
 		countdown(int(settings["CLEAN_DELAY"]), ">>> Unmerging")
 
-	for x in pkgmap:
+	for x in xrange(len(pkgmap)):
 		for y in pkgmap[x]["selected"]:
 			print ">>> Unmerging "+y+"..."
 			emergelog(xterm_titles, "=== Unmerging... ("+y+")")
