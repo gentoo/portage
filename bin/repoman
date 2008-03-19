@@ -284,6 +284,7 @@ qahelp={
 	"LICENSE.invalid":"This ebuild is listing a license that doesnt exist in portages license/ dir.",
 	"KEYWORDS.invalid":"This ebuild contains KEYWORDS that are not listed in profiles/arch.list or for which no valid profile was found",
 	"RESTRICT.invalid":"This ebuild contains invalid RESTRICT values.",
+	"digestentry.unused":"Some files listed in the Manifest aren't referenced in SRC_URI",
 	"ebuild.nostable":"There are no ebuilds that are marked as stable for your ARCH",
 	"ebuild.allmasked":"All ebuilds are masked for this package (Package level only)",
 	"ebuild.majorsyn":"This ebuild has a major syntax error that may cause the ebuild to fail partially or fully",
@@ -303,6 +304,7 @@ qacats.sort()
 qawarnings=[
 "changelog.missing",
 "changelog.notadded",
+"digestentry.unused",
 "ebuild.notadded",
 "ebuild.nostable",
 "ebuild.allmasked",
