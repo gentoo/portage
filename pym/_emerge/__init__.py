@@ -3681,7 +3681,8 @@ class depgraph(object):
 
 				#we need to use "--emptrytree" testing here rather than "empty" param testing because "empty"
 				#param is used for -u, where you still *do* want to see when something is being upgraded.
-				myoldbest=""
+				myoldbest = ""
+				myinslotlist = None
 				installed_versions = vardb.match(portage.cpv_getkey(pkg_key))
 				if vardb.cpv_exists(pkg_key):
 					addl="  "+yellow("R")+fetch+"  "
@@ -3703,21 +3704,22 @@ class depgraph(object):
 						portage.cpv_getkey(pkg_key):
 						myinslotlist = None
 					if myinslotlist:
-						myoldbest=portage.best(myinslotlist)
-						addl="   "+fetch
+						myoldbest = portage.best(myinslotlist)
+						addl = "   " + fetch
 						if portage.pkgcmp(portage.pkgsplit(x[2]), portage.pkgsplit(myoldbest)) < 0:
 							# Downgrade in slot
-							addl+=turquoise("U")+blue("D")
+							addl += turquoise("U")+blue("D")
 							if ordered:
 								counters.downgrades += 1
 						else:
 							# Update in slot
-							addl+=turquoise("U")+" "
+							addl += turquoise("U") + " "
 							if ordered:
 								counters.upgrades += 1
 					else:
 						# New slot, mark it new.
-						addl=" "+green("NS")+fetch+"  "
+						addl = " " + green("NS") + fetch + "  "
+						myoldbest = vardb.match(portage.cpv_getkey(pkg_key))
 						if ordered:
 							counters.newslot += 1
 
@@ -3730,11 +3732,11 @@ class depgraph(object):
 								portdb.findname(pkg_key),
 								inst_matches[0], pkg_key))
 				else:
-					addl=" "+green("N")+" "+fetch+"  "
+					addl = " " + green("N") + " " + fetch + "  "
 					if ordered:
 						counters.new += 1
 
-				verboseadd=""
+				verboseadd = ""
 				
 				if True:
 					# USE flag display
@@ -3751,7 +3753,7 @@ class depgraph(object):
 					cur_use = pkg_use
 					cur_use = [flag for flag in cur_use if flag in cur_iuse]
 
-					if myoldbest:
+					if myoldbest and myinslotlist:
 						pkg = myoldbest
 					else:
 						pkg = x[2]
@@ -3893,10 +3895,10 @@ class depgraph(object):
 						verboseadd += teal("[%s]" % repoadd)
 
 				xs = list(portage.pkgsplit(x[2]))
-				if xs[2]=="r0":
-					xs[2]=""
+				if xs[2] == "r0":
+					xs[2] = ""
 				else:
-					xs[2]="-"+xs[2]
+					xs[2] = "-" + xs[2]
 
 				mywidth = 130
 				if "COLUMNWIDTH" in self.settings:
@@ -3908,16 +3910,22 @@ class depgraph(object):
 							"!!! Unable to parse COLUMNWIDTH='%s'\n" % \
 							self.settings["COLUMNWIDTH"], noiselevel=-1)
 						del e
-				oldlp=mywidth-30
-				newlp=oldlp-30
+				oldlp = mywidth - 30
+				newlp = oldlp - 30
 
 				indent = " " * depth
 
 				if myoldbest:
-					myoldbest=portage.pkgsplit(myoldbest)[1]+"-"+portage.pkgsplit(myoldbest)[2]
-					if myoldbest[-3:]=="-r0":
-						myoldbest=myoldbest[:-3]
-					myoldbest=blue("["+myoldbest+"]")
+					if myinslotlist:
+						myoldbest = [myoldbest]
+					for key in myoldbest:
+						pos = myoldbest.index(key)
+						key = portage.pkgsplit(key)[1] + "-" + portage.pkgsplit(key)[2]
+						if key[-3:] == "-r0":
+							key = key[:-3]
+						myoldbest[pos] = key
+					myoldbest = blue("["+", ".join(myoldbest)+"]")
+					
 
 				pkg_cp = xs[0]
 				root_config = self.roots[myroot]
