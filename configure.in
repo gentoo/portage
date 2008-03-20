@@ -183,11 +183,11 @@ AC_HELP_STRING([--with-portage-group=mygroup],[use group 'mygroup' as portage us
 esac],
 [portagegroup="portage"])
 
-AC_ARG_WITH(rootuser,
-AC_HELP_STRING([--with-rootuser=myuser],[uses 'myuser' as owner of installed files (default is portage-user)]),
+AC_ARG_WITH(root-user,
+AC_HELP_STRING([--with-root-user=myuser],[uses 'myuser' as owner of installed files (default is portage-user)]),
 [case "${withval}" in
-  ""|yes) AC_MSG_ERROR(bad value ${withval} for --with-rootuser);;
-  *) rootuser=${withval};;
+  ""|yes) AC_MSG_ERROR(bad value ${withval} for --with-root-user);;
+  *) root-user=${withval};;
 esac],
 [rootuser=${portageuser}])
 
