@@ -187,7 +187,7 @@ AC_ARG_WITH(root-user,
 AC_HELP_STRING([--with-root-user=myuser],[uses 'myuser' as owner of installed files (default is portage-user)]),
 [case "${withval}" in
   ""|yes) AC_MSG_ERROR(bad value ${withval} for --with-root-user);;
-  *) root-user=${withval};;
+  *) rootuser=${withval};;
 esac],
 [rootuser=${portageuser}])
 
