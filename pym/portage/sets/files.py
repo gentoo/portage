@@ -3,6 +3,7 @@
 # $Id$
 
 import os
+import re
 from itertools import chain
 
 from portage.util import grabfile, write_atomic, ensure_dirs
@@ -19,7 +20,9 @@ __all__ = ["StaticFileSet", "ConfigFileSet", "WorldSet"]
 
 class StaticFileSet(EditablePackageSet):
 	_operations = ["merge", "unmerge"]
-	
+	_repopath_match = re.compile(r'.*\$\{repository:(?P<reponame>.+)\}.*')
+	_repopath_sub = re.compile(r'\$\{repository:(?P<reponame>.+)\}')
+		
 	def __init__(self, filename, greedy=False, dbapi=None):
 		super(StaticFileSet, self).__init__()
 		self._filename = filename
@@ -92,17 +95,26 @@ class StaticFileSet(EditablePackageSet):
 	def singleBuilder(self, options, settings, trees):
 		if not "filename" in options:
 			raise SetConfigError("no filename specified")
-		greedy = get_boolean(options, "greedy", True)
-		return StaticFileSet(options["filename"], greedy=greedy, dbapi=trees["vartree"].dbapi)
+		greedy = get_boolean(options, "greedy", False)
+		filename = options["filename"]
+		# look for repository path variables
+		match = self._repopath_match.match(filename)
+		if match:
+			filename = self._repopath_sub.sub(trees["porttree"].dbapi.treemap[match.groupdict()["reponame"]], filename)
+		return StaticFileSet(filename, greedy=greedy, dbapi=trees["vartree"].dbapi)
 	singleBuilder = classmethod(singleBuilder)
 	
 	def multiBuilder(self, options, settings, trees):
 		rValue = {}
 		directory = options.get("directory", os.path.join(settings["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH.lstrip(os.sep), "sets"))
-		name_pattern = options.get("name_pattern", "sets/$name")
+		name_pattern = options.get("name_pattern", "sets/${name}")
 		if not "$name" in name_pattern and not "${name}" in name_pattern:
-			raise SetConfigError("name_pattern doesn't include $name placeholder")
-		greedy = get_boolean(options, "greedy", True)
+			raise SetConfigError("name_pattern doesn't include ${name} placeholder")
+		greedy = get_boolean(options, "greedy", False)
+		# look for repository path variables
+		match = self._repopath_match.match(directory)
+		if match:
+			directory = self._repopath_sub.sub(trees["porttree"].dbapi.treemap[match.groupdict()["reponame"]], directory)
 		if os.path.isdir(directory):
 			for filename in os.listdir(directory):
 				if filename.endswith(".metadata"):

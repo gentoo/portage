@@ -64,18 +64,17 @@ in files/digest\-[package]\-[version\-rev], a warning is printed
 and ebuild exits with an error code of 1.
 .TP
 .BR digest
-Creates a digest file for the package in
-/usr/portage/[category]/[package]/files/.  This digest file lists the
-checksums of all the files found in the SRC_URI. See the \fB\-\-force\fR
-option if you would like to prevent digests from being assumed. For further
-information regarding the behavior of this command, see the documentation for
-the \fIassume\-digests\fR value of the \fBFEATURES\fR variable in
-\fBmake.conf\fR(5).
+This is now equivalent to the \fImanifest\fR command.
 .TP
 .BR manifest
-Updates the manifest file for the package.  This performs the second half
-of the digest command, creating md5sums for the files in the files
-directory as well as the ebuild.
+Updates the manifest file for the package.  This creates checksums for all
+of the files found in the same directory as the current ebuild as well as
+the recursive contents of the files subdirectory. It also creates checksums
+for all of the files listed in SRC_URI for each ebuild. For further
+information regarding the behavior of this command, see the documentation for
+the \fIassume\-digests\fR value of the \fBFEATURES\fR variable in
+\fBmake.conf\fR(5). See the \fB\-\-force\fR option if you would like to
+prevent digests from being assumed. 
 .TP
 .BR unpack
 Extracts the sources to a subdirectory in the \fIbuild directory\fR
@@ -173,7 +172,8 @@ information is not incorporated into the RPM.
 .SH OPTIONS
 .TP
 \fB--force\fR
-When used together with the digest command, this option forces regeneration of
+When used together with the digest or manifest command,
+this option forces regeneration of
 digests for all distfiles associated with the current ebuild. Any distfiles
 that do not already exist in ${DISTDIR} will be automatically fetched.
 .SH "REPORTING BUGS"

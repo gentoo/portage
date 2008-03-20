@@ -263,6 +263,10 @@ register_die_hook() {
 #if no perms are specified, dirs/files will have decent defaults
 #(not secretive, but not stupid)
 umask 022
+export DESTTREE=/usr
+export INSDESTTREE=""
+export _E_EXEDESTTREE_=""
+export _E_DOCDESTTREE_=""
 export INSOPTIONS="-m0644"
 export EXEOPTIONS="-m0755"
 export LIBOPTIONS="-m0644"
@@ -1060,7 +1064,7 @@ dyn_help() {
 	echo "  help        : show this help screen"
 	echo "  setup       : execute package specific setup actions"
 	echo "  fetch       : download source archive(s) and patches"
-	echo "  digest      : create a digest and a manifest file for the package"
+	echo "  digest      : create a manifest file for the package"
 	echo "  manifest    : create a manifest file for the package"
 	echo "  unpack      : unpack/patch sources (auto-fetch if needed)"
 	echo "  compile     : compile sources (auto-fetch/unpack if needed)"

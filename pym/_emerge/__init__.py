@@ -1271,7 +1271,7 @@ class SetArg(DependencyArg):
 
 class Dependency(object):
 	__slots__ = ("__weakref__", "atom", "blocker", "depth",
-		"parent", "priority", "root")
+		"parent", "onlydeps", "priority", "root")
 	def __init__(self, **kwargs):
 		for myattr in self.__slots__:
 			if myattr == "__weakref__":
@@ -1694,7 +1694,8 @@ class depgraph(object):
 						("blocks", dep.parent.root, dep.atom), set()).add(
 							dep.parent)
 				continue
-			dep_pkg, existing_node = self._select_package(dep.root, dep.atom)
+			dep_pkg, existing_node = self._select_package(dep.root, dep.atom,
+				onlydeps=dep.onlydeps)
 			if not dep_pkg:
 				if allow_unsatisfied:
 					self._unsatisfied_deps.append(dep)
@@ -2324,7 +2325,7 @@ class depgraph(object):
 						return 0, myfavorites
 
 					self._dep_stack.append(
-						Dependency(atom=atom, root=myroot, parent=arg))
+						Dependency(atom=atom, onlydeps=onlydeps, root=myroot, parent=arg))
 					if not self._create_graph():
 						if isinstance(arg, SetArg):
 							sys.stderr.write(("\n\n!!! Problem resolving " + \
@@ -3716,7 +3717,8 @@ class depgraph(object):
 
 				#we need to use "--emptrytree" testing here rather than "empty" param testing because "empty"
 				#param is used for -u, where you still *do* want to see when something is being upgraded.
-				myoldbest=""
+				myoldbest = ""
+				myinslotlist = None
 				installed_versions = vardb.match(portage.cpv_getkey(pkg_key))
 				if vardb.cpv_exists(pkg_key):
 					addl="  "+yellow("R")+fetch+"  "
@@ -3738,21 +3740,22 @@ class depgraph(object):
 						portage.cpv_getkey(pkg_key):
 						myinslotlist = None
 					if myinslotlist:
-						myoldbest=portage.best(myinslotlist)
-						addl="   "+fetch
+						myoldbest = portage.best(myinslotlist)
+						addl = "   " + fetch
 						if portage.pkgcmp(portage.pkgsplit(x[2]), portage.pkgsplit(myoldbest)) < 0:
 							# Downgrade in slot
-							addl+=turquoise("U")+blue("D")
+							addl += turquoise("U")+blue("D")
 							if ordered:
 								counters.downgrades += 1
 						else:
 							# Update in slot
-							addl+=turquoise("U")+" "
+							addl += turquoise("U") + " "
 							if ordered:
 								counters.upgrades += 1
 					else:
 						# New slot, mark it new.
-						addl=" "+green("NS")+fetch+"  "
+						addl = " " + green("NS") + fetch + "  "
+						myoldbest = vardb.match(portage.cpv_getkey(pkg_key))
 						if ordered:
 							counters.newslot += 1
 
@@ -3765,11 +3768,11 @@ class depgraph(object):
 								portdb.findname(pkg_key),
 								inst_matches[0], pkg_key))
 				else:
-					addl=" "+green("N")+" "+fetch+"  "
+					addl = " " + green("N") + " " + fetch + "  "
 					if ordered:
 						counters.new += 1
 
-				verboseadd=""
+				verboseadd = ""
 				
 				if True:
 					# USE flag display
@@ -3786,7 +3789,7 @@ class depgraph(object):
 					cur_use = pkg_use
 					cur_use = [flag for flag in cur_use if flag in cur_iuse]
 
-					if myoldbest:
+					if myoldbest and myinslotlist:
 						pkg = myoldbest
 					else:
 						pkg = x[2]
@@ -3928,10 +3931,10 @@ class depgraph(object):
 						verboseadd += teal("[%s]" % repoadd)
 
 				xs = list(portage.pkgsplit(x[2]))
-				if xs[2]=="r0":
-					xs[2]=""
+				if xs[2] == "r0":
+					xs[2] = ""
 				else:
-					xs[2]="-"+xs[2]
+					xs[2] = "-" + xs[2]
 
 				mywidth = 130
 				if "COLUMNWIDTH" in self.settings:
@@ -3943,16 +3946,22 @@ class depgraph(object):
 							"!!! Unable to parse COLUMNWIDTH='%s'\n" % \
 							self.settings["COLUMNWIDTH"], noiselevel=-1)
 						del e
-				oldlp=mywidth-30
-				newlp=oldlp-30
+				oldlp = mywidth - 30
+				newlp = oldlp - 30
 
 				indent = " " * depth
 
 				if myoldbest:
-					myoldbest=portage.pkgsplit(myoldbest)[1]+"-"+portage.pkgsplit(myoldbest)[2]
-					if myoldbest[-3:]=="-r0":
-						myoldbest=myoldbest[:-3]
-					myoldbest=blue("["+myoldbest+"]")
+					if myinslotlist:
+						myoldbest = [myoldbest]
+					for key in myoldbest:
+						pos = myoldbest.index(key)
+						key = portage.pkgsplit(key)[1] + "-" + portage.pkgsplit(key)[2]
+						if key[-3:] == "-r0":
+							key = key[:-3]
+						myoldbest[pos] = key
+					myoldbest = blue("["+", ".join(myoldbest)+"]")
+					
 
 				pkg_cp = xs[0]
 				root_config = self.roots[myroot]
@@ -4940,7 +4949,7 @@ def unmerge(root_config, myopts, unmerge_action,
 		mysettings = portage.config(clone=settings)
 	
 		if not unmerge_files:
-			if "unmerge"==unmerge_action:
+			if unmerge_action == "unmerge":
 				print
 				print bold("emerge unmerge") + " can only be used with specific package names"
 				print
@@ -5024,9 +5033,13 @@ def unmerge(root_config, myopts, unmerge_action,
 			not ("--quiet" in myopts):
 			print darkgreen(newline+\
 				">>> These are the packages that would be unmerged:")
-	
+
+		# Preservation of order is required for --depclean and --prune so
+		# that dependencies are respected. Use all_selected to eliminate
+		# duplicate packages since the same package may be selected by
+		# multiple atoms.
 		pkgmap = []
-		numselected=0
+		all_selected = set()
 		for x in candidate_catpkgs:
 			# cycle through all our candidate deps and determine
 			# what will and will not get unmerged
@@ -5051,13 +5064,15 @@ def unmerge(root_config, myopts, unmerge_action,
 				portage.writemsg("\n--- Couldn't find '%s' to %s.\n" % \
 					(x, unmerge_action), noiselevel=-1)
 				continue
-			pkgmap.append({"protected":[], "selected":[], "omitted":[] })
+
+			pkgmap.append(
+				{"protected": set(), "selected": set(), "omitted": set()})
 			mykey = len(pkgmap) - 1
 			if unmerge_action=="unmerge":
 					for y in mymatch:
-						if y not in pkgmap[mykey]["selected"]:
-							pkgmap[mykey]["selected"].append(y)
-							numselected=numselected+len(mymatch)
+						if y not in all_selected:
+							pkgmap[mykey]["selected"].add(y)
+							all_selected.add(y)
 			elif unmerge_action == "prune":
 				if len(mymatch) == 1:
 					continue
@@ -5078,38 +5093,41 @@ def unmerge(root_config, myopts, unmerge_action,
 						best_version = mypkg
 						best_slot = myslot
 						best_counter = mycounter
-				pkgmap[mykey]["protected"].append(best_version)
-				pkgmap[mykey]["selected"] = [mypkg for mypkg in mymatch \
-					if mypkg != best_version]
-				numselected = numselected + len(pkgmap[mykey]["selected"])
+				pkgmap[mykey]["protected"].add(best_version)
+				pkgmap[mykey]["selected"].update(mypkg for mypkg in mymatch \
+					if mypkg != best_version and mypkg not in all_selected)
+				all_selected.update(pkgmap[mykey]["selected"])
 			else:
 				# unmerge_action == "clean"
 				slotmap={}
 				for mypkg in mymatch:
-					if unmerge_action=="clean":
-						myslot=localtree.getslot(mypkg)
+					if unmerge_action == "clean":
+						myslot = localtree.getslot(mypkg)
 					else:
 						# since we're pruning, we don't care about slots
 						# and put all the pkgs in together
-						myslot=0
+						myslot = 0
 					if not slotmap.has_key(myslot):
-						slotmap[myslot]={}
-					slotmap[myslot][localtree.dbapi.cpv_counter(mypkg)]=mypkg
+						slotmap[myslot] = {}
+					slotmap[myslot][localtree.dbapi.cpv_counter(mypkg)] = mypkg
+				
 				for myslot in slotmap:
-					counterkeys=slotmap[myslot].keys()
-					counterkeys.sort()
+					counterkeys = slotmap[myslot].keys()
 					if not counterkeys:
 						continue
 					counterkeys.sort()
-					pkgmap[mykey]["protected"].append(
+					pkgmap[mykey]["protected"].add(
 						slotmap[myslot][counterkeys[-1]])
 					del counterkeys[-1]
 					#be pretty and get them in order of merge:
 					for ckey in counterkeys:
-						pkgmap[mykey]["selected"].append(slotmap[myslot][ckey])
-						numselected=numselected+1
+						mypkg = slotmap[myslot][ckey]
+						if mypkg not in all_selected:
+							pkgmap[mykey]["selected"].add(mypkg)
+							all_selected.add(mypkg)
 					# ok, now the last-merged package
 					# is protected, and the rest are selected
+		numselected = len(all_selected)
 		if global_unmerge and not numselected:
 			portage.writemsg_stdout("\n>>> No outdated packages were found on your system.\n")
 			return 0
@@ -5122,9 +5140,55 @@ def unmerge(root_config, myopts, unmerge_action,
 	finally:
 		if vdb_lock:
 			portage.locks.unlockdir(vdb_lock)
-	all_selected = set()
-	for x in pkgmap:
-		all_selected.update(x["selected"])
+	
+	from portage.sets.base import EditablePackageSet
+	
+	# generate a list of package sets that are directly or indirectly listed in "world",
+	# as there is no persistent list of "installed" sets
+	installed_sets = ["world"]
+	stop = False
+	pos = 0
+	while not stop:
+		stop = True
+		pos = len(installed_sets)
+		for s in installed_sets[pos - 1:]:
+			candidates = [x[len(SETPREFIX):] for x in sets[s].getNonAtoms() if x.startswith(SETPREFIX)]
+			if candidates:
+				stop = False
+				installed_sets += candidates
+	del stop, pos
+
+	# we don't want to unmerge packages that are still listed in user-editable package sets
+	# listed in "world" as they would be remerged on the next update of "world" or the 
+	# relevant package sets.
+	for cp in xrange(len(pkgmap)):
+		for cpv in pkgmap[cp]["selected"].copy():
+			parents = []
+			for s in installed_sets:
+				# skip sets that the user requested to unmerge, and skip world 
+				# unless we're unmerging a package set (as the package would be 
+				# removed from "world" later on)
+				if s in root_config.setconfig.active or (s == "world" and not root_config.setconfig.active):
+					continue
+				# only check instances of EditablePackageSet as other classes are generally used for
+				# special purposes and can be ignored here (and are usually generated dynamically, so the
+				# user can't do much about them anyway)
+				elif sets[s].containsCPV(cpv) \
+					and isinstance(sets[s], EditablePackageSet):
+					parents.append(s)
+			if parents:
+				#print colorize("WARN", "Package %s is going to be unmerged," % cpv)
+				#print colorize("WARN", "but still listed in the following package sets:")
+				#print "    %s\n" % ", ".join(parents)
+				print colorize("WARN", "Not unmerging package %s as it is" % cpv)
+				print colorize("WARN", "still referenced by the following package sets:")
+				print "    %s\n" % ", ".join(parents)
+				# adjust pkgmap so the display output is correct
+				pkgmap[cp]["selected"].remove(cpv)
+				pkgmap[cp]["protected"].add(cpv)
+	
+	del installed_sets
+	
 	for x in xrange(len(pkgmap)):
 		selected = pkgmap[x]["selected"]
 		if not selected:
@@ -5132,15 +5196,14 @@ def unmerge(root_config, myopts, unmerge_action,
 		for mytype, mylist in pkgmap[x].iteritems():
 			if mytype == "selected":
 				continue
-			pkgmap[x][mytype] = \
-				[cpv for cpv in mylist if cpv not in all_selected]
-		cp = portage.cpv_getkey(selected[0])
+			mylist.difference_update(all_selected)
+		cp = portage.cpv_getkey(iter(selected).next())
 		for y in localtree.dep_match(cp):
 			if y not in pkgmap[x]["omitted"] and \
-			   y not in pkgmap[x]["selected"] and \
-			   y not in pkgmap[x]["protected"] and \
-			   y not in all_selected:
-				pkgmap[x]["omitted"].append(y)
+				y not in pkgmap[x]["selected"] and \
+				y not in pkgmap[x]["protected"] and \
+				y not in all_selected:
+				pkgmap[x]["omitted"].add(y)
 		if global_unmerge and not pkgmap[x]["selected"]:
 			#avoid cluttering the preview printout with stuff that isn't getting unmerged
 			continue
@@ -5158,15 +5221,14 @@ def unmerge(root_config, myopts, unmerge_action,
 			if "--quiet" not in myopts:
 				portage.writemsg_stdout((mytype + ": ").rjust(14), noiselevel=-1)
 			if pkgmap[x][mytype]:
-				sorted_pkgs = [portage.catpkgsplit(mypkg)[1:] \
-					for mypkg in pkgmap[x][mytype]]
+				sorted_pkgs = [portage.catpkgsplit(mypkg)[1:] for mypkg in pkgmap[x][mytype]]
 				sorted_pkgs.sort(portage.pkgcmp)
 				for pn, ver, rev in sorted_pkgs:
 					if rev == "r0":
 						myversion = ver
 					else:
 						myversion = ver + "-" + rev
-					if mytype=="selected":
+					if mytype == "selected":
 						portage.writemsg_stdout(
 							colorize("UNMERGE_WARN", myversion + " "), noiselevel=-1)
 					else:
@@ -5204,7 +5266,7 @@ def unmerge(root_config, myopts, unmerge_action,
 		for y in pkgmap[x]["selected"]:
 			print ">>> Unmerging "+y+"..."
 			emergelog(xterm_titles, "=== Unmerging... ("+y+")")
-			mysplit=y.split("/")
+			mysplit = y.split("/")
 			#unmerge...
 			retval = portage.unmerge(mysplit[0], mysplit[1], settings["ROOT"],
 				mysettings, unmerge_action not in ["clean","prune"],
@@ -6825,6 +6887,18 @@ def action_build(settings, trees, mtimedb,
 	if pretend or fetchonly:
 		# make the mtimedb readonly
 		mtimedb.filename = None
+	if "--digest" in myopts:
+		msg = "The --digest option can prevent corruption from being" + \
+			" noticed. The `repoman manifest` command is the preferred" + \
+			" way to generate manifests and it is capable of doing an" + \
+			" entire repository or category at once."
+		prefix = bad(" * ")
+		writemsg(prefix + "\n")
+		from textwrap import wrap
+		for line in wrap(msg, 72):
+			writemsg("%s%s\n" % (prefix, line))
+		writemsg(prefix + "\n")
+
 	if "--quiet" not in myopts and \
 		("--pretend" in myopts or "--ask" in myopts or \
 		"--tree" in myopts or "--verbose" in myopts):
@@ -7442,6 +7516,7 @@ def emerge_main():
 					sys.stderr.write(line + "\n")
 				return 1
 		unmerge_actions = ("unmerge", "prune", "clean", "depclean")
+		
 		# In order to know exactly which atoms/sets should be added to the
 		# world file, the depgraph performs set expansion later. It will get
 		# confused about where the atoms came from if it's not allowed to
@@ -7463,6 +7538,7 @@ def emerge_main():
 					print "emerge: there are no sets to satisfy %s." % \
 						colorize("INFORM", s)
 					return 1
+				setconfig.active.append(s)
 				if myaction in unmerge_actions and \
 						not sets[s].supportsOperation("unmerge"):
 					sys.stderr.write("emerge: the given set %s does " + \

@@ -3,8 +3,6 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-import sys, os
-
 # for an explanation on this logic, see pym/_emerge/__init__.py
 import os
 import sys
@@ -13,8 +11,9 @@ if os.environ.__contains__("PORTAGE_PYTHONPATH"):
 else:
 	sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "pym"))
 import portage
+from portage.versions import pkgsplit
 
-a=portage.pkgsplit(sys.argv[1])
+a=pkgsplit(sys.argv[1])
 if a:
 	print a[0],a[1],a[2][1:]
 	sys.exit(0)

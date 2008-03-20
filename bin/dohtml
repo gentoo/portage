@@ -39,6 +39,15 @@ def dodir(path):
 def dofile(src,dst):
 	os.spawnlp(os.P_WAIT, "install", "install", "-m0644", src, dst)
 
+def eqawarn(lines):
+	cmd = "source '%s/isolated-functions.sh' ; " % \
+		os.environ["PORTAGE_BIN_PATH"]
+	for line in lines:
+		cmd += "eqawarn \"%s\" ; " % line
+	os.spawnlp(os.P_WAIT, "bash", "bash", "-c", cmd)
+
+skipped_directories = []
+
 def install(basename, dirname, options, prefix=""):
 	fullpath = basename
 	if prefix:
@@ -62,6 +71,10 @@ def install(basename, dirname, options, prefix=""):
 			pfx = basename
 			if prefix: pfx = prefix + "/" + pfx
 			install(i, dirname, options, pfx)
+	elif not options.recurse and os.path.isdir(fullpath):
+		global skipped_directories
+		skipped_directories.append(fullpath)
+		return False
 	else:
 		return False
 	return True
@@ -155,19 +168,22 @@ def main():
 		print "Document prefix : '" + options.doc_prefix	 + "'"
 		print "Allowed files :", options.allowed_files
 
-	success = True
+	success = False
 	
 	for x in args:
 		basename = os.path.basename(x)
 		dirname  = os.path.dirname(x)
-		if not install(basename, dirname, options):
-			success = False
-	
+		success |= install(basename, dirname, options)
+
 	if success:
 		retcode = 0
 	else:
 		retcode = 1
-	
+		global skipped_directories
+		for x in skipped_directories:
+			eqawarn(["QA Notice: dohtml on directory " + \
+				"'%s' without recursion option" % x])
+
 	sys.exit(retcode)
 
 if __name__ == "__main__":
