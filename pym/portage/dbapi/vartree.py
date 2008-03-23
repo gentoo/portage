@@ -157,6 +157,16 @@ class LibraryPackageMap(object):
 					continue
 				libs = mysplit[1].split(",")
 				for lib in libs:
+					# The contract says we only have basenames in the
+					# keys of the reverse map (as that is the only thing
+					# available on Linux/ELF) and the code calling this
+					# assumes/uses this.  However, Darwin's MACH-O
+					# objects have full paths to the objects, and
+					# Sun/Solaris' ELF objects can have (and do have)
+					# absolute path arguments, so extract the basename
+					# for the key here to make sure we respect the
+					# contract.
+					lib = os.path.basename(lib)
 					if not obj_dict.has_key(lib):
 						obj_dict[lib] = [mysplit[0]]
 					else:
