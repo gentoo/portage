@@ -1200,7 +1200,34 @@ class dblink(object):
 			plib_dict = plib_registry.getPreservedLibs()
 			for cpv in plib_dict:
 				keeplist = []
-				plib_dict[cpv].sort()
+
+				# for the loop below to work correctly, we need all
+				# symlinks to come before the actual files, such that
+				# the recorded symlinks (sonames) will be resolved into
+				# their real target before the object is found not to be
+				# in the reverse NEEDED map
+				def symlink_compare(x, y):
+					if not os.path.exists(x):
+						if not os.path.exists(y):
+							return 0
+						else:
+							return -1
+					else:
+						if not os.path.exists(y):
+							return 1
+						else:
+							if os.path.islink(x):
+								if os.path.islink(y):
+									return 0
+								else:
+									return -1
+							else:
+								if os.path.islink(y):
+									return 1
+								else:
+									return 0
+
+				plib_dict[cpv].sort(symlink_compare)
 				for f in plib_dict[cpv]:
 					if not os.path.exists(f) or os.path.realpath(f) in keeplist:
 						continue
