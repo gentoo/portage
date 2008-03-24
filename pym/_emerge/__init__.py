@@ -2745,7 +2745,7 @@ class depgraph(object):
 							(myarg and not selective)
 						if not reinstall_for_flags and \
 							not must_reinstall and \
-							vardb.cpv_exists(cpv):
+							cpv in vardb.match(atom):
 							break
 					if installed:
 						must_reinstall = empty or \
