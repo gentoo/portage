@@ -3241,11 +3241,12 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 		else:
 			# check if there is enough space in DISTDIR to completely store myfile
 			# overestimate the filesize so we aren't bitten by FS overhead
-			vfs_stat = os.statvfs(mysettings["DISTDIR"])
-			if myfile in mydigests \
-				and (mydigests[myfile]["size"] + vfs_stat.f_bsize) >= (vfs_stat.f_bsize * vfs_stat.f_bavail):
-				writemsg("!!! Insufficient space to store %s in %s\n" % (myfile, mysettings["DISTDIR"]), noiselevel=-1)
-				has_space = False
+			if hasattr(os, "statvfs"):
+				vfs_stat = os.statvfs(mysettings["DISTDIR"])
+				if myfile in mydigests \
+					and (mydigests[myfile]["size"] + vfs_stat.f_bsize) >= (vfs_stat.f_bsize * vfs_stat.f_bavail):
+					writemsg("!!! Insufficient space to store %s in %s\n" % (myfile, mysettings["DISTDIR"]), noiselevel=-1)
+					has_space = False
 
 			if use_locks and can_fetch:
 				waiting_msg = None
