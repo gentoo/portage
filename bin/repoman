@@ -571,15 +571,24 @@ scanlist.sort()
 logging.debug("Found the following packages to scan:\n%s" % '\n'.join(scanlist))
 
 profiles={}
+valid_profile_types = frozenset(["dev", "exp", "stable"])
 descfile=portdir+"/profiles/profiles.desc"
 if os.path.exists(descfile):
-	for x in portage.grabfile(descfile):
+	for i, x in enumerate(open(descfile, 'rb')):
 		if x[0]=="#":
 			continue
 		arch=x.split()
-		if len(arch)!=3:
-			print "wrong format: \""+red(x)+"\" in "+descfile
+		if len(arch) == 0:
 			continue
+		if len(arch)!=3:
+			err("wrong format: \"" + bad(x.strip()) + "\" in " + \
+				descfile + " line %d" % (i+1, ))
+		elif arch[0] not in kwlist:
+			err("invalid arch: \"" + bad(arch[0]) + "\" in " + \
+				descfile + " line %d" % (i+1, ))
+		elif arch[2] not in valid_profile_types:
+			err("invalid profile type: \"" + bad(arch[2]) + "\" in " + \
+				descfile + " line %d" % (i+1, ))
 		if not os.path.isdir(portdir+"/profiles/"+arch[1]):
 			print "Invalid "+arch[2]+" profile ("+arch[1]+") for arch "+arch[0]
 			continue
