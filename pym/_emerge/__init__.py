@@ -318,12 +318,6 @@ def getgccversion(chost):
 	"!!! other terminals also.\n"
 	)
 
-	mystatus, myoutput = commands.getstatusoutput("eselect compiler show")
-	if mystatus == os.EX_OK and len(myoutput.split("/")) == 2:
-		part1, part2 = myoutput.split("/")
-		if part1.startswith(chost + "-"):
-			return myoutput.replace(chost + "-", gcc_ver_prefix, 1)
-
 	mystatus, myoutput = commands.getstatusoutput("gcc-config -c")
 	if mystatus == os.EX_OK and myoutput.startswith(chost + "-"):
 		return myoutput.replace(chost + "-", gcc_ver_prefix, 1)
