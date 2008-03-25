@@ -3244,7 +3244,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 			if hasattr(os, "statvfs"):
 				vfs_stat = os.statvfs(mysettings["DISTDIR"])
 				try:
-					mysize = os.stat(myfile_path)
+					mysize = os.stat(myfile_path).st_size
 				except OSError, e:
 					if e.errno != errno.ENOENT:
 						raise
