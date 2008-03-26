@@ -273,12 +273,6 @@ export LIBOPTIONS="-m0644"
 export DIROPTIONS="-m0755"
 export MOPREFIX=${PN}
 
-# When compiler flags are unset, many packages will substitute their own
-# implicit flags. For uniformity, use an empty string as the default.
-[ "${CFLAGS-unset}"    == "unset" ] && export CFLAGS=""
-[ "${CXXFLAGS-unset}"  == "unset" ] && export CXXFLAGS=""
-[ "${LDFLAGS-unset}"   == "unset" ] && export LDFLAGS=""
-
 check_KV() {
 	if [ -z "${KV}" ]; then
 		eerror ""
