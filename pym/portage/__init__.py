@@ -3098,7 +3098,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 			mymirrors += [x.rstrip("/") for x in mysettings["GENTOO_MIRRORS"].split() if x]
 
 	pkgdir = mysettings.get("O")
-	if pkgdir:
+	if pkgdir and "strict" in features:
 		mydigests = Manifest(
 			pkgdir, mysettings["DISTDIR"]).getTypeDigests("DIST")
 	else:
