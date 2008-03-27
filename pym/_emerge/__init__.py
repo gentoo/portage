@@ -2612,7 +2612,7 @@ class depgraph(object):
 					# Make --noreplace take precedence over --newuse.
 					if not installed and noreplace and \
 						cpv in vardb.match(atom):
-						continue
+						break
 					reinstall_for_flags = None
 					try:
 						metadata = dict(izip(db_keys,
