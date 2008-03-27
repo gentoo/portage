@@ -2574,6 +2574,7 @@ class depgraph(object):
 		usepkgonly = "--usepkgonly" in self.myopts
 		empty = "empty" in self.myparams
 		selective = "selective" in self.myparams
+		noreplace = "--noreplace" in self.myopts
 		reinstall = False
 		# Behavior of the "selective" parameter depends on
 		# whether or not a package matches an argument atom.
@@ -2608,6 +2609,10 @@ class depgraph(object):
 				# descending order
 				cpv_list.reverse()
 				for cpv in cpv_list:
+					# Make --noreplace take precedence over --newuse.
+					if not installed and noreplace and \
+						cpv in vardb.match(atom):
+						continue
 					reinstall_for_flags = None
 					try:
 						metadata = dict(izip(db_keys,
