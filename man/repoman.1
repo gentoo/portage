@@ -34,8 +34,14 @@ Forces the metadata.xml parse check to be carried out
 \fB-v\fR, \fB--verbose\fR
 Displays every package name while checking
 .TP
-\fB-I\fR, \fB--ignore-arches\fR
+\fB\-i\fR, \fB\-\-ignore\-arches\fR
 Ignore arch-specific failures (where arch != host)
+.TP
+\fB\-I\fR, \fB\-\-ignore\-masked\fR
+Ignore masked packages (not allowed with commit mode)
+.TP
+\fB\-\-without\-mask\fR
+Behave as if no package.mask entries exist
 .TP
 \fB-m\fR, \fB--commitmsg\fR
 Adds a commit message via the command line
