@@ -1635,7 +1635,6 @@ class depgraph:
 					return 0
 				del e
 
-		noreplace = "--noreplace" in self.myopts
 		reinstall_for_flags = None
 		merging=1
 		if mytype == "installed":
@@ -1649,7 +1648,7 @@ class depgraph:
 			""" If we aren't merging, perform the --newuse check.
 			    If the package has new iuse flags or different use flags then if
 			    --newuse is specified, we need to merge the package. """
-			if not noreplace and merging == 0 and \
+			if merging == 0 and \
 				myroot == self.target_root and \
 				("--newuse" in self.myopts or
 				"--reinstall" in self.myopts) and \
