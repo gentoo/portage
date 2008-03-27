@@ -250,6 +250,7 @@ qahelp={
 	"file.size":"Files in the files directory must be under 20k",
 	"file.name":"File/dir name must be composed of only the following chars: %s " % allowed_filename_chars,
 	"file.UTF8":"File is not UTF8 compliant",
+	"KEYWORDS.dropped":"Ebuilds that appear to have dropped KEYWORDS for some arch",
 	"KEYWORDS.missing":"Ebuilds that have a missing or empty KEYWORDS variable",
 	"KEYWORDS.stable":"Ebuilds that have been added directly with stable KEYWORDS",
 	"KEYWORDS.stupid":"Ebuilds that use KEYWORDS=-* instead of package.mask", 
@@ -317,6 +318,7 @@ qawarnings=[
 "DEPEND.badindev","RDEPEND.badindev","PDEPEND.badindev",
 "DEPEND.badmaskedindev","RDEPEND.badmaskedindev","PDEPEND.badmaskedindev",
 "DESCRIPTION.toolong",
+"KEYWORDS.dropped",
 "KEYWORDS.stupid",
 "KEYWORDS.missing",
 "RESTRICT.invalid",
@@ -748,7 +750,19 @@ for x in scanlist:
 				fails["EAPI.unsupported"].append(os.path.join(x, y))
 				continue
 			ebuild_metadata[pf] = myaux
-	ebuildlist.sort()
+
+	# Sort ebuilds in ascending order for the KEYWORDS.dropped check.
+	pkgsplits = {}
+	for i in xrange(len(ebuildlist)):
+		ebuild_split = portage.pkgsplit(ebuildlist[i])
+		pkgsplits[ebuild_split] = ebuildlist[i]
+		ebuildlist[i] = ebuild_split
+	ebuildlist.sort(portage.pkgcmp)
+	for i in xrange(len(ebuildlist)):
+		ebuildlist[i] = pkgsplits[ebuildlist[i]]
+	del pkgsplits
+
+	slot_keywords = {}
 
 	if len(ebuild_metadata) != len(ebuildlist):
 		# If we can't access all the metadata then it's totally unsafe to
@@ -1020,6 +1034,22 @@ for x in scanlist:
 				fails["KEYWORDS.stable"].append(
 					x + "/" + y + ".ebuild added with stable keywords: %s" % \
 						" ".join(stable_keywords))
+
+		ebuild_archs = set(kw.lstrip("~") for kw in keywords \
+			if not kw.startswith("-"))
+
+		previous_keywords = slot_keywords.get(myaux["SLOT"])
+		if previous_keywords is None:
+			slot_keywords[myaux["SLOT"]] = set()
+		else:
+			dropped_keywords = previous_keywords.difference(ebuild_archs)
+			if dropped_keywords:
+				stats["KEYWORDS.dropped"] += 1
+				fails["KEYWORDS.dropped"].append(
+					relative_path + " dropped keywords: %s" % \
+					" ".join(sorted(dropped_keywords)))
+
+		slot_keywords[myaux["SLOT"]].update(ebuild_archs)
 
 		# KEYWORDS="-*" is a stupid replacement for package.mask and screws general KEYWORDS semantics
 		if "-*" in keywords:
