@@ -185,7 +185,7 @@ def ParseArgs(args, qahelp):
 	parser.add_option('-i', '--ignore-arches', dest='ignore_arches', action='store_true',
 		default=False, help='ignore arch-specific failures (where arch != host)')
 
-	parser.add_option('-I', '--ignored-masked', dest='ignore_masked', action='store_true',
+	parser.add_option('-I', '--ignore-masked', dest='ignore_masked', action='store_true',
 		default=False, help='ignore masked packages (not allowed with commit mode)')
 
 	parser.add_option('--without-mask', dest='without_mask', action='store_true',
@@ -696,6 +696,7 @@ if isCvs:
 	new_ebuilds.update(x for x in mynew if x.endswith(".ebuild"))
 	del mycvstree, mynew
 
+have_masked = False
 dofail = 0
 arch_caches={}
 arch_xmatch_caches = {}
@@ -1284,6 +1285,7 @@ for x in scanlist:
 					ismasked = os.path.join(catdir, y) not in \
 						portdb.xmatch("list-visible", x)
 					if ismasked:
+						have_masked = True
 						if options.ignore_masked:
 							continue
 						#we are testing deps for a masked package; give it some lee-way
@@ -1408,6 +1410,10 @@ def grouplist(mylist,seperator="/"):
 		else:
 			mygroups[xs[0]]+=[seperator.join(xs[1:])]
 	return mygroups
+
+if have_masked and not (options.without_mask or options.ignore_masked):
+	print bold("Note: use --without-mask to check " + \
+		"KEYWORDS on dependencies of masked packages")
 
 if options.mode != 'commit':
 	if dofull:
