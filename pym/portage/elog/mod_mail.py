@@ -14,6 +14,7 @@ def process(mysettings, key, logentries, fulltext):
 		myrecipient = "root@localhost"
 	
 	myfrom = mysettings["PORTAGE_ELOG_MAILFROM"]
+	myfrom = myfrom.replace("${HOST}", socket.getfqdn())
 	mysubject = mysettings["PORTAGE_ELOG_MAILSUBJECT"]
 	mysubject = mysubject.replace("${PACKAGE}", key)
 	mysubject = mysubject.replace("${HOST}", socket.getfqdn())

@@ -883,7 +883,8 @@ class config(object):
 		"PKGUSE", "PKG_LOGDIR", "PKG_TMPDIR",
 		"PORTAGE_ACTUAL_DISTDIR", "PORTAGE_ARCHLIST",
 		"PORTAGE_BASHRC",
-		"PORTAGE_BINPKG_FILE", "PORTAGE_BINPKG_TMPFILE",
+		"PORTAGE_BINPKG_FILE", "PORTAGE_BINPKG_TAR_OPTS",
+		"PORTAGE_BINPKG_TMPFILE",
 		"PORTAGE_BIN_PATH",
 		"PORTAGE_BUILDDIR", "PORTAGE_COLORMAP",
 		"PORTAGE_CONFIGROOT", "PORTAGE_DEBUG", "PORTAGE_DEPCACHEDIR",
@@ -3120,7 +3121,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 			mymirrors += [x.rstrip("/") for x in mysettings["GENTOO_MIRRORS"].split() if x]
 
 	pkgdir = mysettings.get("O")
-	if pkgdir:
+	if pkgdir is not None:
 		mydigests = Manifest(
 			pkgdir, mysettings["DISTDIR"]).getTypeDigests("DIST")
 	else:
@@ -3766,8 +3767,6 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 	"""Verifies checksums.  Assumes all files have been downloaded.
 	DEPRECATED: this is now only a compability wrapper for 
 	            portage.manifest.Manifest()."""
-	if not strict:
-		return 1
 	pkgdir = mysettings["O"]
 	manifest_path = os.path.join(pkgdir, "Manifest")
 	if not os.path.exists(manifest_path):
@@ -3779,15 +3778,16 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 	eout = portage.output.EOutput()
 	eout.quiet = mysettings.get("PORTAGE_QUIET", None) == "1"
 	try:
-		eout.ebegin("checking ebuild checksums ;-)")
-		mf.checkTypeHashes("EBUILD")
-		eout.eend(0)
-		eout.ebegin("checking auxfile checksums ;-)")
-		mf.checkTypeHashes("AUX")
-		eout.eend(0)
-		eout.ebegin("checking miscfile checksums ;-)")
-		mf.checkTypeHashes("MISC", ignoreMissingFiles=True)
-		eout.eend(0)
+		if strict:
+			eout.ebegin("checking ebuild checksums ;-)")
+			mf.checkTypeHashes("EBUILD")
+			eout.eend(0)
+			eout.ebegin("checking auxfile checksums ;-)")
+			mf.checkTypeHashes("AUX")
+			eout.eend(0)
+			eout.ebegin("checking miscfile checksums ;-)")
+			mf.checkTypeHashes("MISC", ignoreMissingFiles=True)
+			eout.eend(0)
 		for f in myfiles:
 			eout.ebegin("checking %s ;-)" % f)
 			mf.checkFileHashes(mf.findFile(f), f)
@@ -3814,7 +3814,8 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 		if f.endswith(".ebuild") and not mf.hasFile("EBUILD", f):
 			writemsg("!!! A file is not listed in the Manifest: '%s'\n" % \
 				os.path.join(pkgdir, f), noiselevel=-1)
-			return 0
+			if strict:
+				return 0
 	""" epatch will just grab all the patches out of a directory, so we have to
 	make sure there aren't any foreign files that it might grab."""
 	filesdir = os.path.join(pkgdir, "files")
@@ -3830,7 +3831,8 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 			if file_type != "AUX" and not f.startswith("digest-"):
 				writemsg("!!! A file is not listed in the Manifest: '%s'\n" % \
 					os.path.join(filesdir, f), noiselevel=-1)
-				return 0
+				if strict:
+					return 0
 	return 1
 
 # parse actionmap to spawn ebuild with the appropriate args

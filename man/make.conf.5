@@ -272,7 +272,7 @@ stored for later use by various debuggers.  This feature is disabled by
 .TP
 .B strict
 Have portage react strongly to conditions that have the potential to be 
-dangerous (like missing or incorrect digests for ebuilds or distfiles).
+dangerous (like missing or incorrect digests for ebuilds).
 .TP
 .B stricter
 Have portage react strongly to conditions that may conflict with system
@@ -381,6 +381,10 @@ index file which is located at ${PKGDIR}/Packages. Clients that have
 use the URI header field as a base URI for fetching binary packages. If the URI
 header field is not defined then the client will use it's ${PORTAGE_BINHOST}
 setting as the base URI.
+.TP
+.B PORTAGE_BINPKG_TAR_OPTS
+This variable contains options to be passed to the tar command for creation
+of binary packages.
 .TP
 \fBPORTAGE_COMPRESS\fR = \fI"bzip2"\fR
 This variable contains the command used to compress documentation during the

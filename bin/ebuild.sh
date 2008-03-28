@@ -273,12 +273,6 @@ export LIBOPTIONS="-m0644"
 export DIROPTIONS="-m0755"
 export MOPREFIX=${PN}
 
-# When compiler flags are unset, many packages will substitute their own
-# implicit flags. For uniformity, use an empty string as the default.
-[ "${CFLAGS-unset}"    == "unset" ] && export CFLAGS=""
-[ "${CXXFLAGS-unset}"  == "unset" ] && export CXXFLAGS=""
-[ "${LDFLAGS-unset}"   == "unset" ] && export LDFLAGS=""
-
 check_KV() {
 	if [ -z "${KV}" ]; then
 		eerror ""
@@ -676,11 +670,9 @@ dyn_unpack() {
 	if [ "${newstuff}" == "yes" ]; then
 		# We don't necessarily have privileges to do a full dyn_clean here.
 		rm -rf "${WORKDIR}"
-		if [ -d "${T}" ] && ! hasq keeptemp ${FEATURES} ; then
+		if [ -d "${T}" ] && \
+			! hasq keeptemp $FEATURES && ! hasq keepwork $FEATURES ; then
 			rm -rf "${T}" && mkdir "${T}"
-		else
-			[ -e "${T}/environment" ] && \
-				mv "${T}/environment" "${T}/environment.keeptemp"
 		fi
 	fi
 	if [ -e "${WORKDIR}" ]; then
@@ -717,11 +709,10 @@ dyn_clean() {
 	fi
 
 	rm -rf "${PORTAGE_BUILDDIR}/image" "${PORTAGE_BUILDDIR}/homedir"
+	rm -f "${PORTAGE_BUILDDIR}/.installed"
 
-	if ! hasq keeptemp $FEATURES; then
+	if ! hasq keeptemp $FEATURES && ! hasq keepwork $FEATURES ; then
 		rm -rf "${T}"
-	else
-		[ -e "${T}/environment" ] && mv "${T}/environment" "${T}/environment.keeptemp"
 	fi
 
 	if ! hasq keepwork $FEATURES; then
@@ -730,7 +721,6 @@ dyn_clean() {
 		rm -rf "${PORTAGE_BUILDDIR}/.unpacked"
 		rm -rf "${PORTAGE_BUILDDIR}/.compiled"
 		rm -rf "${PORTAGE_BUILDDIR}/.tested"
-		rm -rf "${PORTAGE_BUILDDIR}/.installed"
 		rm -rf "${PORTAGE_BUILDDIR}/.packaged"
 		rm -rf "${PORTAGE_BUILDDIR}/build-info"
 		rm -rf "${WORKDIR}"

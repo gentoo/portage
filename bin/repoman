@@ -183,8 +183,11 @@ def ParseArgs(args, qahelp):
 	parser.add_option('-i', '--ignore-arches', dest='ignore_arches', action='store_true',
 		default=False, help='ignore arch-specific failures (where arch != host)')
 
-	parser.add_option('-I', '--ignored-masked', dest='ignore_masked', action='store_true',
-		default=False, help='ignore masked packages (not allowed with commit mode')
+	parser.add_option('-I', '--ignore-masked', dest='ignore_masked', action='store_true',
+		default=False, help='ignore masked packages (not allowed with commit mode)')
+
+	parser.add_option('--without-mask', dest='without_mask', action='store_true',
+		default=False, help='behave as if no package.mask entries exist')
 
 	parser.add_option('--mode', type='choice', dest='mode', choices=modes.keys(), 
 		help='specify which mode repoman will run in (default=full)')
@@ -245,12 +248,14 @@ qahelp={
 	"file.size":"Files in the files directory must be under 20k",
 	"file.name":"File/dir name must be composed of only the following chars: %s " % allowed_filename_chars,
 	"file.UTF8":"File is not UTF8 compliant",
+	"KEYWORDS.dropped":"Ebuilds that appear to have dropped KEYWORDS for some arch",
 	"KEYWORDS.missing":"Ebuilds that have a missing or empty KEYWORDS variable",
 	"KEYWORDS.stable":"Ebuilds that have been added directly with stable KEYWORDS",
 	"KEYWORDS.stupid":"Ebuilds that use KEYWORDS=-* instead of package.mask", 
 	"LICENSE.missing":"Ebuilds that have a missing or empty LICENSE variable",
 	"DESCRIPTION.missing":"Ebuilds that have a missing or empty DESCRIPTION variable",
 	"DESCRIPTION.toolong":"DESCRIPTION is over %d characters" % max_desc_len,
+	"EAPI.incompatible":"Ebuilds that use features that are only available with a different EAPI",
 	"EAPI.unsupported":"Ebuilds that have an unsupported EAPI version (you must upgrade portage)",
 	"SLOT.missing":"Ebuilds that have a missing or empty SLOT variable",
 	"HOMEPAGE.missing":"Ebuilds that have a missing or empty HOMEPAGE variable",
@@ -312,6 +317,7 @@ qawarnings=[
 "DEPEND.badindev","RDEPEND.badindev","PDEPEND.badindev",
 "DEPEND.badmaskedindev","RDEPEND.badmaskedindev","PDEPEND.badmaskedindev",
 "DESCRIPTION.toolong",
+"KEYWORDS.dropped",
 "KEYWORDS.stupid",
 "KEYWORDS.missing",
 "RESTRICT.invalid",
@@ -695,6 +701,7 @@ if vcs == "cvs":
 	new_ebuilds.update(x for x in mynew if x.endswith(".ebuild"))
 	del mycvstree, mynew
 
+have_masked = False
 dofail = 0
 arch_caches={}
 arch_xmatch_caches = {}
@@ -746,7 +753,19 @@ for x in scanlist:
 				fails["EAPI.unsupported"].append(os.path.join(x, y))
 				continue
 			ebuild_metadata[pf] = myaux
-	ebuildlist.sort()
+
+	# Sort ebuilds in ascending order for the KEYWORDS.dropped check.
+	pkgsplits = {}
+	for i in xrange(len(ebuildlist)):
+		ebuild_split = portage.pkgsplit(ebuildlist[i])
+		pkgsplits[ebuild_split] = ebuildlist[i]
+		ebuildlist[i] = ebuild_split
+	ebuildlist.sort(portage.pkgcmp)
+	for i in xrange(len(ebuildlist)):
+		ebuildlist[i] = pkgsplits[ebuildlist[i]]
+	del pkgsplits
+
+	slot_keywords = {}
 
 	if len(ebuild_metadata) != len(ebuildlist):
 		# If we can't access all the metadata then it's totally unsafe to
@@ -1005,6 +1024,7 @@ for x in scanlist:
 			continue
 
 		myaux = ebuild_metadata[y]
+		eapi = myaux["EAPI"]
 
 		# Test for negative logic and bad words in the RESTRICT var.
 		#for x in myaux[allvars.index("RESTRICT")].split():
@@ -1065,6 +1085,22 @@ for x in scanlist:
 				fails["KEYWORDS.stable"].append(
 					x + "/" + y + ".ebuild added with stable keywords: %s" % \
 						" ".join(stable_keywords))
+
+		ebuild_archs = set(kw.lstrip("~") for kw in keywords \
+			if not kw.startswith("-"))
+
+		previous_keywords = slot_keywords.get(myaux["SLOT"])
+		if previous_keywords is None:
+			slot_keywords[myaux["SLOT"]] = set()
+		else:
+			dropped_keywords = previous_keywords.difference(ebuild_archs)
+			if dropped_keywords:
+				stats["KEYWORDS.dropped"] += 1
+				fails["KEYWORDS.dropped"].append(
+					relative_path + ": %s" % \
+					" ".join(sorted(dropped_keywords)))
+
+		slot_keywords[myaux["SLOT"]].update(ebuild_archs)
 
 		# KEYWORDS="-*" is a stupid replacement for package.mask and screws general KEYWORDS semantics
 		if "-*" in keywords:
@@ -1160,15 +1196,22 @@ for x in scanlist:
 				if myteststr.find(token) != -1:
 					badsyntax.append("'%s' not separated by space" % (token))
 
-
 			if mytype in ("DEPEND", "RDEPEND", "PDEPEND"):
 				for token in mydepstr.split():
 					if token in operator_tokens or \
 						token.endswith("?"):
 						continue
-					if not portage.isvalidatom(token, allow_blockers=True) or \
-						":" in token and myaux["EAPI"] == "0":
+					if not portage.isvalidatom(token, allow_blockers=True):
 						badsyntax.append("'%s' not a valid atom" % token)
+					else:
+						atom = token.lstrip("!")
+						if eapi == "0":
+							if portage.dep.dep_getslot(atom):
+								stats['EAPI.incompatible'] += 1
+								fails['EAPI.incompatible'].append(
+									(relative_path + ": %s slot dependency" + \
+									" not supported with EAPI='%s':" + \
+									" '%s'") % (mytype, eapi, atom))
 
 			type_list.extend([mytype] * (len(badsyntax) - len(type_list)))
 
@@ -1198,8 +1241,15 @@ for x in scanlist:
 			for mypos in range(len(myuse)-1,-1,-1):
 				if myuse[mypos] and (myuse[mypos] in luselist[mykey]):
 					del myuse[mypos]
-		if default_use and myaux["EAPI"] == "0":
-			myuse += default_use
+
+		if default_use and eapi == "0":
+			for myflag in default_use:
+				stats['EAPI.incompatible'] += 1
+				fails['EAPI.incompatible'].append(
+					(relative_path + ": IUSE defaults" + \
+					" not supported with EAPI='%s':" + \
+					" '%s'") % (eapi, myflag))
+
 		for mypos in range(len(myuse)):
 			stats["IUSE.invalid"]=stats["IUSE.invalid"]+1
 			fails["IUSE.invalid"].append(x+"/"+y+".ebuild: %s" % myuse[mypos])	
@@ -1291,6 +1341,8 @@ for x in scanlist:
 						config_profile_path=profdir,
 						config_incrementals=portage.const.INCREMENTALS,
 						local_config=False)
+					if options.without_mask:
+						dep_settings.pmaskdict.clear()
 					arch_caches[prof[0]] = dep_settings
 					while True:
 						try:
@@ -1328,6 +1380,7 @@ for x in scanlist:
 					ismasked = os.path.join(catdir, y) not in \
 						portdb.xmatch("list-visible", x)
 					if ismasked:
+						have_masked = True
 						if options.ignore_masked:
 							continue
 						#we are testing deps for a masked package; give it some lee-way
@@ -1452,6 +1505,10 @@ def grouplist(mylist,seperator="/"):
 		else:
 			mygroups[xs[0]]+=[seperator.join(xs[1:])]
 	return mygroups
+
+if have_masked and not (options.without_mask or options.ignore_masked):
+	print bold("Note: use --without-mask to check " + \
+		"KEYWORDS on dependencies of masked packages")
 
 if options.mode != 'commit':
 	if dofull:
