@@ -534,7 +534,8 @@ dyn_package() {
 	# Sandbox is disabled in case the user wants to use a symlink
 	# for $PKGDIR and/or $PKGDIR/All.
 	export SANDBOX_ON="0"
-	tar ${tar_options} -cf - . | bzip2 -f > "${pkg_tmp}" || \
+	tar $tar_options -cf - $PORTAGE_BINPKG_TAR_OPTS . | \
+		bzip2 -f > "${pkg_tmp}" || \
 		die "Failed to create tarball"
 	cd ..
 	export PYTHONPATH=${PORTAGE_PYM_PATH:-/usr/lib/portage/pym}
