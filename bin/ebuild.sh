@@ -650,11 +650,9 @@ dyn_unpack() {
 	if [ "${newstuff}" == "yes" ]; then
 		# We don't necessarily have privileges to do a full dyn_clean here.
 		rm -rf "${WORKDIR}"
-		if [ -d "${T}" ] && ! hasq keeptemp ${FEATURES} ; then
+		if [ -d "${T}" ] && \
+			! hasq keeptemp $FEATURES && ! hasq keepwork $FEATURES ; then
 			rm -rf "${T}" && mkdir "${T}"
-		else
-			[ -e "${T}/environment" ] && \
-				mv "${T}/environment" "${T}/environment.keeptemp"
 		fi
 	fi
 	if [ -e "${WORKDIR}" ]; then
@@ -692,10 +690,8 @@ dyn_clean() {
 
 	rm -rf "${PORTAGE_BUILDDIR}/image" "${PORTAGE_BUILDDIR}/homedir"
 
-	if ! hasq keeptemp $FEATURES; then
+	if ! hasq keeptemp $FEATURES && ! hasq keepwork $FEATURES ; then
 		rm -rf "${T}"
-	else
-		[ -e "${T}/environment" ] && mv "${T}/environment" "${T}/environment.keeptemp"
 	fi
 
 	if ! hasq keepwork $FEATURES; then
