@@ -160,9 +160,9 @@ install_qa_check() {
 		fi
 
 		# Save NEEDED information after removing self-contained providers
-		scanelf -qyRF '%p:%r %n' "${D}" | sed -e 's:^:/:' | { while read l; do
+		scanelf -qyRF '%p:%r %n' "${D}" | sed -e 's:^:/:' | { while IFS= read l; do
 			obj=${l%%:*}
-			rpath=${l##*:}; rpath=${rpath%% *}
+			rpath=${l#*:}; rpath=${rpath% *}
 			needed=${l##* }
 			if [ -z "${rpath}" -o -n "${rpath//*ORIGIN*}" ]; then
 				# object doesn't contain $ORIGIN in its runpath attribute
