@@ -561,7 +561,8 @@ dyn_package() {
 	[ -z "${PORTAGE_BINPKG_TMPFILE}" ] && \
 		PORTAGE_BINPKG_TMPFILE="${PKGDIR}/${CATEGORY}/${PF}.tbz2"
 	mkdir -p "${PORTAGE_BINPKG_TMPFILE%/*}" || die "mkdir failed"
-	tar ${tar_options} -cf - . | bzip2 -f > "${PORTAGE_BINPKG_TMPFILE}" || \
+	tar $tar_options -cf - $PORTAGE_BINPKG_TAR_OPTS . | \
+		bzip2 -f > "$PORTAGE_BINPKG_TMPFILE" || \
 		die "Failed to create tarball"
 	cd ..
 	export PYTHONPATH="${PORTAGE_PYM_PATH:-/usr/lib/portage/pym}:${PYTHONPATH}"

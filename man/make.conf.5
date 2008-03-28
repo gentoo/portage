@@ -382,6 +382,10 @@ use the URI header field as a base URI for fetching binary packages. If the URI
 header field is not defined then the client will use it's ${PORTAGE_BINHOST}
 setting as the base URI.
 .TP
+.B PORTAGE_BINPKG_TAR_OPTS
+This variable contains options to be passed to the tar command for creation
+of binary packages.
+.TP
 \fBPORTAGE_COMPRESS\fR = \fI"bzip2"\fR
 This variable contains the command used to compress documentation during the
 install phase.
