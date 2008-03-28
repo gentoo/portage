@@ -1071,7 +1071,8 @@ class config:
 		"PORTAGE_BINHOST_CHUNKSIZE", "PORTAGE_CALLER",
 		"PORTAGE_ECLASS_WARNING_ENABLE", "PORTAGE_ELOG_CLASSES",
 		"PORTAGE_ELOG_MAILFROM", "PORTAGE_ELOG_MAILSUBJECT",
-		"PORTAGE_ELOG_MAILURI", "PORTAGE_ELOG_SYSTEM", "PORTAGE_GPG_DIR",
+		"PORTAGE_ELOG_MAILURI", "PORTAGE_ELOG_SYSTEM",
+		"PORTAGE_FETCH_CHECKSUM_TRY_MIRRORS", "PORTAGE_GPG_DIR",
 		"PORTAGE_GPG_KEY", "PORTAGE_PACKAGE_EMPTY_ABORT",
 		"PORTAGE_RSYNC_EXTRA_OPTS", "PORTAGE_RSYNC_OPTS",
 		"PORTAGE_RSYNC_RETRIES", "PORTAGE_USE", "PORT_LOGDIR",
@@ -3002,6 +3003,28 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 	# every single available mirror is a waste of bandwidth
 	# and time, so there needs to be a cap.
 	checksum_failure_max_tries = 5
+	v = checksum_failure_max_tries
+	try:
+		v = int(mysettings.get("PORTAGE_FETCH_CHECKSUM_TRY_MIRRORS",
+			checksum_failure_max_tries))
+	except (ValueError, OverflowError):
+		writemsg("!!! Variable PORTAGE_FETCH_CHECKSUM_TRY_MIRRORS" + \
+			" contains non-integer value: '%s'\n" % \
+			mysettings["PORTAGE_FETCH_CHECKSUM_TRY_MIRRORS"], noiselevel=-1)
+		writemsg("!!! Using PORTAGE_FETCH_CHECKSUM_TRY_MIRRORS " + \
+			"default value: %s\n" % checksum_failure_max_tries,
+			noiselevel=-1)
+		v = checksum_failure_max_tries
+	if v < 1:
+		writemsg("!!! Variable PORTAGE_FETCH_CHECKSUM_TRY_MIRRORS" + \
+			" contains value less than 1: '%s'\n" % v, noiselevel=-1)
+		writemsg("!!! Using PORTAGE_FETCH_CHECKSUM_TRY_MIRRORS " + \
+			"default value: %s\n" % checksum_failure_max_tries,
+			noiselevel=-1)
+		v = checksum_failure_max_tries
+	checksum_failure_max_tries = v
+	del v
+
 	# Behave like the package has RESTRICT="primaryuri" after a
 	# couple of checksum failures, to increase the probablility
 	# of success before checksum_failure_max_tries is reached.
@@ -3464,10 +3487,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 											pass
 								fetched = 1
 								continue
-							if not fetchonly:
-								fetched=2
-								break
-							else:
+							if True:
 								# File is the correct size--check the checksums for the fetched
 								# file NOW, for those users who don't have a stable/continuous
 								# net connection. This way we have a chance to try to download
