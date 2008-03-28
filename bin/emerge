@@ -4159,6 +4159,7 @@ class MergeTask(object):
 				fetch_env = os.environ.copy()
 				fetch_env["FEATURES"] = fetch_env.get("FEATURES", "") + " -cvs"
 				fetch_env["PORTAGE_NICENESS"] = "0"
+				fetch_env["PORTAGE_PARALLEL_FETCHONLY"] = "1"
 				fetch_args = [sys.argv[0], "--resume", "--fetchonly"]
 				resume_opts = self.myopts.copy()
 				# For automatic resume, we need to prevent
@@ -6514,7 +6515,7 @@ def action_build(settings, trees, mtimedb,
 		if ("--resume" in myopts):
 			favorites=mtimedb["resume"]["favorites"]
 			mergetask = MergeTask(settings, trees, myopts)
-			if "--fetchonly" in myopts:
+			if "PORTAGE_PARALLEL_FETCHONLY" in settings:
 				""" parallel-fetch uses --resume --fetchonly and we don't want
 				it to write the mtimedb"""
 				mtimedb.filename = None
