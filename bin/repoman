@@ -127,6 +127,7 @@ repoman_options={
 "--quiet"          : "Be less verbose about extraneous info",
 "--verbose"        : "Displays every package name while checking",
 "--version"        : "Show version info",
+"--without-mask"   : "Behave as if no package.mask entries exist",
 "--xmlparse"       : "Forces the metadata.xml parse check to be carried out"
 }
 repoman_shortoptions={
@@ -1794,6 +1795,8 @@ for x in scanlist:
 						config_profile_path=profdir,
 						config_incrementals=portage_const.INCREMENTALS,
 						local_config=False)
+					if "--without-mask" in myoptions:
+						dep_settings.pmaskdict.clear()
 					arch_caches[prof[0]] = dep_settings
 					while True:
 						try:
