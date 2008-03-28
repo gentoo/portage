@@ -16,11 +16,6 @@ if [[ "$1" == "-r" ]] ; then
 else
 	DOINSRECUR=n
 fi
-[[ -z ${INSDEPTH} ]] && declare -i INSDEPTH=0
-if [[ ${INSDEPTH} -gt 30 ]] ; then
-	echo "${0##*/}: sanity check ... 30 directories is too much :(" 2>&1
-	exit 1
-fi
 
 if [[ ${INSDESTTREE#${D}} != "${INSDESTTREE}" ]]; then
 	vecho "-------------------------------------------------------" 1>&2
@@ -32,24 +27,38 @@ fi
 
 [[ ! -d ${D}${INSDESTTREE} ]] && dodir "${INSDESTTREE}"
 
+_doins() {
+	local mysrc="$1" mydir="$2"
+
+	if [ -L "$mysrc" ] ; then
+		cp "$mysrc" "${T}"
+		mysrc="${T}/${mysrc##*/}"
+	fi
+
+	install ${INSOPTIONS} "${mysrc}" "${D}${INSDESTTREE}/${mydir}"
+}
+
+_xdoins() {
+	while read -d $'\0' x ; do
+		_doins "$x" "${x%/*}"
+	done
+}
+
 for x in "$@" ; do
-	if [ -L "$x" ] ; then
-		cp "$x" "${T}"
-		mysrc="${T}/$(/usr/bin/basename "${x}")"
-	elif [ -d "$x" ] ; then
+	if [ -d "$x" ] ; then
 		if [ "${DOINSRECUR}" == "n" ] ; then
 			continue
 		fi
 
-		mydir="${INSDESTTREE}/$(basename "${x}")"
-		find "${x}" -mindepth 1 -maxdepth 1 -exec \
-			env \
-				INSDESTTREE="${mydir}" \
-				INSDEPTH=$((INSDEPTH+1)) \
-				doins -r {} \;
-		continue
+		if [ $x = "${x%/*}" ] ; then
+			pushd "$PWD" >/dev/null
+		else
+			pushd "${x%/*}" >/dev/null
+		fi
+		find "${x##*/}" -type d -exec dodir "${INSDESTTREE}/{}" \;
+		find "${x##*/}" \( -type f -or -type l \) -print0 | _xdoins
+		popd >/dev/null
 	else
-		mysrc="${x}"
+		_doins "${x}"
 	fi
-	install ${INSOPTIONS} "${mysrc}" "${D}${INSDESTTREE}"
 done
