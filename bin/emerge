@@ -4734,7 +4734,7 @@ def unmerge(settings, myopts, vartree, unmerge_action, unmerge_files,
 					if not counterkeys:
 						continue
 					counterkeys.sort()
-					pkgmap[mykey]["protected"].append(
+					pkgmap[mykey]["protected"].add(
 						slotmap[myslot][counterkeys[-1]])
 					del counterkeys[-1]
 					#be pretty and get them in order of merge:
