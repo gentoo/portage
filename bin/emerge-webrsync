@@ -33,7 +33,7 @@ if ! type portageq > /dev/null ; then
 	exit 1
 fi
 eval $(portageq envvar -v FEATURES FETCHCOMMAND GENTOO_MIRRORS \
-	PORTAGE_BIN_PATH PORTAGE_GPG_DIR PORTAGE_INST_UID PORTAGE_INST_GID \
+	PORTAGE_BIN_PATH PORTAGE_GPG_DIR \
 	PORTAGE_NICENESS PORTAGE_RSYNC_EXTRA_OPTS PORTAGE_TMPDIR PORTDIR \
 	http_proxy ftp_proxy)
 DISTDIR="${PORTAGE_TMPDIR}/emerge-webrsync"
@@ -189,8 +189,8 @@ sync_local() {
 		# Free disk space
 		rm -f "${file}"
 
-		# Make sure user and group file ownership is ${PORTAGE_INST_UID}:${PORTAGE_INST_GID}
-		chown -R ${PORTAGE_INST_UID:-0}:${PORTAGE_INST_GID:-0} portage
+		chown portage:portage portage &> /dev/null && \
+			chown -R portage:portage portage
 		cd portage
 		rsync -av --progress --stats --delete --delete-after \
 			--exclude='/distfiles' --exclude='/packages' \
