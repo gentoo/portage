@@ -1192,8 +1192,15 @@ for x in scanlist:
 			for mypos in range(len(myuse)-1,-1,-1):
 				if myuse[mypos] and (myuse[mypos] in luselist[mykey]):
 					del myuse[mypos]
-		if default_use and myaux["EAPI"] == "0":
-			myuse += default_use
+
+		if default_use and eapi == "0":
+			for myflag in default_use:
+				stats['EAPI.incompatible'] += 1
+				fails['EAPI.incompatible'].append(
+					(relative_path + ": IUSE defaults" + \
+					" not supported with EAPI='%s':" + \
+					" '%s'") % (eapi, myflag))
+
 		for mypos in range(len(myuse)):
 			stats["IUSE.invalid"]=stats["IUSE.invalid"]+1
 			fails["IUSE.invalid"].append(x+"/"+y+".ebuild: %s" % myuse[mypos])	
