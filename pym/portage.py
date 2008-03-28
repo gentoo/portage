@@ -9464,7 +9464,7 @@ class dblink:
 									moveme = cfgfiledict["IGNORE"]
 									cfgprot = cfgfiledict["IGNORE"]
 									if not moveme:
-										zing = "-o-"
+										zing = "---"
 										mymtime = long(mystat.st_mtime)
 								else:
 									moveme = 1
@@ -9487,8 +9487,7 @@ class dblink:
 						sys.exit(1)
 					zing=">>>"
 
-				if mymtime!=None:
-					zing=">>>"
+				if mymtime != None:
 					outfile.write("obj "+myrealdest+" "+mymd5+" "+str(mymtime)+"\n")
 				writemsg_stdout("%s %s\n" % (zing,mydest))
 			else:
