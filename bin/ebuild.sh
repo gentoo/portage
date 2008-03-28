@@ -966,6 +966,15 @@ dyn_install() {
 	#some packages uses an alternative to $S to build in, cause
 	#our libtool to create problematic .la files
 	export PWORKDIR="$WORKDIR"
+
+	# Reset exeinto(), docinto(), insinto(), and into() state variables
+	# in case the user is running the install phase multiple times
+	# consecutively via the ebuild command.
+	export DESTTREE=/usr
+	export INSDESTTREE=""
+	export _E_EXEDESTTREE_=""
+	export _E_DOCDESTTREE_=""
+
 	ebuild_phase src_install
 	touch "${PORTAGE_BUILDDIR}/.installed"
 	vecho ">>> Completed installing ${PF} into ${D}"
