@@ -53,7 +53,7 @@ for x in "$@" ; do
 		while [ "$x" != "${x%/}" ] ; do
 			x=${x%/}
 		done
-		if [ $x = "${x%/*}" ] ; then
+		if [ "$x" = "${x%/*}" ] ; then
 			pushd "$PWD" >/dev/null
 		else
 			pushd "${x%/*}" >/dev/null
