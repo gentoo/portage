@@ -46,6 +46,8 @@ def strip_empty(myarr):
 	"""
 	return [x for x in myarr if x]
 
+_paren_whitespace_re = re.compile(r'\S(\(|\))|(\(|\))\S')
+
 def paren_reduce(mystr,tokenize=1):
 	"""
 	Take a string and convert all paren enclosed entities into sublists, optionally
@@ -64,6 +66,12 @@ def paren_reduce(mystr,tokenize=1):
 	@rtype: Array
 	@return: The reduced string in an array
 	"""
+	global _dep_check_strict, _paren_whitespace_re
+	if _dep_check_strict:
+		m = _paren_whitespace_re.search(mystr)
+		if m is not None:
+			raise portage_exception.InvalidDependString(
+				"missing space by parenthesis: '%s'" % m.group(0))
 	mylist = []
 	while mystr:
 		left_paren = mystr.find("(")
