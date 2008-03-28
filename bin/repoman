@@ -1046,7 +1046,7 @@ for x in scanlist:
 			if dropped_keywords:
 				stats["KEYWORDS.dropped"] += 1
 				fails["KEYWORDS.dropped"].append(
-					relative_path + " dropped keywords: %s" % \
+					relative_path + ": %s" % \
 					" ".join(sorted(dropped_keywords)))
 
 		slot_keywords[myaux["SLOT"]].update(ebuild_archs)
