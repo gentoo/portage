@@ -39,6 +39,13 @@ def dodir(path):
 def dofile(src,dst):
 	os.spawnlp(os.P_WAIT, "install", "install", "-m0644", src, dst)
 
+def eqawarn(lines):
+	cmd = "source '%s/isolated-functions.sh' ; " % \
+		os.environ["PORTAGE_BIN_PATH"]
+	for line in lines:
+		cmd += "eqawarn \"%s\" ; " % line
+	os.spawnlp(os.P_WAIT, "bash", "bash", "-c", cmd)
+
 def install(basename, dirname, options, prefix=""):
 	fullpath = basename
 	if prefix:
@@ -62,6 +69,10 @@ def install(basename, dirname, options, prefix=""):
 			pfx = basename
 			if prefix: pfx = prefix + "/" + pfx
 			install(i, dirname, options, pfx)
+	elif not options.recurse and os.path.isdir(fullpath):
+		eqawarn(["QA Notice: dohtml on directory " + \
+			"'%s' without recursion option" % fullpath])
+		return False
 	else:
 		return False
 	return True
