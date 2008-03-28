@@ -8037,6 +8037,7 @@ class dblink:
 		self._installed_instance = None
 		self.contentscache = None
 		self._contents_inodes = None
+		self._contents_basenames = None
 
 	def lockdb(self):
 		if self._lock_vdb:
@@ -8605,6 +8606,16 @@ class dblink:
 		if pkgfiles and destfile in pkgfiles:
 			return True
 		if pkgfiles:
+			basename = os.path.basename(destfile)
+			if self._contents_basenames is None:
+				self._contents_basenames = set(
+					os.path.basename(x) for x in pkgfiles)
+			if basename not in self._contents_basenames:
+				# This is a shortcut that, in most cases, allows us to
+				# eliminate this package as an owner without the need
+				# to examine inode numbers of parent directories.
+				return False
+
 			# Use stat rather than lstat since we want to follow
 			# any symlinks to the real parent directory.
 			parent_path = os.path.dirname(destfile)
@@ -8640,7 +8651,6 @@ class dblink:
 			p_path_list = self._contents_inodes.get(
 				(parent_stat.st_dev, parent_stat.st_ino))
 			if p_path_list:
-				basename = os.path.basename(destfile)
 				for p_path in p_path_list:
 					x = os.path.join(p_path, basename)
 					if x in pkgfiles:
@@ -9106,6 +9116,7 @@ class dblink:
 		for dblnk in others_in_slot:
 			dblnk.contentscache = None
 			dblnk._contents_inodes = None
+			dblnk._contents_basenames = None
 
 		# If portage is reinstalling itself, remove the old
 		# version now since we want to use the temporary
