@@ -12,6 +12,11 @@
 # **  USE, CONFIG_*, and FEATURES are incremental  **
 # ***************************************************
 
+# When compiler flags are unset, many packages will substitute their own
+# implicit flags. For uniformity, use an empty string as the default.
+CFLAGS=""
+CXXFLAGS=""
+LDFLAGS=""
 
 # Default rsync mirror
 SYNC="rsync://rsync.gentoo.org/gentoo-portage"
