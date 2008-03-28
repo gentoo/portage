@@ -173,7 +173,8 @@ sync_local() {
 
 	vecho "Syncing local tree ..."
 
-	if type -P tarsync &> /dev/null; then
+	# tarsync-0.2.1 doesn't seem to support lzma compression.
+	if [ "${file##*.}" != "lzma" ] && type -P tarsync &> /dev/null; then
 		if ! tarsync $(vvecho -v) -s 1 -o portage -g portage -e /distfiles -e /packages -e /local "${file}" "${PORTDIR}"; then
 			eecho "tarsync failed; tarball is corrupt? (${file})"
 			return 1
