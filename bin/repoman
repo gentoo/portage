@@ -939,7 +939,14 @@ class EbuildQuote(LineCheck):
 
 	repoman_check_name = 'ebuild.minorsyn'
 	ignore_line = re.compile(r'(^$)|(^\s*#.*)|(^\s*\w+=.*)|(^\s*(local|export)\s+)')
-	var_names = r'(D|DISTDIR|FILESDIR|S|T|ROOT|WORKDIR)'
+	var_names = ["D", "DISTDIR", "FILESDIR", "S", "T", "ROOT", "WORKDIR"]
+
+	# variables for games.eclass
+	var_names += ["Ddir", "dir", "GAMES_PREFIX_OPT", "GAMES_DATADIR",
+		"GAMES_DATADIR_BASE", "GAMES_SYSCONFDIR", "GAMES_STATEDIR",
+		"GAMES_LOGDIR", "GAMES_BINDIR"]
+
+	var_names = "(%s)" % "|".join(var_names)
 	var_reference = re.compile(r'\$(\{'+var_names+'\}|' + \
 		var_names + '\W)')
 	missing_quotes = re.compile(r'(\s|^)[^"\'\s]*\$\{?' + var_names + \
