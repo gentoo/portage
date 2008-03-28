@@ -1526,6 +1526,7 @@ class depgraph(object):
 		self._pprovided_args = []
 		self._missing_args = []
 		self._masked_installed = []
+		self._unsatisfied_deps_for_display = []
 		self._dep_stack = []
 		self._unsatisfied_deps = []
 		self._ignored_deps = []
@@ -1539,6 +1540,9 @@ class depgraph(object):
 		automatically, but support for backtracking (removal nodes that have
 		already been selected) will be required in order to handle all possible
 		cases."""
+
+		if not self._slot_collision_info:
+			return
 
 		msg = []
 		msg.append("\n!!! Multiple versions within a single " + \
@@ -1673,8 +1677,8 @@ class depgraph(object):
 				if allow_unsatisfied:
 					self._unsatisfied_deps.append(dep)
 					continue
-				self._show_unsatisfied_dep(dep.root, dep.atom,
-					myparent=dep.parent)
+				self._unsatisfied_deps_for_display.append(
+					((dep.root, dep.atom), {"myparent":dep.parent}))
 				return 0
 			# In some cases, dep_check will return deps that shouldn't
 			# be proccessed any further, so they are identified and
@@ -2289,12 +2293,14 @@ class depgraph(object):
 					if not pkg:
 						if not (isinstance(arg, SetArg) and \
 							arg.name in ("system", "world")):
-							self._show_unsatisfied_dep(myroot, atom)
+							self._unsatisfied_deps_for_display.append(
+								((myroot, atom), {}))
 							return 0, myfavorites
 						self._missing_args.append((arg, atom))
 						continue
 					if pkg.installed and "selective" not in self.myparams:
-						self._show_unsatisfied_dep(myroot, atom)
+						self._unsatisfied_deps_for_display.append(
+							((myroot, atom), {}))
 						return 0, myfavorites
 
 					self._dep_stack.append(
@@ -3097,8 +3103,8 @@ class depgraph(object):
 			# unresolvable blocks.
 			for x in self.altlist():
 				if x[0] == "blocks":
+					self._slot_collision_info.clear()
 					return True
-			self._show_slot_collision_notice()
 			if not self._accept_collisions():
 				return False
 		return True
@@ -4049,6 +4055,20 @@ class depgraph(object):
 				print bold('*'+revision)
 				sys.stdout.write(text)
 
+		self.display_problems()
+		return os.EX_OK
+
+	def display_problems(self):
+		"""
+		Display problems with the dependency graph such as slot collisions.
+		This is called internally by display() to show the problems _after_
+		the merge list where it is most likely to be seen, but if display()
+		is not going to be called then this method should be called explicitly
+		to ensure that the user is notified of problems with the graph.
+		"""
+
+		self._show_slot_collision_notice()
+
 		# TODO: Add generic support for "set problem" handlers so that
 		# the below warnings aren't special cases for world only.
 
@@ -4124,7 +4144,9 @@ class depgraph(object):
 				msg.append("The best course of action depends on the reason that an offending\n")
 				msg.append("package.provided entry exists.\n\n")
 			sys.stderr.write("".join(msg))
-		return os.EX_OK
+
+		for pargs, kwargs in self._unsatisfied_deps_for_display:
+			self._show_unsatisfied_dep(*pargs, **kwargs)
 
 	def calc_changelog(self,ebuildpath,current,next):
 		if ebuildpath == None or not os.path.exists(ebuildpath):
@@ -6800,6 +6822,10 @@ def action_build(settings, trees, mtimedb,
 	merge_count = 0
 	pretend = "--pretend" in myopts
 	fetchonly = "--fetchonly" in myopts or "--fetch-all-uri" in myopts
+	ask = "--ask" in myopts
+	tree = "--tree" in myopts
+	verbose = "--verbose" in myopts
+	quiet = "--quiet" in myopts
 	if pretend or fetchonly:
 		# make the mtimedb readonly
 		mtimedb.filename = None
@@ -6904,9 +6930,14 @@ def action_build(settings, trees, mtimedb,
 			portage.writemsg("\n!!! %s\n" % str(e), noiselevel=-1)
 			return 1
 		if not retval:
+			mydepgraph.display_problems()
 			return 1
 		if "--quiet" not in myopts and "--nodeps" not in myopts:
 			print "\b\b... done!"
+		display = pretend or \
+			((ask or tree or verbose) and not (quiet and not ask))
+		if not display:
+			mydepgraph.display_problems()
 
 	if "--pretend" not in myopts and \
 		("--ask" in myopts or "--tree" in myopts or \
