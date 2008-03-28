@@ -250,6 +250,7 @@ qahelp={
 	"file.size":"Files in the files directory must be under 20k",
 	"file.name":"File/dir name must be composed of only the following chars: %s " % allowed_filename_chars,
 	"file.UTF8":"File is not UTF8 compliant",
+	"java.eclassesnotused":"With virtual/jdk in DEPEND you must inherit a java eclass",
 	"KEYWORDS.dropped":"Ebuilds that appear to have dropped KEYWORDS for some arch",
 	"KEYWORDS.missing":"Ebuilds that have a missing or empty KEYWORDS variable",
 	"KEYWORDS.stable":"Ebuilds that have been added directly with stable KEYWORDS",
@@ -326,6 +327,7 @@ qawarnings=[
 "ebuild.minorsyn",
 "ebuild.badheader",
 "file.size",
+"java.eclassesnotused",
 "metadata.missing",
 "metadata.bad",
 "virtual.versioned",
@@ -976,6 +978,7 @@ for x in scanlist:
 
 		myaux = ebuild_metadata[y]
 		eapi = myaux["EAPI"]
+		inherited = myaux["INHERITED"].split()
 
 		# Test for negative logic and bad words in the RESTRICT var.
 		#for x in myaux[allvars.index("RESTRICT")].split():
@@ -1108,6 +1111,7 @@ for x in scanlist:
 				myflag = myflag[1:]
 			myiuse.add(myflag)
 
+		inherited_java_eclass = "java-pkg" in inherited
 		operator_tokens = set(["||", "(", ")"])
 		type_list, badsyntax = [], []
 		for mytype in ("DEPEND", "RDEPEND", "PDEPEND", "LICENSE", "PROVIDE"):
@@ -1156,6 +1160,11 @@ for x in scanlist:
 						badsyntax.append("'%s' not a valid atom" % token)
 					else:
 						atom = token.lstrip("!")
+						if mytype == "DEPEND" and \
+							not inherited_java_eclass and \
+							portage.dep_getkey(atom) == "virtual/jdk":
+							stats['java.eclassesnotused'] += 1
+							fails['java.eclassesnotused'].append(relative_path)
 						if eapi == "0":
 							if portage.dep.dep_getslot(atom):
 								stats['EAPI.incompatible'] += 1
