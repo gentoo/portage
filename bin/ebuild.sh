@@ -689,6 +689,7 @@ dyn_clean() {
 	fi
 
 	rm -rf "${PORTAGE_BUILDDIR}/image" "${PORTAGE_BUILDDIR}/homedir"
+	rm -f "${PORTAGE_BUILDDIR}/.installed"
 
 	if ! hasq keeptemp $FEATURES && ! hasq keepwork $FEATURES ; then
 		rm -rf "${T}"
@@ -700,7 +701,6 @@ dyn_clean() {
 		rm -rf "${PORTAGE_BUILDDIR}/.unpacked"
 		rm -rf "${PORTAGE_BUILDDIR}/.compiled"
 		rm -rf "${PORTAGE_BUILDDIR}/.tested"
-		rm -rf "${PORTAGE_BUILDDIR}/.installed"
 		rm -rf "${PORTAGE_BUILDDIR}/.packaged"
 		rm -rf "${PORTAGE_BUILDDIR}/build-info"
 		rm -rf "${WORKDIR}"
