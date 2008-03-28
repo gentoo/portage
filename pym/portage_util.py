@@ -159,7 +159,7 @@ def stack_dicts(dicts, incremental=0, incrementals=[], ignore_none=0):
 		if final_dict is None:
 			final_dict = {}
 		for y in mydict.keys():
-			if mydict[y]:
+			if True:
 				if final_dict.has_key(y) and (incremental or (y in incrementals)):
 					final_dict[y] += " "+mydict[y][:]
 				else:
