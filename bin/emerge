@@ -1218,7 +1218,7 @@ def get_mask_info(root_config, cpv, pkgsettings,
 		metadata = None
 	if metadata and not built:
 		pkgsettings.setcpv(cpv, mydb=metadata)
-		metadata["USE"] = pkgsettings.get("USE", "")
+		metadata["USE"] = pkgsettings["PORTAGE_USE"]
 	if metadata is None:
 		mreasons = ["corruption"]
 	else:
@@ -1667,7 +1667,7 @@ class depgraph:
 				mydbapi.aux_get(mykey, self._mydbapi_keys)))
 			if mytype == "ebuild":
 				pkgsettings.setcpv(mykey, mydb=portdb)
-				metadata["USE"] = pkgsettings["USE"]
+				metadata["USE"] = pkgsettings["PORTAGE_USE"]
 		myuse = metadata["USE"].split()
 
 		if not arg and myroot == self.target_root:
@@ -2413,7 +2413,7 @@ class depgraph:
 						pkgsettings.setcpv(myeb, mydb=mydb)
 					else:
 						pkgsettings.setcpv(myeb_pkg, mydb=mydb)
-					now_use = pkgsettings["USE"].split()
+					now_use = pkgsettings["PORTAGE_USE"].split()
 					forced_flags = set()
 					forced_flags.update(pkgsettings.useforce)
 					forced_flags.update(pkgsettings.usemask)
@@ -2434,7 +2434,7 @@ class depgraph:
 					metadata = dict(izip(self._mydbapi_keys,
 						portdb.aux_get(myeb, self._mydbapi_keys)))
 					pkgsettings.setcpv(myeb, mydb=portdb)
-					metadata["USE"] = pkgsettings["USE"]
+					metadata["USE"] = pkgsettings["PORTAGE_USE"]
 					matched_packages.append(
 						(["ebuild", myroot, myeb], metadata))
 
@@ -3367,7 +3367,7 @@ class depgraph:
 					repo_path_real = os.path.dirname(os.path.dirname(
 						os.path.dirname(ebuild_path)))
 					pkgsettings.setcpv(pkg_key, mydb=mydbapi)
-					metadata["USE"] = pkgsettings["USE"]
+					metadata["USE"] = pkgsettings["PORTAGE_USE"]
 				else:
 					repo_path_real = portdb.getRepositoryPath(repo_name)
 				pkg_use = metadata["USE"].split()
@@ -3914,7 +3914,8 @@ class depgraph:
 			if pkg_type == "ebuild":
 				pkgsettings = self.pkgsettings[myroot]
 				pkgsettings.setcpv(pkg_key, mydb=fakedb[myroot])
-				fakedb[myroot].aux_update(pkg_key, {"USE":pkgsettings["USE"]})
+				fakedb[myroot].aux_update(pkg_key,
+					{"USE":pkgsettings["PORTAGE_USE"]})
 			self.spinner.update()
 
 class RepoDisplay(object):
@@ -4202,7 +4203,7 @@ class MergeTask(object):
 				metadata.update(izip(metadata_keys,
 					mydbapi.aux_get(pkg_key, metadata_keys)))
 				pkgsettings.setcpv(pkg_key, mydb=mydbapi)
-				metadata["USE"] = pkgsettings["USE"]
+				metadata["USE"] = pkgsettings["PORTAGE_USE"]
 			else:
 				if pkg_type == "binary":
 					mydbapi = bindb
@@ -5864,8 +5865,8 @@ def action_info(settings, trees, myopts, myfiles):
 			if portdb.cpv_exists(pkg):
 				mydb = portdb
 			pkgsettings.setcpv(pkg, mydb=mydb)
-			if valuesmap["IUSE"].intersection(pkgsettings["USE"].split()) != \
-				valuesmap["USE"]:
+			if valuesmap["IUSE"].intersection(
+				pkgsettings["PORTAGE_USE"].split()) != valuesmap["USE"]:
 				diff_values["USE"] = valuesmap["USE"]
 			# If a difference was found, print the info for
 			# this package.
