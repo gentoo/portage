@@ -1104,6 +1104,7 @@ if isCvs:
 	new_ebuilds.update(x for x in mynew if x.endswith(".ebuild"))
 	del mycvstree, mynew
 
+have_masked = False
 dofail = 0
 arch_caches={}
 arch_xmatch_caches = {}
@@ -1834,6 +1835,7 @@ for x in scanlist:
 					ismasked = os.path.join(catdir, y) not in \
 						portdb.xmatch("list-visible", x)
 					if ismasked:
+						have_masked = True
 						if "--ignore-masked" in myoptions:
 							continue
 						#we are testing deps for a masked package; give it some lee-way
@@ -1957,6 +1959,10 @@ def grouplist(mylist,seperator="/"):
 		else:
 			mygroups[xs[0]]+=[seperator.join(xs[1:])]
 	return mygroups
+
+if have_masked and not ("--without-mask" in myoptions or "--ignore-masked" in myoptions):
+	print bold("Note: use --without-mask to check " + \
+		"KEYWORDS on dependencies of masked packages")
 
 if mymode!="commit":
 	if dofull:
