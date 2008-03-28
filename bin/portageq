@@ -452,7 +452,7 @@ def main():
 		# Multiple matches thrown from cpv_expand
 		pkgs = e.args[0]
 		# An error has occurred so we writemsg to stderr and exit nonzero.
-		portage.writemsg("The following packages available:\n", noiselevel=-1)
+		portage.writemsg("You specified an unqualified atom that matched multiple packages:\n", noiselevel=-1)
 		for pkg in pkgs:
 			portage.writemsg("* %s\n" % pkg, noiselevel=-1)
 		portage.writemsg("\nPlease use a more specific atom.\n", noiselevel=-1)
