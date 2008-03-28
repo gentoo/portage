@@ -257,6 +257,7 @@ qahelp={
 	"LICENSE.missing":"Ebuilds that have a missing or empty LICENSE variable",
 	"DESCRIPTION.missing":"Ebuilds that have a missing or empty DESCRIPTION variable",
 	"DESCRIPTION.toolong":"DESCRIPTION is over %d characters" % max_desc_len,
+	"EAPI.incompatible":"Ebuilds that use features that are only available with a different EAPI",
 	"EAPI.unsupported":"Ebuilds that have an unsupported EAPI version (you must upgrade portage)",
 	"SLOT.missing":"Ebuilds that have a missing or empty SLOT variable",
 	"HOMEPAGE.missing":"Ebuilds that have a missing or empty HOMEPAGE variable",
@@ -974,6 +975,7 @@ for x in scanlist:
 			continue
 
 		myaux = ebuild_metadata[y]
+		eapi = myaux["EAPI"]
 
 		# Test for negative logic and bad words in the RESTRICT var.
 		#for x in myaux[allvars.index("RESTRICT")].split():
@@ -1145,15 +1147,22 @@ for x in scanlist:
 				if myteststr.find(token) != -1:
 					badsyntax.append("'%s' not separated by space" % (token))
 
-
 			if mytype in ("DEPEND", "RDEPEND", "PDEPEND"):
 				for token in mydepstr.split():
 					if token in operator_tokens or \
 						token.endswith("?"):
 						continue
-					if not portage.isvalidatom(token, allow_blockers=True) or \
-						":" in token and myaux["EAPI"] == "0":
+					if not portage.isvalidatom(token, allow_blockers=True):
 						badsyntax.append("'%s' not a valid atom" % token)
+					else:
+						atom = token.lstrip("!")
+						if eapi == "0":
+							if portage.dep.dep_getslot(atom):
+								stats['EAPI.incompatible'] += 1
+								fails['EAPI.incompatible'].append(
+									(relative_path + ": %s slot dependency" + \
+									" not supported with EAPI='%s':" + \
+									" '%s'") % (mytype, eapi, atom))
 
 			type_list.extend([mytype] * (len(badsyntax) - len(type_list)))
 
