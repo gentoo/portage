@@ -598,7 +598,7 @@ dyn_rpm() {
 	addwrite /usr/src/rpm
 	addwrite "${RPMDIR}"
 	dyn_spec
-	rpmbuild -bb "${PF}.spec" || die "Failed to integrate rpm spec file"
+	rpmbuild -bb --clean --rmsource "${PF}.spec" || die "Failed to integrate rpm spec file"
 	install -D "/usr/src/rpm/RPMS/i386/${PN}-${PV}-${PR}.i386.rpm" \
 		"${RPMDIR}/${CATEGORY}/${PN}-${PV}-${PR}.rpm" || \
 		die "Failed to move rpm"
