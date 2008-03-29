@@ -400,7 +400,7 @@ install_mask() {
 		set +o noglob
 		quiet_mode || einfo "Removing ${no_inst}"
 		# normal stuff
-		rm -Rf ${root}/${no_inst} >&/dev/null
+		rm -Rf "${root}"/${no_inst} >&/dev/null
 
 		# we also need to handle globs (*.a, *.h, etc)
 		find "${root}" -path "${no_inst}" -exec rm -fR {} \; >/dev/null
