@@ -160,6 +160,7 @@ qahelp={
 	"changelog.missing":"Missing ChangeLog files",
 	"ebuild.disjointed":"Ebuilds not added to cvs when the matching digest has been added",
 	"ebuild.notadded":"Ebuilds that exist but have not been added to cvs",
+	"ebuild.patches":"PATCHES variable should be a bash array to ensure white space safety",
 	"changelog.notadded":"ChangeLogs that exist but have not been added to cvs",
 	"filedir.missing":"Package lacks a files directory",
 	"file.executable":"Ebuilds, digests, metadata.xml, Manifest, and ChangeLog do note need the executable bit",
@@ -243,6 +244,7 @@ qawarnings=[
 "RESTRICT.invalid",
 "ebuild.minorsyn",
 "ebuild.badheader",
+"ebuild.patches",
 "file.size",
 "java.eclassesnotused",
 "metadata.missing",
@@ -938,7 +940,8 @@ class LineCheck(object):
 
 	def check(self, num, line):
 		"""Run the check on line and return error if there is one"""
-		pass
+		if self.re.match(line):
+			return self.error
 
 class EbuildQuote(LineCheck):
 	"""Ensure ebuilds have valid quoting around things like D,FILESDIR, etc..."""
@@ -1035,6 +1038,12 @@ class EbuildUselessCdS(LineCheck):
 		elif self.method_re.match(line):
 			self.check_next_line = True
 
+class EbuildPatches(LineCheck):
+	"""Ensure ebuilds use bash arrays for PATCHES to ensure white space safety"""
+	repoman_check_name = 'ebuild.patches'
+	re = re.compile(r'^\s*PATCHES=[^\(]')
+	error = 'PATCHES is not a bash array on line: %d'
+
 class EbuildQuotedA(LineCheck):
 	"""Ensure ebuilds have no quoting around ${A}"""
 
@@ -1047,8 +1056,9 @@ class EbuildQuotedA(LineCheck):
 			return "Quoted \"${A}\" on line: %d"
 
 _constant_checks = tuple((c() for c in (
-	EbuildQuote, EbuildUselessDodoc, EbuildUselessCdS,
-	EbuildNestedDie, EbuildQuotedA)))
+	EbuildQuote, EbuildUselessDodoc,
+	EbuildUselessCdS, EbuildNestedDie,
+	EbuildPatches, EbuildQuotedA)))
 
 def run_checks(contents):
 	for num, line in enumerate(contents):
