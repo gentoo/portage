@@ -1776,16 +1776,10 @@ class depgraph:
 			#  - multi-slot atoms listed in the world file
 			#    to prevent depclean from removing them
 
-			if arg:
-				all_ebuilds_masked = bool(
-					portdb.xmatch("match-all", arg) and
-					not portdb.xmatch("bestmatch-visible", arg))
-				if all_ebuilds_masked:
-					self._missing_args.append(arg)
-				if "selective" not in self.myparams:
-					self._unsatisfied_deps_for_display.append(
-						((pkg.root, arg), {"myparent":myparent}))
-					return 0
+			if arg and "selective" not in self.myparams:
+				self._unsatisfied_deps_for_display.append(
+					((pkg.root, arg), {"myparent":myparent}))
+				return 0
 
 			if not visible(pkgsettings, pkg.cpv, pkg.metadata,
 				built=pkg.built, installed=pkg.installed):
@@ -3116,19 +3110,6 @@ class depgraph:
 					continue
 				elif not vardb.match(x):
 					self._world_problems = True
-					available = False
-					if "--usepkgonly" not in self.myopts and \
-						portdb.match(x):
-						available = True
-					elif "--usepkg" in self.myopts:
-						for cpv in bindb.match(x):
-							metadata = dict(izip(bindb_keys,
-								bindb.aux_get(cpv, bindb_keys)))
-							if visible(pkgsettings, cpv, metadata, built=True):
-								available = True
-								break
-					if not available:
-						continue
 				mylist.append(x)
 
 		for myatom in mylist:
