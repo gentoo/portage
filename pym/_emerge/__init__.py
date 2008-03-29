@@ -6911,6 +6911,8 @@ def action_build(settings, trees, mtimedb,
 			out.eerror("Error: The resume list contains packages that are no longer")
 			out.eerror("       available to be emerged. Please restart/continue")
 			out.eerror("       the merge operation manually.")
+			del mtimedb["resume"]
+			mtimedb.commit()
 			return 1
 		if show_spinner:
 			print "\b\b... done!"
