@@ -1530,6 +1530,7 @@ class depgraph:
 		self._missing_args = []
 		self._masked_installed = []
 		self._unsatisfied_deps_for_display = []
+		self._world_problems = False
 
 	def _show_slot_collision_notice(self):
 		"""Show an informational message advising the user to mask one of the
@@ -3072,7 +3073,6 @@ class depgraph:
 		portdb = self.trees[self.target_root]["porttree"].dbapi
 		bindb = self.trees[self.target_root]["bintree"].dbapi
 		bindb_keys = list(bindb._aux_cache_keys)
-		world_problems = False
 
 		root_config = self.roots[self.target_root]
 		world_set = root_config.sets["world"]
@@ -3083,10 +3083,10 @@ class depgraph:
 			self._sets["world"] = world_set
 			for x in world_set:
 				if not portage.isvalidatom(x):
-					world_problems = True
+					self._world_problems = True
 					continue
 				elif not vardb.match(x):
-					world_problems = True
+					self._world_problems = True
 					available = False
 					if "--usepkgonly" not in self.myopts and \
 						portdb.match(x):
@@ -3105,7 +3105,6 @@ class depgraph:
 		for myatom in mylist:
 			self._set_atoms.add(myatom)
 
-		missing_atoms = self._missing_args
 		for mydep in mylist:
 			try:
 				if not self.select_dep(
@@ -3113,31 +3112,10 @@ class depgraph:
 					print >> sys.stderr, "\n\n!!! Problem resolving dependencies for", mydep
 					return 0
 			except portage_exception.PackageNotFound:
-				missing_atoms.append(mydep)
-
-		masked_packages = []
-		for pkg, pkgsettings in self._masked_installed:
-			root_config = self.roots[pkg.root]
-			mreasons = get_masking_status(pkg, pkgsettings, root_config)
-			masked_packages.append((root_config, pkgsettings,
-				pkg.cpv, pkg.metadata, mreasons))
-		if masked_packages:
-			sys.stderr.write("\n" + colorize("BAD", "!!!") + \
-				" The following installed packages are masked:\n")
-			show_masked_packages(masked_packages)
+				self._missing_args.append(mydep)
 
 		if not self.validate_blockers():
 			return False
-
-		if world_problems:
-			print >> sys.stderr, "\n!!! Problems have been detected with your world file"
-			print >> sys.stderr, "!!! Please run "+green("emaint --check world")+"\n"
-
-		if missing_atoms:
-			print >> sys.stderr, "\n" + colorize("BAD", "!!!") + \
-				" Ebuilds for the following packages are either all"
-			print >> sys.stderr, colorize("BAD", "!!!") + " masked or don't exist:"
-			print >> sys.stderr, " ".join(missing_atoms) + "\n"
 
 		return 1
 
@@ -3782,6 +3760,30 @@ class depgraph:
 		"""
 
 		self._show_slot_collision_notice()
+
+		masked_packages = []
+		for pkg, pkgsettings in self._masked_installed:
+			root_config = self.roots[pkg.root]
+			mreasons = get_masking_status(pkg, pkgsettings, root_config)
+			masked_packages.append((root_config, pkgsettings,
+				pkg.cpv, pkg.metadata, mreasons))
+		if masked_packages:
+			sys.stderr.write("\n" + colorize("BAD", "!!!") + \
+				" The following installed packages are masked:\n")
+			show_masked_packages(masked_packages)
+
+		if self._world_problems:
+				sys.stderr.write("\n!!! Problems have been " + \
+					"detected with your world file\n")
+				sys.stderr.write("!!! Please run " + \
+					green("emaint --check world")+"\n\n")
+
+		if self._missing_args:
+			sys.stderr.write("\n" + colorize("BAD", "!!!") + \
+				" Ebuilds for the following packages are either all\n")
+			sys.stderr.write(colorize("BAD", "!!!") + \
+				" masked or don't exist:\n")
+			sys.stderr.write(" ".join(self._missing_args) + "\n")
 
 		if self._pprovided_args:
 			arg_refs = {}
