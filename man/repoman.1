@@ -219,6 +219,9 @@ Ebuilds that exist but have not been added to cvs
 .B ebuild.output
 A simple sourcing of the ebuild produces output; this breaks ebuild policy.
 .TP
+.B ebuild.patches
+PATCHES variable should be a bash array to ensure white space safety
+.TP
 .B ebuild.syntax
 Error generating cache entry for ebuild; typically caused by ebuild syntax error
 or digest verification failure.

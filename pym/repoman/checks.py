@@ -18,8 +18,8 @@ class LineCheck(object):
 
 	def check(self, num, line):
 		"""Run the check on line and return error if there is one"""
-		pass
-
+		if self.re.match(line):
+			return self.error
 
 class EbuildHeader(LineCheck):
 	"""Ensure ebuilds have proper headers
@@ -191,6 +191,11 @@ class EbuildUselessCdS(LineCheck):
 		elif self.method_re.match(line):
 			self.check_next_line = True
 
+class EbuildPatches(LineCheck):
+	"""Ensure ebuilds use bash arrays for PATCHES to ensure white space safety"""
+	repoman_check_name = 'ebuild.patches'
+	re = re.compile(r'^\s*PATCHES=[^\(]')
+	error = errors.PATCHES_ERROR
 
 class EbuildQuotedA(LineCheck):
 	"""Ensure ebuilds have no quoting around ${A}"""
@@ -206,7 +211,8 @@ class EbuildQuotedA(LineCheck):
 _constant_checks = tuple((c() for c in (
 	EbuildWhitespace, EbuildQuote,
 	EbuildAssignment, EbuildUselessDodoc,
-	EbuildUselessCdS, EbuildNestedDie, EbuildQuotedA)))
+	EbuildUselessCdS, EbuildNestedDie,
+	EbuildPatches, EbuildQuotedA)))
 
 def run_checks(contents, st_mtime):
 	checks = list(_constant_checks)
