@@ -1812,7 +1812,9 @@ class depgraph:
 		    emerge --deep <pkgspec>; we need to recursively check dependencies of pkgspec
 		    If we are in --nodeps (no recursion) mode, we obviously only check 1 level of dependencies.
 		"""
-		if "deep" not in self.myparams and not merging and \
+		if arg and pkg.onlydeps:
+			pass
+		elif "deep" not in self.myparams and not merging and \
 			not ("--update" in self.myopts and arg and merging):
 			return 1
 		elif "recurse" not in self.myparams:
