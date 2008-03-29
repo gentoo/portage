@@ -1159,8 +1159,12 @@ for x in scanlist:
 					if not portage.isvalidatom(token, allow_blockers=True):
 						badsyntax.append("'%s' not a valid atom" % token)
 					else:
-						atom = token.lstrip("!")
+						atom = token
+						is_blocker = atom.startswith("!")
+						if is_blocker:
+							atom = token.lstrip("!")
 						if mytype == "DEPEND" and \
+							not is_blocker and \
 							not inherited_java_eclass and \
 							portage.dep_getkey(atom) == "virtual/jdk":
 							stats['java.eclassesnotused'] += 1
