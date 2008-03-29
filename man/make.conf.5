@@ -329,7 +329,10 @@ proxy server for internet access.
 Use this variable if you want to selectively prevent certain files from being
 copied into your file system tree.  This does not work on symlinks, but only on
 actual files.  Useful if you wish to filter out files like HACKING.gz and
-TODO.gz.
+TODO.gz. The \fBINSTALL_MASK\fR is processed just before a package is merged.
+Also supported is a \fBPKG_INSTALL_MASK\fR variable that behaves exactly like
+\fBINSTALL_MASK\fR except that it is processed just before creation of a binary
+package.
 .TP
 .B MAKEOPTS
 Use this variable if you want to use parallel make.  For example, if you
