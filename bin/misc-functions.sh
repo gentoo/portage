@@ -407,6 +407,11 @@ preinst_mask() {
 		 eerror "${FUNCNAME}: D is unset"
 		 return 1
 	fi
+
+	# Make sure $PWD is not ${D} so that we don't leave gmon.out files
+	# in there in case any tools were built with -pg in CFLAGS.
+	cd "${T}"
+
 	# remove man pages, info pages, docs if requested
 	for f in man info doc; do
 		if hasq no${f} $FEATURES; then
@@ -525,7 +530,9 @@ preinst_selinux_labels() {
 }
 
 dyn_package() {
-	cd "${PORTAGE_BUILDDIR}/image"
+	# Make sure $PWD is not ${D} so that we don't leave gmon.out files
+	# in there in case any tools were built with -pg in CFLAGS.
+	cd "${T}"
 	install_mask "${PORTAGE_BUILDDIR}/image" "${PKG_INSTALL_MASK}"
 	local pkg_dest="${PKGDIR}/All/${PF}.tbz2"
 	local pkg_tmp="${PKGDIR}/All/${PF}.tbz2.$$"
@@ -534,10 +541,9 @@ dyn_package() {
 	# Sandbox is disabled in case the user wants to use a symlink
 	# for $PKGDIR and/or $PKGDIR/All.
 	export SANDBOX_ON="0"
-	tar $tar_options -cf - $PORTAGE_BINPKG_TAR_OPTS . | \
+	tar $tar_options -cf - $PORTAGE_BINPKG_TAR_OPTS -C "${D}" . | \
 		bzip2 -f > "${pkg_tmp}" || \
 		die "Failed to create tarball"
-	cd ..
 	export PYTHONPATH=${PORTAGE_PYM_PATH:-/usr/lib/portage/pym}
 	python -c "import xpak; t=xpak.tbz2('${pkg_tmp}'); t.recompose('${PORTAGE_BUILDDIR}/build-info')"
 	if [ $? -ne 0 ]; then
