@@ -3891,7 +3891,8 @@ class depgraph(object):
 						show_repos = True
 						verboseadd += teal("[%s]" % repoadd)
 
-				xs = list(portage.pkgsplit(x[2]))
+				xs = [portage.cpv_getkey(pkg_key)] + \
+					list(portage.catpkgsplit(pkg_key)[2:])
 				if xs[2] == "r0":
 					xs[2] = ""
 				else:
