@@ -3702,7 +3702,8 @@ class depgraph(object):
 					if myinslotlist:
 						myoldbest = portage.best(myinslotlist)
 						addl = "   " + fetch
-						if portage.pkgcmp(portage.pkgsplit(x[2]), portage.pkgsplit(myoldbest)) < 0:
+						if not portage.dep.cpvequal(pkg_key,
+							portage.best([pkg_key, myoldbest])):
 							# Downgrade in slot
 							addl += turquoise("U")+blue("D")
 							if ordered:
