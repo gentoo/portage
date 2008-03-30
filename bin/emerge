@@ -2063,6 +2063,11 @@ class depgraph:
 			if not oneshot:
 				myfavorites.append(myatom)
 		for myarg, myatom in arg_atoms:
+				pprovided = pkgsettings.pprovideddict.get(
+					portage.dep_getkey(myatom))
+				if pprovided and portage.match_from_list(myatom, pprovided):
+					self._pprovided_args.append((myarg, myatom))
+					continue
 				pkg, existing_node = self._select_package(
 					myroot, myatom, onlydeps=onlydeps)
 				if not pkg:
@@ -3075,11 +3080,18 @@ class depgraph:
 			self._set_atoms.add(myatom)
 
 		for mydep in mylist:
+			pprovided = pkgsettings.pprovideddict.get(
+				portage.dep_getkey(mydep))
+			if pprovided and portage.match_from_list(mydep, pprovided):
+				self._pprovided_args.append((mydep, mydep))
+				continue
+
 			pkg, existing_node = self._select_package(
 				self.target_root, mydep)
 			if not pkg:
 				self._missing_args.append(mydep)
 				continue
+
 			if not self.create(pkg, None):
 				print >> sys.stderr, "\n\n!!! Problem resolving dependencies for", mydep
 				return 0
