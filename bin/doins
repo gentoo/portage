@@ -28,14 +28,16 @@ fi
 [[ ! -d ${D}${INSDESTTREE} ]] && dodir "${INSDESTTREE}"
 
 _doins() {
-	local mysrc="$1" mydir="$2"
+	local mysrc="$1" mydir="$2" cleanup=""
 
 	if [ -L "$mysrc" ] ; then
 		cp "$mysrc" "${T}"
 		mysrc="${T}/${mysrc##*/}"
+		cleanup=${mysrc}
 	fi
 
 	install ${INSOPTIONS} "${mysrc}" "${D}${INSDESTTREE}/${mydir}"
+	[[ -n ${cleanup} ]] && rm -f "${cleanup}"
 }
 
 _xdoins() {
