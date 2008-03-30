@@ -2046,51 +2046,16 @@ class depgraph:
 			vardb = self.trees[self.target_root]["vartree"].dbapi
 			greedy_atoms = []
 			for myarg, myatom in arg_atoms:
-				greedy_atoms.append((myarg, myatom))
 				myslots = set()
 				for cpv in vardb.match(myatom):
 					myslots.add(vardb.aux_get(cpv, ["SLOT"])[0])
-				if myslots:
-					best_pkgs = []
-					if "--usepkg" in self.myopts:
-						best_pkg = None
-						for cpv in reversed(bindb.match(myatom)):
-							metadata = dict(izip(bindb_keys,
-								bindb.aux_get(cpv, bindb_keys)))
-							if visible(pkgsettings, cpv, metadata, built=True):
-								best_pkg = cpv
-								break
-						if best_pkg:
-							best_slot = bindb.aux_get(best_pkg, ["SLOT"])[0]
-							best_pkgs.append(("binary", best_pkg, best_slot))
-					if "--usepkgonly" not in self.myopts:
-						best_pkg = portage.best(portdb.match(myatom))
-						if best_pkg:
-							best_slot = portdb.aux_get(best_pkg, ["SLOT"])[0]
-							best_pkgs.append(("ebuild", best_pkg, best_slot))
-					if best_pkgs:
-						best_pkg = portage.best([x[1] for x in best_pkgs])
-						best_pkgs = [x for x in best_pkgs if x[1] == best_pkg]
-						best_slot = best_pkgs[0][2]
-						myslots.add(best_slot)
-				if len(myslots) > 1:
-					for myslot in myslots:
-						myslot_atom = "%s:%s" % \
-							(portage.dep_getkey(myatom), myslot)
-						available = False
-						if "--usepkgonly" not in self.myopts and \
-							self.trees[self.target_root][
-							"porttree"].dbapi.match(myslot_atom):
-							available = True
-						elif "--usepkg" in self.myopts:
-							for cpv in bindb.match(myslot_atom):
-								metadata = dict(izip(bindb_keys,
-									bindb.aux_get(cpv, bindb_keys)))
-								if visible(pkgsettings, cpv, metadata, built=True):
-									available = True
-									break
-						if available:
-							greedy_atoms.append((myarg, myslot_atom))
+				for myslot in myslots:
+					myslot_atom = "%s:%s" % \
+						(portage.dep_getkey(myatom), myslot)
+					greedy_atoms.append((myarg, myslot_atom))
+				# In addition to any installed slots, also try to pull
+				# in the latest new slot that may be available.
+				greedy_atoms.append((myarg, myatom))
 			arg_atoms = greedy_atoms
 
 		oneshot = "--oneshot" in self.myopts or \
