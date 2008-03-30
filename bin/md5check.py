@@ -75,7 +75,7 @@ for mycpv in hugelist:
 				if (md5_list[mybn]["MD5"]  != md5sums[mybn]["MD5"]) or \
 				   (md5_list[mybn]["size"] != md5sums[mybn]["size"]):
 
-					# This associates teh md5 with each file. [md5/size]
+					# This associates the md5 with each file. [md5/size]
 					md5joins = md5_list[mybn][2].split(",")
 					md5joins = (" ["+md5_list[mybn][0]+"/"+md5_list[mybn][1]+"],").join(md5joins)
 					md5joins += " ["+md5_list[mybn][0]+"/"+md5_list[mybn][1]+"]"

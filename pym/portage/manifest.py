@@ -262,7 +262,7 @@ class Manifest(object):
 		del self.fhashdict[ftype][fname]
 	
 	def hasFile(self, ftype, fname):
-		""" Return wether the Manifest contains an entry for the given type,filename pair """
+		""" Return whether the Manifest contains an entry for the given type,filename pair """
 		return (fname in self.fhashdict[ftype])
 	
 	def findFile(self, fname):
