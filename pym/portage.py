@@ -9219,11 +9219,11 @@ class dblink:
 			"portage" == pkgsplit(self.pkg)[0]:
 			reinstall_self = True
 
+		autoclean = self.settings.get("AUTOCLEAN", "yes") == "yes"
 		for dblnk in list(others_in_slot):
 			if dblnk is self:
 				continue
-			if dblnk.mycpv != self.mycpv and \
-				not reinstall_self:
+			if not (autoclean or dblnk.mycpv == self.mycpv or reinstall_self):
 				continue
 			writemsg_stdout(">>> Safely unmerging already-installed instance...\n")
 			others_in_slot.remove(dblnk) # dblnk will unmerge itself now
@@ -9232,8 +9232,11 @@ class dblink:
 			# TODO: Check status and abort if necessary.
 			dblnk.delete()
 			writemsg_stdout(">>> Original instance of package unmerged safely.\n")
-			if not reinstall_self:
-				break
+
+		if len(others_in_slot) > 1:
+			writemsg_stdout(colorize("WARN", "WARNING:")
+				+ " AUTOCLEAN is disabled.  This can cause serious"
+				+ " problems due to overlapping packages.\n")
 
 		# We hold both directory locks.
 		self.dbdir = self.dbpkgdir
