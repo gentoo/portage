@@ -1768,11 +1768,6 @@ class depgraph:
 			#  - multi-slot atoms listed in the world file
 			#    to prevent depclean from removing them
 
-			if arg and "selective" not in self.myparams:
-				self._unsatisfied_deps_for_display.append(
-					((pkg.root, arg), {"myparent":myparent}))
-				return 0
-
 			if not visible(pkgsettings, pkg.cpv, pkg.metadata,
 				built=pkg.built, installed=pkg.installed):
 				self._masked_installed.append((pkg, pkgsettings))
@@ -2084,6 +2079,12 @@ class depgraph:
 					self._unsatisfied_deps_for_display.append(
 						((myroot, myatom), {"myparent":None}))
 					return False, myfavorites
+
+				if pkg.installed and "selective" not in self.myparams:
+					self._unsatisfied_deps_for_display.append(
+						((myroot, myatom), {"myparent":None}))
+					return 0, myfavorites
+
 				try:
 					self.mysd = self.create(pkg, None)
 				except portage_exception.MissingSignature, e:
