@@ -1996,6 +1996,16 @@ class depgraph:
 					portage.writemsg("!!! Please check ebuild(5) for full details.\n")
 					portage.writemsg("!!! (Did you specify a version but forget to prefix with '='?)\n")
 					return (0,[])
+				# Don't expand categories or old-style virtuals here unless
+				# necessary. Expansion of old-style virtuals here causes at
+				# least the following problems:
+				#   1) It's more difficult to determine which set(s) an atom
+				#      came from, if any.
+				#   2) It takes away freedom from the resolver to choose other
+				#      possible expansions when necessary.
+				if "/" in x:
+					arg_atoms.append((x, x))
+					continue
 				try:
 					mykey = None
 					if "--usepkg" in self.myopts:
