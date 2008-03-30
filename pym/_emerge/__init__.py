@@ -3914,8 +3914,7 @@ class depgraph(object):
 				if myoldbest:
 					if myinslotlist:
 						myoldbest = [myoldbest]
-					for key in myoldbest:
-						pos = myoldbest.index(key)
+					for pos, key in enumerate(myoldbest):
 						key = portage.pkgsplit(key)[1] + "-" + portage.pkgsplit(key)[2]
 						if key[-3:] == "-r0":
 							key = key[:-3]
