@@ -631,7 +631,7 @@ class search(object):
 							self.portdb.xmatch("match-all",match))
 				elif mtype == "desc":
 					full_package = match
-					match        = portage.pkgsplit(match)[0]
+					match        = portage.cpv_getkey(match)
 				elif mtype == "set":
 					print green("*")+"  "+white(match)
 					print "     ", darkgreen("Description:")+"  ", self.sdict[match].getMetadata("DESCRIPTION")
@@ -4008,7 +4008,8 @@ class depgraph(object):
 							myprint="["+pkgprint(pkg_type)+" "+addl+"] "+indent+pkgprint(pkg_key)+" "+myoldbest+" "+verboseadd
 				p.append(myprint)
 
-			mysplit = portage.pkgsplit(x[2])
+			mysplit = [portage.cpv_getkey(pkg_key)] + \
+				list(portage.catpkgsplit(pkg_key)[2:])
 			if "--tree" not in self.myopts and mysplit and \
 				len(mysplit) == 3 and mysplit[0] == "sys-apps/portage" and \
 				x[1] == "/":
@@ -4795,8 +4796,8 @@ class MergeTask(object):
 					"--fetch-all-uri" not in self.myopts:
 
 					# Figure out if we need a restart.
-					mysplit=portage.pkgsplit(x[2])
-					if mysplit[0] == "sys-apps/portage" and x[1] == "/":
+					if myroot == "/" and \
+						portage.dep_getkey(pkg_key) == "sys-apps/portage":
 						if len(mymergelist) > mergecount:
 							emergelog(xterm_titles,
 								" ::: completed emerge ("+ \
