@@ -1569,7 +1569,7 @@ for x in scanlist:
 				fails["KEYWORDS.stupid"].append(x+"/"+y+".ebuild")
 
 		"""
-		Ebuilds that inherit a "Live" eclasss (darcs,subversion,git,cvs,etc..) should
+		Ebuilds that inherit a "Live" eclass (darcs,subversion,git,cvs,etc..) should
 		not be allowed to be marked stable
 		"""
 		if set(["darcs","cvs","subversion","git"]).intersection(
