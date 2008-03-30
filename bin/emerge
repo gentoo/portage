@@ -1582,18 +1582,10 @@ class depgraph:
 					if len(parents) > max_parents:
 						omitted_parents = len(parents) - max_parents
 						pruned_list = []
-						# When generating the pruned list, prefer instances
-						# of DependencyArg over instances of Package.
 						for parent in parents:
-							if isinstance(parent, DependencyArg):
-								pruned_list.append(parent)
-								if len(pruned_list) == max_parents:
-									break
-						for parent in parents:
-							if not isinstance(parent, DependencyArg):
-								pruned_list.append(parent)
-								if len(pruned_list) == max_parents:
-									break
+							pruned_list.append(parent)
+							if len(pruned_list) == max_parents:
+								break
 						parents = pruned_list
 					msg.append(" pulled in by\n")
 					for parent in parents:
