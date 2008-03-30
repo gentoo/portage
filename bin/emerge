@@ -2424,6 +2424,7 @@ class depgraph:
 				mymerge = []
 		else:
 			try:
+				self.trees[myroot]["selective"] = "selective" in self.myparams
 				if myparent and p_status == "nomerge":
 					portage_dep._dep_check_strict = False
 				mycheck = portage.dep_check(depstring, None,
@@ -2431,6 +2432,7 @@ class depgraph:
 					use_binaries=("--usepkgonly" in self.myopts),
 					myroot=myroot, trees=self.trees)
 			finally:
+				self.trees[myroot]["selective"] = False
 				portage_dep._dep_check_strict = True
 
 			if not mycheck[0]:
