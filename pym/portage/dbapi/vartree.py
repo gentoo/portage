@@ -21,7 +21,7 @@ from portage.versions import pkgsplit, catpkgsplit, catsplit, best, pkgcmp
 
 from portage import listdir, dep_expand, flatten, key_expand, \
 	doebuild_environment, doebuild, env_update, prepare_build_dirs, \
-	abssymlink, movefile, _movefile, bsd_chflags
+	abssymlink, movefile, _movefile, bsd_chflags, cpv_getkey
 
 from portage.elog import elog_process
 from portage.elog.messages import ewarn
@@ -1834,8 +1834,11 @@ class dblink(object):
 		for v in self.vartree.dbapi.cp_list(self.mysplit[0]):
 			otherversions.append(v.split("/")[1])
 
-		slot_matches = self.vartree.dbapi.match(
-			"%s:%s" % (self.mysplit[0], slot))
+		# filter any old-style virtual matches
+		slot_matches = [cpv for cpv in self.vartree.dbapi.match(
+			"%s:%s" % (cpv_getkey(self.mycpv), slot)) \
+			if cpv_getkey(cpv) == cpv_getkey(self.mycpv)]
+
 		if self.mycpv not in slot_matches and \
 			self.vartree.dbapi.cpv_exists(self.mycpv):
 			# handle multislot or unapplied slotmove
