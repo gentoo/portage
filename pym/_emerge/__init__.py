@@ -1985,28 +1985,11 @@ class depgraph(object):
 		myslots = set()
 		for cpv in vardb.match(mykey):
 			myslots.add(vardb.aux_get(cpv, ["SLOT"])[0])
-		if myslots:
-			self._populate_filtered_repo(root, atom,
-				exclude_installed=True)
-			mymatches = filtered_db.match(atom)
-			best_pkg = portage.best(mymatches)
-			if best_pkg:
-				best_slot = filtered_db.aux_get(best_pkg, ["SLOT"])[0]
-				myslots.add(best_slot)
-		if len(myslots) > 1:
-			for myslot in myslots:
-				myslot_atom = "%s:%s" % (mykey, myslot)
-				self._populate_filtered_repo(
-					root, myslot_atom,
-					exclude_installed=True)
-				if filtered_db.match(myslot_atom):
-					yield myslot_atom
-
-		# Since populate_filtered_repo() was called with the
-		# exclude_installed flag, these atoms will need to be processed
-		# again in case installed packages are required to satisfy
-		# dependencies.
-		self._filtered_trees[root]["atoms"].clear()
+		for myslot in myslots:
+			yield "%s:%s" % (mykey, myslot)
+		# In addition to any installed slots, also try to pull
+		# in the latest new slot that may be available.
+		yield atom
 
 	def _iter_args_for_pkg(self, pkg):
 		# TODO: add multiple $ROOT support
