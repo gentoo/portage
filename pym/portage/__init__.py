@@ -5315,6 +5315,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 	if trees is None:
 		global db
 		trees = db
+	selective = trees[myroot].get("selective", False)
 	writemsg("ZapDeps -- %s\n" % (use_binaries), 2)
 	if not reduced or unreduced == ["||"] or dep_eval(reduced):
 		return []
@@ -5378,7 +5379,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 				has_mask = False
 				if hasattr(mydbapi, "xmatch"):
 					has_mask = bool(mydbapi.xmatch("match-all", atom))
-				if (use_binaries or not has_mask):
+				if (selective or use_binaries or not has_mask):
 					avail_pkg = best(vardb.match(atom))
 					if avail_pkg:
 						avail_slot = "%s:%s" % (dep_getkey(atom),
