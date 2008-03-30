@@ -3677,7 +3677,7 @@ class depgraph(object):
 
 				#we need to use "--emptrytree" testing here rather than "empty" param testing because "empty"
 				#param is used for -u, where you still *do* want to see when something is being upgraded.
-				myoldbest = ""
+				myoldbest = []
 				myinslotlist = None
 				installed_versions = vardb.match(portage.cpv_getkey(pkg_key))
 				if vardb.cpv_exists(pkg_key):
@@ -3700,10 +3700,10 @@ class depgraph(object):
 						portage.cpv_getkey(pkg_key):
 						myinslotlist = None
 					if myinslotlist:
-						myoldbest = portage.best(myinslotlist)
+						myoldbest = myinslotlist[:]
 						addl = "   " + fetch
 						if not portage.dep.cpvequal(pkg_key,
-							portage.best([pkg_key, myoldbest])):
+							portage.best([pkg_key] + myoldbest)):
 							# Downgrade in slot
 							addl += turquoise("U")+blue("D")
 							if ordered:
@@ -3751,7 +3751,7 @@ class depgraph(object):
 					cur_use = [flag for flag in cur_use if flag in cur_iuse]
 
 					if myoldbest and myinslotlist:
-						pkg = myoldbest
+						pkg = myoldbest[0]
 					else:
 						pkg = x[2]
 					if self.trees[x[1]]["vartree"].dbapi.cpv_exists(pkg):
@@ -3912,16 +3912,17 @@ class depgraph(object):
 
 				indent = " " * depth
 
-				if myoldbest:
-					if myinslotlist:
-						myoldbest = [myoldbest]
+				# Convert myoldbest from a list to a string.
+				if not myoldbest:
+					myoldbest = ""
+				else:
 					for pos, key in enumerate(myoldbest):
-						key = portage.pkgsplit(key)[1] + "-" + portage.pkgsplit(key)[2]
+						key = portage.catpkgsplit(key)[2] + \
+							"-" + portage.catpkgsplit(key)[3]
 						if key[-3:] == "-r0":
 							key = key[:-3]
 						myoldbest[pos] = key
 					myoldbest = blue("["+", ".join(myoldbest)+"]")
-					
 
 				pkg_cp = xs[0]
 				root_config = self.roots[myroot]
