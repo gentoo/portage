@@ -3296,7 +3296,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 							fetched = 1 # Try to resume this download.
 						elif parallel_fetchonly and \
 							mystat.st_size == mydigests[myfile]["size"]:
-							eout = portage.output.EOutput()
+							eout = output.EOutput()
 							eout.quiet = \
 								mysettings.get("PORTAGE_QUIET") == "1"
 							eout.ebegin(
