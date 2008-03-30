@@ -4792,20 +4792,6 @@ class MergeTask(object):
 				if "--pretend" not in self.myopts and \
 					"--fetchonly" not in self.myopts and \
 					"--fetch-all-uri" not in self.myopts:
-					# Clean the old package that we have merged over top of it.
-					if pkgsettings.get("AUTOCLEAN", "yes") == "yes":
-						xsplit=portage.pkgsplit(x[2])
-						emergelog(xterm_titles, " >>> AUTOCLEAN: " + xsplit[0])
-						retval = unmerge(self.trees[myroot]["root_config"],
-							self.myopts,
-							"clean", [xsplit[0]], ldpath_mtimes, autoclean=1)
-						if not retval:
-							emergelog(xterm_titles,
-								" --- AUTOCLEAN: Nothing unmerged.")
-					else:
-						portage.writemsg_stdout(colorize("WARN", "WARNING:")
-							+ " AUTOCLEAN is disabled.  This can cause serious"
-							+ " problems due to overlapping packages.\n")
 
 					# Figure out if we need a restart.
 					mysplit=portage.pkgsplit(x[2])
