@@ -127,7 +127,8 @@ repoman_options={
 "--quiet"          : "Be less verbose about extraneous info",
 "--verbose"        : "Displays every package name while checking",
 "--version"        : "Show version info",
-"--without-mask"   : "Behave as if no package.mask entries exist",
+"--without-mask"   : "Behave as if no package.mask entries exist (not " + \
+						"allowed\n                      with commit mode)",
 "--xmlparse"       : "Forces the metadata.xml parse check to be carried out"
 }
 repoman_shortoptions={
@@ -563,8 +564,10 @@ if ("--version" in myoptions):
 	show_version()
 if mymode=="last" or (mymode=="lfull"):
 	last()
-if mymode == "commit":
+if mymode == "commit" and \
+	not ("--force" in myoptions or "--pretend" in myoptions):
 	myoptions.pop("--ignore-masked", None)
+	myoptions.pop("--without-mask", None)
 
 # Set this to False when an extraordinary issue (generally
 # something other than a QA issue) makes it impossible to
