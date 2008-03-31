@@ -2593,14 +2593,6 @@ class depgraph(object):
 			for db, pkg_type, built, installed, db_keys in dbs:
 				if existing_node:
 					break
-				if installed and not find_existing_node and \
-					matched_packages:
-					# We only need to select an installed package in the
-					# following cases:
-					#   1) no available packages
-					#   2) available packages rejected for some reason
-					#      such as --newuse
-					continue
 				if hasattr(db, "xmatch"):
 					cpv_list = db.xmatch("match-all", atom)
 				else:
