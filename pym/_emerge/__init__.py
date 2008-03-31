@@ -2738,8 +2738,7 @@ class depgraph(object):
 							built=built, installed=installed,
 							onlydeps=onlydeps))
 					if reinstall_for_flags:
-						pkg_node = (pkg_type, root, cpv, "merge")
-						self._reinstall_nodes[pkg_node] = \
+						self._reinstall_nodes[matched_packages[-1]] = \
 							reinstall_for_flags
 					break
 
