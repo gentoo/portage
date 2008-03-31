@@ -1827,28 +1827,8 @@ class depgraph(object):
 					return 0
 
 		if pkg.installed:
-			# Warn if all matching ebuilds are masked or
-			# the installed package itself is masked. Do
-			# not warn if there are simply no matching
-			# ebuilds since that would be annoying in some
-			# cases:
-			#
-			#  - binary packages installed from an overlay
-			#    that is not listed in PORTDIR_OVERLAY
-			#
-			#  - multi-slot atoms listed in the world file
-			#    to prevent depclean from removing them
-
-			if arg_atoms:
-				selective = "selective" in self.myparams
-				portdb = self.trees[pkg.root]["porttree"].dbapi
-				for arg, atom in arg_atoms:
-					all_ebuilds_masked = bool(
-						portdb.xmatch("match-all", atom) and
-						not portdb.xmatch("bestmatch-visible", atom))
-					if all_ebuilds_masked and not selective:
-						self._missing_args.append((arg, atom))
-
+			# Warn if an installed package is masked and it
+			# is pulled into the graph.
 			if not visible(pkgsettings, pkg):
 				self._masked_installed.append((pkg, pkgsettings))
 
