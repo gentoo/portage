@@ -1190,7 +1190,7 @@ def iter_atoms(deps):
 class Package(object):
 	__slots__ = ("__weakref__", "built", "cpv", "depth",
 		"installed", "metadata", "root", "onlydeps", "type_name",
-		"cpv_slot", "slot_atom", "_digraph_node")
+		"cp", "cpv_slot", "slot_atom", "_digraph_node")
 	def __init__(self, **kwargs):
 		for myattr in self.__slots__:
 			if myattr == "__weakref__":
@@ -1198,9 +1198,8 @@ class Package(object):
 			myvalue = kwargs.get(myattr, None)
 			setattr(self, myattr, myvalue)
 
-		self.slot_atom = "%s:%s" % \
-			(portage.cpv_getkey(self.cpv), self.metadata["SLOT"])
-
+		self.cp = portage.cpv_getkey(self.cpv)
+		self.slot_atom = "%s:%s" % (self.cp, self.metadata["SLOT"])
 		self.cpv_slot = "%s:%s" % (self.cpv, self.metadata["SLOT"])
 
 		status = "merge"
@@ -2742,6 +2741,20 @@ class depgraph(object):
 		if "--debug" in self.myopts:
 			for pkg in matched_packages:
 				print (pkg.type_name + ":").rjust(10), pkg.cpv
+
+		# Filter out any old-style virtual matches if they are
+		# mixed with new-style virtual matches.
+		cp = portage.dep_getkey(atom)
+		if len(matched_packages) > 1 and \
+			"virtual" == portage.catsplit(cp)[0]:
+			for pkg in matched_packages:
+				if pkg.cp != cp:
+					continue
+				# Got a new-style virtual, so filter
+				# out any old-style virtuals.
+				matched_packages = [pkg for pkg in matched_packages \
+					if pkg.cp == cp]
+				break
 
 		if len(matched_packages) > 1:
 			bestmatch = portage.best(
