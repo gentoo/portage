@@ -472,8 +472,14 @@ class search(object):
 	def _visible(self, db, cpv, metadata):
 		installed = db is self.vartree.dbapi
 		built = installed or db is not self._portdb
-		return visible(self.settings, cpv, metadata,
-			built=built, installed=installed)
+		pkg_type = "ebuild"
+		if installed:
+			pkg_type = "installed"
+		elif built:
+			pkg_type = "binary"
+		return visible(self.settings,
+			Package(type_name=pkg_type, root=self.settings["ROOT"],
+			cpv=cpv, built=built, installed=installed, metadata=metadata))
 
 	def _xmatch(self, level, atom):
 		"""
@@ -1052,7 +1058,7 @@ def perform_global_updates(mycpv, mydb, mycommands):
 	if updates:
 		mydb.aux_update(mycpv, updates)
 
-def visible(pkgsettings, cpv, metadata, built=False, installed=False):
+def visible(pkgsettings, pkg):
 	"""
 	Check if a package is visible. This can raise an InvalidDependString
 	exception if LICENSE is invalid.
@@ -1060,20 +1066,24 @@ def visible(pkgsettings, cpv, metadata, built=False, installed=False):
 	@rtype: Boolean
 	@returns: True if the package is visible, False otherwise.
 	"""
-	if not metadata["SLOT"]:
+	if not pkg.metadata["SLOT"]:
 		return False
-	if built and not installed and \
-		metadata["CHOST"] != pkgsettings["CHOST"]:
+	if pkg.built and not pkg.installed and \
+		pkg.metadata["CHOST"] != pkgsettings["CHOST"]:
 		return False
-	if not portage.eapi_is_supported(metadata["EAPI"]):
+	if not portage.eapi_is_supported(pkg.metadata["EAPI"]):
 		return False
-	if not installed and pkgsettings.getMissingKeywords(cpv, metadata):
+	if not pkg.installed and \
+		pkgsettings.getMissingKeywords(pkg.cpv, pkg.metadata):
 		return False
-	if pkgsettings.getMaskAtom(cpv, metadata):
+	if pkgsettings.getMaskAtom(pkg.cpv, pkg.metadata):
 		return False
-	if pkgsettings.getProfileMaskAtom(cpv, metadata):
+	if pkgsettings.getProfileMaskAtom(pkg.cpv, pkg.metadata):
 		return False
-	if pkgsettings.getMissingLicenses(cpv, metadata):
+	try:
+		if pkgsettings.getMissingLicenses(pkg.cpv, pkg.metadata):
+			return False
+	except portage.exception.InvalidDependString:
 		return False
 	return True
 
@@ -1840,8 +1850,7 @@ class depgraph(object):
 					if all_ebuilds_masked and not selective:
 						self._missing_args.append((arg, atom))
 
-			if not visible(pkgsettings, pkg.cpv, pkg.metadata,
-				built=pkg.built, installed=pkg.installed):
+			if not visible(pkgsettings, pkg):
 				self._masked_installed.append((pkg, pkgsettings))
 
 		if args:
@@ -2422,12 +2431,9 @@ class depgraph(object):
 						else:
 							metadata["USE"] = ""
 
-					try:
-						if not visible(pkgsettings, cpv, metadata,
-							built=built, installed=installed):
-							continue
-					except portage.exception.InvalidDependString:
-						# masked by corruption
+					if not visible(pkgsettings, Package(built=built,
+						cpv=cpv, root=myroot, type_name=pkg_type,
+						installed=installed, metadata=metadata)):
 						continue
 
 					filtered_db.cpv_inject(cpv, metadata=metadata)
@@ -2631,12 +2637,9 @@ class depgraph(object):
 					if not installed:
 						if myarg:
 							found_available_arg = True
-						try:
-							if not visible(pkgsettings, cpv, metadata,
-								built=built, installed=installed):
-								continue
-						except portage.exception.InvalidDependString:
-							# masked by corruption
+						if not visible(pkgsettings, Package(built=built,
+							cpv=cpv, installed=installed, metadata=metadata,
+							type_name=pkg_type)):
 							continue
 					# At this point, we've found the highest visible
 					# match from the current repo. Any lower versions
@@ -6558,8 +6561,8 @@ def action_depclean(settings, trees, ldpath_mtimes,
 			for cpv in reversed(pkgs):
 				metadata = dict(izip(metadata_keys,
 					vardb.aux_get(cpv, metadata_keys)))
-				if visible(settings, cpv, metadata,
-					built=True, installed=True):
+				if visible(settings, Package(built=True, cpv=cpv,
+					installed=True, metadata=metadata, type_name="installed")):
 					pkgs = [cpv]
 					break
 			if len(pkgs) > 1:
