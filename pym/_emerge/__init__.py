@@ -2706,8 +2706,10 @@ class depgraph(object):
 						cpv=cpv, metadata=metadata,
 						built=built, installed=installed,
 						onlydeps=onlydeps)
-					if installed and want_reinstall:
-						matched_packages.insert(0, pkg)
+					if installed and want_reinstall and matched_packages:
+						# Reject the installed package unless
+						# there are no other matches.
+						break
 					else:
 						matched_packages.append(pkg)
 					if reinstall_for_flags:
