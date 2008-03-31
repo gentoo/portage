@@ -2270,12 +2270,17 @@ class depgraph(object):
 						self._missing_args.append((arg, atom))
 						continue
 					if pkg.installed and "selective" not in self.myparams:
+						self._unsatisfied_deps_for_display.append(
+							((myroot, atom), {}))
 						# Previous behavior was to bail out in this case, but
 						# since the dep is satisfied by the installed package,
 						# it's more friendly to continue building the graph
-						# and just show a warning message.
-						self._unsatisfied_deps_for_display.append(
-							((myroot, atom), {}))
+						# and just show a warning message. Therefore, only bail
+						# out here if the atom is not from either the system or
+						# world set.
+						if not (isinstance(arg, SetArg) and \
+							arg.name in ("system", "world")):
+							return 0, myfavorites
 
 					self._dep_stack.append(
 						Dependency(atom=atom, onlydeps=onlydeps, root=myroot, parent=arg))
