@@ -1762,18 +1762,8 @@ class depgraph:
 					return 0
 
 		if pkg.installed:
-			# Warn if all matching ebuilds are masked or
-			# the installed package itself is masked. Do
-			# not warn if there are simply no matching
-			# ebuilds since that would be annoying in some
-			# cases:
-			#
-			#  - binary packages installed from an overlay
-			#    that is not listed in PORTDIR_OVERLAY
-			#
-			#  - multi-slot atoms listed in the world file
-			#    to prevent depclean from removing them
-
+			# Warn if an installed package is masked and it
+			# is pulled into the graph.
 			if not visible(pkgsettings, pkg):
 				self._masked_installed.append((pkg, pkgsettings))
 
