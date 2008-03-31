@@ -2291,9 +2291,12 @@ class depgraph(object):
 						self._missing_args.append((arg, atom))
 						continue
 					if pkg.installed and "selective" not in self.myparams:
+						# Previous behavior was to bail out in this case, but
+						# since the dep is satisfied by the installed package,
+						# it's more friendly to continue building the graph
+						# and just show a warning message.
 						self._unsatisfied_deps_for_display.append(
 							((myroot, atom), {}))
-						return 0, myfavorites
 
 					self._dep_stack.append(
 						Dependency(atom=atom, onlydeps=onlydeps, root=myroot, parent=arg))
@@ -2572,7 +2575,6 @@ class depgraph(object):
 		empty = "empty" in self.myparams
 		selective = "selective" in self.myparams
 		noreplace = "--noreplace" in self.myopts
-		reinstall = False
 		# Behavior of the "selective" parameter depends on
 		# whether or not a package matches an argument atom.
 		# If an installed package provides an old-style
@@ -2592,12 +2594,12 @@ class depgraph(object):
 				if existing_node:
 					break
 				if installed and not find_existing_node and \
-					(reinstall or not selective) and \
-					(matched_packages or empty):
+					matched_packages:
 					# We only need to select an installed package in the
 					# following cases:
-					#   1) there is no other choice
-					#   2) selective is True
+					#   1) no available packages
+					#   2) available packages rejected for some reason
+					#      such as --newuse
 					continue
 				if hasattr(db, "xmatch"):
 					cpv_list = db.xmatch("match-all", atom)
@@ -2691,7 +2693,7 @@ class depgraph(object):
 					if not installed and \
 						("--newuse" in self.myopts or \
 						"--reinstall" in self.myopts) and \
-						vardb.cpv_exists(cpv):
+						cpv in vardb.match(atom):
 						pkgsettings.setcpv(cpv, mydb=metadata)
 						forced_flags = set()
 						forced_flags.update(pkgsettings.useforce)
@@ -2706,19 +2708,12 @@ class depgraph(object):
 							self._reinstall_for_flags(
 							forced_flags, old_use, old_iuse,
 							cur_use, cur_iuse)
-						if reinstall_for_flags:
-							reinstall = True
 					if not installed:
 						must_reinstall = empty or \
 							(myarg and not selective)
 						if not reinstall_for_flags and \
 							not must_reinstall and \
 							cpv in vardb.match(atom):
-							break
-					if installed:
-						must_reinstall = empty or \
-							(found_available_arg and not selective)
-						if must_reinstall:
 							break
 					# Metadata accessed above is cached internally by
 					# each db in order to optimize visibility checks.
@@ -2732,13 +2727,20 @@ class depgraph(object):
 						pkgsettings.setcpv(cpv, mydb=metadata)
 						metadata["USE"] = pkgsettings["PORTAGE_USE"]
 						myeb = cpv
-					matched_packages.append(
-						Package(type_name=pkg_type, root=root,
-							cpv=cpv, metadata=metadata,
-							built=built, installed=installed,
-							onlydeps=onlydeps))
+					want_reinstall = False
+					if installed:
+						want_reinstall = empty or \
+							(found_available_arg and not selective)
+					pkg = Package(type_name=pkg_type, root=root,
+						cpv=cpv, metadata=metadata,
+						built=built, installed=installed,
+						onlydeps=onlydeps)
+					if installed and want_reinstall:
+						matched_packages.insert(0, pkg)
+					else:
+						matched_packages.append(pkg)
 					if reinstall_for_flags:
-						self._reinstall_nodes[matched_packages[-1]] = \
+						self._reinstall_nodes[pkg] = \
 							reinstall_for_flags
 					break
 
@@ -2753,7 +2755,7 @@ class depgraph(object):
 			bestmatch = portage.best(
 				[pkg.cpv for pkg in matched_packages])
 			matched_packages = [pkg for pkg in matched_packages \
-				if pkg.cpv == bestmatch]
+				if portage.dep.cpvequal(pkg.cpv, bestmatch)]
 
 		# ordered by type preference ("ebuild" type is the last resort)
 		return  matched_packages[-1], existing_node
@@ -4045,6 +4047,7 @@ class depgraph(object):
 				print bold('*'+revision)
 				sys.stdout.write(text)
 
+		sys.stdout.flush()
 		self.display_problems()
 		return os.EX_OK
 
