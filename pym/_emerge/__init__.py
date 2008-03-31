@@ -2572,6 +2572,11 @@ class depgraph(object):
 			for db, pkg_type, built, installed, db_keys in dbs:
 				if existing_node:
 					break
+				if installed and not find_existing_node:
+					want_reinstall = empty or \
+						(found_available_arg and not selective)
+					if want_reinstall and matched_packages:
+						continue
 				if hasattr(db, "xmatch"):
 					cpv_list = db.xmatch("match-all", atom)
 				else:
@@ -2698,20 +2703,11 @@ class depgraph(object):
 						pkgsettings.setcpv(cpv, mydb=metadata)
 						metadata["USE"] = pkgsettings["PORTAGE_USE"]
 						myeb = cpv
-					want_reinstall = False
-					if installed:
-						want_reinstall = empty or \
-							(found_available_arg and not selective)
 					pkg = Package(type_name=pkg_type, root=root,
 						cpv=cpv, metadata=metadata,
 						built=built, installed=installed,
 						onlydeps=onlydeps)
-					if installed and want_reinstall and matched_packages:
-						# Reject the installed package unless
-						# there are no other matches.
-						break
-					else:
-						matched_packages.append(pkg)
+					matched_packages.append(pkg)
 					if reinstall_for_flags:
 						self._reinstall_nodes[pkg] = \
 							reinstall_for_flags
