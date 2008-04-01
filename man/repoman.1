@@ -41,7 +41,7 @@ Ignore arch-specific failures (where arch != host)
 Ignore masked packages (not allowed with commit mode)
 .TP
 \fB\-\-without\-mask\fR
-Behave as if no package.mask entries exist
+Behave as if no package.mask entries exist (not allowed with commit mode)
 .TP
 \fB-m\fR, \fB--commitmsg\fR
 Adds a commit message via the command line
@@ -219,6 +219,9 @@ Ebuilds that exist but have not been added to cvs
 .B ebuild.output
 A simple sourcing of the ebuild produces output; this breaks ebuild policy.
 .TP
+.B ebuild.patches
+PATCHES variable should be a bash array to ensure white space safety
+.TP
 .B ebuild.syntax
 Error generating cache entry for ebuild; typically caused by ebuild syntax error
 or digest verification failure.
@@ -237,6 +240,10 @@ Files in the files directory must be under 20k
 .TP
 .B filedir.missing
 Package lacks a files directory
+.TP
+.B java.eclassesnotused
+With virtual/jdk in DEPEND you must inherit a java eclass. Refer to
+\fIhttp://www.gentoo.org/proj/en/java/java\-devel.xml\fR for more information.
 .TP
 .B metadata.bad
 Bad metadata.xml files

@@ -496,7 +496,7 @@ install_mask() {
 		set +o noglob
 		quiet_mode || einfo "Removing ${no_inst}"
 		# normal stuff
-		rm -Rf ${root}/${no_inst} >&/dev/null
+		rm -Rf "${root}"/${no_inst} >&/dev/null
 
 		# we also need to handle globs (*.a, *.h, etc)
 		find "${root}" -path "${no_inst}" -exec rm -fR {} \; >/dev/null
@@ -529,6 +529,11 @@ preinst_mask() {
 		 eerror "${FUNCNAME}: D is unset"
 		 return 1
 	fi
+
+	# Make sure $PWD is not ${D} so that we don't leave gmon.out files
+	# in there in case any tools were built with -pg in CFLAGS.
+	cd "${T}"
+
 	# remove man pages, info pages, docs if requested
 	for f in man info doc; do
 		if hasq no${f} $FEATURES; then
@@ -649,7 +654,9 @@ preinst_selinux_labels() {
 }
 
 dyn_package() {
-	cd "${PORTAGE_BUILDDIR}/image"
+	# Make sure $PWD is not ${D} so that we don't leave gmon.out files
+	# in there in case any tools were built with -pg in CFLAGS.
+	cd "${T}"
 	install_mask "${PORTAGE_BUILDDIR}/image" "${PKG_INSTALL_MASK}"
 	local tar_options=""
 	[ "${PORTAGE_QUIET}" == "1" ] ||  tar_options="${tar_options} -v"
@@ -659,10 +666,9 @@ dyn_package() {
 	[ -z "${PORTAGE_BINPKG_TMPFILE}" ] && \
 		PORTAGE_BINPKG_TMPFILE="${PKGDIR}/${CATEGORY}/${PF}.tbz2"
 	mkdir -p "${PORTAGE_BINPKG_TMPFILE%/*}" || die "mkdir failed"
-	tar $tar_options -cf - $PORTAGE_BINPKG_TAR_OPTS . | \
+	tar $tar_options -cf - $PORTAGE_BINPKG_TAR_OPTS -C "${D}" . | \
 		bzip2 -f > "$PORTAGE_BINPKG_TMPFILE" || \
 		die "Failed to create tarball"
-	cd ..
 	export PYTHONPATH=${PORTAGE_PYM_PATH:-${EPREFIX}/usr/lib/portage/pym}
 	python -c "from portage import xpak; t=xpak.tbz2('${PORTAGE_BINPKG_TMPFILE}'); t.recompose('${PORTAGE_BUILDDIR}/build-info')"
 	if [ $? -ne 0 ]; then

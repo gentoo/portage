@@ -187,7 +187,7 @@ def ParseArgs(args, qahelp):
 		default=False, help='ignore masked packages (not allowed with commit mode)')
 
 	parser.add_option('--without-mask', dest='without_mask', action='store_true',
-		default=False, help='behave as if no package.mask entries exist')
+		default=False, help='behave as if no package.mask entries exist (not allowed with commit mode)')
 
 	parser.add_option('--mode', type='choice', dest='mode', choices=modes.keys(), 
 		help='specify which mode repoman will run in (default=full)')
@@ -220,8 +220,11 @@ def ParseArgs(args, qahelp):
 	if not opts.mode:
 		opts.mode = 'full'	#default to full
 
-	if opts.mode == 'commit' and opts.ignore_masked:
-		parser.error('Commit mode and --ignore_masked are not compatable')
+	if opts.mode == 'commit' and not (opts.force or opts.pretend):
+		if opts.ignore_masked:
+			parser.error('Commit mode and --ignore-masked are not compatable')
+		if opts.without_mask:
+			parser.error('Commit mode and --without-mask are not compatable')
 
 	# Use the verbosity and quiet options to fiddle with the loglevel appropriately
 	for val in range(opts.verbosity):
@@ -242,12 +245,14 @@ qahelp={
 	"changelog.missing":"Missing ChangeLog files",
 	"ebuild.disjointed":"Ebuilds not added to cvs when the matching digest has been added",
 	"ebuild.notadded":"Ebuilds that exist but have not been added to cvs",
+	"ebuild.patches":"PATCHES variable should be a bash array to ensure white space safety",
 	"changelog.notadded":"ChangeLogs that exist but have not been added to cvs",
 	"filedir.missing":"Package lacks a files directory",
 	"file.executable":"Ebuilds, digests, metadata.xml, Manifest, and ChangeLog do note need the executable bit",
 	"file.size":"Files in the files directory must be under 20k",
 	"file.name":"File/dir name must be composed of only the following chars: %s " % allowed_filename_chars,
 	"file.UTF8":"File is not UTF8 compliant",
+	"java.eclassesnotused":"With virtual/jdk in DEPEND you must inherit a java eclass",
 	"KEYWORDS.dropped":"Ebuilds that appear to have dropped KEYWORDS for some arch",
 	"KEYWORDS.missing":"Ebuilds that have a missing or empty KEYWORDS variable",
 	"KEYWORDS.stable":"Ebuilds that have been added directly with stable KEYWORDS",
@@ -323,7 +328,9 @@ qawarnings=[
 "RESTRICT.invalid",
 "ebuild.minorsyn",
 "ebuild.badheader",
+"ebuild.patches",
 "file.size",
+"java.eclassesnotused",
 "metadata.missing",
 "metadata.bad",
 "virtual.versioned",
@@ -1025,6 +1032,7 @@ for x in scanlist:
 
 		myaux = ebuild_metadata[y]
 		eapi = myaux["EAPI"]
+		inherited = myaux["INHERITED"].split()
 
 		# Test for negative logic and bad words in the RESTRICT var.
 		#for x in myaux[allvars.index("RESTRICT")].split():
@@ -1157,6 +1165,7 @@ for x in scanlist:
 				myflag = myflag[1:]
 			myiuse.add(myflag)
 
+		inherited_java_eclass = "java-pkg" in inherited
 		operator_tokens = set(["||", "(", ")"])
 		type_list, badsyntax = [], []
 		for mytype in ("DEPEND", "RDEPEND", "PDEPEND", "LICENSE", "PROVIDE"):
@@ -1204,7 +1213,16 @@ for x in scanlist:
 					if not portage.isvalidatom(token, allow_blockers=True):
 						badsyntax.append("'%s' not a valid atom" % token)
 					else:
-						atom = token.lstrip("!")
+						atom = token
+						is_blocker = atom.startswith("!")
+						if is_blocker:
+							atom = token.lstrip("!")
+						if mytype == "DEPEND" and \
+							not is_blocker and \
+							not inherited_java_eclass and \
+							portage.dep_getkey(atom) == "virtual/jdk":
+							stats['java.eclassesnotused'] += 1
+							fails['java.eclassesnotused'].append(relative_path)
 						if eapi == "0":
 							if portage.dep.dep_getslot(atom):
 								stats['EAPI.incompatible'] += 1

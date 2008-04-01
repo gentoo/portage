@@ -4755,11 +4755,14 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			phase_retval = exit_status_check(phase_retval)
 			if phase_retval == os.EX_OK:
 				# Post phase logic and tasks that have been factored out of
-				# ebuild.sh.
+				# ebuild.sh. Call preinst_mask last so that INSTALL_MASK can
+				# can be used to wipe out any gmon.out files created during
+				# previous functions (in case any tools were built with -pg
+				# in CFLAGS).
 				myargs = [_shell_quote(misc_sh_binary),
-					"preinst_bsdflags", "preinst_mask",
+					"preinst_bsdflags",
 					"preinst_sfperms", "preinst_selinux_labels",
-					"preinst_suid_scan"]
+					"preinst_suid_scan", "preinst_mask"]
 				_doebuild_exit_status_unlink(
 					mysettings.get("EBUILD_EXIT_STATUS_FILE"))
 				mysettings["EBUILD_PHASE"] = ""
@@ -5363,6 +5366,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 	if trees is None:
 		global db
 		trees = db
+	selective = trees[myroot].get("selective", False)
 	writemsg("ZapDeps -- %s\n" % (use_binaries), 2)
 	if not reduced or unreduced == ["||"] or dep_eval(reduced):
 		return []
@@ -5426,7 +5430,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 				has_mask = False
 				if hasattr(mydbapi, "xmatch"):
 					has_mask = bool(mydbapi.xmatch("match-all", atom))
-				if (use_binaries or not has_mask):
+				if (selective or use_binaries or not has_mask):
 					avail_pkg = best(vardb.match(atom))
 					if avail_pkg:
 						avail_slot = "%s:%s" % (dep_getkey(atom),

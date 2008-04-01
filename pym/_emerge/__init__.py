@@ -1547,6 +1547,7 @@ class depgraph(object):
 		self._pprovided_args = []
 		self._missing_args = []
 		self._masked_installed = []
+		self._unsatisfied_deps_for_display = []
 		self._dep_stack = []
 		self._unsatisfied_deps = []
 		self._ignored_deps = []
@@ -1560,6 +1561,9 @@ class depgraph(object):
 		automatically, but support for backtracking (removal nodes that have
 		already been selected) will be required in order to handle all possible
 		cases."""
+
+		if not self._slot_collision_info:
+			return
 
 		msg = []
 		msg.append("\n!!! Multiple versions within a single " + \
@@ -1694,8 +1698,8 @@ class depgraph(object):
 				if allow_unsatisfied:
 					self._unsatisfied_deps.append(dep)
 					continue
-				self._show_unsatisfied_dep(dep.root, dep.atom,
-					myparent=dep.parent)
+				self._unsatisfied_deps_for_display.append(
+					((dep.root, dep.atom), {"myparent":dep.parent}))
 				return 0
 			# In some cases, dep_check will return deps that shouldn't
 			# be proccessed any further, so they are identified and
@@ -2002,28 +2006,11 @@ class depgraph(object):
 		myslots = set()
 		for cpv in vardb.match(mykey):
 			myslots.add(vardb.aux_get(cpv, ["SLOT"])[0])
-		if myslots:
-			self._populate_filtered_repo(root, atom,
-				exclude_installed=True)
-			mymatches = filtered_db.match(atom)
-			best_pkg = portage.best(mymatches)
-			if best_pkg:
-				best_slot = filtered_db.aux_get(best_pkg, ["SLOT"])[0]
-				myslots.add(best_slot)
-		if len(myslots) > 1:
-			for myslot in myslots:
-				myslot_atom = "%s:%s" % (mykey, myslot)
-				self._populate_filtered_repo(
-					root, myslot_atom,
-					exclude_installed=True)
-				if filtered_db.match(myslot_atom):
-					yield myslot_atom
-
-		# Since populate_filtered_repo() was called with the
-		# exclude_installed flag, these atoms will need to be processed
-		# again in case installed packages are required to satisfy
-		# dependencies.
-		self._filtered_trees[root]["atoms"].clear()
+		for myslot in myslots:
+			yield "%s:%s" % (mykey, myslot)
+		# In addition to any installed slots, also try to pull
+		# in the latest new slot that may be available.
+		yield atom
 
 	def _iter_args_for_pkg(self, pkg):
 		# TODO: add multiple $ROOT support
@@ -2310,12 +2297,14 @@ class depgraph(object):
 					if not pkg:
 						if not (isinstance(arg, SetArg) and \
 							arg.name in ("system", "world")):
-							self._show_unsatisfied_dep(myroot, atom)
+							self._unsatisfied_deps_for_display.append(
+								((myroot, atom), {}))
 							return 0, myfavorites
 						self._missing_args.append((arg, atom))
 						continue
 					if pkg.installed and "selective" not in self.myparams:
-						self._show_unsatisfied_dep(myroot, atom)
+						self._unsatisfied_deps_for_display.append(
+							((myroot, atom), {}))
 						return 0, myfavorites
 
 					self._dep_stack.append(
@@ -2516,12 +2505,14 @@ class depgraph(object):
 				myuse=myuse, strict=strict)
 		if True:
 			try:
+				self.trees[root]["selective"] = "selective" in self.myparams
 				if not strict:
 					portage.dep._dep_check_strict = False
 				mycheck = portage.dep_check(depstring, None,
 					pkgsettings, myuse=myuse,
 					myroot=root, trees=trees)
 			finally:
+				self.trees[root]["selective"] = False
 				portage.dep._dep_check_strict = True
 			if not mycheck[0]:
 				raise portage.exception.InvalidDependString(mycheck[1])
@@ -3122,8 +3113,8 @@ class depgraph(object):
 			# unresolvable blocks.
 			for x in self.altlist():
 				if x[0] == "blocks":
+					self._slot_collision_info.clear()
 					return True
-			self._show_slot_collision_notice()
 			if not self._accept_collisions():
 				return False
 		return True
@@ -3716,7 +3707,7 @@ class depgraph(object):
 
 				#we need to use "--emptrytree" testing here rather than "empty" param testing because "empty"
 				#param is used for -u, where you still *do* want to see when something is being upgraded.
-				myoldbest = ""
+				myoldbest = []
 				myinslotlist = None
 				installed_versions = vardb.match(portage.cpv_getkey(pkg_key))
 				if vardb.cpv_exists(pkg_key):
@@ -3739,9 +3730,10 @@ class depgraph(object):
 						portage.cpv_getkey(pkg_key):
 						myinslotlist = None
 					if myinslotlist:
-						myoldbest = portage.best(myinslotlist)
+						myoldbest = myinslotlist[:]
 						addl = "   " + fetch
-						if portage.pkgcmp(portage.pkgsplit(x[2]), portage.pkgsplit(myoldbest)) < 0:
+						if not portage.dep.cpvequal(pkg_key,
+							portage.best([pkg_key] + myoldbest)):
 							# Downgrade in slot
 							addl += turquoise("U")+blue("D")
 							if ordered:
@@ -3789,7 +3781,7 @@ class depgraph(object):
 					cur_use = [flag for flag in cur_use if flag in cur_iuse]
 
 					if myoldbest and myinslotlist:
-						pkg = myoldbest
+						pkg = myoldbest[0]
 					else:
 						pkg = x[2]
 					if self.trees[x[1]]["vartree"].dbapi.cpv_exists(pkg):
@@ -3950,17 +3942,17 @@ class depgraph(object):
 
 				indent = " " * depth
 
-				if myoldbest:
-					if myinslotlist:
-						myoldbest = [myoldbest]
-					for key in myoldbest:
-						pos = myoldbest.index(key)
-						key = portage.pkgsplit(key)[1] + "-" + portage.pkgsplit(key)[2]
+				# Convert myoldbest from a list to a string.
+				if not myoldbest:
+					myoldbest = ""
+				else:
+					for pos, key in enumerate(myoldbest):
+						key = portage.catpkgsplit(key)[2] + \
+							"-" + portage.catpkgsplit(key)[3]
 						if key[-3:] == "-r0":
 							key = key[:-3]
 						myoldbest[pos] = key
 					myoldbest = blue("["+", ".join(myoldbest)+"]")
-					
 
 				pkg_cp = xs[0]
 				root_config = self.roots[myroot]
@@ -4079,6 +4071,20 @@ class depgraph(object):
 				print bold('*'+revision)
 				sys.stdout.write(text)
 
+		self.display_problems()
+		return os.EX_OK
+
+	def display_problems(self):
+		"""
+		Display problems with the dependency graph such as slot collisions.
+		This is called internally by display() to show the problems _after_
+		the merge list where it is most likely to be seen, but if display()
+		is not going to be called then this method should be called explicitly
+		to ensure that the user is notified of problems with the graph.
+		"""
+
+		self._show_slot_collision_notice()
+
 		# TODO: Add generic support for "set problem" handlers so that
 		# the below warnings aren't special cases for world only.
 
@@ -4154,7 +4160,9 @@ class depgraph(object):
 				msg.append("The best course of action depends on the reason that an offending\n")
 				msg.append("package.provided entry exists.\n\n")
 			sys.stderr.write("".join(msg))
-		return os.EX_OK
+
+		for pargs, kwargs in self._unsatisfied_deps_for_display:
+			self._show_unsatisfied_dep(*pargs, **kwargs)
 
 	def calc_changelog(self,ebuildpath,current,next):
 		if ebuildpath == None or not os.path.exists(ebuildpath):
@@ -6883,6 +6891,10 @@ def action_build(settings, trees, mtimedb,
 	merge_count = 0
 	pretend = "--pretend" in myopts
 	fetchonly = "--fetchonly" in myopts or "--fetch-all-uri" in myopts
+	ask = "--ask" in myopts
+	tree = "--tree" in myopts
+	verbose = "--verbose" in myopts
+	quiet = "--quiet" in myopts
 	if pretend or fetchonly:
 		# make the mtimedb readonly
 		mtimedb.filename = None
@@ -6968,6 +6980,8 @@ def action_build(settings, trees, mtimedb,
 			out.eerror("Error: The resume list contains packages that are no longer")
 			out.eerror("       available to be emerged. Please restart/continue")
 			out.eerror("       the merge operation manually.")
+			del mtimedb["resume"]
+			mtimedb.commit()
 			return 1
 		if show_spinner:
 			print "\b\b... done!"
@@ -6987,9 +7001,14 @@ def action_build(settings, trees, mtimedb,
 			portage.writemsg("\n!!! %s\n" % str(e), noiselevel=-1)
 			return 1
 		if not retval:
+			mydepgraph.display_problems()
 			return 1
 		if "--quiet" not in myopts and "--nodeps" not in myopts:
 			print "\b\b... done!"
+		display = pretend or \
+			((ask or tree or verbose) and not (quiet and not ask))
+		if not display:
+			mydepgraph.display_problems()
 
 	if "--pretend" not in myopts and \
 		("--ask" in myopts or "--tree" in myopts or \
