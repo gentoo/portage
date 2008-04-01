@@ -1511,9 +1511,6 @@ class depgraph(object):
 		del trees
 
 		self.digraph=portage.digraph()
-		# Tracks simple parent/child relationships (PDEPEND relationships are
-		# not reversed).
-		self._parent_child_digraph = digraph()
 		# contains all sets added to the graph
 		self._sets = {}
 		# contains atoms given as arguments
@@ -1571,7 +1568,7 @@ class depgraph(object):
 			for node in slot_nodes:
 				msg.append(indent)
 				msg.append(str(node))
-				parents = self._parent_child_digraph.parent_nodes(node)
+				parents = self.digraph.parent_nodes(node)
 				if parents:
 					omitted_parents = 0
 					if len(parents) > max_parents:
@@ -1767,10 +1764,9 @@ class depgraph(object):
 			if existing_node:
 				if pkg.cpv == existing_node.cpv:
 					# The existing node can be reused.
-					self._parent_child_digraph.add(existing_node, myparent)
 					if args:
 						for arg in args:
-							self._parent_child_digraph.add(existing_node, arg)
+							self.digraph.add(existing_node, arg)
 					# If a direct circular dependency is not an unsatisfied
 					# buildtime dependency then drop it here since otherwise
 					# it can skew the merge order calculation in an unwanted
@@ -1838,10 +1834,11 @@ class depgraph(object):
 		# Do this even when addme is False (--onlydeps) so that the
 		# parent/child relationship is always known in case
 		# self._show_slot_collision_notice() needs to be called later.
-		self._parent_child_digraph.add(pkg, myparent)
+		if pkg.onlydeps:
+			self.digraph.add(pkg, myparent)
 		if args:
 			for arg in args:
-				self._parent_child_digraph.add(pkg, arg)
+				self.digraph.add(pkg, arg)
 
 		""" This section determines whether we go deeper into dependencies or not.
 		    We want to go deeper on a few occasions:
@@ -2812,7 +2809,7 @@ class depgraph(object):
 			setconfig = root_config.setconfig
 			args = []
 			# Reuse existing SetArg instances when available.
-			for arg in self._parent_child_digraph.root_nodes():
+			for arg in self.digraph.root_nodes():
 				if not isinstance(arg, SetArg):
 					continue
 				if arg.root_config != root_config:
@@ -3494,7 +3491,7 @@ class depgraph(object):
 
 		tree_nodes = []
 		display_list = []
-		mygraph = self._parent_child_digraph
+		mygraph = self.digraph
 		i = 0
 		depth = 0
 		shown_edges = set()
