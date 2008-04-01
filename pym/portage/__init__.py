@@ -4356,6 +4356,7 @@ def _doebuild_exit_status_unlink(exit_status_file):
 
 _doebuild_manifest_exempt_depend = 0
 _doebuild_manifest_checked = None
+_doebuild_broken_manifests = set()
 
 def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	fetchonly=0, cleanup=0, dbkey=None, use_cache=1, fetchall=0, tree=None,
@@ -4464,13 +4465,16 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		# Always verify the ebuild checksums before executing it.
 		pkgdir = os.path.dirname(myebuild)
 		manifest_path = os.path.join(pkgdir, "Manifest")
-		global _doebuild_manifest_checked
+		global _doebuild_manifest_checked, _doebuild_broken_manifests
+		if manifest_path in _doebuild_broken_manifests:
+			return 1
 		# Avoid checking the same Manifest several times in a row during a
 		# regen with an empty cache.
 		if _doebuild_manifest_checked != manifest_path:
 			if not os.path.exists(manifest_path):
 				writemsg("!!! Manifest file not found: '%s'\n" % manifest_path,
 					noiselevel=-1)
+				_doebuild_broken_manifests.add(manifest_path)
 				return 1
 			mf = Manifest(pkgdir, mysettings["DISTDIR"])
 			try:
@@ -4478,6 +4482,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			except portage.exception.FileNotFound, e:
 				writemsg("!!! A file listed in the Manifest " + \
 					"could not be found: %s\n" % str(e), noiselevel=-1)
+				_doebuild_broken_manifests.add(manifest_path)
 				return 1
 			except portage.exception.DigestException, e:
 				writemsg("!!! Digest verification failed:\n", noiselevel=-1)
@@ -4485,6 +4490,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				writemsg("!!! Reason: %s\n" % e.value[1], noiselevel=-1)
 				writemsg("!!! Got: %s\n" % e.value[2], noiselevel=-1)
 				writemsg("!!! Expected: %s\n" % e.value[3], noiselevel=-1)
+				_doebuild_broken_manifests.add(manifest_path)
 				return 1
 			# Make sure that all of the ebuilds are actually listed in the
 			# Manifest.
@@ -4493,6 +4499,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 					writemsg("!!! A file is not listed in the " + \
 					"Manifest: '%s'\n" % os.path.join(pkgdir, f),
 					noiselevel=-1)
+					_doebuild_broken_manifests.add(manifest_path)
 					return 1
 			_doebuild_manifest_checked = manifest_path
 
@@ -5422,8 +5429,9 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 		all_available = True
 		versions = {}
 		for atom in atoms:
-			avail_pkg = best(mydbapi.match(atom))
+			avail_pkg = mydbapi.match(atom)
 			if avail_pkg:
+				avail_pkg = avail_pkg[-1] # highest (ascending order)
 				avail_slot = "%s:%s" % (dep_getkey(atom),
 					mydbapi.aux_get(avail_pkg, ["SLOT"])[0])
 			elif not avail_pkg:
@@ -5431,8 +5439,9 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 				if hasattr(mydbapi, "xmatch"):
 					has_mask = bool(mydbapi.xmatch("match-all", atom))
 				if (selective or use_binaries or not has_mask):
-					avail_pkg = best(vardb.match(atom))
+					avail_pkg = vardb.match(atom)
 					if avail_pkg:
+						avail_pkg = avail_pkg[-1] # highest (ascending order)
 						avail_slot = "%s:%s" % (dep_getkey(atom),
 							vardb.aux_get(avail_pkg, ["SLOT"])[0])
 			if not avail_pkg:

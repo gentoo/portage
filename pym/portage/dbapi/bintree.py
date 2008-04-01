@@ -161,6 +161,7 @@ class binarytree(object):
 			self._pkgindex_default_pkg_data = {
 				"EAPI"    : eapi,
 				"IUSE"    : "",
+				"LICENSE" : "",
 				"PROVIDE" : "",
 				"SLOT"    : "0",
 				"USE"     : ""

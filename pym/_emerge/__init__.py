@@ -481,8 +481,14 @@ class search(object):
 	def _visible(self, db, cpv, metadata):
 		installed = db is self.vartree.dbapi
 		built = installed or db is not self._portdb
-		return visible(self.settings, cpv, metadata,
-			built=built, installed=installed)
+		pkg_type = "ebuild"
+		if installed:
+			pkg_type = "installed"
+		elif built:
+			pkg_type = "binary"
+		return visible(self.settings,
+			Package(type_name=pkg_type, root=self.settings["ROOT"],
+			cpv=cpv, built=built, installed=installed, metadata=metadata))
 
 	def _xmatch(self, level, atom):
 		"""
@@ -1061,7 +1067,7 @@ def perform_global_updates(mycpv, mydb, mycommands):
 	if updates:
 		mydb.aux_update(mycpv, updates)
 
-def visible(pkgsettings, cpv, metadata, built=False, installed=False):
+def visible(pkgsettings, pkg):
 	"""
 	Check if a package is visible. This can raise an InvalidDependString
 	exception if LICENSE is invalid.
@@ -1069,26 +1075,30 @@ def visible(pkgsettings, cpv, metadata, built=False, installed=False):
 	@rtype: Boolean
 	@returns: True if the package is visible, False otherwise.
 	"""
-	if not metadata["SLOT"]:
+	if not pkg.metadata["SLOT"]:
 		return False
-	if built and not installed and \
-		metadata["CHOST"] != pkgsettings["CHOST"]:
+	if pkg.built and not pkg.installed and \
+		pkg.metadata["CHOST"] != pkgsettings["CHOST"]:
 		return False
 	if built and not installed:
 		# we can have an old binary which has no EPREFIX information
-		if "EPREFIX" not in metadata or not metadata["EPREFIX"]:
+		if "EPREFIX" not in pkg.metadata or not pkg.metadata["EPREFIX"]:
 			return False
-		if len(metadata["EPREFIX"].strip()) < len(pkgsettings["EPREFIX"]):
+		if len(pkg.metadata["EPREFIX"].strip()) < len(pkgsettings["EPREFIX"]):
 			return False
-	if not portage.eapi_is_supported(metadata["EAPI"]):
+	if not portage.eapi_is_supported(pkg.metadata["EAPI"]):
 		return False
-	if not installed and pkgsettings.getMissingKeywords(cpv, metadata):
+	if not pkg.installed and \
+		pkgsettings.getMissingKeywords(pkg.cpv, pkg.metadata):
 		return False
-	if pkgsettings.getMaskAtom(cpv, metadata):
+	if pkgsettings.getMaskAtom(pkg.cpv, pkg.metadata):
 		return False
-	if pkgsettings.getProfileMaskAtom(cpv, metadata):
+	if pkgsettings.getProfileMaskAtom(pkg.cpv, pkg.metadata):
 		return False
-	if pkgsettings.getMissingLicenses(cpv, metadata):
+	try:
+		if pkgsettings.getMissingLicenses(pkg.cpv, pkg.metadata):
+			return False
+	except portage.exception.InvalidDependString:
 		return False
 	return True
 
@@ -1201,7 +1211,7 @@ def iter_atoms(deps):
 class Package(object):
 	__slots__ = ("__weakref__", "built", "cpv", "depth",
 		"installed", "metadata", "root", "onlydeps", "type_name",
-		"cpv_slot", "slot_atom", "_digraph_node")
+		"cp", "cpv_slot", "slot_atom", "_digraph_node")
 	def __init__(self, **kwargs):
 		for myattr in self.__slots__:
 			if myattr == "__weakref__":
@@ -1209,9 +1219,8 @@ class Package(object):
 			myvalue = kwargs.get(myattr, None)
 			setattr(self, myattr, myvalue)
 
-		self.slot_atom = "%s:%s" % \
-			(portage.cpv_getkey(self.cpv), self.metadata["SLOT"])
-
+		self.cp = portage.cpv_getkey(self.cpv)
+		self.slot_atom = "%s:%s" % (self.cp, self.metadata["SLOT"])
 		self.cpv_slot = "%s:%s" % (self.cpv, self.metadata["SLOT"])
 
 		status = "merge"
@@ -1839,30 +1848,9 @@ class depgraph(object):
 					return 0
 
 		if pkg.installed:
-			# Warn if all matching ebuilds are masked or
-			# the installed package itself is masked. Do
-			# not warn if there are simply no matching
-			# ebuilds since that would be annoying in some
-			# cases:
-			#
-			#  - binary packages installed from an overlay
-			#    that is not listed in PORTDIR_OVERLAY
-			#
-			#  - multi-slot atoms listed in the world file
-			#    to prevent depclean from removing them
-
-			if arg_atoms:
-				selective = "selective" in self.myparams
-				portdb = self.trees[pkg.root]["porttree"].dbapi
-				for arg, atom in arg_atoms:
-					all_ebuilds_masked = bool(
-						portdb.xmatch("match-all", atom) and
-						not portdb.xmatch("bestmatch-visible", atom))
-					if all_ebuilds_masked and not selective:
-						self._missing_args.append((arg, atom))
-
-			if not visible(pkgsettings, pkg.cpv, pkg.metadata,
-				built=pkg.built, installed=pkg.installed):
+			# Warn if an installed package is masked and it
+			# is pulled into the graph.
+			if not visible(pkgsettings, pkg):
 				self._masked_installed.append((pkg, pkgsettings))
 
 		if args:
@@ -2305,7 +2293,15 @@ class depgraph(object):
 					if pkg.installed and "selective" not in self.myparams:
 						self._unsatisfied_deps_for_display.append(
 							((myroot, atom), {}))
-						return 0, myfavorites
+						# Previous behavior was to bail out in this case, but
+						# since the dep is satisfied by the installed package,
+						# it's more friendly to continue building the graph
+						# and just show a warning message. Therefore, only bail
+						# out here if the atom is not from either the system or
+						# world set.
+						if not (isinstance(arg, SetArg) and \
+							arg.name in ("system", "world")):
+							return 0, myfavorites
 
 					self._dep_stack.append(
 						Dependency(atom=atom, onlydeps=onlydeps, root=myroot, parent=arg))
@@ -2443,12 +2439,9 @@ class depgraph(object):
 						else:
 							metadata["USE"] = ""
 
-					try:
-						if not visible(pkgsettings, cpv, metadata,
-							built=built, installed=installed):
-							continue
-					except portage.exception.InvalidDependString:
-						# masked by corruption
+					if not visible(pkgsettings, Package(built=built,
+						cpv=cpv, root=myroot, type_name=pkg_type,
+						installed=installed, metadata=metadata)):
 						continue
 
 					filtered_db.cpv_inject(cpv, metadata=metadata)
@@ -2591,7 +2584,6 @@ class depgraph(object):
 		empty = "empty" in self.myparams
 		selective = "selective" in self.myparams
 		noreplace = "--noreplace" in self.myopts
-		reinstall = False
 		# Behavior of the "selective" parameter depends on
 		# whether or not a package matches an argument atom.
 		# If an installed package provides an old-style
@@ -2610,14 +2602,11 @@ class depgraph(object):
 			for db, pkg_type, built, installed, db_keys in dbs:
 				if existing_node:
 					break
-				if installed and not find_existing_node and \
-					(reinstall or not selective) and \
-					(matched_packages or empty):
-					# We only need to select an installed package in the
-					# following cases:
-					#   1) there is no other choice
-					#   2) selective is True
-					continue
+				if installed and not find_existing_node:
+					want_reinstall = empty or \
+						(found_available_arg and not selective)
+					if want_reinstall and matched_packages:
+						continue
 				if hasattr(db, "xmatch"):
 					cpv_list = db.xmatch("match-all", atom)
 				else:
@@ -2656,12 +2645,9 @@ class depgraph(object):
 					if not installed:
 						if myarg:
 							found_available_arg = True
-						try:
-							if not visible(pkgsettings, cpv, metadata,
-								built=built, installed=installed):
-								continue
-						except portage.exception.InvalidDependString:
-							# masked by corruption
+						if not visible(pkgsettings, Package(built=built,
+							cpv=cpv, installed=installed, metadata=metadata,
+							type_name=pkg_type)):
 							continue
 					# At this point, we've found the highest visible
 					# match from the current repo. Any lower versions
@@ -2713,7 +2699,7 @@ class depgraph(object):
 					if not installed and \
 						("--newuse" in self.myopts or \
 						"--reinstall" in self.myopts) and \
-						vardb.cpv_exists(cpv):
+						cpv in vardb.match(atom):
 						pkgsettings.setcpv(cpv, mydb=metadata)
 						forced_flags = set()
 						forced_flags.update(pkgsettings.useforce)
@@ -2728,19 +2714,12 @@ class depgraph(object):
 							self._reinstall_for_flags(
 							forced_flags, old_use, old_iuse,
 							cur_use, cur_iuse)
-						if reinstall_for_flags:
-							reinstall = True
 					if not installed:
 						must_reinstall = empty or \
 							(myarg and not selective)
 						if not reinstall_for_flags and \
 							not must_reinstall and \
 							cpv in vardb.match(atom):
-							break
-					if installed:
-						must_reinstall = empty or \
-							(found_available_arg and not selective)
-						if must_reinstall:
 							break
 					# Metadata accessed above is cached internally by
 					# each db in order to optimize visibility checks.
@@ -2754,14 +2733,13 @@ class depgraph(object):
 						pkgsettings.setcpv(cpv, mydb=metadata)
 						metadata["USE"] = pkgsettings["PORTAGE_USE"]
 						myeb = cpv
-					matched_packages.append(
-						Package(type_name=pkg_type, root=root,
-							cpv=cpv, metadata=metadata,
-							built=built, installed=installed,
-							onlydeps=onlydeps))
+					pkg = Package(type_name=pkg_type, root=root,
+						cpv=cpv, metadata=metadata,
+						built=built, installed=installed,
+						onlydeps=onlydeps)
+					matched_packages.append(pkg)
 					if reinstall_for_flags:
-						pkg_node = (pkg_type, root, cpv, "merge")
-						self._reinstall_nodes[pkg_node] = \
+						self._reinstall_nodes[pkg] = \
 							reinstall_for_flags
 					break
 
@@ -2772,11 +2750,25 @@ class depgraph(object):
 			for pkg in matched_packages:
 				print (pkg.type_name + ":").rjust(10), pkg.cpv
 
+		# Filter out any old-style virtual matches if they are
+		# mixed with new-style virtual matches.
+		cp = portage.dep_getkey(atom)
+		if len(matched_packages) > 1 and \
+			"virtual" == portage.catsplit(cp)[0]:
+			for pkg in matched_packages:
+				if pkg.cp != cp:
+					continue
+				# Got a new-style virtual, so filter
+				# out any old-style virtuals.
+				matched_packages = [pkg for pkg in matched_packages \
+					if pkg.cp == cp]
+				break
+
 		if len(matched_packages) > 1:
 			bestmatch = portage.best(
 				[pkg.cpv for pkg in matched_packages])
 			matched_packages = [pkg for pkg in matched_packages \
-				if pkg.cpv == bestmatch]
+				if portage.dep.cpvequal(pkg.cpv, bestmatch)]
 
 		# ordered by type preference ("ebuild" type is the last resort)
 		return  matched_packages[-1], existing_node
@@ -3188,8 +3180,7 @@ class depgraph(object):
 			get_nodes = mygraph.leaf_nodes
 			for node in mygraph.order:
 				if node.root == "/" and \
-					"portage" == portage.catsplit(
-					portage.cpv_getkey(node.cpv))[-1]:
+					"sys-apps/portage" == portage.cpv_getkey(node.cpv):
 					portage_node = node
 					asap_nodes.append(node)
 					break
@@ -4073,6 +4064,7 @@ class depgraph(object):
 				print bold('*'+revision)
 				sys.stdout.write(text)
 
+		sys.stdout.flush()
 		self.display_problems()
 		return os.EX_OK
 
@@ -6641,8 +6633,8 @@ def action_depclean(settings, trees, ldpath_mtimes,
 			for cpv in reversed(pkgs):
 				metadata = dict(izip(metadata_keys,
 					vardb.aux_get(cpv, metadata_keys)))
-				if visible(settings, cpv, metadata,
-					built=True, installed=True):
+				if visible(settings, Package(built=True, cpv=cpv,
+					installed=True, metadata=metadata, type_name="installed")):
 					pkgs = [cpv]
 					break
 			if len(pkgs) > 1:
