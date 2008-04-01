@@ -8,6 +8,9 @@ if [[ -z ${T} ]] || [[ -z ${2} ]] ; then
 	exit 1
 fi
 
-rm -rf "${T}/${2}" && \
-cp -f "${1}" "${T}/${2}" && \
-exec doins "${T}/${2}"
+rm -rf "${T}/${2}" || exit $?
+cp -f "${1}" "${T}/${2}" || exit $?
+doins "${T}/${2}"
+ret=$?
+rm -rf "${T}/${2}"
+exit $ret

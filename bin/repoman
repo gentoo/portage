@@ -222,9 +222,9 @@ def ParseArgs(args, qahelp):
 
 	if opts.mode == 'commit' and not (opts.force or opts.pretend):
 		if opts.ignore_masked:
-			parser.error('Commit mode and --ignore-masked are not compatable')
+			parser.error('Commit mode and --ignore-masked are not compatible')
 		if opts.without_mask:
-			parser.error('Commit mode and --without-mask are not compatable')
+			parser.error('Commit mode and --without-mask are not compatible')
 
 	# Use the verbosity and quiet options to fiddle with the loglevel appropriately
 	for val in range(opts.verbosity):
@@ -1123,7 +1123,7 @@ for x in scanlist:
 				fails["KEYWORDS.stupid"].append(x+"/"+y+".ebuild")
 
 		"""
-		Ebuilds that inherit a "Live" eclasss (darcs,subversion,git,cvs,etc..) should
+		Ebuilds that inherit a "Live" eclass (darcs,subversion,git,cvs,etc..) should
 		not be allowed to be marked stable
 		"""
 		if set(["darcs","cvs","subversion","git"]).intersection(

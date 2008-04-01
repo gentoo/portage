@@ -22,7 +22,7 @@ portage-2.2
     used without the prefix)
   - they may currently only include simple and versioned atoms or other sets, use
     conditionals or any-of constructs aren't possible yet
-  - emerge makes no difference atm wether you pass a setname or all atoms contained
+  - emerge makes no difference atm whether you pass a setname or all atoms contained
     in the set to it, this means that without options packages will be remerged if 
 	already installed, or in the case of --unmerge all atoms in a set will be 
 	unmerged even if they are depended upon by other packages. This may change in 

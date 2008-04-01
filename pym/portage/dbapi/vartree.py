@@ -21,7 +21,7 @@ from portage.versions import pkgsplit, catpkgsplit, catsplit, best, pkgcmp
 
 from portage import listdir, dep_expand, flatten, key_expand, \
 	doebuild_environment, doebuild, env_update, prepare_build_dirs, \
-	abssymlink, movefile, _movefile, bsd_chflags
+	abssymlink, movefile, _movefile, bsd_chflags, cpv_getkey
 
 from portage.elog import elog_process
 from portage.elog.messages import ewarn
@@ -1871,8 +1871,11 @@ class dblink(object):
 		for v in self.vartree.dbapi.cp_list(self.mysplit[0]):
 			otherversions.append(v.split("/")[1])
 
-		slot_matches = self.vartree.dbapi.match(
-			"%s:%s" % (self.mysplit[0], slot))
+		# filter any old-style virtual matches
+		slot_matches = [cpv for cpv in self.vartree.dbapi.match(
+			"%s:%s" % (cpv_getkey(self.mycpv), slot)) \
+			if cpv_getkey(cpv) == cpv_getkey(self.mycpv)]
+
 		if self.mycpv not in slot_matches and \
 			self.vartree.dbapi.cpv_exists(self.mycpv):
 			# handle multislot or unapplied slotmove
@@ -2163,11 +2166,11 @@ class dblink(object):
 			"portage" == pkgsplit(self.pkg)[0]:
 			reinstall_self = True
 
+		autoclean = self.settings.get("AUTOCLEAN", "yes") == "yes"
 		for dblnk in list(others_in_slot):
 			if dblnk is self:
 				continue
-			if dblnk.mycpv != self.mycpv and \
-				not reinstall_self:
+			if not (autoclean or dblnk.mycpv == self.mycpv or reinstall_self):
 				continue
 			writemsg_stdout(">>> Safely unmerging already-installed instance...\n")
 			others_in_slot.remove(dblnk) # dblnk will unmerge itself now
@@ -2176,8 +2179,12 @@ class dblink(object):
 			# TODO: Check status and abort if necessary.
 			dblnk.delete()
 			writemsg_stdout(">>> Original instance of package unmerged safely.\n")
-			if not reinstall_self:
-				break
+
+		if len(others_in_slot) > 1:
+			from portage.output import colorize
+			writemsg_stdout(colorize("WARN", "WARNING:")
+				+ " AUTOCLEAN is disabled.  This can cause serious"
+				+ " problems due to overlapping packages.\n")
 
 		# We hold both directory locks.
 		self.dbdir = self.dbpkgdir

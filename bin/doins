@@ -36,14 +36,18 @@ fi
 [[ ! -d ${ED}${INSDESTTREE} ]] && dodir "${INSDESTTREE}"
 
 _doins() {
-	local mysrc="$1" mydir="$2"
+	local mysrc="$1" mydir="$2" cleanup="" rval
 
 	if [ -L "$mysrc" ] ; then
 		cp "$mysrc" "${T}"
 		mysrc="${T}/${mysrc##*/}"
+		cleanup=${mysrc}
 	fi
 
 	install ${INSOPTIONS} "${mysrc}" "${ED}${INSDESTTREE}/${mydir}"
+	rval=$?
+	[[ -n ${cleanup} ]] && rm -f "${cleanup}"
+	return $rval
 }
 
 _xdoins() {
@@ -51,6 +55,8 @@ _xdoins() {
 		_doins "$x" "${x%/*}"
 	done
 }
+
+success=0
 
 for x in "$@" ; do
 	if [ -d "$x" ] ; then
@@ -69,7 +75,10 @@ for x in "$@" ; do
 		find "${x##*/}" -type d -exec dodir "${INSDESTTREE}/{}" \;
 		find "${x##*/}" \( -type f -or -type l \) -print0 | _xdoins
 		popd >/dev/null
+		((++success))
 	else
-		_doins "${x}"
+		_doins "${x}" && ((++success))
 	fi
 done
+
+[ $success -gt 0 ] && exit 0 || exit 1

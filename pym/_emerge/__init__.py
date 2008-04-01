@@ -640,7 +640,7 @@ class search(object):
 							self.portdb.xmatch("match-all",match))
 				elif mtype == "desc":
 					full_package = match
-					match        = portage.pkgsplit(match)[0]
+					match        = portage.cpv_getkey(match)
 				elif mtype == "set":
 					print green("*")+"  "+white(match)
 					print "     ", darkgreen("Description:")+"  ", self.sdict[match].getMetadata("DESCRIPTION")
@@ -3921,7 +3921,8 @@ class depgraph(object):
 						show_repos = True
 						verboseadd += teal("[%s]" % repoadd)
 
-				xs = list(portage.pkgsplit(x[2]))
+				xs = [portage.cpv_getkey(pkg_key)] + \
+					list(portage.catpkgsplit(pkg_key)[2:])
 				if xs[2] == "r0":
 					xs[2] = ""
 				else:
@@ -4037,22 +4038,23 @@ class depgraph(object):
 							myprint="["+pkgprint(pkg_type)+" "+addl+"] "+indent+pkgprint(pkg_key)+" "+myoldbest+" "+verboseadd
 				p.append(myprint)
 
-			mysplit = portage.pkgsplit(x[2])
-			if "--tree" not in self.myopts and mysplit and \
-				len(mysplit) == 3 and mysplit[0] == "sys-apps/portage" and \
-				x[1] == "/":
-
-				if mysplit[2] == "r0":
-					myversion = mysplit[1]
-				else:
-					myversion = "%s-%s" % (mysplit[1], mysplit[2])
-
-				if myversion != portage.VERSION and "--quiet" not in self.myopts:
-					if mylist_index < len(mylist) - 1 and EPREFIX == BPREFIX:
-						p.append(colorize("WARN", "*** Portage will stop merging at this point and reload itself,"))
-						p.append(colorize("WARN", "    then resume the merge."))
-						print
-			del mysplit
+				mysplit = [portage.cpv_getkey(pkg_key)] + \
+					list(portage.catpkgsplit(pkg_key)[2:])
+				if "--tree" not in self.myopts and mysplit and \
+					len(mysplit) == 3 and mysplit[0] == "sys-apps/portage" and \
+					x[1] == "/":
+	
+					if mysplit[2] == "r0":
+						myversion = mysplit[1]
+					else:
+						myversion = "%s-%s" % (mysplit[1], mysplit[2])
+	
+					if myversion != portage.VERSION and "--quiet" not in self.myopts:
+						if mylist_index < len(mylist) - 1:
+							p.append(colorize("WARN", "*** Portage will stop merging at this point and reload itself,"))
+							p.append(colorize("WARN", "    then resume the merge."))
+							print
+				del mysplit
 
 		for x in p:
 			print x
@@ -4827,24 +4829,10 @@ class MergeTask(object):
 				if "--pretend" not in self.myopts and \
 					"--fetchonly" not in self.myopts and \
 					"--fetch-all-uri" not in self.myopts:
-					# Clean the old package that we have merged over top of it.
-					if pkgsettings.get("AUTOCLEAN", "yes") == "yes":
-						xsplit=portage.pkgsplit(x[2])
-						emergelog(xterm_titles, " >>> AUTOCLEAN: " + xsplit[0])
-						retval = unmerge(self.trees[myroot]["root_config"],
-							self.myopts,
-							"clean", [xsplit[0]], ldpath_mtimes, autoclean=1)
-						if not retval:
-							emergelog(xterm_titles,
-								" --- AUTOCLEAN: Nothing unmerged.")
-					else:
-						portage.writemsg_stdout(colorize("WARN", "WARNING:")
-							+ " AUTOCLEAN is disabled.  This can cause serious"
-							+ " problems due to overlapping packages.\n")
 
 					# Figure out if we need a restart.
-					mysplit=portage.pkgsplit(x[2])
-					if mysplit[0] == "sys-apps/portage" and x[1] == "/":
+					if myroot == "/" and \
+						portage.dep_getkey(pkg_key) == "sys-apps/portage":
 						if len(mymergelist) > mergecount and EPREFIX == BPREFIX:
 							emergelog(xterm_titles,
 								" ::: completed emerge ("+ \
@@ -6980,7 +6968,11 @@ def action_build(settings, trees, mtimedb,
 			out.eerror("Error: The resume list contains packages that are no longer")
 			out.eerror("       available to be emerged. Please restart/continue")
 			out.eerror("       the merge operation manually.")
-			del mtimedb["resume"]
+
+			# delete the current list and also the backup
+			# since it's probably stale too.
+			for k in ("resume", "resume_backup"):
+				mtimedb.pop(k, None)
 			mtimedb.commit()
 			return 1
 		if show_spinner:
