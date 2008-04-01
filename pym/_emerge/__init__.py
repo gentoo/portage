@@ -3155,8 +3155,7 @@ class depgraph(object):
 			get_nodes = mygraph.leaf_nodes
 			for node in mygraph.order:
 				if node.root == "/" and \
-					"portage" == portage.catsplit(
-					portage.cpv_getkey(node.cpv))[-1]:
+					"sys-apps/portage" == portage.cpv_getkey(node.cpv):
 					portage_node = node
 					asap_nodes.append(node)
 					break
