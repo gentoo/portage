@@ -5359,10 +5359,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 				avail_slot = "%s:%s" % (dep_getkey(atom),
 					mydbapi.aux_get(avail_pkg, ["SLOT"])[0])
 			elif not avail_pkg:
-				has_mask = False
-				if hasattr(mydbapi, "xmatch"):
-					has_mask = bool(mydbapi.xmatch("match-all", atom))
-				if (selective or use_binaries or not has_mask):
+				if selective:
 					avail_pkg = vardb.match(atom)
 					if avail_pkg:
 						avail_pkg = avail_pkg[-1] # highest (ascending order)
