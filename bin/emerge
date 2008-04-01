@@ -1527,9 +1527,6 @@ class depgraph:
 		del trees
 
 		self.digraph=portage.digraph()
-		# Tracks simple parent/child relationships (PDEPEND relationships are
-		# not reversed).
-		self._parent_child_digraph = digraph()
 		# contains all sets added to the graph
 		self._sets = {}
 		# contains atoms given as arguments
@@ -1582,7 +1579,7 @@ class depgraph:
 			for node in slot_nodes:
 				msg.append(indent)
 				msg.append(str(node))
-				parents = self._parent_child_digraph.parent_nodes(node)
+				parents = self.digraph.parent_nodes(node)
 				if parents:
 					omitted_parents = 0
 					if len(parents) > max_parents:
@@ -1705,7 +1702,6 @@ class depgraph:
 			if existing_node:
 				if pkg.cpv == existing_node.cpv:
 					# The existing node can be reused.
-					self._parent_child_digraph.add(existing_node, myparent)
 					# If a direct circular dependency is not an unsatisfied
 					# buildtime dependency then drop it here since otherwise
 					# it can skew the merge order calculation in an unwanted
@@ -1773,7 +1769,8 @@ class depgraph:
 		# Do this even when addme is False (--onlydeps) so that the
 		# parent/child relationship is always known in case
 		# self._show_slot_collision_notice() needs to be called later.
-		self._parent_child_digraph.add(pkg, myparent)
+		if pkg.onlydeps:
+			self.digraph.add(pkg, myparent)
 
 		merging = not (pkg.installed or pkg.onlydeps)
 		myuse = pkg.metadata["USE"].split()
@@ -3202,7 +3199,7 @@ class depgraph:
 
 		tree_nodes = []
 		display_list = []
-		mygraph = self._parent_child_digraph
+		mygraph = self.digraph
 		i = 0
 		depth = 0
 		shown_edges = set()
@@ -3236,6 +3233,8 @@ class depgraph:
 							selected_parent = None
 							# First, try to avoid a direct cycle.
 							for node in parent_nodes:
+								if not isinstance(node, Package):
+									continue
 								if node not in traversed_nodes and \
 									node not in child_nodes:
 									edge = (current_node, node)
@@ -3246,6 +3245,8 @@ class depgraph:
 							if not selected_parent:
 								# A direct cycle is unavoidable.
 								for node in parent_nodes:
+									if not isinstance(node, Package):
+										continue
 									if node not in traversed_nodes:
 										edge = (current_node, node)
 										if edge in shown_edges:
