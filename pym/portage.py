@@ -5426,8 +5426,10 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 			for myslot in intersecting_slots:
 				myversion = versions[myslot]
 				o_version = o_versions[myslot]
-				if myversion != o_version:
-					if myversion == best([myversion, o_version]):
+				difference = pkgcmp(catpkgsplit(myversion)[1:],
+					catpkgsplit(o_version)[1:])
+				if difference:
+					if difference > 0:
 						has_upgrade = True
 					else:
 						has_downgrade = True
