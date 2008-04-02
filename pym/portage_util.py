@@ -1058,7 +1058,12 @@ def new_protect_filename(mydest, newmd5=None):
 	old_pfile = normalize_path(os.path.join(real_dirname, last_pfile))
 	if last_pfile and newmd5:
 		import portage_checksum
-		if portage_checksum.perform_md5(
-			os.path.join(real_dirname, last_pfile)) == newmd5:
-			return old_pfile
+		try:
+			last_pfile_md5 = portage_checksum.perform_md5(old_pfile)
+		except FileNotFound:
+			# The file suddenly disappeared or it's a broken symlink.
+			pass
+		else:
+			if last_pfile_md5 == newmd5:
+				return old_pfile
 	return new_pfile
