@@ -4535,8 +4535,10 @@ class MergeTask(object):
 
 		mergecount=0
 		for x in mymergelist:
-			mergecount+=1
 			pkg_type = x[0]
+			if pkg_type == "blocks":
+				continue
+			mergecount+=1
 			myroot=x[1]
 			pkg_key = x[2]
 			pkgindex=2
@@ -4560,6 +4562,11 @@ class MergeTask(object):
 					raise AssertionError("Package type: '%s'" % pkg_type)
 				metadata.update(izip(metadata_keys,
 					mydbapi.aux_get(pkg_key, metadata_keys)))
+			built = pkg_type != "ebuild"
+			installed = pkg_type == "installed"
+			pkg = Package(type_name=pkg_type, root=myroot,
+				cpv=pkg_key, built=built, installed=installed,
+				metadata=metadata)
 			if x[0]=="blocks":
 				pkgindex=3
 			y = portdb.findname(pkg_key)
@@ -4790,7 +4797,7 @@ class MergeTask(object):
 					"--fetch-all-uri" not in self.myopts:
 
 					# Figure out if we need a restart.
-					if myroot == "/" and pkg_node.cp == "sys-apps/portage":
+					if myroot == "/" and pkg.cp == "sys-apps/portage":
 						if len(mymergelist) > mergecount:
 							emergelog(xterm_titles,
 								" ::: completed emerge ("+ \
