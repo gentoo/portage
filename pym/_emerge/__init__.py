@@ -3631,6 +3631,8 @@ class depgraph(object):
 					mydbapi.aux_get(pkg_key, self._mydbapi_keys)))
 				ebuild_path = None
 				repo_name = metadata["repository"]
+				built = pkg_type != "ebuild"
+				installed = pkg_type == "installed"
 				if pkg_type == "ebuild":
 					ebuild_path = portdb.findname(pkg_key)
 					if not ebuild_path: # shouldn't happen
@@ -3641,6 +3643,9 @@ class depgraph(object):
 					metadata["USE"] = pkgsettings["PORTAGE_USE"]
 				else:
 					repo_path_real = portdb.getRepositoryPath(repo_name)
+				pkg_node = Package(type_name=pkg_type, root=myroot,
+					cpv=pkg_key, built=built, installed=installed,
+					metadata=metadata)
 				pkg_use = metadata["USE"].split()
 				try:
 					restrict = flatten(use_reduce(paren_reduce(
@@ -4785,8 +4790,7 @@ class MergeTask(object):
 					"--fetch-all-uri" not in self.myopts:
 
 					# Figure out if we need a restart.
-					if myroot == "/" and \
-						portage.dep_getkey(pkg_key) == "sys-apps/portage":
+					if myroot == "/" and pkg_node.cp == "sys-apps/portage":
 						if len(mymergelist) > mergecount:
 							emergelog(xterm_titles,
 								" ::: completed emerge ("+ \
