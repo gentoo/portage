@@ -1286,6 +1286,24 @@ class Package(object):
 			status = "nomerge"
 		self._digraph_node = (self.type_name, self.root, self.cpv, status)
 
+	def __lt__(self, other):
+		other_split = portage.catpkgsplit(other.cpv)
+		self_split = portage.catpkgsplit(self.cpv)
+		if other_split[:2] != self_split[:2]:
+			return False
+		if portage.pkgcmp(self_split[1:], other_split[1:]) < 0:
+			return True
+		return False
+
+	def __gt__(self, other):
+		other_split = portage.catpkgsplit(other.cpv)
+		self_split = portage.catpkgsplit(self.cpv)
+		if other_split[:2] != self_split[:2]:
+			return False
+		if portage.pkgcmp(self_split[1:], other_split[1:]) > 0:
+			return True
+		return False
+
 	def __eq__(self, other):
 		return self._digraph_node == other
 	def __ne__(self, other):
@@ -2204,6 +2222,8 @@ class depgraph:
 		portdb = self.roots[root].trees["porttree"].dbapi
 		# List of acceptable packages, ordered by type preference.
 		matched_packages = []
+		highest_version = None
+		atom_cp = portage.dep_getkey(atom)
 		existing_node = None
 		myeb = None
 		usepkgonly = "--usepkgonly" in self.myopts
@@ -2265,13 +2285,18 @@ class depgraph:
 							if not installed:
 								# masked by corruption
 								continue
+					pkg = Package(built=built, cpv=cpv, installed=installed,
+						metadata=metadata, type_name=pkg_type)
 					if not installed:
 						if myarg:
 							found_available_arg = True
-						if not visible(pkgsettings, Package(built=built,
-							cpv=cpv, installed=installed, metadata=metadata,
-							type_name=pkg_type)):
+						if not visible(pkgsettings, pkg):
 							continue
+					if pkg.cp == atom_cp:
+						if highest_version is None:
+							highest_version = pkg
+						elif pkg > highest_version:
+							highest_version = pkg
 					# At this point, we've found the highest visible
 					# match from the current repo. Any lower versions
 					# from this repo are ignored, so this so the loop
@@ -2286,8 +2311,17 @@ class depgraph:
 						cpv_slot = "%s:%s" % \
 							(e_pkg.cpv, e_pkg.metadata["SLOT"])
 						if portage_dep.match_from_list(atom, [cpv_slot]):
-							matched_packages.append(e_pkg)
-							existing_node = e_pkg
+							if highest_version and \
+								e_pkg.cp == atom_cp and \
+								e_pkg < highest_version and \
+								e_pkg.slot_atom != highest_version.slot_atom:
+								# There is a higher version available in a
+								# different slot, so this existing node is
+								# irrelevant.
+								pass
+							else:
+								matched_packages.append(e_pkg)
+								existing_node = e_pkg
 						break
 					# Compare built package to current config and
 					# reject the built package if necessary.
