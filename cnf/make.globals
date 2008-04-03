@@ -59,6 +59,9 @@ AUTOCLEAN="yes"
 # Number of mirrors to try when a downloaded file has an incorrect checksum.
 PORTAGE_FETCH_CHECKSUM_TRY_MIRRORS="5"
 
+# Minimum size of existing file for RESUMECOMMAND to be called.
+PORTAGE_FETCH_RESUME_MIN_SIZE="350K"
+
 # Number of times 'emerge --sync' will run before giving up.
 PORTAGE_RSYNC_RETRIES="3"
 
