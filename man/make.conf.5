@@ -396,6 +396,14 @@ Please see /etc/make.conf.example for elog documentation.
 \fBPORTAGE_FETCH_CHECKSUM_TRY_MIRRORS\fR = \fI5\fR
 Number of mirrors to try when a downloaded file has an incorrect checksum.
 .TP
+\PORTAGE_FETCH_RESUME_MIN_SIZE\fR = \fI350K\fR
+Minimum size of existing file for RESUMECOMMAND to be called. Files smaller
+than this size will be removed and FETCHCOMMAND will be called to download
+the file from the beginning. This is useful for helping to ensure that small
+garbage files such as html 404 pages are properly discarded. The variable
+should contain an integer number of bytes and may have a suffix such as
+K, M, or G.
+.TP
 \fBPORTAGE_NICENESS\fR = \fI[number]\fR
 The value of this variable will be added to the current nice level that
 emerge is running at.  In other words, this will not set the nice level,
