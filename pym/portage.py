@@ -5655,7 +5655,11 @@ def cpv_expand(mycpv, mydb=None, use_cache=1, settings=None):
 					writemsg("virts[%s]: %s\n" % (str(mykey),virts[mykey]), 1)
 					mykey_orig = mykey[:]
 					for vkey in virts[mykey]:
-						if mydb.cp_list(vkey,use_cache=use_cache):
+						# The virtuals file can contain a versioned atom, so
+						# it may be necessary to remove the operator and
+						# version from the atom before it is passed into
+						# dbapi.cp_list().
+						if mydb.cp_list(dep_getkey(vkey), use_cache=use_cache):
 							mykey = vkey
 							writemsg("virts chosen: %s\n" % (mykey), 1)
 							break
