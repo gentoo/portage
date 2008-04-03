@@ -2059,7 +2059,9 @@ class depgraph:
 			self._set_atoms.add(myatom)
 			if not oneshot:
 				myfavorites.append(myatom)
+
 		for myarg, myatom in arg_atoms:
+				atom_cp = portage.dep_getkey(myatom)
 				pprovided = pkgsettings.pprovideddict.get(
 					portage.dep_getkey(myatom))
 				if pprovided and portage.match_from_list(myatom, pprovided):
@@ -2071,7 +2073,17 @@ class depgraph:
 					self._unsatisfied_deps_for_display.append(
 						((myroot, myatom), {"myparent":None}))
 					return False, myfavorites
-
+				if atom_cp != pkg.cp:
+					# For old-style virtuals, we need to repeat the
+					# package.provided check against the selected package.
+					expanded_atom = myatom.replace(atom_cp, pkg.cp)
+					pprovided = pkgsettings.pprovideddict.get(pkg.cp)
+					if pprovided and \
+						portage.match_from_list(expanded_atom, pprovided):
+						# A provided package has been
+						# specified on the command line.
+						self._pprovided_args.append((myarg, myatom))
+						continue
 				if pkg.installed and "selective" not in self.myparams:
 					self._unsatisfied_deps_for_display.append(
 						((myroot, myatom), {"myparent":None}))
@@ -3081,6 +3093,7 @@ class depgraph:
 			self._set_atoms.add(myatom)
 
 		for mydep in mylist:
+			atom_cp = portage.dep_getkey(mydep)
 			pprovided = pkgsettings.pprovideddict.get(
 				portage.dep_getkey(mydep))
 			if pprovided and portage.match_from_list(mydep, pprovided):
@@ -3092,7 +3105,17 @@ class depgraph:
 			if not pkg:
 				self._missing_args.append(mydep)
 				continue
-
+			if atom_cp != pkg.cp:
+				# For old-style virtuals, we need to repeat the
+				# package.provided check against the selected package.
+				expanded_atom = mydep.replace(atom_cp, pkg.cp)
+				pprovided = pkgsettings.pprovideddict.get(pkg.cp)
+				if pprovided and \
+					portage.match_from_list(expanded_atom, pprovided):
+					# A provided package has been
+					# specified on the command line.
+					self._pprovided_args.append((mydep, mydep))
+					continue
 			if pkg.installed and "selective" not in self.myparams:
 				# Previous behavior was to bail out in this case, but
 				# since the dep is satisfied by the installed package,
