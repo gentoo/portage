@@ -3062,7 +3062,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 		fetch_resume_size = fetch_resume_size_default
 		match = _fetch_resume_size_re.match(fetch_resume_size)
 	fetch_resume_size = int(match.group(1)) * \
-		2 ** _size_suffix_map[match.group(2)]
+		2 ** _size_suffix_map[match.group(2).upper()]
 
 	# Behave like the package has RESTRICT="primaryuri" after a
 	# couple of checksum failures, to increase the probablility
