@@ -1990,9 +1990,6 @@ class depgraph(object):
 			myslots.add(vardb.aux_get(cpv, ["SLOT"])[0])
 		for myslot in myslots:
 			yield "%s:%s" % (mykey, myslot)
-		# In addition to any installed slots, also try to pull
-		# in the latest new slot that may be available.
-		yield atom
 
 	def _iter_args_for_pkg(self, pkg):
 		# TODO: add multiple $ROOT support
@@ -2221,6 +2218,8 @@ class depgraph(object):
 			# atoms could be a property of the set itself.
 			greedy_atoms = []
 			for arg in args:
+				# In addition to any installed slots, also try to pull
+				# in the latest new slot that may be available.
 				greedy_atoms.append(arg)
 				if not isinstance(arg, (AtomArg, PackageArg)):
 					continue
