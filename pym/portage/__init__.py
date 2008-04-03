@@ -3069,6 +3069,9 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 	fetch_resume_size = mysettings.get("PORTAGE_FETCH_RESUME_MIN_SIZE")
 	if fetch_resume_size is not None:
 		fetch_resume_size = "".join(fetch_resume_size.split())
+		if not fetch_resume_size:
+			# If it's undefined or empty, silently use the default.
+			fetch_resume_size = fetch_resume_size_default
 		match = _fetch_resume_size_re.match(fetch_resume_size)
 		if match is None or \
 			(match.group(2).upper() not in _size_suffix_map):
