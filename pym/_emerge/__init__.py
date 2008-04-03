@@ -2243,6 +2243,7 @@ class depgraph(object):
 		while args:
 			arg = args.pop()
 			for atom in arg.set:
+				atom_cp = portage.dep_getkey(atom)
 				try:
 					pprovided = pprovideddict.get(portage.dep_getkey(atom))
 					if pprovided and portage.match_from_list(atom, pprovided):
@@ -2266,6 +2267,17 @@ class depgraph(object):
 							return 0, myfavorites
 						self._missing_args.append((arg, atom))
 						continue
+					if atom_cp != pkg.cp:
+						# For old-style virtuals, we need to repeat the
+						# package.provided check against the selected package.
+						expanded_atom = atom.replace(atom_cp, pkg.cp)
+						pprovided = pprovideddict.get(pkg.cp)
+						if pprovided and \
+							portage.match_from_list(expanded_atom, pprovided):
+							# A provided package has been
+							# specified on the command line.
+							self._pprovided_args.append((arg, atom))
+							continue
 					if pkg.installed and "selective" not in self.myparams:
 						self._unsatisfied_deps_for_display.append(
 							((myroot, atom), {}))
