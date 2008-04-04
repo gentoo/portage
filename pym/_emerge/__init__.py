@@ -1927,6 +1927,10 @@ class depgraph(object):
 		strict = mytype != "installed"
 		try:
 			for dep_root, dep_string, dep_priority in deps:
+				if pkg.onlydeps:
+					# Decrease priority so that --buildpkgonly
+					# hasallzeros() works correctly.
+					dep_priority = DepPriority()
 				if not dep_string:
 					continue
 				if debug:
