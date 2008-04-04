@@ -1158,7 +1158,7 @@ def show_masked_packages(masked_packages):
 		print "- "+cpv+" (masked by: "+", ".join(mreasons)+")"
 		if comment and comment not in shown_comments:
 			print filename+":"
-			print comment,
+			print comment
 			shown_comments.add(comment)
 		portdb = root_config.trees["porttree"].dbapi
 		for l in missing_licenses:
@@ -2568,6 +2568,7 @@ class depgraph(object):
 				from textwrap import wrap
 				for line in wrap(msg, 75):
 					print line
+			print
 			show_mask_docs()
 		else:
 			print "\nemerge: there are no ebuilds to satisfy "+green(xinfo)+"."
@@ -5597,7 +5598,6 @@ def show_blocker_docs_link():
 	print
 
 def show_mask_docs():
-	print
 	print "For more information, see MASKED PACKAGES section in the emerge man page or "
 	print "refer to the Gentoo Handbook."
 
