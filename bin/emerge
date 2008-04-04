@@ -6096,12 +6096,18 @@ def action_depclean(settings, trees, ldpath_mtimes,
 
 	remaining_atoms = []
 	if action == "depclean":
-		for atom in worldlist:
-			if vardb.match(atom):
-				remaining_atoms.append((atom, 'world', runtime))
 		for atom in syslist:
 			if vardb.match(atom):
 				remaining_atoms.append((atom, 'system', runtime))
+		if myfiles:
+			# Pull in everything that's installed since we don't want
+			# to clean any package if something depends on it.
+			remaining_atoms.extend(
+				("="+cpv, 'world', runtime) for cpv in vardb.cpv_all())
+		else:
+			for atom in worldlist:
+				if vardb.match(atom):
+					remaining_atoms.append((atom, 'world', runtime))
 	elif action == "prune":
 		for atom in syslist:
 			if vardb.match(atom):
