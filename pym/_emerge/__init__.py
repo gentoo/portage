@@ -1784,7 +1784,8 @@ class depgraph(object):
 					# The existing node can be reused.
 					if args:
 						for arg in args:
-							self.digraph.add(existing_node, arg)
+							self.digraph.add(existing_node, arg,
+								priority=priority)
 					# If a direct circular dependency is not an unsatisfied
 					# buildtime dependency then drop it here since otherwise
 					# it can skew the merge order calculation in an unwanted
@@ -1853,10 +1854,10 @@ class depgraph(object):
 		# parent/child relationship is always known in case
 		# self._show_slot_collision_notice() needs to be called later.
 		if pkg.onlydeps:
-			self.digraph.add(pkg, myparent)
+			self.digraph.add(pkg, myparent, priority=priority)
 		if args:
 			for arg in args:
-				self.digraph.add(pkg, arg)
+				self.digraph.add(pkg, arg, priority=priority)
 
 		""" This section determines whether we go deeper into dependencies or not.
 		    We want to go deeper on a few occasions:
