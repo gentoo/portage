@@ -1158,7 +1158,7 @@ def show_masked_packages(masked_packages):
 		print "- "+cpv+" (masked by: "+", ".join(mreasons)+")"
 		if comment and comment not in shown_comments:
 			print filename+":"
-			print comment
+			print comment,
 			shown_comments.add(comment)
 		portdb = root_config.trees["porttree"].dbapi
 		for l in missing_licenses:
@@ -2568,9 +2568,7 @@ class depgraph(object):
 				from textwrap import wrap
 				for line in wrap(msg, 75):
 					print line
-			print
-			print "For more information, see MASKED PACKAGES section in the emerge man page or "
-			print "refer to the Gentoo Handbook."
+			show_mask_docs()
 		else:
 			print "\nemerge: there are no ebuilds to satisfy "+green(xinfo)+"."
 		if myparent:
@@ -4104,17 +4102,6 @@ class depgraph(object):
 		# TODO: Add generic support for "set problem" handlers so that
 		# the below warnings aren't special cases for world only.
 
-		masked_packages = []
-		for pkg, pkgsettings in self._masked_installed:
-			root_config = self.roots[pkg.root]
-			mreasons = get_masking_status(pkg, pkgsettings, root_config)
-			masked_packages.append((root_config, pkgsettings,
-				pkg.cpv, pkg.metadata, mreasons))
-		if masked_packages:
-			sys.stderr.write("\n" + colorize("BAD", "!!!") + \
-				" The following installed packages are masked:\n")
-			show_masked_packages(masked_packages)
-
 		if self._missing_args:
 			world_problems = False
 			if "world" in self._sets:
@@ -4176,6 +4163,19 @@ class depgraph(object):
 				msg.append("The best course of action depends on the reason that an offending\n")
 				msg.append("package.provided entry exists.\n\n")
 			sys.stderr.write("".join(msg))
+
+		masked_packages = []
+		for pkg, pkgsettings in self._masked_installed:
+			root_config = self.roots[pkg.root]
+			mreasons = get_masking_status(pkg, pkgsettings, root_config)
+			masked_packages.append((root_config, pkgsettings,
+				pkg.cpv, pkg.metadata, mreasons))
+		if masked_packages:
+			sys.stderr.write("\n" + colorize("BAD", "!!!") + \
+				" The following installed packages are masked:\n")
+			show_masked_packages(masked_packages)
+			show_mask_docs()
+			print
 
 		for pargs, kwargs in self._unsatisfied_deps_for_display:
 			self._show_unsatisfied_dep(*pargs, **kwargs)
@@ -5595,6 +5595,11 @@ def show_blocker_docs_link():
 	print
 	print "http://www.gentoo.org/doc/en/handbook/handbook-x86.xml?full=1#blocked"
 	print
+
+def show_mask_docs():
+	print
+	print "For more information, see MASKED PACKAGES section in the emerge man page or "
+	print "refer to the Gentoo Handbook."
 
 def action_sync(settings, trees, mtimedb, myopts, myaction):
 	xterm_titles = "notitles" not in settings.features
