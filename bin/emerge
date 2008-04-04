@@ -2198,8 +2198,7 @@ class depgraph:
 				for line in wrap(msg, 75):
 					print line
 			print
-			print "For more information, see MASKED PACKAGES section in the emerge man page or "
-			print "refer to the Gentoo Handbook."
+			show_mask_docs()
 		else:
 			print "\nemerge: there are no ebuilds to satisfy "+green(xinfo)+"."
 		if myparent:
@@ -3815,17 +3814,6 @@ class depgraph:
 
 		self._show_slot_collision_notice()
 
-		masked_packages = []
-		for pkg, pkgsettings in self._masked_installed:
-			root_config = self.roots[pkg.root]
-			mreasons = get_masking_status(pkg, pkgsettings, root_config)
-			masked_packages.append((root_config, pkgsettings,
-				pkg.cpv, pkg.metadata, mreasons))
-		if masked_packages:
-			sys.stderr.write("\n" + colorize("BAD", "!!!") + \
-				" The following installed packages are masked:\n")
-			show_masked_packages(masked_packages)
-
 		if self._world_problems:
 				sys.stderr.write("\n!!! Problems have been " + \
 					"detected with your world file\n")
@@ -3875,6 +3863,19 @@ class depgraph:
 				msg.append("The best course of action depends on the reason that an offending\n")
 				msg.append("package.provided entry exists.\n\n")
 			sys.stderr.write("".join(msg))
+
+		masked_packages = []
+		for pkg, pkgsettings in self._masked_installed:
+			root_config = self.roots[pkg.root]
+			mreasons = get_masking_status(pkg, pkgsettings, root_config)
+			masked_packages.append((root_config, pkgsettings,
+				pkg.cpv, pkg.metadata, mreasons))
+		if masked_packages:
+			sys.stderr.write("\n" + colorize("BAD", "!!!") + \
+				" The following installed packages are masked:\n")
+			show_masked_packages(masked_packages)
+			show_mask_docs()
+			print
 
 		for pargs, kwargs in self._unsatisfied_deps_for_display:
 			self._show_unsatisfied_dep(*pargs, **kwargs)
@@ -5144,6 +5145,10 @@ def show_blocker_docs_link():
 	print
 	print "http://www.gentoo.org/doc/en/handbook/handbook-x86.xml?full=1#blocked"
 	print
+
+def show_mask_docs():
+	print "For more information, see MASKED PACKAGES section in the emerge man page or "
+	print "refer to the Gentoo Handbook."
 
 def action_sync(settings, trees, mtimedb, myopts, myaction):
 	xterm_titles = "notitles" not in settings.features
