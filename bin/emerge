@@ -5147,8 +5147,8 @@ def show_blocker_docs_link():
 	print
 
 def show_mask_docs():
-	print "For more information, see MASKED PACKAGES section in the emerge man page or "
-	print "refer to the Gentoo Handbook."
+	print "For more information, see the MASKED PACKAGES section in the emerge"
+	print "man page or refer to the Gentoo Handbook."
 
 def action_sync(settings, trees, mtimedb, myopts, myaction):
 	xterm_titles = "notitles" not in settings.features
