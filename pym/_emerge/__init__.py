@@ -6555,7 +6555,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 			# Pull in everything that's installed since we don't want
 			# to clean any package if something depends on it.
 			remaining_atoms.extend(
-				("="+atom, 'world', runtime) for cpv in vardb.cpv_all())
+				("="+cpv, 'world', runtime) for cpv in vardb.cpv_all())
 		else:
 			for atom in worldlist:
 				if vardb.match(atom):
