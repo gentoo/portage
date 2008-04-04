@@ -6765,7 +6765,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 			graph.add(node, None)
 			myaux = dict(izip(aux_keys, vardb.aux_get(node, aux_keys)))
 			mydeps = []
-			usedef = vardb.aux_get(pkg, ["USE"])[0].split()
+			usedef = vardb.aux_get(node, ["USE"])[0].split()
 			for dep_type, depstr in myaux.iteritems():
 				if not depstr:
 					continue
