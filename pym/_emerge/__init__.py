@@ -1588,6 +1588,8 @@ class depgraph(object):
 		self._required_set_names = set(["system", "world"])
 		self._select_atoms = self._select_atoms_highest_available
 		self._select_package = self._select_pkg_highest_available
+		self._highest_pkg_cache = {}
+		self._installed_pkg_cache = {}
 
 	def _show_slot_collision_notice(self):
 		"""Show an informational message advising the user to mask one of the
@@ -2479,6 +2481,15 @@ class depgraph(object):
 		print
 
 	def _select_pkg_highest_available(self, root, atom, onlydeps=False):
+		cache_key = (root, atom, onlydeps)
+		ret = self._highest_pkg_cache.get(cache_key)
+		if ret is not None:
+			return ret
+		ret = self._select_pkg_highest_available_imp(root, atom, onlydeps=onlydeps)
+		self._highest_pkg_cache[cache_key] = ret
+		return ret
+
+	def _select_pkg_highest_available_imp(self, root, atom, onlydeps=False):
 		pkgsettings = self.pkgsettings[root]
 		dbs = self._filtered_trees[root]["dbs"]
 		vardb = self.roots[root].trees["vartree"].dbapi
@@ -2712,12 +2723,18 @@ class depgraph(object):
 		e_pkg = self._slot_pkg_map[root].get(slot_atom)
 		if e_pkg:
 			return e_pkg, e_pkg
+		cache_key = (root, atom, onlydeps)
+		ret = self._installed_pkg_cache.get(cache_key)
+		if ret is not None:
+			return ret
 		metadata = dict(izip(self._mydbapi_keys,
 			graph_db.aux_get(cpv, self._mydbapi_keys)))
 		pkg = Package(cpv=cpv, built=True,
 			installed=True, type_name="installed",
 			metadata=metadata, root=root)
-		return pkg, None
+		ret = pkg, None
+		self._installed_pkg_cache[cache_key] = ret
+		return ret
 
 	def _complete_graph(self):
 		"""
