@@ -2732,7 +2732,7 @@ class depgraph(object):
 		pkg = Package(cpv=cpv, built=True,
 			installed=True, type_name="installed",
 			metadata=metadata, root=root)
-		ret = pkg, None
+		ret = (pkg, None)
 		self._installed_pkg_cache[cache_key] = ret
 		return ret
 
