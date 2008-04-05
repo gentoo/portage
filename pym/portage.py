@@ -6461,8 +6461,7 @@ class vardbapi(dbapi):
 					if e.errno != errno.ENOENT:
 						raise
 					del e
-				write_atomic(os.path.join(newpath, "PF"), new_pf+"\n")
-
+			write_atomic(os.path.join(newpath, "PF"), new_pf+"\n")
 			write_atomic(os.path.join(newpath, "CATEGORY"), mynewcat+"\n")
 			fixdbentries([mylist], newpath)
 		return moves
@@ -7747,11 +7746,13 @@ class binarytree(object):
 			mydata = mytbz2.get_data()
 			updated_items = update_dbentries([mylist], mydata)
 			mydata.update(updated_items)
+			mydata["PF"] = mynewpkg + "\n"
 			mydata["CATEGORY"] = mynewcat+"\n"
 			if mynewpkg != myoldpkg:
-				mydata[mynewpkg+".ebuild"] = mydata[myoldpkg+".ebuild"]
-				del mydata[myoldpkg+".ebuild"]
-				mydata["PF"] = mynewpkg + "\n"
+				ebuild_data = mydata.get(myoldpkg+".ebuild")
+				if ebuild_data is not None:
+					mydata[mynewpkg+".ebuild"] = ebuild_data
+					del mydata[myoldpkg+".ebuild"]
 			mytbz2.recompose_mem(xpak.xpak_mem(mydata))
 
 			self.dbapi.cpv_remove(mycpv)
