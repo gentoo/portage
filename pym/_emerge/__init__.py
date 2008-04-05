@@ -2412,14 +2412,12 @@ class depgraph(object):
 			trees = self._filtered_trees
 		if True:
 			try:
-				self.trees[root]["selective"] = "selective" in self.myparams
 				if not strict:
 					portage.dep._dep_check_strict = False
 				mycheck = portage.dep_check(depstring, None,
 					pkgsettings, myuse=myuse,
 					myroot=root, trees=trees)
 			finally:
-				self.trees[root]["selective"] = False
 				portage.dep._dep_check_strict = True
 			if not mycheck[0]:
 				raise portage.exception.InvalidDependString(mycheck[1])
