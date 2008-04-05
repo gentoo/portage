@@ -1426,6 +1426,39 @@ def show_invalid_depstring_notice(parent_node, depstring, error_msg):
 		f.add_flowing_data(x)
 	f.end_paragraph(1)
 
+class CompositeDbapi(object):
+	def __init__(self, depgraph, root):
+		self._depgraph = depgraph
+		self._root = root
+		self._match_cache = {}
+		self._cpv_tree_map = {}
+
+	def match(self, atom):
+		ret = self._match_cache.get(atom)
+		if ret is not None:
+			return ret[:]
+		pkg, existing = self._depgraph._select_package(self._root, atom)
+		if not pkg:
+			ret = []
+		else:
+			if pkg.installed and "selective" not in self._depgraph.myparams:
+				try:
+					self._depgraph._iter_args_for_pkg(pkg).next()
+				except StopIteration:
+					pass
+				else:
+					ret = []
+			if ret is None:
+				self._cpv_tree_map[pkg.cpv] = \
+					self._depgraph.pkg_tree_map[pkg.type_name]
+				ret = [pkg.cpv]
+		self._match_cache[atom] = ret
+		return ret[:]
+
+	def aux_get(self, cpv, wants):
+		return self._depgraph.trees[self._root][
+			self._cpv_tree_map[cpv]].dbapi.aux_get(cpv, wants)
+
 class depgraph(object):
 
 	pkg_tree_map = {
@@ -1504,10 +1537,8 @@ class depgraph(object):
 			self._filtered_trees[myroot]["vartree"] = self.trees[myroot]["vartree"]
 			def filtered_tree():
 				pass
-			filtered_tree.dbapi = portage.fakedbapi(
-				settings=self.pkgsettings[myroot], exclusive_slots=False)
+			filtered_tree.dbapi = CompositeDbapi(self, myroot)
 			self._filtered_trees[myroot]["porttree"] = filtered_tree
-			self._filtered_trees[myroot]["atoms"] = set()
 			dbs = []
 			portdb = self.trees[myroot]["porttree"].dbapi
 			bindb  = self.trees[myroot]["bintree"].dbapi
@@ -1988,7 +2019,6 @@ class depgraph(object):
 		"""Generate SLOT atoms for the highest available match and
 		any matching installed SLOTs that are also available."""
 		vardb = self.roots[root].trees["vartree"].dbapi
-		filtered_db = self._filtered_trees[root]["porttree"].dbapi
 		mykey = portage.dep_getkey(atom)
 		myslots = set()
 		for cpv in vardb.match(mykey):
@@ -2046,7 +2076,6 @@ class depgraph(object):
 		myfavorites=[]
 		myroot = self.target_root
 		dbs = self._filtered_trees[myroot]["dbs"]
-		filtered_db = self._filtered_trees[myroot]["porttree"].dbapi
 		vardb = self.trees[myroot]["vartree"].dbapi
 		portdb = self.trees[myroot]["porttree"].dbapi
 		bindb = self.trees[myroot]["bintree"].dbapi
@@ -2365,129 +2394,6 @@ class depgraph(object):
 		# We're true here unless we are missing binaries.
 		return (not missing,myfavorites)
 
-	def _populate_filtered_repo(self, myroot, depstring,
-			strict=True, myuse=None, exclude_installed=False):
-		"""Extract all of the atoms from the depstring, select preferred
-		packages from appropriate repositories, and use them to populate
-		the filtered repository. This will raise InvalidDependString when
-		necessary."""
-
-		filtered_db = self._filtered_trees[myroot]["porttree"].dbapi
-		pkgsettings = self.pkgsettings[myroot]
-		usepkgonly = "--usepkgonly" in self.myopts
-
-		from portage.dep import paren_reduce, use_reduce
-		try:
-			portage.dep._dep_check_strict = strict
-			atoms = paren_reduce(depstring)
-			atoms = use_reduce(atoms, uselist=myuse)
-			atoms = list(iter_atoms(atoms))
-			for x in atoms:
-				if portage.dep._dep_check_strict and \
-					not portage.isvalidatom(x, allow_blockers=True):
-					raise portage.exception.InvalidDependString(
-						"Invalid atom: %s" % x)
-		finally:
-			portage.dep._dep_check_strict = True
-
-		filtered_atoms = self._filtered_trees[myroot]["atoms"]
-		dbs = self._filtered_trees[myroot]["dbs"]
-		old_virts = pkgsettings.getvirtuals()
-		while atoms:
-			x = atoms.pop()
-			if x.startswith("!"):
-				continue
-			if x in filtered_atoms:
-				continue
-			filtered_atoms.add(x)
-			cp = portage.dep_getkey(x)
-			cat = portage.catsplit(cp)[0]
-			slot = portage.dep.dep_getslot(x)
-			is_virt = cp.startswith("virtual/")
-			atom_populated = False
-			for db, pkg_type, built, installed, db_keys in dbs:
-				if installed and \
-					(exclude_installed or not usepkgonly):
-					continue
-				cpv_list = db.cp_list(cp)
-				if not cpv_list:
-					if is_virt:
-						# old-style virtual
-						# Create a transformed atom for each choice
-						# and add it to the stack for processing.
-						for choice in old_virts.get(cp, []):
-							atoms.append(x.replace(cp, choice))
-						# Maybe a new-style virtual exists in another db, so
-						# we have to try all of them to prevent the old-style
-						# virtuals from overriding available new-styles.
-					continue
-				# descending order
-				cpv_list.reverse()
-				for cpv in cpv_list:
-					if filtered_db.cpv_exists(cpv):
-						continue
-					if not portage.match_from_list(x, [cpv]):
-						continue
-					if is_virt:
-						mykeys = db_keys[:]
-						mykeys.extend(self._dep_keys)
-					else:
-						mykeys = db_keys
-					try:
-						metadata = dict(izip(mykeys,
-							db.aux_get(cpv, mykeys)))
-					except KeyError:
-						# masked by corruption
-						continue
-					if slot is not None:
-						if slot != metadata["SLOT"]:
-							continue
-					if not built:
-						if (is_virt or "?" in metadata["LICENSE"]):
-							pkgsettings.setcpv(cpv, mydb=metadata)
-							metadata["USE"] = pkgsettings["PORTAGE_USE"]
-						else:
-							metadata["USE"] = ""
-
-					if not visible(pkgsettings, Package(built=built,
-						cpv=cpv, root=myroot, type_name=pkg_type,
-						installed=installed, metadata=metadata)):
-						continue
-
-					filtered_db.cpv_inject(cpv, metadata=metadata)
-					if not is_virt:
-						# break here since we only want the best version
-						# for now (eventually will be configurable).
-						atom_populated = True
-						break
-					# For new-style virtuals, we explore all available
-					# versions and recurse on their deps. This is a
-					# preparation for the lookahead that happens when
-					# new-style virtuals are expanded by dep_check().
-					virtual_deps = " ".join(metadata[k] \
-						for k in self._dep_keys)
-					try:
-						if installed:
-							portage.dep._dep_check_strict = False
-						try:
-							deps = paren_reduce(virtual_deps)
-							deps = use_reduce(deps,
-								uselist=metadata["USE"].split())
-							for y in iter_atoms(deps):
-								if portage.dep._dep_check_strict and \
-									not portage.isvalidatom(y,
-									allow_blockers=True):
-									raise portage.exception.InvalidDependString(
-										"Invalid atom: %s" % y)
-								atoms.append(y)
-						except portage.exception.InvalidDependString, e:
-							# Masked by corruption
-							filtered_db.cpv_remove(cpv)
-					finally:
-						portage.dep._dep_check_strict = True
-				if atom_populated:
-					break
-
 	def _select_atoms_from_graph(self, *pargs, **kwargs):
 		"""
 		Prefer atoms matching packages that have already been
@@ -2504,8 +2410,6 @@ class depgraph(object):
 		pkgsettings = self.pkgsettings[root]
 		if trees is None:
 			trees = self._filtered_trees
-			self._populate_filtered_repo(root, depstring,
-				myuse=myuse, strict=strict)
 		if True:
 			try:
 				self.trees[root]["selective"] = "selective" in self.myparams
