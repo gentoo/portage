@@ -2511,6 +2511,7 @@ class depgraph(object):
 		usepkgonly = "--usepkgonly" in self.myopts
 		empty = "empty" in self.myparams
 		selective = "selective" in self.myparams
+		reinstall = False
 		noreplace = "--noreplace" in self.myopts
 		# Behavior of the "selective" parameter depends on
 		# whether or not a package matches an argument atom.
@@ -2531,7 +2532,7 @@ class depgraph(object):
 				if existing_node:
 					break
 				if installed and not find_existing_node:
-					want_reinstall = empty or \
+					want_reinstall = reinstall or empty or \
 						(found_available_arg and not selective)
 					if want_reinstall and matched_packages:
 						continue
@@ -2656,6 +2657,8 @@ class depgraph(object):
 							self._reinstall_for_flags(
 							forced_flags, old_use, old_iuse,
 							cur_use, cur_iuse)
+						if reinstall_for_flags:
+							reinstall = True
 					if not installed:
 						must_reinstall = empty or \
 							(myarg and not selective)
