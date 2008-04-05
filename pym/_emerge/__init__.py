@@ -1446,6 +1446,8 @@ class CompositeDbapi(object):
 					self._depgraph._iter_args_for_pkg(pkg).next()
 				except StopIteration:
 					pass
+				except portage.exception.InvalidDependString:
+					pass
 				else:
 					ret = []
 			if ret is None:
