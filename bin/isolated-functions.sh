@@ -26,8 +26,8 @@ dump_trace() {
 	(( p = ${#BASH_ARGV[@]} ))
 	while (( n > 0 )) ; do
 		[ "${FUNCNAME[${n}]}" == "qa_call" ] && break
+		(( p -= ${BASH_ARGC[${n}]} ))
 		(( n-- ))
-		(( p -= ${BASH_ARGC[${n} - 1]} ))
 	done
 	if (( n == 0 )) ; then
 		(( n = ${#FUNCNAME[@]} - 1 ))
