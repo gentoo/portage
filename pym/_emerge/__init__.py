@@ -1426,7 +1426,7 @@ def show_invalid_depstring_notice(parent_node, depstring, error_msg):
 		f.add_flowing_data(x)
 	f.end_paragraph(1)
 
-class CompositeDbapi(object):
+class DepcheckCompositeDB(object):
 	def __init__(self, depgraph, root):
 		self._depgraph = depgraph
 		self._root = root
@@ -1548,7 +1548,7 @@ class depgraph(object):
 			self._filtered_trees[myroot]["vartree"] = self.trees[myroot]["vartree"]
 			def filtered_tree():
 				pass
-			filtered_tree.dbapi = CompositeDbapi(self, myroot)
+			filtered_tree.dbapi = DepcheckCompositeDB(self, myroot)
 			self._filtered_trees[myroot]["porttree"] = filtered_tree
 			dbs = []
 			portdb = self.trees[myroot]["porttree"].dbapi
