@@ -1446,8 +1446,8 @@ class DepcheckCompositeDB(object):
 					arg_atoms = list(self._depgraph._iter_atoms_for_pkg(pkg))
 				except portage.exception.InvalidDependString:
 					arg_atoms = []
-				for arg, atom in arg_atoms:
-					arg_cp = portage.dep_getkey(atom)
+				for arg, arg_atom in arg_atoms:
+					arg_cp = portage.dep_getkey(arg_atom)
 					if arg and arg_cp != pkg.cp:
 						# If this argument matches via PROVIDE but there is a
 						# new-style virtual available, then the argument does
