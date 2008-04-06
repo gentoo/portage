@@ -1443,13 +1443,22 @@ class CompositeDbapi(object):
 		else:
 			if pkg.installed and "selective" not in self._depgraph.myparams:
 				try:
-					self._depgraph._iter_args_for_pkg(pkg).next()
-				except StopIteration:
-					pass
+					args = list(self._depgraph._iter_args_for_pkg(pkg))
 				except portage.exception.InvalidDependString:
-					pass
-				else:
-					ret = []
+					args = []
+				for arg in args:
+					arg_cp = portage.dep_getkey(arg.atom)
+					if arg and arg_cp != pkg.cp:
+						# If this argument matches via PROVIDE but there is a
+						# new-style virtual available, then the argument does
+						# not really apply to this package.
+						virt_pkg, virt_existing = \
+							self._depgraph._select_package(self._root, arg_cp)
+						if virt_pkg and virt_pkg.cp == arg_cp:
+							arg = None
+					if arg:
+						ret = []
+						break
 			if ret is None:
 				self._cpv_tree_map[pkg.cpv] = \
 					self._depgraph.pkg_tree_map[pkg.type_name]
