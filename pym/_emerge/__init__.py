@@ -1443,11 +1443,11 @@ class DepcheckCompositeDB(object):
 		else:
 			if pkg.installed and "selective" not in self._depgraph.myparams:
 				try:
-					args = list(self._depgraph._iter_args_for_pkg(pkg))
+					arg_atoms = list(self._depgraph._iter_atoms_for_pkg(pkg))
 				except portage.exception.InvalidDependString:
-					args = []
-				for arg in args:
-					arg_cp = portage.dep_getkey(arg.atom)
+					arg_atoms = []
+				for arg, atom in arg_atoms:
+					arg_cp = portage.dep_getkey(atom)
 					if arg and arg_cp != pkg.cp:
 						# If this argument matches via PROVIDE but there is a
 						# new-style virtual available, then the argument does
@@ -2039,18 +2039,6 @@ class depgraph(object):
 		for myslot in myslots:
 			yield "%s:%s" % (mykey, myslot)
 
-	def _iter_args_for_pkg(self, pkg):
-		# TODO: add multiple $ROOT support
-		if pkg.root != self.target_root:
-			return
-		atom_arg_map = self._atom_arg_map
-		for atom in self._set_atoms.iterAtomsForPackage(pkg):
-			for arg in atom_arg_map[(atom, pkg.root)]:
-				if isinstance(arg, PackageArg) and \
-					arg.package != pkg:
-					continue
-				yield arg
-
 	def _iter_atoms_for_pkg(self, pkg):
 		# TODO: add multiple $ROOT support
 		if pkg.root != self.target_root:
@@ -2072,7 +2060,7 @@ class depgraph(object):
 		This will raise an InvalidDependString exception if PROVIDE is invalid.
 		"""
 		any_arg = None
-		for arg in self._iter_args_for_pkg(pkg):
+		for arg, atom in self._iter_atoms_for_pkg(pkg):
 			if isinstance(arg, PackageArg):
 				return arg
 			any_arg = arg
