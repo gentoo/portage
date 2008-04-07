@@ -1590,6 +1590,8 @@ class depgraph(object):
 		self._select_package = self._select_pkg_highest_available
 		self._highest_pkg_cache = {}
 		self._installed_pkg_cache = {}
+		# All Package instances
+		self._pkg_cache = {}
 
 	def _show_slot_collision_notice(self):
 		"""Show an informational message advising the user to mask one of the
@@ -2531,6 +2533,11 @@ class depgraph(object):
 					cpv_list = db.xmatch("match-all", atom)
 				else:
 					cpv_list = db.match(atom)
+				if not cpv_list:
+					continue
+				pkg_status = "merge"
+				if installed or onlydeps:
+					pkg_status = "nomerge"
 				# descending order
 				cpv_list.reverse()
 				for cpv in cpv_list:
@@ -2539,36 +2546,48 @@ class depgraph(object):
 						cpv in vardb.match(atom):
 						break
 					reinstall_for_flags = None
-					try:
-						metadata = dict(izip(db_keys,
-							db.aux_get(cpv, db_keys)))
-					except KeyError:
-						continue
-					if not built:
-						if "?" in metadata["LICENSE"]:
+					cache_key = (pkg_type, root, cpv, pkg_status)
+					calculated_use = True
+					pkg = self._pkg_cache.get(cache_key)
+					if pkg is None:
+						calculated_use = False
+						try:
+							metadata = dict(izip(self._mydbapi_keys,
+								db.aux_get(cpv, self._mydbapi_keys)))
+						except KeyError:
+							continue
+						if not built and ("?" in metadata["LICENSE"] or \
+							"?" in metadata["PROVIDE"]):
+							# This is avoided whenever possible because
+							# it's expensive. It only needs to be done here
+							# if it has an effect on visibility.
 							pkgsettings.setcpv(cpv, mydb=metadata)
 							metadata["USE"] = pkgsettings["PORTAGE_USE"]
-						else:
-							metadata["USE"] = ""
+							calculated_use = True
+						pkg = Package(built=built, cpv=cpv,
+							installed=installed, metadata=metadata,
+							onlydeps=onlydeps, root=root, type_name=pkg_type)
+						self._pkg_cache[pkg] = pkg
 					myarg = None
 					if root == self.target_root:
 						try:
-							myarg = self._get_arg_for_pkg(
-								Package(type_name=pkg_type, root=root,
-									cpv=cpv, metadata=metadata,
-									built=built, installed=installed,
-									onlydeps=onlydeps))
+							myarg = self._iter_atoms_for_pkg(pkg).next()
+						except StopIteration:
+							pass
 						except portage.exception.InvalidDependString:
 							if not installed:
 								# masked by corruption
 								continue
-					pkg = Package(built=built, cpv=cpv, installed=installed,
-						metadata=metadata, type_name=pkg_type)
 					if not installed:
 						if myarg:
 							found_available_arg = True
 						if not visible(pkgsettings, pkg):
 							continue
+					if not built and not calculated_use:
+						# This is avoided whenever possible because
+						# it's expensive.
+						pkgsettings.setcpv(cpv, mydb=pkg.metadata)
+						pkg.metadata["USE"] = pkgsettings["PORTAGE_USE"]
 					if pkg.cp == atom_cp:
 						if highest_version is None:
 							highest_version = pkg
@@ -2580,9 +2599,7 @@ class depgraph(object):
 					# will always end with a break statement below
 					# this point.
 					if find_existing_node:
-						slot_atom = "%s:%s" % (
-							portage.cpv_getkey(cpv), metadata["SLOT"])
-						e_pkg = self._slot_pkg_map[root].get(slot_atom)
+						e_pkg = self._slot_pkg_map[root].get(pkg.slot_atom)
 						if not e_pkg:
 							break
 						cpv_slot = "%s:%s" % \
@@ -2606,9 +2623,9 @@ class depgraph(object):
 						("--newuse" in self.myopts or \
 						"--reinstall" in self.myopts):
 						iuses = set(filter_iuse_defaults(
-							metadata["IUSE"].split()))
-						old_use = metadata["USE"].split()
-						mydb = metadata
+							pkg.metadata["IUSE"].split()))
+						old_use = pkg.metadata["USE"].split()
+						mydb = pkg.metadata
 						if myeb and not usepkgonly:
 							mydb = portdb
 						if myeb:
@@ -2634,7 +2651,7 @@ class depgraph(object):
 						("--newuse" in self.myopts or \
 						"--reinstall" in self.myopts) and \
 						cpv in vardb.match(atom):
-						pkgsettings.setcpv(cpv, mydb=metadata)
+						pkgsettings.setcpv(cpv, mydb=pkg.metadata)
 						forced_flags = set()
 						forced_flags.update(pkgsettings.useforce)
 						forced_flags.update(pkgsettings.usemask)
@@ -2643,7 +2660,7 @@ class depgraph(object):
 							vardb.aux_get(cpv, ["IUSE"])[0].split()))
 						cur_use = pkgsettings["PORTAGE_USE"].split()
 						cur_iuse = set(filter_iuse_defaults(
-							metadata["IUSE"].split()))
+							pkg.metadata["IUSE"].split()))
 						reinstall_for_flags = \
 							self._reinstall_for_flags(
 							forced_flags, old_use, old_iuse,
@@ -2657,22 +2674,8 @@ class depgraph(object):
 							not must_reinstall and \
 							cpv in vardb.match(atom):
 							break
-					# Metadata accessed above is cached internally by
-					# each db in order to optimize visibility checks.
-					# Now that all possible checks visibility checks
-					# are complete, it's time to pull the rest of the
-					# metadata (including *DEPEND). This part is more
-					# expensive, so avoid it whenever possible.
-					metadata.update(izip(self._mydbapi_keys,
-						db.aux_get(cpv, self._mydbapi_keys)))
 					if not built:
-						pkgsettings.setcpv(cpv, mydb=metadata)
-						metadata["USE"] = pkgsettings["PORTAGE_USE"]
 						myeb = cpv
-					pkg = Package(type_name=pkg_type, root=root,
-						cpv=cpv, metadata=metadata,
-						built=built, installed=installed,
-						onlydeps=onlydeps)
 					matched_packages.append(pkg)
 					if reinstall_for_flags:
 						self._reinstall_nodes[pkg] = \

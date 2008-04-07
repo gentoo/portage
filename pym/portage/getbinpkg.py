@@ -667,10 +667,14 @@ def _cmp_cpv(d1, d2):
 
 class PackageIndex(object):
 
-	def __init__(self, default_pkg_data=None, inherited_keys=None):
+	def __init__(self, default_header_data=None, default_pkg_data=None,
+		inherited_keys=None):
+		self._default_header_data = default_header_data
 		self._default_pkg_data = default_pkg_data
 		self._inherited_keys = inherited_keys
 		self.header = {}
+		if self._default_header_data:
+			self.header.update(self._default_header_data)
 		self.packages = []
 		self.modified = True
 
@@ -725,7 +729,8 @@ class PackageIndex(object):
 			self.header["PACKAGES"] = str(len(self.packages))
 		keys = self.header.keys()
 		keys.sort()
-		self._writepkgindex(pkgfile, [(k, self.header[k]) for k in keys])
+		self._writepkgindex(pkgfile, [(k, self.header[k]) \
+			for k in keys if self.header[k]])
 		for metadata in sorted(self.packages, _cmp_cpv):
 			metadata = metadata.copy()
 			cpv = metadata["CPV"]
