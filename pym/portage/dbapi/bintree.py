@@ -837,7 +837,7 @@ class binarytree(object):
 		del metadata["DESCRIPTION"]
 		use = metadata["USE"].split()
 		raw_use = use
-		iuse = set(metadata["IUSE"].split())
+		iuse = set(f.lstrip("-+") for f in metadata["IUSE"].split())
 		use = [f for f in use if f in iuse]
 		use.sort()
 		metadata["USE"] = " ".join(use)
