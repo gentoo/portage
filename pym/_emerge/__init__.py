@@ -1443,22 +1443,11 @@ class DepcheckCompositeDB(object):
 		else:
 			if pkg.installed and "selective" not in self._depgraph.myparams:
 				try:
-					arg_atoms = list(self._depgraph._iter_atoms_for_pkg(pkg))
-				except portage.exception.InvalidDependString:
-					arg_atoms = []
-				for arg, arg_atom in arg_atoms:
-					arg_cp = portage.dep_getkey(arg_atom)
-					if arg and arg_cp != pkg.cp:
-						# If this argument matches via PROVIDE but there is a
-						# new-style virtual available, then the argument does
-						# not really apply to this package.
-						virt_pkg, virt_existing = \
-							self._depgraph._select_package(self._root, arg_cp)
-						if virt_pkg and virt_pkg.cp == arg_cp:
-							arg = None
-					if arg:
-						ret = []
-						break
+					arg = self._depgraph._iter_atoms_for_pkg(pkg).next()
+				except (StopIteration, portage.exception.InvalidDependString):
+					arg = None
+				if arg:
+					ret = []
 			if ret is None:
 				self._cpv_tree_map[pkg.cpv] = \
 					self._depgraph.pkg_tree_map[pkg.type_name]
@@ -2045,6 +2034,16 @@ class depgraph(object):
 			return
 		atom_arg_map = self._atom_arg_map
 		for atom in self._set_atoms.iterAtomsForPackage(pkg):
+			atom_cp = portage.dep_getkey(atom)
+			if atom_cp != pkg.cp:
+				have_new_virt = False
+				for db, pkg_type, built, installed, db_keys in \
+					self._filtered_trees[pkg.root]["dbs"]:
+					if db.cp_list(atom_cp):
+						have_new_virt = True
+						break
+				if have_new_virt:
+					continue
 			for arg in atom_arg_map[(atom, pkg.root)]:
 				if isinstance(arg, PackageArg) and \
 					arg.package != pkg:
