@@ -2017,17 +2017,6 @@ class depgraph(object):
 			return 0
 		return 1
 
-	def _greedy_slot_atoms(self, root, atom):
-		"""Generate SLOT atoms for the highest available match and
-		any matching installed SLOTs that are also available."""
-		vardb = self.roots[root].trees["vartree"].dbapi
-		mykey = portage.dep_getkey(atom)
-		myslots = set()
-		for cpv in vardb.match(mykey):
-			myslots.add(vardb.aux_get(cpv, ["SLOT"])[0])
-		for myslot in myslots:
-			yield "%s:%s" % (mykey, myslot)
-
 	def _iter_atoms_for_pkg(self, pkg):
 		# TODO: add multiple $ROOT support
 		if pkg.root != self.target_root:
@@ -2257,9 +2246,13 @@ class depgraph(object):
 				greedy_atoms.append(arg)
 				if not isinstance(arg, (AtomArg, PackageArg)):
 					continue
-				for greedy_atom in self._greedy_slot_atoms(myroot, arg.atom):
+				atom_cp = portage.dep_getkey(arg.atom)
+				slots = set()
+				for cpv in vardb.match(atom_cp):
+					slots.add(vardb.aux_get(cpv, ["SLOT"])[0])
+				for slot in slots:
 					greedy_atoms.append(
-						AtomArg(arg=arg.arg, atom=greedy_atom,
+						AtomArg(arg=arg.arg, atom="%s:%s" % (atom_cp, slot),
 							root_config=root_config))
 			args = greedy_atoms
 			del greedy_atoms
