@@ -410,9 +410,11 @@ in order to indicate their status:
 \fI() circumfix\fR = forced, masked, or removed
 .TP
 .BR "\-\-with\-bdeps < y | n >"
-In dependency calculations, pull in build time dependencies that are not
-strictly required.   This defaults to \'n\' for installation actions and
-\'y\' for the \fB\-\-depclean\fR action.  This setting can be added to
+In dependency calculations, pull in build time dependencies
+that are not strictly required. This defaults to \'n\' for
+installation actions, meaning they will not be installed, and
+\'y\' for the \fB\-\-depclean\fR action, meaning they will not be removed.
+This setting can be added to
 \fBEMERGE_DEFAULT_OPTS\fR (see make.conf(5)) and later overridden via the
 command line.
 .SH "ENVIRONMENT OPTIONS"
