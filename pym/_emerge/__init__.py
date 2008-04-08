@@ -1734,7 +1734,9 @@ class depgraph(object):
 				myarg = None
 				if dep.root == self.target_root:
 					try:
-						myarg = self._get_arg_for_pkg(dep_pkg)
+						myarg = self._iter_atoms_for_pkg(dep_pkg).next()
+					except StopIteration:
+						pass
 					except portage.exception.InvalidDependString:
 						if not dep_pkg.installed:
 							# This shouldn't happen since the package
@@ -2025,21 +2027,6 @@ class depgraph(object):
 					arg.package != pkg:
 					continue
 				yield arg, atom
-
-	def _get_arg_for_pkg(self, pkg):
-		"""
-		Return a matching DependencyArg instance for the given Package if
-		any exist, otherwise None. An attempt will be made to return the most
-		specific match (PackageArg type is the most specific).
-
-		This will raise an InvalidDependString exception if PROVIDE is invalid.
-		"""
-		any_arg = None
-		for arg, atom in self._iter_atoms_for_pkg(pkg):
-			if isinstance(arg, PackageArg):
-				return arg
-			any_arg = arg
-		return any_arg
 
 	def select_files(self, myfiles):
 		"""Given a list of .tbz2s, .ebuilds sets, and deps, create the
