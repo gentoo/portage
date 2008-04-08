@@ -1172,21 +1172,6 @@ def show_masked_packages(masked_packages):
 			shown_licenses.add(l)
 	return have_eapi_mask
 
-def iter_atoms(deps):
-	"""Take a dependency structure as returned by paren_reduce or use_reduce
-	and iterate over all the atoms."""
-	i = iter(deps)
-	for x in i:
-		if isinstance(x, basestring):
-			if x == '||' or x.endswith('?'):
-				for x in iter_atoms(i.next()):
-					yield x
-			else:
-				yield x
-		else:
-			for x in iter_atoms(x):
-				yield x
-
 class Package(object):
 	__slots__ = ("__weakref__", "built", "cpv", "depth",
 		"installed", "metadata", "root", "onlydeps", "type_name",
