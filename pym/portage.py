@@ -520,23 +520,40 @@ def elog_process(cpv, mysettings):
 		except ImportError:
 			pass
 
-	mylogfiles = listdir(mysettings["T"]+"/logging/")
+	path = os.path.join(mysettings["T"], "logging")
+	mylogfiles = None
+	try:
+		mylogfiles = os.listdir(path)
+	except OSError:
+		pass
 	# shortcut for packages without any messages
 	if len(mylogfiles) == 0:
 		return
 	# exploit listdir() file order so we process log entries in chronological order
 	mylogfiles.reverse()
 	all_logentries = {}
-	for f in mylogfiles:
-		msgfunction, msgtype = f.split(".")
+	for msgfunction in mylogfiles:
 		if msgfunction not in portage_const.EBUILD_PHASES:
 			writemsg("!!! can't process invalid log file: %s\n" % f,
 				noiselevel=-1)
 			continue
 		if not msgfunction in all_logentries:
 			all_logentries[msgfunction] = []
-		msgcontent = open(mysettings["T"]+"/logging/"+f, "r").readlines()
-		all_logentries[msgfunction].append((msgtype, msgcontent))
+		lastmsgtype = None
+		msgcontent = []
+		for l in open(os.path.join(path, msgfunction), "r").readlines():
+			msgtype, msg = l.split(" ", 1)
+			if lastmsgtype is None:
+				lastmsgtype = msgtype
+			if msgtype == lastmsgtype:
+				msgcontent.append(msg)
+			else:
+				if msgcontent:
+					all_logentries[msgfunction].append((lastmsgtype, msgcontent))
+				msgcontent = [msg]
+			lastmsgtype = msgtype
+		if msgcontent:
+			all_logentries[msgfunction].append((lastmsgtype, msgcontent))
 
 	def filter_loglevels(logentries, loglevels):
 		# remove unwanted entries from all logentries
