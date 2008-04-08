@@ -28,7 +28,7 @@ wecho() { echo "${argv0}: warning: $*" 1>&2 ; }
 eecho() { echo "${argv0}: error: $*" 1>&2 ; }
 
 argv0=$0
-if ! type portageq > /dev/null ; then
+if ! type -P portageq > /dev/null ; then
 	eecho "could not find 'portageq'; aborting"
 	exit 1
 fi
@@ -150,7 +150,7 @@ check_file_signature() {
 
 		vecho "Checking signature ..."
 
-		if type -p gpg > /dev/null; then
+		if type -P gpg > /dev/null; then
 			gpg --homedir "${PORTAGE_GPG_DIR}" --verify "$signature" "$file" && r=0
 		else
 			eecho "cannot check signature: gpg binary not found"
@@ -174,7 +174,7 @@ sync_local() {
 	vecho "Syncing local tree ..."
 
 	# tarsync-0.2.1 doesn't seem to support lzma compression.
-	if [ "${file##*.}" != "lzma" ] && type -P tarsync &> /dev/null; then
+	if [ "${file##*.}" != "lzma" ] && type -P tarsync > /dev/null; then
 		if ! tarsync $(vvecho -v) -s 1 -o portage -g portage -e /distfiles -e /packages -e /local "${file}" "${PORTDIR}"; then
 			eecho "tarsync failed; tarball is corrupt? (${file})"
 			return 1
@@ -189,7 +189,7 @@ sync_local() {
 		# Free disk space
 		rm -f "${file}"
 
-		chown portage:portage portage &> /dev/null && \
+		chown portage:portage portage > /dev/null 2>&1 && \
 			chown -R portage:portage portage
 		cd portage
 		rsync -av --progress --stats --delete --delete-after \
@@ -221,9 +221,9 @@ do_snapshot() {
 	local mirror
 
 	local compressions=""
-	type lzcat > /dev/null && compressions="${compressions} lzma"
-	type bzcat > /dev/null && compressions="${compressions} bz2"
-	type  zcat > /dev/null && compressions="${compressions} gz"
+	type -P lzcat > /dev/null && compressions="${compressions} lzma"
+	type -P bzcat > /dev/null && compressions="${compressions} bz2"
+	type -P  zcat > /dev/null && compressions="${compressions} gz"
 	if [[ -z ${compressions} ]] ; then
 		eecho "unable to locate any decompressors (lzcat or bzcat or zcat)"
 		exit 1
