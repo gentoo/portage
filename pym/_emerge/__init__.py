@@ -1433,6 +1433,11 @@ class DepcheckCompositeDB(object):
 					arg = None
 				if arg:
 					ret = []
+			if ret is None and pkg.installed and \
+				not visible(self._depgraph.pkgsettings[pkg.root], pkg):
+				# For disjunctive || deps, this will cause alternative
+				# atoms or packages to be selected if available.
+				ret = []
 			if ret is None:
 				self._cpv_tree_map[pkg.cpv] = \
 					self._depgraph.pkg_tree_map[pkg.type_name]
@@ -2550,9 +2555,15 @@ class depgraph(object):
 							if not installed:
 								# masked by corruption
 								continue
-					if not installed:
-						if myarg:
-							found_available_arg = True
+					if not installed and myarg:
+						found_available_arg = True
+					if not installed or (installed and matched_packages):
+						# Only enforce visibility on installed packages
+						# if there is at least one other visible package
+						# available. By filtering installed masked packages
+						# here, packages that have been masked since they
+						# were installed can be automatically downgraded
+						# to an unmasked version.
 						if not visible(pkgsettings, pkg):
 							continue
 					if not built and not calculated_use:
