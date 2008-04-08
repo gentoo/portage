@@ -1611,7 +1611,8 @@ for x in scanlist:
 				myflag = myflag[1:]
 			myiuse.add(myflag)
 
-		inherited_java_eclass = "java-pkg" in inherited
+		inherited_java_eclass = "java-pkg-2" in inherited or \
+			"java-pkg-opt-2" in inherited
 		operator_tokens = set(["||", "(", ")"])
 		type_list, badsyntax = [], []
 		for mytype in ("DEPEND", "RDEPEND", "PDEPEND", "LICENSE", "PROVIDE"):
