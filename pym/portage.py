@@ -5945,6 +5945,17 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 		rValue.append(kmask+" keyword")
 	return rValue
 
+
+auxdbkeys=[
+  'DEPEND',    'RDEPEND',   'SLOT',      'SRC_URI',
+	'RESTRICT',  'HOMEPAGE',  'LICENSE',   'DESCRIPTION',
+	'KEYWORDS',  'INHERITED', 'IUSE',      'CDEPEND',
+	'PDEPEND',   'PROVIDE', 'EAPI',
+	'UNUSED_01', 'UNUSED_02', 'UNUSED_03', 'UNUSED_04',
+	'UNUSED_05', 'UNUSED_06', 'UNUSED_07',
+	]
+auxdbkeylen=len(auxdbkeys)
+
 class portagetree:
 	def __init__(self, root="/", virtual=None, clone=None, settings=None):
 
@@ -6020,10 +6031,12 @@ class portagetree:
 		return myslot
 
 
-class dbapi:
+class dbapi(object):
 	_category_re = re.compile(r'^\w[-.+\w]*$')
 	_pkg_dir_name_re = re.compile(r'^\w[-+\w]*$')
 	_categories = None
+	_known_keys = frozenset(x for x in auxdbkeys
+		if not x.startswith("UNUSED_0"))
 	def __init__(self):
 		pass
 
@@ -6243,6 +6256,8 @@ class fakedbapi(dbapi):
 		self.cpvdict[cpv].update(values)
 
 class bindbapi(fakedbapi):
+	_known_keys = frozenset(list(fakedbapi._known_keys) + \
+		["CHOST", "repository", "USE"])
 	def __init__(self, mybintree=None, settings=None):
 		self.bintree = mybintree
 		self.move_ent = mybintree.move_ent
@@ -6254,8 +6269,9 @@ class bindbapi(fakedbapi):
 		self._match_cache = {}
 		# Selectively cache metadata in order to optimize dep matching.
 		self._aux_cache_keys = set(
-					["CHOST", "EAPI", "IUSE", "KEYWORDS",
-					"LICENSE", "PROVIDE", "SLOT", "USE"])
+			["CHOST", "DEPEND", "EAPI", "IUSE", "KEYWORDS",
+			"LICENSE", "PDEPEND", "PROVIDE",
+			"RDEPEND", "repository", "RESTRICT", "SLOT", "USE"])
 		self._aux_cache = {}
 
 	def match(self, *pargs, **kwargs):
@@ -6267,10 +6283,11 @@ class bindbapi(fakedbapi):
 		if self.bintree and not self.bintree.populated:
 			self.bintree.populate()
 		cache_me = False
-		if not set(wants).difference(self._aux_cache_keys):
+		if not self._known_keys.intersection(
+			wants).difference(self._aux_cache_keys):
 			aux_cache = self._aux_cache.get(mycpv)
 			if aux_cache is not None:
-				return [aux_cache[x] for x in wants]
+				return [aux_cache.get(x, "") for x in wants]
 			cache_me = True
 		mysplit = mycpv.split("/")
 		mylist  = []
@@ -6970,16 +6987,6 @@ class vartree(object):
 	def populate(self):
 		self.populated=1
 
-auxdbkeys=[
-  'DEPEND',    'RDEPEND',   'SLOT',      'SRC_URI',
-	'RESTRICT',  'HOMEPAGE',  'LICENSE',   'DESCRIPTION',
-	'KEYWORDS',  'INHERITED', 'IUSE',      'CDEPEND',
-	'PDEPEND',   'PROVIDE', 'EAPI',
-	'UNUSED_01', 'UNUSED_02', 'UNUSED_03', 'UNUSED_04',
-	'UNUSED_05', 'UNUSED_06', 'UNUSED_07',
-	]
-auxdbkeylen=len(auxdbkeys)
-
 def close_portdbapi_caches():
 	for i in portdbapi.portdbapi_instances:
 		i.close_caches()
@@ -7051,11 +7058,13 @@ class portdbapi(dbapi):
 		self.porttrees = [self.porttree_root] + \
 			[os.path.realpath(t) for t in self.mysettings["PORTDIR_OVERLAY"].split()]
 		self.treemap = {}
+		self._repository_map = {}
 		for path in self.porttrees:
 			repo_name_path = os.path.join(path, portage_const.REPO_NAME_LOC)
 			try:
 				repo_name = open(repo_name_path, 'r').readline().strip()
 				self.treemap[repo_name] = path
+				self._repository_map[path] = repo_name
 			except (OSError,IOError):
 				# warn about missing repo_name at some other time, since we
 				# don't want to see a warning every time the portage module is
@@ -7084,7 +7093,9 @@ class portdbapi(dbapi):
 					self.depcachedir, x, filtered_auxdbkeys, gid=portage_gid)
 		# Selectively cache metadata in order to optimize dep matching.
 		self._aux_cache_keys = set(
-			["EAPI", "IUSE", "KEYWORDS", "LICENSE", "PROVIDE", "SLOT"])
+			["DEPEND", "EAPI", "IUSE", "KEYWORDS", "LICENSE",
+			"PDEPEND", "PROVIDE", "RDEPEND", "repository",
+			"RESTRICT", "SLOT"])
 		self._aux_cache = {}
 		self._broken_ebuilds = set()
 
@@ -7179,10 +7190,11 @@ class portdbapi(dbapi):
 		cache_me = False
 		if not mytree:
 			cache_me = True
-		if not mytree and not set(mylist).difference(self._aux_cache_keys):
+		if not mytree and not self._known_keys.intersection(
+			mylist).difference(self._aux_cache_keys):
 			aux_cache = self._aux_cache.get(mycpv)
 			if aux_cache is not None:
-				return [aux_cache[x] for x in mylist]
+				return [aux_cache.get(x, "") for x in mylist]
 			cache_me = True
 		global auxdbkeys,auxdbkeylen
 		cat,pkg = mycpv.split("/", 1)
@@ -7303,6 +7315,10 @@ class portdbapi(dbapi):
 
 		if not mydata.setdefault("EAPI", "0"):
 			mydata["EAPI"] = "0"
+
+		# do we have a origin repository name for the current package
+		mydata["repository"] = self._repository_map.get(
+			os.path.sep.join(myebuild.split(os.path.sep)[:-3]), "")
 
 		#finally, we look at our internal cache entry and return the requested data.
 		returnme = []
