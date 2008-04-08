@@ -44,6 +44,8 @@ def collect_ebuild_messages(path):
 					logentries[msgfunction].append((lastmsgtype, msgcontent))
 				msgcontent = [msg]
 			lastmsgtype = msgtype
+		if msgcontent:
+			logentries[msgfunction].append((lastmsgtype, msgcontent))
 
 	# clean logfiles to avoid repetitions
 	for f in mylogfiles:
