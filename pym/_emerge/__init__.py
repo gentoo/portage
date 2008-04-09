@@ -1416,7 +1416,7 @@ class DepcheckCompositeDB(object):
 		self._depgraph = depgraph
 		self._root = root
 		self._match_cache = {}
-		self._cpv_tree_map = {}
+		self._cpv_pkg_map = {}
 
 	def match(self, atom):
 		ret = self._match_cache.get(atom)
@@ -1439,15 +1439,14 @@ class DepcheckCompositeDB(object):
 				# atoms or packages to be selected if available.
 				ret = []
 			if ret is None:
-				self._cpv_tree_map[pkg.cpv] = \
-					self._depgraph.pkg_tree_map[pkg.type_name]
+				self._cpv_pkg_map[pkg.cpv] = pkg
 				ret = [pkg.cpv]
 		self._match_cache[atom] = ret
 		return ret[:]
 
 	def aux_get(self, cpv, wants):
-		return self._depgraph.trees[self._root][
-			self._cpv_tree_map[cpv]].dbapi.aux_get(cpv, wants)
+		metadata = self._cpv_pkg_map[cpv].metadata
+		return [metadata.get(x, "") for x in wants]
 
 class depgraph(object):
 
