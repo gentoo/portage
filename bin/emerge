@@ -1753,7 +1753,6 @@ class depgraph(object):
 				if parents:
 					omitted_parents = 0
 					if len(parents) > max_parents:
-						omitted_parents = len(parents) - max_parents
 						pruned_list = []
 						# When generating the pruned list, prefer instances
 						# of DependencyArg over instances of Package.
@@ -1768,17 +1767,15 @@ class depgraph(object):
 								in self._slot_collision_info:
 								pruned_list.append(parent)
 						for parent in parents:
-							if not isinstance(parent, DependencyArg):
+							if len(pruned_list) >= max_parents:
+								break
+							if not isinstance(parent, DependencyArg) and \
+								parent not in pruned_list:
 								pruned_list.append(parent)
-								if len(pruned_list) >= max_parents:
-									break
+						omitted_parents = len(parents) - len(pruned_list)
 						parents = pruned_list
 					msg.append(" pulled in by\n")
-					shown_parents = set()
 					for parent in parents:
-						if parent in shown_parents:
-							continue
-						shown_parents.add(parent)
 						msg.append(2*indent)
 						msg.append(str(parent))
 						msg.append("\n")
