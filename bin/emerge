@@ -2360,8 +2360,9 @@ class depgraph(object):
 				expanded_atoms = self._dep_expand(root_config, x)
 				installed_cp_set = set()
 				for atom in expanded_atoms:
-					if vardb.match(atom):
-						installed_cp_set.add(portage.dep_getkey(atom))
+					atom_cp = portage.dep_getkey(atom)
+					if vardb.cp_list(atom_cp):
+						installed_cp_set.add(atom_cp)
 				if len(expanded_atoms) > 1 and len(installed_cp_set) == 1:
 					installed_cp = iter(installed_cp_set).next()
 					expanded_atoms = [atom for atom in expanded_atoms \
