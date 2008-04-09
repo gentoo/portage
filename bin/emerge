@@ -4012,7 +4012,13 @@ class depgraph(object):
 						if repo_name_prev:
 							repo_path_prev = portdb.getRepositoryPath(
 								repo_name_prev)
-						if repo_path_prev == repo_path_real:
+						# To avoid false positives during the transition
+						# period, don't show ? if the installed package
+						# is missing a repository label. Stages starting
+						# with 2008.0 will come with repository labels.
+						ignore_missing_labels = True
+						if (ignore_missing_labels and not repo_path_prev) or \
+							repo_path_prev == repo_path_real:
 							repoadd = repo_display.repoStr(repo_path_real)
 						else:
 							repoadd = "%s=>%s" % (
