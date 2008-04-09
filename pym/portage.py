@@ -529,7 +529,7 @@ def elog_process(cpv, mysettings):
 	except OSError:
 		pass
 	# shortcut for packages without any messages
-	if len(mylogfiles) == 0:
+	if not mylogfiles:
 		return
 	# exploit listdir() file order so we process log entries in chronological order
 	mylogfiles.reverse()
