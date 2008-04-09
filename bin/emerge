@@ -2150,6 +2150,15 @@ class depgraph(object):
 			return 0
 		return 1
 
+	def _have_new_virt(self, root, atom_cp):
+		ret = False
+		for db, pkg_type, built, installed, db_keys in \
+			self._filtered_trees[root]["dbs"]:
+			if db.cp_list(atom_cp):
+				ret = True
+				break
+		return ret
+
 	def _iter_atoms_for_pkg(self, pkg):
 		# TODO: add multiple $ROOT support
 		if pkg.root != self.target_root:
@@ -2157,15 +2166,9 @@ class depgraph(object):
 		atom_arg_map = self._atom_arg_map
 		for atom in self._set_atoms.iterAtomsForPackage(pkg):
 			atom_cp = portage.dep_getkey(atom)
-			if atom_cp != pkg.cp:
-				have_new_virt = False
-				for db, pkg_type, built, installed, db_keys in \
-					self._filtered_trees[pkg.root]["dbs"]:
-					if db.cp_list(atom_cp):
-						have_new_virt = True
-						break
-				if have_new_virt:
-					continue
+			if atom_cp != pkg.cp and \
+				self._have_new_virt(pkg.root, atom_cp):
+				continue
 			for arg in atom_arg_map[(atom, pkg.root)]:
 				if isinstance(arg, PackageArg) and \
 					arg.package != pkg:
