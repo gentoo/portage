@@ -2150,6 +2150,31 @@ class depgraph(object):
 			return 0
 		return 1
 
+	def _dep_expand(self, root_config, atom_without_category):
+		"""
+		@param root_config: a root config instance
+		@type root_config: RootConfig
+		@returns: a list of cat/pn for any matching packages
+		"""
+		null_cp = portage.dep_getkey(insert_category_into_atom(
+			atom_without_category, "null"))
+		cat, atom_pn = portage.catsplit(null_cp)
+
+		cp_set = set()
+		for db, pkg_type, built, installed, db_keys in \
+			self._filtered_trees[root_config.root]["dbs"]:
+			cp_set.update(db.cp_all())
+		for cp in list(cp_set):
+			cat, pn = portage.catsplit(cp)
+			if pn != atom_pn:
+				cp_set.discard(cp)
+		deps = []
+		for cp in cp_set:
+			cat, pn = portage.catsplit(cp)
+			deps.append(insert_category_into_atom(
+				atom_without_category, cat))
+		return deps
+
 	def _have_new_virt(self, root, atom_cp):
 		ret = False
 		for db, pkg_type, built, installed, db_keys in \
@@ -2324,44 +2349,40 @@ class depgraph(object):
 					args.append(AtomArg(arg=x, atom=x,
 						root_config=root_config))
 					continue
-				try:
-					try:
-						for db, pkg_type, built, installed, db_keys in dbs:
-							mykey = portage.dep_expand(x,
-								mydb=db, settings=pkgsettings)
-							if portage.dep_getkey(mykey).startswith("null/"):
-								continue
-							break
-					except ValueError, e:
-						if not e.args or not isinstance(e.args[0], list) or \
-							len(e.args[0]) < 2:
-							raise
-						mykey = portage.dep_expand(x,
-							mydb=vardb, settings=pkgsettings)
-						cp = portage.dep_getkey(mykey)
-						if cp.startswith("null/") or \
-							cp not in e[0]:
-							raise
-						del e
-					virtual_x = expand_virtual_atom(x)
-					if virtual_x and \
-						self._have_new_virt(root_config.root,
-						portage.dep_getkey(virtual_x)) and \
-						virtual_x != mykey:
-						raise ValueError([portage.dep_getkey(virtual_x),
-							portage.dep_getkey(mykey)])
-					args.append(AtomArg(arg=x, atom=mykey,
-						root_config=root_config))
-				except ValueError, e:
-					if not e.args or not isinstance(e.args[0], list) or \
-						len(e.args[0]) < 2:
-						raise
+				expanded_atoms = self._dep_expand(root_config, x)
+				installed_cp_set = set()
+				for atom in expanded_atoms:
+					if vardb.match(atom):
+						installed_cp_set.add(portage.dep_getkey(atom))
+				if len(expanded_atoms) > 1 and len(installed_cp_set) == 1:
+					installed_cp = iter(installed_cp_set).next()
+					expanded_atoms = [atom for atom in expanded_atoms \
+						if portage.dep_getkey(atom) == installed_cp]
+
+				if len(expanded_atoms) > 1:
 					print "\n\n!!! The short ebuild name \"" + x + "\" is ambiguous.  Please specify"
 					print "!!! one of the following fully-qualified ebuild names instead:\n"
-					for i in e.args[0]:
+					expanded_atoms = set(portage.dep_getkey(atom) \
+						for atom in expanded_atoms)
+					for i in sorted(expanded_atoms):
 						print "    " + green(i)
 					print
 					return False, myfavorites
+				if expanded_atoms:
+					atom = expanded_atoms[0]
+				else:
+					null_atom = insert_category_into_atom(x, "null")
+					null_cp = portage.dep_getkey(null_atom)
+					cat, atom_pn = portage.catsplit(null_cp)
+					virts_p = root_config.settings.get_virts_p().get(atom_pn)
+					if virts_p:
+						virt_cp = portage.dep_getkey(virts_p[0])
+						atom = null_atom.replace(null_cp, virt_cp)
+					else:
+						atom = insert_category_into_atom(x, "null")
+
+				args.append(AtomArg(arg=x, atom=atom,
+					root_config=root_config))
 
 		if "--update" in self.myopts:
 			# Enable greedy SLOT atoms for atoms given as arguments.
@@ -5509,9 +5530,13 @@ def expand_virtual_atom(x):
 	@type x: String
 	@returns: the atom with virtual/ inserted for the category, or None
 	"""
-	alphanum = re.search(r'\w', x)
+	return insert_category_into_atom(atom, "virtual")
+
+def insert_category_into_atom(atom, category):
+	alphanum = re.search(r'\w', atom)
 	if alphanum:
-		ret = x[:alphanum.start()] + "virtual/" + x[alphanum.start():]
+		ret = atom[:alphanum.start()] + "%s/" % category + \
+			atom[alphanum.start():]
 	else:
 		ret = None
 	return ret
