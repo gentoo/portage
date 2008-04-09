@@ -1760,16 +1760,25 @@ class depgraph(object):
 						for parent in parents:
 							if isinstance(parent, DependencyArg):
 								pruned_list.append(parent)
-								if len(pruned_list) == max_parents:
-									break
+						# Prefer Packages instances that themselves have been
+						# pulled into collision slots.
+						for parent in parents:
+							if isinstance(parent, Package) and \
+								(parent.slot_atom, parent.root) \
+								in self._slot_collision_info:
+								pruned_list.append(parent)
 						for parent in parents:
 							if not isinstance(parent, DependencyArg):
 								pruned_list.append(parent)
-								if len(pruned_list) == max_parents:
+								if len(pruned_list) >= max_parents:
 									break
 						parents = pruned_list
 					msg.append(" pulled in by\n")
+					shown_parents = set()
 					for parent in parents:
+						if parent in shown_parents:
+							continue
+						shown_parents.add(parent)
 						msg.append(2*indent)
 						msg.append(str(parent))
 						msg.append("\n")
