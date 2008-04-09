@@ -2159,7 +2159,10 @@ class depgraph(object):
 		"""
 		@param root_config: a root config instance
 		@type root_config: RootConfig
-		@returns: a list of cat/pn for any matching packages
+		@param atom_without_category: an atom without a category component
+		@type atom_without_category: String
+		@rtype: list
+		@returns: a list of atoms containing categories (possibly empty)
 		"""
 		null_cp = portage.dep_getkey(insert_category_into_atom(
 			atom_without_category, "null"))
