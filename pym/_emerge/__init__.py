@@ -2237,8 +2237,8 @@ class depgraph(object):
 					cat, atom_pn = portage.catsplit(null_cp)
 					virts_p = root_config.settings.get_virts_p().get(atom_pn)
 					if virts_p:
-						virt_cp = portage.dep_getkey(virts_p[0])
-						atom = null_atom.replace(null_cp, virt_cp)
+						# Allow the depgraph to choose which virtual.
+						atom = insert_category_into_atom(x, "virtual")
 					else:
 						atom = insert_category_into_atom(x, "null")
 
