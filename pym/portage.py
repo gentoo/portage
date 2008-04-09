@@ -535,16 +535,24 @@ def elog_process(cpv, mysettings):
 	mylogfiles.reverse()
 	all_logentries = {}
 	for msgfunction in mylogfiles:
+		filename = os.path.join(path, msgfunction)
 		if msgfunction not in portage_const.EBUILD_PHASES:
-			writemsg("!!! can't process invalid log file: %s\n" % f,
+			writemsg("!!! can't process invalid log file: '%s'\n" % filename,
 				noiselevel=-1)
 			continue
 		if not msgfunction in all_logentries:
 			all_logentries[msgfunction] = []
 		lastmsgtype = None
 		msgcontent = []
-		for l in open(os.path.join(path, msgfunction), "r").readlines():
-			msgtype, msg = l.split(" ", 1)
+		for l in open(filename, "r").read().split("\0"):
+			if not l:
+				continue
+			try:
+				msgtype, msg = l.split(" ", 1)
+			except ValueError:
+				writemsg("!!! malformed entry in " + \
+					"log file: '%s'\n" % filename, noiselevel=-1)
+				continue
 			if lastmsgtype is None:
 				lastmsgtype = msgtype
 			if msgtype == lastmsgtype:
