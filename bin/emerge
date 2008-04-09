@@ -2334,12 +2334,17 @@ class depgraph(object):
 					# sets (like if world contains system).
 					expanded_set = InternalPackageSet(
 						initial_atoms=getSetAtoms(s))
-					if s == "world":
-						# add the system set to the world set
-						expanded_set.update(getSetAtoms("system"))
 					self._sets[s] = expanded_set
 					args.append(SetArg(arg=x, set=expanded_set,
 						root_config=root_config))
+					if s == "world":
+						# pull in the system set too
+						s = "system"
+						expanded_set = InternalPackageSet(
+							initial_atoms=getSetAtoms(s))
+						self._sets[s] = expanded_set
+						args.append(SetArg(arg=SETPREFIX+s, set=expanded_set,
+							root_config=root_config))
 					#if not oneshot:
 					#	myfavorites.append(x)
 					continue
