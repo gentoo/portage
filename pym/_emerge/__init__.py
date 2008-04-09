@@ -2204,6 +2204,13 @@ class depgraph(object):
 							cp not in e[0]:
 							raise
 						del e
+					virtual_x = expand_virtual_atom(x)
+					if virtual_x and \
+						self._have_new_virt(root_config.root,
+						portage.dep_getkey(virtual_x)) and \
+						virtual_x != mykey:
+						raise ValueError([portage.dep_getkey(virtual_x),
+							portage.dep_getkey(mykey)])
 					args.append(AtomArg(arg=x, atom=mykey,
 						root_config=root_config))
 				except ValueError, e:
@@ -5491,6 +5498,22 @@ def checkUpdatedNewsItems(portdb, vardb, NEWS_PATH, UNREAD_PATH, repo_id):
 	from portage.news import NewsManager
 	manager = NewsManager(portdb, vardb, NEWS_PATH, UNREAD_PATH)
 	return manager.getUnreadItems( repo_id, update=True )
+
+def expand_virtual_atom(x):
+	"""
+	Take an atom without a category and insert virtual/ for the
+	category. This works correctly with atoms that have operators.
+
+	@param x: an atom without a category
+	@type x: String
+	@returns: the atom with virtual/ inserted for the category, or None
+	"""
+	alphanum = re.search(r'\w', x)
+	if alphanum:
+		ret = x[:alphanum.start()] + "virtual/" + x[alphanum.start():]
+	else:
+		ret = None
+	return ret
 
 def is_valid_package_atom(x):
 	if "/" not in x:
