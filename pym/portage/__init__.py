@@ -2516,10 +2516,10 @@ class config(object):
 
 		self.already_in_regenerate = 0
 
-	def get_virts_p(self, myroot):
+	def get_virts_p(self, myroot=None):
 		if self.virts_p:
 			return self.virts_p
-		virts = self.getvirtuals(myroot)
+		virts = self.getvirtuals()
 		if virts:
 			for x in virts:
 				vkeysplit = x.split("/")
