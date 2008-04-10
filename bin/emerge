@@ -1578,6 +1578,13 @@ def show_invalid_depstring_notice(parent_node, depstring, error_msg):
 	f.end_paragraph(1)
 
 class DepcheckCompositeDB(object):
+	"""
+	A dbapi-like interface that is optimized for use in dep_check() calls.
+	This is built on top of the existing depgraph package selection logic.
+	Some packages that have been added to the graph may be masked from this
+	view in order to control the atom preference selection that occurs via
+	dep_check().
+	"""
 	def __init__(self, depgraph, root):
 		self._depgraph = depgraph
 		self._root = root
