@@ -7142,14 +7142,22 @@ def action_build(settings, trees, mtimedb,
 				favorites=favorites)
 			if retval != os.EX_OK:
 				return retval
-			if "--buildpkgonly" in myopts and \
-				not mydepgraph.digraph.hasallzeros(ignore_priority=DepPriority.MEDIUM):
+			if "--buildpkgonly" in myopts:
+				graph_copy = mydepgraph.digraph.clone()
+				for node in graph_copy.order:
+					if not isinstance(node, Package):
+						graph_copy.remove(node)
+				if not graph_copy.hasallzeros(ignore_priority=DepPriority.MEDIUM):
 					print "\n!!! --buildpkgonly requires all dependencies to be merged."
 					print "!!! You have to merge the dependencies before you can build this package.\n"
 					return 1
 	else:
-		if ("--buildpkgonly" in myopts):
-			if not mydepgraph.digraph.hasallzeros(ignore_priority=DepPriority.MEDIUM):
+		if "--buildpkgonly" in myopts:
+			graph_copy = mydepgraph.digraph.clone()
+			for node in graph_copy.order:
+				if not isinstance(node, Package):
+					graph_copy.remove(node)
+			if not graph_copy.hasallzeros(ignore_priority=DepPriority.MEDIUM):
 				print "\n!!! --buildpkgonly requires all dependencies to be merged."
 				print "!!! Cannot merge requested packages. Merge deps and try again.\n"
 				return 1
