@@ -281,7 +281,10 @@ int dirwalk(char *src, char *srcp, char *trg, char *trgp) {
 						hl->next = NULL;
 					} else {
 						/* don't "copy" the file, we already made a hard
-						 * link to it */
+						 * link to it, just restore modified path */
+						st = srcp;
+						tt = trgp;
+						*st = *tt = '\0';
 						continue;
 					}
 				}
