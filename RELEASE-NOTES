@@ -32,6 +32,13 @@ portage-2.2
 * "world" does no longer include "system" unconditionally, but you can add
   "@system" to the worldfile to restore the old state.
 
+portage-2.1.5
+==================================
+* In the event that a previously installed package has since been masked,
+  emerge will no longer perform an automatic downgrade as part of a "world"
+  update. You should either unmask such packages or else explicitly re-merge
+  them in order to have them dowgraded to an unmasked version.
+
 portage-2.1.4.1
 ==================================
 

@@ -1447,6 +1447,41 @@ def show_invalid_depstring_notice(parent_node, depstring, error_msg):
 		f.add_flowing_data(x)
 	f.end_paragraph(1)
 
+class CompositeDbapi(object):
+	def __init__(self, depgraph, root):
+		self._depgraph = depgraph
+		self._root = root
+		self._match_cache = {}
+		self._cpv_tree_map = {}
+
+	def match(self, atom):
+		ret = self._match_cache.get(atom)
+		if ret is not None:
+			return ret[:]
+		pkg, existing = self._depgraph._select_package(self._root, atom)
+		if not pkg:
+			ret = []
+		else:
+			if pkg.installed and "selective" not in self._depgraph.myparams:
+				try:
+					self._depgraph._iter_args_for_pkg(pkg).next()
+				except StopIteration:
+					pass
+				except portage.exception.InvalidDependString:
+					pass
+				else:
+					ret = []
+			if ret is None:
+				self._cpv_tree_map[pkg.cpv] = \
+					self._depgraph.pkg_tree_map[pkg.type_name]
+				ret = [pkg.cpv]
+		self._match_cache[atom] = ret
+		return ret[:]
+
+	def aux_get(self, cpv, wants):
+		return self._depgraph.trees[self._root][
+			self._cpv_tree_map[cpv]].dbapi.aux_get(cpv, wants)
+
 class depgraph(object):
 
 	pkg_tree_map = {
@@ -1525,10 +1560,8 @@ class depgraph(object):
 			self._filtered_trees[myroot]["vartree"] = self.trees[myroot]["vartree"]
 			def filtered_tree():
 				pass
-			filtered_tree.dbapi = portage.fakedbapi(
-				settings=self.pkgsettings[myroot], exclusive_slots=False)
+			filtered_tree.dbapi = CompositeDbapi(self, myroot)
 			self._filtered_trees[myroot]["porttree"] = filtered_tree
-			self._filtered_trees[myroot]["atoms"] = set()
 			dbs = []
 			portdb = self.trees[myroot]["porttree"].dbapi
 			bindb  = self.trees[myroot]["bintree"].dbapi
@@ -1578,6 +1611,8 @@ class depgraph(object):
 		self._required_set_names = set(["system", "world"])
 		self._select_atoms = self._select_atoms_highest_available
 		self._select_package = self._select_pkg_highest_available
+		self._highest_pkg_cache = {}
+		self._installed_pkg_cache = {}
 
 	def _show_slot_collision_notice(self):
 		"""Show an informational message advising the user to mask one of the
@@ -2009,7 +2044,6 @@ class depgraph(object):
 		"""Generate SLOT atoms for the highest available match and
 		any matching installed SLOTs that are also available."""
 		vardb = self.roots[root].trees["vartree"].dbapi
-		filtered_db = self._filtered_trees[root]["porttree"].dbapi
 		mykey = portage.dep_getkey(atom)
 		myslots = set()
 		for cpv in vardb.match(mykey):
@@ -2067,7 +2101,6 @@ class depgraph(object):
 		myfavorites=[]
 		myroot = self.target_root
 		dbs = self._filtered_trees[myroot]["dbs"]
-		filtered_db = self._filtered_trees[myroot]["porttree"].dbapi
 		vardb = self.trees[myroot]["vartree"].dbapi
 		portdb = self.trees[myroot]["porttree"].dbapi
 		bindb = self.trees[myroot]["bintree"].dbapi
@@ -2386,129 +2419,6 @@ class depgraph(object):
 		# We're true here unless we are missing binaries.
 		return (not missing,myfavorites)
 
-	def _populate_filtered_repo(self, myroot, depstring,
-			strict=True, myuse=None, exclude_installed=False):
-		"""Extract all of the atoms from the depstring, select preferred
-		packages from appropriate repositories, and use them to populate
-		the filtered repository. This will raise InvalidDependString when
-		necessary."""
-
-		filtered_db = self._filtered_trees[myroot]["porttree"].dbapi
-		pkgsettings = self.pkgsettings[myroot]
-		usepkgonly = "--usepkgonly" in self.myopts
-
-		from portage.dep import paren_reduce, use_reduce
-		try:
-			portage.dep._dep_check_strict = strict
-			atoms = paren_reduce(depstring)
-			atoms = use_reduce(atoms, uselist=myuse)
-			atoms = list(iter_atoms(atoms))
-			for x in atoms:
-				if portage.dep._dep_check_strict and \
-					not portage.isvalidatom(x, allow_blockers=True):
-					raise portage.exception.InvalidDependString(
-						"Invalid atom: %s" % x)
-		finally:
-			portage.dep._dep_check_strict = True
-
-		filtered_atoms = self._filtered_trees[myroot]["atoms"]
-		dbs = self._filtered_trees[myroot]["dbs"]
-		old_virts = pkgsettings.getvirtuals()
-		while atoms:
-			x = atoms.pop()
-			if x.startswith("!"):
-				continue
-			if x in filtered_atoms:
-				continue
-			filtered_atoms.add(x)
-			cp = portage.dep_getkey(x)
-			cat = portage.catsplit(cp)[0]
-			slot = portage.dep.dep_getslot(x)
-			is_virt = cp.startswith("virtual/")
-			atom_populated = False
-			for db, pkg_type, built, installed, db_keys in dbs:
-				if installed and \
-					(exclude_installed or not usepkgonly):
-					continue
-				cpv_list = db.cp_list(cp)
-				if not cpv_list:
-					if is_virt:
-						# old-style virtual
-						# Create a transformed atom for each choice
-						# and add it to the stack for processing.
-						for choice in old_virts.get(cp, []):
-							atoms.append(x.replace(cp, choice))
-						# Maybe a new-style virtual exists in another db, so
-						# we have to try all of them to prevent the old-style
-						# virtuals from overriding available new-styles.
-					continue
-				# descending order
-				cpv_list.reverse()
-				for cpv in cpv_list:
-					if filtered_db.cpv_exists(cpv):
-						continue
-					if not portage.match_from_list(x, [cpv]):
-						continue
-					if is_virt:
-						mykeys = db_keys[:]
-						mykeys.extend(self._dep_keys)
-					else:
-						mykeys = db_keys
-					try:
-						metadata = dict(izip(mykeys,
-							db.aux_get(cpv, mykeys)))
-					except KeyError:
-						# masked by corruption
-						continue
-					if slot is not None:
-						if slot != metadata["SLOT"]:
-							continue
-					if not built:
-						if (is_virt or "?" in metadata["LICENSE"]):
-							pkgsettings.setcpv(cpv, mydb=metadata)
-							metadata["USE"] = pkgsettings["PORTAGE_USE"]
-						else:
-							metadata["USE"] = ""
-
-					if not visible(pkgsettings, Package(built=built,
-						cpv=cpv, root=myroot, type_name=pkg_type,
-						installed=installed, metadata=metadata)):
-						continue
-
-					filtered_db.cpv_inject(cpv, metadata=metadata)
-					if not is_virt:
-						# break here since we only want the best version
-						# for now (eventually will be configurable).
-						atom_populated = True
-						break
-					# For new-style virtuals, we explore all available
-					# versions and recurse on their deps. This is a
-					# preparation for the lookahead that happens when
-					# new-style virtuals are expanded by dep_check().
-					virtual_deps = " ".join(metadata[k] \
-						for k in self._dep_keys)
-					try:
-						if installed:
-							portage.dep._dep_check_strict = False
-						try:
-							deps = paren_reduce(virtual_deps)
-							deps = use_reduce(deps,
-								uselist=metadata["USE"].split())
-							for y in iter_atoms(deps):
-								if portage.dep._dep_check_strict and \
-									not portage.isvalidatom(y,
-									allow_blockers=True):
-									raise portage.exception.InvalidDependString(
-										"Invalid atom: %s" % y)
-								atoms.append(y)
-						except portage.exception.InvalidDependString, e:
-							# Masked by corruption
-							filtered_db.cpv_remove(cpv)
-					finally:
-						portage.dep._dep_check_strict = True
-				if atom_populated:
-					break
-
 	def _select_atoms_from_graph(self, *pargs, **kwargs):
 		"""
 		Prefer atoms matching packages that have already been
@@ -2525,18 +2435,14 @@ class depgraph(object):
 		pkgsettings = self.pkgsettings[root]
 		if trees is None:
 			trees = self._filtered_trees
-			self._populate_filtered_repo(root, depstring,
-				myuse=myuse, strict=strict)
 		if True:
 			try:
-				self.trees[root]["selective"] = "selective" in self.myparams
 				if not strict:
 					portage.dep._dep_check_strict = False
 				mycheck = portage.dep_check(depstring, None,
 					pkgsettings, myuse=myuse,
 					myroot=root, trees=trees)
 			finally:
-				self.trees[root]["selective"] = False
 				portage.dep._dep_check_strict = True
 			if not mycheck[0]:
 				raise portage.exception.InvalidDependString(mycheck[1])
@@ -2594,8 +2500,7 @@ class depgraph(object):
 				for line in wrap(msg, 75):
 					print line
 			print
-			print "For more information, see MASKED PACKAGES section in the emerge man page or "
-			print "refer to the Gentoo Handbook."
+			show_mask_docs()
 		else:
 			print "\nemerge: there are no ebuilds to satisfy "+green(xinfo)+"."
 		if myparent:
@@ -2603,6 +2508,23 @@ class depgraph(object):
 		print
 
 	def _select_pkg_highest_available(self, root, atom, onlydeps=False):
+		cache_key = (root, atom, onlydeps)
+		ret = self._highest_pkg_cache.get(cache_key)
+		if ret is not None:
+			pkg, existing = ret
+			if pkg and not existing:
+				existing = self._slot_pkg_map[root].get(pkg.slot_atom)
+				if existing and existing == pkg:
+					# Update the cache to reflect that the
+					# package has been added to the graph.
+					ret = pkg, pkg
+					self._highest_pkg_cache[cache_key] = ret
+			return ret
+		ret = self._select_pkg_highest_available_imp(root, atom, onlydeps=onlydeps)
+		self._highest_pkg_cache[cache_key] = ret
+		return ret
+
+	def _select_pkg_highest_available_imp(self, root, atom, onlydeps=False):
 		pkgsettings = self.pkgsettings[root]
 		dbs = self._filtered_trees[root]["dbs"]
 		vardb = self.roots[root].trees["vartree"].dbapi
@@ -2616,6 +2538,7 @@ class depgraph(object):
 		usepkgonly = "--usepkgonly" in self.myopts
 		empty = "empty" in self.myparams
 		selective = "selective" in self.myparams
+		reinstall = False
 		noreplace = "--noreplace" in self.myopts
 		# Behavior of the "selective" parameter depends on
 		# whether or not a package matches an argument atom.
@@ -2636,7 +2559,7 @@ class depgraph(object):
 				if existing_node:
 					break
 				if installed and not find_existing_node:
-					want_reinstall = empty or \
+					want_reinstall = reinstall or empty or \
 						(found_available_arg and not selective)
 					if want_reinstall and matched_packages:
 						continue
@@ -2761,6 +2684,8 @@ class depgraph(object):
 							self._reinstall_for_flags(
 							forced_flags, old_use, old_iuse,
 							cur_use, cur_iuse)
+						if reinstall_for_flags:
+							reinstall = True
 					if not installed:
 						must_reinstall = empty or \
 							(myarg and not selective)
@@ -2836,12 +2761,18 @@ class depgraph(object):
 		e_pkg = self._slot_pkg_map[root].get(slot_atom)
 		if e_pkg:
 			return e_pkg, e_pkg
+		cache_key = (root, atom, onlydeps)
+		ret = self._installed_pkg_cache.get(cache_key)
+		if ret is not None:
+			return ret
 		metadata = dict(izip(self._mydbapi_keys,
 			graph_db.aux_get(cpv, self._mydbapi_keys)))
 		pkg = Package(cpv=cpv, built=True,
 			installed=True, type_name="installed",
 			metadata=metadata, root=root)
-		return pkg, None
+		ret = (pkg, None)
+		self._installed_pkg_cache[cache_key] = ret
+		return ret
 
 	def _complete_graph(self):
 		"""
@@ -4134,17 +4065,6 @@ class depgraph(object):
 		# TODO: Add generic support for "set problem" handlers so that
 		# the below warnings aren't special cases for world only.
 
-		masked_packages = []
-		for pkg, pkgsettings in self._masked_installed:
-			root_config = self.roots[pkg.root]
-			mreasons = get_masking_status(pkg, pkgsettings, root_config)
-			masked_packages.append((root_config, pkgsettings,
-				pkg.cpv, pkg.metadata, mreasons))
-		if masked_packages:
-			sys.stderr.write("\n" + colorize("BAD", "!!!") + \
-				" The following installed packages are masked:\n")
-			show_masked_packages(masked_packages)
-
 		if self._missing_args:
 			world_problems = False
 			if "world" in self._sets:
@@ -4206,6 +4126,19 @@ class depgraph(object):
 				msg.append("The best course of action depends on the reason that an offending\n")
 				msg.append("package.provided entry exists.\n\n")
 			sys.stderr.write("".join(msg))
+
+		masked_packages = []
+		for pkg, pkgsettings in self._masked_installed:
+			root_config = self.roots[pkg.root]
+			mreasons = get_masking_status(pkg, pkgsettings, root_config)
+			masked_packages.append((root_config, pkgsettings,
+				pkg.cpv, pkg.metadata, mreasons))
+		if masked_packages:
+			sys.stderr.write("\n" + colorize("BAD", "!!!") + \
+				" The following installed packages are masked:\n")
+			show_masked_packages(masked_packages)
+			show_mask_docs()
+			print
 
 		for pargs, kwargs in self._unsatisfied_deps_for_display:
 			self._show_unsatisfied_dep(*pargs, **kwargs)
@@ -5632,6 +5565,10 @@ def show_blocker_docs_link():
 	print "http://www.gentoo.org/doc/en/handbook/handbook-x86.xml?full=1#blocked"
 	print
 
+def show_mask_docs():
+	print "For more information, see the MASKED PACKAGES section in the emerge"
+	print "man page or refer to the Gentoo Handbook."
+
 def action_sync(settings, trees, mtimedb, myopts, myaction):
 	xterm_titles = "notitles" not in settings.features
 	emergelog(xterm_titles, " === sync")
@@ -6631,12 +6568,18 @@ def action_depclean(settings, trees, ldpath_mtimes,
 
 	remaining_atoms = []
 	if action == "depclean":
-		for atom in worldlist:
-			if vardb.match(atom):
-				remaining_atoms.append((atom, 'world', runtime))
 		for atom in syslist:
 			if vardb.match(atom):
 				remaining_atoms.append((atom, 'system', runtime))
+		if myfiles:
+			# Pull in everything that's installed since we don't want
+			# to clean any package if something depends on it.
+			remaining_atoms.extend(
+				("="+cpv, 'world', runtime) for cpv in vardb.cpv_all())
+		else:
+			for atom in worldlist:
+				if vardb.match(atom):
+					remaining_atoms.append((atom, 'world', runtime))
 	elif action == "prune":
 		for atom in syslist:
 			if vardb.match(atom):
@@ -6842,7 +6785,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 			graph.add(node, None)
 			myaux = dict(izip(aux_keys, vardb.aux_get(node, aux_keys)))
 			mydeps = []
-			usedef = vardb.aux_get(pkg, ["USE"])[0].split()
+			usedef = vardb.aux_get(node, ["USE"])[0].split()
 			for dep_type, depstr in myaux.iteritems():
 				if not depstr:
 					continue

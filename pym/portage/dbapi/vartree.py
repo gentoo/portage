@@ -345,8 +345,7 @@ class vardbapi(dbapi):
 					if e.errno != errno.ENOENT:
 						raise
 					del e
-				write_atomic(os.path.join(newpath, "PF"), new_pf+"\n")
-
+			write_atomic(os.path.join(newpath, "PF"), new_pf+"\n")
 			write_atomic(os.path.join(newpath, "CATEGORY"), mynewcat+"\n")
 			fixdbentries([mylist], newpath)
 		return moves

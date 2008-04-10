@@ -4,6 +4,7 @@
 # $Id$
 
 import errno, signal, sys, os
+from itertools import izip
 
 # for an explanation on this logic, see pym/_emerge/__init__.py
 import os
@@ -39,6 +40,7 @@ def quickpkg_main(options, args, eout):
 	config_files_excluded = 0
 	include_config = options.include_config == "y"
 	include_unmodified_config = options.include_unmodified_config == "y"
+	fix_metadata_keys = ["PF", "CATEGORY"]
 	for arg in args:
 		try:
 			atom = dep_expand(arg, mydb=vardb, settings=vartree.settings)
@@ -110,6 +112,18 @@ def quickpkg_main(options, args, eout):
 									return False
 						excluded_config_files.append(filename)
 						return True
+				existing_metadata = dict(izip(fix_metadata_keys,
+					vardb.aux_get(cpv, fix_metadata_keys)))
+				category, pf = portage.catsplit(cpv)
+				required_metadata = {}
+				required_metadata["CATEGORY"] = category
+				required_metadata["PF"] = pf
+				update_metadata = {}
+				for k, v in required_metadata.iteritems():
+					if v != existing_metadata[k]:
+						update_metadata[k] = v
+				if update_metadata:
+					vardb.aux_update(cpv, update_metadata)
 				xpdata = xpak.xpak(dblnk.dbdir)
 				binpkg_tmpfile = os.path.join(bintree.pkgdir,
 					cpv + ".tbz2." + str(os.getpid()))
