@@ -1193,21 +1193,6 @@ def show_masked_packages(masked_packages):
 			shown_licenses.add(l)
 	return have_eapi_mask
 
-def iter_atoms(deps):
-	"""Take a dependency structure as returned by paren_reduce or use_reduce
-	and iterate over all the atoms."""
-	i = iter(deps)
-	for x in i:
-		if isinstance(x, basestring):
-			if x == '||' or x.endswith('?'):
-				for x in iter_atoms(i.next()):
-					yield x
-			else:
-				yield x
-		else:
-			for x in iter_atoms(x):
-				yield x
-
 class Package(object):
 	__slots__ = ("__weakref__", "built", "cpv", "depth",
 		"installed", "metadata", "root", "onlydeps", "type_name",
@@ -1452,7 +1437,7 @@ class DepcheckCompositeDB(object):
 		self._depgraph = depgraph
 		self._root = root
 		self._match_cache = {}
-		self._cpv_tree_map = {}
+		self._cpv_pkg_map = {}
 
 	def match(self, atom):
 		ret = self._match_cache.get(atom)
@@ -1469,16 +1454,20 @@ class DepcheckCompositeDB(object):
 					arg = None
 				if arg:
 					ret = []
+			if ret is None and pkg.installed and \
+				not visible(self._depgraph.pkgsettings[pkg.root], pkg):
+				# For disjunctive || deps, this will cause alternative
+				# atoms or packages to be selected if available.
+				ret = []
 			if ret is None:
-				self._cpv_tree_map[pkg.cpv] = \
-					self._depgraph.pkg_tree_map[pkg.type_name]
+				self._cpv_pkg_map[pkg.cpv] = pkg
 				ret = [pkg.cpv]
 		self._match_cache[atom] = ret
 		return ret[:]
 
 	def aux_get(self, cpv, wants):
-		return self._depgraph.trees[self._root][
-			self._cpv_tree_map[cpv]].dbapi.aux_get(cpv, wants)
+		metadata = self._cpv_pkg_map[cpv].metadata
+		return [metadata.get(x, "") for x in wants]
 
 class depgraph(object):
 
@@ -1653,16 +1642,25 @@ class depgraph(object):
 						for parent in parents:
 							if isinstance(parent, DependencyArg):
 								pruned_list.append(parent)
-								if len(pruned_list) == max_parents:
-									break
+						# Prefer Packages instances that themselves have been
+						# pulled into collision slots.
+						for parent in parents:
+							if isinstance(parent, Package) and \
+								(parent.slot_atom, parent.root) \
+								in self._slot_collision_info:
+								pruned_list.append(parent)
 						for parent in parents:
 							if not isinstance(parent, DependencyArg):
 								pruned_list.append(parent)
-								if len(pruned_list) == max_parents:
+								if len(pruned_list) >= max_parents:
 									break
 						parents = pruned_list
 					msg.append(" pulled in by\n")
+					shown_parents = set()
 					for parent in parents:
+						if parent in shown_parents:
+							continue
+						shown_parents.add(parent)
 						msg.append(2*indent)
 						msg.append(str(parent))
 						msg.append("\n")
@@ -1770,7 +1768,9 @@ class depgraph(object):
 				myarg = None
 				if dep.root == self.target_root:
 					try:
-						myarg = self._get_arg_for_pkg(dep_pkg)
+						myarg = self._iter_atoms_for_pkg(dep_pkg).next()
+					except StopIteration:
+						pass
 					except portage.exception.InvalidDependString:
 						if not dep_pkg.installed:
 							# This shouldn't happen since the package
@@ -2040,6 +2040,40 @@ class depgraph(object):
 			return 0
 		return 1
 
+	def _dep_expand(self, root_config, atom_without_category):
+		"""
+		@param root_config: a root config instance
+		@type root_config: RootConfig
+		@returns: a list of cat/pn for any matching packages
+		"""
+		null_cp = portage.dep_getkey(insert_category_into_atom(
+			atom_without_category, "null"))
+		cat, atom_pn = portage.catsplit(null_cp)
+
+		cp_set = set()
+		for db, pkg_type, built, installed, db_keys in \
+			self._filtered_trees[root_config.root]["dbs"]:
+			cp_set.update(db.cp_all())
+		for cp in list(cp_set):
+			cat, pn = portage.catsplit(cp)
+			if pn != atom_pn:
+				cp_set.discard(cp)
+		deps = []
+		for cp in cp_set:
+			cat, pn = portage.catsplit(cp)
+			deps.append(insert_category_into_atom(
+				atom_without_category, cat))
+		return deps
+
+	def _have_new_virt(self, root, atom_cp):
+		ret = False
+		for db, pkg_type, built, installed, db_keys in \
+			self._filtered_trees[root]["dbs"]:
+			if db.cp_list(atom_cp):
+				ret = True
+				break
+		return ret
+
 	def _iter_atoms_for_pkg(self, pkg):
 		# TODO: add multiple $ROOT support
 		if pkg.root != self.target_root:
@@ -2047,35 +2081,14 @@ class depgraph(object):
 		atom_arg_map = self._atom_arg_map
 		for atom in self._set_atoms.iterAtomsForPackage(pkg):
 			atom_cp = portage.dep_getkey(atom)
-			if atom_cp != pkg.cp:
-				have_new_virt = False
-				for db, pkg_type, built, installed, db_keys in \
-					self._filtered_trees[pkg.root]["dbs"]:
-					if db.cp_list(atom_cp):
-						have_new_virt = True
-						break
-				if have_new_virt:
-					continue
+			if atom_cp != pkg.cp and \
+				self._have_new_virt(pkg.root, atom_cp):
+				continue
 			for arg in atom_arg_map[(atom, pkg.root)]:
 				if isinstance(arg, PackageArg) and \
 					arg.package != pkg:
 					continue
 				yield arg, atom
-
-	def _get_arg_for_pkg(self, pkg):
-		"""
-		Return a matching DependencyArg instance for the given Package if
-		any exist, otherwise None. An attempt will be made to return the most
-		specific match (PackageArg type is the most specific).
-
-		This will raise an InvalidDependString exception if PROVIDE is invalid.
-		"""
-		any_arg = None
-		for arg, atom in self._iter_atoms_for_pkg(pkg):
-			if isinstance(arg, PackageArg):
-				return arg
-			any_arg = arg
-		return any_arg
 
 	def select_files(self, myfiles):
 		"""Given a list of .tbz2s, .ebuilds sets, and deps, create the
@@ -2226,37 +2239,40 @@ class depgraph(object):
 					args.append(AtomArg(arg=x, atom=x,
 						root_config=root_config))
 					continue
-				try:
-					try:
-						for db, pkg_type, built, installed, db_keys in dbs:
-							mykey = portage.dep_expand(x,
-								mydb=db, settings=pkgsettings)
-							if portage.dep_getkey(mykey).startswith("null/"):
-								continue
-							break
-					except ValueError, e:
-						if not e.args or not isinstance(e.args[0], list) or \
-							len(e.args[0]) < 2:
-							raise
-						mykey = portage.dep_expand(x,
-							mydb=vardb, settings=pkgsettings)
-						cp = portage.dep_getkey(mykey)
-						if cp.startswith("null/") or \
-							cp not in e[0]:
-							raise
-						del e
-					args.append(AtomArg(arg=x, atom=mykey,
-						root_config=root_config))
-				except ValueError, e:
-					if not e.args or not isinstance(e.args[0], list) or \
-						len(e.args[0]) < 2:
-						raise
+				expanded_atoms = self._dep_expand(root_config, x)
+				installed_cp_set = set()
+				for atom in expanded_atoms:
+					if vardb.match(atom):
+						installed_cp_set.add(portage.dep_getkey(atom))
+				if len(expanded_atoms) > 1 and len(installed_cp_set) == 1:
+					installed_cp = iter(installed_cp_set).next()
+					expanded_atoms = [atom for atom in expanded_atoms \
+						if portage.dep_getkey(atom) == installed_cp]
+
+				if len(expanded_atoms) > 1:
 					print "\n\n!!! The short ebuild name \"" + x + "\" is ambiguous.  Please specify"
 					print "!!! one of the following fully-qualified ebuild names instead:\n"
-					for i in e.args[0]:
+					expanded_atoms = set(portage.dep_getkey(atom) \
+						for atom in expanded_atoms)
+					for i in sorted(expanded_atoms):
 						print "    " + green(i)
 					print
 					return False, myfavorites
+				if expanded_atoms:
+					atom = expanded_atoms[0]
+				else:
+					null_atom = insert_category_into_atom(x, "null")
+					null_cp = portage.dep_getkey(null_atom)
+					cat, atom_pn = portage.catsplit(null_cp)
+					virts_p = root_config.settings.get_virts_p().get(atom_pn)
+					if virts_p:
+						# Allow the depgraph to choose which virtual.
+						atom = insert_category_into_atom(x, "virtual")
+					else:
+						atom = insert_category_into_atom(x, "null")
+
+				args.append(AtomArg(arg=x, atom=atom,
+					root_config=root_config))
 
 		if "--update" in self.myopts:
 			# Enable greedy SLOT atoms for atoms given as arguments.
@@ -2271,7 +2287,7 @@ class depgraph(object):
 					continue
 				atom_cp = portage.dep_getkey(arg.atom)
 				slots = set()
-				for cpv in vardb.match(atom_cp):
+				for cpv in vardb.match(arg.atom):
 					slots.add(vardb.aux_get(cpv, ["SLOT"])[0])
 				for slot in slots:
 					greedy_atoms.append(
@@ -2603,9 +2619,15 @@ class depgraph(object):
 							if not installed:
 								# masked by corruption
 								continue
-					if not installed:
-						if myarg:
-							found_available_arg = True
+					if not installed and myarg:
+						found_available_arg = True
+					if not installed or (installed and matched_packages):
+						# Only enforce visibility on installed packages
+						# if there is at least one other visible package
+						# available. By filtering installed masked packages
+						# here, packages that have been masked since they
+						# were installed can be automatically downgraded
+						# to an unmasked version.
 						if not visible(pkgsettings, pkg):
 							continue
 					if not built and not calculated_use:
@@ -5541,6 +5563,26 @@ def checkUpdatedNewsItems(portdb, vardb, NEWS_PATH, UNREAD_PATH, repo_id):
 	from portage.news import NewsManager
 	manager = NewsManager(portdb, vardb, NEWS_PATH, UNREAD_PATH)
 	return manager.getUnreadItems( repo_id, update=True )
+
+def expand_virtual_atom(x):
+	"""
+	Take an atom without a category and insert virtual/ for the
+	category. This works correctly with atoms that have operators.
+
+	@param x: an atom without a category
+	@type x: String
+	@returns: the atom with virtual/ inserted for the category, or None
+	"""
+	return insert_category_into_atom(atom, "virtual")
+
+def insert_category_into_atom(atom, category):
+	alphanum = re.search(r'\w', atom)
+	if alphanum:
+		ret = atom[:alphanum.start()] + "%s/" % category + \
+			atom[alphanum.start():]
+	else:
+		ret = None
+	return ret
 
 def is_valid_package_atom(x):
 	if "/" not in x:

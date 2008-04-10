@@ -2538,10 +2538,10 @@ class config(object):
 
 		self.already_in_regenerate = 0
 
-	def get_virts_p(self, myroot):
+	def get_virts_p(self, myroot=None):
 		if self.virts_p:
 			return self.virts_p
-		virts = self.getvirtuals(myroot)
+		virts = self.getvirtuals()
 		if virts:
 			for x in virts:
 				vkeysplit = x.split("/")
@@ -4291,12 +4291,34 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 					if droppriv:
 						st = os.stat(mydir)
 						if st.st_gid != portage_gid or \
-							not stat.S_IMODE(st.st_mode) & dirmode:
+							not dirmode == (stat.S_IMODE(st.st_mode) & dirmode):
 							droppriv_fix = True
+						if not droppriv_fix:
+							# Check permissions of files in the directory.
+							for filename in os.listdir(mydir):
+								try:
+									subdir_st = os.lstat(
+										os.path.join(mydir, filename))
+								except OSError:
+									continue
+								if subdir_st.st_gid != portage_gid or \
+									((stat.S_ISDIR(subdir_st.st_mode) and \
+									not dirmode == (stat.S_IMODE(subdir_st.st_mode) & dirmode)) or \
+									(not stat.S_ISDIR(subdir_st.st_mode) and \
+									not filemode == (stat.S_IMODE(subdir_st.st_mode) & filemode))):
+									droppriv_fix = True
+									break
+					if droppriv_fix:
+						writemsg(colorize("WARN", " * ") + \
+							 "Adjusting permissions " + \
+							 "for FEATURES=userpriv: '%s'\n" % mydir,
+							noiselevel=-1)
+					elif modified:
+						writemsg(colorize("WARN", " * ") + \
+							 "Adjusting permissions " + \
+							 "for FEATURES=%s: '%s'\n" % (myfeature, mydir),
+							noiselevel=-1)
 					if modified or kwargs["always_recurse"] or droppriv_fix:
-						if modified:
-							writemsg("Adjusting permissions recursively: '%s'\n" % mydir,
-								noiselevel=-1)
 						def onerror(e):
 							raise	# The feature is disabled if a single error
 									# occurs during permissions adjustment.

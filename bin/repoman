@@ -472,6 +472,11 @@ trees = portage.create_trees()
 trees["/"]["porttree"].settings = repoman_settings
 portdb = trees["/"]["porttree"].dbapi
 portdb.mysettings = repoman_settings
+# We really only need to cache the metadata that's necessary for visibility
+# filtering. Anything else can be discarded to reduce memory consumption.
+for k in ("DEPEND", "IUSE", "LICENCE", "PDEPEND",
+	"PROVIDE", "RDEPEND", "RESTRICT", "repository"):
+	portdb._aux_cache_keys.discard(k)
 # dep_zapdeps looks at the vardbapi, but it shouldn't for repoman.
 del trees["/"]["vartree"]
 

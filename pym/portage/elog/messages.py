@@ -25,16 +25,24 @@ def collect_ebuild_messages(path):
 	mylogfiles.reverse()
 	logentries = {}
 	for msgfunction in mylogfiles:
+		filename = os.path.join(path, msgfunction)
 		if msgfunction not in EBUILD_PHASES:
-			writemsg("!!! can't process invalid log file: %s\n" % f,
+			writemsg("!!! can't process invalid log file: %s\n" % filename,
 				noiselevel=-1)
 			continue
 		if not msgfunction in logentries:
 			logentries[msgfunction] = []
 		lastmsgtype = None
 		msgcontent = []
-		for l in open(os.path.join(path, msgfunction), "r").readlines():
-			msgtype, msg = l.split(" ", 1)
+		for l in open(filename, "r").read().split("\0"):
+			if not l:
+				continue
+			try:
+				msgtype, msg = l.split(" ", 1)
+			except ValueError:
+				writemsg("!!! malformed entry in " + \
+					"log file: '%s'\n" % filename, noiselevel=-1)
+				continue
 			if lastmsgtype is None:
 				lastmsgtype = msgtype
 			if msgtype == lastmsgtype:
@@ -44,6 +52,8 @@ def collect_ebuild_messages(path):
 					logentries[msgfunction].append((lastmsgtype, msgcontent))
 				msgcontent = [msg]
 			lastmsgtype = msgtype
+		if msgcontent:
+			logentries[msgfunction].append((lastmsgtype, msgcontent))
 
 	# clean logfiles to avoid repetitions
 	for f in mylogfiles:

@@ -669,10 +669,15 @@ def _cmp_cpv(d1, d2):
 class PackageIndex(object):
 
 	def __init__(self, default_header_data=None, default_pkg_data=None,
-		inherited_keys=None):
+		inherited_keys=None, translated_keys=None):
 		self._default_header_data = default_header_data
 		self._default_pkg_data = default_pkg_data
 		self._inherited_keys = inherited_keys
+		self._write_translation_map = {}
+		self._read_translation_map = {}
+		if translated_keys:
+			self._write_translation_map.update(translated_keys)
+			self._read_translation_map.update(((y, x) for (x, y) in translated_keys))
 		self.header = {}
 		if self._default_header_data:
 			self.header.update(self._default_header_data)
@@ -691,12 +696,13 @@ class PackageIndex(object):
 			k, v = line
 			if v:
 				v = v[1:]
-			d[k] = v
+			d[self._read_translation_map.get(k, k)] = v
 		return d
-	
+
 	def _writepkgindex(self, pkgfile, items):
 		for k, v in items:
-			pkgfile.write("%s: %s\n" % (k, v))
+			pkgfile.write("%s: %s\n" % \
+				(self._write_translation_map.get(k, k), v))
 		pkgfile.write("\n")
 
 	def read(self, pkgfile):

@@ -181,6 +181,10 @@ class binarytree(object):
 			self._pkgindex_default_header_data = {
 				"repository":""
 			}
+			self._pkgindex_translated_keys = (
+				("DESCRIPTION"   ,   "DESC"),
+				("repository"    ,   "REPO"),
+			)
 
 	def move_ent(self, mylist):
 		if not self.populated:
@@ -821,7 +825,8 @@ class binarytree(object):
 		return portage.getbinpkg.PackageIndex(
 			default_header_data=self._pkgindex_default_header_data,
 			default_pkg_data=self._pkgindex_default_pkg_data,
-			inherited_keys=self._pkgindex_inherited_keys)
+			inherited_keys=self._pkgindex_inherited_keys,
+			translated_keys=self._pkgindex_translated_keys)
 
 	def _update_pkgindex_header(self, header):
 		portdir = normalize_path(os.path.realpath(self.settings["PORTDIR"]))
@@ -856,8 +861,6 @@ class binarytree(object):
 		return False
 
 	def _eval_use_flags(self, cpv, metadata):
-		metadata["DESC"] = metadata["DESCRIPTION"]
-		del metadata["DESCRIPTION"]
 		use = metadata["USE"].split()
 		raw_use = use
 		iuse = set(f.lstrip("-+") for f in metadata["IUSE"].split())
