@@ -20,6 +20,8 @@ import re
 from itertools import izip
 
 class bindbapi(fakedbapi):
+	_known_keys = frozenset(list(fakedbapi._known_keys) + \
+		["CHOST", "repository", "USE"])
 	def __init__(self, mybintree=None, **kwargs):
 		fakedbapi.__init__(self, **kwargs)
 		self.bintree = mybintree
@@ -28,8 +30,10 @@ class bindbapi(fakedbapi):
 		self.cpdict={}
 		# Selectively cache metadata in order to optimize dep matching.
 		self._aux_cache_keys = set(
-			["CHOST", "EAPI", "IUSE", "KEYWORDS",
-			"LICENSE", "PROVIDE", "SLOT", "USE", "EPREFIX"])
+			["CHOST", "DEPEND", "EAPI", "IUSE", "KEYWORDS",
+			"LICENSE", "PDEPEND", "PROVIDE",
+			"RDEPEND", "repository", "RESTRICT", "SLOT", "USE",
+			"EPREFIX"])
 		self._aux_cache = {}
 
 	def match(self, *pargs, **kwargs):
@@ -41,10 +45,11 @@ class bindbapi(fakedbapi):
 		if self.bintree and not self.bintree.populated:
 			self.bintree.populate()
 		cache_me = False
-		if not set(wants).difference(self._aux_cache_keys):
+		if not self._known_keys.intersection(
+			wants).difference(self._aux_cache_keys):
 			aux_cache = self._aux_cache.get(mycpv)
 			if aux_cache is not None:
-				return [aux_cache[x] for x in wants]
+				return [aux_cache.get(x, "") for x in wants]
 			cache_me = True
 		mysplit = mycpv.split("/")
 		mylist = []
@@ -149,7 +154,8 @@ class binarytree(object):
 			self._pkgindex_aux_keys = \
 				["CHOST", "DEPEND", "DESCRIPTION", "EAPI",
 				"IUSE", "KEYWORDS", "LICENSE", "PDEPEND",
-				"PROVIDE", "RDEPEND", "SLOT", "USE", "EPREFIX"]
+				"PROVIDE", "RDEPEND", "repository", "SLOT", "USE",
+				"EPREFIX"]
 			self._pkgindex_aux_keys = list(self._pkgindex_aux_keys)
 			self._pkgindex_header_keys = set(["ACCEPT_KEYWORDS", "CBUILD",
 				"CHOST", "CONFIG_PROTECT", "CONFIG_PROTECT_MASK", "FEATURES",
@@ -159,14 +165,22 @@ class binarytree(object):
 			else:
 				eapi = str(EAPI)
 			self._pkgindex_default_pkg_data = {
+				"DEPEND"  : "",
 				"EAPI"    : eapi,
 				"IUSE"    : "",
+				"KEYWORDS": "",
 				"LICENSE" : "",
+				"PDEPEND" : "",
 				"PROVIDE" : "",
+				"RDEPEND" : "",
+				"RESTRICT": "",
 				"SLOT"    : "0",
 				"USE"     : ""
 			}
-			self._pkgindex_inherited_keys = ["CHOST", "EPREFIX"]
+			self._pkgindex_inherited_keys = ["CHOST", "repository", "EPREFIX"]
+			self._pkgindex_default_header_data = {
+				"repository":""
+			}
 
 	def move_ent(self, mylist):
 		if not self.populated:
@@ -805,6 +819,7 @@ class binarytree(object):
 
 	def _new_pkgindex(self):
 		return portage.getbinpkg.PackageIndex(
+			default_header_data=self._pkgindex_default_header_data,
 			default_pkg_data=self._pkgindex_default_pkg_data,
 			inherited_keys=self._pkgindex_inherited_keys)
 
@@ -845,7 +860,7 @@ class binarytree(object):
 		del metadata["DESCRIPTION"]
 		use = metadata["USE"].split()
 		raw_use = use
-		iuse = set(metadata["IUSE"].split())
+		iuse = set(f.lstrip("-+") for f in metadata["IUSE"].split())
 		use = [f for f in use if f in iuse]
 		use.sort()
 		metadata["USE"] = " ".join(use)

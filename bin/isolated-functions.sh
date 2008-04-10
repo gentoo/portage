@@ -15,7 +15,7 @@ shopt -s extdebug
 #            [whitespacing for filenames],
 #            [whitespacing for line numbers])
 dump_trace() {
-	local funcname="" sourcefile="" lineno="" n e s="yes"
+	local funcname="" sourcefile="" lineno="" s="yes" n p
 	declare -i strip=${1:-1}
 	local filespacing=$2 linespacing=$3
 
@@ -23,14 +23,19 @@ dump_trace() {
 	# that the user will not be interested in. Therefore, the stack trace
 	# should only show calls that come after qa_call().
 	(( n = ${#FUNCNAME[@]} - 1 ))
+	(( p = ${#BASH_ARGV[@]} ))
 	while (( n > 0 )) ; do
 		[ "${FUNCNAME[${n}]}" == "qa_call" ] && break
+		(( p -= ${BASH_ARGC[${n}]} ))
 		(( n-- ))
 	done
-	(( n == 0 )) && (( n = ${#FUNCNAME[@]} - 1 ))
+	if (( n == 0 )) ; then
+		(( n = ${#FUNCNAME[@]} - 1 ))
+		(( p = ${#BASH_ARGV[@]} ))
+	fi
 
 	eerror "Call stack:"
-	for (( p = ${#BASH_ARGV[@]} ; n > ${strip} ; n-- )) ; do
+	while (( n > ${strip} )) ; do
 		funcname=${FUNCNAME[${n} - 1]}
 		sourcefile=$(basename ${BASH_SOURCE[${n}]})
 		lineno=${BASH_LINENO[${n} - 1]}
@@ -44,6 +49,7 @@ dump_trace() {
 			(( p -= ${BASH_ARGC[${n} - 1]} ))
 		fi
 		eerror "  $(printf "%${filespacing}s" "${sourcefile}"):$(printf "%${linespacing}s" "${lineno}"): <call ${funcname}${args:+ ${args}}>"
+		(( n-- ))
 	done
 }
 
@@ -171,7 +177,7 @@ elog_base() {
 			return 1
 			;;
 	esac
-	echo -e "$*" >> "${T}/logging/${EBUILD_PHASE:-other}.${messagetype}"
+	echo -e "${messagetype} $*" >> "${T}/logging/${EBUILD_PHASE:-other}"
 	return 0
 }
 

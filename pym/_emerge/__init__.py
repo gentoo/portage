@@ -1447,7 +1447,7 @@ def show_invalid_depstring_notice(parent_node, depstring, error_msg):
 		f.add_flowing_data(x)
 	f.end_paragraph(1)
 
-class CompositeDbapi(object):
+class DepcheckCompositeDB(object):
 	def __init__(self, depgraph, root):
 		self._depgraph = depgraph
 		self._root = root
@@ -1464,12 +1464,10 @@ class CompositeDbapi(object):
 		else:
 			if pkg.installed and "selective" not in self._depgraph.myparams:
 				try:
-					self._depgraph._iter_args_for_pkg(pkg).next()
-				except StopIteration:
-					pass
-				except portage.exception.InvalidDependString:
-					pass
-				else:
+					arg = self._depgraph._iter_atoms_for_pkg(pkg).next()
+				except (StopIteration, portage.exception.InvalidDependString):
+					arg = None
+				if arg:
 					ret = []
 			if ret is None:
 				self._cpv_tree_map[pkg.cpv] = \
@@ -1560,7 +1558,7 @@ class depgraph(object):
 			self._filtered_trees[myroot]["vartree"] = self.trees[myroot]["vartree"]
 			def filtered_tree():
 				pass
-			filtered_tree.dbapi = CompositeDbapi(self, myroot)
+			filtered_tree.dbapi = DepcheckCompositeDB(self, myroot)
 			self._filtered_trees[myroot]["porttree"] = filtered_tree
 			dbs = []
 			portdb = self.trees[myroot]["porttree"].dbapi
@@ -1613,6 +1611,8 @@ class depgraph(object):
 		self._select_package = self._select_pkg_highest_available
 		self._highest_pkg_cache = {}
 		self._installed_pkg_cache = {}
+		# All Package instances
+		self._pkg_cache = {}
 
 	def _show_slot_collision_notice(self):
 		"""Show an informational message advising the user to mask one of the
@@ -2040,35 +2040,22 @@ class depgraph(object):
 			return 0
 		return 1
 
-	def _greedy_slot_atoms(self, root, atom):
-		"""Generate SLOT atoms for the highest available match and
-		any matching installed SLOTs that are also available."""
-		vardb = self.roots[root].trees["vartree"].dbapi
-		mykey = portage.dep_getkey(atom)
-		myslots = set()
-		for cpv in vardb.match(mykey):
-			myslots.add(vardb.aux_get(cpv, ["SLOT"])[0])
-		for myslot in myslots:
-			yield "%s:%s" % (mykey, myslot)
-
-	def _iter_args_for_pkg(self, pkg):
-		# TODO: add multiple $ROOT support
-		if pkg.root != self.target_root:
-			return
-		atom_arg_map = self._atom_arg_map
-		for atom in self._set_atoms.iterAtomsForPackage(pkg):
-			for arg in atom_arg_map[(atom, pkg.root)]:
-				if isinstance(arg, PackageArg) and \
-					arg.package != pkg:
-					continue
-				yield arg
-
 	def _iter_atoms_for_pkg(self, pkg):
 		# TODO: add multiple $ROOT support
 		if pkg.root != self.target_root:
 			return
 		atom_arg_map = self._atom_arg_map
 		for atom in self._set_atoms.iterAtomsForPackage(pkg):
+			atom_cp = portage.dep_getkey(atom)
+			if atom_cp != pkg.cp:
+				have_new_virt = False
+				for db, pkg_type, built, installed, db_keys in \
+					self._filtered_trees[pkg.root]["dbs"]:
+					if db.cp_list(atom_cp):
+						have_new_virt = True
+						break
+				if have_new_virt:
+					continue
 			for arg in atom_arg_map[(atom, pkg.root)]:
 				if isinstance(arg, PackageArg) and \
 					arg.package != pkg:
@@ -2084,7 +2071,7 @@ class depgraph(object):
 		This will raise an InvalidDependString exception if PROVIDE is invalid.
 		"""
 		any_arg = None
-		for arg in self._iter_args_for_pkg(pkg):
+		for arg, atom in self._iter_atoms_for_pkg(pkg):
 			if isinstance(arg, PackageArg):
 				return arg
 			any_arg = arg
@@ -2282,9 +2269,13 @@ class depgraph(object):
 				greedy_atoms.append(arg)
 				if not isinstance(arg, (AtomArg, PackageArg)):
 					continue
-				for greedy_atom in self._greedy_slot_atoms(myroot, arg.atom):
+				atom_cp = portage.dep_getkey(arg.atom)
+				slots = set()
+				for cpv in vardb.match(atom_cp):
+					slots.add(vardb.aux_get(cpv, ["SLOT"])[0])
+				for slot in slots:
 					greedy_atoms.append(
-						AtomArg(arg=arg.arg, atom=greedy_atom,
+						AtomArg(arg=arg.arg, atom="%s:%s" % (atom_cp, slot),
 							root_config=root_config))
 			args = greedy_atoms
 			del greedy_atoms
@@ -2567,6 +2558,11 @@ class depgraph(object):
 					cpv_list = db.xmatch("match-all", atom)
 				else:
 					cpv_list = db.match(atom)
+				if not cpv_list:
+					continue
+				pkg_status = "merge"
+				if installed or onlydeps:
+					pkg_status = "nomerge"
 				# descending order
 				cpv_list.reverse()
 				for cpv in cpv_list:
@@ -2575,36 +2571,48 @@ class depgraph(object):
 						cpv in vardb.match(atom):
 						break
 					reinstall_for_flags = None
-					try:
-						metadata = dict(izip(db_keys,
-							db.aux_get(cpv, db_keys)))
-					except KeyError:
-						continue
-					if not built:
-						if "?" in metadata["LICENSE"]:
+					cache_key = (pkg_type, root, cpv, pkg_status)
+					calculated_use = True
+					pkg = self._pkg_cache.get(cache_key)
+					if pkg is None:
+						calculated_use = False
+						try:
+							metadata = dict(izip(self._mydbapi_keys,
+								db.aux_get(cpv, self._mydbapi_keys)))
+						except KeyError:
+							continue
+						if not built and ("?" in metadata["LICENSE"] or \
+							"?" in metadata["PROVIDE"]):
+							# This is avoided whenever possible because
+							# it's expensive. It only needs to be done here
+							# if it has an effect on visibility.
 							pkgsettings.setcpv(cpv, mydb=metadata)
 							metadata["USE"] = pkgsettings["PORTAGE_USE"]
-						else:
-							metadata["USE"] = ""
+							calculated_use = True
+						pkg = Package(built=built, cpv=cpv,
+							installed=installed, metadata=metadata,
+							onlydeps=onlydeps, root=root, type_name=pkg_type)
+						self._pkg_cache[pkg] = pkg
 					myarg = None
 					if root == self.target_root:
 						try:
-							myarg = self._get_arg_for_pkg(
-								Package(type_name=pkg_type, root=root,
-									cpv=cpv, metadata=metadata,
-									built=built, installed=installed,
-									onlydeps=onlydeps))
+							myarg = self._iter_atoms_for_pkg(pkg).next()
+						except StopIteration:
+							pass
 						except portage.exception.InvalidDependString:
 							if not installed:
 								# masked by corruption
 								continue
-					pkg = Package(built=built, cpv=cpv, installed=installed,
-						metadata=metadata, type_name=pkg_type)
 					if not installed:
 						if myarg:
 							found_available_arg = True
 						if not visible(pkgsettings, pkg):
 							continue
+					if not built and not calculated_use:
+						# This is avoided whenever possible because
+						# it's expensive.
+						pkgsettings.setcpv(cpv, mydb=pkg.metadata)
+						pkg.metadata["USE"] = pkgsettings["PORTAGE_USE"]
 					if pkg.cp == atom_cp:
 						if highest_version is None:
 							highest_version = pkg
@@ -2616,9 +2624,7 @@ class depgraph(object):
 					# will always end with a break statement below
 					# this point.
 					if find_existing_node:
-						slot_atom = "%s:%s" % (
-							portage.cpv_getkey(cpv), metadata["SLOT"])
-						e_pkg = self._slot_pkg_map[root].get(slot_atom)
+						e_pkg = self._slot_pkg_map[root].get(pkg.slot_atom)
 						if not e_pkg:
 							break
 						cpv_slot = "%s:%s" % \
@@ -2642,9 +2648,9 @@ class depgraph(object):
 						("--newuse" in self.myopts or \
 						"--reinstall" in self.myopts):
 						iuses = set(filter_iuse_defaults(
-							metadata["IUSE"].split()))
-						old_use = metadata["USE"].split()
-						mydb = metadata
+							pkg.metadata["IUSE"].split()))
+						old_use = pkg.metadata["USE"].split()
+						mydb = pkg.metadata
 						if myeb and not usepkgonly:
 							mydb = portdb
 						if myeb:
@@ -2670,7 +2676,7 @@ class depgraph(object):
 						("--newuse" in self.myopts or \
 						"--reinstall" in self.myopts) and \
 						cpv in vardb.match(atom):
-						pkgsettings.setcpv(cpv, mydb=metadata)
+						pkgsettings.setcpv(cpv, mydb=pkg.metadata)
 						forced_flags = set()
 						forced_flags.update(pkgsettings.useforce)
 						forced_flags.update(pkgsettings.usemask)
@@ -2679,7 +2685,7 @@ class depgraph(object):
 							vardb.aux_get(cpv, ["IUSE"])[0].split()))
 						cur_use = pkgsettings["PORTAGE_USE"].split()
 						cur_iuse = set(filter_iuse_defaults(
-							metadata["IUSE"].split()))
+							pkg.metadata["IUSE"].split()))
 						reinstall_for_flags = \
 							self._reinstall_for_flags(
 							forced_flags, old_use, old_iuse,
@@ -2693,22 +2699,8 @@ class depgraph(object):
 							not must_reinstall and \
 							cpv in vardb.match(atom):
 							break
-					# Metadata accessed above is cached internally by
-					# each db in order to optimize visibility checks.
-					# Now that all possible checks visibility checks
-					# are complete, it's time to pull the rest of the
-					# metadata (including *DEPEND). This part is more
-					# expensive, so avoid it whenever possible.
-					metadata.update(izip(self._mydbapi_keys,
-						db.aux_get(cpv, self._mydbapi_keys)))
 					if not built:
-						pkgsettings.setcpv(cpv, mydb=metadata)
-						metadata["USE"] = pkgsettings["PORTAGE_USE"]
 						myeb = cpv
-					pkg = Package(type_name=pkg_type, root=root,
-						cpv=cpv, metadata=metadata,
-						built=built, installed=installed,
-						onlydeps=onlydeps)
 					matched_packages.append(pkg)
 					if reinstall_for_flags:
 						self._reinstall_nodes[pkg] = \

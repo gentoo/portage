@@ -24,16 +24,27 @@ def collect_ebuild_messages(path):
 	# exploit listdir() file order so we process log entries in chronological order
 	mylogfiles.reverse()
 	logentries = {}
-	for f in mylogfiles:
-		msgfunction, msgtype = f.split(".")
+	for msgfunction in mylogfiles:
 		if msgfunction not in EBUILD_PHASES:
 			writemsg("!!! can't process invalid log file: %s\n" % f,
 				noiselevel=-1)
 			continue
 		if not msgfunction in logentries:
 			logentries[msgfunction] = []
-		msgcontent = open(os.path.join(path, f), "r").readlines()
-		logentries[msgfunction].append((msgtype, msgcontent))
+		lastmsgtype = None
+		msgcontent = []
+		for l in open(os.path.join(path, msgfunction), "r").readlines():
+			msgtype, msg = l.split(" ", 1)
+			if lastmsgtype is None:
+				lastmsgtype = msgtype
+			if msgtype == lastmsgtype:
+				msgcontent.append(msg)
+			else:
+				if msgcontent:
+					logentries[msgfunction].append((lastmsgtype, msgcontent))
+				msgcontent = [msg]
+			lastmsgtype = msgtype
+
 	# clean logfiles to avoid repetitions
 	for f in mylogfiles:
 		try:

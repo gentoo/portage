@@ -8,7 +8,7 @@ from portage.dep import dep_getslot, dep_getkey, match_from_list
 from portage.locks import unlockfile
 from portage.output import red
 from portage.util import writemsg
-from portage import dep_expand
+from portage import auxdbkeys, dep_expand
 from portage.versions import catpkgsplit, catsplit, pkgcmp
 
 
@@ -16,6 +16,8 @@ class dbapi(object):
 	_category_re = re.compile(r'^\w[-.+\w]*$')
 	_pkg_dir_name_re = re.compile(r'^\w[-+\w]*$')
 	_categories = None
+	_known_keys = frozenset(x for x in auxdbkeys
+		if not x.startswith("UNUSED_0"))
 	def __init__(self):
 		pass
 
