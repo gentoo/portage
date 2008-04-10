@@ -3832,7 +3832,6 @@ class depgraph(object):
 
 		for mylist_index in xrange(len(mylist)):
 			x, depth, ordered = mylist[mylist_index]
-			pkg_node = tuple(x)
 			pkg_type = x[0]
 			myroot = x[1]
 			pkg_key = x[2]
@@ -3864,17 +3863,16 @@ class depgraph(object):
 					addl += bad(" (is blocking %s)") % block_parents
 				blockers.append(addl)
 			else:
+				pkg = self._pkg_cache[tuple(x)]
+				metadata = pkg.metadata
 				pkg_status = x[3]
 				pkg_merge = ordered and pkg_status != "nomerge"
-				if pkg_node in self._slot_collision_nodes or \
-					(pkg_status == "nomerge" and pkg_type != "installed"):
+				if pkg in self._slot_collision_nodes or pkg.onlydeps:
 					# The metadata isn't cached due to a slot collision or
 					# --onlydeps.
 					mydbapi = self.trees[myroot][self.pkg_tree_map[pkg_type]].dbapi
 				else:
 					mydbapi = self.mydbapi[myroot] # contains cached metadata
-				metadata = dict(izip(self._mydbapi_keys,
-					mydbapi.aux_get(pkg_key, self._mydbapi_keys)))
 				ebuild_path = None
 				repo_name = metadata["repository"]
 				built = pkg_type != "ebuild"
@@ -3885,13 +3883,8 @@ class depgraph(object):
 						raise portage_exception.PackageNotFound(pkg_key)
 					repo_path_real = os.path.dirname(os.path.dirname(
 						os.path.dirname(ebuild_path)))
-					pkgsettings.setcpv(pkg_key, mydb=mydbapi)
-					metadata["USE"] = pkgsettings["PORTAGE_USE"]
 				else:
 					repo_path_real = portdb.getRepositoryPath(repo_name)
-				pkg_node = Package(type_name=pkg_type, root=myroot,
-					cpv=pkg_key, built=built, installed=installed,
-					metadata=metadata)
 				pkg_use = metadata["USE"].split()
 				try:
 					restrict = flatten(use_reduce(paren_reduce(
@@ -4041,7 +4034,7 @@ class depgraph(object):
 					# Prevent USE_EXPAND_HIDDEN flags from being hidden if they
 					# are the only thing that triggered reinstallation.
 					reinst_flags_map = {}
-					reinstall_for_flags = self._reinstall_nodes.get(pkg_node)
+					reinstall_for_flags = self._reinstall_nodes.get(pkg)
 					reinst_expand_map = None
 					if reinstall_for_flags:
 						reinst_flags_map = map_to_use_expand(
