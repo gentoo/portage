@@ -1455,6 +1455,85 @@ class DepcheckCompositeDB(object):
 		metadata = self._cpv_pkg_map[cpv].metadata
 		return [metadata.get(x, "") for x in wants]
 
+class PackageVirtualDbapi(portage.dbapi):
+	"""
+	A dbapi-like interface class that represents the state of the installed
+	package database as new packages are installed, replacing any packages
+	that previously existed in the same slot. The main difference between
+	this class and fakedbapi is that this one uses Package instances
+	internally (passed in via cpv_inject() and cpv_remove() calls).
+	"""
+	def __init__(self, settings):
+		portage.dbapi.__init__(self)
+		self.settings = settings
+		self._match_cache = {}
+		self._cp_map = {}
+		self._cpv_map = {}
+
+	def _clear_cache(self):
+		if self._categories is not None:
+			self._categories = None
+		if self._match_cache:
+			self._match_cache = {}
+
+	def match(self, origdep, use_cache=1):
+		result = self._match_cache.get(origdep)
+		if result is not None:
+			return result[:]
+		result = portage.dbapi.match(self, origdep, use_cache=use_cache)
+		self._match_cache[origdep] = result
+		return result[:]
+
+	def cpv_exists(self, cpv):
+		return cpv in self._cpv_map
+
+	def cp_list(self, mycp, use_cache=1):
+		cachelist = self._match_cache.get(mycp)
+		# cp_list() doesn't expand old-style virtuals
+		if cachelist and cachelist[0].startswith(mycp):
+			return cachelist[:]
+		cpv_list = self._cp_map.get(mycp)
+		if cpv_list is None:
+			cpv_list = []
+		else:
+			cpv_list = [pkg.cpv for pkg in cpv_list]
+		self._cpv_sort_ascending(cpv_list)
+		if not (not cpv_list and mycp.startswith("virtual/")):
+			self._match_cache[mycp] = cpv_list
+		return cpv_list[:]
+
+	def cp_all(self):
+		return list(self._cp_map)
+
+	def cpv_all(self):
+		return list(self._cpv_map)
+
+	def cpv_inject(self, pkg):
+		cp_list = self._cp_map.get(pkg.cp)
+		if cp_list is None:
+			cp_list = []
+			self._cp_map[pkg.cp] = cp_list
+		for e_pkg in cp_list:
+			if e_pkg.slot_atom == pkg.slot_atom:
+				if e_pkg == pkg:
+					return
+				self.cpv_remove(e_pkg)
+		cp_list.append(pkg)
+		self._cpv_map[pkg.cpv] = pkg
+		self._clear_cache()
+
+	def cpv_remove(self, pkg):
+		old_pkg = self._cpv_map.get(pkg.cpv)
+		if old_pkg != pkg:
+			raise KeyError(pkg)
+		self._cp_map[pkg.cp].remove(pkg)
+		del self._cpv_map[pkg.cpv]
+		self._clear_cache()
+
+	def aux_get(self, cpv, wants):
+		metadata = self._cpv_map[cpv].metadata
+		return [metadata.get(x, "") for x in wants]
+
 class depgraph(object):
 
 	pkg_tree_map = {
@@ -1493,6 +1572,8 @@ class depgraph(object):
 		# Contains installed packages and new packages that have been added
 		# to the graph.
 		self._graph_trees = {}
+		# All Package instances
+		self._pkg_cache = {}
 		for myroot in trees:
 			self.trees[myroot] = {}
 			for tree in ("porttree", "bintree"):
@@ -1509,19 +1590,22 @@ class depgraph(object):
 			# the FakeVartree instead of the real one.
 			self.roots[myroot] = RootConfig(self.trees[myroot],
 				trees[myroot]["root_config"].setconfig)
+			preload_installed_pkgs = "--nodeps" not in self.myopts and \
+				"--buildpkgonly" not in self.myopts
 			# This fakedbapi instance will model the state that the vdb will
 			# have after new packages have been installed.
-			fakedb = portage.fakedbapi(settings=self.pkgsettings[myroot])
-			self.mydbapi[myroot] = fakedb
-			if "--nodeps" not in self.myopts and \
-				"--buildpkgonly" not in self.myopts:
-				# --nodeps bypasses this, since it isn't needed in this case
-				# and the cache pulls might trigger (slow) cache generation.
-				for pkg in vardb.cpv_all():
+			fakedb = PackageVirtualDbapi(vardb.settings)
+			if preload_installed_pkgs:
+				for cpv in vardb.cpv_all():
 					self.spinner.update()
-					fakedb.cpv_inject(pkg,
-						metadata=dict(izip(self._mydbapi_keys,
-						vardb.aux_get(pkg, self._mydbapi_keys))))
+					metadata = dict(izip(self._mydbapi_keys,
+						vardb.aux_get(cpv, self._mydbapi_keys)))
+					pkg = Package(built=True, cpv=cpv,
+						installed=True, metadata=metadata,
+						root=myroot, type_name="installed")
+					self._pkg_cache[pkg] = pkg
+					fakedb.cpv_inject(pkg)
+			self.mydbapi[myroot] = fakedb
 			def graph_tree():
 				pass
 			graph_tree.dbapi = fakedb
@@ -1586,8 +1670,6 @@ class depgraph(object):
 		self._select_package = self._select_pkg_highest_available
 		self._highest_pkg_cache = {}
 		self._installed_pkg_cache = {}
-		# All Package instances
-		self._pkg_cache = {}
 
 	def _show_slot_collision_notice(self):
 		"""Show an informational message advising the user to mask one of the
@@ -1857,9 +1939,8 @@ class depgraph(object):
 				# function despite collisions.
 				pass
 			else:
-				self.mydbapi[pkg.root].cpv_inject(
-					pkg.cpv, metadata=pkg.metadata)
 				self._slot_pkg_map[pkg.root][pkg.slot_atom] = pkg
+				self.mydbapi[pkg.root].cpv_inject(pkg)
 
 			self.digraph.addnode(pkg, myparent, priority=priority)
 
@@ -4261,12 +4342,16 @@ class depgraph(object):
 			except KeyError:
 				# It does no exist or it is corrupt.
 				raise portage.exception.PackageNotFound(pkg_key)
-			fakedb[myroot].cpv_inject(pkg_key, metadata=metadata)
 			if pkg_type == "ebuild":
 				pkgsettings = self.pkgsettings[myroot]
-				pkgsettings.setcpv(pkg_key, mydb=fakedb[myroot])
-				fakedb[myroot].aux_update(pkg_key,
-					{"USE":pkgsettings["PORTAGE_USE"]})
+				pkgsettings.setcpv(pkg_key, mydb=metadata)
+				metadata["USE"] = pkgsettings["PORTAGE_USE"]
+			installed = False
+			built = pkg_type != "ebuild"
+			pkg = Package(built=built, cpv=pkg_key, installed=installed,
+				metadata=metadata, root=myroot, type_name=pkg_type)
+			self._pkg_cache[pkg] = pkg
+			fakedb[myroot].cpv_inject(pkg)
 			self.spinner.update()
 
 class RepoDisplay(object):
