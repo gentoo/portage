@@ -1228,6 +1228,24 @@ class Package(object):
 			status = "nomerge"
 		self._digraph_node = (self.type_name, self.root, self.cpv, status)
 
+	def __lt__(self, other):
+		other_split = portage.catpkgsplit(other.cpv)
+		self_split = portage.catpkgsplit(self.cpv)
+		if other_split[:2] != self_split[:2]:
+			return False
+		if portage.pkgcmp(self_split[1:], other_split[1:]) < 0:
+			return True
+		return False
+
+	def __gt__(self, other):
+		other_split = portage.catpkgsplit(other.cpv)
+		self_split = portage.catpkgsplit(self.cpv)
+		if other_split[:2] != self_split[:2]:
+			return False
+		if portage.pkgcmp(self_split[1:], other_split[1:]) > 0:
+			return True
+		return False
+
 	def __eq__(self, other):
 		return self._digraph_node == other
 	def __ne__(self, other):
@@ -1532,9 +1550,6 @@ class depgraph(object):
 		del trees
 
 		self.digraph=portage.digraph()
-		# Tracks simple parent/child relationships (PDEPEND relationships are
-		# not reversed).
-		self._parent_child_digraph = digraph()
 		# contains all sets added to the graph
 		self._sets = {}
 		# contains atoms given as arguments
@@ -1592,7 +1607,7 @@ class depgraph(object):
 			for node in slot_nodes:
 				msg.append(indent)
 				msg.append(str(node))
-				parents = self._parent_child_digraph.parent_nodes(node)
+				parents = self.digraph.parent_nodes(node)
 				if parents:
 					omitted_parents = 0
 					if len(parents) > max_parents:
@@ -1788,10 +1803,10 @@ class depgraph(object):
 			if existing_node:
 				if pkg.cpv == existing_node.cpv:
 					# The existing node can be reused.
-					self._parent_child_digraph.add(existing_node, myparent)
 					if args:
 						for arg in args:
-							self._parent_child_digraph.add(existing_node, arg)
+							self.digraph.add(existing_node, arg,
+								priority=priority)
 					# If a direct circular dependency is not an unsatisfied
 					# buildtime dependency then drop it here since otherwise
 					# it can skew the merge order calculation in an unwanted
@@ -1859,10 +1874,11 @@ class depgraph(object):
 		# Do this even when addme is False (--onlydeps) so that the
 		# parent/child relationship is always known in case
 		# self._show_slot_collision_notice() needs to be called later.
-		self._parent_child_digraph.add(pkg, myparent)
+		if pkg.onlydeps:
+			self.digraph.add(pkg, myparent, priority=priority)
 		if args:
 			for arg in args:
-				self._parent_child_digraph.add(pkg, arg)
+				self.digraph.add(pkg, arg, priority=priority)
 
 		""" This section determines whether we go deeper into dependencies or not.
 		    We want to go deeper on a few occasions:
@@ -1932,6 +1948,10 @@ class depgraph(object):
 		strict = mytype != "installed"
 		try:
 			for dep_root, dep_string, dep_priority in deps:
+				if pkg.onlydeps:
+					# Decrease priority so that --buildpkgonly
+					# hasallzeros() works correctly.
+					dep_priority = DepPriority()
 				if not dep_string:
 					continue
 				if debug:
@@ -1996,9 +2016,6 @@ class depgraph(object):
 			myslots.add(vardb.aux_get(cpv, ["SLOT"])[0])
 		for myslot in myslots:
 			yield "%s:%s" % (mykey, myslot)
-		# In addition to any installed slots, also try to pull
-		# in the latest new slot that may be available.
-		yield atom
 
 	def _iter_args_for_pkg(self, pkg):
 		# TODO: add multiple $ROOT support
@@ -2227,6 +2244,8 @@ class depgraph(object):
 			# atoms could be a property of the set itself.
 			greedy_atoms = []
 			for arg in args:
+				# In addition to any installed slots, also try to pull
+				# in the latest new slot that may be available.
 				greedy_atoms.append(arg)
 				if not isinstance(arg, (AtomArg, PackageArg)):
 					continue
@@ -2267,6 +2286,7 @@ class depgraph(object):
 		while args:
 			arg = args.pop()
 			for atom in arg.set:
+				atom_cp = portage.dep_getkey(atom)
 				try:
 					pprovided = pprovideddict.get(portage.dep_getkey(atom))
 					if pprovided and portage.match_from_list(atom, pprovided):
@@ -2290,6 +2310,17 @@ class depgraph(object):
 							return 0, myfavorites
 						self._missing_args.append((arg, atom))
 						continue
+					if atom_cp != pkg.cp:
+						# For old-style virtuals, we need to repeat the
+						# package.provided check against the selected package.
+						expanded_atom = atom.replace(atom_cp, pkg.cp)
+						pprovided = pprovideddict.get(pkg.cp)
+						if pprovided and \
+							portage.match_from_list(expanded_atom, pprovided):
+							# A provided package has been
+							# specified on the command line.
+							self._pprovided_args.append((arg, atom))
+							continue
 					if pkg.installed and "selective" not in self.myparams:
 						self._unsatisfied_deps_for_display.append(
 							((myroot, atom), {}))
@@ -2578,6 +2609,8 @@ class depgraph(object):
 		portdb = self.roots[root].trees["porttree"].dbapi
 		# List of acceptable packages, ordered by type preference.
 		matched_packages = []
+		highest_version = None
+		atom_cp = portage.dep_getkey(atom)
 		existing_node = None
 		myeb = None
 		usepkgonly = "--usepkgonly" in self.myopts
@@ -2642,13 +2675,18 @@ class depgraph(object):
 							if not installed:
 								# masked by corruption
 								continue
+					pkg = Package(built=built, cpv=cpv, installed=installed,
+						metadata=metadata, type_name=pkg_type)
 					if not installed:
 						if myarg:
 							found_available_arg = True
-						if not visible(pkgsettings, Package(built=built,
-							cpv=cpv, installed=installed, metadata=metadata,
-							type_name=pkg_type)):
+						if not visible(pkgsettings, pkg):
 							continue
+					if pkg.cp == atom_cp:
+						if highest_version is None:
+							highest_version = pkg
+						elif pkg > highest_version:
+							highest_version = pkg
 					# At this point, we've found the highest visible
 					# match from the current repo. Any lower versions
 					# from this repo are ignored, so this so the loop
@@ -2663,8 +2701,17 @@ class depgraph(object):
 						cpv_slot = "%s:%s" % \
 							(e_pkg.cpv, e_pkg.metadata["SLOT"])
 						if portage.dep.match_from_list(atom, [cpv_slot]):
-							matched_packages.append(e_pkg)
-							existing_node = e_pkg
+							if highest_version and \
+								e_pkg.cp == atom_cp and \
+								e_pkg < highest_version and \
+								e_pkg.slot_atom != highest_version.slot_atom:
+								# There is a higher version available in a
+								# different slot, so this existing node is
+								# irrelevant.
+								pass
+							else:
+								matched_packages.append(e_pkg)
+								existing_node = e_pkg
 						break
 					# Compare built package to current config and
 					# reject the built package if necessary.
@@ -2837,7 +2884,7 @@ class depgraph(object):
 			setconfig = root_config.setconfig
 			args = []
 			# Reuse existing SetArg instances when available.
-			for arg in self._parent_child_digraph.root_nodes():
+			for arg in self.digraph.root_nodes():
 				if not isinstance(arg, SetArg):
 					continue
 				if arg.root_config != root_config:
@@ -3519,7 +3566,7 @@ class depgraph(object):
 
 		tree_nodes = []
 		display_list = []
-		mygraph = self._parent_child_digraph
+		mygraph = self.digraph
 		i = 0
 		depth = 0
 		shown_edges = set()
@@ -3662,6 +3709,8 @@ class depgraph(object):
 					repo_name = self.roots[myroot].settings.get("PORTAGE_BINHOST")
 				else:
 					repo_name = metadata["repository"]
+				built = pkg_type != "ebuild"
+				installed = pkg_type == "installed"
 				if pkg_type == "ebuild":
 					ebuild_path = portdb.findname(pkg_key)
 					if not ebuild_path: # shouldn't happen
@@ -3674,6 +3723,9 @@ class depgraph(object):
 					repo_path_real = repo_name
 				else:
 					repo_path_real = portdb.getRepositoryPath(repo_name)
+				pkg_node = Package(type_name=pkg_type, root=myroot,
+					cpv=pkg_key, built=built, installed=installed,
+					metadata=metadata)
 				pkg_use = metadata["USE"].split()
 				try:
 					restrict = flatten(use_reduce(paren_reduce(
@@ -4568,8 +4620,10 @@ class MergeTask(object):
 
 		mergecount=0
 		for x in mymergelist:
-			mergecount+=1
 			pkg_type = x[0]
+			if pkg_type == "blocks":
+				continue
+			mergecount+=1
 			myroot=x[1]
 			pkg_key = x[2]
 			pkgindex=2
@@ -4593,6 +4647,11 @@ class MergeTask(object):
 					raise AssertionError("Package type: '%s'" % pkg_type)
 				metadata.update(izip(metadata_keys,
 					mydbapi.aux_get(pkg_key, metadata_keys)))
+			built = pkg_type != "ebuild"
+			installed = pkg_type == "installed"
+			pkg = Package(type_name=pkg_type, root=myroot,
+				cpv=pkg_key, built=built, installed=installed,
+				metadata=metadata)
 			if x[0]=="blocks":
 				pkgindex=3
 			y = portdb.findname(pkg_key)
@@ -4823,8 +4882,7 @@ class MergeTask(object):
 					"--fetch-all-uri" not in self.myopts:
 
 					# Figure out if we need a restart.
-					if myroot == "/" and \
-						portage.dep_getkey(pkg_key) == "sys-apps/portage":
+					if myroot == "/" and pkg.cp == "sys-apps/portage":
 						if len(mymergelist) > mergecount and EPREFIX == BPREFIX:
 							emergelog(xterm_titles,
 								" ::: completed emerge ("+ \

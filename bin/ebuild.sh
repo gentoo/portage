@@ -1728,20 +1728,6 @@ if ! hasq ${EBUILD_PHASE} clean && \
 	PDEPEND="${PDEPEND} ${E_PDEPEND}"
 
 	unset ECLASS E_IUSE E_DEPEND E_RDEPEND E_PDEPEND
-
-	if [ "${EBUILD_PHASE}" != "depend" ] ; then
-		# Make IUSE defaults backward compatible with all the old shell code.
-		iuse_temp=""
-		for x in ${IUSE} ; do
-			if [[ ${x} == +* ]] || [[ ${x} == -* ]] ; then
-				iuse_temp="${iuse_temp} ${x:1}"
-			else
-				iuse_temp="${iuse_temp} ${x}"
-			fi
-		done
-		export IUSE=${iuse_temp}
-		unset x iuse_temp
-	fi
 	set +f
 fi
 

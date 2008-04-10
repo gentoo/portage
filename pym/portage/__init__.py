@@ -949,7 +949,8 @@ class config(object):
 		"PORTAGE_ECLASS_WARNING_ENABLE", "PORTAGE_ELOG_CLASSES",
 		"PORTAGE_ELOG_MAILFROM", "PORTAGE_ELOG_MAILSUBJECT",
 		"PORTAGE_ELOG_MAILURI", "PORTAGE_ELOG_SYSTEM",
-		"PORTAGE_FETCH_CHECKSUM_TRY_MIRRORS", "PORTAGE_GPG_DIR",
+		"PORTAGE_FETCH_CHECKSUM_TRY_MIRRORS", "PORTAGE_FETCH_RESUME_MIN_SIZE",
+		"PORTAGE_GPG_DIR",
 		"PORTAGE_GPG_KEY", "PORTAGE_PACKAGE_EMPTY_ABORT",
 		"PORTAGE_RSYNC_EXTRA_OPTS", "PORTAGE_RSYNC_OPTS",
 		"PORTAGE_RSYNC_RETRIES", "PORTAGE_USE", "PORT_LOGDIR",
@@ -3032,6 +3033,20 @@ def _checksum_failure_temp_file(distdir, basename):
 	os.rename(filename, temp_filename)
 	return temp_filename
 
+_fetch_resume_size_re = re.compile('(^[\d]+)([KMGTPEZY]?$)')
+
+_size_suffix_map = {
+	''  : 0,
+	'K' : 10,
+	'M' : 20,
+	'G' : 30,
+	'T' : 40,
+	'P' : 50,
+	'E' : 60,
+	'Z' : 70,
+	'Y' : 80,
+}
+
 def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",use_locks=1, try_mirrors=1):
 	"fetch files.  Will use digest file if available."
 
@@ -3071,6 +3086,29 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 		v = checksum_failure_max_tries
 	checksum_failure_max_tries = v
 	del v
+
+	fetch_resume_size_default = "350K"
+	fetch_resume_size = mysettings.get("PORTAGE_FETCH_RESUME_MIN_SIZE")
+	if fetch_resume_size is not None:
+		fetch_resume_size = "".join(fetch_resume_size.split())
+		if not fetch_resume_size:
+			# If it's undefined or empty, silently use the default.
+			fetch_resume_size = fetch_resume_size_default
+		match = _fetch_resume_size_re.match(fetch_resume_size)
+		if match is None or \
+			(match.group(2).upper() not in _size_suffix_map):
+			writemsg("!!! Variable PORTAGE_FETCH_RESUME_MIN_SIZE" + \
+				" contains an unrecognized format: '%s'\n" % \
+				mysettings["PORTAGE_FETCH_RESUME_MIN_SIZE"], noiselevel=-1)
+			writemsg("!!! Using PORTAGE_FETCH_RESUME_MIN_SIZE " + \
+				"default value: %s\n" % fetch_resume_size_default,
+				noiselevel=-1)
+			fetch_resume_size = None
+	if fetch_resume_size is None:
+		fetch_resume_size = fetch_resume_size_default
+		match = _fetch_resume_size_re.match(fetch_resume_size)
+	fetch_resume_size = int(match.group(1)) * \
+		2 ** _size_suffix_map[match.group(2).upper()]
 
 	# Behave like the package has RESTRICT="primaryuri" after a
 	# couple of checksum failures, to increase the probablility
@@ -3427,8 +3465,27 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 
 				if fetched != 2 and has_space:
 					#we either need to resume or start the download
-					#you can't use "continue" when you're inside a "try" block
-					if fetched==1:
+					if fetched == 1:
+						try:
+							mystat = os.stat(myfile_path)
+						except OSError, e:
+							if e.errno != errno.ENOENT:
+								raise
+							del e
+							fetched = 0
+						else:
+							if mystat.st_size < fetch_resume_size:
+								writemsg((">>> Deleting distfile with size " + \
+									"%d (smaller than " "PORTAGE_FETCH_RESU" + \
+									"ME_MIN_SIZE)\n") % mystat.st_size)
+								try:
+									os.unlink(myfile_path)
+								except OSError, e:
+									if e.errno != errno.ENOENT:
+										raise
+									del e
+								fetched = 0
+					if fetched == 1:
 						#resume mode:
 						writemsg(">>> Resuming download...\n")
 						locfetch=resumecommand
@@ -5435,10 +5492,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 				avail_slot = "%s:%s" % (dep_getkey(atom),
 					mydbapi.aux_get(avail_pkg, ["SLOT"])[0])
 			elif not avail_pkg:
-				has_mask = False
-				if hasattr(mydbapi, "xmatch"):
-					has_mask = bool(mydbapi.xmatch("match-all", atom))
-				if (selective or use_binaries or not has_mask):
+				if selective:
 					avail_pkg = vardb.match(atom)
 					if avail_pkg:
 						avail_pkg = avail_pkg[-1] # highest (ascending order)
@@ -5505,8 +5559,10 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 			for myslot in intersecting_slots:
 				myversion = versions[myslot]
 				o_version = o_versions[myslot]
-				if myversion != o_version:
-					if myversion == best([myversion, o_version]):
+				difference = pkgcmp(catpkgsplit(myversion)[1:],
+					catpkgsplit(o_version)[1:])
+				if difference:
+					if difference > 0:
 						has_upgrade = True
 					else:
 						has_downgrade = True
@@ -5732,7 +5788,11 @@ def cpv_expand(mycpv, mydb=None, use_cache=1, settings=None):
 					writemsg("virts[%s]: %s\n" % (str(mykey),virts[mykey]), 1)
 					mykey_orig = mykey[:]
 					for vkey in virts[mykey]:
-						if mydb.cp_list(vkey,use_cache=use_cache):
+						# The virtuals file can contain a versioned atom, so
+						# it may be necessary to remove the operator and
+						# version from the atom before it is passed into
+						# dbapi.cp_list().
+						if mydb.cp_list(dep_getkey(vkey), use_cache=use_cache):
 							mykey = vkey
 							writemsg("virts chosen: %s\n" % (mykey), 1)
 							break
