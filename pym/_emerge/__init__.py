@@ -1440,91 +1440,6 @@ def show_invalid_depstring_notice(parent_node, depstring, error_msg):
 		f.add_flowing_data(x)
 	f.end_paragraph(1)
 
-class DepcheckCompositeDB(object):
-	"""
-	A dbapi-like interface that is optimized for use in dep_check() calls.
-	This is built on top of the existing depgraph package selection logic.
-	Some packages that have been added to the graph may be masked from this
-	view in order to control the atom preference selection that occurs via
-	dep_check().
-	"""
-	def __init__(self, depgraph, root):
-		self._depgraph = depgraph
-		self._root = root
-		self._match_cache = {}
-		self._cpv_pkg_map = {}
-
-	def match(self, atom):
-		ret = self._match_cache.get(atom)
-		if ret is not None:
-			return ret[:]
-		orig_atom = atom
-		if "/" not in atom:
-			atom = self._dep_expand(atom)
-		pkg, existing = self._depgraph._select_package(self._root, atom)
-		if not pkg:
-			ret = []
-		else:
-			if pkg.installed and "selective" not in self._depgraph.myparams:
-				try:
-					arg = self._depgraph._iter_atoms_for_pkg(pkg).next()
-				except (StopIteration, portage.exception.InvalidDependString):
-					arg = None
-				if arg:
-					ret = []
-			if ret is None and pkg.installed and \
-				not visible(self._depgraph.pkgsettings[pkg.root], pkg):
-				# For disjunctive || deps, this will cause alternative
-				# atoms or packages to be selected if available.
-				ret = []
-			if ret is None:
-				self._cpv_pkg_map[pkg.cpv] = pkg
-				ret = [pkg.cpv]
-		self._match_cache[orig_atom] = ret
-		return ret[:]
-
-	def _dep_expand(self, atom):
-		"""
-		This is only needed for old installed packages that may
-		contain atoms that are not fully qualified with a specific
-		category. Emulate the cpv_expand() function that's used by
-		dbapi.match() in cases like this. If there are multiple
-		matches, it's often due to a new-style virtual that has
-		been added, so try to filter those out to avoid raising
-		a ValueError.
-		"""
-		root_config = self._depgraph.roots[self._root]
-		orig_atom = atom
-		expanded_atoms = self._depgraph._dep_expand(root_config, atom)
-		if len(expanded_atoms) > 1:
-			non_virtual_atoms = []
-			for x in expanded_atoms:
-				if not portage.dep_getkey(x).startswith("virtual/"):
-					non_virtual_atoms.append(x)
-			if len(non_virtual_atoms) == 1:
-				expanded_atoms = non_virtual_atoms
-		if len(expanded_atoms) > 1:
-			# compatible with portage.cpv_expand()
-			raise ValueError([portage.dep_getkey(x) \
-				for x in expanded_atoms])
-		if expanded_atoms:
-			atom = expanded_atoms[0]
-		else:
-			null_atom = insert_category_into_atom(atom, "null")
-			null_cp = portage.dep_getkey(null_atom)
-			cat, atom_pn = portage.catsplit(null_cp)
-			virts_p = root_config.settings.get_virts_p().get(atom_pn)
-			if virts_p:
-				# Allow the resolver to choose which virtual.
-				atom = insert_category_into_atom(atom, "virtual")
-			else:
-				atom = insert_category_into_atom(atom, "null")
-		return atom
-
-	def aux_get(self, cpv, wants):
-		metadata = self._cpv_pkg_map[cpv].metadata
-		return [metadata.get(x, "") for x in wants]
-
 class PackageVirtualDbapi(portage.dbapi):
 	"""
 	A dbapi-like interface class that represents the state of the installed
@@ -1691,7 +1606,7 @@ class depgraph(object):
 			self._filtered_trees[myroot]["vartree"] = self.trees[myroot]["vartree"]
 			def filtered_tree():
 				pass
-			filtered_tree.dbapi = DepcheckCompositeDB(self, myroot)
+			filtered_tree.dbapi = self._dep_check_composite_db(self, myroot)
 			self._filtered_trees[myroot]["porttree"] = filtered_tree
 			dbs = []
 			portdb = self.trees[myroot]["porttree"].dbapi
@@ -4410,6 +4325,91 @@ class depgraph(object):
 			self._pkg_cache[pkg] = pkg
 			fakedb[myroot].cpv_inject(pkg)
 			self.spinner.update()
+
+	class _dep_check_composite_db(object):
+		"""
+		A dbapi-like interface that is optimized for use in dep_check() calls.
+		This is built on top of the existing depgraph package selection logic.
+		Some packages that have been added to the graph may be masked from this
+		view in order to influence the atom preference selection that occurs
+		via dep_check().
+		"""
+		def __init__(self, depgraph, root):
+			self._depgraph = depgraph
+			self._root = root
+			self._match_cache = {}
+			self._cpv_pkg_map = {}
+
+		def match(self, atom):
+			ret = self._match_cache.get(atom)
+			if ret is not None:
+				return ret[:]
+			orig_atom = atom
+			if "/" not in atom:
+				atom = self._dep_expand(atom)
+			pkg, existing = self._depgraph._select_package(self._root, atom)
+			if not pkg:
+				ret = []
+			else:
+				if pkg.installed and "selective" not in self._depgraph.myparams:
+					try:
+						arg = self._depgraph._iter_atoms_for_pkg(pkg).next()
+					except (StopIteration, portage.exception.InvalidDependString):
+						arg = None
+					if arg:
+						ret = []
+				if ret is None and pkg.installed and \
+					not visible(self._depgraph.pkgsettings[pkg.root], pkg):
+					# For disjunctive || deps, this will cause alternative
+					# atoms or packages to be selected if available.
+					ret = []
+				if ret is None:
+					self._cpv_pkg_map[pkg.cpv] = pkg
+					ret = [pkg.cpv]
+			self._match_cache[orig_atom] = ret
+			return ret[:]
+
+		def _dep_expand(self, atom):
+			"""
+			This is only needed for old installed packages that may
+			contain atoms that are not fully qualified with a specific
+			category. Emulate the cpv_expand() function that's used by
+			dbapi.match() in cases like this. If there are multiple
+			matches, it's often due to a new-style virtual that has
+			been added, so try to filter those out to avoid raising
+			a ValueError.
+			"""
+			root_config = self._depgraph.roots[self._root]
+			orig_atom = atom
+			expanded_atoms = self._depgraph._dep_expand(root_config, atom)
+			if len(expanded_atoms) > 1:
+				non_virtual_atoms = []
+				for x in expanded_atoms:
+					if not portage.dep_getkey(x).startswith("virtual/"):
+						non_virtual_atoms.append(x)
+				if len(non_virtual_atoms) == 1:
+					expanded_atoms = non_virtual_atoms
+			if len(expanded_atoms) > 1:
+				# compatible with portage.cpv_expand()
+				raise ValueError([portage.dep_getkey(x) \
+					for x in expanded_atoms])
+			if expanded_atoms:
+				atom = expanded_atoms[0]
+			else:
+				null_atom = insert_category_into_atom(atom, "null")
+				null_cp = portage.dep_getkey(null_atom)
+				cat, atom_pn = portage.catsplit(null_cp)
+				virts_p = root_config.settings.get_virts_p().get(atom_pn)
+				if virts_p:
+					# Allow the resolver to choose which virtual.
+					atom = insert_category_into_atom(atom, "virtual")
+				else:
+					atom = insert_category_into_atom(atom, "null")
+			return atom
+
+		def aux_get(self, cpv, wants):
+			metadata = self._cpv_pkg_map[cpv].metadata
+			return [metadata.get(x, "") for x in wants]
 
 class RepoDisplay(object):
 	def __init__(self, roots):
