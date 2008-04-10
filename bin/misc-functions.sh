@@ -312,11 +312,7 @@ install_qa_check() {
 			eqawarn "           but will almost certainly crash on 64bit architectures."
 			eqawarn "${f}"
 			vecho -ne '\a\n'
-			# just warn on 32bit hosts but bail on 64bit hosts
-			case ${CHOST} in
-				alpha*|ia64*|powerpc64*|mips64*|sparc64*|x86_64*) die "this code is not 64bit clean";;
-				*) abort="yes";;
-			esac
+			abort="yes"
 		fi
 		if [[ ${abort} == "yes" ]] ; then
 			echo "Please do not file a Gentoo bug and instead" \
