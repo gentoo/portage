@@ -5677,17 +5677,6 @@ def checkUpdatedNewsItems(portdb, vardb, NEWS_PATH, UNREAD_PATH, repo_id):
 	manager = NewsManager(portdb, vardb, NEWS_PATH, UNREAD_PATH)
 	return manager.getUnreadItems( repo_id, update=True )
 
-def expand_virtual_atom(x):
-	"""
-	Take an atom without a category and insert virtual/ for the
-	category. This works correctly with atoms that have operators.
-
-	@param x: an atom without a category
-	@type x: String
-	@returns: the atom with virtual/ inserted for the category, or None
-	"""
-	return insert_category_into_atom(atom, "virtual")
-
 def insert_category_into_atom(atom, category):
 	alphanum = re.search(r'\w', atom)
 	if alphanum:
