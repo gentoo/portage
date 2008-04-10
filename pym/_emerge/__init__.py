@@ -965,14 +965,15 @@ class FakeVartree(portage.vartree):
 	user doesn't necessarily need write access to the vardb in cases where
 	global updates are necessary (updates are performed when necessary if there
 	is not a matching ebuild in the tree)."""
-	def __init__(self, real_vartree, portdb, db_keys):
+	def __init__(self, real_vartree, portdb, db_keys, pkg_cache):
 		self.root = real_vartree.root
 		self.settings = real_vartree.settings
 		mykeys = db_keys[:]
 		for required_key in ("COUNTER", "SLOT"):
 			if required_key not in mykeys:
 				mykeys.append(required_key)
-		self.dbapi = portage.fakedbapi(settings=real_vartree.settings)
+		self._pkg_cache = pkg_cache
+		self.dbapi = PackageVirtualDbapi(real_vartree.settings)
 		vdb_path = os.path.join(self.root, portage.VDB_PATH)
 		try:
 			# At least the parent needs to exist for the lock file.
@@ -986,7 +987,12 @@ class FakeVartree(portage.vartree):
 			real_dbapi = real_vartree.dbapi
 			slot_counters = {}
 			for cpv in real_dbapi.cpv_all():
-				metadata = dict(izip(mykeys, real_dbapi.aux_get(cpv, mykeys)))
+				cache_key = ("installed", self.root, cpv, "nomerge")
+				pkg = self._pkg_cache.get(cache_key)
+				if pkg is not None:
+					metadata = pkg.metadata
+				else:
+					metadata = dict(izip(mykeys, real_dbapi.aux_get(cpv, mykeys)))
 				myslot = metadata["SLOT"]
 				mycp = portage.dep_getkey(cpv)
 				myslot_atom = "%s:%s" % (mycp, myslot)
@@ -1000,7 +1006,12 @@ class FakeVartree(portage.vartree):
 					if other_counter > mycounter:
 						continue
 				slot_counters[myslot_atom] = mycounter
-				self.dbapi.cpv_inject(cpv, metadata=metadata)
+				if pkg is None:
+					pkg = Package(built=True, cpv=cpv,
+						installed=True, metadata=metadata,
+						root=self.root, type_name="installed")
+				self._pkg_cache[pkg] = pkg
+				self.dbapi.cpv_inject(pkg)
 			real_dbapi.flush_cache()
 		finally:
 			if vdb_lock:
@@ -1534,6 +1545,10 @@ class PackageVirtualDbapi(portage.dbapi):
 		metadata = self._cpv_map[cpv].metadata
 		return [metadata.get(x, "") for x in wants]
 
+	def aux_update(self, cpv, values):
+		self._cpv_map[cpv].metadata.update(values)
+		self._clear_cache()
+
 class depgraph(object):
 
 	pkg_tree_map = {
@@ -1542,7 +1557,7 @@ class depgraph(object):
 		"installed":"vartree"}
 
 	_mydbapi_keys = [
-		"CHOST", "DEPEND", "EAPI", "IUSE", "KEYWORDS",
+		"CHOST", "COUNTER", "DEPEND", "EAPI", "IUSE", "KEYWORDS",
 		"LICENSE", "PDEPEND", "PROVIDE", "RDEPEND",
 		"repository", "RESTRICT", "SLOT", "USE"]
 
@@ -1581,7 +1596,7 @@ class depgraph(object):
 			self.trees[myroot]["vartree"] = \
 				FakeVartree(trees[myroot]["vartree"],
 					trees[myroot]["porttree"].dbapi,
-					self._mydbapi_keys)
+					self._mydbapi_keys, self._pkg_cache)
 			self.pkgsettings[myroot] = portage.config(
 				clone=self.trees[myroot]["vartree"].settings)
 			self._slot_pkg_map[myroot] = {}
@@ -6529,12 +6544,13 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	xterm_titles = "notitles" not in settings.features
 	myroot = settings["ROOT"]
 	portdb = trees[myroot]["porttree"].dbapi
+	pkg_cache = {}
 	dep_check_trees = {}
 	dep_check_trees[myroot] = {}
 	dep_check_trees[myroot]["vartree"] = \
 		FakeVartree(trees[myroot]["vartree"],
 		trees[myroot]["porttree"].dbapi,
-		depgraph._mydbapi_keys)
+		depgraph._mydbapi_keys, pkg_cache)
 	vardb = dep_check_trees[myroot]["vartree"].dbapi
 	# Constrain dependency selection to the installed packages.
 	dep_check_trees[myroot]["porttree"] = dep_check_trees[myroot]["vartree"]
