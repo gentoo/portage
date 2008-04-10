@@ -1107,7 +1107,7 @@ def visible(pkgsettings, pkg):
 	if pkg.built and not pkg.installed and \
 		pkg.metadata["CHOST"] != pkgsettings["CHOST"]:
 		return False
-	if pkg.built and not installed:
+	if pkg.built and not pkg.installed:
 		# we can have an old binary which has no EPREFIX information
 		if "EPREFIX" not in pkg.metadata or not pkg.metadata["EPREFIX"]:
 			return False
