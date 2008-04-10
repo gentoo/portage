@@ -1026,10 +1026,26 @@ class FakeVartree(portage.vartree):
 		# being delayed in case cache generation is triggered.
 		self._aux_get = self.dbapi.aux_get
 		self.dbapi.aux_get = self._aux_get_wrapper
+		self._match = self.dbapi.match
+		self.dbapi.match = self._match_wrapper
 		self._aux_get_history = set()
 		self._portdb_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
 		self._portdb = portdb
 		self._global_updates = None
+
+	def _match_wrapper(self, cpv, use_cache=1):
+		"""
+		Make sure the metadata in Package instances gets updated for any
+		cpv that is returned from a match() call, since the metadata can
+		be accessed directly from the Package instance instead of via
+		aux_get().
+		"""
+		matches = self._match(cpv, use_cache=use_cache)
+		for cpv in matches:
+			if cpv in self._aux_get_history:
+				continue
+			self._aux_get_wrapper(cpv, [])
+		return matches
 
 	def _aux_get_wrapper(self, pkg, wants):
 		if pkg in self._aux_get_history:
@@ -6683,10 +6699,8 @@ def action_depclean(settings, trees, ldpath_mtimes,
 			# For consistency with the update algorithm, keep the highest
 			# visible version and prune any versions that are old or masked.
 			for cpv in reversed(pkgs):
-				metadata = dict(izip(metadata_keys,
-					vardb.aux_get(cpv, metadata_keys)))
-				if visible(settings, Package(built=True, cpv=cpv,
-					installed=True, metadata=metadata, type_name="installed")):
+				if visible(settings,
+					pkg_cache[("installed", myroot, cpv, "nomerge")]):
 					pkgs = [cpv]
 					break
 			if len(pkgs) > 1:
