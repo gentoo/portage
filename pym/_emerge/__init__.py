@@ -1477,6 +1477,9 @@ class DepcheckCompositeDB(object):
 		ret = self._match_cache.get(atom)
 		if ret is not None:
 			return ret[:]
+		orig_atom = atom
+		if "/" not in atom:
+			atom = self._dep_expand(atom)
 		pkg, existing = self._depgraph._select_package(self._root, atom)
 		if not pkg:
 			ret = []
@@ -1496,8 +1499,46 @@ class DepcheckCompositeDB(object):
 			if ret is None:
 				self._cpv_pkg_map[pkg.cpv] = pkg
 				ret = [pkg.cpv]
-		self._match_cache[atom] = ret
+		self._match_cache[orig_atom] = ret
 		return ret[:]
+
+	def _dep_expand(self, atom):
+		"""
+		This is only needed for old installed packages that may
+		contain atoms that are not fully qualified with a specific
+		category. Emulate the cpv_expand() function that's used by
+		dbapi.match() in cases like this. If there are multiple
+		matches, it's often due to a new-style virtual that has
+		been added, so try to filter those out to avoid raising
+		a ValueError.
+		"""
+		root_config = self._depgraph.roots[self._root]
+		orig_atom = atom
+		expanded_atoms = self._depgraph._dep_expand(root_config, atom)
+		if len(expanded_atoms) > 1:
+			non_virtual_atoms = []
+			for x in expanded_atoms:
+				if not portage.dep_getkey(x).startswith("virtual/"):
+					non_virtual_atoms.append(x)
+			if len(non_virtual_atoms) == 1:
+				expanded_atoms = non_virtual_atoms
+		if len(expanded_atoms) > 1:
+			# compatible with portage.cpv_expand()
+			raise ValueError([portage.dep_getkey(x) \
+				for x in expanded_atoms])
+		if expanded_atoms:
+			atom = expanded_atoms[0]
+		else:
+			null_atom = insert_category_into_atom(atom, "null")
+			null_cp = portage.dep_getkey(null_atom)
+			cat, atom_pn = portage.catsplit(null_cp)
+			virts_p = root_config.settings.get_virts_p().get(atom_pn)
+			if virts_p:
+				# Allow the resolver to choose which virtual.
+				atom = insert_category_into_atom(atom, "virtual")
+			else:
+				atom = insert_category_into_atom(atom, "null")
+		return atom
 
 	def aux_get(self, cpv, wants):
 		metadata = self._cpv_pkg_map[cpv].metadata
@@ -5671,17 +5712,6 @@ def checkUpdatedNewsItems(portdb, vardb, NEWS_PATH, UNREAD_PATH, repo_id):
 	from portage.news import NewsManager
 	manager = NewsManager(portdb, vardb, NEWS_PATH, UNREAD_PATH)
 	return manager.getUnreadItems( repo_id, update=True )
-
-def expand_virtual_atom(x):
-	"""
-	Take an atom without a category and insert virtual/ for the
-	category. This works correctly with atoms that have operators.
-
-	@param x: an atom without a category
-	@type x: String
-	@returns: the atom with virtual/ inserted for the category, or None
-	"""
-	return insert_category_into_atom(atom, "virtual")
 
 def insert_category_into_atom(atom, category):
 	alphanum = re.search(r'\w', atom)
