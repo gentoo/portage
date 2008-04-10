@@ -7132,7 +7132,7 @@ def action_build(settings, trees, mtimedb,
 				return retval
 			if "--buildpkgonly" in myopts:
 				graph_copy = mydepgraph.digraph.clone()
-				for node in graph_copy.order:
+				for node in list(graph_copy.order):
 					if not isinstance(node, Package):
 						graph_copy.remove(node)
 				if not graph_copy.hasallzeros(ignore_priority=DepPriority.MEDIUM):
@@ -7142,7 +7142,7 @@ def action_build(settings, trees, mtimedb,
 	else:
 		if "--buildpkgonly" in myopts:
 			graph_copy = mydepgraph.digraph.clone()
-			for node in graph_copy.order:
+			for node in list(graph_copy.order):
 				if not isinstance(node, Package):
 					graph_copy.remove(node)
 			if not graph_copy.hasallzeros(ignore_priority=DepPriority.MEDIUM):
