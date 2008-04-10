@@ -3886,13 +3886,12 @@ class depgraph(object):
 					cur_use = [flag for flag in cur_use if flag in cur_iuse]
 
 					if myoldbest and myinslotlist:
-						pkg = myoldbest[0]
+						previous_cpv = myoldbest[0]
 					else:
-						pkg = x[2]
-					if self.trees[x[1]]["vartree"].dbapi.cpv_exists(pkg):
-						old_iuse, old_use = \
-							self.trees[x[1]]["vartree"].dbapi.aux_get(
-								pkg, ["IUSE", "USE"])
+						previous_cpv = pkg.cpv
+					if vardb.cpv_exists(previous_cpv):
+						old_iuse, old_use = vardb.aux_get(
+								previous_cpv, ["IUSE", "USE"])
 						old_iuse = list(set(
 							filter_iuse_defaults(old_iuse.split())))
 						old_iuse.sort()
@@ -4080,21 +4079,21 @@ class depgraph(object):
 					# This is reported elsewhere if relevant.
 					pass
 
-				def pkgprint(pkg):
+				def pkgprint(pkg_cpv):
 					if pkg_merge:
 						if pkg_system:
-							return colorize("PKG_MERGE_SYSTEM", pkg)
+							return colorize("PKG_MERGE_SYSTEM", pkg_cpv)
 						elif pkg_world:
-							return colorize("PKG_MERGE_WORLD", pkg)
+							return colorize("PKG_MERGE_WORLD", pkg_cpv)
 						else:
-							return colorize("PKG_MERGE", pkg)
+							return colorize("PKG_MERGE", pkg_cpv)
 					else:
 						if pkg_system:
-							return colorize("PKG_NOMERGE_SYSTEM", pkg)
+							return colorize("PKG_NOMERGE_SYSTEM", pkg_cpv)
 						elif pkg_world:
-							return colorize("PKG_NOMERGE_WORLD", pkg)
+							return colorize("PKG_NOMERGE_WORLD", pkg_cpv)
 						else:
-							return colorize("PKG_NOMERGE", pkg)
+							return colorize("PKG_NOMERGE", pkg_cpv)
 
 				if x[1]!="/":
 					if myoldbest:
