@@ -4232,21 +4232,21 @@ class depgraph(object):
 					# This is reported elsewhere if relevant.
 					pass
 
-				def pkgprint(pkg_cpv):
+				def pkgprint(pkg_str):
 					if pkg_merge:
 						if pkg_system:
-							return colorize("PKG_MERGE_SYSTEM", pkg_cpv)
+							return colorize("PKG_MERGE_SYSTEM", pkg_str)
 						elif pkg_world:
-							return colorize("PKG_MERGE_WORLD", pkg_cpv)
+							return colorize("PKG_MERGE_WORLD", pkg_str)
 						else:
-							return colorize("PKG_MERGE", pkg_cpv)
+							return colorize("PKG_MERGE", pkg_str)
 					else:
 						if pkg_system:
-							return colorize("PKG_NOMERGE_SYSTEM", pkg_cpv)
+							return colorize("PKG_NOMERGE_SYSTEM", pkg_str)
 						elif pkg_world:
-							return colorize("PKG_NOMERGE_WORLD", pkg_cpv)
+							return colorize("PKG_NOMERGE_WORLD", pkg_str)
 						else:
-							return colorize("PKG_NOMERGE", pkg_cpv)
+							return colorize("PKG_NOMERGE", pkg_str)
 
 				if x[1]!="/":
 					if myoldbest:
