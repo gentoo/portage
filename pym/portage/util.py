@@ -1086,15 +1086,22 @@ def new_protect_filename(mydest, newmd5=None):
 def getlibpaths():
 	""" Return a list of paths that are used for library lookups """
 
-	# PREFIX HIJACK: if this function is used (it seems to be just added
-	# nothing more, then let us know, because then we need to fix this...
-	raise "This is not prefix-proof, and certainly not x-platform proof!"
-
-	# the following is based on the information from ld.so(8)
-	rval = os.environ.get("LD_LIBRARY_PATH", "").split(":")
-	rval.extend(grabfile("/etc/ld.so.conf"))
-	rval.append("/usr/lib")
-	rval.append("/lib")
+	# PREFIX HACK: LD_LIBRARY_PATH isn't portable, and considered
+	# harmfull, so better not use it.  We don't need any host OS lib
+	# paths either, so do Prefix case.
+	if EPREFIX != '':
+		rval = []
+		rval.append(EPREFIX + "/usr/lib")
+		rval.append(EPREFIX + "/lib")
+		# we don't know the CHOST here, so it's a bit hard to guess
+		# where GCC's and ld's libs are.  Though, GCC's libs should be
+		# in lib and usr/lib, binutils' libs rarely used
+	else:
+		# the following is based on the information from ld.so(8)
+		rval = os.environ.get("LD_LIBRARY_PATH", "").split(":")
+		rval.extend(grabfile("/etc/ld.so.conf"))
+		rval.append("/usr/lib")
+		rval.append("/lib")
 
 	rval = [normalize_path(x) for x in rval if x != ""]
 	
