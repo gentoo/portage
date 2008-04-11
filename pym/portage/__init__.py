@@ -4786,8 +4786,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			return spawn(_shell_quote(ebuild_sh_binary) + " " + mydo,
 				mysettings, debug=debug, free=1, logfile=logfile)
 		elif mydo == "setup":
-			infodir = os.path.join(
-				mysettings["PORTAGE_BUILDDIR"], "build-info")
 			retval = spawn(
 				_shell_quote(ebuild_sh_binary) + " " + mydo, mysettings,
 				debug=debug, free=1, logfile=logfile)
