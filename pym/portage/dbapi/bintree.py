@@ -4,9 +4,9 @@
 
 from portage.dep import isvalidatom, isjustname, dep_getkey, match_from_list
 from portage.dbapi.virtual import fakedbapi
-from portage.exception import InvalidPackageName, InvalidAtom
+from portage.exception import InvalidPackageName, InvalidAtom, PortageException
 from portage.output import green
-from portage.util import normalize_path, writemsg, writemsg_stdout
+from portage.util import ensure_dirs, normalize_path, writemsg, writemsg_stdout
 from portage.versions import best, catpkgsplit, catsplit
 from portage.update import update_dbentries
 
@@ -235,12 +235,7 @@ class binarytree(object):
 			self._pkg_paths[mynewcpv] = os.path.join(
 				*new_path.split(os.path.sep)[-2:])
 			if new_path != mytbz2:
-				try:
-					os.makedirs(os.path.dirname(new_path))
-				except OSError, e:
-					if e.errno != errno.EEXIST:
-						raise
-					del e
+				self._ensure_dir(os.path.dirname(new_path))
 				_movefile(tbz2path, new_path, mysettings=self.settings)
 				self._remove_symlink(mycpv)
 				if new_path.split(os.path.sep)[-2] == "All":
@@ -273,12 +268,7 @@ class binarytree(object):
 		exist in the location of the symlink will first be removed."""
 		mycat, mypkg = catsplit(cpv)
 		full_path = os.path.join(self.pkgdir, mycat, mypkg + ".tbz2")
-		try:
-			os.makedirs(os.path.dirname(full_path))
-		except OSError, e:
-			if e.errno != errno.EEXIST:
-				raise
-			del e
+		self._ensure_dir(os.path.dirname(full_path))
 		try:
 			os.unlink(full_path)
 		except OSError, e:
@@ -317,6 +307,26 @@ class binarytree(object):
 		if os.path.exists(full_path):
 			self.inject(cpv)
 
+	def _ensure_dir(self, path):
+		"""
+		Create the specified directory. Also, copy gid and group mode
+		bits from self.pkgdir if possible.
+		@param cat_dir: Absolute path of the directory to be created.
+		@type cat_dir: String
+		"""
+		try:
+			pkgdir_st = os.stat(self.pkgdir)
+		except OSError:
+			ensure_dirs(path)
+			return
+		pkgdir_gid = pkgdir_st.st_gid
+		pkgdir_grp_mode = 02070 & pkgdir_st.st_mode
+		try:
+			ensure_dirs(path, gid=pkgdir_gid, mode=pkgdir_grp_mode, mask=0)
+		except PortageException:
+			if not os.path.isdir(path):
+				raise
+
 	def _move_to_all(self, cpv):
 		"""If the file exists, move it.  Whether or not it exists, update state
 		for future getname() calls."""
@@ -328,12 +338,7 @@ class binarytree(object):
 		except OSError, e:
 			mystat = None
 		if mystat and stat.S_ISREG(mystat.st_mode):
-			try:
-				os.makedirs(os.path.join(self.pkgdir, "All"))
-			except OSError, e:
-				if e.errno != errno.EEXIST:
-					raise
-				del e
+			self._ensure_dir(os.path.join(self.pkgdir, "All"))
 			dest_path = os.path.join(self.pkgdir, "All", myfile)
 			_movefile(src_path, dest_path, mysettings=self.settings)
 			self._create_symlink(cpv)
@@ -347,12 +352,7 @@ class binarytree(object):
 		myfile = mypkg + ".tbz2"
 		mypath = os.path.join(mycat, myfile)
 		dest_path = os.path.join(self.pkgdir, mypath)
-		try:
-			os.makedirs(os.path.dirname(dest_path))
-		except OSError, e:
-			if e.errno != errno.EEXIST:
-				raise
-			del e
+		self._ensure_dir(os.path.dirname(dest_path))
 		src_path = os.path.join(self.pkgdir, "All", myfile)
 		_movefile(src_path, dest_path, mysettings=self.settings)
 		self._pkg_paths[cpv] = mypath
@@ -755,7 +755,9 @@ class binarytree(object):
 			pkgindex_lock = lockfile(self._pkgindex_file,
 				wantnewlockfile=1)
 			if filename is not None:
-				_movefile(filename, self.getname(cpv), mysettings=self.settings)
+				new_filename = self.getname(cpv)
+				self._ensure_dir(os.path.dirname(new_filename))
+				_movefile(filename, new_filename, mysettings=self.settings)
 			if self._all_directory and \
 				self.getname(cpv).split(os.path.sep)[-2] == "All":
 				self._create_symlink(cpv)
@@ -947,10 +949,7 @@ class binarytree(object):
 					noiselevel=-1)
 		
 		mydest = os.path.dirname(self.getname(pkgname))
-		try:
-			os.makedirs(mydest, 0775)
-		except (OSError, IOError):
-			pass
+		self._ensure_dir(mydest)
 		from urlparse import urlparse
 		# urljoin doesn't work correctly with unrecognized protocols like sftp
 		if self._remote_has_index:
