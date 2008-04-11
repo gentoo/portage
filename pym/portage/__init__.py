@@ -1134,7 +1134,7 @@ class config(object):
 						parents = grabfile(parentsFile)
 						if not parents:
 							raise portage.exception.ParseError(
-								"Empty parent file: '%s'" % parents_file)
+								"Empty parent file: '%s'" % parentsFile)
 						for parentPath in parents:
 							parentPath = normalize_path(os.path.join(
 								currentPath, parentPath))
@@ -6065,8 +6065,8 @@ class FetchlistDict(UserDict.DictMixin):
 		"""Returns the complete fetch list for a given package."""
 		return self.portdb.getfetchlist(pkg_key, mysettings=self.settings,
 			all=True, mytree=self.mytree)[1]
-	def __contains__(self):
-		return pkg_key in self.keys()
+	def __contains__(self, cpv):
+		return cpv in self.keys()
 	def has_key(self, pkg_key):
 		"""Returns true if the given package exists within pkgdir."""
 		return pkg_key in self
