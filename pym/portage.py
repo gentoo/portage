@@ -1879,6 +1879,13 @@ class config:
 				os.path.join(infodir, "CATEGORY"), noiselevel=-1)
 			self.configdict["pkg"].update(backup_pkg_metadata)
 			retval = 0
+
+		# Always set known good values for these variables, since
+		# corruption of these can cause problems:
+		cat, pf = catsplit(self.mycpv)
+		self.configdict["pkg"]["CATEGORY"] = cat
+		self.configdict["pkg"]["PF"] = pf
+
 		return retval
 
 	def setcpv(self, mycpv, use_cache=1, mydb=None):
@@ -2016,8 +2023,13 @@ class config:
 				# Without this conditional, regenerate() would be called
 				# *every* time.
 				has_changed = True
-		# CATEGORY is essential for doebuild calls
-		self.configdict["pkg"]["CATEGORY"] = mycpv.split("/")[0]
+
+		# Always set known good values for these variables, since
+		# corruption of these can cause problems:
+		cat, pf = catsplit(self.mycpv)
+		self.configdict["pkg"]["CATEGORY"] = cat
+		self.configdict["pkg"]["PF"] = pf
+
 		if has_changed:
 			self.reset(keeping_pkg=1,use_cache=use_cache)
 
