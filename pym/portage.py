@@ -5361,12 +5361,21 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 		else:
 			a = ['||']
 		for y in pkgs:
-			depstring = " ".join(y[2].aux_get(y[0], dep_keys))
+			cpv, pv_split, db = y
+			depstring = " ".join(db.aux_get(cpv, dep_keys))
+			pkg_kwargs = kwargs.copy()
+			if isinstance(db, portdbapi):
+				# for repoman
+				pass
+			else:
+				# for emerge
+				use_split = db.aux_get(cpv, ["USE"])[0].split()
+				pkg_kwargs["myuse"] = use_split
 			if edebug:
 				print "Virtual Parent:   ", y[0]
 				print "Virtual Depstring:", depstring
 			mycheck = dep_check(depstring, mydbapi, mysettings, myroot=myroot,
-				trees=trees, **kwargs)
+				trees=trees, **pkg_kwargs)
 			if not mycheck[0]:
 				raise portage_exception.ParseError(
 					"%s: %s '%s'" % (y[0], mycheck[1], depstring))
