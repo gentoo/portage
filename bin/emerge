@@ -4921,7 +4921,7 @@ class MergeTask(object):
 				try:
 					catdir_lock = portage_locks.lockdir(catdir)
 					portage_util.ensure_dirs(catdir,
-						uid=portage.portage_uid, gid=portage.portage_gid,
+						gid=portage.portage_gid,
 						mode=070, mask=0)
 					builddir_lock = portage_locks.lockdir(
 						pkgsettings["PORTAGE_BUILDDIR"])
@@ -6971,6 +6971,7 @@ def action_build(settings, trees, mtimedb,
 	ldpath_mtimes = mtimedb["ldpath"]
 	favorites=[]
 	merge_count = 0
+	buildpkgonly = "--buildpkgonly" in myopts
 	pretend = "--pretend" in myopts
 	fetchonly = "--fetchonly" in myopts or "--fetch-all-uri" in myopts
 	ask = "--ask" in myopts
@@ -7273,7 +7274,7 @@ def action_build(settings, trees, mtimedb,
 					+ " AUTOCLEAN is disabled.  This can cause serious"
 					+ " problems due to overlapping packages.\n")
 
-		if merge_count and not (pretend or fetchonly):
+		if merge_count and not (buildpkgonly or fetchonly or pretend):
 			post_emerge(settings, mtimedb, retval)
 		return retval
 
@@ -7715,13 +7716,17 @@ def emerge_main():
 		emergehelp.help(myaction, myopts, output.havecolor)
 		sys.exit(1)
 
+	pretend = "--pretend" in myopts
+	fetchonly = "--fetchonly" in myopts or "--fetch-all-uri" in myopts
+	buildpkgonly = "--buildpkgonly" in myopts
+
 	# check if root user is the current user for the actions where emerge needs this
 	if portage.secpass < 2:
 		# We've already allowed "--version" and "--help" above.
 		if "--pretend" not in myopts and myaction not in ("search","info"):
 			need_superuser = not \
-				("--fetchonly" in myopts or \
-				"--fetch-all-uri" in myopts or \
+				(fetchonly or \
+				(buildpkgonly and secpass >= 1) or \
 				myaction in ("metadata", "regen") or \
 				(myaction == "sync" and os.access(settings["PORTDIR"], os.W_OK)))
 			if portage.secpass < 1 or \
@@ -7823,14 +7828,14 @@ def emerge_main():
 		vartree = trees[settings["ROOT"]]["vartree"]
 		if 1 == unmerge(settings, myopts, vartree, myaction, myfiles,
 			mtimedb["ldpath"]):
-			if "--pretend" not in myopts:
+			if not (buildpkgonly or fetchonly or pretend):
 				post_emerge(settings, mtimedb, 0)
 
 	elif myaction in ("depclean", "prune"):
 		validate_ebuild_environment(trees)
 		action_depclean(settings, trees, mtimedb["ldpath"],
 			myopts, myaction, myfiles, spinner)
-		if "--pretend" not in myopts:
+		if not (buildpkgonly or fetchonly or pretend):
 			post_emerge(settings, mtimedb, 0)
 	# "update", "system", or just process files:
 	else:

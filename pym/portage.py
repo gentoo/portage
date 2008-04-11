@@ -2903,7 +2903,7 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 	if not free:
 		free=((droppriv and "usersandbox" not in features) or \
 			(not droppriv and "sandbox" not in features and \
-			"usersandbox" not in features))
+			"usersandbox" not in features and not fakeroot))
 
 	if free or "SANDBOX_ACTIVE" in os.environ:
 		keywords["opt_name"] += " bash"
@@ -4470,6 +4470,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		vartree = db[myroot]["vartree"]
 
 	features = mysettings.features
+	from portage_data import secpass
 
 	validcommands = ["help","clean","prerm","postrm","cleanrm","preinst","postinst",
 	                "config","info","setup","depend","fetch","digest",
@@ -4972,7 +4973,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			"sesandbox" in mysettings.features
 
 		droppriv = "userpriv" in mysettings.features and \
-			"userpriv" not in restrict
+			"userpriv" not in restrict and \
+			secpass >= 2
 
 		fakeroot = "fakeroot" in mysettings.features
 
