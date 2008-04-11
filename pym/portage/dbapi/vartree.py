@@ -16,7 +16,7 @@ from portage.output import bold, red, green
 from portage.update import fixdbentries
 from portage.util import apply_secpass_permissions, ConfigProtect, ensure_dirs, \
 	writemsg, writemsg_stdout, write_atomic, atomic_ofstream, writedict, \
-	grabfile, grabdict, normalize_path, new_protect_filename, getlibpaths
+	grabfile, grabdict, normalize_path, new_protect_filename
 from portage.versions import pkgsplit, catpkgsplit, catsplit, best, pkgcmp
 
 from portage import listdir, dep_expand, flatten, key_expand, \
@@ -1639,10 +1639,7 @@ class dblink(object):
 
 		for lib in list(preserve_libs):
 			if not has_external_consumers(lib, old_contents, preserve_libs):
-				preserve_libs.remove(lib)
-			for path in getlibpaths():
-				if os.path.exists(os.path.join(path, lib)):
-					preserve_libs.remove(lib)
+				preserve_libs.remove(lib)						
 			
 		# get the real paths for the libs
 		preserve_paths = [x for x in old_contents if os.path.basename(x) in preserve_libs]
