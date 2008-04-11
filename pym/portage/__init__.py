@@ -2922,7 +2922,7 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 	if not free:
 		free=((droppriv and "usersandbox" not in features) or \
 			(not droppriv and "sandbox" not in features and \
-			"usersandbox" not in features))
+			"usersandbox" not in features and not fakeroot))
 
 	if free or "SANDBOX_ACTIVE" in os.environ:
 		keywords["opt_name"] += " bash"
@@ -3320,8 +3320,15 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 			if use_locks and can_fetch:
 				waiting_msg = None
 				if not parallel_fetchonly and "parallel-fetch" in features:
-					waiting_msg = ("Downloading '%s'... " + \
-						"see "+EPREFIX+"/var/log/emerge-fetch.log for details.") % myfile
+					waiting_msg = ("Fetching '%s' " + \
+						"in the background. " + \
+						"To view fetch progress, run `tail -f " + \
+						EPREFIX + "/var/log/emerge-fetch.log` in another " + \
+						"terminal.") % myfile
+					msg_prefix = colorize("GOOD", " * ")
+					from textwrap import wrap
+					waiting_msg = "\n".join(msg_prefix + line \
+						for line in wrap(waiting_msg, 65))
 				if locks_in_subdir:
 					file_lock = portage.locks.lockfile(
 						os.path.join(mysettings["DISTDIR"],
@@ -4512,6 +4519,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		vartree = db[myroot]["vartree"]
 
 	features = mysettings.features
+	from portage.data import secpass
 
 	validcommands = ["help","clean","prerm","postrm","cleanrm","preinst","postinst",
 	                "config","info","setup","depend","fetch","digest",
@@ -5018,7 +5026,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			"sesandbox" in mysettings.features
 
 		droppriv = "userpriv" in mysettings.features and \
-			"userpriv" not in restrict
+			"userpriv" not in restrict and \
+			secpass >= 2
 
 		fakeroot = "fakeroot" in mysettings.features
 
