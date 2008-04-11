@@ -248,6 +248,17 @@ is not a tty (by default, color is disabled unless stdout is a tty).
 Used alongside \fB\-\-pretend\fR to cause the package name, new version, 
 and old version to be displayed in an aligned format for easy cut\-n\-paste.
 .TP
+.BR "\-\-complete\-graph"
+This causes \fBemerge\fR to consider the deep dependencies of all
+packages from the system and world sets. With this option enabled,
+\fBemerge\fR will bail out if it determines that the given operation will
+break any dependencies of the packages that have been added to the
+graph. Like the \fB\-\-deep\fR option, the \fB\-\-complete\-graph\fR
+option will significantly increase the time taken for dependency
+calculations. Note that, unlike the \fB\-\-deep\fR option, the
+\fB\-\-complete\-graph\fR option does not cause any more packages to
+be updated than would have otherwise been updated with the option disabled.
+.TP
 .BR \-\-config\-root=DIR
 Set the \fBPORTAGE_CONFIGROOT\fR environment variable.
 .TP
