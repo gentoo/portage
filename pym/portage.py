@@ -5005,10 +5005,15 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 		if mydo in actionmap:
 			if mydo=="package":
-				portage_util.ensure_dirs(
-					os.path.join(mysettings["PKGDIR"], mysettings["CATEGORY"]))
-				portage_util.ensure_dirs(
-					os.path.join(mysettings["PKGDIR"], "All"))
+				# Make sure the package directory exists before executing
+				# this phase. This can raise PermissionDenied if
+				# the current user doesn't have write access to $PKGDIR.
+				for parent_dir in ("All", mysettings["CATEGORY"]):
+					parent_dir = os.path.join(mysettings["PKGDIR"], parent_dir)
+					portage_util.ensure_dirs(parent_dir)
+					if not os.access(parent_dir, os.W_OK):
+						raise portage_exception.PermissionDenied(
+							"access('%s', os.W_OK)" % parent_dir)
 			retval = spawnebuild(mydo,
 				actionmap, mysettings, debug, logfile=logfile)
 		elif mydo=="qmerge":
