@@ -5366,9 +5366,14 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 		for y in pkgs:
 			cpv, pv_split, db = y
 			depstring = " ".join(db.aux_get(cpv, dep_keys))
-			use_split = db.aux_get(cpv, ["USE"])[0].split()
 			pkg_kwargs = kwargs.copy()
-			pkg_kwargs["myuse"] = use_split
+			if isinstance(db, portdbapi):
+				# for repoman
+				pass
+			else:
+				# for emerge
+				use_split = db.aux_get(cpv, ["USE"])[0].split()
+				pkg_kwargs["myuse"] = use_split
 			if edebug:
 				print "Virtual Parent:   ", y[0]
 				print "Virtual Depstring:", depstring
