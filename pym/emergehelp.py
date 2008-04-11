@@ -17,7 +17,7 @@ def shorthelp():
 	print bold("Options:")+" "+green("-")+"["+green("abBcCdDefgGhkKlnNoOpqPsStuvV")+"] ["+green("--oneshot")+"] ["+green("--newuse")+"] ["+green("--noconfmem")+"]"
 	print      "                                          [ " + green("--color")+" < " + turquoise("y") + " | "+ turquoise("n")+" >  ] [ "+green("--columns")+" ]"
 	print      "                                     [ "+green("--reinstall ")+turquoise("changed-use")+" ] ["+green("--nospinner")+"]"
-	print "                                          [ "+green("--deep")+"  ] [" + green("--with-bdeps")+" < " + turquoise("y") + " | "+ turquoise("n")+" > ]"
+	print "                    [ "+green("--complete-graph")+"  ] [ "+green("--deep")+"  ] [" + green("--with-bdeps")+" < " + turquoise("y") + " | "+ turquoise("n")+" > ]"
 	print bold("Actions:")+" [ "+green("--clean")+" | "+green("--depclean")+" | "+green("--prune")+" | "+green("--regen")+" | "+green("--search")+" | "+green("--unmerge")+" ]"
 
 def help(myaction,myopts,havecolor=1):
@@ -219,6 +219,19 @@ def help(myaction,myopts,havecolor=1):
 		print "       "+green("--columns")
 		print "              Display the pretend output in a tabular form. Versions are"
 		print "              aligned vertically."
+		print
+		print "       "+green("--complete-graph")
+		desc = "This causes emerge to consider the deep dependencies of all" + \
+			" packages from the system and world sets. With this option enabled," + \
+			" emerge will bail out if it determines that the given operation will" + \
+			" break any dependencies of the packages that have been added to the" + \
+			" graph. Like the --deep option, the --complete-graph" + \
+			" option will significantly increase the time taken for dependency" + \
+			" calculations. Note that, unlike the --deep option, the" + \
+			" --complete-graph option does not cause any more packages to" + \
+			" be updated than would have otherwise been updated with the option disabled."
+		for line in wrap(desc, desc_width):
+			print desc_indent + line
 		print
 		print "       "+green("--debug")+" ("+green("-d")+" short option)"
 		print "              Tell emerge to run the ebuild command in --debug mode. In this"
