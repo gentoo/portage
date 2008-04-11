@@ -4960,6 +4960,12 @@ class MergeTask(object):
 						bintree = self.trees[myroot]["bintree"]
 						if bintree.populated:
 							bintree.inject(pkg_key)
+						else:
+							# Copy group permissions for new directories that
+							# may have been created.
+							for path in ("All", portage.catsplit(pkg.cpv)[0]):
+								bintree._ensure_dir(
+									os.path.join(bintree.pkgdir, path))
 						if "--buildpkgonly" not in self.myopts:
 							msg = " === (%s of %s) Merging (%s::%s)" % \
 								(mergecount, len(mymergelist), pkg_key, y)
