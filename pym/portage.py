@@ -4787,12 +4787,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			return spawn(_shell_quote(ebuild_sh_binary) + " " + mydo,
 				mysettings, debug=debug, free=1, logfile=logfile)
 		elif mydo == "setup":
-			infodir = os.path.join(
-				mysettings["PORTAGE_BUILDDIR"], "build-info")
-			if os.path.isdir(infodir):
-				"""Load USE flags for setup phase of a binary package.
-				Ideally, the environment.bz2 would be used instead."""
-				mysettings.load_infodir(infodir)
 			retval = spawn(
 				_shell_quote(ebuild_sh_binary) + " " + mydo, mysettings,
 				debug=debug, free=1, logfile=logfile)
@@ -4849,7 +4843,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 						noiselevel=-1)
 			return phase_retval
 		elif mydo in ("prerm", "postrm", "config", "info"):
-			mysettings.load_infodir(mysettings["O"])
 			retval =  spawn(
 				_shell_quote(ebuild_sh_binary) + " " + mydo,
 				mysettings, debug=debug, free=1, logfile=logfile)
