@@ -7901,6 +7901,16 @@ class binarytree(object):
 		use for a given cpv.  If a collision will occur with an existing
 		package from another category, the existing package will be bumped to
 		${PKGDIR}/${CATEGORY}/${PF}.tbz2 so that both can coexist."""
+
+		# Copy group permissions for new directories that
+		# may have been created.
+		for path in ("All", catsplit(cpv)[0]):
+			path = os.path.join(self.pkgdir, path)
+			self._ensure_dir(path)
+			if not os.access(path, os.W_OK):
+				raise portage_exception.PermissionDenied(
+					"access('%s', W_OK)" % path)
+
 		if not self.populated:
 			# Try to avoid the population routine when possible, so that
 			# FEATURES=buildpkg doesn't always force population.
