@@ -4,7 +4,8 @@
 
 from portage.dep import isvalidatom, isjustname, dep_getkey, match_from_list
 from portage.dbapi.virtual import fakedbapi
-from portage.exception import InvalidPackageName, InvalidAtom, PortageException
+from portage.exception import InvalidPackageName, InvalidAtom, \
+	PermissionDenied, PortageException
 from portage.output import green
 from portage.util import ensure_dirs, normalize_path, writemsg, writemsg_stdout
 from portage.versions import best, catpkgsplit, catsplit
@@ -284,6 +285,15 @@ class binarytree(object):
 		${PKGDIR}/${CATEGORY}/${PF}.tbz2 so that both can coexist."""
 		if not self._all_directory:
 			return
+
+		# Copy group permissions for new directories that
+		# may have been created.
+		for path in ("All", catsplit(cpv)[0]):
+			path = os.path.join(self.pkgdir, path)
+			self._ensure_dir(path)
+			if not os.access(path, os.W_OK):
+				raise PermissionDenied("access('%s', W_OK)" % path)
+
 		full_path = self.getname(cpv)
 		if "All" == full_path.split(os.path.sep)[-2]:
 			return
