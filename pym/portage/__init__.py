@@ -1003,7 +1003,6 @@ class config(object):
 
 		self.user_profile_dir = None
 		self.local_config = local_config
-		self._use_wildcards = False
 
 		if clone:
 			self._filter_calling_env = copy.deepcopy(clone._filter_calling_env)
@@ -1064,7 +1063,6 @@ class config(object):
 
 			self._accept_license = copy.deepcopy(clone._accept_license)
 			self._plicensedict = copy.deepcopy(clone._plicensedict)
-			self._use_wildcards = copy.deepcopy(clone._use_wildcards)
 		else:
 
 			def check_var_directory(varname, var):
@@ -1365,11 +1363,6 @@ class config(object):
 					if not self.pusedict.has_key(cp):
 						self.pusedict[cp] = {}
 					self.pusedict[cp][key] = pusedict[key]
-					if not self._use_wildcards:
-						for x in pusedict[key]:
-							if x.endswith("_*"):
-								self._use_wildcards = True
-								break
 
 				#package.keywords
 				pkgdict = grabdict_package(
@@ -1949,19 +1942,7 @@ class config(object):
 			has_changed = True
 		self.configdict["pkg"]["PKGUSE"] = self.puse[:] # For saving to PUSE file
 		self.configdict["pkg"]["USE"]    = self.puse[:] # this gets appended to USE
-		if iuse != self.configdict["pkg"].get("IUSE",""):
-			self.configdict["pkg"]["IUSE"] = iuse
-			test_use_changed = False
-			if "test" in self.features:
-				test_use_changed = \
-					bool(re.search(r'(^|\s)[-+]?test(\s|$)', iuse)) != \
-					("test" in self["USE"].split())
-			if self.get("EBUILD_PHASE") or \
-				self._use_wildcards or \
-				test_use_changed:
-				# Without this conditional, regenerate() would be called
-				# *every* time.
-				has_changed = True
+		self.configdict["pkg"]["IUSE"] = iuse
 
 		# Always set known good values for these variables, since
 		# corruption of these can cause problems:
@@ -1983,7 +1964,7 @@ class config(object):
 		#  * Forced flags, such as those from {,package}use.force
 		#  * build and bootstrap flags used by bootstrap.sh
 
-		usesplit = self["USE"].split()
+		use = set(self["USE"].split())
 		iuse_implicit = set(x.lstrip("+-") for x in iuse.split())
 
 		# Flags derived from ARCH.
@@ -1999,7 +1980,7 @@ class config(object):
 		if use_expand_hidden:
 			use_expand_hidden = re.compile("^(%s)_.*" % \
 				("|".join(x.lower() for x in use_expand_hidden)))
-			for x in usesplit:
+			for x in use:
 				if use_expand_hidden.match(x):
 					iuse_implicit.add(x)
 
@@ -2022,11 +2003,88 @@ class config(object):
 				iuse_grep = ""
 			self.configdict["pkg"]["PORTAGE_IUSE"] = iuse_grep
 
+		ebuild_force_test = self.get("EBUILD_FORCE_TEST") == "1"
+		if ebuild_force_test and ebuild_phase and \
+			not hasattr(self, "_ebuild_force_test_msg_shown"):
+				self._ebuild_force_test_msg_shown = True
+				writemsg("Forcing test.\n", noiselevel=-1)
+		if "test" in self.features and "test" in iuse_implicit:
+			if "test" in self.usemask and not ebuild_force_test:
+				# "test" is in IUSE and USE=test is masked, so execution
+				# of src_test() probably is not reliable. Therefore,
+				# temporarily disable FEATURES=test just for this package.
+				self["FEATURES"] = " ".join(x for x in self.features \
+					if x != "test")
+				use.discard("test")
+			else:
+				use.add("test")
+				if ebuild_force_test:
+					self.usemask.discard("test")
+
+		# Use the calculated USE flags to regenerate the USE_EXPAND flags so
+		# that they are consistent.
+		use_expand = self.get("USE_EXPAND", "").split()
+		for var in use_expand:
+			prefix = var.lower() + "_"
+			prefix_len = len(prefix)
+			expand_flags = set([ x[prefix_len:] for x in use \
+				if x.startswith(prefix) ])
+			var_split = self.get(var, "").split()
+			# Preserve the order of var_split because it can matter for things
+			# like LINGUAS.
+			var_split = [ x for x in var_split if x in expand_flags ]
+			var_split.extend(expand_flags.difference(var_split))
+			has_wildcard = "*" in var_split
+			if has_wildcard:
+				var_split = [ x for x in var_split if x != "*" ]
+			has_iuse = False
+			for x in iuse_implicit:
+				if x.startswith(prefix):
+					has_iuse = True
+					break
+			if has_wildcard:
+				# * means to enable everything in IUSE that's not masked
+				if has_iuse:
+					for x in iuse_implicit:
+						if x.startswith(prefix) and x not in self.usemask:
+							suffix = x[prefix_len:]
+							if suffix in var_split:
+								continue
+							var_split.append(suffix)
+							use.add(x)
+				else:
+					# If there is a wildcard and no matching flags in IUSE then
+					# LINGUAS should be unset so that all .mo files are
+					# installed.
+					var_split = []
+			var_split = [x for x in var_split if x in iuse_implicit]
+			if var_split:
+				self[var] = " ".join(var_split)
+			else:
+				# Don't export empty USE_EXPAND vars unless the user config
+				# exports them as empty.  This is required for vars such as
+				# LINGUAS, where unset and empty have different meanings.
+				if has_wildcard:
+					# ebuild.sh will see this and unset the variable so
+					# that things like LINGUAS work properly
+					self[var] = "*"
+				else:
+					if has_iuse:
+						self[var] = ""
+					else:
+						# It's not in IUSE, so just allow the variable content
+						# to pass through if it is defined somewhere.  This
+						# allows packages that support LINGUAS but don't
+						# declare it in IUSE to use the variable outside of the
+						# USE_EXPAND context.
+						pass
+
 		# Filtered for the ebuild environment. Store this in a separate
 		# attribute since we still want to be able to see global USE
 		# settings for things like emerge --info.
+
 		self.configdict["pkg"]["PORTAGE_USE"] = " ".join(sorted(
-			x for x in usesplit if \
+			x for x in use if \
 			x in iuse_implicit))
 
 	def getMaskAtom(self, cpv, metadata):
@@ -2428,103 +2486,18 @@ class config(object):
 						continue
 					myflags.add(var_lower + "_" + x)
 
-		myflags.update(self.useforce)
-
-		iuse = self.configdict["pkg"].get("IUSE","").split()
-		iuse = [ x.lstrip("+-") for x in iuse ]
-		# FEATURES=test should imply USE=test
 		if not hasattr(self, "features"):
-			self.features = list(sorted(set(
-				self.configlist[-1].get("FEATURES","").split())))
+			self.features = sorted(set(
+				self.configlist[-1].get("FEATURES","").split()))
 		self["FEATURES"] = " ".join(self.features)
-		ebuild_force_test = self.get("EBUILD_FORCE_TEST") == "1"
-		if ebuild_force_test and \
-			self.get("EBUILD_PHASE") == "test" and \
-			not hasattr(self, "_ebuild_force_test_msg_shown"):
-				self._ebuild_force_test_msg_shown = True
-				writemsg("Forcing test.\n", noiselevel=-1)
-		if "test" in self.features and "test" in iuse:
-			if "test" in self.usemask and not ebuild_force_test:
-				# "test" is in IUSE and USE=test is masked, so execution
-				# of src_test() probably is not reliable. Therefore,
-				# temporarily disable FEATURES=test just for this package.
-				self["FEATURES"] = " ".join(x for x in self.features \
-					if x != "test")
-				myflags.discard("test")
-			else:
-				myflags.add("test")
-				if ebuild_force_test:
-					self.usemask.discard("test")
 
-		usesplit = [ x for x in myflags if \
-			x not in self.usemask]
-
-		# Use the calculated USE flags to regenerate the USE_EXPAND flags so
-		# that they are consistent.
-		for var in use_expand:
-			prefix = var.lower() + "_"
-			prefix_len = len(prefix)
-			expand_flags = set([ x[prefix_len:] for x in usesplit \
-				if x.startswith(prefix) ])
-			var_split = self.get(var, "").split()
-			# Preserve the order of var_split because it can matter for things
-			# like LINGUAS.
-			var_split = [ x for x in var_split if x in expand_flags ]
-			var_split.extend(expand_flags.difference(var_split))
-			has_wildcard = "*" in var_split
-			if has_wildcard:
-				var_split = [ x for x in var_split if x != "*" ]
-				self._use_wildcards = True
-			has_iuse = False
-			for x in iuse:
-				if x.startswith(prefix):
-					has_iuse = True
-					break
-			if has_wildcard:
-				# * means to enable everything in IUSE that's not masked
-				if has_iuse:
-					for x in iuse:
-						if x.startswith(prefix) and x not in self.usemask:
-							suffix = x[prefix_len:]
-							if suffix in var_split:
-								continue
-							var_split.append(suffix)
-							usesplit.append(x)
-				else:
-					# If there is a wildcard and no matching flags in IUSE then
-					# LINGUAS should be unset so that all .mo files are
-					# installed.
-					var_split = []
-			if var_split:
-				self[var] = " ".join(var_split)
-			else:
-				# Don't export empty USE_EXPAND vars unless the user config
-				# exports them as empty.  This is required for vars such as
-				# LINGUAS, where unset and empty have different meanings.
-				if has_wildcard:
-					# ebuild.sh will see this and unset the variable so
-					# that things like LINGUAS work properly
-					self[var] = "*"
-				else:
-					if has_iuse:
-						self[var] = ""
-					else:
-						# It's not in IUSE, so just allow the variable content
-						# to pass through if it is defined somewhere.  This
-						# allows packages that support LINGUAS but don't
-						# declare it in IUSE to use the variable outside of the
-						# USE_EXPAND context.
-						pass
-
+		myflags.update(self.useforce)
 		arch = self.configdict["defaults"].get("ARCH")
-		if arch and arch not in usesplit:
-			usesplit.append(arch)
+		if arch:
+			myflags.add(arch)
 
-		usesplit = [x for x in usesplit if \
-			x not in self.usemask]
-
-		usesplit.sort()
-		self.configlist[-1]["USE"]= " ".join(usesplit)
+		myflags.difference_update(self.usemask)
+		self.configlist[-1]["USE"]= " ".join(sorted(myflags))
 
 		self.already_in_regenerate = 0
 
