@@ -2045,19 +2045,16 @@ class config(object):
 			has_wildcard = "*" in var_split
 			if has_wildcard:
 				var_split = [ x for x in var_split if x != "*" ]
-			has_iuse = False
+			has_iuse = set()
 			for x in iuse_implicit:
 				if x.startswith(prefix):
-					has_iuse = True
-					break
+					has_iuse.add(x[prefix_len:])
 			if has_wildcard:
 				# * means to enable everything in IUSE that's not masked
 				if has_iuse:
 					for x in iuse_implicit:
 						if x.startswith(prefix) and x not in self.usemask:
 							suffix = x[prefix_len:]
-							if suffix in var_split:
-								continue
 							var_split.append(suffix)
 							use.add(x)
 				else:
@@ -2065,7 +2062,17 @@ class config(object):
 					# LINGUAS should be unset so that all .mo files are
 					# installed.
 					var_split = []
-			var_split = [x for x in var_split if x in iuse_implicit]
+			# Make the flags unique and filter them according to IUSE.
+			# Also, continue to preserve order for things like LINGUAS
+			# and filter any duplicates that variable may contain.
+			filtered_var_split = []
+			remaining = has_iuse.intersection(var_split)
+			for x in var_split:
+				if x in remaining:
+					remaining.remove(x)
+					filtered_var_split.append(x)
+			var_split = filtered_var_split
+
 			if var_split:
 				self[var] = " ".join(var_split)
 			else:
