@@ -1291,7 +1291,8 @@ class config(object):
 			self.lookuplist.reverse()
 
 			# Blacklist vars that could interfere with portage internals.
-			for blacklisted in "CATEGORY", "PKGUSE", "PORTAGE_CONFIGROOT", \
+			for blacklisted in "CATEGORY", "EBUILD_PHASE", \
+				"PKGUSE", "PORTAGE_CONFIGROOT", \
 				"PORTAGE_IUSE", "PORTAGE_USE", "ROOT":
 				for cfg in self.lookuplist:
 					cfg.pop(blacklisted, None)
@@ -1942,6 +1943,7 @@ class config(object):
 			has_changed = True
 		self.configdict["pkg"]["PKGUSE"] = self.puse[:] # For saving to PUSE file
 		self.configdict["pkg"]["USE"]    = self.puse[:] # this gets appended to USE
+		previous_iuse = self.configdict["pkg"].get("IUSE")
 		self.configdict["pkg"]["IUSE"] = iuse
 
 		# Always set known good values for these variables, since
@@ -1952,6 +1954,12 @@ class config(object):
 
 		if has_changed:
 			self.reset(keeping_pkg=1,use_cache=use_cache)
+
+		# If this is not an ebuild phase and reset() has not been called,
+		# it's safe to return early here if IUSE has not changed.
+		if not (has_changed or ebuild_phase) and \
+			previous_iuse == iuse:
+			return
 
 		# Filter out USE flags that aren't part of IUSE. This has to
 		# be done for every setcpv() call since practically every
