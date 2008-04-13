@@ -5221,7 +5221,7 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 		# The utime can fail here with EPERM even though the move succeeded.
 		# Instead of failing, use stat to return the mtime if possible.
 		try:
-			newmtime = os.stat(dest).st_mtime
+			newmtime = long(os.stat(dest).st_mtime)
 		except OSError, e:
 			writemsg("!!! Failed to stat in movefile()\n", noiselevel=-1)
 			writemsg("!!! %s\n" % dest, noiselevel=-1)
