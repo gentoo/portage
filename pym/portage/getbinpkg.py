@@ -399,7 +399,12 @@ def file_get(baseurl,dest,conn=None,fcmd=None):
 	lexer = shlex.shlex(StringIO.StringIO(fcmd), posix=True)
 	lexer.whitespace_split = True
 	myfetch = [varexpand(x, mydict=variables) for x in lexer]
-	retval = spawn(myfetch, env=os.environ.copy())
+	fd_pipes= {
+		0:sys.stdin.fileno(),
+		1:sys.stdout.fileno(),
+		2:sys.stdout.fileno()
+	}
+	retval = spawn(myfetch, env=os.environ.copy(), fd_pipes=fd_pipes)
 	if retval != os.EX_OK:
 		sys.stderr.write("Fetcher exited with a failure condition.\n")
 		return 0

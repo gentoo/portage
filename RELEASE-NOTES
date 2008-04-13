@@ -32,6 +32,23 @@ portage-2.2
 * "world" does no longer include "system" unconditionally, but you can add
   "@system" to the worldfile to restore the old state.
 
+portage-2.1.5
+==================================
+
+* The parallel-fetch feature is now enabled by default. It is optimized
+  to avoid doing redundant checksums for previously downloaded files that have
+  the correct size. Run `tail -f /var/log/emerge-fetch.log` in a
+  terminal to view parallel-fetch progress. Add FEATURES="-parallel-fetch"
+  to /etc/make.conf if you want to disable this feature.
+
+* For extra careful dependency handling, emerge has a new --complete-graph
+  option that causes it to consider the deep dependencies of all packages from
+  the system and world sets. With this option enabled, emerge will bail out
+  if it determines that the given operation will break any dependencies of
+  the packages that have been added to the graph. Unlike the --deep option,
+  the --complete-graph option does not cause any more packages to be updated
+  than would have otherwise been updated with the option disabled.
+
 portage-2.1.4.1
 ==================================
 

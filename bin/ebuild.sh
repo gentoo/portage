@@ -1124,7 +1124,7 @@ debug-print() {
 
 		# extra user-configurable targets
 		if [ "$ECLASS_DEBUG_OUTPUT" == "on" ]; then
-			echo "debug: $1"
+			echo "debug: $1" >&2
 		elif [ -n "$ECLASS_DEBUG_OUTPUT" ]; then
 			echo "debug: $1" >> $ECLASS_DEBUG_OUTPUT
 		fi

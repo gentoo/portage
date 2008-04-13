@@ -1014,7 +1014,6 @@ class config(object):
 
 		self.user_profile_dir = None
 		self.local_config = local_config
-		self._use_wildcards = False
 
 		if clone:
 			self._filter_calling_env = copy.deepcopy(clone._filter_calling_env)
@@ -1075,7 +1074,6 @@ class config(object):
 
 			self._accept_license = copy.deepcopy(clone._accept_license)
 			self._plicensedict = copy.deepcopy(clone._plicensedict)
-			self._use_wildcards = copy.deepcopy(clone._use_wildcards)
 		else:
 
 			def check_var_directory(varname, var):
@@ -1145,7 +1143,7 @@ class config(object):
 						parents = grabfile(parentsFile)
 						if not parents:
 							raise portage.exception.ParseError(
-								"Empty parent file: '%s'" % parents_file)
+								"Empty parent file: '%s'" % parentsFile)
 						for parentPath in parents:
 							parentPath = normalize_path(os.path.join(
 								currentPath, parentPath))
@@ -1304,7 +1302,8 @@ class config(object):
 			self.lookuplist.reverse()
 
 			# Blacklist vars that could interfere with portage internals.
-			for blacklisted in "CATEGORY", "PKGUSE", "PORTAGE_CONFIGROOT", \
+			for blacklisted in "CATEGORY", "EBUILD_PHASE", \
+				"PKGUSE", "PORTAGE_CONFIGROOT", \
 				"PORTAGE_IUSE", "PORTAGE_USE", "ROOT", "EPREFIX", "EROOT":
 				for cfg in self.lookuplist:
 					cfg.pop(blacklisted, None)
@@ -1380,11 +1379,6 @@ class config(object):
 					if not self.pusedict.has_key(cp):
 						self.pusedict[cp] = {}
 					self.pusedict[cp][key] = pusedict[key]
-					if not self._use_wildcards:
-						for x in pusedict[key]:
-							if x.endswith("_*"):
-								self._use_wildcards = True
-								break
 
 				#package.keywords
 				pkgdict = grabdict_package(
@@ -1837,6 +1831,13 @@ class config(object):
 				os.path.join(infodir, "CATEGORY"), noiselevel=-1)
 			self.configdict["pkg"].update(backup_pkg_metadata)
 			retval = 0
+
+		# Always set known good values for these variables, since
+		# corruption of these can cause problems:
+		cat, pf = catsplit(self.mycpv)
+		self.configdict["pkg"]["CATEGORY"] = cat
+		self.configdict["pkg"]["PF"] = pf
+
 		return retval
 
 	def setcpv(self, mycpv, use_cache=1, mydb=None):
@@ -1961,23 +1962,23 @@ class config(object):
 			has_changed = True
 		self.configdict["pkg"]["PKGUSE"] = self.puse[:] # For saving to PUSE file
 		self.configdict["pkg"]["USE"]    = self.puse[:] # this gets appended to USE
-		if iuse != self.configdict["pkg"].get("IUSE",""):
-			self.configdict["pkg"]["IUSE"] = iuse
-			test_use_changed = False
-			if "test" in self.features:
-				test_use_changed = \
-					bool(re.search(r'(^|\s)[-+]?test(\s|$)', iuse)) != \
-					("test" in self["USE"].split())
-			if self.get("EBUILD_PHASE") or \
-				self._use_wildcards or \
-				test_use_changed:
-				# Without this conditional, regenerate() would be called
-				# *every* time.
-				has_changed = True
-		# CATEGORY is essential for doebuild calls
-		self.configdict["pkg"]["CATEGORY"] = mycpv.split("/")[0]
+		previous_iuse = self.configdict["pkg"].get("IUSE")
+		self.configdict["pkg"]["IUSE"] = iuse
+
+		# Always set known good values for these variables, since
+		# corruption of these can cause problems:
+		cat, pf = catsplit(self.mycpv)
+		self.configdict["pkg"]["CATEGORY"] = cat
+		self.configdict["pkg"]["PF"] = pf
+
 		if has_changed:
 			self.reset(keeping_pkg=1,use_cache=use_cache)
+
+		# If this is not an ebuild phase and reset() has not been called,
+		# it's safe to return early here if IUSE has not changed.
+		if not (has_changed or ebuild_phase) and \
+			previous_iuse == iuse:
+			return
 
 		# Filter out USE flags that aren't part of IUSE. This has to
 		# be done for every setcpv() call since practically every
@@ -1990,7 +1991,7 @@ class config(object):
 		#  * Forced flags, such as those from {,package}use.force
 		#  * build and bootstrap flags used by bootstrap.sh
 
-		usesplit = self["USE"].split()
+		use = set(self["USE"].split())
 		iuse_implicit = set(x.lstrip("+-") for x in iuse.split())
 
 		# Flags derived from ARCH.
@@ -2006,7 +2007,7 @@ class config(object):
 		if use_expand_hidden:
 			use_expand_hidden = re.compile("^(%s)_.*" % \
 				("|".join(x.lower() for x in use_expand_hidden)))
-			for x in usesplit:
+			for x in use:
 				if use_expand_hidden.match(x):
 					iuse_implicit.add(x)
 
@@ -2032,11 +2033,95 @@ class config(object):
 				iuse_grep = ""
 			self.configdict["pkg"]["PORTAGE_IUSE"] = iuse_grep
 
+		ebuild_force_test = self.get("EBUILD_FORCE_TEST") == "1"
+		if ebuild_force_test and ebuild_phase and \
+			not hasattr(self, "_ebuild_force_test_msg_shown"):
+				self._ebuild_force_test_msg_shown = True
+				writemsg("Forcing test.\n", noiselevel=-1)
+		if "test" in self.features and "test" in iuse_implicit:
+			if "test" in self.usemask and not ebuild_force_test:
+				# "test" is in IUSE and USE=test is masked, so execution
+				# of src_test() probably is not reliable. Therefore,
+				# temporarily disable FEATURES=test just for this package.
+				self["FEATURES"] = " ".join(x for x in self.features \
+					if x != "test")
+				use.discard("test")
+			else:
+				use.add("test")
+				if ebuild_force_test:
+					self.usemask.discard("test")
+
+		# Use the calculated USE flags to regenerate the USE_EXPAND flags so
+		# that they are consistent.
+		use_expand = self.get("USE_EXPAND", "").split()
+		for var in use_expand:
+			prefix = var.lower() + "_"
+			prefix_len = len(prefix)
+			expand_flags = set([ x[prefix_len:] for x in use \
+				if x.startswith(prefix) ])
+			var_split = self.get(var, "").split()
+			# Preserve the order of var_split because it can matter for things
+			# like LINGUAS.
+			var_split = [ x for x in var_split if x in expand_flags ]
+			var_split.extend(expand_flags.difference(var_split))
+			has_wildcard = "*" in var_split
+			if has_wildcard:
+				var_split = [ x for x in var_split if x != "*" ]
+			has_iuse = set()
+			for x in iuse_implicit:
+				if x.startswith(prefix):
+					has_iuse.add(x[prefix_len:])
+			if has_wildcard:
+				# * means to enable everything in IUSE that's not masked
+				if has_iuse:
+					for x in iuse_implicit:
+						if x.startswith(prefix) and x not in self.usemask:
+							suffix = x[prefix_len:]
+							var_split.append(suffix)
+							use.add(x)
+				else:
+					# If there is a wildcard and no matching flags in IUSE then
+					# LINGUAS should be unset so that all .mo files are
+					# installed.
+					var_split = []
+			# Make the flags unique and filter them according to IUSE.
+			# Also, continue to preserve order for things like LINGUAS
+			# and filter any duplicates that variable may contain.
+			filtered_var_split = []
+			remaining = has_iuse.intersection(var_split)
+			for x in var_split:
+				if x in remaining:
+					remaining.remove(x)
+					filtered_var_split.append(x)
+			var_split = filtered_var_split
+
+			if var_split:
+				self[var] = " ".join(var_split)
+			else:
+				# Don't export empty USE_EXPAND vars unless the user config
+				# exports them as empty.  This is required for vars such as
+				# LINGUAS, where unset and empty have different meanings.
+				if has_wildcard:
+					# ebuild.sh will see this and unset the variable so
+					# that things like LINGUAS work properly
+					self[var] = "*"
+				else:
+					if has_iuse:
+						self[var] = ""
+					else:
+						# It's not in IUSE, so just allow the variable content
+						# to pass through if it is defined somewhere.  This
+						# allows packages that support LINGUAS but don't
+						# declare it in IUSE to use the variable outside of the
+						# USE_EXPAND context.
+						pass
+
 		# Filtered for the ebuild environment. Store this in a separate
 		# attribute since we still want to be able to see global USE
 		# settings for things like emerge --info.
+
 		self.configdict["pkg"]["PORTAGE_USE"] = " ".join(sorted(
-			x for x in usesplit if \
+			x for x in use if \
 			x in iuse_implicit))
 
 	def getMaskAtom(self, cpv, metadata):
@@ -2438,103 +2523,18 @@ class config(object):
 						continue
 					myflags.add(var_lower + "_" + x)
 
-		myflags.update(self.useforce)
-
-		iuse = self.configdict["pkg"].get("IUSE","").split()
-		iuse = [ x.lstrip("+-") for x in iuse ]
-		# FEATURES=test should imply USE=test
 		if not hasattr(self, "features"):
-			self.features = list(sorted(set(
-				self.configlist[-1].get("FEATURES","").split())))
+			self.features = sorted(set(
+				self.configlist[-1].get("FEATURES","").split()))
 		self["FEATURES"] = " ".join(self.features)
-		ebuild_force_test = self.get("EBUILD_FORCE_TEST") == "1"
-		if ebuild_force_test and \
-			self.get("EBUILD_PHASE") == "test" and \
-			not hasattr(self, "_ebuild_force_test_msg_shown"):
-				self._ebuild_force_test_msg_shown = True
-				writemsg("Forcing test.\n", noiselevel=-1)
-		if "test" in self.features and "test" in iuse:
-			if "test" in self.usemask and not ebuild_force_test:
-				# "test" is in IUSE and USE=test is masked, so execution
-				# of src_test() probably is not reliable. Therefore,
-				# temporarily disable FEATURES=test just for this package.
-				self["FEATURES"] = " ".join(x for x in self.features \
-					if x != "test")
-				myflags.discard("test")
-			else:
-				myflags.add("test")
-				if ebuild_force_test:
-					self.usemask.discard("test")
 
-		usesplit = [ x for x in myflags if \
-			x not in self.usemask]
-
-		# Use the calculated USE flags to regenerate the USE_EXPAND flags so
-		# that they are consistent.
-		for var in use_expand:
-			prefix = var.lower() + "_"
-			prefix_len = len(prefix)
-			expand_flags = set([ x[prefix_len:] for x in usesplit \
-				if x.startswith(prefix) ])
-			var_split = self.get(var, "").split()
-			# Preserve the order of var_split because it can matter for things
-			# like LINGUAS.
-			var_split = [ x for x in var_split if x in expand_flags ]
-			var_split.extend(expand_flags.difference(var_split))
-			has_wildcard = "*" in var_split
-			if has_wildcard:
-				var_split = [ x for x in var_split if x != "*" ]
-				self._use_wildcards = True
-			has_iuse = False
-			for x in iuse:
-				if x.startswith(prefix):
-					has_iuse = True
-					break
-			if has_wildcard:
-				# * means to enable everything in IUSE that's not masked
-				if has_iuse:
-					for x in iuse:
-						if x.startswith(prefix) and x not in self.usemask:
-							suffix = x[prefix_len:]
-							if suffix in var_split:
-								continue
-							var_split.append(suffix)
-							usesplit.append(x)
-				else:
-					# If there is a wildcard and no matching flags in IUSE then
-					# LINGUAS should be unset so that all .mo files are
-					# installed.
-					var_split = []
-			if var_split:
-				self[var] = " ".join(var_split)
-			else:
-				# Don't export empty USE_EXPAND vars unless the user config
-				# exports them as empty.  This is required for vars such as
-				# LINGUAS, where unset and empty have different meanings.
-				if has_wildcard:
-					# ebuild.sh will see this and unset the variable so
-					# that things like LINGUAS work properly
-					self[var] = "*"
-				else:
-					if has_iuse:
-						self[var] = ""
-					else:
-						# It's not in IUSE, so just allow the variable content
-						# to pass through if it is defined somewhere.  This
-						# allows packages that support LINGUAS but don't
-						# declare it in IUSE to use the variable outside of the
-						# USE_EXPAND context.
-						pass
-
+		myflags.update(self.useforce)
 		arch = self.configdict["defaults"].get("ARCH")
-		if arch and arch not in usesplit:
-			usesplit.append(arch)
+		if arch:
+			myflags.add(arch)
 
-		usesplit = [x for x in usesplit if \
-			x not in self.usemask]
-
-		usesplit.sort()
-		self.configlist[-1]["USE"]= " ".join(usesplit)
+		myflags.difference_update(self.usemask)
+		self.configlist[-1]["USE"]= " ".join(sorted(myflags))
 
 		self.already_in_regenerate = 0
 
@@ -4825,12 +4825,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			return spawn(_shell_quote(ebuild_sh_binary) + " " + mydo,
 				mysettings, debug=debug, free=1, logfile=logfile)
 		elif mydo == "setup":
-			infodir = os.path.join(
-				mysettings["PORTAGE_BUILDDIR"], "build-info")
-			if os.path.isdir(infodir):
-				"""Load USE flags for setup phase of a binary package.
-				Ideally, the environment.bz2 would be used instead."""
-				mysettings.load_infodir(infodir)
 			retval = spawn(
 				_shell_quote(ebuild_sh_binary) + " " + mydo, mysettings,
 				debug=debug, free=1, logfile=logfile)
@@ -4887,7 +4881,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 						noiselevel=-1)
 			return phase_retval
 		elif mydo in ("prerm", "postrm", "config", "info"):
-			mysettings.load_infodir(mysettings["O"])
 			retval =  spawn(
 				_shell_quote(ebuild_sh_binary) + " " + mydo,
 				mysettings, debug=debug, free=1, logfile=logfile)
@@ -5052,6 +5045,16 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				actionmap[x]["dep"] = ' '.join(actionmap_deps[x])
 
 		if mydo in actionmap:
+			if mydo == "package":
+				# Make sure the package directory exists before executing
+				# this phase. This can raise PermissionDenied if
+				# the current user doesn't have write access to $PKGDIR.
+				parent_dir = os.path.join(mysettings["PKGDIR"],
+					mysettings["CATEGORY"])
+				portage.util.ensure_dirs(parent_dir)
+				if not os.access(parent_dir, os.W_OK):
+					raise portage.exception.PermissionDenied(
+						"access('%s', os.W_OK)" % parent_dir)
 			retval = spawnebuild(mydo,
 				actionmap, mysettings, debug, logfile=logfile)
 		elif mydo=="qmerge":
@@ -5400,12 +5403,21 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 		else:
 			a = ['||']
 		for y in pkgs:
-			depstring = " ".join(y[2].aux_get(y[0], dep_keys))
+			cpv, pv_split, db = y
+			depstring = " ".join(db.aux_get(cpv, dep_keys))
+			pkg_kwargs = kwargs.copy()
+			if isinstance(db, portdbapi):
+				# for repoman
+				pass
+			else:
+				# for emerge
+				use_split = db.aux_get(cpv, ["USE"])[0].split()
+				pkg_kwargs["myuse"] = use_split
 			if edebug:
 				print "Virtual Parent:   ", y[0]
 				print "Virtual Depstring:", depstring
 			mycheck = dep_check(depstring, mydbapi, mysettings, myroot=myroot,
-				trees=trees, **kwargs)
+				trees=trees, **pkg_kwargs)
 			if not mycheck[0]:
 				raise portage.exception.ParseError(
 					"%s: %s '%s'" % (y[0], mycheck[1], depstring))
@@ -6092,8 +6104,8 @@ class FetchlistDict(UserDict.DictMixin):
 		"""Returns the complete fetch list for a given package."""
 		return self.portdb.getfetchlist(pkg_key, mysettings=self.settings,
 			all=True, mytree=self.mytree)[1]
-	def __contains__(self):
-		return pkg_key in self.keys()
+	def __contains__(self, cpv):
+		return cpv in self.keys()
 	def has_key(self, pkg_key):
 		"""Returns true if the given package exists within pkgdir."""
 		return pkg_key in self

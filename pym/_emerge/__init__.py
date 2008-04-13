@@ -203,7 +203,7 @@ options=[
 "--ask",          "--alphabetical",
 "--buildpkg",     "--buildpkgonly",
 "--changelog",    "--columns",
-"--consistent",
+"--complete-graph",
 "--debug",        "--deep",
 "--digest",
 "--emptytree",
@@ -390,7 +390,7 @@ def create_depgraph_params(myopts, myaction):
 		myparams.discard("recurse")
 	if "--deep" in myopts:
 		myparams.add("deep")
-	if "--consistent" in myopts:
+	if "--complete-graph" in myopts:
 		myparams.add("consistent")
 	return myparams
 
@@ -2026,10 +2026,12 @@ class depgraph(object):
 		for k in depkeys:
 			edepend[k] = metadata[k]
 
-		if mytype == "ebuild":
-			if "--buildpkgonly" in self.myopts:
-				edepend["RDEPEND"] = ""
-				edepend["PDEPEND"] = ""
+		if not pkg.built and \
+			"--buildpkgonly" in self.myopts and \
+			"deep" not in self.myparams and \
+			"empty" not in self.myparams:
+			edepend["RDEPEND"] = ""
+			edepend["PDEPEND"] = ""
 		bdeps_satisfied = False
 		if mytype in ("installed", "binary"):
 			if self.myopts.get("--with-bdeps", "n") == "y":
@@ -2867,7 +2869,7 @@ class depgraph(object):
 		intially satisfied.
 
 		Since this method can consume enough time to disturb users, it is
-		currently only enabled by the --consistent option.
+		currently only enabled by the --complete-graph option.
 		"""
 		if "consistent" not in self.myparams:
 			# Skip this to avoid consuming enough time to disturb users.
