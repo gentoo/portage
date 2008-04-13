@@ -2388,6 +2388,7 @@ class depgraph(object):
 		while args:
 			arg = args.pop()
 			for atom in arg.set:
+				self.spinner.update()
 				atom_cp = portage.dep_getkey(atom)
 				try:
 					pprovided = pprovideddict.get(portage.dep_getkey(atom))
@@ -2438,16 +2439,12 @@ class depgraph(object):
 
 					dep = Dependency(atom=atom, onlydeps=onlydeps,
 						root=myroot, parent=arg)
-					self._dep_stack.append(dep)
 
 					# Add the selected package to the graph as soon as possible
 					# so that later dep_check() calls can use it as feedback
 					# for making more consistent atom selections.
 					if not self._add_pkg(pkg, dep.parent,
 						priority=dep.priority, depth=dep.depth):
-						return 0, myfavorites
-
-					if not self._create_graph():
 						if isinstance(arg, SetArg):
 							sys.stderr.write(("\n\n!!! Problem resolving " + \
 								"dependencies for %s from %s\n") % \
@@ -2456,6 +2453,7 @@ class depgraph(object):
 							sys.stderr.write(("\n\n!!! Problem resolving " + \
 								"dependencies for %s\n") % atom)
 						return 0, myfavorites
+
 				except portage.exception.MissingSignature, e:
 					portage.writemsg("\n\n!!! A missing gpg signature is preventing portage from calculating the\n")
 					portage.writemsg("!!! required dependencies. This is a security feature enabled by the admin\n")
@@ -2476,6 +2474,11 @@ class depgraph(object):
 					print >> sys.stderr, "\n\n!!! Problem in '%s' dependencies." % atom
 					print >> sys.stderr, "!!!", str(e), getattr(e, "__module__", None)
 					raise
+
+		# Now that the root packages have been added to the graph,
+		# process the dependencies.
+		if not self._create_graph():
+			return 0, myfavorites
 
 		missing=0
 		if "--usepkgonly" in self.myopts:
