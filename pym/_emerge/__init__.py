@@ -4366,21 +4366,17 @@ class depgraph(object):
 							continue
 						slots.add(graph_db.aux_get(cpv, ["SLOT"])[0])
 				ret = []
+				if self._visible(pkg):
+					self._cpv_pkg_map[pkg.cpv] = pkg
+					ret.append(pkg.cpv)
+				slots.remove(pkg.metadata["SLOT"])
 				while slots:
 					slot_atom = "%s:%s" % (atom_cp, slots.pop())
 					pkg, existing = self._depgraph._select_package(
 						self._root, slot_atom)
 					if not pkg:
 						continue
-					if pkg.installed and "selective" not in self._depgraph.myparams:
-						try:
-							arg = self._depgraph._iter_atoms_for_pkg(pkg).next()
-						except (StopIteration, portage.exception.InvalidDependString):
-							arg = None
-						if arg:
-							continue
-					if pkg.installed and \
-						not visible(self._depgraph.pkgsettings[pkg.root], pkg):
+					if not self._visible(pkg):
 						continue
 					self._cpv_pkg_map[pkg.cpv] = pkg
 					ret.append(pkg.cpv)
@@ -4388,6 +4384,19 @@ class depgraph(object):
 					self._cpv_sort_ascending(ret)
 			self._match_cache[orig_atom] = ret
 			return ret[:]
+
+		def _visible(self, pkg):
+			if pkg.installed and "selective" not in self._depgraph.myparams:
+				try:
+					arg = self._depgraph._iter_atoms_for_pkg(pkg).next()
+				except (StopIteration, portage.exception.InvalidDependString):
+					arg = None
+				if arg:
+					return False
+			if pkg.installed and \
+				not visible(self._depgraph.pkgsettings[pkg.root], pkg):
+				return False
+			return True
 
 		def _dep_expand(self, atom):
 			"""
