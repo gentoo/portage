@@ -2144,10 +2144,12 @@ class depgraph(object):
 		for k in depkeys:
 			edepend[k] = metadata[k]
 
-		if mytype == "ebuild":
-			if "--buildpkgonly" in self.myopts:
-				edepend["RDEPEND"] = ""
-				edepend["PDEPEND"] = ""
+		if not pkg.built and \
+			"--buildpkgonly" in self.myopts and \
+			"deep" not in self.myparams and \
+			"empty" not in self.myparams:
+			edepend["RDEPEND"] = ""
+			edepend["PDEPEND"] = ""
 		bdeps_satisfied = False
 		if mytype in ("installed", "binary"):
 			if self.myopts.get("--with-bdeps", "n") == "y":
