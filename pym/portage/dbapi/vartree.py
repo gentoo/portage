@@ -4,7 +4,7 @@
 
 from portage.checksum import perform_md5
 from portage.const import CACHE_PATH, CONFIG_MEMORY_FILE, PORTAGE_BIN_PATH, \
-	PRIVATE_PATH, VDB_PATH, EPREFIX
+	PRIVATE_PATH, VDB_PATH, EPREFIX, EPREFIX_LSTRIP
 from portage.data import portage_gid, portage_uid, secpass
 from portage.dbapi import dbapi
 from portage.dep import dep_getslot, use_reduce, paren_reduce, isvalidatom, \
@@ -157,6 +157,14 @@ class LibraryPackageMap(object):
 					continue
 				libs = mysplit[1].split(",")
 				for lib in libs:
+					# In Prefix we can't do anything about host provided
+					# libs, it also makes little sense to try and
+					# preserve them, so filter them out here.  See below
+					# why we can detect this in certain cases.
+					if '/' in lib:
+						if not lib.startswith(EPREFIX):
+							continue
+
 					# The contract says we only have basenames in the
 					# keys of the reverse map (as that is the only thing
 					# available on Linux/ELF) and the code calling this
@@ -2113,7 +2121,7 @@ class dblink(object):
 
 		# we do a first merge; this will recurse through all files in our srcroot but also build up a
 		# "second hand" of symlinks to merge later
-		if self.mergeme(srcroot, destroot, outfile, secondhand, EPREFIX.lstrip(os.path.sep), cfgfiledict, mymtime):
+		if self.mergeme(srcroot, destroot, outfile, secondhand, EPREFIX_LSTRIP, cfgfiledict, mymtime):
 			return 1
 
 		# now, it's time for dealing our second hand; we'll loop until we can't merge anymore.	The rest are
