@@ -1742,7 +1742,11 @@ class depgraph(object):
 			self._graph_trees[myroot]["vartree"] = self.trees[myroot]["vartree"]
 			del vardb, fakedb
 			self._filtered_trees[myroot] = {}
-			self._filtered_trees[myroot]["vartree"] = self.trees[myroot]["vartree"]
+			# Substitute the graph tree for the vartree in dep_check() since we
+			# want atom selections to be consistent with package selections
+			# have already been made.
+			self._filtered_trees[myroot]["vartree"] = \
+				self._graph_trees[myroot]["porttree"]
 			def filtered_tree():
 				pass
 			filtered_tree.dbapi = self._dep_check_composite_db(self, myroot)
@@ -2579,8 +2583,17 @@ class depgraph(object):
 							arg.name in ("system", "world")):
 							return 0, myfavorites
 
-					self._dep_stack.append(
-						Dependency(atom=atom, onlydeps=onlydeps, root=myroot, parent=arg))
+					dep = Dependency(atom=atom, onlydeps=onlydeps,
+						root=myroot, parent=arg)
+					self._dep_stack.append(dep)
+
+					# Add the selected package to the graph as soon as possible
+					# so that later dep_check() calls can use it as feedback
+					# for making more consistent atom selections.
+					if not self._add_pkg(pkg, dep.parent,
+						priority=dep.priority, depth=dep.depth):
+						return 0, myfavorites
+
 					if not self._create_graph():
 						if isinstance(arg, SetArg):
 							sys.stderr.write(("\n\n!!! Problem resolving " + \
@@ -4513,12 +4526,20 @@ class depgraph(object):
 				slots = set()
 				slots.add(pkg.metadata["SLOT"])
 				atom_cp = portage.dep_getkey(atom)
-				if atom_cp == pkg.cp:
-					graph_db = self._depgraph.mydbapi[self._root]
-					for cpv in graph_db.match(atom):
-						if portage.cpv_getkey(cpv) != pkg.cp:
-							continue
-						slots.add(graph_db.aux_get(cpv, ["SLOT"])[0])
+				if pkg.cp.startswith("virtual/"):
+					# For new-style virtual lookahead that occurs inside
+					# dep_check(), examine all slots. This is needed
+					# so that newer slots will not unnecessarily be pulled in
+					# when a satisfying lower slot is already installed. For
+					# example, if virtual/jdk-1.4 is satisfied via kaffe then
+					# there's no need to pull in a newer slot to satisfy a
+					# virtual/jdk dependency.
+					for db, pkg_type, built, installed, db_keys in \
+						self._depgraph._filtered_trees[self._root]["dbs"]:
+						for cpv in db.match(atom):
+							if portage.cpv_getkey(cpv) != pkg.cp:
+								continue
+							slots.add(db.aux_get(cpv, ["SLOT"])[0])
 				ret = []
 				if self._visible(pkg):
 					self._cpv_pkg_map[pkg.cpv] = pkg
