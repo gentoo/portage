@@ -1603,8 +1603,10 @@ class dblink(object):
 		for lib in list(preserve_libs):
 			if not has_external_consumers(lib, old_contents, preserve_libs):
 				preserve_libs.remove(lib)
+			# only preserve the lib if there is no other copy in the search path
 			for path in getlibpaths():
-				if os.path.exists(os.path.join(path, lib)):
+				fullname = os.path.join(path, lib)
+				if fullname not in old_contents and os.path.exists(fullname):
 					preserve_libs.remove(lib)
 			
 		# get the real paths for the libs
