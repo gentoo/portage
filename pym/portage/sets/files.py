@@ -156,18 +156,75 @@ class ConfigFileSet(PackageSet):
 		return rValue
 	multiBuilder = classmethod(multiBuilder)
 
-class WorldSet(StaticFileSet):
+class WorldSet(EditablePackageSet):
 	description = "Set of packages that were directly installed by the user"
 	
 	def __init__(self, root):
-		super(WorldSet, self).__init__(os.path.join(os.sep, root, PRIVATE_PATH.lstrip(os.sep), "world"))
+		super(WorldSet, self).__init__()
+		# most attributes exist twice as atoms and non-atoms are stored in 
+		# separate files
 		self._lock = None
-
+		self._filename = os.path.join(os.sep, root, PRIVATE_PATH.lstrip(os.sep), "world")
+		self.loader = ItemFileLoader(self._filename, self._validate)
+		self._mtime = None
+		
+		self._filename2 = os.path.join(os.sep, root, PRIVATE_PATH.lstrip(os.sep), "world_sets")
+		self.loader2 = ItemFileLoader(self._filename2, self._validate2)
+		self._mtime2 = None
+		
 	def _validate(self, atom):
-		if atom.startswith(SETPREFIX):
-			return True
 		return ValidAtomValidator(atom)
 
+	def _validate2(self, setname):
+		return setname.startswith(SETPREFIX)
+
+	def write(self):
+		write_atomic(self._filename, "\n".join(sorted(self._atoms))+"\n")
+		write_atomic(self._filename2, "\n".join(sorted(self._nonatoms))+"\n")
+	
+	def load(self):
+		atoms = []
+		nonatoms = []
+		# load atoms and non-atoms from different files so the worldfile is 
+		# backwards-compatible with older versions and other PMs, even though 
+		# it's supposed to be private state data :/
+		try:
+			mtime = os.stat(self._filename).st_mtime
+		except (OSError, IOError):
+			mtime = None
+		if (not self._loaded or self._mtime != mtime):
+			try:
+				data, errors = self.loader.load()
+				for fname in errors:
+					for e in errors[fname]:
+						self.errors.append(fname+": "+e)
+			except EnvironmentError, e:
+				if e.errno != errno.ENOENT:
+					raise
+				del e
+				data = {}
+			atoms = data.keys()
+			self._mtime = mtime
+		try:
+			mtime = os.stat(self._filename2).st_mtime
+		except (OSError, IOError):
+			mtime = None
+		if (not self._loaded or self._mtime2 != mtime):
+			try:
+				data, errors = self.loader2.load()
+				for fname in errors:
+					for e in errors[fname]:
+						self.errors.append(fname+": "+e)
+			except EnvironmentError, e:
+				if e.errno != errno.ENOENT:
+					raise
+				del e
+				data = {}
+			nonatoms = data.keys()
+			self._mtime2 = mtime
+		if self._atoms != atoms or self._nonatoms != nonatoms:
+			self._setAtoms(atoms+nonatoms)
+		
 	def _ensure_dirs(self):
 		ensure_dirs(os.path.dirname(self._filename), gid=portage_gid, mode=02750, mask=02)
 
