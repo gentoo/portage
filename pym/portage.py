@@ -5208,11 +5208,22 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 			print "!!!",e
 			return None
 
-	if newmtime:
-		os.utime(dest,(newmtime,newmtime))
-	else:
-		os.utime(dest, (sstat[stat.ST_ATIME], sstat[stat.ST_MTIME]))
-		newmtime=sstat[stat.ST_MTIME]
+	try:
+		if newmtime is not None:
+			os.utime(dest, (newmtime, newmtime))
+		else:
+			os.utime(dest, (sstat.st_atime, sstat.st_mtime))
+			newmtime = long(sstat.st_mtime)
+	except OSError:
+		# The utime can fail here with EPERM even though the move succeeded.
+		# Instead of failing, use stat to return the mtime if possible.
+		try:
+			newmtime = long(os.stat(dest).st_mtime)
+		except OSError, e:
+			writemsg("!!! Failed to stat in movefile()\n", noiselevel=-1)
+			writemsg("!!! %s\n" % dest, noiselevel=-1)
+			writemsg("!!! %s\n" % str(e), noiselevel=-1)
+			return None
 
 	if bsd_chflags:
 		# Restore the flags we saved before moving
