@@ -4482,7 +4482,7 @@ class depgraph(object):
 			fakedb[myroot].cpv_inject(pkg)
 			self.spinner.update()
 
-	class _dep_check_composite_db(object):
+	class _dep_check_composite_db(portage.dbapi):
 		"""
 		A dbapi-like interface that is optimized for use in dep_check() calls.
 		This is built on top of the existing depgraph package selection logic.
@@ -4491,6 +4491,7 @@ class depgraph(object):
 		via dep_check().
 		"""
 		def __init__(self, depgraph, root):
+			portage.dbapi.__init__(self)
 			self._depgraph = depgraph
 			self._root = root
 			self._match_cache = {}
@@ -4507,23 +4508,49 @@ class depgraph(object):
 			if not pkg:
 				ret = []
 			else:
-				if pkg.installed and "selective" not in self._depgraph.myparams:
-					try:
-						arg = self._depgraph._iter_atoms_for_pkg(pkg).next()
-					except (StopIteration, portage_exception.InvalidDependString):
-						arg = None
-					if arg:
-						ret = []
-				if ret is None and pkg.installed and \
-					not visible(self._depgraph.pkgsettings[pkg.root], pkg):
-					# For disjunctive || deps, this will cause alternative
-					# atoms or packages to be selected if available.
-					ret = []
-				if ret is None:
+				# Return the highest available from select_package() as well as
+				# any matching slots in the graph db.
+				slots = set()
+				slots.add(pkg.metadata["SLOT"])
+				atom_cp = portage.dep_getkey(atom)
+				if atom_cp == pkg.cp:
+					graph_db = self._depgraph.mydbapi[self._root]
+					for cpv in graph_db.match(atom):
+						if portage.cpv_getkey(cpv) != pkg.cp:
+							continue
+						slots.add(graph_db.aux_get(cpv, ["SLOT"])[0])
+				ret = []
+				if self._visible(pkg):
 					self._cpv_pkg_map[pkg.cpv] = pkg
-					ret = [pkg.cpv]
+					ret.append(pkg.cpv)
+				slots.remove(pkg.metadata["SLOT"])
+				while slots:
+					slot_atom = "%s:%s" % (atom_cp, slots.pop())
+					pkg, existing = self._depgraph._select_package(
+						self._root, slot_atom)
+					if not pkg:
+						continue
+					if not self._visible(pkg):
+						continue
+					self._cpv_pkg_map[pkg.cpv] = pkg
+					ret.append(pkg.cpv)
+				if ret:
+					self._cpv_sort_ascending(ret)
 			self._match_cache[orig_atom] = ret
 			return ret[:]
+
+		def _visible(self, pkg):
+			if pkg.installed and "selective" not in self._depgraph.myparams:
+				try:
+					arg = self._depgraph._iter_atoms_for_pkg(pkg).next()
+				except (StopIteration, portage_exception.InvalidDependString):
+					arg = None
+				if arg:
+					return False
+			if pkg.installed and \
+				not visible(self._depgraph.pkgsettings[pkg.root], pkg):
+				return False
+			return True
 
 		def _dep_expand(self, atom):
 			"""
