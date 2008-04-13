@@ -4366,9 +4366,6 @@ class depgraph(object):
 							continue
 						slots.add(graph_db.aux_get(cpv, ["SLOT"])[0])
 				ret = []
-				slots.remove(pkg.metadata["SLOT"])
-				self._cpv_pkg_map[pkg.cpv] = pkg
-				ret.append(pkg.cpv)
 				while slots:
 					slot_atom = "%s:%s" % (atom_cp, slots.pop())
 					pkg, existing = self._depgraph._select_package(
