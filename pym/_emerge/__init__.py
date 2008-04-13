@@ -1599,15 +1599,13 @@ class depgraph(object):
 				pass
 			graph_tree.dbapi = fakedb
 			self._graph_trees[myroot] = {}
-			self._graph_trees[myroot]["porttree"] = graph_tree
-			self._graph_trees[myroot]["vartree"] = self.trees[myroot]["vartree"]
-			del vardb, fakedb
 			self._filtered_trees[myroot] = {}
 			# Substitute the graph tree for the vartree in dep_check() since we
 			# want atom selections to be consistent with package selections
 			# have already been made.
-			self._filtered_trees[myroot]["vartree"] = \
-				self._graph_trees[myroot]["porttree"]
+			self._graph_trees[myroot]["porttree"]   = graph_tree
+			self._graph_trees[myroot]["vartree"]    = graph_tree
+			self._filtered_trees[myroot]["vartree"] = graph_tree
 			def filtered_tree():
 				pass
 			filtered_tree.dbapi = self._dep_check_composite_db(self, myroot)
@@ -2969,18 +2967,6 @@ class depgraph(object):
 			# due to the performance penalty that is incurred by all the
 			# additional dep_check calls that are required.
 
-			# Optimization hack for dep_check calls that minimizes the
-			# available matches by replacing the portdb with a fakedbapi
-			# instance.
-			class FakePortageTree(object):
-				def __init__(self, mydb):
-					self.dbapi = mydb
-			dep_check_trees = {}
-			for myroot in self.trees:
-				dep_check_trees[myroot] = self.trees[myroot].copy()
-				dep_check_trees[myroot]["porttree"] = \
-					FakePortageTree(self.mydbapi[myroot])
-
 			dep_keys = ["DEPEND","RDEPEND","PDEPEND"]
 			for myroot in self.trees:
 				vardb = self.trees[myroot]["vartree"].dbapi
@@ -3016,7 +3002,7 @@ class depgraph(object):
 							try:
 								success, atoms = portage.dep_check(depstr,
 									final_db, pkgsettings, myuse=myuse,
-									trees=dep_check_trees, myroot=myroot)
+									trees=self._graph_trees, myroot=myroot)
 							except Exception, e:
 								if isinstance(e, SystemExit):
 									raise
