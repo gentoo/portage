@@ -1776,12 +1776,6 @@ class depgraph(object):
 		return None
 
 	def _create_graph(self, allow_unsatisfied=False):
-		debug = "--debug" in self.myopts
-		buildpkgonly = "--buildpkgonly" in self.myopts
-		nodeps = "--nodeps" in self.myopts
-		empty = "empty" in self.myparams
-		deep = "deep" in self.myparams
-		consistent = "consistent" in self.myparams
 		dep_stack = self._dep_stack
 		while dep_stack:
 			dep = dep_stack.pop()
@@ -1789,56 +1783,67 @@ class depgraph(object):
 				if not self._add_pkg_deps(dep):
 					return 0
 				continue
-			update = "--update" in self.myopts and dep.depth <= 1
-			if dep.blocker:
-				if not buildpkgonly and \
-					not nodeps and \
-					dep.parent not in self._slot_collision_nodes:
-					if dep.parent.onlydeps:
-						# It's safe to ignore blockers if the
-						# parent is an --onlydeps node.
-						continue
-					# The blocker applies to the root where
-					# the parent is or will be installed.
-					self.blocker_parents.setdefault(
-						("blocks", dep.parent.root, dep.atom), set()).add(
-							dep.parent)
-				continue
-			dep_pkg, existing_node = self._select_package(dep.root, dep.atom,
-				onlydeps=dep.onlydeps)
-			if not dep_pkg:
-				if allow_unsatisfied:
-					self._unsatisfied_deps.append(dep)
-					continue
-				self._unsatisfied_deps_for_display.append(
-					((dep.root, dep.atom), {"myparent":dep.parent}))
+			if not self._add_dep(dep, allow_unsatisfied=allow_unsatisfied):
 				return 0
-			# In some cases, dep_check will return deps that shouldn't
-			# be proccessed any further, so they are identified and
-			# discarded here. Try to discard as few as possible since
-			# discarded dependencies reduce the amount of information
-			# available for optimization of merge order.
-			if dep.priority.satisfied and \
-				not (existing_node or empty or deep or update):
-				myarg = None
-				if dep.root == self.target_root:
-					try:
-						myarg = self._iter_atoms_for_pkg(dep_pkg).next()
-					except StopIteration:
-						pass
-					except portage.exception.InvalidDependString:
-						if not dep_pkg.installed:
-							# This shouldn't happen since the package
-							# should have been masked.
-							raise
-				if not myarg:
-					if consistent:
-						self._ignored_deps.append(dep)
-					continue
+		return 1
 
-			if not self._add_pkg(dep_pkg, dep.parent,
-				priority=dep.priority, depth=dep.depth):
-				return 0
+	def _add_dep(self, dep, allow_unsatisfied=False):
+		debug = "--debug" in self.myopts
+		buildpkgonly = "--buildpkgonly" in self.myopts
+		nodeps = "--nodeps" in self.myopts
+		empty = "empty" in self.myparams
+		deep = "deep" in self.myparams
+		consistent = "consistent" in self.myparams
+		update = "--update" in self.myopts and dep.depth <= 1
+		if dep.blocker:
+			if not buildpkgonly and \
+				not nodeps and \
+				dep.parent not in self._slot_collision_nodes:
+				if dep.parent.onlydeps:
+					# It's safe to ignore blockers if the
+					# parent is an --onlydeps node.
+					return 1
+				# The blocker applies to the root where
+				# the parent is or will be installed.
+				self.blocker_parents.setdefault(
+					("blocks", dep.parent.root, dep.atom), set()).add(
+						dep.parent)
+			return 1
+		dep_pkg, existing_node = self._select_package(dep.root, dep.atom,
+			onlydeps=dep.onlydeps)
+		if not dep_pkg:
+			if allow_unsatisfied:
+				self._unsatisfied_deps.append(dep)
+				return 1
+			self._unsatisfied_deps_for_display.append(
+				((dep.root, dep.atom), {"myparent":dep.parent}))
+			return 0
+		# In some cases, dep_check will return deps that shouldn't
+		# be proccessed any further, so they are identified and
+		# discarded here. Try to discard as few as possible since
+		# discarded dependencies reduce the amount of information
+		# available for optimization of merge order.
+		if dep.priority.satisfied and \
+			not (existing_node or empty or deep or update):
+			myarg = None
+			if dep.root == self.target_root:
+				try:
+					myarg = self._iter_atoms_for_pkg(dep_pkg).next()
+				except StopIteration:
+					pass
+				except portage.exception.InvalidDependString:
+					if not dep_pkg.installed:
+						# This shouldn't happen since the package
+						# should have been masked.
+						raise
+			if not myarg:
+				if consistent:
+					self._ignored_deps.append(dep)
+				return 1
+
+		if not self._add_pkg(dep_pkg, dep.parent,
+			priority=dep.priority, depth=dep.depth):
+			return 0
 		return 1
 
 	def _add_pkg(self, pkg, myparent, priority=None, depth=0):
