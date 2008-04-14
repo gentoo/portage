@@ -2198,6 +2198,7 @@ class depgraph(object):
 				pkg = Package(type_name="binary", root=myroot,
 					cpv=mykey, built=True, metadata=metadata,
 					onlydeps=onlydeps)
+				self._pkg_cache[pkg] = pkg
 				args.append(PackageArg(arg=x, package=pkg,
 					root_config=root_config))
 			elif ext==".ebuild":
@@ -2236,6 +2237,7 @@ class depgraph(object):
 				metadata["USE"] = pkgsettings["PORTAGE_USE"]
 				pkg = Package(type_name="ebuild", root=myroot,
 					cpv=mykey, metadata=metadata, onlydeps=onlydeps)
+				self._pkg_cache[pkg] = pkg
 				args.append(PackageArg(arg=x, package=pkg,
 					root_config=root_config))
 			elif x.startswith(os.path.sep):
