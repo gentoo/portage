@@ -2071,10 +2071,9 @@ class depgraph(object):
 					mypriority = dep_priority.copy()
 					if not blocker and vardb.match(atom):
 						mypriority.satisfied = True
-					self._dep_stack.append(
-						Dependency(atom=atom,
-							blocker=blocker, depth=depth, parent=pkg,
-							priority=mypriority, root=dep_root))
+					self._add_dep(Dependency(atom=atom,
+						blocker=blocker, depth=depth, parent=pkg,
+						priority=mypriority, root=dep_root))
 				if debug:
 					print "Exiting...", jbigkey
 		except ValueError, e:
