@@ -1780,7 +1780,8 @@ class depgraph(object):
 		while dep_stack:
 			dep = dep_stack.pop()
 			if isinstance(dep, Package):
-				if not self._add_pkg_deps(dep):
+				if not self._add_pkg_deps(dep,
+					allow_unsatisfied=allow_unsatisfied):
 					return 0
 				continue
 			if not self._add_dep(dep, allow_unsatisfied=allow_unsatisfied):
@@ -1997,7 +1998,7 @@ class depgraph(object):
 		dep_stack.append(pkg)
 		return 1
 
-	def _add_pkg_deps(self, pkg):
+	def _add_pkg_deps(self, pkg, allow_unsatisfied=False):
 
 		mytype = pkg.type_name
 		myroot = pkg.root
@@ -2071,9 +2072,11 @@ class depgraph(object):
 					mypriority = dep_priority.copy()
 					if not blocker and vardb.match(atom):
 						mypriority.satisfied = True
-					self._add_dep(Dependency(atom=atom,
+					if not self._add_dep(Dependency(atom=atom,
 						blocker=blocker, depth=depth, parent=pkg,
-						priority=mypriority, root=dep_root))
+						priority=mypriority, root=dep_root),
+						allow_unsatisfied=allow_unsatisfied):
+						return 0
 				if debug:
 					print "Exiting...", jbigkey
 		except ValueError, e:
