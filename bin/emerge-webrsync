@@ -260,7 +260,7 @@ do_snapshot() {
 			#
 			if [ ${have_files} -eq 1 ]; then
 
-				vecho "Getting snapshot timetasmp ..."
+				vecho "Getting snapshot timestamp ..."
 				local snapshot_timestamp=$(get_snapshot_timestamp "${file}")
 
 				if [ ${ignore_timestamp} == 0 ]; then

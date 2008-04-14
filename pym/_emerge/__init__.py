@@ -1620,11 +1620,13 @@ class depgraph(object):
 				pass
 			graph_tree.dbapi = fakedb
 			self._graph_trees[myroot] = {}
-			self._graph_trees[myroot]["porttree"] = graph_tree
-			self._graph_trees[myroot]["vartree"] = self.trees[myroot]["vartree"]
-			del vardb, fakedb
 			self._filtered_trees[myroot] = {}
-			self._filtered_trees[myroot]["vartree"] = self.trees[myroot]["vartree"]
+			# Substitute the graph tree for the vartree in dep_check() since we
+			# want atom selections to be consistent with package selections
+			# have already been made.
+			self._graph_trees[myroot]["porttree"]   = graph_tree
+			self._graph_trees[myroot]["vartree"]    = graph_tree
+			self._filtered_trees[myroot]["vartree"] = graph_tree
 			def filtered_tree():
 				pass
 			filtered_tree.dbapi = self._dep_check_composite_db(self, myroot)
@@ -1795,69 +1797,75 @@ class depgraph(object):
 		return None
 
 	def _create_graph(self, allow_unsatisfied=False):
+		dep_stack = self._dep_stack
+		while dep_stack:
+			dep = dep_stack.pop()
+			if isinstance(dep, Package):
+				if not self._add_pkg_deps(dep,
+					allow_unsatisfied=allow_unsatisfied):
+					return 0
+				continue
+			if not self._add_dep(dep, allow_unsatisfied=allow_unsatisfied):
+				return 0
+		return 1
+
+	def _add_dep(self, dep, allow_unsatisfied=False):
 		debug = "--debug" in self.myopts
 		buildpkgonly = "--buildpkgonly" in self.myopts
 		nodeps = "--nodeps" in self.myopts
 		empty = "empty" in self.myparams
 		deep = "deep" in self.myparams
 		consistent = "consistent" in self.myparams
-		dep_stack = self._dep_stack
-		while dep_stack:
-			dep = dep_stack.pop()
-			if isinstance(dep, Package):
-				if not self._add_pkg_deps(dep):
-					return 0
-				continue
-			update = "--update" in self.myopts and dep.depth <= 1
-			if dep.blocker:
-				if not buildpkgonly and \
-					not nodeps and \
-					dep.parent not in self._slot_collision_nodes:
-					if dep.parent.onlydeps:
-						# It's safe to ignore blockers if the
-						# parent is an --onlydeps node.
-						continue
-					# The blocker applies to the root where
-					# the parent is or will be installed.
-					self.blocker_parents.setdefault(
-						("blocks", dep.parent.root, dep.atom), set()).add(
-							dep.parent)
-				continue
-			dep_pkg, existing_node = self._select_package(dep.root, dep.atom,
-				onlydeps=dep.onlydeps)
-			if not dep_pkg:
-				if allow_unsatisfied:
-					self._unsatisfied_deps.append(dep)
-					continue
-				self._unsatisfied_deps_for_display.append(
-					((dep.root, dep.atom), {"myparent":dep.parent}))
-				return 0
-			# In some cases, dep_check will return deps that shouldn't
-			# be proccessed any further, so they are identified and
-			# discarded here. Try to discard as few as possible since
-			# discarded dependencies reduce the amount of information
-			# available for optimization of merge order.
-			if dep.priority.satisfied and \
-				not (existing_node or empty or deep or update):
-				myarg = None
-				if dep.root == self.target_root:
-					try:
-						myarg = self._iter_atoms_for_pkg(dep_pkg).next()
-					except StopIteration:
-						pass
-					except portage.exception.InvalidDependString:
-						if not dep_pkg.installed:
-							# This shouldn't happen since the package
-							# should have been masked.
-							raise
-				if not myarg:
-					if consistent:
-						self._ignored_deps.append(dep)
-					continue
+		update = "--update" in self.myopts and dep.depth <= 1
+		if dep.blocker:
+			if not buildpkgonly and \
+				not nodeps and \
+				dep.parent not in self._slot_collision_nodes:
+				if dep.parent.onlydeps:
+					# It's safe to ignore blockers if the
+					# parent is an --onlydeps node.
+					return 1
+				# The blocker applies to the root where
+				# the parent is or will be installed.
+				self.blocker_parents.setdefault(
+					("blocks", dep.parent.root, dep.atom), set()).add(
+						dep.parent)
+			return 1
+		dep_pkg, existing_node = self._select_package(dep.root, dep.atom,
+			onlydeps=dep.onlydeps)
+		if not dep_pkg:
+			if allow_unsatisfied:
+				self._unsatisfied_deps.append(dep)
+				return 1
+			self._unsatisfied_deps_for_display.append(
+				((dep.root, dep.atom), {"myparent":dep.parent}))
+			return 0
+		# In some cases, dep_check will return deps that shouldn't
+		# be proccessed any further, so they are identified and
+		# discarded here. Try to discard as few as possible since
+		# discarded dependencies reduce the amount of information
+		# available for optimization of merge order.
+		if dep.priority.satisfied and \
+			not (existing_node or empty or deep or update):
+			myarg = None
+			if dep.root == self.target_root:
+				try:
+					myarg = self._iter_atoms_for_pkg(dep_pkg).next()
+				except StopIteration:
+					pass
+				except portage.exception.InvalidDependString:
+					if not dep_pkg.installed:
+						# This shouldn't happen since the package
+						# should have been masked.
+						raise
+			if not myarg:
+				if consistent:
+					self._ignored_deps.append(dep)
+				return 1
 
-			if not self._add_pkg(dep_pkg, dep.parent,
-				priority=dep.priority, depth=dep.depth):
-				return 0
+		if not self._add_pkg(dep_pkg, dep.parent,
+			priority=dep.priority, depth=dep.depth):
+			return 0
 		return 1
 
 	def _add_pkg(self, pkg, myparent, priority=None, depth=0):
@@ -2011,7 +2019,7 @@ class depgraph(object):
 		dep_stack.append(pkg)
 		return 1
 
-	def _add_pkg_deps(self, pkg):
+	def _add_pkg_deps(self, pkg, allow_unsatisfied=False):
 
 		mytype = pkg.type_name
 		myroot = pkg.root
@@ -2085,10 +2093,11 @@ class depgraph(object):
 					mypriority = dep_priority.copy()
 					if not blocker and vardb.match(atom):
 						mypriority.satisfied = True
-					self._dep_stack.append(
-						Dependency(atom=atom,
-							blocker=blocker, depth=depth, parent=pkg,
-							priority=mypriority, root=dep_root))
+					if not self._add_dep(Dependency(atom=atom,
+						blocker=blocker, depth=depth, parent=pkg,
+						priority=mypriority, root=dep_root),
+						allow_unsatisfied=allow_unsatisfied):
+						return 0
 				if debug:
 					print "Exiting...", jbigkey
 		except ValueError, e:
@@ -2405,6 +2414,7 @@ class depgraph(object):
 		while args:
 			arg = args.pop()
 			for atom in arg.set:
+				self.spinner.update()
 				atom_cp = portage.dep_getkey(atom)
 				try:
 					pprovided = pprovideddict.get(portage.dep_getkey(atom))
@@ -2453,9 +2463,14 @@ class depgraph(object):
 							arg.name in ("system", "world")):
 							return 0, myfavorites
 
-					self._dep_stack.append(
-						Dependency(atom=atom, onlydeps=onlydeps, root=myroot, parent=arg))
-					if not self._create_graph():
+					dep = Dependency(atom=atom, onlydeps=onlydeps,
+						root=myroot, parent=arg)
+
+					# Add the selected package to the graph as soon as possible
+					# so that later dep_check() calls can use it as feedback
+					# for making more consistent atom selections.
+					if not self._add_pkg(pkg, dep.parent,
+						priority=dep.priority, depth=dep.depth):
 						if isinstance(arg, SetArg):
 							sys.stderr.write(("\n\n!!! Problem resolving " + \
 								"dependencies for %s from %s\n") % \
@@ -2464,6 +2479,7 @@ class depgraph(object):
 							sys.stderr.write(("\n\n!!! Problem resolving " + \
 								"dependencies for %s\n") % atom)
 						return 0, myfavorites
+
 				except portage.exception.MissingSignature, e:
 					portage.writemsg("\n\n!!! A missing gpg signature is preventing portage from calculating the\n")
 					portage.writemsg("!!! required dependencies. This is a security feature enabled by the admin\n")
@@ -2484,6 +2500,11 @@ class depgraph(object):
 					print >> sys.stderr, "\n\n!!! Problem in '%s' dependencies." % atom
 					print >> sys.stderr, "!!!", str(e), getattr(e, "__module__", None)
 					raise
+
+		# Now that the root packages have been added to the graph,
+		# process the dependencies.
+		if not self._create_graph():
+			return 0, myfavorites
 
 		missing=0
 		if "--usepkgonly" in self.myopts:
@@ -2978,18 +2999,6 @@ class depgraph(object):
 			# due to the performance penalty that is incurred by all the
 			# additional dep_check calls that are required.
 
-			# Optimization hack for dep_check calls that minimizes the
-			# available matches by replacing the portdb with a fakedbapi
-			# instance.
-			class FakePortageTree(object):
-				def __init__(self, mydb):
-					self.dbapi = mydb
-			dep_check_trees = {}
-			for myroot in self.trees:
-				dep_check_trees[myroot] = self.trees[myroot].copy()
-				dep_check_trees[myroot]["porttree"] = \
-					FakePortageTree(self.mydbapi[myroot])
-
 			dep_keys = ["DEPEND","RDEPEND","PDEPEND"]
 			for myroot in self.trees:
 				vardb = self.trees[myroot]["vartree"].dbapi
@@ -3025,7 +3034,7 @@ class depgraph(object):
 							try:
 								success, atoms = portage.dep_check(depstr,
 									final_db, pkgsettings, myuse=myuse,
-									trees=dep_check_trees, myroot=myroot)
+									trees=self._graph_trees, myroot=myroot)
 							except Exception, e:
 								if isinstance(e, SystemExit):
 									raise
@@ -4358,7 +4367,7 @@ class depgraph(object):
 			fakedb[myroot].cpv_inject(pkg)
 			self.spinner.update()
 
-	class _dep_check_composite_db(object):
+	class _dep_check_composite_db(portage.dbapi):
 		"""
 		A dbapi-like interface that is optimized for use in dep_check() calls.
 		This is built on top of the existing depgraph package selection logic.
@@ -4367,6 +4376,7 @@ class depgraph(object):
 		via dep_check().
 		"""
 		def __init__(self, depgraph, root):
+			portage.dbapi.__init__(self)
 			self._depgraph = depgraph
 			self._root = root
 			self._match_cache = {}
@@ -4383,23 +4393,57 @@ class depgraph(object):
 			if not pkg:
 				ret = []
 			else:
-				if pkg.installed and "selective" not in self._depgraph.myparams:
-					try:
-						arg = self._depgraph._iter_atoms_for_pkg(pkg).next()
-					except (StopIteration, portage.exception.InvalidDependString):
-						arg = None
-					if arg:
-						ret = []
-				if ret is None and pkg.installed and \
-					not visible(self._depgraph.pkgsettings[pkg.root], pkg):
-					# For disjunctive || deps, this will cause alternative
-					# atoms or packages to be selected if available.
-					ret = []
-				if ret is None:
+				# Return the highest available from select_package() as well as
+				# any matching slots in the graph db.
+				slots = set()
+				slots.add(pkg.metadata["SLOT"])
+				atom_cp = portage.dep_getkey(atom)
+				if pkg.cp.startswith("virtual/"):
+					# For new-style virtual lookahead that occurs inside
+					# dep_check(), examine all slots. This is needed
+					# so that newer slots will not unnecessarily be pulled in
+					# when a satisfying lower slot is already installed. For
+					# example, if virtual/jdk-1.4 is satisfied via kaffe then
+					# there's no need to pull in a newer slot to satisfy a
+					# virtual/jdk dependency.
+					for db, pkg_type, built, installed, db_keys in \
+						self._depgraph._filtered_trees[self._root]["dbs"]:
+						for cpv in db.match(atom):
+							if portage.cpv_getkey(cpv) != pkg.cp:
+								continue
+							slots.add(db.aux_get(cpv, ["SLOT"])[0])
+				ret = []
+				if self._visible(pkg):
 					self._cpv_pkg_map[pkg.cpv] = pkg
-					ret = [pkg.cpv]
+					ret.append(pkg.cpv)
+				slots.remove(pkg.metadata["SLOT"])
+				while slots:
+					slot_atom = "%s:%s" % (atom_cp, slots.pop())
+					pkg, existing = self._depgraph._select_package(
+						self._root, slot_atom)
+					if not pkg:
+						continue
+					if not self._visible(pkg):
+						continue
+					self._cpv_pkg_map[pkg.cpv] = pkg
+					ret.append(pkg.cpv)
+				if ret:
+					self._cpv_sort_ascending(ret)
 			self._match_cache[orig_atom] = ret
 			return ret[:]
+
+		def _visible(self, pkg):
+			if pkg.installed and "selective" not in self._depgraph.myparams:
+				try:
+					arg = self._depgraph._iter_atoms_for_pkg(pkg).next()
+				except (StopIteration, portage.exception.InvalidDependString):
+					arg = None
+				if arg:
+					return False
+			if pkg.installed and \
+				not visible(self._depgraph.pkgsettings[pkg.root], pkg):
+				return False
+			return True
 
 		def _dep_expand(self, atom):
 			"""

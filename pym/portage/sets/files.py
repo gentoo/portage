@@ -184,6 +184,7 @@ class WorldSet(EditablePackageSet):
 	def load(self):
 		atoms = []
 		nonatoms = []
+		atoms_changed = False
 		# load atoms and non-atoms from different files so the worldfile is 
 		# backwards-compatible with older versions and other PMs, even though 
 		# it's supposed to be private state data :/
@@ -204,6 +205,9 @@ class WorldSet(EditablePackageSet):
 				data = {}
 			atoms = data.keys()
 			self._mtime = mtime
+			atoms_changed = True
+		else:
+			atoms.extend(self._atoms)
 		try:
 			mtime = os.stat(self._filename2).st_mtime
 		except (OSError, IOError):
@@ -221,7 +225,10 @@ class WorldSet(EditablePackageSet):
 				data = {}
 			nonatoms = data.keys()
 			self._mtime2 = mtime
-		if self._atoms != atoms or self._nonatoms != nonatoms:
+			atoms_changed = True
+		else:
+			nonatoms.extend(self._nonatoms)
+		if atoms_changed:
 			self._setAtoms(atoms+nonatoms)
 		
 	def _ensure_dirs(self):
