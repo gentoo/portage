@@ -2035,12 +2035,8 @@ class config(object):
 		for var in use_expand:
 			prefix = var.lower() + "_"
 			prefix_len = len(prefix)
-			prefix_re = re.compile(r'^(%s)(.*)' % prefix)
-			expand_flags = set()
-			for x in use:
-				m = prefix_re.match(x)
-				if m is not None:
-					expand_flags.add(m.group(2))
+			expand_flags = set([ x[prefix_len:] for x in use \
+				if x.startswith(prefix) ])
 			var_split = self.get(var, "").split()
 			# Preserve the order of var_split because it can matter for things
 			# like LINGUAS.
@@ -2051,18 +2047,15 @@ class config(object):
 				var_split = [ x for x in var_split if x != "*" ]
 			has_iuse = set()
 			for x in iuse_implicit:
-				m = prefix_re.match(x)
-				if m is not None:
-					has_iuse.add(m.group(2))
+				if x.startswith(prefix):
+					has_iuse.add(x[prefix_len:])
 			if has_wildcard:
 				# * means to enable everything in IUSE that's not masked
 				if has_iuse:
 					for x in iuse_implicit:
-						if x in self.usemask:
-							continue
-						m = prefix_re.match(x)
-						if m is not None:
-							var_split.append(m.group(2))
+						if x.startswith(prefix) and x not in self.usemask:
+							suffix = x[prefix_len:]
+							var_split.append(suffix)
 							use.add(x)
 				else:
 					# If there is a wildcard and no matching flags in IUSE then
