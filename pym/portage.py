@@ -2091,13 +2091,14 @@ class config:
 					self.usemask.discard("test")
 
 		# Use the calculated USE flags to regenerate the USE_EXPAND flags so
-		# that they are consistent.
+		# that they are consistent. For optimal performance, use slice
+		# comparison instead of startswith().
 		use_expand = self.get("USE_EXPAND", "").split()
 		for var in use_expand:
 			prefix = var.lower() + "_"
 			prefix_len = len(prefix)
 			expand_flags = set([ x[prefix_len:] for x in use \
-				if x.startswith(prefix) ])
+				if x[:prefix_len] == prefix ])
 			var_split = self.get(var, "").split()
 			# Preserve the order of var_split because it can matter for things
 			# like LINGUAS.
@@ -2108,13 +2109,13 @@ class config:
 				var_split = [ x for x in var_split if x != "*" ]
 			has_iuse = set()
 			for x in iuse_implicit:
-				if x.startswith(prefix):
+				if x[:prefix_len] == prefix:
 					has_iuse.add(x[prefix_len:])
 			if has_wildcard:
 				# * means to enable everything in IUSE that's not masked
 				if has_iuse:
 					for x in iuse_implicit:
-						if x.startswith(prefix) and x not in self.usemask:
+						if x[:prefix_len] == prefix and x not in self.usemask:
 							suffix = x[prefix_len:]
 							var_split.append(suffix)
 							use.add(x)
@@ -2450,6 +2451,8 @@ class config:
 					self.uvlist.append(self.configdict[x])
 			self.uvlist.reverse()
 
+		# For optimal performance, use slice
+		# comparison instead of startswith().
 		myflags = set()
 		for curdb in self.uvlist:
 			cur_use_expand = [x for x in use_expand if x in curdb]
@@ -2479,8 +2482,9 @@ class config:
 				is_not_incremental = var not in myincrementals
 				if is_not_incremental:
 					prefix = var_lower + "_"
+					prefix_len = len(prefix)
 					for x in list(myflags):
-						if x.startswith(prefix):
+						if x[:prefix_len] == prefix:
 							myflags.remove(x)
 				for x in curdb[var].split():
 					if x[0] == "+":
