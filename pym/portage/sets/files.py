@@ -207,11 +207,13 @@ class WorldSet(EditablePackageSet):
 			atoms = data.keys()
 			self._mtime = mtime
 			atoms_changed = True
+		else:
+			atoms.extend(self._atoms)
 		try:
 			mtime = os.stat(self._filename2).st_mtime
 		except (OSError, IOError):
 			mtime = None
-		if (not self._loaded or self._mtime2 != mtime or atoms_changed):
+		if (not self._loaded or self._mtime2 != mtime):
 			try:
 				data, errors = self.loader2.load()
 				for fname in errors:
@@ -225,6 +227,8 @@ class WorldSet(EditablePackageSet):
 			nonatoms = data.keys()
 			self._mtime2 = mtime
 			atoms_changed = True
+		else:
+			nonatoms.extend(self._nonatoms)
 		if atoms_changed:
 			self._setAtoms(atoms+nonatoms)
 		
