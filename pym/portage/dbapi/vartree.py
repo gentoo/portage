@@ -1168,7 +1168,8 @@ class dblink(object):
 			
 			# Remove the registration of preserved libs for this pkg instance
 			plib_registry = self.vartree.dbapi.plib_registry
-			plib_registry.unregister(self.mycpv, self.settings["SLOT"], self.settings["COUNTER"])
+			plib_registry.unregister(self.mycpv, self.settings["SLOT"],
+				self.vartree.dbapi.cpv_counter(self.mycpv))
 
 			if myebuildpath:
 				ebuild_phase = "postrm"
@@ -1878,6 +1879,10 @@ class dblink(object):
 		#       needs the counter value but has to be before dbtmpdir is made (which
 		#       has to be before the counter is written) - genone
 		counter = self.vartree.dbapi.counter_tick(self.myroot, mycpv=self.mycpv)
+
+		# Save this for unregistering preserved-libs if the merge fails.
+		self.settings["COUNTER"] = str(counter)
+		self.settings.backup_changes("COUNTER")
 
 		myfilelist = []
 		mylinklist = []
