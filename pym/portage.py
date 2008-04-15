@@ -8689,6 +8689,7 @@ class dblink:
 		unmerge_orphans = "unmerge-orphans" in self.settings.features
 
 		if pkgfiles:
+			self.updateprotect()
 			mykeys=pkgfiles.keys()
 			mykeys.sort()
 			mykeys.reverse()
