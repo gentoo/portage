@@ -82,8 +82,6 @@ class PreservedLibsRegistry(object):
 		"""
 		cp = "/".join(catpkgsplit(cpv)[:2])
 		cps = cp+":"+slot
-		if counter == "":
-			counter = "0"
 		if len(paths) == 0 and self._data.has_key(cps) \
 				and self._data[cps][0] == cpv and int(self._data[cps][1]) == int(counter):
 			del self._data[cps]
