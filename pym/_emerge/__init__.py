@@ -1626,11 +1626,30 @@ class depgraph(object):
 			# have already been made.
 			self._graph_trees[myroot]["porttree"]   = graph_tree
 			self._graph_trees[myroot]["vartree"]    = graph_tree
-			self._filtered_trees[myroot]["vartree"] = graph_tree
 			def filtered_tree():
 				pass
 			filtered_tree.dbapi = self._dep_check_composite_db(self, myroot)
 			self._filtered_trees[myroot]["porttree"] = filtered_tree
+
+			# Passing in graph_tree as the vartree here could lead to better
+			# atom selections in some cases by causing atoms for packages that
+			# have been added to the graph to be preferred over other choices.
+			# However, it can trigger atom selections that result in
+			# unresolvable direct circular dependencies. For example, this
+			# happens with gwydion-dylan which depends on either itself or
+			# gwydion-dylan-bin. In case gwydion-dylan is not yet installed,
+			# gwydion-dylan-bin needs to be selected in order to avoid a
+			# an unresolvable direct circular dependency.
+			#
+			# To solve the problem described above, pass in "graph_db" so that
+			# packages that have been added to the graph are distinguishable
+			# from other available packages and installed packages. Also, pass
+			# the parent package into self._select_atoms() calls so that
+			# unresolvable direct circular dependencies can be detected and
+			# avoided when possible.
+			self._filtered_trees[myroot]["graph_db"] = graph_tree.dbapi
+			self._filtered_trees[myroot]["vartree"] = self.trees[myroot]["vartree"]
+
 			dbs = []
 			portdb = self.trees[myroot]["porttree"].dbapi
 			bindb  = self.trees[myroot]["bintree"].dbapi
@@ -2080,7 +2099,7 @@ class depgraph(object):
 				vardb = self.roots[dep_root].trees["vartree"].dbapi
 				try:
 					selected_atoms = self._select_atoms(dep_root,
-						dep_string, myuse=myuse, strict=strict)
+						dep_string, myuse=myuse, parent=pkg, strict=strict)
 				except portage.exception.InvalidDependString, e:
 					show_invalid_depstring_notice(jbigkey, dep_string, str(e))
 					return 0
@@ -2219,6 +2238,7 @@ class depgraph(object):
 				pkg = Package(type_name="binary", root=myroot,
 					cpv=mykey, built=True, metadata=metadata,
 					onlydeps=onlydeps)
+				self._pkg_cache[pkg] = pkg
 				args.append(PackageArg(arg=x, package=pkg,
 					root_config=root_config))
 			elif ext==".ebuild":
@@ -2257,6 +2277,7 @@ class depgraph(object):
 				metadata["USE"] = pkgsettings["PORTAGE_USE"]
 				pkg = Package(type_name="ebuild", root=myroot,
 					cpv=mykey, metadata=metadata, onlydeps=onlydeps)
+				self._pkg_cache[pkg] = pkg
 				args.append(PackageArg(arg=x, package=pkg,
 					root_config=root_config))
 			elif x.startswith(os.path.sep):
@@ -2536,7 +2557,7 @@ class depgraph(object):
 		return self._select_atoms_highest_available(*pargs, **kwargs)
 
 	def _select_atoms_highest_available(self, root, depstring,
-		myuse=None, strict=True, trees=None):
+		myuse=None, parent=None, strict=True, trees=None):
 		"""This will raise InvalidDependString if necessary. If trees is
 		None then self._filtered_trees is used."""
 		pkgsettings = self.pkgsettings[root]
@@ -2544,12 +2565,16 @@ class depgraph(object):
 			trees = self._filtered_trees
 		if True:
 			try:
+				if parent is not None:
+					trees[root]["parent"] = parent
 				if not strict:
 					portage.dep._dep_check_strict = False
 				mycheck = portage.dep_check(depstring, None,
 					pkgsettings, myuse=myuse,
 					myroot=root, trees=trees)
 			finally:
+				if parent is not None:
+					trees[root].pop("parent")
 				portage.dep._dep_check_strict = True
 			if not mycheck[0]:
 				raise portage.exception.InvalidDependString(mycheck[1])

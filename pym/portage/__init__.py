@@ -2052,13 +2052,14 @@ class config(object):
 					self.usemask.discard("test")
 
 		# Use the calculated USE flags to regenerate the USE_EXPAND flags so
-		# that they are consistent.
+		# that they are consistent. For optimal performance, use slice
+		# comparison instead of startswith().
 		use_expand = self.get("USE_EXPAND", "").split()
 		for var in use_expand:
 			prefix = var.lower() + "_"
 			prefix_len = len(prefix)
 			expand_flags = set([ x[prefix_len:] for x in use \
-				if x.startswith(prefix) ])
+				if x[:prefix_len] == prefix ])
 			var_split = self.get(var, "").split()
 			# Preserve the order of var_split because it can matter for things
 			# like LINGUAS.
@@ -2069,13 +2070,13 @@ class config(object):
 				var_split = [ x for x in var_split if x != "*" ]
 			has_iuse = set()
 			for x in iuse_implicit:
-				if x.startswith(prefix):
+				if x[:prefix_len] == prefix:
 					has_iuse.add(x[prefix_len:])
 			if has_wildcard:
 				# * means to enable everything in IUSE that's not masked
 				if has_iuse:
 					for x in iuse_implicit:
-						if x.startswith(prefix) and x not in self.usemask:
+						if x[:prefix_len] == prefix and x not in self.usemask:
 							suffix = x[prefix_len:]
 							var_split.append(suffix)
 							use.add(x)
@@ -2469,6 +2470,8 @@ class config(object):
 					self.uvlist.append(self.configdict[x])
 			self.uvlist.reverse()
 
+		# For optimal performance, use slice
+		# comparison instead of startswith().
 		myflags = set()
 		for curdb in self.uvlist:
 			cur_use_expand = [x for x in use_expand if x in curdb]
@@ -2498,8 +2501,9 @@ class config(object):
 				is_not_incremental = var not in myincrementals
 				if is_not_incremental:
 					prefix = var_lower + "_"
+					prefix_len = len(prefix)
 					for x in list(myflags):
-						if x.startswith(prefix):
+						if x[:prefix_len] == prefix:
 							myflags.remove(x)
 				for x in curdb[var].split():
 					if x[0] == "+":
@@ -5514,6 +5518,8 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 	other = []
 
 	# Alias the trees we'll be checking availability against
+	parent   = trees[myroot].get("parent")
+	graph_db = trees[myroot].get("graph_db")
 	vardb = None
 	if "vartree" in trees[myroot]:
 		vardb = trees[myroot]["vartree"].dbapi
@@ -5575,8 +5581,43 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 					preferred.append(this_choice)
 				else:
 					preferred_any_slot.append(this_choice)
-			else:
+			elif graph_db is None:
 				possible_upgrades.append(this_choice)
+			else:
+				all_in_graph = True
+				for slot_atom in versions:
+					# New-style virtuals have zero cost to install.
+					if not graph_db.match(slot_atom) and \
+						not slot_atom.startswith("virtual/"):
+						all_in_graph = False
+						break
+				if all_in_graph:
+					if parent is None:
+						preferred.append(this_choice)
+					else:
+						# Check if the atom would result in a direct circular
+						# dependency and try to avoid that if it seems likely
+						# to be unresolvable.
+						cpv_slot_list = [parent.cpv_slot]
+						circular_atom = None
+						for atom in atoms:
+							if "!" == atom[:1]:
+								continue
+							if vardb.match(atom):
+								# If the atom is satisfied by an installed
+								# version then it's not a circular dep.
+								continue
+							if dep_getkey(atom) != parent.cp:
+								continue
+							if match_from_list(atom, cpv_slot_list):
+								circular_atom = atom
+								break
+						if circular_atom is None:
+							preferred.append(this_choice)
+						else:
+							other.append(this_choice)
+				else:
+					possible_upgrades.append(this_choice)
 		else:
 			other.append(this_choice)
 
