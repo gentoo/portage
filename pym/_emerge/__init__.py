@@ -1605,11 +1605,22 @@ class depgraph(object):
 			# have already been made.
 			self._graph_trees[myroot]["porttree"]   = graph_tree
 			self._graph_trees[myroot]["vartree"]    = graph_tree
-			self._filtered_trees[myroot]["vartree"] = graph_tree
 			def filtered_tree():
 				pass
 			filtered_tree.dbapi = self._dep_check_composite_db(self, myroot)
 			self._filtered_trees[myroot]["porttree"] = filtered_tree
+
+			# Passing in graph_tree as the vartree here could lead to better
+			# atom selections in some cases by causing atoms for packages that
+			# have been added to the graph to be preferred over other choices.
+			# However, it can trigger atom selections that result in
+			# unresolvable direct circular dependencies. For example, this
+			# happens with gwydion-dylan which depends on either itself or
+			# gwydion-dylan-bin. In case gwydion-dylan is not yet installed,
+			# gwydion-dylan-bin needs to be selected in order to avoid a
+			# an unresolvable direct circular dependency.
+			self._filtered_trees[myroot]["vartree"] = self.trees[myroot]["vartree"]
+
 			dbs = []
 			portdb = self.trees[myroot]["porttree"].dbapi
 			bindb  = self.trees[myroot]["bintree"].dbapi
