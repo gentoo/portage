@@ -1,5 +1,12 @@
 News (mainly features/major bug fixes)
 
+portage-2.1.5
+==================================
+
+* The dependency resolver now has a feedback mechanism that helps make atom
+  selections more consistent with previous selections that have been added to
+  the graph. This solves some common cases of bug #1343.
+
 portage-2.1.4
 -------------
 
