@@ -7438,7 +7438,7 @@ class portdbapi(dbapi):
 
 	def getfetchlist(self, mypkg, useflags=None, mysettings=None, all=0, mytree=None):
 		if mysettings is None:
-			mysettings = self.mysettings
+			mysettings = self.doebuild_settings
 		try:
 			eapi, myuris = self.aux_get(mypkg,
 				["EAPI", "SRC_URI"], mytree=mytree)
