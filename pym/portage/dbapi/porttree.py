@@ -379,7 +379,7 @@ class portdbapi(dbapi):
 				"getfetchlist(): '%s' has unsupported EAPI: '%s'" % \
 				(mypkg, eapi.lstrip("-")))
 
-		if useflags is None:
+		if not all and useflags is None:
 			mysettings.setcpv(mypkg, mydb=self)
 			useflags = mysettings["PORTAGE_USE"].split()
 
