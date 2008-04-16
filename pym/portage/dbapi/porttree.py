@@ -380,7 +380,8 @@ class portdbapi(dbapi):
 				(mypkg, eapi.lstrip("-")))
 
 		if useflags is None:
-			useflags = mysettings["USE"].split()
+			mysettings.setcpv(mypkg, mydb=self)
+			useflags = mysettings["PORTAGE_USE"].split()
 
 		myurilist = paren_reduce(myuris)
 		myurilist = use_reduce(myurilist, uselist=useflags, matchall=all)
