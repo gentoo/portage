@@ -2728,7 +2728,10 @@ class depgraph(object):
 						# here, packages that have been masked since they
 						# were installed can be automatically downgraded
 						# to an unmasked version.
-						if not visible(pkgsettings, pkg):
+						try:
+							if not visible(pkgsettings, pkg):
+								continue
+						except portage.exception.InvalidDependString:
 							continue
 					if not built and not calculated_use:
 						# This is avoided whenever possible because
@@ -4435,9 +4438,13 @@ class depgraph(object):
 					arg = None
 				if arg:
 					return False
-			if pkg.installed and \
-				not visible(self._depgraph.pkgsettings[pkg.root], pkg):
-				return False
+				if pkg.installed:
+					try:
+						if not visible(
+							self._depgraph.pkgsettings[pkg.root], pkg):
+							return False
+					except portage.exception.InvalidDependString:
+						pass
 			return True
 
 		def _dep_expand(self, atom):
