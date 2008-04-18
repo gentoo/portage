@@ -1684,6 +1684,8 @@ class depgraph(object):
 		self.edebug = 0
 		if settings.get("PORTAGE_DEBUG", "") == "1":
 			self.edebug = 1
+		if "--nodeps" in myopts:
+			spinner.update = spinner.update_quiet
 		self.spinner = spinner
 		self.pkgsettings = {}
 		# Maps slot atom to package for each Package added to the graph.
