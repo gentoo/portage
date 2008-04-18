@@ -7,6 +7,10 @@
 
 	<!ENTITY project "portage">
 
+	<!ENTITY dependency_resolution SYSTEM "dependency_resolution.docbook">
+	<!ENTITY dependency_resolution_package_modeling SYSTEM "dependency_resolution/package_modeling.docbook">
+	<!ENTITY dependency_resolution_decision_making SYSTEM "dependency_resolution/decision_making.docbook">
+	<!ENTITY dependency_resolution_task_scheduling SYSTEM "dependency_resolution/task_scheduling.docbook">
 	<!ENTITY package SYSTEM "package.docbook">
 	<!ENTITY package_ebuild SYSTEM "package/ebuild.docbook">
 	<!ENTITY package_ebuild_phases SYSTEM "package/ebuild/phases.docbook">
@@ -34,6 +38,7 @@
 </bookinfo>
 
 &config;
+&dependency_resolution;
 &package;
 &qa;
 

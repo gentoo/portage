@@ -1,0 +1,65 @@
+<chapter id='dependency-resolution-decision-making'>
+<title>Decision Making</title>
+<sect1 id='dependency-resolution-decision-making-dependency-expression-evaluation'>
+	<title>Dependency Expression Evaluation</title>
+	<para>
+	In terms of boolean logic, a dependency expression can
+	be expressed in disjunctive normal form (DNF), which is
+	a disjunction of conjunctive clauses. Each conjunctive clause
+	represents one possible alternative combination of dependency
+	atoms capable of satisfying the dependency expression.
+	</para>
+</sect1>
+<sect1 id='dependency-resolution-decision-making-look-ahead'>
+	<title>Look-Ahead</title>
+	<para>
+	When there are multiple combinations to choose from,
+	a look-ahead mechanism will choose an optimal combination
+	to satisfy constraints and minimize cost. The
+	following package states influence the cost calculation for
+	a given combination:
+	<itemizedlist>
+	<listitem>
+		installed
+	</listitem>
+	<listitem>
+		selected (for installation)
+	</listitem>
+	<listitem>
+		not selected (for installation)
+	</listitem>
+	</itemizedlist>
+	</para>
+	<para>
+	In cost calculations, virtual packages by themselves are
+	considered to cost nothing since they do not directly install anything.
+	It is the dependencies of a virtual package that contribute to it's cost.
+	</para>
+	<sect2 id='dependency-resolution-decision-making-look-ahead-constraint-propagation'>
+		<title>Constraint Propagation</title>
+		<para>
+		Combinations that include packages from the "installed" or
+		"selected" categories are less costly than those that
+		include packages from the "not selected" category.
+		When a package is chosen for installation, it transitions to the
+		"selected" state. This state change propagates
+		to the cost calculations of later decisions,
+		influencing later decisions to be consistent with earlier decisions.
+		This feedback mechanism serves to propagate constraints and can
+		influence the modeling process to
+		converge on a more optimal final state.
+		</para>
+	</sect2>
+	<sect2 id='dependency-resolution-decision-making-look-ahead-expanded-search-space'>
+		<title>Expanded Search Space</title>
+		<para>
+		When evaluating virtual atoms, an expanded search space is
+		considered which recursively traverses
+		the dependencies of virtual packages
+		from all slots matching a given virtual atom. All combinations in
+		this expanded search space are considered when choosing an optimal
+		combination to satisfy constraints with minimal cost.
+		</para>
+	</sect2>
+</sect1>
+</chapter>
