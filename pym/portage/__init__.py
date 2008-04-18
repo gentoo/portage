@@ -4263,9 +4263,7 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 									continue
 								if subdir_st.st_gid != portage_gid or \
 									((stat.S_ISDIR(subdir_st.st_mode) and \
-									not dirmode == (stat.S_IMODE(subdir_st.st_mode) & dirmode)) or \
-									(not stat.S_ISDIR(subdir_st.st_mode) and \
-									not filemode == (stat.S_IMODE(subdir_st.st_mode) & filemode))):
+									not dirmode == (stat.S_IMODE(subdir_st.st_mode) & dirmode))):
 									droppriv_fix = True
 									break
 					if droppriv_fix:
