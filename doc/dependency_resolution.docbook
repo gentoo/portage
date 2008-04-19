@@ -1,0 +1,6 @@
+<part id='dependency-resolution'>
+<title>Dependency Resolution</title>
+&dependency_resolution_package_modeling;
+&dependency_resolution_decision_making;
+&dependency_resolution_task_scheduling;
+</part>
