@@ -62,7 +62,16 @@ class portdbapi(dbapi):
 		#self.root=settings["PORTDIR"]
 		self.porttree_root = os.path.realpath(porttree_root)
 
-		self.depcachedir = self.mysettings.depcachedir[:]
+		self.depcachedir = os.path.realpath(self.mysettings.depcachedir)
+
+		if os.environ.get("SANDBOX_ON") == "1":
+			# Make api consumers exempt from sandbox violations
+			# when doing metadata cache updates.
+			sandbox_write = os.environ.get("SANDBOX_WRITE", "").split(":")
+			if self.depcachedir not in sandbox_write:
+				sandbox_write.append(self.depcachedir)
+				os.environ["SANDBOX_WRITE"] = \
+					":".join(filter(None, sandbox_write))
 
 		self.eclassdb = eclass_cache.cache(self.porttree_root,
 			overlays=self.mysettings["PORTDIR_OVERLAY"].split())
