@@ -1833,8 +1833,9 @@ class depgraph(object):
 
 		msg = []
 		msg.append("\n!!! Multiple versions within a single " + \
-			"package slot have been \n")
-		msg.append("!!! pulled into the dependency graph:\n\n")
+			"package slot have been pulled\n")
+		msg.append("!!! into the dependency graph, resulting" + \
+			" in a slot conflict:\n\n")
 		indent = "  "
 		# Max number of parents shown, to avoid flooding the display.
 		max_parents = 3
