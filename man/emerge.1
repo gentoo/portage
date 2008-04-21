@@ -131,6 +131,8 @@ tail end of an rsync update using \fBemerge \-\-sync\fR.  This process
 populates the cache database that portage uses for pre-parsed lookups of
 package data.  It does not populate cache for the overlays listed in
 PORTDIR_OVERLAY.  In order to generate cache for overlays, use \fB\-\-regen\fR.
+In versions of portage >=2.1.5 the \-\-metadata action is totally unnecessary
+unless the user has enabled FEATURES="metadata-transfer" in \fBmake.conf\fR(5).
 .TP
 .BR "\-\-prune " (\fB\-P\fR)
 \fBWARNING: This action can remove important packages!\fR  Removes all but the

@@ -395,7 +395,9 @@ transfer or regenerate metadata cache. Users of the rsync tree need to
 run `emerge \-\-metadata` if they have enabled FEATURES="metadata-transfer"
 in \fBmake.conf\fR(5). In order to regenerate metadata for repositories
 listed in \fBPORTDIR_OVERLAY\fR or a cvs tree, run `emerge \-\-regen`
-(see \fBemerge\fR(1)).
+(see \fBemerge\fR(1)). If you use something like the sqlite module and want
+to keep all metadata in that format alone (useful for querying), enable
+FEATURES="metadata-transfer" in \fBmake.conf\fR(5).
 .TP
 .BR package.keywords
 Per\-package KEYWORDS.  Useful for mixing unstable packages in with a normally 
