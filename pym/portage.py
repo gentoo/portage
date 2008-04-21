@@ -7170,7 +7170,8 @@ class portdbapi(dbapi):
 				pass
 
 		self.auxdbmodule  = self.mysettings.load_best_module("portdbapi.auxdbmodule")
-		self.auxdb        = {}
+		self.auxdb = {}
+		self._pregen_auxdb = {}
 		self._init_cache_dirs()
 		# XXX: REMOVE THIS ONCE UNUSED_0 IS YANKED FROM auxdbkeys
 		# ~harring
@@ -7189,6 +7190,11 @@ class portdbapi(dbapi):
 				# location, label, auxdbkeys
 				self.auxdb[x] = self.auxdbmodule(
 					self.depcachedir, x, filtered_auxdbkeys, gid=portage_gid)
+		if "metadata-transfer" not in self.mysettings.features:
+			for x in self.porttrees:
+				if os.path.isdir(os.path.join(x, "metadata", "cache")):
+					self._pregen_auxdb[x] = self.metadbmodule(
+						x, "metadata/cache", filtered_auxdbkeys, readonly=True)
 		# Selectively cache metadata in order to optimize dep matching.
 		self._aux_cache_keys = set(
 			["DEPEND", "EAPI", "IUSE", "KEYWORDS", "LICENSE",
@@ -7350,26 +7356,41 @@ class portdbapi(dbapi):
 				noiselevel=-1)
 			raise KeyError(mycpv)
 
-		try:
-			mydata = self.auxdb[mylocation][mycpv]
-			eapi = mydata.get("EAPI","").strip()
-			if not eapi:
-				eapi = "0"
-			if eapi.startswith("-") and eapi_is_supported(eapi[1:]):
-				doregen = True
-			elif emtime != long(mydata.get("_mtime_", 0)):
-				doregen = True
-			elif len(mydata.get("_eclasses_", [])) > 0:
-				doregen = not self.eclassdb.is_eclass_data_valid(mydata["_eclasses_"])
-			else:
-				doregen = False
-				
-		except KeyError:
-			doregen = True
-		except CacheError:
-			doregen = True
-			try:				del self.auxdb[mylocation][mycpv]
-			except KeyError:	pass
+		# Pull pre-generated metadata from the metadata/cache/
+		# directory if it exists and is valid, otherwise fall
+		# back to the normal writable cache.
+		auxdbs = []
+		pregen_auxdb = self._pregen_auxdb.get(mylocation)
+		if pregen_auxdb is not None:
+			auxdbs.append(pregen_auxdb)
+		auxdbs.append(self.auxdb[mylocation])
+
+		doregen = True
+		for auxdb in auxdbs:
+			try:
+				mydata = auxdb[mycpv]
+				eapi = mydata.get("EAPI","").strip()
+				if not eapi:
+					eapi = "0"
+				if eapi.startswith("-") and eapi_is_supported(eapi[1:]):
+					pass
+				elif emtime != long(mydata.get("_mtime_", 0)):
+					pass
+				elif len(mydata.get("_eclasses_", [])) > 0:
+					if self.eclassdb.is_eclass_data_valid(mydata["_eclasses_"]):
+						doregen = False
+				else:
+					doregen = False
+			except KeyError:
+				pass
+			except CacheError:
+				if auxdb is not pregen_auxdb:
+					try:
+						del auxdb[mycpv]
+					except KeyError:
+						pass
+			if not doregen:
+				break
 
 		writemsg("auxdb is valid: "+str(not doregen)+" "+str(pkg)+"\n", 2)
 
