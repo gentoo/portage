@@ -16,7 +16,7 @@ def shorthelp():
 	print "   "+turquoise("emerge")+" "+turquoise("--help")+" [ "+green("system")+" | "+green("world")+" | "+green("--sync")+" ] "
 	print bold("Options:")+" "+green("-")+"["+green("abBcCdDefgGhkKlnNoOpqPsStuvV")+"]"
 	print "          [ "+green("--columns")+"   ] [ "+green("--deep")+"      ] [ "+green("--newuse")+"    ]"
-	print "          [ "+green("--noconfmem")+" ] [ "+green("--oneshot")+"   ] [ "+green("--nospinner")+" ]"
+	print "          [ "+green("--noconfmem")+" ] [ "+green("--nospinner")+" ] [ "+green("--oneshot")+"   ]"
 	print "          [ " + green("--color")+" < " + turquoise("y") + " | "+ turquoise("n")+" >           ] [ "+green("--complete-graph")+"            ]"
 	print "          [ "+green("--reinstall ")+turquoise("changed-use")+"     ] [ " + green("--with-bdeps")+" < " + turquoise("y") + " | "+ turquoise("n")+" >      ]"
 	print bold("Actions:")+"  [ "+green("--clean")+" | "+green("--depclean")+" | "+green("--prune")+" | "+green("--regen")+" | "+green("--search")+" | "+green("--unmerge")+" ]"
