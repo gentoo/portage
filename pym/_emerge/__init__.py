@@ -1201,10 +1201,9 @@ def show_masked_packages(masked_packages):
 			shown_licenses.add(l)
 	return have_eapi_mask
 
-class Package(object):
-	__slots__ = ("__weakref__", "built", "cpv", "depth",
-		"installed", "metadata", "root", "onlydeps", "type_name",
-		"cp", "cpv_slot", "slot_atom", "_digraph_node")
+class Task(object):
+	__slots__ = ("__weakref__", "_hash_key",)
+
 	def __init__(self, **kwargs):
 		for myattr in self.__slots__:
 			if myattr == "__weakref__":
@@ -1212,14 +1211,56 @@ class Package(object):
 			myvalue = kwargs.get(myattr, None)
 			setattr(self, myattr, myvalue)
 
+	def _get_hash_key(self):
+		try:
+			return self._hash_key
+		except AttributeError:
+			raise NotImplementedError(self)
+
+	def __eq__(self, other):
+		return self._get_hash_key() == other
+
+	def __ne__(self, other):
+		return self._get_hash_key() != other
+
+	def __hash__(self):
+		return hash(self._get_hash_key())
+
+	def __len__(self):
+		return len(self._get_hash_key())
+
+	def __getitem__(self, key):
+		return self._get_hash_key()[key]
+
+	def __iter__(self):
+		return iter(self._get_hash_key())
+
+	def __contains__(self, key):
+		return key in self._get_hash_key()
+
+	def __str__(self):
+		return str(self._get_hash_key())
+
+class Package(Task):
+	__slots__ = ("built", "cpv", "depth",
+		"installed", "metadata", "root", "onlydeps", "type_name",
+		"cp", "cpv_slot", "slot_atom")
+	def __init__(self, **kwargs):
+		Task.__init__(self, **kwargs)
 		self.cp = portage.cpv_getkey(self.cpv)
 		self.slot_atom = "%s:%s" % (self.cp, self.metadata["SLOT"])
 		self.cpv_slot = "%s:%s" % (self.cpv, self.metadata["SLOT"])
 
-		status = "merge"
-		if self.onlydeps or self.installed:
-			status = "nomerge"
-		self._digraph_node = (self.type_name, self.root, self.cpv, status)
+	def _get_hash_key(self):
+		try:
+			return self._hash_key
+		except AttributeError:
+			operation = "merge"
+			if self.onlydeps or self.installed:
+				operation = "nomerge"
+			self._hash_key = \
+				(self.type_name, self.root, self.cpv, operation)
+		return self._hash_key
 
 	def __lt__(self, other):
 		other_split = portage.catpkgsplit(other.cpv)
@@ -1239,22 +1280,14 @@ class Package(object):
 			return True
 		return False
 
-	def __eq__(self, other):
-		return self._digraph_node == other
-	def __ne__(self, other):
-		return self._digraph_node != other
-	def __hash__(self):
-		return hash(self._digraph_node)
-	def __len__(self):
-		return len(self._digraph_node)
-	def __getitem__(self, key):
-		return self._digraph_node[key]
-	def __iter__(self):
-		return iter(self._digraph_node)
-	def __contains__(self, key):
-		return key in self._digraph_node
-	def __str__(self):
-		return str(self._digraph_node)
+class Uninstall(Package):
+	def _get_hash_key(self):
+		try:
+			return self._hash_key
+		except AttributeError:
+			self._hash_key = \
+				(self.type_name, self.root, self.cpv, "unmerge")
+		return self._hash_key
 
 class DependencyArg(object):
 	def __init__(self, arg=None, root_config=None):
