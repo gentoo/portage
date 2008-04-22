@@ -616,6 +616,14 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 					# connection before sending a valid response".
 					conn, protocol, address, params, headers = create_conn(
 						baseurl)
+				except httplib.ResponseNotReady:
+					# With some http servers this error is known to be thrown
+					# from conn.getresponse() in make_http_request() when the
+					# remote file does not have appropriate read permissions.
+					# Maybe it's possible to recover from this exception in
+					# cases though, so retry.
+					conn, protocol, address, params, headers = create_conn(
+						baseurl)
 
 			if myid and myid[0]:
 				metadata[baseurl]["data"][x] = make_metadata_dict(myid)
