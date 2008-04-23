@@ -5026,7 +5026,7 @@ class MergeTask(object):
 			if uninstall_queue:
 				unmerge(root_config, self.myopts, "unmerge",
 					[uninst_pkg.cpv for uninst_pkg in uninstall_queue],
-					ldpath_mtimes)
+					ldpath_mtimes, clean_world=0)
 				del uninstall_queue[:]
 
 			#buildsyspkg: Check if we need to _force_ binary package creation
@@ -5320,7 +5320,7 @@ class MergeTask(object):
 		return os.EX_OK
 
 def unmerge(root_config, myopts, unmerge_action,
-	unmerge_files, ldpath_mtimes, autoclean=0):
+	unmerge_files, ldpath_mtimes, autoclean=0, clean_world=1):
 	settings = root_config.settings
 	sets = root_config.sets
 	vartree = root_config.trees["vartree"]
@@ -5681,7 +5681,8 @@ def unmerge(root_config, myopts, unmerge_action,
 				emergelog(xterm_titles, " !!! unmerge FAILURE: "+y)
 				sys.exit(retval)
 			else:
-				sets["world"].cleanPackage(vartree.dbapi, y)
+				if clean_world:
+					sets["world"].cleanPackage(vartree.dbapi, y)
 				emergelog(xterm_titles, " >>> unmerge success: "+y)
 	return 1
 
