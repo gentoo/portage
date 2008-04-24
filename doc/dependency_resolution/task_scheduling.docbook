@@ -1,0 +1,36 @@
+<chapter id='dependency-resolution-task-scheduling'>
+<title>Task Scheduling</title>
+<sect1 id='dependency-resolution-task-scheduling-dependencies'>
+	<title>Task Dependencies</title>
+	<para>
+	All tasks are executed in an order such
+	that a task's dependencies are satisfied
+	when it is executed. Dependency relationships between tasks
+	form a directed graph.
+	</para>
+</sect1>
+<sect1 id='dependency-resolution-task-scheduling-conflict-avoidance'>
+	<title>Conflict Avoidance</title>
+	<para>
+	In some cases it is possible to adjust package installation order
+	to avoid having two conflicting packages installed simultaneously.
+	</para>
+	<para>
+	TODO: Automatically uninstall packages when necessary to avoid conflicts.
+	</para>
+</sect1>
+<sect1 id='dependency-resolution-task-scheduling-circular-dependencies'>
+	<title>Circular Dependencies</title>
+	<para>
+	TODO: Automatically solve circular dependencies by temporarily disabling
+	conditional dependencies and then rebuilding packages with the conditional
+	dependencies enabled.
+	</para>
+</sect1>
+<sect1 id='dependency-resolution-task-scheduling-parallel'>
+	<title>Parallel Scheduling</title>
+	<para>
+	TODO: Spawn an appropriate number of tasks in parallel when desired.
+	</para>
+</sect1>
+</chapter>

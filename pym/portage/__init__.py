@@ -4314,9 +4314,7 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 									continue
 								if subdir_st.st_gid != portage_gid or \
 									((stat.S_ISDIR(subdir_st.st_mode) and \
-									not dirmode == (stat.S_IMODE(subdir_st.st_mode) & dirmode)) or \
-									(not stat.S_ISDIR(subdir_st.st_mode) and \
-									not filemode == (stat.S_IMODE(subdir_st.st_mode) & filemode))):
+									not dirmode == (stat.S_IMODE(subdir_st.st_mode) & dirmode))):
 									droppriv_fix = True
 									break
 					if droppriv_fix:
@@ -5360,8 +5358,6 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 	# According to GLEP 37, RDEPEND is the only dependency type that is valid
 	# for new-style virtuals.  Repoman should enforce this.
 	dep_keys = ["RDEPEND", "DEPEND", "PDEPEND"]
-	def compare_pkgs(a, b):
-		return pkgcmp(b[1], a[1])
 	portdb = trees[myroot]["porttree"].dbapi
 	if kwargs["use_binaries"]:
 		portdb = trees[myroot]["bintree"].dbapi
@@ -5387,19 +5383,14 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 		match_atom = x
 		if isblocker:
 			match_atom = x[1:]
-		pkgs = {}
-		for cpv in portdb.match(match_atom):
+		pkgs = []
+		matches = portdb.match(match_atom)
+		# Use descending order to prefer higher versions.
+		matches.reverse()
+		for cpv in matches:
 			# only use new-style matches
 			if cpv.startswith("virtual/"):
-				pkgs[cpv] = (cpv, catpkgsplit(cpv)[1:], portdb)
-		if kwargs["use_binaries"] and "vartree" in trees[myroot]:
-			vardb = trees[myroot]["vartree"].dbapi
-			for cpv in vardb.match(match_atom):
-				# only use new-style matches
-				if cpv.startswith("virtual/"):
-					if cpv in pkgs:
-						continue
-					pkgs[cpv] = (cpv, catpkgsplit(cpv)[1:], vardb)
+				pkgs.append((cpv, catpkgsplit(cpv)[1:], portdb))
 		if not (pkgs or mychoices):
 			# This one couldn't be expanded as a new-style virtual.  Old-style
 			# virtuals have already been expanded by dep_virtual, so this one
@@ -5411,8 +5402,6 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 		if not pkgs and len(mychoices) == 1:
 			newsplit.append(x.replace(mykey, mychoices[0]))
 			continue
-		pkgs = pkgs.values()
-		pkgs.sort(compare_pkgs) # Prefer higher versions.
 		if isblocker:
 			a = []
 		else:

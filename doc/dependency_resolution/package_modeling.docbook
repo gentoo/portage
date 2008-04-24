@@ -1,0 +1,93 @@
+<chapter id='dependency-resolution-package-modeling'>
+<title>Package Modeling</title>
+
+<sect1 id='dependency-resolution-package-modeling-constraint-satisfaction'>
+	<title>Constraint Satisfaction</title>
+	<sect2 id='dedependency-resolution-package-modeling-constraint-satisfaction-constraint-types'>
+	<title>Constraint Types</title>
+	<para>
+	Dependency resolution involves satisfaction of
+	many constraints:
+	<itemizedlist>
+	<listitem>
+		Persistent configuration parameters, like those that come from
+		make.profile, make.conf, and the /etc/portage directory.
+	</listitem>
+	<listitem>
+		Current command parameters, which may include options, atoms, or sets.
+	</listitem>
+	<listitem>
+	<link linkend='dependency-resolution-package-modeling-constraint-satisfaction-package-dependencies'>
+	Package Dependencies</link>
+	</listitem>
+	</itemizedlist>
+	</para>
+	</sect2>
+
+	<sect2 id='dependency-resolution-package-modeling-constraint-satisfaction-package-dependencies'>
+	<title>Package Dependencies</title>
+	<para>
+	Common types of package dependencies:
+	<itemizedlist>
+	<listitem>
+		Files required for building or installing. Downloads may
+		be necessary to satisfy these.
+	</listitem>
+	<listitem>
+		Other packages required to be installed for
+		buildtime or runtime.
+	</listitem>
+	<listitem>
+		Blockers that prevent conflicting packages from being installed
+		simultaneously.
+	</listitem>
+	</itemizedlist>
+	</para>
+	</sect2>
+</sect1>
+
+<sect1 id='dependency-resolution-package-modeling-conflicts'>
+	<title>Conflicts</title>
+	<sect2 id='dependency-resolution-package-modeling-blocker-conflicts'>
+		<title>Blocker Conflicts</title>
+		<para>
+		If one package blocks another package, the two packages
+		conflict such that they cannot be installed simultaneously.
+		These conflicts are often due to file collisions.
+		</para>
+	</sect2>
+	<sect2 id='dependency-resolution-package-modeling-slot-conflicts'>
+		<title>Slot Conflicts</title>
+		<para>
+		If two different packages that occupy the same slot are chosen
+		to satisfy dependencies, a slot conflict occurs. The two packages
+		cannot be installed simultaneously and therefore the respective
+		dependencies will not be satisfied simultaneously.
+		</para>
+	</sect2>
+	<sect2 id='dependency-resolution-package-modeling-indirect-conflicts'>
+		<title>Indirect Conflicts</title>
+		<para>
+		If the dependencies of two parent packages cannot be installed
+		simultaneously, it creates an indirect conflict between the parent
+		packages since their respective dependencies cannot be satisfied
+		simultaneously.
+		</para>
+	</sect2>
+</sect1>
+
+<sect1 id='dependency-resolution-package-modeling-dependency-neglection'>
+	<title>Dependency Neglection</title>
+	<para>
+	In order to significantly reduce the resources consumed by
+	the modeling process, the dependencies of
+	installed packages may be neglected.
+	</para>
+	<para>
+	If a more complete dependency calculation is desired,
+	there is a --complete-graph option which will ensure that the
+	dependencies of installed packages are properly considered.
+	</para>
+</sect1>
+
+</chapter>
