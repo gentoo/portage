@@ -4870,6 +4870,7 @@ class MergeTask(object):
 	def _merge(self, mylist, favorites, mtimedb):
 		from portage.elog import elog_process
 		from portage.elog.filtering import filter_mergephases
+		buildpkgonly = "--buildpkgonly" in self.myopts
 		failed_fetches = []
 		fetchonly = "--fetchonly" in self.myopts or \
 			"--fetch-all-uri" in self.myopts
@@ -5021,7 +5022,8 @@ class MergeTask(object):
 				cpv=pkg_key, built=built, installed=installed,
 				metadata=metadata)
 			if pkg.installed:
-				self._uninstall_queue.append(pkg)
+				if not (buildpkgonly or fetchonly or pretend):
+					self._uninstall_queue.append(pkg)
 				continue
 
 			if x[0]=="blocks":
