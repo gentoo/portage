@@ -12,11 +12,38 @@
 <sect1 id='dependency-resolution-task-scheduling-conflict-avoidance'>
 	<title>Conflict Avoidance</title>
 	<para>
-	In some cases it is possible to adjust package installation order
-	to avoid having two conflicting packages installed simultaneously.
+	Sometimes a package installation order exists such that it is
+	possible to avoid having two conflicting packages installed
+	simultaneously. If a currently installed package conflicts with a
+	new package that is planned to be installed, it may be possible to
+	solve the conflict by replacing the installed package with a
+	different package that occupies the same slot.
 	</para>
 	<para>
-	TODO: Automatically uninstall packages when necessary to avoid conflicts.
+	In order to avoid a conflict, a package may need to be uninstalled
+	in advance, rather than through replacement. The following constraints
+	protect inappropriate packages from being chosen for automatic
+	uninstallation:
+	<itemizedlist>
+	<listitem>
+	Installed packages that have been pulled into the current dependency
+	graph will not be uninstalled. Due to
+	<link linkend='dependency-resolution-package-modeling-dependency-neglection'>
+	dependency neglection</link>, other checks may be necessary in order
+	to protect inappropriate packages from being uninstalled.
+	</listitem>
+	<listitem>
+	An installed package that is matched by a dependency atom from the
+	"system" set will not be uninstalled in advance since it might not
+	be safe. Such a package will be uninstalled through replacement.
+	</listitem>
+	<listitem>
+	An installed package that is matched by a dependency atom from the
+	"world" set will not be uninstalled if the dependency graph does not
+	contain a replacement package that is matched by the same dependency
+	atom.
+	</listitem>
+	</itemizedlist>
 	</para>
 </sect1>
 <sect1 id='dependency-resolution-task-scheduling-circular-dependencies'>
