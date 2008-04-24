@@ -4849,13 +4849,15 @@ class MergeTask(object):
 				pass
 			spawned_pids.remove(pid)
 
-	def _dequeue_uninstall_tasks(self, ldpath_mtimes):
+	def _dequeue_uninstall_tasks(self, mtimedb):
 		if not self._uninstall_queue:
 			return
 		for uninst_task in self._uninstall_queue:
 			root_config = self.trees[uninst_task.root]["root_config"]
 			unmerge(root_config, self.myopts, "unmerge",
-				[uninst_task.cpv], ldpath_mtimes, clean_world=0)
+				[uninst_task.cpv], mtimedb["ldpath"], clean_world=0)
+			del mtimedb["resume"]["mergelist"][0]
+			mtimedb.commit()
 		del self._uninstall_queue[:]
 
 	def _merge(self, mylist, favorites, mtimedb):
@@ -5113,7 +5115,7 @@ class MergeTask(object):
 							return retval
 						bintree = self.trees[myroot]["bintree"]
 						bintree.inject(pkg_key, filename=binpkg_tmpfile)
-						self._dequeue_uninstall_tasks(ldpath_mtimes)
+						self._dequeue_uninstall_tasks(mtimedb)
 						if "--buildpkgonly" not in self.myopts:
 							msg = " === (%s of %s) Merging (%s::%s)" % \
 								(mergecount, len(mymergelist), pkg_key, y)
@@ -5145,7 +5147,7 @@ class MergeTask(object):
 							prev_mtimes=ldpath_mtimes)
 						if retval != os.EX_OK:
 							return retval
-						self._dequeue_uninstall_tasks(ldpath_mtimes)
+						self._dequeue_uninstall_tasks(mtimedb)
 						retval = portage.merge(pkgsettings["CATEGORY"],
 							pkgsettings["PF"], pkgsettings["D"],
 							os.path.join(pkgsettings["PORTAGE_BUILDDIR"],
@@ -5174,7 +5176,7 @@ class MergeTask(object):
 							portage.locks.unlockdir(catdir_lock)
 
 			elif x[0]=="binary":
-				self._dequeue_uninstall_tasks(ldpath_mtimes)
+				self._dequeue_uninstall_tasks(mtimedb)
 				#merge the tbz2
 				mytbz2 = self.trees[myroot]["bintree"].getname(pkg_key)
 				if "--getbinpkg" in self.myopts:
