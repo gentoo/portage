@@ -1591,8 +1591,6 @@ class depgraph(object):
 		self.edebug = 0
 		if settings.get("PORTAGE_DEBUG", "") == "1":
 			self.edebug = 1
-		if "--nodeps" in myopts:
-			spinner.update = spinner.update_quiet
 		self.spinner = spinner
 		self.pkgsettings = {}
 		# Maps slot atom to package for each Package added to the graph.
@@ -7326,6 +7324,10 @@ def action_build(settings, trees, mtimedb,
 			else:
 				del mtimedb[k]
 
+	show_spinner = "--quiet" not in myopts and "--nodeps" not in myopts
+	if not show_spinner:
+		spinner.update = spinner.update_quiet
+
 	if "--resume" in myopts and \
 		("resume" in mtimedb or
 		"resume_backup" in mtimedb):
@@ -7349,9 +7351,6 @@ def action_build(settings, trees, mtimedb,
 		for opt in ("--skipfirst", "--ask", "--tree"):
 			resume_opts.pop(opt, None)
 		myopts.update(resume_opts)
-		show_spinner = "--quiet" not in myopts and "--nodeps" not in myopts
-		if not show_spinner:
-			spinner.update = spinner.update_quiet
 		if show_spinner:
 			print "Calculating dependencies  ",
 		myparams = create_depgraph_params(myopts, myaction)
