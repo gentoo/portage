@@ -5033,13 +5033,6 @@ class MergeTask(object):
 			pkgsettings.backup_changes("EMERGE_FROM")
 			pkgsettings.reset()
 
-			# TODO: If the next package isn't built yet then build
-			# if first before executing the queued_uninstall. This
-			# will help replacement packages get merged into place
-			# as soon as possible after a conflicting package is
-			# unmerged.
-			self._dequeue_uninstall_tasks(ldpath_mtimes)
-
 			#buildsyspkg: Check if we need to _force_ binary package creation
 			issyspkg = ("buildsyspkg" in myfeat) \
 					and x[0] != "blocks" \
@@ -5122,6 +5115,7 @@ class MergeTask(object):
 							return retval
 						bintree = self.trees[myroot]["bintree"]
 						bintree.inject(pkg_key, filename=binpkg_tmpfile)
+						self._dequeue_uninstall_tasks(ldpath_mtimes)
 						if "--buildpkgonly" not in self.myopts:
 							msg = " === (%s of %s) Merging (%s::%s)" % \
 								(mergecount, len(mymergelist), pkg_key, y)
@@ -5147,10 +5141,20 @@ class MergeTask(object):
 						short_msg = "emerge: (%s of %s) %s Compile" % \
 							(mergecount, len(mymergelist), pkg_key)
 						emergelog(xterm_titles, msg, short_msg=short_msg)
-						retval = portage.doebuild(y, "merge", myroot,
+						retval = portage.doebuild(y, "install", myroot,
 							pkgsettings, self.edebug, vartree=vartree,
 							mydbapi=portdb, tree="porttree",
 							prev_mtimes=ldpath_mtimes)
+						if retval != os.EX_OK:
+							return retval
+						self._dequeue_uninstall_tasks(ldpath_mtimes)
+						retval = portage.merge(pkgsettings["CATEGORY"],
+							pkgsettings["PF"], pkgsettings["D"],
+							os.path.join(pkgsettings["PORTAGE_BUILDDIR"],
+							"build-info"), myroot, pkgsettings,
+							myebuild=pkgsettings["EBUILD"],
+							mytree="porttree", mydbapi=portdb,
+							vartree=vartree, prev_mtimes=ldpath_mtimes)
 						if retval != os.EX_OK:
 							return retval
 				finally:
@@ -5172,6 +5176,7 @@ class MergeTask(object):
 							portage.locks.unlockdir(catdir_lock)
 
 			elif x[0]=="binary":
+				self._dequeue_uninstall_tasks(ldpath_mtimes)
 				#merge the tbz2
 				mytbz2 = self.trees[myroot]["bintree"].getname(pkg_key)
 				if "--getbinpkg" in self.myopts:
