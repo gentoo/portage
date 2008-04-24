@@ -3508,10 +3508,13 @@ class depgraph(object):
 					# by a normal upgrade operation then require
 					# user intervention.
 					skip = False
-					for atom in root_config.sets[
-						"system"].iterAtomsForPackage(task):
+					try:
+						for atom in root_config.sets[
+							"system"].iterAtomsForPackage(task):
+							skip = True
+							break
+					except portage.exception.InvalidDependString:
 						skip = True
-						break
 					if skip:
 						continue
 
@@ -3519,17 +3522,21 @@ class depgraph(object):
 					# when necessary, as long as the atom will be satisfied
 					# in the final state.
 					graph_db = self.mydbapi[task.root]
-					for atom in root_config.sets[
-						"world"].iterAtomsForPackage(task):
-						satisfied = False
-						for cpv in graph_db.match(atom):
-							if cpv == inst_pkg.cpv and inst_pkg in graph_db:
-								continue
-							satisfied = True
-							break
-						if not satisfied:
-							skip = True
-							break
+					try:
+						for atom in root_config.sets[
+							"world"].iterAtomsForPackage(task):
+							satisfied = False
+							for cpv in graph_db.match(atom):
+								if cpv == inst_pkg.cpv and \
+									inst_pkg in graph_db:
+									continue
+								satisfied = True
+								break
+							if not satisfied:
+								skip = True
+								break
+					except portage.exception.InvalidDependString:
+						skip = True
 					if skip:
 						continue
 
