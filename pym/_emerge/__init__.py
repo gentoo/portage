@@ -365,9 +365,7 @@ def create_depgraph_params(myopts, myaction):
 	# recurse:   go into the dependencies
 	# deep:      go into the dependencies of already merged packages
 	# empty:     pretend nothing is merged
-	# consistent: ensure that installation of new packages does not break
-	#            any deep dependencies of required sets (args, system, or
-	#            world).
+	# complete:  completely account for all known dependencies
 	myparams = set(["recurse"])
 	if "--update" in myopts or \
 		"--newuse" in myopts or \
