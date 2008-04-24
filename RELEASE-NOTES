@@ -35,6 +35,14 @@ portage-2.2
 portage-2.1.5
 ==================================
 
+* Blockers are now resolved automatically in many more cases
+  than before.  When it's safe, blocked packages are uninstalled
+  automatically so that users are no longer inconvenienced with the
+  task. Automatically uninstalled packages are displayed in the merge
+  list, marked "uninstall" and highlighted in red. With the --tree
+  option enabled, it's possible to see which package(s) caused other
+  ones to be automatically uninstalled.
+
 * The metadata-transfer feature is now disabled by default. This disables the
   "Updating Portage cache" routine that used to run at the tail end of each
   `emerge --sync` operation. If you use something like the sqlite module and
