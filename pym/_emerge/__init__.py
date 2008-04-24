@@ -382,7 +382,7 @@ def create_depgraph_params(myopts, myaction):
 	if "--deep" in myopts:
 		myparams.add("deep")
 	if "--complete-graph" in myopts:
-		myparams.add("consistent")
+		myparams.add("complete")
 	return myparams
 
 # search functionality
@@ -1860,7 +1860,7 @@ class depgraph(object):
 		nodeps = "--nodeps" in self.myopts
 		empty = "empty" in self.myparams
 		deep = "deep" in self.myparams
-		consistent = "consistent" in self.myparams
+		complete = "complete" in self.myparams
 		update = "--update" in self.myopts and dep.depth <= 1
 		if dep.blocker:
 			if not buildpkgonly and \
@@ -1904,7 +1904,7 @@ class depgraph(object):
 						# should have been masked.
 						raise
 			if not myarg:
-				if consistent:
+				if complete:
 					self._ignored_deps.append(dep)
 				return 1
 
@@ -2052,7 +2052,7 @@ class depgraph(object):
 			return 1
 		elif pkg.installed and \
 			"deep" not in self.myparams:
-			if "consistent" not in self.myparams:
+			if "complete" not in self.myparams:
 				return 1
 			dep_stack = self._ignored_deps
 
@@ -2942,7 +2942,7 @@ class depgraph(object):
 		Since this method can consume enough time to disturb users, it is
 		currently only enabled by the --complete-graph option.
 		"""
-		if "consistent" not in self.myparams:
+		if "complete" not in self.myparams:
 			# Skip this to avoid consuming enough time to disturb users.
 			return 1
 
