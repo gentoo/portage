@@ -4821,6 +4821,7 @@ class MergeTask(object):
 				clone=trees[root]["vartree"].settings)
 		self.curval = 0
 		self._spawned_pids = []
+		self._uninstall_queue = []
 
 	def merge(self, mylist, favorites, mtimedb):
 		try:
@@ -4849,6 +4850,15 @@ class MergeTask(object):
 				# so remove it from our list.
 				pass
 			spawned_pids.remove(pid)
+
+	def _dequeue_uninstall_tasks(self, ldpath_mtimes):
+		if not self._uninstall_queue:
+			return
+		for uninst_task in self._uninstall_queue:
+			root_config = self.trees[uninst_task.root]["root_config"]
+			unmerge(root_config, self.myopts, "unmerge",
+				[uninst_task.cpv], ldpath_mtimes, clean_world=0)
+		del self._uninstall_queue[:]
 
 	def _merge(self, mylist, favorites, mtimedb):
 		from portage.elog import elog_process
@@ -4961,7 +4971,6 @@ class MergeTask(object):
 		# Filter mymergelist so that all the len(mymergelist) calls
 		# below (for display) do not count Uninstall instances.
 		mymergelist = [x for x in mymergelist if x[-1] == "merge"]
-		uninstall_queue = []
 		mergecount=0
 		for x in task_list:
 			pkg_type = x[0]
@@ -5005,7 +5014,7 @@ class MergeTask(object):
 				cpv=pkg_key, built=built, installed=installed,
 				metadata=metadata)
 			if pkg.installed:
-				uninstall_queue.append(pkg)
+				self._uninstall_queue.append(pkg)
 				continue
 
 			if x[0]=="blocks":
@@ -5029,11 +5038,7 @@ class MergeTask(object):
 			# will help replacement packages get merged into place
 			# as soon as possible after a conflicting package is
 			# unmerged.
-			if uninstall_queue:
-				unmerge(root_config, self.myopts, "unmerge",
-					[uninst_pkg.cpv for uninst_pkg in uninstall_queue],
-					ldpath_mtimes, clean_world=0)
-				del uninstall_queue[:]
+			self._dequeue_uninstall_tasks(ldpath_mtimes)
 
 			#buildsyspkg: Check if we need to _force_ binary package creation
 			issyspkg = ("buildsyspkg" in myfeat) \
