@@ -29,13 +29,14 @@
 	Installed packages that have been pulled into the current dependency
 	graph will not be uninstalled. Due to
 	<link linkend='dependency-resolution-package-modeling-dependency-neglection'>
-	dependency neglection</link>, other checks may be necessary in order
+	dependency neglection</link> and special properties of packages
+	in the "system" set, other checks may be necessary in order
 	to protect inappropriate packages from being uninstalled.
 	</listitem>
 	<listitem>
 	An installed package that is matched by a dependency atom from the
 	"system" set will not be uninstalled in advance since it might not
-	be safe. Such a package will be uninstalled through replacement.
+	be safe. Such a package will be only uninstalled through replacement.
 	</listitem>
 	<listitem>
 	An installed package that is matched by a dependency atom from the
