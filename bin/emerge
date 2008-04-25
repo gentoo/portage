@@ -8153,7 +8153,9 @@ def emerge_main():
 		myelogstr=""
 		if myopts:
 			myelogstr=" ".join(myopts)
-		if myaction:
+		if myaction and myaction != "world":
+			# Exclude "world" here because myfiles
+			# contains a duplicate.
 			myelogstr+=" "+myaction
 		if myfiles:
 			myelogstr+=" "+" ".join(myfiles)
