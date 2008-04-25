@@ -1842,6 +1842,7 @@ class depgraph(object):
 	def _create_graph(self, allow_unsatisfied=False):
 		dep_stack = self._dep_stack
 		while dep_stack:
+			self.spinner.update()
 			dep = dep_stack.pop()
 			if isinstance(dep, Package):
 				if not self._add_pkg_deps(dep,
@@ -3121,6 +3122,7 @@ class depgraph(object):
 				del blocker_cache
 
 		for blocker in self.blocker_parents.keys():
+			self.spinner.update()
 			mytype, myroot, mydep = blocker
 			initial_db = self.trees[myroot]["vartree"].dbapi
 			final_db = self.mydbapi[myroot]
@@ -3294,6 +3296,7 @@ class depgraph(object):
 			for node in mygraph.root_nodes():
 				if not isinstance(node, Package) or \
 					node.installed or node.onlydeps:
+					self.spinner.update()
 					mygraph.remove(node)
 					removed_something = True
 			if not removed_something:
@@ -3372,6 +3375,7 @@ class depgraph(object):
 		# unresolved blockers or circular dependencies.
 
 		while not mygraph.empty():
+			self.spinner.update()
 			selected_nodes = None
 			ignore_priority = None
 			if prefer_asap and asap_nodes:
