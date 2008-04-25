@@ -102,7 +102,7 @@ class SetConfig(SafeConfigParser):
 def load_default_config(settings, trees):
 	setconfigpaths = [os.path.join(GLOBAL_CONFIG_PATH, "sets.conf")]
 	setconfigpaths.append(os.path.join(settings["PORTDIR"], "sets.conf"))
-	setconfigpaths += [os.path.join(x, "sets.conf") for x in settings["PORDIR_OVERLAY"].split()]
+	setconfigpaths += [os.path.join(x, "sets.conf") for x in settings["PORTDIR_OVERLAY"].split()]
 	setconfigpaths.append(os.path.join(settings["PORTAGE_CONFIGROOT"],
 		USER_CONFIG_PATH.lstrip(os.path.sep), "sets.conf"))
 	return SetConfig(setconfigpaths, settings, trees)
