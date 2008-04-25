@@ -36,7 +36,7 @@
 	<listitem>
 	An installed package that is matched by a dependency atom from the
 	"system" set will not be uninstalled in advance since it might not
-	be safe. Such a package will be only uninstalled through replacement.
+	be safe. Such a package will only be uninstalled through replacement.
 	</listitem>
 	<listitem>
 	An installed package that is matched by a dependency atom from the
