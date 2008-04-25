@@ -159,13 +159,16 @@ install_qa_check() {
 		fi
 
 		# Save NEEDED information after removing self-contained providers
-		scanelf -qyRF '%p:%r %n' "${D}" | sed -e 's:^:/:' | { while read l; do
-			obj=${l%%:*}
-			rpath=${l##*:}; rpath=${rpath%% *}
-			needed=${l##* }
+		scanelf -qyRF '%a;%p;%S;%r;%n' "${D}" | { while read l; do
+			arch=${l%%;*}; l=${l#*;}
+			obj="/${l%%;*}"; l=${l#*;}
+			soname=${l%%;*}; l=${l#*;}
+			rpath=${l%%;*}; l=${l#*;}; [ "${rpath}" == "  -  " ] && rpath=""
+			needed=${l%%;*}; l=${l#*;}
 			if [ -z "${rpath}" -o -n "${rpath//*ORIGIN*}" ]; then
 				# object doesn't contain $ORIGIN in its runpath attribute
 				echo "${obj} ${needed}"	>> "${PORTAGE_BUILDDIR}"/build-info/NEEDED
+				echo "${arch:3};${obj};${soname};${rpath};${needed}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED.2
 			else
 				dir=$(dirname ${obj})
 				# replace $ORIGIN with the dirname of the current object for the lookup
@@ -176,7 +179,10 @@ install_qa_check() {
 					[ -e "${D}/${dir}/${lib}" ] || rneeded="${rneeded},${lib}"
 				done
 				rneeded=${rneeded:1}
-				[ -n "${rneeded}" ] && echo "${obj} ${rneeded}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED
+				if [ -n "${rneeded}" ]; then
+					echo "${obj} ${rneeded}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED
+					echo "${arch:3};/${obj};${soname};${rpath};${rneeded}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED.2
+				fi
 			fi
 		done }
 

@@ -2055,6 +2055,7 @@ class dblink(object):
 
 		# copy "info" files (like SLOT, CFLAGS, etc.) into the database
 		for x in listdir(inforoot):
+			print x
 			self.copyfile(inforoot+"/"+x)
 
 		# write local package counter for recording
