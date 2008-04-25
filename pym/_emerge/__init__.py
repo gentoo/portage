@@ -1711,7 +1711,7 @@ class depgraph(object):
 		# Slot collision nodes are not allowed to block other packages since
 		# blocker validation is only able to account for one package per slot.
 		self._slot_collision_nodes = set()
-		self._altlist_cache = {}
+		self._serialized_tasks_cache = None
 		self._pprovided_args = []
 		self._missing_args = []
 		self._masked_installed = []
@@ -1858,7 +1858,6 @@ class depgraph(object):
 		nodeps = "--nodeps" in self.myopts
 		empty = "empty" in self.myparams
 		deep = "deep" in self.myparams
-		complete = "complete" in self.myparams
 		update = "--update" in self.myopts and dep.depth <= 1
 		if dep.blocker:
 			if not buildpkgonly and \
@@ -1902,8 +1901,7 @@ class depgraph(object):
 						# should have been masked.
 						raise
 			if not myarg:
-				if complete:
-					self._ignored_deps.append(dep)
+				self._ignored_deps.append(dep)
 				return 1
 
 		if not self._add_pkg(dep_pkg, dep.parent,
@@ -2050,8 +2048,6 @@ class depgraph(object):
 			return 1
 		elif pkg.installed and \
 			"deep" not in self.myparams:
-			if "complete" not in self.myparams:
-				return 1
 			dep_stack = self._ignored_deps
 
 		self.spinner.update()
@@ -2567,7 +2563,7 @@ class depgraph(object):
 
 		if not self.validate_blockers():
 			return False, myfavorites
-		
+
 		# We're true here unless we are missing binaries.
 		return (not missing,myfavorites)
 
@@ -3233,9 +3229,17 @@ class depgraph(object):
 						blocker, set()).add(parent)
 			if not self.blocker_parents[blocker]:
 				del self.blocker_parents[blocker]
-		# Validate blockers that depend on merge order.
-		if not self.blocker_digraph.empty():
+
+		# This checks whether or not it's possible to resolve blocker
+		# conflicts that depend on installation order or require
+		# uninstallation of a currently installed package. Note that
+		# this can lead to the current method being called recursively
+		# if changes to the dependency graph are required.
+		try:
 			self.altlist()
+		except self._unknown_internal_error:
+			return False
+
 		if self._slot_collision_info:
 			# The user is only notified of a slot collision if there are no
 			# unresolvable blocks.
@@ -3267,13 +3271,19 @@ class depgraph(object):
 		mygraph.order.sort(cmp_merge_preference)
 
 	def altlist(self, reversed=False):
-		if reversed in self._altlist_cache:
-			return self._altlist_cache[reversed][:]
+
+		while self._serialized_tasks_cache is None:
+			try:
+				self._serialized_tasks_cache = self._serialize_tasks()
+			except self._serialize_tasks_retry:
+				pass
+
+		retlist = self._serialized_tasks_cache[:]
 		if reversed:
-			retlist = self.altlist()
 			retlist.reverse()
-			self._altlist_cache[reversed] = retlist[:]
-			return retlist
+		return retlist
+
+	def _serialize_tasks(self):
 		mygraph=self.digraph.copy()
 		# Prune "nomerge" root nodes if nothing depends on them, since
 		# otherwise they slow down merge order calculation. Don't remove
@@ -3311,7 +3321,11 @@ class depgraph(object):
 		# correspond to blocker conflicts that could not be
 		# resolved.
 		ignored_uninstall_tasks = set()
-		blocker_deps = None
+		have_uninstall_task = False
+		complete = "complete" in self.myparams
+		myblocker_parents = self.blocker_parents.copy()
+		for k, v in myblocker_parents.iteritems():
+			myblocker_parents[k] = v.copy()
 		asap_nodes = []
 		portage_node = None
 		def get_nodes(**kwargs):
@@ -3501,42 +3515,53 @@ class depgraph(object):
 					inst_pkg = self._pkg_cache[
 						("installed", task.root, task.cpv, "nomerge")]
 
-					# For packages in the system set, don't take
-					# any chances. If the conflict can't be resolved
-					# by a normal upgrade operation then require
-					# user intervention.
-					skip = False
-					try:
-						for atom in root_config.sets[
-							"system"].iterAtomsForPackage(task):
-							skip = True
-							break
-					except portage.exception.InvalidDependString:
-						skip = True
-					if skip:
+					if self.digraph.contains(inst_pkg):
 						continue
 
-					# For packages in the world set, go ahead an uninstall
-					# when necessary, as long as the atom will be satisfied
-					# in the final state.
-					graph_db = self.mydbapi[task.root]
-					try:
-						for atom in root_config.sets[
-							"world"].iterAtomsForPackage(task):
-							satisfied = False
-							for cpv in graph_db.match(atom):
-								if cpv == inst_pkg.cpv and \
-									inst_pkg in graph_db:
-									continue
-								satisfied = True
-								break
-							if not satisfied:
+					if "/" == task.root:
+						# For packages in the system set, don't take
+						# any chances. If the conflict can't be resolved
+						# by a normal replacement operation then abort.
+						skip = False
+						try:
+							for atom in root_config.sets[
+								"system"].iterAtomsForPackage(task):
 								skip = True
 								break
-					except portage.exception.InvalidDependString:
-						skip = True
-					if skip:
-						continue
+						except portage.exception.InvalidDependString:
+							skip = True
+						if skip:
+							continue
+
+					# Note that the world check isn't always
+					# necessary since self._complete_graph() will
+					# add all packages from the system and world sets to the
+					# graph. This just allows unresolved conflicts to be
+					# detected as early as possible, which makes it possible
+					# to avoid calling self._complete_graph() when it is
+					# unnecessary due to blockers triggering an abortion.
+					if not complete:
+						# For packages in the world set, go ahead an uninstall
+						# when necessary, as long as the atom will be satisfied
+						# in the final state.
+						graph_db = self.mydbapi[task.root]
+						try:
+							for atom in root_config.sets[
+								"world"].iterAtomsForPackage(task):
+								satisfied = False
+								for cpv in graph_db.match(atom):
+									if cpv == inst_pkg.cpv and \
+										inst_pkg in graph_db:
+										continue
+									satisfied = True
+									break
+								if not satisfied:
+									skip = True
+									break
+						except portage.exception.InvalidDependString:
+							skip = True
+						if skip:
+							continue
 
 					# Check the deps of parent nodes to ensure that
 					# the chosen task produces a leaf node. Maybe
@@ -3629,6 +3654,7 @@ class depgraph(object):
 				# and uninstallation tasks.
 				uninst_task = None
 				if isinstance(node, Uninstall):
+					have_uninstall_task = True
 					uninst_task = node
 				else:
 					vardb = self.trees[node.root]["vartree"].dbapi
@@ -3654,24 +3680,32 @@ class depgraph(object):
 						unresolved = \
 							self._unresolved_blocker_parents.get(blocker)
 						if unresolved:
-							self.blocker_parents[blocker] = unresolved
+							myblocker_parents[blocker] = unresolved
 						else:
-							del self.blocker_parents[blocker]
+							del myblocker_parents[blocker]
 
 				if node[-1] != "nomerge":
 					retlist.append(list(node))
 				mygraph.remove(node)
 
-		if not reversed:
-			"""Blocker validation does not work with reverse mode,
-			so self.altlist() should first be called with reverse disabled
-			so that blockers are properly validated."""
-			self.blocker_digraph = myblockers
-
-		""" Add any unresolved blocks so that they can be displayed."""
-		for blocker in self.blocker_parents:
+		for blocker in myblocker_parents:
 			retlist.append(list(blocker))
-		self._altlist_cache[reversed] = retlist[:]
+
+		# If any Uninstall tasks need to be executed in order
+		# to avoid a conflict, complete the graph with any
+		# dependencies that may have been initially
+		# neglected (to ensure that unsafe Uninstall tasks
+		# are properly identified and blocked from execution).
+		if have_uninstall_task and \
+			not complete and \
+			not myblocker_parents:
+			self.myparams.add("complete")
+			if not self._complete_graph():
+				raise self._unknown_internal_error("")
+			if not self.validate_blockers():
+				raise self._unknown_internal_error("")
+			raise self._serialize_tasks_retry("")
+
 		return retlist
 
 	def display(self, mylist, favorites=[], verbosity=None):
@@ -4561,6 +4595,22 @@ class depgraph(object):
 			self._pkg_cache[pkg] = pkg
 			fakedb[myroot].cpv_inject(pkg)
 			self.spinner.update()
+
+	class _unknown_internal_error(portage.exception.PortageException):
+		"""
+		Used by the depgraph internally to terminate graph creation.
+		The specific reason for the failure should have been dumped
+		to stderr, unfortunately, the exact reason for the failure
+		may not be known.
+		"""
+
+	class _serialize_tasks_retry(portage.exception.PortageException):
+		"""
+		This is raised by the _serialize_tasks() method when it needs to
+		be called again for some reason. The only case that it's currently
+		used for is when neglected dependencies need to be added to the
+		graph in order to avoid making a potentially unsafe decision.
+		"""
 
 	class _dep_check_composite_db(portage.dbapi):
 		"""
