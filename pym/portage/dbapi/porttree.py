@@ -521,14 +521,6 @@ class portdbapi(dbapi):
 		l.sort()
 		return l
 
-	def p_list(self,mycp):
-		d={}
-		for oroot in self.porttrees:
-			for x in listdir(oroot+"/"+mycp,EmptyOnError=1,ignorecvs=1):
-				if x[-7:]==".ebuild":
-					d[x[:-7]] = None
-		return d.keys()
-
 	def cp_list(self, mycp, use_cache=1, mytree=None):
 		if self.frozen and mytree is None:
 			cachelist = self.xcache["cp-list"].get(mycp)
