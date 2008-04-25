@@ -2559,10 +2559,9 @@ class depgraph(object):
 					missing += 1
 					print "Missing binary for:",xs[2]
 
-		if not self._complete_graph():
-			return False, myfavorites
-
-		if not self.validate_blockers():
+		try:
+			self.altlist()
+		except self._unknown_internal_error:
 			return False, myfavorites
 
 		# We're true here unless we are missing binaries.
@@ -3232,25 +3231,6 @@ class depgraph(object):
 			if not self.blocker_parents[blocker]:
 				del self.blocker_parents[blocker]
 
-		# This checks whether or not it's possible to resolve blocker
-		# conflicts that depend on installation order or require
-		# uninstallation of a currently installed package. Note that
-		# this can lead to the current method being called recursively
-		# if changes to the dependency graph are required.
-		try:
-			self.altlist()
-		except self._unknown_internal_error:
-			return False
-
-		if self._slot_collision_info:
-			# The user is only notified of a slot collision if there are no
-			# unresolvable blocks.
-			for x in self.altlist():
-				if x[0] == "blocks":
-					self._slot_collision_info.clear()
-					return True
-			if not self._accept_collisions():
-				return False
 		return True
 
 	def _accept_collisions(self):
@@ -3275,6 +3255,7 @@ class depgraph(object):
 	def altlist(self, reversed=False):
 
 		while self._serialized_tasks_cache is None:
+			self._resolve_conflicts()
 			try:
 				self._serialized_tasks_cache = self._serialize_tasks()
 			except self._serialize_tasks_retry:
@@ -3284,6 +3265,13 @@ class depgraph(object):
 		if reversed:
 			retlist.reverse()
 		return retlist
+
+	def _resolve_conflicts(self):
+		if not self._complete_graph():
+			raise self._unknown_internal_error()
+
+		if not self.validate_blockers():
+			raise self._unknown_internal_error()
 
 	def _serialize_tasks(self):
 		mygraph=self.digraph.copy()
@@ -3704,10 +3692,6 @@ class depgraph(object):
 			not complete and \
 			not myblocker_parents:
 			self.myparams.add("complete")
-			if not self._complete_graph():
-				raise self._unknown_internal_error("")
-			if not self.validate_blockers():
-				raise self._unknown_internal_error("")
 			raise self._serialize_tasks_retry("")
 
 		return retlist
@@ -4372,7 +4356,17 @@ class depgraph(object):
 		to ensure that the user is notified of problems with the graph.
 		"""
 
-		self._show_slot_collision_notice()
+		task_list = self.altlist()
+
+		# Any blockers must be appended to the tail of the list,
+		# so we only need to check the last item.
+		have_blocker_conflict = \
+			bool(task_list and task_list[-1][0] == "blocks")
+
+		# The user is only notified of a slot conflict if
+		# there are no unresolvable blocker conflicts.
+		if not have_blocker_conflict:
+			self._show_slot_collision_notice()
 
 		# TODO: Add generic support for "set problem" handlers so that
 		# the below warnings aren't special cases for world only.
