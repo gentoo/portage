@@ -389,6 +389,28 @@ class digraph(object):
 		del self.nodes[node]
 		self.order.remove(node)
 
+	def remove_edge(self, child, parent):
+		"""
+		Remove edge in the direction from child to parent. Note that it is
+		possible for a remaining edge to exist in the opposite direction.
+		Any endpoint vertices that become isolated will remain in the graph.
+		"""
+
+		# Nothing should be modified when a KeyError is raised.
+		for k in parent, child:
+			if k not in self.nodes:
+				raise KeyError(k)
+
+		# Make sure the edge exists.
+		if child not in self.nodes[parent][0]:
+			raise KeyError(child)
+		if parent not in self.nodes[child][1]:
+			raise KeyError(parent)
+
+		# Remove the edge.
+		del self.nodes[child][1][parent]
+		del self.nodes[parent][0][child]
+
 	def contains(self, node):
 		"""Checks if the digraph contains mynode"""
 		return node in self.nodes

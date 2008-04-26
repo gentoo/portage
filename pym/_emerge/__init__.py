@@ -929,6 +929,8 @@ class BlockerDepPriority(DepPriority):
 	def __int__(self):
 		return 0
 
+BlockerDepPriority.instance = BlockerDepPriority()
+
 class UnmergeDepPriority(AbstractDepPriority):
 	__slots__ = ()
 	"""
@@ -1723,9 +1725,12 @@ class depgraph(object):
 		self._atom_arg_map = {}
 		# contains all nodes pulled in by self._set_atoms
 		self._set_nodes = set()
-		self.blocker_digraph = digraph()
-		self.blocker_parents = {}
-		self._unresolved_blocker_parents = {}
+		# Contains only Blocker -> Uninstall edges
+		self._blocker_uninstalls = digraph()
+		# Contains only Package -> Blocker edges
+		self._blocker_parents = digraph()
+		# Contains only unsolvable Package -> Blocker edges
+		self._unsolvable_blockers = digraph()
 		self._slot_collision_info = set()
 		# Slot collision nodes are not allowed to block other packages since
 		# blocker validation is only able to account for one package per slot.
@@ -1889,9 +1894,8 @@ class depgraph(object):
 					return 1
 				# The blocker applies to the root where
 				# the parent is or will be installed.
-				self.blocker_parents.setdefault(
-					Blocker(atom=dep.atom, root=dep.parent.root), set()).add(
-						dep.parent)
+				blocker = Blocker(atom=dep.atom, root=dep.parent.root)
+				self._blocker_parents.add(blocker, dep.parent)
 			return 1
 		dep_pkg, existing_node = self._select_package(dep.root, dep.atom,
 			onlydeps=dep.onlydeps)
@@ -3129,17 +3133,12 @@ class depgraph(object):
 							blocker_cache.BlockerData(counter, blocker_atoms)
 					if blocker_atoms:
 						for myatom in blocker_atoms:
-							blocker = ("blocks", myroot, myatom[1:])
-							myparents = \
-								self.blocker_parents.get(blocker, None)
-							if not myparents:
-								myparents = set()
-								self.blocker_parents[blocker] = myparents
-							myparents.add(node)
+							blocker = Blocker(atom=myatom[1:], root=myroot)
+							self._blocker_parents.add(blocker, node)
 				blocker_cache.flush()
 				del blocker_cache
 
-		for blocker in self.blocker_parents.keys():
+		for blocker in self._blocker_parents.leaf_nodes():
 			self.spinner.update()
 			mytype, myroot, mydep = blocker
 			initial_db = self.trees[myroot]["vartree"].dbapi
@@ -3147,7 +3146,12 @@ class depgraph(object):
 			blocked_initial = initial_db.match(mydep)
 			blocked_final = final_db.match(mydep)
 			if not blocked_initial and not blocked_final:
-				del self.blocker_parents[blocker]
+				parent_pkgs = self._blocker_parents.parent_nodes(blocker)
+				self._blocker_parents.remove(blocker)
+				# Discard any parents that don't have any more blockers.
+				for pkg in parent_pkgs:
+					if not self._blocker_parents.child_nodes(pkg):
+						self._blocker_parents.remove(pkg)
 				continue
 			blocked_slots_initial = {}
 			blocked_slots_final = {}
@@ -3159,7 +3163,7 @@ class depgraph(object):
 				blocked_slots_final[cpv] = \
 					"%s:%s" % (portage.dep_getkey(cpv),
 						final_db.aux_get(cpv, ["SLOT"])[0])
-			for parent in list(self.blocker_parents[blocker]):
+			for parent in self._blocker_parents.parent_nodes(blocker):
 				ptype, proot, pcpv, pstatus = parent
 				pdbapi = self.trees[proot][self.pkg_tree_map[ptype]].dbapi
 				pslot = pdbapi.aux_get(pcpv, ["SLOT"])[0]
@@ -3237,18 +3241,19 @@ class depgraph(object):
 						self._pkg_cache[uninst_task] = uninst_task
 						# Enforce correct merge order with a hard dep.
 						self.digraph.addnode(uninst_task, inst_task,
-							priority=BlockerDepPriority())
+							priority=BlockerDepPriority.instance)
 						# Count references to this blocker so that it can be
 						# invalidated after nodes referencing it have been
 						# merged.
-						self.blocker_digraph.addnode(uninst_task, blocker)
+						self._blocker_uninstalls.addnode(uninst_task, blocker)
 				if not unresolved_blocks and not depends_on_order:
-					self.blocker_parents[blocker].remove(parent)
+					self._blocker_parents.remove_edge(blocker, parent)
+					if not self._blocker_parents.parent_nodes(blocker):
+						self._blocker_parents.remove(blocker)
+					if not self._blocker_parents.child_nodes(parent):
+						self._blocker_parents.remove(parent)
 				if unresolved_blocks:
-					self._unresolved_blocker_parents.setdefault(
-						blocker, set()).add(parent)
-			if not self.blocker_parents[blocker]:
-				del self.blocker_parents[blocker]
+					self._unsolvable_blockers.add(blocker, parent)
 
 		return True
 
@@ -3324,7 +3329,7 @@ class depgraph(object):
 			elif n1_n2_medium:
 				return 1
 			return -1
-		myblockers = self.blocker_digraph.copy()
+		myblocker_uninstalls = self._blocker_uninstalls.copy()
 		retlist=[]
 		# Contains any Uninstall tasks that have been ignored
 		# in order to avoid the circular deps code path. These
@@ -3333,9 +3338,7 @@ class depgraph(object):
 		ignored_uninstall_tasks = set()
 		have_uninstall_task = False
 		complete = "complete" in self.myparams
-		myblocker_parents = self.blocker_parents.copy()
-		for k, v in myblocker_parents.iteritems():
-			myblocker_parents[k] = v.copy()
+		myblocker_parents = self._blocker_parents.copy()
 		asap_nodes = []
 		portage_node = None
 		def get_nodes(**kwargs):
@@ -3508,13 +3511,13 @@ class depgraph(object):
 					selected_nodes = list(selected_nodes)
 				selected_nodes.sort(cmp_circular_bias)
 
-			if not selected_nodes and not myblockers.is_empty():
+			if not selected_nodes and not myblocker_uninstalls.is_empty():
 				# An Uninstall task needs to be executed in order to
 				# avoid conflict if possible.
 
 				min_parent_deps = None
 				uninst_task = None
-				for task in myblockers.leaf_nodes():
+				for task in myblocker_uninstalls.leaf_nodes():
 					# Do some sanity checks so that system or world packages
 					# don't get uninstalled inappropriately here (only really
 					# necessary when --complete-graph has not been enabled).
@@ -3599,7 +3602,7 @@ class depgraph(object):
 					# to avoid the circular deps code path, but the
 					# blocker will still be counted as an unresolved
 					# conflict.
-					for node in myblockers.leaf_nodes():
+					for node in myblocker_uninstalls.leaf_nodes():
 						try:
 							mygraph.remove(node)
 						except KeyError:
@@ -3682,24 +3685,23 @@ class depgraph(object):
 							pass
 				if uninst_task is not None and \
 					uninst_task not in ignored_uninstall_tasks and \
-					myblockers.contains(uninst_task):
-					myblockers.remove(uninst_task)
-					for blocker in myblockers.root_nodes():
-						if myblockers.child_nodes(blocker):
-							continue
-						myblockers.remove(blocker)
-						unresolved = \
-							self._unresolved_blocker_parents.get(blocker)
-						if unresolved:
-							myblocker_parents[blocker] = unresolved
-						else:
-							del myblocker_parents[blocker]
+					myblocker_uninstalls.contains(uninst_task):
+					blocker_nodes = myblocker_uninstalls.parent_nodes(uninst_task)
+					myblocker_uninstalls.remove(uninst_task)
+					# Discard any blockers that this Uninstall solves.
+					for blocker in blocker_nodes:
+						if not myblocker_uninstalls.child_nodes(blocker):
+							myblocker_uninstalls.remove(blocker)
 
 				if node[-1] != "nomerge":
 					retlist.append(list(node))
 				mygraph.remove(node)
 
-		for blocker in myblocker_parents:
+		unsolvable_blockers = set(self._unsolvable_blockers.leaf_nodes())
+		for node in myblocker_uninstalls.root_nodes():
+			unsolvable_blockers.add(node)
+
+		for blocker in unsolvable_blockers:
 			retlist.append(list(blocker))
 
 		# If any Uninstall tasks need to be executed in order
@@ -3709,7 +3711,7 @@ class depgraph(object):
 		# are properly identified and blocked from execution).
 		if have_uninstall_task and \
 			not complete and \
-			not myblocker_parents:
+			not unsolvable_blockers:
 			self.myparams.add("complete")
 			raise self._serialize_tasks_retry("")
 
@@ -3917,7 +3919,7 @@ class depgraph(object):
 					addl = addl + " " + red(resolved)
 				else:
 					addl = "[blocks " + addl + "] " + red(resolved)
-				block_parents = self.blocker_parents[tuple(x)]
+				block_parents = self._blocker_parents.parent_nodes(tuple(x))
 				block_parents = set([pnode[2] for pnode in block_parents])
 				block_parents = ", ".join(block_parents)
 				if resolved!=x[2]:
