@@ -125,6 +125,76 @@ class PreservedLibsRegistry(object):
 			rValue[self._data[cps][0]] = self._data[cps][2]
 		return rValue
 
+class LinkageMap(object):
+	def __init__(self, vardbapi):
+		self._dbapi = vardbapi
+		self._libs = {}
+		self._obj_properties = {}
+		self._defpath = getlibpaths()
+	
+	def rebuild(self):
+		libs = {}
+		obj_properties = {}
+		for cpv in self._dbapi.cpv_all():
+			lines = grabfile(self._dbapi.getpath(cpv, filename="NEEDED.2"))
+			for l in lines:
+				fields = l.strip("\n").split(";")
+				if len(fields) < 5:
+					print "Error", fields
+					# insufficient field length
+					continue
+				arch = fields[0]
+				obj = fields[1]
+				soname = fields[2]
+				path = fields[3].replace("${ORIGIN}", os.path.dirname(obj)).replace("$ORIGIN", os.path.dirname(obj)).split(":")
+				needed = fields[4].split(",")
+				if soname:
+					libs.setdefault(soname, {arch: {"providers": [], "consumers": []}})
+					libs[soname].setdefault(arch, {"providers": [], "consumers": []})
+					libs[soname][arch]["providers"].append(obj)
+				for x in needed:
+					libs.setdefault(x, {arch: {"providers": [], "consumers": []}})
+					libs[x].setdefault(arch, {"providers": [], "consumers": []})
+					libs[x][arch]["consumers"].append(obj)
+				obj_properties[obj] = (arch, path, needed, soname)
+		
+		self._libs = libs
+		self._obj_properties = obj_properties
+	
+	def findProviders(self, obj):
+		obj = os.path.realpath(obj)
+		rValue = {}
+		if obj not in self._obj_properties:
+			raise KeyError("%s not in object list" % obj)
+		arch, path, needed, soname = self._obj_properties[obj]
+		path.extend(self._defpath)
+		path = [os.path.realpath(x) for x in path]
+		for x in needed:
+			rValue[x] = set()
+			if x not in self._libs or arch not in self._libs[x]:
+				continue
+			for y in self._libs[x][arch]["providers"]:
+				if x[0] == os.sep and os.path.realpath(x) == os.path.realpath(y):
+					rValue[x].add(y)
+				elif os.path.realpath(os.path.dirname(y)) in path:
+					rValue[x].add(y)
+		return rValue
+	
+	def findConsumers(self, obj):
+		obj = os.path.realpath(obj)
+		rValue = set()
+		for soname in self._libs:
+			for arch in self._libs[soname]:
+				if obj in self._libs[soname][arch]["providers"]:
+					for x in self._libs[soname][arch]["consumers"]:
+						path = self._obj_properties[x][1]
+						path = [os.path.realpath(y) for y in path+self._defpath]
+						if soname[0] == os.sep and os.path.realpath(soname) == os.path.realpath(obj):
+							rValue.add(x)
+						elif os.path.realpath(os.path.dirname(obj)) in path:
+							rValue.add(x)
+		return rValue
+					
 class LibraryPackageMap(object):
 	""" This class provides a library->consumer mapping generated from VDB data """
 	def __init__(self, filename, vardbapi):
@@ -1608,7 +1678,7 @@ class dblink(object):
 			# only preserve the lib if there is no other copy in the search path
 			for path in getlibpaths():
 				fullname = os.path.join(path, lib)
-				if fullname not in old_contents and os.path.exists(fullname):
+				if fullname not in old_contents and os.path.exists(fullname) and lib in preserve_libs:
 					preserve_libs.remove(lib)
 			
 		# get the real paths for the libs
