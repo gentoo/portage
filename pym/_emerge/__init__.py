@@ -1513,6 +1513,15 @@ class PackageVirtualDbapi(portage.dbapi):
 		self._cp_map = {}
 		self._cpv_map = {}
 
+	def copy(self):
+		obj = PackageVirtualDbapi(self.settings)
+		obj._match_cache = self._match_cache.copy()
+		obj._cp_map = self._cp_map.copy()
+		for k, v in obj._cp_map.iteritems():
+			obj._cp_map[k] = v[:]
+		obj._cpv_map = self._cpv_map.copy()
+		return obj
+
 	def __contains__(self, item):
 		existing = self._cpv_map.get(item.cpv)
 		if existing is not None and \
