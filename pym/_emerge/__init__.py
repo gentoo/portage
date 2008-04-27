@@ -3553,6 +3553,10 @@ class depgraph(object):
 						continue
 
 					if "/" == task.root:
+						# Never uninstall sys-apps/portage
+						# except through replacement.
+						if "sys-apps/portage" == task.cp:
+							continue
 						# For packages in the system set, don't take
 						# any chances. If the conflict can't be resolved
 						# by a normal replacement operation then abort.
