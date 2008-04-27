@@ -1255,7 +1255,7 @@ class Task(object):
 		return str(self._get_hash_key())
 
 class Blocker(Task):
-	__slots__ = ("root", "atom")
+	__slots__ = ("root", "atom", "satisfied")
 
 	def _get_hash_key(self):
 		try:
@@ -3675,6 +3675,7 @@ class depgraph(object):
 
 				# Handle interactions between blockers
 				# and uninstallation tasks.
+				solved_blockers = set()
 				uninst_task = None
 				if isinstance(node, Uninstall):
 					have_uninstall_task = True
@@ -3701,17 +3702,26 @@ class depgraph(object):
 					for blocker in blocker_nodes:
 						if not myblocker_uninstalls.child_nodes(blocker):
 							myblocker_uninstalls.remove(blocker)
+							solved_blockers.add(blocker)
 
 				if node[-1] != "nomerge":
-					retlist.append(list(node))
+					retlist.append(node)
 				mygraph.remove(node)
+				if isinstance(node, Uninstall):
+					# Include satisfied blockers in the merge list so
+					# that the user can see why the package had to be
+					# uninstalled in advance rather than through
+					# replacement.
+					for blocker in solved_blockers:
+						retlist.append(Blocker(atom=blocker.atom,
+							root=blocker.root, satisfied=True))
 
 		unsolvable_blockers = set(self._unsolvable_blockers.leaf_nodes())
 		for node in myblocker_uninstalls.root_nodes():
 			unsolvable_blockers.add(node)
 
 		for blocker in unsolvable_blockers:
-			retlist.append(list(blocker))
+			retlist.append(blocker)
 
 		# If any Uninstall tasks need to be executed in order
 		# to avoid a conflict, complete the graph with any
@@ -3812,15 +3822,53 @@ class depgraph(object):
 
 		tree_nodes = []
 		display_list = []
-		mygraph = self.digraph
+		mygraph = self.digraph.copy()
+
+		# If there are any Uninstall instances, add the corresponding
+		# blockers to the digraph (useful for --tree display).
+		for uninstall in self._blocker_uninstalls.leaf_nodes():
+			uninstall_parents = \
+				self._blocker_uninstalls.parent_nodes(uninstall)
+			if not uninstall_parents:
+				continue
+
+			# Remove the corresponding "nomerge" node and substitute
+			# the Uninstall node.
+			inst_pkg = self._pkg_cache[
+				("installed", uninstall.root, uninstall.cpv, "nomerge")]
+			try:
+				mygraph.remove(inst_pkg)
+			except KeyError:
+				pass
+
+			try:
+				inst_pkg_blockers = self._blocker_parents.child_nodes(inst_pkg)
+			except KeyError:
+				inst_pkg_blockers = []
+
+			# Break the Package -> Uninstall edges.
+			mygraph.remove(uninstall)
+
+			# Resolution of a package's blockers
+			# depend on it's own uninstallation.
+			for blocker in inst_pkg_blockers:
+				mygraph.add(uninstall, blocker)
+
+			# Expand Package -> Uninstall edges into
+			# Package -> Blocker -> Uninstall edges.
+			for blocker in uninstall_parents:
+				mygraph.add(uninstall, blocker)
+				for parent in self._blocker_parents.parent_nodes(blocker):
+					if parent != inst_pkg:
+						mygraph.add(blocker, parent)
+
 		i = 0
 		depth = 0
 		shown_edges = set()
 		for x in mylist:
-			if "blocks" == x[0]:
-				display_list.append((x, 0, True))
-				continue
-			graph_key = tuple(x)
+			graph_key = x
+			if isinstance(graph_key, list):
+				graph_key = tuple(graph_key)
 			if "--tree" in self.myopts:
 				depth = len(tree_nodes)
 				while depth and graph_key not in \
@@ -3846,7 +3894,7 @@ class depgraph(object):
 							selected_parent = None
 							# First, try to avoid a direct cycle.
 							for node in parent_nodes:
-								if not isinstance(node, Package):
+								if not isinstance(node, (Blocker, Package)):
 									continue
 								if node not in traversed_nodes and \
 									node not in child_nodes:
@@ -3858,7 +3906,7 @@ class depgraph(object):
 							if not selected_parent:
 								# A direct cycle is unavoidable.
 								for node in parent_nodes:
-									if not isinstance(node, Package):
+									if not isinstance(node, (Blocker, Package)):
 										continue
 									if node not in traversed_nodes:
 										edge = (current_node, node)
@@ -3870,7 +3918,7 @@ class depgraph(object):
 								shown_edges.add((current_node, selected_parent))
 								traversed_nodes.add(selected_parent)
 								add_parents(selected_parent, False)
-						display_list.append((list(current_node),
+						display_list.append((current_node,
 							len(tree_nodes), ordered))
 						tree_nodes.append(current_node)
 					tree_nodes = []
@@ -3888,8 +3936,6 @@ class depgraph(object):
 				# An ordered node got a consecutive duplicate when the tree was
 				# being filled in.
 				del mylist[i]
-				continue
-			if "blocks" == graph_key[0]:
 				continue
 			if ordered and graph_key[-1] != "nomerge":
 				last_merge_depth = depth
@@ -3917,6 +3963,7 @@ class depgraph(object):
 			pkgsettings = self.pkgsettings[myroot]
 
 			fetch=" "
+			indent = " " * depth
 
 			if x[0]=="blocks":
 				addl=""+red("B")+"  "+fetch+"  "
@@ -3927,7 +3974,7 @@ class depgraph(object):
 				if "--columns" in self.myopts and "--quiet" in self.myopts:
 					addl = addl + " " + red(resolved)
 				else:
-					addl = "[blocks " + addl + "] " + red(resolved)
+					addl = "[blocks " + addl + "] " + indent + red(resolved)
 				block_parents = self._blocker_parents.parent_nodes(tuple(x))
 				block_parents = set([pnode[2] for pnode in block_parents])
 				block_parents = ", ".join(block_parents)
@@ -3936,7 +3983,10 @@ class depgraph(object):
 						(pkg_key, block_parents)
 				else:
 					addl += bad(" (is blocking %s)") % block_parents
-				blockers.append(addl)
+				if isinstance(x, Blocker) and x.satisfied:
+					p.append(addl)
+				else:
+					blockers.append(addl)
 			else:
 				pkg = self._pkg_cache[tuple(x)]
 				metadata = pkg.metadata
@@ -3967,8 +4017,7 @@ class depgraph(object):
 				pkg_use = metadata["USE"].split()
 				try:
 					restrict = flatten(use_reduce(paren_reduce(
-						mydbapi.aux_get(pkg_key, ["RESTRICT"])[0]),
-						uselist=pkg_use))
+						pkg.metadata["RESTRICT"]), uselist=pkg_use))
 				except portage.exception.InvalidDependString, e:
 					if not pkg.installed:
 						restrict = mydbapi.aux_get(pkg_key, ["RESTRICT"])[0]
@@ -4050,10 +4099,10 @@ class depgraph(object):
 				if True:
 					# USE flag display
 					cur_iuse = list(filter_iuse_defaults(
-						mydbapi.aux_get(pkg_key, ["IUSE"])[0].split()))
+						pkg.metadata["IUSE"].split()))
 
 					forced_flags = set()
-					pkgsettings.setcpv(pkg_key, mydb=mydbapi) # for package.use.{mask,force}
+					pkgsettings.setcpv(pkg.cpv, mydb=pkg.metadata) # for package.use.{mask,force}
 					forced_flags.update(pkgsettings.useforce)
 					forced_flags.update(pkgsettings.usemask)
 
@@ -4222,8 +4271,6 @@ class depgraph(object):
 				oldlp = mywidth - 30
 				newlp = oldlp - 30
 
-				indent = " " * depth
-
 				# Convert myoldbest from a list to a string.
 				if not myoldbest:
 					myoldbest = ""
@@ -4390,8 +4437,9 @@ class depgraph(object):
 
 		# Any blockers must be appended to the tail of the list,
 		# so we only need to check the last item.
-		have_blocker_conflict = \
-			bool(task_list and task_list[-1][0] == "blocks")
+		have_blocker_conflict = bool(task_list and \
+			(isinstance(task_list[-1], Blocker) and \
+			not task_list[-1].satisfied))
 
 		# The user is only notified of a slot conflict if
 		# there are no unresolvable blocker conflicts.
@@ -5000,7 +5048,8 @@ class MergeTask(object):
 		world_set = root_config.sets["world"]
 		if "--resume" not in self.myopts:
 			mymergelist = mylist
-			mtimedb["resume"]["mergelist"]=mymergelist[:]
+			mtimedb["resume"]["mergelist"] = [list(x) for x in mymergelist \
+				if isinstance(x, (Package, Uninstall))]
 			mtimedb.commit()
 
 		myfeat = self.settings.features[:]
@@ -7511,6 +7560,8 @@ def action_build(settings, trees, mtimedb,
 				return retval
 			mergecount=0
 			for x in mydepgraph.altlist():
+				if isinstance(x, Blocker) and x.satisfied:
+					continue
 				if x[0] != "blocks" and x[3] != "nomerge":
 					mergecount+=1
 				#check for blocking dependencies
@@ -7628,6 +7679,8 @@ def action_build(settings, trees, mtimedb,
 				pkglist = [pkg for pkg in pkglist if pkg[0] != "blocks"]
 			else:
 				for x in pkglist:
+					if isinstance(x, Blocker) and x.satisfied:
+						continue
 					if x[0] != "blocks":
 						continue
 					retval = mydepgraph.display(mydepgraph.altlist(
