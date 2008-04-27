@@ -16,7 +16,7 @@ from portage.output import bold, red, green
 from portage.update import fixdbentries
 from portage.util import apply_secpass_permissions, ConfigProtect, ensure_dirs, \
 	writemsg, writemsg_stdout, write_atomic, atomic_ofstream, writedict, \
-	grabfile, grabdict, normalize_path, new_protect_filename
+	grabfile, grabdict, normalize_path, new_protect_filename, getlibpaths
 from portage.versions import pkgsplit, catpkgsplit, catsplit, best, pkgcmp
 
 from portage import listdir, dep_expand, flatten, key_expand, \
