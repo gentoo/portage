@@ -180,7 +180,7 @@ install_qa_check() {
 					for path in ${opath//:/ }; do
 						[ -e "${D}/${path}/${lib}" ] && found=1
 					done
-					[ "${found}" -gt 0 ] && rneeded="${rneeded},${lib}"
+					[ "${found}" -eq 0 ] && rneeded="${rneeded},${lib}"
 				done
 				rneeded=${rneeded:1}
 				if [ -n "${rneeded}" ]; then
