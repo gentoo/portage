@@ -1348,11 +1348,18 @@ class Task(object):
 	__slots__ = ("__weakref__", "_hash_key",)
 
 	def __init__(self, **kwargs):
-		for myattr in self.__slots__:
-			if myattr == "__weakref__":
+		classes = [self.__class__]
+		while classes:
+			c = classes.pop()
+			if c is Task:
 				continue
-			myvalue = kwargs.get(myattr, None)
-			setattr(self, myattr, myvalue)
+			classes.extend(c.__bases__)
+			slots = getattr(c, "__slots__", None)
+			if not slots:
+				continue
+			for myattr in slots:
+				myvalue = kwargs.get(myattr, None)
+				setattr(self, myattr, myvalue)
 
 	def _get_hash_key(self):
 		try:
@@ -1383,6 +1390,17 @@ class Task(object):
 
 	def __str__(self):
 		return str(self._get_hash_key())
+
+class Blocker(Task):
+	__slots__ = ("root", "atom")
+
+	def _get_hash_key(self):
+		try:
+			return self._hash_key
+		except AttributeError:
+			self._hash_key = \
+				("blocks", self.root, self.atom)
+		return self._hash_key
 
 class Package(Task):
 	__slots__ = ("built", "cpv", "depth",
@@ -1424,6 +1442,7 @@ class Package(Task):
 		return False
 
 class Uninstall(Package):
+	__slots__ = ()
 	def _get_hash_key(self):
 		try:
 			return self._hash_key
@@ -2010,7 +2029,7 @@ class depgraph(object):
 				# The blocker applies to the root where
 				# the parent is or will be installed.
 				self.blocker_parents.setdefault(
-					("blocks", dep.parent.root, dep.atom), set()).add(
+					Blocker(atom=dep.atom, root=dep.parent.root), set()).add(
 						dep.parent)
 			return 1
 		dep_pkg, existing_node = self._select_package(dep.root, dep.atom,
