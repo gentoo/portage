@@ -160,13 +160,16 @@ install_qa_check() {
 		fi
 
 		# Save NEEDED information after removing self-contained providers
-		scanelf -qyRF '%p:%r %n' "${D}" | sed -e 's:^:/:' | { while IFS= read l; do
-			obj=${l%%:*}
-			rpath=${l#*:}; rpath=${rpath% *}
-			needed=${l##* }
+		scanelf -qyRF '%a;%p;%S;%r;%n' "${D}" | { while IFS= read l; do
+			arch=${l%%;*}; l=${l#*;}
+			obj="/${l%%;*}"; l=${l#*;}
+			soname=${l%%;*}; l=${l#*;}
+			rpath=${l%%;*}; l=${l#*;}; [ "${rpath}" = "  -  " ] && rpath=""
+			needed=${l%%;*}; l=${l#*;}
 			if [ -z "${rpath}" -o -n "${rpath//*ORIGIN*}" ]; then
 				# object doesn't contain $ORIGIN in its runpath attribute
 				echo "${obj} ${needed}"	>> "${PORTAGE_BUILDDIR}"/build-info/NEEDED
+				echo "${arch:3};${obj};${soname};${rpath};${needed}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED.2
 			else
 				dir=$(dirname ${obj})
 				# replace $ORIGIN with the dirname of the current object for the lookup
@@ -174,10 +177,17 @@ install_qa_check() {
 				sneeded=$(echo ${needed} | tr , ' ')
 				rneeded=""
 				for lib in ${sneeded}; do
-					[ -e "${D}/${dir}/${lib}" ] || rneeded="${rneeded},${lib}"
+					found=0
+					for path in ${opath//:/ }; do
+						[ -e "${D}/${path}/${lib}" ] && found=1
+					done
+					[ "${found}" -eq 0 ] && rneeded="${rneeded},${lib}"
 				done
 				rneeded=${rneeded:1}
-				[ -n "${rneeded}" ] && echo "${obj} ${rneeded}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED
+				if [ -n "${rneeded}" ]; then
+					echo "${obj} ${rneeded}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED
+					echo "${arch:3};${obj};${soname};${rpath};${rneeded}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED.2
+				fi
 			fi
 		done }
 
@@ -249,31 +259,35 @@ install_qa_check() {
 		# extension, not after it.  Check for this, and *only* warn
 		# about it.  Some packages do ship .so files on Darwin and make
 		# it work (ugly!).
-		f=""
+		rm -f "${T}/mach-o.check"
 		find ${ED%/} -name "*.so" -or -name "*.so.*" | \
 		while read i ; do
-			[[ $(file $i) == *"Mach-O"* ]] && f="${f} ${i#${D}}"
+			[[ $(file $i) == *"Mach-O"* ]] && \
+				echo "${i#${D}}" >> "${T}/mach-o.check"
 		done
-		if [[ -n ${f} ]] ; then
-			f=${f# }
+		if [[ -f ${T}/mach-o.check ]] ; then
+			f=$(< "${T}/mach-o.check")
 			vecho -ne '\a\n'
 			eqawarn "QA Notice: Found .so dynamic libraries on Darwin:"
-			eqawarn "    ${f// /\n    }"
+			eqawarn "    ${f//\n/\n    }"
 		fi
+		rm -f "${T}/mach-o.check"
+
 		# The naming for dynamic libraries is different on Darwin; the
 		# version component is before the extention, instead of after
 		# it, as with .sos.  Again, make this a warning only.
-		f=""
+		rm -f "${T}/mach-o.check"
 		find ${ED%/} -name "*.dylib.*" | \
 		while read i ; do
-			f="${f} ${i#${D}}"
+			echo "${i#${D}}" >> "${T}/mach-o.check"
 		done
-		if [[ -n ${f} ]] ; then
-			f=${f# }
+		if [[ -f "${T}/mach-o.check" ]] ; then
+			f=$(< "${T}/mach-o.check")
 			vecho -ne '\a\n'
 			eqawarn "QA Notice: Found wrongly named dynamic libraries on Darwin:"
 			eqawarn "    ${f// /\n    }"
 		fi
+		rm -f "${T}/mach-o.check"
 	fi
 
 	# this should help to ensure that all (most?) shared libraries are executable
@@ -359,7 +373,7 @@ install_qa_check() {
 	# use otool to do the magic.  Since this is expensive, we do it
 	# together with the scan for broken installs.
 	rm -f "${T}"/.install_name_check_failed
-	[[ ${CHOST} == *-darwin* ]] && find "${ED}" -type f | while read f ; do
+	[[ ${CHOST} == *-darwin* ]] && find "${ED}" -type f | while IFS= read f ; do
 		rm -f "${T}"/.NEEDED.tmp
 		otool -LX "${f}" \
 			| grep -v "Archive : " \

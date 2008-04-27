@@ -374,9 +374,7 @@ def create_depgraph_params(myopts, myaction):
 	# recurse:   go into the dependencies
 	# deep:      go into the dependencies of already merged packages
 	# empty:     pretend nothing is merged
-	# consistent: ensure that installation of new packages does not break
-	#            any deep dependencies of required sets (args, system, or
-	#            world).
+	# complete:  completely account for all known dependencies
 	myparams = set(["recurse"])
 	if "--update" in myopts or \
 		"--newuse" in myopts or \
@@ -391,7 +389,7 @@ def create_depgraph_params(myopts, myaction):
 	if "--deep" in myopts:
 		myparams.add("deep")
 	if "--complete-graph" in myopts:
-		myparams.add("consistent")
+		myparams.add("complete")
 	return myparams
 
 # search functionality
@@ -840,14 +838,25 @@ def filter_iuse_defaults(iuse):
 		else:
 			yield flag
 
-class AbstractDepPriority(object):
-	__slots__ = ("__weakref__", "buildtime", "runtime", "runtime_post")
+class SlotObject(object):
+	__slots__ = ("__weakref__")
+
 	def __init__(self, **kwargs):
-		for myattr in chain(self.__slots__, AbstractDepPriority.__slots__):
-			if myattr == "__weakref__":
+		classes = [self.__class__]
+		while classes:
+			c = classes.pop()
+			if c is SlotObject:
 				continue
-			myvalue = kwargs.get(myattr, False)
-			setattr(self, myattr, myvalue)
+			classes.extend(c.__bases__)
+			slots = getattr(c, "__slots__", None)
+			if not slots:
+				continue
+			for myattr in slots:
+				myvalue = kwargs.get(myattr, None)
+				setattr(self, myattr, myvalue)
+
+class AbstractDepPriority(SlotObject):
+	__slots__ = ("buildtime", "runtime", "runtime_post")
 
 	def __lt__(self, other):
 		return self.__int__() < other
@@ -939,6 +948,8 @@ class BlockerDepPriority(DepPriority):
 	__slots__ = ()
 	def __int__(self):
 		return 0
+
+BlockerDepPriority.instance = BlockerDepPriority()
 
 class UnmergeDepPriority(AbstractDepPriority):
 	__slots__ = ()
@@ -1228,21 +1239,14 @@ def show_masked_packages(masked_packages):
 			shown_licenses.add(l)
 	return have_eapi_mask
 
-class Task(object):
-	__slots__ = ("__weakref__", "_hash_key",)
-
-	def __init__(self, **kwargs):
-		for myattr in self.__slots__:
-			if myattr == "__weakref__":
-				continue
-			myvalue = kwargs.get(myattr, None)
-			setattr(self, myattr, myvalue)
+class Task(SlotObject):
+	__slots__ = ("_hash_key",)
 
 	def _get_hash_key(self):
-		try:
-			return self._hash_key
-		except AttributeError:
+		hash_key = getattr(self, "_hash_key", None)
+		if hash_key is None:
 			raise NotImplementedError(self)
+		return hash_key
 
 	def __eq__(self, other):
 		return self._get_hash_key() == other
@@ -1268,6 +1272,16 @@ class Task(object):
 	def __str__(self):
 		return str(self._get_hash_key())
 
+class Blocker(Task):
+	__slots__ = ("root", "atom", "satisfied")
+
+	def _get_hash_key(self):
+		hash_key = getattr(self, "_hash_key", None)
+		if hash_key is None:
+			self._hash_key = \
+				("blocks", self.root, self.atom)
+		return self._hash_key
+
 class Package(Task):
 	__slots__ = ("built", "cpv", "depth",
 		"installed", "metadata", "root", "onlydeps", "type_name",
@@ -1279,9 +1293,8 @@ class Package(Task):
 		self.cpv_slot = "%s:%s" % (self.cpv, self.metadata["SLOT"])
 
 	def _get_hash_key(self):
-		try:
-			return self._hash_key
-		except AttributeError:
+		hash_key = getattr(self, "_hash_key", None)
+		if hash_key is None:
 			operation = "merge"
 			if self.onlydeps or self.installed:
 				operation = "nomerge"
@@ -1308,10 +1321,10 @@ class Package(Task):
 		return False
 
 class Uninstall(Package):
+	__slots__ = ()
 	def _get_hash_key(self):
-		try:
-			return self._hash_key
-		except AttributeError:
+		hash_key = getattr(self, "_hash_key", None)
+		if hash_key is None:
 			self._hash_key = \
 				(self.type_name, self.root, self.cpv, "uninstall")
 		return self._hash_key
@@ -1343,16 +1356,11 @@ class SetArg(DependencyArg):
 		self.set = set
 		self.name = self.arg[len(SETPREFIX):]
 
-class Dependency(object):
-	__slots__ = ("__weakref__", "atom", "blocker", "depth",
+class Dependency(SlotObject):
+	__slots__ = ("atom", "blocker", "depth",
 		"parent", "onlydeps", "priority", "root")
 	def __init__(self, **kwargs):
-		for myattr in self.__slots__:
-			if myattr == "__weakref__":
-				continue
-			myvalue = kwargs.get(myattr, None)
-			setattr(self, myattr, myvalue)
-
+		SlotObject.__init__(self, **kwargs)
 		if self.priority is None:
 			self.priority = DepPriority()
 		if self.depth is None:
@@ -1514,6 +1522,15 @@ class PackageVirtualDbapi(portage.dbapi):
 		self._match_cache = {}
 		self._cp_map = {}
 		self._cpv_map = {}
+
+	def copy(self):
+		obj = PackageVirtualDbapi(self.settings)
+		obj._match_cache = self._match_cache.copy()
+		obj._cp_map = self._cp_map.copy()
+		for k, v in obj._cp_map.iteritems():
+			obj._cp_map[k] = v[:]
+		obj._cpv_map = self._cpv_map.copy()
+		return obj
 
 	def __contains__(self, item):
 		existing = self._cpv_map.get(item.cpv)
@@ -1727,14 +1744,17 @@ class depgraph(object):
 		self._atom_arg_map = {}
 		# contains all nodes pulled in by self._set_atoms
 		self._set_nodes = set()
-		self.blocker_digraph = digraph()
-		self.blocker_parents = {}
-		self._unresolved_blocker_parents = {}
+		# Contains only Blocker -> Uninstall edges
+		self._blocker_uninstalls = digraph()
+		# Contains only Package -> Blocker edges
+		self._blocker_parents = digraph()
+		# Contains only unsolvable Package -> Blocker edges
+		self._unsolvable_blockers = digraph()
 		self._slot_collision_info = set()
 		# Slot collision nodes are not allowed to block other packages since
 		# blocker validation is only able to account for one package per slot.
 		self._slot_collision_nodes = set()
-		self._altlist_cache = {}
+		self._serialized_tasks_cache = None
 		self._pprovided_args = []
 		self._missing_args = []
 		self._masked_installed = []
@@ -1865,6 +1885,7 @@ class depgraph(object):
 	def _create_graph(self, allow_unsatisfied=False):
 		dep_stack = self._dep_stack
 		while dep_stack:
+			self.spinner.update()
 			dep = dep_stack.pop()
 			if isinstance(dep, Package):
 				if not self._add_pkg_deps(dep,
@@ -1881,7 +1902,6 @@ class depgraph(object):
 		nodeps = "--nodeps" in self.myopts
 		empty = "empty" in self.myparams
 		deep = "deep" in self.myparams
-		consistent = "consistent" in self.myparams
 		update = "--update" in self.myopts and dep.depth <= 1
 		if dep.blocker:
 			if not buildpkgonly and \
@@ -1893,9 +1913,8 @@ class depgraph(object):
 					return 1
 				# The blocker applies to the root where
 				# the parent is or will be installed.
-				self.blocker_parents.setdefault(
-					("blocks", dep.parent.root, dep.atom), set()).add(
-						dep.parent)
+				blocker = Blocker(atom=dep.atom, root=dep.parent.root)
+				self._blocker_parents.add(blocker, dep.parent)
 			return 1
 		dep_pkg, existing_node = self._select_package(dep.root, dep.atom,
 			onlydeps=dep.onlydeps)
@@ -1925,8 +1944,7 @@ class depgraph(object):
 						# should have been masked.
 						raise
 			if not myarg:
-				if consistent:
-					self._ignored_deps.append(dep)
+				self._ignored_deps.append(dep)
 				return 1
 
 		if not self._add_pkg(dep_pkg, dep.parent,
@@ -2073,8 +2091,6 @@ class depgraph(object):
 			return 1
 		elif pkg.installed and \
 			"deep" not in self.myparams:
-			if "consistent" not in self.myparams:
-				return 1
 			dep_stack = self._ignored_deps
 
 		self.spinner.update()
@@ -2585,12 +2601,11 @@ class depgraph(object):
 					missing += 1
 					print "Missing binary for:",xs[2]
 
-		if not self._complete_graph():
+		try:
+			self.altlist()
+		except self._unknown_internal_error:
 			return False, myfavorites
 
-		if not self.validate_blockers():
-			return False, myfavorites
-		
 		# We're true here unless we are missing binaries.
 		return (not missing,myfavorites)
 
@@ -2967,7 +2982,7 @@ class depgraph(object):
 		Since this method can consume enough time to disturb users, it is
 		currently only enabled by the --complete-graph option.
 		"""
-		if "consistent" not in self.myparams:
+		if "complete" not in self.myparams:
 			# Skip this to avoid consuming enough time to disturb users.
 			return 1
 
@@ -3141,24 +3156,25 @@ class depgraph(object):
 							blocker_cache.BlockerData(counter, blocker_atoms)
 					if blocker_atoms:
 						for myatom in blocker_atoms:
-							blocker = ("blocks", myroot, myatom[1:])
-							myparents = \
-								self.blocker_parents.get(blocker, None)
-							if not myparents:
-								myparents = set()
-								self.blocker_parents[blocker] = myparents
-							myparents.add(node)
+							blocker = Blocker(atom=myatom[1:], root=myroot)
+							self._blocker_parents.add(blocker, node)
 				blocker_cache.flush()
 				del blocker_cache
 
-		for blocker in self.blocker_parents.keys():
+		for blocker in self._blocker_parents.leaf_nodes():
+			self.spinner.update()
 			mytype, myroot, mydep = blocker
 			initial_db = self.trees[myroot]["vartree"].dbapi
 			final_db = self.mydbapi[myroot]
 			blocked_initial = initial_db.match(mydep)
 			blocked_final = final_db.match(mydep)
 			if not blocked_initial and not blocked_final:
-				del self.blocker_parents[blocker]
+				parent_pkgs = self._blocker_parents.parent_nodes(blocker)
+				self._blocker_parents.remove(blocker)
+				# Discard any parents that don't have any more blockers.
+				for pkg in parent_pkgs:
+					if not self._blocker_parents.child_nodes(pkg):
+						self._blocker_parents.remove(pkg)
 				continue
 			blocked_slots_initial = {}
 			blocked_slots_final = {}
@@ -3170,7 +3186,7 @@ class depgraph(object):
 				blocked_slots_final[cpv] = \
 					"%s:%s" % (portage.dep_getkey(cpv),
 						final_db.aux_get(cpv, ["SLOT"])[0])
-			for parent in list(self.blocker_parents[blocker]):
+			for parent in self._blocker_parents.parent_nodes(blocker):
 				ptype, proot, pcpv, pstatus = parent
 				pdbapi = self.trees[proot][self.pkg_tree_map[ptype]].dbapi
 				pslot = pdbapi.aux_get(pcpv, ["SLOT"])[0]
@@ -3248,30 +3264,20 @@ class depgraph(object):
 						self._pkg_cache[uninst_task] = uninst_task
 						# Enforce correct merge order with a hard dep.
 						self.digraph.addnode(uninst_task, inst_task,
-							priority=BlockerDepPriority())
+							priority=BlockerDepPriority.instance)
 						# Count references to this blocker so that it can be
 						# invalidated after nodes referencing it have been
 						# merged.
-						self.blocker_digraph.addnode(uninst_task, blocker)
+						self._blocker_uninstalls.addnode(uninst_task, blocker)
 				if not unresolved_blocks and not depends_on_order:
-					self.blocker_parents[blocker].remove(parent)
+					self._blocker_parents.remove_edge(blocker, parent)
+					if not self._blocker_parents.parent_nodes(blocker):
+						self._blocker_parents.remove(blocker)
+					if not self._blocker_parents.child_nodes(parent):
+						self._blocker_parents.remove(parent)
 				if unresolved_blocks:
-					self._unresolved_blocker_parents.setdefault(
-						blocker, set()).add(parent)
-			if not self.blocker_parents[blocker]:
-				del self.blocker_parents[blocker]
-		# Validate blockers that depend on merge order.
-		if not self.blocker_digraph.empty():
-			self.altlist()
-		if self._slot_collision_info:
-			# The user is only notified of a slot collision if there are no
-			# unresolvable blocks.
-			for x in self.altlist():
-				if x[0] == "blocks":
-					self._slot_collision_info.clear()
-					return True
-			if not self._accept_collisions():
-				return False
+					self._unsolvable_blockers.add(blocker, parent)
+
 		return True
 
 	def _accept_collisions(self):
@@ -3294,27 +3300,44 @@ class depgraph(object):
 		mygraph.order.sort(cmp_merge_preference)
 
 	def altlist(self, reversed=False):
-		if reversed in self._altlist_cache:
-			return self._altlist_cache[reversed][:]
+
+		while self._serialized_tasks_cache is None:
+			self._resolve_conflicts()
+			try:
+				self._serialized_tasks_cache = self._serialize_tasks()
+			except self._serialize_tasks_retry:
+				pass
+
+		retlist = self._serialized_tasks_cache[:]
 		if reversed:
-			retlist = self.altlist()
 			retlist.reverse()
-			self._altlist_cache[reversed] = retlist[:]
-			return retlist
+		return retlist
+
+	def _resolve_conflicts(self):
+		if not self._complete_graph():
+			raise self._unknown_internal_error()
+
+		if not self.validate_blockers():
+			raise self._unknown_internal_error()
+
+	def _serialize_tasks(self):
 		mygraph=self.digraph.copy()
 		# Prune "nomerge" root nodes if nothing depends on them, since
 		# otherwise they slow down merge order calculation. Don't remove
 		# non-root nodes since they help optimize merge order in some cases
 		# such as revdep-rebuild.
+		removed_nodes = set()
 		while True:
-			removed_something = False
 			for node in mygraph.root_nodes():
 				if not isinstance(node, Package) or \
 					node.installed or node.onlydeps:
-					mygraph.remove(node)
-					removed_something = True
-			if not removed_something:
+					removed_nodes.add(node)
+			if removed_nodes:
+				self.spinner.update()
+				mygraph.difference_update(removed_nodes)
+			if not removed_nodes:
 				break
+			removed_nodes.clear()
 		self._merge_order_bias(mygraph)
 		def cmp_circular_bias(n1, n2):
 			"""
@@ -3331,14 +3354,16 @@ class depgraph(object):
 			elif n1_n2_medium:
 				return 1
 			return -1
-		myblockers = self.blocker_digraph.copy()
+		myblocker_uninstalls = self._blocker_uninstalls.copy()
 		retlist=[]
 		# Contains any Uninstall tasks that have been ignored
 		# in order to avoid the circular deps code path. These
 		# correspond to blocker conflicts that could not be
 		# resolved.
 		ignored_uninstall_tasks = set()
-		blocker_deps = None
+		have_uninstall_task = False
+		complete = "complete" in self.myparams
+		myblocker_parents = self._blocker_parents.copy()
 		asap_nodes = []
 		portage_node = None
 		def get_nodes(**kwargs):
@@ -3385,6 +3410,7 @@ class depgraph(object):
 		# unresolved blockers or circular dependencies.
 
 		while not mygraph.empty():
+			self.spinner.update()
 			selected_nodes = None
 			ignore_priority = None
 			if prefer_asap and asap_nodes:
@@ -3510,13 +3536,13 @@ class depgraph(object):
 					selected_nodes = list(selected_nodes)
 				selected_nodes.sort(cmp_circular_bias)
 
-			if not selected_nodes and not myblockers.is_empty():
+			if not selected_nodes and not myblocker_uninstalls.is_empty():
 				# An Uninstall task needs to be executed in order to
 				# avoid conflict if possible.
 
 				min_parent_deps = None
 				uninst_task = None
-				for task in myblockers.leaf_nodes():
+				for task in myblocker_uninstalls.leaf_nodes():
 					# Do some sanity checks so that system or world packages
 					# don't get uninstalled inappropriately here (only really
 					# necessary when --complete-graph has not been enabled).
@@ -3528,42 +3554,53 @@ class depgraph(object):
 					inst_pkg = self._pkg_cache[
 						("installed", task.root, task.cpv, "nomerge")]
 
-					# For packages in the system set, don't take
-					# any chances. If the conflict can't be resolved
-					# by a normal upgrade operation then require
-					# user intervention.
-					skip = False
-					try:
-						for atom in root_config.sets[
-							"system"].iterAtomsForPackage(task):
-							skip = True
-							break
-					except portage.exception.InvalidDependString:
-						skip = True
-					if skip:
+					if self.digraph.contains(inst_pkg):
 						continue
 
-					# For packages in the world set, go ahead an uninstall
-					# when necessary, as long as the atom will be satisfied
-					# in the final state.
-					graph_db = self.mydbapi[task.root]
-					try:
-						for atom in root_config.sets[
-							"world"].iterAtomsForPackage(task):
-							satisfied = False
-							for cpv in graph_db.match(atom):
-								if cpv == inst_pkg.cpv and \
-									inst_pkg in graph_db:
-									continue
-								satisfied = True
-								break
-							if not satisfied:
+					if "/" == task.root:
+						# For packages in the system set, don't take
+						# any chances. If the conflict can't be resolved
+						# by a normal replacement operation then abort.
+						skip = False
+						try:
+							for atom in root_config.sets[
+								"system"].iterAtomsForPackage(task):
 								skip = True
 								break
-					except portage.exception.InvalidDependString:
-						skip = True
-					if skip:
-						continue
+						except portage.exception.InvalidDependString:
+							skip = True
+						if skip:
+							continue
+
+					# Note that the world check isn't always
+					# necessary since self._complete_graph() will
+					# add all packages from the system and world sets to the
+					# graph. This just allows unresolved conflicts to be
+					# detected as early as possible, which makes it possible
+					# to avoid calling self._complete_graph() when it is
+					# unnecessary due to blockers triggering an abortion.
+					if not complete:
+						# For packages in the world set, go ahead an uninstall
+						# when necessary, as long as the atom will be satisfied
+						# in the final state.
+						graph_db = self.mydbapi[task.root]
+						try:
+							for atom in root_config.sets[
+								"world"].iterAtomsForPackage(task):
+								satisfied = False
+								for cpv in graph_db.match(atom):
+									if cpv == inst_pkg.cpv and \
+										inst_pkg in graph_db:
+										continue
+									satisfied = True
+									break
+								if not satisfied:
+									skip = True
+									break
+						except portage.exception.InvalidDependString:
+							skip = True
+						if skip:
+							continue
 
 					# Check the deps of parent nodes to ensure that
 					# the chosen task produces a leaf node. Maybe
@@ -3590,7 +3627,7 @@ class depgraph(object):
 					# to avoid the circular deps code path, but the
 					# blocker will still be counted as an unresolved
 					# conflict.
-					for node in myblockers.leaf_nodes():
+					for node in myblocker_uninstalls.leaf_nodes():
 						try:
 							mygraph.remove(node)
 						except KeyError:
@@ -3650,12 +3687,16 @@ class depgraph(object):
 			prefer_asap = True
 			accept_root_node = False
 
+			mygraph.difference_update(selected_nodes)
+
 			for node in selected_nodes:
 
 				# Handle interactions between blockers
 				# and uninstallation tasks.
+				solved_blockers = set()
 				uninst_task = None
 				if isinstance(node, Uninstall):
+					have_uninstall_task = True
 					uninst_task = node
 				else:
 					vardb = self.trees[node.root]["vartree"].dbapi
@@ -3672,33 +3713,45 @@ class depgraph(object):
 							pass
 				if uninst_task is not None and \
 					uninst_task not in ignored_uninstall_tasks and \
-					myblockers.contains(uninst_task):
-					myblockers.remove(uninst_task)
-					for blocker in myblockers.root_nodes():
-						if myblockers.child_nodes(blocker):
-							continue
-						myblockers.remove(blocker)
-						unresolved = \
-							self._unresolved_blocker_parents.get(blocker)
-						if unresolved:
-							self.blocker_parents[blocker] = unresolved
-						else:
-							del self.blocker_parents[blocker]
+					myblocker_uninstalls.contains(uninst_task):
+					blocker_nodes = myblocker_uninstalls.parent_nodes(uninst_task)
+					myblocker_uninstalls.remove(uninst_task)
+					# Discard any blockers that this Uninstall solves.
+					for blocker in blocker_nodes:
+						if not myblocker_uninstalls.child_nodes(blocker):
+							myblocker_uninstalls.remove(blocker)
+							solved_blockers.add(blocker)
 
 				if node[-1] != "nomerge":
-					retlist.append(list(node))
-				mygraph.remove(node)
+					retlist.append(node)
 
-		if not reversed:
-			"""Blocker validation does not work with reverse mode,
-			so self.altlist() should first be called with reverse disabled
-			so that blockers are properly validated."""
-			self.blocker_digraph = myblockers
+				if isinstance(node, Uninstall):
+					# Include satisfied blockers in the merge list so
+					# that the user can see why the package had to be
+					# uninstalled in advance rather than through
+					# replacement.
+					for blocker in solved_blockers:
+						retlist.append(Blocker(atom=blocker.atom,
+							root=blocker.root, satisfied=True))
 
-		""" Add any unresolved blocks so that they can be displayed."""
-		for blocker in self.blocker_parents:
-			retlist.append(list(blocker))
-		self._altlist_cache[reversed] = retlist[:]
+		unsolvable_blockers = set(self._unsolvable_blockers.leaf_nodes())
+		for node in myblocker_uninstalls.root_nodes():
+			unsolvable_blockers.add(node)
+
+		for blocker in unsolvable_blockers:
+			retlist.append(blocker)
+
+		# If any Uninstall tasks need to be executed in order
+		# to avoid a conflict, complete the graph with any
+		# dependencies that may have been initially
+		# neglected (to ensure that unsafe Uninstall tasks
+		# are properly identified and blocked from execution).
+		if have_uninstall_task and \
+			not complete and \
+			not unsolvable_blockers:
+			self.myparams.add("complete")
+			raise self._serialize_tasks_retry("")
+
 		return retlist
 
 	def display(self, mylist, favorites=[], verbosity=None):
@@ -3787,15 +3840,53 @@ class depgraph(object):
 
 		tree_nodes = []
 		display_list = []
-		mygraph = self.digraph
+		mygraph = self.digraph.copy()
+
+		# If there are any Uninstall instances, add the corresponding
+		# blockers to the digraph (useful for --tree display).
+		for uninstall in self._blocker_uninstalls.leaf_nodes():
+			uninstall_parents = \
+				self._blocker_uninstalls.parent_nodes(uninstall)
+			if not uninstall_parents:
+				continue
+
+			# Remove the corresponding "nomerge" node and substitute
+			# the Uninstall node.
+			inst_pkg = self._pkg_cache[
+				("installed", uninstall.root, uninstall.cpv, "nomerge")]
+			try:
+				mygraph.remove(inst_pkg)
+			except KeyError:
+				pass
+
+			try:
+				inst_pkg_blockers = self._blocker_parents.child_nodes(inst_pkg)
+			except KeyError:
+				inst_pkg_blockers = []
+
+			# Break the Package -> Uninstall edges.
+			mygraph.remove(uninstall)
+
+			# Resolution of a package's blockers
+			# depend on it's own uninstallation.
+			for blocker in inst_pkg_blockers:
+				mygraph.add(uninstall, blocker)
+
+			# Expand Package -> Uninstall edges into
+			# Package -> Blocker -> Uninstall edges.
+			for blocker in uninstall_parents:
+				mygraph.add(uninstall, blocker)
+				for parent in self._blocker_parents.parent_nodes(blocker):
+					if parent != inst_pkg:
+						mygraph.add(blocker, parent)
+
 		i = 0
 		depth = 0
 		shown_edges = set()
 		for x in mylist:
-			if "blocks" == x[0]:
-				display_list.append((x, 0, True))
-				continue
-			graph_key = tuple(x)
+			graph_key = x
+			if isinstance(graph_key, list):
+				graph_key = tuple(graph_key)
 			if "--tree" in self.myopts:
 				depth = len(tree_nodes)
 				while depth and graph_key not in \
@@ -3821,7 +3912,7 @@ class depgraph(object):
 							selected_parent = None
 							# First, try to avoid a direct cycle.
 							for node in parent_nodes:
-								if not isinstance(node, Package):
+								if not isinstance(node, (Blocker, Package)):
 									continue
 								if node not in traversed_nodes and \
 									node not in child_nodes:
@@ -3833,7 +3924,7 @@ class depgraph(object):
 							if not selected_parent:
 								# A direct cycle is unavoidable.
 								for node in parent_nodes:
-									if not isinstance(node, Package):
+									if not isinstance(node, (Blocker, Package)):
 										continue
 									if node not in traversed_nodes:
 										edge = (current_node, node)
@@ -3845,7 +3936,7 @@ class depgraph(object):
 								shown_edges.add((current_node, selected_parent))
 								traversed_nodes.add(selected_parent)
 								add_parents(selected_parent, False)
-						display_list.append((list(current_node),
+						display_list.append((current_node,
 							len(tree_nodes), ordered))
 						tree_nodes.append(current_node)
 					tree_nodes = []
@@ -3863,8 +3954,6 @@ class depgraph(object):
 				# An ordered node got a consecutive duplicate when the tree was
 				# being filled in.
 				del mylist[i]
-				continue
-			if "blocks" == graph_key[0]:
 				continue
 			if ordered and graph_key[-1] != "nomerge":
 				last_merge_depth = depth
@@ -3892,6 +3981,7 @@ class depgraph(object):
 			pkgsettings = self.pkgsettings[myroot]
 
 			fetch=" "
+			indent = " " * depth
 
 			if x[0]=="blocks":
 				addl=""+red("B")+"  "+fetch+"  "
@@ -3902,8 +3992,8 @@ class depgraph(object):
 				if "--columns" in self.myopts and "--quiet" in self.myopts:
 					addl = addl + " " + red(resolved)
 				else:
-					addl = "[blocks " + addl + "] " + red(resolved)
-				block_parents = self.blocker_parents[tuple(x)]
+					addl = "[blocks " + addl + "] " + indent + red(resolved)
+				block_parents = self._blocker_parents.parent_nodes(tuple(x))
 				block_parents = set([pnode[2] for pnode in block_parents])
 				block_parents = ", ".join(block_parents)
 				if resolved!=x[2]:
@@ -3911,7 +4001,10 @@ class depgraph(object):
 						(pkg_key, block_parents)
 				else:
 					addl += bad(" (is blocking %s)") % block_parents
-				blockers.append(addl)
+				if isinstance(x, Blocker) and x.satisfied:
+					p.append(addl)
+				else:
+					blockers.append(addl)
 			else:
 				pkg = self._pkg_cache[tuple(x)]
 				metadata = pkg.metadata
@@ -3919,14 +4012,6 @@ class depgraph(object):
 				pkg_merge = ordered and pkg_status == "merge"
 				if not pkg_merge and pkg_status == "merge":
 					pkg_status = "nomerge"
-				if pkg_status == "uninstall":
-					mydbapi = vardb
-				elif pkg in self._slot_collision_nodes or pkg.onlydeps:
-					# The metadata isn't cached due to a slot collision or
-					# --onlydeps.
-					mydbapi = self.trees[myroot][self.pkg_tree_map[pkg_type]].dbapi
-				else:
-					mydbapi = self.mydbapi[myroot] # contains cached metadata
 				ebuild_path = None
 				if pkg_type == "binary":
 					repo_name = self.roots[myroot].settings.get("PORTAGE_BINHOST")
@@ -3947,12 +4032,11 @@ class depgraph(object):
 				pkg_use = metadata["USE"].split()
 				try:
 					restrict = flatten(use_reduce(paren_reduce(
-						mydbapi.aux_get(pkg_key, ["RESTRICT"])[0]),
-						uselist=pkg_use))
+						pkg.metadata["RESTRICT"]), uselist=pkg_use))
 				except portage.exception.InvalidDependString, e:
 					if not pkg.installed:
-						restrict = mydbapi.aux_get(pkg_key, ["RESTRICT"])[0]
-						show_invalid_depstring_notice(x, restrict, str(e))
+						show_invalid_depstring_notice(x,
+							pkg.metadata["RESTRICT"], str(e))
 						del e
 						return 1
 					restrict = []
@@ -3981,10 +4065,7 @@ class depgraph(object):
 				elif installed_versions and \
 					portage.cpv_getkey(installed_versions[0]) == \
 					portage.cpv_getkey(pkg_key):
-					mynewslot = mydbapi.aux_get(pkg_key, ["SLOT"])[0]
-					slot_atom = "%s:%s" % \
-						(portage.cpv_getkey(pkg_key), mynewslot)
-					myinslotlist = vardb.match(slot_atom)
+					myinslotlist = vardb.match(pkg.slot_atom)
 					# If this is the first install of a new-style virtual, we
 					# need to filter out old-style virtual matches.
 					if myinslotlist and \
@@ -4030,10 +4111,10 @@ class depgraph(object):
 				if True:
 					# USE flag display
 					cur_iuse = list(filter_iuse_defaults(
-						mydbapi.aux_get(pkg_key, ["IUSE"])[0].split()))
+						pkg.metadata["IUSE"].split()))
 
 					forced_flags = set()
-					pkgsettings.setcpv(pkg_key, mydb=mydbapi) # for package.use.{mask,force}
+					pkgsettings.setcpv(pkg.cpv, mydb=pkg.metadata) # for package.use.{mask,force}
 					forced_flags.update(pkgsettings.useforce)
 					forced_flags.update(pkgsettings.usemask)
 
@@ -4202,8 +4283,6 @@ class depgraph(object):
 				oldlp = mywidth - 30
 				newlp = oldlp - 30
 
-				indent = " " * depth
-
 				# Convert myoldbest from a list to a string.
 				if not myoldbest:
 					myoldbest = ""
@@ -4366,7 +4445,18 @@ class depgraph(object):
 		to ensure that the user is notified of problems with the graph.
 		"""
 
-		self._show_slot_collision_notice()
+		task_list = self._serialized_tasks_cache
+
+		# Any blockers must be appended to the tail of the list,
+		# so we only need to check the last item.
+		have_blocker_conflict = bool(task_list and \
+			(isinstance(task_list[-1], Blocker) and \
+			not task_list[-1].satisfied))
+
+		# The user is only notified of a slot conflict if
+		# there are no unresolvable blocker conflicts.
+		if not have_blocker_conflict:
+			self._show_slot_collision_notice()
 
 		# TODO: Add generic support for "set problem" handlers so that
 		# the below warnings aren't special cases for world only.
@@ -4593,6 +4683,22 @@ class depgraph(object):
 			self._pkg_cache[pkg] = pkg
 			fakedb[myroot].cpv_inject(pkg)
 			self.spinner.update()
+
+	class _unknown_internal_error(portage.exception.PortageException):
+		"""
+		Used by the depgraph internally to terminate graph creation.
+		The specific reason for the failure should have been dumped
+		to stderr, unfortunately, the exact reason for the failure
+		may not be known.
+		"""
+
+	class _serialize_tasks_retry(portage.exception.PortageException):
+		"""
+		This is raised by the _serialize_tasks() method when it needs to
+		be called again for some reason. The only case that it's currently
+		used for is when neglected dependencies need to be added to the
+		graph in order to avoid making a potentially unsafe decision.
+		"""
 
 	class _dep_check_composite_db(portage.dbapi):
 		"""
@@ -4959,7 +5065,8 @@ class MergeTask(object):
 		world_set = root_config.sets["world"]
 		if "--resume" not in self.myopts:
 			mymergelist = mylist
-			mtimedb["resume"]["mergelist"]=mymergelist[:]
+			mtimedb["resume"]["mergelist"] = [list(x) for x in mymergelist \
+				if isinstance(x, (Package, Uninstall))]
 			mtimedb.commit()
 
 		myfeat = self.settings.features[:]
@@ -7518,6 +7625,8 @@ def action_build(settings, trees, mtimedb,
 				return retval
 			mergecount=0
 			for x in mydepgraph.altlist():
+				if isinstance(x, Blocker) and x.satisfied:
+					continue
 				if x[0] != "blocks" and x[3] != "nomerge":
 					mergecount+=1
 				#check for blocking dependencies
@@ -7635,6 +7744,8 @@ def action_build(settings, trees, mtimedb,
 				pkglist = [pkg for pkg in pkglist if pkg[0] != "blocks"]
 			else:
 				for x in pkglist:
+					if isinstance(x, Blocker) and x.satisfied:
+						continue
 					if x[0] != "blocks":
 						continue
 					retval = mydepgraph.display(mydepgraph.altlist(
