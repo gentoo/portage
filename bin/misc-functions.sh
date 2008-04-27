@@ -176,7 +176,11 @@ install_qa_check() {
 				sneeded=$(echo ${needed} | tr , ' ')
 				rneeded=""
 				for lib in ${sneeded}; do
-					[ -e "${D}/${dir}/${lib}" ] || rneeded="${rneeded},${lib}"
+					found=0
+					for path in ${opath//:/ }; do
+						[ -e "${D}/${path}/${lib}" ] && found=1
+					done
+					[ "${found}" -gt 0 ] && rneeded="${rneeded},${lib}"
 				done
 				rneeded=${rneeded:1}
 				if [ -n "${rneeded}" ]; then
