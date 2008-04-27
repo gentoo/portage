@@ -2549,14 +2549,14 @@ class depgraph(object):
 					portage.writemsg("!!! to aid in the detection of malicious intent.\n\n")
 					portage.writemsg("!!! THIS IS A POSSIBLE INDICATION OF TAMPERED FILES -- CHECK CAREFULLY.\n")
 					portage.writemsg("!!! Affected file: %s\n" % (e), noiselevel=-1)
-					sys.exit(1)
+					return 0, myfavorites
 				except portage.exception.InvalidSignature, e:
 					portage.writemsg("\n\n!!! An invalid gpg signature is preventing portage from calculating the\n")
 					portage.writemsg("!!! required dependencies. This is a security feature enabled by the admin\n")
 					portage.writemsg("!!! to aid in the detection of malicious intent.\n\n")
 					portage.writemsg("!!! THIS IS A POSSIBLE INDICATION OF TAMPERED FILES -- CHECK CAREFULLY.\n")
 					portage.writemsg("!!! Affected file: %s\n" % (e), noiselevel=-1)
-					sys.exit(1)
+					return 0, myfavorites
 				except SystemExit, e:
 					raise # Needed else can't exit
 				except Exception, e:
@@ -3678,7 +3678,7 @@ class depgraph(object):
 				print
 				print "!!! Note that circular dependencies can often be avoided by temporarily"
 				print "!!! disabling USE flags that trigger optional dependencies."
-				sys.exit(1)
+				raise self._unknown_internal_error()
 
 			# At this point, we've succeeded in selecting one or more nodes, so
 			# it's now safe to reset the prefer_asap and accept_root_node flags
@@ -4678,7 +4678,11 @@ class depgraph(object):
 			fakedb[myroot].cpv_inject(pkg)
 			self.spinner.update()
 
-	class _unknown_internal_error(portage.exception.PortageException):
+	class _internal_exception(portage.exception.PortageException):
+		def __init__(self, value=""):
+			portage.exception.PortageException.__init__(self, value)
+
+	class _unknown_internal_error(_internal_exception):
 		"""
 		Used by the depgraph internally to terminate graph creation.
 		The specific reason for the failure should have been dumped
@@ -4686,7 +4690,7 @@ class depgraph(object):
 		may not be known.
 		"""
 
-	class _serialize_tasks_retry(portage.exception.PortageException):
+	class _serialize_tasks_retry(_internal_exception):
 		"""
 		This is raised by the _serialize_tasks() method when it needs to
 		be called again for some reason. The only case that it's currently
