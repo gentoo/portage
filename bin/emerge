@@ -2942,6 +2942,26 @@ class depgraph(object):
 								continue
 						except portage_exception.InvalidDependString:
 							continue
+
+						# Enable upgrage or downgrade to a version
+						# with visible KEYWORDS when the installed
+						# version is masked by KEYWORDS, but never
+						# reinstall the same exact version only due
+						# to a KEYWORDS mask.
+						if installed and matched_packages and \
+							pkgsettings._getMissingKeywords(
+							pkg.cpv, pkg.metadata):
+							different_version = None
+							for avail_pkg in matched_packages:
+								if not portage_dep.cpvequal(
+									pkg.cpv, avail_pkg.cpv):
+									different_version = avail_pkg
+									break
+							if different_version is not None:
+								# Only reinstall for KEYWORDS if
+								# it's not the same version.
+								continue
+
 					if not built and not calculated_use:
 						# This is avoided whenever possible because
 						# it's expensive.
