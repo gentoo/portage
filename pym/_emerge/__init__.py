@@ -829,14 +829,25 @@ def filter_iuse_defaults(iuse):
 		else:
 			yield flag
 
-class AbstractDepPriority(object):
-	__slots__ = ("__weakref__", "buildtime", "runtime", "runtime_post")
+class SlotObject(object):
+	__slots__ = ("__weakref__")
+
 	def __init__(self, **kwargs):
-		for myattr in chain(self.__slots__, AbstractDepPriority.__slots__):
-			if myattr == "__weakref__":
+		classes = [self.__class__]
+		while classes:
+			c = classes.pop()
+			if c is SlotObject:
 				continue
-			myvalue = kwargs.get(myattr, False)
-			setattr(self, myattr, myvalue)
+			classes.extend(c.__bases__)
+			slots = getattr(c, "__slots__", None)
+			if not slots:
+				continue
+			for myattr in slots:
+				myvalue = kwargs.get(myattr, None)
+				setattr(self, myattr, myvalue)
+
+class AbstractDepPriority(SlotObject):
+	__slots__ = ("buildtime", "runtime", "runtime_post")
 
 	def __lt__(self, other):
 		return self.__int__() < other
@@ -1207,28 +1218,14 @@ def show_masked_packages(masked_packages):
 			shown_licenses.add(l)
 	return have_eapi_mask
 
-class Task(object):
-	__slots__ = ("__weakref__", "_hash_key",)
-
-	def __init__(self, **kwargs):
-		classes = [self.__class__]
-		while classes:
-			c = classes.pop()
-			if c is Task:
-				continue
-			classes.extend(c.__bases__)
-			slots = getattr(c, "__slots__", None)
-			if not slots:
-				continue
-			for myattr in slots:
-				myvalue = kwargs.get(myattr, None)
-				setattr(self, myattr, myvalue)
+class Task(SlotObject):
+	__slots__ = ("_hash_key",)
 
 	def _get_hash_key(self):
-		try:
-			return self._hash_key
-		except AttributeError:
+		hash_key = getattr(self, "_hash_key", None)
+		if hash_key is None:
 			raise NotImplementedError(self)
+		return hash_key
 
 	def __eq__(self, other):
 		return self._get_hash_key() == other
@@ -1258,9 +1255,8 @@ class Blocker(Task):
 	__slots__ = ("root", "atom", "satisfied")
 
 	def _get_hash_key(self):
-		try:
-			return self._hash_key
-		except AttributeError:
+		hash_key = getattr(self, "_hash_key", None)
+		if hash_key is None:
 			self._hash_key = \
 				("blocks", self.root, self.atom)
 		return self._hash_key
@@ -1276,9 +1272,8 @@ class Package(Task):
 		self.cpv_slot = "%s:%s" % (self.cpv, self.metadata["SLOT"])
 
 	def _get_hash_key(self):
-		try:
-			return self._hash_key
-		except AttributeError:
+		hash_key = getattr(self, "_hash_key", None)
+		if hash_key is None:
 			operation = "merge"
 			if self.onlydeps or self.installed:
 				operation = "nomerge"
@@ -1307,9 +1302,8 @@ class Package(Task):
 class Uninstall(Package):
 	__slots__ = ()
 	def _get_hash_key(self):
-		try:
-			return self._hash_key
-		except AttributeError:
+		hash_key = getattr(self, "_hash_key", None)
+		if hash_key is None:
 			self._hash_key = \
 				(self.type_name, self.root, self.cpv, "uninstall")
 		return self._hash_key
@@ -1341,16 +1335,11 @@ class SetArg(DependencyArg):
 		self.set = set
 		self.name = self.arg[len(SETPREFIX):]
 
-class Dependency(object):
-	__slots__ = ("__weakref__", "atom", "blocker", "depth",
+class Dependency(SlotObject):
+	__slots__ = ("atom", "blocker", "depth",
 		"parent", "onlydeps", "priority", "root")
 	def __init__(self, **kwargs):
-		for myattr in self.__slots__:
-			if myattr == "__weakref__":
-				continue
-			myvalue = kwargs.get(myattr, None)
-			setattr(self, myattr, myvalue)
-
+		SlotObject.__init__(self, **kwargs)
 		if self.priority is None:
 			self.priority = DepPriority()
 		if self.depth is None:
