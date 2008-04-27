@@ -3994,14 +3994,6 @@ class depgraph(object):
 				pkg_merge = ordered and pkg_status == "merge"
 				if not pkg_merge and pkg_status == "merge":
 					pkg_status = "nomerge"
-				if pkg_status == "uninstall":
-					mydbapi = vardb
-				elif pkg in self._slot_collision_nodes or pkg.onlydeps:
-					# The metadata isn't cached due to a slot collision or
-					# --onlydeps.
-					mydbapi = self.trees[myroot][self.pkg_tree_map[pkg_type]].dbapi
-				else:
-					mydbapi = self.mydbapi[myroot] # contains cached metadata
 				ebuild_path = None
 				repo_name = metadata["repository"]
 				built = pkg_type != "ebuild"
@@ -4020,8 +4012,8 @@ class depgraph(object):
 						pkg.metadata["RESTRICT"]), uselist=pkg_use))
 				except portage.exception.InvalidDependString, e:
 					if not pkg.installed:
-						restrict = mydbapi.aux_get(pkg_key, ["RESTRICT"])[0]
-						show_invalid_depstring_notice(x, restrict, str(e))
+						show_invalid_depstring_notice(x,
+							pkg.metadata["RESTRICT"], str(e))
 						del e
 						return 1
 					restrict = []
@@ -4050,10 +4042,7 @@ class depgraph(object):
 				elif installed_versions and \
 					portage.cpv_getkey(installed_versions[0]) == \
 					portage.cpv_getkey(pkg_key):
-					mynewslot = mydbapi.aux_get(pkg_key, ["SLOT"])[0]
-					slot_atom = "%s:%s" % \
-						(portage.cpv_getkey(pkg_key), mynewslot)
-					myinslotlist = vardb.match(slot_atom)
+					myinslotlist = vardb.match(pkg.slot_atom)
 					# If this is the first install of a new-style virtual, we
 					# need to filter out old-style virtual matches.
 					if myinslotlist and \
