@@ -4528,7 +4528,7 @@ class depgraph(object):
 		to ensure that the user is notified of problems with the graph.
 		"""
 
-		task_list = self.altlist()
+		task_list = self._serialized_tasks_cache
 
 		# Any blockers must be appended to the tail of the list,
 		# so we only need to check the last item.
