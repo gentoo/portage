@@ -3459,16 +3459,18 @@ class depgraph(object):
 		# otherwise they slow down merge order calculation. Don't remove
 		# non-root nodes since they help optimize merge order in some cases
 		# such as revdep-rebuild.
+		removed_nodes = set()
 		while True:
-			removed_something = False
 			for node in mygraph.root_nodes():
 				if not isinstance(node, Package) or \
 					node.installed or node.onlydeps:
-					self.spinner.update()
-					mygraph.remove(node)
-					removed_something = True
-			if not removed_something:
+					removed_nodes.add(node)
+			if removed_nodes:
+				self.spinner.update()
+				mygraph.difference_update(removed_nodes)
+			if not removed_nodes:
 				break
+			removed_nodes.clear()
 		self._merge_order_bias(mygraph)
 		def cmp_circular_bias(n1, n2):
 			"""
@@ -3818,6 +3820,8 @@ class depgraph(object):
 			prefer_asap = True
 			accept_root_node = False
 
+			mygraph.difference_update(selected_nodes)
+
 			for node in selected_nodes:
 
 				# Handle interactions between blockers
@@ -3853,7 +3857,7 @@ class depgraph(object):
 
 				if node[-1] != "nomerge":
 					retlist.append(node)
-				mygraph.remove(node)
+
 				if isinstance(node, Uninstall):
 					# Include satisfied blockers in the merge list so
 					# that the user can see why the package had to be
