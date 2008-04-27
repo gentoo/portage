@@ -159,11 +159,11 @@ install_qa_check() {
 		fi
 
 		# Save NEEDED information after removing self-contained providers
-		scanelf -qyRF '%a;%p;%S;%r;%n' "${D}" | { while read l; do
+		scanelf -qyRF '%a;%p;%S;%r;%n' "${D}" | { while IFS= read l; do
 			arch=${l%%;*}; l=${l#*;}
 			obj="/${l%%;*}"; l=${l#*;}
 			soname=${l%%;*}; l=${l#*;}
-			rpath=${l%%;*}; l=${l#*;}; [ "${rpath}" == "  -  " ] && rpath=""
+			rpath=${l%%;*}; l=${l#*;}; [ "${rpath}" = "  -  " ] && rpath=""
 			needed=${l%%;*}; l=${l#*;}
 			if [ -z "${rpath}" -o -n "${rpath//*ORIGIN*}" ]; then
 				# object doesn't contain $ORIGIN in its runpath attribute
@@ -181,7 +181,7 @@ install_qa_check() {
 				rneeded=${rneeded:1}
 				if [ -n "${rneeded}" ]; then
 					echo "${obj} ${rneeded}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED
-					echo "${arch:3};/${obj};${soname};${rpath};${rneeded}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED.2
+					echo "${arch:3};${obj};${soname};${rpath};${rneeded}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED.2
 				fi
 			fi
 		done }
