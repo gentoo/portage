@@ -8689,20 +8689,22 @@ class dblink:
 							("located in the '%s' directory. " \
 							% ebuild_dir) + \
 							"If necessary, manually remove " + \
-							"the ebuild file and/or the environment.bz2 " + \
-							"file located in that directory."
+							"the environment.bz2 file and/or the " + \
+							"ebuild file located in that directory."
 							msg_lines.extend(wrap(msg, 72))
 							msg_lines.append("")
 
 							msg = "Removal " + \
-							"of the environment.bz2 file will cause " + \
-							"the ebuild to be sourced and the eclasses " + \
+							"of the environment.bz2 file is " + \
+							"preferred since it may allow the " + \
+							"removal phases to execute successfully. " + \
+							"The ebuild will be " + \
+							"sourced and the eclasses " + \
 							"from the current portage tree will be used " + \
 							"when necessary. Removal of " + \
 							"the ebuild file will cause the " + \
 							"removal phases to be skipped entirely."
 							msg_lines.extend(wrap(msg, 72))
-							from textwrap import wrap
 							cmd = "source '%s/isolated-functions.sh' ; " % \
 								PORTAGE_BIN_PATH
 							for l in msg_lines:
