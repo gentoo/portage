@@ -955,7 +955,10 @@ class EbuildQuote(LineCheck):
 	"""Ensure ebuilds have valid quoting around things like D,FILESDIR, etc..."""
 
 	repoman_check_name = 'ebuild.minorsyn'
-	ignore_line = re.compile(r'(^$)|(^\s*#.*)|(^\s*\w+=.*)|(^\s*(local|export)\s+)')
+	_ignored_commands = ["echo", "local", "export"]
+	_ignored_commands += ["eerror", "einfo", "elog", "eqawarn", "ewarn"]
+	ignore_line = re.compile(r'(^$)|(^\s*#.*)|(^\s*\w+=.*)' + \
+		r'|(^\s*(' + "|".join(_ignored_commands) + r')\s+)')
 	var_names = ["D", "DISTDIR", "FILESDIR", "S", "T", "ROOT", "WORKDIR"]
 
 	# variables for games.eclass
