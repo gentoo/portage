@@ -8680,7 +8680,14 @@ class dblink:
 							"The problem occurred while executing " + \
 							("the ebuild located at '%s'. " % myebuildpath) + \
 							"If necessary, manually remove the ebuild " + \
-							"in order to skip the execution of removal phases."
+							"and/or the environment.bz2 file which " + \
+							"is located in the same directory. Removal " + \
+							"of the environment.bz2 file will cause " + \
+							"the ebuild to be sourced and eclasses " + \
+							"from the current portage tree will be used " + \
+							"when necessary. Removal of " + \
+							"the ebuild will cause the execution of " + \
+							"removal phases to be skipped entirely."
 							from textwrap import wrap
 							cmd = "source '%s/isolated-functions.sh' ; " % \
 								PORTAGE_BIN_PATH
