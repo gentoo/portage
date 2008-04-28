@@ -2835,7 +2835,7 @@ class depgraph(object):
 						except portage.exception.InvalidDependString:
 							continue
 
-						# Enable upgrage or downgrade to a version
+						# Enable upgrade or downgrade to a version
 						# with visible KEYWORDS when the installed
 						# version is masked by KEYWORDS, but never
 						# reinstall the same exact version only due
