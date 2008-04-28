@@ -1299,24 +1299,41 @@ class dblink(object):
 				try:
 					if myebuildpath:
 						if retval != os.EX_OK:
+							from portage.elog.messages import eerror
+							def _eerror(lines):
+								for l in lines:
+									eerror(l, phase=ebuild_phase, key=self.mycpv)
 							msg = ("The '%s' " % ebuild_phase) + \
 							("phase of the '%s' package " % self.mycpv) + \
-							("has failed with exit value %s. " % retval) + \
-							"The problem occurred while executing " + \
-							("the ebuild located at '%s'. " % myebuildpath) + \
-							"If necessary, manually remove the ebuild " + \
-							"and/or the environment.bz2 file which " + \
-							"is located in the same directory. Removal " + \
+							("has failed with exit value %s." % retval)
+							
+							from textwrap import wrap
+							msg = wrap(msg, 72)
+							msg.append("")
+							_eerror(msg)
+
+							ebuild_name = os.path.basename(myebuildpath)
+							ebuild_dir = os.path.dirname(myebuildpath)
+							msg = "The problem occurred while executing " + \
+							("the ebuild file named '%s' " % ebuild_name) + \
+							("located in the '%s' directory. " \
+							% ebuild_dir) + \
+							"If necessary, manually remove " + \
+							"the ebuild file and/or the environment.bz2 " + \
+							"file located in that directory."
+							msg = wrap(msg, 72)
+							msg.append("")
+							_eerror(msg)
+
+							msg = "Removal " + \
 							"of the environment.bz2 file will cause " + \
-							"the ebuild to be sourced and eclasses " + \
+							"the ebuild to be sourced and the eclasses " + \
 							"from the current portage tree will be used " + \
 							"when necessary. Removal of " + \
-							"the ebuild will cause the execution of " + \
+							"the ebuild file will cause the " + \
 							"removal phases to be skipped entirely."
-							from portage.elog.messages import eerror
-							from textwrap import wrap
-							for l in wrap(msg, 72):
-								eerror(l, phase=ebuild_phase, key=self.mycpv)
+							msg = wrap(msg, 72)
+							_eerror(msg)
 
 						# process logs created during pre/postrm
 						elog_process(self.mycpv, self.settings, phasefilter=filter_unmergephases)
