@@ -5325,6 +5325,8 @@ class MergeTask(object):
 			myroot=x[1]
 			pkg_key = x[2]
 			pkgindex=2
+			built = pkg_type != "ebuild"
+			installed = pkg_type == "installed"
 			portdb = self.trees[myroot]["porttree"].dbapi
 			bindb  = self.trees[myroot]["bintree"].dbapi
 			vartree = self.trees[myroot]["vartree"]
@@ -5347,10 +5349,16 @@ class MergeTask(object):
 					mydbapi = vardb
 				else:
 					raise AssertionError("Package type: '%s'" % pkg_type)
-				metadata.update(izip(metadata_keys,
-					mydbapi.aux_get(pkg_key, metadata_keys)))
-			built = pkg_type != "ebuild"
-			installed = pkg_type == "installed"
+				try:
+					metadata.update(izip(metadata_keys,
+						mydbapi.aux_get(pkg_key, metadata_keys)))
+				except KeyError:
+					if not installed:
+						raise
+					# A package scheduled for uninstall apparently
+					# isn't installed anymore. Since it's already
+					# been uninstalled, move on to the next task.
+					continue
 			if installed:
 				pkg_constructor = Uninstall
 			else:
