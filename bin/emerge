@@ -1404,12 +1404,13 @@ class Blocker(Task):
 class Package(Task):
 	__slots__ = ("built", "cpv", "depth",
 		"installed", "metadata", "root", "onlydeps", "type_name",
-		"cp", "cpv_slot", "slot_atom")
+		"cp", "cpv_slot", "pv_split", "slot_atom")
 	def __init__(self, **kwargs):
 		Task.__init__(self, **kwargs)
 		self.cp = portage.cpv_getkey(self.cpv)
 		self.slot_atom = "%s:%s" % (self.cp, self.metadata["SLOT"])
 		self.cpv_slot = "%s:%s" % (self.cpv, self.metadata["SLOT"])
+		self.pv_split = portage.catpkgsplit(self.cpv)[1:]
 
 	def _get_hash_key(self):
 		hash_key = getattr(self, "_hash_key", None)
@@ -1422,38 +1423,30 @@ class Package(Task):
 		return self._hash_key
 
 	def __lt__(self, other):
-		other_split = portage.catpkgsplit(other.cpv)
-		self_split = portage.catpkgsplit(self.cpv)
-		if other_split[:2] != self_split[:2]:
+		if other.cp != self.cp:
 			return False
-		if portage.pkgcmp(self_split[1:], other_split[1:]) < 0:
+		if portage.pkgcmp(self.pv_split, other.pv_split) < 0:
 			return True
 		return False
 
 	def __le__(self, other):
-		other_split = portage.catpkgsplit(other.cpv)
-		self_split = portage.catpkgsplit(self.cpv)
-		if other_split[:2] != self_split[:2]:
+		if other.cp != self.cp:
 			return False
-		if portage.pkgcmp(self_split[1:], other_split[1:]) <= 0:
+		if portage.pkgcmp(self.pv_split, other.pv_split) <= 0:
 			return True
 		return False
 
 	def __gt__(self, other):
-		other_split = portage.catpkgsplit(other.cpv)
-		self_split = portage.catpkgsplit(self.cpv)
-		if other_split[:2] != self_split[:2]:
+		if other.cp != self.cp:
 			return False
-		if portage.pkgcmp(self_split[1:], other_split[1:]) > 0:
+		if portage.pkgcmp(self.pv_split, other.pv_split) > 0:
 			return True
 		return False
 
 	def __ge__(self, other):
-		other_split = portage.catpkgsplit(other.cpv)
-		self_split = portage.catpkgsplit(self.cpv)
-		if other_split[:2] != self_split[:2]:
+		if other.cp != self.cp:
 			return False
-		if portage.pkgcmp(self_split[1:], other_split[1:]) >= 0:
+		if portage.pkgcmp(self.pv_split, other.pv_split) >= 0:
 			return True
 		return False
 
