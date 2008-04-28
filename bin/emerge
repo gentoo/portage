@@ -1722,11 +1722,17 @@ class PackageVirtualDbapi(portage.dbapi):
 		if cp_list is None:
 			cp_list = []
 			self._cp_map[pkg.cp] = cp_list
+		e_pkg = self._cpv_map.get(pkg.cpv)
+		if e_pkg is not None:
+			if e_pkg == pkg:
+				return
+			self.cpv_remove(e_pkg)
 		for e_pkg in cp_list:
 			if e_pkg.slot_atom == pkg.slot_atom:
 				if e_pkg == pkg:
 					return
 				self.cpv_remove(e_pkg)
+				break
 		cp_list.append(pkg)
 		self._cpv_map[pkg.cpv] = pkg
 		self._clear_cache()
