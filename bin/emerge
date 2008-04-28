@@ -897,12 +897,13 @@ class WorldSet(InternalPackageSet):
 class RootConfig(object):
 	"""This is used internally by depgraph to track information about a
 	particular $ROOT."""
-	def __init__(self, trees, setconfig):
+	def __init__(self, settings, trees, setconfig):
 		self.trees = trees
-		self.settings = trees["vartree"].settings
+		self.settings = settings
 		self.root = self.settings["ROOT"]
 		self.setconfig = setconfig
 		self.sets = self.setconfig.getSets()
+		self.visible_pkgs = PackageVirtualDbapi(self.settings)
 
 def create_world_atom(pkg_key, metadata, args_set, root_config):
 	"""Create a new atom for the world file if one does not exist.  If the
@@ -1429,12 +1430,30 @@ class Package(Task):
 			return True
 		return False
 
+	def __le__(self, other):
+		other_split = portage.catpkgsplit(other.cpv)
+		self_split = portage.catpkgsplit(self.cpv)
+		if other_split[:2] != self_split[:2]:
+			return False
+		if portage.pkgcmp(self_split[1:], other_split[1:]) <= 0:
+			return True
+		return False
+
 	def __gt__(self, other):
 		other_split = portage.catpkgsplit(other.cpv)
 		self_split = portage.catpkgsplit(self.cpv)
 		if other_split[:2] != self_split[:2]:
 			return False
 		if portage.pkgcmp(self_split[1:], other_split[1:]) > 0:
+			return True
+		return False
+
+	def __ge__(self, other):
+		other_split = portage.catpkgsplit(other.cpv)
+		self_split = portage.catpkgsplit(self.cpv)
+		if other_split[:2] != self_split[:2]:
+			return False
+		if portage.pkgcmp(self_split[1:], other_split[1:]) >= 0:
 			return True
 		return False
 
@@ -1657,6 +1676,9 @@ class PackageVirtualDbapi(portage.dbapi):
 			return True
 		return False
 
+	def match_pkgs(self, atom):
+		return [self._cpv_map[cpv] for cpv in self.match(atom)]
+
 	def _clear_cache(self):
 		if self._categories is not None:
 			self._categories = None
@@ -1764,9 +1786,15 @@ class depgraph(object):
 		# to the graph.
 		self._graph_trees = {}
 		# All Package instances
-		self._pkg_cache = {}
+		self._pkg_cache = self._package_cache(self)
 		for myroot in trees:
 			self.trees[myroot] = {}
+			# Create a RootConfig instance that references
+			# the FakeVartree instead of the real one.
+			self.roots[myroot] = RootConfig(
+				trees[myroot]["vartree"].settings,
+				self.trees[myroot],
+				trees[myroot]["root_config"].setconfig)
 			for tree in ("porttree", "bintree"):
 				self.trees[myroot][tree] = trees[myroot][tree]
 			self.trees[myroot]["vartree"] = \
@@ -1777,10 +1805,6 @@ class depgraph(object):
 				clone=self.trees[myroot]["vartree"].settings)
 			self._slot_pkg_map[myroot] = {}
 			vardb = self.trees[myroot]["vartree"].dbapi
-			# Create a RootConfig instance that references
-			# the FakeVartree instead of the real one.
-			self.roots[myroot] = RootConfig(self.trees[myroot],
-				trees[myroot]["root_config"].setconfig)
 			preload_installed_pkgs = "--nodeps" not in self.myopts and \
 				"--buildpkgonly" not in self.myopts
 			# This fakedbapi instance will model the state that the vdb will
@@ -2366,10 +2390,26 @@ class depgraph(object):
 		if pkg.root != self.target_root:
 			return
 		atom_arg_map = self._atom_arg_map
+		root_config = self.roots[pkg.root]
 		for atom in self._set_atoms.iterAtomsForPackage(pkg):
 			atom_cp = portage.dep_getkey(atom)
 			if atom_cp != pkg.cp and \
 				self._have_new_virt(pkg.root, atom_cp):
+				continue
+			visible_pkgs = root_config.visible_pkgs.match_pkgs(atom)
+			visible_pkgs.reverse() # descending order
+			higher_slot = None
+			for visible_pkg in visible_pkgs:
+				if visible_pkg.cp != atom_cp:
+					continue
+				if pkg >= visible_pkg:
+					# This is descending order, and we're not
+					# interested in any versions <= pkg given.
+					break
+				if pkg.slot_atom != visible_pkg.slot_atom:
+					higher_slot = visible_pkg
+					break
+			if higher_slot is not None:
 				continue
 			for arg in atom_arg_map[(atom, pkg.root)]:
 				if isinstance(arg, PackageArg) and \
@@ -4975,6 +5015,17 @@ class depgraph(object):
 		def aux_get(self, cpv, wants):
 			metadata = self._cpv_pkg_map[cpv].metadata
 			return [metadata.get(x, "") for x in wants]
+
+	class _package_cache(dict):
+		def __init__(self, depgraph):
+			dict.__init__(self)
+			self._depgraph = depgraph
+
+		def __setitem__(self, k, v):
+			dict.__setitem__(self, k, v)
+			root_config = self._depgraph.roots[v.root]
+			if visible(root_config.settings, v):
+				root_config.visible_pkgs.cpv_inject(v)
 
 class RepoDisplay(object):
 	def __init__(self, roots):
@@ -7856,7 +7907,7 @@ def load_emerge_config(trees=None):
 	for root, root_trees in trees.iteritems():
 		settings = root_trees["vartree"].settings
 		setconfig = SetConfig(settings, root_trees)
-		root_trees["root_config"] = RootConfig(root_trees, setconfig)
+		root_trees["root_config"] = RootConfig(settings, root_trees, setconfig)
 
 	settings = trees["/"]["vartree"].settings
 
