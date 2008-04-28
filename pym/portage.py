@@ -8674,24 +8674,38 @@ class dblink:
 				try:
 					if myebuildpath:
 						if retval != os.EX_OK:
+							msg_lines = []
 							msg = ("The '%s' " % ebuild_phase) + \
 							("phase of the '%s' package " % self.mycpv) + \
-							("has failed with exit value %s. " % retval) + \
-							"The problem occurred while executing " + \
-							("the ebuild located at '%s'. " % myebuildpath) + \
-							"If necessary, manually remove the ebuild " + \
-							"and/or the environment.bz2 file which " + \
-							"is located in the same directory. Removal " + \
+							("has failed with exit value %s." % retval)
+							from textwrap import wrap
+							msg_lines.extend(wrap(msg, 72))
+							msg_lines.append("")
+
+							ebuild_name = os.path.basename(myebuildpath)
+							ebuild_dir = os.path.dirname(myebuildpath)
+							msg = "The problem occurred while executing " + \
+							("the ebuild file named '%s' " % ebuild_name) + \
+							("located in the '%s' directory. " \
+							% ebuild_dir) + \
+							"If necessary, manually remove " + \
+							"the ebuild file and/or the environment.bz2 " + \
+							"file located in that directory."
+							msg_lines.extend(wrap(msg, 72))
+							msg_lines.append("")
+
+							msg = "Removal " + \
 							"of the environment.bz2 file will cause " + \
-							"the ebuild to be sourced and eclasses " + \
+							"the ebuild to be sourced and the eclasses " + \
 							"from the current portage tree will be used " + \
 							"when necessary. Removal of " + \
-							"the ebuild will cause the execution of " + \
+							"the ebuild file will cause the " + \
 							"removal phases to be skipped entirely."
+							msg_lines.extend(wrap(msg, 72))
 							from textwrap import wrap
 							cmd = "source '%s/isolated-functions.sh' ; " % \
 								PORTAGE_BIN_PATH
-							for l in wrap(msg, 72):
+							for l in msg_lines:
 								cmd += "eerror \"%s\" ; " % l
 							portage_exec.spawn(["bash", "-c", cmd],
 								env=self.settings.environ())
