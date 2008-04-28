@@ -2267,8 +2267,9 @@ class depgraph(object):
 					# This is descending order, and we're not
 					# interested in any versions <= pkg given.
 					break
-				higher_slot = visible_pkg
-				break
+				if pkg.slot_atom != visible_pkg.slot_atom:
+					higher_slot = visible_pkg
+					break
 			if higher_slot is not None:
 				continue
 			for arg in atom_arg_map[(atom, pkg.root)]:
