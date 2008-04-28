@@ -1328,7 +1328,8 @@ class dblink(object):
 							"from the current portage tree will be used " + \
 							"when necessary. Removal of " + \
 							"the ebuild file will cause the " + \
-							"removal phases to be skipped entirely."
+							"pkg_prerm() and pkg_postrm() removal " + \
+							"phases to be skipped entirely."
 							msg_lines.extend(wrap(msg, 72))
 							from portage.elog.messages import eerror
 							for l in msg_lines:
