@@ -4191,16 +4191,27 @@ class depgraph(object):
 				else:
 					blockers.append(addl)
 			else:
-				pkg = self._pkg_cache[tuple(x)]
-				metadata = pkg.metadata
 				pkg_status = x[3]
 				pkg_merge = ordered and pkg_status == "merge"
 				if not pkg_merge and pkg_status == "merge":
 					pkg_status = "nomerge"
-				ebuild_path = None
-				repo_name = metadata["repository"]
 				built = pkg_type != "ebuild"
 				installed = pkg_type == "installed"
+				try:
+					pkg = self._pkg_cache[tuple(x)]
+				except KeyError:
+					if pkg_status != "uninstall":
+						raise
+					# A package scheduled for uninstall apparently
+					# isn't installed anymore. Since it's already
+					# been uninstalled, move on to the next task.
+					# This case should only be reachable in --resume
+					# mode, since otherwise the package would have
+					# been cached.
+					continue
+				metadata = pkg.metadata
+				ebuild_path = None
+				repo_name = metadata["repository"]
 				if pkg_type == "ebuild":
 					ebuild_path = portdb.findname(pkg_key)
 					if not ebuild_path: # shouldn't happen
