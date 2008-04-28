@@ -8703,7 +8703,8 @@ class dblink:
 							"from the current portage tree will be used " + \
 							"when necessary. Removal of " + \
 							"the ebuild file will cause the " + \
-							"removal phases to be skipped entirely."
+							"pkg_prerm() and pkg_postrm() removal " + \
+							"phases to be skipped entirely."
 							msg_lines.extend(wrap(msg, 72))
 							cmd = "source '%s/isolated-functions.sh' ; " % \
 								PORTAGE_BIN_PATH
