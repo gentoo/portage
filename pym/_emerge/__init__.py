@@ -831,7 +831,7 @@ def filter_iuse_defaults(iuse):
 			yield flag
 
 class SlotObject(object):
-	__slots__ = ("__weakref__")
+	__slots__ = ("__weakref__",)
 
 	def __init__(self, **kwargs):
 		classes = [self.__class__]
