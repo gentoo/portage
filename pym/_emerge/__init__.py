@@ -2947,7 +2947,10 @@ class depgraph(object):
 						if not reinstall_for_flags and \
 							not must_reinstall and \
 							cpv in vardb.match(atom):
-							break
+							# If the installed version is masked, it may
+							# be necessary to look at lower versions,
+							# in case there is a visible downgrade.
+							continue
 					if not built:
 						myeb = cpv
 					matched_packages.append(pkg)
