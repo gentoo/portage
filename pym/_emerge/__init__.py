@@ -2786,7 +2786,10 @@ class depgraph(object):
 					# Make --noreplace take precedence over --newuse.
 					if not installed and noreplace and \
 						cpv in vardb.match(atom):
-						break
+						# If the installed version is masked, it may
+						# be necessary to look at lower versions,
+						# in case there is a visible downgrade.
+						continue
 					reinstall_for_flags = None
 					cache_key = (pkg_type, root, cpv, pkg_status)
 					calculated_use = True
