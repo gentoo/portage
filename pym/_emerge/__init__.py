@@ -5555,7 +5555,7 @@ class MergeTask(object):
 		return os.EX_OK
 
 def unmerge(root_config, myopts, unmerge_action,
-	unmerge_files, ldpath_mtimes, autoclean=0, clean_world=1):
+	unmerge_files, ldpath_mtimes, autoclean=0, clean_world=1, ordered=0):
 	settings = root_config.settings
 	sets = root_config.sets
 	vartree = root_config.trees["vartree"]
@@ -5829,7 +5829,25 @@ def unmerge(root_config, myopts, unmerge_action,
 				pkgmap[cp]["protected"].add(cpv)
 	
 	del installed_sets
-	
+
+	# Unmerge order only matters in some cases
+	if not ordered:
+		unordered = {}
+		for d in pkgmap:
+			selected = d["selected"]
+			if not selected:
+				continue
+			cp = portage.cpv_getkey(iter(selected).next())
+			cp_dict = unordered.get(cp)
+			if cp_dict is None:
+				cp_dict = {}
+				unordered[cp] = cp_dict
+				for k in d:
+					cp_dict[k] = set()
+			for k, v in d.iteritems():
+				cp_dict[k].update(v)
+		pkgmap = [unordered[cp] for cp in sorted(unordered)]
+
 	for x in xrange(len(pkgmap)):
 		selected = pkgmap[x]["selected"]
 		if not selected:
@@ -7436,11 +7454,12 @@ def action_depclean(settings, trees, ldpath_mtimes,
 						if cpv in clean_set:
 							graph.add(cpv, node, priority=priority)
 
+		ordered = True
 		if len(graph.order) == len(graph.root_nodes()):
 			# If there are no dependencies between packages
-			# then just unmerge them alphabetically.
-			cleanlist = graph.order[:]
-			cleanlist.sort()
+			# let unmerge() group them by cat/pn.
+			ordered = False
+			cleanlist = graph.all_nodes()
 		else:
 			# Order nodes from lowest to highest overall reference count for
 			# optimal root node selection.
@@ -7470,8 +7489,8 @@ def action_depclean(settings, trees, ldpath_mtimes,
 					graph.remove(node)
 					cleanlist.append(node)
 
-		unmerge(root_config, myopts,
-			"unmerge", cleanlist, ldpath_mtimes)
+		unmerge(root_config, myopts, "unmerge", cleanlist,
+			ldpath_mtimes, ordered=ordered)
 
 	if action == "prune":
 		return
@@ -8408,8 +8427,11 @@ def emerge_main():
 		(myaction == "prune" and "--nodeps" in myopts):
 		validate_ebuild_environment(trees)
 		root_config = trees[settings["ROOT"]]["root_config"]
+		# When given a list of atoms, unmerge
+		# them in the order given.
+		ordered = myaction == "unmerge"
 		if 1 == unmerge(root_config, myopts, myaction, myfiles,
-			mtimedb["ldpath"]):
+			mtimedb["ldpath"], ordered=ordered):
 			if not (buildpkgonly or fetchonly or pretend):
 				post_emerge(trees, mtimedb, os.EX_OK)
 
