@@ -1392,7 +1392,11 @@ class Task(SlotObject):
 		return str(self._get_hash_key())
 
 class Blocker(Task):
-	__slots__ = ("root", "atom", "satisfied")
+	__slots__ = ("root", "atom", "cp", "satisfied")
+
+	def __init__(self, **kwargs):
+		Task.__init__(self, **kwargs)
+		self.cp = portage.dep_getkey(self.atom)
 
 	def _get_hash_key(self):
 		hash_key = getattr(self, "_hash_key", None)
@@ -1533,14 +1537,22 @@ class BlockerCache(DictMixin):
 		cache_valid = self._cache_data and \
 			isinstance(self._cache_data, dict) and \
 			self._cache_data.get("version") == self._cache_version and \
-			self._cache_data.get("virtuals") == self._virtuals and \
-			set(self._cache_data.get("blockers", [])) == self._installed_pkgs
+			isinstance(self._cache_data.get("blockers"), dict)
 		if cache_valid:
-			for pkg in self._installed_pkgs:
-				if long(self._vardb.aux_get(pkg, ["COUNTER"])[0]) != \
-					self[pkg].counter:
-					cache_valid = False
-					break
+			invalid_cache = set()
+			for cpv, value \
+				in self._cache_data["blockers"].iteritems():
+				if not (isinstance(value, tuple) and len(value) == 2):
+					invalid_cache.add(cpv)
+					continue
+				counter, atoms = value
+				if counter != long(self._vardb.aux_get(cpv, ["COUNTER"])[0]):
+					invalid_cache.add(cpv)
+					continue
+			for cpv in invalid_cache:
+				del self._cache_data["blockers"][cpv]
+			if not self._cache_data["blockers"]:
+				cache_valid = False
 		if not cache_valid:
 			self._cache_data = {"version":self._cache_version}
 			self._cache_data["blockers"] = {}
@@ -3293,12 +3305,42 @@ class depgraph(object):
 					node = Package(cpv=pkg, built=True,
 						installed=True, metadata=metadata,
 						type_name="installed", root=myroot)
+
+					
+					blockers = None
 					if self.digraph.contains(node):
-						continue
+						try:
+							blockers = self._blocker_parents.child_nodes(node)
+						except KeyError:
+							blockers = []
+					if blockers is not None:
+						blockers = set("!" + blocker.atom \
+							for blocker in blockers)
+
 					# If this node has any blockers, create a "nomerge"
 					# node for it so that they can be enforced.
 					self.spinner.update()
 					blocker_data = blocker_cache.get(pkg)
+
+					# If blocker data from the graph is available, use
+					# it to validate the cache and update the cache if
+					# it seems invalid.
+					if blocker_data is not None and \
+						blockers is not None:
+						if not blockers.symmetric_difference(
+							blocker_data.atoms):
+							continue
+						blocker_data = None
+
+					if blocker_data is None and \
+						blockers is not None:
+						# Re-use the blockers from the graph.
+						blocker_atoms = sorted(blockers)
+						counter = long(node.metadata["COUNTER"])
+						blocker_data = \
+							blocker_cache.BlockerData(counter, blocker_atoms)
+						blocker_cache[pkg] = blocker_data
+
 					if blocker_data:
 						blocker_atoms = blocker_data.atoms
 					else:
@@ -3352,11 +3394,35 @@ class depgraph(object):
 
 		for blocker in self._blocker_parents.leaf_nodes():
 			self.spinner.update()
+			root_config = self.roots[blocker.root]
+			virtuals = root_config.settings.getvirtuals()
 			mytype, myroot, mydep = blocker
 			initial_db = self.trees[myroot]["vartree"].dbapi
 			final_db = self.mydbapi[myroot]
-			blocked_initial = initial_db.match(mydep)
-			blocked_final = final_db.match(mydep)
+			
+			provider_virtual = False
+			if blocker.cp in virtuals and \
+				not self._have_new_virt(blocker.root, blocker.cp):
+				provider_virtual = True
+
+			if provider_virtual:
+				atoms = []
+				for provider_entry in virtuals[blocker.cp]:
+					provider_cp = \
+						portage.dep_getkey(provider_entry)
+					atoms.append(blocker.atom.replace(
+						blocker.cp, provider_cp))
+			else:
+				atoms = [blocker.atom]
+
+			blocked_initial = []
+			for atom in atoms:
+				blocked_initial.extend(initial_db.match(atom))
+
+			blocked_final = []
+			for atom in atoms:
+				blocked_final.extend(final_db.match(atom))
+
 			if not blocked_initial and not blocked_final:
 				parent_pkgs = self._blocker_parents.parent_nodes(blocker)
 				self._blocker_parents.remove(blocker)

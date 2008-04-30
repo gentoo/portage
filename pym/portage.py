@@ -5368,6 +5368,12 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			continue
 		mychoices = myvirtuals.get(mykey, [])
 		isblocker = x.startswith("!")
+		if isblocker:
+			# Virtual blockers are no longer expanded here since
+			# the un-expanded virtual atom is more useful for
+			# maintaining a cache of blocker atoms.
+			newsplit.append(x)
+			continue
 		match_atom = x
 		if isblocker:
 			match_atom = x[1:]
