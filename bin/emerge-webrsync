@@ -308,11 +308,15 @@ do_snapshot() {
 }
 
 do_latest_snapshot() {
-	local attempts=-1
+	local attempts=0
 	local r=1
 
 	vecho "Fetching most recent snapshot ..."
 
+	# The snapshot for a given day is generated at 01:45 UTC on the following
+	# day, so the current day's snapshot (going by UTC time) hasn't been
+	# generated yet.  Therefore, always start by looking for the previous day's
+	# snapshot (for attempts=1, subtract 1 day from the current UTC time).
 	while (( ${attempts} <  40 )) ; do
 		local day
 		local month
@@ -326,9 +330,9 @@ do_latest_snapshot() {
 		day=$(get_date_part ${utc_attempt} "%d")
 		month=$(get_date_part ${utc_attempt} "%m")
 		year=$(get_date_part ${utc_attempt} "%Y")
-		utc_midnight=$(get_date_part $(expr ${utc_attempt} - ${utc_attempt} % 86400) "%s")
+		utc_midnight=$(expr ${utc_attempt} - ${utc_attempt} % 86400)
 
-		if [ ${utc_midnight} -lt $(($(get_portage_timestamp)-86400)) ]; then
+		if [ ${utc_midnight} -lt $(get_portage_timestamp) ]; then
 			wecho "portage content is newer than available snapshots (use --revert option to overide)"
 			r=0
 			break
