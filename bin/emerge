@@ -3185,12 +3185,14 @@ class depgraph(object):
 		# accounted for.
 		self._select_atoms = self._select_atoms_from_graph
 		self._select_package = self._select_pkg_from_graph
-		self.myparams.add("deep")
+		already_deep = "deep" in self.myparams
+		if not already_deep:
+			self.myparams.add("deep")
 
 		for root in self.roots:
 			required_set_names = self._required_set_names.copy()
 			if root == self.target_root and \
-				("deep" in self.myparams or "empty" in self.myparams):
+				(already_deep or "empty" in self.myparams):
 				required_set_names.difference_update(self._sets)
 			if not required_set_names and not self._ignored_deps:
 				continue
