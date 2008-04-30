@@ -3178,7 +3178,7 @@ class depgraph(object):
 					# If blocker data from the graph is available, use
 					# it to validate the cache and update the cache if
 					# it seems invalid.
-					if blocker_data and \
+					if blocker_data is not None and \
 						blockers is not None:
 						if not blockers.symmetric_difference(
 							blocker_data.atoms):
