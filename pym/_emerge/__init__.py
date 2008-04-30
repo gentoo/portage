@@ -3183,6 +3183,11 @@ class depgraph(object):
 						if not blockers.symmetric_difference(
 							blocker_data.atoms):
 							continue
+						blocker_data = None
+
+					if blocker_data is None and \
+						blockers is not None:
+						# Re-use the blockers from the graph.
 						blocker_atoms = sorted(blockers)
 						counter = long(node.metadata["COUNTER"])
 						blocker_data = \
