@@ -1546,7 +1546,12 @@ class BlockerCache(DictMixin):
 					invalid_cache.add(cpv)
 					continue
 				counter, atoms = value
-				if counter != long(self._vardb.aux_get(cpv, ["COUNTER"])[0]):
+				try:
+					if counter != long(self._vardb.aux_get(cpv, ["COUNTER"])[0]):
+						invalid_cache.add(cpv)
+						continue
+				except KeyError:
+					# The package is no longer installed.
 					invalid_cache.add(cpv)
 					continue
 			for cpv in invalid_cache:
