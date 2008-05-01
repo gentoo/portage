@@ -173,8 +173,7 @@ sync_local() {
 
 	vecho "Syncing local tree ..."
 
-	# tarsync-0.2.1 doesn't seem to support lzma compression.
-	if [ "${file##*.}" != "lzma" ] && type -P tarsync > /dev/null; then
+	if type -P tarsync > /dev/null ; then
 		if ! tarsync $(vvecho -v) -s 1 -o portage -g portage -e /distfiles -e /packages -e /local "${file}" "${PORTDIR}"; then
 			eecho "tarsync failed; tarball is corrupt? (${file})"
 			return 1
@@ -221,7 +220,14 @@ do_snapshot() {
 	local mirror
 
 	local compressions=""
-	type -P lzcat > /dev/null && compressions="${compressions} lzma"
+	# lzma is not supported in <=app-arch/tarsync-0.2.1, so use
+	# bz2 format if we have an old version of tarsync.
+	if type -P tarsync > /dev/null && \
+		portageq has_version / '<=app-arch/tarsync-0.2.1' ; then
+		true
+	else
+		type -P lzcat > /dev/null && compressions="${compressions} lzma"
+	fi
 	type -P bzcat > /dev/null && compressions="${compressions} bz2"
 	type -P  zcat > /dev/null && compressions="${compressions} gz"
 	if [[ -z ${compressions} ]] ; then
