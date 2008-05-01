@@ -1407,7 +1407,8 @@ class Blocker(Task):
 
 class Package(Task):
 	__slots__ = ("built", "cpv", "depth",
-		"installed", "metadata", "root", "onlydeps", "type_name",
+		"installed", "metadata", "onlydeps", "operation",
+		"root", "type_name",
 		"cp", "cpv_slot", "pv_split", "slot_atom")
 	def __init__(self, **kwargs):
 		Task.__init__(self, **kwargs)
@@ -1419,11 +1420,12 @@ class Package(Task):
 	def _get_hash_key(self):
 		hash_key = getattr(self, "_hash_key", None)
 		if hash_key is None:
-			operation = "merge"
-			if self.onlydeps or self.installed:
-				operation = "nomerge"
+			if self.operation is None:
+				self.operation = "merge"
+				if self.onlydeps or self.installed:
+					self.operation = "nomerge"
 			self._hash_key = \
-				(self.type_name, self.root, self.cpv, operation)
+				(self.type_name, self.root, self.cpv, self.operation)
 		return self._hash_key
 
 	def __lt__(self, other):
@@ -1453,15 +1455,6 @@ class Package(Task):
 		if portage.pkgcmp(self.pv_split, other.pv_split) >= 0:
 			return True
 		return False
-
-class Uninstall(Package):
-	__slots__ = ()
-	def _get_hash_key(self):
-		hash_key = getattr(self, "_hash_key", None)
-		if hash_key is None:
-			self._hash_key = \
-				(self.type_name, self.root, self.cpv, "uninstall")
-		return self._hash_key
 
 class DependencyArg(object):
 	def __init__(self, arg=None, root_config=None):
@@ -3517,9 +3510,10 @@ class depgraph(object):
 
 				if not unresolved_blocks and depends_on_order:
 					for inst_pkg, inst_task in depends_on_order:
-						uninst_task = Uninstall(built=inst_pkg.built,
+						uninst_task = Package(built=inst_pkg.built,
 							cpv=inst_pkg.cpv, installed=inst_pkg.installed,
-							metadata=inst_pkg.metadata, root=inst_pkg.root,
+							metadata=inst_pkg.metadata,
+							operation="uninstall", root=inst_pkg.root,
 							type_name=inst_pkg.type_name)
 						self._pkg_cache[uninst_task] = uninst_task
 						# Enforce correct merge order with a hard dep.
@@ -3632,7 +3626,8 @@ class depgraph(object):
 			since those should be executed as late as possible.
 			"""
 			return [node for node in mygraph.leaf_nodes(**kwargs) \
-				if not isinstance(node, Uninstall)]
+				if isinstance(node, Package) and \
+				node.operation != "uninstall"]
 		if True:
 			for node in mygraph.order:
 				if node.root == "/" and \
@@ -3959,7 +3954,8 @@ class depgraph(object):
 				# and uninstallation tasks.
 				solved_blockers = set()
 				uninst_task = None
-				if isinstance(node, Uninstall):
+				if isinstance(node, Package) and \
+					"uninstall" == node.operation:
 					have_uninstall_task = True
 					uninst_task = node
 				else:
@@ -3989,7 +3985,8 @@ class depgraph(object):
 				if node[-1] != "nomerge":
 					retlist.append(node)
 
-				if isinstance(node, Uninstall):
+				if isinstance(node, Package) and \
+					"uninstall" == node.operation:
 					# Include satisfied blockers in the merge list so
 					# that the user can see why the package had to be
 					# uninstalled in advance rather than through
@@ -4950,13 +4947,10 @@ class depgraph(object):
 				metadata["USE"] = pkgsettings["PORTAGE_USE"]
 			installed = action == "uninstall"
 			built = pkg_type != "ebuild"
-			if installed:
-				pkg_constructor = Uninstall
-			else:
-				pkg_constructor = Package
-			pkg = pkg_constructor(built=built, cpv=pkg_key,
+			pkg = Package(built=built, cpv=pkg_key,
 				installed=installed, metadata=metadata,
-				root=myroot, type_name=pkg_type)
+				operation=action, root=myroot,
+				type_name=pkg_type)
 			self._pkg_cache[pkg] = pkg
 			fakedb[myroot].cpv_inject(pkg)
 			self.spinner.update()
@@ -5352,7 +5346,7 @@ class MergeTask(object):
 		if "--resume" not in self.myopts:
 			mymergelist = mylist
 			mtimedb["resume"]["mergelist"] = [list(x) for x in mymergelist \
-				if isinstance(x, (Package, Uninstall))]
+				if isinstance(x, Package)]
 			mtimedb.commit()
 
 		myfeat = self.settings.features[:]
@@ -5409,11 +5403,9 @@ class MergeTask(object):
 		mymergelist = [x for x in mymergelist if x[-1] == "merge"]
 		mergecount=0
 		for x in task_list:
-			pkg_type = x[0]
-			if pkg_type == "blocks":
+			if x[0] == "blocks":
 				continue
-			myroot=x[1]
-			pkg_key = x[2]
+			pkg_type, myroot, pkg_key, operation = x
 			pkgindex=2
 			built = pkg_type != "ebuild"
 			installed = pkg_type == "installed"
@@ -5449,14 +5441,12 @@ class MergeTask(object):
 					# isn't installed anymore. Since it's already
 					# been uninstalled, move on to the next task.
 					continue
-			if installed:
-				pkg_constructor = Uninstall
-			else:
-				pkg_constructor = Package
+			if not installed:
 				mergecount += 1
-			pkg = pkg_constructor(type_name=pkg_type, root=myroot,
-				cpv=pkg_key, built=built, installed=installed,
-				metadata=metadata)
+			pkg = Package(cpv=pkg_key, built=built,
+				installed=installed, metadata=metadata,
+				operation=operation, root=myroot,
+				type_name=pkg_type)
 			if pkg.installed:
 				if not (buildpkgonly or fetchonly or pretend):
 					self._uninstall_queue.append(pkg)
