@@ -193,7 +193,7 @@ esac],
 
 AC_MSG_CHECKING([for user id of ${rootuser}])
 dnl grab uid of rootuser
-rootuid=`${XCU_ID} -u ${rootuser}`
+rootuid=`${XCU_ID} -u "${rootuser}"`
 if test "x`echo ${rootuid} | ${EGREP} '^[[0-9]]+$'`" != "x"
 then
 	AC_MSG_RESULT([${rootuid}])
@@ -201,7 +201,7 @@ else
 	AC_MSG_ERROR([error finding the user id of ${rootuser}])
 fi
 AC_MSG_CHECKING([for group id of ${rootuser}])
-rootgid=`${XCU_ID} -g ${rootuser}`
+rootgid=`${XCU_ID} -g "${rootuser}"`
 if test "x`echo ${rootgid} | ${EGREP} '^[[0-9]]+$'`" != "x"
 then
 	AC_MSG_RESULT([${rootgid}])
