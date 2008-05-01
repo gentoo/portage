@@ -12,7 +12,7 @@ portagegroup = @portagegroup@
 PORTAGE_BIN = @PORTAGE_BASE@/bin
 LN_S = @LN_S@
 INSTALL = @INSTALL@
-INSTALL_script = @INSTALL_PROGRAM@ -o $(portageuser) -g $(portagegroup) -m 755
+INSTALL_script = @INSTALL_PROGRAM@ -o "$(portageuser)" -g "$(portagegroup)" -m 755
 INSTALL_scriptsubst = $(SHELL) ${top_builddir}/subst-install --installcmd='${INSTALL_script}'
 
 user_binprogs = \

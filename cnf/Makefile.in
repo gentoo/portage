@@ -10,7 +10,7 @@ portageuser = @portageuser@
 portagegroup = @portagegroup@
 
 INSTALL = @INSTALL@
-INSTALL_cnf = @INSTALL_PROGRAM@ -o $(portageuser) -g $(portagegroup) -m 644
+INSTALL_cnf = @INSTALL_PROGRAM@ -o "$(portageuser)" -g "$(portagegroup)" -m 644
 INSTALL_cnfsubst = $(SHELL) ${top_builddir}/subst-install --installcmd='${INSTALL_cnf}'
 
 list_sourcedir = \

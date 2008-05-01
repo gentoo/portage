@@ -12,7 +12,7 @@ portagegroup = @portagegroup@
 
 PORTAGE_PYM = @PORTAGE_BASE@/pym
 INSTALL = @INSTALL@
-INSTALL_PY = @INSTALL_DATA@ -o $(portageuser) -g $(portagegroup)
+INSTALL_PY = @INSTALL_DATA@ -o "$(portageuser)" -g "$(portagegroup)"
 INSTALL_PYsubst = $(SHELL) ${top_builddir}/subst-install --installcmd='${INSTALL_PY}'
 
 list_sourcedir_dirs = \
