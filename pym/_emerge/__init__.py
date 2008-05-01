@@ -3234,6 +3234,7 @@ class depgraph(object):
 							return False
 						blocker_atoms = [myatom for myatom in atoms \
 							if myatom.startswith("!")]
+						blocker_atoms.sort()
 						counter = long(vardb.aux_get(pkg, ["COUNTER"])[0])
 						blocker_cache[pkg] = \
 							blocker_cache.BlockerData(counter, blocker_atoms)
