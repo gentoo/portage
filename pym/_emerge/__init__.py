@@ -3191,6 +3191,7 @@ class depgraph(object):
 						blocker_data = \
 							blocker_cache.BlockerData(counter, blocker_atoms)
 						blocker_cache[pkg] = blocker_data
+						continue
 
 					if blocker_data:
 						blocker_atoms = blocker_data.atoms
