@@ -3185,7 +3185,7 @@ class depgraph(object):
 						counter = long(node.metadata["COUNTER"])
 						blocker_data = \
 							blocker_cache.BlockerData(counter, blocker_atoms)
-						blocker_cache[pkg] = blocker_data
+						blocker_cache[pkg.cpv] = blocker_data
 						continue
 
 					if blocker_data:
