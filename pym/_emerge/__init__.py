@@ -3149,19 +3149,14 @@ class depgraph(object):
 				final_db = self.mydbapi[myroot]
 				cpv_all_installed = self.trees[myroot]["vartree"].dbapi.cpv_all()
 				blocker_cache = BlockerCache(myroot, vardb)
-				for pkg in cpv_all_installed:
+				for cpv in cpv_all_installed:
 					blocker_atoms = None
-					metadata = dict(izip(self._mydbapi_keys,
-						vardb.aux_get(pkg, self._mydbapi_keys)))
-					node = Package(cpv=pkg, built=True,
-						installed=True, metadata=metadata,
-						type_name="installed", root=myroot)
-
-					
+					pkg = self._pkg_cache[
+						("installed", myroot, cpv, "nomerge")]
 					blockers = None
-					if self.digraph.contains(node):
+					if self.digraph.contains(pkg):
 						try:
-							blockers = self._blocker_parents.child_nodes(node)
+							blockers = self._blocker_parents.child_nodes(pkg)
 						except KeyError:
 							blockers = []
 					if blockers is not None:
@@ -3171,7 +3166,7 @@ class depgraph(object):
 					# If this node has any blockers, create a "nomerge"
 					# node for it so that they can be enforced.
 					self.spinner.update()
-					blocker_data = blocker_cache.get(pkg)
+					blocker_data = blocker_cache.get(cpv)
 
 					# If blocker data from the graph is available, use
 					# it to validate the cache and update the cache if
@@ -3196,9 +3191,8 @@ class depgraph(object):
 					if blocker_data:
 						blocker_atoms = blocker_data.atoms
 					else:
-						dep_vals = vardb.aux_get(pkg, dep_keys)
-						myuse = vardb.aux_get(pkg, ["USE"])[0].split()
-						depstr = " ".join(dep_vals)
+						myuse = pkg.metadata["USE"].split()
+						depstr = " ".join(pkg.metadata[k] for k in dep_keys)
 						# It is crucial to pass in final_db here in order to
 						# optimize dep_check calls by eliminating atoms via
 						# dep_wordreduce and dep_eval calls.
@@ -3216,32 +3210,30 @@ class depgraph(object):
 								# matches (this can happen if an atom lacks a
 								# category).
 								show_invalid_depstring_notice(
-									node, depstr, str(e))
+									pkg, depstr, str(e))
 								del e
 								raise
 						finally:
 							portage.dep._dep_check_strict = True
 						if not success:
-							slot_atom = "%s:%s" % (portage.dep_getkey(pkg),
-								vardb.aux_get(pkg, ["SLOT"])[0])
-							if slot_atom in modified_slots[myroot]:
+							if pkg.slot_atom in modified_slots[myroot]:
 								# This package is being replaced anyway, so
 								# ignore invalid dependencies so as not to
 								# annoy the user too much (otherwise they'd be
 								# forced to manually unmerge it first).
 								continue
-							show_invalid_depstring_notice(node, depstr, atoms)
+							show_invalid_depstring_notice(pkg, depstr, atoms)
 							return False
 						blocker_atoms = [myatom for myatom in atoms \
 							if myatom.startswith("!")]
 						blocker_atoms.sort()
-						counter = long(vardb.aux_get(pkg, ["COUNTER"])[0])
-						blocker_cache[pkg] = \
+						counter = long(pkg.metadata["COUNTER"])
+						blocker_cache[cpv] = \
 							blocker_cache.BlockerData(counter, blocker_atoms)
 					if blocker_atoms:
 						for myatom in blocker_atoms:
 							blocker = Blocker(atom=myatom[1:], root=myroot)
-							self._blocker_parents.add(blocker, node)
+							self._blocker_parents.add(blocker, pkg)
 				blocker_cache.flush()
 				del blocker_cache
 
