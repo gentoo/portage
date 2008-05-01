@@ -10,26 +10,26 @@ case "${RM}" in ""|@*@) RM=rm ;; esac
 case "${BASENAME}" in ""|@*@) BASENAME=basename ;; esac
 case "${DIRNAME}" in ""|@*@) DIRNAME=dirname ;; esac
 
-mydir=`${DIRNAME} $0`
-myname=`${BASENAME} $0`
-mydir=`cd ${mydir};pwd`
-me=${mydir}/${myname}
+mydir="`${DIRNAME} $0`"
+myname="`${BASENAME} $0`"
+mydir="`cd ${mydir};pwd`"
+me="${mydir}/${myname}"
 
 . ${mydir}/subst-install.vars
 
-substinstall_tmpdir=${TMPDIR-/tmp}/${myname}.$$
+substinstall_tmpdir="${TMPDIR-/tmp}/${myname}.$$"
 trap "${RM} -rf \${substinstall_tmpdir}" "0"
-mkdir -p ${substinstall_tmpdir} \
+mkdir -p "${substinstall_tmpdir}" \
 || { echo "cannot create directory ${substinstall_tmpdir}" >&2 ; exit 1 ; }
 
-substinstall_tmpsed=${substinstall_tmpdir}/sedscript
+substinstall_tmpsed="${substinstall_tmpdir}/sedscript"
 
 {	for v in ${all_configurevars}
 	do
 		eval "echo \"s,@${v}@,\${${v}},g;\""
 	done
-} | ${SED} 's/^s,@/s@@/; s/@,/@@/; s/,g;$/@;/; s/[\\&,]/\\&/g;
-   s/^s@@/s,@/; s/@@/@,/; s/@;$/,g;/' > ${substinstall_tmpsed}
+} | "${SED}" 's/^s,@/s@@/; s/@,/@@/; s/,g;$/@;/; s/[\\&,]/\\&/g;
+   s/^s@@/s,@/; s/@@/@,/; s/@;$/,g;/' > "${substinstall_tmpsed}"
 
 substinstall_installcmd=
 substinstall_sources=
@@ -37,15 +37,15 @@ substinstall_target=
 
 while [ "$1" ]
 do
-	substinstall_arg=$1
+	substinstall_arg="$1"
 	shift
 	case "${substinstall_arg}" in
 	--installcmd=*)
-		substinstall_installcmd=`echo ${substinstall_arg} | ${SED} -e 's,^--installcmd=,,'`
+		substinstall_installcmd=`echo "${substinstall_arg}" | "${SED}" -e 's,^--installcmd=,,'`
 		;;
 	*)
 		substinstall_sources="${substinstall_sources} ${substinstall_target}"
-		substinstall_target=${substinstall_arg}
+		substinstall_target="${substinstall_arg}"
 		;;
 	esac
 done
@@ -56,17 +56,17 @@ substinstall_tmpsources=
 
 for substinstall_s in ${substinstall_sources}
 do
-	[ -r ${substinstall_s} ] || { echo "cannot read ${substinstall_s}" >&2 ; exit 1 ; }
-	tmpsource=${substinstall_tmpdir}/`basename ${substinstall_s}`.subst
-	${SED} -f ${substinstall_tmpsed} < ${substinstall_s} > ${tmpsource} \
+	[ -r "${substinstall_s}" ] || { echo "cannot read ${substinstall_s}" >&2 ; exit 1 ; }
+	tmpsource="${substinstall_tmpdir}/`basename ${substinstall_s}`.subst"
+	"${SED}" -f "${substinstall_tmpsed}" < "${substinstall_s}" > "${tmpsource}" \
 	|| { echo "cannot sed from ${substinstall_s} to ${tmpsource}" >&2 ; exit 1 ; }
 	substinstall_tmpsources="${substinstall_tmpsources} ${tmpsource}"
 done
 
-${substinstall_installcmd} ${substinstall_tmpsources} ${substinstall_target}
+eval "${substinstall_installcmd} ${substinstall_tmpsources} ${substinstall_target}"
 
 substinstall_installrv=$?
 
-${RM} -rf ${substinstall_tmpdir}
+"${RM}" -rf "${substinstall_tmpdir}"
 
 exit ${substinstall_installrv}
