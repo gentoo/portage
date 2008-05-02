@@ -4917,7 +4917,7 @@ class depgraph(object):
 		trees = self.trees
 		serialized_tasks = []
 		for x in mergelist:
-			if len(x) != 4:
+			if not (isinstance(x, list) and len(x) == 4):
 				continue
 			pkg_type, myroot, pkg_key, action = x
 			if pkg_type not in self.pkg_tree_map:
