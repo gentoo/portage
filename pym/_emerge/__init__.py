@@ -7878,6 +7878,7 @@ def action_build(settings, trees, mtimedb,
 				portage.writemsg_stdout(colorize("WARN", "WARNING:")
 					+ " AUTOCLEAN is disabled.  This can cause serious"
 					+ " problems due to overlapping packages.\n")
+			trees[settings["ROOT"]]["vartree"].dbapi.plib_registry.pruneNonExisting()
 
 		if merge_count and not (buildpkgonly or fetchonly or pretend):
 			post_emerge(trees, mtimedb, retval)

@@ -27,7 +27,7 @@ from portage.elog import elog_process
 from portage.elog.messages import ewarn
 from portage.elog.filtering import filter_mergephases, filter_unmergephases
 
-import os, re, sys, stat, errno, commands, copy, time
+import os, re, sys, stat, errno, commands, copy, time, subprocess
 from itertools import izip
 
 try:
@@ -135,38 +135,63 @@ class LinkageMap(object):
 	def rebuild(self):
 		libs = {}
 		obj_properties = {}
+		lines = []
 		for cpv in self._dbapi.cpv_all():
-			lines = grabfile(self._dbapi.getpath(cpv, filename="NEEDED.2"))
-			for l in lines:
-				fields = l.strip("\n").split(";")
-				if len(fields) < 5:
-					print "Error", fields
-					# insufficient field length
-					continue
-				arch = fields[0]
-				obj = fields[1]
-				soname = fields[2]
-				path = fields[3].replace("${ORIGIN}", os.path.dirname(obj)).replace("$ORIGIN", os.path.dirname(obj)).split(":")
-				needed = fields[4].split(",")
-				if soname:
-					libs.setdefault(soname, {arch: {"providers": [], "consumers": []}})
-					libs[soname].setdefault(arch, {"providers": [], "consumers": []})
-					libs[soname][arch]["providers"].append(obj)
-				for x in needed:
-					libs.setdefault(x, {arch: {"providers": [], "consumers": []}})
-					libs[x].setdefault(arch, {"providers": [], "consumers": []})
-					libs[x][arch]["consumers"].append(obj)
-				obj_properties[obj] = (arch, path, needed, soname)
+			lines += grabfile(self._dbapi.getpath(cpv, filename="NEEDED.2"))
+
+		# have to call scanelf for preserved libs here as they aren't 
+		# registered in NEEDED.2 files
+		if self._dbapi.plib_registry and self._dbapi.plib_registry.getPreservedLibs():
+			args = ["/usr/bin/scanelf", "-yqF", "%a;%F;%S;%r;%n"]
+			for items in self._dbapi.plib_registry.getPreservedLibs().values():
+				args += items
+			proc = subprocess.Popen(args, stdout=subprocess.PIPE)
+			output = [l[3:] for l in proc.communicate()[0].split("\n")]
+			lines += output
+
+		for l in lines:
+			if l.strip() == "":
+				continue
+			fields = l.strip("\n").split(";")
+			if len(fields) < 5:
+				print "Error", fields
+				# insufficient field length
+				continue
+			arch = fields[0]
+			obj = fields[1]
+			soname = fields[2]
+			path = fields[3].replace("${ORIGIN}", os.path.dirname(obj)).replace("$ORIGIN", os.path.dirname(obj)).split(":")
+			needed = fields[4].split(",")
+			if soname:
+				libs.setdefault(soname, {arch: {"providers": [], "consumers": []}})
+				libs[soname].setdefault(arch, {"providers": [], "consumers": []})
+				libs[soname][arch]["providers"].append(obj)
+			for x in needed:
+				libs.setdefault(x, {arch: {"providers": [], "consumers": []}})
+				libs[x].setdefault(arch, {"providers": [], "consumers": []})
+				libs[x][arch]["consumers"].append(obj)
+			obj_properties[obj] = (arch, needed, path, soname)
 		
 		self._libs = libs
 		self._obj_properties = obj_properties
+
+	def listLibraryObjects(self):
+		rValue = []
+		if not self._libs:
+			self.rebuild()
+		for soname in self._libs:
+			for arch in self._libs[soname]:
+				rValue.extend(self._libs[soname][arch]["providers"])
+		return rValue
 	
 	def findProviders(self, obj):
+		if not self._libs:
+			self.rebuild()
 		obj = os.path.realpath(obj)
 		rValue = {}
 		if obj not in self._obj_properties:
 			raise KeyError("%s not in object list" % obj)
-		arch, path, needed, soname = self._obj_properties[obj]
+		arch, needed, path, soname = self._obj_properties[obj]
 		path.extend(self._defpath)
 		path = [os.path.realpath(x) for x in path]
 		for x in needed:
@@ -181,13 +206,15 @@ class LinkageMap(object):
 		return rValue
 	
 	def findConsumers(self, obj):
+		if not self._libs:
+			self.rebuild()
 		obj = os.path.realpath(obj)
 		rValue = set()
 		for soname in self._libs:
 			for arch in self._libs[soname]:
 				if obj in self._libs[soname][arch]["providers"]:
 					for x in self._libs[soname][arch]["consumers"]:
-						path = self._obj_properties[x][1]
+						path = self._obj_properties[x][2]
 						path = [os.path.realpath(y) for y in path+self._defpath]
 						if soname[0] == os.sep and os.path.realpath(soname) == os.path.realpath(obj):
 							rValue.add(x)
@@ -275,13 +302,14 @@ class vardbapi(dbapi):
 		self._counter_path = os.path.join(root,
 			CACHE_PATH.lstrip(os.path.sep), "counter")
 
-		self.libmap = LibraryPackageMap(os.path.join(self.root, CACHE_PATH.lstrip(os.sep), "library_consumers"), self)
 		try:
 			self.plib_registry = PreservedLibsRegistry(
 				os.path.join(self.root, PRIVATE_PATH, "preserved_libs_registry"))
 		except PermissionDenied:
 			# apparently this user isn't allowed to access PRIVATE_PATH
 			self.plib_registry = None
+
+		self.linkmap = LinkageMap(self)
 
 	def getpath(self, mykey, filename=None):
 		rValue = os.path.join(self.root, VDB_PATH, mykey)
@@ -1253,31 +1281,18 @@ class dblink(object):
 					return retval
 
 			# regenerate reverse NEEDED map
-			self.vartree.dbapi.libmap.update()
+			self.vartree.dbapi.linkmap.rebuild()
 			
 			# remove preserved libraries that don't have any consumers left
 			# FIXME: this code is quite ugly and can likely be optimized in several ways
 			plib_dict = plib_registry.getPreservedLibs()
 			for cpv in plib_dict:
-				keeplist = []
 				plib_dict[cpv].sort()
 				for f in plib_dict[cpv]:
-					if not os.path.exists(f) or os.path.realpath(f) in keeplist:
+					if not os.path.exists(f):
 						continue
 					unlink_list = []
-					while os.path.islink(f):
-						if os.path.basename(f) in self.vartree.dbapi.libmap.get():
-							unlink_list = []
-							keeplist.append(os.path.realpath(f))
-							break
-						else:
-							unlink_list.append(f)
-							# only follow symlinks if the target is also a preserved lib object
-							if os.readlink(f) in plib_dict[cpv]:
-								f = os.readlink(f)
-							else:
-								break
-					if not os.path.islink(f) and not os.path.basename(f) in self.vartree.dbapi.libmap.get():
+					if not self.vartree.dbapi.linkmap.findConsumers(f):
 						unlink_list.append(f)
 					for obj in unlink_list:
 						try:
@@ -1664,22 +1679,27 @@ class dblink(object):
 
 	def _preserve_libs(self, srcroot, destroot, mycontents, counter):
 		# read global reverse NEEDED map
-		libmap = self.vartree.dbapi.libmap.get()
+		linkmap = self.vartree.dbapi.linkmap
+		linkmap.rebuild()
+		liblist = linkmap.listLibraryObjects()
 
 		# get list of libraries from old package instance
 		old_contents = self._installed_instance.getcontents().keys()
-		old_libs = set([os.path.basename(x) for x in old_contents]).intersection(libmap)
+		old_libs = set(old_contents).intersection(liblist)
 
 		# get list of libraries from new package instance
-		mylibs = set([os.path.basename(x) for x in mycontents]).intersection(libmap)
+		mylibs = set(mycontents).intersection(liblist)
 
 		# check which libs are present in the old, but not the new package instance
-		preserve_libs = old_libs.difference(mylibs)
+		candidates = old_libs.difference(mylibs)
+		for x in old_contents:
+			if os.path.islink(x) and os.path.realpath(x) in candidates:
+				candidates.add(x)
 
 		# ignore any libs that are only internally used by the package
 		def has_external_consumers(lib, contents, otherlibs):
-			consumers = set(libmap[lib])
-			contents_without_libs = [x for x in contents if not os.path.basename(x) in otherlibs]
+			consumers = linkmap.findConsumers(lib)
+			contents_without_libs = [x for x in contents if x not in otherlibs]
 			
 			# just used by objects that will be autocleaned
 			if len(consumers.difference(contents_without_libs)) == 0:
@@ -1696,23 +1716,34 @@ class dblink(object):
 			else:
 				return True
 
-		for lib in list(preserve_libs):
-			if not has_external_consumers(lib, old_contents, preserve_libs):
-				preserve_libs.remove(lib)
-			# only preserve the lib if there is no other copy in the search path
-			for path in getlibpaths():
-				fullname = os.path.join(path, lib)
-				if fullname not in old_contents and os.path.exists(fullname) and lib in preserve_libs:
-					preserve_libs.remove(lib)
-			
-		# get the real paths for the libs
-		preserve_paths = [x for x in old_contents if os.path.basename(x) in preserve_libs]
-		del old_contents, old_libs, mylibs, preserve_libs
-
+		for lib in list(candidates):
+			if not has_external_consumers(lib, old_contents, candidates):
+				candidates.remove(lib)
+			# only preserve the lib if there is no other copy to use for each consumer
+			keep = False
+			for c in linkmap.findConsumers(lib):
+				localkeep = True
+				providers = linkmap.findProviders(c)
+				for soname in providers:
+					if lib in providers[soname]:
+						for p in providers[soname]:
+							if p not in candidates:
+								localkeep = False
+								break
+						break
+				if localkeep:
+					keep = True
+		
+		del mylibs, mycontents, old_contents, liblist
+		
 		# inject files that should be preserved into our image dir
 		import shutil
 		missing_paths = []
-		for x in preserve_paths:
+		for x in candidates:
+			# skip existing files so the 'new' libs aren't overwritten
+			if os.path.exists(os.path.join(srcroot, x.lstrip(os.sep))):
+				missing_paths.append(x)
+				continue
 			print "injecting %s into %s" % (x, srcroot)
 			if not os.path.exists(os.path.join(destroot, x.lstrip(os.sep))):
 				print "%s does not exist so can't be preserved" % x
@@ -1730,14 +1761,14 @@ class dblink(object):
 				os.symlink(linktarget, os.path.join(srcroot, x.lstrip(os.sep)))
 				if linktarget[0] != os.sep:
 					linktarget = os.path.join(os.path.dirname(x), linktarget)
-				preserve_paths.append(linktarget)
+				candidates.add(linktarget)
 			else:
 				shutil.copy2(os.path.join(destroot, x.lstrip(os.sep)),
 					os.path.join(srcroot, x.lstrip(os.sep)))
 
-		preserve_paths = [x for x in preserve_paths if x not in missing_paths]
+		preserve_paths = [x for x in candidates if x not in missing_paths]
 
-		del missing_paths
+		del missing_paths, candidates
 
 		# keep track of the libs we preserved
 		self.vartree.dbapi.plib_registry.register(self.mycpv, self.settings["SLOT"], counter, preserve_paths)
@@ -2275,7 +2306,7 @@ class dblink(object):
 		del conf_mem_file
 
 		# regenerate reverse NEEDED map
-		self.vartree.dbapi.libmap.update()
+		self.vartree.dbapi.linkmap.rebuild()
 
 		#do postinst script
 		self.settings["PORTAGE_UPDATE_ENV"] = \
