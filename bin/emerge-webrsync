@@ -35,7 +35,7 @@ fi
 eval $(portageq envvar -v FEATURES FETCHCOMMAND GENTOO_MIRRORS \
 	PORTAGE_BIN_PATH PORTAGE_GPG_DIR \
 	PORTAGE_NICENESS PORTAGE_RSYNC_EXTRA_OPTS PORTAGE_TMPDIR PORTDIR \
-	http_proxy ftp_proxy EPREFIX)
+	http_proxy ftp_proxy EPREFIX PORTAGE_USER PORTAGE_GROUP)
 DISTDIR="${PORTAGE_TMPDIR}/emerge-webrsync"
 export http_proxy ftp_proxy
 
@@ -174,8 +174,8 @@ sync_local() {
 	vecho "Syncing local tree ..."
 
 	if type -P tarsync > /dev/null ; then
-		local chown_opts="-o portage -g portage"
-		chown portage:portage portage > /dev/null 2>&1 || chown_opts=""
+		local chown_opts="-o ${PORTAGE_USER:-portage} -g ${PORTAGE_GROUP:-portage}"
+		chown ${PORTAGE_USER:-portage}:${PORTAGE_GROUP:-portage} portage > /dev/null 2>&1 || chown_opts=""
 		if ! tarsync $(vvecho -v) -s 1 ${chown_opts} \
 			-e /distfiles -e /packages -e /local "${file}" "${PORTDIR}"; then
 			eecho "tarsync failed; tarball is corrupt? (${file})"
