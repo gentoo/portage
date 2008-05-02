@@ -1518,6 +1518,9 @@ class PackageVirtualDbapi(portage.dbapi):
 		obj._cpv_map = self._cpv_map.copy()
 		return obj
 
+	def __iter__(self):
+		return self._cpv_map.itervalues()
+
 	def __contains__(self, item):
 		existing = self._cpv_map.get(item.cpv)
 		if existing is not None and \
@@ -3118,14 +3121,12 @@ class depgraph(object):
 				portdb = self.trees[myroot]["porttree"].dbapi
 				pkgsettings = self.pkgsettings[myroot]
 				final_db = self.mydbapi[myroot]
-				cpv_all_installed = self.trees[myroot]["vartree"].dbapi.cpv_all()
 				blocker_cache = BlockerCache(myroot, vardb)
 				stale_cache = set(blocker_cache)
-				for cpv in cpv_all_installed:
+				for pkg in vardb:
+					cpv = pkg.cpv
 					stale_cache.discard(cpv)
 					blocker_atoms = None
-					pkg = self._pkg_cache[
-						("installed", myroot, cpv, "nomerge")]
 					blockers = None
 					if self.digraph.contains(pkg):
 						try:
