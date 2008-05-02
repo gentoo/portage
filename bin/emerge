@@ -3372,6 +3372,14 @@ class depgraph(object):
 				blocker_cache.flush()
 				del blocker_cache
 
+		# Discard any "uninstall" tasks scheduled by previous calls
+		# to this method, since those tasks may not make sense given
+		# the current graph state.
+		previous_uninstall_tasks = self._blocker_uninstalls.leaf_nodes()
+		if previous_uninstall_tasks:
+			self._blocker_uninstalls = digraph()
+			self.digraph.difference_update(previous_uninstall_tasks)
+
 		for blocker in self._blocker_parents.leaf_nodes():
 			self.spinner.update()
 			root_config = self.roots[blocker.root]
