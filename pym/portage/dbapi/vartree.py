@@ -142,7 +142,7 @@ class LinkageMap(object):
 		# have to call scanelf for preserved libs here as they aren't 
 		# registered in NEEDED.ELF.2 files
 		if self._dbapi.plib_registry and self._dbapi.plib_registry.getPreservedLibs():
-			args = ["/usr/bin/scanelf", "-yqF", "%a;%F;%S;%r;%n"]
+			args = [EPREFIX+"/usr/bin/scanelf", "-yqF", "%a;%F;%S;%r;%n"]
 			for items in self._dbapi.plib_registry.getPreservedLibs().values():
 				args += items
 			proc = subprocess.Popen(args, stdout=subprocess.PIPE)
@@ -256,22 +256,11 @@ class LibraryPackageMap(object):
 				for lib in libs:
 					# In Prefix we can't do anything about host provided
 					# libs, it also makes little sense to try and
-					# preserve them, so filter them out here.  See below
-					# why we can detect this in certain cases.
+					# preserve them, so filter them out here.
 					if '/' in lib:
 						if not lib.startswith(EPREFIX):
 							continue
 
-					# The contract says we only have basenames in the
-					# keys of the reverse map (as that is the only thing
-					# available on Linux/ELF) and the code calling this
-					# assumes/uses this.  However, Darwin's MACH-O
-					# objects have full paths to the objects, and
-					# Sun/Solaris' ELF objects can have (and do have)
-					# absolute path arguments, so extract the basename
-					# for the key here to make sure we respect the
-					# contract.
-					lib = os.path.basename(lib)
 					if not obj_dict.has_key(lib):
 						obj_dict[lib] = [mysplit[0]]
 					else:
