@@ -3793,6 +3793,9 @@ class depgraph(object):
 			mygraph.difference_update(selected_nodes)
 
 			for node in selected_nodes:
+				if isinstance(node, Package) and \
+					node.operation == "nomerge":
+					continue
 
 				# Handle interactions between blockers
 				# and uninstallation tasks.
@@ -3826,8 +3829,7 @@ class depgraph(object):
 							myblocker_uninstalls.remove(blocker)
 							solved_blockers.add(blocker)
 
-				if node[-1] != "nomerge":
-					retlist.append(node)
+				retlist.append(node)
 
 				if isinstance(node, Package) and \
 					"uninstall" == node.operation:
