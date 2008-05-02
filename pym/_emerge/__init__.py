@@ -3430,7 +3430,7 @@ class depgraph(object):
 		complete = "complete" in self.myparams
 		myblocker_parents = self._blocker_parents.copy()
 		asap_nodes = []
-		portage_node = None
+
 		def get_nodes(**kwargs):
 			"""
 			Returns leaf nodes excluding Uninstall instances
@@ -3441,13 +3441,15 @@ class depgraph(object):
 				node.operation != "uninstall"]
 
 		# sys-apps/portage needs special treatment if ROOT="/"
-		for node in mygraph.order:
-			if isinstance(node, Package) and \
-				"sys-apps/portage" == node.cp and \
-				"/" == node.root:
-				portage_node = node
-				asap_nodes.append(node)
-				break
+		portage_node = self.mydbapi["/"].match_pkgs("sys-apps/portage")
+		if portage_node:
+			portage_node = portage_node[0]
+		else:
+			portage_node = None
+		if portage_node is not None and \
+			(not mygraph.contains(portage_node) or \
+			portage_node.operation == "nomerge"):
+			portage_node = None
 
 		ignore_priority_soft_range = [None]
 		ignore_priority_soft_range.extend(
