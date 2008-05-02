@@ -32,7 +32,6 @@ class SetConfig(SafeConfigParser):
 		self.settings = settings
 		self._parsed = False
 		self.active = []
-		self.aliases = {}
 
 	def _parse(self):
 		if self._parsed:
@@ -58,11 +57,17 @@ class SetConfig(SafeConfigParser):
 			# create single or multiple instances of the given class depending on configuration
 			if self.has_option(sname, "multiset") and self.getboolean(sname, "multiset"):
 				if hasattr(setclass, "multiBuilder"):
+					newsets = {}
 					try:
-						self.psets.update(setclass.multiBuilder(optdict, self.settings, self.trees))
+						newsets = setclass.multiBuilder(optdict, self.settings, self.trees)
 					except SetConfigError, e:
 						self.errors.append("Configuration error in section '%s': %s" % (sname, str(e)))
 						continue
+					for x in newsets:
+						if x in self.psets:
+							self.errors.append("Redefinition of set '%s' (sections: '%s', '%s')" % (setname, self.psets[setname].creator, sname))
+						newsets[x].creator = sname
+					self.psets.update(newsets)
 				else:
 					self.errors.append("Section '%s' is configured as multiset, but '%s' doesn't support that configuration" % (sname, classname))
 					continue
@@ -71,9 +76,12 @@ class SetConfig(SafeConfigParser):
 					setname = self.get(sname, "name")
 				except NoOptionError:
 					setname = sname
+				if setname in self.psets:
+					self.errors.append("Redefinition of set '%s' (sections: '%s', '%s')" % (setname, self.psets[setname].creator, sname))
 				if hasattr(setclass, "singleBuilder"):
 					try:
 						self.psets[setname] = setclass.singleBuilder(optdict, self.settings, self.trees)
+						self.psets[setname].creator = sname
 					except SetConfigError, e:
 						self.errors.append("Configuration error in section '%s': %s" % (sname, str(e)))
 						continue
