@@ -5852,6 +5852,7 @@ def unmerge(root_config, myopts, unmerge_action,
 			if candidates:
 				stop = False
 				installed_sets += candidates
+	installed_sets = [x for x in installed_sets if x not in root_config.setconfig.active]
 	del stop, pos
 
 	# we don't want to unmerge packages that are still listed in user-editable package sets
@@ -5992,7 +5993,7 @@ def unmerge(root_config, myopts, unmerge_action,
 				if clean_world:
 					sets["world"].cleanPackage(vartree.dbapi, y)
 				emergelog(xterm_titles, " >>> unmerge success: "+y)
-	if clean_world_
+	if clean_world:
 		for s in root_config.setconfig.active:
 			sets["world"].remove(SETPREFIX+s)
 	return 1
