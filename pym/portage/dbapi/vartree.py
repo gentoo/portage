@@ -1313,7 +1313,7 @@ class dblink(object):
 						unlink_list.append(f)
 					for obj in unlink_list:
 						try:
-							if os.path.islink(f):
+							if os.path.islink(obj):
 								obj_type = "sym"
 							else:
 								obj_type = "obj"
