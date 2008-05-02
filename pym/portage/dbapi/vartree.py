@@ -137,10 +137,10 @@ class LinkageMap(object):
 		obj_properties = {}
 		lines = []
 		for cpv in self._dbapi.cpv_all():
-			lines += grabfile(self._dbapi.getpath(cpv, filename="NEEDED.2"))
+			lines += grabfile(self._dbapi.getpath(cpv, filename="NEEDED.ELF.2"))
 
 		# have to call scanelf for preserved libs here as they aren't 
-		# registered in NEEDED.2 files
+		# registered in NEEDED.ELF.2 files
 		if self._dbapi.plib_registry and self._dbapi.plib_registry.getPreservedLibs():
 			args = ["/usr/bin/scanelf", "-yqF", "%a;%F;%S;%r;%n"]
 			for items in self._dbapi.plib_registry.getPreservedLibs().values():
