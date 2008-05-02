@@ -3094,7 +3094,7 @@ class depgraph(object):
 			# that are initially satisfied.
 			while self._unsatisfied_deps:
 				dep = self._unsatisfied_deps.pop()
-				matches = vardb.match(dep.atom)
+				matches = vardb.match_pkgs(dep.atom)
 				if not matches:
 					# Initially unsatisfied.
 					continue
@@ -3102,12 +3102,7 @@ class depgraph(object):
 				# Add the installed package to the graph so that it
 				# will be appropriately reported as a slot collision
 				# (possibly solvable via backtracking).
-				cpv = matches[-1] # highest match
-				metadata = dict(izip(self._mydbapi_keys,
-					vardb.aux_get(cpv, self._mydbapi_keys)))
-				pkg = Package(type_name="installed", root=root,
-					cpv=cpv, metadata=metadata, built=True,
-					installed=True)
+				pkg = matches[-1] # highest match
 				if not self._add_pkg(pkg, dep.parent,
 					priority=dep.priority, depth=dep.depth):
 					return 0
