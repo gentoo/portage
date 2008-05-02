@@ -108,7 +108,7 @@ class StaticFileSet(EditablePackageSet):
 	def multiBuilder(self, options, settings, trees):
 		rValue = {}
 		directory = options.get("directory", os.path.join(settings["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH.lstrip(os.sep), "sets"))
-		name_pattern = options.get("name_pattern", "sets/${name}")
+		name_pattern = options.get("name_pattern", "${name}")
 		if not "$name" in name_pattern and not "${name}" in name_pattern:
 			raise SetConfigError("name_pattern doesn't include ${name} placeholder")
 		greedy = get_boolean(options, "greedy", False)
