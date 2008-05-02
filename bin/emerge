@@ -1531,26 +1531,6 @@ class BlockerCache(DictMixin):
 			isinstance(self._cache_data, dict) and \
 			self._cache_data.get("version") == self._cache_version and \
 			isinstance(self._cache_data.get("blockers"), dict)
-		if cache_valid:
-			invalid_cache = set()
-			for cpv, value \
-				in self._cache_data["blockers"].iteritems():
-				if not (isinstance(value, tuple) and len(value) == 2):
-					invalid_cache.add(cpv)
-					continue
-				counter, atoms = value
-				try:
-					if counter != long(self._vardb.aux_get(cpv, ["COUNTER"])[0]):
-						invalid_cache.add(cpv)
-						continue
-				except KeyError:
-					# The package is no longer installed.
-					invalid_cache.add(cpv)
-					continue
-			for cpv in invalid_cache:
-				del self._cache_data["blockers"][cpv]
-			if not self._cache_data["blockers"]:
-				cache_valid = False
 		if not cache_valid:
 			self._cache_data = {"version":self._cache_version}
 			self._cache_data["blockers"] = {}
@@ -1599,6 +1579,13 @@ class BlockerCache(DictMixin):
 			(blocker_data.counter, blocker_data.atoms)
 		self._modified = True
 
+	def __iter__(self):
+		return iter(self._cache_data["blockers"])
+
+	def __delitem__(self, cpv):
+		del self._cache_data["blockers"][cpv]
+		self._modified = True
+
 	def __getitem__(self, cpv):
 		"""
 		@rtype: BlockerData
@@ -1609,9 +1596,7 @@ class BlockerCache(DictMixin):
 	def keys(self):
 		"""This needs to be implemented so that self.__repr__() doesn't raise
 		an AttributeError."""
-		if self._cache_data and "blockers" in self._cache_data:
-			return self._cache_data["blockers"].keys()
-		return []
+		return list(self)
 
 def show_invalid_depstring_notice(parent_node, depstring, error_msg):
 
@@ -3282,7 +3267,9 @@ class depgraph(object):
 				final_db = self.mydbapi[myroot]
 				cpv_all_installed = self.trees[myroot]["vartree"].dbapi.cpv_all()
 				blocker_cache = BlockerCache(myroot, vardb)
+				stale_cache = set(blocker_cache)
 				for cpv in cpv_all_installed:
+					stale_cache.discard(cpv)
 					blocker_atoms = None
 					pkg = self._pkg_cache[
 						("installed", myroot, cpv, "nomerge")]
@@ -3300,6 +3287,9 @@ class depgraph(object):
 					# node for it so that they can be enforced.
 					self.spinner.update()
 					blocker_data = blocker_cache.get(cpv)
+					if blocker_data is not None and \
+						blocker_data.counter != long(pkg.metadata["COUNTER"]):
+						blocker_data = None
 
 					# If blocker data from the graph is available, use
 					# it to validate the cache and update the cache if
@@ -3325,7 +3315,9 @@ class depgraph(object):
 						blocker_atoms = blocker_data.atoms
 					else:
 						myuse = pkg.metadata["USE"].split()
-						depstr = " ".join(pkg.metadata[k] for k in dep_keys)
+						# Use aux_get() to trigger FakeVartree global
+						# updates on *DEPEND when appropriate.
+						depstr = " ".join(vardb.aux_get(pkg.cpv, dep_keys))
 						# It is crucial to pass in final_db here in order to
 						# optimize dep_check calls by eliminating atoms via
 						# dep_wordreduce and dep_eval calls.
@@ -3369,6 +3361,8 @@ class depgraph(object):
 						for myatom in blocker_atoms:
 							blocker = Blocker(atom=myatom[1:], root=myroot)
 							self._blocker_parents.add(blocker, pkg)
+				for cpv in stale_cache:
+					del blocker_cache[cpv]
 				blocker_cache.flush()
 				del blocker_cache
 
