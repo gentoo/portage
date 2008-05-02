@@ -742,12 +742,13 @@ class search(object):
 class RootConfig(object):
 	"""This is used internally by depgraph to track information about a
 	particular $ROOT."""
-	def __init__(self, trees, setconfig):
+	def __init__(self, settings, trees, setconfig):
 		self.trees = trees
-		self.settings = trees["vartree"].settings
+		self.settings = settings
 		self.root = self.settings["ROOT"]
 		self.setconfig = setconfig
 		self.sets = self.setconfig.getSets()
+		self.visible_pkgs = PackageVirtualDbapi(self.settings)
 
 def create_world_atom(pkg_key, metadata, args_set, root_config):
 	"""Create a new atom for the world file if one does not exist.  If the
@@ -839,7 +840,7 @@ def filter_iuse_defaults(iuse):
 			yield flag
 
 class SlotObject(object):
-	__slots__ = ("__weakref__")
+	__slots__ = ("__weakref__",)
 
 	def __init__(self, **kwargs):
 		classes = [self.__class__]
@@ -1285,12 +1286,13 @@ class Blocker(Task):
 class Package(Task):
 	__slots__ = ("built", "cpv", "depth",
 		"installed", "metadata", "root", "onlydeps", "type_name",
-		"cp", "cpv_slot", "slot_atom")
+		"cp", "cpv_slot", "pv_split", "slot_atom")
 	def __init__(self, **kwargs):
 		Task.__init__(self, **kwargs)
 		self.cp = portage.cpv_getkey(self.cpv)
 		self.slot_atom = "%s:%s" % (self.cp, self.metadata["SLOT"])
 		self.cpv_slot = "%s:%s" % (self.cpv, self.metadata["SLOT"])
+		self.pv_split = portage.catpkgsplit(self.cpv)[1:]
 
 	def _get_hash_key(self):
 		hash_key = getattr(self, "_hash_key", None)
@@ -1303,20 +1305,30 @@ class Package(Task):
 		return self._hash_key
 
 	def __lt__(self, other):
-		other_split = portage.catpkgsplit(other.cpv)
-		self_split = portage.catpkgsplit(self.cpv)
-		if other_split[:2] != self_split[:2]:
+		if other.cp != self.cp:
 			return False
-		if portage.pkgcmp(self_split[1:], other_split[1:]) < 0:
+		if portage.pkgcmp(self.pv_split, other.pv_split) < 0:
+			return True
+		return False
+
+	def __le__(self, other):
+		if other.cp != self.cp:
+			return False
+		if portage.pkgcmp(self.pv_split, other.pv_split) <= 0:
 			return True
 		return False
 
 	def __gt__(self, other):
-		other_split = portage.catpkgsplit(other.cpv)
-		self_split = portage.catpkgsplit(self.cpv)
-		if other_split[:2] != self_split[:2]:
+		if other.cp != self.cp:
 			return False
-		if portage.pkgcmp(self_split[1:], other_split[1:]) > 0:
+		if portage.pkgcmp(self.pv_split, other.pv_split) > 0:
+			return True
+		return False
+
+	def __ge__(self, other):
+		if other.cp != self.cp:
+			return False
+		if portage.pkgcmp(self.pv_split, other.pv_split) >= 0:
 			return True
 		return False
 
@@ -1539,6 +1551,9 @@ class PackageVirtualDbapi(portage.dbapi):
 			return True
 		return False
 
+	def match_pkgs(self, atom):
+		return [self._cpv_map[cpv] for cpv in self.match(atom)]
+
 	def _clear_cache(self):
 		if self._categories is not None:
 			self._categories = None
@@ -1582,11 +1597,17 @@ class PackageVirtualDbapi(portage.dbapi):
 		if cp_list is None:
 			cp_list = []
 			self._cp_map[pkg.cp] = cp_list
+		e_pkg = self._cpv_map.get(pkg.cpv)
+		if e_pkg is not None:
+			if e_pkg == pkg:
+				return
+			self.cpv_remove(e_pkg)
 		for e_pkg in cp_list:
 			if e_pkg.slot_atom == pkg.slot_atom:
 				if e_pkg == pkg:
 					return
 				self.cpv_remove(e_pkg)
+				break
 		cp_list.append(pkg)
 		self._cpv_map[pkg.cpv] = pkg
 		self._clear_cache()
@@ -1646,9 +1667,15 @@ class depgraph(object):
 		# to the graph.
 		self._graph_trees = {}
 		# All Package instances
-		self._pkg_cache = {}
+		self._pkg_cache = self._package_cache(self)
 		for myroot in trees:
 			self.trees[myroot] = {}
+			# Create a RootConfig instance that references
+			# the FakeVartree instead of the real one.
+			self.roots[myroot] = RootConfig(
+				trees[myroot]["vartree"].settings,
+				self.trees[myroot],
+				trees[myroot]["root_config"].setconfig)
 			for tree in ("porttree", "bintree"):
 				self.trees[myroot][tree] = trees[myroot][tree]
 			self.trees[myroot]["vartree"] = \
@@ -1659,10 +1686,6 @@ class depgraph(object):
 				clone=self.trees[myroot]["vartree"].settings)
 			self._slot_pkg_map[myroot] = {}
 			vardb = self.trees[myroot]["vartree"].dbapi
-			# Create a RootConfig instance that references
-			# the FakeVartree instead of the real one.
-			self.roots[myroot] = RootConfig(self.trees[myroot],
-				trees[myroot]["root_config"].setconfig)
 			preload_installed_pkgs = "--nodeps" not in self.myopts and \
 				"--buildpkgonly" not in self.myopts
 			# This fakedbapi instance will model the state that the vdb will
@@ -2248,10 +2271,26 @@ class depgraph(object):
 		if pkg.root != self.target_root:
 			return
 		atom_arg_map = self._atom_arg_map
+		root_config = self.roots[pkg.root]
 		for atom in self._set_atoms.iterAtomsForPackage(pkg):
 			atom_cp = portage.dep_getkey(atom)
 			if atom_cp != pkg.cp and \
 				self._have_new_virt(pkg.root, atom_cp):
+				continue
+			visible_pkgs = root_config.visible_pkgs.match_pkgs(atom)
+			visible_pkgs.reverse() # descending order
+			higher_slot = None
+			for visible_pkg in visible_pkgs:
+				if visible_pkg.cp != atom_cp:
+					continue
+				if pkg >= visible_pkg:
+					# This is descending order, and we're not
+					# interested in any versions <= pkg given.
+					break
+				if pkg.slot_atom != visible_pkg.slot_atom:
+					higher_slot = visible_pkg
+					break
+			if higher_slot is not None:
 				continue
 			for arg in atom_arg_map[(atom, pkg.root)]:
 				if isinstance(arg, PackageArg) and \
@@ -2570,14 +2609,14 @@ class depgraph(object):
 					portage.writemsg("!!! to aid in the detection of malicious intent.\n\n")
 					portage.writemsg("!!! THIS IS A POSSIBLE INDICATION OF TAMPERED FILES -- CHECK CAREFULLY.\n")
 					portage.writemsg("!!! Affected file: %s\n" % (e), noiselevel=-1)
-					sys.exit(1)
+					return 0, myfavorites
 				except portage.exception.InvalidSignature, e:
 					portage.writemsg("\n\n!!! An invalid gpg signature is preventing portage from calculating the\n")
 					portage.writemsg("!!! required dependencies. This is a security feature enabled by the admin\n")
 					portage.writemsg("!!! to aid in the detection of malicious intent.\n\n")
 					portage.writemsg("!!! THIS IS A POSSIBLE INDICATION OF TAMPERED FILES -- CHECK CAREFULLY.\n")
 					portage.writemsg("!!! Affected file: %s\n" % (e), noiselevel=-1)
-					sys.exit(1)
+					return 0, myfavorites
 				except SystemExit, e:
 					raise # Needed else can't exit
 				except Exception, e:
@@ -2772,7 +2811,10 @@ class depgraph(object):
 					# Make --noreplace take precedence over --newuse.
 					if not installed and noreplace and \
 						cpv in vardb.match(atom):
-						break
+						# If the installed version is masked, it may
+						# be necessary to look at lower versions,
+						# in case there is a visible downgrade.
+						continue
 					reinstall_for_flags = None
 					cache_key = (pkg_type, root, cpv, pkg_status)
 					calculated_use = True
@@ -2820,6 +2862,26 @@ class depgraph(object):
 								continue
 						except portage.exception.InvalidDependString:
 							continue
+
+						# Enable upgrade or downgrade to a version
+						# with visible KEYWORDS when the installed
+						# version is masked by KEYWORDS, but never
+						# reinstall the same exact version only due
+						# to a KEYWORDS mask.
+						if installed and matched_packages and \
+							pkgsettings.getMissingKeywords(
+							pkg.cpv, pkg.metadata):
+							different_version = None
+							for avail_pkg in matched_packages:
+								if not portage.dep.cpvequal(
+									pkg.cpv, avail_pkg.cpv):
+									different_version = avail_pkg
+									break
+							if different_version is not None:
+								# Only reinstall for KEYWORDS if
+								# it's not the same version.
+								continue
+
 					if not built and not calculated_use:
 						# This is avoided whenever possible because
 						# it's expensive.
@@ -2910,7 +2972,10 @@ class depgraph(object):
 						if not reinstall_for_flags and \
 							not must_reinstall and \
 							cpv in vardb.match(atom):
-							break
+							# If the installed version is masked, it may
+							# be necessary to look at lower versions,
+							# in case there is a visible downgrade.
+							continue
 					if not built:
 						myeb = cpv
 					matched_packages.append(pkg)
@@ -3558,6 +3623,10 @@ class depgraph(object):
 						continue
 
 					if "/" == task.root:
+						# Never uninstall sys-apps/portage
+						# except through replacement.
+						if "sys-apps/portage" == task.cp:
+							continue
 						# For packages in the system set, don't take
 						# any chances. If the conflict can't be resolved
 						# by a normal replacement operation then abort.
@@ -3679,7 +3748,7 @@ class depgraph(object):
 				print
 				print "!!! Note that circular dependencies can often be avoided by temporarily"
 				print "!!! disabling USE flags that trigger optional dependencies."
-				sys.exit(1)
+				raise self._unknown_internal_error()
 
 			# At this point, we've succeeded in selecting one or more nodes, so
 			# it's now safe to reset the prefer_asap and accept_root_node flags
@@ -4006,19 +4075,30 @@ class depgraph(object):
 				else:
 					blockers.append(addl)
 			else:
-				pkg = self._pkg_cache[tuple(x)]
-				metadata = pkg.metadata
 				pkg_status = x[3]
 				pkg_merge = ordered and pkg_status == "merge"
 				if not pkg_merge and pkg_status == "merge":
 					pkg_status = "nomerge"
+				built = pkg_type != "ebuild"
+				installed = pkg_type == "installed"
+				try:
+					pkg = self._pkg_cache[tuple(x)]
+				except KeyError:
+					if pkg_status != "uninstall":
+						raise
+					# A package scheduled for uninstall apparently
+					# isn't installed anymore. Since it's already
+					# been uninstalled, move on to the next task.
+					# This case should only be reachable in --resume
+					# mode, since otherwise the package would have
+					# been cached.
+					continue
+				metadata = pkg.metadata
 				ebuild_path = None
 				if pkg_type == "binary":
 					repo_name = self.roots[myroot].settings.get("PORTAGE_BINHOST")
 				else:
 					repo_name = metadata["repository"]
-				built = pkg_type != "ebuild"
-				installed = pkg_type == "installed"
 				if pkg_type == "ebuild":
 					ebuild_path = portdb.findname(pkg_key)
 					if not ebuild_path: # shouldn't happen
@@ -4684,7 +4764,11 @@ class depgraph(object):
 			fakedb[myroot].cpv_inject(pkg)
 			self.spinner.update()
 
-	class _unknown_internal_error(portage.exception.PortageException):
+	class _internal_exception(portage.exception.PortageException):
+		def __init__(self, value=""):
+			portage.exception.PortageException.__init__(self, value)
+
+	class _unknown_internal_error(_internal_exception):
 		"""
 		Used by the depgraph internally to terminate graph creation.
 		The specific reason for the failure should have been dumped
@@ -4692,7 +4776,7 @@ class depgraph(object):
 		may not be known.
 		"""
 
-	class _serialize_tasks_retry(portage.exception.PortageException):
+	class _serialize_tasks_retry(_internal_exception):
 		"""
 		This is raised by the _serialize_tasks() method when it needs to
 		be called again for some reason. The only case that it's currently
@@ -4823,6 +4907,17 @@ class depgraph(object):
 		def aux_get(self, cpv, wants):
 			metadata = self._cpv_pkg_map[cpv].metadata
 			return [metadata.get(x, "") for x in wants]
+
+	class _package_cache(dict):
+		def __init__(self, depgraph):
+			dict.__init__(self)
+			self._depgraph = depgraph
+
+		def __setitem__(self, k, v):
+			dict.__setitem__(self, k, v)
+			root_config = self._depgraph.roots[v.root]
+			if visible(root_config.settings, v):
+				root_config.visible_pkgs.cpv_inject(v)
 
 class RepoDisplay(object):
 	def __init__(self, roots):
@@ -5129,6 +5224,8 @@ class MergeTask(object):
 			myroot=x[1]
 			pkg_key = x[2]
 			pkgindex=2
+			built = pkg_type != "ebuild"
+			installed = pkg_type == "installed"
 			portdb = self.trees[myroot]["porttree"].dbapi
 			bindb  = self.trees[myroot]["bintree"].dbapi
 			vartree = self.trees[myroot]["vartree"]
@@ -5151,10 +5248,16 @@ class MergeTask(object):
 					mydbapi = vardb
 				else:
 					raise AssertionError("Package type: '%s'" % pkg_type)
-				metadata.update(izip(metadata_keys,
-					mydbapi.aux_get(pkg_key, metadata_keys)))
-			built = pkg_type != "ebuild"
-			installed = pkg_type == "installed"
+				try:
+					metadata.update(izip(metadata_keys,
+						mydbapi.aux_get(pkg_key, metadata_keys)))
+				except KeyError:
+					if not installed:
+						raise
+					# A package scheduled for uninstall apparently
+					# isn't installed anymore. Since it's already
+					# been uninstalled, move on to the next task.
+					continue
 			if installed:
 				pkg_constructor = Uninstall
 			else:
@@ -7897,7 +8000,7 @@ def load_emerge_config(trees=None):
 	for root, root_trees in trees.iteritems():
 		settings = root_trees["vartree"].settings
 		setconfig = load_default_config(settings, root_trees)
-		root_trees["root_config"] = RootConfig(root_trees, setconfig)
+		root_trees["root_config"] = RootConfig(settings, root_trees, setconfig)
 
 	settings = trees["/"]["vartree"].settings
 

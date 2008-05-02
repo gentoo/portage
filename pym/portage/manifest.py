@@ -222,10 +222,8 @@ class Manifest(object):
 					else:
 						raise
 			if update_manifest:
-				fd = open(self.getFullname(), "w")
-				for myentry in myentries:
-					fd.write("%s\n" % str(myentry))
-				fd.close()
+				write_atomic(self.getFullname(),
+					"".join("%s\n" % str(myentry) for myentry in myentries))
 			if sign:
 				self.sign()
 		except (IOError, OSError), e:
