@@ -5991,9 +5991,10 @@ def unmerge(root_config, myopts, unmerge_action,
 			else:
 				if clean_world:
 					sets["world"].cleanPackage(vartree.dbapi, y)
-					for s in root_config.setconfig.active:
-						sets["world"].remove(SETPREFIX+s)
 				emergelog(xterm_titles, " >>> unmerge success: "+y)
+	if clean_world_
+		for s in root_config.setconfig.active:
+			sets["world"].remove(SETPREFIX+s)
 	return 1
 
 def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
