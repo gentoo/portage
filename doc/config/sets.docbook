@@ -49,12 +49,13 @@
 			isn't stricly required, but it should always be used as the default 
 			handler might be changed in future versions.</para></footnote>.
 			That option defines which handler class should be used to 
-			create the set. Another universal option available for single sets is
-			<varname>name</varname>, however it's usually not needed as the name
+			create the set. Other universal options available for single sets are
+			<varname>name</varname> (which is usually not needed as the name
 			of the set is generated from the section name if <varname>name</varname>
-			is missing. Some handler classes might require additional
-			options for their configuration, these will be covered later in 
-			this chapter.
+			is missing) and <varname>world-candidate</varname>, which determines if
+			given package should be added to the <varname>world</varname> set. Some
+			handler classes might require additional options for their configuration,
+			these will be covered later in this chapter.
 			</para>
 			<para>
 			Here are a few examples for single sets taken from the default 
@@ -63,6 +64,7 @@
 			# The classic world set
 			[world]
 			class = portage.sets.files.WorldSet
+			world-candidate = False
 			
 			# The classic system set
 			[system]
@@ -81,7 +83,8 @@
 			sets each section still requires the <varname>class</varname> option,
 			but to indicate that the section should generate multiple sets it's
 			also necessary to set the <varname>multiset</varname> option to 
-			<parameter>true</parameter>.
+			<parameter>true</parameter>. The <varname>world-candidate</varname>
+			option is also supported like with single sets.
 			</para>
 			<para>
 			As it doesn't make much sense to specify a single name for multiple sets
@@ -157,6 +160,11 @@
 			<itemizedlist>
 			<listitem><varname>filename</varname>: Required. Specifies the path to the file
 				that should be used for the package set.</listitem>
+			<listitem><varname>greedy</varname>: Optional, defaults to <parameter>false</parameter>.
+				Determines if atoms in the package should include all installed slots (when set to
+				<parameter>true</parameter>) or if no slot expansion is wanted (when set to 
+				<parameter>false</parameter>). This option only affects packages that have multiple
+				slots available (e.g. <parameter>sys-kernel/gentoo-sources</parameter>).</listitem>
 			</itemizedlist>
 			</para>
 			</sect3>
@@ -172,7 +180,7 @@
 				that location a separate package set is created.
 			</listitem>
 			<listitem><varname>name_pattern</varname>: Optional, defaults to 
-				<parameter>sets/$name</parameter>. This describes the naming pattern
+				<parameter>$name</parameter>. This describes the naming pattern
 				to be used for creating the sets. It must contain either 
 				<parameter>$name</parameter> or <parameter>${name}</parameter>, which 
 				will be replaced by the filename (without any directory components).
@@ -218,7 +226,7 @@
 				No other files in that directory will be used.
 			</listitem>
 			<listitem><varname>name_pattern</varname>: Optional, defaults to 
-				<parameter>sets/package_$suffix</parameter>. This describes the naming 
+				<parameter>package_$suffix</parameter>. This describes the naming 
 				pattern to be used for creating the sets. It must contain either
 				<parameter>$suffix</parameter> or <parameter>${suffix}</parameter>, 
 				which will be replaced by the file suffix (e.g. 
@@ -240,7 +248,7 @@
 			<sect3>
 			<title>Single Set Configuraton</title>
 			<para>
-			This class does not support any options.
+			This class doesn't support any extra options.
 			</para>
 			</sect3>
 		</sect2>
@@ -258,7 +266,7 @@
 			<sect3>
 			<title>Single Set Configuration</title>
 			<para>
-			This class does not support any options.
+			This class doesn't support any extra options.
 			</para>
 			</sect3>
 		</sect2>
@@ -441,7 +449,26 @@
 			<sect3>
 			<title>Single Set Configuration</title>
 			<para>
-			This class does not support any options.
+			This class doesn't support any extra options.
+			</para>
+			</sect3>
+		</sect2>
+		<sect2 id='config-set-classes-PreservedLibraryConsumerSet'>
+		<title>portage.sets.libs.PreservedLibraryConsumerSet</title>
+		<para>
+		A special set used to rebuild all packages that need a preserved library that only
+		remains due to <varname>FEATURES="preserve-libs"</varname>.
+		</para>
+
+			<sect3>
+			<title>Single Set Configuration</title>
+			<para>
+			This class supports the following option:
+			<itemizedlist>
+			<listitem><varname>debug</varname>: Generate extra output useful to figure out why
+				certain packages are included in the set, as it's not always obvious.
+			</listitem>
+			</itemizedlist>
 			</para>
 			</sect3>
 		</sect2>
@@ -462,6 +489,7 @@
 	<listitem><varname>world</varname>: uses <classname>WorldSet</classname></listitem>
 	<listitem><varname>security</varname>: uses <classname>NewAffectedSet</classname> with default options</listitem>
 	<listitem><varname>everything</varname>: uses <classname>EverythingSet</classname></listitem>
+	<listitem><varname>preserved-rebuild</varname>: uses <classname>PreservedLibraryConsumerSet</classname></listitem>
 	</itemizedlist>
 	Additionally the default configuration includes a multi set section based on
 	the <classname>StaticFileSet</classname> defaults that creates a set for each 
