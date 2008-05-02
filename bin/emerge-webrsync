@@ -174,7 +174,10 @@ sync_local() {
 	vecho "Syncing local tree ..."
 
 	if type -P tarsync > /dev/null ; then
-		if ! tarsync $(vvecho -v) -s 1 -o portage -g portage -e /distfiles -e /packages -e /local "${file}" "${PORTDIR}"; then
+		local chown_opts="-o portage -g portage"
+		chown portage:portage portage > /dev/null 2>&1 || chown_opts=""
+		if ! tarsync $(vvecho -v) -s 1 ${chown_opts} \
+			-e /distfiles -e /packages -e /local "${file}" "${PORTDIR}"; then
 			eecho "tarsync failed; tarball is corrupt? (${file})"
 			return 1
 		fi
