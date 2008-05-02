@@ -4738,7 +4738,7 @@ class depgraph(object):
 				del e
 		all_added = []
 		for k in self._sets:
-			if k in ("args", "world"):
+			if k in ("args", "world") or not root_config.sets[k].world_candidate:
 				continue
 			s = SETPREFIX + k
 			if s in world_set:

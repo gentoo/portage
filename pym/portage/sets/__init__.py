@@ -67,6 +67,8 @@ class SetConfig(SafeConfigParser):
 						if x in self.psets:
 							self.errors.append("Redefinition of set '%s' (sections: '%s', '%s')" % (setname, self.psets[setname].creator, sname))
 						newsets[x].creator = sname
+						if self.has_option(sname, "world-candidate") and not self.getboolean(sname, "world-candidate"):
+							newsets[x].world_candidate = False
 					self.psets.update(newsets)
 				else:
 					self.errors.append("Section '%s' is configured as multiset, but '%s' doesn't support that configuration" % (sname, classname))
@@ -82,6 +84,8 @@ class SetConfig(SafeConfigParser):
 					try:
 						self.psets[setname] = setclass.singleBuilder(optdict, self.settings, self.trees)
 						self.psets[setname].creator = sname
+						if self.has_option(sname, "world-candidate") and not self.getboolean(sname, "world-candidate"):
+							self.psets[setname].world_candidate = False
 					except SetConfigError, e:
 						self.errors.append("Configuration error in section '%s': %s" % (sname, str(e)))
 						continue
