@@ -323,28 +323,66 @@ do_latest_snapshot() {
 	# day, so the current day's snapshot (going by UTC time) hasn't been
 	# generated yet.  Therefore, always start by looking for the previous day's
 	# snapshot (for attempts=1, subtract 1 day from the current UTC time).
+
+	# Timestamps that differ by less than 2 hours
+	# are considered to be approximately equal.
+	local min_time_diff=$(( 2 * 60 * 60 ))
+
+	local existing_timestamp=$(get_portage_timestamp)
+	local timestamp_difference
+	local timestamp_problem
+	local approx_snapshot_time
+	local start_time=$(get_utc_date_in_seconds)
+	local start_hour=$(get_date_part ${start_time} "%H")
+
+	# Daily snapshots are created at 1:45 AM and are not
+	# available until after 2 AM. Don't waste time trying
+	# to fetch a snapshot before it's been created.
+	if [ ${start_hour} -lt 2 ] ; then
+		(( start_time -= 86400 ))
+	fi
+	local snapshot_date=$(get_date_part ${start_time} "%Y%m%d")
+	local snapshot_date_seconds=$(get_utc_second_from_string ${snapshot_date})
+
 	while (( ${attempts} <  40 )) ; do
-		local day
-		local month
-		local year
-		local seconds
+		(( attempts++ ))
+		(( snapshot_date_seconds -= 86400 ))
+		# snapshots are created at 1:45 AM
+		(( approx_snapshot_time = snapshot_date_seconds + 86400 + 6300 ))
+		(( timestamp_difference = existing_timestamp - approx_snapshot_time ))
+		[ ${timestamp_difference} -lt 0 ] && (( timestamp_difference = -1 * timestamp_difference ))
+		snapshot_date=$(get_date_part ${snapshot_date_seconds} "%Y%m%d")
 
-		attempts=$(( ${attempts} + 1 ))
+		timestamp_problem=""
+		if [ ${timestamp_difference} -eq 0 ]; then
+			timestamp_problem="is identical to"
+		elif [ ${timestamp_difference} -lt ${min_time_diff} ]; then
+			timestamp_problem="is possibly identical to"
+		elif [ ${approx_snapshot_time} -lt ${existing_timestamp} ] ; then
+			timestamp_problem="is newer than"
+		fi
 
-		utc_attempt=$(expr $(get_utc_date_in_seconds) - 86400 \* ${attempts})
-
-		day=$(get_date_part ${utc_attempt} "%d")
-		month=$(get_date_part ${utc_attempt} "%m")
-		year=$(get_date_part ${utc_attempt} "%Y")
-		utc_midnight=$(expr ${utc_attempt} - ${utc_attempt} % 86400)
-
-		if [ ${utc_midnight} -lt $(get_portage_timestamp) ]; then
-			wecho "portage content is newer than available snapshots (use --revert option to overide)"
+		if [ -n "${timestamp_problem}" ]; then
+			ewarn "Latest snapshot date: ${snapshot_date}"
+			ewarn
+			ewarn "Approximate snapshot timestamp: ${approx_snapshot_time}"
+			ewarn "       Current local timestamp: ${existing_timestamp}"
+			ewarn
+			echo -e "The current local timestamp" \
+				"${timestamp_problem} the" \
+				"timestamp of the latest" \
+				"snapshot. In order to force sync," \
+				"use the --revert option or remove" \
+				"the timestamp file located at" \
+				"'${PORTDIR}/metadata/timestamp.x'." | fmt -w 70 | \
+				while read line ; do
+					ewarn "${line}"
+				done
 			r=0
 			break
 		fi
 
-		if do_snapshot 0 "${year}${month}${day}"; then
+		if do_snapshot 0 "${snapshot_date}"; then
 			r=0
 			break;
 		fi
