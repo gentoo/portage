@@ -3812,9 +3812,8 @@ class depgraph(object):
 							for atom in root_config.sets[
 								"world"].iterAtomsForPackage(task):
 								satisfied = False
-								for cpv in graph_db.match(atom):
-									if cpv == inst_pkg.cpv and \
-										inst_pkg in graph_db:
+								for pkg in graph_db.match_pkgs(atom):
+									if pkg == inst_pkg:
 										continue
 									satisfied = True
 									break
