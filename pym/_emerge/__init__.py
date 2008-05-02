@@ -3120,15 +3120,6 @@ class depgraph(object):
 			"--nodeps" in self.myopts:
 			return True
 
-		modified_slots = {}
-		for myroot in self.trees:
-			myslots = {}
-			modified_slots[myroot] = myslots
-			final_db = self.mydbapi[myroot]
-			for pkg in self._slot_pkg_map[myroot].itervalues():
-				if not (pkg.installed or pkg.onlydeps):
-					myslots[pkg.slot_atom] = pkg.cpv
-
 		#if "deep" in self.myparams:
 		if True:
 			# Pull in blockers from all installed packages that haven't already
@@ -3211,7 +3202,9 @@ class depgraph(object):
 						finally:
 							portage.dep._dep_check_strict = True
 						if not success:
-							if pkg.slot_atom in modified_slots[myroot]:
+							replacement_pkg = final_db.match_pkgs(pkg.slot_atom)
+							if replacement_pkg and \
+								replacement_pkg[0].operation == "merge":
 								# This package is being replaced anyway, so
 								# ignore invalid dependencies so as not to
 								# annoy the user too much (otherwise they'd be
@@ -3257,11 +3250,11 @@ class depgraph(object):
 
 			blocked_initial = []
 			for atom in atoms:
-				blocked_initial.extend(initial_db.match(atom))
+				blocked_initial.extend(initial_db.match_pkgs(atom))
 
 			blocked_final = []
 			for atom in atoms:
-				blocked_final.extend(final_db.match(atom))
+				blocked_final.extend(final_db.match_pkgs(atom))
 
 			if not blocked_initial and not blocked_final:
 				parent_pkgs = self._blocker_parents.parent_nodes(blocker)
@@ -3271,27 +3264,11 @@ class depgraph(object):
 					if not self._blocker_parents.child_nodes(pkg):
 						self._blocker_parents.remove(pkg)
 				continue
-			blocked_slots_initial = {}
-			blocked_slots_final = {}
-			for cpv in blocked_initial:
-				blocked_slots_initial[cpv] = \
-					"%s:%s" % (portage.dep_getkey(cpv),
-						initial_db.aux_get(cpv, ["SLOT"])[0])
-			for cpv in blocked_final:
-				blocked_slots_final[cpv] = \
-					"%s:%s" % (portage.dep_getkey(cpv),
-						final_db.aux_get(cpv, ["SLOT"])[0])
 			for parent in self._blocker_parents.parent_nodes(blocker):
-				ptype, proot, pcpv, pstatus = parent
-				pdbapi = self.trees[proot][self.pkg_tree_map[ptype]].dbapi
-				pslot = pdbapi.aux_get(pcpv, ["SLOT"])[0]
-				pslot_atom = "%s:%s" % (portage.dep_getkey(pcpv), pslot)
-				parent_static = pslot_atom not in modified_slots[proot]
 				unresolved_blocks = False
 				depends_on_order = set()
-				for cpv in blocked_initial:
-					slot_atom = blocked_slots_initial[cpv]
-					if slot_atom == pslot_atom:
+				for pkg in blocked_initial:
+					if pkg.slot_atom == parent.slot_atom:
 						# TODO: Support blocks within slots in cases where it
 						# might make sense.  For example, a new version might
 						# require that the old version be uninstalled at build
@@ -3303,39 +3280,31 @@ class depgraph(object):
 						# is already done and this would be likely to
 						# confuse users if displayed like a normal blocker.
 						continue
-					if pstatus == "merge":
+					if parent.operation == "merge":
 						# Maybe the blocked package can be replaced or simply
 						# unmerged to resolve this block.
-						inst_pkg = self._pkg_cache[
-							("installed", myroot, cpv, "nomerge")]
-						depends_on_order.add((inst_pkg, parent))
+						depends_on_order.add((pkg, parent))
 						continue
 					# None of the above blocker resolutions techniques apply,
 					# so apparently this one is unresolvable.
 					unresolved_blocks = True
-				for cpv in blocked_final:
-					slot_atom = blocked_slots_final[cpv]
-					if slot_atom == pslot_atom:
+				for pkg in blocked_final:
+					if pkg.slot_atom == parent.slot_atom:
 						# TODO: Support blocks within slots.
 						continue
-					if parent_static and \
-						slot_atom not in modified_slots[myroot]:
+					if parent.operation == "nomerge" and \
+						pkg.operation == "nomerge":
 						# This blocker will be handled the next time that a
 						# merge of either package is triggered.
 						continue
 
 					# Maybe the blocking package can be
 					# unmerged to resolve this block.
-					try:
-						blocked_pkg = self._slot_pkg_map[myroot][slot_atom]
-					except KeyError:
-						blocked_pkg = self._pkg_cache[
-							("installed", myroot, cpv, "nomerge")]
-					if pstatus == "merge" and blocked_pkg.installed:
-						depends_on_order.add((blocked_pkg, parent))
+					if parent.operation == "merge" and pkg.installed:
+						depends_on_order.add((pkg, parent))
 						continue
-					elif pstatus == "nomerge":
-						depends_on_order.add((parent, blocked_pkg))
+					elif parent.operation == "nomerge":
+						depends_on_order.add((parent, pkg))
 						continue
 					# None of the above blocker resolutions techniques apply,
 					# so apparently this one is unresolvable.
