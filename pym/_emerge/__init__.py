@@ -3182,7 +3182,7 @@ class depgraph(object):
 						blockers is not None:
 						# Re-use the blockers from the graph.
 						blocker_atoms = sorted(blockers)
-						counter = long(node.metadata["COUNTER"])
+						counter = long(pkg.metadata["COUNTER"])
 						blocker_data = \
 							blocker_cache.BlockerData(counter, blocker_atoms)
 						blocker_cache[pkg.cpv] = blocker_data
@@ -4208,9 +4208,7 @@ class depgraph(object):
 							counters.newslot += 1
 
 					if "--changelog" in self.myopts:
-						slot_atom = "%s:%s" % (portage.dep_getkey(pkg_key),
-							mydbapi.aux_get(pkg_key, ["SLOT"])[0])
-						inst_matches = vardb.match(slot_atom)
+						inst_matches = vardb.match(pkg.slot_atom)
 						if inst_matches:
 							changelogs.extend(self.calc_changelog(
 								portdb.findname(pkg_key),
