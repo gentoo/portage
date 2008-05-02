@@ -3439,13 +3439,16 @@ class depgraph(object):
 			return [node for node in mygraph.leaf_nodes(**kwargs) \
 				if isinstance(node, Package) and \
 				node.operation != "uninstall"]
-		if True:
-			for node in mygraph.order:
-				if node.root == "/" and \
-					"sys-apps/portage" == portage.cpv_getkey(node.cpv):
-					portage_node = node
-					asap_nodes.append(node)
-					break
+
+		# sys-apps/portage needs special treatment if ROOT="/"
+		for node in mygraph.order:
+			if isinstance(node, Package) and \
+				"sys-apps/portage" == node.cp and \
+				"/" == node.root:
+				portage_node = node
+				asap_nodes.append(node)
+				break
+
 		ignore_priority_soft_range = [None]
 		ignore_priority_soft_range.extend(
 			xrange(DepPriority.MIN, DepPriority.MEDIUM_SOFT + 1))
