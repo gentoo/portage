@@ -3207,7 +3207,7 @@ class depgraph(object):
 						blockers is not None:
 						# Re-use the blockers from the graph.
 						blocker_atoms = sorted(blockers)
-						counter = long(node.metadata["COUNTER"])
+						counter = long(pkg.metadata["COUNTER"])
 						blocker_data = \
 							blocker_cache.BlockerData(counter, blocker_atoms)
 						blocker_cache[pkg.cpv] = blocker_data
@@ -4238,9 +4238,7 @@ class depgraph(object):
 							counters.newslot += 1
 
 					if "--changelog" in self.myopts:
-						slot_atom = "%s:%s" % (portage.dep_getkey(pkg_key),
-							mydbapi.aux_get(pkg_key, ["SLOT"])[0])
-						inst_matches = vardb.match(slot_atom)
+						inst_matches = vardb.match(pkg.slot_atom)
 						if inst_matches:
 							changelogs.extend(self.calc_changelog(
 								portdb.findname(pkg_key),
@@ -4770,7 +4768,7 @@ class depgraph(object):
 				del e
 		all_added = []
 		for k in self._sets:
-			if k in ("args", "world"):
+			if k in ("args", "world") or not root_config.sets[k].world_candidate:
 				continue
 			s = SETPREFIX + k
 			if s in world_set:
@@ -5889,6 +5887,7 @@ def unmerge(root_config, myopts, unmerge_action,
 			if candidates:
 				stop = False
 				installed_sets += candidates
+	installed_sets = [x for x in installed_sets if x not in root_config.setconfig.active]
 	del stop, pos
 
 	# we don't want to unmerge packages that are still listed in user-editable package sets
@@ -6029,6 +6028,9 @@ def unmerge(root_config, myopts, unmerge_action,
 				if clean_world:
 					sets["world"].cleanPackage(vartree.dbapi, y)
 				emergelog(xterm_titles, " >>> unmerge success: "+y)
+	if clean_world:
+		for s in root_config.setconfig.active:
+			sets["world"].remove(SETPREFIX+s)
 	return 1
 
 def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
@@ -7959,6 +7961,7 @@ def action_build(settings, trees, mtimedb,
 				portage.writemsg_stdout(colorize("WARN", "WARNING:")
 					+ " AUTOCLEAN is disabled.  This can cause serious"
 					+ " problems due to overlapping packages.\n")
+			trees[settings["ROOT"]]["vartree"].dbapi.plib_registry.pruneNonExisting()
 
 		if merge_count and not (buildpkgonly or fetchonly or pretend):
 			post_emerge(trees, mtimedb, retval)

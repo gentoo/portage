@@ -169,7 +169,7 @@ install_qa_check() {
 			if [ -z "${rpath}" -o -n "${rpath//*ORIGIN*}" ]; then
 				# object doesn't contain $ORIGIN in its runpath attribute
 				echo "${obj} ${needed}"	>> "${PORTAGE_BUILDDIR}"/build-info/NEEDED
-				echo "${arch:3};${obj};${soname};${rpath};${needed}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED.2
+				echo "${arch:3};${obj};${soname};${rpath};${needed}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED.ELF.2
 			else
 				dir=$(dirname ${obj})
 				# replace $ORIGIN with the dirname of the current object for the lookup
@@ -186,7 +186,7 @@ install_qa_check() {
 				rneeded=${rneeded:1}
 				if [ -n "${rneeded}" ]; then
 					echo "${obj} ${rneeded}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED
-					echo "${arch:3};${obj};${soname};${rpath};${rneeded}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED.2
+					echo "${arch:3};${obj};${soname};${rpath};${rneeded}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED.ELF.2
 				fi
 			fi
 		done }

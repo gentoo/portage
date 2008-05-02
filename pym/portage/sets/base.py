@@ -24,6 +24,7 @@ class PackageSet(object):
 		self._loading = False
 		self.errors = []
 		self._nonatoms = set()
+		self.world_candidate = True
 
 	def __contains__(self, atom):
 		self._load()
@@ -182,6 +183,7 @@ class EditablePackageSet(PackageSet):
 	def remove(self, atom):
 		self._load()
 		self._atoms.discard(atom)
+		self._nonatoms.discard(atom)
 		self._updateAtomMap()
 		self.write()
 
