@@ -4774,6 +4774,34 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			writemsg("does not exist.  Please create this directory or " + \
 				"correct your PORTAGE_TMPDIR setting.\n", noiselevel=-1)
 			return 1
+		
+		# as some people use a separate PORTAGE_TMPDIR mount
+		# we prefer that as the checks below would otherwise be pointless
+		# for those people.
+		if os.path.exists(os.path.join(mysettings["PORTAGE_TMPDIR"], "portage")):
+			checkdir = os.path.join(mysettings["PORTAGE_TMPDIR"], "portage")
+		else:
+			checkdir = mysettings["PORTAGE_TMPDIR"]
+
+		if not os.access(checkdir, os.W_OK):
+			writemsg("%s is not writable.\n" % checkdir + \
+				"Likely cause is that you've mounted it as readonly.\n" \
+				, noiselevel=-1)
+			return 1
+		else:
+			from tempfile import NamedTemporaryFile
+			fd = NamedTemporaryFile(prefix="exectest-", dir=checkdir)
+			os.chmod(fd.name, 0755)
+			if not os.access(fd.name, os.X_OK):
+				writemsg("Can not execute files in %s\n" % checkdir + \
+					"Likely cause is that you've mounted it with one of the\n" + \
+					"following mount options: 'noexec', 'user', 'users'\n\n" + \
+					"Please make sure that portage can execute files in this direxctory.\n" \
+					, noiselevel=-1)
+				fd.close()
+				return 1
+			fd.close()
+		del checkdir
 
 		if mydo == "unmerge":
 			return unmerge(mysettings["CATEGORY"],
@@ -5422,6 +5450,12 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			continue
 		mychoices = myvirtuals.get(mykey, [])
 		isblocker = x.startswith("!")
+		if isblocker:
+			# Virtual blockers are no longer expanded here since
+			# the un-expanded virtual atom is more useful for
+			# maintaining a cache of blocker atoms.
+			newsplit.append(x)
+			continue
 		match_atom = x
 		if isblocker:
 			match_atom = x[1:]

@@ -1274,7 +1274,11 @@ class Task(SlotObject):
 		return str(self._get_hash_key())
 
 class Blocker(Task):
-	__slots__ = ("root", "atom", "satisfied")
+	__slots__ = ("root", "atom", "cp", "satisfied")
+
+	def __init__(self, **kwargs):
+		Task.__init__(self, **kwargs)
+		self.cp = portage.dep_getkey(self.atom)
 
 	def _get_hash_key(self):
 		hash_key = getattr(self, "_hash_key", None)
@@ -1285,7 +1289,8 @@ class Blocker(Task):
 
 class Package(Task):
 	__slots__ = ("built", "cpv", "depth",
-		"installed", "metadata", "root", "onlydeps", "type_name",
+		"installed", "metadata", "onlydeps", "operation",
+		"root", "type_name",
 		"cp", "cpv_slot", "pv_split", "slot_atom")
 	def __init__(self, **kwargs):
 		Task.__init__(self, **kwargs)
@@ -1297,11 +1302,12 @@ class Package(Task):
 	def _get_hash_key(self):
 		hash_key = getattr(self, "_hash_key", None)
 		if hash_key is None:
-			operation = "merge"
-			if self.onlydeps or self.installed:
-				operation = "nomerge"
+			if self.operation is None:
+				self.operation = "merge"
+				if self.onlydeps or self.installed:
+					self.operation = "nomerge"
 			self._hash_key = \
-				(self.type_name, self.root, self.cpv, operation)
+				(self.type_name, self.root, self.cpv, self.operation)
 		return self._hash_key
 
 	def __lt__(self, other):
@@ -1331,15 +1337,6 @@ class Package(Task):
 		if portage.pkgcmp(self.pv_split, other.pv_split) >= 0:
 			return True
 		return False
-
-class Uninstall(Package):
-	__slots__ = ()
-	def _get_hash_key(self):
-		hash_key = getattr(self, "_hash_key", None)
-		if hash_key is None:
-			self._hash_key = \
-				(self.type_name, self.root, self.cpv, "uninstall")
-		return self._hash_key
 
 class DependencyArg(object):
 	def __init__(self, arg=None, root_config=None):
@@ -1415,14 +1412,27 @@ class BlockerCache(DictMixin):
 		cache_valid = self._cache_data and \
 			isinstance(self._cache_data, dict) and \
 			self._cache_data.get("version") == self._cache_version and \
-			self._cache_data.get("virtuals") == self._virtuals and \
-			set(self._cache_data.get("blockers", [])) == self._installed_pkgs
+			isinstance(self._cache_data.get("blockers"), dict)
 		if cache_valid:
-			for pkg in self._installed_pkgs:
-				if long(self._vardb.aux_get(pkg, ["COUNTER"])[0]) != \
-					self[pkg].counter:
-					cache_valid = False
-					break
+			invalid_cache = set()
+			for cpv, value \
+				in self._cache_data["blockers"].iteritems():
+				if not (isinstance(value, tuple) and len(value) == 2):
+					invalid_cache.add(cpv)
+					continue
+				counter, atoms = value
+				try:
+					if counter != long(self._vardb.aux_get(cpv, ["COUNTER"])[0]):
+						invalid_cache.add(cpv)
+						continue
+				except KeyError:
+					# The package is no longer installed.
+					invalid_cache.add(cpv)
+					continue
+			for cpv in invalid_cache:
+				del self._cache_data["blockers"][cpv]
+			if not self._cache_data["blockers"]:
+				cache_valid = False
 		if not cache_valid:
 			self._cache_data = {"version":self._cache_version}
 			self._cache_data["blockers"] = {}
@@ -3063,12 +3073,14 @@ class depgraph(object):
 		# accounted for.
 		self._select_atoms = self._select_atoms_from_graph
 		self._select_package = self._select_pkg_from_graph
-		self.myparams.add("deep")
+		already_deep = "deep" in self.myparams
+		if not already_deep:
+			self.myparams.add("deep")
 
 		for root in self.roots:
 			required_set_names = self._required_set_names.copy()
 			if root == self.target_root and \
-				("deep" in self.myparams or "empty" in self.myparams):
+				(already_deep or "empty" in self.myparams):
 				required_set_names.difference_update(self._sets)
 			if not required_set_names and not self._ignored_deps:
 				continue
@@ -3162,25 +3174,50 @@ class depgraph(object):
 				final_db = self.mydbapi[myroot]
 				cpv_all_installed = self.trees[myroot]["vartree"].dbapi.cpv_all()
 				blocker_cache = BlockerCache(myroot, vardb)
-				for pkg in cpv_all_installed:
+				for cpv in cpv_all_installed:
 					blocker_atoms = None
-					metadata = dict(izip(self._mydbapi_keys,
-						vardb.aux_get(pkg, self._mydbapi_keys)))
-					node = Package(cpv=pkg, built=True,
-						installed=True, metadata=metadata,
-						type_name="installed", root=myroot)
-					if self.digraph.contains(node):
-						continue
+					pkg = self._pkg_cache[
+						("installed", myroot, cpv, "nomerge")]
+					blockers = None
+					if self.digraph.contains(pkg):
+						try:
+							blockers = self._blocker_parents.child_nodes(pkg)
+						except KeyError:
+							blockers = []
+					if blockers is not None:
+						blockers = set("!" + blocker.atom \
+							for blocker in blockers)
+
 					# If this node has any blockers, create a "nomerge"
 					# node for it so that they can be enforced.
 					self.spinner.update()
-					blocker_data = blocker_cache.get(pkg)
+					blocker_data = blocker_cache.get(cpv)
+
+					# If blocker data from the graph is available, use
+					# it to validate the cache and update the cache if
+					# it seems invalid.
+					if blocker_data is not None and \
+						blockers is not None:
+						if not blockers.symmetric_difference(
+							blocker_data.atoms):
+							continue
+						blocker_data = None
+
+					if blocker_data is None and \
+						blockers is not None:
+						# Re-use the blockers from the graph.
+						blocker_atoms = sorted(blockers)
+						counter = long(node.metadata["COUNTER"])
+						blocker_data = \
+							blocker_cache.BlockerData(counter, blocker_atoms)
+						blocker_cache[pkg.cpv] = blocker_data
+						continue
+
 					if blocker_data:
 						blocker_atoms = blocker_data.atoms
 					else:
-						dep_vals = vardb.aux_get(pkg, dep_keys)
-						myuse = vardb.aux_get(pkg, ["USE"])[0].split()
-						depstr = " ".join(dep_vals)
+						myuse = pkg.metadata["USE"].split()
+						depstr = " ".join(pkg.metadata[k] for k in dep_keys)
 						# It is crucial to pass in final_db here in order to
 						# optimize dep_check calls by eliminating atoms via
 						# dep_wordreduce and dep_eval calls.
@@ -3198,41 +3235,64 @@ class depgraph(object):
 								# matches (this can happen if an atom lacks a
 								# category).
 								show_invalid_depstring_notice(
-									node, depstr, str(e))
+									pkg, depstr, str(e))
 								del e
 								raise
 						finally:
 							portage.dep._dep_check_strict = True
 						if not success:
-							slot_atom = "%s:%s" % (portage.dep_getkey(pkg),
-								vardb.aux_get(pkg, ["SLOT"])[0])
-							if slot_atom in modified_slots[myroot]:
+							if pkg.slot_atom in modified_slots[myroot]:
 								# This package is being replaced anyway, so
 								# ignore invalid dependencies so as not to
 								# annoy the user too much (otherwise they'd be
 								# forced to manually unmerge it first).
 								continue
-							show_invalid_depstring_notice(node, depstr, atoms)
+							show_invalid_depstring_notice(pkg, depstr, atoms)
 							return False
 						blocker_atoms = [myatom for myatom in atoms \
 							if myatom.startswith("!")]
-						counter = long(vardb.aux_get(pkg, ["COUNTER"])[0])
-						blocker_cache[pkg] = \
+						blocker_atoms.sort()
+						counter = long(pkg.metadata["COUNTER"])
+						blocker_cache[cpv] = \
 							blocker_cache.BlockerData(counter, blocker_atoms)
 					if blocker_atoms:
 						for myatom in blocker_atoms:
 							blocker = Blocker(atom=myatom[1:], root=myroot)
-							self._blocker_parents.add(blocker, node)
+							self._blocker_parents.add(blocker, pkg)
 				blocker_cache.flush()
 				del blocker_cache
 
 		for blocker in self._blocker_parents.leaf_nodes():
 			self.spinner.update()
+			root_config = self.roots[blocker.root]
+			virtuals = root_config.settings.getvirtuals()
 			mytype, myroot, mydep = blocker
 			initial_db = self.trees[myroot]["vartree"].dbapi
 			final_db = self.mydbapi[myroot]
-			blocked_initial = initial_db.match(mydep)
-			blocked_final = final_db.match(mydep)
+			
+			provider_virtual = False
+			if blocker.cp in virtuals and \
+				not self._have_new_virt(blocker.root, blocker.cp):
+				provider_virtual = True
+
+			if provider_virtual:
+				atoms = []
+				for provider_entry in virtuals[blocker.cp]:
+					provider_cp = \
+						portage.dep_getkey(provider_entry)
+					atoms.append(blocker.atom.replace(
+						blocker.cp, provider_cp))
+			else:
+				atoms = [blocker.atom]
+
+			blocked_initial = []
+			for atom in atoms:
+				blocked_initial.extend(initial_db.match(atom))
+
+			blocked_final = []
+			for atom in atoms:
+				blocked_final.extend(final_db.match(atom))
+
 			if not blocked_initial and not blocked_final:
 				parent_pkgs = self._blocker_parents.parent_nodes(blocker)
 				self._blocker_parents.remove(blocker)
@@ -3322,9 +3382,10 @@ class depgraph(object):
 
 				if not unresolved_blocks and depends_on_order:
 					for inst_pkg, inst_task in depends_on_order:
-						uninst_task = Uninstall(built=inst_pkg.built,
+						uninst_task = Package(built=inst_pkg.built,
 							cpv=inst_pkg.cpv, installed=inst_pkg.installed,
-							metadata=inst_pkg.metadata, root=inst_pkg.root,
+							metadata=inst_pkg.metadata,
+							operation="uninstall", root=inst_pkg.root,
 							type_name=inst_pkg.type_name)
 						self._pkg_cache[uninst_task] = uninst_task
 						# Enforce correct merge order with a hard dep.
@@ -3437,7 +3498,8 @@ class depgraph(object):
 			since those should be executed as late as possible.
 			"""
 			return [node for node in mygraph.leaf_nodes(**kwargs) \
-				if not isinstance(node, Uninstall)]
+				if isinstance(node, Package) and \
+				node.operation != "uninstall"]
 		if True:
 			for node in mygraph.order:
 				if node.root == "/" and \
@@ -3764,7 +3826,8 @@ class depgraph(object):
 				# and uninstallation tasks.
 				solved_blockers = set()
 				uninst_task = None
-				if isinstance(node, Uninstall):
+				if isinstance(node, Package) and \
+					"uninstall" == node.operation:
 					have_uninstall_task = True
 					uninst_task = node
 				else:
@@ -3794,7 +3857,8 @@ class depgraph(object):
 				if node[-1] != "nomerge":
 					retlist.append(node)
 
-				if isinstance(node, Uninstall):
+				if isinstance(node, Package) and \
+					"uninstall" == node.operation:
 					# Include satisfied blockers in the merge list so
 					# that the user can see why the package had to be
 					# uninstalled in advance rather than through
@@ -4753,13 +4817,10 @@ class depgraph(object):
 				metadata["USE"] = pkgsettings["PORTAGE_USE"]
 			installed = action == "uninstall"
 			built = pkg_type != "ebuild"
-			if installed:
-				pkg_constructor = Uninstall
-			else:
-				pkg_constructor = Package
-			pkg = pkg_constructor(built=built, cpv=pkg_key,
+			pkg = Package(built=built, cpv=pkg_key,
 				installed=installed, metadata=metadata,
-				root=myroot, type_name=pkg_type)
+				operation=action, root=myroot,
+				type_name=pkg_type)
 			self._pkg_cache[pkg] = pkg
 			fakedb[myroot].cpv_inject(pkg)
 			self.spinner.update()
@@ -5161,7 +5222,7 @@ class MergeTask(object):
 		if "--resume" not in self.myopts:
 			mymergelist = mylist
 			mtimedb["resume"]["mergelist"] = [list(x) for x in mymergelist \
-				if isinstance(x, (Package, Uninstall))]
+				if isinstance(x, Package)]
 			mtimedb.commit()
 
 		myfeat = self.settings.features[:]
@@ -5218,11 +5279,9 @@ class MergeTask(object):
 		mymergelist = [x for x in mymergelist if x[-1] == "merge"]
 		mergecount=0
 		for x in task_list:
-			pkg_type = x[0]
-			if pkg_type == "blocks":
+			if x[0] == "blocks":
 				continue
-			myroot=x[1]
-			pkg_key = x[2]
+			pkg_type, myroot, pkg_key, operation = x
 			pkgindex=2
 			built = pkg_type != "ebuild"
 			installed = pkg_type == "installed"
@@ -5258,14 +5317,12 @@ class MergeTask(object):
 					# isn't installed anymore. Since it's already
 					# been uninstalled, move on to the next task.
 					continue
-			if installed:
-				pkg_constructor = Uninstall
-			else:
-				pkg_constructor = Package
+			if not installed:
 				mergecount += 1
-			pkg = pkg_constructor(type_name=pkg_type, root=myroot,
-				cpv=pkg_key, built=built, installed=installed,
-				metadata=metadata)
+			pkg = Package(cpv=pkg_key, built=built,
+				installed=installed, metadata=metadata,
+				operation=operation, root=myroot,
+				type_name=pkg_type)
 			if pkg.installed:
 				if not (buildpkgonly or fetchonly or pretend):
 					self._uninstall_queue.append(pkg)
@@ -5590,7 +5647,7 @@ class MergeTask(object):
 		return os.EX_OK
 
 def unmerge(root_config, myopts, unmerge_action,
-	unmerge_files, ldpath_mtimes, autoclean=0, clean_world=1):
+	unmerge_files, ldpath_mtimes, autoclean=0, clean_world=1, ordered=0):
 	settings = root_config.settings
 	sets = root_config.sets
 	vartree = root_config.trees["vartree"]
@@ -5864,7 +5921,25 @@ def unmerge(root_config, myopts, unmerge_action,
 				pkgmap[cp]["protected"].add(cpv)
 	
 	del installed_sets
-	
+
+	# Unmerge order only matters in some cases
+	if not ordered:
+		unordered = {}
+		for d in pkgmap:
+			selected = d["selected"]
+			if not selected:
+				continue
+			cp = portage.cpv_getkey(iter(selected).next())
+			cp_dict = unordered.get(cp)
+			if cp_dict is None:
+				cp_dict = {}
+				unordered[cp] = cp_dict
+				for k in d:
+					cp_dict[k] = set()
+			for k, v in d.iteritems():
+				cp_dict[k].update(v)
+		pkgmap = [unordered[cp] for cp in sorted(unordered)]
+
 	for x in xrange(len(pkgmap)):
 		selected = pkgmap[x]["selected"]
 		if not selected:
@@ -7519,11 +7594,12 @@ def action_depclean(settings, trees, ldpath_mtimes,
 						if cpv in clean_set:
 							graph.add(cpv, node, priority=priority)
 
+		ordered = True
 		if len(graph.order) == len(graph.root_nodes()):
 			# If there are no dependencies between packages
-			# then just unmerge them alphabetically.
-			cleanlist = graph.order[:]
-			cleanlist.sort()
+			# let unmerge() group them by cat/pn.
+			ordered = False
+			cleanlist = graph.all_nodes()
 		else:
 			# Order nodes from lowest to highest overall reference count for
 			# optimal root node selection.
@@ -7553,8 +7629,8 @@ def action_depclean(settings, trees, ldpath_mtimes,
 					graph.remove(node)
 					cleanlist.append(node)
 
-		unmerge(root_config, myopts,
-			"unmerge", cleanlist, ldpath_mtimes)
+		unmerge(root_config, myopts, "unmerge", cleanlist,
+			ldpath_mtimes, ordered=ordered)
 
 	if action == "prune":
 		return
@@ -8491,8 +8567,11 @@ def emerge_main():
 		(myaction == "prune" and "--nodeps" in myopts):
 		validate_ebuild_environment(trees)
 		root_config = trees[settings["ROOT"]]["root_config"]
+		# When given a list of atoms, unmerge
+		# them in the order given.
+		ordered = myaction == "unmerge"
 		if 1 == unmerge(root_config, myopts, myaction, myfiles,
-			mtimedb["ldpath"]):
+			mtimedb["ldpath"], ordered=ordered):
 			if not (buildpkgonly or fetchonly or pretend):
 				post_emerge(trees, mtimedb, os.EX_OK)
 
