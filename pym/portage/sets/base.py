@@ -183,6 +183,7 @@ class EditablePackageSet(PackageSet):
 	def remove(self, atom):
 		self._load()
 		self._atoms.discard(atom)
+		self._nonatoms.discard(atom)
 		self._updateAtomMap()
 		self.write()
 

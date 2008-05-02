@@ -5991,6 +5991,8 @@ def unmerge(root_config, myopts, unmerge_action,
 			else:
 				if clean_world:
 					sets["world"].cleanPackage(vartree.dbapi, y)
+					for s in root_config.setconfig.active:
+						sets["world"].remove(SETPREFIX+s)
 				emergelog(xterm_titles, " >>> unmerge success: "+y)
 	return 1
 
