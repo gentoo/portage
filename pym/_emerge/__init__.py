@@ -3772,12 +3772,14 @@ class depgraph(object):
 						node = tempgraph.order[0]
 					else:
 						node = nodes[0]
-					display_order.append(list(node))
+					display_order.append(node)
 					tempgraph.remove(node)
 				display_order.reverse()
 				self.myopts.pop("--quiet", None)
 				self.myopts.pop("--verbose", None)
 				self.myopts["--tree"] = True
+				print
+				print
 				self.display(display_order)
 				print "!!! Error: circular dependencies:"
 				print
@@ -4120,18 +4122,7 @@ class depgraph(object):
 					pkg_status = "nomerge"
 				built = pkg_type != "ebuild"
 				installed = pkg_type == "installed"
-				try:
-					pkg = self._pkg_cache[tuple(x)]
-				except KeyError:
-					if pkg_status != "uninstall":
-						raise
-					# A package scheduled for uninstall apparently
-					# isn't installed anymore. Since it's already
-					# been uninstalled, move on to the next task.
-					# This case should only be reachable in --resume
-					# mode, since otherwise the package would have
-					# been cached.
-					continue
+				pkg = x
 				metadata = pkg.metadata
 				ebuild_path = None
 				repo_name = metadata["repository"]
@@ -4760,8 +4751,17 @@ class depgraph(object):
 		"""
 		self._sets["args"].update(resume_data.get("favorites", []))
 		mergelist = resume_data.get("mergelist", [])
+
+		if mergelist and "--skipfirst" in self.myopts:
+			for i, task in enumerate(mergelist):
+				if isinstance(task, list) and \
+					task and task[-1] == "merge":
+					del mergelist[i]
+					break
+
 		fakedb = self.mydbapi
 		trees = self.trees
+		serialized_tasks = []
 		for x in mergelist:
 			if len(x) != 4:
 				continue
@@ -4791,7 +4791,9 @@ class depgraph(object):
 				type_name=pkg_type)
 			self._pkg_cache[pkg] = pkg
 			fakedb[myroot].cpv_inject(pkg)
+			serialized_tasks.append(pkg)
 			self.spinner.update()
+		self._serialized_tasks_cache = serialized_tasks
 
 	class _internal_exception(portage.exception.PortageException):
 		def __init__(self, value=""):
@@ -5135,7 +5137,6 @@ class MergeTask(object):
 		fetchonly = "--fetchonly" in self.myopts or \
 			"--fetch-all-uri" in self.myopts
 		pretend = "--pretend" in self.myopts
-		mymergelist=[]
 		ldpath_mtimes = mtimedb["ldpath"]
 		xterm_titles = "notitles" not in self.settings.features
 
@@ -5143,12 +5144,6 @@ class MergeTask(object):
 			# We're resuming.
 			print colorize("GOOD", "*** Resuming merge...")
 			emergelog(xterm_titles, " *** Resuming merge...")
-			mylist = mtimedb["resume"]["mergelist"][:]
-			if "--skipfirst" in self.myopts and mylist:
-				del mtimedb["resume"]["mergelist"][0]
-				del mylist[0]
-				mtimedb.commit()
-			mymergelist = mylist
 
 		# Verify all the manifests now so that the user is notified of failure
 		# as soon as possible.
@@ -5182,12 +5177,12 @@ class MergeTask(object):
 		system_set = root_config.sets["system"]
 		args_set = InternalPackageSet(favorites)
 		world_set = root_config.sets["world"]
-		if "--resume" not in self.myopts:
-			mymergelist = mylist
-			mtimedb["resume"]["mergelist"] = [list(x) for x in mymergelist \
-				if isinstance(x, Package)]
-			mtimedb.commit()
 
+		mtimedb["resume"]["mergelist"] = [list(x) for x in mylist \
+			if isinstance(x, Package)]
+		mtimedb.commit()
+
+		mymergelist = mylist
 		myfeat = self.settings.features[:]
 		bad_resume_opts = set(["--ask", "--tree", "--changelog", "--skipfirst",
 			"--resume"])
@@ -5254,15 +5249,10 @@ class MergeTask(object):
 			vardb = vartree.dbapi
 			root_config = self.trees[myroot]["root_config"]
 			pkgsettings = self.pkgsettings[myroot]
-			metadata = {}
 			if pkg_type == "blocks":
 				pass
 			elif pkg_type == "ebuild":
 				mydbapi = portdb
-				metadata.update(izip(metadata_keys,
-					mydbapi.aux_get(pkg_key, metadata_keys)))
-				pkgsettings.setcpv(pkg_key, mydb=mydbapi)
-				metadata["USE"] = pkgsettings["PORTAGE_USE"]
 			else:
 				if pkg_type == "binary":
 					mydbapi = bindb
@@ -5270,22 +5260,10 @@ class MergeTask(object):
 					mydbapi = vardb
 				else:
 					raise AssertionError("Package type: '%s'" % pkg_type)
-				try:
-					metadata.update(izip(metadata_keys,
-						mydbapi.aux_get(pkg_key, metadata_keys)))
-				except KeyError:
-					if not installed:
-						raise
-					# A package scheduled for uninstall apparently
-					# isn't installed anymore. Since it's already
-					# been uninstalled, move on to the next task.
-					continue
 			if not installed:
 				mergecount += 1
-			pkg = Package(cpv=pkg_key, built=built,
-				installed=installed, metadata=metadata,
-				operation=operation, root=myroot,
-				type_name=pkg_type)
+			pkg = x
+			metadata = pkg.metadata
 			if pkg.installed:
 				if not (buildpkgonly or fetchonly or pretend):
 					self._uninstall_queue.append(pkg)
@@ -7704,9 +7682,7 @@ def action_build(settings, trees, mtimedb,
 		"--verbose" in myopts) and \
 		not ("--quiet" in myopts and "--ask" not in myopts):
 		if "--resume" in myopts:
-			mymergelist = mtimedb["resume"]["mergelist"]
-			if "--skipfirst" in myopts:
-				mymergelist = mymergelist[1:]
+			mymergelist = mydepgraph.altlist()
 			if len(mymergelist) == 0:
 				print colorize("INFORM", "emerge: It seems we have nothing to resume...")
 				return os.EX_OK
@@ -7762,9 +7738,7 @@ def action_build(settings, trees, mtimedb,
 
 	if ("--pretend" in myopts) and not ("--fetchonly" in myopts or "--fetch-all-uri" in myopts):
 		if ("--resume" in myopts):
-			mymergelist = mtimedb["resume"]["mergelist"]
-			if "--skipfirst" in myopts:
-				mymergelist = mymergelist[1:]
+			mymergelist = mydepgraph.altlist()
 			if len(mymergelist) == 0:
 				print colorize("INFORM", "emerge: It seems we have nothing to resume...")
 				return os.EX_OK
@@ -7806,9 +7780,9 @@ def action_build(settings, trees, mtimedb,
 				it to write the mtimedb"""
 				mtimedb.filename = None
 				time.sleep(3) # allow the parent to have first fetch
+			mymergelist = mydepgraph.altlist()
 			del mydepgraph
-			retval = mergetask.merge(
-				mtimedb["resume"]["mergelist"], favorites, mtimedb)
+			retval = mergetask.merge(mymergelist, favorites, mtimedb)
 			merge_count = mergetask.curval
 		else:
 			if "resume" in mtimedb and \
