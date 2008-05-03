@@ -913,6 +913,8 @@ def create_world_atom(pkg_key, metadata, args_set, root_config):
 	be greedy with respect to slots.  Unslotted system packages will not be
 	stored in world."""
 	arg_atom = args_set.findAtomForPackage(pkg_key, metadata)
+	if not arg_atom:
+		return None
 	cp = portage.dep_getkey(arg_atom)
 	new_world_atom = cp
 	sets = root_config.sets
