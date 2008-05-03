@@ -4839,7 +4839,7 @@ class depgraph(object):
 				# resume list invalid, so convert it to a
 				# UnsatisfiedResumeDep exception.
 				raise self.UnsatisfiedResumeDep(
-					self._unsatisfied_deps[0].atom)
+					self._unsatisfied_deps)
 			self._serialized_tasks_cache = None
 			try:
 				self.altlist()
@@ -7779,9 +7779,14 @@ def action_build(settings, trees, mtimedb,
 			out = EOutput()
 
 			if isinstance(e, mydepgraph.UnsatisfiedResumeDep):
-				out.eerror("An expected dependency " + \
-					"is not installed: %s" % str(e))
+				out.eerror("One or more expected dependencies " + \
+					"are not installed:")
 				out.eerror("")
+				indent = "  "
+				for dep in e.value:
+					out.eerror(indent + str(dep.atom) + " pulled in by:")
+					out.eerror(2 * indent + str(dep.parent))
+					out.eerror("")
 				msg = "The resume list contains packages " + \
 					"with dependencies that have not been " + \
 					"installed yet. Please restart/continue " + \
