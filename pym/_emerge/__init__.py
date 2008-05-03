@@ -7775,9 +7775,8 @@ def action_build(settings, trees, mtimedb,
 			if show_spinner:
 				print "\b\b... done!"
 
-			mydepgraph.display_problems()
-
 		if not success:
+			mydepgraph.display_problems()
 			# delete the current list and also the backup
 			# since it's probably stale too.
 			for k in ("resume", "resume_backup"):
@@ -7802,8 +7801,8 @@ def action_build(settings, trees, mtimedb,
 			return 1
 		if show_spinner:
 			print "\b\b... done!"
-		mydepgraph.display_problems()
 		if not retval:
+			mydepgraph.display_problems()
 			return 1
 
 	if "--pretend" not in myopts and \
