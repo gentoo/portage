@@ -252,8 +252,8 @@ do_snapshot() {
 			local signature="${file}.gpgsig"
 
 			if [ -s "${file}" -a -s "${digest}" -a -s "${signature}" ] ; then
-				check_file_digest "${digest}" "${file}" && \
-				check_file_signature "${signature}" "${file}" && \
+				check_file_digest "${DISTDIR}/${digest}" "${DISTDIR}/${file}" && \
+				check_file_signature "${DISTDIR}/${signature}" "${DISTDIR}/${file}" && \
 				have_files=1
 			fi
 
@@ -261,8 +261,8 @@ do_snapshot() {
 				fetch_file "${mirror}/snapshots/${digest}" "${digest}" && \
 				fetch_file "${mirror}/snapshots/${signature}" "${signature}" && \
 				fetch_file "${mirror}/snapshots/${file}" "${file}" && \
-				check_file_digest "${digest}" "${file}" && \
-				check_file_signature "${signature}" "${file}" && \
+				check_file_digest "${DISTDIR}/${digest}" "${DISTDIR}/${file}" && \
+				check_file_signature "${DISTDIR}/${signature}" "${DISTDIR}/${file}" && \
 				have_files=1
 			fi
 
