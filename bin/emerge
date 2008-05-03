@@ -7788,8 +7788,6 @@ def action_build(settings, trees, mtimedb,
 
 		if not success:
 			mydepgraph.display_problems()
-
-		if not success:
 			# delete the current list and also the backup
 			# since it's probably stale too.
 			for k in ("resume", "resume_backup"):
@@ -7817,10 +7815,6 @@ def action_build(settings, trees, mtimedb,
 		if not retval:
 			mydepgraph.display_problems()
 			return 1
-		display = pretend or \
-			((ask or tree or verbose) and not (quiet and not ask))
-		if not display:
-			mydepgraph.display_problems()
 
 	if "--pretend" not in myopts and \
 		("--ask" in myopts or "--tree" in myopts or \
