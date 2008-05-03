@@ -7669,12 +7669,14 @@ def action_build(settings, trees, mtimedb,
 		if show_spinner:
 			print "\b\b... done!"
 
+		unsatisfied_block = False
 		if success:
 			mymergelist = mydepgraph.altlist()
 			if mymergelist and \
 				(isinstance(mymergelist[-1], Blocker) and \
 				not mymergelist[-1].satisfied):
 				if not fetchonly and not pretend:
+					unsatisfied_block = True
 					mydepgraph.display(
 						mydepgraph.altlist(reversed=tree),
 						favorites=favorites)
@@ -7682,11 +7684,11 @@ def action_build(settings, trees, mtimedb,
 					print   "!!!        at the same time on the same system."
 					if not quiet:
 						show_blocker_docs_link()
-					return 1
 
 		if not success:
 			mydepgraph.display_problems()
 
+		if unsatisfied_block or not success:
 			# delete the current list and also the backup
 			# since it's probably stale too.
 			for k in ("resume", "resume_backup"):
