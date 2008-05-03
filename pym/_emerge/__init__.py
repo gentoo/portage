@@ -1759,6 +1759,8 @@ class depgraph(object):
 		self._missing_args = []
 		self._masked_installed = []
 		self._unsatisfied_deps_for_display = []
+		self._unsatisfied_blockers_for_display = None
+		self._circular_deps_for_display = None
 		self._dep_stack = []
 		self._unsatisfied_deps = []
 		self._ignored_deps = []
@@ -1776,6 +1778,8 @@ class depgraph(object):
 
 		if not self._slot_collision_info:
 			return
+
+		self._show_merge_list()
 
 		msg = []
 		msg.append("\n!!! Multiple versions within a single " + \
@@ -3721,43 +3725,7 @@ class depgraph(object):
 					continue
 
 			if not selected_nodes:
-				# No leaf nodes are available, so we have a circular
-				# dependency panic situation.  Reduce the noise level to a
-				# minimum via repeated elimination of root nodes since they
-				# have no parents and thus can not be part of a cycle.
-				while True:
-					root_nodes = mygraph.root_nodes(
-						ignore_priority=DepPriority.MEDIUM_SOFT)
-					if not root_nodes:
-						break
-					for node in root_nodes:
-						mygraph.remove(node)
-				# Display the USE flags that are enabled on nodes that are part
-				# of dependency cycles in case that helps the user decide to
-				# disable some of them.
-				display_order = []
-				tempgraph = mygraph.copy()
-				while not tempgraph.empty():
-					nodes = tempgraph.leaf_nodes()
-					if not nodes:
-						node = tempgraph.order[0]
-					else:
-						node = nodes[0]
-					display_order.append(node)
-					tempgraph.remove(node)
-				display_order.reverse()
-				self.myopts.pop("--quiet", None)
-				self.myopts.pop("--verbose", None)
-				self.myopts["--tree"] = True
-				print
-				print
-				self.display(display_order)
-				print "!!! Error: circular dependencies:"
-				print
-				mygraph.debug_print()
-				print
-				print "!!! Note that circular dependencies can often be avoided by temporarily"
-				print "!!! disabling USE flags that trigger optional dependencies."
+				self._circular_deps_for_display = mygraph
 				raise self._unknown_internal_error()
 
 			# At this point, we've succeeded in selecting one or more nodes, so
@@ -3837,25 +3805,78 @@ class depgraph(object):
 
 		if unsolvable_blockers and \
 			not self._accept_blocker_conflicts():
-			quiet = "--quiet" in self.myopts
-			display_list = retlist[:]
-			if tree_mode:
-				display_list.reverse()
-			portage.writemsg("\n", noiselevel=-1)
-			self.display(display_list)
-			msg = "Error: The above package list contains " + \
-				"packages which cannot be installed " + \
-				"at the same time on the same system."
-			prefix = bad(" * ")
-			from textwrap import wrap
-			portage.writemsg("\n", noiselevel=-1)
-			for line in wrap(msg, 70):
-				portage.writemsg(prefix + line + "\n", noiselevel=-1)
-			if not quiet:
-				show_blocker_docs_link()
+			self._unsatisfied_blockers_for_display = unsolvable_blockers
+			self._serialized_tasks_cache = retlist[:]
+			raise self._unknown_internal_error()
+
+		if self._slot_collision_info and \
+			not self._accept_blocker_conflicts():
+			self._serialized_tasks_cache = retlist[:]
 			raise self._unknown_internal_error()
 
 		return retlist
+
+	def _show_circular_deps(self, mygraph):
+		# No leaf nodes are available, so we have a circular
+		# dependency panic situation.  Reduce the noise level to a
+		# minimum via repeated elimination of root nodes since they
+		# have no parents and thus can not be part of a cycle.
+		while True:
+			root_nodes = mygraph.root_nodes(
+				ignore_priority=DepPriority.MEDIUM_SOFT)
+			if not root_nodes:
+				break
+			mygraph.difference_update(root_nodes)
+		# Display the USE flags that are enabled on nodes that are part
+		# of dependency cycles in case that helps the user decide to
+		# disable some of them.
+		display_order = []
+		tempgraph = mygraph.copy()
+		while not tempgraph.empty():
+			nodes = tempgraph.leaf_nodes()
+			if not nodes:
+				node = tempgraph.order[0]
+			else:
+				node = nodes[0]
+			display_order.append(node)
+			tempgraph.remove(node)
+		display_order.reverse()
+		self.myopts.pop("--quiet", None)
+		self.myopts.pop("--verbose", None)
+		self.myopts["--tree"] = True
+		portage.writemsg("\n\n", noiselevel=-1)
+		self.display(display_order)
+		prefix = colorize("BAD", " * ")
+		portage.writemsg("\n", noiselevel=-1)
+		portage.writemsg(prefix + "Error: circular dependencies:\n",
+			noiselevel=-1)
+		portage.writemsg("\n", noiselevel=-1)
+		mygraph.debug_print()
+		portage.writemsg("\n", noiselevel=-1)
+		portage.writemsg(prefix + "Note that circular dependencies " + \
+			"can often be avoided by temporarily\n", noiselevel=-1)
+		portage.writemsg(prefix + "disabling USE flags that trigger " + \
+			"optional dependencies.\n", noiselevel=-1)
+
+	def _show_merge_list(self):
+		if self._serialized_tasks_cache is not None:
+			display_list = self._serialized_tasks_cache[:]
+			if "--tree" in self.myopts:
+				display_list.reverse()
+			self.display(display_list)
+
+	def _show_unsatisied_blockers(self, blockers):
+		self._show_merge_list()
+		msg = "Error: The above package list contains " + \
+			"packages which cannot be installed " + \
+			"at the same time on the same system."
+		prefix = colorize("BAD", " * ")
+		from textwrap import wrap
+		portage.writemsg("\n", noiselevel=-1)
+		for line in wrap(msg, 70):
+			portage.writemsg(prefix + line + "\n", noiselevel=-1)
+		if "--quiet" not in self.myopts:
+			show_blocker_docs_link()
 
 	def display(self, mylist, favorites=[], verbosity=None):
 		if verbosity is None:
@@ -4529,7 +4550,6 @@ class depgraph(object):
 				sys.stdout.write(text)
 
 		sys.stdout.flush()
-		self.display_problems()
 		return os.EX_OK
 
 	def display_problems(self):
@@ -4541,17 +4561,16 @@ class depgraph(object):
 		to ensure that the user is notified of problems with the graph.
 		"""
 
-		task_list = self._serialized_tasks_cache
-
-		# Any blockers must be appended to the tail of the list,
-		# so we only need to check the last item.
-		have_blocker_conflict = bool(task_list and \
-			(isinstance(task_list[-1], Blocker) and \
-			not task_list[-1].satisfied))
+		if self._circular_deps_for_display is not None:
+			self._show_circular_deps(
+				self._circular_deps_for_display)
 
 		# The user is only notified of a slot conflict if
 		# there are no unresolvable blocker conflicts.
-		if not have_blocker_conflict:
+		if self._unsatisfied_blockers_for_display is not None:
+			self._show_unsatisied_blockers(
+				self._unsatisfied_blockers_for_display)
+		else:
 			self._show_slot_collision_notice()
 
 		# TODO: Add generic support for "set problem" handlers so that
@@ -7735,11 +7754,11 @@ def action_build(settings, trees, mtimedb,
 		except portage.exception.PackageNotFound, e:
 			portage.writemsg("\n!!! %s\n" % str(e), noiselevel=-1)
 			return 1
+		if show_spinner:
+			print "\b\b... done!"
 		if not retval:
 			mydepgraph.display_problems()
 			return 1
-		if "--quiet" not in myopts and "--nodeps" not in myopts:
-			print "\b\b... done!"
 		display = pretend or \
 			((ask or tree or verbose) and not (quiet and not ask))
 		if not display:
@@ -7758,6 +7777,7 @@ def action_build(settings, trees, mtimedb,
 			retval = mydepgraph.display(
 				mydepgraph.altlist(reversed=tree),
 				favorites=favorites)
+			mydepgraph.display_problems()
 			if retval != os.EX_OK:
 				return retval
 			prompt="Would you like to resume merging these packages?"
@@ -7765,6 +7785,7 @@ def action_build(settings, trees, mtimedb,
 			retval = mydepgraph.display(
 				mydepgraph.altlist(reversed=("--tree" in myopts)),
 				favorites=favorites)
+			mydepgraph.display_problems()
 			if retval != os.EX_OK:
 				return retval
 			mergecount=0
@@ -7808,12 +7829,14 @@ def action_build(settings, trees, mtimedb,
 			retval = mydepgraph.display(
 				mydepgraph.altlist(reversed=tree),
 				favorites=favorites)
+			mydepgraph.display_problems()
 			if retval != os.EX_OK:
 				return retval
 		else:
 			retval = mydepgraph.display(
 				mydepgraph.altlist(reversed=("--tree" in myopts)),
 				favorites=favorites)
+			mydepgraph.display_problems()
 			if retval != os.EX_OK:
 				return retval
 			if "--buildpkgonly" in myopts:
