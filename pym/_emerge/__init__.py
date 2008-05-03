@@ -7637,6 +7637,10 @@ def action_build(settings, trees, mtimedb,
 			mysettings.lock()
 			del myroot, mysettings
 
+		favorites = mtimedb["resume"].get("favorites")
+		if not isinstance(favorites, list):
+			favorites = []
+
 		# "myopts" is a list for backward compatibility.
 		resume_opts = mtimedb["resume"].get("myopts", [])
 		if isinstance(resume_opts, list):
@@ -7663,6 +7667,21 @@ def action_build(settings, trees, mtimedb,
 
 		if show_spinner:
 			print "\b\b... done!"
+
+		if success:
+			mymergelist = mydepgraph.altlist()
+			if mymergelist and \
+				(isinstance(mymergelist[-1], Blocker) and \
+				not mymergelist[-1].satisfied):
+				if not fetchonly and not pretend:
+					mydepgraph.display(
+						mydepgraph.altlist(reversed=tree),
+						favorites=favorites)
+					print "\n!!! Error: The above package list contains packages which cannot be installed"
+					print   "!!!        at the same time on the same system."
+					if not quiet:
+						show_blocker_docs_link()
+					return 1
 
 		if not success:
 			mydepgraph.display_problems()
