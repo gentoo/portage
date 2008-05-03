@@ -7775,7 +7775,6 @@ def action_build(settings, trees, mtimedb,
 			if show_spinner:
 				print "\b\b... done!"
 
-		if not success:
 			mydepgraph.display_problems()
 
 		if not success:
@@ -7803,13 +7802,9 @@ def action_build(settings, trees, mtimedb,
 			return 1
 		if show_spinner:
 			print "\b\b... done!"
+		mydepgraph.display_problems()
 		if not retval:
-			mydepgraph.display_problems()
 			return 1
-		display = pretend or \
-			((ask or tree or verbose) and not (quiet and not ask))
-		if not display:
-			mydepgraph.display_problems()
 
 	if "--pretend" not in myopts and \
 		("--ask" in myopts or "--tree" in myopts or \
