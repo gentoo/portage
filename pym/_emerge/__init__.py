@@ -7576,6 +7576,16 @@ def action_depclean(settings, trees, ldpath_mtimes,
 def action_build(settings, trees, mtimedb,
 	myopts, myaction, myfiles, spinner):
 
+	# validate the state of the resume data
+	# so that we can make assumptions later.
+	for k in ("resume", "resume_backup"):
+		if k in mtimedb:
+			if "mergelist" in mtimedb[k]:
+				if not mtimedb[k]["mergelist"]:
+					del mtimedb[k]
+			else:
+				del mtimedb[k]
+
 	resume = False
 	if "--resume" in myopts and \
 		("resume" in mtimedb or
@@ -7649,16 +7659,6 @@ def action_build(settings, trees, mtimedb,
 			print
 			print darkgreen("These are the packages that would be %s, in order:") % action
 			print
-
-	# validate the state of the resume data
-	# so that we can make assumptions later.
-	for k in ("resume", "resume_backup"):
-		if k in mtimedb:
-			if "mergelist" in mtimedb[k]:
-				if not mtimedb[k]["mergelist"]:
-					del mtimedb[k]
-			else:
-				del mtimedb[k]
 
 	show_spinner = "--quiet" not in myopts and "--nodeps" not in myopts
 	if not show_spinner:
