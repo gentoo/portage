@@ -7582,7 +7582,13 @@ def action_build(settings, trees, mtimedb,
 	pretend = "--pretend" in myopts
 	fetchonly = "--fetchonly" in myopts or "--fetch-all-uri" in myopts
 	ask = "--ask" in myopts
+	nodeps = "--nodeps" in myopts
 	tree = "--tree" in myopts
+	if nodeps and tree:
+		tree = False
+		del myopts["--tree"]
+		portage.writemsg(colorize("WARN", " * ") + \
+			"--tree is broken with --nodeps. Disabling...\n")
 	verbose = "--verbose" in myopts
 	quiet = "--quiet" in myopts
 	if pretend or fetchonly:
@@ -7660,6 +7666,24 @@ def action_build(settings, trees, mtimedb,
 		for opt in ("--skipfirst", "--ask", "--tree"):
 			resume_opts.pop(opt, None)
 		myopts.update(resume_opts)
+
+		buildpkgonly = "--buildpkgonly" in myopts
+		pretend = "--pretend" in myopts
+		fetchonly = "--fetchonly" in myopts or "--fetch-all-uri" in myopts
+		ask = "--ask" in myopts
+		nodeps = "--nodeps" in myopts
+		tree = "--tree" in myopts
+		if nodeps and tree:
+			tree = False
+			del myopts["--tree"]
+			portage.writemsg(colorize("WARN", " * ") + \
+				"--tree is broken with --nodeps. Disabling...\n")
+		verbose = "--verbose" in myopts
+		quiet = "--quiet" in myopts
+		if pretend or fetchonly:
+			# make the mtimedb readonly
+			mtimedb.filename = None
+
 		if show_spinner:
 			print "Calculating dependencies  ",
 		myparams = create_depgraph_params(myopts, myaction)
