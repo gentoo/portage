@@ -7804,11 +7804,12 @@ def action_build(settings, trees, mtimedb,
 
 		if not success:
 			mydepgraph.display_problems()
-			# delete the current list and also the backup
-			# since it's probably stale too.
-			for k in ("resume", "resume_backup"):
-				mtimedb.pop(k, None)
-			mtimedb.commit()
+			if not (ask or pretend):
+				# delete the current list and also the backup
+				# since it's probably stale too.
+				for k in ("resume", "resume_backup"):
+					mtimedb.pop(k, None)
+				mtimedb.commit()
 
 			return 1
 	else:
