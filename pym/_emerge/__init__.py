@@ -3348,7 +3348,7 @@ class depgraph(object):
 
 		return True
 
-	def _accept_collisions(self):
+	def _accept_blocker_conflicts(self):
 		acceptable = False
 		for x in ("--buildpkgonly", "--fetchonly",
 			"--fetch-all-uri", "--nodeps", "--pretend"):
@@ -3834,6 +3834,26 @@ class depgraph(object):
 			not unsolvable_blockers:
 			self.myparams.add("complete")
 			raise self._serialize_tasks_retry("")
+
+		if unsolvable_blockers and \
+			not self._accept_blocker_conflicts():
+			quiet = "--quiet" in self.myopts
+			display_list = retlist[:]
+			if tree_mode:
+				display_list.reverse()
+			portage.writemsg("\n", noiselevel=-1)
+			self.display(display_list)
+			msg = "Error: The above package list contains " + \
+				"packages which cannot be installed " + \
+				"at the same time on the same system."
+			prefix = bad(" * ")
+			from textwrap import wrap
+			portage.writemsg("\n", noiselevel=-1)
+			for line in wrap(msg, 70):
+				portage.writemsg(prefix + line + "\n", noiselevel=-1)
+			if not quiet:
+				show_blocker_docs_link()
+			raise self._unknown_internal_error()
 
 		return retlist
 
@@ -7689,26 +7709,10 @@ def action_build(settings, trees, mtimedb,
 			if show_spinner:
 				print "\b\b... done!"
 
-		unsatisfied_block = False
-		if success:
-			mymergelist = mydepgraph.altlist()
-			if mymergelist and \
-				(isinstance(mymergelist[-1], Blocker) and \
-				not mymergelist[-1].satisfied):
-				if not fetchonly and not pretend:
-					unsatisfied_block = True
-					mydepgraph.display(
-						mydepgraph.altlist(reversed=tree),
-						favorites=favorites)
-					print "\n!!! Error: The above package list contains packages which cannot be installed"
-					print   "!!!        at the same time on the same system."
-					if not quiet:
-						show_blocker_docs_link()
-
 		if not success:
 			mydepgraph.display_problems()
 
-		if unsatisfied_block or not success:
+		if not success:
 			# delete the current list and also the backup
 			# since it's probably stale too.
 			for k in ("resume", "resume_backup"):
@@ -7765,17 +7769,9 @@ def action_build(settings, trees, mtimedb,
 				return retval
 			mergecount=0
 			for x in mydepgraph.altlist():
-				if isinstance(x, Blocker) and x.satisfied:
-					continue
-				if x[0] != "blocks" and x[3] != "nomerge":
-					mergecount+=1
-				#check for blocking dependencies
-				if x[0]=="blocks" and "--fetchonly" not in myopts and "--fetch-all-uri" not in myopts:
-					print "\n!!! Error: The above package list contains packages which cannot be installed"
-					print   "!!!        at the same time on the same system."
-					if "--quiet" not in myopts:
-						show_blocker_docs_link()
-					return 1
+				if isinstance(x, Package) and x.operation == "merge":
+					mergecount += 1
+
 			if mergecount==0:
 				if "--noreplace" in myopts and favorites:
 					print
@@ -7879,30 +7875,6 @@ def action_build(settings, trees, mtimedb,
 							tree="porttree")
 
 			pkglist = mydepgraph.altlist()
-
-			if fetchonly or "--buildpkgonly"  in myopts:
-				pkglist = [pkg for pkg in pkglist if pkg[0] != "blocks"]
-			else:
-				for x in pkglist:
-					if isinstance(x, Blocker) and x.satisfied:
-						continue
-					if x[0] != "blocks":
-						continue
-					retval = mydepgraph.display(mydepgraph.altlist(
-						reversed=("--tree" in myopts)),
-						favorites=favorites)
-					msg = "Error: The above package list contains " + \
-						"packages which cannot be installed " + \
-						"at the same time on the same system."
-					prefix = bad(" * ")
-					from textwrap import wrap
-					print
-					for line in wrap(msg, 70):
-						print prefix + line
-					if "--quiet" not in myopts:
-						show_blocker_docs_link()
-					return 1
-
 			mydepgraph.saveNomergeFavorites()
 			del mydepgraph
 			mergetask = MergeTask(settings, trees, myopts)
