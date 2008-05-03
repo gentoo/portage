@@ -7575,6 +7575,31 @@ def action_depclean(settings, trees, ldpath_mtimes,
 
 def action_build(settings, trees, mtimedb,
 	myopts, myaction, myfiles, spinner):
+
+	resume = False
+	if "--resume" in myopts and \
+		("resume" in mtimedb or
+		"resume_backup" in mtimedb):
+		resume = True
+		if "resume" not in mtimedb:
+			mtimedb["resume"] = mtimedb["resume_backup"]
+			del mtimedb["resume_backup"]
+			mtimedb.commit()
+		# "myopts" is a list for backward compatibility.
+		resume_opts = mtimedb["resume"].get("myopts", [])
+		if isinstance(resume_opts, list):
+			resume_opts = dict((k,True) for k in resume_opts)
+		for opt in ("--skipfirst", "--ask", "--tree"):
+			resume_opts.pop(opt, None)
+		myopts.update(resume_opts)
+		# Adjust config according to options of the command being resumed.
+		for myroot in trees:
+			mysettings =  trees[myroot]["vartree"].settings
+			mysettings.unlock()
+			adjust_config(myopts, mysettings)
+			mysettings.lock()
+			del myroot, mysettings
+
 	ldpath_mtimes = mtimedb["ldpath"]
 	favorites=[]
 	merge_count = 0
@@ -7639,50 +7664,10 @@ def action_build(settings, trees, mtimedb,
 	if not show_spinner:
 		spinner.update = spinner.update_quiet
 
-	if "--resume" in myopts and \
-		("resume" in mtimedb or
-		"resume_backup" in mtimedb):
-		if "resume" not in mtimedb:
-			mtimedb["resume"] = mtimedb["resume_backup"]
-			del mtimedb["resume_backup"]
-			mtimedb.commit()
-
-		# Adjust config according to options of the command being resumed.
-		for myroot in trees:
-			mysettings =  trees[myroot]["vartree"].settings
-			mysettings.unlock()
-			adjust_config(myopts, mysettings)
-			mysettings.lock()
-			del myroot, mysettings
-
+	if resume:
 		favorites = mtimedb["resume"].get("favorites")
 		if not isinstance(favorites, list):
 			favorites = []
-
-		# "myopts" is a list for backward compatibility.
-		resume_opts = mtimedb["resume"].get("myopts", [])
-		if isinstance(resume_opts, list):
-			resume_opts = dict((k,True) for k in resume_opts)
-		for opt in ("--skipfirst", "--ask", "--tree"):
-			resume_opts.pop(opt, None)
-		myopts.update(resume_opts)
-
-		buildpkgonly = "--buildpkgonly" in myopts
-		pretend = "--pretend" in myopts
-		fetchonly = "--fetchonly" in myopts or "--fetch-all-uri" in myopts
-		ask = "--ask" in myopts
-		nodeps = "--nodeps" in myopts
-		tree = "--tree" in myopts
-		if nodeps and tree:
-			tree = False
-			del myopts["--tree"]
-			portage.writemsg(colorize("WARN", " * ") + \
-				"--tree is broken with --nodeps. Disabling...\n")
-		verbose = "--verbose" in myopts
-		quiet = "--quiet" in myopts
-		if pretend or fetchonly:
-			# make the mtimedb readonly
-			mtimedb.filename = None
 
 		if show_spinner:
 			print "Calculating dependencies  ",
