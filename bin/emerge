@@ -4950,8 +4950,19 @@ class depgraph(object):
 				if isinstance(task, Package) and \
 					task.operation == "merge":
 					self._add_pkg(task, None)
-			if not self._create_graph():
+
+			# Allow unsatisfied deps here to avoid showing a masking
+			# message for an unsatisfied dep that isn't necessarily
+			# masked.
+			if not self._create_graph(allow_unsatisfied=True):
 				return False
+			if self._unsatisfied_deps:
+				# This probably means that a required package
+				# was dropped via --skipfirst. It makes the
+				# resume list invalid, so convert it to a
+				# PackageNotFound exception.
+				raise portage_exception.PackageNotFound(
+					self._unsatisfied_deps[0].atom)
 			self._serialized_tasks_cache = None
 			try:
 				self.altlist()
@@ -7675,9 +7686,9 @@ def action_build(settings, trees, mtimedb,
 			out.eerror("Error: The resume list contains packages that are no longer")
 			out.eerror("       available to be emerged. Please restart/continue")
 			out.eerror("       the merge operation manually.")
-
-		if show_spinner:
-			print "\b\b... done!"
+		else:
+			if show_spinner:
+				print "\b\b... done!"
 
 		unsatisfied_block = False
 		if success:
