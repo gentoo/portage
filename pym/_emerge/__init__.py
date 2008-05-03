@@ -4837,8 +4837,8 @@ class depgraph(object):
 				# This probably means that a required package
 				# was dropped via --skipfirst. It makes the
 				# resume list invalid, so convert it to a
-				# PackageNotFound exception.
-				raise portage.exception.PackageNotFound(
+				# UnsatisfiedResumeDep exception.
+				raise self.UnsatisfiedResumeDep(
 					self._unsatisfied_deps[0].atom)
 			self._serialized_tasks_cache = None
 			try:
@@ -4907,6 +4907,13 @@ class depgraph(object):
 					atom_arg_map[atom_key] = refs
 					if arg not in refs:
 						refs.append(arg)
+
+	class UnsatisfiedResumeDep(portage.exception.PortageException):
+		"""
+		A dependency of a resume list is not installed. This
+		can occur when a required package is dropped from the
+		merge list via --skipfirst.
+		"""
 
 	class _internal_exception(portage.exception.PortageException):
 		def __init__(self, value=""):
@@ -7763,14 +7770,34 @@ def action_build(settings, trees, mtimedb,
 		success = False
 		try:
 			success = mydepgraph.loadResumeCommand(mtimedb["resume"])
-		except portage.exception.PackageNotFound:
+		except (portage.exception.PackageNotFound,
+			mydepgraph.UnsatisfiedResumeDep), e:
 			if show_spinner:
 				print
+			from textwrap import wrap
 			from portage.output import EOutput
 			out = EOutput()
-			out.eerror("Error: The resume list contains packages that are no longer")
-			out.eerror("       available to be emerged. Please restart/continue")
-			out.eerror("       the merge operation manually.")
+
+			if isinstance(e, mydepgraph.UnsatisfiedResumeDep):
+				out.eerror("An expected dependency " + \
+					"is not installed: %s" % str(e))
+				out.eerror("")
+				msg = "The resume list contains packages " + \
+					"with dependencies that have not been " + \
+					"installed yet. Please restart/continue " + \
+					"the operation manually."
+				for line in wrap(msg, 72):
+					out.eerror(line)
+			elif isinstance(e, portage.exception.PackageNotFound):
+				out.eerror("An expected package is " + \
+					"not available: %s" % str(e))
+				out.eerror("")
+				msg = "The resume list contains one or more " + \
+					"packages that are no longer " + \
+					"available. Please restart/continue " + \
+					"the operation manually."
+				for line in wrap(msg, 72):
+					out.eerror(line)
 		else:
 			if show_spinner:
 				print "\b\b... done!"
