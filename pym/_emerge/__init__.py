@@ -4724,6 +4724,9 @@ class depgraph(object):
 		"""
 		self._sets["args"].update(resume_data.get("favorites", []))
 		mergelist = resume_data.get("mergelist", [])
+		favorites = resume_data.get("favorites")
+		if not isinstance(favorites, list):
+			favorites = []
 
 		if mergelist and "--skipfirst" in self.myopts:
 			for i, task in enumerate(mergelist):
@@ -4763,10 +4766,50 @@ class depgraph(object):
 				operation=action, root=myroot,
 				type_name=pkg_type)
 			self._pkg_cache[pkg] = pkg
+
+			root_config = self.roots[pkg.root]
+			if "merge" == pkg.operation and \
+				not visible(root_config.settings, pkg):
+				self._unsatisfied_deps_for_display.append(
+					((pkg.root, "="+pkg.cpv), {"myparent":None}))
+
 			fakedb[myroot].cpv_inject(pkg)
 			serialized_tasks.append(pkg)
 			self.spinner.update()
-		self._serialized_tasks_cache = serialized_tasks
+
+		if self._unsatisfied_deps_for_display:
+			return False
+
+		if not serialized_tasks or "--nodeps" in self.myopts:
+			self._serialized_tasks_cache = serialized_tasks
+		else:
+			favorites_set = InternalPackageSet(atom for atom in favorites \
+				if isinstance(atom, basestring) and portage.isvalidatom(atom))
+			for node in serialized_tasks:
+				if isinstance(node, Package) and \
+					node.operation == "merge" and \
+					favorites_set.findAtomForPackage(node.cpv, node.metadata):
+					self._set_nodes.add(node)
+
+			self._select_package = self._select_pkg_from_graph
+			for task in serialized_tasks:
+				if isinstance(task, Package) and \
+					task.operation == "merge":
+					self._add_pkg(task, None)
+			if not self._create_graph():
+				return False
+			self._serialized_tasks_cache = None
+			try:
+				self.altlist()
+			except self._unknown_internal_error:
+				return False
+
+			for node in self.digraph.root_nodes():
+				if isinstance(node, Package) and \
+					node.operation == "merge":
+					# Give hint to the --tree display.
+					self._set_nodes.add(node)
+		return True
 
 	class _internal_exception(portage.exception.PortageException):
 		def __init__(self, value=""):
@@ -5157,7 +5200,7 @@ class MergeTask(object):
 
 		mymergelist = mylist
 		myfeat = self.settings.features[:]
-		bad_resume_opts = set(["--ask", "--tree", "--changelog", "--skipfirst",
+		bad_resume_opts = set(["--ask", "--changelog", "--skipfirst",
 			"--resume"])
 		if "parallel-fetch" in myfeat and \
 			not ("--pretend" in self.myopts or \
@@ -7606,8 +7649,9 @@ def action_build(settings, trees, mtimedb,
 		myparams = create_depgraph_params(myopts, myaction)
 		mydepgraph = depgraph(settings, trees,
 			myopts, myparams, spinner)
+		success = False
 		try:
-			mydepgraph.loadResumeCommand(mtimedb["resume"])
+			success = mydepgraph.loadResumeCommand(mtimedb["resume"])
 		except portage.exception.PackageNotFound:
 			if show_spinner:
 				print
@@ -7617,14 +7661,19 @@ def action_build(settings, trees, mtimedb,
 			out.eerror("       available to be emerged. Please restart/continue")
 			out.eerror("       the merge operation manually.")
 
+		if show_spinner:
+			print "\b\b... done!"
+
+		if not success:
+			mydepgraph.display_problems()
+
 			# delete the current list and also the backup
 			# since it's probably stale too.
 			for k in ("resume", "resume_backup"):
 				mtimedb.pop(k, None)
 			mtimedb.commit()
+
 			return 1
-		if show_spinner:
-			print "\b\b... done!"
 	else:
 		if ("--resume" in myopts):
 			print darkgreen("emerge: It seems we have nothing to resume...")
@@ -7660,7 +7709,9 @@ def action_build(settings, trees, mtimedb,
 				print colorize("INFORM", "emerge: It seems we have nothing to resume...")
 				return os.EX_OK
 			favorites = mtimedb["resume"]["favorites"]
-			retval = mydepgraph.display(mymergelist, favorites=favorites)
+			retval = mydepgraph.display(
+				mydepgraph.altlist(reversed=tree),
+				favorites=favorites)
 			if retval != os.EX_OK:
 				return retval
 			prompt="Would you like to resume merging these packages?"
@@ -7716,7 +7767,9 @@ def action_build(settings, trees, mtimedb,
 				print colorize("INFORM", "emerge: It seems we have nothing to resume...")
 				return os.EX_OK
 			favorites = mtimedb["resume"]["favorites"]
-			retval = mydepgraph.display(mymergelist, favorites=favorites)
+			retval = mydepgraph.display(
+				mydepgraph.altlist(reversed=tree),
+				favorites=favorites)
 			if retval != os.EX_OK:
 				return retval
 		else:
@@ -8296,11 +8349,6 @@ def emerge_main():
 		if "python-trace" in settings.features:
 			import portage.debug
 			portage.debug.set_trace(True)
-
-	if ("--resume" in myopts):
-		if "--tree" in myopts:
-			print "* --tree is currently broken with --resume. Disabling..."
-			del myopts["--tree"]
 
 	if not ("--quiet" in myopts):
 		if not sys.stdout.isatty() or ("--nospinner" in myopts):
