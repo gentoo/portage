@@ -4920,7 +4920,9 @@ class depgraph(object):
 		favorites = resume_data.get("favorites")
 		if isinstance(favorites, list):
 			self._load_favorites(resume_data)
-		mergelist = resume_data.get("mergelist", [])
+		mergelist = resume_data.get("mergelist")
+		if not isinstance(mergelist, list):
+			mergelist = []
 
 		if mergelist and "--skipfirst" in self.myopts:
 			for i, task in enumerate(mergelist):
@@ -7730,6 +7732,7 @@ def action_build(settings, trees, mtimedb,
 		del myopts["--tree"]
 		portage.writemsg(colorize("WARN", " * ") + \
 			"--tree is broken with --nodeps. Disabling...\n")
+	debug = "--debug" in myopts
 	verbose = "--verbose" in myopts
 	quiet = "--quiet" in myopts
 	if pretend or fetchonly:
@@ -7790,6 +7793,19 @@ def action_build(settings, trees, mtimedb,
 			from textwrap import wrap
 			from output import EOutput
 			out = EOutput()
+
+			resume_data = mtimedb["resume"]
+			mergelist = resume_data.get("mergelist")
+			if not isinstance(mergelist, list):
+				mergelist = []
+			if mergelist and debug or (verbose and not quiet):
+				out.eerror("Invalid resume list:")
+				out.eerror("")
+				indent = "  "
+				for task in mergelist:
+					if isinstance(task, list):
+						out.eerror(indent + str(tuple(task)))
+				out.eerror("")
 
 			if isinstance(e, mydepgraph.UnsatisfiedResumeDep):
 				out.eerror("An expected dependency " + \
