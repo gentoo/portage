@@ -5222,7 +5222,8 @@ class MergeTask(object):
 				fetch_env["FEATURES"] = fetch_env.get("FEATURES", "") + " -cvs"
 				fetch_env["PORTAGE_NICENESS"] = "0"
 				fetch_env["PORTAGE_PARALLEL_FETCHONLY"] = "1"
-				fetch_args = [sys.argv[0], "--resume", "--fetchonly"]
+				fetch_args = [sys.argv[0], "--resume",
+					"--fetchonly", "--nodeps"]
 				resume_opts = self.myopts.copy()
 				# For automatic resume, we need to prevent
 				# any of bad_resume_opts from leaking in
