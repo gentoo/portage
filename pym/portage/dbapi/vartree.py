@@ -251,7 +251,7 @@ class vardbapi(dbapi):
 		self._aux_cache_keys = set(
 			["CHOST", "COUNTER", "DEPEND", "DESCRIPTION",
 			"EAPI", "HOMEPAGE", "IUSE", "KEYWORDS",
-			"LICENSE", "PDEPEND", "PROVIDE", "RDEPEND", "NEEDED",
+			"LICENSE", "PDEPEND", "PROVIDE", "RDEPEND",
 			"repository", "RESTRICT" , "SLOT", "USE"])
 		self._aux_cache = None
 		self._aux_cache_version = "1"
@@ -583,12 +583,6 @@ class vardbapi(dbapi):
 			cache_valid = cache_mtime == mydir_mtime
 		if cache_valid:
 			cache_incomplete = self._aux_cache_keys.difference(metadata)
-			needed = metadata.get("NEEDED")
-			if needed is None or needed and "\n" not in needed:
-				# Cached value has whitespace filtered, so it has to be pulled
-				# again. This is temporary migration code which can be removed
-				# later, since it only affects users who are running trunk.
-				cache_incomplete.add("NEEDED")
 			if cache_incomplete:
 				# Allow self._aux_cache_keys to change without a cache version
 				# bump and efficiently recycle partial cache whenever possible.
@@ -630,8 +624,7 @@ class vardbapi(dbapi):
 					myd = myf.read()
 				finally:
 					myf.close()
-				if x != "NEEDED":
-					myd = " ".join(myd.split())
+				myd = " ".join(myd.split())
 			except IOError:
 				myd = ""
 			if x == "EAPI" and not myd:
