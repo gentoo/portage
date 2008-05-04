@@ -5,7 +5,7 @@
 from portage.checksum import perform_md5
 from portage.const import CACHE_PATH, CONFIG_MEMORY_FILE, PORTAGE_BIN_PATH, \
 	PRIVATE_PATH, VDB_PATH, EPREFIX, EPREFIX_LSTRIP
-from portage.data import portage_gid, portage_uid, secpass
+from portage.data import portage_gid, portage_uid, secpass, ostype
 from portage.dbapi import dbapi
 from portage.dep import dep_getslot, use_reduce, paren_reduce, isvalidatom, \
 	isjustname, dep_getkey, match_from_list
@@ -400,7 +400,10 @@ class vardbapi(dbapi):
 			# apparently this user isn't allowed to access PRIVATE_PATH
 			self.plib_registry = None
 
-		self.linkmap = LinkageMap(self)
+		if ostype == "Darwin":
+			self.linkmap = LinkageMapMachO(self)
+		else:
+			self.linkmap = LinkageMap(self)
 
 	def getpath(self, mykey, filename=None):
 		rValue = os.path.join(self.root, VDB_PATH, mykey)
