@@ -222,48 +222,6 @@ class LinkageMap(object):
 							rValue.add(x)
 		return rValue
 					
-class LibraryPackageMap(object):
-	""" This class provides a library->consumer mapping generated from VDB data """
-	def __init__(self, filename, vardbapi):
-		self._filename = filename
-		self._dbapi = vardbapi
-
-	def get(self):
-		""" Read the global library->consumer map for the given vdb instance.
-		    @returns mapping of library objects (just basenames) to consumers (absolute paths)
-			@rtype filename->list-of-paths
-		"""
-		if not os.path.exists(self._filename):
-			self.update()
-		rValue = {}
-		for l in open(self._filename, "r").read().split("\n"):
-			mysplit = l.split()
-			if len(mysplit) > 1:
-				rValue[mysplit[0]] = mysplit[1].split(",")
-		return rValue
-
-	def update(self):
-		""" Update the global library->consumer map for the given vdb instance. """
-		obj_dict = {}
-		aux_get = self._dbapi.aux_get
-		for cpv in self._dbapi.cpv_all():
-			needed_list = aux_get(cpv, ["NEEDED"])[0].splitlines()
-			for l in needed_list:
-				mysplit = l.split()
-				if len(mysplit) < 2:
-					continue
-				libs = mysplit[1].split(",")
-				for lib in libs:
-					if not obj_dict.has_key(lib):
-						obj_dict[lib] = [mysplit[0]]
-					else:
-						obj_dict[lib].append(mysplit[0])
-		mapfile = open(self._filename, "w")
-		for lib in sorted(obj_dict):
-			obj_dict[lib].sort()
-			mapfile.write(lib+" "+",".join(obj_dict[lib])+"\n")
-		mapfile.close()
-
 class vardbapi(dbapi):
 	def __init__(self, root, categories=None, settings=None, vartree=None):
 		"""
