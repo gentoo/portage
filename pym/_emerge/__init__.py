@@ -4811,9 +4811,7 @@ class depgraph(object):
 
 		if not isinstance(resume_data, dict):
 			return False
-		favorites = resume_data.get("favorites")
-		if isinstance(favorites, list):
-			self._load_favorites(favorites)
+
 		mergelist = resume_data.get("mergelist")
 		if not isinstance(mergelist, list):
 			mergelist = []
@@ -4876,10 +4874,29 @@ class depgraph(object):
 			self._select_package = self._select_pkg_from_graph
 			self.myparams.add("selective")
 
+			favorites = resume_data.get("favorites")
+			if isinstance(favorites, list):
+				args = self._load_favorites(favorites)
+			else:
+				args = []
+
 			for task in serialized_tasks:
 				if isinstance(task, Package) and \
 					task.operation == "merge":
-					self._add_pkg(task, None)
+					if not self._add_pkg(task, None):
+						return False
+
+			# Packages for argument atoms need to be explicitly
+			# added via _add_pkg() so that they are included in the
+			# digraph (needed at least for --tree display).
+			for arg in args:
+				for atom in arg.set:
+					pkg, existing_node = self._select_package(
+						arg.root_config.root, atom)
+					if existing_node is None and \
+						pkg is not None:
+						if not self._add_pkg(pkg, arg):
+							return False
 
 			# Allow unsatisfied deps here to avoid showing a masking
 			# message for an unsatisfied dep that isn't necessarily
@@ -4960,6 +4977,7 @@ class depgraph(object):
 					atom_arg_map[atom_key] = refs
 					if arg not in refs:
 						refs.append(arg)
+		return args
 
 	class UnsatisfiedResumeDep(portage.exception.PortageException):
 		"""
