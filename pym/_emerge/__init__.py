@@ -1395,37 +1395,48 @@ class BlockerCache(DictMixin):
 		if cache_valid:
 			# Validate all the atoms and counters so that
 			# corruption is detected as soon as possible.
+			invalid_items = set()
 			for k, v in self._cache_data["blockers"].iteritems():
 				if not isinstance(k, basestring):
-					cache_valid = False
-					break
+					invalid_items.add(k)
+					continue
 				try:
-					portage.catpkgsplit(k)
+					if portage.catpkgsplit(k) is None:
+						invalid_items.add(k)
+						continue
 				except portage.exception.InvalidData:
-					cache_valid = False
-					break
+					invalid_items.add(k)
+					continue
 				if not isinstance(v, tuple) or \
 					len(v) != 2:
-					cache_valid = False
-					break
+					invalid_items.add(k)
+					continue
 				counter, atoms = v
 				if not isinstance(counter, (int, long)):
-					cache_valid = False
-					break
+					invalid_items.add(k)
+					continue
 				if not isinstance(atoms, list):
-					cache_valid = False
-					break
+					invalid_items.add(k)
+					continue
+				invalid_atom = False
 				for atom in atoms:
 					if not isinstance(atom, basestring):
-						cache_valid = False
+						invalid_atom = True
 						break
 					if atom[:1] != "!" or \
 						not portage.isvalidatom(
 						atom, allow_blockers=True):
-						cache_valid = False
+						invalid_atom = True
 						break
-				if not cache_valid:
-					break
+				if invalid_atom:
+					invalid_items.add(k)
+					continue
+
+			for k in invalid_items:
+				del self._cache_data["blockers"][k]
+			if not self._cache_data["blockers"]:
+				cache_valid = False
+
 		if not cache_valid:
 			self._cache_data = {"version":self._cache_version}
 			self._cache_data["blockers"] = {}
