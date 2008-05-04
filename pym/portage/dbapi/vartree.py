@@ -222,6 +222,91 @@ class LinkageMap(object):
 							rValue.add(x)
 		return rValue
 					
+class LinkageMapMachoO(object):
+	def __init__(self, vardbapi):
+		self._dbapi = vardbapi
+		self._libs = {}
+		self._obj_properties = {}
+		self._defpath = getlibpaths()
+	
+	def rebuild(self):
+		libs = {}
+		obj_properties = {}
+		lines = []
+		for cpv in self._dbapi.cpv_all():
+			lines += grabfile(self._dbapi.getpath(cpv, filename="NEEDED.MACHO.2"))
+
+		for l in lines:
+			if l.strip() == "":
+				continue
+			fields = l.strip("\n").split(";")
+			if len(fields) < 3:
+				print "Error", fields
+				# insufficient field length
+				continue
+
+			# Linking an object to a library is registered by recording
+			# the install_name of the library in the object.
+			obj = os.path.realpath(fields[0])
+			install_name = os.path.realpath(fields[1])
+			needed = fields[2].split(",")
+
+			# build an internal structure that contains for each
+			# install_name, what libs have that install_name
+			# (providers), which should be just a single lib since it is
+			# an absolute path, consumers are those objects that
+			# reference the install_name
+			if install_name:
+				libs.setdefault(install_name, {"providers": [], "consumers": []})
+				libs[install_name]["providers"].append(obj)
+			for x in needed:
+				libs.setdefault(x, {"providers": [], "consumers": []})
+				libs[x]["consumers"].append(obj)
+			obj_properties[obj] = (needed, install_name)
+		
+		self._libs = libs
+		self._obj_properties = obj_properties
+
+	def listLibraryObjects(self):
+		rValue = []
+		if not self._libs:
+			self.rebuild()
+		for install_name in self._libs:
+			rValue.extend(self._libs[install_name]["providers"])
+		return rValue
+	
+	# the missing documentation, part X.
+	# This function appears to return all (valid) providers for all
+	# needed entries that the given object has.
+	def findProviders(self, obj):
+		if not self._libs:
+			self.rebuild()
+		obj = os.path.realpath(obj)
+		rValue = {}
+		if obj not in self._obj_properties:
+			raise KeyError("%s not in object list" % obj)
+		needed, install_name = self._obj_properties[obj]
+
+		for x in needed:
+			rValue[x] = set()
+			if x not in self._libs:
+				continue
+			for y in self._libs[x]["providers"]:
+				if os.path.realpath(x) == y:
+					rValue[x].add(y)
+		return rValue
+	
+	def findConsumers(self, obj):
+		if not self._libs:
+			self.rebuild()
+		obj = os.path.realpath(obj)
+		rValue = set()
+		for install_name in self._libs:
+			if obj in self._libs[install_name]["providers"]:
+				for x in self._libs[install_name]["consumers"]:
+					rValue.add(x)
+		return rValue
+					
 class LibraryPackageMap(object):
 	""" This class provides a library->consumer mapping generated from VDB data """
 	def __init__(self, filename, vardbapi):
