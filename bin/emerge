@@ -4055,7 +4055,7 @@ class depgraph(object):
 				display_list.reverse()
 			self.display(display_list)
 
-	def _show_unsatisied_blockers(self, blockers):
+	def _show_unsatisfied_blockers(self, blockers):
 		self._show_merge_list()
 		msg = "Error: The above package list contains " + \
 			"packages which cannot be installed " + \
@@ -4764,7 +4764,7 @@ class depgraph(object):
 		# The user is only notified of a slot conflict if
 		# there are no unresolvable blocker conflicts.
 		if self._unsatisfied_blockers_for_display is not None:
-			self._show_unsatisied_blockers(
+			self._show_unsatisfied_blockers(
 				self._unsatisfied_blockers_for_display)
 		else:
 			self._show_slot_collision_notice()
