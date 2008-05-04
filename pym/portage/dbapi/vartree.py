@@ -227,8 +227,7 @@ class LinkageMapMachoO(object):
 		self._dbapi = vardbapi
 		self._libs = {}
 		self._obj_properties = {}
-		self._defpath = getlibpaths()
-	
+
 	def rebuild(self):
 		libs = {}
 		obj_properties = {}
