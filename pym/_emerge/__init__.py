@@ -1413,6 +1413,51 @@ class BlockerCache(DictMixin):
 			isinstance(self._cache_data, dict) and \
 			self._cache_data.get("version") == self._cache_version and \
 			isinstance(self._cache_data.get("blockers"), dict)
+		if cache_valid:
+			# Validate all the atoms and counters so that
+			# corruption is detected as soon as possible.
+			invalid_items = set()
+			for k, v in self._cache_data["blockers"].iteritems():
+				if not isinstance(k, basestring):
+					invalid_items.add(k)
+					continue
+				try:
+					if portage.catpkgsplit(k) is None:
+						invalid_items.add(k)
+						continue
+				except portage.exception.InvalidData:
+					invalid_items.add(k)
+					continue
+				if not isinstance(v, tuple) or \
+					len(v) != 2:
+					invalid_items.add(k)
+					continue
+				counter, atoms = v
+				if not isinstance(counter, (int, long)):
+					invalid_items.add(k)
+					continue
+				if not isinstance(atoms, list):
+					invalid_items.add(k)
+					continue
+				invalid_atom = False
+				for atom in atoms:
+					if not isinstance(atom, basestring):
+						invalid_atom = True
+						break
+					if atom[:1] != "!" or \
+						not portage.isvalidatom(
+						atom, allow_blockers=True):
+						invalid_atom = True
+						break
+				if invalid_atom:
+					invalid_items.add(k)
+					continue
+
+			for k in invalid_items:
+				del self._cache_data["blockers"][k]
+			if not self._cache_data["blockers"]:
+				cache_valid = False
+
 		if not cache_valid:
 			self._cache_data = {"version":self._cache_version}
 			self._cache_data["blockers"] = {}
@@ -1780,6 +1825,8 @@ class depgraph(object):
 		self._missing_args = []
 		self._masked_installed = []
 		self._unsatisfied_deps_for_display = []
+		self._unsatisfied_blockers_for_display = None
+		self._circular_deps_for_display = None
 		self._dep_stack = []
 		self._unsatisfied_deps = []
 		self._ignored_deps = []
@@ -1797,6 +1844,8 @@ class depgraph(object):
 
 		if not self._slot_collision_info:
 			return
+
+		self._show_merge_list()
 
 		msg = []
 		msg.append("\n!!! Multiple versions within a single " + \
@@ -2302,8 +2351,6 @@ class depgraph(object):
 		root_config = self.roots[self.target_root]
 		sets = root_config.sets
 		getSetAtoms = root_config.setconfig.getSetAtoms
-		oneshot = "--oneshot" in self.myopts or \
-			"--onlydeps" in self.myopts
 		myfavorites=[]
 		myroot = self.target_root
 		dbs = self._filtered_trees[myroot]["dbs"]
@@ -2427,8 +2474,7 @@ class depgraph(object):
 					self._sets[s] = expanded_set
 					args.append(SetArg(arg=x, set=expanded_set,
 						root_config=root_config))
-					if not oneshot:
-						myfavorites.append(x)
+					myfavorites.append(x)
 					continue
 				if not is_valid_package_atom(x):
 					portage.writemsg("\n\n!!! '%s' is not a valid package atom.\n" % x,
@@ -2515,8 +2561,7 @@ class depgraph(object):
 			if myatom in args_set:
 				continue
 			args_set.add(myatom)
-			if not oneshot:
-				myfavorites.append(myatom)
+			myfavorites.append(myatom)
 		self._set_atoms.update(chain(*self._sets.itervalues()))
 		atom_arg_map = self._atom_arg_map
 		for arg in args:
@@ -3373,7 +3418,7 @@ class depgraph(object):
 
 		return True
 
-	def _accept_collisions(self):
+	def _accept_blocker_conflicts(self):
 		acceptable = False
 		for x in ("--buildpkgonly", "--fetchonly",
 			"--fetch-all-uri", "--nodeps", "--pretend"):
@@ -3746,43 +3791,7 @@ class depgraph(object):
 					continue
 
 			if not selected_nodes:
-				# No leaf nodes are available, so we have a circular
-				# dependency panic situation.  Reduce the noise level to a
-				# minimum via repeated elimination of root nodes since they
-				# have no parents and thus can not be part of a cycle.
-				while True:
-					root_nodes = mygraph.root_nodes(
-						ignore_priority=DepPriority.MEDIUM_SOFT)
-					if not root_nodes:
-						break
-					for node in root_nodes:
-						mygraph.remove(node)
-				# Display the USE flags that are enabled on nodes that are part
-				# of dependency cycles in case that helps the user decide to
-				# disable some of them.
-				display_order = []
-				tempgraph = mygraph.copy()
-				while not tempgraph.empty():
-					nodes = tempgraph.leaf_nodes()
-					if not nodes:
-						node = tempgraph.order[0]
-					else:
-						node = nodes[0]
-					display_order.append(node)
-					tempgraph.remove(node)
-				display_order.reverse()
-				self.myopts.pop("--quiet", None)
-				self.myopts.pop("--verbose", None)
-				self.myopts["--tree"] = True
-				print
-				print
-				self.display(display_order)
-				print "!!! Error: circular dependencies:"
-				print
-				mygraph.debug_print()
-				print
-				print "!!! Note that circular dependencies can often be avoided by temporarily"
-				print "!!! disabling USE flags that trigger optional dependencies."
+				self._circular_deps_for_display = mygraph
 				raise self._unknown_internal_error()
 
 			# At this point, we've succeeded in selecting one or more nodes, so
@@ -3860,7 +3869,80 @@ class depgraph(object):
 			self.myparams.add("complete")
 			raise self._serialize_tasks_retry("")
 
+		if unsolvable_blockers and \
+			not self._accept_blocker_conflicts():
+			self._unsatisfied_blockers_for_display = unsolvable_blockers
+			self._serialized_tasks_cache = retlist[:]
+			raise self._unknown_internal_error()
+
+		if self._slot_collision_info and \
+			not self._accept_blocker_conflicts():
+			self._serialized_tasks_cache = retlist[:]
+			raise self._unknown_internal_error()
+
 		return retlist
+
+	def _show_circular_deps(self, mygraph):
+		# No leaf nodes are available, so we have a circular
+		# dependency panic situation.  Reduce the noise level to a
+		# minimum via repeated elimination of root nodes since they
+		# have no parents and thus can not be part of a cycle.
+		while True:
+			root_nodes = mygraph.root_nodes(
+				ignore_priority=DepPriority.MEDIUM_SOFT)
+			if not root_nodes:
+				break
+			mygraph.difference_update(root_nodes)
+		# Display the USE flags that are enabled on nodes that are part
+		# of dependency cycles in case that helps the user decide to
+		# disable some of them.
+		display_order = []
+		tempgraph = mygraph.copy()
+		while not tempgraph.empty():
+			nodes = tempgraph.leaf_nodes()
+			if not nodes:
+				node = tempgraph.order[0]
+			else:
+				node = nodes[0]
+			display_order.append(node)
+			tempgraph.remove(node)
+		display_order.reverse()
+		self.myopts.pop("--quiet", None)
+		self.myopts.pop("--verbose", None)
+		self.myopts["--tree"] = True
+		portage.writemsg("\n\n", noiselevel=-1)
+		self.display(display_order)
+		prefix = colorize("BAD", " * ")
+		portage.writemsg("\n", noiselevel=-1)
+		portage.writemsg(prefix + "Error: circular dependencies:\n",
+			noiselevel=-1)
+		portage.writemsg("\n", noiselevel=-1)
+		mygraph.debug_print()
+		portage.writemsg("\n", noiselevel=-1)
+		portage.writemsg(prefix + "Note that circular dependencies " + \
+			"can often be avoided by temporarily\n", noiselevel=-1)
+		portage.writemsg(prefix + "disabling USE flags that trigger " + \
+			"optional dependencies.\n", noiselevel=-1)
+
+	def _show_merge_list(self):
+		if self._serialized_tasks_cache is not None:
+			display_list = self._serialized_tasks_cache[:]
+			if "--tree" in self.myopts:
+				display_list.reverse()
+			self.display(display_list)
+
+	def _show_unsatisied_blockers(self, blockers):
+		self._show_merge_list()
+		msg = "Error: The above package list contains " + \
+			"packages which cannot be installed " + \
+			"at the same time on the same system."
+		prefix = colorize("BAD", " * ")
+		from textwrap import wrap
+		portage.writemsg("\n", noiselevel=-1)
+		for line in wrap(msg, 70):
+			portage.writemsg(prefix + line + "\n", noiselevel=-1)
+		if "--quiet" not in self.myopts:
+			show_blocker_docs_link()
 
 	def display(self, mylist, favorites=[], verbosity=None):
 		if verbosity is None:
@@ -4539,7 +4621,6 @@ class depgraph(object):
 				sys.stdout.write(text)
 
 		sys.stdout.flush()
-		self.display_problems()
 		return os.EX_OK
 
 	def display_problems(self):
@@ -4551,17 +4632,16 @@ class depgraph(object):
 		to ensure that the user is notified of problems with the graph.
 		"""
 
-		task_list = self._serialized_tasks_cache
-
-		# Any blockers must be appended to the tail of the list,
-		# so we only need to check the last item.
-		have_blocker_conflict = bool(task_list and \
-			(isinstance(task_list[-1], Blocker) and \
-			not task_list[-1].satisfied))
+		if self._circular_deps_for_display is not None:
+			self._show_circular_deps(
+				self._circular_deps_for_display)
 
 		# The user is only notified of a slot conflict if
 		# there are no unresolvable blocker conflicts.
-		if not have_blocker_conflict:
+		if self._unsatisfied_blockers_for_display is not None:
+			self._show_unsatisied_blockers(
+				self._unsatisfied_blockers_for_display)
+		else:
 			self._show_slot_collision_notice()
 
 		# TODO: Add generic support for "set problem" handlers so that
@@ -4752,11 +4832,15 @@ class depgraph(object):
 		Add a resume command to the graph and validate it in the process.  This
 		will raise a PackageNotFound exception if a package is not available.
 		"""
-		self._sets["args"].update(resume_data.get("favorites", []))
-		mergelist = resume_data.get("mergelist", [])
+
+		if not isinstance(resume_data, dict):
+			return False
 		favorites = resume_data.get("favorites")
-		if not isinstance(favorites, list):
-			favorites = []
+		if isinstance(favorites, list):
+			self._load_favorites(resume_data)
+		mergelist = resume_data.get("mergelist")
+		if not isinstance(mergelist, list):
+			mergelist = []
 
 		if mergelist and "--skipfirst" in self.myopts:
 			for i, task in enumerate(mergelist):
@@ -4813,15 +4897,9 @@ class depgraph(object):
 		if not serialized_tasks or "--nodeps" in self.myopts:
 			self._serialized_tasks_cache = serialized_tasks
 		else:
-			favorites_set = InternalPackageSet(atom for atom in favorites \
-				if isinstance(atom, basestring) and portage.isvalidatom(atom))
-			for node in serialized_tasks:
-				if isinstance(node, Package) and \
-					node.operation == "merge" and \
-					favorites_set.findAtomForPackage(node.cpv, node.metadata):
-					self._set_nodes.add(node)
-
 			self._select_package = self._select_pkg_from_graph
+			self.myparams.add("selective")
+
 			for task in serialized_tasks:
 				if isinstance(task, Package) and \
 					task.operation == "merge":
@@ -4836,21 +4914,83 @@ class depgraph(object):
 				# This probably means that a required package
 				# was dropped via --skipfirst. It makes the
 				# resume list invalid, so convert it to a
-				# PackageNotFound exception.
-				raise portage.exception.PackageNotFound(
-					self._unsatisfied_deps[0].atom)
+				# UnsatisfiedResumeDep exception.
+				raise self.UnsatisfiedResumeDep(
+					self._unsatisfied_deps)
 			self._serialized_tasks_cache = None
 			try:
 				self.altlist()
 			except self._unknown_internal_error:
 				return False
 
-			for node in self.digraph.root_nodes():
-				if isinstance(node, Package) and \
-					node.operation == "merge":
-					# Give hint to the --tree display.
-					self._set_nodes.add(node)
 		return True
+
+	def _load_favorites(self, favorites):
+		"""
+		Use a list of favorites to resume state from a
+		previous select_files() call. This creates similar
+		DependencyArg instances to those that would have
+		been created by the original select_files() call.
+		This allows Package instances to be matched with
+		DependencyArg instances during graph creation.
+		"""
+		root_config = self.roots[self.target_root]
+		getSetAtoms = root_config.setconfig.getSetAtoms
+		sets = root_config.sets
+		args = []
+		for x in favorites:
+			if not isinstance(x, basestring):
+				continue
+			if x in ("system", "world"):
+				x = SETPREFIX + x
+			if x.startswith(SETPREFIX):
+				s = x[len(SETPREFIX):]
+				if s not in sets:
+					continue
+				if s in self._sets:
+					continue
+				# Recursively expand sets so that containment tests in
+				# self._get_parent_sets() properly match atoms in nested
+				# sets (like if world contains system).
+				expanded_set = InternalPackageSet(
+					initial_atoms=getSetAtoms(s))
+				self._sets[s] = expanded_set
+				args.append(SetArg(arg=x, set=expanded_set,
+					root_config=root_config))
+			else:
+				if not portage.isvalidatom(x):
+					continue
+				args.append(AtomArg(arg=x, atom=x,
+					root_config=root_config))
+
+		# Create the "args" package set from atoms and
+		# packages given as arguments.
+		args_set = self._sets["args"]
+		for arg in args:
+			if not isinstance(arg, (AtomArg, PackageArg)):
+				continue
+			myatom = arg.atom
+			if myatom in args_set:
+				continue
+			args_set.add(myatom)
+		self._set_atoms.update(chain(*self._sets.itervalues()))
+		atom_arg_map = self._atom_arg_map
+		for arg in args:
+			for atom in arg.set:
+				atom_key = (atom, arg.root_config.root)
+				refs = atom_arg_map.get(atom_key)
+				if refs is None:
+					refs = []
+					atom_arg_map[atom_key] = refs
+					if arg not in refs:
+						refs.append(arg)
+
+	class UnsatisfiedResumeDep(portage.exception.PortageException):
+		"""
+		A dependency of a resume list is not installed. This
+		can occur when a required package is dropped from the
+		merge list via --skipfirst.
+		"""
 
 	class _internal_exception(portage.exception.PortageException):
 		def __init__(self, value=""):
@@ -5198,6 +5338,8 @@ class MergeTask(object):
 		failed_fetches = []
 		fetchonly = "--fetchonly" in self.myopts or \
 			"--fetch-all-uri" in self.myopts
+		oneshot = "--oneshot" in self.myopts or \
+			"--onlydeps" in self.myopts
 		pretend = "--pretend" in self.myopts
 		ldpath_mtimes = mtimedb["ldpath"]
 		xterm_titles = "notitles" not in self.settings.features
@@ -5551,10 +5693,8 @@ class MergeTask(object):
 				if retval != os.EX_OK:
 					return retval
 				#need to check for errors
-			if "--buildpkgonly" not in self.myopts:
-				self.trees[x[1]]["vartree"].inject(x[2])
-				myfavkey = portage.cpv_getkey(x[2])
-				if not fetchonly and not pretend and \
+			if not buildpkgonly:
+				if not (fetchonly or oneshot or pretend) and \
 					args_set.findAtomForPackage(pkg_key, metadata):
 					world_set.lock()
 					world_set.load() # maybe it's changed on disk
@@ -7707,6 +7847,7 @@ def action_build(settings, trees, mtimedb,
 		del myopts["--tree"]
 		portage.writemsg(colorize("WARN", " * ") + \
 			"--tree is broken with --nodeps. Disabling...\n")
+	debug = "--debug" in myopts
 	verbose = "--verbose" in myopts
 	quiet = "--quiet" in myopts
 	if pretend or fetchonly:
@@ -7760,43 +7901,64 @@ def action_build(settings, trees, mtimedb,
 		success = False
 		try:
 			success = mydepgraph.loadResumeCommand(mtimedb["resume"])
-		except portage.exception.PackageNotFound:
+		except (portage.exception.PackageNotFound,
+			mydepgraph.UnsatisfiedResumeDep), e:
 			if show_spinner:
 				print
+			from textwrap import wrap
 			from portage.output import EOutput
 			out = EOutput()
-			out.eerror("Error: The resume list contains packages that are no longer")
-			out.eerror("       available to be emerged. Please restart/continue")
-			out.eerror("       the merge operation manually.")
+
+			resume_data = mtimedb["resume"]
+			mergelist = resume_data.get("mergelist")
+			if not isinstance(mergelist, list):
+				mergelist = []
+			if mergelist and debug or (verbose and not quiet):
+				out.eerror("Invalid resume list:")
+				out.eerror("")
+				indent = "  "
+				for task in mergelist:
+					if isinstance(task, list):
+						out.eerror(indent + str(tuple(task)))
+				out.eerror("")
+
+			if isinstance(e, mydepgraph.UnsatisfiedResumeDep):
+				out.eerror("One or more expected dependencies " + \
+					"are not installed:")
+				out.eerror("")
+				indent = "  "
+				for dep in e.value:
+					out.eerror(indent + str(dep.atom) + " pulled in by:")
+					out.eerror(2 * indent + str(dep.parent))
+					out.eerror("")
+				msg = "The resume list contains packages " + \
+					"with dependencies that have not been " + \
+					"installed yet. Please restart/continue " + \
+					"the operation manually."
+				for line in wrap(msg, 72):
+					out.eerror(line)
+			elif isinstance(e, portage.exception.PackageNotFound):
+				out.eerror("An expected package is " + \
+					"not available: %s" % str(e))
+				out.eerror("")
+				msg = "The resume list contains one or more " + \
+					"packages that are no longer " + \
+					"available. Please restart/continue " + \
+					"the operation manually."
+				for line in wrap(msg, 72):
+					out.eerror(line)
 		else:
 			if show_spinner:
 				print "\b\b... done!"
 
-		unsatisfied_block = False
-		if success:
-			mymergelist = mydepgraph.altlist()
-			if mymergelist and \
-				(isinstance(mymergelist[-1], Blocker) and \
-				not mymergelist[-1].satisfied):
-				if not fetchonly and not pretend:
-					unsatisfied_block = True
-					mydepgraph.display(
-						mydepgraph.altlist(reversed=tree),
-						favorites=favorites)
-					print "\n!!! Error: The above package list contains packages which cannot be installed"
-					print   "!!!        at the same time on the same system."
-					if not quiet:
-						show_blocker_docs_link()
-
 		if not success:
 			mydepgraph.display_problems()
-
-		if unsatisfied_block or not success:
-			# delete the current list and also the backup
-			# since it's probably stale too.
-			for k in ("resume", "resume_backup"):
-				mtimedb.pop(k, None)
-			mtimedb.commit()
+			if not (ask or pretend):
+				# delete the current list and also the backup
+				# since it's probably stale too.
+				for k in ("resume", "resume_backup"):
+					mtimedb.pop(k, None)
+				mtimedb.commit()
 
 			return 1
 	else:
@@ -7814,15 +7976,11 @@ def action_build(settings, trees, mtimedb,
 		except portage.exception.PackageNotFound, e:
 			portage.writemsg("\n!!! %s\n" % str(e), noiselevel=-1)
 			return 1
+		if show_spinner:
+			print "\b\b... done!"
 		if not retval:
 			mydepgraph.display_problems()
 			return 1
-		if "--quiet" not in myopts and "--nodeps" not in myopts:
-			print "\b\b... done!"
-		display = pretend or \
-			((ask or tree or verbose) and not (quiet and not ask))
-		if not display:
-			mydepgraph.display_problems()
 
 	if "--pretend" not in myopts and \
 		("--ask" in myopts or "--tree" in myopts or \
@@ -7837,6 +7995,7 @@ def action_build(settings, trees, mtimedb,
 			retval = mydepgraph.display(
 				mydepgraph.altlist(reversed=tree),
 				favorites=favorites)
+			mydepgraph.display_problems()
 			if retval != os.EX_OK:
 				return retval
 			prompt="Would you like to resume merging these packages?"
@@ -7844,21 +8003,14 @@ def action_build(settings, trees, mtimedb,
 			retval = mydepgraph.display(
 				mydepgraph.altlist(reversed=("--tree" in myopts)),
 				favorites=favorites)
+			mydepgraph.display_problems()
 			if retval != os.EX_OK:
 				return retval
 			mergecount=0
 			for x in mydepgraph.altlist():
-				if isinstance(x, Blocker) and x.satisfied:
-					continue
-				if x[0] != "blocks" and x[3] != "nomerge":
-					mergecount+=1
-				#check for blocking dependencies
-				if x[0]=="blocks" and "--fetchonly" not in myopts and "--fetch-all-uri" not in myopts:
-					print "\n!!! Error: The above package list contains packages which cannot be installed"
-					print   "!!!        at the same time on the same system."
-					if "--quiet" not in myopts:
-						show_blocker_docs_link()
-					return 1
+				if isinstance(x, Package) and x.operation == "merge":
+					mergecount += 1
+
 			if mergecount==0:
 				if "--noreplace" in myopts and favorites:
 					print
@@ -7895,12 +8047,14 @@ def action_build(settings, trees, mtimedb,
 			retval = mydepgraph.display(
 				mydepgraph.altlist(reversed=tree),
 				favorites=favorites)
+			mydepgraph.display_problems()
 			if retval != os.EX_OK:
 				return retval
 		else:
 			retval = mydepgraph.display(
 				mydepgraph.altlist(reversed=("--tree" in myopts)),
 				favorites=favorites)
+			mydepgraph.display_problems()
 			if retval != os.EX_OK:
 				return retval
 			if "--buildpkgonly" in myopts:
@@ -7962,30 +8116,6 @@ def action_build(settings, trees, mtimedb,
 							tree="porttree")
 
 			pkglist = mydepgraph.altlist()
-
-			if fetchonly or "--buildpkgonly"  in myopts:
-				pkglist = [pkg for pkg in pkglist if pkg[0] != "blocks"]
-			else:
-				for x in pkglist:
-					if isinstance(x, Blocker) and x.satisfied:
-						continue
-					if x[0] != "blocks":
-						continue
-					retval = mydepgraph.display(mydepgraph.altlist(
-						reversed=("--tree" in myopts)),
-						favorites=favorites)
-					msg = "Error: The above package list contains " + \
-						"packages which cannot be installed " + \
-						"at the same time on the same system."
-					prefix = bad(" * ")
-					from textwrap import wrap
-					print
-					for line in wrap(msg, 70):
-						print prefix + line
-					if "--quiet" not in myopts:
-						show_blocker_docs_link()
-					return 1
-
 			mydepgraph.saveNomergeFavorites()
 			del mydepgraph
 			mergetask = MergeTask(settings, trees, myopts)

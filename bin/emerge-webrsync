@@ -91,7 +91,11 @@ get_date_part() {
 
 get_utc_second_from_string() {
 	local s="$1"
-	date -d "${s:0:4}-${s:4:2}-${s:6:2}" -u +"%s"
+	if [[ ${USERLAND} == BSD ]] ; then
+		date -juf "%Y%m%d" "$s" +"%s"
+	else
+		date -d "${s:0:4}-${s:4:2}-${s:6:2}" -u +"%s"
+	fi
 }
 
 get_portage_timestamp() {
@@ -133,7 +137,7 @@ check_file_digest() {
 	if type -P md5sum > /dev/null; then
 		md5sum -c $digest && r=0
 	elif type -P md5 > /dev/null; then
-		[ "$(md5 -q $file)" == "$(cut -d \ -f 1 \"$digest\")" ] && r=0
+		[ "$(md5 -q "${file}")" == "$(cut -d ' ' -f 1 "${digest}")" ] && r=0
 	else
 		eecho "cannot check digest: no suitable md5/md5sum binaries found"
 	fi
@@ -248,8 +252,8 @@ do_snapshot() {
 			local signature="${file}.gpgsig"
 
 			if [ -s "${file}" -a -s "${digest}" -a -s "${signature}" ] ; then
-				check_file_digest "${digest}" "${file}" && \
-				check_file_signature "${signature}" "${file}" && \
+				check_file_digest "${DISTDIR}/${digest}" "${DISTDIR}/${file}" && \
+				check_file_signature "${DISTDIR}/${signature}" "${DISTDIR}/${file}" && \
 				have_files=1
 			fi
 
@@ -257,8 +261,8 @@ do_snapshot() {
 				fetch_file "${mirror}/snapshots/${digest}" "${digest}" && \
 				fetch_file "${mirror}/snapshots/${signature}" "${signature}" && \
 				fetch_file "${mirror}/snapshots/${file}" "${file}" && \
-				check_file_digest "${digest}" "${file}" && \
-				check_file_signature "${signature}" "${file}" && \
+				check_file_digest "${DISTDIR}/${digest}" "${DISTDIR}/${file}" && \
+				check_file_signature "${DISTDIR}/${signature}" "${DISTDIR}/${file}" && \
 				have_files=1
 			fi
 
