@@ -3489,6 +3489,9 @@ class depgraph(object):
 				node.operation != "uninstall"]
 
 		# sys-apps/portage needs special treatment if ROOT="/"
+		portage_python_dep = ">=dev-lang/python-2.4"
+		portage_unslotted_deps = frozenset(
+			["app-shells/bash", "sys-apps/portage"])
 		portage_node = self.mydbapi["/"].match_pkgs("sys-apps/portage")
 		if portage_node:
 			portage_node = portage_node[0]
@@ -3677,10 +3680,28 @@ class depgraph(object):
 						continue
 
 					if "/" == task.root:
-						# Never uninstall sys-apps/portage
-						# except through replacement.
-						if "sys-apps/portage" == task.cp:
+						# Never uninstall sys-apps/portage or it's essential
+						# dependencies, except through replacement.
+						if task.cp in portage_unslotted_deps:
 							continue
+
+						# Don't uninstall python if it appears to be
+						# the only suitable one installed.
+						if task.cp == "dev-lang/python" and \
+							portage.match_from_list(
+							portage_python_dep, [task.cpv_slot]):
+							vardb = root_config.trees["vartree"].dbapi
+							other_version = None
+							for pkg in vardb.match_pkgs(portage_python_dep):
+								if pkg.cpv == task.cpv and \
+									pkg.metadata["COUNTER"] == \
+									task.metadata["COUNTER"]:
+									continue
+								other_version = pkg
+								break
+							if other_version is None:
+								continue
+
 						# For packages in the system set, don't take
 						# any chances. If the conflict can't be resolved
 						# by a normal replacement operation then abort.
