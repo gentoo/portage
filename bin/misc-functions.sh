@@ -401,7 +401,7 @@ install_qa_check() {
 		done
 		if [[ -f "${T}"/.NEEDED.tmp ]] ; then
 			needed=$(< "${T}"/.NEEDED.tmp)
-			echo "/${f#${D}} ${needed#,}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED
+			echo "/${f#${D}};${needed#,}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED.MACHO.2
 		fi
 	done
 	if [[ -f ${T}/.install_name_check_failed ]] ; then
