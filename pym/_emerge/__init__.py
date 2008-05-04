@@ -4050,8 +4050,6 @@ class depgraph(object):
 		shown_edges = set()
 		for x in mylist:
 			graph_key = x
-			if isinstance(graph_key, list):
-				graph_key = tuple(graph_key)
 			if "--tree" in self.myopts:
 				depth = len(tree_nodes)
 				while depth and graph_key not in \
@@ -4158,7 +4156,7 @@ class depgraph(object):
 					addl = addl + " " + red(resolved)
 				else:
 					addl = "[blocks " + addl + "] " + indent + red(resolved)
-				block_parents = self._blocker_parents.parent_nodes(tuple(x))
+				block_parents = self._blocker_parents.parent_nodes(x)
 				block_parents = set([pnode[2] for pnode in block_parents])
 				block_parents = ", ".join(block_parents)
 				if resolved!=x[2]:
