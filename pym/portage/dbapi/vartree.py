@@ -306,55 +306,6 @@ class LinkageMapMachO(object):
 					rValue.add(x)
 		return rValue
 					
-class LibraryPackageMap(object):
-	""" This class provides a library->consumer mapping generated from VDB data """
-	def __init__(self, filename, vardbapi):
-		self._filename = filename
-		self._dbapi = vardbapi
-
-	def get(self):
-		""" Read the global library->consumer map for the given vdb instance.
-		    @returns mapping of library objects (just basenames) to consumers (absolute paths)
-			@rtype filename->list-of-paths
-		"""
-		if not os.path.exists(self._filename):
-			self.update()
-		rValue = {}
-		for l in open(self._filename, "r").read().split("\n"):
-			mysplit = l.split()
-			if len(mysplit) > 1:
-				rValue[mysplit[0]] = mysplit[1].split(",")
-		return rValue
-
-	def update(self):
-		""" Update the global library->consumer map for the given vdb instance. """
-		obj_dict = {}
-		aux_get = self._dbapi.aux_get
-		for cpv in self._dbapi.cpv_all():
-			needed_list = aux_get(cpv, ["NEEDED"])[0].splitlines()
-			for l in needed_list:
-				mysplit = l.split()
-				if len(mysplit) < 2:
-					continue
-				libs = mysplit[1].split(",")
-				for lib in libs:
-					# In Prefix we can't do anything about host provided
-					# libs, it also makes little sense to try and
-					# preserve them, so filter them out here.
-					if '/' in lib:
-						if not lib.startswith(EPREFIX):
-							continue
-
-					if not obj_dict.has_key(lib):
-						obj_dict[lib] = [mysplit[0]]
-					else:
-						obj_dict[lib].append(mysplit[0])
-		mapfile = open(self._filename, "w")
-		for lib in sorted(obj_dict):
-			obj_dict[lib].sort()
-			mapfile.write(lib+" "+",".join(obj_dict[lib])+"\n")
-		mapfile.close()
-
 class vardbapi(dbapi):
 	def __init__(self, root, categories=None, settings=None, vartree=None):
 		"""
@@ -384,7 +335,7 @@ class vardbapi(dbapi):
 		self._aux_cache_keys = set(
 			["CHOST", "COUNTER", "DEPEND", "DESCRIPTION",
 			"EAPI", "HOMEPAGE", "IUSE", "KEYWORDS",
-			"LICENSE", "PDEPEND", "PROVIDE", "RDEPEND", "NEEDED",
+			"LICENSE", "PDEPEND", "PROVIDE", "RDEPEND",
 			"repository", "RESTRICT" , "SLOT", "USE"])
 		self._aux_cache = None
 		self._aux_cache_version = "1"
@@ -719,12 +670,6 @@ class vardbapi(dbapi):
 			cache_valid = cache_mtime == mydir_mtime
 		if cache_valid:
 			cache_incomplete = self._aux_cache_keys.difference(metadata)
-			needed = metadata.get("NEEDED")
-			if needed is None or needed and "\n" not in needed:
-				# Cached value has whitespace filtered, so it has to be pulled
-				# again. This is temporary migration code which can be removed
-				# later, since it only affects users who are running trunk.
-				cache_incomplete.add("NEEDED")
 			if cache_incomplete:
 				# Allow self._aux_cache_keys to change without a cache version
 				# bump and efficiently recycle partial cache whenever possible.
@@ -766,8 +711,7 @@ class vardbapi(dbapi):
 					myd = myf.read()
 				finally:
 					myf.close()
-				if x != "NEEDED":
-					myd = " ".join(myd.split())
+				myd = " ".join(myd.split())
 			except IOError:
 				myd = ""
 			if x == "EAPI" and not myd:
