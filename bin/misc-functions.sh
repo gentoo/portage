@@ -375,11 +375,15 @@ install_qa_check() {
 	rm -f "${T}"/.install_name_check_failed
 	[[ ${CHOST} == *-darwin* ]] && find "${ED}" -type f | while IFS= read f ; do
 		rm -f "${T}"/.NEEDED.tmp
+		install_name=$(otool -DX "${f}")
 		otool -LX "${f}" \
 			| grep -v "Archive : " \
 			| sed -e 's/^\t//' -e 's/ (compa.*$//' \
 			| while read r ;
 		do
+			# skip the self reference in libraries
+			[[ -n ${install_name} && ${install_name} == ${r} ]] && continue
+
 			if [[ ! -e ${r} && ! -e ${D}${r} && ${r} != *"@executable_path"* ]] ; then
 				# try to "repair" this if possible, happens because of
 				# gen_usr_ldscript tactics
@@ -401,7 +405,7 @@ install_qa_check() {
 		done
 		if [[ -f "${T}"/.NEEDED.tmp ]] ; then
 			needed=$(< "${T}"/.NEEDED.tmp)
-			echo "/${f#${D}};${needed#,}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED.MACHO.2
+			echo "/${f#${D}};${install_name};${needed#,}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED.MACHO.2
 		fi
 	done
 	if [[ -f ${T}/.install_name_check_failed ]] ; then
