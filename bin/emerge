@@ -4373,10 +4373,11 @@ class depgraph(object):
 				installed_versions = vardb.match(portage.cpv_getkey(pkg_key))
 				if vardb.cpv_exists(pkg_key):
 					addl="  "+yellow("R")+fetch+"  "
-					if pkg_merge:
-						counters.reinst += 1
-					elif pkg_status == "uninstall":
-						counters.uninst += 1
+					if ordered:
+						if pkg_merge:
+							counters.reinst += 1
+						elif pkg_status == "uninstall":
+							counters.uninst += 1
 				# filter out old-style virtual matches
 				elif installed_versions and \
 					portage.cpv_getkey(installed_versions[0]) == \
@@ -4543,7 +4544,8 @@ class depgraph(object):
 								if myfetchfile not in myfetchlist:
 									mysize+=myfilesdict[myfetchfile]
 									myfetchlist.append(myfetchfile)
-							counters.totalsize += mysize
+							if ordered:
+								counters.totalsize += mysize
 						verboseadd+=format_size(mysize)+" "
 
 					# overlay verbose
