@@ -222,7 +222,7 @@ class LinkageMap(object):
 							rValue.add(x)
 		return rValue
 					
-class LinkageMapMachoO(object):
+class LinkageMapMachO(object):
 	def __init__(self, vardbapi):
 		self._dbapi = vardbapi
 		self._libs = {}
