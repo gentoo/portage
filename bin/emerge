@@ -2594,15 +2594,17 @@ class depgraph(object):
 					self._sets[s] = expanded_set
 					args.append(SetArg(arg=x, set=expanded_set,
 						root_config=root_config))
+					myfavorites.append(x)
 					if s == "world":
 						# pull in the system set too
 						s = "system"
+						x = SETPREFIX + s
 						expanded_set = InternalPackageSet(
 							initial_atoms=getSetAtoms(s))
 						self._sets[s] = expanded_set
-						args.append(SetArg(arg=SETPREFIX+s, set=expanded_set,
+						args.append(SetArg(arg=x, set=expanded_set,
 							root_config=root_config))
-					myfavorites.append(x)
+						myfavorites.append(x)
 					continue
 				if not is_valid_package_atom(x):
 					portage.writemsg("\n\n!!! '%s' is not a valid package atom.\n" % x,
