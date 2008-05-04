@@ -7743,12 +7743,24 @@ def action_build(settings, trees, mtimedb,
 	# validate the state of the resume data
 	# so that we can make assumptions later.
 	for k in ("resume", "resume_backup"):
-		if k in mtimedb:
-			if "mergelist" in mtimedb[k]:
-				if not mtimedb[k]["mergelist"]:
-					del mtimedb[k]
-			else:
-				del mtimedb[k]
+		if k not in mtimedb:
+			continue
+		resume_data = mtimedb[k]
+		if not isinstance(resume_data, dict):
+			del mtimedb[k]
+			continue
+		mergelist = resume_data.get("mergelist")
+		if not isinstance(mergelist, list):
+			del mtimedb[k]
+			continue
+		resume_opts = resume_data.get("myopts")
+		if not isinstance(resume_opts, (dict, list)):
+			del mtimedb[k]
+			continue
+		favorites = resume_data.get("favorites")
+		if not isinstance(resume_opts, list):
+			del mtimedb[k]
+			continue
 
 	resume = False
 	if "--resume" in myopts and \
