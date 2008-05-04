@@ -1413,26 +1413,6 @@ class BlockerCache(DictMixin):
 			isinstance(self._cache_data, dict) and \
 			self._cache_data.get("version") == self._cache_version and \
 			isinstance(self._cache_data.get("blockers"), dict)
-		if cache_valid:
-			invalid_cache = set()
-			for cpv, value \
-				in self._cache_data["blockers"].iteritems():
-				if not (isinstance(value, tuple) and len(value) == 2):
-					invalid_cache.add(cpv)
-					continue
-				counter, atoms = value
-				try:
-					if counter != long(self._vardb.aux_get(cpv, ["COUNTER"])[0]):
-						invalid_cache.add(cpv)
-						continue
-				except KeyError:
-					# The package is no longer installed.
-					invalid_cache.add(cpv)
-					continue
-			for cpv in invalid_cache:
-				del self._cache_data["blockers"][cpv]
-			if not self._cache_data["blockers"]:
-				cache_valid = False
 		if not cache_valid:
 			self._cache_data = {"version":self._cache_version}
 			self._cache_data["blockers"] = {}
@@ -1481,6 +1461,13 @@ class BlockerCache(DictMixin):
 			(blocker_data.counter, blocker_data.atoms)
 		self._modified = True
 
+	def __iter__(self):
+		return iter(self._cache_data["blockers"])
+
+	def __delitem__(self, cpv):
+		del self._cache_data["blockers"][cpv]
+		self._modified = True
+
 	def __getitem__(self, cpv):
 		"""
 		@rtype: BlockerData
@@ -1491,9 +1478,7 @@ class BlockerCache(DictMixin):
 	def keys(self):
 		"""This needs to be implemented so that self.__repr__() doesn't raise
 		an AttributeError."""
-		if self._cache_data and "blockers" in self._cache_data:
-			return self._cache_data["blockers"].keys()
-		return []
+		return list(self)
 
 def show_invalid_depstring_notice(parent_node, depstring, error_msg):
 
@@ -1553,6 +1538,9 @@ class PackageVirtualDbapi(portage.dbapi):
 			obj._cp_map[k] = v[:]
 		obj._cpv_map = self._cpv_map.copy()
 		return obj
+
+	def __iter__(self):
+		return self._cpv_map.itervalues()
 
 	def __contains__(self, item):
 		existing = self._cpv_map.get(item.cpv)
@@ -3119,7 +3107,7 @@ class depgraph(object):
 			# that are initially satisfied.
 			while self._unsatisfied_deps:
 				dep = self._unsatisfied_deps.pop()
-				matches = vardb.match(dep.atom)
+				matches = vardb.match_pkgs(dep.atom)
 				if not matches:
 					# Initially unsatisfied.
 					continue
@@ -3127,12 +3115,7 @@ class depgraph(object):
 				# Add the installed package to the graph so that it
 				# will be appropriately reported as a slot collision
 				# (possibly solvable via backtracking).
-				cpv = matches[-1] # highest match
-				metadata = dict(izip(self._mydbapi_keys,
-					vardb.aux_get(cpv, self._mydbapi_keys)))
-				pkg = Package(type_name="installed", root=root,
-					cpv=cpv, metadata=metadata, built=True,
-					installed=True)
+				pkg = matches[-1] # highest match
 				if not self._add_pkg(pkg, dep.parent,
 					priority=dep.priority, depth=dep.depth):
 					return 0
@@ -3150,15 +3133,6 @@ class depgraph(object):
 			"--nodeps" in self.myopts:
 			return True
 
-		modified_slots = {}
-		for myroot in self.trees:
-			myslots = {}
-			modified_slots[myroot] = myslots
-			final_db = self.mydbapi[myroot]
-			for pkg in self._slot_pkg_map[myroot].itervalues():
-				if not (pkg.installed or pkg.onlydeps):
-					myslots[pkg.slot_atom] = pkg.cpv
-
 		#if "deep" in self.myparams:
 		if True:
 			# Pull in blockers from all installed packages that haven't already
@@ -3172,12 +3146,12 @@ class depgraph(object):
 				portdb = self.trees[myroot]["porttree"].dbapi
 				pkgsettings = self.pkgsettings[myroot]
 				final_db = self.mydbapi[myroot]
-				cpv_all_installed = self.trees[myroot]["vartree"].dbapi.cpv_all()
 				blocker_cache = BlockerCache(myroot, vardb)
-				for cpv in cpv_all_installed:
+				stale_cache = set(blocker_cache)
+				for pkg in vardb:
+					cpv = pkg.cpv
+					stale_cache.discard(cpv)
 					blocker_atoms = None
-					pkg = self._pkg_cache[
-						("installed", myroot, cpv, "nomerge")]
 					blockers = None
 					if self.digraph.contains(pkg):
 						try:
@@ -3192,6 +3166,9 @@ class depgraph(object):
 					# node for it so that they can be enforced.
 					self.spinner.update()
 					blocker_data = blocker_cache.get(cpv)
+					if blocker_data is not None and \
+						blocker_data.counter != long(pkg.metadata["COUNTER"]):
+						blocker_data = None
 
 					# If blocker data from the graph is available, use
 					# it to validate the cache and update the cache if
@@ -3217,7 +3194,9 @@ class depgraph(object):
 						blocker_atoms = blocker_data.atoms
 					else:
 						myuse = pkg.metadata["USE"].split()
-						depstr = " ".join(pkg.metadata[k] for k in dep_keys)
+						# Use aux_get() to trigger FakeVartree global
+						# updates on *DEPEND when appropriate.
+						depstr = " ".join(vardb.aux_get(pkg.cpv, dep_keys))
 						# It is crucial to pass in final_db here in order to
 						# optimize dep_check calls by eliminating atoms via
 						# dep_wordreduce and dep_eval calls.
@@ -3241,7 +3220,9 @@ class depgraph(object):
 						finally:
 							portage.dep._dep_check_strict = True
 						if not success:
-							if pkg.slot_atom in modified_slots[myroot]:
+							replacement_pkg = final_db.match_pkgs(pkg.slot_atom)
+							if replacement_pkg and \
+								replacement_pkg[0].operation == "merge":
 								# This package is being replaced anyway, so
 								# ignore invalid dependencies so as not to
 								# annoy the user too much (otherwise they'd be
@@ -3259,8 +3240,18 @@ class depgraph(object):
 						for myatom in blocker_atoms:
 							blocker = Blocker(atom=myatom[1:], root=myroot)
 							self._blocker_parents.add(blocker, pkg)
+				for cpv in stale_cache:
+					del blocker_cache[cpv]
 				blocker_cache.flush()
 				del blocker_cache
+
+		# Discard any "uninstall" tasks scheduled by previous calls
+		# to this method, since those tasks may not make sense given
+		# the current graph state.
+		previous_uninstall_tasks = self._blocker_uninstalls.leaf_nodes()
+		if previous_uninstall_tasks:
+			self._blocker_uninstalls = digraph()
+			self.digraph.difference_update(previous_uninstall_tasks)
 
 		for blocker in self._blocker_parents.leaf_nodes():
 			self.spinner.update()
@@ -3287,11 +3278,11 @@ class depgraph(object):
 
 			blocked_initial = []
 			for atom in atoms:
-				blocked_initial.extend(initial_db.match(atom))
+				blocked_initial.extend(initial_db.match_pkgs(atom))
 
 			blocked_final = []
 			for atom in atoms:
-				blocked_final.extend(final_db.match(atom))
+				blocked_final.extend(final_db.match_pkgs(atom))
 
 			if not blocked_initial and not blocked_final:
 				parent_pkgs = self._blocker_parents.parent_nodes(blocker)
@@ -3301,27 +3292,11 @@ class depgraph(object):
 					if not self._blocker_parents.child_nodes(pkg):
 						self._blocker_parents.remove(pkg)
 				continue
-			blocked_slots_initial = {}
-			blocked_slots_final = {}
-			for cpv in blocked_initial:
-				blocked_slots_initial[cpv] = \
-					"%s:%s" % (portage.dep_getkey(cpv),
-						initial_db.aux_get(cpv, ["SLOT"])[0])
-			for cpv in blocked_final:
-				blocked_slots_final[cpv] = \
-					"%s:%s" % (portage.dep_getkey(cpv),
-						final_db.aux_get(cpv, ["SLOT"])[0])
 			for parent in self._blocker_parents.parent_nodes(blocker):
-				ptype, proot, pcpv, pstatus = parent
-				pdbapi = self.trees[proot][self.pkg_tree_map[ptype]].dbapi
-				pslot = pdbapi.aux_get(pcpv, ["SLOT"])[0]
-				pslot_atom = "%s:%s" % (portage.dep_getkey(pcpv), pslot)
-				parent_static = pslot_atom not in modified_slots[proot]
 				unresolved_blocks = False
 				depends_on_order = set()
-				for cpv in blocked_initial:
-					slot_atom = blocked_slots_initial[cpv]
-					if slot_atom == pslot_atom:
+				for pkg in blocked_initial:
+					if pkg.slot_atom == parent.slot_atom:
 						# TODO: Support blocks within slots in cases where it
 						# might make sense.  For example, a new version might
 						# require that the old version be uninstalled at build
@@ -3333,39 +3308,31 @@ class depgraph(object):
 						# is already done and this would be likely to
 						# confuse users if displayed like a normal blocker.
 						continue
-					if pstatus == "merge":
+					if parent.operation == "merge":
 						# Maybe the blocked package can be replaced or simply
 						# unmerged to resolve this block.
-						inst_pkg = self._pkg_cache[
-							("installed", myroot, cpv, "nomerge")]
-						depends_on_order.add((inst_pkg, parent))
+						depends_on_order.add((pkg, parent))
 						continue
 					# None of the above blocker resolutions techniques apply,
 					# so apparently this one is unresolvable.
 					unresolved_blocks = True
-				for cpv in blocked_final:
-					slot_atom = blocked_slots_final[cpv]
-					if slot_atom == pslot_atom:
+				for pkg in blocked_final:
+					if pkg.slot_atom == parent.slot_atom:
 						# TODO: Support blocks within slots.
 						continue
-					if parent_static and \
-						slot_atom not in modified_slots[myroot]:
+					if parent.operation == "nomerge" and \
+						pkg.operation == "nomerge":
 						# This blocker will be handled the next time that a
 						# merge of either package is triggered.
 						continue
 
 					# Maybe the blocking package can be
 					# unmerged to resolve this block.
-					try:
-						blocked_pkg = self._slot_pkg_map[myroot][slot_atom]
-					except KeyError:
-						blocked_pkg = self._pkg_cache[
-							("installed", myroot, cpv, "nomerge")]
-					if pstatus == "merge" and blocked_pkg.installed:
-						depends_on_order.add((blocked_pkg, parent))
+					if parent.operation == "merge" and pkg.installed:
+						depends_on_order.add((pkg, parent))
 						continue
-					elif pstatus == "nomerge":
-						depends_on_order.add((parent, blocked_pkg))
+					elif parent.operation == "nomerge":
+						depends_on_order.add((parent, pkg))
 						continue
 					# None of the above blocker resolutions techniques apply,
 					# so apparently this one is unresolvable.
@@ -3491,7 +3458,7 @@ class depgraph(object):
 		complete = "complete" in self.myparams
 		myblocker_parents = self._blocker_parents.copy()
 		asap_nodes = []
-		portage_node = None
+
 		def get_nodes(**kwargs):
 			"""
 			Returns leaf nodes excluding Uninstall instances
@@ -3500,13 +3467,18 @@ class depgraph(object):
 			return [node for node in mygraph.leaf_nodes(**kwargs) \
 				if isinstance(node, Package) and \
 				node.operation != "uninstall"]
-		if True:
-			for node in mygraph.order:
-				if node.root == "/" and \
-					"sys-apps/portage" == portage.cpv_getkey(node.cpv):
-					portage_node = node
-					asap_nodes.append(node)
-					break
+
+		# sys-apps/portage needs special treatment if ROOT="/"
+		portage_node = self.mydbapi["/"].match_pkgs("sys-apps/portage")
+		if portage_node:
+			portage_node = portage_node[0]
+		else:
+			portage_node = None
+		if portage_node is not None and \
+			(not mygraph.contains(portage_node) or \
+			portage_node.operation == "nomerge"):
+			portage_node = None
+
 		ignore_priority_soft_range = [None]
 		ignore_priority_soft_range.extend(
 			xrange(DepPriority.MIN, DepPriority.MEDIUM_SOFT + 1))
@@ -3719,9 +3691,8 @@ class depgraph(object):
 							for atom in root_config.sets[
 								"world"].iterAtomsForPackage(task):
 								satisfied = False
-								for cpv in graph_db.match(atom):
-									if cpv == inst_pkg.cpv and \
-										inst_pkg in graph_db:
+								for pkg in graph_db.match_pkgs(atom):
+									if pkg == inst_pkg:
 										continue
 									satisfied = True
 									break
@@ -3797,12 +3768,14 @@ class depgraph(object):
 						node = tempgraph.order[0]
 					else:
 						node = nodes[0]
-					display_order.append(list(node))
+					display_order.append(node)
 					tempgraph.remove(node)
 				display_order.reverse()
 				self.myopts.pop("--quiet", None)
 				self.myopts.pop("--verbose", None)
 				self.myopts["--tree"] = True
+				print
+				print
 				self.display(display_order)
 				print "!!! Error: circular dependencies:"
 				print
@@ -3821,6 +3794,9 @@ class depgraph(object):
 			mygraph.difference_update(selected_nodes)
 
 			for node in selected_nodes:
+				if isinstance(node, Package) and \
+					node.operation == "nomerge":
+					continue
 
 				# Handle interactions between blockers
 				# and uninstallation tasks.
@@ -3854,8 +3830,7 @@ class depgraph(object):
 							myblocker_uninstalls.remove(blocker)
 							solved_blockers.add(blocker)
 
-				if node[-1] != "nomerge":
-					retlist.append(node)
+				retlist.append(node)
 
 				if isinstance(node, Package) and \
 					"uninstall" == node.operation:
@@ -4145,18 +4120,7 @@ class depgraph(object):
 					pkg_status = "nomerge"
 				built = pkg_type != "ebuild"
 				installed = pkg_type == "installed"
-				try:
-					pkg = self._pkg_cache[tuple(x)]
-				except KeyError:
-					if pkg_status != "uninstall":
-						raise
-					# A package scheduled for uninstall apparently
-					# isn't installed anymore. Since it's already
-					# been uninstalled, move on to the next task.
-					# This case should only be reachable in --resume
-					# mode, since otherwise the package would have
-					# been cached.
-					continue
+				pkg = x
 				metadata = pkg.metadata
 				ebuild_path = None
 				if pkg_type == "binary":
@@ -4790,10 +4754,22 @@ class depgraph(object):
 		"""
 		self._sets["args"].update(resume_data.get("favorites", []))
 		mergelist = resume_data.get("mergelist", [])
+		favorites = resume_data.get("favorites")
+		if not isinstance(favorites, list):
+			favorites = []
+
+		if mergelist and "--skipfirst" in self.myopts:
+			for i, task in enumerate(mergelist):
+				if isinstance(task, list) and \
+					task and task[-1] == "merge":
+					del mergelist[i]
+					break
+
 		fakedb = self.mydbapi
 		trees = self.trees
+		serialized_tasks = []
 		for x in mergelist:
-			if len(x) != 4:
+			if not (isinstance(x, list) and len(x) == 4):
 				continue
 			pkg_type, myroot, pkg_key, action = x
 			if pkg_type not in self.pkg_tree_map:
@@ -4820,8 +4796,61 @@ class depgraph(object):
 				operation=action, root=myroot,
 				type_name=pkg_type)
 			self._pkg_cache[pkg] = pkg
+
+			root_config = self.roots[pkg.root]
+			if "merge" == pkg.operation and \
+				not visible(root_config.settings, pkg):
+				self._unsatisfied_deps_for_display.append(
+					((pkg.root, "="+pkg.cpv), {"myparent":None}))
+
 			fakedb[myroot].cpv_inject(pkg)
+			serialized_tasks.append(pkg)
 			self.spinner.update()
+
+		if self._unsatisfied_deps_for_display:
+			return False
+
+		if not serialized_tasks or "--nodeps" in self.myopts:
+			self._serialized_tasks_cache = serialized_tasks
+		else:
+			favorites_set = InternalPackageSet(atom for atom in favorites \
+				if isinstance(atom, basestring) and portage.isvalidatom(atom))
+			for node in serialized_tasks:
+				if isinstance(node, Package) and \
+					node.operation == "merge" and \
+					favorites_set.findAtomForPackage(node.cpv, node.metadata):
+					self._set_nodes.add(node)
+
+			self._select_package = self._select_pkg_from_graph
+			for task in serialized_tasks:
+				if isinstance(task, Package) and \
+					task.operation == "merge":
+					self._add_pkg(task, None)
+
+			# Allow unsatisfied deps here to avoid showing a masking
+			# message for an unsatisfied dep that isn't necessarily
+			# masked.
+			if not self._create_graph(allow_unsatisfied=True):
+				return False
+			if self._unsatisfied_deps:
+				# This probably means that a required package
+				# was dropped via --skipfirst. It makes the
+				# resume list invalid, so convert it to a
+				# PackageNotFound exception.
+				raise portage.exception.PackageNotFound(
+					self._unsatisfied_deps[0].atom)
+			self._serialized_tasks_cache = None
+			try:
+				self.altlist()
+			except self._unknown_internal_error:
+				return False
+
+			for node in self.digraph.root_nodes():
+				if isinstance(node, Package) and \
+					node.operation == "merge":
+					# Give hint to the --tree display.
+					self._set_nodes.add(node)
+		return True
 
 	class _internal_exception(portage.exception.PortageException):
 		def __init__(self, value=""):
@@ -5170,7 +5199,6 @@ class MergeTask(object):
 		fetchonly = "--fetchonly" in self.myopts or \
 			"--fetch-all-uri" in self.myopts
 		pretend = "--pretend" in self.myopts
-		mymergelist=[]
 		ldpath_mtimes = mtimedb["ldpath"]
 		xterm_titles = "notitles" not in self.settings.features
 
@@ -5178,12 +5206,6 @@ class MergeTask(object):
 			# We're resuming.
 			print colorize("GOOD", "*** Resuming merge...")
 			emergelog(xterm_titles, " *** Resuming merge...")
-			mylist = mtimedb["resume"]["mergelist"][:]
-			if "--skipfirst" in self.myopts and mylist:
-				del mtimedb["resume"]["mergelist"][0]
-				del mylist[0]
-				mtimedb.commit()
-			mymergelist = mylist
 
 		# Verify all the manifests now so that the user is notified of failure
 		# as soon as possible.
@@ -5217,14 +5239,14 @@ class MergeTask(object):
 		system_set = root_config.sets["system"]
 		args_set = InternalPackageSet(favorites)
 		world_set = root_config.sets["world"]
-		if "--resume" not in self.myopts:
-			mymergelist = mylist
-			mtimedb["resume"]["mergelist"] = [list(x) for x in mymergelist \
-				if isinstance(x, Package)]
-			mtimedb.commit()
 
+		mtimedb["resume"]["mergelist"] = [list(x) for x in mylist \
+			if isinstance(x, Package)]
+		mtimedb.commit()
+
+		mymergelist = mylist
 		myfeat = self.settings.features[:]
-		bad_resume_opts = set(["--ask", "--tree", "--changelog", "--skipfirst",
+		bad_resume_opts = set(["--ask", "--changelog", "--skipfirst",
 			"--resume"])
 		if "parallel-fetch" in myfeat and \
 			not ("--pretend" in self.myopts or \
@@ -5246,7 +5268,8 @@ class MergeTask(object):
 				fetch_env["FEATURES"] = fetch_env.get("FEATURES", "") + " -cvs"
 				fetch_env["PORTAGE_NICENESS"] = "0"
 				fetch_env["PORTAGE_PARALLEL_FETCHONLY"] = "1"
-				fetch_args = [sys.argv[0], "--resume", "--fetchonly"]
+				fetch_args = [sys.argv[0], "--resume",
+					"--fetchonly", "--nodeps"]
 				resume_opts = self.myopts.copy()
 				# For automatic resume, we need to prevent
 				# any of bad_resume_opts from leaking in
@@ -5289,15 +5312,10 @@ class MergeTask(object):
 			vardb = vartree.dbapi
 			root_config = self.trees[myroot]["root_config"]
 			pkgsettings = self.pkgsettings[myroot]
-			metadata = {}
 			if pkg_type == "blocks":
 				pass
 			elif pkg_type == "ebuild":
 				mydbapi = portdb
-				metadata.update(izip(metadata_keys,
-					mydbapi.aux_get(pkg_key, metadata_keys)))
-				pkgsettings.setcpv(pkg_key, mydb=mydbapi)
-				metadata["USE"] = pkgsettings["PORTAGE_USE"]
 			else:
 				if pkg_type == "binary":
 					mydbapi = bindb
@@ -5305,22 +5323,10 @@ class MergeTask(object):
 					mydbapi = vardb
 				else:
 					raise AssertionError("Package type: '%s'" % pkg_type)
-				try:
-					metadata.update(izip(metadata_keys,
-						mydbapi.aux_get(pkg_key, metadata_keys)))
-				except KeyError:
-					if not installed:
-						raise
-					# A package scheduled for uninstall apparently
-					# isn't installed anymore. Since it's already
-					# been uninstalled, move on to the next task.
-					continue
 			if not installed:
 				mergecount += 1
-			pkg = Package(cpv=pkg_key, built=built,
-				installed=installed, metadata=metadata,
-				operation=operation, root=myroot,
-				type_name=pkg_type)
+			pkg = x
+			metadata = pkg.metadata
 			if pkg.installed:
 				if not (buildpkgonly or fetchonly or pretend):
 					self._uninstall_queue.append(pkg)
@@ -7652,6 +7658,41 @@ def action_depclean(settings, trees, ldpath_mtimes,
 
 def action_build(settings, trees, mtimedb,
 	myopts, myaction, myfiles, spinner):
+
+	# validate the state of the resume data
+	# so that we can make assumptions later.
+	for k in ("resume", "resume_backup"):
+		if k in mtimedb:
+			if "mergelist" in mtimedb[k]:
+				if not mtimedb[k]["mergelist"]:
+					del mtimedb[k]
+			else:
+				del mtimedb[k]
+
+	resume = False
+	if "--resume" in myopts and \
+		("resume" in mtimedb or
+		"resume_backup" in mtimedb):
+		resume = True
+		if "resume" not in mtimedb:
+			mtimedb["resume"] = mtimedb["resume_backup"]
+			del mtimedb["resume_backup"]
+			mtimedb.commit()
+		# "myopts" is a list for backward compatibility.
+		resume_opts = mtimedb["resume"].get("myopts", [])
+		if isinstance(resume_opts, list):
+			resume_opts = dict((k,True) for k in resume_opts)
+		for opt in ("--skipfirst", "--ask", "--tree"):
+			resume_opts.pop(opt, None)
+		myopts.update(resume_opts)
+		# Adjust config according to options of the command being resumed.
+		for myroot in trees:
+			mysettings =  trees[myroot]["vartree"].settings
+			mysettings.unlock()
+			adjust_config(myopts, mysettings)
+			mysettings.lock()
+			del myroot, mysettings
+
 	ldpath_mtimes = mtimedb["ldpath"]
 	favorites=[]
 	merge_count = 0
@@ -7659,7 +7700,13 @@ def action_build(settings, trees, mtimedb,
 	pretend = "--pretend" in myopts
 	fetchonly = "--fetchonly" in myopts or "--fetch-all-uri" in myopts
 	ask = "--ask" in myopts
+	nodeps = "--nodeps" in myopts
 	tree = "--tree" in myopts
+	if nodeps and tree:
+		tree = False
+		del myopts["--tree"]
+		portage.writemsg(colorize("WARN", " * ") + \
+			"--tree is broken with --nodeps. Disabling...\n")
 	verbose = "--verbose" in myopts
 	quiet = "--quiet" in myopts
 	if pretend or fetchonly:
@@ -7696,50 +7743,23 @@ def action_build(settings, trees, mtimedb,
 			print darkgreen("These are the packages that would be %s, in order:") % action
 			print
 
-	# validate the state of the resume data
-	# so that we can make assumptions later.
-	for k in ("resume", "resume_backup"):
-		if k in mtimedb:
-			if "mergelist" in mtimedb[k]:
-				if not mtimedb[k]["mergelist"]:
-					del mtimedb[k]
-			else:
-				del mtimedb[k]
-
 	show_spinner = "--quiet" not in myopts and "--nodeps" not in myopts
 	if not show_spinner:
 		spinner.update = spinner.update_quiet
 
-	if "--resume" in myopts and \
-		("resume" in mtimedb or
-		"resume_backup" in mtimedb):
-		if "resume" not in mtimedb:
-			mtimedb["resume"] = mtimedb["resume_backup"]
-			del mtimedb["resume_backup"]
-			mtimedb.commit()
+	if resume:
+		favorites = mtimedb["resume"].get("favorites")
+		if not isinstance(favorites, list):
+			favorites = []
 
-		# Adjust config according to options of the command being resumed.
-		for myroot in trees:
-			mysettings =  trees[myroot]["vartree"].settings
-			mysettings.unlock()
-			adjust_config(myopts, mysettings)
-			mysettings.lock()
-			del myroot, mysettings
-
-		# "myopts" is a list for backward compatibility.
-		resume_opts = mtimedb["resume"].get("myopts", [])
-		if isinstance(resume_opts, list):
-			resume_opts = dict((k,True) for k in resume_opts)
-		for opt in ("--skipfirst", "--ask", "--tree"):
-			resume_opts.pop(opt, None)
-		myopts.update(resume_opts)
 		if show_spinner:
 			print "Calculating dependencies  ",
 		myparams = create_depgraph_params(myopts, myaction)
 		mydepgraph = depgraph(settings, trees,
 			myopts, myparams, spinner)
+		success = False
 		try:
-			mydepgraph.loadResumeCommand(mtimedb["resume"])
+			success = mydepgraph.loadResumeCommand(mtimedb["resume"])
 		except portage.exception.PackageNotFound:
 			if show_spinner:
 				print
@@ -7748,15 +7768,37 @@ def action_build(settings, trees, mtimedb,
 			out.eerror("Error: The resume list contains packages that are no longer")
 			out.eerror("       available to be emerged. Please restart/continue")
 			out.eerror("       the merge operation manually.")
+		else:
+			if show_spinner:
+				print "\b\b... done!"
 
+		unsatisfied_block = False
+		if success:
+			mymergelist = mydepgraph.altlist()
+			if mymergelist and \
+				(isinstance(mymergelist[-1], Blocker) and \
+				not mymergelist[-1].satisfied):
+				if not fetchonly and not pretend:
+					unsatisfied_block = True
+					mydepgraph.display(
+						mydepgraph.altlist(reversed=tree),
+						favorites=favorites)
+					print "\n!!! Error: The above package list contains packages which cannot be installed"
+					print   "!!!        at the same time on the same system."
+					if not quiet:
+						show_blocker_docs_link()
+
+		if not success:
+			mydepgraph.display_problems()
+
+		if unsatisfied_block or not success:
 			# delete the current list and also the backup
 			# since it's probably stale too.
 			for k in ("resume", "resume_backup"):
 				mtimedb.pop(k, None)
 			mtimedb.commit()
+
 			return 1
-		if show_spinner:
-			print "\b\b... done!"
 	else:
 		if ("--resume" in myopts):
 			print darkgreen("emerge: It seems we have nothing to resume...")
@@ -7787,14 +7829,14 @@ def action_build(settings, trees, mtimedb,
 		"--verbose" in myopts) and \
 		not ("--quiet" in myopts and "--ask" not in myopts):
 		if "--resume" in myopts:
-			mymergelist = mtimedb["resume"]["mergelist"]
-			if "--skipfirst" in myopts:
-				mymergelist = mymergelist[1:]
+			mymergelist = mydepgraph.altlist()
 			if len(mymergelist) == 0:
 				print colorize("INFORM", "emerge: It seems we have nothing to resume...")
 				return os.EX_OK
 			favorites = mtimedb["resume"]["favorites"]
-			retval = mydepgraph.display(mymergelist, favorites=favorites)
+			retval = mydepgraph.display(
+				mydepgraph.altlist(reversed=tree),
+				favorites=favorites)
 			if retval != os.EX_OK:
 				return retval
 			prompt="Would you like to resume merging these packages?"
@@ -7845,14 +7887,14 @@ def action_build(settings, trees, mtimedb,
 
 	if ("--pretend" in myopts) and not ("--fetchonly" in myopts or "--fetch-all-uri" in myopts):
 		if ("--resume" in myopts):
-			mymergelist = mtimedb["resume"]["mergelist"]
-			if "--skipfirst" in myopts:
-				mymergelist = mymergelist[1:]
+			mymergelist = mydepgraph.altlist()
 			if len(mymergelist) == 0:
 				print colorize("INFORM", "emerge: It seems we have nothing to resume...")
 				return os.EX_OK
 			favorites = mtimedb["resume"]["favorites"]
-			retval = mydepgraph.display(mymergelist, favorites=favorites)
+			retval = mydepgraph.display(
+				mydepgraph.altlist(reversed=tree),
+				favorites=favorites)
 			if retval != os.EX_OK:
 				return retval
 		else:
@@ -7889,9 +7931,9 @@ def action_build(settings, trees, mtimedb,
 				it to write the mtimedb"""
 				mtimedb.filename = None
 				time.sleep(3) # allow the parent to have first fetch
+			mymergelist = mydepgraph.altlist()
 			del mydepgraph
-			retval = mergetask.merge(
-				mtimedb["resume"]["mergelist"], favorites, mtimedb)
+			retval = mergetask.merge(mymergelist, favorites, mtimedb)
 			merge_count = mergetask.curval
 		else:
 			if "resume" in mtimedb and \
@@ -8432,11 +8474,6 @@ def emerge_main():
 		if "python-trace" in settings.features:
 			import portage.debug
 			portage.debug.set_trace(True)
-
-	if ("--resume" in myopts):
-		if "--tree" in myopts:
-			print "* --tree is currently broken with --resume. Disabling..."
-			del myopts["--tree"]
 
 	if not ("--quiet" in myopts):
 		if not sys.stdout.isatty() or ("--nospinner" in myopts):
