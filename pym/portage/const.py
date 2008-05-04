@@ -24,6 +24,7 @@ GLOBAL_CONFIG_PATH      = "/usr/share/portage/config"
 PORTAGE_BASE_PATH       = os.path.join(os.sep, os.sep.join(__file__.split(os.sep)[:-3]))
 PORTAGE_BIN_PATH        = PORTAGE_BASE_PATH+"/bin"
 PORTAGE_PYM_PATH        = PORTAGE_BASE_PATH+"/pym"
+PORTAGE_PACKAGE_ATOM    = "sys-apps/portage"
 NEWS_LIB_PATH           = "/var/lib/gentoo"
 PROFILE_PATH            = "/etc/make.profile"
 LOCALE_DATA_PATH        = PORTAGE_BASE_PATH+"/locale"
