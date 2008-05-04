@@ -4045,10 +4045,14 @@ class depgraph(object):
 					if parent != inst_pkg:
 						mygraph.add(blocker, parent)
 
+		unsatisfied_blockers = []
 		i = 0
 		depth = 0
 		shown_edges = set()
 		for x in mylist:
+			if isinstance(x, Blocker) and not x.satisfied:
+				unsatisfied_blockers.append(x)
+				continue
 			graph_key = x
 			if "--tree" in self.myopts:
 				depth = len(tree_nodes)
@@ -4107,6 +4111,8 @@ class depgraph(object):
 			else:
 				display_list.append((x, depth, True))
 		mylist = display_list
+		for x in unsatisfied_blockers:
+			mylist.append((x, 0, True))
 
 		last_merge_depth = 0
 		for i in xrange(len(mylist)-1,-1,-1):
