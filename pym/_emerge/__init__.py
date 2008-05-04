@@ -4813,7 +4813,7 @@ class depgraph(object):
 			return False
 		favorites = resume_data.get("favorites")
 		if isinstance(favorites, list):
-			self._load_favorites(resume_data)
+			self._load_favorites(favorites)
 		mergelist = resume_data.get("mergelist")
 		if not isinstance(mergelist, list):
 			mergelist = []
