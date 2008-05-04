@@ -3931,7 +3931,7 @@ class depgraph(object):
 				display_list.reverse()
 			self.display(display_list)
 
-	def _show_unsatisied_blockers(self, blockers):
+	def _show_unsatisfied_blockers(self, blockers):
 		self._show_merge_list()
 		msg = "Error: The above package list contains " + \
 			"packages which cannot be installed " + \
@@ -4070,13 +4070,15 @@ class depgraph(object):
 					if parent != inst_pkg:
 						mygraph.add(blocker, parent)
 
+		unsatisfied_blockers = []
 		i = 0
 		depth = 0
 		shown_edges = set()
 		for x in mylist:
+			if isinstance(x, Blocker) and not x.satisfied:
+				unsatisfied_blockers.append(x)
+				continue
 			graph_key = x
-			if isinstance(graph_key, list):
-				graph_key = tuple(graph_key)
 			if "--tree" in self.myopts:
 				depth = len(tree_nodes)
 				while depth and graph_key not in \
@@ -4134,6 +4136,8 @@ class depgraph(object):
 			else:
 				display_list.append((x, depth, True))
 		mylist = display_list
+		for x in unsatisfied_blockers:
+			mylist.append((x, 0, True))
 
 		last_merge_depth = 0
 		for i in xrange(len(mylist)-1,-1,-1):
@@ -4183,7 +4187,7 @@ class depgraph(object):
 					addl = addl + " " + red(resolved)
 				else:
 					addl = "[blocks " + addl + "] " + indent + red(resolved)
-				block_parents = self._blocker_parents.parent_nodes(tuple(x))
+				block_parents = self._blocker_parents.parent_nodes(x)
 				block_parents = set([pnode[2] for pnode in block_parents])
 				block_parents = ", ".join(block_parents)
 				if resolved!=x[2]:
@@ -4247,10 +4251,11 @@ class depgraph(object):
 				installed_versions = vardb.match(portage.cpv_getkey(pkg_key))
 				if vardb.cpv_exists(pkg_key):
 					addl="  "+yellow("R")+fetch+"  "
-					if pkg_merge:
-						counters.reinst += 1
-					elif pkg_status == "uninstall":
-						counters.uninst += 1
+					if ordered:
+						if pkg_merge:
+							counters.reinst += 1
+						elif pkg_status == "uninstall":
+							counters.uninst += 1
 				# filter out old-style virtual matches
 				elif installed_versions and \
 					portage.cpv_getkey(installed_versions[0]) == \
@@ -4417,7 +4422,8 @@ class depgraph(object):
 								if myfetchfile not in myfetchlist:
 									mysize+=myfilesdict[myfetchfile]
 									myfetchlist.append(myfetchfile)
-							counters.totalsize += mysize
+							if ordered:
+								counters.totalsize += mysize
 						verboseadd+=format_size(mysize)+" "
 
 					# overlay verbose
@@ -4639,7 +4645,7 @@ class depgraph(object):
 		# The user is only notified of a slot conflict if
 		# there are no unresolvable blocker conflicts.
 		if self._unsatisfied_blockers_for_display is not None:
-			self._show_unsatisied_blockers(
+			self._show_unsatisfied_blockers(
 				self._unsatisfied_blockers_for_display)
 		else:
 			self._show_slot_collision_notice()
@@ -4835,9 +4841,7 @@ class depgraph(object):
 
 		if not isinstance(resume_data, dict):
 			return False
-		favorites = resume_data.get("favorites")
-		if isinstance(favorites, list):
-			self._load_favorites(resume_data)
+
 		mergelist = resume_data.get("mergelist")
 		if not isinstance(mergelist, list):
 			mergelist = []
@@ -4900,10 +4904,29 @@ class depgraph(object):
 			self._select_package = self._select_pkg_from_graph
 			self.myparams.add("selective")
 
+			favorites = resume_data.get("favorites")
+			if isinstance(favorites, list):
+				args = self._load_favorites(favorites)
+			else:
+				args = []
+
 			for task in serialized_tasks:
 				if isinstance(task, Package) and \
 					task.operation == "merge":
-					self._add_pkg(task, None)
+					if not self._add_pkg(task, None):
+						return False
+
+			# Packages for argument atoms need to be explicitly
+			# added via _add_pkg() so that they are included in the
+			# digraph (needed at least for --tree display).
+			for arg in args:
+				for atom in arg.set:
+					pkg, existing_node = self._select_package(
+						arg.root_config.root, atom)
+					if existing_node is None and \
+						pkg is not None:
+						if not self._add_pkg(pkg, arg):
+							return False
 
 			# Allow unsatisfied deps here to avoid showing a masking
 			# message for an unsatisfied dep that isn't necessarily
@@ -4984,6 +5007,7 @@ class depgraph(object):
 					atom_arg_map[atom_key] = refs
 					if arg not in refs:
 						refs.append(arg)
+		return args
 
 	class UnsatisfiedResumeDep(portage.exception.PortageException):
 		"""
@@ -7802,12 +7826,24 @@ def action_build(settings, trees, mtimedb,
 	# validate the state of the resume data
 	# so that we can make assumptions later.
 	for k in ("resume", "resume_backup"):
-		if k in mtimedb:
-			if "mergelist" in mtimedb[k]:
-				if not mtimedb[k]["mergelist"]:
-					del mtimedb[k]
-			else:
-				del mtimedb[k]
+		if k not in mtimedb:
+			continue
+		resume_data = mtimedb[k]
+		if not isinstance(resume_data, dict):
+			del mtimedb[k]
+			continue
+		mergelist = resume_data.get("mergelist")
+		if not isinstance(mergelist, list):
+			del mtimedb[k]
+			continue
+		resume_opts = resume_data.get("myopts")
+		if not isinstance(resume_opts, (dict, list)):
+			del mtimedb[k]
+			continue
+		favorites = resume_data.get("favorites")
+		if not isinstance(resume_opts, list):
+			del mtimedb[k]
+			continue
 
 	resume = False
 	if "--resume" in myopts and \
