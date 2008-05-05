@@ -1098,6 +1098,11 @@ class config:
 		"XARGS",
 	]
 
+	# user config variables
+	_environ_whitelist += [
+		"DOC_SYMLINKS_DIR", "INSTALL_MASK", "PKG_INSTALL_MASK"
+	]
+
 	_environ_whitelist += [
 		"A", "AA", "CATEGORY", "P", "PF", "PN", "PR", "PV", "PVR"
 	]
