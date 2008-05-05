@@ -433,10 +433,7 @@ class vardbapi(dbapi):
 
 		returnme = []
 		for x in dir_list:
-			if x.startswith("."):
-				continue
-			if x[0] == '-':
-				#writemsg(red("INCOMPLETE MERGE:")+str(x[len("-MERGING-"):])+"\n")
+			if self._excluded_dirs.match(x) is not None:
 				continue
 			ps = pkgsplit(x)
 			if not ps:
