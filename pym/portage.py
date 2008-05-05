@@ -6741,7 +6741,11 @@ class vardbapi(dbapi):
 		for y in mylist:
 			if y[0] == '*':
 				y = y[1:]
-			mysplit=catpkgsplit(y)
+			try:
+				mysplit = catpkgsplit(y)
+			except portage_exception.InvalidData:
+				self.invalidentry(self.root+VDB_PATH+"/"+y)
+				continue
 			if not mysplit:
 				self.invalidentry(self.root+VDB_PATH+"/"+y)
 				continue
