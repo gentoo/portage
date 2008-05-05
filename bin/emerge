@@ -7831,7 +7831,7 @@ def action_build(settings, trees, mtimedb,
 			del mtimedb[k]
 			continue
 		favorites = resume_data.get("favorites")
-		if not isinstance(resume_opts, list):
+		if not isinstance(favorites, list):
 			del mtimedb[k]
 			continue
 
