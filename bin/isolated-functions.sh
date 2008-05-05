@@ -485,6 +485,9 @@ save_ebuild_env() {
 			ROOT ROOTPATH RPMDIR STARTDIR TMP TMPDIR USE_EXPAND \
 			WARN XARGS _RC_GET_KV_CACHE
 
+		# user config variables
+		unset DOC_SYMLINKS_DIR INSTALL_MASK PKG_INSTALL_MASK
+
 		set
 		export
 	)
