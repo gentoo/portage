@@ -1361,7 +1361,7 @@ def show_masked_packages(masked_packages):
 	return have_eapi_mask
 
 class Task(SlotObject):
-	__slots__ = ("_hash_key",)
+	__slots__ = ("_hash_key", "_hash_value")
 
 	def _get_hash_key(self):
 		hash_key = getattr(self, "_hash_key", None)
@@ -1376,7 +1376,10 @@ class Task(SlotObject):
 		return self._get_hash_key() != other
 
 	def __hash__(self):
-		return hash(self._get_hash_key())
+		hash_value = getattr(self, "_hash_value", None)
+		if hash_value is None:
+			self._hash_value = hash(self._get_hash_key())
+		return self._hash_value
 
 	def __len__(self):
 		return len(self._get_hash_key())
