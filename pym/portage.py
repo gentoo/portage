@@ -6699,12 +6699,9 @@ class vardbapi(dbapi):
 
 		returnme = []
 		for x in dir_list:
-			if x.startswith("."):
+			if self._excluded_dirs.match(x) is not None:
 				continue
-			if x[0] == '-':
-				#writemsg(red("INCOMPLETE MERGE:")+str(x[len("-MERGING-"):])+"\n")
-				continue
-			ps=pkgsplit(x)
+			ps = pkgsplit(x)
 			if not ps:
 				self.invalidentry(self.root+VDB_PATH+"/"+mysplit[0]+"/"+x)
 				continue
