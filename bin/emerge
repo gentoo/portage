@@ -3907,7 +3907,11 @@ class depgraph(object):
 								"system"].iterAtomsForPackage(task):
 								skip = True
 								break
-						except portage_exception.InvalidDependString:
+						except portage_exception.InvalidDependString, e:
+							portage.writemsg("!!! Invalid PROVIDE in " + \
+								"'%svar/db/pkg/%s/PROVIDE': %s\n" % \
+								(task.root, task.cpv, e), noiselevel=-1)
+							del e
 							skip = True
 						if skip:
 							continue
@@ -3936,7 +3940,11 @@ class depgraph(object):
 								if not satisfied:
 									skip = True
 									break
-						except portage_exception.InvalidDependString:
+						except portage_exception.InvalidDependString, e:
+							portage.writemsg("!!! Invalid PROVIDE in " + \
+								"'%svar/db/pkg/%s/PROVIDE': %s\n" % \
+								(task.root, task.cpv, e), noiselevel=-1)
+							del e
 							skip = True
 						if skip:
 							continue
