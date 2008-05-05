@@ -8149,8 +8149,7 @@ def action_build(settings, trees, mtimedb,
 			retval = mergetask.merge(pkglist, favorites, mtimedb)
 			merge_count = mergetask.curval
 
-		if retval == os.EX_OK and not (pretend or fetchonly):
-			mtimedb.pop("resume", None)
+		if retval == os.EX_OK and not (buildpkgonly or fetchonly or pretend):
 			if "yes" == settings.get("AUTOCLEAN"):
 				portage.writemsg_stdout(">>> Auto-cleaning packages...\n")
 				unmerge(trees[settings["ROOT"]]["root_config"],
