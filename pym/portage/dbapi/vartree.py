@@ -9,7 +9,7 @@ from portage.data import portage_gid, portage_uid, secpass
 from portage.dbapi import dbapi
 from portage.dep import dep_getslot, use_reduce, paren_reduce, isvalidatom, \
 	isjustname, dep_getkey, match_from_list
-from portage.exception import InvalidPackageName, InvalidAtom, \
+from portage.exception import InvalidAtom, InvalidData, InvalidPackageName, \
 	FileNotFound, PermissionDenied, UnsupportedAPIException
 from portage.locks import lockdir, unlockdir
 from portage.output import bold, red, green
@@ -475,7 +475,11 @@ class vardbapi(dbapi):
 		for y in mylist:
 			if y[0] == '*':
 				y = y[1:]
-			mysplit = catpkgsplit(y)
+			try:
+				mysplit = catpkgsplit(y)
+			except portage.exception.InvalidData:
+				self.invalidentry(self.getpath(y))
+				continue
 			if not mysplit:
 				self.invalidentry(self.getpath(y))
 				continue
