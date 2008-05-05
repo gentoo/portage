@@ -6520,7 +6520,7 @@ class vardbapi(dbapi):
 
 	_excluded_dirs = ["CVS", "lost+found"]
 	_excluded_dirs = [re.escape(x) for x in _excluded_dirs]
-	_excluded_dirs = re.compile(r'^(\..*|' + \
+	_excluded_dirs = re.compile(r'^(\..*|-MERGING-.*|' + \
 		"|".join(_excluded_dirs) + r')$')
 
 	"""
