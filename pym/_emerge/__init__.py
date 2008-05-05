@@ -1793,6 +1793,8 @@ class depgraph(object):
 		self._blocker_uninstalls = digraph()
 		# Contains only Package -> Blocker edges
 		self._blocker_parents = digraph()
+		# Contains only irrelevant Package -> Blocker edges
+		self._irrelevant_blockers = digraph()
 		# Contains only unsolvable Package -> Blocker edges
 		self._unsolvable_blockers = digraph()
 		self._slot_collision_info = set()
@@ -3174,10 +3176,17 @@ class depgraph(object):
 					blocker_atoms = None
 					blockers = None
 					if self.digraph.contains(pkg):
+						blockers = []
 						try:
-							blockers = self._blocker_parents.child_nodes(pkg)
+							blockers.extend(
+								self._blocker_parents.child_nodes(pkg))
 						except KeyError:
-							blockers = []
+							pass
+						try:
+							blockers.extend(
+								self._irrelevant_blockers.child_nodes(pkg))
+						except KeyError:
+							pass
 					if blockers is not None:
 						blockers = set("!" + blocker.atom \
 							for blocker in blockers)
@@ -3309,6 +3318,7 @@ class depgraph(object):
 				self._blocker_parents.remove(blocker)
 				# Discard any parents that don't have any more blockers.
 				for pkg in parent_pkgs:
+					self._irrelevant_blockers.add(blocker, pkg)
 					if not self._blocker_parents.child_nodes(pkg):
 						self._blocker_parents.remove(pkg)
 				continue
@@ -3383,6 +3393,7 @@ class depgraph(object):
 						# merged.
 						self._blocker_uninstalls.addnode(uninst_task, blocker)
 				if not unresolved_blocks and not depends_on_order:
+					self._irrelevant_blockers.add(blocker, parent)
 					self._blocker_parents.remove_edge(blocker, parent)
 					if not self._blocker_parents.parent_nodes(blocker):
 						self._blocker_parents.remove(blocker)
