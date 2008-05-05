@@ -54,7 +54,8 @@ INCREMENTALS = ["USE", "USE_EXPAND", "USE_EXPAND_HIDDEN", "FEATURES",
 	"CONFIG_PROTECT_MASK", "CONFIG_PROTECT",
 	"PRELINK_PATH", "PRELINK_PATH_MASK", "PROFILE_ONLY_VARIABLES"]
 EBUILD_PHASES           = ["setup", "unpack", "compile", "test", "install",
-                          "preinst", "postinst", "prerm", "postrm", "other"]
+                          "package", "preinst", "postinst","prerm", "postrm",
+                          "other"]
 
 EAPI = 1
 
