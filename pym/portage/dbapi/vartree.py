@@ -460,13 +460,19 @@ class vardbapi(dbapi):
 				continue
 			if not self._category_re.match(x):
 				continue
-			for y in listdir(basepath + x, EmptyOnError=1):
+			for y in listdir(basepath + x, EmptyOnError=1, dirsonly=1):
 				if self._excluded_dirs.match(y) is not None:
 					continue
 				subpath = x + "/" + y
 				# -MERGING- should never be a cpv, nor should files.
-				if os.path.isdir(basepath + subpath) and (pkgsplit(y) is not None):
-					returnme += [subpath]
+				try:
+					if catpkgsplit(subpath) is None:
+						self.invalidentry(os.path.join(self.root, subpath))
+						continue
+				except portage.exception.InvalidData:
+					self.invalidentry(os.path.join(self.root, subpath))
+					continue
+				returnme.append(subpath)
 		return returnme
 
 	def cp_all(self, use_cache=1):
