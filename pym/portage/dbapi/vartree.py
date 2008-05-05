@@ -132,13 +132,16 @@ class LinkageMap(object):
 		self._obj_properties = {}
 		self._defpath = getlibpaths()
 	
-	def rebuild(self):
+	def rebuild(self, include_file=None):
 		libs = {}
 		obj_properties = {}
 		lines = []
 		for cpv in self._dbapi.cpv_all():
 			lines += grabfile(self._dbapi.getpath(cpv, filename="NEEDED.ELF.2"))
-
+		
+		if include_file:
+			lines += grabfile(include_file)
+		
 		# have to call scanelf for preserved libs here as they aren't 
 		# registered in NEEDED.ELF.2 files
 		if self._dbapi.plib_registry and self._dbapi.plib_registry.getPreservedLibs():
@@ -187,10 +190,11 @@ class LinkageMap(object):
 	def findProviders(self, obj):
 		if not self._libs:
 			self.rebuild()
-		obj = os.path.realpath(obj)
 		rValue = {}
 		if obj not in self._obj_properties:
-			raise KeyError("%s not in object list" % obj)
+			obj = os.path.realpath(obj)
+			if obj not in self._obj_properties:
+				raise KeyError("%s not in object list" % obj)
 		arch, needed, path, soname = self._obj_properties[obj]
 		path.extend(self._defpath)
 		path = [os.path.realpath(x) for x in path]
@@ -208,7 +212,10 @@ class LinkageMap(object):
 	def findConsumers(self, obj):
 		if not self._libs:
 			self.rebuild()
-		obj = os.path.realpath(obj)
+		if obj not in self._obj_properties:
+			obj = os.path.realpath(obj)
+			if obj not in self._obj_properties:
+				raise KeyError("%s not in object list" % obj)
 		rValue = set()
 		for soname in self._libs:
 			for arch in self._libs[soname]:
@@ -1653,10 +1660,10 @@ class dblink(object):
 
 		return False
 
-	def _preserve_libs(self, srcroot, destroot, mycontents, counter):
+	def _preserve_libs(self, srcroot, destroot, mycontents, counter, inforoot):
 		# read global reverse NEEDED map
 		linkmap = self.vartree.dbapi.linkmap
-		linkmap.rebuild()
+		linkmap.rebuild(include_file=os.path.join(inforoot, "NEEDED.ELF.2"))
 		liblist = linkmap.listLibraryObjects()
 
 		# get list of libraries from old package instance
@@ -1664,12 +1671,13 @@ class dblink(object):
 		old_libs = set(old_contents).intersection(liblist)
 
 		# get list of libraries from new package instance
-		mylibs = set(mycontents).intersection(liblist)
-
+		mylibs = set([os.path.join(os.sep, x) for x in mycontents]).intersection(liblist)
+		
 		# check which libs are present in the old, but not the new package instance
 		candidates = old_libs.difference(mylibs)
+		
 		for x in old_contents:
-			if os.path.islink(x) and os.path.realpath(x) in candidates:
+			if os.path.islink(x) and os.path.realpath(x) in candidates and x not in mycontents:
 				candidates.add(x)
 
 		# ignore any libs that are only internally used by the package
@@ -1701,6 +1709,7 @@ class dblink(object):
 			for c in linkmap.findConsumers(lib):
 				localkeep = True
 				providers = linkmap.findProviders(c)
+				
 				for soname in providers:
 					if lib in providers[soname]:
 						for p in providers[soname]:
@@ -2044,7 +2053,7 @@ class dblink(object):
 
 		# Preserve old libs if they are still in use
 		if slot_matches and "preserve-libs" in self.settings.features:
-			self._preserve_libs(srcroot, destroot, myfilelist+mylinklist, counter)
+			self._preserve_libs(srcroot, destroot, myfilelist+mylinklist, counter, inforoot)
 
 		# check for package collisions
 		collisions = self._collision_protect(srcroot, destroot, others_in_slot,
