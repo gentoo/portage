@@ -223,6 +223,12 @@ class LinkageMap(object):
 		return rValue
 					
 class vardbapi(dbapi):
+
+	_excluded_dirs = ["CVS", "lost+found"]
+	_excluded_dirs = [re.escape(x) for x in _excluded_dirs]
+	_excluded_dirs = re.compile(r'^(\..*|' + \
+		"|".join(_excluded_dirs) + r')$')
+
 	def __init__(self, root, categories=None, settings=None, vartree=None):
 		"""
 		The categories parameter is unused since the dbapi class
@@ -443,10 +449,12 @@ class vardbapi(dbapi):
 		returnme = []
 		basepath = os.path.join(self.root, VDB_PATH) + os.path.sep
 		for x in listdir(basepath, EmptyOnError=1, ignorecvs=1, dirsonly=1):
+			if self._excluded_dirs.match(x) is not None:
+				continue
 			if not self._category_re.match(x):
 				continue
 			for y in listdir(basepath + x, EmptyOnError=1):
-				if y.startswith("."):
+				if self._excluded_dirs.match(y) is not None:
 					continue
 				subpath = x + "/" + y
 				# -MERGING- should never be a cpv, nor should files.
