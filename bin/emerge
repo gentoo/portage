@@ -5509,7 +5509,7 @@ class PackageCounters(object):
 			myoutput.append(bad(" (%s unsatisfied)") % \
 				(self.restrict_fetch - self.restrict_fetch_satisfied))
 		if self.blocks > 0:
-			myoutput.append("\nConflict: %s blocker" % \
+			myoutput.append("\nConflict: %s block" % \
 				self.blocks)
 			if self.blocks > 1:
 				myoutput.append("s")
