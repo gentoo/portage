@@ -4229,24 +4229,35 @@ class depgraph(object):
 			fetch=" "
 			indent = " " * depth
 
-			if x[0]=="blocks":
-				addl=""+red("B")+"  "+fetch+"  "
+			if isinstance(x, Blocker):
+				if x.satisfied:
+					blocker_style = "PKG_BLOCKER_SATISFIED"
+					addl = "%s  %s  " % (colorize(blocker_style, "b"), fetch)
+				else:
+					blocker_style = "PKG_BLOCKER"
+					addl = "%s  %s  " % (colorize(blocker_style, "B"), fetch)
 				if ordered:
 					counters.blocks += 1
+					if x.satisfied:
+						counters.blocks_satisfied += 1
 				resolved = portage.key_expand(
 					pkg_key, mydb=vardb, settings=pkgsettings)
 				if "--columns" in self.myopts and "--quiet" in self.myopts:
-					addl = addl + " " + red(resolved)
+					addl += " " + colorize(blocker_style, resolved)
 				else:
-					addl = "[blocks " + addl + "] " + indent + red(resolved)
+					addl = "[%s %s] %s%s" % \
+						(colorize(blocker_style, "blocks"),
+						addl, indent, colorize(blocker_style, resolved))
 				block_parents = self._blocker_parents.parent_nodes(x)
 				block_parents = set([pnode[2] for pnode in block_parents])
 				block_parents = ", ".join(block_parents)
 				if resolved!=x[2]:
-					addl += bad(" (\"%s\" is blocking %s)") % \
+					addl += colorize(blocker_style,
+						" (\"%s\" is blocking %s)") % \
 						(pkg_key, block_parents)
 				else:
-					addl += bad(" (is blocking %s)") % block_parents
+					addl += colorize(blocker_style,
+						" (is blocking %s)") % block_parents
 				if isinstance(x, Blocker) and x.satisfied:
 					p.append(addl)
 				else:
@@ -5287,6 +5298,7 @@ class PackageCounters(object):
 		self.reinst     = 0
 		self.uninst     = 0
 		self.blocks     = 0
+		self.blocks_satisfied         = 0
 		self.totalsize  = 0
 		self.restrict_fetch           = 0
 		self.restrict_fetch_satisfied = 0
@@ -5322,10 +5334,6 @@ class PackageCounters(object):
 			details.append("%s uninstall" % self.uninst)
 			if self.uninst > 1:
 				details[-1] += "s"
-		if self.blocks > 0:
-			details.append("%s block" % self.blocks)
-			if self.blocks > 1:
-				details[-1] += "s"
 		myoutput.append(", ".join(details))
 		if total_installs != 0:
 			myoutput.append(")")
@@ -5338,6 +5346,14 @@ class PackageCounters(object):
 		if self.restrict_fetch_satisfied < self.restrict_fetch:
 			myoutput.append(bad(" (%s unsatisfied)") % \
 				(self.restrict_fetch - self.restrict_fetch_satisfied))
+		if self.blocks > 0:
+			myoutput.append("\nConflict: %s blocker" % \
+				self.blocks)
+			if self.blocks > 1:
+				myoutput.append("s")
+			if self.blocks_satisfied < self.blocks:
+				myoutput.append(bad(" (%s unsatisfied)") % \
+					(self.blocks - self.blocks_satisfied))
 		return "".join(myoutput)
 
 class MergeTask(object):
