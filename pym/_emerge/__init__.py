@@ -2884,7 +2884,8 @@ class depgraph(object):
 							if not visible(pkgsettings, pkg):
 								continue
 						except portage.exception.InvalidDependString:
-							continue
+							if not installed:
+								continue
 
 						# Enable upgrade or downgrade to a version
 						# with visible KEYWORDS when the installed
