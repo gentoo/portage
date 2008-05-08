@@ -235,12 +235,15 @@ class LinkageMapMachO(object):
 		self._libs = {}
 		self._obj_properties = {}
 
-	def rebuild(self):
+	def rebuild(self, include_file=None):
 		libs = {}
 		obj_properties = {}
 		lines = []
 		for cpv in self._dbapi.cpv_all():
 			lines += grabfile(self._dbapi.getpath(cpv, filename="NEEDED.MACHO.2"))
+
+		if include_file:
+			lines += grabfile(include_file)
 
 		for l in lines:
 			if l.strip() == "":
@@ -1763,7 +1766,10 @@ class dblink(object):
 	def _preserve_libs(self, srcroot, destroot, mycontents, counter, inforoot):
 		# read global reverse NEEDED map
 		linkmap = self.vartree.dbapi.linkmap
-		linkmap.rebuild(include_file=os.path.join(inforoot, "NEEDED.ELF.2"))
+		if ostype == "Darwin":
+			linkmap.rebuild(include_file=os.path.join(inforoot, "NEEDED.MACHO.2"))
+		else:
+			linkmap.rebuild(include_file=os.path.join(inforoot, "NEEDED.ELF.2"))
 		liblist = linkmap.listLibraryObjects()
 
 		# get list of libraries from old package instance
