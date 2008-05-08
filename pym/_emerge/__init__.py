@@ -1383,7 +1383,6 @@ class BlockerCache(DictMixin):
 
 	def __init__(self, myroot, vardb):
 		self._vardb = vardb
-		self._installed_pkgs = set(vardb.cpv_all())
 		self._virtuals = vardb.settings.getvirtuals()
 		self._cache_filename = os.path.join(myroot,
 			portage.CACHE_PATH.lstrip(os.path.sep), "vdb_blockers.pickle")
@@ -1529,7 +1528,6 @@ class BlockerDB(object):
 			"porttree"    :  self._vartree,
 			"vartree"     :  self._vartree,
 		}}
-		self._installed_pkgs = None
 
 	def findInstalledBlockers(self, new_pkg):
 		blocker_cache = self._blocker_cache
@@ -1541,9 +1539,9 @@ class BlockerDB(object):
 			FakeVartree(self._vartree,
 				self._portdb, Package.metadata_keys, {})
 		vardb = fake_vartree.dbapi
-		self._installed_pkgs = list(vardb)
+		installed_pkgs = list(vardb)
 
-		for inst_pkg in self._installed_pkgs:
+		for inst_pkg in installed_pkgs:
 			stale_cache.discard(inst_pkg.cpv)
 			cached_blockers = blocker_cache.get(inst_pkg.cpv)
 			if cached_blockers is not None and \
@@ -1582,7 +1580,7 @@ class BlockerDB(object):
 
 		blocker_parents = digraph()
 		blocker_atoms = []
-		for pkg in self._installed_pkgs:
+		for pkg in installed_pkgs:
 			for blocker_atom in self._blocker_cache[pkg.cpv].atoms:
 				blocker_atom = blocker_atom[1:]
 				blocker_atoms.append(blocker_atom)
@@ -1611,7 +1609,7 @@ class BlockerDB(object):
 		blocker_atoms = [atom[1:] for atom in atoms \
 			if atom.startswith("!")]
 		blocker_atoms = InternalPackageSet(initial_atoms=blocker_atoms)
-		for inst_pkg in self._installed_pkgs:
+		for inst_pkg in installed_pkgs:
 			try:
 				blocker_atoms.iterAtomsForPackage(inst_pkg).next()
 			except (portage.exception.InvalidDependString, StopIteration):
