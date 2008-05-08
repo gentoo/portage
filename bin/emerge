@@ -1715,12 +1715,12 @@ class BlockerDB(object):
 				# updates on *DEPEND when appropriate.
 				depstr = " ".join(vardb.aux_get(inst_pkg.cpv, dep_keys))
 				try:
-					portage.dep._dep_check_strict = False
+					portage_dep._dep_check_strict = False
 					success, atoms = portage.dep_check(depstr,
 						vardb, settings, myuse=myuse,
 						trees=dep_check_trees, myroot=inst_pkg.root)
 				finally:
-					portage.dep._dep_check_strict = True
+					portage_dep._dep_check_strict = True
 				if not success:
 					pkg_location = os.path.join(inst_pkg.root,
 						portage.VDB_PATH, inst_pkg.category, inst_pkg.pf)
