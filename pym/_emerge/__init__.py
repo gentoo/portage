@@ -2933,6 +2933,18 @@ class depgraph(object):
 					cpv_list = db.xmatch("match-all", atom)
 				else:
 					cpv_list = db.match(atom)
+
+				# USE=multislot can make an installed package appear as if
+				# it doesn't satisfy a slot dependency. Rebuilding the ebuild
+				# won't do any good as long as USE=multislot is enabled since
+				# the newly built package still won't have the expected slot.
+				# Therefore, assume that such SLOT dependencies are already
+				# satisfied rather than forcing a rebuild.
+				if installed and not cpv_list and matched_packages \
+					and vardb.cpv_exists(matched_packages[-1].cpv) and \
+					portage.dep.dep_getslot(atom):
+					cpv_list = [matched_packages[-1].cpv]
+
 				if not cpv_list:
 					continue
 				pkg_status = "merge"
