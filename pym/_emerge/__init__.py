@@ -4038,6 +4038,8 @@ class depgraph(object):
 							mygraph.remove(uninst_task)
 						except KeyError:
 							pass
+						scheduled_uninstalls.discard(uninst_task)
+
 				if uninst_task is not None and \
 					uninst_task not in ignored_uninstall_tasks and \
 					myblocker_uninstalls.contains(uninst_task):
