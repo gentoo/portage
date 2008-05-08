@@ -21,7 +21,7 @@
 	</para>
 	<para>
 	In order to avoid a conflict, a package may need to be uninstalled
-	in advance, rather than through replacement. The following constraints
+	rather than replaced. The following constraints
 	protect inappropriate packages from being chosen for automatic
 	uninstallation:
 	<itemizedlist>
@@ -45,6 +45,16 @@
 	atom.
 	</listitem>
 	</itemizedlist>
+	</para>
+	<para>
+	In order to ensure that package files remain installed in a usable state
+	whenever possible, uninstallation operations are not executed
+	until after all associated conflicting packages have been installed.
+	When file collisions occur between conflicting packages, the contents
+	entries for those files are removed from the packages
+	that are scheduled for uninstallation. This prevents
+	uninstallation operations from removing overlapping files that
+	have been claimed by conflicting packages.
 	</para>
 </sect1>
 <sect1 id='dependency-resolution-task-scheduling-circular-dependencies'>

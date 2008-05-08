@@ -5313,13 +5313,13 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 	return newmtime
 
 def merge(mycat, mypkg, pkgloc, infloc, myroot, mysettings, myebuild=None,
-	mytree=None, mydbapi=None, vartree=None, prev_mtimes=None):
+	mytree=None, mydbapi=None, vartree=None, prev_mtimes=None, blockers=None):
 	if not os.access(myroot, os.W_OK):
 		writemsg("Permission denied: access('%s', W_OK)\n" % myroot,
 			noiselevel=-1)
 		return errno.EACCES
 	mylink = dblink(mycat, mypkg, myroot, mysettings, treetype=mytree,
-		vartree=vartree)
+		vartree=vartree, blockers=blockers)
 	return mylink.merge(pkgloc, infloc, myroot, myebuild,
 		mydbapi=mydbapi, prev_mtimes=prev_mtimes)
 
@@ -6184,7 +6184,8 @@ class FetchlistDict(UserDict.DictMixin):
 		"""Returns keys for all packages within pkgdir"""
 		return self.portdb.cp_list(self.cp, mytree=self.mytree)
 
-def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes=None):
+def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None,
+	vartree=None, prev_mtimes=None, blockers=None):
 	"""will merge a .tbz2 file, returning a list of runtime dependencies
 		that must be satisfied, or None if there was a merge error.	This
 		code assumes the package exists."""
@@ -6277,7 +6278,7 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 		#tbz2_lock = None
 
 		mylink = dblink(mycat, mypkg, myroot, mysettings, vartree=vartree,
-			treetype="bintree")
+			treetype="bintree", blockers=blockers)
 		retval = mylink.merge(pkgloc, infloc, myroot, myebuild, cleanup=0,
 			mydbapi=mydbapi, prev_mtimes=prev_mtimes)
 		did_merge_phase = True
