@@ -5310,13 +5310,13 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 	return newmtime
 
 def merge(mycat, mypkg, pkgloc, infloc, myroot, mysettings, myebuild=None,
-	mytree=None, mydbapi=None, vartree=None, prev_mtimes=None):
+	mytree=None, mydbapi=None, vartree=None, prev_mtimes=None, blockers=None):
 	if not os.access(myroot, os.W_OK):
 		writemsg("Permission denied: access('%s', W_OK)\n" % myroot,
 			noiselevel=-1)
 		return errno.EACCES
 	mylink = dblink(mycat, mypkg, myroot, mysettings, treetype=mytree,
-		vartree=vartree)
+		vartree=vartree, blockers=blockers)
 	return mylink.merge(pkgloc, infloc, myroot, myebuild,
 		mydbapi=mydbapi, prev_mtimes=prev_mtimes)
 
@@ -8389,7 +8389,7 @@ class dblink:
 	}
 
 	def __init__(self, cat, pkg, myroot, mysettings, treetype=None,
-		vartree=None):
+		vartree=None, blockers=None):
 		"""
 		Creates a DBlink object for a given CPV.
 		The given CPV may not be present in the database already.
@@ -8418,6 +8418,7 @@ class dblink:
 			global db
 			vartree = db[myroot]["vartree"]
 		self.vartree = vartree
+		self._blockers = blockers
 
 		self.dbroot   = normalize_path(os.path.join(myroot, VDB_PATH))
 		self.dbcatdir = self.dbroot+"/"+cat
@@ -8503,6 +8504,11 @@ class dblink:
 		"""
 		if os.path.exists(self.dbdir+"/CONTENTS"):
 			os.unlink(self.dbdir+"/CONTENTS")
+
+	def _clear_contents_cache(self):
+		self.contentscache = None
+		self._contents_inodes = None
+		self._contents_basenames = None
 
 	def getcontents(self):
 		"""
@@ -9167,6 +9173,7 @@ class dblink:
 		"""
 
 		srcroot = normalize_path(srcroot).rstrip(os.path.sep) + os.path.sep
+		destroot = normalize_path(destroot).rstrip(os.path.sep) + os.path.sep
 
 		if not os.path.isdir(srcroot):
 			writemsg("!!! Directory Not Found: D='%s'\n" % srcroot,
@@ -9291,6 +9298,9 @@ class dblink:
 				return 1
 
 		# check for package collisions
+		blockers = self._blockers
+		if blockers is None:
+			blockers = []
 		if True:
 			collision_ignore = set([normalize_path(myignore) for myignore in \
 				self.settings.get("COLLISION_IGNORE", "").split()])
@@ -9343,7 +9353,7 @@ class dblink:
 				if f[0] != "/":
 					f="/"+f
 				isowned = False
-				for ver in [self] + others_in_slot:
+				for ver in [self] + others_in_slot + blockers:
 					if (ver.isowner(f, destroot) or ver.isprotected(f)):
 						isowned = True
 						break
@@ -9581,6 +9591,44 @@ class dblink:
 		self.dbdir = self.dbpkgdir
 		self.delete()
 		_movefile(self.dbtmpdir, self.dbpkgdir, mysettings=self.settings)
+
+		# Check for file collisions with blocking packages
+		# and remove any colliding files from their CONTENTS
+		# since they now belong to this package.
+		self._clear_contents_cache()
+		contents = self.getcontents()
+		destroot_len = len(destroot) - 1
+		for blocker in blockers:
+			blocker_contents = blocker.getcontents()
+			collisions = []
+			for filename in blocker_contents:
+				relative_filename = filename[destroot_len:]
+				if self.isowner(relative_filename, destroot):
+					collisions.append(filename)
+			if not collisions:
+				continue
+			for filename in collisions:
+				del blocker_contents[filename]
+			f = atomic_ofstream(os.path.join(blocker.dbdir, "CONTENTS"))
+			try:
+				for filename in sorted(blocker_contents):
+					entry_data = blocker_contents[filename]
+					entry_type = entry_data[0]
+					relative_filename = filename[destroot_len:]
+					if entry_type == "obj":
+						entry_type, mtime, md5sum = entry_data
+						line = "%s %s %s %s\n" % \
+							(entry_type, relative_filename, md5sum, mtime)
+					elif entry_type == "sym":
+						entry_type, mtime, link = entry_data
+						line = "%s %s -> %s %s\n" % \
+							(entry_type, relative_filename, link, mtime)
+					else: # dir, dev, fif
+						line = "%s %s\n" % (entry_type, relative_filename)
+					f.write(line)
+			finally:
+				f.close()
+
 		# Due to mtime granularity, mtime checks do not always properly
 		# invalidate vardbapi caches.
 		self.vartree.dbapi.mtdircache.pop(self.cat, None)
@@ -10022,7 +10070,8 @@ class FetchlistDict(UserDict.DictMixin):
 		"""Returns keys for all packages within pkgdir"""
 		return self.portdb.cp_list(self.cp, mytree=self.mytree)
 
-def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes=None):
+def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None,
+	vartree=None, prev_mtimes=None, blockers=None):
 	"""will merge a .tbz2 file, returning a list of runtime dependencies
 		that must be satisfied, or None if there was a merge error.	This
 		code assumes the package exists."""
@@ -10115,7 +10164,7 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None, vartree=None, prev_mtimes
 		#tbz2_lock = None
 
 		mylink = dblink(mycat, mypkg, myroot, mysettings, vartree=vartree,
-			treetype="bintree")
+			treetype="bintree", blockers=blockers)
 		retval = mylink.merge(pkgloc, infloc, myroot, myebuild, cleanup=0,
 			mydbapi=mydbapi, prev_mtimes=prev_mtimes)
 		did_merge_phase = True
