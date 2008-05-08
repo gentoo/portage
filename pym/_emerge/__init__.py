@@ -738,7 +738,6 @@ class search(object):
 			result = ""
 		return result
 
-
 class RootConfig(object):
 	"""This is used internally by depgraph to track information about a
 	particular $ROOT."""
@@ -1241,7 +1240,7 @@ def show_masked_packages(masked_packages):
 	return have_eapi_mask
 
 class Task(SlotObject):
-	__slots__ = ("_hash_key",)
+	__slots__ = ("_hash_key", "_hash_value")
 
 	def _get_hash_key(self):
 		hash_key = getattr(self, "_hash_key", None)
@@ -1256,7 +1255,10 @@ class Task(SlotObject):
 		return self._get_hash_key() != other
 
 	def __hash__(self):
-		return hash(self._get_hash_key())
+		hash_value = getattr(self, "_hash_value", None)
+		if hash_value is None:
+			self._hash_value = hash(self._get_hash_key())
+		return self._hash_value
 
 	def __len__(self):
 		return len(self._get_hash_key())
@@ -1291,13 +1293,22 @@ class Package(Task):
 	__slots__ = ("built", "cpv", "depth",
 		"installed", "metadata", "onlydeps", "operation",
 		"root", "type_name",
-		"cp", "cpv_slot", "pv_split", "slot_atom")
+		"category", "cp", "cpv_slot", "pf", "pv_split", "slot_atom")
+
+	metadata_keys = [
+		"CHOST", "COUNTER", "DEPEND", "EAPI", "IUSE", "KEYWORDS",
+		"LICENSE", "PDEPEND", "PROVIDE", "RDEPEND",
+		"repository", "RESTRICT", "SLOT", "USE"]
+
 	def __init__(self, **kwargs):
 		Task.__init__(self, **kwargs)
 		self.cp = portage.cpv_getkey(self.cpv)
 		self.slot_atom = "%s:%s" % (self.cp, self.metadata["SLOT"])
 		self.cpv_slot = "%s:%s" % (self.cpv, self.metadata["SLOT"])
-		self.pv_split = portage.catpkgsplit(self.cpv)[1:]
+		cpv_parts = portage.catpkgsplit(self.cpv)
+		self.category = cpv_parts[0]
+		self.pv_split = cpv_parts[1:]
+		self.pf = self.cpv.replace(self.category + "/", "", 1)
 
 	def _get_hash_key(self):
 		hash_key = getattr(self, "_hash_key", None)
@@ -1384,13 +1395,15 @@ class BlockerCache(DictMixin):
 		2) the old-style virtuals have changed
 	"""
 	class BlockerData(object):
+
+		__slots__ = ("__weakref__", "atoms", "counter")
+
 		def __init__(self, counter, atoms):
 			self.counter = counter
 			self.atoms = atoms
 
 	def __init__(self, myroot, vardb):
 		self._vardb = vardb
-		self._installed_pkgs = set(vardb.cpv_all())
 		self._virtuals = vardb.settings.getvirtuals()
 		self._cache_filename = os.path.join(myroot,
 			portage.CACHE_PATH.lstrip(os.path.sep), "vdb_blockers.pickle")
@@ -1524,6 +1537,107 @@ class BlockerCache(DictMixin):
 		"""This needs to be implemented so that self.__repr__() doesn't raise
 		an AttributeError."""
 		return list(self)
+
+class BlockerDB(object):
+
+	def __init__(self, vartree, portdb):
+		self._vartree = vartree
+		self._portdb = portdb
+		self._blocker_cache = \
+			BlockerCache(self._vartree.root, vartree.dbapi)
+		self._dep_check_trees = { self._vartree.root : {
+			"porttree"    :  self._vartree,
+			"vartree"     :  self._vartree,
+		}}
+
+	def findInstalledBlockers(self, new_pkg):
+		blocker_cache = self._blocker_cache
+		dep_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
+		dep_check_trees = self._dep_check_trees
+		settings = self._vartree.settings
+		stale_cache = set(blocker_cache)
+		fake_vartree = \
+			FakeVartree(self._vartree,
+				self._portdb, Package.metadata_keys, {})
+		vardb = fake_vartree.dbapi
+		installed_pkgs = list(vardb)
+
+		for inst_pkg in installed_pkgs:
+			stale_cache.discard(inst_pkg.cpv)
+			cached_blockers = blocker_cache.get(inst_pkg.cpv)
+			if cached_blockers is not None and \
+				cached_blockers.counter != long(inst_pkg.metadata["COUNTER"]):
+				cached_blockers = None
+			if cached_blockers is not None:
+				blocker_atoms = cached_blockers.atoms
+			else:
+				myuse = inst_pkg.metadata["USE"].split()
+				# Use aux_get() to trigger FakeVartree global
+				# updates on *DEPEND when appropriate.
+				depstr = " ".join(vardb.aux_get(inst_pkg.cpv, dep_keys))
+				try:
+					portage.dep._dep_check_strict = False
+					success, atoms = portage.dep_check(depstr,
+						vardb, settings, myuse=myuse,
+						trees=dep_check_trees, myroot=inst_pkg.root)
+				finally:
+					portage.dep._dep_check_strict = True
+				if not success:
+					pkg_location = os.path.join(inst_pkg.root,
+						portage.VDB_PATH, inst_pkg.category, inst_pkg.pf)
+					portage.writemsg("!!! %s/*DEPEND: %s\n" % \
+						(pkg_location, atoms), noiselevel=-1)
+					continue
+
+				blocker_atoms = [atom for atom in atoms \
+					if atom.startswith("!")]
+				blocker_atoms.sort()
+				counter = long(inst_pkg.metadata["COUNTER"])
+				blocker_cache[inst_pkg.cpv] = \
+					blocker_cache.BlockerData(counter, blocker_atoms)
+		for cpv in stale_cache:
+			del blocker_cache[cpv]
+		blocker_cache.flush()
+
+		blocker_parents = digraph()
+		blocker_atoms = []
+		for pkg in installed_pkgs:
+			for blocker_atom in self._blocker_cache[pkg.cpv].atoms:
+				blocker_atom = blocker_atom[1:]
+				blocker_atoms.append(blocker_atom)
+				blocker_parents.add(blocker_atom, pkg)
+
+		blocker_atoms = InternalPackageSet(initial_atoms=blocker_atoms)
+		blocking_pkgs = set()
+		for atom in blocker_atoms.iterAtomsForPackage(new_pkg):
+			blocking_pkgs.update(blocker_parents.parent_nodes(atom))
+
+		# Check for blockers in the other direction.
+		myuse = new_pkg.metadata["USE"].split()
+		depstr = " ".join(new_pkg.metadata[k] for k in dep_keys)
+		try:
+			portage.dep._dep_check_strict = False
+			success, atoms = portage.dep_check(depstr,
+				vardb, settings, myuse=myuse,
+				trees=dep_check_trees, myroot=new_pkg.root)
+		finally:
+			portage.dep._dep_check_strict = True
+		if not success:
+			# We should never get this far with invalid deps.
+			show_invalid_depstring_notice(new_pkg, depstr, atoms)
+			assert False
+
+		blocker_atoms = [atom[1:] for atom in atoms \
+			if atom.startswith("!")]
+		blocker_atoms = InternalPackageSet(initial_atoms=blocker_atoms)
+		for inst_pkg in installed_pkgs:
+			try:
+				blocker_atoms.iterAtomsForPackage(inst_pkg).next()
+			except (portage.exception.InvalidDependString, StopIteration):
+				continue
+			blocking_pkgs.add(inst_pkg)
+
+		return blocking_pkgs
 
 def show_invalid_depstring_notice(parent_node, depstring, error_msg):
 
@@ -1678,10 +1792,7 @@ class depgraph(object):
 		"binary":"bintree",
 		"installed":"vartree"}
 
-	_mydbapi_keys = [
-		"CHOST", "COUNTER", "DEPEND", "EAPI", "IUSE", "KEYWORDS",
-		"LICENSE", "PDEPEND", "PROVIDE", "RDEPEND",
-		"repository", "RESTRICT", "SLOT", "USE"]
+	_mydbapi_keys = Package.metadata_keys
 
 	_dep_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
 
@@ -2845,6 +2956,18 @@ class depgraph(object):
 					cpv_list = db.xmatch("match-all", atom)
 				else:
 					cpv_list = db.match(atom)
+
+				# USE=multislot can make an installed package appear as if
+				# it doesn't satisfy a slot dependency. Rebuilding the ebuild
+				# won't do any good as long as USE=multislot is enabled since
+				# the newly built package still won't have the expected slot.
+				# Therefore, assume that such SLOT dependencies are already
+				# satisfied rather than forcing a rebuild.
+				if installed and not cpv_list and matched_packages \
+					and vardb.cpv_exists(matched_packages[-1].cpv) and \
+					portage.dep.dep_getslot(atom):
+					cpv_list = [matched_packages[-1].cpv]
+
 				if not cpv_list:
 					continue
 				pkg_status = "merge"
@@ -2906,7 +3029,8 @@ class depgraph(object):
 							if not visible(pkgsettings, pkg):
 								continue
 						except portage.exception.InvalidDependString:
-							continue
+							if not installed:
+								continue
 
 						# Enable upgrade or downgrade to a version
 						# with visible KEYWORDS when the installed
@@ -3011,16 +3135,6 @@ class depgraph(object):
 							cur_use, cur_iuse)
 						if reinstall_for_flags:
 							reinstall = True
-					if not installed:
-						must_reinstall = empty or \
-							(myarg and not selective)
-						if not reinstall_for_flags and \
-							not must_reinstall and \
-							cpv in vardb.match(atom):
-							# If the installed version is masked, it may
-							# be necessary to look at lower versions,
-							# in case there is a visible downgrade.
-							continue
 					if not built:
 						myeb = cpv
 					matched_packages.append(pkg)
@@ -3505,6 +3619,9 @@ class depgraph(object):
 			return -1
 		myblocker_uninstalls = self._blocker_uninstalls.copy()
 		retlist=[]
+		# Contains uninstall tasks that have been scheduled to
+		# occur after overlapping blockers have been installed.
+		scheduled_uninstalls = set()
 		# Contains any Uninstall tasks that have been ignored
 		# in order to avoid the circular deps code path. These
 		# correspond to blocker conflicts that could not be
@@ -3719,10 +3836,16 @@ class depgraph(object):
 					selected_nodes = list(selected_nodes)
 				selected_nodes.sort(cmp_circular_bias)
 
+			if not selected_nodes and scheduled_uninstalls:
+				selected_nodes = set()
+				for node in scheduled_uninstalls:
+					if not mygraph.child_nodes(node):
+						selected_nodes.add(node)
+				scheduled_uninstalls.difference_update(selected_nodes)
+
 			if not selected_nodes and not myblocker_uninstalls.is_empty():
 				# An Uninstall task needs to be executed in order to
 				# avoid conflict if possible.
-
 				min_parent_deps = None
 				uninst_task = None
 				for task in myblocker_uninstalls.leaf_nodes():
@@ -3840,7 +3963,20 @@ class depgraph(object):
 						uninst_task = task
 
 				if uninst_task is not None:
-					selected_nodes = [uninst_task]
+					# The uninstall is performed only after blocking
+					# packages have been merged on top of it. File
+					# collisions between blocking packages are detected
+					# and removed from the list of files to be uninstalled.
+					scheduled_uninstalls.add(uninst_task)
+					parent_nodes = mygraph.parent_nodes(uninst_task)
+
+					# Reverse the parent -> uninstall edges since we want
+					# to do the uninstall after blocking packages have
+					# been merged on top of it.
+					mygraph.remove(uninst_task)
+					for blocked_pkg in parent_nodes:
+						mygraph.add(blocked_pkg, uninst_task,
+							priority=BlockerDepPriority.instance)
 				else:
 					# None of the Uninstall tasks are acceptable, so
 					# the corresponding blockers are unresolvable.
@@ -3857,12 +3993,12 @@ class depgraph(object):
 							ignored_uninstall_tasks.add(node)
 							break
 
-					# After dropping an Uninstall task, reset
-					# the state variables for leaf node selection and
-					# continue trying to select leaf nodes.
-					prefer_asap = True
-					accept_root_node = False
-					continue
+				# After dropping an Uninstall task, reset
+				# the state variables for leaf node selection and
+				# continue trying to select leaf nodes.
+				prefer_asap = True
+				accept_root_node = False
+				continue
 
 			if not selected_nodes:
 				self._circular_deps_for_display = mygraph
@@ -4023,6 +4159,8 @@ class depgraph(object):
 			verbosity = ("--quiet" in self.myopts and 1 or \
 				"--verbose" in self.myopts and 3 or 2)
 		favorites_set = InternalPackageSet(favorites)
+		oneshot = "--oneshot" in self.myopts or \
+			"--onlydeps" in self.myopts
 		changelogs=[]
 		p=[]
 		blockers = []
@@ -4251,24 +4389,35 @@ class depgraph(object):
 			fetch=" "
 			indent = " " * depth
 
-			if x[0]=="blocks":
-				addl=""+red("B")+"  "+fetch+"  "
+			if isinstance(x, Blocker):
+				if x.satisfied:
+					blocker_style = "PKG_BLOCKER_SATISFIED"
+					addl = "%s  %s  " % (colorize(blocker_style, "b"), fetch)
+				else:
+					blocker_style = "PKG_BLOCKER"
+					addl = "%s  %s  " % (colorize(blocker_style, "B"), fetch)
 				if ordered:
 					counters.blocks += 1
+					if x.satisfied:
+						counters.blocks_satisfied += 1
 				resolved = portage.key_expand(
 					pkg_key, mydb=vardb, settings=pkgsettings)
 				if "--columns" in self.myopts and "--quiet" in self.myopts:
-					addl = addl + " " + red(resolved)
+					addl += " " + colorize(blocker_style, resolved)
 				else:
-					addl = "[blocks " + addl + "] " + indent + red(resolved)
+					addl = "[%s %s] %s%s" % \
+						(colorize(blocker_style, "blocks"),
+						addl, indent, colorize(blocker_style, resolved))
 				block_parents = self._blocker_parents.parent_nodes(x)
 				block_parents = set([pnode[2] for pnode in block_parents])
 				block_parents = ", ".join(block_parents)
 				if resolved!=x[2]:
-					addl += bad(" (\"%s\" is blocking %s)") % \
+					addl += colorize(blocker_style,
+						" (\"%s\" is blocking %s)") % \
 						(pkg_key, block_parents)
 				else:
-					addl += bad(" (is blocking %s)") % block_parents
+					addl += colorize(blocker_style,
+						" (is blocking %s)") % block_parents
 				if isinstance(x, Blocker) and x.satisfied:
 					p.append(addl)
 				else:
@@ -4573,7 +4722,8 @@ class depgraph(object):
 				try:
 					pkg_system = system_set.findAtomForPackage(pkg_key, metadata)
 					pkg_world  = world_set.findAtomForPackage(pkg_key, metadata)
-					if not pkg_world and myroot == self.target_root and \
+					if not (oneshot or pkg_world) and \
+						myroot == self.target_root and \
 						favorites_set.findAtomForPackage(pkg_key, metadata):
 						# Maybe it will be added to world now.
 						if create_world_atom(pkg_key, metadata,
@@ -4936,7 +5086,7 @@ class depgraph(object):
 			pkg_type, myroot, pkg_key, action = x
 			if pkg_type not in self.pkg_tree_map:
 				continue
-			if action not in ("merge", "uninstall"):
+			if action != "merge":
 				continue
 			mydb = trees[myroot][self.pkg_tree_map[pkg_type]].dbapi
 			try:
@@ -5319,6 +5469,7 @@ class PackageCounters(object):
 		self.reinst     = 0
 		self.uninst     = 0
 		self.blocks     = 0
+		self.blocks_satisfied         = 0
 		self.totalsize  = 0
 		self.restrict_fetch           = 0
 		self.restrict_fetch_satisfied = 0
@@ -5354,10 +5505,6 @@ class PackageCounters(object):
 			details.append("%s uninstall" % self.uninst)
 			if self.uninst > 1:
 				details[-1] += "s"
-		if self.blocks > 0:
-			details.append("%s block" % self.blocks)
-			if self.blocks > 1:
-				details[-1] += "s"
 		myoutput.append(", ".join(details))
 		if total_installs != 0:
 			myoutput.append(")")
@@ -5370,6 +5517,14 @@ class PackageCounters(object):
 		if self.restrict_fetch_satisfied < self.restrict_fetch:
 			myoutput.append(bad(" (%s unsatisfied)") % \
 				(self.restrict_fetch - self.restrict_fetch_satisfied))
+		if self.blocks > 0:
+			myoutput.append("\nConflict: %s block" % \
+				self.blocks)
+			if self.blocks > 1:
+				myoutput.append("s")
+			if self.blocks_satisfied < self.blocks:
+				myoutput.append(bad(" (%s unsatisfied)") % \
+					(self.blocks - self.blocks_satisfied))
 		return "".join(myoutput)
 
 class MergeTask(object):
@@ -5383,12 +5538,35 @@ class MergeTask(object):
 		if settings.get("PORTAGE_DEBUG", "") == "1":
 			self.edebug = 1
 		self.pkgsettings = {}
+		self._blocker_db = {}
 		for root in trees:
 			self.pkgsettings[root] = portage.config(
 				clone=trees[root]["vartree"].settings)
+			self._blocker_db[root] = BlockerDB(
+				trees[root]["vartree"],
+				trees[root]["porttree"].dbapi)
 		self.curval = 0
 		self._spawned_pids = []
-		self._uninstall_queue = []
+
+	def _find_blockers(self, new_pkg):
+		for opt in ("--buildpkgonly", "--nodeps",
+			"--fetchonly", "--fetch-all-uri", "--pretend"):
+			if opt in self.myopts:
+				return None
+
+		blocker_dblinks = []
+		for blocking_pkg in self._blocker_db[
+			new_pkg.root].findInstalledBlockers(new_pkg):
+			if new_pkg.slot_atom == blocking_pkg.slot_atom:
+				continue
+			if new_pkg.cpv == blocking_pkg.cpv:
+				continue
+			blocker_dblinks.append(portage.dblink(
+				blocking_pkg.category, blocking_pkg.pf, blocking_pkg.root,
+				self.pkgsettings[blocking_pkg.root], treetype="vartree",
+				vartree=self.trees[blocking_pkg.root]["vartree"]))
+
+		return blocker_dblinks
 
 	def merge(self, mylist, favorites, mtimedb):
 		try:
@@ -5417,17 +5595,6 @@ class MergeTask(object):
 				# so remove it from our list.
 				pass
 			spawned_pids.remove(pid)
-
-	def _dequeue_uninstall_tasks(self, mtimedb):
-		if not self._uninstall_queue:
-			return
-		for uninst_task in self._uninstall_queue:
-			root_config = self.trees[uninst_task.root]["root_config"]
-			unmerge(root_config, self.myopts, "unmerge",
-				[uninst_task.cpv], mtimedb["ldpath"], clean_world=0)
-			del mtimedb["resume"]["mergelist"][0]
-			mtimedb.commit()
-		del self._uninstall_queue[:]
 
 	def _merge(self, mylist, favorites, mtimedb):
 		from portage.elog import elog_process
@@ -5481,7 +5648,7 @@ class MergeTask(object):
 		world_set = root_config.sets["world"]
 
 		mtimedb["resume"]["mergelist"] = [list(x) for x in mylist \
-			if isinstance(x, Package)]
+			if isinstance(x, Package) and x.operation == "merge"]
 		mtimedb.commit()
 
 		mymergelist = mylist
@@ -5569,7 +5736,8 @@ class MergeTask(object):
 			metadata = pkg.metadata
 			if pkg.installed:
 				if not (buildpkgonly or fetchonly or pretend):
-					self._uninstall_queue.append(pkg)
+					unmerge(root_config, self.myopts, "unmerge",
+						[pkg.cpv], mtimedb["ldpath"], clean_world=0)
 				continue
 
 			if x[0]=="blocks":
@@ -5670,20 +5838,22 @@ class MergeTask(object):
 							return retval
 						bintree = self.trees[myroot]["bintree"]
 						bintree.inject(pkg_key, filename=binpkg_tmpfile)
-						self._dequeue_uninstall_tasks(mtimedb)
+
 						if "--buildpkgonly" not in self.myopts:
 							msg = " === (%s of %s) Merging (%s::%s)" % \
 								(mergecount, len(mymergelist), pkg_key, y)
 							short_msg = "emerge: (%s of %s) %s Merge" % \
 								(mergecount, len(mymergelist), pkg_key)
 							emergelog(xterm_titles, msg, short_msg=short_msg)
+
 							retval = portage.merge(pkgsettings["CATEGORY"],
 								pkgsettings["PF"], pkgsettings["D"],
 								os.path.join(pkgsettings["PORTAGE_BUILDDIR"],
 								"build-info"), myroot, pkgsettings,
 								myebuild=pkgsettings["EBUILD"],
 								mytree="porttree", mydbapi=portdb,
-								vartree=vartree, prev_mtimes=ldpath_mtimes)
+								vartree=vartree, prev_mtimes=ldpath_mtimes,
+								blockers=self._find_blockers(pkg))
 							if retval != os.EX_OK:
 								return retval
 						elif "noclean" not in pkgsettings.features:
@@ -5702,14 +5872,15 @@ class MergeTask(object):
 							prev_mtimes=ldpath_mtimes)
 						if retval != os.EX_OK:
 							return retval
-						self._dequeue_uninstall_tasks(mtimedb)
+
 						retval = portage.merge(pkgsettings["CATEGORY"],
 							pkgsettings["PF"], pkgsettings["D"],
 							os.path.join(pkgsettings["PORTAGE_BUILDDIR"],
 							"build-info"), myroot, pkgsettings,
 							myebuild=pkgsettings["EBUILD"],
 							mytree="porttree", mydbapi=portdb,
-							vartree=vartree, prev_mtimes=ldpath_mtimes)
+							vartree=vartree, prev_mtimes=ldpath_mtimes,
+							blockers=self._find_blockers(pkg))
 						if retval != os.EX_OK:
 							return retval
 				finally:
@@ -5731,7 +5902,6 @@ class MergeTask(object):
 							portage.locks.unlockdir(catdir_lock)
 
 			elif x[0]=="binary":
-				self._dequeue_uninstall_tasks(mtimedb)
 				#merge the tbz2
 				mytbz2 = self.trees[myroot]["bintree"].getname(pkg_key)
 				if "--getbinpkg" in self.myopts:
@@ -5787,7 +5957,8 @@ class MergeTask(object):
 				retval = portage.pkgmerge(mytbz2, x[1], pkgsettings,
 					mydbapi=bindb,
 					vartree=self.trees[myroot]["vartree"],
-					prev_mtimes=ldpath_mtimes)
+					prev_mtimes=ldpath_mtimes,
+					blockers=self._find_blockers(pkg))
 				if retval != os.EX_OK:
 					return retval
 				#need to check for errors
@@ -7951,6 +8122,7 @@ def action_build(settings, trees, mtimedb,
 	fetchonly = "--fetchonly" in myopts or "--fetch-all-uri" in myopts
 	ask = "--ask" in myopts
 	nodeps = "--nodeps" in myopts
+	oneshot = "--oneshot" in myopts or "--onlydeps" in myopts
 	tree = "--tree" in myopts
 	if nodeps and tree:
 		tree = False
@@ -8122,7 +8294,7 @@ def action_build(settings, trees, mtimedb,
 					mergecount += 1
 
 			if mergecount==0:
-				if "--noreplace" in myopts and favorites:
+				if "--noreplace" in myopts and not oneshot and favorites:
 					print
 					for x in favorites:
 						print " %s %s" % (good("*"), x)

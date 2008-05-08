@@ -1019,7 +1019,7 @@ class dblink(object):
 	}
 
 	def __init__(self, cat, pkg, myroot, mysettings, treetype=None,
-		vartree=None):
+		vartree=None, blockers=None):
 		"""
 		Creates a DBlink object for a given CPV.
 		The given CPV may not be present in the database already.
@@ -1048,6 +1048,7 @@ class dblink(object):
 			from portage import db
 			vartree = db[myroot]["vartree"]
 		self.vartree = vartree
+		self._blockers = blockers
 
 		self.dbroot = normalize_path(os.path.join(myroot, VDB_PATH))
 		self.dbcatdir = self.dbroot+"/"+cat
@@ -1123,6 +1124,11 @@ class dblink(object):
 		"""
 		if os.path.exists(self.dbdir+"/CONTENTS"):
 			os.unlink(self.dbdir+"/CONTENTS")
+
+	def _clear_contents_cache(self):
+		self.contentscache = None
+		self._contents_inodes = None
+		self._contents_basenames = None
 
 	def getcontents(self):
 		"""
@@ -2006,6 +2012,7 @@ class dblink(object):
 		"""
 
 		srcroot = normalize_path(srcroot).rstrip(os.path.sep) + os.path.sep
+		destroot = normalize_path(destroot).rstrip(os.path.sep) + os.path.sep
 
 		if not os.path.isdir(srcroot):
 			writemsg("!!! Directory Not Found: D='%s'\n" % srcroot,
@@ -2146,8 +2153,11 @@ class dblink(object):
 			self._preserve_libs(srcroot, destroot, myfilelist+mylinklist, counter, inforoot)
 
 		# check for package collisions
-		collisions = self._collision_protect(srcroot, destroot, others_in_slot,
-			myfilelist+mylinklist)
+		blockers = self._blockers
+		if blockers is None:
+			blockers = []
+		collisions = self._collision_protect(srcroot, destroot,
+			others_in_slot + blockers, myfilelist + mylinklist)
 
 		# Make sure the ebuild environment is initialized and that ${T}/elog
 		# exists for logging of collision-protect eerror messages.
@@ -2367,6 +2377,42 @@ class dblink(object):
 		self.dbdir = self.dbpkgdir
 		self.delete()
 		_movefile(self.dbtmpdir, self.dbpkgdir, mysettings=self.settings)
+
+		# Check for file collisions with blocking packages
+		# and remove any colliding files from their CONTENTS
+		# since they now belong to this package.
+		self._clear_contents_cache()
+		contents = self.getcontents()
+		destroot_len = len(destroot) - 1
+		for blocker in blockers:
+			blocker_contents = blocker.getcontents()
+			collisions = []
+			for filename in blocker_contents:
+				relative_filename = filename[destroot_len:]
+				if self.isowner(relative_filename, destroot):
+					collisions.append(filename)
+			if not collisions:
+				continue
+			for filename in collisions:
+				del blocker_contents[filename]
+			f = atomic_ofstream(os.path.join(blocker.dbdir, "CONTENTS"))
+			for filename in sorted(blocker_contents):
+				entry_data = blocker_contents[filename]
+				entry_type = entry_data[0]
+				relative_filename = filename[destroot_len:]
+				if entry_type == "obj":
+					entry_type, mtime, md5sum = entry_data
+					line = "%s %s %s %s\n" % \
+						(entry_type, relative_filename, md5sum, mtime)
+				elif entry_type == "sym":
+					entry_type, mtime, link = entry_data
+					line = "%s %s -> %s %s\n" % \
+						(entry_type, relative_filename, link, mtime)
+				else: # dir, dev, fif
+					line = "%s %s\n" % (entry_type, relative_filename)
+				f.write(line)
+			f.close()
+
 		# Due to mtime granularity, mtime checks do not always properly
 		# invalidate vardbapi caches.
 		self.vartree.dbapi.mtdircache.pop(self.cat, None)
