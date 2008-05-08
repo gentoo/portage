@@ -5058,7 +5058,7 @@ class depgraph(object):
 			pkg_type, myroot, pkg_key, action = x
 			if pkg_type not in self.pkg_tree_map:
 				continue
-			if action not in ("merge", "uninstall"):
+			if action != "merge":
 				continue
 			mydb = trees[myroot][self.pkg_tree_map[pkg_type]].dbapi
 			try:
@@ -5615,7 +5615,7 @@ class MergeTask(object):
 		world_set = root_config.sets["world"]
 
 		mtimedb["resume"]["mergelist"] = [list(x) for x in mylist \
-			if isinstance(x, Package)]
+			if isinstance(x, Package) and x.operation == "merge"]
 		mtimedb.commit()
 
 		mymergelist = mylist
@@ -5705,8 +5705,6 @@ class MergeTask(object):
 				if not (buildpkgonly or fetchonly or pretend):
 					unmerge(root_config, self.myopts, "unmerge",
 						[pkg.cpv], mtimedb["ldpath"], clean_world=0)
-					del mtimedb["resume"]["mergelist"][0]
-					mtimedb.commit()
 				continue
 
 			if x[0]=="blocks":
