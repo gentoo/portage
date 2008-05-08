@@ -4052,6 +4052,7 @@ class depgraph(object):
 						# when necessary, as long as the atom will be satisfied
 						# in the final state.
 						graph_db = self.mydbapi[task.root]
+						skip = False
 						try:
 							for atom in root_config.sets[
 								"world"].iterAtomsForPackage(task):
