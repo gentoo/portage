@@ -1814,6 +1814,8 @@ class depgraph(object):
 		self._blocker_uninstalls = digraph()
 		# Contains only Package -> Blocker edges
 		self._blocker_parents = digraph()
+		# Contains only irrelevant Package -> Blocker edges
+		self._irrelevant_blockers = digraph()
 		# Contains only unsolvable Package -> Blocker edges
 		self._unsolvable_blockers = digraph()
 		self._slot_collision_info = set()
@@ -3199,10 +3201,17 @@ class depgraph(object):
 					blocker_atoms = None
 					blockers = None
 					if self.digraph.contains(pkg):
+						blockers = []
 						try:
-							blockers = self._blocker_parents.child_nodes(pkg)
+							blockers.extend(
+								self._blocker_parents.child_nodes(pkg))
 						except KeyError:
-							blockers = []
+							pass
+						try:
+							blockers.extend(
+								self._irrelevant_blockers.child_nodes(pkg))
+						except KeyError:
+							pass
 					if blockers is not None:
 						blockers = set("!" + blocker.atom \
 							for blocker in blockers)
@@ -3334,6 +3343,7 @@ class depgraph(object):
 				self._blocker_parents.remove(blocker)
 				# Discard any parents that don't have any more blockers.
 				for pkg in parent_pkgs:
+					self._irrelevant_blockers.add(blocker, pkg)
 					if not self._blocker_parents.child_nodes(pkg):
 						self._blocker_parents.remove(pkg)
 				continue
@@ -3408,6 +3418,7 @@ class depgraph(object):
 						# merged.
 						self._blocker_uninstalls.addnode(uninst_task, blocker)
 				if not unresolved_blocks and not depends_on_order:
+					self._irrelevant_blockers.add(blocker, parent)
 					self._blocker_parents.remove_edge(blocker, parent)
 					if not self._blocker_parents.parent_nodes(blocker):
 						self._blocker_parents.remove(blocker)
@@ -3514,18 +3525,42 @@ class depgraph(object):
 				node.operation != "uninstall"]
 
 		# sys-apps/portage needs special treatment if ROOT="/"
-		portage_python_dep = ">=dev-lang/python-2.4"
-		portage_unslotted_deps = frozenset(
-			["app-shells/bash", "sys-apps/portage"])
-		portage_node = self.mydbapi["/"].match_pkgs("sys-apps/portage")
-		if portage_node:
-			portage_node = portage_node[0]
+		running_root = "/"
+		from portage.const import PORTAGE_PACKAGE_ATOM
+		runtime_deps = InternalPackageSet(
+			initial_atoms=[PORTAGE_PACKAGE_ATOM])
+		running_portage = self.trees[running_root]["vartree"].dbapi.match_pkgs(
+			PORTAGE_PACKAGE_ATOM)
+		replacement_portage = self.mydbapi[running_root].match_pkgs(
+			PORTAGE_PACKAGE_ATOM)
+
+		if running_portage:
+			running_portage = running_portage[0]
 		else:
-			portage_node = None
-		if portage_node is not None and \
-			(not mygraph.contains(portage_node) or \
-			portage_node.operation == "nomerge"):
-			portage_node = None
+			running_portage = None
+
+		if replacement_portage:
+			replacement_portage = replacement_portage[0]
+		else:
+			replacement_portage = None
+
+		if replacement_portage == running_portage:
+			replacement_portage = None
+
+		if running_portage is not None:
+			try:
+				portage_rdepend = self._select_atoms_highest_available(
+					running_root, running_portage.metadata["RDEPEND"],
+					myuse=running_portage.metadata["USE"].split(),
+					parent=running_portage, strict=False)
+			except portage.exception.InvalidDependString, e:
+				portage.writemsg("!!! Invalid RDEPEND in " + \
+					"'%svar/db/pkg/%s/RDEPEND': %s\n" % \
+					(running_root, running_portage.cpv, e), noiselevel=-1)
+				del e
+				portage_rdepend = []
+			runtime_deps.update(atom for atom in portage_rdepend \
+				if not atom.startswith("!"))
 
 		ignore_priority_soft_range = [None]
 		ignore_priority_soft_range.extend(
@@ -3609,7 +3644,8 @@ class depgraph(object):
 							return True
 						if node not in mergeable_nodes:
 							return False
-						if node == portage_node and mygraph.child_nodes(node,
+						if node == replacement_portage and \
+							mygraph.child_nodes(node,
 							ignore_priority=DepPriority.MEDIUM_SOFT):
 							# Make sure that portage always has all of it's
 							# RDEPENDs installed first.
@@ -3704,20 +3740,26 @@ class depgraph(object):
 					if self.digraph.contains(inst_pkg):
 						continue
 
-					if "/" == task.root:
+					if running_root == task.root:
 						# Never uninstall sys-apps/portage or it's essential
 						# dependencies, except through replacement.
-						if task.cp in portage_unslotted_deps:
+						try:
+							runtime_dep_atoms = \
+								list(runtime_deps.iterAtomsForPackage(task))
+						except portage.exception.InvalidDependString, e:
+							portage.writemsg("!!! Invalid PROVIDE in " + \
+								"'%svar/db/pkg/%s/PROVIDE': %s\n" % \
+								(task.root, task.cpv, e), noiselevel=-1)
+							del e
 							continue
 
-						# Don't uninstall python if it appears to be
-						# the only suitable one installed.
-						if task.cp == "dev-lang/python" and \
-							portage.match_from_list(
-							portage_python_dep, [task.cpv_slot]):
-							vardb = root_config.trees["vartree"].dbapi
+						# Don't uninstall a runtime dep if it appears
+						# to be the only suitable one installed.
+						skip = False
+						vardb = root_config.trees["vartree"].dbapi
+						for atom in runtime_dep_atoms:
 							other_version = None
-							for pkg in vardb.match_pkgs(portage_python_dep):
+							for pkg in vardb.match_pkgs(atom):
 								if pkg.cpv == task.cpv and \
 									pkg.metadata["COUNTER"] == \
 									task.metadata["COUNTER"]:
@@ -3725,7 +3767,10 @@ class depgraph(object):
 								other_version = pkg
 								break
 							if other_version is None:
-								continue
+								skip = True
+								break
+						if skip:
+							continue
 
 						# For packages in the system set, don't take
 						# any chances. If the conflict can't be resolved
@@ -3736,7 +3781,11 @@ class depgraph(object):
 								"system"].iterAtomsForPackage(task):
 								skip = True
 								break
-						except portage.exception.InvalidDependString:
+						except portage.exception.InvalidDependString, e:
+							portage.writemsg("!!! Invalid PROVIDE in " + \
+								"'%svar/db/pkg/%s/PROVIDE': %s\n" % \
+								(task.root, task.cpv, e), noiselevel=-1)
+							del e
 							skip = True
 						if skip:
 							continue
@@ -3765,7 +3814,11 @@ class depgraph(object):
 								if not satisfied:
 									skip = True
 									break
-						except portage.exception.InvalidDependString:
+						except portage.exception.InvalidDependString, e:
+							portage.writemsg("!!! Invalid PROVIDE in " + \
+								"'%svar/db/pkg/%s/PROVIDE': %s\n" % \
+								(task.root, task.cpv, e), noiselevel=-1)
+							del e
 							skip = True
 						if skip:
 							continue
@@ -7862,7 +7915,7 @@ def action_build(settings, trees, mtimedb,
 			del mtimedb[k]
 			continue
 		favorites = resume_data.get("favorites")
-		if not isinstance(resume_opts, list):
+		if not isinstance(favorites, list):
 			del mtimedb[k]
 			continue
 
@@ -8179,8 +8232,7 @@ def action_build(settings, trees, mtimedb,
 			retval = mergetask.merge(pkglist, favorites, mtimedb)
 			merge_count = mergetask.curval
 
-		if retval == os.EX_OK and not (pretend or fetchonly):
-			mtimedb.pop("resume", None)
+		if retval == os.EX_OK and not (buildpkgonly or fetchonly or pretend):
 			if "yes" == settings.get("AUTOCLEAN"):
 				portage.writemsg_stdout(">>> Auto-cleaning packages...\n")
 				unmerge(trees[settings["ROOT"]]["root_config"],

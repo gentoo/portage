@@ -9,7 +9,7 @@ from portage.data import portage_gid, portage_uid, secpass, ostype
 from portage.dbapi import dbapi
 from portage.dep import dep_getslot, use_reduce, paren_reduce, isvalidatom, \
 	isjustname, dep_getkey, match_from_list
-from portage.exception import InvalidPackageName, InvalidAtom, \
+from portage.exception import InvalidAtom, InvalidData, InvalidPackageName, \
 	FileNotFound, PermissionDenied, UnsupportedAPIException
 from portage.locks import lockdir, unlockdir
 from portage.output import bold, red, green
@@ -132,13 +132,16 @@ class LinkageMap(object):
 		self._obj_properties = {}
 		self._defpath = getlibpaths()
 	
-	def rebuild(self):
+	def rebuild(self, include_file=None):
 		libs = {}
 		obj_properties = {}
 		lines = []
 		for cpv in self._dbapi.cpv_all():
 			lines += grabfile(self._dbapi.getpath(cpv, filename="NEEDED.ELF.2"))
-
+		
+		if include_file:
+			lines += grabfile(include_file)
+		
 		# have to call scanelf for preserved libs here as they aren't 
 		# registered in NEEDED.ELF.2 files
 		if self._dbapi.plib_registry and self._dbapi.plib_registry.getPreservedLibs():
@@ -187,10 +190,11 @@ class LinkageMap(object):
 	def findProviders(self, obj):
 		if not self._libs:
 			self.rebuild()
-		obj = os.path.realpath(obj)
 		rValue = {}
 		if obj not in self._obj_properties:
-			raise KeyError("%s not in object list" % obj)
+			obj = os.path.realpath(obj)
+			if obj not in self._obj_properties:
+				raise KeyError("%s not in object list" % obj)
 		arch, needed, path, soname = self._obj_properties[obj]
 		path.extend(self._defpath)
 		path = [os.path.realpath(x) for x in path]
@@ -208,7 +212,10 @@ class LinkageMap(object):
 	def findConsumers(self, obj):
 		if not self._libs:
 			self.rebuild()
-		obj = os.path.realpath(obj)
+		if obj not in self._obj_properties:
+			obj = os.path.realpath(obj)
+			if obj not in self._obj_properties:
+				raise KeyError("%s not in object list" % obj)
 		rValue = set()
 		for soname in self._libs:
 			for arch in self._libs[soname]:
@@ -307,6 +314,12 @@ class LinkageMapMachO(object):
 		return rValue
 					
 class vardbapi(dbapi):
+
+	_excluded_dirs = ["CVS", "lost+found"]
+	_excluded_dirs = [re.escape(x) for x in _excluded_dirs]
+	_excluded_dirs = re.compile(r'^(\..*|-MERGING-.*|' + \
+		"|".join(_excluded_dirs) + r')$')
+
 	def __init__(self, root, categories=None, settings=None, vartree=None):
 		"""
 		The categories parameter is unused since the dbapi class
@@ -507,10 +520,7 @@ class vardbapi(dbapi):
 
 		returnme = []
 		for x in dir_list:
-			if x.startswith("."):
-				continue
-			if x[0] == '-':
-				#writemsg(red("INCOMPLETE MERGE:")+str(x[len("-MERGING-"):])+"\n")
+			if self._excluded_dirs.match(x) is not None:
 				continue
 			ps = pkgsplit(x)
 			if not ps:
@@ -530,15 +540,23 @@ class vardbapi(dbapi):
 		returnme = []
 		basepath = os.path.join(self.root, VDB_PATH) + os.path.sep
 		for x in listdir(basepath, EmptyOnError=1, ignorecvs=1, dirsonly=1):
+			if self._excluded_dirs.match(x) is not None:
+				continue
 			if not self._category_re.match(x):
 				continue
-			for y in listdir(basepath + x, EmptyOnError=1):
-				if y.startswith("."):
+			for y in listdir(basepath + x, EmptyOnError=1, dirsonly=1):
+				if self._excluded_dirs.match(y) is not None:
 					continue
 				subpath = x + "/" + y
 				# -MERGING- should never be a cpv, nor should files.
-				if os.path.isdir(basepath + subpath) and (pkgsplit(y) is not None):
-					returnme += [subpath]
+				try:
+					if catpkgsplit(subpath) is None:
+						self.invalidentry(os.path.join(self.root, subpath))
+						continue
+				except portage.exception.InvalidData:
+					self.invalidentry(os.path.join(self.root, subpath))
+					continue
+				returnme.append(subpath)
 		return returnme
 
 	def cp_all(self, use_cache=1):
@@ -547,7 +565,11 @@ class vardbapi(dbapi):
 		for y in mylist:
 			if y[0] == '*':
 				y = y[1:]
-			mysplit = catpkgsplit(y)
+			try:
+				mysplit = catpkgsplit(y)
+			except portage.exception.InvalidData:
+				self.invalidentry(self.getpath(y))
+				continue
 			if not mysplit:
 				self.invalidentry(self.getpath(y))
 				continue
@@ -1732,10 +1754,10 @@ class dblink(object):
 
 		return False
 
-	def _preserve_libs(self, srcroot, destroot, mycontents, counter):
+	def _preserve_libs(self, srcroot, destroot, mycontents, counter, inforoot):
 		# read global reverse NEEDED map
 		linkmap = self.vartree.dbapi.linkmap
-		linkmap.rebuild()
+		linkmap.rebuild(include_file=os.path.join(inforoot, "NEEDED.ELF.2"))
 		liblist = linkmap.listLibraryObjects()
 
 		# get list of libraries from old package instance
@@ -1743,12 +1765,13 @@ class dblink(object):
 		old_libs = set(old_contents).intersection(liblist)
 
 		# get list of libraries from new package instance
-		mylibs = set(mycontents).intersection(liblist)
-
+		mylibs = set([os.path.join(os.sep, x) for x in mycontents]).intersection(liblist)
+		
 		# check which libs are present in the old, but not the new package instance
 		candidates = old_libs.difference(mylibs)
+		
 		for x in old_contents:
-			if os.path.islink(x) and os.path.realpath(x) in candidates:
+			if os.path.islink(x) and os.path.realpath(x) in candidates and x not in mycontents:
 				candidates.add(x)
 
 		# ignore any libs that are only internally used by the package
@@ -1779,6 +1802,7 @@ class dblink(object):
 			for c in linkmap.findConsumers(lib):
 				localkeep = True
 				providers = linkmap.findProviders(c)
+				
 				for soname in providers:
 					if lib in providers[soname]:
 						for p in providers[soname]:
@@ -2119,7 +2143,7 @@ class dblink(object):
 
 		# Preserve old libs if they are still in use
 		if slot_matches and "preserve-libs" in self.settings.features:
-			self._preserve_libs(srcroot, destroot, myfilelist+mylinklist, counter)
+			self._preserve_libs(srcroot, destroot, myfilelist+mylinklist, counter, inforoot)
 
 		# check for package collisions
 		collisions = self._collision_protect(srcroot, destroot, others_in_slot,

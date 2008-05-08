@@ -503,6 +503,9 @@ save_ebuild_env() {
 		# Prefix additions
 		unset BPREFIX DEFAULT_PATH EPREFIX EROOT PORTAGE_GROUP PORTAGE_USER
 
+		# user config variables
+		unset DOC_SYMLINKS_DIR INSTALL_MASK PKG_INSTALL_MASK
+
 		set
 		export
 	)
