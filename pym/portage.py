@@ -9610,24 +9610,22 @@ class dblink:
 			for filename in collisions:
 				del blocker_contents[filename]
 			f = atomic_ofstream(os.path.join(blocker.dbdir, "CONTENTS"))
-			try:
-				for filename in sorted(blocker_contents):
-					entry_data = blocker_contents[filename]
-					entry_type = entry_data[0]
-					relative_filename = filename[destroot_len:]
-					if entry_type == "obj":
-						entry_type, mtime, md5sum = entry_data
-						line = "%s %s %s %s\n" % \
-							(entry_type, relative_filename, md5sum, mtime)
-					elif entry_type == "sym":
-						entry_type, mtime, link = entry_data
-						line = "%s %s -> %s %s\n" % \
-							(entry_type, relative_filename, link, mtime)
-					else: # dir, dev, fif
-						line = "%s %s\n" % (entry_type, relative_filename)
-					f.write(line)
-			finally:
-				f.close()
+			for filename in sorted(blocker_contents):
+				entry_data = blocker_contents[filename]
+				entry_type = entry_data[0]
+				relative_filename = filename[destroot_len:]
+				if entry_type == "obj":
+					entry_type, mtime, md5sum = entry_data
+					line = "%s %s %s %s\n" % \
+						(entry_type, relative_filename, md5sum, mtime)
+				elif entry_type == "sym":
+					entry_type, mtime, link = entry_data
+					line = "%s %s -> %s %s\n" % \
+						(entry_type, relative_filename, link, mtime)
+				else: # dir, dev, fif
+					line = "%s %s\n" % (entry_type, relative_filename)
+				f.write(line)
+			f.close()
 
 		# Due to mtime granularity, mtime checks do not always properly
 		# invalidate vardbapi caches.
