@@ -1532,22 +1532,6 @@ class BlockerDB(object):
 		self._installed_pkgs = None
 
 	def findInstalledBlockers(self, new_pkg):
-		self._update_cache()
-		blocker_parents = digraph()
-		blocker_atoms = []
-		for pkg in self._installed_pkgs:
-			for blocker_atom in self._blocker_cache[pkg.cpv].atoms:
-				blocker_atom = blocker_atom[1:]
-				blocker_atoms.append(blocker_atom)
-				blocker_parents.add(blocker_atom, pkg)
-
-		blocker_atoms = InternalPackageSet(initial_atoms=blocker_atoms)
-		blocking_pkgs = set()
-		for atom in blocker_atoms.iterAtomsForPackage(new_pkg):
-			blocking_pkgs.update(blocker_parents.parent_nodes(atom))
-		return blocking_pkgs
-
-	def _update_cache(self):
 		blocker_cache = self._blocker_cache
 		dep_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
 		dep_check_trees = self._dep_check_trees
@@ -1595,6 +1579,46 @@ class BlockerDB(object):
 		for cpv in stale_cache:
 			del blocker_cache[cpv]
 		blocker_cache.flush()
+
+		blocker_parents = digraph()
+		blocker_atoms = []
+		for pkg in self._installed_pkgs:
+			for blocker_atom in self._blocker_cache[pkg.cpv].atoms:
+				blocker_atom = blocker_atom[1:]
+				blocker_atoms.append(blocker_atom)
+				blocker_parents.add(blocker_atom, pkg)
+
+		blocker_atoms = InternalPackageSet(initial_atoms=blocker_atoms)
+		blocking_pkgs = set()
+		for atom in blocker_atoms.iterAtomsForPackage(new_pkg):
+			blocking_pkgs.update(blocker_parents.parent_nodes(atom))
+
+		# Check for blockers in the other direction.
+		myuse = new_pkg.metadata["USE"].split()
+		depstr = " ".join(new_pkg.metadata[k] for k in dep_keys)
+		try:
+			portage.dep._dep_check_strict = False
+			success, atoms = portage.dep_check(depstr,
+				vardb, settings, myuse=myuse,
+				trees=dep_check_trees, myroot=new_pkg.root)
+		finally:
+			portage.dep._dep_check_strict = True
+		if not success:
+			# We should never get this far with invalid deps.
+			show_invalid_depstring_notice(new_pkg, depstr, atoms)
+			assert False
+
+		blocker_atoms = [atom[1:] for atom in atoms \
+			if atom.startswith("!")]
+		blocker_atoms = InternalPackageSet(initial_atoms=blocker_atoms)
+		for inst_pkg in self._installed_pkgs:
+			try:
+				blocker_atoms.iterAtomsForPackage(inst_pkg).next()
+			except (portage.exception.InvalidDependString, StopIteration):
+				continue
+			blocking_pkgs.add(inst_pkg)
+
+		return blocking_pkgs
 
 def show_invalid_depstring_notice(parent_node, depstring, error_msg):
 
