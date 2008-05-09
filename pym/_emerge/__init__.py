@@ -3617,7 +3617,8 @@ class depgraph(object):
 			"""
 			return [node for node in mygraph.leaf_nodes(**kwargs) \
 				if isinstance(node, Package) and \
-				node.operation != "uninstall"]
+					(node.operation != "uninstall" or \
+					node in scheduled_uninstalls)]
 
 		# sys-apps/portage needs special treatment if ROOT="/"
 		running_root = "/"
@@ -3814,13 +3815,6 @@ class depgraph(object):
 					selected_nodes = list(selected_nodes)
 				selected_nodes.sort(cmp_circular_bias)
 
-			if not selected_nodes and scheduled_uninstalls:
-				selected_nodes = set()
-				for node in scheduled_uninstalls:
-					if not mygraph.child_nodes(node):
-						selected_nodes.add(node)
-				scheduled_uninstalls.difference_update(selected_nodes)
-
 			if not selected_nodes and not myblocker_uninstalls.is_empty():
 				# An Uninstall task needs to be executed in order to
 				# avoid conflict if possible.
@@ -4004,6 +3998,7 @@ class depgraph(object):
 					"uninstall" == node.operation:
 					have_uninstall_task = True
 					uninst_task = node
+					scheduled_uninstalls.remove(uninst_task)
 				else:
 					vardb = self.trees[node.root]["vartree"].dbapi
 					previous_cpv = vardb.match(node.slot_atom)
