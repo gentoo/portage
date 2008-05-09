@@ -1427,10 +1427,8 @@ class Package(Task):
 		self.cp = portage.cpv_getkey(self.cpv)
 		self.slot_atom = "%s:%s" % (self.cp, self.metadata["SLOT"])
 		self.cpv_slot = "%s:%s" % (self.cpv, self.metadata["SLOT"])
-		cpv_parts = portage.catpkgsplit(self.cpv)
-		self.category = cpv_parts[0]
-		self.pv_split = cpv_parts[1:]
-		self.pf = self.cpv.replace(self.category + "/", "", 1)
+		self.category, self.pf = portage.catsplit(self.cpv)
+		self.pv_split = portage.catpkgsplit(self.cpv)[1:]
 
 	def _get_hash_key(self):
 		hash_key = getattr(self, "_hash_key", None)
