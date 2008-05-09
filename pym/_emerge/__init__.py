@@ -3828,6 +3828,12 @@ class depgraph(object):
 					if task in ignored_uninstall_tasks:
 						continue
 
+					if task in scheduled_uninstalls:
+						# It's been scheduled but it hasn't
+						# been executed yet due to dependence
+						# on installation of blocking packages.
+						continue
+
 					root_config = self.roots[task.root]
 					inst_pkg = self._pkg_cache[
 						("installed", task.root, task.cpv, "nomerge")]
