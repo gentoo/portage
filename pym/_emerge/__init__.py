@@ -1914,6 +1914,7 @@ class depgraph(object):
 		# blocker validation is only able to account for one package per slot.
 		self._slot_collision_nodes = set()
 		self._serialized_tasks_cache = None
+		self._displayed_list = None
 		self._pprovided_args = []
 		self._missing_args = []
 		self._masked_installed = []
@@ -4117,7 +4118,8 @@ class depgraph(object):
 			"optional dependencies.\n", noiselevel=-1)
 
 	def _show_merge_list(self):
-		if self._serialized_tasks_cache is not None:
+		if self._serialized_tasks_cache is not None and \
+			self._serialized_tasks_cache != self._displayed_list:
 			display_list = self._serialized_tasks_cache[:]
 			if "--tree" in self.myopts:
 				display_list.reverse()
@@ -4137,6 +4139,12 @@ class depgraph(object):
 			show_blocker_docs_link()
 
 	def display(self, mylist, favorites=[], verbosity=None):
+
+		# This is used to prevent display_problems() from
+		# redundantly displaying this exact same merge list
+		# again via _show_merge_list().
+		self._displayed_list = mylist
+
 		if verbosity is None:
 			verbosity = ("--quiet" in self.myopts and 1 or \
 				"--verbose" in self.myopts and 3 or 2)
