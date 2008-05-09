@@ -2083,7 +2083,11 @@ class dblink(object):
 			self._preserve_libs(srcroot, destroot, myfilelist+mylinklist, counter, inforoot)
 
 		# check for package collisions
-		blockers = self._blockers
+		blockers = None
+		if self._blockers is not None:
+			# This is only supposed to be called when
+			# the vdb is locked, like it is here.
+			blockers = self._blockers()
 		if blockers is None:
 			blockers = []
 		collisions = self._collision_protect(srcroot, destroot,

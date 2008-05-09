@@ -982,7 +982,8 @@ class FakeVartree(portage.vartree):
 	user doesn't necessarily need write access to the vardb in cases where
 	global updates are necessary (updates are performed when necessary if there
 	is not a matching ebuild in the tree)."""
-	def __init__(self, real_vartree, portdb, db_keys, pkg_cache):
+	def __init__(self, real_vartree, portdb,
+		db_keys, pkg_cache, acquire_lock=1):
 		self.root = real_vartree.root
 		self.settings = real_vartree.settings
 		mykeys = db_keys[:]
@@ -999,7 +1000,7 @@ class FakeVartree(portage.vartree):
 			pass
 		vdb_lock = None
 		try:
-			if os.access(vdb_path, os.W_OK):
+			if acquire_lock and os.access(vdb_path, os.W_OK):
 				vdb_lock = portage.locks.lockdir(vdb_path)
 			real_dbapi = real_vartree.dbapi
 			slot_counters = {}
@@ -1529,7 +1530,7 @@ class BlockerDB(object):
 			"vartree"     :  self._vartree,
 		}}
 
-	def findInstalledBlockers(self, new_pkg):
+	def findInstalledBlockers(self, new_pkg, acquire_lock=0):
 		blocker_cache = self._blocker_cache
 		dep_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
 		dep_check_trees = self._dep_check_trees
@@ -1537,7 +1538,8 @@ class BlockerDB(object):
 		stale_cache = set(blocker_cache)
 		fake_vartree = \
 			FakeVartree(self._vartree,
-				self._portdb, Package.metadata_keys, {})
+				self._portdb, Package.metadata_keys, {},
+				acquire_lock=acquire_lock)
 		vardb = fake_vartree.dbapi
 		installed_pkgs = list(vardb)
 
@@ -5520,12 +5522,22 @@ class MergeTask(object):
 		self._spawned_pids = []
 
 	def _find_blockers(self, new_pkg):
+		"""
+		Returns a callable which should be called only when
+		the vdb lock has been acquired.
+		"""
+		def get_blockers():
+			return self._find_blockers_with_lock(new_pkg, acquire_lock=0)
+		return get_blockers
+
+	def _find_blockers_with_lock(self, new_pkg, acquire_lock=0):
 		if self._opts_ignore_blockers.intersection(self.myopts):
 			return None
 
 		blocker_dblinks = []
 		for blocking_pkg in self._blocker_db[
-			new_pkg.root].findInstalledBlockers(new_pkg):
+			new_pkg.root].findInstalledBlockers(new_pkg,
+			acquire_lock=acquire_lock):
 			if new_pkg.slot_atom == blocking_pkg.slot_atom:
 				continue
 			if new_pkg.cpv == blocking_pkg.cpv:
