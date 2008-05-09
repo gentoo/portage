@@ -1750,13 +1750,14 @@ class BlockerDB(object):
 
 		blocker_atoms = [atom[1:] for atom in atoms \
 			if atom.startswith("!")]
-		blocker_atoms = InternalPackageSet(initial_atoms=blocker_atoms)
-		for inst_pkg in installed_pkgs:
-			try:
-				blocker_atoms.iterAtomsForPackage(inst_pkg).next()
-			except (portage_exception.InvalidDependString, StopIteration):
-				continue
-			blocking_pkgs.add(inst_pkg)
+		if blocker_atoms:
+			blocker_atoms = InternalPackageSet(initial_atoms=blocker_atoms)
+			for inst_pkg in installed_pkgs:
+				try:
+					blocker_atoms.iterAtomsForPackage(inst_pkg).next()
+				except (portage_exception.InvalidDependString, StopIteration):
+					continue
+				blocking_pkgs.add(inst_pkg)
 
 		return blocking_pkgs
 
