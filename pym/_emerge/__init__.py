@@ -2940,9 +2940,11 @@ class depgraph(object):
 				# Therefore, assume that such SLOT dependencies are already
 				# satisfied rather than forcing a rebuild.
 				if installed and not cpv_list and matched_packages \
-					and vardb.cpv_exists(matched_packages[-1].cpv) and \
-					portage.dep.dep_getslot(atom):
-					cpv_list = [matched_packages[-1].cpv]
+					and portage.dep.dep_getslot(atom):
+					for pkg in matched_packages:
+						if vardb.cpv_exists(pkg.cpv):
+							cpv_list = [pkg.cpv]
+							break
 
 				if not cpv_list:
 					continue
