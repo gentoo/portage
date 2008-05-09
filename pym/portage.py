@@ -9311,7 +9311,11 @@ class dblink:
 				return 1
 
 		# check for package collisions
-		blockers = self._blockers
+		blockers = None
+		if self._blockers is not None:
+			# This is only supposed to be called when
+			# the vdb is locked, like it is here.
+			blockers = self._blockers()
 		if blockers is None:
 			blockers = []
 		if True:
