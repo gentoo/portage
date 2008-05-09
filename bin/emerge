@@ -5658,6 +5658,11 @@ class PackageCounters(object):
 
 class MergeTask(object):
 
+	_opts_ignore_blockers = \
+		frozenset(["--buildpkgonly",
+		"--fetchonly", "--fetch-all-uri",
+		"--nodeps", "--pretend"])
+
 	def __init__(self, settings, trees, myopts):
 		self.settings = settings
 		self.target_root = settings["ROOT"]
@@ -5678,10 +5683,8 @@ class MergeTask(object):
 		self._spawned_pids = []
 
 	def _find_blockers(self, new_pkg):
-		for opt in ("--buildpkgonly", "--nodeps",
-			"--fetchonly", "--fetch-all-uri", "--pretend"):
-			if opt in self.myopts:
-				return None
+		if self._opts_ignore_blockers.intersection(self.myopts):
+			return None
 
 		blocker_dblinks = []
 		for blocking_pkg in self._blocker_db[
