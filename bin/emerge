@@ -5767,6 +5767,13 @@ class MergeTask(object):
 			print colorize("GOOD", "*** Resuming merge...")
 			emergelog(xterm_titles, " *** Resuming merge...")
 
+		# Do this before verifying the ebuild Manifests since it might
+		# be possible for the user to use --resume --skipfirst get past
+		# a non-essential package with a broken digest.
+		mtimedb["resume"]["mergelist"] = [list(x) for x in mylist \
+			if isinstance(x, Package) and x.operation == "merge"]
+		mtimedb.commit()
+
 		# Verify all the manifests now so that the user is notified of failure
 		# as soon as possible.
 		if "--fetchonly" not in self.myopts and \
@@ -5799,10 +5806,6 @@ class MergeTask(object):
 		system_set = root_config.sets["system"]
 		args_set = InternalPackageSet(favorites)
 		world_set = root_config.sets["world"]
-
-		mtimedb["resume"]["mergelist"] = [list(x) for x in mylist \
-			if isinstance(x, Package) and x.operation == "merge"]
-		mtimedb.commit()
 
 		mymergelist = mylist
 		myfeat = self.settings.features[:]
