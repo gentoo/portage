@@ -991,7 +991,8 @@ class FakeVartree(portage.vartree):
 	user doesn't necessarily need write access to the vardb in cases where
 	global updates are necessary (updates are performed when necessary if there
 	is not a matching ebuild in the tree)."""
-	def __init__(self, real_vartree, portdb, db_keys, pkg_cache):
+	def __init__(self, real_vartree, portdb,
+		db_keys, pkg_cache, acquire_lock=1):
 		self.root = real_vartree.root
 		self.settings = real_vartree.settings
 		mykeys = db_keys[:]
@@ -1008,7 +1009,7 @@ class FakeVartree(portage.vartree):
 			pass
 		vdb_lock = None
 		try:
-			if os.access(vdb_path, os.W_OK):
+			if acquire_lock and os.access(vdb_path, os.W_OK):
 				vdb_lock = portage.locks.lockdir(vdb_path)
 			real_dbapi = real_vartree.dbapi
 			slot_counters = {}
@@ -1305,10 +1306,8 @@ class Package(Task):
 		self.cp = portage.cpv_getkey(self.cpv)
 		self.slot_atom = "%s:%s" % (self.cp, self.metadata["SLOT"])
 		self.cpv_slot = "%s:%s" % (self.cpv, self.metadata["SLOT"])
-		cpv_parts = portage.catpkgsplit(self.cpv)
-		self.category = cpv_parts[0]
-		self.pv_split = cpv_parts[1:]
-		self.pf = self.cpv.replace(self.category + "/", "", 1)
+		self.category, self.pf = portage.catsplit(self.cpv)
+		self.pv_split = portage.catpkgsplit(self.cpv)[1:]
 
 	def _get_hash_key(self):
 		hash_key = getattr(self, "_hash_key", None)
@@ -1550,7 +1549,7 @@ class BlockerDB(object):
 			"vartree"     :  self._vartree,
 		}}
 
-	def findInstalledBlockers(self, new_pkg):
+	def findInstalledBlockers(self, new_pkg, acquire_lock=0):
 		blocker_cache = self._blocker_cache
 		dep_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
 		dep_check_trees = self._dep_check_trees
@@ -1558,7 +1557,8 @@ class BlockerDB(object):
 		stale_cache = set(blocker_cache)
 		fake_vartree = \
 			FakeVartree(self._vartree,
-				self._portdb, Package.metadata_keys, {})
+				self._portdb, Package.metadata_keys, {},
+				acquire_lock=acquire_lock)
 		vardb = fake_vartree.dbapi
 		installed_pkgs = list(vardb)
 
@@ -1629,13 +1629,14 @@ class BlockerDB(object):
 
 		blocker_atoms = [atom[1:] for atom in atoms \
 			if atom.startswith("!")]
-		blocker_atoms = InternalPackageSet(initial_atoms=blocker_atoms)
-		for inst_pkg in installed_pkgs:
-			try:
-				blocker_atoms.iterAtomsForPackage(inst_pkg).next()
-			except (portage.exception.InvalidDependString, StopIteration):
-				continue
-			blocking_pkgs.add(inst_pkg)
+		if blocker_atoms:
+			blocker_atoms = InternalPackageSet(initial_atoms=blocker_atoms)
+			for inst_pkg in installed_pkgs:
+				try:
+					blocker_atoms.iterAtomsForPackage(inst_pkg).next()
+				except (portage.exception.InvalidDependString, StopIteration):
+					continue
+				blocking_pkgs.add(inst_pkg)
 
 		return blocking_pkgs
 
@@ -2964,9 +2965,11 @@ class depgraph(object):
 				# Therefore, assume that such SLOT dependencies are already
 				# satisfied rather than forcing a rebuild.
 				if installed and not cpv_list and matched_packages \
-					and vardb.cpv_exists(matched_packages[-1].cpv) and \
-					portage.dep.dep_getslot(atom):
-					cpv_list = [matched_packages[-1].cpv]
+					and portage.dep.dep_getslot(atom):
+					for pkg in matched_packages:
+						if vardb.cpv_exists(pkg.cpv):
+							cpv_list = [pkg.cpv]
+							break
 
 				if not cpv_list:
 					continue
@@ -3639,7 +3642,8 @@ class depgraph(object):
 			"""
 			return [node for node in mygraph.leaf_nodes(**kwargs) \
 				if isinstance(node, Package) and \
-				node.operation != "uninstall"]
+					(node.operation != "uninstall" or \
+					node in scheduled_uninstalls)]
 
 		# sys-apps/portage needs special treatment if ROOT="/"
 		running_root = "/"
@@ -3836,13 +3840,6 @@ class depgraph(object):
 					selected_nodes = list(selected_nodes)
 				selected_nodes.sort(cmp_circular_bias)
 
-			if not selected_nodes and scheduled_uninstalls:
-				selected_nodes = set()
-				for node in scheduled_uninstalls:
-					if not mygraph.child_nodes(node):
-						selected_nodes.add(node)
-				scheduled_uninstalls.difference_update(selected_nodes)
-
 			if not selected_nodes and not myblocker_uninstalls.is_empty():
 				# An Uninstall task needs to be executed in order to
 				# avoid conflict if possible.
@@ -3925,6 +3922,7 @@ class depgraph(object):
 						# when necessary, as long as the atom will be satisfied
 						# in the final state.
 						graph_db = self.mydbapi[task.root]
+						skip = False
 						try:
 							for atom in root_config.sets[
 								"world"].iterAtomsForPackage(task):
@@ -4025,6 +4023,7 @@ class depgraph(object):
 					"uninstall" == node.operation:
 					have_uninstall_task = True
 					uninst_task = node
+					scheduled_uninstalls.remove(uninst_task)
 				else:
 					vardb = self.trees[node.root]["vartree"].dbapi
 					previous_cpv = vardb.match(node.slot_atom)
@@ -5531,6 +5530,11 @@ class PackageCounters(object):
 
 class MergeTask(object):
 
+	_opts_ignore_blockers = \
+		frozenset(["--buildpkgonly",
+		"--fetchonly", "--fetch-all-uri",
+		"--nodeps", "--pretend"])
+
 	def __init__(self, settings, trees, myopts):
 		self.settings = settings
 		self.target_root = settings["ROOT"]
@@ -5551,14 +5555,22 @@ class MergeTask(object):
 		self._spawned_pids = []
 
 	def _find_blockers(self, new_pkg):
-		for opt in ("--buildpkgonly", "--nodeps",
-			"--fetchonly", "--fetch-all-uri", "--pretend"):
-			if opt in self.myopts:
-				return None
+		"""
+		Returns a callable which should be called only when
+		the vdb lock has been acquired.
+		"""
+		def get_blockers():
+			return self._find_blockers_with_lock(new_pkg, acquire_lock=0)
+		return get_blockers
+
+	def _find_blockers_with_lock(self, new_pkg, acquire_lock=0):
+		if self._opts_ignore_blockers.intersection(self.myopts):
+			return None
 
 		blocker_dblinks = []
 		for blocking_pkg in self._blocker_db[
-			new_pkg.root].findInstalledBlockers(new_pkg):
+			new_pkg.root].findInstalledBlockers(new_pkg,
+			acquire_lock=acquire_lock):
 			if new_pkg.slot_atom == blocking_pkg.slot_atom:
 				continue
 			if new_pkg.cpv == blocking_pkg.cpv:
@@ -5736,10 +5748,15 @@ class MergeTask(object):
 				mergecount += 1
 			pkg = x
 			metadata = pkg.metadata
+
 			if pkg.installed:
 				if not (buildpkgonly or fetchonly or pretend):
-					unmerge(root_config, self.myopts, "unmerge",
-						[pkg.cpv], mtimedb["ldpath"], clean_world=0)
+					try:
+						unmerge(root_config, self.myopts, "unmerge",
+							[pkg.cpv], mtimedb["ldpath"], clean_world=0,
+							raise_on_error=1)
+					except UninstallFailure, e:
+						return e.status
 				continue
 
 			if x[0]=="blocks":
@@ -6061,8 +6078,20 @@ class MergeTask(object):
 				sys.exit(0)
 		return os.EX_OK
 
+class UninstallFailure(portage.exception.PortageException):
+	"""
+	An instance of this class is raised by unmerge() when
+	an uninstallation fails.
+	"""
+	status = 1
+	def __init__(self, *pargs):
+		portage.exception.PortageException.__init__(self, pargs)
+		if pargs:
+			self.status = pargs[0]
+
 def unmerge(root_config, myopts, unmerge_action,
-	unmerge_files, ldpath_mtimes, autoclean=0, clean_world=1, ordered=0):
+	unmerge_files, ldpath_mtimes, autoclean=0,
+	clean_world=1, ordered=0, raise_on_error=0):
 	settings = root_config.settings
 	sets = root_config.sets
 	vartree = root_config.trees["vartree"]
@@ -6440,6 +6469,8 @@ def unmerge(root_config, myopts, unmerge_action,
 				vartree=vartree, ldpath_mtimes=ldpath_mtimes)
 			if retval != os.EX_OK:
 				emergelog(xterm_titles, " !!! unmerge FAILURE: "+y)
+				if raise_on_error:
+					raise UninstallFailure(retval)
 				sys.exit(retval)
 			else:
 				if clean_world:

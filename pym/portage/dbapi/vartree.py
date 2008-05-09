@@ -1493,7 +1493,11 @@ class dblink(object):
 					vartree=self.vartree))
 		dest_root = normalize_path(self.vartree.root).rstrip(os.path.sep) + \
 			os.path.sep
-		dest_root_len = len(dest_root)
+		dest_root_len = len(dest_root) - 1
+
+		conf_mem_file = os.path.join(dest_root, CONFIG_MEMORY_FILE)
+		cfgfiledict = grabdict(conf_mem_file)
+		stale_confmem = []
 
 		unmerge_orphans = "unmerge-orphans" in self.settings.features
 
@@ -1558,6 +1562,9 @@ class dblink(object):
 						continue
 				if obj.startswith(dest_root):
 					relative_path = obj[dest_root_len:]
+					if not others_in_slot and \
+						relative_path in cfgfiledict:
+						stale_confmem.append(relative_path)
 					is_owned = False
 					for dblnk in others_in_slot:
 						if dblnk.isowner(relative_path, dest_root):
@@ -1681,6 +1688,12 @@ class dblink(object):
 					if e.errno != errno.ENOENT:
 						show_unmerge("---", "!empty", "dir", obj)
 					del e
+
+		# Remove stale entries from config memory.
+		if stale_confmem:
+			for filename in stale_confmem:
+				del cfgfiledict[filename]
+			writedict(cfgfiledict, conf_mem_file)
 
 		#remove self from vartree database so that our own virtual gets zapped if we're the last node
 		self.vartree.zap(self.mycpv)
@@ -2159,7 +2172,11 @@ class dblink(object):
 			self._preserve_libs(srcroot, destroot, myfilelist+mylinklist, counter, inforoot)
 
 		# check for package collisions
-		blockers = self._blockers
+		blockers = None
+		if self._blockers is not None:
+			# This is only supposed to be called when
+			# the vdb is locked, like it is here.
+			blockers = self._blockers()
 		if blockers is None:
 			blockers = []
 		collisions = self._collision_protect(srcroot, destroot,
@@ -2294,6 +2311,15 @@ class dblink(object):
 			cfgfiledict["IGNORE"]=1
 		else:
 			cfgfiledict["IGNORE"]=0
+
+		# Always behave like --noconfmem is enabled for downgrades
+		# so that people who don't know about this option are less
+		# likely to get confused when doing upgrade/downgrade cycles.
+		pv_split = catpkgsplit(self.mycpv)[1:]
+		for other in others_in_slot:
+			if pkgcmp(pv_split, catpkgsplit(other.mycpv)[1:]) < 0:
+				cfgfiledict["IGNORE"] = 1
+				break
 
 		# Don't bump mtimes on merge since some application require
 		# preservation of timestamps.  This means that the unmerge phase must
