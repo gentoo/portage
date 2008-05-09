@@ -5703,10 +5703,15 @@ class MergeTask(object):
 				mergecount += 1
 			pkg = x
 			metadata = pkg.metadata
+
 			if pkg.installed:
 				if not (buildpkgonly or fetchonly or pretend):
-					unmerge(root_config, self.myopts, "unmerge",
-						[pkg.cpv], mtimedb["ldpath"], clean_world=0)
+					try:
+						unmerge(root_config, self.myopts, "unmerge",
+							[pkg.cpv], mtimedb["ldpath"], clean_world=0,
+							raise_on_error=1)
+					except UninstallFailure, e:
+						return e.status
 				continue
 
 			if x[0]=="blocks":
@@ -6028,8 +6033,20 @@ class MergeTask(object):
 				sys.exit(0)
 		return os.EX_OK
 
+class UninstallFailure(portage.exception.PortageException):
+	"""
+	An instance of this class is raised by unmerge() when
+	an uninstallation fails.
+	"""
+	status = 1
+	def __init__(self, *pargs):
+		portage.exception.PortageException.__init__(self, pargs)
+		if pargs:
+			self.status = pargs[0]
+
 def unmerge(root_config, myopts, unmerge_action,
-	unmerge_files, ldpath_mtimes, autoclean=0, clean_world=1, ordered=0):
+	unmerge_files, ldpath_mtimes, autoclean=0,
+	clean_world=1, ordered=0, raise_on_error=0):
 	settings = root_config.settings
 	sets = root_config.sets
 	vartree = root_config.trees["vartree"]
@@ -6407,6 +6424,8 @@ def unmerge(root_config, myopts, unmerge_action,
 				vartree=vartree, ldpath_mtimes=ldpath_mtimes)
 			if retval != os.EX_OK:
 				emergelog(xterm_titles, " !!! unmerge FAILURE: "+y)
+				if raise_on_error:
+					raise UninstallFailure(retval)
 				sys.exit(retval)
 			else:
 				if clean_world:
