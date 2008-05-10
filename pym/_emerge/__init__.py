@@ -4005,7 +4005,6 @@ class depgraph(object):
 					"uninstall" == node.operation:
 					have_uninstall_task = True
 					uninst_task = node
-					scheduled_uninstalls.remove(uninst_task)
 				else:
 					vardb = self.trees[node.root]["vartree"].dbapi
 					previous_cpv = vardb.match(node.slot_atom)
@@ -4019,7 +4018,6 @@ class depgraph(object):
 							mygraph.remove(uninst_task)
 						except KeyError:
 							pass
-						scheduled_uninstalls.discard(uninst_task)
 
 				if uninst_task is not None and \
 					uninst_task not in ignored_uninstall_tasks and \
