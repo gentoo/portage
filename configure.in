@@ -149,15 +149,6 @@ AC_TRY_LINK([
 		 ]
 )
 
-AC_ARG_ENABLE(tbz2tool,
-AC_HELP_STRING([--enable-tbz2tool],[build tbz2tool, tool for creating binpkgs (default yes)]),
-[case "${enableval}" in
-  yes)  enable_tbz2tool=true;;
-  no)	enable_tbz2tool=false;;
-  *)	AC_MSG_ERROR(bad value ${enableval} for --enable-tbz2tool);;
-esac],
-[enable_tbz2tool=true])
-
 AC_ARG_ENABLE(just-compiled-sources,
 AC_HELP_STRING([--enable-just-compiled-sources],[install just the bytecode, not the sources (default no)]),
 [case "${enableval}" in
@@ -250,7 +241,6 @@ AC_SUBST(EAPIPREFIX)
 AC_SUBST(DEFAULT_PATH)
 AC_SUBST(PORTAGE_BASE,['${exec_prefix}/lib/portage'])
 AM_CONDITIONAL(INSTALL_PYTHON_SOURCES, test x$enable_py_sources = xtrue)
-AM_CONDITIONAL(BUILD_TBZ2TOOL, test x$enable_tbz2tool = xtrue)
 
 AC_MSG_CHECKING([for a list of variables known by configure])
 pt_configvars=`sed -n -e "/^ac_subst_vars='/,/'$/p" ${srcdir}/configure | sed -e "s/^ac_subst_vars='//" -e "s/'$//"`
