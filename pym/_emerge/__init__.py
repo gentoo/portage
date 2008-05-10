@@ -4246,6 +4246,10 @@ class depgraph(object):
 
 		# If there are any Uninstall instances, add the corresponding
 		# blockers to the digraph (useful for --tree display).
+
+		executed_uninstalls = set(node for node in mylist \
+			if isinstance(node, Package) and node.operation == "unmerge")
+
 		for uninstall in self._blocker_uninstalls.leaf_nodes():
 			uninstall_parents = \
 				self._blocker_uninstalls.parent_nodes(uninstall)
@@ -4281,6 +4285,16 @@ class depgraph(object):
 				for parent in self._blocker_parents.parent_nodes(blocker):
 					if parent != inst_pkg:
 						mygraph.add(blocker, parent)
+
+			# If the uninstall task did not need to be executed because
+			# of an upgrade, display Blocker -> Upgrade edges since the
+			# corresponding Blocker -> Uninstall edges will not be shown.
+			upgrade_node = \
+				self._slot_pkg_map[uninstall.root].get(uninstall.slot_atom)
+			if upgrade_node is not None and \
+				uninstall not in executed_uninstalls:
+				for blocker in uninstall_parents:
+					mygraph.add(upgrade_node, blocker)
 
 		unsatisfied_blockers = []
 		i = 0
