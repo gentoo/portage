@@ -4042,12 +4042,14 @@ class depgraph(object):
 
 				retlist.append(node)
 
-				if isinstance(node, Package) and \
-					"uninstall" == node.operation:
-					# Include satisfied blockers in the merge list so
-					# that the user can see why the package had to be
-					# uninstalled in advance rather than through
-					# replacement.
+				if (isinstance(node, Package) and \
+					"uninstall" == node.operation) or \
+					(uninst_task is not None and \
+					uninst_task in scheduled_uninstalls):
+					# Include satisfied blockers in the merge list
+					# since the user might be interested and also
+					# it serves as an indicator that blocking packages
+					# will be temporarily installed simultaneously.
 					for blocker in solved_blockers:
 						retlist.append(Blocker(atom=blocker.atom,
 							root=blocker.root, satisfied=True))
