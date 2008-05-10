@@ -3712,8 +3712,18 @@ class depgraph(object):
 					if ignore_priority is None and not tree_mode:
 						# Greedily pop all of these nodes since no relationship
 						# has been ignored.  This optimization destroys --tree
-						# output, so it's disabled in reversed mode.
-						selected_nodes = nodes
+						# output, so it's disabled in reversed mode. If there
+						# is a mix of merge and uninstall nodes, save the
+						# uninstall nodes from later since sometimes a merge
+						# node will render an install node unnecessary, and
+						# we want to avoid doing a separate uninstall task in
+						# that case.
+						merge_nodes = [node for node in nodes \
+							if node.operation == "merge"]
+						if merge_nodes:
+							selected_nodes = merge_nodes
+						else:
+							selected_nodes = nodes
 					else:
 						# For optimal merge order:
 						#  * Only pop one node.
