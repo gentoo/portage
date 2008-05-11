@@ -323,7 +323,7 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 	if isinstance(expand, dict):
 		# Some existing variable definitions have been
 		# passed in, for use in substitutions.
-		expand_map = expand.copy()
+		expand_map = expand
 		expand = True
 	else:
 		expand_map = {}
