@@ -1282,9 +1282,11 @@ class config(object):
 			if self.profiles:
 				mygcfg_dlists = []
 				var_map = {}
+				expand_map = {}
 				for x in self.profiles:
 					var_map = getconfig(os.path.join(x, "make.defaults"),
-						expand=var_map)
+						expand=expand_map)
+					expand_map.update(var_map)
 					mygcfg_dlists.append(var_map)
 
 				for cfg in mygcfg_dlists:
