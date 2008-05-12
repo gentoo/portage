@@ -8286,6 +8286,7 @@ def action_build(settings, trees, mtimedb,
 
 			if mergecount==0:
 				sets = trees[settings["ROOT"]]["root_config"].sets
+				world_candidates = None
 				if "--noreplace" in myopts and \
 					not oneshot and favorites:
 					# Sets that are not world candidates are filtered
