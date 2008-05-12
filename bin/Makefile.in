@@ -22,7 +22,6 @@ user_binprogs = \
 	portageq \
 	quickpkg \
 	repoman \
-	tbz2tool \
 	xpak
 
 user_sbinprogs = \
