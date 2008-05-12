@@ -2568,7 +2568,8 @@ class depgraph(object):
 					self._sets[s] = expanded_set
 					args.append(SetArg(arg=x, set=expanded_set,
 						root_config=root_config))
-					myfavorites.append(x)
+					if sets[s].world_candidate:
+						myfavorites.append(x)
 					continue
 				if not is_valid_package_atom(x):
 					portage.writemsg("\n\n!!! '%s' is not a valid package atom.\n" % x,
