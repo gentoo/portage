@@ -68,10 +68,6 @@ if os.uname()[0] in ["FreeBSD"]:
 		return _chflags(path, flags, opts="-h")
 	bsd_chflags.chflags = _chflags
 	bsd_chflags.lchflags = _lchflags
-	if not hasattr(os.lstat("/"), "st_flags"):
-		sys.stderr.write("WARNING: BSD chflags are disabled since the st_flags attribute is missing!\n")
-		sys.stderr.flush()
-		bsd_chflags = None
 
 try:
 	from portage.cache.cache_errors import CacheError

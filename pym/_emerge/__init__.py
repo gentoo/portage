@@ -2589,7 +2589,8 @@ class depgraph(object):
 					self._sets[s] = expanded_set
 					args.append(SetArg(arg=x, set=expanded_set,
 						root_config=root_config))
-					myfavorites.append(x)
+					if sets[s].world_candidate:
+						myfavorites.append(x)
 					continue
 				if not is_valid_package_atom(x):
 					portage.writemsg("\n\n!!! '%s' is not a valid package atom.\n" % x,
@@ -7543,6 +7544,7 @@ def action_info(settings, trees, myopts, myfiles):
 		print header_title.rjust(int(header_width/2 + len(header_title)/2))
 	print header_width * "="
 	print "System uname: "+unameout
+
 	lastSync = portage.grabfile(os.path.join(
 		settings["PORTDIR"], "metadata", "timestamp.chk"))
 	print "Timestamp of tree:",
