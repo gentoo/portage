@@ -1935,6 +1935,7 @@ class depgraph(object):
 		# blocker validation is only able to account for one package per slot.
 		self._slot_collision_nodes = set()
 		self._serialized_tasks_cache = None
+		self._displayed_list = None
 		self._pprovided_args = []
 		self._missing_args = []
 		self._masked_installed = []
@@ -3736,8 +3737,18 @@ class depgraph(object):
 					if ignore_priority is None and not tree_mode:
 						# Greedily pop all of these nodes since no relationship
 						# has been ignored.  This optimization destroys --tree
-						# output, so it's disabled in reversed mode.
-						selected_nodes = nodes
+						# output, so it's disabled in reversed mode. If there
+						# is a mix of merge and uninstall nodes, save the
+						# uninstall nodes from later since sometimes a merge
+						# node will render an install node unnecessary, and
+						# we want to avoid doing a separate uninstall task in
+						# that case.
+						merge_nodes = [node for node in nodes \
+							if node.operation == "merge"]
+						if merge_nodes:
+							selected_nodes = merge_nodes
+						else:
+							selected_nodes = nodes
 					else:
 						# For optimal merge order:
 						#  * Only pop one node.
@@ -3851,6 +3862,12 @@ class depgraph(object):
 					# necessary when --complete-graph has not been enabled).
 
 					if task in ignored_uninstall_tasks:
+						continue
+
+					if task in scheduled_uninstalls:
+						# It's been scheduled but it hasn't
+						# been executed yet due to dependence
+						# on installation of blocking packages.
 						continue
 
 					root_config = self.roots[task.root]
@@ -4023,7 +4040,6 @@ class depgraph(object):
 					"uninstall" == node.operation:
 					have_uninstall_task = True
 					uninst_task = node
-					scheduled_uninstalls.remove(uninst_task)
 				else:
 					vardb = self.trees[node.root]["vartree"].dbapi
 					previous_cpv = vardb.match(node.slot_atom)
@@ -4037,7 +4053,6 @@ class depgraph(object):
 							mygraph.remove(uninst_task)
 						except KeyError:
 							pass
-						scheduled_uninstalls.discard(uninst_task)
 
 				if uninst_task is not None and \
 					uninst_task not in ignored_uninstall_tasks and \
@@ -4052,12 +4067,14 @@ class depgraph(object):
 
 				retlist.append(node)
 
-				if isinstance(node, Package) and \
-					"uninstall" == node.operation:
-					# Include satisfied blockers in the merge list so
-					# that the user can see why the package had to be
-					# uninstalled in advance rather than through
-					# replacement.
+				if (isinstance(node, Package) and \
+					"uninstall" == node.operation) or \
+					(uninst_task is not None and \
+					uninst_task in scheduled_uninstalls):
+					# Include satisfied blockers in the merge list
+					# since the user might be interested and also
+					# it serves as an indicator that blocking packages
+					# will be temporarily installed simultaneously.
 					for blocker in solved_blockers:
 						retlist.append(Blocker(atom=blocker.atom,
 							root=blocker.root, satisfied=True))
@@ -4136,7 +4153,8 @@ class depgraph(object):
 			"optional dependencies.\n", noiselevel=-1)
 
 	def _show_merge_list(self):
-		if self._serialized_tasks_cache is not None:
+		if self._serialized_tasks_cache is not None and \
+			self._serialized_tasks_cache != self._displayed_list:
 			display_list = self._serialized_tasks_cache[:]
 			if "--tree" in self.myopts:
 				display_list.reverse()
@@ -4156,6 +4174,12 @@ class depgraph(object):
 			show_blocker_docs_link()
 
 	def display(self, mylist, favorites=[], verbosity=None):
+
+		# This is used to prevent display_problems() from
+		# redundantly displaying this exact same merge list
+		# again via _show_merge_list().
+		self._displayed_list = mylist
+
 		if verbosity is None:
 			verbosity = ("--quiet" in self.myopts and 1 or \
 				"--verbose" in self.myopts and 3 or 2)
@@ -4247,6 +4271,10 @@ class depgraph(object):
 
 		# If there are any Uninstall instances, add the corresponding
 		# blockers to the digraph (useful for --tree display).
+
+		executed_uninstalls = set(node for node in mylist \
+			if isinstance(node, Package) and node.operation == "unmerge")
+
 		for uninstall in self._blocker_uninstalls.leaf_nodes():
 			uninstall_parents = \
 				self._blocker_uninstalls.parent_nodes(uninstall)
@@ -4282,6 +4310,16 @@ class depgraph(object):
 				for parent in self._blocker_parents.parent_nodes(blocker):
 					if parent != inst_pkg:
 						mygraph.add(blocker, parent)
+
+			# If the uninstall task did not need to be executed because
+			# of an upgrade, display Blocker -> Upgrade edges since the
+			# corresponding Blocker -> Uninstall edges will not be shown.
+			upgrade_node = \
+				self._slot_pkg_map[uninstall.root].get(uninstall.slot_atom)
+			if upgrade_node is not None and \
+				uninstall not in executed_uninstalls:
+				for blocker in uninstall_parents:
+					mygraph.add(upgrade_node, blocker)
 
 		unsatisfied_blockers = []
 		i = 0
@@ -5628,6 +5666,13 @@ class MergeTask(object):
 			print colorize("GOOD", "*** Resuming merge...")
 			emergelog(xterm_titles, " *** Resuming merge...")
 
+		# Do this before verifying the ebuild Manifests since it might
+		# be possible for the user to use --resume --skipfirst get past
+		# a non-essential package with a broken digest.
+		mtimedb["resume"]["mergelist"] = [list(x) for x in mylist \
+			if isinstance(x, Package) and x.operation == "merge"]
+		mtimedb.commit()
+
 		# Verify all the manifests now so that the user is notified of failure
 		# as soon as possible.
 		if "--fetchonly" not in self.myopts and \
@@ -5660,10 +5705,6 @@ class MergeTask(object):
 		system_set = root_config.sets["system"]
 		args_set = InternalPackageSet(favorites)
 		world_set = root_config.sets["world"]
-
-		mtimedb["resume"]["mergelist"] = [list(x) for x in mylist \
-			if isinstance(x, Package) and x.operation == "merge"]
-		mtimedb.commit()
 
 		mymergelist = mylist
 		myfeat = self.settings.features[:]

@@ -321,7 +321,14 @@ class _tolerant_shlex(shlex.shlex):
 			return (newfile, StringIO.StringIO())
 
 def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
-	mykeys={}
+	if isinstance(expand, dict):
+		# Some existing variable definitions have been
+		# passed in, for use in substitutions.
+		expand_map = expand
+		expand = True
+	else:
+		expand_map = {}
+	mykeys = {}
 	try:
 		f=open(mycfg,'r')
 	except IOError, e:
@@ -380,7 +387,8 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 				else:
 					return mykeys
 			if expand:
-				mykeys[key] = varexpand(val, mykeys)
+				mykeys[key] = varexpand(val, expand_map)
+				expand_map[key] = mykeys[key]
 			else:
 				mykeys[key] = val
 	except SystemExit, e:

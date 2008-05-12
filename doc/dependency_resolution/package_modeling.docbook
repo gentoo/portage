@@ -53,7 +53,12 @@
 		<para>
 		If one package blocks another package, the two packages
 		conflict such that they cannot be installed simultaneously.
-		These conflicts are often due to file collisions.
+		These conflicts are often due to file collisions. In some
+		cases, packages that block each other can be temporarily
+		installed simultaneously. In order to resolve file collisions
+		that occur between two blocking packages that are installed
+		simultaneously, the overlapping files must be removed from
+		the contents list of the package which was installed first.
 		</para>
 	</sect2>
 	<sect2 id='dependency-resolution-package-modeling-slot-conflicts'>

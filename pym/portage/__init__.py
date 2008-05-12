@@ -1291,8 +1291,10 @@ class config(object):
 			self.make_defaults_use = []
 			self.mygcfg = {}
 			if self.profiles:
-				mygcfg_dlists = [getconfig(os.path.join(x, "make.defaults")) \
-					for x in self.profiles]
+				expand_map = {}
+				mygcfg_dlists = [getconfig(os.path.join(x, "make.defaults"),
+					expand=expand_map) for x in self.profiles]
+
 				for cfg in mygcfg_dlists:
 					if cfg:
 						self.make_defaults_use.append(cfg.get("USE", ""))
