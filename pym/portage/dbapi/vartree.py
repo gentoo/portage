@@ -1822,6 +1822,7 @@ class dblink(object):
 		for lib in list(candidates):
 			if not has_external_consumers(lib, old_contents, candidates):
 				candidates.remove(lib)
+				continue
 			# only preserve the lib if there is no other copy to use for each consumer
 			keep = False
 			for c in linkmap.findConsumers(lib):
@@ -1831,12 +1832,15 @@ class dblink(object):
 				for soname in providers:
 					if lib in providers[soname]:
 						for p in providers[soname]:
-							if p not in candidates:
+							if p not in candidates or os.path.exists(os.path.join(srcroot, p.lstrip(os.sep))):
 								localkeep = False
 								break
 						break
 				if localkeep:
 					keep = True
+			if not keep:
+				candidates.remove(lib)
+				continue
 		
 		del mylibs, mycontents, old_contents, liblist
 		

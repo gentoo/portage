@@ -20,7 +20,7 @@ def unlockdir(mylock):
 
 def lockfile(mypath, wantnewlockfile=0, unlinkfile=0, waiting_msg=None):
 	"""Creates all dirs upto, the given dir. Creates a lockfile
-	for the given directory as the file: directoryname+'.portage.lockfile'."""
+	for the given directory as the file: directoryname+'.portage_lockfile'."""
 	import fcntl
 
 	if not mypath:
@@ -37,7 +37,7 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0, waiting_msg=None):
 		unlinkfile      = 0
 	elif wantnewlockfile:
 		base, tail = os.path.split(mypath)
-		lockfilename = os.path.join(base, "." + tail + ".portage.lockfile")
+		lockfilename = os.path.join(base, "." + tail + ".portage_lockfile")
 		del base, tail
 		unlinkfile   = 1
 	else:
