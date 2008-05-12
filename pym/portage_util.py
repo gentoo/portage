@@ -309,10 +309,11 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 	if isinstance(expand, dict):
 		# Some existing variable definitions have been
 		# passed in, for use in substitutions.
-		mykeys = expand.copy()
+		expand_map = expand
 		expand = True
 	else:
-		mykeys = {}
+		expand_map = {}
+	mykeys = {}
 	try:
 		f=open(mycfg,'r')
 	except IOError, e:
@@ -371,7 +372,8 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 				else:
 					return mykeys
 			if expand:
-				mykeys[key] = varexpand(val, mykeys)
+				mykeys[key] = varexpand(val, expand_map)
+				expand_map[key] = mykeys[key]
 			else:
 				mykeys[key] = val
 	except SystemExit, e:
