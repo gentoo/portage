@@ -31,5 +31,10 @@ try:
 except ImportError, AttributeError:
 	raise ImportError("No module named %s" % __oldname)
 
-warnings.warn("DEPRECATION NOTICE: The %s module was replaced by %s" % (__oldname, __newname))
+def _formatwarning(message, category, filename, lineno):
+	return "%s:%s: %s: %s\n" % (filename, lineno, category.__name__, message)
+
+warnings.formatwarning = _formatwarning
+
+warnings.warn("DEPRECATION NOTICE: The %s module was replaced by %s" % (__oldname, __newname), DeprecationWarning)
 sys.modules[__oldname] = __realmodule
