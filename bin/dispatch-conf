@@ -79,7 +79,7 @@ class dispatch:
             if os.path.isfile(self.options["log-file"]):
                 shutil.copy(self.options["log-file"], self.options["log-file"] + '.old')
             if os.path.isfile(self.options["log-file"]) \
-                    or not os.path.exists(self.options["log-file"]):
+               or not os.path.exists(self.options["log-file"]):
                 open(self.options["log-file"], 'w').close() # Truncate it
                 os.chmod(self.options["log-file"], 0600)
         else:
@@ -103,12 +103,13 @@ class dispatch:
 
             confs += self.massage(os.popen(FIND_EXTANT_CONFIGS % (path, find_opts, basename)).readlines())
 
-        if self.options['use-rcs'] == 'yes' and ((os.system( "which rcs >/dev/null 2>&1" ) == 256)
-                                                 or (os.system( "which ci >/dev/null 2>&1" ) == 256)
-                                                 or (os.system( "which co >/dev/null 2>&1" ) == 256) 
-                                                 or (os.system( "which rcsmerge >/dev/null 2>&1" ) == 256)):
-            print >> sys.stderr, 'dispatch-conf: Error finding all RCS utils and use-rcs=yes in config; fatal'
-            return False
+        if self.options['use-rcs'] == 'yes':
+            for rcs_util in ("rcs", "ci", "co", "rcsmerge"):
+                if not find_binary(rcs_util):
+                    print >> sys.stderr, \
+                        'dispatch-conf: Error finding all RCS utils and " + \
+                        "use-rcs=yes in config; fatal'
+                    return False
 
 
         # config file freezing support
@@ -303,8 +304,7 @@ class dispatch:
         the diff of what changed into the configured log file."""
         os.system((DIFF_CONTENTS % (curconf, newconf)) + '>>' + self.options["log-file"])
         try:
-            shutil.copyfile(newconf, curconf)
-            os.remove(newconf)
+            os.rename(newconf, curconf)
         except (IOError, os.error), why:
             print >> sys.stderr, 'dispatch-conf: Error renaming %s to %s: %s; fatal' % \
                   (newconf, curconf, str(why))

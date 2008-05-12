@@ -948,7 +948,7 @@ for x in scanlist:
 				else:
 					raise oe
 			if S_ISDIR(mystat.st_mode):
-# !!! VCS "portability" alert!  Need some function isVcsDir() or alike !!!
+				# !!! VCS "portability" alert!  Need some function isVcsDir() or alike !!!
 				if y == "CVS" or y == ".svn":
 					continue
 				for z in os.listdir(checkdir+"/files/"+y):
