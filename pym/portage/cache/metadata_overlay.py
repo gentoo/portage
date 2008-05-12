@@ -47,17 +47,17 @@ class database(template.database):
 			return value
 
 	def _setitem(self, name, values):
-		try:
-			value_ro = self.db_ro[name]
-			if self._are_values_identical(value_ro,values):
-				# we have matching values in the underlying db_ro
-				# so it is unnecessary to store data in db_rw
-				try:
-					del self.db_rw[name] # delete unwanted whiteout when necessary
-				except KeyError:
-					pass
-		except KeyError:
-			self.db_rw[name] = values
+		value_ro = self.db_ro.get(name, None)
+		if value_ro is not None and \
+			self._are_values_identical(value_ro, values):
+			# we have matching values in the underlying db_ro
+			# so it is unnecessary to store data in db_rw
+			try:
+				del self.db_rw[name] # delete unwanted whiteout when necessary
+			except KeyError:
+				pass
+			return
+		self.db_rw[name] = values
 
 	def _delitem(self, cpv):
 		value = self[cpv] # validates whiteout and/or raises a KeyError when necessary
