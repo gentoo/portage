@@ -8713,7 +8713,8 @@ def emerge_main():
 		msg = "It is best to avoid overridding eclasses from PORTDIR " + \
 		"because it will trigger invalidation of cached ebuild metadata " + \
 		"that is distributed with the portage tree. If you must " + \
-		"override eclasses from PORTDIR then you are advised to run " + \
+		"override eclasses from PORTDIR then you are advised to add " + \
+		"FEATURES=\"metadata-transfer\" to /etc/make.conf and to run " + \
 		"`emerge --regen` after each time that you run `emerge --sync`. " + \
 		"Set PORTAGE_ECLASS_WARNING_ENABLE=\"0\" in /etc/make.conf if " + \
 		"you would like to disable this warning."
