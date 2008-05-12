@@ -3,5 +3,5 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-exec env LIBOPTIONS="-m 0755" \
+exec env LIBOPTIONS="-m0755" \
 	dolib "$@"
