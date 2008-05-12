@@ -19,7 +19,7 @@ CXXFLAGS=""
 LDFLAGS=""
 
 # Default rsync mirror
-SYNC="rsync://rsync.gentoo.org/gentoo-portage"
+SYNC="rsync://rsync.prefix.freens.org/gentoo-portage-prefix"
 
 # Default distfiles mirrors
 GENTOO_MIRRORS="http://distfiles.gentoo.org http://distro.ibiblio.org/pub/linux/distributions/gentoo"
