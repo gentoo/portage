@@ -15,13 +15,13 @@
 [[ -z $1 ]] && exit -1
 
 if [[ ${1/:/} != $1 ]] ; then
-	t1=${1%:*} ; t1=${t1#r}
+	t1=${1%:*} ; t1=${t1#-r} ; t1=${t1#r}
 	t2=${1#*:}
 	# see above
 	t1=$((t1 + 1))
 	r=${t1}:${t2}
 else
-	r=$1
+	r=${1#-r} ; r=${r#r}
 fi
 
 svn log ../../trunk -r$r | awk -v revs=$1 '
