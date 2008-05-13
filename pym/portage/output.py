@@ -246,7 +246,7 @@ def xtermTitle(mystr, raw=False):
 		if len(mystr) > max_len:
 			mystr = mystr[:max_len]
 		myt=os.environ["TERM"]
-		legal_terms = ["xterm","Eterm","aterm","rxvt","screen","kterm","rxvt-unicode","gnome"]
+		legal_terms = ["xterm","xterm-color","Eterm","aterm","rxvt","screen","kterm","rxvt-unicode","gnome","interix"]
 		for term in legal_terms:
 			if myt.startswith(term):
 				if not raw:
