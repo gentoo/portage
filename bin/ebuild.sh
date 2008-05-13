@@ -372,8 +372,21 @@ unpack() {
 			LHa|LHA|lha|lzh)
 				lha xfq "${srcdir}${x}" || die "$myfail"
 				;;
-			a|deb)
+			a)
 				ar x "${srcdir}${x}" || die "$myfail"
+				;;
+			deb)
+				# Unpacking .deb archives can not always be done with
+				# `ar`.  For instance on AIX this doesn't work out.  If
+				# we have `deb2targz` installed, prefer it over `ar` for
+				# that reason.  We just make sure on AIX `deb2targz` is
+				# installed.
+				if type -P deb2targz > /dev/null; then
+					deb2targz "${srcdir}/${x}" || die "$myfail"
+					mv "${srcdir}/${x/.deb/.tar.gz}" data.tar.gz
+				else
+					ar x "${srcdir}/${x}" || die "$myfail"
+				fi
 				;;
 			lzma)
 				if [ "${y}" == "tar" ]; then
