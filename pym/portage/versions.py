@@ -190,9 +190,11 @@ def pkgcmp(pkg1, pkg2):
 	if pkg1[0] != pkg2[0]:
 		return None
 	mycmp = vercmp("-".join(pkg1[1:]), "-".join(pkg2[1:]))
-	if mycmp>0:
+	if mycmp is None:
+		return mycmp
+	if mycmp > 0:
 		return 1
-	if mycmp<0:
+	if mycmp < 0:
 		return -1
 	return 0
 
