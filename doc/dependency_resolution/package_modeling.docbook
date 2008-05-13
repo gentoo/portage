@@ -69,7 +69,7 @@
 		simple adjustment of merge order.</link> In addition, this type of
 		solution will not be chosen if a blocking package will overwrite
 		files belonging to packages from the system set, or packages that are
-		runtime dependencies of portage itself. These constraints serve to
+		runtime dependencies of Portage itself. These constraints serve to
 		limit the probability that a chosen solution will cause an unforeseen
 		problem.
 		</para>
