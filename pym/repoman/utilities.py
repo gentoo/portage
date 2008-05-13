@@ -42,30 +42,39 @@ def detect_vcs_conflicts(options, vcs):
 		retval = commands.getstatusoutput("cvs -n up 2>&1 | " + \
 			"egrep '^[^\?] .*' | " + \
 			"egrep -v '^. .*/digest-[^/]+|^cvs server: .* -- ignored$'")
+	if vcs == 'svn':
+		logging.info("Performing a " + output.green("svn status -u") + \
+			" with a little magic grep to check for updates.")
+		retval = commands.getstatusoutput("svn status -u 2>&1 | " + \
+			"egrep -v '^.  +.*/digest-[^/]+' | " + \
+			"head -n-1")
 
+	if vcs in ['cvs', 'svn']:
 		mylines = retval[1].splitlines()
 		myupdates = []
 		for line in mylines:
 			if not line:
 				continue
-			if line[0] not in "UPMAR": # Updates,Patches,Modified,Added,Removed
+			if line[0] not in "UPMARD": # Updates,Patches,Modified,Added,Removed/Replaced(svn),Deleted(svn)
 				logging.error(red("!!! Please fix the following issues reported " + \
-					"from cvs: ")+green("(U,P,M,A,R are ok)"))
+					"from cvs: ")+green("(U,P,M,A,R,D are ok)"))
 				logging.error(red("!!! Note: This is a pretend/no-modify pass..."))
 				logging.error(retval[1])
 				sys.exit(1)
-			elif line[0] in "UP":
+			elif vcs == 'cvs' and line[0] in "UP":
 				myupdates.append(line[2:])
+			elif vcs == 'svn' and line[8] == '*':
+				myupdates.append(line[9:].lstrip(" 1234567890"))
 
 		if myupdates:
 			logging.info(green("Fetching trivial updates..."))
 			if options.pretend:
-				logging.info("(cvs up "+" ".join(myupdates)+")")
+				logging.info("(" + vcs + " update " + " ".join(myupdates) + ")")
 				retval = os.EX_OK
 			else:
-				retval = os.system("cvs up " + " ".join(myupdates))
+				retval = os.system(vcs + " update " + " ".join(myupdates))
 			if retval != os.EX_OK:
-				logging.fatal("!!! cvs exited with an error. Terminating.")
+				logging.fatal("!!! " + cvs + " exited with an error. Terminating.")
 				sys.exit(retval)
 
 
