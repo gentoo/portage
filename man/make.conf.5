@@ -281,6 +281,15 @@ See also \fIsuidctl\fR below.
 When commiting work to cvs with \fBrepoman\fR(1), sign the Manifest with 
 a GPG key.  Read about the \fIPORTAGE_GPG_KEY\fR variable in \fBmake.conf\fR(5).
 .TP
+.B skiprocheck
+Skip write access checks on \fBDISTDIR\fR when fetching files. This is
+useful when \fBFETCHCOMMAND\fR and \fBRESUMECOMMAND\fR are used to
+forward fetch requests to a server that exposes \fBDISTDIR\fR as
+a read-only NFS share. A read-only \fBDISTDIR\fR is not compatible with the
+\fIdistlocks\fR, so it is recommended to also add "-distlocks" to
+\fBFEATURES\fR in order to avoid warning messages that are triggered by this
+incompatibility.
+.TP
 .B splitdebug
 Prior to stripping ELF etdyn and etexec files, the debugging info is 
 stored for later use by various debuggers.  This feature is disabled by
