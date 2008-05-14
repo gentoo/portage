@@ -16,7 +16,11 @@ portage-2.1.5
   "Updating Portage cache" routine that used to run at the tail end of each
   `emerge --sync` operation. If you use something like the sqlite module and
   want to keep all metadata in that format alone (useful for querying), enable
-  FEATURES="metadata-transfer" in make.conf.
+  FEATURES="metadata-transfer" in make.conf. You should also enable
+  FEATURES="metadata-transfer" if you have any eclasses from PORTDIR_OVERLAY
+  that override eclasses from PORTDIR (in this case, you may have disabled
+  a relevant warning message by setting PORTAGE_ECLASS_WARNING_ENABLE="0" in
+  make.conf).
 
 * The parallel-fetch feature is now enabled by default. It is optimized
   to avoid doing redundant checksums for previously downloaded files that have
