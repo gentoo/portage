@@ -1264,7 +1264,8 @@ for x in scanlist:
 							stats['java.eclassesnotused'] += 1
 							fails['java.eclassesnotused'].append(relative_path)
 						elif mytype == "RDEPEND":
-							if portage.dep_getkey(atom) in suspect_rdepend:
+							if not is_blocker and \
+								portage.dep_getkey(atom) in suspect_rdepend:
 								stats['RDEPEND.suspect'] += 1
 								fails['RDEPEND.suspect'].append(
 									relative_path + ": '%s'" % atom)
