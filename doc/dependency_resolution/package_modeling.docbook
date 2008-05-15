@@ -60,6 +60,19 @@
 		simultaneously, the overlapping files must be removed from
 		the contents list of the package which was installed first.
 		</para>
+		<para>
+		Some cases may exist such that temporary simultaneous installation
+		of blocking packages will cause some sort of problem. However,
+		this type of solution will only be chosen for blockers that can not
+		be satisfied in any other way, such as by <link
+		linkend='dependency-resolution-task-scheduling-conflict-avoidance'>
+		simple adjustment of merge order.</link> In addition, this type of
+		solution will not be chosen if a blocking package will overwrite
+		files belonging to packages from the system set, or packages that are
+		runtime dependencies of Portage itself. These constraints serve to
+		limit the probability that a chosen solution will cause an unforeseen
+		problem.
+		</para>
 	</sect2>
 	<sect2 id='dependency-resolution-package-modeling-slot-conflicts'>
 		<title>Slot Conflicts</title>

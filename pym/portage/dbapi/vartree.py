@@ -1351,7 +1351,7 @@ class dblink(object):
 
 			# regenerate reverse NEEDED map
 			self.vartree.dbapi.linkmap.rebuild()
-			
+
 			# remove preserved libraries that don't have any consumers left
 			# FIXME: this code is quite ugly and can likely be optimized in several ways
 			plib_dict = plib_registry.getPreservedLibs()
@@ -1378,8 +1378,17 @@ class dblink(object):
 					if not os.path.exists(f):
 						continue
 					unlink_list = []
-					if not self.vartree.dbapi.linkmap.findConsumers(f):
+					consumers = self.vartree.dbapi.linkmap.findConsumers(f)
+					if not consumers:
 						unlink_list.append(f)
+					else:
+						keep=False
+						for c in consumers:
+							if c not in self.getcontents():
+								keep=True
+								break
+						if not keep:
+							unlink_list.append(f)
 					for obj in unlink_list:
 						try:
 							if os.path.islink(obj):

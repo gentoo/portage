@@ -281,6 +281,15 @@ See also \fIsuidctl\fR below.
 When commiting work to cvs with \fBrepoman\fR(1), sign the Manifest with 
 a GPG key.  Read about the \fIPORTAGE_GPG_KEY\fR variable in \fBmake.conf\fR(5).
 .TP
+.B skiprocheck
+Skip write access checks on \fBDISTDIR\fR when fetching files. This is
+useful when \fBFETCHCOMMAND\fR and \fBRESUMECOMMAND\fR are used to
+forward fetch requests to a server that exposes \fBDISTDIR\fR as
+a read-only NFS share. A read-only \fBDISTDIR\fR is not compatible with the
+\fIdistlocks\fR, so it is recommended to also add "-distlocks" to
+\fBFEATURES\fR in order to avoid warning messages that are triggered by this
+incompatibility.
+.TP
 .B splitdebug
 Prior to stripping ELF etdyn and etexec files, the debugging info is 
 stored for later use by various debuggers.  This feature is disabled by
@@ -428,13 +437,13 @@ Please see /etc/make.conf.example for elog documentation.
 \fBPORTAGE_FETCH_CHECKSUM_TRY_MIRRORS\fR = \fI5\fR
 Number of mirrors to try when a downloaded file has an incorrect checksum.
 .TP
-\PORTAGE_FETCH_RESUME_MIN_SIZE\fR = \fI350K\fR
-Minimum size of existing file for RESUMECOMMAND to be called. Files smaller
-than this size will be removed and FETCHCOMMAND will be called to download
-the file from the beginning. This is useful for helping to ensure that small
-garbage files such as html 404 pages are properly discarded. The variable
-should contain an integer number of bytes and may have a suffix such as
-K, M, or G.
+\fBPORTAGE_FETCH_RESUME_MIN_SIZE\fR = \fI350K\fR
+Minimum size of existing file for \fBRESUMECOMMAND\fR to be called. Files
+smaller than this size will be removed and \fBFETCHCOMMAND\fR will be called
+to download the file from the beginning. This is useful for helping to ensure
+that small garbage files such as html 404 pages are properly discarded. The
+variable should contain an integer number of bytes and may have a suffix such
+as K, M, or G.
 .TP
 \fBPORTAGE_NICENESS\fR = \fI[number]\fR
 The value of this variable will be added to the current nice level that

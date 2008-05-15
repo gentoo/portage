@@ -2589,8 +2589,7 @@ class depgraph(object):
 					self._sets[s] = expanded_set
 					args.append(SetArg(arg=x, set=expanded_set,
 						root_config=root_config))
-					if sets[s].world_candidate:
-						myfavorites.append(x)
+					myfavorites.append(x)
 					continue
 				if not is_valid_package_atom(x):
 					portage.writemsg("\n\n!!! '%s' is not a valid package atom.\n" % x,
@@ -8370,9 +8369,21 @@ def action_build(settings, trees, mtimedb,
 					mergecount += 1
 
 			if mergecount==0:
-				if "--noreplace" in myopts and not oneshot and favorites:
+				sets = trees[settings["ROOT"]]["root_config"].sets
+				world_candidates = None
+				if "--noreplace" in myopts and \
+					not oneshot and favorites:
+					# Sets that are not world candidates are filtered
+					# out here since the favorites list needs to be
+					# complete for depgraph.loadResumeCommand() to
+					# operate correctly.
+					world_candidates = [x for x in favorites \
+						if not (x.startswith(SETPREFIX) and \
+						not sets[x[1:]].world_candidate)]
+				if "--noreplace" in myopts and \
+					not oneshot and world_candidates:
 					print
-					for x in favorites:
+					for x in world_candidates:
 						print " %s %s" % (good("*"), x)
 					prompt="Would you like to add these packages to your world favorites?"
 				elif settings["AUTOCLEAN"] and "yes"==settings["AUTOCLEAN"]:
@@ -8797,7 +8808,8 @@ def emerge_main():
 		msg = "It is best to avoid overridding eclasses from PORTDIR " + \
 		"because it will trigger invalidation of cached ebuild metadata " + \
 		"that is distributed with the portage tree. If you must " + \
-		"override eclasses from PORTDIR then you are advised to run " + \
+		"override eclasses from PORTDIR then you are advised to add " + \
+		"FEATURES=\"metadata-transfer\" to /etc/make.conf and to run " + \
 		"`emerge --regen` after each time that you run `emerge --sync`. " + \
 		"Set PORTAGE_ECLASS_WARNING_ENABLE=\"0\" in /etc/make.conf if " + \
 		"you would like to disable this warning."
