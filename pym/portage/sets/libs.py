@@ -37,7 +37,11 @@ class PreservedLibraryConsumerSet(LibraryConsumerSet):
 		if reg:
 			for libs in reg.getPreservedLibs().values():
 				for lib in libs:
-					#print lib, self.dbapi.linkmap.findConsumers(lib)
+					if self.debug:
+						print lib
+						for x in sorted(self.dbapi.linkmap.findConsumers(lib)):
+							print "    ", x
+						print "-"*40
 					consumers.update(self.dbapi.linkmap.findConsumers(lib))
 		else:
 			return
@@ -46,5 +50,5 @@ class PreservedLibraryConsumerSet(LibraryConsumerSet):
 		self._setAtoms(self.mapPathsToAtoms(consumers))
 
 	def singleBuilder(cls, options, settings, trees):
-		return PreservedLibraryConsumerSet(trees["vartree"].dbapi)
+		return PreservedLibraryConsumerSet(trees["vartree"].dbapi, True)
 	singleBuilder = classmethod(singleBuilder)

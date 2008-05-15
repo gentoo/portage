@@ -419,16 +419,13 @@ if options.mode in ('last', 'lfull'):
 can_force = True
 
 
-isVcs = False
-vcs = ''
+vcs = None
 if os.path.isdir("CVS"):
-	isVcs = True
 	vcs = "cvs"
 if os.path.isdir(".svn"):
-	isVcs = True
 	vcs = "svn"
 
-if isVcs and vcs == "cvs" and \
+if vcs == "cvs" and \
 	"commit" == options.mode and \
 	"RMD160" not in portage.checksum.hashorigin_map:
 	from portage.util import grablines
@@ -446,7 +443,7 @@ if isVcs and vcs == "cvs" and \
 		sys.exit(1)
 	del repo_lines
 
-if options.mode == 'commit' and not options.pretend and not isVcs:
+if options.mode == 'commit' and not options.pretend and not vcs:
 	logging.info("Not in a version controlled repository; enabling pretend mode.")
 	options.pretend = True
 
@@ -696,7 +693,7 @@ else:
 	#this can be problematic if xmllint changes their output
 	xmllint_capable=True
 
-if options.mode == 'commit' and isVcs:
+if options.mode == 'commit' and vcs:
 	utilities.detect_vcs_conflicts(options, vcs)
 
 if options.mode == "manifest":
@@ -814,12 +811,12 @@ for x in scanlist:
 	if not os.path.isdir(os.path.join(checkdir, "files")):
 		has_filesdir = False
 
-	if isVcs:
+	if vcs:
 		try:
 			if vcs == "cvs":
 				myf=open(checkdir+"/CVS/Entries","r")
 			if vcs == "svn":
-				myf=os.popen("svn update > /dev/null; svn list")
+				myf=os.popen("svn list")
 			myl=myf.readlines()	
 			myf.close()
 			for l in myl:
@@ -855,7 +852,7 @@ for x in scanlist:
 				fails["svn.IO_error"].append(checkdir+"svn info")
 			continue
 
-	if isVcs and has_filesdir:
+	if vcs and has_filesdir:
 		try:
 			if vcs == "cvs":
 				myf=open(checkdir+"/files/CVS/Entries","r")
@@ -1017,7 +1014,7 @@ for x in scanlist:
 		if stat.S_IMODE(os.stat(full_path).st_mode) & 0111:
 			stats["file.executable"] += 1
 			fails["file.executable"].append(x+"/"+y+".ebuild")
-		if isVcs and y not in eadded:
+		if vcs and y not in eadded:
 			#ebuild not added to vcs
 			stats["ebuild.notadded"]=stats["ebuild.notadded"]+1
 			fails["ebuild.notadded"].append(x+"/"+y+".ebuild")
@@ -1560,7 +1557,7 @@ else:
 	if options.pretend:
 		print green("RepoMan sez:"), "\"So, you want to play it safe. Good call.\"\n"
 
-	if isVcs and vcs == "cvs":
+	if vcs == "cvs":
 		try:
 			myvcstree=portage.cvstree.getentries("./",recursive=1)
 			myunadded=portage.cvstree.findunadded(myvcstree,recursive=1,basedir="./")
@@ -1569,7 +1566,7 @@ else:
 		except:
 			err("Error retrieving CVS tree; exiting.")
 
-	if isVcs and vcs == "svn":
+	if vcs == "svn":
 		try:
 			svnstatus=os.popen("svn status").readlines()
 			myunadded = [ "./"+elem.rstrip().split()[1] for elem in svnstatus if elem.startswith("?") ]	
@@ -1643,7 +1640,7 @@ else:
 		# no idea how to detect binaries in SVN
 		bin_blobs = []
 
-	if isVcs:
+	if vcs:
 		if not (mychanged or mynew or myremoved):
 			print green("RepoMan sez:"), "\"Doing nothing is not always good for QA.\""
 			print
@@ -1653,24 +1650,18 @@ else:
 
 	# Manifests need to be regenerated after all other commits, so don't commit
 	# them now even if they have changed.
-	# However, in SVN mode, the manifest won't change, hence, if we
-	# don't sign, we can commit it right away, avoiding an extra commit,
-	# of course this assumes SVN doesn't do Header: expansion.
-	if vcs != "svn" or "sign" in repoman_settings.features:
-		mymanifests = [f for f in mychanged if "Manifest" == os.path.basename(f)]
-		mychanged = [f for f in mychanged if "Manifest" != os.path.basename(f)]
-	else:
-		mymanifests = [] # avoid undefined error
-	myupdates=mychanged+mynew
-	myheaders=[]
-	mydirty=[]
-	headerstring="'\$(Header|Id)"
-	headerstring+=".*\$'"
+	mymanifests = [f for f in mychanged if "Manifest" == os.path.basename(f)]
+	mychanged = [f for f in mychanged if "Manifest" != os.path.basename(f)]
+	myupdates = mychanged + mynew
+	myheaders = []
+	mydirty = []
+	headerstring = "'\$(Header|Id)"
+	headerstring += ".*\$'"
 	for myfile in myupdates:
 		if myfile in bin_blobs:
 			continue
 		myout = commands.getstatusoutput("egrep -q "+headerstring+" "+myfile)
-		if myout[0]==0:
+		if myout[0] == 0:
 			myheaders.append(myfile)
 
 	print "*",green(str(len(myupdates))),"files being committed...",green(str(len(myheaders))),"have headers that will change."
@@ -1948,7 +1939,7 @@ else:
 				sys.exit(retval)
 
 	print
-	if isVcs:
+	if vcs:
 		print "Commit complete."
 	else:
 		print "repoman was too scared by not seeing any familiar version control file that he forgot to commit anything"
