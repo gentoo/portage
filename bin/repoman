@@ -291,6 +291,7 @@ qahelp={
 	"IUSE.invalid":"This ebuild has a variable in IUSE that is not in the use.desc or use.local.desc file",
 	"LICENSE.invalid":"This ebuild is listing a license that doesnt exist in portages license/ dir.",
 	"KEYWORDS.invalid":"This ebuild contains KEYWORDS that are not listed in profiles/arch.list or for which no valid profile was found",
+	"RDEPEND.suspect":"RDEPEND contains a package that usually only belongs in DEPEND.",
 	"RESTRICT.invalid":"This ebuild contains invalid RESTRICT values.",
 	"digestentry.unused":"Some files listed in the Manifest aren't referenced in SRC_URI",
 	"ebuild.nostable":"There are no ebuilds that are marked as stable for your ARCH",
@@ -325,6 +326,7 @@ qawarnings=[
 "KEYWORDS.dropped",
 "KEYWORDS.stupid",
 "KEYWORDS.missing",
+"RDEPEND.suspect",
 "RESTRICT.invalid",
 "ebuild.minorsyn",
 "ebuild.badheader",
@@ -354,9 +356,42 @@ valid_restrict = frozenset(["binchecks", "bindist",
 	"fetch", "installsources", "mirror",
 	"primaryuri", "strip", "test", "userpriv"])
 
+suspect_rdepend = frozenset([
+	"app-arch/cabextract",
+	"app-arch/rpm2targz",
+	"app-doc/doxygen",
+	"dev-lang/nasm",
+	"dev-lang/swig",
+	"dev-lang/yasm",
+	"dev-perl/extutils-pkgconfig",
+	"dev-python/setuptools",
+	"dev-util/byacc",
+	"dev-util/cmake",
+	"dev-util/gtk-doc",
+	"dev-util/gtk-doc-am",
+	"dev-util/intltool",
+	"dev-util/jam",
+	"dev-util/pkgconfig",
+	"dev-util/scons",
+	"dev-util/unifdef",
+	"dev-util/yacc",
+	"media-gfx/ebdftopcf",
+	"sys-apps/help2man",
+	"sys-devel/autoconf",
+	"sys-devel/automake",
+	"sys-devel/bin86",
+	"sys-devel/bison",
+	"sys-devel/dev86",
+	"sys-devel/flex",
+	"sys-devel/libtool",
+	"sys-devel/m4",
+	"sys-devel/pmake",
+	"x11-misc/bdftopcf",
+	"x11-misc/imake",
+])
+
 # file.executable
 no_exec = frozenset(["Manifest","ChangeLog","metadata.xml"])
-
 
 def last(full=False):
 	"""Print the results of the last repoman run
@@ -1226,6 +1261,12 @@ for x in scanlist:
 							portage.dep_getkey(atom) == "virtual/jdk":
 							stats['java.eclassesnotused'] += 1
 							fails['java.eclassesnotused'].append(relative_path)
+						elif mytype == "RDEPEND":
+							if not is_blocker and \
+								portage.dep_getkey(atom) in suspect_rdepend:
+								stats['RDEPEND.suspect'] += 1
+								fails['RDEPEND.suspect'].append(
+									relative_path + ": '%s'" % atom)
 						if eapi == "0":
 							if portage.dep.dep_getslot(atom):
 								stats['EAPI.incompatible'] += 1
