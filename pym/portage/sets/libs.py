@@ -3,6 +3,7 @@
 # $Id$
 
 from portage.sets.base import PackageSet
+from portage.sets import get_boolean
 from portage.dbapi.vartree import dblink
 from portage.versions import catsplit, catpkgsplit
 
@@ -50,5 +51,6 @@ class PreservedLibraryConsumerSet(LibraryConsumerSet):
 		self._setAtoms(self.mapPathsToAtoms(consumers))
 
 	def singleBuilder(cls, options, settings, trees):
-		return PreservedLibraryConsumerSet(trees["vartree"].dbapi, True)
+		debug = get_boolean(options, "debug", False)
+		return PreservedLibraryConsumerSet(trees["vartree"].dbapi, debug)
 	singleBuilder = classmethod(singleBuilder)
