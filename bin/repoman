@@ -369,6 +369,7 @@ suspect_rdepend = frozenset([
 	"dev-python/setuptools",
 	"dev-util/byacc",
 	"dev-util/cmake",
+	"dev-util/ftjam",
 	"dev-util/gtk-doc",
 	"dev-util/gtk-doc-am",
 	"dev-util/intltool",
