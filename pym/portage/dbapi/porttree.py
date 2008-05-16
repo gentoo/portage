@@ -14,7 +14,7 @@ from portage.exception import OperationNotPermitted, PortageException, \
 from portage.manifest import Manifest
 from portage.output import red
 from portage.util import ensure_dirs, writemsg, apply_recursive_permissions
-from portage.versions import pkgcmp, pkgsplit, catpkgsplit, best
+from portage.versions import pkgcmp, pkgsplit, catpkgsplit, best, ver_regexp
 
 import portage.gpg, portage.checksum
 
@@ -554,6 +554,11 @@ class portdbapi(dbapi):
 						continue
 					if ps[0] != mysplit[1]:
 						writemsg("\nInvalid ebuild name: %s\n" % \
+							os.path.join(oroot, mycp, x), noiselevel=-1)
+						continue
+					ver_match = ver_regexp.match("-".join(ps[1:]))
+					if ver_match is None or not ver_match.groups():
+						writemsg("\nInvalid ebuild version: %s\n" % \
 							os.path.join(oroot, mycp, x), noiselevel=-1)
 						continue
 					d[mysplit[0]+"/"+pf] = None
