@@ -7703,6 +7703,7 @@ class portdbapi(dbapi):
 			mytrees = [mytree]
 		else:
 			mytrees = self.porttrees
+		from portage_versions import ver_regexp
 		for oroot in mytrees:
 			try:
 				file_list = os.listdir(os.path.join(oroot, mycp))
@@ -7718,6 +7719,11 @@ class portdbapi(dbapi):
 						continue
 					if ps[0] != mysplit[1]:
 						writemsg("\nInvalid ebuild name: %s\n" % \
+							os.path.join(oroot, mycp, x), noiselevel=-1)
+						continue
+					ver_match = ver_regexp.match("-".join(ps[1:]))
+					if ver_match is None or not ver_match.groups():
+						writemsg("\nInvalid ebuild version: %s\n" % \
 							os.path.join(oroot, mycp, x), noiselevel=-1)
 						continue
 					d[mysplit[0]+"/"+pf] = None
