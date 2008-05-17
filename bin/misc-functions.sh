@@ -269,7 +269,7 @@ install_qa_check() {
 			f=$(< "${T}/mach-o.check")
 			vecho -ne '\a\n'
 			eqawarn "QA Notice: Found .so dynamic libraries on Darwin:"
-			eqawarn "    ${f//\n/\n    }"
+			eqawarn "    ${f//$'\n'/\n    }"
 		fi
 		rm -f "${T}/mach-o.check"
 
