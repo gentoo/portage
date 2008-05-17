@@ -3632,6 +3632,7 @@ class depgraph(object):
 
 		if replacement_portage:
 			replacement_portage = replacement_portage[0]
+			asap_nodes.append(replacement_portage)
 		else:
 			replacement_portage = None
 
