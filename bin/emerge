@@ -6476,6 +6476,7 @@ def unmerge(settings, myopts, vartree, unmerge_action,
 			return 0
 	finally:
 		if vdb_lock:
+			vartree.dbapi.flush_cache()
 			portage_locks.unlockdir(vdb_lock)
 
 	# Unmerge order only matters in some cases
