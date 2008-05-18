@@ -615,6 +615,8 @@ class vardbapi(dbapi):
 		mydata = {}
 		cache_valid = False
 		cache_incomplete = False
+		cache_mtime = None
+		metadata = None
 		if pkg_data:
 			cache_mtime, metadata = pkg_data
 			cache_valid = cache_mtime == mydir_mtime
@@ -638,7 +640,7 @@ class vardbapi(dbapi):
 				mydata[k] = v
 			if not cache_valid or cache_incomplete:
 				cache_data = {}
-				if cache_incomplete:
+				if cache_valid and metadata:
 					cache_data.update(metadata)
 				for aux_key in cache_these:
 					cache_data[aux_key] = mydata[aux_key]
