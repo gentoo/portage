@@ -6546,6 +6546,8 @@ class vardbapi(dbapi):
 	_excluded_dirs = re.compile(r'^(\..*|-MERGING-.*|' + \
 		"|".join(_excluded_dirs) + r')$')
 
+	_aux_multi_line_re = re.compile(r'^(CONTENTS|NEEDED\..*)$')
+
 	"""
 	The categories parameter is unused since the dbapi class
 	now has a categories property that is generated from the
@@ -6858,8 +6860,14 @@ class vardbapi(dbapi):
 		unrecognized, the cache will simple be recreated from scratch (it is
 		completely disposable).
 		"""
-		if not self._aux_cache_keys.intersection(wants):
+		cache_these_wants = self._aux_cache_keys.intersection(wants)
+
+		if not cache_these_wants:
 			return self._aux_get(mycpv, wants)
+
+		cache_these = set(self._aux_cache_keys)
+		cache_these.update(cache_these_wants)
+
 		if self._aux_cache is None:
 			try:
 				f = open(self._aux_cache_filename)
@@ -6874,7 +6882,7 @@ class vardbapi(dbapi):
 				not isinstance(self._aux_cache, dict) or \
 				self._aux_cache.get("version") != self._aux_cache_version or \
 				not self._aux_cache.get("packages"):
-				self._aux_cache = {"version":self._aux_cache_version}
+				self._aux_cache = {"version": self._aux_cache_version}
 				self._aux_cache["packages"] = {}
 			self._aux_cache["modified"] = False
 		mydir = os.path.join(self.root, VDB_PATH, mycpv)
@@ -6889,29 +6897,35 @@ class vardbapi(dbapi):
 		pkg_data = self._aux_cache["packages"].get(mycpv)
 		mydata = {}
 		cache_valid = False
+		cache_incomplete = False
+		cache_mtime = None
+		metadata = None
 		if pkg_data:
 			cache_mtime, metadata = pkg_data
 			cache_valid = cache_mtime == mydir_mtime
 		if cache_valid:
-			cache_incomplete = self._aux_cache_keys.difference(metadata)
+			cache_incomplete = cache_these.difference(metadata)
 			if cache_incomplete:
 				# Allow self._aux_cache_keys to change without a cache version
 				# bump and efficiently recycle partial cache whenever possible.
 				cache_valid = False
 				pull_me = cache_incomplete.union(wants)
 			else:
-				pull_me = set(wants).difference(self._aux_cache_keys)
+				pull_me = set(wants).difference(cache_these)
 			mydata.update(metadata)
 		else:
-			pull_me = self._aux_cache_keys.union(wants)
+			pull_me = cache_these
+
 		if pull_me:
 			# pull any needed data and cache it
 			aux_keys = list(pull_me)
 			for k, v in izip(aux_keys, self._aux_get(mycpv, aux_keys)):
 				mydata[k] = v
-			if not cache_valid:
+			if not cache_valid or cache_incomplete:
 				cache_data = {}
-				for aux_key in self._aux_cache_keys:
+				if cache_valid and metadata:
+					cache_data.update(metadata)
+				for aux_key in cache_these:
 					cache_data[aux_key] = mydata[aux_key]
 				self._aux_cache["packages"][mycpv] = (mydir_mtime, cache_data)
 				self._aux_cache["modified"] = True
@@ -6935,7 +6949,9 @@ class vardbapi(dbapi):
 					myd = myf.read()
 				finally:
 					myf.close()
-				if x != "NEEDED":
+				# Preserve \n for metadata that is known to
+				# contain multiple lines.
+				if self._aux_multi_line_re.match(x) is None:
 					myd = " ".join(myd.split())
 			except IOError:
 				myd = ""
