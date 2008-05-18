@@ -6320,6 +6320,7 @@ def unmerge(root_config, myopts, unmerge_action,
 			return 0
 	finally:
 		if vdb_lock:
+			vartree.dbapi.flush_cache()
 			portage.locks.unlockdir(vdb_lock)
 	
 	from portage.sets.base import EditablePackageSet
