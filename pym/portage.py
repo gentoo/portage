@@ -1442,14 +1442,17 @@ class config:
 			# in getconfig() calls, and the getconfig() calls
 			# update expand_map with the value of each variable
 			# assignment that occurs. Variable substitution occurs
-			# in the following order:
+			# in the following order, which corresponds to the
+			# order of appearance in self.lookuplist:
 			#
 			#   * env.d
-			#   * env
 			#   * make.globals
 			#   * make.defaults
 			#   * make.conf
 			#
+			# Notably absent is "env", since we want to avoid any
+			# interaction with the calling environment that might
+			# lead to unexpected results.
 			expand_map = {}
 
 			env_d = getconfig(os.path.join(target_root, "etc", "profile.env"),
@@ -1461,7 +1464,6 @@ class config:
 
 			# backupenv is used for calculating incremental variables.
 			self.backupenv = os.environ.copy()
-			expand_map.update(self.backupenv)
 
 			# make.globals should not be relative to config_root
 			# because it only contains constants.
