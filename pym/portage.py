@@ -6916,7 +6916,7 @@ class vardbapi(dbapi):
 				pull_me = set(wants).difference(cache_these)
 			mydata.update(metadata)
 		else:
-			pull_me = cache_these
+			pull_me = cache_these.union(wants)
 
 		if pull_me:
 			# pull any needed data and cache it
