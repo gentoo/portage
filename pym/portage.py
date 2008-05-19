@@ -1438,6 +1438,12 @@ class config:
 			if target_root is None:
 				target_root = "/"
 
+			target_root = normalize_path(os.path.abspath(
+				target_root)).rstrip(os.path.sep) + os.path.sep
+
+			portage_util.ensure_dirs(target_root)
+			check_var_directory("ROOT", target_root)
+
 			# The expand_map is used for variable substitution
 			# in getconfig() calls, and the getconfig() calls
 			# update expand_map with the value of each variable
@@ -1550,12 +1556,6 @@ class config:
 				for cfg in self.lookuplist:
 					cfg.pop(blacklisted, None)
 			del blacklisted, cfg
-
-			target_root = normalize_path(os.path.abspath(
-				target_root)).rstrip(os.path.sep) + os.path.sep
-
-			portage_util.ensure_dirs(target_root)
-			check_var_directory("ROOT", target_root)
 
 			self["PORTAGE_CONFIGROOT"] = config_root
 			self.backup_changes("PORTAGE_CONFIGROOT")
