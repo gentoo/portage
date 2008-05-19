@@ -1311,11 +1311,6 @@ class config(object):
 			# backupenv is used for calculating incremental variables.
 			self.backupenv = os.environ.copy()
 
-			# make.globals should not be relative to config_root
-			# because it only contains constants.
-			self.mygcfg = getconfig(os.path.join("/etc", "make.globals"),
-				expand=expand_map)
-
 			if env_d:
 				# Remove duplicate values so they don't override updated
 				# profile.env values later (profile.env is reloaded in each
@@ -1329,6 +1324,11 @@ class config(object):
 				del k, v
 
 			self.configdict["env"] = self.backupenv.copy()
+
+			# make.globals should not be relative to config_root
+			# because it only contains constants.
+			self.mygcfg = getconfig(os.path.join("/etc", "make.globals"),
+				expand=expand_map)
 
 			if self.mygcfg is None:
 				self.mygcfg = {}
