@@ -450,7 +450,7 @@ install_qa_check() {
 			vecho -ne '\a\n'
 			# just warn on 32bit hosts but bail on 64bit hosts
 			case ${CHOST} in
-				alpha*|ia64*|powerpc64*|mips64*|sparc64*|x86_64*) die "this code is not 64bit clean";;
+				alpha*|ia64*|powerpc64*|mips64*|sparc64*|sparcv9*|x86_64*) die "this code is not 64bit clean";;
 				*) abort="yes";;
 			esac
 		fi
