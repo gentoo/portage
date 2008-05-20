@@ -6573,7 +6573,7 @@ class vardbapi(dbapi):
 		self._aux_cache_keys = set(
 			["CHOST", "COUNTER", "DEPEND", "DESCRIPTION",
 			"EAPI", "HOMEPAGE", "IUSE", "KEYWORDS",
-			"LICENSE", "PDEPEND", "PROVIDE", "RDEPEND", "NEEDED",
+			"LICENSE", "PDEPEND", "PROVIDE", "RDEPEND",
 			"repository", "RESTRICT" , "SLOT", "USE"])
 		self._aux_cache = None
 		self._aux_cache_version = "1"
@@ -6897,6 +6897,7 @@ class vardbapi(dbapi):
 			raise KeyError(mycpv)
 		mydir_mtime = long(mydir_stat.st_mtime)
 		pkg_data = self._aux_cache["packages"].get(mycpv)
+		pull_me = cache_these.union(wants)
 		mydata = {}
 		cache_valid = False
 		cache_incomplete = False
@@ -6915,23 +6916,15 @@ class vardbapi(dbapi):
 			cache_mtime, metadata = pkg_data
 			cache_valid = cache_mtime == mydir_mtime
 		if cache_valid:
-			cache_incomplete = cache_these.difference(metadata)
-			if cache_incomplete:
-				# Allow self._aux_cache_keys to change without a cache version
-				# bump and efficiently recycle partial cache whenever possible.
-				pull_me = cache_incomplete.union(wants)
-			else:
-				pull_me = set(wants).difference(cache_these)
 			mydata.update(metadata)
-		else:
-			pull_me = cache_these.union(wants)
+			pull_me.difference_update(metadata)
 
 		if pull_me:
 			# pull any needed data and cache it
 			aux_keys = list(pull_me)
 			for k, v in izip(aux_keys, self._aux_get(mycpv, aux_keys)):
 				mydata[k] = v
-			if not cache_valid or cache_incomplete:
+			if not cache_valid or cache_these.difference(metadata):
 				cache_data = {}
 				if cache_valid and metadata:
 					cache_data.update(metadata)
