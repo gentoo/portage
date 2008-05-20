@@ -6902,6 +6902,15 @@ class vardbapi(dbapi):
 		cache_incomplete = False
 		cache_mtime = None
 		metadata = None
+		if pkg_data is not None:
+			if not isinstance(pkg_data, tuple) or len(pkg_data) != 2:
+				pkg_data = None
+			else:
+				cache_mtime, metadata = pkg_data
+				if not isinstance(cache_mtime, (long, int)) or \
+					not isinstance(metadata, dict):
+					pkg_data = None
+
 		if pkg_data:
 			cache_mtime, metadata = pkg_data
 			cache_valid = cache_mtime == mydir_mtime
