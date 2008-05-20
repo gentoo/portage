@@ -6919,7 +6919,6 @@ class vardbapi(dbapi):
 			if cache_incomplete:
 				# Allow self._aux_cache_keys to change without a cache version
 				# bump and efficiently recycle partial cache whenever possible.
-				cache_valid = False
 				pull_me = cache_incomplete.union(wants)
 			else:
 				pull_me = set(wants).difference(cache_these)
