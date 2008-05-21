@@ -137,7 +137,9 @@ class LinkageMap(object):
 		obj_properties = {}
 		lines = []
 		for cpv in self._dbapi.cpv_all():
-			lines += grabfile(self._dbapi.getpath(cpv, filename="NEEDED.ELF.2"))
+			lines += self._dbapi.aux_get(cpv, ["NEEDED.ELF.2"])[0].split('\n')
+		# Cache NEEDED.* files avoid doing excessive IO for every rebuild.
+		self._dbapi.flush_cache()
 		
 		if include_file:
 			lines += grabfile(include_file)
@@ -240,10 +242,23 @@ class LinkageMapMachO(object):
 		obj_properties = {}
 		lines = []
 		for cpv in self._dbapi.cpv_all():
-			lines += grabfile(self._dbapi.getpath(cpv, filename="NEEDED.MACHO.2"))
+			lines += self._dbapi.aux_get(cpv, ["NEEDED.MACHO.2"])[0].split('\n')
+		# Cache NEEDED.* files avoid doing excessive IO for every rebuild.
+		self._dbapi.flush_cache()
 
 		if include_file:
 			lines += grabfile(include_file)
+
+		# have to call otool for preserved libs here as they aren't 
+		# registered in NEEDED.MACHO.2 files
+# TODO: FIXME: ETC.
+#		if self._dbapi.plib_registry and self._dbapi.plib_registry.getPreservedLibs():
+#			args = [EPREFIX+"/usr/bin/scanelf", "-yqF", "%a;%F;%S;%r;%n"]
+#			for items in self._dbapi.plib_registry.getPreservedLibs().values():
+#				args += items
+#			proc = subprocess.Popen(args, stdout=subprocess.PIPE)
+#			output = [l[3:] for l in proc.communicate()[0].split("\n")]
+#			lines += output
 
 		for l in lines:
 			if l.strip() == "":
@@ -322,6 +337,9 @@ class vardbapi(dbapi):
 	_excluded_dirs = [re.escape(x) for x in _excluded_dirs]
 	_excluded_dirs = re.compile(r'^(\..*|-MERGING-.*|' + \
 		"|".join(_excluded_dirs) + r')$')
+
+	_aux_cache_keys_re = re.compile(r'^NEEDED\..*$')
+	_aux_multi_line_re = re.compile(r'^(CONTENTS|NEEDED\..*)$')
 
 	def __init__(self, root, categories=None, settings=None, vartree=None):
 		"""
@@ -659,8 +677,17 @@ class vardbapi(dbapi):
 		unrecognized, the cache will simple be recreated from scratch (it is
 		completely disposable).
 		"""
-		if not self._aux_cache_keys.intersection(wants):
+		cache_these_wants = self._aux_cache_keys.intersection(wants)
+		for x in wants:
+			if self._aux_cache_keys_re.match(x) is not None:
+				cache_these_wants.add(x)
+
+		if not cache_these_wants:
 			return self._aux_get(mycpv, wants)
+
+		cache_these = set(self._aux_cache_keys)
+		cache_these.update(cache_these_wants)
+
 		if self._aux_cache is None:
 			try:
 				f = open(self._aux_cache_filename)
@@ -690,29 +717,33 @@ class vardbapi(dbapi):
 		pkg_data = self._aux_cache["packages"].get(mycpv)
 		mydata = {}
 		cache_valid = False
+		cache_incomplete = False
 		if pkg_data:
 			cache_mtime, metadata = pkg_data
 			cache_valid = cache_mtime == mydir_mtime
 		if cache_valid:
-			cache_incomplete = self._aux_cache_keys.difference(metadata)
+			cache_incomplete = cache_these.difference(metadata)
 			if cache_incomplete:
 				# Allow self._aux_cache_keys to change without a cache version
 				# bump and efficiently recycle partial cache whenever possible.
 				cache_valid = False
 				pull_me = cache_incomplete.union(wants)
 			else:
-				pull_me = set(wants).difference(self._aux_cache_keys)
+				pull_me = set(wants).difference(cache_these)
 			mydata.update(metadata)
 		else:
-			pull_me = self._aux_cache_keys.union(wants)
+			pull_me = cache_these
+
 		if pull_me:
 			# pull any needed data and cache it
 			aux_keys = list(pull_me)
 			for k, v in izip(aux_keys, self._aux_get(mycpv, aux_keys)):
 				mydata[k] = v
-			if not cache_valid:
+			if not cache_valid or cache_incomplete:
 				cache_data = {}
-				for aux_key in self._aux_cache_keys:
+				if cache_incomplete:
+					cache_data.update(metadata)
+				for aux_key in cache_these:
 					cache_data[aux_key] = mydata[aux_key]
 				self._aux_cache["packages"][mycpv] = (mydir_mtime, cache_data)
 				self._aux_cache["modified"] = True
@@ -736,7 +767,10 @@ class vardbapi(dbapi):
 					myd = myf.read()
 				finally:
 					myf.close()
-				myd = " ".join(myd.split())
+				# Preserve \n for metadata that is known to
+				# contain multiple lines.
+				if self._aux_multi_line_re.match(x) is None:
+					myd = " ".join(myd.split())
 			except IOError:
 				myd = ""
 			if x == "EAPI" and not myd:

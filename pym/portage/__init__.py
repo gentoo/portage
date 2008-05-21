@@ -1274,9 +1274,60 @@ class config(object):
 				self.puseforce_list.append(cpdict)
 			del rawpuseforce
 
+			make_conf = getconfig(
+				os.path.join(config_root, MAKE_CONF_FILE.lstrip(os.path.sep)),
+				tolerant=tolerant, allow_sourcing=True)
+
+			# Allow ROOT setting to come from make.conf if it's not overridden
+			# by the constructor argument (from the calling environment).
+			if target_root is None and "ROOT" in make_conf:
+				target_root = make_conf["ROOT"]
+			if target_root is None:
+				target_root = "/"
+
+			# The expand_map is used for variable substitution
+			# in getconfig() calls, and the getconfig() calls
+			# update expand_map with the value of each variable
+			# assignment that occurs. Variable substitution occurs
+			# in the following order:
+			#
+			#   * env.d
+			#   * env
+			#   * make.globals
+			#   * make.defaults
+			#   * make.conf
+			#
+			expand_map = {}
+
+			env_d = getconfig(os.path.join(target_root + EPREFIX_LSTRIP, "etc", "profile.env"),
+				expand=expand_map)
+			# env_d will be None if profile.env doesn't exist.
+			if env_d:
+				self.configdict["env.d"].update(env_d)
+				expand_map.update(env_d)
+
+			# backupenv is used for calculating incremental variables.
+			self.backupenv = os.environ.copy()
+			expand_map.update(self.backupenv)
+
 			# make.globals should not be relative to config_root
 			# because it only contains constants.
-			self.mygcfg   = getconfig(os.path.join(BPREFIX, "etc", "make.globals"))
+			self.mygcfg = getconfig(os.path.join(BPREFIX, "etc", "make.globals"),
+				expand=expand_map)
+
+			if env_d:
+				# Remove duplicate values so they don't override updated
+				# profile.env values later (profile.env is reloaded in each
+				# call to self.regenerate).
+				for k, v in env_d.iteritems():
+					try:
+						if self.backupenv[k] == v:
+							del self.backupenv[k]
+					except KeyError:
+						pass
+				del k, v
+
+			self.configdict["env"] = self.backupenv.copy()
 
 			if self.mygcfg is None:
 				self.mygcfg = {}
@@ -1287,7 +1338,6 @@ class config(object):
 			self.make_defaults_use = []
 			self.mygcfg = {}
 			if self.profiles:
-				expand_map = {}
 				mygcfg_dlists = [getconfig(os.path.join(x, "make.defaults"),
 					expand=expand_map) for x in self.profiles]
 
@@ -1305,7 +1355,7 @@ class config(object):
 
 			self.mygcfg = getconfig(
 				os.path.join(config_root, MAKE_CONF_FILE.lstrip(os.path.sep)),
-				tolerant=tolerant, allow_sourcing=True)
+				tolerant=tolerant, allow_sourcing=True, expand=expand_map)
 			if self.mygcfg is None:
 				self.mygcfg = {}
 
@@ -1314,12 +1364,7 @@ class config(object):
 				"PROFILE_ONLY_VARIABLES", "").split()
 			for k in profile_only_variables:
 				self.mygcfg.pop(k, None)
-			
-			# Allow ROOT setting to come from make.conf if it's not overridden
-			# by the constructor argument (from the calling environment).
-			if target_root is None and "ROOT" in self.mygcfg:
-				target_root = self.mygcfg["ROOT"]
-			
+
 			self.configlist.append(self.mygcfg)
 			self.configdict["conf"]=self.configlist[-1]
 
@@ -1330,8 +1375,6 @@ class config(object):
 			self.configlist.append({})
 			self.configdict["auto"]=self.configlist[-1]
 
-			# backupenv is used for calculating incremental variables.
-			self.backupenv = os.environ.copy()
 			self.configlist.append(self.backupenv) # XXX Why though?
 			self.configdict["backupenv"]=self.configlist[-1]
 
@@ -1339,8 +1382,7 @@ class config(object):
 			for k in profile_only_variables:
 				self.backupenv.pop(k, None)
 
-			self.configlist.append(self.backupenv.copy())
-			self.configdict["env"]=self.configlist[-1]
+			self.configlist.append(self.configdict["env"])
 
 			# make lookuplist for loading package.*
 			self.lookuplist=self.configlist[:]
@@ -1354,32 +1396,11 @@ class config(object):
 					cfg.pop(blacklisted, None)
 			del blacklisted, cfg
 
-			if target_root is None:
-				target_root = "/"
-
 			target_root = normalize_path(os.path.abspath(
 				target_root)).rstrip(os.path.sep) + os.path.sep
 
 			portage.util.ensure_dirs(target_root + EPREFIX_LSTRIP)
 			check_var_directory("ROOT", target_root + EPREFIX_LSTRIP)
-
-			env_d = getconfig(
-				os.path.join(target_root, EPREFIX_LSTRIP, "etc", "profile.env"), expand=False)
-			# env_d will be None if profile.env doesn't exist.
-			if env_d:
-				self.configdict["env.d"].update(env_d)
-				# Remove duplicate values so they don't override updated
-				# profile.env values later (profile.env is reloaded in each
-				# call to self.regenerate).
-				for cfg in (self.configdict["backupenv"],
-					self.configdict["env"]):
-					for k, v in env_d.iteritems():
-						try:
-							if cfg[k] == v:
-								del cfg[k]
-						except KeyError:
-							pass
-				del cfg, k, v
 
 			self["PORTAGE_CONFIGROOT"] = config_root
 			self.backup_changes("PORTAGE_CONFIGROOT")
