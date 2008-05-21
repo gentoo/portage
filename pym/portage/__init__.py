@@ -1285,18 +1285,27 @@ class config(object):
 			if target_root is None:
 				target_root = "/"
 
+			target_root = normalize_path(os.path.abspath(
+				target_root)).rstrip(os.path.sep) + os.path.sep
+
+			portage.util.ensure_dirs(target_root + EPREFIX_LSTRIP)
+			check_var_directory("ROOT", target_root + EPREFIX_LSTRIP)
+
 			# The expand_map is used for variable substitution
 			# in getconfig() calls, and the getconfig() calls
 			# update expand_map with the value of each variable
 			# assignment that occurs. Variable substitution occurs
-			# in the following order:
+			# in the following order, which corresponds to the
+			# order of appearance in self.lookuplist:
 			#
 			#   * env.d
-			#   * env
 			#   * make.globals
 			#   * make.defaults
 			#   * make.conf
 			#
+			# Notably absent is "env", since we want to avoid any
+			# interaction with the calling environment that might
+			# lead to unexpected results.
 			expand_map = {}
 
 			env_d = getconfig(os.path.join(target_root + EPREFIX_LSTRIP, "etc", "profile.env"),
@@ -1308,12 +1317,6 @@ class config(object):
 
 			# backupenv is used for calculating incremental variables.
 			self.backupenv = os.environ.copy()
-			expand_map.update(self.backupenv)
-
-			# make.globals should not be relative to config_root
-			# because it only contains constants.
-			self.mygcfg = getconfig(os.path.join(BPREFIX, "etc", "make.globals"),
-				expand=expand_map)
 
 			if env_d:
 				# Remove duplicate values so they don't override updated
@@ -1328,6 +1331,11 @@ class config(object):
 				del k, v
 
 			self.configdict["env"] = self.backupenv.copy()
+
+			# make.globals should not be relative to config_root
+			# because it only contains constants.
+			self.mygcfg = getconfig(os.path.join(BPREFIX, "etc", "make.globals"),
+				expand=expand_map)
 
 			if self.mygcfg is None:
 				self.mygcfg = {}
@@ -1395,12 +1403,6 @@ class config(object):
 				for cfg in self.lookuplist:
 					cfg.pop(blacklisted, None)
 			del blacklisted, cfg
-
-			target_root = normalize_path(os.path.abspath(
-				target_root)).rstrip(os.path.sep) + os.path.sep
-
-			portage.util.ensure_dirs(target_root + EPREFIX_LSTRIP)
-			check_var_directory("ROOT", target_root + EPREFIX_LSTRIP)
 
 			self["PORTAGE_CONFIGROOT"] = config_root
 			self.backup_changes("PORTAGE_CONFIGROOT")
