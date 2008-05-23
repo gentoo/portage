@@ -1779,7 +1779,9 @@ class dblink(object):
 		# inject files that should be preserved into our image dir
 		import shutil
 		missing_paths = []
-		for x in candidates:
+		candidates_stack = list(candidates)
+		while candidates_stack:
+			x = candidates_stack.pop()
 			# skip existing files so the 'new' libs aren't overwritten
 			if os.path.exists(os.path.join(srcroot, x.lstrip(os.sep))):
 				missing_paths.append(x)
@@ -1802,6 +1804,7 @@ class dblink(object):
 				if linktarget[0] != os.sep:
 					linktarget = os.path.join(os.path.dirname(x), linktarget)
 				candidates.add(linktarget)
+				candidates_stack.append(linktarget)
 			else:
 				shutil.copy2(os.path.join(destroot, x.lstrip(os.sep)),
 					os.path.join(srcroot, x.lstrip(os.sep)))
