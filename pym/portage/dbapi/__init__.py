@@ -4,7 +4,8 @@
 
 import os
 import re
-from portage.dep import dep_getslot, dep_getkey, match_from_list
+from portage.dep import Atom, dep_getslot, dep_getkey, \
+	dep_getusedeps, match_from_list
 from portage.locks import unlockfile
 from portage.output import red
 from portage.util import writemsg
@@ -16,6 +17,8 @@ class dbapi(object):
 	_category_re = re.compile(r'^\w[-.+\w]*$')
 	_pkg_dir_name_re = re.compile(r'^\w[-+\w]*$')
 	_categories = None
+	_iuse_implicit = None
+	_use_mutable = False
 	_known_keys = frozenset(x for x in auxdbkeys
 		if not x.startswith("UNUSED_0"))
 	def __init__(self):
@@ -119,13 +122,48 @@ class dbapi(object):
 			a list of packages that match origdep
 		"""
 		mydep = dep_expand(origdep, mydb=self, settings=self.settings)
-		mykey = dep_getkey(mydep)
-		mylist = match_from_list(mydep, self.cp_list(mykey, use_cache=use_cache))
-		myslot = dep_getslot(mydep)
-		if myslot is not None:
-			mylist = [cpv for cpv in mylist \
-				if self.aux_get(cpv, ["SLOT"])[0] == myslot]
-		return mylist
+		return list(self._iter_match(mydep,
+			self.cp_list(mydep.cp, use_cache=use_cache)))
+
+	def _iter_match(self, atom, cpv_iter):
+		cpv_iter = match_from_list(atom, cpv_iter)
+		if atom.slot:
+			cpv_iter = self._iter_match_slot(atom, cpv_iter)
+		if atom.use:
+			cpv_iter = self._iter_match_use(atom, cpv_iter)
+		return cpv_iter
+
+	def _iter_match_slot(self, atom, cpv_iter):
+		for cpv in cpv_iter:
+			if self.aux_get(cpv, ["SLOT"])[0] == atom.slot:
+				yield cpv
+
+	def _iter_match_use(self, atom, cpv_iter):
+		"""
+		1) Check for required IUSE intersection (need implicit IUSE here).
+		2) Check enabled/disabled flag states.
+		"""
+		if self._iuse_implicit is None:
+			self._iuse_implicit = self.settings._get_implicit_iuse()
+		for cpv in cpv_iter:
+			iuse, use = self.aux_get(cpv, ["IUSE", "USE"])
+			use = use.split()
+			iuse = self._iuse_implicit.union(
+				x.lstrip("+-") for x in iuse.split())
+			iuse_re = re.compile("^(%s)$" % "|".join(iuse))
+			missing_iuse = False
+			for x in atom.use.required:
+				if iuse_re.match(x) is None:
+					missing_iuse = True
+					break
+			if missing_iuse:
+				continue
+			if not self._use_mutable:
+				if atom.use.enabled.difference(use):
+					continue
+				if atom.use.disabled.intersection(use):
+					continue
+			yield cpv
 
 	def invalidentry(self, mypath):
 		if mypath.endswith('portage_lockfile'):

@@ -507,13 +507,8 @@ class vardbapi(dbapi):
 			if self.matchcache.has_key(mycat):
 				del self.mtdircache[mycat]
 				del self.matchcache[mycat]
-			mymatch = match_from_list(mydep,
-				self.cp_list(mykey, use_cache=use_cache))
-			myslot = dep_getslot(mydep)
-			if myslot is not None:
-				mymatch = [cpv for cpv in mymatch \
-					if self.aux_get(cpv, ["SLOT"])[0] == myslot]
-			return mymatch
+			return list(self._iter_match(mydep,
+				self.cp_list(mydep.cp, use_cache=use_cache)))
 		try:
 			curmtime = os.stat(self.root+VDB_PATH+"/"+mycat)[stat.ST_MTIME]
 		except (IOError, OSError):
@@ -524,11 +519,8 @@ class vardbapi(dbapi):
 			self.mtdircache[mycat] = curmtime
 			self.matchcache[mycat] = {}
 		if not self.matchcache[mycat].has_key(mydep):
-			mymatch = match_from_list(mydep, self.cp_list(mykey, use_cache=use_cache))
-			myslot = dep_getslot(mydep)
-			if myslot is not None:
-				mymatch = [cpv for cpv in mymatch \
-					if self.aux_get(cpv, ["SLOT"])[0] == myslot]
+			mymatch = list(self._iter_match(mydep,
+				self.cp_list(mydep.cp, use_cache=use_cache)))
 			self.matchcache[mycat][mydep] = mymatch
 		return self.matchcache[mycat][mydep][:]
 

@@ -2035,53 +2035,13 @@ class config(object):
 
 		# Filter out USE flags that aren't part of IUSE. This has to
 		# be done for every setcpv() call since practically every
-		# package has different IUSE. Some flags are considered to
-		# be implicit members of IUSE:
-		#
-		#  * Flags derived from ARCH
-		#  * Flags derived from USE_EXPAND_HIDDEN variables
-		#  * Masked flags, such as those from {,package}use.mask
-		#  * Forced flags, such as those from {,package}use.force
-		#  * build and bootstrap flags used by bootstrap.sh
-
+		# package has different IUSE.
 		use = set(self["USE"].split())
-		iuse_implicit = set(x.lstrip("+-") for x in iuse.split())
+		iuse_implicit = self._get_implicit_iuse()
+		iuse_implicit.update(x.lstrip("+-") for x in iuse.split())
 
-		# Flags derived from ARCH.
-		arch = self.configdict["defaults"].get("ARCH")
-		if arch:
-			iuse_implicit.add(arch)
-		iuse_implicit.update(self.get("PORTAGE_ARCHLIST", "").split())
-
-		# Flags derived from USE_EXPAND_HIDDEN variables
-		# such as ELIBC, KERNEL, and USERLAND.
-		use_expand_hidden = self.get("USE_EXPAND_HIDDEN", "").split()
-		use_expand_hidden_raw = use_expand_hidden
-		if use_expand_hidden:
-			use_expand_hidden = re.compile("^(%s)_.*" % \
-				("|".join(x.lower() for x in use_expand_hidden)))
-			for x in use:
-				if use_expand_hidden.match(x):
-					iuse_implicit.add(x)
-
-		# Flags that have been masked or forced.
-		iuse_implicit.update(self.usemask)
-		iuse_implicit.update(self.useforce)
-
-		# build and bootstrap flags used by bootstrap.sh
-		iuse_implicit.add("build")
-		iuse_implicit.add("bootstrap")
-
-		if ebuild_phase:
-			iuse_grep = iuse_implicit.copy()
-			if use_expand_hidden_raw:
-				for x in use_expand_hidden_raw:
-					iuse_grep.add(x.lower() + "_.*")
-			if iuse_grep:
-				iuse_grep = "^(%s)$" % "|".join(sorted(iuse_grep))
-			else:
-				iuse_grep = ""
-			self.configdict["pkg"]["PORTAGE_IUSE"] = iuse_grep
+		self.configdict["pkg"]["PORTAGE_IUSE"] = \
+			"^(%s)$" % "|".join(sorted(iuse_implicit))
 
 		ebuild_force_test = self.get("EBUILD_FORCE_TEST") == "1"
 		if ebuild_force_test and ebuild_phase and \
@@ -2174,6 +2134,38 @@ class config(object):
 		self.configdict["pkg"]["PORTAGE_USE"] = " ".join(sorted(
 			x for x in use if \
 			x in iuse_implicit))
+
+	def _get_implicit_iuse(self):
+		"""
+		Some flags are considered to
+		be implicit members of IUSE:
+		  * Flags derived from ARCH
+		  * Flags derived from USE_EXPAND_HIDDEN variables
+		  * Masked flags, such as those from {,package}use.mask
+		  * Forced flags, such as those from {,package}use.force
+		  * build and bootstrap flags used by bootstrap.sh
+		"""
+		iuse_implicit = set()
+		# Flags derived from ARCH.
+		arch = self.configdict["defaults"].get("ARCH")
+		if arch:
+			iuse_implicit.add(arch)
+		iuse_implicit.update(self.get("PORTAGE_ARCHLIST", "").split())
+
+		# Flags derived from USE_EXPAND_HIDDEN variables
+		# such as ELIBC, KERNEL, and USERLAND.
+		use_expand_hidden = self.get("USE_EXPAND_HIDDEN", "").split()
+		for x in use_expand_hidden:
+			iuse_implicit.add(x.lower() + "_.*")
+
+		# Flags that have been masked or forced.
+		iuse_implicit.update(self.usemask)
+		iuse_implicit.update(self.useforce)
+
+		# build and bootstrap flags used by bootstrap.sh
+		iuse_implicit.add("build")
+		iuse_implicit.add("bootstrap")
+		return iuse_implicit
 
 	def getMaskAtom(self, cpv, metadata):
 		"""
@@ -5728,8 +5720,8 @@ def dep_expand(mydep, mydb=None, use_cache=1, settings=None):
 	myindex = orig_dep.index(mydep)
 	prefix = orig_dep[:myindex]
 	postfix = orig_dep[myindex+len(mydep):]
-	return prefix + cpv_expand(
-		mydep, mydb=mydb, use_cache=use_cache, settings=settings) + postfix
+	return portage.dep.Atom(prefix + cpv_expand(
+		mydep, mydb=mydb, use_cache=use_cache, settings=settings) + postfix)
 
 def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 	use_cache=1, use_binaries=0, myroot="/", trees=None):

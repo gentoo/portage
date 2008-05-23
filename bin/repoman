@@ -509,7 +509,7 @@ portdb = trees["/"]["porttree"].dbapi
 portdb.mysettings = repoman_settings
 # We really only need to cache the metadata that's necessary for visibility
 # filtering. Anything else can be discarded to reduce memory consumption.
-for k in ("DEPEND", "IUSE", "LICENCE", "PDEPEND",
+for k in ("DEPEND", "LICENCE", "PDEPEND",
 	"PROVIDE", "RDEPEND", "RESTRICT", "repository"):
 	portdb._aux_cache_keys.discard(k)
 # dep_zapdeps looks at the vardbapi, but it shouldn't for repoman.
@@ -1258,6 +1258,7 @@ for x in scanlist:
 						is_blocker = atom.startswith("!")
 						if is_blocker:
 							atom = token.lstrip("!")
+						atom = portage.dep.Atom(atom)
 						if mytype == "DEPEND" and \
 							not is_blocker and \
 							not inherited_java_eclass and \
@@ -1277,6 +1278,12 @@ for x in scanlist:
 									(relative_path + ": %s slot dependency" + \
 									" not supported with EAPI='%s':" + \
 									" '%s'") % (mytype, eapi, atom))
+						if atom.use and eapi in ("0", "1"):
+							stats['EAPI.incompatible'] += 1
+							fails['EAPI.incompatible'].append(
+								(relative_path + ": %s use dependency" + \
+								" not supported with EAPI='%s':" + \
+								" '%s'") % (mytype, eapi, atom))
 
 			type_list.extend([mytype] * (len(badsyntax) - len(type_list)))
 

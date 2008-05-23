@@ -329,6 +329,37 @@ def dep_opconvert(deplist):
 		x += 1
 	return retlist
 
+class _use_dep(object):
+	def __init__(self, use):
+		enabled_flags = []
+		disabled_flags = []
+		for x in use:
+			if "-" == x[:1]:
+				disabled_flags.append(x[1:])
+			else:
+				enabled_flags.append(x)
+		self.enabled = frozenset(enabled_flags)
+		self.disabled = frozenset(disabled_flags)
+		self.required = self.enabled.union(self.disabled)
+
+class Atom(str):
+
+	def __init__(self, s):
+		str.__init__(self, s)
+		if not isvalidatom(s, allow_blockers=True):
+			raise InvalidAtom(s)
+		self.blocker = "!" == s[:1]
+		if self.blocker:
+			s = s[1:]
+		self.cp = dep_getkey(s)
+		self.cpv = dep_getcpv(s)
+		self.slot = dep_getslot(s)
+		self.operator = get_operator(s)
+		#self.repo = self._get_repo(s)
+		self.use = dep_getusedeps(s)
+		if self.use:
+			self.use = _use_dep(self.use)
+
 def get_operator(mydep):
 	"""
 	Return the operator used in a depstring.
@@ -344,6 +375,9 @@ def get_operator(mydep):
 	@return: The operator. One of:
 		'~', '=', '>', '<', '=*', '>=', or '<='
 	"""
+	operator = getattr(mydep, "operator", None)
+	if operator is not None:
+		return operator
 	if mydep:
 		mydep = remove_slot(mydep)
 	if not mydep:
@@ -380,6 +414,9 @@ def dep_getcpv(mydep):
 	@rtype: String
 	@return: The depstring with the operator removed
 	"""
+	cpv = getattr(mydep, "cpv", None)
+	if cpv is not None:
+		return cpv
 	global _dep_getcpv_cache
 	retval = _dep_getcpv_cache.get(mydep, None)
 	if retval is not None:
@@ -413,15 +450,32 @@ def dep_getslot(mydep):
 	@rtype: String
 	@return: The slot
 	"""
-	colon = mydep.rfind(":")
+	slot = getattr(mydep, "slot", None)
+	if slot is not None:
+		return slot
+	colon = mydep.find(":")
 	if colon != -1:
-		return mydep[colon+1:]
+		bracket = mydep.find("[", colon)
+		if bracket == -1:
+			return mydep[colon+1:]
+		else:
+			return mydep[colon+1:bracket]
 	return None
 
 def remove_slot(mydep):
-	colon = mydep.rfind(":")
+	"""
+	Removes dep components from the right side of an atom:
+		* slot
+		* use
+		* repo
+	"""
+	colon = mydep.find(":")
 	if colon != -1:
 		mydep = mydep[:colon]
+	else:
+		bracket = mydep.find("[")
+		if bracket != -1:
+			mydep = mydep[:bracket]
 	return mydep
 
 def dep_getusedeps( depend ):
@@ -437,6 +491,9 @@ def dep_getusedeps( depend ):
 	@rtype: List
 	@return: List of use flags ( or [] if no flags exist )
 	"""
+	use = getattr(depend, "use", None)
+	if use is not None:
+		return use
 	use_list = []
 	open_bracket = depend.find('[')
 	# -1 = failure (think c++ string::npos)
@@ -452,7 +509,7 @@ def dep_getusedeps( depend ):
 			raise InvalidAtom("USE Dependency with no use flag ([]): %s" % depend )
 		# Find next use flag
 		open_bracket = depend.find( '[', open_bracket+1 )
-	return use_list
+	return tuple(use_list)
 
 _invalid_atom_chars_regexp = re.compile("[()|?@]")
 
@@ -473,6 +530,10 @@ def isvalidatom(atom, allow_blockers=False):
 		1) 0 if the atom is invalid
 		2) 1 if the atom is valid
 	"""
+	if isinstance(atom, Atom):
+		if atom.blocker and not allow_blockers:
+			return 0
+		return 1
 	global _invalid_atom_chars_regexp
 	if _invalid_atom_chars_regexp.search(atom):
 		return 0
@@ -571,6 +632,9 @@ def dep_getkey(mydep):
 	@rtype: String
 	@return: The package category/package-version
 	"""
+	cp = getattr(mydep, "cp", None)
+	if cp is not None:
+		return cp
 	mydep = dep_getcpv(mydep)
 	if mydep and isspecific(mydep):
 		mysplit = catpkgsplit(mydep)
@@ -646,8 +710,10 @@ def match_from_list(mydep, candidate_list):
 	"""
 
 	from portage.util import writemsg
-	if mydep[0] == "!":
+	if "!" == mydep[:1]:
 		mydep = mydep[1:]
+	if not isinstance(mydep, Atom):
+		mydep = Atom(mydep)
 
 	mycpv     = dep_getcpv(mydep)
 	mycpv_cps = catpkgsplit(mycpv) # Can be None if not specific
