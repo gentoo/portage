@@ -202,7 +202,7 @@ def cacheddir(my_original_path, ignorecvs, ignorelist, EmptyOnError, followSymli
 	try:
 		pathstat = os.stat(mypath)
 		if stat.S_ISDIR(pathstat[stat.ST_MODE]):
-			mtime = pathstat[stat.ST_MTIME]
+			mtime = pathstat.st_mtime
 		else:
 			raise portage.exception.DirectoryNotFound(mypath)
 	except EnvironmentError, e:
