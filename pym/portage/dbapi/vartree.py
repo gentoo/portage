@@ -136,7 +136,7 @@ class LinkageMap(object):
 		libs = {}
 		obj_properties = {}
 		lines = []
-		for cpv in self._dbapi.cpv_all():
+		for cpv in self._dbapi.cpv_all(use_cache=0):
 			lines += self._dbapi.aux_get(cpv, ["NEEDED.ELF.2"])[0].split('\n')
 		# Cache NEEDED.* files avoid doing excessive IO for every rebuild.
 		self._dbapi.flush_cache()
@@ -455,8 +455,25 @@ class vardbapi(dbapi):
 		return returnme
 
 	def cpv_all(self, use_cache=1):
+		"""
+		Set use_cache=0 to bypass the portage.cachedir() cache in cases
+		when the accuracy of mtime staleness checks should not be trusted
+		(generally this is only necessary in critical sections that
+		involve merge or unmerge of packages).
+		"""
 		returnme = []
 		basepath = os.path.join(self.root, VDB_PATH) + os.path.sep
+
+		if use_cache:
+			from portage import listdir
+		else:
+			def listdir(p, **kwargs):
+				try:
+					return [x for x in os.listdir(p) \
+						if os.path.isdir(os.path.join(p, x))]
+				except EnvironmentError:
+					return []
+
 		for x in listdir(basepath, EmptyOnError=1, ignorecvs=1, dirsonly=1):
 			if self._excluded_dirs.match(x) is not None:
 				continue

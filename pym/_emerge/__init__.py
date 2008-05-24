@@ -998,7 +998,7 @@ class FakeVartree(portage.vartree):
 				vdb_lock = portage.locks.lockdir(vdb_path)
 			real_dbapi = real_vartree.dbapi
 			slot_counters = {}
-			for cpv in real_dbapi.cpv_all():
+			for cpv in real_dbapi.cpv_all(use_cache=0):
 				cache_key = ("installed", self.root, cpv, "nomerge")
 				pkg = self._pkg_cache.get(cache_key)
 				if pkg is not None:
