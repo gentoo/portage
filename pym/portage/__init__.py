@@ -5720,8 +5720,15 @@ def dep_expand(mydep, mydb=None, use_cache=1, settings=None):
 	myindex = orig_dep.index(mydep)
 	prefix = orig_dep[:myindex]
 	postfix = orig_dep[myindex+len(mydep):]
-	return portage.dep.Atom(prefix + cpv_expand(
-		mydep, mydb=mydb, use_cache=use_cache, settings=settings) + postfix)
+	expanded = cpv_expand(mydep, mydb=mydb,
+		use_cache=use_cache, settings=settings)
+	try:
+		return portage.dep.Atom(prefix + expanded + postfix)
+	except portage.exception.InvalidAtom:
+		# Missing '=' prefix is allowed for backward compatibility.
+		if not isvalidatom("=" + prefix + expanded + postfix):
+			raise
+		return portage.dep.Atom("=" + prefix + expanded + postfix)
 
 def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 	use_cache=1, use_binaries=0, myroot="/", trees=None):
