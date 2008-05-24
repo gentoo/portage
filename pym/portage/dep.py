@@ -345,6 +345,7 @@ class _use_dep(object):
 				disabled_flags.append(x[1:])
 			else:
 				enabled_flags.append(x)
+		self.tokens = use
 		self.enabled = frozenset(enabled_flags)
 		self.disabled = frozenset(disabled_flags)
 		self.required = self.enabled.union(self.disabled)
@@ -499,8 +500,8 @@ def dep_getusedeps( depend ):
 	@return: List of use flags ( or [] if no flags exist )
 	"""
 	use = getattr(depend, "use", None)
-	if use is not None:
-		return use
+	if use is not None and hasattr(use, "tokens"):
+		return use.tokens
 	use_list = []
 	open_bracket = depend.find('[')
 	# -1 = failure (think c++ string::npos)
