@@ -3044,7 +3044,8 @@ class depgraph(object):
 		# List of acceptable packages, ordered by type preference.
 		matched_packages = []
 		highest_version = None
-		atom_cp = portage.dep_getkey(atom)
+		atom = portage_dep.Atom(atom)
+		atom_cp = atom.cp
 		existing_node = None
 		myeb = None
 		usepkgonly = "--usepkgonly" in self.myopts

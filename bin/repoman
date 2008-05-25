@@ -1709,6 +1709,7 @@ for x in scanlist:
 						is_blocker = atom.startswith("!")
 						if is_blocker:
 							atom = token.lstrip("!")
+						atom = portage_dep.Atom(atom)
 						if mytype == "DEPEND" and \
 							not is_blocker and \
 							not inherited_java_eclass and \

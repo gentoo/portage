@@ -5725,8 +5725,15 @@ def dep_expand(mydep, mydb=None, use_cache=1, settings=None):
 	myindex = orig_dep.index(mydep)
 	prefix = orig_dep[:myindex]
 	postfix = orig_dep[myindex+len(mydep):]
-	return prefix + cpv_expand(
-		mydep, mydb=mydb, use_cache=use_cache, settings=settings) + postfix
+	expanded = cpv_expand(mydep, mydb=mydb,
+		use_cache=use_cache, settings=settings)
+	try:
+		return portage_dep.Atom(prefix + expanded + postfix)
+	except portage.exception.InvalidAtom:
+		# Missing '=' prefix is allowed for backward compatibility.
+		if not isvalidatom("=" + prefix + expanded + postfix):
+			raise
+		return portage_dep.Atom("=" + prefix + expanded + postfix)
 
 def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 	use_cache=1, use_binaries=0, myroot="/", trees=None):
@@ -6288,15 +6295,29 @@ class dbapi(object):
 		'return: ["0",">=sys-libs/bar-1.0","http://www.foo.com"] or [] if mycpv not found'
 		raise NotImplementedError
 
-	def match(self,origdep,use_cache=1):
+	def match(self, origdep, use_cache=1):
+		"""Given a dependency, try to find packages that match
+		Args:
+			origdep - Depend atom
+			use_cache - Boolean indicating if we should use the cache or not
+			NOTE: Do we ever not want the cache?
+		Returns:
+			a list of packages that match origdep
+		"""
 		mydep = dep_expand(origdep, mydb=self, settings=self.settings)
-		mykey=dep_getkey(mydep)
-		mylist = match_from_list(mydep,self.cp_list(mykey,use_cache=use_cache))
-		myslot = portage_dep.dep_getslot(mydep)
-		if myslot is not None:
-			mylist = [cpv for cpv in mylist \
-				if self.aux_get(cpv, ["SLOT"])[0] == myslot]
-		return mylist
+		return list(self._iter_match(mydep,
+			self.cp_list(mydep.cp, use_cache=use_cache)))
+
+	def _iter_match(self, atom, cpv_iter):
+		cpv_iter = match_from_list(atom, cpv_iter)
+		if atom.slot:
+			cpv_iter = self._iter_match_slot(atom, cpv_iter)
+		return cpv_iter
+
+	def _iter_match_slot(self, atom, cpv_iter):
+		for cpv in cpv_iter:
+			if self.aux_get(cpv, ["SLOT"])[0] == atom.slot:
+				yield cpv
 
 	def match2(self,mydep,mykey,mylist):
 		writemsg("DEPRECATED: dbapi.match2\n")
@@ -6795,13 +6816,8 @@ class vardbapi(dbapi):
 			if self.matchcache.has_key(mycat):
 				del self.mtdircache[mycat]
 				del self.matchcache[mycat]
-			mymatch = match_from_list(mydep,
-				self.cp_list(mykey, use_cache=use_cache))
-			myslot = portage_dep.dep_getslot(mydep)
-			if myslot is not None:
-				mymatch = [cpv for cpv in mymatch \
-					if self.aux_get(cpv, ["SLOT"])[0] == myslot]
-			return mymatch
+			return list(self._iter_match(mydep,
+				self.cp_list(mydep.cp, use_cache=use_cache)))
 		try:
 			curmtime=os.stat(self.root+VDB_PATH+"/"+mycat)[stat.ST_MTIME]
 		except (IOError, OSError):
@@ -6812,11 +6828,8 @@ class vardbapi(dbapi):
 			self.mtdircache[mycat]=curmtime
 			self.matchcache[mycat]={}
 		if not self.matchcache[mycat].has_key(mydep):
-			mymatch=match_from_list(mydep,self.cp_list(mykey,use_cache=use_cache))
-			myslot = portage_dep.dep_getslot(mydep)
-			if myslot is not None:
-				mymatch = [cpv for cpv in mymatch \
-					if self.aux_get(cpv, ["SLOT"])[0] == myslot]
+			mymatch = list(self._iter_match(mydep,
+				self.cp_list(mydep.cp, use_cache=use_cache)))
 			self.matchcache[mycat][mydep]=mymatch
 		return self.matchcache[mycat][mydep][:]
 
@@ -7819,22 +7832,14 @@ class portdbapi(dbapi):
 			# Find the minimum matching version. This is optimized to
 			# minimize the number of metadata accesses (improves performance
 			# especially in cases where metadata needs to be generated).
-			if mydep == mykey:
-				mylist = self.cp_list(mykey)
-			else:
-				mylist = match_from_list(mydep, self.cp_list(mykey))
+			cpv_iter = iter(self.cp_list(mykey))
+			if mydep != mykey:
+				cpv_iter = self._iter_match(mydep, cpv_iter)
 			myval = ""
-			if mylist:
-				if myslot is None:
-					myval = mylist[0]
-				else:
-					for cpv in mylist:
-						try:
-							if self.aux_get(cpv, ["SLOT"])[0] == myslot:
-								myval = cpv
-								break
-						except KeyError:
-							pass # ebuild masked by corruption
+			for cpv in cpv_iter:
+				myval = cpv
+				break
+
 		elif level in ("minimum-visible", "bestmatch-visible"):
 			# Find the minimum matching visible version. This is optimized to
 			# minimize the number of metadata accesses (improves performance
@@ -7870,24 +7875,27 @@ class portdbapi(dbapi):
 					continue
 				myval = cpv
 				break
-		elif level=="bestmatch-list":
+		elif level == "bestmatch-list":
 			#dep match -- find best match but restrict search to sublist
-			myval=best(match_from_list(mydep,mylist))
-			#no point is calling xmatch again since we're not caching list deps
-		elif level=="match-list":
+			#no point in calling xmatch again since we're not caching list deps
+
+			myval = best(list(self._iter_match(mydep, mylist)))
+		elif level == "match-list":
 			#dep match -- find all matches but restrict search to sublist (used in 2nd half of visible())
-			myval=match_from_list(mydep,mylist)
-		elif level=="match-visible":
+
+			myval = list(self._iter_match(mydep, mylist))
+		elif level == "match-visible":
 			#dep match -- find all visible matches
-			myval = match_from_list(mydep,
-				self.xmatch("list-visible", mykey, mydep=mykey, mykey=mykey))
 			#get all visible packages, then get the matching ones
-		elif level=="match-all":
+
+			myval = list(self._iter_match(mydep,
+				self.xmatch("list-visible", mykey, mydep=mykey, mykey=mykey)))
+		elif level == "match-all":
 			#match *all* visible *and* masked packages
 			if mydep == mykey:
 				myval = self.cp_list(mykey)
 			else:
-				myval = match_from_list(mydep, self.cp_list(mykey))
+				myval = list(self._iter_match(mydep, self.cp_list(mykey)))
 		else:
 			print "ERROR: xmatch doesn't handle",level,"query!"
 			raise KeyError
