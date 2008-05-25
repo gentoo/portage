@@ -605,6 +605,9 @@ def match_from_list(mydep, candidate_list):
 	@return: A list of package atoms that match the given package atom
 	"""
 
+	if not candidate_list:
+		return []
+
 	from portage_util import writemsg
 	if "!" == mydep[:1]:
 		mydep = mydep[1:]
@@ -637,13 +640,21 @@ def match_from_list(mydep, candidate_list):
 
 	if operator is None:
 		for x in candidate_list:
-			if dep_getkey(x) != mycpv:
+			cp = getattr(x, "cp", None)
+			if cp is None:
+				cp = dep_getkey(x)
+			if cp != mycpv:
 				continue
 			mylist.append(x)
 
 	elif operator == "=": # Exact match
-		mylist = [cpv for cpv in candidate_list if \
-			cpvequal(remove_slot(cpv), mycpv)]
+		for x in candidate_list:
+			xcpv = getattr(x, "cpv", None)
+			if xcpv is None:
+				xcpv = dep_getcpv(x)
+			if not cpvequal(xcpv, mycpv):
+				continue
+			mylist.append(x)
 
 	elif operator == "=*": # glob match
 		# XXX: Nasty special casing for leading zeros
@@ -655,7 +666,9 @@ def match_from_list(mydep, candidate_list):
 			myver = "0"+myver
 		mycpv = mysplit[0]+"/"+mysplit[1]+"-"+myver
 		for x in candidate_list:
-			xs = catpkgsplit(remove_slot(x))
+			xs = getattr(x, "cpv_split", None)
+			if xs is None:
+				xs = catpkgsplit(remove_slot(x))
 			myver = xs[2].lstrip("0")
 			if not myver or not myver[0].isdigit():
 				myver = "0"+myver
@@ -665,7 +678,9 @@ def match_from_list(mydep, candidate_list):
 
 	elif operator == "~": # version, any revision, match
 		for x in candidate_list:
-			xs = catpkgsplit(remove_slot(x))
+			xs = getattr(x, "cpv_split", None)
+			if xs is None:
+				xs = catpkgsplit(remove_slot(x))
 			if xs is None:
 				raise InvalidData(x)
 			if not cpvequal(xs[0]+"/"+xs[1]+"-"+xs[2], mycpv_cps[0]+"/"+mycpv_cps[1]+"-"+mycpv_cps[2]):
@@ -677,8 +692,13 @@ def match_from_list(mydep, candidate_list):
 	elif operator in [">", ">=", "<", "<="]:
 		mysplit = ["%s/%s" % (cat, pkg), ver, rev]
 		for x in candidate_list:
+			xs = getattr(x, "cpv_split", None)
+			if xs is None:
+				xs = catpkgsplit(remove_slot(x))
+			xcat, xpkg, xver, xrev = xs
+			xs = ["%s/%s" % (xcat, xpkg), xver, xrev]
 			try:
-				result = pkgcmp(pkgsplit(remove_slot(x)), mysplit)
+				result = pkgcmp(xs, mysplit)
 			except ValueError: # pkgcmp may return ValueError during int() conversion
 				writemsg("\nInvalid package name: %s\n" % x, noiselevel=-1)
 				raise
@@ -705,7 +725,9 @@ def match_from_list(mydep, candidate_list):
 		candidate_list = mylist
 		mylist = []
 		for x in candidate_list:
-			xslot = dep_getslot(x)
+			xslot = getattr(x, "slot", None)
+			if xslot is None and isinstance(x, basestring):
+				xslot = dep_getslot(x)
 			if xslot is not None and xslot != slot:
 				continue
 			mylist.append(x)

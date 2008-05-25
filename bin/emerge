@@ -819,7 +819,7 @@ class InternalPackageSet(object):
 		atoms = list(self.iterAtomsForPackage(pkg))
 		if not atoms:
 			return None
-		return portage.best_match_to_list(pkg.cpv_slot, atoms)
+		return portage.best_match_to_list(pkg, atoms)
 
 	def iterAtomsForPackage(self, pkg):
 		"""
@@ -827,7 +827,7 @@ class InternalPackageSet(object):
 		arguments against the PROVIDE metadata.  This will raise an
 		InvalidDependString exception if PROVIDE is invalid.
 		"""
-		cpv_slot_list = ["%s:%s" % (pkg.cpv, pkg.metadata["SLOT"])]
+		cpv_slot_list = [pkg]
 		cp = portage.cpv_getkey(pkg.cpv)
 		atoms = self._atoms.get(cp)
 		if atoms:
@@ -1402,7 +1402,8 @@ class Package(Task):
 	__slots__ = ("built", "cpv", "depth",
 		"installed", "metadata", "onlydeps", "operation",
 		"root", "type_name",
-		"category", "cp", "cpv_slot", "pf", "pv_split", "slot_atom")
+		"category", "cp", "cpv_split",
+		"pf", "pv_split", "slot", "slot_atom", "use")
 
 	metadata_keys = [
 		"CHOST", "COUNTER", "DEPEND", "EAPI", "IUSE", "KEYWORDS",
@@ -1411,11 +1412,33 @@ class Package(Task):
 
 	def __init__(self, **kwargs):
 		Task.__init__(self, **kwargs)
+		self.metadata = self._metadata_wrapper(self, self.metadata)
 		self.cp = portage.cpv_getkey(self.cpv)
-		self.slot_atom = "%s:%s" % (self.cp, self.metadata["SLOT"])
-		self.cpv_slot = "%s:%s" % (self.cpv, self.metadata["SLOT"])
+		self.slot_atom = portage_dep.Atom("%s:%s" % (self.cp, self.slot))
 		self.category, self.pf = portage.catsplit(self.cpv)
-		self.pv_split = portage.catpkgsplit(self.cpv)[1:]
+		self.cpv_split = portage.catpkgsplit(self.cpv)
+		self.pv_split = self.cpv_split[1:]
+
+	class _use(object):
+		def __init__(self, use):
+			self.enabled = frozenset(use)
+
+	class _metadata_wrapper(dict):
+		"""
+		Detect metadata updates and synchronize Package attributes.
+		"""
+		def __init__(self, pkg, metadata):
+			dict.__init__(self)
+			self._pkg = pkg
+			for k, v in metadata.iteritems():
+				self[k] = v
+
+		def __setitem__(self, k, v):
+			dict.__setitem__(self, k, v)
+			if k == "USE":
+				self._pkg.use = self._pkg._use(v.split())
+			elif k == "SLOT":
+				self._pkg.slot = v
 
 	def _get_hash_key(self):
 		hash_key = getattr(self, "_hash_key", None)
@@ -3127,18 +3150,7 @@ class depgraph(object):
 							installed=installed, metadata=metadata,
 							onlydeps=onlydeps, root=root, type_name=pkg_type)
 						self._pkg_cache[pkg] = pkg
-					myarg = None
-					if root == self.target_root:
-						try:
-							myarg = self._iter_atoms_for_pkg(pkg).next()
-						except StopIteration:
-							pass
-						except portage_exception.InvalidDependString:
-							if not installed:
-								# masked by corruption
-								continue
-					if not installed and myarg:
-						found_available_arg = True
+
 					if not installed or (installed and matched_packages):
 						# Only enforce visibility on installed packages
 						# if there is at least one other visible package
@@ -3177,6 +3189,22 @@ class depgraph(object):
 						# it's expensive.
 						pkgsettings.setcpv(cpv, mydb=pkg.metadata)
 						pkg.metadata["USE"] = pkgsettings["PORTAGE_USE"]
+
+					myarg = None
+					if root == self.target_root:
+						try:
+							# Ebuild USE must have been calculated prior
+							# to this point, in case atoms have USE deps.
+							myarg = self._iter_atoms_for_pkg(pkg).next()
+						except StopIteration:
+							pass
+						except portage_exception.InvalidDependString:
+							if not installed:
+								# masked by corruption
+								continue
+					if not installed and myarg:
+						found_available_arg = True
+
 					if pkg.cp == atom_cp:
 						if highest_version is None:
 							highest_version = pkg
@@ -3191,9 +3219,7 @@ class depgraph(object):
 						e_pkg = self._slot_pkg_map[root].get(pkg.slot_atom)
 						if not e_pkg:
 							break
-						cpv_slot = "%s:%s" % \
-							(e_pkg.cpv, e_pkg.metadata["SLOT"])
-						if portage_dep.match_from_list(atom, [cpv_slot]):
+						if portage_dep.match_from_list(atom, [e_pkg]):
 							if highest_version and \
 								e_pkg.cp == atom_cp and \
 								e_pkg < highest_version and \
