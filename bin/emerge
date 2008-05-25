@@ -810,32 +810,16 @@ class InternalPackageSet(object):
 		if cp in self._atoms and atom in self._atoms[cp]:
 			return True
 		return False
-	def findAtomForPackage(self, cpv, metadata):
+
+	def findAtomForPackage(self, pkg):
 		"""Return the best match for a given package from the arguments, or
 		None if there are no matches.  This matches virtual arguments against
 		the PROVIDE metadata.  This can raise an InvalidDependString exception
 		if an error occurs while parsing PROVIDE."""
-		cpv_slot = "%s:%s" % (cpv, metadata["SLOT"])
-		cp = portage.dep_getkey(cpv)
-		atoms = self._atoms.get(cp)
-		if atoms:
-			best_match = portage.best_match_to_list(cpv_slot, atoms)
-			if best_match:
-				return best_match
-		if not metadata["PROVIDE"]:
+		atoms = list(self.iterAtomsForPackage(pkg))
+		if not atoms:
 			return None
-		provides = portage.flatten(portage_dep.use_reduce(
-			portage_dep.paren_reduce(metadata["PROVIDE"]),
-			uselist=metadata["USE"].split()))
-		for provide in provides:
-			provided_cp = portage.dep_getkey(provide)
-			atoms = self._atoms.get(provided_cp)
-			if atoms:
-				transformed_atoms = [atom.replace(provided_cp, cp) for atom in atoms]
-				best_match = portage.best_match_to_list(cpv_slot, transformed_atoms)
-				if best_match:
-					return atoms[transformed_atoms.index(best_match)]
-		return None
+		return portage.best_match_to_list(pkg.cpv_slot, atoms)
 
 	def iterAtomsForPackage(self, pkg):
 		"""
@@ -914,7 +898,8 @@ def create_world_atom(pkg_key, metadata, args_set, root_config):
 	in world since system atoms can only match one slot while world atoms can
 	be greedy with respect to slots.  Unslotted system packages will not be
 	stored in world."""
-	arg_atom = args_set.findAtomForPackage(pkg_key, metadata)
+	pkg = Package(cpv=pkg_key, metadata=metadata)
+	arg_atom = args_set.findAtomForPackage(pkg)
 	if not arg_atom:
 		return None
 	cp = portage.dep_getkey(arg_atom)
@@ -970,13 +955,13 @@ def create_world_atom(pkg_key, metadata, args_set, root_config):
 			if len(matched_slots) == 1:
 				new_world_atom = slot_atom
 
-	if new_world_atom == sets["world"].findAtomForPackage(pkg_key, metadata):
+	if new_world_atom == sets["world"].findAtomForPackage(pkg):
 		# Both atoms would be identical, so there's nothing to add.
 		return None
 	if not slotted:
 		# Unlike world atoms, system atoms are not greedy for slots, so they
 		# can't be safely excluded from world if they are slotted.
-		system_atom = sets["system"].findAtomForPackage(pkg_key, metadata)
+		system_atom = sets["system"].findAtomForPackage(pkg)
 		if system_atom:
 			if not portage.dep_getkey(system_atom).startswith("virtual/"):
 				return None
@@ -4896,11 +4881,11 @@ class depgraph(object):
 				pkg_system = False
 				pkg_world = False
 				try:
-					pkg_system = system_set.findAtomForPackage(pkg_key, metadata)
-					pkg_world  = world_set.findAtomForPackage(pkg_key, metadata)
+					pkg_system = system_set.findAtomForPackage(pkg)
+					pkg_world  = world_set.findAtomForPackage(pkg)
 					if not (oneshot or pkg_world) and \
 						myroot == self.target_root and \
-						favorites_set.findAtomForPackage(pkg_key, metadata):
+						favorites_set.findAtomForPackage(pkg):
 						# Maybe it will be added to world now.
 						if create_world_atom(pkg_key, metadata,
 							favorites_set, root_config):
@@ -5951,7 +5936,7 @@ class MergeTask(object):
 			#buildsyspkg: Check if we need to _force_ binary package creation
 			issyspkg = ("buildsyspkg" in myfeat) \
 					and x[0] != "blocks" \
-					and system_set.findAtomForPackage(pkg_key, metadata) \
+					and system_set.findAtomForPackage(pkg) \
 					and "--buildpkg" not in self.myopts
 			if x[0] in ["ebuild","blocks"]:
 				if x[0] == "blocks" and "--fetchonly" not in self.myopts:
@@ -6151,7 +6136,7 @@ class MergeTask(object):
 				#need to check for errors
 			if not buildpkgonly:
 				if not (fetchonly or oneshot or pretend) and \
-					args_set.findAtomForPackage(pkg_key, metadata):
+					args_set.findAtomForPackage(pkg):
 					world_set.lock()
 					world_set.load()
 					myfavkey = create_world_atom(pkg_key, metadata,
@@ -7829,11 +7814,10 @@ def action_depclean(settings, trees, ldpath_mtimes,
 			# to remove those.
 			filtered_pkgs = []
 			for pkg in pkgs:
-				metadata = dict(izip(metadata_keys,
-					vardb.aux_get(pkg, metadata_keys)))
 				arg_atom = None
 				try:
-					arg_atom = args_set.findAtomForPackage(pkg, metadata)
+					arg_atom = args_set.findAtomForPackage(
+						pkg_cache[("installed", myroot, pkg, "nomerge")])
 				except portage_exception.InvalidDependString, e:
 					file_path = os.path.join(myroot, portage.VDB_PATH, pkg, "PROVIDE")
 					portage.writemsg("\n\nInvalid PROVIDE: %s\n" % str(e),
@@ -7941,11 +7925,10 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	if action == "depclean":
 		if myfiles:
 			for pkg in vardb.cpv_all():
-				metadata = dict(izip(metadata_keys,
-					vardb.aux_get(pkg, metadata_keys)))
 				arg_atom = None
 				try:
-					arg_atom = args_set.findAtomForPackage(pkg, metadata)
+					arg_atom = args_set.findAtomForPackage(
+						pkg_cache[("installed", myroot, pkg, "nomerge")])
 				except portage_exception.InvalidDependString:
 					# this error has already been displayed by now
 					continue
