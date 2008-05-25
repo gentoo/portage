@@ -5451,6 +5451,7 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 	if kwargs["use_binaries"]:
 		portdb = trees[myroot]["bintree"].dbapi
 	myvirtuals = mysettings.getvirtuals()
+	myuse = kwargs["myuse"]
 	for x in mysplit:
 		if x == "||":
 			newsplit.append(x)
@@ -5459,10 +5460,23 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			newsplit.append(_expand_new_virtuals(x, edebug, mydbapi,
 				mysettings, myroot=myroot, trees=trees, **kwargs))
 			continue
-		if portage.dep._dep_check_strict and \
-			not isvalidatom(x, allow_blockers=True):
-			raise portage.exception.ParseError(
-				"invalid atom: '%s'" % x)
+
+		if not isinstance(x, portage.dep.Atom):
+			try:
+				x = portage.dep.Atom(x)
+			except portage.exception.InvalidAtom:
+				if portage.dep._dep_check_strict:
+					raise portage.exception.ParseError(
+						"invalid atom: '%s'" % x)
+
+		if isinstance(x, portage.dep.Atom) and x.use:
+			if x.use.conditional:
+				evaluated_atom = portage.dep.remove_slot(x)
+				if x.slot:
+					evaluated_atom += ":%s" % x.slot
+				evaluated_atom += str(x.use.evaluate_conditionals(myuse))
+				x = portage.dep.Atom(evaluated_atom)
+
 		mykey = dep_getkey(x)
 		if not mykey.startswith("virtual/"):
 			newsplit.append(x)
@@ -5768,8 +5782,15 @@ def dep_expand(mydep, mydb=None, use_cache=1, settings=None):
 	myindex = orig_dep.index(mydep)
 	prefix = orig_dep[:myindex]
 	postfix = orig_dep[myindex+len(mydep):]
-	return portage.dep.Atom(prefix + cpv_expand(
-		mydep, mydb=mydb, use_cache=use_cache, settings=settings) + postfix)
+	expanded = cpv_expand(mydep, mydb=mydb,
+		use_cache=use_cache, settings=settings)
+	try:
+		return portage.dep.Atom(prefix + expanded + postfix)
+	except portage.exception.InvalidAtom:
+		# Missing '=' prefix is allowed for backward compatibility.
+		if not isvalidatom("=" + prefix + expanded + postfix):
+			raise
+		return portage.dep.Atom("=" + prefix + expanded + postfix)
 
 def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 	use_cache=1, use_binaries=0, myroot="/", trees=None):

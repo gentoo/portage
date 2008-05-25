@@ -24,7 +24,7 @@ class DepGetUseDeps(TestCase):
 							cpv += version
 						if slot:
 							cpv += ":" + slot
-						if isinstance( use, list ):
+						if isinstance(use, tuple):
 							for u in use:
 								cpv = cpv + "[" + u + "]"
 							self.assertEqual( dep_getusedeps(
@@ -32,7 +32,7 @@ class DepGetUseDeps(TestCase):
 						else:
 							if len(use):
 								self.assertEqual( dep_getusedeps(
-									cpv + "[" + use + "]" ), [use] )
+									cpv + "[" + use + "]" ), (use,) )
 							else:
 								self.assertEqual( dep_getusedeps(
-									cpv + "[" + use + "]" ), [] )
+									cpv + "[" + use + "]" ), () )
