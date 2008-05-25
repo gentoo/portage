@@ -1268,7 +1268,8 @@ class Package(Task):
 	__slots__ = ("built", "cpv", "depth",
 		"installed", "metadata", "onlydeps", "operation",
 		"root", "type_name",
-		"category", "cp", "cpv_slot", "pf", "pv_split", "slot_atom")
+		"category", "cp", "cpv_slot", "cpv_split",
+		"pf", "pv_split", "slot", "slot_atom", "use")
 
 	metadata_keys = [
 		"CHOST", "COUNTER", "DEPEND", "EAPI", "IUSE", "KEYWORDS",
@@ -1277,11 +1278,43 @@ class Package(Task):
 
 	def __init__(self, **kwargs):
 		Task.__init__(self, **kwargs)
+		self.metadata = self._metadata_wrapper(self, self.metadata)
 		self.cp = portage.cpv_getkey(self.cpv)
-		self.slot_atom = "%s:%s" % (self.cp, self.metadata["SLOT"])
-		self.cpv_slot = "%s:%s" % (self.cpv, self.metadata["SLOT"])
+		self.slot = self.metadata["SLOT"]
+		self.slot_atom = portage.dep.Atom("%s:%s" % \
+			(self.cp, self.metadata["SLOT"]))
+
+		# This used to be "%s:%s" % (self.cpv, self.slot) but now
+		# is's just a reference to self since match_from_list()
+		# now supports Package references.
+		self.cpv_slot = self
+
 		self.category, self.pf = portage.catsplit(self.cpv)
-		self.pv_split = portage.catpkgsplit(self.cpv)[1:]
+		self.cpv_split = portage.catpkgsplit(self.cpv)
+		self.pv_split = self.cpv_split[1:]
+		self.use = self._use(self.metadata["USE"].split())
+
+	class _use(object):
+		def __init__(self, use):
+			self.enabled = frozenset(use)
+
+	class _metadata_wrapper(dict):
+		"""
+		Detect metadata updates and synchronize Package attributes.
+		"""
+		def __init__(self, pkg, metadata):
+			dict.__init__(self, metadata.iteritems())
+			self._pkg = pkg
+
+		def __setitem__(self, k, v):
+			dict.__setitem__(self, k, v)
+			if k == "USE":
+				self._pkg.use = self._pkg._use(v.split())
+
+	def _metadata_setitem(self, k, v):
+		self._metadata_setitem_orig(k, v)
+		if k == "USE":
+			self.use = self._use(self)
 
 	def _get_hash_key(self):
 		hash_key = getattr(self, "_hash_key", None)
@@ -3035,18 +3068,7 @@ class depgraph(object):
 							installed=installed, metadata=metadata,
 							onlydeps=onlydeps, root=root, type_name=pkg_type)
 						self._pkg_cache[pkg] = pkg
-					myarg = None
-					if root == self.target_root:
-						try:
-							myarg = self._iter_atoms_for_pkg(pkg).next()
-						except StopIteration:
-							pass
-						except portage.exception.InvalidDependString:
-							if not installed:
-								# masked by corruption
-								continue
-					if not installed and myarg:
-						found_available_arg = True
+
 					if not installed or (installed and matched_packages):
 						# Only enforce visibility on installed packages
 						# if there is at least one other visible package
@@ -3085,6 +3107,22 @@ class depgraph(object):
 						# it's expensive.
 						pkgsettings.setcpv(cpv, mydb=pkg.metadata)
 						pkg.metadata["USE"] = pkgsettings["PORTAGE_USE"]
+
+					myarg = None
+					if root == self.target_root:
+						try:
+							# Ebuild USE must have been calculated prior
+							# to this point, in case atoms have USE deps.
+							myarg = self._iter_atoms_for_pkg(pkg).next()
+						except StopIteration:
+							pass
+						except portage.exception.InvalidDependString:
+							if not installed:
+								# masked by corruption
+								continue
+					if not installed and myarg:
+						found_available_arg = True
+
 					if atom.use and not pkg.built:
 						use = pkg.metadata["USE"].split()
 						if atom.use.enabled.difference(use):

@@ -108,7 +108,7 @@ class PackageSet(object):
 		atoms = list(self.iterAtomsForPackage(pkg))
 		if not atoms:
 			return None
-		return best_match_to_list(pkg.cpv_slot, atoms)
+		return best_match_to_list(pkg, atoms)
 
 	def iterAtomsForPackage(self, pkg):
 		"""
@@ -116,7 +116,7 @@ class PackageSet(object):
 		arguments against the PROVIDE metadata.  This will raise an
 		InvalidDependString exception if PROVIDE is invalid.
 		"""
-		cpv_slot_list = ["%s:%s" % (pkg.cpv, pkg.metadata["SLOT"])]
+		cpv_slot_list = [pkg]
 		cp = cpv_getkey(pkg.cpv)
 		self._load() # make sure the atoms are loaded
 		atoms = self._atommap.get(cp)
