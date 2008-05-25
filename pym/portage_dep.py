@@ -96,6 +96,9 @@ def paren_reduce(mystr,tokenize=1):
 				subsec = strip_empty(subsec.split(" "))
 				return [mylist+subsec,tail]
 			return mylist+[subsec],tail
+		if not isinstance(tail, basestring):
+			raise portage_exception.InvalidDependString(
+				"malformed syntax: '%s'" % mystr)
 		mystr = tail
 		if freesec:
 			if tokenize:
