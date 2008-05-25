@@ -5729,7 +5729,7 @@ def dep_expand(mydep, mydb=None, use_cache=1, settings=None):
 		use_cache=use_cache, settings=settings)
 	try:
 		return portage_dep.Atom(prefix + expanded + postfix)
-	except portage.exception.InvalidAtom:
+	except portage_exception.InvalidAtom:
 		# Missing '=' prefix is allowed for backward compatibility.
 		if not isvalidatom("=" + prefix + expanded + postfix):
 			raise
