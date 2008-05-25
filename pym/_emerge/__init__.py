@@ -1268,7 +1268,7 @@ class Package(Task):
 	__slots__ = ("built", "cpv", "depth",
 		"installed", "metadata", "onlydeps", "operation",
 		"root", "type_name",
-		"category", "cp", "cpv_slot", "cpv_split",
+		"category", "cp", "cpv_split",
 		"pf", "pv_split", "slot", "slot_atom", "use")
 
 	metadata_keys = [
@@ -1283,11 +1283,6 @@ class Package(Task):
 		self.slot = self.metadata["SLOT"]
 		self.slot_atom = portage.dep.Atom("%s:%s" % \
 			(self.cp, self.metadata["SLOT"]))
-
-		# This used to be "%s:%s" % (self.cpv, self.slot) but now
-		# is's just a reference to self since match_from_list()
-		# now supports Package references.
-		self.cpv_slot = self
 
 		self.category, self.pf = portage.catsplit(self.cpv)
 		self.cpv_split = portage.catpkgsplit(self.cpv)
@@ -3143,9 +3138,7 @@ class depgraph(object):
 						e_pkg = self._slot_pkg_map[root].get(pkg.slot_atom)
 						if not e_pkg:
 							break
-						cpv_slot = "%s:%s" % \
-							(e_pkg.cpv, e_pkg.metadata["SLOT"])
-						if portage.dep.match_from_list(atom, [cpv_slot]):
+						if portage.dep.match_from_list(atom, [e_pkg]):
 							if highest_version and \
 								e_pkg.cp == atom_cp and \
 								e_pkg < highest_version and \
