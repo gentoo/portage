@@ -89,7 +89,11 @@ def paren_reduce(mystr,tokenize=1):
 				"missing right parenthesis: '%s'" % mystr)
 		elif has_left_paren and left_paren < right_paren:
 			freesec,subsec = mystr.split("(",1)
-			subsec,tail = paren_reduce(subsec,tokenize)
+			sublist = paren_reduce(subsec, tokenize=tokenize)
+			if len(sublist) != 2:
+				raise portage_exception.InvalidDependString(
+					"malformed syntax: '%s'" % mystr)
+			subsec, tail = sublist
 		else:
 			subsec,tail = mystr.split(")",1)
 			if tokenize:
