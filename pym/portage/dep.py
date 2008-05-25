@@ -557,6 +557,7 @@ def dep_getusedeps( depend ):
 		open_bracket = depend.find( '[', open_bracket+1 )
 	return tuple(use_list)
 
+_valid_category = re.compile("^\w[\w-]*")
 _invalid_atom_chars_regexp = re.compile("[()|@]")
 
 def isvalidatom(atom, allow_blockers=False):
@@ -585,10 +586,13 @@ def isvalidatom(atom, allow_blockers=False):
 		return 0
 	if allow_blockers and atom.startswith("!"):
 		atom = atom[1:]
-	try:
-		mycpv_cps = catpkgsplit(dep_getcpv(atom))
-	except InvalidData:
-		return 0
+	cpv = dep_getcpv(atom)
+	if cpv:
+		if _valid_category.match(catsplit(cpv)[0]) is None:
+			return 0
+		mycpv_cps = catpkgsplit(cpv)
+	else:
+		mycpv_cps = None
 	operator = get_operator(atom)
 	if operator:
 		if operator[0] in "<>" and remove_slot(atom).endswith("*"):

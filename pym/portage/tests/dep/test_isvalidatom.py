@@ -13,8 +13,7 @@ class IsValidAtom(TestCase):
 	"""
 
 	def testIsValidAtom(self):
-	
-		self.todo = True	
+
 		tests = [ ( "sys-apps/portage", True ),
 			  ( "=sys-apps/portage-2.1", True ),
 		 	  ( "=sys-apps/portage-2.1*", True ),
@@ -26,9 +25,10 @@ class IsValidAtom(TestCase):
 			  ( "sys-apps/portage:foo", True ),
 			  ( "sys-apps/portage-2.1:foo", False ),
 			  ( "sys-apps/portage-2.1:", False ),
+			  ( "=sys-apps/portage-2.2*:foo[bar][-baz][doc?][-build?]", True ),
 			  ( ">~cate-gory/foo-1.0", False ),
-			  ( ">~category/foo-1.0", True ),
-			  ( "<~category/foo-1.0", True ),
+			  ( ">~category/foo-1.0", False ),
+			  ( "<~category/foo-1.0", False ),
 			  ( "###cat/foo-1.0", False ),
 			  ( "~sys-apps/portage", False ),
 			  ( "portage", False ) ]
