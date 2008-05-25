@@ -369,7 +369,7 @@ def remove_slot(mydep):
 		mydep = mydep[:colon]
 	return mydep
 
-_invalid_atom_chars_regexp = re.compile("[()|?@]")
+_invalid_atom_chars_regexp = re.compile("[()|?@\[\]]")
 
 def isvalidatom(atom, allow_blockers=False):
 	"""
