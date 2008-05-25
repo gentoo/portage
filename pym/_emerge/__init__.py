@@ -1280,14 +1280,10 @@ class Package(Task):
 		Task.__init__(self, **kwargs)
 		self.metadata = self._metadata_wrapper(self, self.metadata)
 		self.cp = portage.cpv_getkey(self.cpv)
-		self.slot = self.metadata["SLOT"]
-		self.slot_atom = portage.dep.Atom("%s:%s" % \
-			(self.cp, self.metadata["SLOT"]))
-
+		self.slot_atom = portage.dep.Atom("%s:%s" % (self.cp, self.slot))
 		self.category, self.pf = portage.catsplit(self.cpv)
 		self.cpv_split = portage.catpkgsplit(self.cpv)
 		self.pv_split = self.cpv_split[1:]
-		self.use = self._use(self.metadata["USE"].split())
 
 	class _use(object):
 		def __init__(self, use):
@@ -1305,6 +1301,8 @@ class Package(Task):
 			dict.__setitem__(self, k, v)
 			if k == "USE":
 				self._pkg.use = self._pkg._use(v.split())
+			elif k == "SLOT":
+				self._pkg.slot = v
 
 	def _metadata_setitem(self, k, v):
 		self._metadata_setitem_orig(k, v)
