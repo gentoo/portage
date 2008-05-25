@@ -7840,7 +7840,6 @@ class portdbapi(dbapi):
 			mydep = dep_expand(origdep, mydb=self, settings=self.mysettings)
 			mykey=dep_getkey(mydep)
 
-		myslot = portage_dep.dep_getslot(mydep)
 		if level=="list-visible":
 			#a list of all visible packages, not called directly (just by xmatch())
 			#myval=self.visible(self.cp_list(mykey))
@@ -7882,7 +7881,7 @@ class portdbapi(dbapi):
 					continue
 				if not eapi_is_supported(metadata["EAPI"]):
 					continue
-				if myslot and myslot != metadata["SLOT"]:
+				if mydep.slot and mydep.slot != metadata["SLOT"]:
 					continue
 				if settings._getMissingKeywords(cpv, metadata):
 					continue
@@ -7916,16 +7915,7 @@ class portdbapi(dbapi):
 		else:
 			print "ERROR: xmatch doesn't handle",level,"query!"
 			raise KeyError
-		myslot = portage_dep.dep_getslot(mydep)
-		if myslot is not None and isinstance(myval, list):
-			slotmatches = []
-			for cpv in myval:
-				try:
-					if self.aux_get(cpv, ["SLOT"])[0] == myslot:
-						slotmatches.append(cpv)
-				except KeyError:
-					pass # ebuild masked by corruption
-			myval = slotmatches
+
 		if self.frozen and (level not in ["match-list","bestmatch-list"]):
 			self.xcache[level][mydep]=myval
 			if origdep and origdep != mydep:
