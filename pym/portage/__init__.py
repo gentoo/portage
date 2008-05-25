@@ -5403,6 +5403,7 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 	if kwargs["use_binaries"]:
 		portdb = trees[myroot]["bintree"].dbapi
 	myvirtuals = mysettings.getvirtuals()
+	myuse = kwargs["myuse"]
 	for x in mysplit:
 		if x == "||":
 			newsplit.append(x)
@@ -5411,10 +5412,23 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			newsplit.append(_expand_new_virtuals(x, edebug, mydbapi,
 				mysettings, myroot=myroot, trees=trees, **kwargs))
 			continue
-		if portage.dep._dep_check_strict and \
-			not isvalidatom(x, allow_blockers=True):
-			raise portage.exception.ParseError(
-				"invalid atom: '%s'" % x)
+
+		if not isinstance(x, portage.dep.Atom):
+			try:
+				x = portage.dep.Atom(x)
+			except portage.exception.InvalidAtom:
+				if portage.dep._dep_check_strict:
+					raise portage.exception.ParseError(
+						"invalid atom: '%s'" % x)
+
+		if isinstance(x, portage.dep.Atom) and x.use:
+			if x.use.conditional:
+				evaluated_atom = portage.dep.remove_slot(x)
+				if x.slot:
+					evaluated_atom += ":%s" % x.slot
+				evaluated_atom += str(x.use.evaluate_conditionals(myuse))
+				x = portage.dep.Atom(evaluated_atom)
+
 		mykey = dep_getkey(x)
 		if not mykey.startswith("virtual/"):
 			newsplit.append(x)

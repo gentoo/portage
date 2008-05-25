@@ -19,6 +19,7 @@
 #
 
 import re, sys, types
+from itertools import chain
 import portage.exception
 from portage.exception import InvalidData, InvalidAtom
 from portage.versions import catpkgsplit, catsplit, pkgcmp, pkgsplit, ververify
@@ -340,15 +341,52 @@ class _use_dep(object):
 	def __init__(self, use):
 		enabled_flags = []
 		disabled_flags = []
+		conditional_enabled = []
+		conditional_disabled = []
 		for x in use:
 			if "-" == x[:1]:
-				disabled_flags.append(x[1:])
+				if "?" == x[-1:]:
+					conditional_disabled.append(x[1:-1])
+				else:
+					disabled_flags.append(x[1:])
 			else:
-				enabled_flags.append(x)
+				if "?" == x[-1:]:
+					conditional_enabled.append(x[:-1])
+				else:
+					enabled_flags.append(x)
 		self.tokens = use
+		if not isinstance(self.tokens, tuple):
+			self.tokens = tuple(self.tokens)
 		self.enabled = frozenset(enabled_flags)
 		self.disabled = frozenset(disabled_flags)
-		self.required = self.enabled.union(self.disabled)
+		self.conditional_enabled = frozenset(conditional_enabled)
+		self.conditional_disabled = frozenset(conditional_disabled)
+		self.conditional = self.conditional_enabled.union(
+			self.conditional_disabled)
+		self.required = frozenset(chain(self.enabled, self.disabled,
+			self.conditional_enabled, self.conditional_disabled))
+
+	def __str__(self):
+		return "".join("[%s]" % x for x in self.tokens)
+
+	def evaluate_conditionals(self, use):
+		"""
+		Create a new instance with conditionals evaluated as follows:
+
+		parent state   conditional   result
+		 x              x?            x
+		-x              x?           -x
+		 x             -x?           -x
+		-x             -x?            x
+		"""
+		tokens = []
+		tokens.extend(self.enabled)
+		tokens.extend("-" + x for x in self.disabled)
+		tokens.extend(self.conditional_enabled.intersection(use))
+		tokens.extend("-" + x for x in self.conditional_enabled.difference(use))
+		tokens.extend("-" + x for x in self.conditional_disabled.intersection(use))
+		tokens.extend(self.conditional_disabled.difference(use))
+		return _use_dep(tokens)
 
 class Atom(str):
 
@@ -519,7 +557,7 @@ def dep_getusedeps( depend ):
 		open_bracket = depend.find( '[', open_bracket+1 )
 	return tuple(use_list)
 
-_invalid_atom_chars_regexp = re.compile("[()|?@]")
+_invalid_atom_chars_regexp = re.compile("[()|@]")
 
 def isvalidatom(atom, allow_blockers=False):
 	"""
