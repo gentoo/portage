@@ -1304,11 +1304,6 @@ class Package(Task):
 			elif k == "SLOT":
 				self._pkg.slot = v
 
-	def _metadata_setitem(self, k, v):
-		self._metadata_setitem_orig(k, v)
-		if k == "USE":
-			self.use = self._use(self)
-
 	def _get_hash_key(self):
 		hash_key = getattr(self, "_hash_key", None)
 		if hash_key is None:
