@@ -100,33 +100,15 @@ class PackageSet(object):
 			self._atommap[cp].add(a)
 	
 	# Not sure if this one should really be in PackageSet
-	def findAtomForPackage(self, cpv, metadata):
+	def findAtomForPackage(self, pkg):
 		"""Return the best match for a given package from the arguments, or
 		None if there are no matches.  This matches virtual arguments against
 		the PROVIDE metadata.  This can raise an InvalidDependString exception
 		if an error occurs while parsing PROVIDE."""
-		cpv_slot = "%s:%s" % (cpv, metadata["SLOT"])
-		cp = dep_getkey(cpv)
-		self._load() # make sure the atoms are loaded
-		atoms = self._atommap.get(cp)
-		if atoms:
-			best_match = best_match_to_list(cpv_slot, atoms)
-			if best_match:
-				return best_match
-		if not metadata["PROVIDE"]:
+		atoms = list(self.iterAtomsForPackage(pkg))
+		if not atoms:
 			return None
-		provides = flatten(use_reduce(paren_reduce(metadata["PROVIDE"]),
-								uselist=metadata["USE"].split()))
-		for provide in provides:
-			provided_cp = dep_getkey(provide)
-			atoms = self._atommap.get(provided_cp)
-			if atoms:
-				atoms = list(atoms)
-				transformed_atoms = [atom.replace(provided_cp, cp) for atom in atoms]
-				best_match = best_match_to_list(cpv_slot, transformed_atoms)
-				if best_match:
-					return atoms[transformed_atoms.index(best_match)]
-		return None
+		return best_match_to_list(pkg.cpv_slot, atoms)
 
 	def iterAtomsForPackage(self, pkg):
 		"""
