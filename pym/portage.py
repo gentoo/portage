@@ -5416,10 +5416,15 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			newsplit.append(_expand_new_virtuals(x, edebug, mydbapi,
 				mysettings, myroot=myroot, trees=trees, **kwargs))
 			continue
-		if portage_dep._dep_check_strict and \
-			not isvalidatom(x, allow_blockers=True):
-			raise portage_exception.ParseError(
-				"invalid atom: '%s'" % x)
+
+		if not isinstance(x, portage_dep.Atom):
+			try:
+				x = portage_dep.Atom(x)
+			except portage_exception.InvalidAtom:
+				if portage_dep._dep_check_strict:
+					raise portage_exception.ParseError(
+						"invalid atom: '%s'" % x)
+
 		mykey = dep_getkey(x)
 		if not mykey.startswith("virtual/"):
 			newsplit.append(x)
