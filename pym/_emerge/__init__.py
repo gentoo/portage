@@ -1294,8 +1294,10 @@ class Package(Task):
 		Detect metadata updates and synchronize Package attributes.
 		"""
 		def __init__(self, pkg, metadata):
-			dict.__init__(self, metadata.iteritems())
+			dict.__init__(self)
 			self._pkg = pkg
+			for k, v in metadata.iteritems():
+				self[k] = v
 
 		def __setitem__(self, k, v):
 			dict.__setitem__(self, k, v)
