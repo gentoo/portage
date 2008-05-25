@@ -782,22 +782,30 @@ class SetConfig(object):
 class InternalPackageSet(object):
 	def __init__(self, initial_atoms=None):
 		self._atoms = {}
+		self._nonatoms = set()
 		if initial_atoms:
 			self.update(initial_atoms)
 	def clear(self):
 		self._atoms.clear()
+		self._nonatoms.clear()
 	def add(self, atom):
-		cp = portage.dep_getkey(atom)
-		cp_list = self._atoms.get(cp)
+		try:
+			atom = portage_dep.Atom(atom)
+		except portage_dep.InvalidAtom:
+			self._nonatoms.add(atom)
+			return
+		cp_list = self._atoms.get(atom.cp)
 		if cp_list is None:
 			cp_list = []
-			self._atoms[cp] = cp_list
+			self._atoms[atom.cp] = cp_list
 		if atom not in cp_list:
 			cp_list.append(atom)
 	def update(self, atoms):
 		for atom in atoms:
 			self.add(atom)
 	def __contains__(self, atom):
+		if atom in self._nonatoms:
+			return True
 		cp = portage.dep_getkey(atom)
 		if cp in self._atoms and atom in self._atoms[cp]:
 			return True
@@ -1475,13 +1483,15 @@ class AtomArg(DependencyArg):
 	def __init__(self, atom=None, **kwargs):
 		DependencyArg.__init__(self, **kwargs)
 		self.atom = atom
+		if not isinstance(self.atom, portage_dep.Atom):
+			self.atom = portage_dep.Atom(self.atom)
 		self.set = (self.atom, )
 
 class PackageArg(DependencyArg):
 	def __init__(self, package=None, **kwargs):
 		DependencyArg.__init__(self, **kwargs)
 		self.package = package
-		self.atom = "=" + package.cpv
+		self.atom = portage_dep.Atom("=" + package.cpv)
 		self.set = (self.atom, )
 
 class SetArg(DependencyArg):
