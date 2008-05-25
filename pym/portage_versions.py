@@ -255,8 +255,6 @@ def pkgsplit(mypkg,silent=1):
 		pkgcache[mypkg]=None
 		return None
 
-_valid_category = re.compile("^\w[\w-]*")
-
 catcache={}
 def catpkgsplit(mydata,silent=1):
 	"""
@@ -271,13 +269,8 @@ def catpkgsplit(mydata,silent=1):
 	1.  If each exists, it returns [cat, pkgname, version, rev]
 	2.  If cat is not specificed in mydata, cat will be "null"
 	3.  if rev does not exist it will be '-r0'
-	4.  If cat is invalid (specified but has incorrect syntax)
- 		an InvalidData Exception will be thrown
 	"""
-	
-	# Categories may contain a-zA-z0-9+_- but cannot start with -
-	global _valid_category
-	import portage_dep
+
 	try:
 		if not catcache[mydata]:
 			return None
@@ -290,9 +283,6 @@ def catpkgsplit(mydata,silent=1):
 		retval=["null"]
 		p_split=pkgsplit(mydata,silent=silent)
 	elif len(mysplit)==2:
-		if portage_dep._dep_check_strict and \
-			not _valid_category.match(mysplit[0]):
-			raise InvalidData("Invalid category in %s" %mydata )
 		retval=[mysplit[0]]
 		p_split=pkgsplit(mysplit[1],silent=silent)
 	if not p_split:
