@@ -100,7 +100,10 @@ class StaticFileSet(EditablePackageSet):
 		# look for repository path variables
 		match = self._repopath_match.match(filename)
 		if match:
-			filename = self._repopath_sub.sub(trees["porttree"].dbapi.treemap[match.groupdict()["reponame"]], filename)
+			try:
+				filename = self._repopath_sub.sub(trees["porttree"].dbapi.treemap[match.groupdict()["reponame"]], filename)
+			except KeyError:
+				raise SetConfigError("Could not find repository '%s'" % match.groupdict()["reponame"])
 		return StaticFileSet(filename, greedy=greedy, dbapi=trees["vartree"].dbapi)
 	singleBuilder = classmethod(singleBuilder)
 	
@@ -114,7 +117,10 @@ class StaticFileSet(EditablePackageSet):
 		# look for repository path variables
 		match = self._repopath_match.match(directory)
 		if match:
-			directory = self._repopath_sub.sub(trees["porttree"].dbapi.treemap[match.groupdict()["reponame"]], directory)
+			try:
+				directory = self._repopath_sub.sub(trees["porttree"].dbapi.treemap[match.groupdict()["reponame"]], directory)
+			except KeyError:
+				raise SetConfigError("Could not find repository '%s'" % match.groupdict()["reponame"])
 		if os.path.isdir(directory):
 			for filename in os.listdir(directory):
 				if filename.endswith(".metadata"):

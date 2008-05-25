@@ -1013,7 +1013,7 @@ class FakeVartree(portage.vartree):
 				vdb_lock = portage.locks.lockdir(vdb_path)
 			real_dbapi = real_vartree.dbapi
 			slot_counters = {}
-			for cpv in real_dbapi.cpv_all():
+			for cpv in real_dbapi.cpv_all(use_cache=0):
 				cache_key = ("installed", self.root, cpv, "nomerge")
 				pkg = self._pkg_cache.get(cache_key)
 				if pkg is not None:
@@ -2841,6 +2841,13 @@ class depgraph(object):
 		return selected_atoms
 
 	def _show_unsatisfied_dep(self, root, atom, myparent=None, arg=None):
+		atom = portage.dep.Atom(atom)
+		atom_without_use = atom
+		if atom.use:
+			atom_without_use = portage.dep.remove_slot(atom)
+			if atom.slot:
+				atom_without_use += ":" + atom.slot
+			atom_without_use = portage.dep.Atom(atom_without_use)
 		xinfo = '"%s"' % atom
 		if arg:
 			xinfo='"%s"' % arg
@@ -2851,9 +2858,11 @@ class depgraph(object):
 				green('"%s"' % myparent[2]) + \
 				red(' [%s]' % myparent[0]) + ')'
 		masked_packages = []
+		missing_use = []
 		missing_licenses = []
 		have_eapi_mask = False
 		pkgsettings = self.pkgsettings[root]
+		implicit_iuse = pkgsettings._get_implicit_iuse()
 		root_config = self.roots[root]
 		portdb = self.roots[root].trees["porttree"].dbapi
 		dbs = self._filtered_trees[root]["dbs"]
@@ -2862,18 +2871,61 @@ class depgraph(object):
 				continue
 			match = db.match
 			if hasattr(db, "xmatch"):
-				cpv_list = db.xmatch("match-all", atom)
+				cpv_list = db.xmatch("match-all", atom_without_use)
 			else:
-				cpv_list = db.match(atom)
+				cpv_list = db.match(atom_without_use)
 			# descending order
 			cpv_list.reverse()
 			for cpv in cpv_list:
 				metadata, mreasons  = get_mask_info(root_config, cpv,
 					pkgsettings, db, pkg_type, built, installed, db_keys)
-				masked_packages.append(
-					(root_config, pkgsettings, cpv, metadata, mreasons))
+				if atom.use and not mreasons:
+					missing_use.append(Package(built=built, cpv=cpv,
+						installed=installed, metadata=metadata, root=root))
+				else:
+					masked_packages.append(
+						(root_config, pkgsettings, cpv, metadata, mreasons))
 
-		if masked_packages:
+		missing_use_reasons = []
+		missing_iuse_reasons = []
+		for pkg in missing_use:
+			use = pkg.metadata["USE"].split()
+			iuse = implicit_iuse.union(x.lstrip("+-") \
+				for x in pkg.metadata["IUSE"].split())
+			iuse_re = re.compile("^(%s)$" % "|".join(iuse))
+			missing_iuse = []
+			for x in atom.use.required:
+				if iuse_re.match(x) is None:
+					missing_iuse.append(x)
+			mreasons = []
+			if missing_iuse:
+				mreasons.append("Missing IUSE: %s" % " ".join(missing_iuse))
+				missing_iuse_reasons.append((pkg, mreasons))
+			else:
+				need_enable = sorted(atom.use.enabled.difference(use))
+				need_disable = sorted(atom.use.disabled.intersection(use))
+				if need_enable or need_disable:
+					changes = []
+					changes.extend(colorize("red", "+" + x) \
+						for x in need_enable)
+					changes.extend(colorize("blue", "-" + x) \
+						for x in need_disable)
+					mreasons.append("Change USE: %s" % " ".join(changes))
+					missing_use_reasons.append((pkg, mreasons))
+
+		if missing_iuse_reasons and not missing_use_reasons:
+			missing_use_reasons = missing_iuse_reasons
+		elif missing_use_reasons:
+			# Only show the latest version.
+			del missing_use_reasons[1:]
+
+		if missing_use_reasons:
+			print "\nemerge: there are no ebuilds built with USE flags to satisfy "+green(xinfo)+"."
+			print "!!! One of the following packages is required to complete your request:"
+			for pkg, mreasons in missing_use_reasons:
+				print "- "+pkg.cpv+" ("+", ".join(mreasons)+")"
+
+		elif masked_packages:
 			print "\n!!! "+red("All ebuilds that could satisfy ")+green(xinfo)+red(" have been masked.")
 			print "!!! One of the following masked packages is required to complete your request:"
 			have_eapi_mask = show_masked_packages(masked_packages)
@@ -2923,7 +2975,8 @@ class depgraph(object):
 		# List of acceptable packages, ordered by type preference.
 		matched_packages = []
 		highest_version = None
-		atom_cp = portage.dep_getkey(atom)
+		atom = portage.dep.Atom(atom)
+		atom_cp = atom.cp
 		existing_node = None
 		myeb = None
 		usepkgonly = "--usepkgonly" in self.myopts
@@ -3055,11 +3108,17 @@ class depgraph(object):
 								# it's not the same version.
 								continue
 
-					if not built and not calculated_use:
+					if not pkg.built and not calculated_use:
 						# This is avoided whenever possible because
 						# it's expensive.
 						pkgsettings.setcpv(cpv, mydb=pkg.metadata)
 						pkg.metadata["USE"] = pkgsettings["PORTAGE_USE"]
+					if atom.use and not pkg.built:
+						use = pkg.metadata["USE"].split()
+						if atom.use.enabled.difference(use):
+							continue
+						if atom.use.disabled.intersection(use):
+							continue
 					if pkg.cp == atom_cp:
 						if highest_version is None:
 							highest_version = pkg

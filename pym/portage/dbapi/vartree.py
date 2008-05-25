@@ -136,7 +136,7 @@ class LinkageMap(object):
 		libs = {}
 		obj_properties = {}
 		lines = []
-		for cpv in self._dbapi.cpv_all():
+		for cpv in self._dbapi.cpv_all(use_cache=0):
 			lines += self._dbapi.aux_get(cpv, ["NEEDED.ELF.2"])[0].split('\n')
 		# Cache NEEDED.* files avoid doing excessive IO for every rebuild.
 		self._dbapi.flush_cache()
@@ -558,8 +558,25 @@ class vardbapi(dbapi):
 		return returnme
 
 	def cpv_all(self, use_cache=1):
+		"""
+		Set use_cache=0 to bypass the portage.cachedir() cache in cases
+		when the accuracy of mtime staleness checks should not be trusted
+		(generally this is only necessary in critical sections that
+		involve merge or unmerge of packages).
+		"""
 		returnme = []
 		basepath = os.path.join(self.root, VDB_PATH) + os.path.sep
+
+		if use_cache:
+			from portage import listdir
+		else:
+			def listdir(p, **kwargs):
+				try:
+					return [x for x in os.listdir(p) \
+						if os.path.isdir(os.path.join(p, x))]
+				except EnvironmentError:
+					return []
+
 		for x in listdir(basepath, EmptyOnError=1, ignorecvs=1, dirsonly=1):
 			if self._excluded_dirs.match(x) is not None:
 				continue
@@ -610,13 +627,8 @@ class vardbapi(dbapi):
 			if self.matchcache.has_key(mycat):
 				del self.mtdircache[mycat]
 				del self.matchcache[mycat]
-			mymatch = match_from_list(mydep,
-				self.cp_list(mykey, use_cache=use_cache))
-			myslot = dep_getslot(mydep)
-			if myslot is not None:
-				mymatch = [cpv for cpv in mymatch \
-					if self.aux_get(cpv, ["SLOT"])[0] == myslot]
-			return mymatch
+			return list(self._iter_match(mydep,
+				self.cp_list(mydep.cp, use_cache=use_cache)))
 		try:
 			curmtime = os.stat(self.root+VDB_PATH+"/"+mycat)[stat.ST_MTIME]
 		except (IOError, OSError):
@@ -627,11 +639,8 @@ class vardbapi(dbapi):
 			self.mtdircache[mycat] = curmtime
 			self.matchcache[mycat] = {}
 		if not self.matchcache[mycat].has_key(mydep):
-			mymatch = match_from_list(mydep, self.cp_list(mykey, use_cache=use_cache))
-			myslot = dep_getslot(mydep)
-			if myslot is not None:
-				mymatch = [cpv for cpv in mymatch \
-					if self.aux_get(cpv, ["SLOT"])[0] == myslot]
+			mymatch = list(self._iter_match(mydep,
+				self.cp_list(mydep.cp, use_cache=use_cache)))
 			self.matchcache[mycat][mydep] = mymatch
 		return self.matchcache[mycat][mydep][:]
 
@@ -1893,7 +1902,9 @@ class dblink(object):
 		# inject files that should be preserved into our image dir
 		import shutil
 		missing_paths = []
-		for x in candidates:
+		candidates_stack = list(candidates)
+		while candidates_stack:
+			x = candidates_stack.pop()
 			# skip existing files so the 'new' libs aren't overwritten
 			if os.path.exists(os.path.join(srcroot, x.lstrip(os.sep))):
 				missing_paths.append(x)
@@ -1916,6 +1927,7 @@ class dblink(object):
 				if linktarget[0] != os.sep:
 					linktarget = os.path.join(os.path.dirname(x), linktarget)
 				candidates.add(linktarget)
+				candidates_stack.append(linktarget)
 			else:
 				shutil.copy2(os.path.join(destroot, x.lstrip(os.sep)),
 					os.path.join(srcroot, x.lstrip(os.sep)))
