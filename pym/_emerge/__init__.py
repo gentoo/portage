@@ -1333,13 +1333,15 @@ class AtomArg(DependencyArg):
 	def __init__(self, atom=None, **kwargs):
 		DependencyArg.__init__(self, **kwargs)
 		self.atom = atom
+		if not isinstance(self.atom, portage.dep.Atom):
+			self.atom = portage.dep.Atom(self.atom)
 		self.set = (self.atom, )
 
 class PackageArg(DependencyArg):
 	def __init__(self, package=None, **kwargs):
 		DependencyArg.__init__(self, **kwargs)
 		self.package = package
-		self.atom = "=" + package.cpv
+		self.atom = portage.dep.Atom("=" + package.cpv)
 		self.set = (self.atom, )
 
 class SetArg(DependencyArg):

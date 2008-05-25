@@ -3,7 +3,7 @@
 # $Id$
 
 from portage import cpv_getkey, flatten
-from portage.dep import isvalidatom, match_from_list, \
+from portage.dep import Atom, isvalidatom, match_from_list, \
      best_match_to_list, dep_getkey, use_reduce, paren_reduce
 from portage.exception import InvalidAtom
 
@@ -58,15 +58,16 @@ class PackageSet(object):
 		return self._nonatoms.copy()
 
 	def _setAtoms(self, atoms):
-		atoms = map(str.strip, atoms)
+		self._atoms.clear()
 		self._nonatoms.clear()
-		for a in atoms[:]:
-			if a == "":
-				atoms.remove(a)
-			elif not isvalidatom(a):
-				atoms.remove(a)
+		for a in atoms:
+			a = a.strip()
+			if not a:
+				continue
+			try:
+				self._atoms.add(Atom(a))
+			except InvalidAtom:
 				self._nonatoms.add(a)
-		self._atoms = set(atoms)
 		self._updateAtomMap()
 
 	def load(self):
