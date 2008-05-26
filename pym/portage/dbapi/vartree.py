@@ -602,8 +602,11 @@ class vardbapi(dbapi):
 				self._aux_cache = mypickle.load()
 				f.close()
 				del f
-			except (IOError, OSError, EOFError, cPickle.UnpicklingError):
-				pass
+			except (IOError, OSError, EOFError, cPickle.UnpicklingError), e:
+				if isinstance(e, cPickle.UnpicklingError):
+					writemsg("!!! Error loading '%s': %s\n" % \
+						(self._aux_cache_filename, str(e)), noiselevel=-1)
+				del e
 			if not self._aux_cache or \
 				not isinstance(self._aux_cache, dict) or \
 				self._aux_cache.get("version") != self._aux_cache_version or \
