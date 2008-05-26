@@ -1348,6 +1348,7 @@ remove_path_entry() {
 }
 
 source_all_bashrcs() {
+	[ -n "$EBUILD_PHASE" ] || return
 	local OCC="${CC}" OCXX="${CXX}"
 	# source the existing profile.bashrc's.
 	save_IFS
