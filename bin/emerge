@@ -1430,7 +1430,12 @@ class Package(Task):
 		def __init__(self, pkg, metadata):
 			dict.__init__(self)
 			self._pkg = pkg
-			for k, v in metadata.iteritems():
+			i = getattr(metadata, "iteritems", None)
+			if i is None:
+				i = metadata
+			else:
+				i = i()
+			for k, v in i:
 				self[k] = v
 
 		def __setitem__(self, k, v):
@@ -3134,21 +3139,22 @@ class depgraph(object):
 					if pkg is None:
 						calculated_use = False
 						try:
-							metadata = dict(izip(self._mydbapi_keys,
-								db.aux_get(cpv, self._mydbapi_keys)))
+							metadata = zip(self._mydbapi_keys,
+								db.aux_get(cpv, self._mydbapi_keys))
 						except KeyError:
 							continue
+						pkg = Package(built=built, cpv=cpv,
+							installed=installed, metadata=metadata,
+							onlydeps=onlydeps, root=root, type_name=pkg_type)
+						metadata = pkg.metadata
 						if not built and ("?" in metadata["LICENSE"] or \
 							"?" in metadata["PROVIDE"]):
 							# This is avoided whenever possible because
 							# it's expensive. It only needs to be done here
 							# if it has an effect on visibility.
-							pkgsettings.setcpv(cpv, mydb=metadata)
+							pkgsettings.setcpv(pkg)
 							metadata["USE"] = pkgsettings["PORTAGE_USE"]
 							calculated_use = True
-						pkg = Package(built=built, cpv=cpv,
-							installed=installed, metadata=metadata,
-							onlydeps=onlydeps, root=root, type_name=pkg_type)
 						self._pkg_cache[pkg] = pkg
 
 					if not installed or (installed and matched_packages):
@@ -3187,7 +3193,7 @@ class depgraph(object):
 					if not built and not calculated_use:
 						# This is avoided whenever possible because
 						# it's expensive.
-						pkgsettings.setcpv(cpv, mydb=pkg.metadata)
+						pkgsettings.setcpv(pkg)
 						pkg.metadata["USE"] = pkgsettings["PORTAGE_USE"]
 
 					myarg = None
@@ -3239,14 +3245,11 @@ class depgraph(object):
 						"--reinstall" in self.myopts):
 						iuses = set(filter_iuse_defaults(
 							pkg.metadata["IUSE"].split()))
-						old_use = pkg.metadata["USE"].split()
-						mydb = pkg.metadata
-						if myeb and not usepkgonly:
-							mydb = portdb
+						old_use = pkg.use.enabled
 						if myeb:
-							pkgsettings.setcpv(myeb, mydb=mydb)
+							pkgsettings.setcpv(myeb)
 						else:
-							pkgsettings.setcpv(cpv, mydb=mydb)
+							pkgsettings.setcpv(pkg)
 						now_use = pkgsettings["PORTAGE_USE"].split()
 						forced_flags = set()
 						forced_flags.update(pkgsettings.useforce)
@@ -3254,8 +3257,7 @@ class depgraph(object):
 						cur_iuse = iuses
 						if myeb and not usepkgonly:
 							cur_iuse = set(filter_iuse_defaults(
-								portdb.aux_get(myeb,
-								["IUSE"])[0].split()))
+								myeb.metadata["IUSE"].split()))
 						if self._reinstall_for_flags(forced_flags,
 							old_use, iuses,
 							now_use, cur_iuse):
@@ -3266,7 +3268,7 @@ class depgraph(object):
 						("--newuse" in self.myopts or \
 						"--reinstall" in self.myopts) and \
 						cpv in vardb.match(atom):
-						pkgsettings.setcpv(cpv, mydb=pkg.metadata)
+						pkgsettings.setcpv(pkg)
 						forced_flags = set()
 						forced_flags.update(pkgsettings.useforce)
 						forced_flags.update(pkgsettings.usemask)
@@ -3283,7 +3285,7 @@ class depgraph(object):
 						if reinstall_for_flags:
 							reinstall = True
 					if not built:
-						myeb = cpv
+						myeb = pkg
 					matched_packages.append(pkg)
 					if reinstall_for_flags:
 						self._reinstall_nodes[pkg] = \
@@ -5279,23 +5281,23 @@ class depgraph(object):
 				continue
 			mydb = trees[myroot][self.pkg_tree_map[pkg_type]].dbapi
 			try:
-				metadata = dict(izip(self._mydbapi_keys,
-					mydb.aux_get(pkg_key, self._mydbapi_keys)))
+				metadata = zip(self._mydbapi_keys,
+					mydb.aux_get(pkg_key, self._mydbapi_keys))
 			except KeyError:
 				# It does no exist or it is corrupt.
 				if action == "uninstall":
 					continue
 				raise portage_exception.PackageNotFound(pkg_key)
-			if pkg_type == "ebuild":
-				pkgsettings = self.pkgsettings[myroot]
-				pkgsettings.setcpv(pkg_key, mydb=metadata)
-				metadata["USE"] = pkgsettings["PORTAGE_USE"]
 			installed = action == "uninstall"
 			built = pkg_type != "ebuild"
 			pkg = Package(built=built, cpv=pkg_key,
 				installed=installed, metadata=metadata,
 				operation=action, root=myroot,
 				type_name=pkg_type)
+			if pkg_type == "ebuild":
+				pkgsettings = self.pkgsettings[myroot]
+				pkgsettings.setcpv(pkg)
+				pkg.metadata["USE"] = pkgsettings["PORTAGE_USE"]
 			self._pkg_cache[pkg] = pkg
 
 			root_config = self.roots[pkg.root]
