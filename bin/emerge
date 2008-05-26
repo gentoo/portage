@@ -1586,7 +1586,7 @@ class BlockerCache(DictMixin):
 				if not isinstance(counter, (int, long)):
 					invalid_items.add(k)
 					continue
-				if not isinstance(atoms, list):
+				if not isinstance(atoms, (list, tuple)):
 					invalid_items.add(k)
 					continue
 				invalid_atom = False
@@ -1653,7 +1653,7 @@ class BlockerCache(DictMixin):
 		@type blocker_data: BlockerData
 		"""
 		self._cache_data["blockers"][cpv] = \
-			(blocker_data.counter, blocker_data.atoms)
+			(blocker_data.counter, tuple(str(x) for x in blocker_data.atoms))
 		self._modified = True
 
 	def __iter__(self):
@@ -8408,7 +8408,17 @@ def action_build(settings, trees, mtimedb,
 			# XXX: Stored as a list for backward compatibility.
 			mtimedb["resume"]["myopts"] = \
 				[k for k in myopts if myopts[k] is True]
-			mtimedb["resume"]["favorites"]=favorites
+
+			# Convert Atom instances to plain str since the mtimedb loader
+			# sets unpickler.find_global = None which causes unpickler.load()
+			# to raise the following exception:
+			#
+			# cPickle.UnpicklingError: Global and instance pickles are not supported.
+			#
+			# TODO: Maybe stop setting find_global = None, or find some other
+			# way to avoid accidental triggering of the above UnpicklingError.
+			mtimedb["resume"]["favorites"] = [str(x) for x in favorites]
+
 			if ("--digest" in myopts) and not ("--fetchonly" in myopts or "--fetch-all-uri" in myopts):
 				for pkgline in mydepgraph.altlist():
 					if pkgline[0]=="ebuild" and pkgline[3]=="merge":
