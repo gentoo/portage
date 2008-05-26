@@ -6550,7 +6550,11 @@ class MtimeDB(dict):
 			d = mypickle.load()
 			f.close()
 			del f
-		except (IOError, OSError, EOFError, cPickle.UnpicklingError):
+		except (IOError, OSError, EOFError, cPickle.UnpicklingError), e:
+			if isinstance(e, cPickle.UnpicklingError):
+				writemsg("!!! Error loading '%s': %s\n" % \
+					(filename, str(e)), noiselevel=-1)
+			del e
 			d = {}
 
 		if "old" in d:

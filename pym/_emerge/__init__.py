@@ -1423,8 +1423,12 @@ class BlockerCache(DictMixin):
 			self._cache_data = mypickle.load()
 			f.close()
 			del f
-		except (IOError, OSError, EOFError, cPickle.UnpicklingError):
-			pass
+		except (IOError, OSError, EOFError, cPickle.UnpicklingError), e:
+			if isinstance(e, cPickle.UnpicklingError):
+				writemsg("!!! Error loading '%s': %s\n" % \
+					(self._cache_filename, str(e)), noiselevel=-1)
+			del e
+
 		cache_valid = self._cache_data and \
 			isinstance(self._cache_data, dict) and \
 			self._cache_data.get("version") == self._cache_version and \
