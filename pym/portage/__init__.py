@@ -1909,6 +1909,13 @@ class config(object):
 		"""
 
 		self.modifying()
+
+		pkg = None
+		if not isinstance(mycpv, basestring):
+			pkg = mycpv
+			mycpv = pkg.cpv
+			mydb = pkg.metadata
+
 		if self.mycpv == mycpv:
 			return
 		ebuild_phase = self.get("EBUILD_PHASE")
@@ -1924,7 +1931,10 @@ class config(object):
 				iuse = mydb["IUSE"]
 			else:
 				slot, iuse = mydb.aux_get(self.mycpv, ["SLOT", "IUSE"])
-			cpv_slot = "%s:%s" % (self.mycpv, slot)
+			if pkg is None:
+				cpv_slot = "%s:%s" % (self.mycpv, slot)
+			else:
+				cpv_slot = pkg
 			pkginternaluse = []
 			for x in iuse.split():
 				if x.startswith("+"):
