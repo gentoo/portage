@@ -5644,7 +5644,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 						# Check if the atom would result in a direct circular
 						# dependency and try to avoid that if it seems likely
 						# to be unresolvable.
-						cpv_slot_list = [parent.cpv_slot]
+						cpv_slot_list = [parent]
 						circular_atom = None
 						for atom in atoms:
 							if "!" == atom[:1]:
