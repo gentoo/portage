@@ -890,11 +890,16 @@ def match_from_list(mydep, candidate_list):
 		candidate_list = mylist
 		mylist = []
 		for x in candidate_list:
-			# Note: IUSE intersection is neglected here since there
-			# is currently no way to access implicit IUSE. However, IUSE
-			# filtering can be added elsewhere in the chain.
 			use = getattr(x, "use", None)
 			if use is not None:
+				regex = x.iuse.regex
+				missing_iuse = False
+				for y in mydep.use.required:
+					if regex.match(y) is None:
+						missing_iuse = True
+						break
+				if missing_iuse:
+					continue
 				if mydep.use.enabled.difference(use.enabled):
 					continue
 				if mydep.use.disabled.intersection(use.enabled):
