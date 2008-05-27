@@ -1630,14 +1630,13 @@ class BlockerDB(object):
 			if cached_blockers is not None:
 				blocker_atoms = cached_blockers.atoms
 			else:
-				myuse = inst_pkg.metadata["USE"].split()
 				# Use aux_get() to trigger FakeVartree global
 				# updates on *DEPEND when appropriate.
 				depstr = " ".join(vardb.aux_get(inst_pkg.cpv, dep_keys))
 				try:
 					portage.dep._dep_check_strict = False
 					success, atoms = portage.dep_check(depstr,
-						vardb, settings, myuse=myuse,
+						vardb, settings, myuse=pkg.use.enabled,
 						trees=dep_check_trees, myroot=inst_pkg.root)
 				finally:
 					portage.dep._dep_check_strict = True
@@ -1672,12 +1671,11 @@ class BlockerDB(object):
 			blocking_pkgs.update(blocker_parents.parent_nodes(atom))
 
 		# Check for blockers in the other direction.
-		myuse = new_pkg.metadata["USE"].split()
 		depstr = " ".join(new_pkg.metadata[k] for k in dep_keys)
 		try:
 			portage.dep._dep_check_strict = False
 			success, atoms = portage.dep_check(depstr,
-				vardb, settings, myuse=myuse,
+				vardb, settings, myuse=new_pkg.use.enabled,
 				trees=dep_check_trees, myroot=new_pkg.root)
 		finally:
 			portage.dep._dep_check_strict = True
@@ -2346,7 +2344,7 @@ class depgraph(object):
 		myroot = pkg.root
 		mykey = pkg.cpv
 		metadata = pkg.metadata
-		myuse = metadata["USE"].split()
+		myuse = pkg.use.enabled
 		jbigkey = pkg
 		depth = pkg.depth + 1
 
@@ -2950,9 +2948,8 @@ class depgraph(object):
 		missing_use_reasons = []
 		missing_iuse_reasons = []
 		for pkg in missing_use:
-			use = pkg.metadata["USE"].split()
-			iuse = implicit_iuse.union(x.lstrip("+-") \
-				for x in pkg.metadata["IUSE"].split())
+			use = pkg.use.enabled
+			iuse = implicit_iuse.union(re.escape(x) for x in pkg.iuse.all)
 			iuse_re = re.compile("^(%s)$" % "|".join(iuse))
 			missing_iuse = []
 			for x in atom.use.required:
@@ -3179,7 +3176,7 @@ class depgraph(object):
 						found_available_arg = True
 
 					if atom.use and not pkg.built:
-						use = pkg.metadata["USE"].split()
+						use = pkg.use.enabled
 						if atom.use.enabled.difference(use):
 							continue
 						if atom.use.disabled.intersection(use):
@@ -3216,8 +3213,7 @@ class depgraph(object):
 					if built and not installed and \
 						("--newuse" in self.myopts or \
 						"--reinstall" in self.myopts):
-						iuses = set(filter_iuse_defaults(
-							pkg.metadata["IUSE"].split()))
+						iuses = pkg.iuse.all
 						old_use = pkg.use.enabled
 						if myeb:
 							pkgsettings.setcpv(myeb)
@@ -3229,8 +3225,7 @@ class depgraph(object):
 						forced_flags.update(pkgsettings.usemask)
 						cur_iuse = iuses
 						if myeb and not usepkgonly:
-							cur_iuse = set(filter_iuse_defaults(
-								myeb.metadata["IUSE"].split()))
+							cur_iuse = myeb.iuse.all
 						if self._reinstall_for_flags(forced_flags,
 							old_use, iuses,
 							now_use, cur_iuse):
@@ -3249,8 +3244,7 @@ class depgraph(object):
 						old_iuse = set(filter_iuse_defaults(
 							vardb.aux_get(cpv, ["IUSE"])[0].split()))
 						cur_use = pkgsettings["PORTAGE_USE"].split()
-						cur_iuse = set(filter_iuse_defaults(
-							pkg.metadata["IUSE"].split()))
+						cur_iuse = pkg.iuse.all
 						reinstall_for_flags = \
 							self._reinstall_for_flags(
 							forced_flags, old_use, old_iuse,
@@ -3484,7 +3478,6 @@ class depgraph(object):
 					if blocker_data:
 						blocker_atoms = blocker_data.atoms
 					else:
-						myuse = pkg.metadata["USE"].split()
 						# Use aux_get() to trigger FakeVartree global
 						# updates on *DEPEND when appropriate.
 						depstr = " ".join(vardb.aux_get(pkg.cpv, dep_keys))
@@ -3495,7 +3488,7 @@ class depgraph(object):
 							portage.dep._dep_check_strict = False
 							try:
 								success, atoms = portage.dep_check(depstr,
-									final_db, pkgsettings, myuse=myuse,
+									final_db, pkgsettings, myuse=pkg.use.enabled,
 									trees=self._graph_trees, myroot=myroot)
 							except Exception, e:
 								if isinstance(e, SystemExit):
@@ -3797,7 +3790,7 @@ class depgraph(object):
 			try:
 				portage_rdepend = self._select_atoms_highest_available(
 					running_root, running_portage.metadata["RDEPEND"],
-					myuse=running_portage.metadata["USE"].split(),
+					myuse=running_portage.use.enabled,
 					parent=running_portage, strict=False)
 			except portage.exception.InvalidDependString, e:
 				portage.writemsg("!!! Invalid RDEPEND in " + \
@@ -4604,7 +4597,7 @@ class depgraph(object):
 						os.path.dirname(ebuild_path)))
 				else:
 					repo_path_real = portdb.getRepositoryPath(repo_name)
-				pkg_use = metadata["USE"].split()
+				pkg_use = list(pkg.use.enabled)
 				try:
 					restrict = flatten(use_reduce(paren_reduce(
 						pkg.metadata["RESTRICT"]), uselist=pkg_use))
@@ -4684,18 +4677,15 @@ class depgraph(object):
 				
 				if True:
 					# USE flag display
-					cur_iuse = list(filter_iuse_defaults(
-						pkg.metadata["IUSE"].split()))
-
 					forced_flags = set()
-					pkgsettings.setcpv(pkg.cpv, mydb=pkg.metadata) # for package.use.{mask,force}
+					pkgsettings.setcpv(pkg) # for package.use.{mask,force}
 					forced_flags.update(pkgsettings.useforce)
 					forced_flags.update(pkgsettings.usemask)
 
-					cur_iuse = portage.unique_array(cur_iuse)
+					cur_iuse = list(pkg.iuse.all)
 					cur_iuse.sort()
-					cur_use = pkg_use
-					cur_use = [flag for flag in cur_use if flag in cur_iuse]
+					cur_use = [flag for flag in pkg.use.enabled \
+						if flag in cur_iuse]
 
 					if myoldbest and myinslotlist:
 						previous_cpv = myoldbest[0]
