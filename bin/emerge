@@ -1724,7 +1724,7 @@ class BlockerDB(object):
 		self._vartree = root_config.trees["vartree"]
 		self._portdb = root_config.trees["porttree"].dbapi
 		self._blocker_cache = \
-			BlockerCache(self._vartree.root, vartree.dbapi)
+			BlockerCache(self._vartree.root, self._vartree.dbapi)
 		self._dep_check_trees = { self._vartree.root : {
 			"porttree"    :  self._vartree,
 			"vartree"     :  self._vartree,
