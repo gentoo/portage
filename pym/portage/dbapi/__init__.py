@@ -149,7 +149,7 @@ class dbapi(object):
 			iuse, use = self.aux_get(cpv, ["IUSE", "USE"])
 			use = use.split()
 			iuse = self._iuse_implicit.union(
-				x.lstrip("+-") for x in iuse.split())
+				re.escape(x.lstrip("+-")) for x in iuse.split())
 			iuse_re = re.compile("^(%s)$" % "|".join(iuse))
 			missing_iuse = False
 			for x in atom.use.required:
