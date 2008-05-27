@@ -5410,6 +5410,7 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 	# for new-style virtuals.  Repoman should enforce this.
 	dep_keys = ["RDEPEND", "DEPEND", "PDEPEND"]
 	portdb = trees[myroot]["porttree"].dbapi
+	repoman = isinstance(mydbapi, portdbapi)
 	if kwargs["use_binaries"]:
 		portdb = trees[myroot]["bintree"].dbapi
 	myvirtuals = mysettings.getvirtuals()
@@ -5431,7 +5432,10 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 					raise portage.exception.ParseError(
 						"invalid atom: '%s'" % x)
 
-		if isinstance(x, portage.dep.Atom) and x.use:
+		# Repoman only checks IUSE for USE deps, so there's
+		# no need to evaluate conditionals.
+		if not repoman and \
+			myuse is not None and isinstance(x, portage.dep.Atom) and x.use:
 			if x.use.conditional:
 				evaluated_atom = portage.dep.remove_slot(x)
 				if x.slot:
