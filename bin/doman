@@ -31,7 +31,14 @@ for x in "$@" ; do
 		suffix=${realname##*.}
 	fi
 
-	mandir=${i18n}man${suffix:0:1}
+	if [[ $x =~ (.*)\.([a-z][a-z](_[A-Z][A-Z])?)\.(.*) ]] ; then
+		name=${BASH_REMATCH[1]##*/}.${BASH_REMATCH[4]}
+		mandir=${BASH_REMATCH[2]}/man${suffix:0:1}
+	else
+		name=${x##*/}
+		mandir=${i18n}man${suffix:0:1}
+	fi
+
 
 	if echo ${mandir} | egrep -q 'man[0-9n](|f|p|pm)$' -; then
 		if [[ -s ${x} ]] ; then
@@ -39,7 +46,7 @@ for x in "$@" ; do
 				install -d "${D}/usr/share/man/${mandir}"
 			fi
 
-			install -m0644 "${x}" "${D}/usr/share/man/${mandir}"
+			install -m0644 "${x}" "${D}/usr/share/man/${mandir}/${name}"
 			((ret+=$?))
 		elif [[ ! -e ${x} ]] ; then
 			vecho "doman: ${x} does not exist" 1>&2
