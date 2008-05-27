@@ -1295,7 +1295,8 @@ class Package(Task):
 	__slots__ = ("built", "cpv", "depth",
 		"installed", "metadata", "onlydeps", "operation",
 		"root", "type_name",
-		"category", "cp", "cpv_slot", "pf", "pv_split", "slot_atom")
+		"category", "cp", "cpv_split",
+		"pf", "pv_split", "slot", "slot_atom", "use")
 
 	metadata_keys = [
 		"CHOST", "COUNTER", "DEPEND", "EAPI", "IUSE", "KEYWORDS",
@@ -1304,11 +1305,38 @@ class Package(Task):
 
 	def __init__(self, **kwargs):
 		Task.__init__(self, **kwargs)
+		self.metadata = self._metadata_wrapper(self, self.metadata)
 		self.cp = portage.cpv_getkey(self.cpv)
-		self.slot_atom = "%s:%s" % (self.cp, self.metadata["SLOT"])
-		self.cpv_slot = "%s:%s" % (self.cpv, self.metadata["SLOT"])
+		self.slot_atom = portage.dep.Atom("%s:%s" % (self.cp, self.slot))
 		self.category, self.pf = portage.catsplit(self.cpv)
-		self.pv_split = portage.catpkgsplit(self.cpv)[1:]
+		self.cpv_split = portage.catpkgsplit(self.cpv)
+		self.pv_split = self.cpv_split[1:]
+
+	class _use(object):
+		def __init__(self, use):
+			self.enabled = frozenset(use)
+
+	class _metadata_wrapper(dict):
+		"""
+		Detect metadata updates and synchronize Package attributes.
+		"""
+		def __init__(self, pkg, metadata):
+			dict.__init__(self)
+			self._pkg = pkg
+			i = getattr(metadata, "iteritems", None)
+			if i is None:
+				i = metadata
+			else:
+				i = i()
+			for k, v in i:
+				self[k] = v
+
+		def __setitem__(self, k, v):
+			dict.__setitem__(self, k, v)
+			if k == "USE":
+				self._pkg.use = self._pkg._use(v.split())
+			elif k == "SLOT":
+				self._pkg.slot = v
 
 	def _get_hash_key(self):
 		hash_key = getattr(self, "_hash_key", None)
@@ -1422,8 +1450,12 @@ class BlockerCache(DictMixin):
 			self._cache_data = mypickle.load()
 			f.close()
 			del f
-		except (IOError, OSError, EOFError, cPickle.UnpicklingError):
-			pass
+		except (IOError, OSError, EOFError, cPickle.UnpicklingError), e:
+			if isinstance(e, cPickle.UnpicklingError):
+				writemsg("!!! Error loading '%s': %s\n" % \
+					(self._cache_filename, str(e)), noiselevel=-1)
+			del e
+
 		cache_valid = self._cache_data and \
 			isinstance(self._cache_data, dict) and \
 			self._cache_data.get("version") == self._cache_version and \
@@ -1451,7 +1483,7 @@ class BlockerCache(DictMixin):
 				if not isinstance(counter, (int, long)):
 					invalid_items.add(k)
 					continue
-				if not isinstance(atoms, list):
+				if not isinstance(atoms, (list, tuple)):
 					invalid_items.add(k)
 					continue
 				invalid_atom = False
@@ -1518,7 +1550,7 @@ class BlockerCache(DictMixin):
 		@type blocker_data: BlockerData
 		"""
 		self._cache_data["blockers"][cpv] = \
-			(blocker_data.counter, blocker_data.atoms)
+			(blocker_data.counter, tuple(str(x) for x in blocker_data.atoms))
 		self._modified = True
 
 	def __iter__(self):
@@ -2466,6 +2498,7 @@ class depgraph(object):
 	def select_files(self, myfiles):
 		"""Given a list of .tbz2s, .ebuilds sets, and deps, create the
 		appropriate depgraph and return a favorite list."""
+		debug = "--debug" in self.myopts
 		root_config = self.roots[self.target_root]
 		sets = root_config.sets
 		getSetAtoms = root_config.setconfig.getSetAtoms
@@ -2692,6 +2725,8 @@ class depgraph(object):
 					if arg not in refs:
 						refs.append(arg)
 		pprovideddict = pkgsettings.pprovideddict
+		if debug:
+			portage.writemsg("\n", noiselevel=-1)
 		# Order needs to be preserved since a feature of --nodeps
 		# is to allow the user to force a specific merge order.
 		args.reverse()
@@ -2713,6 +2748,9 @@ class depgraph(object):
 								"dependencies for %s\n") % arg.arg)
 							return 0, myfavorites
 						continue
+					if debug:
+						portage.writemsg("      Arg: %s\n     Atom: %s\n" % \
+							(arg, atom), noiselevel=-1)
 					pkg, existing_node = self._select_package(
 						myroot, atom, onlydeps=onlydeps)
 					if not pkg:
@@ -3050,34 +3088,24 @@ class depgraph(object):
 					if pkg is None:
 						calculated_use = False
 						try:
-							metadata = dict(izip(self._mydbapi_keys,
-								db.aux_get(cpv, self._mydbapi_keys)))
+							metadata = zip(self._mydbapi_keys,
+								db.aux_get(cpv, self._mydbapi_keys))
 						except KeyError:
 							continue
+						pkg = Package(built=built, cpv=cpv,
+							installed=installed, metadata=metadata,
+							onlydeps=onlydeps, root=root, type_name=pkg_type)
+						metadata = pkg.metadata
 						if not built and ("?" in metadata["LICENSE"] or \
 							"?" in metadata["PROVIDE"]):
 							# This is avoided whenever possible because
 							# it's expensive. It only needs to be done here
 							# if it has an effect on visibility.
-							pkgsettings.setcpv(cpv, mydb=metadata)
+							pkgsettings.setcpv(pkg)
 							metadata["USE"] = pkgsettings["PORTAGE_USE"]
 							calculated_use = True
-						pkg = Package(built=built, cpv=cpv,
-							installed=installed, metadata=metadata,
-							onlydeps=onlydeps, root=root, type_name=pkg_type)
 						self._pkg_cache[pkg] = pkg
-					myarg = None
-					if root == self.target_root:
-						try:
-							myarg = self._iter_atoms_for_pkg(pkg).next()
-						except StopIteration:
-							pass
-						except portage.exception.InvalidDependString:
-							if not installed:
-								# masked by corruption
-								continue
-					if not installed and myarg:
-						found_available_arg = True
+
 					if not installed or (installed and matched_packages):
 						# Only enforce visibility on installed packages
 						# if there is at least one other visible package
@@ -3114,8 +3142,24 @@ class depgraph(object):
 					if not pkg.built and not calculated_use:
 						# This is avoided whenever possible because
 						# it's expensive.
-						pkgsettings.setcpv(cpv, mydb=pkg.metadata)
+						pkgsettings.setcpv(pkg)
 						pkg.metadata["USE"] = pkgsettings["PORTAGE_USE"]
+
+					myarg = None
+					if root == self.target_root:
+						try:
+							# Ebuild USE must have been calculated prior
+							# to this point, in case atoms have USE deps.
+							myarg = self._iter_atoms_for_pkg(pkg).next()
+						except StopIteration:
+							pass
+						except portage.exception.InvalidDependString:
+							if not installed:
+								# masked by corruption
+								continue
+					if not installed and myarg:
+						found_available_arg = True
+
 					if atom.use and not pkg.built:
 						use = pkg.metadata["USE"].split()
 						if atom.use.enabled.difference(use):
@@ -3136,9 +3180,7 @@ class depgraph(object):
 						e_pkg = self._slot_pkg_map[root].get(pkg.slot_atom)
 						if not e_pkg:
 							break
-						cpv_slot = "%s:%s" % \
-							(e_pkg.cpv, e_pkg.metadata["SLOT"])
-						if portage.dep.match_from_list(atom, [cpv_slot]):
+						if portage.dep.match_from_list(atom, [e_pkg]):
 							if highest_version and \
 								e_pkg.cp == atom_cp and \
 								e_pkg < highest_version and \
@@ -3158,14 +3200,11 @@ class depgraph(object):
 						"--reinstall" in self.myopts):
 						iuses = set(filter_iuse_defaults(
 							pkg.metadata["IUSE"].split()))
-						old_use = pkg.metadata["USE"].split()
-						mydb = pkg.metadata
-						if myeb and not usepkgonly:
-							mydb = portdb
+						old_use = pkg.use.enabled
 						if myeb:
-							pkgsettings.setcpv(myeb, mydb=mydb)
+							pkgsettings.setcpv(myeb)
 						else:
-							pkgsettings.setcpv(cpv, mydb=mydb)
+							pkgsettings.setcpv(pkg)
 						now_use = pkgsettings["PORTAGE_USE"].split()
 						forced_flags = set()
 						forced_flags.update(pkgsettings.useforce)
@@ -3173,8 +3212,7 @@ class depgraph(object):
 						cur_iuse = iuses
 						if myeb and not usepkgonly:
 							cur_iuse = set(filter_iuse_defaults(
-								portdb.aux_get(myeb,
-								["IUSE"])[0].split()))
+								myeb.metadata["IUSE"].split()))
 						if self._reinstall_for_flags(forced_flags,
 							old_use, iuses,
 							now_use, cur_iuse):
@@ -3185,7 +3223,7 @@ class depgraph(object):
 						("--newuse" in self.myopts or \
 						"--reinstall" in self.myopts) and \
 						cpv in vardb.match(atom):
-						pkgsettings.setcpv(cpv, mydb=pkg.metadata)
+						pkgsettings.setcpv(pkg)
 						forced_flags = set()
 						forced_flags.update(pkgsettings.useforce)
 						forced_flags.update(pkgsettings.usemask)
@@ -3202,7 +3240,7 @@ class depgraph(object):
 						if reinstall_for_flags:
 							reinstall = True
 					if not built:
-						myeb = cpv
+						myeb = pkg
 					matched_packages.append(pkg)
 					if reinstall_for_flags:
 						self._reinstall_nodes[pkg] = \
@@ -3214,7 +3252,8 @@ class depgraph(object):
 
 		if "--debug" in self.myopts:
 			for pkg in matched_packages:
-				print (pkg.type_name + ":").rjust(10), pkg.cpv
+				portage.writemsg("%s %s\n" % \
+					((pkg.type_name + ":").rjust(10), pkg.cpv), noiselevel=-1)
 
 		# Filter out any old-style virtual matches if they are
 		# mixed with new-style virtual matches.
@@ -5195,23 +5234,23 @@ class depgraph(object):
 				continue
 			mydb = trees[myroot][self.pkg_tree_map[pkg_type]].dbapi
 			try:
-				metadata = dict(izip(self._mydbapi_keys,
-					mydb.aux_get(pkg_key, self._mydbapi_keys)))
+				metadata = zip(self._mydbapi_keys,
+					mydb.aux_get(pkg_key, self._mydbapi_keys))
 			except KeyError:
 				# It does no exist or it is corrupt.
 				if action == "uninstall":
 					continue
 				raise portage.exception.PackageNotFound(pkg_key)
-			if pkg_type == "ebuild":
-				pkgsettings = self.pkgsettings[myroot]
-				pkgsettings.setcpv(pkg_key, mydb=metadata)
-				metadata["USE"] = pkgsettings["PORTAGE_USE"]
 			installed = action == "uninstall"
 			built = pkg_type != "ebuild"
 			pkg = Package(built=built, cpv=pkg_key,
 				installed=installed, metadata=metadata,
 				operation=action, root=myroot,
 				type_name=pkg_type)
+			if pkg_type == "ebuild":
+				pkgsettings = self.pkgsettings[myroot]
+				pkgsettings.setcpv(pkg)
+				pkg.metadata["USE"] = pkgsettings["PORTAGE_USE"]
 			self._pkg_cache[pkg] = pkg
 
 			root_config = self.roots[pkg.root]
@@ -5957,9 +5996,6 @@ class MergeTask(object):
 							pkgsettings, self.edebug, mydbapi=portdb,
 							tree="porttree")
 						del pkgsettings["PORTAGE_BINPKG_TMPFILE"]
-						if retval != os.EX_OK or \
-							"--buildpkgonly" in self.myopts:
-							elog_process(pkg_key, pkgsettings, phasefilter=filter_mergephases)
 						if retval != os.EX_OK:
 							return retval
 						bintree = self.trees[myroot]["bintree"]
@@ -6011,6 +6047,8 @@ class MergeTask(object):
 							return retval
 				finally:
 					if builddir_lock:
+						elog_process(pkg.cpv, pkgsettings,
+							phasefilter=filter_mergephases)
 						portage.locks.unlockdir(builddir_lock)
 					try:
 						if not catdir_lock:
@@ -8534,7 +8572,17 @@ def action_build(settings, trees, mtimedb,
 			# XXX: Stored as a list for backward compatibility.
 			mtimedb["resume"]["myopts"] = \
 				[k for k in myopts if myopts[k] is True]
-			mtimedb["resume"]["favorites"]=favorites
+
+			# Convert Atom instances to plain str since the mtimedb loader
+			# sets unpickler.find_global = None which causes unpickler.load()
+			# to raise the following exception:
+			#
+			# cPickle.UnpicklingError: Global and instance pickles are not supported.
+			#
+			# TODO: Maybe stop setting find_global = None, or find some other
+			# way to avoid accidental triggering of the above UnpicklingError.
+			mtimedb["resume"]["favorites"] = [str(x) for x in favorites]
+
 			if ("--digest" in myopts) and not ("--fetchonly" in myopts or "--fetch-all-uri" in myopts):
 				for pkgline in mydepgraph.altlist():
 					if pkgline[0]=="ebuild" and pkgline[3]=="merge":
