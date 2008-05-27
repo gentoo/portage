@@ -2471,6 +2471,7 @@ class depgraph(object):
 	def select_files(self, myfiles):
 		"""Given a list of .tbz2s, .ebuilds sets, and deps, create the
 		appropriate depgraph and return a favorite list."""
+		debug = "--debug" in self.myopts
 		root_config = self.roots[self.target_root]
 		sets = root_config.sets
 		getSetAtoms = root_config.setconfig.getSetAtoms
@@ -2697,6 +2698,8 @@ class depgraph(object):
 					if arg not in refs:
 						refs.append(arg)
 		pprovideddict = pkgsettings.pprovideddict
+		if debug:
+			portage.writemsg("\n", noiselevel=-1)
 		# Order needs to be preserved since a feature of --nodeps
 		# is to allow the user to force a specific merge order.
 		args.reverse()
@@ -2718,6 +2721,9 @@ class depgraph(object):
 								"dependencies for %s\n") % arg.arg)
 							return 0, myfavorites
 						continue
+					if debug:
+						portage.writemsg("      Arg: %s\n     Atom: %s\n" % \
+							(arg, atom), noiselevel=-1)
 					pkg, existing_node = self._select_package(
 						myroot, atom, onlydeps=onlydeps)
 					if not pkg:
@@ -3215,7 +3221,8 @@ class depgraph(object):
 
 		if "--debug" in self.myopts:
 			for pkg in matched_packages:
-				print (pkg.type_name + ":").rjust(10), pkg.cpv
+				portage.writemsg("%s %s\n" % \
+					((pkg.type_name + ":").rjust(10), pkg.cpv), noiselevel=-1)
 
 		# Filter out any old-style virtual matches if they are
 		# mixed with new-style virtual matches.
