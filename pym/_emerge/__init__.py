@@ -5955,9 +5955,6 @@ class MergeTask(object):
 							pkgsettings, self.edebug, mydbapi=portdb,
 							tree="porttree")
 						del pkgsettings["PORTAGE_BINPKG_TMPFILE"]
-						if retval != os.EX_OK or \
-							"--buildpkgonly" in self.myopts:
-							elog_process(pkg_key, pkgsettings, phasefilter=filter_mergephases)
 						if retval != os.EX_OK:
 							return retval
 						bintree = self.trees[myroot]["bintree"]
@@ -6009,6 +6006,8 @@ class MergeTask(object):
 							return retval
 				finally:
 					if builddir_lock:
+						elog_process(pkg.cpv, pkgsettings,
+							phasefilter=filter_mergephases)
 						portage.locks.unlockdir(builddir_lock)
 					try:
 						if not catdir_lock:
