@@ -6041,9 +6041,6 @@ class MergeTask(object):
 						retval = portage.doebuild(y, "package", myroot,
 							pkgsettings, self.edebug, mydbapi=portdb,
 							tree="porttree")
-						if retval != os.EX_OK or \
-							"--buildpkgonly" in self.myopts:
-							portage.elog_process(pkg_key, pkgsettings)
 						if retval != os.EX_OK:
 							return retval
 						bintree = self.trees[myroot]["bintree"]
@@ -6095,6 +6092,7 @@ class MergeTask(object):
 							return retval
 				finally:
 					if builddir_lock:
+						portage.elog_process(pkg.cpv, pkgsettings)
 						portage_locks.unlockdir(builddir_lock)
 					try:
 						if not catdir_lock:
