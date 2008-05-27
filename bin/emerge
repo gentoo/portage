@@ -2226,8 +2226,8 @@ class depgraph(object):
 		"""Return a set of flags that trigger reinstallation, or None if there
 		are no such flags."""
 		if "--newuse" in self.myopts:
-			flags = orig_iuse.symmetric_difference(
-				cur_iuse).difference(forced_flags)
+			flags = set(orig_iuse.symmetric_difference(
+				cur_iuse).difference(forced_flags))
 			flags.update(orig_iuse.intersection(orig_use).symmetric_difference(
 				cur_iuse.intersection(cur_use)))
 			if flags:
