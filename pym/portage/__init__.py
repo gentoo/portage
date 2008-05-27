@@ -1674,7 +1674,7 @@ class config(object):
 		for mypath, (gid, mode, modemask, preserve_perms) \
 			in dir_mode_map.iteritems():
 			mydir = os.path.join(self["ROOT"], mypath)
-			if preserve_perms and os.path.isdir(mypath):
+			if preserve_perms and os.path.isdir(mydir):
 				# Only adjust permissions on some directories if
 				# they don't exist yet. This gives freedom to the
 				# user to adjust permissions to suit their taste.
