@@ -1678,16 +1678,23 @@ class config(object):
 		if not os.access(self["ROOT"] + EPREFIX_LSTRIP, os.W_OK):
 			return
 
+		#                                     gid, mode, mask, preserve_perms
 		dir_mode_map = {
-			EPREFIX_LSTRIP+"/tmp"      : (-1,          01777, 0),
-			EPREFIX_LSTRIP+"/var/tmp"  : (-1,          01777, 0),
-			PRIVATE_PATH               : (portage_gid, 02750, 02),
-			CACHE_PATH.lstrip(os.path.sep) : (portage_gid, 0755, 02)
+			EPREFIX_LSTRIP+"tmp" : (                   -1, 01777,  0,  True),
+			EPREFIX_LSTRIP+"var/tmp" : (               -1, 01777,  0,  True),
+			PRIVATE_PATH      : (             portage_gid, 02750, 02,  False),
+			CACHE_PATH.lstrip(os.path.sep) : (portage_gid,  0755, 02,  False)
 		}
 
-		for mypath, (gid, mode, modemask) in dir_mode_map.iteritems():
+		for mypath, (gid, mode, modemask, preserve_perms) \
+			in dir_mode_map.iteritems():
+			mydir = os.path.join(self["ROOT"], mypath)
+			if preserve_perms and os.path.isdir(mydir):
+				# Only adjust permissions on some directories if
+				# they don't exist yet. This gives freedom to the
+				# user to adjust permissions to suit their taste.
+				continue
 			try:
-				mydir = normalize_path(os.path.join(self["ROOT"], mypath))
 				portage.util.ensure_dirs(mydir, gid=gid, mode=mode, mask=modemask)
 			except portage.exception.PortageException, e:
 				writemsg("!!! Directory initialization failed: '%s'\n" % mydir,
@@ -5458,6 +5465,7 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 	# for new-style virtuals.  Repoman should enforce this.
 	dep_keys = ["RDEPEND", "DEPEND", "PDEPEND"]
 	portdb = trees[myroot]["porttree"].dbapi
+	repoman = isinstance(mydbapi, portdbapi)
 	if kwargs["use_binaries"]:
 		portdb = trees[myroot]["bintree"].dbapi
 	myvirtuals = mysettings.getvirtuals()
@@ -5479,7 +5487,10 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 					raise portage.exception.ParseError(
 						"invalid atom: '%s'" % x)
 
-		if isinstance(x, portage.dep.Atom) and x.use:
+		# Repoman only checks IUSE for USE deps, so there's
+		# no need to evaluate conditionals.
+		if not repoman and \
+			myuse is not None and isinstance(x, portage.dep.Atom) and x.use:
 			if x.use.conditional:
 				evaluated_atom = portage.dep.remove_slot(x)
 				if x.slot:

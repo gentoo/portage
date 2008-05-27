@@ -338,6 +338,10 @@ def dep_opconvert(deplist):
 	return retlist
 
 class _use_dep(object):
+
+	__slots__ = ("__weakref__", "conditional", "conditional_disabled",
+		"conditional_enabled", "disabled", "enabled", "tokens", "required")
+
 	def __init__(self, use):
 		enabled_flags = []
 		disabled_flags = []
@@ -405,6 +409,8 @@ class Atom(str):
 		self.use = dep_getusedeps(s)
 		if self.use:
 			self.use = _use_dep(self.use)
+		else:
+			self.use = None
 
 def get_operator(mydep):
 	"""
@@ -890,11 +896,16 @@ def match_from_list(mydep, candidate_list):
 		candidate_list = mylist
 		mylist = []
 		for x in candidate_list:
-			# Note: IUSE intersection is neglected here since there
-			# is currently no way to access implicit IUSE. However, IUSE
-			# filtering can be added elsewhere in the chain.
 			use = getattr(x, "use", None)
 			if use is not None:
+				regex = x.iuse.regex
+				missing_iuse = False
+				for y in mydep.use.required:
+					if regex.match(y) is None:
+						missing_iuse = True
+						break
+				if missing_iuse:
+					continue
 				if mydep.use.enabled.difference(use.enabled):
 					continue
 				if mydep.use.disabled.intersection(use.enabled):

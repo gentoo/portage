@@ -414,6 +414,7 @@ class search(object):
 		self.spinner = spinner
 		self.verbose = verbose
 		self.searchdesc = searchdesc
+		self.root_config = root_config
 		self.setconfig = root_config.setconfig
 
 		def fake_portdb():
@@ -485,7 +486,7 @@ class search(object):
 		elif built:
 			pkg_type = "binary"
 		return visible(self.settings,
-			Package(type_name=pkg_type, root=self.settings["ROOT"],
+			Package(type_name=pkg_type, root_config=self.root_config,
 			cpv=cpv, built=built, installed=installed, metadata=metadata))
 
 	def _xmatch(self, level, atom):
@@ -744,6 +745,7 @@ class RootConfig(object):
 	def __init__(self, settings, trees, setconfig):
 		self.trees = trees
 		self.settings = settings
+		self.iuse_implicit = tuple(sorted(settings._get_implicit_iuse()))
 		self.root = self.settings["ROOT"]
 		self.setconfig = setconfig
 		self.sets = self.setconfig.getSets()
@@ -756,7 +758,7 @@ def create_world_atom(pkg_key, metadata, args_set, root_config):
 	in world since system atoms can only match one slot while world atoms can
 	be greedy with respect to slots.  Unslotted system packages will not be
 	stored in world."""
-	pkg = Package(cpv=pkg_key, metadata=metadata)
+	pkg = Package(cpv=pkg_key, root_config=root_config, metadata=metadata)
 	arg_atom = args_set.findAtomForPackage(pkg)
 	if not arg_atom:
 		return None
@@ -992,11 +994,14 @@ class FakeVartree(portage.vartree):
 	user doesn't necessarily need write access to the vardb in cases where
 	global updates are necessary (updates are performed when necessary if there
 	is not a matching ebuild in the tree)."""
-	def __init__(self, real_vartree, portdb,
-		db_keys, pkg_cache, acquire_lock=1):
+	def __init__(self, root_config, pkg_cache=None, acquire_lock=1):
+		if pkg_cache is None:
+			pkg_cache = {}
+		real_vartree = root_config.trees["vartree"]
+		portdb = root_config.trees["porttree"].dbapi
 		self.root = real_vartree.root
 		self.settings = real_vartree.settings
-		mykeys = db_keys[:]
+		mykeys = list(Package.metadata_keys)
 		for required_key in ("COUNTER", "SLOT"):
 			if required_key not in mykeys:
 				mykeys.append(required_key)
@@ -1037,7 +1042,7 @@ class FakeVartree(portage.vartree):
 				if pkg is None:
 					pkg = Package(built=True, cpv=cpv,
 						installed=True, metadata=metadata,
-						root=self.root, type_name="installed")
+						root_config=root_config, type_name="installed")
 				self._pkg_cache[pkg] = pkg
 				self.dbapi.cpv_inject(pkg)
 			real_dbapi.flush_cache()
@@ -1186,7 +1191,7 @@ def get_mask_info(root_config, cpv, pkgsettings,
 	if metadata is None:
 		mreasons = ["corruption"]
 	else:
-		pkg = Package(type_name=pkg_type, root=root_config.root,
+		pkg = Package(type_name=pkg_type, root_config=root_config,
 			cpv=cpv, built=built, installed=installed, metadata=metadata)
 		mreasons = get_masking_status(pkg, pkgsettings, root_config)
 	return metadata, mreasons
@@ -1294,9 +1299,9 @@ class Blocker(Task):
 class Package(Task):
 	__slots__ = ("built", "cpv", "depth",
 		"installed", "metadata", "onlydeps", "operation",
-		"root", "type_name",
-		"category", "cp", "cpv_split",
-		"pf", "pv_split", "slot", "slot_atom", "use")
+		"root_config", "type_name",
+		"category", "cp", "cpv_split", "iuse",
+		"pf", "pv_split", "root", "slot", "slot_atom", "use")
 
 	metadata_keys = [
 		"CHOST", "COUNTER", "DEPEND", "EAPI", "IUSE", "KEYWORDS",
@@ -1305,6 +1310,7 @@ class Package(Task):
 
 	def __init__(self, **kwargs):
 		Task.__init__(self, **kwargs)
+		self.root = self.root_config.root
 		self.metadata = self._metadata_wrapper(self, self.metadata)
 		self.cp = portage.cpv_getkey(self.cpv)
 		self.slot_atom = portage.dep.Atom("%s:%s" % (self.cp, self.slot))
@@ -1313,13 +1319,51 @@ class Package(Task):
 		self.pv_split = self.cpv_split[1:]
 
 	class _use(object):
+
+		__slots__ = ("__weakref__", "enabled")
+
 		def __init__(self, use):
 			self.enabled = frozenset(use)
+
+	class _iuse(object):
+
+		__slots__ = ("__weakref__", "all", "enabled", "disabled", "iuse_implicit", "regex", "tokens")
+
+		def __init__(self, tokens, iuse_implicit):
+			self.tokens = tuple(tokens)
+			self.iuse_implicit = iuse_implicit
+			enabled = []
+			disabled = []
+			other = []
+			for x in tokens:
+				prefix = x[:1]
+				if prefix == "+":
+					enabled.append(x[1:])
+				elif prefix == "-":
+					disabled.append(x[1:])
+				else:
+					other.append(x)
+			self.enabled = frozenset(enabled)
+			self.disabled = frozenset(disabled)
+			self.all = frozenset(chain(enabled, disabled, other))
+
+		def __getattribute__(self, name):
+			if name == "regex":
+				try:
+					return object.__getattribute__(self, "regex")
+				except AttributeError:
+					all = object.__getattribute__(self, "all")
+					iuse_implicit = object.__getattribute__(self, "iuse_implicit")
+					self.regex = re.compile("^(%s)$" % "|".join(
+						chain((re.escape(x) for x in all), iuse_implicit)))
+			return object.__getattribute__(self, name)
 
 	class _metadata_wrapper(dict):
 		"""
 		Detect metadata updates and synchronize Package attributes.
 		"""
+		_wrapped_keys = frozenset(["IUSE", "SLOT", "USE"])
+
 		def __init__(self, pkg, metadata):
 			dict.__init__(self)
 			self._pkg = pkg
@@ -1333,10 +1377,18 @@ class Package(Task):
 
 		def __setitem__(self, k, v):
 			dict.__setitem__(self, k, v)
-			if k == "USE":
-				self._pkg.use = self._pkg._use(v.split())
-			elif k == "SLOT":
-				self._pkg.slot = v
+			if k in self._wrapped_keys:
+				getattr(self, "_set_" + k.lower())(k, v)
+
+		def _set_iuse(self, k, v):
+			self._pkg.iuse = self._pkg._iuse(
+				v.split(), self._pkg.root_config.iuse_implicit)
+
+		def _set_slot(self, k, v):
+			self._pkg.slot = v
+
+		def _set_use(self, k, v):
+			self._pkg.use = self._pkg._use(v.split())
 
 	def _get_hash_key(self):
 		hash_key = getattr(self, "_hash_key", None)
@@ -1574,11 +1626,12 @@ class BlockerCache(DictMixin):
 
 class BlockerDB(object):
 
-	def __init__(self, vartree, portdb):
-		self._vartree = vartree
-		self._portdb = portdb
+	def __init__(self, root_config):
+		self._root_config = root_config
+		self._vartree = root_config.trees["vartree"]
+		self._portdb = root_config.trees["porttree"].dbapi
 		self._blocker_cache = \
-			BlockerCache(self._vartree.root, vartree.dbapi)
+			BlockerCache(self._vartree.root, self._vartree.dbapi)
 		self._dep_check_trees = { self._vartree.root : {
 			"porttree"    :  self._vartree,
 			"vartree"     :  self._vartree,
@@ -1591,9 +1644,7 @@ class BlockerDB(object):
 		settings = self._vartree.settings
 		stale_cache = set(blocker_cache)
 		fake_vartree = \
-			FakeVartree(self._vartree,
-				self._portdb, Package.metadata_keys, {},
-				acquire_lock=acquire_lock)
+			FakeVartree(self._root_config, acquire_lock=acquire_lock)
 		vardb = fake_vartree.dbapi
 		installed_pkgs = list(vardb)
 
@@ -1606,14 +1657,13 @@ class BlockerDB(object):
 			if cached_blockers is not None:
 				blocker_atoms = cached_blockers.atoms
 			else:
-				myuse = inst_pkg.metadata["USE"].split()
 				# Use aux_get() to trigger FakeVartree global
 				# updates on *DEPEND when appropriate.
 				depstr = " ".join(vardb.aux_get(inst_pkg.cpv, dep_keys))
 				try:
 					portage.dep._dep_check_strict = False
 					success, atoms = portage.dep_check(depstr,
-						vardb, settings, myuse=myuse,
+						vardb, settings, myuse=inst_pkg.use.enabled,
 						trees=dep_check_trees, myroot=inst_pkg.root)
 				finally:
 					portage.dep._dep_check_strict = True
@@ -1648,12 +1698,11 @@ class BlockerDB(object):
 			blocking_pkgs.update(blocker_parents.parent_nodes(atom))
 
 		# Check for blockers in the other direction.
-		myuse = new_pkg.metadata["USE"].split()
 		depstr = " ".join(new_pkg.metadata[k] for k in dep_keys)
 		try:
 			portage.dep._dep_check_strict = False
 			success, atoms = portage.dep_check(depstr,
-				vardb, settings, myuse=myuse,
+				vardb, settings, myuse=new_pkg.use.enabled,
 				trees=dep_check_trees, myroot=new_pkg.root)
 		finally:
 			portage.dep._dep_check_strict = True
@@ -1869,9 +1918,8 @@ class depgraph(object):
 			for tree in ("porttree", "bintree"):
 				self.trees[myroot][tree] = trees[myroot][tree]
 			self.trees[myroot]["vartree"] = \
-				FakeVartree(trees[myroot]["vartree"],
-					trees[myroot]["porttree"].dbapi,
-					self._mydbapi_keys, self._pkg_cache)
+				FakeVartree(trees[myroot]["root_config"],
+					pkg_cache=self._pkg_cache)
 			self.pkgsettings[myroot] = portage.config(
 				clone=self.trees[myroot]["vartree"].settings)
 			self._slot_pkg_map[myroot] = {}
@@ -1882,14 +1930,10 @@ class depgraph(object):
 			# have after new packages have been installed.
 			fakedb = PackageVirtualDbapi(vardb.settings)
 			if preload_installed_pkgs:
-				for cpv in vardb.cpv_all():
+				for pkg in vardb:
 					self.spinner.update()
-					metadata = dict(izip(self._mydbapi_keys,
-						vardb.aux_get(cpv, self._mydbapi_keys)))
-					pkg = Package(built=True, cpv=cpv,
-						installed=True, metadata=metadata,
-						root=myroot, type_name="installed")
-					self._pkg_cache[pkg] = pkg
+					# This triggers metadata updates via FakeVartree.
+					vardb.aux_get(pkg.cpv, [])
 					fakedb.cpv_inject(pkg)
 			self.mydbapi[myroot] = fakedb
 			def graph_tree():
@@ -2089,8 +2133,8 @@ class depgraph(object):
 		"""Return a set of flags that trigger reinstallation, or None if there
 		are no such flags."""
 		if "--newuse" in self.myopts:
-			flags = orig_iuse.symmetric_difference(
-				cur_iuse).difference(forced_flags)
+			flags = set(orig_iuse.symmetric_difference(
+				cur_iuse).difference(forced_flags))
 			flags.update(orig_iuse.intersection(orig_use).symmetric_difference(
 				cur_iuse.intersection(cur_use)))
 			if flags:
@@ -2327,7 +2371,7 @@ class depgraph(object):
 		myroot = pkg.root
 		mykey = pkg.cpv
 		metadata = pkg.metadata
-		myuse = metadata["USE"].split()
+		myuse = pkg.use.enabled
 		jbigkey = pkg
 		depth = pkg.depth + 1
 
@@ -2533,7 +2577,7 @@ class depgraph(object):
 					return 0, myfavorites
 				metadata = dict(izip(self._mydbapi_keys,
 					bindb.aux_get(mykey, self._mydbapi_keys)))
-				pkg = Package(type_name="binary", root=myroot,
+				pkg = Package(type_name="binary", root_config=root_config,
 					cpv=mykey, built=True, metadata=metadata,
 					onlydeps=onlydeps)
 				self._pkg_cache[pkg] = pkg
@@ -2573,7 +2617,7 @@ class depgraph(object):
 					portdb.aux_get(mykey, self._mydbapi_keys)))
 				pkgsettings.setcpv(mykey, mydb=metadata)
 				metadata["USE"] = pkgsettings["PORTAGE_USE"]
-				pkg = Package(type_name="ebuild", root=myroot,
+				pkg = Package(type_name="ebuild", root_config=root_config,
 					cpv=mykey, metadata=metadata, onlydeps=onlydeps)
 				self._pkg_cache[pkg] = pkg
 				args.append(PackageArg(arg=x, package=pkg,
@@ -2922,7 +2966,8 @@ class depgraph(object):
 					pkgsettings, db, pkg_type, built, installed, db_keys)
 				if atom.use and not mreasons:
 					missing_use.append(Package(built=built, cpv=cpv,
-						installed=installed, metadata=metadata, root=root))
+						installed=installed, metadata=metadata,
+						root_config=root_config))
 				else:
 					masked_packages.append(
 						(root_config, pkgsettings, cpv, metadata, mreasons))
@@ -2930,9 +2975,8 @@ class depgraph(object):
 		missing_use_reasons = []
 		missing_iuse_reasons = []
 		for pkg in missing_use:
-			use = pkg.metadata["USE"].split()
-			iuse = implicit_iuse.union(x.lstrip("+-") \
-				for x in pkg.metadata["IUSE"].split())
+			use = pkg.use.enabled
+			iuse = implicit_iuse.union(re.escape(x) for x in pkg.iuse.all)
 			iuse_re = re.compile("^(%s)$" % "|".join(iuse))
 			missing_iuse = []
 			for x in atom.use.required:
@@ -3009,6 +3053,7 @@ class depgraph(object):
 		return ret
 
 	def _select_pkg_highest_available_imp(self, root, atom, onlydeps=False):
+		root_config = self.roots[root]
 		pkgsettings = self.pkgsettings[root]
 		dbs = self._filtered_trees[root]["dbs"]
 		vardb = self.roots[root].trees["vartree"].dbapi
@@ -3094,7 +3139,8 @@ class depgraph(object):
 							continue
 						pkg = Package(built=built, cpv=cpv,
 							installed=installed, metadata=metadata,
-							onlydeps=onlydeps, root=root, type_name=pkg_type)
+							onlydeps=onlydeps, root_config=root_config,
+							type_name=pkg_type)
 						metadata = pkg.metadata
 						if not built and ("?" in metadata["LICENSE"] or \
 							"?" in metadata["PROVIDE"]):
@@ -3161,7 +3207,7 @@ class depgraph(object):
 						found_available_arg = True
 
 					if atom.use and not pkg.built:
-						use = pkg.metadata["USE"].split()
+						use = pkg.use.enabled
 						if atom.use.enabled.difference(use):
 							continue
 						if atom.use.disabled.intersection(use):
@@ -3198,8 +3244,7 @@ class depgraph(object):
 					if built and not installed and \
 						("--newuse" in self.myopts or \
 						"--reinstall" in self.myopts):
-						iuses = set(filter_iuse_defaults(
-							pkg.metadata["IUSE"].split()))
+						iuses = pkg.iuse.all
 						old_use = pkg.use.enabled
 						if myeb:
 							pkgsettings.setcpv(myeb)
@@ -3211,8 +3256,7 @@ class depgraph(object):
 						forced_flags.update(pkgsettings.usemask)
 						cur_iuse = iuses
 						if myeb and not usepkgonly:
-							cur_iuse = set(filter_iuse_defaults(
-								myeb.metadata["IUSE"].split()))
+							cur_iuse = myeb.iuse.all
 						if self._reinstall_for_flags(forced_flags,
 							old_use, iuses,
 							now_use, cur_iuse):
@@ -3231,8 +3275,7 @@ class depgraph(object):
 						old_iuse = set(filter_iuse_defaults(
 							vardb.aux_get(cpv, ["IUSE"])[0].split()))
 						cur_use = pkgsettings["PORTAGE_USE"].split()
-						cur_iuse = set(filter_iuse_defaults(
-							pkg.metadata["IUSE"].split()))
+						cur_iuse = pkg.iuse.all
 						reinstall_for_flags = \
 							self._reinstall_for_flags(
 							forced_flags, old_use, old_iuse,
@@ -3466,7 +3509,6 @@ class depgraph(object):
 					if blocker_data:
 						blocker_atoms = blocker_data.atoms
 					else:
-						myuse = pkg.metadata["USE"].split()
 						# Use aux_get() to trigger FakeVartree global
 						# updates on *DEPEND when appropriate.
 						depstr = " ".join(vardb.aux_get(pkg.cpv, dep_keys))
@@ -3477,7 +3519,7 @@ class depgraph(object):
 							portage.dep._dep_check_strict = False
 							try:
 								success, atoms = portage.dep_check(depstr,
-									final_db, pkgsettings, myuse=myuse,
+									final_db, pkgsettings, myuse=pkg.use.enabled,
 									trees=self._graph_trees, myroot=myroot)
 							except Exception, e:
 								if isinstance(e, SystemExit):
@@ -3626,7 +3668,8 @@ class depgraph(object):
 						uninst_task = Package(built=inst_pkg.built,
 							cpv=inst_pkg.cpv, installed=inst_pkg.installed,
 							metadata=inst_pkg.metadata,
-							operation="uninstall", root=inst_pkg.root,
+							operation="uninstall",
+							root_config=inst_pkg.root_config,
 							type_name=inst_pkg.type_name)
 						self._pkg_cache[uninst_task] = uninst_task
 						# Enforce correct merge order with a hard dep.
@@ -3778,7 +3821,7 @@ class depgraph(object):
 			try:
 				portage_rdepend = self._select_atoms_highest_available(
 					running_root, running_portage.metadata["RDEPEND"],
-					myuse=running_portage.metadata["USE"].split(),
+					myuse=running_portage.use.enabled,
 					parent=running_portage, strict=False)
 			except portage.exception.InvalidDependString, e:
 				portage.writemsg("!!! Invalid RDEPEND in " + \
@@ -4590,7 +4633,7 @@ class depgraph(object):
 					repo_path_real = repo_name
 				else:
 					repo_path_real = portdb.getRepositoryPath(repo_name)
-				pkg_use = metadata["USE"].split()
+				pkg_use = list(pkg.use.enabled)
 				try:
 					restrict = flatten(use_reduce(paren_reduce(
 						pkg.metadata["RESTRICT"]), uselist=pkg_use))
@@ -4670,18 +4713,15 @@ class depgraph(object):
 				
 				if True:
 					# USE flag display
-					cur_iuse = list(filter_iuse_defaults(
-						pkg.metadata["IUSE"].split()))
-
 					forced_flags = set()
-					pkgsettings.setcpv(pkg.cpv, mydb=pkg.metadata) # for package.use.{mask,force}
+					pkgsettings.setcpv(pkg) # for package.use.{mask,force}
 					forced_flags.update(pkgsettings.useforce)
 					forced_flags.update(pkgsettings.usemask)
 
-					cur_iuse = portage.unique_array(cur_iuse)
+					cur_iuse = list(pkg.iuse.all)
 					cur_iuse.sort()
-					cur_use = pkg_use
-					cur_use = [flag for flag in cur_use if flag in cur_iuse]
+					cur_use = [flag for flag in pkg.use.enabled \
+						if flag in cur_iuse]
 
 					if myoldbest and myinslotlist:
 						previous_cpv = myoldbest[0]
@@ -5243,9 +5283,10 @@ class depgraph(object):
 				raise portage.exception.PackageNotFound(pkg_key)
 			installed = action == "uninstall"
 			built = pkg_type != "ebuild"
+			root_config = self.roots[myroot]
 			pkg = Package(built=built, cpv=pkg_key,
 				installed=installed, metadata=metadata,
-				operation=action, root=myroot,
+				operation=action, root_config=root_config,
 				type_name=pkg_type)
 			if pkg_type == "ebuild":
 				pkgsettings = self.pkgsettings[myroot]
@@ -5691,9 +5732,7 @@ class MergeTask(object):
 		for root in trees:
 			self.pkgsettings[root] = portage.config(
 				clone=trees[root]["vartree"].settings)
-			self._blocker_db[root] = BlockerDB(
-				trees[root]["vartree"],
-				trees[root]["porttree"].dbapi)
+			self._blocker_db[root] = BlockerDB(trees[root]["root_config"])
 		self.curval = 0
 		self._spawned_pids = []
 
@@ -7878,9 +7917,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	dep_check_trees = {}
 	dep_check_trees[myroot] = {}
 	dep_check_trees[myroot]["vartree"] = \
-		FakeVartree(trees[myroot]["vartree"],
-		trees[myroot]["porttree"].dbapi,
-		depgraph._mydbapi_keys, pkg_cache)
+		FakeVartree(trees[myroot]["root_config"], pkg_cache=pkg_cache)
 	vardb = dep_check_trees[myroot]["vartree"].dbapi
 	# Constrain dependency selection to the installed packages.
 	dep_check_trees[myroot]["porttree"] = dep_check_trees[myroot]["vartree"]
