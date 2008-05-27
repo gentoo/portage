@@ -1636,7 +1636,7 @@ class BlockerDB(object):
 				try:
 					portage.dep._dep_check_strict = False
 					success, atoms = portage.dep_check(depstr,
-						vardb, settings, myuse=pkg.use.enabled,
+						vardb, settings, myuse=inst_pkg.use.enabled,
 						trees=dep_check_trees, myroot=inst_pkg.root)
 				finally:
 					portage.dep._dep_check_strict = True
