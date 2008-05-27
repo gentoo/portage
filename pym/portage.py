@@ -1776,16 +1776,23 @@ class config:
 		if not os.access(self["ROOT"], os.W_OK):
 			return
 
+		#                                     gid, mode, mask, preserve_perms
 		dir_mode_map = {
-			"tmp"             :(-1,          01777, 0),
-			"var/tmp"         :(-1,          01777, 0),
-			"var/lib/portage" :(portage_gid, 02750, 02),
-			"var/cache/edb"   :(portage_gid,  0755, 02)
+			"tmp"             : (                      -1, 01777,  0,  True),
+			"var/tmp"         : (                      -1, 01777,  0,  True),
+			PRIVATE_PATH      : (             portage_gid, 02750, 02,  False),
+			CACHE_PATH.lstrip(os.path.sep) : (portage_gid,  0755, 02,  False)
 		}
 
-		for mypath, (gid, mode, modemask) in dir_mode_map.iteritems():
+		for mypath, (gid, mode, modemask, preserve_perms) \
+			in dir_mode_map.iteritems():
+			mydir = os.path.join(self["ROOT"], mypath)
+			if preserve_perms and os.path.isdir(mydir):
+				# Only adjust permissions on some directories if
+				# they don't exist yet. This gives freedom to the
+				# user to adjust permissions to suit their taste.
+				continue
 			try:
-				mydir = os.path.join(self["ROOT"], mypath)
 				portage_util.ensure_dirs(mydir, gid=gid, mode=mode, mask=modemask)
 			except portage_exception.PortageException, e:
 				writemsg("!!! Directory initialization failed: '%s'\n" % mydir,
