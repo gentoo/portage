@@ -338,6 +338,10 @@ def dep_opconvert(deplist):
 	return retlist
 
 class _use_dep(object):
+
+	__slots__ = ("__weakref__", "conditional", "conditional_disabled",
+		"conditional_enabled", "disabled", "enabled", "tokens", "required")
+
 	def __init__(self, use):
 		enabled_flags = []
 		disabled_flags = []
