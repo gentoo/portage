@@ -409,6 +409,8 @@ class Atom(str):
 		self.use = dep_getusedeps(s)
 		if self.use:
 			self.use = _use_dep(self.use)
+		else:
+			self.use = None
 
 def get_operator(mydep):
 	"""
