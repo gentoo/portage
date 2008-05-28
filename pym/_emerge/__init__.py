@@ -3024,7 +3024,8 @@ class depgraph(object):
 		# List of acceptable packages, ordered by type preference.
 		matched_packages = []
 		highest_version = None
-		atom = portage.dep.Atom(atom)
+		if not isinstance(atom, portage.dep.Atom):
+			atom = portage.dep.Atom(atom)
 		atom_cp = atom.cp
 		existing_node = None
 		myeb = None
