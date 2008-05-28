@@ -7,7 +7,8 @@ __docformat__ = "epytext"
 import commands,errno,os,re,shlex,sys
 from portage_const import COLOR_MAP_FILE
 from portage_util import writemsg
-from portage_exception import PortageException, ParseError, PermissionDenied, FileNotFound
+from portage_exception import CommandNotFound, FileNotFound, \
+	ParseError, PermissionDenied, PortageException
 
 havecolor=1
 dotitles=1
@@ -347,7 +348,10 @@ def set_term_size(lines, columns, fd):
 	"""
 	from portage_exec import spawn
 	cmd = ["stty", "rows", str(lines), "columns", str(columns)]
-	spawn(cmd, env=os.environ, fd_pipes={0:fd})
+	try:
+		spawn(cmd, env=os.environ, fd_pipes={0:fd})
+	except CommandNotFound:
+		writemsg("portage: stty: command not found\n", noiselevel=-1)
 
 class EOutput:
 	"""
