@@ -3067,12 +3067,21 @@ class depgraph(object):
 				# the newly built package still won't have the expected slot.
 				# Therefore, assume that such SLOT dependencies are already
 				# satisfied rather than forcing a rebuild.
-				if installed and not cpv_list and matched_packages \
-					and portage.dep.dep_getslot(atom):
+				if installed and not cpv_list and \
+					matched_packages and atom.slot:
 					for pkg in matched_packages:
-						if vardb.cpv_exists(pkg.cpv):
+						if not vardb.cpv_exists(pkg.cpv):
+							continue
+						# Remove the slot from the atom and verify that
+						# the package matches the resulting atom.
+						atom_without_slot = portage.dep.remove_slot(atom)
+						if atom.use:
+							atom_without_slot += str(atom.use)
+						atom_without_slot = portage.dep.Atom(atom_without_slot)
+						if portage.match_from_list(
+							atom_without_slot, [pkg]):
 							cpv_list = [pkg.cpv]
-							break
+						break
 
 				if not cpv_list:
 					continue
