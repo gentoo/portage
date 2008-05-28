@@ -6163,9 +6163,9 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 				kmask="~"+myarch
 				break
 
-	# Assume that the user doesn't want to be bothered about
-	# KEYWORDS of packages that are already installed.
-	if kmask and not installed:
+	# Only show KEYWORDS masks for installed packages
+	# if they're not masked for any other reason.
+	if kmask and (not installed or not rValue):
 		rValue.append(kmask+" keyword")
 	return rValue
 

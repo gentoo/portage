@@ -2110,7 +2110,7 @@ class depgraph(object):
 		self._displayed_list = None
 		self._pprovided_args = []
 		self._missing_args = []
-		self._masked_installed = []
+		self._masked_installed = set()
 		self._unsatisfied_deps_for_display = []
 		self._unsatisfied_blockers_for_display = None
 		self._circular_deps_for_display = None
@@ -2418,12 +2418,6 @@ class depgraph(object):
 						pkg, pkg.metadata["PROVIDE"], str(e))
 					del e
 					return 0
-
-		if pkg.installed:
-			# Warn if an installed package is masked and it
-			# is pulled into the graph.
-			if not visible(pkgsettings, pkg):
-				self._masked_installed.append((pkg, pkgsettings))
 
 		if args:
 			self._set_nodes.add(pkg)
@@ -3496,11 +3490,51 @@ class depgraph(object):
 				portdb = self.trees[myroot]["porttree"].dbapi
 				pkgsettings = self.pkgsettings[myroot]
 				final_db = self.mydbapi[myroot]
+
+				graph_complete_for_root = "complete" in self.myparams or \
+					(myroot == self.target_root and \
+					("deep" in self.myparams or "empty" in self.myparams) and \
+					not self._required_set_names.difference(self._sets))
+
 				blocker_cache = BlockerCache(myroot, vardb)
 				stale_cache = set(blocker_cache)
 				for pkg in vardb:
 					cpv = pkg.cpv
 					stale_cache.discard(cpv)
+
+					# Check for masked installed packages. For keyword
+					# mask there are a couple of common cases that are
+					# likely to generate unwanted noise:
+					#
+					#  * Packages missing /var/db/pkg/*/*/KEYWORDS entries
+					#    due to having been installed by an old version of
+					#    portage.
+					#
+					#  * Packages installed by overriding ACCEPT_KEYWORDS
+					#    via the environment.
+					#
+					# To avoid unwanted noise, only warn about keyword
+					# masks if all of the following are true:
+					#
+					#  * KEYWORDS is not empty (not installed by old portage).
+					#
+					#  * The graph is complete and the package has not been
+					#    pulled into the dependency graph. It's eligible for
+					#    depclean, but depclean may fail to recognize it as
+					#    such due to differences in visibility filtering which
+					#    can lead to differences in || dep evaluation.
+					#    TODO: Share visibility code to fix this inconsistency.
+
+					if pkg in final_db:
+						if not visible(pkgsettings, pkg):
+							self._masked_installed.add(pkg)
+						elif graph_complete_for_root and \
+							pkgsettings._getMissingKeywords(
+							pkg.cpv, pkg.metadata) and \
+							pkg.metadata["KEYWORDS"].split() and \
+							not self.digraph.contains(pkg):
+							self._masked_installed.add(pkg)
+
 					blocker_atoms = None
 					blockers = None
 					if self.digraph.contains(pkg):
@@ -5166,8 +5200,9 @@ class depgraph(object):
 			sys.stderr.write("".join(msg))
 
 		masked_packages = []
-		for pkg, pkgsettings in self._masked_installed:
-			root_config = self.roots[pkg.root]
+		for pkg in self._masked_installed:
+			root_config = pkg.root_config
+			pkgsettings = root_config.settings
 			mreasons = get_masking_status(pkg, pkgsettings, root_config)
 			masked_packages.append((root_config, pkgsettings,
 				pkg.cpv, pkg.metadata, mreasons))
