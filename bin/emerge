@@ -8312,7 +8312,8 @@ def action_build(settings, trees, mtimedb,
 							tuple(task) in unsatisfied_parents:
 							continue
 						pruned_mergelist.append(task)
-					if not pruned_mergelist:
+					if not pruned_mergelist or \
+						len(pruned_mergelist) == len(mergelist):
 						raise
 					mergelist[:] = pruned_mergelist
 					dropped_tasks.update(unsatisfied_parents)
