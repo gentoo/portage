@@ -5596,7 +5596,9 @@ class depgraph(object):
 		def __setitem__(self, k, v):
 			dict.__setitem__(self, k, v)
 			root_config = self._depgraph.roots[v.root]
-			if visible(root_config.settings, v):
+			if visible(root_config.settings, v) and \
+				not (v.installed and \
+				v.root_config.settings.getMissingKeywords(v.cpv, v.metadata)):
 				root_config.visible_pkgs.cpv_inject(v)
 
 class RepoDisplay(object):
