@@ -8383,6 +8383,7 @@ def action_build(settings, trees, mtimedb,
 					if not pruned_mergelist:
 						raise
 					mergelist[:] = pruned_mergelist
+					del e
 					continue
 				else:
 					break
