@@ -8363,6 +8363,8 @@ def action_build(settings, trees, mtimedb,
 					del mergelist[i]
 					break
 
+		dropped_tasks = set()
+
 		success = False
 		try:
 			while True:
@@ -8378,11 +8380,12 @@ def action_build(settings, trees, mtimedb,
 					for task in mergelist:
 						if isinstance(task, list) and \
 							tuple(task) in unsatisfied_parents:
-								continue
+							continue
 						pruned_mergelist.append(task)
 					if not pruned_mergelist:
 						raise
 					mergelist[:] = pruned_mergelist
+					dropped_tasks.update(unsatisfied_parents)
 					del e
 					continue
 				else:
@@ -8439,7 +8442,15 @@ def action_build(settings, trees, mtimedb,
 			if show_spinner:
 				print "\b\b... done!"
 
-		if not success:
+		if success:
+			if dropped_tasks:
+				portage.writemsg("!!! One or more packages have been " + \
+					"dropped due to unsatisfied dependencies:\n\n",
+					noiselevel=-1)
+				for task in dropped_tasks:
+					portage.writemsg("  " + str(task) + "\n", noiselevel=-1)
+				portage.writemsg("\n", noiselevel=-1)
+		else:
 			mydepgraph.display_problems()
 			if not (ask or pretend):
 				# delete the current list and also the backup
