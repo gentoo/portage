@@ -3151,13 +3151,23 @@ class depgraph(object):
 					for pkg in matched_packages:
 						if not vardb.cpv_exists(pkg.cpv):
 							continue
+						inst_pkg = self._pkg_cache.get(
+							(pkg_type, root, pkg.cpv, "nomerge"))
+						if inst_pkg is None:
+							metadata = izip(self._mydbapi_keys,
+								vardb.aux_get(cpv, self._mydbapi_keys))
+							inst_pkg = Package(built=built, cpv=pkg.cpv,
+								installed=installed, metadata=metadata,
+								onlydeps=onlydeps, root_config=root_config,
+								type_name=pkg_type)
+							self._pkg_cache[inst_pkg] = inst_pkg
 						# Remove the slot from the atom and verify that
 						# the package matches the resulting atom.
 						atom_without_slot = portage_dep.remove_slot(atom)
 						atom_without_slot = portage_dep.Atom(atom_without_slot)
 						if portage.match_from_list(
-							atom_without_slot, [pkg]):
-							cpv_list = [pkg.cpv]
+							atom_without_slot, [inst_pkg]):
+							cpv_list = [inst_pkg.cpv]
 						break
 
 				if not cpv_list:
