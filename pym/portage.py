@@ -8979,9 +8979,6 @@ class dblink:
 						continue
 				if obj.startswith(dest_root):
 					relative_path = obj[dest_root_len:]
-					if not others_in_slot and \
-						relative_path in cfgfiledict:
-						stale_confmem.append(relative_path)
 					is_owned = False
 					for dblnk in others_in_slot:
 						if dblnk.isowner(relative_path, dest_root):
@@ -8992,6 +8989,8 @@ class dblink:
 						# don't unmerge it.
 						show_unmerge("---", "replaced", file_type, obj)
 						continue
+					elif relative_path in cfgfiledict:
+						stale_confmem.append(relative_path)
 				# next line includes a tweak to protect modules from being unmerged,
 				# but we don't protect modules from being overwritten if they are
 				# upgraded. We effectively only want one half of the config protection
