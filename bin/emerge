@@ -793,7 +793,7 @@ class InternalPackageSet(object):
 	def add(self, atom):
 		try:
 			atom = portage_dep.Atom(atom)
-		except portage_dep.InvalidAtom:
+		except portage_exception.InvalidAtom:
 			self._nonatoms.add(atom)
 			return
 		cp_list = self._atoms.get(atom.cp)
