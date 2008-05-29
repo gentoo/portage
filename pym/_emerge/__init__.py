@@ -4737,10 +4737,9 @@ class depgraph(object):
 					forced_flags.update(pkgsettings.useforce)
 					forced_flags.update(pkgsettings.usemask)
 
-					cur_iuse = list(pkg.iuse.all)
-					cur_iuse.sort()
 					cur_use = [flag for flag in pkg.use.enabled \
-						if flag in cur_iuse]
+						if flag in pkg.iuse.all]
+					cur_iuse = sorted(pkg.iuse.all)
 
 					if myoldbest and myinslotlist:
 						previous_cpv = myoldbest[0]
