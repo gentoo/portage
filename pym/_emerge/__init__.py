@@ -500,8 +500,8 @@ class search(object):
 				else:
 					db_keys = list(db._aux_cache_keys)
 					for cpv in db.match(atom):
-						metadata = dict(izip(db_keys,
-							db.aux_get(cpv, db_keys)))
+						metadata = izip(db_keys,
+							db.aux_get(cpv, db_keys))
 						if not self._visible(db, cpv, metadata):
 							continue
 						matches.add(cpv)
@@ -523,8 +523,8 @@ class search(object):
 					for cpv in reversed(db.match(atom)):
 						if portage.cpv_getkey(cpv) != cp:
 							continue
-						metadata = dict(izip(db_keys,
-							db.aux_get(cpv, db_keys)))
+						metadata = izip(db_keys,
+							db.aux_get(cpv, db_keys))
 						if not self._visible(db, cpv, metadata):
 							continue
 						if not result or cpv == portage.best([cpv, result]):
@@ -744,6 +744,7 @@ def create_world_atom(pkg_key, metadata, args_set, root_config):
 	be greedy with respect to slots.  Unslotted system packages will not be
 	stored in world."""
 	pkg = Package(cpv=pkg_key, root_config=root_config, metadata=metadata)
+	metadata = pkg.metadata
 	arg_atom = args_set.findAtomForPackage(pkg)
 	if not arg_atom:
 		return None
@@ -2542,8 +2543,8 @@ class depgraph(object):
 					os.path.realpath(self.trees[myroot]["bintree"].getname(mykey)):
 					print colorize("BAD", "\n*** You need to adjust PKGDIR to emerge this package.\n")
 					return 0, myfavorites
-				metadata = dict(izip(self._mydbapi_keys,
-					bindb.aux_get(mykey, self._mydbapi_keys)))
+				metadata = izip(self._mydbapi_keys,
+					bindb.aux_get(mykey, self._mydbapi_keys))
 				pkg = Package(type_name="binary", root_config=root_config,
 					cpv=mykey, built=True, metadata=metadata,
 					onlydeps=onlydeps)
@@ -2580,12 +2581,12 @@ class depgraph(object):
 				else:
 					raise portage.exception.PackageNotFound(
 						"%s is not in a valid portage tree hierarchy or does not exist" % x)
-				metadata = dict(izip(self._mydbapi_keys,
-					portdb.aux_get(mykey, self._mydbapi_keys)))
-				pkgsettings.setcpv(mykey, mydb=metadata)
-				metadata["USE"] = pkgsettings["PORTAGE_USE"]
+				metadata = izip(self._mydbapi_keys,
+					portdb.aux_get(mykey, self._mydbapi_keys))
 				pkg = Package(type_name="ebuild", root_config=root_config,
 					cpv=mykey, metadata=metadata, onlydeps=onlydeps)
+				pkgsettings.setcpv(pkg)
+				pkg.metadata["USE"] = pkgsettings["PORTAGE_USE"]
 				self._pkg_cache[pkg] = pkg
 				args.append(PackageArg(arg=x, package=pkg,
 					root_config=root_config))
@@ -3116,7 +3117,7 @@ class depgraph(object):
 					if pkg is None:
 						calculated_use = False
 						try:
-							metadata = zip(self._mydbapi_keys,
+							metadata = izip(self._mydbapi_keys,
 								db.aux_get(cpv, self._mydbapi_keys))
 						except KeyError:
 							continue
@@ -5228,8 +5229,8 @@ class depgraph(object):
 			pkg_type, root, pkg_key, pkg_status = x
 			if pkg_status != "nomerge":
 				continue
-			metadata = dict(izip(self._mydbapi_keys,
-				self.mydbapi[root].aux_get(pkg_key, self._mydbapi_keys)))
+			metadata = izip(self._mydbapi_keys,
+				self.mydbapi[root].aux_get(pkg_key, self._mydbapi_keys))
 			try:
 				myfavkey = create_world_atom(pkg_key, metadata,
 					args_set, root_config)
@@ -5286,7 +5287,7 @@ class depgraph(object):
 				continue
 			mydb = trees[myroot][self.pkg_tree_map[pkg_type]].dbapi
 			try:
-				metadata = zip(self._mydbapi_keys,
+				metadata = izip(self._mydbapi_keys,
 					mydb.aux_get(pkg_key, self._mydbapi_keys))
 			except KeyError:
 				# It does no exist or it is corrupt.
@@ -8022,11 +8023,11 @@ def action_depclean(settings, trees, ldpath_mtimes,
 				continue
 			spinner.update()
 			fakedb.cpv_inject(pkg)
-			myaux = dict(izip(aux_keys, vardb.aux_get(pkg, aux_keys)))
+			myaux = izip(aux_keys, vardb.aux_get(pkg, aux_keys))
 			mydeps = []
 
 			usedef = vardb.aux_get(pkg, ["USE"])[0].split()
-			for dep_type, depstr in myaux.iteritems():
+			for dep_type, depstr in myaux:
 
 				if not depstr:
 					continue
@@ -8157,10 +8158,10 @@ def action_depclean(settings, trees, ldpath_mtimes,
 		del cleanlist[:]
 		for node in clean_set:
 			graph.add(node, None)
-			myaux = dict(izip(aux_keys, vardb.aux_get(node, aux_keys)))
+			myaux = izip(aux_keys, vardb.aux_get(node, aux_keys))
 			mydeps = []
 			usedef = vardb.aux_get(node, ["USE"])[0].split()
-			for dep_type, depstr in myaux.iteritems():
+			for dep_type, depstr in myaux:
 				if not depstr:
 					continue
 				try:
