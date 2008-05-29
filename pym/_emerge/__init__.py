@@ -5228,8 +5228,7 @@ class depgraph(object):
 			pkg_type, root, pkg_key, pkg_status = x
 			if pkg_status != "nomerge":
 				continue
-			metadata = izip(self._mydbapi_keys,
-				self.mydbapi[root].aux_get(pkg_key, self._mydbapi_keys))
+			metadata = x.metadata
 			try:
 				myfavkey = create_world_atom(pkg_key, metadata,
 					args_set, root_config)
