@@ -5273,13 +5273,6 @@ class depgraph(object):
 		if not isinstance(mergelist, list):
 			mergelist = []
 
-		if mergelist and "--skipfirst" in self.myopts:
-			for i, task in enumerate(mergelist):
-				if isinstance(task, list) and \
-					task and task[-1] == "merge":
-					del mergelist[i]
-					break
-
 		fakedb = self.mydbapi
 		trees = self.trees
 		serialized_tasks = []
@@ -8360,11 +8353,39 @@ def action_build(settings, trees, mtimedb,
 		if show_spinner:
 			print "Calculating dependencies  ",
 		myparams = create_depgraph_params(myopts, myaction)
-		mydepgraph = depgraph(settings, trees,
-			myopts, myparams, spinner)
+
+		resume_data = mtimedb["resume"]
+		mergelist = resume_data["mergelist"]
+		if mergelist and "--skipfirst" in myopts:
+			for i, task in enumerate(mergelist):
+				if isinstance(task, list) and \
+					task and task[-1] == "merge":
+					del mergelist[i]
+					break
+
 		success = False
 		try:
-			success = mydepgraph.loadResumeCommand(mtimedb["resume"])
+			while True:
+				mydepgraph = depgraph(settings, trees,
+					myopts, myparams, spinner)
+				try:
+					success = mydepgraph.loadResumeCommand(mtimedb["resume"])
+				except depgraph.UnsatisfiedResumeDep, e:
+					if "--skipfirst" not in myopts:
+						raise
+					unsatisfied_parents = set(dep.parent for dep in e.value)
+					pruned_mergelist = []
+					for task in mergelist:
+						if isinstance(task, list) and \
+							tuple(task) in unsatisfied_parents:
+								continue
+						pruned_mergelist.append(task)
+					if not pruned_mergelist:
+						raise
+					mergelist[:] = pruned_mergelist
+					continue
+				else:
+					break
 		except (portage.exception.PackageNotFound,
 			mydepgraph.UnsatisfiedResumeDep), e:
 			if show_spinner:
@@ -8398,7 +8419,9 @@ def action_build(settings, trees, mtimedb,
 				msg = "The resume list contains packages " + \
 					"with dependencies that have not been " + \
 					"installed yet. Please restart/continue " + \
-					"the operation manually."
+					"the operation manually, or use --skipfirst " + \
+					"to skip the first package in the list and " + \
+					"any other packages that may have missing dependencies."
 				for line in wrap(msg, 72):
 					out.eerror(line)
 			elif isinstance(e, portage.exception.PackageNotFound):
