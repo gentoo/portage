@@ -8386,7 +8386,7 @@ def action_build(settings, trees, mtimedb,
 						raise
 					mergelist[:] = pruned_mergelist
 					dropped_tasks.update(unsatisfied_parents)
-					del e
+					del e, unsatisfied_parents
 					continue
 				else:
 					break
