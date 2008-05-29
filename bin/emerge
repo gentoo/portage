@@ -3156,7 +3156,7 @@ class depgraph(object):
 							(pkg_type, root, pkg.cpv, "nomerge"))
 						if inst_pkg is None:
 							metadata = izip(self._mydbapi_keys,
-								vardb.aux_get(cpv, self._mydbapi_keys))
+								vardb.aux_get(pkg.cpv, self._mydbapi_keys))
 							inst_pkg = Package(built=built, cpv=pkg.cpv,
 								installed=installed, metadata=metadata,
 								onlydeps=onlydeps, root_config=root_config,
