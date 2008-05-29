@@ -2323,6 +2323,12 @@ class dblink(object):
 		outfile.flush()
 		outfile.close()
 
+		# write out our collection of md5sums
+		cfgfiledict.pop("IGNORE", None)
+		ensure_dirs(os.path.dirname(conf_mem_file),
+			gid=portage_gid, mode=02750, mask=02)
+		writedict(cfgfiledict, conf_mem_file)
+
 		# These caches are populated during collision-protect and the data
 		# they contain is now invalid. It's very important to invalidate
 		# the contents_inodes cache so that FEATURES=unmerge-orphans
@@ -2409,16 +2415,6 @@ class dblink(object):
 		self.vartree.dbapi.matchcache.pop(self.cat, None)
 		self.vartree.dbapi.cpcache.pop(self.mysplit[0], None)
 		contents = self.getcontents()
-
-		#write out our collection of md5sums
-		if cfgfiledict.has_key("IGNORE"):
-			del cfgfiledict["IGNORE"]
-
-		my_private_path = os.path.join(destroot, PRIVATE_PATH)
-		ensure_dirs(my_private_path, gid=portage_gid, mode=02750, mask=02)
-
-		writedict(cfgfiledict, conf_mem_file)
-		del conf_mem_file
 
 		# regenerate reverse NEEDED map
 		self.vartree.dbapi.linkmap.rebuild()
