@@ -8450,6 +8450,7 @@ def action_build(settings, trees, mtimedb,
 				for task in dropped_tasks:
 					portage.writemsg("  " + str(task) + "\n", noiselevel=-1)
 				portage.writemsg("\n", noiselevel=-1)
+			del dropped_tasks
 		else:
 			mydepgraph.display_problems()
 			if not (ask or pretend):
