@@ -885,8 +885,8 @@ def match_from_list(mydep, candidate_list):
 		candidate_list = mylist
 		mylist = []
 		for x in candidate_list:
-			xslot = getattr(x, "slot", None)
-			if xslot is None and isinstance(x, basestring):
+			xslot = getattr(x, "slot", False)
+			if xslot is False:
 				xslot = dep_getslot(x)
 			if xslot is not None and xslot != slot:
 				continue
