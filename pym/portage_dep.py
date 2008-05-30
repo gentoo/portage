@@ -310,8 +310,8 @@ def get_operator(mydep):
 	@return: The operator. One of:
 		'~', '=', '>', '<', '=*', '>=', or '<='
 	"""
-	operator = getattr(mydep, "operator", None)
-	if operator is not None:
+	operator = getattr(mydep, "operator", False)
+	if operator is not False:
 		return operator
 	if mydep:
 		mydep = remove_slot(mydep)
@@ -385,8 +385,8 @@ def dep_getslot(mydep):
 	@rtype: String
 	@return: The slot
 	"""
-	slot = getattr(mydep, "slot", None)
-	if slot is not None:
+	slot = getattr(mydep, "slot", False)
+	if slot is not False:
 		return slot
 	colon = mydep.find(":")
 	if colon != -1:
