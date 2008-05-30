@@ -818,10 +818,19 @@ class InternalPackageSet(object):
 		None if there are no matches.  This matches virtual arguments against
 		the PROVIDE metadata.  This can raise an InvalidDependString exception
 		if an error occurs while parsing PROVIDE."""
-		try:
-			return self.iterAtomsForPackage(pkg).next()
-		except StopIteration:
-			return None
+
+		# Atoms matched via PROVIDE must be temporarily transformed since
+		# match_from_list() only works correctly when atom.cp == pkg.cp.
+		rev_transform = {}
+		for atom in self.iterAtomsForPackage(pkg):
+			if atom.cp == pkg.cp:
+				rev_transform[atom] = atom
+			else:
+				rev_transform[portage_dep.Atom(atom.replace(atom.cp, pkg.cp, 1))] = atom
+		best_match = portage.best_match_to_list(pkg, rev_transform.iterkeys())
+		if best_match:
+			return rev_transform[best_match]
+		return None
 
 	def iterAtomsForPackage(self, pkg):
 		"""
