@@ -5144,7 +5144,7 @@ class depgraph(object):
 		masked_packages = []
 		for pkg in self._masked_installed:
 			root_config = pkg.root_config
-			pkgsettings = root_config.settings
+			pkgsettings = self.pkgsettings[pkg.root]
 			mreasons = get_masking_status(pkg, pkgsettings, root_config)
 			masked_packages.append((root_config, pkgsettings,
 				pkg.cpv, pkg.metadata, mreasons))
