@@ -7879,10 +7879,10 @@ class portdbapi(dbapi):
 			cpv_iter = iter(self.cp_list(mykey))
 			if mydep != mykey:
 				cpv_iter = self._iter_match(mydep, cpv_iter)
-			myval = ""
-			for cpv in cpv_iter:
-				myval = cpv
-				break
+			try:
+				myval = cpv_iter.next()
+			except StopIteration:
+				myval = ""
 
 		elif level in ("minimum-visible", "bestmatch-visible"):
 			# Find the minimum matching visible version. This is optimized to
