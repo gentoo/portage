@@ -6331,7 +6331,7 @@ class dbapi(object):
 			self.cp_list(mydep.cp, use_cache=use_cache)))
 
 	def _iter_match(self, atom, cpv_iter):
-		cpv_iter = match_from_list(atom, cpv_iter)
+		cpv_iter = iter(match_from_list(atom, cpv_iter))
 		if atom.slot:
 			cpv_iter = self._iter_match_slot(atom, cpv_iter)
 		return cpv_iter
