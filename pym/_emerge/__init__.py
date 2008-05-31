@@ -6427,8 +6427,7 @@ def unmerge(root_config, myopts, unmerge_action,
 				sys.exit(1)
 	
 			if not mymatch and x[0] not in "<>=~":
-				#add a "=" if missing
-				mymatch=localtree.dep_match("="+x)
+				mymatch = localtree.dep_match(x)
 			if not mymatch:
 				portage.writemsg("\n--- Couldn't find '%s' to %s.\n" % \
 					(x, unmerge_action), noiselevel=-1)
