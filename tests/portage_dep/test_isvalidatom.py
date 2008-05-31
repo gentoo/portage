@@ -31,7 +31,17 @@ class IsValidAtom(TestCase):
 			  ( "<~category/foo-1.0", False ),
 			  ( "###cat/foo-1.0", False ),
 			  ( "~sys-apps/portage", False ),
-			  ( "portage", False ) ]
+			  ( "portage", False ),
+			  ( "=portage", False ),
+			  ( ">=portage-2.1", False ),
+			  ( "~portage-2.1", False ),
+			  ( "=portage-2.1*", False ),
+			  ( "null/portage", True ),
+			  ( "=null/portage", False ),
+			  ( "=null/portage*", False ),
+			  ( ">=null/portage-2.1", True ),
+			  ( "~null/portage-2.1", True ),
+			  ( "=null/portage-2.1*", True ),]
 
 		for test in tests:
 			if test[1]:
