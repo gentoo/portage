@@ -8369,18 +8369,47 @@ def action_build(settings, trees, mtimedb,
 			while True:
 				mydepgraph = depgraph(settings, trees,
 					myopts, myparams, spinner)
+				graph = mydepgraph.digraph
 				try:
 					success = mydepgraph.loadResumeCommand(mtimedb["resume"])
 				except depgraph.UnsatisfiedResumeDep, e:
 					if "--skipfirst" not in myopts:
 						raise
-					unsatisfied_parents = set(dep.parent for dep in e.value)
-					pruned_mergelist = []
-					for task in mergelist:
-						if isinstance(task, list) and \
-							tuple(task) in unsatisfied_parents:
+
+					unsatisfied_parents = dict((dep.parent, dep.parent) \
+						for dep in e.value)
+					traversed_nodes = set()
+					unsatisfied_stack = list(unsatisfied_parents)
+					while unsatisfied_stack:
+						pkg = unsatisfied_stack.pop()
+						if pkg in traversed_nodes:
 							continue
-						pruned_mergelist.append(task)
+						traversed_nodes.add(pkg)
+
+						# If this package was pulled in by a parent
+						# package scheduled for merge, removing this
+						# package may cause the the parent package's
+						# dependency to become unsatisfied.
+						for parent_node in graph.parent_nodes(pkg):
+							if not isinstance(parent_node, Package) \
+								or parent_node.operation != "merge":
+								continue
+							unsatisfied = \
+								graph.child_nodes(parent_node,
+								ignore_priority=DepPriority.SOFT)
+							if pkg in unsatisfied:
+								unsatisfied_parents[parent_node] = parent_node
+								unsatisfied_stack.append(parent_node)
+
+					pruned_mergelist = [x for x in mergelist \
+						if isinstance(x, list) and \
+						tuple(x) not in unsatisfied_parents]
+
+					# It shouldn't happen, but if the size of mergelist
+					# does not decrease for some reason then the loop
+					# will be infinite. Therefore, if that case ever
+					# occurs for some reason, raise the exception to
+					# break out of the loop.
 					if not pruned_mergelist or \
 						len(pruned_mergelist) == len(mergelist):
 						raise
