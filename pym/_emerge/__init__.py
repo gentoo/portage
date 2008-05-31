@@ -8369,13 +8369,13 @@ def action_build(settings, trees, mtimedb,
 			while True:
 				mydepgraph = depgraph(settings, trees,
 					myopts, myparams, spinner)
-				graph = mydepgraph.digraph
 				try:
 					success = mydepgraph.loadResumeCommand(mtimedb["resume"])
 				except depgraph.UnsatisfiedResumeDep, e:
 					if "--skipfirst" not in myopts:
 						raise
 
+					graph = mydepgraph.digraph
 					unsatisfied_parents = dict((dep.parent, dep.parent) \
 						for dep in e.value)
 					traversed_nodes = set()
@@ -8415,7 +8415,8 @@ def action_build(settings, trees, mtimedb,
 						raise
 					mergelist[:] = pruned_mergelist
 					dropped_tasks.update(unsatisfied_parents)
-					del e, unsatisfied_parents
+					del e, graph, traversed_nodes, \
+						unsatisfied_parents, unsatisfied_stack
 					continue
 				else:
 					break
