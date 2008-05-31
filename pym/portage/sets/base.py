@@ -61,13 +61,18 @@ class PackageSet(object):
 		self._atoms.clear()
 		self._nonatoms.clear()
 		for a in atoms:
-			a = a.strip()
-			if not a:
-				continue
-			try:
-				self._atoms.add(Atom(a))
-			except InvalidAtom:
-				self._nonatoms.add(a)
+			if not isinstance(a, Atom):
+				if isinstance(a, basestring):
+					a = a.strip()
+				if not a:
+					continue
+				try:
+					a = Atom(a)
+				except InvalidAtom:
+					self._nonatoms.add(a)
+					continue
+			self._atoms.add(a)
+
 		self._updateAtomMap()
 
 	def load(self):
