@@ -603,6 +603,7 @@ def isvalidatom(atom, allow_blockers=False):
 				# "null" category is valid, missing category is not.
 				mycpv_cps = catpkgsplit(cpv.replace("null/", "cat/", 1))
 				if mycpv_cps:
+					mycpv_cps = list(mycpv_cps)
 					mycpv_cps[0] = "null"
 		if not mycpv_cps:
 			mycpv_cps = catpkgsplit(cpv)
