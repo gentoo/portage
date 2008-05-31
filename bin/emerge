@@ -791,11 +791,17 @@ class InternalPackageSet(object):
 		self._atoms.clear()
 		self._nonatoms.clear()
 	def add(self, atom):
-		try:
-			atom = portage_dep.Atom(atom)
-		except portage_exception.InvalidAtom:
-			self._nonatoms.add(atom)
-			return
+		if not isinstance(atom, portage_dep.Atom):
+			if isinstance(atom, basestring):
+				atom = atom.strip()
+			if not atom:
+				return
+			try:
+				atom = portage_dep.Atom(atom)
+			except portage_exception.InvalidAtom:
+				self._nonatoms.add(atom)
+				return
+
 		cp_list = self._atoms.get(atom.cp)
 		if cp_list is None:
 			cp_list = []
