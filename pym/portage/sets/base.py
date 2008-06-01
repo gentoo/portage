@@ -158,11 +158,15 @@ class EditablePackageSet(PackageSet):
 		modified = False
 		normal_atoms = []
 		for a in atoms:
-			if isvalidatom(a):
-				normal_atoms.append(a)
-			else:
-				modified = True
-				self._nonatoms.add(a)
+			if not isinstance(a, Atom):
+				try:
+					a = Atom(a)
+				except InvalidAtom:
+					modified = True
+					self._nonatoms.add(a)
+					continue
+			normal_atoms.append(a)
+
 		if normal_atoms:
 			modified = True
 			self._atoms.update(normal_atoms)
