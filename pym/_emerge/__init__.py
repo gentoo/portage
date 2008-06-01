@@ -8422,7 +8422,7 @@ def action_build(settings, trees, mtimedb,
 				else:
 					break
 		except (portage.exception.PackageNotFound,
-			mydepgraph.UnsatisfiedResumeDep), e:
+			depgraph.UnsatisfiedResumeDep), e:
 			if show_spinner:
 				print
 			from textwrap import wrap
