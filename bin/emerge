@@ -8394,15 +8394,22 @@ def action_build(settings, trees, mtimedb,
 				out.eerror("")
 				indent = "  "
 				for dep in e.value:
-					out.eerror(indent + str(dep.atom) + " pulled in by:")
-					out.eerror(2 * indent + str(dep.parent))
-					out.eerror("")
+					if dep.atom is None:
+						out.eerror(indent + "Masked package:")
+						out.eerror(2 * indent + str(dep.parent))
+						out.eerror("")
+					else:
+						out.eerror(indent + str(dep.atom) + " pulled in by:")
+						out.eerror(2 * indent + str(dep.parent))
+						out.eerror("")
 				msg = "The resume list contains packages " + \
-					"with dependencies that have not been " + \
-					"installed yet. Please restart/continue " + \
+					"that are either masked or have " + \
+					"unsatisfied dependencies. " + \
+					"Please restart/continue " + \
 					"the operation manually, or use --skipfirst " + \
 					"to skip the first package in the list and " + \
-					"any other packages that may have missing dependencies."
+					"any other packages that may be " + \
+					"masked or have missing dependencies."
 				for line in wrap(msg, 72):
 					out.eerror(line)
 			elif isinstance(e, portage_exception.PackageNotFound):
