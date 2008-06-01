@@ -5269,9 +5269,18 @@ class depgraph(object):
 		if not isinstance(mergelist, list):
 			mergelist = []
 
+		favorites = resume_data.get("favorites")
+		args_set = self._sets["args"]
+		if isinstance(favorites, list):
+			args = self._load_favorites(favorites)
+		else:
+			args = []
+
+		skipfirst = "--skipfirst" in self.myopts
 		fakedb = self.mydbapi
 		trees = self.trees
 		serialized_tasks = []
+		masked_tasks = []
 		for x in mergelist:
 			if not (isinstance(x, list) and len(x) == 4):
 				continue
@@ -5305,8 +5314,13 @@ class depgraph(object):
 			root_config = self.roots[pkg.root]
 			if "merge" == pkg.operation and \
 				not visible(root_config.settings, pkg):
-				self._unsatisfied_deps_for_display.append(
-					((pkg.root, "="+pkg.cpv), {"myparent":None}))
+				if skipfirst:
+					atom = args_set.findAtomForPackage(pkg)
+					masked_tasks.append(Dependency(atom=atom,
+						root=pkg.root, parent=pkg))
+				else:
+					self._unsatisfied_deps_for_display.append(
+						((pkg.root, "="+pkg.cpv), {"myparent":None}))
 
 			fakedb[myroot].cpv_inject(pkg)
 			serialized_tasks.append(pkg)
@@ -5320,12 +5334,6 @@ class depgraph(object):
 		else:
 			self._select_package = self._select_pkg_from_graph
 			self.myparams.add("selective")
-
-			favorites = resume_data.get("favorites")
-			if isinstance(favorites, list):
-				args = self._load_favorites(favorites)
-			else:
-				args = []
 
 			for task in serialized_tasks:
 				if isinstance(task, Package) and \
@@ -5350,13 +5358,13 @@ class depgraph(object):
 			# masked.
 			if not self._create_graph(allow_unsatisfied=True):
 				return False
-			if self._unsatisfied_deps:
+			if masked_tasks or self._unsatisfied_deps:
 				# This probably means that a required package
 				# was dropped via --skipfirst. It makes the
 				# resume list invalid, so convert it to a
 				# UnsatisfiedResumeDep exception.
 				raise self.UnsatisfiedResumeDep(
-					self._unsatisfied_deps)
+					masked_tasks + self._unsatisfied_deps)
 			self._serialized_tasks_cache = None
 			try:
 				self.altlist()
