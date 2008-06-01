@@ -8388,9 +8388,9 @@ def action_build(settings, trees, mtimedb,
 						out.eerror(indent + str(tuple(task)))
 				out.eerror("")
 
-			if isinstance(e, mydepgraph.UnsatisfiedResumeDep):
-				out.eerror("One or more expected dependencies " + \
-					"are not installed:")
+			if isinstance(e, depgraph.UnsatisfiedResumeDep):
+				out.eerror("One or packages are either masked or " + \
+					"have missing dependencies:")
 				out.eerror("")
 				indent = "  "
 				for dep in e.value:
