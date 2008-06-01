@@ -5269,13 +5269,6 @@ class depgraph(object):
 		if not isinstance(mergelist, list):
 			mergelist = []
 
-		favorites = resume_data.get("favorites")
-		args_set = self._sets["args"]
-		if isinstance(favorites, list):
-			args = self._load_favorites(favorites)
-		else:
-			args = []
-
 		skipfirst = "--skipfirst" in self.myopts
 		fakedb = self.mydbapi
 		trees = self.trees
@@ -5315,9 +5308,7 @@ class depgraph(object):
 			if "merge" == pkg.operation and \
 				not visible(root_config.settings, pkg):
 				if skipfirst:
-					atom = args_set.findAtomForPackage(pkg)
-					masked_tasks.append(Dependency(atom=atom,
-						root=pkg.root, parent=pkg))
+					masked_tasks.append(Dependency(root=pkg.root, parent=pkg))
 				else:
 					self._unsatisfied_deps_for_display.append(
 						((pkg.root, "="+pkg.cpv), {"myparent":None}))
@@ -5334,6 +5325,13 @@ class depgraph(object):
 		else:
 			self._select_package = self._select_pkg_from_graph
 			self.myparams.add("selective")
+
+			favorites = resume_data.get("favorites")
+			args_set = self._sets["args"]
+			if isinstance(favorites, list):
+				args = self._load_favorites(favorites)
+			else:
+				args = []
 
 			for task in serialized_tasks:
 				if isinstance(task, Package) and \
