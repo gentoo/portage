@@ -8483,7 +8483,8 @@ def action_build(settings, trees, mtimedb,
 		if success:
 			if dropped_tasks:
 				portage.writemsg("!!! One or more packages have been " + \
-					"dropped due to unsatisfied dependencies:\n\n",
+					"dropped due to\n" + \
+					"!!! masking or unsatisfied dependencies:\n\n",
 					noiselevel=-1)
 				for task in dropped_tasks:
 					portage.writemsg("  " + str(task) + "\n", noiselevel=-1)
