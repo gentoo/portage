@@ -5319,7 +5319,7 @@ class depgraph(object):
 				continue
 
 			try:
-				myfavkey = create_world_atom(pkg, args_set, root_config)
+				myfavkey = create_world_atom(x, args_set, root_config)
 				if myfavkey:
 					if myfavkey in added_favorites:
 						continue
