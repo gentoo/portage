@@ -2017,7 +2017,7 @@ class depgraph(object):
 		self._displayed_list = None
 		self._pprovided_args = []
 		self._missing_args = []
-		self._masked_installed = []
+		self._masked_installed = set()
 		self._unsatisfied_deps_for_display = []
 		self._unsatisfied_blockers_for_display = None
 		self._circular_deps_for_display = None
@@ -2325,12 +2325,6 @@ class depgraph(object):
 						pkg, pkg.metadata["PROVIDE"], str(e))
 					del e
 					return 0
-
-		if pkg.installed:
-			# Warn if an installed package is masked and it
-			# is pulled into the graph.
-			if not visible(pkgsettings, pkg):
-				self._masked_installed.append((pkg, pkgsettings))
 
 		if args:
 			self._set_nodes.add(pkg)
@@ -3061,7 +3055,8 @@ class depgraph(object):
 		# List of acceptable packages, ordered by type preference.
 		matched_packages = []
 		highest_version = None
-		atom = portage.dep.Atom(atom)
+		if not isinstance(atom, portage.dep.Atom):
+			atom = portage.dep.Atom(atom)
 		atom_cp = atom.cp
 		existing_node = None
 		myeb = None
@@ -3104,12 +3099,31 @@ class depgraph(object):
 				# the newly built package still won't have the expected slot.
 				# Therefore, assume that such SLOT dependencies are already
 				# satisfied rather than forcing a rebuild.
-				if installed and not cpv_list and matched_packages \
-					and portage.dep.dep_getslot(atom):
+				if installed and not cpv_list and \
+					matched_packages and atom.slot:
 					for pkg in matched_packages:
-						if vardb.cpv_exists(pkg.cpv):
-							cpv_list = [pkg.cpv]
-							break
+						if not vardb.cpv_exists(pkg.cpv):
+							continue
+						inst_pkg = self._pkg_cache.get(
+							(pkg_type, root, pkg.cpv, "nomerge"))
+						if inst_pkg is None:
+							metadata = izip(self._mydbapi_keys,
+								vardb.aux_get(cpv, self._mydbapi_keys))
+							inst_pkg = Package(built=built, cpv=pkg.cpv,
+								installed=installed, metadata=metadata,
+								onlydeps=onlydeps, root_config=root_config,
+								type_name=pkg_type)
+							self._pkg_cache[inst_pkg] = inst_pkg
+						# Remove the slot from the atom and verify that
+						# the package matches the resulting atom.
+						atom_without_slot = portage.dep.remove_slot(atom)
+						if atom.use:
+							atom_without_slot += str(atom.use)
+						atom_without_slot = portage.dep.Atom(atom_without_slot)
+						if portage.match_from_list(
+							atom_without_slot, [inst_pkg]):
+							cpv_list = [inst_pkg.cpv]
+						break
 
 				if not cpv_list:
 					continue
@@ -3455,11 +3469,51 @@ class depgraph(object):
 				portdb = self.trees[myroot]["porttree"].dbapi
 				pkgsettings = self.pkgsettings[myroot]
 				final_db = self.mydbapi[myroot]
+
+				graph_complete_for_root = "complete" in self.myparams or \
+					(myroot == self.target_root and \
+					("deep" in self.myparams or "empty" in self.myparams) and \
+					not self._required_set_names.difference(self._sets))
+
 				blocker_cache = BlockerCache(myroot, vardb)
 				stale_cache = set(blocker_cache)
 				for pkg in vardb:
 					cpv = pkg.cpv
 					stale_cache.discard(cpv)
+
+					# Check for masked installed packages. For keyword
+					# mask there are a couple of common cases that are
+					# likely to generate unwanted noise:
+					#
+					#  * Packages missing /var/db/pkg/*/*/KEYWORDS entries
+					#    due to having been installed by an old version of
+					#    portage.
+					#
+					#  * Packages installed by overriding ACCEPT_KEYWORDS
+					#    via the environment.
+					#
+					# To avoid unwanted noise, only warn about keyword
+					# masks if all of the following are true:
+					#
+					#  * KEYWORDS is not empty (not installed by old portage).
+					#
+					#  * The graph is complete and the package has not been
+					#    pulled into the dependency graph. It's eligible for
+					#    depclean, but depclean may fail to recognize it as
+					#    such due to differences in visibility filtering which
+					#    can lead to differences in || dep evaluation.
+					#    TODO: Share visibility code to fix this inconsistency.
+
+					if pkg in final_db:
+						if not visible(pkgsettings, pkg):
+							self._masked_installed.add(pkg)
+						elif graph_complete_for_root and \
+							pkgsettings.getMissingKeywords(
+							pkg.cpv, pkg.metadata) and \
+							pkg.metadata["KEYWORDS"].split() and \
+							not self.digraph.contains(pkg):
+							self._masked_installed.add(pkg)
+
 					blocker_atoms = None
 					blockers = None
 					if self.digraph.contains(pkg):
@@ -5124,8 +5178,9 @@ class depgraph(object):
 			sys.stderr.write("".join(msg))
 
 		masked_packages = []
-		for pkg, pkgsettings in self._masked_installed:
-			root_config = self.roots[pkg.root]
+		for pkg in self._masked_installed:
+			root_config = pkg.root_config
+			pkgsettings = root_config.settings
 			mreasons = get_masking_status(pkg, pkgsettings, root_config)
 			masked_packages.append((root_config, pkgsettings,
 				pkg.cpv, pkg.metadata, mreasons))
@@ -5253,13 +5308,6 @@ class depgraph(object):
 		mergelist = resume_data.get("mergelist")
 		if not isinstance(mergelist, list):
 			mergelist = []
-
-		if mergelist and "--skipfirst" in self.myopts:
-			for i, task in enumerate(mergelist):
-				if isinstance(task, list) and \
-					task and task[-1] == "merge":
-					del mergelist[i]
-					break
 
 		fakedb = self.mydbapi
 		trees = self.trees
@@ -5577,7 +5625,9 @@ class depgraph(object):
 		def __setitem__(self, k, v):
 			dict.__setitem__(self, k, v)
 			root_config = self._depgraph.roots[v.root]
-			if visible(root_config.settings, v):
+			if visible(root_config.settings, v) and \
+				not (v.installed and \
+				v.root_config.settings.getMissingKeywords(v.cpv, v.metadata)):
 				root_config.visible_pkgs.cpv_inject(v)
 
 class RepoDisplay(object):
@@ -8393,11 +8443,43 @@ def action_build(settings, trees, mtimedb,
 		if show_spinner:
 			print "Calculating dependencies  ",
 		myparams = create_depgraph_params(myopts, myaction)
-		mydepgraph = depgraph(settings, trees,
-			myopts, myparams, spinner)
+
+		resume_data = mtimedb["resume"]
+		mergelist = resume_data["mergelist"]
+		if mergelist and "--skipfirst" in myopts:
+			for i, task in enumerate(mergelist):
+				if isinstance(task, list) and \
+					task and task[-1] == "merge":
+					del mergelist[i]
+					break
+
+		dropped_tasks = set()
+
 		success = False
 		try:
-			success = mydepgraph.loadResumeCommand(mtimedb["resume"])
+			while True:
+				mydepgraph = depgraph(settings, trees,
+					myopts, myparams, spinner)
+				try:
+					success = mydepgraph.loadResumeCommand(mtimedb["resume"])
+				except depgraph.UnsatisfiedResumeDep, e:
+					if "--skipfirst" not in myopts:
+						raise
+					unsatisfied_parents = set(dep.parent for dep in e.value)
+					pruned_mergelist = []
+					for task in mergelist:
+						if isinstance(task, list) and \
+							tuple(task) in unsatisfied_parents:
+							continue
+						pruned_mergelist.append(task)
+					if not pruned_mergelist:
+						raise
+					mergelist[:] = pruned_mergelist
+					dropped_tasks.update(unsatisfied_parents)
+					del e
+					continue
+				else:
+					break
 		except (portage.exception.PackageNotFound,
 			mydepgraph.UnsatisfiedResumeDep), e:
 			if show_spinner:
@@ -8431,7 +8513,9 @@ def action_build(settings, trees, mtimedb,
 				msg = "The resume list contains packages " + \
 					"with dependencies that have not been " + \
 					"installed yet. Please restart/continue " + \
-					"the operation manually."
+					"the operation manually, or use --skipfirst " + \
+					"to skip the first package in the list and " + \
+					"any other packages that may have missing dependencies."
 				for line in wrap(msg, 72):
 					out.eerror(line)
 			elif isinstance(e, portage.exception.PackageNotFound):
@@ -8448,7 +8532,15 @@ def action_build(settings, trees, mtimedb,
 			if show_spinner:
 				print "\b\b... done!"
 
-		if not success:
+		if success:
+			if dropped_tasks:
+				portage.writemsg("!!! One or more packages have been " + \
+					"dropped due to unsatisfied dependencies:\n\n",
+					noiselevel=-1)
+				for task in dropped_tasks:
+					portage.writemsg("  " + str(task) + "\n", noiselevel=-1)
+				portage.writemsg("\n", noiselevel=-1)
+		else:
 			mydepgraph.display_problems()
 			if not (ask or pretend):
 				# delete the current list and also the backup

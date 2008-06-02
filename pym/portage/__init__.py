@@ -6228,11 +6228,6 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 				kmask="~"+myarch
 				break
 
-	# Assume that the user doesn't want to be bothered about
-	# KEYWORDS of packages that are already installed.
-	if kmask and not installed:
-		rValue.append(kmask+" keyword")
-
 	try:
 		missing_licenses = settings.getMissingLicenses(mycpv, metadata)
 		if missing_licenses:
@@ -6246,6 +6241,11 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 			rValue.append(" ".join(msg))
 	except portage.exception.InvalidDependString, e:
 		rValue.append("LICENSE: "+str(e))
+
+	# Only show KEYWORDS masks for installed packages
+	# if they're not masked for any other reason.
+	if kmask and (not installed or not rValue):
+		rValue.append(kmask+" keyword")
 
 	return rValue
 
