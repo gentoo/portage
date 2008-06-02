@@ -105,10 +105,10 @@ class PackageSet(object):
 		None if there are no matches.  This matches virtual arguments against
 		the PROVIDE metadata.  This can raise an InvalidDependString exception
 		if an error occurs while parsing PROVIDE."""
-		atoms = list(self.iterAtomsForPackage(pkg))
-		if not atoms:
+		try:
+			return self.iterAtomsForPackage(pkg).next()
+		except StopIteration:
 			return None
-		return best_match_to_list(pkg, atoms)
 
 	def iterAtomsForPackage(self, pkg):
 		"""

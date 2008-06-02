@@ -1249,14 +1249,15 @@ for x in scanlist:
 					if token in operator_tokens or \
 						token.endswith("?"):
 						continue
-					if not portage.isvalidatom(token, allow_blockers=True):
+					try:
+						atom = portage.dep.Atom(token)
+					except portage.exception.InvalidAtom:
 						badsyntax.append("'%s' not a valid atom" % token)
 					else:
-						atom = token
-						is_blocker = atom.startswith("!")
-						if is_blocker:
-							atom = token.lstrip("!")
-						atom = portage.dep.Atom(atom)
+						is_blocker = atom.blocker
+						if atom.blocker:
+							atom = portage.dep.Atom(atom[1:])
+
 						if mytype == "DEPEND" and \
 							not is_blocker and \
 							not inherited_java_eclass and \

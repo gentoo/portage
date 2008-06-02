@@ -574,7 +574,10 @@ class vardbapi(dbapi):
 				try:
 					return [x for x in os.listdir(p) \
 						if os.path.isdir(os.path.join(p, x))]
-				except EnvironmentError:
+				except EnvironmentError, e:
+					if e.errno == PermissionDenied.errno:
+						raise PermissionDenied(p)
+					del e
 					return []
 
 		for x in listdir(basepath, EmptyOnError=1, ignorecvs=1, dirsonly=1):
