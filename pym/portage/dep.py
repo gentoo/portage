@@ -593,19 +593,31 @@ def isvalidatom(atom, allow_blockers=False):
 	if allow_blockers and atom.startswith("!"):
 		atom = atom[1:]
 	cpv = dep_getcpv(atom)
+	cpv_catsplit = catsplit(cpv)
+	mycpv_cps = None
 	if cpv:
-		if _valid_category.match(catsplit(cpv)[0]) is None:
-			return 0
-		mycpv_cps = catpkgsplit(cpv)
-	else:
-		mycpv_cps = None
+		if len(cpv_catsplit) == 2:
+			if _valid_category.match(cpv_catsplit[0]) is None:
+				return 0
+			if cpv_catsplit[0] == "null":
+				# "null" category is valid, missing category is not.
+				mycpv_cps = catpkgsplit(cpv.replace("null/", "cat/", 1))
+				if mycpv_cps:
+					mycpv_cps = list(mycpv_cps)
+					mycpv_cps[0] = "null"
+		if not mycpv_cps:
+			mycpv_cps = catpkgsplit(cpv)
+
 	operator = get_operator(atom)
 	if operator:
 		if operator[0] in "<>" and remove_slot(atom).endswith("*"):
 			return 0
-		if mycpv_cps and mycpv_cps[0] != "null":
-			# >=cat/pkg-1.0
-			return 1
+		if mycpv_cps:
+			if len(cpv_catsplit) == 2:
+				# >=cat/pkg-1.0
+				return 1
+			else:
+				return 0
 		else:
 			# >=cat/pkg or >=pkg-1.0 (no category)
 			return 0
@@ -613,7 +625,7 @@ def isvalidatom(atom, allow_blockers=False):
 		# cat/pkg-1.0
 		return 0
 
-	if (len(atom.split('/')) == 2):
+	if len(cpv_catsplit) == 2:
 		# cat/pkg
 		return 1
 	else:

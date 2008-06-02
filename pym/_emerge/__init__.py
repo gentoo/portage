@@ -751,15 +751,14 @@ class RootConfig(object):
 		self.sets = self.setconfig.getSets()
 		self.visible_pkgs = PackageVirtualDbapi(self.settings)
 
-def create_world_atom(pkg_key, metadata, args_set, root_config):
+def create_world_atom(pkg, args_set, root_config):
 	"""Create a new atom for the world file if one does not exist.  If the
 	argument atom is precise enough to identify a specific slot then a slot
 	atom will be returned. Atoms that are in the system set may also be stored
 	in world since system atoms can only match one slot while world atoms can
 	be greedy with respect to slots.  Unslotted system packages will not be
 	stored in world."""
-	pkg = Package(cpv=pkg_key, root_config=root_config, metadata=metadata)
-	metadata = pkg.metadata
+
 	arg_atom = args_set.findAtomForPackage(pkg)
 	if not arg_atom:
 		return None
@@ -781,7 +780,7 @@ def create_world_atom(pkg_key, metadata, args_set, root_config):
 	if slotted and arg_atom != cp:
 		# If the user gave a specific atom, store it as a
 		# slot atom in the world file.
-		slot_atom = "%s:%s" % (cp, metadata["SLOT"])
+		slot_atom = pkg.slot_atom
 
 		# For USE=multislot, there are a couple of cases to
 		# handle here:
@@ -4964,8 +4963,7 @@ class depgraph(object):
 						myroot == self.target_root and \
 						favorites_set.findAtomForPackage(pkg):
 						# Maybe it will be added to world now.
-						if create_world_atom(pkg_key, metadata,
-							favorites_set, root_config):
+						if create_world_atom(pkg, favorites_set, root_config):
 							pkg_world = True
 				except portage.exception.InvalidDependString:
 					# This is reported elsewhere if relevant.
@@ -5264,10 +5262,9 @@ class depgraph(object):
 			pkg_type, root, pkg_key, pkg_status = x
 			if pkg_status != "nomerge":
 				continue
-			metadata = x.metadata
+
 			try:
-				myfavkey = create_world_atom(pkg_key, metadata,
-					args_set, root_config)
+				myfavkey = create_world_atom(pkg, args_set, root_config)
 				if myfavkey:
 					if myfavkey in added_favorites:
 						continue
@@ -6219,8 +6216,7 @@ class MergeTask(object):
 					args_set.findAtomForPackage(pkg):
 					world_set.lock()
 					world_set.load() # maybe it's changed on disk
-					myfavkey = create_world_atom(pkg_key, metadata,
-						args_set, root_config)
+					myfavkey = create_world_atom(pkg, args_set, root_config)
 					if myfavkey:
 						print ">>> Recording",myfavkey,"in \"world\" favorites file..."
 						emergelog(xterm_titles, " === ("+\
@@ -6468,8 +6464,7 @@ def unmerge(root_config, myopts, unmerge_action,
 				sys.exit(1)
 	
 			if not mymatch and x[0] not in "<>=~":
-				#add a "=" if missing
-				mymatch=localtree.dep_match("="+x)
+				mymatch = localtree.dep_match(x)
 			if not mymatch:
 				portage.writemsg("\n--- Couldn't find '%s' to %s.\n" % \
 					(x, unmerge_action), noiselevel=-1)
@@ -8464,19 +8459,49 @@ def action_build(settings, trees, mtimedb,
 				except depgraph.UnsatisfiedResumeDep, e:
 					if "--skipfirst" not in myopts:
 						raise
-					unsatisfied_parents = set(dep.parent for dep in e.value)
-					pruned_mergelist = []
-					for task in mergelist:
-						if isinstance(task, list) and \
-							tuple(task) in unsatisfied_parents:
+
+					graph = mydepgraph.digraph
+					unsatisfied_parents = dict((dep.parent, dep.parent) \
+						for dep in e.value)
+					traversed_nodes = set()
+					unsatisfied_stack = list(unsatisfied_parents)
+					while unsatisfied_stack:
+						pkg = unsatisfied_stack.pop()
+						if pkg in traversed_nodes:
 							continue
-						pruned_mergelist.append(task)
+						traversed_nodes.add(pkg)
+
+						# If this package was pulled in by a parent
+						# package scheduled for merge, removing this
+						# package may cause the the parent package's
+						# dependency to become unsatisfied.
+						for parent_node in graph.parent_nodes(pkg):
+							if not isinstance(parent_node, Package) \
+								or parent_node.operation != "merge":
+								continue
+							unsatisfied = \
+								graph.child_nodes(parent_node,
+								ignore_priority=DepPriority.SOFT)
+							if pkg in unsatisfied:
+								unsatisfied_parents[parent_node] = parent_node
+								unsatisfied_stack.append(parent_node)
+
+					pruned_mergelist = [x for x in mergelist \
+						if isinstance(x, list) and \
+						tuple(x) not in unsatisfied_parents]
+
+					# It shouldn't happen, but if the size of mergelist
+					# does not decrease for some reason then the loop
+					# will be infinite. Therefore, if that case ever
+					# occurs for some reason, raise the exception to
+					# break out of the loop.
 					if not pruned_mergelist or \
 						len(pruned_mergelist) == len(mergelist):
 						raise
 					mergelist[:] = pruned_mergelist
 					dropped_tasks.update(unsatisfied_parents)
-					del e, unsatisfied_parents
+					del e, graph, traversed_nodes, \
+						unsatisfied_parents, unsatisfied_stack
 					continue
 				else:
 					break
